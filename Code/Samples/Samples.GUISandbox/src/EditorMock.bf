@@ -412,6 +412,8 @@ class EditorMock
 		mHost.Read(sDensities[mDensity].Sheet, text);
 		text.Append("\n");
 		mHost.Read("Editor/Mock/kit.css", text); // the kit page's own layout
+		text.Append("\n");
+		mHost.Read("Editor/Mock/profiler.css", text); // the profiler page's, and its bars
 		text.AppendF("\n:root {{ --accent-input: {}; }}\n", sAccents[mAccent].Fill);
 		let sheet = scope StyleSheet();
 		CSSParser.Parse(text, "Editor/editor.css", sheet);
@@ -444,6 +446,8 @@ class EditorMock
 		Register("input-split", "Input B: Tree and Grid", "Editor/Mock/input-split.gml");
 		Register("input-split-set", "Input B: Set Chosen", "Editor/Mock/input-split-set.gml");
 		Register("input-split-set-open", "Input B: Set, Actions Open", "Editor/Mock/input-split-set-open.gml");
+		// The profiler page (X7), a tab in the page area (the user, 2026-10-27).
+		Register("profiler", "Profiler", "Editor/Mock/profiler.gml");
 		Register("assets", "Assets", "Editor/Mock/assets.gml");
 		Register("console", "Console", "Editor/Mock/console.gml");
 		{
@@ -480,7 +484,8 @@ class EditorMock
 		Said(layout.InsertTab("input-split", central));
 		Said(layout.InsertTab("input-split-set", central));
 		Said(layout.InsertTab("input-split-set-open", central));
-		Said(layout.Activate("scene"));
+		Said(layout.InsertTab("profiler", central));
+		Said(layout.Activate("profiler"));
 		Said(layout.InsertBeside("assets", central, .Bottom, 0.28f));
 		Said(layout.InsertTab("console", layout.StackOf("assets")));
 		Said(layout.Activate("assets"));
@@ -494,7 +499,7 @@ class EditorMock
 		description.Title.Set(title);
 		description.Close = .Hide;
 		description.Closable = true;
-		description.Default.Central = id.StartsWith("scene") || (id == "kit");
+		description.Default.Central = id.StartsWith("scene") || (id == "kit") || (id == "profiler");
 		let path = new String(markup);
 		let panel = new String(id);
 		description.Factory = new () =>

@@ -1,0 +1,1136 @@
+<!--
+  The profiler page (X7 of Raptor's editor-gui spec), a static mock of made-up data for the user to judge:
+  the page bar, the frame strip with the counters under it over the same frames, one frame's
+  timeline across the full width, and under it the scope table beside the chosen scope's detail.
+  Generated: each bar is placed by a class of its own in profiler.css.
+-->
+<Panel class="page pm-page">
+    <ToolBar class="page-toolbar">
+        <ToolButton command="mock.prof-record" toggle="true" text="Record" shows-text="true" icon="Editor/Icons/target.svg" tooltip="Record the editor process"/>
+        <ToolButton command="mock.prof-live" toggle="true" text="Live" shows-text="true" icon="Editor/Icons/play.svg" tooltip="Follow the newest frame"/>
+        <Separator/>
+        <ToolButton command="mock.prof-open" icon="Editor/Icons/folder-open.svg" tooltip="Open a capture"/>
+        <ToolButton command="mock.prof-save" icon="Editor/Icons/save.svg" tooltip="Save the recording as a capture"/>
+        <Separator/>
+        <Label class="pm-source" text="Recording: the editor process, 2,140 frames"/>
+        <Spacer/>
+        <Label class="pm-bar-label" text="Budget"/>
+        <ComboBox class="pm-combo" items="30 fps|60 fps|120 fps|None" selected="1"/>
+        <Separator/>
+        <ToolButton command="mock.prof-spike" toggle="true" text="Stop on spike" shows-text="true" icon="Editor/Icons/warning.svg" tooltip="Stop recording when a frame takes longer than this"/>
+        <ComboBox class="pm-combo" items="25 ms|33 ms|50 ms|100 ms" selected="2"/>
+    </ToolBar>
+    <Panel class="pm-strip-area">
+        <Panel class="pm-strip-bar">
+            <Label class="pm-strong" text="Frame 1,482"/>
+            <Label class="pm-dim mono" text="24.60 ms   CPU 24.60   GPU 12.20"/>
+            <Spacer/>
+            <Button class="pm-small" text="Longest"/>
+            <Button class="pm-small" text="Median"/>
+        </Panel>
+        <Panel class="pm-strip-row">
+            <Panel class="pm-axis"><Label class="pm-axis-top mono" text="33.3"/><Label class="pm-axis-mid mono" text="16.7"/><Label class="pm-axis-bot mono" text="0 ms"/></Panel>
+            <Panel class="pm-strip">
+                <Panel class="pm-abs pm-fbar ok pm534"/>
+                <Panel class="pm-abs pm-fpart pm535"/>
+                <Panel class="pm-abs pm-fbar ok pm536"/>
+                <Panel class="pm-abs pm-fpart pm537"/>
+                <Panel class="pm-abs pm-fbar ok pm538"/>
+                <Panel class="pm-abs pm-fpart pm539"/>
+                <Panel class="pm-abs pm-fbar ok pm540"/>
+                <Panel class="pm-abs pm-fpart pm541"/>
+                <Panel class="pm-abs pm-fbar ok pm542"/>
+                <Panel class="pm-abs pm-fpart pm543"/>
+                <Panel class="pm-abs pm-fbar ok pm544"/>
+                <Panel class="pm-abs pm-fpart pm545"/>
+                <Panel class="pm-abs pm-fbar ok pm546"/>
+                <Panel class="pm-abs pm-fpart pm547"/>
+                <Panel class="pm-abs pm-fbar ok pm548"/>
+                <Panel class="pm-abs pm-fpart pm549"/>
+                <Panel class="pm-abs pm-fbar ok pm550"/>
+                <Panel class="pm-abs pm-fpart pm551"/>
+                <Panel class="pm-abs pm-fbar ok pm552"/>
+                <Panel class="pm-abs pm-fpart pm553"/>
+                <Panel class="pm-abs pm-fbar ok pm554"/>
+                <Panel class="pm-abs pm-fpart pm555"/>
+                <Panel class="pm-abs pm-fbar ok pm556"/>
+                <Panel class="pm-abs pm-fpart pm557"/>
+                <Panel class="pm-abs pm-fbar ok pm558"/>
+                <Panel class="pm-abs pm-fpart pm559"/>
+                <Panel class="pm-abs pm-fbar ok pm560"/>
+                <Panel class="pm-abs pm-fpart pm561"/>
+                <Panel class="pm-abs pm-fbar ok pm562"/>
+                <Panel class="pm-abs pm-fpart pm563"/>
+                <Panel class="pm-abs pm-fbar ok pm564"/>
+                <Panel class="pm-abs pm-fpart pm565"/>
+                <Panel class="pm-abs pm-fbar ok pm566"/>
+                <Panel class="pm-abs pm-fpart pm567"/>
+                <Panel class="pm-abs pm-fbar ok pm568"/>
+                <Panel class="pm-abs pm-fpart pm569"/>
+                <Panel class="pm-abs pm-fbar ok pm570"/>
+                <Panel class="pm-abs pm-fpart pm571"/>
+                <Panel class="pm-abs pm-fbar ok pm572"/>
+                <Panel class="pm-abs pm-fpart pm573"/>
+                <Panel class="pm-abs pm-fbar ok pm574"/>
+                <Panel class="pm-abs pm-fpart pm575"/>
+                <Panel class="pm-abs pm-fbar ok pm576"/>
+                <Panel class="pm-abs pm-fpart pm577"/>
+                <Panel class="pm-abs pm-fbar ok pm578"/>
+                <Panel class="pm-abs pm-fpart pm579"/>
+                <Panel class="pm-abs pm-fbar ok pm580"/>
+                <Panel class="pm-abs pm-fpart pm581"/>
+                <Panel class="pm-abs pm-fbar ok pm582"/>
+                <Panel class="pm-abs pm-fpart pm583"/>
+                <Panel class="pm-abs pm-fbar ok pm584"/>
+                <Panel class="pm-abs pm-fpart pm585"/>
+                <Panel class="pm-abs pm-fbar ok pm586"/>
+                <Panel class="pm-abs pm-fpart pm587"/>
+                <Panel class="pm-abs pm-fbar ok pm588"/>
+                <Panel class="pm-abs pm-fpart pm589"/>
+                <Panel class="pm-abs pm-fbar ok pm590"/>
+                <Panel class="pm-abs pm-fpart pm591"/>
+                <Panel class="pm-abs pm-fbar ok pm592"/>
+                <Panel class="pm-abs pm-fpart pm593"/>
+                <Panel class="pm-abs pm-fbar ok pm594"/>
+                <Panel class="pm-abs pm-fpart pm595"/>
+                <Panel class="pm-abs pm-fbar ok pm596"/>
+                <Panel class="pm-abs pm-fpart pm597"/>
+                <Panel class="pm-abs pm-fbar ok pm598"/>
+                <Panel class="pm-abs pm-fpart pm599"/>
+                <Panel class="pm-abs pm-fbar ok pm600"/>
+                <Panel class="pm-abs pm-fpart pm601"/>
+                <Panel class="pm-abs pm-fbar ok pm602"/>
+                <Panel class="pm-abs pm-fpart pm603"/>
+                <Panel class="pm-abs pm-fbar ok pm604"/>
+                <Panel class="pm-abs pm-fpart pm605"/>
+                <Panel class="pm-abs pm-fbar ok pm606"/>
+                <Panel class="pm-abs pm-fpart pm607"/>
+                <Panel class="pm-abs pm-fbar ok pm608"/>
+                <Panel class="pm-abs pm-fpart pm609"/>
+                <Panel class="pm-abs pm-fbar over pm610"/>
+                <Panel class="pm-abs pm-fpart pm611"/>
+                <Panel class="pm-abs pm-fbar ok pm612"/>
+                <Panel class="pm-abs pm-fpart pm613"/>
+                <Panel class="pm-abs pm-fbar ok pm614"/>
+                <Panel class="pm-abs pm-fpart pm615"/>
+                <Panel class="pm-abs pm-fbar ok pm616"/>
+                <Panel class="pm-abs pm-fpart pm617"/>
+                <Panel class="pm-abs pm-fbar ok pm618"/>
+                <Panel class="pm-abs pm-fpart pm619"/>
+                <Panel class="pm-abs pm-fbar ok pm620"/>
+                <Panel class="pm-abs pm-fpart pm621"/>
+                <Panel class="pm-abs pm-fbar ok pm622"/>
+                <Panel class="pm-abs pm-fpart pm623"/>
+                <Panel class="pm-abs pm-fbar ok pm624"/>
+                <Panel class="pm-abs pm-fpart pm625"/>
+                <Panel class="pm-abs pm-fbar ok pm626"/>
+                <Panel class="pm-abs pm-fpart pm627"/>
+                <Panel class="pm-abs pm-fbar ok pm628"/>
+                <Panel class="pm-abs pm-fpart pm629"/>
+                <Panel class="pm-abs pm-fbar ok pm630"/>
+                <Panel class="pm-abs pm-fpart pm631"/>
+                <Panel class="pm-abs pm-fbar ok pm632"/>
+                <Panel class="pm-abs pm-fpart pm633"/>
+                <Panel class="pm-abs pm-fbar ok pm634"/>
+                <Panel class="pm-abs pm-fpart pm635"/>
+                <Panel class="pm-abs pm-fbar ok pm636"/>
+                <Panel class="pm-abs pm-fpart pm637"/>
+                <Panel class="pm-abs pm-fbar ok pm638"/>
+                <Panel class="pm-abs pm-fpart pm639"/>
+                <Panel class="pm-abs pm-fbar ok pm640"/>
+                <Panel class="pm-abs pm-fpart pm641"/>
+                <Panel class="pm-abs pm-fbar ok pm642"/>
+                <Panel class="pm-abs pm-fpart pm643"/>
+                <Panel class="pm-abs pm-fbar ok pm644"/>
+                <Panel class="pm-abs pm-fpart pm645"/>
+                <Panel class="pm-abs pm-fbar ok pm646"/>
+                <Panel class="pm-abs pm-fpart pm647"/>
+                <Panel class="pm-abs pm-fbar ok pm648"/>
+                <Panel class="pm-abs pm-fpart pm649"/>
+                <Panel class="pm-abs pm-fbar ok pm650"/>
+                <Panel class="pm-abs pm-fpart pm651"/>
+                <Panel class="pm-abs pm-fbar ok pm652"/>
+                <Panel class="pm-abs pm-fpart pm653"/>
+                <Panel class="pm-abs pm-fbar ok pm654"/>
+                <Panel class="pm-abs pm-fpart pm655"/>
+                <Panel class="pm-abs pm-fbar ok pm656"/>
+                <Panel class="pm-abs pm-fpart pm657"/>
+                <Panel class="pm-abs pm-fbar ok pm658"/>
+                <Panel class="pm-abs pm-fpart pm659"/>
+                <Panel class="pm-abs pm-fbar ok pm660"/>
+                <Panel class="pm-abs pm-fpart pm661"/>
+                <Panel class="pm-abs pm-fbar ok pm662"/>
+                <Panel class="pm-abs pm-fpart pm663"/>
+                <Panel class="pm-abs pm-fbar ok pm664"/>
+                <Panel class="pm-abs pm-fpart pm665"/>
+                <Panel class="pm-abs pm-fbar ok pm666"/>
+                <Panel class="pm-abs pm-fpart pm667"/>
+                <Panel class="pm-abs pm-fbar ok pm668"/>
+                <Panel class="pm-abs pm-fpart pm669"/>
+                <Panel class="pm-abs pm-fbar ok pm670"/>
+                <Panel class="pm-abs pm-fpart pm671"/>
+                <Panel class="pm-abs pm-fbar ok pm672"/>
+                <Panel class="pm-abs pm-fpart pm673"/>
+                <Panel class="pm-abs pm-fbar ok pm674"/>
+                <Panel class="pm-abs pm-fpart pm675"/>
+                <Panel class="pm-abs pm-fbar ok pm676"/>
+                <Panel class="pm-abs pm-fpart pm677"/>
+                <Panel class="pm-abs pm-fbar ok pm678"/>
+                <Panel class="pm-abs pm-fpart pm679"/>
+                <Panel class="pm-abs pm-fbar ok pm680"/>
+                <Panel class="pm-abs pm-fpart pm681"/>
+                <Panel class="pm-abs pm-fbar ok pm682"/>
+                <Panel class="pm-abs pm-fpart pm683"/>
+                <Panel class="pm-abs pm-fbar over pm684"/>
+                <Panel class="pm-abs pm-fpart pm685"/>
+                <Panel class="pm-abs pm-fbar ok pm686"/>
+                <Panel class="pm-abs pm-fpart pm687"/>
+                <Panel class="pm-abs pm-fbar over pm688"/>
+                <Panel class="pm-abs pm-fpart pm689"/>
+                <Panel class="pm-abs pm-fbar ok pm690"/>
+                <Panel class="pm-abs pm-fpart pm691"/>
+                <Panel class="pm-abs pm-fbar ok pm692"/>
+                <Panel class="pm-abs pm-fpart pm693"/>
+                <Panel class="pm-abs pm-fbar ok pm694"/>
+                <Panel class="pm-abs pm-fpart pm695"/>
+                <Panel class="pm-abs pm-fbar ok pm696"/>
+                <Panel class="pm-abs pm-fpart pm697"/>
+                <Panel class="pm-abs pm-fbar ok pm698"/>
+                <Panel class="pm-abs pm-fpart pm699"/>
+                <Panel class="pm-abs pm-fbar ok pm700"/>
+                <Panel class="pm-abs pm-fpart pm701"/>
+                <Panel class="pm-abs pm-fbar ok pm702"/>
+                <Panel class="pm-abs pm-fpart pm703"/>
+                <Panel class="pm-abs pm-fbar ok pm704"/>
+                <Panel class="pm-abs pm-fpart pm705"/>
+                <Panel class="pm-abs pm-fbar ok pm706"/>
+                <Panel class="pm-abs pm-fpart pm707"/>
+                <Panel class="pm-abs pm-fbar ok pm708"/>
+                <Panel class="pm-abs pm-fpart pm709"/>
+                <Panel class="pm-abs pm-fbar ok pm710"/>
+                <Panel class="pm-abs pm-fpart pm711"/>
+                <Panel class="pm-abs pm-fbar ok pm712"/>
+                <Panel class="pm-abs pm-fpart pm713"/>
+                <Panel class="pm-abs pm-fbar ok pm714"/>
+                <Panel class="pm-abs pm-fpart pm715"/>
+                <Panel class="pm-abs pm-fbar ok pm716"/>
+                <Panel class="pm-abs pm-fpart pm717"/>
+                <Panel class="pm-abs pm-fbar ok pm718"/>
+                <Panel class="pm-abs pm-fpart pm719"/>
+                <Panel class="pm-abs pm-fbar ok pm720"/>
+                <Panel class="pm-abs pm-fpart pm721"/>
+                <Panel class="pm-abs pm-fbar ok pm722"/>
+                <Panel class="pm-abs pm-fpart pm723"/>
+                <Panel class="pm-abs pm-fbar ok pm724"/>
+                <Panel class="pm-abs pm-fpart pm725"/>
+                <Panel class="pm-abs pm-fbar far pm726"/>
+                <Panel class="pm-abs pm-fpart pm727"/>
+                <Panel class="pm-abs pm-clip pm728"/>
+                <Panel class="pm-abs pm-fbar ok pm729"/>
+                <Panel class="pm-abs pm-fpart pm730"/>
+                <Panel class="pm-abs pm-fbar ok pm731"/>
+                <Panel class="pm-abs pm-fpart pm732"/>
+                <Panel class="pm-abs pm-fbar ok pm733"/>
+                <Panel class="pm-abs pm-fpart pm734"/>
+                <Panel class="pm-abs pm-fbar ok pm735"/>
+                <Panel class="pm-abs pm-fpart pm736"/>
+                <Panel class="pm-abs pm-fbar ok pm737"/>
+                <Panel class="pm-abs pm-fpart pm738"/>
+                <Panel class="pm-abs pm-fbar ok pm739"/>
+                <Panel class="pm-abs pm-fpart pm740"/>
+                <Panel class="pm-abs pm-fbar ok pm741"/>
+                <Panel class="pm-abs pm-fpart pm742"/>
+                <Panel class="pm-abs pm-fbar ok pm743"/>
+                <Panel class="pm-abs pm-fpart pm744"/>
+                <Panel class="pm-abs pm-fbar ok pm745"/>
+                <Panel class="pm-abs pm-fpart pm746"/>
+                <Panel class="pm-abs pm-fbar ok pm747"/>
+                <Panel class="pm-abs pm-fpart pm748"/>
+                <Panel class="pm-abs pm-fbar ok pm749"/>
+                <Panel class="pm-abs pm-fpart pm750"/>
+                <Panel class="pm-abs pm-fbar ok pm751"/>
+                <Panel class="pm-abs pm-fpart pm752"/>
+                <Panel class="pm-abs pm-fbar ok pm753"/>
+                <Panel class="pm-abs pm-fpart pm754"/>
+                <Panel class="pm-abs pm-fbar ok pm755"/>
+                <Panel class="pm-abs pm-fpart pm756"/>
+                <Panel class="pm-abs pm-fbar ok pm757"/>
+                <Panel class="pm-abs pm-fpart pm758"/>
+                <Panel class="pm-abs pm-fbar ok pm759"/>
+                <Panel class="pm-abs pm-fpart pm760"/>
+                <Panel class="pm-abs pm-fbar ok pm761"/>
+                <Panel class="pm-abs pm-fpart pm762"/>
+                <Panel class="pm-abs pm-fbar ok pm763"/>
+                <Panel class="pm-abs pm-fpart pm764"/>
+                <Panel class="pm-abs pm-fbar ok pm765"/>
+                <Panel class="pm-abs pm-fpart pm766"/>
+                <Panel class="pm-abs pm-fbar ok pm767"/>
+                <Panel class="pm-abs pm-fpart pm768"/>
+                <Panel class="pm-abs pm-fbar ok pm769"/>
+                <Panel class="pm-abs pm-fpart pm770"/>
+                <Panel class="pm-abs pm-fbar ok pm771"/>
+                <Panel class="pm-abs pm-fpart pm772"/>
+                <Panel class="pm-abs pm-fbar ok pm773"/>
+                <Panel class="pm-abs pm-fpart pm774"/>
+                <Panel class="pm-abs pm-fbar ok pm775"/>
+                <Panel class="pm-abs pm-fpart pm776"/>
+                <Panel class="pm-abs pm-fbar ok pm777"/>
+                <Panel class="pm-abs pm-fpart pm778"/>
+                <Panel class="pm-abs pm-fbar ok pm779"/>
+                <Panel class="pm-abs pm-fpart pm780"/>
+                <Panel class="pm-abs pm-fbar ok pm781"/>
+                <Panel class="pm-abs pm-fpart pm782"/>
+                <Panel class="pm-abs pm-fbar over pm783"/>
+                <Panel class="pm-abs pm-fpart pm784"/>
+                <Panel class="pm-abs pm-fbar ok pm785"/>
+                <Panel class="pm-abs pm-fpart pm786"/>
+                <Panel class="pm-abs pm-fbar ok pm787"/>
+                <Panel class="pm-abs pm-fpart pm788"/>
+                <Panel class="pm-abs pm-fbar ok pm789"/>
+                <Panel class="pm-abs pm-fpart pm790"/>
+                <Panel class="pm-abs pm-fbar ok pm791"/>
+                <Panel class="pm-abs pm-fpart pm792"/>
+                <Panel class="pm-abs pm-fbar ok pm793"/>
+                <Panel class="pm-abs pm-fpart pm794"/>
+                <Panel class="pm-abs pm-fbar ok pm795"/>
+                <Panel class="pm-abs pm-fpart pm796"/>
+                <Panel class="pm-abs pm-fbar ok pm797"/>
+                <Panel class="pm-abs pm-fpart pm798"/>
+                <Panel class="pm-abs pm-fbar ok pm799"/>
+                <Panel class="pm-abs pm-fpart pm800"/>
+                <Panel class="pm-abs pm-fbar ok pm801"/>
+                <Panel class="pm-abs pm-fpart pm802"/>
+                <Panel class="pm-abs pm-fbar ok pm803"/>
+                <Panel class="pm-abs pm-fpart pm804"/>
+                <Panel class="pm-abs pm-fbar ok pm805"/>
+                <Panel class="pm-abs pm-fpart pm806"/>
+                <Panel class="pm-abs pm-fbar ok pm807"/>
+                <Panel class="pm-abs pm-fpart pm808"/>
+                <Panel class="pm-abs pm-fbar ok pm809"/>
+                <Panel class="pm-abs pm-fpart pm810"/>
+                <Panel class="pm-abs pm-fbar ok pm811"/>
+                <Panel class="pm-abs pm-fpart pm812"/>
+                <Panel class="pm-abs pm-fbar ok pm813"/>
+                <Panel class="pm-abs pm-fpart pm814"/>
+                <Panel class="pm-abs pm-fbar ok pm815"/>
+                <Panel class="pm-abs pm-fpart pm816"/>
+                <Panel class="pm-abs pm-fbar ok pm817"/>
+                <Panel class="pm-abs pm-fpart pm818"/>
+                <Panel class="pm-abs pm-fbar ok pm819"/>
+                <Panel class="pm-abs pm-fpart pm820"/>
+                <Panel class="pm-abs pm-fbar ok pm821"/>
+                <Panel class="pm-abs pm-fpart pm822"/>
+                <Panel class="pm-abs pm-fbar ok pm823"/>
+                <Panel class="pm-abs pm-fpart pm824"/>
+                <Panel class="pm-abs pm-fbar ok pm825"/>
+                <Panel class="pm-abs pm-fpart pm826"/>
+                <Panel class="pm-abs pm-fbar ok pm827"/>
+                <Panel class="pm-abs pm-fpart pm828"/>
+                <Panel class="pm-abs pm-fbar ok pm829"/>
+                <Panel class="pm-abs pm-fpart pm830"/>
+                <Panel class="pm-abs pm-fbar ok pm831"/>
+                <Panel class="pm-abs pm-fpart pm832"/>
+                <Panel class="pm-abs pm-fbar ok pm833"/>
+                <Panel class="pm-abs pm-fpart pm834"/>
+                <Panel class="pm-abs pm-fbar ok pm835"/>
+                <Panel class="pm-abs pm-fpart pm836"/>
+                <Panel class="pm-abs pm-fbar ok pm837"/>
+                <Panel class="pm-abs pm-fpart pm838"/>
+                <Panel class="pm-abs pm-fbar ok pm839"/>
+                <Panel class="pm-abs pm-fpart pm840"/>
+                <Panel class="pm-abs pm-fbar ok pm841"/>
+                <Panel class="pm-abs pm-fpart pm842"/>
+                <Panel class="pm-abs pm-fbar ok pm843"/>
+                <Panel class="pm-abs pm-fpart pm844"/>
+                <Panel class="pm-abs pm-fbar ok pm845"/>
+                <Panel class="pm-abs pm-fpart pm846"/>
+                <Panel class="pm-abs pm-fbar ok pm847"/>
+                <Panel class="pm-abs pm-fpart pm848"/>
+                <Panel class="pm-abs pm-fbar over pm849"/>
+                <Panel class="pm-abs pm-fpart pm850"/>
+                <Panel class="pm-abs pm-fbar ok pm851"/>
+                <Panel class="pm-abs pm-fpart pm852"/>
+                <Panel class="pm-abs pm-fbar ok pm853"/>
+                <Panel class="pm-abs pm-fpart pm854"/>
+                <Panel class="pm-abs pm-fbar ok pm855"/>
+                <Panel class="pm-abs pm-fpart pm856"/>
+                <Panel class="pm-abs pm-fbar ok pm857"/>
+                <Panel class="pm-abs pm-fpart pm858"/>
+                <Panel class="pm-abs pm-fbar ok pm859"/>
+                <Panel class="pm-abs pm-fpart pm860"/>
+                <Panel class="pm-abs pm-fbar ok pm861"/>
+                <Panel class="pm-abs pm-fpart pm862"/>
+                <Panel class="pm-abs pm-fbar ok pm863"/>
+                <Panel class="pm-abs pm-fpart pm864"/>
+                <Panel class="pm-abs pm-fbar ok pm865"/>
+                <Panel class="pm-abs pm-fpart pm866"/>
+                <Panel class="pm-abs pm-fbar ok pm867"/>
+                <Panel class="pm-abs pm-fpart pm868"/>
+                <Panel class="pm-abs pm-fbar ok pm869"/>
+                <Panel class="pm-abs pm-fpart pm870"/>
+                <Panel class="pm-abs pm-fbar ok pm871"/>
+                <Panel class="pm-abs pm-fpart pm872"/>
+                <Panel class="pm-abs pm-fbar ok pm873"/>
+                <Panel class="pm-abs pm-fpart pm874"/>
+                <Panel class="pm-abs pm-fbar ok pm875"/>
+                <Panel class="pm-abs pm-fpart pm876"/>
+                <Panel class="pm-abs pm-fbar ok pm877"/>
+                <Panel class="pm-abs pm-fpart pm878"/>
+                <Panel class="pm-abs pm-fbar ok pm879"/>
+                <Panel class="pm-abs pm-fpart pm880"/>
+                <Panel class="pm-abs pm-fbar ok pm881"/>
+                <Panel class="pm-abs pm-fpart pm882"/>
+                <Panel class="pm-abs pm-fbar ok pm883"/>
+                <Panel class="pm-abs pm-fpart pm884"/>
+                <Panel class="pm-abs pm-fbar ok pm885"/>
+                <Panel class="pm-abs pm-fpart pm886"/>
+                <Panel class="pm-abs pm-fbar ok pm887"/>
+                <Panel class="pm-abs pm-fpart pm888"/>
+                <Panel class="pm-abs pm-fbar ok pm889"/>
+                <Panel class="pm-abs pm-fpart pm890"/>
+                <Panel class="pm-abs pm-fbar ok pm891"/>
+                <Panel class="pm-abs pm-fpart pm892"/>
+                <Panel class="pm-abs pm-fbar ok pm893"/>
+                <Panel class="pm-abs pm-fpart pm894"/>
+                <Panel class="pm-abs pm-fbar over chosen pm895"/>
+                <Panel class="pm-abs pm-fpart pm896"/>
+                <Panel class="pm-abs pm-fbar ok pm897"/>
+                <Panel class="pm-abs pm-fpart pm898"/>
+                <Panel class="pm-abs pm-fbar ok pm899"/>
+                <Panel class="pm-abs pm-fpart pm900"/>
+                <Panel class="pm-abs pm-fbar ok pm901"/>
+                <Panel class="pm-abs pm-fpart pm902"/>
+                <Panel class="pm-abs pm-fbar over pm903"/>
+                <Panel class="pm-abs pm-fpart pm904"/>
+                <Panel class="pm-abs pm-fbar over pm905"/>
+                <Panel class="pm-abs pm-fpart pm906"/>
+                <Panel class="pm-abs pm-fbar ok pm907"/>
+                <Panel class="pm-abs pm-fpart pm908"/>
+                <Panel class="pm-abs pm-fbar ok pm909"/>
+                <Panel class="pm-abs pm-fpart pm910"/>
+                <Panel class="pm-abs pm-fbar ok pm911"/>
+                <Panel class="pm-abs pm-fpart pm912"/>
+                <Panel class="pm-abs pm-fbar ok pm913"/>
+                <Panel class="pm-abs pm-fpart pm914"/>
+                <Panel class="pm-abs pm-fbar ok pm915"/>
+                <Panel class="pm-abs pm-fpart pm916"/>
+                <Panel class="pm-abs pm-fbar ok pm917"/>
+                <Panel class="pm-abs pm-fpart pm918"/>
+                <Panel class="pm-abs pm-fbar ok pm919"/>
+                <Panel class="pm-abs pm-fpart pm920"/>
+                <Panel class="pm-abs pm-fbar ok pm921"/>
+                <Panel class="pm-abs pm-fpart pm922"/>
+                <Panel class="pm-abs pm-fbar ok pm923"/>
+                <Panel class="pm-abs pm-fpart pm924"/>
+                <Panel class="pm-abs pm-fbar ok pm925"/>
+                <Panel class="pm-abs pm-fpart pm926"/>
+                <Panel class="pm-abs pm-fbar ok pm927"/>
+                <Panel class="pm-abs pm-fpart pm928"/>
+                <Panel class="pm-abs pm-fbar ok pm929"/>
+                <Panel class="pm-abs pm-fpart pm930"/>
+                <Panel class="pm-abs pm-fbar ok pm931"/>
+                <Panel class="pm-abs pm-fpart pm932"/>
+                <Panel class="pm-abs pm-fbar ok pm933"/>
+                <Panel class="pm-abs pm-fpart pm934"/>
+                <Panel class="pm-abs pm-fbar ok pm935"/>
+                <Panel class="pm-abs pm-fpart pm936"/>
+                <Panel class="pm-abs pm-fbar ok pm937"/>
+                <Panel class="pm-abs pm-fpart pm938"/>
+                <Panel class="pm-abs pm-fbar ok pm939"/>
+                <Panel class="pm-abs pm-fpart pm940"/>
+                <Panel class="pm-abs pm-fbar ok pm941"/>
+                <Panel class="pm-abs pm-fpart pm942"/>
+                <Panel class="pm-abs pm-fbar ok pm943"/>
+                <Panel class="pm-abs pm-fpart pm944"/>
+                <Panel class="pm-abs pm-fbar ok pm945"/>
+                <Panel class="pm-abs pm-fpart pm946"/>
+                <Panel class="pm-abs pm-fbar ok pm947"/>
+                <Panel class="pm-abs pm-fpart pm948"/>
+                <Panel class="pm-abs pm-fbar over pm949"/>
+                <Panel class="pm-abs pm-fpart pm950"/>
+                <Panel class="pm-abs pm-fbar ok pm951"/>
+                <Panel class="pm-abs pm-fpart pm952"/>
+                <Panel class="pm-abs pm-fbar ok pm953"/>
+                <Panel class="pm-abs pm-fpart pm954"/>
+                <Panel class="pm-abs pm-fbar ok pm955"/>
+                <Panel class="pm-abs pm-fpart pm956"/>
+                <Panel class="pm-abs pm-fbar ok pm957"/>
+                <Panel class="pm-abs pm-fpart pm958"/>
+                <Panel class="pm-abs pm-fbar ok pm959"/>
+                <Panel class="pm-abs pm-fpart pm960"/>
+                <Panel class="pm-abs pm-fbar ok pm961"/>
+                <Panel class="pm-abs pm-fpart pm962"/>
+                <Panel class="pm-abs pm-fbar ok pm963"/>
+                <Panel class="pm-abs pm-fpart pm964"/>
+                <Panel class="pm-abs pm-fbar ok pm965"/>
+                <Panel class="pm-abs pm-fpart pm966"/>
+                <Panel class="pm-abs pm-fbar ok pm967"/>
+                <Panel class="pm-abs pm-fpart pm968"/>
+                <Panel class="pm-abs pm-fbar ok pm969"/>
+                <Panel class="pm-abs pm-fpart pm970"/>
+                <Panel class="pm-abs pm-fbar ok pm971"/>
+                <Panel class="pm-abs pm-fpart pm972"/>
+                <Panel class="pm-abs pm-fbar ok pm973"/>
+                <Panel class="pm-abs pm-fpart pm974"/>
+                <Panel class="pm-abs pm-fbar ok pm975"/>
+                <Panel class="pm-abs pm-fpart pm976"/>
+                <Panel class="pm-abs pm-fbar ok pm977"/>
+                <Panel class="pm-abs pm-fpart pm978"/>
+                <Panel class="pm-abs pm-fbar ok pm979"/>
+                <Panel class="pm-abs pm-fpart pm980"/>
+                <Panel class="pm-abs pm-fbar ok pm981"/>
+                <Panel class="pm-abs pm-fpart pm982"/>
+                <Panel class="pm-abs pm-fbar ok pm983"/>
+                <Panel class="pm-abs pm-fpart pm984"/>
+                <Panel class="pm-abs pm-fbar ok pm985"/>
+                <Panel class="pm-abs pm-fpart pm986"/>
+                <Panel class="pm-abs pm-fbar ok pm987"/>
+                <Panel class="pm-abs pm-fpart pm988"/>
+                <Panel class="pm-abs pm-fbar ok pm989"/>
+                <Panel class="pm-abs pm-fpart pm990"/>
+                <Panel class="pm-abs pm-fbar ok pm991"/>
+                <Panel class="pm-abs pm-fpart pm992"/>
+                <Panel class="pm-abs pm-fbar ok pm993"/>
+                <Panel class="pm-abs pm-fpart pm994"/>
+                <Panel class="pm-abs pm-fbar ok pm995"/>
+                <Panel class="pm-abs pm-fpart pm996"/>
+                <Panel class="pm-abs pm-fbar ok pm997"/>
+                <Panel class="pm-abs pm-fpart pm998"/>
+                <Panel class="pm-abs pm-fbar ok pm999"/>
+                <Panel class="pm-abs pm-fpart pm1000"/>
+                <Panel class="pm-abs pm-fbar over pm1001"/>
+                <Panel class="pm-abs pm-fpart pm1002"/>
+                <Panel class="pm-abs pm-fbar ok pm1003"/>
+                <Panel class="pm-abs pm-fpart pm1004"/>
+                <Panel class="pm-abs pm-fbar ok pm1005"/>
+                <Panel class="pm-abs pm-fpart pm1006"/>
+                <Panel class="pm-abs pm-fbar ok pm1007"/>
+                <Panel class="pm-abs pm-fpart pm1008"/>
+                <Panel class="pm-abs pm-fbar ok pm1009"/>
+                <Panel class="pm-abs pm-fpart pm1010"/>
+                <Panel class="pm-abs pm-fbar ok pm1011"/>
+                <Panel class="pm-abs pm-fpart pm1012"/>
+                <Panel class="pm-abs pm-fbar ok pm1013"/>
+                <Panel class="pm-abs pm-fpart pm1014"/>
+                <Panel class="pm-abs pm-budget pm1015"/>
+                <Panel class="pm-abs pm-view pm1016"/>
+            </Panel>
+        </Panel>
+        <Panel class="pm-strip-row pm-counter-row">
+            <Panel class="pm-axis pm-counter-head"><Label class="pm-counter-name" text="Draw calls"/><Label class="pm-dim mono" text="884 to 1,330"/></Panel>
+            <Panel class="pm-counter">
+                <Panel class="pm-abs pm-cbar pm54"/>
+                <Panel class="pm-abs pm-cbar pm55"/>
+                <Panel class="pm-abs pm-cbar pm56"/>
+                <Panel class="pm-abs pm-cbar pm57"/>
+                <Panel class="pm-abs pm-cbar pm58"/>
+                <Panel class="pm-abs pm-cbar pm59"/>
+                <Panel class="pm-abs pm-cbar pm60"/>
+                <Panel class="pm-abs pm-cbar pm61"/>
+                <Panel class="pm-abs pm-cbar pm62"/>
+                <Panel class="pm-abs pm-cbar pm63"/>
+                <Panel class="pm-abs pm-cbar pm64"/>
+                <Panel class="pm-abs pm-cbar pm65"/>
+                <Panel class="pm-abs pm-cbar pm66"/>
+                <Panel class="pm-abs pm-cbar pm67"/>
+                <Panel class="pm-abs pm-cbar pm68"/>
+                <Panel class="pm-abs pm-cbar pm69"/>
+                <Panel class="pm-abs pm-cbar pm70"/>
+                <Panel class="pm-abs pm-cbar pm71"/>
+                <Panel class="pm-abs pm-cbar pm72"/>
+                <Panel class="pm-abs pm-cbar pm73"/>
+                <Panel class="pm-abs pm-cbar pm74"/>
+                <Panel class="pm-abs pm-cbar pm75"/>
+                <Panel class="pm-abs pm-cbar pm76"/>
+                <Panel class="pm-abs pm-cbar pm77"/>
+                <Panel class="pm-abs pm-cbar pm78"/>
+                <Panel class="pm-abs pm-cbar pm79"/>
+                <Panel class="pm-abs pm-cbar pm80"/>
+                <Panel class="pm-abs pm-cbar pm81"/>
+                <Panel class="pm-abs pm-cbar pm82"/>
+                <Panel class="pm-abs pm-cbar pm83"/>
+                <Panel class="pm-abs pm-cbar pm84"/>
+                <Panel class="pm-abs pm-cbar pm85"/>
+                <Panel class="pm-abs pm-cbar pm86"/>
+                <Panel class="pm-abs pm-cbar pm87"/>
+                <Panel class="pm-abs pm-cbar pm88"/>
+                <Panel class="pm-abs pm-cbar pm89"/>
+                <Panel class="pm-abs pm-cbar pm90"/>
+                <Panel class="pm-abs pm-cbar pm91"/>
+                <Panel class="pm-abs pm-cbar pm92"/>
+                <Panel class="pm-abs pm-cbar pm93"/>
+                <Panel class="pm-abs pm-cbar pm94"/>
+                <Panel class="pm-abs pm-cbar pm95"/>
+                <Panel class="pm-abs pm-cbar pm96"/>
+                <Panel class="pm-abs pm-cbar pm97"/>
+                <Panel class="pm-abs pm-cbar pm98"/>
+                <Panel class="pm-abs pm-cbar pm99"/>
+                <Panel class="pm-abs pm-cbar pm100"/>
+                <Panel class="pm-abs pm-cbar pm101"/>
+                <Panel class="pm-abs pm-cbar pm102"/>
+                <Panel class="pm-abs pm-cbar pm103"/>
+                <Panel class="pm-abs pm-cbar pm104"/>
+                <Panel class="pm-abs pm-cbar pm105"/>
+                <Panel class="pm-abs pm-cbar pm106"/>
+                <Panel class="pm-abs pm-cbar pm107"/>
+                <Panel class="pm-abs pm-cbar pm108"/>
+                <Panel class="pm-abs pm-cbar pm109"/>
+                <Panel class="pm-abs pm-cbar pm110"/>
+                <Panel class="pm-abs pm-cbar pm111"/>
+                <Panel class="pm-abs pm-cbar pm112"/>
+                <Panel class="pm-abs pm-cbar pm113"/>
+                <Panel class="pm-abs pm-cbar pm114"/>
+                <Panel class="pm-abs pm-cbar pm115"/>
+                <Panel class="pm-abs pm-cbar pm116"/>
+                <Panel class="pm-abs pm-cbar pm117"/>
+                <Panel class="pm-abs pm-cbar pm118"/>
+                <Panel class="pm-abs pm-cbar pm119"/>
+                <Panel class="pm-abs pm-cbar pm120"/>
+                <Panel class="pm-abs pm-cbar pm121"/>
+                <Panel class="pm-abs pm-cbar pm122"/>
+                <Panel class="pm-abs pm-cbar pm123"/>
+                <Panel class="pm-abs pm-cbar pm124"/>
+                <Panel class="pm-abs pm-cbar pm125"/>
+                <Panel class="pm-abs pm-cbar pm126"/>
+                <Panel class="pm-abs pm-cbar pm127"/>
+                <Panel class="pm-abs pm-cbar pm128"/>
+                <Panel class="pm-abs pm-cbar pm129"/>
+                <Panel class="pm-abs pm-cbar pm130"/>
+                <Panel class="pm-abs pm-cbar pm131"/>
+                <Panel class="pm-abs pm-cbar pm132"/>
+                <Panel class="pm-abs pm-cbar pm133"/>
+                <Panel class="pm-abs pm-cbar pm134"/>
+                <Panel class="pm-abs pm-cbar pm135"/>
+                <Panel class="pm-abs pm-cbar pm136"/>
+                <Panel class="pm-abs pm-cbar pm137"/>
+                <Panel class="pm-abs pm-cbar pm138"/>
+                <Panel class="pm-abs pm-cbar pm139"/>
+                <Panel class="pm-abs pm-cbar pm140"/>
+                <Panel class="pm-abs pm-cbar pm141"/>
+                <Panel class="pm-abs pm-cbar pm142"/>
+                <Panel class="pm-abs pm-cbar pm143"/>
+                <Panel class="pm-abs pm-cbar pm144"/>
+                <Panel class="pm-abs pm-cbar pm145"/>
+                <Panel class="pm-abs pm-cbar pm146"/>
+                <Panel class="pm-abs pm-cbar pm147"/>
+                <Panel class="pm-abs pm-cbar pm148"/>
+                <Panel class="pm-abs pm-cbar pm149"/>
+                <Panel class="pm-abs pm-cbar pm150"/>
+                <Panel class="pm-abs pm-cbar pm151"/>
+                <Panel class="pm-abs pm-cbar pm152"/>
+                <Panel class="pm-abs pm-cbar pm153"/>
+                <Panel class="pm-abs pm-cbar pm154"/>
+                <Panel class="pm-abs pm-cbar pm155"/>
+                <Panel class="pm-abs pm-cbar pm156"/>
+                <Panel class="pm-abs pm-cbar pm157"/>
+                <Panel class="pm-abs pm-cbar pm158"/>
+                <Panel class="pm-abs pm-cbar pm159"/>
+                <Panel class="pm-abs pm-cbar pm160"/>
+                <Panel class="pm-abs pm-cbar pm161"/>
+                <Panel class="pm-abs pm-cbar pm162"/>
+                <Panel class="pm-abs pm-cbar pm163"/>
+                <Panel class="pm-abs pm-cbar pm164"/>
+                <Panel class="pm-abs pm-cbar pm165"/>
+                <Panel class="pm-abs pm-cbar pm166"/>
+                <Panel class="pm-abs pm-cbar pm167"/>
+                <Panel class="pm-abs pm-cbar pm168"/>
+                <Panel class="pm-abs pm-cbar pm169"/>
+                <Panel class="pm-abs pm-cbar pm170"/>
+                <Panel class="pm-abs pm-cbar pm171"/>
+                <Panel class="pm-abs pm-cbar pm172"/>
+                <Panel class="pm-abs pm-cbar pm173"/>
+                <Panel class="pm-abs pm-cbar pm174"/>
+                <Panel class="pm-abs pm-cbar pm175"/>
+                <Panel class="pm-abs pm-cbar pm176"/>
+                <Panel class="pm-abs pm-cbar pm177"/>
+                <Panel class="pm-abs pm-cbar pm178"/>
+                <Panel class="pm-abs pm-cbar pm179"/>
+                <Panel class="pm-abs pm-cbar pm180"/>
+                <Panel class="pm-abs pm-cbar pm181"/>
+                <Panel class="pm-abs pm-cbar pm182"/>
+                <Panel class="pm-abs pm-cbar pm183"/>
+                <Panel class="pm-abs pm-cbar pm184"/>
+                <Panel class="pm-abs pm-cbar pm185"/>
+                <Panel class="pm-abs pm-cbar pm186"/>
+                <Panel class="pm-abs pm-cbar pm187"/>
+                <Panel class="pm-abs pm-cbar pm188"/>
+                <Panel class="pm-abs pm-cbar pm189"/>
+                <Panel class="pm-abs pm-cbar pm190"/>
+                <Panel class="pm-abs pm-cbar pm191"/>
+                <Panel class="pm-abs pm-cbar pm192"/>
+                <Panel class="pm-abs pm-cbar pm193"/>
+                <Panel class="pm-abs pm-cbar pm194"/>
+                <Panel class="pm-abs pm-cbar pm195"/>
+                <Panel class="pm-abs pm-cbar pm196"/>
+                <Panel class="pm-abs pm-cbar pm197"/>
+                <Panel class="pm-abs pm-cbar pm198"/>
+                <Panel class="pm-abs pm-cbar pm199"/>
+                <Panel class="pm-abs pm-cbar pm200"/>
+                <Panel class="pm-abs pm-cbar pm201"/>
+                <Panel class="pm-abs pm-cbar pm202"/>
+                <Panel class="pm-abs pm-cbar pm203"/>
+                <Panel class="pm-abs pm-cbar pm204"/>
+                <Panel class="pm-abs pm-cbar pm205"/>
+                <Panel class="pm-abs pm-cbar pm206"/>
+                <Panel class="pm-abs pm-cbar pm207"/>
+                <Panel class="pm-abs pm-cbar pm208"/>
+                <Panel class="pm-abs pm-cbar pm209"/>
+                <Panel class="pm-abs pm-cbar pm210"/>
+                <Panel class="pm-abs pm-cbar pm211"/>
+                <Panel class="pm-abs pm-cbar pm212"/>
+                <Panel class="pm-abs pm-cbar pm213"/>
+                <Panel class="pm-abs pm-cbar pm214"/>
+                <Panel class="pm-abs pm-cbar pm215"/>
+                <Panel class="pm-abs pm-cbar pm216"/>
+                <Panel class="pm-abs pm-cbar pm217"/>
+                <Panel class="pm-abs pm-cbar pm218"/>
+                <Panel class="pm-abs pm-cbar pm219"/>
+                <Panel class="pm-abs pm-cbar pm220"/>
+                <Panel class="pm-abs pm-cbar pm221"/>
+                <Panel class="pm-abs pm-cbar pm222"/>
+                <Panel class="pm-abs pm-cbar pm223"/>
+                <Panel class="pm-abs pm-cbar pm224"/>
+                <Panel class="pm-abs pm-cbar pm225"/>
+                <Panel class="pm-abs pm-cbar pm226"/>
+                <Panel class="pm-abs pm-cbar pm227"/>
+                <Panel class="pm-abs pm-cbar pm228"/>
+                <Panel class="pm-abs pm-cbar pm229"/>
+                <Panel class="pm-abs pm-cbar pm230"/>
+                <Panel class="pm-abs pm-cbar pm231"/>
+                <Panel class="pm-abs pm-cbar pm232"/>
+                <Panel class="pm-abs pm-cbar pm233"/>
+                <Panel class="pm-abs pm-cbar chosen pm234"/>
+                <Panel class="pm-abs pm-cbar pm235"/>
+                <Panel class="pm-abs pm-cbar pm236"/>
+                <Panel class="pm-abs pm-cbar pm237"/>
+                <Panel class="pm-abs pm-cbar pm238"/>
+                <Panel class="pm-abs pm-cbar pm239"/>
+                <Panel class="pm-abs pm-cbar pm240"/>
+                <Panel class="pm-abs pm-cbar pm241"/>
+                <Panel class="pm-abs pm-cbar pm242"/>
+                <Panel class="pm-abs pm-cbar pm243"/>
+                <Panel class="pm-abs pm-cbar pm244"/>
+                <Panel class="pm-abs pm-cbar pm245"/>
+                <Panel class="pm-abs pm-cbar pm246"/>
+                <Panel class="pm-abs pm-cbar pm247"/>
+                <Panel class="pm-abs pm-cbar pm248"/>
+                <Panel class="pm-abs pm-cbar pm249"/>
+                <Panel class="pm-abs pm-cbar pm250"/>
+                <Panel class="pm-abs pm-cbar pm251"/>
+                <Panel class="pm-abs pm-cbar pm252"/>
+                <Panel class="pm-abs pm-cbar pm253"/>
+                <Panel class="pm-abs pm-cbar pm254"/>
+                <Panel class="pm-abs pm-cbar pm255"/>
+                <Panel class="pm-abs pm-cbar pm256"/>
+                <Panel class="pm-abs pm-cbar pm257"/>
+                <Panel class="pm-abs pm-cbar pm258"/>
+                <Panel class="pm-abs pm-cbar pm259"/>
+                <Panel class="pm-abs pm-cbar pm260"/>
+                <Panel class="pm-abs pm-cbar pm261"/>
+                <Panel class="pm-abs pm-cbar pm262"/>
+                <Panel class="pm-abs pm-cbar pm263"/>
+                <Panel class="pm-abs pm-cbar pm264"/>
+                <Panel class="pm-abs pm-cbar pm265"/>
+                <Panel class="pm-abs pm-cbar pm266"/>
+                <Panel class="pm-abs pm-cbar pm267"/>
+                <Panel class="pm-abs pm-cbar pm268"/>
+                <Panel class="pm-abs pm-cbar pm269"/>
+                <Panel class="pm-abs pm-cbar pm270"/>
+                <Panel class="pm-abs pm-cbar pm271"/>
+                <Panel class="pm-abs pm-cbar pm272"/>
+                <Panel class="pm-abs pm-cbar pm273"/>
+                <Panel class="pm-abs pm-cbar pm274"/>
+                <Panel class="pm-abs pm-cbar pm275"/>
+                <Panel class="pm-abs pm-cbar pm276"/>
+                <Panel class="pm-abs pm-cbar pm277"/>
+                <Panel class="pm-abs pm-cbar pm278"/>
+                <Panel class="pm-abs pm-cbar pm279"/>
+                <Panel class="pm-abs pm-cbar pm280"/>
+                <Panel class="pm-abs pm-cbar pm281"/>
+                <Panel class="pm-abs pm-cbar pm282"/>
+                <Panel class="pm-abs pm-cbar pm283"/>
+                <Panel class="pm-abs pm-cbar pm284"/>
+                <Panel class="pm-abs pm-cbar pm285"/>
+                <Panel class="pm-abs pm-cbar pm286"/>
+                <Panel class="pm-abs pm-cbar pm287"/>
+                <Panel class="pm-abs pm-cbar pm288"/>
+                <Panel class="pm-abs pm-cbar pm289"/>
+                <Panel class="pm-abs pm-cbar pm290"/>
+                <Panel class="pm-abs pm-cbar pm291"/>
+                <Panel class="pm-abs pm-cbar pm292"/>
+                <Panel class="pm-abs pm-cbar pm293"/>
+            </Panel>
+        </Panel>
+        <Panel class="pm-strip-row pm-counter-row">
+            <Panel class="pm-axis pm-counter-head"><Label class="pm-counter-name" text="Memory MB"/><Label class="pm-dim mono" text="612 to 627"/></Panel>
+            <Panel class="pm-counter">
+                <Panel class="pm-abs pm-cbar pm294"/>
+                <Panel class="pm-abs pm-cbar pm295"/>
+                <Panel class="pm-abs pm-cbar pm296"/>
+                <Panel class="pm-abs pm-cbar pm297"/>
+                <Panel class="pm-abs pm-cbar pm298"/>
+                <Panel class="pm-abs pm-cbar pm299"/>
+                <Panel class="pm-abs pm-cbar pm300"/>
+                <Panel class="pm-abs pm-cbar pm301"/>
+                <Panel class="pm-abs pm-cbar pm302"/>
+                <Panel class="pm-abs pm-cbar pm303"/>
+                <Panel class="pm-abs pm-cbar pm304"/>
+                <Panel class="pm-abs pm-cbar pm305"/>
+                <Panel class="pm-abs pm-cbar pm306"/>
+                <Panel class="pm-abs pm-cbar pm307"/>
+                <Panel class="pm-abs pm-cbar pm308"/>
+                <Panel class="pm-abs pm-cbar pm309"/>
+                <Panel class="pm-abs pm-cbar pm310"/>
+                <Panel class="pm-abs pm-cbar pm311"/>
+                <Panel class="pm-abs pm-cbar pm312"/>
+                <Panel class="pm-abs pm-cbar pm313"/>
+                <Panel class="pm-abs pm-cbar pm314"/>
+                <Panel class="pm-abs pm-cbar pm315"/>
+                <Panel class="pm-abs pm-cbar pm316"/>
+                <Panel class="pm-abs pm-cbar pm317"/>
+                <Panel class="pm-abs pm-cbar pm318"/>
+                <Panel class="pm-abs pm-cbar pm319"/>
+                <Panel class="pm-abs pm-cbar pm320"/>
+                <Panel class="pm-abs pm-cbar pm321"/>
+                <Panel class="pm-abs pm-cbar pm322"/>
+                <Panel class="pm-abs pm-cbar pm323"/>
+                <Panel class="pm-abs pm-cbar pm324"/>
+                <Panel class="pm-abs pm-cbar pm325"/>
+                <Panel class="pm-abs pm-cbar pm326"/>
+                <Panel class="pm-abs pm-cbar pm327"/>
+                <Panel class="pm-abs pm-cbar pm328"/>
+                <Panel class="pm-abs pm-cbar pm329"/>
+                <Panel class="pm-abs pm-cbar pm330"/>
+                <Panel class="pm-abs pm-cbar pm331"/>
+                <Panel class="pm-abs pm-cbar pm332"/>
+                <Panel class="pm-abs pm-cbar pm333"/>
+                <Panel class="pm-abs pm-cbar pm334"/>
+                <Panel class="pm-abs pm-cbar pm335"/>
+                <Panel class="pm-abs pm-cbar pm336"/>
+                <Panel class="pm-abs pm-cbar pm337"/>
+                <Panel class="pm-abs pm-cbar pm338"/>
+                <Panel class="pm-abs pm-cbar pm339"/>
+                <Panel class="pm-abs pm-cbar pm340"/>
+                <Panel class="pm-abs pm-cbar pm341"/>
+                <Panel class="pm-abs pm-cbar pm342"/>
+                <Panel class="pm-abs pm-cbar pm343"/>
+                <Panel class="pm-abs pm-cbar pm344"/>
+                <Panel class="pm-abs pm-cbar pm345"/>
+                <Panel class="pm-abs pm-cbar pm346"/>
+                <Panel class="pm-abs pm-cbar pm347"/>
+                <Panel class="pm-abs pm-cbar pm348"/>
+                <Panel class="pm-abs pm-cbar pm349"/>
+                <Panel class="pm-abs pm-cbar pm350"/>
+                <Panel class="pm-abs pm-cbar pm351"/>
+                <Panel class="pm-abs pm-cbar pm352"/>
+                <Panel class="pm-abs pm-cbar pm353"/>
+                <Panel class="pm-abs pm-cbar pm354"/>
+                <Panel class="pm-abs pm-cbar pm355"/>
+                <Panel class="pm-abs pm-cbar pm356"/>
+                <Panel class="pm-abs pm-cbar pm357"/>
+                <Panel class="pm-abs pm-cbar pm358"/>
+                <Panel class="pm-abs pm-cbar pm359"/>
+                <Panel class="pm-abs pm-cbar pm360"/>
+                <Panel class="pm-abs pm-cbar pm361"/>
+                <Panel class="pm-abs pm-cbar pm362"/>
+                <Panel class="pm-abs pm-cbar pm363"/>
+                <Panel class="pm-abs pm-cbar pm364"/>
+                <Panel class="pm-abs pm-cbar pm365"/>
+                <Panel class="pm-abs pm-cbar pm366"/>
+                <Panel class="pm-abs pm-cbar pm367"/>
+                <Panel class="pm-abs pm-cbar pm368"/>
+                <Panel class="pm-abs pm-cbar pm369"/>
+                <Panel class="pm-abs pm-cbar pm370"/>
+                <Panel class="pm-abs pm-cbar pm371"/>
+                <Panel class="pm-abs pm-cbar pm372"/>
+                <Panel class="pm-abs pm-cbar pm373"/>
+                <Panel class="pm-abs pm-cbar pm374"/>
+                <Panel class="pm-abs pm-cbar pm375"/>
+                <Panel class="pm-abs pm-cbar pm376"/>
+                <Panel class="pm-abs pm-cbar pm377"/>
+                <Panel class="pm-abs pm-cbar pm378"/>
+                <Panel class="pm-abs pm-cbar pm379"/>
+                <Panel class="pm-abs pm-cbar pm380"/>
+                <Panel class="pm-abs pm-cbar pm381"/>
+                <Panel class="pm-abs pm-cbar pm382"/>
+                <Panel class="pm-abs pm-cbar pm383"/>
+                <Panel class="pm-abs pm-cbar pm384"/>
+                <Panel class="pm-abs pm-cbar pm385"/>
+                <Panel class="pm-abs pm-cbar pm386"/>
+                <Panel class="pm-abs pm-cbar pm387"/>
+                <Panel class="pm-abs pm-cbar pm388"/>
+                <Panel class="pm-abs pm-cbar pm389"/>
+                <Panel class="pm-abs pm-cbar pm390"/>
+                <Panel class="pm-abs pm-cbar pm391"/>
+                <Panel class="pm-abs pm-cbar pm392"/>
+                <Panel class="pm-abs pm-cbar pm393"/>
+                <Panel class="pm-abs pm-cbar pm394"/>
+                <Panel class="pm-abs pm-cbar pm395"/>
+                <Panel class="pm-abs pm-cbar pm396"/>
+                <Panel class="pm-abs pm-cbar pm397"/>
+                <Panel class="pm-abs pm-cbar pm398"/>
+                <Panel class="pm-abs pm-cbar pm399"/>
+                <Panel class="pm-abs pm-cbar pm400"/>
+                <Panel class="pm-abs pm-cbar pm401"/>
+                <Panel class="pm-abs pm-cbar pm402"/>
+                <Panel class="pm-abs pm-cbar pm403"/>
+                <Panel class="pm-abs pm-cbar pm404"/>
+                <Panel class="pm-abs pm-cbar pm405"/>
+                <Panel class="pm-abs pm-cbar pm406"/>
+                <Panel class="pm-abs pm-cbar pm407"/>
+                <Panel class="pm-abs pm-cbar pm408"/>
+                <Panel class="pm-abs pm-cbar pm409"/>
+                <Panel class="pm-abs pm-cbar pm410"/>
+                <Panel class="pm-abs pm-cbar pm411"/>
+                <Panel class="pm-abs pm-cbar pm412"/>
+                <Panel class="pm-abs pm-cbar pm413"/>
+                <Panel class="pm-abs pm-cbar pm414"/>
+                <Panel class="pm-abs pm-cbar pm415"/>
+                <Panel class="pm-abs pm-cbar pm416"/>
+                <Panel class="pm-abs pm-cbar pm417"/>
+                <Panel class="pm-abs pm-cbar pm418"/>
+                <Panel class="pm-abs pm-cbar pm419"/>
+                <Panel class="pm-abs pm-cbar pm420"/>
+                <Panel class="pm-abs pm-cbar pm421"/>
+                <Panel class="pm-abs pm-cbar pm422"/>
+                <Panel class="pm-abs pm-cbar pm423"/>
+                <Panel class="pm-abs pm-cbar pm424"/>
+                <Panel class="pm-abs pm-cbar pm425"/>
+                <Panel class="pm-abs pm-cbar pm426"/>
+                <Panel class="pm-abs pm-cbar pm427"/>
+                <Panel class="pm-abs pm-cbar pm428"/>
+                <Panel class="pm-abs pm-cbar pm429"/>
+                <Panel class="pm-abs pm-cbar pm430"/>
+                <Panel class="pm-abs pm-cbar pm431"/>
+                <Panel class="pm-abs pm-cbar pm432"/>
+                <Panel class="pm-abs pm-cbar pm433"/>
+                <Panel class="pm-abs pm-cbar pm434"/>
+                <Panel class="pm-abs pm-cbar pm435"/>
+                <Panel class="pm-abs pm-cbar pm436"/>
+                <Panel class="pm-abs pm-cbar pm437"/>
+                <Panel class="pm-abs pm-cbar pm438"/>
+                <Panel class="pm-abs pm-cbar pm439"/>
+                <Panel class="pm-abs pm-cbar pm440"/>
+                <Panel class="pm-abs pm-cbar pm441"/>
+                <Panel class="pm-abs pm-cbar pm442"/>
+                <Panel class="pm-abs pm-cbar pm443"/>
+                <Panel class="pm-abs pm-cbar pm444"/>
+                <Panel class="pm-abs pm-cbar pm445"/>
+                <Panel class="pm-abs pm-cbar pm446"/>
+                <Panel class="pm-abs pm-cbar pm447"/>
+                <Panel class="pm-abs pm-cbar pm448"/>
+                <Panel class="pm-abs pm-cbar pm449"/>
+                <Panel class="pm-abs pm-cbar pm450"/>
+                <Panel class="pm-abs pm-cbar pm451"/>
+                <Panel class="pm-abs pm-cbar pm452"/>
+                <Panel class="pm-abs pm-cbar pm453"/>
+                <Panel class="pm-abs pm-cbar pm454"/>
+                <Panel class="pm-abs pm-cbar pm455"/>
+                <Panel class="pm-abs pm-cbar pm456"/>
+                <Panel class="pm-abs pm-cbar pm457"/>
+                <Panel class="pm-abs pm-cbar pm458"/>
+                <Panel class="pm-abs pm-cbar pm459"/>
+                <Panel class="pm-abs pm-cbar pm460"/>
+                <Panel class="pm-abs pm-cbar pm461"/>
+                <Panel class="pm-abs pm-cbar pm462"/>
+                <Panel class="pm-abs pm-cbar pm463"/>
+                <Panel class="pm-abs pm-cbar pm464"/>
+                <Panel class="pm-abs pm-cbar pm465"/>
+                <Panel class="pm-abs pm-cbar pm466"/>
+                <Panel class="pm-abs pm-cbar pm467"/>
+                <Panel class="pm-abs pm-cbar pm468"/>
+                <Panel class="pm-abs pm-cbar pm469"/>
+                <Panel class="pm-abs pm-cbar pm470"/>
+                <Panel class="pm-abs pm-cbar pm471"/>
+                <Panel class="pm-abs pm-cbar pm472"/>
+                <Panel class="pm-abs pm-cbar pm473"/>
+                <Panel class="pm-abs pm-cbar chosen pm474"/>
+                <Panel class="pm-abs pm-cbar pm475"/>
+                <Panel class="pm-abs pm-cbar pm476"/>
+                <Panel class="pm-abs pm-cbar pm477"/>
+                <Panel class="pm-abs pm-cbar pm478"/>
+                <Panel class="pm-abs pm-cbar pm479"/>
+                <Panel class="pm-abs pm-cbar pm480"/>
+                <Panel class="pm-abs pm-cbar pm481"/>
+                <Panel class="pm-abs pm-cbar pm482"/>
+                <Panel class="pm-abs pm-cbar pm483"/>
+                <Panel class="pm-abs pm-cbar pm484"/>
+                <Panel class="pm-abs pm-cbar pm485"/>
+                <Panel class="pm-abs pm-cbar pm486"/>
+                <Panel class="pm-abs pm-cbar pm487"/>
+                <Panel class="pm-abs pm-cbar pm488"/>
+                <Panel class="pm-abs pm-cbar pm489"/>
+                <Panel class="pm-abs pm-cbar pm490"/>
+                <Panel class="pm-abs pm-cbar pm491"/>
+                <Panel class="pm-abs pm-cbar pm492"/>
+                <Panel class="pm-abs pm-cbar pm493"/>
+                <Panel class="pm-abs pm-cbar pm494"/>
+                <Panel class="pm-abs pm-cbar pm495"/>
+                <Panel class="pm-abs pm-cbar pm496"/>
+                <Panel class="pm-abs pm-cbar pm497"/>
+                <Panel class="pm-abs pm-cbar pm498"/>
+                <Panel class="pm-abs pm-cbar pm499"/>
+                <Panel class="pm-abs pm-cbar pm500"/>
+                <Panel class="pm-abs pm-cbar pm501"/>
+                <Panel class="pm-abs pm-cbar pm502"/>
+                <Panel class="pm-abs pm-cbar pm503"/>
+                <Panel class="pm-abs pm-cbar pm504"/>
+                <Panel class="pm-abs pm-cbar pm505"/>
+                <Panel class="pm-abs pm-cbar pm506"/>
+                <Panel class="pm-abs pm-cbar pm507"/>
+                <Panel class="pm-abs pm-cbar pm508"/>
+                <Panel class="pm-abs pm-cbar pm509"/>
+                <Panel class="pm-abs pm-cbar pm510"/>
+                <Panel class="pm-abs pm-cbar pm511"/>
+                <Panel class="pm-abs pm-cbar pm512"/>
+                <Panel class="pm-abs pm-cbar pm513"/>
+                <Panel class="pm-abs pm-cbar pm514"/>
+                <Panel class="pm-abs pm-cbar pm515"/>
+                <Panel class="pm-abs pm-cbar pm516"/>
+                <Panel class="pm-abs pm-cbar pm517"/>
+                <Panel class="pm-abs pm-cbar pm518"/>
+                <Panel class="pm-abs pm-cbar pm519"/>
+                <Panel class="pm-abs pm-cbar pm520"/>
+                <Panel class="pm-abs pm-cbar pm521"/>
+                <Panel class="pm-abs pm-cbar pm522"/>
+                <Panel class="pm-abs pm-cbar pm523"/>
+                <Panel class="pm-abs pm-cbar pm524"/>
+                <Panel class="pm-abs pm-cbar pm525"/>
+                <Panel class="pm-abs pm-cbar pm526"/>
+                <Panel class="pm-abs pm-cbar pm527"/>
+                <Panel class="pm-abs pm-cbar pm528"/>
+                <Panel class="pm-abs pm-cbar pm529"/>
+                <Panel class="pm-abs pm-cbar pm530"/>
+                <Panel class="pm-abs pm-cbar pm531"/>
+                <Panel class="pm-abs pm-cbar pm532"/>
+                <Panel class="pm-abs pm-cbar pm533"/>
+            </Panel>
+        </Panel>
+    </Panel>
+    <Splitter class="page-body" axis="vertical" weights="0.58 0.42">
+        <Panel class="pm-timeline">
+            <Panel class="pm-ruler-row">
+                <Panel class="pm-corner"><Button class="pm-small" text="Fit"/></Panel>
+                <Panel class="pm-ruler">
+                    <Panel class="pm-abs pm-tick pm1017"/>
+                    <Label class="pm-abs pm-tick-text pm1018" text="0 ms"/>
+                    <Panel class="pm-abs pm-tick pm1019"/>
+                    <Label class="pm-abs pm-tick-text pm1020" text="2 ms"/>
+                    <Panel class="pm-abs pm-tick pm1021"/>
+                    <Label class="pm-abs pm-tick-text pm1022" text="4 ms"/>
+                    <Panel class="pm-abs pm-tick pm1023"/>
+                    <Label class="pm-abs pm-tick-text pm1024" text="6 ms"/>
+                    <Panel class="pm-abs pm-tick pm1025"/>
+                    <Label class="pm-abs pm-tick-text pm1026" text="8 ms"/>
+                    <Panel class="pm-abs pm-tick pm1027"/>
+                    <Label class="pm-abs pm-tick-text pm1028" text="10 ms"/>
+                    <Panel class="pm-abs pm-tick pm1029"/>
+                    <Label class="pm-abs pm-tick-text pm1030" text="12 ms"/>
+                    <Panel class="pm-abs pm-tick pm1031"/>
+                    <Label class="pm-abs pm-tick-text pm1032" text="14 ms"/>
+                    <Panel class="pm-abs pm-tick pm1033"/>
+                    <Label class="pm-abs pm-tick-text pm1034" text="16 ms"/>
+                    <Panel class="pm-abs pm-tick pm1035"/>
+                    <Label class="pm-abs pm-tick-text pm1036" text="18 ms"/>
+                    <Panel class="pm-abs pm-tick pm1037"/>
+                    <Label class="pm-abs pm-tick-text pm1038" text="20 ms"/>
+                    <Panel class="pm-abs pm-tick pm1039"/>
+                    <Label class="pm-abs pm-tick-text pm1040" text="22 ms"/>
+                    <Panel class="pm-abs pm-tick pm1041"/>
+                    <Label class="pm-abs pm-tick-text pm1042" text="24 ms"/>
+                    <Panel class="pm-abs pm-range-head pm1043"><Label class="pm-range-text mono" text="10.00 ms"/></Panel>
+                    <Label class="pm-abs pm-frame-text pm1044" text="Frame 1,482  24.60 ms"/>
+                    <Label class="pm-abs pm-frame-text pm1045" text="1,483"/>
+                </Panel>
+            </Panel>
+            <Panel class="pm-lanes-scroll">
+                <Panel class="pm-lanes">
+                    <Panel class="pm-heads">
+                        <Panel class="pm-lane-head cpu pm-h4"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-lane-name" text="Main"/></Panel>
+                        <Panel class="pm-lane-head cpu pm-h2"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-lane-name" text="Render"/></Panel>
+                        <Panel class="pm-lane-head cpu pm-h2"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-lane-name" text="Job 1"/></Panel>
+                        <Panel class="pm-lane-head cpu pm-h2"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-lane-name" text="Job 2"/></Panel>
+                        <Panel class="pm-lane-head cpu pm-h1 folded"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Label class="pm-lane-name" text="Jobs 3 to 6"/></Panel>
+                        <Panel class="pm-lane-head gpu pm-h2"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-lane-name" text="GPU"/></Panel>
+                    </Panel>
+                    <Panel class="pm-bodies">
+                        <Panel class="pm-lane cpu pm-h4"><Panel class="pm-abs pm-bar c5 dim pm1"><Label class="pm-bar-text" text="Frame  24.60 ms"/></Panel><Panel class="pm-abs pm-bar c2 dim pm2"></Panel><Panel class="pm-abs pm-bar c1 dim pm3"><Label class="pm-bar-text" text="Update  15.40 ms"/></Panel><Panel class="pm-abs pm-bar c0 dim pm4"><Label class="pm-bar-text" text="Render.Submit  7.80 ms"/></Panel><Panel class="pm-abs pm-bar c3 dim pm5"></Panel><Panel class="pm-abs pm-bar c0 dim pm6"><Label class="pm-bar-text" text="Scripts  3.60 ms"/></Panel><Panel class="pm-abs pm-bar c3 dim pm7"><Label class="pm-bar-text" text="Physics.Step  9.40 ms"/></Panel><Panel class="pm-abs pm-bar c4 dim pm8"><Label class="pm-bar-text" text="Animation"/></Panel><Panel class="pm-abs pm-bar c2 dim pm9"><Label class="pm-bar-text" text="Cull"/></Panel><Panel class="pm-abs pm-bar c5 dim pm10"><Label class="pm-bar-text" text="Build Draws  5.50 ms"/></Panel><Panel class="pm-abs pm-bar c7 dim pm11"><Label class="pm-bar-text" text="Player.as"/></Panel><Panel class="pm-abs pm-bar c0 dim pm12"><Label class="pm-bar-text" text="Enemy.as"/></Panel><Panel class="pm-abs pm-bar c1 dim pm13"><Label class="pm-bar-text" text="Broadphase"/></Panel><Panel class="pm-abs pm-bar c7 dim wait pm14"><Label class="pm-bar-text" text="Wait: Physics.Island  7.70 ms"/></Panel><Panel class="pm-abs pm-hatch pm15"><Label class="pm-bar-text" text="&#215;14"/></Panel><Panel class="pm-abs pm-bar c2 dim pm16"><Label class="pm-bar-text" text="Pose Blend"/></Panel><Panel class="pm-abs pm-bar c1 dim pm17"><Label class="pm-bar-text" text="Opaque  2.80 ms"/></Panel><Panel class="pm-abs pm-bar c2 dim pm18"><Label class="pm-bar-text" text="Transparent"/></Panel></Panel>
+                        <Panel class="pm-lane cpu pm-h2"><Panel class="pm-abs pm-bar c3 dim pm19"><Label class="pm-bar-text" text="Frame Graph  8.30 ms"/></Panel><Panel class="pm-abs pm-bar c3 dim pm20"><Label class="pm-bar-text" text="Shadows  2.70 ms"/></Panel><Panel class="pm-abs pm-bar c7 dim pm21"><Label class="pm-bar-text" text="GBuffer  2.50 ms"/></Panel><Panel class="pm-abs pm-bar c4 dim pm22"><Label class="pm-bar-text" text="Lighting  2.40 ms"/></Panel><Panel class="pm-abs pm-bar c1 dim pm23"><Label class="pm-bar-text" text="Upload  6.20 ms"/></Panel><Panel class="pm-abs pm-bar c1 dim pm24"><Label class="pm-bar-text" text="Skinning  2.70 ms"/></Panel><Panel class="pm-abs pm-bar c6 dim pm25"><Label class="pm-bar-text" text="Instances  3.00 ms"/></Panel></Panel>
+                        <Panel class="pm-lane cpu pm-h2"><Panel class="pm-abs pm-bar c4 chosen pm26"><Label class="pm-bar-text" text="Physics.Island  3.50 ms"/></Panel><Panel class="pm-abs pm-bar c4 chosen pm27"><Label class="pm-bar-text" text="Physics.Island  3.70 ms"/></Panel><Panel class="pm-abs pm-bar c3 dim pm28"><Label class="pm-bar-text" text="Contacts"/></Panel><Panel class="pm-abs pm-bar c1 dim pm29"><Label class="pm-bar-text" text="Integrate"/></Panel><Panel class="pm-abs pm-bar c3 dim pm30"><Label class="pm-bar-text" text="Contacts"/></Panel><Panel class="pm-abs pm-bar c1 dim pm31"><Label class="pm-bar-text" text="Integrate"/></Panel><Panel class="pm-abs pm-bar c7 dim pm32"><Label class="pm-bar-text" text="Cull Chunk"/></Panel></Panel>
+                        <Panel class="pm-lane cpu pm-h2"><Panel class="pm-abs pm-bar c4 chosen pm33"><Label class="pm-bar-text" text="Physics.Island  4.20 ms"/></Panel><Panel class="pm-abs pm-bar c4 chosen pm34"><Label class="pm-bar-text" text="Physics.Island  3.10 ms"/></Panel><Panel class="pm-abs pm-bar c3 dim pm35"><Label class="pm-bar-text" text="Contacts  2.80 ms"/></Panel><Panel class="pm-abs pm-bar c1 dim pm36"><Label class="pm-bar-text" text="Integrate"/></Panel><Panel class="pm-abs pm-bar c3 dim pm37"><Label class="pm-bar-text" text="Contacts"/></Panel><Panel class="pm-abs pm-bar c1 dim pm38"><Label class="pm-bar-text" text="Integrate"/></Panel><Panel class="pm-abs pm-bar c7 dim pm39"><Label class="pm-bar-text" text="Cull Chunk"/></Panel></Panel>
+                        <Panel class="pm-lane cpu pm-h1"><Panel class="pm-abs pm-activity pm40"/><Panel class="pm-abs pm-activity pm41"/></Panel>
+                        <Panel class="pm-lane gpu pm-h2"><Panel class="pm-abs pm-bar c3 dim pm42"><Label class="pm-bar-text" text="Shadows"/></Panel><Panel class="pm-abs pm-bar c7 dim pm43"><Label class="pm-bar-text" text="GBuffer  3.60 ms"/></Panel><Panel class="pm-abs pm-bar c6 dim pm44"><Label class="pm-bar-text" text="SSAO"/></Panel><Panel class="pm-abs pm-bar c4 dim pm45"><Label class="pm-bar-text" text="Lighting  2.50 ms"/></Panel><Panel class="pm-abs pm-bar c0 dim pm46"><Label class="pm-bar-text" text="Post"/></Panel><Panel class="pm-abs pm-bar c3 dim pm47"><Label class="pm-bar-text" text="GUI"/></Panel><Panel class="pm-abs pm-bar c5 dim pm48"><Label class="pm-bar-text" text="Terrain"/></Panel><Panel class="pm-abs pm-bar c3 dim pm49"><Label class="pm-bar-text" text="Meshes"/></Panel><Panel class="pm-abs pm-bar c1 dim pm50"><Label class="pm-bar-text" text="Clustered"/></Panel><Panel class="pm-abs pm-bar c1 dim pm51"><Label class="pm-bar-text" text="Sky"/></Panel><Panel class="pm-abs pm-bar c3 dim pm52"><Label class="pm-bar-text" text="Bloom"/></Panel><Panel class="pm-abs pm-bar c2 dim pm53"></Panel></Panel>
+                        <Panel class="pm-abs pm-edge pm1046"/>
+                        <Panel class="pm-abs pm-edge pm1047"/>
+                        <Panel class="pm-abs pm-range pm1048"/>
+                    </Panel>
+                </Panel>
+            </Panel>
+        </Panel>
+        <Splitter class="pm-lower" axis="horizontal" weights="0.64 0.36">
+            <Panel class="panel pm-table-pane">
+                <Panel class="panel-toolbar">
+                    <Label class="pm-dim" text="Frame 1,482, the range 4.00 to 14.00 ms"/>
+                    <Spacer/>
+                    <Panel class="search"><Image class="search-icon" src="Editor/Icons/search.svg"/><TextField class="search-field" placeholder="Filter scopes"/></Panel>
+                </Panel>
+                <Panel class="pm-table">
+                    <Panel class="pm-trow pm-thead"><Label class="pm-cname" text="Name"/><Label class="pm-cnum" text="Calls"/><Label class="pm-cnum sorted" text="Total ms"/><Label class="pm-cnum" text="Self ms"/><Label class="pm-cnum" text="Mean"/><Label class="pm-cnum" text="Max"/><Label class="pm-cnum" text="Frame"/></Panel>
+                    <Panel class="pm-trow thread"><Panel class="pm-cname pm-ind0"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-name" text="Main"/></Panel><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind1"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Panel class="pm-swatch c5"/><Label class="pm-name" text="Frame"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="24.60"/><Label class="pm-cnum mono" text="0.38"/><Label class="pm-cnum mono" text="24.60"/><Label class="pm-cnum mono" text="24.60"/><Label class="pm-cnum mono" text="100%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind2"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Panel class="pm-swatch c1"/><Label class="pm-name" text="Update"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="15.40"/><Label class="pm-cnum mono" text="0.62"/><Label class="pm-cnum mono" text="15.40"/><Label class="pm-cnum mono" text="15.40"/><Label class="pm-cnum mono" text="62.6%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind3"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Panel class="pm-swatch c3"/><Label class="pm-name" text="Physics.Step"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="9.40"/><Label class="pm-cnum mono" text="0.21"/><Label class="pm-cnum mono" text="9.40"/><Label class="pm-cnum mono" text="9.40"/><Label class="pm-cnum mono" text="38.2%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind4"><Panel class="pm-fold-space"/><Panel class="pm-swatch c7"/><Label class="pm-name" text="Wait: Physics.Island"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="7.70"/><Label class="pm-cnum mono" text="7.70"/><Label class="pm-cnum mono" text="7.70"/><Label class="pm-cnum mono" text="7.70"/><Label class="pm-cnum mono" text="31.3%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind4"><Panel class="pm-fold-space"/><Panel class="pm-swatch c1"/><Label class="pm-name" text="Broadphase"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="1.40"/><Label class="pm-cnum mono" text="1.40"/><Label class="pm-cnum mono" text="1.40"/><Label class="pm-cnum mono" text="1.40"/><Label class="pm-cnum mono" text="5.7%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind3"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Panel class="pm-swatch c0"/><Label class="pm-name" text="Scripts"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="3.60"/><Label class="pm-cnum mono" text="0.12"/><Label class="pm-cnum mono" text="3.60"/><Label class="pm-cnum mono" text="3.60"/><Label class="pm-cnum mono" text="14.6%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind3"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Panel class="pm-swatch c4"/><Label class="pm-name" text="Animation"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="1.70"/><Label class="pm-cnum mono" text="0.30"/><Label class="pm-cnum mono" text="1.70"/><Label class="pm-cnum mono" text="1.70"/><Label class="pm-cnum mono" text="6.9%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind2"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Panel class="pm-swatch c0"/><Label class="pm-name" text="Render.Submit"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="7.80"/><Label class="pm-cnum mono" text="0.20"/><Label class="pm-cnum mono" text="7.80"/><Label class="pm-cnum mono" text="7.80"/><Label class="pm-cnum mono" text="31.7%"/></Panel>
+                    <Panel class="pm-trow thread"><Panel class="pm-cname pm-ind0"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-name" text="Jobs"/></Panel><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/></Panel>
+                    <Panel class="pm-trow chosen"><Panel class="pm-cname pm-ind1"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Panel class="pm-swatch c4"/><Label class="pm-name" text="Physics.Island"/></Panel><Label class="pm-cnum mono" text="4"/><Label class="pm-cnum mono" text="16.40"/><Label class="pm-cnum mono" text="1.30"/><Label class="pm-cnum mono" text="4.10"/><Label class="pm-cnum mono" text="4.20"/><Label class="pm-cnum mono" text="66.7%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind2"><Panel class="pm-fold-space"/><Panel class="pm-swatch c3"/><Label class="pm-name" text="Contacts"/></Panel><Label class="pm-cnum mono" text="4"/><Label class="pm-cnum mono" text="9.60"/><Label class="pm-cnum mono" text="9.60"/><Label class="pm-cnum mono" text="2.40"/><Label class="pm-cnum mono" text="2.80"/><Label class="pm-cnum mono" text="39.0%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind2"><Panel class="pm-fold-space"/><Panel class="pm-swatch c1"/><Label class="pm-name" text="Integrate"/></Panel><Label class="pm-cnum mono" text="4"/><Label class="pm-cnum mono" text="5.50"/><Label class="pm-cnum mono" text="5.50"/><Label class="pm-cnum mono" text="1.38"/><Label class="pm-cnum mono" text="1.60"/><Label class="pm-cnum mono" text="22.4%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind1"><Panel class="pm-fold-space"/><Panel class="pm-swatch c7"/><Label class="pm-name" text="Cull Chunk"/></Panel><Label class="pm-cnum mono" text="2"/><Label class="pm-cnum mono" text="2.50"/><Label class="pm-cnum mono" text="2.50"/><Label class="pm-cnum mono" text="1.25"/><Label class="pm-cnum mono" text="1.30"/><Label class="pm-cnum mono" text="10.2%"/></Panel>
+                    <Panel class="pm-trow thread"><Panel class="pm-cname pm-ind0"><Image class="pm-fold" src="Editor/Icons/chevron-down.svg"/><Label class="pm-name" text="GPU"/></Panel><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/><Label class="pm-cnum mono" text=""/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind1"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Panel class="pm-swatch c7"/><Label class="pm-name" text="GBuffer"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="3.60"/><Label class="pm-cnum mono" text="0.30"/><Label class="pm-cnum mono" text="3.60"/><Label class="pm-cnum mono" text="3.60"/><Label class="pm-cnum mono" text="14.6%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind1"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Panel class="pm-swatch c4"/><Label class="pm-name" text="Lighting"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="2.50"/><Label class="pm-cnum mono" text="0.10"/><Label class="pm-cnum mono" text="2.50"/><Label class="pm-cnum mono" text="2.50"/><Label class="pm-cnum mono" text="10.2%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind1"><Panel class="pm-fold-space"/><Panel class="pm-swatch c3"/><Label class="pm-name" text="Shadows"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="1.90"/><Label class="pm-cnum mono" text="1.90"/><Label class="pm-cnum mono" text="1.90"/><Label class="pm-cnum mono" text="1.90"/><Label class="pm-cnum mono" text="7.7%"/></Panel>
+                    <Panel class="pm-trow "><Panel class="pm-cname pm-ind1"><Image class="pm-fold" src="Editor/Icons/chevron-right.svg"/><Panel class="pm-swatch c0"/><Label class="pm-name" text="Post"/></Panel><Label class="pm-cnum mono" text="1"/><Label class="pm-cnum mono" text="1.60"/><Label class="pm-cnum mono" text="0.10"/><Label class="pm-cnum mono" text="1.60"/><Label class="pm-cnum mono" text="1.60"/><Label class="pm-cnum mono" text="6.5%"/></Panel>
+                </Panel>
+            </Panel>
+            <Panel class="panel pm-detail">
+                <Panel class="pm-detail-head">
+                    <Panel class="pm-swatch c4"/>
+                    <Label class="pm-detail-title" text="Physics.Island"/>
+                    <Spacer/>
+                    <Button class="pm-small" text="Zoom to longest"/>
+                </Panel>
+                <Label class="pm-dim mono" text="4 calls on Job 1, Job 2   total 16.40   mean 4.10   max 4.20 ms"/>
+                <Label class="pm-section" text="Called from"/>
+                <Label class="pm-dim" text="A job's root: scheduled by Physics.Step on Main"/>
+                <Label class="pm-section" text="Children"/>
+                <Panel class="pm-child"><Panel class="pm-swatch c3"/><Label class="pm-child-name" text="Contacts"/><Label class="pm-child-ms mono" text="9.60 ms  58%"/></Panel>
+                <Panel class="pm-share"><Panel class="pm-abs pm-share-fill c3 pm1049"/></Panel>
+                <Panel class="pm-child"><Panel class="pm-swatch c1"/><Label class="pm-child-name" text="Integrate"/><Label class="pm-child-ms mono" text="5.50 ms  34%"/></Panel>
+                <Panel class="pm-share"><Panel class="pm-abs pm-share-fill c1 pm1050"/></Panel>
+                <Panel class="pm-child"><Panel class="pm-swatch c4"/><Label class="pm-child-name" text="Self"/><Label class="pm-child-ms mono" text="1.30 ms  8%"/></Panel>
+                <Panel class="pm-share"><Panel class="pm-abs pm-share-fill c4 pm1051"/></Panel>
+                <Label class="pm-section" text="Durations over 2,140 frames (8,560 calls)"/>
+                <Panel class="pm-hist">
+                    <Panel class="pm-abs pm-hbar pm1052"/>
+                    <Panel class="pm-abs pm-hbar pm1053"/>
+                    <Panel class="pm-abs pm-hbar pm1054"/>
+                    <Panel class="pm-abs pm-hbar pm1055"/>
+                    <Panel class="pm-abs pm-hbar pm1056"/>
+                    <Panel class="pm-abs pm-hbar pm1057"/>
+                    <Panel class="pm-abs pm-hbar pm1058"/>
+                    <Panel class="pm-abs pm-hbar pm1059"/>
+                    <Panel class="pm-abs pm-hbar pm1060"/>
+                    <Panel class="pm-abs pm-hbar pm1061"/>
+                    <Panel class="pm-abs pm-hbar chosen pm1062"/>
+                    <Panel class="pm-abs pm-hbar pm1063"/>
+                </Panel>
+                <Panel class="pm-hist-axis"><Label class="pm-dim mono" text="0.8 ms"/><Spacer/><Label class="pm-dim mono" text="this frame 4.20"/><Spacer/><Label class="pm-dim mono" text="4.6 ms"/></Panel>
+            </Panel>
+        </Splitter>
+    </Splitter>
+</Panel>
