@@ -23,6 +23,26 @@ class ParticleEffectTests
 	}
 
 	[Test]
+	public static void ASystemRemovedTheLinksFollowIt()
+	{
+		let effect = scope ParticleEffect("shells");
+		effect.AddSystem(16);
+		effect.AddSystem(16);
+		effect.AddSystem(16);
+		var intoSecond = SubEmitterLink.Default();
+		intoSecond.ChildSystemIndex = 1;
+		var intoThird = SubEmitterLink.Default();
+		intoThird.ChildSystemIndex = 2;
+		effect.AddSubEmitterLink(intoSecond);
+		effect.AddSubEmitterLink(intoThird);
+
+		effect.RemoveSystem(1);
+		Test.Assert(effect.SubEmitterLinks.Length == 2);
+		Test.Assert(effect.SubEmitterLinks[0].ChildSystemIndex == -1, "into the one removed: does nothing");
+		Test.Assert(effect.SubEmitterLinks[1].ChildSystemIndex == 1, "the third is the second now");
+	}
+
+	[Test]
 	public static void ParentDeathSpawnsIntoTheChild()
 	{
 		let effect = scope ParticleEffect("fireworks");

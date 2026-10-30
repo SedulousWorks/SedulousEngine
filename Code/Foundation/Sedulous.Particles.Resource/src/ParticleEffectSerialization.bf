@@ -199,11 +199,13 @@ static class ParticleEffectSerialization
 		SerializeBehaviors(ar, system);
 	}
 
-	/// The whole effect. A READ APPENDS: the caller clears the effect first if it is reusing
-	/// one.
+	/// The whole effect. A read replaces what the effect had (an editor's whole-asset undo reads
+	/// over the effect it shows).
 	public static void SerializeEffect(ISerializer ar, ParticleEffect effect)
 	{
 		let reading = (ar.Mode == .Read);
+		if (reading)
+			effect.Clear(); // read over an effect, not added to what it had
 		Serialize(ar, "name", effect.Name);
 
 		uint32 systemCount = reading ? 0 : (uint32)effect.SystemCount;

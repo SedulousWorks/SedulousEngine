@@ -32,6 +32,8 @@ class ParticleEffect
 
 	public void AddSubEmitterLink(SubEmitterLink link) => mLinks.Add(link);
 
+	/// The links follow: one into the removed system does nothing (-1), one into a system after
+	/// it names that system's new place.
 	public void RemoveSystem(int32 index)
 	{
 		if ((index >= 0) && (index < SystemCount))
@@ -39,6 +41,13 @@ class ParticleEffect
 			let system = mSystems[index];
 			mSystems.RemoveAt(index);
 			delete system;
+			for (var link in ref mLinks)
+			{
+				if (link.ChildSystemIndex == index)
+					link.ChildSystemIndex = -1;
+				else if (link.ChildSystemIndex > index)
+					link.ChildSystemIndex--;
+			}
 		}
 	}
 

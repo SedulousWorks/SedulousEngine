@@ -223,6 +223,32 @@ class ParticleEffectResourceTests
 	}
 
 	[Test]
+	public static void ReadOverAnEffectItReplacesWhatTheEffectHad()
+	{
+		let effect = scope ParticleEffect();
+		BuildEffect(effect);
+		SerializerFactory serializers = scope (stream, mode) =>
+			new BinarySerializerContext(stream, mode);
+		let buffer = scope MemoryStream();
+		{
+			let context = serializers(buffer, .Write);
+			defer delete context;
+			ParticleEffectSerialization.SerializeEffect(context.Serializer, effect);
+			context.Flush(buffer);
+			Test.Assert(context.Serializer.IsPayloadOk);
+		}
+
+		// The same effect read back over itself, as a whole-asset undo does: two systems, one link.
+		buffer.Seek(0, .Begin);
+		let context = serializers(buffer, .Read);
+		defer delete context;
+		ParticleEffectSerialization.SerializeEffect(context.Serializer, effect);
+		Test.Assert(context.Serializer.IsPayloadOk);
+		Test.Assert(effect.SystemCount == 2);
+		Test.Assert(effect.SubEmitterLinks.Length == 1);
+	}
+
+	[Test]
 	public static void AnUnknownModuleTypeIsSkippedRatherThanFailingTheEffect()
 	{
 		let fixture = scope Fixture("scratch_particle_resource_unknown");
