@@ -424,6 +424,81 @@ class ParticleEffectPageTests
 		Test.Assert(grav != null);
 	}
 
+	private static MenuItem ItemOf(Node menu, StringView text)
+	{
+		for (int i < menu.ChildCount)
+		{
+			let node = menu.GetChildAt(i);
+			if (let item = node as MenuItem)
+			{
+				if (item.Text == text)
+					return item;
+			}
+			if (let found = ItemOf(node, text))
+				return found;
+		}
+		return null;
+	}
+
+	[Test]
+	public static void ATreeRowsMenuAddsAModuleByTypeMovesOneDeletesItASystemRenamedInPlace()
+	{
+		let bed = scope Bed();
+		let context = new GUIContext();
+		let root = new SceneRoot(context);
+		context.ReleaseRef(); // the root's keeps it
+		defer root.ReleaseRef();
+		root.Size = .(1200.0f, 800.0f);
+		root.AddChild(bed.Page.Content);
+		defer root.RemoveChild(bed.Page.Content);
+		root.UpdateLayout();
+		let owner = bed.Page.Content;
+
+		// A module's: Move Down, one step, still chosen where it went.
+		bed.Page.ShowRowMenu(.(.Initializer, 0, 0), owner, .(40.0f, 80.0f)); // Lifetime
+		Test.Assert(bed.Page.RowMenu != null);
+		let down = ItemOf(bed.Page.RowMenu, "Move Down");
+		Test.Assert(down != null);
+		Test.Assert(down.HandleActivate());
+		let tree = bed.Tree;
+		defer delete tree;
+		Test.Assert(tree == "Sparks\n  Emitter\n  Initializers\n    Velocity\n    Lifetime\n    Size\n    Color\n  Behaviors\n    Gravity\n  Sub-emitters");
+		bed.Page.Commands.Undo();
+		Test.Assert(bed.TreeHas("Initializers\n    Lifetime\n    Velocity"));
+		Test.Assert(!bed.Page.MoveModule(.(.Initializer, 0, 0), -1), "the first goes no higher");
+
+		// A folder's: its modules by type; one added at the end, chosen.
+		bed.Page.ShowRowMenu(.(.Behaviors, 0, -1), owner, .(40.0f, 80.0f));
+		Test.Assert(bed.Page.RowMenu != null);
+		let add = ItemOf(bed.Page.RowMenu, "Add Size over Lifetime");
+		Test.Assert(add != null);
+		Test.Assert(add.HandleActivate());
+		Test.Assert(bed.Effect.GetSystem(0).BehaviorCount == 2);
+		Test.Assert(bed.Effect.GetSystem(0).GetBehavior(1) is SizeOverLifetimeBehavior);
+
+		// Delete on a module's menu.
+		bed.Page.ShowRowMenu(.(.Behavior, 0, 1), owner, .(40.0f, 80.0f));
+		Test.Assert(bed.Page.RowMenu != null);
+		let remove = ItemOf(bed.Page.RowMenu, "Delete");
+		Test.Assert(remove != null);
+		Test.Assert(remove.HandleActivate());
+		Test.Assert(bed.Effect.GetSystem(0).BehaviorCount == 1);
+
+		// A system's: Delete off while it is the only one; renamed in place, one step.
+		bed.Page.ShowRowMenu(.(.System, 0, -1), owner, .(40.0f, 80.0f));
+		Test.Assert(bed.Page.RowMenu != null);
+		let deleteSystem = ItemOf(bed.Page.RowMenu, "Delete System");
+		Test.Assert(deleteSystem != null);
+		Test.Assert(!deleteSystem.Enabled);
+		bed.Page.RowMenu.Close();
+		Test.Assert(bed.Page.BeginRename(0));
+		Test.Assert(bed.Page.RenameSystem(0, "Embers"));
+		Test.Assert(bed.Effect.GetSystem(0).Name == "Embers");
+		Test.Assert(bed.TreeHas("Embers\n"));
+		bed.Page.Commands.Undo();
+		Test.Assert(bed.Effect.GetSystem(0).Name == "Sparks");
+	}
+
 	[Test]
 	public static void TheCreatorSeedsAnEffectUnderParticleEffects()
 	{

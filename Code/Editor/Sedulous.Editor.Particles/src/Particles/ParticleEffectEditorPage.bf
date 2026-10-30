@@ -53,6 +53,28 @@ struct ParticleTreeRow : IEquatable<ParticleTreeRow>
 	public static bool operator==(ParticleTreeRow a, ParticleTreeRow b) => a.Equals(b);
 }
 
+/// The tree's model: a system's row renamed in place (F2, or Rename on its menu).
+class ParticleTreeModel : TreeModel
+{
+	private delegate bool(int32 node) mEditable ~ delete _;
+	private delegate bool(int32 node, StringView name) mRename ~ delete _;
+
+	/// TAKES OWNERSHIP of both.
+	public this(delegate bool(int32 node) editable, delegate bool(int32 node, StringView name) rename)
+	{
+		mEditable = editable;
+		mRename = rename;
+	}
+
+	public override bool IsEditable(ModelIndex index) => (mEditable != null) && mEditable((int32)index.InternalId);
+
+	public override bool SetData(ModelIndex index, Sedulous.GUI.Variant value)
+	{
+		let name = value.ToString(.. scope .());
+		return (mRename != null) && !name.IsEmpty && mRename((int32)index.InternalId, name);
+	}
+}
+
 /// A particle effect on the GUI from its markup (Data/Editor/ParticleEffectPage.gml; Raptor's
 /// editor-gui spec, 5.4, layer 8). The effect's systems a tree (each its emitter, its initializers
 /// and its behaviors), the live preview beside it, and the grid showing the chosen system by its
@@ -90,7 +112,10 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 
 	/// The chosen system's rows; the base's sections let go of them first.
 	private FieldPropertySource mValues = null;
-	private TreeModel mModel = new .() ~ delete _;
+	private ParticleTreeModel mModel ~ delete _;
+	/// A tree row's menu (a reference of ours).
+	private Sedulous.GUI.Menu mRowMenu = null ~ _?.ReleaseRef();
+	private uint32 mTreeMenuListener = 0;
 	/// The markup's: the tree holds it.
 	private TreeView mTree = null;
 	/// The tree's rows, by node id.
@@ -120,6 +145,8 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 	{
 		ParticleEditor.RegisterRowTypes(); // the modules' types for the lists' adds, the curves as one value
 		HideAssetRows(); // the effect's rows are the chosen system's, beside the tree
+		mModel = new .(new [=this] (node) => (node >= 0) && (node < mRows.Count) && (mRows[node].Kind == .System),
+			new [=this] (node, name) => (node >= 0) && (node < mRows.Count) && RenameSystem(mRows[node].System, name));
 		mTree = Find<TreeView>("particle-tree");
 		if (let add = Find<ButtonBase>("particle-add-system"))
 			add.SetOnClick(new [=this] () => { AddSystem(); });
@@ -135,6 +162,17 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 					let node = (int)index.InternalId;
 					if ((node >= 0) && (node < mRows.Count))
 						Choose(mRows[node]);
+				});
+			// A row's menu (the old page's): what adds, moves, renames or removes there.
+			mTreeMenuListener = mTree.AddEventListener(.ContextMenu, new [=this] (e) =>
+				{
+					let at = ((MouseEvent)e).Position;
+					let item = mTree.ItemAt(at);
+					let node = (item >= 0) ? (int)mTree.GetItemIndex(item).InternalId : mRows.Count;
+					if ((node < 0) || (node >= mRows.Count))
+						return;
+					ShowRowMenu(mRows[node], mTree, at);
+					e.Handled = true;
 				});
 		}
 
@@ -176,8 +214,13 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 
 	public ~this()
 	{
+		if ((mRowMenu != null) && mRowMenu.IsOpen)
+			mRowMenu.Close();
 		if (mTree != null)
+		{
+			mTree.RemoveEventListener(mTreeMenuListener);
 			mTree.Model = null;
+		}
 		DetachPreview();
 		DeleteAndNullify!(mPane);
 		delete mPreviewResource;
@@ -237,6 +280,140 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 		EditWhole("edit_particle", scope (object) => { ParticleCreators.AddDefaultSystem(((ParticleEffectAsset)object).Effect); });
 		Choose(.(.System, Effect.SystemCount - 1, -1));
 	}
+
+	/// A system's name, one undo step (its tree row renamed in place, or its Name row).
+	public bool RenameSystem(int32 system, StringView name)
+	{
+		let effect = Effect;
+		if ((effect == null) || (system < 0) || (system >= effect.SystemCount) || name.IsEmpty)
+			return false;
+		Choose(.(.System, system, -1));
+		mValues.BeginEdit("Name");
+		mValues.CommitEdit("Name", PropertyWrite(Sedulous.GUI.Variant(name))); // one step, as the grid's Name row
+		return true;
+	}
+
+	/// Its tree row's name to type (F2; Rename on its menu).
+	public bool BeginRename(int32 system)
+	{
+		if (mTree == null)
+			return false;
+		for (int32 item = 0; item < (int32)mTree.GetItemCount(); item++)
+		{
+			let node = (int)mTree.GetItemIndex(item).InternalId;
+			if ((node >= 0) && (node < mRows.Count) && (mRows[node].Kind == .System) && (mRows[node].System == system))
+				return mTree.BeginEdit(item);
+		}
+		return false;
+	}
+
+	/// What the Initializers' or Behaviors' folder adds, by type name, appended.
+	public void ModuleTypes(ParticleRowKind folder, List<String> outTypes)
+	{
+		if ((folder != .Initializers) && (folder != .Behaviors))
+			return;
+		let list = (folder == .Initializers) ? "mInitializers" : "mBehaviors";
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		mValues.GetProperties("", rows);
+		for (let info in rows)
+		{
+			if (info.Name == list)
+			{
+				for (let type in info.ElementTypes)
+					outTypes.Add(new String(type));
+			}
+		}
+	}
+
+	/// A module of `type` added at the end of `folder`'s list, chosen; one step.
+	public bool AddModule(ParticleTreeRow folder, StringView type)
+	{
+		if ((folder.Kind != .Initializers) && (folder.Kind != .Behaviors))
+			return false;
+		Choose(folder);
+		let system = SystemAt(folder.System);
+		if (system == null)
+			return false;
+		let index = (folder.Kind == .Initializers) ? system.InitializerCount : system.BehaviorCount;
+		let edit = scope ListEdit(.Insert, index);
+		edit.ElementType.Set(type);
+		let kind = (folder.Kind == .Initializers) ? ParticleRowKind.Initializer : ParticleRowKind.Behavior;
+		if (!mValues.EditList(PlaceOf(folder, .. scope .()), edit))
+			return false;
+		Choose(.(kind, folder.System, index)); // the new module opened
+		return true;
+	}
+
+	/// A module, or a sub-emitter link, moved `by` places in its list, still chosen; one step.
+	public bool MoveModule(ParticleTreeRow row, int32 by)
+	{
+		if ((row.Module < 0) || (row.Kind == .System))
+			return false;
+		let system = SystemAt(row.System);
+		if (system == null)
+			return false;
+		let count = (row.Kind == .Initializer) ? system.InitializerCount : ((row.Kind == .Behavior) ? system.BehaviorCount : (int32)system.SubEmitters.Count);
+		let to = row.Module + by;
+		if ((to < 0) || (to >= count))
+			return false;
+		Choose(row);
+		if (!mValues.EditList(PlaceOf(.(FolderOf(row.Kind), row.System, -1), .. scope .()), scope ListEdit(.Move, row.Module, to)))
+			return false;
+		Choose(.(row.Kind, row.System, to)); // it stays chosen where it went
+		return true;
+	}
+
+	/// The tree row's menu at `at` over `owner`: a system's Add System, Rename and Delete; a
+	/// folder's modules to add by type; a module's Move Up, Move Down and Delete.
+	public void ShowRowMenu(ParticleTreeRow row, Node owner, Float2 at)
+	{
+		if (mRowMenu != null)
+		{
+			if (mRowMenu.IsOpen)
+				mRowMenu.Close();
+			mRowMenu.ReleaseRef();
+		}
+		mRowMenu = new Sedulous.GUI.Menu();
+		let effect = Effect;
+		let systems = (effect != null) ? effect.SystemCount : 0;
+		switch (row.Kind)
+		{
+		case .System:
+			mRowMenu.AddItem("Add System", new [=this] () => { AddSystem(); });
+			mRowMenu.AddItem("Rename", new [=this, =row] () => { BeginRename(row.System); }).Shortcut = "F2";
+			mRowMenu.AddSeparator();
+			mRowMenu.AddItem("Delete System", new [=this, =row] () =>
+				{
+					Choose(row);
+					RemoveChosen();
+				}).Enabled = systems > 1; // an effect keeps a system
+		case .Initializers, .Behaviors:
+			let types = scope List<String>();
+			defer { ClearAndDeleteItems!(types); }
+			ModuleTypes(row.Kind, types);
+			for (let type in types)
+			{
+				let named = new String(type);
+				mRowMenu.AddItem(scope $"Add {type}", new [=this, =row, =named] () => { AddModule(row, named); } ~ delete named);
+			}
+		case .Initializer, .Behavior, .SubEmitter:
+			mRowMenu.AddItem("Move Up", new [=this, =row] () => { MoveModule(row, -1); });
+			mRowMenu.AddItem("Move Down", new [=this, =row] () => { MoveModule(row, 1); });
+			mRowMenu.AddSeparator();
+			mRowMenu.AddItem("Delete", new [=this, =row] () =>
+				{
+					Choose(row);
+					RemoveChosen();
+				});
+		case .Emitter, .SubEmitters:
+			return; // the emitter is the system's own; a link is added in the grid, where its child is chosen
+		}
+		mRowMenu.Open(owner, at);
+	}
+
+	/// The tree row's menu, while it is open.
+	public Sedulous.GUI.Menu RowMenu => ((mRowMenu != null) && mRowMenu.IsOpen) ? mRowMenu : null;
 
 	/// The tree's chosen row taken out: a module or a sub-emitter, or a system while another remains.
 	public bool RemoveChosen()
