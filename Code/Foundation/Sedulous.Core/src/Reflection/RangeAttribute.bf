@@ -8,7 +8,9 @@ namespace Sedulous.Core;
 /// so applying this is also the statement "this is a magnitude, not an arbitrary number".
 ///
 /// Step zero means unspecified: the reader picks.
-[AttributeUsage(.Field | .Property,
+///
+/// On a method, it bounds the row an [InspectorProperty] getter shows.
+[AttributeUsage(.Field | .Property | .Method,
 	.NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct RangeAttribute : Attribute
 {

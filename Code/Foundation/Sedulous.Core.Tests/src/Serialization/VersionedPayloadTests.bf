@@ -339,6 +339,87 @@ class VersionedPayloadTests
 		Test.Assert(!strictOk, "no floor means the current version alone");
 	}
 
+	/// A keyed backend over binary that says whether the envelope's key is there, as the text
+	/// format can: a payload stored before its type was versioned has none.
+	class EnvelopeKeySerializer : Serializer
+	{
+		private BinarySerializer mInner ~ delete _;
+		public bool HasEnvelope = true;
+
+		public this(IStream stream, SerializeMode mode) : base(mode)
+		{
+			mInner = new BinarySerializer(stream, mode);
+		}
+
+		public override bool HasKey(StringView name) => (name != "dataVersions") || HasEnvelope;
+		public override void Key(StringView name) => mInner.Key(name);
+		public override void BeginObject() => mInner.BeginObject();
+		public override void EndObject() => mInner.EndObject();
+		public override void BeginArray(ref uint32 count) => mInner.BeginArray(ref count);
+		public override void EndArray() => mInner.EndArray();
+		public override void Scalar(void* value, ScalarKind kind) => mInner.Scalar(value, kind);
+		public override void Text(String value) => mInner.Text(value);
+		public override void Blob(void* data, int size) => mInner.Blob(data, size);
+		public override void GuidValue(ref Guid value) => mInner.GuidValue(ref value);
+	}
+
+	/// A type that keeps a legacy reader from version 0 reads its version 0 data: an envelope
+	/// stamped 0, and on a keyed backend a payload with no envelope at all (stored before the type
+	/// was versioned), the scope saying 0; without the reader both are refused.
+	[Test]
+	public static void ALegacyReaderFromVersionZeroReadsNeverVersionedData()
+	{
+		const uint64 cTypeId = 0xBEEF;
+
+		// An envelope stamped 0, read by a type now at version 1.
+		let stamped = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stamped, .Write);
+			BeginVersionedPayload(writer, cTypeId, 0);
+			EndVersionedPayload(writer);
+		}
+		for (let keeps in bool[2](true, false))
+		{
+			Test.Assert(stamped.Seek(0, .Begin) == 0);
+			let reader = scope BinarySerializer(stamped, .Read);
+			BeginVersionedPayload(reader, cTypeId, 1, 0, keeps);
+			Test.Assert(reader.IsOk == keeps, "a floor of 0 is a floor only with the reader kept");
+			if (keeps)
+				Test.Assert(reader.Version == 0);
+			EndVersionedPayload(reader);
+		}
+
+		// No envelope: the payload's own field alone, as the type wrote it before it had one.
+		let bare = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(bare, .Write);
+			int32 value = 77;
+			writer.Key("value");
+			writer.Scalar(&value, .Int32);
+		}
+		Test.Assert(bare.Seek(0, .Begin) == 0);
+		{
+			let reader = scope EnvelopeKeySerializer(bare, .Read);
+			reader.HasEnvelope = false;
+			BeginVersionedPayload(reader, cTypeId, 1, 0, true);
+			Test.Assert(reader.IsOk);
+			Test.Assert(reader.Version == 0, "never versioned reads as version 0");
+			int32 value = 0;
+			reader.Key("value");
+			reader.Scalar(&value, .Int32);
+			Test.Assert(value == 77, "the body reads on from where the payload starts");
+			EndVersionedPayload(reader);
+		}
+		Test.Assert(bare.Seek(0, .Begin) == 0);
+		{
+			let reader = scope EnvelopeKeySerializer(bare, .Read);
+			reader.HasEnvelope = false;
+			BeginVersionedPayload(reader, cTypeId, 1);
+			Test.Assert(!reader.IsOk, "without the reader, data with no envelope is refused");
+			EndVersionedPayload(reader);
+		}
+	}
+
 	/// A version 1 payload, written by hand: the chain, then the one field it had.
 	private static void WriteGrownV1(MemoryStream stream, uint32 version, int32 value)
 	{

@@ -25,13 +25,26 @@ static
 	/// what the data said rather than what this build assumed, and a mismatch has already
 	/// failed the payload by the time the body runs.
 	/// `minReadVersion` is the oldest CONCRETE version a legacy reader still accepts, nought
-	/// meaning the current one alone. Only the first entry, the concrete type's, is relaxed:
-	/// a base in the chain stays exact, since nothing branches on a base's version.
+	/// meaning the current one alone, unless `keepsLegacyReader` says the type keeps one: then
+	/// nought is a floor like any other, and a payload stored before the type was versioned at
+	/// all (no envelope) reads as version 0, where the backend can tell a key is missing (a keyed
+	/// one, the text format; a positional one cannot, and reads on, refusing what it finds). Only
+	/// the first entry, the concrete type's, is relaxed: a base in the chain stays exact, since
+	/// nothing branches on a base's version.
 	public static void BeginVersionedPayload(ISerializer ar, Span<SerializedDataVersion> declared,
-		uint32 minReadVersion = 0)
+		uint32 minReadVersion = 0, bool keepsLegacyReader = false)
 	{
 		let chain = scope List<SerializedDataVersion>();
 		uint32 count = 0;
+
+		// Never versioned: what the data was before the type had an envelope, its version 0.
+		if ((ar.Mode == .Read) && keepsLegacyReader && (minReadVersion == 0) && !ar.HasKey("dataVersions"))
+		{
+			for (let entry in declared)
+				chain.Add(.(entry.TypeId, 0));
+			ar.PushVersionScope(chain);
+			return;
+		}
 
 		if (ar.Mode == .Write)
 		{
@@ -79,7 +92,7 @@ static
 			var matches = (int)count == declared.Length;
 			for (int i = 0; matches && (i < (int)count); i++)
 			{
-				let legacy = (i == 0) && (minReadVersion != 0)
+				let legacy = (i == 0) && ((minReadVersion != 0) || keepsLegacyReader)
 					&& (chain[i].Version >= minReadVersion)
 					&& (chain[i].Version < declared[i].Version);
 				// A former identity is the same type saved before it moved (SerializableRenames).
@@ -97,10 +110,10 @@ static
 
 	/// One type's own version, which is the common case: no versioned bases.
 	public static void BeginVersionedPayload(ISerializer ar, uint64 typeId, uint32 version,
-		uint32 minReadVersion = 0)
+		uint32 minReadVersion = 0, bool keepsLegacyReader = false)
 	{
 		SerializedDataVersion[1] one = .(.(typeId, version));
-		BeginVersionedPayload(ar, .(&one[0], 1), minReadVersion);
+		BeginVersionedPayload(ar, .(&one[0], 1), minReadVersion, keepsLegacyReader);
 	}
 
 	public static void EndVersionedPayload(ISerializer ar) => ar.PopVersionScope();
