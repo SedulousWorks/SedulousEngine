@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">162c22d6-7e8b-764f-b4f0-1165a452ccfd</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiStyleSheetAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5871759161733652681</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">SnowlineSheet.css</string>
+			<string name="previewMarkup"/>
+		</object>
+	</object>
+</root>

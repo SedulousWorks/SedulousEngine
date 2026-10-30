@@ -1,0 +1,112 @@
+/* Snowline's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): night blue cards,
+   slate buttons that light gold when focused, the medals' discs. Its screens are Title, Hud, Pause,
+   Finish and Ending (Snowline.as pushes them). */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+screen.fades:entering { animation: fade-in 0.3s ease-out; }
+
+.centre { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; padding: 32px; }
+.card { flex-direction: column; align-items: center; background-color: rgba(16, 24, 42, 0.9); border-radius: 16px; }
+.white { color: #FFFFFF; }
+.pale { color: #E0E8F8; }
+.mist { color: #B8C8E8; }
+.dusk { color: #8FA3C8; }
+.ice { color: #7FDFFF; }
+.sun { color: #FFE38A; }
+.rule { height: 2px; background-color: #3A4A6A; border-radius: 1px; }
+
+/* The buttons: slate, brighter as they are hovered and pressed, edged gold when focused; a locked
+   course's card dims. */
+button.slate { color: #FFFFFF; background-color: #1C2740; border: 2px solid #5A6E96; border-radius: 10px; }
+button.slate:hover { background-color: #26345A; border: 3px solid #B8C8E8; }
+button.slate:active { background-color: #304070; border: 4px solid #FFD966; }
+button.slate:focus-visible { border: 4px solid #FFD966; }
+button.slate:disabled { background-color: #0E1424; border: 2px solid #3A4A6A; color: #6A7A9A; }
+
+/* The medals: a disc each, its colour by class (medal-none, -bronze, -silver, -gold). */
+.medal { width: 26px; height: 26px; border-radius: 13px; border: 2px solid #4A5A7A; }
+.medal.large { width: 64px; height: 64px; border-radius: 32px; border: 4px solid #4A5A7A; opacity: 0; } /* until the tally reaches it */
+.medal-bronze { background-color: #C27A3E; border-color: #E8A56A; }
+.medal-silver { background-color: #AEB8C6; border-color: #E4EAF2; }
+.medal-gold { background-color: #E2A81E; border-color: #FFE07A; }
+
+/* The controls: a row per action, its key and its pad button. */
+.controls { flex-direction: column; align-items: center; gap: 4px; }
+.controls-row { flex-direction: row; align-items: center; width: 480px; }
+.controls-action { width: 240px; font-size: 15px; color: #B8C8E8; }
+.controls-key { width: 120px; font-size: 16px; color: #FFFFFF; }
+.controls-pad { width: 120px; font-size: 16px; color: #FFE38A; }
+.controls-head { font-size: 13px; color: #8FA3C8; }
+
+/* The title: a card per course, its picture over its name and its best. */
+.title-card { padding: 24px; gap: 6px; }
+.title-name { font-size: 72px; color: #FFFFFF; }
+.title-lead { font-size: 20px; color: #B8C8E8; margin-bottom: 16px; }
+.courses { flex-direction: row; align-items: start; gap: 24px; }
+button.course { width: 320px; padding: 8px; flex-direction: column; align-items: start; justify-content: start; gap: 4px; }
+.course-picture { width: 304px; height: 171px; border-radius: 6px; object-fit: cover; margin-bottom: 4px; }
+.course-name { font-size: 22px; color: #FFFFFF; }
+.course-best { font-size: 14px; color: #E0E8F8; }
+button.course:disabled .course-picture { opacity: 0.4; }
+button.course:disabled .course-name { color: #6A7A9A; }
+button.quit { width: 200px; height: 40px; font-size: 20px; margin-top: 12px; }
+.title-hint { font-size: 15px; color: #8FA3C8; margin-top: 8px; }
+
+/* The HUD: the clock top left, a landed trick in the middle, the gates and gems top right, the
+   controls along the foot for a moment. It takes no pointer: the run is ridden beneath it. */
+.hud { flex-grow: 1; flex-direction: column; justify-content: space-between; padding: 18px; pointer-events: none; }
+.hud-top { flex-direction: row; justify-content: space-between; align-items: start; }
+.hud-left { flex-direction: column; align-items: start; gap: 4px; }
+.hud-middle { flex-direction: column; align-items: center; gap: 2px; }
+.hud-right { flex-direction: column; align-items: end; gap: 8px; }
+.hud-card { flex-direction: row; align-items: center; gap: 8px; padding: 10px; background-color: rgba(16, 24, 42, 0.69); border-radius: 10px; }
+.hud-time { font-size: 30px; color: #FFFFFF; }
+.hud-penalty { font-size: 24px; color: #FF5A4A; opacity: 0; } /* these three until there is one */
+.hud-avalanche-card { background-color: rgba(90, 26, 26, 0.75); }
+.hud-avalanche-name { font-size: 18px; color: #FFC8C0; }
+.hud-avalanche { font-size: 26px; color: #FFFFFF; }
+.hud-avalanche.close { color: #FF7366; } /* under 15 m */
+.hud-trick { font-size: 30px; color: #FFE38A; opacity: 0; }
+.hud-combo { font-size: 22px; color: #FFFFFF; opacity: 0; }
+.hud-name { font-size: 18px; }
+.hud-count { font-size: 26px; color: #FFFFFF; }
+.hud-foot { flex-direction: row; justify-content: center; }
+.hud-controls { padding: 14px; background-color: rgba(16, 24, 42, 0.78); border-radius: 12px; opacity: 0; }
+
+/* The pause menu. */
+.pause-card { padding: 22px; gap: 10px; }
+.pause-title { font-size: 40px; color: #FFFFFF; margin-bottom: 4px; }
+button.wide { width: 300px; height: 44px; font-size: 22px; }
+.pause-controls { margin-top: 6px; margin-bottom: 8px; }
+.pause-hint { font-size: 15px; color: #8FA3C8; }
+
+/* The results: the tally's rows come in one at a time (Snowline.as fades each in from the left). */
+.finish-card { padding: 28px; gap: 8px; }
+.finish-title { font-size: 24px; color: #B8C8E8; }
+.tally-row { flex-direction: row; justify-content: space-between; align-items: center; width: 380px; opacity: 0; }
+.tally-name { font-size: 19px; }
+.tally-value { font-size: 19px; color: #FFFFFF; }
+.final { flex-direction: row; align-items: center; gap: 18px; }
+.final-text { flex-direction: column; align-items: start; gap: 2px; }
+.final-time { font-size: 48px; color: #FFFFFF; }
+.final-medal { font-size: 18px; color: #E0E8F8; }
+.score-name { font-size: 22px; color: #B8C8E8; }
+.final-score { font-size: 30px; color: #FFFFFF; }
+.final-best { font-size: 18px; color: #FFD966; }
+.final-prompt { font-size: 17px; color: #8FA3C8; margin-top: 6px; }
+
+/* The ending: every course's best medal and time, their total and the medals won. */
+.ending-card { padding: 32px; gap: 10px; }
+.ending-title { font-size: 44px; color: #FFFFFF; }
+.ending-headline { font-size: 20px; color: #FFE38A; margin-bottom: 10px; }
+.ending-row { flex-direction: row; justify-content: space-between; align-items: center; width: 420px; }
+.ending-course { flex-direction: row; align-items: center; gap: 12px; }
+.ending-name { font-size: 22px; color: #FFFFFF; }
+.ending-best { font-size: 20px; color: #E0E8F8; }
+.ending-label { font-size: 20px; color: #B8C8E8; }
+.ending-value { font-size: 20px; color: #FFFFFF; }
+.ending-closing { font-size: 18px; color: #B8C8E8; margin-top: 14px; }
+.ending-hint { font-size: 16px; color: #8FA3C8; }
+
+/* The lines Snowline.as spaces out ("6 / 9    +6 s", "Bronze   best 0:36.78") keep their spaces. */
+.course-best, .hud-trick, .tally-value, .ending-best, .ending-value { white-space: pre; }

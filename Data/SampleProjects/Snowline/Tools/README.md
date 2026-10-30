@@ -25,8 +25,9 @@ imported copies live in the project's `Sources/`.
    `--kenney <dir> --music <dir>`, the Kenney sound effects and the two music tracks; with
    neither, what is already in `generated/Audio`).
 5. **First run**: `setup.py`: the title's thumbnails, the script assets (`script_create`, their
-   sources a draft from `render.py --draft`), the course scenes to write into, the screens
-   (`ui/*.sml`) and the manifest's start scene and Game script.
+   sources a draft from `render.py --draft`), the course scenes to write into, the screens on the
+   engine GUI (`ui/*.gml`, checked with `gui_validate`, styled by `ui/SnowlineSheet.css`, the
+   project's GUI sheet) and the manifest's start scene and Game script.
 6. **Shared assets**: `effects.py` (the track marks), `particles.py` (spray, powder, the gem's
    sparkle, the avalanche), `ghosts.py` (the ghosts' materials), `gems.py` (the sparkle prefab),
    `gates.py` (the gate and finish prefabs) and `graph.py` (the rider's animation graph).

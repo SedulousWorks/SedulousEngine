@@ -7,7 +7,8 @@ Run controls.py, look.py, importall.py (each course) and sounds.py first; then t
   render.py (a draft first: a script naming an asset not made yet holds a nil id until the last run
   of render.py, after course.py).
 - Scenes/Meadow, Forest, Ridge: the course scenes course.py writes into.
-- UI/<Name>: the screens (ui/*.sml, rendered with the thumbnails' ids).
+- UI/<Name>: the screens on the engine GUI (ui/*.gml, rendered with the thumbnails' ids, each checked
+  with gui_validate) and their sheet (ui/SnowlineSheet.css), made the project's GUI sheet.
 - The manifest: the start scene (Meadow) and the Game script (Snowline).
 Everything is made once and found by name after, so a rerun changes nothing it made before (the
 screens are written again: a changed one is imported over its asset).
@@ -49,10 +50,21 @@ for course in COURSES:
 staging = tempfile.mkdtemp(prefix="snowline-ui-")
 subprocess.run([sys.executable, os.path.join(HERE, "render.py"), "--stage", staging] + ["ui/" + s for s in SCREENS],
                check=True)
+def checked(path, kind):
+    """`path`, checked as its cook will check it: a problem stops the setup."""
+    check = mcp("gui_validate", {"source": open(path).read(), "kind": kind})
+    if not check["valid"] or check["diagnostics"]:
+        sys.exit("%s: %s" % (os.path.basename(path), check["diagnostics"]))
+    return path
+
+
 for screen in SCREENS:
-    r = mcp("asset_import", {"source": os.path.join(staging, screen + ".sml"), "group": "UI"})
+    r = mcp("asset_import", {"source": checked(os.path.join(staging, screen + ".gml"), "document"), "group": "UI"})
     print("screen", screen, r["guid"])
+sheet = mcp("asset_import", {"source": checked(os.path.join(HERE, "ui", "SnowlineSheet.css"), "sheet"), "group": "UI"})
+print("sheet SnowlineSheet", sheet["guid"])
 
 mcp("project_settings_set", {"defaultSceneId": have("Meadow", "SceneDocument"),
-                             "startupScriptId": have("Snowline", "ScriptClassAsset")})
+                             "startupScriptId": have("Snowline", "ScriptClassAsset"),
+                             "guiStyleSheetIds": [sheet["guid"]]}) # the game's look, over the GUI's theme
 print(mcp("asset_cook", {}))

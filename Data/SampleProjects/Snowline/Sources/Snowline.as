@@ -32,11 +32,68 @@
 // the best medal and time on every course, their total and the medals won. Jump from it goes back
 // to the title.
 
-Guid kHudDoc = Guid::FromString("d9bf0289-e31c-f14d-a647-26169f04e05a");    // UI/Hud
-Guid kFinishDoc = Guid::FromString("8038f3db-396a-ce4c-a5ce-45329e0f9d34"); // UI/Finish
-Guid kTitleDoc = Guid::FromString("0fd52a3d-d1ce-744d-bd5f-afbc2ab249f2");  // UI/Title
-Guid kEndingDoc = Guid::FromString("f7d32a05-810a-2144-bad1-531d9f88fdbb"); // UI/Ending
-Guid kPauseDoc = Guid::FromString("454e44ed-867b-224d-8a69-5f2f1d0f4cee");  // UI/Pause
+// The screens, on the engine GUI's screen stack: their documents by asset id (render.py fills these
+// in).
+const string kHudDoc = "{13cbfb43-a8f4-1349-bd50-6a7446a6ec44}";
+const string kFinishDoc = "{bd132384-40c8-764a-a57f-21252ad488ba}";
+const string kTitleDoc = "{f0daf034-a4c9-4348-be76-83dd05bb4f08}";
+const string kEndingDoc = "{be9658e8-7260-704f-ae92-cf9da4329f77}";
+const string kPauseDoc = "{f3f0d06a-768a-9648-a945-1220d7527e8c}";
+
+ScreenStack@ screens() { return ScreenStack::Of(Gui.Root().Find("screens")); }
+// The top screen first: one just cleared or popped away is still in the tree while its exit plays,
+// with the same ids, and would be found first.
+Node@ find(string id)
+{
+	Screen@ top = screens().Top;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+void wire(string id, EventHandler@ handler) { find(id).On("click", handler); } // `on*` names are the engine's handlers
+// These skip a node the screens up now do not have: a course's gates and gems announce themselves
+// behind the title, before the HUD is up.
+void setText(string id, string text)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		Label::Of(n).Text = text;
+	}
+}
+// Shown at once, or hidden (a sheet's opacity 0 keeps its place in the layout).
+void show(string id, bool shown)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		n.Tween("opacity", shown ? "1" : "0", 0.0f, "linear");
+	}
+}
+// In the layout, or out of it.
+void display(string id, bool shown)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		n.Visible = shown;
+	}
+}
+// The medal's disc: its colour by class, rank 0 (none) to 3 (gold).
+void setMedal(string id, int rank)
+{
+	UIWidget@ disc = UIWidget::Of(find(id));
+	if (disc is null)
+	{
+		return;
+	}
+	disc.RemoveClass("medal-bronze");
+	disc.RemoveClass("medal-silver");
+	disc.RemoveClass("medal-gold");
+	if (rank > 0)
+	{
+		disc.AddClass(rank == 3 ? "medal-gold" : (rank == 2 ? "medal-silver" : "medal-bronze"));
+	}
+}
 
 // The courses, in order: each unlocked by a bronze on the one before it.
 const int kCourseCount = 3;
@@ -126,18 +183,17 @@ class Game
 		m_onTitle = true;
 		music(kMusicTitle);
 		Run.TimeScale = 0.0f; // the scene behind the title holds still
-		Ui.Clear();
-		UIScreen s = Ui.Push(kTitleDoc);
-		s.FindButton("course-0").OnClick(ScriptCallback(this.onMeadow));
-		s.FindButton("course-1").OnClick(ScriptCallback(this.onForest));
-		s.FindButton("course-2").OnClick(ScriptCallback(this.onRidge));
-		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));
+		screens().Clear();
+		screens().Push(kTitleDoc);
+		wire("course-0", EventHandler(this.onMeadow));
+		wire("course-1", EventHandler(this.onForest));
+		wire("course-2", EventHandler(this.onRidge));
+		wire("quit-btn", EventHandler(this.onQuit));
 		for (int i = 0; i < kCourseCount; ++i)
 		{
 			bool open = unlocked(i);
-			s.FindButton("course-" + i).SetEnabled(open);
-			s.FindLabel("course-" + i + "-best").SetText(open ? bestLine(i)
-														   : "Locked: " + courseName(i - 1) + " bronze");
+			find("course-" + i).Enabled = open;
+			setText("course-" + i + "-best", open ? bestLine(i) : "Locked: " + courseName(i - 1) + " bronze");
 		}
 	}
 
@@ -147,15 +203,21 @@ class Game
 		m_paused = true;
 		Audio.PlayOneShot(kClick, AudioBus::Effects, 0.7f);
 		m_controlsShow = 0.0f;
-		Ui.Find("hud-controls").SetVisible(false); // the menu shows them itself
+		show("hud-controls", false); // the menu shows them itself
 		Run.TimeScale = 0.0f;
-		UIScreen s = Ui.Push(kPauseDoc);
-		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
-		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRestartRun));
-		s.FindButton("courses-btn").OnClick(ScriptCallback(this.onCourses));
+		screens().Push(kPauseDoc);
+		wire("resume-btn", EventHandler(this.onResume));
+		wire("restart-btn", EventHandler(this.onRestartRun));
+		wire("courses-btn", EventHandler(this.onCourses));
 	}
 
-	private void onResume()
+	private bool onResume(GuiEvent@ e)
+	{
+		resume();
+		return true;
+	}
+
+	private void resume()
 	{
 		if (!m_paused)
 		{
@@ -163,32 +225,35 @@ class Game
 		}
 		Audio.PlayOneShot(kBack, AudioBus::Effects, 0.7f);
 		m_paused = false;
-		Ui.Pop(); // the pause menu
+		screens().Pop(); // the pause menu
 		Run.TimeScale = 1.0f;
 	}
 
-	private void onRestartRun()
+	private bool onRestartRun(GuiEvent@ e)
 	{
 		Audio.PlayOneShot(kClick, AudioBus::Effects, 0.7f);
-		onResume();
+		resume();
 		restart();
+		return true;
 	}
 
-	private void onCourses()
+	private bool onCourses(GuiEvent@ e)
 	{
 		Audio.PlayOneShot(kClick, AudioBus::Effects, 0.7f);
 		m_paused = false;
 		showTitle();
+		return true;
 	}
 
-	private void onMeadow() { startCourse(0); }
-	private void onForest() { startCourse(1); }
-	private void onRidge() { startCourse(2); }
+	private bool onMeadow(GuiEvent@ e) { startCourse(0); return true; }
+	private bool onForest(GuiEvent@ e) { startCourse(1); return true; }
+	private bool onRidge(GuiEvent@ e) { startCourse(2); return true; }
 
-	private void onQuit()
+	private bool onQuit(GuiEvent@ e)
 	{
 		Audio.PlayOneShot(kClick, AudioBus::Effects, 0.7f);
 		Run.RequestExit(0);
+		return true;
 	}
 
 	// A course opens with a bronze or better on the one before it; the first is always open.
@@ -225,15 +290,12 @@ class Game
 		m_gold = 0.0f;
 		m_silver = 0.0f;
 		m_bronze = 0.0f;
-		Ui.Clear();
-		Ui.Push(kHudDoc);
+		screens().Clear();
+		screens().Push(kHudDoc);
 		resetRun();
 		// The controls, keyboard and pad, along the bottom for the first seconds of the course
-		// (and always in the pause menu).
-		UIView controls = Ui.Find("hud-controls");
-		controls.SetVisible(true);
-		controls.SetOpacity(0.0f);
-		controls.FadeTo(1.0f, 0.3f);
+		// (and always in the pause menu): faded in from the sheet's 0.
+		find("hud-controls").Tween("opacity", "1", 0.3f, "ease");
 		m_controlsShow = kControlsShown;
 		Run.TimeScale = 1.0f;
 		Run.LoadScene(courseScene(i));
@@ -259,7 +321,7 @@ class Game
 			// Back out of the menu the way it came in, or with B (the Grab button) on a pad.
 			if (Input.WasPressed("Pause") || Input.WasPressed("Grab"))
 			{
-				onResume();
+				resume();
 			}
 			return;
 		}
@@ -282,13 +344,13 @@ class Game
 				return;
 			}
 			m_time += dt;
-			Ui.FindLabel("hud-time").SetText(clock(m_time + m_penalty));
+			setText("hud-time", clock(m_time + m_penalty));
 			if (m_flash > 0.0f)
 			{
 				m_flash -= Run.RealDeltaTime;
 				if (m_flash <= 0.0f)
 				{
-					Ui.Find("hud-penalty").SetVisible(false);
+					show("hud-penalty", false);
 				}
 			}
 			if (m_controlsShow > 0.0f)
@@ -296,7 +358,7 @@ class Game
 				m_controlsShow -= Run.RealDeltaTime;
 				if (m_controlsShow <= 0.0f)
 				{
-					Ui.Find("hud-controls").FadeTo(0.0f, 0.6f);
+					find("hud-controls").Tween("opacity", "0", 0.6f, "ease");
 				}
 			}
 			if (m_trickShow > 0.0f)
@@ -304,7 +366,7 @@ class Game
 				m_trickShow -= Run.RealDeltaTime;
 				if (m_trickShow <= 0.0f)
 				{
-					Ui.Find("hud-trick").SetVisible(false);
+					show("hud-trick", false);
 				}
 			}
 			return;
@@ -332,8 +394,7 @@ class Game
 		m_missed += 1;
 		m_penalty += kMissPenalty;
 		m_flash = 1.2f;
-		UIView penalty = Ui.Find("hud-penalty");
-		penalty.SetVisible(true);
+		show("hud-penalty", true);
 		showGates();
 	}
 
@@ -390,30 +451,31 @@ class Game
 	{
 		if (m_running)
 		{
-			Ui.Find("hud-avalanche-panel").SetVisible(true);
+			display("hud-avalanche-panel", true);
 			onAvalancheGap(metres);
 		}
 	}
 
 	void onAvalancheGap(int metres)
 	{
-		if (!m_running)
+		UIWidget@ gap = UIWidget::Of(find("hud-avalanche"));
+		if (!m_running || gap is null)
 		{
 			return;
 		}
-		UILabel gap = Ui.FindLabel("hud-avalanche");
-		gap.SetText("" + metres + " m");
+		setText("hud-avalanche", "" + metres + " m");
 		if (metres < 15)
 		{
-			gap.SetTextColor(Color(1.0f, 0.45f, 0.4f, 1.0f));
+			gap.AddClass("close");
 			if (metres % 2 == 0)
 			{
-				Ui.Find("hud-avalanche-panel").Pulse(1.12f, 0.18f);
+				// A beat: up and back down.
+				find("hud-avalanche-panel").Tween("transform", "scale(1.12)", 0.09f, "ease-out").From("scale(1)").Repeats(2).PingPong();
 			}
 		}
 		else
 		{
-			gap.ClearTextColor();
+			gap.RemoveClass("close");
 		}
 	}
 
@@ -423,7 +485,7 @@ class Game
 		if (m_running)
 		{
 			showTrick("Caught by the avalanche", "");
-			Ui.Find("hud-avalanche-panel").SetVisible(false);
+			display("hud-avalanche-panel", false);
 			m_caught = true;
 		}
 	}
@@ -461,9 +523,8 @@ class Game
 		{
 			m_combo += 1;
 		}
-		UIView combo = Ui.Find("hud-combo");
-		Ui.FindLabel("hud-combo").SetText("Combo x" + m_combo);
-		combo.SetVisible(true);
+		setText("hud-combo", "Combo x" + m_combo);
+		show("hud-combo", true);
 	}
 
 	// "360 Grab", "180", "Air": the spin if any, then the grab if held a while, else just air.
@@ -479,18 +540,20 @@ class Game
 
 	private void showTrick(string name, string points)
 	{
-		UILabel trick = Ui.FindLabel("hud-trick");
-		trick.SetText(points == "" ? name : name + "   " + points);
-		trick.SetVisible(true);
-		trick.SetOpacity(0.0f);
-		trick.FadeTo(1.0f, 0.15f);
+		Node@ trick = find("hud-trick");
+		if (trick is null)
+		{
+			return;
+		}
+		setText("hud-trick", points == "" ? name : name + "   " + points);
+		trick.Tween("opacity", "1", 0.15f, "ease").From("0");
 		m_trickShow = kTrickShown;
 	}
 
 	private void endCombo()
 	{
 		m_combo = 1;
-		Ui.Find("hud-combo").SetVisible(false);
+		show("hud-combo", false);
 	}
 
 	void onMedalGold(int hundredths) { m_gold = float(hundredths) / 100.0f; }
@@ -505,11 +568,11 @@ class Game
 	void onRunFinished(int unused)
 	{
 		m_running = false;
-		Ui.Find("hud-avalanche-panel").SetVisible(false);
+		display("hud-avalanche-panel", false);
 		m_tallyStep = 0;
 		m_tallyTime = 0.0f;
 		keepBest(m_time + m_penalty);
-		Ui.Push(kFinishDoc);
+		screens().Push(kFinishDoc);
 	}
 
 	// The course's best time and medal, kept in the save; a new best is announced at once, so the
@@ -571,7 +634,7 @@ class Game
 		}
 		if (Input.WasPressed("Jump"))
 		{
-			Ui.Pop(); // the results
+			screens().Pop(); // the results
 			if (m_endingDue)
 			{
 				m_endingDue = false;
@@ -589,10 +652,10 @@ class Game
 		Audio.PlayOneShot(kMedalSting, AudioBus::Music, 0.9f);
 		music(kMusicTitle);
 		Run.TimeScale = 0.0f; // the course behind it holds still
-		Ui.Clear();
-		Ui.Push(kEndingDoc);
+		screens().Clear();
+		screens().Push(kEndingDoc);
 		string last = courseName(kCourseCount - 1);
-		Ui.FindLabel("end-headline").SetText(medalTitle(Save.GetInt("medal." + last, 0)) + " on " + last);
+		setText("end-headline", medalTitle(Save.GetInt("medal." + last, 0)) + " on " + last);
 		float total = 0.0f;
 		bool allRidden = true;
 		int golds = 0;
@@ -602,9 +665,8 @@ class Game
 		{
 			float best = Save.GetFloat("best." + courseName(i), -1.0f);
 			int rank = Save.GetInt("medal." + courseName(i), 0);
-			Ui.Find("end-" + i + "-" + (rank == 3 ? "gold" : (rank == 2 ? "silver" : (rank == 1 ? "bronze" : "none"))))
-				.SetVisible(true);
-			Ui.FindLabel("end-" + i + "-best").SetText(best < 0.0f ? "not ridden" : medalTitle(rank) + "   " + clock(best));
+			setMedal("end-" + i + "-medal", rank);
+			setText("end-" + i + "-best", best < 0.0f ? "not ridden" : medalTitle(rank) + "   " + clock(best));
 			if (best < 0.0f)
 			{
 				allRidden = false;
@@ -617,10 +679,10 @@ class Game
 			silvers += rank == 2 ? 1 : 0;
 			bronzes += rank == 1 ? 1 : 0;
 		}
-		Ui.FindLabel("end-total").SetText(allRidden ? clock(total) : "");
-		Ui.FindLabel("end-medals").SetText("" + golds + " gold   " + silvers + " silver   " + bronzes + " bronze");
-		Ui.FindLabel("end-closing").SetText(golds == kCourseCount ? "Gold on every course. Thanks for riding."
-																  : "Thanks for riding. There is gold still out there.");
+		setText("end-total", allRidden ? clock(total) : "");
+		setText("end-medals", "" + golds + " gold   " + silvers + " silver   " + bronzes + " bronze");
+		setText("end-closing", golds == kCourseCount ? "Gold on every course. Thanks for riding."
+													 : "Thanks for riding. There is gold still out there.");
 	}
 
 	// The music: switched only when the track changes, so the title's keeps playing across menus.
@@ -673,27 +735,30 @@ class Game
 				key = "bonus";
 				value = "+" + timeBonus(total);
 			}
-			UIView row = Ui.Find("row-" + key);
-			row.SetVisible(true);
-			Ui.FindLabel("value-" + key).SetText(value);
-			if (!quiet)
+			Node@ row = find("row-" + key);
+			setText("value-" + key, value);
+			if (quiet)
 			{
-				row.SetOpacity(0.0f);
-				row.FadeTo(1.0f, 0.2f);
-				row.SetTranslation(-24.0f, 0.0f);
-				row.MoveTo(0.0f, 0.0f, 0.25f, Ease::Out);
+				show("row-" + key, true);
+			}
+			else
+			{
+				// In from the left as it fades in.
+				row.Tween("opacity", "1", 0.2f, "ease").From("0");
+				row.Tween("transform", "translateX(0px)", 0.25f, "ease-out").From("translateX(-24px)");
 				Audio.PlayOneShot(kChime, AudioBus::Effects, 0.3f, 0.8f + 0.08f * float(step));
 			}
 			return;
 		}
 		if (step == 5)
 		{
-			Ui.FindLabel("final-time").SetText(clock(total));
+			setText("final-time", clock(total));
 			string medal = medalName(total);
-			Ui.FindLabel("final-medal").SetText(medalLine(total));
+			setText("final-medal", medalLine(total));
+			setMedal("medal", medalRank(medal));
+			show("medal", true);
 			if (medal == "")
 			{
-				Ui.Find("medal-none").SetVisible(true);
 				if (!quiet)
 				{
 					Audio.PlayOneShot(kNoMedalSting, AudioBus::Music, 0.8f);
@@ -701,19 +766,16 @@ class Game
 			}
 			else
 			{
-				UIView disc = Ui.Find("medal-" + medal);
-				disc.SetVisible(true);
 				if (!quiet)
 				{
-					disc.SetScale(1.6f);
-					disc.ScaleTo(1.0f, 0.3f, Ease::Out);
+					find("medal").Tween("transform", "scale(1)", 0.3f, "ease-out").From("scale(1.6)");
 					Audio.PlayOneShot(kMedalSting, AudioBus::Music, 0.9f);
 				}
 			}
 			return;
 		}
-		Ui.Find("row-score").SetVisible(true);
-		Ui.FindLabel("final-score").SetText("" + (m_taken * kGemPoints + m_tricks + timeBonus(total)));
+		show("row-score", true);
+		setText("final-score", "" + (m_taken * kGemPoints + m_tricks + timeBonus(total)));
 		string best;
 		if (m_previousBest < 0.0f)
 		{
@@ -727,8 +789,8 @@ class Game
 		{
 			best = "Best " + clock(m_previousBest);
 		}
-		Ui.FindLabel("final-best").SetText(best);
-		Ui.FindLabel("final-prompt").SetText("Jump to ride again");
+		setText("final-best", best);
+		setText("final-prompt", "Jump to ride again");
 	}
 
 	// "gold", "silver", "bronze", or "" for none.
@@ -798,21 +860,21 @@ class Game
 		m_tricks = 0;
 		m_trickShow = 0.0f;
 		endCombo();
-		Ui.Find("hud-trick").SetVisible(false);
-		Ui.Find("hud-penalty").SetVisible(false);
-		Ui.Find("hud-avalanche-panel").SetVisible(false);
+		show("hud-trick", false);
+		show("hud-penalty", false);
+		display("hud-avalanche-panel", false);
 		showGates();
 		showGems();
 	}
 
 	private void showGates()
 	{
-		Ui.FindLabel("hud-gates").SetText("" + m_passed + " / " + m_gates);
+		setText("hud-gates", "" + m_passed + " / " + m_gates);
 	}
 
 	private void showGems()
 	{
-		Ui.FindLabel("hud-gems").SetText("" + m_taken + " / " + m_gems);
+		setText("hud-gems", "" + m_taken + " / " + m_gems);
 	}
 
 	// m:ss.cc

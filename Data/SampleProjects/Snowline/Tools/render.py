@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""render.py [--check | --draft] <Name> | ui/<Name>...: scripts/<Name>.as, or ui/<Name>.sml, with {{Asset}}
-placeholders -> Snowline's Sources/<Name>.as (.sml) with the asset ids; a script is then compile-checked
+"""render.py [--check | --draft] <Name> | ui/<Name>...: scripts/<Name>.as, or a screen ui/<Name>.gml (the
+engine GUI's), with {{Asset}} placeholders -> Snowline's Sources/<Name>.as (.gml) with the asset ids; a script is then compile-checked
 (script_validate over the editor's MCP). A placeholder whose asset does not exist yet is a nil id under
 --check (nothing written) and --draft (written: a fresh project's first pass, so the prefabs and scenes
 find the scripts' properties before the scripts can name them). --stage <dir> writes there instead of
@@ -8,7 +8,8 @@ Sources/ (a screen, which asset_import then copies in).
 
 A placeholder is the asset's name, prefixed by its kind where names are shared (a course's scene, its
 thumbnail and its terrain textures; the Finish screen and the Finish prefab): {{Scene:Meadow}},
-{{UI:Finish}}, {{Texture:Meadow}}, {{Prefab:GemSparkle}}; a sound is its bare name, {{Pop}}."""
+{{GUI:Finish}}, {{Texture:Meadow}}, {{Prefab:GemSparkle}}; a sound is its bare name, {{Pop}}. A script
+names a screen as "{{{GUI:Hud}}}": the id in braces, the form the GUI's screen stack takes."""
 import os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from snowgen import mcp, assets, NIL
@@ -24,7 +25,7 @@ names = [a for i, a in enumerate(args) if a not in ("--check", "--draft", "--sta
 # By name; a prefab sharing a script's name is written {{Prefab:Name}}, and an animation clip
 # {{Clip:Name}} (a clip sharing another asset's name).
 PREFIX = {"PrefabDocument": "Prefab:", "AnimationClipAsset": "Clip:", "SceneDocument": "Scene:",
-          "UIDocumentAsset": "UI:", "TextureAsset": "Texture:"}
+          "GuiDocumentAsset": "GUI:", "TextureAsset": "Texture:"}
 ids, ambiguous = {}, set()
 for a in assets():
     key = PREFIX.get(a["type"], "") + a["name"]
@@ -47,9 +48,9 @@ for name in names:
     ui = name.startswith("ui/")
     if ui:
         name = name[3:]
-    file_name = name + (".sml" if ui else ".as")
+    file_name = name + (".gml" if ui else ".as")
     text = open(os.path.join(HERE, "ui" if ui else "scripts", file_name)).read()
-    text = re.sub(r"\{\{([^}]+)\}\}", resolve, text)
+    text = re.sub(r"\{\{([^{}]+)\}\}", resolve, text) # "{{{GUI:Hud}}}" keeps its outer braces
     if not check:
         open(os.path.join(stage or SOURCES, file_name), "w").write(text)
     if ui:
