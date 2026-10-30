@@ -86,6 +86,28 @@ class GuiScriptTests
 		engine.Scenes.DestroyScene(level);
 	}
 
+	/// Raptor's case (its fix, a typed Variant return, has no counterpart here: Beef's Root() returns
+	/// a Node): AngelScript reaches a canvas's, a billboard's and a world panel's tree by Root().
+	[Test]
+	public static void AngelScriptReachesACanvassABillboardsAndAWorldPanelsTreeByRoot()
+	{
+		let surface = scope ScriptSurface();
+		EngineScriptSurface.Populate(surface);
+		let engine = scope GuiTestEngine();
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(surface);
+		engine.Gui.ExposeToScript(vm);
+		let ok = vm.Compile("roots", "roots.as", """
+			Node@ canvas(const Entity &in e) { return GuiCanvasComponent::of(e).Root(); }
+			Node@ board(const Entity &in e) { return GuiBillboardComponent::of(e).Root(); }
+			Node@ panel(const Entity &in e) { return GuiWorldPanelComponent::of(e).Root(); }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "each compiles against the engine surface");
+		vm.DiscardModule("roots");
+	}
+
 	/// With run screens on, a run's facade answers its own tier, made on first use, and the
 	/// shared facade the shared tier; both find no root once the subsystem has shut down.
 	[Test]

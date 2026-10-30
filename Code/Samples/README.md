@@ -21,7 +21,7 @@ the editor. Games made the usual way, as projects in the editor, are under
 | `AudioPlayground` | The audio stack from a component to a speaker: a looping bed on the music bus, four spatial emitters playing one clip at four pitches, a reverb zone, and one shots fired through a cue. |
 | `InputActions` | The whole input stack: named actions over keys, pads and touch, an exclusive menu set, the smoothing processors, the time scale, and a rebind overlay saved to the user settings. |
 | `TerrainPlayground` | A heightfield built in code, with no cook behind it, drawn by the chunked terrain renderer: rolling hills, a dome, a ripple and a plateau, each stressing a different part of it. |
-| `GameUiSandbox` | The game UI kit on screen: a HUD screen and a pause menu pushed over it on the UI subsystem's screen stack, driven by keys or a pad. |
+| `GameUiSandbox` | A game's screens on the engine GUI: a HUD (a menu of buttons, a health bar and a rolling score tweened through the GUI's data, a prompt naming the Deliver binding, toasts) and a pause menu pushed over it on the GUI's screen stack, driven by keys or a pad. |
 | `NetEcho` | The network stack end to end with no graphics: a reliable server and client over real localhost sockets, the server echoing each line back. |
 
 ## Web

@@ -475,4 +475,59 @@ class GuiSubsystemTests
 		Test.Assert(ok.Size.Y > 0.0f);
 		Test.Assert((title as UINode).GetTextStyle().FontFamily == family);
 	}
+
+	/// A map with one action, Deliver, on `key`. The caller owns it.
+	private static Sedulous.Input.InputMap MapWith(Sedulous.Shell.KeyCode key)
+	{
+		let map = new Sedulous.Input.InputMap();
+		let set = new Sedulous.Input.ActionSet();
+		set.Name.Set("Gameplay");
+		let deliver = new Sedulous.Input.InputAction();
+		deliver.Name.Set("Deliver");
+		Sedulous.Input.Binding binding = .();
+		binding.Source = .Key;
+		binding.Code = (uint32)key;
+		deliver.Bindings.Add(binding);
+		set.Actions.Add(deliver);
+		map.Sets.Add(set);
+		return map;
+	}
+
+	[Test]
+	public static void APromptNamesTheGamesBindingWithNoHostWiringAndFollowsARebindingAndTheRuntimeNamed()
+	{
+		let engine = scope GuiTestEngine();
+		// The input subsystem's runtime by default.
+		let e = MapWith(.E);
+		defer delete e;
+		engine.Input.SetMap(e);
+		let prompt = new Sedulous.GUI.Prompt();
+		defer prompt.ReleaseRef();
+		prompt.ActionName = "Deliver";
+		engine.Gui.ScreenRoot.AddChild(prompt);
+		engine.Frame();
+		engine.Gui.ScreenRoot.UpdateLayout();
+		Test.Assert(engine.Gui.PromptRuntime === engine.Input.Runtime);
+		Test.Assert(prompt.Text == "E", scope $"{prompt.Text}");
+
+		// A rebinding (a map installed again) shows at the next frame.
+		let f = MapWith(.F);
+		defer delete f;
+		engine.Input.SetMap(f);
+		engine.Frame();
+		engine.Gui.ScreenRoot.UpdateLayout();
+		Test.Assert(prompt.Text == "F", scope $"{prompt.Text}");
+
+		// The runtime the host names (a game instance's) instead.
+		let game = scope Sedulous.Input.ActionRuntime();
+		let g = MapWith(.G);
+		defer delete g;
+		game.SetMap(g);
+		engine.Gui.SetPromptRuntime(game);
+		engine.Frame();
+		engine.Gui.ScreenRoot.UpdateLayout();
+		Test.Assert(prompt.Text == "G", scope $"{prompt.Text}");
+		engine.Gui.SetPromptRuntime(null);
+		engine.Frame();
+	}
 }

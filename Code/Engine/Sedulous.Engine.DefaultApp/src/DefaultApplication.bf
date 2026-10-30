@@ -416,6 +416,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		// components, `Gui` in its scripts).
 		mGui = new GuiSubsystem(mDataMount);
 		host.Context.RegisterSubsystem<GuiSubsystem>(mGui);
+		// Its prompts name the game's bindings: the primary instance's runtime, which the game runs on.
+		mGui.SetPromptRuntime(mInstance.InputRuntime);
 		InstallRunGui(mInstance);
 
 		// Each instance owns its OWN endpoint and goes online at runtime through the facade,

@@ -4,7 +4,7 @@ using Sedulous.Core;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.UI;
+using Sedulous.Engine.GUI;
 using Sedulous.Extensions.Imgui;
 using Sedulous.Graphics;
 using Sedulous.Physics;
@@ -12,8 +12,7 @@ using Sedulous.Physics.Resource;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Shell;
-using Sedulous.UI;
-using Sedulous.UI.Resource;
+using Sedulous.GUI.Resources; // GuiDocument (the documents made in code)
 using Samples.Common;
 using cimgui_Beef;
 
@@ -22,7 +21,8 @@ namespace Samples.PhysicsPlayground;
 /// The physics stack with a scene on top of it: a crate wall, a cooked ramp and boulder, a
 /// kinematic sweeper, a motorised hinge, a character, a trigger volume, and raycast shoving.
 ///
-/// All three UI tiers ride along on purpose. The screen button is the proof that a click the UI
+/// All three tiers of the engine GUI ride along on purpose (the HUD a canvas, the hero's nameplate a
+/// billboard, the kiosk a world panel). The screen button is the proof that a click the UI
 /// consumed does NOT also reach the world.
 class PhysicsPlaygroundApp : DefaultApplication
 {
@@ -40,9 +40,9 @@ class PhysicsPlaygroundApp : DefaultApplication
 	private EntityHandle mKioskEntity = .Invalid;
 	private List<EntityHandle> mCrates = new .() ~ delete _;
 
-	private UIDocument mHudDocument = null ~ delete _;
-	private UIDocument mKioskDocument = null ~ delete _;
-	private UIDocument mNameplateDocument = null ~ delete _;
+	private GuiDocument mHudDocument = null ~ delete _;
+	private GuiDocument mKioskDocument = null ~ delete _;
+	private GuiDocument mNameplateDocument = null ~ delete _;
 	private bool mHudBound = false;
 	private bool mKioskBound = false;
 	private uint32 mHudClicks = 0;
@@ -250,10 +250,10 @@ class PhysicsPlaygroundApp : DefaultApplication
 			hero.MaxStrength = 6000.0f;
 		}
 
-		mNameplateDocument = new UIDocument();
+		mNameplateDocument = new GuiDocument();
 		mNameplateDocument.Markup.Set(PlaygroundMarkup.cNameplate);
 
-		if (let billboards = mScene.GetSystem<UIBillboardComponentManager>())
+		if (let billboards = mScene.GetSystem<GuiBillboardComponentManager>())
 		{
 			let plate = billboards.Add(mHero);
 			plate.Document.SetDirect(mNameplateDocument);
@@ -268,10 +268,10 @@ class PhysicsPlaygroundApp : DefaultApplication
 		let entity = mScene.CreateEntity("kiosk");
 		mScene.SetLocalPosition(entity, .(4.0f, 1.6f, -6.0f));
 
-		mKioskDocument = new UIDocument();
+		mKioskDocument = new GuiDocument();
 		mKioskDocument.Markup.Set(PlaygroundMarkup.cKiosk);
 
-		if (let panels = mScene.GetSystem<UIWorldPanelComponentManager>())
+		if (let panels = mScene.GetSystem<GuiWorldPanelComponentManager>())
 		{
 			let panel = panels.Add(entity);
 			panel.Document.SetDirect(mKioskDocument);
@@ -303,11 +303,11 @@ class PhysicsPlaygroundApp : DefaultApplication
 
 	private void BuildHud()
 	{
-		mHudDocument = new UIDocument();
+		mHudDocument = new GuiDocument();
 		mHudDocument.Markup.Set(PlaygroundMarkup.cHud);
 
 		let entity = mScene.CreateEntity("hud");
-		if (let canvases = mScene.GetSystem<UICanvasComponentManager>())
+		if (let canvases = mScene.GetSystem<GuiCanvasComponentManager>())
 		{
 			let canvas = canvases.Add(entity);
 			canvas.Document.SetDirect(mHudDocument);
@@ -345,14 +345,14 @@ class PhysicsPlaygroundApp : DefaultApplication
 			hero.JumpSpeed = 6.0f;
 	}
 
-	/// Bound from the update rather than at build time: the tree does not exist until the UI
-	/// subsystem has instantiated the document.
+	/// Bound from the update rather than at build time: the tree does not exist until the GUI
+	/// subsystem has built the document.
 	private void BindHudButton()
 	{
 		if (mHudBound || (mScene == null))
 			return;
 
-		let canvases = mScene.GetSystem<UICanvasComponentManager>();
+		let canvases = mScene.GetSystem<GuiCanvasComponentManager>();
 		if (canvases == null)
 			return;
 
@@ -360,18 +360,14 @@ class PhysicsPlaygroundApp : DefaultApplication
 		if ((canvas == null) || (canvas.Root == null))
 			return;
 
-		let group = canvas.Root as ViewGroup;
-		if (group == null)
-			return;
-
-		let button = group.FindByName<Button>("hud-btn");
+		let button = canvas.Root.FindElement("hud-btn") as Sedulous.GUI.Button;
 		if (button == null)
 			return;
 
-		button.OnClick.Add(new (sender) =>
+		button.SetOnClick(new () =>
 			{
 				mHudClicks++;
-				button.SetText(scope $"Clicks: {mHudClicks}");
+				button.Text = scope $"Clicks: {mHudClicks}";
 				Console.WriteLine("PhysicsPlayground: HUD button clicked.");
 			});
 		mHudBound = true;
@@ -382,22 +378,22 @@ class PhysicsPlaygroundApp : DefaultApplication
 		if (mKioskBound || (mScene == null))
 			return;
 
-		let panels = mScene.GetSystem<UIWorldPanelComponentManager>();
+		let panels = mScene.GetSystem<GuiWorldPanelComponentManager>();
 		if (panels == null)
 			return;
 
 		let panel = panels.Get(mKioskEntity);
-		if ((panel == null) || (panel.RenderRoot == null))
+		if ((panel == null) || (panel.Root == null))
 			return;
 
-		let button = panel.RenderRoot.FindByName<Button>("kiosk-btn");
+		let button = panel.Root.FindElement("kiosk-btn") as Sedulous.GUI.Button;
 		if (button == null)
 			return;
 
-		button.OnClick.Add(new (sender) =>
+		button.SetOnClick(new () =>
 			{
 				mKioskTaps++;
-				button.SetText(scope $"Taps: {mKioskTaps}");
+				button.Text = scope $"Taps: {mKioskTaps}";
 				Console.WriteLine("PhysicsPlayground: kiosk panel tapped.");
 			});
 		mKioskBound = true;
@@ -405,10 +401,10 @@ class PhysicsPlaygroundApp : DefaultApplication
 
 	private void ShoveUnderCursor(IApplicationHost host, IInputManager input)
 	{
-		// A click the UI ate never reaches the world. That gate IS what the HUD button is
+		// A click the GUI took never reaches the world. That gate IS what the HUD button is
 		// there to demonstrate.
-		let gameUi = host.Context.GetSubsystem<UISubsystem>();
-		if ((gameUi != null) && gameUi.PointerOverUI)
+		let gameGui = host.Context.GetSubsystem<GuiSubsystem>();
+		if ((gameGui != null) && gameGui.PointerOverGui)
 			return;
 
 		if (!input.Mouse.IsButtonPressed(.Left) || (mPhysics == null) || (mPhysics.World == null))

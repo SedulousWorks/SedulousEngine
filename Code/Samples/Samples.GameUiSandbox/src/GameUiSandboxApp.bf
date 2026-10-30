@@ -1,91 +1,127 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Engine.DefaultApp;
+using Sedulous.Engine.GUI;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.UI;
+using Sedulous.GUI;
+using Sedulous.GUI.Resources;
 using Sedulous.Input;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Shell;
-using Sedulous.UI;
-using Sedulous.UI.Gamekit;
 
 namespace Samples.GameUiSandbox;
 
-/// The game interface kit on screen: a screen pushed onto the subsystem's stack and filled with
-/// the widgets a game actually uses.
-///
-/// The point is the SCREEN TIER rather than any one widget: a heads up display is a screen, a
-/// pause menu is another one pushed over it, and backing out pops rather than exits.
+/// A game's screens on the engine GUI (Engine.GUI, GUI.Gamekit): two screens built from markup and
+/// pushed on the GUI's screen stack.
+///   - a HUD: a menu of buttons (the arrows or the pad move through it, Enter or South presses), a
+///     health bar that drains and heals with a tween, a score that rolls up through a data tween (a
+///     whole number, so it rolls in whole steps), a prompt naming the key or button bound to the
+///     "Deliver" action, and toasts on "Show toast";
+///   - a pause menu pushed over it, blocking it, which back (Escape) pops.
+/// The old game kit's MenuList, Bar and Ticker have no widget here (Raptor's gui-lab-evolution-3
+/// spec, section K): markup, navigation and commands make the menu, a progress bar and a tween the
+/// bar, a data tween the ticker. Escape on the HUD exits.
 class GameUiSandboxApp : DefaultApplication
 {
+	/// The HUD: the title, the prompt, the score and the health (bound to the GUI's data), the menu.
+	private const String cHudMarkup = """
+		<Panel flex-direction="column" gap="16" padding="40 48" flex-grow="1" background-color="rgb(18, 20, 26)">
+		  <Label text="Game UI Sandbox" font-size="28"/>
+		  <Panel flex-direction="row" align-items="center" gap="8">
+		    <Prompt action="Deliver"/><Label text="Deliver"/>
+		  </Panel>
+		  <Panel flex-direction="row" align-items="center" gap="8">
+		    <Label text="Score" width="64"/><Label text="{{score}}" font-size="20"/>
+		  </Panel>
+		  <Panel flex-direction="row" align-items="center" gap="8">
+		    <Label text="Health" width="64"/><ProgressBar id="health" width="220" value="{{health}}"/>
+		  </Panel>
+		  <Panel flex-direction="column" gap="6" width="240">
+		    <Button id="menu-score" text="Score +250"/>
+		    <Button id="menu-damage" text="Take damage"/>
+		    <Button id="menu-heal" text="Heal"/>
+		    <Button id="menu-toast" text="Show toast"/>
+		    <Button id="menu-pause" text="Pause menu"/>
+		    <Button id="menu-quit" text="Quit"/>
+		  </Panel>
+		</Panel>
+		""";
+
+	/// The pause menu: a scrim over the HUD, a card in its middle.
+	private const String cPauseMarkup = """
+		<Panel background-color="rgba(0, 0, 0, 0.55)" justify-content="center" align-items="center">
+		  <Panel flex-direction="column" align-items="center" gap="16" padding="28 40"
+		         background-color="rgba(31, 33, 43, 0.98)" border-radius="8">
+		    <Label text="Paused" font-size="26"/>
+		    <Button id="pause-resume" text="Resume" width="200"/>
+		    <Button id="pause-quit" text="Quit" width="200"/>
+		  </Panel>
+		</Panel>
+		""";
+
 	private Scene mScene = null;
 	private EntityHandle mCamera = .Invalid;
-	private UISubsystem mUI = null;
-
-	private ToastHost mToasts = null;
-	private Bar mHealth = null;
-	private Ticker mScore = null;
-
+	/// BORROWED: the context's.
+	private GuiSubsystem mGui = null;
+	/// A reference of the app's own (the screen root holds another).
+	private ToastHost mToasts = null ~ { if (_ != null) _.ReleaseRef(); };
+	private GuiDocument mHudDocument = null ~ delete _;
+	private GuiDocument mPauseDocument = null ~ delete _;
 	private InputMap mMap = new .() ~ delete _;
-	private int64 mScoreValue = 0;
-	private float mHealthValue = 1.0f;
+	private int64 mScore = 0;
+	private float mHealth = 1.0f;
 	private bool mQuit = false;
 
 	public override void OnLaunch(IApplicationHost host)
 	{
 		base.OnLaunch(host);
 
-		// A camera and nothing else: the opaque screen covers the view, but a frame still has to
-		// have something to render.
+		// A minimal scene and camera so a frame renders; the HUD covers it.
 		mScene = PrimaryScenes.CreateScene("gameui");
 		mCamera = mScene.CreateEntity("camera");
 		if (let cameras = mScene.GetSystem<CameraComponentManager>())
 			cameras.Add(mCamera);
 		mScene.Start();
 
-		mUI = host.Context.GetSubsystem<UISubsystem>();
-		if (mUI == null)
+		mGui = host.Context.GetSubsystem<GuiSubsystem>();
+		if ((mGui == null) || (mGui.ScreenRoot == null) || (mGui.Screens == null))
 			return;
 
-		// The toasts live on the screen ROOT rather than on a screen, so they survive a push and
-		// float above whatever is on top.
-		mToasts = new ToastHost();
-		mUI.ScreenRoot.AddView(mToasts);
-
+		// The game's bindings, which the prompt names (the engine's GUI reads the game's runtime).
 		BuildInputMap();
-		mUI.Screens.Push(BuildHudScreen());
+		Instance.InputRuntime.SetMap(mMap);
 
-		Console.WriteLine("GameUiSandbox: up and down move the menu, Enter activates. Esc exits.");
+		// The values the HUD shows: a whole score (so its tween rolls in whole steps), the health.
+		let data = mGui.GuiContext.Data;
+		data.Set("score", System.Variant.Create((int64)0));
+		data.Set("health", System.Variant.Create(1.0));
+
+		// Toasts over the screens.
+		mToasts = new ToastHost();
+		mGui.ScreenRoot.AddChild(mToasts);
+
+		PushHud();
+		Console.WriteLine("GameUiSandbox: the arrows (or the pad) move through the menu, Enter or South presses. Escape backs out of the pause menu, else exits.");
 	}
 
 	public override void OnUpdate(IApplicationHost host, float deltaTime)
 	{
-		base.OnUpdate(host, deltaTime); // ticks the interface, which is what animates the widgets
-
-		if (mToasts != null)
-			mToasts.Update(deltaTime); // ages the timed ones out
-
+		base.OnUpdate(host, deltaTime);
 		if (mQuit)
 		{
 			host.RequestExit(0);
 			return;
 		}
-
 		let input = (host.Shell != null) ? host.Shell.Input : null;
-		if (input == null)
+		if ((input == null) || (mGui == null) || (mGui.Screens == null))
 			return;
-
-		if (input.Keyboard.IsKeyPressed(.Escape))
-		{
-			// Escape BACKS OUT first and only exits when there is nothing to back out of, which
-			// is what a player expects of it.
-			if (!mUI.Screens.HandleBack())
-				host.RequestExit(0);
-		}
-
-		if (input.Keyboard.IsKeyPressed(.E) && (mToasts != null))
-			ShowToast("Delivered!", .Info, 1.5f);
+		// Escape backs out of the pause menu first (the screen stack's back), else exits.
+		if (input.Keyboard.IsKeyPressed(.Escape) && (mGui.Screens.Count <= 1))
+			host.RequestExit(0);
+		// The "Deliver" action the prompt names: E fires it (a toast, for the demo).
+		if (input.Keyboard.IsKeyPressed(.E))
+			Toast("Delivered!", .Info, 1.5f);
 	}
 
 	/// The action the prompt advertises, which is also what the prompt reads its key from: the
@@ -112,138 +148,74 @@ class GameUiSandboxApp : DefaultApplication
 		mMap.Sets.Add(set);
 	}
 
-	private void ShowToast(StringView message, ToastSeverity severity, float seconds)
+	/// A screen built from `markup` (into `document`, the app's) and pushed: the pushed screen, or
+	/// null.
+	private Sedulous.GUI.Screen PushMarkup(StringView markup, ref GuiDocument document)
 	{
-		ToastRequest request = .();
-		request.Message = message;
+		delete document;
+		document = new GuiDocument();
+		document.Markup.Set(markup);
+		let tree = mGui.BuildDocument(document);
+		if (tree == null)
+			return null;
+		defer tree.ReleaseRef(); // the stack takes its own
+		return mGui.Screens.Push(tree);
+	}
+
+	/// The button `id` on `screen` runs `click`. OWNERSHIP of `click` transfers.
+	private static void OnClick(Node screen, StringView id, delegate void() click)
+	{
+		if (let button = screen.FindElement(id) as Sedulous.GUI.Button)
+			button.SetOnClick(click);
+		else
+			delete click;
+	}
+
+	private void PushHud()
+	{
+		let hud = PushMarkup(cHudMarkup, ref mHudDocument);
+		if (hud == null)
+			return;
+		hud.Covers = true; // over the scene, whole
+		hud.Back = "none"; // back on the HUD is the host's (Escape exits)
+		OnClick(hud, "menu-score", new () =>
+			{
+				mScore += 250;
+				mGui.GuiContext.AnimateData("score", (double)mScore, 0.6f).ReleaseRef();
+			});
+		OnClick(hud, "menu-damage", new () =>
+			{
+				mHealth = Math.Max(0.0f, mHealth - 0.2f);
+				mGui.GuiContext.AnimateData("health", mHealth, 0.35f).ReleaseRef();
+			});
+		OnClick(hud, "menu-heal", new () =>
+			{
+				mHealth = Math.Min(1.0f, mHealth + 0.3f);
+				mGui.GuiContext.AnimateData("health", mHealth, 0.35f).ReleaseRef();
+			});
+		OnClick(hud, "menu-toast", new () => { Toast("Objective complete!", .Success, 3.0f); });
+		OnClick(hud, "menu-pause", new () => { PushPause(); });
+		OnClick(hud, "menu-quit", new () => { mQuit = true; });
+	}
+
+	private void PushPause()
+	{
+		let pause = PushMarkup(cPauseMarkup, ref mPauseDocument);
+		if (pause == null)
+			return;
+		pause.Blocks = true; // the HUD under it shows, and takes no input
+		OnClick(pause, "pause-resume", new () => { mGui.Screens.Pop(); });
+		OnClick(pause, "pause-quit", new () => { mQuit = true; });
+	}
+
+	private void Toast(StringView message, ToastSeverity severity, float seconds)
+	{
+		if (mToasts == null)
+			return;
+		let request = scope ToastRequest();
+		request.Title = message;
 		request.Severity = severity;
-		request.DurationSeconds = seconds;
-		mToasts.Show(request);
-	}
-
-	private static Label Text(StringView text, float size = 16.0f)
-	{
-		let label = new Label(text);
-		label.FontSize.Value = size;
-		return label;
-	}
-
-	private static FlexLayout Row(float spacing)
-	{
-		let row = new FlexLayout();
-		row.Direction = .Horizontal;
-		row.AlignItems = .Center;
-		row.Spacing = spacing;
-		return row;
-	}
-
-	private UIScreen BuildHudScreen()
-	{
-		let screen = new UIScreen();
-		screen.Mode = .Opaque;
-		screen.SetTransition(.(.Fade, 0.2f));
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 16.0f;
-		column.Padding = .(48.0f, 40.0f);
-
-		column.AddView(Text("Game UI Kit Sandbox", 28.0f));
-
-		let prompt = new ButtonPrompt();
-		prompt.SetFromAction(mMap, "Deliver", "Deliver");
-		column.AddView(prompt);
-
-		{
-			let row = Row(8.0f);
-			row.AddView(Text("Score"));
-			mScore = new Ticker();
-			mScore.FontSize.Value = 20.0f;
-			row.AddView(mScore);
-			column.AddView(row);
-		}
-		{
-			let row = Row(8.0f);
-			row.AddView(Text("Health"));
-			mHealth = new Bar();
-			mHealth.SetFill(1.0f);
-
-			LayoutStyle style = .();
-			style.Width = SizeSpec.Fixed(Unit.Px(220));
-			row.AddView(mHealth, style);
-			column.AddView(row);
-		}
-
-		let menu = new MenuList();
-		menu.AddItem("Score +250", new () =>
-			{
-				mScoreValue += 250;
-				if (mScore != null)
-					mScore.AnimateTo(mScoreValue);
-			});
-		menu.AddItem("Take damage", new () =>
-			{
-				mHealthValue = Math.Max(0.0f, mHealthValue - 0.2f);
-				if (mHealth != null)
-					mHealth.AnimateTo(mHealthValue);
-			});
-		menu.AddItem("Heal", new () =>
-			{
-				mHealthValue = Math.Min(1.0f, mHealthValue + 0.3f);
-				if (mHealth != null)
-					mHealth.AnimateTo(mHealthValue);
-			});
-		menu.AddItem("Show toast", new () =>
-			{
-				if (mToasts != null)
-					ShowToast("Objective complete!", .Success, 3.0f);
-			});
-		menu.AddItem("Pause menu", new () => mUI.Screens.Push(BuildPauseScreen()));
-		menu.AddItem("Quit", new () => { mQuit = true; });
-		column.AddView(menu);
-
-		screen.AddView(column);
-		return screen;
-	}
-
-	private UIScreen BuildPauseScreen()
-	{
-		let screen = new UIScreen();
-		screen.Mode = .Modal; // shields the display below without hiding it
-		screen.SetTransition(.(.Scale, 0.18f));
-
-		// The scrim goes on FIRST so it draws behind the card, dimming the frozen display
-		// rather than the card itself.
-		screen.AddView(new ColorView(Color(0.0f, 0.0f, 0.0f, 0.55f), 0.0f, 0.0f));
-
-		let center = new FlexLayout();
-		center.Direction = .Vertical;
-		center.JustifyContent = .Center;
-		center.AlignItems = .Center;
-
-		// A solid CARD, because a menu laid straight over the dimmed display reads as a jumble
-		// of two screens rather than one on top of another.
-		let card = new Panel();
-		card.SetStyle(.Background, new ColorDrawable(Color(0.12f, 0.13f, 0.17f, 0.98f)));
-
-		// The padding lives on the inner layout, which honours it; the panel is what paints
-		// the background behind it.
-		let content = new FlexLayout();
-		content.Direction = .Vertical;
-		content.AlignItems = .Center;
-		content.Spacing = 16.0f;
-		content.Padding = .(40.0f, 28.0f);
-
-		content.AddView(Text("Paused", 26.0f));
-
-		let menu = new MenuList();
-		menu.AddItem("Resume", new () => mUI.Screens.Pop());
-		menu.AddItem("Quit", new () => { mQuit = true; });
-		content.AddView(menu);
-
-		card.AddView(content);
-		center.AddView(card);
-		screen.AddView(center);
-		return screen;
+		request.Duration = seconds;
+		mToasts.Post(request);
 	}
 }

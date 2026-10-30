@@ -96,6 +96,14 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// BORROWED peers; null in a headless context.
 	private RenderSubsystem mRender = null;
 	private InputSubsystem mInput = null;
+	/// The game kit's prompts, installed on the GUI's context: they read mPromptRuntime (else the
+	/// input subsystem's), told again when its bindings' version moves.
+	private InputPrompts mPrompts = new .() ~ delete _;
+	/// BORROWED: the host's, outliving its use here (null: the input subsystem's own).
+	private ActionRuntime mPromptRuntime = null;
+	/// The runtime the prompts read now, and its bindings' version they last saw.
+	private ActionRuntime mPromptsRead = null;
+	private uint64 mPromptsVersion = 0;
 	/// The input kind, from the active source each frame; every bridge borrows it.
 	private Sedulous.Input.InputKindTracker mInputKind = new .() ~ delete _;
 	/// BORROWED: the window whose platform text input follows the GUI's focus; null leaves it alone.
@@ -373,6 +381,35 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		return tree;
 	}
 
+	/// `document`'s tree built in the GUI's context (its resources and fonts, its `{{values}}` bound
+	/// to the GUI's data), placed nowhere: a native host's screen to push on Screens. With the
+	/// CALLER's reference; null when it does not build.
+	public Node BuildDocument(GuiDocument document)
+	{
+		if ((document == null) || document.Markup.IsEmpty)
+			return null;
+		let loader = scope MarkupLoader(mContext.ElementSet, mResources, Fonts);
+		loader.SetDataModel(mContext.Data);
+		let root = loader.LoadFromString(document.Markup);
+		if (root == null)
+			GlobalLog(.Warning, "GUI: a document did not build");
+		return root;
+	}
+
+	/// The action runtime the GUI's prompts (GUI.Gamekit's Prompt) name the bindings of: the game's
+	/// (the application's primary game instance's, as the default application sets it); null, the
+	/// input subsystem's own. BORROWED: it outlives its use here, or is set to null first. Its
+	/// bindings' changes (a map loaded, a rebinding, a set enabled) are seen at the next frame and
+	/// every prompt reads them again.
+	public void SetPromptRuntime(ActionRuntime runtime)
+	{
+		mPromptRuntime = runtime;
+	}
+
+	public ActionRuntime PromptRuntime => (mPromptRuntime != null) ? mPromptRuntime : ((mInput != null) ? mInput.Runtime : null);
+
+	public InputPrompts Prompts => mPrompts;
+
 	/// A tree made in code shown on the overlay layer, which takes a reference of its own.
 	public void PushOverlay(Node overlay)
 	{
@@ -488,6 +525,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		if (Context == null)
 			return;
 		mInput = Context.GetSubsystem<InputSubsystem>();
+		mPrompts.Install(mContext); // every prompt in the game's GUI names its bindings through it
+		SyncPrompts();
 		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
@@ -517,6 +556,9 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		}
 		mActiveRoot = null;
 		mPressRoot = null;
+		InputPrompts.Uninstall(mContext);
+		mPrompts.SetRuntime(null);
+		mPromptsRead = null;
 		mInput = null;
 		DropTiers();
 		mResources.SetTextureSink(null);
@@ -569,6 +611,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 				mRenderState.Renderer.BeginFrame();
 			if (mResources.Poll())
 				ApplySheets(); // a sheet (or a document) was cooked again: the GUI restyles
+			SyncPrompts();
 			SyncComponents(); // each scene's billboards, canvases and world panels in line
 			PumpInput(); // before the clock, as Raptor's
 			// By ticks: TimeSpan.FromSeconds would round to whole milliseconds.
@@ -738,19 +781,24 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		mSheetGeneration++;
 	}
 
-	// ==================== documents ====================
+	// ==================== prompts ====================
 
-	/// A document's tree, with the caller's reference; null when it does not build.
-	private Node BuildDocument(GuiDocument document)
+	/// The prompts on the runtime they should read, told again when its bindings may have changed.
+	private void SyncPrompts()
 	{
-		if ((document == null) || document.Markup.IsEmpty)
-			return null;
-		let loader = scope MarkupLoader(mContext.ElementSet, mResources, Fonts);
-		loader.SetDataModel(mContext.Data);
-		let root = loader.LoadFromString(document.Markup);
-		if (root == null)
-			GlobalLog(.Warning, "GUI: a document did not build");
-		return root;
+		let runtime = PromptRuntime;
+		if (runtime !== mPromptsRead)
+		{
+			mPromptsRead = runtime;
+			mPromptsVersion = (runtime != null) ? runtime.BindingsVersion : 0;
+			mPrompts.SetRuntime(runtime); // tells them
+			return;
+		}
+		if ((runtime != null) && (runtime.BindingsVersion != mPromptsVersion))
+		{
+			mPromptsVersion = runtime.BindingsVersion;
+			mPrompts.NotifyBindingsChanged();
+		}
 	}
 
 	// ==================== the built-in font ====================
