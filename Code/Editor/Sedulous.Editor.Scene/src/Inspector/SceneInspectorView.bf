@@ -321,6 +321,7 @@ class SceneInspectorView
 			if (mServices.PickEntity != null)
 				mEntityRefs.Pick = new (request) => { mServices.PickEntity(request); };
 			EntityRefEditor.Register(mGrid.Editors, mEntityRefs);
+			BoneNameEditor.Register(mGrid.Editors, mEdit); // a bone name picked from the animator's skeleton
 			PropertyExtras.Register(mGrid.Editors); // a component's notices and actions
 			mGrid.Source = mSections;
 			mGrid.SetOnRowMenu(new (menu, row) => { HeaderMenu(menu, row); });

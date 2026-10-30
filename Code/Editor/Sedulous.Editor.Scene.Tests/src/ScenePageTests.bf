@@ -953,6 +953,78 @@ class ScenePageTests
 	}
 
 	[Test]
+	public static void InspectorABoneNamePicksFromTheSkeletonOfTheAnimatorAboveANameItLacksSaidSoWithNoneText()
+	{
+		// Before the page: the scene borrows it until the page goes.
+		let skeleton = scope Sedulous.Animation.Skeleton(3);
+		StringView[3] names = .("Thigh", "Shin", "Foot");
+		for (int32 i < 3)
+		{
+			let bone = skeleton.Bones[i];
+			bone.Index = i;
+			bone.Name.Set(names[i]);
+			bone.ParentIndex = i - 1;
+		}
+		skeleton.BuildNameMap();
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let edit = page.EditContext;
+		let scene = page.ScenePtr;
+		let rider = edit.CreateEntity("Rider");
+		let leg = edit.CreateEntity("LegIk", rider);
+		let clips = scene.GetSystem<SkeletalAnimationComponentManager>();
+		let legs = scene.GetSystem<TwoBoneIkComponentManager>();
+		Test.Assert((clips != null) && (legs != null));
+		clips.Add(scene.FindEntity(rider)).Skeleton.SetDirect(skeleton);
+		let added = legs.Add(scene.FindEntity(leg));
+		if (added.MidBone == null)
+			added.MidBone = new String();
+		added.MidBone.Set("Knee");
+		TwoBoneIkComponent* Live() => legs.Get(scene.FindEntity(leg));
+
+		edit.EntitySelection.Set(leg);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let shown = scope Shown(page);
+		let startPath = inspector.PathOf("Two Bone IK", "StartBone", .. scope String());
+		Test.Assert(!startPath.IsEmpty);
+		let start = inspector.Grid.FindEditor(startPath) as BoneNameEditor;
+		Test.Assert(start != null);
+		Test.Assert(start.ListsBones);
+		let choices = start.ComboBox;
+		Test.Assert(choices.ItemCount == 4);
+		Test.Assert(choices.ItemsText == "(none)|Thigh|Shin|Foot");
+		Test.Assert(choices.SelectedIndex == 0);
+		let before = page.Commands.UndoIndex;
+		choices.SelectByUser(1);
+		Test.Assert((Live().StartBone != null) && (Live().StartBone == "Thigh"));
+		Test.Assert(page.Commands.UndoIndex > before); // one step (the index counts a group's markers too)
+		page.Commands.Undo();
+		Test.Assert(page.Commands.UndoIndex == before);
+		Test.Assert((Live().StartBone == null) || Live().StartBone.IsEmpty);
+
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		let mid = inspector.Grid.FindEditor(inspector.PathOf("Two Bone IK", "MidBone", .. scope String())) as BoneNameEditor;
+		Test.Assert(mid != null);
+		Test.Assert(mid.ComboBox.ItemCount == 5);
+		Test.Assert(mid.ComboBox.ItemsText.EndsWith("|Knee (not in the skeleton)"));
+		Test.Assert(mid.ComboBox.SelectedIndex == 4);
+
+		// With no animator above, the text field.
+		let stray = edit.CreateEntity("Stray");
+		legs.Add(scene.FindEntity(stray));
+		edit.EntitySelection.Set(stray);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		let text = inspector.Grid.FindEditor(inspector.PathOf("Two Bone IK", "StartBone", .. scope String())) as BoneNameEditor;
+		Test.Assert(text != null);
+		Test.Assert(!text.ListsBones);
+		page.OnClose();
+	}
+
+	[Test]
 	public static void InspectorAComponentsExtrasUnderItsHeaderARigidBodysNoticeWhileItHasNoColliderAZonesBake()
 	{
 		BuiltinInspectorExtras.Register();
