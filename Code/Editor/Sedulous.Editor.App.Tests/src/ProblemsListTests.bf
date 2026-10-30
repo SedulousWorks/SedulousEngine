@@ -22,6 +22,9 @@ class ProblemsListTests
 		defer host.ReleaseRef();
 		let problems = scope ProblemsList(host);
 		Test.Assert(problems.Summary(.. scope .()) == "No problems");
+		problems.SetClean("No problems: compiles class Hero"); // what the page's check found good
+		Test.Assert(problems.Summary(.. scope .()) == "No problems: compiles class Hero");
+		problems.SetClean("");
 
 		CodeProblem[4] found = .(
 			scope .(.Warning, "unused variable", "", 2, 4),

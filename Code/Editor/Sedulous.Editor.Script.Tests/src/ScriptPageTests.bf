@@ -146,7 +146,7 @@ class ScriptPageTests
 		Test.Assert(page.Text(.. scope .()) == bed.Source);
 		Test.Assert(page.Language == "angelscript");
 		Test.Assert(page.ErrorCount == 0, page.Found.IsEmpty ? "" : page.Found[0].Message);
-		Test.Assert(page.Problems.Summary(.. scope .()) == "No problems");
+		Test.Assert(page.Problems.Summary(.. scope .()) == "No problems: compiles class Hero"); // the class it compiled, as the old page said
 		Test.Assert(!page.Code.TokensOf(0).IsEmpty, "coloured: its language read");
 
 		// Typing that breaks it: one step on the page's stack, the problem on its line once checked.

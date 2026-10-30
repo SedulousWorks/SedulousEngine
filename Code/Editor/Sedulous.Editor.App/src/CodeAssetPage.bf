@@ -194,7 +194,13 @@ abstract class CodeAssetPage : AssetObjectPage
 		if (mCode != null)
 			mCode.SetDiagnostics(marks);
 		if (mProblems != null)
+		{
+			let clean = scope String();
+			if (mRead)
+				CleanSummary(clean);
+			mProblems.SetClean(clean);
 			mProblems.Show(mFound);
+		}
 		OnCodeChecked();
 	}
 
@@ -250,6 +256,10 @@ abstract class CodeAssetPage : AssetObjectPage
 
 	/// After each check (a status, a preview following the code).
 	protected virtual void OnCodeChecked() { }
+
+	/// What the problems line says when the check found none (empty: "No problems"), appended;
+	/// asked after CheckCode.
+	protected virtual void CleanSummary(String outText) { }
 
 	protected StringView SourcePath => mSourcePath;
 

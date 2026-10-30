@@ -208,6 +208,13 @@ class ScriptEditorPage : CodeAssetPage
 
 	public bool HasBreakpointMark(uint32 line) => (Code != null) && Code.HasMarker(line, "breakpoint");
 
+	/// "No problems: compiles class Player": the class the check compiled (the old page's).
+	protected override void CleanSummary(String outText)
+	{
+		if (!mDoc.ClassName.IsEmpty)
+			outText.AppendF("No problems: compiles class {}", mDoc.ClassName);
+	}
+
 	protected override void CheckCode(StringView text, List<CodeProblem> outProblems)
 	{
 		// Compiled as the cook compiles it, none of it run.

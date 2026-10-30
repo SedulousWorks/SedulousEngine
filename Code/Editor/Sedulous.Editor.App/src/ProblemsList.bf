@@ -74,6 +74,7 @@ class ProblemsList
 	}
 
 	private List<CodeProblem> mProblems = new .() ~ DeleteContainerAndItems!(_);
+	private String mClean = new .() ~ delete _; // SetClean's
 	private Model mModel ~ delete _;
 	/// One reference each, the list's: the host holds its own.
 	private Sedulous.GUI.Label mSummary ~ _.ReleaseRef();
@@ -133,12 +134,19 @@ class ProblemsList
 		mOnChoose = onChoose;
 	}
 
-	/// "No problems", "1 error", "2 errors, 1 warning", appended.
+	/// What the summary says with no problems (empty: "No problems"): what a page's check
+	/// found good (the class a script compiles). Said at the next Show.
+	public void SetClean(StringView text)
+	{
+		mClean.Set(text);
+	}
+
+	/// "No problems" (or what SetClean said), "1 error", "2 errors, 1 warning", appended.
 	public void Summary(String outText)
 	{
 		if (mProblems.IsEmpty)
 		{
-			outText.Append("No problems");
+			outText.Append(mClean.IsEmpty ? "No problems" : mClean);
 			return;
 		}
 		int errors = 0;
