@@ -112,7 +112,8 @@ static class EditorInputTools
 				return false;
 			}
 			outAt = .((float)McpTools.ArgNumber(arguments, "x"), (float)McpTools.ArgNumber(arguments, "y"));
-			outNode = root.OverFind(outAt);
+			let dispatcher = root.EventDispatcher;
+			outNode = (dispatcher != null) ? dispatcher.NodeAt(outAt) : root.OverFind(outAt); // a popup's first, as input
 			return true;
 		}
 		let found = scope List<Node>();

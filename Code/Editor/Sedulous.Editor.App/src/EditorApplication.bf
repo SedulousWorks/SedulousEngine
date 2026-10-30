@@ -103,6 +103,8 @@ class EditorApplication : IApplication
 	private Picker mPicker = null ~ delete _;
 	/// An asset slot's picker, made the first time it shows.
 	private AssetPickerWindow mAssetPicker = null ~ delete _;
+	/// Create Asset, while open (and after, until the next one opens).
+	private AssetCreate mCreateAsset = null ~ delete _;
 	/// What an asset slot asks of the editor, made the first time a slot needs it; after the icons
 	/// and the picker it reaches, so it goes first.
 	private ResourceRefServices mRefs = null ~ delete _;
@@ -834,6 +836,25 @@ class EditorApplication : IApplication
 
 	/// Opens the asset picker (its groups beside what each holds) over the main window for
 	/// `request`; it is made the first time. OWNERSHIP of `request` transfers, shown or not.
+	/// Opens Create Asset over the window, titled `title` ("New Clip"), the group `group` (null: the
+	/// project's top) and the name `suggested` to start; `create` is told the group and the name
+	/// chosen (the caller makes the asset). TAKES OWNERSHIP of `create`.
+	public void ShowCreateAsset(StringView title, StringView suggested, Group group, delegate void(Group group, StringView name) create)
+	{
+		let root = mWindow.Root;
+		let project = mContext.Project;
+		if ((root == null) || (project == null))
+		{
+			delete create;
+			return;
+		}
+		let sources = project.SourceDb;
+		// The one before is closed: Create Asset is modal, so a page asks again only once it is.
+		DeleteAndNullify!(mCreateAsset);
+		mCreateAsset = AssetCreate.Open(root, mWindow.LoadMarkup(AssetCreate.cMarkupPath), sources,
+			(group != null) ? group : sources.RootGroup, title, suggested, PickerMade(), create);
+	}
+
 	public void ShowAssetPicker(AssetPickRequest request)
 	{
 		let root = mWindow.Root;
@@ -1249,6 +1270,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mTemplates); // closed, while the window is there
 		DeleteAndNullify!(mExportDialog); // closed, while the window and the export are there
 		DeleteAndNullify!(mImportWindow); // closed (its session let go), while the window and the picker are there
+		DeleteAndNullify!(mCreateAsset); // closed (its picking too), while the picker and the window are there
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mAssetPicker); // closed, while the window's root and the context are there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there

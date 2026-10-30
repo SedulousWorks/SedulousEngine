@@ -265,12 +265,12 @@ class EditorPages
 			mAsking.ReleaseRef();
 		let question = new MessageBox();
 		mAsking = question;
-		let message = scope String();
-		if (dirty == 1)
-			message.Set("1 page has unsaved changes.");
-		else
-			message.AppendF("{} pages have unsaved changes.", dirty);
-		question.Configure("Unsaved changes", message, .Ok);
+		// Each named, as the page's tab and its panels name them (a count says nothing of where).
+		let lines = scope List<String>();
+		defer { ClearAndDeleteItems!(lines); }
+		for (let open in mOpen)
+			UnsavedLines(open.Page, lines);
+		question.Configure("Unsaved changes", UnsavedText(lines, .. scope String()), .Ok);
 		question.ClearButtons();
 		question.AddButton(discardVerb, "discard", .Destructive);
 		question.AddButton("Cancel", "cancel", .Cancel);
@@ -288,6 +288,8 @@ class EditorPages
 		{
 			if (open.Page.IsDirty && !(open.Page.Save() case .Ok))
 				all = false;
+			if (open.Page.HasUnsavedWork && !(open.Page.SaveBesides() case .Ok))
+				all = false; // a clip its panel edits
 		}
 		return all;
 	}
@@ -451,7 +453,33 @@ class EditorPages
 		id.ToString(outPanel, 'D');
 	}
 
-	/// How many pages have unsaved changes.
+	/// What is unsaved on `page`, a line each (the caller's to delete): its own changes by its name
+	/// ("Level1"), the work it holds besides with its name ("The clip 'Bounce', in Level1").
+	private static void UnsavedLines(EditorPage page, List<String> outLines)
+	{
+		if (page.IsDirty)
+			outLines.Add(new String(page.Title));
+		let besides = scope List<String>();
+		defer { ClearAndDeleteItems!(besides); }
+		page.ListUnsavedBesides(besides);
+		for (let work in besides)
+			outLines.Add(new String()..AppendF("{}, in {}", work, page.Title));
+	}
+
+	/// The prompt's words for `lines`: one in a sentence, several listed.
+	private static void UnsavedText(List<String> lines, String outText)
+	{
+		if (lines.Count == 1)
+		{
+			outText.AppendF("{} has unsaved changes.", lines[0]);
+			return;
+		}
+		outText.Append("These have unsaved changes:");
+		for (let line in lines)
+			outText.AppendF("\n    {}", line);
+	}
+
+	/// How many pages have unsaved changes, or hold unsaved work of their own (a clip).
 	public int DirtyCount
 	{
 		get
@@ -459,7 +487,7 @@ class EditorPages
 			int count = 0;
 			for (let open in mOpen)
 			{
-				if (open.Page.IsDirty)
+				if (open.Page.HasUnsavedWork)
 					++count;
 			}
 			return count;
@@ -502,7 +530,7 @@ class EditorPages
 
 	private void AskToClose(UIEditorPage page)
 	{
-		if (!page.IsDirty)
+		if (!page.HasUnsavedWork)
 		{
 			Close(page);
 			return;
@@ -516,7 +544,11 @@ class EditorPages
 			mAsking.ReleaseRef();
 		let question = new MessageBox();
 		mAsking = question;
-		question.Configure("Unsaved changes", scope $"'{page.Title}' has unsaved changes.", .Ok);
+		// What is unsaved, each named: the page's own changes, the work it holds besides (a clip).
+		let lines = scope List<String>();
+		defer { ClearAndDeleteItems!(lines); }
+		UnsavedLines(page, lines);
+		question.Configure("Unsaved changes", UnsavedText(lines, .. scope String()), .Ok);
 		question.ClearButtons();
 		question.AddButton("Discard", "discard", .Destructive);
 		question.AddButton("Cancel", "cancel", .Cancel);
@@ -531,7 +563,7 @@ class EditorPages
 			return; // closed meanwhile
 		if (answer == "save")
 		{
-			if (!(page.Save() case .Ok))
+			if ((page.IsDirty && !(page.Save() case .Ok)) || !(page.SaveBesides() case .Ok))
 			{
 				mServices.Context.Notify(.Error, "Save FAILED (see Console) - the page stays open.");
 				return;

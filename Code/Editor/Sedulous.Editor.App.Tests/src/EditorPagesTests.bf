@@ -65,6 +65,24 @@ class PagesTestPage : UIEditorPage
 	public Guid SavedInto = .Empty;
 	/// Its next saves fail.
 	public bool FailSave = false;
+	/// Work it holds besides its asset (a scene page's clip); empty: none.
+	public String Besides = new .() ~ delete _;
+	public int BesidesSaves = 0;
+
+	public override void ListUnsavedBesides(List<String> outNames)
+	{
+		if (!Besides.IsEmpty)
+			outNames.Add(new String(Besides));
+	}
+
+	public override Result<void, ErrorCode> SaveBesides()
+	{
+		if (Besides.IsEmpty)
+			return .Ok;
+		BesidesSaves++;
+		Besides.Clear();
+		return .Ok;
+	}
 
 	public this(StringView title, PagesTestCounts counts)
 	{
@@ -454,7 +472,7 @@ class EditorPagesTests
 		page.MarkDirty();
 		var question = bed.Ask(page);
 		Test.Assert(question.Title == "Unsaved changes");
-		Test.Assert(question.Message == "'One' has unsaved changes.");
+		Test.Assert(question.Message == "One has unsaved changes.", scope String(question.Message));
 		Test.Assert(question.ButtonCount == 3);
 		Test.Assert(question.GetButtonRole(0) == .Destructive); // Discard
 		Test.Assert(question.GetButtonRole(1) == .Cancel);
@@ -480,6 +498,42 @@ class EditorPagesTests
 		bed.Frame();
 		Test.Assert(bed.Pages.Count == 0);
 		Test.Assert(bed.Counts.Closed == 3);
+	}
+
+	[Test]
+	public static void APageHoldingUnsavedWorkBesidesItsAssetIsAskedAboutOnCloseAndAtExitThatWorkSavedWithIt()
+	{
+		let bed = scope PagesBed("scratch_editor_pages_besides");
+		var page = (PagesTestPage)bed.Pages.Open(bed.One);
+		Test.Assert(page != null);
+		page.Besides.Set("The clip 'Bounce'");
+		Test.Assert(!page.IsDirty, "its own mark says nothing of the clip");
+		var question = bed.Ask(page);
+		Test.Assert(question.Message == "The clip 'Bounce', in One has unsaved changes.", scope String(question.Message));
+		Test.Assert(PagesBed.ButtonNamed(question, "Save").HandleActivate());
+		Test.Assert(page.BesidesSaves == 1);
+		Test.Assert(page.Saves == 0, "nothing of its own to save");
+		bed.Frame();
+		Test.Assert(bed.Pages.Count == 0);
+
+		// Both: the page's and the work's, each saved.
+		page = (PagesTestPage)bed.Pages.Open(bed.Two);
+		page.Besides.Set("The clip 'Spin'");
+		page.MarkDirty();
+		question = bed.Ask(page);
+		Test.Assert(question.Message == "These have unsaved changes:\n    Two\n    The clip 'Spin', in Two", scope String(question.Message));
+		Test.Assert(PagesBed.ButtonNamed(question, "Cancel").HandleActivate());
+		bed.Frame();
+		Test.Assert(bed.Pages.Count == 1, "kept");
+
+		// The exit gate counts it, and Save All saves it: each named, the page's own changes and its
+		// clip, never a count of pages.
+		question = bed.AskGate();
+		Test.Assert(question.Message == "These have unsaved changes:\n    Two\n    The clip 'Spin', in Two", scope String(question.Message));
+		Test.Assert(PagesBed.ButtonNamed(question, "Save All and Exit").HandleActivate());
+		Test.Assert(page.BesidesSaves == 1);
+		Test.Assert(page.Saves == 1);
+		Test.Assert(bed.Proceeded == 1);
 	}
 
 	[Test]
@@ -858,7 +912,7 @@ class EditorPagesTests
 		two.MarkDirty();
 		var question = bed.AskGate();
 		Test.Assert(question.Title == "Unsaved changes");
-		Test.Assert(question.Message == "2 pages have unsaved changes.");
+		Test.Assert(question.Message == "These have unsaved changes:\n    One\n    Two", scope String(question.Message));
 		Test.Assert(question.ButtonCount == 3);
 		Test.Assert(question.GetButtonRole(0) == .Destructive); // the caller's discard verb
 		Test.Assert(question.GetButtonRole(1) == .Cancel);
@@ -879,7 +933,7 @@ class EditorPagesTests
 
 		one.MarkDirty();
 		question = bed.AskGate();
-		Test.Assert(question.Message == "1 page has unsaved changes.");
+		Test.Assert(question.Message == "One has unsaved changes.", scope String(question.Message));
 		Test.Assert(PagesBed.ButtonNamed(question, "Exit Without Saving").HandleActivate());
 		Test.Assert(one.Saves == 1, "not saved");
 		Test.Assert(one.IsDirty);

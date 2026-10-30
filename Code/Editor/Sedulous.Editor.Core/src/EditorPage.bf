@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Content;
 
@@ -44,6 +45,28 @@ abstract class EditorPage
 	}
 
 	public EditorCommandStack Commands => mCommands;
+
+	/// Unsaved work the page holds that is not its asset (a clip its animation panel edits, with a
+	/// history and a Save of its own; any panel of its like): each named for the prompts ("The clip
+	/// 'Bounce'"), added to `outNames` (the caller's to delete), none when all is saved. The page's
+	/// unsaved mark never covers it; closing the page and leaving the editor name each beside the
+	/// page's own changes.
+	public virtual void ListUnsavedBesides(List<String> outNames) {}
+	/// Saves all of that work; what the saves said (the first that failed).
+	public virtual Result<void, ErrorCode> SaveBesides() => .Ok;
+	/// The page's changes or that work unsaved: what the close and the exit ask about.
+	public bool HasUnsavedWork => IsDirty || HasUnsavedBesides;
+	/// Whether the page holds unsaved work besides its asset.
+	public bool HasUnsavedBesides
+	{
+		get
+		{
+			let besides = scope List<String>();
+			defer { ClearAndDeleteItems!(besides); }
+			ListUnsavedBesides(besides);
+			return !besides.IsEmpty;
+		}
+	}
 
 	/// The asset this page edits changed OUTSIDE the page: an apply to prefab, a re-import.
 	/// A page that caches loaded content overrides to refresh itself.
