@@ -84,7 +84,7 @@ abstract class Renderer
 	/// Before the graph executes, so the forward pass and every shadow pass share one device
 	/// local bone buffer: uploading per pass would stream the same matrices across the bus
 	/// once per cascade.
-	public virtual void UploadSkinning(ExtractedScene scene, ICommandEncoder encoder) {}
+	public virtual void UploadSkinning(Span<ExtractedScene> scenes, ICommandEncoder encoder) {}
 
 	public virtual void FinishFrame() {}
 }

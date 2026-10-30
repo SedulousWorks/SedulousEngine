@@ -399,6 +399,45 @@ class RenderFrameTests
 		smallFrame.End();
 		Test.Assert(small.BonePoolSlotsPerFrame == MeshRenderer.InitialBonePoolSlots,
 			"a scene that fits left it alone");
+
+		// Two scenes in one frame (editor pages side by side): both skinned, not only the last
+		// drawn. Uploaded one scene at a time, each upload lost the one before it, and every page
+		// but the last drew its creatures in their bind pose.
+		Float4x4[cBones] otherPalette = ?; // a skeleton of its own, in neither of the scenes above
+		for (int b < cBones)
+			otherPalette[b] = Float4x4.Identity();
+		let other = scope ExtractedScene();
+		let otherData = other.Add<MeshRenderData>();
+		otherData.World = Float4x4.Identity();
+		otherData.Mesh = skinned;
+		otherData.Material = material;
+		otherData.Category = RenderCategories.Opaque;
+		otherData.WorldRadius = 1.0f;
+		otherData.BoneMatrices = &otherPalette[0];
+		otherData.BoneCount = cBones;
+		smallFrame.Begin(fixture.Encoder, 1);
+		smallFrame.AddView(one, camera, .(), fixture.ColorView, .BGRA8Unorm, 256, 256);
+		smallFrame.AddView(other, camera, .(), fixture.ColorView, .BGRA8Unorm, 256, 256);
+		smallFrame.End();
+		Test.Assert(small.IsSkinUploaded(&palettes[0][0]));
+		Test.Assert(small.IsSkinUploaded(&otherPalette[0]));
+
+		// And when the second scene is the one that makes the pool grow, the first is not lost
+		// with the old pool: the pool is sized for both before either is written.
+		let grower = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(grower.Initialize() case .Ok);
+		let growerRegistry = scope RendererRegistry();
+		growerRegistry.Register(grower);
+		let growerFrame = scope RenderFrame(fixture.Device, growerRegistry, 2);
+		growerFrame.Begin(fixture.Encoder, 0);
+		growerFrame.AddView(other, camera, .(), fixture.ColorView, .BGRA8Unorm, 256, 256);
+		growerFrame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 256, 256); // forty casters
+		growerFrame.End();
+		Test.Assert(grower.BonePoolSlotsPerFrame == 8192);
+		Test.Assert(grower.IsSkinUploaded(&otherPalette[0]), "the first scene's, drawn before the growth");
+		for (int c < cCasters)
+			Test.Assert(grower.IsSkinUploaded(&palettes[c][0]));
 	}
 
 	/// The caster list asks the DATA what it is, never the renderer id.

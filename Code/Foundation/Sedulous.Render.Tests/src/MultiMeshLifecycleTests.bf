@@ -12,6 +12,13 @@ namespace Sedulous.Render.Tests;
 /// opt out, and the region alignment every backend needs.
 class MultiMeshLifecycleTests
 {
+	// A frame drawing the one scene (the upload takes every scene a frame draws).
+	private static void UploadOne(MeshRenderer renderer, ExtractedScene scene)
+	{
+		ExtractedScene[1] one = .(scene);
+		renderer.UploadMultiMeshes(one);
+	}
+
 	private static void AddSet(ExtractedScene scene, uint64 key, StaticMesh mesh, Material material,
 		Float4x4* transforms, uint32 count, uint16 rendererId, uint32 version = 1,
 		uint32 uploadCount = 0)
@@ -60,7 +67,7 @@ class MultiMeshLifecycleTests
 		AddSet(seen, 0x11, cube, material, &transforms[0], 3, renderer.RendererId);
 		AddSet(seen, 0x22, cube, material, &transforms[0], 3, renderer.RendererId);
 		renderer.PrepareFrame(2, 0);
-		renderer.UploadMultiMeshes(seen);
+		UploadOne(renderer, seen);
 		Test.Assert(renderer.MultiMeshSetCount == 2);
 		let pendingAfterUpload = retire.PendingCount;
 
@@ -71,11 +78,11 @@ class MultiMeshLifecycleTests
 		for (uint32 f = 0; f < MeshRenderer.cMultiMeshEvictFrames; f++)
 		{
 			renderer.PrepareFrame(2, f % 2);
-			renderer.UploadMultiMeshes(partial);
+			UploadOne(renderer, partial);
 			Test.Assert(renderer.MultiMeshSetCount == 2); // not yet: exactly the window
 		}
 		renderer.PrepareFrame(2, 0);
-		renderer.UploadMultiMeshes(partial); // one past the window
+		UploadOne(renderer, partial); // one past the window
 		Test.Assert(renderer.MultiMeshSetCount == 1);
 		// Its buffer and both region bind groups went through the QUEUE, not destroyed in
 		// place under a frame that may still read them.
@@ -86,13 +93,13 @@ class MultiMeshLifecycleTests
 		for (uint32 f = 0; f <= MeshRenderer.cMultiMeshEvictFrames; f++)
 		{
 			renderer.PrepareFrame(2, f % 2);
-			renderer.UploadMultiMeshes(empty);
+			UploadOne(renderer, empty);
 		}
 		Test.Assert(renderer.MultiMeshSetCount == 0);
 
 		// A returning key rebuilds a fresh set.
 		renderer.PrepareFrame(2, 0);
-		renderer.UploadMultiMeshes(seen);
+		UploadOne(renderer, seen);
 		Test.Assert(renderer.MultiMeshSetCount == 2);
 
 		retire.Flush();
@@ -192,7 +199,7 @@ class MultiMeshLifecycleTests
 			AddSet(scene, 0x77, cube, material, transforms.Ptr, count, renderer.RendererId,
 				version);
 			renderer.PrepareFrame(2, index % 2);
-			renderer.UploadMultiMeshes(scene);
+			UploadOne(renderer, scene);
 		}
 
 		// Frame nought draws three, being far away, and frame one all eight, so region one
@@ -258,7 +265,7 @@ class MultiMeshLifecycleTests
 			AddSet(scene, 0x99, cube, material, transforms.Ptr, drawCount, renderer.RendererId,
 				1, 8);
 			renderer.PrepareFrame(2, index % 2);
-			renderer.UploadMultiMeshes(scene);
+			UploadOne(renderer, scene);
 		}
 
 		// Far away: it draws three and holds eight.
@@ -324,7 +331,7 @@ class MultiMeshLifecycleTests
 		faded.FadeEnd = 80.0f;
 
 		renderer.PrepareFrame(2, 0);
-		renderer.UploadMultiMeshes(scene);
+		UploadOne(renderer, scene);
 
 		// Unfaded: the shared colour, its alpha untouched.
 		Test.Assert(renderer.ReadMultiMeshInstanceTint(0x51, 0, 0, let plain));

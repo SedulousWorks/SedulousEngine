@@ -686,6 +686,9 @@ class MeshRenderer : Renderer
 
 	/// The per frame slots the pool holds. It grows on demand, and the tests pin that.
 	public uint32 BonePoolSlotsPerFrame => mBoneRing.SlotsPerFrame;
+	/// Whether the skeleton whose matrices are at `boneMatrices` was uploaded this frame (its meshes
+	/// draw skinned; else in their bind pose).
+	public bool IsSkinUploaded(Float4x4* boneMatrices) => mBoneStart.ContainsKey((int)(void*)boneMatrices);
 	public static uint32 InitialBonePoolSlots => cInitialBoneMatrices;
 
 	/// The device local mirror of the staging ring, recreated when the ring's capacity moves.
@@ -719,18 +722,20 @@ class MeshRenderer : Renderer
 		return true;
 	}
 
-	/// Writes every distinct skinned palette into the pool ONCE this frame and copies the
-	/// populated range to the device, then records where each landed so a resolve can hand the
-	/// draw its bone base. Before any pass: the alternative, uploading per pass, streams the
-	/// same matrices once per cascade.
-	public override void UploadSkinning(ExtractedScene scene, ICommandEncoder encoder)
+	/// Writes every distinct skinned palette of every scene the frame draws into the pool ONCE
+	/// this frame and copies the populated range to the device, then records where each landed so
+	/// a resolve can hand the draw its bone base. Before any pass: the alternative, uploading per
+	/// pass, streams the same matrices once per cascade. Every scene at once (editor pages side by
+	/// side): uploaded one scene at a time, each upload lost the one before it, and every page but
+	/// the last drew its skinned meshes in their bind pose.
+	public override void UploadSkinning(Span<ExtractedScene> scenes, ICommandEncoder encoder)
 	{
 		mBoneStart.Clear();
 		mSkinnedScratch.Clear();
 		if (!mReady)
 			return;
 
-		UploadMultiMeshes(scene);
+		UploadMultiMeshes(scenes);
 
 		// Once: bring the out of graph stand ins into the layout their descriptors expect, so
 		// they are never sampled while undefined on a frame with no caster.
@@ -749,9 +754,12 @@ class MeshRenderer : Renderer
 			mDummyDepthInit = true;
 		}
 
-		// First the DISTINCT palettes, keyed by address so a duplicate is skipped. Each per
-		// entity caster costs twice its bones: the current slab and the previous one.
+		// First the DISTINCT palettes across every scene of the frame, keyed by address so a
+		// duplicate is skipped. Each per entity caster costs twice its bones: the current slab and
+		// the previous one. All of them at once: the pool grows (if it must) before this frame's one
+		// block is allocated, the only time it may.
 		uint32 total = 0;
+		for (let scene in scenes)
 		for (let data in scene.Items)
 		{
 			if ((data == null) || (data.RendererId != RendererId))
@@ -777,6 +785,7 @@ class MeshRenderer : Renderer
 		}
 
 		// Then the crowds' POSE POOLS: a set's palettes uploaded once, whatever its size.
+		for (let scene in scenes)
 		for (let data in scene.Items)
 		{
 			if ((data == null) || (data.RendererId != RendererId))
@@ -857,7 +866,8 @@ class MeshRenderer : Renderer
 			block.ByteOffset, (uint64)total * sizeof(Float4x4));
 		encoder.TransitionBuffer(mBoneDevice, .CopyDst, .ShaderRead);
 
-		FillSkinnedMultiMeshOffsets(scene);
+		for (let scene in scenes)
+			FillSkinnedMultiMeshOffsets(scene);
 	}
 
 	/// Brings every instanced set's persistent buffer up to date and grows the shared ramp to
@@ -865,12 +875,14 @@ class MeshRenderer : Renderer
 	/// that constant cost per frame is the whole point.
 	/// PUBLIC for the lifecycle tests, which drive the pool directly; UploadSkinning is the
 	/// frame's own caller.
-	public void UploadMultiMeshes(ExtractedScene scene)
+	public void UploadMultiMeshes(Span<ExtractedScene> scenes)
 	{
+		// One frame, however many scenes it draws: a set ages by frames, not by scenes.
 		mMultiMeshFrame++;
 		EvictStaleMultiMeshSets(); // before any early return: a frame with no sets still ages them
 
 		uint32 maxCount = 0;
+		for (let scene in scenes)
 		for (let data in scene.Items)
 		{
 			if ((data == null) || (data.RendererId != RendererId))
@@ -890,6 +902,7 @@ class MeshRenderer : Renderer
 		if (!EnsureRamp(maxCount))
 			return;
 
+		for (let scene in scenes)
 		for (let data in scene.Items)
 		{
 			if ((data == null) || (data.RendererId != RendererId))

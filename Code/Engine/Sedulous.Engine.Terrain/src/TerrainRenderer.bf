@@ -664,7 +664,7 @@ class TerrainRenderer : Renderer
 	/// before any pass opens, purely to move the stand in shadow depth out of its undefined
 	/// layout ONCE: a caster less frame would otherwise sample an image that was never
 	/// written, which the validation layers reject.
-	public override void UploadSkinning(ExtractedScene scene, ICommandEncoder encoder)
+	public override void UploadSkinning(Span<ExtractedScene> scenes, ICommandEncoder encoder)
 	{
 		if (!mDummyDepthInitialized && (mDummyShadowTexture != null))
 		{

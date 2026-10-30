@@ -132,6 +132,8 @@ class RenderFrame
 
 	/// Slot k is the k-th distinct scene this frame.
 	private List<SceneShadowContext> mSceneShadowPool = new .() ~ DeleteContainerAndItems!(_);
+	/// The pool's scenes, in order: what the skinning upload is given.
+	private List<ExtractedScene> mFrameScenes = new .() ~ delete _;
 	/// Per view, the index into the pool.
 	private List<int> mViewSceneIndex = new .() ~ delete _;
 	/// The scenes' entries CONCATENATED, in caster order within each scene.
@@ -1153,13 +1155,14 @@ class RenderFrame
 			renderer.UploadLocalShadows(mLocalShadows, mFrameIndex);
 
 		// The skinning: each distinct skeleton's matrices written ONCE into the pool and copied
-		// to the device, before any pass reads them. Per DISTINCT scene, a scene's instances
-		// covering every view of it.
+		// to the device, before any pass reads them. Every distinct scene at once (a scene's
+		// instances cover every view of it): uploaded one scene at a time, each upload lost the one
+		// before it, and every page but the last drew its skinned meshes in their bind pose.
+		mFrameScenes.Clear();
 		for (int k < sceneCount)
-		{
-			for (let renderer in mRegistry.Unique)
-				renderer.UploadSkinning(mSceneShadowPool[k].Scene, mEncoder);
-		}
+			mFrameScenes.Add(mSceneShadowPool[k].Scene);
+		for (let renderer in mRegistry.Unique)
+			renderer.UploadSkinning(mFrameScenes, mEncoder);
 
 		if (mClusters != null)
 			mClusters.PrepareFrame(mFrameIndex);
