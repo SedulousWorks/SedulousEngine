@@ -19,7 +19,7 @@ namespace Sedulous.Editor.Animation;
 // the rest when chosen), the path a clip's root motion travels drawn on the ground, and the rig a pose
 // is shown on (AnimationPreviewRig): the skeleton and the skinned mesh the preview plays on, picked on
 // the preview's bar, each optional (no mesh: the bones alone), the mesh skinned with the pose each
-// frame.
+// frame. Bones and Mesh on the bar hide either, the mesh's pick kept.
 
 static class AnimationPreview
 {
@@ -131,6 +131,13 @@ class AnimationPreviewRig
 	private Skeleton mFramedFor = null;
 	private delegate void() mOnPicked ~ delete _;
 	private delegate void() mOnFirstShown ~ delete _;
+	// The bar's Bones and Mesh (the bar holds a reference of its own; these are ours).
+	private ToolButton mBonesButton = null ~ _?.ReleaseRef();
+	private ToolButton mMeshButton = null ~ _?.ReleaseRef();
+	private bool mBonesShown = true;
+	private bool mMeshShown = true;
+	/// Where hidden bones are placed, never drawn.
+	private DebugDraw mUnshown = new .() ~ delete _;
 
 	/// Over `pane`'s preview (its scene given a sun and the mesh's entity), its two slots placed
 	/// among the preview's own choices. Without a preview (a test), it still keeps what was picked.
@@ -147,6 +154,9 @@ class AnimationPreviewRig
 		mMeshSlot.SetAcceptedTypes(meshes);
 		Labelled("Skeleton", mSkeletonSlot);
 		Labelled("Mesh", mMeshSlot);
+		// What shows of it: the bones, the mesh (hidden, its pick kept), each this page's alone.
+		mBonesButton = Toggle("preview-bones", "Bones", "Draw the skeleton's bones over the preview", new [=this] (on) => { SetBonesShown(on); });
+		mMeshButton = Toggle("preview-mesh-shown", "Mesh", "Draw the skinned mesh (off: hidden, its pick kept)", new [=this] (on) => { SetMeshShown(on); });
 
 		let scene = (pane.Viewport != null) ? pane.Viewport.Scene : null;
 		if (scene == null)
@@ -249,7 +259,14 @@ class AnimationPreviewRig
 				mBind[b] = skeleton.GetBone(b).LocalBindPose;
 			pose = mBind;
 		}
-		AnimationPreview.DrawSkeletonBones(draw, skeleton, pose, mWorld, placement, chosen);
+		// Hidden bones are still placed (the framing and the mesh read them), drawn where nothing shows.
+		if (mBonesShown)
+			AnimationPreview.DrawSkeletonBones(draw, skeleton, pose, mWorld, placement, chosen);
+		else
+		{
+			mUnshown.Clear();
+			AnimationPreview.DrawSkeletonBones(mUnshown, skeleton, pose, mWorld, placement, chosen);
+		}
 		if ((skeleton !== mFramedFor) && !mWorld.IsEmpty)
 		{
 			mFramedFor = skeleton;
@@ -260,6 +277,7 @@ class AnimationPreviewRig
 		let component = MeshComponentOf();
 		if ((component == null) || (mesh == null))
 			return;
+		component.Visible = mMeshShown;
 		// Skinned with the pose, placed where the bones are (borrowed for this frame's drawing).
 		mSkinning.Count = boneCount;
 		skeleton.ComputeSkinningMatrices(pose, .(mSkinning.Ptr, boneCount));
@@ -279,6 +297,44 @@ class AnimationPreviewRig
 
 	public AssetPickerSlot SkeletonSlot => mSkeletonSlot;
 	public AssetPickerSlot MeshSlot => mMeshSlot;
+	public ToolButton BonesButton => mBonesButton;
+	public ToolButton MeshButton => mMeshButton;
+
+	/// Whether its bones are drawn, and its mesh (hidden, its pick kept): the bar's Bones and Mesh,
+	/// the page's alone.
+	public bool BonesShown => mBonesShown;
+	public bool MeshShown => mMeshShown;
+
+	public void SetBonesShown(bool shown)
+	{
+		mBonesShown = shown;
+		if ((mBonesButton != null) && (mBonesButton.Checked != shown))
+			mBonesButton.Checked = shown;
+	}
+
+	public void SetMeshShown(bool shown)
+	{
+		mMeshShown = shown;
+		if ((mMeshButton != null) && (mMeshButton.Checked != shown))
+			mMeshButton.Checked = shown;
+		if (let component = MeshComponentOf())
+			component.Visible = shown;
+	}
+
+	// A toggle on the preview's bar, on; TAKES OWNERSHIP of `set`. A reference of ours.
+	private ToolButton Toggle(StringView id, StringView text, StringView tooltip, delegate void(bool on) set)
+	{
+		let button = new ToolButton();
+		button.Id = id;
+		button.IsToggle = true;
+		button.Checked = true;
+		button.Text = text;
+		button.ShowsText = true;
+		button.Tooltip = tooltip;
+		button.SetOnToggled(set);
+		mPane.AddControl(button);
+		return button;
+	}
 
 	private void Labelled(StringView text, AssetPickerSlot slot)
 	{

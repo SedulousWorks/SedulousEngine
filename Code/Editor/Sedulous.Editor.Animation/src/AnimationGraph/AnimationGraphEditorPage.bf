@@ -92,6 +92,10 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 	private GraphView mView = null;
 	private TreeView mLayerTree = null;
 	private TreeView mParameterTree = null;
+	/// A list row's menu (a reference of ours).
+	private Sedulous.GUI.Menu mListMenu = null ~ _?.ReleaseRef();
+	private uint32 mLayerMenuListener = 0;
+	private uint32 mParameterMenuListener = 0;
 	private Sedulous.GUI.Label mState = null;
 	private ButtonBase mTravelButton = null;
 	private TreeModel mLayerModel = new .() ~ delete _;
@@ -151,6 +155,11 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 						Choose(.(.Parameter, (int32)index.InternalId));
 				});
 		}
+		// A row's menu: the row chosen, then Delete (the old page's; the bars' trash does the same).
+		if (mLayerTree != null)
+			mLayerMenuListener = mLayerTree.AddEventListener(.ContextMenu, new [=this] (e) => { RowMenu(mLayerTree, true, e); });
+		if (mParameterTree != null)
+			mParameterMenuListener = mParameterTree.AddEventListener(.ContextMenu, new [=this] (e) => { RowMenu(mParameterTree, false, e); });
 		if (let add = Find<ButtonBase>("graph-add-layer"))
 			add.SetOnClick(new [=this] () => { AddLayer(); });
 		if (let remove = Find<ButtonBase>("graph-remove-layer"))
@@ -211,10 +220,18 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 	{
 		if (mView != null)
 			mView.Source = null;
+		if ((mListMenu != null) && mListMenu.IsOpen)
+			mListMenu.Close();
 		if (mLayerTree != null)
+		{
+			mLayerTree.RemoveEventListener(mLayerMenuListener);
 			mLayerTree.Model = null;
+		}
 		if (mParameterTree != null)
+		{
+			mParameterTree.RemoveEventListener(mParameterMenuListener);
 			mParameterTree.Model = null;
+		}
 		// Torn down in order: the player borrows the graph; the rig before its pane.
 		DeleteAndNullify!(mPlayer);
 		DeleteAndNullify!(mGraph);
@@ -299,6 +316,45 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 		EditWhole("add_animgraph_layer", scope [&] (object) => { made = AnimationGraphEdits.AddLayer((AnimationGraphAsset)object, "Layer"); });
 		if (made >= 0)
 			ChooseLayer(made);
+	}
+
+	/// A layer's (`layers`) or a parameter's row menu at `at` over `owner` (its list): the row
+	/// chosen, then Delete.
+	public void ShowListMenu(bool layers, int32 index, Node owner, Float2 at)
+	{
+		if (layers)
+			ChooseLayer(index);
+		else
+			Choose(.(.Parameter, index));
+		if (mListMenu != null)
+		{
+			if (mListMenu.IsOpen)
+				mListMenu.Close();
+			mListMenu.ReleaseRef();
+		}
+		mListMenu = new Sedulous.GUI.Menu();
+		let remove = mListMenu.AddItem(layers ? "Delete Layer" : "Delete Parameter", new [=this, =layers] () =>
+			{
+				if (layers)
+					RemoveLayer();
+				else
+					RemoveParameter();
+			});
+		remove.Enabled = !layers || (mDoc.Layers.Count > 1); // the last layer stays
+		mListMenu.Open(owner, at);
+	}
+
+	/// That menu, while it is open.
+	public Sedulous.GUI.Menu ListMenu => ((mListMenu != null) && mListMenu.IsOpen) ? mListMenu : null;
+
+	private void RowMenu(TreeView tree, bool layers, Event e)
+	{
+		let at = ((MouseEvent)e).Position;
+		let item = tree.ItemAt(at);
+		if (item < 0)
+			return;
+		ShowListMenu(layers, (int32)tree.GetItemIndex(item).InternalId, tree, at);
+		e.Handled = true;
 	}
 
 	public bool RemoveLayer()

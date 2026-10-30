@@ -512,4 +512,70 @@ class AnimationGraphPageTests
 		Test.Assert(bed.Layers(.. scope .()) == "Base");
 		Test.Assert(!bed.Page.RemoveLayer(), "the last stays");
 	}
+
+	private static MenuItem ItemOf(Node menu, StringView text)
+	{
+		for (int i < menu.ChildCount)
+		{
+			let node = menu.GetChildAt(i);
+			if (let item = node as MenuItem)
+			{
+				if (item.Text == text)
+					return item;
+			}
+			if (let found = ItemOf(node, text))
+				return found;
+		}
+		return null;
+	}
+
+	[Test]
+	public static void ALayersOrAParametersRowMenuDeletesItThePreviewsBonesAndMeshHideEitherThePickKept()
+	{
+		let bed = scope Bed();
+		let context = new GUIContext();
+		let root = new SceneRoot(context);
+		context.ReleaseRef(); // the root's keeps it
+		defer root.ReleaseRef();
+		root.Size = .(1200.0f, 800.0f);
+		root.AddChild(bed.Page.Content);
+		defer root.RemoveChild(bed.Page.Content);
+		root.UpdateLayout();
+
+		// The last layer is never deleted: its Delete is off.
+		bed.Page.ShowListMenu(true, 0, bed.Page.Content, .(20.0f, 60.0f));
+		Test.Assert(bed.Page.ListMenu != null);
+		var deleteLayer = ItemOf(bed.Page.ListMenu, "Delete Layer");
+		Test.Assert(deleteLayer != null);
+		Test.Assert(!deleteLayer.Enabled);
+		bed.Page.ListMenu.Close();
+		bed.Page.AddLayer();
+		bed.Page.ShowListMenu(true, 1, bed.Page.Content, .(20.0f, 60.0f));
+		Test.Assert(bed.Page.ListMenu != null);
+		deleteLayer = ItemOf(bed.Page.ListMenu, "Delete Layer");
+		Test.Assert(deleteLayer != null);
+		Test.Assert(deleteLayer.HandleActivate());
+		Test.Assert(bed.Layers(.. scope .()) == "Base");
+
+		bed.Page.ShowListMenu(false, 0, bed.Page.Content, .(20.0f, 300.0f));
+		Test.Assert(bed.Page.Chosen.Kind == .Parameter); // the row chosen first
+		Test.Assert(bed.Page.ListMenu != null);
+		let deleteParameter = ItemOf(bed.Page.ListMenu, "Delete Parameter");
+		Test.Assert(deleteParameter != null);
+		Test.Assert(deleteParameter.HandleActivate());
+		Test.Assert(bed.Parameters(.. scope .()).IsEmpty);
+
+		let rig = bed.Page.Rig;
+		Test.Assert(rig != null);
+		Test.Assert((rig.BonesButton != null) && (rig.MeshButton != null));
+		Test.Assert(rig.BonesShown);
+		Test.Assert(rig.MeshShown);
+		Test.Assert(rig.BonesButton.HandleActivate()); // a click
+		Test.Assert(!rig.BonesShown);
+		let mesh = Guid(5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		rig.SetMesh(mesh);
+		Test.Assert(rig.MeshButton.HandleActivate());
+		Test.Assert(!rig.MeshShown);
+		Test.Assert(rig.MeshId == mesh); // hidden, its pick kept
+	}
 }
