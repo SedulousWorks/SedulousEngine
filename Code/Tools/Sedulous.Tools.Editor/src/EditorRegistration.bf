@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Sedulous.Core;
 using Sedulous.VFS;
 using Sedulous.Runtime.Client;
@@ -38,9 +39,15 @@ namespace Sedulous.Tools.Editor;
 ///
 /// The pages are parked while the editor moves onto the GUI (Raptor's editor-gui spec, 4.1):
 /// each one's Register comes back here with its port, and with them the thumbnail generators
-/// they fold in.
+/// they fold in (counted below).
 static class EditorRegistration
 {
+	/// The thumbnail generators the domains fold in: five drawn from an image (heightfield,
+	/// texture, font, splat map, audio clip), eight staged in a scene (mesh, material, prefab,
+	/// scene, particle effect, skeleton, model manifest, collision shape).
+	private const int cThumbnailGenerators = 5;
+	private const int cSceneThumbnailGenerators = 8;
+
 	public static void RegisterEditors(EditorApplication app, IApplicationHost host)
 	{
 		let context = app.Context;
@@ -88,6 +95,11 @@ static class EditorRegistration
 		SkeletonEditor.Register(context, pageServices); // the skeleton
 		AnimationGraphEditor.Register(context, pageServices); // the animation graph
 		GenericAssetPageFactory.Register(context, pageServices);
+		// The thumbnail generators' tripwire: each domain's registration above registers its
+		// generators too; bump a count when a domain gains one, so one that stops registering fails
+		// here rather than as icons where pictures were.
+		Debug.Assert((context.Thumbnails != null) && (context.Thumbnails.GeneratorCount == cThumbnailGenerators));
+		Debug.Assert(context.Thumbnails.SceneGeneratorCount == cSceneThumbnailGenerators);
 
 		// File > New: every pipeline domain's creators, the scripts' among them.
 		PipelineRegistration.RegisterAllCreators(context.Creators);
