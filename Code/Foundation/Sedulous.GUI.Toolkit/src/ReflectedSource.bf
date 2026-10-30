@@ -1194,12 +1194,13 @@ class ReflectedPropertySource : IPropertySource
 	}
 
 	// `visibleWhen` ("prop", or "prop=1,2" of its raw integer): a sibling's value, in every object.
+	// A condition that does not read so (no name, an empty or non-integer value) hides nothing.
 	protected bool Holds(StringView group, StringView condition)
 	{
 		int eq = 0;
 		while ((eq < condition.Length) && (condition[eq] != '='))
 			++eq;
-		if (eq == 0)
+		if ((eq == 0) || !ListReads(condition, eq))
 			return true;
 		let sibling = JoinPropertyPath(group, condition.Substring(0, eq), .. scope String());
 		for (int o = 0; o < mObjects.Count; ++o)
@@ -1211,6 +1212,26 @@ class ReflectedPropertySource : IPropertySource
 			value.Dispose();
 			if (!Matches(condition, eq, held))
 				return false;
+		}
+		return true;
+	}
+
+	// Whether every value listed after the `=` at `eq` is an integer (no `=`: nothing to read).
+	protected static bool ListReads(StringView condition, int eq)
+	{
+		if (eq >= condition.Length)
+			return true;
+		int start = eq + 1;
+		while (start <= condition.Length)
+		{
+			var end = start;
+			while ((end < condition.Length) && (condition[end] != ','))
+				++end;
+			var listed = condition.Substring(start, end - start);
+			listed.Trim();
+			if (!(int64.Parse(listed) case .Ok))
+				return false;
+			start = end + 1;
 		}
 		return true;
 	}

@@ -545,6 +545,27 @@ class TestLinks
 }
 
 /// Two lamps, the source over the first (or both), its changes kept.
+/// Rows whose conditions read or do not.
+[GuiReflect(true)]
+class TestJoint
+{
+	private int32 mMode = 0;
+	private float mWhenTwo, mNoName, mNoValue, mNotANumber, mEmptyItem;
+
+	[GuiProperty]
+	public int32 Mode { get => mMode; set => mMode = value; }
+	[GuiProperty, VisibleWhen("Mode=2")]
+	public float WhenTwo { get => mWhenTwo; set => mWhenTwo = value; }
+	[GuiProperty, VisibleWhen("=1")]
+	public float NoName { get => mNoName; set => mNoName = value; }
+	[GuiProperty, VisibleWhen("Mode=")]
+	public float NoValue { get => mNoValue; set => mNoValue = value; }
+	[GuiProperty, VisibleWhen("Mode=x")]
+	public float NotANumber { get => mNotANumber; set => mNotANumber = value; }
+	[GuiProperty, VisibleWhen("Mode=1,,2")]
+	public float EmptyItem { get => mEmptyItem; set => mEmptyItem = value; }
+}
+
 class ReflectedBed
 {
 	public TestLamp A = new .() ~ delete _;
@@ -1538,5 +1559,26 @@ class ReflectedSourceTests
 		var value = source.GetDefault(path, object);
 		defer value.Dispose();
 		return value.AsInt;
+	}
+
+	[Test]
+	public static void AConditionThatDoesNotReadHidesNothing()
+	{
+		let joint = scope TestJoint();
+		let source = scope ReflectedPropertySource();
+		Object[1] objects = .(joint);
+		source.SetObjects(objects, TestJoint.StaticGuiType);
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(!Find(rows, "WhenTwo").Visible); // Mode 0
+		Test.Assert(Find(rows, "NoName").Visible);
+		Test.Assert(Find(rows, "NoValue").Visible);
+		Test.Assert(Find(rows, "NotANumber").Visible);
+		Test.Assert(Find(rows, "EmptyItem").Visible);
+		joint.Mode = 2;
+		ClearAndDeleteItems!(rows);
+		source.GetProperties("", rows);
+		Test.Assert(Find(rows, "WhenTwo").Visible);
 	}
 }
