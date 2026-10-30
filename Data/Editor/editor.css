@@ -645,6 +645,7 @@ button.add-component { align-self: stretch; justify-content: center; margin: var
 .transport-state.stopped { color: var(--text-dim); }
 .clip-time { width: 116px; flex-shrink: 0; } /* a running time never moves what follows it */
 .graph-playing { width: 168px; flex-shrink: 0; } /* nor does the state a graph plays */
+.particle-count { width: 128px; flex-shrink: 0; } /* a running count of the particles alive, the same */
 .scene-simulate-state { width: 84px; flex-shrink: 0; text-align: center; } /* Paused and Simulating take one width: the centred Simulate buttons stay put */
 /* The Game tab: the game beside the script debugger, the bar's resolution a fixed width. */
 .game-view-pane { flex-grow: 1; flex-basis: 0; min-width: 0; min-height: 0; background-color: var(--surface-sunken); }

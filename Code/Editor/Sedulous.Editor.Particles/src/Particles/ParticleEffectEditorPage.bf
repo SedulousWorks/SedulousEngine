@@ -872,11 +872,13 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 			most += effect.GetSystem(s).MaxParticles;
 		}
 		let state = mStopped ? "stopped" : (mPaused ? "paused" : "playing");
+		// Its width fixed by the sheet; paused says so by its colour, as the Play button does by its
+		// icon (a running count beside a word grew and shrank, moving what follows it).
 		let text = scope String();
 		if (mStopped)
 			text.Append("Stopped");
 		else
-			text.AppendF("{} of {}{}", alive, most, mPaused ? "  ·  Paused" : "");
+			text.AppendF("{} of {}", alive, most);
 		if (mCount.Text != text)
 			mCount.Text = text;
 		for (let name in StringView[3]("stopped", "paused", "playing"))

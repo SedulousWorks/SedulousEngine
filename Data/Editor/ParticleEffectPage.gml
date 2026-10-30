@@ -40,7 +40,7 @@
                 <ToolButton id="particle-restart" icon="Editor/Icons/restart.svg"/>
                 <ToolButton id="particle-play" toggle="true" icon="Editor/Icons/play.svg" checked-icon="Editor/Icons/pause.svg"/>
                 <ToolButton id="particle-stop" icon="Editor/Icons/stop.svg"/>
-                <Label id="particle-count" class="transport-state" text=""/>
+                <Label id="particle-count" class="transport-state particle-count" text=""/>
                 <Separator id="preview-own"/>
                 <Spacer/>
                 <Label class="preview-hint" text="Speed"/>
