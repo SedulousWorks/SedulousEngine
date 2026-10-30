@@ -238,6 +238,38 @@ class GuiSubsystemTests
 		Test.Assert(engine.Gui.GuiContext.FontService === builtIn);
 	}
 
+	/// The fonts set again: the same ones keep the service; new ones restyle every label from the
+	/// new service, the old one kept to the end (a label measured with it held its fonts, and a cook
+	/// finishing mid-play sets the fonts again: freeing it at once left labels on freed fonts).
+	[Test]
+	public static void FontsSetAgainKeepTheirServiceOrRestyleEveryLabelFromTheNewOne()
+	{
+		// BORROWED by the GUI's services, so declared first: freed after the engine.
+		let body = scope Font();
+		MakeFontProduct(body, "Body");
+		let heading = scope Font();
+		MakeFontProduct(heading, "Heading");
+		let engine = scope GuiTestEngine();
+		engine.Gui.SetFonts(body, .());
+		let first = engine.Gui.Fonts;
+		let label = new Sedulous.GUI.Label();
+		label.Text = "Lamp";
+		engine.Gui.ScreenRoot.AddChild(label);
+		label.ReleaseRef(); // the tree's keeps it
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		engine.Frame();
+		Test.Assert(label.GetTextLayout().Font != null, "measured with the project's font");
+
+		engine.Gui.SetFonts(body, .());
+		Test.Assert(engine.Gui.Fonts === first, "the same fonts: the same service");
+
+		engine.Gui.SetFonts(heading, .());
+		Test.Assert(engine.Gui.Fonts !== first);
+		engine.Frame(); // styled and measured again (ASan: no read of the first service's fonts)
+		Test.Assert(label.GetTextLayout().Font != null);
+		Test.Assert(engine.Gui.Fonts.GetDefaultFontFamily(.. scope String()) == "Heading", "the new service's");
+	}
+
 	[Test]
 	public static void TheScreenIsPlacedAsTheGamesImageIsFittedAtItsResolutionTurnedForItsOrientation()
 	{

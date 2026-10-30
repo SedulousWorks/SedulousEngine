@@ -65,6 +65,10 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// style manager and the renderer.
 	private TrueTypeFontService mFonts ~ delete _;
 	private ResourceFontService mProjectFonts ~ delete _;
+	/// The project's earlier services, kept to the end: a label measured with one holds its
+	/// CachedFont (borrowed) until it is styled again, so freeing the service at once left those
+	/// labels pointing at freed fonts (a cook finishing mid-play sets the fonts again).
+	private List<ResourceFontService> mRetiredFonts = new .() ~ DeleteContainerAndItems!(_);
 	/// BORROWED: the resource manager's cache keeps the products alive.
 	private Font mDefaultFont = null;
 	private List<Font> mOtherFonts = new .() ~ delete _;
@@ -162,6 +166,9 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// manager's cache keeps them alive.
 	public void SetFonts(Font defaultFont, Span<Font> others)
 	{
+		// The same fonts again (the editor sets them after every cook): nothing to change.
+		if ((defaultFont == mDefaultFont) && SameFonts(others))
+			return;
 		mDefaultFont = defaultFont;
 		mOtherFonts.Clear();
 		for (let font in others)
@@ -189,16 +196,39 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		ApplyUserAgentSheet(); // the default family is the new service's
 		if ((mRenderState != null) && (mRenderState.Renderer != null))
 			mRenderState.Renderer.SetFontService(fonts);
-		// The old service goes once nothing asks it any more.
-		delete was;
+		// The old service is kept (mRetiredFonts): a label holds its fonts until it is styled again.
+		if (was != null)
+			mRetiredFonts.Add(was);
+		// Every root styled again, so each label takes its font from the new service, and measured.
 		if (mScreen.Root != null)
-			mScreen.Root.RequestLayoutTree();
+			Restyle(mScreen.Root);
 		for (let tier in mRunTiers)
-			tier.Root.RequestLayoutTree();
+			Restyle(tier.Root);
 		for (let tier in mSceneTiers)
-			tier.Root.RequestLayoutTree();
+			Restyle(tier.Root);
 		for (let root in mTextureRoots)
-			root.Root.RequestLayoutTree();
+			Restyle(root.Root);
+	}
+
+	// Whether `others` are the fonts set now, in order (nulls left out, as SetFonts does).
+	private bool SameFonts(Span<Font> others)
+	{
+		int count = 0;
+		for (let font in others)
+		{
+			if (font == null)
+				continue;
+			if ((count >= mOtherFonts.Count) || (mOtherFonts[count] != font))
+				return false;
+			count++;
+		}
+		return count == mOtherFonts.Count;
+	}
+
+	private static void Restyle(Node root)
+	{
+		root.MarkStyleDirty(true);
+		root.RequestLayoutTree();
 	}
 
 	/// Where asset guids resolve (the application's resource manager); null resolves nothing.
