@@ -1,13 +1,13 @@
 <root>
-	<string name="guid">19918547-b90e-1f4a-b488-1dde85e7d18b</string>
-	<string name="typeName">Sedulous.UI.Pipeline.UIDocumentAsset</string>
+	<string name="guid">994ae329-2812-9943-846e-89860e0d43be</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
 	<array name="dataVersions" count="1">
-		<u64 name="type">5440813216362558612</u64>
+		<u64 name="type">13358085703002792026</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Gallery.sml</string>
+			<string name="fileName">Gallery.gml</string>
 		</object>
 	</object>
 </root>
