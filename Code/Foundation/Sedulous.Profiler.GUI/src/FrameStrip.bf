@@ -166,6 +166,14 @@ abstract class FrameAxisView : ProfilerWidget, IFrameAxisClient
 	private float mHoverX = 0.0f;
 	private String mHoverTip = new .() ~ delete _;
 
+	/// The parts it draws, which the sheet styles as `tag::part`.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		base.CollectStyleParts(outParts);
+		outParts.Add("plot");
+		outParts.Add("chosen-box");
+		outParts.Add("chosen-fill");
+	}
 	public this()
 	{
 		TabFocusable = false;
@@ -452,6 +460,19 @@ class FrameStrip : FrameAxisView
 
 	private float mBudgetMs = 0.0f;
 
+	/// The parts it draws, which the sheet styles as `tag::part`.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		base.CollectStyleParts(outParts);
+		outParts.Add("scale");
+		outParts.Add("on-time");
+		outParts.Add("over");
+		outParts.Add("far-over");
+		outParts.Add("clipped");
+		outParts.Add("chosen");
+		outParts.Add("share");
+		outParts.Add("budget");
+	}
 	public this()
 	{
 		Tag = "framestrip";
@@ -625,6 +646,16 @@ class CounterPlot : FrameAxisView
 
 	private uint32 mCounter = 0;
 
+	/// The parts it draws, which the sheet styles as `tag::part`.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		base.CollectStyleParts(outParts);
+		outParts.Add("name");
+		outParts.Add("bar");
+		outParts.Add("chosen");
+		outParts.Add("range");
+		outParts.Add("range-backing");
+	}
 	public this()
 	{
 		Tag = "counterplot";
@@ -735,6 +766,10 @@ class CounterPlot : FrameAxisView
 		ProfileWindow.FormatCounter(least, info.Unit, range);
 		range.Append(" to ");
 		ProfileWindow.FormatCounter(most, info.Unit, range);
-		DrawLabel(ctx, range, .(plot.X + 4.0f, plot.Y, plot.Width - 8.0f, plot.Height), PartTextColor("range"), .End);
+		// On a backing of the plot's colour at its end, so the bars under it never hide it.
+		let width = Math.Min(LabelWidth(range) + 8.0f, plot.Width);
+		let backing = Rect(plot.Right - width, plot.Y + 2.0f, width, plot.Height - 4.0f);
+		ctx.VG.FillRoundedRect(backing.ToRectangle(), 3.0f, PartColor("range-backing", .(0.1f, 0.1f, 0.12f, 0.85f)));
+		DrawLabel(ctx, range, .(backing.X + 4.0f, plot.Y, width - 8.0f, plot.Height), PartTextColor("range"), .End);
 	}
 }

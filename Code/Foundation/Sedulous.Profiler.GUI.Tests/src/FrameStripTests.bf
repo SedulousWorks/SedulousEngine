@@ -235,4 +235,38 @@ class FrameStripTests
 		bed.Click(over);
 		Test.Assert(bed.Focus.Frames.First == 3);
 	}
+
+	[Test]
+	public static void ProfilerGuisSheetReachesThePartsEveryViewNamesANamesHuesAmongThem()
+	{
+		let bed = scope Bed();
+		let timeline = new ProfileTimeline();
+		let table = new ScopeTable();
+		let detail = new ScopeDetail();
+		for (let view in scope ProfilerWidget[](timeline, table, detail))
+		{
+			bed.Root.AddChild(view);
+			view.ReleaseRef(); // the root's keeps it
+		}
+		let styles = scope StyleManager();
+		let sheet = scope StyleSheet();
+		let theme = scope String()..AppendF("{}\n{}", Theme.DefaultThemeCSS, ProfilerSheetCSS()); // its tokens under it, as in the editor
+		CSSParser.Parse(theme, sheet);
+		styles.UserAgentSheet = sheet;
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.Strip.GetPartStyle("on-time").HasBackground);
+		Test.Assert(bed.Strip.GetPartStyle("far-over").HasBackground);
+		Test.Assert(bed.Plot.GetPartStyle("bar").HasBackground);
+		Test.Assert(timeline.GetPartStyle("bar").HasColor);
+		Test.Assert(timeline.GetPartStyle("hatch").HasBackground);
+		Test.Assert(table.GetPartStyle("heading").HasBackground);
+		Test.Assert(detail.GetPartStyle("lit").HasBackground);
+		// A name's hue: each of the eight, on every view.
+		for (let hue in scope String[]("hue-0", "hue-3", "hue-7"))
+		{
+			Test.Assert(timeline.GetPartStyle(hue).HasBackground);
+			Test.Assert(table.GetPartStyle(hue).HasBackground);
+			Test.Assert(detail.GetPartStyle(hue).HasBackground);
+		}
+	}
 }

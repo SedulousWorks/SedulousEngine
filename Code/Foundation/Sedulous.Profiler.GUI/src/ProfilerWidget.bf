@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.GUI;
 
@@ -59,6 +60,14 @@ abstract class ProfilerWidget : UIWidget, IProfileFocusClient
 		for (let c in name.RawChars)
 			hash = hash * 31 + (uint32)(uint8)c;
 		return hash % cHueCount;
+	}
+
+	/// The parts every view draws: a name's hues. Each view adds its own; a part the sheet is to style
+	/// must be named here, or the sheet never reaches it.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		for (let hue in cHueParts)
+			outParts.Add(hue);
 	}
 
 	public virtual void OnProfileSourceChanged() { Invalidate(); }

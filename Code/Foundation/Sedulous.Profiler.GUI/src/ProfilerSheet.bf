@@ -29,6 +29,7 @@ internal static class ProfilerSheetDetail
 		framestrip::chosen-fill, counterplot::chosen-fill { background-color: var(--profiler-chosen-fill, var(--accent-subtle)); opacity: 0.5; }
 		framestrip::scale, counterplot::range { color: var(--text-dim); }
 		counterplot::name { color: var(--text); }
+		counterplot::range-backing { background-color: var(--surface); opacity: 0.85; }
 		counterplot::bar { background-color: var(--profiler-counter, #6f86b8); }
 		profiletimeline { color: var(--text); font-size: var(--font-small); }
 		profiletimeline::ruler, profiletimeline::header { background-color: var(--profiler-ruler, var(--surface-header)); }
@@ -48,13 +49,28 @@ internal static class ProfilerSheetDetail
 		profiletimeline::span { background-color: var(--profiler-span, var(--accent)); opacity: 0.1; }
 		profiletimeline::span-edge { background-color: var(--profiler-span-edge, var(--accent)); }
 		profiletimeline::span-head { background-color: var(--profiler-span-head, var(--accent)); opacity: 0.35; color: var(--text-strong); }
-		framestrip::hue-0, counterplot::hue-0, profiletimeline::hue-0 { background-color: var(--profiler-hue-0, #e0a458); }
-		framestrip::hue-1, counterplot::hue-1, profiletimeline::hue-1 { background-color: var(--profiler-hue-1, #7fc8a9); }
-		framestrip::hue-2, counterplot::hue-2, profiletimeline::hue-2 { background-color: var(--profiler-hue-2, #8fb0e8); }
-		framestrip::hue-3, counterplot::hue-3, profiletimeline::hue-3 { background-color: var(--profiler-hue-3, #d98fb0); }
-		framestrip::hue-4, counterplot::hue-4, profiletimeline::hue-4 { background-color: var(--profiler-hue-4, #b8c96f); }
-		framestrip::hue-5, counterplot::hue-5, profiletimeline::hue-5 { background-color: var(--profiler-hue-5, #c6a6e8); }
-		framestrip::hue-6, counterplot::hue-6, profiletimeline::hue-6 { background-color: var(--profiler-hue-6, #6fc4d1); }
-		framestrip::hue-7, counterplot::hue-7, profiletimeline::hue-7 { background-color: var(--profiler-hue-7, #e88f7f); }
+		scopetable, scopedetail { color: var(--text); font-size: var(--font-small); }
+		scopetable::heading { background-color: var(--table-header-background, var(--surface-header)); color: var(--table-header-text, var(--text-dim)); }
+		scopetable::sorted { color: var(--text-strong); }
+		scopetable::separator { background-color: var(--separator); }
+		scopetable::group { color: var(--text-dim); }
+		scopetable::fold { background-color: var(--icon-dim); }
+		scopetable::chosen { background-color: var(--profiler-row-chosen, var(--selection)); }
+		scopetable::hover { background-color: var(--profiler-row-hover, var(--row-hover)); }
+		scopedetail::title { color: var(--text-strong); }
+		scopedetail::heading { color: var(--text-strong); }
+		scopedetail::note { color: var(--text-dim); }
+		scopedetail::track, scopedetail::plot { background-color: var(--profiler-plot, var(--surface-sunken)); }
+		scopedetail::self { background-color: var(--profiler-self, var(--text-dim)); }
+		scopedetail::bar { background-color: var(--profiler-counter, #6f86b8); }
+		scopedetail::lit { background-color: var(--profiler-chosen, var(--accent)); }
+		framestrip::hue-0, counterplot::hue-0, profiletimeline::hue-0, scopetable::hue-0, scopedetail::hue-0 { background-color: var(--profiler-hue-0, #e0a458); }
+		framestrip::hue-1, counterplot::hue-1, profiletimeline::hue-1, scopetable::hue-1, scopedetail::hue-1 { background-color: var(--profiler-hue-1, #7fc8a9); }
+		framestrip::hue-2, counterplot::hue-2, profiletimeline::hue-2, scopetable::hue-2, scopedetail::hue-2 { background-color: var(--profiler-hue-2, #8fb0e8); }
+		framestrip::hue-3, counterplot::hue-3, profiletimeline::hue-3, scopetable::hue-3, scopedetail::hue-3 { background-color: var(--profiler-hue-3, #d98fb0); }
+		framestrip::hue-4, counterplot::hue-4, profiletimeline::hue-4, scopetable::hue-4, scopedetail::hue-4 { background-color: var(--profiler-hue-4, #b8c96f); }
+		framestrip::hue-5, counterplot::hue-5, profiletimeline::hue-5, scopetable::hue-5, scopedetail::hue-5 { background-color: var(--profiler-hue-5, #c6a6e8); }
+		framestrip::hue-6, counterplot::hue-6, profiletimeline::hue-6, scopetable::hue-6, scopedetail::hue-6 { background-color: var(--profiler-hue-6, #6fc4d1); }
+		framestrip::hue-7, counterplot::hue-7, profiletimeline::hue-7, scopetable::hue-7, scopedetail::hue-7 { background-color: var(--profiler-hue-7, #e88f7f); }
 		""";
 }

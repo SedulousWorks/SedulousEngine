@@ -138,6 +138,29 @@ class ProfileTimeline : ProfilerWidget
 	private float mComputedWidth = -1.0f;
 	private float mComputedHeight = -1.0f;
 
+	/// The parts it draws, which the sheet styles as `tag::part`.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		base.CollectStyleParts(outParts);
+		outParts.Add("separator");
+		outParts.Add("frame-edge");
+		outParts.Add("ruler");
+		outParts.Add("tick");
+		outParts.Add("frame");
+		outParts.Add("header");
+		outParts.Add("fit");
+		outParts.Add("fold");
+		outParts.Add("lane-name");
+		outParts.Add("gpu-name");
+		outParts.Add("bar");
+		outParts.Add("hover");
+		outParts.Add("chosen");
+		outParts.Add("hatch");
+		outParts.Add("activity");
+		outParts.Add("span");
+		outParts.Add("span-edge");
+		outParts.Add("span-head");
+	}
 	public this()
 	{
 		Tag = "profiletimeline";
