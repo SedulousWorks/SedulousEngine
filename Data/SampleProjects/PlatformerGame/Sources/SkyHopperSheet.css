@@ -1,0 +1,162 @@
+/* Sky Hopper's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): cloud islands.
+   Every screen floats in the game's blue sky on white cloud cards with a sky-blue edge and a soft
+   drop shadow; headlines are the deep blue of the zenith, the main button and whatever a key or pad
+   has focused are coin gold (focus as loud as hover: the menus are driven by keys and pads), and
+   the final win is edged in gold. Its screens are Title, Intro, Hud, Pause, Settings, LevelClear,
+   GameOver, Victory and Fade (PlatformerGame.as pushes them); its icons are the project's SVGs
+   (UI/Icons), drawn in their own colours.
+
+   The palette: cloud #FFFFFF, mist #EAF4FF, sky #4DA3EE, deep sky #1F5FAF, ink #233249, soft ink
+   #5A6B85, coin gold #FFC93C (deep gold #D99A00). */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+screen.fades:entering { animation: fade-in 0.3s ease-out; }
+screen.pops:entering { animation: pop-in 0.35s ease-out-back; }
+
+label { color: #233249; }
+.lilita { font-family: "Lilita One"; }
+
+/* ---- the sky behind a screen, and the clouds on it ---- */
+
+.veil { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; padding: 32px;
+        background-color: rgba(31, 95, 175, 0.25); }
+.veil.heavy { background-color: rgba(31, 95, 175, 0.45); }
+.centre { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; padding: 32px; }
+.cloud { flex-direction: column; align-items: center; background-color: #FFFFFF; border: 3px solid #4DA3EE;
+         border-radius: 24px; box-shadow: 0 6px 16px rgba(31, 95, 175, 0.35); }
+.cloud.gold { border: 4px solid #FFC93C; box-shadow: 0 6px 16px rgba(217, 154, 0, 0.4); }
+
+.headline { color: #1F5FAF; }
+.headline-gold { color: #D99A00; }
+.body { color: #233249; }
+.note { color: #5A6B85; }
+
+/* An icon: the SVG in its own colours, at its box's size. */
+.icon { flex-shrink: 0; }
+.icon-24 { width: 24px; height: 24px; }
+.icon-26 { width: 26px; height: 26px; }
+.icon-28 { width: 28px; height: 28px; }
+.icon-30 { width: 30px; height: 30px; }
+
+/* ---- buttons: cloud pills with a sky edge; the main one coin gold ---- */
+
+button { height: 46px; font-size: 20px; color: #1F5FAF; background-color: #FFFFFF; border: 2px solid #4DA3EE;
+         border-radius: 22px; padding: 6px 18px; box-shadow: 0 3px 8px rgba(31, 95, 175, 0.3); }
+button:hover { background-color: #EAF4FF; border: 3px solid #1F5FAF; }
+button:active { background-color: #D6E9FF; border: 3px solid #1F5FAF; }
+button:focus-visible { background-color: #FFE58A; border: 3px solid #1F5FAF; }
+button:disabled { background-color: #EEF2F7; border: 2px solid #B5C2D3; }
+button.primary { color: #233249; background-color: #FFC93C; border: 2px solid #D99A00;
+                 box-shadow: 0 3px 8px rgba(181, 127, 0, 0.45); }
+button.primary:hover { background-color: #FFD766; border: 3px solid #D99A00; }
+button.primary:active { background-color: #F2B416; border: 3px solid #B57F00; }
+button.primary:focus-visible { background-color: #FFC93C; border: 4px solid #1F5FAF; }
+button.primary:disabled { background-color: #E9D9A8; border: 2px solid #C9B276; }
+button.big { height: 52px; font-size: 24px; }
+
+.menu { flex-direction: column; align-items: stretch; gap: 12px; width: 280px; }
+
+/* ---- the title ---- */
+
+.title-card { padding: 24px; gap: 4px; }
+.title-name { font-size: 84px; }
+.tagline { font-size: 20px; margin-bottom: 6px; }
+.title-tally { flex-direction: row; align-items: center; gap: 8px; }
+.title-count { font-size: 22px; }
+.title-best { margin-left: 16px; }
+.title-menu { margin-top: 36px; margin-bottom: 28px; }
+.hint-card { padding: 8px; }
+.hint { font-size: 14px; }
+
+/* ---- a level's intro ---- */
+
+.intro-card { padding: 28px; gap: 6px; }
+.intro-number { font-size: 22px; }
+.intro-name { font-size: 46px; margin-bottom: 14px; }
+.intro-prompt { font-size: 18px; }
+
+/* ---- the cards (pause, settings, the clear, game over, the win) ---- */
+
+.card { padding: 32px; }
+.card-title { font-size: 40px; margin-bottom: 22px; }
+.pause-menu { gap: 8px; width: 260px; }
+.pause-menu button { height: 44px; }
+
+/* ---- the settings' volume sliders: a misty groove, a sky fill, a cloud thumb ---- */
+
+.volumes { flex-direction: column; gap: 14px; }
+.volume-row { flex-direction: row; align-items: center; gap: 16px; }
+.volume-name { width: 110px; font-size: 20px; }
+.volume-value { width: 60px; font-size: 18px; }
+slider.volume { width: 260px; height: 28px; }
+slider::track { background-color: #EAF4FF; border: 2px solid #4DA3EE; border-radius: 5px; height: 10px; }
+slider::fill { background-color: #4DA3EE; border-radius: 5px; }
+slider::thumb { background-color: #FFFFFF; border: 2px solid #1F5FAF; border-radius: 12px; width: 24px; }
+slider:hover::thumb { background-color: #EAF4FF; border: 3px solid #1F5FAF; }
+slider:focus-visible::thumb { background-color: #FFC93C; border: 3px solid #1F5FAF; }
+slider::focus { opacity: 0; } /* the focused thumb is marked by its colour, as every focused control is: no ring as well */
+button.back { width: 220px; height: 44px; margin-top: 26px; }
+.settings-hint { font-size: 14px; margin-top: 14px; }
+
+/* ---- the HUD: cloud pills at the top of the sky ---- */
+
+.hud-screen { flex-grow: 1; flex-direction: row; justify-content: space-between; align-items: start; padding: 18px;
+              pointer-events: none; }
+.hud { background-color: #FFFFFF; border: 3px solid #4DA3EE; border-radius: 20px;
+       box-shadow: 0 4px 10px rgba(31, 95, 175, 0.3); padding: 10px; }
+.hud-row { flex-direction: row; align-items: center; gap: 8px; }
+.hud-gap { margin-left: 10px; }
+.hud-number { font-size: 24px; }
+.hud-clock { font-size: 22px; }
+.hud-gem { opacity: 0; } /* until the level's gem is found */
+.hud-coins { color: #D99A00; }
+.hud-value { color: #233249; }
+.hud-level { font-size: 18px; color: #1F5FAF; margin-right: 8px; white-space: pre; }
+.hud-right { flex-direction: column; align-items: end; gap: 2px; }
+.hud-score-card { min-width: 96px; align-items: end; }
+.hud-score { font-size: 28px; color: #1F5FAF; }
+/* A gain floating up from the score: gold for points, red for a life. */
+.popup { font-size: 26px; color: #FFC93C; opacity: 0; }
+.popup-life { font-size: 26px; color: #EF4444; opacity: 0; }
+
+/* ---- the level clear: the stars, then the tally ---- */
+
+.clear-card { gap: 8px; }
+.clear-title { font-size: 44px; }
+.stars { flex-direction: row; align-items: center; gap: 14px; margin-bottom: 6px; }
+.star { flex-direction: column; align-items: center; gap: 2px; }
+.star-slot { flex-shrink: 0; }
+.star-56 { width: 56px; height: 56px; }
+.star-64 { width: 64px; height: 64px; }
+.star-icon { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.star-filled { opacity: 0; } /* until the game fills it */
+.star-caption { font-size: 13px; }
+.tally-row { flex-direction: row; justify-content: space-between; align-items: center; width: 340px; opacity: 0; }
+.tally-name { font-size: 18px; color: #5A6B85; }
+.tally-value { font-size: 18px; color: #233249; white-space: pre; }
+.rule { width: 340px; height: 3px; background-color: #4DA3EE; border-radius: 1px; }
+.tally-total-row { flex-direction: row; justify-content: space-between; align-items: center; width: 340px; }
+.total-name { font-size: 24px; }
+.tally-total { font-size: 30px; color: #1F5FAF; }
+.best { color: #D99A00; }
+.clear-best { font-size: 20px; }
+.clear-next { font-size: 16px; margin-top: 4px; white-space: pre; }
+
+/* ---- the game over and the win ---- */
+
+.end-card { padding: 40px; gap: 8px; }
+.end-title { font-size: 56px; }
+.end-line { font-size: 18px; white-space: pre; }
+.end-score-row { flex-direction: row; align-items: center; gap: 8px; }
+.end-score-name { font-size: 20px; }
+.end-score { font-size: 34px; }
+.end-best { font-size: 18px; }
+.end-menu { margin-top: 18px; gap: 10px; }
+.victory-score { font-size: 40px; }
+.victory-stars { font-size: 24px; }
+.victory-best { font-size: 20px; }
+
+/* ---- the black between scenes ---- */
+
+.fade { flex-grow: 1; background-color: #000000; opacity: 0; pointer-events: none; }

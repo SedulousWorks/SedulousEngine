@@ -20,15 +20,17 @@
 // ends the level ("GoalReached"). In a run the scene bus IS the run bus, so all of them reach
 // this class.
 
-Guid kHudDoc = Guid::FromString("b8fe2b54-f4d3-7646-bab4-dd6f4583065b");     // UI/Hud
-Guid kTitleDoc = Guid::FromString("7e57a0b4-cb4c-a048-8a90-9bbdaac084bf");   // UI/Title
-Guid kIntroDoc = Guid::FromString("7d9ecf53-9d4a-934b-85d8-579d68267f46");   // UI/Intro
-Guid kPauseDoc = Guid::FromString("6515a579-9cb8-b348-9434-826c90022af2");   // UI/Pause
-Guid kClearDoc = Guid::FromString("7421e5ab-e8ca-5c46-9312-e24ad88a4b30");   // UI/LevelClear
-Guid kVictoryDoc = Guid::FromString("91aaa0a4-e496-994d-a0df-4e0c0759503e"); // UI/Victory
-Guid kFadeDoc = Guid::FromString("6b9fdabc-5904-d541-a066-5cce39d30cef");    // UI/Fade
-Guid kSettingsDoc = Guid::FromString("a4bb594a-8f56-ab40-ac66-ee4142b28bde"); // UI/Settings
-Guid kGameOverDoc = Guid::FromString("be8a7e3b-28e6-e24e-845e-c39727ca0e09"); // UI/GameOver
+// The screens, on the engine GUI (Tools/ui, imported by Tools/importui.py): their documents by asset
+// id, as importui.py made them (a re-import keeps them).
+const string kHudDoc = "{e09972b0-43f3-034d-9760-b3f74dcf11ad}";
+const string kTitleDoc = "{5fd73dbe-154b-db49-8901-6ce2c3b20a02}";
+const string kIntroDoc = "{a5c33950-5d25-514a-ac27-86c20e332525}";
+const string kPauseDoc = "{bdc6be12-9060-8042-bf90-2946b0423368}";
+const string kClearDoc = "{bc75d2d9-8afe-7f4a-a5b0-bbdb84695c53}";
+const string kVictoryDoc = "{b64e0bde-4209-304d-a9ab-8d9fc79d3e67}";
+const string kFadeDoc = "{f41b5031-33c0-d142-8f7b-24950e820278}";
+const string kSettingsDoc = "{d9a81097-a913-b84d-8b2f-73d02e45cc44}";
+const string kGameOverDoc = "{824cdd2c-b9b9-d94d-bdd2-5b628b5131b8}";
 
 Guid kLevel1 = Guid::FromString("d54b3804-21ff-724a-a076-4e971ef6b238");     // Scenes/Level1
 Guid kLevel2 = Guid::FromString("d56e307e-8751-4241-a1ff-565b483b2cf1");     // Scenes/Level2
@@ -63,6 +65,44 @@ const float kFadeSeconds = 0.45f;
 const float kDyingSeconds = 1.1f;
 /// How long the clear card waits once its tally is done before the next level comes on its own.
 const float kClearHoldSeconds = 4.0f;
+
+ScreenStack@ screens() { return ScreenStack::Of(Gui.Root().Find("screens")); }
+// The top screen first: one just cleared or popped away is still in the tree while its exit plays,
+// with the same ids, and would be found first. Null when there is none: a level's coins and
+// enemies report while the title is up, before there is a HUD.
+Node@ find(string id)
+{
+	Screen@ top = screens().Top;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+void wire(string id, string event, EventHandler@ handler) { find(id).On(event, handler); } // `on*` names are the engine's handlers
+void setText(string id, string text)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		Label::Of(n).Text = text;
+	}
+}
+// Shown or hidden at once (the sheet starts what waits for its moment at opacity 0).
+void show(string id, bool shown)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		n.Tween("opacity", shown ? "1" : "0", 0.0f, "linear"); // a tween of no length replaces the last
+	}
+}
+// Grows to `scale` and back over `seconds`: a counter that just changed.
+void pulse(string id, float scale, float seconds)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		n.Tween("transform", "scale(" + scale + ")", seconds * 0.5f, "ease-out").From("scale(1)").Repeats(2).PingPong();
+	}
+}
 
 Guid levelScene(int index)
 {
@@ -139,7 +179,7 @@ class Game
 	private int m_nextLevel = 0;
 	/// The phase a fade in reveals.
 	private Phase m_afterFade = Phase::Intro;
-	private UIView m_fade;
+	private Node@ m_fade;
 	/// The track playing: 0 none, 1 the menu's, 2 + n level n's. A track asked for again keeps
 	/// playing rather than restarting.
 	private int m_track = 0;
@@ -199,14 +239,14 @@ class Game
 		case Phase::FadingIn:
 			if (m_timer >= kFadeSeconds)
 			{
-				Ui.Pop(); // the fade layer, on top since the fade began
+				screens().Pop(); // the fade layer, on top since the fade began
 				enter(m_afterFade);
 				if (m_afterFade == Phase::Intro)
 				{
 					// The level's card drops in from above and settles with a bounce.
-					UIView card = Ui.Find("intro-card");
-					card.MoveTo(0.0f, 0.0f, 0.55f, Ease::OutBack);
-					card.FadeTo(1.0f, 0.25f);
+					Node@ card = find("intro-card");
+					card.Tween("transform", "translateY(0px)", 0.55f, "ease-out-back").From("translateY(-260px)");
+					card.Tween("opacity", "1", 0.25f, "linear").From("0");
 				}
 			}
 			break;
@@ -215,14 +255,14 @@ class Game
 			// never sees it and does not jump the moment play starts.
 			if (Input.WasReleased("Jump"))
 			{
-				Ui.Pop(); // the intro banner
+				screens().Pop(); // the intro banner
 				Run.TimeScale = 1.0f;
 				enter(Phase::Playing);
 			}
 			break;
 		case Phase::Playing:
 			m_time += dt;
-			Ui.FindLabel("hud-time").SetText(clock(m_time));
+			setText("hud-time", clock(m_time));
 			rollScore(real, m_score + levelPoints());
 			if (Input.WasPressed("Pause"))
 			{
@@ -239,13 +279,13 @@ class Game
 		case Phase::Settings:
 			if (Input.WasPressed("Pause"))
 			{
-				onSettingsBack();
+				settingsBack();
 			}
 			break;
 		case Phase::Paused:
 			if (Input.WasPressed("Pause"))
 			{
-				onResume();
+				resume();
 			}
 			break;
 		case Phase::Cleared:
@@ -259,7 +299,7 @@ class Game
 
 	void exit()
 	{
-		Ui.Clear();
+		screens().Clear();
 	}
 
 	// ---- run events ----
@@ -277,7 +317,7 @@ class Game
 		}
 		m_coins += value;
 		popup("+" + (value * kCoinPoints));
-		Ui.Find("hud-coin").Pulse(1.35f, 0.25f);
+		pulse("hud-coin", 1.35f, 0.25f);
 		m_lifeCoins += value;
 		if (m_lifeCoins >= kCoinsPerLife)
 		{
@@ -306,11 +346,12 @@ class Game
 		}
 		m_gem = true;
 		popup("+" + kGemPoints);
-		UIView gem = Ui.Find("hud-gem");
-		gem.SetVisible(true);
-		gem.SetScale(0.0f);
-		gem.ScaleTo(1.0f, 0.45f, Ease::OutBack);
-		refreshHud();
+		refreshHud(); // shows it
+		Node@ gem = find("hud-gem");
+		if (gem !is null)
+		{
+			gem.Tween("transform", "scale(1)", 0.45f, "ease-out-back").From("scale(0)");
+		}
 	}
 
 	void onLifeCollected(int count)
@@ -330,8 +371,7 @@ class Game
 		}
 		m_falls += 1;
 		m_lives -= 1;
-		UIView heart = Ui.Find("hud-heart");
-		heart.Pulse(0.6f, 0.35f); // the heart shrinks and comes back: a life gone
+		pulse("hud-heart", 0.6f, 0.35f); // the heart shrinks and comes back: a life gone
 		refreshHud();
 		if (m_lives <= 0)
 		{
@@ -375,94 +415,114 @@ class Game
 		m_allFalls += m_falls;
 		m_allTime += m_time;
 		Audio.PlayOneShot(kClearJingle);
-		UIScreen s = Ui.Push(kClearDoc);
-		s.FindLabel("star-3-caption").SetText("Under " + clock(par));
-		s.FindLabel("tally-total").SetText("0");
-		s.FindLabel("clear-best").SetText("");
-		s.FindLabel("clear-next").SetText("");
+		screens().Push(kClearDoc);
+		setText("star-3-caption", "Under " + clock(par));
+		setText("tally-total", "0");
+		setText("clear-best", "");
+		setText("clear-next", "");
 		m_tallyStep = 0;
 		m_tallyDone = false;
 		enter(Phase::Cleared);
 	}
 
-	// ---- buttons ----
-	void onPlay()
+	// ---- buttons (a GUI event's handlers; what they do, the flow below runs too) ----
+	bool onPlay(GuiEvent@ e)
 	{
 		click();
 		startRun();
+		return true;
 	}
 
 	/// The volumes, on the audio buses the player saves when it exits, so a change made
 	/// here is there next time without the game storing anything itself.
-	void onSettings()
+	bool onSettings(GuiEvent@ e)
 	{
 		click();
-		UIScreen s = Ui.Push(kSettingsDoc);
-		bindVolume(s, "master", AudioBus::Master, ScriptCallback(this.onMasterChanged));
-		bindVolume(s, "music", AudioBus::Music, ScriptCallback(this.onMusicChanged));
-		bindVolume(s, "effects", AudioBus::Effects, ScriptCallback(this.onEffectsChanged));
-		s.FindButton("settings-back-btn").OnClick(ScriptCallback(this.onSettingsBack));
+		screens().Push(kSettingsDoc);
+		bindVolume("master", AudioBus::Master, EventHandler(this.onMasterChanged));
+		bindVolume("music", AudioBus::Music, EventHandler(this.onMusicChanged));
+		bindVolume("effects", AudioBus::Effects, EventHandler(this.onEffectsChanged));
+		wire("settings-back-btn", "click", EventHandler(this.onSettingsBack));
 		enter(Phase::Settings);
+		return true;
 	}
 
-	void onSettingsBack()
+	bool onSettingsBack(GuiEvent@ e)
 	{
-		click();
-		Ui.Pop(); // the settings screen; the title is under it
-		enter(Phase::Title);
+		settingsBack();
+		return true;
 	}
 
-	void onMasterChanged()
+	bool onMasterChanged(GuiEvent@ e)
 	{
 		volumeChanged("master", AudioBus::Master);
+		return true;
 	}
 
-	void onMusicChanged()
+	bool onMusicChanged(GuiEvent@ e)
 	{
 		volumeChanged("music", AudioBus::Music);
+		return true;
 	}
 
-	void onEffectsChanged()
+	bool onEffectsChanged(GuiEvent@ e)
 	{
 		volumeChanged("effects", AudioBus::Effects);
 		click(); // hear the level being set; the music is heard anyway
+		return true;
 	}
 
-	void onQuit()
+	bool onQuit(GuiEvent@ e)
 	{
 		click();
 		Run.RequestExit(0);
+		return true;
 	}
 
-	void onResume()
+	bool onResume(GuiEvent@ e)
 	{
-		click();
-		Ui.Pop(); // the pause menu
-		Run.TimeScale = 1.0f;
-		enter(Phase::Playing);
+		resume();
+		return true;
 	}
 
 	/// From the pause menu: the level again from its start, with the score it started with and
 	/// the lives left now (a restart is no way to win lives back).
-	void onRestart()
+	bool onRestart(GuiEvent@ e)
 	{
 		click();
 		fadeToLevel(m_level);
+		return true;
 	}
 
-	void onRetry()
+	bool onRetry(GuiEvent@ e)
 	{
 		click();
 		startRun();
+		return true;
 	}
 
-	void onQuitToTitle()
+	bool onQuitToTitle(GuiEvent@ e)
 	{
 		click();
 		fadeToTitle();
+		return true;
 	}
 
 	// ---- the flow ----
+	private void settingsBack()
+	{
+		click();
+		screens().Pop(); // the settings screen; the title is under it
+		enter(Phase::Title);
+	}
+
+	private void resume()
+	{
+		click();
+		screens().Pop(); // the pause menu
+		Run.TimeScale = 1.0f;
+		enter(Phase::Playing);
+	}
 	private void enter(Phase phase)
 	{
 		m_phase = phase;
@@ -484,47 +544,47 @@ class Game
 	}
 
 	/// A bound volume row: its slider at the bus's level, its readout, and the handler.
-	private void bindVolume(UIScreen s, string row, AudioBus bus, ScriptCallback@ handler)
+	private void bindVolume(string row, AudioBus bus, EventHandler@ handler)
 	{
-		UISlider slider = s.FindSlider(row + "-slider");
-		slider.SetValue(Audio.BusVolume(bus));
-		showVolume(row, slider.Value);
-		slider.OnChanged(handler);
+		Slider@ slider = Slider::Of(find(row + "-slider"));
+		slider.Value = Audio.BusVolume(bus);
+		showVolume(row, float(slider.Value));
+		wire(row + "-slider", "input", handler); // each step as the slider moves
 	}
 
 	private void volumeChanged(string row, AudioBus bus)
 	{
-		float level = Ui.FindSlider(row + "-slider").Value;
+		float level = float(Slider::Of(find(row + "-slider")).Value);
 		Audio.SetBusVolume(bus, level);
 		showVolume(row, level);
 	}
 
 	private void showVolume(string row, float level)
 	{
-		Ui.FindLabel(row + "-value").SetText("" + int(level * 100.0f + 0.5f) + "%");
+		setText(row + "-value", "" + int(level * 100.0f + 0.5f) + "%");
 	}
 
 	private void showTitle()
 	{
 		music(1);
-		Ui.Clear();
-		UIScreen s = Ui.Push(kTitleDoc);
-		s.FindButton("play-btn").OnClick(ScriptCallback(this.onPlay));
-		s.FindButton("settings-btn").OnClick(ScriptCallback(this.onSettings));
-		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));
-		s.FindLabel("title-stars").SetText("" + savedStars() + " / " + (kLevelCount * 3));
+		screens().Clear();
+		screens().Push(kTitleDoc);
+		wire("play-btn", "click", EventHandler(this.onPlay));
+		wire("settings-btn", "click", EventHandler(this.onSettings));
+		wire("quit-btn", "click", EventHandler(this.onQuit));
+		setText("title-stars", "" + savedStars() + " / " + (kLevelCount * 3));
 		int best = Save.GetInt("best.run", 0);
-		s.FindLabel("title-best").SetText(best > 0 ? "Best " + points(best) : "");
+		setText("title-best", best > 0 ? "Best " + points(best) : "");
 		enter(Phase::Title);
 	}
 
 	private void pause()
 	{
 		Run.TimeScale = 0.0f;
-		UIScreen s = Ui.Push(kPauseDoc);
-		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
-		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRestart));
-		s.FindButton("title-btn").OnClick(ScriptCallback(this.onQuitToTitle));
+		screens().Push(kPauseDoc);
+		wire("resume-btn", "click", EventHandler(this.onResume));
+		wire("restart-btn", "click", EventHandler(this.onRestart));
+		wire("title-btn", "click", EventHandler(this.onQuitToTitle));
 		enter(Phase::Paused);
 	}
 
@@ -533,27 +593,27 @@ class Game
 		Run.TimeScale = 0.0f;
 		int total = m_score + levelPoints();
 		bool best = saveRun(total);
-		UIScreen s = Ui.Push(kGameOverDoc);
-		s.FindLabel("gameover-reached").SetText("Reached level " + (m_level + 1) + ", " + levelName(m_level));
-		s.FindLabel("gameover-score").SetText(points(total));
-		s.FindLabel("gameover-best").SetText(best ? "New best run!" : "Best " + points(Save.GetInt("best.run", 0)));
-		s.FindButton("gameover-retry-btn").OnClick(ScriptCallback(this.onRetry));
-		s.FindButton("gameover-title-btn").OnClick(ScriptCallback(this.onQuitToTitle));
+		screens().Push(kGameOverDoc);
+		setText("gameover-reached", "Reached level " + (m_level + 1) + ", " + levelName(m_level));
+		setText("gameover-score", points(total));
+		setText("gameover-best", best ? "New best run!" : "Best " + points(Save.GetInt("best.run", 0)));
+		wire("gameover-retry-btn", "click", EventHandler(this.onRetry));
+		wire("gameover-title-btn", "click", EventHandler(this.onQuitToTitle));
 		enter(Phase::GameOver);
 	}
 
 	private void showVictory()
 	{
-		Ui.Pop(); // the clear card
+		screens().Pop(); // the clear card
 		Audio.PlayOneShot(kVictoryJingle);
 		bool best = saveRun(m_score);
-		UIScreen s = Ui.Push(kVictoryDoc);
-		s.FindLabel("victory-summary").SetText("Coins " + m_allCoins + " / " + m_allCoinTotal + "    Falls "
+		screens().Push(kVictoryDoc);
+		setText("victory-summary", "Coins " + m_allCoins + " / " + m_allCoinTotal + "    Falls "
 			+ m_allFalls + "    Time " + clock(m_allTime));
-		s.FindLabel("victory-score").SetText(points(m_score));
-		s.FindLabel("victory-stars").SetText("" + m_runStars + " / " + (kLevelCount * 3));
-		s.FindLabel("victory-best").SetText(best ? "New best run!" : "Best " + points(Save.GetInt("best.run", 0)));
-		s.FindButton("victory-title-btn").OnClick(ScriptCallback(this.onQuitToTitle));
+		setText("victory-score", points(m_score));
+		setText("victory-stars", "" + m_runStars + " / " + (kLevelCount * 3));
+		setText("victory-best", best ? "New best run!" : "Best " + points(Save.GetInt("best.run", 0)));
+		wire("victory-title-btn", "click", EventHandler(this.onQuitToTitle));
 		enter(Phase::Victory);
 	}
 
@@ -577,16 +637,16 @@ class Game
 		{
 			return;
 		}
-		UIScreen s = Ui.Push(kFadeDoc);
-		m_fade = s.Find("fade");
-		m_fade.FadeTo(1.0f, kFadeSeconds);
+		screens().Push(kFadeDoc);
+		@m_fade = find("fade");
+		m_fade.Tween("opacity", "1", kFadeSeconds, "linear").From("0");
 		enter(Phase::FadingOut);
 	}
 
 	/// Under the black: the new scene and its screens, then the black fades away.
 	private void arrive()
 	{
-		Ui.Clear();
+		screens().Clear();
 		Run.TimeScale = 0.0f;
 		if (m_toTitle)
 		{
@@ -606,21 +666,18 @@ class Game
 			Run.LoadScene(levelScene(m_level));
 			m_track = 0; // the level's music from its start, at full volume after a game over
 			music(2 + m_level);
-			Ui.Push(kHudDoc);
+			screens().Push(kHudDoc);
 			m_shownScore = float(m_score);
 			refreshHud();
-			UIScreen intro = Ui.Push(kIntroDoc);
-			intro.FindLabel("intro-number").SetText("Level " + (m_level + 1));
-			intro.FindLabel("intro-name").SetText(levelName(m_level));
-			UIView card = intro.Find("intro-card"); // above, waiting for the fade to clear
-			card.SetTranslation(0.0f, -260.0f);
-			card.SetOpacity(0.0f);
+			screens().Push(kIntroDoc);
+			setText("intro-number", "Level " + (m_level + 1));
+			setText("intro-name", levelName(m_level));
+			show("intro-card", false); // waiting above for the fade to clear
 			m_afterFade = Phase::Intro;
 		}
-		UIScreen s = Ui.Push(kFadeDoc);
-		m_fade = s.Find("fade");
-		m_fade.SetOpacity(1.0f);
-		m_fade.FadeTo(0.0f, kFadeSeconds);
+		screens().Push(kFadeDoc);
+		@m_fade = find("fade");
+		m_fade.Tween("opacity", "0", kFadeSeconds, "linear").From("1");
 		enter(Phase::FadingIn);
 	}
 
@@ -654,8 +711,7 @@ class Game
 		}
 		bool more = m_level + 1 < kLevelCount;
 		int left = int(kClearHoldSeconds - m_timer + 0.999f);
-		Ui.FindLabel("clear-next").SetText((more ? "Next level in " : "Results in ") + left
-			+ "    (Space or A to go on)");
+		setText("clear-next", (more ? "Next level in " : "Results in ") + left + "    (Space or A to go on)");
 		if (m_timer >= kClearHoldSeconds || Input.WasPressed("Jump"))
 		{
 			if (more)
@@ -701,27 +757,26 @@ class Game
 				key = "flawless";
 				value = (m_flawless > 0) ? "+" + points(m_flawless) : "-";
 			}
-			UIView row = Ui.Find("tally-" + key + "-row");
-			row.SetVisible(true);
-			UILabel label = Ui.FindLabel("tally-" + key);
-			label.SetText(value);
-			if (!quiet)
+			setText("tally-" + key, value);
+			Node@ row = find("tally-" + key + "-row");
+			if (quiet)
 			{
-				row.SetOpacity(0.0f);
-				row.FadeTo(1.0f, 0.2f);
-				row.SetTranslation(-24.0f, 0.0f);
-				row.MoveTo(0.0f, 0.0f, 0.25f, Ease::Out);
+				show("tally-" + key + "-row", true);
+			}
+			else if (row !is null)
+			{
+				row.Tween("opacity", "1", 0.2f, "linear").From("0");
+				row.Tween("transform", "translateX(0px)", 0.25f, "ease-out").From("translateX(-24px)");
 				Audio.PlayOneShot(kChime, AudioBus::Effects, 0.35f, 0.9f + 0.08f * float(step));
 			}
 			return;
 		}
 		if (step == 5)
 		{
-			UILabel total = Ui.FindLabel("tally-total");
-			total.SetText(points(m_levelScore));
+			setText("tally-total", points(m_levelScore));
 			if (!quiet)
 			{
-				total.Pulse(1.4f, 0.35f);
+				pulse("tally-total", 1.4f, 0.35f);
 			}
 			return;
 		}
@@ -730,14 +785,11 @@ class Game
 		{
 			return;
 		}
-		UIView filled = Ui.Find("star-" + star);
-		filled.SetVisible(true);
-		if (!quiet)
+		show("star-" + star, true);
+		Node@ filled = find("star-" + star);
+		if (!quiet && filled !is null)
 		{
-			filled.SetScale(0.0f);
-			filled.ScaleTo(1.0f, 0.4f, Ease::OutBack);
-			filled.SetRotation(-40.0f);
-			filled.RotateTo(0.0f, 0.4f, Ease::Out);
+			filled.Tween("transform", "scale(1) rotate(0deg)", 0.4f, "ease-out-back").From("scale(0) rotate(-40deg)");
 			Audio.PlayOneShot(kChime, AudioBus::Effects, 0.7f, 1.0f + 0.15f * float(star));
 			Input.Rumble(0.0f, 0.3f, 0.06f);
 		}
@@ -746,16 +798,18 @@ class Game
 	private void finishTally()
 	{
 		m_tallyDone = true;
-		UILabel best = Ui.FindLabel("clear-best");
 		if (m_newBest)
 		{
-			best.SetText("New best!");
-			best.SetScale(0.0f);
-			best.ScaleTo(1.0f, 0.4f, Ease::OutBack);
+			setText("clear-best", "New best!");
+			Node@ best = find("clear-best");
+			if (best !is null)
+			{
+				best.Tween("transform", "scale(1)", 0.4f, "ease-out-back").From("scale(0)");
+			}
 		}
 		else
 		{
-			best.SetText("Best " + points(Save.GetInt("best.score." + m_level, 0)));
+			setText("clear-best", "Best " + points(Save.GetInt("best.score." + m_level, 0)));
 		}
 		enter(Phase::Cleared); // the hold before the next level starts now
 	}
@@ -851,13 +905,8 @@ class Game
 		{
 			m_lives += 1;
 		}
-		UILabel up = Ui.FindLabel("hud-life-popup");
-		up.SetVisible(true);
-		up.SetOpacity(1.0f);
-		up.SetTranslation(0.0f, 0.0f);
-		up.MoveTo(0.0f, -26.0f, 0.9f, Ease::Out);
-		up.FadeTo(0.0f, 0.9f, Ease::In);
-		Ui.Find("hud-heart").Pulse(1.5f, 0.4f);
+		rise("hud-life-popup", 26.0f, 0.9f);
+		pulse("hud-heart", 1.5f, 0.4f);
 		refreshHud();
 	}
 
@@ -870,13 +919,19 @@ class Game
 	/// A gain floating up from the score.
 	private void popup(string text)
 	{
-		UILabel pop = Ui.FindLabel("hud-popup");
-		pop.SetText(text);
-		pop.SetVisible(true);
-		pop.SetOpacity(1.0f);
-		pop.SetTranslation(0.0f, 0.0f);
-		pop.MoveTo(0.0f, -22.0f, 0.7f, Ease::Out);
-		pop.FadeTo(0.0f, 0.7f, Ease::In);
+		setText("hud-popup", text);
+		rise("hud-popup", 22.0f, 0.7f);
+	}
+
+	/// A label rising `height` pixels from its place as it fades away.
+	private void rise(string id, float height, float seconds)
+	{
+		Node@ n = find(id);
+		if (n !is null)
+		{
+			n.Tween("transform", "translateY(" + (-height) + "px)", seconds, "ease-out").From("translateY(0px)");
+			n.Tween("opacity", "0", seconds, "ease-in").From("1");
+		}
 	}
 
 	/// The HUD's score rolls up toward `goal`, quickly for a big gain.
@@ -889,22 +944,21 @@ class Game
 		}
 		float step = (target - m_shownScore) * 8.0f * real + 40.0f * real;
 		m_shownScore = (m_shownScore + step > target) ? target : m_shownScore + step;
-		UILabel score = Ui.FindLabel("hud-score");
-		score.SetText(points(int(m_shownScore)));
+		setText("hud-score", points(int(m_shownScore)));
 		if (m_shownScore >= target)
 		{
-			score.Pulse(1.2f, 0.2f);
+			pulse("hud-score", 1.2f, 0.2f);
 		}
 	}
 
 	private void refreshHud()
 	{
-		Ui.FindLabel("hud-lives").SetText("x " + m_lives);
-		Ui.FindLabel("hud-coins").SetText("" + m_coins + " / " + m_coinTotal);
-		Ui.FindLabel("hud-time").SetText(clock(m_time));
-		Ui.FindLabel("hud-level").SetText("" + (m_level + 1) + "  " + levelName(m_level));
-		Ui.FindLabel("hud-score").SetText(points(int(m_shownScore)));
-		Ui.Find("hud-gem").SetVisible(m_gem);
+		setText("hud-lives", "x " + m_lives);
+		setText("hud-coins", "" + m_coins + " / " + m_coinTotal);
+		setText("hud-time", clock(m_time));
+		setText("hud-level", "" + (m_level + 1) + "  " + levelName(m_level));
+		setText("hud-score", points(int(m_shownScore)));
+		show("hud-gem", m_gem);
 	}
 
 	private string clock(float seconds)

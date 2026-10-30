@@ -1,0 +1,62 @@
+<!-- A level's clear (PlatformerGame.as): its three stars (all the coins, no falls, under par),
+     each empty until the game fills it in turn, then the tally, a row at a time, the level's score
+     and its best, and when the next level comes. Over the level, where the confetti still flies.
+     Styled by SkyHopperSheet.css. Back (Escape, East) is the game's own Pause action. -->
+<Screen class="pops" back="none">
+  <Panel class="centre">
+    <Panel class="cloud card clear-card">
+      <Label id="clear-title" class="headline lilita clear-title" text="Level Clear!"/>
+      <Panel class="stars">
+        <Panel class="star">
+          <Panel class="star-slot star-56">
+            <Image id="star-1-empty" class="icon star-icon" src="{7d487ca8-8a05-b444-a8aa-7b3f9bb01e05}"/>
+            <Image id="star-1" class="icon star-icon star-filled" src="{b2616554-cea4-8341-b46a-d9c4941c8f51}"/>
+          </Panel>
+          <Label class="note star-caption" text="All coins"/>
+        </Panel>
+        <Panel class="star">
+          <Panel class="star-slot star-64">
+            <Image id="star-2-empty" class="icon star-icon" src="{7d487ca8-8a05-b444-a8aa-7b3f9bb01e05}"/>
+            <Image id="star-2" class="icon star-icon star-filled" src="{b2616554-cea4-8341-b46a-d9c4941c8f51}"/>
+          </Panel>
+          <Label class="note star-caption" text="No falls"/>
+        </Panel>
+        <Panel class="star">
+          <Panel class="star-slot star-56">
+            <Image id="star-3-empty" class="icon star-icon" src="{7d487ca8-8a05-b444-a8aa-7b3f9bb01e05}"/>
+            <Image id="star-3" class="icon star-icon star-filled" src="{b2616554-cea4-8341-b46a-d9c4941c8f51}"/>
+          </Panel>
+          <Label id="star-3-caption" class="note star-caption" text="Under 1:00"/>
+        </Panel>
+      </Panel>
+      <!-- The tally: each row comes in and counts up in turn, then the total. -->
+      <Panel id="tally-coins-row" class="tally-row">
+        <Label id="tally-coins-name" class="tally-name" text="Coins"/>
+        <Label id="tally-coins" class="tally-value" text=""/>
+      </Panel>
+      <Panel id="tally-stomps-row" class="tally-row">
+        <Label id="tally-stomps-name" class="tally-name" text="Stomps"/>
+        <Label id="tally-stomps" class="tally-value" text=""/>
+      </Panel>
+      <Panel id="tally-gem-row" class="tally-row">
+        <Label id="tally-gem-name" class="tally-name" text="Gem"/>
+        <Label id="tally-gem" class="tally-value" text=""/>
+      </Panel>
+      <Panel id="tally-time-row" class="tally-row">
+        <Label id="tally-time-name" class="tally-name" text="Time"/>
+        <Label id="tally-time" class="tally-value" text=""/>
+      </Panel>
+      <Panel id="tally-flawless-row" class="tally-row">
+        <Label id="tally-flawless-name" class="tally-name" text="No falls"/>
+        <Label id="tally-flawless" class="tally-value" text=""/>
+      </Panel>
+      <Panel class="rule"/>
+      <Panel class="tally-total-row">
+        <Label class="tally-name lilita total-name" text="Level score"/>
+        <Label id="tally-total" class="tally-total lilita" text="0"/>
+      </Panel>
+      <Label id="clear-best" class="best lilita clear-best" text=""/>
+      <Label id="clear-next" class="note clear-next" text=""/>
+    </Panel>
+  </Panel>
+</Screen>
