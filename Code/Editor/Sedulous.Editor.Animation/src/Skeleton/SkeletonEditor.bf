@@ -1,14 +1,15 @@
-using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Animation;
 
-/// The skeleton editor's composition: its page.
+/// The skeleton editor's composition: its page (asking for its services when it is made).
+/// Skeletons come from import: there is no creator.
 static class SkeletonEditor
 {
-	public static void Register(EditorContext context, IApplicationHost host, UIHost uiHost)
+	/// `services` is borrowed and outlives the page factory.
+	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
-		context.Pages.Register(new SkeletonPageFactory(host, uiHost));
+		context.Pages.Register(new SkeletonPageFactory(services));
 	}
 }

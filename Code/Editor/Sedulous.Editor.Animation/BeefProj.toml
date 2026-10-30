@@ -19,10 +19,17 @@ corlib = "*"
 "Sedulous.Render" = "*"
 "Sedulous.Graphics" = "*"
 "Sedulous.Engine.Render" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Toolkit" = "*"
-"Sedulous.UI.Runtime" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Toolkit" = "*"
 "Sedulous.Runtime.Client" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.Editor.Preview" = "*"
+
+# The graph page's old files (Sedulous.UI): out of the build until its parts (Raptor's layer 10,
+# parts 4 and 5).
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreFolder"
+Name = "AnimationGraph"

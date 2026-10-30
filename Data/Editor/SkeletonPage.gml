@@ -1,0 +1,55 @@
+<!--
+  The skeleton page (Raptor's editor-gui spec, 5.4, layer 10, part 3): a viewer. The kit's
+  bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page;
+  its kind at the end) over three panes: the bones as a tree with its search (a bone found keeps the
+  bones above it, so where it hangs still shows); the bind pose, the chosen bone drawn apart; the
+  grid, the chosen bone's facts and the skeleton's, read only. An asset that did not read says so
+  in place of the grid. Code puts the viewport in its stage and fills the tree and the grid.
+-->
+<Panel class="page preview-page skeleton-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.24 0.46 0.3">
+        <Panel class="panel page-pane skeleton-tree-pane">
+            <Panel class="panel-toolbar">
+                <Panel class="search">
+                    <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                    <TextField id="skeleton-search" class="search-field" placeholder="Find a bone"/>
+                </Panel>
+            </Panel>
+            <TreeView id="skeleton-tree" class="panel-body tree skeleton-tree"/>
+        </Panel>
+        <Panel class="panel page-pane preview-pane">
+            <Panel id="preview-bar" class="panel-toolbar preview-bar">
+                <ToolButton id="preview-frame" icon="Editor/Icons/frame-selection.svg" tooltip="Frame it (F)"/>
+                <Separator id="preview-own"/>
+                <Spacer/>
+                <Label id="preview-hint" class="preview-hint" text="Alt drag orbits · right drag looks, WASD flies · middle drag pans · wheel zooms"/>
+            </Panel>
+            <Panel id="preview-stage" class="preview-stage"/>
+            <Panel id="preview-empty" class="state-box preview-empty">
+                <Image class="state-icon" src="Editor/Icons/Types/SkeletonAsset.svg"/>
+                <Label id="preview-empty-title" class="state-title" text="No preview"/>
+                <Label id="preview-empty-text" class="state-text" text="The preview needs the editor's renderer."/>
+            </Panel>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

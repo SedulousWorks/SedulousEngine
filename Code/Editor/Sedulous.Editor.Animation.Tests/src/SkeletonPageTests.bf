@@ -1,14 +1,195 @@
 using System;
 using System.Collections;
+using System.IO;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Content;
 using Sedulous.Animation;
+using Sedulous.Animation.Pipeline;
 using Sedulous.Render;
+using Sedulous.GUI;
+using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Animation.Tests;
 
-/// The skeleton page's headless halves: the stats, the tree snapshot and the wireframe.
+/// The skeleton page over its markup (Data/Editor/SkeletonPage.gml) and a scratch project, without a
+/// host (no preview): the bones a tree under their parents, read from the asset; the chosen bone's
+/// facts and the skeleton's, read only; a search keeping a bone found and the bones above it; a
+/// rotation said in degrees about an axis. And the bones the previews draw.
 class SkeletonPageTests
 {
+	static bool DataRoot(String outPath)
+	{
+		var dir = GetCurrentDirectory(.. scope .());
+		for (int i < 8)
+		{
+			let data = PathJoin(dir, "Data", .. scope .());
+			if (DirectoryExists(PathJoin(data, "Editor", .. scope .())))
+			{
+				outPath.Set(data);
+				return true;
+			}
+			let parent = PathParent(dir, .. scope .());
+			if (parent == dir)
+				break;
+			dir.Set(parent);
+		}
+		return false;
+	}
+
+	static Node LoadMarkup(StringView relative)
+	{
+		let data = scope String();
+		Test.Assert(DataRoot(data));
+		let text = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(data, relative, .. scope .()), text) case .Ok);
+		RegisterGuiElements();
+		RegisterToolkitElements();
+		let elements = ElementSet.All();
+		defer delete elements;
+		let loader = scope MarkupLoader(elements);
+		return loader.LoadFromString(text);
+	}
+
+	/// A scratch project holding one skeleton: Hips (Spine, Chest under it; LegL, LegR) and a second
+	/// root, Prop.
+	private class Bed
+	{
+		public String Dir = new .("scratch_skeleton_page_project") ~ delete _;
+		public EditorProject Project;
+		public EditorContext Context = new .() ~ delete _;
+		public SkeletonEditorPage Page;
+
+		public this()
+		{
+			AnimationPipeline.RegisterAll();
+			RemoveDirectoryRecursive(Dir);
+			Test.Assert(EditorProject.Create(Dir, "P") case .Ok);
+			Project = EditorProject.Open(Dir);
+			Test.Assert(Project != null);
+			Context.SetProject(Project);
+			let instance = Project.SourceDb.RootGroup.CreateInstance("Rig", typeof(SkeletonAsset).GetFullName(.. scope .()));
+			Test.Assert(instance != null);
+			let asset = scope SkeletonAsset();
+			let source = asset.Source;
+			source.Name.Set("rig");
+			void Bone(StringView name, int32 parent, Float3 at, Quaternion turn)
+			{
+				source.BoneName.Add(new String(name));
+				source.ParentIndex.Add(parent);
+				source.Translation.Add(at);
+				source.Rotation.Add(turn);
+				source.Scale.Add(.(1.0f, 1.0f, 1.0f));
+				source.InverseBindPose.Add(.Identity());
+			}
+			Bone("Hips", -1, .(0.0f, 1.0f, 0.0f), .Identity);
+			Bone("Spine", 0, .(0.0f, 0.2f, 0.0f), Quaternion.FromAxisAngle(.(0.0f, 1.0f, 0.0f), Math.PI_f * 0.5f));
+			Bone("Chest", 1, .(0.0f, 0.25f, 0.0f), .Identity);
+			Bone("LegL", 0, .(0.1f, -0.1f, 0.0f), .Identity);
+			Bone("LegR", 0, .(-0.1f, -0.1f, 0.0f), .Identity);
+			Bone("Prop", -1, .(0.5f, 1.0f, 0.0f), .Identity);
+			Test.Assert(instance.WriteObject(asset) case .Ok);
+			let services = new AssetPageServices();
+			services.LoadMarkup = new (path) => LoadMarkup(path);
+			Page = new SkeletonEditorPage(Context, services, instance);
+			Test.Assert(!Page.LoadFailed);
+		}
+
+		public ~this()
+		{
+			delete Page;
+			Context.SetProject(null);
+			delete Project;
+			RemoveDirectoryRecursive(Dir);
+		}
+
+		/// The copies Row read (GetValue's are owned), let go with the bed.
+		private List<Sedulous.GUI.Variant> mRead = new .() ~ { for (var value in _) value.Dispose(); delete _; };
+
+		public StringView Row(StringView path)
+		{
+			let value = Page.BoneRows.GetValue(path, 0);
+			mRead.Add(value);
+			return value.AsString;
+		}
+		public String Tree(String outText)
+		{
+			Page.Tree(outText);
+			return outText;
+		}
+		public String Fact(StringView name, String outText)
+		{
+			Page.Fact(name, outText);
+			return outText;
+		}
+	}
+
+	private static String Rotation(Quaternion rotation, String outText)
+	{
+		SkeletonEditorPage.DescribeRotation(rotation, outText);
+		return outText;
+	}
+
+	[Test]
+	public static void TheBonesATreeUnderTheirParentsReadFromTheAssetItsFactsReadOnly()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Page.ShownSkeleton != null);
+		Test.Assert(bed.Tree(.. scope .()) == "Hips\n  Spine\n    Chest\n  LegL\n  LegR\nProp", bed.Tree(.. scope .()));
+		Test.Assert(bed.Fact("Bones", .. scope .()) == "6");
+		Test.Assert(bed.Fact("Roots", .. scope .()) == "2");
+		Test.Assert(bed.Fact("Deepest chain", .. scope .()) == "2 below its root");
+
+		// The first bone chosen to start; another chosen, its facts follow.
+		Test.Assert(bed.Page.ChosenBone == 0);
+		Test.Assert(bed.Row("parent") == "None: a root");
+		Test.Assert(bed.Row("children") == "3");
+		bed.Page.ChooseBone(1);
+		Test.Assert(bed.Row("name") == "Spine");
+		Test.Assert(bed.Row("index") == "1");
+		Test.Assert(bed.Row("parent") == "Hips");
+		Test.Assert(bed.Row("position") == "0, 0.2, 0", scope String(bed.Row("position")));
+		Test.Assert(bed.Row("rotation") == "90° about 0, 1, 0", scope String(bed.Row("rotation")));
+		Test.Assert(bed.Row("scale") == "1, 1, 1", scope String(bed.Row("scale")));
+		bed.Page.ChooseBone(-1);
+		Test.Assert(bed.Row("name") == "None chosen");
+		Test.Assert(bed.Row("parent").IsEmpty);
+
+		// Read only, every one of them.
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		bed.Page.BoneRows.GetProperties("", rows);
+		Test.Assert(rows.Count == 7);
+		for (let info in rows)
+			Test.Assert(info.ReadOnly);
+	}
+
+	[Test]
+	public static void ASearchKeepsABoneFoundAndTheBonesAboveIt()
+	{
+		let bed = scope Bed();
+		bed.Page.Search("leg");
+		Test.Assert(bed.Tree(.. scope .()) == "Hips\n  LegL\n  LegR");
+		bed.Page.Search("chest");
+		Test.Assert(bed.Tree(.. scope .()) == "Hips\n  Spine\n    Chest");
+		bed.Page.Search("nothing like it");
+		Test.Assert(bed.Tree(.. scope .()).IsEmpty);
+		bed.Page.Search("  ");
+		Test.Assert(bed.Tree(.. scope .()) == "Hips\n  Spine\n    Chest\n  LegL\n  LegR\nProp");
+	}
+
+	[Test]
+	public static void ARotationSaidInDegreesAboutAnAxis()
+	{
+		Test.Assert(Rotation(.Identity, .. scope .()) == "None");
+		Test.Assert(Rotation(Quaternion.FromAxisAngle(.(1.0f, 0.0f, 0.0f), Math.PI_f), .. scope .()) == "180° about 1, 0, 0");
+		// The shorter way round: -90 about +Y is 90 about -Y.
+		let turned = Rotation(Quaternion.FromAxisAngle(.(0.0f, 1.0f, 0.0f), -Math.PI_f * 0.5f), .. scope .());
+		Test.Assert(turned == "90° about 0, -1, 0", turned);
+	}
+
 	/// Root -> Spine -> Head, plus a second root; the spine rises one unit per bone.
 	private static Skeleton Rig()
 	{
@@ -26,54 +207,9 @@ class SkeletonPageTests
 		return skeleton;
 	}
 
+	// What no Raptor test covers (Sedulous's old wireframe test, on the previews' shared drawing).
 	[Test]
-	public static void StatsReportBonesRootsAndDepth()
-	{
-		let skeleton = Rig();
-		defer delete skeleton;
-		let lines = scope List<String>();
-		defer { ClearAndDeleteItems!(lines); }
-		SkeletonStats.Lines(skeleton, lines);
-		// No name: three entries.
-		Test.Assert(lines.Count == 3);
-		Test.Assert(lines[0] == "4 bones");
-		Test.Assert(lines[1] == "2 roots");
-		Test.Assert(lines[2] == "depth 2");
-	}
-
-	[Test]
-	public static void TheTreeSnapshotMirrorsTheHierarchy()
-	{
-		let skeleton = Rig();
-		defer delete skeleton;
-		let snapshot = scope SkeletonTreeSnapshot();
-		snapshot.Rebuild(skeleton);
-		Test.Assert(snapshot.Nodes.Count == 4);
-		Test.Assert(snapshot.Roots.Count == 2);
-		Test.Assert((snapshot.Roots[0] == 0) && (snapshot.Roots[1] == 3));
-		Test.Assert(snapshot.Nodes[0].Children.Count == 1 && snapshot.Nodes[0].Children[0] == 1);
-		Test.Assert(snapshot.Nodes[1].Children.Count == 1 && snapshot.Nodes[1].Children[0] == 2);
-		Test.Assert(snapshot.Nodes[2].Depth == 2);
-		Test.Assert(snapshot.Nodes[3].Depth == 0);
-		Test.Assert(snapshot.InRange(3) && !snapshot.InRange(4) && !snapshot.InRange(-1));
-
-		// The adapter walks it: roots at -1, children by index, never reorderable.
-		let adapter = scope SkeletonTreeAdapter(snapshot);
-		adapter.SetSkeleton(skeleton);
-		Test.Assert(adapter.GetChildCount(-1) == 2);
-		Test.Assert(adapter.GetChildId(-1, 1) == 3);
-		Test.Assert(adapter.GetChildId(0, 0) == 1);
-		Test.Assert(adapter.GetChildId(0, 1) == -1);
-		Test.Assert(adapter.HasChildren(1) && !adapter.HasChildren(2));
-		Test.Assert(!adapter.CanMove(0, 1));
-
-		// No product: an empty table.
-		snapshot.Rebuild(null);
-		Test.Assert(snapshot.Nodes.IsEmpty && snapshot.Roots.IsEmpty);
-	}
-
-	[Test]
-	public static void TheWireframeDrawsOneLinePerChildBoneAtWorldJoints()
+	public static void TheBonesDrawOneLinePerChildBoneAtWorldJoints()
 	{
 		let skeleton = Rig();
 		defer delete skeleton;
@@ -82,18 +218,18 @@ class SkeletonPageTests
 			poses.Add(bone.LocalBindPose);
 		let world = scope List<Float4x4>();
 		let draw = scope DebugDraw();
-		SkeletonWireframe.Draw(draw, skeleton, poses, world);
+		AnimationPreview.DrawSkeletonBones(draw, skeleton, poses, world, .Identity());
 
 		Test.Assert(world.Count == 4);
 		// Head sits two units up: the spine's unit plus its own.
-		let head = SkeletonWireframe.JointPosition(world[2]);
+		let head = AnimationPreview.JointPosition(world[2]);
 		Test.Assert(Math.Abs(head.Y - 2.0f) < 1e-4f);
 		// Two child bones give two lines; every joint a cross of three lines.
 		Test.Assert(draw.LineVertices.Length == (2 + 4 * 3) * 2);
 
 		// Too few poses: nothing drawn.
 		draw.Clear();
-		SkeletonWireframe.Draw(draw, skeleton, .(poses.Ptr, 2), world);
+		AnimationPreview.DrawSkeletonBones(draw, skeleton, .(poses.Ptr, 2), world, .Identity());
 		Test.Assert(!draw.HasAnyDraws);
 	}
 }
