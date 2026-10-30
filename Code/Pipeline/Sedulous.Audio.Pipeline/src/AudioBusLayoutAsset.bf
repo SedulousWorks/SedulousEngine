@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Audio.Pipeline;
 
 /// The mixer, as the inspector edits it.
+[DisplayName("Audio Bus Layout")]
 [Serializable]
 class AudioBusLayoutAsset : Asset
 {

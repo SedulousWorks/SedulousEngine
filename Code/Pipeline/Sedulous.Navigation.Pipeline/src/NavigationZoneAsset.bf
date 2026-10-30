@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 
@@ -12,6 +13,7 @@ namespace Sedulous.Navigation.Pipeline;
 /// keeps the two in step.
 ///
 /// Zones are authored in the scene, so the file name a plain asset carries goes unused.
+[DisplayName("Navigation Zone")]
 [Serializable]
 class NavigationZoneAsset : Asset
 {

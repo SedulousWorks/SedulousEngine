@@ -12,6 +12,7 @@ namespace Sedulous.Animation.Pipeline;
 /// address (a named root resolves against it), and the armature's rest transform (its own
 /// channels, the clip's model tracks, are turned into model space by its inverse). The importer
 /// sets both.
+[DisplayName("Animation Clip")]
 [Serializable]
 class AnimationClipAsset : Asset
 {

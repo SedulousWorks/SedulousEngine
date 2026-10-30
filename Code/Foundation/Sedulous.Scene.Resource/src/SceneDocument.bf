@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.Scene.Resource;
@@ -8,6 +9,7 @@ namespace Sedulous.Scene.Resource;
 /// Deliberately minimal: it carries the NAME so the instance materialises and can be
 /// discovered, and the world itself lives in the instance's "scene" data stream. A
 /// database browsing a thousand scenes reads a thousand names, not a thousand worlds.
+[DisplayName("Scene")] // the kind the editor names it by, as File > New does
 [Serializable]
 class SceneDocument
 {

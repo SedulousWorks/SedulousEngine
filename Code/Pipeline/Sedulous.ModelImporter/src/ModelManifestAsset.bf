@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Model.Resource;
 using Sedulous.Pipeline.Core;
@@ -11,6 +12,7 @@ namespace Sedulous.ModelImporter;
 /// The identities inside are SOURCE identities, and the cook writes the manifest through
 /// unchanged, so a source identity and its product's are the same one. That is what lets a
 /// material written at import already name the textures written beside it.
+[DisplayName("Model")]
 [Serializable]
 class ModelManifestAsset : Asset
 {

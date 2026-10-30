@@ -13,7 +13,9 @@ namespace Sedulous.Pipeline.Core;
 /// NOT serializable on its own, and deliberately. A concrete asset carries [Serializable],
 /// which walks the whole base chain, so the file name below is stored without this class
 /// declaring anything about it. A hand written body here would be a second description of the
-/// same field, and the two would drift.
+/// same field, and the two would drift. Its fields are reflected at run time, as a concrete
+/// asset's are ([Serializable]), so the editor's asset pages show the source file too.
+[Reflect(.NonStaticFields)]
 class Asset
 {
 	/// The source file, relative to the sources mount, or empty when the data is embedded.

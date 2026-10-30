@@ -2,6 +2,7 @@ using Sedulous.Core;
 using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
+using Sedulous.Geometry;
 
 namespace Sedulous.Physics.Pipeline;
 
@@ -13,8 +14,9 @@ namespace Sedulous.Physics.Pipeline;
 [Serializable]
 class CollisionShapeAsset : Asset
 {
-	/// The static mesh asset this is cooked from.
+	/// The mesh asset this is cooked from, static or skinned: its slot takes what a mesh cooks to.
 	[DisplayName("Source Mesh")]
+	[References(typeof(StaticMeshSource))]
 	public Guid SourceMesh = .Empty;
 	[DisplayName("Cook Mode")]
 	public CollisionCookKind Cook = .ConvexHull;

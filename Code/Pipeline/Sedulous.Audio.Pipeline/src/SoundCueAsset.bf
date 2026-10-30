@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 
@@ -10,6 +11,7 @@ namespace Sedulous.Audio.Pipeline;
 ///
 /// A FIXED bank of slots rather than a list, so the generic property page edits it without an
 /// array editor.
+[DisplayName("Sound Cue")]
 [Serializable]
 class SoundCueAsset : Asset
 {

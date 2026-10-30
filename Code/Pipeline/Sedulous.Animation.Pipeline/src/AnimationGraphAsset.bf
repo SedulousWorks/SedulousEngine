@@ -1,4 +1,5 @@
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Animation.Resource;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
@@ -9,6 +10,7 @@ namespace Sedulous.Animation.Pipeline;
 ///
 /// The canvas layout rides on the ASSET, not the source, so the builder cooks the source alone
 /// and no editor state reaches the runtime.
+[DisplayName("Animation Graph")]
 [Serializable]
 class AnimationGraphAsset : Asset
 {

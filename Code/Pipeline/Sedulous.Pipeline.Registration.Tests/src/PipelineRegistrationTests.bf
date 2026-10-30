@@ -101,6 +101,43 @@ static class PipelineRegistrationTests
 			});
 	}
 
+	/// Every type a project holds declares its display name ([DisplayName]): without one the
+	/// editor names its kind with a blank (a page's bar, the picker). What a project holds is what
+	/// a builder cooks or a creator makes (the scene and prefab documents derive no Asset). Thirteen
+	/// went without; the next one cannot.
+	[Test]
+	public static void EveryTypeAProjectHoldsDeclaresItsDisplayName()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let registry = scope BuilderRegistry();
+		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
+		registry.ForEach(scope (builder) => { AssertNamed(builder.AssetType); });
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllCreators(creators);
+		for (let creator in creators)
+		{
+			Type made = null;
+			for (let type in Type.Types)
+			{
+				if (type.GetFullName(.. scope .()) == creator.TypeName)
+				{
+					made = type;
+					break;
+				}
+			}
+			Test.Assert(made != null, scope $"creator {creator.Label}: no type {creator.TypeName}");
+			AssertNamed(made);
+		}
+	}
+
+	private static void AssertNamed(Type type)
+	{
+		let named = type.GetCustomAttribute<DisplayNameAttribute>();
+		Test.Assert((named case .Ok(let attribute)) && !String.IsNullOrEmpty(attribute.Name),
+			scope $"type {type.GetFullName(.. scope .())} declares no display name");
+	}
+
 	/// Every creator the engine ships registers, three per script language on top of the
 	/// fixed set, and each makes an instance of its own type in a plain source database, with
 	/// no editor: the headless host's creation and the editor's are the same code.

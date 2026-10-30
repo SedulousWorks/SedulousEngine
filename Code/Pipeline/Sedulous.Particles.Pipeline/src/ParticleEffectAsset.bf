@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Particles;
 using Sedulous.Particles.Resource;
@@ -16,6 +17,7 @@ namespace Sedulous.Particles.Pipeline;
 /// Describes ITSELF rather than carrying [Serializable], for the same reason the cooked
 /// resource does: the effect is a graph of polymorphic modules, and only the effect
 /// serializer knows how to rebuild them.
+[DisplayName("Particle Effect")]
 class ParticleEffectAsset : Asset, ISerializable
 {
 	public ParticleEffect Effect = new .() ~ delete _;

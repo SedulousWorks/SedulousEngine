@@ -19,7 +19,9 @@ class FontAsset : Asset
 	[DisplayName("Bake Mode")]
 	public FontBakeMode Mode = .RasterRamp;
 
-	/// Raster ramp: one cooked entry per size.
+	/// Raster ramp: one cooked entry per size. The font page shows it as one row of text, in its
+	/// own section, so the asset's rows leave it out.
+	[Hidden]
 	public List<float> Sizes = new .() ~ delete _;
 
 	/// Distance field: the single bake size.

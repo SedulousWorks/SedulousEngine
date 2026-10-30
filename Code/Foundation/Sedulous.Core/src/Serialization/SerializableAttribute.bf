@@ -27,7 +27,10 @@ namespace Sedulous.Core.Serialization;
 /// current one (a material's colours typed as its template declares them), on every path that
 /// reads it. Asked for explicitly, since a type's own methods cannot be read while it is being
 /// built.
-[AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
+///
+/// Its fields are reflected at run time too, as a component's are: the editor's asset pages read
+/// an asset's fields onto their grids from the live object (FieldPropertySource).
+[AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple, ReflectUser = .Type | .NonStaticFields)]
 struct SerializableAttribute : Attribute, IComptimeTypeApply
 {
 	private uint32 mDataVersion;

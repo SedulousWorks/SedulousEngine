@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Pipeline.Core;
@@ -13,6 +14,7 @@ namespace Sedulous.Geometry.Pipeline;
 /// The incident behind that: an imported scene produced a 170 MB text envelope, vertex arrays
 /// and all, and every project open parsed the whole thing to read three header fields. Text is
 /// for AUTHORED data; machine generated bulk follows the texture pixels into a binary stream.
+[DisplayName("Static Mesh")]
 [Serializable]
 class StaticMeshAsset : Asset
 {
