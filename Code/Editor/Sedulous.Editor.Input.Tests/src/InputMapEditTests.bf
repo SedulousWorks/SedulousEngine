@@ -519,4 +519,32 @@ class InputMapEditTests
 		f.Page.Commands.Undo();
 		Test.Assert(f.Page.Notice("invalid", .. scope .()).IsEmpty);
 	}
+
+	// A touch stick's radius is normalised, as the runtime reads it (the touch's offset from its
+	// anchor, a fraction of the screen, over the radius) and as the touch regions are: its row is
+	// bounded and said the same way, not in pixels (a typed 100 saturated every touch).
+	[Test]
+	public static void ATouchSticksRadiusIsAFractionOfTheScreenAsItsAreaIs()
+	{
+		let set = scope ActionSet();
+		let look = new InputAction();
+		look.Name.Set("Look");
+		look.Kind = .Axis2D;
+		var stick = Binding();
+		stick.Source = .TouchStick;
+		look.Bindings.Add(stick);
+		set.Actions.Add(look);
+
+		let radius = scope PropertyInfo();
+		InputMapRows.Describe(set, "Actions.0.Bindings.0.StickRadius", radius);
+		let area = scope PropertyInfo();
+		InputMapRows.Describe(set, "Actions.0.Bindings.0.RegionX", area);
+		Test.Assert(radius.Visible);
+		Test.Assert(radius.HasRange);
+		Test.Assert(radius.Min == area.Min);
+		Test.Assert(radius.Max == area.Max);
+		Test.Assert(radius.Step == area.Step);
+		Test.Assert(radius.Description.Contains("fraction of the screen", true));
+		Test.Assert(stick.StickRadius <= radius.Max); // the default sits in the range
+	}
 }

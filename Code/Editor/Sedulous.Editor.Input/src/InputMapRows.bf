@@ -250,8 +250,10 @@ static class InputMapRows
 		else if (field == "StickRadius")
 		{
 			info.DisplayName.Set("Radius");
-			info.Description.Set("How far the stick reaches, in pixels");
-			Range(info, 0.0, 1000.0, 1.0);
+			// Normalised as the regions are: the runtime divides the touch's offset from its anchor, a
+			// fraction of the screen, by it (ActionRuntime).
+			info.Description.Set("How far the stick deflects for a full reading: a fraction of the screen, 0 to 1");
+			Range(info, 0.0, 1.0, 0.01);
 			info.Visible = source == .TouchStick;
 		}
 	}
