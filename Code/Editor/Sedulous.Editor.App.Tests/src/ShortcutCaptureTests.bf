@@ -71,7 +71,7 @@ static class ShortcutCaptureTests
 		Test.Assert(chosen.Count == 2);
 		Test.Assert(!chosen[1].IsSet);
 		Test.Assert(!button.Chord.IsSet);
-		Test.Assert(button.Text == "None");
+		Test.Assert(button.Text == "Not set");
 
 		// The focus leaving cancels; the keys are the GUI's again.
 		Test.Assert(button.HandleActivate());
@@ -79,7 +79,7 @@ static class ShortcutCaptureTests
 		Test.Assert(!button.IsCapturing);
 		Test.Assert(!button.CapturesAllKeys);
 		Test.Assert(!button.HasClass("capturing"));
-		Test.Assert(button.Text == "None", "the chord shown again");
+		Test.Assert(button.Text == "Not set", "the chord shown again");
 		d.InjectKeyDown((uint32)KeyCode.K, KeyModCtrl | KeyModShift);
 		Test.Assert(bound == 1);
 		Test.Assert(chosen.Count == 2);

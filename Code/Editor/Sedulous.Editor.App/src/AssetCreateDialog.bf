@@ -176,7 +176,7 @@ class AssetCreate
 	{
 		let request = GroupPicker.Request(mSources, mGroup);
 		request.OnPicked = new (key) => { PickedGroup(key); };
-		mPicking = mPicker.Open(mRoot, request, mGroupField);
+		mPicking = mPicker.Open(mRoot, request);
 	}
 
 	private void PickedGroup(StringView key)

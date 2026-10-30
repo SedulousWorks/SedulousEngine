@@ -1,0 +1,51 @@
+<!--
+  The image pages (Raptor's editor-gui spec, 5.4, layer 2): Texture, Image, Heightfield and Fonts,
+  one shape. The kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an
+  action over the page; the page's own after them; its kind at the end) over the picture beside the
+  grid. The picture has its own bar: Fit, 1:1 and the zoom, the channel shown, and the pixel under
+  the pointer. A picture that is not there says why; an asset that did not read says so in place of
+  the grid.
+  Code puts the picture in its stage and fills the grid: the asset's properties, then what the page
+  says of its source, read only.
+-->
+<Panel class="page image-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.62 0.38">
+        <Panel class="panel page-pane image-pane">
+            <Panel class="panel-toolbar image-bar">
+                <ToolButton id="image-fit" icon="Editor/Icons/maximize.svg" tooltip="Fit the picture (double click)"/>
+                <ToolButton id="image-actual" text="1:1" tooltip="One pixel to one pixel"/>
+                <Label id="image-zoom" class="mono image-zoom" text="100%"/>
+                <Separator/>
+                <ComboBox id="image-channel" class="image-channel" items="RGBA|RGB|Red|Green|Blue|Alpha" selected="0" tooltip="The channels shown"/>
+                <Spacer/>
+                <Label id="image-readout" class="mono image-readout"/>
+            </Panel>
+            <Panel id="image-stage" class="image-stage"/>
+            <Panel id="image-empty" class="state-box image-empty">
+                <Image class="state-icon" src="Editor/Icons/texture.svg"/>
+                <Label class="state-title" text="No picture"/>
+                <Label id="image-empty-text" class="state-text" text="The source file is missing or did not decode; the Console says why."/>
+            </Panel>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

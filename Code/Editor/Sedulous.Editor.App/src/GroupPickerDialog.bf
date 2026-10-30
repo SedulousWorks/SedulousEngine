@@ -14,7 +14,7 @@ namespace Sedulous.Editor.App;
 static class GroupPicker
 {
 	/// The top group's name and key: it has no name of its own.
-	public const String cTop = AssetPicker.cTopGroup;
+	public const String cTop = AssetsView.cTopGroup;
 
 	/// The picker's request over `sources`' groups, `current` checked (null: none). The caller's
 	/// (Picker.Open takes it).

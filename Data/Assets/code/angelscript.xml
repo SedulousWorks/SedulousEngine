@@ -1,41 +1,53 @@
-<!-- The sandbox's Luau definition for its code editor (GUI.Code, C2 of Specs/gui-lab-evolution-3.md): a language's definition is its owners', read through the engine's XML serialization. -->
+<!-- The AngelScript definition for the code editors (GUI.Code, C2 of Raptor's Specs/gui-lab-evolution-3.md), one for the editor and the GUI sandbox alike (Raptor's editor-gui spec, 5.4, layer 6), read through the engine's XML serialization. -->
 <root>
 	<object>
-		<string name="id">luau</string>
-		<string name="name">Luau</string>
-		<array name="extensions" count="2">
-			<string>luau</string>
-			<string>lua</string>
+		<string name="id">angelscript</string>
+		<string name="name">AngelScript</string>
+		<array name="extensions" count="1">
+			<string>as</string>
 		</array>
 		<bool name="identifierDashes">false</bool>
 		<array name="words" count="3">
 			<object>
 				<string name="token">keyword</string>
-				<string name="list">and break continue do else elseif end export for function if in local not or repeat return then type typeof until while</string>
+				<string name="list">abstract break case cast catch class const continue default do else enum explicit external final for from funcdef function get if import in inout interface is mixin namespace not or and xor out override private property protected return set shared super switch this try typedef while delete</string>
+			</object>
+			<object>
+				<string name="token">type</string>
+				<string name="list">void bool int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 float double auto string array dictionary</string>
 			</object>
 			<object>
 				<string name="token">constant</string>
-				<string name="list">true false nil</string>
-			</object>
-			<object>
-				<string name="token">builtin</string>
-				<string name="list">assert error getmetatable ipairs next pairs pcall print rawequal rawget rawlen rawset require select setmetatable tonumber tostring unpack xpcall math string table coroutine os utf8 bit32 buffer debug task</string>
+				<string name="list">true false null</string>
 			</object>
 		</array>
 		<array name="contexts" count="7">
 			<object>
 				<string name="name">code</string>
 				<string name="token">text</string>
-				<array name="rules" count="11">
+				<array name="rules" count="10">
 					<object>
 						<string name="match">literal</string>
-						<string name="text">--</string>
-						<string name="token">comment</string>
-						<string name="enter">comment-start</string>
+						<string name="text">#</string>
+						<string name="token">preprocessor</string>
+						<string name="enter">directive</string>
+						<bool name="lineStart">true</bool>
 					</object>
 					<object>
-						<string name="match">long-open</string>
-						<string name="text">[</string>
+						<string name="match">literal</string>
+						<string name="text">//</string>
+						<string name="token">comment</string>
+						<string name="enter">line-comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">/*</string>
+						<string name="token">comment</string>
+						<string name="enter">block-comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"""</string>
 						<string name="token">string</string>
 						<string name="enter">long-string</string>
 					</object>
@@ -52,12 +64,6 @@
 						<string name="enter">char</string>
 					</object>
 					<object>
-						<string name="match">literal</string>
-						<string name="text">`</string>
-						<string name="token">string</string>
-						<string name="enter">interpolated</string>
-					</object>
-					<object>
 						<string name="match">number</string>
 						<string name="token">number</string>
 					</object>
@@ -66,51 +72,41 @@
 						<string name="token">text</string>
 					</object>
 					<object>
-						<string name="match">literal</string>
-						<string name="text">...</string>
-						<string name="token">operator</string>
-					</object>
-					<object>
-						<string name="match">literal</string>
-						<string name="text">..</string>
+						<string name="match">any-of</string>
+						<string name="text">+-*/%=&lt;&gt;!&amp;|^~?</string>
 						<string name="token">operator</string>
 					</object>
 					<object>
 						<string name="match">any-of</string>
-						<string name="text">+-*/%^#=&lt;&gt;~&amp;|</string>
-						<string name="token">operator</string>
-					</object>
-					<object>
-						<string name="match">any-of</string>
-						<string name="text">(){}[];:,.</string>
+						<string name="text">(){}[];:,.@</string>
 						<string name="token">punctuation</string>
 					</object>
 				</array>
 			</object>
 			<object>
-				<string name="name">comment-start</string>
+				<string name="name">line-comment</string>
 				<string name="token">comment</string>
 				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="0">
+				</array>
+			</object>
+			<object>
+				<string name="name">block-comment</string>
+				<string name="token">comment</string>
 				<array name="rules" count="1">
 					<object>
-						<string name="match">long-open</string>
-						<string name="text">[</string>
+						<string name="match">literal</string>
+						<string name="text">*/</string>
 						<string name="token">comment</string>
-						<string name="enter">long-comment</string>
 						<u8 name="leave">1</u8>
 					</object>
 				</array>
 			</object>
 			<object>
-				<string name="name">long-comment</string>
-				<string name="token">comment</string>
-				<array name="rules" count="1">
-					<object>
-						<string name="match">long-close</string>
-						<string name="text">]</string>
-						<string name="token">comment</string>
-						<u8 name="leave">1</u8>
-					</object>
+				<string name="name">directive</string>
+				<string name="token">preprocessor</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="0">
 				</array>
 			</object>
 			<object>
@@ -118,8 +114,8 @@
 				<string name="token">string</string>
 				<array name="rules" count="1">
 					<object>
-						<string name="match">long-close</string>
-						<string name="text">]</string>
+						<string name="match">literal</string>
+						<string name="text">"""</string>
 						<string name="token">string</string>
 						<u8 name="leave">1</u8>
 					</object>
@@ -153,24 +149,11 @@
 					</object>
 				</array>
 			</object>
-			<object>
-				<string name="name">interpolated</string>
-				<string name="token">string</string>
-				<string name="escape">\</string>
-				<array name="rules" count="1">
-					<object>
-						<string name="match">literal</string>
-						<string name="text">`</string>
-						<string name="token">string</string>
-						<u8 name="leave">1</u8>
-					</object>
-				</array>
-			</object>
 		</array>
-		<string name="lineComment">--</string>
+		<string name="lineComment">//</string>
 		<object name="blockComment">
-			<string name="open">--[[</string>
-			<string name="close">]]</string>
+			<string name="open">/*</string>
+			<string name="close">*/</string>
 		</object>
 		<array name="brackets" count="3">
 			<object>
@@ -186,7 +169,7 @@
 				<string name="close">}</string>
 			</object>
 		</array>
-		<array name="autoClose" count="6">
+		<array name="autoClose" count="5">
 			<object>
 				<string name="open">(</string>
 				<string name="close">)</string>
@@ -207,15 +190,8 @@
 				<string name="open">'</string>
 				<string name="close">'</string>
 			</object>
-			<object>
-				<string name="open">`</string>
-				<string name="close">`</string>
-			</object>
 		</array>
-		<string name="indentAfter">{ ( [ then do function else repeat</string>
-		<string name="outdentFirst">} ) ] end else elseif until</string>
-		<bool name="foldByIndent">true</bool>
-		<string name="regionStart">--#region</string>
-		<string name="regionEnd">--#endregion</string>
+		<string name="indentAfter">{ ( [</string>
+		<string name="outdentFirst">} ) ]</string>
 	</object>
 </root>

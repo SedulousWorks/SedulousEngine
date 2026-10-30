@@ -18,7 +18,7 @@
                 <Panel class="templates-title"><Label id="templates-name" class="templates-name"/><Label id="templates-id" class="templates-id mono"/></Panel>
             </Panel>
             <Panel id="templates-fields" class="form templates-fields"/>
-            <Panel class="templates-verbs"><Button id="templates-reveal" class="ghost" text="Reveal Folder"/><Button id="templates-remove" class="ghost danger" text="Remove..."/></Panel>
+            <Panel class="templates-verbs"><Button id="templates-reveal" text="Reveal Folder"/><Button id="templates-remove" class="ghost danger" text="Remove..."/></Panel>
         </Panel>
     </Panel>
     <Panel class="dialog-buttons"><Button id="templates-install" text="Install from Folder..."/><Button id="templates-create" text="Create from Build..."/><Spacer/><Button id="templates-close" class="primary" text="Close"/></Panel>

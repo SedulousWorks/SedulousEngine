@@ -15,8 +15,9 @@ namespace Sedulous.Editor.App;
 // where it is; the group's subgroups then its assets on the right, as tiles or a list (kept per
 // project), each by its type's glyph (its category's tint; a tile's thumbnail in its place once
 // there is one, drawn again when it arrives), its name, what it is, its cook badge and a star when
-// a favourite. The search looks in every group, by name or a guid's start, each match saying
-// where it is; a whole guid selects its asset. The type filter keeps one type. With nothing to
+// a favourite. The search looks in the group shown and every group under it (Content: the whole
+// project), by name or a guid's start, each match saying where it is, and is kept when another
+// group is chosen, so a search narrows by picking where to look; a whole guid selects its asset. The type filter keeps one type. With nothing to
 // show it says what is so and offers the way on (clear the search, show every type).
 // Enter or a double click opens an asset or enters a group; Reveal shows an asset where it lives.
 // A drag of the selection carries its assets (AssetDrag) to a slot; dropped on a group's row, a
@@ -429,19 +430,13 @@ class AssetsView
 	/// The group it shows; null without a project.
 	public Group CurrentGroup => mCurrent;
 
-	/// Shows `group`'s content (the search cleared), its tree row selected, the breadcrumb
-	/// following.
+	/// Shows `group`'s content (with a search, its matches in it and under it: the search is
+	/// kept), its tree row selected, the breadcrumb following.
 	public void Navigate(Group group)
 	{
 		if (!Contains(group))
 			return;
 		mCurrent = group;
-		if (!mSearch.IsEmpty)
-		{
-			mSearch.Clear();
-			if (let search = Find<TextField>("assets-search"))
-				search.Text = "";
-		}
 		SelectTreeGroup(group);
 		BuildRows();
 	}
@@ -456,6 +451,8 @@ class AssetsView
 			return false;
 		mType.Clear();
 		ShowTypeButton();
+		if (!mSearch.IsEmpty)
+			SetSearch(""); // where it lives, not among a search's matches
 		Navigate(instance.OwningGroup);
 		for (int row < mRows.Count)
 		{
@@ -763,7 +760,7 @@ class AssetsView
 		if ((db != null) && (mCurrent != null))
 		{
 			if (!mSearch.IsEmpty)
-				CollectMatches(db.RootGroup);
+				CollectMatches(mCurrent);
 			else
 			{
 				if (mType.IsEmpty)
@@ -849,7 +846,10 @@ class AssetsView
 		else if (!mSearch.IsEmpty)
 		{
 			icon = "Editor/Icons/search.svg";
-			title.AppendF("Nothing matches {}", mSearch);
+			if ((mCurrent != null) && (mCurrent !== Sources().RootGroup))
+				title.AppendF("Nothing matches {} in {}", mSearch, ShownPath(mCurrent, .. scope .()));
+			else
+				title.AppendF("Nothing matches {}", mSearch);
 			verb = "Clear the search";
 		}
 		else if (!mType.IsEmpty)

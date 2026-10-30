@@ -117,7 +117,7 @@ class AssetPickerSlotTests
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
-		Test.Assert(slot.ShownName == "None");
+		Test.Assert(slot.ShownName == "Not set");
 		Test.Assert(slot.HasClass("empty"));
 		Test.Assert(!slot.HasValue);
 		Test.Assert(!slot.PickButton.Displayed);
@@ -186,7 +186,7 @@ class AssetPickerSlotTests
 		slot.SetOnClear(new () => { });
 		slot.SetValue("Wood");
 		slot.SetValue("");
-		Test.Assert(slot.ShownName == "None");
+		Test.Assert(slot.ShownName == "Not set");
 		Test.Assert(slot.HasClass("empty"));
 		Test.Assert(!slot.HasValue);
 		Test.Assert(slot.PickButton.Displayed, "an empty slot keeps pick");
@@ -375,5 +375,28 @@ class AssetPickerSlotTests
 		Test.Assert(one == "boom is an AudioClipAsset - this list takes MaterialAsset");
 		let none = AssetPickerSlot.RejectionText("boom", "AudioClipAsset", Span<String>(), "list", .. scope .());
 		Test.Assert(none == "boom is an AudioClipAsset - this list takes no asset");
+	}
+
+	/// What a slot takes is asked of the reference services (the builders': what makes a Material,
+	/// a Texture), so a preview's slot takes every asset that cooks to it; none when they cannot say.
+	[Test]
+	public static void ItTakesTheTypesTheServicesSayMakeItsTarget()
+	{
+		let slot = new AssetPickerSlot();
+		defer slot.ReleaseRef();
+		let refs = scope ResourceRefServices();
+		refs.AcceptedTypes = new (target, outTypes) =>
+			{
+				if (target == typeof(String))
+				{
+					outTypes.Add(new .("TextureAsset"));
+					outTypes.Add(new .("RenderTextureAsset"));
+				}
+			};
+		slot.AcceptTypesOf(refs, typeof(String));
+		Test.Assert(slot.AcceptedTypes.Length == 2);
+		Test.Assert((slot.AcceptedTypes[0] == "TextureAsset") && (slot.AcceptedTypes[1] == "RenderTextureAsset"));
+		slot.AcceptTypesOf(null, typeof(String));
+		Test.Assert(slot.AcceptedTypes.IsEmpty);
 	}
 }

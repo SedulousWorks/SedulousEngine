@@ -41,6 +41,11 @@
     --element-disabled: #23262c;
     --ghost-hover: rgba(255, 255, 255, 0.07);
     --ghost-active: rgba(255, 255, 255, 0.12);
+    /* An element on a dialog or a popup (--surface-overlay): a step lighter, as --element is
+       nearly the overlay's own colour and a neutral button there read as text. */
+    --element-on-overlay: #383d47;
+    --element-on-overlay-hover: #434956;
+    --element-on-overlay-active: #4d5461;
 
     --border: #30343c;          /* fields, cards, popups */
     --border-strong: #454b56;   /* a hovered field */
@@ -114,6 +119,9 @@
         --element-disabled: #eef0f3;
         --ghost-hover: rgba(0, 0, 0, 0.06);
         --ghost-active: rgba(0, 0, 0, 0.11);
+        --element-on-overlay: #e6e9ee;    /* the overlay is white, as --element is */
+        --element-on-overlay-hover: #dce0e6;
+        --element-on-overlay-active: #d0d5dc;
 
         --border: #cfd4db;
         --border-strong: #aab1bc;
@@ -218,6 +226,8 @@
     /* Widgets: neutral buttons by default (an editor is mostly secondary actions); the primary
        one asks for the accent with a class. */
     --button-background: var(--element);
+    --button-hover: var(--element-hover);
+    --button-active: var(--element-active);
     --button-text: var(--text);
     --button-padding: var(--space-xs) var(--space-l);
     --button-radius: var(--radius);

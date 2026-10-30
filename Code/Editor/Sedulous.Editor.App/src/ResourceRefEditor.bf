@@ -10,7 +10,7 @@ namespace Sedulous.Editor.App;
 // editor for GUI.Toolkit's Reference kind, an asset slot. What may fill it is asked of the builders,
 // never listed here (ruling 19): the source asset types whose builder makes the type the reference
 // points at (EditorContext.SourceAssetTypesOf). Pick, drop and clear are one write, the grid's, so
-// one undo step; a pick opens the asset picker below the slot. Open and reveal show the asset. What
+// one undo step; a pick opens the asset picker (AssetPickerWindow). Open and reveal show the asset. What
 // it asks of the editor is a table of its own (ResourceRefServices), so a test gives its own and the
 // application fills it from its context.
 //
@@ -37,25 +37,25 @@ class ResourceRefServices
 	/// What `id` names, into `outShown`; false when the project has no such asset (a dangling
 	/// reference).
 	public delegate bool(Guid id, ResourceRefShown outShown) Describe ~ delete _;
-	/// Opens a picker over `types` (empty: any) below `anchor`, `current` checked; `chosen`
+	/// Opens a picker over `types` (empty: any), `current` checked; `chosen`
 	/// assigns what it picks (nil: None). OWNERSHIP of `chosen` transfers: the picker deletes it
 	/// once it has answered, or given up.
-	public delegate void(Span<String> types, Guid current, Node anchor, delegate void(Guid id) chosen) Pick ~ delete _;
+	public delegate void(Span<String> types, Guid current, delegate void(Guid id) chosen) Pick ~ delete _;
 	public delegate void(Guid id) Open ~ delete _;
 	public delegate void(Guid id) Reveal ~ delete _;
 
 	/// A table filled from the editor's context: the builders' types (SourceAssetTypesOf; none,
 	/// the type itself, a reference naming a source asset type), the project's names, the type
-	/// icons, the asset picker over the project's sources and the context's favourites (`open` shows a picker's request below its anchor, taking the request;
-	/// null: no pick), the context's open and reveal. `context` and `icons` outlive it; OWNERSHIP
+	/// icons, the asset picker over the project's sources (`open` shows the asset picker for a
+	/// request, taking the request; null: no pick), the context's open and reveal. `context` and `icons` outlive it; OWNERSHIP
 	/// of `open` transfers. The caller deletes it.
 	public static ResourceRefServices From(EditorContext context, EditorIcons icons,
-		delegate void(PickerRequest request, Node anchor) open)
+		delegate void(AssetPickRequest request) open)
 	{
 		let services = new ResourceRefServices();
 		if (open != null)
 		{
-			services.Pick = new [=context, =icons, =open] (types, current, anchor, chosen) =>
+			services.Pick = new [=context, =open] (types, current, chosen) =>
 				{
 					let project = context.Project;
 					if (project == null)
@@ -63,16 +63,12 @@ class ResourceRefServices
 						delete chosen; // given up: no project, nothing to pick
 						return;
 					}
-					let request = AssetPicker.Request(project.SourceDb, icons, context.Pages, context.Favorites, types, current);
-					// The request's: it goes with the request, once the picker has answered or closed.
-					request.OnPicked = new [=chosen] (key) =>
-						{
-							if (key.IsEmpty)
-								chosen(.Empty); // None
-							else if (Guid.Parse(key) case .Ok(let id))
-								chosen(id);
-						} ~ { delete chosen; };
-					open(request, anchor);
+					let request = new AssetPickRequest();
+					for (let type in types)
+						request.Types.Add(new String(type));
+					request.Current = current;
+					request.Chosen = chosen; // the request's: it goes with it, once the picker has answered or closed
+					open(request);
 				} ~ { delete open; };
 		}
 		// What the builders make it from; none: the type itself, a reference naming a source asset
@@ -239,7 +235,7 @@ class ResourceRefEditor : SingleControlEditor
 		let self = this;
 		let path = new String(Path);
 		AddRef();
-		mServices.Pick(mTypes, mCurrent, mSlot, new [=self, =path] (id) =>
+		mServices.Pick(mTypes, mCurrent, new [=self, =path] (id) =>
 			{
 				if (self.Path == path)
 					self.Assign(id);

@@ -221,7 +221,7 @@ class ImportWindow
 			return;
 		let request = GroupPicker.Request(sources, mImport.GroupOf(mSession));
 		request.OnPicked = new (key) => { PickedGroup(key); };
-		mPicking = mPicker.Open(mRoot, request, mGroupField);
+		mPicking = mPicker.Open(mRoot, request);
 	}
 
 	private void PickedGroup(StringView key)

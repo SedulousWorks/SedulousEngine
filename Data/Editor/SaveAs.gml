@@ -6,5 +6,5 @@
     <Label id="save-as-prompt" class="dialog-text"/>
     <TextField id="save-as-name"/>
     <Label id="save-as-error" class="form-help save-as-error"/>
-    <Panel class="dialog-buttons"><Spacer/><Button id="save-as-cancel" class="ghost" text="Cancel"/><Button id="save-as-save" class="primary" text="Save"/></Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="save-as-cancel" text="Cancel"/><Button id="save-as-save" class="primary" text="Save"/></Panel>
 </Panel>

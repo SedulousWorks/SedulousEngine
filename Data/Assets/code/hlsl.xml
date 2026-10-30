@@ -1,31 +1,36 @@
-<!-- The sandbox's AngelScript definition for its code editor (GUI.Code, C2 of Specs/gui-lab-evolution-3.md): a language's definition is its owners', read through the engine's XML serialization. -->
+<!-- The HLSL (with the engine's properties) definition for the code editors (GUI.Code, C2 of Raptor's Specs/gui-lab-evolution-3.md), one for the editor and the GUI sandbox alike (Raptor's editor-gui spec, 5.4, layer 6), read through the engine's XML serialization. -->
 <root>
 	<object>
-		<string name="id">angelscript</string>
-		<string name="name">AngelScript</string>
-		<array name="extensions" count="1">
-			<string>as</string>
+		<string name="id">hlsl</string>
+		<string name="name">HLSL (with the engine's properties)</string>
+		<array name="extensions" count="2">
+			<string>hlsl</string>
+			<string>shader</string>
 		</array>
 		<bool name="identifierDashes">false</bool>
-		<array name="words" count="3">
+		<array name="words" count="4">
 			<object>
 				<string name="token">keyword</string>
-				<string name="list">abstract break case cast catch class const continue default do else enum explicit external final for from funcdef function get if import in inout interface is mixin namespace not or and xor out override private property protected return set shared super switch this try typedef while delete</string>
+				<string name="list">if else for while do switch case default break continue return discard struct cbuffer tbuffer register packoffset static const uniform in out inout inline typedef namespace groupshared precise nointerpolation linear centroid sample properties</string>
 			</object>
 			<object>
 				<string name="token">type</string>
-				<string name="list">void bool int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 float double auto string array dictionary</string>
+				<string name="list">void bool int uint dword half float double min16float min16int min16uint bool2 bool3 bool4 int2 int3 int4 uint2 uint3 uint4 half2 half3 half4 float2 float3 float4 float2x2 float3x3 float4x4 float3x4 float4x3 double2 double3 double4 matrix vector Texture1D Texture2D Texture3D TextureCube Texture2DArray TextureCubeArray RWTexture2D RWTexture3D SamplerState SamplerComparisonState Buffer RWBuffer StructuredBuffer RWStructuredBuffer ByteAddressBuffer RWByteAddressBuffer ConstantBuffer Color ColorHdr Texture Sampler</string>
 			</object>
 			<object>
 				<string name="token">constant</string>
-				<string name="list">true false null</string>
+				<string name="list">true false</string>
+			</object>
+			<object>
+				<string name="token">builtin</string>
+				<string name="list">abs acos all any asin atan atan2 ceil clamp clip cos cosh cross ddx ddy degrees determinant distance dot exp exp2 floor fmod frac length lerp log log2 mad max min modf mul normalize pow radians reflect refract round rsqrt saturate sign sin sinh smoothstep sqrt step tan tanh transpose trunc Sample SampleLevel SampleBias SampleGrad SampleCmp Load GetDimensions SV_Position SV_Target SV_Depth SV_VertexID SV_InstanceID SV_DispatchThreadID SV_GroupID SV_GroupThreadID</string>
 			</object>
 		</array>
-		<array name="contexts" count="7">
+		<array name="contexts" count="5">
 			<object>
 				<string name="name">code</string>
 				<string name="token">text</string>
-				<array name="rules" count="10">
+				<array name="rules" count="8">
 					<object>
 						<string name="match">literal</string>
 						<string name="text">#</string>
@@ -47,21 +52,9 @@
 					</object>
 					<object>
 						<string name="match">literal</string>
-						<string name="text">"""</string>
-						<string name="token">string</string>
-						<string name="enter">long-string</string>
-					</object>
-					<object>
-						<string name="match">literal</string>
 						<string name="text">"</string>
 						<string name="token">string</string>
 						<string name="enter">string</string>
-					</object>
-					<object>
-						<string name="match">literal</string>
-						<string name="text">'</string>
-						<string name="token">string</string>
-						<string name="enter">char</string>
 					</object>
 					<object>
 						<string name="match">number</string>
@@ -78,7 +71,7 @@
 					</object>
 					<object>
 						<string name="match">any-of</string>
-						<string name="text">(){}[];:,.@</string>
+						<string name="text">(){}[];:,.</string>
 						<string name="token">punctuation</string>
 					</object>
 				</array>
@@ -110,18 +103,6 @@
 				</array>
 			</object>
 			<object>
-				<string name="name">long-string</string>
-				<string name="token">string</string>
-				<array name="rules" count="1">
-					<object>
-						<string name="match">literal</string>
-						<string name="text">"""</string>
-						<string name="token">string</string>
-						<u8 name="leave">1</u8>
-					</object>
-				</array>
-			</object>
-			<object>
 				<string name="name">string</string>
 				<string name="token">string</string>
 				<string name="escape">\</string>
@@ -130,20 +111,6 @@
 					<object>
 						<string name="match">literal</string>
 						<string name="text">"</string>
-						<string name="token">string</string>
-						<u8 name="leave">1</u8>
-					</object>
-				</array>
-			</object>
-			<object>
-				<string name="name">char</string>
-				<string name="token">string</string>
-				<string name="escape">\</string>
-				<bool name="endsAtLineEnd">true</bool>
-				<array name="rules" count="1">
-					<object>
-						<string name="match">literal</string>
-						<string name="text">'</string>
 						<string name="token">string</string>
 						<u8 name="leave">1</u8>
 					</object>
@@ -193,5 +160,7 @@
 		</array>
 		<string name="indentAfter">{ ( [</string>
 		<string name="outdentFirst">} ) ]</string>
+		<string name="regionStart">#pragma region</string>
+		<string name="regionEnd">#pragma endregion</string>
 	</object>
 </root>

@@ -7,7 +7,7 @@ namespace Sedulous.Editor.App;
 
 // The asset slot (Raptor's editor-gui spec, 5.2, layer 3), as the kit draws it: the referenced
 // asset's type glyph (its category's tint), its name, and its verbs: pick (the target; a click on
-// the name picks too), open, reveal (in the assets browser), clear. An empty slot says "None" and
+// the name picks too), open, reveal (in the assets browser), clear. An empty slot says "Not set" and
 // keeps only pick. A verb shows only when its owner wired it; open, reveal and clear need something
 // referenced. It is a drop target for an asset of a type it takes, naming why not over one it does
 // not: a drop and a pick are the same assignment.
@@ -120,13 +120,23 @@ class AssetPickerSlot : UIWidget
 			mTypes.Add(new String(type));
 	}
 
+	/// The asset types that may fill a reference to `target`, asked of `refs` (the builders': a
+	/// texture's and a render texture's for a Texture), as the ones it takes; none when `refs` cannot
+	/// say.
+	public void AcceptTypesOf(ResourceRefServices refs, Type target)
+	{
+		ClearAndDeleteItems(mTypes);
+		if ((refs != null) && (refs.AcceptedTypes != null))
+			refs.AcceptedTypes(target, mTypes);
+	}
+
 	public Span<String> AcceptedTypes => mTypes;
 
 	/// What it references: the asset's name, or nothing (`name` empty).
 	public void SetValue(StringView name)
 	{
 		mHasValue = !name.IsEmpty;
-		mName.Text = mHasValue ? name : StringView("None");
+		mName.Text = mHasValue ? name : StringView("Not set");
 		Show();
 	}
 

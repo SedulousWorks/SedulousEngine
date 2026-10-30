@@ -11,11 +11,11 @@ namespace Sedulous.Editor.App.Tests;
 /// first; the current value checked and lit, the foot saying Esc keeps it; Up and Down past the
 /// headings from the search, Enter picking and closing; a search narrowing (a name that starts
 /// with it first) or saying nothing matches, with a way back; nothing to pick saying what is
-/// missing and running the owner's next step; None picking nothing. The path picker: the files
+/// missing and running the owner's next step; its close keeping the value. The path picker: the files
 /// under a folder with the extensions asked, ignoring case, sorted, under their folders. Then
 /// what Sedulous adds so each behaviour has a test: what a row shows (its star, its check), a
-/// double click picking and closing (on a heading, nothing), Escape keeping the value, None
-/// only when the owner allows it, the states' icons, texts and verbs, and the path picker's
+/// double click picking and closing (on a heading, nothing), Escape keeping the value, the
+/// states' icons, texts and verbs, and the path picker's
 /// request opened in the picker. A tree request: rows indented in its order, a search keeping
 /// the groups above each match, dimmed.
 static class PickerTests
@@ -46,7 +46,7 @@ static class PickerTests
 		public Sedulous.GUI.EventDispatcher Dispatcher => Root.EventDispatcher;
 
 		/// Wood and Wool under Props; Wood_Dark (a favourite) and Redwood under Town; Wood the
-		/// current value; None allowed. The caller's.
+		/// current value. The caller's.
 		public PickerRequest Materials()
 		{
 			let request = new PickerRequest();
@@ -56,7 +56,6 @@ static class PickerTests
 			request.Add("dark", "Wood_Dark", "Town", "MaterialAsset").Favourite = true;
 			request.Add("redwood", "Redwood", "Town", "MaterialAsset");
 			request.Current.Set("wood");
-			request.AllowNone = true;
 			request.OnPicked = new (key) => { Picked.Add(new String(key)); };
 			return request;
 		}
@@ -198,7 +197,7 @@ static class PickerTests
 		Test.Assert(bed.Rows(.. scope .()) == "#Favourites Wood_Dark #Props Wood Wool #Town Wood_Dark Redwood");
 		Test.Assert(bed.View.LitKey == "wood");
 		Test.Assert(bed.View.Hint == "Enter picks, Esc keeps Wood");
-		Test.Assert(bed.View.NoneButton.Displayed);
+		Test.Assert(bed.View.CloseButton != null);
 
 		bed.Press(.Up); // over the Props heading to the favourite
 		Test.Assert(bed.View.LitKey == "dark");
@@ -235,7 +234,7 @@ static class PickerTests
 	}
 
 	[Test]
-	public static void ASearchNarrowsANameStartingWithItFirstNothingMatchingSaysSoAndClearsNonePicksNothing()
+	public static void ASearchNarrowsANameStartingWithItFirstNothingMatchingSaysSoAndClearsItsCloseKeepsTheValue()
 	{
 		let bed = scope PickerBed();
 		bed.Open(bed.Materials());
@@ -251,9 +250,9 @@ static class PickerTests
 		Test.Assert(!bed.View.ShowsState);
 		Test.Assert(bed.View.RowCount == 8);
 
-		Test.Assert(bed.View.NoneButton.HandleActivate());
-		Test.Assert(bed.Picked.Count == 1);
-		Test.Assert(bed.Picked[0].IsEmpty);
+		// The close keeps the value: nothing picked, no None to slip onto.
+		Test.Assert(bed.View.CloseButton.HandleActivate());
+		Test.Assert(bed.Picked.IsEmpty);
 		Test.Assert(!bed.View.IsOpen);
 	}
 
@@ -271,7 +270,6 @@ static class PickerTests
 		bed.Open(request);
 		Test.Assert(bed.View.ShowsState);
 		Test.Assert(bed.View.StateTitle == "No materials yet");
-		Test.Assert(!bed.View.NoneButton.Displayed);
 		Test.Assert(bed.View.Hint == "Enter picks, Esc closes");
 		Test.Assert(bed.View.StateVerbButton.Text == "Create Material...");
 		Test.Assert(bed.View.StateVerbButton.HandleActivate());
@@ -385,26 +383,20 @@ static class PickerTests
 		Test.Assert(bed.View.LitKey == "wood");
 	}
 
-	/// None shows only when the owner allows nothing; with no current value the first item is
-	/// lit, nothing checked, and the foot says Esc closes.
+	/// With no current value the first item is lit, nothing checked, and the foot says Esc closes.
 	[Test]
-	public static void NoneShowsOnlyWhenAllowed()
+	public static void WithNoCurrentValueTheFirstItemIsLitAndEscCloses()
 	{
 		let bed = scope PickerBed();
 		let request = bed.Materials();
-		request.AllowNone = false;
 		request.Current.Clear();
 		bed.Open(request);
-		Test.Assert(!bed.View.NoneButton.Displayed);
 		Test.Assert(bed.View.LitKey == "dark");
 		Test.Assert(bed.View.Hint == "Enter picks, Esc closes");
 		bed.SizeList();
 		Test.Assert(!bed.ShownRow(3).ShowsCheck);
 		bed.View.Close();
 		Test.Assert(!bed.View.IsOpen);
-
-		bed.Open(bed.Materials());
-		Test.Assert(bed.View.NoneButton.Displayed);
 	}
 
 	/// The states: nothing matching shows the search's icon, no text, the list hidden, and a verb
@@ -492,7 +484,6 @@ static class PickerTests
 		Test.Assert(bed.View.LitKey == "Fonts/Inter.TTF");
 		Test.Assert(bed.View.Hint == "Enter picks, Esc keeps Inter.TTF");
 		Test.Assert(bed.View.Search.Placeholder == "Search files");
-		Test.Assert(!bed.View.NoneButton.Displayed);
 		bed.Press(.Up);
 		bed.Press(.Return);
 		Test.Assert(bed.Picked.Count == 1);
@@ -527,6 +518,30 @@ static class PickerTests
 		let list = bed.View.List.ScreenBounds;
 		Test.Assert(list.X >= frame.X);
 		Test.Assert(list.X + list.Width <= frame.X + frame.Width + 0.5f, scope $"the list ends at {list.X + list.Width}, the frame at {frame.X + frame.Width}");
+		bed.View.Close();
+	}
+
+	/// It opens in the window's middle; a lit item's description is the foot's, else what the keys
+	/// do.
+	[Test]
+	public static void ItOpensCentredAndALitItemsDescriptionIsTheFoot()
+	{
+		let bed = scope PickerBed();
+		let request = bed.Materials();
+		request.Items[1].Description.Set("Warm and soft."); // Wool's
+		bed.Open(request);
+		let frame = bed.View.Content.ScreenBounds;
+		Test.Assert(Math.Abs(frame.X + frame.Width * 0.5f - 400.0f) < 4.0f, scope $"the frame's middle at {frame.X + frame.Width * 0.5f}");
+		Test.Assert(Math.Abs(frame.Y + frame.Height * 0.5f - 300.0f) < 3.0f, scope $"the frame's middle at {frame.Y + frame.Height * 0.5f}");
+		Test.Assert(bed.View.Hint == "Enter picks, Esc keeps Wood", "Wood lit: it says nothing");
+		Test.Assert(!bed.View.HintLabel.HasClass("described"));
+		bed.Press(.Down); // Wool
+		Test.Assert(bed.View.LitKey == "wool");
+		Test.Assert(bed.View.Hint == "Warm and soft.");
+		Test.Assert(bed.View.HintLabel.HasClass("described"));
+		bed.Press(.Up);
+		Test.Assert(bed.View.Hint == "Enter picks, Esc keeps Wood");
+		Test.Assert(!bed.View.HintLabel.HasClass("described"));
 		bed.View.Close();
 	}
 }

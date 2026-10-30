@@ -107,6 +107,6 @@ class ShortcutCaptureButton : Sedulous.GUI.Button
 	private void ShowChord()
 	{
 		let text = mChord.ToString(.. scope .());
-		Text = text.IsEmpty ? "None" : text;
+		Text = text.IsEmpty ? "Not set" : text;
 	}
 }

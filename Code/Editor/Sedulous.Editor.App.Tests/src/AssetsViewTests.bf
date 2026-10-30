@@ -460,12 +460,13 @@ static class AssetsViewTests
 		Test.Assert(view.Crumbs.ItemCount == 2);
 	}
 
-	/// The search looks in every group, by name in any case, a match saying where it is, by its
-	/// type's display name where it has one; a guid's start finds its asset, a whole guid (braced or
-	/// bare) selects it; nothing matching says so, and its verb, the clear button or entering a
-	/// group clears the search.
+	/// The search looks in the group shown and every group under it, by name in any case, a match
+	/// saying where it is, by its type's display name where it has one, and is kept as the group
+	/// changes; a guid's start finds its asset, a whole guid (braced or bare) selects it; nothing
+	/// matching says so (naming the group when it is not the top), and its verb or the clear button
+	/// clears the search; Reveal ends it.
 	[Test]
-	public static void ASearchLooksInEveryGroupSayingWhereEachMatchIsNothingMatchingSaysSoAndClears()
+	public static void ASearchLooksInTheGroupShownAndUnderItKeptAsTheGroupChangesNothingMatchingSaysSoAndClears()
 	{
 		let bed = scope Bed("scratch_assets_view_search");
 		let view = bed.View;
@@ -474,8 +475,8 @@ static class AssetsViewTests
 		Test.Assert((field != null) && (clear != null));
 		Test.Assert(!clear.Visible, "nothing to clear");
 		view.SetTiles(false);
-		// Searched from inside another group: the search is not that group's alone.
-		view.Navigate(bed.Sounds);
+		// Searched from a group: in it and under it.
+		view.Navigate(bed.Models);
 		view.SetSearch("BAR");
 		Test.Assert(bed.RowsAre("Barrel"));
 		Test.Assert(field.Text == "BAR");
@@ -517,15 +518,26 @@ static class AssetsViewTests
 		Test.Assert(view.List.Displayed);
 		Test.Assert(bed.RowsAre("/Models /Sounds Crate"));
 
-		// The clear button clears it, as does entering a group.
+		// The clear button clears it.
 		view.SetSearch("Crate");
 		Test.Assert(clear.HandleActivate());
 		Test.Assert(view.SearchText.IsEmpty && field.Text.IsEmpty && !clear.Visible);
 		Test.Assert(bed.RowsAre("/Models /Sounds Crate"));
-		view.SetSearch("Barrel");
+
+		// Another group chosen keeps the search, looking there and under it.
+		view.SetSearch("e");
+		Test.Assert(bed.RowsAre("Crate Barrel Bell"));
 		view.Navigate(bed.Models);
+		Test.Assert(view.SearchText == "e");
+		Test.Assert(bed.RowsAre("Barrel Bell"));
+		view.SetSearch("crate");
+		Test.Assert(view.StateTitle == "Nothing matches crate in Content/Models");
+		view.Navigate(bed.Top);
+		Test.Assert(bed.RowsAre("Crate"));
+		// Reveal shows an asset where it lives, so it ends the search.
+		Test.Assert(view.Reveal(bed.Barrel.Id));
 		Test.Assert(view.SearchText.IsEmpty && field.Text.IsEmpty);
-		Test.Assert(bed.RowsAre("/Town"));
+		Test.Assert(view.CurrentGroup == bed.Town);
 	}
 
 	/// The type filter keeps one type, by its full name or its short one; groups go while it does,

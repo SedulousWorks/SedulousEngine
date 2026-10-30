@@ -76,10 +76,16 @@ class EditorExport
 		mServices = services;
 	}
 
-	/// The project it exports; null between projects.
+	/// The project it exports (null between projects), its presets read from it (its
+	/// export_presets.xml, else the default one), as the old editor read them when its Export
+	/// dialog opened: they were saved and never read back, so a restart lost them.
 	public void SetProject(EditorProject project)
 	{
 		mProject = project;
+		if (mProject == null)
+			return;
+		let projectFs = scope NativeFileSystem(mProject.Directory);
+		mPresetsController.Load(projectFs);
 	}
 
 	/// Exports `presetName`, or every preset when `all`: a background cook first, then the

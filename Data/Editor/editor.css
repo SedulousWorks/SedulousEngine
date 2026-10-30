@@ -143,8 +143,10 @@ button.primary:hover { background-color: var(--accent-fill-hover); opacity: 1; }
 button.danger { background-color: var(--danger-background); color: var(--danger); border: 1px solid var(--danger-border); }
 button.ghost { background-color: transparent; }
 button.ghost:hover { background-color: var(--ghost-hover); opacity: 1; }
-button:hover { background-color: var(--element-hover); opacity: 1; }
-button:active { background-color: var(--element-active); opacity: 1; }
+button:hover { background-color: var(--button-hover); opacity: 1; }
+button:active { background-color: var(--button-active); opacity: 1; }
+/* On a dialog's surface a neutral button takes the overlay's element fills, which stand off it. */
+.dialog, .dialog-body { --button-background: var(--element-on-overlay); --button-hover: var(--element-on-overlay-hover); --button-active: var(--element-on-overlay-active); }
 /* A disabled button fades and stays as it is under the pointer. */
 button:disabled, button:disabled:hover, button:disabled:active { opacity: var(--disabled-opacity); }
 button.primary:disabled:hover { background-color: var(--accent-fill); }
@@ -233,6 +235,64 @@ treerowcontent.inactive { opacity: 0.45; }
 /* The inspector: what a simulation leaves read only says so over the grid; nothing selected fills the pane. */
 .inspector-note { padding: var(--space-s) var(--space-m); }
 .inspector-state { flex-grow: 1; }
+
+/* The generic asset page (AssetForm.gml): its search over the grid, in one column. */
+.asset-form-body { flex-direction: column; }
+.asset-form-state { flex-grow: 1; }
+/* An asset page's state in place of its grid. */
+.page-state { flex-grow: 1; }
+/* The image pages (ImagePage.gml): the picture's own bar over its stage, which the picture fills. */
+.image-pane { flex-direction: column; }
+.image-stage { flex-grow: 1; min-height: 0; background-color: var(--surface-sunken); }
+.image-inspect { flex-grow: 1; }
+.image-empty { flex-grow: 1; background-color: var(--surface-sunken); }
+/* The audio clip page: the waveform under its transport, in the theme's colours; the audition's
+   volume a short slider at the bar's end. */
+.audio-pane { flex-direction: column; }
+.audio-stage { flex-grow: 1; min-height: 0; flex-direction: column; padding: var(--space-m); background-color: var(--surface-sunken); }
+.audio-stage > .waveform { flex-grow: 1; min-height: 0; }
+.audio-empty { flex-grow: 1; background-color: var(--surface-sunken); }
+.audio-volume { width: 96px; }
+.audio-volume-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
+waveform::wave { background-color: var(--accent); }
+waveform::playhead { background-color: var(--warning); }
+/* The bus layout page: the buses' tree under its bar, beside the chosen bus's grid. */
+.bus-pane { flex-direction: column; }
+.bus-tree { flex-grow: 1; min-height: 0; }
+/* The input map page: the sets' tree under its bar and search, beside the chosen set's grid. */
+.input-tree-pane { flex-direction: column; }
+.input-tree-pane > .search-row { flex-direction: row; padding: var(--space-s); }
+.input-tree { flex-grow: 1; min-height: 0; }
+/* A code page: its code over its problems, beside what is the page's own (a script's API). */
+.code-page { flex-direction: column; }
+.code-pane { flex-grow: 1; min-width: 0; }
+.page-code { font-family: var(--mono-font); font-size: var(--font-code); min-height: 0; }
+.page-problems { min-height: 0; }
+.preview-stale { color: var(--warning); font-size: var(--font-small); }
+.gui-markup-pane { flex-direction: column; }
+.gui-markup-pane > .page-code { flex-grow: 1; }
+.api-pane { flex-direction: column; }
+.api-pane > .search-row { flex-direction: row; padding: var(--space-s); }
+.api-tree { flex-grow: 1; min-height: 0; }
+/* A code page's problems: how many over a row each, its severity's icon, its place, its message. */
+.problems { flex-direction: column; }
+.problems-summary { padding: var(--space-xs) var(--space-s); color: var(--text-dim); font-size: var(--font-small); }
+.problems-list { flex-grow: 1; min-height: 0; }
+.problem-row { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 0 var(--space-s); height: 22px; }
+.problem-icon { width: var(--icon-size); height: var(--icon-size); flex-shrink: 0; }
+.problem-row.error > .problem-icon { image-color: var(--danger); }
+.problem-row.warning > .problem-icon { image-color: var(--warning); }
+.problem-row.info > .problem-icon, .problem-row.hint > .problem-icon { image-color: var(--icon-dim); }
+.problem-place { color: var(--text-dim); font-size: var(--font-small); flex-shrink: 0; }
+.problem-message { flex-grow: 1; min-width: 0; text-overflow: ellipsis; }
+.image-zoom { min-width: 48px; color: var(--text-dim); font-size: var(--font-small); }
+.image-readout { color: var(--text-dim); font-size: var(--font-small); }
+/* The preview pages (PreviewPage.gml): the preview's own bar over its stage, which the viewport fills. */
+.preview-pane { flex-direction: column; }
+.preview-stage { flex-grow: 1; min-height: 0; }
+.preview-view { flex-grow: 1; }
+.preview-empty { flex-grow: 1; background-color: var(--surface-sunken); }
+.preview-hint { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
 /* An editor grid's notice: what it says wraps, in the warning's colour. */
 .notice-text { white-space: normal; color: var(--warning); }
 /* The HUD's zones: each a corner of the viewport, its pieces stacked from that corner, so they
@@ -283,6 +343,11 @@ treerowcontent.inactive { opacity: 0.45; }
                        background-size: cover; background-position: center; }
 .camera-preview-foot { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 3px 3px 1px;
                        font-size: var(--font-small); color: var(--hud-text); }
+.camera-preview-frame { border-radius: var(--radius-small); } /* the picture's holder; code sizes the picture to the camera's aspect */
+.camera-preview-name { flex-grow: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.camera-preview-foot > button.camera-preview-pin { width: 20px; height: 20px; }
+.camera-preview-foot > button.camera-preview-pin > icon { width: 14px; height: 14px; image-color: var(--hud-text-dim); }
+.camera-preview-foot > button.camera-preview-pin.checked > icon { image-color: var(--hud-text); }
 /* A tool's panel: one chrome for every tool (its name, help, close), under the view's menus. */
 .hud-panel { width: 240px; flex-direction: column; row-gap: var(--space-m); padding: var(--space-m);
              background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
@@ -335,7 +400,9 @@ toast { border: 1px solid var(--border-strong); }
    then its badge, Always Export and star in columns of their own, so every kind ends in line. */
 .asset-row-text { flex-direction: row; align-items: baseline; flex-grow: 1; min-width: 0; column-gap: var(--space-l); }
 .asset-row-text > .row-name { flex-grow: 1; }
-.asset-row-text > .row-kind { flex-grow: 0; flex-shrink: 0; text-align: end; }
+/* The name keeps its room; the kind gives way first, in an ellipsis, never over the name (a picker's
+   kind says where the asset is, a long path). */
+.asset-row-text > .row-kind { flex-grow: 0; flex-shrink: 1000; min-width: 0; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
 .asset-list .asset-row > .badge { width: 52px; flex-shrink: 0; text-align: center; }
 /* A row's Always Export and star: on every row, lit when so, greyed when not. */
 .asset-list .asset-row > .badge-icon { margin-left: var(--space-xs); image-color: var(--icon-dim); opacity: var(--disabled-opacity); }
@@ -371,6 +438,8 @@ propertyrowcontent { padding-right: var(--space-m); }
 treeview { arrow-size: var(--arrow); indent-width: var(--tree-indent); icon-size: var(--icon-size); }
 treeicon { image-color: var(--icon); }
 propertygrid { arrow-size: var(--arrow); indent-width: var(--grid-indent); }
+/* A closed group's line: what it holds, dim, where an editor would be. */
+propertysummary { color: var(--text-dim); font-size: var(--font-small); }
 /* A vector's parts keep their room for their numbers: a small inset, not a field's full one. */
 propertyeditor.floats numberfield { padding: 0 var(--space-xs); }
 
@@ -558,6 +627,18 @@ button.add-component { align-self: stretch; justify-content: center; margin: var
 .transport-state.playing { color: var(--success); background-color: var(--success-background); }
 .transport-state.paused { color: var(--warning); background-color: var(--warning-background); }
 .transport-state.faulted { color: var(--danger); background-color: var(--danger-background); }
+.transport-state.stopped { color: var(--text-dim); }
+/* The Game tab: the game beside the script debugger, the bar's resolution a fixed width. */
+.game-view-pane { flex-grow: 1; flex-basis: 0; min-width: 0; min-height: 0; background-color: var(--surface-sunken); }
+.game-view { flex-grow: 1; }
+.game-scene { font-size: var(--font-small); color: var(--text-dim); margin-left: var(--space-s); }
+.game-resolution { width: 200px; flex-shrink: 0; }
+.game-debugger { min-width: 200px; flex-direction: column; } /* its share of the split, its handle the edge */
+.game-debugger-bar { flex-direction: row; column-gap: var(--space-xs); }
+.game-debugger-state { font-size: var(--font-small); color: var(--text-dim); padding: var(--space-xs) var(--space-m); }
+.game-debugger-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-m) var(--space-xs); }
+.game-debugger-stack { height: 160px; background-color: transparent; }
+.game-debugger-locals { flex-grow: 1; min-height: 0; background-color: transparent; }
 
 /* === Problems === */
 .problems { flex-direction: column; background-color: var(--surface); border: 1px solid var(--separator); border-radius: var(--radius); }
@@ -618,6 +699,9 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
                 padding: var(--space-xs); }
 .picker { padding-bottom: var(--space-s); width: 420px; } /* its own width: a dialog's 380 is a form's */
 .picker-search { padding: var(--space-m); border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); margin-bottom: var(--space-s); }
+/* The search, then the picker's close at its end. */
+.picker-search { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.picker-search > .search { flex-grow: 1; }
 .picker-group { font-size: 11px; font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-l) var(--space-xs); }
 .picker > .asset-row { margin: 0 var(--space-s); }
 /* A tree picker's rows: indented by level (the width is the row's), a row kept only to show where
@@ -627,6 +711,9 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .picker-foot { flex-direction: row; align-items: center; padding: var(--space-s) var(--space-m) 0; margin-top: var(--space-s);
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
+.picker-hint.described { color: var(--text-dim); white-space: normal; flex-shrink: 1; min-width: 0; } /* the lit item's sentence */
+/* A row's name keeps its room; its detail gives way first, in an ellipsis, never over the name. */
+.picker-list .row-kind { flex-shrink: 1000; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
 /* The asset picker: its groups a tree beside what the chosen one holds, as the assets browser. */
 .dialog.asset-picker { width: 640px; }
@@ -636,8 +723,18 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .asset-picker-items { flex-grow: 1; min-width: 0; flex-direction: column; padding: var(--space-xs) var(--space-s); }
 .asset-picker-where { font-size: var(--font-small); color: var(--text-dim); padding: var(--space-xs) var(--space-m) var(--space-s); }
 .asset-picker-bar { flex-direction: row; align-items: center; column-gap: var(--space-s); }
-.asset-picker-grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); padding: var(--space-xs) var(--space-s); }
+.asset-picker-grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); padding: var(--space-xs) var(--space-s); } /* the mock's */
 .asset-picker-grid > .asset-tile { width: 88px; }
+.asset-picker-items > .asset-picker-list { flex-grow: 1; min-height: 0; background-color: transparent; padding: 0; }
+/* A row's name a column of its own, so where each asset lives starts at one x down the list (as the
+   grid's names are): a name longer than it ends in an ellipsis. Where it lives is cut in the
+   middle, its start and the asset's own folder kept. */
+.asset-picker-list .asset-row-text > .row-name { flex-grow: 0; flex-shrink: 0; width: 40%; }
+.asset-picker-list .asset-row-text > .row-kind { flex-grow: 1; text-align: start; text-overflow: ellipsis-middle; }
+.asset-picker-state { flex-grow: 1; color: var(--text-dim); text-align: center; padding: var(--space-xl) var(--space-l); }
+/* The entity picker: the scene's tree as the hierarchy draws it, in a picker's frame. */
+.entity-picker-tree { height: 340px; background-color: transparent; padding: 0 var(--space-s); }
+.entity-picker-state { height: 340px; color: var(--text-dim); text-align: center; padding: var(--space-xl) var(--space-l); } /* in the tree's room */
 /* The render textures picker: its passes a tree, wide enough for a texture's size and format. */
 .texture-picker { width: 460px; }
 .texture-tree { height: 360px; }
@@ -673,6 +770,9 @@ button.group-field { justify-content: flex-start; }
 .templates, .export { flex-grow: 1; padding-bottom: 0; }
 .templates-split, .export-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
 .templates-list { width: 290px; flex-shrink: 0; }
+/* A template's and a preset's row is two lines with room above and below (.template-row's height):
+   the lists' own row height, where the views' default one line had squeezed them into each other. */
+.templates-list, .export-list { row-height: 52px; }
 .templates-side { flex-grow: 1; min-width: 0; }
 .templates-detail { flex-direction: column; row-gap: var(--space-m); }
 .templates-head { flex-direction: row; align-items: center; column-gap: var(--space-m); }

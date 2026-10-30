@@ -41,9 +41,10 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[19] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+	private static StringView[21] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
 		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "project.reportResourceMemory", "build.cookAll",
-		"build.rebuildAll", "game.play", "game.playNewInstance", "view.resetLayout", "view.screenshot", "view.commandPalette", "help.about");
+		"build.rebuildAll", "build.cookPage", "build.rebuildPage", "game.play", "game.playNewInstance", "view.resetLayout",
+		"view.screenshot", "view.commandPalette", "help.about");
 	/// The ones a later layer brings: no hook yet, so not registered. Close Project is here because
 	/// a project given on the command line keeps its one project.
 	private static StringView[4] sLeftOut = .("file.saveLayout", "file.closeProject", "view.profiler", "profiler.record");
@@ -109,6 +110,8 @@ static class EditorApplicationTests
 		Test.Assert(Refused(actions, "file.saveAs"));
 		Test.Assert(Refused(actions, "build.cookAll"));
 		Test.Assert(Refused(actions, "build.rebuildAll"));
+		Test.Assert(Refused(actions, "build.cookPage"));
+		Test.Assert(Refused(actions, "build.rebuildPage"));
 		Test.Assert(Refused(actions, "project.settings"));
 		Test.Assert(Refused(actions, "project.export"));
 		Test.Assert(Refused(actions, "game.play"));

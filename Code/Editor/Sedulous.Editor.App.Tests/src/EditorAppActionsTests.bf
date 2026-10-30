@@ -589,4 +589,47 @@ class EditorAppActionsTests
 		Test.Assert(actions.Execute("help.about", null) case .Ok);
 		Test.Assert(bench.Said("about"));
 	}
+
+	/// An asset page's Cook and Rebuild: off with no project, or over a page with no asset (a Game
+	/// tab), saying why; each runs over the page it is given.
+	[Test]
+	public static void AnAssetPagesCookAndRebuildAreOffWithNoProjectOrNoAssetAndRunOverTheirPage()
+	{
+		let bench = scope Bench();
+		let actions = bench.Actions;
+		let ran = scope List<String>();
+		defer { ClearAndDeleteItems!(ran); }
+		EditorAppActions.RegisterBuildActions(actions, bench.Context,
+			new [=ran] (page) => { ran.Add(new $"cook {page.Title}"); },
+			new [=ran] (page) => { ran.Add(new $"rebuild {page.Title}"); });
+		Test.Assert(actions.Find("build.cookPage") != null);
+		Test.Assert(actions.Find("build.rebuildPage") != null);
+		Test.Assert(actions.Find("build.cookPage").MenuPath == "Build/Cook This Asset");
+
+		let page = scope TestPage("Crate");
+		Test.Assert(!actions.IsEnabled("build.cookPage", page));
+		Test.Assert(actions.DisabledReason("build.cookPage", page, .. scope .()) == "Open a project first");
+
+		bench.OpenProject("app_actions_cook");
+		Test.Assert(!actions.IsEnabled("build.cookPage", page), "a page with no asset (a Game tab)");
+		Test.Assert(actions.DisabledReason("build.cookPage", page, .. scope .()) == "This page shows no asset");
+		Test.Assert(actions.DisabledReason("build.cookPage", null, .. scope .()) == "No page is active");
+		page.InstanceId = Guid.Create();
+		Test.Assert(actions.IsEnabled("build.cookPage", page));
+		Test.Assert(actions.Execute("build.cookPage", page) case .Ok);
+		Test.Assert(actions.Execute("build.rebuildPage", page) case .Ok);
+		Test.Assert(ran.Count == 2);
+		Test.Assert(ran[0] == "cook Crate");
+		Test.Assert(ran[1] == "rebuild Crate");
+		Test.Assert(bench.Cooks.IsEmpty, "the page's own cook, not the whole project's");
+	}
+
+	/// No context: the page cooks are left out, their hooks let go.
+	[Test]
+	public static void ThePageCooksAreLeftOutWithNoContext()
+	{
+		let actions = scope EditorActionRegistry();
+		EditorAppActions.RegisterBuildActions(actions, null, new (page) => {}, new (page) => {});
+		Test.Assert(actions.Count == 0);
+	}
 }

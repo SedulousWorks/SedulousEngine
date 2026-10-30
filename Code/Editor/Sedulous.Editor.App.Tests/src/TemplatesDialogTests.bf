@@ -341,9 +341,9 @@ class TemplatesDialogTests
 	}
 
 	/// A template's row under the editor's sheet: --space-l at its side and between its icon and
-	/// its text, a 28-pixel icon, a gap (--space-xs) between its name and summary. Its height is
-	/// still the list's fixed row (Raptor's c10ec7994 gives the list 52-pixel rows), so the rule's
-	/// min-height and its padding above and below wait for that.
+	/// its text, a 28-pixel icon, a gap (--space-xs) between its name and summary; two lines high
+	/// with room above and below (the list's row, 52 pixels: the views' default one line had
+	/// squeezed the rows into each other).
 	[Test]
 	public static void ATemplatesRowHasRoomAtItsSidesALargerIconAGapBetweenItsLines()
 	{
@@ -364,7 +364,8 @@ class TemplatesDialogTests
 		let textAt = text.ConvertToRootSpace(.(0.0f, 0.0f));
 		let nameAt = name.ConvertToRootSpace(.(0.0f, 0.0f));
 		let summaryAt = summary.ConvertToRootSpace(.(0.0f, 0.0f));
-		Test.Assert(row.Size.Y == dialog.List.RowHeight, "the list's row, till c10ec7994");
+		Test.Assert(row.Size.Y == dialog.List.RowHeight, "the list's row");
+		Test.Assert(dialog.List.RowHeight == 52.0f, "two lines with room above and below");
 		Test.Assert((icon.Size.X == 28.0f) && (icon.Size.Y == 28.0f), "a slightly larger icon");
 		Test.Assert(iconAt.X - at.X == 12.0f, "--space-l at its side");
 		Test.Assert(textAt.X - (iconAt.X + icon.Size.X) == 12.0f, "--space-l between icon and text");

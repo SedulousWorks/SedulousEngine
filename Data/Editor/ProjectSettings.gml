@@ -5,5 +5,5 @@
 -->
 <Panel class="dialog-body project-settings">
     <PropertyGrid id="settings-grid" class="settings-grid"/>
-    <Panel class="dialog-buttons"><Spacer/><Button id="settings-cancel" class="ghost" text="Cancel"/><Button id="settings-save" class="primary" text="Save"/></Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="settings-cancel" text="Cancel"/><Button id="settings-save" class="primary" text="Save"/></Panel>
 </Panel>

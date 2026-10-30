@@ -244,6 +244,10 @@ class EditorWindow
 	/// The look in effect. The window's.
 	public EditorLook Look => mLook;
 
+	/// A file's text by its path under the data root (a code language's), appended; false when it
+	/// is not there.
+	public bool LoadText(StringView path, String outText) => (mResources != null) && mResources.LoadText(path, outText);
+
 	/// A page's or a panel's markup by its path under the data root (Editor/...): a node with one
 	/// reference, the caller's, or null (logged) when it does not load.
 	public Node LoadMarkup(StringView path)

@@ -61,7 +61,7 @@
             <Panel class="dialog-body pref-previews-page">
                 <Label class="form-help" text="Sizes the Game tab offers on this machine, after the project's own and its export presets'."/>
                 <Panel id="pref-previews" class="pref-previews"/>
-                <Button id="pref-preview-add" class="ghost pref-preview-add" text="Add a resolution"/>
+                <Button id="pref-preview-add" class="pref-preview-add" text="Add a resolution"/>
             </Panel>
         </TabPage>
         <TabPage title="Shortcuts">
@@ -71,5 +71,5 @@
             </Panel>
         </TabPage>
     </TabView>
-    <Panel class="dialog-buttons"><Spacer/><Button id="pref-cancel" class="ghost" text="Cancel"/><Button id="pref-save" class="primary" text="Save"/></Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="pref-cancel" text="Cancel"/><Button id="pref-save" class="primary" text="Save"/></Panel>
 </Panel>

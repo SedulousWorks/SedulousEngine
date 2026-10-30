@@ -606,4 +606,32 @@ class LayoutStoreTests
 		Test.Assert(reader.IsOk);
 		Test.Assert(!section.Captured);
 	}
+
+	/// What a restored layout names and nothing provides (a Game tab) is let go, docked or closed.
+	[Test]
+	public static void WhatARestoredLayoutNamesAndNothingProvidesIsLetGoDockedOrClosed()
+	{
+		let dock = scope DockController();
+		Register(dock, "assets");
+		Register(dock, "game-page");
+		Register(dock, "game-page-1");
+		let layout = scope DockLayout();
+		Test.Assert(layout.InsertTab("assets", layout.CentralStack).Ok);
+		Test.Assert(layout.InsertBeside("game-page", layout.StackOf("assets"), .End, 0.5f).Ok);
+		Test.Assert(layout.InsertTab("game-page-1", layout.StackOf("game-page")).Ok);
+		Test.Assert(layout.Close("game-page-1").Ok, "a closed one is remembered as hidden");
+
+		// The next session: the shared panels registered, no Game tab reopened.
+		let restored = scope DockController();
+		Register(restored, "assets");
+		Test.Assert(restored.Adopt(layout).Ok);
+		Test.Assert(restored.Layout.StackOf("game-page") != cNoDock, "a placeholder until let go");
+		ProjectEditorSettings.ForgetUnprovidedPanels(restored);
+		let kept = restored.Layout;
+		Test.Assert(kept.StackOf("assets") != cNoDock);
+		Test.Assert(kept.StackOf("game-page") == cNoDock);
+		Test.Assert(kept.FindHidden("game-page") == null);
+		Test.Assert(kept.FindHidden("game-page-1") == null);
+		Test.Assert(kept.CheckInvariants());
+	}
 }

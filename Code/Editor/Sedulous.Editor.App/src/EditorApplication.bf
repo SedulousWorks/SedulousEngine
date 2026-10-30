@@ -58,6 +58,11 @@ class EditorApplication : IApplication
 	/// The host borrows it for as long as it is installed.
 	private delegate void(int) mEmbeddedExitHandler = null ~ delete _;
 
+	/// The one source every page factory asks for PageServices (the registrations borrow it).
+	/// Declared before the context, so it outlives the factories the context's registry holds.
+	private AssetPageServicesSource mPageServices ~ delete _;
+	/// The code pages' languages, read through the window's resources.
+	private CodeLanguages mCodeLanguages ~ delete _;
 	// The services the parts share. Declared before the parts, so they outlive them.
 	private EditorContext mContext = new .() ~ delete _;
 	/// Exe-assembled (RegisterEditors).
@@ -94,8 +99,10 @@ class EditorApplication : IApplication
 	private EditorPreferencesDialog mPreferences = null ~ delete _;
 	/// A type's icon, asked of the type; made with the slots' table.
 	private EditorIcons mTypeIcons = null ~ delete _;
-	/// The one picker (assets, paths, groups), made the first time it shows.
+	/// The one picker (paths, groups, components), made the first time it shows.
 	private Picker mPicker = null ~ delete _;
+	/// An asset slot's picker, made the first time it shows.
+	private AssetPickerWindow mAssetPicker = null ~ delete _;
 	/// What an asset slot asks of the editor, made the first time a slot needs it; after the icons
 	/// and the picker it reaches, so it goes first.
 	private ResourceRefServices mRefs = null ~ delete _;
@@ -147,6 +154,8 @@ class EditorApplication : IApplication
 	public this(EditorAppConfig config)
 	{
 		mConfig = config;
+		mPageServices = new .(new [=this] () => PageServices());
+		mCodeLanguages = new .(new [=this] (path, outText) => mWindow.LoadText(path, outText));
 		mProjectManager = new ProjectManagerController(mEditorSettings);
 		// Thumbnails are reachable from the constructor on: the registration block, where each
 		// domain folds its thumbnail generator in, runs before the project opens.
@@ -176,6 +185,16 @@ class EditorApplication : IApplication
 	/// The engine data root this editor runs from (its config's, resolved at launch).
 	public StringView DataRoot => mConfig.DataRoot;
 	public EditorCookService CookService => mCookService;
+
+	/// Cooks `page`'s asset and what it needs (`force`: again, changed or not), saving the page's
+	/// changes first.
+	private void CookPage(EditorPage page, bool force)
+	{
+		if (page.IsDirty)
+			mPages.Save(page);
+		Guid[1] ids = .(page.InstanceId);
+		mCookService.RequestCookFor(ids, force);
+	}
 	/// The resources over the open project's cooked database; null with no project.
 	public ResourceManager Resources => mSession.Resources;
 	/// Valid after OnStartup; the Game page drives its play bracket through it.
@@ -292,6 +311,9 @@ class EditorApplication : IApplication
 					};
 				if ((store == null) || !mPages.Restore(store, progress))
 					OpenDefaultScene(project);
+				// What the layout names and nothing reopened (a Game tab, a page whose asset is
+				// gone) goes, rather than staying a placeholder.
+				ProjectEditorSettings.ForgetUnprovidedPanels(mDock.Controller);
 				// The Project panel shows the project's page; its links open assets as the pages do.
 				if (mWindow.IsOpen)
 				{
@@ -494,6 +516,8 @@ class EditorApplication : IApplication
 		mcpServices.Port = mConfig.McpPort;
 		mcpServices.TemplatesRoot = new (outPath) => { mExport.TemplatesRoot(outPath); };
 		mcpServices.OnCreated = new (creator, instance) => { mCreation.AfterCreate(creator, instance); };
+		// What follows an import, as the Import dialog's: the editor told (a model's prefab made).
+		mcpServices.OnImported = new (primary, options) => { mContext.NotifyImported(primary, options); };
 		// The pages, over the paths the tabs take (a close at the next frame).
 		mcpServices.OpenPage = new (id) => mPages.Open(id);
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
@@ -503,6 +527,8 @@ class EditorApplication : IApplication
 		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
 		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
+		// The main window's GUI, which the input tools drive.
+		mcpServices.GuiRoot = new () => mWindow.Root;
 		// The dock's layout tools, over its controller, and the action bridge, its unattended
 		// calls refusing the window root's modal windows (both outlive the host, which stops
 		// first; a headless run has no root, so nothing to refuse).
@@ -793,9 +819,9 @@ class EditorApplication : IApplication
 		mExportDialog.Open(root);
 	}
 
-	/// Shows a picker's request below `anchor` (else near the top), over the main window; the
-	/// picker is made the first time. OWNERSHIP of `request` transfers, shown or not.
-	public void ShowPicker(PickerRequest request, Sedulous.GUI.Node anchor)
+	/// Shows a picker's request in the middle of the main window; the picker is made the first
+	/// time. OWNERSHIP of `request` transfers, shown or not.
+	public void ShowPicker(PickerRequest request)
 	{
 		let root = mWindow.Root;
 		if (root == null)
@@ -803,7 +829,28 @@ class EditorApplication : IApplication
 			delete request;
 			return;
 		}
-		PickerMade().Open(root, request, anchor);
+		PickerMade().Open(root, request);
+	}
+
+	/// Opens the asset picker (its groups beside what each holds) over the main window for
+	/// `request`; it is made the first time. OWNERSHIP of `request` transfers, shown or not.
+	public void ShowAssetPicker(AssetPickRequest request)
+	{
+		let root = mWindow.Root;
+		if (root == null)
+		{
+			delete request;
+			return;
+		}
+		if (mAssetPicker == null)
+		{
+			let services = new AssetPickerServices();
+			services.Context = mContext;
+			services.Icons = TypeIcons();
+			services.Picture = new (id) => mThumbnailService.Get(id);
+			mAssetPicker = new AssetPickerWindow(services, mWindow.LoadMarkup(AssetPickerWindow.cMarkupPath));
+		}
+		mAssetPicker.Open(root, request);
 	}
 
 	/// The one picker, made the first time.
@@ -881,7 +928,7 @@ class EditorApplication : IApplication
 		{
 			let window = mWindow;
 			mTypeIcons = new EditorIcons(new [=window] (path) => (window.Resources != null) && window.Resources.Exists(path));
-			mRefs = ResourceRefServices.From(mContext, mTypeIcons, new (request, anchor) => { ShowPicker(request, anchor); });
+			mRefs = ResourceRefServices.From(mContext, mTypeIcons, new (request) => { ShowAssetPicker(request); });
 		}
 		return mRefs;
 	}
@@ -892,6 +939,25 @@ class EditorApplication : IApplication
 	{
 		RefServices();
 		return mTypeIcons;
+	}
+
+	/// The source every page factory asks for PageServices; the registrations borrow it, and it
+	/// lives as long as the editor.
+	public AssetPageServicesSource PageServicesSource => mPageServices;
+
+	/// What an asset page asks of the editor when it is made: its markup, the asset slots' table,
+	/// the type icons, the host and the window's GUI a preview renders in. The caller owns it.
+	public AssetPageServices PageServices()
+	{
+		let services = new AssetPageServices();
+		let window = mWindow;
+		services.LoadMarkup = new [=window] (path) => window.LoadMarkup(path);
+		services.Refs = RefServices();
+		services.Icons = TypeIcons();
+		services.Host = mEmbeddedHost; // the runtime's, with its scenes and renderer (the scene page's too)
+		services.Gui = mWindow.Host;
+		services.Languages = mCodeLanguages;
+		return services;
 	}
 
 	/// Exits once the unsaved pages are saved or let go; true when nothing needed asking (the
@@ -938,7 +1004,10 @@ class EditorApplication : IApplication
 		project.ExportPresets = new () => { OpenExport(); };
 		EditorAppActions.RegisterProjectActions(actions, project);
 
-		EditorAppActions.RegisterBuildActions(actions, mContext);
+		// One page's asset: its changes saved first, so what cooks is what it shows.
+		EditorAppActions.RegisterBuildActions(actions, mContext,
+			new (page) => { CookPage(page, false); },
+			new (page) => { CookPage(page, true); });
 
 		// The Game tab through the context's GamePageFactory: unset until the play library
 		// registers it, Play says so.
@@ -1181,6 +1250,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mExportDialog); // closed, while the window and the export are there
 		DeleteAndNullify!(mImportWindow); // closed (its session let go), while the window and the picker are there
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
+		DeleteAndNullify!(mAssetPicker); // closed, while the window's root and the context are there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it

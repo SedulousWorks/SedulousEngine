@@ -13,8 +13,8 @@ namespace Sedulous.Editor.App.Tests;
 
 /// EditorExport: an export asks for a project and runs one at a time; it cooks first, then
 /// hands the job to the job service, whose failure is a notice; the templates' folder is the
-/// user's override when there is one; the presets save to the project; a resource report with
-/// no project is a line in the log, not a crash.
+/// user's override when there is one; the presets save to the project and are read back when it
+/// opens again; a resource report with no project is a line in the log, not a crash.
 class EditorExportTests
 {
 	/// The services an exporter runs on, over the real cook and job services; the notices land
@@ -169,5 +169,32 @@ class EditorExportTests
 		Test.Assert(ExportPresetsFile.Load(projectFs, loaded) case .Ok);
 		Test.Assert(loaded.Presets.Count == 1);
 		Test.Assert(loaded.Presets[0].Name == exporter.Presets.At(0).Name);
+	}
+
+	/// A project's presets saved are read back when it opens again: a new export over the same
+	/// project has them (they were saved and never read back, so a restart lost them).
+	[Test]
+	public static void AProjectsPresetsAreReadBackWhenItOpensAgain()
+	{
+		let bench = scope Bench();
+		bench.OpenProject("scratch_editor_export_presets_again");
+		{
+			let first = scope EditorExport(bench.Services());
+			first.SetProject(bench.Project);
+			let defaults = first.Presets.Count;
+			let deck = scope ExportPreset();
+			deck.Name.Set("Steam Deck");
+			deck.Platform.Set("Linux64");
+			first.Presets.Add(deck);
+			first.SavePresets();
+			Test.Assert(first.Presets.Count == defaults + 1);
+		}
+		// The next session: a new export over the same project.
+		let again = scope EditorExport(bench.Services());
+		again.SetProject(bench.Project);
+		var found = false;
+		for (let preset in again.Presets.Set.Presets)
+			found = found || (preset.Name == "Steam Deck");
+		Test.Assert(found);
 	}
 }

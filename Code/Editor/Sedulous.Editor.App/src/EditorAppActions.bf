@@ -96,6 +96,7 @@ class HelpActions
 static class EditorAppActions
 {
 	typealias Hook = delegate void();
+	typealias PageHook = delegate void(EditorPage page);
 
 	/// Registers `d` running `run`, taking the hook (the field is left null so its holder does
 	/// not delete it too); with no hook, `d` is dropped.
@@ -213,11 +214,17 @@ static class EditorAppActions
 
 	/// Build's actions, cooks through the context's cook request (the session wires it to the
 	/// cook service while a project is open); they need a project open. Left out with no
-	/// context.
-	public static void RegisterBuildActions(EditorActionRegistry actions, EditorContext context)
+	/// context. `cookPage` and `rebuildPage` cook the page's asset and what it needs (rebuild:
+	/// again, whether changed or not), its unsaved changes saved first so the cook reads them;
+	/// each is left out when null. TAKES OWNERSHIP of both.
+	public static void RegisterBuildActions(EditorActionRegistry actions, EditorContext context, delegate void(EditorPage page) cookPage = null, delegate void(EditorPage page) rebuildPage = null)
 	{
 		if (context == null)
+		{
+			delete cookPage;
+			delete rebuildPage;
 			return;
+		}
 		{
 			let d = NeedsProject(context, new EditorActionDeclaration("build.cookAll", "Cook All", "Cook the dirty assets into the cooked database", "Build/Cook All", 100));
 			d.Execute = new [=context] (page) => { context.RequestCook(false); };
@@ -228,6 +235,35 @@ static class EditorAppActions
 			d.Execute = new [=context] (page) => { context.RequestCook(true); };
 			actions.Register(d);
 		}
+		// An asset page's: on its bar, and in Build's menu over the active page. Where the old
+		// collision page had its own Cook now, every asset page has these.
+		AddPageCook(actions, context, new .("build.cookPage", "Cook This Asset", "Save the page's changes, then cook its asset and what it needs", "Build/Cook This Asset", 200), cookPage);
+		AddPageCook(actions, context, new .("build.rebuildPage", "Rebuild This Asset", "Save the page's changes, then cook its asset and what it needs again, changed or not", "Build/Rebuild This Asset", 201), rebuildPage);
+	}
+
+	/// Registers `d` running `cook` over the page, on while a project is open and the page shows
+	/// an asset (a Game tab shows none). TAKES OWNERSHIP of both; with no hook, `d` is dropped.
+	private static void AddPageCook(EditorActionRegistry actions, EditorContext context, EditorActionDeclaration d, PageHook cook)
+	{
+		if (cook == null)
+		{
+			delete d;
+			return;
+		}
+		d.Enabled = new [=context] (page) => (context.Project != null) && (page != null) && !page.InstanceId.IsNil;
+		d.DisabledReason = new [=context] (page, outReason) =>
+			{
+				if (context.Project == null)
+					outReason.Append("Open a project first");
+				else
+					outReason.Append((page == null) ? "No page is active" : "This page shows no asset");
+			};
+		d.Execute = new [=cook] (page) =>
+			{
+				if (page != null)
+					cook(page);
+			} ~ delete cook;
+		actions.Register(d);
 	}
 
 	/// Game's actions. TAKES OWNERSHIP of `run`.

@@ -52,6 +52,40 @@ static class ProjectEditorSettings
 		return .Ok;
 	}
 
+	/// The panels a restored layout names that nothing provides once the project's pages have
+	/// reopened (a Game tab, which no project reopens; a page whose asset is gone) let go, docked or
+	/// closed, so the dock shows no placeholder for them: as the old dock did, which skipped a saved
+	/// panel it had none for.
+	public static void ForgetUnprovidedPanels(DockController dock)
+	{
+		let layout = scope DockLayout();
+		layout.Set(dock.Layout);
+		let gone = scope List<String>();
+		defer { ClearAndDeleteItems(gone); }
+		for (let node in layout.Nodes)
+		{
+			if (!node.IsStack)
+				continue;
+			for (let panel in node.Panels)
+			{
+				if (dock.Describe(panel) == null)
+					gone.Add(new String(panel));
+			}
+		}
+		for (let panel in gone)
+			layout.Close(panel);
+		for (let hidden in layout.Hidden)
+		{
+			if (dock.Describe(hidden.Panel) == null)
+				gone.Add(new String(hidden.Panel));
+		}
+		if (gone.IsEmpty)
+			return;
+		for (let panel in gone)
+			layout.Forget(panel);
+		dock.Adopt(layout);
+	}
+
 	public static void CaptureFavorites(EditorContext context, Settings store)
 	{
 		let section = store.Section<EditorFavoritesSettings>();

@@ -7,6 +7,7 @@ using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Settings;
 using Sedulous.Mcp;
+using Sedulous.GUI; // the input tools' root
 using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;
 using Sedulous.Pipeline.Core;
@@ -58,6 +59,8 @@ class EditorMcpServiceServices
 	public delegate void(List<WindowShot> outShots) Shots ~ delete _;
 	/// The tools the application adds over its other parts (the dock's layout tools, the action
 	/// bridge), called on every start. Owned.
+	/// The main window's GUI, which the input tools drive; null: none now.
+	public delegate SceneRoot() GuiRoot ~ delete _;
 	public delegate void(McpServer server) AddTools ~ delete _;
 }
 
@@ -187,6 +190,10 @@ class EditorMcpService
 					mServices.Shots(outShots);
 			};
 		EditorWindowTools.Register(mHost.Server, windows);
+		// editor_find, editor_click and the other hands: the main window's GUI, driven as a user would.
+		let input = new InputToolSeams();
+		input.Root = new [=this] () => (mServices.GuiRoot != null) ? mServices.GuiRoot() : null;
+		EditorInputTools.Register(mHost.Server, input);
 		// profiler_capture: the process's recorder, which the host advances after each frame.
 		let profiler = new ProfilerToolSeams();
 		profiler.Profiler = GlobalProfiler();

@@ -266,7 +266,7 @@ class ProjectHomeView
 	}
 
 	/// A setting's value as text: a choice by its case's name, a flag as On or Off, a count (the
-	/// MSAA level by its label, as the settings dialog shows it), a text ("(none)" when empty).
+	/// MSAA level by its label, as the settings dialog shows it), a text ("Not set" when empty).
 	/// Empty for a kind this page does not show.
 	private static void SettingText(ProjectSettings settings, FieldInfo field, SettingKind kind, String outText)
 	{
@@ -292,7 +292,7 @@ class ProjectHomeView
 				outText.AppendF("{}", *(uint32*)address);
 		case .Text:
 			let text = *(String*)address;
-			outText.Append(text.IsEmpty ? "(none)" : StringView(text));
+			outText.Append(text.IsEmpty ? "Not set" : StringView(text));
 		default:
 		}
 	}
@@ -324,7 +324,7 @@ class ProjectHomeView
 					continue;
 				let setting = SettingFields.Setting(field).Value;
 				SettingFields.KindOf(field, let kind);
-				let emptyText = (setting.EmptyText != null) ? StringView(setting.EmptyText) : "(none)";
+				let emptyText = (setting.EmptyText != null) ? StringView(setting.EmptyText) : "Not set";
 				Node value = null;
 				let text = scope String();
 				switch (kind)
@@ -340,7 +340,7 @@ class ProjectHomeView
 					list.AddClass("home-links");
 					for (let id in ids)
 					{
-						Adopt(list, AssetLink(id, "(none)"));
+						Adopt(list, AssetLink(id, "Not set"));
 						let instance = project.SourceDb.GetInstance(id);
 						if (!text.IsEmpty)
 							text.Append(", ");
@@ -348,7 +348,7 @@ class ProjectHomeView
 					}
 					if (ids.IsEmpty)
 					{
-						text.Append("(none)");
+						text.Append("Not set");
 						Adopt(list, Text(text, "home-value dim"));
 					}
 					value = list;

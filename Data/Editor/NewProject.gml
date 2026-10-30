@@ -12,5 +12,5 @@
             <Label id="new-project-where" class="form-help"/>
         </Panel>
     </Panel>
-    <Panel class="dialog-buttons"><Spacer/><Button id="new-project-cancel" class="ghost" text="Cancel"/><Button id="new-project-create" class="primary" text="Create" enabled="false"/></Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="new-project-cancel" text="Cancel"/><Button id="new-project-create" class="primary" text="Create" enabled="false"/></Panel>
 </Panel>

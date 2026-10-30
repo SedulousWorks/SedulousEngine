@@ -14,5 +14,5 @@
         <ScrollView class="import-detail"><Panel id="import-detail" class="import-detail-body"/></ScrollView>
     </Panel>
     <Label id="import-why" class="form-help import-why"/>
-    <Panel class="dialog-buttons"><Spacer/><Button id="import-cancel" class="ghost" text="Cancel"/><Button id="import-run" class="primary" text="Import"/></Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="import-cancel" text="Cancel"/><Button id="import-run" class="primary" text="Import"/></Panel>
 </Panel>

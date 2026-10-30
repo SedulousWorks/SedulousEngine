@@ -29,6 +29,8 @@ class AssetCell : UIWidget
 		/// An export takes it (a group: all it holds) whatever reaches it.
 		public bool AlwaysExported;
 		public bool Group;
+		/// A row without its badge and Always Export columns: a picker's, which asks neither.
+		public bool HidesStateColumns;
 		/// Its thumbnail, a tile's in place of its glyph (Show keeps a reference); null: none yet.
 		public Sedulous.GUI.Drawable Picture;
 	}
@@ -134,6 +136,8 @@ class AssetCell : UIWidget
 		else
 		{
 			mBadge.Visible = !shown.Badge.IsEmpty;
+			mBadge.Displayed = !shown.HidesStateColumns;
+			mExportIcon.Displayed = !shown.HidesStateColumns;
 			Lit(mExportIcon, shown.AlwaysExported);
 			mExportIcon.Tooltip = shown.AlwaysExported ? "Always exported" : "Exported when something it ships uses it";
 			Lit(mStar, shown.Favourite);

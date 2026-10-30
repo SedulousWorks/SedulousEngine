@@ -1,0 +1,48 @@
+<!--
+  The preview pages (Raptor's editor-gui spec, 5.4, layers 3 and 4): the mesh viewer, the
+  collision shape, the material and the settings profile, one shape. The kit's bar (Save, Undo,
+  Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; the page's own
+  after them; its kind at the end) over the 3D preview beside the grid. The preview has its own bar: Frame, then the preview's own choices
+  (what it shows the asset on: a material, a level of detail, a shape), and the camera's controls
+  named, as no preview said them before. A preview with nothing to show says why; an asset that did
+  not read says so in place of the grid.
+  Code puts the viewport in its stage, the page's choices after `preview-own`, and fills the grid.
+-->
+<Panel class="page preview-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.62 0.38">
+        <Panel class="panel page-pane preview-pane">
+            <Panel id="preview-bar" class="panel-toolbar preview-bar">
+                <ToolButton id="preview-frame" icon="Editor/Icons/frame-selection.svg" tooltip="Frame it (F)"/>
+                <Separator id="preview-own"/>
+                <Spacer/>
+                <Label id="preview-hint" class="preview-hint" text="Alt drag orbits · right drag looks, WASD flies · middle drag pans · wheel zooms"/>
+            </Panel>
+            <Panel id="preview-stage" class="preview-stage"/>
+            <Panel id="preview-empty" class="state-box preview-empty">
+                <Image class="state-icon" src="Editor/Icons/cube.svg"/>
+                <Label id="preview-empty-title" class="state-title" text="Nothing to preview yet"/>
+                <Label id="preview-empty-text" class="state-text" text="It shows once the asset has cooked."/>
+            </Panel>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

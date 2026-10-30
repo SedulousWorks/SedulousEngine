@@ -10,7 +10,7 @@ class EditorAssetBrowserSettings
 {
 	/// False is list, true is grid.
 	public bool GridMode = false;
-	/// The asset picker dialog's own list or grid choice, apart from the browser's: a picker
+	/// The asset picker's own list or grid choice (AssetPickerWindow), apart from the browser's: a picker
 	/// is often a narrower choice (one asset type), where tiles of thumbnails read differently.
 	[Appended]
 	public bool PickerGridMode = false;

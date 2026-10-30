@@ -277,17 +277,18 @@ class EditorMcpServiceTests
 		let projectPayload = Payload(projectInfo);
 		defer delete projectPayload;
 		Test.Assert(projectPayload.Get("name").AsString() == "Hosted");
-		// The surface: the engine tools, host_info, the pages, the windows, the profiler and the
-		// application's own, each once.
+		// The surface: the engine tools, host_info, the pages, the windows, the input tools, the
+		// profiler and the application's own, each once.
 		Test.Assert(tools != null);
 		let listed = tools.Get("result").Get("tools");
 		Test.Assert(listed.Count == EngineTools.cEngineToolCount + 1 + EditorPageTools.cPageToolCount
-			+ EditorWindowTools.cWindowToolCount + EditorProfilerTools.cProfilerToolCount + 1);
+			+ EditorWindowTools.cWindowToolCount + EditorInputTools.cInputToolCount + EditorProfilerTools.cProfilerToolCount
+			+ 1);
 		let names = scope List<String>();
 		defer ClearAndDeleteItems(names);
 		for (int i < listed.Count)
 			names.Add(new String(listed.At(i).Get("name").AsString()));
-		for (let expected in StringView[?]("host_info", "page_list", "page_close", "editor_screenshot", "profiler_capture", "app_tool"))
+		for (let expected in StringView[?]("host_info", "page_list", "page_close", "editor_screenshot", "editor_click", "profiler_capture", "app_tool"))
 		{
 			bool found = false;
 			for (let name in names)

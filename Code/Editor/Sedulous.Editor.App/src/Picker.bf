@@ -5,18 +5,18 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-// The picker (Raptor's editor-gui spec, 5.2, layer 5; catalog 2.4): one for assets, paths and
-// groups, as the kit draws it (Data/Editor/Picker.gml). A search over the rows, which sit under
+// The picker (Raptor's editor-gui spec, 5.2, layer 5; catalog 2.4): one for paths, groups and
+// components (an asset slot's is the asset picker, AssetPickerWindow), as the kit draws it (Data/Editor/Picker.gml). A search over the rows, which sit under
 // their sections in the order the owner gives them, favourites first in a section of their own; a
 // row shows its glyph (its category's tint), its name, what it is, a star when a favourite, and a
 // check on the current value. The current value is lit when it opens; Up and Down move the light
 // past the section headings while the search keeps the keys, and Enter, a double click or Enter on
-// the list picks. The foot says so ("Esc keeps" the current value) and holds None when the owner
-// allows nothing. With nothing to pick it says what is missing and offers the owner's next step;
+// the list picks. The foot says so ("Esc keeps" the current value), and a close at the search's end
+// keeps it too: no button sets nothing, so a pick never clears a value by a slip. With nothing to
+// pick it says what is missing and offers the owner's next step;
 // with nothing matching, it says so and offers to clear the search. A tree request (the groups')
 // indents its rows by level in its order, and a search keeps the rows above each match, dimmed, so
-// a match reads where it is. It opens as a modal popup
-// below what it picks for, or near the top of the window.
+// a match reads where it is. It opens as a modal popup in the window's middle.
 
 /// One thing a picker offers.
 class PickerItem
@@ -24,8 +24,10 @@ class PickerItem
 	/// What a pick answers (a guid's text, a path); unique in a request.
 	public String Key = new .() ~ delete _;
 	public String Name = new .() ~ delete _;
-	/// What it is, dim after the name (a type, a folder).
+	/// What it is, dim after the name (a type, a folder): a few words.
 	public String Detail = new .() ~ delete _;
+	/// A sentence about it, the foot's while its row is lit (a component's).
+	public String Description = new .() ~ delete _;
 	/// The heading it is listed under.
 	public String Section = new .() ~ delete _;
 	/// Its icon's source.
@@ -46,8 +48,6 @@ class PickerRequest
 	public List<PickerItem> Items = new .() ~ DeleteContainerAndItems!(_);
 	/// The current value's key: checked, and lit when it opens.
 	public String Current = new .() ~ delete _;
-	/// The foot's None, which picks nothing (an empty key).
-	public bool AllowNone = false;
 	/// The items a tree (by Depth, in their order): a search keeps where each match is.
 	public bool Tree = false;
 	/// With nothing to pick ("No materials yet").
@@ -155,8 +155,6 @@ class Picker
 	public const String cMarkupPath = "Editor/Picker.gml";
 	/// The favourites' section, listed first.
 	public const String cFavourites = "Favourites";
-	/// How far down the window it opens with no anchor, as a share of its height.
-	private const float cTopShare = 0.12f;
 	private const float cRowEstimate = 26.0f;
 	/// A heading's id has it; an item's never does.
 	private const ItemId cHeaderBit = (ItemId)1 << 63;
@@ -222,7 +220,8 @@ class Picker
 	private ListView mList = null;
 	private UIWidget mState = null;
 	private Sedulous.GUI.Label mHint = null;
-	private Sedulous.GUI.Button mNone = null;
+	/// What the keys do, the foot's when the lit item says nothing.
+	private String mKeysHint = new .() ~ delete _;
 	/// BORROWED: what it opened over, last.
 	private SceneRoot mRoot = null;
 	/// What it was opened with last; an empty one before.
@@ -233,7 +232,7 @@ class Picker
 	private RowModel mModel ~ delete _;
 
 	/// The picker in `content` (the markup's: `picker-search`, `picker-list`, `picker-state` and
-	/// its parts, `picker-hint`, `picker-none`, by id). TAKES OWNERSHIP of a reference to
+	/// its parts, `picker-hint`, `picker-close`, by id). TAKES OWNERSHIP of a reference to
 	/// `content`; null makes a picker that never opens.
 	public this(Node content)
 	{
@@ -245,7 +244,6 @@ class Picker
 		mList = Find<ListView>("picker-list");
 		mState = Find<UIWidget>("picker-state");
 		mHint = Find<Sedulous.GUI.Label>("picker-hint");
-		mNone = Find<Sedulous.GUI.Button>("picker-none");
 		if (mSearch != null)
 			mSearch.SetOnTextChanging(new (text) => { Filter(text); });
 		if (mList != null)
@@ -258,9 +256,10 @@ class Picker
 			mList.EstimatedRowHeight = cRowEstimate;
 			mList.Model = mModel;
 			mList.SetOnActivated(new (index) => { PickRow(index.Row); });
+			mList.SetOnSelectionChanged(new (index) => { ShowHint(); });
 		}
-		if (mNone != null)
-			mNone.SetOnClick(new () => { Pick(""); });
+		if (let close = CloseButton)
+			close.SetOnClick(new () => { Close(); });
 		if (let verb = StateVerbButton)
 			verb.SetOnClick(new () => { StateVerb(); });
 		// Up, Down and Enter before the search takes them.
@@ -294,10 +293,11 @@ class Picker
 		}
 	}
 
-	/// Opens it over `root` for `request`: below `anchor` (what it picks for), else near the top
-	/// of the window; the search empty and focused, the current value lit. False with no frame, a
-	/// root in no GUI, or one open already. OWNERSHIP of `request` transfers, opened or not.
-	public bool Open(SceneRoot root, PickerRequest request, Node anchor = null)
+	/// Opens it over `root` for `request`, in the window's middle whatever asked (every picker the
+	/// same: the user, 2026-10-25); the search empty and focused, the current value lit. False with
+	/// no frame, a root in no GUI, or one open already. OWNERSHIP of `request` transfers, opened or
+	/// not.
+	public bool Open(SceneRoot root, PickerRequest request)
 	{
 		let dispatcher = root.EventDispatcher;
 		if ((mContent == null) || (dispatcher == null) || IsOpen)
@@ -316,27 +316,13 @@ class Picker
 			mSearch.Placeholder = mRequest.Placeholder;
 			mSearch.Text = default;
 		}
-		if (mNone != null)
-			mNone.Displayed = mRequest.AllowNone;
 		Filter(default);
 		let options = new PopupOptions();
 		options.Kind = .Auto; // Escape and a press outside close it, keeping the current value
 		options.Modal = true;
 		options.TakesFocus = true;
 		options.FitContent = true;
-		if (anchor != null)
-		{
-			options.Anchor = anchor;
-			options.Placement.Side = .Below;
-			options.Placement.Align = .Start;
-		}
-		else
-		{
-			options.HasAnchorRect = true;
-			options.AnchorRect = Rect(0.0f, 0.0f, root.Size.X, root.Size.Y * cTopShare);
-			options.Placement.Side = .Below;
-			options.Placement.Align = .Center;
-		}
+		options.Centered = true;
 		dispatcher.OpenPopup(root, mContent, options);
 		if (mSearch != null)
 			dispatcher.FocusNode = mSearch;
@@ -412,6 +398,7 @@ class Picker
 	public void PickLit() => PickRow((mList != null) ? mList.SelectedItem : -1);
 
 	public StringView Hint => (mHint != null) ? mHint.Text : default;
+	public Sedulous.GUI.Label HintLabel => mHint;
 
 	/// Whether it shows its state (nothing to pick, nothing matching) instead of rows.
 	public bool ShowsState => (mState != null) && mState.Displayed;
@@ -448,7 +435,7 @@ class Picker
 	/// The frame's: the tree holds them.
 	public ListView List => mList;
 	public TextField Search => mSearch;
-	public Sedulous.GUI.Button NoneButton => mNone;
+	public Sedulous.GUI.Button CloseButton => Find<Sedulous.GUI.Button>("picker-close");
 	public Sedulous.GUI.Button StateVerbButton => Find<Sedulous.GUI.Button>("picker-state-verb");
 	/// Its frame. Ours: a caller that keeps it takes a reference.
 	public Node Content => mContent;
@@ -469,7 +456,10 @@ class Picker
 	private void Light(int32 row)
 	{
 		if ((mList != null) && IsItemRow(row))
+		{
 			mList.SelectedItem = row;
+			ShowHint(); // lit from code: the list's own callback does not hear it
+		}
 	}
 
 	/// The rows for `query` (case folded; a name that starts with it before one that holds it, or
@@ -610,10 +600,32 @@ class Picker
 				if (IsCurrent(item))
 					current = item.Name;
 			}
+			mKeysHint.Clear();
 			if (current.IsEmpty)
-				mHint.Text = "Enter picks, Esc closes";
+				mKeysHint.Append("Enter picks, Esc closes");
 			else
-				mHint.Text = scope $"Enter picks, Esc keeps {current}";
+				mKeysHint.AppendF("Enter picks, Esc keeps {}", current);
+			ShowHint();
+		}
+	}
+
+	// The foot: the lit item's description where it has one (read as the arrows move), else what
+	// the keys do.
+	private void ShowHint()
+	{
+		if (mHint == null)
+			return;
+		let lit = (mList != null) ? mList.SelectedItem : -1;
+		StringView description = IsItemRow(lit) ? (StringView)mRequest.Items[mRows[lit].Item].Description : default;
+		if (!description.IsEmpty)
+		{
+			mHint.Text = description;
+			mHint.AddClass("described");
+		}
+		else
+		{
+			mHint.Text = mKeysHint;
+			mHint.RemoveClass("described");
 		}
 	}
 

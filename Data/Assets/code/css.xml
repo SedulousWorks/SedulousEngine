@@ -1,4 +1,4 @@
-<!-- The sandbox's Style sheet definition for its code editor (GUI.Code, C2 of Specs/gui-lab-evolution-3.md): a language's definition is its owners', read through the engine's XML serialization. -->
+<!-- The Style sheet definition for the code editors (GUI.Code, C2 of Raptor's Specs/gui-lab-evolution-3.md), one for the editor and the GUI sandbox alike (Raptor's editor-gui spec, 5.4, layer 6), read through the engine's XML serialization. -->
 <root>
 	<object>
 		<string name="id">css</string>

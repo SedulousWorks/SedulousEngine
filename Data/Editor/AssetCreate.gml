@@ -10,5 +10,5 @@
         <Label class="form-label" text="Name"/>
         <Panel class="form-field"><TextField id="asset-create-name"/><Label id="asset-create-why" class="form-help"/></Panel>
     </Panel>
-    <Panel class="dialog-buttons"><Spacer/><Button id="asset-create-cancel" class="ghost" text="Cancel"/><Button id="asset-create-create" class="primary" text="Create"/></Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="asset-create-cancel" text="Cancel"/><Button id="asset-create-create" class="primary" text="Create"/></Panel>
 </Panel>
