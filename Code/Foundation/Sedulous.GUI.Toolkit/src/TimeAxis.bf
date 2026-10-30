@@ -332,6 +332,15 @@ abstract class ITimeMarkerSource
 [GuiReflect(true)]
 class TimeRuler : UIWidget, ITimeAxisClient, ITimeMarkerSourceClient
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		outParts.Add("tick");
+		outParts.Add("marker");
+		outParts.Add("marker-chosen");
+		outParts.Add("playhead");
+	}
+
 	/// Labelled ticks at least this far apart (pixels).
 	public const float cMinLabelSpacing = 60.0f;
 	/// A marker is under the pointer this near its time (pixels).

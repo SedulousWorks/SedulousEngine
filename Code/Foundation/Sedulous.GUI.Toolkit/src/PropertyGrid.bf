@@ -438,6 +438,13 @@ class PropertyRowContent : UIWidget
 [GuiReflect(true)]
 class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		base.CollectStyleParts(outParts);
+		outParts.Add("drop-indicator");
+	}
+
 	public const uint32 cCategoryRow = 0x80000000;
 	public const uint32 cGroupRow = 0x80000001;
 

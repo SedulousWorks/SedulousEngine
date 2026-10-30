@@ -65,6 +65,12 @@ internal static class CurveEditorsDetail
 [GuiReflect]
 class PropertyValuePreview : UIWidget
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		outParts.Add("curve");
+	}
+
 	// Its own copy.
 	private Sedulous.GUI.Variant mValue = .() ~ _.Dispose();
 	private bool mMixed = false;

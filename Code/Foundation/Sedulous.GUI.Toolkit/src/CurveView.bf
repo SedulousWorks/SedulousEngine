@@ -49,6 +49,15 @@ struct CurveHit
 [GuiReflect(true)]
 class CurveView : UIWidget, ITimeAxisClient, ICurveSourceClient
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		outParts.Add("grid");
+		outParts.Add("selected");
+		outParts.Add("playhead");
+		outParts.Add("selection-box");
+	}
+
 	public const float cHitRadius = 6.0f;
 	public const float cHandleLength = 40.0f;
 	public const float cDragThreshold = 3.0f;

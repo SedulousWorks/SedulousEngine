@@ -39,6 +39,18 @@ class DopesheetRow
 [GuiReflect(true)]
 class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		outParts.Add("labels");
+		outParts.Add("separator");
+		outParts.Add("key");
+		outParts.Add("summary");
+		outParts.Add("selected");
+		outParts.Add("playhead");
+		outParts.Add("selection-box");
+	}
+
 	public const float cRowHeight = 20.0f;
 	public const float cIndent = 12.0f;
 	public const float cHitRadius = 5.0f;

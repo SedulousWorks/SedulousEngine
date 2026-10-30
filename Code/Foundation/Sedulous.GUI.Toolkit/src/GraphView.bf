@@ -567,6 +567,19 @@ class GraphFrameWidget : UIWidget
 [GuiReflect(true)]
 class GraphView : UIWidget, IGraphSourceClient
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		outParts.Add("grid");
+		outParts.Add("grid-major");
+		outParts.Add("node-link");
+		outParts.Add("link-selected");
+		outParts.Add("link-highlight");
+		outParts.Add("link-drag");
+		outParts.Add("link-refused");
+		outParts.Add("selection-box");
+	}
+
 	public const float cDragThreshold = 3.0f;
 	/// How near a pin a press or a drop takes it (at least; the pin's own size when larger).
 	public const float cPinReach = 9.0f;

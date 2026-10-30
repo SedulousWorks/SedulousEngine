@@ -48,6 +48,12 @@ struct GradientStopRef : IEquatable<GradientStopRef>
 [GuiReflect]
 class GradientStrip : UIWidget
 {
+	/// The parts it draws: a sheet reaches only the parts named here.
+	public override void CollectStyleParts(List<StringView> outParts)
+	{
+		outParts.Add("selected");
+	}
+
 	// Each stop lane's height.
 	public const float cLane = 12.0f;
 	public const float cHitRadius = 6.0f;
