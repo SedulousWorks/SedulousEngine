@@ -457,6 +457,32 @@ class InputMapEditorPage : AssetObjectPage
 		let error = scope String();
 		let valid = (map == null) || InputMapValidation.Validate(map, error);
 		SetNotice("invalid", valid ? "" : scope String()..AppendF("The game cannot read this map yet: {}", error));
+		// What it holds, in a line (the old page's totals).
+		if (map != null)
+		{
+			int actions = 0;
+			int bindings = 0;
+			for (let set in map.Sets)
+			{
+				for (let action in set.Actions)
+				{
+					actions++;
+					bindings += action.Bindings.Count;
+				}
+			}
+			let holds = scope String();
+			Counted(holds, map.Sets.Count, "set", "sets");
+			holds.Append(", ");
+			Counted(holds, actions, "action", "actions");
+			holds.Append(", ");
+			Counted(holds, bindings, "binding", "bindings");
+			SetFact("Holds", holds);
+		}
+	}
+
+	private static void Counted(String outText, int count, StringView one, StringView many)
+	{
+		outText.AppendF("{} {}", count, (count == 1) ? one : many);
 	}
 
 	private void StopListen()

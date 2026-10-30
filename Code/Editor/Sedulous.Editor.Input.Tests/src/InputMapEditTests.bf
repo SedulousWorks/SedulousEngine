@@ -128,6 +128,18 @@ class InputMapEditTests
 		InputMapRows.Describe(set, "Actions.0.Bindings.0", binding);
 		Test.Assert(binding.DisplayName == InputMapEdit.SourceTitle(.Composite2D));
 		Test.Assert(!binding.Summary.IsEmpty);
+		Test.Assert(!binding.Summary.Contains("not taken")); // an Axis2D takes four keys
+
+		// A binding whose source the action's kind does not take says so on its own row.
+		let jump = new InputAction();
+		jump.Name.Set("Jump");
+		jump.Kind = .Button;
+		jump.Bindings.Add(keys); // four keys on a button
+		set.Actions.Add(jump);
+		let wrong = scope PropertyInfo();
+		InputMapRows.Describe(set, "Actions.1.Bindings.0", wrong);
+		Test.Assert(wrong.Summary.Contains("(not taken by a "));
+		delete set.Actions.PopBack();
 
 		// A four-key binding: its keys shown and captured, its single input and dead zone not.
 		let left = scope PropertyInfo();
@@ -319,6 +331,7 @@ class InputMapEditTests
 		let f = scope PageFixture();
 		Test.Assert(!f.Page.LoadFailed);
 		Test.Assert(f.Page.Tree(.. scope .()) == "Gameplay\n  Move\n  Jump\nMenu\n  Back");
+		Test.Assert(f.Page.Fact("Holds", .. scope .()).StartsWith("2 sets, 3 actions, ")); // the old page's totals
 		Test.Assert(f.Page.ChosenSet == 0);
 		Test.Assert(f.Text("Name", .. scope .()) == "Gameplay");
 		let shown = scope String();

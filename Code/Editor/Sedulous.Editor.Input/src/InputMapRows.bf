@@ -111,10 +111,13 @@ static class InputMapRows
 		let binding = action.Bindings[b];
 		if (field.IsEmpty)
 		{
-			// A binding: by its source; closed, its input.
+			// A binding: by its source; closed, its input, and when the action's kind does not take
+			// its source (a map the game cannot read), that said on its own row.
 			info.DisplayName.Set(InputMapEdit.SourceTitle(binding.Source));
 			info.Summary.Clear();
 			BindingNames.DescribeBinding(binding, info.Summary);
+			if (!InputMapEdit.SourceFitsKind(action.Kind, binding.Source))
+				info.Summary.AppendF("  (not taken by a {} action)", InputMapEdit.KindTitle(action.Kind));
 			return;
 		}
 		DescribeBindingField(binding, field, info);
