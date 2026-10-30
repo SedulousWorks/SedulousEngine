@@ -111,6 +111,8 @@ class ProfilerPanel : IProfileFocusClient
 			mLiveButton.SetOnToggled(new [=this] (on) => { if (on) ShowLive(); else SetFollowing(false); });
 		if (let open = Find<ToolButton>("profiler-open"))
 			open.SetOnClick(new [=this] () => { PickCapture(); });
+		if (let clear = Find<ToolButton>("profiler-clear"))
+			clear.SetOnClick(new [=this] () => { Clear(); });
 		mSave = Find<ToolButton>("profiler-save");
 		if (mSave != null)
 			mSave.SetOnClick(new [=this] () => { SaveRecording(.. scope .()); });
@@ -179,6 +181,25 @@ class ProfilerPanel : IProfileFocusClient
 
 	public bool IsRecording => mRecordingNow;
 	public bool IsFollowing => mFollowing;
+
+	/// Drops the frames recorded; a recording goes on from the next frame (the old panel's Clear).
+	/// The page shows the recording again, nothing chosen.
+	public void Clear()
+	{
+		mRecording.Clear();
+		if (mCapture != null)
+		{
+			let old = mCapture;
+			mCapture = null;
+			mCapturePath.Clear();
+			SetSource(mRecording);
+			delete old;
+		}
+		mFocus.SetFrames(FrameRange());
+		mAxis.Fit(0, 0);
+		SetFollowing(mRecordingNow);
+		Refresh();
+	}
 
 	/// Each frame: the store's newly settled frames taken while recording; Stop on spike stops at
 	/// the first frame over its time.

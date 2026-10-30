@@ -1007,6 +1007,7 @@ class EditorApplication : IApplication
 		services.Host = mEmbeddedHost; // the runtime's, with its scenes and renderer (the scene page's too)
 		services.Gui = mWindow.Host;
 		services.Languages = mCodeLanguages;
+		services.Pick = new (request) => { ShowPicker(request); };
 		return services;
 	}
 

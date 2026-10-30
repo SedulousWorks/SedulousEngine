@@ -14,7 +14,8 @@ namespace Sedulous.Editor.App.Tests;
 /// the page's recording, following the newest until a frame is chosen, Live following again; Stop
 /// lets the store go and keeps the frames; another viewer's arm and the store's history are left
 /// alone; Stop on spike ends the recording at the first frame over its time; a plot per counter;
-/// Longest and Median; Save writes a capture that Open shows, and Live goes back.
+/// Longest and Median; Save writes a capture that Open shows, and Live goes back; Clear drops the
+/// frames, a recording going on.
 class ProfilerPanelTests
 {
 	private static Node LoadPage()
@@ -220,5 +221,28 @@ class ProfilerPanelTests
 			delete panel;
 		}
 		Test.Assert(!store.Armed);
+	}
+
+	[Test]
+	public static void ClearDropsTheFramesRecordedARecordingGoesOnFromTheNext()
+	{
+		let bed = scope Bed();
+		bed.Panel.Start();
+		RunFrames(bed.Store, 10);
+		bed.Panel.Update();
+		Test.Assert(bed.Panel.Recording.HasFrames);
+		Test.Assert(bed.Find<ToolButton>("profiler-clear").HandleActivate());
+		Test.Assert(!bed.Panel.Recording.HasFrames);
+		Test.Assert(bed.Panel.IsRecording);
+		Test.Assert(bed.Panel.Focus.Frames.Empty);
+		RunFrames(bed.Store, 8);
+		bed.Panel.Update();
+		Test.Assert(bed.Panel.Recording.HasFrames);
+		Test.Assert(bed.Panel.Recording.OldestFrame == 6); // none it had: the next to settle on
+		Test.Assert(bed.Panel.IsFollowing);
+		bed.Panel.Stop();
+		bed.Panel.Clear();
+		Test.Assert(!bed.Panel.Recording.HasFrames);
+		Test.Assert(!bed.Panel.IsRecording);
 	}
 }

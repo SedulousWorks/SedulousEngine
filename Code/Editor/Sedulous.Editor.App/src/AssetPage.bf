@@ -36,6 +36,9 @@ class AssetPageServices
 	public GuiHost Gui = null;
 	/// The code editors' languages by id; null: none, a test (code shows uncoloured). Not owned.
 	public CodeLanguages Languages = null;
+	/// Opens the editor's picker for a request (a source file's Browse); OWNERSHIP of the request
+	/// transfers. Null: none. Owned.
+	public delegate void(PickerRequest request) Pick ~ delete _;
 }
 
 /// Where every page factory gets the services a page is made with: one, owned by the editor's

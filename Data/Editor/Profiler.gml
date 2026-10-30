@@ -14,6 +14,8 @@
         <Separator/>
         <ToolButton id="profiler-open" icon="Editor/Icons/folder-open.svg"
                     tooltip="Open a capture from &lt;user-data&gt;/profiles (a player's F9 or --profile-capture)"/>
+        <ToolButton id="profiler-clear" icon="Editor/Icons/trash.svg"
+                    tooltip="Clear the frames recorded (a recording goes on)"/>
         <ToolButton id="profiler-save" icon="Editor/Icons/save.svg"
                     tooltip="Save the recording to &lt;user-data&gt;/profiles (.aeprofile, and .json for Perfetto)"/>
         <Separator/>

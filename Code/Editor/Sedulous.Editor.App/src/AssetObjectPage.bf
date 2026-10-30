@@ -29,26 +29,54 @@ namespace Sedulous.Editor.App;
 // Save writes the asset and asks for a cook, so what uses it takes the new one; something else
 // writing it (a scene's save writing a profile) has it read again (ReadAgain).
 
-/// An asset's source file as its row shows it: read only, the path as the asset names it (a
-/// SourcePath has no field the grid shows, so the page that holds the asset says it).
-class SourcePathEditor : SingleControlEditor
+/// An asset's source file as its row shows it: the path as the asset names it (the page that holds
+/// the asset says it), never typed (a typo would cook a dangling reference); with `browse`, a Browse
+/// button picking another file of the project's (a font's source, relinked).
+class SourcePathEditor : PropertyEditor
 {
 	public const String cHint = "SourcePath";
 
 	private delegate void(String outPath) mPath ~ delete _;
+	private delegate void() mBrowse ~ delete _;
 	private Sedulous.GUI.Label mText ~ _.ReleaseRef();
+	private Sedulous.GUI.Button mButton ~ _.ReleaseRef();
 
-	/// Takes `path`, which says the path.
-	public this(delegate void(String outPath) path)
+	/// Takes `path`, which says the path, and `browse` (null: no Browse).
+	public this(delegate void(String outPath) path, delegate void() browse = null)
 	{
 		mPath = path;
+		mBrowse = browse;
 		AddClass("source-path");
+		EditLayoutStyle(scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Center;
+				s.ColumnGap = 6.0f;
+			});
 		mText = new Sedulous.GUI.Label();
 		mText.AddClass("source-path-text");
-		Hold(mText);
+		mText.EditLayoutStyle(scope (s) =>
+			{
+				s.Grow = 1.0f;
+				s.Shrink = 1.0f;
+			});
+		AddChild(mText);
+		mButton = new Sedulous.GUI.Button();
+		mButton.AddClass("source-path-browse");
+		mButton.Text = "Browse...";
+		mButton.Tooltip = "Pick another file of the project's as its source";
+		mButton.SetOnClick(new [=this] () =>
+			{
+				if (mBrowse != null)
+					mBrowse();
+			});
+		mButton.Displayed = mBrowse != null;
+		AddChild(mButton);
 	}
 
 	public StringView Text => mText.Text;
+	/// Its Browse; null when it has none.
+	public Sedulous.GUI.Button BrowseButton => (mBrowse != null) ? mButton : null;
 
 	protected override void OnBind(PropertyInfo info, PropertyValue value)
 	{
@@ -56,6 +84,13 @@ class SourcePathEditor : SingleControlEditor
 		if (mPath != null)
 			mPath(path);
 		mText.Text = path;
+		mButton.Enabled = !IsReadOnly;
+	}
+
+	protected override void OnTextStyleChange()
+	{
+		ShareTextStyle(mText);
+		ShareTextStyle(mButton);
 	}
 }
 
@@ -146,7 +181,15 @@ abstract class AssetObjectPage : UIEditorPage
 			if (mServices.Refs != null)
 				ResourceRefEditor.Register(mGrid.Editors, mServices.Refs);
 			PropertyExtras.Register(mGrid.Editors); // the notices
-			mGrid.Editors.RegisterHint(SourcePathEditor.cHint, new [=this] () => new SourcePathEditor(new [=this] (outPath) => { SourceFile(outPath); }), true);
+			mGrid.Editors.RegisterHint(SourcePathEditor.cHint, new [=this] () =>
+				{
+					let kinds = scope List<StringView>();
+					SourceExtensions(kinds);
+					delegate void() browse = null;
+					if (!kinds.IsEmpty && (mServices.Pick != null))
+						browse = new [=this] () => { BrowseSource(); };
+					return new SourcePathEditor(new [=this] (outPath) => { SourceFile(outPath); }, browse);
+				}, true);
 			mGrid.Source = mSections;
 		}
 	}
@@ -222,6 +265,41 @@ abstract class AssetObjectPage : UIEditorPage
 			outPath.Append(asset.FileName.Value);
 		else
 			outPath.Append("Not set");
+	}
+
+	/// The kinds of file its source may be relinked to (".ttf"), appended; none: its source row only
+	/// says it (the default).
+	public virtual void SourceExtensions(List<StringView> outExtensions)
+	{
+	}
+
+	/// The source row's Browse: the files under the project's sources of those kinds, the current
+	/// one checked; a pick relinks it.
+	public void BrowseSource()
+	{
+		let asset = ObjectRef as Asset;
+		let project = (mContext != null) ? mContext.Project : null;
+		if ((asset == null) || (mServices.Pick == null) || (project == null))
+			return;
+		let kinds = scope List<StringView>();
+		SourceExtensions(kinds);
+		let request = PathPicker.Request(project.SourcesRoot(.. scope .()), kinds, asset.FileName.Value);
+		delete request.OnPicked;
+		request.OnPicked = new [=this] (picked) => { RelinkSource(picked); };
+		mServices.Pick(request);
+	}
+
+	/// Names `path` (under the project's sources) as the asset's source, one undo step; the page's
+	/// rows read it again.
+	public void RelinkSource(StringView path)
+	{
+		if (((ObjectRef as Asset) == null) || path.IsEmpty)
+			return;
+		EditWhole("asset_page.source", scope [&] (object) =>
+			{
+				if (let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Asset)
+					asset.FileName.Set(path);
+			});
 	}
 
 	/// What the notice `key` says (empty when it is not shown), appended.
