@@ -20,6 +20,9 @@ using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Camera;
 using Sedulous.Editor.ViewportTools;
+using Sedulous.Editor.PropertyAnimation; // the animation panel under the viewport
+using Sedulous.PropertyAnimation.Pipeline; // PropertyAnimationCreators (the panel's New)
+using Sedulous.Engine.Animation; // PropertyAnimatorComponent (a new clip given to it)
 
 namespace Sedulous.Editor.Scene;
 
@@ -49,6 +52,10 @@ class SceneEditorPageServices
 	/// Opens the picker for a request (the inspector's Add Component); OWNERSHIP of the request
 	/// transfers. Null: no picking, a test.
 	public delegate void(PickerRequest request) Pick ~ delete _;
+	/// Opens Create Asset (a title, a suggested name, a group to start; null: the top), told the
+	/// group and the name chosen (the animation panel's New Clip); OWNERSHIP of `create` transfers.
+	/// Null: none, a test.
+	public delegate void(StringView title, StringView suggested, Group group, delegate void(Group group, StringView name) create) CreateAsset ~ delete _;
 }
 
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
@@ -78,6 +85,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneInspectorView mInspector = null;
 	/// An entity slot's pick, made the first time.
 	private EntityPickerWindow mEntityPicker = null;
+	/// Under the viewport (null: no markup); a clip of its own, never the scene's history.
+	private PropertyAnimationPanel mAnimation = null;
+	/// Held: out of the splitter while hidden, nothing else holds it.
+	private Node mAnimationPane = null;
+	private bool mAnimationShown = false;
 	/// After mEditContext (the tools borrow it), so deleted first.
 	/// What the tools and their panels were made with.
 	private ViewportToolHostContext mToolHost = .();
@@ -119,6 +131,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		// The tools borrow the edit context, the flows, the hierarchy and the inspector too: they go
 		// first.
+		DeleteAndNullify!(mAnimation); // what its preview posed goes back while the scene is here
 		DeleteAndNullify!(mEntityPicker);
 		DeleteAndNullify!(mInspector);
 		DeleteAndNullify!(mHierarchy);
@@ -127,6 +140,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		delete mEditContext;
 		if (mConfirm != null)
 			mConfirm.ReleaseRef();
+		if (mAnimationPane != null)
+			mAnimationPane.ReleaseRef();
 		if (mContent != null)
 			mContent.ReleaseRef();
 	}
@@ -142,8 +157,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public GizmoController Gizmos => (mSelectTool != null) ? mSelectTool.Gizmos : null;
 	public bool CameraOwnsInput => mViewport.CameraOwnsInput;
 	public bool MarkersShown => mOverlays.Settings.ShowMarkers;
-	/// The property animation panel comes back with its editor (X6): never shown until then.
-	public bool AnimationPanelShown => false;
+	/// The property animation panel under the viewport (X6 layer 9): a clip of its own, never the
+	/// scene's history or its unsaved mark.
+	public bool AnimationPanelShown => mAnimationShown;
+	public PropertyAnimationPanel AnimationPanel => mAnimation;
 	public EditorCamera ViewportCamera => mViewport.Camera;
 	public ViewportCapture LastViewportCapture => mViewport.LastCapture;
 	public Result<void, ErrorCode> RequestViewportCapture(StringView path) => mViewport.RequestCapture(path, false);
@@ -347,9 +364,160 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			}
 		}
 
+		BuildAnimationPanel(context);
 		mOverlays.Settings = SceneViewState.LoadOverlays(context.ProjectEditorSettings, InstanceId, mOverlays.Settings);
 		RestoreViewState();
 	}
+
+	private void BuildAnimationPanel(EditorContext context)
+	{
+		// Under the viewport, its pane out of the splitter until shown (a pane that goes gives its
+		// share to the viewport).
+		let pane = Find<Node>("scene-animation");
+		if ((pane == null) || (mScene == null) || (mEditContext == null) || (mServices.LoadMarkup == null))
+			return;
+		let content = mServices.LoadMarkup(PropertyAnimationPanel.cMarkupPath);
+		if (content == null)
+			return;
+		pane.AddChild(content);
+		mAnimation = new PropertyAnimationPanel(context, mScene, content);
+		content.ReleaseRef(); // the pane's and the panel's keep it
+		mAnimation.SelectedEntity = new [=this] () => mEditContext.EntitySelection.IsEmpty ? Guid.Empty : mEditContext.EntitySelection.Primary;
+		mAnimation.GuardUnsaved = new [=this] (proceed) => { AskAboutClip(proceed); };
+		// Hidden: what it posed goes back, its clip stays open in it (unsaved or not) for next time.
+		mAnimation.RequestClose = new [=this] () => { Later(new [=this] () => { SetAnimationPanelShown(false); }); };
+		if ((mServices.Refs != null) && (mServices.Refs.Pick != null))
+		{
+			mAnimation.RequestOpenClip = new [=this] () =>
+				{
+					String[1] types = .("PropertyAnimationClipAsset");
+					mServices.Refs.Pick(types, mAnimation.Document.ClipId, new [=this] (picked) =>
+						{
+							if (picked != .Empty)
+								mAnimation.RequestEditClip(picked, .Empty);
+						});
+				};
+		}
+		// New: the clip named and placed in Create Asset (Animations and the entity's name to start),
+		// then opened; an animator on the entity with no clip yet plays it.
+		mAnimation.RequestNewClip = new [=this] () => { AskAboutClip(new [=this] () => { NewClip(); }); };
+		mAnimationPane = pane;
+		mAnimationPane.AddRef();
+		pane.Parent.RemoveChild(pane); // hidden until shown
+	}
+
+	// New Clip: named and placed (Create Asset), opened, given to the entity's animator when it has
+	// none.
+	private void NewClip()
+	{
+		let top = (mContext.Project != null) ? mContext.Project.SourceDb.RootGroup : null;
+		if (top == null)
+			return;
+		Group animations = null;
+		for (let child in top.Groups)
+		{
+			if (child.Name == "Animations")
+				animations = child;
+		}
+		let entity = mAnimation.BoundEntity;
+		let handle = (entity == .Empty) ? EntityHandle.Invalid : mScene.FindEntity(entity);
+		// A name not taken where it starts.
+		let start = handle.IsAssigned ? scope String()..AppendF("{} Clip", mScene.GetEntityName(handle)) : scope String("Clip");
+		let suggested = scope String();
+		((animations != null) ? animations : top).UniqueInstanceName(start, suggested);
+		delegate void(Group group, StringView name) make = new [=this, =entity] (group, name) =>
+			{
+				let made = PropertyAnimationCreators.CreateClip(group, name);
+				if (made == null)
+				{
+					mContext.Notify(.Warning, "The clip could not be made; the Console says why.");
+					return;
+				}
+				mAnimation.LoadClip(made.Id);
+				GiveClipToAnimator(entity, made.Id);
+			};
+		if (mServices.CreateAsset != null)
+		{
+			mServices.CreateAsset("New Clip", suggested, animations, make);
+			return;
+		}
+		// No dialog (a test): Animations, as suggested.
+		defer delete make;
+		if (animations == null)
+			animations = top.CreateGroup("Animations");
+		if (animations != null)
+			make(animations, suggested); // made unique there
+	}
+
+	// Only an animator with no clip takes it: one that plays another keeps it (this is another clip).
+	private void GiveClipToAnimator(Guid entity, Guid clip)
+	{
+		let animators = mScene.GetSystem<PropertyAnimatorComponentManager>();
+		let handle = (entity == .Empty) ? EntityHandle.Invalid : mScene.FindEntity(entity);
+		let animator = ((animators != null) && handle.IsAssigned) ? animators.Get(handle) : null;
+		if ((animator == null) || (animator.Clip.Id != .Empty))
+			return;
+		mEditContext.SetComponentResourceRef<Sedulous.PropertyAnimation.PropertyAnimationClip>(entity, typeof(PropertyAnimatorComponent), "Clip", clip,
+			mContext.Resources);
+	}
+
+	// The page's prompt for the panel's unsaved clip: Save, Discard (as saved) or Cancel; `proceed`
+	// (taken) runs after Save or Discard.
+	private void AskAboutClip(delegate void() proceed)
+	{
+		if ((mAnimation == null) || !mAnimation.Document.IsDirty)
+		{
+			proceed();
+			delete proceed;
+			return;
+		}
+		let root = (mContent != null) ? mContent.RootNode : null;
+		if (root == null)
+		{
+			delete proceed;
+			return; // nothing to ask over: the clip stays
+		}
+		if (mConfirm != null)
+			mConfirm.ReleaseRef();
+		let question = new MessageBox();
+		mConfirm = question;
+		question.Configure("Unsaved clip", scope $"The clip '{mAnimation.Document.Name}' has unsaved changes.", .Ok);
+		question.ClearButtons();
+		question.AddButton("Discard", "discard", .Destructive);
+		question.AddButton("Cancel", "cancel", .Cancel);
+		question.AddButton("Save", "save", .Primary);
+		question.AddEventListener(.Changed, new [=question, =proceed, =this] (e) =>
+			{
+				let answer = question.ResultName;
+				if ((answer == "save") && !(mAnimation.Save() case .Ok))
+					return; // it said why
+				if ((answer == "save") || (answer == "discard"))
+					proceed();
+			} ~ delete proceed);
+		question.OpenModal(root);
+	}
+
+	/// The panel shown editing the clip `clip` (empty: the one it has) and animating `entity` (empty:
+	/// the one it binds), an unsaved clip asked about first (an animator's Edit Clip).
+	public void EditAnimationClip(Guid clip, Guid entity)
+	{
+		if (mAnimation == null)
+			return;
+		SetAnimationPanelShown(true);
+		if (clip != .Empty)
+			mAnimation.RequestEditClip(clip, entity);
+		else if (entity != .Empty)
+			mAnimation.BindEntity(entity);
+	}
+
+	/// The clip its animation panel edits, while unsaved: asked about beside the scene.
+	public override void ListUnsavedBesides(List<String> outNames)
+	{
+		if ((mAnimation != null) && mAnimation.Document.IsDirty)
+			outNames.Add(new String()..AppendF("The clip '{}'", mAnimation.Document.Name));
+	}
+
+	public override Result<void, ErrorCode> SaveBesides() => ((mAnimation != null) && mAnimation.Document.IsDirty) ? mAnimation.Save() : .Ok;
 
 	private void BuildTools(EditorContext context)
 	{
@@ -383,6 +551,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			}
 		}
 
+		if ((mAnimation != null) && mAnimationShown)
+			mAnimation.Update(dt, mSimulation.IsRunning);
 		mViewport.AdvanceScripted(dt); // a playtest's frame (viewport_run), before the view's input is read
 		// A modal tool (a brush) owns Shift + wheel to size itself, so the camera leaves that wheel
 		// to it; the bare wheel stays the camera's under a brush too.
@@ -526,6 +696,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public override void OnClose()
 	{
+		DeleteAndNullify!(mAnimation); // what its preview posed goes back while the scene is here
 		DeleteAndNullify!(mEntityPicker); // it lets the scene's tree go before the scene does
 		DeleteAndNullify!(mCameraPreview); // its picture's targets go with the viewports, before the scene
 		DeleteAndNullify!(mInspector); // the grid lets its sources go before the scene does
@@ -570,7 +741,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				return .Err(.InvalidArgument);
 			}
 		}
+		// What the animation panel posed is not the scene's: saved as it is, posed again after.
+		if (mAnimation != null)
+			mAnimation.StopPreview();
 		let saved = isPrefab ? SceneStorage.SavePrefab(mScene, instance) : SceneStorage.SaveScene(mScene, instance);
+		if (mAnimation != null)
+			mAnimation.Repose();
 		if (saved case .Err)
 			return saved;
 		ClearDirty();
@@ -623,6 +799,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public void StartSimulation()
 	{
+		// The scene as it is, not as the animation panel posed it, is what the run starts from and
+		// what its end puts back.
+		if (mAnimation != null)
+			mAnimation.StopPreview();
 		if ((mScene == null) || !mSimulation.Start(mScene, Commands))
 			return;
 		// Modal edit tools (terrain sculpt) share runtime state with the simulation (the collider):
@@ -650,8 +830,23 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public void SetAnimationPanelShown(bool shown)
 	{
+		if ((mAnimation == null) || (mAnimationPane == null) || (shown == mAnimationShown))
+			return;
+		let center = Find<Splitter>("scene-center");
+		if (center == null)
+			return;
+		mAnimationShown = shown;
 		if (shown)
-			mContext.Notify(.Info, "The animation panel is not on the new editor yet: it comes with the property animation editor.");
+		{
+			center.AddChild(mAnimationPane);
+			float[2] weights = .(0.68f, 0.32f);
+			center.SetWeights(weights);
+		}
+		else
+		{
+			mAnimation.StopPreview(); // what it posed goes back with it
+			center.RemoveChild(mAnimationPane);
+		}
 	}
 
 	public bool FrameEntities(Span<Guid> entities, bool ease) => (mScene != null) && mViewport.Frame(mScene, entities, ease);

@@ -24,6 +24,10 @@ using Sedulous.Editor.App;
 using Sedulous.Editor.Scene;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Render; // DebugDraw
+using Sedulous.PropertyAnimation;
+using Sedulous.PropertyAnimation.Pipeline;
+using Sedulous.Editor.PropertyAnimation;
+using Sedulous.Engine.Animation; // PropertyAnimatorComponent (New Clip gives it the clip)
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -226,6 +230,101 @@ class ScenePageTests
 		Test.Assert(save.Enabled);
 		Test.Assert(page.Save() case .Ok);
 		Test.Assert(!page.IsDirty);
+		page.OnClose();
+	}
+
+	/// The animation panel under the viewport (layer 9, part 3): shown and hidden, an animator's clip
+	/// opened in it, its clip asked about apart from the scene, the scene saved as it is and not as
+	/// the panel posed it.
+	[Test]
+	public static void TheAnimationPanelUnderTheViewportItsClipItsOwnTheSceneSavedAsItIsAndNotAsPosed()
+	{
+		let bed = scope Bed();
+		PropertyAnimationPipeline.RegisterAll();
+		let clip = PropertyAnimationCreators.CreateClip(bed.Project.SourceDb.RootGroup, "Bounce");
+		Test.Assert(clip != null);
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let panel = page.AnimationPanel;
+		Test.Assert(panel != null);
+		let center = FindId<Splitter>(page.Content, "scene-center");
+		Test.Assert(center != null);
+		Test.Assert(center.PaneCount == 1, "hidden: the viewport takes it all");
+		Test.Assert(!page.AnimationPanelShown);
+		page.SetAnimationPanelShown(true);
+		Test.Assert(center.PaneCount == 2);
+		page.SetAnimationPanelShown(false);
+		Test.Assert(center.PaneCount == 1);
+
+		// An animator's Edit Clip: shown, the clip opened, the entity bound.
+		page.EditAnimationClip(clip.Id, bed.Crate);
+		Test.Assert(page.AnimationPanelShown);
+		Test.Assert(panel.Document.ClipId == clip.Id);
+		Test.Assert(panel.BoundEntity == bed.Crate);
+
+		// A track posing the crate at x 5: the clip unsaved, never the scene.
+		{
+			let offered = scope List<AnimatablePropertyInfo>();
+			defer { ClearAndDeleteItems!(offered); }
+			panel.OfferedTracks(offered);
+			AnimatablePropertyInfo position = null;
+			for (let seed in offered)
+			{
+				if (seed.PropertyPath == "Position")
+					position = seed;
+			}
+			Test.Assert(position != null);
+			panel.AddTrack(position);
+		}
+		panel.Document.Edit("test", scope (c) => { c.Tracks[0].Channels[0].Keys[0].Value = 5.0f; });
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let crate = page.ScenePtr.FindEntity(bed.Crate);
+		Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X - 5.0f) < 1e-3f);
+		Test.Assert(!page.IsDirty);
+		{
+			let besides = scope List<String>();
+			defer { ClearAndDeleteItems!(besides); }
+			page.ListUnsavedBesides(besides);
+			Test.Assert(besides.Count == 1);
+			Test.Assert(besides[0] == "The clip 'Bounce'");
+		}
+		Test.Assert(page.HasUnsavedWork);
+
+		// Saved: the scene as it is (x 0), the crate posed again after.
+		page.EditContext.CreateEntity("Barrel");
+		Test.Assert(page.Save() case .Ok);
+		Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X - 5.0f) < 1e-3f);
+		{
+			let stored = scope Sedulous.Scene.Scene("stored");
+			Test.Assert(SceneStorage.LoadScene(bed.Level, stored) case .Ok);
+			Test.Assert(Math.Abs(stored.GetLocalTransform(stored.FindEntity(bed.Crate)).Position.X) < 1e-3f);
+		}
+		Test.Assert(page.SaveBesides() case .Ok);
+		Test.Assert(!page.HasUnsavedBesides);
+
+		// Hidden from its own Close: what it posed goes back.
+		Test.Assert(panel.RequestClose != null);
+		panel.RequestClose();
+		Test.Assert(!page.AnimationPanelShown);
+		Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X) < 1e-3f);
+
+		// New on an entity whose animator has no clip: the clip made in Animations and given to it,
+		// one step of the scene's; an animator playing a clip keeps it.
+		page.EditContext.AddComponent(bed.Crate, typeof(PropertyAnimatorComponent));
+		Test.Assert(panel.RequestNewClip != null);
+		panel.RequestNewClip();
+		let animators = page.ScenePtr.GetSystem<PropertyAnimatorComponentManager>();
+		Test.Assert(animators != null);
+		let made = animators.Get(crate).Clip.Id;
+		Test.Assert(made != .Empty);
+		Test.Assert(panel.Document.ClipId == made);
+		Test.Assert(panel.Document.Name == "Crate Clip");
+		page.EditContext.Commands.Undo();
+		Test.Assert(animators.Get(crate).Clip.Id == .Empty);
+		page.EditContext.Commands.Redo();
+		panel.RequestNewClip(); // another: the animator keeps the first
+		Test.Assert(animators.Get(crate).Clip.Id == made);
+		Test.Assert(panel.Document.ClipId != made);
 		page.OnClose();
 	}
 

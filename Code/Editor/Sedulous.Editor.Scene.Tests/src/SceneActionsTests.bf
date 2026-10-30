@@ -102,6 +102,7 @@ class SceneActionsTests
 		public bool Animation = false;
 		public bool AnimationPanelShown => Animation;
 		public void SetAnimationPanelShown(bool shown) { Animation = shown; }
+		public void EditAnimationClip(Guid clip, Guid entity) {}
 		public void CreatePrefabFromEntity(Guid entity) { PrefabFrom = entity; }
 		public void PickAndSpawnPrefab(Guid parent)
 		{

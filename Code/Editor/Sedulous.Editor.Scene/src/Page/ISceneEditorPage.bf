@@ -79,6 +79,9 @@ interface ISceneEditorPage
 	/// bottom dock takes no space at all.
 	bool AnimationPanelShown { get; }
 	void SetAnimationPanelShown(bool shown);
+	/// The panel shown editing the clip `clip` (empty: the one it has) and animating `entity` (empty:
+	/// the one it binds), an unsaved clip asked about first (an animator's Edit Clip).
+	void EditAnimationClip(Guid clip, Guid entity);
 
 	/// The viewport's free-fly camera: the pose the scene is looked at from, which an agent
 	/// moves to look from somewhere specific; null on a page without a viewport.

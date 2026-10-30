@@ -5,6 +5,7 @@ using Sedulous.Editor.Navigation;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Script;
+using Sedulous.Engine.Animation; // PropertyAnimatorComponent (its Edit Clip)
 
 namespace Sedulous.Editor.Scene;
 
@@ -18,7 +19,9 @@ namespace Sedulous.Editor.Scene;
 //     asset, the outcome said. It runs at once on the main thread, as the bake's interface is one
 //     call; a bake as a job waits for that call to be split (collect here, bake on a worker);
 //   - the physics block's collision groups and the scene script block's level properties, sources
-//     of their own (SettingsExtraSources).
+//     of their own (SettingsExtraSources);
+//   - a property animator's Edit Clip: its clip in the page's animation panel, animating its entity
+//     (layer 9, part 3).
 static class BuiltinInspectorExtras
 {
 	public const String cNoColliderText = "Shape is Cooked but no collision shape is set - this body has no collider. Assign one (import a mesh with Generate collision, or create a Collision Shape asset).";
@@ -36,6 +39,7 @@ static class BuiltinInspectorExtras
 		InspectorExtrasRegistry.Register(typeof(ScriptComponent), new (extras) => { AddBehaviors(extras); });
 		InspectorExtrasRegistry.Register(typeof(PhysicsSceneSettings), new (extras) => { AddCollisionGroups(extras); });
 		InspectorExtrasRegistry.Register(typeof(SceneScriptSettings), new (extras) => { AddLevelProperties(extras); });
+		InspectorExtrasRegistry.Register(typeof(PropertyAnimatorComponent), new (extras) => { AddEditClip(extras); });
 	}
 
 	// A script component's behaviours: a source of their own (reflection does not show them).
@@ -57,6 +61,26 @@ static class BuiltinInspectorExtras
 	{
 		let source = new LevelScriptSource(extras.Edit, extras.Context);
 		extras.AddSection(source, new [=source] () => { source.Refresh(); });
+	}
+
+	// An animator's clip in the page's animation panel, animating its entity (no clip: the panel bound
+	// to it, to make one).
+	private static void AddEditClip(InspectorExtras extras)
+	{
+		extras.AddAction("Animation", "Edit Clip", "Open the clip in the animation panel under the viewport, animating this entity",
+			new [=extras] () =>
+			{
+				let context = extras.Context;
+				let page = (context != null) ? (context.ActivePage as ISceneEditorPage) : null;
+				if ((page == null) || extras.Entities.IsEmpty)
+					return;
+				let edit = extras.Edit;
+				let entity = extras.Entities[0];
+				let animators = edit.Scene.GetSystem<PropertyAnimatorComponentManager>();
+				let handle = edit.Resolve(entity);
+				let animator = ((animators != null) && handle.IsAssigned) ? animators.Get(handle) : null;
+				page.EditAnimationClip((animator != null) ? animator.Clip.Id : .Empty, entity);
+			});
 	}
 
 	private static void AddNoCollider(InspectorExtras extras)

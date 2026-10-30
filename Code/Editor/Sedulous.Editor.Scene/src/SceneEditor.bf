@@ -66,6 +66,7 @@ static class SceneEditor
 		services.Refs = app.RefServices();
 		services.Icons = app.TypeIcons();
 		services.Pick = new [=app] (request) => { app.ShowPicker(request); };
+		services.CreateAsset = new [=app] (title, suggested, group, create) => { app.ShowCreateAsset(title, suggested, group, create); };
 		return services;
 	}
 }

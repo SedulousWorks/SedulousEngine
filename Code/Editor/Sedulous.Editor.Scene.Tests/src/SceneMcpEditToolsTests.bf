@@ -67,6 +67,7 @@ class SceneMcpEditToolsTests
 		public void SetMarkersShown(bool shown) {}
 		public bool AnimationPanelShown => false;
 		public void SetAnimationPanelShown(bool shown) {}
+		public void EditAnimationClip(Guid clip, Guid entity) {}
 		public void CreatePrefabFromEntity(Guid entity) {}
 		public void PickAndSpawnPrefab(Guid parent) {}
 		public void ApplyInstanceToPrefab(Guid root) {}
