@@ -271,4 +271,141 @@ f 1/1/1 2/2/1 3/3/1
 		let loader = scope FbxLoader();
 		Test.Assert(loader.Load(path, model) != .Ok);
 	}
+
+	// A limb node is a bone of the file's skeleton, an empty (null) node is not: what tells 3ds Max's
+	// Dummy helper bone, animated with the pose, from Blender's armature object.
+	[Test]
+	public static void ALimbNodeIsASkeletonBoneANullNodeIsNot()
+	{
+		let path = scope String("scratch_fbx_limb.fbx");
+		File.WriteAllText(path, """
+			; FBX 7.4.0 project file
+			FBXHeaderExtension:  {
+				FBXHeaderVersion: 1003
+				FBXVersion: 7400
+			}
+			Objects:  {
+				NodeAttribute: 10, "NodeAttribute::Dummy", "LimbNode" {
+					TypeFlags: "Skeleton"
+				}
+				Model: 1, "Model::Dummy001", "LimbNode" {
+					Version: 232
+				}
+				NodeAttribute: 11, "NodeAttribute::Armature", "Null" {
+					TypeFlags: "Null"
+				}
+				Model: 2, "Model::Armature", "Null" {
+					Version: 232
+				}
+			}
+			Connections:  {
+				C: "OO",1,0
+				C: "OO",10,1
+				C: "OO",2,0
+				C: "OO",11,2
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope FbxLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		ModelBone dummy = null;
+		ModelBone armature = null;
+		for (let bone in model.Bones)
+		{
+			if (bone.Name == "Dummy001")
+				dummy = bone;
+			if (bone.Name == "Armature")
+				armature = bone;
+		}
+		Test.Assert((dummy != null) && (armature != null));
+		Test.Assert(dummy.IsSkeletonBone);
+		Test.Assert(!armature.IsSkeletonBone);
+	}
+
+	// A take that holds a bone somewhere other than its default pose for the whole clip (3ds Max poses a
+	// head and leaves it there) keeps that as a channel: skipped as constant, the bone played its
+	// default pose and the head never turned. One held at its default still says nothing.
+	[Test]
+	public static void AChannelTheTakeHoldsConstantAwayFromTheDefaultPoseIsKept()
+	{
+		let path = scope String("scratch_fbx_held.fbx");
+		File.WriteAllText(path, """
+			; FBX 7.4.0 project file
+			FBXHeaderExtension:  {
+				FBXHeaderVersion: 1003
+				FBXVersion: 7400
+			}
+			Objects:  {
+				NodeAttribute: 10, "NodeAttribute::Head", "LimbNode" {
+					TypeFlags: "Skeleton"
+				}
+				Model: 1, "Model::Head", "LimbNode" {
+					Version: 232
+				}
+				NodeAttribute: 11, "NodeAttribute::Tail", "LimbNode" {
+					TypeFlags: "Skeleton"
+				}
+				Model: 2, "Model::Tail", "LimbNode" {
+					Version: 232
+				}
+				AnimationStack: 100, "AnimStack::idle", "" {
+					Properties70:  {
+						P: "LocalStop", "KTime", "Time", "",46186158000
+						P: "ReferenceStop", "KTime", "Time", "",46186158000
+					}
+				}
+				AnimationLayer: 101, "AnimLayer::BaseLayer", "" {
+				}
+				AnimationCurveNode: 102, "AnimCurveNode::R", "" {
+					Properties70:  {
+						P: "d|X", "Number", "", "A",0
+						P: "d|Y", "Number", "", "A",0
+						P: "d|Z", "Number", "", "A",45
+					}
+				}
+				AnimationCurveNode: 103, "AnimCurveNode::R", "" {
+					Properties70:  {
+						P: "d|X", "Number", "", "A",0
+						P: "d|Y", "Number", "", "A",0
+						P: "d|Z", "Number", "", "A",0
+					}
+				}
+			}
+			Connections:  {
+				C: "OO",1,0
+				C: "OO",10,1
+				C: "OO",2,0
+				C: "OO",11,2
+				C: "OO",101,100
+				C: "OO",102,101
+				C: "OO",103,101
+				C: "OP",102,1, "Lcl Rotation"
+				C: "OP",103,2, "Lcl Rotation"
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope FbxLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		Test.Assert(model.Animations.Length == 1);
+		int32 head = -1;
+		for (int b < model.Bones.Length)
+		{
+			if (model.Bones[b].Name == "Head")
+				head = (int32)b;
+		}
+		Test.Assert(head >= 0);
+		int rotations = 0;
+		for (let channel in model.Animations[0].Channels)
+		{
+			if (channel.Path != .Rotation)
+				continue;
+			rotations++;
+			Test.Assert(channel.TargetBone == head, "the tail, held at its default, has none");
+			Test.Assert(!channel.Keyframes.IsEmpty);
+			Test.Assert(Math.Abs(channel.Keyframes[0].Value.Z - 0.38268f) < 0.001f, "45 degrees about z");
+		}
+		Test.Assert(rotations == 1);
+	}
 }

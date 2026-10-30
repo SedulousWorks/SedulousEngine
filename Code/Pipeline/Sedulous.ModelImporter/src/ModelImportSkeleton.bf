@@ -24,16 +24,18 @@ static class ModelImportSkeleton
 			return;
 
 		let skin = model.Skins[0];
+		let joints = scope List<int32>(); // the skin's, then the bones it hangs from
+		AnimConvert.SkeletonJoints(model, skin, joints);
 		let boneToJoint = scope Dictionary<int32, int32>();
-		AnimConvert.BuildBoneToJoint(skin, boneToJoint);
-		manifest.SkeletonParentNode = AnimConvert.SkeletonParentNode(model, skin, boneToJoint);
+		AnimConvert.BuildBoneToJoint(joints, boneToJoint);
+		manifest.SkeletonParentNode = AnimConvert.SkeletonParentNode(model, joints);
 
 		let skeletonName = scope String();
 		ImportedNames.ForSkeleton(skin, skeletonName);
 		if (options.SelectionEnabled(.Skeleton, skeletonName))
 		{
 			let asset = scope SkeletonAsset();
-			AnimConvert.SkeletonFromModel(model, skin, boneToJoint, asset.Source);
+			AnimConvert.SkeletonFromModel(model, skin, joints, boneToJoint, asset.Source);
 
 			let instance = ClaimedInstances.Claim(group,
 				options.SelectionName(.Skeleton, skeletonName), cSkeletonType, claimed);

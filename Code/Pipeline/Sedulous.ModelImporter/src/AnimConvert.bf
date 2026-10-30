@@ -10,49 +10,75 @@ namespace Sedulous.ModelImporter;
 /// A loaded model's skin and animations into the cooked animation sources.
 ///
 /// Everything here is remapped from the model's BONE indices into the skeleton's JOINT
-/// indices, since the skin's joint order is what the skeleton and every animation track are
-/// keyed by.
+/// indices: the skin's joints in its order, then the bones they hang from (SkeletonJoints), are
+/// what the skeleton and every animation track are keyed by.
 static class AnimConvert
 {
-	/// The model's bone indices to the skin's joint indices. A bone the skin does not use has
-	/// no entry at all.
-	public static void BuildBoneToJoint(ModelSkin skin, Dictionary<int32, int32> outMap)
+	/// The skeleton's joints, as model bone indices, into `outJoints`: the skin's, in its order (a
+	/// skinned vertex's joint indices address them), then each node the skeleton hangs from while the
+	/// file makes it a bone (ModelBone.IsSkeletonBone). 3ds Max hangs a skeleton from a Dummy helper
+	/// bone with no vertices of its own, and animates it with the pose (a creature's bob): it is a
+	/// joint, its channels played. An empty node above (Blender's armature object, whose animation is
+	/// the character's travel) stays outside: the node the skeleton hangs from, its channels the
+	/// clip's model tracks. Appended after the skin's joints, so no vertex's joint index moves.
+	public static void SkeletonJoints(Model model, ModelSkin skin, List<int32> outJoints)
+	{
+		outJoints.Clear();
+		outJoints.AddRange(skin.Joints);
+		let bones = model.Bones;
+		for (int guard < bones.Length) // a malformed cycle cannot loop for ever
+		{
+			let hang = JointsParentNode(model, outJoints);
+			if ((hang < 0) || (hang >= bones.Length) || (bones[hang] == null) || !bones[hang].IsSkeletonBone)
+				break;
+			outJoints.Add(hang);
+		}
+	}
+
+	/// The model's bone indices to the skeleton's joint indices (`joints`' order, SkeletonJoints). A
+	/// bone not among them has no entry at all.
+	public static void BuildBoneToJoint(Span<int32> joints, Dictionary<int32, int32> outMap)
 	{
 		outMap.Clear();
-		let joints = skin.Joints;
 		for (int j < joints.Length)
 			outMap[joints[j]] = (int32)j;
 	}
 
-	/// The model node the skeleton hangs from: the parent of the skin's first root joint (a
-	/// joint whose parent is not in the skin), minus one when that root has no parent, minus two
-	/// for a skin with no joints. A skin with several roots under different nodes takes the
-	/// first root's: the skeleton has one model space.
-	public static int32 SkeletonParentNode(Model model, ModelSkin skin, Dictionary<int32, int32> boneToJoint)
+	/// The model node the skeleton hangs from: the node above its joints (SkeletonJoints), minus one
+	/// the scene root, minus two no joints. Its channels are the clip's model tracks.
+	public static int32 SkeletonParentNode(Model model, Span<int32> joints) => JointsParentNode(model, joints);
+
+	/// The model node the joints `joints` hang from: the parent of their first root (a joint whose
+	/// parent is not among them), minus one when that root has no parent, minus two with no joints.
+	/// Several roots under different nodes take the first root's: the skeleton has one model space.
+	public static int32 JointsParentNode(Model model, Span<int32> joints)
 	{
 		let bones = model.Bones;
-		for (let joint in skin.Joints)
+		for (let joint in joints)
 		{
 			if ((joint < 0) || (joint >= bones.Length) || (bones[joint] == null))
 				continue;
 			let parent = bones[joint].ParentIndex;
 			if ((parent < 0) || (parent >= bones.Length))
 				return -1;
-			if (!boneToJoint.ContainsKey(parent))
+			var among = false;
+			for (let other in joints)
+				among = among || (other == parent);
+			if (!among)
 				return parent;
 		}
 		return -2;
 	}
 
-	/// A skeleton from a skin: one bone per joint, in joint order, with each local bind pose
-	/// taken from the model's bone, the inverse bind from the skin, and the parent remapped
-	/// into joint space.
-	public static void SkeletonFromModel(Model model, ModelSkin skin,
+	/// A skeleton from a skin's skeleton joints (SkeletonJoints): one bone per joint, in their order,
+	/// with each local bind pose taken from the model's bone, the inverse bind from the skin
+	/// (identity for a bone the skin's joints hang from: no vertex is bound to it), and the parent
+	/// remapped into joint space.
+	public static void SkeletonFromModel(Model model, ModelSkin skin, Span<int32> joints,
 		Dictionary<int32, int32> boneToJoint, SkeletonSource outSource)
 	{
 		outSource.Name.Set("skeleton");
 
-		let joints = skin.Joints;
 		let inverseBinds = skin.InverseBindMatrices;
 		let bones = model.Bones;
 

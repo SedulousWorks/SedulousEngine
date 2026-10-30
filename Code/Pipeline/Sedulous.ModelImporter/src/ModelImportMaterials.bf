@@ -42,25 +42,12 @@ static class ModelImportMaterials
 				continue;
 			}
 
-			// A standard material carrying the model's factors, captured into a source that
-			// names the built in shader, so an import renders without a cooked shader.
-			let built = MaterialPresets.CreatePbr(materialName, material.BaseColorFactor,
-				material.MetallicFactor, material.RoughnessFactor);
-			defer delete built;
-
-			// A ColorHdr: the sRGB colour, the intensity in w.
-			built.SetDefaultColor("EmissiveColor", .(material.EmissiveFactor.X,
-				material.EmissiveFactor.Y, material.EmissiveFactor.Z, material.EmissiveIntensity));
-			built.SetDefaultFloat("OcclusionStrength", material.OcclusionStrength);
-			built.SetDefaultFloat("NormalScale", material.NormalScale);
-			built.SetDefaultFloat("AlphaCutoff", material.AlphaCutoff);
-
+			// On the built-in its shading model names, every texture it reads wired in; FBX's
+			// separate metal and rough maps baked into one packed texture asset here, once a pair.
 			let asset = scope MaterialAsset();
-			MaterialSource.FromMaterial(built, .Empty, asset.Source);
-			asset.Source.ShaderName.Set("forward");
-
-			WireTextures(model, material, textureGuids, bakedPacked, group, claimed,
-				deferredWrites, asset.Source);
+			ModelMaterialBuild.Build(model, material, materialName, textureGuids,
+				scope (roughIndex, metalIndex) => ModelImportTextures.GetOrBakePacked(model, group, bakedPacked, roughIndex, metalIndex,
+					claimed, deferredWrites), asset);
 
 			let instance = ClaimedInstances.Claim(group,
 				options.SelectionName(.Material, materialName), cAssetType, claimed);
@@ -76,59 +63,5 @@ static class ModelImportMaterials
 			manifest.MaterialAlbedo.Add(((albedoIndex >= 0)
 				&& (albedoIndex < textureGuids.Count)) ? textureGuids[albedoIndex] : Guid.Empty);
 		}
-	}
-
-	/// Binds every authored texture into its slot, baking the packed metal and roughness map
-	/// when the format supplied the two separately.
-	private static void WireTextures(Model model, ModelMaterial material, List<Guid> textureGuids,
-		Dictionary<uint64, Guid> bakedPacked, Group group, List<String> claimed,
-		List<DeferredImportWrite> deferredWrites, MaterialSource source)
-	{
-		void Wire(int32 index, StringView slot)
-		{
-			if ((index < 0) || (index >= textureGuids.Count) || (textureGuids[index] == Guid.Empty))
-				return;
-			source.TextureSlots.Add(new String(slot));
-			source.TextureIds.Add(textureGuids[index]);
-		}
-
-		Wire(material.BaseColorTextureIndex, "AlbedoMap");
-		Wire(material.NormalTextureIndex, "NormalMap");
-		Wire(material.OcclusionTextureIndex, "OcclusionMap");
-		Wire(material.EmissiveTextureIndex, "EmissiveMap");
-
-		if (material.MetallicRoughnessTextureIndex >= 0)
-		{
-			// Already packed, which is what most formats supply.
-			Wire(material.MetallicRoughnessTextureIndex, "MetallicRoughnessMap");
-		}
-		else if ((material.SeparateRoughnessTextureIndex >= 0)
-			|| (material.SeparateMetalnessTextureIndex >= 0))
-		{
-			// Two grayscale maps: feeding either into the packed slot as it stands would bleed
-			// one channel's data across the others, so the pair bakes into a packed one.
-			let packed = ModelImportTextures.GetOrBakePacked(model, group, bakedPacked,
-				material.SeparateRoughnessTextureIndex, material.SeparateMetalnessTextureIndex,
-				claimed, deferredWrites);
-			if (packed != Guid.Empty)
-			{
-				source.TextureSlots.Add(new String("MetallicRoughnessMap"));
-				source.TextureIds.Add(packed);
-			}
-		}
-
-		// The authored pipeline state. A masked material is an alpha tested cutout, which also
-		// gives its shadow holes; a blended one goes to the transparent pass.
-		if (material.AlphaMode == .Mask)
-			source.BlendMode = .Masked;
-		else if (material.AlphaMode == .Blend)
-			source.BlendMode = .AlphaBlend;
-
-		if (material.DoubleSided)
-			source.CullMode = .None;
-
-		ModelSamplerModes.For(model, material, let samplerU, let samplerV);
-		source.SamplerU = (uint8)samplerU;
-		source.SamplerV = (uint8)samplerV;
 	}
 }

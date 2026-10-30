@@ -411,4 +411,32 @@ class GltfLoaderTests
 		Test.Assert(Math.Abs(material.EmissiveFactor.Y - 0.5f) < 0.002f);
 		Test.Assert(Near(material.EmissiveIntensity, 4.0f));
 	}
+
+	// KHR_materials_unlit: the material comes in on the built-in Unlit (Raptor's phong-material spec),
+	// its colour read from the metallic-roughness block as the extension says; a material without it
+	// is PBR.
+	[Test]
+	public static void AMaterialWithKhrMaterialsUnlitIsUnlitOneWithoutIsPbr()
+	{
+		let path = scope String("scratch_gltf_unlit.gltf");
+		File.WriteAllText(path, """
+			{
+			  "asset": {"version": "2.0"},
+			  "extensionsUsed": ["KHR_materials_unlit"],
+			  "materials": [
+			    {"name": "flat", "pbrMetallicRoughness": {"baseColorFactor": [0.2140, 0.2140, 0.2140, 1.0]},
+			     "extensions": {"KHR_materials_unlit": {}}},
+			    {"name": "lit", "pbrMetallicRoughness": {"baseColorFactor": [1.0, 1.0, 1.0, 1.0]}}
+			  ]
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope GltfLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		Test.Assert(model.Materials.Length == 2);
+		Test.Assert(model.Materials[0].Shading == .Unlit);
+		Test.Assert(Near(model.Materials[0].BaseColorFactor.X, 0.5f, 0.002f), scope $"{model.Materials[0].BaseColorFactor.X}");
+		Test.Assert(model.Materials[1].Shading == .Pbr);
+	}
 }

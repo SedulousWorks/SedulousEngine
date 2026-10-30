@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Animation.Resource;
 using Sedulous.Model;
 using Sedulous.ModelImporter;
 
@@ -28,25 +29,98 @@ class SkeletonParentNodeTests
 		let spine = Bone("Spine", hips);
 		Bone("Body", armature);
 
-		let map = scope Dictionary<int32, int32>();
-
 		// Joints listed child first: the root is found by its parent, not by its place in the list.
 		let skin = scope ModelSkin();
 		skin.AddJoint(spine, Float4x4.Identity());
 		skin.AddJoint(hips, Float4x4.Identity());
-		AnimConvert.BuildBoneToJoint(skin, map);
-		Test.Assert(AnimConvert.SkeletonParentNode(model, skin, map) == armature);
+		Test.Assert(AnimConvert.SkeletonParentNode(model, Joints(model, skin, .. scope .())) == armature);
 
 		// A root joint at the top of the file has no parent node: the scene root (-1).
 		let top = scope ModelSkin();
 		top.AddJoint(scene, Float4x4.Identity());
 		top.AddJoint(armature, Float4x4.Identity());
-		AnimConvert.BuildBoneToJoint(top, map);
-		Test.Assert(AnimConvert.SkeletonParentNode(model, top, map) == -1);
+		Test.Assert(AnimConvert.SkeletonParentNode(model, Joints(model, top, .. scope .())) == -1);
 
 		// No joints: unknown (-2), and the prefab keeps the file's placement.
 		let empty = scope ModelSkin();
-		AnimConvert.BuildBoneToJoint(empty, map);
-		Test.Assert(AnimConvert.SkeletonParentNode(model, empty, map) == -2);
+		Test.Assert(AnimConvert.SkeletonParentNode(model, Joints(model, empty, .. scope .())) == -2);
+	}
+
+	private static List<int32> Joints(Model model, ModelSkin skin, List<int32> outJoints)
+	{
+		AnimConvert.SkeletonJoints(model, skin, outJoints);
+		return outJoints;
+	}
+
+	// 3ds Max hangs a skeleton from a Dummy helper bone with no vertices of its own and animates it
+	// with the pose (a creature bobbing as it idles). Left outside the skeleton, as Blender's armature
+	// object is, the bob was a model track the pose never played.
+	[Test]
+	public static void ABoneTheSkinsJointsHangFromJoinsTheSkeletonItsAnimationPlayedAnEmptyOneDoesNot()
+	{
+		for (let helperIsBone in bool[2](true, false))
+		{
+			let model = scope Model();
+			int32 Bone(StringView name, int32 parent, bool isBone)
+			{
+				let bone = new ModelBone();
+				bone.Name.Set(name);
+				bone.ParentIndex = parent;
+				bone.IsSkeletonBone = isBone;
+				return model.AddBone(bone);
+			}
+			let root = Bone("300024", -1, false);
+			let dummy = Bone("Dummy001", root, helperIsBone);
+			let spine = Bone("Bone001", dummy, true);
+			let arm = Bone("Bone002", spine, true);
+			let skin = scope ModelSkin();
+			skin.AddJoint(spine, Float4x4.Identity());
+			skin.AddJoint(arm, Float4x4.Identity());
+
+			let idle = scope ModelAnimation();
+			idle.Duration = 1.0f;
+			let bob = new AnimationChannel();
+			bob.TargetBone = dummy;
+			bob.Path = .Translation;
+			bob.AddKeyframe(0.0f, .(0.0f, 1.0f, 0.0f, 0.0f));
+			bob.AddKeyframe(1.0f, .(0.0f, 1.6f, 0.0f, 0.0f));
+			idle.AddChannel(bob);
+			let wave = new AnimationChannel();
+			wave.TargetBone = arm;
+			wave.Path = .Rotation;
+			wave.AddKeyframe(0.0f, .(0.0f, 0.0f, 0.0f, 1.0f));
+			idle.AddChannel(wave);
+
+			let joints = Joints(model, skin, .. scope .());
+			let boneToJoint = scope Dictionary<int32, int32>();
+			AnimConvert.BuildBoneToJoint(joints, boneToJoint);
+			let skeleton = scope SkeletonSource();
+			AnimConvert.SkeletonFromModel(model, skin, joints, boneToJoint, skeleton);
+			let hangsFrom = AnimConvert.SkeletonParentNode(model, joints);
+			let clip = scope AnimationClipSource();
+			AnimConvert.ClipFromModel(idle, boneToJoint, "idle", clip, hangsFrom);
+			Test.Assert(clip.TrackBone.Count == 2);
+			if (helperIsBone)
+			{
+				// Appended after the skin's joints (no vertex's joint index moves), the skin's root
+				// joint under it, the mesh's placement node above it, and its bob a track of the pose.
+				Test.Assert(joints.Count == 3);
+				Test.Assert(joints[2] == dummy);
+				Test.Assert(skeleton.BoneName[2] == "Dummy001");
+				Test.Assert(skeleton.ParentIndex[0] == 2);
+				Test.Assert(skeleton.ParentIndex[2] == -1);
+				Test.Assert(hangsFrom == root);
+				Test.Assert(clip.TrackBone[0] == 2);
+			}
+			else
+			{
+				// An empty node: the node the skeleton hangs from, its channel the clip's model track.
+				Test.Assert(joints.Count == 2);
+				Test.Assert(skeleton.ParentIndex[0] == -1);
+				Test.Assert(hangsFrom == dummy);
+				Test.Assert(clip.TrackBone[0] == -1);
+			}
+			Test.Assert(clip.TrackBone[1] == 1, "the arm, wherever the helper went");
+		}
 	}
 }

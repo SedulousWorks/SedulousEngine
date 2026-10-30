@@ -29,6 +29,10 @@ class ModelBone
 	public int32 MeshIndex = -1;
 	/// The skin this node is bound to, or -1 for none.
 	public int32 SkinIndex = -1;
+	/// Whether the file makes this node a bone of its skeleton (an FBX limb or root node), so a
+	/// helper bone the skin's joints hang from (3ds Max's Dummy, animated with the pose) joins the
+	/// skeleton, where an empty or null node they hang from (Blender's armature object) does not.
+	public bool IsSkeletonBone = false;
 
 	public Span<ModelBone> Children => .(mChildren.Ptr, mChildren.Count);
 

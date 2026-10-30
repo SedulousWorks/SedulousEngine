@@ -81,11 +81,13 @@ static class ModelCook
 		Dictionary<int32, int32> boneToJoint, ModelManifestSource manifest)
 	{
 		let skin = model.Skins[0];
-		AnimConvert.BuildBoneToJoint(skin, boneToJoint);
-		manifest.SkeletonParentNode = AnimConvert.SkeletonParentNode(model, skin, boneToJoint);
+		let joints = scope List<int32>(); // the skin's, then the bones it hangs from
+		AnimConvert.SkeletonJoints(model, skin, joints);
+		AnimConvert.BuildBoneToJoint(joints, boneToJoint);
+		manifest.SkeletonParentNode = AnimConvert.SkeletonParentNode(model, joints);
 
 		let skeletonAsset = scope SkeletonAsset();
-		AnimConvert.SkeletonFromModel(model, skin, boneToJoint, skeletonAsset.Source);
+		AnimConvert.SkeletonFromModel(model, skin, joints, boneToJoint, skeletonAsset.Source);
 
 		let skeletonInstance = root.CreateInstance(scope $"{namePrefix}.skeleton",
 			"Sedulous.Animation.Resource.SkeletonSource");

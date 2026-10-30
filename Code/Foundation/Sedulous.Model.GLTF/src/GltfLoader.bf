@@ -149,6 +149,12 @@ class GltfLoader : IModelLoader
 			else
 				material.Name.AppendF("m_texture{}", i);
 
+			// KHR_materials_unlit: its colour as it is, no light (the built-in Unlit, Raptor's
+			// phong-material spec). The colour and its map come from the metallic-roughness block as
+			// the extension says; the rest is not read.
+			if (source.unlit != 0)
+				material.Shading = .Unlit;
+
 			if (source.has_pbr_metallic_roughness != 0)
 			{
 				let pbr = &source.pbr_metallic_roughness;

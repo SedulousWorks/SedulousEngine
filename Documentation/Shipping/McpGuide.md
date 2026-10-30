@@ -205,7 +205,11 @@ checkboxes by label (`{"Generate collision": true}` gives an imported model's pr
 colliders and a static body; a model also takes Textures, Materials, Animations, Generate
 prefab, Generate scene, Generate LODs, Convex collision); the result lists every toggle's
 value. An imported model gets its prefab, the `Prefab` asset beside its manifest, in both
-hosts (and a scene with `Generate scene`). `asset_list` and `asset_info` inspect either database.
+hosts (and a scene with `Generate scene`). Its materials come in as authored: an FBX Phong or
+Lambert material and a classic OBJ `.mtl` on the built-in Phong, a glTF material with
+`KHR_materials_unlit` on Unlit, everything else (glTF, Blender's FBX, an `.mtl` with PBR keys) on
+PBR; to draw one another way, `material_set_shader` after the
+import. `asset_list` and `asset_info` inspect either database.
 Assets that are authored rather than imported (input maps, materials, scenes, prefabs,
 particle effects, animation graphs, physics, audio and UI assets, primitive meshes, script
 classes) come from `asset_create`: `asset_creators` lists every creator with the `type` it

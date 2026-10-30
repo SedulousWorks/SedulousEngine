@@ -33,7 +33,7 @@ static class ModelSamplerModes
 
 		let slots = scope int32[](material.BaseColorTextureIndex, material.NormalTextureIndex,
 			material.MetallicRoughnessTextureIndex, material.EmissiveTextureIndex,
-			material.OcclusionTextureIndex);
+			material.OcclusionTextureIndex, material.SpecularTextureIndex);
 
 		for (let slot in slots)
 		{

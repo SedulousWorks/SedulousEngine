@@ -3,7 +3,22 @@ using Sedulous.Core;
 
 namespace Sedulous.Model;
 
-/// PBR material properties as an importer found them.
+/// How a material was authored to be lit: the built-in material the import makes of it.
+enum ShadingModel : uint8
+{
+	/// Metal-rough PBR (glTF's, and an FBX or OBJ material with PBR data).
+	Pbr,
+	/// Diffuse plus a specular highlight (an FBX Phong material, a classic OBJ .mtl).
+	Phong,
+	/// Diffuse alone (an FBX Lambert material).
+	Lambert,
+	/// Its colour as it is, no light (glTF KHR_materials_unlit).
+	Unlit,
+}
+
+/// A model's material as its file authored it: metal-rough PBR, or the lighting model a legacy
+/// format names (Phong, Lambert, unlit), which the import makes the matching built-in material of
+/// (Raptor's phong-material spec).
 ///
 /// Texture references are INDICES into the model's texture list, not pointers, because
 /// that is how the source formats express them and it survives the model being moved or
@@ -15,6 +30,10 @@ class ModelMaterial
 {
 	public String Name = new .() ~ delete _;
 
+	/// How it is lit; PBR unless its loader says otherwise.
+	public ShadingModel Shading = .Pbr;
+
+	/// Phong's and Lambert's diffuse, Unlit's colour too.
 	public Float4 BaseColorFactor = .(1, 1, 1, 1);
 	public int32 BaseColorTextureIndex = -1;
 
@@ -40,6 +59,12 @@ class ModelMaterial
 	/// emission factor): the intensity a ColorHdr carries in w.
 	public float EmissiveIntensity = 1.0f;
 	public int32 EmissiveTextureIndex = -1;
+
+	/// The highlight (Phong): sRGB, times the file's specular factor; black: none.
+	public Float3 SpecularColor = .Zero;
+	public int32 SpecularTextureIndex = -1;
+	/// The highlight's exponent.
+	public float Shininess = 20.0f;
 
 	public AlphaMode AlphaMode = .Opaque;
 	public float AlphaCutoff = 0.5f;

@@ -157,4 +157,86 @@ class ModelMaterialWiringTests
 		Test.Assert(SlotId(ReadMaterial(group, "PartB", owned), "MetallicRoughnessMap")
 			== packed.Id);
 	}
+
+	// Each material made on the built-in its shading model names, as its file authored it (Raptor's
+	// phong-material spec), by the one function both cooks make materials with.
+	[Test]
+	public static void AMaterialIsMadeOnTheBuiltInItsShadingModelNamesItsMapsWired()
+	{
+		let model = scope Model();
+		ModelMaterial Add(ShadingModel shading)
+		{
+			let material = new ModelMaterial();
+			material.Shading = shading;
+			material.BaseColorTextureIndex = 0;
+			material.NormalTextureIndex = 1;
+			model.AddMaterial(material);
+			return material;
+		}
+		let phong = Add(.Phong);
+		phong.SpecularColor = .(0.5f, 0.25f, 0.125f);
+		phong.SpecularTextureIndex = 2;
+		phong.Shininess = 32.0f;
+		let lambert = Add(.Lambert);
+		lambert.SpecularColor = .(0.5f, 0.5f, 0.5f); // a Lambert material has no highlight, whatever it says
+		lambert.SpecularTextureIndex = 2;
+		Add(.Unlit);
+		let pbr = Add(.Pbr);
+		pbr.SeparateRoughnessTextureIndex = 3;
+		pbr.OcclusionTextureIndex = 4;
+
+		let textures = scope List<Guid>();
+		for (uint8 t = 1; t <= 5; t++)
+			textures.Add(Guid(t, 0, 0, 0, 0, 0, 0, 0, 0, 0, t));
+		int bakes = 0;
+		delegate Guid(int32 roughIndex, int32 metalIndex) packed = scope [&] (roughIndex, metalIndex) =>
+			{
+				bakes++;
+				return Guid(9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9);
+			};
+		void Slots(MaterialAsset asset, String outText)
+		{
+			for (let slot in asset.Source.TextureSlots)
+			{
+				if (!outText.IsEmpty)
+					outText.Append(' ');
+				outText.Append(slot);
+			}
+		}
+		Float4 Uniform(MaterialAsset asset, StringView name)
+		{
+			var value = Float4(0, 0, 0, 0);
+			let source = asset.Source;
+			for (int i < source.PropertyNames.Count)
+			{
+				if (source.PropertyNames[i] == name)
+					Internal.MemCpy(&value, source.UniformDefaults.Ptr + source.PropertyOffsets[i], Math.Min(sizeof(Float4), (int)source.PropertySizes[i]));
+			}
+			return value;
+		}
+
+		let onPhong = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, model.Materials[0], "m", textures, packed, onPhong);
+		Test.Assert(onPhong.Source.ShaderName == "phong");
+		Test.Assert(Slots(onPhong, .. scope .()) == "AlbedoMap NormalMap SpecularMap");
+		Test.Assert(Math.Abs(Uniform(onPhong, "SpecularColor").Y - 0.25f) < 1e-5f);
+		Test.Assert(Math.Abs(Uniform(onPhong, "Shininess").X - 32.0f) < 1e-5f);
+
+		let onLambert = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, model.Materials[1], "m", textures, packed, onLambert);
+		Test.Assert(onLambert.Source.ShaderName == "phong");
+		Test.Assert(Slots(onLambert, .. scope .()) == "AlbedoMap NormalMap", "no highlight, so no specular map");
+		Test.Assert(Uniform(onLambert, "SpecularColor").X == 0.0f);
+
+		let onUnlit = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, model.Materials[2], "m", textures, packed, onUnlit);
+		Test.Assert(onUnlit.Source.ShaderName == "unlit");
+		Test.Assert(Slots(onUnlit, .. scope .()) == "AlbedoMap");
+
+		let onPbr = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, model.Materials[3], "m", textures, packed, onPbr);
+		Test.Assert(onPbr.Source.ShaderName == "forward");
+		Test.Assert(Slots(onPbr, .. scope .()) == "AlbedoMap NormalMap OcclusionMap MetallicRoughnessMap");
+		Test.Assert(bakes == 1, "its separate rough map baked into the packed one by the caller");
+	}
 }

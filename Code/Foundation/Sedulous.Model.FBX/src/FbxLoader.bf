@@ -256,9 +256,32 @@ class FbxLoader : IModelLoader
 			material.EmissiveTextureIndex = TextureIndex(source.pbr.emission_color.texture, model);
 	}
 
-	/// A Lambert or Phong material from before PBR, mapped onto the PBR fields.
+	/// A Lambert or Phong material from before PBR, and a classic OBJ .mtl: imported as authored
+	/// (Raptor's phong-material spec). Phong and the .mtl's Kd/Ks/Ns keep their highlight, Lambert has
+	/// none; a legacy material of another kind (a shader the engine has no built-in for) stays the
+	/// PBR approximation. Blender's exports are their own kind (it labels every material Phong) and
+	/// take the PBR branch.
 	private void ReadLegacyMaterial(ufbx_material* source, ModelMaterial material, ModelData model)
 	{
+		let phong = (source.shader_type == .UFBX_SHADER_FBX_PHONG) || (source.shader_type == .UFBX_SHADER_WAVEFRONT_MTL);
+		if (phong || (source.shader_type == .UFBX_SHADER_FBX_LAMBERT))
+			material.Shading = phong ? .Phong : .Lambert;
+		if (phong)
+		{
+			if (source.fbx.specular_color.has_value)
+			{
+				// The colour times its factor, as the file lights it, then as sRGB.
+				let c = source.fbx.specular_color.value_vec4;
+				let factor = source.fbx.specular_factor.has_value ? source.fbx.specular_factor.value_real : 1.0;
+				let specular = SrgbColor(c.x * factor, c.y * factor, c.z * factor, 1.0);
+				material.SpecularColor = .(specular.X, specular.Y, specular.Z);
+			}
+			if (source.fbx.specular_color.texture != null)
+				material.SpecularTextureIndex = TextureIndex(source.fbx.specular_color.texture, model);
+			if (source.fbx.specular_exponent.has_value)
+				material.Shininess = (float)source.fbx.specular_exponent.value_real;
+		}
+
 		if (source.fbx.diffuse_color.has_value)
 		{
 			let c = source.fbx.diffuse_color.value_vec4;
@@ -290,11 +313,20 @@ class FbxLoader : IModelLoader
 		if (source.fbx.emission_color.texture != null)
 			material.EmissiveTextureIndex = TextureIndex(source.fbx.emission_color.texture, model);
 
-		// A material that predates PBR says nothing about metalness, and a default of one
-		// would make every old asset a mirror.
+		// The PBR approximation's (what a legacy material of another kind is drawn as): a material
+		// that predates PBR says nothing about metalness, and a default of one would make every old
+		// asset a mirror.
 		material.MetallicFactor = 0.0f;
 		material.RoughnessFactor = 0.8f;
 	}
+
+	/// Whether a held value is away from the default pose's.
+	private static bool HeldAway(ufbx_vec3 held, ufbx_vec3 rest) =>
+		(Abs(held.x - rest.x) > 1e-5) || (Abs(held.y - rest.y) > 1e-5) || (Abs(held.z - rest.z) > 1e-5);
+
+	/// Whether a held rotation is turned away from the default pose's (either sign the same turn).
+	private static bool TurnedAway(ufbx_quat held, ufbx_quat rest) =>
+		Abs(held.x * rest.x + held.y * rest.y + held.z * rest.z + held.w * rest.w) < 1.0 - 1e-7;
 
 	/// The model index for a ufbx texture, creating the entry if this is the first mention.
 	///
@@ -977,6 +1009,9 @@ class FbxLoader : IModelLoader
 					bone.MeshIndex = meshIndex;
 			}
 
+			// A limb or root node of the file's skeleton (ufbx's bone attribute), not an empty.
+			bone.IsSkeletonBone = node.bone != null;
+
 			mNodeToBone[node.element.typed_id] = model.AddBone(bone);
 		}
 
@@ -1074,9 +1109,24 @@ class FbxLoader : IModelLoader
 				if (!mNodeToBone.TryGetValue(node.typed_id, let boneIndex))
 					continue;
 
-				// A CONSTANT channel is dropped: a bone that never moves does not need
-				// keyframes, and every one kept costs sampling work every frame.
-				if ((node.translation_keys.count > 0) && !node.constant_translation)
+				// A channel the take holds constant is kept when it holds the node somewhere other
+				// than its default pose (the skeleton's bind pose, which a clip with no track for it
+				// plays): a 3ds Max take often poses a bone and leaves it there, a head turned for the
+				// whole idle. One key says it; one at the default says nothing and is left out.
+				let sourceNode = (node.typed_id < mScene.nodes.count) ? mScene.nodes.data[node.typed_id] : null;
+				var rest = ufbx_transform();
+				rest.rotation.w = 1.0;
+				rest.scale = .() { x = 1.0, y = 1.0, z = 1.0 };
+				if (sourceNode != null)
+					rest = sourceNode.local_transform;
+				let keepTranslation = (node.translation_keys.count > 0)
+					&& (!node.constant_translation || HeldAway(node.translation_keys.data[0].value, rest.translation));
+				let keepRotation = (node.rotation_keys.count > 0)
+					&& (!node.constant_rotation || TurnedAway(node.rotation_keys.data[0].value, rest.rotation));
+				let keepScale = (node.scale_keys.count > 0)
+					&& (!node.constant_scale || HeldAway(node.scale_keys.data[0].value, rest.scale));
+
+				if (keepTranslation)
 				{
 					let channel = new AnimationChannel();
 					channel.TargetBone = boneIndex;
@@ -1091,7 +1141,7 @@ class FbxLoader : IModelLoader
 					animation.AddChannel(channel);
 				}
 
-				if ((node.rotation_keys.count > 0) && !node.constant_rotation)
+				if (keepRotation)
 				{
 					let channel = new AnimationChannel();
 					channel.TargetBone = boneIndex;
@@ -1106,7 +1156,7 @@ class FbxLoader : IModelLoader
 					animation.AddChannel(channel);
 				}
 
-				if ((node.scale_keys.count > 0) && !node.constant_scale)
+				if (keepScale)
 				{
 					let channel = new AnimationChannel();
 					channel.TargetBone = boneIndex;

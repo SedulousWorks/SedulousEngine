@@ -184,4 +184,119 @@ f 1 2 3
 		Test.Assert(model.Materials.Length >= 1);
 		Test.Assert(Near(model.Materials[0].BaseColorFactor.X, 0.5f, 0.002f), scope $"{model.Materials[0].BaseColorFactor.X}");
 	}
+
+	// Imported as authored (Raptor's phong-material spec): an FBX Phong material keeps its highlight
+	// (its specular colour times its factor, as sRGB, and its exponent), a Lambert one has none; both
+	// are told apart from PBR by the shading model the file names.
+	[Test]
+	public static void APhongMaterialKeepsItsHighlightALambertOneIsDiffuseAlone()
+	{
+		let path = "scratch_fbx_phong.fbx";
+		System.IO.File.WriteAllText(path, """
+			; FBX 7.4.0 project file
+			FBXHeaderExtension:  {
+				FBXHeaderVersion: 1003
+				FBXVersion: 7400
+			}
+			Objects:  {
+				Material: 1000, "Material::Shiny", "" {
+					Version: 102
+					ShadingModel: "phong"
+					Properties70:  {
+						P: "DiffuseColor", "Color", "", "A",1,1,1
+						P: "SpecularColor", "Color", "", "A",0.2140,0.2140,0.2140
+						P: "SpecularFactor", "Number", "", "A",1
+						P: "ShininessExponent", "Number", "", "A",32
+					}
+				}
+				Material: 1001, "Material::Matte", "" {
+					Version: 102
+					ShadingModel: "lambert"
+					Properties70:  {
+						P: "DiffuseColor", "Color", "", "A",0.2140,0.2140,0.2140
+					}
+				}
+			}
+			Connections:  {
+			}
+			""").IgnoreError();
+		defer { System.IO.File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope FbxLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		ModelMaterial shiny = null;
+		ModelMaterial matte = null;
+		for (let material in model.Materials)
+		{
+			if (material.Name == "Shiny")
+				shiny = material;
+			if (material.Name == "Matte")
+				matte = material;
+		}
+		Test.Assert((shiny != null) && (matte != null));
+		Test.Assert(shiny.Shading == .Phong);
+		Test.Assert(Near(shiny.SpecularColor.X, 0.5f, 0.002f), scope $"{shiny.SpecularColor.X}"); // linear 0.2140 is sRGB 0.5
+		Test.Assert(Near(shiny.Shininess, 32.0f));
+		Test.Assert(matte.Shading == .Lambert);
+		Test.Assert(matte.SpecularColor.X == 0.0f);
+		Test.Assert(Near(matte.BaseColorFactor.X, 0.5f, 0.002f));
+	}
+
+	[Test]
+	public static void AClassicMtlIsPhongOneWithPbrKeysStaysPbr()
+	{
+		{
+			let fixture = scope ObjFixture("classic", cTwoMaterials, "newmtl red\nKd 1 0 0\nKs 0.2140 0.2140 0.2140\nNs 50\n");
+			let model = scope ModelData();
+			let loader = scope FbxLoader();
+			Test.Assert(loader.Load(fixture.Path, model) == .Ok);
+			Test.Assert(model.Materials.Length >= 1);
+			let red = model.Materials[0];
+			Test.Assert(red.Shading == .Phong);
+			Test.Assert(Near(red.SpecularColor.X, 0.5f, 0.002f), scope $"{red.SpecularColor.X}");
+			Test.Assert(Near(red.Shininess, 50.0f));
+		}
+		{
+			let fixture = scope ObjFixture("pbrmtl", cTwoMaterials, "newmtl red\nKd 1 0 0\nPr 0.4\nPm 0.0\n");
+			let model = scope ModelData();
+			let loader = scope FbxLoader();
+			Test.Assert(loader.Load(fixture.Path, model) == .Ok);
+			Test.Assert(model.Materials.Length >= 1);
+			Test.Assert(model.Materials[0].Shading == .Pbr);
+		}
+	}
+
+	[Test]
+	public static void BlendersExportStaysPbrThoughItNamesEveryMaterialPhong()
+	{
+		let path = "scratch_fbx_blender.fbx";
+		System.IO.File.WriteAllText(path, """
+			; FBX 7.4.0 project file
+			FBXHeaderExtension:  {
+				FBXHeaderVersion: 1003
+				FBXVersion: 7400
+				Creator: "Blender (stable FBX IO) - 4.2.0 - 5.12.3"
+			}
+			Creator: "Blender (stable FBX IO) - 4.2.0 - 5.12.3"
+			Objects:  {
+				Material: 1000, "Material::Painted", "" {
+					Version: 102
+					ShadingModel: "Phong"
+					Properties70:  {
+						P: "DiffuseColor", "Color", "", "A",0.8,0.8,0.8
+						P: "SpecularColor", "Color", "", "A",0.8,0.8,0.8
+						P: "ShininessExponent", "Number", "", "A",25
+					}
+				}
+			}
+			Connections:  {
+			}
+			""").IgnoreError();
+		defer { System.IO.File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope FbxLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		Test.Assert(model.Materials.Length >= 1);
+		Test.Assert(model.Materials[0].Shading == .Pbr);
+	}
 }
