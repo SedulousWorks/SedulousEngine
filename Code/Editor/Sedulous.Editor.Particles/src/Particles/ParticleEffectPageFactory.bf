@@ -1,26 +1,25 @@
 using System;
 using Sedulous.Content;
-using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
 using Sedulous.Particles.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Particles;
 
-/// Opens a ParticleEffectAsset in the particle page.
+/// Opens a ParticleEffectAsset in the particle page; a page asks for its services when it is made.
 class ParticleEffectPageFactory : IEditorPageFactory
 {
-	/// Borrowed.
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	/// Borrowed: the editor's (or a test's), which outlives it.
+	private AssetPageServicesSource mServices;
 
-	public this(IApplicationHost host, UIHost uiHost)
+	/// `services` is borrowed and outlives it.
+	public this(AssetPageServicesSource services)
 	{
-		mHost = host;
-		mUiHost = uiHost;
+		mServices = services;
 	}
 
 	public Type PrimaryType => typeof(ParticleEffectAsset);
 
-	public EditorPage CreatePage(EditorContext context, Instance instance) => new ParticleEffectEditorPage(context, mHost, mUiHost, instance);
+	public EditorPage CreatePage(EditorContext context, Instance instance) =>
+		new ParticleEffectEditorPage(context, mServices.Make(), instance);
 }

@@ -1,0 +1,65 @@
+<!--
+  The particle effect page (Raptor's editor-gui spec, 5.4, layer 8): the kit's bar (Save,
+  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its kind
+  at the end) over three panes. The effect's systems as a tree, each its emitter, initializers,
+  behaviors and sub-emitters; the tree's bar adds a system and removes the chosen system, module
+  or sub-emitter. The live preview with its own bar: Frame, the kit's transport (Restart, Play, Stop, each an action over the page,
+  Play showing Pause while it plays), the particles alive, and the preview's speed, which is the
+  page's alone and not saved; the chosen system's emission shape is drawn over it. The grid shows
+  the chosen system: its options, its emitter, its initializers and behaviors as lists (an add
+  chooses the module's type) and its sub-emitters, a module or a sub-emitter chosen in the tree
+  opening there. An asset that did not read says so in place of the grid.
+  Code puts the viewport in its stage and fills the tree and the grid.
+-->
+<Panel class="page preview-page particle-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.2 0.48 0.32">
+        <Panel class="panel page-pane particle-tree-pane">
+            <Panel class="panel-toolbar">
+                <ToolButton id="particle-add-system" icon="Editor/Icons/plus.svg" text="System" shows-text="true" tooltip="Add a system"/>
+                <ToolButton id="particle-remove" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen system (while another remains) or module"/>
+                <Spacer/>
+            </Panel>
+            <TreeView id="particle-tree" class="panel-body tree particle-tree"/>
+        </Panel>
+        <Panel class="panel page-pane preview-pane">
+            <Panel id="preview-bar" class="panel-toolbar preview-bar">
+                <ToolButton id="preview-frame" icon="Editor/Icons/frame-selection.svg" tooltip="Frame it (F)"/>
+                <Separator/>
+                <ToolButton id="particle-restart" icon="Editor/Icons/restart.svg"/>
+                <ToolButton id="particle-play" toggle="true" icon="Editor/Icons/play.svg" checked-icon="Editor/Icons/pause.svg"/>
+                <ToolButton id="particle-stop" icon="Editor/Icons/stop.svg"/>
+                <Label id="particle-count" class="transport-state" text=""/>
+                <Separator id="preview-own"/>
+                <Spacer/>
+                <Label class="preview-hint" text="Speed"/>
+                <Slider id="particle-speed" class="preview-speed" min="0" max="3" step="0.05" value="1" tooltip="The preview's speed: this page's alone, not saved"/>
+            </Panel>
+            <Panel id="preview-stage" class="preview-stage"/>
+            <Panel id="preview-empty" class="state-box preview-empty">
+                <Image class="state-icon" src="Editor/Icons/particles.svg"/>
+                <Label id="preview-empty-title" class="state-title" text="No preview"/>
+                <Label id="preview-empty-text" class="state-text" text="The preview needs the editor's renderer."/>
+            </Panel>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

@@ -253,6 +253,7 @@ treerowcontent.inactive { opacity: 0.45; }
 .audio-stage > .waveform { flex-grow: 1; min-height: 0; }
 .audio-empty { flex-grow: 1; background-color: var(--surface-sunken); }
 .audio-volume { width: 96px; }
+.preview-speed { width: 96px; }
 .audio-volume-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
 waveform::wave { background-color: var(--accent); }
 waveform::playhead { background-color: var(--warning); }
