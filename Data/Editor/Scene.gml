@@ -25,7 +25,7 @@
         <ToolButton id="scene-simulate" icon="Editor/Icons/play.svg"/>
         <ToolButton id="scene-pause" toggle="true" icon="Editor/Icons/pause.svg"/>
         <ToolButton id="scene-stop" icon="Editor/Icons/stop.svg"/>
-        <Label id="scene-simulate-state" class="transport-state playing" text="Simulating"/>
+        <Label id="scene-simulate-state" class="transport-state playing scene-simulate-state" text="Simulating"/>
         <Spacer/>
         <!-- The viewport tools, from the tool registry, go here (code adds them before this). -->
         <Separator id="scene-tools-end"/>

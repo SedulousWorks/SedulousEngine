@@ -1727,6 +1727,14 @@ class ScenePageTests
 		Test.Assert(!pause.Enabled);
 		Test.Assert(!stop.Enabled);
 		Test.Assert(bar.State.IsEmpty);
+		// The buttons are centred beside the state: it keeps its place and one width whatever it
+		// says, so they never move as the scene starts, pauses or stops.
+		float PauseAt()
+		{
+			shown.Root.UpdateLayout();
+			return pause.ScreenBounds.X;
+		}
+		let resting = PauseAt();
 
 		shown.Click(simulate);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
@@ -1734,15 +1742,18 @@ class ScenePageTests
 		Test.Assert(bar.State == "Simulating");
 		Test.Assert(!simulate.Enabled);
 		Test.Assert(stop.Enabled);
+		Test.Assert(Math.Abs(PauseAt() - resting) < 1e-3f);
 		shown.Click(pause);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(page.IsPaused);
 		Test.Assert(bar.State == "Paused");
 		Test.Assert(pause.Checked);
+		Test.Assert(Math.Abs(PauseAt() - resting) < 1e-3f);
 		shown.Click(stop);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!page.IsSimulating);
 		Test.Assert(bar.State.IsEmpty);
+		Test.Assert(Math.Abs(PauseAt() - resting) < 1e-3f);
 		page.OnClose();
 	}
 

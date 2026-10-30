@@ -94,7 +94,7 @@ class SceneBar
 	public int Bound => mBar.Count;
 
 	/// What the state label says ("Simulating", "Paused"); empty while it shows nothing.
-	public StringView State => ((mState != null) && mState.Displayed) ? mState.Text : default;
+	public StringView State => ((mState != null) && mState.Visible) ? mState.Text : default;
 
 	/// Once a frame: each button as its action is now over the page; the space's icon and the
 	/// increments' checks as the gizmo has them.
@@ -118,7 +118,9 @@ class SceneBar
 		Check(mScaleItems, sScaleIncrements, gizmo.ScaleSnap);
 	}
 
-	// Simulate's state beside its buttons: shown while it runs, the edits locked meanwhile.
+	// Simulate's state beside its buttons: shown while it runs, the edits locked meanwhile. Its place
+	// is kept while it shows nothing, and its width is the sheet's whatever it says, so the buttons
+	// centred beside it never move as it starts, pauses or stops.
 	private void SyncState()
 	{
 		if (mState == null)
@@ -126,8 +128,8 @@ class SceneBar
 		let scene = mPage as ISceneEditorPage;
 		let running = (scene != null) && scene.IsSimulating;
 		let paused = running && scene.IsPaused;
-		if (mState.Displayed != running)
-			mState.Displayed = running;
+		if (mState.Visible != running)
+			mState.Visible = running;
 		if (!running || (mStateShown && (paused == mPaused)))
 			return;
 		mState.Text = paused ? "Paused" : "Simulating";
