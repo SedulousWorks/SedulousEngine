@@ -1,0 +1,58 @@
+<!--
+  The GUI document and sheet page (Raptor's editor-gui spec, 5.4, layer 6, part 5): the
+  kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the
+  page; a sheet's page then its own: the preview over a document's markup; its kind at the end) over
+  the code and its problems, one above the other, beside the preview the game's GUI draws (its fonts,
+  theme and sheets). A sheet is previewed over markup of the page's own, edited above the preview
+  and kept for the sheet in the project's editor settings, never in the asset. While the code does
+  not build the preview keeps the last that did, and says so. An asset that did not read says so in
+  place of the code.
+-->
+<Panel class="page code-page gui-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <ToolButton id="gui-preview-document" icon="Editor/Icons/open.svg" text="Preview Over a Document" shows-text="true"
+                    tooltip="Preview the sheet over a copy of a document's markup (the copy is the page's: the document is not changed)"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Panel id="page-state" class="state-box failed page-state">
+        <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+        <Label class="state-title" text="This asset did not read"/>
+        <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+    </Panel>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.5 0.5">
+        <Splitter class="code-pane" axis="vertical" weights="0.8 0.2">
+            <CodeEditor id="page-code" class="page-code"/>
+            <Panel id="page-problems" class="panel page-problems"/>
+        </Splitter>
+        <Splitter id="gui-preview-side" class="page-pane" axis="vertical" weights="0.35 0.65">
+            <Panel id="gui-markup-pane" class="panel page-pane gui-markup-pane">
+                <Panel class="panel-toolbar">
+                    <Label class="panel-title" text="Previewed Over"/>
+                </Panel>
+                <CodeEditor id="gui-preview-markup" class="page-code"/>
+            </Panel>
+            <Panel class="panel page-pane preview-pane">
+                <Panel class="panel-toolbar preview-bar">
+                    <Label id="gui-preview-stale" class="preview-stale" text="Does not build: showing the last version that did"/>
+                    <Spacer/>
+                    <Label class="preview-hint" text="Drawn by the game's GUI: its fonts, theme and sheets"/>
+                </Panel>
+                <Panel id="gui-preview-stage" class="preview-stage"/>
+                <Panel id="gui-preview-empty" class="state-box preview-empty">
+                    <Image class="state-icon" src="Editor/Icons/gui-panel.svg"/>
+                    <Label id="gui-preview-empty-title" class="state-title" text="Nothing to preview"/>
+                    <Label id="gui-preview-empty-text" class="state-text" text="It shows once the markup builds."/>
+                </Panel>
+            </Panel>
+        </Splitter>
+    </Splitter>
+</Panel>

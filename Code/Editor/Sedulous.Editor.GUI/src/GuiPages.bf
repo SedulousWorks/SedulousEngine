@@ -1,12 +1,12 @@
 using System;
 using System.Collections;
 using Sedulous.GUI;
-using Sedulous.UI.Toolkit;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.GUI;
 
-/// What the GUI asset page shares with a test: the markup a sheet first previews over, and the
-/// cook's diagnostics put in an editor's margin.
+/// What the GUI asset page shares with a test: the markup a sheet first previews over, the name its
+/// problems go under, and the cook's diagnostics as the page's problems.
 static class GuiPages
 {
 	/// What a sheet is previewed over with nothing chosen yet: a little of everything a sheet
@@ -23,17 +23,17 @@ static class GuiPages
 
 		""";
 
-	/// The cook's diagnostics on `editor`'s lines, as its margin marks them (from 0; a diagnostic
-	/// with no line on the first). `found` stays the caller's.
-	public static void MarkLines(CodeEditView editor, List<GuiDiagnostic> found)
+	/// How the problems list names the preview markup's problems (a sheet's page).
+	public const String cPreviewMarkupName = "preview markup";
+
+	/// The cook's diagnostics as the page's problems, `file` the code they are in (empty: the page's
+	/// own), appended; the caller deletes them. `found` stays the caller's.
+	public static void AddProblems(List<GuiDiagnostic> found, StringView file, List<CodeProblem> outProblems)
 	{
-		let marks = new List<Sedulous.UI.Toolkit.CodeDiagnostic>(); // consumed by the document
-		for (let diagnostic in found)
+		for (let d in found)
 		{
-			let line = (diagnostic.Line > 0) ? (int32)diagnostic.Line - 1 : 0;
-			marks.Add(new Sedulous.UI.Toolkit.CodeDiagnostic(diagnostic.Level == .Error, line, diagnostic.Message));
+			// The cook names lines: the whole of each is marked.
+			outProblems.Add(new CodeProblem((d.Level == .Error) ? CodeSeverity.Error : .Warning, d.Message, file, (d.Line > 0) ? d.Line - 1 : 0, 0, false));
 		}
-		editor.Document.SetDiagnostics(marks);
-		editor.Invalidate();
 	}
 }

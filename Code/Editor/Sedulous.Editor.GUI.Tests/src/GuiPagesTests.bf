@@ -1,194 +1,222 @@
 using System;
 using System.Collections;
-using Sedulous.Content;
+using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
-using Sedulous.Core.Serialization;
-using Sedulous.VFS;
-using Sedulous.UI.Toolkit;
+using Sedulous.Content;
+using Sedulous.Settings;
+using Sedulous.GUI;
 using Sedulous.GUI.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.GUI.Tests;
 
-/// The GUI asset pages: their registration, what the cook reports marking the editor's lines, the
-/// markup a sheet is first previewed over, and a page's preview built in the runtime's GUI.
+/// The GUI asset pages over their markup: a document's code checked as the cook checks it, its
+/// problems on their lines; a sheet previewed over markup of the page's own (first a little of
+/// everything, which builds clean), whose edits never dirty the sheet and are kept in the project's
+/// editor settings, whose problems are named apart, and which can be a copy of a document's markup;
+/// and (Sedulous's) a document's preview built in the runtime's GUI, kept while the code does not
+/// build.
 class GuiPagesTests
 {
-	/// A scratch source database to open pages on: the asset there, its linked file not (the page
-	/// opens empty, and a test types into it with SetText).
-	class PageBed
-	{
-		private String mDirectory = new .() ~ delete _;
-		private NativeFileSystem mMount ~ delete _;
-		private SerializerFactory mSerializers ~ delete _;
-		public ContentDatabase Database ~ delete _;
-		public EditorContext Context = new .() ~ delete _;
+	const String cHud = "<Panel class=\"hud\">\n    <Label class=\"score\" text=\"0\"/>\n</Panel>\n";
+	const String cSheet = ".hud { padding: 8px; }\n.score { color: #ffcc00; }\n";
 
-		public this(StringView directory)
+	static bool DataRoot(String outPath)
+	{
+		var dir = GetCurrentDirectory(.. scope .());
+		for (int i < 8)
 		{
-			GuiPipeline.RegisterAll();
-			mDirectory.Set(directory);
-			RemoveDirectoryRecursive(mDirectory);
-			CreateDirectory(mDirectory);
-			mMount = new NativeFileSystem(mDirectory);
-			mSerializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
-			Database = new ContentDatabase(mMount, mSerializers, "rasset");
+			let data = PathJoin(dir, "Data", .. scope .());
+			if (DirectoryExists(PathJoin(data, "Editor", .. scope .())))
+			{
+				outPath.Set(data);
+				return true;
+			}
+			let parent = PathParent(dir, .. scope .());
+			if (parent == dir)
+				break;
+			dir.Set(parent);
+		}
+		return false;
+	}
+
+	static bool ReadData(StringView relative, String outText)
+	{
+		let data = scope String();
+		return DataRoot(data) && (System.IO.File.ReadAllText(PathJoin(data, relative, .. scope .()), outText, true) case .Ok);
+	}
+
+	/// Markup under the data root: a node with one reference, the caller's.
+	static Node LoadMarkup(StringView relative)
+	{
+		let text = scope String();
+		Test.Assert(ReadData(relative, text));
+		RegisterGuiElements();
+		RegisterToolkitElements();
+		RegisterCodeElements();
+		let elements = ElementSet.All();
+		defer delete elements;
+		let loader = scope MarkupLoader(elements);
+		return loader.LoadFromString(text);
+	}
+
+	/// A project with a document ("Hud", Sources/Hud.gml) and a sheet ("Theme", Sources/Theme.css),
+	/// its editor settings the context's.
+	private class Bed
+	{
+		public String Dir = new .("scratch_gui_page_project") ~ delete _;
+		public EditorProject Project;
+		/// Declared before the context, which borrows it: it goes after.
+		public Settings Store = new .() ~ delete _;
+		public EditorContext Context = new .() ~ delete _;
+		public CodeLanguages Languages = new .(new (path, outText) => ReadData(path, outText)) ~ delete _;
+		public Instance Hud;
+		public Instance Theme;
+
+		public this()
+		{
+			GuiPipeline.RegisterAll(); // the instances' types, written and read back
+			GuiEditorSerializables.RegisterAll(); // the settings section's type
+			RemoveDirectoryRecursive(Dir);
+			Test.Assert(EditorProject.Create(Dir, "P") case .Ok);
+			Project = EditorProject.Open(Dir);
+			Test.Assert(Project != null);
+			Context.SetProject(Project);
+			Context.ProjectEditorSettings = Store;
+			let sources = Project.SourcesRoot(.. scope .());
+			Test.Assert(System.IO.File.WriteAllText(PathJoin(sources, "Hud.gml", .. scope .()), cHud) case .Ok);
+			Test.Assert(System.IO.File.WriteAllText(PathJoin(sources, "Theme.css", .. scope .()), cSheet) case .Ok);
+			Hud = Project.SourceDb.RootGroup.CreateInstance("Hud", typeof(GuiDocumentAsset).GetFullName(.. scope .()));
+			Theme = Project.SourceDb.RootGroup.CreateInstance("Theme", typeof(GuiStyleSheetAsset).GetFullName(.. scope .()));
+			Test.Assert((Hud != null) && (Theme != null));
+			let document = scope GuiDocumentAsset();
+			document.FileName.Set("Hud.gml");
+			Test.Assert(Hud.WriteObject(document) case .Ok);
+			let sheet = scope GuiStyleSheetAsset();
+			sheet.FileName.Set("Theme.css");
+			Test.Assert(Theme.WriteObject(sheet) case .Ok);
 		}
 
 		public ~this()
 		{
-			delete Database;
-			Database = null;
-			delete mMount;
-			mMount = null;
-			RemoveDirectoryRecursive(mDirectory);
+			Context.ProjectEditorSettings = null;
+			Context.SetProject(null);
+			delete Project;
+			RemoveDirectoryRecursive(Dir);
 		}
 
-		public Instance Document(StringView name)
+		/// The page over `instance`; the caller deletes it (before the bed). `host` (may be null) is
+		/// the runtime the preview builds in.
+		public GuiAssetEditorPage Open(Instance instance, GuiAssetEditorPage.Kind kind, GuiPageHost host = null)
 		{
-			let instance = Database.RootGroup.CreateInstance(name, typeof(GuiDocumentAsset).GetFullName(.. scope .()));
-			Test.Assert(instance.WriteObject(scope GuiDocumentAsset()) case .Ok);
-			return instance;
-		}
-
-		public Instance StyleSheet(StringView name, StringView previewMarkup)
-		{
-			let instance = Database.RootGroup.CreateInstance(name, typeof(GuiStyleSheetAsset).GetFullName(.. scope .()));
-			let asset = scope GuiStyleSheetAsset();
-			asset.PreviewMarkup.Set(previewMarkup);
-			Test.Assert(instance.WriteObject(asset) case .Ok);
-			return instance;
+			let services = new AssetPageServices();
+			services.LoadMarkup = new (path) => LoadMarkup(path);
+			services.Languages = Languages;
+			services.Host = host;
+			return new GuiAssetEditorPage(Context, services, instance, kind);
 		}
 	}
 
-	private static bool Near(float a, float b) => Math.Abs(a - b) < 0.5f;
-
 	[Test]
-	public static void RegisteringRoutesBothAssetsToTheirPages()
+	public static void RegisteredForTheDocumentAndTheSheet()
 	{
+		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		GuiEditor.Register(context, null, null);
-		let document = context.Pages.FindFactory(typeof(GuiDocumentAsset));
-		Test.Assert((document != null) && (document.PrimaryType == typeof(GuiDocumentAsset)));
-		let sheet = context.Pages.FindFactory(typeof(GuiStyleSheetAsset));
-		Test.Assert((sheet != null) && (sheet.PrimaryType == typeof(GuiStyleSheetAsset)));
-	}
-
-	[Test]
-	public static void WhatTheCookReportsMarksTheEditorsLinesAndClearsWhenClean()
-	{
-		let editor = new CodeEditView();
-		defer editor.ReleaseRef();
-		let broken = "<Panel>\n  <NoSuchElement/>\n</Panel>";
-		editor.SetText(broken);
-		let found = scope List<Sedulous.GUI.GuiDiagnostic>();
-		defer { ClearAndDeleteItems!(found); }
-		GuiPipeline.ValidateDocument(broken, found);
-		Test.Assert(!found.IsEmpty, "an element nothing makes is dropped, and said so");
-		GuiPages.MarkLines(editor, found);
-		Test.Assert(editor.Document.DiagnosticCount == found.Count);
-		Test.Assert(found[0].Line == 2, "the dropped element's own line");
-		Test.Assert(editor.Document.GetDiagnostic(0).Line == 1, "the editor counts from 0");
-		Test.Assert(!editor.Document.GetDiagnostic(0).Message.IsEmpty);
-
-		GuiPages.MarkLines(editor, scope List<Sedulous.GUI.GuiDiagnostic>());
-		Test.Assert(editor.Document.DiagnosticCount == 0);
+		GuiEditor.Register(context, none);
+		Test.Assert(context.Pages.FindFactory(typeof(GuiDocumentAsset)) != null);
+		Test.Assert(context.Pages.FindFactory(typeof(GuiStyleSheetAsset)) != null);
 	}
 
 	[Test]
 	public static void TheMarkupASheetIsFirstPreviewedOverBuildsClean()
 	{
-		let found = scope List<Sedulous.GUI.GuiDiagnostic>();
+		let found = scope List<GuiDiagnostic>();
 		defer { ClearAndDeleteItems!(found); }
 		Test.Assert(GuiPipeline.ValidateDocument(GuiPages.cStockPreviewMarkup, found));
 		Test.Assert(found.IsEmpty);
 	}
 
-	/// Typing rebuilds the preview in the runtime's GUI; a document that does not build keeps the
-	/// last good one, its error on the line; what was dropped is a warning that still previews.
 	[Test]
-	public static void ADocumentsPreviewRebuildsAsItIsTypedAndKeepsTheLastGoodOne()
+	public static void ADocumentsCodeCheckedAsTheCookChecksItItsProblemsOnTheirLines()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Hud, .Document);
+		defer delete page;
+		Test.Assert(!page.LoadFailed);
+		Test.Assert(page.Code != null);
+		Test.Assert(page.Text(.. scope .()) == cHud);
+		Test.Assert(page.ErrorCount == 0, page.Found.IsEmpty ? "" : page.Found[0].Message);
+		Test.Assert(page.PreviewMarkupEditor == null, "a document is previewed as it is");
+		Test.Assert(!page.Code.TokensOf(0).IsEmpty);
+
+		page.Code.SetCaret(.(1, 0));
+		page.Code.Type("<Label text=\"unclosed\n");
+		page.CheckNow();
+		Test.Assert(page.ErrorCount > 0);
+		Test.Assert(page.Found[0].File.IsEmpty);
+		page.Commands.Undo();
+		page.CheckNow();
+		Test.Assert(page.ErrorCount == 0);
+	}
+
+	[Test]
+	public static void ASheetOverMarkupOfThePagesOwnKeptApartFromTheAssetItsProblemsNamedApart()
+	{
+		let bed = scope Bed();
+		var page = bed.Open(bed.Theme, .StyleSheet);
+		defer { delete page; } // the block reads page as it is then: the one opened again
+		Test.Assert(page.PreviewMarkupEditor != null);
+		Test.Assert(page.PreviewMarkup(.. scope .()) == GuiPages.cStockPreviewMarkup);
+		Test.Assert(page.ErrorCount == 0, page.Found.IsEmpty ? "" : page.Found[0].Message);
+
+		// Its edits: the preview's, not the sheet's.
+		page.PreviewMarkupEditor.SetCaret(.(0, 0));
+		page.PreviewMarkupEditor.Type("<Broken\n");
+		Test.Assert(!page.IsDirty);
+		Test.Assert(!page.Commands.CanUndo);
+		page.CheckNow();
+		Test.Assert(page.ErrorCount > 0);
+		Test.Assert(page.Found[0].File == GuiPages.cPreviewMarkupName);
+
+		// Kept for the sheet in the project's editor settings.
+		let kept = bed.Store.Find<GuiSheetPreviewSettings>();
+		Test.Assert(kept != null);
+		Test.Assert(kept.Sheets.Count == 1);
+		Test.Assert(kept.Sheets[0].Asset == bed.Theme.Id);
+		Test.Assert(kept.Sheets[0].Markup.StartsWith("<Broken"));
+
+		// Over a copy of a document's markup; the sheet opened again shows what was kept.
+		page.PreviewOverDocument(bed.Hud.Id);
+		Test.Assert(page.PreviewMarkup(.. scope .()) == cHud);
+		Test.Assert(page.ErrorCount == 0, page.Found.IsEmpty ? "" : page.Found[0].Message);
+		delete page;
+		page = bed.Open(bed.Theme, .StyleSheet);
+		Test.Assert(page.PreviewMarkup(.. scope .()) == cHud);
+	}
+
+	/// Sedulous's: with the runtime's GUI the preview builds from the code; code that does not build
+	/// keeps the last good one and says so; closing lets it go.
+	[Test]
+	public static void ADocumentsPreviewBuildsInTheRuntimesGuiAndKeepsTheLastGoodOne()
 	{
 		let host = scope GuiPageHost();
-		let bed = scope PageBed("scratch_gui_document_page");
-		let page = new GuiAssetEditorPage(bed.Context, host, null, bed.Document("menu"), .Document);
+		let bed = scope Bed();
+		let page = bed.Open(bed.Hud, .Document, host);
 		defer delete page;
-		Test.Assert(page.Title == "menu");
-		Test.Assert(page.Text.IsEmpty, "no linked file: the page opens empty");
-		Test.Assert(page.PreviewRoot == null);
-		Test.Assert(!page.IsDirty);
-		Test.Assert(page.PreviewEditor == null, "a document is previewed as it is");
-
-		page.SetText("<Panel><Label id=\"title\" text=\"Menu\"/></Panel>");
-		Test.Assert(page.IsDirty);
 		let good = page.PreviewRoot;
 		Test.Assert(good != null);
-		Test.Assert(good.FindElement("title") != null);
-		Test.Assert(page.StatusText == "OK");
+		Test.Assert(!page.PreviewStale);
 
-		page.SetText("<Panel>\n  <Label text=\"a\">\n</Panel>");
+		page.Code.SetCaret(.(1, 0));
+		page.Code.Type("<Label text=\"unclosed\n");
+		page.CheckNow();
 		Test.Assert(page.PreviewRoot === good, "the last good preview stays");
-		Test.Assert(page.StatusText.StartsWith("Does not build"));
-		let editor = page.Editor;
-		Test.Assert((editor != null) && (editor.Document.DiagnosticCount > 0) && editor.Document.GetDiagnostic(0).IsError);
-
-		page.SetText("<Panel id=\"menu\">\n  <NoSuchElement/>\n</Panel>");
-		Test.Assert((page.PreviewRoot != null) && (page.PreviewRoot !== good), "a warning still previews");
-		Test.Assert(page.PreviewRoot.FindElement("menu") != null);
-		Test.Assert(page.StatusText.StartsWith("Warning: "));
-		Test.Assert(editor.Document.DiagnosticCount > 0);
-		Test.Assert((editor.Document.GetDiagnostic(0).Line == 1) && !editor.Document.GetDiagnostic(0).IsError);
+		Test.Assert(page.PreviewStale);
 
 		page.OnClose();
 		Test.Assert(page.PreviewRoot == null, "closing lets the preview go");
-	}
-
-	/// A sheet is previewed over its asset's own markup, the sheet over that tree alone; with none
-	/// kept, over the stock markup.
-	[Test]
-	public static void ASheetIsPreviewedOverItsOwnMarkup()
-	{
-		let host = scope GuiPageHost();
-		let bed = scope PageBed("scratch_gui_sheet_page");
-		let page = new GuiAssetEditorPage(bed.Context, host, null,
-			bed.StyleSheet("theme", "<Panel><Panel class=\"title\" id=\"t\"/></Panel>"), .StyleSheet);
-		defer delete page;
-		Test.Assert(page.PreviewMarkup == "<Panel><Panel class=\"title\" id=\"t\"/></Panel>");
-		Test.Assert(page.PreviewRoot != null, "the markup previews before the sheet has text");
-		Test.Assert((page.PreviewEditor != null) && (page.PreviewEditor.Document.DiagnosticCount == 0));
-
-		page.SetText(".title { width: 66px; height: 4px; }");
-		let preview = page.PreviewRoot;
-		Test.Assert(preview != null);
-		Test.Assert(page.StatusText == "OK");
-		// Styled and laid out as RenderPreview does before it draws.
-		preview.ViewportSize = .(320.0f, 200.0f);
-		host.Gui.Styles.MediaContext = preview.MediaContext;
-		host.Gui.Styles.ApplyTree(preview);
-		preview.UpdateLayout();
-		let title = preview.FindElement("t");
-		Test.Assert(title != null);
-		Test.Assert(Near(title.Size.X, 66.0f), "the sheet styled its preview");
-		Test.Assert(host.Gui.ScreenRoot.FindElement("t") == null, "and nothing of the game's");
-
-		let stock = new GuiAssetEditorPage(bed.Context, host, null, bed.StyleSheet("plain", ""), .StyleSheet);
-		defer delete stock;
-		Test.Assert(stock.PreviewMarkup == GuiPages.cStockPreviewMarkup);
-		Test.Assert(stock.PreviewRoot != null);
-	}
-
-	/// With no GUI in the runtime there is nothing to preview in; the page still edits, and says so.
-	[Test]
-	public static void WithoutTheRuntimesGuiThePageSaysThereIsNoPreview()
-	{
-		let bed = scope PageBed("scratch_gui_headless_page");
-		let page = new GuiAssetEditorPage(bed.Context, null, null, bed.Document("menu"), .Document);
-		defer delete page;
-		page.SetText("<Panel/>");
-		Test.Assert(page.Text == "<Panel/>");
-		Test.Assert(page.PreviewRoot == null);
-		Test.Assert(page.StatusText == "No GUI in the runtime: no preview.");
-		Test.Assert(page.Save() case .Err(.NotFound), "no project to save into");
 	}
 }
