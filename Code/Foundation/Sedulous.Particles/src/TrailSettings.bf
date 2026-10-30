@@ -1,26 +1,33 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.Particles;
 
 /// How a trail system records and draws its ribbons.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 struct TrailSettings
 {
 	public bool Enabled = false;
 	/// The ring buffer's length per particle.
+	[Range(2, 256, 1)]
 	public int32 MaxPoints = 16;
 	/// The least time between recorded points.
+	[Description("Seconds at least between the points it records")]
 	public float RecordInterval = 0.033f;
 	/// How long a point takes to fade out.
+	[Description("Seconds a point takes to fade")]
 	public float Lifetime = 1.0f;
 	/// The ribbon's half width at the newest point and at the oldest.
 	public float WidthStart = 0.15f;
 	public float WidthEnd = 0.0f;
 	/// A point is also recorded once the particle has moved this far, so a fast particle
 	/// leaves a smooth ribbon rather than a dotted one.
+	[DisplayName("Min Point Distance")]
 	public float MinVertexDistance = 0.05f;
 	/// Whether the ribbon takes the particle's colour rather than its own.
 	public bool UseParticleColor = true;
+	[AsColor, VisibleWhen("UseParticleColor=0")]
 	public Float4 TrailColor = .(1, 1, 1, 1);
 
 	public this() {}

@@ -142,7 +142,9 @@ static class ParticleEffectSerialization
 
 	/// One system. The budget and the seed come FIRST, because on a read they are what the
 	/// system has to be constructed with before anything else can be poured into it.
-	private static void SerializeSystem(ISerializer ar, ParticleEffect effect, int32 index)
+	/// `effectLinks`: the layout before a system owned its sub-emitters (see SerializeEffect), with
+	/// none.
+	public static void SerializeSystem(ISerializer ar, ParticleEffect effect, int32 index, bool effectLinks = false)
 	{
 		let reading = (ar.Mode == .Read);
 		int32 maxParticles = reading ? 0 : effect.GetSystem(index).MaxParticles;
@@ -197,11 +199,33 @@ static class ParticleEffectSerialization
 
 		SerializeInitializers(ar, system);
 		SerializeBehaviors(ar, system);
+		if (!ar.IsPayloadOk || effectLinks)
+			return;
+
+		// Its sub-emitters, each into the system it names.
+		uint32 linkCount = reading ? 0 : (uint32)system.SubEmitters.Count;
+		ar.Key("subEmitters");
+		ar.BeginArray(ref linkCount);
+		if (reading)
+			system.SubEmitters.Clear();
+		for (uint32 i = 0; i < linkCount; i++)
+		{
+			ar.BeginObject();
+			var link = reading ? SubEmitterLink() : system.SubEmitters[(int)i];
+			link.Serialize(ar);
+			ar.EndObject();
+			if (reading)
+				system.SubEmitters.Add(link);
+		}
+		ar.EndArray();
 	}
 
 	/// The whole effect. A read replaces what the effect had (an editor's whole-asset undo reads
-	/// over the effect it shows).
-	public static void SerializeEffect(ISerializer ar, ParticleEffect effect)
+	/// over the effect it shows). `effectLinks`: the layout before a system owned its sub-emitters,
+	/// the effect's own list of links each into a system on every other system's births or deaths
+	/// (the authoring asset's data version 0); read, each becomes a sub-emitter of every system but
+	/// the one it spawns into, as it behaved, and one into nothing (which did nothing) is dropped.
+	public static void SerializeEffect(ISerializer ar, ParticleEffect effect, bool effectLinks = false)
 	{
 		let reading = (ar.Mode == .Read);
 		if (reading)
@@ -214,22 +238,29 @@ static class ParticleEffectSerialization
 		for (uint32 i = 0; i < systemCount; i++)
 		{
 			ar.BeginObject();
-			SerializeSystem(ar, effect, (int32)i);
+			SerializeSystem(ar, effect, (int32)i, reading && effectLinks);
 			ar.EndObject();
 		}
 		ar.EndArray();
 
-		uint32 linkCount = reading ? 0 : (uint32)effect.SubEmitterLinks.Length;
+		if (!reading || !effectLinks)
+			return;
+		uint32 linkCount = 0;
 		ar.Key("links");
 		ar.BeginArray(ref linkCount);
 		for (uint32 i = 0; i < linkCount; i++)
 		{
 			ar.BeginObject();
-			var link = reading ? SubEmitterLink() : effect.SubEmitterLinks[(int)i];
+			var link = SubEmitterLink();
 			link.Serialize(ar);
 			ar.EndObject();
-			if (reading)
-				effect.AddSubEmitterLink(link);
+			if ((link.ChildSystemIndex < 0) || (link.ChildSystemIndex >= effect.SystemCount))
+				continue; // into nothing, it did nothing: dropped
+			for (int32 s < effect.SystemCount)
+			{
+				if (s != link.ChildSystemIndex)
+					effect.GetSystem(s).SubEmitters.Add(link);
+			}
 		}
 		ar.EndArray();
 	}

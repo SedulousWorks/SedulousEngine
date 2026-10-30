@@ -1,9 +1,12 @@
+using System;
+
 namespace Sedulous.Particles;
 
 /// How a system's particles are drawn.
 ///
 /// A TAG the render extractor branches on rather than a polymorphic module, because the
 /// branch happens once per system and a virtual call would happen once per particle.
+[Reflect(.StaticFields)] // its cases, by name, for a row to offer
 enum ParticleRenderMode : uint8
 {
 	case Billboard;

@@ -1,6 +1,9 @@
+using System;
+
 namespace Sedulous.Particles;
 
 /// Where a system's update runs.
+[Reflect(.StaticFields)] // its cases, by name, for a row to offer
 enum SimulationMode : uint8
 {
 	case CPU;

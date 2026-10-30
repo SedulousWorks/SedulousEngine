@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Particles;
@@ -5,20 +6,30 @@ namespace Sedulous.Particles;
 /// Spawn TIMING only. It answers how many particles are due this frame and spawns none of
 /// them, which is what keeps the emission window, the bursts and the budget in one place.
 [Scriptable(.AllPublic)]
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 class ParticleEmitter
 {
 	public EmissionMode Mode = .Continuous;
+	// Each row where it does something: the spawn rate in the continuous modes, the bursts in the
+	// burst modes (VisibleWhen of the mode's raw value).
 	/// Particles per second, for the continuous modes.
+	[VisibleWhen("Mode=0,2"), Description("Particles a second")]
 	public float SpawnRate = 10.0f;
+	[VisibleWhen("Mode=1,2")]
 	public int32 BurstCount = 0;
 	/// Seconds between bursts. Nought or less means ONE burst, on the first frame.
+	[VisibleWhen("Mode=1,2"), Description("Seconds between bursts; 0 bursts once")]
 	public float BurstInterval = 0.0f;
 	/// How many bursts before stopping. Nought is forever.
+	[VisibleWhen("Mode=1,2"), Description("Bursts in all; 0 bursts on and on")]
 	public int32 BurstCycles = 0;
+	[DisplayName("Emits"), Description("Off: it emits only when another system's sub-emitter link spawns it")]
 	public bool IsEmitting = true;
 	/// The emission window in seconds. Nought emits forever.
+	[Description("Seconds it emits; 0 emits on and on")]
 	public float Duration = 0.0f;
 	/// Whether the window restarts when it runs out, rather than emitting once and stopping.
+	[Description("With a duration: emits for it again and again")]
 	public bool Looping = true;
 
 	private float mCycleTime = 0.0f;

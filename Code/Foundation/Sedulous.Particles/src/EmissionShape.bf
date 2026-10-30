@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
@@ -6,32 +7,35 @@ namespace Sedulous.Particles;
 /// The volume a system spawns into: a tagged shape that answers a position and an outward
 /// direction for one particle.
 [Scriptable]
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 struct EmissionShape
 {
-	[Scriptable]
+	// Each measure where its shape uses it (VisibleWhen of the type's raw value: 0 a point, 1 a
+	// sphere, 2 a hemisphere, 3 a box, 4 a cone, 5 a ring, 6 a circle, 7 an edge).
+	[Scriptable, DisplayName("Shape")]
 	public EmissionShapeType Type = .Point;
 
 	/// Sphere, hemisphere, cone, ring and circle. For an edge, its half length.
-	[Scriptable]
+	[Scriptable, VisibleWhen("Type=1,2,4,5,6,7"), Description("An edge's half its length")]
 	public float Radius = 1.0f;
 	/// A box's half extents.
-	[Scriptable]
+	[Scriptable, DisplayName("Half Extents"), VisibleWhen("Type=3")]
 	public Float3 Extents = .(1, 1, 1);
 	/// A cone's half angle, in radians.
-	[Scriptable]
+	[Scriptable, Description("The cone's half angle, in radians"), VisibleWhen("Type=4")]
 	public float Angle = 0.7853982f;
 	/// How much of the full turn is used, nought to one, which is what makes an arc rather
 	/// than a full ring.
-	[Scriptable]
+	[Scriptable, Description("How much of the way round it emits"), Range(0, 1, 0.01f), VisibleWhen("Type=1,2,4,5,6")]
 	public float Arc = 1.0f;
 	/// Whether a sphere, ring or circle spawns on its SURFACE rather than throughout.
-	[Scriptable]
+	[Scriptable, DisplayName("From Its Surface"), VisibleWhen("Type=1,2,6")]
 	public bool EmitFromShell = false;
 
 	public this() {}
 
 	/// One spawn: a position before the emitter's own offset, and a normalised direction.
-	public void Sample(ref Random rng, out Float3 outPosition, out Float3 outDirection)
+	public void Sample(ref Sedulous.Core.Random rng, out Float3 outPosition, out Float3 outDirection)
 	{
 		let tau = 6.2831853f * Clamp(Arc, 0.0f, 1.0f);
 

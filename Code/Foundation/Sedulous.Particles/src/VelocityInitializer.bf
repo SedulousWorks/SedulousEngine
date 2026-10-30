@@ -17,6 +17,7 @@ class VelocityInitializer : ParticleInitializer
 	/// makes a cone a cone rather than a disc of parallel particles.
 	public float ShapeDirectionSpeed = 0.0f;
 	/// How much of the emitter's velocity the particle carries away.
+	[Range(0, 1, 0.01f)]
 	public float VelocityInheritance = 0.0f;
 	/// Sampled only for its direction. Usually a copy of the position initializer's shape.
 	public EmissionShape Shape = .Point();

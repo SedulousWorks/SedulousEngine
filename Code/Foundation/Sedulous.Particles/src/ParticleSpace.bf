@@ -1,6 +1,9 @@
+using System;
+
 namespace Sedulous.Particles;
 
 /// The space a system simulates in.
+[Reflect(.StaticFields)] // its cases, by name, for a row to offer
 enum ParticleSpace : uint8
 {
 	/// Particles are independent of the emitter once spawned, so moving it leaves a trail

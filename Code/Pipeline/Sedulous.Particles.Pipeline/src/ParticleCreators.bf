@@ -27,6 +27,13 @@ static class ParticleCreators
 	/// A new effect: one continuous system rising under gravity, visible the moment it plays.
 	public static void SeedDefaultEffect(ParticleEffect effect)
 	{
+		AddDefaultSystem(effect);
+	}
+
+	/// Adds the default system (a continuous fountain: a lifetime, a velocity, a size, a colour
+	/// and gravity) after the effect's others: what the seed and the editor's Add System make.
+	public static ParticleSystem AddDefaultSystem(ParticleEffect effect)
+	{
 		let sys = effect.AddSystem(2000);
 		sys.AddInitializer<LifetimeInitializer>().Lifetime = .(1.5f, 2.5f);
 		sys.AddInitializer<VelocityInitializer>().BaseVelocity = .(0.0f, 5.0f, 0.0f);
@@ -35,5 +42,6 @@ static class ParticleCreators
 		sys.AddBehavior<GravityBehavior>();
 		sys.Emitter.Mode = .Continuous;
 		sys.Emitter.SpawnRate = 120.0f;
+		return sys;
 	}
 }

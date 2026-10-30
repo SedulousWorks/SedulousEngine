@@ -287,7 +287,7 @@ static class ShowcaseEffects
 		link.Probability = 1.0f;
 		link.InheritPosition = true;
 		link.InheritColor = true;
-		effect.AddSubEmitterLink(link);
+		rocket.SubEmitters.Add(link); // the rockets' own: their deaths burst into sparks
 	}
 
 	/// A dust column swirling up a vertical axis. LOCAL space keeps the vortex and attractor

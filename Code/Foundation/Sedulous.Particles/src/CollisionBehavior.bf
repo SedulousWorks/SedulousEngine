@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
@@ -18,6 +19,7 @@ namespace Sedulous.Particles;
 /// hand written body is count bound instead, which is the shape the record wants anyway.
 [DisplayName("Collision")]
 [Scriptable]
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 class CollisionBehavior : ParticleBehavior, ISerializable
 {
 	public const int32 MaxPlanes = 4;
@@ -40,16 +42,16 @@ class CollisionBehavior : ParticleBehavior, ISerializable
 	public int32 BoxCount = 0;
 
 	/// The particle's own radius, which offsets every surface outward.
-	[Scriptable]
+	[Scriptable, Description("A particle's, as it meets them")]
 	public float Radius = 0.0f;
 	/// Normal restitution: nought sticks, one bounces perfectly.
-	[Scriptable]
+	[Scriptable, Range(0, 1, 0.01f)]
 	public float Bounce = 0.5f;
 	/// Tangential damping on contact, nought to one.
-	[Scriptable]
+	[Scriptable, Range(0, 1, 0.01f)]
 	public float Friction = 0.1f;
 	/// The fraction of its REMAINING life a particle loses per hit, nought to one.
-	[Scriptable]
+	[Scriptable, Description("The fraction of its life a hit takes"), Range(0, 1, 0.01f)]
 	public float LifetimeLoss = 0.0f;
 
 	public override BehaviorSupport Support => .Both;

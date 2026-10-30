@@ -93,7 +93,7 @@ class ParticleEffectResourceTests
 		link.Trigger = .OnDeath;
 		link.ChildSystemIndex = 1;
 		link.SpawnCount = 12;
-		effect.AddSubEmitterLink(link);
+		fountain.SubEmitters.Add(link); // the fountain's own: its deaths feed the sparks
 	}
 
 	[Test]
@@ -110,7 +110,9 @@ class ParticleEffectResourceTests
 		let effect = bound.Get.Effect;
 
 		Test.Assert(effect.SystemCount == 2);
-		Test.Assert(effect.SubEmitterLinks.Length == 1);
+		Test.Assert(effect.GetSystem(0).SubEmitters.Count == 1);
+		Test.Assert(effect.GetSystem(0).SubEmitters[0].ChildSystemIndex == 1);
+		Test.Assert(effect.GetSystem(1).SubEmitters.IsEmpty);
 
 		let fountain = effect.GetSystem(0);
 		Test.Assert(fountain.Name == "fountain");
@@ -222,6 +224,21 @@ class ParticleEffectResourceTests
 		Test.Assert(copy.MaterialRefs[1] == secondMaterial);
 	}
 
+	/// A system's references name their targets by full name (the runtime library sees none of
+	/// them): the names are the types the factory binds.
+	[Test]
+	public static void ASystemsReferencesNameTheTypesTheFactoryBinds()
+	{
+		(StringView field, Type bound)[3] pairs = .(("TextureRef", typeof(Sedulous.Texture.Resource.Texture)),
+			("MeshRef", typeof(Sedulous.Geometry.StaticMesh)), ("MaterialRefs", typeof(Sedulous.Materials.Material)));
+		for (let pair in pairs)
+		{
+			Test.Assert(typeof(ParticleSystem).GetField(scope String(pair.field)) case .Ok(let field));
+			Test.Assert(field.GetCustomAttribute<ReferencesAttribute>() case .Ok(let references));
+			Test.Assert(references.TargetName == pair.bound.GetFullName(.. scope String()), references.TargetName);
+		}
+	}
+
 	[Test]
 	public static void ReadOverAnEffectItReplacesWhatTheEffectHad()
 	{
@@ -245,7 +262,102 @@ class ParticleEffectResourceTests
 		ParticleEffectSerialization.SerializeEffect(context.Serializer, effect);
 		Test.Assert(context.Serializer.IsPayloadOk);
 		Test.Assert(effect.SystemCount == 2);
-		Test.Assert(effect.SubEmitterLinks.Length == 1);
+		Test.Assert(effect.GetSystem(0).SubEmitters.Count == 1);
+		Test.Assert(effect.GetSystem(1).SubEmitters.IsEmpty);
+	}
+
+	/// The layout before a system owned its sub-emitters, by hand: three systems, then the effect's
+	/// links (one into the third, one into nothing). Read as the old layout, each link is every other
+	/// system's, as it behaved; never into itself; the one into nothing dropped.
+	[Test]
+	public static void TheEffectLevelLinksOfBeforeAreReadOntoEverySystemButTheOneEachSpawnsInto()
+	{
+		ParticleModules.RegisterModules();
+		let buffer = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(buffer, .Write);
+			let fx = scope ParticleEffect();
+			BuildEffect(fx);
+			fx.GetSystem(0).SubEmitters.Clear();
+			fx.AddSystem(100);
+			// The systems as they were written then: no sub-emitters of their own.
+			Serialize(writer, "name", fx.Name);
+			uint32 systems = (uint32)fx.SystemCount;
+			writer.Key("systems");
+			writer.BeginArray(ref systems);
+			for (uint32 i < systems)
+			{
+				writer.BeginObject();
+				ParticleEffectSerialization.SerializeSystem(writer, fx, (int32)i, true);
+				writer.EndObject();
+			}
+			writer.EndArray();
+			uint32 count = 2;
+			writer.Key("links");
+			writer.BeginArray(ref count);
+			for (let child in int32[2](2, -1))
+			{
+				writer.BeginObject();
+				var link = SubEmitterLink.Default();
+				link.ChildSystemIndex = child;
+				link.SpawnCount = 7;
+				link.Serialize(writer);
+				writer.EndObject();
+			}
+			writer.EndArray();
+		}
+		buffer.Seek(0, .Begin);
+		let reader = scope BinarySerializer(buffer, .Read);
+		let read = scope ParticleEffect();
+		ParticleEffectSerialization.SerializeEffect(reader, read, true);
+		Test.Assert(reader.IsPayloadOk);
+		Test.Assert(read.SystemCount == 3);
+		// As it behaved: every other system's events spawned into the third.
+		Test.Assert(read.GetSystem(0).SubEmitters.Count == 1);
+		Test.Assert(read.GetSystem(0).SubEmitters[0].ChildSystemIndex == 2);
+		Test.Assert(read.GetSystem(0).SubEmitters[0].SpawnCount == 7);
+		Test.Assert(read.GetSystem(1).SubEmitters.Count == 1);
+		Test.Assert(read.GetSystem(2).SubEmitters.IsEmpty, "never into itself; the link into nothing dropped");
+	}
+
+	/// A product cooked before (the resource's data version 1, the effect's links at its end) is
+	/// refused cleanly, nothing read from it, rather than misread (its builder's version moved, so it
+	/// cooks again: Particles.Pipeline.Tests).
+	[Test]
+	public static void AProductCookedBeforeIsRefusedCleanly()
+	{
+		ParticleModules.RegisterModules();
+		let buffer = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(buffer, .Write);
+			BeginVersionedPayload(writer, ParticleEffectResource.TypeId, 1);
+			let fx = scope ParticleEffect();
+			BuildEffect(fx);
+			fx.GetSystem(0).SubEmitters.Clear();
+			Serialize(writer, "name", fx.Name);
+			uint32 systems = (uint32)fx.SystemCount;
+			writer.Key("systems");
+			writer.BeginArray(ref systems);
+			for (uint32 i < systems)
+			{
+				writer.BeginObject();
+				ParticleEffectSerialization.SerializeSystem(writer, fx, (int32)i, true);
+				writer.EndObject();
+			}
+			writer.EndArray();
+			uint32 none = 0;
+			writer.Key("links");
+			writer.BeginArray(ref none);
+			writer.EndArray();
+			EndVersionedPayload(writer);
+		}
+		buffer.Seek(0, .Begin);
+		let reader = scope BinarySerializer(buffer, .Read);
+		let resource = scope ParticleEffectResource();
+		resource.Serialize(reader);
+		Test.Assert(!reader.IsPayloadOk, "an old product is refused");
+		Test.Assert(resource.Effect.SystemCount == 0, "and nothing of it read");
+		Test.Assert(ParticleEffectResource.DataVersion == 2);
 	}
 
 	[Test]

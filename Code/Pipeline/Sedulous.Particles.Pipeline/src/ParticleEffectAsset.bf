@@ -20,6 +20,13 @@ namespace Sedulous.Particles.Pipeline;
 [DisplayName("Particle Effect")]
 class ParticleEffectAsset : Asset, ISerializable
 {
+	public static readonly uint64 TypeId = TypeIdOf("Sedulous.Particles.Pipeline.ParticleEffectAsset");
+	/// One (2026-10-29): each system its sub-emitters. Version 0 (stored before the asset had an
+	/// envelope of its own) kept the effect's links, each into a system on every other system's
+	/// births or deaths: its legacy reader moves them onto the systems (SerializeEffect's
+	/// effectLinks), which a keyed backend (the source assets' text) can tell has no envelope.
+	public const uint32 DataVersion = 1;
+
 	public ParticleEffect Effect = new .() ~ delete _;
 
 	/// The edit time texture reference for each system, as an asset PATH, which is a SOFT
@@ -44,11 +51,17 @@ class ParticleEffectAsset : Asset, ISerializable
 	public void Serialize(ISerializer ar)
 	{
 		ar.BeginObject();
-		ar.Key("fileName");
-		FileName.Serialize(ar);
-		ParticleEffectSerialization.SerializeEffect(ar, Effect);
-		ar.Key("texturePaths");
-		SerializeList(ar, mSystemTexturePaths);
+		BeginVersionedPayload(ar, TypeId, DataVersion, 0, true);
+		if (ar.IsPayloadOk)
+		{
+			ar.Key("fileName");
+			FileName.Serialize(ar);
+			// A version 0 asset's effect-level links read onto its systems.
+			ParticleEffectSerialization.SerializeEffect(ar, Effect, (ar.Mode == .Read) && (ar.Version < 1));
+			ar.Key("texturePaths");
+			SerializeList(ar, mSystemTexturePaths);
+		}
+		EndVersionedPayload(ar);
 		ar.EndObject();
 	}
 }

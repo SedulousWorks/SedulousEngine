@@ -9,8 +9,15 @@ namespace Sedulous.Particles;
 ///
 /// The system owns its modules and its streams. Module order MATTERS in both lists, so an
 /// editor reordering them changes the result.
+[Reflect(.Type | .NonStaticFields | .Methods)]
 class ParticleSystem
 {
+	// Every authored field reflected, each row where it does something (VisibleWhen of the render
+	// mode's raw value: 0 to 3 the billboards, 4 a mesh, 5 a trail, 6 a light): a texture for the
+	// billboards and the trail, a flipbook for the billboards, a mesh and its materials for a mesh.
+	// The references are bare ids naming what they bind (the resource factory binds them), by
+	// full name, since this library sees none of those types.
+
 	/// The cap on events reported in one frame. A bound rather than a growing list, because
 	/// the events feed sub emitters and an unbounded burst of them is an unbounded burst of
 	/// spawns.
@@ -19,49 +26,75 @@ class ParticleSystem
 	private const uint64 cDefaultSeed = 0x9E3779B97F4A7C15UL;
 
 	public String Name = new .() ~ delete _;
+	[DisplayName("Simulation")]
 	public SimulationMode DesiredMode = .CPU;
+	[DisplayName("Space")]
 	public ParticleSpace SimulationSpace = .World;
 	public ParticleBlendMode BlendMode = .Alpha;
 	public ParticleRenderMode RenderMode = .Billboard;
 
 	/// The billboard sheet, as an OPAQUE cooked resource id. The runtime library does not
 	/// resolve it: the resource factory binds it, and an empty id is untextured.
+	[DisplayName("Texture"), References("Sedulous.Texture.Resource.Texture"), VisibleWhen("RenderMode=0,1,2,3,5")]
 	public Guid TextureRef = .Empty;
 	/// The per particle mesh for a mesh mode system, again an opaque cooked resource id.
+	[DisplayName("Mesh"), References("Sedulous.Geometry.StaticMesh"), VisibleWhen("RenderMode=4")]
 	public Guid MeshRef = .Empty;
+	[VisibleWhen("RenderMode=4")]
 	public float MeshScale = 1.0f;
 	/// Per submesh materials for a mesh mode system, indexed by the submesh's material index.
 	/// Slot nought doubles as the whole mesh material, so a single material mesh needs one
 	/// entry.
+	[DisplayName("Materials"), References("Sedulous.Materials.Material"), VisibleWhen("RenderMode=4")]
+	[Description("By the mesh's material slots; the first the whole mesh's")]
 	public List<Guid> MaterialRefs = new .() ~ delete _;
 
 	public bool SortParticles = false;
 	/// Fades a billboard where it approaches the surface behind it, over SoftDistance world
 	/// units. Read every frame, so it toggles live.
 	public bool SoftParticles = true;
+	[Range(0, 10, 0.01f), VisibleWhen("SoftParticles")]
 	public float SoftDistance = 0.6f;
 
+	[VisibleWhen("RenderMode=5")]
 	public TrailSettings Trail = .Default();
+	[VisibleWhen("RenderMode=0,1,2,3")]
 	public FlipbookSettings Flipbook = .();
 
 	/// Simulated once on the first update, so the effect starts already running rather than
 	/// visibly filling up.
+	[Description("Seconds run before it shows, so it starts full")]
 	public float PrewarmTime = 0.0f;
 
 	// Distance based rate falloff. Nought on both disables it.
+	[DisplayName("Fewer From"), Description("Its rate falls from this distance; 0 never")]
 	public float LodStartDistance = 0.0f;
+	[DisplayName("Hidden From"), Description("Not drawn past this distance; 0 always drawn")]
 	public float LodCullDistance = 0.0f;
+	[DisplayName("Fewest"), Description("Its rate at its farthest, as a fraction"), Range(0, 1, 0.01f)]
 	public float LodMinRate = 0.1f;
 
 	// Where the emitter is, and where it was, which is what gives it a velocity.
+	// Runtime state, not authored: no rows.
+	[Hidden]
 	public Float3 Position = .(0, 0, 0);
+	[Hidden]
 	public Float3 PrevPosition = .(0, 0, 0);
 
 	public ParticleEmitter Emitter = new .() ~ delete _;
 
+	/// Sub-emitters: on this system's particles' births or deaths, each spawns into the effect's
+	/// system it names (a spark that leaves smoke, a shell that bursts).
+	[DisplayName("Sub-emitters")]
+	public List<SubEmitterLink> SubEmitters = new .() ~ delete _;
+
 	private int32 mMaxParticles;
 	private ParticleStreamContainer mStreams ~ delete _;
+	// The modules, an editor's lists in place (its grid adds a module by type, removes and moves
+	// them; DeclareModuleStreams after).
+	[InspectorField, DisplayName("Initializers")]
 	private List<ParticleInitializer> mInitializers = new .() ~ DeleteContainerAndItems!(_);
+	[InspectorField, DisplayName("Behaviors")]
 	private List<ParticleBehavior> mBehaviors = new .() ~ DeleteContainerAndItems!(_);
 	private ParticleSimulator mSimulator = new CPUSimulator() ~ delete _;
 
@@ -102,6 +135,11 @@ class ParticleSystem
 	public uint64 Seed => mSeed;
 
 	public int32 MaxParticles => mMaxParticles;
+	/// The budget as an inspector's row: through SetMaxParticles, which reallocates the streams.
+	// Always compiled: only reflection calls it, and an uncompiled method has no reflection.
+	[InspectorProperty("MaxParticles", "SetMaxParticles"), DisplayName("Max Particles"), AlwaysInclude]
+	[Description("The most alive at once"), Range(1, 1000000, 1)]
+	public int32 GetMaxParticles() => mMaxParticles;
 	public int32 AliveCount => mStreams.AliveCount;
 	public float TotalTime => mTotalTime;
 	public float LodRateMultiplier => mLodRateMultiplier;
@@ -158,6 +196,16 @@ class ParticleSystem
 		mBehaviors.Add(module);
 	}
 
+	/// Every module declares its streams again (idempotent: a declared stream stays): what an
+	/// editor that put a module straight into a list calls before the system runs.
+	public void DeclareModuleStreams()
+	{
+		for (let module in mInitializers)
+			module.DeclareStreams(mStreams);
+		for (let module in mBehaviors)
+			module.DeclareStreams(mStreams);
+	}
+
 	/// Drops a module. The streams it declared STAY allocated, which is harmless: a module
 	/// never removes a channel another one is reading.
 	public void RemoveInitializer(int32 index)
@@ -188,6 +236,7 @@ class ParticleSystem
 	/// Changes the particle budget, which RESTARTS the effect: the streams are rebuilt at the
 	/// new capacity and every module re-declares into them. The trail buffers heal themselves
 	/// on the next step.
+	[AlwaysInclude] // the MaxParticles row's setter, called through reflection
 	public void SetMaxParticles(int32 newMax)
 	{
 		let capped = Max(newMax, 1);

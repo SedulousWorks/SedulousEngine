@@ -4,18 +4,18 @@ using Sedulous.Core;
 
 namespace Sedulous.Particles;
 
-/// The asset: a set of systems and the links between them.
+/// The asset: a set of systems, each with its sub-emitter links into the others.
 ///
 /// An effect holds the DEFINITION and, today, the running state too, since a system carries
 /// its own streams. An instance drives one effect.
 /// On the script surface as an opaque handle: a script holds one and hands it back.
 [Scriptable]
+[Reflect(.Type | .NonStaticFields)]
 class ParticleEffect
 {
 	public String Name = new .() ~ delete _;
 
 	private List<ParticleSystem> mSystems = new .() ~ DeleteContainerAndItems!(_);
-	private List<SubEmitterLink> mLinks = new .() ~ delete _;
 
 	public this(StringView name = "Effect")
 	{
@@ -30,10 +30,8 @@ class ParticleEffect
 		return system;
 	}
 
-	public void AddSubEmitterLink(SubEmitterLink link) => mLinks.Add(link);
-
-	/// The links follow: one into the removed system does nothing (-1), one into a system after
-	/// it names that system's new place.
+	/// The systems' sub-emitters follow: one into the removed system does nothing (-1), one into a
+	/// system after it names that system's new place.
 	public void RemoveSystem(int32 index)
 	{
 		if ((index >= 0) && (index < SystemCount))
@@ -41,12 +39,15 @@ class ParticleEffect
 			let system = mSystems[index];
 			mSystems.RemoveAt(index);
 			delete system;
-			for (var link in ref mLinks)
+			for (let other in mSystems)
 			{
-				if (link.ChildSystemIndex == index)
-					link.ChildSystemIndex = -1;
-				else if (link.ChildSystemIndex > index)
-					link.ChildSystemIndex--;
+				for (var link in ref other.SubEmitters)
+				{
+					if (link.ChildSystemIndex == index)
+						link.ChildSystemIndex = -1;
+					else if (link.ChildSystemIndex > index)
+						link.ChildSystemIndex--;
+				}
 			}
 		}
 	}
@@ -55,7 +56,6 @@ class ParticleEffect
 	public void Clear()
 	{
 		ClearAndDeleteItems!(mSystems);
-		mLinks.Clear();
 	}
 
 	public int32 SystemCount => (int32)mSystems.Count;
@@ -63,5 +63,4 @@ class ParticleEffect
 	public ParticleSystem GetSystem(int32 index) =>
 		((index >= 0) && (index < SystemCount)) ? mSystems[index] : null;
 
-	public Span<SubEmitterLink> SubEmitterLinks => mLinks;
 }

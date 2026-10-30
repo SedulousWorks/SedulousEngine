@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
@@ -7,15 +8,20 @@ namespace Sedulous.Particles;
 ///
 /// Sedulous carried the vertex fields for this and never populated them, so this is the half
 /// that was missing rather than a new idea.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 struct FlipbookSettings
 {
 	public bool Enabled = false;
+	[Range(1, 64, 1)]
 	public int32 Columns = 1;
+	[Range(1, 64, 1)]
 	public int32 Rows = 1;
 	/// Frames per second, when the sheet is NOT swept over the lifetime.
+	[DisplayName("Frame Rate"), VisibleWhen("OverLifetime=0")]
 	public float Fps = 0.0f;
 	/// Whether the whole sheet is swept once across the particle's life, rather than looped
 	/// at a rate. Sweeping is what an explosion wants; looping is what a flame wants.
+	[Description("The whole sheet once over a particle's life; off, at its frame rate")]
 	public bool OverLifetime = true;
 	public int32 StartFrame = 0;
 

@@ -87,24 +87,22 @@ class ParticleEffectInstance
 			mEffect.GetSystem(i).Reset();
 	}
 
+	// Each system's sub-emitters, from its own births or deaths into the system each names.
 	private void RouteSubEmitterEvents()
 	{
-		let links = mEffect.SubEmitterLinks;
 		let systemCount = mEffect.SystemCount;
 
-		for (let link in links)
+		for (int32 s = 0; s < systemCount; s++)
 		{
-			if ((link.ChildSystemIndex < 0) || (link.ChildSystemIndex >= systemCount))
-				continue;
-
-			let child = mEffect.GetSystem(link.ChildSystemIndex);
-			for (int32 s = 0; s < systemCount; s++)
+			let parent = mEffect.GetSystem(s);
+			for (let link in parent.SubEmitters)
 			{
-				// A system spawning into itself would feed its own events back and run away.
-				if (s == link.ChildSystemIndex)
+				// Nothing, or itself: a system spawning into itself would feed its own events back
+				// and run away.
+				if ((link.ChildSystemIndex < 0) || (link.ChildSystemIndex >= systemCount) || (link.ChildSystemIndex == s))
 					continue;
 
-				let parent = mEffect.GetSystem(s);
+				let child = mEffect.GetSystem(link.ChildSystemIndex);
 				let events = (link.Trigger == .OnDeath) ? parent.DeathEvents
 					: parent.BirthEvents;
 

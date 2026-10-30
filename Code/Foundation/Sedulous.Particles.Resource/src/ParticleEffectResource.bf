@@ -29,9 +29,9 @@ class ParticleEffectResource : ISerializable
 
 	public static readonly uint64 TypeId = TypeIdOf("Sedulous.Particles.Resource.ParticleEffectResource");
 	/// One: curves of Core's keys and gradients, and size over lifetime as size, separateAxes
-	/// and sizeY. A product from before is refused rather than misread, and cooked again (the
-	/// builder's version moved).
-	public const uint32 DataVersion = 1;
+	/// and sizeY. Two (2026-10-29): each system its sub-emitters, no effect-level links. A product
+	/// from before is refused rather than misread, and cooked again (the builder's version moved).
+	public const uint32 DataVersion = 2;
 
 	public ParticleEffect Effect => mEffect;
 
