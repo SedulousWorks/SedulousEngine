@@ -10,7 +10,34 @@ corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Scene" = "*"
 "Sedulous.PropertyAnimation" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Toolkit" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Toolkit" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.PropertyAnimation.Resource" = "*"
+"Sedulous.PropertyAnimation.Pipeline" = "*"
+"Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.PropertyAnimation" = "*"
+
+# The old panel's tests: out of the build until part 2 (Raptor 8d531b25a).
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ClipEditorViewTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PropertyAnimationPanelTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "AutoFolder"
+Name = "Fixtures"
+
+[[ProjectFolder.Items.Items]]
+Type = "IgnoreSource"
+Name = "FakeClipHost.bf"
+
+[[ProjectFolder.Items.Items]]
+Type = "IgnoreSource"
+Name = "PanelFixture.bf"
