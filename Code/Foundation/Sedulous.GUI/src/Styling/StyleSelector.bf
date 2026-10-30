@@ -750,6 +750,34 @@ class StyleSelector
 		}
 	}
 
+	/// Calls `f(compound, states)` for each compound whose own states it reads through a descendant
+	/// or child step (`button.revert:hover` in `button.revert:hover > icon`): a change of one of
+	/// them restyles the subtree of a widget that compound could match, and no other's. What nested
+	/// selectors read (`:is()`, `:not()` and `:has()` in any compound) cannot be placed on one
+	/// widget, and goes into `unplaced`: a change of one of those restyles any widget's subtree, as
+	/// every ancestor read once did.
+	public void ForEachStateReadAbove(delegate void(StyleSelectorRule compound, uint32 states) f, ref uint32 unplaced)
+	{
+		for (int i = 0; i < mRules.Count; i++)
+		{
+			let rule = mRules[i];
+			uint32 nestedAncestor = 0;
+			uint32 nestedSibling = 0;
+			for (int k = 0; k < rule.NestedCount; k++)
+				rule.GetNested(k).CollectRelationStates(ref nestedAncestor, ref nestedSibling, 1, false);
+			if ((nestedAncestor | nestedSibling) != 0)
+				unplaced |= nestedAncestor | nestedSibling | AllDynamic(rule);
+			if (i + 1 == mRules.Count)
+				continue;
+			let next = mRules[i + 1].Combinator;
+			if ((next == .Adjacent) || (next == .Sibling))
+				continue; // a sibling's state: CollectRelationStates' sibling states restyle the later siblings
+			let states = rule.PseudoClasses & cDynamicPseudoClasses;
+			if (states != 0)
+				f(rule, states);
+		}
+	}
+
 	/// A comma-separated list split at its top level (commas inside parentheses, brackets or
 	/// quotes stay), its parts trimmed and empty ones dropped, added to `outParts`.
 	public static void SplitList(StringView list, List<StringView> outParts)

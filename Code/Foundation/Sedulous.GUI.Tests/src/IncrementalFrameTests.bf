@@ -181,13 +181,19 @@ class IncrementalFrameTests
 	}
 
 	[Test]
-	public static void AStateRestylesTheSubtreeOrTheLaterSiblingsOnlyWhenARuleReadsItThere()
+	public static void AStateRestylesTheSubtreeOrTheLaterSiblingsOnlyWhenARuleReadsItThereInACompoundTheWidgetCanMatch()
 	{
 		Test.Assert(RestyledByPanelHover("panel:hover { opacity: 0.5; }") == 1); // the panel alone
 		Test.Assert(RestyledByPanelHover("panel:hover label { opacity: 0.5; }") == 5); // and its four labels
 		Test.Assert(RestyledByPanelHover("panel:hover + note { opacity: 0.5; }") == 2); // and the note after it
 		Test.Assert(RestyledByPanelHover(":is(panel:hover) > label { opacity: 0.5; }") == 5); // read inside :is() too
 		Test.Assert(RestyledByPanelHover("label:not(:hover) { opacity: 0.5; }") == 1); // a subject's own state
+		// Read through an ancestor the panel cannot be: its subtree stays (a hover moves through every
+		// ancestor of the pointer, so `button:hover > icon` once restyled whole pages at every move).
+		Test.Assert(RestyledByPanelHover("button:hover > label { opacity: 0.5; }") == 1); // another tag
+		Test.Assert(RestyledByPanelHover("panel.open:hover label { opacity: 0.5; }") == 1); // a class it lacks
+		Test.Assert(RestyledByPanelHover("#menu:hover label { opacity: 0.5; }") == 1); // an id it lacks
+		Test.Assert(RestyledByPanelHover("panel:focus label { opacity: 0.5; }") == 1); // another state
 	}
 
 	private struct JoinRun

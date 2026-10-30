@@ -153,6 +153,14 @@ class StyleManager
 	private uint32 mLastRestyleCount = 0;
 	private bool mReadsSiblings = false; // some rule reads siblings: a rearrangement restyles them
 	private List<StyleSelectorRule> mSiblingReadsAbove = new .() ~ DeleteContainerAndItems!(_); // compounds reading siblings with a step below: what such a child holds restyles too
+	/// A compound whose states a rule reads through a descendant or child step, and which.
+	private class AncestorStateRead
+	{
+		public StyleSelectorRule Compound = new .() ~ delete _;
+		public uint32 States = 0;
+	}
+	private List<AncestorStateRead> mAncestorStateReads = new .() ~ DeleteContainerAndItems!(_);
+	private uint32 mUnplacedAncestorStates = 0; // read through an ancestor in a nested selector: any widget's change restyles below it
 	private AncestorFilter mAncestors = new .() ~ delete _; // the names above the widget ApplyTree's walk is at
 	private bool mFiltering = false; // inside that walk (a widget styled any other way has no filter)
 
@@ -542,7 +550,7 @@ class StyleManager
 			}
 		}
 		let self = forceSubtree || forceSelf || node.IsStyleDirty;
-		let subtree = forceSubtree || node.IsStyleSubtreeDirty || ((states & mAncestorStates) != 0);
+		let subtree = forceSubtree || node.IsStyleSubtreeDirty || RestylesBelow(node, states);
 		// Its children came, went or moved: when a sheet reads siblings, each may match
 		// differently, and what each holds only when a rule reads them through an ancestor; else
 		// only the new ones restyle (marked so). (Restyling every child's subtree made each popup or
@@ -580,6 +588,28 @@ class StyleManager
 		}
 		if (widget != null)
 			mAncestors.Pop();
+	}
+
+	// Whether a change of `states` on `node` can change what matches below it: a rule reads one of
+	// them through an ancestor in a compound `node` could match (or in a nested selector, which no
+	// one widget can be told by). A hover moves through every ancestor of the pointer, so restyling
+	// each one's subtree for any rule's ancestor hover (`button:hover > icon`) restyled whole pages
+	// at every move.
+	private bool RestylesBelow(Node node, uint32 states)
+	{
+		if ((states & mAncestorStates) == 0)
+			return false;
+		if ((states & mUnplacedAncestorStates) != 0)
+			return true;
+		let widget = node as UIWidget;
+		if (widget == null)
+			return true;
+		for (let read in mAncestorStateReads)
+		{
+			if (((read.States & states) != 0) && read.Compound.MatchesIdentity(widget))
+				return true;
+		}
+		return false;
 	}
 
 	// Whether a rearrangement of `child`'s siblings can change what matches inside it: a rule reads
@@ -1188,6 +1218,8 @@ class StyleManager
 		mSiblingStates = 0;
 		mReadsSiblings = false;
 		ClearAndDeleteItems!(mSiblingReadsAbove);
+		ClearAndDeleteItems!(mAncestorStateReads);
+		mUnplacedAncestorStates = 0;
 		mSheetsReadViewport = false;
 		mSizeQueries.Clear();
 		void Learn(Sedulous.GUI.StyleSheet sheet)
@@ -1206,6 +1238,13 @@ class StyleManager
 						copy.Set(compound);
 						mSiblingReadsAbove.Add(copy);
 					});
+				rule.Selector.ForEachStateReadAbove(scope (compound, states) =>
+					{
+						let read = new AncestorStateRead();
+						read.Compound.Set(compound);
+						read.States = states;
+						mAncestorStateReads.Add(read);
+					}, ref mUnplacedAncestorStates);
 			}
 		}
 		Learn(mUserAgent);
