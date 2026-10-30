@@ -6,7 +6,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.App;
 
 // The asset slot (Raptor's editor-gui spec, 5.2, layer 3), as the kit draws it: the referenced
-// asset's type glyph (its category's tint), its name, and its verbs: pick (the target; a click on
+// asset's thumbnail, or its type glyph (its category's tint) until it has one, its name, and its verbs: pick (the target; a click on
 // the name picks too), open, reveal (in the assets browser), clear. An empty slot says "Not set" and
 // keeps only pick. A verb shows only when its owner wired it; open, reveal and clear need something
 // referenced. It is a drop target for an asset of a type it takes, naming why not over one it does
@@ -36,6 +36,10 @@ class AssetPickerSlot : UIWidget
 	private List<String> mTypes = new .() ~ DeleteContainerAndItems!(_);
 	/// The category class on the glyph now, taken off when the glyph changes.
 	private String mGlyphClass = new .() ~ delete _;
+	/// The type glyph's path, shown again when the thumbnail goes.
+	private String mGlyphSource = new .() ~ delete _;
+	/// SetPicture: shown in the glyph's place (a reference of ours).
+	private Sedulous.GUI.Drawable mPicture = null ~ _?.ReleaseRef();
 	private bool mHasValue = false;
 	private bool mHasGlyph = false;
 
@@ -151,10 +155,40 @@ class AssetPickerSlot : UIWidget
 		mGlyphClass.Set(categoryClass);
 		if (!mGlyphClass.IsEmpty)
 			mGlyph.AddClass(mGlyphClass);
-		mGlyph.Source = path;
+		mGlyphSource.Set(path);
+		if (mPicture == null)
+			mGlyph.Source = path;
 		mHasGlyph = !path.IsEmpty;
 		Show();
 	}
+
+	/// The referenced asset's thumbnail, drawn in the glyph's place, untinted; null: the glyph. It
+	/// takes a reference of its own.
+	public void SetPicture(Sedulous.GUI.Drawable picture)
+	{
+		if (picture == mPicture)
+			return;
+		if (picture != null)
+			picture.AddRef();
+		if (mPicture != null)
+			mPicture.ReleaseRef();
+		mPicture = picture;
+		if (mPicture != null)
+		{
+			mGlyph.SetDrawable(mPicture);
+			mGlyph.AddClass("slot-picture");
+		}
+		else
+		{
+			mGlyph.RemoveClass("slot-picture");
+			mGlyph.SetDrawable(null);
+			mGlyph.Source = mGlyphSource; // back to the type's glyph
+		}
+		Show();
+	}
+
+	/// The thumbnail it shows, or null. Borrowed.
+	public Sedulous.GUI.Drawable Picture => mPicture;
 
 	/// The glyph of a type, as EditorIcons found it (its icon and its category's class); null:
 	/// none.
@@ -278,7 +312,7 @@ class AssetPickerSlot : UIWidget
 			RemoveClass("empty");
 		else
 			AddClass("empty");
-		mGlyph.Displayed = mHasValue && mHasGlyph;
+		mGlyph.Displayed = mHasValue && (mHasGlyph || (mPicture != null));
 		mPick.Displayed = mOnPick != null;
 		mOpen.Displayed = (mOnOpen != null) && mHasValue;
 		mReveal.Displayed = (mOnReveal != null) && mHasValue;

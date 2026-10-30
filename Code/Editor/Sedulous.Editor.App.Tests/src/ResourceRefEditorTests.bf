@@ -64,6 +64,8 @@ class ResourceRefEditorTests
 		/// What the last pick was opened over.
 		public Guid PickedOver = .Empty;
 		public int Commits = 0;
+		/// Its thumbnail, once "generated" (a reference of ours).
+		public Sedulous.GUI.Drawable WoodPicture = null;
 
 		public this(int objects = 1)
 		{
@@ -99,6 +101,7 @@ class ResourceRefEditorTests
 					outShown.Name.Set("Wood");
 					outShown.Glyph.Set("Editor/Icons/Types/MeshAsset.svg");
 					outShown.GlyphClass.Set("cat-rendering");
+					outShown.Picture = WoodPicture;
 					return true;
 				};
 			Services.Pick = new [=this] (types, current, answer) =>
@@ -121,6 +124,7 @@ class ResourceRefEditorTests
 		{
 			delete Chosen; // lets go of the row the picker held
 			Grid.Source = null;
+			WoodPicture?.ReleaseRef();
 			Grid.ReleaseRef();
 			Root.ReleaseRef();
 			delete Bag;
@@ -439,5 +443,23 @@ class ResourceRefEditorTests
 		services.Pick(meshes, crate.Id, new [=chosen] (id) => { chosen.Add(id); });
 		Test.Assert(opened == null);
 		Test.Assert(chosen.Count == 2);
+	}
+
+	[Test]
+	public static void TheSlotDrawsTheAssetsThumbnailInItsGlyphsPlaceOnceThereIsOne()
+	{
+		let bed = scope Bed();
+		bed.Add("mesh", sWood);
+		bed.Show();
+		let slot = bed.Editor("mesh").Slot;
+		Test.Assert(slot.Picture == null); // none generated yet: the type's glyph
+		bed.WoodPicture = SvgDrawable.FromText("<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><rect width='8' height='8'/></svg>");
+		bed.Grid.Source = null;
+		bed.Show();
+		let again = bed.Editor("mesh").Slot;
+		Test.Assert(again.Picture == bed.WoodPicture);
+		Test.Assert(again.ShownName == "Wood");
+		again.SetPicture(null);
+		Test.Assert(again.Picture == null); // back to the glyph
 	}
 }

@@ -5,6 +5,7 @@ using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Shell;
 using Sedulous.VFS;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
@@ -159,5 +160,22 @@ static class EditorWindowTests
 		Test.Assert(window.Look !== look, "copied");
 		window.Close();
 		window.Close(); // again: nothing left to let go of
+	}
+
+	[Test]
+	public static void ANoticesToastTimesOutOneWithAnActionStaysWithItsButton()
+	{
+		let plain = scope ToastRequest();
+		EditorWindow.MakeToast(.Success, "Cook finished", "", plain);
+		Test.Assert(plain.Severity == .Success);
+		Test.Assert(plain.Title == "Cook finished");
+		Test.Assert(plain.Duration > 0.0f); // it goes
+		Test.Assert(plain.Actions.IsEmpty);
+
+		let exported = scope ToastRequest();
+		EditorWindow.MakeToast(.Success, "Exported to Dist/Linux64", "Open Folder", exported);
+		Test.Assert(exported.Duration == 0.0f); // until closed
+		Test.Assert(exported.Actions.Count == 1);
+		Test.Assert(exported.Actions[0].Text == "Open Folder");
 	}
 }

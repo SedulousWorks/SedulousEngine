@@ -1445,12 +1445,12 @@ static class AssetsViewTests
 		let bell = bed.Cell(bed.RowOf("Bell"));
 		Test.Assert(!bell.ShowsPicture && bell.ShowsGlyph, "no thumbnail: its glyph stays");
 
-		// A list row keeps its glyph, a thumbnail or not.
+		// A list row shows the thumbnail small, in its icon's place.
 		view.Navigate(bed.Top);
 		view.SetTiles(false);
 		crate = bed.Cell(bed.RowOf("Crate"));
 		Test.Assert((crate != null) && !crate.IsTile);
-		Test.Assert(!crate.ShowsPicture && crate.ShowsGlyph, "a row: its glyph");
+		Test.Assert(crate.ShowsPicture, "a row: the thumbnail in its icon's place");
 
 		// A tile whose thumbnail goes shows its glyph again.
 		let tile = new AssetCell(true);

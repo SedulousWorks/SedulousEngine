@@ -154,6 +154,18 @@ class FieldPropertySource : IPropertySource
 	/// A value struct shown as one gradient value, its parts where `parts` says.
 	public static void RegisterGradientType(Type type, GradientParts parts) { sGradientTypes[type] = parts; }
 
+	// The process's hint attributes: a field carrying one is hinted with its name (literals).
+	private static List<(delegate bool(FieldInfo field) carries, String hint)> sHintAttributes = new .() ~ { for (let entry in _) delete entry.carries; delete _; };
+
+	/// Hints a field carrying the attribute `T` with `hint` (a literal: it lives as long as the
+	/// process), for the application's editor of what that attribute says (a string naming a bone
+	/// of a skeleton). Raptor's RegisterHintAttribute: Beef reads an attribute by its type.
+	public static void RegisterHintAttribute<T>(String hint) where T : Attribute
+	{
+		delegate bool(FieldInfo field) carries = new (field) => field.HasCustomAttribute<T>();
+		sHintAttributes.Add((carries, hint));
+	}
+
 	private Type mType;
 	private int mCount;
 	private Resolver mResolve ~ delete _;
@@ -625,6 +637,11 @@ class FieldPropertySource : IPropertySource
 				if ((info.Kind == .Float) && (info.Hint.Length == 0))
 					info.Hint.Set("slider");
 			}
+			for (let entry in sHintAttributes)
+			{
+				if ((info.Hint.Length == 0) && entry.carries(field))
+					info.Hint.Set(entry.hint);
+			}
 			if (field.GetCustomAttribute<VisibleWhenAttribute>() case .Ok(let visible))
 				info.Visible = Holds(parent, visible.Condition);
 			outInfos.Add(info);
@@ -786,6 +803,7 @@ class FieldPropertySource : IPropertySource
 	}
 
 	// `visibleWhen` ("prop", or "prop=1,2" of its raw integer): a sibling's value, in every object.
+	// A condition that does not read so (no name, an empty or non-integer value) hides nothing.
 	private bool Holds(StringView group, StringView condition)
 	{
 		var eq = condition.IndexOf('=');
@@ -793,6 +811,12 @@ class FieldPropertySource : IPropertySource
 			return true;
 		if (eq < 0)
 			eq = condition.Length;
+		for (var listed in condition.Substring(Math.Min(eq + 1, condition.Length)).Split(','))
+		{
+			listed.Trim();
+			if ((eq < condition.Length) && !(int64.Parse(listed) case .Ok))
+				return true;
+		}
 		let sibling = JoinPropertyPath(group, condition.Substring(0, eq), .. scope String());
 		for (int i < mCount)
 		{

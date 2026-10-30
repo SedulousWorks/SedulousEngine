@@ -13,7 +13,8 @@ namespace Sedulous.Editor.App;
 // kept with the project), the current value lit, the search over every group while it has text (by
 // name or a guid's start, as the browser's; each match saying where it lives). Enter or a double
 // click picks; Esc or its close keeps the value (a slot's own clear sets nothing, so a pick can
-// never clear it by a slip). Its cells are the browser's (AssetCell); it opens
+// never clear it by a slip). A row's menu pins it as a favourite, or unpins it; a whole guid of an
+// asset the slot does not take says so. Its cells are the browser's (AssetCell); it opens
 // in the window's middle, as every picker does. A type is taken by its full or its short name
 // (AssetTypeNames.Matches), and none named, or AssetPickerSlot.cAnyAsset among them, takes any.
 
@@ -140,6 +141,9 @@ class AssetPickerWindow
 	private ContentDatabase mRowsDb = null;
 	private uint64 mRowsRevision = 0;
 	private uint32 mKeyListener = 0;
+	private uint32 mListMenuListener = 0;
+	/// A row's menu (a reference of ours).
+	private Sedulous.GUI.Menu mMenu = null ~ _?.ReleaseRef();
 	/// The context's thumbnail listener; 0: none.
 	private uint64 mThumbnails = 0;
 
@@ -182,6 +186,12 @@ class AssetPickerWindow
 			mList.SetRowFactory(rows);
 			mList.Model = mModel;
 			mList.SetOnActivated(new (index) => { PickRow(index.Row); });
+			mListMenuListener = mList.AddEventListener(.ContextMenu, new (e) =>
+				{
+					let at = ((MouseEvent)e).Position;
+					ShowRowMenu(mList.ItemAt(at), at);
+					e.Handled = true;
+				});
 		}
 		if (let tiles = Find<Sedulous.GUI.Button>("asset-picker-tiles"))
 			tiles.SetOnClick(new () => { SetTiles(true); });
@@ -213,11 +223,11 @@ class AssetPickerWindow
 					e.Handled = true;
 				}
 			}, true);
-		// A picture that arrives redraws the tiles (the one showing it among them).
+		// A picture that arrives redraws the cells (the one showing it among them).
 		if ((mServices.Context != null) && (mServices.Picture != null))
 			mThumbnails = mServices.Context.AddThumbnailListener(new (id) =>
 				{
-					if (IsOpen && mTiles)
+					if (IsOpen)
 						mModel.Changed();
 				});
 	}
@@ -230,14 +240,45 @@ class AssetPickerWindow
 			mServices.Context.RemoveThumbnailListener(mThumbnails);
 		if (mContent != null)
 			mContent.RemoveEventListener(mKeyListener);
+		if ((mMenu != null) && mMenu.IsOpen)
+			mMenu.Close();
 		if (mList != null)
 		{
+			mList.RemoveEventListener(mListMenuListener);
 			mList.Model = null;
 			mList.SetRowFactory(null);
 		}
 		if (mTree != null)
 			mTree.Model = null;
 	}
+
+	/// A row's menu at `at` (the root's space): Pin as Favourite, or Unpin Favourite. No row, or no
+	/// context: none.
+	public void ShowRowMenu(int32 row, Float2 at)
+	{
+		if ((mList == null) || (mServices.Context == null) || (row < 0) || (row >= mRows.Count))
+			return;
+		let id = mRows[row].Id;
+		if (mMenu != null)
+		{
+			if (mMenu.IsOpen)
+				mMenu.Close();
+			mMenu.ReleaseRef();
+		}
+		mMenu = new Sedulous.GUI.Menu();
+		mMenu.AddItem(mServices.Context.IsFavorite(id) ? "Unpin Favourite" : "Pin as Favourite", new [=this, =id] () =>
+			{
+				mServices.Context.ToggleFavorite(id);
+				if ((mSource == cFavourites) && mQuery.IsEmpty)
+					BuildRows(); // it joins or leaves the rows
+				else
+					mModel.Changed(); // its star
+			});
+		mMenu.Open(mList, at);
+	}
+
+	/// The row menu, while it is open.
+	public Sedulous.GUI.Menu RowMenu => ((mMenu != null) && mMenu.IsOpen) ? mMenu : null;
 
 	/// Opens it over `root` for `request`, in the window's middle: the current value's group
 	/// chosen (else All) and its row lit, the search empty and focused, tiles or a list as it was
@@ -642,13 +683,27 @@ class AssetPickerWindow
 		if (mState != null)
 		{
 			mState.Displayed = mRows.IsEmpty;
-			if (!mQuery.IsEmpty)
+			if (let other = WrongTypeNamed())
+				mState.Text = scope String()..AppendF("'{}' is a {}, which this slot does not take.", other.Name, KindOf(other.TypeName, .. scope .()));
+			else if (!mQuery.IsEmpty)
 				mState.Text = scope String()..AppendF("No {} match \"{}\".", noun, mQuery);
 			else if (mSource == cFavourites)
 				mState.Text = scope String()..AppendF("No favourite {}: star one in the Assets panel.", noun);
 			else
 				mState.Text = scope String()..AppendF("No {} here.", noun);
 		}
+	}
+
+	// The asset a search's whole guid names when the slot does not take its type; else null.
+	private Instance WrongTypeNamed()
+	{
+		let db = Sources();
+		if (db == null)
+			return null;
+		if (!AssetFilter.AsGuid(mQuery, let id))
+			return null;
+		let named = db.GetInstance(id);
+		return ((named != null) && !Takes(named.TypeName, mRequest.Types)) ? named : null;
 	}
 
 	private void Collect(Group group, bool deep)
@@ -696,8 +751,8 @@ class AssetPickerWindow
 			shown.Glyph = "Editor/Icons/file.svg";
 		shown.HidesStateColumns = true; // a pick asks neither its cook nor its export
 		shown.Favourite = (mServices.Context != null) && mServices.Context.IsFavorite(instance.Id);
-		if (mTiles && (mServices.Picture != null))
-			shown.Picture = mServices.Picture(instance.Id);
+		if (mServices.Picture != null)
+			shown.Picture = mServices.Picture(instance.Id); // a tile's, and a row's small
 		cell.Show(shown);
 		// Hovered, the whole of where it lives (a row's is cut to fit) and what it is.
 		let tip = scope String();

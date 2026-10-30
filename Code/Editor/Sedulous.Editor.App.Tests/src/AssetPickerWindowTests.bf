@@ -52,6 +52,8 @@ static class AssetPickerWindowTests
 		public Instance Bucket;
 		public List<Guid> Chosen = new .() ~ delete _;
 		public int Saves = 0;
+		/// The crate's thumbnail, once "generated" (a reference of ours).
+		public Sedulous.GUI.Drawable Picture = null ~ _?.ReleaseRef();
 
 		public this()
 		{
@@ -82,6 +84,7 @@ static class AssetPickerWindowTests
 			let services = new AssetPickerServices();
 			services.Context = Context;
 			services.Icons = Icons;
+			services.Picture = new [=bed] (id) => (id == bed.Crate.Id) ? bed.Picture : null;
 			Picker = new AssetPickerWindow(services, PagesBed.LoadMarkup(AssetPickerWindow.cMarkupPath));
 		}
 
@@ -322,5 +325,61 @@ static class AssetPickerWindowTests
 		// A column: where each asset lives starts at one x, whatever its name or its path.
 		Test.Assert(Math.Abs(near.KindLabel.ScreenBounds.X - farKind.X) < 0.5f);
 		bed.Picker.Close();
+	}
+
+	[Test]
+	public static void ARowsMenuPinsItAsAFavouriteOrUnpinsIt()
+	{
+		let bed = scope Bed();
+		bed.Open(.Empty);
+		Test.Assert(bed.Picker.ChooseSource("Favourites"));
+		Test.Assert(bed.Picker.Rows(.. scope .()).IsEmpty);
+		Test.Assert(bed.Picker.ChooseSource("All PickMeshAssets"));
+		bed.Picker.ShowRowMenu(0, .(20.0f, 10.0f)); // Crate
+		var menu = bed.Picker.RowMenu;
+		Test.Assert(menu != null);
+		let pin = MenuRows.ItemNamed(menu, "Pin as Favourite");
+		Test.Assert(pin != null);
+		Test.Assert(pin.HandleActivate());
+		Test.Assert(bed.Context.IsFavorite(bed.Crate.Id));
+		Test.Assert(bed.Picker.ChooseSource("Favourites"));
+		Test.Assert(bed.Picker.Rows(.. scope .()) == "Crate");
+		bed.Picker.ShowRowMenu(0, .(20.0f, 10.0f));
+		menu = bed.Picker.RowMenu;
+		Test.Assert(menu != null);
+		let unpin = MenuRows.ItemNamed(menu, "Unpin Favourite");
+		Test.Assert(unpin != null);
+		Test.Assert(unpin.HandleActivate());
+		Test.Assert(!bed.Context.IsFavorite(bed.Crate.Id));
+		Test.Assert(bed.Picker.Rows(.. scope .()).IsEmpty); // it left the Favourites shown
+	}
+
+	[Test]
+	public static void AWholeGuidOfAnAssetTheSlotDoesNotTakeSaysWhatItIs()
+	{
+		let bed = scope Bed();
+		bed.Open(.Empty);
+		bed.Picker.Search(bed.Bell.Id.ToString(.. scope .()));
+		Test.Assert(bed.Picker.Rows(.. scope .()).IsEmpty);
+		Test.Assert(bed.Picker.StateText == "'Bell' is a PickSoundAsset, which this slot does not take.", scope String(bed.Picker.StateText));
+		bed.Picker.Search("nothing like it");
+		Test.Assert(bed.Picker.StateText == "No pickmeshassets match \"nothing like it\".");
+	}
+
+	[Test]
+	public static void ARowShowsTheAssetsThumbnailSmallInItsIconsPlaceAsATileDoes()
+	{
+		let bed = scope Bed();
+		bed.Picture = SvgDrawable.FromText("<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><rect width='8' height='8'/></svg>");
+		bed.Open(.Empty);
+		Test.Assert(bed.Picker.ChooseSource("All PickMeshAssets"));
+		Test.Assert(!bed.Picker.ShowsTiles);
+		bed.SizeList();
+		let crate = bed.Cell(0);
+		Test.Assert(crate != null);
+		Test.Assert(crate.ShowsPicture);
+		let barrel = bed.Cell(1);
+		Test.Assert(barrel != null);
+		Test.Assert(!barrel.ShowsPicture); // none yet: its glyph
 	}
 }

@@ -266,29 +266,51 @@ class EditorWindow
 	}
 
 	/// A toast over the dock, its severity the notice's; the same message again counts on the one
-	/// shown. An error stays until it is dismissed; the rest go after five seconds.
-	public void ShowToast(NoticeKind kind, StringView message)
+	/// shown. An error stays until it is dismissed, and so does one with an action (Open Folder on
+	/// an export), its button running `action`; the rest go after five seconds. TAKES OWNERSHIP of
+	/// `action`.
+	public void ShowToast(NoticeKind kind, StringView message, StringView actionText = default, delegate void() action = null)
 	{
-		if (mToasts != null)
-			PostNotice(mToasts, kind, message);
+		if (mToasts == null)
+		{
+			delete action;
+			return;
+		}
+		PostNotice(mToasts, kind, message, actionText, action);
 	}
 
 	/// Posts a notice on `toasts` as ShowToast does: keyed by its message, so a repeat counts on
-	/// the one shown rather than stacking another.
-	public static ToastId PostNotice(ToastHost toasts, NoticeKind kind, StringView message)
+	/// the one shown rather than stacking another. TAKES OWNERSHIP of `action`.
+	public static ToastId PostNotice(ToastHost toasts, NoticeKind kind, StringView message, StringView actionText = default,
+		delegate void() action = null)
 	{
 		let request = scope ToastRequest();
+		MakeToast(kind, message, actionText, request);
+		if (action == null)
+			return toasts.Post(request); // copied
+		return toasts.Post(request, new [=action] (pressed) => { action(); } ~ delete action);
+	}
+
+	/// The toast a notice shows, into `outRequest`: its severity, the message as its title and its
+	/// key; an error until closed, the rest five seconds; with an action's text, a button and no
+	/// time out.
+	public static void MakeToast(NoticeKind kind, StringView message, StringView actionText, ToastRequest outRequest)
+	{
 		switch (kind)
 		{
-		case .Success: request.Severity = .Success;
-		case .Warning: request.Severity = .Warning;
-		case .Error: request.Severity = .Error;
-		default: request.Severity = .Info;
+		case .Success: outRequest.Severity = .Success;
+		case .Warning: outRequest.Severity = .Warning;
+		case .Error: outRequest.Severity = .Error;
+		default: outRequest.Severity = .Info;
 		}
-		request.Title = message;
-		request.Key = message;
-		request.Duration = (kind == .Error) ? 0.0f : 5.0f;
-		return toasts.Post(request); // copied
+		outRequest.Title = message;
+		outRequest.Key = message;
+		outRequest.Duration = (kind == .Error) ? 0.0f : 5.0f;
+		if (!actionText.IsEmpty)
+		{
+			outRequest.AddAction("action", actionText, "");
+			outRequest.Duration = 0.0f; // until closed: its button is there to be used
+		}
 	}
 
 	/// Where the toasts stack in `frame`: over its dock (`frame-dock`), at its bottom right, so

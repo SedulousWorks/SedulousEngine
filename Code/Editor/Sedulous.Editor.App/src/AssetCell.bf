@@ -31,7 +31,7 @@ class AssetCell : UIWidget
 		public bool Group;
 		/// A row without its badge and Always Export columns: a picker's, which asks neither.
 		public bool HidesStateColumns;
-		/// Its thumbnail, a tile's in place of its glyph (Show keeps a reference); null: none yet.
+		/// Its thumbnail, in its glyph's place (a tile's and a row's; Show keeps a reference); null: none yet.
 		public Sedulous.GUI.Drawable Picture;
 	}
 
@@ -111,14 +111,25 @@ class AssetCell : UIWidget
 	public void Show(Shown shown)
 	{
 		SwapClass(mGlyph, mGlyphClass, shown.GlyphClass);
-		mGlyph.Source = shown.Glyph;
-		// A tile shows the asset's picture once there is one, its type's glyph till then.
+		// A tile shows the asset's picture once there is one, its type's glyph till then; a row,
+		// the picture small in its icon's place.
 		let pictured = (mPicture != null) && (shown.Picture != null);
 		if (mPicture != null)
 		{
 			if (mPicture.Drawable !== shown.Picture)
 				mPicture.SetDrawable(shown.Picture);
 			mPicture.Displayed = pictured;
+		}
+		if (!mTile && (shown.Picture != null))
+		{
+			if (mGlyph.Drawable !== shown.Picture)
+				mGlyph.SetDrawable(shown.Picture);
+			mGlyph.AddClass("row-picture");
+		}
+		else
+		{
+			mGlyph.RemoveClass("row-picture");
+			mGlyph.Source = shown.Glyph;
 		}
 		mGlyph.Displayed = !pictured;
 		mName.Text = shown.Name;
@@ -172,7 +183,7 @@ class AssetCell : UIWidget
 	public UIWidget AlwaysExportPart => mTile ? (UIWidget)mExportMark : mExportIcon;
 	public bool IsTile => mTile;
 	/// A tile showing its thumbnail; a row never does.
-	public bool ShowsPicture => (mPicture != null) && mPicture.Displayed && (mPicture.Drawable != null);
+	public bool ShowsPicture => mTile ? ((mPicture != null) && mPicture.Displayed && (mPicture.Drawable != null)) : mGlyph.HasClass("row-picture");
 	/// Its type's glyph shown: a row's always, a tile's until its thumbnail.
 	public bool ShowsGlyph => mGlyph.Displayed;
 	public Sedulous.GUI.Label NameLabel => mName;

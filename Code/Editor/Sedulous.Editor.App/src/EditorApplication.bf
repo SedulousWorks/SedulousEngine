@@ -221,7 +221,9 @@ class EditorApplication : IApplication
 	public void SetSceneRenderer(ISceneRenderer renderer) => mSceneRenderer = renderer;
 
 	/// A toast, as every notice and job result is said.
-	public void ShowToast(NoticeKind kind, StringView message) => mWindow.ShowToast(kind, message);
+	/// TAKES OWNERSHIP of `action` (a button's, keeping the toast until closed).
+	public void ShowToast(NoticeKind kind, StringView message, StringView actionText = default, delegate void() action = null)
+		=> mWindow.ShowToast(kind, message, actionText, action);
 
 	private EditorAssetCreationServices CreationServices()
 	{
@@ -506,7 +508,16 @@ class EditorApplication : IApplication
 		exportServices.Builders = mBuilders;
 		exportServices.UserSettings = mEditorSettings;
 		exportServices.DataRoot.Set(mConfig.DataRoot);
-		exportServices.OnExported = new (folder) => { ShowToast(.Success, scope $"Exported to {folder}"); };
+		// It stays, its button showing the build in the system's file manager (the old editor's).
+		exportServices.OnExported = new (folder) =>
+			{
+				let exported = new String(folder);
+				ShowToast(.Success, scope $"Exported to {folder}", "Open Folder", new [=this, =exported] () =>
+					{
+						if (let dialogs = ShellDialogs())
+							dialogs.OpenPath(exported);
+					} ~ delete exported);
+			};
 		mExport = new EditorExport(exportServices);
 
 		let mcpServices = new EditorMcpServiceServices();

@@ -17,9 +17,12 @@ namespace Sedulous.Editor.App;
 // An entity reference is not this editor's: an EntityRef is no reference to an asset, and only a
 // scene names its entities, so it comes with the scene page's inspector.
 
-/// What a referenced asset shows: its name, its type's glyph and the class that tints it.
+/// What a referenced asset shows: its name, its type's glyph and the class that tints it, and its
+/// thumbnail in the glyph's place once there is one.
 class ResourceRefShown
 {
+	/// The asset's thumbnail; null until one is generated (a bind asks again). Borrowed.
+	public Sedulous.GUI.Drawable Picture = null;
 	public String Name = new .() ~ delete _;
 	/// The glyph's image; empty: none.
 	public String Glyph = new .() ~ delete _;
@@ -100,6 +103,8 @@ class ResourceRefServices
 					outShown.Glyph.Set(icon.Source);
 					outShown.GlyphClass.Set(icon.Class);
 				}
+				if (context.Thumbnails != null)
+					outShown.Picture = context.Thumbnails.Get(id); // null until generated; a bind asks again
 				return true;
 			};
 		services.Open = new [=context] (id) =>
@@ -202,6 +207,7 @@ class ResourceRefEditor : SingleControlEditor
 
 	private void Show()
 	{
+		mSlot.SetPicture(null);
 		if (mMixed)
 		{
 			mSlot.SetGlyph("");
@@ -218,6 +224,7 @@ class ResourceRefEditor : SingleControlEditor
 		if ((mServices.Describe != null) && mServices.Describe(mCurrent, shown))
 		{
 			mSlot.SetGlyph(shown.Glyph, shown.GlyphClass);
+			mSlot.SetPicture(shown.Picture);
 			mSlot.SetValue(shown.Name);
 		}
 		else

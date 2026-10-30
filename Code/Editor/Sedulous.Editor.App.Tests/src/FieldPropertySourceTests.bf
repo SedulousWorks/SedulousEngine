@@ -6,6 +6,33 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
+/// The test's own hint attribute (an application's, as the engine's BoneName is).
+[AttributeUsage(.Field, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
+struct FieldSourceBoneAttribute : Attribute
+{
+}
+
+/// A joint of an application's: a bone named by a string its editor offers from a skeleton, and
+/// rows whose conditions read or do not.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
+class FieldSourceJoint
+{
+	[FieldSourceBone]
+	public String Bone = new .() ~ delete _;
+	public String Label = new .() ~ delete _;
+	public int32 Mode = 0;
+	[VisibleWhen("Mode=2")]
+	public float WhenTwo = 0.0f;
+	[VisibleWhen("=1")]
+	public float NoName = 0.0f;
+	[VisibleWhen("Mode=")]
+	public float NoValue = 0.0f;
+	[VisibleWhen("Mode=x")]
+	public float NotANumber = 0.0f;
+	[VisibleWhen("Mode=1,,2")]
+	public float EmptyItem = 0.0f;
+}
+
 /// What a Guid list points at, by the full name of a type its library cannot see.
 class FieldSourceTarget
 {
@@ -335,5 +362,58 @@ class FieldPropertySourceTests
 		Test.Assert(elements.Count == 1);
 		Test.Assert(elements[0].Kind == .Reference);
 		Test.Assert(elements[0].ReferenceType == typeof(FieldSourceTarget));
+	}
+
+	private static PropertyInfo Row(List<PropertyInfo> rows, StringView name)
+	{
+		for (let info in rows)
+		{
+			if (info.Name == name)
+				return info;
+		}
+		Test.Assert(false, "no row");
+		return null;
+	}
+
+	[Test]
+	public static void AnAttributeTheApplicationRegistersHintsItsRows()
+	{
+		let joint = scope FieldSourceJoint();
+		let address = Internal.UnsafeCastToPtr(joint);
+		let source = scope FieldPropertySource(typeof(FieldSourceJoint), 1, new (object) => address,
+			new (apply) => { apply(0, address); });
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(Row(rows, "Bone").Kind == .String);
+		Test.Assert(Row(rows, "Bone").Hint.IsEmpty); // not registered: a string's field
+
+		FieldPropertySource.RegisterHintAttribute<FieldSourceBoneAttribute>("fieldSourceBone");
+		ClearAndDeleteItems!(rows);
+		source.GetProperties("", rows);
+		Test.Assert(Row(rows, "Bone").Kind == .String);
+		Test.Assert(Row(rows, "Bone").Hint == "fieldSourceBone");
+		Test.Assert(Row(rows, "Label").Hint.IsEmpty); // a string without it
+	}
+
+	[Test]
+	public static void AConditionThatDoesNotReadHidesNothing()
+	{
+		let joint = scope FieldSourceJoint();
+		let address = Internal.UnsafeCastToPtr(joint);
+		let source = scope FieldPropertySource(typeof(FieldSourceJoint), 1, new (object) => address,
+			new (apply) => { apply(0, address); });
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(!Row(rows, "WhenTwo").Visible); // Mode 0
+		Test.Assert(Row(rows, "NoName").Visible);
+		Test.Assert(Row(rows, "NoValue").Visible);
+		Test.Assert(Row(rows, "NotANumber").Visible);
+		Test.Assert(Row(rows, "EmptyItem").Visible);
+		joint.Mode = 2;
+		ClearAndDeleteItems!(rows);
+		source.GetProperties("", rows);
+		Test.Assert(Row(rows, "WhenTwo").Visible);
 	}
 }
