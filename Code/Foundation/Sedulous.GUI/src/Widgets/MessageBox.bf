@@ -115,10 +115,10 @@ class MessageBox : Window
 			content.Padding = .(cPad);
 		}
 		mMessage = new Label();
-		mMessage.AddClass("dialogmessage"); // white-space inherits under a sheet: the theme wraps it
+		mMessage.AddClass("dialogmessage"); // white-space inherits under a sheet: the theme wraps it, keeping its lines
 		using (StyleWriteScope(mMessage)) // its own values, which a sheet returns to
 		{
-			mMessage.WhiteSpace = .Normal; // a message wraps
+			mMessage.WhiteSpace = .PreWrap; // a message wraps, and keeps the lines it is written in (a list)
 			mMessage.SetTextAlignment(.Start, .Top);
 			mMessage.EditLayoutStyle(scope (st) => { st.Grow = 1.0f; });
 		}

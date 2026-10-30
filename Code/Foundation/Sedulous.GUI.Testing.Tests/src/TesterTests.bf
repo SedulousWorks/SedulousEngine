@@ -181,6 +181,28 @@ class TesterTests
 	}
 
 	[Test]
+	public static void AimingSeesAnOpenPopupAsInputDoesWhatItHoldsIsReachedWhatItCoversIsNot()
+	{
+		let bed = scope Bed();
+		let t = scope Tester(bed.Root);
+		// A popup over the field, holding a button of its own.
+		let popup = new Panel();
+		defer popup.ReleaseRef();
+		popup.Position = .(0.0f, 40.0f);
+		popup.Size = .(200.0f, 60.0f);
+		let inside = TesterFixtures.Add<Button>(popup, "inside", 0.0f, 0.0f, 200.0f, 60.0f);
+		defer inside.ReleaseRef();
+		bed.Root.EventDispatcher.OpenPopup(bed.Show, popup, new PopupOptions());
+		t.Frame();
+		Float2 at;
+		Node over;
+		Test.Assert(AimAt(bed.Root, inside, out at, out over)); // in a popup over the root's nodes
+		Test.Assert(!AimAt(bed.Root, bed.Field, out at, out over)); // under it
+		Test.Assert(over == inside);
+		bed.Root.EventDispatcher.CloseAllPopups(.Code);
+	}
+
+	[Test]
 	public static void TypingGoesToTheFocusKeysMoveItAndAHeldArrowRepeats()
 	{
 		let bed = scope Bed();

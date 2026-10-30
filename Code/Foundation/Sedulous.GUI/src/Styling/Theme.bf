@@ -94,7 +94,7 @@ static class Theme
 		            titlebar > label { color: var(--window-title-text, var(--text-title)); }
 		            titlebar > close { color: var(--window-close-text, var(--outline)); padding: var(--space-s); border-radius: var(--space-s); }
 		            titlebar > close:hover { background-color: var(--danger); color: #ffffff; }
-		            .dialogmessage { white-space: normal; }
+		            .dialogmessage { white-space: pre-wrap; }
 		            .dialogbutton { background-color: var(--button-background, var(--accent)); color: var(--button-text, var(--on-accent));
 		                            border-radius: var(--radius); padding: var(--space-m) var(--space-xl); transition: opacity var(--motion-fast); }
 		            .dialogbutton:hover { opacity: 0.9; }

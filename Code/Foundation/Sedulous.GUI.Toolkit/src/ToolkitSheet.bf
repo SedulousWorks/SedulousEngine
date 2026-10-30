@@ -63,6 +63,8 @@ internal static class ToolkitSheetDetail
 		            timeruler { background-color: var(--timeline-ruler, var(--surface-header)); color: var(--text-dim); font-size: var(--font-small); }
 		            timeruler::tick { background-color: var(--timeline-tick, var(--text-dim)); }
 		            timeruler::playhead { background-color: var(--timeline-playhead, var(--accent)); }
+		            timeruler::marker { background-color: var(--timeline-marker, var(--text)); }
+		            timeruler::marker-chosen { background-color: var(--timeline-marker-chosen, var(--accent)); }
 		            curveview { background-color: var(--curveview-background, var(--surface-sunken)); color: var(--text-dim);
 		                        font-size: var(--font-small); }
 		            curveview::grid { background-color: var(--curveview-grid, var(--separator)); }

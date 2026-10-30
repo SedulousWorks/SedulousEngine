@@ -51,7 +51,9 @@ static
 	{
 		let @box = node.ScreenBounds;
 		at = .(@box.X + @box.Width * 0.5f, @box.Y + @box.Height * 0.5f);
-		let hit = root.OverFind(at);
+		// As input finds it: an open popup's first (a menu item, a dialog over a panel), then the root's.
+		let dispatcher = root.EventDispatcher;
+		let hit = (dispatcher != null) ? dispatcher.NodeAt(at) : root.OverFind(at);
 		over = hit;
 		for (var n = hit; n != null; n = n.Parent)
 		{

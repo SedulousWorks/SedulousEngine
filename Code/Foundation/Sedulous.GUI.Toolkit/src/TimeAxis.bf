@@ -16,6 +16,11 @@ namespace Sedulous.GUI;
 // times a power of ten, of seconds or of frames), labels, and the playhead. A drag on it scrubs the
 // playhead, the wheel zooms about the pointer and a middle drag pans. Time runs left to right in
 // either direction of the text, as a ruler's numbers do.
+//
+// A ruler may show a marker source's markers (a clip's events), each a time and a label, as a flag at
+// its time: a click chooses one, a drag moves it, one gesture through the source (begun, previewed,
+// committed once, Escape giving it up), and the one under the pointer names itself in full. The undo
+// is the source's, as every source's is.
 
 static
 {
@@ -264,15 +269,92 @@ class TimeTick
 	public String Label = new .() ~ delete _;
 }
 
+/// A marker of a ruler (a clip's event): where it is and what it is called. A class: it owns its
+/// label.
+class TimeMarker
+{
+	public float Time = 0.0f;
+	public String Label = new .() ~ delete _;
+}
+
+/// What a marker source tells the rulers showing it.
+interface ITimeMarkerSourceClient
+{
+	/// The markers changed: read them again.
+	void OnTimeMarkersChanged();
+}
+
+/// The markers a ruler shows, by their place in it; a move is a gesture as the other sources' are.
+abstract class ITimeMarkerSource
+{
+	// Not owned: each ruler leaves as it goes.
+	private List<ITimeMarkerSourceClient> mMarkerClients = new .() ~ delete _;
+
+	public abstract int MarkerCount { get; }
+	/// Marker `marker`, into `outMarker`.
+	public abstract void GetMarker(int marker, TimeMarker outMarker);
+
+	/// A move begins: where the marker is now is what a cancel puts back.
+	public abstract void BeginMarkerMove(int marker);
+	/// The marker moved to `time`, live.
+	public abstract void PreviewMarkerMove(int marker, float time);
+	/// The move ends as last previewed: one change.
+	public abstract void CommitMarkerMove();
+	/// The move is given up: the marker as it was.
+	public abstract void CancelMarkerMove();
+
+	public void AddMarkerClient(ITimeMarkerSourceClient client)
+	{
+		mMarkerClients.Add(client);
+	}
+
+	public void RemoveMarkerClient(ITimeMarkerSourceClient client)
+	{
+		for (int i = 0; i < mMarkerClients.Count; ++i)
+		{
+			if (mMarkerClients[i] === client)
+			{
+				mMarkerClients.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
+	protected void NotifyTimeMarkersChanged()
+	{
+		for (int i = 0; i < mMarkerClients.Count; ++i)
+			mMarkerClients[i].OnTimeMarkersChanged();
+	}
+}
+
 /// The axis drawn: ticks, labels and the playhead; a drag scrubs, the wheel zooms, a middle drag
 /// pans.
 [GuiReflect(true)]
-class TimeRuler : UIWidget, ITimeAxisClient
+class TimeRuler : UIWidget, ITimeAxisClient, ITimeMarkerSourceClient
 {
 	/// Labelled ticks at least this far apart (pixels).
 	public const float cMinLabelSpacing = 60.0f;
+	/// A marker is under the pointer this near its time (pixels).
+	public const float cMarkerHitRadius = 5.0f;
+	public const float cDragThreshold = 3.0f;
+
+	private enum MarkerDrag : uint8
+	{
+		None,
+		/// Pressed, not yet past the threshold.
+		Pending,
+		Moving,
+	}
 
 	private Sedulous.GUI.TimeAxis mAxis = null;
+	// Not owned: the source outlives the ruler or is set to null first.
+	private ITimeMarkerSource mMarkers = null;
+	private int32 mChosen = -1;
+	private int32 mHover = -1;
+	private String mHoverTip = new .() ~ delete _;
+	private MarkerDrag mMarkerDrag = .None;
+	private float mPressX = 0.0f;
+	private delegate void(int32 marker) mOnMarkerChosen ~ delete _;
 	// Each label in turn.
 	private Sedulous.GUI.Text mText = new .() ~ delete _;
 	private bool mScrubbing = false;
@@ -283,6 +365,7 @@ class TimeRuler : UIWidget, ITimeAxisClient
 	public this()
 	{
 		Tag = "timeruler";
+		TabFocusable = true; // Escape reaches it during a marker's move
 		EditLayoutStyle(scope (s) => { s.Height = LayoutLength.Px(22.0f); });
 	}
 
@@ -293,6 +376,8 @@ class TimeRuler : UIWidget, ITimeAxisClient
 			mAxis.Leave(this);
 			mAxis.ReleaseRef();
 		}
+		if (mMarkers != null)
+			mMarkers.RemoveMarkerClient(this);
 	}
 
 	/// The axis it draws. It takes a reference of its own: the caller keeps its.
@@ -314,6 +399,81 @@ class TimeRuler : UIWidget, ITimeAxisClient
 			Invalidate();
 		}
 	}
+
+	// === Markers ===
+
+	/// The markers it shows (not owned: the source outlives the ruler or is set to null first).
+	public ITimeMarkerSource MarkerSource
+	{
+		get => mMarkers;
+		set
+		{
+			if (mMarkers != null)
+				mMarkers.RemoveMarkerClient(this);
+			mMarkers = value;
+			if (mMarkers != null)
+				mMarkers.AddMarkerClient(this);
+			mChosen = -1;
+			mHover = -1;
+			mHoverTip.Clear();
+			Invalidate();
+		}
+	}
+
+	/// The marker chosen (-1: none).
+	public int32 ChosenMarker => mChosen;
+
+	/// Chooses `marker` (-1: none), as a click on it does, telling the chosen callback.
+	public void ChooseMarker(int32 marker)
+	{
+		var marker;
+		if ((mMarkers == null) || (marker < 0) || (marker >= mMarkers.MarkerCount))
+			marker = -1;
+		if (marker == mChosen)
+			return;
+		mChosen = marker;
+		Invalidate();
+		if (mOnMarkerChosen != null)
+			mOnMarkerChosen(mChosen);
+	}
+
+	/// Told when the chosen marker changes (-1: none). OWNERSHIP of `callback` transfers.
+	public void SetOnMarkerChosen(delegate void(int32 marker) callback)
+	{
+		delete mOnMarkerChosen;
+		mOnMarkerChosen = callback;
+	}
+
+	/// The marker at `x` from its content start, the nearest within the hit radius; -1: none.
+	public int32 MarkerAt(float x)
+	{
+		if ((mMarkers == null) || (mAxis == null))
+			return -1;
+		int32 best = -1;
+		var nearest = cMarkerHitRadius;
+		let marker = scope TimeMarker();
+		for (int i < mMarkers.MarkerCount)
+		{
+			mMarkers.GetMarker(i, marker);
+			let off = Abs(mAxis.TimeToOffset(marker.Time) - x);
+			if (off <= nearest)
+			{
+				nearest = off;
+				best = (int32)i;
+			}
+		}
+		return best;
+	}
+
+	public void OnTimeMarkersChanged()
+	{
+		if ((mMarkers != null) && (mChosen >= 0) && (mChosen >= mMarkers.MarkerCount))
+			ChooseMarker(-1);
+		Invalidate();
+	}
+
+	/// The marker under the pointer named in full, else its own tooltip.
+	public override StringView TooltipText => !mHoverTip.IsEmpty ? mHoverTip : base.TooltipText;
 
 	/// The ticks across its width now: every minor tick, the major ones labelled. `outTicks` is
 	/// emptied first; the caller deletes what it holds.
@@ -355,6 +515,16 @@ class TimeRuler : UIWidget, ITimeAxisClient
 		if (e.Button == .Left)
 		{
 			e.Handled = true;
+			let x = LocalX(e.Position);
+			let marker = MarkerAt(x);
+			if (marker >= 0)
+			{
+				// A marker pressed is chosen; dragged past the threshold, it moves.
+				ChooseMarker(marker);
+				mMarkerDrag = .Pending;
+				mPressX = x;
+				return;
+			}
 			mScrubbing = true;
 			ScrubTo(e.Position);
 		}
@@ -371,6 +541,19 @@ class TimeRuler : UIWidget, ITimeAxisClient
 	{
 		if (mAxis == null)
 			return;
+		let x = LocalX(e.Position);
+		if ((mMarkerDrag == .Pending) && (mMarkers != null) && (mChosen >= 0) && (Abs(x - mPressX) >= cDragThreshold))
+		{
+			mMarkerDrag = .Moving;
+			mMarkers.BeginMarkerMove(mChosen);
+		}
+		if (mMarkerDrag == .Moving)
+		{
+			mMarkers.PreviewMarkerMove(mChosen, Clamp(mAxis.Snap(mAxis.OffsetToTime(x)), 0.0f, mAxis.Duration));
+			Invalidate();
+		}
+		else if ((mMarkerDrag == .None) && !mScrubbing && !mPanning)
+			Hover(MarkerAt(x));
 		if (mScrubbing)
 			ScrubTo(e.Position);
 		else if (mPanning)
@@ -379,6 +562,8 @@ class TimeRuler : UIWidget, ITimeAxisClient
 
 	protected override void OnMouseUp(MouseEvent e)
 	{
+		if ((mMarkerDrag != .None) && (e.Button == .Left))
+			EndMarkerDrag(true);
 		if (mScrubbing && (e.Button == .Left))
 			mScrubbing = false;
 		if (mPanning && (e.Button == .Middle))
@@ -387,8 +572,25 @@ class TimeRuler : UIWidget, ITimeAxisClient
 
 	protected override void OnPointerCancel(MouseEvent e)
 	{
+		EndMarkerDrag(false);
 		mScrubbing = false;
 		mPanning = false;
+	}
+
+	protected override void OnMouseLeave(MouseEvent e)
+	{
+		base.OnMouseLeave(e);
+		if (mMarkerDrag == .None)
+			Hover(-1);
+	}
+
+	protected override void OnKeyDown(KeyEvent e)
+	{
+		if (((KeyCode)e.KeyCode == .Escape) && (mMarkerDrag == .Moving))
+		{
+			e.Handled = true;
+			EndMarkerDrag(false);
+		}
 	}
 
 	protected override void OnMouseWheel(WheelEvent e)
@@ -433,6 +635,35 @@ class TimeRuler : UIWidget, ITimeAxisClient
 				mText.Draw(ctx, Float2(x + 3.0f, @box.Y + 1.0f));
 			}
 		}
+		if (mMarkers != null)
+		{
+			// Each a line down the ruler and a flag at its foot, the chosen one in its own colour.
+			let markerPart = GetPartStyle("marker");
+			var markerColor = markerPart.HasBackground ? markerPart.Box.BackgroundColor : TextColor;
+			markerColor.A *= markerPart.Opacity;
+			let chosenPart = GetPartStyle("marker-chosen");
+			var chosenColor = chosenPart.HasBackground ? chosenPart.Box.BackgroundColor : Color(0.31f, 0.61f, 1.0f, 1.0f);
+			chosenColor.A *= chosenPart.Opacity;
+			let marker = scope TimeMarker();
+			for (int i < mMarkers.MarkerCount)
+			{
+				mMarkers.GetMarker(i, marker);
+				let mx = @box.X + mAxis.TimeToOffset(marker.Time);
+				if ((mx < @box.X - 6.0f) || (mx > @box.Right + 6.0f))
+					continue;
+				let color = (i == mChosen) ? chosenColor : markerColor;
+				ctx.VG.FillRect(.(Floor(mx), @box.Y, 1.0f, @box.Height), color);
+				let flag = scope PathBuilder();
+				flag.MoveTo(mx, @box.Bottom - 9.0f);
+				flag.LineTo(mx + 4.0f, @box.Bottom - 4.5f);
+				flag.LineTo(mx, @box.Bottom);
+				flag.LineTo(mx - 4.0f, @box.Bottom - 4.5f);
+				flag.Close();
+				let flagPath = flag.ToPath();
+				ctx.VG.FillPath(flagPath, color);
+				delete flagPath;
+			}
+		}
 		let playheadPart = GetPartStyle("playhead");
 		var playhead = playheadPart.HasBackground ? playheadPart.Box.BackgroundColor : Color(0.31f, 0.61f, 1.0f, 1.0f);
 		playhead.A *= playheadPart.Opacity;
@@ -469,5 +700,39 @@ class TimeRuler : UIWidget, ITimeAxisClient
 	private void ScrubTo(Float2 screen)
 	{
 		mAxis.Playhead = mAxis.Snap(TimeAt(screen));
+	}
+
+	private float LocalX(Float2 screen) => ConvertToNodeSpace(screen).X - ContentBounds.X;
+
+	private void Hover(int32 marker)
+	{
+		if (marker == mHover)
+			return;
+		mHover = marker;
+		mHoverTip.Clear();
+		if ((mMarkers != null) && (marker >= 0))
+		{
+			let shown = scope TimeMarker();
+			mMarkers.GetMarker(marker, shown);
+			mHoverTip.Append(shown.Label);
+			if (mAxis != null)
+			{
+				mHoverTip.Append(" at ");
+				mAxis.FormatTime(shown.Time, 0.01f, mHoverTip);
+			}
+		}
+	}
+
+	private void EndMarkerDrag(bool commit)
+	{
+		let moving = mMarkerDrag == .Moving;
+		mMarkerDrag = .None;
+		if (!moving || (mMarkers == null))
+			return;
+		if (commit)
+			mMarkers.CommitMarkerMove();
+		else
+			mMarkers.CancelMarkerMove();
+		Invalidate();
 	}
 }

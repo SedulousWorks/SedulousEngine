@@ -996,6 +996,9 @@ class EventDispatcher
 	/// pointer (Node.TakesPointer), not only over a layout container. A game host asks before
 	/// treating a click as its own.
 	public bool IsPointerOver(Float2 position) => IsPointerTaken(HitTest(position));
+	/// What the pointer at `position` reaches, as input finds it: an open popup's first (a menu, a
+	/// dialog), then the root's; null under a modal popup, where everything is inert.
+	public Node NodeAt(Float2 position) => HitTest(position);
 
 	// === Focus ===
 

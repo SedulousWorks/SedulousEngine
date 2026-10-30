@@ -261,6 +261,35 @@ class MessageBoxTests
 	}
 
 	[Test]
+	public static void AMessageWrittenInLinesKeepsThemAsWellAsWrappingWithOrWithoutTheTheme()
+	{
+		let root = SceneFixtures.NewScene(800.0f, 600.0f);
+		defer root.ReleaseRef();
+		let font = scope CachedFont(new MockFont(), null);
+		MessageBox Make(StringView text)
+		{
+			let dialog = new MessageBox();
+			dialog.Font = font;
+			dialog.Configure("Unsaved changes", text, .Ok);
+			root.AddChild(dialog);
+			return dialog;
+		}
+		let one = Make("These have unsaved changes: a b");
+		defer one.ReleaseRef();
+		let lines = Make("These have unsaved changes:\n    a\n    b");
+		defer lines.ReleaseRef();
+		root.UpdateLayout();
+		Test.Assert(lines.Size.Y >= one.Size.Y + 24.0f); // three lines of 12 px, not one
+		let styles = scope StyleManager();
+		let theme = scope StyleSheet();
+		CSSParser.Parse(Theme.DefaultThemeCSS, theme);
+		styles.UserAgentSheet = theme;
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(lines.Size.Y >= one.Size.Y + 24.0f);
+	}
+
+	[Test]
 	public static void ShownInNoGUIItRefusesRatherThanBecomingItsOwnChild()
 	{
 		let dialog = new MessageBox();

@@ -17,6 +17,56 @@ class CountingAxisClient : ITimeAxisClient
 	}
 }
 
+/// Markers in memory: a move's changes counted, a cancel putting the marker back.
+class MemoryMarkers : ITimeMarkerSource
+{
+	public List<TimeMarker> Markers = new .() ~ DeleteContainerAndItems!(_);
+	public float Before = 0.0f;
+	public int Commits = 0;
+	public int Cancels = 0;
+	public int Moving = 0;
+
+	public void Add(float time, StringView label)
+	{
+		let marker = new TimeMarker();
+		marker.Time = time;
+		marker.Label.Set(label);
+		Markers.Add(marker);
+	}
+
+	public override int MarkerCount => Markers.Count;
+
+	public override void GetMarker(int marker, TimeMarker outMarker)
+	{
+		outMarker.Time = Markers[marker].Time;
+		outMarker.Label.Set(Markers[marker].Label);
+	}
+
+	public override void BeginMarkerMove(int marker)
+	{
+		Moving = marker;
+		Before = Markers[marker].Time;
+	}
+
+	public override void PreviewMarkerMove(int marker, float time)
+	{
+		Markers[marker].Time = time;
+	}
+
+	public override void CommitMarkerMove()
+	{
+		++Commits;
+	}
+
+	public override void CancelMarkerMove()
+	{
+		Markers[Moving].Time = Before;
+		++Cancels;
+	}
+
+	public void Changed() => NotifyTimeMarkersChanged();
+}
+
 /// A ruler 500 across in a root 600 by 100, on an axis of its own. The root goes with it.
 class RulerBed
 {
@@ -39,7 +89,8 @@ class RulerBed
 
 /// One time axis: the scale, the scroll, a frame rate and the playhead held once and told to every
 /// view on it; the ruler's ticks at a step whose labels never collide, in seconds or frames; a drag on
-/// it scrubbing, the wheel zooming about the pointer and a middle drag panning.
+/// it scrubbing, the wheel zooming about the pointer and a middle drag panning; a marker source's
+/// markers chosen, moved and named on it.
 class TimeAxisTests
 {
 	[Test]
@@ -228,6 +279,65 @@ class TimeAxisTests
 		}
 		Test.Assert(axis.ClientCount == 0);
 		axis.Scroll = 1.0f; // nothing left to tell
+	}
+
+	[Test]
+	public static void AClickChoosesAMarkerADragMovesItAsOneChangeEscapeGivesTheMoveUp()
+	{
+		let bed = scope RulerBed();
+		bed.Axis.Duration = 4.0f;
+		bed.Axis.PixelsPerSecond = 100.0f;
+		bed.Axis.FrameRate = 10.0f;
+		let markers = scope MemoryMarkers();
+		markers.Add(1.0f, "Footstep");
+		markers.Add(3.0f, "Land");
+		bed.Ruler.MarkerSource = markers;
+		int32 told = -2;
+		bed.Ruler.SetOnMarkerChosen(new [&told] (marker) => { told = marker; });
+
+		// Pressed near it: chosen, the playhead left where it was.
+		bed.D.InjectMouseMove(.(303.0f, 10.0f));
+		Test.Assert(bed.Ruler.TooltipText == "Land at 30", scope String(bed.Ruler.TooltipText)); // in frames, as the ruler labels
+		bed.D.InjectMouseDown(.(303.0f, 10.0f), .Left);
+		Test.Assert(bed.Ruler.ChosenMarker == 1);
+		Test.Assert(told == 1);
+		bed.D.InjectMouseUp(.(303.0f, 10.0f), .Left);
+		Test.Assert(bed.Axis.Playhead == 0.0f);
+		Test.Assert(markers.Commits == 0, "a click moves nothing");
+
+		// Dragged: on frames, one change.
+		bed.D.InjectMouseDown(.(100.0f, 10.0f), .Left);
+		Test.Assert(bed.Ruler.ChosenMarker == 0);
+		bed.D.InjectMouseMove(.(152.0f, 10.0f));
+		CheckNear(markers.Markers[0].Time, 1.5f);
+		bed.D.InjectMouseMove(.(177.0f, 10.0f));
+		CheckNear(markers.Markers[0].Time, 1.8f);
+		bed.D.InjectMouseUp(.(177.0f, 10.0f), .Left);
+		Test.Assert(markers.Commits == 1);
+		Test.Assert(bed.Axis.Playhead == 0.0f);
+
+		// Escape: back where it was, nothing committed.
+		bed.D.InjectMouseDown(.(180.0f, 10.0f), .Left);
+		bed.D.InjectMouseMove(.(260.0f, 10.0f));
+		CheckNear(markers.Markers[0].Time, 2.6f);
+		bed.D.InjectKeyDown((uint32)KeyCode.Escape);
+		CheckNear(markers.Markers[0].Time, 1.8f);
+		Test.Assert(markers.Cancels == 1);
+		bed.D.InjectMouseUp(.(260.0f, 10.0f), .Left);
+		Test.Assert(markers.Commits == 1);
+
+		// Away from every marker, a press scrubs as before.
+		bed.D.InjectMouseDown(.(50.0f, 10.0f), .Left);
+		CheckNear(bed.Axis.Playhead, 0.5f);
+		bed.D.InjectMouseUp(.(50.0f, 10.0f), .Left);
+		Test.Assert(bed.Ruler.ChosenMarker == 0, "a scrub keeps the choice");
+
+		// The chosen marker gone: none chosen, told.
+		ClearAndDeleteItems!(markers.Markers);
+		markers.Changed();
+		Test.Assert(bed.Ruler.ChosenMarker == -1);
+		Test.Assert(told == -1);
+		bed.Ruler.MarkerSource = null;
 	}
 
 	// What no Raptor test covers: a value to the decimals of its step, rounded half away from zero
