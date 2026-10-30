@@ -19,10 +19,11 @@ class CreateTestAsset
 /// (Data/Editor/AssetCreate.gml): the groups in the tree's order, each by name and what holds it, a
 /// key finding its group again; a name refused when empty, holding what a file cannot, spaced at an
 /// end or taken, saying why; Create waiting while refused, the line under the name saying why or
-/// what it makes, the group field picking another group, and Create answering the group and the
+/// what it makes, the groups a tree in it (every one open, the starting one chosen, a click choosing
+/// another), and Create answering the group and the
 /// name, then closing. Then what Sedulous adds so each behaviour has a test: every character a file
 /// cannot hold, each end's space and the end's dot, the group picker's row as it shows (its glyph,
-/// the current one checked and lit), the group picker opened below the group field, the refused
+/// the current one checked and lit), the refused
 /// line red and the made one not, Create pressed while it waits making nothing, and Enter creating
 /// (or waiting) as Create does.
 static class AssetCreateTests
@@ -95,7 +96,7 @@ static class AssetCreateTests
 		public AssetCreate Open(ProjectBed project, Group group, StringView suggested)
 		{
 			let dialog = AssetCreate.Open(Root, PagesBed.LoadMarkup(AssetCreate.cMarkupPath), project.Sources, group, "New Asset",
-				suggested, Groups, new [=this] (target, name) =>
+				suggested, new [=this] (target, name) =>
 				{
 					MadeIn = target;
 					MadeName.Set(name);
@@ -232,7 +233,7 @@ static class AssetCreateTests
 	}
 
 	[Test]
-	public static void CreateAssetCreateWaitsWhileTheNameIsRefusedSayingWhyTheGroupFieldPicksAnotherCreateAnswersAndCloses()
+	public static void CreateAssetTheGroupsATreeInItAClickChoosingOneCreateWaitsWhileTheNameIsRefusedCreateAnswersAndCloses()
 	{
 		let bed = scope ProjectBed();
 		let scene = scope SceneBed();
@@ -243,10 +244,20 @@ static class AssetCreateTests
 		let name = Part<TextField>(dialog, "asset-create-name");
 		let why = Part<Sedulous.GUI.Label>(dialog, "asset-create-why");
 		let create = Part<Sedulous.GUI.Button>(dialog, "asset-create-create");
-		let group = Part<Sedulous.GUI.Button>(dialog, "asset-create-group");
+		let tree = Part<TreeView>(dialog, "asset-create-groups");
 		Test.Assert(name.Text == "Crate", "the suggestion");
 		Test.Assert(scene.Root.EventDispatcher.FocusNode === name, "the name focused");
-		Test.Assert(group.Text == "Content");
+		int32 town = -1;
+		int32 chosen = -1;
+		for (int32 item < (int32)tree.GetItemCount())
+		{
+			if (tree.GetItemText(item, .. scope .()) == "Town")
+				town = item;
+			if (tree.IsItemSelected(item))
+				chosen = item;
+		}
+		Test.Assert(town >= 0, "every group shown, open");
+		Test.Assert(tree.GetItemText(chosen, .. scope .()) == "Content", "the group it starts in");
 		Test.Assert(!create.Enabled, "the suggestion is taken here");
 		Test.Assert(why.Text == "Crate is already in Content.");
 		Test.Assert(why.HasClass("refused"), "red");
@@ -256,23 +267,18 @@ static class AssetCreateTests
 		Test.Assert(scene.Made == 0);
 		Test.Assert(dialog.IsOpen);
 
-		// Another group, through the picker below the field: the same name is free there. The field
-		// given a height, as the editor's sheet would (no sheet is loaded here).
-		group.EditLayoutStyle(scope (s) => { s.Height = LayoutLength.Px(24.0f); });
-		scene.Layout();
-		Test.Assert(group.HandleActivate());
-		Test.Assert(scene.Groups.IsOpen);
-		scene.Layout();
-		let fieldAt = group.ConvertToRootSpace(.(0.0f, 0.0f));
-		let pickerAt = scene.Groups.Content.ConvertToRootSpace(.(0.0f, 0.0f));
-		Test.Assert(group.Size.Y > 0.0f, "laid out");
-		Test.Assert(pickerAt.Y >= fieldAt.Y + group.Size.Y - 0.5f, "below the group field");
-		Test.Assert(scene.Groups.LitKey == "Content", "the group now checked and lit");
-		scene.Groups.SetQuery("town");
-		scene.Groups.PickLit(); // Town, not the current Content shown above it
-		Test.Assert(!scene.Groups.IsOpen);
+		// Another group, clicked in its tree: the same name is free there.
+		{
+			scene.Layout();
+			let row = tree.RowForItem(town);
+			Test.Assert(row != null, "realised");
+			let @box = row.ScreenBounds;
+			let at = Float2(@box.X + @box.Width * 0.5f, @box.Y + @box.Height * 0.5f);
+			scene.Root.EventDispatcher.InjectMouseMove(at);
+			scene.Root.EventDispatcher.InjectMouseDown(at, .Left);
+			scene.Root.EventDispatcher.InjectMouseUp(at, .Left);
+		}
 		Test.Assert(dialog.TargetGroup == bed.Town);
-		Test.Assert(group.Text == "Models/Town");
 		Test.Assert(create.Enabled);
 		Test.Assert(why.Text == "Makes Crate in Models/Town.");
 		Test.Assert(!why.HasClass("refused"), "not red");
@@ -319,15 +325,15 @@ static class AssetCreateTests
 		let again = scene.Open(bed, bed.Models, "Lamp");
 		defer delete again;
 		Test.Assert(again.IsOpen);
-		Test.Assert(Part<Sedulous.GUI.Button>(again, "asset-create-group").Text == "Models");
+		Test.Assert(again.TargetGroup == bed.Models);
 		Test.Assert(Part<Sedulous.GUI.Button>(again, "asset-create-cancel").HandleActivate());
 		Test.Assert(!again.IsOpen);
 		Test.Assert(scene.Made == 1);
 
 		// Markup without its parts opens nothing.
-		Test.Assert(AssetCreate.Open(scene.Root, new Sedulous.GUI.Panel(), bed.Sources, bed.Top, "New Asset", "Lamp", scene.Groups,
+		Test.Assert(AssetCreate.Open(scene.Root, new Sedulous.GUI.Panel(), bed.Sources, bed.Top, "New Asset", "Lamp",
 			new (target, made) => { }) == null);
-		Test.Assert(AssetCreate.Open(scene.Root, null, bed.Sources, bed.Top, "New Asset", "Lamp", scene.Groups,
+		Test.Assert(AssetCreate.Open(scene.Root, null, bed.Sources, bed.Top, "New Asset", "Lamp",
 			new (target, made) => { }) == null);
 	}
 }

@@ -801,6 +801,7 @@ button.import-file-name { flex-grow: 1; justify-content: flex-start; background-
 .import > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
 /* Create Asset: its group a field that opens the group picker. */
 button.group-field { justify-content: flex-start; }
+.asset-create-groups { height: 200px; border: 1px solid var(--border); border-radius: var(--radius-small); background-color: var(--surface-sunken); }
 .save-as-error { color: var(--danger); }
 .preferences { flex-direction: column; flex-grow: 1; }
 /* Project Settings: the grid fills the window above its buttons. */

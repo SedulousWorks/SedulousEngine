@@ -881,7 +881,7 @@ class EditorApplication : IApplication
 		// The one before is closed: Create Asset is modal, so a page asks again only once it is.
 		DeleteAndNullify!(mCreateAsset);
 		mCreateAsset = AssetCreate.Open(root, mWindow.LoadMarkup(AssetCreate.cMarkupPath), sources,
-			(group != null) ? group : sources.RootGroup, title, suggested, PickerMade(), create);
+			(group != null) ? group : sources.RootGroup, title, suggested, create);
 	}
 
 	public void ShowAssetPicker(AssetPickRequest request)
