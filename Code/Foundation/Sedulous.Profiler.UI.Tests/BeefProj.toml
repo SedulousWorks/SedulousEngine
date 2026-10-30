@@ -12,3 +12,10 @@ corlib = "*"
 "Sedulous.Profiler.UI" = "*"
 "Sedulous.UI" = "*"
 "Sedulous.VG" = "*"
+
+# The known-frames source the viewers' suites share, compiled from Profiler.Tests.
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "../Sedulous.Profiler.Tests/src/KnownSource.bf"

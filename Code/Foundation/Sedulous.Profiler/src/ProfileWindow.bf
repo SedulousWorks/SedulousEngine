@@ -1,8 +1,11 @@
 using System;
 using System.Collections;
-using Sedulous.Profiler;
 
-namespace Sedulous.Profiler.UI;
+namespace Sedulous.Profiler;
+
+// What a viewer shows, whichever draws it (the editor's profiler on the GUI, the in-game overlay on
+// Profiler.UI): the frame times, their statistics, the totals by name and the counters' readings.
+// Nothing here draws.
 
 /// One frame's times. The GPU time is the span of its passes, from the first to start to the
 /// last to end; it is missing for the newest frames, whose passes have not arrived yet.

@@ -4,6 +4,7 @@ using Sedulous.VG;
 using Sedulous.UI;
 using Sedulous.Profiler;
 using Sedulous.Profiler.UI;
+using Sedulous.Profiler.Tests; // KnownSource
 
 namespace Sedulous.Profiler.UI.Tests;
 
@@ -12,7 +13,7 @@ namespace Sedulous.Profiler.UI.Tests;
 /// panel in its corner.
 class ProfilerViewsTests
 {
-	private static bool Near(double a, double b) => ProfileWindowTests.Near(a, b);
+	private static bool Near(double a, double b) => Math.Abs(a - b) <= 1e-4 * Math.Max(1.0, Math.Abs(b));
 
 	/// `view` measured and laid out at `width` x `height`.
 	private static void Stage(View view, float width, float height)

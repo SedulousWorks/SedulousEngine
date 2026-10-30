@@ -1,9 +1,8 @@
 using System;
 using System.Collections;
 using Sedulous.Profiler;
-using Sedulous.Profiler.UI;
 
-namespace Sedulous.Profiler.UI.Tests;
+namespace Sedulous.Profiler.Tests;
 
 /// What the views show, computed from a source of known frames: frame times and their
 /// statistics, the longest scopes and passes, and the counters as text.
