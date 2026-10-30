@@ -163,4 +163,23 @@ class ColorPickerTests
 		Test.Assert(!bed.Picker.AlphaStrip.Displayed);
 		Test.Assert(Near(bed.Picker.ColorValue.A, 1.0f));
 	}
+
+	[Test]
+	public static void APickerGivenTheColourItOpenedWithShowsItBesideTheNewOneAClickOnItPutsItBack()
+	{
+		let bed = scope PickerBed();
+		Test.Assert(bed.Picker.OriginalSwatch == null); // none given: no comparison
+		let was = Color(0.2f, 0.4f, 0.8f, 1.0f);
+		bed.Picker.ColorValue = was;
+		bed.Picker.SetOriginal(was);
+		let swatch = bed.Picker.OriginalSwatch;
+		Test.Assert(swatch != null);
+		Test.Assert(Near(swatch.ColorValue.B, 0.8f));
+		bed.Picker.ColorValue = .(1.0f, 0.0f, 0.0f, 1.0f);
+		let before = bed.Changes;
+		bed.Picker.Revert();
+		Test.Assert(bed.Changes == before + 1); // reported as a change
+		Test.Assert(Math.Abs(bed.Picker.ColorValue.B - 0.8f) < 0.01f);
+		Test.Assert(Math.Abs(bed.Picker.ColorValue.R - 0.2f) < 0.01f);
+	}
 }

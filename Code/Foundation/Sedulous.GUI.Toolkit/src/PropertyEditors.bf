@@ -727,6 +727,7 @@ class ColorPropertyEditor : PropertyEditor
 		ShareTextStyle(mPopup, false);
 		mPopup.Picker.ShowsAlpha = mShowsAlpha;
 		mPopup.Picker.ColorValue = mColor;
+		mPopup.Picker.SetOriginal(mColor); // beside the new one, a click putting it back
 		mPicking = false;
 		mPicked = mColor;
 		let options = new PopupOptions();

@@ -12,7 +12,8 @@ namespace Sedulous.GUI;
 //     objects' colours differing); a click, Return or Space reports it.
 //   - ColorPicker: a saturation and value plane, a hue strip, an alpha strip, a hex field (any CSS
 //     colour typed: #rgb, #rrggbb, #rrggbbaa, rgb(), a name) and, on the row below it, 0-255 fields
-//     for each channel. A drag reports each step (`input`) and its end (`change`); a field reports
+//     for each channel; given the colour it opened with, that beside the new one over the plane, a
+//     click on it putting it back. A drag reports each step (`input`) and its end (`change`); a field reports
 //     its commit. The hue is kept where a grey or black has none, so dragging back out of the
 //     corner keeps it.
 
@@ -392,6 +393,11 @@ class ColorPicker : UIWidget
 	// The fields are being set from the colour.
 	private bool mShowing = false;
 	// Its parts, its children; a reference held to each.
+	/// The colour it opened with beside the new one (shown once an owner gives it).
+	private UIWidget mCompare = null ~ _?.ReleaseRef();
+	private ColorSwatch mWas = null ~ _?.ReleaseRef();
+	private ColorSwatch mNow = null ~ _?.ReleaseRef();
+	private Color mOriginal = .(0.0f, 0.0f, 0.0f, 1.0f);
 	private ColorPickerArea mPlane = null ~ _?.ReleaseRef();
 	private ColorPickerArea mHueStrip = null ~ _?.ReleaseRef();
 	private ColorPickerArea mAlphaStrip = null ~ _?.ReleaseRef();
@@ -411,6 +417,31 @@ class ColorPicker : UIWidget
 				s.Direction = .Column;
 				s.RowGap = 8.0f;
 			});
+		mCompare = new UIWidget();
+		mCompare.AddClass("compare");
+		mCompare.EditLayoutStyle(scope (s) =>
+			{
+				s.Direction = .Row;
+				s.Height = LayoutLength.Px(20.0f);
+			});
+		mWas = new ColorSwatch();
+		mWas.AddClass("was");
+		mWas.Tooltip = "The colour it had: click to put it back";
+		mWas.SetOnClick(new [=this] () => { Revert(); });
+		mNow = new ColorSwatch();
+		mNow.AddClass("now");
+		mNow.HitTestVisible = false;
+		for (let half in ColorSwatch[2](mWas, mNow))
+		{
+			half.EditLayoutStyle(scope (s) =>
+				{
+					s.Grow = 1.0f;
+					s.Basis = LayoutLength.Px(0.0f);
+				});
+			mCompare.AddChild(half);
+		}
+		mCompare.Displayed = false;
+		AddChild(mCompare);
 		mPlane = new ColorPickerArea(this, .Plane);
 		mPlane.EditLayoutStyle(scope (s) => { s.Height = LayoutLength.Px(140.0f); });
 		AddChild(mPlane);
@@ -490,6 +521,28 @@ class ColorPicker : UIWidget
 
 	public ColorHsv Hsv => mHsv;
 
+	/// The colour it opened with, shown beside the new one (a click on it puts it back).
+	public void SetOriginal(Color color)
+	{
+		mOriginal = color;
+		mWas.ColorValue = color;
+		mCompare.Displayed = true;
+	}
+
+	/// The swatch of the colour it opened with; null when none was given.
+	public ColorSwatch OriginalSwatch => mCompare.Displayed ? mWas : null;
+
+	/// Back to the colour it opened with, reported as a change.
+	public void Revert()
+	{
+		if (!mCompare.Displayed)
+			return;
+		mHsv = ToHsv(mOriginal, mHsv.H);
+		ShowFields();
+		Invalidate();
+		Report(true);
+	}
+
 	/// Whether it edits alpha (its strip and field show).
 	[GuiProperty("shows-alpha"), Scriptable]
 	public bool ShowsAlpha
@@ -498,6 +551,8 @@ class ColorPicker : UIWidget
 		set
 		{
 			mShowsAlpha = value;
+			mWas.ShowsAlpha = value;
+			mNow.ShowsAlpha = value;
 			mAlphaStrip.Displayed = value;
 			mChannels[3].Displayed = value;
 			mChannelLabels[3].Displayed = value;
@@ -618,6 +673,7 @@ class ColorPicker : UIWidget
 				mChannels[i].Value = (double)(Math.Clamp(channels[i], 0.0f, 1.0f) * 255.0f + 0.5f);
 		}
 		mShowing = false;
+		mNow.ColorValue = color;
 		mPlane.Invalidate();
 		mHueStrip.Invalidate();
 		mAlphaStrip.Invalidate();
