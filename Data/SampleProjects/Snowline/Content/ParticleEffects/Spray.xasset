@@ -7,6 +7,10 @@
 	</array>
 	<object name="payload">
 		<object>
+			<array name="dataVersions" count="1">
+				<u64 name="type">11225811489939361997</u64>
+				<u32 name="version">1</u32>
+			</array>
 			<string name="fileName"/>
 			<string name="name">Spray</string>
 			<array name="systems" count="1">
@@ -220,9 +224,9 @@
 							</object>
 						</object>
 					</array>
+					<array name="subEmitters" count="0"/>
 				</object>
 			</array>
-			<array name="links" count="0"/>
 			<array name="texturePaths" count="1">
 				<string>Effects/SoftDot</string>
 			</array>
