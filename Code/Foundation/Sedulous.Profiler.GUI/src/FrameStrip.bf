@@ -638,7 +638,7 @@ class FrameStrip : FrameAxisView
 }
 
 /// A counter's value each frame, on the strip's axis: its name in the gutter, the least and the most
-/// shown printed over the plot.
+/// shown printed over the plot, and its mean over the frames chosen.
 [GuiReflect(true)]
 class CounterPlot : FrameAxisView
 {
@@ -674,6 +674,54 @@ class CounterPlot : FrameAxisView
 	}
 
 	/// A column's value: the most of its frames' (false when none of them set it).
+	/// Its mean over the frames chosen that set it (false: none chosen, or none of them did).
+	public bool ChosenMean(out double mean)
+	{
+		mean = 0.0;
+		let source = Source;
+		let chosen = (mFocus != null) ? mFocus.Frames : FrameRange();
+		if ((source == null) || chosen.Empty)
+			return false;
+		double sum = 0.0;
+		uint32 count = 0;
+		for (var n = chosen.First; n <= chosen.Last; n++)
+		{
+			let frame = source.Frame(n);
+			if (frame == null)
+				continue;
+			for (let v in frame.Counters)
+			{
+				if (v.Counter == mCounter)
+				{
+					sum += v.Value;
+					count++;
+				}
+			}
+		}
+		if (count == 0)
+			return false;
+		mean = sum / (double)count;
+		return true;
+	}
+
+	/// What it prints over its plot, appended: the least and the most shown, the chosen frames'
+	/// mean.
+	public void RangeText(double least, double most, String outText)
+	{
+		let source = Source;
+		if ((source == null) || (mCounter >= (uint32)source.Counters.Length))
+			return;
+		let unit = source.Counters[mCounter].Unit;
+		ProfileWindow.FormatCounter(least, unit, outText);
+		outText.Append(" to ");
+		ProfileWindow.FormatCounter(most, unit, outText);
+		if (ChosenMean(let mean))
+		{
+			outText.Append(", mean ");
+			ProfileWindow.FormatCounter(mean, unit, outText);
+		}
+	}
+
 	public bool ColumnValue(FrameColumn column, out double value)
 	{
 		value = 0.0;
@@ -762,10 +810,7 @@ class CounterPlot : FrameAxisView
 			ctx.VG.FillRect(.(plot.X + column.X, plot.Bottom - h, Math.Max(column.Width, 1.0f), h), isChosen ? chosenColor : bar);
 		}
 		ctx.PopClip();
-		let range = scope String();
-		ProfileWindow.FormatCounter(least, info.Unit, range);
-		range.Append(" to ");
-		ProfileWindow.FormatCounter(most, info.Unit, range);
+		let range = RangeText(least, most, .. scope .());
 		// On a backing of the plot's colour at its end, so the bars under it never hide it.
 		let width = Math.Min(LabelWidth(range) + 8.0f, plot.Width);
 		let backing = Rect(plot.Right - width, plot.Y + 2.0f, width, plot.Height - 4.0f);

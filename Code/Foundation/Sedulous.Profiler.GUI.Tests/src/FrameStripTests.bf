@@ -234,6 +234,18 @@ class FrameStripTests
 		// A click on the plot chooses as the strip's does.
 		bed.Click(over);
 		Test.Assert(bed.Focus.Frames.First == 3);
+
+		// The mean over the frames chosen, printed after the range.
+		var chosen = FrameRange();
+		chosen.First = 3;
+		chosen.Last = 6;
+		chosen.Empty = false;
+		bed.Focus.SetFrames(chosen);
+		Test.Assert(bed.Plot.ChosenMean(var mean));
+		Test.Assert(Math.Abs(mean - 104.5) < 0.0001);
+		Test.Assert(bed.Plot.RangeText(100.0, 110.0, .. scope .()).Contains(", mean ", true));
+		bed.Plot.Counter = 5;
+		Test.Assert(!bed.Plot.ChosenMean(out mean));
 	}
 
 	[Test]
