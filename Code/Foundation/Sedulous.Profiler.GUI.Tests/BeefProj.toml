@@ -1,0 +1,20 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Profiler.GUI.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Profiler.GUI.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Profiler.GUI" = "*"
+"Sedulous.GUI" = "*"
+
+# The known-frames source the viewers' suites share, compiled from Profiler.Tests.
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "../Sedulous.Profiler.Tests/src/KnownSource.bf"
