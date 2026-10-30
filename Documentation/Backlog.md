@@ -51,6 +51,25 @@ map is [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
 
+### Importing over a same-named asset of another type keeps the old type
+`Group.CreateInstanceWithId` (Foundation/Sedulous.Content/src/Group.bf) returns the existing
+instance of that name whatever its type, so a reimport keeps its guid, but an import of a file
+of another kind over it does too: the GUI sample ports' screens, imported as `.gml` over the old
+`.sml` documents of the same name, stayed `UIDocumentAsset` holding GUI markup and failed to
+cook. Worked around through MCP (`asset_delete`, then import: the screens took new ids).
+Raptor's `Group::CreateInstanceWithId` behaves the same, so the rule is for both engines: refuse
+with a clear error, or replace the instance (and what of its guid and its references).
+
+### A page save re-records a scene's prefab instances
+Saving the Snowline Meadow page after painting its vegetation mask re-recorded the scene's
+prefab instances (40 to 77, with member lists) though its entities (47) and components (55)
+were unchanged; `scene_write` says it stores a scene as the editor saves it, so the two
+disagree. Found rebuilding Snowline (f1d081d4f); the commit kept course.py's scene.
+
+### `pie_stop` takes no `pie: "all"`
+It wants an instance name, though McpGuide's wording reads as if "all" stops every Game tab.
+Decide which, and make the tool or the guide match.
+
 ### Beef: an early `return` in a destructor skips the fields' cleanups
 A `return` inside `~this` also skips every field's `~ delete _` (or other `~` cleanup), which
 run after the body; C++ runs member destructors however the body exits. Verified on the fork's
