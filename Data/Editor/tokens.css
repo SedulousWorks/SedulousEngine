@@ -51,7 +51,7 @@
     --border-strong: #454b56;   /* a hovered field */
     --separator: #282b31;       /* between rows and panels */
 
-    /* Text: 13px on --surface. text 12.6:1, text-dim 6.4:1, text-placeholder 4.6:1. */
+    /* Text: 13px on --surface. text 12.3:1, text-dim 6.4:1, text-placeholder 4.6:1. */
     --text: #d9dde4;
     --text-strong: #f3f5f8;
     --text-dim: #9aa1ad;
@@ -127,7 +127,7 @@
         --border-strong: #aab1bc;
         --separator: #dfe2e7;
 
-        /* On --surface: text 14.9:1, text-dim 5.9:1, text-placeholder 4.5:1. */
+        /* On --surface: text 14.5:1, text-dim 5.6:1, text-placeholder 4.2:1. */
         --text: #1e2228;
         --text-strong: #0b0d10;
         --text-dim: #5b626e;
