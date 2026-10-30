@@ -66,12 +66,12 @@ class ViewActions
 	public EditorContext Context = null;
 	/// Puts the panels back in the default layout. Owned.
 	public delegate void() ResetLayout ~ delete _;
-	/// Shows the Profiler tab. Owned.
+	/// Shows the Profiler page. Owned.
 	public delegate void() Profiler ~ delete _;
 	/// Whether the profiler is recording: Profiler Record's checked state; null is never.
 	/// Owned, and dropped with ProfilerRecord when that is not given.
 	public delegate bool() ProfilerRecording ~ delete _;
-	/// Shows the Profiler tab and starts or stops its recording. Owned.
+	/// Shows the Profiler page and starts or stops its recording. Owned.
 	public delegate void() ProfilerRecord ~ delete _;
 	/// Writes the main window to a PNG under <user-data>/screenshots. Owned.
 	public delegate void() Screenshot ~ delete _;
@@ -294,13 +294,13 @@ static class EditorAppActions
 			actions.Register(d);
 		}
 		{
-			let d = new EditorActionDeclaration("view.profiler", "Profiler", "Show the Profiler tab beside the Console: record the editor process, open a player's capture", "View/Profiler", 210);
+			let d = new EditorActionDeclaration("view.profiler", "Profiler", "Show the Profiler page: record the editor process, open a player's capture", "View/Profiler", 210);
 			d.ReadOnly = true; // shows a panel; nothing in the project changes
 			Add(actions, d, ref run.Profiler);
 		}
 		if (run.ProfilerRecord != null)
 		{
-			let d = new EditorActionDeclaration("profiler.record", "Profiler Record", "Record the editor process in the Profiler tab (every page, preview and Play-in-editor run), or stop", "View/Profiler Record", 211);
+			let d = new EditorActionDeclaration("profiler.record", "Profiler Record", "Record the editor process in the Profiler page (every page, preview and Play-in-editor run), or stop", "View/Profiler Record", 211);
 			d.Kind = .Toggle;
 			d.ReadOnly = true; // the profiler's state, not the project's
 			let recording = run.ProfilerRecording;

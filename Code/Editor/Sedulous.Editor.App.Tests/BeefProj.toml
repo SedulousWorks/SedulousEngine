@@ -47,6 +47,7 @@ corlib = "*"
 "Sedulous.Editor.Mcp" = "*"
 "Sedulous.Profiler" = "*"
 "Sedulous.Profiler.Capture" = "*"
+"Sedulous.Profiler.GUI" = "*"
 # The editor-wide actions' resource report, over a scratch project's cooked database.
 "Sedulous.Resource" = "*"
 # The project manager: a manifest's engine stamp rewritten, and probed.
@@ -68,10 +69,6 @@ Name = "ContainerListEditorTests.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "PageToolbarTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ProfilerPanelTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

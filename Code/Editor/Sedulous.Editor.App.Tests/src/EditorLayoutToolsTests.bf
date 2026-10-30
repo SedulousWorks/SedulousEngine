@@ -360,11 +360,7 @@ class EditorLayoutToolsTests
 		let bed = scope DockBed();
 		let server = scope McpServer();
 		Rig(bed, server);
-		let description = new DockPanelDescription();
-		description.Id.Set("profiler");
-		description.Title.Set("Profiler");
-		description.Factory = new () => new Sedulous.GUI.Panel();
-		Test.Assert(bed.Dock.Controller.Register(description));
+		// The dock's Profiler: registered, closed in the default layout until shown.
 		{
 			let got = Call(server, "layout_get", "{}");
 			defer delete got;

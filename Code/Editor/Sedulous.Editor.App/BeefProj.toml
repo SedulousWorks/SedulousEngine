@@ -57,6 +57,7 @@ corlib = "*"
 "Sedulous.Mcp.Http" = "*"
 "Sedulous.Profiler" = "*"
 "Sedulous.Profiler.Capture" = "*"
+"Sedulous.Profiler.GUI" = "*"
 "Sedulous.Editor.Mcp" = "*"
 
 # The shell moves onto the GUI in parts (Raptor's editor-gui spec, 5.1). A file still on
@@ -103,10 +104,6 @@ Name = "PagePanel.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "PageToolbar.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ProfilerPanel.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

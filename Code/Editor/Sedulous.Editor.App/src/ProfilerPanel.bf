@@ -1,17 +1,31 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Profiler;
-using Sedulous.Profiler.UI;
+using Sedulous.Profiler.GUI;
 using Sedulous.Profiler.Capture;
 
 namespace Sedulous.Editor.App;
 
-/// What the panel records and where its captures go: the process's store and recorder (a
-/// test's own), and the folder (made when missing).
+// ProfilerPanel: the editor's Profiler (X7 of Raptor's editor-gui spec), a tab in the page area that
+// floats as any page does. It records the editor process, every page, viewport preview and
+// Play-in-editor run in one frame, and says so: a game's own numbers come from its player (the
+// overlay, or a capture from it opened here). Its frame is markup (Data/Editor/Profiler.gml); its
+// views are Profiler.GUI's, all on one focus.
+//
+// Record starts copying the store's frames into the panel's own recording and Stop ends it, so
+// stopping, the choices and a longer history than the store keeps never touch the store another
+// viewer reads (a PIE game's overlay). While Live, the newest frame is chosen as it comes; a choice
+// on the strip stops that, and Live brings it back (from a capture, the editor's own recording
+// again). Stop on spike ends the recording at the first frame over its time, that frame chosen.
+// Save writes the recording as a capture (.aeprofile and its Chrome trace JSON) to
+// <user-data>/profiles; Open shows a capture from there, a player's from a Deck or a phone copied in.
+
+/// What the panel records and where its captures go: the process's store and recorder (a test's
+/// own), the folder (made when missing) and the picker it opens a capture through.
 class ProfilerPanelSeams
 {
 	/// BORROWED, both.
@@ -19,164 +33,108 @@ class ProfilerPanelSeams
 	/// The platform and build a saved capture names; null leaves them empty.
 	public CaptureRecorder Recorder;
 	public String Folder = new .() ~ delete _;
+	/// Opens a picker's request (OWNERSHIP of it transfers); null: Open does nothing. Owned.
+	public delegate void(PickerRequest request) Pick ~ delete _;
 }
 
-/// The panel's parts at their natural sizes: the toolbar, the frame strip, then the timeline
-/// beside a column of the scope table over the counters. It takes the pane's size, or its
-/// minimum when the pane is smaller, and the panel scrolls it then: resize the split for more.
-class ProfilerPanelBody : ViewGroup
+class ProfilerPanel : IProfileFocusClient
 {
-	public const float MinWidth = 640.0f;
-	public const float MinHeight = 360.0f;
-	/// The table and counters' column, at most and at least.
-	public const float SideMax = 380.0f;
-	public const float SideMin = 260.0f;
-	public const float Gap = 4.0f;
+	/// Its frame, under the data root.
+	public const String cMarkupPath = "Editor/Profiler.gml";
+	/// The budget's choices, the combo's order: 30, 60 and 120 fps, then none.
+	public static readonly float[4] cBudgets = .(1000.0f / 30.0f, 1000.0f / 60.0f, 1000.0f / 120.0f, 0.0f);
+	/// Stop on spike's times, the combo's order.
+	public static readonly float[4] cSpikes = .(25.0f, 33.3f, 50.0f, 100.0f);
 
-	/// The table and counters' column in a body `width` wide: 40%, within its bounds.
-	public static float SideWidth(float width) => Math.Clamp(width * 0.4f, SideMin, SideMax);
-
-	/// The parts it places, BORROWED: it holds them as children.
-	public View Toolbar;
-	public View Strip;
-	public View TimelineView;
-	public View Table;
-	public View Counters;
-	/// The pane it shows in (the panel sets it before each measure).
-	public Float2 Viewport = .(MinWidth, MinHeight);
-
-	protected override void OnMeasure(BoxConstraints constraints)
-	{
-		// Unbounded along a scrolled axis: the pane's size decides instead.
-		let width = Math.Max(Viewport.X, MinWidth);
-		let height = Math.Max(Viewport.Y, MinHeight);
-		let unbounded = BoxConstraints.Expand().MaxHeight;
-		Toolbar.Measure(.(width, width, 0.0f, unbounded));
-		Counters.Measure(.(0.0f, SideWidth(width), 0.0f, unbounded));
-		let loose = BoxConstraints(0.0f, width, 0.0f, height);
-		Strip.Measure(loose);
-		TimelineView.Measure(loose);
-		Table.Measure(loose);
-		MeasuredSize = .(width, height);
-	}
-
-	protected override void OnLayout(float left, float top, float width, float height)
-	{
-		let bar = Toolbar.MeasuredSize.Y;
-		Toolbar.Layout(0, 0, width, bar);
-		Strip.Layout(0, bar, width, FrameTimeGraph.GraphHeight);
-		let y = bar + FrameTimeGraph.GraphHeight + Gap;
-		let rest = Math.Max(height - y, 0.0f);
-		let side = SideWidth(width);
-		TimelineView.Layout(0, y, width - side - Gap, rest);
-		let countersHeight = Counters.MeasuredSize.Y;
-		let tableHeight = Math.Max(rest - countersHeight - Gap, 0.0f);
-		Table.Layout(width - side, y, side, tableHeight);
-		Counters.Layout(width - side, y + tableHeight + Gap, side, countersHeight);
-	}
-}
-
-/// The editor's Profiler tab, docked with the Console. It records the editor process, every
-/// page, viewport preview and Play-in-editor run in one frame, and says so: a game's own
-/// numbers come from its player (the overlay, or a capture from it opened here). Record starts
-/// copying the store's frames into the panel's own recording and Stop ends it, so stopping,
-/// the selection and a longer history than the store keeps never touch the store another
-/// viewer reads (a PIE game's overlay). The frame strip shows every recorded frame (a click
-/// selects one, a drag a range; while recording it follows the newest until you choose), the
-/// timeline and the scope table show the selection, the counters their means over it. Save
-/// writes the recording as a capture (.aeprofile and its Chrome trace JSON) to
-/// <user-data>/profiles; Open shows a capture from there, a player's from a Deck or a phone
-/// copied in, and Live goes back to the editor's own.
-class ProfilerPanel : ViewGroup
-{
+	/// A reference of ours; the panel showing it takes its own. Declared first: it goes last.
+	private Node mContent ~ _?.ReleaseRef();
 	private ProfilerPanelSeams mSeams ~ delete _;
 	private LiveProfileSource mLive ~ delete _;
 	private ProfileRecording mRecording = new .() ~ delete _;
 	/// Shown instead of the recording, when open.
-	private ProfileCapture mCapture ~ delete _;
+	private ProfileCapture mCapture = null ~ delete _;
 	private String mCapturePath = new .() ~ delete _;
-	private IProfileSource mSource;
-	private bool mRecordingNow;
-	/// While recording, the newest frame shows until the user selects.
-	private bool mFollow = true;
-
-	// BORROWED: the tree holds them.
-	private ScrollView mScroll;
-	private ProfilerPanelBody mBody;
-	private Toolbar mToolbar;
-	private ToolbarToggle mRecord;
-	private ToolbarButton mSave;
-	private ToolbarButton mLiveButton;
-	private Label mStatus;
+	private ProfileFocus mFocus = new .() ~ _.ReleaseRef();
+	private FrameAxis mAxis = new .() ~ _.ReleaseRef();
+	private bool mRecordingNow = false;
+	private bool mFollowing = true;
+	private bool mStopOnSpike = false;
+	private float mSpikeMs = 50.0f;
 	private String mStatusText = new .() ~ delete _;
-	private FrameTimeGraph mStrip;
-	private Sedulous.Profiler.UI.Timeline mTimeline;
-	private ScopeTable mTable;
-	private CounterStrip mCounters;
 
-	/// TAKES OWNERSHIP of the seams.
-	public this(ProfilerPanelSeams seams)
+	// Borrowed from the content.
+	private FrameStrip mStrip = null;
+	private ProfileTimeline mTimeline = null;
+	private ScopeTable mTable = null;
+	private ScopeDetail mDetail = null;
+	private Sedulous.GUI.Panel mCounters = null;
+	private ToolButton mRecord = null;
+	private ToolButton mLiveButton = null;
+	private ToolButton mSave = null;
+	private ToolButton mSpike = null;
+	/// A reference each, the counters' panel another.
+	private List<CounterPlot> mCounterPlots = new .() ~ { for (let plot in _) plot.ReleaseRef(); delete _; };
+
+	/// Over its frame `content` (the markup's: its parts by id). TAKES OWNERSHIP of the seams and
+	/// of a reference to `content`; null shows nothing.
+	public this(ProfilerPanelSeams seams, Node content)
 	{
 		mSeams = seams;
+		mContent = content;
 		mLive = new .(seams.Store);
+		mFocus.Join(this);
+		if (mContent == null)
+			return;
+		mStrip = Find<FrameStrip>("profiler-strip");
+		mTimeline = Find<ProfileTimeline>("profiler-timeline");
+		mTable = Find<ScopeTable>("profiler-table");
+		mDetail = Find<ScopeDetail>("profiler-detail");
+		mCounters = Find<Sedulous.GUI.Panel>("profiler-counters");
+		if (mStrip != null)
+		{
+			mStrip.Focus = mFocus;
+			mStrip.Axis = mAxis;
+			mStrip.SetOnFramesPicked(new [=this] () => { SetFollowing(false); });
+		}
+		if (mTimeline != null)
+			mTimeline.Focus = mFocus;
+		if (mTable != null)
+			mTable.Focus = mFocus;
+		if (mDetail != null)
+			mDetail.Focus = mFocus;
 
-		mToolbar = new Toolbar();
-		mRecord = mToolbar.AddToggle("Record");
-		mRecord.TooltipText.Set("Record the editor process (every page, preview and Play-in-editor run)");
-		mRecord.OnCheckedChanged.Add(new [=this](toggle, on) => { if (on) Start(); else Stop(); });
-		let clear = mToolbar.AddButton("Clear");
-		clear.TooltipText.Set("Drop the recorded frames");
-		clear.OnClick.Add(new [=this](button) => Clear());
-		mToolbar.AddSeparator();
-		let open = mToolbar.AddButton("Open...");
-		open.TooltipText.Set("Show a capture from <user-data>/profiles (a player's F9 or --profile-capture)");
-		open.OnClick.Add(new [=this](button) => PickCapture());
-		mSave = mToolbar.AddButton("Save");
-		mSave.TooltipText.Set("Write the recording to <user-data>/profiles (.aeprofile, and .json for Perfetto)");
-		mSave.OnClick.Add(new [=this](button) => { SaveRecording(.. scope .()); });
-		mLiveButton = mToolbar.AddButton("Live");
-		mLiveButton.TooltipText.Set("Back to the editor's own recording");
-		mLiveButton.OnClick.Add(new [=this](button) => ShowLive());
-		mToolbar.AddSeparator();
-		mStatus = mToolbar.AddLabel("");
-		mStatus.TooltipText.Set("The editor process: every page, viewport preview and Play-in-editor run in one frame. A game's own numbers come from its player: the overlay (F3), or a capture (F9, --profile-capture) opened here.");
-		mBody = new ProfilerPanelBody();
-		mBody.AddView(mToolbar);
-
-		mStrip = new FrameTimeGraph();
-		mStrip.FitToSource = true;
-		mStrip.Interactive = true;
-		mStrip.OnSelectionChanged.Add(new [=this](range) =>
-			{
-				mFollow = false; // the user chose: stop following the newest
-				ShowFrames(range);
-			});
-		mBody.AddView(mStrip);
-
-		mTimeline = new Sedulous.Profiler.UI.Timeline();
-		mTable = new ScopeTable();
-		mTable.OnSelect.Add(new [=this](row) =>
-			{
-				if (row != null)
-					mTimeline.SetHighlight(row.Name, row.Gpu);
-				else
-					mTimeline.ClearHighlight();
-			});
-		mCounters = new CounterStrip();
-		mBody.AddView(mTimeline);
-		mBody.AddView(mTable);
-		mBody.AddView(mCounters);
-		mBody.Toolbar = mToolbar;
-		mBody.Strip = mStrip;
-		mBody.TimelineView = mTimeline;
-		mBody.Table = mTable;
-		mBody.Counters = mCounters;
-		// A pane smaller than the body's minimum scrolls it; the user resizes the split for more.
-		mScroll = new ScrollView();
-		mScroll.VScrollBarPolicy.Value = .Auto;
-		mScroll.HScrollBarPolicy.Value = .Auto;
-		mScroll.AddView(mBody);
-		AddView(mScroll);
+		mRecord = Find<ToolButton>("profiler-record");
+		if (mRecord != null)
+			mRecord.SetOnToggled(new [=this] (on) => { if (on) Start(); else Stop(); });
+		mLiveButton = Find<ToolButton>("profiler-live");
+		if (mLiveButton != null)
+			mLiveButton.SetOnToggled(new [=this] (on) => { if (on) ShowLive(); else SetFollowing(false); });
+		if (let open = Find<ToolButton>("profiler-open"))
+			open.SetOnClick(new [=this] () => { PickCapture(); });
+		mSave = Find<ToolButton>("profiler-save");
+		if (mSave != null)
+			mSave.SetOnClick(new [=this] () => { SaveRecording(.. scope .()); });
+		if (let budget = Find<Sedulous.GUI.ComboBox>("profiler-budget"))
+		{
+			budget.SetOnSelectionChanged(new [=this] (index) => { SetBudgetChoice(index); });
+			SetBudgetChoice(budget.SelectedIndex);
+		}
+		mSpike = Find<ToolButton>("profiler-spike");
+		if (mSpike != null)
+			mSpike.SetOnToggled(new [=this] (on) => { SetStopOnSpike(on); });
+		if (let spike = Find<Sedulous.GUI.ComboBox>("profiler-spike-ms"))
+		{
+			spike.SetOnSelectionChanged(new [=this] (index) => { SetSpikeChoice(index); });
+			SetSpikeChoice(spike.SelectedIndex);
+		}
+		if (let longest = Find<Sedulous.GUI.Button>("profiler-longest"))
+			longest.SetOnClick(new [=this] () => { ChooseLongest(); });
+		if (let median = Find<Sedulous.GUI.Button>("profiler-median"))
+			median.SetOnClick(new [=this] () => { ChooseMedian(); });
+		if (let zoom = Find<Sedulous.GUI.Button>("profiler-zoom-longest"))
+			zoom.SetOnClick(new [=this] () => { ZoomToLongest(); });
+		if (let filter = Find<Sedulous.GUI.TextField>("profiler-filter"))
+			filter.SetOnTextChanging(new [=this] (text) => { if (mTable != null) mTable.SetFilter(text); });
 		ShowLive();
 	}
 
@@ -184,7 +142,14 @@ class ProfilerPanel : ViewGroup
 	{
 		if (mRecordingNow)
 			mSeams.Store.Disarm();
+		mFocus.Leave(this);
+		mFocus.SetSource(null);
 	}
+
+	/// Its frame (ours; the panel showing it takes its own reference).
+	public Node Content => mContent;
+	public ProfileFocus Focus => mFocus;
+	public FrameAxis Axis => mAxis;
 
 	/// Starts recording the editor process afresh (arming the store, counted).
 	public void Start()
@@ -195,9 +160,9 @@ class ProfilerPanel : ViewGroup
 		mRecording.Begin(mLive);
 		mSeams.Store.Arm();
 		mRecordingNow = true;
-		mFollow = true;
-		SyncRecordToggle();
-		RefreshViews();
+		mAxis.Fit(0, 0); // fitting again: it follows the recording from here
+		SyncToggles();
+		Refresh();
 	}
 
 	/// Stops: the frames recorded stay to read and save; the store is let go.
@@ -208,31 +173,43 @@ class ProfilerPanel : ViewGroup
 		mRecording.Pull(mLive, 0); // the rest, as they are
 		mSeams.Store.Disarm();
 		mRecordingNow = false;
-		SyncRecordToggle();
-		RefreshViews();
+		SyncToggles();
+		Refresh();
 	}
 
 	public bool IsRecording => mRecordingNow;
+	public bool IsFollowing => mFollowing;
 
-	/// Drops the recorded frames (recording carries on from now if it is on).
-	public void Clear()
-	{
-		mRecording.Begin(mLive);
-		mFollow = true;
-		ShowFrames(.());
-		RefreshViews();
-	}
-
-	/// Each frame: takes the store's newly settled frames while recording, and redraws.
+	/// Each frame: the store's newly settled frames taken while recording; Stop on spike stops at
+	/// the first frame over its time.
 	public void Update()
 	{
 		if (!mRecordingNow)
 			return;
 		let before = mRecording.FrameCount;
 		let newest = mRecording.NewestFrame;
+		let next = mRecording.HasFrames ? (newest + 1) : 0;
 		mRecording.Pull(mLive);
-		if ((mRecording.FrameCount != before) || (mRecording.NewestFrame != newest))
-			RefreshViews();
+		if ((mRecording.FrameCount == before) && (mRecording.NewestFrame == newest))
+			return;
+		if (mStopOnSpike && mRecording.HasFrames)
+		{
+			for (var n = Math.Max(next, mRecording.OldestFrame); n <= mRecording.NewestFrame; n++)
+			{
+				let frame = mRecording.Frame(n);
+				if (frame == null)
+					continue;
+				let ms = ProfileWindow.TicksToMs(frame.EndTick - frame.BeginTick, mRecording.TickFrequency);
+				if (ms <= mSpikeMs)
+					continue;
+				Stop();
+				SetFollowing(false);
+				mFocus.SetFrame(n);
+				SetStatus(scope $"Stopped on frame {n}: {ms:F2} ms, over {mSpikeMs:F0} ms");
+				return;
+			}
+		}
+		Refresh();
 	}
 
 	/// Writes the recording as a capture; appends the .aeprofile's path to `outPath` (nothing:
@@ -265,7 +242,8 @@ class ProfilerPanel : ViewGroup
 		outPath.Append(path);
 	}
 
-	/// Shows the capture file at `path` (recording stops). False when it cannot be read.
+	/// Shows the capture file at `path` (recording stops), its newest frame chosen. False when it
+	/// cannot be read.
 	public bool OpenCapture(StringView path)
 	{
 		let capture = new ProfileCapture();
@@ -279,104 +257,165 @@ class ProfilerPanel : ViewGroup
 			}
 		}
 		Stop();
-		delete mCapture;
+		// The views let the old capture go before it is deleted.
+		let old = mCapture;
 		mCapture = capture;
 		mCapturePath.Set(path);
+		SetFollowing(false);
 		SetSource(mCapture);
-		mFollow = false;
-		// The newest frame selected, as a recording shows it.
-		var newest = FrameRange();
+		delete old;
 		if (mCapture.HasFrames)
-		{
-			newest.First = mCapture.NewestFrame;
-			newest.Last = newest.First;
-			newest.Empty = false;
-		}
-		ShowFrames(newest);
+			mFocus.SetFrame(mCapture.NewestFrame);
 		return true;
 	}
 
-	/// Back to the editor's own recording.
+	/// The editor's own recording, following its newest frame.
 	public void ShowLive()
 	{
-		DeleteAndNullify!(mCapture);
-		mCapturePath.Clear();
-		SetSource(mRecording);
+		if ((mCapture != null) || (mFocus.Source == null))
+		{
+			let old = mCapture;
+			mCapture = null;
+			mCapturePath.Clear();
+			SetSource(mRecording);
+			delete old;
+		}
+		SetFollowing(true);
+		Refresh();
 	}
 
 	public bool ViewingCapture => mCapture != null;
-	public IProfileSource Source => mSource;
 	public ProfileRecording Recording => mRecording;
-	public FrameRange Selection => mStrip.Selection;
-
-	/// Selects frames as a click or drag on the strip does.
-	public void Select(FrameRange range)
-	{
-		mFollow = false;
-		ShowFrames(range);
-	}
-
-	public FrameTimeGraph Strip => mStrip;
-	public Sedulous.Profiler.UI.Timeline TimelineView => mTimeline;
-	public ScopeTable Table => mTable;
-	public CounterStrip Counters => mCounters;
 	public StringView StatusText => mStatusText;
-	public ProfilerPanelBody Body => mBody;
-	public ScrollView Scroller => mScroll;
 
-	protected override void OnMeasure(BoxConstraints constraints)
+	/// Follows the newest frame as it comes, or not (a choice on the strip stops it).
+	public void SetFollowing(bool following)
 	{
-		mBody.Viewport = .(constraints.MaxWidth, constraints.MaxHeight);
-		mScroll.Measure(constraints);
-		MeasuredSize = .(constraints.MaxWidth, constraints.MaxHeight);
+		mFollowing = following;
+		SyncToggles();
+		if (following)
+			Refresh();
 	}
 
-	protected override void OnLayout(float left, float top, float width, float height)
+	/// The budget in ms (0: none).
+	public void SetBudgetChoice(int32 index)
 	{
-		mScroll.Layout(0, 0, width, height);
+		let at = ((index >= 0) && (index < cBudgets.Count)) ? index : 1;
+		if (mStrip != null)
+			mStrip.BudgetMs = cBudgets[at];
+	}
+
+	/// Stop on spike's time.
+	public void SetSpikeChoice(int32 index)
+	{
+		let at = ((index >= 0) && (index < cSpikes.Count)) ? index : 2;
+		mSpikeMs = cSpikes[at];
+	}
+
+	public void SetStopOnSpike(bool on)
+	{
+		mStopOnSpike = on;
+		if ((mSpike != null) && (mSpike.Checked != on))
+			mSpike.Checked = on;
+	}
+
+	public bool StopsOnSpike => mStopOnSpike;
+
+	/// The longest and the median frame held, chosen.
+	public void ChooseLongest()
+	{
+		if (mFocus.Source != null)
+			ChooseFrame(ProfileFrames.LongestFrame(mFocus.Source, ProfileFrames.AllFrames(mFocus.Source)));
+	}
+
+	public void ChooseMedian()
+	{
+		if (mFocus.Source != null)
+			ChooseFrame(ProfileFrames.MedianFrame(mFocus.Source, ProfileFrames.AllFrames(mFocus.Source)));
+	}
+
+	/// The chosen scope's longest call in the frames chosen, on the timeline.
+	public void ZoomToLongest()
+	{
+		if ((mDetail != null) && (mTimeline != null) && mDetail.LongestCall(let begin, let end))
+			mTimeline.ZoomTo((double)begin, (double)end);
+	}
+
+	/// The plots made for the source's counters (one each, in their order).
+	public int CounterPlotCount => mCounterPlots.Count;
+
+	public void OnProfileSourceChanged() { }
+	public void OnProfileFramesChanged() => UpdateFrameText();
+	public void OnProfileChoiceChanged() => UpdateScopeNote();
+
+	/// The frame's part with this id, as a T; null when it has none.
+	private T Find<T>(StringView id) where T : Node
+	{
+		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
 	}
 
 	private void SetSource(IProfileSource source)
 	{
-		mSource = source;
-		mStrip.Source = source;
-		mTimeline.Source = source;
-		mTable.Source = source;
-		mCounters.Source = source;
-		mLiveButton.Visibility = (mCapture != null) ? .Visible : .Gone;
-		mSave.IsEnabled = mCapture == null;
-		ShowFrames(.());
+		mAxis.Fit(0, 0); // every frame of the new source, following it as it grows
+		mFocus.SetSource(source);
+		SyncCounters();
+		if (mSave != null)
+			mSave.Enabled = mCapture == null;
 		UpdateStatus();
 	}
 
-	/// The selection, to every view that shows it.
-	private void ShowFrames(FrameRange range)
+	// New frames: every view reads them again; while following, the newest is chosen.
+	private void Refresh()
 	{
-		mStrip.Selection = range;
-		mTimeline.Frames = range;
-		mTable.Frames = range;
-		mCounters.SetRange(range);
+		mFocus.SourceGrew();
+		SyncCounters();
+		let source = mFocus.Source;
+		if (mFollowing && (source != null) && source.HasFrames)
+			mFocus.SetFrame(source.NewestFrame);
+		UpdateStatus();
+		UpdateFrameText();
 	}
 
-	/// New frames: the strip grows, and while following, the newest is shown.
-	private void RefreshViews()
+	private void ChooseFrame(FrameRange frame)
 	{
-		mStrip.Refresh();
-		if (mFollow && mRecording.HasFrames)
+		if (frame.Empty)
+			return;
+		SetFollowing(false);
+		mFocus.SetFrames(frame);
+	}
+
+	// A plot per counter the source has, under the strip.
+	private void SyncCounters()
+	{
+		let source = mFocus.Source;
+		let wanted = (source != null) ? source.Counters.Length : 0;
+		if ((mCounters == null) || (wanted == mCounterPlots.Count))
+			return;
+		while (mCounterPlots.Count > wanted)
 		{
-			var newest = FrameRange();
-			newest.First = mRecording.NewestFrame;
-			newest.Last = newest.First;
-			newest.Empty = false;
-			ShowFrames(newest);
+			let plot = mCounterPlots.PopBack();
+			plot.RemoveFromParent();
+			plot.ReleaseRef();
 		}
-		UpdateStatus();
+		while (mCounterPlots.Count < wanted)
+		{
+			let plot = new CounterPlot();
+			plot.Focus = mFocus;
+			plot.Axis = mAxis;
+			plot.Counter = (uint32)mCounterPlots.Count;
+			plot.SetOnFramesPicked(new [=this] () => { SetFollowing(false); });
+			mCounters.AddChild(plot);
+			mCounterPlots.Add(plot);
+		}
 	}
 
-	private void SyncRecordToggle()
+	private void SyncToggles()
 	{
-		if (mRecord.IsChecked != mRecordingNow)
-			mRecord.IsChecked = mRecordingNow; // fires Start or Stop, which return at once
+		if ((mRecord != null) && (mRecord.Checked != mRecordingNow))
+			mRecord.Checked = mRecordingNow; // fires Start or Stop, which return at once
+		let live = mFollowing && (mCapture == null);
+		if ((mLiveButton != null) && (mLiveButton.Checked != live))
+			mLiveButton.Checked = live;
 	}
 
 	private void UpdateStatus()
@@ -388,33 +427,87 @@ class ProfilerPanel : ViewGroup
 			text.AppendF("{}: {} frames of {} ({} {})", mCapturePath, mCapture.FrameCount, header.Application, header.Platform, header.Build);
 		}
 		else if (mRecordingNow)
-		{
 			text.AppendF("Recording the editor process: {} frames", mRecording.FrameCount);
-		}
 		else if (mRecording.HasFrames)
-		{
-			text.AppendF("Editor process: {} frames", mRecording.FrameCount);
-		}
+			text.AppendF("The editor process: {} frames", mRecording.FrameCount);
 		else
-		{
-			text.Append("Editor process (every page, preview and Play-in-editor run): Record to start");
-		}
+			text.Append("The editor process (every page, preview and Play-in-editor run): Record to start");
 		SetStatus(text);
 	}
 
 	private void SetStatus(StringView text)
 	{
 		mStatusText.Set(text);
-		mStatus.SetText(mStatusText);
+		if (let label = Find<Sedulous.GUI.Label>("profiler-source"))
+			label.Text = mStatusText;
+	}
+
+	// The strip's bar: the frames chosen and their times.
+	private void UpdateFrameText()
+	{
+		let source = mFocus.Source;
+		let frames = mFocus.Frames;
+		let frame = scope String();
+		let times = scope String();
+		if ((source != null) && !frames.Empty)
+		{
+			if (frames.First == frames.Last)
+				frame.AppendF("Frame {}", frames.First);
+			else
+				frame.AppendF("Frames {} to {}", frames.First, frames.Last);
+			let collected = scope List<FrameTime>();
+			ProfileWindow.CollectFrameTimes(source, frames, collected);
+			if (collected.Count == 1)
+			{
+				if (collected[0].HasGpu)
+					times.AppendF("CPU {:F2} ms   GPU {:F2} ms", collected[0].CpuMs, collected[0].GpuMs);
+				else
+					times.AppendF("CPU {:F2} ms", collected[0].CpuMs);
+			}
+			else if (!collected.IsEmpty)
+			{
+				let stats = ProfileWindow.StatsOf(collected);
+				times.AppendF("CPU mean {:F2}   median {:F2}   max {:F2} ms", stats.Cpu.Mean, stats.Cpu.Median, stats.Cpu.Max);
+			}
+		}
+		if (let label = Find<Sedulous.GUI.Label>("profiler-frame"))
+			label.Text = frame;
+		if (let label = Find<Sedulous.GUI.Label>("profiler-frame-times"))
+			label.Text = times;
+		UpdateScopeNote();
+	}
+
+	// The table's bar: what it covers.
+	private void UpdateScopeNote()
+	{
+		let note = Find<Sedulous.GUI.Label>("profiler-scope-note");
+		if (note == null)
+			return;
+		let source = mFocus.Source;
+		let frames = mFocus.Frames;
+		let text = scope String();
+		if ((source != null) && !frames.Empty)
+		{
+			if (frames.First == frames.Last)
+				text.AppendF("Frame {}", frames.First);
+			else
+				text.AppendF("Frames {} to {}", frames.First, frames.Last);
+			let span = mFocus.Span;
+			if (span.Any)
+				text.AppendF(", a span of {:F2} ms", ProfileWindow.TicksToMs(span.EndTick - span.BeginTick, source.TickFrequency));
+		}
+		note.Text = text;
 	}
 
 	private void PickCapture()
 	{
-		if (Context == null)
+		if (mSeams.Pick == null)
 			return;
 		CreateDirectory(mSeams.Folder);
-		let dialog = new PathPickerDialog("Open a capture", mSeams.Folder, scope StringView[](".aeprofile"));
-		dialog.OnPicked = new [=this](picked) => { OpenCapture(PathJoin(mSeams.Folder, picked, .. scope .())); };
-		dialog.Show(Context);
+		let request = PathPicker.Request(mSeams.Folder, scope StringView[](".aeprofile"));
+		let folder = new String(mSeams.Folder);
+		delete request.OnPicked;
+		request.OnPicked = new [=this, =folder] (picked) => { OpenCapture(PathJoin(folder, picked, .. scope .())); } ~ delete folder;
+		mSeams.Pick(request);
 	}
 }

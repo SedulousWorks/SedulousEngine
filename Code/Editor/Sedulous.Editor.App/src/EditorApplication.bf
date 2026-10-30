@@ -18,6 +18,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Profiler;
+using Sedulous.Profiler.Capture;
 
 namespace Sedulous.Editor.App;
 
@@ -117,6 +118,8 @@ class EditorApplication : IApplication
 	private ProjectHomeView mHome = null ~ delete _;
 	/// The Console panel's content, made with the dock.
 	private LogView mConsole = null ~ delete _;
+	/// The Profiler page's content, made with the dock.
+	private ProfilerPanel mProfiler = null ~ delete _;
 	/// The Assets panel's content, made with the dock; after the type icons it borrows, so it
 	/// goes first.
 	private AssetsView mAssets = null ~ delete _;
@@ -642,6 +645,21 @@ class EditorApplication : IApplication
 					content.AddRef(); // the dock's
 				return content;
 			};
+		{
+			let seams = new ProfilerPanelSeams();
+			seams.Store = GlobalProfiler(); // installed at start-up
+			seams.Recorder = CaptureRecorder.Process;
+			PathJoin(GetUserDataDirectory(.. scope .()), "profiles", seams.Folder);
+			seams.Pick = new (request) => { ShowPicker(request); };
+			mProfiler = new ProfilerPanel(seams, mWindow.LoadMarkup(ProfilerPanel.cMarkupPath));
+		}
+		contents.Profiler = new () =>
+			{
+				let content = mProfiler.Content;
+				if (content != null)
+					content.AddRef(); // the dock's
+				return content;
+			};
 		mDock.Open(into, mWindow.Host, contents);
 	}
 
@@ -1041,6 +1059,18 @@ class EditorApplication : IApplication
 		let view = new ViewActions();
 		view.Context = mContext;
 		view.ResetLayout = new () => { mDock.ResetLayout(); };
+		view.Profiler = new () => { mDock.BringToFront(EditorDock.cPanelProfiler); };
+		view.ProfilerRecording = new () => (mProfiler != null) && mProfiler.IsRecording;
+		view.ProfilerRecord = new () =>
+			{
+				if (mProfiler == null)
+					return;
+				mDock.BringToFront(EditorDock.cPanelProfiler);
+				if (mProfiler.IsRecording)
+					mProfiler.Stop();
+				else
+					mProfiler.Start();
+			};
 		view.Screenshot = new () => { TakeEditorScreenshot(); };
 		view.CommandPalette = new () => { OpenCommandPalette(); };
 		EditorAppActions.RegisterViewActions(actions, view);
@@ -1095,6 +1125,8 @@ class EditorApplication : IApplication
 			resources.CollectGarbage(); // products a hot reload replaced go
 		}
 		DrainLog();
+		if (mProfiler != null)
+			mProfiler.Update(); // the frames recorded since, while recording
 		if (mAssets != null)
 			mAssets.Refresh(); // an agent's write, a cook's badges: shown this frame
 		if (host.Shell != null)
@@ -1279,6 +1311,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
 		DeleteAndNullify!(mConsole); // its list let go, the dock having let go of its content
+		DeleteAndNullify!(mProfiler); // the store let go if it records, the dock having let go of its content
 		DeleteAndNullify!(mAssets); // its list and tree let go, the dock having let go of its content
 		mWindow.Close();
 		if (mStarted)

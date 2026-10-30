@@ -209,7 +209,7 @@ static class EditorDockTests
 		Test.Assert(Near(pane.Weights[0], 0.65f) && Near(pane.Weights[1], 0.35f));
 
 		let controller = dock.Controller;
-		Test.Assert(controller.Panels.Length == 3);
+		Test.Assert(controller.Panels.Length == 4); // and the Profiler, a page closed until shown
 		let project = controller.Describe(EditorDock.cPanelProject);
 		Test.Assert(project != null);
 		Test.Assert(project.Title == "Project");
@@ -366,7 +366,7 @@ static class EditorDockTests
 		bed.Root.AddChild(other);
 		bed.Dock.Open(other, null, new EditorDockContents());
 		Test.Assert(bed.Dock.Area.Parent == other);
-		Test.Assert(controller.Panels.Length == 3, "registered once");
+		Test.Assert(controller.Panels.Length == 4, "registered once"); // the Profiler among them
 		Test.Assert(controller.Content(EditorDock.cPanelProject) == holder);
 		Test.Assert(holder.GetChildAt(0) == bed.Welcome, "the welcome kept");
 	}
@@ -417,5 +417,29 @@ static class EditorDockTests
 		bed.Dock.BringToFront(EditorDock.cPanelAssets);
 		node = bed.Layout.FindNode(bed.Layout.StackOf(EditorDock.cPanelAssets));
 		Test.Assert(node.Panels[node.Active] == EditorDock.cPanelAssets, "its tab in front");
+	}
+
+	/// The Profiler is a page: out of the default layout until presented, then in the page area,
+	/// and to the front when presented again behind another tab.
+	[Test]
+	public static void TheProfilerIsAPageOutOfTheDefaultLayoutUntilPresentedThenInThePageAreaAndToTheFront()
+	{
+		let bed = scope DockBed();
+		let controller = bed.Dock.Controller;
+		let profiler = controller.Describe(EditorDock.cPanelProfiler);
+		Test.Assert(profiler != null);
+		Test.Assert(profiler.Title == "Profiler");
+		Test.Assert(profiler.Default.Central);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelProfiler) == cNoDock);
+
+		bed.Dock.BringToFront(EditorDock.cPanelProfiler);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelProfiler) == bed.Layout.CentralStack);
+
+		// Presented again behind the Project panel's tab: to the front.
+		Test.Assert(controller.Edit(scope (l) => l.Activate(EditorDock.cPanelProject)).Ok);
+		bed.Dock.BringToFront(EditorDock.cPanelProfiler);
+		let central = bed.Layout.FindNode(bed.Layout.CentralStack);
+		Test.Assert(central != null);
+		Test.Assert(central.Panels[central.Active] == EditorDock.cPanelProfiler);
 	}
 }

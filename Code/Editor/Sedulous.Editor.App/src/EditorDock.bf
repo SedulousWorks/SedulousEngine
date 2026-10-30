@@ -13,19 +13,22 @@ class EditorDockContents
 	public delegate Node() Welcome ~ delete _;
 	public delegate Node() Assets ~ delete _;
 	public delegate Node() Console ~ delete _;
+	public delegate Node() Profiler ~ delete _;
 }
 
 /// The editor's dock (Raptor's editor-gui spec, 5.1, layer 4). A GUI.Docking controller with its
 /// area in the frame's `frame-dock`, its floats in OS windows of their own where the GUI's host
 /// opens them (else over the main window), and the panels every project shares: the Project panel
-/// (the open project's page, or the welcome without one), Assets and Console. Their ids are the
-/// ones saved layouts and the MCP layout tools name: `welcome` (the Project panel kept the id it
-/// had as the Welcome panel), `assets`, `console`. Pages come through it (EditorPages).
+/// (the open project's page, or the welcome without one), Assets, Console and the Profiler (X7: a tab
+/// in the page area, not in the default layout until shown). Their ids are the ones saved layouts
+/// and the MCP layout tools name: `welcome` (the Project panel kept the id it had as the Welcome
+/// panel), `assets`, `console`, `profiler`. Pages come through it (EditorPages).
 class EditorDock
 {
 	public const String cPanelProject = "welcome";
 	public const String cPanelAssets = "assets";
 	public const String cPanelConsole = "console";
+	public const String cPanelProfiler = "profiler";
 
 	/// The pane under the document: 30% of the height.
 	private const float cPaneShare = 0.3f;
@@ -62,11 +65,8 @@ class EditorDock
 		RegisterPanel(cPanelProject, "Project", false, new () => Holder());
 		RegisterPanel(cPanelAssets, "Assets", true, new () => Make(mContents.Assets));
 		RegisterPanel(cPanelConsole, "Console", true, new () => Make(mContents.Console));
-		{
-			let layout = DefaultLayout();
-			defer delete layout;
-			mController.Adopt(layout);
-		}
+		RegisterPanel(cPanelProfiler, "Profiler", true, new () => Make(mContents.Profiler));
+		AdoptDefault();
 		mArea = new DockArea();
 		into.AddChild(mArea);
 		mArea.Show(mController);
@@ -110,12 +110,7 @@ class EditorDock
 
 	/// The default layout taken again (View > Reset Layout): a closed panel shows where it
 	/// belongs.
-	public void ResetLayout()
-	{
-		let layout = DefaultLayout();
-		defer delete layout;
-		mController.Adopt(layout);
-	}
+	public void ResetLayout() => AdoptDefault();
 
 	/// The layout a project opens with: the one saved in its store, else the default (the dock
 	/// may be showing another project's). `store` null: the default.
@@ -162,6 +157,16 @@ class EditorDock
 	/// Whether its floats open as OS windows (else over the main window).
 	public bool FloatsInWindows => mWindows != null;
 
+	// The default layout, the Profiler closed in it: adopting places every registered panel, and the
+	// Profiler is a page shown when asked (View > Profiler), where it was last.
+	private void AdoptDefault()
+	{
+		let layout = DefaultLayout();
+		defer delete layout;
+		mController.Adopt(layout);
+		mController.Close(cPanelProfiler);
+	}
+
 	/// TAKES OWNERSHIP of `factory` (one not needed is deleted).
 	private void RegisterPanel(StringView id, StringView title, bool closable, delegate Node() factory)
 	{
@@ -174,7 +179,7 @@ class EditorDock
 		description.Id.Set(id);
 		description.Title.Set(title);
 		description.Closable = closable;
-		description.Default.Central = id == cPanelProject;
+		description.Default.Central = (id == cPanelProject) || (id == cPanelProfiler); // the Profiler is a page
 		description.Default.Side = .Bottom;
 		description.Factory = factory;
 		mController.Register(description); // the controller's

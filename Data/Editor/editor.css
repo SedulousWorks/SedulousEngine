@@ -445,6 +445,25 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
 .log-row.error > .log-text { color: var(--danger); }
 .console-empty { color: var(--text-dim); padding: var(--space-l); }
 
+/* === The Profiler page (X7): its bar, the strip and counters, the timeline over the table and
+   the detail. The views draw themselves (Profiler.GUI's sheet); these place them. === */
+.profiler-page { min-width: 0; }
+.profiler-source, .profiler-bar-label { color: var(--text-dim); white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+.profiler-combo { width: 96px; }
+.profiler-strong { font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+.profiler-dim { color: var(--text-dim); white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+.profiler-small { height: 22px; padding: 0 var(--space-m); flex-shrink: 0; }
+.profiler-strip-area { flex-direction: column; flex-shrink: 0; padding: var(--space-xs) var(--space-m) var(--space-s); row-gap: 3px;
+                       border-bottom: 1px solid var(--separator); background-color: var(--surface); }
+.profiler-strip-bar { flex-direction: row; align-items: center; column-gap: var(--space-m); height: 26px; }
+/* The engine registers a dozen counters: three plots high, the rest a scroll away. */
+.profiler-counters { flex-direction: column; row-gap: 3px; max-height: 87px; overflow-y: auto; overflow-x: hidden; flex-shrink: 0; }
+.profiler-timeline { min-height: 0; min-width: 0; background-color: var(--surface); }
+.profiler-lower { min-height: 0; }
+.profiler-table-pane, .profiler-detail-pane { min-width: 0; min-height: 0; }
+.profiler-table { flex-grow: 1; flex-basis: 0; min-height: 0; }
+.profiler-detail { flex-grow: 1; flex-basis: 0; min-height: 0; margin: var(--space-s) var(--space-m); }
+
 /* === The property grid === */
 /* The rows inset from the right as the panel's bars are, so an editor's edge lines up with the
    search field above it (the left keeps the grid's own column for a section's arrow). */

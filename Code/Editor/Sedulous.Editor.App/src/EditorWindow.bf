@@ -9,6 +9,7 @@ using Sedulous.Graphics;
 using Sedulous.Runtime.Client; // IApplicationHost
 using Sedulous.VFS;
 using Sedulous.GUI; // with GUI.Hosting's host, GUI.Docking's, GUI.Toolkit's and GUI.Code's sheets and elements
+using Sedulous.Profiler.GUI; // its sheet and elements
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
@@ -179,6 +180,7 @@ class EditorWindow
 		RegisterGuiElements();
 		RegisterToolkitElements();
 		RegisterCodeElements();
+		RegisterProfilerElements();
 		// Shaped by HarfBuzz and reordered by the bidirectional algorithm, installed before a font
 		// loads so its atlas takes what shaping reaches.
 		HarfBuzzShaping.Install();
@@ -199,7 +201,7 @@ class EditorWindow
 		mHost.Context.ResourceProvider = mResources;
 		styles.SetFontFaceLoader(new (face, source) => LoadFontFace(face, source));
 		// The satellites' sheets over the widgets'.
-		let theme = scope $"{Sedulous.GUI.Theme.DefaultThemeCSS}\n{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}";
+		let theme = scope $"{Sedulous.GUI.Theme.DefaultThemeCSS}\n{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}\n{ProfilerSheetCSS()}";
 		let userAgent = scope StyleSheet();
 		CSSParser.Parse(theme, "theme", userAgent);
 		styles.UserAgentSheet = userAgent; // copied

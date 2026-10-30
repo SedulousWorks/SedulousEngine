@@ -41,13 +41,13 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[21] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+	private static StringView[23] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
 		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "project.reportResourceMemory", "build.cookAll",
 		"build.rebuildAll", "build.cookPage", "build.rebuildPage", "game.play", "game.playNewInstance", "view.resetLayout",
-		"view.screenshot", "view.commandPalette", "help.about");
+		"view.profiler", "profiler.record", "view.screenshot", "view.commandPalette", "help.about");
 	/// The ones a later layer brings: no hook yet, so not registered. Close Project is here because
 	/// a project given on the command line keeps its one project.
-	private static StringView[4] sLeftOut = .("file.saveLayout", "file.closeProject", "view.profiler", "profiler.record");
+	private static StringView[2] sLeftOut = .("file.saveLayout", "file.closeProject");
 
 	/// The registry refused `id` as not enabled (over no subject).
 	private static bool Refused(EditorActionRegistry actions, StringView id)
