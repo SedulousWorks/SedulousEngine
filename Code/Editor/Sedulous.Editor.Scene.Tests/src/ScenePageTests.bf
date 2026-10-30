@@ -1476,10 +1476,33 @@ class ScenePageTests
 		let rows = scope List<PropertyInfo>();
 		defer { ClearAndDeleteItems!(rows); }
 		groups.GetProperties("groups.1", rows);
+		Test.Assert(rows.Count == 1, "its name; which pairs collide is the matrix's");
+		Test.Assert(rows[0].Name == "name");
+		ClearAndDeleteItems!(rows);
+		groups.GetProperties("", rows);
 		Test.Assert(rows.Count == 2);
-		Test.Assert(rows[1].Kind == .Flags);
-		Test.Assert(rows[1].Choices.Count == 2);
-		Test.Assert(rows[1].Choices[1].Name == "Group 1");
+		Test.Assert(rows[1].Hint == "CollisionMatrix");
+		Test.Assert(IntOf("matrix") == 2);
+
+		// The grid: a row and a column a group, a box at each pair; a click is the pair's write.
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let matrixPath = inspector.PathOf("Physics", "matrix", .. scope String());
+		Test.Assert(!matrixPath.IsEmpty);
+		let matrixRow = inspector.Grid.FindRow(matrixPath);
+		Test.Assert(matrixRow >= 0);
+		inspector.Grid.ScrollToItem(matrixRow); // under the fold
+		shown.Root.UpdateLayout();
+		let matrix = inspector.Grid.FindEditor(matrixPath) as CollisionMatrixEditor;
+		Test.Assert(matrix != null);
+		Test.Assert(matrix.Count == 2);
+		Test.Assert(matrix.Box(1, 0) != null);
+		Test.Assert(matrix.Box(0, 1) == null, "above the diagonal: the same pair as (1, 0)");
+		Test.Assert(matrix.Box(1, 0).Checked);
+		Test.Assert(matrix.Box(1, 0).HandleActivate()); // off: both ways
+		Test.Assert((Settings().GroupCollides[1] & 1) == 0);
+		Test.Assert((Settings().GroupCollides[0] & 2) == 0);
+		page.Commands.Undo();
+		Test.Assert((Settings().GroupCollides[1] & 1) != 0);
 
 		// Group 1 no longer collides with Default: both rows say so.
 		var off = PropertyWrite(Sedulous.GUI.Variant((int64)2));
@@ -1506,6 +1529,15 @@ class ScenePageTests
 		Test.Assert(!groups.EditList("groups", remove)); // Default stays
 		page.Commands.Undo(); // the remove
 		Test.Assert(IntOf("groups") == 2);
+
+		// The physics world's cap: the list says its most, and an add past it is refused.
+		ClearAndDeleteItems!(rows);
+		groups.GetProperties("", rows);
+		Test.Assert(rows[0].MaxCount == (uint32)Sedulous.Physics.PhysicsWorldSettings.CollisionGroupCount);
+		while (IntOf("groups") < Sedulous.Physics.PhysicsWorldSettings.CollisionGroupCount)
+			Test.Assert(groups.EditList("groups", add));
+		Test.Assert(!groups.EditList("groups", add));
+		Test.Assert(IntOf("groups") == Sedulous.Physics.PhysicsWorldSettings.CollisionGroupCount);
 		page.OnClose();
 	}
 

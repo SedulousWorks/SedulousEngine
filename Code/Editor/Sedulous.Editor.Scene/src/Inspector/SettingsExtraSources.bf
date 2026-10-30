@@ -14,9 +14,10 @@ namespace Sedulous.Editor.Scene;
 // Rows of a scene settings block that reflection does not show, each a source under its block's
 // section while the scene is selected (Raptor's editor-gui spec, 5.3, layer 4, part 4), registered
 // by the block's type as inspector extras:
-//   - the physics block's collision groups: a list of groups, each its name and the groups it
-//     collides with (flags named by the groups). A pair collides both ways or neither, so a toggle
-//     writes both; a new group collides with every group; only the last group is removed, as a
+//   - the physics block's collision groups: a list of groups, each its name, and beside it a
+//     grid of which pairs collide (`matrix`, the CollisionMatrixEditor's, read and written through
+//     each group's hidden `collides`). A pair collides both ways or neither, so a toggle writes
+//     both; a new group collides with every group; only the last group is removed, as a
 //     body keeps its group by index (removing another renumbers the ones after it, a remap of
 //     every body this does not make). A scene without groups shows one, Default.
 //   - the scene script block's level properties: its Level class's properties by their kinds, as
@@ -55,7 +56,7 @@ class CollisionGroupsSource : IPropertySource
 		if (signature != mSignature)
 		{
 			mSignature = signature;
-			NotifyPropertiesChanged(); // the flags' names are the groups'
+			NotifyPropertiesChanged(); // the group rows and the matrix's names are the groups'
 		}
 		else
 			NotifyValuesChanged();
@@ -80,6 +81,14 @@ class CollisionGroupsSource : IPropertySource
 			list.ListOps = PropertyListAdd | PropertyListRemove;
 			list.MaxCount = (uint32)PhysicsWorldSettings.CollisionGroupCount;
 			outInfos.Add(list);
+			// Which pairs collide, a grid of the groups (the old editor's matrix).
+			let matrix = new PropertyInfo();
+			matrix.Name.Set("matrix");
+			matrix.DisplayName.Set("Collides");
+			matrix.Description.Set("Where a group's row and another's column meet: whether the two collide (both ways).");
+			matrix.Kind = .Group;
+			matrix.Hint.Set(CollisionMatrixEditor.cHint);
+			outInfos.Add(matrix);
 			return;
 		}
 		let place = Parse(parent);
@@ -97,24 +106,19 @@ class CollisionGroupsSource : IPropertySource
 		}
 		if ((place.Group < 0) || (place.Group >= count) || !place.Row.IsEmpty)
 			return;
+		// A group's row: its name (which pairs collide is the matrix's grid, read and written
+		// through each group's `collides`, a hidden row).
 		let name = new PropertyInfo();
 		name.Name.Set("name");
 		name.DisplayName.Set("Name");
 		name.Kind = .String;
 		outInfos.Add(name);
-		let collides = new PropertyInfo();
-		collides.Name.Set("collides");
-		collides.DisplayName.Set("Collides With");
-		collides.Kind = .Flags;
-		for (int j < count)
-			collides.AddChoice(NameOf(j, .. scope String()), (int64)(1UL << j));
-		outInfos.Add(collides);
 	}
 
 	public override Sedulous.GUI.Variant GetValue(StringView path, int object)
 	{
 		let place = Parse(path);
-		if (place.List)
+		if (place.List || (path == "matrix"))
 			return Sedulous.GUI.Variant((int64)Count());
 		if ((place.Group < 0) || (place.Group >= Count()))
 			return .();
