@@ -10,6 +10,8 @@ namespace Sedulous.Input;
 /// Priority decides which one answers when the same action name lives in several enabled
 /// sets, higher winning. That is what lets a menu take "Cancel" while gameplay still holds
 /// its own, without either knowing about the other.
+/// Reflected: the editor's input map page lists its fields as the grid's rows.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 [Scriptable(.AllPublic)]
 class ActionSet
 {

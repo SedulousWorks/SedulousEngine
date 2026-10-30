@@ -649,4 +649,30 @@ class ActionRuntimeTests
 		Test.Assert(devices.Keyboard == null);
 		Test.Assert(devices.Events.IsEmpty);
 	}
+
+	/// The bindings' version moves when what a binding resolves to may change, and only then.
+	[Test]
+	public static void TheBindingsVersionMovesWhenWhatABindingResolvesToMayChangeAndOnlyThen()
+	{
+		let map = InputTestMaps.Gameplay(); // its Gameplay and Menu sets
+		defer delete map;
+		let runtime = scope ActionRuntime();
+		let start = runtime.BindingsVersion;
+		runtime.SetMap(map);
+		let mapped = runtime.BindingsVersion;
+		Test.Assert(mapped != start);
+		runtime.EnableSet("Menu", true); // already enabled: nothing changed
+		Test.Assert(runtime.BindingsVersion == mapped);
+		runtime.DisableSet("Menu");
+		let disabled = runtime.BindingsVersion;
+		Test.Assert(disabled != mapped);
+		runtime.PushExclusiveSet("Gameplay");
+		Test.Assert(runtime.BindingsVersion != disabled);
+		let pushed = runtime.BindingsVersion;
+		runtime.PopExclusiveSet();
+		Test.Assert(runtime.BindingsVersion != pushed);
+		let popped = runtime.BindingsVersion;
+		runtime.PopExclusiveSet(); // nothing to pop
+		Test.Assert(runtime.BindingsVersion == popped);
+	}
 }

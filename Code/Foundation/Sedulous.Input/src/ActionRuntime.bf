@@ -76,6 +76,8 @@ class ActionRuntime
 	private ConsumptionMask mConsumed = .();
 	/// Set by an exclusive push or pop, consumed by the next Update.
 	private bool mLatchHeldOnce = false;
+	/// BindingsVersion.
+	private uint64 mBindingsVersion = 0;
 
 	/// A rumble asked for, waiting for the next Update's devices.
 	private struct RumbleRequest
@@ -115,11 +117,17 @@ class ActionRuntime
 		mSetEnabled.Resize(mMap.Sets.Count);
 		for (int i = 0; i < mSetEnabled.Count; i++)
 			mSetEnabled[i] = true;
+		mBindingsVersion++;
 	}
 
 	/// The installed copy. Read only to a caller: editing it desynchronises the state
 	/// tables that are indexed against it.
 	public InputMap Map => mMap;
+
+	/// Counts up whenever what a binding resolves to may have changed (a map installed, a set
+	/// enabled or disabled, an exclusive set pushed or popped): a reader of the bindings (a GUI's
+	/// prompts) reads them again when it moves, rather than each frame.
+	public uint64 BindingsVersion => mBindingsVersion;
 
 	// ---- sets ----
 
@@ -128,8 +136,11 @@ class ActionRuntime
 	{
 		for (int i = 0; i < mMap.Sets.Count; i++)
 		{
-			if (mMap.Sets[i].Name == name)
+			if ((mMap.Sets[i].Name == name) && (mSetEnabled[i] != enabled))
+			{
 				mSetEnabled[i] = enabled;
+				mBindingsVersion++;
+			}
 		}
 	}
 
@@ -158,6 +169,7 @@ class ActionRuntime
 	{
 		mExclusiveStack.Add(new String(name));
 		mLatchHeldOnce = true;
+		mBindingsVersion++;
 	}
 
 	[Scriptable]
@@ -168,6 +180,7 @@ class ActionRuntime
 
 		delete mExclusiveStack.PopBack();
 		mLatchHeldOnce = true;
+		mBindingsVersion++;
 	}
 
 	public int ExclusiveDepth => mExclusiveStack.Count;

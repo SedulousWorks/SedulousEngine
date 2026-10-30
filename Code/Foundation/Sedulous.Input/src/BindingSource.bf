@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Input;
@@ -7,6 +8,8 @@ namespace Sedulous.Input;
 /// The tag on a flat record: only the fields its source uses mean anything, and the rest
 /// stay at their defaults. Flat because it then serializes compactly and an editor can show
 /// it as a grid rather than a tree of variants.
+/// Reflected: the editor's input map page offers its cases as a row's choices.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum BindingSource : uint8
 {

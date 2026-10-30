@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Input;
@@ -6,6 +7,8 @@ namespace Sedulous.Input;
 ///
 /// A small state machine per action, so a game does not write the same press timing logic
 /// for every ability it has.
+/// Reflected: the editor's input map page offers its cases as a row's choices.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum InteractionKind : uint8
 {

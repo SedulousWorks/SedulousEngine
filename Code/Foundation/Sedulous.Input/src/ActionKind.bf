@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Input;
@@ -8,6 +9,8 @@ namespace Sedulous.Input;
 /// editor's validation surfaces, rather than a silent zero: the archived engine collapsed
 /// everything to an {X, Y} pair and lost the distinction, so a button and a stick read the
 /// same and nothing could tell you which you had meant.
+/// Reflected: the editor's input map page offers its cases as a row's choices.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum ActionKind : uint8
 {

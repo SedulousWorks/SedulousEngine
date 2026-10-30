@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Input;
@@ -7,6 +8,8 @@ namespace Sedulous.Input;
 /// FLAT rather than a union or a hierarchy. Only the fields its source uses are read, the
 /// rest sit at defaults that cost almost nothing on disk, and an editor can render the
 /// whole thing as one grid row instead of a shape that changes per source.
+/// Reflected: the editor's input map page lists its fields as the grid's rows.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 [Scriptable(.AllPublic)]
 struct Binding
 {
