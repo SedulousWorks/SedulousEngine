@@ -22,7 +22,8 @@ tab's PIE id, `welcome` for Project, `assets`, `console`, `profiler`, with the `
 `hidden` panels listed apart; `panel_dock`, which moves a panel beside another, into its tabs,
 along the window's edge or floating, as dragging its tab does, `share` setting its part of the
 room it splits), the whole-window capture
-(`editor_screenshot`), the action bridge (`action_list`,
+(`editor_screenshot`), the editor's own UI used as a user would (`editor_find`, `editor_click`,
+`editor_hover`, `editor_scroll`, `editor_type`, `editor_key`; see below), the action bridge (`action_list`,
 `action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
 menu, over the active page, executed unattended; a disabled action may say why as
 `disabledReason`, in its state and in a refused execute; a dialog an action would open is closed as
@@ -30,7 +31,7 @@ cancelled and named under `suppressedDialogs`, so the action most likely did not
 dedicated tool or ask the user) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, `entity_inspect`,
 `component_set`, `viewport_camera_get`, `viewport_camera_set`, `viewport_frame`, `viewport_screenshot`,
-`navigation_bake`, each addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
+`viewport_run`, `navigation_bake`, each addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
 move the viewport's editor camera in degrees (a position, a yaw and pitch, or a `lookAt` point),
 and switch it to `orthographic` (an `orthoHeight` zooms it about its focus; the height follows
 the zoom in either projection); editor state only, no undo step. `viewport_frame` frames entities (by name, path or guid;
@@ -40,7 +41,12 @@ it. `viewport_screenshot` writes what the viewport renders to a
 PNG and returns its path and size: the scene with the grid, the markers and the selection's
 gizmo, not the HUD over the view (its chips, the stats, the view gizmo, the tool's status) or
 the panels docked over the viewport. It brings the page to front first, since a
-hidden viewport never renders. Move the camera, shoot, read the file. `editor_screenshot`
+hidden viewport never renders. Move the camera, shoot, read the file. `viewport_run` plays a
+device-level input timeline (pie_run's entries: keys, mouse moves in the viewport's render
+pixels, buttons, the wheel) into a scene page's viewport for a `duration`, as a user's hands over
+it: pick a brush first (`action_execute scene.tool.<id>`) and a drag paints, Shift + wheel sizes
+it, a click selects and the gizmo drags; its `screenshots` are written as their times come, and
+what it edits is the page's, undone as the user's edits are, saved by nobody. `editor_screenshot`
 writes the whole editor window as the user sees it (panels, pages, menus, dialogs, toasts) the
 same way, `window: "all"` adding each floating window beside it, for checking the editor's own
 UI rather than a scene (the user's View > Screenshot Editor, F12, writes the same under
@@ -214,10 +220,11 @@ requests the cook itself afterwards; the headless host does not, so `asset_cook`
 The engine GUI's assets are linked text, as scripts are:
 `asset_create` with `GUI Document` (`.gml` markup) or `GUI Style Sheet` (`.css`), or
 `asset_import` of such a file, each validated by its cook (what the loader or parser dropped is a
-warning, markup that does not build an error); they reference images, vector images, fonts, sheets
-and documents by asset guid (`{guid}`), each a dependency of the cook. A scene shows them with
-`gui.Canvas`, `gui.Billboard` and `gui.WorldPanel`; the editor's page for each is its text beside a
-live preview.
+warning, markup that does not build an error; `gui_validate` runs that check on text before it is
+saved: loop on it while writing a screen, then edit the asset's linked source file and cook); they
+reference images, vector images, fonts, sheets and documents by asset guid (`{guid}`), each a
+dependency of the cook. A scene shows them with `gui.Canvas`, `gui.Billboard` and
+`gui.WorldPanel`; the editor's page for each is its text beside a live preview.
 
 **Scenes**: read `docs://generated/SceneSchema.json` once (or `component_schema` for one
 component), copy from `docs://generated/SceneExample.scene.xml`, read the target with
@@ -324,11 +331,31 @@ read the file before trusting it, and leave the judgement of how it looks to the
 - *A scene in the editor*: `viewport_frame` the entities (or `viewport_camera_set` a position and
   a `lookAt`), then `viewport_screenshot`, which brings the page to front since a hidden
   viewport never renders.
+- *Painting in the scene view* (a terrain's sculpt, splat or holes, a vegetation mask): frame the
+  spot, `viewport_screenshot` to see where it lands in the view's pixels (its width and height
+  are the timeline's space), pick the tool with `action_execute scene.tool.<id>`, then
+  `viewport_run` a drag: a `mouseMove` to the start, the `mouseButton` Left down, `mouseMove`
+  entries along the stroke a few hundredths of a second apart, the button up; its `screenshots`
+  show the strokes. Save the page after (`file.save`), as a user would.
 - *The editor itself* (panels, dialogs, menus, toasts): `editor_screenshot`
   (`editor-<pid>-<n>.png`; `window: "all"` adds each floating window), as the user's F12 (View >
   Screenshot Editor) does. For a run with no MCP, `Sedulous.Tools.Editor --project <dir>
   --screenshot <png> [--screenshot-after <s>] [--screenshot-exit]` writes the main window once it
   has drawn, and with `--screenshot-exit` quits once the file is written.
+- *Using the editor's own UI*, to check what a page does and not only how it looks (the editor
+  host): `editor_find` lists the nodes a target names with where they are, `editor_click` clicks
+  one (`button` right for a context menu, `clicks` 2 for a double click, `modifiers` held),
+  `editor_hover` moves the pointer over one (a tooltip shows after its delay), `editor_scroll`
+  turns the wheel, `editor_type` types into the focus and `editor_key` presses a key or a chord
+  (`return`, `escape`, `ctrl-s`; the keymap's names). They go through the editor's own input,
+  never the operating system's, so they reach that editor alone, its window hidden or not. A
+  target is named as the GUI's tests name one: a CSS selector (`#input-tree`, `treeitem`),
+  `text=Jump`, or `text~=Jum`, with `within` to look under another match and `index` to pick
+  among several; or `x` and `y` in the screenshot's pixels. A click is refused when its target
+  finds no node or several (each is named), or when something else lies over the target's middle
+  (a popup or a dialog). Each acting tool answers a frame after it acts, with what has the focus;
+  then `editor_screenshot` to see it. The main window only; a drag (a dock panel moved) is not
+  offered, and `panel_dock` does that.
 - *An exported game (the player)*, which is a different host from PIE: `<dist>/<player>
   --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-count N]
   [--screenshot-exit]` writes the window at frame N (30 by default) or after S seconds, N files

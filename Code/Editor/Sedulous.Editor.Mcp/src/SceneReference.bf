@@ -308,8 +308,10 @@ class SceneReference
 
 	/// The source asset types a resource reference to `product` takes: the runtime type's
 	/// factory description in the engine composition gives its cooked forms, and the builder
-	/// producing each gives its asset type (a texture's and a render texture's for a Texture).
-	/// Declarations only, nothing constructed. Nothing is added when nothing in this
+	/// producing each gives its asset type (a texture's and a render texture's for a Texture). A
+	/// cooked form itself (what nothing makes at run time) takes every asset whose product is one
+	/// or derives from one (a StaticMeshSource: the static and the skinned mesh). Declarations
+	/// only, nothing constructed. Nothing is added when nothing in this
 	/// composition makes the product. Shared by the schema and the editor's pickers.
 	public static void SourceAssetTypesFor(BuilderRegistry builders, Type product, List<Type> outAssets,
 		List<ResourceFactoryDesc*> descriptions = null)
@@ -328,6 +330,19 @@ class SceneReference
 				desc.ForEachCooked(scope (cooked) => cookedForms.Add(cooked));
 				break;
 			}
+		}
+		if (cookedForms.IsEmpty)
+		{
+			// Nothing makes it at run time: it may be a cooked form itself (a collision shape's mesh
+			// names what a mesh cooks to). Every asset whose product is one, or derives from one (a
+			// skinned mesh's source is a static mesh's), makes it.
+			builders.ForEach(scope [&](builder) =>
+				{
+					let output = builder.ProductType;
+					if ((output != null) && (builder.AssetType != null) && output.IsSubtypeOf(product))
+						outAssets.Add(builder.AssetType); // each builder its own asset type
+				});
+			return;
 		}
 		for (let cooked in cookedForms)
 		{

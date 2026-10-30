@@ -67,8 +67,8 @@ static class SceneReferenceTests
 		Test.Assert(HasString(spline.Get("unreflected"), "points"));
 	}
 
-	/// The join the schema makes, shared with the editor's pickers: a product's asset types,
-	/// none for a type nothing makes.
+	/// The join the schema makes, shared with the editor's pickers: a product's asset types, a
+	/// cooked form's the assets that cook to it, none for a type nothing makes.
 	[Test]
 	public static void SourceAssetTypesForJoinsAProductToWhatMakesIt()
 	{
@@ -83,6 +83,14 @@ static class SceneReferenceTests
 		assets.Clear();
 		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Texture.Resource.Texture), assets);
 		Test.Assert(assets.Count == 2, "a texture's and a render texture's");
+		assets.Clear();
+		// A cooked form itself (a collision shape's mesh) takes each asset that cooks to one, or to
+		// one derived from it: a skinned mesh's source is a static mesh's.
+		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Geometry.StaticMeshSource), assets);
+		Test.Assert(assets.Count == 2);
+		let first = assets[0].GetName(.. scope .());
+		let second = assets[1].GetName(.. scope .());
+		Test.Assert(((first == "StaticMeshAsset") && (second == "SkinnedMeshAsset")) || ((first == "SkinnedMeshAsset") && (second == "StaticMeshAsset")));
 		assets.Clear();
 		SceneReference.SourceAssetTypesFor(builders, typeof(String), assets);
 		Test.Assert(assets.IsEmpty);
