@@ -63,10 +63,10 @@ class TessellatorTests
 		Test.Assert(aaIndices.Count > plainIndices.Count);
 	}
 
-	/// The fringe fades in ALPHA rather than toward black, and the outer ring carries zero
-	/// coverage so the shader can multiply it out.
+	/// The outer ring is the fringe: no coverage, the colour's own alpha (the shader multiplies the
+	/// two, so fading alpha as well would square the ramp to a stepped edge).
 	[Test]
-	public static void TheFringeFadesInAlphaAtZeroCoverage()
+	public static void TheFringeFadesByCoverageAloneKeepingItsColour()
 	{
 		let path = Rect(0, 0, 10, 10);
 		defer delete path;
@@ -88,7 +88,7 @@ class TessellatorTests
 			{
 				faded++;
 				Test.Assert(vertex.Coverage == 0.0f);
-				Test.Assert(vertex.Color.A == 0.0f, "transparent, not black");
+				Test.Assert(vertex.Color.A == 1.0f, "its alpha kept: coverage fades it");
 				Test.Assert(vertex.Color.R == 1.0f, "and still red");
 			}
 		}
@@ -319,7 +319,7 @@ class TessellatorTests
 			if (vertex.Coverage == 0.0f)
 			{
 				faded++;
-				Test.Assert(vertex.Color.A == 0.0f);
+				Test.Assert(vertex.Color.A == 1.0f, "faded by coverage alone");
 			}
 		}
 		Test.Assert(faded == 4, "the two outer rings");
@@ -379,8 +379,9 @@ class TessellatorTests
 		}
 
 		let butt = VertexCountFor(.Butt);
-		Test.Assert(VertexCountFor(.Square) == butt + 8, "a quad at each end");
-		Test.Assert(VertexCountFor(.Round) > butt + 8, "a fan at each end");
+		// Each cap a fan from the end point: a square's centre and its four corners, five at each end.
+		Test.Assert(VertexCountFor(.Square) == butt + 10, "a centre and four corners at each end");
+		Test.Assert(VertexCountFor(.Round) > VertexCountFor(.Square), "a round cap's half turn has more");
 	}
 
 	/// A square cap extends by HALF the stroke width, which is what makes two of them meet

@@ -270,10 +270,6 @@ static class FillTessellator
 		let normals = scope List<Float2>();
 		ComputeFringeNormals(points, normals);
 
-		// The outer ring keeps the colour and loses the ALPHA, so the fade is in
-		// transparency rather than toward black.
-		let transparent = Color(color.R, color.G, color.B, 0.0f);
-
 		let innerColors = scope List<Color>();
 		let outerColors = scope List<Color>();
 		innerColors.Resize(n);
@@ -281,7 +277,7 @@ static class FillTessellator
 		for (int i = 0; i < n; i++)
 		{
 			innerColors[i] = color;
-			outerColors[i] = transparent;
+			outerColors[i] = color; // faded by coverage alone (EmitFringeRing)
 		}
 
 		EmitFringeRing(points, fillRule, normals, innerColors, outerColors, vertices, indices,
@@ -324,7 +320,7 @@ static class FillTessellator
 		{
 			let color = fill.GetColorAt(points[i], bounds);
 			innerColors[i] = color;
-			outerColors[i] = .(color.R, color.G, color.B, 0.0f);
+			outerColors[i] = color; // faded by coverage alone: alpha too would square the ramp
 		}
 
 		EmitFringeRing(points, fillRule, normals, innerColors, outerColors, vertices, indices,

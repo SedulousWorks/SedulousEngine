@@ -805,4 +805,38 @@ class VGContextTests
 		QuadCorners(context.GetBatch(), quads);
 		Test.Assert(quads.Count == 3, "one more: the glyph alone");
 	}
+
+	[Test]
+	public static void APremultipliedPictureDrawnAtItsOwnSizeLandsOnThePixelGrid()
+	{
+		let atlas = scope OwnedImageData(32, 32, .RGBA8, .(), .Linear);
+		let context = scope VGContext();
+		// An icon baked at 16 x 16, centred at a half pixel: moved onto whole pixels, its size kept.
+		context.DrawImagePremultiplied(atlas, .(5.5f, 3.25f, 16, 16), .(0, 0, 16, 16), Color.White);
+		let batch = context.GetBatch();
+		Test.Assert(batch.Vertices.Count == 4);
+		var minX = 1e9f;
+		var minY = 1e9f;
+		var maxX = -1e9f;
+		var maxY = -1e9f;
+		for (let v in batch.Vertices)
+		{
+			minX = Min(minX, v.Position.X);
+			minY = Min(minY, v.Position.Y);
+			maxX = Max(maxX, v.Position.X);
+			maxY = Max(maxY, v.Position.Y);
+		}
+		Test.Assert(Near(minX, Round(5.5f)));
+		Test.Assert(Near(minY, 3.0f));
+		Test.Assert(Near(maxX - minX, 16.0f));
+		Test.Assert(Near(maxY - minY, 16.0f));
+
+		// Drawn larger than it was baked, it is scaled where it was asked for.
+		context.Clear();
+		context.DrawImagePremultiplied(atlas, .(5.5f, 3.25f, 24, 24), .(0, 0, 16, 16), Color.White);
+		var sawAsked = false;
+		for (let v in context.GetBatch().Vertices)
+			sawAsked = sawAsked || (Near(v.Position.X, 5.5f) && Near(v.Position.Y, 3.25f));
+		Test.Assert(sawAsked);
+	}
 }

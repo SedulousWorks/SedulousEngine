@@ -1482,6 +1482,23 @@ class VGContext
 	{
 		if ((texture == null) || (destRect.Width <= 0.0f) || (destRect.Height <= 0.0f))
 			return;
+		// A picture drawn at its own size (an icon baked at the size it is shown) lands on the pixel
+		// grid: at a fractional offset the sampler would blend each texel with its neighbour and
+		// soften what was baked crisp.
+		var destRect;
+		if (mPixelSnap && TransformIsAxisAligned())
+		{
+			let m = mCurrentState.Transform;
+			let sx = m[0, 0];
+			let sy = m[1, 1];
+			if ((Abs(sx) > 1e-4f) && (Abs(sy) > 1e-4f) && (Abs(destRect.Width * Abs(sx) - srcRect.Width) < 1.0f)
+				&& (Abs(destRect.Height * Abs(sy) - srcRect.Height) < 1.0f))
+			{
+				let origin = TransformPoint(.(destRect.X, destRect.Y));
+				destRect = .(destRect.X + (Round(origin.X) - origin.X) / sx, destRect.Y + (Round(origin.Y) - origin.Y) / sy,
+					srcRect.Width / Abs(sx), srcRect.Height / Abs(sy));
+			}
+		}
 
 		FlushCurrentCommand();
 		let start = (int32)mBatch.Indices.Count;

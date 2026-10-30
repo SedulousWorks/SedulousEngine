@@ -155,9 +155,20 @@ static class StrokeTessellator
 			}
 		}
 
+		// The fringe straddles the stroke's edge, so the stroke covers its own width: solid to half
+		// a fringe inside the edge, nothing half a fringe outside it. The fringe keeps the colour's
+		// alpha and fades by coverage alone (the shader multiplies the two; fading both squared the
+		// ramp to a stepped edge). A stroke thinner than the fringe is solid nowhere: it is drawn as
+		// wide as its fringe, at the alpha that covers its own width.
+		let innerHalf = Max(halfWidth - (fringeWidth * 0.5f), 0.0f);
+		let outerHalf = halfWidth + (fringeWidth * 0.5f);
+		var strokeColor = color;
+		if (antiAlias && ((halfWidth - (fringeWidth * 0.5f)) < 0.0f))
+			strokeColor.A *= 2.0f * halfWidth / outerHalf;
+
 		if (antiAlias)
-			EmitAntiAliased(points, closed, halfWidth, fringeWidth, color, vertexNormals,
-				unitNormals, vertices, indices);
+			EmitAntiAliased(points, closed, innerHalf, outerHalf, strokeColor, vertexNormals,
+				vertices, indices);
 		else
 			EmitPlain(points, closed, halfWidth, color, vertexNormals, vertices, indices);
 
@@ -168,8 +179,9 @@ static class StrokeTessellator
 
 			let previousEdge = closed ? ((i + edgeCount - 1) % edgeCount) : (i - 1);
 			let nextEdge = closed ? (i % edgeCount) : i;
-			AddJoin(points[i], edgeNormals[previousEdge], edgeNormals[nextEdge], halfWidth,
-				style.Join, color, vertices, indices);
+			// At the solid radius: the body's mitred edge (and its fringe) covers the corner.
+			AddJoin(points[i], edgeNormals[previousEdge], edgeNormals[nextEdge], innerHalf,
+				style.Join, strokeColor, vertices, indices);
 		}
 
 		// Only an open path has ends to cap, and a butt cap is the absence of geometry.
@@ -183,8 +195,8 @@ static class StrokeTessellator
 			{
 				direction = direction / length;
 				// NEGATED: the start cap extends backwards, away from the line.
-				AddCap(points[0], -direction, edgeNormals[0], halfWidth, style.Cap, color,
-					vertices, indices);
+				AddCap(points[0], -direction, edgeNormals[0], innerHalf,
+					antiAlias ? outerHalf : innerHalf, style.Cap, strokeColor, vertices, indices);
 			}
 		}
 		{
@@ -193,44 +205,35 @@ static class StrokeTessellator
 			if (length > cEpsilon)
 			{
 				direction = direction / length;
-				AddCap(points[n - 1], direction, edgeNormals[edgeCount - 1], halfWidth, style.Cap,
-					color, vertices, indices);
+				AddCap(points[n - 1], direction, edgeNormals[edgeCount - 1], innerHalf,
+					antiAlias ? outerHalf : innerHalf, style.Cap, strokeColor, vertices, indices);
 			}
 		}
 	}
 
-	/// Four rings: a transparent fringe, the two stroke edges, and a transparent fringe on
-	/// the other side. Three quad strips between them.
-	private static void EmitAntiAliased(Span<Float2> points, bool closed, float halfWidth,
-		float fringeWidth, Color color, List<Float2> vertexNormals, List<Float2> unitNormals,
-		List<VGVertex> vertices, List<uint32> indices)
+	/// Four rings: a fringe (no coverage), the two solid edges at `innerHalf`, and a fringe on the
+	/// other side, the fringes at `outerHalf`. Three quad strips between them.
+	private static void EmitAntiAliased(Span<Float2> points, bool closed, float innerHalf,
+		float outerHalf, Color color, List<Float2> vertexNormals, List<VGVertex> vertices,
+		List<uint32> indices)
 	{
 		let n = points.Length;
-		let transparent = Color(color.R, color.G, color.B, 0.0f);
 
 		let outerLeftBase = (uint32)vertices.Count;
 		for (int i = 0; i < n; i++)
-		{
-			// The fringe rides on the UNIT normal, so it keeps its width even where the
-			// miter has stretched the body outward.
-			let offset = (vertexNormals[i] * halfWidth) + (unitNormals[i] * fringeWidth);
-			vertices.Add(VGVertex.Solid(points[i] + offset, transparent, 0.0f));
-		}
+			vertices.Add(VGVertex.Solid(points[i] + (vertexNormals[i] * outerHalf), color, 0.0f));
 
 		let strokeLeftBase = (uint32)vertices.Count;
 		for (int i = 0; i < n; i++)
-			vertices.Add(VGVertex.Solid(points[i] + (vertexNormals[i] * halfWidth), color, 1.0f));
+			vertices.Add(VGVertex.Solid(points[i] + (vertexNormals[i] * innerHalf), color, 1.0f));
 
 		let strokeRightBase = (uint32)vertices.Count;
 		for (int i = 0; i < n; i++)
-			vertices.Add(VGVertex.Solid(points[i] - (vertexNormals[i] * halfWidth), color, 1.0f));
+			vertices.Add(VGVertex.Solid(points[i] - (vertexNormals[i] * innerHalf), color, 1.0f));
 
 		let outerRightBase = (uint32)vertices.Count;
 		for (int i = 0; i < n; i++)
-		{
-			let offset = (vertexNormals[i] * halfWidth) + (unitNormals[i] * fringeWidth);
-			vertices.Add(VGVertex.Solid(points[i] - offset, transparent, 0.0f));
-		}
+			vertices.Add(VGVertex.Solid(points[i] - (vertexNormals[i] * outerHalf), color, 0.0f));
 
 		let segmentCount = closed ? n : (n - 1);
 		for (int i = 0; i < segmentCount; i++)
@@ -391,32 +394,57 @@ static class StrokeTessellator
 			color, vertices, indices);
 	}
 
-	/// The geometry past the end of an open stroke.
-	private static void AddCap(Float2 point, Float2 direction, Float2 normal, float halfWidth,
-		VGLineCap capType, Color color, List<VGVertex> vertices, List<uint32> indices)
+	/// The geometry past the end of an open stroke. Its outline runs from the stroke's one side, out
+	/// through `direction`, round to its other side: solid to `innerHalf`, and with a fringe
+	/// (`outerHalf` beyond it) faded by coverage to nothing there, meeting the body's fringe at
+	/// either side.
+	private static void AddCap(Float2 point, Float2 direction, Float2 normal, float innerHalf,
+		float outerHalf, VGLineCap capType, Color color, List<VGVertex> vertices,
+		List<uint32> indices)
 	{
+		// The outline's offsets per unit of radius.
+		let outline = scope List<Float2>();
 		if (capType == .Square)
 		{
-			let baseIndex = (uint32)vertices.Count;
-			let extent = direction * halfWidth;
-			let side = normal * halfWidth;
-
-			vertices.Add(VGVertex.Solid(point - side, color));
-			vertices.Add(VGVertex.Solid(point + side, color));
-			vertices.Add(VGVertex.Solid(point + extent + side, color));
-			vertices.Add(VGVertex.Solid(point + extent - side, color));
-
-			AddQuad(indices, baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 3);
-			return;
+			outline.Add(normal);
+			outline.Add(normal + direction);
+			outline.Add(direction - normal);
+			outline.Add(-normal);
 		}
-
-		if (capType != .Round)
+		else if (capType == .Round)
+		{
+			// A half turn from one side of the stroke to the other, through its direction (an angle
+			// from the normal alone would turn the end cap back over the stroke).
+			let segments = Max(4, (int32)(outerHalf * 0.5f));
+			for (int32 i = 0; i <= segments; i++)
+			{
+				let angle = Pi * (float)i / (float)segments;
+				outline.Add((normal * Cos(angle)) + (direction * Sin(angle)));
+			}
+		}
+		else
 			return;
 
-		// A half turn from one side of the stroke to the other.
-		let segments = Max(4, (int32)(halfWidth * 0.5f));
-		EmitFan(point, Atan2(normal.Y, normal.X), Pi / (float)segments, segments, halfWidth, color,
-			vertices, indices);
+		let count = (uint32)outline.Count;
+		let centre = (uint32)vertices.Count;
+		vertices.Add(VGVertex.Solid(point, color));
+		let inner = (uint32)vertices.Count;
+		for (let offset in outline)
+			vertices.Add(VGVertex.Solid(point + (offset * innerHalf), color));
+		for (uint32 i = 0; (i + 1) < count; i++)
+		{
+			indices.Add(centre);
+			indices.Add(inner + i);
+			indices.Add(inner + i + 1);
+		}
+		if (outerHalf <= innerHalf)
+			return;
+
+		let outer = (uint32)vertices.Count;
+		for (let offset in outline)
+			vertices.Add(VGVertex.Solid(point + (offset * outerHalf), color, 0.0f));
+		for (uint32 i = 0; (i + 1) < count; i++)
+			AddQuad(indices, inner + i, outer + i, outer + i + 1, inner + i + 1);
 	}
 
 	/// A triangle fan around a centre: the centre, then one vertex per step of the sweep.
