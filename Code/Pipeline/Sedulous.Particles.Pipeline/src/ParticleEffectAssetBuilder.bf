@@ -20,6 +20,37 @@ class ParticleEffectAssetBuilder : IAssetBuilder
 	/// (the product's data version 2).
 	public int32 Version => 6;
 
+	/// What each system draws with is a runtime REFERENCE (the factory binds it at load): its
+	/// texture, its mesh and its materials, by id, or a texture by its edit time path. Declared
+	/// so a cook of the effect cooks them too (a scene's first cook reached the effect but not
+	/// its texture), and asset_uses and the export's reach see them.
+	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
+	{
+		let authored = (ParticleEffectAsset)asset;
+		let effect = authored.Effect;
+		for (int32 index < effect.SystemCount)
+		{
+			let system = effect.GetSystem(index);
+			if (system == null)
+				continue;
+			if (system.TextureRef != Guid.Empty)
+				outDeps.References.Add(system.TextureRef);
+			if (system.MeshRef != Guid.Empty)
+				outDeps.References.Add(system.MeshRef);
+			for (let material in system.MaterialRefs)
+			{
+				if (material != Guid.Empty)
+					outDeps.References.Add(material);
+			}
+			let path = authored.SystemTexturePath(index);
+			if (!path.IsEmpty && (context.Database != null))
+			{
+				if (let named = context.Database.GetInstanceByPath(path))
+					outDeps.References.Add(named.Id);
+			}
+		}
+	}
+
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
 		if ((context.Output == null) || (context.Serializers == null))

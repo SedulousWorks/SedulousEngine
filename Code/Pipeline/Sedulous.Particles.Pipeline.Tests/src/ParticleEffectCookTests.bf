@@ -291,4 +291,29 @@ class ParticleEffectCookTests
 		Test.Assert((read.Effect.SystemCount == 2) && (read.Effect.GetSystem(0).SubEmitters.Count == 1));
 		Test.Assert(read.Effect.GetSystem(0).SubEmitters[0].ChildSystemIndex == 1);
 	}
+
+	/// What each system draws with is declared as a reference, so a cook of the effect cooks it.
+	[Test]
+	public static void AnEffectDeclaresWhatItsSystemsDrawWithAsReferencesSoACookOfItCooksThem()
+	{
+		let asset = scope ParticleEffectAsset();
+		let sparks = asset.Effect.AddSystem(64);
+		let debris = asset.Effect.AddSystem(64);
+		let texture = Guid(0x11, 0x1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let mesh = Guid(0x22, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let material = Guid(0x33, 0x3, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		sparks.TextureRef = texture;
+		debris.MeshRef = mesh;
+		debris.MaterialRefs.Add(Guid.Empty);
+		debris.MaterialRefs.Add(material);
+		let builder = scope ParticleEffectAssetBuilder();
+		let context = scope AssetBuildContext();
+		let deps = scope AssetDependencies();
+		builder.ScanDependencies(asset, context, deps);
+		Test.Assert(deps.References.Count == 3, "the empty slot left out");
+		Test.Assert(deps.References[0] == texture);
+		Test.Assert(deps.References[1] == mesh);
+		Test.Assert(deps.References[2] == material);
+		Test.Assert(deps.Reads.IsEmpty, "runtime references: an edit of them re-cooks nothing");
+	}
 }
