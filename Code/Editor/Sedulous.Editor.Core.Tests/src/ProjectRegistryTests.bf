@@ -140,6 +140,10 @@ static class ProjectRegistryTests
 		Test.Assert(WriteFile(manifest, .((uint8*)text.Ptr, text.Length)) case .Ok);
 		controller.DecideOpen(dir, decision);
 		Test.Assert(decision.Gate == .PromptNewerEngine);
+		// Opened anyway, a newer engine's project keeps its stamp; only an older one's is upgraded.
+		Test.Assert(!ProjectManagerController.RestampsOnOpen(decision.Gate));
+		Test.Assert(ProjectManagerController.RestampsOnOpen(.PromptOlderBackup));
+		Test.Assert(!ProjectManagerController.RestampsOnOpen(.OpenDirectly));
 		Test.Assert(decision.PromptBody.Contains("99.0.0") && decision.PromptBody.Contains(EngineVersion.String));
 
 		// An older stamp offers the backup.

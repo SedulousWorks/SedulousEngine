@@ -230,7 +230,7 @@ class ProjectManagerMode
 			return;
 		let path = new String(directory);
 		let backup = answer == "backup";
-		let restamp = gate == .PromptOlderBackup;
+		let restamp = ProjectManagerController.RestampsOnOpen(gate);
 		Later(new [=this, =path, =backup, =restamp] () =>
 			{
 				if (backup && (mServices.Projects.BackupManifest(path, scope .()) case .Err))

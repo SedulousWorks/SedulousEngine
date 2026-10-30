@@ -20,6 +20,12 @@ class ProjectManagerController
 
 	public Settings Store => mStore;
 
+	/// Whether opening through `gate`, once the user agrees, stamps the project with this engine: an
+	/// older engine's project is upgraded (backed up first or not, as asked); a newer engine's is
+	/// opened as it is, keeping its stamp, so the newer engine still knows it as its own; one of this
+	/// engine's needs nothing.
+	public static bool RestampsOnOpen(ProjectOpenGate gate) => gate == .PromptOlderBackup;
+
 	/// Probes, classifies and composes the prompt copy for `directory` into `decision`. A
 	/// pure decision: the caller shows the dialogs for the prompt gates and calls the open
 	/// path it owns.
