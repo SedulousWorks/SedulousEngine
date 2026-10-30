@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""importscripts.py [name ...]: the game's UI documents (ui/*.sml, group UI) and scripts
-(scripts/*.as, group Scripts) imported through the editor's MCP, then cooked; the game script
-(Masquerade.as, the reserved class Game) made the project's startup script. With names, only those
-(Guest, Hud, ...). A re-run re-imports over the same assets, keeping their ids.
+"""importscripts.py [name ...]: the game's screens on the engine GUI (ui/*.gml and its sheet
+ui/*.css, group UI, each checked with gui_validate first) and scripts (scripts/*.as, group Scripts)
+imported through the editor's MCP, the sheet made the project's GUI sheet, then cooked; the game
+script (Masquerade.as, the reserved class Game) made the project's startup script. With names, only
+those (Guest, Hud, ...). A re-run re-imports over the same assets, keeping their ids. An asset is
+named by its file, so a sheet and a document may not share a name.
 
-The documents go first, so a script can name them: a `{{Type:Name}}` in a script (Type one of UI,
+The documents go first, so a script can name them: a `{{Type:Name}}` in a script (Type one of GUI,
 Scene, Prefab, Audio) is replaced by that asset's id before it is imported (the filled copy goes to
 generated/scripts/), and by the nil id when there is no such asset yet (a level not built).
 """
@@ -13,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from scenegen import mcp, assets
 
-TYPES = {"UI": "UIDocumentAsset", "Scene": "SceneDocument", "Prefab": "PrefabDocument", "Audio": "AudioClipAsset"}
+TYPES = {"GUI": "GuiDocumentAsset", "Scene": "SceneDocument", "Prefab": "PrefabDocument", "Audio": "AudioClipAsset"}
 NIL = "00000000-0000-0000-0000-000000000000"
 FILLED = os.path.join(HERE, "generated", "scripts")
 
@@ -36,7 +38,8 @@ def filled(path):
 
 
 only = set(sys.argv[1:])
-for folder, ext, group in (("ui", ".sml", "UI"), ("scripts", ".as", "Scripts")):
+sheets = []
+for folder, ext, group in (("ui", ".gml", "UI"), ("ui", ".css", "UI"), ("scripts", ".as", "Scripts")):
     if not os.path.isdir(os.path.join(HERE, folder)):
         continue
     for f in sorted(os.listdir(os.path.join(HERE, folder))):
@@ -44,8 +47,17 @@ for folder, ext, group in (("ui", ".sml", "UI"), ("scripts", ".as", "Scripts")):
         if e != ext or (only and name not in only):
             continue
         source = os.path.join(HERE, folder, f)
+        if ext in (".gml", ".css"):
+            # Checked as its cook will check it: a problem stops the import.
+            check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".gml" else "sheet"})
+            if not check["valid"] or check["diagnostics"]:
+                sys.exit("%s: %s" % (f, check["diagnostics"]))
         r = mcp("asset_import", {"source": filled(source) if ext == ".as" else source, "group": group})
         print(group + "/" + name, r["guid"])
+        if ext == ".css":
+            sheets.append(r["guid"])
         if name == "Masquerade":
             mcp("project_settings_set", {"startupScriptId": r["guid"]})
+if sheets:
+    mcp("project_settings_set", {"guiStyleSheetIds": sheets}) # the game's look, over the GUI's theme
 print(mcp("asset_cook", {}))

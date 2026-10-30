@@ -14,10 +14,11 @@
 // notes carry the game's name.
 
 const float kControlsShown = 7.0f; // how long the controls show as a round starts (s)
-Guid kTitleDoc = Guid::FromString("{{UI:Title}}");
-Guid kHudDoc = Guid::FromString("{{UI:Hud}}");
-Guid kPauseDoc = Guid::FromString("{{UI:Pause}}");
-Guid kResultsDoc = Guid::FromString("{{UI:Results}}");
+// The screens, on the engine GUI's screen stack (pushed by their documents' ids).
+const string kTitleDoc = "{{{GUI:Title}}}";
+const string kHudDoc = "{{{GUI:Hud}}}";
+const string kPauseDoc = "{{{GUI:Pause}}}";
+const string kResultsDoc = "{{{GUI:Results}}}";
 Guid kPalace = Guid::FromString("{{Scene:Palace}}");
 Guid kCanal = Guid::FromString("{{Scene:Canal}}");
 Guid kGardens = Guid::FromString("{{Scene:Gardens}}");
@@ -41,6 +42,19 @@ const int kAlone = 0;
 const int kHosting = 1;
 const int kJoining = 2;
 
+// The GUI's screen stack, and a node of the screens by its id.
+ScreenStack@ screens() { return ScreenStack::Of(Gui.Root().Find("screens")); }
+// The top screen first: one just cleared or popped away is still in the tree while its exit plays,
+// with the same ids, and would be found first.
+Node@ find(string id)
+{
+	Screen@ top = screens().Top;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+void wire(string id, EventHandler@ handler) { find(id).On("click", handler); } // `on*` names are the engine's handlers
+void setText(string id, string text) { Label::Of(find(id)).Text = text; }
+
 class Game
 {
 	private bool m_inRound = false;
@@ -63,33 +77,33 @@ class Game
 		m_inRound = false;
 		m_paused = false;
 		Run.TimeScale = 0.0f; // whatever is behind the title holds still
-		Ui.Clear();
-		UIScreen s = Ui.Push(kTitleDoc);
-		s.FindButton("play-btn").OnClick(ScriptCallback(this.onPalace));
-		s.FindButton("canal-btn").OnClick(ScriptCallback(this.onCanal));
-		s.FindButton("solo-btn").OnClick(ScriptCallback(this.onSolo));
-		s.FindButton("host-btn").OnClick(ScriptCallback(this.onHost));
-		s.FindButton("join-btn").OnClick(ScriptCallback(this.onJoin));
-		s.FindLabel("map-choice").SetText("The map: " + mapTitle(m_map));
-		s.FindLabel("net-status").SetText("");
-		s.FindButton("canal-btn").SetEnabled(!kCanal.IsNil);
-		s.FindButton("gardens-btn").OnClick(ScriptCallback(this.onGardens));
-		s.FindButton("gardens-btn").SetEnabled(!kGardens.IsNil);
-		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));
-		s.FindLabel("palace-best").SetText(bestLine(0));
-		s.FindLabel("canal-best").SetText(bestLine(1));
-		s.FindLabel("gardens-best").SetText(bestLine(2));
+		screens().Clear();
+		screens().Push(kTitleDoc);
+		wire("play-btn", EventHandler(this.onPalace));
+		wire("canal-btn", EventHandler(this.onCanal));
+		wire("solo-btn", EventHandler(this.onSolo));
+		wire("host-btn", EventHandler(this.onHost));
+		wire("join-btn", EventHandler(this.onJoin));
+		setText("map-choice", "The map: " + mapTitle(m_map));
+		setText("net-status", "");
+		find("canal-btn").Enabled = !kCanal.IsNil;
+		wire("gardens-btn", EventHandler(this.onGardens));
+		find("gardens-btn").Enabled = !kGardens.IsNil;
+		wire("quit-btn", EventHandler(this.onQuit));
+		setText("palace-best", bestLine(0));
+		setText("canal-best", bestLine(1));
+		setText("gardens-best", bestLine(2));
 	}
 
-	private void onPalace() { choose(0); }
-	private void onCanal() { choose(1); }
-	private void onGardens() { choose(2); }
+	private bool onPalace(GuiEvent@ e) { choose(0); return true; }
+	private bool onCanal(GuiEvent@ e) { choose(1); return true; }
+	private bool onGardens(GuiEvent@ e) { choose(2); return true; }
 
 	private void choose(int map)
 	{
 		sound(kClick);
 		m_map = map;
-		Ui.FindLabel("map-choice").SetText("The map: " + mapTitle(map));
+		setText("map-choice", "The map: " + mapTitle(map));
 	}
 
 	private string mapTitle(int map)
@@ -97,33 +111,36 @@ class Game
 		return map == 0 ? "the Palace" : (map == 1 ? "the Canal" : "the Gardens");
 	}
 
-	private void onSolo()
+	private bool onSolo(GuiEvent@ e)
 	{
 		sound(kClick);
 		m_mode = kAlone;
 		startRound();
+		return true;
 	}
 
-	private void onHost()
+	private bool onHost(GuiEvent@ e)
 	{
 		sound(kClick);
 		if (!Net.StartServer(kPort))
 		{
-			Ui.FindLabel("net-status").SetText("Could not host on port " + kPort);
-			return;
+			setText("net-status", "Could not host on port " + kPort);
+			return true;
 		}
 		m_mode = kHosting;
 		startRound();
+		return true;
 	}
 
-	private void onJoin()
+	private bool onJoin(GuiEvent@ e)
 	{
 		sound(kClick);
-		UITextBox box = Ui.FindTextBox("address");
-		m_address = (box.IsValid && box.Text.length() > 0) ? box.Text : "127.0.0.1";
+		string typed = TextField::Of(find("address")).Text;
+		m_address = typed.length() > 0 ? typed : "127.0.0.1";
 		m_mode = kJoining;
 		startRound();
 		m_connectIn = 0.2f; // once the map has loaded
+		return true;
 	}
 
 	private string mapName(int map) { return map == 0 ? "Palace" : (map == 1 ? "Canal" : "Gardens"); }
@@ -134,10 +151,11 @@ class Game
 		return best == -100000 ? "No round played yet" : "Best round: " + best + " points";
 	}
 
-	private void onQuit()
+	private bool onQuit(GuiEvent@ e)
 	{
 		sound(kClick);
 		Run.RequestExit(0);
+		return true;
 	}
 
 	// ---- a round ----
@@ -146,14 +164,11 @@ class Game
 		m_paused = false;
 		m_inRound = true;
 		m_note = 0.0f;
-		Ui.Clear();
-		Ui.Push(kHudDoc);
-		Ui.FindLabel("hud-target").SetText("");
-		Ui.FindLabel("hud-score").SetText("Points 0");
-		UIView controls = Ui.Find("hud-controls");
-		controls.SetVisible(true);
-		controls.SetOpacity(0.0f);
-		controls.FadeTo(1.0f, 0.3f);
+		screens().Clear();
+		screens().Push(kHudDoc);
+		setText("hud-target", "");
+		setText("hud-score", "Points 0");
+		find("hud-controls").Tween("opacity", "1", 0.3f, "ease"); // from the sheet's 0
 		m_controlsShow = kControlsShown;
 		Run.TimeScale = 1.0f;
 		Run.LoadScene(m_map == 0 ? kPalace : (m_map == 1 ? kCanal : kGardens));
@@ -172,7 +187,7 @@ class Game
 		if (Input.WasPressed("Pause"))
 		{
 			if (m_paused)
-				onResume();
+				resume();
 			else
 				pause();
 			return;
@@ -183,13 +198,13 @@ class Game
 		{
 			m_controlsShow -= dt;
 			if (m_controlsShow <= 0.0f)
-				Ui.Find("hud-controls").FadeTo(0.0f, 0.6f);
+				find("hud-controls").Tween("opacity", "0", 0.6f, "ease");
 		}
 		if (m_note > 0.0f)
 		{
 			m_note -= dt;
 			if (m_note <= 0.0f)
-				Ui.Find("hud-note").FadeTo(0.0f, 0.5f);
+				find("hud-note").Tween("opacity", "0", 0.5f, "ease");
 		}
 	}
 
@@ -198,12 +213,16 @@ class Game
 	{
 		if (!m_inRound)
 			return;
-		UILabel mark = Ui.FindLabel("hud-target");
-		mark.SetText(costumeName(int(hud.Z)));
-		mark.SetTextColor(costumeColour(int(hud.Z)));
-		Ui.FindLabel("hud-score").SetText("Points " + int(hud.X));
-		Ui.FindLabel("hud-time").SetText(clock(hud.Y));
-		Ui.FindLabel("hud-rank").SetText(place(int(hud.W)) + " of 4");
+		int costume = int(hud.Z);
+		setText("hud-target", costumeName(costume));
+		// In its colour: the sheet's class for the costume.
+		UIWidget@ mark = UIWidget::Of(find("hud-target"));
+		for (int c = 0; c < 6; ++c)
+			mark.RemoveClass("costume-" + c);
+		mark.AddClass("costume-" + costume);
+		setText("hud-score", "Points " + int(hud.X));
+		setText("hud-time", clock(hud.Y));
+		setText("hud-rank", place(int(hud.W)) + " of 4");
 	}
 
 	void onNote(int what)
@@ -262,17 +281,17 @@ class Game
 		if (scores.Y > scores.X) ++rank;
 		if (scores.Z > scores.X) ++rank;
 		if (scores.W > scores.X) ++rank;
-		UIScreen s = Ui.Push(kResultsDoc);
-		s.FindLabel("res-title").SetText(rank == 1 ? "The ball is yours" : "The music stops");
-		s.FindLabel("res-you").SetText("You came " + place(rank) + " with " + you + " points");
-		s.FindLabel("res-0").SetText("You        " + you);
-		s.FindLabel("res-1").SetText("Hunter 1   " + int(scores.Y));
-		s.FindLabel("res-2").SetText("Hunter 2   " + int(scores.Z));
-		s.FindLabel("res-3").SetText("Hunter 3   " + int(scores.W));
-		s.FindLabel("res-best").SetText(record ? "Your best round yet" : "Your best: " + best + " points");
-		s.FindButton("again-btn").OnClick(ScriptCallback(this.onAgain));
-		s.FindButton("again-btn").SetVisible(m_mode != kJoining); // the host starts the next round
-		s.FindButton("title-btn").OnClick(ScriptCallback(this.onTitle));
+		screens().Push(kResultsDoc);
+		setText("res-title", rank == 1 ? "The ball is yours" : "The music stops");
+		setText("res-you", "You came " + place(rank) + " with " + you + " points");
+		setText("res-0", "You        " + you);
+		setText("res-1", "Hunter 1   " + int(scores.Y));
+		setText("res-2", "Hunter 2   " + int(scores.Z));
+		setText("res-3", "Hunter 3   " + int(scores.W));
+		setText("res-best", record ? "Your best round yet" : "Your best: " + best + " points");
+		wire("again-btn", EventHandler(this.onAgain));
+		find("again-btn").Visible = m_mode != kJoining; // the host starts the next round
+		wire("title-btn", EventHandler(this.onTitle));
 	}
 
 	// The host started another round in the same scene: a joiner leaves its results for it.
@@ -289,36 +308,43 @@ class Game
 		m_paused = true;
 		holdStill();
 		m_controlsShow = 0.0f;
-		Ui.Find("hud-controls").SetVisible(false); // the menu shows them itself
-		UIScreen s = Ui.Push(kPauseDoc);
-		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
-		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onAgain));
-		s.FindButton("restart-btn").SetVisible(m_mode != kJoining); // the host's to start over
-		s.FindButton("title-btn").OnClick(ScriptCallback(this.onTitle));
+		find("hud-controls").Tween("opacity", "0", 0.0f, "ease"); // the menu shows them itself
+		screens().Push(kPauseDoc);
+		wire("resume-btn", EventHandler(this.onResume));
+		wire("restart-btn", EventHandler(this.onAgain));
+		find("restart-btn").Visible = m_mode != kJoining; // the host's to start over
+		wire("title-btn", EventHandler(this.onTitle));
 	}
 
-	private void onResume()
+	private bool onResume(GuiEvent@ e)
+	{
+		resume();
+		return true;
+	}
+
+	private void resume()
 	{
 		if (!m_paused)
 			return;
 		m_paused = false;
-		Ui.Pop();
+		screens().Pop();
 		sound(kClick);
 		letGo();
 	}
 
 	// Another round: alone, the map afresh; hosting, the same scene goes on (the players' hunters
 	// with it) and the Ball starts over ("Restart").
-	private void onAgain()
+	private bool onAgain(GuiEvent@ e)
 	{
 		sound(kClick);
 		if (m_mode == kHosting)
 		{
 			enterRound();
 			Run.Emit("Restart", 0); // Ball.as starts over
-			return;
+			return true;
 		}
 		startRound();
+		return true;
 	}
 
 	// Alone, the scene stops behind a menu. In a networked round it goes on (the host runs the
@@ -342,15 +368,15 @@ class Game
 	// The HUD over the scene that is already running.
 	private void enterRound()
 	{
-		Ui.Clear();
-		Ui.Push(kHudDoc);
+		screens().Clear();
+		screens().Push(kHudDoc);
 		m_inRound = true;
 		m_paused = false;
 		m_note = 0.0f;
 		letGo();
 	}
 
-	private void onTitle()
+	private bool onTitle(GuiEvent@ e)
 	{
 		sound(kClick);
 		if (m_mode != kAlone)
@@ -360,6 +386,7 @@ class Game
 		}
 		m_connectIn = -1.0f;
 		showTitle();
+		return true;
 	}
 
 	private void sound(Guid clip)
@@ -369,10 +396,8 @@ class Game
 
 	private void note(string text)
 	{
-		UILabel label = Ui.FindLabel("hud-note");
-		label.SetText(text);
-		label.SetOpacity(1.0f);
-		label.SetVisible(true);
+		setText("hud-note", text);
+		find("hud-note").Tween("opacity", "1", 0.15f, "ease"); // from the sheet's 0, or a fade going
 		m_note = 3.0f;
 	}
 
@@ -385,18 +410,6 @@ class Game
 		if (costume == 3) return "a black coat";
 		if (costume == 4) return "a plum coat";
 		return "an ivory coat";
-	}
-
-	// Each costume's colour, lightened enough to read on the HUD's night blue (the black coat as
-	// a silver grey).
-	private Color costumeColour(int costume)
-	{
-		if (costume == 0) return Color(0.95f, 0.45f, 0.55f, 1.0f);
-		if (costume == 1) return Color(0.35f, 0.85f, 0.85f, 1.0f);
-		if (costume == 2) return Color(0.98f, 0.80f, 0.35f, 1.0f);
-		if (costume == 3) return Color(0.78f, 0.80f, 0.86f, 1.0f);
-		if (costume == 4) return Color(0.85f, 0.55f, 0.90f, 1.0f);
-		return Color(1.0f, 0.96f, 0.86f, 1.0f);
 	}
 
 	private string place(int p)

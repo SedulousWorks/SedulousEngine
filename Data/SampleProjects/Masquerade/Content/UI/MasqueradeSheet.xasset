@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">a85a9fd4-b9a2-d044-85b1-09980b76e1b2</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiStyleSheetAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5871759161733652681</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">MasqueradeSheet.css</string>
+			<string name="previewMarkup"/>
+		</object>
+	</object>
+</root>
