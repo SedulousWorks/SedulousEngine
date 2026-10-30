@@ -4,7 +4,8 @@
 Needs terrain.py <course> and importall.py <course> first: it places what they made. The scene:
 - the sun;
 - the mountain: the terrain, its heightfield as a static body, and the vegetation (pines on the
-  forest floor's splat layer, rocks scattered thinly on open snow);
+  forest floor's splat layer, rocks scattered thinly on open snow, snowy shrubs where the course's
+  vegetation mask is painted, which it is not until someone paints it);
 - the course line: a spline down the middle of the course (terrain.py's points, with Catmull-Rom
   handles, stored as written);
 - the rider (Board.as on a character, the modelled rider and board under it) at the top gate;
@@ -77,8 +78,11 @@ TERRAIN = asset("TerrainAsset", name + "Terrain")
 HEIGHTFIELD = asset("HeightfieldAsset", name + "Height")
 PINE = asset("StaticMeshAsset", "PineModel.2")
 ROCK = asset("StaticMeshAsset", "RockModel.2")
+SHRUB = asset("StaticMeshAsset", "ShrubModel.2")
+MASK = asset("VegetationMaskAsset", name + "Mask")
 PINE_MATERIALS = model_materials("Pine")
 ROCK_MATERIALS = model_materials("Rock")
+SHRUB_MATERIALS = model_materials("Shrub")
 BOARD = asset("ScriptClassAsset", "Board")
 GATE = asset("ScriptClassAsset", "Gate")
 FINISH = asset("ScriptClassAsset", "Finish")
@@ -449,7 +453,7 @@ def vegetation_layer(label, mesh, materials, placement, density, scale, slope, f
                 num(threshold), num(density)))
 
 
-UNIFORM, SPLAT = 0, 1
+UNIFORM, SPLAT, MASK_PLACEMENT = 0, 1, 2
 # Collision groups: 0 everything, 1 the gates' flags (gates.py's FLAG_GROUP), 2 the trees and rocks
 # (the vegetation's trunks: Board.as finds a near miss by this group).
 FLAGS_GROUP, TREES_GROUP = 1, 2
@@ -475,13 +479,17 @@ def build():
     mountain = d.entity("Mountain")
     d.add(mountain, "terrain", terrain=TERRAIN)
     d.add(mountain, "physics.RigidBody", motion=0, layer=0, shape=5, heightfield=HEIGHTFIELD)
-    d.add(mountain, "terrainVegetation", proceduralLayers=[
+    # The course's mask (blank until painted in the scene view's Paint Vegetation) grows the shrubs.
+    d.add(mountain, "terrainVegetation", mask=MASK, proceduralLayers=[
         # Pines where terrain.py laid the forest floor (palette layer 2), sparse enough to ride
         # between; rocks thinly everywhere the slope allows, the course's own splat aside.
         vegetation_layer("Pines", PINE, PINE_MATERIALS, SPLAT, COURSE["pines"], (0.8, 1.3), 30.0, (250.0, 320.0), splat_layer=2,
                          threshold=0.5, shadows=True, solid=PINE_TRUNK),
         vegetation_layer("Rocks", ROCK, ROCK_MATERIALS, SPLAT, 0.0015, (0.6, 1.5), 40.0, (120.0, 160.0), splat_layer=BASE_LAYER,
                          threshold=0.9, solid=ROCK_SOLID),
+        # Snowy shrubs wherever the mask is painted (its plane 0), as dense as the paint: scenery
+        # the rider passes through.
+        vegetation_layer("Shrubs", SHRUB, SHRUB_MATERIALS, MASK_PLACEMENT, 0.08, (0.7, 1.4), 35.0, (90.0, 130.0)),
     ])
 
     course = d.entity("Course")

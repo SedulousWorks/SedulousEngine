@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">223a1d0f-3401-3a4c-af56-a6f292c2e926</string>
+	<string name="typeName">Sedulous.Vegetation.Pipeline.VegetationMaskAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5960363004650490919</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<i32 name="width">1024</i32>
+			<i32 name="height">1024</i32>
+			<u32 name="planeCount">1</u32>
+		</object>
+	</object>
+</root>

@@ -3,8 +3,9 @@
 
 Run terrain.py <course> and the Blender props script first (blender/props.py, into
 Tools/generated/Props). Imports, each once (a re-run finds each by name and type and leaves it):
-- Terrain/<Course>: the heightfield (sized from <course>.json), the splatmap, and the terrain
-  asset that ties them to the layers' textures (base snow, then the course, rock and forest).
+- Terrain/<Course>: the heightfield (sized from <course>.json), the splatmap, the terrain asset
+  that ties them to the layers' textures (base snow, then the course, rock and forest), and the
+  course's vegetation mask (blank: painted in the scene view).
 - Terrain/Textures: the layers' textures.
 - Models/Rider/RiderModel: the rider on the board, rigged, with its clips (blender/rider.py, into
   Tools/generated/Rider).
@@ -90,6 +91,14 @@ write_fields(terrain, {"heightfieldId": height, "weightsId": splat, "baseAlbedoI
                        "paletteTextureSize": 256})
 print("terrain", terrain)
 
+# The vegetation mask the course's Shrubs layer grows from (course.py assigns it): one plane,
+# blank (nothing grows until the scene view's Paint Vegetation tool paints it).
+mask_name = name + "Mask"
+found = [a["guid"] for a in existing() if a["name"] == mask_name and a["type"] == "VegetationMaskAsset"]
+mask = found[0] if found else mcp("asset_create", {"creator": "Vegetation Mask", "name": mask_name,
+                                                   "group": "Terrain/" + name})["guid"]
+print("mask", mask)
+
 rider = os.path.join(HERE, "generated", "Rider", "RiderModel.glb")  # blender/rider.py
 if os.path.exists(rider):
     imported(rider, "Models/Rider", "Model")
@@ -97,7 +106,7 @@ if os.path.exists(rider):
 props = os.path.join(HERE, "generated", "Props")
 # The kicker is ridden, so it carries its collision (a triangle mesh: the rider rides its curve).
 COLLIDES = {"Kicker"}
-for model in ("Pine", "Rock", "GatePole", "GateFlagRed", "GateFlagBlue", "Finish", "Gem", "Kicker"):
+for model in ("Pine", "Shrub", "Rock", "GatePole", "GateFlagRed", "GateFlagBlue", "Finish", "Gem", "Kicker"):
     path = os.path.join(props, model + "Model.glb")
     if os.path.exists(path):
         imported(path, "Models/Props", "Model", {"Generate collision": True} if model in COLLIDES else None)

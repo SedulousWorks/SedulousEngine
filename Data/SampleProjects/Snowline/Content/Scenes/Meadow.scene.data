@@ -1958,8 +1958,8 @@
 					<u64 name="type">8523590734164385642</u64>
 					<u32 name="version">4</u32>
 				</array>
-				<string name="mask">00000000-0000-0000-0000-000000000000</string>
-				<array name="proceduralLayers" count="2">
+				<string name="mask">223a1d0f-3401-3a4c-af56-a6f292c2e926</string>
+				<array name="proceduralLayers" count="3">
 					<string name="name">Pines</string>
 					<string name="mesh">ccbd550e-1c00-d04a-b9d4-c3e566184181</string>
 					<array name="materials" count="4">
@@ -2020,6 +2020,36 @@
 					<f32 name="splatThreshold">0.9</f32>
 					<u32 name="maskPlane">0</u32>
 					<f32 name="density">0.0015</f32>
+					<string name="name">Shrubs</string>
+					<string name="mesh">8a3f36d3-7013-fa4d-9676-3cfb85321888</string>
+					<array name="materials" count="3">
+						<string>69d6a2a0-4ba4-5842-86e4-3796169b1f1c</string>
+						<string>5f2f8493-99ce-fa40-9ea3-505e764163ff</string>
+						<string>0b49696b-b5fb-0b44-82df-d17f7c82f4b8</string>
+					</array>
+					<object name="scaleRange">
+						<f32 name="x">0.7</f32>
+						<f32 name="y">1.4</f32>
+					</object>
+					<f32 name="maxSlopeDegrees">35</f32>
+					<object name="heightRange">
+						<f32 name="x">-1000000</f32>
+						<f32 name="y">1000000</f32>
+					</object>
+					<bool name="alignToNormal">false</bool>
+					<f32 name="fadeStart">90</f32>
+					<f32 name="fadeEnd">130</f32>
+					<bool name="castShadows">false</bool>
+					<u32 name="maxInstancesPerChunk">4096</u32>
+					<bool name="visible">true</bool>
+					<f32 name="collisionRadius">0</f32>
+					<f32 name="collisionHeight">0</f32>
+					<u8 name="collisionGroup">0</u8>
+					<u8 name="placement">2</u8>
+					<u32 name="splatLayer">0</u32>
+					<f32 name="splatThreshold">0.25</f32>
+					<u32 name="maskPlane">0</u32>
+					<f32 name="density">0.08</f32>
 				</array>
 				<array name="propLayers" count="0"/>
 				<bool name="visible">true</bool>

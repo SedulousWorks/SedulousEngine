@@ -1,4 +1,4 @@
-"""Snowline's props: the mountain's trees and rocks, the slalom gates, the finish and the gems, modelled in
+"""Snowline's props: the mountain's trees, shrubs and rocks, the slalom gates, the finish and the gems, modelled in
 Blender on the shared kit.
 
     blender --background --factory-startup --python props.py -- <out dir> [preview] [names]
@@ -43,6 +43,17 @@ def pine():
         snow_bottom = bottom + (top - bottom) * 0.45
         snow_radius = radius * (top - snow_bottom) / (top - bottom) + 0.05
         tube("SnowCap", P(0, 0, snow_bottom), P(0, 0, top + 0.04), snow_radius, "Snow", "root", 10, 0.02)
+
+
+def shrub():
+    """A low snowy shrub about 1 m across and 0.7 m tall: three clumps of needles leaning together,
+    each under a cap of snow. It grows where a course's vegetation mask is painted."""
+    clumps = ((P(0, 0, 0.30), 0.42), (P(0.28, 0.12, 0.22), 0.30), (P(-0.24, -0.16, 0.20), 0.28))
+    for i, (centre, radius) in enumerate(clumps):
+        ball("Clump", centre, radius, "Needles" if i % 2 == 0 else "NeedlesDark", scale=(1.0, 1.0, 0.85), segments=(9, 6))
+        # The snow: a dome over the clump's top, wider than the clump is there, so it overhangs.
+        cap = centre + P(0, 0, radius * 0.6)
+        ball("ShrubSnow", cap, radius * 0.86, "Snow", scale=(1.0, 1.0, 0.5), segments=(9, 5), cut_below=0.0)
 
 
 def rock():
@@ -126,7 +137,7 @@ def kicker():
     kit3d.finish("Lip", stripe, "KickerLip")
 
 
-MODELS = {"Pine": pine, "Rock": rock, "GatePole": gate_pole, "GateFlagRed": gate_flag("FlagRed"),
+MODELS = {"Pine": pine, "Shrub": shrub, "Rock": rock, "GatePole": gate_pole, "GateFlagRed": gate_flag("FlagRed"),
           "GateFlagBlue": gate_flag("FlagBlue"), "Finish": finish, "Gem": gem, "Kicker": kicker}
 
 
