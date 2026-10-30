@@ -1,751 +1,726 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Core.Logging;
-using Sedulous.Content;
 using Sedulous.Scene;
-using Sedulous.Render;
+using Sedulous.GUI;
 using Sedulous.PropertyAnimation;
-using Sedulous.PropertyAnimation.Resource;
-using Sedulous.PropertyAnimation.Pipeline;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
-using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.PropertyAnimation;
 
-/// The persistent in-scene property-animation editor: a docked view, not a viewport tool
-/// mode, that the scene page owns for its whole lifetime below the viewport. Persistent, so
-/// the editing view is never recreated mid edit and an undo command can never outlive it, and
-/// the preview snapshot is re-taken whenever the track set changes. The panel is the clip
-/// editor host: it owns the editing clip, routes edits through the scene page's command
-/// stack, loads, creates and saves the clip asset, owns the live-preview state, and hosts the
-/// Timeline scrubber above the shared ClipEditorView. The scene page calls Tick and
-/// DrawOverlay each frame.
-class PropertyAnimationPanel : FlexLayout, IClipEditorHost
+/// The property animation panel on the GUI from its markup (Data/Editor/PropertyAnimationPanel.gml;
+/// Raptor's editor-gui spec, 5.4, layer 9, part 2), over part 1's clip document, source, preview and
+/// transport, under the scene page's viewport. Its bar holds the clip (its name and unsaved mark, New,
+/// Open, Save, its own Undo and Redo), the entity it animates (Use Selected), its tracks (Add Track
+/// offers the entity's properties without one, Key keys the chosen tracks with what the entity shows
+/// at the playhead, Remove takes them away), the kit's transport with Loop, and the clip's length. The
+/// ruler, the dopesheet and the curve view share one time axis; the curve view shows the chosen
+/// tracks' curves, every track's with none chosen.
+///
+/// While it holds the focus its keys are its own (the user's ruling): Undo, Redo and Save are handled
+/// on its root, so Ctrl+Z, Ctrl+Y and Ctrl+S act on the clip and never reach the scene, even with
+/// nothing left to undo; a key it does not bind goes on to the scene page. The preview stands down
+/// while the scene simulates. New, Open and the prompt for an unsaved clip are the page's seams.
+class PropertyAnimationPanel
 {
-	/// The entity's local transform is animated by naming it with this reserved component
-	/// type; it is baked into the scene, not a reflected component.
-	public const String cTransformName = "Transform";
+	public const String cMarkupPath = "Editor/PropertyAnimationPanel.gml";
 
-	// The dopesheet lane sizing.
-	private const float cLaneHeight = 22.0f;
-	private const float cRulerBand = 24.0f;
-	private const float cTimelineMinHeight = 28.0f;
-	private const float cTimelineMaxHeight = 220.0f;
+	/// A key this close to a time is the one at it.
+	private const float cSameTime = 1e-4f;
 
-	// Borrowed: the scene page owns them and the panel.
-	private EditorContext mEditorCtx;
-	private Scene mScene;
-	private EditorCommandStack mCommands;
-	private Selection<Guid> mSelection;
-	/// The editing model, durable across the panel's life.
-	private PropertyAnimationClip mClip = new .() ~ delete _;
-	/// The clip asset being edited; Empty is none loaded.
-	private Guid mClipId = .Empty;
-	private String mClipName = new .() ~ delete _;
-	private bool mDirty = false;
-	/// The transient header status; empty is none.
-	private String mStatusFlash = new .() ~ delete _;
-	private float mStatusFlashSeconds = 0.0f;
+	private EditorContext mContext;
+	/// Borrowed: the page's, which outlives it.
+	private Sedulous.Scene.Scene mScene;
+	/// A reference of its own.
+	private Node mContent ~ _?.ReleaseRef();
+	private ClipDocument mDocument ~ delete _;
+	private ClipSource mSource ~ delete _;
+	private ClipPreview mPreview ~ delete _;
+	private ClipTransport mTransport = new .() ~ delete _;
+	private TimeAxis mAxis ~ _?.ReleaseRef();
+	private Guid mEntity = .Empty;
+	private bool mSimulating = false;
+	/// The transport moving the playhead: not a scrub.
+	private bool mMoving = false;
+	/// The tracks the curve view shows, as last chosen.
+	private List<int> mShownTracks = new .() ~ delete _;
+	/// What the curve view shows changed: fit its values.
+	private bool mFitValues = true;
+	/// The clip's tracks, as last shown.
+	private int mTrackCount = 0;
+	/// The clip, as last shown.
+	private Guid mShownClip = .Empty;
+	/// The root's command handlers.
+	private List<uint32> mCommands = new .() ~ delete _;
+	private Menu mTrackMenu = null ~ _?.ReleaseRef();
 
-	// The chrome, built once; borrowed, the tree owns them.
-	private Label mClipLabel = null;
-	/// Anchors the "+ Track" property-picker menu.
-	private Button mAddTrackButton = null;
-	private Button mPlayButton = null;
-	private Button mPauseButton = null;
-	private Button mLoopButton = null;
-	private Timeline mTimeline = null;
-	/// Sizes the timeline pane to its lanes.
-	private LayoutStyle mTimelineParams = .();
-	/// The clip and entity chrome, hidden while empty.
-	private FlexLayout mHeader = null;
-	/// The "no clip" message with Create and Open, exclusive with the body.
-	private FlexLayout mEmptyState = null;
-	private Label mEntityLabel = null;
-	/// The transport, Timeline and ClipEditorView.
-	private FlexLayout mBody = null;
-	private ClipEditorView mView = null ~ delete _;
-	/// The explicit preview, key and seed target; Empty is unbound.
-	private Guid mBoundEntity = .Empty;
+	// The markup's (its tree holds them).
+	private Dopesheet mSheet = null;
+	private CurveView mCurves = null;
+	private Sedulous.GUI.Label mClipName = null;
+	private Node mDirty = null;
+	private Sedulous.GUI.Label mEntityName = null;
+	private NumberField mLength = null;
+	private Node mEmpty = null;
+	private Node mBody = null;
+	private ButtonBase mSave = null;
+	private ButtonBase mUndo = null;
+	private ButtonBase mRedo = null;
+	private ButtonBase mPlay = null;
+	private ButtonBase mAddTrack = null;
+	private ButtonBase mKey = null;
+	private ButtonBase mRemove = null;
+	private ButtonBase mRestart = null;
+	private ButtonBase mStop = null;
 
-	/// The scene page wires this to its entity picker; the panel cannot depend on the scene
-	/// editor. Called with the current binding and a callback for the pick. Owned.
-	public delegate void(Guid current, delegate void(Guid picked) onPicked) RequestEntityPick ~ delete _;
+	// === The page's seams ===
 
-	// The dopesheet lane bookkeeping: the sorted key time each marker on a lane represents,
-	// parallel to the Timeline's lanes, so a (lane, index) selection maps to a time.
-	private List<List<float>> mLaneKeyTimes = new .() ~ DeleteContainerAndItems!(_);
-	/// The moved keys' new times, consumed by the next BuildLanes.
-	private List<ReselectMark> mReselectTimes = new .() ~ delete _;
-	private bool mHaveReselect = false;
+	/// The scene's selected entity (Use Selected binds it); null: none.
+	public delegate Guid() SelectedEntity ~ delete _;
+	/// New and Open: the page's dialogs, which end by LoadClip. Null: the buttons do nothing.
+	public delegate void() RequestNewClip ~ delete _;
+	public delegate void() RequestOpenClip ~ delete _;
+	/// Runs `proceed` now, or once the user has saved or discarded the unsaved clip (the page's
+	/// prompt; it takes `proceed`); null: at once.
+	public delegate void(delegate void() proceed) GuardUnsaved ~ delete _;
+	/// The bar's Close: the page hides the panel (the clip stays open in it). Null: nothing.
+	public delegate void() RequestClose ~ delete _;
 
-	// The transport, editor-local. Loop defaults on, matching a fresh animator component.
-	private bool mPlaying = false;
-	private bool mPaused = false;
-	private bool mLoop = true;
-	/// The transport clock, mirrored to the Timeline widget.
-	private float mPlayheadTime = 0.0f;
-
-	// The preview state, transient: never dirties the document or goes through undo.
-	/// The last Tick's Simulate or Play gate; no preview when true.
-	private bool mEditingLocked = false;
-	private bool mPreviewing = false;
-	private EntityHandle mPreviewEntity = .();
-	private float mPreviewTime = 0.0f;
-	/// The pre-preview values, restored on stop.
-	private List<PreviewSnapshotEntry> mSnapshot = new .() ~ DeleteContainerAndItems!(_);
-	/// The track identity the snapshot was taken against.
-	private List<String> mSnapshotIdentity = new .() ~ DeleteContainerAndItems!(_);
-
-	public this(EditorContext editorCtx, Scene scene, EditorCommandStack commands, Selection<Guid> selection)
+	/// Over `scene` (the page's, which outlives it), its markup `content` loaded (a reference of its
+	/// own taken).
+	public this(EditorContext context, Sedulous.Scene.Scene scene, Node content)
 	{
-		mEditorCtx = editorCtx;
+		mContext = context;
 		mScene = scene;
-		mCommands = commands;
-		mSelection = selection;
-		BuildChrome();
-		RefreshHeader();
-		RefreshEntitySlot();
-		RefreshTransportButtons();
-		BuildLanes();
-		RefreshClipStateUI(); // no clip yet: the empty state is the whole panel
+		mContent = content;
+		if (mContent != null)
+			mContent.AddRef();
+		mDocument = new .(context);
+		mSource = new .(mDocument);
+		mPreview = new .(scene);
+		mDocument.OnChanged = new [=this] () => { Changed(); };
+		mSource.CurrentValue = new [=this] (track) => EntityValue(track.ComponentType, track.PropertyPath);
+
+		// One axis under the ruler, the dopesheet and the curve view; a scrub poses the entity.
+		mAxis = new .();
+		mAxis.PixelsPerSecond = 120.0f;
+		mAxis.FrameRate = 30.0f;
+		mAxis.Duration = mDocument.Length;
+		mAxis.SetOnPlayheadChanged(new [=this] (time) =>
+			{
+				if (mMoving)
+					return;
+				mTransport.SetTime(time);
+				Pose();
+			});
+		if (let ruler = Find<TimeRuler>("anim-ruler"))
+			ruler.TimeAxis = mAxis;
+		mSheet = Find<Dopesheet>("anim-sheet");
+		if (mSheet != null)
+		{
+			mSheet.TimeAxis = mAxis;
+			mSheet.Source = mSource;
+		}
+		mCurves = Find<CurveView>("anim-curves");
+		if (mCurves != null)
+		{
+			mCurves.TimeAxis = mAxis;
+			mCurves.Source = mSource;
+		}
+
+		mClipName = Find<Sedulous.GUI.Label>("anim-clip");
+		mDirty = Find<Node>("anim-dirty");
+		mEntityName = Find<Sedulous.GUI.Label>("anim-entity");
+		mEmpty = Find<Node>("anim-empty");
+		mBody = Find<Node>("anim-body");
+		mLength = Find<NumberField>("anim-length");
+		if (mLength != null)
+			mLength.SetOnValueChanged(new [=this] (value) => { SetLength((float)value); });
+		if (let button = Find<ButtonBase>("anim-new"))
+			button.SetOnClick(new [=this] () => { if (RequestNewClip != null) RequestNewClip(); });
+		if (let button = Find<ButtonBase>("anim-open"))
+			button.SetOnClick(new [=this] () => { if (RequestOpenClip != null) RequestOpenClip(); });
+		mSave = Wire("anim-save", new [=this] () => { Save().IgnoreError(); });
+		mUndo = Wire("anim-undo", new [=this] () => { Undo(); });
+		mRedo = Wire("anim-redo", new [=this] () => { Redo(); });
+		Wire("anim-bind", new [=this] () => { BindSelected(); }); // always on: the page's selection is read when clicked
+		mAddTrack = Wire("anim-add-track", new [=this] () => { OpenTrackMenu(); });
+		mKey = Wire("anim-key", new [=this] () => { KeyChosen(); });
+		mRemove = Wire("anim-remove", new [=this] () => { RemoveChosen(); });
+		mRestart = Wire("anim-restart", new [=this] () => { Restart(); });
+		Wire("anim-frame", new [=this] () => { FrameCurves(); });
+		Wire("anim-close", new [=this] () =>
+			{
+				if (RequestClose != null)
+					RequestClose();
+			});
+		mStop = Wire("anim-stop", new [=this] () => { Stop(); });
+		mPlay = Find<ButtonBase>("anim-play");
+		if (mPlay != null)
+		{
+			mPlay.SetOnToggled(new [=this] (on) =>
+				{
+					if (on)
+						Play();
+					else
+						Pause();
+				});
+		}
+		if (let loop = Find<ButtonBase>("anim-loop"))
+			loop.SetOnToggled(new [=this] (on) => { SetLooping(on); });
+
+		// The keys it binds, while it holds the focus: the clip's, never the scene's.
+		if (mContent != null)
+		{
+			mCommands.Add(mContent.OnCommand("edit.undo", new [=this] (command) => { Undo(); }));
+			mCommands.Add(mContent.OnCommand("edit.redo", new [=this] (command) => { Redo(); }));
+			mCommands.Add(mContent.OnCommand("file.save", new [=this] (command) => { Save().IgnoreError(); }));
+		}
+		Changed();
 	}
 
 	public ~this()
 	{
-		StopPreview();
-	}
-
-	// ---- IClipEditorHost -------------------------------------------------------------------
-
-	public PropertyAnimationClip Clip => mClip;
-	public EditorCommandStack Commands => mCommands;
-
-	public void MarkClipDirty()
-	{
-		let wasDirty = mDirty;
-		mDirty = true;
-		if (!wasDirty)
-			RefreshHeader(); // the dirty star shows as soon as the first edit lands
-		// A live canvas edit mutates keys without a view rebuild: the dopesheet markers resync
-		// now, or they lag until the next full rebuild.
-		if (mTimeline != null)
-			mTimeline.SetDuration(Math.Max(Math.Max(mClip.Duration, mClip.ComputeDuration()), 1.0f));
-		BuildLanes();
-	}
-
-	/// The scrub moved: ignored while Playing, since the transport owns the playhead then.
-	/// Drives live preview off the new time.
-	public void OnScrubTimeChanged(float time)
-	{
-		if (mPlaying && !mPaused)
-			return;
-		mPlayheadTime = time; // a scrub repositions the transport clock
-		if (mView != null)
-			mView.SetScrubTime(time);
-		PreviewSelected(time);
-	}
-
-	/// The view rebuilt its rows: the Timeline axis resyncs to the authored duration and the
-	/// lanes rebuild, selection preserved by time.
-	public void OnClipViewRebuilt()
-	{
-		if (mTimeline != null)
-			mTimeline.SetDuration(Math.Max(Math.Max(mClip.Duration, mClip.ComputeDuration()), 1.0f));
-		BuildLanes();
-	}
-
-	/// The undo and redo whole-clip apply, routed through the view; the command holds this
-	/// host, never a view pointer.
-	public void ApplyClipState(PropertyAnimationClip state, bool rebuild)
-	{
-		if (mView != null)
-			mView.ApplyState(state, rebuild);
-		else
-			state.CopyTo(mClip);
-	}
-
-	/// Authors the clip's duration, never below the last key; one undo step.
-	public void SetClipDuration(float seconds)
-	{
-		if (mView == null)
-			return;
-		let before = mClip.Clone();
-		let after = mClip.Clone();
-		after.Duration = Math.Max(seconds, after.ComputeDuration());
-		if (after.Duration == before.Duration)
+		mPreview.Stop();
+		if (mSheet != null)
+			mSheet.Source = null;
+		if (mCurves != null)
+			mCurves.Source = null;
+		if (mContent != null)
 		{
-			delete before;
-			delete after;
-			return;
+			for (let token in mCommands)
+				mContent.RemoveCommandHandler(token);
 		}
-		mView.PushClipEdit(before, after);
 	}
 
-	public ClipTimeAxis ClipTimeTransform
+	public Node Content => mContent;
+
+	// === The clip ===
+
+	/// Edits the clip asset `clipId` (false: no such clip); the transport stopped, at the start.
+	public bool LoadClip(Guid clipId)
 	{
-		get
-		{
-			var axis = ClipTimeAxis();
-			if (mTimeline != null)
+		mPreview.Stop();
+		if (!mDocument.Load(clipId))
+			return false;
+		mTransport.Stop();
+		MovePlayhead(0.0f);
+		if (mSheet != null)
+			mSheet.SetSelection(default);
+		return true;
+	}
+
+	/// Asks about an unsaved clip, then opens `clipId` and binds `entity` (empty: keeps the bound one).
+	public void RequestEditClip(Guid clipId, Guid entity)
+	{
+		delegate void() open = new [=this, =clipId, =entity] () =>
 			{
-				axis.PixelsPerSecond = mTimeline.PixelsPerSecond;
-				axis.ScrollSeconds = mTimeline.ScrollSeconds;
-				axis.LabelColumnWidth = mTimeline.LabelColumnWidth;
-			}
-			return axis;
-		}
-	}
-
-	/// The key-from-scene capture source: the bound entity's live value. Every failure names
-	/// its stage, since the chain has five distinct ways to miss.
-	public PropertyValue ReadSceneValue(StringView componentType, StringView propertyPath)
-	{
-		if (mScene == null)
-		{
-			GlobalLog(.Warning, "PropertyAnimation: Key capture: the panel has no scene");
-			return .Empty;
-		}
-		if (!mBoundEntity.IsSet)
-		{
-			GlobalLog(.Warning, "PropertyAnimation: Key capture: no entity bound (use Bind... or Use Selected)");
-			return .Empty;
-		}
-		let entity = mScene.FindEntity(mBoundEntity);
-		if (!entity.IsAssigned)
-		{
-			GlobalLog(.Warning, "PropertyAnimation: Key capture: the bound guid {} is not an entity of scene '{}'", mBoundEntity, mScene.Name);
-			return .Empty;
-		}
-		let value = ReadTrackTarget(entity, componentType, propertyPath);
-		if (!value.HasValue)
-		{
-			if (componentType == cTransformName)
-			{
-				GlobalLog(.Warning, "PropertyAnimation: Key capture: property path '{}' did not resolve on the Transform", propertyPath);
-			}
-			else
-			{
-				let mgr = FindManagerByComponentTypeName(componentType);
-				if (mgr == null)
-					GlobalLog(.Warning, "PropertyAnimation: Key capture: no component manager named '{}' on this scene", componentType);
-				else if (!mgr.HasComponent(entity))
-					GlobalLog(.Warning, "PropertyAnimation: Key capture: the bound entity has no '{}' component", componentType);
-				else
-					GlobalLog(.Warning, "PropertyAnimation: Key capture: property path '{}' did not resolve on '{}'", propertyPath, componentType);
-			}
-		}
-		return value;
-	}
-
-	// ---- the frame hooks -------------------------------------------------------------------
-
-	/// Advances playback when Playing, driving the playhead and preview; caches the edit gate
-	/// and stands playback and preview down when locked. Only mutates widgets while playing.
-	public void Tick(float dt, bool editingLocked)
-	{
-		if (mStatusFlashSeconds > 0.0f)
-		{
-			mStatusFlashSeconds -= Math.Max(dt, 0.0f);
-			if (mStatusFlashSeconds <= 0.0f)
-			{
-				mStatusFlash.Clear();
-				RefreshHeader();
-			}
-		}
-		mEditingLocked = editingLocked;
-		if (mEditingLocked)
-		{
-			StopPlaybackInternal(); // no editor playback under Simulate or Play
-			StopPreview();
-			return;
-		}
-		if (mPlaying && !mPaused)
-			Advance(dt);
-	}
-
-	/// The preview marker overlay: at the previewed entity's world position, over geometry.
-	public void DrawOverlay(DebugDraw drawList)
-	{
-		if (!mPreviewing || (mScene == null) || !mPreviewEntity.IsAssigned)
-			return;
-		let world = mScene.GetWorldMatrix(mPreviewEntity);
-		let p = Float3(world.M[3][0], world.M[3][1], world.M[3][2]);
-		let marker = Color(1.0f, 0.85f, 0.2f, 1.0f);
-		drawList.DrawWireSphereOverlay(p, 0.35f, marker);
-		drawList.DrawText3D(p, "preview", marker);
-	}
-
-	// ---- the transport ---------------------------------------------------------------------
-
-	/// Starts or resumes advancing from the current playhead, restarting if at the end.
-	public void Play()
-	{
-		if (mClip.Tracks.IsEmpty)
-			return;
-		let dur = Math.Max(Math.Max(mClip.Duration, mClip.ComputeDuration()), 1e-3f);
-		if (mPlayheadTime >= dur - 1e-4f)
-			mPlayheadTime = 0.0f;
-		mPlaying = true;
-		mPaused = false;
-		RefreshTransportButtons();
-	}
-
-	/// Pauses or resumes while Playing; a no-op when stopped.
-	public void TogglePause()
-	{
-		if (!mPlaying)
-			return;
-		mPaused = !mPaused;
-		RefreshTransportButtons();
-	}
-
-	/// Stops and rewinds the playhead to 0, showing the start pose.
-	public void Stop()
-	{
-		mPlaying = false;
-		mPaused = false;
-		mPlayheadTime = 0.0f;
-		if (mTimeline != null)
-			mTimeline.SetPlayheadTime(0.0f);
-		if (mView != null)
-			mView.SetScrubTime(0.0f);
-		PreviewSelected(0.0f);
-		RefreshTransportButtons();
-	}
-
-	/// Stops advancing without rewinding, the Simulate override.
-	private void StopPlaybackInternal()
-	{
-		if (!mPlaying && !mPaused)
-			return;
-		mPlaying = false;
-		mPaused = false;
-		RefreshTransportButtons();
-	}
-
-	public void SetLooping(bool loop)
-	{
-		mLoop = loop;
-		RefreshTransportButtons();
-	}
-
-	public bool IsLooping => mLoop;
-	public bool IsPlaying => mPlaying;
-	public bool IsPaused => mPaused;
-	public float PlayheadTime => mPlayheadTime;
-
-	private void Advance(float dt)
-	{
-		if (mClip.Tracks.IsEmpty)
-		{
-			Stop();
-			return;
-		}
-		let dur = Math.Max(Math.Max(mClip.Duration, mClip.ComputeDuration()), 1e-3f);
-		mPlayheadTime += Math.Max(dt, 0.0f);
-		if (mPlayheadTime >= dur)
-		{
-			if (mLoop)
-			{
-				while (mPlayheadTime >= dur)
-					mPlayheadTime -= dur; // dt is far below dur, so a subtract loop is enough
-			}
-			else
-			{
-				mPlayheadTime = dur; // clamped and stopped at the end
-				mPlaying = false;
-				mPaused = false;
-				RefreshTransportButtons();
-			}
-		}
-		if (mTimeline != null)
-			mTimeline.SetPlayheadTime(mPlayheadTime); // the scrubber event is guarded while playing
-		if (mView != null)
-			mView.SetScrubTime(mPlayheadTime);
-		PreviewSelected(mPlayheadTime); // the advance loop owns the playhead, so it previews directly
-	}
-
-	private void RefreshTransportButtons()
-	{
-		if (mPauseButton != null)
-			mPauseButton.SetText(mPaused ? "Resume" : "Pause");
-		if (mLoopButton != null)
-			mLoopButton.SetText(mLoop ? "Loop: on" : "Loop: off");
-	}
-
-	// ---- the clip document -----------------------------------------------------------------
-
-	public StringView ClipName => mClipName;
-	public bool HasClip => mClipId.IsSet;
-	public bool IsDirty => mDirty;
-	public Guid ClipId => mClipId;
-	public EditorContext EditorCtx => mEditorCtx;
-	public ClipEditorView View => mView;
-	public Timeline Dopesheet => mTimeline;
-	public bool IsPreviewing => mPreviewing;
-
-	/// Drops the loaded clip; no asset written.
-	private void ClearClip()
-	{
-		StopPreview(); // never a live preview pointing at the old clip's tracks
-		mPlaying = false; // a new document starts stopped at the top
-		mPaused = false;
-		mPlayheadTime = 0.0f;
-		if (mTimeline != null)
-			mTimeline.SetPlayheadTime(0.0f);
-		RefreshTransportButtons();
-		ClearAndDeleteItems(mClip.Tracks);
-		mClip.Duration = 0.0f;
-		mClipId = .Empty;
-		mClipName.Clear();
-		mDirty = false;
-	}
-
-	/// Loads an existing clip asset, unguarded, and owns the whole refresh.
-	public void LoadClip(Guid instanceId)
-	{
-		if (mEditorCtx.Project == null)
-			return;
-		let inst = mEditorCtx.Project.SourceDb.GetInstance(instanceId);
-		if (inst == null)
-			return;
-		ClearClip();
-		let object = inst.ReadObject();
-		if (let asset = object as PropertyAnimationClipAsset)
-			asset.Source.FillClip(mClip);
-		delete object;
-		mClipId = instanceId;
-		mClipName.Set(inst.Name);
-		if (mView != null)
-			mView.ResetForClip();
-		RefreshHeader();
-		RefreshClipStateUI();
-	}
-
-	/// Flattens, writes and re-cooks. Every outcome is visible: the header flashes the result.
-	public void SaveClip()
-	{
-		if (!mClipId.IsSet || (mEditorCtx.Project == null))
-		{
-			GlobalLog(.Warning, "PropertyAnimation: Save: no clip asset loaded, use Create or Open first");
-			FlashStatus("save: no clip loaded");
-			return;
-		}
-		let inst = mEditorCtx.Project.SourceDb.GetInstance(mClipId);
-		if (inst == null)
-		{
-			GlobalLog(.Warning, "PropertyAnimation: Save: the clip asset {} no longer exists in the project", mClipId);
-			FlashStatus("save FAILED: asset missing");
-			return;
-		}
-		let asset = scope PropertyAnimationClipAsset();
-		PropertyAnimationClipSource.FromClip(mClip, asset.Source);
-		if (inst.WriteObject(asset) case .Ok)
-		{
-			mDirty = false;
-			mEditorCtx.RequestCook(false);
-			GlobalLog(.Information, "Editor: saved in-scene property-animation clip '{}'", mClipName);
-			FlashStatus("saved"); // RefreshHeader inside clears the dirty star
-		}
+				if (clipId != mDocument.ClipId)
+					LoadClip(clipId);
+				if (entity != .Empty)
+					BindEntity(entity);
+			};
+		if ((GuardUnsaved != null) && mDocument.IsDirty && (clipId != mDocument.ClipId))
+			GuardUnsaved(open);
 		else
 		{
-			GlobalLog(.Warning, "PropertyAnimation: Save: writing clip '{}' failed", mClipName);
-			FlashStatus("save FAILED (see log)");
+			open();
+			delete open;
 		}
 	}
 
-	/// The pencil-claim and programmatic entry: a dirty-guarded load (Save, Discard, Cancel
-	/// when a modified clip is open), then optionally binds the entity whose animator slot
-	/// invoked the edit; Empty keeps the current binding.
-	public void RequestEditClip(Guid clipId, Guid bindEntity)
+	public Result<void, ErrorCode> Save()
 	{
-		if (!clipId.IsSet)
-			return;
-		if (mClipId == clipId)
+		if (!mDocument.HasClip)
+			return .Err(.NotFound);
+		if (mDocument.Save() case .Err(let error))
 		{
-			// Already the open document: just the binding request.
-			if (bindEntity.IsSet)
-				BindEntity(bindEntity);
-			return;
+			mContext.Notify(.Warning, scope $"The clip '{mDocument.Name}' did not save; the Console says why.");
+			return .Err(error);
 		}
-		RunDirtyGuarded(new [=clipId, =bindEntity, =this]() =>
-			{
-				LoadClip(clipId);
-				if ((mClipId == clipId) && bindEntity.IsSet)
-					BindEntity(bindEntity); // the pencil's animator entity auto-binds
-			});
+		mContext.Notify(.Info, scope $"Saved the clip '{mDocument.Name}'.");
+		return .Ok;
 	}
 
-	// ---- the bound entity ------------------------------------------------------------------
-
-	public void BindEntity(Guid entityId)
+	public void Undo()
 	{
-		if (mBoundEntity == entityId)
-			return;
-		StopPreview(); // the preview snapshot belongs to the old binding: restored first
-		mBoundEntity = entityId;
-		RefreshEntitySlot();
+		if (mDocument.Commands.CanUndo)
+			mDocument.Commands.Undo();
 	}
 
-	/// Binds the primary selection; flashes when there is none.
-	public void BindSelectedEntity()
+	public void Redo()
 	{
-		if ((mSelection == null) || (mSelection.Count == 0))
-		{
-			FlashStatus("bind: nothing selected");
-			return;
-		}
-		BindEntity(mSelection.Primary);
+		if (mDocument.Commands.CanRedo)
+			mDocument.Commands.Redo();
 	}
 
-	public Guid BoundEntity => mBoundEntity;
-
-	private void RefreshEntitySlot()
+	public void SetLength(float seconds)
 	{
-		if (mEntityLabel == null)
-			return;
-		let text = scope String("Entity: ");
-		if (!mBoundEntity.IsSet)
-		{
-			text.Append("(none)");
-		}
-		else
-		{
-			let entity = (mScene != null) ? mScene.FindEntity(mBoundEntity) : EntityHandle();
-			if (!entity.IsAssigned)
-			{
-				text.Append("(missing)"); // the bound guid no longer resolves in this scene
-			}
-			else
-			{
-				let name = mScene.GetEntityName(entity);
-				text.Append(name.IsEmpty ? "(unnamed)" : name);
-			}
-		}
-		mEntityLabel.SetText(text);
+		mDocument.Edit("propanim-length", scope (clip) => { clip.Duration = Math.Max(0.0f, seconds); });
 	}
 
-	/// Adds a track for each animatable property of the bound entity's components, as one
-	/// undo group. Answers the count; 0 for no bound entity or nothing animatable.
-	public int AddTracksFromSelection(ClipEditorView view)
+	// === The entity it animates ===
+
+	public Guid BoundEntity => mEntity;
+
+	public void BindEntity(Guid entity)
+	{
+		if (entity == mEntity)
+			return;
+		mPreview.Stop(); // the one posed goes back first
+		mEntity = entity;
+		Pose();
+		ShowBar();
+	}
+
+	public void BindSelected()
+	{
+		if (SelectedEntity != null)
+			BindEntity(SelectedEntity());
+	}
+
+	// === The tracks ===
+
+	/// What Add Track offers: the bound entity's properties without a track yet; appended (the list
+	/// owns them).
+	public void OfferedTracks(List<AnimatablePropertyInfo> outOffered)
 	{
 		let seeds = scope List<AnimatablePropertyInfo>();
-		defer { ClearAndDeleteItems(seeds); }
-		CollectSelectionTrackSeeds(seeds);
-		if (seeds.IsEmpty)
-			return 0;
-		// One undo step for the whole seed set.
-		mCommands.BeginGroup("propanim-add-tracks-from-selection");
+		mPreview.TrackSeeds(mEntity, seeds);
 		for (let seed in seeds)
-			view.AddTrack(seed.ComponentType, seed.PropertyPath, seed.Kind);
-		mCommands.EndGroup();
-		mCommands.LockGroup(); // a second "+ Tracks" is its own undo entry
-		return seeds.Count;
+		{
+			if (HasTrack(mDocument.Clip, seed.ComponentType, seed.PropertyPath))
+				delete seed;
+			else
+				outOffered.Add(seed);
+		}
 	}
 
-	/// The animatable-property seeds for the bound entity: the Transform TRS plus each
-	/// reflected component's animatable leaves. The list owns the entries.
-	private void CollectSelectionTrackSeeds(List<AnimatablePropertyInfo> outSeeds)
+	/// A track for `seed`, keyed at the playhead with what the entity shows (when it can be read).
+	public void AddTrack(AnimatablePropertyInfo seed)
 	{
-		if ((mScene == null) || !mBoundEntity.IsSet)
+		if (!mDocument.HasClip || HasTrack(mDocument.Clip, seed.ComponentType, seed.PropertyPath))
 			return;
-		let entity = mScene.FindEntity(mBoundEntity);
-		if (!entity.IsAssigned)
-			return;
-		// Every entity has a scene transform, so its TRS is always offered.
-		outSeeds.Add(new AnimatablePropertyInfo(cTransformName, "Position", .Float3));
-		outSeeds.Add(new AnimatablePropertyInfo(cTransformName, "Rotation", .Quat));
-		outSeeds.Add(new AnimatablePropertyInfo(cTransformName, "Scale", .Float3));
-		mScene.ForEachManager(scope [&](mgr) =>
+		let value = EntityValue(seed.ComponentType, seed.PropertyPath);
+		let time = mTransport.Time;
+		mPreview.Stop(); // the tracks change: what the preview keeps is taken again
+		mDocument.Edit("propanim-add-track", scope [&] (clip) =>
 			{
-				if (!mgr.HasComponent(entity) || (mgr.ComponentType == null))
-					return;
-				AnimatableProperties.Collect(mgr.ComponentType, outSeeds);
+				let track = new PropertyTrack();
+				track.ComponentType.Set(seed.ComponentType);
+				track.PropertyPath.Set(seed.PropertyPath);
+				track.Kind = seed.Kind;
+				if (value.HasValue)
+					KeyValue(track, time, value); // it starts holding what the entity shows
+				clip.Tracks.Add(track);
 			});
 	}
 
-	private bool ClipHasTrack(StringView componentType, StringView propertyPath)
+	/// The tracks of the keys chosen in the dopesheet, into `outTracks`.
+	public void ChosenTracks(List<int> outTracks)
 	{
-		for (let t in mClip.Tracks)
+		outTracks.Clear();
+		if (mSheet == null)
+			return;
+		let channels = mSource.Channels;
+		for (let key in mSheet.Selection)
 		{
-			if ((t.ComponentType == componentType) && (t.PropertyPath == propertyPath))
+			if ((key.Channel < 0) || (key.Channel >= channels.Length))
+				continue;
+			let track = channels[key.Channel].Track;
+			if (!outTracks.Contains(track))
+				outTracks.Add(track);
+		}
+	}
+
+	/// Keys the chosen tracks (every one, with none chosen) at the playhead with what the entity
+	/// shows, one step; how many it keyed.
+	public int KeyChosen()
+	{
+		if (!mDocument.HasClip || (mEntity == .Empty))
+			return 0;
+		let tracks = scope List<int>();
+		ChosenTracks(tracks);
+		if (tracks.IsEmpty)
+		{
+			for (int t < mDocument.Clip.Tracks.Count)
+				tracks.Add(t);
+		}
+		// What the entity shows, read before the edit (the preview poses it after).
+		let values = scope List<Sedulous.PropertyAnimation.PropertyValue>();
+		var keyed = 0;
+		for (let t in tracks)
+		{
+			let track = mDocument.Clip.Tracks[t];
+			let value = EntityValue(track.ComponentType, track.PropertyPath);
+			values.Add(value);
+			keyed += value.HasValue ? 1 : 0;
+		}
+		if (keyed == 0)
+			return 0;
+		let time = mTransport.Time;
+		mDocument.Edit("propanim-key", scope [&] (clip) =>
+			{
+				for (int i < tracks.Count)
+				{
+					if (values[i].HasValue)
+						KeyValue(clip.Tracks[tracks[i]], time, values[i]);
+				}
+			});
+		return keyed;
+	}
+
+	/// Takes the chosen tracks away, one step; false with none chosen.
+	public bool RemoveChosen()
+	{
+		let tracks = scope List<int>();
+		ChosenTracks(tracks);
+		if (tracks.IsEmpty)
+			return false;
+		mPreview.Stop(); // what it wrote goes back before its tracks go
+		if (mSheet != null)
+			mSheet.SetSelection(default);
+		// Last first, so each index still names its track.
+		tracks.Sort(scope (a, b) => b <=> a);
+		mDocument.Edit("propanim-remove-tracks", scope [&] (clip) =>
+			{
+				for (let t in tracks)
+				{
+					delete clip.Tracks[t];
+					clip.Tracks.RemoveAt(t);
+				}
+			});
+		return true;
+	}
+
+	// === The transport ===
+
+	public void Play()
+	{
+		mTransport.Play(mDocument.Length);
+		ShowBar();
+	}
+
+	public void Pause()
+	{
+		mTransport.Pause();
+		ShowBar();
+	}
+
+	public void Stop()
+	{
+		mTransport.Stop();
+		MovePlayhead(0.0f);
+		Pose(); // the start pose
+		ShowBar();
+	}
+
+	public void Restart()
+	{
+		mTransport.Stop();
+		mTransport.Play(mDocument.Length);
+		MovePlayhead(0.0f);
+		Pose();
+		ShowBar();
+	}
+
+	public void SetLooping(bool looping) => mTransport.SetLooping(looping);
+
+	/// The playhead moved to `time`, as a scrub of the ruler moves it.
+	public void Scrub(float time)
+	{
+		mAxis.Playhead = time; // as the ruler's scrub: the transport and the pose follow
+	}
+
+	/// The curves shown framed, in time and value (the bar's Frame).
+	public void FrameCurves()
+	{
+		if (mCurves != null)
+			mCurves.FrameAll();
+	}
+
+	/// Once a frame from the page: the transport, the preview (stood down while `simulating`), the
+	/// bar's state.
+	public void Update(float dt, bool simulating)
+	{
+		if (simulating != mSimulating)
+		{
+			mSimulating = simulating;
+			if (simulating)
+			{
+				mTransport.Pause(); // the scene's own animators run; the preview stands down
+				mPreview.Stop();
+			}
+			ShowBar();
+		}
+		if (!mSimulating && mTransport.Advance(dt, mDocument.Length))
+		{
+			MovePlayhead(mTransport.Time);
+			Pose();
+			if (!mTransport.IsPlaying)
+				ShowBar(); // it stopped at the end
+		}
+		// The dopesheet tells no one of its choice: the curve view follows it here.
+		ShowCurves();
+		if (mFitValues)
+		{
+			mFitValues = false;
+			FitValues();
+		}
+	}
+
+	/// The preview put back (the page saving the scene, starting a simulation); Repose poses it again
+	/// where the playhead stands.
+	public void StopPreview() => mPreview.Stop();
+	public void Repose() => Pose();
+
+	// === For tests ===
+
+	public ClipDocument Document => mDocument;
+	public ClipSource Source => mSource;
+	public ClipPreview Preview => mPreview;
+	public ClipTransport Transport => mTransport;
+	public Dopesheet Sheet => mSheet;
+	public TimeAxis Axis => mAxis;
+
+	// === Showing it ===
+
+	private void Changed()
+	{
+		mSource.Refresh();
+		mAxis.Duration = mDocument.Length;
+		// Another clip, or tracks come or gone: the curves shown are others (a key's edit is not).
+		if ((mDocument.ClipId != mShownClip) || (mDocument.Clip.Tracks.Count != mTrackCount))
+		{
+			mShownClip = mDocument.ClipId;
+			mTrackCount = mDocument.Clip.Tracks.Count;
+			mFitValues = true;
+		}
+		// The length it plays over (a new clip's second, its last key's time when later).
+		let length = mDocument.Length;
+		if ((mLength != null) && ((float)mLength.Value != length))
+			mLength.Value = length;
+		Pose(); // an edit, an undo: the entity shows the clip as it is now
+		ShowBar();
+	}
+
+	private void Pose()
+	{
+		if (mSimulating || !mDocument.HasClip || (mEntity == .Empty) || mDocument.Clip.Tracks.IsEmpty)
+		{
+			mPreview.Stop();
+			return;
+		}
+		mPreview.Pose(mEntity, mDocument.Clip, mTransport.Time);
+	}
+
+	// The playhead where the transport has it (not a scrub: the pose is the caller's).
+	private void MovePlayhead(float time)
+	{
+		mMoving = true;
+		mAxis.Playhead = time;
+		mMoving = false;
+	}
+
+	private void ShowCurves()
+	{
+		let tracks = scope List<int>();
+		ChosenTracks(tracks);
+		if (tracks.IsEmpty)
+		{
+			for (int t < mDocument.Clip.Tracks.Count)
+				tracks.Add(t); // none chosen: every track's
+		}
+		var same = tracks.Count == mShownTracks.Count;
+		for (int i = 0; same && (i < tracks.Count); i++)
+			same = tracks[i] == mShownTracks[i];
+		if (same && (tracks.Count == mSource.ShownTracks.Length))
+			return;
+		mShownTracks.Clear();
+		mShownTracks.AddRange(tracks);
+		mSource.ShowTracks(tracks);
+		mFitValues = true; // other curves: their values fill the view
+	}
+
+	// The curve view's values fitted to the curves it shows (never its time: the dopesheet shares
+	// that axis, and a choice made there must not rezoom it under the mouse).
+	private void FitValues()
+	{
+		if (mCurves == null)
+			return;
+		var low = 0.0f;
+		var high = 0.0f;
+		var any = false;
+		for (int c < mSource.CurveCount)
+		{
+			for (let key in mSource.GetKeys(c))
+			{
+				low = any ? Math.Min(low, key.Value) : key.Value;
+				high = any ? Math.Max(high, key.Value) : key.Value;
+				any = true;
+			}
+		}
+		if (!any)
+		{
+			low = 0.0f;
+			high = 1.0f;
+		}
+		if (high - low < 1e-3f)
+		{
+			low -= 1.0f; // one value: a span about it
+			high += 1.0f;
+		}
+		let margin = (high - low) * 0.1f;
+		mCurves.SetValueRange(low - margin, high + margin);
+	}
+
+	private void ShowBar()
+	{
+		let clip = mDocument.HasClip;
+		if (mClipName != null)
+			mClipName.Text = clip ? mDocument.Name : "No clip";
+		if (mDirty != null)
+			mDirty.Displayed = mDocument.IsDirty;
+		if (mEmpty != null)
+			mEmpty.Displayed = !clip;
+		if (mBody != null)
+			mBody.Displayed = clip;
+		if (mEntityName != null)
+		{
+			let handle = (mEntity == .Empty) ? EntityHandle.Invalid : mScene.FindEntity(mEntity);
+			mEntityName.Text = handle.IsAssigned ? mScene.GetEntityName(handle) : "No entity";
+		}
+		let editable = clip && !mSimulating;
+		Enable(mSave, mDocument.IsDirty);
+		Enable(mUndo, mDocument.Commands.CanUndo);
+		Enable(mRedo, mDocument.Commands.CanRedo);
+		Enable(mAddTrack, editable && (mEntity != .Empty));
+		Enable(mKey, editable && (mEntity != .Empty) && !mDocument.Clip.Tracks.IsEmpty);
+		Enable(mRemove, editable);
+		Enable(mPlay, editable);
+		Enable(mRestart, editable);
+		Enable(mStop, editable);
+		if (mPlay != null)
+			mPlay.Checked = mTransport.IsPlaying;
+	}
+
+	private static void Enable(ButtonBase button, bool on)
+	{
+		if (button != null)
+			button.Enabled = on;
+	}
+
+	private void OpenTrackMenu()
+	{
+		if (mAddTrack == null)
+			return;
+		// Made fresh each time: what it offers follows the entity and the tracks.
+		mTrackMenu?.ReleaseRef();
+		mTrackMenu = new .();
+		mTrackMenu.SetAutoWidth(true);
+		let offered = scope List<AnimatablePropertyInfo>();
+		defer { ClearAndDeleteItems!(offered); }
+		OfferedTracks(offered);
+		for (let seed in offered)
+		{
+			let pick = seed.Clone();
+			mTrackMenu.AddItem(scope $"{seed.ComponentType}.{seed.PropertyPath}", new [=this, =pick] () => { AddTrack(pick); } ~ delete pick);
+		}
+		if (offered.IsEmpty)
+			mTrackMenu.AddItem((mEntity == .Empty) ? "Bind an entity first" : "Every property has a track", new () => { }).Enabled = false;
+		mTrackMenu.OpenBelow(mAddTrack, mAddTrack);
+	}
+
+	private Sedulous.PropertyAnimation.PropertyValue EntityValue(StringView componentType, StringView propertyPath)
+	{
+		return mPreview.Read(mEntity, componentType, propertyPath);
+	}
+
+	private ButtonBase Wire(StringView id, delegate void() click)
+	{
+		let found = Find<ButtonBase>(id);
+		if (found != null)
+			found.SetOnClick(click);
+		else
+			delete click;
+		return found;
+	}
+
+	private T Find<T>(StringView id) where T : Node
+	{
+		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
+	}
+
+	private static bool HasTrack(PropertyAnimationClip clip, StringView componentType, StringView propertyPath)
+	{
+		for (let track in clip.Tracks)
+		{
+			if ((track.ComponentType == componentType) && (track.PropertyPath == propertyPath))
 				return true;
 		}
 		return false;
 	}
 
-	private ComponentManagerBase FindManagerByComponentTypeName(StringView name)
+	// The value's parts as a track's channels take them (a Float3's three, a Color's four); a key
+	// already at `time` takes the value.
+	private static void KeyValue(PropertyTrack track, float time, Sedulous.PropertyAnimation.PropertyValue value)
 	{
-		if (mScene == null)
-			return null;
-		ComponentManagerBase found = null;
-		mScene.ForEachManager(scope [&](m) =>
+		if (!value.HasValue)
+			return;
+		switch (track.Kind)
+		{
+		case .Float:
+			if (value.Kind == .Float)
+				SetChannel(track, 0, time, value.Scalar);
+		case .Float3:
+			if (value.Kind == .Float3)
 			{
-				if ((found == null) && (m.ComponentType != null))
+				SetChannel(track, 0, time, value.Vector.X);
+				SetChannel(track, 1, time, value.Vector.Y);
+				SetChannel(track, 2, time, value.Vector.Z);
+			}
+		case .Color:
+			if (value.Kind == .Color)
+			{
+				SetChannel(track, 0, time, value.Color.R);
+				SetChannel(track, 1, time, value.Color.G);
+				SetChannel(track, 2, time, value.Color.B);
+				SetChannel(track, 3, time, value.Color.A);
+			}
+		case .Quat:
+			if (value.Kind == .Quat)
+			{
+				for (var existing in ref track.QuatKeys)
 				{
-					let typeName = scope:: String();
-					m.ComponentType.GetName(typeName);
-					if (typeName == name)
-						found = m;
+					if (Math.Abs(existing.Time - time) < cSameTime)
+					{
+						existing.Value = value.Rotation;
+						return;
+					}
 				}
-			});
-		return found;
+				var at = 0;
+				while ((at < track.QuatKeys.Count) && (track.QuatKeys[at].Time < time))
+					at++;
+				track.QuatKeys.Insert(at, QuatKey(time, value.Rotation));
+			}
+		}
 	}
 
-	// ---- live preview ----------------------------------------------------------------------
-	//
-	// Scrubbing writes the clip's sampled values onto the bound entity through the runtime's
-	// binding resolver. The writes are transient: a snapshot is captured on the first scrub and
-	// restored on stop, Simulate, or clip change. Nothing goes through the command stack or
-	// dirties the document. The snapshot is re-taken when the track set changes, so it never
-	// restores stale targets after a track is added, removed or retargeted.
-
-	private void PreviewSelected(float time)
+	private static void SetChannel(PropertyTrack track, int channel, float time, float v)
 	{
-		if (mClip.Tracks.IsEmpty || mEditingLocked || (mScene == null))
-			return;
-		if (!mBoundEntity.IsSet)
+		let curve = track.Channels[channel];
+		for (var existing in ref curve.Keys)
 		{
-			StopPreview();
-			return;
-		}
-		let entity = mScene.FindEntity(mBoundEntity);
-		if (!entity.IsAssigned)
-		{
-			StopPreview();
-			return;
-		}
-		PreviewAt(entity, time);
-	}
-
-	/// Reads a track target on an entity: the built-in Transform through the scene's local
-	/// transform, or a reflected component through its manager. No value when unresolved.
-	private PropertyValue ReadTrackTarget(EntityHandle entity, StringView componentType, StringView propertyPath)
-	{
-		if (mScene == null)
-			return .Empty;
-		let binding = scope PropertyBinding();
-		if (componentType == cTransformName)
-		{
-			PropertyBindingResolver.Resolve(typeof(Transform), propertyPath, binding);
-			if (!binding.IsResolved)
-				return .Empty;
-			var local = mScene.GetLocalTransform(entity);
-			return PropertyBindingResolver.Read(binding, &local, typeof(Transform));
-		}
-		let mgr = FindManagerByComponentTypeName(componentType);
-		if ((mgr == null) || (mgr.ComponentType == null) || !mgr.HasComponent(entity))
-			return .Empty;
-		PropertyBindingResolver.Resolve(mgr.ComponentType, propertyPath, binding);
-		if (!binding.IsResolved)
-			return .Empty;
-		return PropertyBindingResolver.Read(binding, mgr.GetComponentAddress(entity), mgr.ComponentType);
-	}
-
-	private void WriteTrackTarget(EntityHandle entity, StringView componentType, StringView propertyPath, PropertyValue value)
-	{
-		if (mScene == null)
-			return;
-		let binding = scope PropertyBinding();
-		if (componentType == cTransformName)
-		{
-			PropertyBindingResolver.Resolve(typeof(Transform), propertyPath, binding);
-			if (!binding.IsResolved)
+			if (Math.Abs(existing.Time - time) < cSameTime)
+			{
+				existing.Value = v;
+				curve.ApplyTangentModes();
 				return;
-			// Read, modify, write through SetLocalTransform so the world matrix is flagged.
-			var local = mScene.GetLocalTransform(entity);
-			if (PropertyBindingResolver.Write(binding, &local, typeof(Transform), value) case .Ok)
-				mScene.SetLocalTransform(entity, local);
-			return;
+			}
 		}
-		let mgr = FindManagerByComponentTypeName(componentType);
-		if ((mgr == null) || (mgr.ComponentType == null) || !mgr.HasComponent(entity))
-			return;
-		PropertyBindingResolver.Resolve(mgr.ComponentType, propertyPath, binding);
-		if (binding.IsResolved)
-			PropertyBindingResolver.Write(binding, mgr.GetComponentAddress(entity), mgr.ComponentType, value).IgnoreError();
-	}
-
-	/// The identity of the tracks a snapshot was taken against, "component|path" per track.
-	private void TrackIdentity(List<String> outIdentity)
-	{
-		for (let track in mClip.Tracks)
-			outIdentity.Add(new $"{track.ComponentType}|{track.PropertyPath}");
-	}
-
-	private static bool SameIdentity(List<String> a, List<String> b)
-	{
-		if (a.Count != b.Count)
-			return false;
-		for (int i < a.Count)
-		{
-			if (a[i] != b[i])
-				return false;
-		}
-		return true;
-	}
-
-	private void SnapshotEntity(EntityHandle entity)
-	{
-		ClearAndDeleteItems(mSnapshot);
-		for (let track in mClip.Tracks)
-		{
-			let current = ReadTrackTarget(entity, track.ComponentType, track.PropertyPath);
-			if (!current.HasValue)
-				continue;
-			let entry = new PreviewSnapshotEntry();
-			entry.ComponentType.Set(track.ComponentType);
-			entry.PropertyPath.Set(track.PropertyPath);
-			entry.Value = current;
-			mSnapshot.Add(entry);
-		}
-	}
-
-	/// Snapshots if needed and writes the sampled values.
-	private void PreviewAt(EntityHandle entity, float time)
-	{
-		let identity = scope List<String>();
-		defer { ClearAndDeleteItems(identity); }
-		TrackIdentity(identity);
-		// A re-snapshot when the previewed entity changes or the track set changed: the old
-		// snapshot describes targets that may no longer exist or were retargeted.
-		if (!mPreviewing || (mPreviewEntity != entity) || !SameIdentity(identity, mSnapshotIdentity))
-		{
-			if (mPreviewing)
-				StopPreview(); // the old targets restore before a fresh snapshot
-			SnapshotEntity(entity);
-			ClearAndDeleteItems(mSnapshotIdentity);
-			for (let s in identity)
-				mSnapshotIdentity.Add(new String(s));
-			mPreviewing = true;
-			mPreviewEntity = entity;
-		}
-		mPreviewTime = time;
-		for (let track in mClip.Tracks)
-		{
-			// SampleMerged keeps the live value for empty channels, no teleport to the origin.
-			let current = ReadTrackTarget(entity, track.ComponentType, track.PropertyPath);
-			WriteTrackTarget(entity, track.ComponentType, track.PropertyPath, track.SampleMerged(time, current));
-		}
-	}
-
-	/// Restores the snapshot and ends the preview; idempotent.
-	public void StopPreview()
-	{
-		if (!mPreviewing)
-			return;
-		if ((mScene != null) && mPreviewEntity.IsAssigned)
-		{
-			for (let entry in mSnapshot)
-				WriteTrackTarget(mPreviewEntity, entry.ComponentType, entry.PropertyPath, entry.Value);
-		}
-		ClearAndDeleteItems(mSnapshot);
-		ClearAndDeleteItems(mSnapshotIdentity);
-		mPreviewing = false;
-		mPreviewEntity = .();
+		var key = CurveKey(time, v, .Cubic);
+		key.TangentMode = .Auto;
+		curve.AddKey(key);
+		curve.ApplyTangentModes();
 	}
 }

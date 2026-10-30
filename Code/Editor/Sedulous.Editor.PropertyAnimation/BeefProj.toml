@@ -20,41 +20,10 @@ corlib = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.App" = "*"
 
-# The old panel, on Sedulous.UI: out of the build until part 2 (Raptor 8d531b25a) replaces it.
+# The old registrar (Sedulous.UI's host): out of the build until the scene page holds the panel
+# (Raptor's part 3).
 [ProjectFolder]
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ClipEditCommand.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ClipEditorView.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ClipTimeAxis.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "IClipEditorHost.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "PropertyAnimationEditor.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "PropertyAnimationPanel.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "PropertyAnimationPanelChrome.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ReselectMark.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "TrackKeys.bf"

@@ -320,6 +320,8 @@
     --propertygrid-row-hover: var(--ghost-hover);
     --propertygrid-popup: var(--surface-overlay);
     --timeline-playhead: var(--accent-strong);
+    --timeline-marker: var(--warning);           /* a clip's events on the ruler */
+    --timeline-marker-chosen: var(--text-strong); /* apart from the playhead's accent */
     --curveview-background: var(--surface-sunken);
     --curveview-grid: var(--separator);
     --curveview-selected: var(--accent-strong);

@@ -254,6 +254,20 @@ treerowcontent.inactive { opacity: 0.45; }
 .audio-empty { flex-grow: 1; background-color: var(--surface-sunken); }
 .audio-volume { width: 96px; }
 .preview-speed { width: 96px; }
+/* The property animation panel (layer 9): its bar over the ruler, dopesheet and curve view, the
+   ruler and the curves starting where the dopesheet's keys do (its names' width). */
+.anim-panel { flex-direction: column; flex-grow: 1; background-color: var(--surface); }
+.anim-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
+.anim-clip { font-weight: 600; padding: 0 var(--space-s); }
+.anim-entity { color: var(--text-dim); padding: 0 var(--space-s); }
+.anim-length { width: 72px; }
+.anim-length-label { color: var(--text-dim); padding: 0 var(--space-s); }
+.anim-empty { flex-grow: 1; background-color: var(--surface-sunken); }
+.anim-body { flex-grow: 1; }
+.anim-sheet-pane { flex-direction: column; }
+.anim-ruler { margin-inline-start: 200px; height: 22px; }
+.anim-sheet { flex-grow: 1; }
+.anim-curves { margin-inline-start: 200px; border-top: 1px solid var(--border); }
 .audio-volume-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
 waveform::wave { background-color: var(--accent); }
 waveform::playhead { background-color: var(--warning); }
@@ -629,6 +643,7 @@ button.add-component { align-self: stretch; justify-content: center; margin: var
 .transport-state.paused { color: var(--warning); background-color: var(--warning-background); }
 .transport-state.faulted { color: var(--danger); background-color: var(--danger-background); }
 .transport-state.stopped { color: var(--text-dim); }
+.clip-time { width: 116px; flex-shrink: 0; } /* a running time never moves what follows it */
 /* The Game tab: the game beside the script debugger, the bar's resolution a fixed width. */
 .game-view-pane { flex-grow: 1; flex-basis: 0; min-width: 0; min-height: 0; background-color: var(--surface-sunken); }
 .game-view { flex-grow: 1; }
