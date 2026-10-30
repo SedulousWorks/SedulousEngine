@@ -271,6 +271,35 @@ class MaterialAssetCookTests
 		Test.Assert((unlit.TextureSlots.Count == 1) && (unlit.TextureSlots[0] == "AlbedoMap") && (unlit.TextureIds[0] == albedo));
 	}
 
+	/// Phong takes the names PBR gives the colour, its map, the emission and the normal map, so a PBR
+	/// material put on the built-in Phong keeps its look's makings; what Phong lacks (metal,
+	/// roughness) is dropped and its own (specular, shininess) start at their defaults.
+	[Test]
+	public static void APbrMaterialPutOnTheBuiltInPhongKeepsItsColourAndItsMaps()
+	{
+		let pbrMaterial = MaterialPresets.CreatePbr("m", .(0.2f, 0.4f, 0.6f, 1.0f));
+		defer delete pbrMaterial;
+		let source = scope MaterialSource();
+		MaterialSource.FromMaterial(pbrMaterial, Guid(), source);
+		let albedo = Guid(5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let normal = Guid(7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		source.TextureSlots.Add(new String("AlbedoMap"));
+		source.TextureIds.Add(albedo);
+		source.TextureSlots.Add(new String("NormalMap"));
+		source.TextureIds.Add(normal);
+		source.TextureSlots.Add(new String("MetallicRoughnessMap")); // Phong has none
+		source.TextureIds.Add(Guid(9, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+
+		MaterialShaderLayout.SetBuiltInShader(source, .Phong);
+		Test.Assert(source.ShaderName == "phong");
+		Test.Assert(MaterialSourceRead.Find(source, "BaseColor") >= 0);
+		Test.Assert(MaterialSourceRead.Find(source, "Metallic") < 0);
+		Test.Assert(Math.Abs(MaterialSourceRead.Read<Float4>(source, "BaseColor").Y - 0.4f) < 1e-5f);
+		Test.Assert(source.TextureSlots.Count == 2);
+		Test.Assert((source.TextureSlots[0] == "AlbedoMap") && (source.TextureIds[0] == albedo));
+		Test.Assert((source.TextureSlots[1] == "NormalMap") && (source.TextureIds[1] == normal));
+	}
+
 	/// A material switched onto a custom shader and back, as the material page's Shader row does
 	/// it: on the shader it is the shader's layout with the shader's name and id, its BaseColor and
 	/// render state kept; back on the built-in Unlit it is Unlit's layout, the id nil, the colour and
@@ -301,7 +330,7 @@ class MaterialAssetCookTests
 		Test.Assert(MaterialSourceRead.Read<Float4>(source, "BaseColor") == red);
 		Test.Assert(MaterialSourceRead.Read<float>(source, "Speed") == 3.0f, "the shader's default");
 
-		MaterialShaderLayout.SetBuiltInShader(source, true);
+		MaterialShaderLayout.SetBuiltInShader(source, .Unlit);
 		Test.Assert(source.ShaderId.IsNil && (source.ShaderName == "unlit"));
 		Test.Assert(MaterialSourceRead.Find(source, "Speed") < 0, "Unlit's layout");
 		Test.Assert(source.CullMode == .None);

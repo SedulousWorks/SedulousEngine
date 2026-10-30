@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Materials; // BuiltinShading, MaterialPresets
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
@@ -83,11 +84,11 @@ static class MaterialShaderLayout
 		Assign(source, laid);
 	}
 
-	/// Puts a material back on a built-in shader, PBR or Unlit: the built-in's own layout (what
-	/// Create > Materials makes), the material's values and render state carried onto it.
-	public static void SetBuiltInShader(MaterialSource source, bool unlit)
+	/// Puts a material back on a built-in shader (PBR, Unlit or Phong): the built-in's own layout
+	/// (what Create > Materials makes), the material's values and render state carried onto it.
+	public static void SetBuiltInShader(MaterialSource source, BuiltinShading shading)
 	{
-		let built = unlit ? MaterialPresets.CreateUnlit(source.Name) : MaterialPresets.CreatePbr(source.Name);
+		let built = MaterialPresets.CreateBuiltin(shading, source.Name);
 		defer delete built;
 		let to = scope MaterialSource();
 		MaterialSource.FromMaterial(built, .(), to);

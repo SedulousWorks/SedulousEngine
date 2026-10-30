@@ -61,4 +61,53 @@ class MaterialColourTests
 		Test.Assert(unlit.FindProperty("BaseColor", let unlitBase) && (unlitBase.Type == .Color));
 		Test.Assert(MaterialPresets.BuiltinTemplate("my_custom_shader") == null);
 	}
+
+	[Test]
+	public static void ThePhongBuiltinLaysItsCbufferOutAsPhongPsReadsIt()
+	{
+		let phong = MaterialPresets.BuiltinTemplate("phong");
+		Test.Assert(phong != null);
+		defer delete phong;
+		Test.Assert(phong.ShaderName == "phong");
+		// The order phong.ps.hlsl's Material cbuffer declares, in 64 bytes.
+		StringView[6] names = .("BaseColor", "SpecularColor", "EmissiveColor", "Shininess", "NormalScale", "AlphaCutoff");
+		MaterialPropertyType[6] types = .(.Color, .Color, .ColorHdr, .Float, .Float, .Float);
+		uint32[6] offsets = .(0, 16, 32, 48, 52, 56);
+		for (int i < 6)
+		{
+			Test.Assert(phong.FindProperty(names[i], let found), scope String(names[i]));
+			Test.Assert(found.Type == types[i], scope String(names[i]));
+			Test.Assert(found.Offset == offsets[i], scope String(names[i]));
+		}
+		// Its maps in their slots, t0 to t3, then the sampler.
+		for (let map in StringView[4]("AlbedoMap", "SpecularMap", "NormalMap", "EmissiveMap"))
+		{
+			Test.Assert(phong.FindProperty(map, let found), scope String(map));
+			Test.Assert(found.Type == .Texture2D);
+		}
+		Test.Assert(phong.FindProperty("MainSampler", let sampler) && (sampler.Type == .Sampler));
+		// No wind: a Phong material never asks for the swaying vertex variant.
+		Test.Assert(!phong.FindProperty("WindStrength", ?));
+	}
+
+	[Test]
+	public static void EachBuiltinIsKnownByItsShaderItsShortNameAndItsLabel()
+	{
+		Test.Assert(MaterialPresets.cBuiltinShadingCount == 3);
+		Test.Assert(MaterialPresets.FindBuiltinShadingByShader("forward").Value.Shading == .Pbr);
+		Test.Assert(MaterialPresets.FindBuiltinShadingByShader("unlit").Value.Shading == .Unlit);
+		Test.Assert(MaterialPresets.FindBuiltinShadingByShader("phong").Value.Shading == .Phong);
+		Test.Assert(!MaterialPresets.FindBuiltinShadingByShader("toon").HasValue);
+		Test.Assert(MaterialPresets.FindBuiltinShadingByShortName("phong").Value.ShaderName == "phong");
+		Test.Assert(MaterialPresets.FindBuiltinShadingByShortName("pbr").Value.ShaderName == "forward");
+		Test.Assert(!MaterialPresets.FindBuiltinShadingByShortName("forward").HasValue);
+		for (int i < MaterialPresets.cBuiltinShadingCount)
+		{
+			// Each made from its own builtin.
+			let made = MaterialPresets.CreateBuiltin(MaterialPresets.BuiltinShadings[i].Shading, "m");
+			defer delete made;
+			Test.Assert(made.ShaderName == MaterialPresets.BuiltinShadings[i].ShaderName);
+			Test.Assert((int)MaterialPresets.BuiltinShadings[i].Shading == i, "the table is in the enum's order");
+		}
+	}
 }

@@ -66,17 +66,118 @@ static class MaterialPresets
 			.Build();
 	}
 
-	/// The builtin template a builtin shader's materials are made from (CreatePbr for
-	/// "forward", CreateUnlit for "unlit"), or null for a custom shader: what a stored
-	/// material's property table is checked against.
+	/// The standard PHONG material (the "phong" builtin shader, Raptor's phong-material spec): what a
+	/// model authored with Phong or Lambert is made of. Each light shaded Blinn-Phong: the diffuse
+	/// (BaseColor x AlbedoMap) by N.L, the specular (SpecularColor x SpecularMap, black: none) as a
+	/// highlight as tight as Shininess, its exponent; the scene's diffuse ambient; the emission added.
+	/// Its colour, map, emission, normal map and cutoff take the names PBR and Unlit give them, so a
+	/// material moved between built-ins keeps them. Same vertex path as forward, so it casts shadows
+	/// and moves through the post stack normally. The order lays the cbuffer out in 64 bytes, as
+	/// phong.ps.hlsl declares it.
+	///
+	/// THE CALLER OWNS what comes back.
+	public static Material CreatePhong(StringView name, Float4 baseColor = .(1, 1, 1, 1),
+		Float4 specularColor = .(0, 0, 0, 1), float shininess = 20.0f, StringView shaderName = "phong")
+	{
+		let builder = scope MaterialBuilder(name);
+		return builder
+			..Shader(shaderName)
+			..VertexLayout(.Mesh)
+			..Color("BaseColor", baseColor)
+			..Color("SpecularColor", specularColor)
+			// Black = none; rgb x EmissiveMap, times the intensity in w (glow above white).
+			..ColorHdr("EmissiveColor", .(0, 0, 0, 1))
+			..Float("Shininess", shininess)
+			..Float("NormalScale", 1.0f)
+			..Float("AlphaCutoff", 0.5f)
+			..Texture("AlbedoMap")
+			..Texture("SpecularMap")
+			..Texture("NormalMap")
+			..Texture("EmissiveMap")
+			..Sampler("MainSampler")
+			.Build();
+	}
+
+	/// The builtin shaders a material may be drawn with, and how each is known: by its shader's
+	/// name (what a material source stores), a short name (what an agent types) and a label (what
+	/// the editor shows), in BuiltinShading's order. The one list every place that offers or
+	/// recognises a builtin reads.
+	public const int cBuiltinShadingCount = 3;
+	public static readonly BuiltinShadingInfo[cBuiltinShadingCount] BuiltinShadings = .(
+		.(.Pbr, "forward", "pbr", "PBR"),
+		.(.Unlit, "unlit", "unlit", "Unlit"),
+		.(.Phong, "phong", "phong", "Phong"));
+
+	public static BuiltinShadingInfo BuiltinShadingOf(BuiltinShading shading) => BuiltinShadings[(int)shading];
+
+	/// The builtin whose shader is `shaderName`, or null (a custom shader's name).
+	public static BuiltinShadingInfo? FindBuiltinShadingByShader(StringView shaderName)
+	{
+		for (let info in BuiltinShadings)
+		{
+			if (info.ShaderName == shaderName)
+				return info;
+		}
+		return null;
+	}
+
+	/// The builtin an agent names ("pbr", "unlit", "phong"), or null.
+	public static BuiltinShadingInfo? FindBuiltinShadingByShortName(StringView shortName)
+	{
+		for (let info in BuiltinShadings)
+		{
+			if (info.ShortName == shortName)
+				return info;
+		}
+		return null;
+	}
+
+	/// A material on `shading`'s builtin, its defaults. THE CALLER OWNS what comes back.
+	public static Material CreateBuiltin(BuiltinShading shading, StringView name)
+	{
+		switch (shading)
+		{
+		case .Unlit: return CreateUnlit(name);
+		case .Phong: return CreatePhong(name);
+		default: return CreatePbr(name);
+		}
+	}
+
+	/// The builtin template a builtin shader's materials are made from, or null for a custom shader:
+	/// what a stored material's property table is checked against.
 	///
 	/// THE CALLER OWNS what comes back.
 	public static Material BuiltinTemplate(StringView shaderName)
 	{
-		if (shaderName == "forward")
-			return CreatePbr("__template", .(1, 1, 1, 1), 0.0f, 0.5f, shaderName);
-		if (shaderName == "unlit")
-			return CreateUnlit("__template", .(1, 1, 1, 1), shaderName);
-		return null;
+		let builtin = FindBuiltinShadingByShader(shaderName);
+		return builtin.HasValue ? CreateBuiltin(builtin.Value.Shading, "__template") : null;
+	}
+}
+
+/// The builtin shaders a material may be drawn with (MaterialPresets.BuiltinShadings).
+enum BuiltinShading : uint8
+{
+	Pbr,
+	Unlit,
+	Phong,
+}
+
+/// How a builtin is known.
+struct BuiltinShadingInfo
+{
+	public BuiltinShading Shading;
+	/// The material source's ShaderName.
+	public StringView ShaderName;
+	/// "pbr", "unlit", "phong".
+	public StringView ShortName;
+	/// "PBR", "Unlit", "Phong".
+	public StringView Label;
+
+	public this(BuiltinShading shading, StringView shaderName, StringView shortName, StringView label)
+	{
+		Shading = shading;
+		ShaderName = shaderName;
+		ShortName = shortName;
+		Label = label;
 	}
 }
