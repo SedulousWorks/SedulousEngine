@@ -2,7 +2,7 @@
   The property animation panel (Raptor's editor-gui spec, 5.4, layer 9): under the scene
   page's viewport, a clip of its own, not the scene. Its bar: the clip (New, Open, Save, its own
   Undo and Redo), the entity it animates (named, Use Selected binds the
-  scene's selection), the tracks (Add Track offers the entity's animatable properties, Key keys the
+  scene's selection, Pick one from the scene's entities), the tracks (Add Track offers the entity's animatable properties, Key keys the
   chosen tracks with what the entity shows at the playhead, Remove takes the chosen tracks away),
   the kit's transport over the preview (Restart, Play showing Pause while it plays, Stop, Loop),
   Frame (the curves shown) and the clip's length; at its end the clip's name and its unsaved mark,
@@ -22,6 +22,7 @@
         <Image class="anim-icon" src="Editor/Icons/entity.svg"/>
         <Label id="anim-entity" class="anim-entity" text="No entity"/>
         <ToolButton id="anim-bind" icon="Editor/Icons/target.svg" tooltip="Animate the entity selected in the scene"/>
+        <ToolButton id="anim-pick" icon="Editor/Icons/hierarchy.svg" tooltip="Pick the entity to animate from the scene's entities"/>
         <Separator/>
         <ToolButton id="anim-add-track" icon="Editor/Icons/plus.svg" text="Track" shows-text="true" tooltip="Add a track for one of the entity's properties"/>
         <ToolButton id="anim-key" icon="Editor/Icons/star.svg" text="Key" shows-text="true" tooltip="Key the chosen tracks (all, with none chosen) with what the entity shows at the playhead"/>

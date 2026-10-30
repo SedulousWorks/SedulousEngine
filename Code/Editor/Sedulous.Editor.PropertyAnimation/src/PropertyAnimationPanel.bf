@@ -11,7 +11,8 @@ namespace Sedulous.Editor.PropertyAnimation;
 /// The property animation panel on the GUI from its markup (Data/Editor/PropertyAnimationPanel.gml;
 /// Raptor's editor-gui spec, 5.4, layer 9, part 2), over part 1's clip document, source, preview and
 /// transport, under the scene page's viewport. Its bar holds the clip (its name and unsaved mark, New,
-/// Open, Save, its own Undo and Redo), the entity it animates (Use Selected), its tracks (Add Track
+/// Open, Save, its own Undo and Redo), the entity it animates (Use Selected, or Pick from the scene's
+/// entities; the page marks the entity its preview poses), its tracks (Add Track
 /// offers the entity's properties without one, Key keys the chosen tracks with what the entity shows
 /// at the playhead, Remove takes them away), the kit's transport with Loop, and the clip's length. The
 /// ruler, the dopesheet and the curve view share one time axis; the curve view shows the chosen
@@ -85,6 +86,9 @@ class PropertyAnimationPanel
 	public delegate void(delegate void() proceed) GuardUnsaved ~ delete _;
 	/// The bar's Close: the page hides the panel (the clip stays open in it). Null: nothing.
 	public delegate void() RequestClose ~ delete _;
+	/// The bar's Pick: the page's entity picker over the scene, `current` lit; `chosen` answers its
+	/// pick (OWNERSHIP of it transfers). Unset: the button does nothing. Owned.
+	public delegate void(Guid current, delegate void(Guid id) chosen) RequestPickEntity ~ delete _;
 
 	/// Over `scene` (the page's, which outlives it), its markup `content` loaded (a reference of its
 	/// own taken).
@@ -144,6 +148,7 @@ class PropertyAnimationPanel
 		mUndo = Wire("anim-undo", new [=this] () => { Undo(); });
 		mRedo = Wire("anim-redo", new [=this] () => { Redo(); });
 		Wire("anim-bind", new [=this] () => { BindSelected(); }); // always on: the page's selection is read when clicked
+		Wire("anim-pick", new [=this] () => { PickEntity(); });
 		mAddTrack = Wire("anim-add-track", new [=this] () => { OpenTrackMenu(); });
 		mKey = Wire("anim-key", new [=this] () => { KeyChosen(); });
 		mRemove = Wire("anim-remove", new [=this] () => { RemoveChosen(); });
@@ -277,6 +282,18 @@ class PropertyAnimationPanel
 	{
 		if (SelectedEntity != null)
 			BindEntity(SelectedEntity());
+	}
+
+	/// Binds the entity picked in the page's entity picker (the bar's Pick).
+	public void PickEntity()
+	{
+		if (RequestPickEntity == null)
+			return;
+		RequestPickEntity(mEntity, new [=this] (picked) =>
+			{
+				if (!picked.IsNil) // the picker's None keeps the binding
+					BindEntity(picked);
+			});
 	}
 
 	// === The tracks ===
