@@ -111,11 +111,10 @@ Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor <projectDir
 
 Add `--mcp` to serve the project to an agent over MCP while you work in the editor.
 
-The editor is moving onto the GUI: `Sedulous.Tools.Editor` has its shell (the dock, menus,
-project manager, assets browser and dialogs) and the scene page with its hierarchy and its
-inspector on the GUI, but the asset pages are not yet, and the editor libraries still on
-Sedulous.UI are out of the workspace until each one's port lands. Until then,
-build the full editor at commit e293ee1f, or use `Sedulous.Tools.Mcp` for MCP.
+The editor is on the GUI: its shell (the dock, menus, project manager, assets browser and
+dialogs), the scene page, the Game tab, the asset pages and the Profiler page. The old editor on
+Sedulous.UI is gone; it last builds at commit e293ee1f. `Sedulous.Tools.Mcp` serves MCP without
+the editor.
 
 ## Sample projects
 

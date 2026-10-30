@@ -68,23 +68,3 @@ corlib = "*"
 "Sedulous.Engine.Scene" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.GUI.Toolkit" = "*"
-
-# On the GUI in parts with its library: these drive the inspector and the picker dialogs on
-# Sedulous.UI; they come back with those layers (Raptor's editor-gui spec, 5.3).
-[ProjectFolder]
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "CollisionMatrixTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ComponentPickerDialogTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "InspectorViewTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "SettingsProfileTests.bf"

@@ -56,20 +56,3 @@ corlib = "*"
 "Sedulous.Engine.Render" = "*"
 "Sedulous.Scene.Resource" = "*"
 "Sedulous.Fonts.Pipeline" = "*"
-
-# The suites of the shell's files on the GUI so far (Raptor's editor-gui spec, 5.1); the
-# others, and the fixtures only they use, stay out of the compile, unedited, and come back with
-# their files.
-[ProjectFolder]
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ContainerListEditorTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "PageToolbarTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ShellTests.bf"

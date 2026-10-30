@@ -5,7 +5,7 @@ namespace Sedulous.Editor.App;
 
 /// The playback actions over any IPlaybackPage: playback.play (a toggle, checked while
 /// playing: start, pause, resume), playback.stop (stop and rewind) and playback.restart. A
-/// page shows them through PageToolbar.AddPlayback.
+/// page binds its transport's buttons to them (BindAction).
 static class PlaybackActions
 {
 	public static void Register(EditorActionRegistry actions)

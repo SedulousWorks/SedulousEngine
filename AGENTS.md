@@ -13,16 +13,12 @@ BeefBuild -proddir=. -config=Debug -platform=Linux64 -project=Sedulous.Tools.Edi
 BeefBuild -proddir=. -platform=Linux64 -test -project=Sedulous.Core.Tests
 ```
 
-The editor is moving onto the GUI, as Raptor's editor-gui series moves it. `Sedulous.Tools.Editor`
-builds again: the shell on the GUI (its window, dock, menus, palette, project manager, the
-assets browser, Preferences, Project Settings, export, the MCP host over `--mcp`), the scene
-page with its hierarchy and its inspector, the Game tab with the play-in-editor tools, and
-the asset pages ported so far (the fallback page; Image, Texture, Heightfield, Terrain, the vegetation mask, Fonts, the mesh
-viewer, the collision shape, the material, the settings profiles, the audio clip, the sound cue,
-the audio bus layout, the input map, the script, the shader, the GUI document and sheet and the particle effect). The editor libraries still on Sedulous.UI
-are out of the workspace, as are the files still on it in the libraries that are back (`IgnoreSource` in their
-BeefProj.toml), their sources untouched, and each comes back with its port. Until then,
-the full editor builds at e293ee1f; `Sedulous.Tools.Mcp` is the headless MCP host, and `Samples.GUISandbox --editor-mock` shows the design.
+The editor is on the GUI, as Raptor's editor-gui series moved it: `Sedulous.Tools.Editor` is
+the shell (its window, dock, menus, palette, project manager, the assets browser, Preferences,
+Project Settings, export, the MCP host over `--mcp`), the scene page with its hierarchy and its
+inspector, the Game tab with the play-in-editor tools, every asset page and the Profiler page.
+The old editor's files are deleted (the swap); the last editor on Sedulous.UI builds at e293ee1f.
+`Sedulous.Tools.Mcp` is the headless MCP host, and `Samples.GUISandbox --editor-mock` shows the design.
 
 - Outputs land in `Code/build/<Config>_<Platform>/<Project>/`.
 - Configs: Debug, Test, Release (optimised, the profiler compiled in) and ShippingRelease
