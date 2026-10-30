@@ -520,6 +520,9 @@ class ScenePageTests
 			Root.EventDispatcher.InjectMouseDown(at, .Left, modifiers);
 			Root.EventDispatcher.InjectMouseUp(at, .Left, modifiers);
 		}
+
+		/// A key pressed on what has the focus.
+		public void Key(Sedulous.GUI.KeyCode key) => Root.EventDispatcher.InjectKeyDown((uint32)key);
 	}
 
 	static bool RowsAre(SceneHierarchyView tree, StringView expected)
@@ -702,6 +705,176 @@ class ScenePageTests
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!add.Enabled, "refused visibly while it simulates");
 		page.StopSimulation();
+		page.OnClose();
+	}
+
+	/// The GUI's clipboard, in memory.
+	class TestClipboard : Sedulous.GUI.IClipboard
+	{
+		public String Stored = new .() ~ delete _;
+
+		public bool HasText => !Stored.IsEmpty;
+		public void GetText(String outText) { outText.Append(Stored); }
+		public void SetText(StringView text) { Stored.Set(text); }
+	}
+
+	static MenuItem ItemNamed(Node menu, StringView text)
+	{
+		for (int i < menu.ChildCount)
+		{
+			let node = menu.GetChildAt(i);
+			if (let item = node as MenuItem)
+			{
+				if (item.Text == text)
+					return item;
+			}
+			if (let found = ItemNamed(node, text))
+				return found;
+		}
+		return null;
+	}
+
+	[Test]
+	public static void AHierarchyRowsCopyIdPutsTheEntitysGuidOnTheClipboardAndSaysSoWithNoClipboardItWarns()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		NoticeKind kind = .Info;
+		let notice = scope String();
+		bed.Context.OnNotice = new [&] (k, message) =>
+			{
+				kind = k;
+				notice.Set(message);
+			};
+		let shown = scope Shown(page);
+		let clipboard = scope TestClipboard();
+		shown.Root.EventDispatcher.Clipboard = clipboard;
+		defer { shown.Root.EventDispatcher.Clipboard = null; }
+
+		// The scene's row has no id to copy.
+		tree.ShowMenu(0, .(10.0f, 10.0f));
+		Test.Assert(tree.OpenMenu != null);
+		Test.Assert(ItemNamed(tree.OpenMenu, "Copy ID") == null);
+		tree.OpenMenu.Close();
+
+		tree.ShowMenu(tree.ItemOf(bed.Crate), .(10.0f, 10.0f));
+		Test.Assert(tree.OpenMenu != null);
+		var copy = ItemNamed(tree.OpenMenu, "Copy ID");
+		Test.Assert(copy != null);
+		Test.Assert(copy.HandleActivate());
+		Test.Assert(clipboard.Stored == bed.Crate.ToString(.. scope .(), 'D')); // the guid as the scene file spells it
+		Test.Assert(clipboard.Stored.Length == 36);
+		Test.Assert(kind == .Success);
+		Test.Assert(notice == "Copied entity ID");
+
+		shown.Root.EventDispatcher.Clipboard = null;
+		tree.ShowMenu(tree.ItemOf(bed.Crate), .(10.0f, 10.0f));
+		Test.Assert(tree.OpenMenu != null);
+		copy = ItemNamed(tree.OpenMenu, "Copy ID");
+		Test.Assert(copy != null);
+		copy.HandleActivate();
+		Test.Assert(kind == .Warning);
+		Test.Assert(notice == "Could not copy entity ID to the clipboard");
+		page.OnClose();
+	}
+
+	[Test]
+	public static void AHierarchyRowDoubleClickedFramesItsEntityEasedAndStartsNoRenameOneClickFramesNothing()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		let lantern = page.EditContext.CreateEntity("Lantern");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let camera = page.ViewportCamera;
+		Test.Assert(camera != null);
+		let shown = scope Shown(page);
+
+		// The scene's row: no entity, nothing framed.
+		shown.Click(tree.Tree, 0);
+		shown.Click(tree.Tree, 0);
+		Test.Assert(!camera.IsGliding);
+
+		let item = tree.ItemOf(lantern);
+		Test.Assert(item >= 0);
+		shown.Click(tree.Tree, item);
+		Test.Assert(page.EditContext.EntitySelection.Contains(lantern));
+		Test.Assert(!camera.IsGliding, "one click selects");
+		shown.Click(tree.Tree, item);
+		Test.Assert(camera.IsGliding, "the second frames, eased");
+		Test.Assert(!tree.Tree.IsEditing);
+
+		// Once the glide is done, the pivot is on the entity (at the origin).
+		camera.Advance(1.0f);
+		let pivot = camera.Position + camera.Forward * camera.FocusDistance;
+		Test.Assert(Length(pivot) < 0.01f);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void TheHierarchysArrowKeysMoveTheTreesSelectionTheScenesFollowsUpOntoTheScenesRowClearsIt()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		let barrel = page.EditContext.CreateEntity("Barrel");
+		let lantern = page.EditContext.CreateEntity("Lantern");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |   Barrel |   Lantern"));
+		let shown = scope Shown(page);
+
+		shown.Click(tree.Tree, tree.ItemOf(bed.Crate)); // the tree has the keys now
+		Test.Assert(page.EditContext.EntitySelection.Contains(bed.Crate));
+		shown.Key(.Down);
+		Test.Assert(page.EditContext.EntitySelection.Contains(barrel));
+		Test.Assert(page.EditContext.EntitySelection.Count == 1);
+		shown.Key(.Down);
+		Test.Assert(page.EditContext.EntitySelection.Contains(lantern));
+		shown.Key(.Up);
+		shown.Key(.Up);
+		Test.Assert(page.EditContext.EntitySelection.Contains(bed.Crate));
+		shown.Key(.Up);
+		Test.Assert(page.EditContext.EntitySelection.IsEmpty, "the scene's row: no entity");
+		Test.Assert(tree.SceneSelected);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorASceneSettingsSectionIsTitledWithItsTypesDisplayNameElseItsNameLessSettings()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		Test.Assert(inspector != null);
+		let shown = scope Shown(page);
+		shown.Click(page.Hierarchy.Tree, 0); // the scene's row
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Kind == "Scene");
+		let edit = page.EditContext;
+		Test.Assert(edit.FindSystemBySettingsType(typeof(EnvironmentSettings)) != null);
+		Test.Assert(inspector.SettingsOf("Environment") != null);
+		Test.Assert(edit.FindSystemBySettingsType(typeof(PostProcessSettings)) != null);
+		Test.Assert(inspector.SettingsOf("Post Processing") != null);
+		Test.Assert(edit.FindSystemBySettingsType(typeof(PhysicsSceneSettings)) != null);
+		Test.Assert(inspector.SettingsOf("Physics") != null);
+		Test.Assert(edit.FindSystemBySettingsType(typeof(NavigationSceneSettings)) != null);
+		Test.Assert(inspector.SettingsOf("Navigation") != null);
+		Test.Assert(edit.FindSystemBySettingsType(typeof(SceneScriptSettings)) != null);
+		Test.Assert(inspector.SettingsOf("Scene Script") != null);
+		// No type name reads through.
+		let titles = inspector.SectionTitles(.. scope .());
+		Test.Assert(!titles.Contains("PostProcess", true));
+		Test.Assert(!titles.Contains("PhysicsScene", true));
+		Test.Assert(!titles.Contains("Settings", true));
 		page.OnClose();
 	}
 

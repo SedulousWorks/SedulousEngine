@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Render;
@@ -7,6 +8,8 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
+using Sedulous.GUI;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -95,6 +98,67 @@ class InspectorHelperTests
 		Test.Assert(env.GetField("SkyZenith") case .Ok(let zenith));
 		Test.Assert(zenith.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let label));
 		Test.Assert(label.Name == "Sky Zenith / Color");
+	}
+
+	/// Whether the row `name` of `source` shows now.
+	static bool RowVisible(FieldPropertySource source, StringView name)
+	{
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		for (let row in rows)
+		{
+			if (row.Name == name)
+				return row.Visible;
+		}
+		Test.Assert(false, "no such row");
+		return false;
+	}
+
+	/// The inspector's source shows and hides the render components' rows by their conditions,
+	/// read again from the values each time it lists them.
+	[Test]
+	public static void TheFieldSourceShowsAndHidesTheRenderComponentsRowsByTheirConditions()
+	{
+		var lamp = LightComponent();
+		lamp.Type = .Directional;
+		lamp.CastsShadows = false;
+		void* lampAddress = &lamp;
+		let lights = scope FieldPropertySource(typeof(LightComponent), 1, new (object) => lampAddress, new (apply) => { apply(0, lampAddress); });
+		Test.Assert(!RowVisible(lights, "InnerAngle"));
+		Test.Assert(!RowVisible(lights, "ShadowStrength"));
+		lamp.Type = .Spot;
+		lamp.CastsShadows = true;
+		Test.Assert(RowVisible(lights, "InnerAngle"));
+		Test.Assert(RowVisible(lights, "ShadowStrength"));
+		lamp.Type = .Point;
+		Test.Assert(!RowVisible(lights, "InnerAngle"));
+		Test.Assert(RowVisible(lights, "Range")); // Type=1,2
+
+		var eye = CameraComponent();
+		eye.Projection = .Perspective;
+		void* eyeAddress = &eye;
+		let cameras = scope FieldPropertySource(typeof(CameraComponent), 1, new (object) => eyeAddress, new (apply) => { apply(0, eyeAddress); });
+		Test.Assert(RowVisible(cameras, "FovYRadians"));
+		Test.Assert(!RowVisible(cameras, "OrthoHeight"));
+		eye.Projection = .Orthographic;
+		Test.Assert(!RowVisible(cameras, "FovYRadians"));
+		Test.Assert(RowVisible(cameras, "OrthoHeight"));
+
+		var settings = EnvironmentSettings();
+		settings.SkyMode = .Analytic;
+		void* settingsAddress = &settings;
+		let environments = scope FieldPropertySource(typeof(EnvironmentSettings), 1, new (object) => settingsAddress, new (apply) => { apply(0, settingsAddress); });
+		Test.Assert(RowVisible(environments, "Turbidity"));
+		settings.SkyMode = .HDREquirect;
+		Test.Assert(!RowVisible(environments, "Turbidity"));
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		environments.GetProperties("", rows);
+		bool named = false;
+		for (let row in rows)
+			named = named || ((row.Name == "SkyZenith") && (row.DisplayName == "Sky Zenith / Color"));
+		Test.Assert(named);
 	}
 
 	/// Every field of a settings block a scene inspector edits must carry RUNTIME reflection

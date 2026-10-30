@@ -332,6 +332,7 @@ class LogViewTests
 		Test.Assert(notices.Back == "Warning: Could not copy path to the clipboard");
 		context.CopyToEditorClipboard("component", scope uint8[](1, 2), "component 'Mesh'");
 		Test.Assert((context.ClipboardKind == "component") && (notices.Back == "Success: Copied component 'Mesh'"));
+		Test.Assert((context.ClipboardData("component").Length == 2) && context.ClipboardData("entities").IsEmpty); // another kind reads nothing
 
 		// The console reports how many lines it copied.
 		let bed = scope ConsoleBed();
