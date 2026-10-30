@@ -92,10 +92,18 @@ class FontPageTests
 		}
 
 		/// The page over the font; the caller deletes it.
+		/// What the page last asked the picker to show (ours).
+		public PickerRequest Picked = null ~ delete _;
+
 		public FontEditorPage Open()
 		{
 			let services = new AssetPageServices();
 			services.LoadMarkup = new (path) => LoadMarkup(path);
+			services.Pick = new [=this] (request) =>
+				{
+					delete Picked;
+					Picked = request;
+				};
 			return new FontEditorPage(Context, services, Roboto);
 		}
 	}
@@ -144,5 +152,31 @@ class FontPageTests
 		page.Commands.Undo();
 		Test.Assert(page.Ramp.FindInfo("sizes").Visible);
 		page.OnClose();
+	}
+
+	[Test]
+	public static void BrowseOnTheSourceRowPicksAnotherFontFileOfTheProjectsTheRelinkIsOneUndoStep()
+	{
+		let bed = scope Bed();
+		let sources = bed.Project.SourcesRoot(.. scope .());
+		let faces = PathJoin(sources, "faces", .. scope .());
+		Test.Assert(CreateDirectory(faces));
+		let notAFont = scope List<uint8>() { (uint8)'x' };
+		Test.Assert(WriteFile(PathJoin(faces, "bold.otf", .. scope .()), notAFont) case .Ok);
+		Test.Assert(WriteFile(PathJoin(sources, "readme.txt", .. scope .()), notAFont) case .Ok);
+		let page = bed.Open();
+		defer delete page;
+		Test.Assert(!page.LoadFailed);
+		page.BrowseSource();
+		Test.Assert((bed.Picked != null) && (bed.Picked.OnPicked != null));
+		Test.Assert(bed.Picked.Current == "roboto.ttf");
+		Test.Assert(bed.Picked.Items.Count == 2); // the font files, not the text
+		Test.Assert(bed.Picked.Items[0].Key == "faces/bold.otf");
+		Test.Assert(bed.Picked.Items[1].Key == "roboto.ttf");
+		bed.Picked.OnPicked("faces/bold.otf");
+		Test.Assert(page.SourceFile(.. scope .()) == "faces/bold.otf");
+		Test.Assert(page.Commands.CanUndo);
+		page.Commands.Undo();
+		Test.Assert(page.SourceFile(.. scope .()) == "roboto.ttf");
 	}
 }

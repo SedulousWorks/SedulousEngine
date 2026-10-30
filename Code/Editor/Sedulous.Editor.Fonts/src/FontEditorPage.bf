@@ -74,6 +74,14 @@ class FontEditorPage : AssetObjectPage
 		}
 	}
 
+	/// A font's source relinks to another font file of the project's (Browse on its row).
+	public override void SourceExtensions(List<StringView> outExtensions)
+	{
+		outExtensions.Add(".ttf");
+		outExtensions.Add(".otf");
+		outExtensions.Add(".ttc");
+	}
+
 	/// Sets the raster ramp's sizes from text ("10, 12.5 24"), one undo step; false, with the row
 	/// put back and a notice saying why, when it is not a list of sizes from 1 to 512.
 	public bool SetSizes(StringView text)
