@@ -57,6 +57,7 @@ corlib = "*"
 "Sedulous.Editor.GUI" = "*"
 "Sedulous.Editor.Spline" = "*"
 "Sedulous.Editor.Particles" = "*"
+"Sedulous.Editor.Animation" = "*"
 "Sedulous.Editor.Terrain" = "*"
 "Sedulous.Editor.Vegetation" = "*"
 # The pages are parked while the editor moves onto the GUI (Raptor's editor-gui spec, 4.1): each

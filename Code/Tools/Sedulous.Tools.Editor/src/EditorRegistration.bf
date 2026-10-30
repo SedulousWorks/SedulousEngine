@@ -25,6 +25,7 @@ using Sedulous.Editor.Shaders;
 using Sedulous.Editor.GUI;
 using Sedulous.Editor.Spline;
 using Sedulous.Editor.Particles;
+using Sedulous.Editor.Animation;
 using Sedulous.Editor.Terrain;
 using Sedulous.Editor.Vegetation;
 
@@ -83,6 +84,8 @@ static class EditorRegistration
 		ShaderEditor.Register(context, pageServices, DataPath(app.DataRoot, "Shaders", .. scope .())); // a check's include path
 		GuiEditor.Register(context, pageServices); // the GUI's documents and sheets
 		ParticleEditor.Register(context, pageServices); // the particle effect
+		AnimationClipEditor.Register(context, pageServices); // the animation clip
+		SkeletonEditor.Register(context, pageServices); // the skeleton
 		GenericAssetPageFactory.Register(context, pageServices);
 
 		// File > New: every pipeline domain's creators, the scripts' among them.
