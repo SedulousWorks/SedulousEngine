@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">1ae566a6-fd7a-f245-8a51-f25e2eeee392</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiStyleSheetAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5871759161733652681</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">LamplightSheet.css</string>
+			<string name="previewMarkup"/>
+		</object>
+	</object>
+</root>

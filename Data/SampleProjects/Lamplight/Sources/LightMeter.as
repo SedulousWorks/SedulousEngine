@@ -17,8 +17,6 @@ class LightMeter
 	[7, "How many material slots the figure has"] int slots;
 
 	private float m_shown = 0.0f;
-	private UIProgressBar m_bar;
-	private UILabel m_label;
 	private Entity m_figure;
 	private float m_glow = -1.0f; // the glow last set
 
@@ -34,9 +32,6 @@ class LightMeter
 
 	void onStart()
 	{
-		// The HUD is the game's (Lamplight.as pushes it before the level loads).
-		m_bar = Ui.FindProgressBar("hud-light");
-		m_label = Ui.FindLabel("hud-light-label");
 		m_shown = level();
 	}
 
@@ -44,13 +39,13 @@ class LightMeter
 	{
 		float k = follow * dt;
 		m_shown += (level() - m_shown) * Min(k, 1.0f);
-		if (m_bar.IsValid)
+		// The HUD is the game's (Lamplight.as pushes it before the level loads), looked up each
+		// frame: a new level's HUD is a new tree.
+		Node@ bar = Gui.Root().Find("hud-light");
+		if (bar !is null)
 		{
-			m_bar.SetValue(m_shown);
-		}
-		if (m_label.IsValid)
-		{
-			m_label.SetText(m_shown < 0.25f ? "Hidden" : (m_shown < 0.6f ? "Dim" : "Lit"));
+			ProgressBar::Of(bar).Value = m_shown;
+			Label::Of(Gui.Root().Find("hud-light-label")).Text = m_shown < 0.25f ? "Hidden" : (m_shown < 0.6f ? "Dim" : "Lit");
 		}
 		glow();
 	}

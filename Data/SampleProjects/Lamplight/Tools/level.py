@@ -412,7 +412,7 @@ class Builder:
               range=9.0, outerAngle=0.6, innerAngle=0.45, castsShadows=True)
         meter = d.stable_id("entity")
         d.entity("Meter", (0, 2.25, 0), parent=guard, eid=meter)
-        d.add(meter, "ui.Billboard", document=asset("UIDocumentAsset", "GuardMeter"), visible=False)
+        d.add(meter, "gui.Billboard", document=asset("GuiDocumentAsset", "GuardMeter"), visible=False)
         d.script(guard, (asset("ScriptClassAsset", "Guard"), {
             "thief": ("entity", self.thief), "route": ("entity", round_), "lantern": ("entity", lantern),
             "meter": ("entity", meter), "group": GUARD_GROUP}))

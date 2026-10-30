@@ -27725,7 +27725,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">17631806423189705212</u64>
-					<u32 name="version">2</u32>
+					<u32 name="version">3</u32>
 				</array>
 				<f32 name="radius">0.35</f32>
 				<f32 name="height">1.8</f32>
@@ -27733,17 +27733,19 @@
 				<f32 name="maxAcceleration">8</f32>
 				<bool name="moveEntity">true</bool>
 				<f32 name="stopDistance">0</f32>
+				<bool name="avoidOthers">true</bool>
 			</object>
 		</object>
 		<object>
 			<string name="owner">08de6271-0fbe-54e9-99b6-b155c296dd1b</string>
-			<string name="type">ui.Billboard</string>
+			<string name="type">gui.Billboard</string>
 			<object name="data">
 				<array name="dataVersions" count="1">
-					<u64 name="type">18291051174076733258</u64>
+					<u64 name="type">3567874187606549049</u64>
 					<u32 name="version">1</u32>
 				</array>
-				<string name="document">f124841d-3e12-3c4c-a34a-9a2c0be30c5d</string>
+				<string name="document">8e30bdcf-6879-2e41-b112-714b512d76e7</string>
+				<string name="sheet">00000000-0000-0000-0000-000000000000</string>
 				<object name="offset">
 					<f32 name="x">0</f32>
 					<f32 name="y">0</f32>

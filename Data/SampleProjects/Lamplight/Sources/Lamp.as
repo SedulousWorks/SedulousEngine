@@ -59,15 +59,19 @@ class Lamp
 	{
 		if (near)
 		{
-			UILabel text = Ui.FindLabel("hud-prompt");
-			if (text.IsValid)
-				text.SetText(lit ? "Interact: put out the lamp" : "Interact: light the lamp");
-			Ui.Find("hud-prompt-panel").SetVisible(true);
+			Node@ panel = Gui.Root().Find("hud-prompt-panel");
+			if (panel is null)
+				return; // the HUD is not up
+			Label::Of(Gui.Root().Find("hud-prompt")).Text = lit ? "Interact: put out the lamp" : "Interact: light the lamp";
+			panel.Visible = true;
+			Gui.Root().Find("hud-pick").Visible = false; // a door's
 			m_prompting = true;
 		}
 		else if (m_prompting)
 		{
-			Ui.Find("hud-prompt-panel").SetVisible(false);
+			Node@ panel = Gui.Root().Find("hud-prompt-panel");
+			if (panel !is null)
+				panel.Visible = false;
 			m_prompting = false;
 		}
 	}

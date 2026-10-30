@@ -30,8 +30,9 @@ Generated files land in `generated/` (gitignored); the imported copies live in t
    pebble's), `surfaces.py` (what floors are made of, as physical materials),
    `sounds.py` (footsteps on each surface, the loot's jingle and chime, the rain, all generated)
    and `effects.py` (the rain). `graph.py` writes the thief's and the guard's animation graphs.
-3. **Scripts**: `importscripts.py` imports `ui/*.sml` and then `scripts/*.as`, filling each
-   script's `{{UI:Title}}`-style asset ids, and makes `Lamplight.as` (the game: title, HUD,
+3. **Scripts**: `importscripts.py` imports the screens on the engine GUI and the guards' meter
+   (`ui/*.gml`, styled by `ui/LamplightSheet.css`, the project's GUI sheet) and then
+   `scripts/*.as`, filling each script's `{{{GUI:Title}}}`-style asset ids, and makes `Lamplight.as` (the game: title, HUD,
    pause, results, saves) the startup script. The rest: the thief (`Thief`, `Footsteps`,
    `LightMeter`), the guard (`Guard`, and his `GuardMeter`), the quarter-turn camera
    (`CameraRig`), the wall that fades out of the camera's way (`CutawayWall`), lamps (`Lamp`),

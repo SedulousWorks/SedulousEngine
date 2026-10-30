@@ -98,13 +98,11 @@ class Thief
 	void onCheckpoint(Float3 at)
 	{
 		m_checkpoint = at;
-		UILabel note = Ui.FindLabel("hud-note");
-		if (note.IsValid)
+		Node@ note = Gui.Root().Find("hud-note");
+		if (note !is null)
 		{
-			note.SetText("Checkpoint");
-			note.SetOpacity(1.0f);
-			note.SetVisible(true);
-			note.FadeTo(0.0f, 2.5f);
+			Label::Of(note).Text = "Checkpoint";
+			note.Tween("opacity", "0", 2.5f, "ease").From("1");
 		}
 	}
 

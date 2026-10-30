@@ -110,24 +110,27 @@ class Door
 	{
 		if (show)
 		{
-			UILabel text = Ui.FindLabel("hud-prompt");
-			if (text.IsValid)
+			Node@ panel = Gui.Root().Find("hud-prompt-panel");
+			if (panel is null)
 			{
-				text.SetText(locked ? (m_picking ? "Picking the lock..." : "Hold Interact: pick the lock")
-				                    : (m_target != 0.0f ? "Interact: close the door" : "Interact: open the door"));
+				return; // the HUD is not up
 			}
-			Ui.Find("hud-prompt-panel").SetVisible(true);
-			UIProgressBar bar = Ui.FindProgressBar("hud-pick");
-			if (bar.IsValid)
-			{
-				bar.SetVisible(m_picking);
-				bar.SetValue(m_pick / pickSeconds);
-			}
+			Label::Of(Gui.Root().Find("hud-prompt")).Text =
+				locked ? (m_picking ? "Picking the lock..." : "Hold Interact: pick the lock")
+				       : (m_target != 0.0f ? "Interact: close the door" : "Interact: open the door");
+			panel.Visible = true;
+			Node@ bar = Gui.Root().Find("hud-pick");
+			bar.Visible = m_picking;
+			ProgressBar::Of(bar).Value = m_pick / pickSeconds;
 			m_prompting = true;
 		}
 		else if (m_prompting)
 		{
-			Ui.Find("hud-prompt-panel").SetVisible(false);
+			Node@ panel = Gui.Root().Find("hud-prompt-panel");
+			if (panel !is null)
+			{
+				panel.Visible = false;
+			}
 			m_prompting = false;
 		}
 	}

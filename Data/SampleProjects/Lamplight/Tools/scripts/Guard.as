@@ -26,7 +26,7 @@ class Guard
 	[null, "The thief"] Entity thief;
 	[null, "The round: its children are the points walked in turn"] Entity route;
 	[null, "The lantern's spot light (a child): its cone and range are what he sees"] Entity lantern;
-	[null, "The meter over his head (a UI billboard: a mark and a bar)"] Entity meter;
+	[null, "The meter over his head (a GUI billboard: a mark and a bar)"] Entity meter;
 	[1.2, "Walking speed (m/s): the Walk clip's"] float walkSpeed;
 	[4.0, "Running speed (m/s): the Run clip's"] float runSpeed;
 	[1.6, "Eye height (m)"] float eyeHeight;
@@ -150,14 +150,16 @@ class Guard
 	{
 		if (!meter.IsValid())
 			return;
-		UIBillboardComponent@ board = UIBillboardComponent::of(meter);
+		GuiBillboardComponent@ board = GuiBillboardComponent::of(meter);
 		bool shown = awareness > 0.02f || m_state == kChase;
 		board.Visible = shown;
 		if (!shown)
 			return;
-		UIViewGroup panel = board.Root;
-		panel.FindProgressBar("meter").SetValue(m_state == kChase ? 1.0f : awareness);
-		panel.FindLabel("mark").SetText(m_state == kChase ? "!" : "?");
+		Node@ panel = board.Root();
+		if (panel is null)
+			return; // not built yet
+		ProgressBar::Of(panel.Find("meter")).Value = m_state == kChase ? 1.0f : awareness;
+		Label::Of(panel.Find("mark")).Text = m_state == kChase ? "!" : "?";
 	}
 
 	// A noise: heard within its reach, it is searched (unless he is already after the thief).

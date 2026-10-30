@@ -16,10 +16,32 @@
 
 const int kLevelCount = 5;
 const float kControlsShown = 6.0f; // how long the controls show as a level starts (s)
-Guid kTitleDoc = Guid::FromString("{{UI:Title}}");
-Guid kHudDoc = Guid::FromString("{{UI:Hud}}");
-Guid kPauseDoc = Guid::FromString("{{UI:Pause}}");
-Guid kResultsDoc = Guid::FromString("{{UI:Results}}");
+// The screens, on the engine GUI's screen stack: their documents by asset id (importscripts.py fills
+// these in).
+const string kTitleDoc = "{{{GUI:Title}}}";
+const string kHudDoc = "{{{GUI:Hud}}}";
+const string kPauseDoc = "{{{GUI:Pause}}}";
+const string kResultsDoc = "{{{GUI:Results}}}";
+
+ScreenStack@ screens() { return ScreenStack::Of(Gui.Root().Find("screens")); }
+// The top screen first: one just cleared or popped away is still in the tree while its exit plays,
+// with the same ids, and would be found first.
+Node@ find(string id)
+{
+	Screen@ top = screens().Top;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+void wire(string id, EventHandler@ handler) { find(id).On("click", handler); } // `on*` names are the engine's handlers
+// Skips a node the screens up now do not have (a level's pieces report while the title is up).
+void setText(string id, string text)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		Label::Of(n).Text = text;
+	}
+}
 
 class Game
 {
@@ -99,27 +121,27 @@ class Game
 		m_inLevel = false;
 		m_paused = false;
 		Run.TimeScale = 0.0f; // whatever is behind the title holds still
-		Ui.Clear();
-		UIScreen s = Ui.Push(kTitleDoc);
-		s.FindButton("level-0").OnClick(ScriptCallback(this.onLevel0));
-		s.FindButton("level-1").OnClick(ScriptCallback(this.onLevel1));
-		s.FindButton("level-2").OnClick(ScriptCallback(this.onLevel2));
-		s.FindButton("level-3").OnClick(ScriptCallback(this.onLevel3));
-		s.FindButton("level-4").OnClick(ScriptCallback(this.onLevel4));
-		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));
+		screens().Clear();
+		screens().Push(kTitleDoc);
+		wire("level-0", EventHandler(this.onLevel0));
+		wire("level-1", EventHandler(this.onLevel1));
+		wire("level-2", EventHandler(this.onLevel2));
+		wire("level-3", EventHandler(this.onLevel3));
+		wire("level-4", EventHandler(this.onLevel4));
+		wire("quit-btn", EventHandler(this.onQuit));
 		for (int i = 0; i < kLevelCount; ++i)
 		{
-			s.FindButton("level-" + i).SetEnabled(unlocked(i));
-			s.FindLabel("level-" + i + "-best").SetText(bestLine(i));
+			find("level-" + i).Enabled = unlocked(i);
+			setText("level-" + i + "-best", bestLine(i));
 		}
 	}
 
-	private void onLevel0() { startLevel(0); }
-	private void onLevel1() { startLevel(1); }
-	private void onLevel2() { startLevel(2); }
-	private void onLevel3() { startLevel(3); }
-	private void onLevel4() { startLevel(4); }
-	private void onQuit() { Run.RequestExit(0); }
+	private bool onLevel0(GuiEvent@ e) { startLevel(0); return true; }
+	private bool onLevel1(GuiEvent@ e) { startLevel(1); return true; }
+	private bool onLevel2(GuiEvent@ e) { startLevel(2); return true; }
+	private bool onLevel3(GuiEvent@ e) { startLevel(3); return true; }
+	private bool onLevel4(GuiEvent@ e) { startLevel(4); return true; }
+	private bool onQuit(GuiEvent@ e) { Run.RequestExit(0); return true; }
 
 	// ---- a level ----
 	private void startLevel(int i)
@@ -133,14 +155,13 @@ class Game
 		m_note = 0.0f;
 		m_paused = false;
 		m_inLevel = true;
-		Ui.Clear();
-		Ui.Push(kHudDoc);
+		screens().Clear();
+		screens().Push(kHudDoc);
+		find("hud-prompt-panel").Visible = false; // until a lamp or a door is in reach
 		showHud();
-		// The controls, keyboard and pad, for the first seconds of the level (the pause menu has them too).
-		UIView controls = Ui.Find("hud-controls");
-		controls.SetVisible(true);
-		controls.SetOpacity(0.0f);
-		controls.FadeTo(1.0f, 0.3f);
+		// The controls, keyboard and pad, for the first seconds of the level (the pause menu has
+		// them too): faded in from the sheet's 0.
+		find("hud-controls").Tween("opacity", "1", 0.3f, "ease");
 		m_controlsShow = kControlsShown;
 		Run.TimeScale = 1.0f;
 		Run.LoadScene(levelScene(i));
@@ -156,7 +177,7 @@ class Game
 		{
 			if (m_paused)
 			{
-				onResume();
+				resume();
 			}
 			else
 			{
@@ -174,33 +195,35 @@ class Game
 			m_controlsShow -= dt;
 			if (m_controlsShow <= 0.0f)
 			{
-				Ui.Find("hud-controls").FadeTo(0.0f, 0.6f);
+				find("hud-controls").Tween("opacity", "0", 0.6f, "ease");
 			}
 		}
-		Ui.FindLabel("hud-time").SetText(clock(m_time));
+		setText("hud-time", clock(m_time));
 		if (m_note > 0.0f)
 		{
 			m_note -= dt;
 			if (m_note <= 0.0f)
 			{
-				Ui.Find("hud-note").FadeTo(0.0f, 0.5f);
+				find("hud-note").Tween("opacity", "0", 0.5f, "ease");
 			}
 		}
 	}
 
 	private void showHud()
 	{
-		Ui.FindLabel("hud-target").SetText(m_haveTarget ? "Got " + targetName(m_level) + ": get out"
-														: "Find " + targetName(m_level));
-		Ui.FindLabel("hud-loot").SetText("Loot " + m_loot);
+		setText("hud-target", m_haveTarget ? "Got " + targetName(m_level) + ": get out" : "Find " + targetName(m_level));
+		setText("hud-loot", "Loot " + m_loot);
 	}
 
 	private void note(string text)
 	{
-		UILabel label = Ui.FindLabel("hud-note");
-		label.SetText(text);
-		label.SetOpacity(1.0f);
-		label.SetVisible(true);
+		Node@ label = find("hud-note");
+		if (label is null)
+		{
+			return;
+		}
+		setText("hud-note", text);
+		label.Tween("opacity", "1", 0.0f, "linear");
 		m_note = 2.5f;
 	}
 
@@ -255,26 +278,32 @@ class Game
 		m_paused = true;
 		Run.TimeScale = 0.0f;
 		m_controlsShow = 0.0f;
-		Ui.Find("hud-controls").SetVisible(false); // the menu shows them itself
-		UIScreen s = Ui.Push(kPauseDoc);
-		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
-		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRestart));
-		s.FindButton("title-btn").OnClick(ScriptCallback(this.onTitle));
+		find("hud-controls").Tween("opacity", "0", 0.0f, "linear"); // the menu shows them itself
+		screens().Push(kPauseDoc);
+		wire("resume-btn", EventHandler(this.onResume));
+		wire("restart-btn", EventHandler(this.onRestart));
+		wire("title-btn", EventHandler(this.onTitle));
 	}
 
-	private void onResume()
+	private bool onResume(GuiEvent@ e)
+	{
+		resume();
+		return true;
+	}
+
+	private void resume()
 	{
 		if (!m_paused)
 		{
 			return;
 		}
 		m_paused = false;
-		Ui.Pop();
+		screens().Pop();
 		Run.TimeScale = 1.0f;
 	}
 
-	private void onRestart() { startLevel(m_level); }
-	private void onTitle() { showTitle(); }
+	private bool onRestart(GuiEvent@ e) { startLevel(m_level); return true; }
+	private bool onTitle(GuiEvent@ e) { showTitle(); return true; }
 
 	// ---- the results ----
 	private void finish()
@@ -299,25 +328,25 @@ class Game
 		}
 		Save.Flush();
 
-		UIScreen s = Ui.Push(kResultsDoc);
+		screens().Push(kResultsDoc);
 		bool last = m_level + 1 >= kLevelCount;
 		string title = ghost ? "Away like a ghost" : (m_caught == 0 ? "Away clean" : "Away");
-		s.FindLabel("res-title").SetText(last ? "The jewels are yours. " + title : title);
-		s.FindLabel("res-time").SetText("Time   " + clock(m_time));
-		s.FindLabel("res-loot").SetText("Loot   " + m_loot);
-		s.FindLabel("res-seen").SetText("Seen " + m_seen + (m_seen == 1 ? " time" : " times") + ", caught " + m_caught);
-		s.FindLabel("res-medal").SetText(last ? "The Lamplight heist is done" + (ghost ? ". Ghost: never seen" : "")
+		setText("res-title", last ? "The jewels are yours. " + title : title);
+		setText("res-time", "Time   " + clock(m_time));
+		setText("res-loot", "Loot   " + m_loot);
+		setText("res-seen", "Seen " + m_seen + (m_seen == 1 ? " time" : " times") + ", caught " + m_caught);
+		setText("res-medal", last ? "The Lamplight heist is done" + (ghost ? ". Ghost: never seen" : "")
 											  : (ghost ? "Ghost: never seen" : ""));
-		s.FindLabel("res-best").SetText("Best on " + levelTitle(m_level) + ": " + clock(Save.GetFloat("best." + level, m_time))
+		setText("res-best", "Best on " + levelTitle(m_level) + ": " + clock(Save.GetFloat("best." + level, m_time))
 										+ ", loot " + Save.GetInt("loot." + level, m_loot));
 		bool next = m_level + 1 < kLevelCount && unlocked(m_level + 1);
-		s.FindButton("next-btn").SetEnabled(next);
-		s.FindButton("next-btn").OnClick(ScriptCallback(this.onNext));
-		s.FindButton("again-btn").OnClick(ScriptCallback(this.onRestart));
-		s.FindButton("title-btn").OnClick(ScriptCallback(this.onTitle));
+		find("next-btn").Enabled = next;
+		wire("next-btn", EventHandler(this.onNext));
+		wire("again-btn", EventHandler(this.onRestart));
+		wire("title-btn", EventHandler(this.onTitle));
 	}
 
-	private void onNext() { startLevel(m_level + 1); }
+	private bool onNext(GuiEvent@ e) { startLevel(m_level + 1); return true; }
 
 	private string clock(float seconds)
 	{

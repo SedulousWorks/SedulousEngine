@@ -1,0 +1,72 @@
+/* Lamplight's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): dark umber cards,
+   amber-edged buttons, candlelit text. Its screens are Title, Hud, Pause and Results (Lamplight.as
+   pushes them); GuardMeter is the billboard over each guard (Guard.as). */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+screen.fades:entering { animation: fade-in 0.3s ease-out; }
+
+.centre { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; padding: 32px; }
+.card { flex-direction: column; background-color: rgba(12, 9, 7, 0.91); border-radius: 16px; }
+
+/* The buttons: umber edged in amber, brighter as they are hovered, pressed or focused. */
+button.amber { height: 44px; font-size: 22px; color: #F0E0C0; background-color: #1E1610; border: 2px solid #6A5030; border-radius: 10px; }
+button.amber:hover { background-color: #2C2016; border: 3px solid #D8B070; }
+button.amber:active { background-color: #3A2A1A; border: 4px solid #F0C070; }
+button.amber:focus-visible { border: 4px solid #F0C070; }
+button.amber:disabled { background-color: #100C08; border: 2px solid #3A2C1E; color: #6A5A48; }
+
+/* The controls: a row per action, its key and its pad button. */
+.controls { flex-direction: column; align-items: center; gap: 4px; }
+.controls-row { flex-direction: row; align-items: center; width: 560px; }
+.controls-action { width: 300px; font-size: 15px; color: #D8C8A8; }
+.controls-key { width: 120px; font-size: 16px; color: #FFFFFF; }
+.controls-pad { width: 140px; font-size: 16px; color: #F0C070; }
+.controls-head { font-size: 13px; color: #A89878; }
+
+/* The title: a button per level, the best taken on it under it. */
+.title-card { padding: 28px; align-items: center; gap: 5px; width: 460px; }
+.title-name { font-size: 60px; color: #F0D8A8; }
+.title-lead { font-size: 20px; color: #B8A080; margin-bottom: 8px; }
+button.level { width: 420px; height: 38px; font-size: 21px; }
+.level-best { font-size: 15px; color: #C8B490; white-space: pre; } /* "best 0:39   loot 155   ghost" keeps its spaces */
+button.quit { width: 200px; height: 40px; font-size: 20px; margin-top: 10px; }
+.title-hint { font-size: 15px; color: #8C7A60; margin-top: 6px; white-space: normal; width: 420px; text-align: center; }
+
+/* The HUD: the target and loot top left, a word in the middle, the time top right; the prompt,
+   the controls and the light meter along the foot. It takes no pointer: the level is played
+   beneath it. */
+.hud { flex-grow: 1; flex-direction: column; justify-content: space-between; padding: 18px; gap: 10px; pointer-events: none; }
+.hud-top { flex-direction: row; justify-content: space-between; align-items: start; }
+.hud-card { flex-direction: column; align-items: start; gap: 2px; padding: 10px; background-color: rgba(10, 14, 24, 0.75); border-radius: 10px; }
+.hud-target { font-size: 20px; color: #F0E0C0; }
+.hud-loot { font-size: 18px; color: #D8C8A8; }
+.hud-note { font-size: 28px; color: #F0E0C0; opacity: 0; }
+.hud-time { font-size: 22px; color: #F0E0C0; }
+.hud-foot { flex-direction: column; justify-content: end; gap: 10px; }
+.hud-row { flex-direction: row; justify-content: center; }
+.hud-prompt-card { align-items: center; gap: 6px; }
+.hud-prompt { font-size: 22px; color: #F0E0C0; }
+.hud-pick { width: 220px; height: 8px; }
+.hud-controls { padding: 14px; background-color: rgba(10, 14, 24, 0.78); border-radius: 12px; opacity: 0; }
+.hud-meter-row { flex-direction: row; justify-content: start; }
+.hud-meter { padding: 12px; gap: 6px; width: 264px; }
+.hud-light-label { font-size: 20px; color: #D8C8A8; }
+.hud-light { width: 240px; height: 12px; }
+
+/* The pause menu. */
+.pause-card { padding: 24px; align-items: stretch; gap: 10px; width: 628px; }
+.pause-title { font-size: 36px; color: #F0D8A8; }
+.pause-controls { margin-top: 6px; }
+
+/* The results. */
+.results-card { padding: 26px; align-items: stretch; gap: 8px; width: 472px; }
+.res-title { font-size: 40px; color: #F0D8A8; white-space: normal; }
+.res-line { font-size: 22px; color: #E8D8B8; white-space: pre; }
+.res-medal { font-size: 26px; color: #FFE07A; }
+.res-best { font-size: 16px; color: #B8A080; white-space: normal; }
+button.first { margin-top: 8px; }
+
+/* The meter over a guard's head. */
+.guard-meter { flex-direction: column; align-items: center; gap: 4px; width: 120px; pointer-events: none; }
+.guard-mark { font-size: 34px; color: #FFE07A; }
+.guard-bar { width: 90px; height: 10px; }
