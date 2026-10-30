@@ -548,6 +548,41 @@ class KeyboardTests
 		Test.Assert(bed.Focused == "next");
 	}
 
+	/// A game in an editor's panel reads the pad itself; the editor's GUI must not act on it too.
+	[Test]
+	public static void AFocusThatCapturesEveryKeyTakesTheGamepadTooNoFocusMoveActivationOrScroll()
+	{
+		let bed = scope KeyBed();
+		let game = bed.Add("game");
+		bed.Add("below").Position = .(0.0f, 40.0f);
+		int clicks = 0;
+		game.AddEventListener(.MouseClick, new [&] (e) => { clicks++; });
+		game.RequestFocus();
+		bed.D.PressDirection(.Down); // held from before the capture
+		Test.Assert(bed.Focused == "below");
+		game.RequestFocus();
+		game.CapturesAllKeys = true;
+		bed.D.Tick(1.0f); // the held direction would repeat
+		Test.Assert(bed.Focused == "game");
+		bed.D.ReleaseDirection(.Down);
+
+		bed.D.PressDirection(.Down);
+		bed.D.Tick(1.0f);
+		bed.D.InjectPadButton(.South);
+		bed.D.ScrollStick = .(0.0f, 1.0f);
+		Test.Assert(bed.Focused == "game");
+		Test.Assert(clicks == 0);
+		Test.Assert(bed.D.ScrollStick == Sedulous.Core.Float2(0.0f, 0.0f));
+
+		// Released, the pad is the GUI's again.
+		bed.D.ReleaseDirection(.Down);
+		game.CapturesAllKeys = false;
+		bed.D.InjectPadButton(.South);
+		Test.Assert(clicks == 1);
+		bed.D.PressDirection(.Down);
+		Test.Assert(bed.Focused == "below");
+	}
+
 	[Test]
 	public static void AFieldsLabelForMarksAnAccessKeyAndAltWithItFocusesTheField()
 	{

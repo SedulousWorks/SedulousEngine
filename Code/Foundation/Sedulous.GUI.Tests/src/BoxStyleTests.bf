@@ -269,4 +269,30 @@ class BoxStyleTests
 		Test.Assert(ringTriangles > 0);
 		Test.Assert(inside == 0);
 	}
+
+	/// Two shapes smoothed along one outer curve leave the background's colour outside the border.
+	[Test]
+	public static void ABackgroundUnderASolidBorderIsOneBoxWithItSoNoBackgroundShowsPastARoundedCorner()
+	{
+		let w = Styled("box { background-color: #ff0000; border: 3px solid #000000; border-radius: 6px; }");
+		defer w.ReleaseRef();
+		let canvas = scope VGContext();
+		canvas.SetAnalyticBoxes(true);
+		let dc = scope DrawContext(canvas);
+		w.Draw(dc);
+		let batch = canvas.GetBatch();
+		Test.Assert(batch.BoxVertices.Count == 6); // one quad
+		Test.Assert(Math.Abs(batch.BoxVertices[0].Fill.R - 1.0f) < 0.001f);
+		Test.Assert(Math.Abs(batch.BoxVertices[0].BorderTop.A - 1.0f) < 0.001f);
+
+		// A dashed border is drawn apart, over the background.
+		let dashed = Styled("box { background-color: #ff0000; border: 3px dashed #000000; border-radius: 6px; }");
+		defer dashed.ReleaseRef();
+		let other = scope VGContext();
+		other.SetAnalyticBoxes(true);
+		let odc = scope DrawContext(other);
+		dashed.Draw(odc);
+		Test.Assert(other.GetBatch().BoxVertices.Count == 6); // the background alone
+		Test.Assert(Math.Abs(other.GetBatch().BoxVertices[0].BorderTop.A) < 0.001f);
+	}
 }

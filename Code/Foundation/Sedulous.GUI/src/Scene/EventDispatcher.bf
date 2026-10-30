@@ -821,6 +821,8 @@ class EventDispatcher
 	/// cancelled).
 	public void InjectPadButton(PadButton button)
 	{
+		if (PadCaptured)
+			return;
 		NoteInput();
 		DropHiddenFocus();
 		ApplyInputKind(.Pad);
@@ -1554,6 +1556,8 @@ class EventDispatcher
 
 	public void PressDirection(NavDirection direction)
 	{
+		if (PadCaptured)
+			return;
 		NoteInput();
 		ApplyInputKind(.Pad);
 		mHolding = true;
@@ -1577,8 +1581,12 @@ class EventDispatcher
 	public Float2 ScrollStick
 	{
 		get => mScrollStick;
-		set => mScrollStick = value;
+		set => mScrollStick = PadCaptured ? Float2(0.0f, 0.0f) : value;
 	}
+
+	/// A focus that captures every key (a game in a panel) takes the gamepad too: it reads the pad
+	/// itself, and the GUI neither moves focus, activates nor scrolls by it meanwhile.
+	public bool PadCaptured => (mFocusNode != null) && mFocusNode.CapturesAllKeys;
 
 	public void Tick(float seconds)
 	{
@@ -1595,6 +1603,8 @@ class EventDispatcher
 			if (mPressHeld >= cLongPress)
 				LongPress();
 		}
+		if (mHolding && PadCaptured)
+			mHolding = false; // held as the game took the focus: no further step is the GUI's
 		if (!mHolding)
 			return;
 		mHeldFor += seconds;

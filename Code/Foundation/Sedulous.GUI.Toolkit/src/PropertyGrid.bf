@@ -295,6 +295,8 @@ class PropertyRowContent : UIWidget
 	private PropertyGrid mGrid;
 	private TreeArrow mArrow ~ _.ReleaseRef();
 	private Sedulous.GUI.Label mLabel ~ _.ReleaseRef();
+	/// A closed group's line (its info's Summary), where an editor would be.
+	private Sedulous.GUI.Label mSummary ~ _.ReleaseRef();
 	private PropertySplitHandle mSplit ~ _.ReleaseRef();
 	private PropertyGrip mGrip ~ _.ReleaseRef();
 	private PropertyEditor mEditor ~ _?.ReleaseRef();
@@ -325,6 +327,16 @@ class PropertyRowContent : UIWidget
 		}
 		mLabel.HitTestVisible = false;
 		AddChild(mLabel);
+		mSummary = new Sedulous.GUI.Label();
+		mSummary.Tag = "propertysummary";
+		mSummary.SetTextAlignment(.Start, .Middle);
+		using (StyleWriteScope(mSummary))
+		{
+			mSummary.TextOverflow = .Ellipsis;
+		}
+		mSummary.HitTestVisible = false;
+		mSummary.Displayed = false;
+		AddChild(mSummary);
 		if (mEditor != null)
 			AddChild(mEditor);
 		mGrip = new PropertyGrip(grid);
@@ -341,6 +353,10 @@ class PropertyRowContent : UIWidget
 		mArrow.Visible = row.HasChildren;
 		mArrow.Expanded = row.Open;
 		mLabel.Text = row.Info.ShownName;
+		let says = row.HasChildren && !row.Open && !row.Info.Summary.IsEmpty;
+		mSummary.Displayed = says;
+		if (says)
+			mSummary.Text = row.Info.Summary;
 		mMovable = row.Element && ((row.ListOps & PropertyListMove) != 0) && (row.Count > 1);
 		mGrip.Displayed = mMovable;
 		mGrip.Path = row.Path;
@@ -350,6 +366,7 @@ class PropertyRowContent : UIWidget
 	public StringView Path => mPath;
 	public PropertyEditor Editor => mEditor;
 	public Sedulous.GUI.Label Label => mLabel;
+	public Sedulous.GUI.Label Summary => mSummary;
 	public PropertySplitHandle SplitHandle => mSplit;
 	public PropertyGrip Grip => mGrip;
 
@@ -391,6 +408,8 @@ class PropertyRowContent : UIWidget
 		mLabel.Arrange(Rect.MirroredIn(.(@box.X + textX, @box.Y, Math.Max(0.0f, split - textX - 4.0f), @box.Height), @box, rtl));
 		if (mEditor != null)
 			mEditor.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f, @box.Y + 1.0f, Math.Max(0.0f, @box.Width - split - 2.0f), Math.Max(0.0f, @box.Height - 2.0f)), @box, rtl));
+		if (mSummary.Displayed)
+			mSummary.Arrange(Rect.MirroredIn(.(@box.X + split + 4.0f, @box.Y, Math.Max(0.0f, @box.Width - split - 8.0f), @box.Height), @box, rtl));
 		mSplit.Arrange(Rect.MirroredIn(.(@box.X + split - 3.0f, @box.Y, 6.0f, @box.Height), @box, rtl));
 	}
 
@@ -410,6 +429,7 @@ class PropertyRowContent : UIWidget
 	protected override void OnTextStyleChange()
 	{
 		ShareTextStyle(mLabel);
+		ShareTextStyle(mSummary);
 		if (mEditor != null)
 			ShareTextStyle(mEditor);
 	}
@@ -644,10 +664,16 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 	/// The editor showing `path` now (its row realised), or null.
 	public PropertyEditor FindEditor(StringView path)
 	{
+		let content = FindRowContent(path);
+		return (content != null) ? content.Editor : null;
+	}
+
+	/// The row showing `path` (null when it is not in view).
+	public PropertyRowContent FindRowContent(StringView path)
+	{
 		let item = FindRow(path);
 		let row = (item >= 0) ? RowForItem(item) : null;
-		let content = (row != null) ? (row.Content as PropertyRowContent) : null;
-		return (content != null) ? content.Editor : null;
+		return (row != null) ? (row.Content as PropertyRowContent) : null;
 	}
 
 	// === Defaults ===

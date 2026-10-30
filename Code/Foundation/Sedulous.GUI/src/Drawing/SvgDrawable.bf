@@ -93,10 +93,23 @@ class SvgDrawable : Drawable
 
 static
 {
+	/// Whether a source's last name has an ending (".png", ".svg"): a file's, not an id's.
+	public static bool HasFileEnding(StringView path)
+	{
+		for (int i = path.Length - 1; i >= 0; i--)
+		{
+			if (path[i] == '.')
+				return true;
+			if ((path[i] == '/') || (path[i] == '\\'))
+				return false;
+		}
+		return false;
+	}
+
 	/// A picture by its source, as a resource provider has it: an SvgDrawable for an SVG source
-	/// (IsSvgSource: a .svg path or one written inline), an ImageDrawable otherwise, each
-	/// borrowing the provider's picture; null when the provider has none. The caller holds the
-	/// one reference.
+	/// (IsSvgSource: a .svg path or one written inline), an ImageDrawable otherwise, or for a source
+	/// with no file ending (an id) whichever of the two the provider has, each borrowing the
+	/// provider's picture; null when the provider has none. The caller holds the one reference.
 	public static Drawable PictureDrawable(IResourceProvider resources, StringView path)
 	{
 		if (IsSvgSource(path))
@@ -107,6 +120,13 @@ static
 		}
 		if (let image = resources.LoadImage(path))
 			return new ImageDrawable(image);
+		// A source with no file ending (a resource id, an engine's "{guid}") says nothing of its
+		// kind: the provider knows, so a vector image named so is asked for as one.
+		if (!HasFileEnding(path))
+		{
+			if (let document = resources.Svg(path))
+				return new SvgDrawable(document);
+		}
 		return null;
 	}
 }

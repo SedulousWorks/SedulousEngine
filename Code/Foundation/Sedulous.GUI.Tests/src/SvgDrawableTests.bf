@@ -28,7 +28,7 @@ class SvgPictures : IResourceProvider
 	public override ImageData LoadImage(StringView path)
 	{
 		Images++;
-		if (path == "missing.png")
+		if ((path == "missing.png") || (path == "{vector}"))
 			return null;
 		return Img;
 	}
@@ -38,7 +38,7 @@ class SvgPictures : IResourceProvider
 	public override SVGDocument LoadSvg(StringView path)
 	{
 		Svgs++;
-		if (path == "missing.svg")
+		if ((path == "missing.svg") || (path == "missing.png"))
 			return null;
 		return Doc;
 	}
@@ -136,6 +136,26 @@ class SvgDrawableTests
 		Test.Assert(pictures.Images == 1);
 		Test.Assert(PictureDrawable(pictures, "missing.svg") == null);
 		Test.Assert(PictureDrawable(pictures, "missing.png") == null);
+		Test.Assert(pictures.Svgs == 2); // a missing raster named by its file is not asked for as an SVG
+	}
+
+	/// An engine names its pictures by id ("{guid}"): no ending says the kind, the provider does.
+	[Test]
+	public static void APictureByAnIdIsWhicheverTheProviderHasARasterFirst()
+	{
+		let pictures = scope SvgPictures();
+		let vector = PictureDrawable(pictures, "{vector}");
+		Test.Assert(vector != null);
+		defer vector.ReleaseRef();
+		Test.Assert((vector as SvgDrawable) != null);
+		let raster = PictureDrawable(pictures, "{texture}");
+		Test.Assert(raster != null);
+		defer raster.ReleaseRef();
+		Test.Assert((raster as ImageDrawable) != null);
+		Test.Assert(pictures.Svgs == 1); // the raster was found first
+		Test.Assert(!HasFileEnding("{6faf9764-c33a-444f-8126-91cc8eade4f5}"));
+		Test.Assert(!HasFileEnding("v1.2/icon"));
+		Test.Assert(HasFileEnding("Icons/a.png"));
 	}
 
 	[Test]

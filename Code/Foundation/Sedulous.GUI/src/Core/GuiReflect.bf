@@ -15,7 +15,7 @@ namespace Sedulous.GUI;
 //
 // What an inspector reads of a member rides in the same records, generated the same way:
 //   - Core's [DisplayName], [Description], [Range] and [VisibleWhen] beside [GuiProperty], and the
-//     GUI's own flags on it (BitFlags, NoAlpha, HdrColor);
+//     GUI's own flags on it (BitFlags, NoAlpha, HdrColor, Color);
 //   - an enum's cases, as written in its declaration;
 //   - a value struct (one whose public fields carry [GuiProperty]) as its fields, each with a typed
 //     get and set over a pointer to the struct, so a source reads one, changes a copy and writes it
@@ -38,6 +38,9 @@ enum GuiPropertyFlags : uint8
 	case NoAlpha = 8;
 	/// A Float4 that is an HDR colour: sRGB rgb, a linear intensity in w.
 	case HdrColor = 16;
+	/// A Float4 that is a colour (four floats a runtime keeps its tints in): one colour, as a
+	/// Color is, its alpha hidden with NoAlpha.
+	case Color = 32;
 }
 
 /// Marks a property the GUI reflects: by its CSS name when it has one (`[GuiProperty("page")]`),

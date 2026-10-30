@@ -489,6 +489,32 @@ class TestIds
 	}
 }
 
+/// A list of bare Guids naming what they point at, and tints a runtime keeps as four floats.
+[GuiReflect(true)]
+class TestIdList
+{
+	private List<Guid> mMeshes = new .() ~ delete _;
+	private Float4 mTint = .(1.0f, 0.5f, 0.25f, 0.75f);
+	private Float4 mRim = .(0.0f, 0.0f, 1.0f, 1.0f);
+
+	[GuiProperty, GuiReference("TestTarget")]
+	public List<Guid> Meshes => mMeshes;
+
+	[GuiProperty("", .Color)]
+	public Float4 Tint
+	{
+		get => mTint;
+		set => mTint = value;
+	}
+
+	[GuiProperty("", .Color | .NoAlpha)]
+	public Float4 Rim
+	{
+		get => mRim;
+		set => mRim = value;
+	}
+}
+
 /// A struct an application takes as a reference by its Guid (an editor's entity reference).
 struct TestLink
 {
@@ -688,6 +714,32 @@ class ReflectedSourceTests
 		ClearAndDeleteItems!(rows);
 		bed.Source.GetProperties("", rows);
 		Test.Assert(Find(rows, "ConeAngle").Visible);
+	}
+
+	[Test]
+	public static void AnApplicationDescribesEachRowAsItIsListed()
+	{
+		let bed = scope ReflectedBed();
+		let told = scope List<String>();
+		defer { ClearAndDeleteItems!(told); }
+		bed.Source.SetOnDescribe(new [=told] (path, info) =>
+			{
+				told.Add(new String(path));
+				if (path == "Intensity")
+					info.DisplayName.Set("Brightness"); // what reflection could not say
+				if (path == "Shape")
+					info.Summary.Set("a lamp shade");
+			});
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		bed.Source.GetProperties("", rows);
+		Test.Assert(Find(rows, "Intensity").DisplayName == "Brightness");
+		Test.Assert(Find(rows, "Shape").Summary == "a lamp shade");
+		Test.Assert(told.Count == rows.Count, "each row, by its path");
+		let parts = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(parts); }
+		bed.Source.GetProperties("Rotation", parts);
+		Test.Assert(told.Back.StartsWith("Rotation."), "a group's parts by their paths");
 	}
 
 	[Test]
@@ -1370,6 +1422,59 @@ class ReflectedSourceTests
 		source.BeginEdit("Mesh");
 		source.CommitEdit("Mesh", PropertyWrite(Sedulous.GUI.Variant(StringView())));
 		Test.Assert(ids.Mesh.IsNil);
+	}
+
+	[Test]
+	public static void AListOfBareGuidsNamesItsElementsTypeByItsGuiReferenceAndAFloat4WithColorIsAColour()
+	{
+		let ids = scope TestIdList();
+		ids.Meshes.Add(Guid());
+		let source = scope ReflectedPropertySource();
+		let format = scope BlobFormat();
+		source.TextFormat = format;
+		let changes = scope List<ReflectedChange>();
+		defer { ClearAndDeleteItems!(changes); }
+		source.SetOnChange(new (change) =>
+			{
+				let copy = new ReflectedChange();
+				copy.Set(change);
+				changes.Add(copy);
+			});
+		Object[1] objects = .(ids);
+		source.SetObjects(objects, TestIdList.StaticGuiType);
+
+		let elements = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(elements); }
+		source.GetProperties("Meshes", elements);
+		Test.Assert(elements.Count == 1);
+		Test.Assert(elements[0].Kind == .Reference);
+		Test.Assert(elements[0].ReferenceType == typeof(TestTarget));
+
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(rows.Count == 3);
+		Test.Assert(rows[1].Kind == .Color);
+		Test.Assert(rows[1].ShowsAlpha);
+		Test.Assert(rows[2].Kind == .Color);
+		Test.Assert(!rows[2].ShowsAlpha);
+		let parts = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(parts); }
+		source.GetProperties("Tint", parts);
+		Test.Assert(parts.IsEmpty, "one value, not its parts");
+		var tint = source.GetValue("Tint", 0);
+		Test.Assert(Math.Abs(tint.AsColor.G - 0.5f) < 1e-5f);
+		Test.Assert(Math.Abs(tint.AsColor.A - 0.75f) < 1e-5f);
+		tint.Dispose();
+
+		source.BeginEdit("Tint");
+		source.CommitEdit("Tint", PropertyWrite(Sedulous.GUI.Variant(Color(0.1f, 0.2f, 0.3f, 0.4f))));
+		Test.Assert(Math.Abs(ids.Tint.Y - 0.2f) < 1e-5f);
+		Test.Assert(Math.Abs(ids.Tint.W - 0.4f) < 1e-5f);
+		Test.Assert(changes.Count == 1);
+		Test.Assert(source.Restore(changes.Back, true));
+		Test.Assert(Math.Abs(ids.Tint.Y - 0.5f) < 1e-5f);
+		Test.Assert(Math.Abs(ids.Tint.W - 0.75f) < 1e-5f);
 	}
 
 	[Test]

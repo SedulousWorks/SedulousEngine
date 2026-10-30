@@ -686,6 +686,18 @@ static
 			partStyle.TextColor = c.ColorValue;
 			partStyle.HasColor = true;
 		}
+		let w = style.Value("width");
+		if ((w != null) && (w.Kind == .Length)) // not auto
+		{
+			partStyle.Width = Math.Max(0.0f, StyleApplierDetail.PixelsOf(w, lengths, 0.0f, 0.0f));
+			partStyle.HasWidth = true;
+		}
+		let h = style.Value("height");
+		if ((h != null) && (h.Kind == .Length)) // not auto
+		{
+			partStyle.Height = Math.Max(0.0f, StyleApplierDetail.PixelsOf(h, lengths, 0.0f, 0.0f));
+			partStyle.HasHeight = true;
+		}
 		node.SetPartStyle(part, partStyle);
 	}
 }

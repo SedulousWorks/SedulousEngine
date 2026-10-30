@@ -15,7 +15,8 @@ namespace Sedulous.GUI;
 //     without a setter is read only (but a list, changed in place, needs none).
 //   - A Color is a colour, its alpha hidden with NoAlpha; a Float4 with HdrColor (sRGB rgb, a
 //     linear intensity in w) is an HDR colour, hinted "ColorHdr", its parts `color` and
-//     `intensity` (shown in stops).
+//     `intensity` (shown in stops); a Float4 with Color is a colour as a Color is (four floats a
+//     runtime keeps its tints in), NoAlpha hiding its alpha.
 //   - Float2, Float3 and Float4 are groups hinted with their names, their parts x, y, z, w; a
 //     Quaternion is a Float3 group of Euler degrees (pitch, yaw, roll) the source converts, as the
 //     editor's Transform row does; a node held by a property is a group of its own table's
@@ -34,7 +35,7 @@ namespace Sedulous.GUI;
 //     registers as a reference (its Guid field, by name), naming itself and hinted with its name,
 //     so the application's editor for it (an editor's entity reference) is chosen before the one
 //     for asset references; and a bare Guid, naming the type its member's [GuiReference] names,
-//     else nothing in particular. The toolkit has no slot: by default a reference shows as its
+//     else nothing in particular; a list of bare Guids names its elements' by its own member's. The toolkit has no slot: by default a reference shows as its
 //     Guid's text, and the application registers its editor for the kind.
 //   - Any other type is a group hinted with its type's name, for an application's editor; with no
 //     editor, the grid's row saying no editor fits.
@@ -247,6 +248,8 @@ class ReflectedPropertySource : IPropertySource
 		public int32 Part = -1;
 		// A Float4 that is an HDR colour: its parts `color` and `intensity`.
 		public bool Hdr = false;
+		// A Float4 that is a colour (Color): one value, not its parts.
+		public bool AsColor = false;
 		public bool ReadOnly = false;
 
 		public this() { }
@@ -305,6 +308,8 @@ class ReflectedPropertySource : IPropertySource
 	private IPropertyReferenceShape mReferenceShape = null;
 	private List<GradientType> mGradientTypes = new .() ~ DeleteContainerAndItems!(_);
 	private delegate void(ReflectedChange change) mOnChange ~ delete _;
+	/// SetOnDescribe's.
+	private delegate void(StringView path, PropertyInfo info) mOnDescribe ~ delete _;
 
 	public ~this()
 	{
@@ -432,6 +437,33 @@ class ReflectedPropertySource : IPropertySource
 
 	public override void GetProperties(StringView parent, List<PropertyInfo> outInfos)
 	{
+		let first = outInfos.Count;
+		ListProperties(parent, outInfos);
+		// What the application says of each (a list element named by a field of its own, a group's
+		// line, a row shown only when another holds): its describe hook, last.
+		if (mOnDescribe != null)
+		{
+			let path = scope String();
+			for (int i = first; i < outInfos.Count; ++i)
+			{
+				path.Clear();
+				JoinPropertyPath(parent, outInfos[i].Name, path);
+				mOnDescribe(path, outInfos[i]);
+			}
+		}
+	}
+
+	/// Told of each row as it is described, its info to change: what reflection cannot say of it (an
+	/// element's name from a field of its own, a closed group's line, a row shown or not by another's
+	/// value). The hook reads the objects through GetValue. OWNERSHIP of `onDescribe` transfers.
+	public void SetOnDescribe(delegate void(StringView path, PropertyInfo info) onDescribe)
+	{
+		delete mOnDescribe;
+		mOnDescribe = onDescribe;
+	}
+
+	private void ListProperties(StringView parent, List<PropertyInfo> outInfos)
+	{
 		if (mObjects.IsEmpty)
 			return;
 		Target target = .();
@@ -451,7 +483,7 @@ class ReflectedPropertySource : IPropertySource
 			ListElements(parent, outInfos);
 		else if (target.Hdr)
 			ListHdrParts(outInfos);
-		else if ((shape == .Float2) || (shape == .Float3) || (shape == .Float4) || (shape == .Quaternion))
+		else if (!target.AsColor && ((shape == .Float2) || (shape == .Float3) || (shape == .Float4) || (shape == .Quaternion)))
 			ListParts(shape, outInfos);
 	}
 
@@ -762,6 +794,10 @@ class ReflectedPropertySource : IPropertySource
 	protected bool IsHdr(GuiMemberInfo member) =>
 		member.Flags.HasFlag(.HdrColor) && (ShapeOf(member.ValueType, member.Value) == .Float4);
 
+	// A member's four floats kept as a colour: a Float4 marked Color.
+	protected bool IsColor(GuiMemberInfo member) =>
+		member.Flags.HasFlag(.Color) && (ShapeOf(member.ValueType, member.Value) == .Float4);
+
 	// === Paths ===
 
 	// The place `path` names in object `object`.
@@ -808,6 +844,7 @@ class ReflectedPropertySource : IPropertySource
 			next.Property = property;
 			next.ReadOnly = at.ReadOnly || IsReadOnlyMember(property);
 			next.Hdr = IsHdr(property);
+			next.AsColor = IsColor(property);
 			if (BaseShapeOf(property.ValueType) == .Group)
 			{
 				// A node it holds: a group of its own table.
@@ -834,6 +871,7 @@ class ReflectedPropertySource : IPropertySource
 			at.Links[at.Depth] = Link(field);
 			at.Depth++;
 			at.Hdr = IsHdr(field);
+			at.AsColor = IsColor(field);
 			return true;
 		}
 		if (shape == .List)
@@ -852,6 +890,7 @@ class ReflectedPropertySource : IPropertySource
 			at.Links[at.Depth] = Link(info, index);
 			at.Depth++;
 			at.Hdr = false;
+			at.AsColor = false;
 			if (info.HoldsObjects)
 			{
 				// An object of its own: a group of its table, written in place.
@@ -866,6 +905,8 @@ class ReflectedPropertySource : IPropertySource
 			}
 			return true;
 		}
+		if (at.AsColor)
+			return false; // a colour is one value, not its parts
 		let part = at.Hdr ? HdrPartIndex(segment) : PartIndex(shape, segment);
 		if (part >= 0)
 		{
@@ -972,6 +1013,13 @@ class ReflectedPropertySource : IPropertySource
 			info.ShowsAlpha = !member.Flags.HasFlag(.NoAlpha);
 		if (IsHdr(member))
 			info.Hint.Set("ColorHdr");
+		else if (IsColor(member))
+		{
+			// Four floats kept as a colour (a particle's tint): one colour, as a Color is.
+			info.Kind = .Color;
+			info.Hint.Clear();
+			info.ShowsAlpha = !member.Flags.HasFlag(.NoAlpha);
+		}
 		if (member.HasRange)
 		{
 			info.HasRange = true;
@@ -1096,6 +1144,17 @@ class ReflectedPropertySource : IPropertySource
 	{
 		if (mObjects.IsEmpty)
 			return;
+		// A list of bare ids names what its elements point at as a bare id does, by its own
+		// member's [GuiReference].
+		System.Type named = null;
+		Target list = .();
+		if (Resolve(0, path, out list))
+		{
+			if (list.Depth > 0)
+				named = list.Links[list.Depth - 1].Field?.ReferenceType;
+			else if (list.Property != null)
+				named = list.Property.ReferenceType;
+		}
 		int64 count = int64.MaxValue;
 		for (int o = 0; o < mObjects.Count; ++o)
 		{
@@ -1123,6 +1182,8 @@ class ReflectedPropertySource : IPropertySource
 			else
 			{
 				DescribeType(TypeOf(target), ValueInfoOf(target), false, info);
+				if ((info.Kind == .Reference) && (info.ReferenceType == null))
+					info.ReferenceType = named;
 				if (ShapeOf(target) == .Group)
 					info.DisplayName.AppendF("{} {}", info.Hint, i + 1);
 				else
@@ -1271,6 +1332,11 @@ class ReflectedPropertySource : IPropertySource
 			Float4 parts;
 			return ReadCompound(target, .Float4, out parts) ? Sedulous.GUI.Variant(Color(parts.X, parts.Y, parts.Z, 1.0f)) : Sedulous.GUI.Variant();
 		}
+		if (target.AsColor)
+		{
+			Float4 parts;
+			return ReadCompound(target, .Float4, out parts) ? Sedulous.GUI.Variant(Color(parts.X, parts.Y, parts.Z, parts.W)) : Sedulous.GUI.Variant();
+		}
 		if (target.Part >= 0)
 			return Sedulous.GUI.Variant(PartOf(target, shape));
 		let type = TypeOf(target);
@@ -1313,6 +1379,11 @@ class ReflectedPropertySource : IPropertySource
 				return false;
 			let color = value.AsColor;
 			return WriteCompound(target, .Float4, .(color.R, color.G, color.B, parts.W));
+		}
+		if (target.AsColor)
+		{
+			let color = value.AsColor;
+			return WriteCompound(target, .Float4, .(color.R, color.G, color.B, color.A));
 		}
 		if (target.Part >= 0)
 			return SetPart(target, shape, value.AsFloat);
@@ -1565,7 +1636,7 @@ class ReflectedPropertySource : IPropertySource
 			return;
 		}
 		let shape = ShapeOf(target);
-		if (target.Part == cHdrColorPart)
+		if ((target.Part == cHdrColorPart) || target.AsColor)
 		{
 			var read = Read(target);
 			defer read.Dispose();
@@ -1704,6 +1775,7 @@ class ReflectedPropertySource : IPropertySource
 				child.Property = property;
 				child.ReadOnly = target.ReadOnly || IsReadOnlyMember(property);
 				child.Hdr = IsHdr(property);
+				child.AsColor = IsColor(property);
 				if (child.ReadOnly && reading)
 					continue;
 				if (reading && !ar.HasKey(property.Name))
@@ -1734,6 +1806,7 @@ class ReflectedPropertySource : IPropertySource
 			child.Links[child.Depth] = Link(field);
 			child.Depth++;
 			child.Hdr = IsHdr(field);
+			child.AsColor = IsColor(field);
 			SerializeTarget(ar, field.Name, child);
 		}
 		ar.EndObject();
@@ -1816,6 +1889,7 @@ class ReflectedPropertySource : IPropertySource
 			element.Links[element.Depth] = Link(info, i);
 			element.Depth++;
 			element.Hdr = false;
+			element.AsColor = false;
 			if (info.HoldsObjects)
 			{
 				var object = info.GetAt(list, i);
@@ -1883,7 +1957,7 @@ class ReflectedPropertySource : IPropertySource
 	// value's kind; appended to `outText`.
 	protected void ShapeTag(Target target, String outText)
 	{
-		if (target.Part == cHdrColorPart)
+		if ((target.Part == cHdrColorPart) || target.AsColor)
 		{
 			outText.Append("Color");
 			return;

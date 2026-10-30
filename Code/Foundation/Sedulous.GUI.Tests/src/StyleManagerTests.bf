@@ -515,6 +515,36 @@ class StyleManagerTests
 		Test.Assert(!slider.GetPartStyle("track").HasBackground); // the track keeps its own
 	}
 
+	/// A game's groove thicker than the 4 px line, its thumb smaller than the slider is tall.
+	[Test]
+	public static void ASlidersTrackTakesTheSheetsHeightAndItsThumbTheSheetsWidth()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		slider.Size = .(160.0f, 24.0f);
+		root.AddChild(slider);
+		let styles = scope StyleManager(Sheet(
+			"slider::track { height: 10px; } slider::thumb { width: 16px; } slider::fill { height: auto; }", scope StyleSheet()));
+		styles.ApplyTree(root);
+		let track = slider.GetPartStyle("track");
+		Test.Assert(track.HasHeight);
+		Test.Assert(Near(track.Height, 10.0f));
+		Test.Assert(!track.HasWidth);
+		Test.Assert(Near(slider.GetPartStyle("thumb").Width, 16.0f));
+		Test.Assert(!slider.GetPartStyle("fill").HasHeight); // auto is no size
+
+		let canvas = scope VGContext();
+		canvas.SetAnalyticBoxes(true);
+		let dc = scope DrawContext(canvas);
+		slider.Draw(dc);
+		let boxes = canvas.GetBatch().BoxVertices;
+		Test.Assert(boxes.Count >= 12);
+		Test.Assert(Near(boxes[0].HalfSize.Y, 5.0f)); // the track, 10 px thick
+		Test.Assert(Near(boxes[boxes.Count - 1].HalfSize.X, 8.0f)); // the thumb, 16 px across
+	}
+
 	[Test]
 	public static void EmMeasuresByTheElementsOwnFontSizeWhichTakesEmAndPercentagesOfItsParents()
 	{

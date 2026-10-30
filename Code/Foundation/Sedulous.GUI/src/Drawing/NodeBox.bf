@@ -339,6 +339,20 @@ class NodeBox
 		// The backdrop blurs inside the box's shape, under its (translucent) background.
 		if (withBackdrop)
 			DrawBackdrop(ctx, area);
+		// A background straight under a solid border is one box with it: drawn apart, both are
+		// smoothed along the same outer curve, and the background shows outside the border at a
+		// rounded corner. One box takes fill and border from one edge.
+		let bordered = !Skin.HasPicture && !BorderWidths.IsZero && !BorderColors.IsTransparent;
+		let solid = (BorderLines[0] == .Solid) && (BorderLines[1] == .Solid) && (BorderLines[2] == .Solid) &&
+			(BorderLines[3] == .Solid);
+		bool insetShadows = false;
+		for (let shadow in Shadows)
+			insetShadows = insetShadows || shadow.Inset;
+		if (bordered && solid && (BackgroundColor.A > 0.0f) && Layers.IsEmpty && !insetShadows)
+		{
+			canvas.DrawBox(rect, Radii, BackgroundColor, BorderWidths, BorderColors);
+			return;
+		}
 		if (BackgroundColor.A > 0.0f)
 			canvas.DrawBox(rect, Radii, BackgroundColor);
 		for (int i = Layers.Count - 1; i >= 0; i--)
@@ -353,10 +367,8 @@ class NodeBox
 		}
 		if (Skin.HasPicture)
 			DrawSkin(ctx, rect); // a border image stands in for the border (CSS)
-		else if (!BorderWidths.IsZero && !BorderColors.IsTransparent)
+		else if (bordered)
 		{
-			let solid = (BorderLines[0] == .Solid) && (BorderLines[1] == .Solid) && (BorderLines[2] == .Solid) &&
-				(BorderLines[3] == .Solid);
 			if (solid)
 				canvas.DrawBox(rect, Radii, .(0.0f, 0.0f, 0.0f, 0.0f), BorderWidths, BorderColors);
 			else
@@ -767,6 +779,12 @@ class PartStyle
 	/// Its `color`: what a part that is text draws in (a code editor's keyword, CSS's ::selection).
 	public Color TextColor = .();
 	public bool HasColor = false;
+	/// Its `width` and `height` in pixels, where the sheet gives them: a part the widget sizes itself
+	/// (a slider's track thickness, its thumb) takes them over its own.
+	public float Width = 0.0f;
+	public float Height = 0.0f;
+	public bool HasWidth = false;
+	public bool HasHeight = false;
 
 	/// Copies `other` deeply.
 	public void Set(PartStyle other)
@@ -782,6 +800,10 @@ class PartStyle
 		HasShadows = other.HasShadows;
 		TextColor = other.TextColor;
 		HasColor = other.HasColor;
+		Width = other.Width;
+		Height = other.Height;
+		HasWidth = other.HasWidth;
+		HasHeight = other.HasHeight;
 	}
 
 	/// The sheet's aspects written over `own` (a part's own look, changed in place).

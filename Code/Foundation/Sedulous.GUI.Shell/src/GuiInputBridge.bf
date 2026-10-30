@@ -546,7 +546,10 @@ class GuiInputBridge
 	}
 
 	// A gamepad: the d-pad holds a direction (focus moves, then repeats); the face, shoulder and
-	// menu buttons are keystrokes for the keymap (South activates when unbound).
+	// menu buttons are keystrokes for the keymap (South activates when unbound). A button acts on
+	// its release, armed by its press with the focus unchanged since, as a click is: a game under
+	// the GUI reads the press, so a menu's Resume taken on the press would hand the game that same
+	// press (South a jump) the moment it resumes.
 	private bool DispatchPadButton(Sedulous.Shell.GamepadButton button, bool down)
 	{
 		NavDirection direction = .Up;
@@ -567,14 +570,28 @@ class GuiInputBridge
 				mDispatcher.ReleaseDirection(direction);
 			return true;
 		}
-		if (!down)
-			return true;
 		PadButton pad = .South;
 		if (!MapPadButton(button, out pad))
 			return false;
-		mDispatcher.InjectPadButton(pad);
+		let bit = (uint32)1 << (int32)pad;
+		if (down)
+		{
+			if (mPadArmed == 0)
+				mPadArmedOn = mDispatcher.FocusNode; // compared only, never followed
+			mPadArmed |= bit;
+			return true;
+		}
+		let armed = (mPadArmed & bit) != 0;
+		mPadArmed &= ~bit;
+		if (armed && (mDispatcher.FocusNode === mPadArmedOn))
+			mDispatcher.InjectPadButton(pad);
 		return true;
 	}
+
+	/// The pad buttons pressed and not yet released (a bit by PadButton).
+	private uint32 mPadArmed = 0;
+	/// The focus when the first of them went down: compared only, never followed.
+	private Node mPadArmedOn = null;
 
 	// The left stick as a d-pad: past half way it holds a direction, back under a third it lets go
 	// (the gap keeps a stick resting near the threshold from chattering). The right stick scrolls.

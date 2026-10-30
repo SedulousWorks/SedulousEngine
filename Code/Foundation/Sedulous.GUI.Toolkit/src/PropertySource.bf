@@ -110,6 +110,8 @@ class PropertyInfo
 	public List<PropertyChoice> Choices = new .() ~ DeleteContainerAndItems!(_);
 	public bool ReadOnly = false;
 	public bool Visible = true;
+	/// A group's: what it holds, said in a line on its row while it is closed.
+	public String Summary = new .() ~ delete _;
 	/// A colour's alpha is edited (not an HDR colour's, nor one with `noAlpha`).
 	public bool ShowsAlpha = true;
 	/// A list's: the PropertyList* bits.
@@ -155,6 +157,7 @@ class PropertyInfo
 		}
 		ReadOnly = other.ReadOnly;
 		Visible = other.Visible;
+		Summary.Set(other.Summary);
 		ShowsAlpha = other.ShowsAlpha;
 		ListOps = other.ListOps;
 		MaxCount = other.MaxCount;
@@ -434,6 +437,8 @@ class PropertyBag : IPropertySource
 	private delegate void(StringView path) mOnCancel ~ delete _;
 	private delegate void(StringView path, ListEdit edit) mOnListEdited ~ delete _;
 	private delegate void(StringView path) mOnReverted ~ delete _;
+	/// SetOnDescribe's.
+	private delegate void(StringView path, PropertyInfo info) mOnDescribe ~ delete _;
 
 	public this(int objects = 1)
 	{
@@ -630,6 +635,28 @@ class PropertyBag : IPropertySource
 	public override int ObjectCount => mObjects;
 
 	public override void GetProperties(StringView parent, List<PropertyInfo> outInfos)
+	{
+		let first = outInfos.Count;
+		ListProperties(parent, outInfos);
+		// What the owner says of each (a list element named for what it holds, a closed group's
+		// line), as a reflected source's describe hook does: last.
+		if (mOnDescribe != null)
+		{
+			for (int i = first; i < outInfos.Count; i++)
+				mOnDescribe(JoinPropertyPath(parent, outInfos[i].Name, .. scope .()), outInfos[i]);
+		}
+	}
+
+	/// Told of each row as it is listed, its info to change: what the bag's entries cannot say (a
+	/// list element's name from its values, a closed group's line). The hook reads the values through
+	/// GetValue. OWNERSHIP of `onDescribe` transfers.
+	public void SetOnDescribe(delegate void(StringView path, PropertyInfo info) onDescribe)
+	{
+		delete mOnDescribe;
+		mOnDescribe = onDescribe;
+	}
+
+	private void ListProperties(StringView parent, List<PropertyInfo> outInfos)
 	{
 		// A list's elements: as many as the fewest any object has.
 		let list = Find(parent);

@@ -150,6 +150,40 @@ class PropertySourceTests
 		bag.Client = null;
 	}
 
+	/// An owner names an element from its values (a terrain's layers by channel, each by its albedo).
+	[Test]
+	public static void ABagsDescribeHookNamesAListsElementsAndSumsUpAGroupAsItListsThem()
+	{
+		let bag = scope Sedulous.GUI.PropertyBag();
+		bag.AddList("layers", .Group, .(), 2);
+		Test.Assert(bag.AddElementField("layers", "albedo", .String, Sedulous.GUI.Variant("grass")) != null);
+		bag.SetValue("layers.1.albedo", 0, Sedulous.GUI.Variant("rock"));
+		let seen = scope List<String>();
+		defer { ClearAndDeleteItems!(seen); }
+		bag.SetOnDescribe(new [=bag, =seen] (path, info) =>
+			{
+				seen.Add(new String(path));
+				if (ParentPropertyPath(path) == "layers")
+				{
+					info.DisplayName.Set("Layer");
+					var value = bag.GetValue(JoinPropertyPath(path, "albedo", .. scope .()), 0);
+					info.Summary.Set(value.AsString);
+					value.Dispose();
+				}
+			});
+		let elements = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(elements); }
+		bag.GetProperties("layers", elements);
+		Test.Assert(elements.Count == 2);
+		Test.Assert(elements[0].ShownName == "Layer");
+		Test.Assert(elements[1].Summary == "rock");
+		let fields = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(fields); }
+		bag.GetProperties("layers.0", fields);
+		Test.Assert(fields.Count == 1);
+		Test.Assert(seen.Back == "layers.0.albedo"); // every row it lists, by its full path
+	}
+
 	[Test]
 	public static void AListsElementsAreItsChildrenByIndexSayingWhatTheListGivesThemChangedInEachObjectByOneCall()
 	{

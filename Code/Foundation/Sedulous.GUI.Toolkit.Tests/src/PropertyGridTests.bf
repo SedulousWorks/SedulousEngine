@@ -224,6 +224,33 @@ class PropertyGridTests
 	}
 
 	[Test]
+	public static void AClosedGroupSaysWhatItHoldsInALineWhereAnEditorWouldBeOpenItDoesNot()
+	{
+		let bed = scope GridBed();
+		let shape = bed.Add("shape", .Group);
+		shape.Summary.Set("Box, 2 x 1 x 2");
+		bed.Add("shape.width", .Float, Sedulous.GUI.Variant(2.0));
+		bed.Add("plain", .Group); // nothing to say: no line
+		bed.Add("plain.x", .Float, Sedulous.GUI.Variant(0.0));
+		bed.Show();
+		var row = bed.Grid.FindRowContent("shape");
+		Test.Assert(row != null);
+		Test.Assert(row.Summary != null);
+		Test.Assert(row.Summary.Displayed);
+		Test.Assert(row.Summary.Text == "Box, 2 x 1 x 2");
+		Test.Assert(row.Summary.ScreenBounds.X >= row.Label.ScreenBounds.X + row.Label.ScreenBounds.Width);
+		let plain = bed.Grid.FindRowContent("plain");
+		Test.Assert(plain != null);
+		Test.Assert(!plain.Summary.Displayed);
+
+		bed.Grid.SetOpen("shape", true);
+		bed.Frame();
+		row = bed.Grid.FindRowContent("shape");
+		Test.Assert(row != null);
+		Test.Assert(!row.Summary.Displayed, "its rows say it now");
+	}
+
+	[Test]
 	public static void ASearchKeepsMatchesByNameOrPathWithWhatHoldsThemOpenedTheFoldingStays()
 	{
 		let bed = scope GridBed();

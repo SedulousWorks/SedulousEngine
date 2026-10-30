@@ -241,9 +241,11 @@ class Slider : RangeWidget
 	{
 		let b = ContentBounds;
 		let vertical = mOrientation == .Vertical;
-		let across = vertical ? b.Width : b.Height; // the thumb's diameter
-		let handleR = across * 0.5f;
-		let trackW = 4.0f;
+		let handleR = HandleRadius(b);
+		// The track's thickness: the sheet's (slider::track { height }, a vertical one's width) or 4.
+		let trackStyle = GetPartStyle("track");
+		let sized = vertical ? trackStyle.HasWidth : trackStyle.HasHeight;
+		let trackW = sized ? (vertical ? trackStyle.Width : trackStyle.Height) : 4.0f;
 		let ratio = (float)Ratio;
 		let lo = (vertical ? b.Y : b.X) + handleR;
 		let hi = (vertical ? b.Y + b.Height : b.X + b.Width) - handleR;
@@ -256,7 +258,7 @@ class Slider : RangeWidget
 
 		// Each part its own look with the sheet's over it (slider::track, ::fill, ::tick, ::thumb, ::focus).
 		let track = vertical ? Rect(mid - trackW * 0.5f, b.Y, trackW, b.Height) : Rect(b.X, mid - trackW * 0.5f, b.Width, trackW);
-		GetPartStyle("track").Draw(ctx, track, FilledBox(mTrackColor, round, scope NodeBox()));
+		trackStyle.Draw(ctx, track, FilledBox(mTrackColor, round, scope NodeBox()));
 		let fill = vertical ? Rect(track.X, along, trackW, b.Y + b.Height - along)
 			: (reversed ? Rect(along, track.Y, b.X + b.Width - along, trackW) : Rect(b.X, track.Y, along - b.X, trackW));
 		GetPartStyle("fill").Draw(ctx, fill, FilledBox(mFillColor, round, scope NodeBox()));
@@ -297,11 +299,22 @@ class Slider : RangeWidget
 	/// A horizontal slider in right to left runs from the right.
 	private bool Reversed => (mOrientation == .Horizontal) && IsRightToLeft;
 
+	/// The thumb's radius: the sheet's size (slider::thumb { width }) across the slider, or as wide as
+	/// the slider is across; never past it.
+	private float HandleRadius(Rect b)
+	{
+		let vertical = mOrientation == .Vertical;
+		let across = vertical ? b.Width : b.Height;
+		let thumb = GetPartStyle("thumb");
+		let sized = thumb.HasWidth ? thumb.Width : (thumb.HasHeight ? thumb.Height : across);
+		return Math.Min(sized, across) * 0.5f;
+	}
+
 	private void UpdateFromEvent(MouseEvent e)
 	{
 		let b = ContentBounds;
 		let vertical = mOrientation == .Vertical;
-		let handleR = (vertical ? b.Width : b.Height) * 0.5f;
+		let handleR = HandleRadius(b);
 		let local = ConvertToNodeSpace(e.Position);
 		let lo = (vertical ? b.Y : b.X) + handleR;
 		let hi = (vertical ? b.Y + b.Height : b.X + b.Width) - handleR;

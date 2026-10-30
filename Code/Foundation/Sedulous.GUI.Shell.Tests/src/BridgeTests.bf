@@ -311,7 +311,47 @@ class BridgeTests
 		root.OnCommand("back", new [&] (command) => { back = true; });
 		Test.Assert(root.Context.Keymap.Bind("pad-east", "back"));
 		Test.Assert(bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonDown, .East)));
+		Test.Assert(!back); // on its release
+		Test.Assert(bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonUp, .East)));
 		Test.Assert(back);
+	}
+
+	/// A game under the GUI reads the press: a Resume taken on it would hand the game that press.
+	[Test]
+	public static void APadButtonActsOnItsReleaseAndOnlyWhereTheFocusWasWhenItWentDown()
+	{
+		let root = BridgeFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let top = new Button();
+		defer top.ReleaseRef();
+		let bottom = new Button();
+		defer bottom.ReleaseRef();
+		top.Size = .(60.0f, 20.0f);
+		bottom.Position = .(0.0f, 50.0f);
+		bottom.Size = .(60.0f, 20.0f);
+		root.AddChild(top);
+		root.AddChild(bottom);
+		int clicks = 0;
+		top.AddEventListener(.MouseClick, new [&] (e) => { clicks++; });
+		bottom.AddEventListener(.MouseClick, new [&] (e) => { clicks++; });
+		let d = root.EventDispatcher;
+		let bridge = scope GuiInputBridge(d);
+		d.FocusNode = top;
+
+		Test.Assert(bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonDown, .South)));
+		Test.Assert(clicks == 0);
+		Test.Assert(bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonUp, .South)));
+		Test.Assert(clicks == 1);
+
+		// Pressed on one button and released after the focus moved: neither acts.
+		bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonDown, .South));
+		d.FocusNode = bottom;
+		bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonUp, .South));
+		Test.Assert(clicks == 1);
+
+		// A release with no press before it (held as the GUI came up) does nothing.
+		bridge.Dispatch(BridgeFixtures.Pad(.GamepadButtonUp, .South));
+		Test.Assert(clicks == 1);
 	}
 
 	[Test]
