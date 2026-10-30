@@ -68,7 +68,7 @@ shape, any element's included.
 geometry inside the zone's box (static, non-trigger rigid bodies and terrain; render meshes are
 not read, so a floor or an obstacle agents should respect needs a static body, and what moves
 never bakes) into the zone's Navigation Zone asset, which must be assigned first. The scene
-itself is unchanged; cook for the game to see the navmesh. A `scene_write` or `prefab_write` over an asset the user has open reaches
+itself is unchanged; cook for the game to see the navmesh. A `scene_write`, `prefab_write` or `asset_data_write` over an asset the user has open reaches
 its page at once: a clean page reloads in place, a page with unsaved edits keeps them and
 warns the user. Ask before `page_reload` with `force`, which discards them.
 

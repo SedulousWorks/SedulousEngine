@@ -165,6 +165,19 @@ abstract class AssetObjectPage : UIEditorPage
 		Refresh();
 	}
 
+	/// The asset written outside the page (an agent's asset_data_write, page_reload): a clean page
+	/// shows what is stored now, its undo let go; one with unsaved edits keeps them and says so, as
+	/// the scene page does.
+	public override void OnAssetExternallyModified()
+	{
+		if (IsDirty)
+		{
+			mContext.Notify(.Warning, scope $"'{mTitle}' changed on disk but has unsaved edits here - not refreshed.");
+			return;
+		}
+		ReadAgain();
+	}
+
 	public override Result<void, ErrorCode> Save()
 	{
 		if ((mObject == null) || (mContext.Project == null))
@@ -378,8 +391,11 @@ abstract class AssetObjectPage : UIEditorPage
 	{
 		if (mObject == null)
 			return;
+		// The asset as it is (not the last step of the base's own: a page's own rows edit it too).
+		let before = scope List<uint8>();
+		ObjectSnapshot.Take(mObject, before);
 		mutate(mObject);
-		Step(typeId);
+		Step(typeId, before);
 	}
 
 	/// The asset changed: an edit, its undo or redo. The page's preview follows it.
@@ -410,11 +426,14 @@ abstract class AssetObjectPage : UIEditorPage
 
 	// The asset as it is now, after the baseline, as one undo step (its Execute puts back what is
 	// already there, then tells the page).
-	private void Step(StringView typeId)
+	private void Step(StringView typeId) => Step(typeId, mBaseline);
+
+	// The asset as it is now, after `before`, as one undo step.
+	private void Step(StringView typeId, Span<uint8> before)
 	{
 		let after = scope List<uint8>();
 		ObjectSnapshot.Take(mObject, after);
-		Commands.Execute(new ObjectSnapshotCommand(new [=this] () => mObject, mBaseline, after, typeId, new [=this] () => { Applied(); }));
+		Commands.Execute(new ObjectSnapshotCommand(new [=this] () => mObject, before, after, typeId, new [=this] () => { Applied(); }));
 	}
 
 	// The sections in their order: the notices, the asset's, the page's own, the facts.

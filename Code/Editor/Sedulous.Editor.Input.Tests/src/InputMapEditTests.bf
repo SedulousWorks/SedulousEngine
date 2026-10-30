@@ -404,6 +404,33 @@ class InputMapEditTests
 	}
 
 	[Test]
+	public static void ASetFoldedInTheTreeStaysFoldedWhenAnotherIsChosen()
+	{
+		let f = scope PageFixture();
+		let tree = f.Page.Content.FindElement("input-tree") as TreeView;
+		Test.Assert(tree != null);
+		Test.Assert(tree.IsIdExpanded(0)); // Gameplay
+		tree.SetIdExpanded(0, false);
+		f.Page.ChooseSet(1);
+		Test.Assert(!tree.IsIdExpanded(0));
+		f.Edit("Name", Sedulous.GUI.Variant("Menus")); // an edit rebuilds the tree
+		Test.Assert(!tree.IsIdExpanded(0));
+	}
+
+	[Test]
+	public static void ASetAddedAndUndoneAfterARowsEditKeepsThatEdit()
+	{
+		// The whole edit's before is the map as it is, not as the base page's own last step left it.
+		let f = scope PageFixture();
+		f.Edit("Actions.1.Name", Sedulous.GUI.Variant("Leap"));
+		f.Page.AddSet();
+		Test.Assert(f.Map.Sets.Count == 3);
+		f.Page.Commands.Undo();
+		Test.Assert(f.Map.Sets.Count == 2);
+		Test.Assert(f.Map.Sets[0].Actions[1].Name == "Leap");
+	}
+
+	[Test]
 	public static void ABindingsInputListenedForAndLandedAsOneUndoStepAFourKeyOneByItsKey()
 	{
 		let f = scope PageFixture();

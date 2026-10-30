@@ -72,7 +72,7 @@ port is 7405; the token is minted on first enable and written to `<user-data>/mc
   has the grid, the markers, the selection's gizmo and the tool's hint text (`selection_set` an
   empty list first for a cleaner shot), not the panels docked over the viewport. To look at something: `viewport_camera_set`
   with `lookAt`, then `viewport_screenshot`, then read the file. A `scene_write`
-  or `prefab_write` over an asset the user has open reaches its page at once: a clean page
+  / `prefab_write` / `asset_data_write` over an asset the user has open reaches its page at once: a clean page
   reloads in place, a page with unsaved edits keeps them and warns the user. Never write over
   it again hoping to win; ask, or `page_reload` with `force` only when the user said to
   discard.

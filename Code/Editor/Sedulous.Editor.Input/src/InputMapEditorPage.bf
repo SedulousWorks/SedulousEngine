@@ -383,6 +383,16 @@ class InputMapEditorPage : AssetObjectPage
 		if (map == null)
 			return;
 		mShowing = true;
+		// A set the user folded stays folded through the rebuild (a choice, an edit, a search).
+		let folded = scope List<int32>();
+		if (mTree != null)
+		{
+			for (int node < mRows.Count)
+			{
+				if ((mRows[node].Action < 0) && !mTree.IsIdExpanded((ItemId)node))
+					folded.Add(mRows[node].Set);
+			}
+		}
 		mModel.Clear();
 		mRows.Clear();
 		int32 chosen = -1;
@@ -430,7 +440,7 @@ class InputMapEditorPage : AssetObjectPage
 			for (int node < mRows.Count)
 			{
 				if (mRows[node].Action < 0)
-					mTree.SetIdExpanded((ItemId)node, true);
+					mTree.SetIdExpanded((ItemId)node, !folded.Contains(mRows[node].Set));
 			}
 			if (chosen >= 0)
 			{

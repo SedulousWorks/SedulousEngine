@@ -17,19 +17,32 @@ namespace Sedulous.Editor.App;
 /// Beef's reflection describes ([Component], [SerializableComponent] and [Serializable] ask for
 /// their fields), so the editor reads them through FieldJson, as the MCP tools do (the user's
 /// rulings, 2026-10-29). Its rows are the shown
-/// fields (public, instance, not [Hidden]) by path, as the toolkit's are:
+/// fields (public, instance, not [Hidden]; a private one marked [InspectorField] too, though FieldJson
+/// and the MCP tools still see only the public) by path, as the toolkit's are:
 ///   - bool, every integer width, float, double and text are values; an enum is choices from its
 ///     cases; a Color is a colour; a Guid is a reference (to what its [References] names), and a
 ///     Ref<T> one to its T; an EntityRef
 ///     is a reference by its id, hinted "EntityRef" (the scene's entity slot, chosen before the
 ///     asset one).
 ///   - Float2, Float3 and Float4 are groups hinted with their names, their parts x, y, z, w; a
-///     Quaternion is a Float3 group of Euler degrees (pitch, yaw, roll).
+///     Quaternion is a Float3 group of Euler degrees (pitch, yaw, roll). A Float4 field marked
+///     [AsColor] is a colour as a Color is (four floats a runtime keeps its tints in), one value.
 ///   - A List<T> is a list, its elements by index; one of plain values (no text, no objects) may
-///     have elements added, removed and moved.
+///     have elements added (its type's default when that reflects), removed and moved. A list of Guids marked [References] names its
+///     elements' target, as a single Guid's does. A list of objects (which it owns) adds any type
+///     deriving from its element type that can be made, chosen by [DisplayName] (else its name),
+///     removes (deleting the object) and moves; each element is named by its own type.
+///   - A value struct registered as a curve (its fixed array of CurveKey and the count of those in
+///     use) is one value of kind Curve, its keys whole; one registered as a gradient (its colour and
+///     alpha stop arrays, their counts, its blend) one of kind Gradient: the toolkit's curve and
+///     gradient editors take them. The registry is the process's (RegisterCurveType,
+///     RegisterGradientType): an editor library registers its runtime's types once.
 ///   - A structure or an object with shown fields is a group of them; any other type (one with
 ///     none: an asset's SourcePath) a group hinted with its type's name, for an editor registered
 ///     by that name (an asset page's source file).
+///   - A method marked [InspectorProperty] is a row of its own after the fields, by the attribute's
+///     name: its getter's value, written through the named setter (read only without one), its
+///     own [DisplayName], [Description] and [Range] said as a field's are.
 ///   - A row says its [DisplayName], else its field's name made readable; its [Description], its
 ///     [Range] (a ranged float a slider), [ReadOnly] and [VisibleWhen] ("Kind" or "Kind=1,2",
 ///     a sibling's; shown when it holds for every object).
@@ -61,6 +74,8 @@ class FieldPropertySource : IPropertySource
 		Guid,
 		Reference,
 		EntityRef,
+		Curve,
+		Gradient,
 		List,
 		Group,
 		Other,
@@ -76,12 +91,68 @@ class FieldPropertySource : IPropertySource
 		public bool ReadOnly = false;
 		/// The address is an object's own, not a reference to one: the root of an object type.
 		public bool Direct = false;
+		/// A Float4 field marked [AsColor]: one colour, not its parts.
+		public bool AsColor = false;
+		/// What a list field's Guid elements point at (its [References]); null: nothing named.
+		public Type ElementReference = null;
+		/// An [InspectorProperty] row: Owner is what its getter and setter are called on (an
+		/// object's own address, or a struct's), Type the getter's value's; Address is Owner too.
+		public bool Accessor = false;
+		public void* Owner = null;
+		public Type OwnerType = null;
+		public MethodInfo Getter = default;
 
 		public this() { }
 	}
 
 	/// An EntityRef's hint: the entity slot's.
 	public const String cEntityRefHint = "EntityRef";
+
+	/// Where a value struct registered as a curve keeps its keys, by field name: a fixed array of
+	/// CurveKey (its length the most keys) and the int32 counting those in use.
+	public struct CurveParts
+	{
+		public StringView Keys;
+		public StringView Count;
+
+		public this(StringView keys, StringView count)
+		{
+			Keys = keys;
+			Count = count;
+		}
+	}
+
+	/// Where a value struct registered as a gradient keeps its parts, by field name: fixed arrays of
+	/// GradientColorStop and GradientAlphaStop, the int32s counting those in use, and its
+	/// GradientInterpolation.
+	public struct GradientParts
+	{
+		public StringView Colors;
+		public StringView ColorCount;
+		public StringView Alphas;
+		public StringView AlphaCount;
+		public StringView Interpolation;
+
+		public this(StringView colors, StringView colorCount, StringView alphas, StringView alphaCount, StringView interpolation)
+		{
+			Colors = colors;
+			ColorCount = colorCount;
+			Alphas = alphas;
+			AlphaCount = alphaCount;
+			Interpolation = interpolation;
+		}
+	}
+
+	// The process's curve and gradient value types (their part names live as long as the process:
+	// literals).
+	private static Dictionary<Type, CurveParts> sCurveTypes = new .() ~ delete _;
+	private static Dictionary<Type, GradientParts> sGradientTypes = new .() ~ delete _;
+
+	/// A value struct shown as one curve value, its keys where `parts` says; its fields must be
+	/// reflected. Again replaces.
+	public static void RegisterCurveType(Type type, CurveParts parts) { sCurveTypes[type] = parts; }
+	/// A value struct shown as one gradient value, its parts where `parts` says.
+	public static void RegisterGradientType(Type type, GradientParts parts) { sGradientTypes[type] = parts; }
 
 	private Type mType;
 	private int mCount;
@@ -165,7 +236,14 @@ class FieldPropertySource : IPropertySource
 		let target = Resolve(parent, Address(0));
 		if ((target.Address == null) || (target.Euler >= 0))
 			return;
-		switch (ShapeOf(target.Type))
+		// An object held by reference is shaped by its own type (a list's module under an abstract base).
+		var shaped = target;
+		if (target.Type.IsObject && !target.Direct && (target.Type != typeof(String)) && (ElementOf(target.Type) == null))
+		{
+			if (let held = *(Object*)target.Address)
+				shaped.Type = held.GetType();
+		}
+		switch (ShapeAt(shaped))
 		{
 		case .Float2: ListParts(2, false, outInfos);
 		case .Float3: ListParts(3, false, outInfos);
@@ -221,14 +299,18 @@ class FieldPropertySource : IPropertySource
 	public override bool EditList(StringView path, ListEdit edit)
 	{
 		let target = Resolve(path, Address(0));
-		if ((target.Address == null) || target.ReadOnly || (ShapeOf(target.Type) != .List) || !MayChangeList(ElementOf(target.Type)))
+		if ((target.Address == null) || target.ReadOnly || (ShapeOf(target.Type) != .List))
+			return false;
+		let element = ElementOf(target.Type);
+		let objects = HoldsObjectElements(element);
+		if (!objects && !MayChangeList(element))
 			return false;
 		var changed = false;
 		let held = scope String(path);
 		mCommit(scope [&] (object, value) =>
 			{
 				let list = ListAt(Resolve(held, value));
-				if ((list != null) && ChangeList(list, edit))
+				if ((list != null) && (objects ? ChangeObjectList(list, edit) : ChangeList(list, edit)))
 					changed = true;
 			});
 		return changed;
@@ -297,7 +379,17 @@ class FieldPropertySource : IPropertySource
 			angle.AsFloat.ToString(outText);
 			return;
 		}
-		let json = FieldJson.ValueJson(target.Type, target.Address);
+		if (target.Accessor)
+		{
+			let value = scope uint8[Math.Max(target.Type.Stride, sizeof(int64))]*;
+			if (!ReadAccessor(target, value))
+				return;
+			let json = FieldJson.ValueJson(target.Type, value);
+			defer delete json;
+			json.ToString(outText);
+			return;
+		}
+		let json = FieldJson.ValueJson(target.AsColor ? typeof(Color) : target.Type, target.Address);
 		defer delete json;
 		json.ToString(outText);
 	}
@@ -382,9 +474,20 @@ class FieldPropertySource : IPropertySource
 			return target;
 		for (let segment in path.Split('.'))
 		{
-			if ((target.Address == null) || (target.Euler >= 0))
-				return Target();
-			switch (ShapeOf(target.Type))
+			if ((target.Address == null) || (target.Euler >= 0) || target.Accessor)
+				return Target(); // an accessor's row is a value, no parts
+			// An object held by reference (a list's module): its own type's fields, not its slot's type's
+			// (an abstract base may have none).
+			if (target.Type.IsObject && !target.Direct && (target.Type != typeof(String)) && (ElementOf(target.Type) == null))
+			{
+				let held = *(Object*)target.Address;
+				if (held == null)
+					return Target();
+				target.Address = Internal.UnsafeCastToPtr(held);
+				target.Type = held.GetType();
+				target.Direct = true;
+			}
+			switch (ShapeAt(target)) // a colour has no parts
 			{
 			case .Quaternion:
 				let angle = AngleIndex(segment);
@@ -403,6 +506,7 @@ class FieldPropertySource : IPropertySource
 					return Target();
 				target.Address = list.ElementAddress(index);
 				target.Type = list.ElementType;
+				target.ElementReference = null;
 			case .Group:
 				var address = target.Address;
 				var type = target.Type;
@@ -414,12 +518,29 @@ class FieldPropertySource : IPropertySource
 					address = Internal.UnsafeCastToPtr(held);
 					type = held.GetType();
 				}
-				if (!(type.GetField(scope String(segment)) case .Ok(let field)) || !FieldJson.IsShown(field))
-					return Target();
+				if (!(type.GetField(scope String(segment)) case .Ok(let field)) || !IsShown(field))
+				{
+					// An [InspectorProperty] row by its name.
+					if (!FindAccessor(type, segment, var getter, var property))
+						return Target();
+					target.Accessor = true;
+					target.Owner = address;
+					target.OwnerType = type;
+					target.Getter = getter;
+					target.Address = address;
+					target.Type = getter.ReturnType;
+					target.Direct = false;
+					target.AsColor = false;
+					target.ElementReference = null;
+					target.ReadOnly = target.ReadOnly || (property.Setter.Length == 0);
+					continue;
+				}
 				target.Address = (uint8*)address + field.MemberOffset;
 				target.Type = field.FieldType;
 				target.Direct = false;
 				target.ReadOnly = target.ReadOnly || field.HasCustomAttribute<ReadOnlyAttribute>();
+				target.AsColor = (field.FieldType == typeof(Float4)) && field.HasCustomAttribute<AsColorAttribute>();
+				target.ElementReference = (ElementOf(field.FieldType) != null) ? ReferenceOf(field) : null;
 			default:
 				return Target();
 			}
@@ -433,7 +554,7 @@ class FieldPropertySource : IPropertySource
 		let target = Resolve(path, Address(0));
 		if (target.Address == null)
 			return;
-		let shape = (target.Euler >= 0) ? Shape.Float : ShapeOf(target.Type);
+		let shape = (target.Euler >= 0) ? Shape.Float : ShapeAt(target);
 		if (shape == .List)
 			return; // a list keeps its elements
 		if ((shape != .Group) && (shape != .Float2) && (shape != .Float3) && (shape != .Float4) && (shape != .Quaternion))
@@ -472,7 +593,7 @@ class FieldPropertySource : IPropertySource
 		}
 		for (let field in type.GetFields())
 		{
-			if (!FieldJson.IsShown(field))
+			if (!IsShown(field))
 				continue;
 			let info = new PropertyInfo();
 			info.Name.Set(field.Name);
@@ -484,9 +605,16 @@ class FieldPropertySource : IPropertySource
 				info.Description.Set(description.Text);
 			info.ReadOnly = group.ReadOnly || field.HasCustomAttribute<ReadOnlyAttribute>();
 			DescribeType(field.FieldType, info);
+			// Four floats kept as a colour (a particle's tint): one colour, as a Color is.
+			if ((field.FieldType == typeof(Float4)) && (field.GetCustomAttribute<AsColorAttribute>() case .Ok(let asColor)))
+			{
+				info.Kind = .Color;
+				info.Hint.Clear();
+				info.ShowsAlpha = asColor.ShowsAlpha;
+			}
 			// A guid that says what it is the id of: a slot for that.
-			if ((info.Kind == .Reference) && (info.ReferenceType == null) && (field.GetCustomAttribute<ReferencesAttribute>() case .Ok(let references)))
-				info.ReferenceType = references.Target;
+			if ((info.Kind == .Reference) && (info.ReferenceType == null))
+				info.ReferenceType = ReferenceOf(field);
 			if (field.GetCustomAttribute<RangeAttribute>() case .Ok(let range))
 			{
 				info.HasRange = true;
@@ -499,6 +627,34 @@ class FieldPropertySource : IPropertySource
 			}
 			if (field.GetCustomAttribute<VisibleWhenAttribute>() case .Ok(let visible))
 				info.Visible = Holds(parent, visible.Condition);
+			outInfos.Add(info);
+		}
+		// The computed rows, after the fields.
+		for (let method in type.GetMethods())
+		{
+			if (method.IsStatic || (method.ParamCount != 0))
+				continue;
+			if (!(method.GetCustomAttribute<InspectorPropertyAttribute>() case .Ok(let property)))
+				continue;
+			let info = new PropertyInfo();
+			info.Name.Set(property.Name);
+			if (method.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let shown))
+				info.DisplayName.Set(shown.Name);
+			else
+				ReadablePropertyName(property.Name, info.DisplayName);
+			if (method.GetCustomAttribute<DescriptionAttribute>() case .Ok(let description))
+				info.Description.Set(description.Text);
+			info.ReadOnly = group.ReadOnly || (property.Setter.Length == 0);
+			DescribeType(method.ReturnType, info);
+			if (method.GetCustomAttribute<RangeAttribute>() case .Ok(let range))
+			{
+				info.HasRange = true;
+				info.Min = range.Min;
+				info.Max = range.Max;
+				info.Step = range.Step;
+				if ((info.Kind == .Float) && (info.Hint.Length == 0))
+					info.Hint.Set("slider");
+			}
 			outInfos.Add(info);
 		}
 	}
@@ -515,13 +671,25 @@ class FieldPropertySource : IPropertySource
 		let element = ElementOf(target.Type);
 		if ((count == int.MaxValue) || (element == null))
 			return;
+		let list0 = ListAt(target); // the first object's, for its elements' own types
 		for (int i < count)
 		{
 			let info = new PropertyInfo();
 			i.ToString(info.Name);
 			info.ReadOnly = target.ReadOnly;
 			DescribeType(element, info);
-			if (ShapeOf(element) == .Group)
+			// A list of ids names what its elements point at, by its own field's [References].
+			if ((info.Kind == .Reference) && (info.ReferenceType == null))
+				info.ReferenceType = target.ElementReference;
+			let held = HoldsObjectElements(element) ? HeldAt(list0, i) : null;
+			if (held != null)
+			{
+				// A module by its own type: a group of its own fields.
+				info.Kind = .Group;
+				info.Hint.Clear();
+				info.DisplayName.AppendF("{} {}", TypeShownName(held.GetType(), .. scope String()), i + 1);
+			}
+			else if (ShapeOf(element) == .Group)
 				info.DisplayName.AppendF("{} {}", element.GetName(.. scope String()), i + 1);
 			else
 				info.DisplayName.AppendF("Element {}", i + 1);
@@ -560,6 +728,12 @@ class FieldPropertySource : IPropertySource
 			info.Hint.Set("Float3"); // Euler degrees
 		case .Color:
 			info.Kind = .Color;
+		case .Curve:
+			info.Kind = .Curve;
+			info.MaxCount = (uint32)CurveMost(type);
+		case .Gradient:
+			info.Kind = .Gradient;
+			info.MaxCount = (uint32)GradientMost(type);
 		case .Guid:
 			info.Kind = .Reference;
 		case .Reference:
@@ -567,8 +741,19 @@ class FieldPropertySource : IPropertySource
 			info.ReferenceType = ReferenceShape.Target(type);
 		case .List:
 			info.Kind = .List;
-			if (!info.ReadOnly && MayChangeList(ElementOf(type)))
+			let element = ElementOf(type);
+			if (!info.ReadOnly && MayChangeList(element))
 				info.ListOps = PropertyListAdd | PropertyListRemove | PropertyListMove;
+			else if (!info.ReadOnly && HoldsObjectElements(element))
+			{
+				// Objects: an add chooses among the types that can be made.
+				let creatable = CreatableTypes(element);
+				for (let made in creatable)
+					info.ElementTypes.Add(TypeShownName(made, .. new String()));
+				info.ListOps = PropertyListRemove | PropertyListMove;
+				if (!creatable.IsEmpty)
+					info.ListOps |= PropertyListAdd;
+			}
 		case .Group:
 			info.Kind = .Group;
 		case .EntityRef:
@@ -663,14 +848,246 @@ class FieldPropertySource : IPropertySource
 		case typeof(Color): return .Color;
 		default:
 		}
+		if (sCurveTypes.ContainsKey(type))
+			return .Curve;
+		if (sGradientTypes.ContainsKey(type))
+			return .Gradient;
 		if (ElementOf(type) != null)
 			return .List;
 		if (type.IsObject || (type.IsStruct && !type.IsPrimitive))
-			return FieldJson.HasShownFields(type) ? .Group : .Other;
+			return HasShownFields(type) ? .Group : .Other;
 		return .Other;
 	}
 
 	private static Type ElementOf(Type type) => FieldJson.ListElement(type);
+
+	// === Curves and gradients ===
+
+	// A part of a registered value struct at `address`: its address, and the length of the fixed
+	// array it is (0 when it is none).
+	private static void* PartAt(Type type, void* address, StringView name, out int outLength)
+	{
+		outLength = 0;
+		if (!(type.GetField(scope String(name)) case .Ok(let field)))
+			return null;
+		if (let array = field.FieldType as SizedArrayType)
+			outLength = array.ElementCount;
+		return (uint8*)address + field.MemberOffset;
+	}
+
+	private static int CurveMost(Type type)
+	{
+		if (!sCurveTypes.TryGetValue(type, let parts))
+			return 0;
+		if (!(type.GetField(scope String(parts.Keys)) case .Ok(let field)))
+			return 0;
+		return (field.FieldType as SizedArrayType)?.ElementCount ?? 0;
+	}
+
+	private static int GradientMost(Type type)
+	{
+		if (!sGradientTypes.TryGetValue(type, let parts))
+			return 0;
+		var colors = 0;
+		var alphas = 0;
+		if (type.GetField(scope String(parts.Colors)) case .Ok(let field))
+			colors = (field.FieldType as SizedArrayType)?.ElementCount ?? 0;
+		if (type.GetField(scope String(parts.Alphas)) case .Ok(let field))
+			alphas = (field.FieldType as SizedArrayType)?.ElementCount ?? 0;
+		return Math.Min(colors, alphas);
+	}
+
+	// How many of a fixed array are in use, by its count field, kept within the array.
+	private static int InUse(void* count, int length) => (count != null) ? Math.Clamp((int)*(int32*)count, 0, length) : 0;
+
+	private static Sedulous.GUI.Variant ReadCurve(Type type, void* address)
+	{
+		if (!sCurveTypes.TryGetValue(type, let parts))
+			return .();
+		let keys = (CurveKey*)PartAt(type, address, parts.Keys, let length);
+		let count = PartAt(type, address, parts.Count, let unused1);
+		if (keys == null)
+			return .();
+		return Sedulous.GUI.Variant.FromCurve(.(keys, InUse(count, length))).Copy();
+	}
+
+	private static bool WriteCurve(Type type, void* address, Span<CurveKey> keys)
+	{
+		if (!sCurveTypes.TryGetValue(type, let parts))
+			return false;
+		let at = (CurveKey*)PartAt(type, address, parts.Keys, let length);
+		let count = (int32*)PartAt(type, address, parts.Count, let unused2);
+		if ((at == null) || (count == null))
+			return false;
+		let kept = Math.Min(keys.Length, length);
+		for (int i < kept)
+			at[i] = keys[i];
+		*count = (int32)kept;
+		return true;
+	}
+
+	private static Sedulous.GUI.Variant ReadGradient(Type type, void* address)
+	{
+		if (!sGradientTypes.TryGetValue(type, let parts))
+			return .();
+		let gradient = scope ColorGradient();
+		let colors = (GradientColorStop*)PartAt(type, address, parts.Colors, let colorLength);
+		let colorCount = PartAt(type, address, parts.ColorCount, let unused3);
+		let alphas = (GradientAlphaStop*)PartAt(type, address, parts.Alphas, let alphaLength);
+		let alphaCount = PartAt(type, address, parts.AlphaCount, let unused4);
+		if (colors != null)
+		{
+			for (int i < InUse(colorCount, colorLength))
+				gradient.Colors.Add(colors[i]);
+		}
+		if (alphas != null)
+		{
+			for (int i < InUse(alphaCount, alphaLength))
+				gradient.Alphas.Add(alphas[i]);
+		}
+		if (let blend = (GradientInterpolation*)PartAt(type, address, parts.Interpolation, let unused5))
+			gradient.Interpolation = *blend;
+		return Sedulous.GUI.Variant(gradient).Copy();
+	}
+
+	private static bool WriteGradient(Type type, void* address, ColorGradient gradient)
+	{
+		if (!sGradientTypes.TryGetValue(type, let parts))
+			return false;
+		let colors = (GradientColorStop*)PartAt(type, address, parts.Colors, let colorLength);
+		let colorCount = (int32*)PartAt(type, address, parts.ColorCount, let unused6);
+		let alphas = (GradientAlphaStop*)PartAt(type, address, parts.Alphas, let alphaLength);
+		let alphaCount = (int32*)PartAt(type, address, parts.AlphaCount, let unused7);
+		if ((colors == null) || (colorCount == null) || (alphas == null) || (alphaCount == null))
+			return false;
+		let keptColors = Math.Min(gradient.Colors.Count, colorLength);
+		for (int i < keptColors)
+			colors[i] = gradient.Colors[i];
+		*colorCount = (int32)keptColors;
+		let keptAlphas = Math.Min(gradient.Alphas.Count, alphaLength);
+		for (int i < keptAlphas)
+			alphas[i] = gradient.Alphas[i];
+		*alphaCount = (int32)keptAlphas;
+		if (let blend = (GradientInterpolation*)PartAt(type, address, parts.Interpolation, let unused8))
+			*blend = gradient.Interpolation;
+		return true;
+	}
+
+	// The [InspectorProperty] getter named `name` on `type` (an instance method taking nothing).
+	private static bool FindAccessor(Type type, StringView name, out MethodInfo outGetter, out InspectorPropertyAttribute outProperty)
+	{
+		outGetter = default;
+		outProperty = default;
+		for (let method in type.GetMethods())
+		{
+			if (method.IsStatic || (method.ParamCount != 0))
+				continue;
+			if ((method.GetCustomAttribute<InspectorPropertyAttribute>() case .Ok(let property)) && (property.Name == name))
+			{
+				outGetter = method;
+				outProperty = property;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// What an accessor's getter or setter is called on: the object, or a reference to the struct.
+	private static System.Variant AccessorSelf(Target target)
+	{
+		if (target.OwnerType.IsObject)
+			return System.Variant.Create(Internal.UnsafeCastToObject(target.Owner));
+		return System.Variant.CreateReference(target.OwnerType, target.Owner);
+	}
+
+	// The getter's value copied into `outValue` (room for its type); false when the call failed.
+	private static bool ReadAccessor(Target target, void* outValue)
+	{
+		var self = AccessorSelf(target);
+		defer self.Dispose();
+		if (!(target.Getter.Invoke(self) case .Ok(var result)))
+			return false;
+		defer result.Dispose();
+		result.CopyValueData(outValue);
+		return true;
+	}
+
+	// `value` (of the accessor's type) handed to its setter; false without one or when it failed.
+	private static bool WriteAccessor(Target target, void* value)
+	{
+		if (!(target.Getter.GetCustomAttribute<InspectorPropertyAttribute>() case .Ok(let property)) || (property.Setter.Length == 0))
+			return false;
+		if (!(target.OwnerType.GetMethod(property.Setter) case .Ok(let setter)))
+			return false;
+		var self = AccessorSelf(target);
+		defer self.Dispose();
+		var argument = System.Variant.Create(target.Type, value);
+		defer argument.Dispose();
+		if (setter.Invoke(self, argument) case .Ok(var done))
+		{
+			done.Dispose();
+			return true;
+		}
+		return false;
+	}
+
+	// A field this source shows: FieldJson's (public, instance, not [Hidden]), or a private one an
+	// inspector is given ([InspectorField]).
+	private static bool IsShown(FieldInfo field)
+		=> FieldJson.IsShown(field) || (!field.IsStatic && field.HasCustomAttribute<InspectorFieldAttribute>() && !field.HasCustomAttribute<HiddenAttribute>());
+
+	private static bool HasShownFields(Type type)
+	{
+		for (let field in type.GetFields())
+		{
+			if (IsShown(field))
+				return true;
+		}
+		return false;
+	}
+
+	// A place's shape: a Float4 marked [AsColor] is a Color (the same four floats, laid out alike).
+	private static Shape ShapeAt(Target target) => target.AsColor ? .Color : ShapeOf(target.Type);
+
+	// What a field's [References] names: its type, or the type its full name names (a library
+	// that cannot see the type it points at names it); null when none.
+	private static Type ReferenceOf(FieldInfo field)
+	{
+		if (!(field.GetCustomAttribute<ReferencesAttribute>() case .Ok(let references)))
+			return null;
+		if (references.Target != null)
+			return references.Target;
+		return TypeNamed(references.TargetName);
+	}
+
+	private static Dictionary<String, Type> sTypesByName = new .() ~ DeleteDictionaryAndKeys!(_);
+
+	// The type of a full name, or null; scanned once a name and remembered.
+	private static Type TypeNamed(StringView fullName)
+	{
+		if (fullName.IsEmpty)
+			return null;
+		if (sTypesByName.TryGetValue(scope String(fullName), let known))
+			return known;
+		Type found = null;
+		let name = scope String();
+		for (let type in Type.Types)
+		{
+			// As EditorPageRegistry.ResolveType: a tuple's or an array's full name is not to be asked.
+			if (!(type is TypeInstance) || type.IsBoxed || type.IsPointer || type.IsArray
+				|| type.IsSizedArray || type.IsGenericParam || type.IsTuple)
+				continue;
+			name.Clear();
+			type.GetFullName(name);
+			if (name == fullName)
+			{
+				found = type;
+				break;
+			}
+		}
+		sTypesByName[new String(fullName)] = found;
+		return found;
+	}
 
 	private static int32 PartCount(Type type) => (type == typeof(Float2)) ? 2 : ((type == typeof(Float3)) ? 3 : 4);
 
@@ -693,6 +1110,109 @@ class FieldPropertySource : IPropertySource
 		case "yaw": return 1;
 		case "roll": return 2;
 		default: return -1;
+		}
+	}
+
+	// A list's element that is an object (not text): the list holds references, and owns what they
+	// point at.
+	private static bool HoldsObjectElements(Type element)
+		=> (element != null) && element.IsObject && (element != typeof(String));
+
+	// The object at `index` of a list of objects; null when there is none.
+	private static Object HeldAt(IReflectedList list, int index)
+	{
+		if ((list == null) || (index < 0) || (index >= list.Count) || !HoldsObjectElements(list.ElementType))
+			return null;
+		return *(Object*)list.ElementAddress(index);
+	}
+
+	// What a type is called to a user: its [DisplayName], else its name.
+	private static void TypeShownName(Type type, String outName)
+	{
+		if (type.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let shown))
+			outName.Append(shown.Name);
+		else
+			type.GetName(outName);
+	}
+
+	private static Dictionary<Type, List<Type>> sCreatable = new .() ~ DeleteDictionaryAndValues!(_);
+
+	// The types an add to a list of `element` can make: it, or any class deriving from it, that is
+	// not abstract and that reflection or the serializable registry constructs; by their shown names.
+	// Scanned once a type.
+	private static List<Type> CreatableTypes(Type element)
+	{
+		if (sCreatable.TryGetValue(element, let known))
+			return known;
+		let found = new List<Type>();
+		for (let type in Type.Types)
+		{
+			if (!(type is TypeInstance) || !type.IsObject || type.IsInterface || type.IsAbstract || type.IsBoxed
+				|| type.IsGenericParam || type.IsGenericType || type.IsTuple || type.IsArray
+				|| ((type != element) && !type.IsSubtypeOf(element)))
+				continue;
+			let made = Make(type);
+			if (made == null)
+				continue;
+			delete made;
+			found.Add(type);
+		}
+		found.Sort(scope (a, b) => TypeShownName(a, .. scope String()).CompareTo(TypeShownName(b, .. scope String())));
+		sCreatable[element] = found;
+		return found;
+	}
+
+	// A new `type` (OWNED by the caller), by its reflected default constructor or the serializable
+	// registry; null when neither makes one.
+	private static Object Make(Type type)
+	{
+		if (type.CreateObject() case .Ok(let made))
+			return made;
+		let registered = Sedulous.Core.Serialization.GlobalSerializableRegistry;
+		let id = Sedulous.Core.Serialization.TypeIdOf(type.GetFullName(.. scope String()));
+		if (!registered.IsRegistered(id))
+			return null;
+		let created = registered.Create(id);
+		if (created == null)
+			return null;
+		let object = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(created));
+		if (object.GetType() == type)
+			return object;
+		delete object;
+		return null;
+	}
+
+	// A list of objects changed: one made (of the type shown as `edit.ElementType`; empty: the
+	// first that can be) and inserted, one removed and deleted, or one moved.
+	private static bool ChangeObjectList(IReflectedList list, ListEdit edit)
+	{
+		let count = list.Count;
+		switch (edit.Kind)
+		{
+		case .Insert:
+			if ((edit.Index < 0) || (edit.Index > count))
+				return false;
+			Object made = null;
+			for (let type in CreatableTypes(list.ElementType))
+			{
+				if ((edit.ElementType.Length != 0) && (TypeShownName(type, .. scope String()) != edit.ElementType))
+					continue;
+				made = Make(type);
+				break;
+			}
+			if (made == null)
+				return false;
+			ChangeList(list, edit); // a null slot made at the place
+			*(Object*)list.ElementAddress(edit.Index) = made;
+			return true;
+		case .Remove:
+			let removed = HeldAt(list, edit.Index);
+			if (!ChangeList(list, edit))
+				return false;
+			delete removed; // the list's own
+			return true;
+		case .Move:
+			return ChangeList(list, edit); // references move as bytes
 		}
 	}
 
@@ -722,7 +1242,8 @@ class FieldPropertySource : IPropertySource
 		return (*(Object*)target.Address) as IReflectedList;
 	}
 
-	// An element inserted (a zeroed one), removed or moved, the others' bytes shifted.
+	// An element inserted (its type's default, else a zeroed one), removed or moved, the others'
+	// bytes shifted.
 	private static bool ChangeList(IReflectedList list, ListEdit edit)
 	{
 		let count = list.Count;
@@ -735,7 +1256,16 @@ class FieldPropertySource : IPropertySource
 			list.Count = count + 1;
 			let at = (uint8*)list.ElementAddress(edit.Index);
 			Internal.MemMove(at + stride, at, (count - edit.Index) * stride);
-			Internal.MemSet(at, 0, stride);
+			// Its type's default (a struct's own initialisers: a sub-emitter link spawns one, its
+			// chance whole), else zeroed.
+			let element = list.ElementType;
+			if (!element.IsObject && (element.CreateValue() case .Ok(let made)))
+			{
+				Internal.MemCpy(at, made, stride);
+				delete made;
+			}
+			else
+				Internal.MemSet(at, 0, stride);
 			return true;
 		case .Remove:
 			if ((edit.Index < 0) || (edit.Index >= count))
@@ -765,13 +1295,24 @@ class FieldPropertySource : IPropertySource
 		let address = target.Address;
 		if (address == null)
 			return .();
+		if (target.Accessor)
+		{
+			// The getter's value, read as a field holding it would be.
+			let value = scope uint8[Math.Max(target.Type.Stride, sizeof(int64))]*;
+			if (!ReadAccessor(target, value))
+				return .();
+			var held = Target();
+			held.Address = value;
+			held.Type = target.Type;
+			return Read(held);
+		}
 		if (target.Euler >= 0)
 		{
 			float[3] angles = ?;
 			ToYawPitchRoll(*(Quaternion*)address, out angles[1], out angles[0], out angles[2]);
 			return Sedulous.GUI.Variant((double)RadiansToDegrees(angles[target.Euler]));
 		}
-		switch (ShapeOf(target.Type))
+		switch (ShapeAt(target))
 		{
 		case .Bool:
 			return Sedulous.GUI.Variant(*(bool*)address);
@@ -786,6 +1327,10 @@ class FieldPropertySource : IPropertySource
 			return Sedulous.GUI.Variant(RawFieldAccess.ReadRawInt(address, target.Type.Size));
 		case .Color:
 			return Sedulous.GUI.Variant(*(Color*)address);
+		case .Curve:
+			return ReadCurve(target.Type, address);
+		case .Gradient:
+			return ReadGradient(target.Type, address);
 		case .Guid:
 			return GuidText(*(Guid*)address);
 		case .Reference:
@@ -808,6 +1353,19 @@ class FieldPropertySource : IPropertySource
 		let address = target.Address;
 		if ((address == null) || target.ReadOnly || value.IsEmpty)
 			return false;
+		if (target.Accessor)
+		{
+			// Written into a copy of what the getter says, then handed to the setter.
+			let held = scope uint8[Math.Max(target.Type.Stride, sizeof(int64))]*;
+			if (!ReadAccessor(target, held))
+				return false;
+			var copy = Target();
+			copy.Address = held;
+			copy.Type = target.Type;
+			if (!Write(copy, value))
+				return false;
+			return WriteAccessor(target, held);
+		}
 		if (target.Euler >= 0)
 		{
 			float[3] angles = ?;
@@ -817,7 +1375,7 @@ class FieldPropertySource : IPropertySource
 			*rotation = FromYawPitchRoll(angles[1], angles[0], angles[2]);
 			return true;
 		}
-		switch (ShapeOf(target.Type))
+		switch (ShapeAt(target))
 		{
 		case .Bool:
 			*(bool*)address = value.AsBool;
@@ -837,6 +1395,10 @@ class FieldPropertySource : IPropertySource
 			RawFieldAccess.WriteRawInt(address, target.Type.Size, value.AsInt);
 		case .Color:
 			*(Color*)address = value.AsColor;
+		case .Curve:
+			return (value.Kind == .Curve) && WriteCurve(target.Type, address, value.AsCurve);
+		case .Gradient:
+			return (value.Kind == .Gradient) && WriteGradient(target.Type, address, value.AsGradient);
 		case .Guid:
 			*(Guid*)address = GuidOf(value.AsString);
 		case .Reference:
@@ -854,7 +1416,7 @@ class FieldPropertySource : IPropertySource
 	{
 		if (json == null)
 			return .();
-		let shape = (target.Euler >= 0) ? Shape.Float : ShapeOf(target.Type);
+		let shape = (target.Euler >= 0) ? Shape.Float : ShapeAt(target);
 		switch (shape)
 		{
 		case .Bool:
