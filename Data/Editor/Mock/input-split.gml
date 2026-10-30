@@ -1,0 +1,76 @@
+<!--
+  The input map page, design B: a tree beside the grid (as the bus layout page). The sets and their
+  actions a tree on the left (each action's kind beside its name), its bar adding a set and removing
+  the chosen one; the chosen one's rows on the right: an action's name, kind and interaction, its
+  bindings as the grid's list (each binding a group: its source and the key capture, then its
+  settings), then its processing; a set's name and priority, then its actions as the grid's list,
+  where an action is added to that set (input-split-set.gml: no add on the tree's bar guessing which
+  set, the user 2026-10-26). A binding is
+  captured by pressing the input on its key capture. The same map as design A's
+  (input-outline.gml), to compare.
+-->
+<Panel class="page input-page mock">
+    <ToolBar class="page-toolbar">
+        <ToolButton command="mock.save" icon="Editor/Icons/save.svg"/>
+        <ToolButton command="mock.undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton command="mock.redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton icon="Editor/Icons/revert.svg" tooltip="Discard Changes"/>
+        <Separator/>
+        <ToolButton icon="Editor/Icons/cook.svg" tooltip="Cook This Asset"/>
+        <ToolButton icon="Editor/Icons/rebuild.svg" tooltip="Rebuild This Asset"/>
+        <Spacer/>
+        <Label class="badge page-kind" text="Input Map"/>
+    </ToolBar>
+    <Splitter class="page-body" axis="horizontal" weights="0.32 0.68">
+        <Panel class="panel page-pane input-pane">
+            <Panel class="panel-toolbar">
+                <ToolButton icon="Editor/Icons/plus.svg" text="Set" shows-text="true" tooltip="Add a set"/>
+                <ToolButton icon="Editor/Icons/trash.svg" tooltip="Remove the chosen set or action"/>
+                <Spacer/>
+            </Panel>
+            <Panel class="search-row"><Panel class="search"><Image class="search-icon" src="Editor/Icons/search.svg"/><TextField class="search-field" placeholder="Find an action or an input"/></Panel></Panel>
+            <TreeView class="panel-body tree">
+                <TreeItem text="Gameplay" icon="Editor/Icons/Types/InputMapAsset.svg" icon-class="cat-scripting" expanded="true">
+                    <TreeItem text="Move   2D" icon="Editor/Icons/move.svg"/>
+                    <TreeItem text="Jump   Button" icon="Editor/Icons/play.svg"/>
+                    <TreeItem text="Look   2D" icon="Editor/Icons/move.svg"/>
+                </TreeItem>
+                <TreeItem text="Menus" icon="Editor/Icons/Types/InputMapAsset.svg" icon-class="cat-scripting" expanded="true">
+                    <TreeItem text="Navigate   2D" icon="Editor/Icons/move.svg"/>
+                    <TreeItem text="Confirm   Button" icon="Editor/Icons/play.svg"/>
+                    <TreeItem text="Back   Button" icon="Editor/Icons/play.svg"/>
+                </TreeItem>
+            </TreeView>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel class="kit-scroll">
+                <Panel class="kit-grid input-sheet">
+                    <Panel class="component-header"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="component-name" text="Action"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Name"/><TextField text="Move"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Set"/><Label class="read-only-value" text="Gameplay"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Kind"/><ComboBox items="Button|1D axis|2D axis" selected="2"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Interaction"/><ComboBox items="On press|Hold|Tap|Double tap" selected="0"/></Panel>
+                    <Panel class="prop-row list-head"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="prop-name" text="Bindings"/><Label class="list-count" text="2"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/plus.svg" tooltip="Add a binding: the sources a 2D axis takes"/></Panel>
+                    <Panel class="list-item"><Image class="grip" src="Editor/Icons/grip.svg"/><Label class="list-index" text="1"/><Label class="input-source" text="Keys (four)"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove"/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Up"/><Button class="key-capture" text="W" tooltip="Press to rebind"/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Left"/><Button class="key-capture" text="A"/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Down"/><Button class="key-capture capturing" text="Press a key..."/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Right"/><Button class="key-capture" text="D"/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Normalize"/><CheckBox checked="true"/></Panel>
+                    <Panel class="list-item"><Image class="grip" src="Editor/Icons/grip.svg"/><Label class="list-index" text="2"/><Label class="input-source" text="Gamepad stick"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove"/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Stick"/><Button class="key-capture" text="Left Stick"/></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Dead Zone"/><Panel class="slider-field"><Slider value="0.15" min="0" max="1"/><NumberField value="0.15" step="0.01"/></Panel></Panel>
+                    <Panel class="prop-row input-indent"><Label class="prop-name" text="Gamepad"/><ComboBox items="Any|1|2|3|4" selected="0"/></Panel>
+                    <Panel class="component-header"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="component-name" text="Processing"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Sensitivity"/><Panel class="slider-field"><Slider value="1" min="0" max="4"/><NumberField value="1" step="0.05"/></Panel></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Gravity"/><Panel class="slider-field"><Slider value="0" min="0" max="20"/><NumberField value="0" step="0.1"/></Panel></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Snap on Reverse"/><CheckBox checked="true"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Scale with Time"/><CheckBox/></Panel>
+                </Panel>
+            </Panel>
+        </Panel>
+    </Splitter>
+</Panel>

@@ -11,34 +11,34 @@ namespace Samples.GUISandbox;
 /// The sandbox's composition root: its flags, the shell, the graphics device and the desktop
 /// runner. What Main returns is the run's code, or a check's verdict: 0 passed, 1 failed, 77
 /// skipped (no device to test on), as the image tests, the sweep and the mirror audit report it.
-///
 /// --page <id>: open on that page (controls, text, layout, data-views, menus, viewport, docking,
-/// toolkit, code, styling, effects, pictures, motion, themes, binding, input, navigation,
-/// language, stress, game-menu). --showcase: open the game menu at once. --light: the light
-/// scheme from the start. --menu-call <function>: call one of the game menu's script functions
-/// once it is up (onSettings, onPlay, onQuit). --keys "<keys>": type keystrokes into what is
-/// shown, one every 15 frames ("down down return", "pad-east"; pointer steps too, in logical
-/// units: click:x,y rclick:x,y move:x,y down:x,y up:x,y pinch:x,y turn:x,y pan2:x,y, or at what a
-/// selector or a text finds: click:#ok, click:text=Show, move:text~=Sett). --always-redraw: draw
-/// every frame. --frame-stats: print, each second, how many frames drew. --sweep: hover, click
-/// and right-click every widget of every page, walk each by keys and the pad, then open the game
-/// menu, printing each step, and exit, failing when anything warned. --soak <minutes>
-/// [--soak-csv <path>]: the sweep over and over, a CSV row every ten seconds. --mirror-audit:
-/// every page laid out both ways, each widget where the mirror of its place puts it.
-/// --scroll <px>: scroll the page down that far once it is up. --layout-overlay (F9),
-/// --input-overlay (F8): start with that half of the debug overlay on. --inspector: start with
-/// the inspector's pane open (Ctrl+Shift+I toggles it). --inspect <selector>: open it with the
-/// first widget the selector matches selected. --image-tests: draw each page offscreen at 960x720
-/// on a fixed clock and compare it with its reference in Data/Tests/GUI/Images (the pictures go
-/// to --image-out <dir>, build/gui-images by default). --approve-images [backend]: write them as
-/// the references instead (the backends' shared one, or with "backend" this backend's own),
-/// after looking at them. --bench <page> [frames]: a page's frame cost by stage. --lang <locale>:
-/// start in that language (en, ar, or pseudo: English pseudolocalized). --narrate: print what a
-/// screen reader would say. --stress <n>: start on the Stress page, built at load n (1 to 20;
-/// measure in Release). --editor-mock: the editor's mock (EditorMock.bf) instead of the sandbox,
-/// its window full HD; with --mock-side-by-side its two scene pages side by side, --mock-kit its kit page in front, --mock-size
-/// <w>x<h> its window at that size, and --light the light scheme. The backend: --vulkan (the default), --webgpu, --dx12. With the
-/// framework's --screenshot flags, a picture of any of it.
+/// toolkit, code, styling, effects, pictures, motion, themes, binding, input, navigation, language,
+/// stress, game-menu). --showcase: open the game menu at once. --light: the light scheme from the
+/// start. --menu-call <function>: call one of the game menu's script functions once it is up
+/// (onSettings, onPlay, onQuit). --keys "<keys>": type keystrokes into what is shown, one every 15
+/// frames ("down down return", "pad-east"; pointer steps too, in logical units: click:x,y
+/// rclick:x,y move:x,y down:x,y up:x,y pinch:x,y turn:x,y pan2:x,y, or at what a selector or a text
+/// finds: click:#ok, click:text=Show, move:text~=Sett). --always-redraw: draw every frame.
+/// --frame-stats: print, each second, how many frames drew. --sweep: hover, click and right-click
+/// every widget of every page, walk each by keys and the pad, then open the game menu, printing
+/// each step, and exit, failing when anything warned. --soak <minutes> [--soak-csv <path>]: the
+/// sweep over and over, a CSV row every ten seconds. --mirror-audit: every page laid out both ways,
+/// each widget where the mirror of its place puts it. --scroll <px>: scroll the page down that far
+/// once it is up. --layout-overlay (F9), --input-overlay (F8): start with that half of the debug
+/// overlay on. --inspector: start with the inspector's pane open (Ctrl+Shift+I toggles it).
+/// --inspect <selector>: open it with the first widget the selector matches selected.
+/// --image-tests: draw each page offscreen at 960x720 on a fixed clock and compare it with its
+/// reference in Data/Tests/GUI/Images (the pictures go to --image-out <dir>, build/gui-images by
+/// default). --approve-images [backend]: write them as the references instead (the backends' shared
+/// one, or with "backend" this backend's own), after looking at them. --bench <page> [frames]: a
+/// page's frame cost by stage. --lang <locale>: start in that language (en, ar, or pseudo: English
+/// pseudolocalized). --narrate: print what a screen reader would say. --stress <n>: start on the
+/// Stress page, built at load n (1 to 20; measure in Release). --editor-mock: the editor's mock
+/// (EditorMock.bf) instead of the sandbox, its window full HD; with --mock-side-by-side its two
+/// scene pages side by side, --mock-kit its kit page in front, --mock-page <id> that page in front,
+/// --mock-size <w>x<h> its window at that size, and --light the light scheme. The backend: --vulkan
+/// (the default), --webgpu, --dx12. With the framework's --screenshot flags, a picture of any of
+/// it.
 class Program
 {
 	public static int Main(String[] args)
@@ -58,6 +58,8 @@ class Program
 				app.SetMockSideBySide(true);
 			else if (arg == "--mock-kit")
 				app.SetMockKit(true);
+			else if ((arg == "--mock-page") && hasNext)
+				app.SetMockPage(args[++i]);
 			else if ((arg == "--mock-size") && hasNext)
 			{
 				// <w>x<h>, both above nothing; anything else leaves the size as it was.

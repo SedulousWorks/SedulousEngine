@@ -1,0 +1,76 @@
+<!--
+  The input map page, design B with a set chosen, its actions expandable: the set's name and priority,
+  then its actions as the grid's list of groups, each action a group that opens in place to its rows
+  (its kind and interaction, its bindings as a list of their own, its processing), closed showing its
+  name, kind and bindings in one line; Add adds an action to this set. The same map as
+  input-split.gml's (the user asked to see it, 2026-10-26).
+-->
+<Panel class="page input-page mock">
+    <ToolBar class="page-toolbar">
+        <ToolButton command="mock.save" icon="Editor/Icons/save.svg"/>
+        <ToolButton command="mock.undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton command="mock.redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton icon="Editor/Icons/revert.svg" tooltip="Discard Changes"/>
+        <Separator/>
+        <ToolButton icon="Editor/Icons/cook.svg" tooltip="Cook This Asset"/>
+        <ToolButton icon="Editor/Icons/rebuild.svg" tooltip="Rebuild This Asset"/>
+        <Spacer/>
+        <Label class="badge page-kind" text="Input Map"/>
+    </ToolBar>
+    <Splitter class="page-body" axis="horizontal" weights="0.32 0.68">
+        <Panel class="panel page-pane input-pane">
+            <Panel class="panel-toolbar">
+                <ToolButton icon="Editor/Icons/plus.svg" text="Set" shows-text="true" tooltip="Add a set"/>
+                <ToolButton icon="Editor/Icons/trash.svg" tooltip="Remove the chosen set or action"/>
+                <Spacer/>
+            </Panel>
+            <Panel class="search-row"><Panel class="search"><Image class="search-icon" src="Editor/Icons/search.svg"/><TextField class="search-field" placeholder="Find an action or an input"/></Panel></Panel>
+            <TreeView class="panel-body tree">
+                <TreeItem text="Gameplay" icon="Editor/Icons/Types/InputMapAsset.svg" icon-class="cat-scripting" expanded="true">
+                    <TreeItem text="Move   2D" icon="Editor/Icons/move.svg"/>
+                    <TreeItem text="Jump   Button" icon="Editor/Icons/play.svg"/>
+                    <TreeItem text="Look   2D" icon="Editor/Icons/move.svg"/>
+                </TreeItem>
+                <TreeItem text="Menus" icon="Editor/Icons/Types/InputMapAsset.svg" icon-class="cat-scripting" expanded="true">
+                    <TreeItem text="Navigate   2D" icon="Editor/Icons/move.svg"/>
+                    <TreeItem text="Confirm   Button" icon="Editor/Icons/play.svg"/>
+                    <TreeItem text="Back   Button" icon="Editor/Icons/play.svg"/>
+                </TreeItem>
+            </TreeView>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel class="kit-scroll">
+                <Panel class="kit-grid input-sheet">
+                    <Panel class="component-header"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="component-name" text="Set"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Name"/><TextField text="Gameplay"/></Panel>
+                    <Panel class="prop-row"><Label class="prop-name" text="Priority"/><NumberField value="0" step="1"/></Panel>
+                    <Panel class="prop-row list-head"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="prop-name" text="Actions"/><Label class="list-count" text="3"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/plus.svg" tooltip="Add an action to Gameplay"/></Panel>
+                    <!-- Move, open. -->
+                    <Panel class="list-item"><Image class="grip" src="Editor/Icons/grip.svg" tooltip="Drag to reorder"/><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="input-source" text="Move"/><Label class="badge accent" text="2D axis"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove Move"/></Panel>
+                    <Panel class="prop-row input-l1 input-nested"><Label class="prop-name" text="Name"/><TextField text="Move"/></Panel>
+                    <Panel class="prop-row input-l1 input-nested"><Label class="prop-name" text="Kind"/><ComboBox items="Button|1D axis|2D axis" selected="2"/></Panel>
+                    <Panel class="prop-row input-l1 input-nested"><Label class="prop-name" text="Interaction"/><ComboBox items="On press|Hold|Tap|Double tap" selected="0"/></Panel>
+                    <Panel class="prop-row list-head input-l1 input-nested"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="prop-name" text="Bindings"/><Label class="list-count" text="2"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/plus.svg" tooltip="Add a binding to Move: the sources a 2D axis takes"/></Panel>
+                    <Panel class="list-item input-l2 input-nested"><Image class="grip" src="Editor/Icons/grip.svg"/><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="input-source" text="Keys (four)"/><Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove"/></Panel>
+                    <Panel class="prop-row input-l3 input-nested"><Label class="prop-name" text="Up"/><Button class="key-capture" text="W" tooltip="Press to rebind"/></Panel>
+                    <Panel class="prop-row input-l3 input-nested"><Label class="prop-name" text="Left"/><Button class="key-capture" text="A"/></Panel>
+                    <Panel class="prop-row input-l3 input-nested"><Label class="prop-name" text="Down"/><Button class="key-capture" text="S"/></Panel>
+                    <Panel class="prop-row input-l3 input-nested"><Label class="prop-name" text="Right"/><Button class="key-capture" text="D"/></Panel>
+                    <Panel class="prop-row input-l3 input-nested"><Label class="prop-name" text="Normalize"/><CheckBox checked="true"/></Panel>
+                    <Panel class="list-item input-l2 input-nested"><Image class="grip" src="Editor/Icons/grip.svg"/><Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/><Label class="input-source" text="Gamepad stick"/><Label class="input-summary" text="Left Stick, dead zone 0.15"/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove"/></Panel>
+                    <Panel class="prop-row list-head input-l1 input-nested"><Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/><Label class="prop-name" text="Processing"/><Label class="input-summary" text="Sensitivity 1, snap on reverse"/></Panel>
+                    <!-- Jump and Look, closed: a line each. -->
+                    <Panel class="list-item"><Image class="grip" src="Editor/Icons/grip.svg"/><Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/><Label class="input-source" text="Jump"/><Label class="badge" text="Button"/><Label class="input-summary" text="Space, Gamepad A"/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove Jump"/></Panel>
+                    <Panel class="list-item"><Image class="grip" src="Editor/Icons/grip.svg"/><Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/><Label class="input-source" text="Look"/><Label class="badge accent" text="2D axis"/><Label class="input-summary" text="Mouse movement, Right Stick"/>
+                        <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove Look"/></Panel>
+                </Panel>
+            </Panel>
+        </Panel>
+    </Splitter>
+</Panel>

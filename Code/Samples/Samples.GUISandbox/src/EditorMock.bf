@@ -55,10 +55,11 @@ class EditorMock
 	/// Its toasts' host and the dialog it shows: our references, let go by ReleaseTree.
 	private ToastHost mToasts = null;
 	private MessageBox mDialog = null;
-	/// The render textures picker and the asset picker, once opened: our references, let go by
-	/// ReleaseTree.
+	/// The render textures picker, the asset picker and the entity picker, once opened: our
+	/// references, let go by ReleaseTree.
 	private Node mTextures = null;
 	private Node mAssetPicker = null;
+	private Node mEntityPicker = null;
 	private int mToastsShown = 0;
 	/// What each page's inspector shows, and the sources over them.
 	private List<Object> mShown = new .();
@@ -107,6 +108,11 @@ class EditorMock
 			mAssetPicker.ReleaseRef();
 			mAssetPicker = null;
 		}
+		if (mEntityPicker != null)
+		{
+			mEntityPicker.ReleaseRef();
+			mEntityPicker = null;
+		}
 		if (mToasts != null)
 		{
 			mToasts.ReleaseRef();
@@ -143,6 +149,13 @@ class EditorMock
 		BuildDock();
 		ApplyLook();
 		return true;
+	}
+
+	/// A page of the mock in front by its id (--mock-page: "input-outline", "input-split").
+	public void ShowPage(StringView id)
+	{
+		if (mDock != null)
+			Said(mDock.Edit(scope (layout) => layout.Activate(id)));
 	}
 
 	/// The kit page in front (--mock-kit): every shared piece in its states.
@@ -238,6 +251,7 @@ class EditorMock
 		Define("mock.toast", "Show a Toast");
 		Define("mock.dialog", "Show a Dialog");
 		Define("mock.asset-picker", "Show the Asset Picker");
+		Define("mock.entity-picker", "Show the Entity Picker");
 		mContext.DefineCommand("mock.grid").Checked = true;
 		mContext.DefineCommand("mock.space").Checked = true;
 		let pause = mContext.DefineCommand("mock.pause");
@@ -254,6 +268,7 @@ class EditorMock
 		mRoot.OnCommand("mock.dialog", new (e) => { ShowDialog(); });
 		mRoot.OnCommand("mock.textures", new (e) => { ShowPicker(ref mTextures, "Editor/Mock/textures.gml"); });
 		mRoot.OnCommand("mock.asset-picker", new (e) => { ShowPicker(ref mAssetPicker, "Editor/Mock/asset-picker.gml"); });
+		mRoot.OnCommand("mock.entity-picker", new (e) => { ShowPicker(ref mEntityPicker, "Editor/Mock/entity-picker.gml"); });
 		mRoot.OnCommand("mock.side-by-side", new (e) => { SetSideBySide(!mSideBySide); });
 		Define("look.dark", "Dark");
 		Define("look.light", "Light");
@@ -339,9 +354,12 @@ class EditorMock
 	}
 
 	// The asset picker's chosen group (Props: Favourites, All, Content, Materials, Props) and its
-	// two views, the buttons switching them (the editor keeps the last one).
+	// two views, the buttons switching them (the editor keeps the last one); the entity picker's
+	// current value (Camera: Level 1, Sun, Sky, Player, Camera).
 	private void PickerViews(Node picker)
 	{
+		if (let tree = picker.FindElement("entity-picker-tree") as TreeView)
+			tree.SelectedItem = 4;
 		if (let groups = picker.FindElement("asset-picker-groups") as TreeView)
 			groups.SelectedItem = 4;
 		let rows = picker.FindElement("asset-picker-rows");
@@ -421,6 +439,11 @@ class EditorMock
 		Register("scene", "Level 1", "Editor/Mock/scene.gml");
 		Register("scene-2", "Level 2", "Editor/Mock/scene.gml");
 		Register("kit", "Kit", "Editor/Mock/kit.gml");
+		// The input map page's two designs, to compare (the user, 2026-10-26).
+		Register("input-outline", "Input A: Outline", "Editor/Mock/input-outline.gml");
+		Register("input-split", "Input B: Tree and Grid", "Editor/Mock/input-split.gml");
+		Register("input-split-set", "Input B: Set Chosen", "Editor/Mock/input-split-set.gml");
+		Register("input-split-set-open", "Input B: Set, Actions Open", "Editor/Mock/input-split-set-open.gml");
 		Register("assets", "Assets", "Editor/Mock/assets.gml");
 		Register("console", "Console", "Editor/Mock/console.gml");
 		{
@@ -453,6 +476,10 @@ class EditorMock
 		else
 			Said(layout.InsertTab("scene-2", central));
 		Said(layout.InsertTab("kit", central));
+		Said(layout.InsertTab("input-outline", central));
+		Said(layout.InsertTab("input-split", central));
+		Said(layout.InsertTab("input-split-set", central));
+		Said(layout.InsertTab("input-split-set-open", central));
 		Said(layout.Activate("scene"));
 		Said(layout.InsertBeside("assets", central, .Bottom, 0.28f));
 		Said(layout.InsertTab("console", layout.StackOf("assets")));

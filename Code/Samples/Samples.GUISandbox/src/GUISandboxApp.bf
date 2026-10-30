@@ -79,6 +79,8 @@ class GUISandboxApp : IApplication
 	private bool mMockSideBySide = false;
 	/// --mock-kit: the kit page in front.
 	private bool mMockKit = false;
+	/// --mock-page <id>: a page of the mock in front by its id.
+	private String mMockPage = new .() ~ delete _;
 	/// --mock-size <w>x<h>: its window; a full HD display's by default, the user's (2026-10-24).
 	private uint32 mMockWidth = 1920;
 	private uint32 mMockHeight = 1080;
@@ -235,6 +237,8 @@ class GUISandboxApp : IApplication
 	public bool IsEditorMock => mEditorMockMode;
 	public void SetMockSideBySide(bool on) => mMockSideBySide = on;
 	public void SetMockKit(bool on) => mMockKit = on;
+	/// --mock-page <id>: that page of the mock in front (the input map's designs: input-outline, input-split).
+	public void SetMockPage(StringView id) => mMockPage.Set(id);
 	/// --mock-size <w>x<h>: the mock's window at another size (a large monitor, a laptop).
 	public void SetMockSize(uint32 width, uint32 height)
 	{
@@ -674,6 +678,8 @@ class GUISandboxApp : IApplication
 			mEditorMock.SetSideBySide(true);
 		if (mMockKit)
 			mEditorMock.ShowKit();
+		if (!mMockPage.IsEmpty)
+			mEditorMock.ShowPage(mMockPage);
 		mRoot.OnCommand("inspector.toggle", new (e) => { ToggleInspector(); });
 		mGui.Keymap.Bind("ctrl-shift-i", "inspector.toggle");
 		mRoot.DebugFont = mFont;

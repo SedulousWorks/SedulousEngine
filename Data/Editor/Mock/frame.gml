@@ -56,6 +56,7 @@
             <MenuItem command="mock.toast"/>
             <MenuItem command="mock.dialog"/>
             <MenuItem command="mock.asset-picker"/>
+            <MenuItem command="mock.entity-picker"/>
             <MenuSeparator/>
             <MenuItem command="mock.about"/>
         </Menu>

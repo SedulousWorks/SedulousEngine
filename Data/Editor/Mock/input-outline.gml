@@ -1,0 +1,82 @@
+<!--
+  The input map page, design A: one outline (the old page's outline, on the kit). The whole map in
+  one column: each set a section (its name, priority and actions counted in its header, Add Action
+  and its menu at its end), each action a header of its own (its name and kind) over its rows: its
+  kind and interaction, its bindings as the grid's list (each binding a group: its source and the
+  key capture, then its settings), then its processing. Sets and actions are added from their
+  headers and renamed in place; a binding is captured by pressing the input on its key capture.
+  The same map as design B's (input-split.gml), to compare.
+-->
+<Panel class="page input-page mock">
+    <ToolBar class="page-toolbar">
+        <ToolButton command="mock.save" icon="Editor/Icons/save.svg"/>
+        <ToolButton command="mock.undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton command="mock.redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton icon="Editor/Icons/revert.svg" tooltip="Discard Changes"/>
+        <Separator/>
+        <ToolButton icon="Editor/Icons/cook.svg" tooltip="Cook This Asset"/>
+        <ToolButton icon="Editor/Icons/rebuild.svg" tooltip="Rebuild This Asset"/>
+        <Separator/>
+        <Button class="with-icon" icon="Editor/Icons/plus.svg" text="Add Set"/>
+        <Spacer/>
+        <Panel class="search input-search"><Image class="search-icon" src="Editor/Icons/search.svg"/><TextField class="search-field" placeholder="Find an action or an input"/></Panel>
+        <Label class="badge page-kind" text="Input Map"/>
+    </ToolBar>
+    <Panel class="kit-scroll input-outline">
+        <Panel class="kit-grid input-sheet">
+            <!-- A set: its section. -->
+            <Panel class="component-header input-set">
+                <Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/>
+                <Image class="row-icon cat-scripting" src="Editor/Icons/Types/InputMapAsset.svg"/>
+                <Label class="component-name" text="Gameplay"/>
+                <Label class="badge" text="Priority 0"/>
+                <Label class="input-count" text="3 actions"/>
+                <Button class="icon-button" icon="Editor/Icons/plus.svg" tooltip="Add an action to Gameplay"/>
+                <Button class="icon-button" icon="Editor/Icons/more.svg" tooltip="Rename, priority, remove"/>
+            </Panel>
+            <!-- An action: its header and its rows. -->
+            <Panel class="component-header input-action">
+                <Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/>
+                <Label class="component-name" text="Move"/>
+                <Label class="badge accent" text="2D axis"/>
+                <Button class="icon-button" icon="Editor/Icons/more.svg" tooltip="Rename, duplicate, remove"/>
+            </Panel>
+            <Panel class="prop-row input-indent"><Label class="prop-name" text="Kind"/><ComboBox items="Button|1D axis|2D axis" selected="2"/></Panel>
+            <Panel class="prop-row input-indent"><Label class="prop-name" text="Interaction"/><ComboBox items="On press|Hold|Tap|Double tap" selected="0"/></Panel>
+            <Panel class="prop-row list-head input-indent"><Image class="row-arrow" src="Editor/Icons/chevron-down.svg"/><Label class="prop-name" text="Bindings"/><Label class="list-count" text="2"/><Spacer/>
+                <Button class="slot-button" icon="Editor/Icons/plus.svg" tooltip="Add a binding: the sources a 2D axis takes"/></Panel>
+            <Panel class="list-item input-indent"><Image class="grip" src="Editor/Icons/grip.svg"/><Label class="list-index" text="1"/><Label class="input-source" text="Keys (four)"/>
+                <Button class="key-capture" text="W"/><Button class="key-capture" text="A"/><Button class="key-capture" text="S"/><Button class="key-capture" text="D"/><Spacer/>
+                <Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove"/></Panel>
+            <Panel class="prop-row input-indent-2"><Label class="prop-name" text="Normalize"/><CheckBox checked="true"/></Panel>
+            <Panel class="list-item input-indent"><Image class="grip" src="Editor/Icons/grip.svg"/><Label class="list-index" text="2"/><Label class="input-source" text="Gamepad stick"/>
+                <Button class="key-capture" text="Left Stick"/><Spacer/><Button class="slot-button" icon="Editor/Icons/minus.svg" tooltip="Remove"/></Panel>
+            <Panel class="prop-row input-indent-2"><Label class="prop-name" text="Dead Zone"/><Panel class="slider-field"><Slider value="0.15" min="0" max="1"/><NumberField value="0.15" step="0.01"/></Panel></Panel>
+            <Panel class="prop-row input-indent-2"><Label class="prop-name" text="Gamepad"/><ComboBox items="Any|1|2|3|4" selected="0"/></Panel>
+            <Panel class="prop-row list-head input-indent"><Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/><Label class="prop-name" text="Processing"/></Panel>
+            <Panel class="component-header input-action collapsed">
+                <Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/>
+                <Label class="component-name" text="Jump"/>
+                <Label class="badge" text="Button"/>
+                <Label class="input-summary" text="Space, Gamepad A"/>
+                <Button class="icon-button" icon="Editor/Icons/more.svg"/>
+            </Panel>
+            <Panel class="component-header input-action collapsed">
+                <Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/>
+                <Label class="component-name" text="Look"/>
+                <Label class="badge accent" text="2D axis"/>
+                <Label class="input-summary" text="Mouse movement, Right Stick"/>
+                <Button class="icon-button" icon="Editor/Icons/more.svg"/>
+            </Panel>
+            <Panel class="component-header input-set collapsed">
+                <Image class="row-arrow" src="Editor/Icons/chevron-right.svg"/>
+                <Image class="row-icon cat-scripting" src="Editor/Icons/Types/InputMapAsset.svg"/>
+                <Label class="component-name" text="Menus"/>
+                <Label class="badge" text="Priority 10"/>
+                <Label class="input-count" text="3 actions"/>
+                <Button class="icon-button" icon="Editor/Icons/plus.svg" tooltip="Add an action to Menus"/>
+                <Button class="icon-button" icon="Editor/Icons/more.svg"/>
+            </Panel>
+        </Panel>
+    </Panel>
+</Panel>
