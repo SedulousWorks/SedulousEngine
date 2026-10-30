@@ -1025,6 +1025,118 @@ class ScenePageTests
 	}
 
 	[Test]
+	public static void SceneBarTheAnimationPanelsToggleShowsItCheckedWhileItShows()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let shown = scope Shown(page);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let animation = FindId<ButtonBase>(page.Content, "scene-animation-panel");
+		Test.Assert(animation != null);
+		Test.Assert(!animation.Checked);
+		shown.Click(animation);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(page.AnimationPanelShown);
+		Test.Assert(animation.Checked);
+		shown.Click(animation);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!page.AnimationPanelShown);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void TheAnimationPanelBindsAnEntityPickedFromTheSceneAClipOpenedWhileThePageShowsGoesIntoIt()
+	{
+		let bed = scope Bed();
+		PropertyAnimationPipeline.RegisterAll();
+		let clip = PropertyAnimationCreators.CreateClip(bed.Project.SourceDb.RootGroup, "Swing");
+		Test.Assert(clip != null);
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let panel = page.AnimationPanel;
+		Test.Assert(panel != null);
+		let door = page.EditContext.CreateEntity("Door");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+
+		// Off screen, a clip's open is not the page's: it opens as an asset would.
+		Test.Assert(!page.IsOnScreen);
+		Test.Assert(!bed.Context.TryInterceptOpenAsset(clip));
+
+		let shown = scope Shown(page);
+		Test.Assert(page.IsOnScreen);
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		Test.Assert(bed.Context.TryInterceptOpenAsset(clip));
+		Test.Assert(page.AnimationPanelShown);
+		Test.Assert(panel.Document.ClipId == clip.Id);
+		Test.Assert(panel.BoundEntity == bed.Crate); // the selection, as Edit Clip binds it
+		Test.Assert(!bed.Context.TryInterceptOpenAsset(bed.Barrel)); // a prefab is not a clip
+
+		// Pick: the entity picker, the bound entity lit; a pick binds, None keeps it.
+		panel.PickEntity();
+		let picker = page.EntityPicker;
+		Test.Assert(picker != null);
+		Test.Assert(picker.IsOpen);
+		Test.Assert(picker.LitName(.. scope .()) == "Crate");
+		picker.Search("door");
+		picker.PickLit();
+		Test.Assert(panel.BoundEntity == door);
+		page.OnClose();
+		Test.Assert(!bed.Context.TryInterceptOpenAsset(clip)); // closed: it let go
+	}
+
+	[Test]
+	public static void InspectorPasteComponentPutsTheCopiedComponentOnTheSelectionOneUndoOverOneItHasItAsksFirst()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let edit = page.EditContext;
+		let lamp = edit.CreateEntity("Lamp");
+		edit.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.AddComponent("InstanceMemberComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let shown = scope Shown(page);
+		Test.Assert(!inspector.CanPasteComponent); // nothing copied
+		let blob = scope List<uint8>();
+		edit.CopyComponent(bed.Crate, typeof(InstanceMemberComponent), blob);
+		Test.Assert(!blob.IsEmpty);
+		bed.Context.CopyToEditorClipboard("component", blob, "component");
+
+		// Onto an entity without one: pasted at once, one step.
+		edit.EntitySelection.Set(lamp);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.CanPasteComponent);
+		let scene = page.ScenePtr;
+		let manager = edit.FindManager(typeof(InstanceMemberComponent));
+		Test.Assert(manager != null);
+		Test.Assert(!manager.HasComponent(scene.FindEntity(lamp)));
+		let before = page.Commands.UndoIndex;
+		Test.Assert(inspector.PasteComponent());
+		Test.Assert(inspector.PasteConfirm == null);
+		Test.Assert(manager.HasComponent(scene.FindEntity(lamp)));
+		page.Commands.Undo(); // one step (the index counts a group's markers too)
+		Test.Assert(page.Commands.UndoIndex == before);
+		Test.Assert(!manager.HasComponent(scene.FindEntity(lamp)));
+
+		// Onto one that has it: asked; Cancel leaves it, Overwrite pastes.
+		edit.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let asked = page.Commands.UndoIndex;
+		Test.Assert(inspector.PasteComponent());
+		Test.Assert(inspector.PasteConfirm != null);
+		Test.Assert(page.Commands.UndoIndex == asked); // nothing yet
+		inspector.PasteConfirm.Close();
+		Test.Assert(inspector.PasteComponentNow());
+		Test.Assert(page.Commands.UndoIndex > asked);
+		page.Commands.Undo(); // one step
+		Test.Assert(page.Commands.UndoIndex == asked);
+		page.OnClose();
+	}
+
+	[Test]
 	public static void InspectorAComponentsExtrasUnderItsHeaderARigidBodysNoticeWhileItHasNoColliderAZonesBake()
 	{
 		BuiltinInspectorExtras.Register();
@@ -1295,7 +1407,7 @@ class ScenePageTests
 		let shown = scope Shown(page);
 		let bar = page.Bar;
 		Test.Assert(bar != null);
-		Test.Assert(bar.Bound == 15); // save, undo, redo, discard, four transform, space, snap, vertex snap, Simulate's three, frame
+		Test.Assert(bar.Bound == 16); // save, undo, redo, discard, four transform, space, snap, vertex snap, Simulate's three, frame, the animation panel
 		let gizmos = page.Gizmos;
 		Test.Assert(gizmos != null);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);

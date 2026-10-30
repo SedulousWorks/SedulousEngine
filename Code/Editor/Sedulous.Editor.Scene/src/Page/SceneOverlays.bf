@@ -11,7 +11,7 @@ namespace Sedulous.Editor.Scene;
 // A scene page's overlays (Raptor's editor-gui spec, 5.3, layer 2): what the editor draws into the
 // scene in its viewport's own debug list each frame (the lists clear every frame). The grid under the
 // camera with the world's axes, the entity markers and the selection's boxes, the tools' gizmos, the
-// component gizmos. Out of the page's class; the toggles are kept per scene (SceneViewPref). What is
+// component gizmos, and the entity the animation panel's preview poses. Out of the page's class; the toggles are kept per scene (SceneViewPref). What is
 // written rather than drawn in the scene (the stats, the tool's status, the zoom readout, the view
 // gizmo) is the HUD's, on the GUI (layer 5).
 
@@ -26,6 +26,8 @@ struct SceneOverlayFrame
 	public uint32 Height = 0;
 	public ViewportToolManager Tools = null;
 	public GizmoRendererRegistry ComponentGizmos = null;
+	/// The entity the animation panel's preview poses; nil: none.
+	public Guid Previewed = .Empty;
 }
 
 class SceneOverlays
@@ -46,6 +48,22 @@ class SceneOverlays
 		}
 		DrawEntityMarkers(dd, frame);
 		DrawGizmos(dd, frame);
+		DrawPreviewMarker(dd, frame);
+	}
+
+	// The entity the animation panel poses: a sphere and "preview" over it, drawn over the scene so
+	// it reads through what stands in front.
+	private void DrawPreviewMarker(DebugDraw dd, SceneOverlayFrame frame)
+	{
+		if (frame.Previewed.IsNil)
+			return;
+		let entity = frame.Scene.FindEntity(frame.Previewed);
+		if (!entity.IsAssigned)
+			return;
+		let at = frame.Scene.GetWorldPosition(entity);
+		let marker = Color(1.0f, 0.85f, 0.2f, 1.0f);
+		dd.DrawWireSphereOverlay(at, 0.35f, marker);
+		dd.DrawText3D(at, "preview", marker);
 	}
 
 	/// The grid's spacing where the camera is now (by its distance from the grid's plane): what

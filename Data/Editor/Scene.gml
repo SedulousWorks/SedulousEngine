@@ -30,6 +30,7 @@
         <!-- The viewport tools, from the tool registry, go here (code adds them before this). -->
         <Separator id="scene-tools-end"/>
         <ToolButton id="scene-frame" icon="Editor/Icons/frame-selection.svg"/>
+        <ToolButton id="scene-animation-panel" toggle="true" icon="Editor/Icons/animation.svg"/>
         <Label id="scene-kind" class="badge page-kind" text="Prefab" tooltip="This page edits a prefab: one root, saved to every instance"/>
     </ToolBar>
     <Splitter id="scene-body" class="page-body" axis="horizontal" weights="0.2 0.56 0.24">
@@ -105,6 +106,7 @@
                     <Image class="search-icon" src="Editor/Icons/search.svg"/>
                     <TextField id="inspector-search" class="search-field" placeholder="Search properties"/>
                 </Panel>
+                <Button id="inspector-paste" class="icon-button" icon="Editor/Icons/paste.svg" tooltip="Paste the copied component onto the selection"/>
                 <Button id="inspector-add" class="icon-button" icon="Editor/Icons/plus.svg" tooltip="Add a component"/>
             </Panel>
             <Label id="inspector-note" class="form-help inspector-note" text="Simulating: the values follow the run; edits wait until it stops."/>

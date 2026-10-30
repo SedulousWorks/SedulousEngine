@@ -90,6 +90,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// Held: out of the splitter while hidden, nothing else holds it.
 	private Node mAnimationPane = null;
 	private bool mAnimationShown = false;
+	/// Takes a clip's open into the panel while the page is on screen; 0: none.
+	private uint64 mOpenClipInterceptor = 0;
 	/// After mEditContext (the tools borrow it), so deleted first.
 	/// What the tools and their panels were made with.
 	private ViewportToolHostContext mToolHost = .();
@@ -401,6 +403,25 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		// New: the clip named and placed in Create Asset (Animations and the entity's name to start),
 		// then opened; an animator on the entity with no clip yet plays it.
 		mAnimation.RequestNewClip = new [=this] () => { AskAboutClip(new [=this] () => { NewClip(); }); };
+		// Pick: the page's entity picker, the bound entity lit.
+		mAnimation.RequestPickEntity = new [=this] (current, chosen) =>
+			{
+				let request = new EntityPickRequest();
+				request.Current = current;
+				request.Chosen = chosen;
+				PickEntity(request);
+			};
+		// A clip opened from the browser or a slot while this page is on screen: into the panel,
+		// shown, bound to the selected entity (the old page's), not a page of its own.
+		mOpenClipInterceptor = mContext.AddOpenAssetInterceptor(new [=this] (instance) =>
+			{
+				if (!AssetTypeNames.Matches(instance.TypeName, "PropertyAnimationClipAsset") || !IsOnScreen)
+					return false;
+				SetAnimationPanelShown(true);
+				let selection = mEditContext.EntitySelection;
+				mAnimation.RequestEditClip(instance.Id, selection.IsEmpty ? Guid.Empty : selection.Primary);
+				return true;
+			});
 		mAnimationPane = pane;
 		mAnimationPane.AddRef();
 		pane.Parent.RemoveChild(pane); // hidden until shown
@@ -580,6 +601,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			frame.Height = mViewport.View.RenderHeight;
 			frame.Tools = mViewportTools;
 			frame.ComponentGizmos = mComponentGizmos;
+			if ((mAnimation != null) && mAnimationShown && mAnimation.Preview.IsPosing)
+				frame.Previewed = mAnimation.Preview.PosedEntity;
 			mOverlays.Draw(dd, frame);
 		}
 		if (mTools != null)
@@ -694,8 +717,16 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		return mEntityPicker.Open(root, request);
 	}
 
+	/// Whether its content is shown in the window now (its tab the one in front).
+	public bool IsOnScreen => (mContent != null) && (mContent.RootNode is SceneRoot) && mContent.IsTreeVisible;
+
 	public override void OnClose()
 	{
+		if (mOpenClipInterceptor != 0)
+		{
+			mContext.RemoveOpenAssetInterceptor(mOpenClipInterceptor);
+			mOpenClipInterceptor = 0;
+		}
 		DeleteAndNullify!(mAnimation); // what its preview posed goes back while the scene is here
 		DeleteAndNullify!(mEntityPicker); // it lets the scene's tree go before the scene does
 		DeleteAndNullify!(mCameraPreview); // its picture's targets go with the viewports, before the scene

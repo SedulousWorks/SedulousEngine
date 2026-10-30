@@ -298,6 +298,8 @@ class SceneInspectorView
 	private String mFilter = new .() ~ delete _;
 	private uint64 mSignature = ~(uint64)0;
 	private bool mReadOnly = false;
+	/// Paste Component's overwrite question (a reference of ours).
+	private Sedulous.GUI.MessageBox mPasteConfirm = null ~ _?.ReleaseRef();
 	// The transform and component edits made, each a group of its own.
 	private uint64 mEdits = 0;
 
@@ -328,6 +330,11 @@ class SceneInspectorView
 		}
 		if (let search = Find<TextField>("inspector-search"))
 			search.SetOnTextChanging(new (text) => { Search(text); });
+		if (let paste = Find<Sedulous.GUI.Button>("inspector-paste"))
+		{
+			paste.SetOnClick(new [=this] () => { PasteComponent(); });
+			paste.Displayed = false;
+		}
 		if (let add = Find<Sedulous.GUI.Button>("inspector-add"))
 			add.SetOnClick(new [=this] () => { OpenAddComponent(); });
 		mName = Find<TextField>("inspector-name");
@@ -355,6 +362,10 @@ class SceneInspectorView
 			search.SetOnTextChanging(null);
 		if (let add = Find<Sedulous.GUI.Button>("inspector-add"))
 			add.SetOnClick(null);
+		if (let paste = Find<Sedulous.GUI.Button>("inspector-paste"))
+			paste.SetOnClick(null);
+		if ((mPasteConfirm != null) && mPasteConfirm.IsOpen)
+			mPasteConfirm.Close(); // its answer would reach a gone view
 		if (mName != null)
 			mName.SetOnTextChanged(null);
 		Clear();
@@ -381,6 +392,7 @@ class SceneInspectorView
 		// The values as they are now (a gizmo's drag, an undo): the transforms read again, the
 		// notices asked again, the grid told, except while it is editing one (its row is the
 		// gesture's).
+		ShowPaste();
 		PullTransforms();
 		RefreshExtras();
 		if ((mGrid != null) && !mGrid.IsEditing)
@@ -461,6 +473,77 @@ class SceneInspectorView
 					outNames.Add(type.GetName(.. new String()));
 			});
 	}
+
+	/// Whether a copied component waits on the clipboard for the entities selected (Paste
+	/// Component's button shows then).
+	public bool CanPasteComponent => !mReadOnly && !mEntities.IsEmpty && (mServices.Context != null) &&
+		!mServices.Context.ClipboardData("component").IsEmpty;
+
+	private void ShowPaste()
+	{
+		if (let paste = Find<Node>("inspector-paste"))
+			paste.Displayed = CanPasteComponent;
+	}
+
+	/// Paste Component: the copied component onto every selected entity, one undo step; when one
+	/// has that component already, asked first (it is overwritten). False: nothing to do.
+	public bool PasteComponent()
+	{
+		if (!CanPasteComponent)
+			return false;
+		// Over a component an entity has, it overwrites it: asked first (the old inspector's).
+		let clip = mServices.Context.ClipboardData("component");
+		let scene = mEdit.Scene;
+		let typeId = SceneEditContext.PeekComponentTypeId(clip, .. scope .());
+		let manager = scene.FindManagerBySerializationId(typeId);
+		var overwrites = false;
+		for (let entity in mEntities)
+			overwrites = overwrites || ((manager != null) && manager.HasComponent(scene.FindEntity(entity)));
+		let root = (mPane != null) ? mPane.RootNode : null;
+		if (!overwrites || (manager == null) || !(root is SceneRoot))
+			return PasteComponentNow();
+		let title = scope String();
+		if (manager.ComponentType != null)
+			TitleOf(manager.ComponentType, title);
+		else
+			title.Append("component");
+		if (mPasteConfirm != null)
+		{
+			if (mPasteConfirm.IsOpen)
+				mPasteConfirm.Close();
+			mPasteConfirm.ReleaseRef();
+		}
+		let question = new Sedulous.GUI.MessageBox();
+		mPasteConfirm = question;
+		question.Configure("Overwrite Component?", scope $"{(mEntities.Count == 1) ? "This entity" : "An entity selected"} has a {title} component already. Pasting overwrites it (you can undo).", .Ok);
+		question.ClearButtons();
+		question.AddButton("Cancel", "cancel", .Cancel);
+		question.AddButton("Overwrite", "overwrite", .Primary);
+		question.AddEventListener(.Changed, new [=this, =question] (e) =>
+			{
+				if (question.ResultName == "overwrite")
+					PasteComponentNow();
+			});
+		question.OpenModal(root);
+		return true;
+	}
+
+	/// The same without asking (the confirm's yes).
+	public bool PasteComponentNow()
+	{
+		if (!CanPasteComponent)
+			return false;
+		let clip = mServices.Context.ClipboardData("component");
+		mEdit.Commands.BeginGroup("inspector.paste");
+		var pasted = false;
+		for (let entity in mEntities)
+			pasted = mEdit.PasteComponent(entity, clip) || pasted;
+		mEdit.Commands.EndGroup();
+		return pasted;
+	}
+
+	/// The overwrite question, while it is open.
+	public Sedulous.GUI.MessageBox PasteConfirm => ((mPasteConfirm != null) && mPasteConfirm.IsOpen) ? mPasteConfirm : null;
 
 	/// Adds a component of the type named `typeName` to every selected entity, one undo step.
 	public bool AddComponent(StringView typeName)
@@ -711,6 +794,7 @@ class SceneInspectorView
 			mGrid.Displayed = any || sceneShown;
 		if (let add = Find<Node>("inspector-add"))
 			add.Displayed = any; // a scene has settings, not components
+		ShowPaste();
 		BuildHead();
 		if (sceneShown)
 		{
