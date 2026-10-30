@@ -73,6 +73,8 @@ class InlineProjectOperations : IProjectOperations
 		let project = mSession.Project;
 		let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 		let importContext = scope ImportContext(project.SourcesRoot(.. scope .()));
+		importContext.OnConflict = request.OnConflict;
+		ImportPaths.ImportLedgerPath(project.CacheRoot(.. scope .()), importContext.LedgerPath);
 		let importer = request.Importer;
 
 		var started = Stopwatch.GetTimestamp();

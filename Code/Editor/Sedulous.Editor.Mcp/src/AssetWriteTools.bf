@@ -41,9 +41,11 @@ static class AssetWriteTools
 		importSchema.Str("group", "source-DB group path to place it in (slash-joined; default root)");
 		importSchema.Str("importer", "which importer to use when several claim the extension, by label (the result of an unhinted import lists them)");
 		importSchema.Map("options", "the importer's options, as the import dialog's checkboxes: {\"<toggle>\": true|false}, the toggle named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Generate LODs, Convex collision); unnamed toggles keep their defaults, and the result lists every toggle's value");
+		importSchema.Str("name", "the asset's name (a single-asset importer's; default: the file's stem)");
+		importSchema.Str("onConflict", "when another file's asset of this type has the name: refuse (default), replace, or keepBoth");
 		server.RegisterTool("asset_import",
 			"""
-			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. Does not cook - call asset_cook next.
+			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. A name held by an asset of another type is refused; one held by another file's asset of its type is refused unless `onConflict` says `replace` (that asset takes the new file, its guid and references kept) or `keepBoth` (the next free name); re-importing the same file replaces its asset. Does not cook - call asset_cook next.
 			""",
 			importSchema.Build(), .Creates,
 			new (call, arguments, outResult, outError) => Import(context, call, arguments, outResult, outError),
@@ -139,7 +141,51 @@ static class AssetWriteTools
 		request.Source = source;
 		request.GroupPath = McpTools.ArgString(arguments, "group", .. scope .());
 		request.Importer = importer;
-		request.Options = options;
+
+		// The name asked for, and what to do when another file's asset holds it.
+		let conflict = McpTools.ArgString(arguments, "onConflict", .. scope .());
+		if (conflict.IsEmpty || (conflict == "refuse"))
+			request.OnConflict = .Refuse;
+		else if (conflict == "replace")
+			request.OnConflict = .Replace;
+		else if (conflict == "keepBoth")
+			request.OnConflict = .KeepBoth;
+		else
+		{
+			outError.AppendF("onConflict is refuse, replace or keepBoth, not '{}'", conflict);
+			return .Failed;
+		}
+		var named = options;
+		let asked = McpTools.ArgString(arguments, "name", .. scope .());
+		ImportOptions own = null;
+		defer { delete own; }
+		if (!asked.IsEmpty)
+		{
+			if (named == null)
+			{
+				own = new ImportOptions();
+				named = own;
+			}
+			ClearAndDeleteItems!(named.Selection.Entries);
+			ImportPaths.SingleAssetPlan(source, named.Selection);
+			named.Selection.Entries[0].TargetName.Set(asked);
+		}
+		request.Options = named;
+
+		// The clash, refused here with what holds the name (the importer refuses too).
+		{
+			let project = session.Project;
+			let into = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
+			let ledger = ImportPaths.ImportLedgerPath(project.CacheRoot(.. scope .()), .. scope .());
+			let clash = scope ImportClash();
+			importer.FindClash(into, source, (named != null) ? named.Selection : null, ledger, clash);
+			if (!ImportPaths.ImportClashAllows(clash, request.OnConflict))
+			{
+				ImportPaths.DescribeImportClash(clash, outError);
+				outError.Append((clash.Kind == .OtherType) ? " Pass `name`." : " Pass `onConflict`: replace or keepBoth (or `name`).");
+				return .Failed;
+			}
+		}
 		let done = scope ImportOutcome();
 		switch (context.Operations.Import(call, request, done, outError))
 		{

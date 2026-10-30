@@ -4,6 +4,7 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Model;
+using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.ModelImporter;
@@ -173,6 +174,21 @@ class ModelFileImporter : IFileImporter
 		}
 	}
 
+	/// A model claims its folder (named after the file) and the manifest in it: another file's
+	/// model there is a clash of its type; anything else in the folder keeps the name apart as
+	/// before (the manifest takes the next free one).
+	public void FindClash(Group group, StringView sourcePath, ImportPlan plan, StringView ledgerPath, ImportClash outClash)
+	{
+		outClash.Clear();
+		let stem = ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath));
+		let modelGroup = group.GetGroup(stem);
+		if (modelGroup == null)
+			return;
+		ImportPaths.FindImportClash(modelGroup, stem, cManifestType, sourcePath, ledgerPath, outClash);
+		if (outClash.Kind == .OtherType)
+			outClash.Clear();
+	}
+
 	public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context,
 		Group group, ImportOptions options, Object prepared,
 		List<DeferredImportWrite> deferredWrites)
@@ -188,16 +204,42 @@ class ModelFileImporter : IFileImporter
 		if (sourceFileName.IsEmpty)
 			return .Err(.InvalidArgument);
 
+		// The clash rule (ImportPaths.FindImportClash) over the model's folder: another file's
+		// model there is refused, replaced or kept beside under the next folder name, as the
+		// context says; this file's own earlier import is re-imported in place.
+		let clash = scope ImportClash();
+		FindClash(group, sourcePath, null, context.LedgerPath, clash);
+		if (!ImportPaths.ImportClashAllows(clash, context.OnConflict))
+			return .Err(.AlreadyExists);
+		let folderName = scope String(ImportPaths.StemOf(sourceFileName));
+		var overwriteOwn = false; // a new model never writes over a file another one copied in
+		if ((clash.Kind == .Reimport) || ((clash.Kind == .SameType) && (context.OnConflict == .Replace)))
+		{
+			if (let previous = clash.Existing.ReadObject())
+			{
+				defer delete previous;
+				if (let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(previous)) as Asset)
+					overwriteOwn = asset.FileName.Value == sourceFileName;
+			}
+		}
+		else if (clash.Kind == .SameType)
+		{
+			let free = scope String();
+			group.UniqueGroupName(folderName, free); // KeepBoth
+			folderName.Set(free);
+		}
+
 		let fileName = scope String();
 		if (deferredWrites != null)
 		{
-			fileName.Set(sourceFileName);
+			// Named now (from what is there and the ledger), copied on the worker.
+			ImportPaths.SourcesNameFor(context, sourcePath, fileName, overwriteOwn);
 			let copy = new DeferredImportWrite();
 			copy.CopyFrom.Set(sourcePath);
-			PathJoin(context.SourcesRoot, sourceFileName, copy.CopyTo);
+			PathJoin(context.SourcesRoot, fileName, copy.CopyTo);
 			deferredWrites.Add(copy);
 		}
-		else if (ImportPaths.CopyIntoSources(context, sourcePath, fileName) case .Err(let error))
+		else if (ImportPaths.CopyIntoSources(context, sourcePath, fileName, overwriteOwn) case .Err(let error))
 		{
 			return .Err(error);
 		}
@@ -227,7 +269,7 @@ class ModelFileImporter : IFileImporter
 		if (sidecarsCopied)
 			GltfSidecars.Copy(sourcePath, context, deferredWrites);
 
-		let stem = ImportPaths.StemOf(fileName);
+		let stem = StringView(folderName); // the folder's and the manifest's name
 		let modelGroup = group.CreateGroup(stem);
 		if (modelGroup == null)
 			return .Err(.Unknown);

@@ -14,8 +14,10 @@ namespace Sedulous.Editor.App;
 // importer (a choice when several take it), its options (a check box per toggle), and what it
 // would create by kind, each kept or not and named, a kind's box keeping or leaving all of it. A
 // file still being read says so and shows when it is ready. The line under it says what Import
-// does, or why it waits, Import waiting with it. It is the view of an AssetImport session, which
-// does the work. Run is the editor's one import (a drop, Import...): at once when nothing needs
+// does, or why it waits, Import waiting with it. A name another asset holds is said on the file
+// (AssetImport.ClashOf): one of another type waits for a rename; another file's of its type offers
+// Replace or Keep both, Import waiting for the choice. It is the view of an AssetImport session,
+// which does the work. Run is the editor's one import (a drop, Import...): at once when nothing needs
 // review, else here.
 
 class ImportWindow
@@ -352,6 +354,7 @@ class ImportWindow
 				Add(mDetail, toggleBox);
 			}
 		}
+		ShowClash(file, index);
 		if (file.Plan.IsEmpty)
 		{
 			Add(mDetail, Text("It makes one asset, named after the file.", "form-help"));
@@ -410,12 +413,54 @@ class ImportWindow
 					{
 						if (let planned = Planned(index, e))
 							planned.TargetName.Set(text);
+						ShowWhy(); // a rename may free the name, or take one
 					});
+				// Committed (Enter, or leaving it): the clash line says what the name meets now.
+				name.SetOnTextChanged(new [=this] (text) => { Later(new [=this] () => { ShowDetail(); }); });
 				Add(line, keep);
 				Add(line, name);
 				Add(mDetail, line);
 			}
 		}
+	}
+
+	// What the file's name meets (AssetImport.ClashOf): nothing said when it is free or the file's
+	// own earlier import; another type's asset said, to rename; another file's of its type said,
+	// with Replace and Keep both.
+	private void ShowClash(AssetImport.File file, int index)
+	{
+		let clash = AssetImport.ClashOf(mSession, file, .. scope .());
+		if ((clash.Kind == .None) || (clash.Kind == .Reimport))
+			return;
+		let chosen = ImportPaths.ImportClashAllows(clash, file.OnConflict);
+		Add(mDetail, Text(ImportPaths.DescribeImportClash(clash, .. scope .()), chosen ? "form-help" : "form-help refused"));
+		if (clash.Kind != .SameType)
+			return;
+		let choices = Row("segmented");
+		AddChoice(choices, file, index, "Replace", "The asset there takes this file; what refers to it keeps working", .Replace);
+		AddChoice(choices, file, index, "Keep both", "This one under the next free name", .KeepBoth);
+		Add(mDetail, choices);
+	}
+
+	private void AddChoice(Node into, AssetImport.File file, int index, StringView text, StringView tip, ImportConflictChoice choice)
+	{
+		let segment = new Sedulous.GUI.Button();
+		segment.AddClass("segment");
+		segment.Text = text;
+		segment.Tooltip = tip;
+		segment.IsToggle = true;
+		segment.Checked = file.OnConflict == choice;
+		segment.SetOnClick(new [=this, =index, =choice] () =>
+			{
+				if ((mSession != null) && (index < mSession.Files.Count))
+					mSession.Files[index].OnConflict = choice;
+				Later(new [=this] () =>
+					{
+						ShowDetail();
+						ShowWhy();
+					});
+			});
+		Add(into, segment);
 	}
 
 	// File `index`'s plan entry `entry`, while the session still has it.

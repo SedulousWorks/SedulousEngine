@@ -51,15 +51,6 @@ map is [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
 
-### Importing over a same-named asset of another type keeps the old type
-`Group.CreateInstanceWithId` (Foundation/Sedulous.Content/src/Group.bf) returns the existing
-instance of that name whatever its type, so a reimport keeps its guid, but an import of a file
-of another kind over it does too: the GUI sample ports' screens, imported as `.gml` over the old
-`.sml` documents of the same name, stayed `UIDocumentAsset` holding GUI markup and failed to
-cook. Worked around through MCP (`asset_delete`, then import: the screens took new ids).
-Raptor's `Group::CreateInstanceWithId` behaves the same, so the rule is for both engines: refuse
-with a clear error, or replace the instance (and what of its guid and its references).
-
 ### A page save re-records a scene's prefab instances
 Saving the Snowline Meadow page after painting its vegetation mask re-recorded the scene's
 prefab instances (40 to 77, with member lists) though its entities (47) and components (55)

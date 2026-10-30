@@ -45,6 +45,24 @@ interface IFileImporter
 	{
 	}
 
+	/// The asset type a SINGLE-ASSET importer makes of `sourcePath`, for the name clash check before
+	/// an import; empty for an importer that makes several (a model's), which keeps its own names
+	/// apart.
+	StringView AssetTypeName(StringView sourcePath) => default;
+
+	/// The clash an import of `sourcePath` would meet in `group` under the names `plan` gives (null:
+	/// the file's own): what the editor's window shows on the file's row, and what an agent's import
+	/// is refused with. Default: a single asset (AssetTypeName) under its Asset entry's target, else
+	/// the file's stem; none when AssetTypeName is empty. An importer that makes several says what
+	/// it claims (a model, its folder).
+	void FindClash(Group group, StringView sourcePath, ImportPlan plan, StringView ledgerPath, ImportClash outClash)
+	{
+		outClash.Clear();
+		let typeName = AssetTypeName(sourcePath);
+		if (!typeName.IsEmpty)
+			ImportPaths.SingleAssetClash(group, sourcePath, typeName, plan, ledgerPath, outClash);
+	}
+
 	/// Re-import memory: the selection a PREVIOUS import of this source stored in the target
 	/// group, left empty when there is none or the importer does not support it.
 	///

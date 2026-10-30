@@ -7,6 +7,7 @@ using Sedulous.GUI;
 using Sedulous.GUI.Pipeline;
 using Sedulous.GUI.Resources;
 using Sedulous.Pipeline.Core;
+using Sedulous.Pipeline.Importer;
 using Sedulous.Resource;
 using Sedulous.VFS;
 
@@ -218,5 +219,108 @@ static class GuiPipelineTests
 		Test.Assert(GuiPipeline.ValidateDocument(GuiPipeline.cDocumentStarter, said));
 		GuiPipeline.ValidateStyleSheet(GuiPipeline.cStyleSheetStarter, said);
 		Test.Assert(said.IsEmpty);
+	}
+
+	private static void Write(StringView path, StringView text)
+		=> Test.Assert(WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Ok);
+
+	/// The asset file an instance names.
+	private static void FileOf(Instance instance, String outFileName)
+	{
+		let object = instance.ReadObject();
+		defer delete object;
+		outFileName.Append((Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Asset).FileName.Value);
+	}
+
+	/// The import's name clash rule, through the GUI importer (a document and a sheet share a stem
+	/// easily): a sheet over a document of the same name is refused, the document untouched;
+	/// re-importing the document's own file replaces it in place (its guid kept); another folder's
+	/// file of the same name is refused, kept beside ("menu.2", its own copy "menu.2.gml"), or takes
+	/// the asset over (guid kept), as the context says; and the window's check (FindClash) says so
+	/// first.
+	[Test]
+	public static void AnImportsNameClashesAnotherTypeRefusedAnotherFileRefusedKeptBesideOrReplacing()
+	{
+		GuiPipeline.RegisterAll();
+		let root = "scratch_guipipe_clash";
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let sources = PathJoin(root, "Sources", .. scope .());
+		let one = PathJoin(root, "one", .. scope .());
+		let two = PathJoin(root, "two", .. scope .());
+		let dbRoot = PathJoin(root, "db", .. scope .());
+		for (let folder in scope StringView[](sources, one, two, dbRoot))
+			Test.Assert(CreateDirectory(folder));
+		let doc = PathJoin(one, "menu.gml", .. scope .());
+		let sheet = PathJoin(one, "menu.css", .. scope .());
+		let otherDoc = PathJoin(two, "menu.gml", .. scope .());
+		Write(doc, "<Panel/>\n");
+		Write(sheet, "label { color: #fff; }\n");
+		Write(otherDoc, "<Label/>\n");
+
+		let mount = scope NativeFileSystem(dbRoot);
+		SerializerFactory factory = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let sourceDb = scope ContentDatabase(mount, factory, "asset");
+		let group = sourceDb.RootGroup;
+		IFileImporter importer = scope GuiFileImporter();
+		let context = scope ImportContext(sources);
+		ImportPaths.ImportLedgerPath(PathJoin(root, ".cache", .. scope .()), context.LedgerPath);
+
+		Instance firstInstance = null;
+		if (importer.Import(doc, context, group, null, null, null) case .Ok(let made))
+			firstInstance = made;
+		Test.Assert(firstInstance != null);
+		let id = firstInstance.Id;
+		Test.Assert(firstInstance.TypeName == "Sedulous.GUI.Pipeline.GuiDocumentAsset");
+
+		// A sheet named "menu": another type holds it. Said first, refused, nothing changed.
+		let plan = scope ImportPlan();
+		ImportPaths.SingleAssetPlan(sheet, plan);
+		let typeClash = scope ImportClash();
+		importer.FindClash(group, sheet, plan, context.LedgerPath, typeClash);
+		Test.Assert(typeClash.Kind == .OtherType);
+		Test.Assert(ImportPaths.DescribeImportClash(typeClash, .. scope .()).Contains("GuiDocumentAsset"));
+		context.OnConflict = .Replace; // no choice lets another type through
+		Test.Assert(importer.Import(sheet, context, group, null, null, null) case .Err);
+		Test.Assert(group.GetInstance("menu").TypeName == "Sedulous.GUI.Pipeline.GuiDocumentAsset");
+		// Under another name it comes in.
+		let named = scope ImportOptions();
+		ImportPaths.SingleAssetPlan(sheet, named.Selection);
+		named.Selection.Entries[0].TargetName.Set("menu sheet");
+		Test.Assert(importer.Import(sheet, context, group, named, null, null) case .Ok);
+		context.OnConflict = .Refuse;
+
+		// The document's own file again (edited): a re-import, in place, no question.
+		Write(doc, "<Panel id=\"edited\"/>\n");
+		let reimport = scope ImportClash();
+		importer.FindClash(group, doc, null, context.LedgerPath, reimport);
+		Test.Assert(reimport.Kind == .Reimport);
+		Instance again = null;
+		if (importer.Import(doc, context, group, null, null, null) case .Ok(let made))
+			again = made;
+		Test.Assert((again != null) && (again.Id == id));
+		Test.Assert(FileOf(again, .. scope .()) == "menu.gml");
+
+		// Another folder's menu.gml: refused by default.
+		let other = scope ImportClash();
+		importer.FindClash(group, otherDoc, null, context.LedgerPath, other);
+		Test.Assert(other.Kind == .SameType);
+		Test.Assert(importer.Import(otherDoc, context, group, null, null, null) case .Err);
+		Test.Assert(group.GetInstance("menu.2") == null);
+		// Kept beside: its own asset and its own copy; the first's untouched.
+		context.OnConflict = .KeepBoth;
+		Instance beside = null;
+		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
+			beside = made;
+		Test.Assert((beside != null) && (beside.Name == "menu.2") && (beside.Id != id));
+		Test.Assert(FileOf(beside, .. scope .()) == "menu.2.gml");
+		Test.Assert(FileOf(group.GetInstance("menu"), .. scope .()) == "menu.gml");
+		// Replacing: the first asset takes the other file, its guid kept.
+		context.OnConflict = .Replace;
+		Instance replaced = null;
+		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
+			replaced = made;
+		Test.Assert((replaced != null) && (replaced.Id == id));
+		Test.Assert(FileOf(replaced, .. scope .()) == "menu.2.gml"); // the other file's copy, the first's left alone
 	}
 }

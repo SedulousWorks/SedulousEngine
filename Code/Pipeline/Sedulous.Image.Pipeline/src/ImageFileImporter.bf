@@ -35,19 +35,18 @@ class ImageFileImporter : IFileImporter
 		=> ImportPaths.SingleAssetStoredSelection(group, sourcePath,
 			"Sedulous.Image.Pipeline.ImageAsset", outPlan);
 
+	public StringView AssetTypeName(StringView sourcePath) => "Sedulous.Image.Pipeline.ImageAsset";
+
 	public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context,
 		Group group, ImportOptions options, Object prepared,
 		List<DeferredImportWrite> deferredWrites)
 	{
 		let fileName = scope String();
-		if (ImportPaths.CopyIntoSources(context, sourcePath, fileName) case .Err(let copyError))
-			return .Err(copyError);
-
-		let stem = ImportPaths.StemOf(fileName);
-		let instance = group.CreateInstance(ImportPaths.SingleAssetName(options, stem),
-			"Sedulous.Image.Pipeline.ImageAsset");
-		if (instance == null)
-			return .Err(.Unknown);
+		// The name claimed by the clash rule, the file copied in beside any other's.
+		let claimed = ImportPaths.ClaimSingleAsset(context, group, options, sourcePath, "Sedulous.Image.Pipeline.ImageAsset", fileName);
+		if (claimed case .Err(let claimError))
+			return .Err(claimError);
+		let instance = claimed.Value;
 
 		let asset = scope ImageAsset();
 		asset.FileName.Set(fileName);

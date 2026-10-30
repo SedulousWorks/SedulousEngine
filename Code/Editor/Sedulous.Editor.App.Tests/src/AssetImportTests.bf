@@ -19,9 +19,37 @@ namespace Sedulous.Editor.App.Tests;
 /// that needs no review. Then what Sedulous adds so each behaviour has a test: a heavy file read
 /// on a worker, a read for a replaced importer or a closed window let go, a failed read; the
 /// bulk writes flushed on a worker before the editor is told; the cook of the group asked for;
-/// and an import waiting for a cook, its group found again when it runs.
+/// and an import waiting for a cook, its group found again when it runs. A name another asset
+/// holds: one of another type waits for a rename, another file's of its type for Replace or Keep
+/// both.
 static class AssetImportTests
 {
+	/// A single-asset importer of `ext` making a `typeName` asset (the clash check's input).
+	class SingleImporter : IFileImporter
+	{
+		private String mExt = new .() ~ delete _;
+		private String mType = new .() ~ delete _;
+
+		public this(StringView ext, StringView typeName)
+		{
+			mExt.Set(ext);
+			mType.Set(typeName);
+		}
+
+		public StringView Label => mExt;
+		public bool Accepts(StringView ext) => ext == mExt;
+		public StringView AssetTypeName(StringView sourcePath) => mType;
+
+		public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared, ImportPlan outPlan)
+			=> ImportPaths.SingleAssetPlan(sourcePath, outPlan);
+
+		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
+			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
+		{
+			return .Err(.NotSupported);
+		}
+	}
+
 	/// Takes ".crate": would make a mesh and a material, each kept or not and named as chosen.
 	class CrateImporter : IFileImporter
 	{
@@ -239,6 +267,8 @@ static class AssetImportTests
 			Raw = new HeavyImporter("Raw", "mesh");
 			importers.Register(Raw);
 			importers.Register(new HeavyImporter("Broken", "bad", true));
+			importers.Register(new SingleImporter("sheet", "Tests.SheetThing"));
+			importers.Register(new SingleImporter("thing", "Tests.ImportedThing"));
 			if (second)
 			{
 				importers.Register(new CrateImporter("Varnish"));
@@ -574,5 +604,36 @@ static class AssetImportTests
 			Test.Assert(bed.LastSaid == "The group the import goes in is gone: choose another.");
 			Test.Assert(!late.Committed, "it can go elsewhere");
 		}
+	}
+
+	[Test]
+	public static void ANameAnotherAssetHoldsWaitsAnotherTypeForARenameAnotherFilesForReplaceOrKeepBoth()
+	{
+		let bed = scope Bed("scratch_asset_import_clash");
+		Test.Assert(bed.Top.CreateInstance("menu", "Tests.ImportedThing") != null);
+		let why = scope String();
+
+		// A "SheetThing" named menu over an ImportedThing: said, no import, and no import at once either.
+		let other = bed.Import.Begin(scope StringView[]("/somewhere/menu.sheet"), bed.Top);
+		Test.Assert(other != null);
+		defer other.ReleaseRef();
+		Test.Assert(AssetImport.ClashOf(other, other.Files[0], .. scope .()).Kind == .OtherType);
+		Test.Assert(!AssetImport.CanImport(other, why));
+		Test.Assert(why.Contains("already a Tests.ImportedThing", true));
+		Test.Assert(!AssetImport.NeedsNoReview(other));
+		other.Files[0].OnConflict = .Replace; // no choice lets another type through
+		Test.Assert(!AssetImport.CanImport(other, why..Clear()));
+		other.Files[0].Plan.Entries[0].TargetName.Set("menu sheet"); // renamed: free
+		Test.Assert(AssetImport.CanImport(other, why..Clear()));
+
+		// An ImportedThing named menu that another file made: waits for the user's choice.
+		let same = bed.Import.Begin(scope StringView[]("/elsewhere/menu.thing"), bed.Top);
+		Test.Assert(same != null);
+		defer same.ReleaseRef();
+		Test.Assert(AssetImport.ClashOf(same, same.Files[0], .. scope .()).Kind == .SameType);
+		Test.Assert(!AssetImport.CanImport(same, why..Clear()));
+		Test.Assert(why.Contains("replace it, or keep both", true));
+		same.Files[0].OnConflict = .KeepBoth;
+		Test.Assert(AssetImport.CanImport(same, why..Clear()));
 	}
 }

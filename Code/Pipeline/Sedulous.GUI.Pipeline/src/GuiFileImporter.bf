@@ -24,18 +24,19 @@ class GuiFileImporter : IFileImporter
 	public void StoredSelection(Group group, StringView sourcePath, ImportPlan outPlan)
 		=> ImportPaths.SingleAssetStoredSelection(group, sourcePath, IsSheet(sourcePath) ? cStyleSheetType : cDocumentType, outPlan);
 
+	public StringView AssetTypeName(StringView sourcePath) => IsSheet(sourcePath) ? cStyleSheetType : cDocumentType;
+
 	public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context,
 		Group group, ImportOptions options, Object prepared,
 		List<DeferredImportWrite> deferredWrites)
 	{
 		let sheet = IsSheet(sourcePath);
 		let fileName = scope String();
-		if (ImportPaths.CopyIntoSources(context, sourcePath, fileName) case .Err(let copyError))
-			return .Err(copyError);
-		let stem = ImportPaths.StemOf(fileName);
-		let instance = group.CreateInstance(ImportPaths.SingleAssetName(options, stem), sheet ? cStyleSheetType : cDocumentType);
-		if (instance == null)
-			return .Err(.Unknown);
+		// The name claimed by the clash rule, the file copied in beside any other's.
+		let claimed = ImportPaths.ClaimSingleAsset(context, group, options, sourcePath, sheet ? cStyleSheetType : cDocumentType, fileName);
+		if (claimed case .Err(let claimError))
+			return .Err(claimError);
+		let instance = claimed.Value;
 		Result<void, ErrorCode> written;
 		if (sheet)
 		{

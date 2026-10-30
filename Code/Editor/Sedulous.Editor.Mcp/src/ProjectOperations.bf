@@ -38,6 +38,9 @@ struct ImportRequest
 	/// The importer's options, its defaults with the call's toggles applied; null when the
 	/// importer has none. BORROWED.
 	public ImportOptions Options = null;
+	/// What the import does when another file's asset of its type holds the name
+	/// (ImportConflictChoice): refused unless the call says.
+	public ImportConflictChoice OnConflict = .Refuse;
 }
 
 /// What asset_import reports: the created asset's identity and where the time went (the

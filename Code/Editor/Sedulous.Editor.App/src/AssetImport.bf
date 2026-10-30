@@ -19,7 +19,9 @@ namespace Sedulous.Editor.App;
 // then each is imported (its bulk writes flushed on a worker), the editor is told, and the group's
 // assets are cooked. Nothing changes the databases while a cook reads them: an import waits for it,
 // saying so. The group is held by its picker key and found again when it is used, so one deleted
-// meanwhile is never reached. The import window is its view.
+// meanwhile is never reached. A name another asset holds (ImportPaths.FindImportClash) is said on
+// the file: one of another type must be renamed; another file's of its type is replaced or kept
+// beside as the user chooses. The import window is its view.
 
 /// What an AssetImport works over.
 class AssetImportServices
@@ -64,6 +66,9 @@ class AssetImport
 		public FileState State = .Reading;
 		/// Bumped by each describe: a read for an importer since replaced is let go.
 		public uint64 Generation = 0;
+		/// What it does over another file's asset of its type under its name (ClashOf): Refuse
+		/// until the user chooses.
+		public ImportConflictChoice OnConflict = .Refuse;
 
 		public IFileImporter Importer => (ImporterIndex < Importers.Count) ? Importers[ImporterIndex] : null;
 		public StringView Name => ImportPaths.FileNameOf(Path);
@@ -82,6 +87,10 @@ class AssetImport
 		public bool Closed = false;
 		/// Imported: what the files' options and reads held went with the import, so it runs once.
 		public bool Committed = false;
+		/// The project's import ledger (ImportPaths.ImportLedgerPath).
+		public String LedgerPath = new .() ~ delete _;
+		/// The group they go in found again (AssetImport.GroupOf), for the clash check. Owned.
+		public delegate Group() FindGroup ~ delete _;
 	}
 
 	/// One file's import under way: what it needs, taken from its session's file, alive across
@@ -95,6 +104,8 @@ class AssetImport
 		public ImportOptions Options = null ~ delete _;
 		public Object Prepared = null ~ delete _;
 		public String GroupKey = new .() ~ delete _;
+		public ImportConflictChoice OnConflict = .Refuse;
+		public String LedgerPath = new .() ~ delete _;
 		public List<DeferredImportWrite> Writes = new .() ~ DeleteContainerAndItems!(_);
 	}
 
@@ -120,6 +131,9 @@ class AssetImport
 	{
 		let session = new Session();
 		GroupPicker.KeyOf(into, session.GroupKey);
+		session.FindGroup = new [=this, =session] () => GroupOf(session);
+		if (let project = Context.Project)
+			ImportPaths.ImportLedgerPath(project.CacheRoot(.. scope .()), session.LedgerPath);
 		for (let path in paths)
 		{
 			let file = new File();
@@ -154,7 +168,19 @@ class AssetImport
 			return false;
 		let toggles = scope List<ImportToggle>();
 		file.Options.GetToggles(toggles);
-		return toggles.IsEmpty;
+		return toggles.IsEmpty && ImportPaths.ImportClashAllows(ClashOf(session, file, .. scope .()), .Refuse);
+	}
+
+	/// The name clash a file's import would meet in the session's group under its plan's names,
+	/// into `outClash` (none while it is being read).
+	public static void ClashOf(Session session, File file, ImportClash outClash)
+	{
+		outClash.Clear();
+		if ((file.State != .Ready) || (file.Importer == null) || (session.FindGroup == null))
+			return;
+		let group = session.FindGroup();
+		if (group != null)
+			file.Importer.FindClash(group, file.Path, file.Plan, session.LedgerPath, outClash);
 	}
 
 	/// Chooses another importer for a file: its options anew, described again.
@@ -228,6 +254,12 @@ class AssetImport
 				outWhy.AppendF("{} could not be read: leave it out.", file.Name);
 				return false;
 			}
+			let clash = ClashOf(session, file, .. scope .());
+			if (!ImportPaths.ImportClashAllows(clash, file.OnConflict))
+			{
+				ImportPaths.DescribeImportClash(clash, outWhy);
+				return false;
+			}
 		}
 		if (kept == 0)
 		{
@@ -262,6 +294,8 @@ class AssetImport
 			pending.Path.Set(file.Path);
 			pending.Importer = file.Importer;
 			pending.GroupKey.Set(session.GroupKey);
+			pending.OnConflict = file.OnConflict;
+			pending.LedgerPath.Set(session.LedgerPath);
 			// The options and what was read go with the import, the plan's choices on the options.
 			pending.Options = file.Options;
 			file.Options = null;
@@ -391,6 +425,8 @@ class AssetImport
 		}
 		let started = Stopwatch.GetTimestamp();
 		let context = scope ImportContext(project.SourcesRoot(.. scope .()));
+		context.OnConflict = pending.OnConflict;
+		context.LedgerPath.Set(pending.LedgerPath);
 		let imported = pending.Importer.Import(pending.Path, context, group, pending.Options, pending.Prepared,
 			(mServices.Jobs != null) ? pending.Writes : null);
 		GlobalLog(.Information, "Import: '{}': {} ms on the main thread, {} deferred write(s)", name,
