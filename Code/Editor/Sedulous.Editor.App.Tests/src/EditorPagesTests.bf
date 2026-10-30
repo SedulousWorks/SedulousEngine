@@ -1070,4 +1070,27 @@ class EditorPagesTests
 		bed.Pages.SaveAs(two);
 		Test.Assert(PagesBed.FindWindow(bed.Root) == null);
 	}
+
+	[Test]
+	public static void AUsersOpenGoesFirstToAnEditorThatClaimsTheAssetElseItsPageOpens()
+	{
+		let bed = scope PagesBed("scratch_pages_open_for_user");
+		let claimed = scope List<Guid>();
+		let two = bed.Two.Id;
+		let interceptor = bed.Context.AddOpenAssetInterceptor(new [=claimed, =two] (instance) =>
+			{
+				if (instance.Id != two)
+					return false;
+				claimed.Add(instance.Id);
+				return true;
+			});
+		Test.Assert(bed.Pages.OpenForUser(bed.Two.Id));
+		Test.Assert(claimed.Count == 1);
+		Test.Assert(bed.Pages.Count == 0); // taken: no page
+		Test.Assert(bed.Pages.OpenForUser(bed.One.Id));
+		Test.Assert(bed.Pages.Count == 1); // not claimed: its page
+		Test.Assert(!bed.Pages.OpenForUser(Guid(7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0))); // no such asset
+		bed.Context.RemoveOpenAssetInterceptor(interceptor);
+		Test.Assert(bed.Pages.Open(bed.Two) != null); // a page open (MCP's page_open, a restore) is never claimed
+	}
 }

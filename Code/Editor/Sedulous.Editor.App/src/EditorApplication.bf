@@ -624,7 +624,7 @@ class EditorApplication : IApplication
 			assets.Cook = mCookService;
 			RefServices(); // the type icons
 			assets.Icons = mTypeIcons;
-			assets.Open = new (instance) => { mPages.Open(instance); };
+			assets.Open = new (instance) => { mPages.OpenForUser(instance.Id); };
 			assets.Picture = new (id) => mThumbnailService.Get(id);
 			assets.Operations = mAssetOps;
 			assets.Create = new (creator, group) => { mCreation.CreateAndOpen(creator, group); };
@@ -638,7 +638,7 @@ class EditorApplication : IApplication
 						mDock.BringToFront(EditorDock.cPanelAssets);
 				};
 			if (mContext.OpenAsset == null)
-				mContext.OpenAsset = new (id) => { mPages.Open(id); };
+				mContext.OpenAsset = new (id) => { mPages.OpenForUser(id); };
 		}
 		contents.Assets = new () =>
 			{

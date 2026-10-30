@@ -139,6 +139,20 @@ class EditorPages
 		return uiPage;
 	}
 
+	/// A user's open of the source asset `id` (the browser's, a slot's Open): an editor that claims
+	/// it takes it first (the scene page on screen takes a property animation clip into its panel);
+	/// else its page opens. False when nothing took it.
+	public bool OpenForUser(Guid id)
+	{
+		let sources = Sources;
+		let instance = (sources != null) ? sources.GetInstance(id) : null;
+		if (instance == null)
+			return false;
+		if ((mServices.Context != null) && mServices.Context.TryInterceptOpenAsset(instance))
+			return true;
+		return Open(instance) != null;
+	}
+
 	/// Opens (or brings forward) the page for the source asset `id`; null when there is none.
 	public UIEditorPage Open(Guid id)
 	{

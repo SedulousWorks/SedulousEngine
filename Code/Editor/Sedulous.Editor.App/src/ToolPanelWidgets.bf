@@ -70,6 +70,8 @@ class ToolPanelBody : UIWidget
 	private List<SliderRow> mSlides = new .() ~ DeleteContainerAndItems!(_);
 	private List<CheckRow> mChecks = new .() ~ DeleteContainerAndItems!(_);
 	private List<NoteRow> mNotes = new .() ~ DeleteContainerAndItems!(_);
+	/// AddPicture's: shown, not chosen.
+	private List<ChoicePicture> mPictures = new .() ~ DeleteContainerAndItems!(_);
 
 	public this()
 	{
@@ -126,6 +128,37 @@ class ToolPanelBody : UIWidget
 			button.ReleaseRef(); // the row's keeps it
 		}
 		mChoices.Add(group);
+		AddChild(row);
+		row.ReleaseRef(); // ours keeps it
+	}
+
+	/// A picture shown, not chosen, under `name` (a terrain's base layer, which erasing reveals):
+	/// `shown`'s picture once it has one, its icon meanwhile, its tooltip. Takes its picture; the
+	/// choice stays the caller's.
+	public void AddPicture(StringView name, ToolPanelChoice shown)
+	{
+		if (!name.IsEmpty)
+			AddHeading(name);
+		let row = new Panel();
+		row.AddClass("segmented");
+		let frame = new Panel();
+		frame.AddClass("segment");
+		frame.AddClass("picture");
+		frame.AddClass("shown"); // not a button: nothing to choose
+		frame.Tooltip = shown.Tooltip;
+		let image = new Image();
+		image.AddClass("segment-picture");
+		image.Source = shown.Icon;
+		image.HitTestVisible = false;
+		frame.AddChild(image);
+		image.ReleaseRef(); // the frame's keeps it
+		row.AddChild(frame);
+		frame.ReleaseRef(); // the row's keeps it
+		let picture = new ChoicePicture();
+		picture.Image = image;
+		picture.Ask = shown.Picture;
+		shown.Picture = null; // ours now
+		mPictures.Add(picture);
 		AddChild(row);
 		row.ReleaseRef(); // ours keeps it
 	}
@@ -235,6 +268,17 @@ class ToolPanelBody : UIWidget
 				}
 			}
 		}
+		for (let picture in mPictures)
+		{
+			if ((picture.Ask != null) && !picture.Shown)
+			{
+				if (let drawable = picture.Ask())
+				{
+					picture.Image.SetDrawable(drawable);
+					picture.Shown = true;
+				}
+			}
+		}
 		for (let slide in mSlides)
 		{
 			if (slide.Get == null)
@@ -270,6 +314,8 @@ class ToolPanelBody : UIWidget
 	public NumberField NumberAt(int index) => (index < mSlides.Count) ? mSlides[index].Number : null;
 	public Slider SliderAt(int index) => (index < mSlides.Count) ? mSlides[index].Slider : null;
 	public CheckBox CheckAt(int index) => (index < mChecks.Count) ? mChecks[index].Box : null;
+	/// The `index`th shown picture's image (AddPicture's); null: none.
+	public Image PictureAt(int index) => (index < mPictures.Count) ? mPictures[index].Image : null;
 
 	private void AddHeading(StringView name)
 	{

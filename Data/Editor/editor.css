@@ -380,6 +380,7 @@ waveform::playhead { background-color: var(--warning); }
 .tool-panel-body > .segmented { align-self: stretch; }
 .tool-panel-body button.segment { flex-grow: 1; }
 .tool-panel-body button.segment.picture { flex-grow: 0; padding: 2px; }
+.tool-panel-body .segment.shown { flex-grow: 0; padding: 2px; } /* a picture shown, not chosen (a terrain's base) */
 .segment-picture { width: 24px; height: 24px; border-radius: var(--radius-small); object-fit: cover; }
 .hud-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); }
 /* The real toast card takes the kit's frame. */
