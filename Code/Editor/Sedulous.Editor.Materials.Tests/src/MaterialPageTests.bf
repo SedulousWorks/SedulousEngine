@@ -82,7 +82,7 @@ class MaterialPageTests
 			Wood = Project.SourceDb.RootGroup.CreateInstance("Wood", typeof(MaterialAsset).GetFullName(.. scope .()));
 			Test.Assert(Wood != null);
 			let asset = scope MaterialAsset();
-			MaterialShaderLayout.SetBuiltInShader(asset.Source, false);
+			MaterialShaderLayout.SetBuiltInShader(asset.Source, .Pbr);
 			Test.Assert(Wood.WriteObject(asset) case .Ok);
 		}
 
@@ -157,6 +157,46 @@ class MaterialPageTests
 			Test.Assert(texture.Kind == .Reference);
 			Test.Assert(texture.ReferenceType == typeof(Texture), "a texture or a render texture");
 		}
+	}
+
+	[Test]
+	public static void ABuiltInSwitchedLaysTheRowsOutAsItsOwnAndItsUndoAsTheyWere()
+	{
+		let bed = scope Bed();
+		let page = bed.Open();
+		defer delete page;
+		Test.Assert(page.PropertyRows.FindInfo("Metallic") != null);
+		page.EditRow(page.MaterialRows, "builtIn", Sedulous.GUI.Variant((int64)1)); // Unlit
+		page.Refresh();
+		Test.Assert(page.Source.ShaderName == "unlit", page.Source.ShaderName);
+		Test.Assert(page.PropertyRows.FindInfo("Metallic") == null, "PBR's rows gone with it");
+		Test.Assert(page.PropertyRows.FindInfo("BaseColor") != null);
+		page.Commands.Undo();
+		page.Refresh();
+		Test.Assert(page.PropertyRows.FindInfo("Metallic") != null);
+	}
+
+	[Test]
+	public static void TheBuiltInRowOffersEachBuiltInPhongLaysTheMaterialOutAsItsOwnOneStep()
+	{
+		let bed = scope Bed();
+		let page = bed.Open();
+		defer delete page;
+		let builtIn = page.MaterialRows.FindInfo("builtIn");
+		Test.Assert(builtIn != null);
+		Test.Assert(builtIn.Choices.Count == 3);
+		Test.Assert(builtIn.Choices[2].Name == "Phong");
+
+		page.EditRow(page.MaterialRows, "builtIn", Sedulous.GUI.Variant((int64)2));
+		page.Refresh();
+		Test.Assert(page.Source.ShaderName == "phong");
+		Test.Assert(IntOf(page.MaterialRows, "builtIn") == 2);
+		Test.Assert(page.PropertyRows.FindInfo("Shininess") != null);
+		Test.Assert(page.PropertyRows.FindInfo("Metallic") == null);
+		page.Commands.Undo();
+		page.Refresh();
+		Test.Assert(page.Source.ShaderName == "forward");
+		Test.Assert(page.PropertyRows.FindInfo("Metallic") != null);
 	}
 
 	[Test]

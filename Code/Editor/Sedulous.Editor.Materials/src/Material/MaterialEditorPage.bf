@@ -29,7 +29,7 @@ namespace Sedulous.Editor.Materials;
 /// proxy bound to the cooked product then hot-swaps.
 ///
 /// The rows are the material's, not its fields' (a source in parallel arrays: names, offsets, a
-/// uniform blob): under Material its shader (a shader asset, or a built-in, PBR or Unlit) and its
+/// uniform blob): under Material its shader (a shader asset, or a built-in, PBR, Unlit or Phong) and its
 /// pipeline state (blend, depth, cull); under Properties each value its shader declares, by its type
 /// (a number, with the shader's range; two, three or four; an integer; a colour; a colour that may
 /// pass white, with its intensity); under Textures each texture slot, a slot taking what makes a
@@ -289,7 +289,17 @@ class MaterialEditorPage : AssetObjectPage
 			SnapshotSource(before);
 		mInGesture = false;
 		mGestureBefore.Clear();
+		// The rows follow a change of what the material holds (a built-in switched): the command's
+		// Execute below applies `after` over itself, so it cannot see that change.
+		let namesBefore = scope List<String>();
+		defer { ClearAndDeleteItems!(namesBefore); }
+		for (let name in asset.Source.PropertyNames)
+			namesBefore.Add(new String(name));
 		mutate(asset.Source);
+		var sameRows = namesBefore.Count == asset.Source.PropertyNames.Count;
+		for (int i = 0; sameRows && (i < namesBefore.Count); i++)
+			sameRows = namesBefore[i] == asset.Source.PropertyNames[i];
+		mRowsDirty |= !sameRows;
 		let after = scope List<uint8>();
 		SnapshotSource(after);
 		Commands.Execute(new EditMaterialCommand(this, mergeKey, before, after));

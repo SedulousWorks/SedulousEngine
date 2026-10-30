@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Materials; // BuiltinShading, MaterialPresets
 using Sedulous.Core;
 using Sedulous.Json;
 using Sedulous.Mcp;
@@ -19,10 +20,10 @@ static class MaterialShaderTool
 	{
 		let schema = scope SchemaBuilder();
 		schema.Str("material", "the material asset's guid", true);
-		schema.Str("shader", "a shader asset's guid, or `pbr` or `unlit`", true);
+		schema.Str("shader", "a shader asset's guid, or `pbr`, `unlit` or `phong`", true);
 		server.RegisterTool("material_set_shader",
 			"""
-			Put a material on a shader, as the material page's Shader row does: `shader` is a custom shader asset's guid (the material laid out by its cooked properties, every value whose name, type and size fit kept; the shader must have cooked: asset_cook first), or `pbr` / `unlit` for a built-in. Saves the material; asset_cook to see it. Returns the material's properties after. Use this, not asset_data_write of its shaderId, which leaves the material in its old layout.
+			Put a material on a shader, as the material page's Shader row does: `shader` is a custom shader asset's guid (the material laid out by its cooked properties, every value whose name, type and size fit kept; the shader must have cooked: asset_cook first), or `pbr`, `unlit` or `phong` for a built-in. Saves the material; asset_cook to see it. Returns the material's properties after. Use this, not asset_data_write of its shaderId, which leaves the material in its old layout.
 			""",
 			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
@@ -56,15 +57,16 @@ static class MaterialShaderTool
 			return false;
 		}
 
-		if ((shaderText == "pbr") || (shaderText == "unlit"))
+		let builtin = MaterialPresets.FindBuiltinShadingByShortName(shaderText);
+		if (builtin.HasValue)
 		{
-			MaterialShaderLayout.SetBuiltInShader(material.Source, shaderText == "unlit");
+			MaterialShaderLayout.SetBuiltInShader(material.Source, builtin.Value.Shading);
 		}
 		else
 		{
 			if (!(Guid.Parse(shaderText) case .Ok(let shaderId)))
 			{
-				outError.AppendF("'{}' is neither a shader asset's guid nor pbr or unlit", shaderText);
+				outError.AppendF("'{}' is neither a shader asset's guid nor pbr, unlit or phong", shaderText);
 				return false;
 			}
 			let shaderAsset = project.SourceDb.GetInstance(shaderId);

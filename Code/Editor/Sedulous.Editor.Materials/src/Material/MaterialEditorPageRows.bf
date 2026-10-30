@@ -18,7 +18,6 @@ extension MaterialEditorPage
 	private static readonly StringView[6] cBlendItems = .("Opaque", "Masked", "AlphaBlend", "Additive", "Multiply", "PremultipliedAlpha");
 	private static readonly StringView[4] cDepthItems = .("Disabled", "ReadWrite", "ReadOnly", "WriteOnly");
 	private static readonly StringView[3] cCullItems = .("None", "Back", "Front");
-	private static readonly StringView[2] cBuiltIns = .("PBR", "Unlit");
 	/// A number's parts, by their names in a group.
 	private static readonly StringView[4] cParts = .("x", "y", "z", "w");
 
@@ -35,13 +34,17 @@ extension MaterialEditorPage
 			return;
 		let src = asset.Source;
 
-		// The shader: a shader asset, or a built-in (PBR or Unlit) while it is on none.
+		// The shader: a shader asset, or a built-in (PBR, Unlit or Phong) while it is on none.
 		{
 			let shader = mMaterialRows.Add("shader", .Reference);
 			shader.DisplayName.Set("Shader");
 			shader.Description.Set("A shader asset the material is drawn with; cleared, a built-in");
 			shader.ReferenceType = typeof(ShaderResource);
-			AddChoiceRow(mMaterialRows, "builtIn", "Built-in", cBuiltIns);
+			// The built-ins by their labels, in BuiltinShading's order.
+			StringView[MaterialPresets.cBuiltinShadingCount] builtIns = default;
+			for (int i < builtIns.Count)
+				builtIns[i] = MaterialPresets.BuiltinShadings[i].Label;
+			AddChoiceRow(mMaterialRows, "builtIn", "Built-in", builtIns);
 			AddChoiceRow(mMaterialRows, "blend", "Blend", cBlendItems);
 			AddChoiceRow(mMaterialRows, "depth", "Depth", cDepthItems);
 			AddChoiceRow(mMaterialRows, "cull", "Cull", cCullItems);
@@ -161,7 +164,8 @@ extension MaterialEditorPage
 			return;
 		let src = asset.Source;
 		Show(mMaterialRows, "shader", Sedulous.GUI.Variant(GuidText(src.ShaderId, .. scope .())));
-		Show(mMaterialRows, "builtIn", Sedulous.GUI.Variant((int64)((src.ShaderName == "unlit") ? 1 : 0)));
+		let builtin = MaterialPresets.FindBuiltinShadingByShader(src.ShaderName);
+		Show(mMaterialRows, "builtIn", Sedulous.GUI.Variant((int64)(builtin.HasValue ? (int)builtin.Value.Shading : 0)));
 		if (let builtIn = mMaterialRows.FindInfo("builtIn"))
 		{
 			if (builtIn.Visible != src.ShaderId.IsNil)
@@ -230,7 +234,9 @@ extension MaterialEditorPage
 			switch (path)
 			{
 			case "shader": SwitchShader(GuidOf(value.AsString));
-			case "builtIn": SwitchToBuiltIn(index == 1);
+			case "builtIn":
+				if ((index >= 0) && (index < MaterialPresets.cBuiltinShadingCount))
+					SwitchToBuiltIn((BuiltinShading)index);
 			case "blend": ApplyEdit("blend", scope [&] (s) => { s.BlendMode = (BlendMode)index; });
 			case "depth": ApplyEdit("depth", scope [&] (s) => { s.DepthMode = (DepthMode)index; });
 			case "cull": ApplyEdit("cull", scope [&] (s) => { s.CullMode = (CullModeConfig)index; });

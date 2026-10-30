@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Materials; // BuiltinShading, MaterialPresets
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -10,7 +11,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Materials;
 
-/// The material's shader: a shader asset, or a built-in (PBR or Unlit) when it has none. A switch
+/// The material's shader: a shader asset, or a built-in (PBR, Unlit or Phong) when it has none. A switch
 /// is one undoable edit that re-lays the material by the new shader, keeping every value that
 /// still fits; the page follows its shader asset when it recooks.
 extension MaterialEditorPage
@@ -37,7 +38,7 @@ extension MaterialEditorPage
 			return;
 		if (shader.IsNil)
 		{
-			SwitchToBuiltIn(false);
+			SwitchToBuiltIn(.Pbr);
 			return;
 		}
 		let table = ReadShader(shader);
@@ -50,15 +51,15 @@ extension MaterialEditorPage
 		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetShader(s, shader, table); });
 	}
 
-	private void SwitchToBuiltIn(bool unlit)
+	private void SwitchToBuiltIn(BuiltinShading shading)
 	{
 		let asset = Edited;
 		if (asset == null)
 			return;
 		let current = asset.Source;
-		if (current.ShaderId.IsNil && ((current.ShaderName == "unlit") == unlit))
+		if (current.ShaderId.IsNil && (current.ShaderName == MaterialPresets.BuiltinShadingOf(shading).ShaderName))
 			return;
-		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetBuiltInShader(s, unlit); });
+		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetBuiltInShader(s, shading); });
 	}
 
 	/// Binds the material's shader asset (its resource registers it for the preview) and re-lays

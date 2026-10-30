@@ -78,5 +78,11 @@ static class MaterialShaderToolTests
 		defer delete onPbr;
 		Test.Assert(onPbr.Get("properties").Count == 16);
 		Test.Assert(onPbr.Get("shaderName").AsString() == "forward");
+
+		// On the built-in Phong: its eleven (six values, four maps, the sampler).
+		let onPhong = CallOk(server, "material_set_shader", With(With(Obj(), "material", materialId), "shader", "phong"));
+		defer delete onPhong;
+		Test.Assert(onPhong.Get("properties").Count == 11);
+		Test.Assert(onPhong.Get("shaderName").AsString() == "phong");
 	}
 }
