@@ -21,13 +21,14 @@
 // ending's music. Buttons click, and a delivery's points rise from under the score and fade. The
 // pad cheers a cleared block and slumps on a failed one (the bike and porches rumble their own).
 
-Guid kTitleDoc = Guid::FromString("fe1f3877-b6eb-ef43-8fba-f73add0b4d79");
-Guid kHudDoc = Guid::FromString("d544f8b1-309d-d342-be81-0e5db70589e9");
-Guid kClearedDoc = Guid::FromString("1a8b784d-a0bb-5041-ab52-0220e9674eca");
-Guid kFailedDoc = Guid::FromString("cb529d09-1aba-ba48-ae47-0b963765b35b");
-Guid kGameOverDoc = Guid::FromString("9a2304de-0e82-2846-af90-39b94b5cfe02");
-Guid kPauseDoc = Guid::FromString("d8ce1390-43fe-2c46-a1a2-f6132354621f");
-Guid kSettingsDoc = Guid::FromString("acf4c08b-a9b7-c84b-829f-3e8b2daca1fc");
+// The screens, on the engine GUI's screen stack: their documents by asset id.
+const string kTitleDoc = "{79ff1415-3645-3e4c-80e6-6478638c4a4c}";
+const string kHudDoc = "{d0ff2e93-ff1a-8a40-b10f-93209f42af4f}";
+const string kClearedDoc = "{339a9f1f-78bd-0849-953b-b45541400bb4}";
+const string kFailedDoc = "{9f898f82-4624-8045-b310-733575eb1026}";
+const string kGameOverDoc = "{d3fdf1b6-dba0-d649-b2d0-0214f3e53b1b}";
+const string kPauseDoc = "{94dd821d-1f47-9748-9cc1-239c264f6a9e}";
+const string kSettingsDoc = "{53fdc7e9-ec44-444f-a65b-bd50d5e6410f}";
 
 Guid kTitleMusic = Guid::FromString("92494f18-c682-6d47-8bbc-fa49f6917d4e");
 Guid kEndingMusic = Guid::FromString("eaa4c451-d3a3-ac4b-bccc-890a0ecec6e3");
@@ -49,6 +50,25 @@ const float kCelebrateSlowest = 0.12f;
 const float kCelebrateSeconds = 1.9f;
 const float kBannerDrop = 0.35f; // seconds for the banner to drop into place
 Guid kStart = Guid::FromString("abf41c6a-3a62-4a4f-830f-47fb88f610ff");
+
+ScreenStack@ screens() { return ScreenStack::Of(Gui.Root().Find("screens")); }
+// The top screen first: one just cleared or popped away is still in the tree while its exit plays,
+// with the same ids, and would be found first.
+Node@ find(string id)
+{
+	Screen@ top = screens().Top;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+void wire(string id, string event, EventHandler@ handler) { find(id).On(event, handler); } // `on*` names are the engine's handlers
+void setText(string id, string text)
+{
+	Node@ n = find(id);
+	if (n !is null)
+	{
+		Label::Of(n).Text = text;
+	}
+}
 
 const int kStartLives = 3;
 const int kTimeBonusPerSecond = 5;
@@ -75,7 +95,6 @@ class Game
 	private Phase m_settingsFrom = Phase::Title; // where Settings goes back to
 	private array<Guid> m_blockMusic;
 	private float m_endingIn = -1.0f; // seconds until the ending's music, after the final screen's voice
-	private float m_pop = 0.0f;       // seconds left of the points rising from the score
 	private float m_celebrated = 0.0f; // seconds into a cleared block's celebration
 	private int m_secondsLeft = 0;     // the clock when the block was cleared (its time bonus)
 
@@ -97,7 +116,6 @@ class Game
 	// The Game tier ticks at time scale 0 too, so the Pause action is read here in every phase.
 	void update(float dt)
 	{
-		tickPop(dt);
 		if (m_phase == Phase::Celebrating)
 		{
 			tickCelebration(dt);
@@ -120,11 +138,11 @@ class Game
 		}
 		else if (m_phase == Phase::Paused)
 		{
-			onResume();
+			resume();
 		}
 		else if (m_phase == Phase::Settings)
 		{
-			onSettingsBack();
+			settingsBack();
 		}
 	}
 
@@ -140,13 +158,16 @@ class Game
 		}
 		m_delivered += 1;
 		m_score += points;
-		Ui.FindLabel("hud-score").SetText("" + m_score);
-		UILabel pop = Ui.FindLabel("hud-pop");
-		pop.SetText("+" + points);
-		pop.SetOpacity(1.0f);
-		pop.SetTranslation(kPopX, kPopY);
-		pop.SetVisible(true);
-		m_pop = kPopSeconds;
+		setText("hud-score", "" + m_score);
+		// The points: up 36 px from under the score over the pop's time, fading out late.
+		Node@ pop = find("hud-pop");
+		if (pop !is null)
+		{
+			Label::Of(pop).Text = "+" + points;
+			pop.Tween("transform", "translate(" + kPopX + "px, " + (kPopY - 36.0f) + "px)", kPopSeconds, "linear")
+				.From("translate(" + kPopX + "px, " + kPopY + "px)");
+			pop.Tween("opacity", "0", kPopSeconds, "ease-in").From("1");
+		}
 	}
 
 	void onQuotaMet(int secondsLeft)
@@ -161,9 +182,10 @@ class Game
 		Input.Rumble(0.3f, 0.6f, 0.45f); // the cheer of a cleared block
 		Audio.StopMusic(1.2f);
 		Audio.PlayOneShot(kClearedFanfare, AudioBus::Music);
-		UILabel banner = Ui.FindLabel("hud-banner");
-		banner.SetOpacity(0.0f);
-		banner.SetVisible(true);
+		// The banner drops in over kBannerDrop, easing out.
+		Node@ banner = find("hud-banner");
+		banner.Tween("opacity", "1", kBannerDrop, "ease-out").From("0");
+		banner.Tween("transform", "translateY(0px)", kBannerDrop, "ease-out").From("translateY(-60px)");
 	}
 
 	// The block winds down under the banner, then its screen comes up and it freezes.
@@ -178,18 +200,9 @@ class Game
 		eased = 1.0f - (1.0f - eased) * (1.0f - eased);
 		Run.TimeScale = 1.0f + (kCelebrateSlowest - 1.0f) * eased;
 
-		UILabel banner = Ui.FindLabel("hud-banner");
-		float drop = m_celebrated / kBannerDrop;
-		if (drop > 1.0f)
-		{
-			drop = 1.0f;
-		}
-		banner.SetOpacity(drop);
-		banner.SetTranslation(0.0f, -60.0f * (1.0f - drop) * (1.0f - drop));
-
 		if (m_celebrated >= kCelebrateSeconds)
 		{
-			banner.SetVisible(false);
+			find("hud-banner").Tween("opacity", "0", 0.0f, "linear");
 			showCleared();
 		}
 	}
@@ -202,16 +215,14 @@ class Game
 		int bonus = m_secondsLeft * kTimeBonusPerSecond;
 		m_score += bonus;
 		m_banked = m_score;
-		Ui.FindLabel("hud-score").SetText("" + m_score);
-		UIScreen s = Ui.Push(kClearedDoc);
-		s.FindLabel("cleared-summary").SetText("" + m_delivered + " delivered, " + earned + " points + "
-											   + bonus + " time bonus");
-		UIButton next = s.FindButton("continue-btn");
+		setText("hud-score", "" + m_score);
+		screens().Push(kClearedDoc);
+		setText("cleared-summary", "" + m_delivered + " delivered, " + earned + " points + " + bonus + " time bonus");
 		if (m_level + 1 >= int(m_levels.length()))
 		{
-			next.SetText("Finish");
+			Button::Of(find("continue-btn")).Text = "Finish";
 		}
-		next.OnClick(ScriptCallback(this.onContinue));
+		wire("continue-btn", "click", EventHandler(this.onContinue));
 	}
 
 	void onLevelFailed(int reason)
@@ -226,22 +237,31 @@ class Game
 		Audio.StopMusic(0.3f);
 		Audio.PlayOneShot(kFailedJingle, AudioBus::Music);
 		m_lives -= 1;
-		Ui.FindLabel("hud-lives").SetText("" + m_lives);
+		setText("hud-lives", "" + m_lives);
 		if (m_lives <= 0)
 		{
 			showGameOver(false);
 			return;
 		}
-		UIScreen s = Ui.Push(kFailedDoc);
-		s.FindLabel("failed-reason").SetText(reason == 0 ? "Out of time" : "Out of papers");
-		s.FindLabel("failed-lives").SetText(m_lives == 1 ? "1 life left" : "" + m_lives + " lives left");
-		s.FindButton("retry-btn").OnClick(ScriptCallback(this.onRetry));
-		s.FindButton("menu-btn").OnClick(ScriptCallback(this.onToTitle));
+		screens().Push(kFailedDoc);
+		setText("failed-reason", reason == 0 ? "Out of time" : "Out of papers");
+		setText("failed-lives", m_lives == 1 ? "1 life left" : "" + m_lives + " lives left");
+		wire("retry-btn", "click", EventHandler(this.onRetry));
+		wire("menu-btn", "click", EventHandler(this.onToTitle));
 	}
 
 	// ---- buttons ----
 
-	void onNewGame()
+	bool onNewGame(GuiEvent@ e) { newGame(); return true; }
+	bool onRetry(GuiEvent@ e) { retry(); return true; }
+	bool onContinue(GuiEvent@ e) { continueRun(); return true; }
+	bool onResume(GuiEvent@ e) { resume(); return true; }
+	bool onSettings(GuiEvent@ e) { settings(); return true; }
+	bool onSettingsBack(GuiEvent@ e) { settingsBack(); return true; }
+	bool onToTitle(GuiEvent@ e) { toTitle(); return true; }
+	bool onQuit(GuiEvent@ e) { quit(); return true; }
+
+	private void newGame()
 	{
 		click();
 		m_level = 0;
@@ -251,69 +271,72 @@ class Game
 		startLevel();
 	}
 
-	void onRetry()
+	private void retry()
 	{
 		click();
 		startLevel();
 	}
 
-	void onContinue()
+	private void continueRun()
 	{
 		click();
 		m_level += 1;
 		if (m_level >= int(m_levels.length()))
 		{
 			m_level = int(m_levels.length()) - 1;
-			Ui.Pop(); // the Block cleared screen gives way to the summary
+			screens().Pop(); // the Block cleared screen gives way to the summary
 			showGameOver(true);
 			return;
 		}
 		startLevel();
 	}
 
-	void onResume()
+	private void resume()
 	{
 		click();
-		Ui.Pop(); // the pause menu
+		screens().Pop(); // the pause menu
 		Run.TimeScale = 1.0f;
 		m_phase = Phase::Playing;
 	}
 
-	void onSettings()
+	private void settings()
 	{
 		click();
 		m_settingsFrom = m_phase;
-		UIScreen s = Ui.Push(kSettingsDoc);
-		bindVolume(s, "master", AudioBus::Master, ScriptCallback(this.onMasterChanged));
-		bindVolume(s, "music", AudioBus::Music, ScriptCallback(this.onMusicChanged));
-		bindVolume(s, "effects", AudioBus::Effects, ScriptCallback(this.onEffectsChanged));
-		s.FindButton("settings-back-btn").OnClick(ScriptCallback(this.onSettingsBack));
+		screens().Push(kSettingsDoc);
+		bindVolume("master", AudioBus::Master, EventHandler(this.onMasterChanged));
+		bindVolume("music", AudioBus::Music, EventHandler(this.onMusicChanged));
+		bindVolume("effects", AudioBus::Effects, EventHandler(this.onEffectsChanged));
+		wire("settings-back-btn", "click", EventHandler(this.onSettingsBack));
 		m_phase = Phase::Settings;
 	}
 
-	void onSettingsBack()
+	private void settingsBack()
 	{
 		click();
-		Ui.Pop(); // the settings screen; the title or the pause menu is under it
+		screens().Pop(); // the settings screen; the title or the pause menu is under it
 		m_phase = m_settingsFrom;
 	}
 
-	void onMasterChanged()
+	bool onMasterChanged(GuiEvent@ e)
 	{
 		volumeChanged("master", AudioBus::Master);
+		return true;
 	}
 
-	void onMusicChanged()
+	bool onMusicChanged(GuiEvent@ e)
 	{
 		volumeChanged("music", AudioBus::Music);
+		return true;
 	}
 
-	void onEffectsChanged()
+	bool onEffectsChanged(GuiEvent@ e)
 	{
 		volumeChanged("effects", AudioBus::Effects);
+		return true;
 	}
 
-	void onToTitle()
+	private void toTitle()
 	{
 		click();
 		Run.LoadScene(kStart);
@@ -321,7 +344,7 @@ class Game
 		showTitle();
 	}
 
-	void onQuit()
+	private void quit()
 	{
 		click();
 		Run.RequestExit(0);
@@ -334,11 +357,10 @@ class Game
 	{
 		m_score = m_banked;
 		m_delivered = 0;
-		Ui.Clear();
-		Ui.Push(kHudDoc);
-		Ui.FindLabel("hud-score").SetText("" + m_score);
-		Ui.FindLabel("hud-lives").SetText("" + m_lives);
-		m_pop = 0.0f;
+		screens().Clear();
+		screens().Push(kHudDoc);
+		setText("hud-score", "" + m_score);
+		setText("hud-lives", "" + m_lives);
 		m_endingIn = -1.0f;
 		Audio.PlayMusic(m_blockMusic[m_level % int(m_blockMusic.length())], 0.8f, kMusicVolume);
 		Run.TimeScale = 1.0f;
@@ -349,11 +371,11 @@ class Game
 	private void pause()
 	{
 		Run.TimeScale = 0.0f;
-		UIScreen s = Ui.Push(kPauseDoc);
-		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
-		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRetry));
-		s.FindButton("settings-btn").OnClick(ScriptCallback(this.onSettings));
-		s.FindButton("menu-btn").OnClick(ScriptCallback(this.onToTitle));
+		screens().Push(kPauseDoc);
+		wire("resume-btn", "click", EventHandler(this.onResume));
+		wire("restart-btn", "click", EventHandler(this.onRetry));
+		wire("settings-btn", "click", EventHandler(this.onSettings));
+		wire("menu-btn", "click", EventHandler(this.onToTitle));
 		m_phase = Phase::Paused;
 	}
 
@@ -362,42 +384,18 @@ class Game
 		Audio.PlayOneShot(kClickSound, AudioBus::Effects, 0.7f);
 	}
 
-	// The delivery's points: up 36 px from under the score over the pop's time, fading out late.
-	private void tickPop(float dt)
-	{
-		if (m_pop <= 0.0f)
-		{
-			return;
-		}
-		m_pop -= dt;
-		UILabel pop = Ui.FindLabel("hud-pop");
-		if (!pop.IsValid)
-		{
-			m_pop = 0.0f;
-			return;
-		}
-		if (m_pop <= 0.0f)
-		{
-			pop.SetVisible(false);
-			return;
-		}
-		float t = 1.0f - m_pop / kPopSeconds;
-		pop.SetTranslation(kPopX, kPopY - 36.0f * t);
-		pop.SetOpacity(1.0f - t * t);
-	}
-
 	// A volume row: its slider at the bus's level, its readout, and the handler.
-	private void bindVolume(UIScreen s, string row, AudioBus bus, ScriptCallback@ handler)
+	private void bindVolume(string row, AudioBus bus, EventHandler@ handler)
 	{
-		UISlider slider = s.FindSlider(row + "-slider");
-		slider.SetValue(Audio.BusVolume(bus));
-		showVolume(row, slider.Value);
-		slider.OnChanged(handler);
+		Slider@ slider = Slider::Of(find(row + "-slider"));
+		slider.Value = Audio.BusVolume(bus);
+		showVolume(row, float(slider.Value));
+		wire(row + "-slider", "input", handler); // each step as the slider moves
 	}
 
 	private void volumeChanged(string row, AudioBus bus)
 	{
-		float level = Ui.FindSlider(row + "-slider").Value;
+		float level = float(Slider::Of(find(row + "-slider")).Value);
 		Audio.SetBusVolume(bus, level);
 		showVolume(row, level);
 		Audio.PlayOneShot(kSliderSound, AudioBus::Effects, 0.6f); // hear the level being set
@@ -405,7 +403,7 @@ class Game
 
 	private void showVolume(string row, float level)
 	{
-		Ui.FindLabel(row + "-value").SetText("" + int(level * 100.0f + 0.5f) + "%");
+		setText(row + "-value", "" + int(level * 100.0f + 0.5f) + "%");
 	}
 
 	private void showGameOver(bool won)
@@ -422,13 +420,12 @@ class Game
 			Audio.PlayOneShot(kGameOverVoice, AudioBus::Effects);
 		}
 		m_endingIn = won ? 4.2f : 2.0f; // the ending's music once the fanfare or the voice is done
-		UIScreen s = Ui.Push(kGameOverDoc);
-		s.FindLabel("over-title").SetText(won ? "Route complete!" : "Game over");
-		s.FindLabel("over-score").SetText("Score " + m_score);
-		s.FindLabel("over-reached").SetText(won ? "Every block delivered"
-												: "Reached block " + (m_level + 1) + " of " + m_levels.length());
-		s.FindButton("again-btn").OnClick(ScriptCallback(this.onNewGame));
-		s.FindButton("menu-btn").OnClick(ScriptCallback(this.onToTitle));
+		screens().Push(kGameOverDoc);
+		setText("over-title", won ? "Route complete!" : "Game over");
+		setText("over-score", "Score " + m_score);
+		setText("over-reached", won ? "Every block delivered" : "Reached block " + (m_level + 1) + " of " + m_levels.length());
+		wire("again-btn", "click", EventHandler(this.onNewGame));
+		wire("menu-btn", "click", EventHandler(this.onToTitle));
 	}
 
 	private void showTitle()
@@ -436,10 +433,10 @@ class Game
 		m_phase = Phase::Title;
 		m_endingIn = -1.0f;
 		Audio.PlayMusic(kTitleMusic, 0.8f, kMusicVolume);
-		Ui.Clear();
-		UIScreen s = Ui.Push(kTitleDoc);
-		s.FindButton("play-btn").OnClick(ScriptCallback(this.onNewGame));
-		s.FindButton("settings-btn").OnClick(ScriptCallback(this.onSettings));
-		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));
+		screens().Clear();
+		screens().Push(kTitleDoc);
+		wire("play-btn", "click", EventHandler(this.onNewGame));
+		wire("settings-btn", "click", EventHandler(this.onSettings));
+		wire("quit-btn", "click", EventHandler(this.onQuit));
 	}
 }

@@ -1,13 +1,13 @@
 <root>
-	<string name="guid">9a2304de-0e82-2846-af90-39b94b5cfe02</string>
-	<string name="typeName">Sedulous.UI.Pipeline.UIDocumentAsset</string>
+	<string name="guid">d3fdf1b6-dba0-d649-b2d0-0214f3e53b1b</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
 	<array name="dataVersions" count="1">
-		<u64 name="type">5440813216362558612</u64>
+		<u64 name="type">13358085703002792026</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">GameOver.sml</string>
+			<string name="fileName">GameOver.gml</string>
 		</object>
 	</object>
 </root>

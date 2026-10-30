@@ -6,6 +6,17 @@
 // The HUD has this many subscriber dots (map-sub-0 ...).
 const uint kDots = 8;
 
+// A HUD element: the top screen's first, then any (a HUD just replaced is still in the tree while it
+// leaves, with the same ids, and would be found first). Named for this script: the behaviours
+// compile into one module, beside Level.as's hud().
+Node@ markersHud(string id)
+{
+	ScreenStack@ stack = ScreenStack::Of(Gui.Root().Find("screens"));
+	Screen@ top = stack !is null ? stack.Top : null;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+
 class MapMarkers
 {
 	Entity self;
@@ -17,6 +28,7 @@ class MapMarkers
 	[2, "The delivery zones' collision group"] int zoneGroup;
 
 	private array<Entity> m_zones;
+	private array<int> m_waiting; // each dot's state shown: 1 waiting, 0 delivered, -1 not yet shown
 	private bool m_found = false;
 
 	void onUpdate(float dt)
@@ -29,30 +41,34 @@ class MapMarkers
 		}
 		for (uint i = 0; i < m_zones.length(); i++)
 		{
-			UIView dot = Ui.Find("map-sub-" + i);
-			if (!dot.IsValid)
+			Node@ dot = markersHud("map-sub-" + i);
+			if (dot is null)
 			{
 				continue;
 			}
 			Entity marker = m_zones[i].FindChildByName("Marker");
-			bool waiting = marker.IsValid() && marker.IsActive();
-			dot.SetOpacity(waiting ? 1.0f : 0.3f);
+			int waiting = marker.IsValid() && marker.IsActive() ? 1 : 0;
+			if (waiting != m_waiting[i]) // the sheet's 0 until placed, then full or dimmed
+			{
+				m_waiting[i] = waiting;
+				dot.Tween("opacity", waiting == 1 ? "1" : "0.3", 0.0f, "linear");
+			}
 		}
 		if (!bike.IsValid())
 		{
 			return;
 		}
-		UIView arrow = Ui.Find("map-bike");
-		if (!arrow.IsValid)
+		Node@ arrow = markersHud("map-bike");
+		if (arrow is null)
 		{
 			return;
 		}
-		place(arrow, bike.GetLocalTransform().Position, 10.0f, 16.0f);
 		// The bike faces its local +Z; on the map that points (x, z) with z down the screen, and a
-		// view turns clockwise from up.
+		// view turns clockwise from up. Set every frame (a tween of no length replaces the last).
 		Float3 f = RotateVector(bike.GetLocalTransform().Rotation, Float3(0.0f, 0.0f, 1.0f));
-		arrow.SetRotation(RadiansToDegrees(Atan2(f.X, -f.Z)));
-		arrow.SetVisible(true);
+		arrow.Tween("transform", at(bike.GetLocalTransform().Position, 10.0f, 16.0f) + " rotate(" + RadiansToDegrees(Atan2(f.X, -f.Z)) + "deg)",
+			0.0f, "linear");
+		arrow.Tween("opacity", "1", 0.0f, "linear");
 	}
 
 	private void findZones()
@@ -68,21 +84,22 @@ class MapMarkers
 		for (uint i = 0; i < zones.length() && i < kDots; i++)
 		{
 			m_zones.insertLast(zones[i]);
-			UIView dot = Ui.Find("map-sub-" + i);
-			if (dot.IsValid)
+			m_waiting.insertLast(-1);
+			Node@ dot = markersHud("map-sub-" + i);
+			if (dot !is null)
 			{
-				place(dot, zones[i].GetWorldPosition(), 12.0f, 12.0f);
-				dot.SetVisible(true);
+				dot.Tween("transform", at(zones[i].GetWorldPosition(), 12.0f, 12.0f), 0.0f, "linear");
 			}
 		}
 	}
 
-	// Centre a marker of the given pixel size on a world position.
-	private void place(UIView marker, Float3 world, float width, float height)
+	// The move that centres a marker of the given pixel size on a world position, from the map's
+	// corner (a CSS transform).
+	private string at(Float3 world, float width, float height)
 	{
 		Float3 c = self.GetLocalTransform().Position;
 		float u = ((world.X - c.X) / span + 0.5f) * mapSize;
 		float v = ((world.Z - c.Z) / span + 0.5f) * mapSize;
-		marker.SetTranslation(u - width * 0.5f, v - height * 0.5f);
+		return "translate(" + (u - width * 0.5f) + "px, " + (v - height * 0.5f) + "px)";
 	}
 }

@@ -34,7 +34,9 @@ def resolve(match):
 ok = True
 for name in names:
     text = open(os.path.join(HERE, "scripts", name + ".as")).read()
-    text = re.sub(r"\{\{([^}]+)\}\}", resolve, text)
+    # A name starts with a word character, so "{{{Title}}}" (a GUI document, wanted braced) keeps its
+    # outer braces: "{<id>}".
+    text = re.sub(r"\{\{(\w[^{}]*)\}\}", resolve, text)
     if not check:
         open(os.path.join(SOURCES, name + ".as"), "w").write(text)
     v = mcp("script_validate", {"source": text, "language": "angelscript", "name": name + ".as"})

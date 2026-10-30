@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">1d925b0a-0c26-8644-a9d5-5cb1f0d858be</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiStyleSheetAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5871759161733652681</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">PaperKidSheet.css</string>
+			<string name="previewMarkup"/>
+		</object>
+	</object>
+</root>

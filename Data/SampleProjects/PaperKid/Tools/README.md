@@ -35,6 +35,11 @@ Raptor's PaperKid tools, ported to this engine's asset envelopes, schema keys an
 - `touch.py`: the touch controls in the input map (Controls): a floating stick on the left half,
   Throw in the bottom-right corner, Pause small in the top-left. It replaces only the map's touch
   bindings, so it can run again after a change.
+- `ui/*.gml` + `ui/PaperKidSheet.css` + `importui.py`: the screens on the engine GUI (Title, Hud,
+  Cleared, Failed, GameOver, Pause, Settings) and the sheet that gives them the morning edition's
+  look, the project's GUI sheet; `importui.py` checks each with `gui_validate`, imports them and
+  cooks. The game script names the screens by id (`"{{{Title}}}"`, a braced id), so run
+  `render.py PaperKidGame` after their first import.
 - `scripts/*.as` + `render.py`: the game's scripts with `{{AssetName}}` placeholders (a prefab
   sharing a script's name is `{{Prefab:Name}}`); `render.py <Name>...` fills in the asset ids,
   writes `Sources/<Name>.as` and compile-checks it. `--check` compiles without writing; `--draft`

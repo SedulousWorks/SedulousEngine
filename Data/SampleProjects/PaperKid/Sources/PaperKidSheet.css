@@ -1,0 +1,115 @@
+/* PaperKid's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): the morning
+   edition. Every screen is printed on the paper the kid delivers: cream newsprint cards with an
+   inked border and an offset print shadow, ink text, headlines in the paper band's red, and the
+   porch markers' yellow for whatever a key or pad has focused. Its screens are Title, Hud, Cleared,
+   Failed, GameOver, Pause and Settings (PaperKidGame.as pushes them).
+
+   The palette: paper #F4ECD8, paper shade #E4D6B8, ink #2A251F, soft ink #6A5F52, headline red
+   #C8372D (pressed #9C2820), marker yellow #FFD23F. */
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+screen.fades:entering { animation: fade-in 0.3s ease-out; }
+
+label { color: #2A251F; }
+
+/* ---- the page behind a screen, and the cards on it ---- */
+
+.dim { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; padding: 32px;
+       background-color: rgba(34, 26, 16, 0.45); }
+.dim.heavy { background-color: rgba(34, 26, 16, 0.65); }
+.card { flex-direction: column; align-items: center; background-color: #F4ECD8; border: 3px solid #2A251F;
+        border-radius: 6px; box-shadow: 6px 8px 0 rgba(42, 37, 31, 0.45); }
+/* A failed block's card is edged in headline red. */
+.card-bad { border: 4px solid #C8372D; }
+/* A highlighter stroke behind a headline (the Block cleared screen's good news). */
+.highlight { padding: 6px; background-color: #FFD23F; border-radius: 3px; }
+/* The rule under a headline, as on a front page. */
+.rule { width: 460px; height: 4px; background-color: #2A251F; border-radius: 1px; }
+
+.slab { font-family: "Alfa Slab One"; font-size: 56px; }
+.masthead { color: #C8372D; }
+.headline { color: #2A251F; }
+.headline-bad { color: #C8372D; }
+.body { color: #2A251F; }
+.note { color: #6A5F52; }
+
+/* A strip of paper for the hint under the title's buttons. */
+.strip { padding: 8px; background-color: #F4ECD8; border: 2px solid #2A251F; border-radius: 4px; }
+
+/* ---- buttons: paper with an inked edge; the main one in headline red ---- */
+
+button { height: 52px; font-size: 31px; color: #2A251F; background-color: #F4ECD8; border: 2px solid #2A251F;
+         border-radius: 6px; padding: 6px 16px; box-shadow: 4px 5px 0 rgba(42, 37, 31, 0.4); }
+button:hover { background-color: #FFF7E4; border: 3px solid #C8372D; }
+button:active { background-color: #E4D6B8; border: 3px solid #2A251F; }
+button:focus-visible { background-color: #FFD23F; border: 3px solid #2A251F; }
+button:disabled { background-color: #E4D6B8; border: 2px solid #6A5F52; color: #6A5F52; }
+button.primary { color: #F4ECD8; background-color: #C8372D; border: 2px solid #2A251F; }
+button.primary:hover { background-color: #DE4A3F; border: 3px solid #2A251F; }
+button.primary:active { background-color: #9C2820; border: 3px solid #2A251F; }
+button.primary:focus-visible { background-color: #C8372D; border: 4px solid #FFD23F; }
+button.big { height: 58px; font-size: 34px; }
+
+.menu { flex-direction: column; align-items: stretch; gap: 10px; width: 300px; }
+
+/* ---- the title ---- */
+
+.front-page { padding: 28px; gap: 6px; }
+.title-name { font-family: "Lilita One"; font-size: 88px; }
+.tagline { font-size: 31px; }
+.title-menu { width: 320px; gap: 14px; margin-top: 40px; margin-bottom: 32px; }
+.hint { font-size: 23px; }
+
+/* ---- the result cards (cleared, failed, game over, pause, settings) ---- */
+
+.result-card { padding: 40px; gap: 8px; }
+.summary { font-size: 31px; }
+.lives { font-size: 26px; }
+.over-score { font-size: 39px; }
+.reached { font-size: 29px; }
+.result-menu { margin-top: 24px; }
+.pause-menu { margin-top: 18px; }
+
+/* ---- the settings' volume sliders: an inked groove, a red fill, a paper thumb ---- */
+
+.volumes { flex-direction: column; gap: 16px; margin-top: 22px; }
+.volume-row { flex-direction: row; align-items: center; gap: 16px; }
+.volume-name { width: 110px; font-size: 29px; }
+.volume-value { width: 64px; font-size: 26px; }
+slider.volume { width: 280px; height: 30px; }
+slider::track { background-color: #E4D6B8; border: 2px solid #2A251F; border-radius: 4px; height: 10px; }
+slider::fill { background-color: #C8372D; border-radius: 4px; }
+slider::thumb { background-color: #F4ECD8; border: 2px solid #2A251F; border-radius: 12px; width: 24px; }
+slider:hover::thumb { background-color: #FFF7E4; border: 3px solid #C8372D; }
+slider:focus-visible::thumb { background-color: #FFD23F; border: 3px solid #2A251F; }
+slider::focus { opacity: 0; } /* the focused thumb is marked by its colour, as every focused control is: no ring as well */
+button.back { width: 240px; margin-top: 28px; }
+.settings-hint { font-size: 23px; margin-top: 14px; }
+
+/* ---- the HUD: a folded strip of paper over the street ---- */
+
+.hud-screen { flex-grow: 1; flex-direction: row; justify-content: space-between; align-items: start; padding: 18px;
+              pointer-events: none; }
+.hud { background-color: #F4ECD8; border: 3px solid #2A251F; border-radius: 6px;
+       box-shadow: 4px 6px 0 rgba(42, 37, 31, 0.4); }
+.stats { flex-direction: row; align-items: center; gap: 30px; padding: 14px; }
+.stat { flex-direction: column; align-items: center; }
+.hud-caption { font-size: 21px; color: #6A5F52; }
+.hud-value { font-size: 44px; color: #2A251F; }
+.hud-alert { font-size: 44px; color: #C8372D; }
+/* Over the street itself (the points rising from the score, a cleared block's banner): the
+   marker yellow, which reads over road, grass and sky alike. */
+.over-scene { color: #FFD23F; font-family: "Alfa Slab One"; }
+.hud-pop { position: absolute; left: 18px; top: 18px; font-size: 30px; opacity: 0; }
+.banner-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; justify-content: center; align-items: center; }
+.hud-banner { font-size: 84px; opacity: 0; }
+
+/* The minimap: the image, and markers placed over it from its corner (MapMarkers.as). */
+.map-card { padding: 6px; }
+.map { width: 200px; height: 200px; }
+.map-image { position: absolute; left: 0; top: 0; width: 200px; height: 200px; }
+.map-dot { position: absolute; left: 0; top: 0; width: 12px; height: 12px; border-radius: 6px;
+           background-color: rgb(255, 214, 102); border: 2px solid rgb(20, 22, 28); opacity: 0; } /* until MapMarkers.as places it */
+.map-bike { position: absolute; left: 0; top: 0; width: 10px; height: 16px; border-radius: 3px; align-items: center;
+            background-color: rgb(240, 70, 60); border: 1px solid rgb(20, 22, 28); opacity: 0; } /* until MapMarkers.as places it */
+.map-bike-nose { width: 6px; height: 5px; margin-top: 1px; border-radius: 2px; background-color: rgb(255, 255, 255); }

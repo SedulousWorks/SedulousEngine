@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """setup.py <raw-dir>: a fresh project's first run, what the other tools build on: the fonts and
 the audio imported from <raw-dir> (the third-party files CREDITS.md lists), the primitive meshes,
-the input map, the minimap's render texture, the screens and their theme (from <raw-dir> too;
-once imported, Sources/ holds them), a navigation zone per block and the scenes the blocks are
+the input map, the minimap's render texture (importui.py then imports the screens), a navigation zone per block and the scenes the blocks are
 written into. Everything is made once and found by name after, so a rerun changes nothing."""
 import os, re, sys, tempfile
 import xml.etree.ElementTree as ET
@@ -123,21 +122,8 @@ edit_payload(created("Controls", "InputMapAsset", "Input Map"), write_controls)
 edit_payload(created("Minimap", "RenderTextureAsset", "Render Texture", "Textures"),
              lambda body: set_fields(body, width=256, height=256))
 
-# The screens and the theme. The HUD's minimap image is the Minimap texture, by id
-# ({{Minimap}} in the source).
-minimap = existing()[("Minimap", "RenderTextureAsset")]
-for file_name in ("Title.sml", "Hud.sml", "Pause.sml", "Settings.sml", "Cleared.sml", "Failed.sml", "GameOver.sml",
-                  "PaperKidTheme.sss"):
-    asset_type = "UIThemeAsset" if file_name.endswith(".sss") else "UIDocumentAsset"
-    name = os.path.splitext(file_name)[0]
-    if (name, asset_type) in existing():
-        continue
-    if RAW is None:
-        raise SystemExit("%s is not imported yet: run setup.py <raw-dir>" % file_name)
-    text = open(os.path.join(RAW, file_name)).read().replace("{{Minimap}}", minimap)
-    staged = os.path.join(tempfile.mkdtemp(), file_name)
-    open(staged, "w").write(text)
-    print("imported", file_name, mcp("asset_import", {"source": staged, "group": "UI"})["guid"])
+# The screens are importui.py's (ui/*.gml on the engine GUI, over ui/PaperKidSheet.css), run after
+# this: the HUD's minimap is the Minimap texture above, by id.
 
 # The scripts' assets (render.py writes their sources): the Game, each block's Level, and the
 # behaviours.
@@ -163,7 +149,7 @@ for block in range(1, 6):
 for scene in ("Start", "Block1", "Block2", "Block3", "Block4", "Block5"):
     created(scene, "SceneDocument", "Scene")
 
-# The manifest: the title's scene first, the Game script, the controls, the newsprint theme, Oswald
+# The manifest: the title's scene first, the Game script, the controls, Oswald
 # for the HUD and text with the masthead's, the headlines' and Roboto beside it, and a 1280x720
 # frame, letterboxed.
 have = existing()
@@ -171,7 +157,7 @@ mcp("project_settings_set", {
     "defaultSceneId": have[("Start", "SceneDocument")],
     "startupScriptId": have[("PaperKidGame", "ScriptClassAsset")],
     "defaultInputMapId": have[("Controls", "InputMapAsset")],
-    "defaultUiThemeId": have[("PaperKidTheme", "UIThemeAsset")],
+    "defaultUiThemeId": "", # cleared: the newsprint look is the GUI sheet's now (importui.py)
     "defaultUiFontId": have[("Oswald-SemiBold", "FontAsset")],
     "uiFontIds": [have[("LilitaOne-Regular", "FontAsset")], have[("AlfaSlabOne-Regular", "FontAsset")],
                   have[("Roboto-Bold", "FontAsset")]],

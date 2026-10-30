@@ -24,6 +24,16 @@ const float kHurryMusicRate = 1.2f; // 20% faster
 const float kHurryMusicEase = 0.6f; // seconds to get there
 const float kTicksFrom = 10.0f;
 
+// A HUD element: the top screen's first, then any (a HUD just replaced is still in the tree while it
+// leaves, with the same ids, and would be found first).
+Node@ hud(string id)
+{
+	ScreenStack@ stack = ScreenStack::Of(Gui.Root().Find("screens"));
+	Screen@ top = stack !is null ? stack.Top : null;
+	Node@ n = top !is null ? top.Find(id) : null;
+	return n !is null ? n : Gui.Root().Find(id);
+}
+
 class Level
 {
 	Scene@ scene;
@@ -45,6 +55,7 @@ class Level
 	private bool m_trafficSet = false;
 	private bool m_hurried = false;
 	private int m_lastTick = -1; // the whole second last ticked
+	private bool m_dimmed = false; // the clock dimmed by the blink
 
 	void onStart()
 	{
@@ -135,10 +146,9 @@ class Level
 			Audio.PlayOneShot(kHurrySound, AudioBus::Effects);
 			Audio.SetVoicePitch(Audio.MusicVoice(), kHurryMusicRate, kHurryMusicEase);
 		}
-		UILabel time = Ui.FindLabel("hud-time");
 		if (m_timeLeft > kTicksFrom)
 		{
-			time.SetOpacity(1.0f);
+			blink(false);
 			return;
 		}
 		int second = int(m_timeLeft);
@@ -148,7 +158,19 @@ class Level
 			Audio.PlayOneShot(kTickSound, AudioBus::Effects, 0.7f);
 		}
 		// Dim for the second half of every second: a blink in step with the ticks.
-		time.SetOpacity((m_timeLeft - float(second)) < 0.5f ? 0.35f : 1.0f);
+		blink((m_timeLeft - float(second)) < 0.5f);
+	}
+
+	// The clock dimmed or not, set when it changes.
+	private void blink(bool dim)
+	{
+		Node@ time = hud("hud-time");
+		if (time is null || dim == m_dimmed)
+		{
+			return;
+		}
+		m_dimmed = dim;
+		time.Tween("opacity", dim ? "0.35" : "1", 0.0f, "linear");
 	}
 
 	// The outcome goes out on the scene bus, which in a run is the run's: the Game and the Bike
@@ -156,7 +178,7 @@ class Level
 	private void end(bool cleared, int reason)
 	{
 		m_ended = true;
-		Ui.FindLabel("hud-time").SetOpacity(1.0f); // not left dim by the blink
+		blink(false); // not left dim by the blink
 		updateHud();
 		if (cleared)
 		{
@@ -170,8 +192,12 @@ class Level
 
 	private void updateHud()
 	{
-		Ui.FindLabel("hud-time").SetText("" + int(m_timeLeft + 0.99f));
-		Ui.FindLabel("hud-papers").SetText("" + m_papersLeft);
-		Ui.FindLabel("hud-deliveries").SetText("" + m_delivered + " / " + quota);
+		if (hud("hud-time") is null)
+		{
+			return; // the HUD is not up
+		}
+		Label::Of(hud("hud-time")).Text = "" + int(m_timeLeft + 0.99f);
+		Label::Of(hud("hud-papers")).Text = "" + m_papersLeft;
+		Label::Of(hud("hud-deliveries")).Text = "" + m_delivered + " / " + quota;
 	}
 }
