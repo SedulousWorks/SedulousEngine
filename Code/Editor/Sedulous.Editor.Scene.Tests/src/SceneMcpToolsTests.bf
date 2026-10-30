@@ -778,6 +778,9 @@ class SceneMcpToolsTests
 			Test.Assert(got.Ok, got.Error);
 			let targets = animations.Get(rider).MeshEntities;
 			Test.Assert((targets.Count == 2) && (targets[0].Id == boardId) && targets[1].IsNil);
+			// Each element its id, as a lone reference is (not an object of its Id field).
+			Test.Assert(got.Payload.Get("value").At(0).AsString() == boardId.ToString(.. scope .()));
+			Test.Assert(got.Payload.Get("value").At(1).IsNull);
 		}
 		{
 			let got = Set("InstancedMeshComponent", "Tints", "[[1,0,0,1],[0,0,1,0.5]]");

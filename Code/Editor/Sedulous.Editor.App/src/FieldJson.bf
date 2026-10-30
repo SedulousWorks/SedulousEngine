@@ -47,6 +47,7 @@ static class FieldJson
 				return GuidJson(id);
 			return JsonValue.MakeNull();
 		}
+		// An entity reference is its id, alone or a list's element, before the struct's own fields.
 		if (type == typeof(EntityRef))
 		{
 			let id = ((EntityRef*)address).Id;
