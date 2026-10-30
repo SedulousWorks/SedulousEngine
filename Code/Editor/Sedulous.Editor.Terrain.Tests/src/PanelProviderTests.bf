@@ -81,6 +81,12 @@ class PanelProviderTests
 		Test.Assert(splatPanel.ChoiceAt(0, 5).Checked);
 		for (int i < 6)
 			Test.Assert(!splatPanel.ChoiceAt(0, i).Tooltip.IsEmpty);
+		// The base above them, shown and not chosen (erasing reveals it); its tooltip names it.
+		let @base = splatPanel.PictureAt(0);
+		Test.Assert(@base != null);
+		Test.Assert(@base.Parent != null);
+		Test.Assert((@base.Parent as UIWidget).Tooltip.StartsWith("The base layer"));
+		Test.Assert(splatPanel.PictureAt(1) == null);
 		Test.Assert(splatPanel.ChoiceCount(1) == 3);
 		Test.Assert(splatPanel.ChoiceAt(1, 0).Checked); // painting
 		splatPanel.ChoiceAt(1, 1).HandleActivate(); // Erase

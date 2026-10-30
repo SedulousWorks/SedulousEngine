@@ -57,6 +57,20 @@ class SplatPanelProvider : IViewportToolPanelProvider
 		LayerSet.Resolve(context.Scene, layers);
 		let body = new ToolPanelBody();
 
+		// The base, shown and never chosen: it is never painted, erasing reveals it.
+		if (layers.Count > 0)
+		{
+			let @base = scope ToolPanelChoice();
+			@base.Tooltip.Append("The base layer: ");
+			TerrainToolPanels.AlbedoName(context.EditorContext, layers.BaseId, @base.Tooltip);
+			@base.Tooltip.Append(". It is never painted; Erase reveals it.");
+			@base.Icon.Set("Editor/Icons/texture.svg");
+			let baseId = layers.BaseId;
+			if ((thumbs != null) && !baseId.IsNil)
+				@base.Picture = new [=thumbs, =baseId] () => thumbs.Get(baseId);
+			body.AddPicture("Base (erase to reveal)", @base);
+		}
+
 		// The layers, numbered from 1 as their keys are (and the Terrain page names them), each its
 		// albedo's picture once there is one. With no terrain resolved, four.
 		let count = (layers.Count > 0) ? layers.Count : 4;
