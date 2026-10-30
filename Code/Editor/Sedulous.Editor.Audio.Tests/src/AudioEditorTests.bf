@@ -8,128 +8,10 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Audio.Tests;
 
-/// The audio editor's registration, the bus layout edits and tree, the sound cue snapshot
-/// and the clip thumbnail.
+/// The clip thumbnail and the audition's voice. (The pages' registrations are their own tests'; the
+/// bus layout's rules are BusLayoutPageTests'.)
 class AudioEditorTests
 {
-	[Test]
-	public static void RegisteringRoutesTheThreeAssets()
-	{
-		let context = scope EditorContext();
-		AudioEditor.Register(context, null);
-		Test.Assert(context.Pages.FindFactory(typeof(AudioClipAsset)) != null);
-		Test.Assert(context.Pages.FindFactory(typeof(SoundCueAsset)) != null);
-		Test.Assert(context.Pages.FindFactory(typeof(AudioBusLayoutAsset)) != null);
-	}
-
-	[Test]
-	public static void WouldCycleCatchesDirectAndTransitiveCycles()
-	{
-		let asset = scope AudioBusLayoutAsset();
-		asset.Custom[0].Name.Set("A");
-		asset.Custom[0].Parent.Set("B");
-		asset.Custom[1].Name.Set("B");
-		asset.Custom[1].Parent.Set("C");
-		asset.Custom[2].Name.Set("C");
-		asset.Custom[2].Parent.Set("Master");
-		Test.Assert(AudioBusLayoutEdit.WouldCycle(asset, 2, "A"));
-		Test.Assert(AudioBusLayoutEdit.WouldCycle(asset, 2, "B"));
-		Test.Assert(!AudioBusLayoutEdit.WouldCycle(asset, 2, "Effects"));
-		Test.Assert(!AudioBusLayoutEdit.WouldCycle(asset, 2, "Master"));
-		Test.Assert(AudioBusLayoutEdit.WouldCycle(asset, 0, "A"));
-		Test.Assert(!AudioBusLayoutEdit.WouldCycle(asset, 0, "Nope"));
-	}
-
-	[Test]
-	public static void TheBusTreeFollowsParentsAndTheEditsKeepItConsistent()
-	{
-		let asset = scope AudioBusLayoutAsset();
-		Test.Assert(AudioBusLayoutEdit.AddBus(asset) == 0);
-		Test.Assert((asset.Custom[0].Name == "Bus1") && (asset.Custom[0].Parent == "Master"));
-		Test.Assert(AudioBusLayoutEdit.AddBus(asset) == 1);
-		asset.Custom[1].Parent.Set("Bus1");
-		asset.Custom[2].Name.Set("Ambience");
-		asset.Custom[2].Parent.Set("effects"); // case insensitive
-		asset.Custom[3].Name.Set("Lost");
-		asset.Custom[3].Parent.Set("Nowhere"); // unknown: under Master
-
-		let tree = scope BusTreeSnapshot();
-		tree.Rebuild(asset);
-		// Four fixed plus four named slots.
-		Test.Assert(tree.Nodes.Count == 8);
-		Test.Assert(tree.Roots.Count == 1);
-		Test.Assert(tree.Nodes[0].Children.Count == 5); // Effects, Music, UI, Bus1, Lost
-		Test.Assert(tree.Nodes[1].Children.Count == 1); // Ambience under Effects
-		Test.Assert(tree.Label(asset, tree.Nodes[1].Children[0]) == "Ambience");
-		let bus1 = tree.Nodes[0].Children[3];
-		Test.Assert((tree.Label(asset, bus1) == "Bus1") && (tree.Nodes[bus1].Children.Count == 1));
-		Test.Assert(tree.Nodes[tree.Nodes[bus1].Children[0]].Depth == 2);
-		Test.Assert(BusTreeSnapshot.BusOf(asset, tree.Nodes[2]) === asset.Music);
-		Test.Assert(BusTreeSnapshot.BusOf(asset, tree.Nodes[bus1]) === asset.Custom[0].Bus);
-
-		// A rename follows the children; a fixed or taken name is refused.
-		Test.Assert(!AudioBusLayoutEdit.RenameBus(asset, 0, "Music"));
-		Test.Assert(!AudioBusLayoutEdit.RenameBus(asset, 0, "Ambience"));
-		Test.Assert(AudioBusLayoutEdit.RenameBus(asset, 0, "Drums"));
-		Test.Assert(asset.Custom[1].Parent == "Drums");
-		// A removal re-parents the children to Master and empties the slot.
-		asset.Custom[0].Bus.Volume = 0.5f;
-		Test.Assert(AudioBusLayoutEdit.RemoveBus(asset, 0));
-		Test.Assert(asset.Custom[0].Name.IsEmpty && (asset.Custom[0].Bus.Volume == 1.0f));
-		Test.Assert(asset.Custom[1].Parent == "Master");
-		tree.Rebuild(null);
-		Test.Assert(tree.Nodes.IsEmpty);
-	}
-
-	[Test]
-	public static void TheBusLayoutSnapshotRoundTripsBusesAndSlots()
-	{
-		AudioPipeline.RegisterAll();
-		let a = scope AudioBusLayoutAsset();
-		a.Music.Volume = 0.3f;
-		a.Effects.LowpassHz = 1500.0f;
-		a.Custom[0].Name.Set("drums");
-		a.Custom[0].Parent.Set("Effects");
-		a.Custom[0].Bus.LowpassHz = 1200.0f;
-		a.Custom[0].Bus.ReverbWet = 0.4f;
-		let blob = scope List<uint8>();
-		AudioBusLayoutEdit.Snapshot(a, blob);
-		let b = scope AudioBusLayoutAsset();
-		Test.Assert(AudioBusLayoutEdit.Apply(b, blob));
-		Test.Assert((b.Music.Volume == 0.3f) && (b.Effects.LowpassHz == 1500.0f));
-		Test.Assert((b.Custom[0].Name == "drums") && (b.Custom[0].Parent == "Effects"));
-		Test.Assert((b.Custom[0].Bus.LowpassHz == 1200.0f) && (b.Custom[0].Bus.ReverbWet == 0.4f));
-		Test.Assert(!AudioBusLayoutEdit.Apply(b, blob));
-	}
-
-	[Test]
-	public static void TheSoundCueSnapshotRoundTripsSlotsAndJitter()
-	{
-		AudioPipeline.RegisterAll();
-		let a = scope SoundCueAsset();
-		a.Slots[0].ClipId = Guid(0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x22);
-		a.Slots[2].ClipId = Guid(0x33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x44);
-		a.Slots[0].Weight = 2.5f;
-		a.Slots[2].Weight = 0.5f;
-		a.Mode = 2;
-		a.PitchMin = 0.9f;
-		a.PitchMax = 1.1f;
-		a.VolumeMin = 0.8f;
-		a.VolumeMax = 1.0f;
-		let b = scope SoundCueAsset();
-		SoundCueAssetEdit.CopyTo(a, b);
-		Test.Assert(b.Slots[0].ClipId == a.Slots[0].ClipId);
-		Test.Assert(b.Slots[1].ClipId.IsNil);
-		Test.Assert(b.Slots[2].ClipId == a.Slots[2].ClipId);
-		Test.Assert((b.Slots[0].Weight == 2.5f) && (b.Slots[2].Weight == 0.5f));
-		Test.Assert((b.Mode == 2) && (b.PitchMin == 0.9f) && (b.VolumeMax == 1.0f));
-		Test.Assert(SoundCueAssetEdit.HasAnyClip(b));
-		Test.Assert(SoundCueAssetEdit.ModeLabel(2) == "Mode: Sequential");
-		Test.Assert(SoundCueAssetEdit.ModeLabel(0) == "Mode: Random (no repeat)");
-		let empty = scope SoundCueAsset();
-		Test.Assert(!SoundCueAssetEdit.HasAnyClip(empty));
-	}
-
 	private static int BarHeight(Image tile, int x)
 	{
 		let px = tile.PixelData;
@@ -194,8 +76,8 @@ class AudioEditorTests
 		return clip;
 	}
 
-	/// The audio pages' per-frame check keeps a paused audition, which the engine keeps too, so
-	/// Play resumes it; only a finished or stopped voice ends it.
+	/// The audition's voice: a paused audition is still the audition (the engine keeps the voice,
+	/// and Play resumes it); only a finished or stopped voice ends it; none plays without an engine.
 	[Test]
 	public static void APausedAuditionIsStillTheAudition()
 	{
@@ -206,25 +88,34 @@ class AudioEditorTests
 		Test.Assert(clip != null);
 		defer delete clip;
 
-		var parameters = AudioPlayParams();
-		parameters.AllowDedupe = false;
-		let voice = engine.Play(clip, parameters);
-		Test.Assert(AuditionVoice.Track(engine, voice, var status) == .Playing);
+		let voice = scope AuditionVoice(engine);
+		Test.Assert(voice.HasEngine);
+		Test.Assert(voice.Start(clip, AudioPlayParams()));
+		Test.Assert(voice.IsPlaying);
+		float cursor = 0.0f;
+		Test.Assert(voice.Poll(out cursor));
 
-		engine.SetPaused(voice, true);
+		voice.SetPaused(true);
 		for (int i < 5)
 			engine.Update(0.1f);
-		Test.Assert(AuditionVoice.Track(engine, voice, out status) == .Paused);
-		// What the pages asked before: false while paused, which ended the audition.
-		Test.Assert(!engine.IsPlaying(voice));
+		Test.Assert(voice.Poll(out cursor), "paused: still the audition");
+		Test.Assert(voice.IsPaused && voice.IsActive);
 
-		engine.SetPaused(voice, false);
-		Test.Assert(AuditionVoice.Track(engine, voice, out status) == .Playing);
-		engine.Stop(voice);
+		voice.SetPaused(false);
+		Test.Assert(voice.Poll(out cursor) && voice.IsPlaying);
+		voice.SetVolume(0.5f);
+		Test.Assert(Math.Abs(voice.Volume - 0.5f) < 1e-5f);
+
+		// Played again: the last voice stopped first, one at a time.
+		Test.Assert(voice.Start(clip, AudioPlayParams()));
+		voice.Stop();
 		for (int i < 5)
 			engine.Update(0.1f);
-		Test.Assert(AuditionVoice.Track(engine, voice, out status) == .Gone);
-		Test.Assert(AuditionVoice.Track(null, voice, out status) == .Gone);
-		Test.Assert(AuditionVoice.Track(engine, .(), out status) == .Gone);
+		Test.Assert(!voice.Poll(out cursor));
+		Test.Assert(!voice.IsActive);
+
+		let none = scope AuditionVoice((Sedulous.Engine.Audio.AudioSubsystem)null);
+		Test.Assert(!none.HasEngine);
+		Test.Assert(!none.Start(clip, AudioPlayParams()));
 	}
 }

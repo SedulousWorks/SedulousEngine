@@ -1,23 +1,25 @@
 using System;
 using Sedulous.Content;
-using Sedulous.Runtime.Client;
 using Sedulous.Audio.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// Opens an AudioClipAsset in the clip page.
+/// Opens an AudioClipAsset in the clip page; a page asks for its services when it is made.
 class AudioClipPageFactory : IEditorPageFactory
 {
-	/// Borrowed.
-	private IApplicationHost mHost;
+	/// Borrowed: the editor's (or a test's), which outlives it.
+	private AssetPageServicesSource mServices;
 
-	public this(IApplicationHost host)
+	/// `services` is borrowed and outlives it.
+	public this(AssetPageServicesSource services)
 	{
-		mHost = host;
+		mServices = services;
 	}
 
 	public Type PrimaryType => typeof(AudioClipAsset);
 
-	public EditorPage CreatePage(EditorContext context, Instance instance) => new AudioClipEditorPage(context, mHost, instance);
+	public EditorPage CreatePage(EditorContext context, Instance instance) =>
+		new AudioClipEditorPage(context, mServices.Make(), instance);
 }

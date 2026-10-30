@@ -1,0 +1,49 @@
+<!--
+  The input map page (Raptor's editor-gui spec, 5.4, layer 5, part 4; the user's choice of
+  the designs in Editor/Mock/input-*.gml): the kit's bar (Save, Undo, Redo, Discard Changes, Cook and
+  Rebuild this asset, each an action over the page; its kind at the end) over the sets and their
+  actions as a tree beside the grid. The tree's bar adds a set and removes the chosen row (a set and
+  its actions, or an action); its search keeps the actions whose name or input matches. The grid
+  shows the chosen set: its name and priority, then its actions, each opening in place to its kind,
+  interaction, bindings and processing; an action chosen in the tree opens there. A map the game
+  could not read (an action's binding its kind does not take) says so over the rows. An asset that
+  did not read says so in place of the grid.
+-->
+<Panel class="page input-map-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.32 0.68">
+        <Panel class="panel page-pane input-tree-pane">
+            <Panel class="panel-toolbar">
+                <ToolButton id="input-add-set" icon="Editor/Icons/plus.svg" text="Set" shows-text="true" tooltip="Add a set"/>
+                <ToolButton id="input-remove" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen set (with its actions) or action"/>
+                <Spacer/>
+            </Panel>
+            <Panel class="search-row">
+                <Panel class="search">
+                    <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                    <TextField id="input-search" class="search-field" placeholder="Find an action or an input"/>
+                </Panel>
+            </Panel>
+            <TreeView id="input-tree" class="panel-body tree input-tree"/>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

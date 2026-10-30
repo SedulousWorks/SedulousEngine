@@ -8,22 +8,22 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Terrain.Tests;
 
-/// The terrain page's headless half: the stats column, the undo snapshot round trip over
+/// The terrain page's headless half: the cooked terrain's facts, the undo snapshot round trip over
 /// every authored field, and the palette's structural verbs.
 class TerrainEditorPageTests
 {
-	private static bool Has(List<String> lines, StringView needle)
+	private static StringView FactOf(List<TerrainFact> facts, StringView name)
 	{
-		for (let line in lines)
+		for (let fact in facts)
 		{
-			if (line == needle)
-				return true;
+			if (fact.Name == name)
+				return fact.Value;
 		}
-		return false;
+		return "?";
 	}
 
 	[Test]
-	public static void StatLinesReportGridChunksPaletteAndShadowsFromAResolvedProduct()
+	public static void TheFactsSayTheGridWorldSizeChunksLayersAndShadowsOfACookedTerrain()
 	{
 		let grid = scope Heightfield(129, .(128.0f, 128.0f), 0.0f, 20.0f);
 		let res = scope TerrainResource();
@@ -31,27 +31,27 @@ class TerrainEditorPageTests
 		res.CastShadows = true;
 		res.Palette.Add(TerrainLayer());
 		res.Palette.Add(TerrainLayer());
-		let lines = scope List<String>();
-		defer { ClearAndDeleteItems!(lines); }
-		TerrainStats.Lines(res, lines);
-		Test.Assert(lines.Count >= 4);
-		Test.Assert(Has(lines, "Grid: 129 x 129"));
-		Test.Assert(Has(lines, "World: 128 x 128 m"));
-		Test.Assert(Has(lines, "Chunks: 2 x 2 = 4")); // 129 is two chunks a side
-		Test.Assert(Has(lines, "Palette layers: 2"));
-		Test.Assert(Has(lines, "Cast shadows: yes"));
+		let facts = scope List<TerrainFact>();
+		defer { ClearAndDeleteItems!(facts); }
+		TerrainFact.Of(res, facts);
+		Test.Assert(FactOf(facts, "Grid") == "129 x 129");
+		Test.Assert(FactOf(facts, "World") == "128 x 128 m");
+		Test.Assert(FactOf(facts, "Chunks") == "2 x 2 (4)"); // 129 is two chunks a side
+		Test.Assert(FactOf(facts, "Paint layers") == "2");
+		Test.Assert(FactOf(facts, "Casts shadows") == "Yes");
 	}
 
 	[Test]
-	public static void StatLinesAreRobustWhenTheHeightfieldIsUnresolved()
+	public static void TheFactsSayWhenThereIsNoHeightfield()
 	{
 		let res = scope TerrainResource();
 		res.CastShadows = false;
-		let lines = scope List<String>();
-		defer { ClearAndDeleteItems!(lines); }
-		TerrainStats.Lines(res, lines);
-		Test.Assert(Has(lines, "Heightfield: unresolved"));
-		Test.Assert(Has(lines, "Cast shadows: no"));
+		let facts = scope List<TerrainFact>();
+		defer { ClearAndDeleteItems!(facts); }
+		TerrainFact.Of(res, facts);
+		Test.Assert(!facts.IsEmpty);
+		Test.Assert(facts[0].Value == "No heightfield");
+		Test.Assert(facts.Back.Value == "No");
 	}
 
 	/// Every authored field survives the blob: the references, the base maps, the parallel
@@ -196,7 +196,8 @@ class TerrainEditorPageTests
 	[Test]
 	public static void TheFactoryReportsTheTerrainAssetPrimaryType()
 	{
-		let factory = scope TerrainEditorPageFactory(null, null);
+		let none = scope Sedulous.Editor.App.AssetPageServicesSource(); // no services: the factory only
+		let factory = scope TerrainEditorPageFactory(none);
 		Test.Assert(factory.PrimaryType == typeof(TerrainAsset));
 	}
 }

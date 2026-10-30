@@ -41,6 +41,20 @@ static class TerrainAssetEdit
 		return true;
 	}
 
+	/// Every layer list as long as the albedos, so a layer's maps line up whatever the asset kept
+	/// (an older terrain has fewer maps): nil maps, the new layer's tiling.
+	public static void Square(TerrainAsset asset)
+	{
+		let layers = asset.PaletteAlbedoIds.Count;
+		for (let ids in List<Guid>[4](asset.PaletteNormalIds, asset.PaletteOrmIds, asset.PaletteHeightIds, asset.PaletteMaskIds))
+		{
+			while (ids.Count < layers)
+				ids.Add(.Empty);
+		}
+		while (asset.PaletteTileScales.Count < layers)
+			asset.PaletteTileScales.Add(cNewLayerTileScale);
+	}
+
 	/// Appends an unset paint layer across every parallel list.
 	public static void AddLayer(TerrainAsset asset)
 	{

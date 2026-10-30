@@ -1,208 +1,243 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Audio;
 using Sedulous.Audio.Pipeline;
 using Sedulous.Engine.Audio;
-using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The audio clip page: the waveform with a playhead, the page toolbar's playback on the
-/// runtime audio engine, and an audition volume. Audition only; the import options edit
-/// through the inspector, so there is nothing to save.
-class AudioClipEditorPage : UIEditorPage, IPlaybackPage
+/// The audition page of an AudioClipAsset, on the GUI from its markup (Data/Editor/AudioClipPage.gml;
+/// Raptor's editor-gui spec, 5.4, layer 5). The clip's peak waveform (decoded from its source file,
+/// the bytes the cook writes through) with the kit's transport over it: Play, Stop and Restart are
+/// the playback actions over the page, auditioned through the RUNTIME context's AudioSubsystem (the
+/// game's engine, buses and voices, so what is heard is what the game plays), honouring the clip's
+/// loop, a playhead following the voice. Beside it the clip's options on the grid, each edit one
+/// undo step, the audition following them (a loop turned on loops the next play), and its source's
+/// facts read only (channels, rate, length). The old page edited nothing itself; its options were
+/// the inspector's.
+class AudioClipEditorPage : AssetObjectPage, IPlaybackPage
 {
-	/// Borrowed.
-	private EditorContext mContext;
-	/// The runtime context's subsystem; null in a headless host.
-	private AudioSubsystem mAudio = null;
-	private String mTitle = new .() ~ delete _;
-	private bool mLoop = false;
-	private bool mPaused = false;
-	private float mAuditionVolume = 1.0f;
-	/// Owned; the engine decodes it on play.
-	private AudioClip mClip = null ~ delete _;
-	private VoiceHandle mVoice = .();
+	public const String cMarkupPath = "Editor/AudioClipPage.gml";
+	public const uint32 cPeakBuckets = 256;
 
-	/// Borrowed: the content owns them.
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private Label mInfo = null;
-	private Label mStatus = null;
-	private PageToolbar mToolbar = null;
-	private Slider mVolumeSlider = null;
-	private WaveformView mWaveform = null;
+	/// Through the runtime context's audio (none in a test).
+	private AuditionVoice mVoice ~ delete _;
+	/// Owned; the engine decodes it on play. Null: no source read.
+	private AudioClip mClip = null;
+	/// The source the clip was read from (a new one reads it again).
+	private String mLoadedFile = new .() ~ delete _;
+	/// One reference, the page's: the stage holds its own.
+	private WaveformView mWaveform = null ~ _?.ReleaseRef();
+	// The markup's: the tree holds them.
+	private Node mStage = null;
+	private Node mEmpty = null;
+	private Sedulous.GUI.Label mEmptyText = null;
+	private Sedulous.GUI.Label mState = null;
+	private Slider mVolume = null;
 
-	public this(EditorContext context, IApplicationHost host, Instance instance)
+	/// It takes `services`.
+	public this(EditorContext context, AssetPageServices services, Instance instance)
+		: base(context, services, instance, typeof(AudioClipAsset), cMarkupPath)
 	{
-		mContext = context;
-		mTitle.Set(instance.Name);
-		InstanceId = instance.Id;
-		mAudio = (host != null) ? host.Context.GetSubsystem<AudioSubsystem>() : null;
-		LoadClip(instance);
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 8.0f;
-		mToolbar = new PageToolbar(this, mContext.Actions, .None);
-		mToolbar.AddPlayback();
-		mToolbar.AddSeparator();
-		mToolbar.AddLabel("Vol");
-		mVolumeSlider = new Slider(0.0f, 1.0f, 1.0f);
-		mVolumeSlider.Step.Value = 0.05f;
-		mVolumeSlider.OnValueChanged.Add(new [=this](slider, v) => { SetAuditionVolume(v); });
-		var sliderStyle = LayoutStyle();
-		sliderStyle.Width = SizeSpec.Fixed(Unit.Dp(90));
-		sliderStyle.AlignSelf = .Center;
-		mToolbar.AddItem(mVolumeSlider, sliderStyle);
-		mStatus = mToolbar.AddLabel("");
-		var bar = LayoutStyle();
-		bar.Width = SizeSpec.Match();
-		column.AddView(mToolbar, bar);
-		mInfo = new Label("");
-		mInfo.FontSize.Value = 13.0f;
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		column.AddView(mInfo, match);
+		let host = Services.Host;
+		mVoice = new AuditionVoice((host != null) ? host.Context.GetSubsystem<AudioSubsystem>() : null);
+		mStage = Find<Node>("audio-stage");
+		mEmpty = Find<Node>("audio-empty");
+		mEmptyText = Find<Sedulous.GUI.Label>("audio-empty-text");
+		mState = Find<Sedulous.GUI.Label>("audio-state");
+		mVolume = Find<Slider>("audio-volume");
 		mWaveform = new WaveformView();
-		var strip = LayoutStyle();
-		strip.Width = SizeSpec.Match();
-		strip.Height = SizeSpec.Fixed(Unit.Dp(160));
-		column.AddView(mWaveform, strip);
-
-		mContent = column;
-		RefreshInfo();
+		if (mStage != null)
+			mStage.AddChild(mWaveform);
+		// The kit's transport: the playback actions over this page, as every page's transport is.
+		BindAction(Find<ButtonBase>("audio-restart"), "playback.restart");
+		BindAction(Find<ButtonBase>("audio-play"), "playback.play");
+		BindAction(Find<ButtonBase>("audio-stop"), "playback.stop");
+		if (mVolume != null)
+			mVolume.SetOnValueChanging(new [=this] (volume) => { SetAuditionVolume((float)volume); });
+		LoadClip();
+		ShowState("stopped", "Stopped");
 	}
 
-	public override StringView Title => mTitle;
-	public override View ContentView => mContent;
-	public bool HasClip => mClip != null;
-	/// Audition only: the options edit through the inspector.
-	public override Result<void, ErrorCode> Save() => .Ok;
+	public ~this()
+	{
+		StopAudition();
+		delete mClip; // after the voice that played it has stopped
+	}
+
 	public override void OnClose() => StopAudition();
 
-	private AudioEngine Engine => (mAudio != null) ? mAudio.Engine : null;
+	// === IPlaybackPage ===
 
-	/// Tracks the voice: the playhead follows, and a finished voice stops the transport.
-	public override void OnUpdate(IApplicationHost host, float dt)
-	{
-		if (mToolbar != null)
-			mToolbar.Refresh();
-		let engine = Engine;
-		if (!mVoice.IsValid || (engine == null))
-			return;
-		let state = AuditionVoice.Track(engine, mVoice, let status);
-		if (state == .Gone)
-		{
-			StopAudition();
-			return;
-		}
-		// Paused: the playhead and the status hold where they are.
-		if (state == .Paused)
-			return;
-		let duration = (mClip != null) ? mClip.DurationSeconds : 0.0f;
-		if (duration <= 0.0f)
-			return;
-		var fraction = status.CursorSeconds / duration;
-		if (mLoop)
-			fraction = fraction - (float)(int64)fraction;
-		mWaveform.SetPlayheadFraction(Math.Min(fraction, 1.0f));
-		mStatus.SetText(scope $"Playing...  {status.CursorSeconds:F1} s");
-	}
-
-	private void LoadClip(Instance instance)
-	{
-		let object = instance.ReadObject();
-		defer delete object;
-		let asset = object as AudioClipAsset;
-		if (asset == null)
-			return;
-		mLoop = asset.Loop;
-		mClip = AudioClipLoader.Load(mContext, asset);
-	}
-
-	private void RefreshInfo()
-	{
-		if (mClip == null)
-		{
-			mInfo.SetText("Source file missing or undecodable.");
-			return;
-		}
-		mInfo.SetText(scope $"{mClip.Channels} ch  |  {mClip.SampleRate} Hz  |  {mClip.DurationSeconds:F2} s{mLoop ? "  |  loops" : ""}");
-		let peaks = scope List<float>();
-		if (AudioCodec.BuildWaveformPeaks(mClip.EncodedData, 256, peaks))
-			mWaveform.SetPeaks(peaks);
-	}
-
-	private void Audition()
-	{
-		let engine = Engine;
-		if ((mClip == null) || (engine == null))
-			return;
-		StopAudition();
-		var parameters = AudioPlayParams();
-		parameters.Loop = mLoop;
-		parameters.AllowDedupe = false; // a rapid re-audition restarts, never merges
-		mVoice = engine.Play(mClip, parameters);
-		if (mVoice.IsValid)
-			engine.SetVoiceVolume(mVoice, mAuditionVolume); // the audition slider applies
-		mPaused = false;
-		mStatus.SetText(mVoice.IsValid ? "Playing..." : "No voice (engine headless?)");
-	}
-
-	private void TogglePause()
-	{
-		let engine = Engine;
-		if ((engine == null) || !mVoice.IsValid)
-			return;
-		mPaused = !mPaused;
-		engine.SetPaused(mVoice, mPaused);
-		mStatus.SetText(mPaused ? "Paused" : "Playing...");
-	}
-
-	private void SetAuditionVolume(float volume)
-	{
-		mAuditionVolume = Math.Max(volume, 0.0f);
-		let engine = Engine;
-		if ((engine != null) && mVoice.IsValid)
-			engine.SetVoiceVolume(mVoice, mAuditionVolume); // live while auditioning
-	}
-
-	private void StopAudition()
-	{
-		let engine = Engine;
-		if ((engine != null) && mVoice.IsValid)
-			engine.Stop(mVoice);
-		mVoice = .();
-		mPaused = false;
-		mWaveform.SetPlayheadFraction(-1.0f);
-		mStatus.SetText("");
-	}
-
-	// ---- IPlaybackPage ----
-
-	public bool CanPlay => mClip != null;
-	public bool IsPlaying => mVoice.IsValid && !mPaused;
+	public bool CanPlay => (mClip != null) && mVoice.HasEngine;
+	public bool IsPlaying => mVoice.IsPlaying;
 
 	public void Play()
 	{
-		if (!mVoice.IsValid)
-			Audition();
-		else if (mPaused)
-			TogglePause();
+		if (!mVoice.IsActive)
+		{
+			StartAudition();
+			return;
+		}
+		mVoice.SetPaused(false);
+		ShowState("playing", "Playing");
 	}
 
 	public void Pause()
 	{
-		if (mVoice.IsValid && !mPaused)
-			TogglePause();
+		if (!mVoice.IsPlaying)
+			return;
+		mVoice.SetPaused(true);
+		ShowState("paused", "Paused");
 	}
 
 	public void Stop() => StopAudition();
-	public void Restart() => Audition();
+	public void Restart() => StartAudition();
+
+	/// The audition's volume (this page's voice only, not saved), 0 to 1.
+	public void SetAuditionVolume(float volume)
+	{
+		mVoice.SetVolume(volume); // heard as it moves
+		if ((mVolume != null) && (mVolume.Value != (double)mVoice.Volume))
+			mVolume.Value = mVoice.Volume;
+	}
+
+	public float AuditionVolume => mVoice.Volume;
+
+	// === For tests ===
+
+	public AudioClip Clip => mClip;
+	public WaveformView Waveform => mWaveform;
+	public StringView State => (mState != null) ? mState.Text : default;
+
+	public override void OnUpdate(IApplicationHost host, float dt)
+	{
+		base.OnUpdate(host, dt); // the bar, the transport with it, each frame
+		if (!mVoice.IsActive)
+			return;
+		if (!mVoice.Poll(let cursor))
+		{
+			StopAudition(); // finished, or its voice taken
+			return;
+		}
+		let duration = (mClip != null) ? mClip.DurationSeconds : 0.0f;
+		if (mVoice.IsPaused || (duration <= 0.0f))
+			return; // a paused audition holds its playhead
+		var fraction = cursor / duration;
+		if (mClip.Loop)
+			fraction -= (float)(int64)fraction;
+		mWaveform.SetPlayhead(Math.Min(fraction, 1.0f));
+		ShowState("playing", scope String()..AppendF("Playing {:F1} s", cursor));
+	}
+
+	protected override void OnObjectChanged()
+	{
+		let asset = ObjectAs<AudioClipAsset>();
+		if ((asset != null) && (asset.FileName.Value != mLoadedFile))
+			LoadClip(); // another source: read again
+		else
+			ApplyOptions(); // the next play takes them
+	}
+
+	/// Reads the source file named by the asset: the clip to audition, its peaks and its facts; the
+	/// waveform's place says why when there is none.
+	private void LoadClip()
+	{
+		StopAudition();
+		let asset = ObjectAs<AudioClipAsset>();
+		if (asset == null)
+			return;
+		mLoadedFile.Set(asset.FileName.Value);
+		if (asset.FileName.IsEmpty || (Context.Project == null))
+		{
+			ShowEmpty("This clip names no source file.");
+			return;
+		}
+		DeleteAndNullify!(mClip);
+		mClip = Audition.ReadClip(Context.Project, asset, let metadata);
+		if (mClip == null)
+		{
+			GlobalLog(.Warning, "Editor: audio source missing or undecodable: {}", asset.FileName.Value);
+			ShowEmpty(scope String()..AppendF("{} is missing or did not decode.", asset.FileName.Value));
+			return;
+		}
+		let peaks = scope List<float>();
+		if (AudioCodec.BuildWaveformPeaks(mClip.EncodedData, cPeakBuckets, peaks))
+			mWaveform.SetPeaks(peaks);
+		if (mStage != null)
+			mStage.Displayed = true;
+		if (mEmpty != null)
+			mEmpty.Displayed = false;
+		let channels = scope String();
+		switch (metadata.Channels)
+		{
+		case 1: channels.Append("Mono");
+		case 2: channels.Append("Stereo");
+		default: channels.AppendF("{}", metadata.Channels);
+		}
+		SetFact("Channels", channels);
+		SetFact("Sample Rate", scope String()..AppendF("{} Hz", metadata.SampleRate));
+		SetFact("Length", scope String()..AppendF("{:F2} s ({} frames)", metadata.DurationSeconds, metadata.FrameCount));
+	}
+
+	/// The clip's options as the asset has them now (an edit, an undo): the next play takes them.
+	private void ApplyOptions()
+	{
+		let asset = ObjectAs<AudioClipAsset>();
+		if ((asset == null) || (mClip == null))
+			return;
+		mClip.Gain = asset.Gain;
+		mClip.Loop = asset.Loop;
+		mClip.LoopStartFrame = asset.LoopStartFrame;
+		mClip.LoopEndFrame = asset.LoopEndFrame;
+	}
+
+	private void StartAudition()
+	{
+		StopAudition();
+		if (!CanPlay)
+			return;
+		var parameters = AudioPlayParams();
+		parameters.Loop = mClip.Loop;
+		if (!mVoice.Start(mClip, parameters))
+		{
+			ShowState("faulted", "No voice: the audio engine did not start one");
+			return;
+		}
+		ShowState("playing", "Playing");
+	}
+
+	private void StopAudition()
+	{
+		if (mVoice != null)
+			mVoice.Stop();
+		if (mWaveform != null)
+			mWaveform.SetPlayhead(-1.0f);
+		ShowState("stopped", "Stopped");
+	}
+
+	private void ShowState(StringView state, StringView text)
+	{
+		Audition.ShowTransportState(mState, state, text);
+	}
+
+	private void ShowEmpty(StringView why)
+	{
+		DeleteAndNullify!(mClip);
+		if (mWaveform != null)
+			mWaveform.SetPeaks(.());
+		if (mStage != null)
+			mStage.Displayed = false;
+		if (mEmpty != null)
+			mEmpty.Displayed = true;
+		if (mEmptyText != null)
+			mEmptyText.Text = why;
+	}
 }

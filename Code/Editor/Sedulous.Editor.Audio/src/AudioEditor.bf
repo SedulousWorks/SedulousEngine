@@ -1,19 +1,21 @@
-using Sedulous.Runtime.Client;
 using Sedulous.Audio.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The audio editor's composition: the asset serializables, the clip, sound cue and bus
-/// layout pages, and the clip thumbnail when the context has a thumbnail service.
+/// The audio editor's composition: the asset serializables, the clip, sound cue and bus layout
+/// pages, and the clip thumbnails when the context has a thumbnail service.
 static class AudioEditor
 {
-	public static void Register(EditorContext context, IApplicationHost host)
+	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
+	/// its services when it is made (the window exists by then).
+	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
 		AudioPipeline.RegisterAll();
-		context.Pages.Register(new AudioClipPageFactory(host));
-		context.Pages.Register(new SoundCuePageFactory(host));
-		context.Pages.Register(new AudioBusLayoutPageFactory());
+		context.Pages.Register(new AudioClipPageFactory(services));
+		context.Pages.Register(new SoundCuePageFactory(services));
+		context.Pages.Register(new AudioBusLayoutPageFactory(services));
 		if (context.Thumbnails != null)
 			context.Thumbnails.RegisterGenerator(new AudioClipThumbnailGenerator());
 	}

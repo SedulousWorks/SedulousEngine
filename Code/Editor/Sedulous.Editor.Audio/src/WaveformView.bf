@@ -1,17 +1,27 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.UI;
+using Sedulous.GUI;
 
 namespace Sedulous.Editor.Audio;
 
-/// A clip's peak envelope as a bar strip, with the audition playhead over it.
-class WaveformView : View
+/// A clip's peak waveform, a widget of the editor's on the GUI (Raptor's editor-gui spec, 5.4,
+/// layer 5): symmetric bars per bucket about the middle line, and a playhead at a fraction of the
+/// clip while it plays. Its colours are the sheet's (`waveform` the tag, its background its own box,
+/// its parts `wave` and `playhead`), so it follows the theme.
+class WaveformView : UIWidget
 {
 	private List<float> mPeaks = new .() ~ delete _;
-	/// A fraction of the strip, or below zero for none.
+	/// A fraction of the clip; below zero: none (stopped).
 	private float mPlayhead = -1.0f;
 
+	public this()
+	{
+		Tag = "waveform";
+		AddClass("waveform");
+	}
+
+	/// Each bucket's peak, 0 to 1, left to right; none draws only the background.
 	public void SetPeaks(Span<float> peaks)
 	{
 		mPeaks.Clear();
@@ -19,30 +29,43 @@ class WaveformView : View
 		Invalidate();
 	}
 
-	public void SetPlayheadFraction(float fraction)
+	public Span<float> Peaks => mPeaks;
+
+	/// Where the playhead is along the clip, 0 to 1; below 0 hides it (stopped).
+	public void SetPlayhead(float fraction)
 	{
-		if (mPlayhead != fraction)
-		{
-			mPlayhead = fraction;
-			Invalidate();
-		}
+		if (fraction == mPlayhead)
+			return;
+		mPlayhead = fraction;
+		Invalidate();
 	}
 
-	public override void OnDraw(UIDrawContext ctx)
+	public float Playhead => mPlayhead;
+
+	public override void CollectStyleParts(List<StringView> outParts)
 	{
-		let bounds = Rectangle(0.0f, 0.0f, Width, Height);
-		ctx.VG.FillRect(bounds, .(0.10f, 0.11f, 0.13f, 1.0f));
-		if (mPeaks.IsEmpty || (bounds.Width <= 2.0f) || (bounds.Height <= 2.0f))
+		outParts.Add("wave");
+		outParts.Add("playhead");
+	}
+
+	public override Float2 MeasureContent(Float2 available) => .(240.0f, 120.0f);
+
+	public override void OnDraw(DrawContext ctx, Rect localBounds)
+	{
+		base.OnDraw(ctx, localBounds);
+		if (mPeaks.IsEmpty || (localBounds.Width <= 2.0f) || (localBounds.Height <= 2.0f))
 			return;
-		let mid = bounds.Height * 0.5f;
-		let barWidth = bounds.Width / (float)mPeaks.Count;
-		let barColor = Color(64.0f / 255.0f, 200.0f / 255.0f, 190.0f / 255.0f, 0.9f);
+		let mid = localBounds.Y + localBounds.Height * 0.5f;
+		let bar = localBounds.Width / (float)mPeaks.Count;
+		let wave = GetPartStyle("wave");
+		let waveColor = Color(0.25f, 0.78f, 0.75f, 0.9f); // without a sheet
 		for (int i < mPeaks.Count)
 		{
-			let half = Math.Max(1.0f, mPeaks[i] * (mid - 2.0f));
-			ctx.VG.FillRect(.((float)i * barWidth, mid - half, Math.Max(1.0f, barWidth - 1.0f), half * 2.0f), barColor);
+			let half = Math.Max(1.0f, mPeaks[i] * (localBounds.Height * 0.5f - 2.0f));
+			wave.Draw(ctx, Rect(localBounds.X + (float)i * bar, mid - half, Math.Max(1.0f, bar - 1.0f), half * 2.0f), FilledBox(waveColor, scope NodeBox()));
 		}
 		if ((mPlayhead >= 0.0f) && (mPlayhead <= 1.0f))
-			ctx.VG.FillRect(.(mPlayhead * bounds.Width - 1.0f, 0.0f, 2.0f, bounds.Height), .(0.95f, 0.85f, 0.4f, 1.0f));
+			GetPartStyle("playhead").Draw(ctx, Rect(localBounds.X + mPlayhead * localBounds.Width - 1.0f, localBounds.Y, 2.0f, localBounds.Height),
+				FilledBox(Color(0.95f, 0.85f, 0.4f, 1.0f), scope NodeBox()));
 	}
 }

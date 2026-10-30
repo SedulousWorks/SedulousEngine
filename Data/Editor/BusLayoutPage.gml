@@ -1,0 +1,39 @@
+<!--
+  The audio bus layout page (Raptor's editor-gui spec, 5.4, layer 5): the kit's bar (Save,
+  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its kind at
+  the end) over the buses' tree beside the grid. The tree has its own bar: Add a bus (under Master,
+  in the first free slot) and Remove the chosen one (a custom bus; its children move to Master). The
+  grid shows the chosen bus: its name and parent (a custom bus's), then its mix, its filters, its
+  delay and its reverb. An asset that did not read says so in place of the grid.
+-->
+<Panel class="page bus-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.34 0.66">
+        <Panel class="panel page-pane bus-pane">
+            <Panel class="panel-toolbar bus-bar">
+                <ToolButton id="bus-add" icon="Editor/Icons/plus.svg" tooltip="Add a bus: under Master, in the first free slot"/>
+                <ToolButton id="bus-remove" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen bus: its children move to Master"/>
+            </Panel>
+            <TreeView id="bus-tree" class="panel-body tree bus-tree"/>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

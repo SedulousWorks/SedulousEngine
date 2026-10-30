@@ -76,6 +76,18 @@ static class InputMapEdit
 		}
 	}
 
+	/// When an action fires, as the page names it (the old page's words).
+	public static StringView InteractionTitle(InteractionKind kind)
+	{
+		switch (kind)
+		{
+		case .None: return "On press";
+		case .Hold: return "Hold";
+		case .Tap: return "Tap";
+		case .DoubleTap: return "Double tap";
+		}
+	}
+
 	/// The next source valid for the action, on a fresh binding since the source specifics
 	/// mean nothing across sources.
 	public static Binding CycleSource(ActionKind kind, Binding current)

@@ -1,0 +1,34 @@
+<!--
+  The sound cue page (Raptor's editor-gui spec, 5.4, layer 5): the kit's bar (Save, Undo,
+  Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page), then the kit's
+  transport (Restart, Play, Stop, the playback actions over the page, Play showing Pause while it
+  plays) and what the last play picked,
+  its kind at the end; under it the grid: the cue (how it picks, its pitch and volume ranges), then
+  its variants, each a clip and its weight. An asset that did not read says so in place of the grid.
+-->
+<Panel class="page cue-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <ToolButton id="cue-restart" icon="Editor/Icons/restart.svg"/>
+        <ToolButton id="cue-play" toggle="true" icon="Editor/Icons/play.svg" checked-icon="Editor/Icons/pause.svg"/>
+        <ToolButton id="cue-stop" icon="Editor/Icons/stop.svg"/>
+        <Label id="cue-state" class="transport-state stopped" text="Stopped"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Panel class="panel page-pane cue-pane">
+        <Panel id="page-state" class="state-box failed page-state">
+            <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+            <Label class="state-title" text="This asset did not read"/>
+            <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+        </Panel>
+        <PropertyGrid id="page-grid" class="panel-body"/>
+    </Panel>
+</Panel>
