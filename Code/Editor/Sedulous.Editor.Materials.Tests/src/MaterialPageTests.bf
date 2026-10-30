@@ -293,4 +293,23 @@ class MaterialPageTests
 		Test.Assert(Near(MaterialSourceEdit.ReadFloat(page.Source, "Roughness"), before));
 		Test.Assert(!page.Commands.CanUndo);
 	}
+
+	[Test]
+	public static void AShaderThatHasNotCookedIsRefusedSayingSoTheMaterialKeepsItsOwn()
+	{
+		let bed = scope Bed();
+		// A shader asset with no cooked product yet (never saved, or broken).
+		let shader = bed.Project.SourceDb.RootGroup.CreateInstance("Glow", typeof(MaterialAsset).GetFullName(.. scope .()));
+		Test.Assert(shader != null);
+		let notices = scope List<String>();
+		defer { ClearAndDeleteItems!(notices); }
+		bed.Context.OnNotice = new [=notices] (kind, message) => { notices.Add(new String(message)); };
+		let page = bed.Open();
+		defer delete page;
+		page.EditRow(page.MaterialRows, "shader", Sedulous.GUI.Variant(shader.Id.ToString(.. scope .())));
+		Test.Assert(page.Source.ShaderId.IsNil, "refused: still the built-in PBR");
+		Test.Assert(!page.Commands.CanUndo);
+		Test.Assert(notices.Count == 1);
+		Test.Assert(notices[0].Contains("has not cooked", true));
+	}
 }
