@@ -19,9 +19,10 @@ namespace Sedulous.Editor.App;
 // editor's sheet names, the editor's own files (EditorResources) and the frame read from
 // Data/Editor/Shell.gml, with its status bar (EditorStatusBar) and the toast host over its dock.
 // Its look is the editor's sheet (Editor/editor.css over its tokens), the chosen density's sheet
-// after it and a `:root` block of the user's inputs (the accent), the scheme and less motion
-// through the GUI's media; a change to those files on disk (the editor's development loop)
-// applies at once.
+// after it and a `:root` block of the user's inputs (the accent), then the user's theme overrides
+// (5.7, layer 1: a file in their data folder, so any token or rule is theirs to set), the scheme
+// and less motion through the GUI's media; a change to those files on disk (the editor's
+// development loop, or the user's overrides) applies at once.
 
 /// An accent Preferences offers: its name and its fill.
 struct EditorAccent
@@ -118,6 +119,9 @@ class EditorWindow
 	/// The frame's markup and the editor's sheet, under the data root.
 	public const String cFramePath = "Editor/Shell.gml";
 	public const String cSheetPath = "Editor/editor.css";
+	/// The user's theme overrides: the folder under their data folder, and the file in it.
+	public const String cThemeFolder = "theme";
+	public const String cThemeOverridesPath = "overrides.css";
 
 	/// About once a second: a sweep is a walk of the editor's folder.
 	private const float cSweepSeconds = 1.0f;
@@ -135,6 +139,8 @@ class EditorWindow
 	private VgShaderLibrary mShaders = null ~ delete _;
 	private TrueTypeFontService mFonts = null ~ delete _;
 	private EditorResources mResources = null ~ delete _;
+	/// The user's overrides' folder; null: none.
+	private EditorResources mTheme = null ~ delete _;
 	private GuiHost mHost = null ~ delete _;
 	/// References of ours (the tree holds its own).
 	private SceneRoot mRoot = null ~ _?.ReleaseRef();
@@ -145,7 +151,7 @@ class EditorWindow
 	private Node mScreen = null ~ _?.ReleaseRef();
 	/// Over the frame's items: it goes before the frame.
 	private EditorStatusBar mStatus = null ~ delete _;
-	/// The sheet again when the editor's files change.
+	/// The sheet again when the editor's files or the overrides change.
 	private Effect mReload = null ~ delete _;
 	private float mSinceSweep = 0.0f;
 
@@ -155,9 +161,10 @@ class EditorWindow
 	}
 
 	/// Opens the GUI on the host's main window over the data root: the shaders, the fonts, the
-	/// frame and the sheet. `look` is copied. False (logged, and nothing kept) when the window, the
+	/// frame and the sheet, with the user's theme overrides from `themeFolder` (made if it is not
+	/// there; empty: none). `look` is copied. False (logged, and nothing kept) when the window, the
 	/// device, the shaders or the frame are missing; the editor then runs with no interface.
-	public bool Open(IApplicationHost host, StringView dataRoot, EditorLook look)
+	public bool Open(IApplicationHost host, StringView dataRoot, EditorLook look, StringView themeFolder = default)
 	{
 		Close(); // opened again: the last GUI goes first
 		let window = host.MainRenderWindow;
@@ -187,6 +194,13 @@ class EditorWindow
 		BidiAlgorithm.Install();
 		mFonts = new TrueTypeFontService();
 		mResources = new EditorResources(dataRoot);
+		if (!themeFolder.IsEmpty)
+		{
+			// A place for the file the user writes (the data folder first, should it be new).
+			CreateDirectory(PathParent(themeFolder, .. scope .()));
+			CreateDirectory(themeFolder);
+			mTheme = new EditorResources(themeFolder);
+		}
 
 		mHost = new GuiHost(mDevice, host.Shell, mFonts, mShaders.Set);
 		{
@@ -219,10 +233,12 @@ class EditorWindow
 		mToasts = new ToastHost();
 		ToastsInto(mFrame).AddChild(mToasts);
 		SetLook(look);
-		// The editor's own files changed on disk: its sheet applies again.
+		// The editor's own files or the user's overrides changed on disk: the sheet applies again.
 		mReload = new Effect(new () =>
 			{
 				mResources.TrackChanges();
+				if (mTheme != null)
+					mTheme.TrackChanges();
 				if (mFrame != null)
 					ApplySheet();
 			});
@@ -368,6 +384,8 @@ class EditorWindow
 		{
 			mSinceSweep = 0.0f;
 			mResources.Poll();
+			if ((mTheme != null) && mTheme.Poll())
+				GlobalLog(.Information, "Editor: the theme overrides applied again ({})", cThemeOverridesPath);
 		}
 		mHost.Update(deltaTime);
 	}
@@ -416,6 +434,7 @@ class EditorWindow
 			mHost.Styles.ResourceProvider = null;
 		}
 		DeleteAndNullify!(mHost);
+		DeleteAndNullify!(mTheme);
 		DeleteAndNullify!(mResources);
 		DeleteAndNullify!(mFonts);
 		DeleteAndNullify!(mShaders);
@@ -434,7 +453,10 @@ class EditorWindow
 
 	/// The sheet `look` makes from the editor's files, appended to `outSheet`: the editor's sheet,
 	/// the density's after it (its sizes win), then a `:root` block of the inputs (the accent).
-	public static void SheetFor(IResourceProvider resources, EditorLook look, String outSheet)
+	public static void SheetFor(IResourceProvider resources, EditorLook look, String outSheet) => SheetFor(resources, look, null, outSheet);
+
+	/// The same, then the user's overrides from `theme` (null: none), last so what they set wins.
+	public static void SheetFor(IResourceProvider resources, EditorLook look, IResourceProvider theme, String outSheet)
 	{
 		resources.LoadText(cSheetPath, outSheet);
 		let density = scope String();
@@ -444,11 +466,17 @@ class EditorWindow
 			outSheet.Append(density);
 		}
 		outSheet.AppendF("\n:root {{ --accent-input: {}; }}\n", look.Accent);
+		let overrides = scope String();
+		if ((theme != null) && theme.LoadText(cThemeOverridesPath, overrides))
+		{
+			outSheet.Append(overrides);
+			outSheet.Append('\n');
+		}
 	}
 
 	private void ApplySheet()
 	{
-		let text = SheetFor(mResources, mLook, .. scope String());
+		let text = SheetFor(mResources, mLook, mTheme, .. scope String());
 		let sheet = scope StyleSheet();
 		CSSParser.Parse(text, cSheetPath, sheet);
 		mHost.Styles.StyleSheet = sheet; // copied

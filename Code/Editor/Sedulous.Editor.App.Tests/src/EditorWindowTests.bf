@@ -12,7 +12,8 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.App.Tests;
 
 /// EditorWindow's look: the sheet a look makes from the editor's files, the density's sheet after
-/// the editor's so its sizes win, the user's accent as an input after both; the look from the
+/// the editor's so its sizes win, the user's accent as an input after both, the user's theme
+/// overrides last and again as they change; the look from the
 /// user's settings and back into them. And with no window or device it opens no interface, and
 /// what it is then asked does nothing.
 static class EditorWindowTests
@@ -69,6 +70,53 @@ static class EditorWindowTests
 		let comfortable = EditorWindow.SheetFor(resources, look, .. scope .());
 		Test.Assert(comfortable.Contains("--row: 32px"));
 		Test.Assert(comfortable.Contains("--accent-input: #0f8a7e"));
+	}
+
+	[Test]
+	public static void TheUsersThemeOverridesComeLastSoTheyWinAndApplyAgainAsTheFileComesChangesAndGoes()
+	{
+		let root = Scratch("scratch_editor_window_theme", .. scope .());
+		defer RemoveDirectoryRecursive(root);
+		Write(root, "Editor/editor.css", ".frame { color: var(--text); }");
+		Write(root, "Editor/density-compact.css", ":root { --row: 22px; }");
+		let resources = scope EditorResources(root);
+		let folder = PathJoin(root, "user-theme", .. scope .());
+		Test.Assert(CreateDirectory(folder));
+		let theme = scope EditorResources(folder); // empty, as on a first run
+
+		let look = scope EditorLook();
+		let sheet = scope String();
+		int applied = 0;
+		let reload = new Effect(new [&] () =>
+			{
+				resources.TrackChanges();
+				theme.TrackChanges();
+				sheet.Clear();
+				EditorWindow.SheetFor(resources, look, theme, sheet);
+				applied++;
+			});
+		defer delete reload;
+		Test.Assert(applied == 1);
+		Test.Assert(!sheet.Contains("--surface: #000000"), "no file: nothing of the user's");
+
+		Write(folder, EditorWindow.cThemeOverridesPath, ":root { --surface: #000000; --accent-input: #ff0000; }");
+		Test.Assert(theme.Poll());
+		Test.Assert(applied == 2);
+		let accent = sheet.IndexOf("--accent-input: #2f6fdf");
+		let theirs = sheet.IndexOf("--accent-input: #ff0000");
+		Test.Assert(sheet.Contains("--surface: #000000"));
+		Test.Assert((accent >= 0) && (accent < theirs), "after Preferences' inputs, so the user's own accent wins");
+
+		Write(folder, EditorWindow.cThemeOverridesPath, ":root { --surface: #101010; }");
+		Test.Assert(theme.Poll());
+		Test.Assert(applied == 3);
+		Test.Assert(sheet.Contains("--surface: #101010"));
+		Test.Assert(!sheet.Contains("--surface: #000000"));
+
+		Test.Assert(System.IO.File.Delete(PathJoin(folder, EditorWindow.cThemeOverridesPath, .. scope .())) case .Ok);
+		Test.Assert(theme.Poll());
+		Test.Assert(applied == 4);
+		Test.Assert(!sheet.Contains("--surface: #101010"), "removed: the editor's own look again");
 	}
 
 	[Test]

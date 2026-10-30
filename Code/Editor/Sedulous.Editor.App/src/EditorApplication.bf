@@ -441,7 +441,7 @@ class EditorApplication : IApplication
 		ReportStartup("Preparing the interface", 0.30f);
 		let look = scope EditorLook();
 		look.ReadFrom(mEditorSettings.Find<EditorUiSettings>());
-		if (mWindow.Open(host, mConfig.DataRoot, look))
+		if (mWindow.Open(host, mConfig.DataRoot, look, PathJoin(GetUserDataDirectory(.. scope .()), EditorWindow.cThemeFolder, .. scope .())))
 			OpenDock();
 		// The window's close button asks about unsaved pages first, as File > Exit does.
 		if (host.Shell != null)
