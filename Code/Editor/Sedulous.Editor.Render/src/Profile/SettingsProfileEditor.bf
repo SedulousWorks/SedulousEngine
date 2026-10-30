@@ -1,39 +1,41 @@
 using System;
 using Sedulous.Content;
-using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
 using Sedulous.Render.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Render;
 
-/// Opens every profile asset in the profile page: the registry matches along the asset type's
-/// base chain.
+/// Opens every profile asset in the profile page (the registry matches along the asset type's base
+/// chain); a page asks for its services when it is made.
 class SettingsProfilePageFactory : IEditorPageFactory
 {
-	/// Borrowed.
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	/// Borrowed: the editor's (or a test's), which outlives it.
+	private AssetPageServicesSource mServices;
 
-	public this(IApplicationHost host, UIHost uiHost)
+	/// `services` is borrowed and outlives it.
+	public this(AssetPageServicesSource services)
 	{
-		mHost = host;
-		mUiHost = uiHost;
+		mServices = services;
 	}
 
 	public Type PrimaryType => typeof(SettingsProfileAsset);
 
-	public EditorPage CreatePage(EditorContext context, Instance instance) => new SettingsProfilePage(context, mHost, mUiHost, instance);
+	public EditorPage CreatePage(EditorContext context, Instance instance) =>
+		new SettingsProfilePage(context, mServices.Make(), instance);
 }
 
-/// The profile page's composition: the asset types' serializables, the editor's own (the
-/// preview scene each profile remembers), and the page.
+/// The profile page's composition: the asset types' serializables, the editor's own (the preview
+/// scene each profile remembers, registered before the app loads the per-project store), and the
+/// page.
 static class SettingsProfileEditor
 {
-	public static void Register(EditorContext context, IApplicationHost host, UIHost uiHost)
+	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
+	/// its services when it is made (the window exists by then).
+	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
 		RenderPipeline.RegisterAll();
 		RenderEditorSerializables.Register();
-		context.Pages.Register(new SettingsProfilePageFactory(host, uiHost));
+		context.Pages.Register(new SettingsProfilePageFactory(services));
 	}
 }

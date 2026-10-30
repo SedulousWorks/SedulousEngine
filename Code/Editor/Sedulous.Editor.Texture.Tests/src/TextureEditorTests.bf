@@ -7,24 +7,27 @@ using Sedulous.Texture;
 using Sedulous.Texture.Compression;
 using Sedulous.Texture.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Texture.Tests;
 
-/// The texture editor's registration, undo snapshot, derivations and thumbnail.
+/// The texture editor's registration, the asset's snapshot, derivations and thumbnail.
 class TextureEditorTests
 {
 	[Test]
 	public static void TheFactoryReportsTheTextureAssetPrimaryType()
 	{
-		let factory = scope TextureEditorPageFactory();
+		let none = scope AssetPageServicesSource();
+		let factory = scope TextureEditorPageFactory(none);
 		Test.Assert(factory.PrimaryType == typeof(TextureAsset));
 	}
 
 	[Test]
 	public static void RegisteringRoutesTextureAssetToTheFactory()
 	{
+		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		TextureEditor.Register(context);
+		TextureEditor.Register(context, none);
 		let found = context.Pages.FindFactory(typeof(TextureAsset));
 		Test.Assert((found != null) && (found.PrimaryType == typeof(TextureAsset)));
 	}
@@ -47,9 +50,9 @@ class TextureEditorTests
 		original.Usage = .Normal;
 		original.Compression = .Quality;
 		let blob = scope List<uint8>();
-		TextureAssetEdit.Snapshot(original, blob);
+		ObjectSnapshot.Take(original, blob);
 		let restored = scope TextureAsset();
-		Test.Assert(TextureAssetEdit.Apply(restored, blob));
+		Test.Assert(ObjectSnapshot.Restore(restored, blob));
 		Test.Assert(restored.FileName.Value == "Textures/brick.png");
 		Test.Assert(restored.ColorSpace == .Linear);
 		Test.Assert(restored.Shape == .Cubemap);
@@ -58,7 +61,6 @@ class TextureEditorTests
 		Test.Assert(!restored.GenerateMipmaps);
 		Test.Assert(restored.Anisotropy == 8.0f);
 		Test.Assert((restored.Usage == .Normal) && (restored.Compression == .Quality));
-		Test.Assert(!TextureAssetEdit.Apply(restored, blob));
 	}
 
 	[Test]
@@ -80,10 +82,10 @@ class TextureEditorTests
 		Test.Assert(TextureAssetEdit.ColorSpaceFor(.Normal) == .Linear);
 		Test.Assert(TextureAssetEdit.ColorSpaceFor(.Mask) == .Linear);
 		Test.Assert(TextureAssetEdit.ColorSpaceFor(.HDR) == .Linear);
-		Test.Assert(TextureAssetEdit.Lint(.Normal, .Srgb).StartsWith("Normal/Mask/HDR"));
+		Test.Assert(TextureAssetEdit.Lint(.Normal, .Srgb).StartsWith("Normal, mask and HDR maps are data"));
 		Test.Assert(TextureAssetEdit.Lint(.Normal, .Linear).IsEmpty);
 		Test.Assert(TextureAssetEdit.Lint(.Color, .Srgb).IsEmpty);
-		Test.Assert(TextureAssetEdit.Lint(.Color, .Linear).StartsWith("Color as Linear"));
+		Test.Assert(TextureAssetEdit.Lint(.Color, .Linear).StartsWith("Colour stored as Linear"));
 		Test.Assert(TextureAssetEdit.MipLevels(256, 256) == 9);
 		Test.Assert(TextureAssetEdit.MipLevels(1, 1) == 1);
 		Test.Assert(TextureAssetEdit.MipLevels(4, 1) == 3);
@@ -156,7 +158,11 @@ class TextureEditorTests
 		Test.Assert((px[0] == 255) && (px[1] == 128) && (px[2] == 0) && (px[3] == 255));
 		Test.Assert((px[4] == 0) && (px[5] == 255) && (px[6] == 64));
 
+		// Another format converted; an empty one shows nothing.
 		let odd = scope Image(2, 2, .R8);
-		Test.Assert(TexturePreview.From(odd) == null);
+		let converted = TexturePreview.From(odd);
+		defer delete converted;
+		Test.Assert((converted != null) && (converted.Format == .RGBA8));
+		Test.Assert(TexturePreview.From(scope Image()) == null);
 	}
 }

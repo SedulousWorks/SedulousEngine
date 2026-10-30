@@ -1,26 +1,25 @@
 using System;
 using Sedulous.Content;
-using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
 using Sedulous.Materials.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Materials;
 
-/// Opens a MaterialAsset in the material page.
+/// Opens a MaterialAsset in the material page; a page asks for its services when it is made.
 class MaterialEditorPageFactory : IEditorPageFactory
 {
-	/// Borrowed.
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	/// Borrowed: the editor's (or a test's), which outlives it.
+	private AssetPageServicesSource mServices;
 
-	public this(IApplicationHost host, UIHost uiHost)
+	/// `services` is borrowed and outlives it.
+	public this(AssetPageServicesSource services)
 	{
-		mHost = host;
-		mUiHost = uiHost;
+		mServices = services;
 	}
 
 	public Type PrimaryType => typeof(MaterialAsset);
 
-	public EditorPage CreatePage(EditorContext context, Instance instance) => new MaterialEditorPage(context, mHost, mUiHost, instance);
+	public EditorPage CreatePage(EditorContext context, Instance instance) =>
+		new MaterialEditorPage(context, mServices.Make(), instance);
 }

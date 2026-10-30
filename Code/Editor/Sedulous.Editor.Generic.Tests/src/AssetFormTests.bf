@@ -1,11 +1,12 @@
 using System;
 using System.Collections;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Generic.Tests;
 
 /// Headless: the serialize-driven scan and patch machinery is pure over any ISerializable,
-/// covered with the probe asset. The grid wiring needs a live editor.
+/// covered with the probe asset. The page over it is GenericPageTests'.
 static class AssetFormTests
 {
 	private static bool Near(double a, double b) => Math.Abs(a - b) < 1e-5;
@@ -107,8 +108,9 @@ static class AssetFormTests
 	[Test]
 	public static void TheFallbackFactoryRoutesAnySerializableAndBespokePagesWin()
 	{
+		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		GenericAssetPageFactory.Register(context);
+		GenericAssetPageFactory.Register(context, none);
 		// The probe type routes to the fallback via its Object base.
 		let found = context.Pages.FindFactory(typeof(FormProbeAsset));
 		Test.Assert(found != null);

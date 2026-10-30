@@ -1,7 +1,7 @@
-using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
+using System;
 using Sedulous.Physics.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Physics;
 
@@ -9,10 +9,12 @@ namespace Sedulous.Editor.Physics;
 /// thumbnail generator when the context has a thumbnail service.
 static class CollisionShapeEditor
 {
-	public static void Register(EditorContext context, IApplicationHost host, UIHost uiHost)
+	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
+	/// its services when it is made (the window exists by then).
+	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
 		PhysicsPipeline.RegisterAll();
-		context.Pages.Register(new CollisionShapeEditorPageFactory(host, uiHost));
+		context.Pages.Register(new CollisionShapeEditorPageFactory(services));
 		if (context.Thumbnails != null)
 			context.Thumbnails.RegisterSceneGenerator(new CollisionThumbnailGenerator());
 	}

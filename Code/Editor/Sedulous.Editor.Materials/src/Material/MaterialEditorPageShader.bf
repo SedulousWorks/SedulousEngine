@@ -19,9 +19,9 @@ extension MaterialEditorPage
 	/// caller's to delete.
 	private ShaderSource ReadShader(Guid shader)
 	{
-		if ((mContext.Project == null) || shader.IsNil)
+		if ((Context.Project == null) || shader.IsNil)
 			return null;
-		let product = mContext.Project.CookedDb.GetInstance(shader);
+		let product = Context.Project.CookedDb.GetInstance(shader);
 		let object = (product != null) ? product.ReadObject() : null;
 		let source = object as ShaderSource;
 		if ((object != null) && (source == null))
@@ -32,7 +32,8 @@ extension MaterialEditorPage
 	/// Moves the material onto a shader asset, or back to the built-in PBR (nil).
 	private void SwitchShader(Guid shader)
 	{
-		if ((mAsset == null) || (shader == mAsset.Source.ShaderId))
+		let asset = Edited;
+		if ((asset == null) || (shader == asset.Source.ShaderId))
 			return;
 		if (shader.IsNil)
 		{
@@ -42,69 +43,54 @@ extension MaterialEditorPage
 		let table = ReadShader(shader);
 		if (table == null)
 		{
-			mContext.Notify(.Warning, "That shader has not cooked yet - save it (or fix its errors), then pick it again");
-			return;
+			Context.Notify(.Warning, "That shader has not cooked yet: save it (or fix its errors), then pick it again");
+			return; // the row shows the shader it still has
 		}
 		defer delete table;
-		ApplyEdit("Shader", new [=shader, =table](s) => MaterialShaderLayout.SetShader(s, shader, table));
+		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetShader(s, shader, table); });
 	}
 
 	private void SwitchToBuiltIn(bool unlit)
 	{
-		if (mAsset == null)
+		let asset = Edited;
+		if (asset == null)
 			return;
-		let current = mAsset.Source;
+		let current = asset.Source;
 		if (current.ShaderId.IsNil && ((current.ShaderName == "unlit") == unlit))
 			return;
-		ApplyEdit("Shader", new [=unlit](s) => MaterialShaderLayout.SetBuiltInShader(s, unlit));
+		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetBuiltInShader(s, unlit); });
 	}
 
 	/// Binds the material's shader asset (its resource registers it for the preview) and re-lays
-	/// the material by its current table: on opening, and whenever it recooks.
+	/// the material by its current table: on opening, and whenever it recooks. Not an edit: the
+	/// material follows its shader, as the cook lays it out.
 	private void BindShader()
 	{
 		mShader.Forget();
 		mShader = default;
 		mShaderVersion = 0;
 		ClearAndDeleteItems!(mShaderTable);
-		if ((mAsset == null) || mAsset.Source.ShaderId.IsNil)
+		let asset = Edited;
+		if ((asset == null) || asset.Source.ShaderId.IsNil)
 			return;
-		let id = mAsset.Source.ShaderId;
-		if (mContext.Resources != null)
+		let id = asset.Source.ShaderId;
+		if (Context.Resources != null)
 		{
-			mShader = mContext.Resources.Bind<ShaderResource>(id);
+			mShader = Context.Resources.Bind<ShaderResource>(id);
 			mShader.Retain();
 			mShaderVersion = (mShader.Get != null) ? mShader.Get.Version : 0;
 		}
+		mRowsDirty = true;
 		let table = ReadShader(id);
 		if (table == null)
 		{
-			GlobalLog(.Warning, "Editor: material '{}': its shader has not cooked - its rows are its own until it does", mTitle);
+			GlobalLog(.Warning, "Editor: material '{}': its shader has not cooked, its rows are its own until it does", Title);
 			return;
 		}
 		defer delete table;
 		table.GetProperties(mShaderTable);
-		// Not an edit: the material follows its shader, as the cook lays it out.
 		let laid = scope MaterialSource();
-		MaterialShaderLayout.LayOut(mAsset.Source, table, laid);
-		MaterialShaderLayout.Assign(mAsset.Source, laid);
-		mGridDirty = true;
-	}
-
-	/// The range the shader asset declares for `name`, when it declares one.
-	private bool ShaderRange(StringView name, out float min, out float max)
-	{
-		min = 0.0f;
-		max = 1.0f;
-		for (let property in mShaderTable)
-		{
-			if ((property.Name == name) && property.HasRange)
-			{
-				min = property.RangeMin;
-				max = property.RangeMax;
-				return true;
-			}
-		}
-		return false;
+		MaterialShaderLayout.LayOut(asset.Source, table, laid);
+		MaterialShaderLayout.Assign(asset.Source, laid);
 	}
 }

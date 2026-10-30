@@ -3,355 +3,205 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.Image;
 using Sedulous.Image.IO;
 using Sedulous.Texture;
 using Sedulous.Texture.Compression;
 using Sedulous.Texture.Pipeline;
-using Sedulous.Runtime.Client;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Texture;
 
-/// The texture page: the source, or the embedded pixels, previewed over an info line with
-/// the derived cooked format and mip count; a row of profile buttons; and a grid of the
-/// import settings, each edit a whole asset snapshot command, every row re-pulled after an
-/// undo. A usage pick derives the colour space, and a mismatch shows a lint row.
-class TextureEditorPage : UIEditorPage
+/// The texture page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
+/// (Data/Editor/ImagePage.gml): the source, or the embedded pixels, in the picture, beside the
+/// asset's import settings; its presets in a menu on the bar, each one undo step however many
+/// settings it moves; a usage edit sets the colour space with it, as one step, and a colour space
+/// that disagrees with the usage is a notice over the rows. What it says of the source (its size,
+/// its mip chain, what it cooks to) is read only. What every asset page does is AssetObjectPage's.
+class TextureEditorPage : AssetObjectPage
 {
-	private static readonly StringView[2] cColorSpaceItems = .("sRGB", "Linear");
-	private static readonly StringView[5] cShapeItems = .("2D", "2D Array", "3D", "Cubemap", "Cubemap Array");
-	private static readonly StringView[4] cFilterItems = .("Nearest", "Linear", "Mipmap Nearest", "Mipmap Linear");
-	private static readonly StringView[4] cWrapItems = .("Repeat", "Clamp To Edge", "Clamp To Border", "Mirrored Repeat");
-	private static readonly StringView[4] cUsageItems = .("Color", "Normal map", "Data mask (rough/AO/height/coverage)", "HDR");
-	private static readonly StringView[3] cCompressionItems = .("Default", "None", "Quality");
+	public const String cMarkupPath = "Editor/ImagePage.gml";
 
-	/// Borrowed.
-	private EditorContext mContext;
-	private String mTitle = new .() ~ delete _;
-	/// Owned; null when the read failed and the page opened empty.
-	private TextureAsset mAsset = null ~ delete _;
-	/// Owned: the ImageView borrows it.
-	private OwnedImageData mPreview = null ~ delete _;
-	/// The source's format before the preview conversion.
+	/// A preset: what its menu item says, and what it sets.
+	public struct Preset
+	{
+		public String Label;
+		public function void(TextureAsset asset) Setup;
+
+		public this(String label, function void(TextureAsset asset) setup)
+		{
+			Label = label;
+			Setup = setup;
+		}
+	}
+
+	/// The presets, in their menu's order.
+	public static Preset[7] sPresets = .(
+		.("UI", (asset) => asset.SetupForUI()),
+		.("Sprite", (asset) => asset.SetupForSprite()),
+		.("3D Surface", (asset) => asset.SetupFor3D()),
+		.("Normal Map", (asset) => asset.SetupForNormalMap()),
+		.("Data Mask", (asset) => asset.SetupForDataMask()),
+		.("Equirect Sky", (asset) => asset.SetupForEquirectangularSkybox()),
+		.("Cubemap Sky", (asset) => asset.SetupForCubemapSkybox()));
+
+	private ImagePreview mPreview = null ~ delete _;
+	/// One reference, the page's: the bar holds its own.
+	private ToolMenuButton mPresets = null ~ _?.ReleaseRef();
+	/// The source's format, before the preview's conversion.
 	private PixelFormat mSourceFormat = .RGBA8;
 
-	/// Borrowed: the content owns them.
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private PageToolbar mToolbar = null;
-	private ImageView mImage = null;
-	private Label mInfo = null;
-	private PropertyGrid mGrid = null;
-	private List<delegate void()> mRefreshers = new .() ~ DeleteContainerAndItems!(_);
-
-	public this(EditorContext context, Instance instance)
+	/// It takes `services`.
+	public this(EditorContext context, AssetPageServices services, Instance instance)
+		: base(context, services, instance, typeof(TextureAsset), cMarkupPath)
 	{
-		mContext = context;
-		mTitle.Set(instance.Name);
-		InstanceId = instance.Id;
-
-		let object = instance.ReadObject();
-		mAsset = object as TextureAsset;
-		if ((object != null) && (mAsset == null))
-			delete object;
-		if (mAsset == null)
-			GlobalLog(.Error, "Editor: texture '{}' failed to read, page opens empty", mTitle);
-		else
-			LoadPreview(instance);
-
-		mImage = new ImageView();
-		mImage.ScaleType.Value = .FitCenter;
-		mImage.SetImage(mPreview);
-		mInfo = new Label("");
-		mInfo.FontSize.Value = 12.0f;
-
-		let previewColumn = new FlexLayout();
-		previewColumn.Direction = .Vertical;
-		previewColumn.Spacing = 6.0f;
-		previewColumn.Padding = .(8, 6);
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		previewColumn.AddView(mInfo, match);
-		var growMatch = LayoutStyle();
-		growMatch.Width = SizeSpec.Match();
-		growMatch.FlexGrow = 1.0f;
-		previewColumn.AddView(mImage, growMatch);
-
-		mGrid = new PropertyGrid();
-		BuildGrid();
-		let gridColumn = new FlexLayout();
-		gridColumn.Direction = .Vertical;
-		gridColumn.Padding = .(8, 6);
-		gridColumn.Spacing = 6.0f;
-		let profileRow = new FlexLayout();
-		profileRow.Direction = .Horizontal;
-		profileRow.Spacing = 4.0f;
-		BuildProfileRow(profileRow);
-		gridColumn.AddView(profileRow, match);
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		gridColumn.AddView(mGrid, grow);
-
-		let split = new SplitView();
-		split.SplitRatio = 0.55f;
-		split.SetPanes(previewColumn, gridColumn);
-
-		mToolbar = new PageToolbar(this, mContext.Actions);
-		let pageColumn = new FlexLayout();
-		pageColumn.Direction = .Vertical;
-		pageColumn.AddView(mToolbar, match);
-		pageColumn.AddView(split, growMatch);
-		mContent = pageColumn;
-		RefreshInfo();
-	}
-
-	public override StringView Title => mTitle;
-	public override View ContentView => mContent;
-	public TextureAsset Asset => mAsset;
-	public bool HasPreview => mPreview != null;
-
-	public override void OnUpdate(IApplicationHost host, float dt)
-	{
-		if (mToolbar != null)
-			mToolbar.Refresh();
-	}
-
-	public override Result<void, ErrorCode> Save()
-	{
-		if ((mAsset == null) || (mContext.Project == null))
-			return .Err(.NotFound);
-		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
-		if (instance == null)
-			return .Err(.NotFound);
-		let saved = instance.WriteObject(mAsset);
-		if (saved case .Ok)
+		if (Content != null)
 		{
-			ClearDirty();
-			mContext.RequestCook(false);
-			GlobalLog(.Information, "Editor: saved texture '{}'", mTitle);
+			mPreview = new ImagePreview(Content);
+			AddPresets();
 		}
-		return saved;
+		LoadPreview(instance);
+		ShowFacts();
 	}
 
-	/// The embedded pixels when there is no source file, else the decoded source.
+	/// Applies the preset `label`, one undo step; false when there is none by that name.
+	public bool ApplyPreset(StringView label)
+	{
+		for (let preset in sPresets)
+		{
+			if (preset.Label != label)
+				continue;
+			let setup = preset.Setup;
+			EditWhole("texture_preset", scope [&] (object) => { setup((TextureAsset)object); });
+			return true;
+		}
+		return false;
+	}
+
+	/// "Cooks to": the compression policy for desktop (and mobile when it differs) from the
+	/// asset's usage, colour space and compression and the source's facts, appended.
+	public void ResolvedFormatText(String outText)
+	{
+		let pixels = ((mPreview != null) && mPreview.View.HasImage) ? mPreview.View.Pixels : null;
+		TextureAssetEdit.ResolvedFormatText(ObjectAs<TextureAsset>(), pixels, mSourceFormat, outText);
+	}
+
+	// === For tests ===
+
+	public ImagePreview Preview => mPreview;
+	public ToolMenuButton PresetButton => mPresets;
+
+	/// Usage is the question; the colour space follows it (data is linear, colour sRGB), so the two
+	/// change as one step. Colour Space stays its own row for the rare override.
+	protected override bool FollowEdit(StringView path, ISerializable object)
+	{
+		if (path != "Usage")
+			return false;
+		let asset = (TextureAsset)object;
+		asset.ColorSpace = TextureAssetEdit.ColorSpaceFor(asset.Usage);
+		return true;
+	}
+
+	protected override void OnObjectChanged()
+	{
+		ShowFacts();
+	}
+
+	/// The presets' menu after the bar's own separator: the page's own controls follow Save, Undo
+	/// and Redo.
+	private void AddPresets()
+	{
+		let own = Find<Node>("page-own");
+		let bar = (own != null) ? own.Parent : null;
+		if ((bar == null) || LoadFailed)
+			return;
+		mPresets = new ToolMenuButton();
+		mPresets.Id = "texture-presets";
+		mPresets.Text = "Preset";
+		mPresets.Tooltip = "Set what a kind of texture needs (usage, colour space, shape, filters, wraps, mips) in one step";
+		for (let preset in sPresets)
+		{
+			let label = preset.Label;
+			mPresets.Menu.AddItem(label, new [=this, =label] () => { ApplyPreset(label); });
+		}
+		bar.AddChildAt(mPresets, bar.GetChildIndex(own) + 1);
+	}
+
+	/// The embedded pixels when there is no source file, else the decoded source (the +X face
+	/// stands in for a cubemap's).
 	private void LoadPreview(Instance instance)
 	{
-		if (mAsset == null)
+		let asset = ObjectAs<TextureAsset>();
+		if (asset == null)
 			return;
-		if (mAsset.FileName.IsEmpty && (mAsset.EmbeddedWidth > 0) && (mAsset.EmbeddedHeight > 0))
+		// Embedded (a model's import): the "pixels" stream, raw RGBA8 at EmbeddedWidth x Height.
+		if (asset.FileName.IsEmpty && (asset.EmbeddedWidth > 0) && (asset.EmbeddedHeight > 0))
 		{
+			let expected = (int)asset.EmbeddedWidth * (int)asset.EmbeddedHeight * 4;
 			let stream = instance.ReadData("pixels");
-			if (stream == null)
-				return;
 			defer delete stream;
-			let expected = (int)mAsset.EmbeddedWidth * (int)mAsset.EmbeddedHeight * 4;
-			let size = (int)stream.Size();
-			if ((size <= 0) || (size < expected))
-				return;
-			let pixels = new List<uint8>(); // handed to the image
-			pixels.Resize(expected);
-			if (stream.Read(Span<uint8>(pixels.Ptr, expected)) != expected)
+			let pixels = new Sedulous.Image.Image(asset.EmbeddedWidth, asset.EmbeddedHeight, .RGBA8);
+			if ((stream == null) || (stream.Size() < expected) || (stream.Read(Span<uint8>(pixels.PixelData.Ptr, expected)) != expected))
 			{
 				delete pixels;
+				if (mPreview != null)
+					mPreview.ShowNone("Its embedded pixels did not read.");
 				return;
 			}
 			mSourceFormat = .RGBA8;
-			mPreview = new OwnedImageData(mAsset.EmbeddedWidth, mAsset.EmbeddedHeight, .RGBA8, pixels, mAsset.ColorSpace);
+			if (mPreview != null)
+				mPreview.Show(pixels);
+			else
+				delete pixels;
 			return;
 		}
-		if (mAsset.FileName.IsEmpty || (mContext.Project == null))
+		if (asset.FileName.IsEmpty || (Context.Project == null))
+		{
+			if (mPreview != null)
+				mPreview.ShowNone("This texture names no source file.");
 			return;
-		let path = PathJoin(mContext.Project.SourcesRoot(.. scope .()), mAsset.FileName.Value, .. scope .());
-		let image = scope Sedulous.Image.Image();
-		if (!(ImageIO.LoadImage(path, image) case .Ok))
+		}
+		let path = PathJoin(Context.Project.SourcesRoot(.. scope .()), asset.FileName.Value, .. scope .());
+		let source = scope Sedulous.Image.Image();
+		Sedulous.Image.Image shown = null;
+		if (ImageIO.LoadImage(path, source) case .Ok)
+			shown = TexturePreview.From(source);
+		if (shown == null)
 		{
 			GlobalLog(.Warning, "Editor: texture source missing or undecodable: {}", path);
+			if (mPreview != null)
+				mPreview.ShowNone(scope String()..AppendF("{} is missing or did not decode.", asset.FileName.Value));
 			return;
 		}
-		mSourceFormat = image.Format;
-		mPreview = TexturePreview.From(image);
+		mSourceFormat = source.Format;
+		if (mPreview != null)
+			mPreview.Show(shown);
+		else
+			delete shown;
 	}
 
-	private void RefreshInfo()
+	private void ShowFacts()
 	{
-		if (mAsset == null)
-		{
-			mInfo.SetText("Texture failed to load.");
+		let asset = ObjectAs<TextureAsset>();
+		if (asset == null)
 			return;
-		}
-		if (mPreview == null)
-		{
-			mInfo.SetText("No preview (source file missing, embedded, or undecodable).");
+		// Data stored as sRGB warps its values; colour stored as linear is unusual.
+		SetNotice("colorSpace", TextureAssetEdit.Lint(asset.Usage, asset.ColorSpace));
+		if (asset.FileName.IsEmpty && (asset.EmbeddedWidth > 0))
+			SetFact("Pixels", "Embedded in the asset (a model's import)");
+		if (!asset.SourceHint.IsEmpty)
+			SetFact("Imported From", asset.SourceHint);
+		let pixels = ((mPreview != null) && mPreview.View.HasImage) ? mPreview.View.Pixels : null;
+		if (pixels == null)
 			return;
-		}
-		let hdr = mSourceFormat == .RGBA32F;
-		let derived = hdr ? "RGBA32F" : ((mAsset.ColorSpace == .Srgb) ? "RGBA8 sRGB" : "RGBA8 Linear");
-		let mipLevels = mAsset.GenerateMipmaps ? TextureAssetEdit.MipLevels(mPreview.Width, mPreview.Height) : 1;
-		mInfo.SetText(scope $"{mPreview.Width} x {mPreview.Height}  |  source {hdr ? "HDR" : "LDR"}  |  cooks to {derived}  |  {mipLevels} mip level(s)");
-	}
-
-	private void BuildGrid()
-	{
-		mGrid.Clear();
-		ClearAndDeleteItems!(mRefreshers);
-		if (mAsset == null)
-			return;
-
-		let usage = new EnumEditor("Usage", (int32)mAsset.Usage, cUsageItems, new [=this](v) =>
-			{
-				ApplyEdit("usage", new [=v](a) =>
-					{
-						a.Usage = (SourceUsage)v;
-						a.ColorSpace = TextureAssetEdit.ColorSpaceFor(a.Usage);
-					});
-			}, "Content");
-		AddEditor(usage, new [=this, =usage]() => { usage.SetValue((int32)mAsset.Usage); });
-
-		let colorSpace = new EnumEditor("Color Space (advanced)", (int32)mAsset.ColorSpace, cColorSpaceItems, new [=this](v) =>
-			{
-				ApplyEdit("colorSpace", new [=v](a) => { a.ColorSpace = (ImageColorSpace)v; });
-			}, "Content");
-		AddEditor(colorSpace, new [=this, =colorSpace]() => { colorSpace.SetValue((int32)mAsset.ColorSpace); });
-
-		let lint = new StringEditor("Warning", "", null, "Content");
-		AddEditor(lint, new [=this, =lint]() =>
-			{
-				let text = TextureAssetEdit.Lint(mAsset.Usage, mAsset.ColorSpace);
-				lint.SetRowVisible(!text.IsEmpty);
-				if (!text.IsEmpty)
-					lint.SetValue(text);
-			});
-		lint.SetRowVisible(false);
-
-		let compression = new EnumEditor("Compression", (int32)mAsset.Compression, cCompressionItems, new [=this](v) =>
-			{
-				ApplyEdit("compression", new [=v](a) => { a.Compression = (CompressionChoice)v; });
-			}, "Content");
-		AddEditor(compression, new [=this, =compression]() => { compression.SetValue((int32)mAsset.Compression); });
-
-		if (!mAsset.SourceHint.IsEmpty)
-		{
-			let source = new StringEditor("Source", mAsset.SourceHint, null, "Content");
-			AddEditor(source, new [=this, =source]() => { source.SetValue(mAsset.SourceHint); });
-		}
-
-		let cooks = new StringEditor("Cooks to", "", null, "Content");
-		AddEditor(cooks, new [=this, =cooks]() => { cooks.SetValue(TextureAssetEdit.ResolvedFormatText(mAsset, mPreview, mSourceFormat, .. scope .())); });
-		cooks.SetValue(TextureAssetEdit.ResolvedFormatText(mAsset, mPreview, mSourceFormat, .. scope .()));
-
-		let shape = new EnumEditor("Shape", (int32)mAsset.Shape, cShapeItems, new [=this](v) =>
-			{
-				ApplyEdit("shape", new [=v](a) => { a.Shape = (TextureShape)v; });
-			}, "Sampling");
-		AddEditor(shape, new [=this, =shape]() => { shape.SetValue((int32)mAsset.Shape); });
-
-		AddFilterRow("Min Filter", "minFilter", new (a) => (int32)a.MinFilter, new (a, v) => a.MinFilter = (TextureFilter)v);
-		AddFilterRow("Mag Filter", "magFilter", new (a) => (int32)a.MagFilter, new (a, v) => a.MagFilter = (TextureFilter)v);
-		AddWrapRow("Wrap U", "wrapU", new (a) => (int32)a.WrapU, new (a, v) => a.WrapU = (TextureWrap)v);
-		AddWrapRow("Wrap V", "wrapV", new (a) => (int32)a.WrapV, new (a, v) => a.WrapV = (TextureWrap)v);
-		AddWrapRow("Wrap W", "wrapW", new (a) => (int32)a.WrapW, new (a, v) => a.WrapW = (TextureWrap)v);
-
-		let mipmaps = new BoolEditor("Generate Mipmaps", mAsset.GenerateMipmaps, new [=this](v) =>
-			{
-				ApplyEdit("generateMipmaps", new [=v](a) => { a.GenerateMipmaps = v; });
-			}, "Sampling");
-		AddEditor(mipmaps, new [=this, =mipmaps]() => { mipmaps.SetValue(mAsset.GenerateMipmaps); });
-
-		let anisotropy = new RangeEditor("Anisotropy", mAsset.Anisotropy, 1.0f, 16.0f, 1.0f, new [=this](v) =>
-			{
-				ApplyEdit("anisotropy", new [=v](a) => { a.Anisotropy = v; });
-			}, "Sampling");
-		AddEditor(anisotropy, new [=this, =anisotropy]() => { anisotropy.SetValue(mAsset.Anisotropy); });
-	}
-
-	/// An enum row over one of the sampler fields; `read` and `write` are consumed.
-	private void AddEnumRow(StringView label, StringView key, Span<StringView> items, delegate int32(TextureAsset) read, delegate void(TextureAsset, int32) write)
-	{
-		let mergeKey = new String(key);
-		let editor = new EnumEditor(label, read(mAsset), items, new [=this, =mergeKey, =write](v) =>
-			{
-				ApplyEdit(mergeKey, new [=write, =v](a) => { write(a, v); });
-			} ~ { delete mergeKey; delete write; }, "Sampling");
-		AddEditor(editor, new [=this, =editor, =read]() => { editor.SetValue(read(mAsset)); } ~ delete read);
-	}
-
-	private void AddFilterRow(StringView label, StringView key, delegate int32(TextureAsset) read, delegate void(TextureAsset, int32) write) => AddEnumRow(label, key, cFilterItems, read, write);
-	private void AddWrapRow(StringView label, StringView key, delegate int32(TextureAsset) read, delegate void(TextureAsset, int32) write) => AddEnumRow(label, key, cWrapItems, read, write);
-
-	/// The profile buttons: each applies one of the asset's own setups as a single command.
-	private void BuildProfileRow(FlexLayout row)
-	{
-		let caption = new Label("Apply profile:");
-		caption.FontSize.Value = 12.0f;
-		var center = LayoutStyle();
-		center.AlignSelf = .Center;
-		row.AddView(caption, center);
-		AddProfile(row, "UI", new (a) => a.SetupForUI());
-		AddProfile(row, "Sprite", new (a) => a.SetupForSprite());
-		AddProfile(row, "3D Surface", new (a) => a.SetupFor3D());
-		AddProfile(row, "Normal Map", new (a) => a.SetupForNormalMap());
-		AddProfile(row, "Data Mask", new (a) => a.SetupForDataMask());
-		AddProfile(row, "Equirect Sky", new (a) => a.SetupForEquirectangularSkybox());
-		AddProfile(row, "Cubemap Sky", new (a) => a.SetupForCubemapSkybox());
-	}
-
-	/// `setup` is consumed.
-	private void AddProfile(FlexLayout row, StringView label, delegate void(TextureAsset) setup)
-	{
-		let button = new Button(label);
-		button.OnClick.Add(new [=this, =setup](btn) =>
-			{
-				ApplyEdit("profile", new [=setup](a) => { setup(a); });
-			} ~ delete setup);
-		row.AddView(button);
-	}
-
-	/// Adds `editor` to the grid, which owns it, and keeps `refresher` to re-pull the shown
-	/// value after an undo while the row is not being edited. `refresher` is consumed.
-	private void AddEditor(PropertyEditor editor, delegate void() refresher)
-	{
-		mGrid.AddProperty(editor);
-		mRefreshers.Add(new [=editor, =refresher]() =>
-			{
-				if (!editor.IsEditing)
-					refresher();
-			} ~ delete refresher);
-	}
-
-	private void Snapshot(List<uint8> outBlob)
-	{
-		outBlob.Clear();
-		if (mAsset != null)
-			TextureAssetEdit.Snapshot(mAsset, outBlob);
-	}
-
-	/// Restores a snapshot, the undo and redo path; every row re-pulls and the info follows.
-	public void ApplyBlob(List<uint8> blob)
-	{
-		if ((mAsset == null) || !TextureAssetEdit.Apply(mAsset, blob))
-			return;
-		for (let refresher in mRefreshers)
-			refresher();
-		RefreshInfo();
-		MarkDirty();
-	}
-
-	/// Runs `mutate` on the asset and records the before and after as one merged-per-key
-	/// command. `mutate` is consumed.
-	public void ApplyEdit(StringView mergeKey, delegate void(TextureAsset asset) mutate)
-	{
-		defer delete mutate;
-		if (mAsset == null)
-			return;
-		let before = scope List<uint8>();
-		Snapshot(before);
-		mutate(mAsset);
-		let after = scope List<uint8>();
-		Snapshot(after);
-		Commands.Execute(new EditTextureCommand(this, mergeKey, before, after));
+		SetFact("Size", scope String()..AppendF("{} x {}  ({})", pixels.Width, pixels.Height, (mSourceFormat == .RGBA32F) ? "HDR" : "LDR"));
+		// The mip chain the cook makes: down to 1x1 when it makes one.
+		let mips = asset.GenerateMipmaps ? TextureAssetEdit.MipLevels(pixels.Width, pixels.Height) : 1;
+		SetFact("Mip Levels", scope String()..AppendF("{}", mips));
+		SetFact("Cooks To", ResolvedFormatText(.. scope .()));
 	}
 }

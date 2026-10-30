@@ -10,8 +10,8 @@ using Sedulous.Texture.Pipeline;
 
 namespace Sedulous.Editor.Texture;
 
-/// The texture page's headless halves: what a usage implies, the lint on a mismatch, the
-/// cooked format read out, and the whole asset's binary snapshot the undo step carries.
+/// The texture page's headless halves: what a usage implies, the notice on a mismatch, the
+/// cooked format read out.
 static class TextureAssetEdit
 {
 	/// A colour texture is sRGB; every data usage is linear.
@@ -22,9 +22,9 @@ static class TextureAssetEdit
 	public static StringView Lint(SourceUsage usage, ImageColorSpace colorSpace)
 	{
 		if ((usage != .Color) && (colorSpace == .Srgb))
-			return "Normal/Mask/HDR maps are data - sRGB will warp the values. Set Linear.";
+			return "Normal, mask and HDR maps are data: sRGB will warp their values. Set the colour space to Linear.";
 		if ((usage == .Color) && (colorSpace == .Linear))
-			return "Color as Linear is unusual (fine for LUT-style data).";
+			return "Colour stored as Linear is unusual (fine for data authored as an image, a LUT).";
 		return "";
 	}
 
@@ -93,32 +93,6 @@ static class TextureAssetEdit
 		if (desktop == mobile)
 			outText.Set(CookedFormatName(desktop));
 		else
-			outText.AppendF("{}  |  mobile: {}", CookedFormatName(desktop), CookedFormatName(mobile));
-	}
-
-	public static void Snapshot(TextureAsset asset, List<uint8> outBlob)
-	{
-		outBlob.Clear();
-		let stream = scope MemoryStream();
-		let ar = scope BinarySerializer(stream, .Write);
-		ISerializable serializable = asset;
-		serializable.Serialize(ar);
-		outBlob.AddRange(stream.Bytes);
-	}
-
-	/// Restores a snapshot over `asset`; false when it already matched, nothing read.
-	public static bool Apply(TextureAsset asset, Span<uint8> blob)
-	{
-		let current = scope List<uint8>();
-		Snapshot(asset, current);
-		if ((current.Count == blob.Length) && (Internal.MemCmp(current.Ptr, blob.Ptr, blob.Length) == 0))
-			return false;
-		let stream = scope MemoryStream();
-		stream.Write(blob);
-		stream.Seek(0, .Begin);
-		let ar = scope BinarySerializer(stream, .Read);
-		ISerializable serializable = asset;
-		serializable.Serialize(ar);
-		return true;
+			outText.AppendF("{}  ·  mobile: {}", CookedFormatName(desktop), CookedFormatName(mobile));
 	}
 }

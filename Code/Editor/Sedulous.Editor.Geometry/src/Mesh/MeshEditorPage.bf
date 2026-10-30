@@ -9,90 +9,81 @@ using Sedulous.Materials;
 using Sedulous.Runtime.Client;
 using Sedulous.Graphics;
 using Sedulous.Engine.Render;
-using Sedulous.UI;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Geometry;
 
-/// The mesh page: the cooked product on a preview entity, following reloads by product
-/// identity, beside a stats column with a preview material picker and, for a LOD chain, a
-/// row of level buttons driving the component's real ForceLod knob. Read only: a mesh is
-/// edited by re-importing its source.
-class MeshEditorPage : UIEditorPage
+/// The mesh viewer (Raptor's editor-gui spec, 5.4, layer 3), on the preview pages' markup
+/// (Data/Editor/PreviewPage.gml): the cooked product on a preview entity, following reloads by
+/// product identity, beside the asset's fields and its stats, read only. The material the preview
+/// shows it in (kept for this mesh) and, for a LOD chain, the level it draws are the preview's own
+/// choices, on its bar, not among the stats. What every asset page does is AssetObjectPage's.
+class MeshEditorPage : AssetObjectPage
 {
-	/// Borrowed.
-	private EditorContext mContext;
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
-	private String mTitle = new .() ~ delete _;
+	public const String cMarkupPath = "Editor/PreviewPage.gml";
 
-	private PreviewViewport mPreview = null;
+	private PreviewPane mPane = null ~ delete _;
+	/// One reference each, the page's: the preview's bar holds its own.
+	private AssetPickerSlot mMaterialSlot = null ~ _?.ReleaseRef();
+	private ComboBox mLod = null ~ _?.ReleaseRef();
 	/// The preview mesh entity, in the preview scene.
 	private EntityHandle mEntity = .Invalid;
 	/// Owned: what draws when no material is picked.
 	private Material mDefaultMaterial = null;
 	/// The picked override, retained; null is the default.
 	private Proxy<Material> mPreviewMaterial = default;
-	/// Its source guid, for the label.
-	/// OWNED; its view sits in the stats column's material row.
-	private ResourceRefEditor mPreviewMaterialRow ~ delete _;
 	private Guid mPreviewMaterialId = .();
-	/// The LOD row's choice, -1 auto, pushed to ForceLod.
+	/// The level the preview draws, -1 the one the game would choose; pushed to ForceLod.
 	private int32 mPreviewForceLod = -1;
-
 	/// The cooked product, retained; follows reloads.
 	private Proxy<StaticMesh> mMeshProxy = default;
 	/// Product identity, so a hot reload re-points the component.
 	private uint64 mLastUid = 0;
 
-	/// Borrowed: the content owns them.
-	private FlexLayout mStatsColumn = null;
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-
-	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
+	/// It takes `services`; `type` is the mesh asset type it opens (static or skinned).
+	public this(EditorContext context, AssetPageServices services, Instance instance, Type type)
+		: base(context, services, instance, type, cMarkupPath)
 	{
-		mContext = context;
-		mHost = host;
-		mUiHost = uiHost;
-		mTitle.Set(instance.Name);
-		InstanceId = instance.Id;
-
 		mDefaultMaterial = MaterialPresets.CreatePbr("MeshPreview");
+		if (Content != null)
+		{
+			mPane = new PreviewPane(Content, Services, "mesh.preview");
+			mPane.OnFrame = new [=this] () => { FramePreview(); };
+			if (let preview = mPane.Viewport)
+			{
+				preview.Camera.Position = .(4.0f, 3.0f, 6.0f);
+				preview.Camera.LookAt(.(0.0f, 0.0f, 0.0f));
+			}
 
-		mPreview = new PreviewViewport(host, uiHost, "mesh.preview");
-		mPreview.Camera.Position = .(4.0f, 3.0f, 6.0f);
-		mPreview.Camera.LookAt(.(0.0f, 0.0f, 0.0f));
+			// The material the preview shows the mesh in: a slot on the preview's bar.
+			mMaterialSlot = new AssetPickerSlot();
+			mMaterialSlot.AddClass("preview-slot");
+			mMaterialSlot.Tooltip = "The material the preview shows the mesh in (a neutral one when none); kept for this mesh";
+			let refs = Services.Refs;
+			mMaterialSlot.AcceptTypesOf(refs, typeof(Material)); // what makes a Material, asked of the builders
+			if ((refs != null) && (refs.Pick != null))
+				mMaterialSlot.SetOnPick(new [=this, =refs] () =>
+					{
+						refs.Pick(mMaterialSlot.AcceptedTypes, mPreviewMaterialId, new [=this] (picked) => { SetPreviewMaterial(picked); });
+					});
+			mMaterialSlot.SetOnClear(new [=this] () => { SetPreviewMaterial(.()); });
+			mMaterialSlot.SetOnDropped(new [=this] (dropped) => { SetPreviewMaterial(dropped); });
+			mPane.AddControl(mMaterialSlot);
 
+			// A chain's level of detail: the one the game would choose, or one held.
+			mLod = new ComboBox();
+			mLod.AddClass("preview-lod");
+			mLod.Tooltip = "The level of detail the preview draws: Auto is the one the game would choose";
+			mLod.SetOnSelectionChanged(new [=this] (index) => { SetPreviewLod(index - 1); });
+			mLod.Displayed = false;
+			mPane.AddControl(mLod);
+		}
 		BuildPreviewScene();
-
-		mStatsColumn = new FlexLayout();
-		mStatsColumn.Direction = .Vertical;
-		mStatsColumn.Spacing = 4.0f;
-
-		let scroll = new ScrollView();
-		scroll.VScrollBarPolicy.Value = .Auto;
-		scroll.HScrollBarPolicy.Value = .Never;
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		scroll.AddView(mStatsColumn, match);
-
-		let outer = new FlexLayout();
-		outer.Direction = .Vertical;
-		outer.Padding = .(8, 6);
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		outer.AddView(scroll, grow);
-
-		let split = new SplitView();
-		split.SplitRatio = 0.66f;
-		split.SetPanes(mPreview.View, outer);
-		mContent = split;
-
-		LoadPreviewPref();
+		LoadPreviewPref(); // binds the preview material before BindMesh applies it
+		ShowMaterial();
 		BindMesh();
 	}
 
@@ -101,71 +92,102 @@ class MeshEditorPage : UIEditorPage
 		ClearPreviewOverrides();
 		mPreviewMaterial.Forget();
 		mMeshProxy.Forget();
-		delete mPreview;
+		DeleteAndNullify!(mPane); // its preview scene before the material it drew with
 		delete mDefaultMaterial;
 	}
 
-	public override StringView Title => mTitle;
-	public override View ContentView => mContent;
-	public override Result<void, ErrorCode> Save() => .Ok;
-	public PreviewViewport Preview => mPreview;
-	public Guid PreviewMaterialId => mPreviewMaterialId;
+	/// The preview's material, nil for the neutral default; kept with the project per asset.
+	public void SetPreviewMaterial(Guid picked)
+	{
+		mPreviewMaterialId = picked;
+		mPreviewMaterial.Forget();
+		if ((Context.Resources != null) && !picked.IsNil)
+		{
+			mPreviewMaterial = Context.Resources.Bind<Material>(picked);
+			mPreviewMaterial.Retain();
+		}
+		else
+			mPreviewMaterial = default;
+		ApplyPreviewMaterial();
+		SavePreviewPref();
+		ShowMaterial();
+	}
+
+	public Guid PreviewMaterial => mPreviewMaterialId;
+
+	/// The level the preview draws (-1: the one the game would choose).
+	public void SetPreviewLod(int32 lod)
+	{
+		mPreviewForceLod = lod;
+		if (let mc = PreviewComponent())
+			mc.ForceLod = mPreviewForceLod;
+	}
+
+	// === For tests ===
+
+	public PreviewPane Pane => mPane;
+	public AssetPickerSlot MaterialSlot => mMaterialSlot;
+	public ComboBox LodChoice => mLod;
 	public int32 PreviewForceLod => mPreviewForceLod;
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
-		if (mPreview != null)
-			mPreview.Update(dt);
-
+		base.OnUpdate(host, dt);
+		if (mPane != null)
+			mPane.Update(dt);
+		// The product resolving (a cook) or its identity changing (a re-cook): the component
+		// pointed at it again, the preview framed, the stats shown again.
 		let mesh = mMeshProxy.Get;
 		let uid = (mesh != null) ? mesh.Uid : 0;
 		if (uid != mLastUid)
 		{
 			PointComponentAtMesh(mesh);
 			mLastUid = uid;
-			FramePreview(mesh);
-			RefreshStats();
+			FramePreview();
+			ShowMesh(mesh);
 		}
 	}
 
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		if (mPreview != null)
-			mPreview.RenderFrame(ref frame);
+		if (mPane != null)
+			mPane.Render(ref frame);
 	}
 
 	public override void OnClose()
 	{
-		if (mPreview != null)
-			mPreview.Shutdown();
+		if (mPane != null)
+			mPane.Close();
 	}
 
 	private void LoadPreviewPref()
 	{
-		mPreviewMaterialId = MeshPreviewPrefs.Load(mContext.ProjectEditorSettings, InstanceId);
-		if (!mPreviewMaterialId.IsNil && (mContext.Resources != null))
+		mPreviewMaterialId = MeshPreviewPrefs.Load(Context.ProjectEditorSettings, InstanceId);
+		if (!mPreviewMaterialId.IsNil && (Context.Resources != null))
 		{
-			mPreviewMaterial = mContext.Resources.Bind<Material>(mPreviewMaterialId);
+			mPreviewMaterial = Context.Resources.Bind<Material>(mPreviewMaterialId);
 			mPreviewMaterial.Retain();
 		}
 	}
 
 	private void SavePreviewPref()
 	{
-		if (MeshPreviewPrefs.Save(mContext.ProjectEditorSettings, InstanceId, mPreviewMaterialId))
-			mContext.RequestProjectEditorSettingsSave();
+		if (MeshPreviewPrefs.Save(Context.ProjectEditorSettings, InstanceId, mPreviewMaterialId))
+			Context.RequestProjectEditorSettingsSave();
 	}
 
+	private Sedulous.Scene.Scene PreviewScene => ((mPane != null) && (mPane.Viewport != null)) ? mPane.Viewport.Scene : null;
+
+	/// The preview world: one entity with a MeshComponent and a sun (the render subsystem gives the
+	/// scene its default environment).
 	private void BuildPreviewScene()
 	{
-		let scene = (mPreview != null) ? mPreview.Scene : null;
+		let scene = PreviewScene;
 		if (scene == null)
 			return;
-
 		mEntity = scene.CreateEntity("PreviewMesh");
 		if (let meshes = scene.GetSystem<MeshComponentManager>())
 			meshes.Add(mEntity); // the mesh lands in BindMesh once the product resolves
-
 		let sun = scene.CreateEntity("Sun");
 		var t = Transform();
 		t.Rotation = Quaternion.FromAxisAngle(.(0, 1, 0), 0.35f) * Quaternion.FromAxisAngle(.(1, 0, 0), -1.05f);
@@ -177,28 +199,68 @@ class MeshEditorPage : UIEditorPage
 		}
 	}
 
+	/// The cooked product bound by the asset's guid; safe before it is cooked.
 	private void BindMesh()
 	{
-		if (mContext.Resources != null)
+		if (Context.Resources != null)
 		{
 			mMeshProxy.Forget();
-			mMeshProxy = mContext.Resources.Bind<StaticMesh>(InstanceId);
+			mMeshProxy = Context.Resources.Bind<StaticMesh>(InstanceId);
 			mMeshProxy.Retain();
 		}
 		let mesh = mMeshProxy.Get;
 		PointComponentAtMesh(mesh);
 		mLastUid = (mesh != null) ? mesh.Uid : 0;
-		FramePreview(mesh);
-		RefreshStats();
+		FramePreview();
+		ShowMesh(mesh);
+	}
+
+	/// The stats as facts, the LOD choice as the chain is, and the preview or why there is none.
+	private void ShowMesh(StaticMesh mesh)
+	{
+		if (mesh == null)
+		{
+			SetFact("Status", "Not cooked yet");
+			if (mPane != null)
+				mPane.ShowEmpty("Not cooked yet", "The preview and the stats show once the mesh has cooked.");
+			if (mLod != null)
+				mLod.Displayed = false;
+			return;
+		}
+		SetFact("Status", "Cooked");
+		if (mPane != null)
+			mPane.Show();
+		let lines = scope List<String>();
+		defer { ClearAndDeleteItems(lines); }
+		MeshStats.Lines(mesh, lines);
+		let name = scope String();
+		let value = scope String();
+		for (let line in lines)
+		{
+			name.Clear();
+			value.Clear();
+			MeshStats.Split(line, name, value);
+			SetFact(name, value);
+		}
+		if (mLod != null)
+		{
+			mLod.Displayed = mesh.LodCount > 1;
+			let items = scope String("Auto");
+			for (uint32 l < mesh.LodCount)
+				items.AppendF("|LOD {}", l);
+			mLod.ItemsText = items;
+			mLod.SelectedIndex = mPreviewForceLod + 1;
+		}
 	}
 
 	private MeshComponent* PreviewComponent()
 	{
-		let scene = (mPreview != null) ? mPreview.Scene : null;
+		let scene = PreviewScene;
 		let meshes = (scene != null) ? scene.GetSystem<MeshComponentManager>() : null;
 		return ((meshes != null) && mEntity.IsAssigned) ? meshes.Get(mEntity) : null;
 	}
 
+	/// The preview entity's MeshComponent at `mesh` (null: cleared, not cooked yet).
 	private void PointComponentAtMesh(StaticMesh mesh)
 	{
 		let mc = PreviewComponent();
@@ -206,14 +268,8 @@ class MeshEditorPage : UIEditorPage
 			return;
 		mc.Mesh.SetId(.());
 		mc.Mesh.SetDirect(mesh); // the cooked product, or null while it is not cooked yet
-		mc.ForceLod = mPreviewForceLod; // the page's LOD row drives the real knob
+		mc.ForceLod = mPreviewForceLod; // the LOD choice drives the real knob
 		ApplyPreviewMaterial();
-	}
-
-	private void ApplyPreviewLod()
-	{
-		if (let mc = PreviewComponent())
-			mc.ForceLod = mPreviewForceLod;
 	}
 
 	private void ApplyPreviewMaterial()
@@ -237,124 +293,28 @@ class MeshEditorPage : UIEditorPage
 		}
 	}
 
-	/// The preview's material, nil for the default; persisted as a preview preference.
-	private void SetPreviewMaterial(Guid picked)
+	private void ShowMaterial()
 	{
-		mPreviewMaterialId = picked;
-		mPreviewMaterial.Forget();
-		if ((mContext.Resources != null) && !picked.IsNil)
-		{
-			mPreviewMaterial = mContext.Resources.Bind<Material>(picked);
-			mPreviewMaterial.Retain();
-		}
-		else
-			mPreviewMaterial = default;
-		ApplyPreviewMaterial();
-		SavePreviewPref();
-	}
-
-	private void RefreshStats()
-	{
-		if (mStatsColumn == null)
+		if (mMaterialSlot == null)
 			return;
-		mStatsColumn.RemoveAllViews();
-
+		let refs = Services.Refs;
+		if (!mPreviewMaterialId.IsNil && (refs != null) && (refs.Describe != null))
 		{
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 4.0f;
-
-			let label = new Label("Material");
-			label.FontSize.Value = 12.0f;
-			var labelStyle = LayoutStyle();
-			labelStyle.Width = SizeSpec.Fixed(Unit.Dp(64.0f));
-			labelStyle.AlignSelf = .Center;
-			row.AddView(label, labelStyle);
-			// Rebuilt with the stats column; the previous row goes here, never inside its own
-			// write (the write defers the rebuild).
-			delete mPreviewMaterialRow;
-			mPreviewMaterialRow = new ResourceRefEditor("Material", "Default", "", scope StringView[]("MaterialAsset"));
-			mPreviewMaterialRow.EmptyText.Set("Default");
-			mPreviewMaterialRow.BindAsset(mContext, new [=this]() => mPreviewMaterialId, new [=this](picked) =>
-				{
-					SetPreviewMaterial(picked);
-					if (let ctx = (mContent != null) ? mContent.Context : null)
-						ctx.MutationQueue.QueueAction(new [=this]() => { RefreshStats(); });
-				});
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			// The editor keeps its own reference to its view; the layout gets one of its own.
-			mPreviewMaterialRow.EditorView.AddRef();
-			row.AddView(mPreviewMaterialRow.EditorView, grow);
-
-			// Its natural height, as in an inspector; the fixed stat row height squeezed the
-			// slot's buttons.
-			var rowStyle = LayoutStyle();
-			rowStyle.Width = SizeSpec.Match();
-			mStatsColumn.AddView(row, rowStyle);
-		}
-
-		let mesh = mMeshProxy.Get;
-		if (mesh == null)
-		{
-			AddStatLine("Not cooked yet - the preview appears once the asset cooks.");
-			return;
-		}
-
-		if (mesh.LodCount > 1)
-		{
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 4.0f;
-			AddLodButton(row, "Auto", -1);
-			for (uint32 l < mesh.LodCount)
-				AddLodButton(row, scope $"LOD {l}", (int32)l);
-			AddRow(row);
-		}
-
-		let lines = scope List<String>();
-		defer { ClearAndDeleteItems!(lines); }
-		MeshStats.Lines(mesh, lines);
-		for (let line in lines)
-			AddStatLine(line);
-	}
-
-	private void AddLodButton(FlexLayout row, StringView text, int32 value)
-	{
-		let button = new Button(text);
-		button.FontSize.Value = 12.0f;
-		if (value == mPreviewForceLod)
-			button.IsEnabled = false; // the active choice reads as pressed
-		button.OnClick.Add(new [=this, =value](btn) =>
+			let shown = scope ResourceRefShown();
+			if (refs.Describe(mPreviewMaterialId, shown))
 			{
-				mPreviewForceLod = value;
-				ApplyPreviewLod();
-				RefreshStats();
-			});
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		row.AddView(button, grow);
+				mMaterialSlot.SetValue(shown.Name);
+				mMaterialSlot.SetGlyph(shown.Glyph, shown.GlyphClass);
+				return;
+			}
+		}
+		mMaterialSlot.SetValue(""); // the neutral default
 	}
 
-	private void AddRow(View row)
+	/// The orbit camera framed on the mesh's bounds.
+	private void FramePreview()
 	{
-		var style = LayoutStyle();
-		style.Width = SizeSpec.Match();
-		style.Height = SizeSpec.Fixed(Unit.Dp(24.0f));
-		mStatsColumn.AddView(row, style);
-	}
-
-	private void AddStatLine(StringView text)
-	{
-		let label = new Label(text);
-		label.FontSize.Value = 12.0f;
-		var style = LayoutStyle();
-		style.Width = SizeSpec.Match();
-		mStatsColumn.AddView(label, style);
-	}
-
-	private void FramePreview(StaticMesh mesh)
-	{
+		let mesh = mMeshProxy.Get;
 		var radius = 1.0f;
 		var center = Float3(0.0f, 0.0f, 0.0f);
 		if ((mesh != null) && (mesh.VertexCount > 0))
@@ -362,7 +322,7 @@ class MeshEditorPage : UIEditorPage
 			center = mesh.Bounds.Center();
 			radius = Math.Max(0.25f, Length(mesh.Bounds.Extents()));
 		}
-		if (mPreview != null)
-			mPreview.Camera.FrameBounds(center, radius);
+		if ((mPane != null) && (mPane.Viewport != null))
+			mPane.Viewport.Frame(center, radius);
 	}
 }

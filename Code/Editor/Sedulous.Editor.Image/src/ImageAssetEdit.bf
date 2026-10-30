@@ -8,8 +8,7 @@ using Sedulous.Image.Pipeline;
 
 namespace Sedulous.Editor.Image;
 
-/// The image page's headless halves: the source format label and the whole asset's binary
-/// snapshot the undo step carries.
+/// The image page's headless half: the source format label its facts say.
 static class ImageAssetEdit
 {
 	public static StringView PixelFormatLabel(PixelFormat format)
@@ -23,31 +22,5 @@ static class ImageAssetEdit
 		case .RGBA32F: return "RGBA32F (HDR)";
 		default: return "?";
 		}
-	}
-
-	public static void Snapshot(ImageAsset asset, List<uint8> outBlob)
-	{
-		outBlob.Clear();
-		let stream = scope MemoryStream();
-		let ar = scope BinarySerializer(stream, .Write);
-		ISerializable serializable = asset;
-		serializable.Serialize(ar);
-		outBlob.AddRange(stream.Bytes);
-	}
-
-	/// Restores a snapshot over `asset`; false when it already matched, nothing read.
-	public static bool Apply(ImageAsset asset, Span<uint8> blob)
-	{
-		let current = scope List<uint8>();
-		Snapshot(asset, current);
-		if ((current.Count == blob.Length) && (Internal.MemCmp(current.Ptr, blob.Ptr, blob.Length) == 0))
-			return false;
-		let stream = scope MemoryStream();
-		stream.Write(blob);
-		stream.Seek(0, .Begin);
-		let ar = scope BinarySerializer(stream, .Read);
-		ISerializable serializable = asset;
-		serializable.Serialize(ar);
-		return true;
 	}
 }

@@ -15,43 +15,68 @@ using Sedulous.Texture.Resource;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
 using Sedulous.Graphics;
-using Sedulous.UI;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Materials;
 
-/// The material page: a live preview of the material on a primitive or a mesh asset on
-/// the left, the property grid on the right. Every edit is a whole-source snapshot command
-/// (EditMaterialCommand), merged per row, and the preview material is rebuilt from the
-/// source after each one, so undo shows too.
-class MaterialEditorPage : UIEditorPage
+/// The material page (Raptor's editor-gui spec, 5.4, layer 4), on the preview pages' markup
+/// (Data/Editor/PreviewPage.gml): the material on a preview shape lit by a sun and the default sky
+/// (its clock running, so a shader that moves with Time moves), beside its rows. The authored form
+/// IS the runtime source (MaterialSource), so Save writes it back and asks for a cook; every live
+/// proxy bound to the cooked product then hot-swaps.
+///
+/// The rows are the material's, not its fields' (a source in parallel arrays: names, offsets, a
+/// uniform blob): under Material its shader (a shader asset, or a built-in, PBR or Unlit) and its
+/// pipeline state (blend, depth, cull); under Properties each value its shader declares, by its type
+/// (a number, with the shader's range; two, three or four; an integer; a colour; a colour that may
+/// pass white, with its intensity); under Textures each texture slot, a slot taking what makes a
+/// Texture. A shader switched, undone or recooked lays the rows out again. What the preview shows
+/// the material on (a shape, or a mesh of the project) is on the preview's bar, not among the
+/// material's rows, and kept per material with the project.
+///
+/// Edits are whole-source snapshot commands (EditMaterialCommand): the serialized MaterialSource
+/// before and after (it is tiny), exact undo whatever the layout, consecutive edits of one row
+/// merged. Every apply rebuilds the preview's material, so a scrub reads live on the shape.
+class MaterialEditorPage : AssetObjectPage
 {
-	/// Borrowed.
-	private EditorContext mContext;
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
-	private String mTitle = new .() ~ delete _;
+	public const String cMarkupPath = "Editor/PreviewPage.gml";
 
-	/// Owned; null when the read failed and the page opened empty.
-	private MaterialAsset mAsset = null ~ delete _;
+	private PreviewPane mPane = null ~ delete _;
+	/// One reference each, the page's: the preview's bar holds its own.
+	private ComboBox mShapeChoice = null ~ _?.ReleaseRef();
+	private AssetPickerSlot mMeshSlot = null ~ _?.ReleaseRef();
+	/// The rows' sections: the material's (shader, pipeline state), its properties, its textures.
+	/// Made again with the layout; the base's sections let go of them first (ClearSections).
+	private Sedulous.GUI.PropertyBag mMaterialRows = null;
+	private Sedulous.GUI.PropertyBag mPropertyRows = null;
+	private Sedulous.GUI.PropertyBag mTextureRows = null;
+	/// The layout changed: the rows made again on the next Refresh, never inside the grid's commit
+	/// that caused it.
+	private bool mRowsDirty = false;
+	/// The values changed under the rows: shown again on the next Refresh.
+	private bool mReshow = false;
+	/// A gesture under way (a drag, a scrub, a picker open): its previews are written to the source
+	/// as they go, so the preview shows them, with no undo step; the source as it was before them is
+	/// what the gesture's one step starts from, or what a cancel puts back.
+	private bool mPreviewing = false;
+	private bool mInGesture = false;
+	private List<uint8> mGestureBefore = new .() ~ delete _;
 
-	private PreviewViewport mPreview = null;
 	/// The preview shape entity, in the preview scene.
-	private EntityHandle mSphere = .Invalid;
-	/// Owned: runtime built, never an asset. Null while a mesh asset is the preview shape.
+	private EntityHandle mShape = .Invalid;
+	/// Owned: runtime built, never an asset. Null while a mesh of the project is the preview's.
 	private StaticMesh mPreviewMesh = null;
 	/// Owned; the preview entity draws it directly.
 	private Material mPreviewMaterial = null;
 	/// Index into MaterialPreviewShapes.
 	private uint32 mPreviewShape = 0;
-	/// Nil = primitive shape.
+	/// Nil: the shape.
 	private Guid mPreviewMeshGuid = .();
-	/// Retained proxies of the textures the preview material captured, and the views it
-	/// captured them at; a view change (a late cook, a reload) rebuilds the material.
+	/// Retained proxies of the textures the preview material captured, and the views it captured
+	/// them at; a view change (a late cook, a reload) rebuilds the material.
 	private List<Proxy<Texture>> mPreviewTextures = new .() ~ delete _;
 	private List<ITextureView> mPreviewTextureViews = new .() ~ delete _;
 
@@ -60,100 +85,67 @@ class MaterialEditorPage : UIEditorPage
 	private Proxy<ShaderResource> mShader = default;
 	private uint64 mShaderVersion = 0;
 	private List<ShaderProperty> mShaderTable = new .() ~ DeleteContainerAndItems!(_);
-	/// The rows change with the layout (a shader switched, undone or recooked): rebuilt on the
-	/// next update, never inside the grid callback that caused it.
-	private bool mGridDirty = false;
 
-	/// Borrowed: the content owns it.
-	private PropertyGrid mGrid = null;
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private PageToolbar mToolbar = null;
-	private List<delegate void()> mRefreshers = new .() ~ DeleteContainerAndItems!(_);
-	private List<Object> mOwned = new .() ~ DeleteContainerAndItems!(_);
-
-	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
+	/// It takes `services`.
+	public this(EditorContext context, AssetPageServices services, Instance instance)
+		: base(context, services, instance, typeof(MaterialAsset), cMarkupPath)
 	{
-		mContext = context;
-		mHost = host;
-		mUiHost = uiHost;
-		mTitle.Set(instance.Name);
-
-		let object = instance.ReadObject();
-		mAsset = object as MaterialAsset;
-		if ((object != null) && (mAsset == null))
-			delete object;
-		if (mAsset == null)
-			GlobalLog(.Error, "Editor: material '{}' failed to read, page opens empty", mTitle);
-		else
+		// Its source holds arrays no one edits by hand: the rows are the material's own.
+		HideAssetRows();
+		if (Content != null)
+		{
+			mPane = new PreviewPane(Content, Services, "material.preview");
+			mPane.OnFrame = new [=this] () => { FramePreview(); };
+			if (let preview = mPane.Viewport)
+			{
+				// The scene's clock runs only while it simulates: a material on a shader that
+				// animates with Time() (a scrolling surface, moving vertices, wind) moves.
+				preview.SetSimulationEnabled(true);
+				preview.Camera.Position = .(0.0f, 0.9f, 2.6f);
+				preview.Camera.LookAt(.(0.0f, 0.0f, 0.0f));
+			}
+			AddPreviewControls();
+		}
+		if (let asset = Edited)
 		{
 			let missing = scope String();
-			if (!ForwardMaterialContract.IsComplete(mAsset.Source, missing))
-				GlobalLog(.Error, "Editor: material '{}' is missing the forward shader property '{}' (a stale source); re-create it, the runtime refuses to build it", mTitle, missing);
+			if (asset.Source.ShaderId.IsNil && !ForwardMaterialContract.IsComplete(asset.Source, missing))
+				GlobalLog(.Error, "Editor: material '{}' is missing the forward shader property '{}' (a stale source); make it again, the runtime refuses to build it", Title, missing);
 		}
 		BindShader(); // a material on a shader asset shows the shader's current properties
-
-		mPreview = new PreviewViewport(host, uiHost, "material.preview");
-		// The scene's clock runs only while it simulates: a material on a shader that animates
-		// with Time() (a scrolling surface, moving vertices, wind) moves in its preview.
-		if (mPreview.Scene != null)
-			mPreview.Scene.SetSimulationEnabled(true);
-		mPreview.Camera.Position = .(0.0f, 0.9f, 2.6f);
-		mPreview.Camera.LookAt(.(0.0f, 0.0f, 0.0f));
-
 		BuildPreviewScene();
-
-		InstanceId = instance.Id;
-
-		LoadPreviewPref();
+		LoadPreviewPref(); // the shape or mesh this material was last shown on
 		if ((mPreviewShape != 0) || !mPreviewMeshGuid.IsNil)
 			ApplyPreviewMesh();
-
-		mGrid = new PropertyGrid();
-		RebuildGrid();
-
-		let gridColumn = new FlexLayout();
-		gridColumn.Direction = .Vertical;
-		gridColumn.Padding = .(8, 6);
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		gridColumn.AddView(mGrid, grow);
-
-		let split = new SplitView();
-		split.SplitRatio = 0.62f;
-		split.SetPanes(mPreview.View, gridColumn);
-		mToolbar = new PageToolbar(this, mContext.Actions);
-		mContent = PageToolbar.Frame(mToolbar, split);
-
+		BuildRows();
+		ShowNotices();
 		RebuildPreviewMaterial();
+		if ((mPane != null) && (Edited != null))
+			mPane.Show();
 	}
 
 	public ~this()
 	{
+		// The grid's sections let go of the rows before they go (the base's outlive these).
+		ClearSections();
+		DeleteRows();
 		// The preview entity draws the page's mesh and material directly; detach them before
-		// they go, then the viewport and its scene.
+		// they go, then the pane and its scene.
 		ClearPreviewOverrides();
 		ForgetPreviewTextures();
 		mShader.Forget();
-		delete mPreview;
+		DeleteAndNullify!(mPane);
 		delete mPreviewMaterial;
 		delete mPreviewMesh;
 	}
 
-	public override StringView Title => mTitle;
-	public override View ContentView => mContent;
-	public MaterialAsset Asset => mAsset;
-	public PreviewViewport Preview => mPreview;
-	public uint32 PreviewShape => mPreviewShape;
-	public Guid PreviewMeshGuid => mPreviewMeshGuid;
-	public PropertyGrid Grid => mGrid;
-
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
-		if (mToolbar != null)
-			mToolbar.Refresh();
-		if (mPreview != null)
-			mPreview.Update(dt);
-
+		base.OnUpdate(host, dt);
+		if (mPane != null)
+			mPane.Update(dt);
+		// A bound texture's live view no longer the one the material captured (a cook, a reload):
+		// the preview's material made again.
 		for (int i < mPreviewTextures.Count)
 		{
 			let texture = mPreviewTextures[i].Get;
@@ -164,129 +156,167 @@ class MaterialEditorPage : UIEditorPage
 				break;
 			}
 		}
-
 		// The shader asset recooked (its properties may have changed): re-lay the material by it.
 		if ((mShader.Get != null) && (mShader.Get.Version != mShaderVersion))
 		{
 			BindShader();
+			ShowNotices();
 			RebuildPreviewMaterial();
 		}
-		if (mGridDirty)
-		{
-			mGridDirty = false;
-			RebuildGrid();
-		}
+	}
 
-		for (let refresher in mRefreshers)
-			refresher();
+	/// The rows shown again from the source (after an undo), or laid out again (a shader switched).
+	public override void Refresh()
+	{
+		base.Refresh();
+		if (mRowsDirty)
+			BuildRows();
+		else if (mReshow)
+			ShowValues();
+		mRowsDirty = false;
+		mReshow = false;
 	}
 
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		if (mPreview != null)
-			mPreview.RenderFrame(ref frame);
-	}
-
-	public override Result<void, ErrorCode> Save()
-	{
-		if ((mAsset == null) || (mContext.Project == null))
-			return .Err(.NotFound);
-		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
-		if (instance == null)
-			return .Err(.NotFound);
-		let saved = instance.WriteObject(mAsset);
-		if (saved case .Ok)
-		{
-			ClearDirty();
-			mContext.RequestCook(false);
-			GlobalLog(.Information, "Editor: saved material '{}'", mTitle);
-		}
-		return saved;
+		if (mPane != null)
+			mPane.Render(ref frame);
 	}
 
 	public override void OnClose()
 	{
-		if (mPreview != null)
-			mPreview.Shutdown();
+		if (mPane != null)
+			mPane.Close();
 	}
+
+	/// The preview's shape (an index into MaterialPreviewShapes), kept per material; a shape picked
+	/// takes over from a mesh.
+	public void SetPreviewShape(uint32 shape)
+	{
+		mPreviewShape = (shape < (uint32)MaterialPreviewShapes.Names.Count) ? shape : 0;
+		mPreviewMeshGuid = .();
+		ApplyPreviewMesh();
+		SavePreviewPref();
+		mReshow = true;
+	}
+
+	/// A mesh of the project to show the material on (nil: the shape), kept per material.
+	public void SetPreviewMesh(Guid mesh)
+	{
+		mPreviewMeshGuid = mesh;
+		ApplyPreviewMesh();
+		SavePreviewPref();
+		mReshow = true;
+	}
+
+	public uint32 PreviewShape => mPreviewShape;
+	public Guid PreviewMesh => mPreviewMeshGuid;
+
+	// === For tests ===
+
+	/// The material's source; null when it did not read.
+	public MaterialSource Source => (Edited != null) ? Edited.Source : null;
+	public PreviewPane Pane => mPane;
+	public ComboBox ShapeChoice => mShapeChoice;
+	public Sedulous.GUI.PropertyBag MaterialRows => mMaterialRows;
+	public Sedulous.GUI.PropertyBag PropertyRows => mPropertyRows;
+	public Sedulous.GUI.PropertyBag TextureRows => mTextureRows;
+
+	/// Writes `value` to row `path` of `rows` as the grid commits an edit (one undo step).
+	public void EditRow(Sedulous.GUI.PropertyBag rows, StringView path, Sedulous.GUI.Variant value)
+	{
+		rows.SetValue(path, 0, value); // as the grid's commit leaves it
+		Committed(rows, path, value);
+	}
+
+	// === Edits and undo ===
 
 	/// Restores a source snapshot, the undo and redo path, and rebuilds the preview.
 	public void ApplySourceBlob(List<uint8> blob)
 	{
-		if (mAsset == null)
+		let asset = Edited;
+		if (asset == null)
 			return;
-		let shaderBefore = mAsset.Source.ShaderId;
+		let shaderBefore = asset.Source.ShaderId;
 		let namesBefore = scope List<String>();
 		defer { ClearAndDeleteItems!(namesBefore); }
-		for (let name in mAsset.Source.PropertyNames)
+		for (let name in asset.Source.PropertyNames)
 			namesBefore.Add(new String(name));
-		MaterialSourceEdit.Apply(mAsset.Source, blob);
+		MaterialSourceEdit.Apply(asset.Source, blob);
 		// A shader switched (or its switch undone) changes the rows and what the preview binds.
-		if (mAsset.Source.ShaderId != shaderBefore)
-		{
+		if (asset.Source.ShaderId != shaderBefore)
 			BindShader();
-			mGridDirty = true;
-		}
-		var sameRows = namesBefore.Count == mAsset.Source.PropertyNames.Count;
+		var sameRows = namesBefore.Count == asset.Source.PropertyNames.Count;
 		for (int i = 0; sameRows && (i < namesBefore.Count); i++)
-			sameRows = namesBefore[i] == mAsset.Source.PropertyNames[i];
-		mGridDirty |= !sameRows;
+			sameRows = namesBefore[i] == asset.Source.PropertyNames[i];
+		mRowsDirty |= !sameRows;
+		mReshow = true;
+		ShowNotices();
 		RebuildPreviewMaterial();
 	}
 
 	public void SnapshotSource(List<uint8> outBlob)
 	{
 		outBlob.Clear();
-		if (mAsset != null)
-			MaterialSourceEdit.Snapshot(mAsset.Source, outBlob);
+		if (let asset = Edited)
+			MaterialSourceEdit.Snapshot(asset.Source, outBlob);
 	}
 
-	/// Runs `mutate` on the source and records the before and after as one merged-per-key
-	/// command. `mutate` is consumed.
-	public void ApplyEdit(StringView mergeKey, delegate void(MaterialSource source) mutate)
+	/// Runs `mutate` on the source and records the before and after as one command merged per
+	/// `mergeKey` (the mutation already ran; its Execute puts back what is there).
+	private void ApplyEdit(StringView mergeKey, delegate void(MaterialSource source) mutate)
 	{
-		defer delete mutate;
-		if (mAsset == null)
+		let asset = Edited;
+		if (asset == null)
 			return;
+		if (mPreviewing)
+		{
+			// A preview: written to the source and shown, the source before the gesture kept.
+			if (!mInGesture)
+			{
+				SnapshotSource(mGestureBefore);
+				mInGesture = true;
+			}
+			mutate(asset.Source);
+			RebuildPreviewMaterial();
+			return;
+		}
+		// The gesture's one step starts from the source before its previews.
 		let before = scope List<uint8>();
-		SnapshotSource(before);
-		mutate(mAsset.Source);
+		if (mInGesture)
+			before.AddRange(mGestureBefore);
+		else
+			SnapshotSource(before);
+		mInGesture = false;
+		mGestureBefore.Clear();
+		mutate(asset.Source);
 		let after = scope List<uint8>();
 		SnapshotSource(after);
 		Commands.Execute(new EditMaterialCommand(this, mergeKey, before, after));
 	}
 
-	/// The context every dialog opens against; null until the content is attached.
-	private UIContext Ctx => (mGrid != null) ? mGrid.Context : null;
-
-	private StringView AssetNameFor(Guid target)
+	/// A gesture given up: the source as it was before its previews, the preview with it.
+	private void CancelGesture()
 	{
-		if (target.IsNil)
-			return "(none)";
-		if (mContext.Project != null)
-		{
-			if (let inst = mContext.Project.SourceDb.GetInstance(target))
-				return inst.Name;
-		}
-		return "(missing)";
+		if (!mInGesture)
+			return;
+		mInGesture = false;
+		ApplySourceBlob(mGestureBefore);
+		mGestureBefore.Clear();
 	}
 
-	/// Adds `editor` to the grid, which owns it, and keeps `refresher` to pull the shown value
-	/// each frame while the row is not being edited. `refresher` is consumed.
-	private void AddEditor(PropertyEditor editor, delegate void() refresher)
-	{
-		mGrid.AddProperty(editor);
-		mRefreshers.Add(new [=editor, =refresher]() =>
-			{
-				if (!editor.IsEditing)
-					refresher();
-			} ~ delete refresher);
-	}
+	private MaterialAsset Edited => ObjectAs<MaterialAsset>();
 
-	/// Keeps a helper object alive for the page's lifetime.
-	private T Own<T>(T object) where T : class
+	/// The stale source and the shader that has not cooked, each a notice while it holds.
+	private void ShowNotices()
 	{
-		mOwned.Add(object);
-		return object;
+		let asset = Edited;
+		if (asset == null)
+			return;
+		let missing = scope String();
+		let complete = !asset.Source.ShaderId.IsNil || ForwardMaterialContract.IsComplete(asset.Source, missing);
+		SetNotice("stale", complete ? "" : scope String()..AppendF("This material lacks the forward shader's {}: it was made by an older editor. Make it again; the game refuses to build it.", missing));
+		SetNotice("shader", (!asset.Source.ShaderId.IsNil && mShaderTable.IsEmpty)
+			? "Its shader has not cooked (or has errors): its rows are its own until it does." : "");
 	}
 }

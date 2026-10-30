@@ -5,7 +5,7 @@ using Sedulous.Geometry;
 namespace Sedulous.Editor.Geometry;
 
 /// The mesh page's read-only stat lines: counts, bounds, skinning, one row per submesh, and
-/// the LOD chain when there is one.
+/// the LOD chain when there is one; the page shows each as a row (Split).
 static class MeshStats
 {
 	/// Appends one line per stat; the caller owns the strings.
@@ -40,5 +40,35 @@ static class MeshStats
 					outLines.Add(new $"  LOD {l}: {indexTotal / 3} triangles  |  below {threshold:F3} coverage");
 			}
 		}
+	}
+
+	/// A stat line as a row: "Vertices: 1200" its name and value, "  [2] material 1 | 90 indices" a
+	/// submesh's ("Submesh 2"), "  LOD 1: 400 triangles | ..." a level's. Appended.
+	public static void Split(StringView line, String outName, String outValue)
+	{
+		var start = 0;
+		while ((start < line.Length) && (line[start] == ' '))
+			start++;
+		let text = line.Substring(start);
+		if (!text.IsEmpty && (text[0] == '['))
+		{
+			var close = 1;
+			while ((close < text.Length) && (text[close] != ']'))
+				close++;
+			outName.AppendF("Submesh {}", text.Substring(1, close - 1));
+			let rest = (close + 2 < text.Length) ? close + 2 : text.Length;
+			outValue.Append(text.Substring(rest));
+			return;
+		}
+		for (int i = 0; i + 1 < text.Length; i++)
+		{
+			if ((text[i] == ':') && (text[i + 1] == ' '))
+			{
+				outName.Append(text.Substring(0, i));
+				outValue.Append(text.Substring(i + 2));
+				return;
+			}
+		}
+		outName.Append(text);
 	}
 }

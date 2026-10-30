@@ -1,27 +1,27 @@
 using System;
 using Sedulous.Content;
-using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Geometry;
 
-/// Opens a mesh asset, static or skinned (one factory per type), in the mesh page.
+/// Opens a mesh asset, static or skinned (one factory per type), in the mesh viewer; a page asks
+/// for its services when it is made.
 class MeshEditorPageFactory : IEditorPageFactory
 {
 	private Type mType;
-	/// Borrowed.
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	/// Borrowed: the editor's (or a test's), which outlives it.
+	private AssetPageServicesSource mServices;
 
-	public this(Type type, IApplicationHost host, UIHost uiHost)
+	/// `services` is borrowed and outlives it.
+	public this(Type type, AssetPageServicesSource services)
 	{
 		mType = type;
-		mHost = host;
-		mUiHost = uiHost;
+		mServices = services;
 	}
 
 	public Type PrimaryType => mType;
 
-	public EditorPage CreatePage(EditorContext context, Instance instance) => new MeshEditorPage(context, mHost, mUiHost, instance);
+	public EditorPage CreatePage(EditorContext context, Instance instance) =>
+		new MeshEditorPage(context, mServices.Make(), instance, mType);
 }

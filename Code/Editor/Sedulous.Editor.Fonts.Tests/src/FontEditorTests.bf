@@ -7,17 +7,19 @@ using Sedulous.Image;
 using Sedulous.VFS;
 using Sedulous.Fonts.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Fonts.Tests;
 
-/// The font editor's registration, size list, undo snapshot and thumbnail.
+/// The font editor's registration, size list, the asset's snapshot and thumbnail.
 class FontEditorTests
 {
 	[Test]
 	public static void RegisteringRoutesFontAssetToTheFactory()
 	{
+		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		FontEditor.Register(context);
+		FontEditor.Register(context, none);
 		let found = context.Pages.FindFactory(typeof(FontAsset));
 		Test.Assert((found != null) && (found.PrimaryType == typeof(FontAsset)));
 	}
@@ -55,15 +57,14 @@ class FontEditorTests
 		a.AtlasWidth = 256;
 		a.AtlasHeight = 128;
 		let blob = scope List<uint8>();
-		FontAssetEdit.Snapshot(a, blob);
+		ObjectSnapshot.Take(a, blob);
 		let b = scope FontAsset();
-		Test.Assert(FontAssetEdit.Apply(b, blob));
+		Test.Assert(ObjectSnapshot.Restore(b, blob));
 		Test.Assert(b.FileName.Value == "Fonts/Roboto-Bold.ttf");
 		Test.Assert((b.Family == "Roboto") && (b.Mode == .DistanceField));
 		Test.Assert((b.Sizes.Count == 1) && (b.Sizes[0] == 18.0f));
 		Test.Assert((b.DistanceFieldSize == 64.0f) && (b.FirstCodepoint == 65) && (b.LastCodepoint == 90));
 		Test.Assert((b.AtlasWidth == 256) && (b.AtlasHeight == 128));
-		Test.Assert(!FontAssetEdit.Apply(b, blob));
 	}
 
 	[Test]

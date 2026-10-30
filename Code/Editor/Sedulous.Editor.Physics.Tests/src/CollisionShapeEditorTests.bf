@@ -7,6 +7,7 @@ using Sedulous.Physics.Resource;
 using Sedulous.Physics.Pipeline;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Physics.Tests;
 
@@ -16,7 +17,8 @@ class CollisionShapeEditorTests
 	[Test]
 	public static void TheFactoryReportsTheCollisionShapeAssetPrimaryType()
 	{
-		let factory = scope CollisionShapeEditorPageFactory(null, null);
+		let none = scope AssetPageServicesSource();
+		let factory = scope CollisionShapeEditorPageFactory(none);
 		Test.Assert(factory.PrimaryType == typeof(CollisionShapeAsset));
 		Test.Assert(CollisionShapeEditorPage.CookLabel(.ConvexHull) == "Convex hull (dynamic)");
 		Test.Assert(CollisionShapeEditorPage.CookLabel(.TriangleMesh) == "Triangle mesh (static)");
@@ -25,8 +27,9 @@ class CollisionShapeEditorTests
 	[Test]
 	public static void RegisteringRoutesTheAssetAndAddsTheThumbnailGenerator()
 	{
+		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		CollisionShapeEditor.Register(context, null, null);
+		CollisionShapeEditor.Register(context, none);
 		let found = context.Pages.FindFactory(typeof(CollisionShapeAsset));
 		Test.Assert((found != null) && (found.PrimaryType == typeof(CollisionShapeAsset)));
 

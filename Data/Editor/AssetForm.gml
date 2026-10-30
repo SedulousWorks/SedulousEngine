@@ -1,0 +1,34 @@
+<!--
+  The generic asset page (Raptor's editor-gui spec, 5.4, layer 1): the fallback for an asset with no
+  page of its own, its saved fields on the property grid. Its bar is the kit's (Save, Undo, Redo,
+  Discard Changes, each an action over the page), its type named at the end; a search over the rows
+  above them. An asset that did not read says so in place of the rows.
+  Code binds the bar to the actions and fills the grid from the asset's fields.
+-->
+<Panel class="page asset-form-page">
+    <ToolBar id="form-bar" class="page-toolbar">
+        <ToolButton id="form-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="form-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="form-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="form-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="form-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="form-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Spacer/>
+        <Label id="form-kind" class="badge page-kind" tooltip="This asset has no page of its own: its saved fields are shown as they are"/>
+    </ToolBar>
+    <Panel class="page-body asset-form-body">
+        <Panel class="panel-toolbar">
+            <Panel class="search">
+                <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                <TextField id="form-search" class="search-field" placeholder="Search the fields"/>
+            </Panel>
+        </Panel>
+        <Panel id="form-state" class="state-box failed asset-form-state">
+            <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+            <Label class="state-title" text="This asset did not read"/>
+            <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+        </Panel>
+        <PropertyGrid id="form-grid" class="panel-body"/>
+    </Panel>
+</Panel>

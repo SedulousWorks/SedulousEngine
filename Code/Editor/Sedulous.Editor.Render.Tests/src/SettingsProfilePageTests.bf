@@ -1,19 +1,131 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Content;
 using Sedulous.Engine.Render;
 using Sedulous.Render.Pipeline;
 using Sedulous.Settings;
 using Sedulous.Xml.Serialization;
+using Sedulous.GUI;
+using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Render.Tests;
 
 /// The settings profile page: its preview takes the profile's values, on its built-in scene or
 /// on a project scene that takes a profile, and the scene each profile is previewed on is
-/// remembered.
+/// remembered. Then the page from the preview pages' markup over a profile in a project, with no
+/// host (so no preview): its rows the values' (the scene's own fields left out), an edit one undo
+/// step, and Discard Changes taking every edit back.
 class SettingsProfilePageTests
 {
 	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
+
+	static bool DataRoot(String outPath)
+	{
+		var dir = GetCurrentDirectory(.. scope .());
+		for (int i < 8)
+		{
+			let data = PathJoin(dir, "Data", .. scope .());
+			if (DirectoryExists(PathJoin(data, "Editor", .. scope .())))
+			{
+				outPath.Set(data);
+				return true;
+			}
+			let parent = PathParent(dir, .. scope .());
+			if (parent == dir)
+				break;
+			dir.Set(parent);
+		}
+		return false;
+	}
+
+	/// Markup under the data root: a node with one reference, the caller's.
+	static Node LoadMarkup(StringView relative)
+	{
+		let data = scope String();
+		Test.Assert(DataRoot(data));
+		let text = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(data, relative, .. scope .()), text) case .Ok);
+		RegisterGuiElements();
+		RegisterToolkitElements();
+		let elements = ElementSet.All();
+		defer delete elements;
+		let loader = scope MarkupLoader(elements);
+		return loader.LoadFromString(text);
+	}
+
+	/// A project holding an environment profile ("Dusk") and its editor settings.
+	class Bed
+	{
+		public String Dir = new .("scratch_profile_page_project") ~ delete _;
+		public EditorProject Project;
+		public Settings Store = new .() ~ delete _;
+		/// What the registered factories make pages with: the markup. Declared before the context, so
+		/// it outlives the factories the context's registry holds.
+		public AssetPageServicesSource Services = new .(new () =>
+			{
+				let services = new AssetPageServices();
+				services.LoadMarkup = new (path) => LoadMarkup(path);
+				return services;
+			}) ~ delete _;
+		public EditorContext Context = new .() ~ delete _;
+		public Instance Dusk;
+
+		public this()
+		{
+			SettingsProfileEditor.Register(Context, Services); // the asset's types and the preferences' section
+			RemoveDirectoryRecursive(Dir);
+			Test.Assert(EditorProject.Create(Dir, "P") case .Ok);
+			Project = EditorProject.Open(Dir);
+			Test.Assert(Project != null);
+			Context.SetProject(Project);
+			Context.ProjectEditorSettings = Store;
+			Dusk = Project.SourceDb.RootGroup.CreateInstance("Dusk", typeof(EnvironmentProfileAsset).GetFullName(.. scope .()));
+			Test.Assert(Dusk != null);
+			let asset = scope EnvironmentProfileAsset();
+			asset.Values.Turbidity = 3.0f;
+			Test.Assert(Dusk.WriteObject(asset) case .Ok);
+		}
+
+		public ~this()
+		{
+			Context.ProjectEditorSettings = null;
+			Context.SetProject(null);
+			delete Project;
+			RemoveDirectoryRecursive(Dir);
+		}
+
+		/// The page over the profile; the caller deletes it.
+		public SettingsProfilePage Open()
+		{
+			let services = new AssetPageServices();
+			services.LoadMarkup = new (path) => LoadMarkup(path);
+			return new SettingsProfilePage(Context, services, Dusk);
+		}
+	}
+
+	static bool HasRow(IPropertySource rows, StringView name)
+	{
+		let top = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(top); }
+		rows.GetProperties(default, top);
+		for (let info in top)
+		{
+			if (info.Name == name)
+				return true;
+		}
+		return false;
+	}
+
+	static double FloatOf(IPropertySource rows, StringView path)
+	{
+		var value = rows.GetValue(path, 0);
+		defer value.Dispose();
+		return value.AsFloat;
+	}
 
 	[Test]
 	public static void TheProfilePagesPreviewTakesTheProfilesValues()
@@ -128,5 +240,87 @@ class SettingsProfilePageTests
 		Test.Assert(loaded.UnknownSectionCount == 0);
 		let read = loaded.Find<ProfilePreviewSettings>();
 		Test.Assert((read != null) && (read.SceneFor(profile) == level));
+	}
+
+	[Test]
+	public static void ItsRowsAreTheValuesTheScenesOwnFieldsLeftOut()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Context.Pages.FindFactory(typeof(EnvironmentProfileAsset)) != null, "found along the base chain");
+		let page = bed.Open();
+		defer delete page;
+		Test.Assert(!page.LoadFailed);
+		let rows = page.Rows;
+		Test.Assert(rows != null);
+		Test.Assert(rows.ObjectCount == 1);
+		Test.Assert(HasRow(rows, "Turbidity"));
+		Test.Assert(!HasRow(rows, "Source"), "a scene's, not a profile's");
+		Test.Assert(!HasRow(rows, "Profile"));
+		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 3.0) < 1e-5);
+		Test.Assert(page.PreviewSceneId.IsNil, "the built-in scene");
+		Test.Assert(page.Sections.SectionCount == 3, "notices, the values, facts (no field rows)");
+
+		// The bar names the kind by the asset type's display name, each profile declaring its own.
+		Test.Assert((typeof(EnvironmentProfileAsset).GetCustomAttribute<DisplayNameAttribute>() case .Ok(let environment)) && (environment.Name == "Environment Profile"));
+		Test.Assert((typeof(PostProcessProfileAsset).GetCustomAttribute<DisplayNameAttribute>() case .Ok(let post)) && (post.Name == "Post Process Profile"));
+	}
+
+	[Test]
+	public static void AnEditIsOneUndoStepDiscardChangesTakesEveryEditBack()
+	{
+		let bed = scope Bed();
+		let page = bed.Open();
+		defer delete page;
+		let rows = page.Rows;
+		page.EditValue("Turbidity", PropertyWrite(Sedulous.GUI.Variant(5.0)));
+		Test.Assert(page.IsDirty);
+		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 5.0) < 1e-5);
+		page.Commands.Undo();
+		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 3.0) < 1e-5);
+
+		page.EditValue("Turbidity", PropertyWrite(Sedulous.GUI.Variant(6.0)));
+		page.EditValue("Turbidity", PropertyWrite(Sedulous.GUI.Variant(7.0)));
+		page.DiscardChanges();
+		Test.Assert(!page.IsDirty);
+		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 3.0) < 1e-5);
+	}
+
+	/// A scene's save wrote the profile: the page reads it again, its undo let go.
+	[Test]
+	public static void AScenesSaveWritingTheProfileHasThePageReadItAgain()
+	{
+		let bed = scope Bed();
+		let page = bed.Open();
+		defer delete page;
+		page.EditValue("Turbidity", PropertyWrite(Sedulous.GUI.Variant(5.0)));
+		let written = scope EnvironmentProfileAsset();
+		written.Values.Turbidity = 9.0f;
+		Test.Assert(bed.Dusk.WriteObject(written) case .Ok);
+		page.OnAssetExternallyModified();
+		Test.Assert(Math.Abs(FloatOf(page.Rows, "Turbidity") - 9.0) < 1e-5);
+		Test.Assert(!page.IsDirty);
+		Test.Assert(!page.Commands.CanUndo);
+	}
+
+	/// A gesture's previews reach the preview as they go, and so does its cancel.
+	[Test]
+	public static void AGesturesPreviewsReachThePreviewAsTheyGoAndItsCancel()
+	{
+		let bed = scope Bed();
+		let page = bed.Open();
+		defer delete page;
+		let rows = page.Rows;
+		let before = page.PreviewsApplied;
+		// As a slider's drag: written in place as it goes, the preview given each value.
+		rows.BeginEdit("Turbidity");
+		rows.PreviewEdit("Turbidity", PropertyWrite(Sedulous.GUI.Variant(4.0)));
+		Test.Assert(page.PreviewsApplied == before + 1);
+		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 4.0) < 1e-5);
+		rows.PreviewEdit("Turbidity", PropertyWrite(Sedulous.GUI.Variant(5.0)));
+		Test.Assert(page.PreviewsApplied == before + 2);
+		Test.Assert(!page.Commands.CanUndo, "no step while it goes");
+		rows.CancelEdit("Turbidity");
+		Test.Assert(page.PreviewsApplied == before + 3, "the value back, the preview with it");
+		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 3.0) < 1e-5);
 	}
 }

@@ -1,5 +1,6 @@
 using Sedulous.Heightfield.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Heightfield;
 
@@ -7,10 +8,12 @@ namespace Sedulous.Editor.Heightfield;
 /// thumbnail generator when the context has a thumbnail service.
 static class HeightfieldEditor
 {
-	public static void Register(EditorContext context)
+	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
+	/// its services when it is made (the window exists by then).
+	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
 		HeightfieldPipeline.RegisterAll();
-		context.Pages.Register(new HeightfieldEditorPageFactory());
+		context.Pages.Register(new HeightfieldEditorPageFactory(services));
 		if (context.Thumbnails != null)
 			context.Thumbnails.RegisterGenerator(new HeightfieldThumbnailGenerator());
 	}

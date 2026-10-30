@@ -1,20 +1,18 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Engine.Render;
 using Sedulous.Render.Pipeline;
 using Sedulous.Runtime.Client;
 using Sedulous.Graphics;
-using Sedulous.UI;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
@@ -23,31 +21,141 @@ using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Render;
 
-/// Edits a profile asset (an Environment Profile, a Post Process Profile; any
-/// SettingsProfileAsset): a preview on the left rendered with the profile applied, and the
-/// profile's values on the right in the same rows a scene's settings section shows. The preview
-/// is a built-in scene (a ground, spheres of a few materials, a cube and a sun) or one of the
-/// project's scenes, picked in the Preview row, since a shared profile is tuned by how it looks
-/// in the levels: it loads as the scene page opens it, seen from where that page's camera was
-/// left, the profile's values over the scene's own. The choice is remembered per profile
-/// (ProfilePreviewSettings). Save writes the asset and cooks it, so every scene using the
-/// profile picks the change up.
-///
-/// Edits are snapshot commands like the material page's: the whole asset serialized before and
-/// after (it is small), consecutive scrubs of one field merged, each apply re-applying the
-/// values to the preview.
-class SettingsProfilePage : UIEditorPage, IInspectorOwner
+/// A profile's values as the grid shows them: its settings type's fields, the block's own left out
+/// (those marked [SceneOnly]: its source, its profile reference), which are a scene's and not a
+/// profile's.
+class ProfileValuesSource : IPropertySource
 {
-	/// Borrowed.
-	private EditorContext mContext;
-	private String mTitle = new .() ~ delete _;
+	// What the field source tells reaches this one's client.
+	private class Forwarder : IPropertySourceClient
+	{
+		private ProfileValuesSource mOwner;
 
-	/// Owned; null when the read failed and the page opened empty.
-	private SettingsProfileAsset mAsset = null ~ delete _;
+		public this(ProfileValuesSource owner)
+		{
+			mOwner = owner;
+		}
 
-	private PreviewViewport mPreview = null;
+		public void OnPropertiesChanged() => mOwner.NotifyPropertiesChanged();
+		public void OnValuesChanged() => mOwner.ValuesWritten();
+	}
+
+	/// Told whenever the values change under it: a gesture's previews (written in place as they
+	/// go) and its cancel, which the field source writes without a word, or a values change it
+	/// tells; the page's preview follows them. Owned.
+	public delegate void() OnValuesWritten ~ delete _;
+
+	private Forwarder mForwarder ~ delete _;
+	private FieldPropertySource mInner ~ delete _;
+	/// The top-level fields left out, by name.
+	private List<String> mSkipped = new .() ~ DeleteContainerAndItems!(_);
+
+	/// Over the values of `type` that `resolve` finds; `commit` writes an edit (both taken, as a
+	/// FieldPropertySource takes them).
+	public this(Type type, FieldPropertySource.Resolver resolve, FieldPropertySource.Committer commit, Sedulous.Resource.ResourceManager resources)
+	{
+		mForwarder = new .(this);
+		mInner = new FieldPropertySource(type, 1, resolve, commit, resources);
+		mInner.Client = mForwarder;
+		for (let field in type.GetFields())
+		{
+			if (field.GetCustomAttribute<SceneOnlyAttribute>() case .Ok)
+				mSkipped.Add(new String(field.Name));
+		}
+	}
+
+	public ~this()
+	{
+		mInner.Client = null;
+	}
+
+	/// The values found again, the grid told (an undo wrote them behind the source).
+	public void Refresh() => mInner.Refresh();
+
+	public override int ObjectCount => mInner.ObjectCount;
+
+	public override void GetProperties(StringView parent, List<PropertyInfo> outInfos)
+	{
+		if (!parent.IsEmpty)
+		{
+			mInner.GetProperties(parent, outInfos);
+			return;
+		}
+		let all = scope List<PropertyInfo>();
+		mInner.GetProperties(parent, all);
+		for (let info in all)
+		{
+			if (Skipped(info.Name))
+				delete info;
+			else
+				outInfos.Add(info);
+		}
+	}
+
+	private void ValuesWritten()
+	{
+		NotifyValuesChanged();
+		if (OnValuesWritten != null)
+			OnValuesWritten();
+	}
+
+	private bool Skipped(StringView name)
+	{
+		for (let skipped in mSkipped)
+		{
+			if (skipped == name)
+				return true;
+		}
+		return false;
+	}
+
+	public override Sedulous.GUI.Variant GetValue(StringView path, int object) => mInner.GetValue(path, object);
+	public override void BeginEdit(StringView path) => mInner.BeginEdit(path);
+	public override void PreviewEdit(StringView path, PropertyWrite write)
+	{
+		mInner.PreviewEdit(path, write);
+		ValuesWritten();
+	}
+
+	public override void CommitEdit(StringView path, PropertyWrite write) => mInner.CommitEdit(path, write);
+
+	public override void CancelEdit(StringView path)
+	{
+		let editing = mInner.Editing;
+		mInner.CancelEdit(path);
+		if (editing)
+			ValuesWritten(); // the values back, the preview with them
+	}
+	public override bool EditList(StringView path, ListEdit edit) => mInner.EditList(path, edit);
+	public override Sedulous.GUI.Variant GetDefault(StringView path, int object) => mInner.GetDefault(path, object);
+	public override bool Revert(StringView path) => mInner.Revert(path);
+	public override void GetRevertText(StringView path, String outText) => mInner.GetRevertText(path, outText);
+	public override void CopyValue(StringView path, String outText) => mInner.CopyValue(path, outText);
+	public override bool PasteValue(StringView path, StringView text, String reason) => mInner.PasteValue(path, text, reason);
+}
+
+/// Edits a profile asset (an Environment Profile, a Post Process Profile; any
+/// SettingsProfileAsset), on the preview pages' markup (Data/Editor/PreviewPage.gml; Raptor's
+/// editor-gui spec, 5.4, layer 4): a preview rendered with the profile applied, beside the
+/// profile's values, the rows a scene's settings show (the block's own fields, its source and its
+/// profile, left out, as they are a scene's). The preview is a built-in scene (a ground, spheres of
+/// a few materials, a cube and a sun) or one of the project's scenes, picked on the preview's bar,
+/// since a shared profile is tuned by how it looks in the levels: it loads as the scene page opens
+/// it, seen from where that page's camera was left, the profile's values over the scene's own. The
+/// choice is remembered per profile (ProfilePreviewSettings). Each edit is one undo step; Save
+/// writes the asset and cooks it, so every scene using the profile picks the change up.
+class SettingsProfilePage : AssetObjectPage
+{
+	public const String cMarkupPath = "Editor/PreviewPage.gml";
+
+	private PreviewPane mPane = null ~ delete _;
+	/// One reference, the page's: the preview's bar holds its own.
+	private AssetPickerSlot mSceneSlot = null ~ _?.ReleaseRef();
+	/// The values' rows; the base's sections let go of them first (ClearSections).
+	private ProfileValuesSource mValues = null;
 	/// The project scene the profile is previewed on; nil is the built-in one.
 	private Guid mPreviewSceneId = .();
+	private int mPreviewsApplied = 0;
 	/// The preview's entities that draw the page's own meshes and materials, detached before
 	/// those go.
 	private List<EntityHandle> mPreviewEntities = new .() ~ delete _;
@@ -55,66 +163,80 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 	private List<StaticMesh> mPreviewMeshes = new .() ~ DeleteContainerAndItems!(_);
 	private List<Material> mPreviewMaterials = new .() ~ DeleteContainerAndItems!(_);
 
-	/// Borrowed: the content owns it.
-	private PropertyGrid mGrid = null;
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private PageToolbar mToolbar = null;
-	private List<delegate void()> mRefreshers = new .() ~ DeleteContainerAndItems!(_);
-	private List<Object> mOwned = new .() ~ DeleteContainerAndItems!(_);
-	private bool mRebuildRequested = false;
-
-	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
+	/// It takes `services`.
+	public this(EditorContext context, AssetPageServices services, Instance instance)
+		: base(context, services, instance, typeof(SettingsProfileAsset), cMarkupPath)
 	{
-		mContext = context;
-		mTitle.Set(instance.Name);
-
-		let object = instance.ReadObject();
-		mAsset = object as SettingsProfileAsset;
-		if ((object != null) && (mAsset == null))
-			delete object;
-		if (mAsset == null)
-			GlobalLog(.Error, "Editor: profile '{}' failed to read, page opens empty", mTitle);
-		InstanceId = instance.Id;
-
-		mPreview = new PreviewViewport(host, uiHost, "profile.preview");
+		// The asset holds its values in a wrapper; the rows are the values', as a scene's show them.
+		HideAssetRows();
+		if (let profile = Profile)
+		{
+			mValues = new ProfileValuesSource(profile.ValuesType,
+				new [=this] (object) => (Profile != null) ? Profile.ValuesAddress : null,
+				new [=this] (apply) =>
+				{
+					// The whole asset before and after, one undo step; its apply tells the page.
+					EditWhole("edit_settings_profile", scope [&] (object) =>
+						{
+							if (let edited = object as SettingsProfileAsset)
+								apply(0, edited.ValuesAddress);
+						});
+				}, context.Resources);
+			// The preview scene follows the values as they change, a slider's drag included (the old
+			// page's did; the commit alone left the scene still until the release).
+			mValues.OnValuesWritten = new [=this] () => { ApplyPreview(); };
+			let title = scope String("Values");
+			if (profile.ValuesType.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let named))
+				title.Set(named.Name);
+			AddSection("values", title, mValues);
+		}
+		if (Content != null)
+		{
+			mPane = new PreviewPane(Content, Services, "profile.preview");
+			mPane.OnFrame = new [=this] () =>
+				{
+					let preview = (mPane != null) ? mPane.Viewport : null;
+					if ((preview != null) && (preview.Scene != null) && SceneLoading.SceneWorldBounds(preview.Scene, let bounds))
+						preview.Frame(bounds.Center(), Length(bounds.Extents()));
+				};
+			// The scene the profile is previewed on: the built-in one, or one of the project's.
+			mSceneSlot = new AssetPickerSlot();
+			mSceneSlot.AddClass("preview-slot");
+			mSceneSlot.Tooltip = "A scene of the project to preview the profile in (the built-in one when none); kept for this profile";
+			let refs = Services.Refs;
+			mSceneSlot.AcceptTypesOf(refs, typeof(SceneDocument));
+			if ((refs != null) && (refs.Pick != null))
+				mSceneSlot.SetOnPick(new [=this, =refs] () =>
+					{
+						refs.Pick(mSceneSlot.AcceptedTypes, mPreviewSceneId, new [=this] (picked) => { SetPreviewScene(picked); });
+					});
+			mSceneSlot.SetOnClear(new [=this] () => { SetPreviewScene(.()); });
+			mSceneSlot.SetOnDropped(new [=this] (dropped) => { SetPreviewScene(dropped); });
+			mPane.AddControl(mSceneSlot);
+		}
 		LoadPreviewPref();
 		LoadPreviewContent();
-
-		mGrid = new PropertyGrid();
-		RebuildGrid();
-
-		let gridColumn = new FlexLayout();
-		gridColumn.Direction = .Vertical;
-		gridColumn.Padding = .(8, 6); // inset like the scene inspector
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		gridColumn.AddView(mGrid, grow);
-
-		let split = new SplitView();
-		split.SplitRatio = 0.62f;
-		split.SetPanes(mPreview.View, gridColumn);
-		mToolbar = new PageToolbar(this, mContext.Actions);
-		mContent = PageToolbar.Frame(mToolbar, split);
+		ShowScene();
+		if ((mPane != null) && !LoadFailed)
+			mPane.Show();
 	}
 
 	public ~this()
 	{
-		// The preview's entities draw the page's meshes and materials directly; detach them
-		// before they go, then the viewport and its scene.
+		// The grid's sections let go of the values' rows before they go (the base's outlive these).
+		ClearSections();
+		DeleteAndNullify!(mValues);
+		// The preview's entities draw the page's meshes and materials directly; detach them before
+		// they go, then the pane and its scene.
 		ClearPreviewOverrides();
-		delete mPreview;
+		DeleteAndNullify!(mPane);
 	}
-
-	public override StringView Title => mTitle;
-	public override View ContentView => mContent;
-	public SettingsProfileAsset Asset => mAsset;
-	public PreviewViewport Preview => mPreview;
 
 	/// The scene the profile is previewed on (nil: the built-in one).
 	public Guid PreviewSceneId => mPreviewSceneId;
 
-	/// Previews on another scene (nil: the built-in one): the preview reloads, and the choice
-	/// is remembered for this profile.
+	/// Previews on another scene (nil: the built-in one): the preview reloads, and the choice is
+	/// remembered for this profile.
 	public void SetPreviewScene(Guid scene)
 	{
 		if (scene == mPreviewSceneId)
@@ -122,152 +244,94 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 		mPreviewSceneId = scene;
 		LoadPreviewContent();
 		SavePreviewPref();
+		ShowScene();
 	}
 
-	/// The values' layout, and where they are: the rows' target reads both.
-	public Type ValuesType => (mAsset != null) ? mAsset.ValuesType : null;
-	public void* ValuesAddress => (mAsset != null) ? mAsset.ValuesAddress : null;
+	// === For tests ===
 
-	// ---- IInspectorOwner: the rows a scene's settings section shows ----
+	/// The profile's rows (its values, the scene's own fields left out); null when it did not read.
+	public IPropertySource Rows => mValues;
+	public PreviewPane Pane => mPane;
+	/// How often the values were given to the preview scene (a test has no scene to look at).
+	public int PreviewsApplied => mPreviewsApplied;
 
-	public EditorContext Editor => mContext;
-	public PropertyGrid Grid => mGrid;
-	public UIContext DialogContext => (mGrid != null) ? mGrid.Context : null;
-
-	public void AddEditor(PropertyEditor editor, delegate void() refresher)
+	/// An edit of the values' property `path` to `write`, as the grid commits one.
+	public void EditValue(StringView path, PropertyWrite write)
 	{
-		mGrid.AddProperty(editor);
-		mRefreshers.Add(new [=editor, =refresher]() =>
-			{
-				if (!editor.IsEditing)
-					refresher();
-			} ~ delete refresher);
+		if (mValues == null)
+			return;
+		mValues.BeginEdit(path);
+		mValues.CommitEdit(path, write);
 	}
-
-	public void AddRefresher(delegate void() refresher) => mRefreshers.Add(refresher);
-	public void Keep(Object owned) => mOwned.Add(owned);
-	public void AssetNameFor(Guid target, String outName) => mContext.AssetNameFor(target, outName);
-	public void RequestRebuild() => mRebuildRequested = true;
-
-	// ---- the page ----
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
-		if (mToolbar != null)
-			mToolbar.Refresh();
-		if (mPreview != null)
-			mPreview.Update(dt);
-		if (mRebuildRequested)
-		{
-			mRebuildRequested = false;
-			RebuildGrid();
-			return;
-		}
-		for (let refresher in mRefreshers)
-			refresher();
+		base.OnUpdate(host, dt);
+		if (mPane != null)
+			mPane.Update(dt);
 	}
 
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		if (mPreview != null)
-			mPreview.RenderFrame(ref frame);
-	}
-
-	public override Result<void, ErrorCode> Save()
-	{
-		if ((mAsset == null) || (mContext.Project == null))
-			return .Err(.NotFound);
-		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
-		if (instance == null)
-			return .Err(.NotFound);
-		let saved = instance.WriteObject(mAsset);
-		if (saved case .Ok)
-		{
-			ClearDirty();
-			mContext.RequestCook(false); // every scene using the profile takes the new values
-			GlobalLog(.Information, "Editor: saved profile '{}'", mTitle);
-		}
-		return saved;
+		if (mPane != null)
+			mPane.Render(ref frame);
 	}
 
 	public override void OnClose()
 	{
-		if (mPreview != null)
-			mPreview.Shutdown();
+		if (mPane != null)
+			mPane.Close();
 	}
 
 	/// A scene's save wrote a profile-mode edit to the asset: show what is stored now.
 	public override void OnAssetExternallyModified()
 	{
-		let instance = (mContext.Project != null) ? mContext.Project.SourceDb.GetInstance(InstanceId) : null;
-		if (instance == null)
-			return;
-		let object = instance.ReadObject();
-		let asset = object as SettingsProfileAsset;
-		if (asset == null)
-		{
-			delete object;
-			return;
-		}
-		delete mAsset;
-		mAsset = asset;
-		Commands.Clear();
-		ClearDirty();
+		ReadAgain();
+	}
+
+	protected override void OnObjectChanged()
+	{
+		if (mValues != null)
+			mValues.Refresh(); // an undo, or a read again, wrote them behind the source
 		ApplyPreview();
 	}
 
-	/// Restores an asset snapshot, the undo and redo path, and gives the preview its values.
-	public void ApplyAssetBlob(List<uint8> blob)
-	{
-		if (mAsset == null)
-			return;
-		let stream = scope MemoryStream();
-		stream.Write(blob);
-		stream.Seek(0, .Begin);
-		let ar = scope BinarySerializer(stream, .Read);
-		mAsset.Serialize(ar);
-		ApplyPreview();
-	}
+	private SettingsProfileAsset Profile => ObjectAs<SettingsProfileAsset>();
 
-	public void SnapshotAsset(List<uint8> outBlob)
-	{
-		outBlob.Clear();
-		if (mAsset == null)
-			return;
-		let stream = scope MemoryStream();
-		{
-			let ar = scope BinarySerializer(stream, .Write);
-			mAsset.Serialize(ar);
-		}
-		outBlob.AddRange(stream.Bytes);
-	}
-
-	/// One undoable edit of the profile's values: `mutate` runs on them between a snapshot
-	/// before and after, recorded as one command merged per `mergeKey`.
-	public void ApplyEdit(StringView mergeKey, delegate void(void* values) mutate)
-	{
-		if (mAsset == null)
-			return;
-		let before = scope List<uint8>();
-		SnapshotAsset(before);
-		mutate(mAsset.ValuesAddress);
-		let after = scope List<uint8>();
-		SnapshotAsset(after);
-		Commands.Execute(new EditProfileCommand(this, mergeKey, before, after));
-	}
+	private PreviewViewport Preview => (mPane != null) ? mPane.Viewport : null;
 
 	private void ApplyPreview()
 	{
-		let scene = (mPreview != null) ? mPreview.Scene : null;
-		if ((scene != null) && (mAsset != null))
-			ProfilePreview.PreviewInScene(mAsset, scene, mContext.Resources);
+		mPreviewsApplied++;
+		let scene = (Preview != null) ? Preview.Scene : null;
+		if ((scene != null) && (Profile != null))
+			ProfilePreview.PreviewInScene(Profile, scene, Context.Resources);
 	}
 
-	/// The preview's content: the picked scene, loaded and seen from where its page's camera
-	/// was left (else framed whole), or the built-in scene when none is picked or it is gone.
+	private void ShowScene()
+	{
+		if (mSceneSlot == null)
+			return;
+		let refs = Services.Refs;
+		if (!mPreviewSceneId.IsNil && (refs != null) && (refs.Describe != null))
+		{
+			let shown = scope ResourceRefShown();
+			if (refs.Describe(mPreviewSceneId, shown))
+			{
+				mSceneSlot.SetValue(shown.Name);
+				mSceneSlot.SetGlyph(shown.Glyph, shown.GlyphClass);
+				return;
+			}
+		}
+		mSceneSlot.SetValue(""); // the built-in scene
+	}
+
+	/// The preview's content: the picked scene, loaded and seen from where its page's camera was
+	/// left (else framed whole), or the built-in scene when none is picked or it is gone.
 	private void LoadPreviewContent()
 	{
-		if (mPreview == null)
+		let preview = Preview;
+		if (preview == null)
 			return;
 		// The built-in content draws the page's own meshes and materials: detached and freed
 		// before the scene that holds it goes.
@@ -275,26 +339,26 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 		mPreviewEntities.Clear();
 		ClearAndDeleteItems(mPreviewMeshes);
 		ClearAndDeleteItems(mPreviewMaterials);
-		var scene = mPreview.ResetScene();
+		var scene = preview.ResetScene();
 		if (scene == null)
 			return;
 
-		let document = (!mPreviewSceneId.IsNil && (mContext.Project != null)) ? mContext.Project.SourceDb.GetInstance(mPreviewSceneId) : null;
+		let document = (!mPreviewSceneId.IsNil && (Context.Project != null)) ? Context.Project.SourceDb.GetInstance(mPreviewSceneId) : null;
 		var loaded = false;
 		if (document != null)
 		{
-			loaded = SceneLoading.LoadEditorScene(mContext, document, scene) case .Ok;
+			loaded = SceneLoading.LoadEditorScene(Context, document, scene) case .Ok;
 			if (!loaded)
 			{
-				GlobalLog(.Warning, "Editor: profile '{}': preview scene '{}' did not load, showing the built-in one", mTitle, document.Name);
-				scene = mPreview.ResetScene();
+				GlobalLog(.Warning, "Editor: profile '{}': preview scene '{}' did not load, showing the built-in one", Title, document.Name);
+				scene = preview.ResetScene();
 			}
 		}
-		let camera = mPreview.Camera;
+		let camera = preview.Camera;
 		if (loaded)
 		{
 			// From where that scene's page left its camera, else the whole scene in view.
-			let view = SceneViewPrefs.Find(mContext.ProjectEditorSettings, mPreviewSceneId);
+			let view = SceneViewPrefs.Find(Context.ProjectEditorSettings, mPreviewSceneId);
 			if ((view != null) && view.HasCamera)
 			{
 				camera.Position = view.Camera.Position;
@@ -318,7 +382,7 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 
 	private void LoadPreviewPref()
 	{
-		let store = mContext.ProjectEditorSettings;
+		let store = Context.ProjectEditorSettings;
 		if (store == null)
 			return;
 		if (let section = store.Find<ProfilePreviewSettings>())
@@ -327,43 +391,17 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 
 	private void SavePreviewPref()
 	{
-		let store = mContext.ProjectEditorSettings;
+		let store = Context.ProjectEditorSettings;
 		if (store == null)
 			return;
 		store.Section<ProfilePreviewSettings>().Set(InstanceId, mPreviewSceneId);
 		store.MarkChanged<ProfilePreviewSettings>();
-		mContext.RequestProjectEditorSettingsSave();
-	}
-
-	/// The profile's values, in the rows a scene's settings section shows; the block's own
-	/// fields (its source, its profile) are not a profile's and have none.
-	private void RebuildGrid()
-	{
-		mGrid.Clear();
-		ClearAndDeleteItems(mRefreshers);
-		ClearAndDeleteItems(mOwned);
-
-		// The scene the profile is previewed on: the page's own, not the profile's data, and
-		// remembered per profile in the project's editor store.
-		{
-			let sceneRow = new ResourceRefEditor("Scene", "(built-in)", "Preview", scope StringView[]("SceneDocument"));
-			sceneRow.EmptyText.Set("(built-in)");
-			sceneRow.BindAsset(mContext, new [=this]() => mPreviewSceneId, new [=this](picked) => { SetPreviewScene(picked); });
-			mGrid.AddProperty(sceneRow);
-		}
-
-		let type = ValuesType;
-		let entry = (type != null) ? InspectorRegistry.Find(type) : null;
-		if (entry == null)
-			return;
-		let target = Own(new ProfileValuesTarget(this));
-		let section = scope InspectorSection(this, target, entry.SettingsSectionName(.. scope .()));
-		entry.Build(section);
+		Context.RequestProjectEditorSettingsSave();
 	}
 
 	private void BuildPreviewScene()
 	{
-		let scene = (mPreview != null) ? mPreview.Scene : null;
+		let scene = (Preview != null) ? Preview.Scene : null;
 		let meshes = (scene != null) ? scene.GetSystem<MeshComponentManager>() : null;
 		if (meshes == null)
 			return;
@@ -401,11 +439,11 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 		}
 	}
 
-	/// Detaches the page's meshes and materials from the preview's entities, ahead of
-	/// deleting them.
+	/// Detaches the page's meshes and materials from the preview's entities, ahead of deleting
+	/// them.
 	private void ClearPreviewOverrides()
 	{
-		let scene = (mPreview != null) ? mPreview.Scene : null;
+		let scene = (Preview != null) ? Preview.Scene : null;
 		let meshes = (scene != null) ? scene.GetSystem<MeshComponentManager>() : null;
 		if (meshes == null)
 			return;
@@ -418,12 +456,5 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 				mc.MaterialCache.Clear();
 			}
 		}
-	}
-
-	/// Keeps a helper object alive for the grid's contents.
-	private T Own<T>(T object) where T : class
-	{
-		mOwned.Add(object);
-		return object;
 	}
 }

@@ -7,150 +7,48 @@ using Sedulous.Physics.Resource;
 using Sedulous.Physics.Pipeline;
 using Sedulous.Runtime.Client;
 using Sedulous.Graphics;
-using Sedulous.UI;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Physics;
 
-/// The collision shape page: the cooked outline drawn as a wireframe in a preview, beside
-/// the source mesh pick, the cook mode toggle, the hull tolerance and a Cook now button
-/// that saves, which is what triggers the cook. Two fields with no undo: Discard reloads.
-class CollisionShapeEditorPage : UIEditorPage
+/// The collision shape page (Raptor's editor-gui spec, 5.4, layer 3), on the preview pages' markup
+/// (Data/Editor/PreviewPage.gml): the cooked collider's outline drawn in the preview, beside the
+/// asset's fields, its source mesh a slot for what a mesh cooks to ([References]), each edit one
+/// undo step. A shape with no mesh says so in a notice, and shows no collider (one cooked before
+/// its mesh was cleared is not one it can make now); what it cooks from and how, and the
+/// collider's size, are read only. The old page's Cook now is the bar's Cook, as every asset page
+/// has it. What every asset page does is AssetObjectPage's.
+class CollisionShapeEditorPage : AssetObjectPage
 {
-	/// Borrowed.
-	private EditorContext mContext;
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
-	private String mTitle = new .() ~ delete _;
-	/// Owned; null when the read failed and the page opened empty.
-	private CollisionShapeAsset mAsset = null ~ delete _;
+	public const String cMarkupPath = "Editor/PreviewPage.gml";
 
-	/// Borrowed: the content owns them.
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private PageToolbar mToolbar = null;
-	/// OWNED; its view sits in the source mesh row.
-	private ResourceRefEditor mMeshRow ~ delete _;
-	private Button mCookButton = null;
-	private FloatEditor mToleranceRow = null;
-	private Label mStatus = null;
-	private PreviewViewport mPreview = null ~ delete _;
-	/// The cooked product, retained.
+	private PreviewPane mPane = null ~ delete _;
+	/// The cooked product, retained; it follows re-cooks, so DrawOutline reads the current outline.
 	private Proxy<CollisionShape> mShape = default;
+	/// The outline's vertex count when the camera last framed it: a re-cook that changes it frames
+	/// again.
 	private int mFramedCount = 0;
 
-	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
+	/// It takes `services`.
+	public this(EditorContext context, AssetPageServices services, Instance instance)
+		: base(context, services, instance, typeof(CollisionShapeAsset), cMarkupPath)
 	{
-		mContext = context;
-		mHost = host;
-		mUiHost = uiHost;
-		mTitle.Set(instance.Name);
-		InstanceId = instance.Id;
-
-		let object = instance.ReadObject();
-		mAsset = object as CollisionShapeAsset;
-		if ((object != null) && (mAsset == null))
-			delete object;
-		if (mAsset == null)
-			GlobalLog(.Error, "Editor: collision shape '{}' failed to read, page opens empty", mTitle);
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 8.0f;
-		column.Padding = .(10, 8);
-
+		// The outline is drawn as unlit debug lines each frame, so the preview's scene needs no
+		// entities or light.
+		if (Content != null)
 		{
-			let row = AddLabeledRow(column, "Source mesh");
-			mMeshRow = new ResourceRefEditor("Source mesh", "(none)", "", scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
-			mMeshRow.BindAsset(mContext, new [=this]() => (mAsset != null) ? mAsset.SourceMesh : Guid(), new [=this](picked) =>
-				{
-					if (mAsset == null)
-						return;
-					mAsset.SourceMesh = picked;
-					MarkDirty();
-					RefreshStatus();
-				});
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			// The editor keeps its own reference to its view; the layout gets one of its own.
-			mMeshRow.EditorView.AddRef();
-			row.AddView(mMeshRow.EditorView, grow);
+			mPane = new PreviewPane(Content, Services, "collision.preview");
+			mPane.OnFrame = new [=this] () => { FrameOutline(); };
 		}
+		if (Context.Resources != null)
 		{
-			let row = AddLabeledRow(column, "Cook");
-			mCookButton = new Button((mAsset != null) ? CookLabel(mAsset.Cook) : "-");
-			mCookButton.OnClick.Add(new [=this](btn) =>
-				{
-					if (mAsset == null)
-						return;
-					mAsset.Cook = (mAsset.Cook == .ConvexHull) ? .TriangleMesh : .ConvexHull;
-					mCookButton.SetText(CookLabel(mAsset.Cook));
-					RefreshTolerance();
-					MarkDirty();
-				});
-			row.AddView(mCookButton);
-		}
-		{
-			// The hull's one knob, in a grid of its own so it reads like the other pages.
-			let grid = new PropertyGrid();
-			mToleranceRow = new FloatEditor("Hull Tolerance", (mAsset != null) ? mAsset.HullTolerance : 0.0, 0.0, 0.1, 0.0001, 4, new [=this](v) =>
-				{
-					if (mAsset == null)
-						return;
-					mAsset.HullTolerance = (float)v;
-					MarkDirty();
-				}, "Cook");
-			grid.AddProperty(mToleranceRow);
-			var match = LayoutStyle();
-			match.Width = SizeSpec.Match();
-			column.AddView(grid, match);
-		}
-		{
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 8.0f;
-			let cook = new Button("Cook now");
-			cook.OnClick.Add(new [=this](btn) => { Save().IgnoreError(); });
-			row.AddView(cook);
-			mStatus = new Label("");
-			mStatus.FontSize.Value = 12.0f;
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			row.AddView(mStatus, grow);
-			var match = LayoutStyle();
-			match.Width = SizeSpec.Match();
-			column.AddView(row, match);
-		}
-
-		mPreview = new PreviewViewport(host, uiHost, "collision.preview");
-		let split = new SplitView();
-		split.SplitRatio = 0.62f;
-		split.SetPanes(mPreview.View, column);
-
-		mToolbar = new PageToolbar(this, mContext.Actions);
-		let pageColumn = new FlexLayout();
-		pageColumn.Direction = .Vertical;
-		var matchTop = LayoutStyle();
-		matchTop.Width = SizeSpec.Match();
-		pageColumn.AddView(mToolbar, matchTop);
-		var growMatch = LayoutStyle();
-		growMatch.FlexGrow = 1.0f;
-		growMatch.Width = SizeSpec.Match();
-		pageColumn.AddView(split, growMatch);
-		mContent = pageColumn;
-
-		if (mContext.Resources != null)
-		{
-			mShape = mContext.Resources.Bind<CollisionShape>(InstanceId);
+			mShape = Context.Resources.Bind<CollisionShape>(InstanceId);
 			mShape.Retain();
 		}
-		RefreshTolerance();
-		RefreshStatus();
+		ShowStatus();
 	}
 
 	public ~this()
@@ -158,126 +56,126 @@ class CollisionShapeEditorPage : UIEditorPage
 		mShape.Forget();
 	}
 
-	public override StringView Title => mTitle;
-	public override View ContentView => mContent;
-	public CollisionShapeAsset Asset => mAsset;
-
+	/// What a cook kind is called.
 	public static StringView CookLabel(CollisionCookKind kind) => (kind == .ConvexHull) ? "Convex hull (dynamic)" : "Triangle mesh (static)";
 
-	private void MeshName(Guid id, String outName)
+	/// Whether the preview shows the cooked collider: there is one, and the asset still names a
+	/// mesh to make it from (cleared, the last cook's collider is one it can no longer make).
+	public static bool ShowsCollider(Guid sourceMesh, CollisionShape shape)
+		=> !sourceMesh.IsNil && (shape != null) && (shape.Outline.Count >= 3);
+
+	// The collider shown now (null: none to show).
+	private CollisionShape ShownCollider
 	{
-		if (id.IsNil || (mContext.Project == null))
+		get
 		{
-			outName.Set("(none - pick a mesh)");
-			return;
+			let asset = ObjectAs<CollisionShapeAsset>();
+			let shape = mShape.Get;
+			return ((asset != null) && ShowsCollider(asset.SourceMesh, shape)) ? shape : null;
 		}
-		let inst = mContext.Project.SourceDb.GetInstance(id);
-		if (inst != null)
-			inst.GetPath(outName);
-		else
-			outName.Set("(missing mesh)");
 	}
 
-	private static FlexLayout AddLabeledRow(FlexLayout column, StringView labelText)
+	// === For tests ===
+
+	public PreviewPane Pane => mPane;
+
+	public override void OnUpdate(IApplicationHost host, float dt)
 	{
-		let row = new FlexLayout();
-		row.Direction = .Horizontal;
-		row.Spacing = 6.0f;
-		let label = new Label(labelText);
-		var labelStyle = LayoutStyle();
-		labelStyle.Width = SizeSpec.Fixed(Unit.Dp(90.0f));
-		labelStyle.AlignSelf = .Center;
-		row.AddView(label, labelStyle);
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		column.AddView(row, match);
-		return row;
+		base.OnUpdate(host, dt);
+		if (mPane != null)
+			mPane.Update(dt);
+		DrawOutline();
 	}
 
-	/// Reloads the asset from the source database.
-	public override void DiscardChanges()
+	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		let instance = (mContext.Project != null) ? mContext.Project.SourceDb.GetInstance(InstanceId) : null;
-		if (instance != null)
-		{
-			let object = instance.ReadObject();
-			if (let asset = object as CollisionShapeAsset)
-			{
-				delete mAsset;
-				mAsset = asset;
-				if (mCookButton != null)
-					mCookButton.SetText(CookLabel(mAsset.Cook));
-				RefreshTolerance();
-				RefreshStatus();
-			}
-			else
-				delete object;
-		}
-		Commands.Clear();
-		ClearDirty();
+		if (mPane != null)
+			mPane.Render(ref frame);
 	}
 
-	/// The tolerance only means something for a hull.
-	private void RefreshTolerance()
+	public override void OnClose()
 	{
-		if ((mToleranceRow == null) || (mAsset == null))
+		if (mPane != null)
+			mPane.Close();
+	}
+
+	protected override void OnObjectChanged()
+	{
+		ShowStatus();
+	}
+
+	/// The notice and the facts: what it cooks from and how; the preview or why there is none.
+	private void ShowStatus()
+	{
+		let asset = ObjectAs<CollisionShapeAsset>();
+		if (asset == null)
 			return;
-		mToleranceRow.SetValue(mAsset.HullTolerance);
-		mToleranceRow.SetRowVisible(mAsset.Cook == .ConvexHull);
-	}
-
-	private void RefreshStatus()
-	{
-		if (mAsset == null)
-			return;
-		let name = MeshName(mAsset.SourceMesh, .. scope .());
-		mMeshRow.Refresh();
-		if (mAsset.SourceMesh.IsNil)
-			mStatus.SetText("No source mesh - pick one, then Cook now.");
-		else
-			mStatus.SetText(scope $"Cooks a collider from {name}.");
-	}
-
-	public override Result<void, ErrorCode> Save()
-	{
-		if ((mAsset == null) || (mContext.Project == null))
-			return .Err(.NotFound);
-		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
-		if (instance == null)
-			return .Err(.NotFound);
-		let saved = instance.WriteObject(mAsset);
-		if (saved case .Ok)
-		{
-			ClearDirty();
-			mContext.RequestCook(false); // re-cook, so a body on the cooked shape gets its collider
-			RefreshStatus();
-			GlobalLog(.Information, "Editor: saved collision shape '{}'", mTitle);
-		}
-		return saved;
-	}
-
-	/// The outline triangles as a wireframe, framed once per cooked product.
-	private void DrawOutline()
-	{
-		if ((mPreview == null) || !mPreview.IsValid)
-			return;
+		SetNotice("mesh", asset.SourceMesh.IsNil ? "No source mesh: pick one, then save to cook its collider." : "");
+		SetFact("Cooks From", MeshName(asset.SourceMesh, .. scope .()));
+		SetFact("Cooks As", CookLabel(asset.Cook));
 		let shape = mShape.Get;
-		if ((shape == null) || (shape.Outline.Count < 3))
+		if (!ShowsCollider(asset.SourceMesh, shape))
+		{
+			SetFact("Collider", asset.SourceMesh.IsNil ? "None: no source mesh" : "Not cooked yet");
+			if (mPane != null)
+				mPane.ShowEmpty("No collider yet", asset.SourceMesh.IsNil ? "Pick a source mesh, then save: its collider cooks and shows here."
+					: "Save to cook the collider; it shows here once cooked.");
+			return;
+		}
+		SetFact("Collider", scope String()..AppendF("{} triangles", shape.Outline.Count / 3));
+		if (mPane != null)
+			mPane.Show();
+	}
+
+	/// The source mesh as its row says it: its path, or why there is none, appended.
+	private void MeshName(Guid id, String outText)
+	{
+		if (id.IsNil || (Context.Project == null))
+		{
+			outText.Append("Not set");
+			return;
+		}
+		let instance = Context.Project.SourceDb.GetInstance(id);
+		if (instance != null)
+			instance.GetPath(outText);
+		else
+			outText.Append("(missing mesh)");
+	}
+
+	private void FrameOutline()
+	{
+		let shape = ShownCollider;
+		if ((shape == null) || (mPane == null) || (mPane.Viewport == null))
 			return;
 		let tris = shape.Outline;
+		var lo = tris[0];
+		var hi = tris[0];
+		for (let v in tris)
+		{
+			lo = .(Math.Min(lo.X, v.X), Math.Min(lo.Y, v.Y), Math.Min(lo.Z, v.Z));
+			hi = .(Math.Max(hi.X, v.X), Math.Max(hi.Y, v.Y), Math.Max(hi.Z, v.Z));
+		}
+		mPane.Viewport.Frame((lo + hi) * 0.5f, Math.Max(0.25f, Length((hi - lo) * 0.5f)));
+	}
+
+	/// The outline triangles as a wireframe each frame (the debug scene clears each frame).
+	private void DrawOutline()
+	{
+		let preview = (mPane != null) ? mPane.Viewport : null;
+		if ((preview == null) || !preview.IsValid)
+			return;
+		let shape = ShownCollider;
+		if (shape == null)
+			return;
+		let tris = shape.Outline; // a triangle list: three vertices each
+		// Framed when the outline first appears or a re-cook changes its vertex count, and said.
 		if (tris.Count != mFramedCount)
 		{
-			var lo = tris[0];
-			var hi = tris[0];
-			for (let v in tris)
-			{
-				lo = .(Math.Min(lo.X, v.X), Math.Min(lo.Y, v.Y), Math.Min(lo.Z, v.Z));
-				hi = .(Math.Max(hi.X, v.X), Math.Max(hi.Y, v.Y), Math.Max(hi.Z, v.Z));
-			}
-			mPreview.Camera.FrameBounds((lo + hi) * 0.5f, Length((hi - lo) * 0.5f));
+			FrameOutline();
 			mFramedCount = tris.Count;
+			ShowStatus();
 		}
-		let draw = mPreview.SceneDebugDraw;
+		let draw = preview.SceneDebugDraw;
 		let color = Color(0.30f, 0.95f, 0.55f, 1.0f);
 		for (int i = 0; i + 2 < tris.Count; i += 3)
 		{
@@ -285,26 +183,5 @@ class CollisionShapeEditorPage : UIEditorPage
 			draw.DrawLine(tris[i + 1], tris[i + 2], color);
 			draw.DrawLine(tris[i + 2], tris[i], color);
 		}
-	}
-
-	public override void OnUpdate(IApplicationHost host, float dt)
-	{
-		if (mToolbar != null)
-			mToolbar.Refresh();
-		if (mPreview != null)
-			mPreview.Update(dt);
-		DrawOutline();
-	}
-
-	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
-	{
-		if (mPreview != null)
-			mPreview.RenderFrame(ref frame);
-	}
-
-	public override void OnClose()
-	{
-		if (mPreview != null)
-			mPreview.Shutdown();
 	}
 }

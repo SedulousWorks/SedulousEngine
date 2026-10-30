@@ -4,24 +4,27 @@ using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.Heightfield.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Heightfield.Tests;
 
-/// The heightfield editor's registration, its undo snapshot and its thumbnail.
+/// The heightfield editor's registration, the asset's snapshot and its thumbnail.
 class HeightfieldEditorTests
 {
 	[Test]
 	public static void TheFactoryReportsTheHeightfieldAssetPrimaryType()
 	{
-		let factory = scope HeightfieldEditorPageFactory();
+		let none = scope AssetPageServicesSource();
+		let factory = scope HeightfieldEditorPageFactory(none);
 		Test.Assert(factory.PrimaryType == typeof(HeightfieldAsset));
 	}
 
 	[Test]
 	public static void RegisteringRoutesHeightfieldAssetToTheFactory()
 	{
+		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		HeightfieldEditor.Register(context);
+		HeightfieldEditor.Register(context, none);
 		let found = context.Pages.FindFactory(typeof(HeightfieldAsset));
 		Test.Assert(found != null);
 		Test.Assert(found.PrimaryType == typeof(HeightfieldAsset));
@@ -38,14 +41,13 @@ class HeightfieldEditorTests
 		a.MinY = -8.0f;
 		a.MaxY = 96.0f;
 		let blob = scope List<uint8>();
-		HeightfieldAssetEdit.Snapshot(a, blob);
+		ObjectSnapshot.Take(a, blob);
 		let b = scope HeightfieldAsset();
-		Test.Assert(HeightfieldAssetEdit.Apply(b, blob));
+		Test.Assert(ObjectSnapshot.Restore(b, blob));
 		Test.Assert(b.FileName.Value == "Terrain/island.png");
 		Test.Assert(b.Size == 513);
 		Test.Assert(b.WorldSize.X == 512.0f);
 		Test.Assert((b.MinY == -8.0f) && (b.MaxY == 96.0f));
-		Test.Assert(!HeightfieldAssetEdit.Apply(b, blob));
 	}
 
 	[Test]

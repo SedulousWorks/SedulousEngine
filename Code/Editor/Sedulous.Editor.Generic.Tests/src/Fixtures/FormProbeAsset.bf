@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.Editor.Generic.Tests;
 
 /// A synthetic asset exercising scalars, strings, guids, blobs, arrays, and a version-gated
 /// plus a value-conditional field. Hand-written, since the conditionals are the point.
+[DisplayName("Form Probe")] // the kind its page names
 class FormProbeAsset : ISerializable
 {
 	public const uint64 TypeId = 0x7A3F19C2D4B8E601UL;
