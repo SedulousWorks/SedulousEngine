@@ -30,7 +30,8 @@ cbuffer TerrainChunk : register(b0, space1) {
     float2 TexelSpan;   // texels spanned across the chunk (= kChunkQuads)
     float2 HeightRange; // minY, maxY (world)
     float2 GridSize;    // heightfield side S (texel clamp bound), same in x and y
-    float2 Skirt;       // x = skirt drop depth (world); y = pad
+    float  SkirtDepth;  // how far the skirt ring drops below the surface (world)
+    float  _terrainChunkPad0;
 };
 
 Texture2D<uint> HeightTex : register(t0, space2);
@@ -61,7 +62,7 @@ VSOut main(VSIn i) {
     float2 texelF   = TexelBase + uv * TexelSpan;
     int2   texel    = int2((int)round(texelF.x), (int)round(texelF.y));
     float  surfaceY = SampleHeightY(texel);
-    float  y        = surfaceY - isSkirt * Skirt.x; // skirt verts drop below the surface
+    float  y        = surfaceY - isSkirt * SkirtDepth; // skirt verts drop below the surface
 
     float2 lxz = OriginXZ + uv * SizeXZ;                       // local XZ
     float3 worldPos = mul(float4(lxz.x, y, lxz.y, 1.0), ChunkToWorld).xyz;

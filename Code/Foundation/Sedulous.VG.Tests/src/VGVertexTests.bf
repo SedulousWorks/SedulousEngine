@@ -66,4 +66,42 @@ class VGVertexTests
 		Test.Assert(vertex.Coverage == 1.0f);
 		Test.Assert(vertex.Color == Color.White);
 	}
+
+	/// Every field where the renderer's vertex layout reads it (VGRenderer's attributes), the
+	/// render vertex the same.
+	[Test]
+	public static void EachFieldSitsWhereTheLayoutReadsIt()
+	{
+		Test.Assert(offsetof(VGVertex, Position) == 0);
+		Test.Assert(offsetof(VGVertex, TexCoord) == 8);
+		Test.Assert(offsetof(VGVertex, Color) == 16);
+		Test.Assert(offsetof(VGVertex, Coverage) == 32);
+		Test.Assert(offsetof(VGVertex, Effect) == 36);
+	}
+
+	/// The per pipeline constructors write their values where the shaders read them.
+	[Test]
+	public static void ThePerPipelineConstructorsWriteWhereTheShadersRead()
+	{
+		// The box shadow: the SDF operand rides TexCoord and the signed corner radius Coverage.
+		let shadow = VGVertex.BoxShadow(.(1.0f, 2.0f), .(-0.5f, 0.25f), .Red, -1.5f);
+		Test.Assert(shadow.Position == Float2(1.0f, 2.0f));
+		Test.Assert(shadow.TexCoord == Float2(-0.5f, 0.25f));
+		Test.Assert(shadow.Color == Color.Red);
+		Test.Assert(shadow.Coverage == -1.5f);
+		Test.Assert(shadow.Effect == Float2(0.0f, 0.0f));
+
+		// A glyph: full coverage, the edge shift and ramp in Effect.
+		let glyph = VGVertex.Glyph(.(3.0f, 4.0f), .(0.1f, 0.2f), .White, .(0.125f, 0.25f));
+		Test.Assert(glyph.TexCoord == Float2(0.1f, 0.2f));
+		Test.Assert(glyph.Coverage == 1.0f);
+		Test.Assert(glyph.Effect == Float2(0.125f, 0.25f));
+
+		// A layer composite: the filter as offsets from none, so a plain composite carries zeros.
+		let plain = VGVertex.LayerComposite(.(0.0f, 0.0f), .(1.0f, 1.0f), .White, 1.0f, 1.0f);
+		Test.Assert(plain.Effect == Float2(0.0f, 0.0f));
+		Test.Assert(plain.Coverage == 1.0f);
+		let filtered = VGVertex.LayerComposite(.(0.0f, 0.0f), .(1.0f, 1.0f), .White, 0.25f, 1.5f);
+		Test.Assert(filtered.Effect == Float2(0.75f, 0.5f));
+	}
 }

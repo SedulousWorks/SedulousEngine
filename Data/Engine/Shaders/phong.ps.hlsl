@@ -109,7 +109,7 @@ float4 main(PSInput input) : SV_Target0 {
     // For the views that look at the surface's makings: a Phong surface as the dielectric it is, as
     // rough as its highlight is broad.
     const float roughness = saturate(sqrt(2.0 / (exponent + 2.0)));
-    uint debugMode = (uint)(DebugParams.x + 0.5);
+    uint debugMode = DebugMode;
     if (debugMode != 0u) {
         litColor = DebugSemanticColor(debugMode, diffuse, N, roughness, 0.0, viewDepth, lights.count, litColor);
 #ifdef GBUFFER

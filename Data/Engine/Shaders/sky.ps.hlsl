@@ -24,10 +24,10 @@ PSOut main(PSIn i) {
     // direction) and take the UV delta, in UNJITTERED NDC. The ray is reconstructed through the UNJITTERED
     // InvViewProj (so the background is temporally invariant under a static camera - no per-pixel jitter
     // oscillation for TAA to chase), which makes i.ndc the geometric current NDC directly. The previous
-    // term still unjitters (PrevViewProj carries last frame's jitter; +Jitter.zw removes it).
+    // term still unjitters (PrevViewProj carries last frame's jitter; +PrevJitter removes it).
     float4 prevClip = mul(float4(dir, 0.0), PrevViewProj);
     float2 curNDC   = i.ndc;
-    float2 prevNDC  = prevClip.xy / prevClip.w + Jitter.zw;
+    float2 prevNDC  = prevClip.xy / prevClip.w + PrevJitter;
     float2 velocity = (curNDC - prevNDC) * float2(0.5, -0.5);
     // A direction through an orthographic matrix has w = 0. The renderer hands an orthographic
     // view a perspective stand-in (SkyViewProjection), so this is a guard: a NaN here would

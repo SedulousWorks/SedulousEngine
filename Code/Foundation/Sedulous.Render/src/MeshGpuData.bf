@@ -51,8 +51,10 @@ struct MeshViewData
 
 	/// Last frame's world into clip, for the motion vectors.
 	public Float4x4 PrevViewProj = .Identity();
-	/// This frame's jitter in the first two, last frame's in the last two.
-	public Float4 Jitter = .(0, 0, 0, 0);
+	/// This frame's NDC jitter (TAA).
+	public Float2 Jitter = .(0, 0);
+	/// Last frame's, which unjitters the motion vectors.
+	public Float2 PrevJitter = .(0, 0);
 
 	/// This view's scene's first record in the probe records (scenes' records are
 	/// concatenated per frame).
@@ -62,10 +64,17 @@ struct MeshViewData
 	public uint32 ProbePad0 = 0;
 	public uint32 ProbePad1 = 0;
 
-	/// The cascade fade's width in world units and the clip space Y sign; zw unused.
-	public Float4 ShadowParams = .(40.0f, 0, 0, 0);
-	/// The first component is the semantic debug mode, nought being off; the rest spare.
-	public Float4 DebugParams = .(0, 0, 0, 0);
+	/// The cascades' far fade width, in world units.
+	public float ShadowFarFade = 40.0f;
+	/// The shadow map's uv Y sign, which the backend decides.
+	public float ShadowUvYSign = 0.0f;
+	public float ShadowPad0 = 0.0f;
+	public float ShadowPad1 = 0.0f;
+	/// The semantic debug view; nought is off.
+	public uint32 DebugMode = 0;
+	public uint32 DebugPad0 = 0;
+	public uint32 DebugPad1 = 0;
+	public uint32 DebugPad2 = 0;
 	/// The sky lighting dimmer (diffuse image lighting).
 	public float IblDiffuse = 1.0f;
 	/// The sky reflection dimmer (specular image lighting).

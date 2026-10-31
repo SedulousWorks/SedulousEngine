@@ -1317,11 +1317,11 @@ class VGRenderer
 		bool clipped = false, bool isBox = false)
 	{
 		let attributes = scope VertexAttribute[5](
-			.(.Float32x2, 0, 0),
-			.(.Float32x2, 8, 1),
-			.(.Float32x4, 16, 2),
-			.(.Float32, 32, 3),
-			.(.Float32x2, 36, 4)); // effect: distance-field text effects
+			.(.Float32x2, 0, 0), // position
+			.(.Float32x2, 8, 1), // texCoord (a box shadow's SDF operand)
+			.(.Float32x4, 16, 2), // color
+			.(.Float32, 32, 3), // coverage (a box shadow's signed corner radius)
+			.(.Float32x2, 36, 4)); // effect (a glyph's edge shift and ramp; a layer's colour filter)
 		// An analytic box's vertex (VGBoxVertex).
 		let boxAttributes = scope VertexAttribute[10](
 			.(.Float32x2, 0, 0), // position

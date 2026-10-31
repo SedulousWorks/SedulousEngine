@@ -10,6 +10,10 @@ cbuffer Sky : register(b0, space0) {
     float  SunAngularSizeDegrees;
     float3 SunColor;
     float  SunIntensity;
-    float4 Jitter;            // xy = this frame's NDC jitter, zw = last frame's
-    float4 SkyFlags;          // x = scene-NDC Y sign (-1 on Y-flip targets: WebGPU today)
+    float2 Jitter;            // this frame's NDC jitter
+    float2 PrevJitter;        // last frame's NDC jitter (unjitters the reprojection)
+    float  SceneYSign;        // the scene NDC's Y sign: -1 on Y-flip targets (WebGPU today), +1 on Vulkan
+    float  _skyPad0;
+    float  _skyPad1;
+    float  _skyPad2;
 };

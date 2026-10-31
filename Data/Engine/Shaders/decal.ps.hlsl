@@ -29,7 +29,7 @@ float4 main(float4 pos : SV_Position, float2 ndc : TEXCOORD0) : SV_Target {
     // Reconstruct world position from the interpolated emitted NDC - which is VIEWPORT-LOCAL,
     // exactly what the per-view InvViewProj expects (a full-target-uv reconstruction breaks
     // split-screen sub-rect views). On Y-flip targets the interpolant's pixel mapping mirrors,
-    // so its Y is corrected by YFlip (the SkyFlags.x convention: +1 Vulkan keeps it verbatim,
+    // so its Y is corrected by YFlip (the sky's SceneYSign convention: +1 Vulkan keeps it verbatim,
     // -1 on Y-flip targets un-mirrors). clip -> world via InvViewProj (same as SkyPass).
     ndc.y *= YFlip;
     float4 h        = mul(float4(ndc, depth, 1.0), InvViewProj);

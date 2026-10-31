@@ -47,8 +47,8 @@ float4 main(PSInput input) : SV_Target0 {
     float4 albedoTex = AlbedoMap.Sample(MainSampler, input.uv);
     float4 c = input.color * BaseColor * albedoTex;
 #ifdef GBUFFER
-    float2 curNDC  = input.curClip.xy  / input.curClip.w  + Jitter.xy;
-    float2 prevNDC = input.prevClip.xy / input.prevClip.w + Jitter.zw;
+    float2 curNDC  = input.curClip.xy  / input.curClip.w  + Jitter;
+    float2 prevNDC = input.prevClip.xy / input.prevClip.w + PrevJitter;
     PSOutput o;
     o.color    = c;
     o.normal   = OctEncode(normalize(mul(float4(normalize(input.normalWS), 0.0), View).xyz));

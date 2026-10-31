@@ -21,8 +21,10 @@ struct GpuTerrainView
 	/// The camera in world space.
 	public Float3 CameraPos;
 	public float Pad1;
-	/// This frame's jitter in the first two, last frame's in the last two.
-	public Float4 Jitter;
+	/// This frame's TAA jitter (NDC).
+	public Float2 Jitter;
+	/// Last frame's, which unjitters the motion vectors.
+	public Float2 PrevJitter;
 	public Float4 CascadeSplitFar;
 	public Float4 CascadeTexelSize;
 	/// Nought: no directional caster this frame, so the pixel shader is fully lit.
@@ -68,8 +70,9 @@ struct GpuTerrainChunk
 	public Float2 TexelSpan;
 	public Float2 HeightRange;
 	public Float2 GridSize;
-	/// x the skirt depth in world units, y spare.
-	public Float2 Skirt;
+	/// How far the skirt ring drops below the surface, in world units.
+	public float SkirtDepth;
+	public float Pad0;
 }
 
 /// The pick pass's own view (cbuffer TerrainPickView, terrain_pick.vs.hlsl), written into the

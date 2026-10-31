@@ -28,7 +28,7 @@ class TerrainRenderer : Renderer
 	/// GpuTerrainView (672 bytes; the pick pass's GpuTerrainPickView, 144, shares the slot),
 	/// padded up to the dynamic uniform alignment.
 	private const uint64 cViewSlotSize = 768;
-	/// GpuTerrainChunk, seven pairs (56 bytes), padded the same way.
+	/// GpuTerrainChunk, six pairs and two scalars (56 bytes), padded the same way.
 	private const uint64 cChunkSlotSize = 256;
 
 	/// A chunk with holes draws its OWN buffers, which the render data carries per chunk; a
@@ -340,8 +340,8 @@ class TerrainRenderer : Renderer
 			uniforms.PrevViewProj = context.PrevViewProj;
 			uniforms.LightDir = .(sun.X, sun.Y, sun.Z);
 			uniforms.CameraPos = context.CameraPos;
-			uniforms.Jitter = .(context.Jitter.X, context.Jitter.Y, context.PrevJitter.X,
-				context.PrevJitter.Y);
+			uniforms.Jitter = context.Jitter;
+			uniforms.PrevJitter = context.PrevJitter;
 
 			let uvYSign = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
 			uniforms.ShadowUvYSign = uvYSign;
@@ -691,7 +691,7 @@ class TerrainRenderer : Renderer
 		uniforms.TexelSpan = .((float)TerrainMesh.ChunkQuads, (float)TerrainMesh.ChunkQuads);
 		uniforms.HeightRange = .(data.MinY, data.MaxY);
 		uniforms.GridSize = .((float)data.GridSize, (float)data.GridSize);
-		uniforms.Skirt = .(skirtDepth, 0.0f);
+		uniforms.SkirtDepth = skirtDepth;
 		return uniforms;
 	}
 

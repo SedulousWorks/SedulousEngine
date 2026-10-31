@@ -635,9 +635,6 @@ class VGContext
 		let layer = mBatch.Layers[index];
 		let bounds = layer.Bounds;
 		let tint = Color(1.0f, 1.0f, 1.0f, alpha);
-		// The colour filters ride the vertices' effect pair, which no blend space touches:
-		// (1 - saturation, brightness - 1), so a plain composite carries zeros.
-		let filters = Float2(1.0f - layer.Saturation, layer.Brightness - 1.0f);
 		let start = (int32)mBatch.Indices.Count;
 		let vertexBase = (uint32)mBatch.Vertices.Count;
 		let x0 = bounds.X;
@@ -648,9 +645,8 @@ class VGContext
 		Float2[4] uvs = .(.(0.0f, 0.0f), .(1.0f, 0.0f), .(1.0f, 1.0f), .(0.0f, 1.0f));
 		for (int i < 4)
 		{
-			var vertex = VGVertex(corners[i], uvs[i], tint);
-			vertex.Effect = filters;
-			mBatch.Vertices.Add(vertex);
+			// The colour filters ride the vertices' effect pair, which no blend space touches.
+			mBatch.Vertices.Add(VGVertex.LayerComposite(corners[i], uvs[i], tint, layer.Saturation, layer.Brightness));
 		}
 		for (let i in scope uint32[](0, 1, 2, 0, 2, 3))
 			mBatch.Indices.Add(vertexBase + i);
@@ -1061,8 +1057,8 @@ class VGContext
 	/// it interpolates exactly from the four vertices, carried in sigma units in the texture
 	/// coordinate, and the shader has only to finish
 	/// `length(max(q, 0)) + min(max(q.x, q.y), 0) - r`. Non uniform radii come free, each
-	/// quadrant carrying its own corner radius as coverage = r / sigma, negated for inset.
-	/// Batches with every other shadow in the same command.
+	/// quadrant carrying its own corner radius as r / sigma, negated for inset (VGVertex.BoxShadow
+	/// names where each rides). Batches with every other shadow in the same command.
 	public void FillBoxShadow(Rectangle rect, CornerRadii radii, float blur, Color color,
 		bool inset = false)
 	{
@@ -1094,7 +1090,7 @@ class VGContext
 			let sx = signs[quadrant][0];
 			let sy = signs[quadrant][1];
 			let r = Min(corner[quadrant], Min(half.X, half.Y));
-			let coverage = (inset ? -r : r) / sigma;
+			let signedCornerRadius = (inset ? -r : r) / sigma;
 			let reachX = half.X + extent;
 			let reachY = half.Y + extent;
 			// q at a local offset (ax, ay) is |offset| - (half - r), in sigma units. Only two
@@ -1109,10 +1105,10 @@ class VGContext
 			let p2 = Float2(center.X + sx * reachX, center.Y + sy * reachY);
 			let p3 = Float2(center.X, center.Y + sy * reachY);
 			let baseIndex = (uint32)mBatch.Vertices.Count;
-			mBatch.Vertices.Add(VGVertex(TransformPoint(p0), .(qxNear, qyNear), opColor, coverage));
-			mBatch.Vertices.Add(VGVertex(TransformPoint(p1), .(qxFar, qyNear), opColor, coverage));
-			mBatch.Vertices.Add(VGVertex(TransformPoint(p2), .(qxFar, qyFar), opColor, coverage));
-			mBatch.Vertices.Add(VGVertex(TransformPoint(p3), .(qxNear, qyFar), opColor, coverage));
+			mBatch.Vertices.Add(VGVertex.BoxShadow(TransformPoint(p0), .(qxNear, qyNear), opColor, signedCornerRadius));
+			mBatch.Vertices.Add(VGVertex.BoxShadow(TransformPoint(p1), .(qxFar, qyNear), opColor, signedCornerRadius));
+			mBatch.Vertices.Add(VGVertex.BoxShadow(TransformPoint(p2), .(qxFar, qyFar), opColor, signedCornerRadius));
+			mBatch.Vertices.Add(VGVertex.BoxShadow(TransformPoint(p3), .(qxNear, qyFar), opColor, signedCornerRadius));
 			mBatch.Indices.Add(baseIndex + 0);
 			mBatch.Indices.Add(baseIndex + 1);
 			mBatch.Indices.Add(baseIndex + 2);
@@ -2017,12 +2013,11 @@ class VGContext
 			});
 	}
 
-	private void EmitGlyphQuad(GlyphQuad quad, Color color, Float2 effect = .Zero)
+	private void EmitGlyphQuad(GlyphQuad quad, Color color, Float2 edgeShiftRamp = .Zero)
 	{
 		let baseIndex = (uint32)mBatch.Vertices.Count;
 
-		var vertex = VGVertex(Float2(quad.X0, quad.Y0), .(quad.U0, quad.V0), color, 1.0f);
-		vertex.Effect = effect;
+		var vertex = VGVertex.Glyph(Float2(quad.X0, quad.Y0), .(quad.U0, quad.V0), color, edgeShiftRamp);
 		mBatch.Vertices.Add(vertex);
 		vertex.Position = .(quad.X1, quad.Y0);
 		vertex.TexCoord = .(quad.U1, quad.V0);

@@ -133,8 +133,9 @@ class SkyPass
 		uniform.SunAngularSizeDegrees = sunSize;
 		uniform.SunColor = sunColor;
 		uniform.SunIntensity = sunIntensity;
-		uniform.Jitter = .(jitter.X, jitter.Y, prevJitter.X, prevJitter.Y);
-		uniform.SkyFlags = .(mDevice.NeedsClipSpaceYFlip ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f);
+		uniform.Jitter = jitter;
+		uniform.PrevJitter = prevJitter;
+		uniform.SceneYSign = mDevice.NeedsClipSpaceYFlip ? -1.0f : 1.0f;
 
 		let uid = envUid;
 		graph.AddRenderPass("sky", scope (builder) =>

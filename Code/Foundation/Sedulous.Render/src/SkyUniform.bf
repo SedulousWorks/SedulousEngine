@@ -22,11 +22,17 @@ struct SkyUniform
 	public float SunAngularSizeDegrees = 0.5f;
 	public Float3 SunColor = .(1, 1, 1);
 	public float SunIntensity = 1.0f;
-	/// This frame's jitter and last frame's, which the reprojection undoes.
-	public Float4 Jitter = .(0, 0, 0, 0);
-	/// The sign the reconstructed ray's vertical axis is multiplied by: a backend that flips
-	/// clip space presents the ray mirrored, and this mirrors it back.
-	public Float4 SkyFlags = .(1, 0, 0, 0);
+	/// This frame's NDC jitter.
+	public Float2 Jitter = .(0, 0);
+	/// Last frame's, which the reprojection undoes.
+	public Float2 PrevJitter = .(0, 0);
+	/// The scene NDC's Y sign, which the reconstructed ray's vertical axis is multiplied by: a
+	/// backend that flips clip space presents the ray mirrored (minus one), and this mirrors it
+	/// back; one on Vulkan.
+	public float SceneYSign = 1.0f;
+	public float Pad0 = 0.0f;
+	public float Pad1 = 0.0f;
+	public float Pad2 = 0.0f;
 
 	public this() {}
 }

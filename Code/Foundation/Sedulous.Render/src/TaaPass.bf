@@ -233,6 +233,9 @@ class TaaPass
 
 		for (int i < 2)
 		{
+			// rgb is the accumulated colour; alpha is NOT colour: it holds the previous frame's
+			// linear view depth, which taa.ps reads back for the disocclusion test (a texture
+			// channel rather than a second depth ping pong; nothing downstream reads it).
 			var textureDesc = TextureDesc();
 			textureDesc.Format = HistoryFormat;
 			textureDesc.Width = width;

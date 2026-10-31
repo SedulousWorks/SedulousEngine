@@ -64,7 +64,7 @@ float4 PSMain(VSOutput input) : SV_Target0 {
     float3 litColor = s.albedo + s.emissive;
     float3 bounce = float3(0.0, 0.0, 0.0);
 #endif
-    uint debugMode = (uint)(DebugParams.x + 0.5);
+    uint debugMode = DebugMode;
 #ifdef GBUFFER
     if (debugMode != 0u) {
         litColor = DebugSemanticColor(debugMode, albedo, N, roughness, metallic, viewDepth,

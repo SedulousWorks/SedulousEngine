@@ -11,7 +11,10 @@
 // shadow is confined to the rounded box's own coverage. No texture.
 // Shares VGUniforms (b0) with vg.vs. Resolved via ShaderSystem::GetVariant("vg_shadow", Fragment).
 cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float BlendSpace; };
-struct PSInput { float4 Position:SV_Position; float2 TexCoord:TEXCOORD0; float4 Color:COLOR0; float Coverage:COVERAGE; };
+// vg.vs passes the vertex through unchanged; this pipeline's vertices (VGVertex::BoxShadow) carry
+// the SDF operand q in the texcoord slot and the signed corner radius (r / sigma, negative for an
+// inset shadow) in the coverage slot, so the inputs are named for those.
+struct PSInput { float4 Position:SV_Position; float2 ShadowOperand:TEXCOORD0; float4 Color:COLOR0; float SignedCornerRadius:COVERAGE; };
 float Erf(float x) {
     float s = sign(x);
     float a = abs(x);
@@ -20,14 +23,14 @@ float Erf(float x) {
     return s * y;
 }
 float4 main(PSInput input) : SV_Target {
-    float r = abs(input.Coverage);
-    float2 q = input.TexCoord;
+    float r = abs(input.SignedCornerRadius);
+    float2 q = input.ShadowOperand;
     float d = length(max(q, float2(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
     // The box's own antialiased coverage (its edge one pixel wide): an inset shadow is confined
     // to it, else the corners outside a rounded box's arc, inside its quads, read as deep inside
     // the shadow. fwidth before any branch (uniformity, for the WGSL cook).
     float inside = saturate(0.5 - d / max(fwidth(d), 1e-4));
-    bool inset = input.Coverage < 0.0;
+    bool inset = input.SignedCornerRadius < 0.0;
     // Inset: the shadow lives INSIDE the box, fading away from the edge, so the distance flips.
     if (inset) { d = -d; }
     // 1 - Phi(d): the fraction of a unit-sigma Gaussian centred on the pixel that lies inside.

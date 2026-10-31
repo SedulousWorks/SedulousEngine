@@ -69,8 +69,8 @@ float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
     float4 lc  = mul(float4(biasedPos, 1.0), CascadeViewProj[cascade]);
     if (lc.w <= 0.0) { return 1.0; }
     float3 ndc = lc.xyz / lc.w;
-    // uv.y sign is backend-driven (ShadowParams.y): -1 on Vulkan (neg viewport), +1 on Y-flip targets.
-    float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);
+    // uv.y sign is backend-driven (ShadowUvYSign): -1 on Vulkan (neg viewport), +1 on Y-flip targets.
+    float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowUvYSign * 0.5 + 0.5);
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 1.0; }
     float compareDepth = BiasTowardViewer(ndc.z, ShadowDepthBias);   // toward the light: fewer false occluders
     float layer = CascadeLayerBase + (float)cascade;   // this view's slice of the shared array
@@ -106,11 +106,11 @@ float SampleCSM(float3 worldPos, float3 N, float NdotL, float viewDepth) {
 
     // Far fade: dissolve shadow toward fully-lit as viewDepth approaches the last cascade's far edge
     // (the shadow distance). Without this the coverage boundary is a hard line -- on a tilted camera
-    // it reads as a diagonal where directional shadows pop in/out while rotating. ShadowParams.x is a
+    // it reads as a diagonal where directional shadows pop in/out while rotating. ShadowFarFade is a
     // fixed fade WIDTH in world units (distance-independent), so the soft edge is the same physical
     // thickness whatever the reach.
     float shadowFar = CascadeSplitFar[count - 1];
-    float fadeBand  = max(ShadowParams.x, 0.5);
+    float fadeBand  = max(ShadowFarFade, 0.5);
     float farFade   = saturate((shadowFar - viewDepth) / fadeBand);
     shadow = lerp(1.0, shadow, farFade);
     return shadow;
@@ -144,7 +144,7 @@ float SampleLocalShadow(int idx, float3 worldPos, float3 N, float3 lightPos) {
     float4 lc = mul(float4(biasedPos, 1.0), s.viewProj);
     if (lc.w <= 0.0) { return 1.0; }
     float3 ndc = lc.xyz / lc.w;
-    float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);   // backend-driven uv.y sign
+    float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowUvYSign * 0.5 + 0.5);   // backend-driven uv.y sign
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z < 0.0 || ndc.z > 1.0) { return 1.0; }   // outside the light's depth range
     float2 atlasUV = uv * s.atlasScaleBias.xy + s.atlasScaleBias.zw;
     float compareDepth = BiasTowardViewer(ndc.z, s.depthBias);

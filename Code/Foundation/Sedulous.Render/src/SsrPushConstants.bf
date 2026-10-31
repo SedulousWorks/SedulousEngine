@@ -21,7 +21,8 @@ struct SsrPush
 	public float RoughCutoff = 0.6f;
 	public int32 MaxSteps = 96;
 	/// The sign of the vertical axis in the shader's coordinate conversions, which differs
-	/// between the backends.
+	/// between the backends: minus one on Vulkan, one on a target that flips clip space. Mirrors
+	/// the forward view's ShadowUvYSign.
 	public float YSign = -1.0f;
 	public int32 Debug = 0;
 	public float Glossy = 1.0f;

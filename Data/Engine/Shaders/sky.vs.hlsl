@@ -13,10 +13,10 @@ VSOut main(uint vid : SV_VertexID) {
     // Reconstruct the world ray for the pixel this fragment LANDS ON. On Vulkan (negative
     // viewport) the emitted NDC matches the scene geometry's NDC at that pixel; on Y-flip
     // targets (no negative viewport) the geometry occupying the same pixel has MIRRORED
-    // clip y, so negate NDC y BEFORE unprojecting (SkyFlags.x = -1 there, +1 on Vulkan).
+    // clip y, so negate NDC y BEFORE unprojecting (SceneYSign = -1 there, +1 on Vulkan).
     // Flipping in NDC (not the world ray) keeps the ray correct under camera pitch/roll
     // and keeps the reprojection below in one consistent scene-NDC convention.
-    float2 sceneNdc = float2(ndc.x, ndc.y * SkyFlags.x);
+    float2 sceneNdc = float2(ndc.x, ndc.y * SceneYSign);
     o.ndc = sceneNdc; // scene-convention NDC: the PS velocity reprojection compares like with like
     float4 world = mul(float4(sceneNdc, kDepthFar, 1.0), InvViewProj);  // clip -> world, on the far plane
     o.dir = world.xyz / world.w - CameraPos;

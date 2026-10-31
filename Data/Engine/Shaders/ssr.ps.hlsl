@@ -50,7 +50,7 @@ float3 OctDecode(float2 e) {
     return normalize(n);
 }
 // viewport-LOCAL uv (0..1 within the view) + depth -> view-space position. The uv<->ndc Y
-// mapping is backend-driven (YSign, same convention as ShadowParams.y): Vulkan's negative
+// mapping is backend-driven (YSign, same convention as the view's ShadowUvYSign): Vulkan's negative
 // viewport gives uv.y = (1-ndc.y)/2, Y-flip targets (WebGPU) uv.y = (1+ndc.y)/2 - with the
 // wrong sign every reconstructed view position mirrors and reflections trace the wrong way.
 float3 ViewPos(float2 luv, float depth) {

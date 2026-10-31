@@ -94,12 +94,19 @@ class ShaderBlockLayoutTests
 		.("LocalShadowBase", offsetof(MeshViewData, LocalShadowBase)),
 		.("PrevViewProj", offsetof(MeshViewData, PrevViewProj)),
 		.("Jitter", offsetof(MeshViewData, Jitter)),
+		.("PrevJitter", offsetof(MeshViewData, PrevJitter)),
 		.("ProbeBase", offsetof(MeshViewData, ProbeBase)),
 		.("ProbeCount", offsetof(MeshViewData, ProbeCount)),
 		.("_probePad0", offsetof(MeshViewData, ProbePad0)),
 		.("_probePad1", offsetof(MeshViewData, ProbePad1)),
-		.("ShadowParams", offsetof(MeshViewData, ShadowParams)),
-		.("DebugParams", offsetof(MeshViewData, DebugParams)),
+		.("ShadowFarFade", offsetof(MeshViewData, ShadowFarFade)),
+		.("ShadowUvYSign", offsetof(MeshViewData, ShadowUvYSign)),
+		.("_shadowPad0", offsetof(MeshViewData, ShadowPad0)),
+		.("_shadowPad1", offsetof(MeshViewData, ShadowPad1)),
+		.("DebugMode", offsetof(MeshViewData, DebugMode)),
+		.("_debugPad0", offsetof(MeshViewData, DebugPad0)),
+		.("_debugPad1", offsetof(MeshViewData, DebugPad1)),
+		.("_debugPad2", offsetof(MeshViewData, DebugPad2)),
 		.("IblDiffuse", offsetof(MeshViewData, IblDiffuse)),
 		.("IblSpecular", offsetof(MeshViewData, IblSpecular)),
 		.("SceneTime", offsetof(MeshViewData, SceneTime)),
@@ -164,7 +171,11 @@ class ShaderBlockLayoutTests
 		.("SunColor", offsetof(SkyUniform, SunColor)),
 		.("SunIntensity", offsetof(SkyUniform, SunIntensity)),
 		.("Jitter", offsetof(SkyUniform, Jitter)),
-		.("SkyFlags", offsetof(SkyUniform, SkyFlags)));
+		.("PrevJitter", offsetof(SkyUniform, PrevJitter)),
+		.("SceneYSign", offsetof(SkyUniform, SceneYSign)),
+		.("_skyPad0", offsetof(SkyUniform, Pad0)),
+		.("_skyPad1", offsetof(SkyUniform, Pad1)),
+		.("_skyPad2", offsetof(SkyUniform, Pad2)));
 
 	private static FieldRow[?] sIblPush = .(
 		.("FaceIndex", offsetof(IblPush, FaceIndex)),
@@ -306,6 +317,8 @@ class ShaderBlockLayoutTests
 		.("Debug", offsetof(SsgiResolvePush, Debug)),
 		.("OutputAccum", offsetof(SsgiResolvePush, OutputAccum)),
 		.("Intensity", offsetof(SsgiResolvePush, Intensity)),
+		.("_pad0", offsetof(SsgiResolvePush, Pad0)),
+		.("_pad1", offsetof(SsgiResolvePush, Pad1)),
 		.("ViewToWorld0", offsetof(SsgiResolvePush, ViewToWorld) + 0),
 		.("ViewToWorld1", offsetof(SsgiResolvePush, ViewToWorld) + 16),
 		.("ViewToWorld2", offsetof(SsgiResolvePush, ViewToWorld) + 32),
@@ -428,6 +441,7 @@ class ShaderBlockLayoutTests
 		.("CameraPos", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CameraPos)),
 		.("_terrainViewPad1", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad1)),
 		.("Jitter", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Jitter)),
+		.("PrevJitter", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, PrevJitter)),
 		.("CascadeSplitFar", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeSplitFar)),
 		.("CascadeTexelSize", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeTexelSize)),
 		.("CascadeCount", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeCount)),
@@ -466,7 +480,8 @@ class ShaderBlockLayoutTests
 		.("TexelSpan", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, TexelSpan)),
 		.("HeightRange", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, HeightRange)),
 		.("GridSize", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, GridSize)),
-		.("Skirt", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, Skirt)));
+		.("SkirtDepth", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, SkirtDepth)),
+		.("_terrainChunkPad0", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, Pad0)));
 
 	private static FieldRow[?] sVGUniforms = .(
 		.("Projection", offsetof(Sedulous.VG.Renderer.VGUniforms, Projection)),
@@ -719,7 +734,7 @@ class ShaderBlockLayoutTests
 	{
 		Test.Assert(sizeof(Sedulous.Engine.Particles.GpuParticleView) == 144);
 		Test.Assert(sizeof(Sedulous.Engine.Terrain.GpuTerrainView) == 672); // eight matrices, ten vectors
-		Test.Assert(sizeof(Sedulous.Engine.Terrain.GpuTerrainChunk) == 56); // seven pairs
+		Test.Assert(sizeof(Sedulous.Engine.Terrain.GpuTerrainChunk) == 56); // six pairs and two scalars
 		Test.Assert(sizeof(Sedulous.Engine.Terrain.GpuTerrainPickView) == 144);
 	}
 

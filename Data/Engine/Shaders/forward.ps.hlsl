@@ -108,7 +108,7 @@ float4 main(PSInput input) : SV_Target0 {
 
     GBufferOutput o;
     float3 litColor = ambient + Lo + emissive;
-    uint debugMode = (uint)(DebugParams.x + 0.5);
+    uint debugMode = DebugMode;
     if (debugMode != 0u) {
         litColor = DebugSemanticColor(debugMode, albedo, N, roughness, metallic, viewDepth,
                                       debugLightCount, litColor);
@@ -125,7 +125,7 @@ float4 main(PSInput input) : SV_Target0 {
 #else
     float3 emissive = EmissiveColor.rgb * EmissiveMap.Sample(MainSampler, input.uv).rgb;
     float3 litColor = ambient + Lo + emissive;
-    uint debugMode = (uint)(DebugParams.x + 0.5);
+    uint debugMode = DebugMode;
     if (debugMode != 0u) {
         litColor = DebugSemanticColor(debugMode, albedo, N, roughness, metallic, viewDepth,
                                       debugLightCount, litColor);

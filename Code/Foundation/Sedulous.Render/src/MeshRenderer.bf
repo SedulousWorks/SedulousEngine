@@ -1463,8 +1463,8 @@ class MeshRenderer : Renderer
 		var viewData = MeshViewData();
 		viewData.ViewProj = context.ViewProj;
 		viewData.PrevViewProj = context.PrevViewProj;
-		viewData.Jitter = .(context.Jitter.X, context.Jitter.Y, context.PrevJitter.X,
-			context.PrevJitter.Y);
+		viewData.Jitter = context.Jitter;
+		viewData.PrevJitter = context.PrevJitter;
 		viewData.View = context.ViewMatrix;
 		viewData.CameraPos = context.CameraPos;
 		viewData.Ambient = context.Ambient;
@@ -1501,7 +1501,7 @@ class MeshRenderer : Renderer
 			// the receiver's compare bias. Defaults: ShadowBiasDefaults.
 			viewData.ShadowNormalBias = context.Cascades.NormalBias;
 			viewData.ShadowDepthBias = context.Cascades.DepthBias;
-			viewData.ShadowParams.X = context.Cascades.FarFade; // the scene's fade width at the reach
+			viewData.ShadowFarFade = context.Cascades.FarFade; // the scene's fade width at the reach
 		}
 
 		// The vertical sign for a shadow lookup. The shadow map rasterises the same way the
@@ -1509,8 +1509,8 @@ class MeshRenderer : Renderer
 		// other. OUTSIDE the cascade block: a local shadow lookup uses this sign too, and local
 		// shadows exist without any directional cascade, where the default would collapse every
 		// lookup onto one row of the atlas.
-		viewData.ShadowParams.Y = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
-		viewData.DebugParams.X = (float)context.DebugSemantic;
+		viewData.ShadowUvYSign = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
+		viewData.DebugMode = (uint32)context.DebugSemantic;
 		viewData.IblDiffuse = context.IblDiffuseIntensity;
 		viewData.IblSpecular = context.IblSpecularIntensity;
 		viewData.SceneTime = context.TimeSeconds;

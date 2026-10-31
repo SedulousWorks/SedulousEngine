@@ -25,7 +25,8 @@ cbuffer TerrainChunk : register(b0, space1) {
     float2 TexelSpan;
     float2 HeightRange;
     float2 GridSize;
-    float2 Skirt;
+    float  SkirtDepth;
+    float  _terrainChunkPad0;
 };
 
 Texture2D<uint> HeightTex : register(t0, space2);

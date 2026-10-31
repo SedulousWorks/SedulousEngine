@@ -33,6 +33,8 @@ struct SsgiResolvePush {
     int    Debug;          // >0 = output the accumulated GI raw (no composite)
     int    OutputAccum;    // 1 = write the accumulated bounce (rgb + hit share), the denoise's input
     float  Intensity;      // GI strength
+    float  _pad0;          // the float4 rows below start on a 16-byte boundary (the Beef mirror declares it too)
+    float  _pad1;
     float4 ViewToWorld0;   // rows of the camera's world rotation: view-space normal -> world
     float4 ViewToWorld1;
     float4 ViewToWorld2;

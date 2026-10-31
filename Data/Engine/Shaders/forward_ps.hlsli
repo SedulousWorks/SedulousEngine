@@ -43,12 +43,12 @@ float2 OctEncode(float3 n) {
 // NDC.y is flipped vs UV.y, hence the (0.5, -0.5) scale. `curClip` and `prevClip` are the vertex
 // stage's (VSOutput).
 float2 MotionVector(float4 curClip, float4 prevClip) {
-    float2 curNDC  = curClip.xy  / curClip.w  + Jitter.xy;
-    float2 prevNDC = prevClip.xy / prevClip.w + Jitter.zw;
+    float2 curNDC  = curClip.xy  / curClip.w  + Jitter;
+    float2 prevNDC = prevClip.xy / prevClip.w + PrevJitter;
     return (curNDC - prevNDC) * float2(0.5, -0.5);
 }
 
-// Editor semantic debug views (DebugParams.x, ViewDebugSemantic; 0 = off). A uniform
+// Editor semantic debug views (DebugMode, ViewDebugSemantic; 0 = off). A uniform
 // branch - every lane takes the same path, free when off; kept out of Material/variant
 // space on purpose (the drift lint never sees it). Values are meant to reach the screen
 // RAW (the compose blits scene color past tonemap when a semantic mode is active).

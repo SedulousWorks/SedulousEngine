@@ -3,7 +3,7 @@
 
 #include "push_constant.hlsli"
 Texture2D    CurrentColor  : register(t0, space0);
-Texture2D    HistoryColor  : register(t1, space0);
+Texture2D    HistoryColor  : register(t1, space0);   // rgb = accumulated colour, a = the previous frame's linear depth
 Texture2D    MotionVectors : register(t2, space0);
 Texture2D    DepthTexture  : register(t3, space0);
 SamplerState PointSamp     : register(s0, space0);
@@ -62,6 +62,8 @@ float3 SampleHistoryCatmullRom(float2 uv, float2 texSize) {
     return max(r / max(wSum, 1e-5), 0.0);
 }
 
+// History is the next frame's HistoryColor: rgb the accumulated colour, a this pixel's linear depth
+// (TaaPass.EnsureHistory creates the target; its alpha is never colour).
 struct PSOut { float4 Color : SV_Target0; float4 History : SV_Target1; };
 
 PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {

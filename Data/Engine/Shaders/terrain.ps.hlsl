@@ -21,7 +21,8 @@ cbuffer TerrainView : register(b0, space0) {
     float    _terrainViewPad0;
     float3   CameraPos;
     float    _terrainViewPad1;
-    float4   Jitter;     // xy = current jitter, zw = previous
+    float2   Jitter;     // this frame's TAA jitter (NDC)
+    float2   PrevJitter; // last frame's (unjitters the motion vectors)
     float4   CascadeSplitFar;
     float4   CascadeTexelSize;
     float    CascadeCount;        // 0: no directional caster this frame (fully lit)
@@ -374,8 +375,8 @@ PSOutput main(PSIn i) {
     float3 lit = base * (ambient * ao + ndlN * shadow);
 
     // GBuffer motion vector: current vs previous NDC (unjittered), NDC.y flipped vs UV.y.
-    float2 curNDC  = i.curClip.xy  / i.curClip.w  + Jitter.xy;
-    float2 prevNDC = i.prevClip.xy / i.prevClip.w + Jitter.zw;
+    float2 curNDC  = i.curClip.xy  / i.curClip.w  + Jitter;
+    float2 prevNDC = i.prevClip.xy / i.prevClip.w + PrevJitter;
 
     PSOutput o;
     o.color    = float4(lit, 1.0);

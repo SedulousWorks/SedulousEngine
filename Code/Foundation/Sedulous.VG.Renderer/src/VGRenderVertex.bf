@@ -8,14 +8,20 @@ namespace Sedulous.VG.Renderer;
 /// The colour passes through UNCONVERTED. Vertex colours are authored in sRGB and the
 /// vertex shader does the single decode to linear; converting here as well would decode
 /// twice.
+///
+/// The fields keep VGVertex's names; two pipelines read TexCoord, Coverage and Effect for other
+/// values (VGVertex's comment and named constructors list them, and each fragment shader names
+/// its inputs for its own meaning).
 [CRepr]
 struct VGRenderVertex
 {
 	public float[2] Position;
+	/// The SDF operand for a box shadow.
 	public float[2] TexCoord;
 	public float[4] Color;
+	/// The signed corner radius for a box shadow.
 	public float Coverage;
-	/// A distance-field text effect pass (VGVertex.Effect).
+	/// A glyph's edge shift and ramp; a layer's colour filter (VGVertex.Effect).
 	public float[2] Effect;
 
 	/// The stride the vertex layout declares: 8 + 8 + 16 + 4 + 8.

@@ -6,17 +6,18 @@
 // crisp at any scale. Shares VGUniforms (b0) for the DF metadata; pairs with vg.vs. Resolved via
 // ShaderSystem::GetVariant("vg_df", Fragment). fwidth is called unconditionally (uniformity-safe
 // for the WGSL/naga+tint cook).
-// A text effect pass (VGContext::SetTextEffects: an outline, a glow, a soft shadow) carries Effect:
+// A text effect pass (VGContext::SetTextEffects: an outline, a glow, a soft shadow) carries EdgeShiftRamp:
 // x moves the edge outward and y widens it into a ramp, both in field units (0.5 is the edge); it
 // reads the true distance in alpha (MTSDF), whose contours round the corners past the edge.
 cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float BlendSpace; };
-struct PSInput { float4 Position:SV_Position; float2 TexCoord:TEXCOORD0; float4 Color:COLOR0; float Coverage:COVERAGE; float2 Effect:EFFECT; };
+// The effect slot (VGVertex::Glyph) is this pipeline's edge shift (x) and ramp width (y).
+struct PSInput { float4 Position:SV_Position; float2 TexCoord:TEXCOORD0; float4 Color:COLOR0; float Coverage:COVERAGE; float2 EdgeShiftRamp:EFFECT; };
 Texture2D VGTexture : register(t0);
 SamplerState VGSampler : register(s0);
 float Median(float r, float g, float b) { return max(min(r, g), min(max(r, g), b)); }
 float4 main(PSInput input) : SV_Target {
     float4 mtsd = VGTexture.Sample(VGSampler, input.TexCoord);
-    bool effectPass = input.Effect.x != 0.0 || input.Effect.y != 0.0;
+    bool effectPass = input.EdgeShiftRamp.x != 0.0 || input.EdgeShiftRamp.y != 0.0;
     float sd = effectPass ? mtsd.a : Median(mtsd.r, mtsd.g, mtsd.b);
     // Screen-space px range: convert the atlas-space DF spread to screen pixels via the texcoord
     // derivatives, so the antialiased edge is ~1px wide regardless of magnification.
@@ -24,8 +25,8 @@ float4 main(PSInput input) : SV_Target {
     float2 screenTexSize = float2(1.0, 1.0) / max(fwidth(input.TexCoord), float2(1e-6, 1e-6));
     float screenPxRange = max(0.5 * dot(unitRange, screenTexSize), 1.0);
     // The edge ramp: one screen pixel wide, or the effect's softness when that is wider.
-    float ramp = max(1.0 / screenPxRange, input.Effect.y);
-    float opacity = clamp((sd - 0.5 + input.Effect.x) / ramp + 0.5, 0.0, 1.0);
+    float ramp = max(1.0 / screenPxRange, input.EdgeShiftRamp.y);
+    float opacity = clamp((sd - 0.5 + input.EdgeShiftRamp.x) / ramp + 0.5, 0.0, 1.0);
     float4 result = input.Color;
     result.a *= opacity * input.Coverage;
     result.rgb *= result.a; // premultiplied output, pairs with the PremultipliedAlpha blend

@@ -20,13 +20,20 @@ cbuffer View : register(b0, space0) {
     float4 CascadeTexelSize;       // world units per shadow texel, per cascade (normal-offset bias)
     float  ShadowNormalBias; float ShadowDepthBias; float CascadeLayerBase; uint LocalShadowBase;
     row_major float4x4 PrevViewProj;   // last frame's world->clip (motion vectors)
-    float4 Jitter;                     // xy = this frame's NDC jitter, zw = last frame's (TAA)
+    float2 Jitter;                     // this frame's NDC jitter (TAA)
+    float2 PrevJitter;                 // last frame's NDC jitter (unjitters the motion vectors)
     uint   ProbeBase;                  // this view's scene's first record in Probes[] (scenes' records are concatenated)
     uint   ProbeCount;                 // its reflection probes (0 = none: the global IBL alone)
     uint   _probePad0;
     uint   _probePad1;
-    float4 ShadowParams;               // x = CSM far-fade width in WORLD UNITS, y = clip-space Y sign; zw unused
-    float4 DebugParams;                // x = semantic debug-view mode (0 = off); yzw spare
+    float  ShadowFarFade;              // the CSM's far fade width, in world units
+    float  ShadowUvYSign;              // the shadow map's uv Y sign: -1 on Vulkan (negative viewport), +1 on Y-flip targets
+    float  _shadowPad0;
+    float  _shadowPad1;
+    uint   DebugMode;                  // the semantic debug view (ViewDebugSemantic; 0 = off)
+    uint   _debugPad0;
+    uint   _debugPad1;
+    uint   _debugPad2;
     float  IblDiffuse;                 // the sky-lighting dimmer (diffuse image lighting)
     float  IblSpecular;                // the sky-reflection dimmer (specular image lighting)
     float  SceneTime;                  // the view's scene clock (s): the WIND sway, a surface's Time()
