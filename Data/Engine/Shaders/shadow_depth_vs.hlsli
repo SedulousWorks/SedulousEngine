@@ -10,8 +10,9 @@
 #endif
 cbuffer ShadowView : register(b0, space0) {
     row_major float4x4 LightViewProj;
-    float4             ShadowWind;   // x = time (s) for the WIND sway, y/z = instance fade start/end (a faded set's private slot; 0 = none)
-    float4             ShadowCamera; // xyz = the CAMERA's position (the fade is by camera distance, not the light's)
+    float4             ShadowWind;   // x = time (s) for the WIND sway; yzw unused
+    float3             ShadowCamera; // the CAMERA's position (the fade is by camera distance, not the light's)
+    uint               ShadowFadeFromCamera; // 1: the pass couples to a camera, so a faded set fades
 };
 #ifdef WIND
 #include "wind.hlsli"
@@ -78,8 +79,8 @@ float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
 #endif
 #ifdef INSTANCED
     float4x4 world = Instances[input.dataOffsets.x].World;
-    float fadeKeep = InstanceFadeKeep(world[3].xyz, ShadowCamera.xyz,
-                                      Instances[input.dataOffsets.x].Tint.a, ShadowWind.yz);
+    float fadeKeep = InstanceFadeKeep(world[3].xyz, ShadowCamera, input.dataOffsets.x,
+                                      ShadowFadeFromCamera != 0u);
 #else
     float4x4 world = World;
 #endif
@@ -116,7 +117,6 @@ float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
     // A surface shader's Vertex() moves what this pass draws, as it does the forward pass's.
   #ifdef INSTANCED
     float4 tint = Instances[input.dataOffsets.x].Tint;
-    if (ShadowWind.z > 0.0) tint.a = 1.0;   // a faded set's alpha is its rank (instance_fade.hlsli)
   #else
     float4 tint = Tint;
   #endif

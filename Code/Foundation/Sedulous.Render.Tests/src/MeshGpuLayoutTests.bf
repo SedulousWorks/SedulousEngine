@@ -28,6 +28,7 @@ class MeshGpuLayoutTests
 	{
 		Test.Assert(sizeof(MeshShadowViewData) == 96);
 		Test.Assert(sizeof(MeshPickViewData) == 96); // cbuffer PickView in pick_ids.vs
+		Test.Assert(sizeof(MeshInstanceSetData) == 32); // cbuffer InstanceSet in instance_fade.hlsli
 	}
 
 	/// The instance stepped attribute is one vector of four, which is what a normalised

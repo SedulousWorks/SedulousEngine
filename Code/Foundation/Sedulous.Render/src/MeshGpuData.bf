@@ -60,8 +60,7 @@ struct MeshViewData
 	public Float4 ProbeBoxMin = .(0, 0, 0, 0);
 	public Float4 ProbeBoxMax = .(0, 0, 0, 0);
 
-	/// The cascade fade's width in world units, the clip space Y sign, then the instance fade's
-	/// start and end (an instanced set's own view slot; nought is none).
+	/// The cascade fade's width in world units and the clip space Y sign; zw unused.
 	public Float4 ShadowParams = .(40.0f, 0, 0, 0);
 	/// The first component is the semantic debug mode, nought being off; the rest spare.
 	public Float4 DebugParams = .(0, 0, 0, 0);
@@ -114,6 +113,26 @@ struct MeshInstanceData
 	}
 }
 
+/// An instanced draw's set, cbuffer InstanceSet (instance_fade.hlsli), bound in set one beside
+/// the instances in the forward, shadow and pick passes: its distance fade's window (an end at
+/// or below nought is none), its instance count (each instance's rank in the fade is (index +
+/// 0.5) over it), and the entity an instanced set picks as (index plus one and generation;
+/// nought is each instance's own id).
+[CRepr]
+struct MeshInstanceSetData
+{
+	public float FadeStart = 0.0f;
+	public float FadeEnd = 0.0f;
+	public uint32 InstanceCount = 1;
+	public uint32 Pad0 = 0;
+	public uint32 PickIndex = 0;
+	public uint32 PickGeneration = 0;
+	public uint32 Pad1 = 0;
+	public uint32 Pad2 = 0;
+
+	public this() {}
+}
+
 /// The instance stepped vertex attribute that addresses everything else.
 ///
 /// The portable form of "which instance am I": a base and an offset in a vertex stream,
@@ -143,10 +162,13 @@ struct MeshDataOffsets
 struct MeshShadowViewData
 {
 	public Float4x4 LightViewProj = .Identity();
-	/// x is the time in seconds the WIND sway reads, and y and z a faded set's window.
+	/// x is the time in seconds the WIND sway reads; yzw unused.
 	public Float4 Wind = .(0, 0, 0, 0);
-	/// xyz is the CAMERA's position: an instance fade is by camera distance, not the light's.
-	public Float4 Camera = .(0, 0, 0, 0);
+	/// The CAMERA's position: an instance fade is by camera distance, not the light's.
+	public Float3 Camera = .(0, 0, 0);
+	/// One when the pass couples to a camera, so a faded set fades; a pass with none draws every
+	/// instance.
+	public uint32 FadeFromCamera = 0;
 
 	public this() {}
 
@@ -157,21 +179,20 @@ struct MeshShadowViewData
 }
 
 /// The pick pass's set nought view, the PickView block of pick_ids.vs: the cropped world to
-/// clip plus a per DRAW GROUP id override. An instanced set is one entity for all its
-/// instances and its instance data is persistent, so its id rides the view slot instead;
-/// nought means each draw carries its own. Shares the shadow view ring's slots.
+/// clip, the WIND clock and the camera the instance fade measures from. An instanced set's own
+/// id is its InstanceSet's. Shares the shadow view ring's slots.
 [CRepr]
 struct MeshPickViewData
 {
 	public Float4x4 ViewProj = .Identity();
-	public uint32 PickIndex = 0;
-	public uint32 PickGeneration = 0;
 	/// The time in seconds the WIND sway reads, so the pick follows the swayed card.
 	public float WindTime = 0.0f;
-	/// A faded set's window start; Camera.w carries its end, and nought means no fade.
-	public float FadeStart = 0.0f;
-	/// xyz is the camera's position and w the fade window's end.
-	public Float4 Camera = .(0, 0, 0, 0);
+	public float Pad0 = 0.0f;
+	public float Pad1 = 0.0f;
+	public float Pad2 = 0.0f;
+	/// The camera's position, the instance fade's distance.
+	public Float3 Camera = .(0, 0, 0);
+	public float Pad3 = 0.0f;
 
 	public this() {}
 }

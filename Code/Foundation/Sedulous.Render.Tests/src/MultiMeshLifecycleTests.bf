@@ -285,13 +285,14 @@ class MultiMeshLifecycleTests
 		Test.Assert(Math.Abs(quiet1.M[3][1]) < 0.001f);
 	}
 
-	/// A faded set uploads each instance's RANK in its tint's alpha, and an unfaded one keeps
-	/// the tint it was given.
+	/// A faded set's InstanceSet carries its window, the whole list's count and its entity, and
+	/// every tint keeps its alpha.
 	///
-	/// The vertex shaders dissolve an instance whose rank is above the density at its own
-	/// distance, so the rank is its place in the set's random order.
+	/// The vertex shaders dissolve an instance whose rank, (index + 0.5) over the count, is above
+	/// the density at its own distance (instance_fade.hlsli); the window and the count are the
+	/// set's InstanceSet, so no instance's tint carries anything but its colour.
 	[Test]
-	public static void AFadedSetUploadsEachInstancesRankInItsTintAlpha()
+	public static void AFadedSetsInstanceSetCarriesItsWindowTheWholeListsCountAndItsEntity()
 	{
 		let fixture = scope RenderFrameFixture(64, 64);
 		if (!fixture.Ready)
@@ -320,7 +321,7 @@ class MultiMeshLifecycleTests
 		faded.Key = 0x52;
 		faded.Transforms = transforms.Ptr;
 		faded.InstanceCount = 2; // the prefix: the far half is already out
-		faded.UploadCount = 4; // and the whole list carries its ranks
+		faded.UploadCount = 4; // the whole list: the count each rank divides by
 		faded.Version = 1;
 		faded.Mesh = cube;
 		faded.Material = material;
@@ -329,6 +330,7 @@ class MultiMeshLifecycleTests
 		faded.WorldRadius = 2.0f;
 		faded.FadeStart = 40.0f;
 		faded.FadeEnd = 80.0f;
+		faded.EntityId = EntityTag.Pack(6, 3);
 
 		renderer.PrepareFrame(2, 0);
 		UploadOne(renderer, scene);
@@ -339,9 +341,16 @@ class MultiMeshLifecycleTests
 
 		for (uint32 i < 4)
 		{
-			Test.Assert(renderer.ReadMultiMeshInstanceTint(0x52, 0, i, let ranked));
-			let expected = ((float)i + 0.5f) / 4.0f;
-			Test.Assert(Math.Abs(ranked.A - expected) < 0.001f, scope $"instance {i}");
+			Test.Assert(renderer.ReadMultiMeshInstanceTint(0x52, 0, i, let tint));
+			Test.Assert(Math.Abs(tint.A - 1.0f) < 0.001f, scope $"instance {i}: faded too, the colour and not a rank");
 		}
+		Test.Assert(renderer.ReadMultiMeshInstanceSet(0x52, 0, let block));
+		Test.Assert(Math.Abs(block.FadeStart - 40.0f) < 0.001f);
+		Test.Assert(Math.Abs(block.FadeEnd - 80.0f) < 0.001f);
+		Test.Assert(block.InstanceCount == 4, "the whole list, not the drawn prefix");
+		Test.Assert(block.PickIndex == 7, "the entity's index plus one");
+		Test.Assert(block.PickGeneration == 3);
+		Test.Assert(renderer.ReadMultiMeshInstanceSet(0x51, 0, let plainBlock));
+		Test.Assert(Math.Abs(plainBlock.FadeEnd) < 0.001f, "unfaded");
 	}
 }

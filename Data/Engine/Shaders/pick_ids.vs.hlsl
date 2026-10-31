@@ -8,8 +8,8 @@
 //   - single object:   cbuffer Object's PickIndex/PickGeneration (the pads of the forward layout);
 //   - instanced run:   the instance-stepped dataOffsets (.w = index + 1, .z = generation - the
 //                      pick pass fills its own ramp, so these never collide with the forward's);
-//   - MultiMesh set:   cbuffer PickView's SetPickId (one entity for the whole set; its instance
-//                      buffer is persistent and its ramp shared, so the id rides the view slot).
+//   - MultiMesh set:   its InstanceSet's SetPickIndex/SetPickGeneration (one entity for the whole
+//                      set; its instance buffer is persistent and its ramp shared).
 // variants: SKINNED INSTANCED ALPHA_TEST WIND
 // preserve-interface
 // (Keeps every vertex input in the interface: the pipeline binds the full mesh layout, and an input

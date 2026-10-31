@@ -79,10 +79,7 @@ VSOutput FORWARD_VS_ENTRY(VSInput input) {
     float4x4 world     = Instances[input.dataOffsets.x].World;
     float4x4 prevWorld = Instances[input.dataOffsets.x].PrevWorld;
     float4   tint      = Instances[input.dataOffsets.x].Tint;
-    // A faded set: Tint.a is the instance's rank and the window rides ShadowParams.zw, so the
-    // alpha goes back to one once it has been read (instance_fade.hlsli).
-    float    fadeKeep  = InstanceFadeKeep(world[3].xyz, CameraPos, tint.a, ShadowParams.zw);
-    if (ShadowParams.w > 0.0) tint.a = 1.0;
+    float    fadeKeep  = InstanceFadeKeep(world[3].xyz, CameraPos, input.dataOffsets.x, true);
 #else
     float4x4 world     = World;
     float4x4 prevWorld = PrevWorld;

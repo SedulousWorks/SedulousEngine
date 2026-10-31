@@ -9,10 +9,12 @@
 #endif
 cbuffer PickView : register(b0, space0) {
     row_major float4x4 ViewProj;   // the cropped world->clip
-    uint2              SetPickId;  // x != 0: every draw in this group is this entity
     float              WindTime;   // time (s) for the WIND sway (the pick follows the swayed card)
-    float              FadeStart;  // a faded set's window start (its private slot; FadeEnd <= 0 = none)
-    float4             PickCamera; // xyz = the camera's position, w = the fade window's end
+    float              _pickPad0;
+    float              _pickPad1;
+    float              _pickPad2;
+    float3             PickCamera; // the camera's position (the instance fade's distance)
+    float              _pickPad3;
 };
 #ifdef WIND
 #include "wind.hlsli"
@@ -82,9 +84,7 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
 #ifdef INSTANCED
     float4x4 world = Instances[input.dataOffsets.x].World;
     uint2 drawId = uint2(input.dataOffsets.w, input.dataOffsets.z);
-    float fadeKeep = InstanceFadeKeep(world[3].xyz, PickCamera.xyz,
-                                      Instances[input.dataOffsets.x].Tint.a,
-                                      float2(FadeStart, PickCamera.w));
+    float fadeKeep = InstanceFadeKeep(world[3].xyz, PickCamera, input.dataOffsets.x, true);
 #else
     float4x4 world = World;
     uint2 drawId = uint2(PickIndex, PickGeneration);
@@ -122,7 +122,6 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
     // A surface shader's Vertex() moves what this pass picks, as it does the forward pass's.
   #ifdef INSTANCED
     float4 tint = Instances[input.dataOffsets.x].Tint;
-    if (PickCamera.w > 0.0) tint.a = 1.0;   // a faded set's alpha is its rank (instance_fade.hlsli)
   #else
     float4 tint = Tint;
   #endif
@@ -132,7 +131,11 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
     SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, WindTime);
 #endif
     o.pos = mul(worldPos, ViewProj);
-    o.id  = (SetPickId.x != 0u) ? SetPickId : drawId;
+#ifdef INSTANCED
+    o.id  = (SetPickIndex != 0u) ? uint2(SetPickIndex, SetPickGeneration) : drawId; // a MultiMesh set is one entity
+#else
+    o.id  = drawId;
+#endif
 #if defined(SURFACE_PROGRAM) && defined(ALPHA_TEST)
     o.worldPos  = worldPos.xyz;
     o.normalWS  = normalize(nWS);

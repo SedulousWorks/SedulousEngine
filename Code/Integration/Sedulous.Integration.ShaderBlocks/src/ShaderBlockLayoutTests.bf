@@ -129,14 +129,28 @@ class ShaderBlockLayoutTests
 	private static FieldRow[?] sShadowView = .(
 		.("LightViewProj", offsetof(MeshShadowViewData, LightViewProj)),
 		.("ShadowWind", offsetof(MeshShadowViewData, Wind)),
-		.("ShadowCamera", offsetof(MeshShadowViewData, Camera)));
+		.("ShadowCamera", offsetof(MeshShadowViewData, Camera)),
+		.("ShadowFadeFromCamera", offsetof(MeshShadowViewData, FadeFromCamera)));
 
 	private static FieldRow[?] sPickView = .(
 		.("ViewProj", offsetof(MeshPickViewData, ViewProj)),
-		.("SetPickId", offsetof(MeshPickViewData, PickIndex)),
 		.("WindTime", offsetof(MeshPickViewData, WindTime)),
-		.("FadeStart", offsetof(MeshPickViewData, FadeStart)),
-		.("PickCamera", offsetof(MeshPickViewData, Camera)));
+		.("_pickPad0", offsetof(MeshPickViewData, Pad0)),
+		.("_pickPad1", offsetof(MeshPickViewData, Pad1)),
+		.("_pickPad2", offsetof(MeshPickViewData, Pad2)),
+		.("PickCamera", offsetof(MeshPickViewData, Camera)),
+		.("_pickPad3", offsetof(MeshPickViewData, Pad3)));
+
+	/// An instanced draw's set: its fade window, count and set pick id (instance_fade.hlsli).
+	private static FieldRow[?] sInstanceSet = .(
+		.("FadeStart", offsetof(MeshInstanceSetData, FadeStart)),
+		.("FadeEnd", offsetof(MeshInstanceSetData, FadeEnd)),
+		.("InstanceCount", offsetof(MeshInstanceSetData, InstanceCount)),
+		.("_setPad0", offsetof(MeshInstanceSetData, Pad0)),
+		.("SetPickIndex", offsetof(MeshInstanceSetData, PickIndex)),
+		.("SetPickGeneration", offsetof(MeshInstanceSetData, PickGeneration)),
+		.("_setPad1", offsetof(MeshInstanceSetData, Pad1)),
+		.("_setPad2", offsetof(MeshInstanceSetData, Pad2)));
 
 	private static FieldRow[?] sSky = .(
 		.("InvViewProj", offsetof(SkyUniform, InvViewProj)),
@@ -509,6 +523,9 @@ class ShaderBlockLayoutTests
 		Check("pick_ids", .Vertex, .None, "type.Object", sPickObject);
 		Check("pick_ids", .Vertex, .Instanced, "InstanceData", sInstance);
 		Check("pick_ids", .Vertex, .None, "type.PickView", sPickView);
+		Check("forward", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);
+		Check("shadow_depth", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);
+		Check("pick_ids", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);
 		Check("forward", .Fragment, .None, "GpuLight", sGpuLight);
 		Check("cluster_build", .Compute, .None, "GpuLight", sGpuLight);
 		Check("forward", .Fragment, .None, "GpuLocalShadow", sGpuLocalShadow);

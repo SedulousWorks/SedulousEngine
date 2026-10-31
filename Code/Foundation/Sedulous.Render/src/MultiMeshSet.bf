@@ -20,6 +20,9 @@ class MultiMeshSet
 	public IBindGroup[cMaxFramesInFlight] InstanceBindGroups;
 	/// This frame's region's group.
 	public IBindGroup ActiveInstanceBindGroup = null;
+	/// Its InstanceSet block (the fade window, the instance count, the pick id), one view
+	/// slot per region, rewritten each frame the set draws.
+	public IBuffer SetBuffer = null;
 
 	/// Instances per region.
 	public uint32 Capacity = 0;

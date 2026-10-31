@@ -33,13 +33,6 @@ class MeshRenderer : Renderer
 	private const uint32 cMaxLights = 256;
 	/// One per shadow pass and category run, sized with headroom since a slot is tiny.
 	private const uint32 cMaxShadowPasses = 256;
-	/// The instanced sets a pick pass can id per frame, each taking a shadow view ring slot.
-	private const uint32 cMaxPickMultiMeshSets = 64;
-	/// The FADED instanced sets per frame that get a PRIVATE view slot carrying their window:
-	/// the forward view ring and the shadow view ring each budget this many beyond their own
-	/// passes. A set past the budget draws through the pass's own slot, so it is visible and
-	/// simply not faded, which beats dropping it.
-	private const uint32 cMaxFadedSetSlots = 256;
 	/// A set not extracted for this many upload frames releases its buffers and bind groups,
 	/// through the retire queue when one is wired, and leaves the pool: per chunk vegetation
 	/// sets come and go with the camera, and a set seen once must not pin its buffer for the
@@ -215,8 +208,6 @@ class MeshRenderer : Renderer
 	private Dictionary<uint64, OverrideInstance> mOverrideInstances = new .() ~ delete _;
 
 	private DynamicUniformRing mViewRing ~ delete _;
-	/// The pass's own view block, kept so a FADED instanced set can copy it with its window.
-	private MeshViewData mPassView = .();
 	private DynamicUniformRing mShadowViewRing ~ delete _;
 	private DynamicUniformRing mObjectRing ~ delete _;
 	private DynamicUniformRing mInstanceRing ~ delete _;
@@ -272,6 +263,8 @@ class MeshRenderer : Renderer
 	private uint32 mShadowViewBindGroupBoneGeneration = 0;
 	private IBindGroup mObjectBindGroup = null;
 	private IBindGroup mInstanceBindGroup = null;
+	/// The InstanceSet a per frame instanced batch binds: no fade, each instance its own id.
+	private IBuffer mNoFadeSetBuffer = null;
 	private uint32 mObjectBindGroupGeneration = 0;
 	private uint32 mInstanceBindGroupGeneration = 0;
 
@@ -430,12 +423,35 @@ class MeshRenderer : Renderer
 		if (mObjectLayout == null)
 			return .Err;
 
-		// Set one, the instanced form: the per instance structured buffer.
-		let instanceEntry = BindGroupLayoutEntry.StorageBuffer(0, .Vertex, true,
-			sizeof(MeshInstanceData));
-		mInstanceLayout = MakeLayout(instanceEntry);
-		if (mInstanceLayout == null)
-			return .Err;
+		// Set one, the instanced form: the per instance structured buffer and the draw's
+		// InstanceSet block (its fade window, instance count and set pick id).
+		{
+			BindGroupLayoutEntry[2] instanceEntries = .(
+				BindGroupLayoutEntry.StorageBuffer(0, .Vertex, true, sizeof(MeshInstanceData)),
+				BindGroupLayoutEntry.UniformBuffer(1, .Vertex));
+			var desc = BindGroupLayoutDesc();
+			desc.Entries = .(&instanceEntries[0], 2);
+			if (!(mDevice.CreateBindGroupLayout(desc) case .Ok(let layout)))
+				return .Err;
+			mInstanceLayout = layout;
+		}
+		// The InstanceSet every per frame instanced batch binds: no fade, each instance its own id.
+		{
+			var desc = BufferDesc();
+			desc.Size = sizeof(MeshInstanceSetData);
+			desc.Usage = .Uniform | .CopyDst;
+			desc.Memory = .CpuToGpu;
+			desc.Label = "mesh.instance-set.unfaded";
+			if (!(mDevice.CreateBuffer(desc) case .Ok(let buffer)))
+				return .Err;
+			mNoFadeSetBuffer = buffer;
+			let mapped = (MeshInstanceSetData*)buffer.Map();
+			if (mapped != null)
+			{
+				*mapped = MeshInstanceSetData();
+				buffer.Unmap();
+			}
+		}
 
 		// Set two, the material, is NOT a fixed layout here: it is derived per material from
 		// that material's own property list, and the pipeline layout assembled around it. That
@@ -599,13 +615,11 @@ class MeshRenderer : Renderer
 		// camera's own, so meshes vanished with their shadows still drawn.
 		let drawCap = InstanceSlotsPerFrame(maxDraws, mShadowCasterDraws,
 			(uint32)ShadowCascades.Count + mLocalShadowPassCount, mCaptureFacePasses + mPickPasses);
-		// A pick pass takes shadow view slots too: one for itself and one per instanced set
-		// it ids.
-		let shadowViewCap = cMaxShadowPasses + mPickPasses * (1 + cMaxPickMultiMeshSets)
-			+ cMaxFadedSetSlots;
+		// A pick pass takes a shadow view slot each, as a shadow pass does.
+		let shadowViewCap = cMaxShadowPasses + mPickPasses;
 
-		// The view ring takes one slot per pass view, plus the faded sets' private copies.
-		if (!mViewRing.Reserve(maxDraws + cMaxFadedSetSlots)
+		// The view ring takes one slot per pass view.
+		if (!mViewRing.Reserve(maxDraws)
 			|| !mShadowViewRing.Reserve(shadowViewCap)
 			|| !mObjectRing.Reserve(drawCap) || !mInstanceRing.Reserve(drawCap)
 			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(cMaxLights)
@@ -619,7 +633,7 @@ class MeshRenderer : Renderer
 			|| !EnsureRingBindGroup(mObjectRing, mObjectLayout, sizeof(MeshObjectData),
 				ref mObjectBindGroup, ref mObjectBindGroupGeneration, false)
 			|| !EnsureRingBindGroup(mInstanceRing, mInstanceLayout, 0, ref mInstanceBindGroup,
-				ref mInstanceBindGroupGeneration, true))
+				ref mInstanceBindGroupGeneration, true, mNoFadeSetBuffer))
 			return;
 
 		mFrameIndex = frameIndex;
@@ -1003,6 +1017,14 @@ class MeshRenderer : Renderer
 				mDevice.DestroyBuffer(ref set.OffsetsBuffer);
 			set.OffsetsBuffer = null;
 		}
+		if (set.SetBuffer != null)
+		{
+			if (mRetire != null)
+				mRetire.Retire(set.SetBuffer);
+			else
+				mDevice.DestroyBuffer(ref set.SetBuffer);
+			set.SetBuffer = null;
+		}
 		set.Capacity = 0;
 		set.OffsetsCapacity = 0;
 	}
@@ -1032,8 +1054,24 @@ class MeshRenderer : Renderer
 	/// How many instanced sets the pool holds, for the lifecycle tests.
 	public int MultiMeshSetCount => mMultiMeshSets.Count;
 
-	/// A test readback of the TINT written for one instance: a faded set's rank rides its
-	/// alpha, so this is how the rank is checked without a GPU.
+	/// A test readback of a set's InstanceSet block for one REGION: its fade window, its count
+	/// and its pick id.
+	public bool ReadMultiMeshInstanceSet(uint64 key, uint32 region, out MeshInstanceSetData block)
+	{
+		block = .();
+		if (!mMultiMeshSets.TryGetValue(key, let set))
+			return false;
+		if ((set.SetBuffer == null) || (region >= (uint32)MultiMeshSet.cMaxFramesInFlight))
+			return false;
+		let mapped = (uint8*)set.SetBuffer.Map();
+		if (mapped == null)
+			return false;
+		block = *(MeshInstanceSetData*)(mapped + (int)region * (int)cViewSlot);
+		set.SetBuffer.Unmap();
+		return true;
+	}
+
+	/// A test readback of the TINT written for one instance.
 	public bool ReadMultiMeshInstanceTint(uint64 key, uint32 region, uint32 index, out Color tint)
 	{
 		tint = .(1, 1, 1, 1);
@@ -1133,16 +1171,36 @@ class MeshRenderer : Renderer
 			}
 			set.InstanceBuffer = buffer;
 
+			// The set's InstanceSet block, one slot per region, kept across a capacity change.
+			if (set.SetBuffer == null)
+			{
+				var setDesc = BufferDesc();
+				setDesc.Size = (uint64)MultiMeshSet.cMaxFramesInFlight * cViewSlot;
+				setDesc.Usage = .Uniform | .CopyDst;
+				setDesc.Memory = .CpuToGpu;
+				setDesc.Label = "mesh.multimesh.instance-set";
+				if (!(mDevice.CreateBuffer(setDesc) case .Ok(let setBuffer)))
+				{
+					mDevice.DestroyBuffer(ref set.InstanceBuffer);
+					set.Capacity = 0;
+					return;
+				}
+				set.SetBuffer = setBuffer;
+			}
+
 			// A group per region, each over its own slice, so the shader's index stays within
-			// the bound region and the shared ramp remains zero based.
+			// the bound region and the shared ramp remains zero based, with that region's
+			// InstanceSet.
 			var ok = true;
 			for (uint32 r = 0; r < regions; r++)
 			{
-				var entry = BindGroupEntry.BufferEntry(buffer, (uint64)r * regionBytes,
-					regionBytes);
+				BindGroupEntry[2] entries = .(
+					BindGroupEntry.BufferEntry(buffer, (uint64)r * regionBytes, regionBytes),
+					BindGroupEntry.BufferEntry(set.SetBuffer, (uint64)r * cViewSlot,
+						sizeof(MeshInstanceSetData)));
 				var bindGroupDesc = BindGroupDesc();
 				bindGroupDesc.Layout = mInstanceLayout;
-				bindGroupDesc.Entries = .(&entry, 1);
+				bindGroupDesc.Entries = .(&entries[0], 2);
 
 				if (!(mDevice.CreateBindGroup(bindGroupDesc) case .Ok(let group)))
 				{
@@ -1176,6 +1234,25 @@ class MeshRenderer : Renderer
 		set.Count = multiMesh.InstanceCount;
 		set.ActiveInstanceBindGroup = set.InstanceBindGroups[region];
 
+		// This frame's InstanceSet, in its own region so the GPU's read of the last frame's is
+		// untouched: the fade window, the count each instance's rank divides by (the whole list,
+		// of which a faded set draws a prefix), and the one entity the set picks as.
+		if (set.SetBuffer != null)
+		{
+			let mapped = (uint8*)set.SetBuffer.Map();
+			if (mapped != null)
+			{
+				var block = MeshInstanceSetData();
+				block.FadeStart = multiMesh.FadeStart;
+				block.FadeEnd = multiMesh.FadeEnd;
+				block.InstanceCount = Math.Max(uploadCount, 1);
+				block.PickIndex = EntityTag.Index(multiMesh.EntityId) + 1;
+				block.PickGeneration = EntityTag.Generation(multiMesh.EntityId);
+				*(MeshInstanceSetData*)(mapped + (int)region * (int)cViewSlot) = block;
+				set.SetBuffer.Unmap();
+			}
+		}
+
 		// A frame writes ONLY its own region while the GPU reads the previous one, which is
 		// what makes this hazard free, and only when that region is behind the item: a new
 		// version, so a static set writes once per region and a per frame dynamic one every
@@ -1189,14 +1266,9 @@ class MeshRenderer : Renderer
 			if (mapped != null)
 			{
 				let destination = mapped + (int)region * (int)set.Capacity;
-				// A FADED set carries each instance's rank in its tint's alpha, which is what
-				// the vertex shaders dissolve against; see instance_fade.hlsli.
-				let ranked = multiMesh.FadeEnd > 0.0f;
 				for (uint32 i = 0; i < uploadCount; i++)
 				{
-					var tint = (multiMesh.Tints != null) ? multiMesh.Tints[i] : multiMesh.Color;
-					if (ranked)
-						tint.A = ((float)i + 0.5f) / (float)uploadCount;
+					let tint = (multiMesh.Tints != null) ? multiMesh.Tints[i] : multiMesh.Color;
 					// Static content has no motion, so the previous world is the current one.
 					destination[i] = .(multiMesh.Transforms[i], multiMesh.Transforms[i], tint);
 				}
@@ -1411,8 +1483,6 @@ class MeshRenderer : Renderer
 		}
 
 		*(MeshViewData*)view.Ptr = viewData;
-		// A faded instanced set copies this with its own window; see ResolveMultiMesh.
-		mPassView = viewData;
 		let viewOffset = view.ByteOffset;
 
 		// A blended run is never instanced: its back to front order has to dominate.
@@ -1508,17 +1578,18 @@ class MeshRenderer : Renderer
 			var pickView = MeshPickViewData();
 			pickView.ViewProj = context.ViewProj;
 			pickView.WindTime = context.TimeSeconds;
-			// The camera the instance fade measures from; an unfaded pass leaves w at nought.
-			pickView.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
-				0.0f);
+			// The camera the instance fade measures from.
+			pickView.Camera = context.CameraPos;
 			*(MeshPickViewData*)shadowView.Ptr = pickView;
 		}
 		else
 		{
 			var shadowData = MeshShadowViewData(context.ViewProj);
 			shadowData.Wind.X = context.TimeSeconds;
-			shadowData.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
-				0.0f);
+			shadowData.Camera = context.CameraPos;
+			// A faded set's shadow fades from the camera the pass couples to; a pass with none
+			// (no view) draws every instance.
+			shadowData.FadeFromCamera = (context.View != null) ? 1 : 0;
 			*(MeshShadowViewData*)shadowView.Ptr = shadowData;
 		}
 		let shadowViewOffset = shadowView.ByteOffset;
@@ -2035,24 +2106,6 @@ class MeshRenderer : Renderer
 		if (!skinned && (mRampBuffer == null))
 			return;
 
-		// A FADED set draws through a private copy of the pass's view block carrying its
-		// window in ShadowParams.zw: the instanced path binds no per draw block of its own,
-		// so this is where the window can ride. See instance_fade.hlsli.
-		var setViewOffset = viewOffset;
-		if (multiMesh.FadeEnd > 0.0f)
-		{
-			let slot = mViewRing.Allocate();
-			// Past the budget: the pass's slot, drawn unfaded rather than dropped.
-			if (slot.Ok)
-			{
-				var faded = mPassView;
-				faded.ShadowParams.Z = multiMesh.FadeStart;
-				faded.ShadowParams.W = multiMesh.FadeEnd;
-				*(MeshViewData*)slot.Ptr = faded;
-				setViewOffset = slot.ByteOffset;
-			}
-		}
-
 		let material = (multiMesh.Material != null) ? multiMesh.Material : mDefaultMaterial;
 		var config = ConfigFor(multiMesh, context, true);
 		if (skinned)
@@ -2063,7 +2116,7 @@ class MeshRenderer : Renderer
 
 		var template = ResolvedDraw();
 		template.ViewSet = mViewBindGroup;
-		template.ViewOffset = setViewOffset;
+		template.ViewOffset = viewOffset;
 		template.ViewDynamic = true;
 		template.DrawSet = set.ActiveInstanceBindGroup;
 		template.DrawDynamic = false;
@@ -2103,43 +2156,8 @@ class MeshRenderer : Renderer
 		if (!skinned && (mRampBuffer == null))
 			return;
 
-		var viewOffset = shadowViewOffset;
-		if (pick)
-		{
-			// The set is ONE entity: its id rides a private view slot, since the persistent
-			// instance data and the shared ramp carry no per set id. Budgeted by
-			// cMaxPickMultiMeshSets; a set past the budget is not pickable this frame, and the
-			// editor's CPU pick still finds it.
-			let pickView = mShadowViewRing.Allocate();
-			if (!pickView.Ok)
-				return;
-			var data = MeshPickViewData();
-			data.ViewProj = context.ViewProj;
-			data.WindTime = context.TimeSeconds;
-			data.FadeStart = multiMesh.FadeStart;
-			data.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
-				multiMesh.FadeEnd);
-			data.PickIndex = EntityTag.Index(multiMesh.EntityId) + 1;
-			data.PickGeneration = EntityTag.Generation(multiMesh.EntityId);
-			*(MeshPickViewData*)pickView.Ptr = data;
-			viewOffset = pickView.ByteOffset;
-		}
-		else if ((multiMesh.FadeEnd > 0.0f) && (context.View != null))
-		{
-			// A faded set's SHADOW: its window rides a private shadow view slot, the fade
-			// measured from the CAMERA the pass is coupled to. No view means a pass with no
-			// camera, and so no fade.
-			let shadowView = mShadowViewRing.Allocate();
-			// Past the budget: the pass's slot, unfaded rather than dropped.
-			if (shadowView.Ok)
-			{
-				var data = MeshShadowViewData(context.ViewProj);
-				data.Wind = .(context.TimeSeconds, multiMesh.FadeStart, multiMesh.FadeEnd, 0.0f);
-				data.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z, 0.0f);
-				*(MeshShadowViewData*)shadowView.Ptr = data;
-				viewOffset = shadowView.ByteOffset;
-			}
-		}
+		// The set's fade and its one pick id ride its InstanceSet (EnsureMultiMeshSet).
+		let viewOffset = shadowViewOffset;
 
 		let choice = DepthLikeFor(context, multiMesh.Material, true, pick);
 		var config = choice.Config;
@@ -2672,8 +2690,11 @@ class MeshRenderer : Renderer
 
 	/// Rebuilds a group over a ring's buffer when the ring has reallocated. Whole binds the
 	/// entire buffer, for an indexed read; otherwise a window of one slot, for a dynamic offset.
+	/// `secondUniform`, when given, is bound whole as binding one (the instanced set's
+	/// InstanceSet).
 	private bool EnsureRingBindGroup(DynamicUniformRing ring, IBindGroupLayout layout,
-		uint64 bindSize, ref IBindGroup group, ref uint32 generation, bool whole)
+		uint64 bindSize, ref IBindGroup group, ref uint32 generation, bool whole,
+		IBuffer secondUniform = null)
 	{
 		if ((group != null) && (generation == ring.Generation))
 			return true;
@@ -2686,10 +2707,12 @@ class MeshRenderer : Renderer
 		if (buffer == null)
 			return false;
 
-		var entry = BindGroupEntry.BufferEntry(buffer, 0, whole ? ring.ByteCapacity : bindSize);
+		BindGroupEntry[2] entries = .(
+			BindGroupEntry.BufferEntry(buffer, 0, whole ? ring.ByteCapacity : bindSize),
+			BindGroupEntry.BufferEntry(secondUniform, 0, (secondUniform != null) ? secondUniform.Size : 0));
 		var desc = BindGroupDesc();
 		desc.Layout = layout;
-		desc.Entries = .(&entry, 1);
+		desc.Entries = .(&entries[0], (secondUniform != null) ? 2 : 1);
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let created)))
 			return false;
@@ -3206,6 +3229,8 @@ class MeshRenderer : Renderer
 			mDevice.DestroyBindGroup(ref mObjectBindGroup);
 		if (mInstanceBindGroup != null)
 			mDevice.DestroyBindGroup(ref mInstanceBindGroup);
+		if (mNoFadeSetBuffer != null)
+			mDevice.DestroyBuffer(ref mNoFadeSetBuffer);
 
 		if (mBoneDevice != null)
 		{
@@ -3255,6 +3280,8 @@ class MeshRenderer : Renderer
 				mDevice.DestroyBuffer(ref set.InstanceBuffer);
 			if (set.OffsetsBuffer != null)
 				mDevice.DestroyBuffer(ref set.OffsetsBuffer);
+			if (set.SetBuffer != null)
+				mDevice.DestroyBuffer(ref set.SetBuffer);
 			delete set;
 		}
 		mMultiMeshSets.Clear();
