@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.VG;
 using Sedulous.GUI;
+using Sedulous.Profiler;
 
 namespace Sedulous.GUI.Tests;
 
@@ -108,5 +109,66 @@ class FrameStatsTests
 		Test.Assert(root.NeedsFrame());
 		Test.Assert(stats.Reasons.Redraw);
 		Test.Assert(!stats.Reasons.Animation);
+	}
+
+	[Test]
+	public static void AProfiledFrameTimesTheDrawsPhasesApartTheBoxTheWidgetsOwnDrawing()
+	{
+		let profiler = scope Sedulous.Profiler.Profiler();
+		profiler.Arm();
+		InitGlobalProfiler(profiler);
+		defer ShutdownGlobalProfiler();
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let filled = Box(root, "filled");
+		defer filled.ReleaseRef();
+		let styles = scope StyleManager();
+		let canvas = scope VGContext();
+		profiler.BeginFrame();
+		Frame(root, styles, canvas);
+		profiler.EndFrame();
+		let frame = profiler.LatestFrame;
+		Test.Assert(frame != null);
+		uint32 draws = 0;
+		uint32 boxes = 0;
+		uint32 widgets = 0;
+		for (let thread in frame.Threads)
+		{
+			for (let scopeEvent in thread.Scopes)
+			{
+				let name = profiler.NameOf(scopeEvent.Name);
+				draws += (name == "GUI.Draw") ? 1 : 0;
+				boxes += (name == "GUI.Draw.Box") ? 1 : 0;
+				widgets += (name == "GUI.Draw.Widget") ? 1 : 0;
+			}
+		}
+		profiler.Disarm();
+		Test.Assert(draws == 1);
+		Test.Assert(boxes == 2, "the root's and the box's");
+		Test.Assert(widgets == 2);
+	}
+
+	[Test]
+	public static void AtADisplayScaleTheWindowsClipIsTheRootsDevicePixelsSoTheWholeWindowIsDrawn()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		root.DisplayScale = 1.75f;
+		root.ViewportSize = .(1400.0f, 1050.0f); // device pixels: 800 x 600 laid out
+		root.UpdateLayout();
+		Test.Assert(Math.Abs(root.Size.X - 800.0f) < 0.01f);
+		let filled = Box(root, "filled");
+		defer filled.ReleaseRef();
+		filled.SetInlineStyle("background-color", "red"); // something drawn
+		let styles = scope StyleManager();
+		let canvas = scope VGContext();
+		Frame(root, styles, canvas);
+		let batch = canvas.GetBatch();
+		Test.Assert(!batch.Commands.IsEmpty);
+		for (let command in batch.Commands)
+		{
+			Test.Assert(command.ClipRect.Width >= 1400.0f - 0.5f, "never the 800 of its layout");
+			Test.Assert(command.ClipRect.Height >= 1050.0f - 0.5f);
+		}
 	}
 }

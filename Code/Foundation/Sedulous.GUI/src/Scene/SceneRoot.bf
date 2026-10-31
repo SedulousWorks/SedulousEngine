@@ -544,10 +544,13 @@ class SceneRoot : Node
 			mPendingDamage.Clear();
 			ctx.SetDamageRecorder(mLastDamage);
 			// The window bounds the drawing, so what lies outside it is culled; only the drawing:
-			// navigation and hit testing still reach a node past it.
+			// navigation and hit testing still reach a node past it. The clip is pushed outside the
+			// root's own transform, so it is the root's size in the device pixels it draws to (its
+			// layout size times its display scale), not its layout size: on a scaled display the
+			// latter cut the drawing to a corner (1/1.75 of it at 175%).
 			let sized = (Size.X > 0.0f) && (Size.Y > 0.0f);
 			if (sized)
-				ctx.PushClip(.(Position.X, Position.Y, Size.X, Size.Y));
+				ctx.PushClip(.(Position.X, Position.Y, Size.X * mDisplayScale, Size.Y * mDisplayScale));
 			Draw(ctx);
 			if (sized)
 				ctx.PopClip();

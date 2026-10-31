@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.VG;
+using Sedulous.Profiler; // ProfileScope: a frame's draw, by phase
 using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
@@ -921,8 +922,16 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 		let local = LocalBounds;
 
-		mBox.DrawUnder(ctx, local, !backdropFirst);
-		OnDraw(ctx, local);
+		// The phases timed apart (what is left in GUI.Draw is the walk: culling, transforms, clips
+		// and damage).
+		using (ProfileScope("GUI.Draw.Box")) // background, border, shadow, background image
+		{
+			mBox.DrawUnder(ctx, local, !backdropFirst);
+		}
+		using (ProfileScope("GUI.Draw.Widget")) // what the node draws of its own (its text apart)
+		{
+			OnDraw(ctx, local);
+		}
 
 		// Children clip to the box, its rounded corners included (a path clip; a host without
 		// stencil fills gets the bounds' scissor).

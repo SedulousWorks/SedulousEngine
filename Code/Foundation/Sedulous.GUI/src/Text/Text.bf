@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.VG;
 using Sedulous.VG.SVG;
+using Sedulous.Profiler; // ProfileScope: a frame's text, apart in the GUI's draw
 using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
@@ -520,6 +521,8 @@ class Text
 	/// Draws a layout at `origin` (a field draws its own, scrolled).
 	public void DrawLayout(DrawContext ctx, TextLayout layout, Float2 origin)
 	{
+		var profiled = ProfileScope("GUI.Draw.Text"); // the glyphs into the batch
+		defer profiled.Dispose();
 		Sync();
 		let g = ctx.VG;
 		bool anyEffects = false;
