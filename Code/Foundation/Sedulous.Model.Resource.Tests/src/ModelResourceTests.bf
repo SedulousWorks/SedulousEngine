@@ -218,6 +218,34 @@ class ModelResourceTests
 		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 1, 3) == 1);
 	}
 
+	/// An unskinned mesh rides with the nearest node at or above it that is a bone of the
+	/// skeleton; none when no bone is above it; a malformed cycle ends the walk.
+	[Test]
+	public static void AnUnskinnedMeshRidesWithTheNearestBoneAboveIt()
+	{
+		let nodes = scope List<ModelNode>();
+		defer { ClearAndDeleteItems!(nodes); }
+		// Root(0) > Hips(1) > Hand(2) > Grip(3) > Sword(4); Root(0) > Prop(5)
+		int32[6] parents = .(-1, 0, 1, 2, 3, 0);
+		StringView[6] names = .("Root", "Hips", "Hand", "Grip", "Sword", "Prop");
+		for (int i < 6)
+		{
+			let node = new ModelNode();
+			node.Name.Set(names[i]);
+			node.ParentIndex = parents[i];
+			nodes.Add(node);
+		}
+		delegate bool(StringView name) isBone = scope (name) => (name == "Hips") || (name == "Hand");
+		Test.Assert(ModelPlacement.RigidMeshBone(nodes, 4, isBone) == 2, "the hand, past the grip");
+		Test.Assert(ModelPlacement.RigidMeshBone(nodes, 2, isBone) == 2, "a bone node itself");
+		Test.Assert(ModelPlacement.RigidMeshBone(nodes, 5, isBone) == -1, "under no bone");
+		Test.Assert(ModelPlacement.RigidMeshBone(nodes, 9, isBone) == -1, "out of range");
+
+		// A cycle (3 > 4 > 3) with no bone on it ends at the node count instead of hanging.
+		nodes[3].ParentIndex = 4;
+		Test.Assert(ModelPlacement.RigidMeshBone(nodes, 4, isBone) == -1);
+	}
+
 	/// A mesh's slots give the material indices its submeshes index; a mesh whose parts name no
 	/// material, or one past the list, gives none (the default material draws it); only a model
 	/// with no slot lists at all gives every material, as its submeshes index the model wide list.

@@ -745,6 +745,24 @@ class SandboxApp : DefaultApplication
 				skinned.Add(entities[i]);
 		}
 
+		// An unskinned mesh under a bone (a weapon in a hand) follows that bone: one attachment on
+		// the nearest bone node above it, its children riding along.
+		let skeleton = model.Skeleton.Get;
+		let attachments = mScene.GetSystem<BoneAttachmentComponentManager>();
+		if ((skeleton != null) && (attachments != null))
+		{
+			for (int i < model.Nodes.Count)
+			{
+				let meshIndex = model.Nodes[i].MeshIndex;
+				if ((meshIndex < 0) || (meshIndex >= model.Meshes.Count) || (model.Mesh(meshIndex) == null)
+					|| model.MeshSkinned[meshIndex])
+					continue;
+				let bone = ModelPlacement.RigidMeshBone(model.Nodes, i, scope (name) => skeleton.FindBone(name) >= 0);
+				if ((bone >= 0) && (attachments.Get(entities[bone]) == null))
+					attachments.Add(entities[bone]).Bone.Set(model.Nodes[bone].Name);
+			}
+		}
+
 		AttachAnimation(model, root, skinned, useGraph);
 	}
 

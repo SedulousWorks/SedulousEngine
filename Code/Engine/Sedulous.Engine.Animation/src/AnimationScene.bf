@@ -18,5 +18,7 @@ static class AnimationScene
 		scene.AddSystem<TwoBoneIkComponentManager>();
 		scene.AddSystem<AimIkComponentManager>();
 		scene.AddSystem<FootIkComponentManager>();
+		// Entities that follow a bone.
+		scene.AddSystem<BoneAttachmentComponentManager>();
 	}
 }

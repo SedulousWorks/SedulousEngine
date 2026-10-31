@@ -15,6 +15,7 @@ using Sedulous.Engine.Animation;
 using Sedulous.Materials;
 using Sedulous.Model.Resource;
 using Sedulous.Resource;
+using Sedulous.Animation.Pipeline;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -234,6 +235,69 @@ class ModelPrefabTests
 		asset.Manifest.SkeletonGuid = .();
 		Test.Assert(manifest.WriteObject(asset) case .Ok);
 		Test.Assert(Animators() == 0, "no skeleton, no animator");
+	}
+
+	/// A weapon hung under a hand bone stands where the file put it unless something moves it: the
+	/// prefab puts one bone attachment on the nearest bone node above each unskinned mesh. Nodes:
+	/// Root; Armature; Hips and Hand (bones); Grip (a plain node under the hand); Sword (a static
+	/// mesh under the grip); Body (the skinned mesh); Prop (a static mesh under no bone).
+	[Test]
+	public static void AnUnskinnedMeshUnderABoneGetsAnAttachmentOnThatBonesNode()
+	{
+		let fx = scope Fixture("scratch_model_prefab_bone_attachment_db");
+		AnimationPipeline.RegisterAll(fx.Serializables);
+		let group = fx.Database.RootGroup.CreateGroup("Knight");
+		Test.Assert(group != null);
+
+		let skeleton = scope SkeletonAsset();
+		skeleton.Source.BoneName.Add(new String("Hips"));
+		skeleton.Source.BoneName.Add(new String("Hand"));
+		skeleton.Source.ParentIndex.Add(-1);
+		skeleton.Source.ParentIndex.Add(0);
+		let skeletonInstance = group.CreateInstance("skeleton", typeof(SkeletonAsset).GetFullName(.. scope .()));
+		Test.Assert((skeletonInstance != null) && (skeletonInstance.WriteObject(skeleton) case .Ok));
+
+		let asset = scope ModelManifestAsset();
+		asset.Manifest.MeshGuid.Add(G(0x81, 1)); // the sword
+		asset.Manifest.MeshGuid.Add(G(0x81, 2)); // the body
+		asset.Manifest.MeshGuid.Add(G(0x81, 3)); // the prop
+		asset.Manifest.MeshSkinned.Add(false);
+		asset.Manifest.MeshSkinned.Add(true);
+		asset.Manifest.MeshSkinned.Add(false);
+		for (int i < 3)
+			asset.Manifest.MeshMaterial.Add(-1);
+		asset.Manifest.SkeletonGuid = skeletonInstance.Id;
+		asset.Manifest.SkeletonParentNode = 1;
+		AddNode(asset, "Root", -1, -1, .(0, 0, 0));
+		AddNode(asset, "Armature", 0, -1, .(0, 0, 0));
+		AddNode(asset, "Hips", 1, -1, .(0, 0, 0));
+		AddNode(asset, "Hand", 2, -1, .(0, 0, 0));
+		AddNode(asset, "Grip", 3, -1, .(0, 0, 0));
+		AddNode(asset, "Sword", 4, 0, .(0, 0, 0));
+		AddNode(asset, "Body", 0, 1, .(0, 0, 0));
+		AddNode(asset, "Prop", 0, 2, .(0, 0, 0));
+		let manifest = group.CreateInstance("Knight", typeof(ModelManifestAsset).GetFullName(.. scope .()));
+		Test.Assert((manifest != null) && (manifest.WriteObject(asset) case .Ok));
+
+		let generated = ModelPrefab.GenerateModelPrefab(manifest);
+		Test.Assert(generated.Instance != null);
+		let payload = generated.Instance.ReadData("scene");
+		Test.Assert(payload != null);
+		defer delete payload;
+		let level = scope Scene("level");
+		level.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(level);
+		Test.Assert(PrefabSpawn.Spawn(level, payload, generated.Instance.Id).IsAssigned);
+
+		let attachments = level.GetSystem<BoneAttachmentComponentManager>();
+		Test.Assert(attachments != null);
+		let hand = attachments.Get(level.FindEntityByName("Hand"));
+		Test.Assert(hand != null, "the nearest bone above the sword (the grip is no bone)");
+		Test.Assert(hand.Bone == "Hand");
+		Test.Assert(attachments.Get(level.FindEntityByName("Grip")) == null);
+		Test.Assert(attachments.Get(level.FindEntityByName("Hips")) == null);
+		Test.Assert(attachments.Get(level.FindEntityByName("Prop")) == null, "under no bone: it stays put");
+		Test.Assert(attachments.Get(level.FindEntityByName("Body")) == null, "skinned: the palette moves it");
 	}
 
 	/// A skin draws in its skeleton's parent's space and glTF ignores a skinned mesh node's own

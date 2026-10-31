@@ -10,6 +10,7 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Model.Resource;
 using Sedulous.ModelImporter;
+using Sedulous.Animation.Pipeline;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
@@ -21,9 +22,32 @@ namespace Sedulous.Scene.Pipeline;
 /// per meshed node with the manifest's materials, a cooked collider where the import made
 /// one, and, when the model brought a skeleton, one skeletal animator on the root feeding every
 /// skinned mesh: its resting clip when the model has clips, else none, the rig's rest pose (a
-/// skinned mesh fed nothing draws its raw vertices).
+/// skinned mesh fed nothing draws its raw vertices). An unskinned mesh under a bone (a weapon in a
+/// hand) gets a bone attachment on the nearest bone node above it (ModelPlacement.RigidMeshBone),
+/// so it moves with the animation.
 static class ModelPrefab
 {
+	/// The skeleton's bone names, read from the skeleton asset beside the manifest, into
+	/// `outNames` (none when the model has no skeleton or it does not read back).
+	public static void SkeletonBoneNames(Instance manifestInstance, ModelManifestSource manifest, List<String> outNames)
+	{
+		if (manifest.SkeletonGuid.IsNil)
+			return;
+		for (let sibling in manifestInstance.OwningGroup.Instances)
+		{
+			if (sibling.Id != manifest.SkeletonGuid)
+				continue;
+			let object = sibling.ReadObject();
+			defer delete object;
+			if (let skeleton = object as SkeletonAsset)
+			{
+				for (let name in skeleton.Source.BoneName)
+					outNames.Add(new String(name));
+			}
+			break;
+		}
+	}
+
 	/// The skinned mesh entity under the skeleton's parent node at identity, or left where the
 	/// file put it (ModelPlacement.SkinnedMeshParent says which).
 	private static void PlaceInSkeletonSpace(Sedulous.Scene.Scene scene, ModelManifestSource manifest,
@@ -100,6 +124,34 @@ static class ModelPrefab
 			{
 				skinnedEntities.Add(entities[i]);
 				PlaceInSkeletonSpace(scene, manifest, nodes, entities, root, i);
+			}
+		}
+
+		// An unskinned mesh under a bone follows it: one attachment on the nearest bone node above.
+		if (rigged)
+		{
+			let bones = scope List<String>();
+			defer { ClearAndDeleteItems(bones); }
+			SkeletonBoneNames(manifestInstance, manifest, bones);
+			let attachments = scene.AddSystem<BoneAttachmentComponentManager>();
+			delegate bool(StringView name) isBone = scope [&] (name) =>
+				{
+					for (let b in bones)
+					{
+						if (b == name)
+							return true;
+					}
+					return false;
+				};
+			for (int i < nodes.Count)
+			{
+				let meshIndex = nodes[i].MeshIndex;
+				if ((meshIndex < 0) || (meshIndex >= manifest.MeshGuid.Count) || manifest.MeshGuid[meshIndex].IsNil
+					|| ((meshIndex < manifest.MeshSkinned.Count) && manifest.MeshSkinned[meshIndex]))
+					continue;
+				let bone = ModelPlacement.RigidMeshBone(nodes, i, isBone);
+				if ((bone >= 0) && (attachments.Get(entities[bone]) == null))
+					attachments.Add(entities[bone]).Bone.Set(nodes[bone].Name);
 			}
 		}
 

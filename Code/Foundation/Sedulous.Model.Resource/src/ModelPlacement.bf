@@ -25,6 +25,23 @@ static class ModelPlacement
 	public static int32 SkinnedMeshParent(Span<int32> nodeParents, int32 skeletonParentNode, int meshNode)
 		=> Walk(nodeParents.Length, skeletonParentNode, meshNode, scope (i) => nodeParents[i]);
 
+	/// The node an unskinned mesh node rides with in a rigged model: the nearest node at or above
+	/// it that is one of the skeleton's bones (`isBone(name)`), which a bone attachment moves with
+	/// the animation (a weapon hung under a hand). The bones animate only as a skinning palette, so
+	/// without it the mesh stands where the file put it while the skin moves. Minus one when no
+	/// bone is above it. The walk up is bounded by the node count (a malformed cycle).
+	public static int32 RigidMeshBone(Span<ModelNode> nodes, int meshNode, delegate bool(StringView name) isBone)
+	{
+		var node = (int32)meshNode;
+		for (int steps = 0; (node >= 0) && (node < nodes.Length) && (steps <= nodes.Length); steps++)
+		{
+			if (isBone(nodes[node].Name))
+				return node;
+			node = nodes[node].ParentIndex;
+		}
+		return -1;
+	}
+
 	private static int32 Walk(int nodeCount, int32 skeletonParentNode, int meshNode, delegate int32(int node) parentOf)
 	{
 		if ((skeletonParentNode < -1) || (skeletonParentNode >= nodeCount))
