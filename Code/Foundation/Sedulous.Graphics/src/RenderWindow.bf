@@ -41,8 +41,8 @@ class RenderWindow
 		mFences.AddRange(fences);
 		for (int i < mFences.Count)
 			mFenceValues.Add(0);
-		mWidth = window.Width;
-		mHeight = window.Height;
+		mWidth = window.PixelWidth;
+		mHeight = window.PixelHeight;
 	}
 
 	public ~this()
@@ -101,8 +101,8 @@ class RenderWindow
 	/// manager that resizes without telling anyone still works.
 	public bool SyncSize()
 	{
-		let width = mWindow.Width;
-		let height = mWindow.Height;
+		let width = mWindow.PixelWidth;
+		let height = mWindow.PixelHeight;
 		if ((width == 0) || (height == 0))
 			return false;
 		if ((width == mWidth) && (height == mHeight))

@@ -9,6 +9,12 @@ interface IWindow
 
 	uint32 Width { get; }
 	uint32 Height { get; }
+	/// What the window draws into, in pixels: Width and Height are in the OS's window units, which
+	/// on a scaled display (Windows at 175%, a Retina screen) are fewer than its pixels. A swapchain
+	/// is made at this size, and a GUI lays out to it; the pointer arrives in window units and is
+	/// scaled by the ratio of the two. As many as its units unless the window says otherwise.
+	uint32 PixelWidth => Width;
+	uint32 PixelHeight => Height;
 
 	/// Screen space top left, in the same frame the OS uses. Multi window code reads and
 	/// writes this to place a floating window relative to another.

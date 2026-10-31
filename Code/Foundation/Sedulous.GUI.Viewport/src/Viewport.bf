@@ -246,7 +246,7 @@ class Viewport : UIWidget, IHostedContent
 		Invalidate();
 	}
 
-	public void Place(Rectangle windowPixels, Float2 windowSize)
+	public void Place(Rectangle windowPixels, Rectangle windowUnits, Float2 windowSize)
 	{
 		// The targets follow the node in device pixels, unless the content has a size of its own.
 		let width = (mFixedWidth > 0) ? mFixedWidth : (uint32)Math.Max(1.0f, windowPixels.Width + 0.5f);
@@ -256,7 +256,7 @@ class Viewport : UIWidget, IHostedContent
 		if (mSurface == null)
 			return;
 		mSurface.SetWindowSize(windowSize);
-		PlaceSurface(windowPixels);
+		PlaceSurface(windowUnits); // the pointer arrives in window units
 	}
 
 	public void Record(ICommandEncoder encoder, int32 frameIndex)

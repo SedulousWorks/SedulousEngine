@@ -43,6 +43,30 @@ class SDL3Window : IWindow
 	public uint32 Width => mWidth;
 	public uint32 Height => mHeight;
 
+	public uint32 PixelWidth
+	{
+		get
+		{
+			int32 w = 0;
+			int32 h = 0;
+			if ((mWindow == null) || !SDL3.SDL_GetWindowSizeInPixels(mWindow, &w, &h) || (w <= 0))
+				return mWidth;
+			return (uint32)w;
+		}
+	}
+
+	public uint32 PixelHeight
+	{
+		get
+		{
+			int32 w = 0;
+			int32 h = 0;
+			if ((mWindow == null) || !SDL3.SDL_GetWindowSizeInPixels(mWindow, &w, &h) || (h <= 0))
+				return mHeight;
+			return (uint32)h;
+		}
+	}
+
 	public int32 X
 	{
 		get

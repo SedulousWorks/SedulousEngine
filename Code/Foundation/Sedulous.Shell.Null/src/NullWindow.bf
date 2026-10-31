@@ -12,6 +12,8 @@ class NullWindow : IWindow
 {
 	private uint32 mId;
 	private uint32 mWidth;
+	/// Pixels a window unit (SetPixelDensity).
+	private float mPixelDensity = 1.0f;
 	private uint32 mHeight;
 	private int32 mX;
 	private int32 mY;
@@ -36,6 +38,10 @@ class NullWindow : IWindow
 	public uint32 Id => mId;
 	public uint32 Width => mWidth;
 	public uint32 Height => mHeight;
+	// As many pixels as window units, unless a test gives it a pixel density (a scaled display).
+	public uint32 PixelWidth => (uint32)((float)mWidth * mPixelDensity + 0.5f);
+	public uint32 PixelHeight => (uint32)((float)mHeight * mPixelDensity + 0.5f);
+	public void SetPixelDensity(float density) { mPixelDensity = (density > 0.0f) ? density : 1.0f; }
 	public int32 X => mX;
 	public int32 Y => mY;
 

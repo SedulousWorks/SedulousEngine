@@ -152,8 +152,8 @@ class GraphicsDevice
 			return .Err;
 
 		var swapDesc = SwapChainDesc();
-		swapDesc.Width = window.Width;
-		swapDesc.Height = window.Height;
+		swapDesc.Width = window.PixelWidth; // the drawable's pixels, not the OS's window units
+		swapDesc.Height = window.PixelHeight;
 		swapDesc.Format = desc.Format;
 		swapDesc.PresentMode = desc.PresentMode;
 		swapDesc.BufferCount = desc.BufferCount;

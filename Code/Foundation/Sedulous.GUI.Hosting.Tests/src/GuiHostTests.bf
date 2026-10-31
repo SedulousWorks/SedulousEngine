@@ -147,6 +147,7 @@ class RecordingContent : IHostedContent
 	public int Binds = 0;
 	public int Records = 0;
 	public Rectangle Placed = .();
+	public Rectangle PlacedUnits = .();
 	public Float2 PlacedWindow = .();
 	/// Placing changes what its node shows (as a viewport made again at a new size does).
 	public bool ChangesWhenPlaced = false;
@@ -160,9 +161,10 @@ class RecordingContent : IHostedContent
 		BoundWindow = windowId;
 	}
 
-	public void Place(Rectangle windowPixels, Float2 windowSize)
+	public void Place(Rectangle windowPixels, Rectangle windowUnits, Float2 windowSize)
 	{
 		Placed = windowPixels;
+		PlacedUnits = windowUnits;
 		PlacedWindow = windowSize;
 		if (ChangesWhenPlaced)
 			Shown.Invalidate();
@@ -197,7 +199,7 @@ class SurfaceContent : IHostedContent
 			mSurface = new .(input, windowId, ContentFit());
 	}
 
-	public void Place(Rectangle windowPixels, Float2 windowSize)
+	public void Place(Rectangle windowPixels, Rectangle windowUnits, Float2 windowSize)
 	{
 	}
 
@@ -622,6 +624,76 @@ class GuiHostTests
 			otherRoot.ReleaseRef();
 			mainRoot.ReleaseRef();
 			delete other;
+			delete main;
+		}
+		device.Raw.DestroyShaderModule(ref fs);
+		device.Raw.DestroyShaderModule(ref vs);
+		delete device;
+	}
+
+	[Test]
+	public static void OnAScaledDisplayTheGuiFillsTheWindowsPixelsAndThePointerInWindowUnitsLandsWhereItShows()
+	{
+		let shell = scope DrivenShell();
+		// 175%: the OS counts the window in units, each 1.75 pixels (a 4K screen's 3840 is 2194 units).
+		let window = (NullWindow)shell.MainWindow;
+		window.Resize(800, 600);
+		window.SetPixelDensity(1.75f);
+		let device = NullGraphics.CreateDevice(2).Value;
+		var vs = HostingFixtures.MakeModule(device.Raw);
+		var fs = HostingFixtures.MakeModule(device.Raw);
+		{
+			let main = device.CreateRenderWindow(window, .()).Value;
+			Test.Assert(main.Swap.Width == 1400, "the swapchain is the window's pixels");
+			Test.Assert(main.Swap.Height == 1050);
+			var shaders = VgShaderSet();
+			shaders.Vertex = vs;
+			shaders.Fragment = fs;
+			let host = new GuiHost(device, shell, null, shaders);
+			let root = new SceneRoot(host.Context);
+			// A panel in the bottom right quarter of what the root lays out.
+			let panel = new Panel();
+			panel.EditLayoutStyle(scope (s) =>
+				{
+					s.Placement = .Absolute;
+					s.Left = LayoutLength.Px(1050.0f);
+					s.Top = LayoutLength.Px(787.0f);
+					s.Width = LayoutLength.Px(350.0f);
+					s.Height = LayoutLength.Px(263.0f);
+				});
+			root.AddChild(panel);
+			int downs = 0;
+			panel.AddEventListener(.MouseDown, new [&] (e) => { downs++; });
+			host.AttachWindow(main, root);
+			Test.Assert(Math.Abs(root.ViewportSize.X - 1400.0f) < 0.01f, "all of it, not the 800 units' corner");
+			Test.Assert(Math.Abs(root.ViewportSize.Y - 1050.0f) < 0.01f);
+			let mouse = shell.DrivenDevices.Driven;
+			let id = main.Window.Id;
+			void Frame(float x, float y, bool down, bool edge)
+			{
+				shell.DrivenDevices.Hover = id;
+				mouse.PointerX = x;
+				mouse.PointerY = y;
+				mouse.Pressed = edge && down;
+				mouse.Released = edge && !down;
+				mouse.Down = down;
+				host.Update(1.0f / 60.0f);
+				device.AdvanceFrame();
+			}
+			// The pointer at (700, 525) units is (1225, 919) pixels: on the panel.
+			Frame(700.0f, 525.0f, false, false);
+			Frame(700.0f, 525.0f, true, true);
+			Test.Assert(downs == 1);
+			Frame(700.0f, 525.0f, false, true);
+			// At (500, 400) units it is (875, 700) pixels: above and left of it, though in units the
+			// panel's own numbers would have held it.
+			Frame(500.0f, 400.0f, false, false);
+			Frame(500.0f, 400.0f, true, true);
+			Test.Assert(downs == 1);
+			host.DetachWindow(main);
+			delete host;
+			panel.ReleaseRef();
+			root.ReleaseRef();
 			delete main;
 		}
 		device.Raw.DestroyShaderModule(ref fs);

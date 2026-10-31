@@ -22,8 +22,10 @@ interface IHostedContent
 	/// Bound to the window it is in: `renderer` draws that window's GUI (null: in no window, its
 	/// last let go), `input` and `windowId` its input surface's. All borrowed.
 	void Bind(IDevice device, VGRenderer renderer, Sedulous.Shell.IInputManager input, uint32 windowId);
-	/// Where its node lies in its window, in the window's pixels, and the window's size.
-	void Place(Rectangle windowPixels, Float2 windowSize);
+	/// Where its node lies in its window: in the window's pixels (what it draws to) and in the
+	/// window's units (where the pointer arrives; fewer on a scaled display), and the window's size
+	/// in its units (where fingers land).
+	void Place(Rectangle windowPixels, Rectangle windowUnits, Float2 windowSize);
 	/// Its drawing, on its window's frame, before that window's GUI is drawn.
 	void Record(ICommandEncoder encoder, int32 frameIndex);
 	/// The input surface the host's content router gates (null until bound). The content's own.

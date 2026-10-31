@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Fonts;
 using Sedulous.Graphics;
 using Sedulous.RHI;
@@ -81,6 +82,9 @@ class GuiWindowData : IRenderWindowData
 	public TextureFormat DrawFormat = .Undefined;
 	/// Update's verdict: the panes draw this frame, else the last batch is encoded.
 	public bool NeedsFrame = true;
+	/// The frame size its sizes were last logged at.
+	public uint32 LoggedWidth = 0;
+	public uint32 LoggedHeight = 0;
 
 	public SceneRoot Root => Panes.IsEmpty ? null : Panes[0].Root;
 }
@@ -356,7 +360,7 @@ class GuiHost
 		let swap = window.Swap;
 		data.Encoded = (mBlendSpace == .Encoded) && (swap != null) && (swap.AlternateViewFormat != .Undefined);
 		data.DrawFormat = (swap == null) ? .RGBA8UnormSrgb : (data.Encoded ? swap.AlternateViewFormat : swap.Format);
-		data.Targets = MakeTargets(data.DrawFormat, window.Window.Width, window.Window.Height);
+		data.Targets = MakeTargets(data.DrawFormat, window.Window.PixelWidth, window.Window.PixelHeight);
 		let targets = data.Targets != null;
 		data.Multisampled = targets;
 		VGBlendSpace space = data.Encoded ? .Encoded : .Linear;
@@ -402,7 +406,7 @@ class GuiHost
 		pane.Region = region;
 		pane.Styles = styles;
 		let area = AreaOf(window, region);
-		pane.Surface = new .(mShell.Input, window.Window.Id, ContentFit(area, .(area.Width, area.Height), .Stretch));
+		pane.Surface = new .(mShell.Input, window.Window.Id, ContentFit(InWindowUnits(window, area), .(area.Width, area.Height), .Stretch));
 		mRouter.AddSurface(pane.Surface);
 		pane.Bridge = new .(root.EventDispatcher);
 		pane.Bridge.SetTextInputTarget(window.Window);
@@ -586,7 +590,8 @@ class GuiHost
 					continue;
 				let window = attached.Window.Window;
 				let area = AreaOf(attached.Window, pane.Region);
-				screen = .((float)window.X + area.X + local.X, (float)window.Y + area.Y + local.Y);
+				let ratio = PixelsPerUnit(window); // the pane's pixels back to window units
+				screen = .((float)window.X + (area.X + local.X) / ratio.X, (float)window.Y + (area.Y + local.Y) / ratio.Y);
 				return true;
 			}
 		}
@@ -713,6 +718,22 @@ class GuiHost
 			let node = hosted.Content.HostedNode;
 			if ((hosted.Window == frame.Window) && (node != null) && node.IsTreeVisible)
 				hosted.Content.Record(frame.Encoder, (int32)frame.FrameIndex);
+		}
+		// Every size a window's drawing depends on, once per frame size: on a scaled display the
+		// window's units, its pixels, the swapchain and the root's viewport must agree to fill it.
+		if ((frame.Width != data.LoggedWidth) || (frame.Height != data.LoggedHeight))
+		{
+			data.LoggedWidth = frame.Width;
+			data.LoggedHeight = frame.Height;
+			let os = frame.Window.Window;
+			let root = data.Root;
+			let swap = frame.Window.Swap;
+			GlobalLog(.Information, "GUI: window {}: {}x{} units, {}x{} pixels, content scale {}; frame {}x{}; swapchain {}x{}; root viewport {}x{}, size {}x{}, display scale {}",
+				os.Id, os.Width, os.Height, os.PixelWidth, os.PixelHeight, os.ContentScale, frame.Width, frame.Height,
+				(swap != null) ? swap.Width : 0, (swap != null) ? swap.Height : 0,
+				(root != null) ? root.ViewportSize.X : 0.0f, (root != null) ? root.ViewportSize.Y : 0.0f,
+				(root != null) ? root.Size.X : 0.0f, (root != null) ? root.Size.Y : 0.0f,
+				(root != null) ? root.DisplayScale : 0.0f);
 		}
 		let batch = data.Canvas.GetBatch();
 		let slot = (int32)frame.FrameIndex;
@@ -868,11 +889,29 @@ class GuiHost
 		return mBakerReady;
 	}
 
+	// A pane's area in its window's pixels (a region is given in them too): all of the window by
+	// default. The GUI lays out to it and draws into the swapchain at the same size, so a scaled
+	// display (more pixels than window units) is filled, not drawn into a corner.
 	private static Rectangle AreaOf(Sedulous.Graphics.RenderWindow window, Rectangle region)
 	{
 		if ((region.Width > 0.0f) && (region.Height > 0.0f))
 			return region;
-		return .(0.0f, 0.0f, (float)window.Window.Width, (float)window.Window.Height);
+		return .(0.0f, 0.0f, (float)window.Window.PixelWidth, (float)window.Window.PixelHeight);
+	}
+
+	// How many of the window's pixels a window unit holds, across and down (1 on an unscaled display).
+	private static Float2 PixelsPerUnit(Sedulous.Shell.IWindow window)
+	{
+		let w = (float)window.Width;
+		let h = (float)window.Height;
+		return .((w > 0.0f) ? (float)window.PixelWidth / w : 1.0f, (h > 0.0f) ? (float)window.PixelHeight / h : 1.0f);
+	}
+
+	// A pane's area in window units, where the pointer arrives.
+	private static Rectangle InWindowUnits(Sedulous.Graphics.RenderWindow window, Rectangle area)
+	{
+		let ratio = PixelsPerUnit(window.Window);
+		return .(area.X / ratio.X, area.Y / ratio.Y, area.Width / ratio.X, area.Height / ratio.Y);
 	}
 
 	// A window's multisampled targets at `width` x `height`, the caller's; null when the device
@@ -959,8 +998,10 @@ class GuiHost
 	{
 		local = .();
 		let window = attached.Window.Window;
-		let at = Float2(screen.X - (float)window.X, screen.Y - (float)window.Y);
-		if ((at.X < 0.0f) || (at.Y < 0.0f) || (at.X >= (float)window.Width) || (at.Y >= (float)window.Height) || window.IsMinimized)
+		// The screen is in window units; the panes are in the window's pixels.
+		let ratio = PixelsPerUnit(window);
+		let at = Float2((screen.X - (float)window.X) * ratio.X, (screen.Y - (float)window.Y) * ratio.Y);
+		if ((at.X < 0.0f) || (at.Y < 0.0f) || (at.X >= (float)window.PixelWidth) || (at.Y >= (float)window.PixelHeight) || window.IsMinimized)
 			return null;
 		for (int i = attached.Data.Panes.Count; i > 0; i--) // the pane drawn last is on top
 		{
@@ -1004,8 +1045,8 @@ class GuiHost
 				continue; // its targets kept for when it shows again
 			let pane = PaneArea(root);
 			let bounds = node.ScreenBounds; // the root's device pixels
-			hosted.Content.Place(.(pane.X + bounds.X, pane.Y + bounds.Y, bounds.Width, bounds.Height),
-				.((float)window.Window.Width, (float)window.Window.Height));
+			let pixels = Rectangle(pane.X + bounds.X, pane.Y + bounds.Y, bounds.Width, bounds.Height);
+			hosted.Content.Place(pixels, InWindowUnits(window, pixels), .((float)window.Window.Width, (float)window.Window.Height));
 		}
 		mContentRouter.Update();
 	}
@@ -1135,8 +1176,10 @@ class GuiHost
 			let size = Float2((float)window.Window.Width, (float)window.Window.Height);
 			for (let pane in pointer.Value.Data.Panes)
 			{
+				// The pointer arrives in window units; the pane lays out in pixels, so the surface maps
+				// the one to the other.
 				let area = AreaOf(window, pane.Region);
-				pane.Surface.SetRegion(area);
+				pane.Surface.SetRegion(InWindowUnits(window, area));
 				pane.Surface.SetWindowSize(size); // places fingers
 				pane.Surface.SetContentSize(.(area.Width, area.Height));
 				if ((mPointerFilter == null) || !mPointerFilter(pane.Root, pane.Surface))
