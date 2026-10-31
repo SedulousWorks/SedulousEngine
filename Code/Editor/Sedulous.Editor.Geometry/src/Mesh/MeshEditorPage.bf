@@ -17,13 +17,13 @@ using Sedulous.Editor.Preview;
 namespace Sedulous.Editor.Geometry;
 
 /// The mesh viewer (Raptor's editor-gui spec, 5.4, layer 3), on the preview pages' markup
-/// (Data/Editor/PreviewPage.gml): the cooked product on a preview entity, following reloads by
+/// (Data/Editor/PreviewPage.xml): the cooked product on a preview entity, following reloads by
 /// product identity, beside the asset's fields and its stats, read only. The material the preview
 /// shows it in (kept for this mesh) and, for a LOD chain, the level it draws are the preview's own
 /// choices, on its bar, not among the stats. What every asset page does is AssetObjectPage's.
 class MeshEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/PreviewPage.gml";
+	public const String cMarkupPath = "Editor/PreviewPage.xml";
 
 	private PreviewPane mPane = null ~ delete _;
 	/// One reference each, the page's: the preview's bar holds its own.

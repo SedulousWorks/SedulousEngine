@@ -13,14 +13,14 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Heightfield;
 
 /// The heightfield page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
-/// (Data/Editor/ImagePage.gml): the source heightmap in the picture, from its own lowest sample
+/// (Data/Editor/ImagePage.xml): the source heightmap in the picture, from its own lowest sample
 /// (black) to its highest (white), so a low relief shows where the high byte alone was one flat
 /// grey; the readout says the height under the pointer in metres. Beside it the asset's fields
 /// (its Y range among them), and its source's size and range in metres, following an edit. What
 /// every asset page does is AssetObjectPage's.
 class HeightfieldEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/ImagePage.gml";
+	public const String cMarkupPath = "Editor/ImagePage.xml";
 
 	private ImagePreview mPreview = null ~ delete _;
 	/// The source's samples, row by row.

@@ -44,11 +44,11 @@ class EditorPagesServices
 /// the active one are saved with the project and reopen with it. Before an exit (layer 11; a
 /// project's close in layer 13) the unsaved pages are asked about as one: save them all, cancel,
 /// or go on without saving. Save As writes a page into a new asset beside its own, named in a
-/// dialog of its own markup (Data/Editor/SaveAs.gml); the page edits the new asset after.
+/// dialog of its own markup (Data/Editor/SaveAs.xml); the page edits the new asset after.
 class EditorPages
 {
 	/// Save As's dialog, under the data root.
-	public const String cSaveAsPath = "Editor/SaveAs.gml";
+	public const String cSaveAsPath = "Editor/SaveAs.xml";
 	private const float cSaveAsWidth = 420.0f;
 	private const float cSaveAsHeight = 200.0f;
 

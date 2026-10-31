@@ -34,7 +34,7 @@ tap on the menus; they show once the screen is touched (`Tools/touch.py` binds t
 
 - `Project.xml`: the manifest: the start scene, the Game script, the input map, the GUI's
   sheet and fonts, and the render resolution (1280x720, letterboxed).
-- `Sources/`: the raw sources: the AngelScript scripts, the screens (`.gml`) and their
+- `Sources/`: the raw sources: the AngelScript scripts, the screens (`.xml`) and their
   sheet, the fonts, the audio, and the kit's glTF models.
 - `Content/`: the asset envelopes (`*.xasset`) and their sidecars.
 - `Tools/`: the authoring scripts that drive the editor's MCP tools (levels 4 and 5 among them);

@@ -9,7 +9,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// Preferences over its own markup (Data/Editor/Preferences.gml): its controls as the user's store
+/// Preferences over its own markup (Data/Editor/Preferences.xml): its controls as the user's store
 /// has the look (what the store names wrongly, the defaults); each change of each input shown at
 /// once; Save into the store, marked changed and persisted; Cancel, Escape, its close button, or
 /// the dialog going while open, putting the look back as it was with the store unchanged; the

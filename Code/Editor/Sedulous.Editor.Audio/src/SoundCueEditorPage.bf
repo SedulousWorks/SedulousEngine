@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// A sound cue on the GUI from its markup (Data/Editor/SoundCuePage.gml; Raptor's editor-gui spec,
+/// A sound cue on the GUI from its markup (Data/Editor/SoundCuePage.xml; Raptor's editor-gui spec,
 /// 5.4, layer 5). The cue on the grid: how it picks (at random never the same twice running, at
 /// random, or in order), its pitch and volume ranges, then its variants, a list as every page's (the
 /// count with Add, each element under it, removed and moved from its menu; eight at most), each a
@@ -25,7 +25,7 @@ namespace Sedulous.Editor.Audio;
 /// picked is said beside the transport. A cue with no clip says so.
 class SoundCueEditorPage : AssetObjectPage, IPlaybackPage
 {
-	public const String cMarkupPath = "Editor/SoundCuePage.gml";
+	public const String cMarkupPath = "Editor/SoundCuePage.xml";
 
 	private struct RangeRow
 	{

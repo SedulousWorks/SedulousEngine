@@ -8,7 +8,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.PropertyAnimation;
 
-/// The property animation panel on the GUI from its markup (Data/Editor/PropertyAnimationPanel.gml;
+/// The property animation panel on the GUI from its markup (Data/Editor/PropertyAnimationPanel.xml;
 /// Raptor's editor-gui spec, 5.4, layer 9, part 2), over part 1's clip document, source, preview and
 /// transport, under the scene page's viewport. Its bar holds the clip (its name and unsaved mark, New,
 /// Open, Save, its own Undo and Redo), the entity it animates (Use Selected, or Pick from the scene's
@@ -24,7 +24,7 @@ namespace Sedulous.Editor.PropertyAnimation;
 /// while the scene simulates. New, Open and the prompt for an unsaved clip are the page's seams.
 class PropertyAnimationPanel
 {
-	public const String cMarkupPath = "Editor/PropertyAnimationPanel.gml";
+	public const String cMarkupPath = "Editor/PropertyAnimationPanel.xml";
 
 	/// A key this close to a time is the one at it.
 	private const float cSameTime = 1e-4f;

@@ -7,7 +7,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
-// An entity slot's pick (Raptor's editor-gui spec, ruling 25; the mock's entity-picker.gml): the
+// An entity slot's pick (Raptor's editor-gui spec, ruling 25; the mock's entity-picker.xml): the
 // scene as its hierarchy shows it, the hierarchy's own tree model (SceneTreeModel) in a picker's
 // frame. The scene is its top row (open, and no pick); each entity by its type's icon in its
 // category's colour, opened and closed by its arrow; the way to the current entity open and its row
@@ -38,7 +38,7 @@ class EntityPickerServices
 class EntityPickerWindow
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/EntityPicker.gml";
+	public const String cMarkupPath = "Editor/EntityPicker.xml";
 
 	/// A reference of ours: closed, it leaves the tree, and this keeps it for the next open.
 	/// Declared first: it goes last, after the model the tree it holds borrows.

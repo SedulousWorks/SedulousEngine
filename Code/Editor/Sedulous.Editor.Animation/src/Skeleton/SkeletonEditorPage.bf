@@ -46,7 +46,7 @@ struct SkeletonFacts
 	}
 }
 
-/// A skeleton on the GUI from its markup (Data/Editor/SkeletonPage.gml; Raptor's editor-gui spec,
+/// A skeleton on the GUI from its markup (Data/Editor/SkeletonPage.xml; Raptor's editor-gui spec,
 /// 5.4, layer 10, part 3). A viewer: a skeleton comes from its model's import and nothing here edits
 /// it. Its bones are a tree (each under its parent), with a search that keeps a bone whose name holds
 /// it and the bones above it, so where it hangs still shows; a bone the user folds stays folded.
@@ -56,7 +56,7 @@ struct SkeletonFacts
 /// only.
 class SkeletonEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/SkeletonPage.gml";
+	public const String cMarkupPath = "Editor/SkeletonPage.xml";
 	private static readonly StringView[6] cBoneRowsAfterName = .("index", "parent", "children", "position", "rotation", "scale");
 
 	/// Filled from the asset's source.

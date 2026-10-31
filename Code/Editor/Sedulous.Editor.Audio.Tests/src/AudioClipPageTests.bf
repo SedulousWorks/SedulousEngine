@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio.Tests;
 
-/// The audio clip page over its markup (Data/Editor/AudioClipPage.gml) and a scratch project, with
+/// The audio clip page over its markup (Data/Editor/AudioClipPage.xml) and a scratch project, with
 /// no host (no audio engine: nothing plays): the source read into its waveform and facts, the
 /// transport bound to the playback actions, an option an undo step the audition follows, and a
 /// missing source said in the waveform's place.

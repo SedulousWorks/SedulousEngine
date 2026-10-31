@@ -19,7 +19,7 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Terrain;
 
-/// A terrain on the GUI from the preview pages' markup (Data/Editor/PreviewPage.gml; Raptor's
+/// A terrain on the GUI from the preview pages' markup (Data/Editor/PreviewPage.xml; Raptor's
 /// editor-gui spec, 5.4, layer 7). The cooked terrain on a preview lit by a sun (its self-shadowing
 /// shown), beside its rows. The asset keeps its layers in parallel lists, so the rows are the page's
 /// own, not its reflection's: under Terrain the heightfield and the splat weights it is painted with,
@@ -37,7 +37,7 @@ namespace Sedulous.Editor.Terrain;
 /// sculpting and painting are the scene view's tools.
 class TerrainEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/PreviewPage.gml";
+	public const String cMarkupPath = "Editor/PreviewPage.xml";
 	/// The sizes New Splat Weights offers, in its menu's order.
 	public const int32[3] cSplatSizes = .(512, 1024, 2048);
 

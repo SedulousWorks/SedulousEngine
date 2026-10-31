@@ -63,7 +63,7 @@ class GuiPagesTests
 		return loader.LoadFromString(text);
 	}
 
-	/// A project with a document ("Hud", Sources/Hud.gml) and a sheet ("Theme", Sources/Theme.css),
+	/// A project with a document ("Hud", Sources/Hud.xml) and a sheet ("Theme", Sources/Theme.css),
 	/// its editor settings the context's.
 	private class Bed
 	{
@@ -87,13 +87,13 @@ class GuiPagesTests
 			Context.SetProject(Project);
 			Context.ProjectEditorSettings = Store;
 			let sources = Project.SourcesRoot(.. scope .());
-			Test.Assert(System.IO.File.WriteAllText(PathJoin(sources, "Hud.gml", .. scope .()), cHud) case .Ok);
+			Test.Assert(System.IO.File.WriteAllText(PathJoin(sources, "Hud.xml", .. scope .()), cHud) case .Ok);
 			Test.Assert(System.IO.File.WriteAllText(PathJoin(sources, "Theme.css", .. scope .()), cSheet) case .Ok);
 			Hud = Project.SourceDb.RootGroup.CreateInstance("Hud", typeof(GuiDocumentAsset).GetFullName(.. scope .()));
 			Theme = Project.SourceDb.RootGroup.CreateInstance("Theme", typeof(GuiStyleSheetAsset).GetFullName(.. scope .()));
 			Test.Assert((Hud != null) && (Theme != null));
 			let document = scope GuiDocumentAsset();
-			document.FileName.Set("Hud.gml");
+			document.FileName.Set("Hud.xml");
 			Test.Assert(Hud.WriteObject(document) case .Ok);
 			let sheet = scope GuiStyleSheetAsset();
 			sheet.FileName.Set("Theme.css");

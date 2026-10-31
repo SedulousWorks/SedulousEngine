@@ -6,7 +6,7 @@ using Sedulous.GUI;
 namespace Sedulous.Editor.App;
 
 // The picker (Raptor's editor-gui spec, 5.2, layer 5; catalog 2.4): one for paths, groups and
-// components (an asset slot's is the asset picker, AssetPickerWindow), as the kit draws it (Data/Editor/Picker.gml). A search over the rows, which sit under
+// components (an asset slot's is the asset picker, AssetPickerWindow), as the kit draws it (Data/Editor/Picker.xml). A search over the rows, which sit under
 // their sections in the order the owner gives them, favourites first in a section of their own; a
 // row shows its glyph (its category's tint), its name, what it is, a star when a favourite, and a
 // check on the current value. The current value is lit when it opens; Up and Down move the light
@@ -152,7 +152,7 @@ class PickerRow : UIWidget
 class Picker
 {
 	/// Its frame's markup, under the data root.
-	public const String cMarkupPath = "Editor/Picker.gml";
+	public const String cMarkupPath = "Editor/Picker.xml";
 	/// The favourites' section, listed first.
 	public const String cFavourites = "Favourites";
 	private const float cRowEstimate = 26.0f;

@@ -4,10 +4,10 @@
   the chosen one; the chosen one's rows on the right: an action's name, kind and interaction, its
   bindings as the grid's list (each binding a group: its source and the key capture, then its
   settings), then its processing; a set's name and priority, then its actions as the grid's list,
-  where an action is added to that set (input-split-set.gml: no add on the tree's bar guessing which
+  where an action is added to that set (input-split-set.xml: no add on the tree's bar guessing which
   set, the user 2026-10-26). A binding is
   captured by pressing the input on its key capture. The same map as design A's
-  (input-outline.gml), to compare.
+  (input-outline.xml), to compare.
 -->
 <Panel class="page input-page mock">
     <ToolBar class="page-toolbar">

@@ -15,7 +15,7 @@ Raptor's Sky Hopper tools, ported to this engine's asset envelopes, schema keys 
   settings come from Level3, so every level looks and plays alike. `levels.py Level4` writes one;
   a rewrite keeps the level's asset. The measures a route has to respect are in its docstring.
 - `importui.py`: the game's screens on the engine GUI. `ui/` holds them: Title, Intro, Hud, Pause,
-  Settings, LevelClear, GameOver, Victory and Fade (`.gml`), styled by `SkyHopperSheet.css`, the
+  Settings, LevelClear, GameOver, Victory and Fade (`.xml`), styled by `SkyHopperSheet.css`, the
   project's GUI sheet; the icons are the project's vector images (UI/Icons), shown by `<Image
   src="{guid}">`. It checks each with `gui_validate`, imports them into UI, makes the sheet the
   project's GUI sheet and cooks. A re-import keeps their ids, which `Sources/PlatformerGame.as`

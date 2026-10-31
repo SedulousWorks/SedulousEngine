@@ -5,7 +5,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Play;
 
-/// The Game tab's script debugger beside the game (its markup in Game.gml): Continue, Step Into,
+/// The Game tab's script debugger beside the game (its markup in Game.xml): Continue, Step Into,
 /// Step Over and Break; the state line; the call stack; the locals, an object's members one level
 /// under it (closed until opened). It reads only the neutral IScriptDebugger, so the same panel
 /// would drive a remote debugger; the page rebuilds it from its update, never mid-script. The

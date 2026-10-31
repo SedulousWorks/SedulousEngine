@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// Project Settings over its markup (Data/Editor/ProjectSettings.gml): the manifest's labelled
+/// Project Settings over its markup (Data/Editor/ProjectSettings.xml): the manifest's labelled
 /// settings as the grid's rows, in their categories; an asset setting a reference to the source
 /// type it names (its slot), a list setting a list of them, an enum its choices by name, MSAA the
 /// render subsystem's levels, the project's engine version read only; Save writing the rows back

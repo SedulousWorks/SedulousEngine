@@ -16,7 +16,7 @@ using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Editor.Animation.Tests;
 
-/// The animation graph page over its markup (Data/Editor/AnimationGraphPage.gml) and a scratch project,
+/// The animation graph page over its markup (Data/Editor/AnimationGraphPage.xml) and a scratch project,
 /// without a host (no preview): the layers and parameters as lists, the chosen layer on the graph view,
 /// the grid showing what is chosen (a layer, a parameter, a state, a transition) with each row where
 /// what it is uses it, each edit one undo step; a parameter added by its type and removed, a layer

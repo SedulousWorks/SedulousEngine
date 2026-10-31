@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The export templates dialog over its markup (Data/Editor/Templates.gml) and a scratch templates
+/// The export templates dialog over its markup (Data/Editor/Templates.xml) and a scratch templates
 /// root: it lists what the root holds and the host build, shows the selected one's details (its
 /// engine version, warned when not this editor's), installs a bundle from a folder, and removes one
 /// after asking (from its button or Delete on the list), never the host build. Then what Sedulous

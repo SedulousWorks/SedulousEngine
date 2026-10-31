@@ -16,7 +16,7 @@ class CreateTestAsset
 }
 
 /// The group picker, the rule a new asset's name keeps, and Create Asset over its markup
-/// (Data/Editor/AssetCreate.gml): the groups in the tree's order, each by name and what holds it, a
+/// (Data/Editor/AssetCreate.xml): the groups in the tree's order, each by name and what holds it, a
 /// key finding its group again; a name refused when empty, holding what a file cannot, spaced at an
 /// end or taken, saying why; Create waiting while refused, the line under the name saying why or
 /// what it makes, the groups a tree in it (every one open, the starting one chosen, a click choosing

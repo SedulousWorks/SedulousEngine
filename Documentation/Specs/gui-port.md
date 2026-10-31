@@ -69,7 +69,7 @@ that uses both libraries (the player, DefaultApp, the editor) has to qualify the
 
 Projects go in dependency order. Inside a project, a slice may use only what is already ported.
 
-1. **Sedulous.GUI.Resources**: the cooked `.gml` document and `.css` sheet, stored as validated
+1. **Sedulous.GUI.Resources**: the cooked `.xml` document and `.css` sheet, stored as validated
    text. It has no GUI dependency, so it can go first or at any time.
 2. **Sedulous.GUI, the core** (48k lines, 28k of tests), in 19 slices. Each slice imports only
    from slices before it:

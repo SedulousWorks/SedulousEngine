@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""render.py [--check | --draft] <Name> | ui/<Name>...: scripts/<Name>.as, or a screen ui/<Name>.gml (the
-engine GUI's), with {{Asset}} placeholders -> Snowline's Sources/<Name>.as (.gml) with the asset ids; a script is then compile-checked
+"""render.py [--check | --draft] <Name> | ui/<Name>...: scripts/<Name>.as, or a screen ui/<Name>.xml (the
+engine GUI's), with {{Asset}} placeholders -> Snowline's Sources/<Name>.as (.xml) with the asset ids; a script is then compile-checked
 (script_validate over the editor's MCP). A placeholder whose asset does not exist yet is a nil id under
 --check (nothing written) and --draft (written: a fresh project's first pass, so the prefabs and scenes
 find the scripts' properties before the scripts can name them). --stage <dir> writes there instead of
@@ -48,7 +48,7 @@ for name in names:
     ui = name.startswith("ui/")
     if ui:
         name = name[3:]
-    file_name = name + (".gml" if ui else ".as")
+    file_name = name + (".xml" if ui else ".as")
     text = open(os.path.join(HERE, "ui" if ui else "scripts", file_name)).read()
     text = re.sub(r"\{\{([^{}]+)\}\}", resolve, text) # "{{{GUI:Hud}}}" keeps its outer braces
     if not check:

@@ -14,7 +14,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Animation.Tests;
 
-/// The skeleton page over its markup (Data/Editor/SkeletonPage.gml) and a scratch project, without a
+/// The skeleton page over its markup (Data/Editor/SkeletonPage.xml) and a scratch project, without a
 /// host (no preview): the bones a tree under their parents, read from the asset; the chosen bone's
 /// facts and the skeleton's, read only; a search keeping a bone found and the bones above it; a
 /// rotation said in degrees about an axis. And the bones the previews draw.

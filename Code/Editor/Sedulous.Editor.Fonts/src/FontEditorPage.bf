@@ -14,7 +14,7 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Fonts;
 
 /// The font page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
-/// (Data/Editor/ImagePage.gml): the baked atlas in the picture, beside the asset's fields and, in a
+/// (Data/Editor/ImagePage.xml): the baked atlas in the picture, beside the asset's fields and, in a
 /// section of its own, the raster ramp's sizes as one row of text ("12, 16, 24"), validated, one
 /// undo step. What it says of the bake (its glyphs, its atlas) is read only. What every asset page
 /// does is AssetObjectPage's.
@@ -26,7 +26,7 @@ namespace Sedulous.Editor.Fonts;
 /// replacement is ready. No job service (a test): it bakes in place.
 class FontEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/ImagePage.gml";
+	public const String cMarkupPath = "Editor/ImagePage.xml";
 	private const String cSizesPath = "sizes";
 
 	private ImagePreview mPreview = null ~ delete _;

@@ -10,7 +10,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.Scene;
 
 // The camera preview in the HUD's bottom end (Raptor's editor-gui spec, 5.3, layer 6; the mock's
-// scene.gml): what a scene camera sees while the scene is edited from elsewhere. It shows the
+// scene.xml): what a scene camera sees while the scene is edited from elsewhere. It shows the
 // selected camera, or the one pinned (a pin wins while its entity is alive and still a camera; a
 // stale pin clears itself, CameraPreview.Resolve's decision), titled with that camera's name and
 // icon, its picture at the camera's own aspect. The picture is a second view of the scene through

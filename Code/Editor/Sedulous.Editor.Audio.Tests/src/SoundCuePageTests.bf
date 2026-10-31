@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio.Tests;
 
-/// The sound cue page over its markup (Data/Editor/SoundCuePage.gml) and a scratch project, with no
+/// The sound cue page over its markup (Data/Editor/SoundCuePage.xml) and a scratch project, with no
 /// host (no audio engine: nothing plays): the cue's rows, its variants a list as every page's, a cue
 /// with no clip said so; Add makes a variant to fill, its clip picked joins the cue, removed and
 /// moved; how it picks and its ranges; each change to the cue one undo step.

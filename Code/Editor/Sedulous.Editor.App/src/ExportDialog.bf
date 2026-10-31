@@ -9,7 +9,7 @@ using Sedulous.Engine.Project;
 namespace Sedulous.Editor.App;
 
 // Export (Raptor's editor-gui spec, 5.2, layer 6): Project > Export, a window over its markup
-// (Data/Editor/Export.gml). The project's export presets on the left (add, duplicate, remove after
+// (Data/Editor/Export.xml). The project's export presets on the left (add, duplicate, remove after
 // asking), each by the icon of the template it resolves to here, warned of when none does; the
 // selected one on the right under a card naming the template it exports with, or saying why there
 // is none, its settings on the property grid as Project Settings' are (ruling 20): a section per
@@ -44,7 +44,7 @@ class ExportDialogSeams
 class ExportDialog
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/Export.gml";
+	public const String cMarkupPath = "Editor/Export.xml";
 	private const float cWidth = 820.0f;
 	private const float cHeight = 540.0f;
 	private const String cDot = " · ";

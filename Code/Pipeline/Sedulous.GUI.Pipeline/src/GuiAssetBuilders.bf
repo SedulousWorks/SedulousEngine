@@ -63,7 +63,7 @@ abstract class GuiTextAssetBuilder : IAssetBuilder
 	protected abstract Result<void, ErrorCode> Write(StringView text, AssetBuildContext context);
 }
 
-/// A `.gml` document, cooked to a GuiDocumentSource.
+/// A `.xml` document, cooked to a GuiDocumentSource.
 class GuiDocumentAssetBuilder : GuiTextAssetBuilder
 {
 	public override Type AssetType => typeof(GuiDocumentAsset);

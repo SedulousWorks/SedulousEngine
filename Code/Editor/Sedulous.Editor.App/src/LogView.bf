@@ -7,7 +7,7 @@ using Sedulous.GUI;
 namespace Sedulous.Editor.App;
 
 /// The Console panel (Raptor's editor-gui spec, 5.2, layer 1). Its frame is markup
-/// (Data/Editor/Console.gml): a chip per level (Debug, holding the trace lines too, Info,
+/// (Data/Editor/Console.xml): a chip per level (Debug, holding the trace lines too, Info,
 /// Warnings, Errors, holding the critical ones) with how many lines it holds, on showing them; a
 /// search matching anywhere in a line ignoring case, cleared by its x; Clear; then the lines on a
 /// virtualised list, each its time since the editor started and `[Category] message` in its
@@ -19,7 +19,7 @@ namespace Sedulous.Editor.App;
 class LogView
 {
 	/// Its frame under the data root.
-	public const String cMarkupPath = "Editor/Console.gml";
+	public const String cMarkupPath = "Editor/Console.xml";
 	/// The cap on the lines kept; the oldest are trimmed.
 	public const int cMaxEntries = 1000;
 	/// This near the bottom counts as at it: a new line is followed.

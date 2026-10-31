@@ -135,7 +135,7 @@ class ProfileValuesSource : IPropertySource
 }
 
 /// Edits a profile asset (an Environment Profile, a Post Process Profile; any
-/// SettingsProfileAsset), on the preview pages' markup (Data/Editor/PreviewPage.gml; Raptor's
+/// SettingsProfileAsset), on the preview pages' markup (Data/Editor/PreviewPage.xml; Raptor's
 /// editor-gui spec, 5.4, layer 4): a preview rendered with the profile applied, beside the
 /// profile's values, the rows a scene's settings show (the block's own fields, its source and its
 /// profile, left out, as they are a scene's). The preview is a built-in scene (a ground, spheres of
@@ -146,7 +146,7 @@ class ProfileValuesSource : IPropertySource
 /// writes the asset and cooks it, so every scene using the profile picks the change up.
 class SettingsProfilePage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/PreviewPage.gml";
+	public const String cMarkupPath = "Editor/PreviewPage.xml";
 
 	private PreviewPane mPane = null ~ delete _;
 	/// One reference, the page's: the preview's bar holds its own.

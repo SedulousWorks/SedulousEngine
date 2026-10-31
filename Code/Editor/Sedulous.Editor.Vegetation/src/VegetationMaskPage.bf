@@ -14,7 +14,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Vegetation;
 
-/// A vegetation mask on the GUI from the image pages' markup (Data/Editor/ImagePage.gml; Raptor's
+/// A vegetation mask on the GUI from the image pages' markup (Data/Editor/ImagePage.xml; Raptor's
 /// editor-gui spec, 5.4, layer 7, part 2), new: no editor had one, a mask opened on the generic page.
 /// A mask is where each vegetation layer that places by Mask may grow, a density plane per layer; the
 /// page shows one plane at a time (chosen on the picture's bar, in the channel's place: a plane is one
@@ -29,7 +29,7 @@ namespace Sedulous.Editor.Vegetation;
 /// plane count: its width and height are read only, its size a fact.
 class VegetationMaskPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/ImagePage.gml";
+	public const String cMarkupPath = "Editor/ImagePage.xml";
 	/// An imported mask's planes at most: its image's channels.
 	public const uint32 cImageChannels = 4;
 

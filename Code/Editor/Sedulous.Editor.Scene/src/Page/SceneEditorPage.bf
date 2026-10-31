@@ -27,7 +27,7 @@ using Sedulous.Engine.Animation; // PropertyAnimatorComponent (a new clip given 
 namespace Sedulous.Editor.Scene;
 
 // SceneEditorPage: the scene (and prefab) document editor, on the GUI from markup
-// (Data/Editor/Scene.gml; Raptor's editor-gui spec, 5.3, layer 2). Each page owns its own live
+// (Data/Editor/Scene.xml; Raptor's editor-gui spec, 5.3, layer 2). Each page owns its own live
 // scene, in its own scene manager (several pages are open at once; everything scene scoped is per
 // page), and is made of parts: its viewport (the renderer drawing the scene into it, the camera,
 // picking, the capture), its overlays, Simulate, the prefab flows and the view state kept per scene,
@@ -60,7 +60,7 @@ class SceneEditorPageServices
 
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
 {
-	public const String cPath = "Editor/Scene.gml";
+	public const String cPath = "Editor/Scene.xml";
 
 	private EditorContext mContext;
 	private SceneEditorPageServices mServices ~ delete _;

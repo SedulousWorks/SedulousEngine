@@ -15,7 +15,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Vegetation.Tests;
 
-/// The vegetation mask page over its markup (Data/Editor/ImagePage.gml) and a scratch project,
+/// The vegetation mask page over its markup (Data/Editor/ImagePage.xml) and a scratch project,
 /// without a host: a painted mask's planes one at a time, the density under the pointer, its size
 /// read only; a plane added keeping those painted; a blank mask; an imported one's planes its image's
 /// channels.

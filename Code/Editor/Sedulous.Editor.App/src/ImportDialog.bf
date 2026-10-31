@@ -8,7 +8,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.App;
 
 // The import window (Raptor's editor-gui spec, 5.2, layer 7), over its markup
-// (Data/Editor/Import.gml): one window for one file or many, where the old editor had a single-file
+// (Data/Editor/Import.xml): one window for one file or many, where the old editor had a single-file
 // and a batch dialog. Where they go, a field that opens the group picker; the files, when there are
 // several, each kept or not, with its state (reading, ready, failed), one chosen; the chosen file's
 // importer (a choice when several take it), its options (a check box per toggle), and what it
@@ -23,7 +23,7 @@ namespace Sedulous.Editor.App;
 class ImportWindow
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/Import.gml";
+	public const String cMarkupPath = "Editor/Import.xml";
 	private const float cWidth = 640.0f;
 	private const float cHeight = 520.0f;
 	/// The kinds a plan shows, in the order they show; a kind with nothing planned is left out.

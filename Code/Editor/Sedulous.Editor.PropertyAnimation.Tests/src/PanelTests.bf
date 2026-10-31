@@ -11,7 +11,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.PropertyAnimation.Tests;
 
-/// The property animation panel over its markup (Data/Editor/PropertyAnimationPanel.gml), a scratch
+/// The property animation panel over its markup (Data/Editor/PropertyAnimationPanel.xml), a scratch
 /// project's clip and a scene (Raptor's editor-gui spec, 5.4, layer 9, part 2): the state with no
 /// clip, the clip's name and unsaved mark; an entity bound, a track added holding what it shows, keyed
 /// and removed, each one step; its keys the clip's while it holds the focus; the scrub's pose, put

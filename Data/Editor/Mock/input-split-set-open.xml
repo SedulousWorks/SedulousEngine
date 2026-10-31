@@ -3,7 +3,7 @@
   then its actions as the grid's list of groups, each action a group that opens in place to its rows
   (its kind and interaction, its bindings as a list of their own, its processing), closed showing its
   name, kind and bindings in one line; Add adds an action to this set. The same map as
-  input-split.gml's (the user asked to see it, 2026-10-26).
+  input-split.xml's (the user asked to see it, 2026-10-26).
 -->
 <Panel class="page input-page mock">
     <ToolBar class="page-toolbar">

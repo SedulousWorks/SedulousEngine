@@ -13,7 +13,7 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Generic;
 
 /// The fallback property-form editor for every asset without a dedicated page, on the GUI from its
-/// markup (Data/Editor/AssetForm.gml; Raptor's editor-gui spec, 5.4, layer 1). Registered against
+/// markup (Data/Editor/AssetForm.xml; Raptor's editor-gui spec, 5.4, layer 1). Registered against
 /// Object, so the registry's nearest-base dispatch routes every bespoke page first and everything
 /// else lands here instead of the hard "No editor registered" failure. The form is serialize-driven
 /// (see AssetForm).
@@ -29,7 +29,7 @@ namespace Sedulous.Editor.Generic;
 class GenericAssetEditorPage : UIEditorPage
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/AssetForm.gml";
+	public const String cMarkupPath = "Editor/AssetForm.xml";
 
 	/// Borrowed.
 	private EditorContext mContext;

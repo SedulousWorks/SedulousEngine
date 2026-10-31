@@ -8,7 +8,7 @@ namespace Sedulous.GUI.Resources;
 
 // Cooked GUI documents and style sheets. Sedulous.UI's counterpart: Sedulous.UI.Resource.
 //
-// Each payload is VALIDATED TEXT: the cook (GUI.Pipeline) parses a `.gml` document with the GUI's
+// Each payload is VALIDATED TEXT: the cook (GUI.Pipeline) parses a `.xml` document with the GUI's
 // markup loader and a `.css` sheet with its CSS parser, fails on what cannot be read, and ships the
 // source text; whatever hosts the GUI parses it again (a document is a template: each use builds
 // its own tree from it). Free of the GUI framework, so a headless tool reads them. Nothing is
@@ -16,7 +16,7 @@ namespace Sedulous.GUI.Resources;
 // its asset guid, which the host's resource provider answers, so an icon is cooked once however
 // many sheets draw it.
 
-/// Cooked GUI document: validated `.gml` markup.
+/// Cooked GUI document: validated `.xml` markup.
 [Serializable(1)]
 class GuiDocumentSource
 {

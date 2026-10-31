@@ -15,7 +15,7 @@ using Sedulous.Editor.Preview;
 namespace Sedulous.Editor.Physics;
 
 /// The collision shape page (Raptor's editor-gui spec, 5.4, layer 3), on the preview pages' markup
-/// (Data/Editor/PreviewPage.gml): the cooked collider's outline drawn in the preview, beside the
+/// (Data/Editor/PreviewPage.xml): the cooked collider's outline drawn in the preview, beside the
 /// asset's fields, its source mesh a slot for what a mesh cooks to ([References]), each edit one
 /// undo step. A shape with no mesh says so in a notice, and shows no collider (one cooked before
 /// its mesh was cleared is not one it can make now); what it cooks from and how, and the
@@ -23,7 +23,7 @@ namespace Sedulous.Editor.Physics;
 /// has it. What every asset page does is AssetObjectPage's.
 class CollisionShapeEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/PreviewPage.gml";
+	public const String cMarkupPath = "Editor/PreviewPage.xml";
 
 	private PreviewPane mPane = null ~ delete _;
 	/// The cooked product, retained; it follows re-cooks, so DrawOutline reads the current outline.

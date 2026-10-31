@@ -37,7 +37,7 @@ class GameEditorPageServices
 /// shows it).
 ///
 /// On the GUI (Raptor's editor-gui spec, 5.3, layer 7, part 3), from its markup (Data/Editor/
-/// Game.gml): the kit's transport (Restart, Play, Pause, Stop, the state named beside them and the
+/// Game.xml): the kit's transport (Restart, Play, Pause, Stop, the state named beside them and the
 /// scene it runs, a Play waiting for the cook said so), the resolution and the phone, the debugger's
 /// toggle; the game on GUI.Viewport, which the GUI host binds, places and routes, and which keeps
 /// every key while it runs and has the focus (Shift+F1 gives them back).
@@ -47,7 +47,7 @@ class GameEditorPageServices
 class GameEditorPage : UIEditorPage, IPieInstancePage
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/Game.gml";
+	public const String cMarkupPath = "Editor/Game.xml";
 
 	/// The tab's PIE id (IPieInstancePage.PieId).
 	private String mPieId = new .() ~ delete _;

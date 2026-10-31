@@ -13,7 +13,7 @@ the sky and the three primitives the hall uses; `mcp.py` reads the token the edi
    `blender --background --factory-startup --python blender/exhibits.py -- generated/Exhibits`:
    the knot, the rock, the water and the flag; then `importmodels.py` imports them into Models.
 2. `controls.py`: the input map (Controls), made the project's default.
-3. `ui.py`: the lesson list on the engine GUI (`ui/Gallery.gml` over `ui/GallerySheet.css`) and the
+3. `ui.py`: the lesson list on the engine GUI (`ui/Gallery.xml` over `ui/GallerySheet.css`) and the
    camera's script (`scripts/Gallery.as`, from `scripts/Gallery.as.in`), written from the lessons
    table; then `importscripts.py` checks the list with `gui_validate`, imports all three and makes
    the sheet the project's GUI sheet.

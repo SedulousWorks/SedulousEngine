@@ -23,7 +23,7 @@ class PickSoundAsset
 {
 }
 
-/// The asset picker over its markup (Data/Editor/AssetPicker.gml) and a scratch project: the groups
+/// The asset picker over its markup (Data/Editor/AssetPicker.xml) and a scratch project: the groups
 /// a tree (Favourites and All first, then the project's, Content at the top); the current value's
 /// group chosen and its row lit, the foot saying Esc keeps it; a group holding only what the slot
 /// takes; a search over every group, each match saying where it lives; Favourites; tiles or a list

@@ -7,7 +7,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.App;
 
 // CommandPalette: every action by name (Raptor's editor-gui spec, 5.1, layer 10). Its frame is
-// markup (Data/Editor/CommandPalette.gml: the kit's picker, a search field over a list and a hint),
+// markup (Data/Editor/CommandPalette.xml: the kit's picker, a search field over a list and a hint),
 // its rows the registry's declarations filtered by what is typed (case folded): labels that start
 // with it first, then labels that hold it, then a description or id that does. A row shows the
 // action's label, its menu path and its chord; one disabled over the active page is dimmed and
@@ -80,7 +80,7 @@ class CommandPaletteRow : UIWidget
 class CommandPalette
 {
 	/// Its frame's markup, under the data root.
-	public const String cMarkupPath = "Editor/CommandPalette.gml";
+	public const String cMarkupPath = "Editor/CommandPalette.xml";
 	/// How far down the window it opens, as a share of its height.
 	private const float cTopShare = 0.12f;
 

@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Generic.Tests;
 
-/// The generic page from its markup (Data/Editor/AssetForm.gml) over the probe asset in a project:
+/// The generic page from its markup (Data/Editor/AssetForm.xml) over the probe asset in a project:
 /// its rows by their keys (an array's folded under its key, a blob read only, a guid a reference),
 /// an edit and its undo, a change of shape, Save, and an asset that does not read.
 class GenericPageTests

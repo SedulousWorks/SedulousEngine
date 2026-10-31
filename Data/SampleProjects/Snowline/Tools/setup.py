@@ -7,7 +7,7 @@ Run controls.py, look.py, importall.py (each course) and sounds.py first; then t
   render.py (a draft first: a script naming an asset not made yet holds a nil id until the last run
   of render.py, after course.py).
 - Scenes/Meadow, Forest, Ridge: the course scenes course.py writes into.
-- UI/<Name>: the screens on the engine GUI (ui/*.gml, rendered with the thumbnails' ids, each checked
+- UI/<Name>: the screens on the engine GUI (ui/*.xml, rendered with the thumbnails' ids, each checked
   with gui_validate) and their sheet (ui/SnowlineSheet.css), made the project's GUI sheet.
 - The manifest: the start scene (Meadow) and the Game script (Snowline).
 Everything is made once and found by name after, so a rerun changes nothing it made before (the
@@ -59,7 +59,7 @@ def checked(path, kind):
 
 
 for screen in SCREENS:
-    r = mcp("asset_import", {"source": checked(os.path.join(staging, screen + ".gml"), "document"), "group": "UI"})
+    r = mcp("asset_import", {"source": checked(os.path.join(staging, screen + ".xml"), "document"), "group": "UI"})
     print("screen", screen, r["guid"])
 sheet = mcp("asset_import", {"source": checked(os.path.join(HERE, "ui", "SnowlineSheet.css"), "sheet"), "group": "UI"})
 print("sheet SnowlineSheet", sheet["guid"])

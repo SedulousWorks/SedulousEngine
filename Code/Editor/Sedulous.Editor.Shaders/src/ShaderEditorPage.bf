@@ -21,7 +21,7 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Shaders;
 
-/// A custom shader's page: its .hlsl on the GUI from its markup (Data/Editor/ShaderPage.gml;
+/// A custom shader's page: its .hlsl on the GUI from its markup (Data/Editor/ShaderPage.xml;
 /// Raptor's editor-gui spec, 5.4, layer 6, part 4), on the code pages' base (the source file, the
 /// shared HLSL colours, one history, the problems list): checked a moment after each edit (each
 /// stage's base variant), its file's errors on their lines and an include's in the list; beside it a
@@ -32,7 +32,7 @@ namespace Sedulous.Editor.Shaders;
 /// preview draws under a name of its own, so a scene keeps the last cooked shader until then.
 class ShaderEditorPage : CodeAssetPage
 {
-	public const String cMarkupPath = "Editor/ShaderPage.gml";
+	public const String cMarkupPath = "Editor/ShaderPage.xml";
 
 	/// The renderer's; borrowed, null without one (and once the page closed).
 	private ShaderSystem mShaders = null;

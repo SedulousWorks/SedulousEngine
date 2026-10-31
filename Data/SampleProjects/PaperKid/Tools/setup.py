@@ -122,7 +122,7 @@ edit_payload(created("Controls", "InputMapAsset", "Input Map"), write_controls)
 edit_payload(created("Minimap", "RenderTextureAsset", "Render Texture", "Textures"),
              lambda body: set_fields(body, width=256, height=256))
 
-# The screens are importui.py's (ui/*.gml on the engine GUI, over ui/PaperKidSheet.css), run after
+# The screens are importui.py's (ui/*.xml on the engine GUI, over ui/PaperKidSheet.css), run after
 # this: the HUD's minimap is the Minimap texture above, by id.
 
 # The scripts' assets (render.py writes their sources): the Game, each block's Level, and the

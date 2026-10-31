@@ -69,7 +69,7 @@ class LauncherClipboard : IClipboard
 	}
 }
 
-/// The project manager over its markup (Data/Editor/ProjectManager.gml): the recent projects as a
+/// The project manager over its markup (Data/Editor/ProjectManager.xml): the recent projects as a
 /// list or a grid (remembered), each by its picture (the thumbnail in its editor folder, an image
 /// chosen for it, or its initial), a missing one with no Open, each project's menu and what it
 /// runs, and New Project's dialog. Then what Sedulous adds so each behaviour has a test: a newer

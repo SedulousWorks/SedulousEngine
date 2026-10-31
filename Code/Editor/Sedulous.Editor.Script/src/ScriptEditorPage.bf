@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Script;
 
-/// A behaviour script's code on the GUI from its markup (Data/Editor/ScriptPage.gml; Raptor's
+/// A behaviour script's code on the GUI from its markup (Data/Editor/ScriptPage.xml; Raptor's
 /// editor-gui spec, 5.4, layer 6, part 3), on the code pages' base (the source file, its language's
 /// colours, a check a moment after each edit into the problems list, one history, Save then a cook).
 /// Its check compiles the code as the cook does, running none of it (a failing one leaves the last
@@ -24,7 +24,7 @@ namespace Sedulous.Editor.Script;
 /// the asset's language id.
 class ScriptEditorPage : CodeAssetPage
 {
-	public const String cMarkupPath = "Editor/ScriptPage.gml";
+	public const String cMarkupPath = "Editor/ScriptPage.xml";
 
 	/// The compile check, as the cook checks.
 	private ScriptSourceDocument mDoc = new .() ~ delete _;

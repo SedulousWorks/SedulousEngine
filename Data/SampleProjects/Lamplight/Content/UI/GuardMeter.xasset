@@ -7,7 +7,7 @@
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">GuardMeter.gml</string>
+			<string name="fileName">GuardMeter.xml</string>
 		</object>
 	</object>
 </root>

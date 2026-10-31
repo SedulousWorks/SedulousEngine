@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""importscripts.py [name ...]: the game's screens on the engine GUI and the guards' meter (ui/*.gml
+"""importscripts.py [name ...]: the game's screens on the engine GUI and the guards' meter (ui/*.xml
 and its sheet ui/LamplightSheet.css, group UI, each checked with gui_validate first) and scripts
 (scripts/*.as, group Scripts) imported through the editor's MCP, the sheet made the project's GUI
 sheet, then cooked; the game script (Lamplight.as, the reserved class Game) made the project's
@@ -39,7 +39,7 @@ def filled(path):
 
 only = set(sys.argv[1:])
 sheets = []
-for folder, ext, group in (("ui", ".gml", "UI"), ("ui", ".css", "UI"), ("scripts", ".as", "Scripts")):
+for folder, ext, group in (("ui", ".xml", "UI"), ("ui", ".css", "UI"), ("scripts", ".as", "Scripts")):
     if not os.path.isdir(os.path.join(HERE, folder)):
         continue
     for f in sorted(os.listdir(os.path.join(HERE, folder))):
@@ -47,9 +47,9 @@ for folder, ext, group in (("ui", ".gml", "UI"), ("ui", ".css", "UI"), ("scripts
         if e != ext or (only and name not in only):
             continue
         source = os.path.join(HERE, folder, f)
-        if ext in (".gml", ".css"):
+        if ext in (".xml", ".css"):
             # Checked as its cook will check it: a problem stops the import.
-            check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".gml" else "sheet"})
+            check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".xml" else "sheet"})
             if not check["valid"] or check["diagnostics"]:
                 sys.exit("%s: %s" % (f, check["diagnostics"]))
         r = mcp("asset_import", {"source": filled(source) if ext == ".as" else source, "group": group})

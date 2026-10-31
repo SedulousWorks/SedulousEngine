@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Input;
 
-/// An input map on the GUI from its markup (Data/Editor/InputMapPage.gml; Raptor's editor-gui spec,
+/// An input map on the GUI from its markup (Data/Editor/InputMapPage.xml; Raptor's editor-gui spec,
 /// 5.4, layer 5, part 4; the user's choice among the designs mocked in the editor mock). The sets
 /// and their actions a tree beside the grid; the tree's bar adds a set and removes the chosen row,
 /// its search keeping the actions whose name or input matches. The grid shows the chosen set by its
@@ -26,7 +26,7 @@ namespace Sedulous.Editor.Input;
 /// one layout of the grid's own rows.
 class InputMapEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/InputMapPage.gml";
+	public const String cMarkupPath = "Editor/InputMapPage.xml";
 	/// The grid's section the chosen set's rows are in: its paths are "set/" and the set's own.
 	public const String cSetSection = "set";
 

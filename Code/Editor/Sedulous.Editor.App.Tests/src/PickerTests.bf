@@ -7,7 +7,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The picker over its markup (Data/Editor/Picker.gml): rows under their sections, favourites
+/// The picker over its markup (Data/Editor/Picker.xml): rows under their sections, favourites
 /// first; the current value checked and lit, the foot saying Esc keeps it; Up and Down past the
 /// headings from the search, Enter picking and closing; a search narrowing (a name that starts
 /// with it first) or saying nothing matches, with a way back; nothing to pick saying what is

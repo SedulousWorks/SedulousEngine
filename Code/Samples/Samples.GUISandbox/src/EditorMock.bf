@@ -139,7 +139,7 @@ class EditorMock
 	/// the frame's markup does not load.
 	public bool Build()
 	{
-		mFrame = mHost.Load("Editor/Mock/frame.gml");
+		mFrame = mHost.Load("Editor/Mock/frame.xml");
 		if (mFrame == null)
 			return false;
 		mRoot.AddChild(mFrame);
@@ -266,9 +266,9 @@ class EditorMock
 		// a dialog.
 		mRoot.OnCommand("mock.toast", new (e) => { ShowToast(); });
 		mRoot.OnCommand("mock.dialog", new (e) => { ShowDialog(); });
-		mRoot.OnCommand("mock.textures", new (e) => { ShowPicker(ref mTextures, "Editor/Mock/textures.gml"); });
-		mRoot.OnCommand("mock.asset-picker", new (e) => { ShowPicker(ref mAssetPicker, "Editor/Mock/asset-picker.gml"); });
-		mRoot.OnCommand("mock.entity-picker", new (e) => { ShowPicker(ref mEntityPicker, "Editor/Mock/entity-picker.gml"); });
+		mRoot.OnCommand("mock.textures", new (e) => { ShowPicker(ref mTextures, "Editor/Mock/textures.xml"); });
+		mRoot.OnCommand("mock.asset-picker", new (e) => { ShowPicker(ref mAssetPicker, "Editor/Mock/asset-picker.xml"); });
+		mRoot.OnCommand("mock.entity-picker", new (e) => { ShowPicker(ref mEntityPicker, "Editor/Mock/entity-picker.xml"); });
 		mRoot.OnCommand("mock.side-by-side", new (e) => { SetSideBySide(!mSideBySide); });
 		Define("look.dark", "Dark");
 		Define("look.light", "Light");
@@ -438,18 +438,18 @@ class EditorMock
 			return;
 		DefineDockingCommands(mContext);
 		mDock = new DockController();
-		Register("scene", "Level 1", "Editor/Mock/scene.gml");
-		Register("scene-2", "Level 2", "Editor/Mock/scene.gml");
-		Register("kit", "Kit", "Editor/Mock/kit.gml");
+		Register("scene", "Level 1", "Editor/Mock/scene.xml");
+		Register("scene-2", "Level 2", "Editor/Mock/scene.xml");
+		Register("kit", "Kit", "Editor/Mock/kit.xml");
 		// The input map page's two designs, to compare (the user, 2026-10-26).
-		Register("input-outline", "Input A: Outline", "Editor/Mock/input-outline.gml");
-		Register("input-split", "Input B: Tree and Grid", "Editor/Mock/input-split.gml");
-		Register("input-split-set", "Input B: Set Chosen", "Editor/Mock/input-split-set.gml");
-		Register("input-split-set-open", "Input B: Set, Actions Open", "Editor/Mock/input-split-set-open.gml");
+		Register("input-outline", "Input A: Outline", "Editor/Mock/input-outline.xml");
+		Register("input-split", "Input B: Tree and Grid", "Editor/Mock/input-split.xml");
+		Register("input-split-set", "Input B: Set Chosen", "Editor/Mock/input-split-set.xml");
+		Register("input-split-set-open", "Input B: Set, Actions Open", "Editor/Mock/input-split-set-open.xml");
 		// The profiler page (X7), a tab in the page area (the user, 2026-10-27).
-		Register("profiler", "Profiler", "Editor/Mock/profiler.gml");
-		Register("assets", "Assets", "Editor/Mock/assets.gml");
-		Register("console", "Console", "Editor/Mock/console.gml");
+		Register("profiler", "Profiler", "Editor/Mock/profiler.xml");
+		Register("assets", "Assets", "Editor/Mock/assets.xml");
+		Register("console", "Console", "Editor/Mock/console.xml");
 		{
 			let layout = DefaultLayout(false);
 			defer delete layout;

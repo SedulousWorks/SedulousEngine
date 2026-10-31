@@ -11,7 +11,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.App;
 
 // Project Settings (Raptor's editor-gui spec, 5.2, layer 6; ruling 20): the project's manifest
-// (Project.xml) on the property grid, a window over its markup (Data/Editor/ProjectSettings.gml).
+// (Project.xml) on the property grid, a window over its markup (Data/Editor/ProjectSettings.xml).
 // The rows are a bag made from ProjectSettings' reflection (SettingFields), a section per category
 // the settings name, each by its label: text, a number within its range, a check box, an enum's
 // choices by name, and each asset setting an asset reference to the source type it names (a list
@@ -25,7 +25,7 @@ namespace Sedulous.Editor.App;
 class ProjectSettingsDialog
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/ProjectSettings.gml";
+	public const String cMarkupPath = "Editor/ProjectSettings.xml";
 	/// The path of the read-only row showing the engine version the project was saved with.
 	public const String cEngineVersionRow = "engineVersion";
 	/// The MSAA setting's key, whose choices are the render subsystem's levels.

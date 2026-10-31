@@ -13,7 +13,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Materials.Tests;
 
-/// The material page from the preview pages' markup (Data/Editor/PreviewPage.gml) over a PBR
+/// The material page from the preview pages' markup (Data/Editor/PreviewPage.xml) over a PBR
 /// material in a project, with no host (so no preview): its rows laid out from its shader's table
 /// (the material's, its properties, its textures), an edit one undo step, Discard Changes taking
 /// them all back, and the preview's shape or mesh kept per material (the bar showing it is no pick).

@@ -7,7 +7,7 @@
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">GameOver.gml</string>
+			<string name="fileName">GameOver.xml</string>
 		</object>
 	</object>
 </root>

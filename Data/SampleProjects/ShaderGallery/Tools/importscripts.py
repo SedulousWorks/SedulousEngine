@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""importscripts.py [name ...]: the gallery's GUI documents and sheets (ui/*.gml and ui/*.css,
+"""importscripts.py [name ...]: the gallery's GUI documents and sheets (ui/*.xml and ui/*.css,
 group UI, each checked with gui_validate first) and scripts (scripts/*.as, group Scripts) imported
 through the editor's MCP, the sheets made the project's GUI sheets, then cooked. With names, only
 those (Gallery, ...). A re-run re-imports over the same assets, keeping their ids. ui.py writes
-ui/Gallery.gml, ui/GallerySheet.css and scripts/Gallery.as first (from lessons.py).
+ui/Gallery.xml, ui/GallerySheet.css and scripts/Gallery.as first (from lessons.py).
 
 The documents go first, so a script can name them: a `{{Type:Name}}` in a script (Type one of GUI,
 Scene, Prefab, Audio) is replaced by that asset's id before it is imported (the filled copy goes to
@@ -38,7 +38,7 @@ def filled(path):
 
 only = set(sys.argv[1:])
 sheets = []
-for folder, ext, group in (("ui", ".gml", "UI"), ("ui", ".css", "UI"), ("scripts", ".as", "Scripts")):
+for folder, ext, group in (("ui", ".xml", "UI"), ("ui", ".css", "UI"), ("scripts", ".as", "Scripts")):
     if not os.path.isdir(os.path.join(HERE, folder)):
         continue
     for f in sorted(os.listdir(os.path.join(HERE, folder))):
@@ -46,9 +46,9 @@ for folder, ext, group in (("ui", ".gml", "UI"), ("ui", ".css", "UI"), ("scripts
         if e != ext or (only and name not in only):
             continue
         source = os.path.join(HERE, folder, f)
-        if ext in (".gml", ".css"):
+        if ext in (".xml", ".css"):
             # Checked as its cook will check it: a problem stops the import.
-            check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".gml" else "sheet"})
+            check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".xml" else "sheet"})
             if not check["valid"] or check["diagnostics"]:
                 sys.exit("%s: %s" % (f, check["diagnostics"]))
         r = mcp("asset_import", {"source": filled(source) if ext == ".as" else source, "group": group})

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""importui.py [name ...]: the game's screens on the engine GUI (ui/*.gml and its sheet
+"""importui.py [name ...]: the game's screens on the engine GUI (ui/*.xml and its sheet
 ui/PaperKidSheet.css, group UI, each checked with gui_validate first) imported through the editor's
 MCP, the sheet made the project's GUI sheet, then cooked. With names, only those (Hud, Title, ...).
 A re-run re-imports over the same assets, keeping their ids. Run render.py PaperKidGame after a
@@ -19,7 +19,7 @@ staging = tempfile.mkdtemp(prefix="paperkid-ui-")
 
 only = set(sys.argv[1:])
 sheets = []
-for ext in (".gml", ".css"):
+for ext in (".xml", ".css"):
     for f in sorted(os.listdir(os.path.join(HERE, "ui"))):
         name, e = os.path.splitext(f)
         if e != ext or (only and name not in only):
@@ -27,7 +27,7 @@ for ext in (".gml", ".css"):
         source = os.path.join(staging, f)
         open(source, "w").write(open(os.path.join(HERE, "ui", f)).read().replace("{{Minimap}}", minimap[0]))
         # Checked as its cook will check it: a problem stops the import.
-        check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".gml" else "sheet"})
+        check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".xml" else "sheet"})
         if not check["valid"] or check["diagnostics"]:
             sys.exit("%s: %s" % (f, check["diagnostics"]))
         r = mcp("asset_import", {"source": source, "group": "UI"})

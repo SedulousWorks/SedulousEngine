@@ -14,8 +14,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.GUI;
 
-/// The engine GUI's asset page: a `.gml` document or a `.css` sheet on the GUI from its markup
-/// (Data/Editor/GuiPage.gml; Raptor's editor-gui spec, 5.4, layer 6, part 5), on the code pages'
+/// The engine GUI's asset page: a `.xml` document or a `.css` sheet on the GUI from its markup
+/// (Data/Editor/GuiPage.xml; Raptor's editor-gui spec, 5.4, layer 6, part 5), on the code pages'
 /// base (the source file, the shared XML or CSS colours, one history, the problems list). Its check
 /// is what the cook would report (the loader's and the parser's diagnostics), and beside the code a
 /// live preview the RUNTIME context's GuiSubsystem draws into a viewport of the page (CreatePreview /
@@ -26,7 +26,7 @@ namespace Sedulous.Editor.GUI;
 /// under its own name. Markup that does not build keeps the last good preview, and says so.
 class GuiAssetEditorPage : CodeAssetPage
 {
-	public const String cMarkupPath = "Editor/GuiPage.gml";
+	public const String cMarkupPath = "Editor/GuiPage.xml";
 
 	/// What the page edits: a document (its markup, previewed as it is) or a sheet (its CSS,
 	/// previewed over markup of the page's own).

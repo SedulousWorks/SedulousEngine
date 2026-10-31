@@ -26,7 +26,7 @@ imported copies live in the project's `Sources/`.
    neither, what is already in `generated/Audio`).
 5. **First run**: `setup.py`: the title's thumbnails, the script assets (`script_create`, their
    sources a draft from `render.py --draft`), the course scenes to write into, the screens on the
-   engine GUI (`ui/*.gml`, checked with `gui_validate`, styled by `ui/SnowlineSheet.css`, the
+   engine GUI (`ui/*.xml`, checked with `gui_validate`, styled by `ui/SnowlineSheet.css`, the
    project's GUI sheet) and the manifest's start scene and Game script.
 6. **Shared assets**: `effects.py` (the track marks), `particles.py` (spray, powder, the gem's
    sparkle, the avalanche), `ghosts.py` (the ghosts' materials), `gems.py` (the sparkle prefab),

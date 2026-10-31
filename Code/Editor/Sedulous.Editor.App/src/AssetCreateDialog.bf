@@ -6,7 +6,7 @@ using Sedulous.GUI;
 namespace Sedulous.Editor.App;
 
 // Create Asset (Raptor's editor-gui spec, 5.2, layer 5): a window over its markup
-// (Data/Editor/AssetCreate.gml) that names a new asset and the group it goes in, for any type: it
+// (Data/Editor/AssetCreate.xml) that names a new asset and the group it goes in, for any type: it
 // creates nothing itself, its owner does with what Create answers. The groups are a tree in it,
 // every one open, the group it starts in chosen and a click choosing another (the old dialog's); the
 // name is checked as it is typed (AssetNames, the rule Save As keeps too), Create waiting while it is refused and the line under the name saying why, else what it
@@ -52,7 +52,7 @@ static class AssetNames
 class AssetCreate
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/AssetCreate.gml";
+	public const String cMarkupPath = "Editor/AssetCreate.xml";
 	public const float cWidth = 440.0f;
 	public const float cHeight = 420.0f;
 

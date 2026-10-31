@@ -13,7 +13,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The audition page of an AudioClipAsset, on the GUI from its markup (Data/Editor/AudioClipPage.gml;
+/// The audition page of an AudioClipAsset, on the GUI from its markup (Data/Editor/AudioClipPage.xml;
 /// Raptor's editor-gui spec, 5.4, layer 5). The clip's peak waveform (decoded from its source file,
 /// the bytes the cook writes through) with the kit's transport over it: Play, Stop and Restart are
 /// the playback actions over the page, auditioned through the RUNTIME context's AudioSubsystem (the
@@ -24,7 +24,7 @@ namespace Sedulous.Editor.Audio;
 /// the inspector's.
 class AudioClipEditorPage : AssetObjectPage, IPlaybackPage
 {
-	public const String cMarkupPath = "Editor/AudioClipPage.gml";
+	public const String cMarkupPath = "Editor/AudioClipPage.xml";
 	public const uint32 cPeakBuckets = 256;
 
 	/// Through the runtime context's audio (none in a test).

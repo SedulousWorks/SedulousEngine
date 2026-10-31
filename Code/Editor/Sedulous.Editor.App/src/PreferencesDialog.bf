@@ -10,7 +10,7 @@ namespace Sedulous.Editor.App;
 // EditorPreferencesDialog: the user's own editor settings (the settings store at
 // <user-data>/editor.settings.xml), distinct from Project Settings, which edits the project
 // (Raptor's editor-gui spec, 5.1, layer 12). A modal window of the editor's markup
-// (Data/Editor/Preferences.gml), a tab per category. Appearance holds the look's inputs: the
+// (Data/Editor/Preferences.xml), a tab per category. Appearance holds the look's inputs: the
 // scheme, the accent (one of the editor's or any #rrggbb), the density, less motion and the UI
 // scale, and whether axis views are orthographic; each change of the look shows at once. Export
 // holds the templates' folder, Agent access the MCP host (on, its port, its token), Game preview
@@ -48,7 +48,7 @@ class EditorPreferencesServices
 class EditorPreferencesDialog
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/Preferences.gml";
+	public const String cMarkupPath = "Editor/Preferences.xml";
 	private const float cWidth = 560.0f;
 	private const float cHeight = 440.0f;
 

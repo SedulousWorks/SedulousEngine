@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Fonts.Tests;
 
-/// The font page from the image pages' markup (Data/Editor/ImagePage.gml) over a font in a project:
+/// The font page from the image pages' markup (Data/Editor/ImagePage.xml) over a font in a project:
 /// its atlas baked and shown with its facts; the ramp's sizes a row of its own, one undo step, text
 /// that is no list refused; the row gone while a distance field bakes one size.
 class FontPageTests

@@ -1,6 +1,6 @@
 <!--
   The input map page (Raptor's editor-gui spec, 5.4, layer 5, part 4; the user's choice of
-  the designs in Editor/Mock/input-*.gml): the kit's bar (Save, Undo, Redo, Discard Changes, Cook and
+  the designs in Editor/Mock/input-*.xml): the kit's bar (Save, Undo, Redo, Discard Changes, Cook and
   Rebuild this asset, each an action over the page; its kind at the end) over the sets and their
   actions as a tree beside the grid. The tree's bar adds a set and removes the chosen row (a set and
   its actions, or an action); its search keeps the actions whose name or input matches. The grid

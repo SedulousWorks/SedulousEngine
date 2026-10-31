@@ -17,14 +17,14 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Texture;
 
 /// The texture page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
-/// (Data/Editor/ImagePage.gml): the source, or the embedded pixels, in the picture, beside the
+/// (Data/Editor/ImagePage.xml): the source, or the embedded pixels, in the picture, beside the
 /// asset's import settings; its presets in a menu on the bar, each one undo step however many
 /// settings it moves; a usage edit sets the colour space with it, as one step, and a colour space
 /// that disagrees with the usage is a notice over the rows. What it says of the source (its size,
 /// its mip chain, what it cooks to) is read only. What every asset page does is AssetObjectPage's.
 class TextureEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/ImagePage.gml";
+	public const String cMarkupPath = "Editor/ImagePage.xml";
 
 	/// A preset: what its menu item says, and what it sets.
 	public struct Preset

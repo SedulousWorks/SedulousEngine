@@ -13,7 +13,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Heightfield.Tests;
 
-/// The heightfield page from the image pages' markup (Data/Editor/ImagePage.gml) over heightfields
+/// The heightfield page from the image pages' markup (Data/Editor/ImagePage.xml) over heightfields
 /// in a project: its heights from the lowest to the highest, a sample in metres, its range's facts
 /// following an edit; a blank heightfield said in the picture's place.
 class HeightfieldPageTests

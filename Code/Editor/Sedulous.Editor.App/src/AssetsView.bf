@@ -10,7 +10,7 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.App;
 
 // The Assets panel (Raptor's editor-gui spec, 5.2, layer 7), over its markup
-// (Data/Editor/Assets.gml) as the mock draws it: the project's source content, the content database
+// (Data/Editor/Assets.xml) as the mock draws it: the project's source content, the content database
 // the truth. The group tree on the left (folders, Content at the top); the toolbar's breadcrumb
 // where it is; the group's subgroups then its assets on the right, as tiles or a list (kept per
 // project), each by its type's glyph (its category's tint; a tile's thumbnail in its place once
@@ -60,7 +60,7 @@ class AssetsViewServices
 class AssetsView
 {
 	/// Its markup, under the data root.
-	public const String cMarkupPath = "Editor/Assets.gml";
+	public const String cMarkupPath = "Editor/Assets.xml";
 	/// What the top group is called: it has no name of its own.
 	public const String cTopGroup = "Content";
 	private const float cTileWidth = 96.0f;

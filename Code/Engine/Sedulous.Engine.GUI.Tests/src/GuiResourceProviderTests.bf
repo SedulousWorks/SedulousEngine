@@ -37,7 +37,7 @@ class GuiResourceProviderTests
 		text.Clear();
 		Test.Assert(provider.LoadText(sheetPath, text));
 		Test.Assert(text == "#menu { width: 10px; }");
-		Test.Assert(!provider.LoadText("menu.gml", text), "a path is not a guid");
+		Test.Assert(!provider.LoadText("menu.xml", text), "a path is not a guid");
 		Test.Assert(!provider.LoadText(iconPath, text), "a vector image is no text");
 
 		let picture = provider.LoadSvg(iconPath);
@@ -89,7 +89,7 @@ class GuiResourceProviderTests
 		let id = Guid.Create();
 		Test.Assert(GuiResourceProvider.ParseGuid(GuiTestProject.Braced(id, .. scope .()), let braced) && (braced == id));
 		Test.Assert(GuiResourceProvider.ParseGuid(id.ToString(.. scope .()), let bare) && (bare == id));
-		Test.Assert(!GuiResourceProvider.ParseGuid("menu.gml", ?));
+		Test.Assert(!GuiResourceProvider.ParseGuid("menu.xml", ?));
 		Test.Assert(!GuiResourceProvider.ParseGuid("{00000000-0000-0000-0000-000000000000}", ?));
 	}
 }

@@ -23,7 +23,7 @@ using Sedulous.Editor.Preview;
 namespace Sedulous.Editor.Materials;
 
 /// The material page (Raptor's editor-gui spec, 5.4, layer 4), on the preview pages' markup
-/// (Data/Editor/PreviewPage.gml): the material on a preview shape lit by a sun and the default sky
+/// (Data/Editor/PreviewPage.xml): the material on a preview shape lit by a sun and the default sky
 /// (its clock running, so a shader that moves with Time moves), beside its rows. The authored form
 /// IS the runtime source (MaterialSource), so Save writes it back and asks for a cook; every live
 /// proxy bound to the cooked product then hot-swaps.
@@ -42,7 +42,7 @@ namespace Sedulous.Editor.Materials;
 /// merged. Every apply rebuilds the preview's material, so a scrub reads live on the shape.
 class MaterialEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/PreviewPage.gml";
+	public const String cMarkupPath = "Editor/PreviewPage.xml";
 
 	private PreviewPane mPane = null ~ delete _;
 	/// One reference each, the page's: the preview's bar holds its own.

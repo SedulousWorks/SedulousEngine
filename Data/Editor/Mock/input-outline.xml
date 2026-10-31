@@ -5,7 +5,7 @@
   kind and interaction, its bindings as the grid's list (each binding a group: its source and the
   key capture, then its settings), then its processing. Sets and actions are added from their
   headers and renamed in place; a binding is captured by pressing the input on its key capture.
-  The same map as design B's (input-split.gml), to compare.
+  The same map as design B's (input-split.xml), to compare.
 -->
 <Panel class="page input-page mock">
     <ToolBar class="page-toolbar">

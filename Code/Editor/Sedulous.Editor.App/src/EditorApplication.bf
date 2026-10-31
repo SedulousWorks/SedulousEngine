@@ -617,7 +617,7 @@ class EditorApplication : IApplication
 			return;
 		}
 		let contents = new EditorDockContents();
-		contents.Welcome = new () => mWindow.LoadMarkup("Editor/Welcome.gml");
+		contents.Welcome = new () => mWindow.LoadMarkup("Editor/Welcome.xml");
 		{
 			let assets = new AssetsViewServices();
 			assets.Context = mContext;

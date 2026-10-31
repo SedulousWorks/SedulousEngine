@@ -13,7 +13,7 @@ static class GuiCreators
 	public static void Register(AssetCreatorRegistry registry)
 	{
 		registry.Register(new AssetCreator("GUI Document", "GUI", typeof(GuiDocumentAsset), new (context) =>
-			CreateWithStarterFile(context, "GuiDocument", ".gml", GuiPipeline.cDocumentStarter, typeof(GuiDocumentAsset), scope GuiDocumentAsset())));
+			CreateWithStarterFile(context, "GuiDocument", ".xml", GuiPipeline.cDocumentStarter, typeof(GuiDocumentAsset), scope GuiDocumentAsset())));
 		registry.Register(new AssetCreator("GUI Style Sheet", "GUI", typeof(GuiStyleSheetAsset), new (context) =>
 			CreateWithStarterFile(context, "GuiStyleSheet", ".css", GuiPipeline.cStyleSheetStarter, typeof(GuiStyleSheetAsset), scope GuiStyleSheetAsset())));
 	}

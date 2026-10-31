@@ -13,7 +13,7 @@ namespace Sedulous.Editor.App;
 // ProfilerPanel: the editor's Profiler (X7 of Raptor's editor-gui spec), a tab in the page area that
 // floats as any page does. It records the editor process, every page, viewport preview and
 // Play-in-editor run in one frame, and says so: a game's own numbers come from its player (the
-// overlay, or a capture from it opened here). Its frame is markup (Data/Editor/Profiler.gml); its
+// overlay, or a capture from it opened here). Its frame is markup (Data/Editor/Profiler.xml); its
 // views are Profiler.GUI's, all on one focus.
 //
 // Record starts copying the store's frames into the panel's own recording and Stop ends it, so
@@ -40,7 +40,7 @@ class ProfilerPanelSeams
 class ProfilerPanel : IProfileFocusClient
 {
 	/// Its frame, under the data root.
-	public const String cMarkupPath = "Editor/Profiler.gml";
+	public const String cMarkupPath = "Editor/Profiler.xml";
 	/// The budget's choices, the combo's order: 30, 60 and 120 fps, then none.
 	public static readonly float[4] cBudgets = .(1000.0f / 30.0f, 1000.0f / 60.0f, 1000.0f / 120.0f, 0.0f);
 	/// Stop on spike's times, the combo's order.

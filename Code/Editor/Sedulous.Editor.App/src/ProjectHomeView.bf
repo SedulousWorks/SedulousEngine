@@ -13,7 +13,7 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.App;
 
 /// The Project panel with a project open (Raptor's editor-gui spec, 5.1, layer 13). Its frame is
-/// markup (Data/Editor/ProjectHome.gml); it fills the project's picture, name, engine and folder;
+/// markup (Data/Editor/ProjectHome.xml); it fills the project's picture, name, engine and folder;
 /// a Start column (open the default scene, the Game menu's actions, every scene in the project);
 /// and a Project column (every setting the project's settings carry, by category, each asset a
 /// link that opens it, a missing one in the warning colour, then the Project menu's actions).
@@ -26,7 +26,7 @@ namespace Sedulous.Editor.App;
 class ProjectHomeView
 {
 	/// Its frame under the data root.
-	public const String cMarkupPath = "Editor/ProjectHome.gml";
+	public const String cMarkupPath = "Editor/ProjectHome.xml";
 
 	/// Borrowed.
 	private EditorContext mContext;

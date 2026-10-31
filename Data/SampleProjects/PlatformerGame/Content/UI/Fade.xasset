@@ -7,7 +7,7 @@
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Fade.gml</string>
+			<string name="fileName">Fade.xml</string>
 		</object>
 	</object>
 </root>

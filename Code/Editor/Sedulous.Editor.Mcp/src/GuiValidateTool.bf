@@ -8,7 +8,7 @@ using Sedulous.GUI.Pipeline;
 
 namespace Sedulous.Editor.Mcp;
 
-/// gui_validate: checks the engine GUI's markup (a `.gml` document) or a sheet (`.css`) WITHOUT
+/// gui_validate: checks the engine GUI's markup (a `.xml` document) or a sheet (`.css`) WITHOUT
 /// saving it, through the check its cook runs (the markup loader's or the CSS parser's diagnostics:
 /// what was dropped a warning, markup that does not build an error), so an agent writing a game's
 /// screens loops on it as on script_validate and shader_validate. Returns each diagnostic with its
@@ -21,10 +21,10 @@ static class GuiValidateTool
 		let schema = scope SchemaBuilder();
 		schema.Str("source", "the full text", true);
 		StringView[2] kinds = .("document", "sheet");
-		schema.Enum("kind", kinds, "document (.gml) or sheet (.css)", true);
+		schema.Enum("kind", kinds, "document (.xml) or sheet (.css)", true);
 		server.RegisterTool("gui_validate",
 			"""
-			CHECK the engine GUI's text without saving: a `document` (.gml markup) or a `sheet` (.css), the exact check its cook runs. Returns `valid` (false only when markup does not build; a sheet always reads), each diagnostic {level: error | warning, line (from 1, 0 when not known), message} (what the loader or the parser dropped, a property name nothing takes), and `references`, the asset guids the text names ({guid}: images, fonts, sheets, documents). Use as the loop while writing a game's screens, then edit the asset's linked source file and cook; the editor's page for it previews it live.
+			CHECK the engine GUI's text without saving: a `document` (.xml markup) or a `sheet` (.css), the exact check its cook runs. Returns `valid` (false only when markup does not build; a sheet always reads), each diagnostic {level: error | warning, line (from 1, 0 when not known), message} (what the loader or the parser dropped, a property name nothing takes), and `references`, the asset guids the text names ({guid}: images, fonts, sheets, documents). Use as the loop while writing a game's screens, then edit the asset's linked source file and cook; the editor's page for it previews it live.
 			""",
 			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(arguments, outResult, outError));

@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The export dialog over its markup (Data/Editor/Export.gml), a presets controller and a scratch
+/// The export dialog over its markup (Data/Editor/Export.xml), a presets controller and a scratch
 /// templates root: the presets listed and the selected one's settings on the grid in their sections
 /// under the card naming the template it exports with (or why none), a template picked by name
 /// deciding the platform and config, edits applied as made and saved when the selection moves, an

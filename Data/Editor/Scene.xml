@@ -1,7 +1,7 @@
 <!--
   The scene page (Raptor's editor-gui spec, 5.3, layers 2, 5 and 7): its bar (the editing controls
   and Simulate, each an action) over its own hierarchy, viewport and inspector, as the mock draws it
-  (Editor/Mock/scene.gml). A prefab is marked as one.
+  (Editor/Mock/scene.xml). A prefab is marked as one.
   Code puts the viewport in its pane (under the state a scene that did not load shows), binds the
   bar to the actions, the hierarchy to the scene and the inspector to its selection.
 -->

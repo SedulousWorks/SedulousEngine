@@ -7,7 +7,7 @@
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">LevelClear.gml</string>
+			<string name="fileName">LevelClear.xml</string>
 		</object>
 	</object>
 </root>

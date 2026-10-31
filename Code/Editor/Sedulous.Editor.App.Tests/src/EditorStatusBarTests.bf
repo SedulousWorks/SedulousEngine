@@ -7,7 +7,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// EditorStatusBar over the editor's own frame (Data/Editor/Shell.gml): the message line; the job
+/// EditorStatusBar over the editor's own frame (Data/Editor/Shell.xml): the message line; the job
 /// with its name, progress and count, a sweep when its length is unknown, hidden when none runs;
 /// the agent hidden while there is none; a frame without the items skipped. And the toasts: over
 /// the frame's dock, the same message again counted on the one shown, an error staying until it is

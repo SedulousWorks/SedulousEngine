@@ -17,7 +17,7 @@ namespace Sedulous.Editor.App;
 // EditorWindow: the editor's GUI on its main window (Raptor's editor-gui spec, 5.1, layer 3). It
 // owns the GUI host (the window's input, frames, renderer and picture baker), the fonts the
 // editor's sheet names, the editor's own files (EditorResources) and the frame read from
-// Data/Editor/Shell.gml, with its status bar (EditorStatusBar) and the toast host over its dock.
+// Data/Editor/Shell.xml, with its status bar (EditorStatusBar) and the toast host over its dock.
 // Its look is the editor's sheet (Editor/editor.css over its tokens), the chosen density's sheet
 // after it and a `:root` block of the user's inputs (the accent), then the user's theme overrides
 // (5.7, layer 1: a file in their data folder, so any token or rule is theirs to set), the scheme
@@ -117,7 +117,7 @@ class EditorLook
 class EditorWindow
 {
 	/// The frame's markup and the editor's sheet, under the data root.
-	public const String cFramePath = "Editor/Shell.gml";
+	public const String cFramePath = "Editor/Shell.xml";
 	public const String cSheetPath = "Editor/editor.css";
 	/// The user's theme overrides: the folder under their data folder, and the file in it.
 	public const String cThemeFolder = "theme";

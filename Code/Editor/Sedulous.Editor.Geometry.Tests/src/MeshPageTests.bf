@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Geometry.Tests;
 
-/// The mesh viewer from the preview pages' markup (Data/Editor/PreviewPage.gml) over a mesh in a
+/// The mesh viewer from the preview pages' markup (Data/Editor/PreviewPage.xml) over a mesh in a
 /// project, with no host (so no preview): not cooked, said in the preview's place; its choices on
 /// the preview's bar after its own separator; its material kept with the project for the mesh; a
 /// stat line split into its row.

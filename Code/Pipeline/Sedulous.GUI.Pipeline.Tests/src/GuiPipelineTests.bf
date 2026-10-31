@@ -13,7 +13,7 @@ using Sedulous.VFS;
 
 namespace Sedulous.GUI.Pipeline.Tests;
 
-/// Raptor's GUI.Pipeline tests: a `.gml` document and a `.css` sheet cooked through their
+/// Raptor's GUI.Pipeline tests: a `.xml` document and a `.css` sheet cooked through their
 /// validating builders and loaded as products; what cannot be read fails the cook, what was dropped
 /// is said with its line; the guids a source names are found; the importer takes the two
 /// extensions and the creators make the two kinds.
@@ -102,13 +102,13 @@ static class GuiPipelineTests
 	public static void ADocumentAndASheetCookValidatedAndLoadAsTheirProducts()
 	{
 		let bed = scope Bed("roundtrip");
-		bed.Stage("title.gml", cTitle);
+		bed.Stage("title.xml", cTitle);
 		bed.Stage("game.css", cSheet);
 
 		let documentInstance = bed.Output("title", typeof(GuiDocumentSource));
 		{
 			let asset = scope GuiDocumentAsset();
-			asset.FileName.Set("title.gml");
+			asset.FileName.Set("title.xml");
 			bed.Context.Output = documentInstance;
 			Test.Assert(scope GuiDocumentAssetBuilder().Build(asset, bed.Context) case .Ok);
 		}
@@ -163,16 +163,16 @@ static class GuiPipelineTests
 
 		// The builder: an unreadable document, no link, or a missing file fails.
 		let bed = scope Bed("bad");
-		bed.Stage("bad.gml", "<Panel><Label text=\"x\"</Panel>");
+		bed.Stage("bad.xml", "<Panel><Label text=\"x\"</Panel>");
 		bed.Context.Output = bed.Output("bad", typeof(GuiDocumentSource));
 		let builder = scope GuiDocumentAssetBuilder();
 		let bad = scope GuiDocumentAsset();
-		bad.FileName.Set("bad.gml");
+		bad.FileName.Set("bad.xml");
 		Test.Assert(builder.Build(bad, bed.Context) case .Err);
 		let unlinked = scope GuiDocumentAsset();
 		Test.Assert(builder.Build(unlinked, bed.Context) case .Err);
 		let missing = scope GuiDocumentAsset();
-		missing.FileName.Set("missing.gml");
+		missing.FileName.Set("missing.xml");
 		Test.Assert(builder.Build(missing, bed.Context) case .Err);
 	}
 
@@ -203,12 +203,12 @@ static class GuiPipelineTests
 	}
 
 	[Test]
-	public static void TheImporterTakesGmlAndCssAndTheCreatorsMakeADocumentAndASheet()
+	public static void TheImporterTakesXmlAndCssAndTheCreatorsMakeADocumentAndASheet()
 	{
 		let importer = scope GuiFileImporter();
-		Test.Assert(importer.Accepts("gml"));
+		Test.Assert(importer.Accepts("xml"));
 		Test.Assert(importer.Accepts("css"));
-		Test.Assert(!importer.Accepts("xml"));
+		Test.Assert(!importer.Accepts("gml"));
 		Test.Assert(!importer.Accepts("sml"));
 		let creators = scope AssetCreatorRegistry();
 		GuiCreators.Register(creators);
@@ -235,7 +235,7 @@ static class GuiPipelineTests
 	/// The import's name clash rule, through the GUI importer (a document and a sheet share a stem
 	/// easily): a sheet over a document of the same name is refused, the document untouched;
 	/// re-importing the document's own file replaces it in place (its guid kept); another folder's
-	/// file of the same name is refused, kept beside ("menu.2", its own copy "menu.2.gml"), or takes
+	/// file of the same name is refused, kept beside ("menu.2", its own copy "menu.2.xml"), or takes
 	/// the asset over (guid kept), as the context says; and the window's check (FindClash) says so
 	/// first.
 	[Test]
@@ -251,9 +251,9 @@ static class GuiPipelineTests
 		let dbRoot = PathJoin(root, "db", .. scope .());
 		for (let folder in scope StringView[](sources, one, two, dbRoot))
 			Test.Assert(CreateDirectory(folder));
-		let doc = PathJoin(one, "menu.gml", .. scope .());
+		let doc = PathJoin(one, "menu.xml", .. scope .());
 		let sheet = PathJoin(one, "menu.css", .. scope .());
-		let otherDoc = PathJoin(two, "menu.gml", .. scope .());
+		let otherDoc = PathJoin(two, "menu.xml", .. scope .());
 		Write(doc, "<Panel/>\n");
 		Write(sheet, "label { color: #fff; }\n");
 		Write(otherDoc, "<Label/>\n");
@@ -299,9 +299,9 @@ static class GuiPipelineTests
 		if (importer.Import(doc, context, group, null, null, null) case .Ok(let made))
 			again = made;
 		Test.Assert((again != null) && (again.Id == id));
-		Test.Assert(FileOf(again, .. scope .()) == "menu.gml");
+		Test.Assert(FileOf(again, .. scope .()) == "menu.xml");
 
-		// Another folder's menu.gml: refused by default.
+		// Another folder's menu.xml: refused by default.
 		let other = scope ImportClash();
 		importer.FindClash(group, otherDoc, null, context.LedgerPath, other);
 		Test.Assert(other.Kind == .SameType);
@@ -313,14 +313,14 @@ static class GuiPipelineTests
 		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
 			beside = made;
 		Test.Assert((beside != null) && (beside.Name == "menu.2") && (beside.Id != id));
-		Test.Assert(FileOf(beside, .. scope .()) == "menu.2.gml");
-		Test.Assert(FileOf(group.GetInstance("menu"), .. scope .()) == "menu.gml");
+		Test.Assert(FileOf(beside, .. scope .()) == "menu.2.xml");
+		Test.Assert(FileOf(group.GetInstance("menu"), .. scope .()) == "menu.xml");
 		// Replacing: the first asset takes the other file, its guid kept.
 		context.OnConflict = .Replace;
 		Instance replaced = null;
 		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
 			replaced = made;
 		Test.Assert((replaced != null) && (replaced.Id == id));
-		Test.Assert(FileOf(replaced, .. scope .()) == "menu.2.gml"); // the other file's copy, the first's left alone
+		Test.Assert(FileOf(replaced, .. scope .()) == "menu.2.xml"); // the other file's copy, the first's left alone
 	}
 }

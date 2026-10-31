@@ -15,7 +15,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Texture.Tests;
 
-/// The texture page from the image pages' markup (Data/Editor/ImagePage.gml) over a texture in a
+/// The texture page from the image pages' markup (Data/Editor/ImagePage.xml) over a texture in a
 /// project: a preset from the bar's menu one undo step however many settings it moves; Usage
 /// setting the colour space in the same step, and a colour space that disagrees with it a notice;
 /// what it says of its source read only.

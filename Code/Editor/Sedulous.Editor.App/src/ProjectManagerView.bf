@@ -12,7 +12,7 @@ namespace Sedulous.Editor.App;
 
 // ProjectManagerView: the project manager (Raptor's editor-gui spec, 5.1, layer 13), the window's
 // whole screen at startup with no project given, and after File > Close Project. Its frame is
-// markup (Data/Editor/ProjectManager.gml): New Project and Open Folder first, then every recent
+// markup (Data/Editor/ProjectManager.xml): New Project and Open Folder first, then every recent
 // project as a row (its picture, name, folder and engine, Open, a menu) or a tile of its picture.
 // There is no selection: an action is one click on the project it is for. Each project is probed as
 // it is shown: one whose folder no longer holds it is dimmed with no Open; one saved by a newer
@@ -45,8 +45,8 @@ class ProjectManagerServices
 class ProjectManagerView
 {
 	/// Its frames, under the data root.
-	public const String cMarkupPath = "Editor/ProjectManager.gml";
-	public const String cNewProjectPath = "Editor/NewProject.gml";
+	public const String cMarkupPath = "Editor/ProjectManager.xml";
+	public const String cNewProjectPath = "Editor/NewProject.xml";
 	private const float cDialogWidth = 480.0f;
 	private const float cDialogHeight = 220.0f;
 

@@ -5,7 +5,7 @@ using Sedulous.Pipeline.Core;
 
 namespace Sedulous.GUI.Pipeline;
 
-/// A GUI document: a LINKED `.gml` in the sources tree. The markup lives only in that file.
+/// A GUI document: a LINKED `.xml` in the sources tree. The markup lives only in that file.
 [DisplayName("GUI Document")]
 [Category("GUI")]
 [Serializable]

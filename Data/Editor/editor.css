@@ -236,12 +236,12 @@ treerowcontent.inactive { opacity: 0.45; }
 .inspector-note { padding: var(--space-s) var(--space-m); }
 .inspector-state { flex-grow: 1; }
 
-/* The generic asset page (AssetForm.gml): its search over the grid, in one column. */
+/* The generic asset page (AssetForm.xml): its search over the grid, in one column. */
 .asset-form-body { flex-direction: column; }
 .asset-form-state { flex-grow: 1; }
 /* An asset page's state in place of its grid. */
 .page-state { flex-grow: 1; }
-/* The image pages (ImagePage.gml): the picture's own bar over its stage, which the picture fills. */
+/* The image pages (ImagePage.xml): the picture's own bar over its stage, which the picture fills. */
 .image-pane { flex-direction: column; }
 .image-stage { flex-grow: 1; min-height: 0; background-color: var(--surface-sunken); }
 .image-inspect { flex-grow: 1; }
@@ -302,7 +302,7 @@ waveform::playhead { background-color: var(--warning); }
 .problem-message { flex-grow: 1; min-width: 0; text-overflow: ellipsis; }
 .image-zoom { min-width: 48px; color: var(--text-dim); font-size: var(--font-small); }
 .image-readout { color: var(--text-dim); font-size: var(--font-small); }
-/* The preview pages (PreviewPage.gml): the preview's own bar over its stage, which the viewport fills. */
+/* The preview pages (PreviewPage.xml): the preview's own bar over its stage, which the viewport fills. */
 .preview-pane { flex-direction: column; }
 .preview-stage { flex-grow: 1; min-height: 0; }
 .preview-view { flex-grow: 1; }

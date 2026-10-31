@@ -7,7 +7,7 @@ using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.GUI.Pipeline;
 
-/// Imports a dropped `.gml` or `.css`: STAGED into the sources tree and LINKED, as a document or a
+/// Imports a dropped `.xml` or `.css`: STAGED into the sources tree and LINKED, as a document or a
 /// sheet by its extension.
 class GuiFileImporter : IFileImporter
 {
@@ -16,7 +16,7 @@ class GuiFileImporter : IFileImporter
 
 	public StringView Label => "GUI document or style sheet";
 
-	public bool Accepts(StringView @extension) => (@extension == "gml") || (@extension == "css");
+	public bool Accepts(StringView @extension) => (@extension == "xml") || (@extension == "css");
 
 	public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared,
 		ImportPlan outPlan) => ImportPaths.SingleAssetPlan(sourcePath, outPlan);

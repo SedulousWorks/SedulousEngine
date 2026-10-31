@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Physics.Tests;
 
-/// The collision shape page from the preview pages' markup (Data/Editor/PreviewPage.gml), no host
+/// The collision shape page from the preview pages' markup (Data/Editor/PreviewPage.xml), no host
 /// (so no preview): its source mesh a slot for what a mesh cooks to, each edit one undo step, no
 /// mesh a notice, no collider said in the preview's place.
 class CollisionShapePageTests

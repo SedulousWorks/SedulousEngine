@@ -7,7 +7,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The command palette over a registry and its own markup (Data/Editor/CommandPalette.gml): the
+/// The command palette over a registry and its own markup (Data/Editor/CommandPalette.xml): the
 /// rows a query yields and their order, what a row shows (its label, its menu path, its chord; a
 /// disabled one dimmed), the lit row under the arrow keys (taken ahead of the search field) and
 /// under the pointer, Enter or a click running the lit action through the registry with the palette

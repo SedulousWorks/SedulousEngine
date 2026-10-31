@@ -11,7 +11,7 @@ namespace Sedulous.GUI.Pipeline;
 // The GUI's sources, cooked (tooling: never linked by the runtime, nor in a web or shipping build).
 // Sedulous.UI's counterpart: Sedulous.UI.Pipeline.
 //
-// * GuiDocumentAsset (`.gml` markup) and GuiStyleSheetAsset (`.css`): a LINKED source file in the
+// * GuiDocumentAsset (`.xml` markup) and GuiStyleSheetAsset (`.css`): a LINKED source file in the
 //   project's sources tree (Asset.FileName), as a script's; an asset with no linked file fails the
 //   cook.
 // * The builders VALIDATE: a document through the GUI's markup loader with every element type the
@@ -23,7 +23,7 @@ namespace Sedulous.GUI.Pipeline;
 // * What a document or a sheet names by asset guid (`url("{guid}")`, `source="{guid}"`, a document
 //   pushed by its guid) is recorded as a runtime reference of the product; a guid naming no asset is
 //   a warning.
-// * One importer takes a dropped `.gml` or `.css` into the sources tree and links it; creators make
+// * One importer takes a dropped `.xml` or `.css` into the sources tree and links it; creators make
 //   a new one from starter text (File > New, MCP's asset_create).
 
 /// Registration for the GUI's authoring types, and what their cooks share.

@@ -13,7 +13,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The Project page over its markup (Data/Editor/ProjectHome.gml): the project's name, the scenes
+/// The Project page over its markup (Data/Editor/ProjectHome.xml): the project's name, the scenes
 /// (the assets of the default scene setting's type) as links that open them, the default scene's
 /// button opening it, every setting by its label under its category (title case, as the settings
 /// name them), an asset by its name, an unset one by its empty text, a missing one in the warning

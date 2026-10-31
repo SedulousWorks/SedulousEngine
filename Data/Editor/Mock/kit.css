@@ -33,7 +33,7 @@
              border-radius: var(--radius-small); }
 .type-cell:hover { background-color: var(--ghost-hover); }
 .type-name { font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
-/* The input map page's two designs (input-outline.gml, input-split.gml): the grid's look, the sheet
+/* The input map page's two designs (input-outline.xml, input-split.xml): the grid's look, the sheet
    filling the page; an action's rows and a binding's settings indented under their headers. */
 .input-page { flex-direction: column; background-color: var(--surface); }
 .input-outline { padding: var(--space-m); }
@@ -45,7 +45,7 @@
 .input-source { min-width: 120px; color: var(--text-strong); }
 .input-page .input-search { flex-grow: 0; width: 280px; }
 .input-page .search-row { padding: var(--space-s); }
-/* An expanded action's rows (input-split-set-open.gml): each level's names start past its parent's
+/* An expanded action's rows (input-split-set-open.xml): each level's names start past its parent's
    name (a list element's grip and arrow come before its name), on a faint band, so the block reads
    as the action's. */
 .input-nested { background-color: var(--ghost-hover); }

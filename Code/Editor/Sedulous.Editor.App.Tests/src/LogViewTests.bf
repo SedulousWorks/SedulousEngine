@@ -8,7 +8,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The Console over its markup (Data/Editor/Console.gml): lines with their category, the levels'
+/// The Console over its markup (Data/Editor/Console.xml): lines with their category, the levels'
 /// chips (Debug holding trace, Error holding critical) with their counts showing and hiding their
 /// lines, the search, the cap trimming the oldest, Clear, the empty line, a selection kept by
 /// entry through a trim and copied oldest first, each line's time, and every line one fixed

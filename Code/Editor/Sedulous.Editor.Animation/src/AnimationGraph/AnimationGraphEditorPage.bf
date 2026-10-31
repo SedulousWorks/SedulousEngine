@@ -40,7 +40,7 @@ struct GraphChoice : IEquatable<GraphChoice>
 	public bool Equals(GraphChoice other) => (Kind == other.Kind) && (Index == other.Index);
 }
 
-/// An animation graph on the GUI from its markup (Data/Editor/AnimationGraphPage.gml; Raptor's
+/// An animation graph on the GUI from its markup (Data/Editor/AnimationGraphPage.xml; Raptor's
 /// editor-gui spec, 5.4, layer 10, part 5). The graph's layers and parameters are lists, each with its
 /// bar (a parameter added by its type); the chosen layer is on the graph view (AnimationGraphStates:
 /// its states the nodes, Any State one more, its transitions arrows; a state added from the view's
@@ -62,7 +62,7 @@ struct GraphChoice : IEquatable<GraphChoice>
 /// as the asset changes) and every edit goes through AnimationGraphEdits.Edit.
 class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 {
-	public const String cMarkupPath = "Editor/AnimationGraphPage.gml";
+	public const String cMarkupPath = "Editor/AnimationGraphPage.xml";
 	private const String cEntries = "entries";
 	private const String cConditions = "conditions";
 	private static readonly StringView[4] cParameterTypes = .("Float", "Int", "Bool", "Trigger");

@@ -75,7 +75,7 @@ class ParticleTreeModel : TreeModel
 	}
 }
 
-/// A particle effect on the GUI from its markup (Data/Editor/ParticleEffectPage.gml; Raptor's
+/// A particle effect on the GUI from its markup (Data/Editor/ParticleEffectPage.xml; Raptor's
 /// editor-gui spec, 5.4, layer 8). The effect's systems a tree (each its emitter, its initializers
 /// and its behaviors), the live preview beside it, and the grid showing the chosen system by its
 /// fields (FieldPropertySource, the user's ruling): its options, each shown where its render mode
@@ -97,7 +97,7 @@ class ParticleTreeModel : TreeModel
 /// which emits only when spawned) and so changed what was saved. Its speed is the page's alone.
 class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 {
-	public const String cMarkupPath = "Editor/ParticleEffectPage.gml";
+	public const String cMarkupPath = "Editor/ParticleEffectPage.xml";
 	/// The grid's section the chosen system's rows are in: its paths are "system/" and the system's own.
 	public const String cSystemSection = "system";
 

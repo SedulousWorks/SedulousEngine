@@ -9,7 +9,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The mixer's buses, on the GUI from its markup (Data/Editor/BusLayoutPage.gml; Raptor's editor-gui
+/// The mixer's buses, on the GUI from its markup (Data/Editor/BusLayoutPage.xml; Raptor's editor-gui
 /// spec, 5.4, layer 5). The buses' tree (the four fixed ones, Master and Effects, Music and UI under
 /// it, and the custom ones under their parents) on the GUI's tree beside the grid, which shows the
 /// chosen bus: a custom one's name and parent (only the parents that make no cycle offered), then its
@@ -20,7 +20,7 @@ namespace Sedulous.Editor.Audio;
 /// (one the cook refuses) says so.
 class AudioBusLayoutEditorPage : AssetObjectPage
 {
-	public const String cMarkupPath = "Editor/BusLayoutPage.gml";
+	public const String cMarkupPath = "Editor/BusLayoutPage.xml";
 
 	/// A bus's setting as a row: its path, its name, its group (a section of the grid), what it says
 	/// of itself, and its range (a number's; a flag has none).

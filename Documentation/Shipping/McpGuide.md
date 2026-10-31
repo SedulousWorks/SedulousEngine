@@ -180,7 +180,7 @@ settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
 the game UI loads beside the default, each a family a label picks with
 `font-family="<family>"`, a title face say; `guiStyleSheetIds`, the engine GUI's `.css` sheets in
 order over its built-in theme, each over those before it (its fonts are the UI's), and
-`guiLoadingDocumentId`, a `.gml` document the player's boot splash shows through the engine GUI
+`guiLoadingDocumentId`, a `.xml` document the player's boot splash shows through the engine GUI
 instead of the UI's (its load progress the GUI's data value `bootProgress`, 0 to 1); the
 display: `renderWidth`/`renderHeight`, the resolution the game draws at, 0 for its output's
 size, `renderFit`, and the player's
@@ -229,7 +229,7 @@ exactly as the engine would and refusing it, unchanged, when it does not load. E
 numbers there; `type_info` on the field's type names the cases. The editor host holds the call while a cook is running and
 requests the cook itself afterwards; the headless host does not, so `asset_cook` next.
 The engine GUI's assets are linked text, as scripts are:
-`asset_create` with `GUI Document` (`.gml` markup) or `GUI Style Sheet` (`.css`), or
+`asset_create` with `GUI Document` (`.xml` markup) or `GUI Style Sheet` (`.css`), or
 `asset_import` of such a file, each validated by its cook (what the loader or parser dropped is a
 warning, markup that does not build an error; `gui_validate` runs that check on text before it is
 saved: loop on it while writing a screen, then edit the asset's linked source file and cook); they
