@@ -35,6 +35,8 @@ class WebSocketServerGateway
 		/// Plain, or TLS (wss://); it buffers what the socket would not take. OWNED.
 		public INetByteStream Stream ~ delete _;
 		public bool Upgraded = false;
+		/// The request's first byte has arrived.
+		public bool Started = false;
 		/// Live until the upgrade completes, then deleted.
 		public HttpMessageParser Handshake ~ delete _;
 		public WebSocketFrameParser Frames = new .() ~ delete _;
@@ -278,6 +280,18 @@ class WebSocketServerGateway
 	{
 		while (offset < got)
 		{
+			// A request starts with its method's letters: anything else (a TLS hello at a ws://
+			// gateway) is refused at once, rather than waiting on a head that never ends.
+			if (!client.Started)
+			{
+				let first = chunk[offset];
+				if ((first < (uint8)'A') || (first > (uint8)'Z'))
+				{
+					client.Dead = true;
+					return false;
+				}
+				client.Started = true;
+			}
 			let state = client.Handshake.Push(.(&chunk[offset], 1));
 			offset++;
 

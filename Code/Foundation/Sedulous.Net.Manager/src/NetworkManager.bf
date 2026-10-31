@@ -137,7 +137,10 @@ class NetworkManager
 		ReliableConfig config = .())
 	{
 #if BF_PLATFORM_WASM
-		let socket = new WebSocketClientSocket(host, port);
+		let webSocket = scope WebSocketClientConfig();
+		webSocket.Host.Set(host);
+		webSocket.Port = port;
+		let socket = new WebSocketClientSocket(webSocket);
 		if (!socket.IsOpen)
 		{
 			delete socket;

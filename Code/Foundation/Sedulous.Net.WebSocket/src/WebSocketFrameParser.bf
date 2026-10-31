@@ -3,11 +3,11 @@ using System.Collections;
 
 namespace Sedulous.Net.WebSocket;
 
-/// An incremental decoder for the SERVER side of a connection.
+/// An incremental decoder for one side of a connection.
 ///
 /// Push bytes as they arrive and drain whole frames with Next. It enforces what this
-/// deliberately bounded server accepts: client frames masked, no fragmentation, no reserved
-/// bits, and a size cap. Failure LATCHES, because once framing is lost there is no way back
+/// deliberately bounded wire accepts: the server reads masked frames (a client's) and the client
+/// unmasked ones (a server's), no fragmentation, no reserved bits, and a size cap. Failure LATCHES, because once framing is lost there is no way back
 /// into sync; the caller closes the connection.
 class WebSocketFrameParser
 {
@@ -17,8 +17,15 @@ class WebSocketFrameParser
 	private List<WsFrame> mFrames = new .() ~ DeleteContainerAndItems!(_);
 	private int mFrameHead = 0;
 	private bool mFailed = false;
+	private bool mServerSide;
 
 	public bool Failed => mFailed;
+
+	/// `serverSide`: reading what a client sent (masked), else what a server sent.
+	public this(bool serverSide = true)
+	{
+		mServerSide = serverSide;
+	}
 
 	public void Push(Span<uint8> bytes)
 	{
@@ -68,9 +75,10 @@ class WebSocketFrameParser
 
 			let opcode = (WsOpcode)(b0 & 0x0F);
 
-			// The RFC requires a client to mask. An unmasked client frame is either a broken
-			// client or something pretending to be one.
-			if ((b1 & 0x80) == 0)
+			// The RFC requires a client to mask and a server not to. A frame the other way is
+			// either a broken peer or something pretending to be one.
+			let masked = (b1 & 0x80) != 0;
+			if (masked != mServerSide)
 			{
 				mFailed = true;
 				return;
@@ -103,12 +111,17 @@ class WebSocketFrameParser
 
 			// The masking key plus the whole payload have to be here before anything is
 			// decoded, because unmasking is not resumable.
-			if ((uint64)(mBuffer.Count - cursor) < (4 + length))
+			let keyBytes = masked ? 4 : 0;
+			if ((uint64)(mBuffer.Count - cursor) < ((uint64)keyBytes + length))
 				return;
 
-			let key = scope uint8[4](mBuffer[cursor], mBuffer[cursor + 1], mBuffer[cursor + 2],
-				mBuffer[cursor + 3]);
-			cursor += 4;
+			uint8[4] key = default;
+			if (masked)
+			{
+				for (int i < 4)
+					key[i] = mBuffer[cursor + i];
+				cursor += 4;
+			}
 
 			let frame = new WsFrame();
 			frame.Opcode = opcode;
