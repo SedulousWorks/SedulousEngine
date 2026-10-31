@@ -5,8 +5,8 @@ using Sedulous.Profiler;
 namespace Sedulous.Profiler.Tests;
 
 /// A profile source of hand-made frames on a millisecond clock (a tick is a millisecond), so a
-/// test's numbers come out exact. The viewers' suites (Profiler.UI.Tests, and Profiler.GUI.Tests
-/// when it comes) compile it from here (a linked source in their BeefProj.toml).
+/// test's numbers come out exact. The viewers' suite (Profiler.GUI.Tests) compiles it from here (a
+/// linked source in its BeefProj.toml).
 class KnownSource : IProfileSource
 {
 	private List<String> mNames = new .() ~ DeleteContainerAndItems!(_);

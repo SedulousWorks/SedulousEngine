@@ -3,8 +3,8 @@ using System.Collections;
 
 namespace Sedulous.Profiler;
 
-// What a viewer shows, whichever draws it (the editor's profiler on the GUI, the in-game overlay on
-// Profiler.UI): the frame times, their statistics, the totals by name and the counters' readings.
+// What a viewer shows, whichever draws it (the editor's profiler and the in-game overlay, both on
+// the GUI): the frame times, their statistics, the totals by name and the counters' readings.
 // Nothing here draws.
 
 /// One frame's times. The GPU time is the span of its passes, from the first to start to the
