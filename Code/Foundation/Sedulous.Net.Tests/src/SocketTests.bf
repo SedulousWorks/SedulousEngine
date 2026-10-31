@@ -43,6 +43,13 @@ class SocketTests
 		Test.Assert(!NetAddress.ResolveHostIPv4("", let empty));
 		// The .invalid domain is reserved by RFC 2606 and can never resolve.
 		Test.Assert(!NetAddress.ResolveHostIPv4("no-such-host.invalid", let missing));
+
+		// A host sliced out of a longer string has no NUL after it: the resolver reads the
+		// name alone (an overread here is an ASan failure), and the rest of the string is not
+		// taken as part of it.
+		let url = scope String("localhost:8080/path");
+		Test.Assert(NetAddress.ResolveHostIPv4(StringView(url, 0, 9), let sliced));
+		Test.Assert(sliced == 0x7F000001);
 	}
 
 	/// A literal is read HERE rather than by the platform, so what counts as one cannot drift

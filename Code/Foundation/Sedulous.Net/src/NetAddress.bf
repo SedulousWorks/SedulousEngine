@@ -99,7 +99,12 @@ static class NetAddress
 		// and Windows refcounts it, which is why the socket types call it freely too.
 		Socket.Init();
 
-		if (Socket.GetAddrInfo(host, Socket.AddrInfo() { ai_family = Socket.AF_INET })
+		// corlib hands the view's pointer to getaddrinfo as a C string, so a view that is a
+		// slice of a longer string (a URL's host) is read past its end: it goes in as a copy
+		// that ends in a NUL.
+		let name = scope String(host);
+		name.EnsureNullTerminator();
+		if (Socket.GetAddrInfo(name, Socket.AddrInfo() { ai_family = Socket.AF_INET })
 			case .Ok(var info))
 		{
 			defer info.Dispose();
