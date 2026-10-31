@@ -84,6 +84,9 @@ class ShaderPageTests
 			Test.Assert(Project != null);
 			Context.SetProject(Project);
 			Test.Assert(ReadData("SampleProjects/ShaderGallery/Sources/01_UnlitColour.hlsl", Source));
+			// Line feeds alone, as the page's code document holds a file's text: a Windows checkout
+			// gives the sample CRLF endings.
+			Source.Replace("\r", "");
 			Test.Assert(System.IO.File.WriteAllText(PathJoin(Project.SourcesRoot(.. scope .()), "Colour.hlsl", .. scope .()), Source) case .Ok);
 			Colour = Project.SourceDb.RootGroup.CreateInstance("Colour", typeof(ShaderAsset).GetFullName(.. scope .()));
 			Test.Assert(Colour != null);
