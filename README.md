@@ -114,7 +114,8 @@ Add `--mcp` to serve the project to an agent over MCP while you work in the edit
 The editor is on the GUI: its shell (the dock, menus, project manager, assets browser and
 dialogs), the scene page, the Game tab, the asset pages and the Profiler page. The old editor on
 Sedulous.UI is gone; it last builds at commit e293ee1f. `Sedulous.Tools.Mcp` serves MCP without
-the editor.
+the editor. The old UI framework and its UISandbox stay under `Code/Deprecated/UI`, disabled in
+every build config.
 
 ## Sample projects
 

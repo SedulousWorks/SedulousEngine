@@ -19,6 +19,9 @@ Project Settings, export, the MCP host over `--mcp`), the scene page with its hi
 inspector, the Game tab with the play-in-editor tools, every asset page and the Profiler page.
 The old editor's files are deleted (the swap); the last editor on Sedulous.UI builds at e293ee1f.
 `Sedulous.Tools.Mcp` is the headless MCP host, and `Samples.GUISandbox --editor-mock` shows the design.
+The old UI framework (Sedulous.UI and its toolkit, shell, runtime, application and VFS libraries)
+and its UISandbox live under `Code/Deprecated/UI`, in the workspace but disabled in every config:
+nothing else links them, and enabling them builds the sandbox.
 
 - Outputs land in `Code/build/<Config>_<Platform>/<Project>/`.
 - Configs: Debug, Test, Release (optimised, the profiler compiled in) and ShippingRelease
