@@ -56,13 +56,13 @@ Handlers dispatch **by presence**: implement only what you need.
 Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `scene.Audio.Play(...)`, `scene.Render`, `scene.Animation`, `scene.Particles`,
 `scene.Splines`, `scene.Prefabs.Spawn(...)`, `scene.Debug`; the services `Audio`, `Input`,
-`Save`, `Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
+`Save`, `Gui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
-`Ui` finds a control by its authored `id` and hands back a typed handle: `UIView`, `UIViewGroup`,
-`UIScreen`, `UILabel`, `UIButton`, `UISlider`, `UIProgressBar`, `UITextBox`, `UIRichText` and
-`UIImage` (`UILabel title = Ui.FindLabel("title");`). The `UI` prefix leaves the plain names to
-the GUI library's own script types, which will live beside these while games move across.
+`Gui` is the run's screen tier on the engine GUI: `Gui.Root()` is its root node, the gamekit's
+screens and prompts sit on it, and the GUI's data values (`GetNumber`, `SetText`, `TweenData`
+and the rest) are what a document's `{{name}}` bindings read. The old UI's `Ui` service and its
+`UIView` handles are gone with Engine.UI.
 
 `Input.Rumble(low, high, seconds)` runs the gamepad's two motors, `low` the heavy one and
 `high` the light one, each 0 to 1 (a crash 0.8, 0.4, 0.25; a footstep 0, 0.2, 0.05);
@@ -90,11 +90,8 @@ An entity's place, turn and size in the world, every ancestor's included, are
 invalid entity); `GetLocalTransform()` is its own. A lantern on a guard aims along
 `RotateVector(lantern.GetWorldRotation(), Float3(0, 0, -1))` whatever the guard's parent is.
 
-A world-space UI component (`UICanvasComponent`, `UIBillboardComponent`,
-`UIWorldPanelComponent`) hands a script its instantiated tree as `Root`, the same
-`UIViewGroup` handle `Ui.Root` gives the screen tier, so the same finders reach inside it: a meter
-over a guard's head is `UIBillboardComponent::of(guard).Root.FindProgressBar("meter")`. Before
-the tree is built the handle is null but valid, and every finder misses quietly.
+A world-space GUI component (`GuiCanvasComponent`, `GuiBillboardComponent`,
+`GuiWorldPanelComponent`) hands a script its tree as `Root()`, a node of the GUI's.
 
 `scene.Physics.RayCast(...)` answers a `PhysicsHit`: whether it hit, the entity, the distance,
 position and normal, the struck face's `Surface` slot on a cooked mesh, and the `Material` of the

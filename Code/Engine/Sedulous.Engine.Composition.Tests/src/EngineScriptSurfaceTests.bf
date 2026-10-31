@@ -39,13 +39,15 @@ static class EngineScriptSurfaceTests
 		EngineScriptSurface.Populate(s);
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
-		// stray dependency of the root. 180 = 115 + the engine's GUI (65): Sedulous.GUI's own
-		// 55 (its 71 as Sedulous.GUI.ScriptSurface counts them, less Core's static block and
-		// fifteen types already here), the gamekit's Screen, ScreenStack and Prompt, and
-		// Engine.GUI's three components (GuiCanvasComponent, GuiBillboardComponent,
-		// GuiWorldPanelComponent) and the four enums their fields name (GuiScalerMode,
-		// GuiCanvasRenderMode, GuiBillboardOrientation, GuiBillboardScale).
-		Test.Assert(EngineScriptSurface.TypeCount == 180, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// stray dependency of the root. 161 = 96 + the engine's GUI (65). The 96 was 115 until the
+		// old UI's 19 went with Engine.UI and its script layer (Ui and its eleven handles, Ease, its
+		// three components and their four enums). The GUI's 65: Sedulous.GUI's own 55 (its 71 as
+		// Sedulous.GUI.ScriptSurface counts them, less Core's static block and fifteen types
+		// already here), the gamekit's Screen, ScreenStack and Prompt, and Engine.GUI's three
+		// components (GuiCanvasComponent, GuiBillboardComponent, GuiWorldPanelComponent) and the
+		// four enums their fields name (GuiScalerMode, GuiCanvasRenderMode,
+		// GuiBillboardOrientation, GuiBillboardScale).
+		Test.Assert(EngineScriptSurface.TypeCount == 161, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -87,7 +89,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.Engine.GameInstance.GameInstance").Role == .Service, "Run");
 		let save = s.Find("Sedulous.Engine.GameInstance.SaveFacade");
 		Test.Assert((save != null) && (save.Role == .Service) && (save.DisplayName == "Save"));
-		Test.Assert(s.Find("Sedulous.Engine.UI.Script.UiScript").Role == .Service, "Ui");
+		Test.Assert(s.Find("Sedulous.Engine.UI.Script.UiScript") == null, "the old UI's Ui is gone");
 		let gui = s.Find("Sedulous.GUI.GuiFacade");
 		Test.Assert((gui != null) && (gui.Role == .Service) && (gui.DisplayName == "Gui"));
 		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak, "what Gui.Root() gives");

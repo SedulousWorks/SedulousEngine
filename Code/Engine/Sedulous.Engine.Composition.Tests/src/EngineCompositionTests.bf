@@ -14,16 +14,16 @@ static class EngineCompositionTests
 	[Test]
 	public static void OneListOfDomainsAnswersTheSceneAndResourceFacets()
 	{
-		// Fifteen domains: fourteen with scene content (the GUI's the last), and input with none.
+		// Fourteen domains: thirteen with scene content (the GUI's the last), and input with none.
 		let modules = EngineComposition.Modules;
-		Test.Assert(modules.Count == 15, scope $"{modules.Count} domains");
+		Test.Assert(modules.Count == 14, scope $"{modules.Count} domains");
 		int withScene = 0;
 		for (let domain in modules)
 		{
 			if (domain.HasScene)
 				withScene++;
 		}
-		Test.Assert(withScene == 14);
+		Test.Assert(withScene == 13);
 		// Each domain id once; input is listed though it has no scene content.
 		bool sawInput = false;
 		for (int i < modules.Count)
@@ -38,23 +38,23 @@ static class EngineCompositionTests
 		}
 		Test.Assert(sawInput);
 
-		// Twenty three resource modules, each id once: the twenty two before the GUI's, and its
-		// documents and sheets (its vector images and fonts are the UI domain's too).
+		// Twenty two resource modules, each id once: the GUI's documents and sheets among them, and
+		// its vector images and fonts.
 		let resources = scope List<ResourceModule>();
 		EngineComposition.ResourceModules(resources);
-		Test.Assert(resources.Count == 23, scope $"{resources.Count} resource modules");
+		Test.Assert(resources.Count == 22, scope $"{resources.Count} resource modules");
 		for (int i < resources.Count)
 		{
 			for (int j = i + 1; j < resources.Count; j++)
 				Test.Assert(resources[i].Id != resources[j].Id, scope $"{resources[i].Id} twice");
 		}
 
-		// Thirty two factory descriptions (the GUI's documents and sheets the last two), each
-		// naming its product and cooked form; after the resource facet runs, every cooked form
-		// is a registered serializable.
+		// Thirty factory descriptions (the GUI's documents and sheets the last two), each naming its
+		// product and cooked form; after the resource facet runs, every cooked form is a registered
+		// serializable.
 		let descriptions = scope List<ResourceFactoryDesc*>();
 		EngineComposition.FactoryDescriptions(descriptions);
-		Test.Assert(descriptions.Count == 32, scope $"{descriptions.Count} descriptions");
+		Test.Assert(descriptions.Count == 30, scope $"{descriptions.Count} descriptions");
 		EngineComposition.RegisterResourceTypes();
 		for (let desc in descriptions)
 		{
@@ -70,7 +70,7 @@ static class EngineCompositionTests
 		let set = scope ResourceFactorySet();
 		let none = scope NoResourceServices();
 		EngineComposition.CreateFactories(set, none);
-		Test.Assert(set.Count == 30, scope $"{set.Count} factories");
+		Test.Assert(set.Count == 28, scope $"{set.Count} factories"); // thirty described, the two needing a service skipped
 		// The two skipped name what they wanted: the graphics device and the shader system.
 		Test.Assert(set.Skipped.Length == 2);
 		bool device = false;
@@ -100,6 +100,6 @@ static class EngineCompositionTests
 		}
 		// A second call adds nothing.
 		EngineComposition.CreateFactories(set, none);
-		Test.Assert((set.Count == 30) && (set.Skipped.Length == 2));
+		Test.Assert((set.Count == 28) && (set.Skipped.Length == 2));
 	}
 }

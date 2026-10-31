@@ -8,7 +8,6 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
-using Sedulous.Engine.UI;
 using Sedulous.Engine.GUI;
 using Sedulous.Engine.Composition;
 
@@ -25,7 +24,7 @@ static class EngineSceneCompositionTests
 	{
 		let composition = EngineSceneComposition.Build();
 		defer delete composition;
-		Test.Assert(composition.ModuleCount == 14, scope $"{composition.ModuleCount} modules");
+		Test.Assert(composition.ModuleCount == 13, scope $"{composition.ModuleCount} modules");
 
 		let scratch = scope Scene("surface");
 		EngineSceneComposition.AddAllSceneManagers(scratch);
@@ -34,7 +33,6 @@ static class EngineSceneCompositionTests
 		Test.Assert(scratch.HasSystem<PropertyAnimatorComponentManager>());
 		Test.Assert(scratch.HasSystem<PostProcessSystem>());
 		Test.Assert(scratch.HasSystem<ScriptComponentManager>());
-		Test.Assert(scratch.HasSystem<UICanvasComponentManager>());
 		Test.Assert(scratch.HasSystem<GuiCanvasComponentManager>());
 		Test.Assert(scratch.HasSystem<AudioSourceComponentManager>());
 		Test.Assert(scratch.HasSystem<NetworkComponentManager>());

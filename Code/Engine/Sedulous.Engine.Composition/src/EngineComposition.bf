@@ -13,7 +13,6 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
-using Sedulous.Engine.UI;
 using Sedulous.Engine.Vegetation;
 using Sedulous.Resource;
 using Sedulous.Scene.Resource;
@@ -59,11 +58,10 @@ static class EngineComposition
 						VegetationDomain.Module,
 						NavigationDomain.Module,
 						AudioDomain.Module,
-						UIDomain.Module,
 						NetDomain.Module,
 						SplineDomain.Module,
 						InputDomain.Module,
-						// The engine's GUI on Sedulous.GUI, beside the UI domain while both live.
+						// The engine's GUI on Sedulous.GUI.
 						GuiDomain.Module
 					};
 			}

@@ -21,13 +21,6 @@ the pad directly (`UIInputPump.PumpGamepad`).
 Suggested order: B, then C when rebinding or prompts are a goal. It also decides whether
 B (circle) closes Sky Hopper's settings menu. Waiting on the Raptor port settling.
 
-### Project themes replace the built-in theme
-`UISubsystem.SetDefaultTheme` parses ONLY the project's sheet and installs it: anything it does
-not style falls back to each control's own drawing colours, not to `GameTheme`. A small override
-(buttons only) means restyling everything, or starting with `@import` of a base sheet. Layering
-the project's sheet over `GameTheme` would make overrides easy but changes what existing themes
-resolve to.
-
 ### The Beef requirement wording
 The README and `AGENTS.md` say upstream Beef is sufficient. The engine needs the fork's
 `working` branch again: `fix/interface-slots-past-incomplete-base` (a type's interfaces were

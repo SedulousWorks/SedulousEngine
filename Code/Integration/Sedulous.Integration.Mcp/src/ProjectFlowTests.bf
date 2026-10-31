@@ -310,7 +310,7 @@ static class ProjectFlowTests
 		let reported = api.Get("languages").At(0);
 		Test.Assert(reported.Get("language").AsString() == "angelscript");
 		let types = reported.Get("types");
-		for (let name in scope String[]("Scene", "PhysicsFacade", "AudioFacade", "InputFacade", "GameInstance", "UiScript", "Float3", "FontBakeMode"))
+		for (let name in scope String[]("Scene", "PhysicsFacade", "AudioFacade", "InputFacade", "GameInstance", "GuiFacade", "Float3", "FontBakeMode"))
 			Test.Assert(TypeEndingIn(types, name) != null, name);
 		Test.Assert(Named(types, "scriptName", "Entity") != null, "the entity, as a script spells it");
 		// The runtime surface and the pipeline's own types: the facades, and the components a
