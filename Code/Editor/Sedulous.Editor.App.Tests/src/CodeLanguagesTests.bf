@@ -7,7 +7,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The code languages: each of the shared definitions (Data/Assets/code) read by its id the first
+/// The code languages: each of the shared definitions (Data/Editor/Code) read by its id the first
 /// time it is asked for and kept, one with no file none (and not read again).
 class CodeLanguagesTests
 {

@@ -69,7 +69,7 @@ class FontPageTests
 			let data = scope String();
 			Test.Assert(DataRoot(data));
 			let bytes = scope List<uint8>();
-			Test.Assert(System.IO.File.ReadAll(PathJoin(data, "Assets/fonts/roboto/Roboto-Bold.ttf", .. scope .()), bytes) case .Ok);
+			Test.Assert(System.IO.File.ReadAll(PathJoin(data, "Engine/Fonts/roboto/Roboto-Bold.ttf", .. scope .()), bytes) case .Ok);
 			Test.Assert(System.IO.File.WriteAll(PathJoin(Project.SourcesRoot(.. scope .()), "roboto.ttf", .. scope .()), bytes) case .Ok);
 			Roboto = Project.SourceDb.RootGroup.CreateInstance("Roboto", typeof(FontAsset).GetFullName(.. scope .()));
 			Test.Assert(Roboto != null);

@@ -108,7 +108,7 @@ class ShaderPageTests
 			services.Languages = Languages;
 			let data = scope String();
 			Test.Assert(DataRoot(data));
-			return new ShaderEditorPage(Context, services, Colour, PathJoin(data, "Shaders", .. scope .()));
+			return new ShaderEditorPage(Context, services, Colour, PathJoin(data, "Engine/Shaders", .. scope .()));
 		}
 	}
 
@@ -117,7 +117,7 @@ class ShaderPageTests
 	{
 		let none = scope AssetPageServicesSource(); // no services: the registration only, before the context it outlives
 		let context = scope EditorContext();
-		ShaderEditor.Register(context, none, "Shaders");
+		ShaderEditor.Register(context, none, "Engine/Shaders");
 		let found = context.Pages.FindFactory(typeof(ShaderAsset));
 		Test.Assert((found != null) && (found.PrimaryType == typeof(ShaderAsset)));
 	}

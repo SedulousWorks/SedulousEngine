@@ -25,7 +25,7 @@ static class ShaderValidateToolTests
 		let dataRoot = FindDataRoot(.. scope String());
 		Test.Assert(!dataRoot.IsEmpty);
 		let server = scope McpServer();
-		ShaderValidateTool.Register(server, DataPath(dataRoot, "Shaders", .. scope .()));
+		ShaderValidateTool.Register(server, DataPath(dataRoot, "Engine/Shaders", .. scope .()));
 
 		let good = CallOk(server, "shader_validate", With(With(Obj(), "source", ShaderCreators.cStarter), "name", "Lava.hlsl"));
 		defer delete good;

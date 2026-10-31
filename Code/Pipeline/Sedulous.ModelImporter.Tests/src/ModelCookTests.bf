@@ -128,7 +128,7 @@ class ModelCookTests
 		let dataRoot = FindDataRoot(.. scope String());
 		if (dataRoot.IsEmpty)
 			return;
-		let path = PathJoin(dataRoot, "Assets/models/QuaterniusCharacter/glTF/Character.gltf", .. scope .());
+		let path = PathJoin(dataRoot, "Samples/Models/QuaterniusCharacter/glTF/Character.gltf", .. scope .());
 
 		let fixture = scope Fixture("scratch_model_slots");
 		let model = scope Model();

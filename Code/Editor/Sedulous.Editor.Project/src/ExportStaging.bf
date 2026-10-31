@@ -191,7 +191,7 @@ static class ExportStaging
 
 	/// Cooks the engine shader corpus under the data root, and the project's custom shaders the
 	/// dist ships (`projectShaders`, their cooked ShaderSource products in `cooked`), into
-	/// <dist>/Data/Shaders/shaders.dpak, and writes the data root marker beside it, so the
+	/// <dist>/Data/Engine/Shaders/shaders.dpak, and writes the data root marker beside it, so the
 	/// shipped player finds its data the way every executable does and renders with no compiler.
 	public static Result<void, ErrorCode> StageShaderPack(StringView outputDir, StringView dataRoot, StringView platform,
 		ContentDatabase cooked, Span<Guid> projectShaders, out int outVariants)

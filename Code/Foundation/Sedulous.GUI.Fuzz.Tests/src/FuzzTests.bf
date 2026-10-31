@@ -138,7 +138,7 @@ class FuzzTests
 	private static void SandboxStringsPath(String outPath)
 	{
 		let root = FindDataRoot(.. scope String());
-		DataPath(root, "Assets/ui/sandbox/i18n/sandbox.strings.xml", outPath);
+		DataPath(root, "Samples/UI/sandbox/i18n/sandbox.strings.xml", outPath);
 	}
 
 	/// A mutation is found again from its seed: the same seed makes the same numbers and the same

@@ -12,8 +12,8 @@ class Program
 	/// Roboto ships in the engine's data; run from this folder or the repository.
 	static bool FindFont(String outPath)
 	{
-		for (let candidate in StringView[]("../../Data/Assets/fonts/roboto/Roboto-Regular.ttf",
-			"../../../Data/Assets/fonts/roboto/Roboto-Regular.ttf", "Data/Assets/fonts/roboto/Roboto-Regular.ttf"))
+		for (let candidate in StringView[]("../../Data/Engine/Fonts/roboto/Roboto-Regular.ttf",
+			"../../../Data/Engine/Fonts/roboto/Roboto-Regular.ttf", "Data/Engine/Fonts/roboto/Roboto-Regular.ttf"))
 		{
 			if (File.Exists(candidate))
 			{

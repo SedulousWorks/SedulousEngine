@@ -17,7 +17,7 @@ class EditorSplashTests
 		let font = scope String();
 		if (!TestFont.FindPath(font))
 			return false;
-		// <Data>/Assets/fonts/roboto/Roboto-Regular.ttf: four levels up.
+		// <Data>/Engine/Fonts/roboto/Roboto-Regular.ttf: four levels up.
 		outPath.Set(font);
 		for (int i < 4)
 		{

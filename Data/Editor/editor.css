@@ -6,14 +6,14 @@
 @import "Editor/tokens.css";
 
 /* The faces (OFL, their licences beside them): Inter for the interface, JetBrains Mono for code. */
-@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Regular.ttf); }
-@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Italic.ttf); font-style: italic; }
-@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Medium.ttf); font-weight: 500; }
-@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-SemiBold.ttf); font-weight: 600; }
-@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Bold.ttf); font-weight: bold; }
-@font-face { font-family: "JetBrains Mono"; src: url(Assets/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf); }
-@font-face { font-family: "JetBrains Mono"; src: url(Assets/fonts/jetbrains-mono/JetBrainsMono-Italic.ttf); font-style: italic; }
-@font-face { font-family: "JetBrains Mono"; src: url(Assets/fonts/jetbrains-mono/JetBrainsMono-Bold.ttf); font-weight: bold; }
+@font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Regular.ttf); }
+@font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Italic.ttf); font-style: italic; }
+@font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Medium.ttf); font-weight: 500; }
+@font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Bold.ttf); font-weight: bold; }
+@font-face { font-family: "JetBrains Mono"; src: url(Editor/Fonts/jetbrains-mono/JetBrainsMono-Regular.ttf); }
+@font-face { font-family: "JetBrains Mono"; src: url(Editor/Fonts/jetbrains-mono/JetBrainsMono-Italic.ttf); font-style: italic; }
+@font-face { font-family: "JetBrains Mono"; src: url(Editor/Fonts/jetbrains-mono/JetBrainsMono-Bold.ttf); font-weight: bold; }
 
 :root { font-family: var(--ui-font); font-size: var(--font-body); color: var(--text); }
 

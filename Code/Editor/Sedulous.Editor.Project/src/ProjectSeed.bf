@@ -29,7 +29,7 @@ static class ProjectSeed
 		// The UI font, the one a shipped game binds. A distance-field font, so a 72 px title and
 		// a 14 px caption both draw clean from its one bake.
 		{
-			let source = DataPath(dataRoot, "Assets/fonts/roboto/Roboto-Regular.ttf", .. scope .());
+			let source = DataPath(dataRoot, "Engine/Fonts/roboto/Roboto-Regular.ttf", .. scope .());
 			let copied = scope String();
 			if (ImportPaths.CopyIntoSources(importContext, source, copied) case .Ok)
 			{
@@ -52,7 +52,7 @@ static class ProjectSeed
 		// 4096 x 2048 BlueSky (10 MB, nearly 3 s to cook) was more than a starting sky needs.
 		{
 			let source = DataPath(dataRoot,
-				"Assets/environment/kloofendal_48d_partly_cloudy_puresky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .());
+				"Templates/kloofendal_48d_partly_cloudy_puresky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .());
 			let copied = scope String();
 			if (ImportPaths.CopyIntoSources(importContext, source, copied) case .Ok)
 			{

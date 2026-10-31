@@ -25,7 +25,7 @@ The paths were Raptor's.
   hosting and script facade, the editor's GUI pages, and the cook.
 - `Code/Samples/GUISandbox`: the sandbox sample.
 - `Code/Integration/Integration.GuiScript`: the GUI script integration tests.
-- `Data/Assets/ui/sandbox`, `Data/Assets/ui/showcase`: what the sandbox loads. `Data/Tests/GUI`:
+- `Data/Samples/UI/sandbox`, `Data/Samples/UI/showcase`: what the sandbox loads. `Data/Tests/GUI`:
   the reference images and the fuzz input. Ported by moving them to the same place in `Data/`.
 - `Hunks/<path>.diff`: changes the GUI makes to files outside its own projects, as
   `git diff 287ddc135 4fe177db2 -- <path>`. Struck hunk by hunk as each one is ported.

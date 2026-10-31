@@ -3,6 +3,6 @@
   over a quiet line, centred.
 -->
 <Panel class="welcome">
-    <Image class="welcome-logo" src="Assets/branding/sedulous-logo.svg"/>
+    <Image class="welcome-logo" src="Branding/sedulous-logo.svg"/>
     <Label class="welcome-hint" text="Open an asset to begin"/>
 </Panel>

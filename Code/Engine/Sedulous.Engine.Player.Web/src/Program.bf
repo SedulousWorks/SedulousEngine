@@ -88,8 +88,9 @@ class Program
 		// finds Data/.dataroot in a browser exactly as it does on disk. See the data root
 		// rule: one mechanism, never a baked or probed path.
 		CreateDirectory("Data");
-		CreateDirectory("Data/Shaders");
+		CreateDirectory("Data/Engine");
+		CreateDirectory("Data/Engine/Shaders");
 		WebDist.Fetch("Data/.dataroot");
-		WebDist.Fetch("Data/Shaders/shaders.dpak");
+		WebDist.Fetch("Data/Engine/Shaders/shaders.dpak");
 	}
 }

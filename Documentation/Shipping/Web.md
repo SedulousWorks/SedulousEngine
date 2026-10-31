@@ -29,7 +29,7 @@ desktop player's `--profile-overlay` does; F3 toggles it either way.
 
 `project_export` with the Web preset stages the page (named by the preset's `playerName`; a
 renamed page keeps `.html`, and `index` serves the export at its folder's root), the player's
-`.js` and `.wasm`, `serve.py`, `player.xml`, `Data/Shaders/shaders.dpak` and one content pack
+`.js` and `.wasm`, `serve.py`, `player.xml`, `Data/Engine/Shaders/shaders.dpak` and one content pack
 per texture family (`Content-bc.pak`, `Content-astc.pak`); the page fetches the one the
 browser's GPU reads. The cooks behind those packs land in `<project>/Cooked-web-bc` and
 `Cooked-web-astc`, generated like `Cooked/`.

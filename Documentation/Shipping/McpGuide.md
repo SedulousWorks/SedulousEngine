@@ -381,7 +381,7 @@ read the file before trusting it, and leave the judgement of how it looks to the
 `project_export` (`preset` optional; the default is the first, or the host platform preset
 when the project has no `export_presets.xml`). The dist lands under `<project>/Dist` unless
 `out` says otherwise: the player, its runtime libraries, `Content.pak`, `player.xml` and
-`Data/Shaders/shaders.dpak`. A web export, its template and serving it: `docs://Web.md`.
+`Data/Engine/Shaders/shaders.dpak`. A web export, its template and serving it: `docs://Web.md`.
 A project's custom shaders ship as bytecode in the dist's shader pack, their HLSL left out unless
 the preset's `includeShaderSource` is set.
 

@@ -302,7 +302,7 @@ class ShaderEditorPageFactory : IEditorPageFactory
 }
 
 /// The shader page's registration (from the editor's assembly). Its colours are the shared HLSL
-/// definition's (Data/Assets/code/hlsl.xml).
+/// definition's (Data/Editor/Code/hlsl.xml).
 static class ShaderEditor
 {
 	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for

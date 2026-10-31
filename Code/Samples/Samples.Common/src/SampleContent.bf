@@ -12,9 +12,9 @@ namespace Samples.Common;
 static class SampleContent
 {
 	/// The layout under the root, spelled here once for the samples that share it.
-	public const String cAssetRoot = "Assets";
-	public const String cAudioDir = "Assets/audio/playground";
-	public const String cRobotoFont = "Assets/fonts/roboto/Roboto-Regular.ttf";
+	public const String cAssetRoot = "Samples";
+	public const String cAudioDir = "Samples/Audio/playground";
+	public const String cRobotoFont = "Engine/Fonts/roboto/Roboto-Regular.ttf";
 
 	/// The data root, discovered once and kept. Empty when there is none, which every caller
 	/// treats as "that content is absent" rather than as a failure.

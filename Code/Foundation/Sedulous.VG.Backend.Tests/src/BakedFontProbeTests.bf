@@ -35,7 +35,7 @@ class BakedFontProbeTests
 		for (int depth < 8)
 		{
 			let candidate = scope:: String();
-			PathJoin(current, "Data/Assets/fonts/roboto/Roboto-Regular.ttf", candidate);
+			PathJoin(current, "Data/Engine/Fonts/roboto/Roboto-Regular.ttf", candidate);
 			if (File.Exists(candidate))
 			{
 				outPath.Set(candidate);

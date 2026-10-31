@@ -12,7 +12,7 @@ static class TestFont
 {
 	public static bool FindPath(String outPath)
 	{
-		const String cRelative = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
+		const String cRelative = "Data/Engine/Fonts/roboto/Roboto-Regular.ttf";
 		let directory = scope String();
 		GetCurrentDirectory(directory);
 		for (int depth < 8)

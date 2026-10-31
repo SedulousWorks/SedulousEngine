@@ -123,7 +123,7 @@ class EditorMcpService
 		let paths = scope EngineToolPaths();
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
 		// shader_validate compiles against the engine's shader library under the data root.
-		DataPath(mServices.DataRoot, "Shaders", paths.ShaderLibrary);
+		DataPath(mServices.DataRoot, "Engine/Shaders", paths.ShaderLibrary);
 		mSession.Project = project;
 
 		// The operations run on the application's services, so an agent's cook, import or export

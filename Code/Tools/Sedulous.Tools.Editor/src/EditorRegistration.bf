@@ -88,7 +88,7 @@ static class EditorRegistration
 		// The script page browses the engine facade surface the embedded runtime binds; its check
 		// compiles through the script cooks the pipeline registered above.
 		ScriptEditor.Register(context, pageServices, app.EmbeddedApplication.ScriptSurface);
-		ShaderEditor.Register(context, pageServices, DataPath(app.DataRoot, "Shaders", .. scope .())); // a check's include path
+		ShaderEditor.Register(context, pageServices, DataPath(app.DataRoot, "Engine/Shaders", .. scope .())); // a check's include path
 		GuiEditor.Register(context, pageServices); // the GUI's documents and sheets
 		ParticleEditor.Register(context, pageServices); // the particle effect
 		AnimationClipEditor.Register(context, pageServices); // the animation clip

@@ -71,7 +71,7 @@ static class ExportFlowTests
 		let outputDir = scope String(exported.Get("outputDir").AsString());
 		Test.Assert(!outputDir.IsEmpty);
 		Test.Assert(FileExists(PathJoin(outputDir, "Content.pak", .. scope .())) && FileExists(PathJoin(outputDir, "player.xml", .. scope .())));
-		Test.Assert(FileExists(PathJoin(outputDir, "Data/Shaders/shaders.dpak", .. scope .())), "the shader pack cooked from the data root");
+		Test.Assert(FileExists(PathJoin(outputDir, "Data/Engine/Shaders/shaders.dpak", .. scope .())), "the shader pack cooked from the data root");
 		Test.Assert(exported.Get("filesStaged").AsInt() >= 1, "the player staged");
 		Test.Assert(FileExists(PathJoin(outputDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .())));
 	}

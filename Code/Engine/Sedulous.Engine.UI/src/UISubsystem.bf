@@ -728,7 +728,7 @@ class UISubsystem : Subsystem, ISceneObserver
 	// ==================== GPU bring-up ====================
 
 	/// The engine's own face, the one constant of the layout this subsystem reads.
-	private const String cBuiltInFont = "Assets/fonts/roboto/Roboto-Regular.ttf";
+	private const String cBuiltInFont = "Engine/Fonts/roboto/Roboto-Regular.ttf";
 
 	private bool LoadBuiltInFont()
 	{

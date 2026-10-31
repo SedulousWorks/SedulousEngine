@@ -12,7 +12,7 @@ namespace Samples.VGSandbox;
 /// the repository root in all three cases.
 static class SandboxContent
 {
-	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";
+	public const String cFontFile = "Engine/Fonts/roboto/Roboto-Regular.ttf";
 
 	/// The absolute path of a repository relative file, or false when this checkout has no
 	/// data. False rather than an assertion, because the sample still draws everything that

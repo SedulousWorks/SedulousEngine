@@ -73,7 +73,7 @@ class FontEditorTests
 		let root = FindDataRoot(.. scope .());
 		Test.Assert(!root.IsEmpty);
 		let ttf = scope List<uint8>();
-		Test.Assert(File.ReadAll(DataPath(root, "Assets/fonts/roboto/Roboto-Bold.ttf", .. scope .()), ttf) case .Ok);
+		Test.Assert(File.ReadAll(DataPath(root, "Engine/Fonts/roboto/Roboto-Bold.ttf", .. scope .()), ttf) case .Ok);
 		Test.Assert(ttf.Count > 0);
 
 		let generator = scope FontThumbnailGenerator();
@@ -92,7 +92,7 @@ class FontEditorTests
 		// A coverage bake through the page's path lands an atlas too.
 		let request = scope FontBakeRequest();
 		request.Valid = true;
-		request.Path.Set(DataPath(root, "Assets/fonts/roboto/Roboto-Bold.ttf", .. scope .()));
+		request.Path.Set(DataPath(root, "Engine/Fonts/roboto/Roboto-Bold.ttf", .. scope .()));
 		request.Size = 24.0f;
 		request.FirstCodepoint = (int32)'A';
 		request.LastCodepoint = (int32)'Z';

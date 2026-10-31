@@ -24,11 +24,11 @@ class TextLayoutTests
 		for (int depth < 8)
 		{
 			let regular = scope String();
-			PathJoin(directory, "Data/Assets/fonts/roboto/Roboto-Regular.ttf", regular);
+			PathJoin(directory, "Data/Engine/Fonts/roboto/Roboto-Regular.ttf", regular);
 			if (File.Exists(regular))
 			{
 				let bold = scope String();
-				PathJoin(directory, "Data/Assets/fonts/roboto/Roboto-Bold.ttf", bold);
+				PathJoin(directory, "Data/Engine/Fonts/roboto/Roboto-Bold.ttf", bold);
 				let service = new TrueTypeFontService();
 				Test.Assert(service.LoadFont("Roboto", regular) == .Success);
 				Test.Assert(service.LoadFont("Roboto Bold", bold) == .Success);

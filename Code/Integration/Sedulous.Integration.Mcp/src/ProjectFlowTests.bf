@@ -689,7 +689,7 @@ static class ProjectFlowTests
 		let dataRoot = scope String();
 		FindDataRoot(dataRoot);
 		Test.Assert(!dataRoot.IsEmpty);
-		let duck = PathJoin(dataRoot, "Assets/models/Duck/glTF/Duck.gltf", .. scope .());
+		let duck = PathJoin(dataRoot, "Samples/Models/Duck/glTF/Duck.gltf", .. scope .());
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();

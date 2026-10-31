@@ -39,7 +39,7 @@ class Program
 {
 	/// The splash's last resort face, baked into the executable, so a relocated editor's splash
 	/// never comes up textless (the editor's own faces are its sheet's, through its resources).
-	private const uint8[?] cEmbeddedFont = Compiler.ReadBinary("../../../Data/Assets/fonts/roboto/Roboto-Regular.ttf");
+	private const uint8[?] cEmbeddedFont = Compiler.ReadBinary("../../../Data/Engine/Fonts/roboto/Roboto-Regular.ttf");
 
 	public static int Main(String[] args)
 	{
@@ -78,7 +78,7 @@ class Program
 		ReadCommandLine(args, config);
 		config.StartInProjectManager = config.ProjectDirectory.IsEmpty;
 		// The splash's face, from the data root, with the embedded twin as the last resort.
-		let splashFontPath = DataPath(dataRoot, "Assets/fonts/roboto/Roboto-Regular.ttf", .. scope .());
+		let splashFontPath = DataPath(dataRoot, "Engine/Fonts/roboto/Roboto-Regular.ttf", .. scope .());
 		config.LogBuffer = logBuffer;
 		config.SeedNewProject = new (ctx, project) => EditorSeed.SeedNewProject(ctx, project);
 		config.RegisterEditors = new (app, host) => EditorRegistration.RegisterEditors(app, host);

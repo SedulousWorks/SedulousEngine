@@ -8,7 +8,7 @@ namespace Sedulous.Core;
 ///
 /// Everything that would otherwise hard code 0 and 1 or a compare direction names these
 /// instead. RHI's Depth maps them to compare functions, the clear value and rasterizer bias
-/// signs; Data/Shaders/depth.hlsli is the shader side twin. Keep the three in step. A
+/// signs; Data/Engine/Shaders/depth.hlsli is the shader side twin. Keep the three in step. A
 /// consumer that reconstructs position through an inverse projection matrix is convention
 /// free and needs none of this.
 static class Projection

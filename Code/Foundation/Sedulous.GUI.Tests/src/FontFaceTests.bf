@@ -82,8 +82,8 @@ class FontFaceTests
 				return service.LoadFont(face, path) == .Success;
 			});
 		// The regular face the service has already is not asked for.
-		WidgetFixtures.UseSheet(styles, "@font-face { font-family: Brand; src: url(Assets/fonts/roboto/Roboto-Regular.ttf); }" +
-			"@font-face { font-family: Brand; src: url(Assets/fonts/roboto/Roboto-Bold.ttf); font-weight: bold; }" +
+		WidgetFixtures.UseSheet(styles, "@font-face { font-family: Brand; src: url(Engine/Fonts/roboto/Roboto-Regular.ttf); }" +
+			"@font-face { font-family: Brand; src: url(Engine/Fonts/roboto/Roboto-Bold.ttf); font-weight: bold; }" +
 			".text { font-family: Brand; font-size: 16px; font-weight: 700; }");
 		let scene = SceneFixtures.NewScene();
 		defer scene.ReleaseRef();

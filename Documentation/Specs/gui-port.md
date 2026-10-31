@@ -140,7 +140,7 @@ These follow what the Xml and VG ports already did. Beef's way wins over the C++
 - **Casts.** `core::Cast<T>` becomes `as`. `RTTI_OBJECT` is not needed: every Beef class knows
   its type.
 - **Data.** The tests reach fonts and images through `FindDataRoot` and `DataPath`, which
-  Sedulous.VFS already has. The four fonts they use are already in `Data/Assets/fonts`. The
+  Sedulous.VFS already has. The four fonts they use are already in `Data/Samples/Fonts`. The
   ledger's `Data/` (the sandbox and showcase pages, the reference images, the fuzz input) moves
   to the same place in `Data/` with the first port that reads it. Two places use a CMake define
   for a path (GUI.Code's language samples, the showcase script test); they use `FindDataRoot`

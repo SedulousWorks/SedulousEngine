@@ -32,7 +32,7 @@ class ShaderCreatorTests
 			if (probe.Initialize() case .Err) { Console.WriteLine("SKIP: no DXC runtime"); return; }
 		}
 		var options = ShaderCheckOptions();
-		options.ShaderLibrary = DataPath(dataRoot, "Shaders", .. scope .());
+		options.ShaderLibrary = DataPath(dataRoot, "Engine/Shaders", .. scope .());
 		let check = scope ShaderCheck();
 		check.Run(ShaderCreators.cStarter, "Shader.hlsl", options);
 		for (let error in check.Errors)
@@ -126,7 +126,7 @@ class ShaderCreatorTests
 			if (compiler.Initialize() case .Err) { Console.WriteLine("SKIP: no DXC runtime"); return; }
 		}
 		var options = ShaderCheckOptions();
-		let library = DataPath(FindDataRoot(.. scope String()), "Shaders", .. scope .());
+		let library = DataPath(FindDataRoot(.. scope String()), "Engine/Shaders", .. scope .());
 		options.ShaderLibrary = library;
 		for (let (text, model) in scope (StringView, SurfaceModel)[]((ShaderCreators.cLitSurfaceStarter, .Lit),
 			(ShaderCreators.cUnlitSurfaceStarter, .Unlit)))

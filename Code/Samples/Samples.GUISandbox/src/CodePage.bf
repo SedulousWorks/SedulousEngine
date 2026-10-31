@@ -12,7 +12,7 @@ namespace Samples.GUISandbox;
 /// edit without running it (ScriptRuntime.Check), its errors the editor's diagnostics; a click in
 /// the gutter sets a breakpoint; completion and hover from the surface the script backend bound
 /// (DescribeBoundApi) and the language's words; and a shader beside it. The languages are the
-/// editor's too (Data/Assets/code), read through the XML serialization.
+/// editor's too (Data/Editor/Code), read through the XML serialization.
 ///
 /// Outlives the page's editors (the host deletes it after the GUI), so it never reaches into them
 /// as it goes: its change listener is the script document's, and goes with it.
@@ -54,7 +54,7 @@ class CodePage : ICodeLanguageService
 			mScripts.DescribeBoundApi(mApi);
 	}
 
-	/// Reads a language definition (the XML of one of Data/Assets/code's files) into
+	/// Reads a language definition (the XML of one of Data/Editor/Code's files) into
 	/// `outLanguage`, prepared.
 	public bool ReadLanguage(StringView text, CodeLanguage outLanguage)
 	{

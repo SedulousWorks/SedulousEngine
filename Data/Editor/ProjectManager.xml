@@ -7,7 +7,7 @@
 <Panel class="manager">
     <Panel class="manager-column">
         <Panel class="manager-header">
-            <Image class="manager-logo" src="Assets/branding/sedulous-logo.svg"/>
+            <Image class="manager-logo" src="Branding/sedulous-logo.svg"/>
             <Label id="manager-engine" class="home-meta"/>
         </Panel>
         <Panel class="manager-actions">

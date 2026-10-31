@@ -57,7 +57,7 @@ class SurfaceShaderTests
 
 	private static ShaderCheckOptions LibraryOptions(String library)
 	{
-		DataPath(FindDataRoot(.. scope String()), "Shaders", library);
+		DataPath(FindDataRoot(.. scope String()), "Engine/Shaders", library);
 		var options = ShaderCheckOptions();
 		options.ShaderLibrary = library;
 		return options;

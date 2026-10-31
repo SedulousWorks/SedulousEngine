@@ -9,11 +9,11 @@ namespace Samples.Sandbox;
 static class SandboxPaths
 {
 	public const String cOutputDir = "Output/Sandbox";
-	public const String cModelDir = "Assets/models";
-	public const String cImageDir = "Assets/images";
-	public const String cEnvironmentDir = "Assets/environment";
+	public const String cModelDir = "Samples/Models";
+	public const String cImageDir = "Samples/Images";
+	public const String cEnvironmentDir = "Samples/Environment";
 
-	public const String cHdrSky = "Assets/environment/BlueSky.hdr";
-	public const String cCubemapFace = "Assets/environment/cube_sky/px.png";
+	public const String cHdrSky = "Templates/kloofendal_48d_partly_cloudy_puresky/kloofendal_48d_partly_cloudy_puresky_1k.hdr"; // the sky a new project starts with
+	public const String cCubemapFace = "Samples/Environment/cube_sky/px.png";
 	public const String cLogoImage = "logo.png";
 }

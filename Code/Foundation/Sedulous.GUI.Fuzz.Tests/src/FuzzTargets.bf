@@ -160,7 +160,7 @@ static class FuzzTargets
 	public static void SandboxSeeds(StringView @extension, List<String> outSeeds)
 	{
 		let root = FindDataRoot(.. scope String());
-		let @base = DataPath(root, "Assets/ui/sandbox", .. scope String());
+		let @base = DataPath(root, "Samples/UI/sandbox", .. scope String());
 		ReadDirectory(@base, @extension, outSeeds);
 		ReadDirectory(PathJoin(@base, "pages", .. scope String()), @extension, outSeeds);
 	}

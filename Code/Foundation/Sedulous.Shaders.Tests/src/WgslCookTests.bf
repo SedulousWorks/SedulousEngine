@@ -173,7 +173,7 @@ class WgslCookTests
 		let compiler = MakeCompiler();
 		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
 		defer delete compiler;
-		let library = RepositoryPath("Data/Shaders", "forward_vs.hlsli", .. scope String());
+		let library = RepositoryPath("Data/Engine/Shaders", "forward_vs.hlsli", .. scope String());
 		Test.Assert(!library.IsEmpty, "the engine's shader folder is found");
 		let shaderDirectory = PathParent(library, .. scope String());
 
@@ -205,8 +205,8 @@ class WgslCookTests
 		let compiler = MakeCompiler();
 		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
 		defer delete compiler;
-		let library = RepositoryPath("Data/Shaders", "forward_vs.hlsli", .. scope String());
-		let toonPath = RepositoryPath("Data/Assets/shaders/toon", "toon.hlsl", .. scope String());
+		let library = RepositoryPath("Data/Engine/Shaders", "forward_vs.hlsli", .. scope String());
+		let toonPath = RepositoryPath("Data/Samples/Shaders/toon", "toon.hlsl", .. scope String());
 		Test.Assert(!library.IsEmpty && !toonPath.IsEmpty);
 		let shaderDirectory = PathParent(library, .. scope String());
 		let text = scope String();

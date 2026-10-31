@@ -70,7 +70,7 @@ class PlayerApplication : DefaultApplication
 	private Sedulous.GUI.Node mGuiSplash = null;
 	/// The SedulousEngine logo the default loading screen shows, built into the player so a
 	/// game needs no file of it.
-	private const String cEngineLogo = Compiler.ReadText("../../../Data/Assets/branding/sedulous-logo.svg");
+	private const String cEngineLogo = Compiler.ReadText("../../../Data/Branding/sedulous-logo.svg");
 	private String mBootScenePath = new .() ~ delete _;
 	private bool mBooting = false;
 

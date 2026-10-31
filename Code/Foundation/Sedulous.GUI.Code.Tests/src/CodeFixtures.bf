@@ -52,12 +52,12 @@ static class CodeFixtures
 	public static bool Near(float a, float b, float epsilon = 1.2e-5f) =>
 		Math.Abs(a - b) < epsilon * (1.0f + Math.Max(Math.Abs(a), Math.Abs(b)));
 
-	/// One of the shared definitions (Data/Assets/code, the editor's and the sandbox's), read as they read it,
+	/// One of the shared definitions (Data/Editor/Code, the editor's and the sandbox's), read as they read it,
 	/// into `out`.
 	public static bool LoadSandboxLanguage(StringView id, CodeLanguage @out)
 	{
 		let root = FindDataRoot(.. scope String());
-		let relative = scope String()..AppendF("Assets/code/{}.xml", id);
+		let relative = scope String()..AppendF("Editor/Code/{}.xml", id);
 		let path = DataPath(root, relative, .. scope String());
 		let text = scope String();
 		if (File.ReadAllText(path, text, true) case .Err)

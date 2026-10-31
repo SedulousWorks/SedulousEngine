@@ -20,7 +20,7 @@ using Samples.Common;
 namespace Samples.CustomShader;
 
 /// A LOW-LEVEL custom shader end to end: a toon (cel) shader, one file with VSMain and PSMain
-/// (Data/Assets/shaders/toon/toon.hlsl), registered with the render subsystem's shader system under
+/// (Data/Samples/Shaders/toon/toon.hlsl), registered with the render subsystem's shader system under
 /// the name "toon", and materials built in code whose properties lay out the shader's set-2
 /// block. Nothing in the renderer knows about it: a material's property list derives its bind
 /// group layout and pipeline, and the shader keeps the frame's contract (sets 0, 1 and 3, the
@@ -34,9 +34,9 @@ namespace Samples.CustomShader;
 /// variant). WASD and the right button fly; Esc quits.
 class CustomShaderApp : DefaultApplication
 {
-	private const String cShaderFile = "Assets/shaders/toon/toon.hlsl";
+	private const String cShaderFile = "Samples/Shaders/toon/toon.hlsl";
 	private const String cOutputDir = "Output/CustomShader";
-	private const String cModelFile = "Assets/models/Fox/glTF/Fox.gltf";
+	private const String cModelFile = "Samples/Models/Fox/glTF/Fox.gltf";
 
 	private Scene mScene = null;
 	private EntityHandle mCamera = .Invalid;
@@ -79,7 +79,7 @@ class CustomShaderApp : DefaultApplication
 		BuildLights();
 		SpawnToonFox(host);
 
-		Console.WriteLine("CustomShader: a toon shader from Data/Assets/shaders/toon.");
+		Console.WriteLine("CustomShader: a toon shader from Data/Samples/Shaders/toon.");
 		Console.WriteLine("WASD and the right button fly, Esc quits.");
 	}
 

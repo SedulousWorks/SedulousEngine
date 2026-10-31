@@ -41,7 +41,7 @@ class AnimatedCrowdApp : DefaultApplication
 	/// The cap on how many distinct clips the crowd mixes across.
 	private const int32 cMaxClipGroups = 6;
 	private const String cOutputDir = "Output/AnimatedCrowd";
-	private const String cModelFile = "Assets/models/QuaterniusCharacter/glTF/Character.gltf";
+	private const String cModelFile = "Samples/Models/QuaterniusCharacter/glTF/Character.gltf";
 
 	/// One colour per clip group, so a glance says which clip a character is playing.
 	private static readonly Float3[cMaxClipGroups] cClipColors = .(

@@ -29,11 +29,11 @@ namespace Sedulous.Shaders;
 class ShaderSystemHost
 {
 	/// The layout under the data root, spelled once.
-	public const String cShaderFolder = "Shaders";
+	public const String cShaderFolder = "Engine/Shaders";
 	public const String cShaderPackFile = "shaders.dpak";
-	public const String cShaderPackPath = "Shaders/shaders.dpak";
+	public const String cShaderPackPath = "Engine/Shaders/shaders.dpak";
 	/// A data root that ships the sources AND a pack and wants the pack.
-	public const String cShaderPackFirstMarker = "Shaders/.pack-first";
+	public const String cShaderPackFirstMarker = "Engine/Shaders/.pack-first";
 
 	/// Set in the environment to test a shipped configuration on a development machine.
 	private const String cPackEnvironmentVariable = "OPTION_USE_SHADER_PACK";

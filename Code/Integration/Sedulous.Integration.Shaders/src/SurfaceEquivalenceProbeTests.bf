@@ -20,7 +20,7 @@ using Sedulous.VFS;
 namespace Sedulous.Integration.Shaders;
 
 /// A surface shader renders as the engine's own does: the built-in PBR written as a lit surface
-/// shader (Data/Assets/shaders/surface_pbr), cooked by the shader pipeline into its forward, depth
+/// shader (Data/Tests/Shaders/surface_pbr), cooked by the shader pipeline into its forward, depth
 /// and pick programs, draws a lit, windy sphere on a ground the same as `forward` draws them, on
 /// REAL GPU backends. The test allows a rounding step, since the two programs compute the same
 /// lighting in a different order (the surface samples every texture before the cut-out test) and
@@ -40,9 +40,9 @@ class SurfaceEquivalenceProbeTests
 	{
 		let dataRoot = FindDataRoot(.. scope String());
 		Test.Assert(!dataRoot.IsEmpty);
-		DataPath(dataRoot, "Shaders", library);
+		DataPath(dataRoot, "Engine/Shaders", library);
 		let text = scope String();
-		Test.Assert(System.IO.File.ReadAllText(DataPath(dataRoot, "Assets/shaders/surface_pbr/surface_pbr.hlsl", .. scope .()), text) case .Ok);
+		Test.Assert(System.IO.File.ReadAllText(DataPath(dataRoot, "Tests/Shaders/surface_pbr/surface_pbr.hlsl", .. scope .()), text) case .Ok);
 		if (timedAlpha)
 		{
 			let alphaLine = "surface.alpha  = input.color.a * BaseColor.a * albedoTex.a;";

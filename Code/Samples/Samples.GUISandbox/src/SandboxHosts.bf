@@ -87,7 +87,7 @@ extension GUISandboxApp
 		if (let editor = FindById(mShellNode, "code-script") as CodeEditor)
 		{
 			let dir = scope $"{cSandboxDir}code/"; // the sandbox's samples
-			let languages = "Assets/code/"; // the languages, the editor's too
+			let languages = "Editor/Code/"; // the languages, the editor's too
 			mCode = new CodePage(mScripts);
 			mCode.AttachScript(editor, ReadText(scope $"{languages}angelscript.xml", .. scope String()),
 				ReadText(scope $"{dir}sample.as", .. scope String()), FindById(mShellNode, "code-status") as Sedulous.GUI.Label);

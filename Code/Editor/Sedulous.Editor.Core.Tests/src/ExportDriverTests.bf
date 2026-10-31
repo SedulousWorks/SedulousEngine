@@ -142,7 +142,7 @@ static class ExportDriverTests
 		Test.Assert(dist.Exists("libfoo.so"), "the sidecar staged");
 		Test.Assert(dist.Exists(ProjectLayout.DistContentPak) && dist.Exists(ProjectLayout.DistManifestFile));
 		Test.Assert(dist.Exists("Project.xml"), "the additional file staged by its base name");
-		Test.Assert(dist.Exists("Data/Shaders/shaders.dpak") && dist.Exists("Data/.dataroot"), "the shader pack and the data root marker");
+		Test.Assert(dist.Exists("Data/Engine/Shaders/shaders.dpak") && dist.Exists("Data/.dataroot"), "the shader pack and the data root marker");
 		Test.Assert(!dist.Exists(".stage-scenes"), "the staging directory removed");
 		Test.Assert(result.FilesStaged == 5, scope $"{result.FilesStaged} staged");
 		Test.Assert(result.Content.Cooked == 2);
@@ -579,8 +579,8 @@ static class ExportDriverTests
 		let dist = scope NativeFileSystem(result.OutputDir);
 		Test.Assert(dist.Exists(page) && dist.Exists(scope $"{BuildLayout.cWebPlayerBaseName}.js") && dist.Exists(scope $"{BuildLayout.cWebPlayerBaseName}.wasm"), "the browser player trio");
 		Test.Assert(dist.Exists("Content-bc.pak") && dist.Exists("Content-astc.pak") && !dist.Exists("Content.pak"), "the two web paks, no desktop one");
-		Test.Assert(dist.Exists(ProjectLayout.DistManifestFile) && dist.Exists("Data/.dataroot") && dist.Exists("Data/Shaders/shaders.dpak"));
-		let packStream = dist.Open("Data/Shaders/shaders.dpak", .Read);
+		Test.Assert(dist.Exists(ProjectLayout.DistManifestFile) && dist.Exists("Data/.dataroot") && dist.Exists("Data/Engine/Shaders/shaders.dpak"));
+		let packStream = dist.Open("Data/Engine/Shaders/shaders.dpak", .Read);
 		Test.Assert(packStream != null);
 		defer delete packStream;
 		let pack = scope Sedulous.Shaders.CookedShaderPack();
@@ -631,7 +631,7 @@ static class ExportDriverTests
 		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
 		Test.Assert(result.Content.CookFailed == 0);
 
-		let packStream = scope NativeFileSystem(result.OutputDir).Open("Data/Shaders/shaders.dpak", .Read);
+		let packStream = scope NativeFileSystem(result.OutputDir).Open("Data/Engine/Shaders/shaders.dpak", .Read);
 		Test.Assert(packStream != null);
 		defer delete packStream;
 		let pack = scope Sedulous.Shaders.CookedShaderPack();
@@ -736,7 +736,7 @@ static class ExportDriverTests
 		let stripped = ExportWith(false, "stripped");
 		defer delete stripped;
 		{
-			let packStream = scope NativeFileSystem(stripped).Open("Data/Shaders/shaders.dpak", .Read);
+			let packStream = scope NativeFileSystem(stripped).Open("Data/Engine/Shaders/shaders.dpak", .Read);
 			Test.Assert(packStream != null);
 			defer delete packStream;
 			let pack = scope Sedulous.Shaders.CookedShaderPack();

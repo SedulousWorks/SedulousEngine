@@ -8,7 +8,7 @@ namespace Sedulous.RHI;
 /// compare function is "nearer", what a depth clear is, and which way a rasterizer bias
 /// pushes. Every depth-stencil state, sampler compare and clear in the engine names one
 /// of these rather than a literal, so the convention lives in one place (three, with the
-/// shader twin Data/Shaders/depth.hlsli).
+/// shader twin Data/Engine/Shaders/depth.hlsli).
 static class Depth
 {
 	/// Pass when the fragment is strictly nearer than the stored depth: a depth prepass, an

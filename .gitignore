@@ -14,7 +14,7 @@ scratch_*/
 
 # Cooked shader packs are build output, the same as Raptor keeps its own under Bin.
 # Sedulous.Tools.ShaderPack writes them; a checkout compiles on demand without one.
-/Data/Shaders/*.dpak
+/Data/Engine/Shaders/*.dpak
 
 # Web sample output: emcc writes the html, js and wasm beside the project, and the debug
 # wasm alone is four megabytes.

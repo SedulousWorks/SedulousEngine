@@ -9,7 +9,7 @@ using Sedulous.GUI;
 namespace Sedulous.Editor.App;
 
 /// The code editors' languages by id, for the code pages (Raptor's editor-gui spec, 5.4, layer 6,
-/// part 1). A language is a data file of Data/Assets/code, one for the editor and the GUI sandbox
+/// part 1). A language is a data file of Data/Editor/Code, one for the editor and the GUI sandbox
 /// alike (the user's choice, 2026-10-26), named by its id and read through the XML serialization the
 /// first time a page asks for it (a script asset's language, "hlsl", "css"); so no list of languages
 /// is written anywhere, and one added is a file. The editor's application owns one and hands it to
@@ -17,7 +17,7 @@ namespace Sedulous.Editor.App;
 class CodeLanguages
 {
 	/// Where the languages are, under the data root: <id>.xml each.
-	public const String cFolder = "Assets/code/";
+	public const String cFolder = "Editor/Code/";
 
 	private class Entry
 	{

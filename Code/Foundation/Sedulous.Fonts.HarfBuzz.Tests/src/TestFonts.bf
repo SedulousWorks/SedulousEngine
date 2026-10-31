@@ -10,8 +10,8 @@ namespace Sedulous.Fonts.HarfBuzz.Tests;
 /// directory to the repository's Data/.
 static class TestFonts
 {
-	public const String cRoboto = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
-	public const String cDejaVuMono = "Data/Assets/fonts/dejavu/DejaVuSansMono.ttf";
+	public const String cRoboto = "Data/Engine/Fonts/roboto/Roboto-Regular.ttf";
+	public const String cDejaVuMono = "Data/Samples/Fonts/dejavu/DejaVuSansMono.ttf";
 
 	public static bool FindPath(StringView relative, String outPath)
 	{

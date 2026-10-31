@@ -14,9 +14,9 @@ namespace Sedulous.GUI.Tests;
 /// loads takes it.
 static class TextFixtures
 {
-	public const String cRoboto = "Assets/fonts/roboto/Roboto-Regular.ttf";
-	public const String cRobotoBold = "Assets/fonts/roboto/Roboto-Bold.ttf";
-	public const String cDejaVuMono = "Assets/fonts/dejavu/DejaVuSansMono.ttf";
+	public const String cRoboto = "Engine/Fonts/roboto/Roboto-Regular.ttf";
+	public const String cRobotoBold = "Engine/Fonts/roboto/Roboto-Bold.ttf";
+	public const String cDejaVuMono = "Samples/Fonts/dejavu/DejaVuSansMono.ttf";
 
 	/// doctest's Approx: within a relative epsilon (scaled by 1 plus the larger magnitude).
 	public static bool Near(float a, float b, float epsilon = 1.2e-5f) =>

@@ -31,13 +31,13 @@ using Samples.Common;
 namespace Samples.GUISandbox;
 
 // The GUI's demo (Raptor's GUISandbox, Documentation/Specs/vg-and-gui-lab.md there), built from the
-// GUI itself. A shell (Data/Assets/ui/sandbox/shell.xml: a header, a sidebar of pages, the page on
+// GUI itself. A shell (Data/Samples/UI/sandbox/shell.xml: a header, a sidebar of pages, the page on
 // show) whose sidebar buttons run page.<id> commands; each page is pages/<id>.xml with an optional
 // pages/<id>.css and pages/<id>.as, so a new page is a button and its files. This host only sizes
 // the shell, fills the few hosts that need native models or widgets (the data views, the menu bar,
 // the context menu, the floating window, the message box, an image, the toolkit's sources, the
 // dock space, the viewport's cube), and switches the theme. The game menu
-// (Data/Assets/ui/showcase) is a second layer of the same root: it shares the data, and its Leave
+// (Data/Samples/UI/showcase) is a second layer of the same root: it shares the data, and its Leave
 // brings the player back here.
 //
 // It runs on the runtime host through GUI.Hosting's GuiHost, which takes the window's input, draws
@@ -53,13 +53,13 @@ namespace Samples.GUISandbox;
 /// The sandbox: one GUI, one root, on the runtime host.
 class GUISandboxApp : IApplication
 {
-	public const String cRoboto = "Assets/fonts/roboto/Roboto-Regular.ttf";
-	public const String cLilita = "Assets/fonts/lilita-one/LilitaOne-Regular.ttf";
+	public const String cRoboto = "Engine/Fonts/roboto/Roboto-Regular.ttf";
+	public const String cLilita = "Samples/Fonts/lilita-one/LilitaOne-Regular.ttf";
 	/// Arabic, which Roboto has not.
-	public const String cDejaVu = "Assets/fonts/dejavu/DejaVuSansMono.ttf";
-	public const String cStrings = "Assets/ui/sandbox/i18n/sandbox.strings.xml";
-	public const String cSandboxDir = "Assets/ui/sandbox/";
-	public const String cMenuDir = "Assets/ui/showcase/";
+	public const String cDejaVu = "Samples/Fonts/dejavu/DejaVuSansMono.ttf";
+	public const String cStrings = "Samples/UI/sandbox/i18n/sandbox.strings.xml";
+	public const String cSandboxDir = "Samples/UI/sandbox/";
+	public const String cMenuDir = "Samples/UI/showcase/";
 	public const String cPageCommand = "page.";
 
 	public const float cHeaderHeight = 60.0f;

@@ -11,9 +11,9 @@ namespace Sedulous.Fonts.Pipeline.Tests;
 /// one would only have whatever it was built with.
 static class FontTestFile
 {
-	public const String cRoboto = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
+	public const String cRoboto = "Data/Engine/Fonts/roboto/Roboto-Regular.ttf";
 	/// Has the Arabic Roboto lacks.
-	public const String cDejaVuMono = "Data/Assets/fonts/dejavu/DejaVuSansMono.ttf";
+	public const String cDejaVuMono = "Data/Samples/Fonts/dejavu/DejaVuSansMono.ttf";
 
 	/// Walks up from the working directory looking for the asset.
 	///

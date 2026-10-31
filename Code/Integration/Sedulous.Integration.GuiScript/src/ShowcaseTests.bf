@@ -21,7 +21,7 @@ class ShowcaseFiles : IResourceProvider
 	public override SVGDocument LoadSvg(StringView path) => null;
 }
 
-/// The GUI's game menu as the sandbox hosts it: its frame (Data/Assets/ui/showcase/menu.xml)
+/// The GUI's game menu as the sandbox hosts it: its frame (Data/Samples/UI/showcase/menu.xml)
 /// filling a 960 x 820 root, its sheet over it, the menu's one action given to its prompts, and
 /// its script running, which pushes its screens' documents from the data folder.
 class Showcase
@@ -78,7 +78,7 @@ class Showcase
 		Prompts.Install(Root.Context);
 
 		let markup = scope String();
-		Test.Assert(ReadData("Assets/ui/showcase/menu.xml", markup), "the frame reads");
+		Test.Assert(ReadData("Samples/UI/showcase/menu.xml", markup), "the frame reads");
 		let loader = scope MarkupLoader(Root.ElementSet, Files);
 		loader.SetDataModel(Root.Context.Data);
 		MenuFrame = loader.LoadFromString(markup);
@@ -89,7 +89,7 @@ class Showcase
 		for (int i = 0; i < MenuFrame.ChildCount; i++)
 			MenuFrame.GetChildAt(i).Size = Root.Size;
 		let css = scope String();
-		Test.Assert(ReadData("Assets/ui/showcase/menu.css", css), "the sheet reads");
+		Test.Assert(ReadData("Samples/UI/showcase/menu.css", css), "the sheet reads");
 		let sheet = scope StyleSheet();
 		CSSParser.Parse(css, sheet);
 		Styles.SetSubtreeSheet(MenuFrame, sheet);
@@ -102,7 +102,7 @@ class Showcase
 		Vm.Bind(Surface);
 		Vm.SetService(Gui);
 		let source = scope String();
-		Test.Assert(ReadData("Assets/ui/showcase/menu.as", source), "the script reads");
+		Test.Assert(ReadData("Samples/UI/showcase/menu.as", source), "the script reads");
 		let ok = Vm.Compile("menu", "menu.as", source);
 		Dump();
 		Test.Assert(ok && Vm.Problems.IsEmpty, "compiled, with nothing to say");
@@ -208,7 +208,7 @@ class Showcase
 }
 
 /// The GUI's game menu (the sandbox's showcase, K7 of Raptor's gui-lab-evolution-3.md) played end
-/// to end from its real files, Raptor's ShowcaseScriptTests: Data/Assets/ui/showcase's frame,
+/// to end from its real files, Raptor's ShowcaseScriptTests: Data/Samples/UI/showcase's frame,
 /// sheet, screen documents and AngelScript, on the gamekit's stack. A player's keys and pad drive
 /// it: pages and Back, the quit question, loading into the game, the HUD's prompt following the
 /// device, the score counting up in whole numbers, pause from Escape and Start stopping the game,

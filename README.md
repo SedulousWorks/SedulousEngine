@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="Data/Assets/branding/sedulous-logo.svg">
-    <img alt="SedulousEngine" src="Data/Assets/branding/sedulous-logo-light.svg" height="72">
+    <source media="(prefers-color-scheme: dark)" srcset="Data/Branding/sedulous-logo.svg">
+    <img alt="SedulousEngine" src="Data/Branding/sedulous-logo-light.svg" height="72">
   </picture>
 </h1>
 
@@ -220,4 +220,4 @@ Sedulous draws inspiration from [ezEngine](https://github.com/ezEngine/ezEngine)
 ## License
 
 MIT. See [LICENSE](LICENSE). The SedulousEngine name and logo are not: they stay the project's
-own, under the terms in [Data/Assets/branding/LICENSE.txt](Data/Assets/branding/LICENSE.txt).
+own, under the terms in [Data/Branding/LICENSE.txt](Data/Branding/LICENSE.txt).

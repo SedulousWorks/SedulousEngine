@@ -34,7 +34,7 @@ class AnimStressTestApp : DefaultApplication
 	private const float cFloorY = -7.0f;
 	private const float cFloorBaseSize = 120.0f;
 	private const String cOutputDir = "Output/AnimStressTest";
-	private const String cModelFile = "Assets/models/QuaterniusCharacter/glTF/Character.gltf";
+	private const String cModelFile = "Samples/Models/QuaterniusCharacter/glTF/Character.gltf";
 
 	private Scene mScene = null;
 	private EntityHandle mCamera = .Invalid;

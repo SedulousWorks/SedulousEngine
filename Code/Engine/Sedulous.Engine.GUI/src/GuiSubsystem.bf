@@ -834,7 +834,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	// ==================== the built-in font ====================
 
-	private const String cBuiltInFont = "Assets/fonts/roboto/Roboto-Regular.ttf";
+	private const String cBuiltInFont = "Engine/Fonts/roboto/Roboto-Regular.ttf";
 
 	private bool LoadBuiltInFont()
 	{

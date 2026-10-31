@@ -13,7 +13,7 @@ namespace Sedulous.GUI;
 // a missing one leaves its draws to a fallback, as VG's renderer has it). VgShaderLibrary resolves
 // them from an application's data mount through the shared shader host: cooked from
 // Shaders/shaders.dpak in a build that ships, compiled from Shaders/ in development (the same
-// shaders UIHost resolves: the text is in Data/Shaders, not here). A test hands GuiHost a set of its
+// shaders UIHost resolves: the text is in Data/Engine/Shaders, not here). A test hands GuiHost a set of its
 // own instead.
 
 /// The modules are borrowed: whoever made them (a VgShaderLibrary, a test) outlives every host

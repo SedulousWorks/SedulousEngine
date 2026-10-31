@@ -253,7 +253,7 @@ class ShaderAssetCookTests
 		let dataRoot = FindDataRoot(.. scope String());
 		Test.Assert(!dataRoot.IsEmpty);
 		let toon = scope String();
-		Test.Assert(System.IO.File.ReadAllText(DataPath(dataRoot, "Assets/shaders/toon/toon.hlsl", .. scope .()), toon) case .Ok);
+		Test.Assert(System.IO.File.ReadAllText(DataPath(dataRoot, "Samples/Shaders/toon/toon.hlsl", .. scope .()), toon) case .Ok);
 		if (!HaveCompiler()) { Console.WriteLine("SKIP: no DXC runtime"); return; }
 		Fresh();
 		defer Clean();

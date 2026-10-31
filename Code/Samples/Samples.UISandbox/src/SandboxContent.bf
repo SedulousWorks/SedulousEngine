@@ -8,13 +8,13 @@ namespace Samples.UISandbox;
 /// only the paths below are this sandbox's own.
 static class SandboxContent
 {
-	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";
-	public const String cBoldFontFile = "Assets/fonts/roboto/Roboto-Bold.ttf";
+	public const String cFontFile = "Engine/Fonts/roboto/Roboto-Regular.ttf";
+	public const String cBoldFontFile = "Engine/Fonts/roboto/Roboto-Bold.ttf";
 	public const String cTitleFontFile =
-		"Assets/fonts/lilita-one/LilitaOne-Regular.ttf";
+		"Samples/Fonts/lilita-one/LilitaOne-Regular.ttf";
 	public const String cPlayfulFontFile =
-		"Assets/fonts/chewy/Chewy-Regular.ttf";
-	public const String cUiAssetDir = "Assets/ui";
+		"Samples/Fonts/chewy/Chewy-Regular.ttf";
+	public const String cUiAssetDir = "Samples/UI";
 
 	public static bool FindFile(StringView relative, String outPath) =>
 		Samples.Common.SampleContent.FindFile(relative, outPath);

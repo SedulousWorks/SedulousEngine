@@ -48,7 +48,7 @@ class EditorSplash
 	private float mProgress = 0.0f;
 	private List<uint8> mPixels = new .() ~ delete _;
 
-	/// `logoRgba` is the logo at the splash's size (Assets/branding/sedulous-logo-splash.png,
+	/// `logoRgba` is the logo at the splash's size (Branding/sedulous-logo-splash.png,
 	/// tightly packed RGBA), copied; `fontData` a TrueType face for the text, TAKEN. Either may
 	/// be empty: the splash draws without it.
 	public this(IShell shell, IWindow window, Span<uint8> logoRgba, uint32 logoWidth, uint32 logoHeight, List<uint8> fontData, StringView version)
@@ -197,13 +197,13 @@ class EditorSplash
 	/// The SedulousEngine logo (mark and wordmark, for a dark background), relative to the
 	/// data root: what a page's markup shows (`<Image src="...">`, through the editor's
 	/// resources). Its aspect is cEditorLogoAspect.
-	public const String cEditorLogoPath = "Assets/branding/sedulous-logo.svg";
+	public const String cEditorLogoPath = "Branding/sedulous-logo.svg";
 
 	/// The aspect of the logo at cEditorLogoPath (width over height).
 	public const float cEditorLogoAspect = 885.0f / 200.0f;
 
 	/// Opens the splash over a new software window of `shell` (after the main window: the
-	/// shell's first window is its main one), with the logo from <dataRoot>/Assets/branding
+	/// shell's first window is its main one), with the logo from <dataRoot>/Branding
 	/// and the text in the font at `fontPath`, else `embeddedFont` (the face built into the
 	/// editor). Null when the window cannot open: the editor then starts without one.
 	public static EditorSplash Open(IShell shell, StringView dataRoot, StringView fontPath, Span<uint8> embeddedFont, StringView version)
@@ -223,7 +223,7 @@ class EditorSplash
 		ApplyWindowIcon(window, dataRoot);
 
 		let logo = scope Image();
-		let logoPath = PathJoin(dataRoot, "Assets/branding/sedulous-logo-splash.png", .. scope .());
+		let logoPath = PathJoin(dataRoot, "Branding/sedulous-logo-splash.png", .. scope .());
 		let hasLogo = (ImageIO.LoadImage(logoPath, logo) case .Ok) && (logo.Format == .RGBA8);
 		let font = new List<uint8>();
 		if (System.IO.File.ReadAll(scope String(fontPath), font) case .Err)
@@ -235,7 +235,7 @@ class EditorSplash
 	}
 
 	/// The SedulousEngine icon on `window` (its title bar, the taskbar), from
-	/// <dataRoot>/Assets/branding/sedulous-icon-<size>.png: 32 px at the normal scale, the
+	/// <dataRoot>/Branding/sedulous-icon-<size>.png: 32 px at the normal scale, the
 	/// larger sizes for scaled displays. False when none of them loads.
 	public static bool ApplyWindowIcon(IWindow window, StringView dataRoot)
 	{
@@ -245,7 +245,7 @@ class EditorSplash
 		let icon = scope List<WindowIconImage>();
 		for (let size in sizes)
 		{
-			let path = PathJoin(dataRoot, scope $"Assets/branding/sedulous-icon-{size}.png", .. scope .());
+			let path = PathJoin(dataRoot, scope $"Branding/sedulous-icon-{size}.png", .. scope .());
 			let image = new Image();
 			if ((ImageIO.LoadImage(path, image) case .Ok) && (image.Format == .RGBA8) && (image.Width == size))
 			{
