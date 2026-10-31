@@ -14,15 +14,12 @@ using Sedulous.Engine.GUI;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
-using Sedulous.Engine.UI;
 using Sedulous.Fonts.Resource;
 using Sedulous.Input.Resource;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Settings;
-using Sedulous.UI;
-using Sedulous.UI.Resource;
 using Sedulous.Script.Resource;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
@@ -65,9 +62,10 @@ class PlayerApplication : DefaultApplication
 
 	// The boot splash and the asynchronous load behind it.
 	private SceneLoadHandle mBootLoad = .();
-	private View mSplashView = null;
-	/// The GUI's splash, when the project names one, with the reference its push handed over.
+	/// The splash on the GUI's overlay layer (null: none), with a reference of ours.
 	private Sedulous.GUI.Node mGuiSplash = null;
+	/// The engine's own splash's bar (in mGuiSplash); null for an authored one.
+	private Sedulous.GUI.ProgressBar mSplashProgress = null;
 	/// The SedulousEngine logo the default loading screen shows, built into the player so a
 	/// game needs no file of it.
 	private const String cEngineLogo = Compiler.ReadText("../../../Data/Branding/sedulous-logo.svg");
@@ -103,12 +101,11 @@ class PlayerApplication : DefaultApplication
 		SetContentDatabase(mContentDb);
 		base.OnStartup(host);
 
-		// The player owns its window, so the UI drives the platform's text input on it as
-		// game focus moves. An editor leaves this null, its own bridge owning that there.
-		if ((UI != null) && (host.Shell != null))
-			UI.SetTextInputTarget(host.Shell.MainWindow);
+		// The game GUI's text input: the player owns its window, so the GUI drives the platform's
+		// text input on it as a text field's focus moves. An editor leaves this null, its own GUI
+		// owning that there.
 		if ((Gui != null) && (host.Shell != null))
-			Gui.SetTextInputTarget(host.Shell.MainWindow); // the GUI's text fields too
+			Gui.SetTextInputTarget(host.Shell.MainWindow);
 
 		LoadNativeGame(host);
 	}
@@ -312,15 +309,13 @@ class PlayerApplication : DefaultApplication
 	}
 
 	/// Everything the project asked the engine for: the input map, the multisampling, the
-	/// mixer, the per user volumes, and the interface's font and theme.
+	/// mixer, the per user volumes, and the GUI's fonts and sheets.
 	private void ApplyProjectBindings(IApplicationHost host)
 	{
 		BindInputMap();
 		ApplyMsaa(host);
 		BindAudio();
 		BindUserAudioSettings();
-		BindUIFont();
-		BindUITheme();
 		BindGuiFontsAndSheets();
 		// The resolution the game draws at, fitted into whatever window it got.
 		SetRenderResolution(mSettings.RenderWidth, mSettings.RenderHeight, mSettings.RenderFit);
@@ -412,43 +407,9 @@ class PlayerApplication : DefaultApplication
 		}
 	}
 
-	/// The project's font. Unset or unresolved leaves the development fallback, WHICH A
-	/// DISTRIBUTION DOES NOT HAVE: a distributed game needs this bound for any text at all.
-	private void BindUIFont()
-	{
-		if (UI == null)
-			return;
-
-		if ((mSettings.DefaultUiFontId == Guid()) || (Resources == null))
-		{
-			GlobalLog(.Warning,
-				"Player: no default UI font is set in the project, so game UI text will not render in a distribution");
-			return;
-		}
-
-		let font = Resources.Bind<Font>(mSettings.DefaultUiFontId).Get;
-		if (font == null)
-		{
-			GlobalLog(.Warning, "Player: the default UI font did not resolve");
-			return;
-		}
-
-		UI.SetDefaultFont(font);
-		GlobalLog(.Information, "Player: default UI font bound");
-
-		let extras = scope List<Font>();
-		for (let id in mSettings.UiFontIds)
-		{
-			if (let extra = Resources.Bind<Font>(id).Get)
-				extras.Add(extra);
-			else
-				GlobalLog(.Warning, "Player: UI font {} did not resolve", id);
-		}
-		UI.SetExtraFonts(extras);
-	}
-
-	/// The engine GUI's fonts, the UI's (the default and the others, each a family), and the
-	/// project's sheets in order. An unset default leaves the GUI's built in font.
+	/// The engine GUI: the project's fonts (the default and the others, each a family) and its
+	/// sheets, in order. The default is a cooked font; unset or unresolved leaves the GUI's built in
+	/// font, WHICH A DISTRIBUTION DOES NOT HAVE: a distributed game needs it bound for any text.
 	private void BindGuiFontsAndSheets()
 	{
 		if ((Gui == null) || (Resources == null))
@@ -456,32 +417,25 @@ class PlayerApplication : DefaultApplication
 
 		Font defaultFont = null;
 		if (mSettings.DefaultUiFontId != Guid())
+		{
 			defaultFont = Resources.Bind<Font>(mSettings.DefaultUiFontId).Get;
+			if (defaultFont != null)
+				GlobalLog(.Information, "Player: default UI font bound");
+			else
+				GlobalLog(.Warning, "Player: the default UI font did not resolve");
+		}
+		else
+			GlobalLog(.Warning, "Player: no default UI font is set in the project, so game UI text will not render in a distribution");
 		let others = scope List<Font>();
 		for (let id in mSettings.UiFontIds)
 		{
 			if (let font = Resources.Bind<Font>(id).Get)
 				others.Add(font);
+			else
+				GlobalLog(.Warning, "Player: UI font {} did not resolve", id);
 		}
 		Gui.SetFonts(defaultFont, others);
 		Gui.SetStyleSheets(mSettings.GuiStyleSheetIds);
-	}
-
-	/// The project's theme. Unset or unresolved leaves the built in one.
-	private void BindUITheme()
-	{
-		if ((UI == null) || (mSettings.DefaultUiThemeId == Guid()) || (Resources == null))
-			return;
-
-		let theme = Resources.Bind<UITheme>(mSettings.DefaultUiThemeId).Get;
-		if (theme == null)
-		{
-			GlobalLog(.Warning, "Player: the default UI theme did not resolve");
-			return;
-		}
-
-		UI.SetDefaultTheme(theme);
-		GlobalLog(.Information, "Player: default UI theme bound");
 	}
 
 	/// Pushes the splash, then loads the scene BEHIND it, with the update driving both.
@@ -490,7 +444,7 @@ class PlayerApplication : DefaultApplication
 		mBootScenePath.Clear();
 		instance.GetPath(mBootScenePath);
 
-		mSplashView = PushSplash();
+		PushSplash();
 
 		let sceneDb = mSceneDb;
 		mBootLoad = Instance.LoadSceneAsync(instance, Resources, scope (prefabId) =>
@@ -634,7 +588,7 @@ class PlayerApplication : DefaultApplication
 
 	/// The engine GUI's splash, when the project names one (GuiLoadingDocumentId): on the GUI's
 	/// overlay layer, its progress the GUI's data value `bootProgress`. False when there is none
-	/// or it does not resolve, and the UI's splash shows instead.
+	/// or it does not resolve, and the engine's own shows instead.
 	private bool PushGuiSplash()
 	{
 		if ((Gui == null) || (mSettings.GuiLoadingDocumentId == Guid()) || (Resources == null))
@@ -643,7 +597,7 @@ class PlayerApplication : DefaultApplication
 		let document = Resources.Bind<Sedulous.GUI.Resources.GuiDocument>(mSettings.GuiLoadingDocumentId).Get;
 		if (document == null)
 		{
-			GlobalLog(.Warning, "Player: the GUI loading screen did not resolve; the UI's shows");
+			GlobalLog(.Warning, "Player: the GUI loading screen did not resolve; the engine's own shows");
 			return false;
 		}
 		SetBootProgress(0.0f);
@@ -656,30 +610,20 @@ class PlayerApplication : DefaultApplication
 		Gui.GuiContext.Data.Set("bootProgress", Variant.Create((double)progress));
 	}
 
-	private View PushSplash()
+	private void PushSplash()
 	{
-		if (PushGuiSplash() || (UI == null))
-			return null;
-
-		UIDocument document = null;
-		if ((mSettings.LoadingDocumentId != Guid()) && (Resources != null))
-			document = Resources.Bind<UIDocument>(mSettings.LoadingDocumentId).Get;
-
-		if (document != null)
-			return UI.PushScreenOverlay(document);
+		if (PushGuiSplash() || (Gui == null))
+			return;
 
 		// None authored: the engine's own, with its logo.
-		let view = DefaultLoadingScreen.Build(cEngineLogo);
-		UI.PushScreenOverlay(view);
-		return view;
+		let screen = GuiLoadingScreen.Build(cEngineLogo);
+		mGuiSplash = screen.Root;
+		mSplashProgress = screen.Progress;
+		Gui.PushOverlay(mGuiSplash);
 	}
 
 	private void PopSplash()
 	{
-		if ((mSplashView != null) && (UI != null))
-			UI.RemoveScreenOverlay(mSplashView);
-
-		mSplashView = null;
 		if (mGuiSplash != null)
 		{
 			if (Gui != null)
@@ -687,17 +631,16 @@ class PlayerApplication : DefaultApplication
 			mGuiSplash.ReleaseRef();
 			mGuiSplash = null;
 		}
+		mSplashProgress = null;
 	}
 
 	private void DriveSplash(float progress)
 	{
-		if ((mGuiSplash != null) && (Gui != null))
-			SetBootProgress(progress);
-		let root = mSplashView as ViewGroup;
-		if (root == null)
+		if ((mGuiSplash == null) || (Gui == null))
 			return;
-
-		if (let bar = root.FindByName<ProgressBar>("progress"))
-			bar.Value.Value = progress;
+		if (mSplashProgress != null)
+			mSplashProgress.Value = progress; // the engine's own
+		else
+			SetBootProgress(progress);
 	}
 }

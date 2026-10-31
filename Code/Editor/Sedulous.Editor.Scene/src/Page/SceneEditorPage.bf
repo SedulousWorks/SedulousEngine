@@ -13,7 +13,6 @@ using Sedulous.Scene.Resource;
 using Sedulous.Engine.Scene;
 using Sedulous.Render;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.UI;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -209,7 +208,6 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		{
 			mScenes = host.Context.GetSubsystem<SceneSubsystem>();
 			view.Render = host.Context.GetSubsystem<RenderSubsystem>();
-			view.GameUI = host.Context.GetSubsystem<UISubsystem>();
 			view.GameGui = host.Context.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>();
 		}
 		mViewport = new SceneViewport(view);

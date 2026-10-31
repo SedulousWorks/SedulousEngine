@@ -601,10 +601,8 @@ class EditorApplication : IApplication
 			mEmbeddedApp.Input.UnboundScenePolicy = .ScreenTierOnly;
 		// Each Game tab runs its own game inside this one application, with screens of its own
 		// (menus, HUD, pause), so tabs never draw or drive each other's screens.
-		if (mEmbeddedApp.UI != null)
-			mEmbeddedApp.UI.RunScreens = true;
 		if (mEmbeddedApp.Gui != null)
-			mEmbeddedApp.Gui.RunScreens = true; // and the engine GUI's
+			mEmbeddedApp.Gui.RunScreens = true;
 		mRuntimeContext.Startup();
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 	}

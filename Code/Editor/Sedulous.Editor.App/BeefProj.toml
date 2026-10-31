@@ -31,8 +31,6 @@ corlib = "*"
 "Sedulous.Fonts.Resource" = "*"
 "Sedulous.Fonts.DistanceField" = "*"
 "Sedulous.Fonts.DistanceField.Baker" = "*"
-"Sedulous.UI.Resource" = "*"
-"Sedulous.Engine.UI" = "*"
 "Sedulous.Engine.GUI" = "*"
 "Sedulous.GUI" = "*"
 # The input tools: GUI.Testing's Finder and AimAt name and aim at a target; the inspector names a node.

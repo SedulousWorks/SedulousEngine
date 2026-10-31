@@ -128,8 +128,6 @@ extension GameEditorPage
 		if ((Audio != null) && (mGameInstance != null))
 			Audio.EndRun(mGameInstance);
 		// Its screens go with it; another tab's run keeps its own.
-		if ((mApp != null) && (mApp.UI != null) && (mGameInstance != null))
-			mApp.UI.EndRunScreens(mGameInstance);
 		if ((mApp != null) && (mApp.Gui != null) && (mGameInstance != null))
 			mApp.Gui.EndRunScreens(mGameInstance);
 		{

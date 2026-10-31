@@ -296,9 +296,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			if (IsScripted || (focused && !anotherPlaytest))
 				mInput.SetSourceProvider(ActiveSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
 		}
-		// The window's text input follows the GAME UI's focus: the viewport (the GUI's focused node
-		// while playing) says the game's context wants text, and the GUI's bridge starts it.
-		mViewport.SetHostedTextInputWanted((mApp != null) && (mApp.UI != null) && mApp.UI.UiContext.WantsTextInput());
+		// The window's text input follows the game GUI's focus: the viewport (the editor GUI's focused
+		// node while playing) says the game's GUI wants text, and the editor GUI's bridge starts it.
+		mViewport.SetHostedTextInputWanted((mApp != null) && (mApp.Gui != null) && mApp.Gui.WantsTextInput);
 		DrainDebuggerState();
 		SyncRunAudio();
 	}
@@ -317,10 +317,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if ((w == 0) || (h == 0) || !mViewport.IsTreeVisible)
 			return;
 
-		if ((mApp != null) && (mApp.UI != null))
-			mApp.UI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
 		if ((mApp != null) && (mApp.Gui != null))
-			mApp.Gui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // and the engine GUI's
+			mApp.Gui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex);
 
 		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
 		mCaptureX = 0;
@@ -363,14 +361,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if ((w == 0) || (h == 0))
 			return;
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, mViewport.ColorState, .RenderTarget);
-		// The UI is shared between the Game tabs; each draws its own run's screen tier, laid out
+		// The GUI is shared between the Game tabs; each draws its own run's screen tier, laid out
 		// at its own render resolution (the shared tier's global overlays draw above it).
-		if ((mApp != null) && (mApp.UI != null))
-		{
-			mApp.UI.SetScreenResolution(mGameInstance, mRenderWidth, mRenderHeight, mRenderFit);
-			mApp.UI.SetScreenOrientation(mGameInstance, mOrientation);
-			mApp.UI.SetRenderRun(mGameInstance);
-		}
 		if ((mApp != null) && (mApp.Gui != null))
 		{
 			mApp.Gui.SetScreenResolution(mGameInstance, mRenderWidth, mRenderHeight, mRenderFit);
@@ -380,8 +372,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		// Through the viewport's UNORM view: the screen UI blends encoded values, as in the player.
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorView, mViewport.ColorFormat, w, h, frame.FrameIndex,
 			mViewport.ColorAlternateView);
-		if ((mApp != null) && (mApp.UI != null))
-			mApp.UI.SetRenderRun(null);
 		if ((mApp != null) && (mApp.Gui != null))
 			mApp.Gui.SetRenderRun(null);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);

@@ -26,10 +26,6 @@ using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Vegetation;
-using Sedulous.Engine.UI;
-using Sedulous.Engine.UI.Script;
-using Sedulous.UI;
-using Sedulous.UI.Resource;
 using Sedulous.Graphics;
 using Sedulous.Image;
 using Sedulous.Net.Manager;
@@ -73,7 +69,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	private PhysicsSubsystem mPhysics = null;
 	/// OWNED, like the other REGISTERED subsystems: the context drives one it did not create
 	/// and never frees it.
-	private UISubsystem mUI = null ~ delete _;
 	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
 	private GuiSubsystem mGui = null ~ delete _;
 
@@ -84,9 +79,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Each instance's own Audio facade, its run's (installed on its run host). OWNED, and
 	/// declared before the instances so it is freed after them.
 	private Dictionary<GameInstance, AudioFacade> mRunAudio = new .() ~ DeleteDictionaryAndValues!(_);
-	/// Each instance's own Ui service, its run's screens (installed on its run host). OWNED, and
-	/// declared before the instances so it is freed after them.
-	private Dictionary<GameInstance, UiScript> mRunUi = new .() ~ DeleteDictionaryAndValues!(_);
 	private GameInstance mInstance = new .() ~ delete _;
 	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
 
@@ -112,9 +104,6 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
 	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
-	/// OWNED: `Ui` to a script, over the screen tier; a document instantiates through the
-	/// resource manager and the UI subsystem.
-	private UiScript mUiScript = new .() ~ delete _;
 	/// `Input` where no run installs its own: scene scripts outside a run (the editor's
 	/// Simulate) read every action released and at rest rather than faulting on a missing
 	/// service. A run's own InputFacade replaces it.
@@ -163,7 +152,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	public InputSubsystem Input => mInput;
 	public PhysicsSubsystem Physics => mPhysics;
 	public AudioSubsystem Audio => mAudio;
-	public UISubsystem UI => mUI;
 	/// The engine's GUI: its screen tier, its components, `Gui` in scripts.
 	public GuiSubsystem Gui => mGui;
 	public NetworkManager Net => mInstance.NetEndpoint;
@@ -240,8 +228,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	public void SetResourceManager(ResourceManager borrowed)
 	{
 		mBorrowedResources = borrowed;
-		if (mUI != null)
-			mUI.SetResourceManager(Resources); // the game UI's images bind through it
 		if (mGui != null)
 			mGui.SetResourceManager(Resources); // the GUI's documents, sheets and images by guid
 		PointSpawnersAtContent();
@@ -278,8 +264,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		mBorrowedResources = borrowed;
 		if (borrowed != null)
 			RegisterStandardFactories(borrowed, host);
-		if (mUI != null)
-			mUI.SetResourceManager(Resources); // the game UI's images bind through it
 		if (mGui != null)
 			mGui.SetResourceManager(Resources);
 		PointSpawnersAtContent();
@@ -362,7 +346,6 @@ class DefaultApplication : IApplication, ISceneObserver
 				// The service facades a script reaches by handle: the run's audio over the
 				// app's resources, the screen tier. Input is per instance, installed below.
 				runtime.SetService(mAudioFacade);
-				runtime.SetService(mUiScript);
 				if (mGui != null)
 					mGui.ExposeToScript(runtime); // `Gui`: the shared screen tier
 				runtime.SetService(mIdleInput);
@@ -397,23 +380,17 @@ class DefaultApplication : IApplication, ISceneObserver
 		mAudioFacade = new AudioFacade(mAudio, new () => Resources);
 		// The primary's scripting was wired before the subsystem existed.
 		InstallRunAudio(mInstance);
-		InstallRunUi(mInstance);
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
-		// Every instance's action runtime, so the UI's consumption and touch guide reach the game.
+		// Every instance's action runtime, so the GUI's consumption and touch guide reach the game.
 		mInput.SetActionRuntimeProvider(new (visit) => { ForEachInstance(scope [&] (instance) => { visit(instance.InputRuntime); }); });
 		// The primary instance reads the shell's devices by default, which is the player's
 		// path; an editor tab overrides this to its own gated source.
 		mInstance.SetInputSource(mInput.ShellSource);
 
-		mUI = new UISubsystem(mDataMount);
-		host.Context.RegisterSubsystem<UISubsystem>(mUI);
-		// The screen tier to scripts: Ui.Push(document) instantiates the cooked document
-		// through the resource manager, on the subsystem's context.
-		mUiScript.Attach(mUI.Screens, new (documentId) => InstantiateDocument(documentId));
-		// The engine's GUI beside it while both live: every game has it (its screen tier, its
-		// components, `Gui` in its scripts).
+		// The engine's GUI: every game has it (its screen tier, its components, `Gui` in its
+		// scripts).
 		mGui = new GuiSubsystem(mDataMount);
 		host.Context.RegisterSubsystem<GuiSubsystem>(mGui);
 		// Its prompts name the game's bindings: the primary instance's runtime, which the game runs on.
@@ -496,33 +473,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			});
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
 		InstallRunAudio(instance);
-		InstallRunUi(instance);
 		InstallRunGui(instance);
-	}
-
-	/// A cooked UI document, instantiated through the resource manager on the UI subsystem's
-	/// context, or null: what Ui.Push makes a screen of.
-	private View InstantiateDocument(Guid documentId)
-	{
-		if ((Resources == null) || (mUI == null))
-			return null;
-		let document = Resources.Bind<UIDocument>(documentId).Get;
-		return (document != null) ? mUI.InstantiateScreenOverlay(document) : null;
-	}
-
-	/// The instance's own Ui service: its run's screens, as the UI subsystem keeps them (each
-	/// run its own with run screens on, the editor's Game tabs; the shared ones otherwise). The
-	/// stack is asked at each call, since the subsystem and the run screens setting may come
-	/// after this. It overrides the shared service, as the instance's Audio does.
-	private void InstallRunUi(GameInstance instance)
-	{
-		if (mRunUi.ContainsKey(instance))
-			return;
-		let ui = new UiScript();
-		ui.Attach(new () => (mUI != null) ? mUI.ScreensFor(instance) : null,
-			new (documentId) => InstantiateDocument(documentId));
-		mRunUi[instance] = ui;
-		instance.RunHost.SetService(ui);
 	}
 
 	/// The instance's own Gui: its run's screen tier, as the GUI keeps them (each run its own with
@@ -580,8 +531,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		// Its sound and its screens end with it.
 		if (mAudio != null)
 			mAudio.EndRun(instance);
-		if (mUI != null)
-			mUI.EndRunScreens(instance);
 		if (mGui != null)
 			mGui.EndRunScreens(instance);
 
@@ -590,12 +539,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		AudioFacade runAudio = null;
 		if (mRunAudio.GetAndRemove(instance) case .Ok(let entry))
 			runAudio = entry.value;
-		UiScript runUi = null;
-		if (mRunUi.GetAndRemove(instance) case .Ok(let uiEntry))
-			runUi = uiEntry.value;
 		delete instance;
 		delete runAudio;
-		delete runUi;
 		// Its Gui after every runtime it made, which borrow it.
 		if (mGui != null)
 			mGui.EndRunScripts(instance);
@@ -633,8 +578,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		RegisterProductTypes();
 
 		let graphics = host.Graphics;
-		if ((graphics != null) && (graphics.Raw != null) && (mUI != null))
-			mUI.EnsureRenderReady(graphics.Raw, (int32)graphics.FramesInFlight);
 		if ((graphics != null) && (graphics.Raw != null) && (mGui != null))
 			mGui.EnsureRenderReady(graphics.Raw, (int32)graphics.FramesInFlight);
 
@@ -648,8 +591,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		PointSpawnersAtContent();
 
 		let resources = Resources;
-		if (mUI != null)
-			mUI.SetResourceManager(resources); // the game UI's images bind through it
 		if ((mGui != null) && mProfilerOverlayAtStart)
 			ProfilerOverlay.Show(mGui);
 		if (mGui != null)
@@ -845,8 +786,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		mRenderWidth = fixedSize ? width : 0;
 		mRenderHeight = fixedSize ? height : 0;
 		mRenderFit = fit;
-		if (mUI != null)
-			mUI.SetScreenResolution(mRenderWidth, mRenderHeight, fit);
 		if (mGui != null)
 			mGui.SetScreenResolution(mRenderWidth, mRenderHeight, fit); // the GUI's screen tier too
 		UpdateFittedInput();
@@ -859,8 +798,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	public void SetOrientation(ScreenOrientation orientation)
 	{
 		mOrientation = orientation;
-		if (mUI != null)
-			mUI.SetScreenOrientation(orientation); // the screen tier turns with the game's image
 		if (mGui != null)
 			mGui.SetScreenOrientation(orientation);
 		UpdateFittedInput();
@@ -956,8 +893,6 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		// The texture canvases draw BEFORE the scene, so a material sampling one sees this
 		// frame's interface.
-		if (mUI != null)
-			mUI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
 		if (mGui != null)
 			mGui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // its canvases' and panels' textures
 
@@ -1000,8 +935,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		mContactBridge.Uninstall();
 		// Every game script's exit() before its scenes go.
 		ForEachInstance(scope (instance) => instance.StopScript());
-		// The script handles' references before the UI tier's trees go.
-		UiHandles.Clear();
 		DebugFacade.Renderer = null;
 
 		// Each manager's scenes go before it is unregistered, so the aware subsystems hear of them.
@@ -1024,8 +957,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		// The products release while the device is alive, then the factories (the texture
 		// factory holds the device). A borrowed manager outlives this application, so it
 		// forgets them first.
-		if (mUI != null)
-			mUI.SetResourceManager(null);
 		if (mGui != null)
 			mGui.SetResourceManager(null);
 		DeleteAndNullify!(mOwnedResources);

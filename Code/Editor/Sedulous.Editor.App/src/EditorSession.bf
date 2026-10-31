@@ -156,7 +156,7 @@ class EditorSession
 		if (app != null)
 			app.SetContentDatabase(project.SourceDb); // scripted scene loads read the sources
 		ApplyGameUiDefaults();
-		if ((app != null) && (app.UI != null) && !project.Settings.DefaultUiFontId.IsSet && HasFontAssets(project.SourceDb.RootGroup))
+		if ((app != null) && (app.Gui != null) && !project.Settings.DefaultUiFontId.IsSet && HasFontAssets(project.SourceDb.RootGroup))
 		{
 			// A project with fonts and no default renders no game-UI text: the fix is named.
 			GlobalLog(.Warning, "UI: game UI has no default font, set Project Settings > Default UI font (the project has fonts, but none is the default, so game-UI text will not render)");
@@ -227,8 +227,6 @@ class EditorSession
 			// between projects.
 			app.AttachResourceManager(null, mServices.EmbeddedHost);
 			app.SetContentDatabase(null); // the sources go with the project
-			if (app.UI != null)
-				app.UI.SetDefaultTheme(null);
 		}
 		context.Resources = null;
 		DeleteAndNullify!(mResources);
@@ -276,8 +274,8 @@ class EditorSession
 			ProjectEditorSettings.Save(mStore, mProject.EditorStateRoot(.. scope .())).IgnoreError();
 	}
 
-	/// Binds the project's default UI theme and fonts (the default and its others) onto the
-	/// embedded app's game UI, and the fonts and the project's sheets onto its engine GUI.
+	/// Binds the project's fonts (the default and its others) and its sheets onto the embedded
+	/// app's engine GUI.
 	/// Idempotent: at project open, after every finished cook (a fresh checkout's first cook
 	/// creates the products the open-time bind missed), and on settings save.
 	public void ApplyGameUiDefaults()
@@ -289,23 +287,12 @@ class EditorSession
 		// made them, and a bind of a product that is not there warns of a broken reference.
 		let cooked = mProject.CookedDb;
 		bool Ready(Guid id) => id.IsSet && (cooked.GetInstance(id) != null);
-		let themeId = mProject.Settings.DefaultUiThemeId;
-		if (Ready(themeId) && (app.UI != null))
-		{
-			let theme = mResources.Bind<Sedulous.UI.Resource.UITheme>(themeId).Get;
-			if (theme != null)
-				app.UI.SetDefaultTheme(theme);
-		}
 		let fontId = mProject.Settings.DefaultUiFontId;
 		Font defaultFont = null;
 		if (Ready(fontId))
-		{
 			defaultFont = mResources.Bind<Font>(fontId).Get;
-			if ((defaultFont != null) && (app.UI != null))
-				app.UI.SetDefaultFont(defaultFont);
-		}
 		// The other UI fonts, each a family beside the default; always set, so one taken off the
-		// list leaves the game UI too.
+		// list leaves the game GUI too.
 		let extras = scope List<Font>();
 		for (let id in mProject.Settings.UiFontIds)
 		{
@@ -314,9 +301,7 @@ class EditorSession
 			if (let font = mResources.Bind<Font>(id).Get)
 				extras.Add(font);
 		}
-		if (app.UI != null)
-			app.UI.SetExtraFonts(extras);
-		// The engine GUI shares the fonts, and takes the project's sheets in order (a sheet not
+		// The engine GUI takes the fonts, and the project's sheets in order (a sheet not
 		// cooked yet resolves once it is: the cook finished callback lands here again).
 		if (app.Gui != null)
 		{

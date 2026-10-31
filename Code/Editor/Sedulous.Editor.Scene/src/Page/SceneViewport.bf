@@ -9,7 +9,6 @@ using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Render;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.UI;
 using Sedulous.GUI;
 using Sedulous.Editor.Camera;
 using Sedulous.Editor.ViewportTools;
@@ -30,7 +29,6 @@ namespace Sedulous.Editor.Scene;
 struct SceneViewportServices
 {
 	public RenderSubsystem Render = null;
-	public UISubsystem GameUI = null;
 	public Sedulous.Engine.GUI.GuiSubsystem GameGui = null;
 }
 
@@ -282,8 +280,6 @@ class SceneViewport
 		// RenderTexture canvases stay live in editing viewports too: an in world screen must not
 		// show stale content while its scene is edited (Simulate renders through here as well).
 		// The subsystems draw at most once a frame, so several pages share one draw of each.
-		if (mServices.GameUI != null)
-			mServices.GameUI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
 		if (mServices.GameGui != null)
 			mServices.GameGui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex);
 
