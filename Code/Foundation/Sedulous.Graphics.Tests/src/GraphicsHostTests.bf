@@ -5,6 +5,7 @@ using Sedulous.Graphics.Null;
 using Sedulous.RHI;
 using Sedulous.Shell;
 using Sedulous.Shell.Null;
+using Sedulous.Profiler;
 
 namespace Sedulous.Graphics.Tests;
 
@@ -257,5 +258,46 @@ class GraphicsHostTests
 		String[] none = scope .("editor", "--project", "Foo");
 		Test.Assert(BackendSelection.FromArguments(none, .Null) == .Null);
 		Test.Assert(BackendSelection.FromArguments(null, .WebGPU) == .WebGPU);
+	}
+
+	/// A profiled frame start times the slot's fence and the image apart.
+	[Test]
+	public static void AProfiledFrameStartTimesTheSlotsFenceAndTheImageApart()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let device));
+		defer delete device;
+		Test.Assert(device.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let window));
+		defer delete window;
+		let profiler = scope Sedulous.Profiler.Profiler();
+		profiler.Arm();
+		InitGlobalProfiler(profiler);
+		defer ShutdownGlobalProfiler();
+		uint32 fences = 0;
+		uint32 images = 0;
+		// Three frames: the third reuses slot 0, so it waits that slot's fence.
+		for (int n < 3)
+		{
+			profiler.BeginFrame();
+			var frame = window.BeginFrame();
+			Test.Assert(frame.Valid);
+			window.EndFrame(ref frame);
+			device.AdvanceFrame();
+			profiler.EndFrame();
+			let record = profiler.LatestFrame;
+			Test.Assert(record != null);
+			for (let thread in record.Threads)
+			{
+				for (let scopeEvent in thread.Scopes)
+				{
+					let name = profiler.NameOf(scopeEvent.Name);
+					fences += (name == "Render.Acquire.Fence") ? 1 : 0;
+					images += (name == "Render.Acquire.Image") ? 1 : 0;
+				}
+			}
+		}
+		profiler.Disarm();
+		Test.Assert(images == 3, "every frame takes an image");
+		Test.Assert((fences >= 1) && (fences <= 3), "a slot used before waits its fence");
 	}
 }

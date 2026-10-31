@@ -206,6 +206,12 @@ class VulkanSwapChain : ISwapChain
 		mBufferCount = Math.Max(wantedCount, capabilities.minImageCount);
 		if (capabilities.maxImageCount > 0)
 			mBufferCount = Math.Min(mBufferCount, capabilities.maxImageCount);
+		// How the display paces frames: under FIFO the CPU waits in the acquire for an image the
+		// compositor gives back, and how many images there are bounds how far it can run ahead, so a
+		// long acquire in a capture is read against these.
+		Console.WriteLine("[RHI] swapchain present mode: requested {}, chosen {}; {} images (the surface allows {} to {})",
+			PresentModeName(VulkanConversions.ToVkPresentMode(mPresentMode)), PresentModeName(presentMode), mBufferCount,
+			capabilities.minImageCount, capabilities.maxImageCount);
 
 		let surfaceFormat = ChooseSurfaceFormat(requestedFormat);
 		mFormat = FromVkFormat(surfaceFormat.format);
@@ -310,6 +316,18 @@ class VulkanSwapChain : ISwapChain
 	/// Immediate and Mailbox both mean "do not block on the refresh", so an unavailable one
 	/// falls to the other before settling for FIFO, which Wayland needs since it commonly
 	/// offers Mailbox but not Immediate. FIFO is the only mode the spec guarantees.
+	private static StringView PresentModeName(VkPresentModeKHR mode)
+	{
+		switch (mode)
+		{
+		case .VK_PRESENT_MODE_FIFO_KHR: return "FIFO";
+		case .VK_PRESENT_MODE_FIFO_RELAXED_KHR: return "FIFO_RELAXED";
+		case .VK_PRESENT_MODE_MAILBOX_KHR: return "MAILBOX";
+		case .VK_PRESENT_MODE_IMMEDIATE_KHR: return "IMMEDIATE";
+		default: return "(other)";
+		}
+	}
+
 	private VkPresentModeKHR ChoosePresentMode(PresentMode requested)
 	{
 		uint32 count = 0;

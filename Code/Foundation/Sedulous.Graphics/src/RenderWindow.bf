@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.RHI;
 using Sedulous.Shell;
+using Sedulous.Profiler; // ProfileScope: a frame's two waits apart
 
 namespace Sedulous.Graphics;
 
@@ -134,13 +135,22 @@ class RenderWindow
 
 		let frameIndex = mDevice.CurrentFrame;
 
-		// Guard reuse of this slot: its pool and its back buffer are still the GPU's until
-		// the fence this window signalled at this slot has been reached.
-		if (mFenceValues[(int)frameIndex] > 0)
-			mFences[(int)frameIndex].Wait(mFenceValues[(int)frameIndex]);
+		// Timed apart, as their causes differ: the fence is the GPU still on the frame that last
+		// used this slot (ours to fix); the image is the compositor not yet giving one back (vsync,
+		// or the display stalled).
+		using (ProfileScope("Render.Acquire.Fence"))
+		{
+			// Guard reuse of this slot: its pool and its back buffer are still the GPU's until
+			// the fence this window signalled at this slot has been reached.
+			if (mFenceValues[(int)frameIndex] > 0)
+				mFences[(int)frameIndex].Wait(mFenceValues[(int)frameIndex]);
+		}
 
-		if (mSwapChain.AcquireNextImage() case .Err)
-			return .();
+		using (ProfileScope("Render.Acquire.Image"))
+		{
+			if (mSwapChain.AcquireNextImage() case .Err)
+				return .();
+		}
 
 		mPools[(int)frameIndex].Reset();
 		if (!(mPools[(int)frameIndex].CreateEncoder() case .Ok(let encoder)))
