@@ -6,8 +6,10 @@ Guid kCoinSparkle = Guid::FromString("e93dd0c2-fe3e-7f43-a636-f9eae8fe7b7b");
 // Audio/powerUp7 (Kenney Digital Audio, CC0): the chime of a coin taken.
 Guid kCoinSound = Guid::FromString("cd3e0197-ff26-a740-8ad2-a7774508f0f8");
 
-// The hero looks at the nearest coin within its reach (an AimIkComponent on the Player). Coins
-// share these, one script module: the first coin to update in a frame starts it over.
+// The hero looks at the nearest coin within its reach (an AimIkComponent on the Player) that it can
+// turn its head to: one in front of it, not too steep above or below. A coin behind it would twist
+// the head over backwards, so it does not count. Coins share these, one script module: the first
+// coin to update in a frame starts it over.
 double g_lookFrame = -1.0;
 float g_lookNearest = 0.0f;
 
@@ -21,6 +23,8 @@ class Coin
 	[0.2, "Bob height (m)"] float bobHeight;
 	[1, "Points"] int value;
 	[7.0, "The hero looks at the nearest coin within this (m)"] float lookRadius;
+	[55.0, "... and within this turn from where the hero faces (degrees)"] float lookTurn;
+	[35.0, "... and within this angle above or below its eyes (degrees)"] float lookPitch;
 
 	private Entity m_player;
 	private Float3 m_home = Float3(0.0f, 0.0f, 0.0f);
@@ -64,12 +68,38 @@ class Coin
 			g_lookNearest = lookRadius;
 			aim.Active = false;
 		}
-		if (distance < g_lookNearest)
+		if (distance < g_lookNearest && inView())
 		{
 			g_lookNearest = distance;
 			scene.Animation.SetIkTarget(m_player, self.GetWorldPosition());
 			aim.Active = true;
 		}
+	}
+
+	// Whether the hero can turn its head to this coin: the turn from its facing, and the angle
+	// above or below, each within its limit. The hero's centre stands in for its eyes (the head
+	// is about 0.1 m below it).
+	private bool inView()
+	{
+		Float3 to = self.GetWorldPosition() - m_player.GetWorldPosition();
+		float flat = Sqrt(to.X * to.X + to.Z * to.Z);
+		if (flat < 0.01f)
+		{
+			return false; // straight above or below
+		}
+		float degrees = 3.14159265f / 180.0f;
+		if (Abs(Atan2(to.Y, flat)) > lookPitch * degrees)
+		{
+			return false;
+		}
+		Float3 facing = RotateVector(m_player.GetWorldRotation(), Float3(0.0f, 0.0f, 1.0f));
+		float facingFlat = Sqrt(facing.X * facing.X + facing.Z * facing.Z);
+		if (facingFlat < 0.01f)
+		{
+			return false;
+		}
+		float along = (facing.X * to.X + facing.Z * to.Z) / (facingFlat * flat);
+		return along >= Cos(lookTurn * degrees);
 	}
 }
 // recook 1790769637

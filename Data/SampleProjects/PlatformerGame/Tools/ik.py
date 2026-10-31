@@ -7,7 +7,9 @@ gets two components, which drive the model's animator below it:
   off the root (detached), met by the shins; the pelvis is Body (it carries the legs).
   PlayerController turns it off in the air.
 - Aim IK: the head (Neck 0.4, Head 1.0) looks at the nearest coin within reach; Coin.as picks the
-  coin and sets the target, and turns it off when none is near.
+  coin and sets the target, and turns it off when none is near. A coin counts only in front of the
+  hero (within 55 degrees of its facing, 35 above or below), so MaxAngle is a guard: past it the
+  solver swings the head the short way round, over the top for a coin behind.
 
 `ik.py` writes every level; `ik.py Level2` one. A rerun rewrites the same values. Raptor's ik.py,
 with this engine's component ids and field names (as entity_inspect shows them).
@@ -29,7 +31,7 @@ FEET = {
 }
 LOOK = {
     "Bones": [{"Bone": "Neck", "Share": 0.4}, {"Bone": "Head", "Share": 1.0}],
-    "MaxAngle": 70.0,
+    "MaxAngle": 60.0,
     "FadeSeconds": 0.35,
     "Active": False,  # until a coin is near
 }

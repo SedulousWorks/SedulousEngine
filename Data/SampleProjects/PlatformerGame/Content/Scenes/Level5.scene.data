@@ -651,7 +651,7 @@
 					<f32 name="y">1</f32>
 					<f32 name="z">0</f32>
 				</object>
-				<f32 name="maxAngle">70</f32>
+				<f32 name="maxAngle">60</f32>
 				<f32 name="weight">1</f32>
 				<f32 name="fadeSeconds">0.35</f32>
 				<bool name="active">false</bool>
