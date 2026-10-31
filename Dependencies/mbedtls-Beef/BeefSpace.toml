@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {mbedtls-Beef = {Path = "."}, mbedtls-Beef-Test = {Path = "mbedtls-Beef-Test"}}
+
+[Workspace]
+StartupProject = "mbedtls-Beef-Test"
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Linux64]
+ConfigSelections = {corlib = {Config = "Debug"}}

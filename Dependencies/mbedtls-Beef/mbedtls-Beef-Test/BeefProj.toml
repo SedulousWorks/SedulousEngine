@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", mbedtls-Beef = "*"}
+
+[Project]
+Name = "mbedtls-Beef-Test"
+StartupObject = "mbedtls_Beef_Test.Program"
