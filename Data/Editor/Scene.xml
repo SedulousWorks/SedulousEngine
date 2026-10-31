@@ -16,6 +16,7 @@
         <ToolButton id="scene-move" name="scene-transform" toggle="true" icon="Editor/Icons/move.svg"/>
         <ToolButton id="scene-rotate" name="scene-transform" toggle="true" icon="Editor/Icons/rotate.svg"/>
         <ToolButton id="scene-scale" name="scene-transform" toggle="true" icon="Editor/Icons/scale.svg"/>
+        <ToolButton id="scene-frame" icon="Editor/Icons/frame-selection.svg"/> <!-- with the manipulators: it acts on the selection -->
         <Separator/>
         <ToolButton id="scene-space" toggle="true" icon="Editor/Icons/world.svg"/>
         <ToolMenuButton id="scene-snap" toggle="true" split="true" icon="Editor/Icons/magnet.svg"/>
@@ -29,7 +30,6 @@
         <Spacer/>
         <!-- The viewport tools, from the tool registry, go here (code adds them before this). -->
         <Separator id="scene-tools-end"/>
-        <ToolButton id="scene-frame" icon="Editor/Icons/frame-selection.svg"/>
         <ToolButton id="scene-animation-panel" toggle="true" icon="Editor/Icons/animation.svg"/>
         <Label id="scene-kind" class="badge page-kind" text="Prefab" tooltip="This page edits a prefab: one root, saved to every instance"/>
     </ToolBar>
