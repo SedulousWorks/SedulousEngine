@@ -992,7 +992,7 @@ class EditorPagesTests
 
 		name.Text = "One Again";
 		Test.Assert(save.HandleActivate());
-		Test.Assert(!window.IsOpen);
+		Test.Assert(PagesBed.FindWindow(bed.Root) == null); // closed and let go: `window` no longer points at one
 		let made = bed.Project.SourceDb.RootGroup.GetInstance("One Again");
 		Test.Assert(made != null);
 		Test.Assert(made.Id != original);
