@@ -67,8 +67,8 @@ static class ModelCook
 
 		CookNodes(model, manifest);
 
-		let manifestInstance = root.CreateInstance(scope $"{namePrefix}.model",
-			"Sedulous.Model.Resource.ModelManifestSource");
+		let manifestName = root.UniqueInstanceName(scope $"{namePrefix}.model", .. scope .());
+		let manifestInstance = root.CreateInstance(manifestName, "Sedulous.Model.Resource.ModelManifestSource");
 		if (manifestInstance == null)
 			return .Err(.Unknown);
 		if (manifestInstance.WriteObject(manifest) case .Err(let writeError))
@@ -89,8 +89,11 @@ static class ModelCook
 		let skeletonAsset = scope SkeletonAsset();
 		AnimConvert.SkeletonFromModel(model, skin, joints, boneToJoint, skeletonAsset.Source);
 
-		let skeletonInstance = root.CreateInstance(scope $"{namePrefix}.skeleton",
-			"Sedulous.Animation.Resource.SkeletonSource");
+		// Every name unique in the group, as the textures' and materials' are: a file can call its
+		// mesh, its texture and its material the same (3ds Max exports often do), and CreateInstance
+		// hands back the instance a name already has.
+		let skeletonName = root.UniqueInstanceName(scope $"{namePrefix}.skeleton", .. scope .());
+		let skeletonInstance = root.CreateInstance(skeletonName, "Sedulous.Animation.Resource.SkeletonSource");
 		if (skeletonInstance != null)
 		{
 			let context = scope AssetBuildContext();
@@ -110,7 +113,7 @@ static class ModelCook
 			let clipAsset = scope AnimationClipAsset();
 			AnimConvert.ClipFromModel(animations[a], boneToJoint, qualified, clipAsset.Source, manifest.SkeletonParentNode);
 
-			let clipInstance = root.CreateInstance(qualified,
+			let clipInstance = root.CreateInstance(root.UniqueInstanceName(qualified, .. scope .()),
 				"Sedulous.Animation.Resource.AnimationClipSource");
 			if (clipInstance == null)
 				continue;
@@ -137,7 +140,7 @@ static class ModelCook
 			let meshName = scope String();
 			ImportedNames.ForAsset(mesh.Name, "mesh", i, meshName);
 
-			let instance = root.CreateInstance(scope $"{namePrefix}.{meshName}",
+			let instance = root.CreateInstance(root.UniqueInstanceName(scope $"{namePrefix}.{meshName}", .. scope .()),
 				skinned ? "Sedulous.Geometry.SkinnedMeshSource" : "Sedulous.Geometry.StaticMeshSource");
 			if (instance == null)
 				return .Err(.Unknown);

@@ -116,6 +116,42 @@ class ModelCookTests
 		Test.Assert(resource.Animations[0].Get.Duration > 0.0f);
 	}
 
+	/// A mesh, a texture and a material of one name all cook (3ds Max exports name them alike).
+	///
+	/// The direct cook named meshes, clips, the skeleton and the manifest without making them
+	/// unique: a mesh called as its texture was handed the texture's instance and the model came
+	/// without its body.
+	[Test]
+	public static void AMeshATextureAndAMaterialOfOneNameAllCook()
+	{
+		let fixture = scope Fixture("scratch_model_cook_names");
+
+		let model = scope Model();
+		ModelFixture.Character(model);
+		// The occlusion texture has no file, so its cooked name is its own: give the first mesh
+		// and the material the same.
+		Test.Assert((model.Textures.Length > 1) && model.Textures[1].Uri.IsEmpty);
+		let shared = scope String(model.Textures[1].Name);
+		model.Meshes[0].Name.Set(shared);
+		model.Materials[0].Name.Set(shared);
+
+		let cooked = ModelCook.Cook(model, fixture.Database, "Character");
+		Test.Assert(cooked case .Ok(let manifestId));
+		let bound = fixture.Manager.Bind<ModelResource>(manifestId);
+		let resource = bound.Get;
+		Test.Assert(resource != null);
+		Test.Assert(resource.Meshes.Count == model.Meshes.Length);
+		for (int i < resource.Meshes.Count)
+		{
+			let mesh = resource.Mesh(i);
+			Test.Assert(mesh != null, "every mesh cooked as its own instance");
+			Test.Assert(mesh.VertexCount > 0);
+		}
+		// And the texture kept its instance, a texture still.
+		let texture = fixture.Database.RootGroup.GetInstance(scope $"Character.{shared}");
+		Test.Assert((texture != null) && (texture.TypeName == "Sedulous.Texture.Resource.TextureResource"));
+	}
+
 	/// Each mesh keeps its material slots, the materials its submeshes index.
 	///
 	/// A cooked submesh's material index is a position in its mesh's own slots, and the bound
