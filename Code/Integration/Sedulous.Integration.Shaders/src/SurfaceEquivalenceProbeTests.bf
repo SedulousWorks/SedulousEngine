@@ -57,7 +57,6 @@ class SurfaceEquivalenceProbeTests
 		for (let error in check.Errors)
 			error.Format(errors..Append('\n'));
 		Test.Assert(check.IsOk, errors);
-		Test.Assert(check.HasVertex, "forward's wind");
 		// The engine's vertex stages sway every surface shader by its material's Wind group, so
 		// its programs declare WIND.
 		Test.Assert(!check.Programs.IsEmpty);
@@ -65,12 +64,10 @@ class SurfaceEquivalenceProbeTests
 		return check;
 	}
 
-	/// The forward PBR material the scene uses, swaying by its Wind group, or the same values on
-	/// the surface PBR, laid out by its properties block (forward's, in forward's layout, with its
-	/// own wind properties in the lanes forward's buffer leaves as padding), swaying by its own
-	/// Vertex(). The surface material carries the Wind group too (its programs declare WIND), off:
-	/// so it sways once, by its Vertex(), and its own WindStrength does not collide with the
-	/// effect's Strength. THE CALLER OWNS it.
+	/// The forward PBR material the scene uses, or the same values on the surface PBR, laid out by
+	/// its properties block (forward's, at forward's offsets); both sway by the same Wind group,
+	/// through the engine's vertex stages, which both programs' WIND variants run. THE CALLER OWNS
+	/// it.
 	private static Material PbrMaterial(StringView name, Float4 color, float metallic, float roughness, bool surface,
 		ShaderCheck cooked, ShaderEffect wind, float windStrength)
 	{
@@ -102,9 +99,9 @@ class SurfaceEquivalenceProbeTests
 		material.SetDefaultColor("BaseColor", color);
 		material.SetDefaultFloat("Metallic", metallic);
 		material.SetDefaultFloat("Roughness", roughness);
-		material.SetDefaultFloat("WindStrength", windStrength);
-		material.SetDefaultFloat("WindSpeed", 1.0f);
-		material.SetDefaultFloat("WindHeight", 0.5f);
+		material.SetDefaultFloat("Wind.Strength", windStrength);
+		material.SetDefaultFloat("Wind.Speed", 1.0f);
+		material.SetDefaultFloat("Wind.Height", 0.5f);
 		// Laid out as forward's: the values mean the same on both.
 		Test.Assert(material.FindProperty("EmissiveColor", let emissive) && (emissive.Offset == 32));
 		Test.Assert(material.FindProperty("AlphaCutoff", let cutoff) && (cutoff.Offset == 56));

@@ -4,26 +4,20 @@
 // The engine's built-in PBR (`forward`) written as a lit surface shader: the reference that a
 // surface shader renders as the engine's own does (Sedulous.Integration.Shaders compares them on
 // the GPU). Its properties are forward's, in forward's order, so a PBR material's values mean the
-// same on it, plus wind properties of its own in the lanes forward's buffer leaves as padding;
-// its Vertex() sways by them as forward's vertex stage sways by the Wind effect's block (a surface
-// written by hand: its programs declare WIND too, and its material's Wind group stays off, so it
-// sways once).
+// same on it, at the same offsets (forward's buffer keeps its old wind lanes as padding; a float4
+// aligns to its row here, so EmissiveColor lands at 32 all the same). It sways as forward does:
+// its programs declare WIND, and the engine's vertex stage sways it by its material's Wind group.
 // surface: lit
-
-#include "wind_sway.hlsli"
 
 properties
 {
     Color    BaseColor         = (1, 1, 1, 1);
     float    Metallic          = 0   [0, 1];
     float    Roughness         = 0.5 [0, 1];
-    float    WindStrength      = 0;
-    float    WindSpeed         = 1;
     ColorHdr EmissiveColor     = (0, 0, 0, 1);
     float    OcclusionStrength = 1   [0, 1];
     float    NormalScale       = 1   [0, 2];
     float    AlphaCutoff       = 0.5 [0, 1];
-    float    WindHeight        = 1;
     Texture  AlbedoMap;
     Texture  NormalMap;
     Texture  MetallicRoughnessMap;
@@ -44,9 +38,4 @@ void Surface(SurfaceInput input, inout SurfaceOutput surface) {
     surface.roughness = Roughness * mr.x;
     surface.occlusion = lerp(1.0, OcclusionMap.Sample(MainSampler, input.uv).r, OcclusionStrength);
     surface.emissive  = EmissiveColor.rgb * EmissiveMap.Sample(MainSampler, input.uv).rgb;
-}
-
-void Vertex(inout VertexInput v) {
-    v.position += WindSwayOf(v.position, v.localPosition.y, Time(), WindStrength, WindSpeed,
-                             WindHeight);
 }
