@@ -57,6 +57,9 @@ class AnimationGraphPlayer
 		mPrevSkinningMatrices.Count = boneCount;
 		for (int i < boneCount)
 		{
+			// Before the first Update the pose is the rig's rest pose, as a clip player's is.
+			let bone = skeleton.GetBone((int32)i);
+			mFinalPoses[i] = (bone != null) ? bone.LocalBindPose : BoneTransform();
 			mSkinningMatrices[i] = Float4x4.Identity();
 			mPrevSkinningMatrices[i] = Float4x4.Identity();
 		}

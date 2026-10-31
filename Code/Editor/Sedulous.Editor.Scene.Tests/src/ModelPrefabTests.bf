@@ -184,6 +184,58 @@ class ModelPrefabTests
 		Test.Assert(ModelPrefab.RestingClip(manifest, asset.Manifest) == 0, "else the first");
 	}
 
+	/// A rigged model without clips still gets its animator, with no clip: a skinned mesh fed
+	/// nothing draws its raw vertices, which an FBX file keeps lying in its authoring tool's axes,
+	/// so the animator feeds it the rig's rest pose. A model without a skeleton gets none.
+	[Test]
+	public static void ARiggedModelWithoutClipsGetsAnAnimatorWithNoClip()
+	{
+		let fx = scope Fixture("scratch_model_prefab_rest_pose_db");
+		let meshSkinned = G(0x52, 1);
+		let skeleton = G(0x71, 3);
+		let asset = scope ModelManifestAsset();
+		asset.Manifest.MeshGuid.Add(meshSkinned);
+		asset.Manifest.MeshSkinned.Add(true);
+		asset.Manifest.MeshMaterial.Add(-1);
+		asset.Manifest.SkeletonGuid = skeleton;
+		AddNode(asset, "Armature", -1, -1, .(0, 0, 0));
+		AddNode(asset, "Skin", 0, 0, .(0, 0, 0));
+
+		let group = fx.Database.RootGroup.CreateGroup("Statue");
+		let manifest = group.CreateInstance("Statue", typeof(ModelManifestAsset).GetFullName(.. scope .()));
+		Test.Assert((manifest != null) && (manifest.WriteObject(asset) case .Ok));
+		int Animators()
+		{
+			let generated = ModelPrefab.GenerateModelPrefab(manifest);
+			Test.Assert(generated.Instance != null);
+			let payload = generated.Instance.ReadData("scene");
+			Test.Assert(payload != null);
+			defer delete payload;
+			let level = scope Scene("level");
+			let meshes = level.AddSystem<MeshComponentManager>();
+			let anims = level.AddSystem<SkeletalAnimationComponentManager>();
+			let root = PrefabSpawn.Spawn(level, payload, generated.Instance.Id);
+			Test.Assert(root.IsAssigned);
+			var count = 0;
+			anims.ForEach(scope [&](c, e) =>
+			{
+				count++;
+				Test.Assert(e == root);
+				Test.Assert(c.Skeleton.Id == skeleton);
+				Test.Assert(c.Clip.Id.IsNil, "no clip: the rest pose");
+				Test.Assert(c.MeshEntities.Count == 1);
+				let fed = meshes.Get(level.FindEntity(c.MeshEntities[0].Id));
+				Test.Assert((fed != null) && (fed.Mesh.Id == meshSkinned));
+			});
+			return count;
+		}
+		Test.Assert(Animators() == 1);
+
+		asset.Manifest.SkeletonGuid = .();
+		Test.Assert(manifest.WriteObject(asset) case .Ok);
+		Test.Assert(Animators() == 0, "no skeleton, no animator");
+	}
+
 	/// A skin draws in its skeleton's parent's space and glTF ignores a skinned mesh node's own
 	/// transform: the prefab puts the mesh entity under that parent at identity, so its world is
 	/// the skeleton's model space (inverse-kinematics.md P0a). Nodes: Root; Armature (moved and

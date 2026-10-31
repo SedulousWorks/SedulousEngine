@@ -19,7 +19,9 @@ namespace Sedulous.Scene.Pipeline;
 
 /// A model manifest as a prefab or a scene: its node tree under one root, a mesh component
 /// per meshed node with the manifest's materials, a cooked collider where the import made
-/// one, and one skeletal animator on the root feeding every skinned mesh.
+/// one, and, when the model brought a skeleton, one skeletal animator on the root feeding every
+/// skinned mesh: its resting clip when the model has clips, else none, the rig's rest pose (a
+/// skinned mesh fed nothing draws its raw vertices).
 static class ModelPrefab
 {
 	/// The skinned mesh entity under the skeleton's parent node at identity, or left where the
@@ -67,7 +69,7 @@ static class ModelPrefab
 			scene.SetLocalTransform(e, node.LocalTransform);
 			entities.Add(e);
 		}
-		let animated = !manifest.SkeletonGuid.IsNil && !manifest.AnimationGuid.IsEmpty;
+		let rigged = !manifest.SkeletonGuid.IsNil;
 		let skinnedEntities = scope List<EntityHandle>();
 		for (int i < nodes.Count)
 		{
@@ -94,7 +96,7 @@ static class ModelPrefab
 			}
 
 			let skinned = (meshIndex < manifest.MeshSkinned.Count) && manifest.MeshSkinned[meshIndex];
-			if (skinned && animated)
+			if (skinned && rigged)
 			{
 				skinnedEntities.Add(entities[i]);
 				PlaceInSkeletonSpace(scene, manifest, nodes, entities, root, i);
@@ -105,7 +107,8 @@ static class ModelPrefab
 		{
 			let ac = anims.Add(root);
 			ac.Skeleton.SetId(manifest.SkeletonGuid);
-			ac.Clip.SetId(manifest.AnimationGuid[RestingClip(manifestInstance, manifest)]);
+			if (!manifest.AnimationGuid.IsEmpty)
+				ac.Clip.SetId(manifest.AnimationGuid[RestingClip(manifestInstance, manifest)]);
 			for (let e in skinnedEntities)
 				ac.MeshEntities.Add(EntityRef(scene.GetEntityId(e)));
 		}

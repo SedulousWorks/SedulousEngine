@@ -751,12 +751,13 @@ class SandboxApp : DefaultApplication
 	private void AttachAnimation(ModelResource model, EntityHandle root,
 		List<EntityHandle> skinned, bool useGraph)
 	{
-		if ((model.Skeleton.Get == null) || model.Animations.IsEmpty || skinned.IsEmpty)
+		// A skinned model: the root feeds its skinned meshes, playing the first clip when there
+		// is one, else holding the rest pose (a skinned mesh fed nothing draws its raw vertices).
+		if ((model.Skeleton.Get == null) || skinned.IsEmpty)
 			return;
-		if (model.Animations[0].Get == null)
-			return;
+		let clip = model.Animations.IsEmpty ? null : model.Animations[0].Get;
 
-		if (useGraph)
+		if (useGraph && (clip != null))
 		{
 			let graphs = mScene.GetSystem<AnimationGraphComponentManager>();
 			if (graphs == null)
@@ -783,7 +784,8 @@ class SandboxApp : DefaultApplication
 
 		let component = animations.Add(root);
 		component.Skeleton.SetDirect(model.Skeleton.Get);
-		component.Clip.SetDirect(model.Animations[0].Get);
+		if (clip != null)
+			component.Clip.SetDirect(clip);
 		for (let entity in skinned)
 			component.MeshEntities.Add(.(mScene.GetEntityId(entity)));
 	}

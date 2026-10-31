@@ -13,7 +13,8 @@ namespace Sedulous.Engine.Animation;
 ///
 /// It runs at a LOWER update order than the clip manager, so a graph backed entity is driven
 /// by its graph. An entity is expected to carry one or the other: both push to the same mesh,
-/// and the later writer would win.
+/// and the later writer would win. Time is simulation gated and the pose is not, as in the clip
+/// manager (see its comment).
 class AnimationGraphComponentManager : ResourceBindingComponentManager<AnimationGraphComponent>
 {
 	/// BORROWED: the scene outlives its systems.
@@ -23,9 +24,6 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 	{
 		mScene = scene;
 	}
-
-	/// Simulation gated, for the reason the clip manager gives.
-	public override bool IsSimulationOnly => true;
 
 	/// Before the clip manager, which sits at nought.
 	public override int32 UpdateOrder => -1;
@@ -143,9 +141,16 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 			return;
 		}
 
-		component.Player.Update(deltaTime);
-		RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
-			ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
+		if (mScene.SimulationEnabled)
+		{
+			component.Player.Update(deltaTime);
+			RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
+				ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
+		}
+		else
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
+		}
 
 		AnimationFeed.FeedAll(mScene, meshes, owner, component.MeshEntities,
 			component.Player.GetSkinningMatrices(), component.Player.GetPrevSkinningMatrices());

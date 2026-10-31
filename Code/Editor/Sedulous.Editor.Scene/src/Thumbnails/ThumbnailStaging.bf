@@ -6,12 +6,13 @@ using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.Animation;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
 /// What the scene thumbnail generators share: reaching the project's source assets,
-/// waiting on mesh references, and framing what was staged.
+/// waiting on mesh references, posing skinned meshes, and framing what was staged.
 static class ThumbnailStaging
 {
 	/// Pending while a bind is still loading; failed once the handle says so, or when there
@@ -57,6 +58,48 @@ static class ThumbnailStaging
 				settled = false;
 		});
 		return settled;
+	}
+
+	/// Whether the reference has loaded or failed, as MeshRefsSettled asks of a mesh.
+	private static bool RefSettled<T>(Ref<T> reference) where T : class
+	{
+		if (reference.Id.IsNil || (reference.Get != null))
+			return true;
+		return !reference.IsBound || (reference.State == .Failed);
+	}
+
+	/// A skinned mesh draws in its rig's rest pose only once an animator feeds it a palette,
+	/// and the stage never ticks the scene: once the animators' skeletons have loaded, one tick
+	/// with the simulation off feeds it (time stands still, so no clip plays). False while a
+	/// skeleton is still loading.
+	public static bool PoseSkinnedMeshes(Sedulous.Scene.Scene stage)
+	{
+		var any = false;
+		var settled = true;
+		if (let clips = stage.GetSystem<SkeletalAnimationComponentManager>())
+		{
+			clips.ForEach(scope [&](c, owner) =>
+			{
+				any = true;
+				settled = settled && RefSettled(c.Skeleton);
+			});
+		}
+		if (let graphs = stage.GetSystem<AnimationGraphComponentManager>())
+		{
+			graphs.ForEach(scope [&](c, owner) =>
+			{
+				any = true;
+				settled = settled && RefSettled(c.Skeleton) && RefSettled(c.Graph);
+			});
+		}
+		if (!settled)
+			return false;
+		if (any)
+		{
+			stage.SetSimulationEnabled(false);
+			stage.Update(0.0f);
+		}
+		return true;
 	}
 
 	/// The world bounds of every resolved mesh on the stage.

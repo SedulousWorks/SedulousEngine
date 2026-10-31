@@ -42,7 +42,7 @@ class PrefabThumbnailGenerator : ISceneThumbnailGenerator
 			ThumbnailStaging.AddSun(stage);
 			mSpawned = true;
 		}
-		if (!ThumbnailStaging.MeshRefsSettled(stage))
+		if (!ThumbnailStaging.MeshRefsSettled(stage) || !ThumbnailStaging.PoseSkinnedMeshes(stage))
 			return .Pending;
 		stage.UpdateTransforms();
 		ThumbnailStaging.FrameFromBounds(ThumbnailStaging.WorldMeshBounds(stage), ref outFraming);

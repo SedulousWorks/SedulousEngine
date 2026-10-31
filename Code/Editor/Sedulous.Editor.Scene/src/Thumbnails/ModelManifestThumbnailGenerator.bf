@@ -8,13 +8,15 @@ using Sedulous.Scene.Pipeline;
 using Sedulous.Materials;
 using Sedulous.Model.Resource;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.Animation;
 using Sedulous.ModelImporter;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
 /// A model manifest rebuilt as its node tree on a private stage, each node's mesh bound by
-/// id and the manifest's materials on every one.
+/// id with its own materials, and a rigged model's animator with no clip so its skinned meshes
+/// draw in the rig's rest pose.
 class ModelManifestThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private EditorContext mContext;
@@ -46,6 +48,7 @@ class ModelManifestThumbnailGenerator : ISceneThumbnailGenerator
 			let manifest = asset.Manifest;
 			let root = stage.CreateEntity(instance.Name);
 			let entities = scope List<EntityHandle>();
+			let skinnedEntities = scope List<EntityHandle>();
 			let nodeCount = manifest.NodeName.Count;
 			for (int i < nodeCount)
 			{
@@ -71,19 +74,29 @@ class ModelManifestThumbnailGenerator : ISceneThumbnailGenerator
 			for (int i < nodeCount)
 			{
 				let meshIndex = manifest.NodeMesh[i];
-				if ((meshIndex < 0) || (meshIndex >= manifest.MeshSkinned.Count) || !manifest.MeshSkinned[meshIndex])
+				if ((meshIndex < 0) || (meshIndex >= manifest.MeshGuid.Count) || (meshIndex >= manifest.MeshSkinned.Count)
+					|| !manifest.MeshSkinned[meshIndex])
 					continue;
+				skinnedEntities.Add(entities[i]);
 				let parent = ModelPlacement.SkinnedMeshParent(manifest.NodeParent, manifest.SkeletonParentNode, i);
 				if (parent == ModelPlacement.cSkinnedMeshKeepsPlace)
 					continue;
 				stage.SetParent(entities[i], (parent >= 0) ? entities[parent] : root, false);
 				stage.SetLocalTransform(entities[i], .());
 			}
+			let animators = stage.GetSystem<SkeletalAnimationComponentManager>();
+			if ((animators != null) && !manifest.SkeletonGuid.IsNil && !skinnedEntities.IsEmpty)
+			{
+				let animator = animators.Add(root);
+				animator.Skeleton.SetId(manifest.SkeletonGuid);
+				for (let e in skinnedEntities)
+					animator.MeshEntities.Add(EntityRef(stage.GetEntityId(e)));
+			}
 			SceneResolve.ResolveSceneResources(stage, resources);
 			ThumbnailStaging.AddSun(stage);
 			mSpawned = true;
 		}
-		if (!ThumbnailStaging.MeshRefsSettled(stage))
+		if (!ThumbnailStaging.MeshRefsSettled(stage) || !ThumbnailStaging.PoseSkinnedMeshes(stage))
 			return .Pending;
 		stage.UpdateTransforms();
 		ThumbnailStaging.FrameFromBounds(ThumbnailStaging.WorldMeshBounds(stage), ref outFraming);

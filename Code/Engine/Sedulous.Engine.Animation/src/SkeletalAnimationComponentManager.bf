@@ -11,10 +11,13 @@ namespace Sedulous.Engine.Animation;
 /// Ticks every skeletal animation in the animation phase, before extraction: advance each
 /// player, then write its current and previous skinning matrices into the target meshes.
 ///
-/// SIMULATION GATED. Animation is gameplay side state and must not advance in a scene that is
-/// not simulating: watching things animate in an editor's edit mode is wrong. A consumer that
-/// wants live animation in a context that looks paused enables simulation on its OWN preview
-/// scene; scenes simulate by default, so a player and a headless test are unaffected.
+/// Time is SIMULATION GATED. Animation is gameplay side state and must not advance in a scene
+/// that is not simulating: watching things animate in an editor's edit mode is wrong. A consumer
+/// that wants live animation in a context that looks paused enables simulation on its OWN preview
+/// scene; scenes simulate by default, so a player and a headless test are unaffected. The pose
+/// is not: in a scene standing still the manager still feeds its meshes the player's standing
+/// pose (the rig's rest pose before any clip), since a skinned mesh fed nothing draws its raw
+/// vertices, which an FBX file keeps lying in its authoring tool's axes.
 class SkeletalAnimationComponentManager : ResourceBindingComponentManager<SkeletalAnimationComponent>
 {
 	/// BORROWED: the scene outlives its systems.
@@ -24,8 +27,6 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	{
 		mScene = scene;
 	}
-
-	public override bool IsSimulationOnly => true;
 
 	/// The base's destructor sweeps the components through OnComponentDestroyed; mid teardown the
 	/// scene's other systems may be gone, so a driven character is not released then.
@@ -173,9 +174,14 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 		// The CLIP changes independently of the skeleton: an editor's picks land one at a
 		// time, and a hot reload swaps the product mid play. Automatic playback starts the new
-		// clip; anyone driving the player by hand keeps doing so.
+		// clip; anyone driving the player by hand keeps doing so. Not while the scene stands
+		// still: the clip starts when the simulation does.
 		let clip = component.Clip.Get;
-		if (clip !== component.PlayerClip)
+		if (!mScene.SimulationEnabled)
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
+		}
+		else if (clip !== component.PlayerClip)
 		{
 			component.PlayerClip = clip;
 			if (component.AutoPlay && (clip != null))
@@ -187,9 +193,12 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 		}
 
 		component.Player.Speed = component.Speed;
-		component.Player.Update(deltaTime);
-		RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
-			ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
+		if (mScene.SimulationEnabled)
+		{
+			component.Player.Update(deltaTime);
+			RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
+				ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
+		}
 
 		AnimationFeed.FeedAll(mScene, meshes, owner, component.MeshEntities,
 			component.Player.GetSkinningMatrices(), component.Player.GetPrevSkinningMatrices());
