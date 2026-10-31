@@ -6,12 +6,12 @@ namespace Sedulous.Http;
 /// An incremental HTTP/1.1 parser, for a request or a response.
 ///
 /// Push bytes as they arrive; once Complete, the pieces are readable. A STRICT SUBSET: CRLF
-/// framing, Content-Length bodies only, a capped head, and a caller-set body cap. Chunked
-/// transfer fails rather than being half supported, because a wrong body boundary is worse
-/// than a refusal.
-///
-/// A response with no Content-Length is read UNTIL THE PEER CLOSES, which is what the
-/// connection-close model leaves as the only framing.
+/// framing, a capped head, and a caller-set body cap. A request's body is Content-Length only:
+/// a chunked request fails rather than being half supported (the server's contract), because a
+/// wrong body boundary is worse than a refusal. A response's body is Content-Length, chunked
+/// (what real servers send, which the client reads), or read UNTIL THE PEER CLOSES, which is
+/// what the connection-close model leaves as the only other framing. A response that carries no
+/// body (204, 304, 1xx, or one to a HEAD: SetNoBody) is Complete at its head.
 class HttpMessageParser
 {
 	/// The head cap. Sixteen kibibytes is far past any legitimate request line and header
@@ -24,6 +24,23 @@ class HttpMessageParser
 	private bool mHeadParsed = false;
 	private bool mBodyUntilClose = false;
 	private int mBodyExpected = 0;
+	private bool mNoBody = false;
+	private bool mChunked = false;
+	private bool mTooLarge = false;
+
+	private enum Chunk : uint8
+	{
+		/// A chunk's size line next.
+		Size,
+		/// mChunkLeft bytes of data, then CRLF.
+		Data,
+		/// After the last (0) chunk: trailer lines to the blank one.
+		Trailers,
+	}
+	private Chunk mChunk = .Size;
+	private int mChunkLeft = 0;
+	/// Encoded bytes not yet decoded.
+	private List<uint8> mChunkRaw = new .() ~ delete _;
 
 	/// Head accumulation. Emptied once the head is parsed; the body goes to mBody.
 	private List<uint8> mBuffer = new .() ~ delete _;
@@ -40,6 +57,11 @@ class HttpMessageParser
 	}
 
 	public HttpParseState State => mState;
+	/// Failed because the body is larger than the cap, not because it is malformed.
+	public bool TooLarge => mTooLarge;
+
+	/// Response mode: the request was a HEAD, so the response has headers alone.
+	public void SetNoBody() => mNoBody = true;
 
 	// Request mode.
 	public StringView Method => mMethod;
@@ -81,15 +103,24 @@ class HttpMessageParser
 			}
 			mHeadParsed = true;
 			mBuffer.Clear();
-			mBody.AddRange(Span<uint8>(spill.Ptr, spill.Count));
+			if (mNoBody)
+			{
+				mState = .Complete;
+				return mState;
+			}
+			(mChunked ? mChunkRaw : mBody).AddRange(Span<uint8>(spill.Ptr, spill.Count));
 		}
 		else
 		{
-			mBody.AddRange(bytes);
+			(mChunked ? mChunkRaw : mBody).AddRange(bytes);
 		}
+
+		if (mChunked)
+			return DecodeChunks();
 
 		if (mBody.Count > mMaxBody)
 		{
+			mTooLarge = true;
 			mState = .Failed;
 			return mState;
 		}
@@ -220,16 +251,35 @@ class HttpMessageParser
 
 	private bool ParseBodyFraming()
 	{
-		// Chunked is outside the subset in BOTH directions. Guessing at a chunked body would
-		// mean guessing where the message ends.
-		if (!HttpHeader.Find(mHeaders, "Transfer-Encoding").IsEmpty)
-			return false;
+		// A response with no body: complete at its head (Push sees mNoBody).
+		if ((mMode == .Response) && (mNoBody || (mStatus == 204) || (mStatus == 304) || ((mStatus >= 100) && (mStatus < 200))))
+		{
+			mNoBody = true;
+			return true;
+		}
+
+		// Chunked: a response's, which servers send. A chunked REQUEST stays outside the
+		// server's subset, as does any other transfer coding: guessing at one would mean
+		// guessing where the message ends.
+		let transfer = HttpHeader.Find(mHeaders, "Transfer-Encoding");
+		if (!transfer.IsEmpty)
+		{
+			if ((mMode != .Response) || !transfer.Contains("chunked", true))
+				return false;
+			mChunked = true;
+			return true;
+		}
 
 		let contentLength = HttpHeader.Find(mHeaders, "Content-Length");
 		if (!contentLength.IsEmpty)
 		{
-			if (!ParseUnsigned(contentLength, let expected) || (expected > (uint64)mMaxBody))
+			if (!ParseUnsigned(contentLength, let expected))
 				return false;
+			if (expected > (uint64)mMaxBody)
+			{
+				mTooLarge = true;
+				return false;
+			}
 			mBodyExpected = (int)expected;
 			return true;
 		}
@@ -238,6 +288,112 @@ class HttpMessageParser
 		if (mMode == .Response)
 			mBodyUntilClose = true;
 		return true;
+	}
+
+	/// The chunked bytes so far into mBody: hex sizes (an extension after ';' ignored), each
+	/// chunk's data and CRLF, then the trailers to the blank line, which are dropped.
+	private HttpParseState DecodeChunks()
+	{
+		int at = 0;
+		while (mState == .NeedMore)
+		{
+			if (mChunk == .Size)
+			{
+				if (!NextLine(ref at, let sizeLine))
+					break;
+				int size = 0;
+				int digits = 0;
+				for (let c in sizeLine)
+				{
+					if (c == ';')
+						break;
+					int v;
+					if ((c >= '0') && (c <= '9'))
+						v = (int)c - (int)'0';
+					else if ((c >= 'a') && (c <= 'f'))
+						v = (int)c - (int)'a' + 10;
+					else if ((c >= 'A') && (c <= 'F'))
+						v = (int)c - (int)'A' + 10;
+					else if ((c == ' ') || (c == '\t'))
+						continue;
+					else
+					{
+						mState = .Failed;
+						return mState;
+					}
+					// A size no body here reaches.
+					if (++digits > 15)
+					{
+						mState = .Failed;
+						return mState;
+					}
+					size = size * 16 + v;
+				}
+				if (digits == 0)
+				{
+					mState = .Failed;
+					return mState;
+				}
+				if (size == 0)
+				{
+					mChunk = .Trailers;
+					continue;
+				}
+				if (mBody.Count + size > mMaxBody)
+				{
+					mTooLarge = true;
+					mState = .Failed;
+					return mState;
+				}
+				mChunk = .Data;
+				mChunkLeft = size;
+			}
+			else if (mChunk == .Data)
+			{
+				// The chunk and its CRLF not all here yet.
+				if (mChunkRaw.Count - at < mChunkLeft + 2)
+					break;
+				mBody.AddRange(Span<uint8>(mChunkRaw.Ptr + at, mChunkLeft));
+				at += mChunkLeft;
+				if ((mChunkRaw[at] != '\r') || (mChunkRaw[at + 1] != '\n'))
+				{
+					mState = .Failed;
+					return mState;
+				}
+				at += 2;
+				mChunk = .Size;
+			}
+			else
+			{
+				if (!NextLine(ref at, let trailer))
+					break;
+				if (trailer.IsEmpty)
+					mState = .Complete;
+			}
+		}
+		// Keep what is not decoded yet.
+		if (at > 0)
+			mChunkRaw.RemoveRange(0, at);
+		if (mChunkRaw.Count > cMaxHeadBytes + mMaxBody)
+			mState = .Failed;
+		return mState;
+	}
+
+	/// The CRLF-ended line of mChunkRaw starting at `at`, moving past it; false when it has not
+	/// all arrived.
+	private bool NextLine(ref int at, out StringView outLine)
+	{
+		outLine = default;
+		for (int i = at; (i + 1) < mChunkRaw.Count; i++)
+		{
+			if ((mChunkRaw[i] == '\r') && (mChunkRaw[i + 1] == '\n'))
+			{
+				outLine = .((char8*)mChunkRaw.Ptr + at, i - at);
+				at = i + 2;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/// Digits only. False on empty, on anything else, and on a value that would overflow,

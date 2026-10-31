@@ -149,4 +149,64 @@ class HttpParserTests
 		Test.Assert(HttpHeader.Find(parser.Headers, "x-ODD-case") == "spaced");
 		Test.Assert(HttpHeader.Find(parser.Headers, "absent").IsEmpty);
 	}
+
+	/// A chunked response body, split anywhere, extensions and trailers dropped; a bad size line
+	/// and chunk data not ended by CRLF refused; past the cap refused as too large.
+	[Test]
+	public static void AChunkedResponseBodySplitAnywhereExtensionsAndTrailersDropped()
+	{
+		let wire = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n7;ext=1\r\n, world\r\nA\r\n0123456789\r\n0\r\nX-Trailer: t\r\n\r\n";
+		// Whole, then a byte at a time, then three: the same body.
+		int[3] steps = .(wire.Length, 1, 3);
+		for (let step in steps)
+		{
+			let parser = scope HttpMessageParser(.Response);
+			var state = HttpParseState.NeedMore;
+			for (int at = 0; at < wire.Length; at += step)
+			{
+				let n = Math.Min(step, wire.Length - at);
+				state = parser.Push(Bytes(wire.Substring(at, n)));
+				if (at + n < wire.Length)
+					Test.Assert(state == .NeedMore);
+			}
+			Test.Assert(state == .Complete);
+			Test.Assert(parser.Status == 200);
+			Test.Assert(StringView((char8*)parser.Body.Ptr, parser.Body.Count) == "hello, world0123456789");
+		}
+		{
+			let parser = scope HttpMessageParser(.Response);
+			Test.Assert(parser.Push(Bytes("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n")) == .Failed);
+			Test.Assert(!parser.TooLarge);
+		}
+		{
+			let parser = scope HttpMessageParser(.Response);
+			Test.Assert(parser.Push(Bytes("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nabcd\r\n")) == .Failed);
+		}
+		{
+			let parser = scope HttpMessageParser(.Response, 8);
+			Test.Assert(parser.Push(Bytes("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n5\r\n")) == .Failed);
+			Test.Assert(parser.TooLarge);
+		}
+	}
+
+	/// Responses with no body (204, 304, 1xx, a HEAD's) complete at their head; a Content-Length
+	/// past the cap is too large, not malformed.
+	[Test]
+	public static void ResponsesWithNoBodyCompleteAtTheirHead()
+	{
+		StringView[2] heads = .("HTTP/1.1 204 No Content\r\n\r\n", "HTTP/1.1 304 Not Modified\r\nContent-Length: 50\r\n\r\n");
+		for (let head in heads)
+		{
+			let parser = scope:: HttpMessageParser(.Response);
+			Test.Assert(parser.Push(Bytes(head)) == .Complete);
+			Test.Assert(parser.Body.IsEmpty);
+		}
+		let head = scope HttpMessageParser(.Response);
+		head.SetNoBody();
+		Test.Assert(head.Push(Bytes("HTTP/1.1 200 OK\r\nContent-Length: 1234\r\n\r\n")) == .Complete);
+		Test.Assert(head.Status == 200);
+		let capped = scope HttpMessageParser(.Response, 8);
+		Test.Assert(capped.Push(Bytes("HTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\n")) == .Failed);
+		Test.Assert(capped.TooLarge);
+	}
 }

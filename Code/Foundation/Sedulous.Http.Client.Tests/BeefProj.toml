@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Http.Client.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Http.Client.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Http" = "*"
+"Sedulous.Http.Client" = "*"
+"Sedulous.Net" = "*"
+"Sedulous.Net.Tls" = "*"
+"Sedulous.Net.Tls.MbedTLS" = "*"
