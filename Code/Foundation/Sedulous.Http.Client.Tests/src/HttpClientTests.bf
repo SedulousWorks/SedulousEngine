@@ -369,6 +369,18 @@ class HttpClientTests
 		Test.Assert(bad.Error.Contains("not an http", true), bad.Error);
 	}
 
+	/// Off the web, the platform's client is the native one.
+	[Test]
+	public static void ThePlatformsClientIsTheNativeOneOffTheWeb()
+	{
+		let client = HttpClients.Create(null);
+		defer delete client;
+		Test.Assert(client is NativeHttpClient);
+		let r = scope HttpClientResponse();
+		Fetch(client, HttpClientRequest.Get("gopher://x/"), scope () => {}, r);
+		Test.Assert(r.Error.Contains("not an http", true), r.Error);
+	}
+
 	[Test]
 	public static void AChunkedResponse()
 	{

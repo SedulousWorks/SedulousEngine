@@ -9,6 +9,7 @@ using Sedulous.Net.Tls;
 
 namespace Sedulous.Http.Client;
 
+#if !BF_PLATFORM_WASM
 /// The native HTTP client: requests on one worker thread; https through a TLS backend (none:
 /// http only, an https request failing to say so), checked against the client's trust.
 class NativeHttpClient : IHttpClient
@@ -350,3 +351,4 @@ class NativeHttpClient : IHttpClient
 		}
 	}
 }
+#endif

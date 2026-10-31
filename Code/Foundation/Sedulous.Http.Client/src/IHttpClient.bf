@@ -5,7 +5,9 @@ namespace Sedulous.Http.Client;
 /// The game-facing HTTP client: requests go out, their responses come back by callback on the
 /// caller's thread when it pumps. The native backend (NativeHttpClient) runs each request on a
 /// worker thread, since a name lookup blocks, speaking HTTP/1.1 over a PlainStream for http:// and
-/// a TlsStream for https://.
+/// a TlsStream for https://. A browser build has its own backend (BrowserHttpClient) over the
+/// browser's fetch, which does TLS, redirects and certificates itself. HttpClients.Create picks the
+/// platform's.
 ///
 /// What it does: GET, POST and any method; bodies by Content-Length, chunked, or until close;
 /// redirects within a limit (an https request is never followed to http); a timeout over the
