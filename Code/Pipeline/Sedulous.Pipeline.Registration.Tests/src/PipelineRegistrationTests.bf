@@ -180,7 +180,7 @@ static class PipelineRegistrationTests
 		Test.Assert((material != null) && (material.OwningGroup == picked));
 
 		// A file backed creator refuses without a sources folder rather than write nowhere.
-		Test.Assert(creators.FindByLabel("UI Document").Create(null, db.RootGroup, "") == null);
+		Test.Assert(creators.FindByLabel("GUI Document").Create(null, db.RootGroup, "") == null);
 
 		// A type with several creators has no single one; a type with one does.
 		Test.Assert(creators.FindByType(typeof(Sedulous.Materials.Pipeline.MaterialAsset).GetFullName(.. scope .())) == null);

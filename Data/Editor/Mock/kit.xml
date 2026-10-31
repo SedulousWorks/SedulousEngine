@@ -220,8 +220,6 @@
                     <Panel class="type-cell" tooltip="FontAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/FontAsset.svg"/><Label class="type-name" text="Font"/></Panel>
                     <Panel class="type-cell" tooltip="GuiDocumentAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/GuiDocumentAsset.svg"/><Label class="type-name" text="Gui Document"/></Panel>
                     <Panel class="type-cell" tooltip="GuiStyleSheetAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/GuiStyleSheetAsset.svg"/><Label class="type-name" text="Gui Style Sheet"/></Panel>
-                    <Panel class="type-cell" tooltip="UIDocumentAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/UIDocumentAsset.svg"/><Label class="type-name" text="UI Document"/></Panel>
-                    <Panel class="type-cell" tooltip="UIThemeAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/UIThemeAsset.svg"/><Label class="type-name" text="UI Theme"/></Panel>
                 </Panel>
                 <Panel class="type-group"><Label class="type-group-name" text="Input"/>
                     <Panel class="type-cell" tooltip="InputMapAsset"><Image class="row-icon cat-input" src="Editor/Icons/Types/InputMapAsset.svg"/><Label class="type-name" text="Input Map"/></Panel>
@@ -282,9 +280,6 @@
                     <Panel class="type-cell" tooltip="GuiCanvasComponent"><Image class="row-icon cat-gui" src="Editor/Icons/Types/GuiCanvasComponent.svg"/><Label class="type-name" text="Gui Canvas"/></Panel>
                     <Panel class="type-cell" tooltip="GuiBillboardComponent"><Image class="row-icon cat-gui" src="Editor/Icons/Types/GuiBillboardComponent.svg"/><Label class="type-name" text="Gui Billboard"/></Panel>
                     <Panel class="type-cell" tooltip="GuiWorldPanelComponent"><Image class="row-icon cat-gui" src="Editor/Icons/Types/GuiWorldPanelComponent.svg"/><Label class="type-name" text="Gui World Panel"/></Panel>
-                    <Panel class="type-cell" tooltip="UICanvasComponent"><Image class="row-icon cat-gui" src="Editor/Icons/Types/UICanvasComponent.svg"/><Label class="type-name" text="UI Canvas"/></Panel>
-                    <Panel class="type-cell" tooltip="UIBillboardComponent"><Image class="row-icon cat-gui" src="Editor/Icons/Types/UIBillboardComponent.svg"/><Label class="type-name" text="UI Billboard"/></Panel>
-                    <Panel class="type-cell" tooltip="UIWorldPanelComponent"><Image class="row-icon cat-gui" src="Editor/Icons/Types/UIWorldPanelComponent.svg"/><Label class="type-name" text="UI World Panel"/></Panel>
                 </Panel>
                 <Panel class="type-group"><Label class="type-group-name" text="Effects"/>
                     <Panel class="type-cell" tooltip="ParticleEffectComponent"><Image class="row-icon cat-effects" src="Editor/Icons/Types/ParticleEffectComponent.svg"/><Label class="type-name" text="Particle Effect"/></Panel>

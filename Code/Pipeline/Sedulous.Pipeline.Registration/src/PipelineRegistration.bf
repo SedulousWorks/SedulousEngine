@@ -3,8 +3,6 @@ using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
-using Sedulous.UI;
-using Sedulous.UI.Gamekit;
 using Sedulous.Animation.Resource;
 using Sedulous.Audio.Resource;
 using Sedulous.Fonts.Resource;
@@ -24,7 +22,6 @@ using Sedulous.Script.Resource;
 using Sedulous.Shaders.Resource;
 using Sedulous.Terrain.Resource;
 using Sedulous.Texture.Resource;
-using Sedulous.UI.Resource;
 using Sedulous.GUI.Resources;
 using Sedulous.VG.Resource;
 using Sedulous.Animation.Pipeline;
@@ -52,7 +49,6 @@ using Sedulous.Terrain.Pipeline;
 using Sedulous.Vegetation.Pipeline;
 using Sedulous.Vegetation.Resource;
 using Sedulous.Texture.Pipeline;
-using Sedulous.UI.Pipeline;
 using Sedulous.GUI.Pipeline;
 using Sedulous.VG.Pipeline;
 
@@ -74,11 +70,12 @@ static class PipelineRegistration
 {
 	/// The GUI's asset kinds: a document and a style sheet (Sedulous.GUI.Pipeline).
 	public const int cGuiAssetKinds = 2;
-	public const int cBuilderCount = 31 + cGuiAssetKinds;
-	public const int cImporterCount = 13;
+	/// 29 and 12: the old UI's document and theme builders and its importer gone with it.
+	public const int cBuilderCount = 29 + cGuiAssetKinds;
+	public const int cImporterCount = 12;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 32 + cGuiAssetKinds; // 32: the Phong Material
+	public const int cCreatorCount = 30 + cGuiAssetKinds; // 30: the old UI's document and theme gone
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -93,10 +90,6 @@ static class PipelineRegistration
 	/// RegisterAllBuilders, and registers nothing editor only, which stays host side.
 	public static void RegisterPipelineTypes()
 	{
-		// The markup vocabulary the UI document cook validates against.
-		MarkupLoader.Initialize();
-		GamekitMarkup.Register();
-
 		// The resource tier: every product a cooked file names.
 		AnimationResources.RegisterAll();
 		AudioResources.RegisterAll();
@@ -118,7 +111,6 @@ static class PipelineRegistration
 		TerrainResources.RegisterAll();
 		VegetationResources.RegisterAll();
 		TextureResources.RegisterAll();
-		UIResources.RegisterAll();
 		VGResources.RegisterAll();
 		GuiResources.RegisterAll();
 
@@ -141,7 +133,6 @@ static class PipelineRegistration
 		ShadersPipeline.RegisterAll();
 		TerrainPipeline.RegisterAll();
 		TexturePipeline.RegisterAll();
-		UIPipeline.RegisterAll();
 		VegetationPipeline.RegisterAll();
 		VGPipeline.RegisterAll();
 		GuiPipeline.RegisterAll();
@@ -194,8 +185,6 @@ static class PipelineRegistration
 		registry.Register(new EnvironmentProfileAssetBuilder());
 		registry.Register(new PostProcessProfileAssetBuilder());
 		registry.Register(new NavigationZoneAssetBuilder());
-		registry.Register(new UIDocumentAssetBuilder());
-		registry.Register(new UIThemeAssetBuilder());
 		registry.Register(new VectorImageAssetBuilder());
 		registry.Register(new GuiDocumentAssetBuilder());
 		registry.Register(new GuiStyleSheetAssetBuilder());
@@ -231,7 +220,6 @@ static class PipelineRegistration
 		PhysicsCreators.Register(registry);
 		RenderCreators.Register(registry);
 		AudioCreators.Register(registry);
-		UICreators.Register(registry);
 		GuiCreators.Register(registry);
 		ShaderCreators.Register(registry);
 		HeightfieldCreators.Register(registry);
@@ -247,7 +235,6 @@ static class PipelineRegistration
 	{
 		registry.Register(new TextureFileImporter());
 		registry.Register(new ModelFileImporter());
-		registry.Register(new UIFileImporter());
 		registry.Register(new VectorImageFileImporter());
 		registry.Register(new GuiFileImporter());
 		registry.Register(new ShaderFileImporter());

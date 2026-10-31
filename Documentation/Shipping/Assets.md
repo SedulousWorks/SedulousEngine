@@ -27,10 +27,9 @@ so a rename or a move never breaks one. Deleting is the dangerous operation: que
 Scenes and prefabs are NOT cooked: they are XML text sources staged directly (see
 Scenes.md).
 
-Game UI sources link like scripts: `.sml` screens, `.sss` themes and `.svg` vector images
-import as assets whose text stays in `Sources/`. A theme draws a vector image as an icon:
-`@icon heart "{guid}";` then `svg(heart, tint=#E53935)` as any background. The theme's cook
-embeds the icons it names and fails on one that names no vector image.
+Game GUI sources link like scripts: `.xml` documents, `.css` sheets and `.svg` vector images
+import as assets whose text stays in `Sources/`. A document or sheet names images, vector
+images, fonts, sheets and documents by asset guid (`{guid}`), each a dependency of its cook.
 
 ## Inspecting
 
