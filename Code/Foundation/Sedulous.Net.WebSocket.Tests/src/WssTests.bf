@@ -338,4 +338,26 @@ class WssTests
 		Test.Assert(!strict.Next(frame));
 		Test.Assert(strict.Failed);
 	}
+
+	[Test]
+	public static void JoinAddressesWithASchemeAreReadABareHostIsNotOne()
+	{
+		let c = scope WebSocketClientConfig();
+		Test.Assert(c.ParseAddress("wss://play.example.com/ball", 7000));
+		Test.Assert(c.Secure);
+		Test.Assert(c.Host == "play.example.com");
+		Test.Assert(c.Port == 7000);
+		Test.Assert(c.Path == "/ball");
+		Test.Assert(c.ParseAddress("WS://10.0.0.2:7010", 7000));
+		Test.Assert(!c.Secure);
+		Test.Assert(c.Host == "10.0.0.2");
+		Test.Assert(c.Port == 7010);
+		Test.Assert(c.Path == "/");
+		Test.Assert(c.ParseAddress("wss://host", 0));
+		Test.Assert(c.Port == 443);
+		Test.Assert(!c.ParseAddress("10.0.0.2", 7000));
+		Test.Assert(!c.ParseAddress("https://host/", 7000));
+		Test.Assert(!c.ParseAddress("wss://", 7000));
+		Test.Assert(!c.ParseAddress("ws://host:99999", 7000));
+	}
 }

@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Net;
 using Sedulous.Net.Replication;
+using Sedulous.Net.Tls;
 using Sedulous.Net.WebSocket;
 using Sedulous.Profiler;
 using Sedulous.Scene;
@@ -127,29 +128,38 @@ class NetworkManager
 
 	/// Connects to host:port. Null when the socket cannot open.
 	///
-	/// A browser has no UDP, so the web build joins over a WEBSOCKET to the host's gateway,
-	/// and `port` there is the gateway's port rather than the UDP one. NetworkController does
-	/// that translation, so the same game script joins with the same number everywhere.
+	/// `host` may be an address with a scheme: "ws://host[:port][/path]" or "wss://..." joins
+	/// the host's WebSocket gateway (`port` when the address names none), natively too, wss
+	/// through `tls` (BORROWED, outliving the manager) checked against `trust` (Roots:
+	/// `trustedPem` alone). A bare host joins over UDP natively. A browser has no UDP, so the
+	/// web build joins a bare host over a WEBSOCKET to the host's gateway, wss when the page is
+	/// https (a browser refuses ws:// from an https page), and `port` there is the gateway's
+	/// port rather than the UDP one. NetworkController does that translation, so the same game
+	/// script joins with the same number everywhere.
 	///
-	/// Nothing waits for the handshake. The browser socket queues sends until it opens, which
-	/// is what keeps the session's immediate connect packet from being dropped into it.
+	/// Nothing waits for the handshake. The websocket queues sends until it upgrades, which is
+	/// what keeps the session's immediate connect packet from being dropped into it.
 	public static NetworkManager JoinServer(StringView host, uint16 port,
-		ReliableConfig config = .())
+		ReliableConfig config = .(), ITlsBackend tls = null, TlsTrust trust = .System, StringView trustedPem = default)
 	{
-#if BF_PLATFORM_WASM
 		let webSocket = scope WebSocketClientConfig();
-		webSocket.Host.Set(host);
-		webSocket.Port = port;
-		let socket = new WebSocketClientSocket(webSocket);
-		if (!socket.IsOpen)
+		let addressed = webSocket.ParseAddress(host, port);
+#if BF_PLATFORM_WASM
+		if (!addressed)
 		{
-			delete socket;
-			return null;
+			webSocket.Host.Set(host);
+			webSocket.Port = port;
+			webSocket.Secure = emscripten_run_script_int("location.protocol === 'https:' ? 1 : 0") != 0;
 		}
-		let manager = new NetworkManager(socket, 0, port, config);
-		manager.ConnectTo(WebSocketClientSocket.ServerEndpoint);
-		return manager;
+		return JoinWebSocket(webSocket, config);
 #else
+		if (addressed)
+		{
+			webSocket.Tls = tls;
+			webSocket.Trust = trust;
+			webSocket.TrustedPem.Set(trustedPem);
+			return JoinWebSocket(webSocket, config);
+		}
 		let socket = new UdpSocket(0);
 		if (!socket.IsOpen)
 		{
@@ -161,6 +171,26 @@ class NetworkManager
 		return manager;
 #endif
 	}
+
+	/// Joins a host's gateway over a websocket. A join that cannot start says why in the log.
+	private static NetworkManager JoinWebSocket(WebSocketClientConfig webSocket, ReliableConfig config)
+	{
+		let socket = new WebSocketClientSocket(webSocket);
+		if (!socket.IsOpen)
+		{
+			GlobalLog(.Error, "Net: could not join {}: {}", webSocket.Host, socket.Failure);
+			delete socket;
+			return null;
+		}
+		let manager = new NetworkManager(socket, 0, webSocket.Port, config);
+		manager.ConnectTo(WebSocketClientSocket.ServerEndpoint);
+		return manager;
+	}
+
+#if BF_PLATFORM_WASM
+	[CLink, CallingConvention(.Cdecl)]
+	private static extern int32 emscripten_run_script_int(char8* script);
+#endif
 
 	/// The port this endpoint's OWNED socket is bound to; nought when the socket is borrowed.
 	/// A host opened on port nought reports its assigned port here, so a client can reach it.
