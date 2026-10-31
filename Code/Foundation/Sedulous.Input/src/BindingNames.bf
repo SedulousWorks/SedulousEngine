@@ -61,7 +61,8 @@ static class BindingNames
 	}
 
 	/// A gamepad button by POSITION, which is how it is bound: "Pad South" whatever the pad
-	/// prints on that button.
+	/// prints on that button. One of its own for every button, so a prompt's sheet can tell any
+	/// two apart.
 	public static StringView PadButtonName(uint32 code)
 	{
 		switch ((GamepadButton)code)
@@ -78,6 +79,15 @@ static class BindingNames
 		case .DPadRight: return "DPad Right";
 		case .Start: return "Pad Start";
 		case .Back: return "Pad Back";
+		case .LeftStick: return "Pad LS"; // the left stick pressed
+		case .RightStick: return "Pad RS";
+		case .Guide: return "Pad Guide";
+		case .LeftPaddle1: return "Pad Left Paddle 1";
+		case .LeftPaddle2: return "Pad Left Paddle 2";
+		case .RightPaddle1: return "Pad Right Paddle 1";
+		case .RightPaddle2: return "Pad Right Paddle 2";
+		case .Touchpad: return "Pad Touchpad";
+		case .Misc1: return "Pad Misc";
 		default: return "Pad Button";
 		}
 	}
@@ -136,14 +146,15 @@ static class BindingNames
 			outName.Append("Touch Stick");
 
 		case .Composite2D:
-			outName.Append("Keys ");
-			KeyName(binding.NegX, outName);
-			outName.Append('/');
-			KeyName(binding.PosX, outName);
-			outName.Append('/');
-			KeyName(binding.NegY, outName);
-			outName.Append('/');
+			// Up, left, down, right, as a player reads them ("W A S D"; the arrows "Up Left Down
+			// Right").
 			KeyName(binding.PosY, outName);
+			outName.Append(' ');
+			KeyName(binding.NegX, outName);
+			outName.Append(' ');
+			KeyName(binding.NegY, outName);
+			outName.Append(' ');
+			KeyName(binding.PosX, outName);
 		}
 	}
 

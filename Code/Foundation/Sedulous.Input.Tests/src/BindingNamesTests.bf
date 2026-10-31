@@ -42,8 +42,8 @@ class BindingNamesTests
 		Test.Assert(BindingNames.PadButtonName((.)GamepadButton.DPadUp) == "DPad Up");
 		Test.Assert(BindingNames.PadButtonName((.)GamepadButton.LeftShoulder) == "Pad LB");
 		Test.Assert(BindingNames.PadButtonName((.)GamepadButton.Start) == "Pad Start");
-		// A button with no prompt of its own still names its family.
-		Test.Assert(BindingNames.PadButtonName((.)GamepadButton.Touchpad) == "Pad Button");
+		// Every button names itself now, the touchpad too.
+		Test.Assert(BindingNames.PadButtonName((.)GamepadButton.Touchpad) == "Pad Touchpad");
 	}
 
 	private static void Describe(BindingSource source, uint32 code, String outName)
@@ -77,6 +77,20 @@ class BindingNamesTests
 
 	/// A composite names all four keys, in the order the fields are declared, so a prompt
 	/// reads as the shape the player's hand makes.
+	/// Every button its own name (a prompt's sheet draws a glyph per name): the stick presses
+	/// read "Pad Button" once, so Sprint on the left stick could not be told from any other.
+	[Test]
+	public static void EveryPadButtonHasANameOfItsOwn()
+	{
+		Test.Assert(BindingNames.PadButtonName((.)GamepadButton.LeftStick) == "Pad LS");
+		for (uint32 a < (uint32)GamepadButton.Count)
+		{
+			Test.Assert(BindingNames.PadButtonName(a) != "Pad Button", scope $"button {a}");
+			for (uint32 b = a + 1; b < (uint32)GamepadButton.Count; b++)
+				Test.Assert(BindingNames.PadButtonName(a) != BindingNames.PadButtonName(b), scope $"buttons {a} and {b}");
+		}
+	}
+
 	[Test]
 	public static void ACompositeNamesItsFourKeys()
 	{
@@ -89,7 +103,7 @@ class BindingNamesTests
 
 		let label = scope String();
 		BindingNames.DescribeBinding(wasd, label);
-		Test.Assert(label == "Keys A/D/S/W");
+		Test.Assert(label == "W A S D"); // up, left, down, right, as a player reads them
 	}
 
 	[Test]
