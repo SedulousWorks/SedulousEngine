@@ -34,6 +34,8 @@ class ModelResource
 
 	/// Null when the model has no skin.
 	public Proxy<Skeleton> Skeleton = .(null);
+	/// The manifest's skeleton parent node, for ModelPlacement.SkinnedMeshParent.
+	public int32 SkeletonParentNode = -2;
 	public List<Proxy<AnimationClip>> Animations = new .() ~ delete _;
 
 	public Float3 BoundsMin = .(0, 0, 0);

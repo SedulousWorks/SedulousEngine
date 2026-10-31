@@ -136,6 +136,7 @@ class ModelResourceTests
 		record.CollisionGuid.Add(.());
 
 		record.SkeletonGuid = fixture.CookSkeleton("rig");
+		record.SkeletonParentNode = 0;
 		record.AnimationGuid.Add(fixture.CookClip("walk"));
 
 		// A root that draws nothing, and a child that draws the mesh: a hierarchy carries
@@ -176,12 +177,41 @@ class ModelResourceTests
 
 		Test.Assert(model.Get.Skeleton.Get != null);
 		Test.Assert(model.Get.Skeleton.Get.FindBone("child") == 1);
+		Test.Assert(model.Get.SkeletonParentNode == 0, "the manifest's skeleton parent, for a host's placement");
 
 		Test.Assert(model.Get.Animations.Count == 1);
 		Test.Assert(model.Get.Animations[0].Get != null);
 
 		Test.Assert(model.Get.BoundsMin == Float3(-1, -1, -1));
 		Test.Assert(model.Get.BoundsMax == Float3(1, 1, 1));
+	}
+
+	/// A skinned mesh's node goes under the skeleton's parent at identity; it stays where the file
+	/// put it when that parent is unknown (data before version 3), is the mesh node, or is below it;
+	/// a malformed cycle ends the walk.
+	[Test]
+	public static void ASkinnedMeshGoesUnderTheSkeletonsParentUnlessThatIsItOrBelowIt()
+	{
+		let nodes = scope List<ModelNode>();
+		defer { ClearAndDeleteItems!(nodes); }
+		// root(0) > armature(1) > bone(2); root(0) > mesh(3) > below(4)
+		int32[5] parents = .(-1, 0, 1, 0, 3);
+		for (let parent in parents)
+		{
+			let node = new ModelNode();
+			node.ParentIndex = parent;
+			nodes.Add(node);
+		}
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 1, 3) == 1, "under the armature");
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, -1, 3) == -1, "no parent: the model's root");
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, -2, 3) == ModelPlacement.cSkinnedMeshKeepsPlace, "unknown (before version 3)");
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 9, 3) == ModelPlacement.cSkinnedMeshKeepsPlace, "out of range");
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 3, 3) == ModelPlacement.cSkinnedMeshKeepsPlace, "the mesh node itself");
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 4, 3) == ModelPlacement.cSkinnedMeshKeepsPlace, "below the mesh node");
+
+		// A cycle (1 > 2 > 1) ends at the node count instead of hanging.
+		nodes[1].ParentIndex = 2;
+		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 1, 3) == 1);
 	}
 
 	/// A model with NO skin binds no skeleton, and a nil id in any list is a gap rather than

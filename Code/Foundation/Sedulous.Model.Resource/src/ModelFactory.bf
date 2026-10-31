@@ -72,6 +72,7 @@ class ModelFactory : IResourceFactory
 		// A nil id is a model with no skin, which is most of them.
 		if (source.SkeletonGuid != Guid())
 			model.Skeleton = manager.Bind<Skeleton>(source.SkeletonGuid);
+		model.SkeletonParentNode = source.SkeletonParentNode;
 
 		for (let id in source.AnimationGuid)
 		{

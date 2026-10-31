@@ -22,27 +22,14 @@ namespace Sedulous.Scene.Pipeline;
 /// one, and one skeletal animator on the root feeding every skinned mesh.
 static class ModelPrefab
 {
-	/// A skin draws in its skeleton's parent's space (the joints' palette is relative to it),
-	/// and glTF ignores a skinned mesh node's own transform: so the skinned mesh entity goes
-	/// under the skeleton's parent node (the prefab root when the skeleton has none) at
-	/// identity, and its world IS the skeleton's model space wherever the file put the mesh
-	/// node (inverse-kinematics.md P0a). Left where the file put it when the manifest does not
-	/// know the parent (before data version 3) or that parent is the mesh node or below it.
+	/// The skinned mesh entity under the skeleton's parent node at identity, or left where the
+	/// file put it (ModelPlacement.SkinnedMeshParent says which).
 	private static void PlaceInSkeletonSpace(Sedulous.Scene.Scene scene, ModelManifestSource manifest,
 		List<ModelNode> nodes, List<EntityHandle> entities, EntityHandle root, int meshNode)
 	{
-		let parent = manifest.SkeletonParentNode;
-		if ((parent < -1) || (parent >= entities.Count))
+		let parent = ModelPlacement.SkinnedMeshParent(nodes, manifest.SkeletonParentNode, meshNode);
+		if ((parent == ModelPlacement.cSkinnedMeshKeepsPlace) || (parent >= entities.Count))
 			return;
-
-		// The walk up is bounded by the node count, so a malformed cycle cannot hang it.
-		var node = parent;
-		for (int steps = 0; (node >= 0) && (node < nodes.Count) && (steps <= nodes.Count); steps++)
-		{
-			if (node == meshNode)
-				return;
-			node = nodes[node].ParentIndex;
-		}
 		scene.SetParent(entities[meshNode], (parent >= 0) ? entities[parent] : root);
 		scene.SetLocalTransform(entities[meshNode], .());
 	}
