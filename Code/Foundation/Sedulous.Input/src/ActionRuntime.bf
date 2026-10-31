@@ -70,6 +70,8 @@ class ActionRuntime
 	private List<ActionState> mStates = new .() ~ delete _;
 	private List<bool> mSetEnabled = new .() ~ delete _;
 	private List<String> mExclusiveStack = new .() ~ DeleteContainerAndItems!(_);
+	/// ExclusiveTopSet, kept as the stack changes (queries compare no names).
+	private int mExclusiveTop = -1;
 	private List<RefEntry> mRefs = new .() ~ DeleteContainerAndItems!(_);
 	private uint64 mFrame = 0;
 	private float mTimeScale = 1.0f;
@@ -104,6 +106,7 @@ class ActionRuntime
 		mStates.Clear();
 		mSetEnabled.Clear();
 		ClearAndDeleteItems!(mExclusiveStack);
+		mExclusiveTop = -1;
 		ClearAndDeleteItems!(mRefs);
 
 		int actionTotal = 0;
@@ -168,6 +171,7 @@ class ActionRuntime
 	public void PushExclusiveSet(StringView name)
 	{
 		mExclusiveStack.Add(new String(name));
+		mExclusiveTop = ExclusiveTopSet();
 		mLatchHeldOnce = true;
 		mBindingsVersion++;
 	}
@@ -179,6 +183,7 @@ class ActionRuntime
 			return;
 
 		delete mExclusiveStack.PopBack();
+		mExclusiveTop = ExclusiveTopSet();
 		mLatchHeldOnce = true;
 		mBindingsVersion++;
 	}
@@ -507,11 +512,21 @@ class ActionRuntime
 		if (!reference.IsValid || (reference.Index >= (uint32)mRefs.Count))
 			return .Err;
 
+		// The first set in effect: enabled, and the exclusive top while one is pushed. An enabled
+		// set under an exclusive one only reads released, so an action a menu set repeats (Pause
+		// in Gameplay and in Menu) answers from the menu's while it is up.
+		int suppressed = -1;
 		for (let candidate in mRefs[(int)reference.Index].Candidates)
 		{
-			if (mSetEnabled[candidate.Set])
+			if (!mSetEnabled[candidate.Set])
+				continue;
+			if ((mExclusiveTop < 0) || (candidate.Set == mExclusiveTop))
 				return .Ok(candidate.FlatIndex);
+			if (suppressed < 0)
+				suppressed = candidate.FlatIndex; // released, as every set under it
 		}
+		if (suppressed >= 0)
+			return .Ok(suppressed);
 		return .Err;
 	}
 

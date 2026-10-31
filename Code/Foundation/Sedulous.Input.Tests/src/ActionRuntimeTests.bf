@@ -263,6 +263,70 @@ class ActionRuntimeTests
 		Test.Assert(runtime.WasPressed(jump));
 	}
 
+	/// A menu set repeating an action of the game's (Masquerade: Pause in Gameplay and in Menu,
+	/// the menu's set pushed exclusive while a menu is up): the query answers from the set in
+	/// effect, not the first enabled one, so Escape still closes the menu it opened.
+	[Test]
+	public static void AnActionTwoSetsShareAnswersFromTheExclusiveSetWhileItIsPushed()
+	{
+		let map = new InputMap();
+		defer delete map;
+		let gameplay = new ActionSet();
+		gameplay.Name.Set("Gameplay");
+		map.Sets.Add(gameplay);
+		let gamePause = new InputAction();
+		gamePause.Name.Set("Pause");
+		gamePause.Kind = .Button;
+		gamePause.Bindings.Add(InputTestMaps.Key(.Escape));
+		gameplay.Actions.Add(gamePause);
+		let tag = new InputAction();
+		tag.Name.Set("Tag");
+		tag.Kind = .Button;
+		tag.Bindings.Add(InputTestMaps.Key(.F));
+		gameplay.Actions.Add(tag);
+		let menu = new ActionSet();
+		menu.Name.Set("Menu"); // the same priority as Gameplay, after it
+		map.Sets.Add(menu);
+		let menuPause = new InputAction();
+		menuPause.Name.Set("Pause");
+		menuPause.Kind = .Button;
+		menuPause.Bindings.Add(InputTestMaps.Key(.Escape));
+		menu.Actions.Add(menuPause);
+
+		let runtime = scope ActionRuntime();
+		runtime.SetMap(map);
+		let devices = scope FakeDevices();
+		let pauseRef = runtime.Resolve("Pause");
+		let tagRef = runtime.Resolve("Tag");
+
+		// In play, Escape pauses (the game's Pause).
+		devices.FakeKeyboard.SetDown(.Escape);
+		runtime.Update(devices, cStep);
+		Test.Assert(runtime.WasPressed(pauseRef));
+		devices.FakeKeyboard.SetDown(.Escape, false);
+		runtime.Update(devices, cStep);
+
+		// The menu is up: Tag reads released, and Escape is the menu's Pause, pressed.
+		runtime.PushExclusiveSet("Menu");
+		devices.FakeKeyboard.SetDown(.F);
+		runtime.Update(devices, cStep);
+		Test.Assert(!runtime.WasPressed(tagRef));
+		Test.Assert(!runtime.IsDown(tagRef));
+		devices.FakeKeyboard.SetDown(.F, false);
+		devices.FakeKeyboard.SetDown(.Escape);
+		runtime.Update(devices, cStep);
+		Test.Assert(runtime.WasPressed(pauseRef), "was the Gameplay copy: suppressed, never pressed");
+		devices.FakeKeyboard.SetDown(.Escape, false);
+		runtime.Update(devices, cStep);
+
+		// Closed: the game's own again.
+		runtime.PopExclusiveSet();
+		runtime.Update(devices, cStep);
+		devices.FakeKeyboard.SetDown(.F);
+		runtime.Update(devices, cStep);
+		Test.Assert(runtime.WasPressed(tagRef));
+	}
+
 	/// Pushing a set the map does not have suppresses NOTHING. A typo should not make the
 	/// game unplayable.
 	///
