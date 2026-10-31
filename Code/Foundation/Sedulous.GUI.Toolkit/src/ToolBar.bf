@@ -500,6 +500,52 @@ class ToolBar : UIWidget
 			}
 			return (count > 1) ? total + gap * (float)(count - 1) : total;
 		}
+		// An item that may shrink (flex-shrink with a minimum of its own, as a label that ellipsizes:
+		// CSS's automatic minimum keeps the rest at their content) gives up its room first, down to
+		// that minimum, so a long text never pushes the tools out of the bar.
+		{
+			let over = Used(false) - room;
+			float weight = 0.0f;
+			float give = 0.0f;
+			for (let item in items)
+			{
+				let spare = ShrinkRoom(item.Node, Along(item.Size), column);
+				if (spare > 0.0f)
+				{
+					weight += item.Node.LayoutStyle.Shrink * Along(item.Size);
+					give += spare;
+				}
+			}
+			if ((over > 0.0f) && (weight > 0.0f))
+			{
+				// Each by its share of the shrink (CSS: flex-shrink times its size), held at its minimum.
+				var left = Math.Min(over, give);
+				for (int round = 0; (round < 4) && (left > 0.01f); ++round)
+				{
+					float share = 0.0f;
+					for (let item in items)
+					{
+						if (ShrinkRoom(item.Node, Along(item.Size), column) > 0.0f)
+							share += item.Node.LayoutStyle.Shrink * Along(item.Size);
+					}
+					if (share <= 0.0f)
+						break;
+					let cut = left;
+					for (int i < items.Count)
+					{
+						let spare = ShrinkRoom(items[i].Node, Along(items[i].Size), column);
+						if (spare <= 0.0f)
+							continue;
+						let take = Math.Min(spare, cut * items[i].Node.LayoutStyle.Shrink * Along(items[i].Size) / share);
+						if (column)
+							items[i].Size.Y -= take;
+						else
+							items[i].Size.X -= take;
+						left -= take;
+					}
+				}
+			}
+		}
 		// Hide the lowest priority first, the last of a priority first, until what shows fits.
 		let hiding = Used(false) > room + 0.5f;
 		while (hiding && (Used(true) > room + 0.5f))
@@ -707,4 +753,19 @@ class ToolBar : UIWidget
 				GetChildAt(i).RequestLayout(); // its thickness lies along the other axis now
 		}
 	}
+
+	// How much of `extent` an item may give up along the bar: down to its own minimum when it shrinks
+	// and sets one; none for an automatic minimum (its content).
+	private static float ShrinkRoom(Node node, float extent, bool column)
+	{
+		let s = node.LayoutStyle;
+		if (s.Shrink <= 0.0f)
+			return 0.0f;
+		let min = column ? s.MinHeight : s.MinWidth;
+		if (min.IsAuto)
+			return 0.0f;
+		let floor = (min.Resolve(0.0f) ?? 0.0f) + (column ? s.Margin.TotalVertical : s.Margin.TotalHorizontal);
+		return Math.Max(0.0f, extent - floor);
+	}
+
 }

@@ -146,6 +146,43 @@ class ToolBarTests
 	}
 
 	[Test]
+	public static void AnItemThatMayShrinkToAMinimumOfItsOwnGivesUpItsRoomBeforeAnyToolOverflows()
+	{
+		let bed = scope ToolBed(200.0f); // 192 inside its padding
+		let b = scope List<ToolButton>();
+		for (int32 i = 0; i < 3; ++i)
+			b.Add(bed.Button());
+		// A long status, 160 wide, that shrinks and may go to nothing (min-width: 0, as a label that
+		// ellipsizes); three tools of 40 with gaps of 2 beside it ask 290.
+		let status = bed.Hold(new UIWidget());
+		status.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(160.0f);
+				s.Height = LayoutLength.Px(20.0f);
+				s.MinWidth = LayoutLength.Px(0.0f);
+				s.Shrink = 1.0f;
+			});
+		bed.Bar.AddChild(status);
+		bed.Lay();
+		for (let button in b)
+			Test.Assert(button.Visible, "no tool went to the overflow menu");
+		Test.Assert(bed.Bar.Overflowed.IsEmpty);
+		Test.Assert(!bed.Bar.OverflowButton.Visible);
+		CheckNear(status.Size.X, 192.0f - 3 * 40.0f - 3 * 2.0f); // what is left: 66
+
+		// Below its minimum it holds, and only then do tools overflow.
+		status.EditLayoutStyle(scope (s) => { s.MinWidth = LayoutLength.Px(100.0f); });
+		bed.Lay();
+		CheckNear(status.Size.X, 100.0f);
+		Test.Assert(!bed.Bar.Overflowed.IsEmpty);
+
+		// With an automatic minimum (its content) it never shrinks: the tools overflow as before.
+		status.EditLayoutStyle(scope (s) => { s.MinWidth = LayoutLength(); });
+		bed.Lay();
+		CheckNear(status.Size.X, 160.0f);
+	}
+
+	[Test]
 	public static void ASeparatorShowsOnlyBetweenShownItemsAWidgetNoMenuRowStandsForNeverOverflows()
 	{
 		let bed = scope ToolBed(400.0f);
