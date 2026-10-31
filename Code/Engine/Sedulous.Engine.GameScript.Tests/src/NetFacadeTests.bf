@@ -25,8 +25,10 @@ class NetFacadeTests
 				bool hosted = false;
 				bool server = false;
 				bool client = true;
+				bool canHost = false;
 				void launch()
 				{
+					canHost = Net.CanHost;
 					offlineServer = Net.IsServer;
 					offlinePeers = Net.PeerCount;
 					Net.Rpc("nobody");
@@ -41,6 +43,7 @@ class NetFacadeTests
 			""");
 		Test.Assert(run.Instance.StartScript(game));
 		Test.Assert(!run.PropBool("offlineServer"));
+		Test.Assert(run.PropBool("canHost") == Sedulous.Net.Manager.NetworkManager.CanHost, "the build's, not the session's");
 		Test.Assert(run.PropInt("offlinePeers") == 0);
 		Test.Assert(run.PropBool("hosted"), "a host on an assigned port opens");
 		Test.Assert(run.PropBool("server") && !run.PropBool("client"));

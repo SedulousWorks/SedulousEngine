@@ -87,6 +87,11 @@ class NetFacade : IScriptEntityScene
 	[Scriptable]
 	public double NetworkTimeMs => (Endpoint != null) ? Endpoint.Session.NetworkTimeMs : 0.0;
 
+	/// Whether this build can host at all (a browser cannot listen): a title offers Host only when
+	/// it can, rather than failing once it is chosen.
+	[Scriptable]
+	public bool CanHost => NetworkManager.CanHost;
+
 	/// Hosts on `port`, a listen server (this run plays too). False when the socket does not
 	/// open; the game shows an error.
 	[Scriptable]
