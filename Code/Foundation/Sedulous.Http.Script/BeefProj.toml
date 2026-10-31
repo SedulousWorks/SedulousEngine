@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Http.Script"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Http.Script.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Http" = "*"
+"Sedulous.Http.Client" = "*"
+"Sedulous.Script" = "*"
