@@ -13,7 +13,8 @@ namespace Sedulous.Editor.Materials;
 
 /// The material's shader: a shader asset, or a built-in (PBR, Unlit or Phong) when it has none. A switch
 /// is one undoable edit that re-lays the material by the new shader, keeping every value that
-/// still fits; the page follows its shader asset when it recooks.
+/// still fits, and gives it the effect groups the new shader's vertex stage declares (a group
+/// gained or dropped is part of that step); the page follows its shader asset when it recooks.
 extension MaterialEditorPage
 {
 	/// The shader asset's cooked source (its property table), or null before it has cooked. The
@@ -48,7 +49,12 @@ extension MaterialEditorPage
 			return; // the row shows the shader it still has
 		}
 		defer delete table;
-		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetShader(s, shader, table); });
+		let variants = (ShaderFlags)table.VertexVariantMask;
+		ApplyEdit("Shader", scope [&] (s) =>
+			{
+				MaterialShaderLayout.SetShader(s, shader, table);
+				AdoptEffects(s, variants);
+			});
 	}
 
 	private void SwitchToBuiltIn(BuiltinShading shading)
@@ -59,7 +65,11 @@ extension MaterialEditorPage
 		let current = asset.Source;
 		if (current.ShaderId.IsNil && (current.ShaderName == MaterialPresets.BuiltinShadingOf(shading).ShaderName))
 			return;
-		ApplyEdit("Shader", scope [&] (s) => { MaterialShaderLayout.SetBuiltInShader(s, shading); });
+		ApplyEdit("Shader", scope [&] (s) =>
+			{
+				MaterialShaderLayout.SetBuiltInShader(s, shading);
+				AdoptEffects(s, MaterialPresets.BuiltinShadingOf(shading).VertexVariants);
+			});
 	}
 
 	/// Binds the material's shader asset (its resource registers it for the preview) and re-lays
@@ -71,9 +81,21 @@ extension MaterialEditorPage
 		mShader = default;
 		mShaderVersion = 0;
 		ClearAndDeleteItems!(mShaderTable);
+		mShaderVertexVariants = .None;
 		let asset = Edited;
-		if ((asset == null) || asset.Source.ShaderId.IsNil)
+		if (asset == null)
 			return;
+		if (asset.Source.ShaderId.IsNil)
+		{
+			// A built-in: its effect groups laid on the effects' tables, not an edit, as a shader
+			// asset's layout below is.
+			let before = scope List<String>();
+			defer { ClearAndDeleteItems!(before); }
+			RowLayoutOf(asset.Source, before);
+			AdoptEffects(asset.Source, VertexVariantsOf(asset.Source));
+			mRowsDirty |= !SameLayout(before, asset.Source);
+			return;
+		}
 		let id = asset.Source.ShaderId;
 		if (Context.Resources != null)
 		{
@@ -90,8 +112,29 @@ extension MaterialEditorPage
 		}
 		defer delete table;
 		table.GetProperties(mShaderTable);
+		mShaderVertexVariants = (ShaderFlags)table.VertexVariantMask;
 		let laid = scope MaterialSource();
 		MaterialShaderLayout.LayOut(asset.Source, table, laid);
 		MaterialShaderLayout.Assign(asset.Source, laid);
+		AdoptEffects(asset.Source, mShaderVertexVariants);
+	}
+
+	/// `source`'s effect groups laid on the effects' tables by what its shader's vertex stage
+	/// declares (a group it lacks added at the effect's defaults). Without the shader system (no
+	/// host: a test) the groups the source carries stand.
+	private void AdoptEffects(MaterialSource source, ShaderFlags vertexVariants)
+	{
+		if (mEffectSystem == null)
+			return;
+		source.AdoptDeclaredEffects(mEffectSystem.Effects.All, vertexVariants);
+	}
+
+	/// What the source's shader's vertex stage declares: a built-in's, or its shader asset's.
+	private ShaderFlags VertexVariantsOf(MaterialSource source)
+	{
+		if (!source.ShaderId.IsNil)
+			return mShaderVertexVariants;
+		let builtin = MaterialPresets.FindBuiltinShadingByShader(source.ShaderName);
+		return builtin.HasValue ? builtin.Value.VertexVariants : .None;
 	}
 }

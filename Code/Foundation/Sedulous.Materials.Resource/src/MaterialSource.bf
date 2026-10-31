@@ -153,6 +153,31 @@ class MaterialSource
 		return material;
 	}
 
+	/// The groups laid on the effects' tables by what this source's shader's vertex stage declares
+	/// (Material.AdoptDeclaredEffects, on the stored form): a declared effect it has no group for
+	/// gains one at the effect's defaults, a group carried keeps the values whose name, type and
+	/// size still fit, and a group whose effect is not declared goes. The factory does this to a
+	/// runtime material; an authoring tool that has the tables (the material page,
+	/// material_set_shader) does it to the source, so a material made before it had a group
+	/// (every new one: the builders know no effect's table) shows and saves the group its shader
+	/// draws. No effects say nothing: the stored groups stand.
+	public void AdoptDeclaredEffects(Span<Sedulous.Shaders.ShaderEffect> effects, Sedulous.Shaders.ShaderFlags vertexVariants)
+	{
+		if (effects.IsEmpty)
+			return;
+		let scratch = scope Material();
+		for (let group in Effects)
+			group.ApplyTo(scratch);
+		scratch.AdoptDeclaredEffects(effects, vertexVariants);
+		ClearAndDeleteItems!(Effects);
+		for (let group in scratch.EffectGroups)
+		{
+			let stored = new MaterialEffectGroupSource();
+			MaterialEffectGroupSource.FromGroup(group, stored);
+			Effects.Add(stored);
+		}
+	}
+
 	/// Once read (the [Serializable] hook): stored colours typed as the template declares them,
 	/// and a builtin material's wind lanes moved into its Wind group.
 	public void AfterRead()

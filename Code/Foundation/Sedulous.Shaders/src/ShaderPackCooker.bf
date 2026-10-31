@@ -122,10 +122,12 @@ static class ShaderPackCooker
 		}
 	}
 
-	/// Records every effect block the corpus's includes declare into the pack, so a game reads
-	/// the effects' tables without the sources. A malformed block, or two effects sharing a name
-	/// or a flag, is a cook error naming the file and line. False when any is.
-	public static bool CookShaderEffects(StringView shaderDirectory, CookedShaderPack pack, ShaderCookReport report)
+	/// Every effect block the library's includes declare, into `outLibrary`: what the cook
+	/// records in the pack, and where a tool with no shader system (the headless MCP host's
+	/// material_set_shader) reads the effects' tables from. A malformed block, or two effects
+	/// sharing a name or a flag, is left out with an error naming the file and line in
+	/// `outErrors` (its strings the list's). False when any is.
+	public static bool CollectShaderLibraryEffects(StringView shaderDirectory, ShaderEffectLibrary outLibrary, List<String> outErrors)
 	{
 		let files = scope List<String>();
 		defer { ClearAndDeleteItems!(files); }
@@ -136,7 +138,7 @@ static class ShaderPackCooker
 			let text = scope String();
 			if (!ReadStageSource(shaderDirectory, file, text))
 			{
-				report.AddError(file, "could not read the source");
+				outErrors.Add(new String()..AppendF("{}: could not read the source", file));
 				ok = false;
 				continue;
 			}
@@ -150,16 +152,36 @@ static class ShaderPackCooker
 				if (!block.IsOk)
 				{
 					for (let error in block.Errors)
-						report.AddError(scope $"{file}:{error.Line}", error.Message);
+						outErrors.Add(new String()..AppendF("{}:{}: {}", file, error.Line, error.Message));
 					ok = false;
 					continue;
 				}
 				let error = scope String();
-				if (!pack.AddEffect(block.Effect, error))
+				if (!outLibrary.Add(block.Effect, error))
 				{
-					report.AddError(scope $"{file}:{block.FirstLine}", error);
+					outErrors.Add(new String()..AppendF("{}:{}: {}", file, block.FirstLine, error));
 					ok = false;
 				}
+			}
+		}
+		return ok;
+	}
+
+	/// Records every effect block the corpus's includes declare into the pack, so a game reads
+	/// the effects' tables without the sources. A malformed block, or two effects sharing a name
+	/// or a flag, is a cook error naming the file and line. False when any is.
+	public static bool CookShaderEffects(StringView shaderDirectory, CookedShaderPack pack, ShaderCookReport report)
+	{
+		let library = scope ShaderEffectLibrary();
+		var ok = CollectShaderLibraryEffects(shaderDirectory, library, report.Errors);
+		for (let effect in library.All)
+		{
+			// The library refused a second name or flag already, as the pack would.
+			let error = scope String();
+			if (!pack.AddEffect(effect, error))
+			{
+				report.AddError(effect.Name, error);
+				ok = false;
 			}
 		}
 		return ok;

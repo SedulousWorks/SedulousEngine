@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Materials;
 using Sedulous.Materials.Resource;
+using Sedulous.Shaders;
 using Sedulous.Shaders.Resource;
 using Sedulous.Texture.Resource;
 using Sedulous.GUI;
@@ -12,7 +13,8 @@ namespace Sedulous.Editor.Materials;
 
 /// The rows, laid out from the material's shader table in three sections: the material's (its
 /// shader a reference, the built-in while there is none, the pipeline state), each property its
-/// shader declares by its type, and each texture slot. A grid's commit is one undo step.
+/// shader declares by its type, and each texture slot; then a section per effect group the
+/// material carries. A grid's commit is one undo step.
 extension MaterialEditorPage
 {
 	private static readonly StringView[6] cBlendItems = .("Opaque", "Masked", "AlphaBlend", "Additive", "Multiply", "PremultipliedAlpha");
@@ -51,76 +53,71 @@ extension MaterialEditorPage
 		}
 
 		// Each value its shader declares, by its type.
-		let path = scope String();
 		for (int i = 0; (i < src.PropertyNames.Count) && (i < src.PropertyTypes.Count); i++)
 		{
 			let row = MaterialPropertyRow.For((MaterialPropertyType)src.PropertyTypes[i]);
 			let name = src.PropertyNames[i];
-			let rows = (row == .Texture) ? mTextureRows : mPropertyRows;
-			PropertyInfo info = null;
-			switch (row)
-			{
-			case .None:
+			if (row == .None)
 				continue; // a sampler has no value to edit (the material system binds it)
-			case .Number:
-				info = rows.Add(name, .Float);
-				// A shader asset's property declares its range; the standard PBR factors are 0..1
-				// (the normal scale 0..2); any other float is unbounded.
-				let ranged = ShaderRange(name, let min, let max);
-				let zeroToOne = (name == "Metallic") || (name == "Roughness") || (name == "OcclusionStrength") || (name == "AlphaCutoff");
-				if (ranged || zeroToOne || (name == "NormalScale"))
-				{
-					info.HasRange = true;
-					info.Min = ranged ? min : 0.0;
-					info.Max = ranged ? max : (zeroToOne ? 1.0 : 2.0);
-					info.Hint.Set("slider"); // over its range, as the old page's were
-				}
-				info.Step = 0.01;
-			case .Numbers2, .Numbers3, .Numbers4:
-				let count = PartCount(row);
-				info = rows.Add(name, .Group);
-				info.Hint.AppendF("Float{}", count);
-				for (int p < count)
-				{
-					path.Clear();
-					JoinPropertyPath(name, cParts[p], path);
-					rows.Add(path, .Float).Step = 0.01;
-				}
-			case .Integer:
-				info = rows.Add(name, .Integer);
-				if (ShaderRange(name, let lo, let hi))
-				{
-					info.HasRange = true;
-					info.Min = lo;
-					info.Max = hi;
-				}
-			case .Color:
-				info = rows.Add(name, .Color);
-			case .ColorWithIntensity:
-				// A colour that may pass white: its colour as entered, its intensity in w (the
-				// grid's HDR colour, as a field's parts are named).
-				info = rows.Add(name, .Group);
-				info.Hint.Set("ColorHdr");
-				path.Clear();
-				JoinPropertyPath(name, "color", path);
-				rows.Add(path, .Color).ShowsAlpha = false;
-				path.Clear();
-				JoinPropertyPath(name, "intensity", path);
-				let intensity = rows.Add(path, .Float);
-				intensity.HasRange = true;
-				intensity.Min = 0.0;
-				intensity.Max = 1e6;
-				intensity.Step = 0.05;
-			case .Texture:
+			if (row == .Texture)
+			{
 				// A texture or a render texture (a monitor's screen, a mirror): what makes a
 				// Texture, asked of the builders.
-				info = rows.Add(name, .Reference);
-				info.ReferenceType = typeof(Texture);
+				let slot = mTextureRows.Add(name, .Reference);
+				slot.ReferenceType = typeof(Texture);
+				PropertyNames.Prettify(name, slot.DisplayName);
+				continue;
 			}
-			if (info != null)
-				PropertyNames.Prettify(name, info.DisplayName);
+			// A shader asset's property declares its range.
+			ShaderProperty declared = null;
+			for (let property in mShaderTable)
+			{
+				if (property.Name == name)
+					declared = property;
+			}
+			AddValueRow(mPropertyRows, name, row, declared);
+			let info = mPropertyRows.FindInfo(name);
+			if (info == null)
+				continue;
+			// The standard PBR factors are 0..1 (the normal scale 0..2); any other float a shader
+			// gives no range is unbounded.
+			let zeroToOne = (name == "Metallic") || (name == "Roughness") || (name == "OcclusionStrength") || (name == "AlphaCutoff");
+			if ((row == .Number) && !info.HasRange && (zeroToOne || (name == "NormalScale")))
+			{
+				info.HasRange = true;
+				info.Min = 0.0;
+				info.Max = zeroToOne ? 1.0 : 2.0;
+				info.Hint.Set("slider"); // over its range, as the old page's were
+			}
+			PropertyNames.Prettify(name, info.DisplayName);
 		}
-		for (let rows in Sedulous.GUI.PropertyBag[3](mMaterialRows, mPropertyRows, mTextureRows))
+
+		// Each effect group the material carries (Wind), a section of its own: its rows from the
+		// effect's table, as a custom shader's properties are, with the table's ranges when the
+		// page has the shader system serving it; else the group's own layout, unbounded.
+		for (let group in src.Effects)
+		{
+			let rows = new Sedulous.GUI.PropertyBag();
+			let table = (mEffectSystem != null) ? mEffectSystem.FindEffect(group.Name) : null;
+			for (int i = 0; (i < group.PropertyNames.Count) && (i < group.PropertyTypes.Count); i++)
+			{
+				let name = group.PropertyNames[i];
+				let row = MaterialPropertyRow.For((MaterialPropertyType)group.PropertyTypes[i]);
+				if ((row == .None) || (row == .Texture))
+					continue; // an effect takes uniforms only
+				AddValueRow(rows, name, row, (table != null) ? table.FindProperty(name) : null);
+				if (let info = rows.FindInfo(name))
+					PropertyNames.Prettify(name, info.DisplayName);
+			}
+			mEffectRows.Add(rows);
+			mEffectRowNames.Add(new String(group.Name));
+		}
+		let bags = scope List<Sedulous.GUI.PropertyBag>();
+		bags.Add(mMaterialRows);
+		bags.Add(mPropertyRows);
+		bags.Add(mTextureRows);
+		bags.AddRange(mEffectRows);
+		for (let rows in bags)
 		{
 			rows.SetOnCommit(new [=this, =rows] (commit) =>
 				{
@@ -146,14 +143,76 @@ extension MaterialEditorPage
 		AddSection("material", "Material", mMaterialRows);
 		AddSection("properties", "Properties", mPropertyRows);
 		AddSection("textures", "Textures", mTextureRows);
+		// After the shader's own: an effect's values are the material's, not its shader's.
+		for (int g < mEffectRows.Count)
+			AddSection(scope String()..AppendF("effect-{}", mEffectRowNames[g]), mEffectRowNames[g], mEffectRows[g]);
 	}
 
-	/// The three sections' rows let go; the grid let go of them first (ClearSections).
+	/// The sections' rows let go; the grid let go of them first (ClearSections).
 	private void DeleteRows()
 	{
 		DeleteAndNullify!(mMaterialRows);
 		DeleteAndNullify!(mPropertyRows);
 		DeleteAndNullify!(mTextureRows);
+		ClearAndDeleteItems!(mEffectRows);
+		ClearAndDeleteItems!(mEffectRowNames);
+	}
+
+	/// A value's row by its type, at `path` of `rows`: one way for the shader's properties and an
+	/// effect group's parameters. `declared` (the shader's or the effect's) gives its range.
+	private static void AddValueRow(Sedulous.GUI.PropertyBag rows, StringView path, MaterialPropertyRow row, ShaderProperty declared)
+	{
+		let ranged = (declared != null) && declared.HasRange;
+		let part = scope String();
+		switch (row)
+		{
+		case .Number:
+			let info = rows.Add(path, .Float);
+			if (ranged)
+			{
+				info.HasRange = true;
+				info.Min = declared.RangeMin;
+				info.Max = declared.RangeMax;
+				info.Hint.Set("slider"); // over its range, as the old page's were
+			}
+			info.Step = 0.01;
+		case .Numbers2, .Numbers3, .Numbers4:
+			let count = PartCount(row);
+			let group = rows.Add(path, .Group);
+			group.Hint.AppendF("Float{}", count);
+			for (int p < count)
+			{
+				part.Clear();
+				JoinPropertyPath(path, cParts[p], part);
+				rows.Add(part, .Float).Step = 0.01;
+			}
+		case .Integer:
+			let integer = rows.Add(path, .Integer);
+			if (ranged)
+			{
+				integer.HasRange = true;
+				integer.Min = declared.RangeMin;
+				integer.Max = declared.RangeMax;
+			}
+		case .Color:
+			rows.Add(path, .Color);
+		case .ColorWithIntensity:
+			// A colour that may pass white: its colour as entered, its intensity in w (the
+			// grid's HDR colour, as a field's parts are named).
+			let hdr = rows.Add(path, .Group);
+			hdr.Hint.Set("ColorHdr");
+			JoinPropertyPath(path, "color", part);
+			rows.Add(part, .Color).ShowsAlpha = false;
+			part.Clear();
+			JoinPropertyPath(path, "intensity", part);
+			let intensity = rows.Add(part, .Float);
+			intensity.HasRange = true;
+			intensity.Min = 0.0;
+			intensity.Max = 1e6;
+			intensity.Step = 0.05;
+		default:
+			// a texture's row is a slot (BuildRows); a sampler has none
+		}
 	}
 
 	/// Each row's value from the source, where it differs; the preview bar's choices as they are.
@@ -178,46 +237,69 @@ extension MaterialEditorPage
 		Show(mMaterialRows, "depth", Sedulous.GUI.Variant((int64)src.DepthMode));
 		Show(mMaterialRows, "cull", Sedulous.GUI.Variant((int64)src.CullMode));
 
-		let path = scope String();
 		for (int i = 0; (i < src.PropertyNames.Count) && (i < src.PropertyTypes.Count); i++)
 		{
 			let name = src.PropertyNames[i];
 			let row = MaterialPropertyRow.For((MaterialPropertyType)src.PropertyTypes[i]);
-			switch (row)
-			{
-			case .Number:
-				Show(mPropertyRows, name, Sedulous.GUI.Variant((double)MaterialSourceEdit.ReadFloat(src, name)));
-			case .Numbers2, .Numbers3, .Numbers4:
-				let count = PartCount(row);
-				float[4] parts = default;
-				MaterialSourceEdit.ReadUniform(src, name, &parts[0], sizeof(float) * count);
-				for (int p < count)
-				{
-					path.Clear();
-					JoinPropertyPath(name, cParts[p], path);
-					Show(mPropertyRows, path, Sedulous.GUI.Variant((double)parts[p]));
-				}
-			case .Integer:
-				int32 integer = 0;
-				MaterialSourceEdit.ReadUniform(src, name, &integer, sizeof(int32));
-				Show(mPropertyRows, name, Sedulous.GUI.Variant((int64)integer));
-			case .Color:
-				let colour = MaterialSourceEdit.ReadFloat4(src, name);
-				Show(mPropertyRows, name, Sedulous.GUI.Variant(Color(colour.X, colour.Y, colour.Z, colour.W)));
-			case .ColorWithIntensity:
-				let hdr = MaterialSourceEdit.ReadFloat4(src, name);
-				path.Clear();
-				JoinPropertyPath(name, "color", path);
-				Show(mPropertyRows, path, Sedulous.GUI.Variant(Color(hdr.X, hdr.Y, hdr.Z, 1.0f)));
-				path.Clear();
-				JoinPropertyPath(name, "intensity", path);
-				Show(mPropertyRows, path, Sedulous.GUI.Variant((double)hdr.W));
-			case .Texture:
+			if (row == .Texture)
 				Show(mTextureRows, name, Sedulous.GUI.Variant(GuidText(MaterialSourceEdit.TextureFor(src, name), .. scope .())));
-			case .None:
+			else
+				ShowValue(src, mPropertyRows, name, name, row);
+		}
+		// Each effect group's values, addressed as `Effect.Property`.
+		let qualified = scope String();
+		for (int g < mEffectRows.Count)
+		{
+			for (let group in src.Effects)
+			{
+				if (group.Name != mEffectRowNames[g])
+					continue;
+				for (int i = 0; (i < group.PropertyNames.Count) && (i < group.PropertyTypes.Count); i++)
+				{
+					let name = group.PropertyNames[i];
+					qualified..Clear().AppendF("{}.{}", group.Name, name);
+					ShowValue(src, mEffectRows[g], name, qualified, MaterialPropertyRow.For((MaterialPropertyType)group.PropertyTypes[i]));
+				}
 			}
 		}
 		ShowPreviewChoices();
+	}
+
+	/// The value `name` addresses (`Metallic`, `Wind.Strength`) shown in row `path` of `rows`, by
+	/// its type.
+	private static void ShowValue(MaterialSource src, Sedulous.GUI.PropertyBag rows, StringView path, StringView name, MaterialPropertyRow row)
+	{
+		let part = scope String();
+		switch (row)
+		{
+		case .Number:
+			Show(rows, path, Sedulous.GUI.Variant((double)MaterialSourceEdit.ReadFloat(src, name)));
+		case .Numbers2, .Numbers3, .Numbers4:
+			let count = PartCount(row);
+			float[4] parts = default;
+			MaterialSourceEdit.ReadUniform(src, name, &parts[0], sizeof(float) * count);
+			for (int p < count)
+			{
+				part.Clear();
+				JoinPropertyPath(path, cParts[p], part);
+				Show(rows, part, Sedulous.GUI.Variant((double)parts[p]));
+			}
+		case .Integer:
+			int32 integer = 0;
+			MaterialSourceEdit.ReadUniform(src, name, &integer, sizeof(int32));
+			Show(rows, path, Sedulous.GUI.Variant((int64)integer));
+		case .Color:
+			let colour = MaterialSourceEdit.ReadFloat4(src, name);
+			Show(rows, path, Sedulous.GUI.Variant(Color(colour.X, colour.Y, colour.Z, colour.W)));
+		case .ColorWithIntensity:
+			let hdr = MaterialSourceEdit.ReadFloat4(src, name);
+			JoinPropertyPath(path, "color", part);
+			Show(rows, part, Sedulous.GUI.Variant(Color(hdr.X, hdr.Y, hdr.Z, 1.0f)));
+			part.Clear();
+			JoinPropertyPath(path, "intensity", part);
+			Show(rows, part, Sedulous.GUI.Variant((double)hdr.W));
+		default:
+		}
 	}
 
 	/// A grid's commit of `value` to row `path` of `rows`, one undo step (a shader switched,
@@ -250,16 +332,51 @@ extension MaterialEditorPage
 			ApplyEdit(path, scope [&] (s) => { MaterialSourceEdit.SetTexture(s, path, picked); });
 			return;
 		}
-		// A property, or one part of it ("Tint.x", "Emissive.intensity").
+		// A value, or one part of it ("Tint.x", "Emissive.intensity").
 		let parent = ParentPropertyPath(path);
 		let name = parent.IsEmpty ? path : parent;
 		let part = (name.Length == path.Length) ? StringView() : path.Substring(name.Length + 1);
-		var row = MaterialPropertyRow.None;
-		for (int i = 0; (i < asset.Source.PropertyNames.Count) && (i < asset.Source.PropertyTypes.Count); i++)
+		let src = asset.Source;
+		if (rows === mPropertyRows)
 		{
-			if (asset.Source.PropertyNames[i] == name)
-				row = MaterialPropertyRow.For((MaterialPropertyType)asset.Source.PropertyTypes[i]);
+			var row = MaterialPropertyRow.None;
+			for (int i = 0; (i < src.PropertyNames.Count) && (i < src.PropertyTypes.Count); i++)
+			{
+				if (src.PropertyNames[i] == name)
+					row = MaterialPropertyRow.For((MaterialPropertyType)src.PropertyTypes[i]);
+			}
+			CommitValue(name, part, row, value);
+			return;
 		}
+		// An effect group's parameter, written as `Effect.Property` into the group's values.
+		for (int g < mEffectRows.Count)
+		{
+			if (rows !== mEffectRows[g])
+				continue;
+			for (let group in src.Effects)
+			{
+				if (group.Name != mEffectRowNames[g])
+					continue;
+				for (int i = 0; (i < group.PropertyNames.Count) && (i < group.PropertyTypes.Count); i++)
+				{
+					if (group.PropertyNames[i] != name)
+						continue;
+					let qualified = scope String()..AppendF("{}.{}", group.Name, name);
+					CommitValue(qualified, part, MaterialPropertyRow.For((MaterialPropertyType)group.PropertyTypes[i]), value);
+					return;
+				}
+			}
+			return;
+		}
+	}
+
+	/// An edit of the value `name` addresses (`Metallic`, `Wind.Strength`), or of its `part`, one
+	/// undo step merged per value.
+	private void CommitValue(StringView name, StringView part, MaterialPropertyRow row, Sedulous.GUI.Variant value)
+	{
+		let asset = Edited;
+		if (asset == null)
+			return;
 		switch (row)
 		{
 		case .Number:
@@ -293,23 +410,6 @@ extension MaterialEditorPage
 			ApplyEdit(name, scope [&] (s) => { MaterialSourceEdit.WriteFloat4(s, name, hdr); });
 		default:
 		}
-	}
-
-	/// The range the shader asset declares for `name`, when it declares one.
-	private bool ShaderRange(StringView name, out double min, out double max)
-	{
-		min = 0.0;
-		max = 1.0;
-		for (let property in mShaderTable)
-		{
-			if ((property.Name == name) && property.HasRange)
-			{
-				min = property.RangeMin;
-				max = property.RangeMax;
-				return true;
-			}
-		}
-		return false;
 	}
 
 	// `value` shown in row `path` of `rows` where it differs.

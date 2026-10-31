@@ -4,7 +4,10 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Settings;
 using Sedulous.Content;
+using Sedulous.Materials;
 using Sedulous.Materials.Pipeline;
+using Sedulous.Materials.Resource;
+using Sedulous.Shaders;
 using Sedulous.Texture.Resource;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
@@ -15,7 +18,8 @@ namespace Sedulous.Editor.Materials.Tests;
 
 /// The material page from the preview pages' markup (Data/Editor/PreviewPage.xml) over a PBR
 /// material in a project, with no host (so no preview): its rows laid out from its shader's table
-/// (the material's, its properties, its textures), an edit one undo step, Discard Changes taking
+/// (the material's, its properties, its textures, a section per effect group), an edit one undo
+/// step, Discard Changes taking
 /// them all back, and the preview's shape or mesh kept per material (the bar showing it is no pick).
 class MaterialPageTests
 {
@@ -311,5 +315,130 @@ class MaterialPageTests
 		Test.Assert(!page.Commands.CanUndo);
 		Test.Assert(notices.Count == 1);
 		Test.Assert(notices[0].Contains("has not cooked", true));
+	}
+
+	/// The Wind effect's table, parsed as the cook parses wind.hlsli. THE CALLER OWNS it.
+	static ShaderEffect WindTable()
+	{
+		let block = scope ShaderEffectBlock();
+		ShaderProperties.ParseEffect("effect Wind : WIND\n{\n    float Strength = 0 [0, 2] (gate);\n" +
+			"    float Speed = 1 [0, 20];\n    float Height = 1 [0.01, 100];\n}\n", 0, block);
+		Test.Assert(block.IsOk);
+		let effect = new ShaderEffect();
+		block.Effect.CopyTo(effect);
+		return effect;
+	}
+
+	/// A float of an effect group in the material's source; -1 when it has none such.
+	static float SourceEffectFloat(MaterialSource source, StringView effect, StringView name)
+	{
+		for (let group in source.Effects)
+		{
+			if (group.Name != effect)
+				continue;
+			for (int i = 0; (i < group.PropertyNames.Count) && (i < group.PropertyOffsets.Count); i++)
+			{
+				if ((group.PropertyNames[i] == name) && ((int)group.PropertyOffsets[i] + sizeof(float) <= group.Values.Count))
+					return *(float*)(group.Values.Ptr + group.PropertyOffsets[i]);
+			}
+		}
+		return -1.0f;
+	}
+
+	/// The bed's Wood as a PBR material carrying the Wind group, at a strength of 0.25.
+	static void GiveWoodWind(Bed bed)
+	{
+		let wind = WindTable();
+		defer delete wind;
+		let card = MaterialPresets.CreatePbr("Wood");
+		defer delete card;
+		card.AddEffectGroup(wind);
+		card.SetDefaultFloat("Wind.Strength", 0.25f);
+		let asset = scope MaterialAsset();
+		MaterialSource.FromMaterial(card, .(), asset.Source);
+		Test.Assert(asset.Source.Effects.Count == 1);
+		Test.Assert(bed.Wood.WriteObject(asset) case .Ok);
+	}
+
+	/// A material's effect groups: a section each, titled by the effect, its rows from the group's
+	/// parameters, its values the group's. Without a host the page has no shader system, so the
+	/// rows are the group's own layout (no ranges) and no group is added for a material that
+	/// lacks one.
+	[Test]
+	public static void AMaterialCarryingTheWindGroupHasAWindSectionOneWithoutHasNone()
+	{
+		let bed = scope Bed();
+		{
+			let page = bed.Open();
+			defer delete page;
+			Test.Assert(page.Source != null);
+			Test.Assert(page.Source.Effects.IsEmpty);
+			Test.Assert(page.EffectRows("Wind") == null);
+			Test.Assert(page.Sections.SectionCount == 5, "notices, the material, properties, textures, facts");
+		}
+
+		GiveWoodWind(bed);
+		let page = bed.Open();
+		defer delete page;
+		Test.Assert(page.Sections.SectionCount == 6, "and Wind");
+		let wind = page.EffectRows("Wind");
+		Test.Assert(wind != null);
+		let strength = wind.FindInfo("Strength");
+		Test.Assert(strength != null);
+		Test.Assert(strength.Kind == .Float);
+		Test.Assert(strength.DisplayName == "Strength");
+		Test.Assert(wind.FindInfo("Speed") != null);
+		Test.Assert(wind.FindInfo("Height") != null);
+		Test.Assert(Near(FloatOf(wind, "Strength"), 0.25));
+		Test.Assert(Near(FloatOf(wind, "Speed"), 1.0));
+		// The shader's own rows keep no wind of theirs.
+		Test.Assert(page.PropertyRows.FindInfo("WindStrength") == null);
+	}
+
+	[Test]
+	public static void AnEditOfWindStrengthLandsInTheSourcesWindGroupOneUndoStep()
+	{
+		let bed = scope Bed();
+		GiveWoodWind(bed);
+		let page = bed.Open();
+		defer delete page;
+		let wind = page.EffectRows("Wind");
+		Test.Assert(wind != null);
+		page.EditRow(wind, "Strength", Sedulous.GUI.Variant(0.8));
+		page.Refresh();
+		Test.Assert(page.IsDirty);
+		Test.Assert(Near(SourceEffectFloat(page.Source, "Wind", "Strength"), 0.8));
+		Test.Assert(Near(SourceEffectFloat(page.Source, "Wind", "Speed"), 1.0), "its neighbours untouched");
+		Test.Assert(page.EffectRows("Wind") != null);
+		Test.Assert(Near(FloatOf(page.EffectRows("Wind"), "Strength"), 0.8));
+		page.Commands.Undo();
+		page.Refresh();
+		Test.Assert(Near(SourceEffectFloat(page.Source, "Wind", "Strength"), 0.25));
+		Test.Assert(page.EffectRows("Wind") != null);
+		Test.Assert(Near(FloatOf(page.EffectRows("Wind"), "Strength"), 0.25));
+	}
+
+	/// The section follows the group across a shader switch: a built-in that declares WIND (all
+	/// three do) keeps the group, values and all, and the rows laid out again for the new shader
+	/// keep its section; the undo too. (A shader that does not declare WIND drops the group: the
+	/// pipeline's KeepDeclaredEffects, tested in Materials.Pipeline.Tests.)
+	[Test]
+	public static void ABuiltInSwitchedKeepsTheWindGroupAndItsSectionAndItsUndoToo()
+	{
+		let bed = scope Bed();
+		GiveWoodWind(bed);
+		let page = bed.Open();
+		defer delete page;
+		Test.Assert(page.EffectRows("Wind") != null);
+		// Unlit declares WIND as PBR does: the group, and its section, stay.
+		page.EditRow(page.MaterialRows, "builtIn", Sedulous.GUI.Variant((int64)1));
+		page.Refresh();
+		Test.Assert(page.Source.ShaderName == "unlit", page.Source.ShaderName);
+		Test.Assert(page.EffectRows("Wind") != null);
+		Test.Assert(Near(FloatOf(page.EffectRows("Wind"), "Strength"), 0.25));
+		page.Commands.Undo();
+		page.Refresh();
+		Test.Assert(page.Source.ShaderName == "forward");
+		Test.Assert(page.EffectRows("Wind") != null);
 	}
 }

@@ -51,7 +51,7 @@ static class EngineTools
 		ScriptValidateTool.Register(server);
 		ShaderValidateTool.Register(server, paths.ShaderLibrary);
 		GuiValidateTool.Register(server);
-		MaterialShaderTool.Register(server, session);
+		MaterialShaderTool.Register(server, session, paths.ShaderLibrary);
 		ScriptCreateTool.Register(server, session);
 		ExportPresetTools.Register(server, session);
 		ProjectExportTool.Register(server, session, operations);

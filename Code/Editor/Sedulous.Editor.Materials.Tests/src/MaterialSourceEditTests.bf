@@ -4,11 +4,12 @@ using Sedulous.Core;
 using Sedulous.Materials;
 using Sedulous.Materials.Resource;
 using Sedulous.Materials.Pipeline;
+using Sedulous.Shaders;
 
 namespace Sedulous.Editor.Materials.Tests;
 
-/// The material page's headless edits: named uniforms, the texture slot table, and the
-/// snapshot the undo step carries.
+/// The material page's headless edits: named uniforms (an effect group's as `Effect.Property`),
+/// the texture slot table, and the snapshot the undo step carries.
 class MaterialSourceEditTests
 {
 	private static MaterialSource PbrSource()
@@ -106,5 +107,37 @@ class MaterialSourceEditTests
 		Test.Assert(source.TextureSlots.Count == 1);
 		Test.Assert(source.TextureSlots[0] == "AlbedoMap");
 		Test.Assert(source.BlendMode == .Additive);
+	}
+
+	/// `Wind.Strength` reaches the Wind group's values, never a shader property; a name of no
+	/// group, or of no parameter in it, reaches nothing.
+	[Test]
+	public static void AnEffectsParameterReadsAndWritesAsEffectProperty()
+	{
+		let block = scope ShaderEffectBlock();
+		ShaderProperties.ParseEffect("effect Wind : WIND\n{\n    float Strength = 0 [0, 2] (gate);\n" +
+			"    float Speed = 1 [0, 20];\n    float Height = 1 [0.01, 100];\n}\n", 0, block);
+		Test.Assert(block.IsOk);
+		let built = MaterialPresets.CreatePbr("M");
+		defer delete built;
+		built.AddEffectGroup(block.Effect);
+		let source = scope MaterialSource();
+		MaterialSource.FromMaterial(built, .(), source);
+		let defaultsBefore = scope List<uint8>();
+		defaultsBefore.AddRange(source.UniformDefaults);
+
+		Test.Assert(MaterialSourceEdit.ReadFloat(source, "Wind.Speed", -1.0f) == 1.0f);
+		Test.Assert(MaterialSourceEdit.WriteFloat(source, "Wind.Strength", 0.4f));
+		Test.Assert(MaterialSourceEdit.ReadFloat(source, "Wind.Strength", -1.0f) == 0.4f);
+		Test.Assert(*(float*)source.Effects[0].Values.Ptr == 0.4f);
+		Test.Assert(MaterialSourceEdit.ReadFloat(source, "Wind.Speed", -1.0f) == 1.0f, "its neighbour untouched");
+		// The shader's buffer is not where the group lives.
+		Test.Assert(source.UniformDefaults.Count == defaultsBefore.Count);
+		for (int i < defaultsBefore.Count)
+			Test.Assert(source.UniformDefaults[i] == defaultsBefore[i]);
+
+		Test.Assert(!MaterialSourceEdit.WriteFloat(source, "Wind.Gust", 1.0f));
+		Test.Assert(!MaterialSourceEdit.WriteFloat(source, "Fade.Amount", 1.0f));
+		Test.Assert(MaterialSourceEdit.ReadFloat(source, "Fade.Amount", -1.0f) == -1.0f);
 	}
 }

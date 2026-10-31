@@ -218,4 +218,52 @@ class MaterialEffectSourceTests
 		fixture.Manager.RemoveFactory(withSystem);
 		fixture.Manager.AddFactory(fixture.Materials);
 	}
+
+	/// An authoring tool with the effects' tables (the material page, material_set_shader) lays a
+	/// source's groups on them as the factory does a runtime material's: a declared effect the
+	/// source lacks a group for gains one at its defaults, a group carried keeps its values, a
+	/// group whose effect is not declared goes, and no effects leave the stored groups as they are.
+	[Test]
+	public static void AdoptDeclaredEffectsGivesASourceTheGroupsItsShaderDeclaresKeepingValues()
+	{
+		let library = scope ShaderEffectLibrary();
+		let wind = WindTable();
+		defer delete wind;
+		Test.Assert(library.Add(wind, scope String()));
+		let declares = ShaderFlags.Skinned | .Wind;
+
+		// Made where no table was at hand (every new material): no group, then the effect's defaults.
+		let pbr = MaterialPresets.CreatePbr("fresh");
+		defer delete pbr;
+		let fresh = scope MaterialSource();
+		MaterialSource.FromMaterial(pbr, .(), fresh);
+		Test.Assert(fresh.Effects.IsEmpty);
+		fresh.AdoptDeclaredEffects(library.All, declares);
+		Test.Assert(fresh.Effects.Count == 1);
+		let group = fresh.Effects[0];
+		Test.Assert(group.Name == "Wind");
+		Test.Assert(group.Flag == (uint32)ShaderFlags.Wind);
+		Test.Assert(group.PropertyNames.Count == 3);
+		Test.Assert(Near(FloatAt(group.Values, group.PropertyOffsets[0]), 0.0f), "Strength: off");
+		Test.Assert(Near(FloatAt(group.Values, group.PropertyOffsets[1]), 1.0f), "Speed");
+
+		// A group carried keeps its values.
+		let windy = MaterialPresets.CreatePbr("windy");
+		defer delete windy;
+		windy.AddEffectGroup(wind);
+		windy.SetDefaultFloat("Wind.Strength", 0.6f);
+		let kept = scope MaterialSource();
+		MaterialSource.FromMaterial(windy, .(), kept);
+		kept.AdoptDeclaredEffects(library.All, declares);
+		Test.Assert(kept.Effects.Count == 1);
+		Test.Assert(Near(FloatAt(kept.Effects[0].Values, kept.Effects[0].PropertyOffsets[0]), 0.6f));
+
+		// No effects say nothing: the group stands.
+		kept.AdoptDeclaredEffects(Span<ShaderEffect>(), .Skinned);
+		Test.Assert(kept.Effects.Count == 1);
+
+		// A shader that does not declare WIND: the group goes.
+		kept.AdoptDeclaredEffects(library.All, .Skinned);
+		Test.Assert(kept.Effects.IsEmpty);
+	}
 }

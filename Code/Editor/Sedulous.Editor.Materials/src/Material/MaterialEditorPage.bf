@@ -12,6 +12,7 @@ using Sedulous.Materials.Pipeline;
 using Sedulous.Shaders;
 using Sedulous.Shaders.Resource;
 using Sedulous.Texture.Resource;
+using Sedulous.Engine.Render;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
 using Sedulous.Graphics;
@@ -33,7 +34,10 @@ namespace Sedulous.Editor.Materials;
 /// pipeline state (blend, depth, cull); under Properties each value its shader declares, by its type
 /// (a number, with the shader's range; two, three or four; an integer; a colour; a colour that may
 /// pass white, with its intensity); under Textures each texture slot, a slot taking what makes a
-/// Texture. A shader switched, undone or recooked lays the rows out again. What the preview shows
+/// Texture; then a section per effect group the material carries (Wind: its Strength, Speed and
+/// Height), its rows from the effect's table as a custom shader's are, its values the group's
+/// (`Wind.Strength`), and none for a material whose shader declares no effect. A shader switched,
+/// undone or recooked lays the rows out again. What the preview shows
 /// the material on (a shape, or a mesh of the project) is on the preview's bar, not among the
 /// material's rows, and kept per material with the project.
 ///
@@ -53,6 +57,9 @@ class MaterialEditorPage : AssetObjectPage
 	private Sedulous.GUI.PropertyBag mMaterialRows = null;
 	private Sedulous.GUI.PropertyBag mPropertyRows = null;
 	private Sedulous.GUI.PropertyBag mTextureRows = null;
+	/// A section per effect group, in the source's order, and the group each shows.
+	private List<Sedulous.GUI.PropertyBag> mEffectRows = new .() ~ delete _;
+	private List<String> mEffectRowNames = new .() ~ DeleteContainerAndItems!(_);
 	/// The layout changed: the rows made again on the next Refresh, never inside the grid's commit
 	/// that caused it.
 	private bool mRowsDirty = false;
@@ -85,6 +92,12 @@ class MaterialEditorPage : AssetObjectPage
 	private Proxy<ShaderResource> mShader = default;
 	private uint64 mShaderVersion = 0;
 	private List<ShaderProperty> mShaderTable = new .() ~ DeleteContainerAndItems!(_);
+	/// What the shader asset's vertex stage declares: the effects its materials carry.
+	private ShaderFlags mShaderVertexVariants = .None;
+	/// The renderer's shader system (borrowed; null without a host): the effects' tables, for a
+	/// group's ranges and the group of an effect the material's shader declares that the
+	/// material does not carry yet.
+	private ShaderSystem mEffectSystem = null;
 
 	/// It takes `services`.
 	public this(EditorContext context, AssetPageServices services, Instance instance)
@@ -111,6 +124,11 @@ class MaterialEditorPage : AssetObjectPage
 			let missing = scope String();
 			if (asset.Source.ShaderId.IsNil && !ForwardMaterialContract.IsComplete(asset.Source, missing))
 				GlobalLog(.Error, "Editor: material '{}' is missing the forward shader property '{}' (a stale source); make it again, the runtime refuses to build it", Title, missing);
+		}
+		if (let host = Services.Host)
+		{
+			if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+				mEffectSystem = render.Shaders;
 		}
 		BindShader(); // a material on a shader asset shows the shader's current properties
 		BuildPreviewScene();
@@ -222,6 +240,17 @@ class MaterialEditorPage : AssetObjectPage
 	public Sedulous.GUI.PropertyBag PropertyRows => mPropertyRows;
 	public Sedulous.GUI.PropertyBag TextureRows => mTextureRows;
 
+	/// An effect group's section (`Wind`), or null when the material carries no such group.
+	public Sedulous.GUI.PropertyBag EffectRows(StringView effect)
+	{
+		for (int g < mEffectRowNames.Count)
+		{
+			if (mEffectRowNames[g] == effect)
+				return mEffectRows[g];
+		}
+		return null;
+	}
+
 	/// Writes `value` to row `path` of `rows` as the grid commits an edit (one undo step).
 	public void EditRow(Sedulous.GUI.PropertyBag rows, StringView path, Sedulous.GUI.Variant value)
 	{
@@ -238,18 +267,14 @@ class MaterialEditorPage : AssetObjectPage
 		if (asset == null)
 			return;
 		let shaderBefore = asset.Source.ShaderId;
-		let namesBefore = scope List<String>();
-		defer { ClearAndDeleteItems!(namesBefore); }
-		for (let name in asset.Source.PropertyNames)
-			namesBefore.Add(new String(name));
+		let layoutBefore = scope List<String>();
+		defer { ClearAndDeleteItems!(layoutBefore); }
+		RowLayoutOf(asset.Source, layoutBefore);
 		MaterialSourceEdit.Apply(asset.Source, blob);
 		// A shader switched (or its switch undone) changes the rows and what the preview binds.
 		if (asset.Source.ShaderId != shaderBefore)
 			BindShader();
-		var sameRows = namesBefore.Count == asset.Source.PropertyNames.Count;
-		for (int i = 0; sameRows && (i < namesBefore.Count); i++)
-			sameRows = namesBefore[i] == asset.Source.PropertyNames[i];
-		mRowsDirty |= !sameRows;
+		mRowsDirty |= !SameLayout(layoutBefore, asset.Source);
 		mReshow = true;
 		ShowNotices();
 		RebuildPreviewMaterial();
@@ -291,18 +316,42 @@ class MaterialEditorPage : AssetObjectPage
 		mGestureBefore.Clear();
 		// The rows follow a change of what the material holds (a built-in switched): the command's
 		// Execute below applies `after` over itself, so it cannot see that change.
-		let namesBefore = scope List<String>();
-		defer { ClearAndDeleteItems!(namesBefore); }
-		for (let name in asset.Source.PropertyNames)
-			namesBefore.Add(new String(name));
+		let layoutBefore = scope List<String>();
+		defer { ClearAndDeleteItems!(layoutBefore); }
+		RowLayoutOf(asset.Source, layoutBefore);
 		mutate(asset.Source);
-		var sameRows = namesBefore.Count == asset.Source.PropertyNames.Count;
-		for (int i = 0; sameRows && (i < namesBefore.Count); i++)
-			sameRows = namesBefore[i] == asset.Source.PropertyNames[i];
-		mRowsDirty |= !sameRows;
+		mRowsDirty |= !SameLayout(layoutBefore, asset.Source);
 		let after = scope List<uint8>();
 		SnapshotSource(after);
 		Commands.Execute(new EditMaterialCommand(this, mergeKey, before, after));
+	}
+
+	/// What the rows are laid out from: the shader's property names, then each effect group's
+	/// `Effect.Property` names. A change of it (a shader switched, its undo) lays them out again.
+	private static void RowLayoutOf(MaterialSource source, List<String> outNames)
+	{
+		for (let name in source.PropertyNames)
+			outNames.Add(new String(name));
+		for (let group in source.Effects)
+		{
+			for (let name in group.PropertyNames)
+				outNames.Add(new String()..AppendF("{}.{}", group.Name, name));
+		}
+	}
+
+	private static bool SameLayout(List<String> before, MaterialSource source)
+	{
+		let now = scope List<String>();
+		defer { ClearAndDeleteItems!(now); }
+		RowLayoutOf(source, now);
+		if (now.Count != before.Count)
+			return false;
+		for (int i < now.Count)
+		{
+			if (now[i] != before[i])
+				return false;
+		}
+		return true;
 	}
 
 	/// A gesture given up: the source as it was before its previews, the preview with it.

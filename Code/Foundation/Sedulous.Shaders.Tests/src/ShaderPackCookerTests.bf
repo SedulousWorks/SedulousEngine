@@ -406,4 +406,25 @@ class ShaderPackCookerTests
 		Test.Assert(badLine);
 		Test.Assert(pack.Effects.Count == 1, "the first Wind only");
 	}
+
+	/// What a tool with no shader system reads the effects' tables from (the headless host's
+	/// material_set_shader): the library's effects, no compiler needed, each refused one an error
+	/// naming its file and line, the first of a name or flag kept.
+	[Test]
+	public static void TheLibrarysEffectsAreCollectedWithoutACompiler()
+	{
+		let corpus = MakeCorpusDirectory("effects_collect", .. scope String());
+		defer { RemoveDirectoryRecursive(corpus); }
+		WriteShader(corpus, "a.hlsli", ShaderEffectCompileTests.cWindEffect);
+		WriteShader(corpus, "b.hlsli", "effect Gust : WIND\n{\n    float Amount = 1 (gate);\n}\n");
+
+		let library = scope ShaderEffectLibrary();
+		let errors = scope List<String>();
+		defer { ClearAndDeleteItems!(errors); }
+		Test.Assert(!ShaderPackCooker.CollectShaderLibraryEffects(corpus, library, errors));
+		Test.Assert(library.Count == 1);
+		Test.Assert(library.Find("Wind") != null);
+		Test.Assert(errors.Count == 1);
+		Test.Assert(errors[0].Contains("b.hlsli:1"), errors[0]);
+	}
 }

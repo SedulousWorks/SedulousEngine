@@ -3,19 +3,29 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Materials;
 using Sedulous.Materials.Resource;
 
 namespace Sedulous.Editor.Materials;
 
 /// The material page's edits on a MaterialSource, kept off the page so they run headless:
-/// the packed uniform defaults by property name, the texture slot table, and the binary
-/// snapshot the undo command carries.
+/// the packed uniform defaults by property name (an `Effect.Property` name reaching the effect
+/// group's values instead), the texture slot table, and the binary snapshot the undo command
+/// carries.
 static class MaterialSourceEdit
 {
 	/// Copies `bytes` of the named property's default out of the packed blob; false, `outValue`
 	/// untouched, when the property is absent or the blob too short.
 	public static bool ReadUniform(MaterialSource source, StringView name, void* outValue, int bytes)
 	{
+		let values = EffectValue(source, name, bytes);
+		if (values != null)
+		{
+			Internal.MemCpy(outValue, values, bytes);
+			return true;
+		}
+		if (Material.SplitEffectPropertyName(name, ?, ?))
+			return false; // no such group, or parameter: never a shader property of that name
 		let index = IndexOf(source, name);
 		if (index < 0)
 			return false;
@@ -28,6 +38,14 @@ static class MaterialSourceEdit
 
 	public static bool WriteUniform(MaterialSource source, StringView name, void* value, int bytes)
 	{
+		let values = EffectValue(source, name, bytes);
+		if (values != null)
+		{
+			Internal.MemCpy(values, value, bytes);
+			return true;
+		}
+		if (Material.SplitEffectPropertyName(name, ?, ?))
+			return false;
 		let index = IndexOf(source, name);
 		if (index < 0)
 			return false;
@@ -122,6 +140,26 @@ static class MaterialSourceEdit
 		let ar = scope BinarySerializer(stream, .Read);
 		ISerializable serializable = source;
 		serializable.Serialize(ar);
+	}
+
+	/// Where the parameter `Effect.Property` names sits in its group's values, when the group
+	/// holds `bytes` of it; null for any other name.
+	private static uint8* EffectValue(MaterialSource source, StringView name, int bytes)
+	{
+		if (!Material.SplitEffectPropertyName(name, let effect, let parameter))
+			return null;
+		for (let group in source.Effects)
+		{
+			if (group.Name != effect)
+				continue;
+			for (int i = 0; (i < group.PropertyNames.Count) && (i < group.PropertyOffsets.Count); i++)
+			{
+				if ((group.PropertyNames[i] == parameter) && ((int)group.PropertyOffsets[i] + bytes <= group.Values.Count))
+					return group.Values.Ptr + group.PropertyOffsets[i];
+			}
+			return null;
+		}
+		return null;
 	}
 
 	private static int IndexOf(MaterialSource source, StringView name)
