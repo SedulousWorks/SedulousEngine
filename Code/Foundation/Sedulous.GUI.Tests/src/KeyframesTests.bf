@@ -230,4 +230,44 @@ class KeyframesTests
 		bed.Advance(0.5);
 		Test.Assert(Near(bed.W.Alpha, 1.0f));
 	}
+
+	/// A label's text scales with its node (Masquerade's clock): a scale pulse beside an opacity
+	/// one, started on the label from the first styling or later by a class, reaches the world
+	/// transform it draws through.
+	[Test]
+	public static void ALabelsScalePulseReachesItsWorldTransformFromTheStartOrByAClass()
+	{
+		for (int pass < 2)
+		{
+			let byClass = pass == 1;
+			let root = SceneFixtures.NewScene();
+			defer root.ReleaseRef();
+			let label = new Sedulous.GUI.Label();
+			defer label.ReleaseRef();
+			label.Text = "3:55";
+			label.AddClass("a");
+			if (!byClass)
+				label.AddClass("late");
+			root.AddChild(label);
+			let styles = scope StyleManager();
+			let sheet = scope StyleSheet();
+			CSSParser.Parse("@keyframes pulse { from { transform: scale(1); opacity: 1; } to { transform: scale(1.5); opacity: 0.5; } } " +
+				".a { width: 100px; height: 40px; } .a.late { animation: pulse 1s linear infinite alternate; }", sheet);
+			styles.StyleSheet = sheet;
+			styles.ApplyTree(root);
+			root.UpdateLayout();
+			if (byClass)
+			{
+				root.Context.Update(SceneFixtures.Seconds(0.5)); // no pulse yet
+				Test.Assert(Near(label.ScreenBounds.Width, 100.0f), "unscaled before its class");
+				label.AddClass("late");
+				styles.ApplyTree(root);
+			}
+			root.Context.Update(SceneFixtures.Seconds(0.5)); // halfway up: scale 1.25 about the centre, opacity 0.75
+			Test.Assert(Near(label.Alpha, 0.75f), scope $"alpha, by class {byClass}");
+			let drawn = label.ScreenBounds;
+			Test.Assert(Near(drawn.Width, 125.0f), scope $"width {drawn.Width}, by class {byClass}");
+			Test.Assert(Near(drawn.Height, 50.0f), scope $"height {drawn.Height}, by class {byClass}");
+		}
+	}
 }
