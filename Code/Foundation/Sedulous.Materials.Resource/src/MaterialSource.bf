@@ -16,8 +16,9 @@ namespace Sedulous.Materials.Resource;
 /// substitutes a neutral texture at bind time, and storing white in every asset would be a
 /// thousand copies of a decision that belongs in one place. The texture slots that ARE
 /// bound are stored, by resource id.
-/// Version three.
-[Serializable(3, true)] // afterRead: the stored colours typed on read
+/// Version four: the effect groups (Effects). A version three record still reads, and a builtin
+/// material's wind lanes migrate into a Wind group as it does (AfterRead).
+[Serializable(4, true, 3)] // afterRead: the stored colours typed and the wind lanes migrated on read
 class MaterialSource
 {
 	[DisplayName("Name")]
@@ -63,6 +64,11 @@ class MaterialSource
 	[DisplayName("Sampler V")]
 	public uint8 SamplerV = 0;
 
+	/// The effect groups: one per effect the material's shader declares the variant of, apart
+	/// from the shader's properties.
+	[Appended(4)]
+	public List<MaterialEffectGroupSource> Effects = new .() ~ DeleteContainerAndItems!(_);
+
 	/// Captures a built material's declared layout and defaults into an authorable source
 	/// referencing `shaderId`. What the editor's cook and the round trip tests use.
 	public static void FromMaterial(Material material, Guid shaderId, MaterialSource outSource)
@@ -96,6 +102,14 @@ class MaterialSource
 
 		outSource.UniformDefaults.Clear();
 		outSource.UniformDefaults.AddRange(material.DefaultUniformData);
+
+		ClearAndDeleteItems!(outSource.Effects);
+		for (let group in material.EffectGroups)
+		{
+			let stored = new MaterialEffectGroupSource();
+			MaterialEffectGroupSource.FromGroup(group, stored);
+			outSource.Effects.Add(stored);
+		}
 	}
 
 	/// A runtime material from this source, drawn with `shaderName`: its property layout, default
@@ -133,13 +147,113 @@ class MaterialSource
 		material.Pipeline.VertexLayout = VertexLayout;
 		material.SamplerU = (Sedulous.RHI.AddressMode)SamplerU;
 		material.SamplerV = (Sedulous.RHI.AddressMode)SamplerV;
+		// The effect groups, each as stored (the material needs nothing else to draw them).
+		for (let group in Effects)
+			group.ApplyTo(material);
 		return material;
 	}
 
-	/// Once read (the [Serializable] hook): stored colours typed as the template declares them.
+	/// Once read (the [Serializable] hook): stored colours typed as the template declares them,
+	/// and a builtin material's wind lanes moved into its Wind group.
 	public void AfterRead()
 	{
 		AdoptTemplateColorTypes();
+		MigrateWindLanes();
+	}
+
+	/// Before effect groups (data version 3), a PBR material carried the wind in its buffer's
+	/// spare lanes as the properties WindStrength, WindSpeed and WindHeight (offsets 24, 28, 60).
+	/// The wind is an effect now: the three properties go (their bytes stay, as the padding the
+	/// buffer declares there) and the material gets a Wind group holding their values. The
+	/// group's layout below is the effect's on the day of that change, frozen with the data it
+	/// reads; the live table is wind.hlsli's effect block, onto which the factory re-lays the
+	/// group, keeping these values, whenever it has the shader system. Only for a builtin
+	/// shader's material whose template no longer declares the lanes: a custom shader may name
+	/// properties of its own so. Idempotent: a migrated source has no lanes left.
+	public void MigrateWindLanes()
+	{
+		if (ShaderId != Guid())
+			return;
+		StringView[3] lanes = .("WindStrength", "WindSpeed", "WindHeight");
+		StringView[3] parameters = .("Strength", "Speed", "Height");
+		float[3] values = .(0.0f, 1.0f, 1.0f); // a lane the source lacks
+		var any = false;
+		for (let name in PropertyNames)
+		{
+			for (let lane in lanes)
+				any = any || (name == lane);
+		}
+		if (!any)
+			return;
+		let template = MaterialPresets.BuiltinTemplate(ShaderName);
+		if (template == null)
+			return;
+		defer delete template;
+		if (template.FindProperty(lanes[0], let ignored))
+			return;
+
+		var write = 0;
+		let count = PropertyNames.Count;
+		for (int i < count)
+		{
+			var lane = -1;
+			for (int k < 3)
+			{
+				if (PropertyNames[i] == lanes[k])
+					lane = k;
+			}
+			if (lane >= 0)
+			{
+				let offset = (i < PropertyOffsets.Count) ? PropertyOffsets[i] : uint32.MaxValue;
+				if ((offset != uint32.MaxValue) && ((int)offset + sizeof(float) <= UniformDefaults.Count))
+					values[lane] = *(float*)(UniformDefaults.Ptr + offset);
+				delete PropertyNames[i];
+				PropertyNames[i] = null;
+				continue;
+			}
+			if (write != i)
+			{
+				PropertyNames[write] = PropertyNames[i];
+				PropertyNames[i] = null;
+				if (i < PropertyTypes.Count)
+					PropertyTypes[write] = PropertyTypes[i];
+				if (i < PropertyOffsets.Count)
+					PropertyOffsets[write] = PropertyOffsets[i];
+				if (i < PropertySizes.Count)
+					PropertySizes[write] = PropertySizes[i];
+			}
+			if (write < PropertyBindings.Count)
+				PropertyBindings[write] = (uint32)write; // a builtin's ordinals are its order
+			write++;
+		}
+		PropertyNames.Count = write;
+		PropertyTypes.Count = Math.Min(write, PropertyTypes.Count);
+		PropertyOffsets.Count = Math.Min(write, PropertyOffsets.Count);
+		PropertySizes.Count = Math.Min(write, PropertySizes.Count);
+		PropertyBindings.Count = Math.Min(write, PropertyBindings.Count);
+
+		for (let group in Effects)
+		{
+			if (group.Name == "Wind")
+				return; // already carried
+		}
+		let wind = new MaterialEffectGroupSource();
+		wind.Name.Set("Wind");
+		wind.Flag = (uint32)Sedulous.Shaders.ShaderFlags.Wind;
+		wind.GateIndex = 0;
+		wind.UniformSize = 16;
+		wind.Values.Count = 16;
+		for (int b < 16)
+			wind.Values[b] = 0;
+		for (int k < 3)
+		{
+			wind.PropertyNames.Add(new String(parameters[k]));
+			wind.PropertyTypes.Add((uint8)MaterialPropertyType.Float);
+			wind.PropertyOffsets.Add((uint32)(k * sizeof(float)));
+			wind.PropertySizes.Add((uint32)sizeof(float));
+			*(float*)(wind.Values.Ptr + k * sizeof(float)) = values[k];
+		}
+		Effects.Add(wind);
 	}
 
 	/// A material stored before materials had colour properties declared its colours as

@@ -347,7 +347,7 @@ class ShaderPackCookerTests
 			#include "fx_wind.hlsli"
 			float4 main(uint id : SV_VertexID) : SV_Position {
 			#ifdef WIND
-			    return float4(Strength, Speed, Height, 1);
+			    return float4(Wind.Strength, Wind.Speed, Wind.Height, 1);
 			#else
 			    return float4(0, 0, 0, 1);
 			#endif

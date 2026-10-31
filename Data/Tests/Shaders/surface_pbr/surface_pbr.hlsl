@@ -4,7 +4,10 @@
 // The engine's built-in PBR (`forward`) written as a lit surface shader: the reference that a
 // surface shader renders as the engine's own does (Sedulous.Integration.Shaders compares them on
 // the GPU). Its properties are forward's, in forward's order, so a PBR material's values mean the
-// same on it; its Vertex() is forward's wind sway.
+// same on it, plus wind properties of its own in the lanes forward's buffer leaves as padding;
+// its Vertex() sways by them as forward's vertex stage sways by the Wind effect's block (a surface
+// written by hand: its programs declare WIND too, and its material's Wind group stays off, so it
+// sways once).
 // surface: lit
 
 #include "wind_sway.hlsli"

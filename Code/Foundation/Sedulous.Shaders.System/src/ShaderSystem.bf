@@ -263,6 +263,32 @@ class ShaderSystem
 		return GetCookedVariant(name, stage, flags);
 	}
 
+	/// The variant flags `name`'s `stage` declares (its `// variants` line, or the lattice a cooked
+	/// shader was registered or packed with): what a material on the shader may turn on, so which
+	/// effect groups it carries. Served the way GetVariant would serve the stage: a registered
+	/// source's mask, else the pack's, else the provider's source, fetched and remembered as a
+	/// compile would. None when unknown.
+	public ShaderFlags DeclaredVariants(StringView name, ShaderStage stage)
+	{
+		let key = SourceKey(name, stage);
+		mSources.TryGetValue(key, let registered);
+		let compiles = (mCompiler != null) && (registered != null) && !registered.Hlsl.IsEmpty;
+		if ((mPack != null) && !compiles)
+			return mPack.DeclaredMask(ShaderFlagNames.ShaderNameHash(name), stage);
+		if (mDeclaredMasks.TryGetValue(key, let mask))
+			return mask;
+		if (registered != null)
+		{
+			// Registered without a lattice: the raw flags compile, so its directive says what its
+			// code reads.
+			let directive = ShaderVariants.ParseStageVariantDirective(registered.Hlsl, stage);
+			return directive.Present ? directive.Mask : .None;
+		}
+		if (FetchFromProvider(name, stage, key))
+			return mDeclaredMasks.TryGetValue(key, let fetched) ? fetched : .None;
+		return .None;
+	}
+
 	/// Destroys every cached variant of a shader and bumps its version, which is the reload
 	/// signal a pipeline cache polls. Returns how many were dropped.
 	public int InvalidateShader(StringView name)

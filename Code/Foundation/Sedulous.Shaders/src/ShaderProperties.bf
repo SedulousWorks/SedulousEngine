@@ -399,11 +399,31 @@ static class ShaderProperties
 		}
 	}
 
-	/// The declaration an effect stands for: its cbuffer at the effect binding, its members
-	/// named as declared, so the effect's code reads `Strength`.
+	/// The declaration an effect stands for: a struct of its parameters (`<Name>Effect`) and a
+	/// ConstantBuffer of it named for the effect, at the effect binding, so the effect's code reads
+	/// `Wind.Strength`, as a material and a script address the value. Not a plain cbuffer: its
+	/// members would be global names, and a shader that declares the effect's variant would then
+	/// refuse a property of its own named `Speed` or `Height`. A ConstantBuffer<T> packs its struct
+	/// by the cbuffer rules, so the offsets are PackCbufferMember's. Nothing for an effect with no
+	/// uniforms.
 	public static void GenerateEffectDeclaration(ShaderEffect effect, String outHlsl)
 	{
-		AppendCbuffer(outHlsl, effect.Name, cEffectRegister, effect.Properties);
+		var any = false;
+		for (let property in effect.Properties)
+			any = any || (property.Size != 0);
+		if (!any)
+			return;
+		let structName = EffectStructName(effect.Name, .. scope String());
+		outHlsl.AppendF("struct {} {{\n", structName);
+		AppendUniformMembers(outHlsl, effect.Properties);
+		outHlsl.Append("};\n");
+		outHlsl.AppendF("ConstantBuffer<{}> {} : {};\n", structName, effect.Name, cEffectRegister);
+	}
+
+	/// The struct an effect's parameters are declared in: `<Name>Effect`.
+	public static void EffectStructName(StringView effectName, String outName)
+	{
+		outName.AppendF("{}Effect", effectName);
 	}
 
 	/// The source as the compiler sees it: each effect block replaced by its declaration, then
@@ -506,13 +526,19 @@ static class ShaderProperties
 		if (!any)
 			return;
 		outHlsl.AppendF("cbuffer {} : {} {{\n", name, registerText);
+		AppendUniformMembers(outHlsl, properties);
+		outHlsl.Append("};\n");
+	}
+
+	/// A block's uniforms as members, in declaration order, one per line with its offset.
+	private static void AppendUniformMembers(String outHlsl, List<ShaderProperty> properties)
+	{
 		for (let property in properties)
 		{
 			if (property.Size == 0)
 				continue;
 			outHlsl.AppendF("    {} {}; // offset {}\n", RowOf(property.Type).Hlsl, property.Name, property.Offset);
 		}
-		outHlsl.Append("};\n");
 	}
 
 	/// `#line` so the lines after a replaced block keep the number (and file name) their author

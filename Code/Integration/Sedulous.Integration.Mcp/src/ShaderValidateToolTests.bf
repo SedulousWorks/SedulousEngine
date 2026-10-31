@@ -37,7 +37,7 @@ static class ShaderValidateToolTests
 		Test.Assert(properties.At(0).Get("type").AsString() == "Color");
 		Test.Assert(properties.At(1).Get("range").Count == 2, "Roughness [0, 1]");
 		Test.Assert(properties.At(0).Get("range") == null, "no range declared");
-		Test.Assert(good.Get("vertexVariants").Count == 2); // SKINNED INSTANCED
+		Test.Assert(good.Get("vertexVariants").Count == 3); // SKINNED INSTANCED WIND
 		Test.Assert(good.Get("fragmentVariants").Count == 3); // ALPHA_TEST GBUFFER DITHER
 		Test.Assert(good.Get("fragmentVariants").At(0).AsString() == "ALPHA_TEST");
 		Test.Assert(good.Get("kind").AsString() == "lowLevel");

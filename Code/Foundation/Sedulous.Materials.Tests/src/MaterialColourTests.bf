@@ -86,8 +86,10 @@ class MaterialColourTests
 			Test.Assert(found.Type == .Texture2D);
 		}
 		Test.Assert(phong.FindProperty("MainSampler", let sampler) && (sampler.Type == .Sampler));
-		// No wind: a Phong material never asks for the swaying vertex variant.
+		// No wind property: the wind is an effect group, which a Phong material carries when its
+		// shader's table is at hand (MaterialBuilder.Effect, the factory), never a property.
 		Test.Assert(!phong.FindProperty("WindStrength", ?));
+		Test.Assert(phong.EffectGroupCount == 0);
 	}
 
 	[Test]

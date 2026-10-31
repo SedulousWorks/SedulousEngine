@@ -612,22 +612,78 @@ class ShaderBlockLayoutTests
 				if (property.IsUniform)
 					uniforms++;
 			}
-			Test.Assert(members.Count == uniforms, scope $"{at}: {members.Count} members in the shader, {uniforms} uniforms in the material");
+			// Padding is padding: a member named `_...` holds a place (PBR's former wind lanes)
+			// and is no property.
+			int named = 0;
 			for (let member in members)
 			{
+				if (!member.Name.StartsWith("_"))
+					named++;
+			}
+			Test.Assert(named == uniforms, scope $"{at}: {named} members in the shader, {uniforms} uniforms in the material");
+			for (let member in members)
+			{
+				if (member.Name.StartsWith("_"))
+					continue;
 				Test.Assert(material.FindProperty(member.Name, let property), scope $"{at}: {member.Name} is no property");
 				Test.Assert(property.IsUniform, scope $"{at}: {member.Name} is not a uniform");
 				Test.Assert(member.HasOffset && (property.Offset == member.Offset), scope $"{at}: {member.Name} at {member.Offset} in the shader, {property.Offset} in the material");
 			}
 		}
 
-		// forward.vs's WIND variant declares PBR's buffer through wind.hlsli. Phong's and Unlit's
-		// WIND vertex variants declare that same PBR layout over their own buffers (the cleanup's
-		// phase 2 gives the wind a block of its own), so they are not rows here.
+		// The vertex stages declare no material buffer: the wind reads its own block (the next
+		// test).
 		Check("forward", .Fragment, .None, MaterialPresets.CreatePbr("pbr"));
-		Check("forward", .Vertex, .Wind, MaterialPresets.CreatePbr("pbr"));
 		Check("phong", .Fragment, .None, MaterialPresets.CreatePhong("phong"));
 		Check("unlit", .Fragment, .None, MaterialPresets.CreateUnlit("unlit"));
+	}
+
+	/// The effect block in wind.hlsli is the one declaration of the wind's parameters: the cook
+	/// records its table in the pack, and the material system fills the buffer by that table's
+	/// offsets. Every stage that sways must read the same layout.
+	[Test]
+	public static void EveryWindVertexStagesWindBlockMatchesTheEffectsTable()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+		let pack = CookCorpus(compiler);
+		defer delete pack;
+
+		let wind = pack.Effects.ForFlag(.Wind);
+		Test.Assert(wind != null, "the pack holds the Wind effect");
+		Test.Assert(wind.Name == "Wind");
+		Test.Assert((wind.Gate != null) && (wind.Gate.Name == "Strength"));
+
+		let spirvName = scope String("type.ConstantBuffer.");
+		ShaderProperties.EffectStructName(wind.Name, spirvName);
+		for (let shader in StringView[?]("forward", "phong", "unlit", "shadow_depth", "pick_ids"))
+		{
+			let blob = pack.Find(shader, .Vertex, .Wind, .SpirV);
+			Test.Assert(blob case .Ok, scope $"{shader}: its WIND vertex variant is not in the pack");
+			let module = scope SpirvBlocks(blob.Get());
+			let members = module.Find(spirvName);
+			Test.Assert(members != null, scope $"{shader}: no {spirvName}");
+			Test.Assert(members.Count == wind.Properties.Count, scope $"{shader}: {members.Count} members, {wind.Properties.Count} in the table");
+			for (int i < Math.Min(members.Count, wind.Properties.Count))
+			{
+				let member = members[i];
+				let property = wind.Properties[i];
+				Test.Assert(member.Name == property.Name, scope $"{shader}: member {i} is {member.Name}, the table's {property.Name}");
+				Test.Assert(member.HasOffset && (member.Offset == property.Offset), scope $"{shader}: {member.Name} at {member.Offset}, the table's {property.Offset}");
+			}
+			// Not the material's buffer: no vertex stage declares one for the wind any more.
+			Test.Assert(module.Find("type.Material") == null, scope $"{shader}: a Material block in its vertex stage");
+		}
+
+		// What each built-in's vertex stage declares, as the Beef table states it (the effects a
+		// material on it may carry where no shader system is at hand): its `// variants` line, as
+		// the cook read it.
+		for (let builtin in MaterialPresets.BuiltinShadings)
+		{
+			Test.Assert(pack.DeclaredMask(builtin.ShaderName, .Vertex) == builtin.VertexVariants,
+				scope $"{builtin.ShaderName}: the pack declares {pack.DeclaredMask(builtin.ShaderName, .Vertex)}, the table {builtin.VertexVariants}");
+		}
 	}
 
 	/// The engine renderers' mirrors, each its block's size (the render library's own are checked

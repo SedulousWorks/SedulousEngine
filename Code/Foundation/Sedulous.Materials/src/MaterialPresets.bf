@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Shaders;
 
 namespace Sedulous.Materials;
 
@@ -24,20 +25,16 @@ static class MaterialPresets
 			..Color("BaseColor", baseColor)
 			..Float("Metallic", metallic)
 			..Float("Roughness", roughness)
-			// The wind lanes, at offsets 24, 28 and 60: the block's spare slots, so it stays
-			// sixty four bytes and a material without them reads nought, which is no sway.
-			// Metres of sway at a full height mask, radians per second, and the local height
-			// at which the sway is full. A strength above nought selects the WIND vertex
-			// variant.
-			..Float("WindStrength", 0.0f)
-			..Float("WindSpeed", 0.0f)
+			// Offsets 24 and 60 are padding (forward.ps.hlsl's `_materialPad*`): the cbuffer packs
+			// EmissiveColor at 32 and stays sixty four bytes. The wind, which once lived there,
+			// is an effect with a buffer of its own (the material's Wind group,
+			// MaterialBuilder.Effect).
 			// Black means none: the emissive map multiplies through this, times the intensity
 			// in w (a glow above white).
 			..ColorHdr("EmissiveColor", .(0, 0, 0, 1))
 			..Float("OcclusionStrength", 1.0f)
 			..Float("NormalScale", 1.0f)
 			..Float("AlphaCutoff", 0.5f)
-			..Float("WindHeight", 1.0f)
 			..Texture("AlbedoMap")
 			..Texture("NormalMap")
 			..Texture("MetallicRoughnessMap")
@@ -104,9 +101,13 @@ static class MaterialPresets
 	/// recognises a builtin reads.
 	public const int cBuiltinShadingCount = 3;
 	public static readonly BuiltinShadingInfo[cBuiltinShadingCount] BuiltinShadings = .(
-		.(.Pbr, "forward", "pbr", "PBR"),
-		.(.Unlit, "unlit", "unlit", "Unlit"),
-		.(.Phong, "phong", "phong", "Phong"));
+		.(.Pbr, "forward", "pbr", "PBR", cBuiltinVertexVariants),
+		.(.Unlit, "unlit", "unlit", "Unlit", cBuiltinVertexVariants),
+		.(.Phong, "phong", "phong", "Phong", cBuiltinVertexVariants));
+
+	/// What every builtin's vertex stage declares (its `// variants` line, which the tests pin
+	/// against the shader files).
+	public const ShaderFlags cBuiltinVertexVariants = .Skinned | .Instanced | .Wind;
 
 	public static BuiltinShadingInfo BuiltinShadingOf(BuiltinShading shading) => BuiltinShadings[(int)shading];
 
@@ -172,12 +173,18 @@ struct BuiltinShadingInfo
 	public StringView ShortName;
 	/// "PBR", "Unlit", "Phong".
 	public StringView Label;
+	/// What the builtin's vertex stage declares: the effects a material on it may carry where no
+	/// shader system is at hand to ask (a material moved between shaders in the editor keeps its
+	/// Wind group when both declare WIND).
+	public ShaderFlags VertexVariants;
 
-	public this(BuiltinShading shading, StringView shaderName, StringView shortName, StringView label)
+	public this(BuiltinShading shading, StringView shaderName, StringView shortName, StringView label,
+		ShaderFlags vertexVariants)
 	{
 		Shading = shading;
 		ShaderName = shaderName;
 		ShortName = shortName;
 		Label = label;
+		VertexVariants = vertexVariants;
 	}
 }

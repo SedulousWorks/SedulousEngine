@@ -41,6 +41,11 @@ class MaterialSystem : IMaterialInstanceSink
 	private Dictionary<uint64, IBindGroupLayout> mLayoutCache = new .() ~ delete _;
 	private Dictionary<uint64, ISampler> mSamplerCache = new .() ~ delete _;
 	private Dictionary<MaterialInstance, IBuffer> mUniformBuffers = new .() ~ delete _;
+	/// Each instance's effect group buffers, by group index (null for a group without uniforms).
+	private Dictionary<MaterialInstance, List<IBuffer>> mEffectBuffers = new .() ~ DeleteDictionaryAndValues!(_);
+	/// The binding the first effect group's buffer takes in the material's set (b1:
+	/// ShaderProperties.cEffectRegister).
+	private const uint32 cFirstEffectBinding = 1;
 	private Dictionary<MaterialInstance, IBindGroup> mBindGroups = new .() ~ delete _;
 	private List<MaterialInstance> mDirty = new .() ~ delete _;
 	private List<RetiredBindGroup> mRetiredBindGroups = new .() ~ delete _;
@@ -116,9 +121,20 @@ class MaterialSystem : IMaterialInstanceSink
 				break;
 			}
 		}
-		// The vertex stage too: the WIND variant reads the material's wind lanes.
+		// The vertex stage too: a surface shader's Vertex() reads its material's properties.
 		if (hasUniforms && (material.UniformDataSize > 0))
 			entries.Add(BindGroupLayoutEntry.UniformBuffer(0, .Vertex | .Fragment));
+		// Each effect group's buffer, right after the material's (the bind group pushes them at
+		// the same positions: WebGPU matches entries by position). An effect block binds at b1 of
+		// the material's set; the engine declares one effect per flag and its shaders one (Wind),
+		// so a second group would take b2, which no shader declares until effects get registers
+		// of their own. Vertex: the effects are vertex effects (the sway).
+		var effectBinding = cFirstEffectBinding;
+		for (let group in material.EffectGroups)
+		{
+			if (group.UniformSize > 0)
+				entries.Add(BindGroupLayoutEntry.UniformBuffer(effectBinding++, .Vertex));
+		}
 
 		// Textures and samplers number SEPARATELY: the two occupy different binding spaces
 		// on the backends that separate them, and one shared counter would leave holes.
@@ -169,7 +185,7 @@ class MaterialSystem : IMaterialInstanceSink
 		if (bindGroupLayout == null)
 			return null;
 
-		if (instance.IsUniformDirty && (material.UniformDataSize > 0))
+		if (instance.IsUniformDirty && HasUniformBuffers(material))
 		{
 			if (!UpdateUniformBuffer(instance))
 				return null;
@@ -270,6 +286,33 @@ class MaterialSystem : IMaterialInstanceSink
 		{
 			mDevice.DestroyBuffer(ref buffer);
 			mUniformBuffers.Remove(instance);
+		}
+		if (mEffectBuffers.GetAndRemove(instance) case .Ok(let pair))
+		{
+			for (var effectBuffer in pair.value)
+			{
+				if (effectBuffer != null)
+					mDevice.DestroyBuffer(ref effectBuffer);
+			}
+			delete pair.value;
+		}
+	}
+
+	/// Hands the instance's effect buffers to the caller (removed from the system) WITHOUT
+	/// destroying them, appended to `outBuffers`: DetachUniformBuffer's twin for the effect
+	/// groups' buffers, retired the same way.
+	public void DetachEffectBuffers(MaterialInstance instance, List<IBuffer> outBuffers)
+	{
+		if (instance == null)
+			return;
+		if (mEffectBuffers.GetAndRemove(instance) case .Ok(let pair))
+		{
+			for (let effectBuffer in pair.value)
+			{
+				if (effectBuffer != null)
+					outBuffers.Add(effectBuffer);
+			}
+			delete pair.value;
 		}
 	}
 
@@ -390,9 +433,67 @@ class MaterialSystem : IMaterialInstanceSink
 		return true;
 	}
 
+	/// Whether the material has a uniform buffer of any kind: its own or an effect group's.
+	private static bool HasUniformBuffers(Material material)
+	{
+		if (material.UniformDataSize > 0)
+			return true;
+		for (let group in material.EffectGroups)
+		{
+			if (group.UniformSize > 0)
+				return true;
+		}
+		return false;
+	}
+
+	/// The instance's effect group buffers, created on first use and written from its values.
+	private bool UpdateEffectBuffers(MaterialInstance instance)
+	{
+		let material = instance.Material;
+		if (material.EffectGroupCount == 0)
+			return true;
+		if (!mEffectBuffers.TryGetValue(instance, var buffers))
+		{
+			buffers = new List<IBuffer>();
+			mEffectBuffers[instance] = buffers;
+		}
+		while (buffers.Count < material.EffectGroupCount)
+			buffers.Add(null);
+		for (int g < material.EffectGroupCount)
+		{
+			let group = material.GetEffectGroup(g);
+			if (group.UniformSize == 0)
+				continue;
+			if (buffers[g] == null)
+			{
+				var desc = BufferDesc();
+				desc.Size = group.UniformSize; // a whole row already (Material.SetEffectGroup)
+				desc.Usage = .Uniform;
+				desc.Memory = .CpuToGpu;
+				desc.Label = "material-effect-uniforms";
+				if (!(mDevice.CreateBuffer(desc) case .Ok(let created)))
+					return false;
+				buffers[g] = created;
+			}
+			let data = instance.EffectData(g);
+			if ((data.Length > 0) && (data.Length <= (int)group.UniformSize))
+			{
+				let mapped = buffers[g].Map();
+				if (mapped != null)
+				{
+					MaterialUniforms.EncodeForGpu(group.Properties, data, (uint8*)mapped);
+					buffers[g].Unmap();
+				}
+			}
+		}
+		return true;
+	}
+
 	private bool UpdateUniformBuffer(MaterialInstance instance)
 	{
 		let material = instance.Material;
+		if (!UpdateEffectBuffers(instance))
+			return false;
 		if (material.UniformDataSize == 0)
 			return true;
 
@@ -444,6 +545,20 @@ class MaterialSystem : IMaterialInstanceSink
 
 		if (mUniformBuffers.TryGetValue(instance, let buffer))
 			entries.Add(BindGroupEntry.BufferEntry(buffer, 0, material.UniformDataSize));
+		// The effect groups' buffers, in the layout's order (GetOrCreateLayout).
+		if (material.EffectGroupCount > 0)
+		{
+			mEffectBuffers.TryGetValue(instance, let buffers);
+			for (int g < material.EffectGroupCount)
+			{
+				let group = material.GetEffectGroup(g);
+				if (group.UniformSize == 0)
+					continue;
+				if ((buffers == null) || (g >= buffers.Count) || (buffers[g] == null))
+					return false; // never written: the layout's entry would go unfilled
+				entries.Add(BindGroupEntry.BufferEntry(buffers[g], 0, group.UniformSize));
+			}
+		}
 
 		for (int index = 0; index < material.PropertyCount; index++)
 		{
@@ -517,6 +632,11 @@ class MaterialSystem : IMaterialInstanceSink
 			hash = (hash &* 31) &+ (uint64)property.Type;
 			hash = (hash &* 31) &+ property.Binding;
 		}
+		// Each effect group adds a binding: a material with one is another layout.
+		uint64 effectBindings = 0;
+		for (let group in material.EffectGroups)
+			effectBindings += (group.UniformSize > 0) ? 1 : 0;
+		hash = (hash &* 31) &+ 0x9E37 &+ effectBindings;
 		return hash;
 	}
 
@@ -554,6 +674,16 @@ class MaterialSystem : IMaterialInstanceSink
 			var buffer = entry.value;
 			mDevice.DestroyBuffer(ref buffer);
 		}
+		for (let entry in mEffectBuffers)
+		{
+			for (var effectBuffer in entry.value)
+			{
+				if (effectBuffer != null)
+					mDevice.DestroyBuffer(ref effectBuffer);
+			}
+			delete entry.value;
+		}
+		mEffectBuffers.Clear();
 		for (let entry in mLayoutCache)
 		{
 			var layout = entry.value;

@@ -312,7 +312,7 @@ class ShaderPropertiesTests
 	}
 
 	[Test]
-	public static void TheEffectsCbufferBindsAtB1OfTheMaterialsSetMembersAsDeclared()
+	public static void TheEffectsConstantBufferBindsAtB1OfTheMaterialsSetReadAsEffectMember()
 	{
 		let block = scope ShaderEffectBlock();
 		ShaderProperties.ParseEffect("effect Wind : WIND\n" +
@@ -323,11 +323,12 @@ class ShaderPropertiesTests
 			"}\n", 0, block);
 		Test.Assert(block.IsOk);
 		let declaration = ShaderProperties.GenerateEffectDeclaration(block.Effect, .. scope String());
-		Test.Assert(declaration == "cbuffer Wind : register(b1, space2) {\n" +
+		Test.Assert(declaration == "struct WindEffect {\n" +
 			"    float Strength; // offset 0\n" +
 			"    float Speed; // offset 4\n" +
 			"    float Height; // offset 8\n" +
-			"};\n", declaration);
+			"};\n" +
+			"ConstantBuffer<WindEffect> Wind : register(b1, space2);\n", declaration);
 
 		// The expansion replaces the block and keeps the later lines' numbers.
 		let expanded = scope String();
@@ -338,14 +339,15 @@ class ShaderPropertiesTests
 			"{\n" +
 			"    float Strength = 0 (gate);\n" +
 			"}\n" +
-			"float Sway() { return Strength; }\n", "wind.hlsli", expanded, blocks);
+			"float Sway() { return Wind.Strength; }\n", "wind.hlsli", expanded, blocks);
 		Test.Assert(blocks.Count == 1);
 		Test.Assert(expanded == "// head\n" +
-			"cbuffer Wind : register(b1, space2) {\n" +
+			"struct WindEffect {\n" +
 			"    float Strength; // offset 0\n" +
 			"};\n" +
+			"ConstantBuffer<WindEffect> Wind : register(b1, space2);\n" +
 			"#line 6 \"wind.hlsli\"\n" +
-			"float Sway() { return Strength; }\n", expanded);
+			"float Sway() { return Wind.Strength; }\n", expanded);
 
 		// A block with errors becomes an #error at each error's line, so a compile reaching it
 		// fails naming the file and line.

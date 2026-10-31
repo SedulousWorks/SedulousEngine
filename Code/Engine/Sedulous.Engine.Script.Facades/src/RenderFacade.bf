@@ -20,7 +20,8 @@ class RenderFacade : SceneFacade
 	[Scriptable]
 	public bool SetMaterial(EntityHandle entity, Guid material, int slot = 0) => Meshes?.SetMaterial(entity, material, slot) ?? false;
 	/// Sets one of the entity's material properties for it alone: the material in `slot` draws
-	/// with `value` for the property `name` (as the material editor shows it: Roughness), every
+	/// with `value` for the property `name` (as the material editor shows it: Roughness; an effect
+	/// group's as `Effect.Property`, Wind.Strength), every
 	/// other mesh using that material unchanged. A name the material does not have, or a value
 	/// wider than the property, changes nothing. Runtime only: not saved with the scene. False
 	/// for an entity without a mesh or a negative slot.

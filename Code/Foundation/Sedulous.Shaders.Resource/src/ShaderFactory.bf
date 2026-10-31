@@ -64,6 +64,7 @@ class ShaderFactory : IResourceFactory
 		product.Initialize(mSystem, source.Name);
 		product.SetDepthPrograms(source.HasProgram(ShaderSource.cDepthProgramSuffix),
 			source.HasProgram(ShaderSource.cPickProgramSuffix), source.DepthProgramsAlways);
+		product.SetVertexVariants((ShaderFlags)source.VertexVariantMask);
 		return product;
 	}
 }

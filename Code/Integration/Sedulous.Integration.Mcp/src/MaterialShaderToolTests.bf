@@ -73,10 +73,11 @@ static class MaterialShaderToolTests
 		Test.Assert(xml.Contains("<string>CrackColor</string>"));
 		Test.Assert(!xml.Contains("<string>BaseColor</string>"));
 
-		// Back on the built-in PBR: PBR's sixteen properties again.
+		// Back on the built-in PBR: PBR's thirteen properties again (its wind is the Wind effect's
+		// group, not three of them).
 		let onPbr = CallOk(server, "material_set_shader", With(With(Obj(), "material", materialId), "shader", "pbr"));
 		defer delete onPbr;
-		Test.Assert(onPbr.Get("properties").Count == 16);
+		Test.Assert(onPbr.Get("properties").Count == 13);
 		Test.Assert(onPbr.Get("shaderName").AsString() == "forward");
 
 		// On the built-in Phong: its eleven (six values, four maps, the sampler).

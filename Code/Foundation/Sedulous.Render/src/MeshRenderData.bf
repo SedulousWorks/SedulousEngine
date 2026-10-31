@@ -35,7 +35,9 @@ class MeshRenderData : RenderData
 	/// Material properties set for this mesh alone, borrowed from its owner for the frame, and
 	/// their version, which changes whenever they do. A mesh with any draws alone (it never
 	/// batches), with an instance of its own for each slot it overrides; the depth and shadow
-	/// passes use the shared material.
+	/// passes use the shared material. A name may be an effect group's, `Effect.Property`
+	/// (`Wind.Strength`): it changes how an active effect moves the visible mesh, its shadow and
+	/// pick following the shared material.
 	public MaterialPropertyOverride* Overrides = null;
 	public uint32 OverrideCount = 0;
 	public uint32 OverrideVersion = 0;

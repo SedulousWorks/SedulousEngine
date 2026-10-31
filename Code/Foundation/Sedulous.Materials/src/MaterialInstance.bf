@@ -42,6 +42,8 @@ class MaterialInstance
 	private Dictionary<int, ITextureView> mTextures = new .() ~ delete _;
 	private Dictionary<int, ISampler> mSamplers = new .() ~ delete _;
 	private PropertyOverrideMask mOverrides = .();
+	/// The values per effect group this instance draws with (its overrides over the material's).
+	private List<List<uint8>> mEffectData = new .() ~ DeleteContainerAndItems!(_);
 
 	private IBindGroupLayout mBindGroupLayout;
 
@@ -54,7 +56,13 @@ class MaterialInstance
 	public this(Material material)
 	{
 		mMaterial = material;
-		if ((material == null) || (material.UniformDataSize == 0))
+		if (material == null)
+			return;
+		// Each effect group's values, which this instance may override apart from the shader's
+		// buffer (`Wind.Strength`).
+		for (let group in material.EffectGroups)
+			mEffectData.Add(new List<uint8>()..AddRange(group.Defaults));
+		if (material.UniformDataSize == 0)
 			return;
 
 		// Seeded from the material's defaults, so an instance that overrides nothing still
@@ -126,9 +134,48 @@ class MaterialInstance
 
 	public bool IsOverridden(int propertyIndex) => mOverrides.IsSet(propertyIndex);
 
+	/// The values of the material's effect group `groupIndex` this instance draws with (its
+	/// overrides over the material's).
+	public Span<uint8> EffectData(int groupIndex)
+	{
+		if (groupIndex < mEffectData.Count)
+			return mEffectData[groupIndex];
+		if (groupIndex < mMaterial.EffectGroupCount)
+			return mMaterial.GetEffectGroup(groupIndex).Defaults;
+		return default;
+	}
+
+	/// Every effect group back to the material's values.
+	public void ResetEffects()
+	{
+		var changed = false;
+		for (int g = 0; (g < mEffectData.Count) && (g < mMaterial.EffectGroupCount); g++)
+		{
+			let defaults = mMaterial.GetEffectGroup(g).Defaults;
+			if ((mEffectData[g].Count == defaults.Count) && (defaults.Count > 0))
+			{
+				Internal.MemCpy(mEffectData[g].Ptr, defaults.Ptr, defaults.Count);
+				changed = true;
+			}
+		}
+		if (changed)
+			SetUniformDirty();
+	}
+
 	/// Drops one override, so the property reads the material's default again.
 	public void ResetProperty(StringView name)
 	{
+		if (mMaterial.FindEffectProperty(name, let effect, let group))
+		{
+			let defaults = mMaterial.GetEffectGroup(group).Defaults;
+			if ((group < mEffectData.Count) && ((int)(effect.Offset + effect.Size) <= mEffectData[group].Count)
+				&& ((int)(effect.Offset + effect.Size) <= defaults.Count))
+			{
+				Internal.MemCpy(mEffectData[group].Ptr + effect.Offset, defaults.Ptr + effect.Offset, (int)effect.Size);
+				SetUniformDirty();
+			}
+			return;
+		}
 		let index = mMaterial.GetPropertyIndex(name);
 		if (index < 0)
 			return;
@@ -179,6 +226,18 @@ class MaterialInstance
 
 	private void WriteUniform<T>(StringView name, T value) where T : struct
 	{
+		// `Effect.Property`: a value of an effect group, in its own buffer.
+		if (mMaterial.FindEffectProperty(name, let effect, let group))
+		{
+			if ((group < mEffectData.Count) && ((uint32)sizeof(T) <= effect.Size)
+				&& ((int)effect.Offset + sizeof(T) <= mEffectData[group].Count))
+			{
+				var local = value;
+				Internal.MemCpy(mEffectData[group].Ptr + effect.Offset, &local, sizeof(T));
+				SetUniformDirty();
+			}
+			return;
+		}
 		let index = mMaterial.GetPropertyIndex(name);
 		if (index < 0)
 			return;

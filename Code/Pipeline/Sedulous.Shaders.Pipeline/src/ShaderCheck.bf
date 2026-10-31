@@ -76,10 +76,12 @@ class ShaderCheckProgram
 /// the shader compiles at the depth asked.
 class ShaderCheck
 {
-	/// A surface shader's lattices: the template's, the same for every surface shader.
-	public const ShaderFlags cSurfaceForwardVertexMask = .Skinned | .Instanced;
+	/// A surface shader's lattices: the template's, the same for every surface shader. WIND in
+	/// each vertex lattice: the engine's vertex stages sway by the material's Wind group, so every
+	/// surface shader can sway, its shadow and pick with it.
+	public const ShaderFlags cSurfaceForwardVertexMask = .Skinned | .Instanced | .Wind;
 	public const ShaderFlags cSurfaceForwardFragmentMask = .AlphaTest | .GBuffer | .Dither;
-	public const ShaderFlags cSurfaceDepthVertexMask = .Skinned | .Instanced | .AlphaTest;
+	public const ShaderFlags cSurfaceDepthVertexMask = .Skinned | .Instanced | .AlphaTest | .Wind;
 	public const ShaderFlags cSurfaceDepthFragmentMask = .AlphaTest;
 
 	public ShaderPropertiesBlock Block = new .() ~ delete _;

@@ -154,7 +154,7 @@ class MaterialSourceTests
 	[Test]
 	public static void TheCookedRecordIsVersioned()
 	{
-		Test.Assert(MaterialSource.DataVersion == 3);
+		Test.Assert(MaterialSource.DataVersion == 4);
 	}
 
 

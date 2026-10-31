@@ -24,6 +24,8 @@ class Material
 	private List<String> mPropertyNames = new .() ~ DeleteContainerAndItems!(_);
 	private List<uint8> mDefaultUniformData = new .() ~ delete _;
 	private uint32 mUniformDataSize = 0;
+	/// In the order the shader's effects were adopted.
+	private List<MaterialEffectGroup> mEffectGroups = new .() ~ DeleteContainerAndItems!(_);
 
 	private Dictionary<int, ITextureView> mDefaultTextures = new .() ~ delete _;
 	private Dictionary<int, ISampler> mDefaultSamplers = new .() ~ delete _;
@@ -173,12 +175,182 @@ class Material
 			Internal.MemCpy(mDefaultUniformData.Ptr, data.Ptr, count);
 	}
 
+	// ---- effect groups ----
+
+	public int EffectGroupCount => mEffectGroups.Count;
+	public MaterialEffectGroup GetEffectGroup(int index) => mEffectGroups[index];
+	public Span<MaterialEffectGroup> EffectGroups => mEffectGroups;
+
+	/// The index of the named effect's group, or -1.
+	public int FindEffectGroup(StringView effectName)
+	{
+		for (int i < mEffectGroups.Count)
+		{
+			if (mEffectGroups[i].Name == effectName)
+				return i;
+		}
+		return -1;
+	}
+
+	/// Splits `Effect.Property` at its dot. False for a name without one (a shader property's:
+	/// HLSL identifiers have no dot, so the dot alone says which set a name addresses).
+	public static bool SplitEffectPropertyName(StringView qualified, out StringView effect, out StringView property)
+	{
+		let dot = qualified.IndexOf('.');
+		if (dot < 0)
+		{
+			effect = default;
+			property = default;
+			return false;
+		}
+		effect = qualified.Substring(0, dot);
+		property = qualified.Substring(dot + 1);
+		return true;
+	}
+
+	/// The parameter `Effect.Property` names, and its group's index; false when the material
+	/// carries no such group or the group no such parameter.
+	public bool FindEffectProperty(StringView qualified, out MaterialPropertyDef property, out int group)
+	{
+		property = .();
+		group = -1;
+		if (!SplitEffectPropertyName(qualified, let effect, let name))
+			return false;
+		let index = FindEffectGroup(effect);
+		if ((index < 0) || !mEffectGroups[index].FindProperty(name, out property))
+			return false;
+		group = index;
+		return true;
+	}
+
+	/// Adds an effect's group (replacing one of the same name): its parameters' names, types and
+	/// offsets in the effect's buffer, the gate's index and the buffer's size, and the values
+	/// (`uniformSize` bytes; shorter is zero filled). What a material from an asset restores from
+	/// its source.
+	public void SetEffectGroup(StringView effectName, ShaderFlags flag, uint32 gateIndex, uint32 uniformSize,
+		Span<MaterialPropertyDef> properties, Span<uint8> values)
+	{
+		let group = new MaterialEffectGroup();
+		group.Name.Set(effectName);
+		group.Flag = flag;
+		group.GateIndex = gateIndex;
+		group.UniformSize = CbufferRowSize(uniformSize);
+		for (let def in properties)
+		{
+			group.AddProperty(def);
+			group.UniformSize = Math.Max(group.UniformSize, CbufferRowSize(def.Offset + def.Size));
+		}
+		group.Defaults.Count = (int)group.UniformSize;
+		for (int i < group.Defaults.Count)
+			group.Defaults[i] = 0;
+		let count = Math.Min(values.Length, group.Defaults.Count);
+		if (count > 0)
+			Internal.MemCpy(group.Defaults.Ptr, values.Ptr, count);
+		let existing = FindEffectGroup(effectName);
+		if (existing >= 0)
+		{
+			delete mEffectGroups[existing];
+			mEffectGroups[existing] = group;
+		}
+		else
+			mEffectGroups.Add(group);
+	}
+
+	/// Adds an effect's group from the effect's table (the shader system's, from the effect
+	/// block), at the effect's defaults: what a material built in code takes from whoever holds
+	/// the shader system. An effect takes uniforms only, so every parameter is one.
+	public void AddEffectGroup(ShaderEffect effect)
+	{
+		let defs = scope List<MaterialPropertyDef>();
+		let values = scope List<uint8>();
+		values.Count = (int)effect.UniformSize;
+		for (int i < values.Count)
+			values[i] = 0;
+		for (int i < effect.Properties.Count)
+		{
+			let property = effect.Properties[i];
+			var def = MaterialPropertyDef();
+			def.Name = property.Name;
+			def.Type = MaterialPropertyTypes.Of(property.Type);
+			def.Binding = (uint32)i;
+			def.Offset = property.Offset;
+			def.Size = property.Size;
+			defs.Add(def);
+			if ((property.Size == 0) || ((int)property.Offset + (int)property.Size > values.Count))
+				continue;
+			if (property.Type == .Int)
+				*(int32*)(values.Ptr + property.Offset) = (int32)property.Value.X; // an int as the shader reads it
+			else
+			{
+				float[4] components = .(property.Value.X, property.Value.Y, property.Value.Z, property.Value.W);
+				Internal.MemCpy(values.Ptr + property.Offset, &components[0], Math.Min((int)property.Size, sizeof(float[4])));
+			}
+		}
+		SetEffectGroup(effect.Name, effect.Flag, effect.GateIndex, effect.UniformSize, defs, values);
+	}
+
+	/// Adds the group of every effect in `effects` whose flag `vertexVariants` declares (the
+	/// variants line of the material's shader's vertex stage), and drops any group whose effect
+	/// the shader no longer declares. A group already carried keeps the values whose name, type
+	/// and size still fit (an effect's table may have grown since it was saved).
+	public void AdoptDeclaredEffects(Span<ShaderEffect> effects, ShaderFlags vertexVariants)
+	{
+		let kept = scope List<MaterialEffectGroup>();
+		for (let effect in effects)
+		{
+			if (!vertexVariants.HasFlag(effect.Flag))
+				continue;
+			MaterialEffectGroup previous = null;
+			let old = FindEffectGroup(effect.Name);
+			if (old >= 0)
+			{
+				previous = mEffectGroups[old];
+				mEffectGroups.RemoveAt(old);
+			}
+			AddEffectGroup(effect);
+			let fresh = mEffectGroups.PopBack();
+			if (previous != null)
+			{
+				for (let def in fresh.Properties)
+				{
+					if (previous.FindProperty(def.Name, let was) && (was.Type == def.Type) && (was.Size == def.Size)
+						&& ((int)was.Offset + (int)was.Size <= previous.Defaults.Count)
+						&& ((int)def.Offset + (int)def.Size <= fresh.Defaults.Count))
+						Internal.MemCpy(fresh.Defaults.Ptr + def.Offset, previous.Defaults.Ptr + was.Offset, def.Size);
+				}
+				delete previous;
+			}
+			kept.Add(fresh);
+		}
+		ClearAndDeleteItems!(mEffectGroups);
+		mEffectGroups.AddRange(kept);
+	}
+
+	public void ClearEffectGroups()
+	{
+		ClearAndDeleteItems!(mEffectGroups);
+	}
+
+	private static uint32 CbufferRowSize(uint32 bytes) => (bytes + 15) & ~(uint32)15;
+
 	/// Writes into the default buffer, and does NOTHING when the property is unknown, is
 	/// not a uniform, or would not fit. Silence is right here: defaults are set by
 	/// importers walking whatever a source file happened to declare, and a property the
-	/// shader does not have is a source file being generous, not an error.
+	/// shader does not have is a source file being generous, not an error. An `Effect.Property`
+	/// name writes its group's values.
 	private void WriteUniform<T>(StringView name, T value) where T : struct
 	{
+		if (FindEffectProperty(name, let effect, let group))
+		{
+			let values = mEffectGroups[group].Defaults;
+			if ((sizeof(T) <= (int)effect.Size) && ((int)effect.Offset + sizeof(T) <= values.Count))
+			{
+				var local = value;
+				Internal.MemCpy(values.Ptr + effect.Offset, &local, sizeof(T));
+			}
+			return;
+		}
+
 		let index = GetPropertyIndex(name);
 		if (index < 0)
 			return;

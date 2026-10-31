@@ -77,7 +77,7 @@ static class ShaderCreators
 	public const String cStarter = """
 		// A low-level shader: the whole pixel stage is yours. This one shades the engine's way, with
 		// every light, shadow and reflection probe; change the pixel stage to make it your own.
-		// variants(vertex): SKINNED INSTANCED
+		// variants(vertex): SKINNED INSTANCED WIND
 		// variants(fragment): ALPHA_TEST GBUFFER DITHER
 		// preserve-interface (the pixel stage keeps VSOutput's fade input when DITHER is off)
 

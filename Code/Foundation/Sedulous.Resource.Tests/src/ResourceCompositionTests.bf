@@ -32,6 +32,16 @@ class ResourceCompositionTests
 		public Object Create(ResourceManager manager, Instance instance) => null;
 	}
 
+	/// A factory that uses the device when the host has one and works without it.
+	class OptionalFactory : IResourceFactory
+	{
+		public FakeDevice Device;
+		public this(FakeDevice device) { Device = device; }
+		public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<PlainProduct>();
+		public Type CookedType => typeof(TestSource);
+		public Object Create(ResourceManager manager, Instance instance) => null;
+	}
+
 	static int sRegistered = 0;
 
 	static ResourceModule sFakeModule = new .("fake", () => { sRegistered++; }, new .(
@@ -151,5 +161,29 @@ class ResourceCompositionTests
 		set.Create(modules, scope NoResourceServices());
 		Test.Assert((set.Count == 1) && (set.Skipped.Length == 1));
 		delete set;
+	}
+
+	/// A factory with an optional service (the material factory and the shader system) is not
+	/// gated: it is made in every host, and given the service where there is one.
+	[Test]
+	public static void AFactoryWithAnOptionalServiceIsMadeInEveryHostGivenItWhereThereIsOne()
+	{
+		let optional = ResourceFactoryDesc(typeof(PlainProduct), typeof(TestSource), null,
+			(services) => new OptionalFactory(services.Service(typeof(FakeDevice)) as FakeDevice));
+		Test.Assert(optional.Service == null, "not gated: never skipped");
+		Test.Assert(optional.Product == typeof(PlainProduct));
+
+		let headless = optional.Create(scope NoResourceServices());
+		defer delete headless;
+		Test.Assert(headless != null);
+		Test.Assert((headless as OptionalFactory).Device == null);
+
+		let device = scope FakeDevice();
+		let services = scope ResourceServiceTable();
+		services.Add(typeof(FakeDevice), device);
+		let hosted = optional.Create(services);
+		defer delete hosted;
+		Test.Assert(hosted != null);
+		Test.Assert((hosted as OptionalFactory).Device === device);
 	}
 }

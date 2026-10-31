@@ -12,10 +12,11 @@ namespace Sedulous.Render.Backend.Tests;
 
 /// The WIND vertex sway at the texel on real devices.
 ///
-/// A tall card with a windy material is rendered at two frame times: its top rows, where the
-/// height mask is one, shift sideways between them, while its bottom rows, below the root and
-/// so at a mask of nought, do not. The same card with a material whose WindStrength is nought
-/// renders identically at both times, the variant never being selected.
+/// A tall card whose material's Wind group is on is rendered at two frame times: its top rows,
+/// where the height mask is one, shift sideways between them, while its bottom rows, below the
+/// root and so at a mask of nought, do not; on PBR and on Phong, the wind being an effect with a
+/// block of its own, so any shader that declares WIND sways. The same card whose group's
+/// Strength is nought renders identically at both times, the variant never being selected.
 class WindProbeTests
 {
 	private const uint32 cSize = 128;
@@ -204,25 +205,51 @@ class WindProbeTests
 		if (!fixture.Ready)
 			return;
 
-		let windy = MaterialPresets.CreatePbr("wind.card", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
-		defer delete windy;
-		// A metre of sway, which is around eighteen texels at this framing.
-		windy.SetDefaultFloat("WindStrength", 1.0f);
-		windy.SetDefaultFloat("WindSpeed", 1.0f);
-		// Full at the card's top edge.
-		windy.SetDefaultFloat("WindHeight", 2.0f);
-
-		let still = MaterialPresets.CreatePbr("still.card", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
-		defer delete still;
+		// The engine's Wind table, as the shader system serves it from wind.hlsli: what a
+		// material built in code takes its group from.
+		let wind = fixture.Shaders.EffectForFlag(.Wind);
+		Test.Assert(wind != null, scope $"{kind}: the shader system serves the Wind effect");
+		if (wind == null)
+			return;
 
 		let card = SegmentedCard(16);
 		defer delete card;
+
+		let pbr = MaterialPresets.CreatePbr("wind.card", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
+		defer delete pbr;
+		let phong = MaterialPresets.CreatePhong("wind.phong", .(0.9f, 0.9f, 0.9f, 1));
+		defer delete phong;
+		// Each one's twin with its group's gate at nought.
+		let stillPbr = MaterialPresets.CreatePbr("still.card", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
+		defer delete stillPbr;
+		let stillPhong = MaterialPresets.CreatePhong("still.phong", .(0.9f, 0.9f, 0.9f, 1));
+		defer delete stillPhong;
+		Material[2] windies = .(pbr, phong);
+		Material[2] stills = .(stillPbr, stillPhong);
+		// Phong sways as PBR does: the block is the effect's, whatever the material's layout.
+		for (int i < 2)
+		{
+			let windy = windies[i];
+			windy.AddEffectGroup(wind);
+			stills[i].AddEffectGroup(wind);
+			// A metre of sway, which is around eighteen texels at this framing.
+			windy.SetDefaultFloat("Wind.Strength", 1.0f);
+			windy.SetDefaultFloat("Wind.Speed", 1.0f);
+			// Full at the card's top edge.
+			windy.SetDefaultFloat("Wind.Height", 2.0f);
+			ProbeCard(fixture, kind, card, windy, stills[i]);
+		}
+	}
+
+	private static void ProbeCard(BackendProbeFixture fixture, ProbeBackend kind, StaticMesh card, Material windy,
+		Material still)
+	{
 
 		let a = RenderCard(fixture, card, windy, 0.0f);
 		defer delete a;
 		let b = RenderCard(fixture, card, windy, 1.5f);
 		defer delete b;
-		Test.Assert((a != null) && (b != null), scope $"{kind}: the windy card rendered");
+		Test.Assert((a != null) && (b != null), scope $"{kind} {windy.ShaderName}: the windy card rendered");
 
 		// The card's rows, y downward: it spans the middle of the frame. The top quarter of
 		// its lit rows are tips and the bottom quarter roots.
@@ -237,9 +264,9 @@ class WindProbeTests
 				last = y;
 			}
 		}
-		Test.Assert(first >= 0, scope $"{kind}: the card is lit");
+		Test.Assert(first >= 0, scope $"{kind} {windy.ShaderName}: the card is lit");
 		// A four metre card fills most of the frame's height.
-		Test.Assert((last - first) > 40, scope $"{kind}: the card fills the frame");
+		Test.Assert((last - first) > 40, scope $"{kind} {windy.ShaderName}: the card fills the frame");
 
 		let span = last - first;
 		var tipsMoved = false;
@@ -251,8 +278,8 @@ class WindProbeTests
 		for (int32 y = last - span / 4; y <= last; y++)
 			rootsMoved |= a.Leftmost[y] != b.Leftmost[y];
 
-		Test.Assert(tipsMoved, scope $"{kind}: the tips sway with the clock");
-		Test.Assert(!rootsMoved, scope $"{kind}: the roots stay put");
+		Test.Assert(tipsMoved, scope $"{kind} {windy.ShaderName}: the tips sway with the clock");
+		Test.Assert(!rootsMoved, scope $"{kind} {windy.ShaderName}: the roots stay put");
 
 		// A material whose strength is nought never selects the variant, so the clock reaches
 		// nothing and the two frames are identical.
@@ -260,16 +287,16 @@ class WindProbeTests
 		defer delete c;
 		let d = RenderCard(fixture, card, still, 1.5f);
 		defer delete d;
-		Test.Assert((c != null) && (d != null), scope $"{kind}: the still card rendered");
-		Test.Assert(c.Pixels.Count == d.Pixels.Count, scope $"{kind}: the same image size");
+		Test.Assert((c != null) && (d != null), scope $"{kind} {windy.ShaderName}: the still card rendered");
+		Test.Assert(c.Pixels.Count == d.Pixels.Count, scope $"{kind} {windy.ShaderName}: the same image size");
 
 		var identical = true;
 		for (int i < c.Pixels.Count)
 			identical &= c.Pixels[i] == d.Pixels[i];
-		Test.Assert(identical, scope $"{kind}: a still material renders the same at both times");
+		Test.Assert(identical, scope $"{kind} {windy.ShaderName}: a still material renders the same at both times");
 
 		// And its roots sit where the windy card's roots sit, the root rows being the same
 		// geometry unmoved.
-		Test.Assert(c.Leftmost[last] == a.Leftmost[last], scope $"{kind}: the roots share a column");
+		Test.Assert(c.Leftmost[last] == a.Leftmost[last], scope $"{kind} {windy.ShaderName}: the roots share a column");
 	}
 }

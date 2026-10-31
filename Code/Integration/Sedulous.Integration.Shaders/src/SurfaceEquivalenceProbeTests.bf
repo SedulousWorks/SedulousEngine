@@ -58,25 +58,58 @@ class SurfaceEquivalenceProbeTests
 			error.Format(errors..Append('\n'));
 		Test.Assert(check.IsOk, errors);
 		Test.Assert(check.HasVertex, "forward's wind");
+		// The engine's vertex stages sway every surface shader by its material's Wind group, so
+		// its programs declare WIND.
+		Test.Assert(!check.Programs.IsEmpty);
+		Test.Assert(check.Programs[0].VertexMask.HasFlag(.Wind));
 		return check;
 	}
 
-	/// The forward PBR material the scene uses, or the same values on the surface PBR (its
-	/// properties are forward's, in forward's layout, so the material is the same but its
-	/// shader). THE CALLER OWNS it.
-	private static Material PbrMaterial(StringView name, Float4 color, float metallic, float roughness, bool surface)
+	/// The forward PBR material the scene uses, swaying by its Wind group, or the same values on
+	/// the surface PBR, laid out by its properties block (forward's, in forward's layout, with its
+	/// own wind properties in the lanes forward's buffer leaves as padding), swaying by its own
+	/// Vertex(). The surface material carries the Wind group too (its programs declare WIND), off:
+	/// so it sways once, by its Vertex(), and its own WindStrength does not collide with the
+	/// effect's Strength. THE CALLER OWNS it.
+	private static Material PbrMaterial(StringView name, Float4 color, float metallic, float roughness, bool surface,
+		ShaderCheck cooked, ShaderEffect wind, float windStrength)
 	{
-		let material = MaterialPresets.CreatePbr(name, color, metallic, roughness);
-		material.SetDefaultFloat("WindStrength", 0.15f);
+		if (!surface)
+		{
+			let material = MaterialPresets.CreatePbr(name, color, metallic, roughness);
+			material.AddEffectGroup(wind);
+			material.SetDefaultFloat("Wind.Strength", windStrength);
+			material.SetDefaultFloat("Wind.Speed", 1.0f);
+			material.SetDefaultFloat("Wind.Height", 0.5f);
+			return material;
+		}
+		let builder = scope MaterialBuilder(name);
+		builder..Shader(cSurfaceName)..VertexLayout(.Mesh);
+		for (let property in cooked.Block.Properties)
+		{
+			switch (property.Type)
+			{
+			case .Float: builder.Float(property.Name, property.Value.X);
+			case .Color: builder.Color(property.Name, property.Value);
+			case .ColorHdr: builder.ColorHdr(property.Name, property.Value);
+			case .Texture: builder.Texture(property.Name);
+			case .Sampler: builder.Sampler(property.Name);
+			default: Test.FatalError("surface_pbr declares a property kind this test does not lay out");
+			}
+		}
+		builder.Effect(wind);
+		let material = builder.Build();
+		material.SetDefaultColor("BaseColor", color);
+		material.SetDefaultFloat("Metallic", metallic);
+		material.SetDefaultFloat("Roughness", roughness);
+		material.SetDefaultFloat("WindStrength", windStrength);
 		material.SetDefaultFloat("WindSpeed", 1.0f);
 		material.SetDefaultFloat("WindHeight", 0.5f);
-		if (surface)
-		{
-			material.ShaderName.Set(cSurfaceName);
-			material.Pipeline.ShaderName = material.ShaderName;
-			material.DepthShaderName..Set(cSurfaceName).Append(ShaderSource.cDepthProgramSuffix);
-			material.PickShaderName..Set(cSurfaceName).Append(ShaderSource.cPickProgramSuffix);
-		}
+		// Laid out as forward's: the values mean the same on both.
+		Test.Assert(material.FindProperty("EmissiveColor", let emissive) && (emissive.Offset == 32));
+		Test.Assert(material.FindProperty("AlphaCutoff", let cutoff) && (cutoff.Offset == 56));
+		material.DepthShaderName..Set(cSurfaceName).Append(ShaderSource.cDepthProgramSuffix);
+		material.PickShaderName..Set(cSurfaceName).Append(ShaderSource.cPickProgramSuffix);
 		return material;
 	}
 
@@ -128,11 +161,14 @@ class SurfaceEquivalenceProbeTests
 		defer delete sphere;
 		let ground = Primitives.Plane(8.0f, 8.0f);
 		defer delete ground;
-		let ball = PbrMaterial("ball", .(0.8f, 0.3f, 0.2f, 1.0f), 0.2f, 0.4f, surface);
+		let wind = shaders.EffectForFlag(.Wind);
+		Test.Assert(wind != null);
+		if (wind == null)
+			return;
+		let ball = PbrMaterial("ball", .(0.8f, 0.3f, 0.2f, 1.0f), 0.2f, 0.4f, surface, cooked, wind, 0.15f);
 		defer delete ball;
-		let floor = PbrMaterial("floor", .(0.7f, 0.7f, 0.7f, 1.0f), 0.0f, 0.8f, surface);
+		let floor = PbrMaterial("floor", .(0.7f, 0.7f, 0.7f, 1.0f), 0.0f, 0.8f, surface, cooked, wind, 0.0f); // stays put
 		defer delete floor;
-		floor.SetDefaultFloat("WindStrength", 0.0f); // the ground stays put
 		ball.SetDefaultFloat4("EmissiveColor", .(0.05f, 0.02f, 0.0f, 1.0f));
 		if (cutOut)
 		{

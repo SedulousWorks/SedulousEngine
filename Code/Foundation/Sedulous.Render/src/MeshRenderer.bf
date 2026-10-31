@@ -46,25 +46,24 @@ class MeshRenderer : Renderer
 	/// group where Vulkan had accepted it.
 	public static uint32 MultiMeshRegionCapacity(uint32 count) => (count + 15) & ~15;
 
-	/// Whether a material opts into the WIND vertex variant: it declares a WindStrength float
-	/// whose default is above nought.
-	///
-	/// Every other material keeps the configuration it had, so a scene with no windy material
-	/// renders exactly as it did before the flag existed.
-	public static bool MaterialWantsWind(Material material)
+	/// The variant flags a material's active effects turn on: an effect group is active while its
+	/// gate is above nought in the material's values, and an active effect adds its flag (WIND
+	/// for the Wind group). The renderer knows that rule, not what any effect does. A material
+	/// with no active effect keeps the variants it had, so a scene without one renders exactly as
+	/// it did before effects existed. Read from the shared material: a per entity override of a
+	/// gate does not switch the variant (the pipeline is chosen per material), it only changes the
+	/// values an already active effect draws with.
+	public static ShaderFlags MaterialEffectFlags(Material material)
 	{
+		ShaderFlags flags = .None;
 		if (material == null)
-			return false;
-		if (!material.FindProperty("WindStrength", let strength) || (strength.Type != .Float))
-			return false;
-
-		let defaults = material.DefaultUniformData;
-		if (((int)strength.Offset + sizeof(float)) > defaults.Length)
-			return false;
-
-		var value = 0.0f;
-		Internal.MemCpy(&value, defaults.Ptr + strength.Offset, sizeof(float));
-		return value > 0.0f;
+			return flags;
+		for (let group in material.EffectGroups)
+		{
+			if (group.IsActive)
+				flags |= group.Flag;
+		}
+		return flags;
 	}
 	private const uint32 cMaxLocalShadows = RenderLimits.MaxLocalShadowEntries;
 	/// The skinning pool: the staging ring and its device mirror START here and GROW, by
@@ -2231,7 +2230,8 @@ class MeshRenderer : Renderer
 	public struct DepthLikeChoice
 	{
 		public PipelineConfig Config;
-		/// A masked cut-out, wind, or the material's own program.
+		/// A masked cut-out, an active effect (its block is in the material's set), or the material's
+		/// own program.
 		public bool MaterialSet;
 	}
 
@@ -2243,29 +2243,29 @@ class MeshRenderer : Renderer
 	{
 		// A masked caster casts a HOLEY shadow through the alpha test, which needs its material.
 		let masked = (material != null) && (material.Pipeline.BlendMode == .Masked);
-		// A windy caster needs set two as well, the sway reading the material's wind lanes.
-		let wind = MaterialWantsWind(material);
+		// An active effect's caster needs set two as well: the effect's block is in the material's
+		// set (b1).
+		let effects = MaterialEffectFlags(material);
 		var choice = DepthLikeChoice();
-		choice.Config = pick ? PickConfigFor(context, instanced, masked, wind) : ShadowConfigFor(context, instanced, masked, wind);
+		choice.Config = pick ? PickConfigFor(context, instanced, masked, effects) : ShadowConfigFor(context, instanced, masked, effects);
 		let own = (material == null) ? StringView() : (pick ? StringView(material.PickShaderName) : StringView(material.DepthShaderName));
 		if (!own.IsEmpty)
 			choice.Config.ShaderName = own;
 		// A two sided material picks both faces.
 		if (pick && (material != null))
 			choice.Config.CullMode = material.Pipeline.CullMode;
-		choice.MaterialSet = masked || wind || !own.IsEmpty;
+		choice.MaterialSet = masked || (effects != .None) || !own.IsEmpty;
 		return choice;
 	}
 
 	/// The depth only configuration for a shadow pass.
 	private static PipelineConfig ShadowConfigFor(RenderRecordContext context, bool instanced,
-		bool masked = false, bool wind = false)
+		bool masked = false, ShaderFlags effects = .None)
 	{
 		var config = PipelineConfig();
 		config.ShaderName = "shadow_depth";
 		// The caster sways with the card it casts from.
-		if (wind)
-			config.ShaderFlags |= .Wind;
+		config.ShaderFlags |= effects; // it moves as the mesh does (a swaying card's shadow and pick)
 		config.VertexLayout = .Mesh;
 		config.Instanced = instanced;
 		if (instanced)
@@ -2311,13 +2311,12 @@ class MeshRenderer : Renderer
 	/// RG32Uint id target, single sampled, no bias, a masked material alpha tested. Callers
 	/// override the cull mode from the material.
 	private static PipelineConfig PickConfigFor(RenderRecordContext context, bool instanced,
-		bool masked, bool wind = false)
+		bool masked, ShaderFlags effects = .None)
 	{
 		var config = PipelineConfig();
 		config.ShaderName = "pick_ids";
 		// The pick follows the swayed card.
-		if (wind)
-			config.ShaderFlags |= .Wind;
+		config.ShaderFlags |= effects; // it moves as the mesh does (a swaying card's shadow and pick)
 		config.VertexLayout = .Mesh;
 		config.Instanced = instanced;
 		if (instanced)
@@ -2384,9 +2383,8 @@ class MeshRenderer : Renderer
 		config.Instanced = instanced;
 		if (instanced)
 			config.ShaderFlags |= .Instanced;
-		// The material's wind lanes sway it.
-		if (MaterialWantsWind(material))
-			config.ShaderFlags |= .Wind;
+		// Its active effects (the Wind group sways it).
+		config.ShaderFlags |= MaterialEffectFlags(material);
 		// The screen door fade (a cutaway).
 		if (md.Fade > 0.0f)
 			config.ShaderFlags |= .Dither;
@@ -2567,13 +2565,19 @@ class MeshRenderer : Renderer
 		entry.LastFrame = mFrameClock;
 		if (!entry.Applied || (entry.Version != md.OverrideVersion))
 		{
-			// Back to the material's own values, then this slot's overrides over them.
+			// Back to the material's own values, then this slot's overrides over them. A name
+			// `Effect.Property` (`Wind.Strength`) reaches the material's effect group: the
+			// instance's setters route it there. This instance is the forward pass's alone: the
+			// shadow and pick passes draw with the shared material's (MeshRenderData.Overrides), and
+			// the variant follows the shared material's gate (MaterialEffectFlags), so an override
+			// changes how an active effect moves the visible mesh, not whether it is on.
 			let instance = entry.Instance;
 			for (let def in material.Properties)
 			{
 				if (def.IsUniform)
 					instance.ResetProperty(def.Name);
 			}
+			instance.ResetEffects();
 			for (uint32 i < md.OverrideCount)
 			{
 				let o = md.Overrides[i];
@@ -2596,6 +2600,7 @@ class MeshRenderer : Renderer
 	{
 		RetireBindGroup(mMaterials.DetachBindGroup(instance));
 		RetireBuffer(mMaterials.DetachUniformBuffer(instance));
+		RetireEffectBuffers(instance);
 		delete instance;
 	}
 
@@ -2644,6 +2649,7 @@ class MeshRenderer : Renderer
 			// destroyed, and the buffer with it.
 			RetireBindGroup(mMaterials.DetachBindGroup(entry.Instance));
 			RetireBuffer(mMaterials.DetachUniformBuffer(entry.Instance));
+			RetireEffectBuffers(entry.Instance);
 			mInstances.Remove(key);
 			delete entry.Instance;
 		}
@@ -2653,6 +2659,15 @@ class MeshRenderer : Renderer
 	{
 		if (group != null)
 			mRetiredBindGroups.Add(.() { Group = group, FramesLeft = mFramesInFlight });
+	}
+
+	/// Retires an instance's effect group buffers (MaterialSystem.DetachEffectBuffers).
+	private void RetireEffectBuffers(MaterialInstance instance)
+	{
+		let buffers = scope List<IBuffer>();
+		mMaterials.DetachEffectBuffers(instance, buffers);
+		for (let buffer in buffers)
+			RetireBuffer(buffer);
 	}
 
 	private void RetireBuffer(IBuffer buffer)

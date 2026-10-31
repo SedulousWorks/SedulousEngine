@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Resource;
+using Sedulous.Shaders;
 
 namespace Sedulous.Materials.Resource;
 
@@ -15,8 +16,11 @@ static class MaterialResources
 	/// the engine composition creates from, built on first use so no static
 	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
+	/// The material factory is made in every host and given the host's shader system when it has
+	/// one (the effects' tables; MaterialFactory), never gated on it.
 	public static ResourceModule Module => sModule ?? (sModule = new .("materials", () => RegisterAll(), new .(
-		.ByDefault<Material, MaterialSource, MaterialFactory>())));
+		.(typeof(Material), typeof(MaterialSource), null,
+			(services) => new MaterialFactory(services.Service(typeof(ShaderSystem)) as ShaderSystem)))));
 	private static ResourceModule sModule ~ delete _;
 
 	/// The manager does not take ownership, so the caller keeps the factory alive for as

@@ -22,6 +22,21 @@ namespace Sedulous.Materials.Resource;
 /// by the material system, which is what keeps this layer device free.
 class MaterialFactory : IResourceFactory
 {
+	/// BORROWED; null in a host without one.
+	private ShaderSystem mSystem = null;
+
+	public this() {}
+
+	/// With the shader system (borrowed; may be null): the factory re-lays each material's effect
+	/// groups on the effects' live tables, by what its shader's vertex stage declares (a material
+	/// saved before an effect existed gains its group; one whose shader no longer declares the
+	/// effect loses it). Without one, a material keeps the groups its source carries, which is
+	/// all it needs to draw them.
+	public this(ShaderSystem system)
+	{
+		mSystem = system;
+	}
+
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<Material>();
 	public Type CookedType => typeof(MaterialSource);
 
@@ -51,9 +66,23 @@ class MaterialFactory : IResourceFactory
 
 		let depthName = scope String();
 		let pickName = scope String();
-		let material = source.ToMaterial(ResolveShaderName(manager, source, depthName, pickName, .. scope .()));
+		// Where the material's effects are declared: the shader's vertex variants, and the
+		// shader system serving the effects' tables (a custom shader's own, else the host's).
+		ShaderSystem effectSystem = null;
+		ShaderFlags vertexVariants = .None;
+		let shaderName = ResolveShaderName(manager, source, depthName, pickName, ref effectSystem, ref vertexVariants,
+			.. scope .());
+		if ((effectSystem == null) && (mSystem != null) && !shaderName.IsEmpty)
+		{
+			effectSystem = mSystem;
+			vertexVariants = mSystem.DeclaredVariants(shaderName, .Vertex);
+		}
+		let material = source.ToMaterial(shaderName);
 		material.DepthShaderName.Set(depthName);
 		material.PickShaderName.Set(pickName);
+		// An empty library says nothing (a shader system with no corpus): the stored groups stand.
+		if ((effectSystem != null) && !effectSystem.Effects.IsEmpty)
+			material.AdoptDeclaredEffects(effectSystem.Effects.All, vertexVariants);
 
 		BindDefaultTextures(manager, source, material);
 		return material;
@@ -62,7 +91,8 @@ class MaterialFactory : IResourceFactory
 	/// The cooked shader's name, or the builtin named directly when there is no resource to
 	/// point at; and the shader's own depth and pick programs, where the material needs them.
 	private static void ResolveShaderName(ResourceManager manager, MaterialSource source,
-		String outDepthName, String outPickName, String outName)
+		String outDepthName, String outPickName, ref ShaderSystem effectSystem, ref ShaderFlags vertexVariants,
+		String outName)
 	{
 		if (source.ShaderId != Guid())
 		{
@@ -75,6 +105,8 @@ class MaterialFactory : IResourceFactory
 				let masked = source.BlendMode == .Masked;
 				outDepthName.Set(shader.Get.DepthProgram(masked));
 				outPickName.Set(shader.Get.PickProgram(masked));
+				effectSystem = shader.Get.System;
+				vertexVariants = shader.Get.VertexVariants;
 			}
 		}
 

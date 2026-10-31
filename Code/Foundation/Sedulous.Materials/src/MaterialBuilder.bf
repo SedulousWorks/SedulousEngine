@@ -47,6 +47,16 @@ class MaterialBuilder
 		return this;
 	}
 
+	/// The group of an effect the material's shader declares (its variant flag in the shader's
+	/// vertex variants), at the effect's defaults, from the effect's table: the shader system's
+	/// (ShaderSystem.FindEffect, EffectForFlag). A builder without one makes a material without
+	/// the group.
+	public MaterialBuilder Effect(ShaderEffect effect)
+	{
+		mMaterial.AddEffectGroup(effect);
+		return this;
+	}
+
 	public MaterialBuilder Blend(BlendMode mode)
 	{
 		mMaterial.Pipeline.BlendMode = mode;

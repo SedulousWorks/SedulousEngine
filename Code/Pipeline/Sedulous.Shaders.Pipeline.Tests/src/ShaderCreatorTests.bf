@@ -39,7 +39,8 @@ class ShaderCreatorTests
 			Console.WriteLine(error.Format(.. scope .()));
 		Test.Assert(check.IsOk);
 		Test.Assert(check.Block.Properties.Count == 6);
-		Test.Assert(check.VertexMask == (ShaderFlags.Skinned | .Instanced));
+		// WIND: the starter sways by its material's Wind group.
+		Test.Assert(check.VertexMask == (ShaderFlags.Skinned | .Instanced | .Wind));
 	}
 
 	[Test]

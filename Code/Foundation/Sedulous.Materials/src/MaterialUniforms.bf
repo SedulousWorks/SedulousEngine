@@ -12,10 +12,14 @@ static class MaterialUniforms
 	/// GPU, like the hardware decode of an sRGB texture. `gpu` holds at least `authored.Length`
 	/// bytes.
 	public static void EncodeForGpu(Material material, Span<uint8> authored, uint8* gpu)
+		=> EncodeForGpu(material.Properties, authored, gpu);
+
+	/// Over any declared set: a material's properties, or one of its effect groups'.
+	public static void EncodeForGpu(Span<MaterialPropertyDef> properties, Span<uint8> authored, uint8* gpu)
 	{
 		if (authored.Length > 0)
 			Internal.MemCpy(gpu, authored.Ptr, authored.Length);
-		for (let def in material.Properties)
+		for (let def in properties)
 		{
 			if (!def.IsColor || ((int)def.Offset + sizeof(Float4) > authored.Length))
 				continue;

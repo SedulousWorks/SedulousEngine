@@ -469,4 +469,37 @@ class ShaderSystemTests
 		Test.Assert(shaders.PumpReloads() == 0);
 		Test.Assert(shaders.SourceProvider == null);
 	}
+
+	/// What a shader's stage declares, asked by the material factory for the effects a material
+	/// on it carries: a registered lattice, the pack's, or the source's line.
+	[Test]
+	public static void AStagesDeclaredVariantsRegisteredPackedOrReadFromItsSource()
+	{
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		let pack = scope CookedShaderPack();
+		pack.AddDeclaredMask("packed", .Vertex, .Instanced | .Wind);
+		let game = scope Sedulous.Shaders.ShaderSystem(device); // no compiler: the pack answers
+		game.SetCookedPack(pack);
+		Test.Assert(game.DeclaredVariants("packed", .Vertex) == (.Instanced | .Wind));
+		Test.Assert(game.DeclaredVariants("packed", .Fragment) == .None);
+		Test.Assert(game.DeclaredVariants("unknown", .Vertex) == .None);
+		game.SetCookedPack(null);
+
+		let editor = scope Sedulous.Shaders.ShaderSystem(device);
+		editor.RegisterSource("lattice", .Vertex, "float4 main() : SV_Position { return 0; }\n", "main", .Skinned | .Wind);
+		Test.Assert(editor.DeclaredVariants("lattice", .Vertex) == (.Skinned | .Wind));
+		// Registered without a lattice: its own line says what its code reads.
+		editor.RegisterSource("raw", .Vertex, "// variants(vertex): WIND\n// variants(fragment): DITHER\n" +
+			"float4 main() : SV_Position { return 0; }\n", "main");
+		Test.Assert(editor.DeclaredVariants("raw", .Vertex) == .Wind);
+	}
 }

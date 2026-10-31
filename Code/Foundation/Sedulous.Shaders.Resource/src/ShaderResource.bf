@@ -12,6 +12,7 @@ namespace Sedulous.Shaders.Resource;
 class ShaderResource
 {
 	private ShaderSystem mSystem = null;
+	private ShaderFlags mVertexVariants = .None;
 	private String mName = new String() ~ delete _;
 	private String mDepthName = new String() ~ delete _;
 	private String mPickName = new String() ~ delete _;
@@ -25,6 +26,16 @@ class ShaderResource
 	}
 
 	public StringView Name => mName;
+
+	/// The variant flags the shader's main vertex stage declares (its cooked lattice): what a
+	/// material on it may turn on, so which effect groups it carries (an effect's flag here, WIND,
+	/// gives the material the effect's group).
+	public ShaderFlags VertexVariants => mVertexVariants;
+	public void SetVertexVariants(ShaderFlags mask) => mVertexVariants = mask;
+
+	/// The shader system the shader lives in (borrowed; null for a handle never initialised):
+	/// where the effects' tables are served.
+	public ShaderSystem System => mSystem;
 
 	/// Records the shader's own depth like programs (a ShaderSource's .depth and .pick), and
 	/// whether they replace the built-ins for every material or only for a masked one.

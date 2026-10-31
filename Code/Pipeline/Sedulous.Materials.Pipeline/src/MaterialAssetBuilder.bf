@@ -22,8 +22,9 @@ class MaterialAssetBuilder : IAssetBuilder
 
 	/// Two: the property arrays carry full names now, and the reader REFUSES a product cooked
 	/// under the older record version, so the recipe hash has to change to re-cook it. Three: a
-	/// material on a custom shader is laid out by the shader's property table.
-	public int32 Version => 3;
+	/// material on a custom shader is laid out by the shader's property table. Four: MaterialSource
+	/// four, the effect groups, and PBR's wind lanes migrated into one.
+	public int32 Version => 4;
 
 	/// A bound texture is a runtime REFERENCE: its product has to exist, but editing the
 	/// texture never re-cooks the material, since the factory re-binds when it loads. A custom
@@ -100,7 +101,39 @@ static class MaterialShaderLayout
 		to.SamplerU = source.SamplerU;
 		to.SamplerV = source.SamplerV;
 		CarryValues(source, to);
+		KeepDeclaredEffects(source, to, MaterialPresets.BuiltinShadingOf(shading).VertexVariants);
 		Assign(source, to);
+	}
+
+	/// Keeps the effect groups of `from` whose effect `declared` (the new shader's vertex
+	/// variants) still declares, values and all, as `to`'s; drops the rest with a warning. A
+	/// material moved between two shaders that both declare WIND keeps its wind; one moved to a
+	/// shader that does not, loses it. A shader that declares an effect the material has no group
+	/// for gets none here: the factory adds it at the effect's defaults when it has the shader
+	/// system.
+	public static void KeepDeclaredEffects(MaterialSource from, MaterialSource to, ShaderFlags declared)
+	{
+		ClearAndDeleteItems!(to.Effects);
+		for (let group in from.Effects)
+		{
+			if (declared.HasFlag((ShaderFlags)group.Flag))
+			{
+				let copy = new MaterialEffectGroupSource();
+				copy.Name.Set(group.Name);
+				copy.Flag = group.Flag;
+				copy.GateIndex = group.GateIndex;
+				copy.UniformSize = group.UniformSize;
+				for (let name in group.PropertyNames)
+					copy.PropertyNames.Add(new String(name));
+				copy.PropertyTypes.AddRange(group.PropertyTypes);
+				copy.PropertyOffsets.AddRange(group.PropertyOffsets);
+				copy.PropertySizes.AddRange(group.PropertySizes);
+				copy.Values.AddRange(group.Values);
+				to.Effects.Add(copy);
+			}
+			else
+				GlobalLog(.Warning, "Materials: material '{}': shader '{}' does not declare the {} effect - its group is dropped", from.Name, to.ShaderName, group.Name);
+		}
 	}
 
 	/// Replaces `to` with `from`, every field: its serialization is the complete list of what a
@@ -152,7 +185,7 @@ static class MaterialShaderLayout
 		{
 			let property = table[i];
 			outProduct.PropertyNames.Add(new String(property.Name));
-			outProduct.PropertyTypes.Add((uint8)MaterialTypeOf(property.Type));
+			outProduct.PropertyTypes.Add((uint8)MaterialPropertyTypes.Of(property.Type));
 			outProduct.PropertyBindings.Add((uint32)i);
 			outProduct.PropertyOffsets.Add(property.Offset);
 			outProduct.PropertySizes.Add(property.Size);
@@ -160,6 +193,7 @@ static class MaterialShaderLayout
 				WriteDefault(property, &outProduct.UniformDefaults[(int)property.Offset]);
 		}
 		CarryValues(authored, outProduct);
+		KeepDeclaredEffects(authored, outProduct, (ShaderFlags)shader.VertexVariantMask);
 	}
 
 	/// Carries a material's values onto another layout of it (`to`: its properties, offsets and
@@ -206,23 +240,6 @@ static class MaterialShaderLayout
 		{
 			if (IndexOf(to.TextureSlots, slot) < 0)
 				GlobalLog(.Warning, "Materials: material '{}': shader '{}' has no texture '{}' - its binding is dropped", from.Name, to.ShaderName, slot);
-		}
-	}
-
-	private static MaterialPropertyType MaterialTypeOf(ShaderPropertyType type)
-	{
-		switch (type)
-		{
-		case .Float: return .Float;
-		case .Float2: return .Float2;
-		case .Float3: return .Float3;
-		case .Float4: return .Float4;
-		case .Int: return .Int;
-		case .Color: return .Color;
-		case .ColorHdr: return .ColorHdr;
-		case .Texture: return .Texture2D;
-		case .TextureCube: return .TextureCube;
-		case .Sampler: return .Sampler;
 		}
 	}
 

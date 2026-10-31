@@ -19,7 +19,7 @@ class ShaderEffectCompileTests
 		    float Speed = 1 [0, 20];
 		    float Height = 1 [0.01, 100];
 		}
-		float WindAmount() { return Strength * Speed; }
+		float WindAmount() { return Wind.Strength * Wind.Speed; }
 
 		""";
 
@@ -33,11 +33,11 @@ class ShaderEffectCompileTests
 
 		""";
 
-	/// Reads the effect's members by their declared names.
+	/// Reads the effect's members by their declared names, through the effect's buffer.
 	private const String cReadsWind = """
 		#include "fx_wind.hlsli"
 		float4 main() : SV_Target {
-		    return float4(Strength, Speed, Height, WindAmount());
+		    return float4(Wind.Strength, Wind.Speed, Wind.Height, WindAmount());
 		}
 		""";
 
@@ -110,7 +110,7 @@ class ShaderEffectCompileTests
 		// Only beside its includer (sub/), never on the search path: found relative to the
 		// includer first, as DXC's own handler does, and its effect expanded there too.
 		WriteScratch(sub, "fx_sibling.hlsli", "effect Fade : DITHER\n{\n    float Amount = 1 (gate);\n}\n");
-		WriteScratch(sub, "fx_nested.hlsli", "#include \"fx_sibling.hlsli\"\nfloat FadeAmount() { return Amount; }\n");
+		WriteScratch(sub, "fx_nested.hlsli", "#include \"fx_sibling.hlsli\"\nfloat FadeAmount() { return Fade.Amount; }\n");
 
 		StringView[1] includePaths = .(root);
 		var options = CompileOptions();
@@ -143,6 +143,21 @@ class ShaderEffectCompileTests
 		options.IncludeResolver = resolver;
 		let messages = scope String();
 		Test.Assert(CompileFragment(compiler, cReadsWind, options, messages), messages);
+
+		// The effect's members are not global names: a shader whose own material has a `Speed`
+		// and a `Height` (a surface shader declares WIND whatever its properties are called)
+		// compiles.
+		let ownSpeed = """
+			cbuffer Material : register(b0, space2) {
+			    float Speed;
+			    float Height;
+			};
+			#include "fx_wind.hlsli"
+			float4 main() : SV_Target {
+			    return float4(Speed, Height, Wind.Speed, Wind.Height);
+			}
+			""";
+		Test.Assert(CompileFragment(compiler, ownSpeed, options, messages), messages);
 	}
 
 	[Test]
@@ -156,7 +171,7 @@ class ShaderEffectCompileTests
 			"    float Strength = 0 (gate);\n" + // 3
 			"}\n" +                              // 4
 			"float4 main() : SV_Target {\n" +    // 5
-			"    return Strength * Sped;\n" +    // 6: the mistake
+			"    return Wind.Strength * Sped;\n" + // 6: the mistake
 			"}\n";
 		var options = CompileOptions();
 		options.SourceName = "Top.hlsl";
@@ -173,7 +188,7 @@ class ShaderEffectCompileTests
 		let compiler = MakeCompiler();
 		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
 		defer delete compiler;
-		let readsBad = "#include \"fx_bad.hlsli\"\nfloat4 main() : SV_Target { return Strength; }\n";
+		let readsBad = "#include \"fx_bad.hlsli\"\nfloat4 main() : SV_Target { return Wind.Strength; }\n";
 
 		// Disk.
 		let root = MakeScratch("bad", .. scope String());

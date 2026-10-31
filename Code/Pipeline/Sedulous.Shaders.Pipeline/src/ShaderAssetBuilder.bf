@@ -25,8 +25,10 @@ class ShaderAssetBuilder : IAssetBuilder
 	public Type ProductType => typeof(ShaderSource);
 	/// 2: the product names each stage's entry point. 3: one file, compiled at cook time; the
 	/// product carries the expanded source, the lattices and the property table. 4: the product
-	/// carries programs beside the main one (a surface shader's depth and pick).
-	public int32 Version => 4;
+	/// carries programs beside the main one (a surface shader's depth and pick). 5: a surface
+	/// shader's vertex lattices declare WIND (its material's Wind group sways it), and an effect
+	/// block expands to a ConstantBuffer read as `Wind.Strength`.
+	public int32 Version => 5;
 
 	/// `dataRoot`: the engine's data root, whose shader library (`Shaders/`) is on every custom
 	/// shader's include path. Empty: includes resolve nowhere.
