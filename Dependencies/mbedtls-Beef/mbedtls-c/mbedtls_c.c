@@ -391,16 +391,28 @@ void mbedtlsc_session_verify_info(mbedtlsc_session* s, char* out, size_t size)
 
 int mbedtlsc_session_read(mbedtlsc_session* s, uint8_t* out, size_t capacity, int* outCode)
 {
+    unsigned round;
     *outCode = MBEDTLSC_READ_NONE;
     if (capacity == 0)
         return 0;
-    for (;;)
+    for (round = 0;; ++round)
     {
+        size_t before = s->in.size - s->inHead;
         int r = mbedtls_ssl_read(&s->ssl, out, capacity);
         if (r > 0)
             return r;
         if (r == MBEDTLS_ERR_SSL_WANT_READ || r == MBEDTLS_ERR_SSL_WANT_WRITE)
+        {
+            /* After a post-handshake message (TLS 1.3's tickets) Mbed TLS answers WANT_READ with
+             * records still unread, here or in its own buffer; read on while some are, or data
+             * that arrived with the peer's close would be lost. (Bounded: each round consumes a
+             * record.) */
+            size_t after = s->in.size - s->inHead;
+            int unread = (after > 0 && after < before) || mbedtls_ssl_check_pending(&s->ssl) != 0;
+            if (r == MBEDTLS_ERR_SSL_WANT_READ && unread && round < 64)
+                continue;
             return 0;
+        }
         if (r == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET)
             continue; /* TLS 1.3's after-handshake ticket: read on */
         if (r == 0 || r == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
