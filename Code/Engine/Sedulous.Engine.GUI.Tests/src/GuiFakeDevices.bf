@@ -5,10 +5,39 @@ using Sedulous.Shell;
 
 namespace Sedulous.Engine.GUI.Tests;
 
-/// The engine's active input source as a test drives it: the mouse, and this frame's events.
+/// Fingers a test puts down (normalized over an 800 x 600 screen) and lifts.
+class GuiFakeTouch : ITouch
+{
+	public List<TouchPoint> Points = new .() ~ delete _;
+
+	public int32 TouchCount => (int32)Points.Count;
+	public bool HasTouch => !Points.IsEmpty;
+
+	public bool GetTouchPoint(int32 index, out TouchPoint point)
+	{
+		point = .();
+		if ((index < 0) || (index >= Points.Count))
+			return false;
+		point = Points[index];
+		return true;
+	}
+
+	public void Put(uint64 id, float x, float y)
+	{
+		Points.Clear();
+		Points.Add(.(id, x / 800.0f, y / 600.0f, 1.0f, x, y));
+	}
+}
+
+/// The engine's active input source as a test drives it: the mouse, a touch screen when present,
+/// and this frame's events.
 class GuiFakeDevices : IInputSourceProvider
 {
 	public GuiFakeMouse FakeMouse = new .() ~ delete _;
+	public GuiFakeTouch FakeTouch = new .() ~ delete _;
+	/// A touch screen; off, the devices are a desktop's.
+	public bool TouchPresent = false;
+	public ITouch Touch => TouchPresent ? FakeTouch : null;
 	public List<InputEvent> Queue = new .() ~ delete _;
 
 	public IKeyboard Keyboard => null;

@@ -13,8 +13,8 @@ namespace Sedulous.Engine.GUI;
 /// (the screen tier first, then a scene's, then a world panel's by a ray through its scene's
 /// camera); else the screen tier while it holds a screen; else the first scene root with content.
 /// A press stays with its root until every button is up. Which scenes input may reach follows the
-/// input subsystem's binding, as Engine.UI's does. The action layer is told what the GUI took,
-/// added to what Engine.UI claims; the input kind is tracked from the same source.
+/// input subsystem's binding. The action layer is told what the GUI took, added to what an
+/// earlier pump in the lane claims; the input kind is tracked from the same source.
 ///
 /// It reads the SAME device facades the action layer evaluates, so the player's window
 /// coordinates and an editor viewport's content coordinates both arrive in the right space.
@@ -213,6 +213,10 @@ extension GuiSubsystem
 		else if (mouse != null)
 			point = .(mouse.X, mouse.Y);
 		let pointer = fingers || (mouse != null);
+		// The touch guide: from the first touch on, the controls of the sets in effect.
+		mTouchSeen = mTouchSeen || fingers;
+		if (mTouchGuide != null)
+			mTouchGuide.Update(mInput, mTouchSeen);
 		let held = fingers || ((mouse != null) && (mouse.IsButtonDown(.Left) || mouse.IsButtonDown(.Right) || mouse.IsButtonDown(.Middle)));
 
 		// One root a frame; a held press stays with the root it began in, so its release lands (on
@@ -275,11 +279,11 @@ extension GuiSubsystem
 		bridge.SyncInputKind(); // a pad or keys with no event this frame still count
 
 		// What the action layer is told the GUI took: the pointer over GUI that takes it, or a
-		// press that began there while it is held; the keys while text is edited. Added to
-		// Engine.UI's claim (its pump runs first in this lane); EndFrame clears them after the
-		// frame read them.
+		// press that began there while it is held; the keys while text is edited. Added to any
+		// earlier claim in this lane; EndFrame clears them after the frame read them.
 		mPointerTaken = pointer && (held ? mPressTaken : (target.Panel || root.EventDispatcher.IsPointerOver(target.Point)));
 		let keys = root.EventDispatcher.WantsTextInput;
+		mTextWanted = keys;
 		if (!held)
 		{
 			mPressRoot = null;

@@ -6,8 +6,7 @@ namespace Sedulous.Engine.GUI;
 
 /// The GUI's arithmetic in the world, kept PURE so each piece is measured on its own: a world
 /// panel's texture size, a ray from a pointer and where it crosses a panel, and where a
-/// billboard shows in a view. Engine.UI keeps the same math for its own components while both
-/// live (WorldPanelMath); the two are separate so neither moves under the other.
+/// billboard shows in a view.
 static class GuiWorldMath
 {
 	/// A world panel's texture in pixels: its extent at its density, within 16 and 2044 on each

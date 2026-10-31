@@ -24,14 +24,14 @@ using Sedulous.VFS;
 
 namespace Sedulous.Engine.GUI;
 
-/// The engine's GUI on Sedulous.GUI, Engine.UI's counterpart while both live.
+/// The engine's GUI on Sedulous.GUI: every game's interface.
 ///
 /// One GUIContext and style manager for the application, the GUI's built-in theme under the
 /// game's sheets (a list, in order, each an @import of its guid), and the fonts; a screen tier (a
 /// root holding the gamekit's screen stack and an overlay layer above it, outside any scene, so it
 /// survives a scene swap) and a scene tier (a root per scene, drawn wherever the scene renders);
-/// both drawn into the engine's overlay passes through GUI.Hosting's GuiPassRenderer, above
-/// Engine.UI's (GuiOverlayDraw.bf). A sheet or document whose cooked product changes restyles the
+/// both drawn into the engine's overlay passes through GUI.Hosting's GuiPassRenderer
+/// (GuiOverlayDraw.bf). A sheet or document whose cooked product changes restyles the
 /// GUI (hot reload). The GUI ticks on unscaled time (menus move while the game is paused), so its
 /// work is in BeginFrame.
 ///
@@ -52,7 +52,7 @@ namespace Sedulous.Engine.GUI;
 /// (ExposeToScript, ScriptFacadeFor); the components reach their trees as nodes (`Root()`).
 class GuiSubsystem : Subsystem, ISceneObserver
 {
-	/// After Engine.UI's (-650), so a game's GUI sees the same frame; all work in BeginFrame.
+	/// Early in the frame, so a game's GUI sees the same frame; all work in BeginFrame.
 	public override int32 UpdateOrder => -640;
 
 	/// BORROWED from the application: the VG shaders and the built-in font come from it.
@@ -83,6 +83,12 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	private Object mRenderRun = null;
 	/// The shared tier's overlay layer. A HELD reference.
 	private UIWidget mOverlay = null;
+	/// The touch controls' guide, beneath the shared tier's screens. A HELD reference.
+	private GuiTouchGuide mTouchGuide = null;
+	/// A finger has touched the screen: the guide shows.
+	private bool mTouchSeen = false;
+	/// The GUI input reaches is editing text, as of the last input pump.
+	private bool mTextWanted = false;
 	/// `Gui` to every run's scripts, its root the shared tier's (ExposeToScript). OWNED: each
 	/// runtime it is set on borrows it, so it lives as long as the subsystem.
 	private GuiFacade mScriptFacade ~ delete _;
@@ -160,7 +166,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// The fonts the GUI's text draws with: the project's, else the built-in font.
 	public IFontService Fonts => (mProjectFonts != null) ? (IFontService)mProjectFonts : mFonts;
 
-	/// The project's fonts, which it shares with Engine.UI (defaultUiFontId, uiFontIds): the
+	/// The project's fonts (defaultUiFontId, uiFontIds): the
 	/// default and the others, each a family a label picks by `font-family`. Without a default the
 	/// built-in font serves (the others wait for one). The products are BORROWED: the resource
 	/// manager's cache keeps them alive.
@@ -398,6 +404,11 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	/// The overlay layer above every screen. The subsystem's.
 	public UIWidget OverlayLayer => mOverlay;
+	/// Whether the GUI input reaches is editing text (a field has the focus), as of the last input
+	/// pump: a host that owns the window's text input (the editor's Game tab) starts it.
+	public bool WantsTextInput => mTextWanted;
+	/// The touch controls' guide, beneath the shared tier's screens (tests). The subsystem's.
+	public GuiTouchGuide TouchGuide => mTouchGuide;
 
 	/// `document` built and shown on the overlay layer, above every screen (a loading screen, a
 	/// system menu), modal while it shows unless it takes no pointer (`pointer-events: none` on its
@@ -547,6 +558,9 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			mOverlay.EditLayoutStyle(scope (s) => { s.Kind = .Stack; });
 		}
 		mScreen.Root.AddChild(mOverlay);
+		// The touch controls' guide, beneath the screens pushed on this tier and the overlays.
+		mTouchGuide = new GuiTouchGuide();
+		mScreen.Root.AddChildAt(mTouchGuide, 0);
 		// The scripts' facades resolve their roots from here (made with the subsystem: a host may
 		// install them before it starts).
 	}
@@ -618,6 +632,11 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			mOverlay.ReleaseRef();
 			mOverlay = null;
 		}
+		if (mTouchGuide != null)
+		{
+			mTouchGuide.ReleaseRef();
+			mTouchGuide = null;
+		}
 		// The script facades resolve through the shared root, gone below: a script still running
 		// finds no root, not a freed one.
 		if (mScreen.Screens != null)
@@ -655,7 +674,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	}
 
 	/// The action layer's pointer and keyboard claims cleared after the frame read them: the next
-	/// frame's BeginFrame lane republishes them (Engine.UI's, then the GUI's added by PumpInput).
+	/// frame's BeginFrame lane republishes them (the GUI's added by PumpInput).
 	public override void EndFrame()
 	{
 		if (mInput == null)

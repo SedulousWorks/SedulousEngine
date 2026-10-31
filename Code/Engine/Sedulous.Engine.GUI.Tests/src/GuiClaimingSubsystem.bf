@@ -5,7 +5,7 @@ using Sedulous.Runtime;
 
 namespace Sedulous.Engine.GUI.Tests;
 
-/// What Engine.UI does in the same lane before the GUI: claims the pointer, when told to.
+/// An earlier pump in the same lane before the GUI: claims the pointer, when told to.
 class GuiClaimingSubsystem : Subsystem
 {
 	/// BORROWED: the fixture's, which outlives it.

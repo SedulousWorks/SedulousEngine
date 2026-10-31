@@ -12,7 +12,7 @@ using Sedulous.VFS;
 namespace Sedulous.Engine.GUI.Tests;
 
 /// A context with the scene subsystem and the GUI's (and the input subsystem's, on fake devices,
-/// with what Engine.UI claims before the GUI), started, the GUI reading its shaders and built-in
+/// with what an earlier pump claims before the GUI), started, the GUI reading its shaders and built-in
 /// font through the data root.
 class GuiTestEngine
 {
@@ -73,7 +73,7 @@ class GuiTestEngine
 		Devices.EndOfFrame();
 	}
 
-	/// Whether the action layer was told the pointer is taken (Engine.UI's claim, the GUI's).
+	/// Whether the action layer was told the pointer is taken (an earlier claim, the GUI's).
 	public bool PointerClaimed => Input.Runtime.GetConsumptionMask().Pointer;
 
 	/// A document with this markup. The CALLER owns what comes back.

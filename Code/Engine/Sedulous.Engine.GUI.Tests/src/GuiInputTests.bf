@@ -6,7 +6,7 @@ using Sedulous.GUI;
 namespace Sedulous.Engine.GUI.Tests;
 
 /// The input: where it goes (the root whose GUI is under the pointer, else the screens a game
-/// pushed), a press kept by its root, what the action layer hears beside Engine.UI's claim, the
+/// pushed), a press kept by its root, what the action layer hears beside an earlier claim, the
 /// keys and Back, and a source bound to another scene. A fitted tier's pointer, the overlay layer
 /// modal and a world panel's pointer are with the cases they extend (GuiSubsystemTests.bf,
 /// GuiComponentSyncTests.bf).
@@ -53,7 +53,7 @@ class GuiInputTests
 		engine.Context.EndFrame();
 		Test.Assert(!engine.PointerClaimed);
 
-		// Engine.UI's claim (made first in the lane) stands though the GUI takes nothing.
+		// The earlier claim (made first in the lane) stands though the GUI takes nothing.
 		engine.Claiming.Claims = true;
 		mouse.X = 500.0f;
 		engine.Frame();

@@ -24,14 +24,15 @@ class GuiSubsystemTests
 		Math.Abs(actual - expected) < tolerance;
 
 	[Test]
-	public static void TheScreenTierHoldsTheScreenStackUnderTheOverlayLayerAndEachSceneARootOfItsOwn()
+	public static void TheScreenTierHoldsTheTouchGuideUnderTheScreenStackUnderTheOverlayLayerAndEachSceneARootOfItsOwn()
 	{
 		let engine = scope GuiTestEngine();
 		let screen = engine.Gui.ScreenRoot;
 		Test.Assert(screen != null);
-		Test.Assert(screen.ChildCount == 2);
-		Test.Assert(screen.GetChildAt(0) === engine.Gui.Screens);
-		Test.Assert(screen.GetChildAt(1) === engine.Gui.OverlayLayer);
+		Test.Assert(screen.ChildCount == 3);
+		Test.Assert(screen.GetChildAt(0) === engine.Gui.TouchGuide);
+		Test.Assert(screen.GetChildAt(1) === engine.Gui.Screens);
+		Test.Assert(screen.GetChildAt(2) === engine.Gui.OverlayLayer);
 		Test.Assert(engine.Gui.GuiContext.ResourceProvider === engine.Gui.Resources);
 		Test.Assert(engine.Gui.Fonts != null);
 
@@ -489,7 +490,7 @@ class GuiSubsystemTests
 			".title { width: 66px; height: 4px; }");
 		Test.Assert(preview != null);
 		defer { if (preview != null) preview.ReleaseRef(); }
-		Test.Assert(engine.Gui.ScreenRoot.ChildCount == 2, "not in a tier: the screen's stack and overlays alone");
+		Test.Assert(engine.Gui.ScreenRoot.ChildCount == 3, "not in a tier: the screen's guide, stack and overlays alone");
 
 		var texture = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8UnormSrgb, 320, 200)).Value;
 		defer device.DestroyTexture(ref texture);
@@ -589,5 +590,119 @@ class GuiSubsystemTests
 		Test.Assert(prompt.Text == "G", scope $"{prompt.Text}");
 		engine.Gui.SetPromptRuntime(null);
 		engine.Frame();
+	}
+
+	[Test]
+	public static void TheDefaultLoadingScreenIsTheLogoOverABarAndLoadingOnTheOverlayLayerItsBarThePlayersToDrive()
+	{
+		const String cSvg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 885 200\"><rect width=\"885\" height=\"200\"/></svg>";
+		let screen = GuiLoadingScreen.Build(cSvg);
+		Test.Assert(screen.Root != null);
+		defer screen.Root.ReleaseRef();
+		Test.Assert(screen.Progress != null);
+		Test.Assert(screen.Root.ChildCount == 3, "the logo, the bar, the status");
+		Test.Assert(screen.Root.GetChildAt(0) is Image);
+		Test.Assert(screen.Root.GetChildAt(1) === screen.Progress);
+		let status = screen.Root.GetChildAt(2) as Label;
+		Test.Assert((status != null) && (status.Text == "Loading"));
+		screen.Progress.Value = 0.5;
+		Test.Assert(Math.Abs(screen.Progress.Value - 0.5) < 1e-6);
+
+		// No logo it can read: the bar and the line alone.
+		let bare = GuiLoadingScreen.Build("");
+		defer bare.Root.ReleaseRef();
+		Test.Assert(bare.Root.ChildCount == 2);
+		let unreadable = GuiLoadingScreen.Build("not svg");
+		defer unreadable.Root.ReleaseRef();
+		Test.Assert(unreadable.Root.ChildCount == 2);
+
+		let engine = scope GuiTestEngine();
+		let before = engine.Gui.OverlayCount;
+		engine.Gui.PushOverlay(screen.Root);
+		Test.Assert(engine.Gui.OverlayCount == before + 1);
+		engine.Gui.RemoveOverlay(screen.Root);
+		Test.Assert(engine.Gui.OverlayCount == before);
+	}
+
+	[Test]
+	public static void TheTouchGuideShowsTheGamesTouchControlsOnceAFingerHasTouchedTheScreen()
+	{
+		let engine = scope GuiTestEngine();
+		engine.Devices.TouchPresent = true;
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		let map = scope Sedulous.Input.InputMap();
+		let set = new Sedulous.Input.ActionSet();
+		set.Name.Set("Gameplay");
+		let move = new Sedulous.Input.InputAction();
+		move.Name.Set("Move");
+		move.Kind = .Axis2D;
+		var stick = Sedulous.Input.Binding();
+		stick.Source = .TouchStick;
+		stick.RegionW = 0.5f;
+		move.Bindings.Add(stick);
+		set.Actions.Add(move);
+		let jump = new Sedulous.Input.InputAction();
+		jump.Name.Set("Jump");
+		var zone = Sedulous.Input.Binding();
+		zone.Source = .TouchButton;
+		zone.RegionX = 0.5f;
+		zone.RegionW = 0.5f;
+		jump.Bindings.Add(zone);
+		set.Actions.Add(jump);
+		map.Sets.Add(set);
+		engine.Input.SetMap(map);
+
+		let guide = engine.Gui.TouchGuide;
+		Test.Assert(guide != null);
+		Test.Assert(guide.Parent === engine.Gui.ScreenRoot);
+		Test.Assert(guide.Parent.GetChildAt(0) === guide, "beneath the screens and the overlays");
+		Test.Assert(!guide.HitTestVisible);
+		// No finger yet (a desktop player): nothing shown.
+		engine.Frame();
+		Test.Assert(guide.ControlCount == 0);
+		Test.Assert(!guide.Visible);
+		// A finger: both controls, and they stay after it lifts.
+		engine.Devices.FakeTouch.Put(1, 600.0f, 300.0f);
+		engine.Frame();
+		Test.Assert(guide.ControlCount == 2);
+		Test.Assert(guide.Visible);
+		engine.Devices.FakeTouch.Points.Clear();
+		engine.Frame();
+		Test.Assert(guide.ControlCount == 2);
+		// It covers the screen, and the Jump button's name is shown.
+		Test.Assert(Math.Abs(guide.Size.X - 800.0f) < 0.5f);
+		Test.Assert(Math.Abs(guide.Size.Y - 600.0f) < 0.5f);
+		bool shown = false;
+		for (int i < guide.ChildCount)
+		{
+			if (let label = guide.GetChildAt(i) as Label)
+			{
+				if (label.Text == "Jump")
+					shown = label.Visible;
+			}
+		}
+		Test.Assert(shown);
+	}
+
+	[Test]
+	public static void TheGuiSaysItWantsTextInputWhileATextFieldInputReachesHasTheFocus()
+	{
+		let engine = scope GuiTestEngine();
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		let form = new UIWidget();
+		let name = new TextField();
+		name.Size = .(200.0f, 30.0f);
+		form.AddChild(name);
+		name.ReleaseRef(); // the form holds it
+		Test.Assert(engine.Gui.Screens.Push(form) != null, "a pushed screen focuses its first field");
+		form.ReleaseRef(); // its screen holds it
+		engine.Frame();
+		Test.Assert(engine.Gui.WantsTextInput, "the editor's Game tab starts the window's text input on it");
+		engine.Gui.ScreenRoot.EventDispatcher.FocusNode = null;
+		engine.Frame();
+		Test.Assert(!engine.Gui.WantsTextInput);
+		engine.Gui.ScreenRoot.EventDispatcher.FocusNode = name;
+		engine.Frame();
+		Test.Assert(engine.Gui.WantsTextInput);
 	}
 }

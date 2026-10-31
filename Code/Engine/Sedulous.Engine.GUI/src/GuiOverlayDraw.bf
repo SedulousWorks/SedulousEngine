@@ -17,7 +17,7 @@ namespace Sedulous.Engine.GUI;
 /// offscreen layers on the host's encoder), then drawn in it.
 extension GuiSubsystem : ISceneOverlay, IScreenOverlay
 {
-	/// Above Engine.UI's (0) while both draw.
+	/// Above the engine's own overlays (0).
 	public int32 OverlayOrder => 10;
 
 	/// Whether the overlays draw: the renderer is up and its shaders resolved.
