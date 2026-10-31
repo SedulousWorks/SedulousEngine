@@ -14,10 +14,14 @@ class OnePicture : IResourceProvider
 {
 	public OwnedImageData Img = WidgetFixtures.MakeImage() ~ delete _;
 	public int Loads = 0;
+	/// "later.png": a picture that arrives after it was first asked for.
+	public bool LateReady = false;
 
 	public override ImageData LoadImage(StringView path)
 	{
 		++Loads;
+		if (path == "later.png")
+			return LateReady ? Img : null;
 		return (path == "pic.png") ? Img : null;
 	}
 
@@ -248,9 +252,9 @@ class SimpleWidgetsTests
 		Test.Assert(Near(w.Size.Y, 2.0f));
 		root.UpdateLayout();
 		Test.Assert(resources.Loads == 1); // once
-		w.Source = "other.png"; // a path it has none for: no picture, and asked once
+		w.Source = "other.png"; // a path it has none for: no picture, asked again until one comes
 		root.UpdateLayout();
-		Test.Assert(resources.Loads == 2);
+		Test.Assert(resources.Loads >= 2, scope $"loads {resources.Loads}");
 		Test.Assert(w.Drawable == null);
 		Test.Assert(Near(w.Size.X, 0.0f));
 	}

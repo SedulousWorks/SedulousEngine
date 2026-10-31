@@ -222,4 +222,53 @@ class ImageWidgetTests
 		Test.Assert(img.ObjectPositionName == "100% 0%");
 		Test.Assert(Near(img.ImageColor.A, 128.0f / 255.0f));
 	}
+
+	/// A host's pictures load in their own time (a texture a game names, still loading): an image
+	/// that got nothing asks again as it is laid out next, and shows the picture once there is one.
+	[Test]
+	public static void APictureNotThereYetIsAskedForAgainUntilItComes()
+	{
+		let resources = scope OnePicture();
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		root.Context.ResourceProvider = resources;
+		let w = new Sedulous.GUI.Image();
+		defer w.ReleaseRef();
+		w.Source = "later.png"; // the provider has none yet
+		root.AddChild(w);
+		root.UpdateLayout();
+		let first = resources.Loads;
+		Test.Assert(first >= 1);
+		Test.Assert(Near(w.Size.X, 0.0f));
+		w.RequestLayout(); // as the host does when a picture arrives
+		root.UpdateLayout();
+		Test.Assert(resources.Loads > first, "asked again");
+		w.Source = "pic.png";
+		root.UpdateLayout();
+		Test.Assert(Near(w.Size.X, 4.0f));
+		let loaded = resources.Loads;
+		w.RequestLayout();
+		root.UpdateLayout();
+		Test.Assert(resources.Loads == loaded, "once it has it, never again");
+
+		// A box its style sizes (a HUD's portrait) takes the picture as the host lays out again
+		// when it arrives, though its size does not change.
+		let boxed = new Sedulous.GUI.Image();
+		defer boxed.ReleaseRef();
+		boxed.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(72.0f);
+				s.Height = LayoutLength.Px(72.0f);
+			});
+		boxed.Source = "later.png";
+		root.AddChild(boxed);
+		root.UpdateLayout();
+		Test.Assert(boxed.Drawable == null);
+		resources.LateReady = true;
+		root.RequestLayoutTree(); // the host, as a texture arrives
+		root.UpdateLayout();
+		Test.Assert(boxed.Drawable != null);
+		Test.Assert(boxed.NeedsRedraw, "drawn again with it");
+	}
 }

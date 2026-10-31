@@ -287,6 +287,15 @@ class Image : UIWidget
 		}
 	}
 
+	/// Laid out, it asks for its picture if it has none yet: a box its style sizes is never
+	/// measured by its content, and a picture still loading when it was set comes this way, as the
+	/// host lays out again when one arrives.
+	public override void OnLayout()
+	{
+		LoadSource();
+		base.OnLayout();
+	}
+
 	public override void OnDraw(DrawContext ctx, Rect localBounds)
 	{
 		LoadSource();
@@ -313,11 +322,17 @@ class Image : UIWidget
 		let resources = ResourceProvider;
 		if (resources == null)
 			return; // not in a GUI with one yet: tried again when drawn or measured
-		mSourceLoaded = true;
 		if (mDrawable != null)
 			mDrawable.ReleaseRef();
 		mDrawable = PictureDrawable(resources, mSource); // an SVG drawn as paths
-		RequestLayout();
+		// A picture the resources do not have yet (a texture still loading) is asked for again when
+		// laid out or drawn next: the host lays out again once one arrives.
+		mSourceLoaded = mDrawable != null;
+		if (mSourceLoaded)
+		{
+			RequestLayout(); // its size may follow the picture's
+			Invalidate(); // and a box sized by its style is drawn again, picture and all
+		}
 	}
 }
 

@@ -68,6 +68,8 @@ class GuiResourceProvider : IResourceProvider
 	private List<Text> mTexts = new .() ~ delete _;
 	private List<Picture> mPictures = new .() ~ delete _;
 	private List<TextureImage> mImages = new .() ~ delete _;
+	/// A texture an image asked for has arrived (TakeImagesArrived).
+	private bool mImagesArrived = false;
 	/// Keys no texture backs now, kept for the views that may hold them. OWNED.
 	private List<ImageDataRef> mRetired = new .() ~ DeleteContainerAndItems!(_);
 	/// Pictures replaced, kept for the widgets that may hold them. OWNED.
@@ -244,7 +246,7 @@ class GuiResourceProvider : IResourceProvider
 	public bool Poll()
 	{
 		for (let entry in mImages)
-			Refresh(entry);
+			mImagesArrived = Refresh(entry) || mImagesArrived;
 		for (let entry in mPictures)
 			Refresh(entry);
 		bool changed = false;
@@ -297,13 +299,24 @@ class GuiResourceProvider : IResourceProvider
 		mTexts.Clear();
 	}
 
-	/// An image's key in line with its texture's current product.
-	private void Refresh(TextureImage entry)
+	/// Whether a texture an image asked for has arrived since the last call (an image asked before
+	/// it loaded got nothing, and asks again as it is laid out next).
+	public bool TakeImagesArrived()
+	{
+		let arrived = mImagesArrived;
+		mImagesArrived = false;
+		return arrived;
+	}
+
+	/// An image's key in line with its texture's current product: true when the texture has just
+	/// arrived (an image that had none has one now).
+	private bool Refresh(TextureImage entry)
 	{
 		let texture = entry.Texture.Get;
 		let uid = ((texture != null) && (texture.View != null)) ? texture.Uid : 0;
 		if (uid == entry.Uid)
-			return;
+			return false;
+		let arrived = (entry.Uid == 0) && (uid != 0);
 		if ((uid != 0) && ((entry.Key == null) || (entry.Key.Width != texture.Width) || (entry.Key.Height != texture.Height)))
 		{
 			// A key's size is the image's natural size: another size takes a new key, the old one
@@ -317,6 +330,7 @@ class GuiResourceProvider : IResourceProvider
 		}
 		entry.Uid = uid;
 		Tell(entry.Key, (uid != 0) ? texture.View : null);
+		return arrived;
 	}
 
 	/// A picture parsed again when its vector image's product changed.

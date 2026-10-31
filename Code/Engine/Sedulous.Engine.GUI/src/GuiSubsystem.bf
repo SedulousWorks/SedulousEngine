@@ -661,6 +661,19 @@ class GuiSubsystem : Subsystem, ISceneObserver
 				mRenderState.Renderer.BeginFrame();
 			if (mResources.Poll())
 				ApplySheets(); // a sheet (or a document) was cooked again: the GUI restyles
+			if (mResources.TakeImagesArrived())
+			{
+				// A texture an image asked for before it loaded is here: every root lays out again,
+				// and the images that got nothing ask again.
+				if (mScreen.Root != null)
+					mScreen.Root.RequestLayoutTree();
+				for (let tier in mRunTiers)
+					tier.Root.RequestLayoutTree();
+				for (let tier in mSceneTiers)
+					tier.Root.RequestLayoutTree();
+				for (let root in mTextureRoots)
+					root.Root.RequestLayoutTree();
+			}
 			SyncPrompts();
 			SyncComponents(); // each scene's billboards, canvases and world panels in line
 			PumpInput(); // before the clock, as Raptor's
