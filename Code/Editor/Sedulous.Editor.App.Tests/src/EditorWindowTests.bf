@@ -120,6 +120,15 @@ static class EditorWindowTests
 	}
 
 	[Test]
+	public static void ItsWindowsPresentWithAThirdImageSoALateCompositorCostsNoRefresh()
+	{
+		let desc = EditorWindow.EditorRenderWindowDesc();
+		Test.Assert(desc.BufferCount == 3);
+		Test.Assert(desc.PresentMode == .Fifo);
+		Test.Assert(RenderWindowDesc().BufferCount == 2, "a game keeps the default");
+	}
+
+	[Test]
 	public static void TheLookFromTheUsersSettingsTheDefaultsForWhatIsUnsetOrNamedWronglyAndBack()
 	{
 		let none = scope EditorLook();

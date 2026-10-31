@@ -5,6 +5,7 @@ using Sedulous.GUI;
 using Sedulous.Profiler;
 using Sedulous.Profiler.GUI;
 using Sedulous.Profiler.Capture;
+using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
@@ -51,6 +52,8 @@ class ProfilerPanelTests
 		public Sedulous.Profiler.Profiler Store = new .() ~ delete _;
 		public CaptureRecorder Recorder = new .() ~ delete _;
 		public ProfilerPanel Panel ~ delete _;
+		/// What the panel told the user, in order: "kind|message|folder".
+		public List<String> Notices = new .() ~ DeleteContainerAndItems!(_);
 
 		public this()
 		{
@@ -58,6 +61,7 @@ class ProfilerPanelTests
 			seams.Store = Store;
 			seams.Recorder = Recorder;
 			seams.Folder.Set("scratch_profiler_panel");
+			seams.Notify = new [=this] (kind, message, folder) => { Notices.Add(new $"{kind}|{message}|{folder}"); };
 			Panel = new ProfilerPanel(seams, LoadPage());
 			Test.Assert(Panel.Content != null);
 		}
@@ -176,6 +180,8 @@ class ProfilerPanelTests
 		let bed = scope Bed();
 		bed.Recorder.SetBuild("Linux64", "test-build");
 		Test.Assert(bed.Panel.SaveRecording(.. scope .()).IsEmpty); // nothing recorded yet
+		Test.Assert(bed.Notices.Count == 1);
+		Test.Assert(bed.Notices[0] == "Info|Nothing to save: record first|", bed.Notices[0]);
 
 		bed.Panel.Start();
 		RunFrames(bed.Store, 8);
@@ -184,7 +190,10 @@ class ProfilerPanelTests
 		Test.Assert(!path.IsEmpty);
 		Test.Assert(path.EndsWith(".aeprofile"));
 		Test.Assert(path.Contains("scratch_profiler_panel/Editor-"), path);
-		Test.Assert(bed.Panel.StatusText.Contains("Saved 8 frames", true), scope String(bed.Panel.StatusText));
+		// Told once, with the folder to open; the bar's label still says what is shown.
+		Test.Assert(bed.Notices.Count == 2);
+		Test.Assert(bed.Notices[1] == "Success|Saved 8 frames|scratch_profiler_panel", bed.Notices[1]);
+		Test.Assert(bed.Panel.StatusText.Contains("The editor process: 8 frames", true), scope String(bed.Panel.StatusText));
 
 		Test.Assert(bed.Panel.OpenCapture(path));
 		Test.Assert(bed.Panel.ViewingCapture);
@@ -201,7 +210,7 @@ class ProfilerPanelTests
 		Test.Assert(bed.Panel.Focus.Source === bed.Panel.Recording);
 
 		Test.Assert(!bed.Panel.OpenCapture("scratch_profiler_panel/not-there.aeprofile"));
-		Test.Assert(bed.Panel.StatusText.Contains("Could not read", true));
+		Test.Assert(bed.Notices.Back.StartsWith("Error|Could not read"), "said once, as an error");
 		Test.Assert(!bed.Panel.ViewingCapture);
 	}
 

@@ -116,6 +116,17 @@ class EditorLook
 
 class EditorWindow
 {
+	/// How every editor window presents: vsync, with a third swapchain image, so a compositor late
+	/// in giving one back (two images held the frame for whole refreshes, the user's spikes) costs
+	/// nothing; the frame of latency it adds is no matter in an editor. A game keeps the default.
+	public static RenderWindowDesc EditorRenderWindowDesc()
+	{
+		var desc = RenderWindowDesc();
+		desc.PresentMode = .Fifo;
+		desc.BufferCount = 3;
+		return desc;
+	}
+
 	/// The frame's markup and the editor's sheet, under the data root.
 	public const String cFramePath = "Editor/Shell.xml";
 	public const String cSheetPath = "Editor/editor.css";
@@ -206,7 +217,7 @@ class EditorWindow
 		{
 			// A float in an OS window of its own: the runtime host's.
 			let opener = new GuiHost.WindowOpener();
-			opener.Open = new (settings) => host.OpenWindow(settings, RenderWindowDesc());
+			opener.Open = new (settings) => host.OpenWindow(settings, EditorRenderWindowDesc());
 			opener.Close = new (opened) => host.CloseWindow(opened);
 			mHost.SetWindowOpener(opener);
 		}

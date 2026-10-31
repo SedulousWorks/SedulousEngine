@@ -7,6 +7,7 @@ using Sedulous.GUI;
 using Sedulous.Profiler;
 using Sedulous.Profiler.GUI;
 using Sedulous.Profiler.Capture;
+using Sedulous.Editor.Core; // NoticeKind
 
 namespace Sedulous.Editor.App;
 
@@ -35,6 +36,9 @@ class ProfilerPanelSeams
 	public String Folder = new .() ~ delete _;
 	/// Opens a picker's request (OWNERSHIP of it transfers); null: Open does nothing. Owned.
 	public delegate void(PickerRequest request) Pick ~ delete _;
+	/// Tells the user how a save or an open went (the editor's toasts; `folder`, when not empty, the
+	/// one a save went to, for the toast to open); null: nobody is told. Owned.
+	public delegate void(NoticeKind kind, StringView message, StringView folder) Notify ~ delete _;
 }
 
 class ProfilerPanel : IProfileFocusClient
@@ -239,7 +243,7 @@ class ProfilerPanel : IProfileFocusClient
 	{
 		if ((mCapture != null) || !mRecording.HasFrames)
 		{
-			SetStatus("Nothing to save: record first");
+			Notify(.Info, "Nothing to save: record first");
 			return;
 		}
 		CreateDirectory(mSeams.Folder); // its parents too
@@ -255,10 +259,10 @@ class ProfilerPanel : IProfileFocusClient
 		let path = CaptureRecorder.WriteCaptureFiles(mRecording, mRecording.OldestFrame, mRecording.NewestFrame, basePath, header, .. scope .());
 		if (path.IsEmpty)
 		{
-			SetStatus(scope $"Could not save to {mSeams.Folder} (see the Console)");
+			Notify(.Error, scope $"Could not save the recording to {mSeams.Folder} (see the Console)");
 			return;
 		}
-		SetStatus(scope $"Saved {mRecording.FrameCount} frames to {path}");
+		Notify(.Success, scope $"Saved {mRecording.FrameCount} frames", mSeams.Folder);
 		GlobalLog(.Information, "Profiler: saved the editor's recording to {}", path);
 		outPath.Append(path);
 	}
@@ -273,7 +277,7 @@ class ProfilerPanel : IProfileFocusClient
 			if (!file.IsValid || !capture.Read(file))
 			{
 				delete capture;
-				SetStatus(scope $"Could not read {path}");
+				Notify(.Error, scope $"Could not read {path}");
 				return false;
 			}
 		}
@@ -454,6 +458,14 @@ class ProfilerPanel : IProfileFocusClient
 		else
 			text.Append("The editor process (every page, preview and Play-in-editor run): Record to start");
 		SetStatus(text);
+	}
+
+	// How a save or an open went, said once (a toast), not left in the bar: the bar's label says
+	// what is shown, and stays short.
+	private void Notify(NoticeKind kind, StringView message, StringView folder = default)
+	{
+		if (mSeams.Notify != null)
+			mSeams.Notify(kind, message, folder);
 	}
 
 	private void SetStatus(StringView text)

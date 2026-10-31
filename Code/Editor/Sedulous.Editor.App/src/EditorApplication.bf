@@ -386,6 +386,9 @@ class EditorApplication : IApplication
 		return services;
 	}
 
+	/// The main window presents as every editor window does (EditorWindow.EditorRenderWindowDesc).
+	public RenderWindowDesc MainRenderWindow => EditorWindow.EditorRenderWindowDesc();
+
 	public void Configure(IApplicationHost host)
 	{
 		if (mConfig.ConfigureEngine != null)
@@ -662,6 +665,21 @@ class EditorApplication : IApplication
 			seams.Recorder = CaptureRecorder.Process;
 			PathJoin(GetUserDataDirectory(.. scope .()), "profiles", seams.Folder);
 			seams.Pick = new (request) => { ShowPicker(request); };
+			// A save's toast stays with Open Folder, as an export's does.
+			seams.Notify = new (kind, message, folder) =>
+				{
+					if (folder.IsEmpty)
+					{
+						ShowToast(kind, message);
+						return;
+					}
+					let saved = new String(folder);
+					ShowToast(kind, message, "Open Folder", new [=this, =saved] () =>
+						{
+							if (let dialogs = ShellDialogs())
+								dialogs.OpenPath(saved);
+						} ~ delete saved);
+				};
 			mProfiler = new ProfilerPanel(seams, mWindow.LoadMarkup(ProfilerPanel.cMarkupPath));
 		}
 		contents.Profiler = new () =>
