@@ -62,6 +62,8 @@ class PipelineCacheFixture
 		uint8[4] blob = .(1, 2, 3, 4);
 		Pack.Add(name, stage, flags, ShaderSystem.SelectCookedFormat(Device.PreferredShaderFormat),
 			.(&blob[0], 4));
+		// As the cook records it: a cooked stage without its entry point is refused.
+		Pack.AddEntryPoint(name, stage, ShaderCorpus.EntryPoint);
 	}
 
 	/// The usual pair.
