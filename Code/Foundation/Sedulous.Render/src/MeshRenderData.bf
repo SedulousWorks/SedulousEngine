@@ -20,8 +20,8 @@ class MeshRenderData : RenderData
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	/// The screen door fade, nought (solid) to one (gone). A faded mesh draws in the Masked
 	/// category (out of the depth prepass, whose depth would hide what shows through it) with
-	/// the DITHER variant, its fade riding the instance's DataOffsets.W or, drawn alone, the
-	/// object block. Shadows ignore it.
+	/// the DITHER variant, its fade riding the instance's MeshDrawOffsets.Fade or, drawn alone,
+	/// the object block. Shadows ignore it.
 	public float Fade = 0.0f;
 
 	public StaticMesh Mesh = null;

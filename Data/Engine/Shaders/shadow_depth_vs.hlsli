@@ -35,24 +35,17 @@ float4x4 BlendBones(uint4 j, float4 w, uint base) {
                     b0.Row3 * w.x + b1.Row3 * w.y + b2.Row3 * w.z + b3.Row3 * w.w);
 }
 #endif
-// Layouts mirror the forward path's Object/InstanceData exactly (shared ring buffers) - the extra
-// PrevWorld/PrevBoneBase fields keep the strides/offsets aligned even though the depth pass ignores them.
+// The forward path's InstanceData and Object block (shared ring buffers): the depth pass reads fewer
+// of their fields, declared in full so the strides and offsets are the forward's.
 #ifdef INSTANCED
 struct InstanceData { row_major float4x4 World; row_major float4x4 PrevWorld; float4 Tint; };
 StructuredBuffer<InstanceData> Instances : register(t0, space1);
 #include "instance_fade.hlsli"
 #else
-cbuffer Object : register(b0, space1) {
-    row_major float4x4 World;
-    row_major float4x4 PrevWorld;
-    float4             Tint;
-    uint               BoneBase;
-    uint               PrevBoneBase;
-    uint2              _objPad;
-};
+#include "object_block.hlsli"
 #endif
 // Every input pins its location (SPIR-V; the semantics give DXIL the same): without them DXC numbers
-// them in order, and a non-instanced skinned variant's joints would take dataOffsets' 5.
+// them in order, and a non-instanced skinned variant's joints would take drawOffsets' 5.
 struct VSInput {
     [[vk::location(0)]] float3 position : TEXCOORD0;
     [[vk::location(1)]] float3 normal   : TEXCOORD1;
@@ -60,7 +53,10 @@ struct VSInput {
     [[vk::location(3)]] float4 color    : TEXCOORD3;
     [[vk::location(4)]] float4 tangent  : TEXCOORD4;   // xyz = tangent, w = TBN handedness (+-1)
 #ifdef INSTANCED
-    [[vk::location(5)]] uint4  dataOffsets : TEXCOORD5;   // .x = index into Instances[] (instance-stepped)
+    // Instance-stepped (MeshDrawOffsets, the forward pass's): x = index into Instances[],
+    // y = the bone base, z = last frame's bone base, w = the draw's fade, a float by its bits (read
+    // with asfloat). This pass reads x and y.
+    [[vk::location(5)]] uint4  drawOffsets : TEXCOORD5;
 #endif
 #ifdef SKINNED
     [[vk::location(6)]] uint2  jointsPacked : TEXCOORD6;
@@ -81,8 +77,8 @@ ShadowVSOut SHADOW_DEPTH_VS_ENTRY(VSInput input) {
 float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
 #endif
 #ifdef INSTANCED
-    float4x4 world = Instances[input.dataOffsets.x].World;
-    float fadeKeep = InstanceFadeKeep(world[3].xyz, ShadowCamera, input.dataOffsets.x,
+    float4x4 world = Instances[input.drawOffsets.x].World;
+    float fadeKeep = InstanceFadeKeep(world[3].xyz, ShadowCamera, input.drawOffsets.x,
                                       ShadowFadeFromCamera != 0u);
 #else
     float4x4 world = World;
@@ -97,7 +93,7 @@ float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
 #endif
 #ifdef SKINNED
   #ifdef INSTANCED
-    uint boneBase = input.dataOffsets.y;
+    uint boneBase = input.drawOffsets.y;
   #else
     uint boneBase = BoneBase;
   #endif
@@ -119,7 +115,7 @@ float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
 #ifdef SURFACE_PROGRAM
     // A surface shader's Vertex() moves what this pass draws, as it does the forward pass's.
   #ifdef INSTANCED
-    float4 tint = Instances[input.dataOffsets.x].Tint;
+    float4 tint = Instances[input.drawOffsets.x].Tint;
   #else
     float4 tint = Tint;
   #endif

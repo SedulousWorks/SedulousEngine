@@ -27,9 +27,10 @@ struct PipelineConfig
 	public uint32 CustomVertexStride = 0;
 	public uint8 CustomAttributeCount = 0;
 
-	/// Adds a second, INSTANCE stepped vertex buffer: a uint4 of data offsets at location
-	/// five, whose first component indexes a per instance structured buffer. Pair it with
-	/// ShaderFlags.Instanced, which is the permutation that reads it.
+	/// Adds a second, INSTANCE stepped vertex buffer: a uint4 of offsets at location five
+	/// (MeshDrawOffsets, or MeshPickDrawOffsets in the pick pass), whose first component indexes
+	/// a per instance structured buffer. Pair it with ShaderFlags.Instanced, which is the
+	/// permutation that reads it.
 	public bool Instanced = false;
 
 	// ---- primitive assembly ----

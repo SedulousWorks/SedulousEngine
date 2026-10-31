@@ -28,21 +28,10 @@ struct InstanceData { row_major float4x4 World; row_major float4x4 PrevWorld; fl
 StructuredBuffer<InstanceData> Instances : register(t0, space1);
 #include "instance_fade.hlsli"
 #else
-cbuffer Object : register(b0, space1) {
-    row_major float4x4 World;
-    row_major float4x4 PrevWorld;   // last frame's world (motion vectors)
-    float4             Tint;
-    uint               BoneBase;      // first bone matrix for this draw (skinning); 0 otherwise
-    uint               PrevBoneBase;  // last frame's bone base (skinned motion vectors)
-    uint2              _objPad;       // (the pick pass's ids, in its own layout)
-    float              Fade;          // the screen-door fade, 0 = solid (forward.ps DITHER)
-    uint               _fadePad0;     // scalars: a uint3 here breaks WGSL's 16-byte vec3 alignment
-    uint               _fadePad1;
-    uint               _fadePad2;
-};
+#include "object_block.hlsli"
 #endif
 // Every input pins its location (SPIR-V; the semantics give DXIL the same): without them DXC numbers
-// them in order, and a non-instanced skinned variant's joints would take dataOffsets' 5.
+// them in order, and a non-instanced skinned variant's joints would take drawOffsets' 5.
 struct VSInput {
     [[vk::location(0)]] float3 position : TEXCOORD0;
     [[vk::location(1)]] float3 normal   : TEXCOORD1;
@@ -50,7 +39,9 @@ struct VSInput {
     [[vk::location(3)]] float4 color    : TEXCOORD3;
     [[vk::location(4)]] float4 tangent  : TEXCOORD4;   // xyz = tangent, w = TBN handedness (+-1)
 #ifdef INSTANCED
-    [[vk::location(5)]] uint4  dataOffsets : TEXCOORD5;   // .x = index into Instances[] (instance-stepped)
+    // Instance-stepped (MeshDrawOffsets): x = index into Instances[], y = the bone base,
+    // z = last frame's bone base, w = the draw's fade, a float by its bits (read with asfloat).
+    [[vk::location(5)]] uint4  drawOffsets : TEXCOORD5;
 #endif
 #ifdef SKINNED
     [[vk::location(6)]] uint2  jointsPacked : TEXCOORD6;  // 4x u16 bone indices packed into 2x u32
@@ -76,10 +67,10 @@ struct VSOutput {
 VSOutput FORWARD_VS_ENTRY(VSInput input) {
     VSOutput o;
 #ifdef INSTANCED
-    float4x4 world     = Instances[input.dataOffsets.x].World;
-    float4x4 prevWorld = Instances[input.dataOffsets.x].PrevWorld;
-    float4   tint      = Instances[input.dataOffsets.x].Tint;
-    float    fadeKeep  = InstanceFadeKeep(world[3].xyz, CameraPos, input.dataOffsets.x, true);
+    float4x4 world     = Instances[input.drawOffsets.x].World;
+    float4x4 prevWorld = Instances[input.drawOffsets.x].PrevWorld;
+    float4   tint      = Instances[input.drawOffsets.x].Tint;
+    float    fadeKeep  = InstanceFadeKeep(world[3].xyz, CameraPos, input.drawOffsets.x, true);
 #else
     float4x4 world     = World;
     float4x4 prevWorld = PrevWorld;
@@ -91,11 +82,11 @@ VSOutput FORWARD_VS_ENTRY(VSInput input) {
     float3 lpPrev = input.position;   // previous-frame local position (differs from lp only when skinned)
 #ifdef SKINNED
     // Blend the four influencing bones (joint indices packed 4x u16 -> 2x u32) into a skin matrix. The
-    // bone base is per-instance (DataOffsets.y) for the instanced path; the device pool holds [cur][prev]
-    // per skeleton (DataOffsets.z = prev base, for motion vectors).
+    // bone base is per-instance (drawOffsets.y) for the instanced path; the device pool holds [cur][prev]
+    // per skeleton (drawOffsets.z = prev base, for motion vectors).
   #ifdef INSTANCED
-    uint boneBase     = input.dataOffsets.y;
-    uint prevBoneBase = input.dataOffsets.z;
+    uint boneBase     = input.drawOffsets.y;
+    uint prevBoneBase = input.drawOffsets.z;
   #else
     uint boneBase     = BoneBase;
     uint prevBoneBase = PrevBoneBase;
@@ -152,7 +143,7 @@ VSOutput FORWARD_VS_ENTRY(VSInput input) {
     o.curClip   = o.clip;                                        // (jitter is baked into ViewProj; PS unjitters)
     o.prevClip  = mul(prevWorldPos, PrevViewProj);
 #ifdef INSTANCED
-    o.fade      = asfloat(input.dataOffsets.w);                  // the instance's fade
+    o.fade      = asfloat(input.drawOffsets.w);                  // the instance's fade
 #else
     o.fade      = Fade;                                          // the object's fade
 #endif

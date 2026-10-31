@@ -93,36 +93,20 @@ class ShaderBlockLayoutTests
 		.("SceneTime", offsetof(MeshViewData, SceneTime)),
 		.("PrevSceneTime", offsetof(MeshViewData, PrevSceneTime)));
 
-	/// The per-draw block: one C++ struct for three passes, each declaring its own part of it
-	/// (phase 3 gives each pass its fields by name; until then each row records what it declares).
-	private static FieldRow[?] sForwardObject = .(
-		.("World", offsetof(MeshObjectData, World)),
-		.("PrevWorld", offsetof(MeshObjectData, PrevWorld)),
-		.("Tint", offsetof(MeshObjectData, Tint)),
-		.("BoneBase", offsetof(MeshObjectData, BoneBase)),
-		.("PrevBoneBase", offsetof(MeshObjectData, PrevBoneBase)),
-		.("_objPad", offsetof(MeshObjectData, PickIndex)),
-		.("Fade", offsetof(MeshObjectData, Fade)),
-		.("_fadePad0", offsetof(MeshObjectData, FadePad0)),
-		.("_fadePad1", offsetof(MeshObjectData, FadePad1)),
-		.("_fadePad2", offsetof(MeshObjectData, FadePad2)));
-
-	private static FieldRow[?] sShadowObject = .(
-		.("World", offsetof(MeshObjectData, World)),
-		.("PrevWorld", offsetof(MeshObjectData, PrevWorld)),
-		.("Tint", offsetof(MeshObjectData, Tint)),
-		.("BoneBase", offsetof(MeshObjectData, BoneBase)),
-		.("PrevBoneBase", offsetof(MeshObjectData, PrevBoneBase)),
-		.("_objPad", offsetof(MeshObjectData, PickIndex)));
-
-	private static FieldRow[?] sPickObject = .(
+	/// The per draw block: one Beef struct and one declaration (object_block.hlsli) that the
+	/// forward, shadow depth and pick vertex stages all include, every field by its name in each.
+	private static FieldRow[?] sObject = .(
 		.("World", offsetof(MeshObjectData, World)),
 		.("PrevWorld", offsetof(MeshObjectData, PrevWorld)),
 		.("Tint", offsetof(MeshObjectData, Tint)),
 		.("BoneBase", offsetof(MeshObjectData, BoneBase)),
 		.("PrevBoneBase", offsetof(MeshObjectData, PrevBoneBase)),
 		.("PickIndex", offsetof(MeshObjectData, PickIndex)),
-		.("PickGeneration", offsetof(MeshObjectData, PickGeneration)));
+		.("PickGeneration", offsetof(MeshObjectData, PickGeneration)),
+		.("Fade", offsetof(MeshObjectData, Fade)),
+		.("_objectPad0", offsetof(MeshObjectData, ObjectPad0)),
+		.("_objectPad1", offsetof(MeshObjectData, ObjectPad1)),
+		.("_objectPad2", offsetof(MeshObjectData, ObjectPad2)));
 
 	private static FieldRow[?] sInstance = .(
 		.("World", offsetof(MeshInstanceData, World)),
@@ -521,12 +505,12 @@ class ShaderBlockLayoutTests
 		}
 
 		Check("forward", .Fragment, .None, "type.View", sView);
-		Check("forward", .Vertex, .None, "type.Object", sForwardObject);
+		Check("forward", .Vertex, .None, "type.Object", sObject);
 		Check("forward", .Vertex, .Instanced, "InstanceData", sInstance);
-		Check("shadow_depth", .Vertex, .None, "type.Object", sShadowObject);
+		Check("shadow_depth", .Vertex, .None, "type.Object", sObject);
 		Check("shadow_depth", .Vertex, .Instanced, "InstanceData", sInstance);
 		Check("shadow_depth", .Vertex, .None, "type.ShadowView", sShadowView);
-		Check("pick_ids", .Vertex, .None, "type.Object", sPickObject);
+		Check("pick_ids", .Vertex, .None, "type.Object", sObject);
 		Check("pick_ids", .Vertex, .Instanced, "InstanceData", sInstance);
 		Check("pick_ids", .Vertex, .None, "type.PickView", sPickView);
 		Check("forward", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);
@@ -537,9 +521,9 @@ class ShaderBlockLayoutTests
 		Check("forward", .Fragment, .None, "GpuLocalShadow", sGpuLocalShadow);
 		Check("forward", .Fragment, .None, "GpuProbe", sGpuProbe);
 		Check("decal", .Fragment, .None, "type.DecalUniforms", sDecalUniforms);
-		Check("phong", .Vertex, .None, "type.Object", sForwardObject);
+		Check("phong", .Vertex, .None, "type.Object", sObject);
 		Check("phong", .Fragment, .None, "type.View", sView);
-		Check("unlit", .Vertex, .None, "type.Object", sForwardObject);
+		Check("unlit", .Vertex, .None, "type.Object", sObject);
 		Check("unlit", .Fragment, .GBuffer, "type.View", sView);
 		Check("sky", .Vertex, .None, "type.Sky", sSky);
 		Check("sky", .Fragment, .None, "type.Sky", sSky);

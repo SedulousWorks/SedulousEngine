@@ -76,7 +76,9 @@ struct MeshViewData
 	public this() {}
 }
 
-/// The per object constants, at a dynamic offset.
+/// A single object's per draw block, cbuffer Object (object_block.hlsli; set one binding nought,
+/// at a dynamic offset): one declaration the forward, shadow depth and pick vertex stages all
+/// include, each pass writing and reading the fields it uses, by name.
 [CRepr]
 struct MeshObjectData
 {
@@ -86,16 +88,16 @@ struct MeshObjectData
 	public uint32 BoneBase = 0;
 	public uint32 PrevBoneBase = 0;
 	/// The pick pass alone reads these: the entity index plus one, nought being nothing, and
-	/// the generation. The forward's layout has them as padding.
+	/// the generation.
 	public uint32 PickIndex = 0;
 	public uint32 PickGeneration = 0;
 	/// The screen door fade, nought being solid: the forward pass's DITHER variant reads it on
-	/// the single path, as the instanced one reads DataOffsets.W.
+	/// the single path, as the instanced one reads MeshDrawOffsets.Fade.
 	public float Fade = 0.0f;
 	/// Scalars, not a three wide vector: WGSL aligns a vec3 to sixteen bytes, which would move it.
-	public uint32 FadePad0 = 0;
-	public uint32 FadePad1 = 0;
-	public uint32 FadePad2 = 0;
+	public uint32 ObjectPad0 = 0;
+	public uint32 ObjectPad1 = 0;
+	public uint32 ObjectPad2 = 0;
 
 	public this() {}
 }
@@ -138,27 +140,63 @@ struct MeshInstanceSetData
 	public this() {}
 }
 
-/// The instance stepped vertex attribute that addresses everything else.
+/// The instance stepped uint4 at location five an instanced draw binds beside its instances, one
+/// entry per instance, in two layouts by pass. This is the forward's and the shadow depth's
+/// (drawOffsets in forward_vs and shadow_depth_vs.hlsli): written by their instanced fills, the
+/// shared MultiMesh ramp and a skinned set's per instance offsets. The fade is a float whose bits
+/// travel in the uint4's w; the shader reads it with asfloat. A depth fill writes nought (a faded
+/// run is never prepassed, so the forward reuses only solid ranges).
 ///
 /// The portable form of "which instance am I": a base and an offset in a vertex stream,
 /// rather than the built in instance index, whose base differs between the backends.
 [CRepr]
-struct MeshDataOffsets
+struct MeshDrawOffsets
 {
-	/// The index into the instance buffer.
-	public uint32 X = 0;
-	/// The current bone base.
-	public uint32 Y = 0;
+	/// Into the draw's Instances[].
+	public uint32 InstanceIndex = 0;
+	/// The instance's first bone matrix (skinned); nought otherwise.
+	public uint32 BoneBase = 0;
 	/// Last frame's bone base, for the motion vectors.
-	public uint32 Z = 0;
-	/// The forward pass's fade, as its float's bits (nought is solid).
-	public uint32 W = 0;
+	public uint32 PrevBoneBase = 0;
+	/// The screen door fade, nought being solid (the forward pass's DITHER variant).
+	public float Fade = 0.0f;
 
 	public this() {}
 
-	public this(uint32 x, uint32 y, uint32 z, uint32 w)
+	public this(uint32 instanceIndex, uint32 boneBase, uint32 prevBoneBase, float fade)
 	{
-		X = x; Y = y; Z = z; W = w;
+		InstanceIndex = instanceIndex;
+		BoneBase = boneBase;
+		PrevBoneBase = prevBoneBase;
+		Fade = fade;
+	}
+}
+
+/// The pick pass's instance stepped entry (pickOffsets in pick_ids_vs.hlsli): the instance and
+/// bone base, then the entity's id. Its instanced fill writes them per draw; a MultiMesh set's
+/// pick draw binds the pick ramp or the set's pick offsets, whose ids are nought (the set picks
+/// as its InstanceSet's entity). The same sixteen bytes as MeshDrawOffsets: both passes' entries
+/// share one ring's stride.
+[CRepr]
+struct MeshPickDrawOffsets
+{
+	/// Into the draw's Instances[].
+	public uint32 InstanceIndex = 0;
+	/// The instance's first bone matrix (skinned); nought otherwise.
+	public uint32 BoneBase = 0;
+	/// The entity's generation.
+	public uint32 PickGeneration = 0;
+	/// The entity's index plus one, nought being nothing.
+	public uint32 PickIndex = 0;
+
+	public this() {}
+
+	public this(uint32 instanceIndex, uint32 boneBase, uint32 pickGeneration, uint32 pickIndex)
+	{
+		InstanceIndex = instanceIndex;
+		BoneBase = boneBase;
+		PickGeneration = pickGeneration;
+		PickIndex = pickIndex;
 	}
 }
 

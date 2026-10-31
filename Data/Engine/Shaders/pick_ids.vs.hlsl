@@ -5,11 +5,11 @@
 // that also carries the draw's entity id to the fragment. The pass renders with a CROPPED camera
 // projection into a rect-sized RG32Uint target (PickSystem); the id is (entity index + 1,
 // generation) - 0 = nothing. Sources, by draw kind:
-//   - single object:   cbuffer Object's PickIndex/PickGeneration (the pads of the forward layout);
-//   - instanced run:   the instance-stepped dataOffsets (.w = index + 1, .z = generation - the
-//                      pick pass fills its own ramp, so these never collide with the forward's);
+//   - single object:   cbuffer Object's PickIndex/PickGeneration (object_block.hlsli);
+//   - instanced run:   the instance-stepped pickOffsets (MeshPickDrawOffsets: .w = index + 1,
+//                      .z = generation; the pick pass fills its own stream, never the forward's);
 //   - MultiMesh set:   its InstanceSet's SetPickIndex/SetPickGeneration (one entity for the whole
-//                      set; its instance buffer is persistent and its ramp shared).
+//                      set; its stream, the pick ramp or the set's pick offsets, carries ids 0).
 // variants: SKINNED INSTANCED ALPHA_TEST WIND
 // preserve-interface
 // (Keeps every vertex input in the interface: the pipeline binds the full mesh layout, and an input

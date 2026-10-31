@@ -44,6 +44,10 @@ class MultiMeshSet
 	/// A skinned crowd needs a PER SET offsets buffer, refilled each frame with the per
 	/// instance bone bases; the shared ramp's are always nought. Only allocated when skinned.
 	public IBuffer OffsetsBuffer = null;
+	/// The same instances in the pick pass's layout ({i, bone base, nought, nought}: the ids
+	/// nought, so the set picks as its InstanceSet's entity), filled beside OffsetsBuffer with the
+	/// same regions.
+	public IBuffer PickOffsetsBuffer = null;
 	public uint32 OffsetsCapacity = 0;
 	/// This frame's region's byte offset, rewritten every frame.
 	public uint32 OffsetsByteOffset = 0;

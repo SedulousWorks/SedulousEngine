@@ -32,11 +32,22 @@ class MeshGpuLayoutTests
 	}
 
 	/// The instance stepped attribute is one vector of four, which is what a normalised
-	/// unsigned integer vertex format reads.
+	/// unsigned integer vertex format reads, in either pass's layout: the forward and depth's
+	/// (instance, bone base, last frame's bone base, the fade's bits) and the pick's (instance,
+	/// bone base, generation, index plus one), one ring's stride for both.
 	[Test]
-	public static void TheOffsetsAttributeIsFourWords()
+	public static void TheOffsetsAttributeIsFourWordsInEitherLayout()
 	{
-		Test.Assert(sizeof(MeshDataOffsets) == 16);
+		Test.Assert(sizeof(MeshDrawOffsets) == 16);
+		Test.Assert(offsetof(MeshDrawOffsets, InstanceIndex) == 0);
+		Test.Assert(offsetof(MeshDrawOffsets, BoneBase) == 4);
+		Test.Assert(offsetof(MeshDrawOffsets, PrevBoneBase) == 8);
+		Test.Assert(offsetof(MeshDrawOffsets, Fade) == 12);
+		Test.Assert(sizeof(MeshPickDrawOffsets) == 16);
+		Test.Assert(offsetof(MeshPickDrawOffsets, InstanceIndex) == 0);
+		Test.Assert(offsetof(MeshPickDrawOffsets, BoneBase) == 4);
+		Test.Assert(offsetof(MeshPickDrawOffsets, PickGeneration) == 8);
+		Test.Assert(offsetof(MeshPickDrawOffsets, PickIndex) == 12);
 	}
 
 	/// Every block has to sit on a sixteen byte boundary, since that is what a constant
@@ -49,7 +60,7 @@ class MeshGpuLayoutTests
 		Test.Assert((sizeof(MeshInstanceData) % 16) == 0);
 		Test.Assert((sizeof(MeshShadowViewData) % 16) == 0);
 		Test.Assert((sizeof(MeshPickViewData) % 16) == 0);
-		Test.Assert((sizeof(MeshDataOffsets) % 16) == 0);
+		Test.Assert((sizeof(MeshDrawOffsets) % 16) == 0);
 	}
 
 	/// The view block is handed out of a ring whose slot is a fixed size, so it must fit.

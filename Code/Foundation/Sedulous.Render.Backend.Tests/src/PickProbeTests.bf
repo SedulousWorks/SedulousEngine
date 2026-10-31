@@ -17,6 +17,8 @@ namespace Sedulous.Render.Backend.Tests;
 ///   with its entity index AND generation.
 /// - Three identical cubes side by side, one instanced run: each column answers its own id,
 ///   the instance stepped ids being per instance, not per run.
+/// - A MultiMesh set of two cubes: both answer the set's one entity (its InstanceSet's id, the
+///   set's pick stream carrying ids nought).
 /// - A pixel where nothing is drawn answers with no hits: the clear is nothing.
 /// - A rect over the whole view answers every entity once.
 /// - A second request on the same view in the same frame is answered independently.
@@ -33,6 +35,8 @@ class PickProbeTests
 		public float Radius = 1.0f;
 		public uint32 EntityIndex = 0;
 		public uint32 Generation = 0;
+		/// Not empty: a MultiMesh set of these, one entity.
+		public List<Float4x4> Instances = new .() ~ delete _;
 	}
 
 	private class Probe
@@ -111,6 +115,26 @@ class PickProbeTests
 		scene.SetAmbient(.(1.0f, 1.0f, 1.0f));
 		for (let item in items)
 		{
+			if (!item.Instances.IsEmpty)
+			{
+				let set = scene.Add<MultiMeshRenderData>();
+				set.MultiMesh = true;
+				set.Key = 0x51C0 + item.EntityIndex;
+				set.Transforms = item.Instances.Ptr;
+				set.InstanceCount = (uint32)item.Instances.Count;
+				set.UploadCount = (uint32)item.Instances.Count;
+				set.Version = 1;
+				set.Mesh = item.Mesh;
+				set.Material = item.Material;
+				set.RendererId = meshRenderer.RendererId;
+				set.Category = RenderCategories.Opaque;
+				// Every producer stamps this at extraction.
+				set.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(item.Mesh), Internal.UnsafeCastToPtr(item.Material));
+				set.WorldCenter = item.Center;
+				set.WorldRadius = item.Radius;
+				set.EntityId = EntityTag.Pack(item.EntityIndex, item.Generation);
+				continue;
+			}
 			let data = scene.Add<MeshRenderData>();
 			data.World = item.World;
 			data.WorldCenter = item.Center;
@@ -252,6 +276,14 @@ class PickProbeTests
 		let rowAt = Float3[3](.(-2.4f, -3.2f, -7.0f), .(0.0f, -3.2f, -7.0f), .(2.4f, -3.2f, -7.0f));
 		for (uint32 k < 3)
 			items.Add(Cube(rowMesh, 1.2f, rowAt[k], grey, 30 + k, 2));
+		// A MultiMesh set of two cubes, entity 50 generation 4, in a row above: one entity for both.
+		let setAt = Float3[2](.(-1.6f, 3.2f, -7.0f), .(1.6f, 3.2f, -7.0f));
+		{
+			let set = Cube(rowMesh, 3.0f, .(0.0f, 3.2f, -7.0f), grey, 50, 4);
+			set.Instances.Add(Float4x4.Translation(setAt[0]));
+			set.Instances.Add(Float4x4.Translation(setAt[1]));
+			items.Add(set);
+		}
 		let camera = Camera();
 
 		let probes = scope List<Probe>();
@@ -264,6 +296,8 @@ class PickProbeTests
 		probes.Add(new Probe(.(1, 1, 1, 1)));                      // 5: nothing
 		probes.Add(new Probe(.(0, 0, cSize, cSize)));              // 6: everything
 		probes.Add(new Probe(.(cSize / 2, cSize / 2, 1, 1)));      // 7: the centre again
+		probes.Add(new Probe(PixelRect(camera, setAt[0])));        // 8: the set's first instance
+		probes.Add(new Probe(PixelRect(camera, setAt[1])));        // 9: its second
 
 		Test.Assert(RenderAndPick(fixture, items, camera, probes), scope $"{kind}: rendered");
 
@@ -278,12 +312,15 @@ class PickProbeTests
 		Test.Assert(HitIs(probes[3].Result, 31, 2), scope $"{kind}: row middle");
 		Test.Assert(HitIs(probes[4].Result, 32, 2), scope $"{kind}: row right");
 		Test.Assert(probes[5].Result.Hits.IsEmpty, scope $"{kind}: a corner nothing reached");
-		Test.Assert(probes[6].Result.Hits.Count == 5, scope $"{kind}: every entity once");
+		Test.Assert(probes[6].Result.Hits.Count == 6, scope $"{kind}: every entity once (the set is one)");
 		Test.Assert(Contains(probes[6].Result, 7, 3), scope $"{kind}: rect has the near cube");
 		Test.Assert(Contains(probes[6].Result, 200, 1), scope $"{kind}: rect has the far cube");
 		Test.Assert(Contains(probes[6].Result, 30, 2), scope $"{kind}: rect has row left");
 		Test.Assert(Contains(probes[6].Result, 31, 2), scope $"{kind}: rect has row middle");
 		Test.Assert(Contains(probes[6].Result, 32, 2), scope $"{kind}: rect has row right");
+		Test.Assert(Contains(probes[6].Result, 50, 4), scope $"{kind}: rect has the set");
 		Test.Assert(HitIs(probes[7].Result, 7, 3), scope $"{kind}: two requests, one frame, both answered");
+		Test.Assert(HitIs(probes[8].Result, 50, 4), scope $"{kind}: both instances of the set answer its entity");
+		Test.Assert(HitIs(probes[9].Result, 50, 4), scope $"{kind}: the set's second instance");
 	}
 }

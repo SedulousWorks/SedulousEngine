@@ -311,8 +311,13 @@ class MeshRenderer : Renderer
 
 	private Dictionary<uint64, MultiMeshSet> mMultiMeshSets = new .() ~ delete _;
 	/// The shared offsets ramp, which serves EVERY set: the first component indexes that set's
-	/// own buffer, so one static ramp does for all of them.
+	/// own buffer, so one static ramp does for all of them. Bound for the depth prepass, the
+	/// forward and every shadow cascade.
 	private IBuffer mRampBuffer = null;
+	/// The ramp in the pick pass's layout, {i, nought, nought, nought}: a MultiMesh set's pick
+	/// draws bind it (its ids nought, so the set picks as its InstanceSet's entity), never the
+	/// forward layout's ramp.
+	private IBuffer mPickRampBuffer = null;
 	private uint32 mRampCapacity = 0;
 	private uint32 mMultiMeshFrame = 0;
 
@@ -341,7 +346,7 @@ class MeshRenderer : Renderer
 		mObjectRing = new .(device, framesInFlight, cViewSlot, .Uniform | .CopyDst, "mesh.object");
 		mInstanceRing = new .(device, framesInFlight, sizeof(MeshInstanceData),
 			.StorageRead | .CopyDst, "mesh.instances");
-		mOffsetsRing = new .(device, framesInFlight, sizeof(MeshDataOffsets),
+		mOffsetsRing = new .(device, framesInFlight, sizeof(MeshDrawOffsets),
 			.Vertex | .CopyDst, "mesh.offsets");
 		mLightRing = new .(device, framesInFlight, sizeof(GpuLight), .StorageRead | .CopyDst,
 			"mesh.lights");
@@ -949,15 +954,17 @@ class MeshRenderer : Renderer
 	/// index, so it is filled once per allocation and never rewritten.
 	private bool EnsureRamp(uint32 count)
 	{
-		if ((mRampBuffer != null) && (count <= mRampCapacity))
+		if ((mRampBuffer != null) && (mPickRampBuffer != null) && (count <= mRampCapacity))
 			return true;
 
-		// A frame in flight may still be reading the old one.
+		// A frame in flight may still be reading the old ones.
 		if (mRampBuffer != null)
 			RetireOrDrainBuffer(ref mRampBuffer);
+		if (mPickRampBuffer != null)
+			RetireOrDrainBuffer(ref mPickRampBuffer);
 
 		var desc = BufferDesc();
-		desc.Size = (uint64)count * sizeof(MeshDataOffsets);
+		desc.Size = (uint64)count * sizeof(MeshDrawOffsets);
 		desc.Usage = .Vertex | .CopyDst;
 		desc.Memory = .CpuToGpu;
 		desc.Label = "mesh.multimesh.ramp";
@@ -969,12 +976,30 @@ class MeshRenderer : Renderer
 		}
 		mRampBuffer = buffer;
 
-		let mapped = (MeshDataOffsets*)buffer.Map();
+		let mapped = (MeshDrawOffsets*)buffer.Map();
 		if (mapped != null)
 		{
 			for (uint32 i = 0; i < count; i++)
-				mapped[i] = .(i, 0, 0, 0);
+				mapped[i] = .(i, 0, 0, 0.0f);
 			buffer.Unmap();
+		}
+
+		var pickDesc = desc;
+		pickDesc.Size = (uint64)count * sizeof(MeshPickDrawOffsets);
+		pickDesc.Label = "mesh.multimesh.pick-ramp";
+		if (!(mDevice.CreateBuffer(pickDesc) case .Ok(let pickBuffer)))
+		{
+			mRampCapacity = 0;
+			return false;
+		}
+		mPickRampBuffer = pickBuffer;
+
+		let pickMapped = (MeshPickDrawOffsets*)pickBuffer.Map();
+		if (pickMapped != null)
+		{
+			for (uint32 i = 0; i < count; i++)
+				pickMapped[i] = .(i, 0, 0, 0);
+			pickBuffer.Unmap();
 		}
 
 		mRampCapacity = count;
@@ -1015,6 +1040,14 @@ class MeshRenderer : Renderer
 			else
 				mDevice.DestroyBuffer(ref set.OffsetsBuffer);
 			set.OffsetsBuffer = null;
+		}
+		if (set.PickOffsetsBuffer != null)
+		{
+			if (mRetire != null)
+				mRetire.Retire(set.PickOffsetsBuffer);
+			else
+				mDevice.DestroyBuffer(ref set.PickOffsetsBuffer);
+			set.PickOffsetsBuffer = null;
 		}
 		if (set.SetBuffer != null)
 		{
@@ -1287,12 +1320,14 @@ class MeshRenderer : Renderer
 		{
 			if (set.OffsetsBuffer != null)
 				RetireOrDrainBuffer(ref set.OffsetsBuffer);
+			if (set.PickOffsetsBuffer != null)
+				RetireOrDrainBuffer(ref set.PickOffsetsBuffer);
 
 			var desc = BufferDesc();
 			// One region per frame in flight: these are rewritten EVERY frame, so each writes
 			// its own while the GPU reads the previous, never the same bytes.
 			desc.Size = (uint64)mFramesInFlight * (uint64)multiMesh.InstanceCount
-				* sizeof(MeshDataOffsets);
+				* sizeof(MeshDrawOffsets);
 			desc.Usage = .Vertex | .CopyDst;
 			desc.Memory = .CpuToGpu;
 			desc.Label = "mesh.multimesh.offsets";
@@ -1303,6 +1338,18 @@ class MeshRenderer : Renderer
 				return;
 			}
 			set.OffsetsBuffer = buffer;
+
+			var pickDesc = desc;
+			pickDesc.Size = (uint64)mFramesInFlight * (uint64)multiMesh.InstanceCount
+				* sizeof(MeshPickDrawOffsets);
+			pickDesc.Label = "mesh.multimesh.pick-offsets";
+			if (!(mDevice.CreateBuffer(pickDesc) case .Ok(let pickBuffer)))
+			{
+				RetireOrDrainBuffer(ref set.OffsetsBuffer);
+				set.OffsetsCapacity = 0;
+				return;
+			}
+			set.PickOffsetsBuffer = pickBuffer;
 			set.OffsetsCapacity = multiMesh.InstanceCount;
 		}
 	}
@@ -1337,9 +1384,10 @@ class MeshRenderer : Renderer
 
 			// Write ONLY this frame's region; the GPU is reading the previous one.
 			let regionBase = region * set.OffsetsCapacity;
-			let mapped = (MeshDataOffsets*)set.OffsetsBuffer.Map();
+			let mapped = (MeshDrawOffsets*)set.OffsetsBuffer.Map();
 			if (mapped == null)
 				continue;
+			let pickMapped = (set.PickOffsetsBuffer != null) ? (MeshPickDrawOffsets*)set.PickOffsetsBuffer.Map() : null;
 
 			for (uint32 i = 0; i < multiMesh.InstanceCount; i++)
 			{
@@ -1350,11 +1398,15 @@ class MeshRenderer : Renderer
 					multiMesh.PoseIndices, (multiMesh.InstanceClips != null) ? multiMesh.InstanceClips[i] : 0,
 					multiMesh.PosesPerClip);
 				let bucket = pose * multiMesh.PoseBoneCount;
-				mapped[regionBase + i] = MeshDataOffsets(i, pool.Base + bucket, pool.PrevBase + bucket, 0);
+				mapped[regionBase + i] = .(i, pool.Base + bucket, pool.PrevBase + bucket, 0.0f);
+				if (pickMapped != null)
+					pickMapped[regionBase + i] = .(i, pool.Base + bucket, 0, 0); // ids nought: the set's own
 			}
 
 			set.OffsetsBuffer.Unmap();
-			set.OffsetsByteOffset = regionBase * (uint32)sizeof(MeshDataOffsets);
+			if (pickMapped != null)
+				set.PickOffsetsBuffer.Unmap();
+			set.OffsetsByteOffset = regionBase * (uint32)sizeof(MeshDrawOffsets);
 		}
 	}
 
@@ -1751,7 +1803,7 @@ class MeshRenderer : Renderer
 			}
 
 			let instanceData = (MeshInstanceData*)instances.Ptr;
-			let offsetData = (MeshDataOffsets*)offsets.Ptr;
+			let offsetData = (MeshDrawOffsets*)offsets.Ptr;
 
 			for (uint32 k = 0; k < count; k++)
 			{
@@ -1767,9 +1819,7 @@ class MeshRenderer : Renderer
 					boneBase = slot.Base;
 					prevBase = slot.PrevBase;
 				}
-				// X the instance index, Y and Z the bone bases, W the fade's bits (nought is solid).
-				var fade = md.Fade;
-				offsetData[k] = .(instances.SlotIndex + k, boneBase, prevBase, *(uint32*)&fade);
+				offsetData[k] = .(instances.SlotIndex + k, boneBase, prevBase, md.Fade);
 			}
 
 			offsetsByteOffset = offsets.ByteOffset;
@@ -1998,7 +2048,10 @@ class MeshRenderer : Renderer
 		}
 
 		let instanceData = (MeshInstanceData*)instances.Ptr;
-		let offsetData = (MeshDataOffsets*)offsets.Ptr;
+		// One ring entry per instance in either pass's layout (both sixteen bytes): the pick fill is
+		// the pass's own, never shared with the forward, which reads the previous bone base.
+		let offsetData = (MeshDrawOffsets*)offsets.Ptr;
+		let pickOffsetData = (MeshPickDrawOffsets*)offsets.Ptr;
 
 		// When this prepass FEEDS the forward, build the full instance data including the real
 		// previous world, so the forward can reuse it for the motion vectors. A shadow caster
@@ -2020,12 +2073,10 @@ class MeshRenderer : Renderer
 				boneBase = slot.Base;
 				prevBase = slot.PrevBase;
 			}
-			// The pick pass carries the entity id in .z and .w: this fill is the pass's own,
-			// never shared with the forward, which reads the previous base from .z.
-			offsetData[k] = pick
-				? .(instances.SlotIndex + k, boneBase, EntityTag.Generation(md.EntityId),
-					EntityTag.Index(md.EntityId) + 1)
-				: .(instances.SlotIndex + k, boneBase, prevBase, 0);
+			if (pick)
+				pickOffsetData[k] = .(instances.SlotIndex + k, boneBase, EntityTag.Generation(md.EntityId), EntityTag.Index(md.EntityId) + 1);
+			else
+				offsetData[k] = .(instances.SlotIndex + k, boneBase, prevBase, 0.0f);
 		}
 
 		if (feedsForward)
@@ -2153,8 +2204,9 @@ class MeshRenderer : Renderer
 		if ((set.ActiveInstanceBindGroup == null) || (set.Count == 0))
 			return;
 
-		let skinned = set.Skinned && (set.OffsetsBuffer != null) && (mesh.SkinBuffer != null);
-		if (!skinned && (mRampBuffer == null))
+		let skinned = set.Skinned && (set.OffsetsBuffer != null) && (mesh.SkinBuffer != null)
+			&& (!pick || (set.PickOffsetsBuffer != null));
+		if (!skinned && ((pick ? mPickRampBuffer : mRampBuffer) == null))
 			return;
 
 		// The set's fade and its one pick id ride its InstanceSet (EnsureMultiMeshSet).
@@ -2206,12 +2258,14 @@ class MeshRenderer : Renderer
 		{
 			draw.VertexBuffer1 = mesh.SkinBuffer;
 			draw.VertexOffset1 = mesh.SkinOffset;
-			draw.VertexBuffer2 = set.OffsetsBuffer;
+			// This frame's region of the set's offsets, in the pick layout for a pick: the same
+			// stride and regions in both.
+			draw.VertexBuffer2 = pick ? set.PickOffsetsBuffer : set.OffsetsBuffer;
 			draw.VertexOffset2 = set.OffsetsByteOffset;
 		}
 		else
 		{
-			draw.VertexBuffer1 = mRampBuffer;
+			draw.VertexBuffer1 = pick ? mPickRampBuffer : mRampBuffer; // the shared ramp, by layout
 			draw.VertexOffset1 = 0;
 		}
 		draw.IndexBuffer = mesh.IndexBuffer;
@@ -3297,6 +3351,8 @@ class MeshRenderer : Renderer
 				mDevice.DestroyBuffer(ref set.InstanceBuffer);
 			if (set.OffsetsBuffer != null)
 				mDevice.DestroyBuffer(ref set.OffsetsBuffer);
+			if (set.PickOffsetsBuffer != null)
+				mDevice.DestroyBuffer(ref set.PickOffsetsBuffer);
 			if (set.SetBuffer != null)
 				mDevice.DestroyBuffer(ref set.SetBuffer);
 			delete set;
@@ -3308,6 +3364,8 @@ class MeshRenderer : Renderer
 			mDevice.DestroyBuffer(ref mRampBuffer);
 			mRampCapacity = 0;
 		}
+		if (mPickRampBuffer != null)
+			mDevice.DestroyBuffer(ref mPickRampBuffer);
 
 		for (int i < cMaxClusterSlots)
 		{

@@ -33,24 +33,16 @@ float4x4 BlendBones(uint4 j, float4 w, uint base) {
                     b0.Row3 * w.x + b1.Row3 * w.y + b2.Row3 * w.z + b3.Row3 * w.w);
 }
 #endif
-// Layouts mirror the forward path's Object/InstanceData exactly (shared ring buffers).
+// The forward path's InstanceData and Object block (shared ring buffers).
 #ifdef INSTANCED
 struct InstanceData { row_major float4x4 World; row_major float4x4 PrevWorld; float4 Tint; };
 StructuredBuffer<InstanceData> Instances : register(t0, space1);
 #include "instance_fade.hlsli"
 #else
-cbuffer Object : register(b0, space1) {
-    row_major float4x4 World;
-    row_major float4x4 PrevWorld;
-    float4             Tint;
-    uint               BoneBase;
-    uint               PrevBoneBase;
-    uint               PickIndex;       // entity index + 1
-    uint               PickGeneration;
-};
+#include "object_block.hlsli"
 #endif
 // Every input pins its location (SPIR-V; the semantics give DXIL the same): without them DXC numbers
-// them in order, and a non-instanced skinned variant's joints would take dataOffsets' 5.
+// them in order, and a non-instanced skinned variant's joints would take pickOffsets' 5.
 struct VSInput {
     [[vk::location(0)]] float3 position : TEXCOORD0;
     [[vk::location(1)]] float3 normal   : TEXCOORD1;
@@ -58,7 +50,10 @@ struct VSInput {
     [[vk::location(3)]] float4 color    : TEXCOORD3;
     [[vk::location(4)]] float4 tangent  : TEXCOORD4;
 #ifdef INSTANCED
-    [[vk::location(5)]] uint4  dataOffsets : TEXCOORD5;   // .x = instance, .y = bone base, .z = generation, .w = index + 1
+    // Instance-stepped (MeshPickDrawOffsets): x = index into Instances[], y = the bone base,
+    // z = the entity's generation, w = the entity's index + 1 (0 for a MultiMesh set, whose id is
+    // its InstanceSet's).
+    [[vk::location(5)]] uint4  pickOffsets : TEXCOORD5;
 #endif
 #ifdef SKINNED
     [[vk::location(6)]] uint2  jointsPacked : TEXCOORD6;
@@ -82,9 +77,9 @@ struct PickVSOut {
 PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
     PickVSOut o;
 #ifdef INSTANCED
-    float4x4 world = Instances[input.dataOffsets.x].World;
-    uint2 drawId = uint2(input.dataOffsets.w, input.dataOffsets.z);
-    float fadeKeep = InstanceFadeKeep(world[3].xyz, PickCamera, input.dataOffsets.x, true);
+    float4x4 world = Instances[input.pickOffsets.x].World;
+    uint2 drawId = uint2(input.pickOffsets.w, input.pickOffsets.z); // (index + 1, generation)
+    float fadeKeep = InstanceFadeKeep(world[3].xyz, PickCamera, input.pickOffsets.x, true);
 #else
     float4x4 world = World;
     uint2 drawId = uint2(PickIndex, PickGeneration);
@@ -99,7 +94,7 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
 #endif
 #ifdef SKINNED
   #ifdef INSTANCED
-    uint boneBase = input.dataOffsets.y;
+    uint boneBase = input.pickOffsets.y;
   #else
     uint boneBase = BoneBase;
   #endif
@@ -121,7 +116,7 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
 #ifdef SURFACE_PROGRAM
     // A surface shader's Vertex() moves what this pass picks, as it does the forward pass's.
   #ifdef INSTANCED
-    float4 tint = Instances[input.dataOffsets.x].Tint;
+    float4 tint = Instances[input.pickOffsets.x].Tint;
   #else
     float4 tint = Tint;
   #endif

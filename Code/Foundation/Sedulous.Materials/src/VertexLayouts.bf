@@ -26,12 +26,12 @@ static class VertexLayouts
 		.(.Unorm8x4, 32, 3), .(.Float32x4, 36, 4));
 
 	/// Joints packed as two uint32s, then weights. At locations SIX and SEVEN, past the per
-	/// instance data offsets at five: the shaders pin every input's location, so a skinned
+	/// instance offsets at five: the shaders pin every input's location, so a skinned
 	/// draw lines up whether it is instanced or not.
 	private static VertexAttribute[2] cSkinningStream = .(
 		.(.Uint32x2, 0, 6), .(.Float32x4, 8, 7));
 
-	/// The per instance data offsets, at location five.
+	/// The per instance offsets, at location five (drawOffsets, or pickOffsets in the pick pass).
 	private static VertexAttribute[1] cInstanceOffsets = .(
 		.(.Uint32x4, 0, 5));
 
@@ -74,8 +74,9 @@ static class VertexLayouts
 		return result;
 	}
 
-	/// The instance stepped buffer an instanced draw binds: one uint4 of data offsets per
-	/// instance, whose first component indexes a per instance structured buffer.
+	/// The instance stepped buffer an instanced draw binds: one uint4 of offsets per instance
+	/// (MeshDrawOffsets, or MeshPickDrawOffsets in the pick pass), whose first component indexes a
+	/// per instance structured buffer.
 	///
 	/// Hardware instance stepping rather than the instance id system value, because the two
 	/// backends disagree about what that value counts from, and a vertex attribute does not
