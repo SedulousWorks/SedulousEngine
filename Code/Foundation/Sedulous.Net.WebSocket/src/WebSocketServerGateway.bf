@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Http;
 using Sedulous.Net;
+using Sedulous.Net.Tls;
 
 namespace Sedulous.Net.WebSocket;
 
@@ -11,6 +12,11 @@ namespace Sedulous.Net.WebSocket;
 /// message parser rather than a second hand rolled one. After the 101 the connection speaks
 /// binary frames, which are message oriented and so map one to one onto the datagram seam the
 /// whole net stack rides.
+///
+/// TLS (wss://) is the gateway's when the host hands it a backend and a certificate
+/// (WebSocketTls): each connection then runs a TLS session before the upgrade, through
+/// Sedulous.Net.Tls's streams. A proxy in front of a plain gateway stays the way for a host with
+/// no certificate.
 ///
 /// SINGLE THREADED, like the HTTP server.
 class WebSocketServerGateway
@@ -26,17 +32,20 @@ class WebSocketServerGateway
 	private class Client
 	{
 		public uint32 Id = 0;
-		public TcpSocket Socket ~ delete _;
+		/// Plain, or TLS (wss://); it buffers what the socket would not take. OWNED.
+		public INetByteStream Stream ~ delete _;
 		public bool Upgraded = false;
 		/// Live until the upgrade completes, then deleted.
 		public HttpMessageParser Handshake ~ delete _;
 		public WebSocketFrameParser Frames = new .() ~ delete _;
-		/// What a partial send left behind, retried on the next pump.
-		public List<uint8> SendBuffer = new .() ~ delete _;
 		public bool Dead = false;
 	}
 
 	private TcpListener mListener ~ delete _;
+	/// BORROWED: the application's, outliving the gateway. Null for ws:// alone.
+	private ITlsBackend mTls = null;
+	private TlsServerConfig mTlsConfig ~ delete _;
+	private String mFailure = new .() ~ delete _;
 	private List<Client> mClients = new .() ~ DeleteContainerAndItems!(_);
 	private List<WsGatewayEvent> mEvents = new .() ~ DeleteContainerAndItems!(_);
 	private int mEventHead = 0;
@@ -46,26 +55,56 @@ class WebSocketServerGateway
 	private List<uint8> mScratch = new .() ~ delete _;
 	private WsFrame mScratchFrame = new .() ~ delete _;
 
-	/// Binds the listener. Nought lets the operating system choose; read BoundPort after.
-	public this(uint16 port)
+	/// Binds the listener. Nought lets the operating system choose; read BoundPort after. With
+	/// `tls` every connection is TLS first (wss://); a certificate or key that does not load
+	/// leaves the gateway closed, Failure saying why.
+	public this(uint16 port, WebSocketTls tls = null)
 	{
 		mListener = new .(port);
+		if (tls == null)
+			return;
+		mTls = tls.Backend;
+		mTlsConfig = new .();
+		mTlsConfig.CertificateChainPem.Set(tls.Config.CertificateChainPem);
+		mTlsConfig.PrivateKeyPem.Set(tls.Config.PrivateKeyPem);
+		for (let protocol in tls.Config.Alpn)
+			mTlsConfig.Alpn.Add(new .(protocol));
+		mTlsConfig.Minimum = tls.Config.Minimum;
+		mTlsConfig.Maximum = tls.Config.Maximum;
+		if (mTls == null)
+		{
+			mFailure.Set("wss needs a TLS backend, and none was given");
+			return;
+		}
+		// A certificate or key that does not load fails every connection: say so now, once.
+		let probe = mTls.CreateServer(mTlsConfig);
+		defer delete probe;
+		if (probe.State == .Failed)
+			mFailure.Set(probe.Failure);
 	}
 
-	public bool IsOpen => mListener.IsOpen;
+	public ~this()
+	{
+		for (let client in mClients)
+			client.Stream.Close();
+	}
+
+	public bool IsOpen => mListener.IsOpen && mFailure.IsEmpty;
+	public bool IsSecure => mTlsConfig != null;
+	/// Why the gateway is not open, when its TLS configuration is the reason.
+	public StringView Failure => mFailure;
 	public uint16 BoundPort => mListener.BoundPort;
 	public int ClientCount => mClients.Count;
 
-	/// One pump: accept, flush what is owed, read, decode, and drop what died.
+	/// One pump: accept, move each stream on, read, decode, and drop what died.
 	public void Pump()
 	{
+		if (!mFailure.IsEmpty)
+			return;
 		AcceptPending();
 
 		for (let client in mClients)
 		{
-			if (client.Dead)
-				continue;
-			FlushSend(client);
 			if (!client.Dead)
 				PumpClient(client);
 		}
@@ -74,6 +113,8 @@ class WebSocketServerGateway
 		{
 			if (mClients[i].Dead)
 			{
+				// What is still held goes (a close frame, close_notify).
+				mClients[i].Stream.Close();
 				delete mClients[i];
 				mClients.RemoveAt(i);
 			}
@@ -149,7 +190,10 @@ class WebSocketServerGateway
 			let client = new Client();
 			client.Id = mNextClientId;
 			mNextClientId++;
-			client.Socket = accepted;
+			if (mTlsConfig != null)
+				client.Stream = new TlsStream(accepted, mTls.CreateServer(mTlsConfig));
+			else
+				client.Stream = new PlainStream(accepted);
 			client.Handshake = new .(.Request, cHandshakeCap);
 			mClients.Add(client);
 		}
@@ -162,37 +206,33 @@ class WebSocketServerGateway
 		mEvents.Add(entry);
 	}
 
-	/// Queues bytes and tries to push them out. A send may be partial or may block, so the
-	/// tail stays buffered for the next pump.
+	/// The stream takes all of it, holding what the socket would not take yet.
 	private void SendRaw(Client client, List<uint8> bytes)
 	{
-		client.SendBuffer.AddRange(bytes);
-		FlushSend(client);
+		if (client.Stream.Send(bytes) < 0)
+			client.Dead = true;
 	}
 
-	private void FlushSend(Client client)
+	/// Moves the stream's bytes (and a TLS handshake) on; what it already holds is still read
+	/// before a closed stream counts.
+	private void PumpClient(Client client)
 	{
-		while (!client.SendBuffer.IsEmpty)
+		let alive = client.Stream.Pump();
+		ReadClient(client);
+		if (!alive && !client.Dead)
 		{
-			let sent = client.Socket.Send(client.SendBuffer);
-			if (sent < 0)
-			{
-				client.Dead = true;
-				return;
-			}
-			// Would block: the peer is alive but not reading. Retry next pump.
-			if (sent == 0)
-				return;
-			client.SendBuffer.RemoveRange(0, (int)sent);
+			client.Dead = true;
+			if (client.Upgraded)
+				PushEvent(.Disconnected, client.Id, .());
 		}
 	}
 
-	private void PumpClient(Client client)
+	private void ReadClient(Client client)
 	{
 		let chunk = scope uint8[cReadChunk];
 		for (;;)
 		{
-			let got = client.Socket.Receive(chunk);
+			let got = client.Stream.Receive(chunk);
 			if (got < 0)
 			{
 				client.Dead = true;

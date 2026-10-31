@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Net;
+using Sedulous.Net.Tls;
 
 namespace Sedulous.Net.WebSocket;
 
@@ -21,11 +22,11 @@ class WebSocketHybridSocket : IDatagramSocket
 	private WsGatewayEvent mScratchEvent = new .() ~ delete _;
 
 	/// Binds the UDP socket and the websocket listener. Either port may be nought to let the
-	/// operating system choose. Check IsOpen.
-	public this(uint16 udpPort, uint16 webSocketPort)
+	/// operating system choose; with `tls` the listener speaks wss://. Check IsOpen.
+	public this(uint16 udpPort, uint16 webSocketPort, WebSocketTls tls = null)
 	{
 		mUdp = new .(udpPort);
-		mGateway = new .(webSocketPort);
+		mGateway = new .(webSocketPort, tls);
 	}
 
 	public bool IsOpen => mUdp.IsOpen && mGateway.IsOpen;

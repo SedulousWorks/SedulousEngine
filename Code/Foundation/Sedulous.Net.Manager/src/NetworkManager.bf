@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Net;
 using Sedulous.Net.Replication;
 using Sedulous.Net.WebSocket;
@@ -90,18 +91,20 @@ class NetworkManager
 	/// caller logs before running offline.
 	///
 	/// A non zero webSocketPort ALSO accepts browser clients, so native and browser peers share
-	/// one session behind one datagram socket.
+	/// one session behind one datagram socket; with webSocketTls, over wss:// instead of ws://.
 	public static NetworkManager HostServer(uint16 port, bool dedicated = false,
-		ReliableConfig config = .(), uint16 webSocketPort = 0)
+		ReliableConfig config = .(), uint16 webSocketPort = 0, WebSocketTls webSocketTls = null)
 	{
 		if (!CanHost)
 			return null;
 
 		if (webSocketPort != 0)
 		{
-			let hybrid = new WebSocketHybridSocket(port, webSocketPort);
+			let hybrid = new WebSocketHybridSocket(port, webSocketPort, webSocketTls);
 			if (!hybrid.IsOpen)
 			{
+				if (!hybrid.Gateway.Failure.IsEmpty)
+					GlobalLog(.Error, "Net: the wss gateway did not open: {}", hybrid.Gateway.Failure);
 				delete hybrid;
 				return null;
 			}
