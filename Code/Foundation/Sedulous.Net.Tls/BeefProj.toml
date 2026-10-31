@@ -1,0 +1,23 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Net.Tls"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Net.Tls.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+
+# The Windows ROOT store (CertOpenSystemStoreW).
+[Configs.Debug.Win64]
+LibPaths = ["crypt32.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["crypt32.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["crypt32.lib"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["crypt32.lib"]
