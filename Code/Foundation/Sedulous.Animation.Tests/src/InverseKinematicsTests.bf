@@ -346,7 +346,7 @@ class InverseKinematicsTests
 	}
 
 	[Test]
-	public static void AnAimReachesWithinItsLimitClampsBeyondItSharesTheSwingAndHoldsItsUpAxis()
+	public static void AnAimReachesWithinItsLimitsHoldsBeyondThemSharesTheSwingAndHoldsItsUpAxis()
 	{
 		let skeleton = scope Skeleton(BoneCount);
 		BuildBody(skeleton);
@@ -375,7 +375,7 @@ class InverseKinematicsTests
 			let upWanted = Normalized(Float3(0, 1, 0) - aim * Dot(Float3(0, 1, 0), aim));
 			Test.Assert(Dot(up, upWanted) > 1.0f - 1.0e-5f);
 		}
-		// Beyond the limit: stopped at MaxAngle from the animated direction.
+		// Beyond the turn limit: stopped at MaxTurn from the animated direction.
 		{
 			BindPose(skeleton, pose);
 			cache.Build(skeleton, pose);
@@ -386,6 +386,67 @@ class InverseKinematicsTests
 			Test.Assert(!result.Reached);
 			Test.Assert(Near(Acos(Math.Clamp(Dot(Axis(cache, Head, 2), Float3(0, 0, 1)), -1.0f, 1.0f)), 60.0f * DegToRad, 1e-3f));
 			Test.Assert(Finite(pose));
+		}
+		// Turn and tilt are separate limits: a wide turn within, a steep tilt held.
+		{
+			BindPose(skeleton, pose);
+			cache.Build(skeleton, pose);
+			var settings = AimIkSettings();
+			settings.MaxTurn = 60.0f * DegToRad;
+			settings.MaxTilt = 30.0f * DegToRad;
+			settings.Target = head + Float3(5, 0, 5); // 45 degrees to the side: within the turn
+			var result = InverseKinematics.SolveAim(skeleton, pose, cache, .(&spine[2], 1), .(), settings);
+			Test.Assert(result.Reached);
+			Test.Assert(!result.BeyondLimits);
+
+			BindPose(skeleton, pose);
+			cache.Build(skeleton, pose);
+			settings.Target = head + Float3(0, 5, 5); // 45 degrees up: past the tilt
+			result = InverseKinematics.SolveAim(skeleton, pose, cache, .(&spine[2], 1), .(), settings);
+			Test.Assert(!result.Reached);
+			Test.Assert(result.BeyondLimits);
+			let aim = Axis(cache, Head, 2);
+			Test.Assert(Math.Abs(aim.Y - Sin(30.0f * DegToRad)) < 1.0e-3f);
+			Test.Assert(Math.Abs(aim.X) < 1.0e-4f);
+		}
+		// A target behind: turned to its side as far as the turn goes, never up and over. Behind and
+		// a little to +x, level, then also high above: the old cone swung these over the top of the
+		// head; the limits hold them at the side.
+		{
+			var settings = AimIkSettings();
+			settings.MaxTurn = 60.0f * DegToRad;
+			settings.MaxTilt = 30.0f * DegToRad;
+			Float3[2] behind = .(.(1, 0, -10), .(1, 9, -10));
+			float[2] rise = .(0.0f, Sin(30.0f * DegToRad));
+			for (int i < 2)
+			{
+				BindPose(skeleton, pose);
+				cache.Build(skeleton, pose);
+				settings.Target = head + behind[i];
+				let result = InverseKinematics.SolveAim(skeleton, pose, cache, spine, shares, settings);
+				Test.Assert(result.Valid);
+				Test.Assert(result.BeyondLimits);
+				let aim = Axis(cache, Head, 2);
+				Test.Assert(aim.Z > 0.0f, "still facing forward of the animated aim");
+				Test.Assert(Math.Abs(aim.Y - rise[i]) < 1.0e-3f);
+				let level = Normalized(Float3(aim.X, 0, aim.Z));
+				Test.Assert(Math.Abs(Atan2(level.X, level.Z) - 60.0f * DegToRad) < 1.0e-3f);
+				Test.Assert(Finite(pose));
+			}
+		}
+		// Weight 0 still reports a target beyond the limits, the pose untouched.
+		{
+			BindPose(skeleton, pose);
+			let original = scope List<BoneTransform>();
+			BindPose(skeleton, original);
+			cache.Build(skeleton, pose);
+			var settings = AimIkSettings();
+			settings.Target = head + Float3(0, 0, -5);
+			settings.Weight = 0.0f;
+			Test.Assert(InverseKinematics.SolveAim(skeleton, pose, cache, spine, shares, settings).BeyondLimits);
+			Test.Assert(SameBytes(pose, original));
+			settings.Target = head + Float3(0, 0, 5);
+			Test.Assert(!InverseKinematics.SolveAim(skeleton, pose, cache, spine, shares, settings).BeyondLimits);
 		}
 		// An up direction: the head rolls toward it.
 		{

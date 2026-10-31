@@ -52,6 +52,8 @@ struct IkCommon
 	public float FadeSeconds;
 	public int32 Order;
 	public bool DebugDraw;
+	/// On, but held off for now: an aim released past its limits (none other is).
+	public bool HeldOff;
 }
 
 /// Inverse kinematics on scene entities (inverse-kinematics.md P2): finding the animator, taking
@@ -455,11 +457,14 @@ abstract class IkComponentManagerBase<T> : SerializableComponentManager<T>
 		runtime.Status = .Solving;
 		runtime.Logged = .Solving;
 
-		// The weight eases toward its goal at full scale per FadeSeconds.
-		let goal = common.Active ? Math.Clamp(common.Weight, 0.0f, 1.0f) : 0.0f;
+		// The weight eases toward its goal at full scale per FadeSeconds. A component held off (an
+		// aim released past its limits) eases out but keeps solving at weight nought, so its solve
+		// still says when the target comes back.
+		let heldOff = common.Active && common.HeldOff;
+		let goal = (common.Active && !heldOff) ? Math.Clamp(common.Weight, 0.0f, 1.0f) : 0.0f;
 		let step = (common.FadeSeconds > 0.0f) ? (deltaTime / common.FadeSeconds) : 1.0f;
 		runtime.Weight = (runtime.Weight < goal) ? Math.Min(goal, runtime.Weight + step) : Math.Max(goal, runtime.Weight - step);
-		if (runtime.Weight <= 0.0f)
+		if ((runtime.Weight <= 0.0f) && !heldOff)
 		{
 			Detach(runtime);
 			return;
@@ -584,8 +589,15 @@ class AimIkComponentManager : IkComponentManagerBase<AimIkComponent>
 		component.Bones = null;
 	}
 
+	/// Released past its limits: its last solve found the target beyond them.
+	private static bool HeldOff(AimIkComponent* c)
+	{
+		let m = (c.Runtime != null) ? c.Runtime.Modifier : null;
+		return (c.BeyondLimits == .Release) && (m != null) && m.Solved && m.Result.Valid && m.Result.BeyondLimits;
+	}
+
 	protected override IkCommon Common(AimIkComponent* c)
-		=> .() { Runtime = c.Runtime, Active = c.Active, Weight = c.Weight, FadeSeconds = c.FadeSeconds, Order = c.Order, DebugDraw = c.DebugDraw };
+		=> .() { Runtime = c.Runtime, Active = c.Active, Weight = c.Weight, FadeSeconds = c.FadeSeconds, Order = c.Order, DebugDraw = c.DebugDraw, HeldOff = HeldOff(c) };
 
 	protected override IkStatus Resolve(AimIkComponent* c, Skeleton skeleton, String outFailed)
 	{
@@ -631,7 +643,8 @@ class AimIkComponentManager : IkComponentManagerBase<AimIkComponent>
 		s.Target = TransformPoint(runtime.TargetWorld, worldToModel);
 		s.AimAxis = c.AimAxis;
 		s.UpAxis = c.UpAxis;
-		s.MaxAngle = c.MaxAngle * DegToRad;
+		s.MaxTurn = c.MaxTurn * DegToRad;
+		s.MaxTilt = c.MaxTilt * DegToRad;
 		s.Weight = runtime.Weight;
 		s.HasUp = false;
 		m.AimUpIsPoint = false;

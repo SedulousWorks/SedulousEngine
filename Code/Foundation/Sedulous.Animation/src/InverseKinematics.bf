@@ -6,11 +6,14 @@ namespace Sedulous.Animation;
 /// What a solve did: whether the chain's end reached its target, and how far it missed (a
 /// distance for a two bone chain, an angle in radians for an aim). `Valid` is false when the
 /// bones do not form the chain (a bad index, or a bone not below the one before it); nothing
-/// changed then.
+/// changed then. `BeyondLimits` is an aim's: the target lies past its turn or its tilt from the
+/// animated direction (reported at any weight, nought included, so a caller that fades an aim out
+/// beyond its limits can tell when the target comes back).
 struct IkResult
 {
 	public bool Valid = false;
 	public bool Reached = false;
+	public bool BeyondLimits = false;
 	public float Error = 0.0f;
 
 	public this() {}
@@ -65,7 +68,10 @@ struct TwoBoneIkSettings
 }
 
 /// An aim (a head, a spine sharing a turn, a weapon): the last bone's aim axis points at the
-/// target, each bone taking its share of the swing still to go.
+/// target, each bone taking its share of the swing still to go. Its reach is two limits from the
+/// animated aim, as a neck has: a turn to either side (about the animated up axis) and a tilt up
+/// or down. A target past them is held at them, turned toward its side: a target behind turns the
+/// aim as far as it goes to that side, never up and over the top.
 struct AimIkSettings
 {
 	/// Model space.
@@ -79,8 +85,10 @@ struct AimIkSettings
 	public bool HasUp = false;
 	/// Model space.
 	public Float3 Up = .(0, 0, 0);
-	/// From the animated aim direction.
-	public float MaxAngle = 60.0f * DegToRad;
+	/// To either side of the animated aim.
+	public float MaxTurn = 60.0f * DegToRad;
+	/// Above or below the animated aim.
+	public float MaxTilt = 45.0f * DegToRad;
 	public float Weight = 1.0f;
 
 	public this() {}
@@ -442,8 +450,9 @@ static class InverseKinematics
 	/// Points the last bone's aim axis at `settings.Target`, the swing shared along `bones` (root
 	/// first): bone i takes `shares[i]` of what is still to go (a spine: 0.3, 0.5, 1.0; the last
 	/// share 1 lands it exactly). Empty `shares` gives the last bone all of it. The direction is
-	/// held within MaxAngle of the animated one, and the up axis is then turned toward `Up` (or
-	/// back to the animated up) about the aim axis. The error is the angle left to the target.
+	/// held within MaxTurn and MaxTilt of the animated one, and the up axis is then turned toward
+	/// `Up` (or back to the animated up) about the aim axis. The error is the angle left to the
+	/// target.
 	public static IkResult SolveAim(Skeleton skeleton, Span<BoneTransform> localPoses,
 		ModelPoseCache model, Span<int32> bones, Span<float> shares, AimIkSettings settings)
 	{
@@ -465,19 +474,35 @@ static class InverseKinematics
 		let aimFrom = Normalized(RotateVector(animated, aimAxis));
 		let upFrom = RotateVector(animated, settings.UpAxis);
 
-		// The direction to aim from `origin`: the target's, held within MaxAngle of the animated.
-		Float3 Wanted(Float3 origin)
+		// The animated aim's frame: forward, its up (the up axis made perpendicular to it), and its
+		// side. The limits are a turn about that up and a tilt toward it.
+		var frameUp = Perpendicular(upFrom, aimFrom);
+		frameUp = (LengthSquared(frameUp) > 1.0e-10f) ? Normalized(frameUp) : AnyPerpendicular(aimFrom);
+		let frameSide = Cross(frameUp, aimFrom);
+		let maxTurn = Math.Clamp(settings.MaxTurn, 0.0f, Pi);
+		let maxTilt = Math.Clamp(settings.MaxTilt, 0.0f, Pi * 0.5f);
+		// The direction to aim from `origin`: the target's, its turn and tilt each held within its
+		// limit; `beyond` says whether either was.
+		Float3 Wanted(Float3 origin, out bool beyond)
 		{
+			beyond = false;
 			let toTarget = settings.Target - origin;
 			if (Length(toTarget) <= Epsilon)
 				return aimFrom;
 			let direction = Normalized(toTarget);
-			let angle = Acos(Math.Clamp(Dot(aimFrom, direction), -1.0f, 1.0f));
-			if (angle <= settings.MaxAngle)
+			let forward = Dot(direction, aimFrom);
+			let side = Dot(direction, frameSide);
+			let rise = Dot(direction, frameUp);
+			let turn = Atan2(side, forward); // plus or minus pi straight behind
+			let tilt = Atan2(rise, Sqrt(forward * forward + side * side));
+			let within = (Abs(turn) <= maxTurn) && (Abs(tilt) <= maxTilt);
+			beyond = !within;
+			if (within)
 				return direction;
-			var axis = Cross(aimFrom, direction);
-			axis = (LengthSquared(axis) > 1.0e-12f) ? Normalized(axis) : AnyPerpendicular(aimFrom);
-			return RotateVector(Quaternion.FromAxisAngle(axis, settings.MaxAngle), aimFrom);
+			let heldTurn = Math.Clamp(turn, -maxTurn, maxTurn);
+			let heldTilt = Math.Clamp(tilt, -maxTilt, maxTilt);
+			let level = aimFrom * Cos(heldTurn) + frameSide * Sin(heldTurn);
+			return level * Cos(heldTilt) + frameUp * Sin(heldTilt);
 		}
 		Float3 AimNow() => Normalized(RotateVector(RotationOf(model.At(last)), aimAxis));
 		float Missed()
@@ -486,6 +511,7 @@ static class InverseKinematics
 			return (Length(toTarget) > Epsilon) ? Acos(Math.Clamp(Dot(AimNow(), Normalized(toTarget)), -1.0f, 1.0f)) : 0.0f;
 		}
 
+		Wanted(Position(model.At(last)), out result.BeyondLimits);
 		if (settings.Weight <= 0.0f)
 		{
 			result.Error = Missed();
@@ -502,7 +528,7 @@ static class InverseKinematics
 			if (share <= 0.0f)
 				continue;
 			// The target direction from where the last bone is NOW (a turn above it moved it).
-			let direction = Wanted(Position(model.At(last)));
+			let direction = Wanted(Position(model.At(last)), ?);
 			let turn = Slerp(Quaternion.Identity, FromTo(AimNow(), direction), share);
 			TurnInModel(skeleton, localPoses, model, bones[i], turn);
 			model.RebuildFrom(skeleton, localPoses, bones[i]);

@@ -3,6 +3,8 @@ using System.Collections;
 using Sedulous.Animation;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
+using Sedulous.Core.Serialization;
+using Sedulous.Core.IO;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Render;
 using Sedulous.Scene;
@@ -257,6 +259,152 @@ class IkComponentTests
 		Test.Assert(s.Player.Modifiers.IsEmpty);
 		s.Tick(); // and the player runs on with nothing dangling
 		Test.Assert(!IkScene.Reached(s.Level, head));
+	}
+
+	/// The head's aim (its +z) in the skeleton's model space, from the final pose.
+	private static Float3 HeadAimModel(Stage s)
+	{
+		s.Player.GetSkinningMatrices();
+		let cache = scope ModelPoseCache();
+		cache.Build(s.Skeleton, s.Player.GetFinalPoses());
+		let m = cache.At(5);
+		return Normalized(Float3(m.M[2][0], m.M[2][1], m.M[2][2]));
+	}
+
+	/// A point at `offset` from the head (0, 13, 0) in model space, as a world position.
+	private static Float3 FromHead(Stage s, Float3 offset)
+		=> TransformPoint(Float3(0, 13, 0) + offset, s.Level.GetWorldMatrix(s.Body));
+
+	private static AimIkComponent* HeadAim(Stage s, EntityHandle target)
+	{
+		let e = s.Level.CreateEntity("HeadIk");
+		s.Level.SetParent(e, s.Rider);
+		let c = s.Level.GetSystem<AimIkComponentManager>().Add(e);
+		c.Bones.Add(new AimIkBone("Head", 1.0f));
+		c.Target = EntityRef(s.Level.GetEntityId(target));
+		c.MaxTurn = 60.0f;
+		c.MaxTilt = 30.0f;
+		c.FadeSeconds = 0.0f;
+		return c;
+	}
+
+	private static void MoveTo(Stage s, EntityHandle e, Float3 at)
+		=> s.Level.SetLocalTransform(e, .(at, .Identity, .(1, 1, 1)));
+
+	/// A target behind, high above, is held at the turn limit on its side, never over the top.
+	[Test]
+	public static void AnAimHoldsATargetBehindAtTheTurnLimitOnItsSideNeverOverTheTop()
+	{
+		let s = scope Stage();
+		let target = s.Target("Coin", .(0, 0, 0));
+		MoveTo(s, target, FromHead(s, .(1, 9, -10))); // behind, to +x, high above
+		HeadAim(s, target);
+		s.Tick();
+		s.Tick();
+		let aim = HeadAimModel(s);
+		Test.Assert(aim.Z > 0.0f);
+		Test.Assert(Math.Abs(aim.Y - Sin(30.0f * DegToRad)) < 1.0e-3f);
+		Test.Assert(Math.Abs(Atan2(aim.X, aim.Z) - 60.0f * DegToRad) < 1.0e-3f);
+	}
+
+	/// Release eases off past the limits and comes back when the target does.
+	[Test]
+	public static void ReleaseEasesOffPastTheLimitsAndComesBackWhenTheTargetDoes()
+	{
+		let s = scope Stage();
+		let target = s.Target("Coin", .(0, 0, 0));
+		MoveTo(s, target, FromHead(s, .(1, 0, 4))); // ahead
+		let added = HeadAim(s, target);
+		added.BeyondLimits = .Release;
+		added.FadeSeconds = 0.1f;
+		let owner = s.Level.FindEntityByName("HeadIk");
+		let aims = s.Level.GetSystem<AimIkComponentManager>();
+		for (int i < 12)
+			s.Tick();
+		Test.Assert(Math.Abs(aims.Get(owner).Runtime.Weight - 1.0f) < 1.0e-5f);
+		Test.Assert(Dot(HeadAimModel(s), Normalized(Float3(1, 0, 4))) > 1.0f - 1.0e-4f);
+
+		MoveTo(s, target, FromHead(s, .(1, 0, -4))); // behind: past the turn
+		// The frame's ease runs before the frame's solve, so the solve that finds the target
+		// beyond starts the ease a frame later.
+		s.Tick();
+		s.Tick();
+		Test.Assert(aims.Get(owner).Runtime.Weight < 1.0f, "easing off, not snapping");
+		Test.Assert(aims.Get(owner).Runtime.Weight > 0.0f);
+		for (int i < 12)
+			s.Tick();
+		Test.Assert(aims.Get(owner).Runtime.Weight == 0.0f);
+		Test.Assert(Dot(HeadAimModel(s), Float3(0, 0, 1)) > 1.0f - 1.0e-5f, "the animated aim");
+		Test.Assert(s.Player.Modifiers.Count == 1, "still watching at weight nought");
+
+		MoveTo(s, target, FromHead(s, .(-1, 0, 4))); // ahead again
+		for (int i < 12)
+			s.Tick();
+		Test.Assert(Math.Abs(aims.Get(owner).Runtime.Weight - 1.0f) < 1.0e-5f);
+		Test.Assert(Dot(HeadAimModel(s), Normalized(Float3(-1, 0, 4))) > 1.0f - 1.0e-4f);
+
+		// Off: it leaves the player, released or not.
+		aims.Get(owner).Active = false;
+		for (int i < 12)
+			s.Tick();
+		Test.Assert(s.Player.Modifiers.IsEmpty);
+	}
+
+	/// A version 1 record's one maxAngle becomes both limits, held: it loads through the
+	/// manager (which accepts version 1 as well as the current one) and consumes nothing past
+	/// its fields.
+	[Test]
+	public static void AVersionOneRecordsOneMaxAngleBecomesBothLimitsHeld()
+	{
+		let stream = scope MemoryStream();
+		{
+			// A version 1 record, as a scene saved before the two limits holds it.
+			let writer = scope BinarySerializer(stream, .Write);
+			BeginVersionedPayload(writer, TypeIdOf("aim_ik"), 1);
+			writer.Key("bones");
+			let bones = scope List<AimIkBone>();
+			SerializeList(writer, bones);
+			var nil = Guid();
+			SerializeValue(writer, "target", ref nil);
+			SerializeValue(writer, "up", ref nil);
+			var aimAxis = Float3(0, 0, 1);
+			SerializeValue(writer, "aimAxis", ref aimAxis);
+			var upAxis = Float3(0, 1, 0);
+			SerializeValue(writer, "upAxis", ref upAxis);
+			var maxAngle = 70.0f;
+			SerializeValue(writer, "maxAngle", ref maxAngle);
+			var weight = 1.0f;
+			SerializeValue(writer, "weight", ref weight);
+			var fade = 0.35f;
+			SerializeValue(writer, "fadeSeconds", ref fade);
+			var active = false;
+			SerializeValue(writer, "active", ref active);
+			int32 order = 0;
+			SerializeValue(writer, "order", ref order);
+			var debugDraw = false;
+			SerializeValue(writer, "debugDraw", ref debugDraw);
+			EndVersionedPayload(writer);
+			uint32 trailing = 77;
+			SerializeValue(writer, "trailing", ref trailing);
+			Test.Assert(writer.IsOk);
+		}
+
+		let scene = scope Scene();
+		let aims = scene.AddSystem<AimIkComponentManager>();
+		let entity = scene.CreateEntity("Head");
+		stream.Seek(0, .Begin);
+		let reader = scope BinarySerializer(stream, .Read);
+		aims.ReadComponent(reader, entity);
+		uint32 trailing = 0;
+		SerializeValue(reader, "trailing", ref trailing);
+		Test.Assert(reader.IsOk, "a version 1 record loads");
+		let aim = aims.Get(entity);
+		Test.Assert(aim.MaxTurn == 70.0f);
+		Test.Assert(aim.MaxTilt == 70.0f);
+		Test.Assert(aim.BeyondLimits == .Hold);
+		Test.Assert(aim.FadeSeconds == 0.35f);
+		Test.Assert(!aim.Active);
+		Test.Assert(trailing == 77, "nothing past the version 1 fields was consumed");
 	}
 
 	/// Flat ground at `Height` everywhere, answered as the scene's solid surface ray query (the

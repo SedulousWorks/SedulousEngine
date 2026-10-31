@@ -265,9 +265,22 @@ class AimIkBone : ISerializable
 	}
 }
 
+/// What an aim does with a target past its turn or tilt limits.
+[Scriptable]
+enum AimBeyondLimits : uint8
+{
+	/// Aim as far as the limits go, turned toward the target's side.
+	Hold,
+	/// Ease off (over FadeSeconds) until the target comes back within them.
+	Release
+}
+
 /// Bones that turn so the last one points at a target: a head that follows, a spine sharing
 /// the turn (0.3, 0.5, 1.0), a weapon.
-[SerializableComponent("aim_ik")]
+///
+/// Data version 2: MaxTurn, MaxTilt and BeyondLimits for version 1's one MaxAngle, which a
+/// version 1 record reads as both limits, held, so a scene saved before keeps its look.
+[SerializableComponent("aim_ik", 2, 1)]
 [DisplayName("Aim IK")]
 [Category("Animation")]
 [Scriptable]
@@ -286,8 +299,12 @@ struct AimIkComponent : ISerializable
 	public Float3 AimAxis = .(0, 0, 1);
 	[Scriptable, DisplayName("Up Axis")]
 	public Float3 UpAxis = .(0, 1, 0);
-	[Scriptable, DisplayName("Max Angle"), Range(0.0f, 180.0f, 1.0f), Description("Degrees from the animated direction.")]
-	public float MaxAngle = 60.0f;
+	[Scriptable, DisplayName("Max Turn"), Range(0.0f, 180.0f, 1.0f), Description("Degrees to either side of the animated direction.")]
+	public float MaxTurn = 60.0f;
+	[Scriptable, DisplayName("Max Tilt"), Range(0.0f, 90.0f, 1.0f), Description("Degrees above or below the animated direction.")]
+	public float MaxTilt = 45.0f;
+	[Scriptable, DisplayName("Beyond Limits"), Description("A target past the limits: Hold aims as far as they go, toward its side; Release eases off until it comes back.")]
+	public AimBeyondLimits BeyondLimits = .Hold;
 	[Scriptable, Range(0.0f, 1.0f, 0.01f)]
 	public float Weight = 1.0f;
 	[Scriptable, DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
@@ -312,7 +329,23 @@ struct AimIkComponent : ISerializable
 		SerializeValue(ar, "up", ref Up.Id);
 		SerializeValue(ar, "aimAxis", ref AimAxis);
 		SerializeValue(ar, "upAxis", ref UpAxis);
-		SerializeValue(ar, "maxAngle", ref MaxAngle);
+		if ((ar.Mode == .Write) || (ar.Version >= 2))
+		{
+			SerializeValue(ar, "maxTurn", ref MaxTurn);
+			SerializeValue(ar, "maxTilt", ref MaxTilt);
+			var beyond = (uint8)BeyondLimits;
+			SerializeValue(ar, "beyondLimits", ref beyond);
+			BeyondLimits = (AimBeyondLimits)beyond;
+		}
+		else
+		{
+			// Version 1's one cone: both limits take its angle, and a target past it is held.
+			var maxAngle = 60.0f;
+			SerializeValue(ar, "maxAngle", ref maxAngle);
+			MaxTurn = maxAngle;
+			MaxTilt = Math.Min(maxAngle, 90.0f);
+			BeyondLimits = .Hold;
+		}
 		SerializeValue(ar, "weight", ref Weight);
 		SerializeValue(ar, "fadeSeconds", ref FadeSeconds);
 		SerializeValue(ar, "active", ref Active);
