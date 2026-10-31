@@ -159,7 +159,13 @@ class ScreenStack : UIWidget
 			return null;
 		if (screen == null)
 		{
+			// Made for it: the content fills it, as a document's root fills the screen (a menu's
+			// scrim covers the game, not only its card).
 			screen = new Screen(); // this call's reference
+			using (Node.StyleWriteScope(screen))
+			{
+				screen.EditLayoutStyle(scope (s) => { s.Kind = .Stack; });
+			}
 			screen.AddChild(content);
 		}
 		else

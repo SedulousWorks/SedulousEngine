@@ -442,4 +442,25 @@ class ScreenStackTests
 		Test.Assert(ScreenStack.StaticGuiType.FindCss("covers") == null); // a screen's, not the stack's
 		Test.Assert(Screen.StaticGuiType.FindCss("covers") != null);
 	}
+
+	[Test]
+	public static void ContentPushedWithoutAScreenOfItsOwnFillsTheScreenMadeForItAsAMenusScrimMust()
+	{
+		let bed = scope Bed();
+		let scrim = new UIWidget(); // a panel sized by nothing of its own
+		defer scrim.ReleaseRef();
+		let card = new UIWidget();
+		card.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(120.0f);
+				s.Height = LayoutLength.Px(60.0f);
+			});
+		scrim.AddChild(card);
+		card.ReleaseRef(); // the scrim holds it
+		Test.Assert(bed.Stack.Push(scrim) != null);
+		bed.Layout();
+		Test.Assert(Near(scrim.Size.X, 400.0f));
+		Test.Assert(Near(scrim.Size.Y, 300.0f));
+		Test.Assert(Near(card.Size.X, 120.0f), "what it holds keeps its own size");
+	}
 }
