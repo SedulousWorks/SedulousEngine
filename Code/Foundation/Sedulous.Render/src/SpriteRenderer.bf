@@ -31,14 +31,6 @@ class SpriteRenderer : Renderer
 		public uint64 ViewId;
 	}
 
-	/// The view's two matrices, as the shader reads them.
-	[CRepr]
-	private struct ViewUniforms
-	{
-		public Float4x4 ViewProj;
-		public Float4x4 View;
-	}
-
 	private static uint16[1] sCategories = .(RenderCategories.Transparent);
 
 	private IDevice mDevice;
@@ -165,10 +157,10 @@ class SpriteRenderer : Renderer
 		if (!viewRange.Ok)
 			return;
 
-		var viewUniforms = ViewUniforms();
+		var viewUniforms = GpuSpriteView();
 		viewUniforms.ViewProj = context.ViewProj;
 		viewUniforms.View = context.ViewMatrix;
-		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(ViewUniforms));
+		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(GpuSpriteView));
 
 		// Fuse consecutive sprites sharing a texture and a blend mode into one instanced draw.
 		var i = 0;

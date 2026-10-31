@@ -19,8 +19,6 @@ class FxaaPass
 	/// One frame can hold views with different target formats, so the pipelines are cached
 	/// per format rather than destroyed on a mismatch.
 	private const int cMaxPipelineFormats = 4;
-	/// The texel size, the coordinate transform, the quality and the two thresholds.
-	private const int cPushFloats = 10;
 
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
@@ -63,7 +61,7 @@ class FxaaPass
 		var pushRange = PushConstantRange();
 		pushRange.Stages = .Fragment;
 		pushRange.Offset = 0;
-		pushRange.Size = sizeof(float) * cPushFloats;
+		pushRange.Size = sizeof(FxaaPush);
 
 		var pipelineLayoutDesc = PipelineLayoutDesc();
 		pipelineLayoutDesc.BindGroupLayouts = .(&layouts[0], 1);
@@ -105,8 +103,14 @@ class FxaaPass
 		// intermediate in the target's format, and an sRGB target decodes to linear on sampling
 		// while a float one holds linear values, so the luma is told which it reads.
 		let linearInput = TextureFormats.IsSrgb(ldrFormat) || TextureFormats.IsFloat(ldrFormat);
-		float[cPushFloats] push = .(texelSize.X, texelSize.Y, uvScale.X, uvScale.Y, uvOffset.X,
-			uvOffset.Y, subpixelQuality, 0.166f, 0.0312f, linearInput ? 1.0f : 0.0f);
+		var push = FxaaPush();
+		push.TexelSize = texelSize;
+		push.UvScale = uvScale;
+		push.UvOffset = uvOffset;
+		push.SubpixelQuality = subpixelQuality;
+		push.EdgeThreshold = 0.166f;
+		push.EdgeThresholdMin = 0.0312f;
+		push.LinearInput = linearInput ? 1.0f : 0.0f;
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 
@@ -128,8 +132,7 @@ class FxaaPass
 						encoder.SetBindGroup(0, bindGroup);
 
 						var constants = push;
-						encoder.SetPushConstants(.Fragment, 0, sizeof(float) * cPushFloats,
-							&constants[0]);
+						encoder.SetPushConstants(.Fragment, 0, sizeof(FxaaPush), &constants);
 						encoder.Draw(3, 1, 0, 0);
 					});
 			});

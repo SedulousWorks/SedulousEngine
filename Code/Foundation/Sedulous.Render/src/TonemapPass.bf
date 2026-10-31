@@ -23,11 +23,6 @@ class TonemapPass
 	/// mismatch would destroy a pipeline an earlier view of the same frame still refers to.
 	private const int cMaxPipelineFormats = 4;
 
-	/// The push constants: exposure, bloom, the coordinate transform, occlusion, the two
-	/// mode flags, the auto exposure window, the grading, and whether the target stores the
-	/// display encoding as written (padded to 16 bytes).
-	private const int cPushFloats = 20;
-
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
 	private uint32 mFramesInFlight = 2;
@@ -82,7 +77,7 @@ class TonemapPass
 		var pushRange = PushConstantRange();
 		pushRange.Stages = .Fragment;
 		pushRange.Offset = 0;
-		pushRange.Size = sizeof(float) * cPushFloats;
+		pushRange.Size = sizeof(TonemapPush);
 
 		var pipelineLayoutDesc = PipelineLayoutDesc();
 		pipelineLayoutDesc.BindGroupLayouts = .(&layouts[0], 1);
@@ -138,14 +133,23 @@ class TonemapPass
 		let autoOn = (autoExposure.View != null) && autoExposure.Enabled;
 		let gradeOn = (grading.View != null) && (grading.LutSize >= 2.0f);
 
-		float[cPushFloats] push = .(
-			exposure, bloomIntensity, uvScale.X, uvScale.Y,
-			uvOffset.X, uvOffset.Y, aoStrength, debugShowAo ? 1.0f : 0.0f,
-			copyOnly ? 2.0f : (agx ? 1.0f : 0.0f), flipSceneY ? 1.0f : 0.0f,
-			autoOn ? 1.0f : 0.0f, autoExposure.Key, autoExposure.MinExposure,
-			autoExposure.MaxExposure,
-			gradeOn ? grading.Intensity : 0.0f, gradeOn ? grading.LutSize : 0.0f,
-			EncodesOnWrite(ldrFormat) ? 0.0f : 1.0f, (float)(uint32)turn, 0.0f, 0.0f);
+		var push = TonemapPush();
+		push.Exposure = exposure;
+		push.BloomIntensity = bloomIntensity;
+		push.UvScale = uvScale;
+		push.UvOffset = uvOffset;
+		push.AoStrength = aoStrength;
+		push.DebugShowAo = debugShowAo ? 1.0f : 0.0f;
+		push.Operator = copyOnly ? 2.0f : (agx ? 1.0f : 0.0f);
+		push.FlipSceneY = flipSceneY ? 1.0f : 0.0f;
+		push.AutoExposure = autoOn ? 1.0f : 0.0f;
+		push.AutoKey = autoExposure.Key;
+		push.AutoMin = autoExposure.MinExposure;
+		push.AutoMax = autoExposure.MaxExposure;
+		push.GradeIntensity = gradeOn ? grading.Intensity : 0.0f;
+		push.LutSize = gradeOn ? grading.LutSize : 0.0f;
+		push.EncodeOutput = EncodesOnWrite(ldrFormat) ? 0.0f : 1.0f;
+		push.Rotation = (float)(uint32)turn;
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 		let autoView = autoOn ? autoExposure.View : null;
@@ -188,8 +192,7 @@ class TonemapPass
 						encoder.SetBindGroup(0, bindGroup);
 
 						var constants = push;
-						encoder.SetPushConstants(.Fragment, 0, sizeof(float) * cPushFloats,
-							&constants[0]);
+						encoder.SetPushConstants(.Fragment, 0, sizeof(TonemapPush), &constants);
 						encoder.Draw(3, 1, 0, 0);
 					});
 			});

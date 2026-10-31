@@ -70,7 +70,7 @@ class DebugDrawPass
 		var geomPush = PushConstantRange();
 		geomPush.Stages = .Vertex;
 		geomPush.Offset = 0;
-		geomPush.Size = sizeof(Float4x4);
+		geomPush.Size = sizeof(DebugGeomPush);
 		// With no groups the push block sits at the FIRST space, not the second every other
 		// shader uses, so a backend that emulates pushes with a uniform must put it there too.
 		geomPush.BindGroupIndex = 0;
@@ -110,7 +110,7 @@ class DebugDrawPass
 		var screenPush = PushConstantRange();
 		screenPush.Stages = .Vertex;
 		screenPush.Offset = 0;
-		screenPush.Size = sizeof(float) * 4;
+		screenPush.Size = sizeof(DebugScreenPush);
 
 		var screenLayoutDesc = PipelineLayoutDesc();
 		screenLayoutDesc.BindGroupLayouts = .(&screenLayouts[0], 1);
@@ -231,9 +231,10 @@ class DebugDrawPass
 						// stream costs nothing.
 						void Draw(IRenderPipeline pipeline, uint32 count, uint32 first)
 						{
-							var matrix = viewProj;
+							var geom = DebugGeomPush();
+							geom.ViewProj = viewProj;
 							encoder.SetPipeline(pipeline);
-							encoder.SetPushConstants(.Vertex, 0, sizeof(Float4x4), &matrix);
+							encoder.SetPushConstants(.Vertex, 0, sizeof(DebugGeomPush), &geom);
 							encoder.Draw(count, 1, first, 0);
 						}
 
@@ -276,7 +277,8 @@ class DebugDrawPass
 			return;
 
 		let count = (uint32)mScreenScratch.Count;
-		let push = float[4](1.0f / (float)viewportWidth, 1.0f / (float)viewportHeight, 0.0f, 0.0f);
+		var push = DebugScreenPush();
+		push.InvSize = .(1.0f / (float)viewportWidth, 1.0f / (float)viewportHeight);
 		let bindGroup = mFontBindGroup;
 
 		graph.AddRenderPass("debug.screen", scope (builder) =>
@@ -292,7 +294,7 @@ class DebugDrawPass
 						encoder.SetVertexBuffer(0, buffer, 0);
 
 						var constants = push;
-						encoder.SetPushConstants(.Vertex, 0, sizeof(float) * 4, &constants[0]);
+						encoder.SetPushConstants(.Vertex, 0, sizeof(DebugScreenPush), &constants);
 						encoder.Draw(count, 1, 0, 0);
 					});
 			});

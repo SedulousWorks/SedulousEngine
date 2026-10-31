@@ -15,7 +15,7 @@ struct GpuLight {
     float3 positionWS; float range;
     float3 color;      float intensity;
     float3 directionWS;float type;           // 0=Directional, 1=Point, 2=Spot
-    float innerCos; float outerCos; float pad0; float pad1;
+    float innerCos; float outerCos; float shadowIndex; float shadowStrength; // as lighting.hlsli
 };
 StructuredBuffer<GpuLight> Lights               : register(t0);
 RWStructuredBuffer<uint2>  ClusterOffsetsRW      : register(u0);

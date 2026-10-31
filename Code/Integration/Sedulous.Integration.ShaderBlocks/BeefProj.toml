@@ -1,0 +1,18 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Integration.ShaderBlocks"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Integration.ShaderBlocks.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.VG.Renderer" = "*"
+"Sedulous.Engine.Particles" = "*"
+"Sedulous.Engine.Terrain" = "*"
+"Dxc-Beef" = "*"

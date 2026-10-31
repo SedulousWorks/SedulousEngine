@@ -84,7 +84,7 @@ class ExposurePass
 		var pushRange = PushConstantRange();
 		pushRange.Stages = .Fragment;
 		pushRange.Offset = 0;
-		pushRange.Size = sizeof(float) * 8;
+		pushRange.Size = sizeof(ExposurePush);
 
 		var pipelineLayoutDesc = PipelineLayoutDesc();
 		pipelineLayoutDesc.BindGroupLayouts = .(&layouts[0], 1);
@@ -160,12 +160,11 @@ class ExposurePass
 			ResourceState.ShaderRead, mViews[view].States[currentSlot]);
 		mViews[view].States[currentSlot] = .ShaderRead;
 
-		let push = float[8](
-			uvScale.X, uvScale.Y,
-			uvOffset.X, uvOffset.Y,
-			Max(deltaSeconds, 0.0f) * Max(adaptSpeed, 0.0f),
-			mViews[view].Valid ? 1.0f : 0.0f,
-			0.0f, 0.0f);
+		var push = ExposurePush();
+		push.UvScale = uvScale;
+		push.UvOffset = uvOffset;
+		push.DtSpeed = Max(deltaSeconds, 0.0f) * Max(adaptSpeed, 0.0f);
+		push.HistoryValid = mViews[view].Valid ? 1.0f : 0.0f;
 
 		let previousView = mViews[view].Views[previousSlot];
 
@@ -194,7 +193,7 @@ class ExposurePass
 						encoder.SetBindGroup(0, bindGroup);
 
 						var constants = push;
-						encoder.SetPushConstants(.Fragment, 0, sizeof(float) * 8, &constants[0]);
+						encoder.SetPushConstants(.Fragment, 0, sizeof(ExposurePush), &constants);
 						encoder.Draw(3, 1, 0, 0);
 					});
 			});

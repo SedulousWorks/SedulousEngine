@@ -60,11 +60,13 @@ struct MeshViewData
 	public Float4 ProbeBoxMin = .(0, 0, 0, 0);
 	public Float4 ProbeBoxMax = .(0, 0, 0, 0);
 
-	/// The first component is the cascade fade's width in world units; the rest spare.
+	/// The cascade fade's width in world units, the clip space Y sign, then the instance fade's
+	/// start and end (an instanced set's own view slot; nought is none).
 	public Float4 ShadowParams = .(40.0f, 0, 0, 0);
 	/// The first component is the semantic debug mode, nought being off; the rest spare.
 	public Float4 DebugParams = .(0, 0, 0, 0);
-	/// The diffuse and specular environment dimmers; the rest spare.
+	/// The diffuse and specular environment dimmers, then the wind's clock: this frame's time in
+	/// seconds and the last frame's.
 	public Float4 IblParams = .(1, 1, 0, 0);
 
 	public this() {}

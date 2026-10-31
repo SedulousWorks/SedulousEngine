@@ -25,53 +25,11 @@ class TerrainRenderer : Renderer
 	private const uint32 cMaxTerrains = 8;
 	/// Matches ShadowCascades.Count.
 	private const uint32 cCascadeCount = 4;
-	/// Eight matrices and six vectors, padded up to the dynamic uniform alignment.
+	/// GpuTerrainView, eight matrices and ten vectors (672 bytes), padded up to the dynamic
+	/// uniform alignment.
 	private const uint64 cViewSlotSize = 768;
-	/// Six pairs, padded the same way.
+	/// GpuTerrainChunk, seven pairs (56 bytes), padded the same way.
 	private const uint64 cChunkSlotSize = 256;
-
-	/// Mirrors the shader's terrain view constants: keep the field order in lockstep.
-	[CRepr]
-	private struct ViewUniforms
-	{
-		public Float4x4 ChunkToWorld;
-		public Float4x4 ViewProj;
-		public Float4x4 View;
-		public Float4x4 PrevViewProj;
-		public Float4x4[cCascadeCount] CascadeViewProj;
-		public Float4 LightDir;
-		public Float4 CameraPos;
-		public Float4 Jitter;
-		public Float4 CascadeSplitFar;
-		public Float4 CascadeTexelSize;
-		/// x the cascade count, y the layer base, z the normal bias, w the depth bias.
-		public Float4 ShadowMeta;
-		/// x the far fade width, y the uv y sign, z the height blend contrast, w whether a
-		/// height map is bound.
-		public Float4 ShadowParams;
-		/// x the palette count, y whether weights are bound, z the base tile scale, w whether
-		/// a base albedo is bound.
-		public Float4 SplatParams;
-		/// x whether a coverage mask array is bound; the rest spare.
-		public Float4 SplatParams2;
-		/// x the caster light's shadow strength (one is full); the rest spare. Last, so the
-		/// vertex shader's shorter declaration of this block still lines up.
-		public Float4 ShadowLight;
-	}
-
-	/// Mirrors the shader's per chunk constants. Shared by the colour and the depth passes.
-	[CRepr]
-	private struct ChunkUniforms
-	{
-		public Float2 OriginXZ;
-		public Float2 SizeXZ;
-		public Float2 TexelBase;
-		public Float2 TexelSpan;
-		public Float2 HeightRange;
-		public Float2 GridSize;
-		/// x the skirt depth in world units, y spare.
-		public Float2 Skirt;
-	}
 
 	/// A chunk with holes draws its OWN buffers, which the render data carries per chunk; a
 	/// chunk cut everywhere draws nothing; every other chunk draws the shared grid the caller
@@ -129,20 +87,6 @@ class TerrainRenderer : Renderer
 		public uint64 ShaderVersion = 0;
 
 		public this() {}
-	}
-
-	/// The pick pass's view slot: the placement and the cropped projection where the depth
-	/// pass reads them, then the terrain entity's id. Mirrors terrain_pick.vs's prefix.
-	[CRepr]
-	private struct PickViewUniforms
-	{
-		public Float4x4 ChunkToWorld;
-		public Float4x4 ViewProj;
-		/// The entity index plus one; nought is nothing.
-		public uint32 PickIndex;
-		public uint32 PickGeneration;
-		public uint32 Pad0;
-		public uint32 Pad1;
 	}
 
 	private struct PickPso
@@ -389,7 +333,7 @@ class TerrainRenderer : Renderer
 			// The vertex shader works in WORLD space, with the placement applied there rather
 			// than folded into the view projection, so the pixel shader can shadow sample the
 			// world position against the world space cascade matrices.
-			var uniforms = ViewUniforms();
+			var uniforms = GpuTerrainView();
 			uniforms.ChunkToWorld = data.ChunkToWorld;
 			uniforms.ViewProj = context.ViewProj;
 			uniforms.View = context.ViewMatrix;
@@ -438,7 +382,7 @@ class TerrainRenderer : Renderer
 			let maskBound = data.MaskArrayView != null;
 			uniforms.SplatParams2 = .(maskBound ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
 
-			Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(ViewUniforms));
+			Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(GpuTerrainView));
 
 			BuildDraws(context, data, projection);
 			if (mDraws.IsEmpty)
@@ -473,7 +417,7 @@ class TerrainRenderer : Renderer
 				mFrameChunkAllocations++;
 
 				var chunkUniforms = MakeChunkUniforms(data, data.Chunks[draw.ChunkIndex]);
-				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(ChunkUniforms));
+				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(GpuTerrainChunk));
 
 				let holed = data.Chunks[draw.ChunkIndex].HasHoles && (holePso != null)
 					&& (holeBindGroup != null);
@@ -556,21 +500,21 @@ class TerrainRenderer : Renderer
 			{
 				// The pick vertex shader reads the placement, the cropped projection and the
 				// id; the id sits where the colour pass keeps its view matrix.
-				var uniforms = PickViewUniforms();
+				var uniforms = GpuTerrainPickView();
 				uniforms.ChunkToWorld = data.ChunkToWorld;
 				uniforms.ViewProj = context.ViewProj;
 				uniforms.PickIndex = EntityTag.Index(data.EntityId) + 1;
 				uniforms.PickGeneration = EntityTag.Generation(data.EntityId);
-				Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(PickViewUniforms));
+				Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(GpuTerrainPickView));
 			}
 			else
 			{
 				// The depth vertex shader reads the placement and the view projection alone;
 				// the rest of the slot goes unread.
-				var uniforms = ViewUniforms();
+				var uniforms = GpuTerrainView();
 				uniforms.ChunkToWorld = data.ChunkToWorld;
 				uniforms.ViewProj = context.ViewProj;
-				Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(ViewUniforms));
+				Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(GpuTerrainView));
 			}
 
 			BuildDraws(context, data, projection);
@@ -607,7 +551,7 @@ class TerrainRenderer : Renderer
 				mFrameChunkAllocations++;
 
 				var chunkUniforms = MakeChunkUniforms(data, data.Chunks[draw.ChunkIndex]);
-				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(ChunkUniforms));
+				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(GpuTerrainChunk));
 
 				let holed = data.Chunks[draw.ChunkIndex].HasHoles && (holePso != null)
 					&& (holeBindGroup != null);
@@ -729,14 +673,14 @@ class TerrainRenderer : Renderer
 		}
 	}
 
-	private static ChunkUniforms MakeChunkUniforms(TerrainRenderData data, TerrainChunk chunk)
+	private static GpuTerrainChunk MakeChunkUniforms(TerrainRenderData data, TerrainChunk chunk)
 	{
 		// How far the skirt ring drops below the surface to plug a seam, bounded by the
 		// chunk's own relief, since a seam cannot mismatch by more than that, with a floor for
 		// near flat ground. Only ever visible AT a crack, so being generous costs nothing.
 		let skirtDepth = Math.Max(1.0f, 0.5f * (chunk.Bounds.Max.Y - chunk.Bounds.Min.Y));
 
-		var uniforms = ChunkUniforms();
+		var uniforms = GpuTerrainChunk();
 		uniforms.OriginXZ = .(chunk.Bounds.Min.X, chunk.Bounds.Min.Z);
 		uniforms.SizeXZ = .(chunk.Bounds.Max.X - chunk.Bounds.Min.X,
 			chunk.Bounds.Max.Z - chunk.Bounds.Min.Z);

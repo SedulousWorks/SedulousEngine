@@ -55,7 +55,23 @@ class MeshGpuLayoutTests
 	[Test]
 	public static void TheViewBlockFitsItsRingSlot()
 	{
+		Test.Assert(sizeof(MeshViewData) == 688, "view.hlsli's View");
 		Test.Assert(sizeof(MeshViewData) <= 1024);
+	}
+
+	/// The mirrors the passes push or upload, each the size its shader's block is
+	/// (Integration.ShaderBlocks checks them member by member).
+	[Test]
+	public static void EachPassMirrorIsItsBlocksSize()
+	{
+		Test.Assert(sizeof(GpuLight) == GpuLight.SizeInBytes);
+		Test.Assert(sizeof(GpuLocalShadow) == GpuLocalShadow.SizeInBytes);
+		Test.Assert(sizeof(TonemapPush) == 80); // twenty floats
+		Test.Assert(sizeof(FxaaPush) == 40);
+		Test.Assert(sizeof(ExposurePush) == 32);
+		Test.Assert(sizeof(DebugGeomPush) == 64);
+		Test.Assert(sizeof(DebugScreenPush) == 16);
+		Test.Assert(sizeof(GpuSpriteView) == 128);
 	}
 
 	/// The object block is handed out at a dynamic offset, whose alignment is the slot size.

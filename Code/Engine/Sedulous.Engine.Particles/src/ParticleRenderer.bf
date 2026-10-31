@@ -49,18 +49,6 @@ class ParticleRenderer : Renderer
 		public uint64 Frame;
 	}
 
-	/// The view's two matrices and the depth reconstruction coefficients, as the shader reads
-	/// them.
-	[CRepr]
-	private struct ViewUniforms
-	{
-		public Float4x4 ViewProj;
-		public Float4x4 View;
-		/// The projection terms that turn a sampled depth back into a view space one. The
-		/// fourth lane is unused: the soft fade distance rides each instance.
-		public Float4 DepthParams;
-	}
-
 	private static uint16[1] sCategories = .(RenderCategories.Transparent);
 
 	private IDevice mDevice;
@@ -249,14 +237,14 @@ class ParticleRenderer : Renderer
 
 		let projection = (context.View != null) ? context.View.Camera.Projection : Float4x4.Identity();
 
-		var viewUniforms = ViewUniforms();
+		var viewUniforms = GpuParticleView();
 		viewUniforms.ViewProj = context.ViewProj;
 		viewUniforms.View = context.ViewMatrix;
 		// The projection's depth terms (M[2][3] is nought for an orthographic projection, which the
 		// shader linearizes as such) and the soft particle fade distance.
 		viewUniforms.DepthParams = .(projection.M[2][2], projection.M[3][2], projection.M[2][3],
 			0.0f);
-		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(ViewUniforms));
+		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(GpuParticleView));
 
 		// The scene depth the soft fade reads. The transparent pass hands over the opaque
 		// depth already in a readable state; with none, the fallback stands in so the set is
