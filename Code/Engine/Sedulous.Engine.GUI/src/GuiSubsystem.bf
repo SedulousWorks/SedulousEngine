@@ -541,6 +541,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		MakeScreenTier(mScreen);
 		mOverlay = new UIWidget();
 		mOverlay.Tag = "overlays";
+		mOverlay.HitTestVisible = false; // over the screens: only what is on it takes the pointer
 		using (Node.StyleWriteScope(mOverlay))
 		{
 			mOverlay.EditLayoutStyle(scope (s) => { s.Kind = .Stack; });

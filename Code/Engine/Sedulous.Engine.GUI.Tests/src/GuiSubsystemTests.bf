@@ -397,6 +397,34 @@ class GuiSubsystemTests
 	}
 
 	[Test]
+	public static void AButtonOnAScreenAGamePushedTakesTheClickTheEmptyOverlayLayerOverItTakesNothing()
+	{
+		let engine = scope GuiTestEngine();
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		let menu = GuiTestEngine.MakeMenu("play");
+		Test.Assert(engine.Gui.Screens.Push(menu) != null);
+		menu.ReleaseRef(); // its screen holds it
+		let play = menu.FindElement("play") as Button;
+		Test.Assert(play != null);
+		int clicks = 0;
+		play.SetOnClick(new [&clicks] () => { clicks++; });
+		Test.Assert(engine.Gui.OverlayLayer != null);
+		Test.Assert(engine.Gui.OverlayCount == 0);
+		engine.Frame();
+
+		engine.Devices.FakeMouse.X = 50.0f;
+		engine.Devices.FakeMouse.Y = 30.0f;
+		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === engine.Gui.ScreenRoot);
+		Test.Assert(engine.Gui.ScreenRoot.EventDispatcher.NodeAt(.(50.0f, 30.0f)) === play);
+		engine.Devices.FakeMouse.Down = true;
+		engine.Frame();
+		engine.Devices.FakeMouse.Down = false;
+		engine.Frame();
+		Test.Assert(clicks == 1);
+	}
+
+	[Test]
 	public static void ADocumentOnTheOverlayLayerShowsAboveEveryScreenModalUntilItIsTakenOff()
 	{
 		let engine = scope GuiTestEngine();
