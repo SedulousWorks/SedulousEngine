@@ -109,7 +109,7 @@
         document.title = match[1];
         document.getElementById('loading-name').textContent = match[1];
       }
-      var own = /<string name="loadingDocumentId">([^<]*)<\/string>/.exec(text);
+      var own = /<string name="guiLoadingDocumentId">([^<]*)<\/string>/.exec(text);
       var hasOwn = own && own[1] && !/^[0-]*$/.test(own[1]);
       document.getElementById(hasOwn ? 'loading-name' : 'loading-logo').hidden = false;
     }

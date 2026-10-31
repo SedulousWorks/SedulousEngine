@@ -30,6 +30,52 @@ class ProjectManifestTests
 		RemoveDirectoryRecursive(kScratch);
 	}
 
+	/// A version 9 manifest, which carried the old UI's theme and loading document, still opens:
+	/// the two are passed by, every other setting reads, and it saves as version 10 without them.
+	[Test]
+	public static void AVersion9ManifestStillReadsItsOldUiSettingsDropped()
+	{
+		FreshScratch();
+		const String cVersion9 = """
+			<root>
+				<array name="dataVersions" count="1">
+					<u64 name="type">15697994609334965484</u64>
+					<u32 name="version">9</u32>
+				</array>
+				<object>
+					<string name="name">Old</string>
+					<string name="engineVersion">0.1.0</string>
+					<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
+					<string name="defaultScene">Scenes/Start</string>
+					<string name="startupScript"/>
+					<string name="nativeModule"/>
+					<string name="defaultInputMapId">00000000-0000-0000-0000-000000000000</string>
+					<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+					<string name="defaultUiThemeId">11111111-1111-1111-1111-111111111111</string>
+					<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
+					<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
+					<string name="loadingDocumentId">22222222-2222-2222-2222-222222222222</string>
+					<u32 name="renderMsaaSamples">4</u32>
+				</object>
+			</root>
+			""";
+		let fs = scope NativeFileSystem(kScratch);
+		Test.Assert(fs.Save("Project.xml", .((uint8*)cVersion9.Ptr, cVersion9.Length)) case .Ok);
+		let settings = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(fs, settings, "Project.xml") case .Ok);
+		Test.Assert(settings.Name == "Old");
+		Test.Assert(settings.DefaultSceneId == Guid.Parse("abf41c6a-3a62-4a4f-830f-47fb88f610ff").Get());
+		Test.Assert(settings.DefaultUiFontId == Guid.Parse("23da25e1-47fe-2044-a727-d7fbcde40a8f").Get(), "after the dropped theme");
+		Test.Assert(settings.RenderMsaaSamples == 4, "after the dropped loading document");
+		Test.Assert(!settings.GuiLoadingDocumentId.IsSet, "the old UI's document is not the GUI's");
+
+		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
+		let saved = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
+		Test.Assert(saved.Contains("<u32 name=\"version\">10</u32>"));
+		Test.Assert(!saved.Contains("defaultUiThemeId") && !saved.Contains("name=\"loadingDocumentId\""));
+	}
+
 	/// A copy goes through the settings' own serialization, so it carries every field, the
 	/// ones added after it was written too: the two manifests are the same document.
 	[Test]
@@ -41,7 +87,7 @@ class ProjectManifestTests
 		from.Name.Set("Demo");
 		from.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
 		from.DefaultScene.Set("Scenes/Main");
-		from.LoadingDocumentId = .(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		from.GuiLoadingDocumentId = .(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 		from.RenderMsaaSamples = 4;
 		from.UiFontIds.Add(.(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9));
 		from.RenderWidth = 1280;
@@ -53,7 +99,7 @@ class ProjectManifestTests
 
 		let to = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Copy(from, to) case .Ok);
-		Test.Assert((to.LoadingDocumentId == from.LoadingDocumentId) && (to.RenderMsaaSamples == 4));
+		Test.Assert((to.GuiLoadingDocumentId == from.GuiLoadingDocumentId) && (to.RenderMsaaSamples == 4));
 		Test.Assert((to.UiFontIds.Count == 1) && (to.RenderFit == .Crop) && (to.WindowMode == .Fullscreen) && !to.WindowResizable);
 		Test.Assert(to.Orientation == .Landscape);
 

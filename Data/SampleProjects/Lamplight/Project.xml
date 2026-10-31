@@ -1,7 +1,7 @@
 <root>
 	<array name="dataVersions" count="1">
 		<u64 name="type">15697994609334965484</u64>
-		<u32 name="version">9</u32>
+		<u32 name="version">10</u32>
 	</array>
 	<object>
 		<string name="name">Lamplight</string>
@@ -12,10 +12,8 @@
 		<string name="nativeModule"/>
 		<string name="defaultInputMapId">97a6f059-4e19-904a-a287-5d77506a62e9</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="defaultUiThemeId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">6d8c5968-c68f-b446-be76-b2ff79f6a746</string>
 		<string name="defaultUiFontId">3c4a941d-fc18-5d4f-b77c-a8286f4e3c2d</string>
-		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
 		<u32 name="renderMsaaSamples">1</u32>
 		<array name="uiFontIds" count="0"/>
 		<u32 name="renderWidth">0</u32>

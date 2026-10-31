@@ -117,7 +117,7 @@ static class EditorProjectTests
 		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
 
 		let sceneId = Guid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8").Get();
-		let themeId = Guid.Parse("6ba7b811-9dad-11d1-80b4-00c04fd430c8").Get();
+		let loadingId = Guid.Parse("6ba7b811-9dad-11d1-80b4-00c04fd430c8").Get();
 		let mapId = Guid.Parse("6ba7b812-9dad-11d1-80b4-00c04fd430c8").Get();
 		let fontId = Guid.Parse("6ba7b813-9dad-11d1-80b4-00c04fd430c8").Get();
 		let scriptId = Guid.Parse("6ba7b814-9dad-11d1-80b4-00c04fd430c8").Get();
@@ -128,7 +128,7 @@ static class EditorProjectTests
 			Test.Assert(!project.Settings.StartupScriptId.IsSet);
 			project.Settings.DefaultScene.Set("scenes/main");
 			project.Settings.DefaultSceneId = sceneId;
-			project.Settings.DefaultUiThemeId = themeId;
+			project.Settings.GuiLoadingDocumentId = loadingId;
 			project.Settings.DefaultInputMapId = mapId;
 			project.Settings.DefaultUiFontId = fontId;
 			project.Settings.StartupScriptId = scriptId;
@@ -142,7 +142,7 @@ static class EditorProjectTests
 			// Every guid field comes back: a per field settings move that DROPS one is
 			// silent data loss, which is what this guards.
 			Test.Assert(project.Settings.DefaultSceneId == sceneId);
-			Test.Assert(project.Settings.DefaultUiThemeId == themeId);
+			Test.Assert(project.Settings.GuiLoadingDocumentId == loadingId);
 			Test.Assert(project.Settings.DefaultInputMapId == mapId);
 			Test.Assert(project.Settings.DefaultUiFontId == fontId);
 			Test.Assert(project.Settings.StartupScriptId == scriptId);

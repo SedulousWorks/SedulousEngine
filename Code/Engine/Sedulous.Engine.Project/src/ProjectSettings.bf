@@ -20,8 +20,9 @@ namespace Sedulous.Engine.Project;
 ///
 /// FIELD ORDER IS THE WIRE: the generator walks the declaration, so inserting a field in the
 /// middle changes what existing manifests mean. Append, and bump the version when the shape
-/// has to change.
-[Serializable(9)]
+/// has to change. Version 10 dropped the old UI's theme and loading document (Engine.UI,
+/// deleted); a version 9 manifest still reads, its keyed reader passing the two by.
+[Serializable(10, false, 9)]
 class ProjectSettings
 {
 	[Setting("Name", "General")]
@@ -46,18 +47,12 @@ class ProjectSettings
 	/// The mixer layout applied at startup. Nil for the built in one.
 	[Setting("Default bus layout", "AudioBusLayoutAsset", "(built-in)", "Audio")]
 	public Guid DefaultBusLayoutId;
-	/// The cooked theme the game UI defaults to. Nil for the built in one.
-	[Setting("Default UI theme", "UIThemeAsset", "(built-in)", "UI")]
-	public Guid DefaultUiThemeId;
 	/// The cooked script class the player launches. Nil for none.
 	[Setting("Startup script", "ScriptClassAsset", "(none)", "Startup")]
 	public Guid StartupScriptId;
 	/// The cooked font the game UI defaults to. Nil for the development fallback.
 	[Setting("Default UI font", "FontAsset", "(built-in)", "UI")]
 	public Guid DefaultUiFontId;
-	/// The cooked document shown while the default scene loads. Nil for the built in splash.
-	[Setting("Loading screen", "UIDocumentAsset", "(built-in)", "Startup")]
-	public Guid LoadingDocumentId;
 
 	/// The scene pass sample count: one is off. Clamped to what the device can do at
 	/// runtime, so a project asking for more than the hardware has still runs.
@@ -105,8 +100,8 @@ class ProjectSettings
 	public List<Guid> GuiStyleSheetIds = new .() ~ delete _;
 	/// The cooked GUI document the player's boot splash shows through the engine GUI while the
 	/// default scene loads, its progress the GUI's data value `bootProgress` (0 to 1). Nil for
-	/// the UI's loading screen (LoadingDocumentId). [Appended].
-	[Appended, Setting("GUI loading screen", "GuiDocumentAsset", "(the UI's)", "Startup")]
+	/// the engine's own loading screen. [Appended].
+	[Appended, Setting("Loading screen", "GuiDocumentAsset", "(built-in)", "Startup")]
 	public Guid GuiLoadingDocumentId;
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.

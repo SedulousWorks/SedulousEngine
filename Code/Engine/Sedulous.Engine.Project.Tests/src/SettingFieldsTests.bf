@@ -36,8 +36,6 @@ class SettingFieldsTests
 			}
 			if (field.Name == "RenderMsaaSamples")
 				Test.Assert(category == "Display");
-			if (field.Name == "LoadingDocumentId")
-				Test.Assert(category == "Startup");
 			if (field.Name == "UiFontIds")
 				Test.Assert(category == "UI");
 			if (field.Name == "GuiStyleSheetIds")
@@ -72,7 +70,7 @@ class SettingFieldsTests
 			SettingFields.Key(field, keys);
 		}
 		// The engine stamp and the path mirrors are not settings.
-		Test.Assert(keys == "name,defaultSceneId,nativeModule,defaultInputMapId,defaultBusLayoutId,defaultUiThemeId,startupScriptId,defaultUiFontId,loadingDocumentId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId", keys);
+		Test.Assert(keys == "name,defaultSceneId,nativeModule,defaultInputMapId,defaultBusLayoutId,startupScriptId,defaultUiFontId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -101,16 +99,14 @@ class SettingFieldsTests
 		{
 			let setting = SettingFields.Setting(field).Value;
 			Test.Assert(!setting.Label.IsEmpty);
-			if (field.Name == "LoadingDocumentId")
+			if (field.Name == "GuiLoadingDocumentId")
 			{
 				Test.Assert(setting.Label == "Loading screen");
-				Test.Assert(setting.AssetType == "UIDocumentAsset");
+				Test.Assert(setting.AssetType == "GuiDocumentAsset");
 				Test.Assert(setting.EmptyText == "(built-in)");
 			}
 			if (field.Name == "GuiStyleSheetIds")
 				Test.Assert((setting.AssetType == "GuiStyleSheetAsset") && (setting.EmptyText == "(none)"));
-			if (field.Name == "GuiLoadingDocumentId")
-				Test.Assert((setting.AssetType == "GuiDocumentAsset") && (setting.EmptyText == "(the UI's)"));
 			if (field.Name == "WindowWidth")
 			{
 				SettingFields.CountRange(field, let least, let most);

@@ -75,11 +75,9 @@ static class ExportDriver
 		Add(settings.StartupScriptId, .StartupScript);
 		Add(settings.DefaultInputMapId, .ManifestDefault);
 		Add(settings.DefaultBusLayoutId, .ManifestDefault);
-		Add(settings.DefaultUiThemeId, .ManifestDefault);
 		Add(settings.DefaultUiFontId, .ManifestDefault);
 		for (let id in settings.UiFontIds)
 			Add(id, .ManifestDefault);
-		Add(settings.LoadingDocumentId, .ManifestDefault);
 		for (let id in settings.GuiStyleSheetIds)
 			Add(id, .ManifestDefault);
 		Add(settings.GuiLoadingDocumentId, .ManifestDefault);

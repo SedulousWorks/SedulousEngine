@@ -1,7 +1,7 @@
 <root>
 	<array name="dataVersions" count="1">
 		<u64 name="type">15697994609334965484</u64>
-		<u32 name="version">9</u32>
+		<u32 name="version">10</u32>
 	</array>
 	<object>
 		<string name="name">PaperKid</string>
@@ -12,10 +12,8 @@
 		<string name="nativeModule"/>
 		<string name="defaultInputMapId">edd0a22c-5ef7-0646-9fca-43f85d40012f</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="defaultUiThemeId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">ba2bb78e-5e43-c64d-85bd-8101fe5d230c</string>
 		<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
-		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
 		<u32 name="renderMsaaSamples">1</u32>
 		<array name="uiFontIds" count="3">
 			<string>14c23b32-0f13-4a47-9761-c4010f0cd3ae</string>

@@ -1,7 +1,7 @@
 <root>
 	<array name="dataVersions" count="1">
 		<u64 name="type">15697994609334965484</u64>
-		<u32 name="version">9</u32>
+		<u32 name="version">10</u32>
 	</array>
 	<object>
 		<string name="name">Platformer</string>
@@ -12,10 +12,8 @@
 		<string name="nativeModule"/>
 		<string name="defaultInputMapId">ddc8a18e-d7bf-2849-a2b7-540ed7ddc674</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="defaultUiThemeId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">cdc1ed58-4cc2-184f-9021-aca36cc0f5f8</string>
 		<string name="defaultUiFontId">8be6cf88-845d-6847-b584-8df8343df0f4</string>
-		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
 		<u32 name="renderMsaaSamples">4</u32>
 		<array name="uiFontIds" count="1">
 			<string>038822bb-8eab-b648-a0cd-d78421a6353d</string>

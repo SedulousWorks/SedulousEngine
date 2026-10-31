@@ -13,7 +13,7 @@ enum ExportRootReason
 	case Flag;
 	/// An instance under a group flagged "Always export contents".
 	case Group;
-	/// A manifest default reference: input map, bus layout, UI theme, UI font.
+	/// A manifest default reference: input map, bus layout, UI font, loading screen.
 	case ManifestDefault;
 
 	public StringView Name
