@@ -35,11 +35,8 @@ class TonemapPass
 	private ISampler mSampler = null;
 
 	private IBindGroup[cMaxSlots] mBindGroups = .();
-	private ITextureView[cMaxSlots] mBindGroupHdr = .();
-	private ITextureView[cMaxSlots] mBindGroupBloom = .();
-	private ITextureView[cMaxSlots] mBindGroupAo = .();
-	/// The transient generation the cached group was built for.
-	private uint64[cMaxSlots] mBindGroupGeneration = .();
+	/// What each slot's group was built from.
+	private BindGroupInputs<5>[cMaxSlots] mBindGroupInputs = .();
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
@@ -173,18 +170,15 @@ class TonemapPass
 				builder.SetExecute(new (encoder) =>
 					{
 						let hdrView = graph.GetTextureView(hdr);
-						// The generation MIXES every input's, so a change in any of them
-						// rebuilds the group: an address that came back around would
-						// otherwise leave it pointing at a destroyed texture.
-						let generation = graph.GetTextureGeneration(hdr)
-							^ (graph.GetTextureGeneration(bloom) &* 1099511628211UL)
-							^ (graph.GetTextureGeneration(ao) &* 14695981039346656037UL)
-							^ (autoGeneration &* 31UL) ^ (lutUid &* 131071UL);
-
-						let bindGroup = EnsureBindGroup(slot, hdrView,
-							graph.GetTextureView(bloom), graph.GetTextureView(ao),
-							(autoView != null) ? autoView : hdrView,
-							(lutView != null) ? lutView : hdrView, generation);
+						let hdrGeneration = graph.GetTextureGeneration(hdr);
+						var inputs = BindGroupInputs<5>();
+						inputs.Set(0, hdrView, hdrGeneration);
+						inputs.Set(1, graph.GetTextureView(bloom), graph.GetTextureGeneration(bloom));
+						inputs.Set(2, graph.GetTextureView(ao), graph.GetTextureGeneration(ao));
+						// Unused bindings take the HDR view, as the layout needs a texture there.
+						inputs.Set(3, (autoView != null) ? autoView : hdrView, (autoView != null) ? autoGeneration : hdrGeneration);
+						inputs.Set(4, (lutView != null) ? lutView : hdrView, (lutView != null) ? lutUid : hdrGeneration);
+						let bindGroup = EnsureBindGroup(slot, inputs);
 						if (bindGroup == null)
 							return;
 
@@ -273,34 +267,29 @@ class TonemapPass
 		return pipeline;
 	}
 
-	/// One group per (view, frame) slot over its own inputs, rebuilt when the GENERATION
-	/// changes.
-	///
-	/// Comparing the views alone is not enough: a freed view's address is reused by the next
-	/// allocation, which would leave a cached group pointing at a destroyed texture.
-	private IBindGroup EnsureBindGroup(int slot, ITextureView hdrView, ITextureView bloomView,
-		ITextureView aoView, ITextureView autoView, ITextureView lutView, uint64 generation)
+	/// One group per (view, frame) slot, kept while EVERY input is the same view of the same
+	/// texture (BindGroupInputs: the HDR, bloom and AO transients, the adapted exposure and the
+	/// grading LUT, each with its generation). One generation folded from them all collided: the
+	/// exposure's two ping pong textures, folded in with the transients', could land on last
+	/// frame's value, and the group kept the other exposure texture, so every other frame showed
+	/// a stale exposure.
+	private IBindGroup EnsureBindGroup(int slot, BindGroupInputs<5> inputs)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots))
-			return null;
-		if ((hdrView == null) || (bloomView == null) || (aoView == null) || (autoView == null)
-			|| (lutView == null))
+		if ((slot < 0) || (slot >= cMaxSlots) || !inputs.Complete)
 			return null;
 
-		if ((mBindGroups[slot] != null) && (mBindGroupHdr[slot] == hdrView)
-			&& (mBindGroupBloom[slot] == bloomView) && (mBindGroupAo[slot] == aoView)
-			&& (mBindGroupGeneration[slot] == generation))
+		if ((mBindGroups[slot] != null) && mBindGroupInputs[slot].Matches(inputs))
 			return mBindGroups[slot];
 
 		if (mBindGroups[slot] != null)
 			mDevice.DestroyBindGroup(ref mBindGroups[slot]);
 
 		var entries = BindGroupEntry[6](
-			BindGroupEntry.TextureEntry(hdrView),
-			BindGroupEntry.TextureEntry(bloomView),
-			BindGroupEntry.TextureEntry(aoView),
-			BindGroupEntry.TextureEntry(autoView),
-			BindGroupEntry.TextureEntry(lutView),
+			BindGroupEntry.TextureEntry(inputs.Views[0]),
+			BindGroupEntry.TextureEntry(inputs.Views[1]),
+			BindGroupEntry.TextureEntry(inputs.Views[2]),
+			BindGroupEntry.TextureEntry(inputs.Views[3]),
+			BindGroupEntry.TextureEntry(inputs.Views[4]),
 			BindGroupEntry.SamplerEntry(mSampler));
 
 		var desc = BindGroupDesc();
@@ -311,10 +300,7 @@ class TonemapPass
 			return null;
 
 		mBindGroups[slot] = bindGroup;
-		mBindGroupHdr[slot] = hdrView;
-		mBindGroupBloom[slot] = bloomView;
-		mBindGroupAo[slot] = aoView;
-		mBindGroupGeneration[slot] = generation;
+		mBindGroupInputs[slot] = inputs;
 		return bindGroup;
 	}
 
