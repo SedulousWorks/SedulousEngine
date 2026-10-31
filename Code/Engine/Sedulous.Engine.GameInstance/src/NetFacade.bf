@@ -98,6 +98,23 @@ class NetFacade : IScriptEntityScene
 	/// itself completes later.
 	[Scriptable]
 	public bool Connect(StringView host, int32 port) => (mController != null) && mController.Connect(host, (uint16)port);
+	/// Host: joiners wait for Ready before they hear any state (NetworkManager.SetWaitForReady):
+	/// a game whose joiner loads the host's map after connecting. Called once hosting.
+	[Scriptable]
+	public void WaitForReady(bool wait)
+	{
+		if (Endpoint != null)
+			Endpoint.SetWaitForReady(wait);
+	}
+
+	/// Client: its scene is the host's, loaded; the host's state starts, from a full snapshot.
+	[Scriptable]
+	public void Ready()
+	{
+		if (Endpoint != null)
+			Endpoint.SendReady();
+	}
+
 	/// Leaves: the session and its socket close.
 	[Scriptable]
 	public void Disconnect()

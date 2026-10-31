@@ -196,4 +196,84 @@ class ReplicationWiringTests
 		let transform = clientScene.GetLocalTransform(clientEntity);
 		Test.Assert(Near(transform.Position, .(4, 5, 6)));
 	}
+
+	/// A joiner that loads the host's map after connecting (Masquerade: the host's map comes in
+	/// its welcome): with the host waiting for ready, the joiner hears RPCs but no state until it
+	/// says it is ready, and then gets everything from a full snapshot, an entity made before its
+	/// ready included.
+	[Test]
+	public static void AHeldJoinerHearsNoStateUntilItsReadyThenAllOfIt()
+	{
+		SimConditions conditions = .();
+		conditions.LatencyMs = 15.0f;
+		conditions.Seed = 11;
+
+		let network = scope SimDatagramNetwork(conditions);
+		let serverSocket = network.CreateSocket();
+		let server = scope NetworkManager(serverSocket);
+		let client = scope NetworkManager(network.CreateSocket());
+		server.SetWaitForReady(true);
+
+		let serverScene = scope Scene("server");
+		serverScene.AddSystem<NetworkComponentManager>();
+		let serverMovers = serverScene.AddSystem<RepMoverManager>();
+		server.SetReplicatedScene(serverScene);
+		let clientScene = scope Scene("client");
+		clientScene.AddSystem<NetworkComponentManager>();
+		clientScene.AddSystem<RepMoverManager>();
+		client.SetReplicatedScene(clientScene);
+
+		var welcomed = false;
+		client.Rpc.On("map", new [&welcomed](sender, args) => { welcomed = true; });
+		server.StartServer(true);
+		client.ConnectTo(serverSocket.LocalEndpoint);
+		for (int i = 0; (i < 60) && (server.Session.PeerCount == 0); i++)
+			Pump(network, server, client);
+		Test.Assert(server.Session.PeerCount == 1);
+		let joiner = server.Session.Peers[0].Id;
+		Test.Assert(server.IsHeld(joiner));
+
+		// State on the host while the joiner is held: none of it reaches the joiner, an RPC does.
+		let entity = serverScene.CreateEntity("Unit");
+		var moving = serverMovers.Add(entity);
+		moving.Health = 42;
+		let id = server.Replication.AssignNetworkId(serverScene, entity);
+		Test.Assert(id.IsValid);
+		server.Rpc.Call(server.Session, joiner, "map");
+		for (int i < 60)
+			Pump(network, server, client);
+		Test.Assert(welcomed);
+		Test.Assert(!clientScene.IsValid(client.Replication.FindEntity(id)));
+
+		// Ready: the host lets it go, and the next state is the whole of it.
+		client.SendReady();
+		var mirror = EntityHandle.Invalid;
+		for (int i = 0; (i < 200) && !clientScene.IsValid(mirror); i++)
+		{
+			Pump(network, server, client);
+			mirror = client.Replication.FindEntity(id);
+		}
+		Test.Assert(!server.IsHeld(joiner));
+		Test.Assert(clientScene.IsValid(mirror));
+		let mirrored = clientScene.GetSystem<RepMoverManager>().Get(mirror);
+		Test.Assert(mirrored != null);
+		Test.Assert(mirrored.Health == 42);
+	}
+
+	/// The default: a host that does not wait sends state at once, as before.
+	[Test]
+	public static void AHostThatDoesNotWaitForReadyHoldsNoJoiner()
+	{
+		let network = scope SimDatagramNetwork(SimConditions());
+		let serverSocket = network.CreateSocket();
+		let server = scope NetworkManager(serverSocket);
+		let client = scope NetworkManager(network.CreateSocket());
+		Test.Assert(!server.WaitsForReady);
+		server.StartServer(true);
+		client.ConnectTo(serverSocket.LocalEndpoint);
+		for (int i = 0; (i < 60) && (server.Session.PeerCount == 0); i++)
+			Pump(network, server, client);
+		Test.Assert(server.Session.PeerCount == 1);
+		Test.Assert(!server.IsHeld(server.Session.Peers[0].Id));
+	}
 }

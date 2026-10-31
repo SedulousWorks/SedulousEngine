@@ -175,6 +175,10 @@ client, its own join once welcomed, and the host leaving as player nought). The 
 one player with `Net.RpcTo`, `Net.RpcNumberTo` and `Net.RpcTextTo`, and spawns a prefab a
 player owns with `Net.SpawnFor(player, prefab, position)`; `Net.IsMine(entity)` says whether
 an entity is this game's own. On a client every message's sender is the host, nought.
+A joiner that loads the host's map after connecting can wait for it: the host calls
+`Net.WaitForReady(true)` once hosting, and a client then hears no state, only messages (the
+host's welcome naming the map), until it calls `Net.Ready()`; its first state is then the
+whole snapshot. Off by default: state flows at once.
 Offline every call does nothing.
 
 ## Saving

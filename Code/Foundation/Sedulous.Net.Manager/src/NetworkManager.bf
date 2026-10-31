@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Net;
 using Sedulous.Net.Replication;
@@ -186,6 +187,10 @@ class NetworkManager
 	private PlayerEvents mPlayerEvents = null ~ delete _;
 	/// Client: the welcome has been reported.
 	private bool mWelcomed = false;
+	/// Host: joiners wait for their ready before any state.
+	private bool mWaitForReady = false;
+	/// Host: joined, not yet ready.
+	private HashSet<PeerId> mHeld = new .() ~ delete _;
 
 	/// Who hears players join and leave. On the host: a client joined or left. On a client:
 	/// it joined itself (its own id, once the server welcomed it), or the host left (nought).
@@ -207,6 +212,35 @@ class NetworkManager
 			mPlayerEvents(false, event.Peer);
 		else if (mSession.IsClient && (event.Kind == .Disconnected))
 			mPlayerEvents(false, 0); // the host went
+	}
+
+	/// Host: whether a client that joins waits for its ready (SendReady) before it hears any
+	/// state: a game whose joiner loads the host's map after connecting holds the state off until
+	/// the map's networked entities are there to take it. Off by default (state flows at once).
+	/// RPCs are never held: the host's welcome (naming its map, say) reaches a held joiner.
+	public bool WaitsForReady => mWaitForReady;
+	public void SetWaitForReady(bool wait) => mWaitForReady = wait;
+
+	/// Host: whether a client is held (joined, not yet ready).
+	public bool IsHeld(PeerId peer) => mHeld.Contains(peer);
+
+	/// Client: tells the host this end is ready for state (its scene loaded). The host forgets
+	/// what it last sent it, so the state starts from a full snapshot. Harmless to a host that
+	/// does not wait (its baseline restarts: one full snapshot more).
+	public void SendReady()
+	{
+		if (!mSession.IsClient)
+			return;
+		var ready = (uint8)1;
+		for (let peer in mSession.Peers)
+			mSession.Send(peer.Id, ReplicationChannel, .(&ready, 1), .ReliableOrdered);
+	}
+
+	/// A held client said it is ready: its baseline goes, so its first delta is everything.
+	private void ReleasePeer(PeerId peer)
+	{
+		mHeld.Remove(peer);
+		mReplication.ForgetPeer(peer);
 	}
 
 	/// The scene this endpoint replicates; null is none.
@@ -244,6 +278,14 @@ class NetworkManager
 					continue;
 				}
 
+				if ((event.Kind == .Received) && (event.Channel == ReplicationChannel) && mSession.IsServer)
+				{
+					// The one message a client sends on this channel: it is ready (its scene is
+					// the host's, loaded). Its state starts now, from a full snapshot.
+					ReleasePeer(event.Peer);
+					continue;
+				}
+
 				if ((event.Kind == .Received) && (event.Channel == ReplicationChannel))
 				{
 					if (mScene == null)
@@ -261,7 +303,12 @@ class NetworkManager
 				}
 
 				if (event.Kind == .Disconnected)
+				{
 					mReplication.ForgetPeer(event.Peer);
+					mHeld.Remove(event.Peer);
+				}
+				else if ((event.Kind == .Connected) && mSession.IsServer && mWaitForReady)
+					mHeld.Add(event.Peer); // no state until it says it is ready
 				if ((event.Kind == .Connected) || (event.Kind == .Disconnected))
 					ReportPlayer(event);
 				if (onEvent != null)
@@ -298,6 +345,8 @@ class NetworkManager
 				let bits = *(uint64*)&now;
 				for (let peer in mSession.Peers)
 				{
+					if (mHeld.Contains(peer.Id))
+						continue; // joined, not ready: its scene is not the host's yet
 					let writer = new BitWriter();
 					// The server's capture time rides AHEAD of the delta.
 					writer.WriteU64(bits);
