@@ -6,6 +6,7 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Scene.Pipeline;
 using Sedulous.Materials;
+using Sedulous.Model.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.ModelImporter;
 using Sedulous.Editor.Core;
@@ -64,6 +65,19 @@ class ModelManifestThumbnailGenerator : ISceneThumbnailGenerator
 				let component = meshes.Add(entities[i]);
 				component.Mesh.SetId(manifest.MeshGuid[meshIndex]);
 				ModelPrefab.BindMeshMaterials(manifest, meshIndex, component.Materials);
+			}
+			// A skinned mesh in its skeleton's space, as the model's prefab puts it (after every
+			// node has its parent, as a skeleton's parent may come later in the list).
+			for (int i < nodeCount)
+			{
+				let meshIndex = manifest.NodeMesh[i];
+				if ((meshIndex < 0) || (meshIndex >= manifest.MeshSkinned.Count) || !manifest.MeshSkinned[meshIndex])
+					continue;
+				let parent = ModelPlacement.SkinnedMeshParent(manifest.NodeParent, manifest.SkeletonParentNode, i);
+				if (parent == ModelPlacement.cSkinnedMeshKeepsPlace)
+					continue;
+				stage.SetParent(entities[i], (parent >= 0) ? entities[parent] : root, false);
+				stage.SetLocalTransform(entities[i], .());
 			}
 			SceneResolve.ResolveSceneResources(stage, resources);
 			ThumbnailStaging.AddSun(stage);

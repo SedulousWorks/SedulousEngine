@@ -12,6 +12,9 @@ using Sedulous.Scene.Pipeline;
 using Sedulous.ModelImporter;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
+using Sedulous.Materials;
+using Sedulous.Model.Resource;
+using Sedulous.Resource;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -397,5 +400,37 @@ class ModelPrefabTests
 		Test.Assert(regen.Instance != null);
 		Test.Assert(regen.Regenerated);
 		Test.Assert(regen.Instance.Id == sceneId);
+	}
+
+	/// A mesh binds its own material slots, the whole list only without them: the rule the
+	/// prefab and the editor's model thumbnail share (ModelPrefab.BindMeshMaterials).
+	[Test]
+	public static void AMeshBindsItsOwnMaterialSlotsTheWholeListOnlyWithoutThem()
+	{
+		let manifest = scope ModelManifestSource();
+		let a = Guid(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let b = Guid(2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let c = Guid(3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		manifest.MaterialGuid.Add(a);
+		manifest.MaterialGuid.Add(b);
+		manifest.MaterialGuid.Add(c);
+		int32[3] slots = .(2, 0, 7); // 7 is out of range: nil, never another mesh's material
+		manifest.AddMeshMaterialSlots(.(&slots[0], slots.Count));
+		manifest.AddMeshMaterialSlots(.());
+
+		let ids = scope List<Ref<Material>>();
+		ModelPrefab.BindMeshMaterials(manifest, 0, ids);
+		Test.Assert(ids.Count == 3);
+		Test.Assert(ids[0].Id == c, "submesh 0 draws slot 0, the model's third material");
+		Test.Assert(ids[1].Id == a);
+		Test.Assert(ids[2].Id == Guid.Empty);
+
+		// No slots (a manifest recording none, or a mesh past the list): the model wide list, in order.
+		ids.Clear();
+		ModelPrefab.BindMeshMaterials(manifest, 1, ids);
+		Test.Assert((ids.Count == 3) && (ids[0].Id == a));
+		ids.Clear();
+		ModelPrefab.BindMeshMaterials(manifest, 5, ids);
+		Test.Assert(ids.Count == 3);
 	}
 }

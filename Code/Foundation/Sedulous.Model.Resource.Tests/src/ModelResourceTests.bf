@@ -209,6 +209,10 @@ class ModelResourceTests
 		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 3, 3) == ModelPlacement.cSkinnedMeshKeepsPlace, "the mesh node itself");
 		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 4, 3) == ModelPlacement.cSkinnedMeshKeepsPlace, "below the mesh node");
 
+		// The same rule over a manifest's node parents, as an editor thumbnail reads them.
+		Test.Assert(ModelPlacement.SkinnedMeshParent(Span<int32>(&parents[0], parents.Count), 1, 3) == 1);
+		Test.Assert(ModelPlacement.SkinnedMeshParent(Span<int32>(&parents[0], parents.Count), 4, 3) == ModelPlacement.cSkinnedMeshKeepsPlace);
+
 		// A cycle (1 > 2 > 1) ends at the node count instead of hanging.
 		nodes[1].ParentIndex = 2;
 		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 1, 3) == 1);

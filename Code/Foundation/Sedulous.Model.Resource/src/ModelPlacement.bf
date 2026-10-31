@@ -18,15 +18,23 @@ static class ModelPlacement
 	/// cSkinnedMeshKeepsPlace when it stays: the parent is not known (data before version 3) or is
 	/// the mesh node or below it. The walk up is bounded by the node count (a malformed cycle).
 	public static int32 SkinnedMeshParent(Span<ModelNode> nodes, int32 skeletonParentNode, int meshNode)
+		=> Walk(nodes.Length, skeletonParentNode, meshNode, scope (i) => nodes[i].ParentIndex);
+
+	/// The same rule over a manifest's node parents (ModelManifestSource.NodeParent), which an
+	/// editor thumbnail reads without building the nodes.
+	public static int32 SkinnedMeshParent(Span<int32> nodeParents, int32 skeletonParentNode, int meshNode)
+		=> Walk(nodeParents.Length, skeletonParentNode, meshNode, scope (i) => nodeParents[i]);
+
+	private static int32 Walk(int nodeCount, int32 skeletonParentNode, int meshNode, delegate int32(int node) parentOf)
 	{
-		if ((skeletonParentNode < -1) || (skeletonParentNode >= nodes.Length))
+		if ((skeletonParentNode < -1) || (skeletonParentNode >= nodeCount))
 			return cSkinnedMeshKeepsPlace;
 		var node = skeletonParentNode;
-		for (int steps = 0; (node >= 0) && (node < nodes.Length) && (steps <= nodes.Length); steps++)
+		for (int steps = 0; (node >= 0) && (node < nodeCount) && (steps <= nodeCount); steps++)
 		{
 			if (node == meshNode)
 				return cSkinnedMeshKeepsPlace;
-			node = nodes[node].ParentIndex;
+			node = parentOf(node);
 		}
 		return skeletonParentNode;
 	}
