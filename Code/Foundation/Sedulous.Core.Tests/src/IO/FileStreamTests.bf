@@ -249,4 +249,44 @@ class FileStreamTests
 		RemoveDirectoryRecursive(kScratch);
 	}
 
+	/// A file lock is held by one handle at a time, even another in this process, and the locked
+	/// file's own bytes still read through another handle (what a second tool reads to say who
+	/// holds it). Unlocking or closing hands it over.
+	[Test]
+	public static void AFileLockIsHeldByOneHandleAtATimeAndTheFileStaysReadable()
+	{
+		let path = PathJoin(kScratch, "lock.tmp", .. scope String());
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+		{
+			let file = scope FileStream(path, .Write);
+			Test.Assert(file.IsValid);
+			uint8[5] text = .((.)'1', (.)'2', (.)'3', (.)'4', (.)'\n');
+			Test.Assert(file.Write(.(&text[0], 5)) == 5);
+		}
+
+		let first = scope FileStream(path, .ReadWrite);
+		let second = scope FileStream(path, .ReadWrite);
+		Test.Assert(first.IsValid && second.IsValid);
+		Test.Assert(first.TryLock());
+		Test.Assert(!second.TryLock(), "another handle, even in this process");
+
+		{
+			let reader = scope FileStream(path, .Read);
+			Test.Assert(reader.IsValid);
+			uint8[8] buffer = default;
+			Test.Assert(reader.Read(.(&buffer[0], 5)) == 5);
+			Test.Assert(buffer[0] == (.)'1');
+		}
+
+		first.Unlock();
+		Test.Assert(second.TryLock(), "released: the other takes it");
+		Test.Assert(!first.TryLock());
+		second.Close(); // closing releases it too
+		Test.Assert(first.TryLock());
+		first.Close();
+		Test.Assert(!first.TryLock(), "a closed stream takes none");
+
+		RemoveDirectoryRecursive(kScratch);
+	}
 }

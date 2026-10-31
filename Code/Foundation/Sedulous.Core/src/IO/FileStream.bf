@@ -101,4 +101,74 @@ class FileStream : IStream
 			mIsValid = false;
 		}
 	}
+
+	/// An exclusive lock on the open file, without waiting: true when taken, false when another
+	/// handle holds it, in this process or another. It lasts until Unlock, the close, or the
+	/// process's end (a crash included), so a lock is never left behind, as a lock file with a
+	/// process id is when its holder crashes. Advisory: it stops other lockers, not readers or
+	/// writers. For one-writer files (a tool's library).
+	public bool TryLock()
+	{
+		if (!mIsValid)
+			return false;
+#if BF_PLATFORM_WINDOWS
+		var range = LockRange();
+		return LockFileEx((void*)mFile.Handle, cLockFileExclusiveLock | cLockFileFailImmediately, 0, 1, 0, &range) != 0;
+#else
+		// flock belongs to the open file description: a second open, in this process or
+		// another, conflicts; the lock goes with the last descriptor of this one.
+		return flock((int32)mFile.Handle, cLockExclusive | cLockNonBlocking) == 0;
+#endif
+	}
+
+	/// Lets go of the lock TryLock took; nothing when there is none.
+	public void Unlock()
+	{
+		if (!mIsValid)
+			return;
+#if BF_PLATFORM_WINDOWS
+		var range = LockRange();
+		UnlockFileEx((void*)mFile.Handle, 0, 1, 0, &range);
+#else
+		flock((int32)mFile.Handle, cLockUnlock);
+#endif
+	}
+
+#if BF_PLATFORM_WINDOWS
+	[CRepr]
+	private struct Overlapped
+	{
+		public uint Internal;
+		public uint InternalHigh;
+		public uint32 Offset;
+		public uint32 OffsetHigh;
+		public void* Event;
+	}
+
+	private const uint32 cLockFileFailImmediately = 0x1;
+	private const uint32 cLockFileExclusiveLock = 0x2;
+
+	/// The byte the lock covers: far past any content, since a Win32 range lock is mandatory
+	/// (it would stop other handles reading the bytes it covers), and locking past the end of a
+	/// file is allowed.
+	private static Overlapped LockRange()
+	{
+		Overlapped range = default;
+		range.Offset = 0xFFFFFFFE;
+		range.OffsetHigh = 0x7FFFFFFF;
+		return range;
+	}
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 LockFileEx(void* file, uint32 flags, uint32 reserved, uint32 bytesLow, uint32 bytesHigh, Overlapped* overlapped);
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 UnlockFileEx(void* file, uint32 reserved, uint32 bytesLow, uint32 bytesHigh, Overlapped* overlapped);
+#else
+	private const int32 cLockExclusive = 2;
+	private const int32 cLockNonBlocking = 4;
+	private const int32 cLockUnlock = 8;
+
+	[CLink]
+	private static extern int32 flock(int32 fd, int32 operation);
+#endif
 }
