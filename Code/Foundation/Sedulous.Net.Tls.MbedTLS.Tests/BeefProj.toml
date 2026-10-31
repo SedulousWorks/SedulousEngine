@@ -8,5 +8,6 @@ StartupObject = "Sedulous.Net.Tls.MbedTLS.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Net" = "*"
 "Sedulous.Net.Tls" = "*"
 "Sedulous.Net.Tls.MbedTLS" = "*"

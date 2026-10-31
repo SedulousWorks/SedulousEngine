@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Net.Tls.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Net" = "*"
 
 # The Windows ROOT store (CertOpenSystemStoreW).
 [Configs.Debug.Win64]

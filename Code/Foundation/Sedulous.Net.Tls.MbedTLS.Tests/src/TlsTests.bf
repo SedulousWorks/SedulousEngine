@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
+using Sedulous.Net;
 using Sedulous.Net.Tls;
 using Sedulous.Net.Tls.MbedTLS;
 
@@ -11,7 +13,8 @@ namespace Sedulous.Net.Tls.MbedTLS.Tests;
 /// 1.3, and 1.2 when asked), ALPN agreed, plaintext written before the handshake held and
 /// delivered; the client refusing a certificate for another name, one it does not trust, and an
 /// expired one, each saying why; a close seen by the peer; a configuration that cannot work
-/// failing with its reason; the system's roots read where the box has them.
+/// failing with its reason; the system's roots read where the box has them. Then a TLS server and
+/// client over loopback sockets (TlsStream), and the plain stream.
 class TlsTests
 {
 	private class Certificate
@@ -235,5 +238,134 @@ class TlsTests
 		Test.Assert(client.State == .Handshaking, scope String(client.Failure));
 		let hello = scope List<uint8>();
 		Test.Assert(client.TakeOutgoing(hello) > 0, "its ClientHello");
+	}
+
+	/// Pumps both streams until `done` holds or about two seconds pass.
+	private static bool PumpUntil(INetByteStream a, INetByteStream b, delegate bool() done)
+	{
+		for (int i < 2000)
+		{
+			a.Pump();
+			b.Pump();
+			if (done())
+				return true;
+			Thread.Sleep(1);
+		}
+		return false;
+	}
+
+	private static void ReceiveAll(INetByteStream stream, int want, INetByteStream other, String outText)
+	{
+		uint8[4096] buffer = ?;
+		PumpUntil(stream, other, scope [&]() =>
+			{
+				while (true)
+				{
+					let n = stream.Receive(.(&buffer[0], buffer.Count));
+					if (n <= 0)
+						break;
+					outText.Append(StringView((char8*)&buffer[0], (int)n));
+				}
+				return outText.Length >= want;
+			});
+	}
+
+	/// A client connected to a loopback listener, and the server's side of it accepted; the
+	/// caller owns both.
+	private static bool Connect(TcpListener listener, out TcpSocket client, out TcpSocket server)
+	{
+		client = TcpSocket.Connect("127.0.0.1", listener.BoundPort);
+		server = null;
+		for (int i < 2000)
+		{
+			server = listener.Accept();
+			if (server != null)
+				break;
+			Thread.Sleep(1);
+		}
+		return client.IsOpen && (server != null);
+	}
+
+	[Test]
+	public static void ATlsServerAndClientOverLoopbackSocketsDataBothWaysAClose()
+	{
+		let cert = scope Certificate("localhost");
+		let backend = scope MbedTlsBackend();
+		let listener = scope TcpListener(0, true);
+		Test.Assert(listener.IsOpen);
+		let connected = Connect(listener, let clientSocket, let serverSocket);
+		Test.Assert(connected);
+		let serverConfig = scope TlsServerConfig();
+		serverConfig.CertificateChainPem.Set(cert.Pem);
+		serverConfig.PrivateKeyPem.Set(cert.Key);
+		let server = scope TlsStream(serverSocket, backend.CreateServer(serverConfig));
+		let client = scope TlsStream(clientSocket, backend.CreateClient(Trusting(cert, "localhost", scope .())));
+
+		// Written before the handshake: held, then sent.
+		Test.Assert(client.Send(Bytes("ping")) == 4);
+		Test.Assert(PumpUntil(client, server, scope () => client.Ready && server.Ready), scope String(client.Failure));
+		Test.Assert(ReceiveAll(server, 4, client, .. scope .()) == "ping");
+
+		let big = scope String();
+		for (int i < 100000)
+			big.Append(((i % 61) == 60) ? '\n' : 'y');
+		Test.Assert(server.Send(Bytes(big)) == big.Length);
+		Test.Assert(ReceiveAll(client, big.Length, server, .. scope .()) == big);
+
+		client.Close();
+		uint8[16] b = ?;
+		Test.Assert(PumpUntil(server, client, scope [&]() => server.Receive(.(&b[0], b.Count)) < 0));
+	}
+
+	[Test]
+	public static void AClientRefusingTheServersCertificateFailsOverSocketsTooSayingWhy()
+	{
+		let cert = scope Certificate("localhost");
+		let backend = scope MbedTlsBackend();
+		let listener = scope TcpListener(0, true);
+		let connected = Connect(listener, let clientSocket, let serverSocket);
+		Test.Assert(connected);
+		let serverConfig = scope TlsServerConfig();
+		serverConfig.CertificateChainPem.Set(cert.Pem);
+		serverConfig.PrivateKeyPem.Set(cert.Key);
+		let server = scope TlsStream(serverSocket, backend.CreateServer(serverConfig));
+		let client = scope TlsStream(clientSocket, backend.CreateClient(Trusting(cert, "example.com", scope .())));
+		Test.Assert(PumpUntil(client, server, scope () => !client.Pump()));
+		Test.Assert(!client.Ready);
+		Test.Assert(client.Failure.Contains("refused", true), scope String(client.Failure));
+	}
+
+	[Test]
+	public static void ABareSocketAsAStreamTheSameConventions()
+	{
+		let listener = scope TcpListener(0, true);
+		let connected = Connect(listener, let clientSocket, let serverSocket);
+		Test.Assert(connected);
+		let client = scope PlainStream(clientSocket);
+		let server = scope PlainStream(serverSocket);
+		Test.Assert(client.Send(Bytes("hello")) == 5);
+		Test.Assert(PumpUntil(client, server, scope () => client.Ready && server.Ready));
+		Test.Assert(ReceiveAll(server, 5, client, .. scope .()) == "hello");
+		client.Close();
+		uint8[16] b = ?;
+		Test.Assert(PumpUntil(server, client, scope [&]() => server.Receive(.(&b[0], b.Count)) < 0));
+
+		// Nothing listening (a port whose listener has gone): the connect fails, said so.
+		uint16 port = 0;
+		{
+			let gone = scope TcpListener(0, true);
+			port = gone.BoundPort;
+		}
+		let nowhere = scope PlainStream(TcpSocket.Connect("127.0.0.1", port));
+		var ended = false;
+		for (int i < 2000)
+		{
+			ended = !nowhere.Pump();
+			if (ended)
+				break;
+			Thread.Sleep(1);
+		}
+		Test.Assert(ended);
+		Test.Assert(nowhere.Failure.Contains("could not be made", true), scope String(nowhere.Failure));
 	}
 }
