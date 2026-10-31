@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using Sedulous.Core.IO;
 using Sedulous.Shell;
+using Sedulous.Image;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -31,7 +32,7 @@ class EditorSplashTests
 
 	private static Pixel At(EditorSplash splash, uint32 x, uint32 y)
 	{
-		let i = ((int)y * (int)EditorSplash.cWidth + (int)x) * 4;
+		let i = ((int)y * (int)splash.Width + (int)x) * 4;
 		return .(splash.Pixels[i], splash.Pixels[i + 1], splash.Pixels[i + 2]);
 	}
 
@@ -83,7 +84,7 @@ class EditorSplashTests
 		let logo = scope List<uint8>();
 		for (int i < 20 * 10)
 			logo..Add(255)..Add(0)..Add(0)..Add(255);
-		let splash = scope EditorSplash(null, null, logo, 20, 10, font, "Version 0.1.0");
+		let splash = scope EditorSplash(null, null, logo, 20, 10, font, "Version 0.1.0", 1.0f);
 		Test.Assert(splash.Pixels.Length == (int)EditorSplash.cWidth * (int)EditorSplash.cHeight * 4);
 		let background = At(splash, EditorSplash.cWidth / 2, 20);
 
@@ -112,6 +113,70 @@ class EditorSplashTests
 		splash.Step("Ready", 2.0f); // clamped
 		Test.Assert(splash.Progress == 1.0f);
 		Test.Assert(At(splash, 40 + 470, cBarY).R == 0xF5);
+	}
+
+	/// On a scaled display the splash is drawn at the scale (a 175% monitor showed it small):
+	/// twice the size at 200%, its layout and its text with it.
+	[Test]
+	public static void AtADisplayScaleItIsThatMuchLargerItsLayoutAndTextWithIt()
+	{
+		let fontPath = scope String();
+		Test.Assert(TestFont.FindPath(fontPath));
+		let font = new List<uint8>();
+		Test.Assert(File.ReadAll(fontPath, font) case .Ok);
+		// The logo at the scale's size: an opaque red block, 40 x 20.
+		let logo = scope List<uint8>();
+		for (int i < 40 * 20)
+			logo..Add(255)..Add(0)..Add(0)..Add(255);
+		let splash = scope EditorSplash(null, null, logo, 40, 20, font, "Version 0.1.0", 2.0f);
+		Test.Assert(splash.Width == EditorSplash.cWidth * 2);
+		Test.Assert(splash.Height == EditorSplash.cHeight * 2);
+		Test.Assert(splash.Pixels.Length == (int)splash.Width * (int)splash.Height * 4);
+		let background = At(splash, splash.Width / 2, 40);
+		Test.Assert(At(splash, splash.Width / 2, 178).R == 255); // the logo, at twice its 100% place (89)
+
+		splash.Step("Opening Level1", 0.5f);
+		const uint32 cBarY = 255 * 2;
+		Test.Assert(At(splash, 80 + 240, cBarY).R == 0xF5); // filled to half of the doubled bar
+		Test.Assert(At(splash, 80 + 720, cBarY).R == 0x2E); // the track after
+		// The status text drew on its doubled line, and its glyphs are the larger face's: ink
+		// reaches higher above the baseline than the 100% face's 15 px could.
+		int32 top = -1;
+		for (uint32 y = 440; (y < 480) && (top < 0); y++)
+		{
+			for (uint32 x = 80; (x < 400) && (top < 0); x++)
+			{
+				if (At(splash, x, y).R > background.R + 40)
+					top = (int32)y;
+			}
+		}
+		Test.Assert(top >= 0);
+		Test.Assert(472 - top > 15);
+	}
+
+	/// The logo for a scale: the 1x picture at 100%, the 2x one resampled above it.
+	[Test]
+	public static void ItsLogoLoadsAtTheSizeTheScaleAsksFor()
+	{
+		let data = scope String();
+		Test.Assert(DataRoot(data));
+		let one = scope Image();
+		Test.Assert(EditorSplash.LoadLogo(data, 1.0f, one));
+		Test.Assert((one.Width == 420) && (one.Height == 95));
+		let two = scope Image();
+		Test.Assert(EditorSplash.LoadLogo(data, 2.0f, two));
+		Test.Assert((two.Width == 840) && (two.Height == 190));
+		let between = scope Image();
+		Test.Assert(EditorSplash.LoadLogo(data, 1.75f, between));
+		Test.Assert((between.Width == 735) && (between.Height == 166));
+		// Resampled, not emptied: the mark's ink is still there, opaque somewhere.
+		var opaque = false;
+		let pixels = between.PixelData;
+		for (int i = 3; (i < pixels.Length) && !opaque; i += 4)
+			opaque = pixels[i] == 255;
+		Test.Assert(opaque);
+		let none = scope Image();
+		Test.Assert(!EditorSplash.LoadLogo("/nowhere", 1.0f, none));
 	}
 
 	[Test]

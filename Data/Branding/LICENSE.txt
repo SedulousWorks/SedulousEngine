@@ -12,8 +12,8 @@ You may show them unchanged to refer to SedulousEngine itself (in an article, a 
 Files: sedulous-mark.svg (the mark), sedulous-mark-small.svg (the mark at 24 px and below),
 sedulous-logo.svg and sedulous-logo-light.svg (the mark and the wordmark, for dark and for
 light backgrounds), sedulous-icon-<size>.png (the window and taskbar icon),
-sedulous-logo-splash.png (the logo at the editor splash's size, rendered from
-sedulous-logo.svg).
+sedulous-logo-splash.png and sedulous-logo-splash@2x.png (the logo at the editor splash's size
+and twice it, rendered from sedulous-logo.svg by Code/Tools/logo-splash.py).
 
 The wordmark's letters are Roboto Bold and Regular, drawn as outlines (Roboto by Christian
 Robertson, font data copyright Google 2011; its terms are in ../Engine/Fonts/roboto/NOTICE.txt).
