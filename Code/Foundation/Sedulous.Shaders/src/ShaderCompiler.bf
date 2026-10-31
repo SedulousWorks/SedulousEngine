@@ -107,17 +107,31 @@ class ShaderCompiler
 		let arguments = scope List<StringView>();
 		BuildArguments(stage, entryPoint, target, options, storage, arguments);
 
+		// An effect block in the source itself expands as one in an include does (after any
+		// properties expansion, which the caller has made). The expansion outlives the compile.
+		var compiled = source;
+		let sourceText = StringView((char8*)source.Ptr, source.Length);
+		let expandedSource = scope String();
+		if (ShaderProperties.HasEffect(sourceText))
+		{
+			let blocks = scope List<ShaderEffectBlock>();
+			defer { ClearAndDeleteItems!(blocks); }
+			ShaderProperties.ExpandEffects(sourceText, options.SourceName, expandedSource, blocks);
+			compiled = .((uint8*)expandedSource.Ptr, expandedSource.Length);
+		}
+
 		DxcBuffer sourceBuffer = .()
 			{
-				Ptr = source.Ptr,
-				Size = (uint)source.Length,
+				Ptr = compiled.Ptr,
+				Size = (uint)compiled.Length,
 				Encoding = DXC_CP_UTF8
 			};
 
-		// A compile carrying a resolver gets its own handler, built on the stack for this one
-		// call: DXC does not retain it, and the resolver it forwards to is the caller's.
-		var resolverHandler = ResolverIncludeHandler(mUtils, options.IncludeResolver);
-		let handler = (options.IncludeResolver != null) ? resolverHandler.Handle : mIncludeHandler;
+		// Every compile gets the engine's handler, built on the stack for this one call (DXC does
+		// not retain it): the caller's resolver when it has one, else the disk through DXC's
+		// default handler, effect blocks expanded either way.
+		var includeHandler = EngineIncludeHandler(mUtils, options.IncludeResolver, mIncludeHandler);
+		let handler = includeHandler.Handle;
 
 		void** resultPointer = null;
 		let hr = mCompiler.Compile(&sourceBuffer, arguments, handler,

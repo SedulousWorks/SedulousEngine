@@ -18,9 +18,10 @@ class CookedShaderPack
 {
 	/// "DSPK" little endian.
 	private const uint32 cMagic = 0x4b505344;
-	/// Version 2 added the declared mask table; 3 the entry point table. An older pack is
-	/// refused: it would run every stage as `main`, so the export cooks it again.
-	private const uint32 cVersion = 3;
+	/// Version 2 added the declared mask table; 3 the entry point table; 4 the effect tables. An
+	/// older pack is refused: it would run every stage as `main`, so the export cooks it again
+	/// (and below 4 too: a pack is cooked with the engine that reads it).
+	private const uint32 cVersion = 4;
 
 	private class Entry
 	{
@@ -41,6 +42,16 @@ class CookedShaderPack
 	private Dictionary<uint64, uint32> mDeclaredMasks = new Dictionary<uint64, uint32>() ~ delete _;
 	/// Mask key to the entry point that stage was cooked for.
 	private Dictionary<uint64, String> mEntryPoints = new .() ~ DeleteDictionaryAndValues!(_);
+	/// The corpus's effect tables.
+	private ShaderEffectLibrary mEffects = new .() ~ delete _;
+
+	/// Records a copy of an effect's table (an `effect` block of the corpus's includes), so a
+	/// game reads an effect's parameters without its sources. False, with the reason, when its
+	/// name or its flag is already recorded.
+	public bool AddEffect(ShaderEffect effect, String outError) => mEffects.Add(effect, outError);
+
+	/// The effect tables the cook recorded. Stable while the pack is not modified.
+	public ShaderEffectLibrary Effects => mEffects;
 
 	public int Count => mEntries.Count;
 	public bool IsEmpty => mEntries.IsEmpty;
@@ -199,6 +210,32 @@ class CookedShaderPack
 			writer.Write<uint32>((uint32)entry.Blob.Count);
 			writer.WriteBytes(entry.Blob);
 		}
+
+		writer.Write<uint32>((uint32)mEffects.Count);
+		for (let effect in mEffects.All)
+		{
+			writer.WriteString(effect.Name);
+			writer.Write<uint32>((uint32)effect.Flag);
+			writer.Write<uint32>(effect.GateIndex);
+			writer.Write<uint32>(effect.UniformSize);
+			writer.Write<uint32>((uint32)effect.Properties.Count);
+			for (let property in effect.Properties)
+			{
+				writer.WriteString(property.Name);
+				writer.Write<uint32>((uint32)property.Type);
+				writer.Write<float>(property.Value.X);
+				writer.Write<float>(property.Value.Y);
+				writer.Write<float>(property.Value.Z);
+				writer.Write<float>(property.Value.W);
+				writer.Write<uint32>(property.HasRange ? 1 : 0);
+				writer.Write<float>(property.RangeMin);
+				writer.Write<float>(property.RangeMax);
+				writer.Write<uint32>(property.Line);
+				writer.Write<uint32>(property.Offset);
+				writer.Write<uint32>(property.Size);
+				writer.Write<uint32>(property.Binding);
+			}
+		}
 		return writer.IsOk ? .Ok : .Err;
 	}
 
@@ -221,6 +258,10 @@ class CookedShaderPack
 		if (ReadEntryPoints(reader, stream) case .Err)
 			return .Err;
 		if (ReadEntries(reader, stream) case .Err)
+			return .Err;
+		if (!reader.IsOk)
+			return .Err;
+		if (ReadEffects(reader, stream) case .Err)
 			return .Err;
 
 		return reader.IsOk ? .Ok : .Err;
@@ -355,8 +396,61 @@ class CookedShaderPack
 		return .Ok;
 	}
 
+	private Result<void> ReadEffects(BinaryReader reader, IStream stream)
+	{
+		uint32 count = 0;
+		reader.Read<uint32>(out count);
+		// A name's length, the flag, the gate, the size and the count: 20 bytes minimum.
+		if (count > Remaining(stream) / 20)
+			return .Err;
+
+		let error = scope String();
+		for (uint32 i = 0; (i < count) && reader.IsOk; ++i)
+		{
+			let effect = scope ShaderEffect();
+			uint32 flag = 0;
+			uint32 propertyCount = 0;
+			reader.ReadString(effect.Name);
+			reader.Read<uint32>(out flag);
+			reader.Read<uint32>(out effect.GateIndex);
+			reader.Read<uint32>(out effect.UniformSize);
+			reader.Read<uint32>(out propertyCount);
+			effect.Flag = (ShaderFlags)flag;
+			// The fixed bytes of a property: 52.
+			if (!reader.IsOk || (propertyCount > Remaining(stream) / 52))
+				return .Err;
+			for (uint32 k = 0; (k < propertyCount) && reader.IsOk; ++k)
+			{
+				let property = new ShaderProperty();
+				effect.Properties.Add(property);
+				uint32 type = 0;
+				uint32 hasRange = 0;
+				reader.ReadString(property.Name);
+				reader.Read<uint32>(out type);
+				reader.Read<float>(out property.Value.X);
+				reader.Read<float>(out property.Value.Y);
+				reader.Read<float>(out property.Value.Z);
+				reader.Read<float>(out property.Value.W);
+				reader.Read<uint32>(out hasRange);
+				reader.Read<float>(out property.RangeMin);
+				reader.Read<float>(out property.RangeMax);
+				reader.Read<uint32>(out property.Line);
+				reader.Read<uint32>(out property.Offset);
+				reader.Read<uint32>(out property.Size);
+				reader.Read<uint32>(out property.Binding);
+				property.Type = (ShaderPropertyType)type;
+				property.HasRange = hasRange != 0;
+			}
+			// A cook records each effect once.
+			if (!reader.IsOk || !mEffects.Add(effect, error))
+				return .Err;
+		}
+		return .Ok;
+	}
+
 	private void Clear()
 	{
+		mEffects.Clear();
 		ClearAndDeleteItems!(mEntries);
 		mIndex.Clear();
 		for (let pair in mNames)

@@ -211,4 +211,57 @@ class CookedShaderPackTests
 		Test.Assert(target.Find("stale", .Compute, .Emissive, .Dxil) case .Err,
 			"the previous contents are gone");
 	}
+
+	/// An effect's table survives the round trip, a second effect of its name is refused, and a
+	/// pack of the version before effect tables is refused: packs are cooked again.
+	[Test]
+	public static void EffectTablesSurviveTheRoundTrip()
+	{
+		let pack = scope CookedShaderPack();
+		let error = scope String();
+		let wind = scope ShaderEffectBlock();
+		ShaderProperties.ParseEffect(ShaderEffectCompileTests.cWindEffect, 0, wind);
+		Test.Assert(pack.AddEffect(wind.Effect, error));
+		Test.Assert(!pack.AddEffect(wind.Effect, error));
+
+		let buffer = scope MemoryStream();
+		Test.Assert(pack.Write(buffer) case .Ok);
+		Test.Assert(buffer.Seek(0, .Begin) == 0);
+		let loaded = scope CookedShaderPack();
+		Test.Assert(loaded.Read(buffer) case .Ok);
+
+		Test.Assert(loaded.Effects.Count == 1);
+		let read = loaded.Effects.ForFlag(.Wind);
+		Test.Assert(read != null);
+		Test.Assert(read.Name == "Wind");
+		Test.Assert(read.GateIndex == 0);
+		Test.Assert(read.UniformSize == 16);
+		Test.Assert(read.Properties.Count == 3);
+		let height = read.Properties[2];
+		Test.Assert(height.Name == "Height");
+		Test.Assert(height.Type == .Float);
+		Test.Assert(height.Value.X == 1.0f);
+		Test.Assert(height.HasRange);
+		Test.Assert(Math.Abs(height.RangeMin - 0.01f) < 1e-6f);
+		Test.Assert(height.RangeMax == 100.0f);
+		Test.Assert(height.Line == 6);
+		Test.Assert(height.Offset == 8);
+		Test.Assert(height.Size == 4);
+		Test.Assert(read.Properties[1].HasRange, "Speed's [0, 20]");
+
+		// A pack of the previous version (3, before effect tables) is refused.
+		let old = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(old);
+			writer.Write<uint32>(0x4b505344); // "DSPK"
+			writer.Write<uint32>(3);
+			writer.Write<uint32>(0); // names
+			writer.Write<uint32>(0); // declared masks
+			writer.Write<uint32>(0); // entry points
+			writer.Write<uint32>(0); // entries
+		}
+		Test.Assert(old.Seek(0, .Begin) == 0);
+		let refused = scope CookedShaderPack();
+		Test.Assert(refused.Read(old) case .Err);
+	}
 }

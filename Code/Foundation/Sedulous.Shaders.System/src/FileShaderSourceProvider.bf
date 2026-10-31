@@ -104,6 +104,50 @@ class FileShaderSourceProvider : IShaderSourceProvider, IShaderIncludeResolver
 		return .Ok;
 	}
 
+	/// Every .hlsli in the folder and its subfolders ("surface/forward.hlsli"), as an include names
+	/// it from the folder: LoadInclude serves each name back.
+	public void CollectIncludeNames(List<String> outNames)
+	{
+		if (mMount != null)
+			CollectIncludes("", 0, outNames);
+	}
+
+	/// The .hlsli under `relative` (folder relative) and its subfolders, depth limited.
+	private void CollectIncludes(StringView relative, uint32 depth, List<String> outNames)
+	{
+		const uint32 cMaxFolderDepth = 8;
+		let enumerable = mMount as IEnumerableFileSystem;
+		if (enumerable == null)
+			return;
+		let folder = scope String();
+		if (relative.IsEmpty)
+			folder.Set(mFolder);
+		else
+			Locate(relative, folder);
+		let entries = scope List<DirEntry>();
+		defer
+		{
+			for (var entry in ref entries)
+				entry.Dispose();
+		}
+		if (enumerable.Enumerate(folder, entries) case .Err)
+			return;
+		for (let entry in entries)
+		{
+			let path = scope String(relative);
+			if (!relative.IsEmpty)
+				path.Append('/');
+			path.Append(entry.Name);
+			if (entry.IsDirectory)
+			{
+				if (depth < cMaxFolderDepth)
+					CollectIncludes(path, depth + 1, outNames);
+			}
+			else if (entry.Name.EndsWith(".hlsli"))
+				outNames.Add(new String(path));
+		}
+	}
+
 	/// A folder relative name as a mount relative path.
 	private void Locate(StringView name, String outPath)
 	{

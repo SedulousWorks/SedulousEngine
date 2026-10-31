@@ -326,4 +326,84 @@ class ShaderPackCookerTests
 		// An empty stem has no name to key on.
 		Test.Assert(!ShaderPackCooker.ParseStageFile(".ps.hlsl", ref stage, stem));
 	}
+
+	/// The corpus's effect blocks, in its includes and its subfolders' (the surface templates
+	/// live in one), are stored in the pack, and a stage reading one cooks.
+	[Test]
+	public static void TheCorpussEffectBlocksAreStoredInThePackAndAStageReadingOneCooks()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let corpus = MakeCorpusDirectory("effects", .. scope String());
+		defer { RemoveDirectoryRecursive(corpus); }
+		let surface = PathJoin(corpus, "surface", .. scope String());
+		CreateDirectory(surface);
+		WriteShader(corpus, "fx_wind.hlsli", ShaderEffectCompileTests.cWindEffect);
+		WriteShader(surface, "fx_fade.hlsli", "effect Fade : DITHER\n{\n    float Amount = 1 (gate);\n}\n");
+		WriteShader(corpus, "fxsway.vs.hlsl", """
+			// variants: WIND
+			#include "fx_wind.hlsli"
+			float4 main(uint id : SV_VertexID) : SV_Position {
+			#ifdef WIND
+			    return float4(Strength, Speed, Height, 1);
+			#else
+			    return float4(0, 0, 0, 1);
+			#endif
+			}
+			""");
+
+		CookedShaderFormat[1] formats = .(.SpirV);
+		let pack = scope CookedShaderPack();
+		let report = scope ShaderCookReport();
+		ShaderPackCooker.CookEngineShaders(compiler, SpirvOnly(corpus, corpus, formats), pack, report);
+		for (let error in report.Errors)
+			Console.WriteLine(error);
+		Test.Assert(report.Success);
+		Test.Assert(report.VariantsCooked == 2, "None and WIND");
+		Test.Assert(pack.Find("fxsway", .Vertex, .Wind, .SpirV) case .Ok);
+
+		Test.Assert(pack.Effects.Count == 2);
+		let wind = pack.Effects.Find("Wind");
+		Test.Assert(wind != null);
+		Test.Assert(wind.Flag == .Wind);
+		Test.Assert(wind.GateIndex == 0);
+		Test.Assert(wind.UniformSize == 16);
+		Test.Assert(wind.Properties.Count == 3);
+		Test.Assert((wind.Properties[2].Name == "Height") && (wind.Properties[2].Offset == 8));
+		Test.Assert(pack.Effects.ForFlag(.Dither) === pack.Effects.Find("Fade"));
+	}
+
+	/// Two effects with one name or one flag, or a malformed one, fail the cook naming the file
+	/// and line; the pack keeps the first.
+	[Test]
+	public static void TwoEffectsWithOneNameOrOneFlagOrAMalformedOneFailTheCook()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let corpus = MakeCorpusDirectory("effects_dup", .. scope String());
+		defer { RemoveDirectoryRecursive(corpus); }
+		WriteShader(corpus, "a.hlsli", ShaderEffectCompileTests.cWindEffect);
+		WriteShader(corpus, "b.hlsli", "effect Gust : WIND\n{\n    float Amount = 1 (gate);\n}\n");
+		WriteShader(corpus, "c.hlsli", ShaderEffectCompileTests.cBadEffect);
+
+		CookedShaderFormat[1] formats = .(.SpirV);
+		let pack = scope CookedShaderPack();
+		let report = scope ShaderCookReport();
+		ShaderPackCooker.CookEngineShaders(compiler, SpirvOnly(corpus, corpus, formats), pack, report);
+		Test.Assert(!report.Success);
+		var sharedFlag = false;
+		var badLine = false;
+		for (let error in report.Errors)
+		{
+			sharedFlag = sharedFlag || (error.Contains("b.hlsli:1") && error.Contains("share a variant flag"));
+			badLine = badLine || error.Contains("c.hlsli:3: ");
+		}
+		Test.Assert(sharedFlag);
+		Test.Assert(badLine);
+		Test.Assert(pack.Effects.Count == 1, "the first Wind only");
+	}
 }

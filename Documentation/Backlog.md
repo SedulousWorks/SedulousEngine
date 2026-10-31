@@ -106,6 +106,16 @@ A preset that names no template resolves by platform and config, and the install
 `sedulous-steamdeck-release-*` template ranks first for Linux64 Release. Works (the Deck player
 is a portable Linux player) but is surprising; consider ranking or naming.
 
+### Samples.WebScene.Web ships a dead shader pack
+`Code/Samples/Samples.WebScene.Web/webdata/Data/Shaders/shaders.dpak` is committed and preloaded
+into the sample's web build (`--preload-file webdata/Data@Data` in its BeefProj.toml). It is a
+version 2 pack, which the reader has refused since version 3 (entry points; the reader now
+takes 4 alone, the effect tables), and it sits at `Data/Shaders/`, where nothing looks: the
+host loads `Engine/Shaders/shaders.dpak` (`ShaderSystemHost.cShaderPackPath`). It is dead
+weight in the repository and in the page's download. The web build should cook its own pack
+(Sedulous.Tools.ShaderPack, as an export does) into `webdata/Data/Engine/Shaders/` rather than
+carry a committed one, which goes stale with every format change.
+
 ### Game scripts do not hot reload in play in editor
 Game-tier scripts are not reloaded while a Game tab runs.
 

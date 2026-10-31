@@ -391,4 +391,84 @@ class FileProviderTests
 		Test.Assert(changed.Count == 2,
 			"an include edit reports every shader, since the includers are unknown");
 	}
+
+	// ---- effects: a game reads their tables from the cooked pack, the editor parses them from
+	// the sources it serves ----
+
+	[Test]
+	public static void EffectsAreServedByNameAndByFlagFromThePack()
+	{
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		let pack = scope CookedShaderPack();
+		let error = scope String();
+		let wind = scope ShaderEffectBlock();
+		ShaderProperties.ParseEffect("effect Wind : WIND\n{\n    float Strength = 0 [0, 2] (gate);\n" +
+			"    float Speed = 1 [0, 20];\n    float Height = 1 [0.01, 100];\n}\n", 0, wind);
+		Test.Assert(wind.IsOk);
+		Test.Assert(pack.AddEffect(wind.Effect, error));
+
+		let shaders = scope Sedulous.Shaders.ShaderSystem(device); // a game's: no compiler
+		Test.Assert(shaders.FindEffect("Wind") == null, "no pack, no provider: nothing declares one");
+		shaders.SetCookedPack(pack);
+		let byName = shaders.FindEffect("Wind");
+		Test.Assert(byName != null);
+		Test.Assert(byName.Flag == .Wind);
+		Test.Assert(byName.Properties.Count == 3);
+		Test.Assert(byName.GateIndex == 0);
+		Test.Assert(byName.UniformSize == 16);
+		Test.Assert(shaders.EffectForFlag(.Wind) === byName);
+		Test.Assert(shaders.EffectForFlag(.Dither) == null);
+		Test.Assert(shaders.FindEffect("Gust") == null);
+		Test.Assert(shaders.Effects.Count == 1);
+		shaders.SetCookedPack(null);
+	}
+
+	[Test]
+	public static void InDevelopmentEffectsAreParsedFromTheProvidersIncludes()
+	{
+		let root = MakeRoot("effects", .. scope String());
+		defer { RemoveDirectoryRecursive(root); }
+		let surface = PathJoin(root, "surface", .. scope String());
+		CreateDirectory(surface);
+		Write(root, "sway.vs.hlsl", "// variants: WIND\n#include \"surface/wind_fx.hlsli\"\n" +
+			"float4 main(uint id : SV_VertexID) : SV_Position { return float4(0,0,0,1); }\n");
+		// An include in a subfolder, as the corpus's surface templates are.
+		Write(surface, "wind_fx.hlsli", "effect Wind : WIND\n{\n    float Strength = 0 (gate);\n}\n");
+		Write(root, "plain.hlsli", "float Plain() { return 1; }\n");
+
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		let provider = scope FileShaderSourceProvider();
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
+		let includes = scope List<String>();
+		defer { ClearAndDeleteItems!(includes); }
+		provider.CollectIncludeNames(includes);
+		Test.Assert(includes.Count == 2);
+
+		let shaders = scope Sedulous.Shaders.ShaderSystem(device);
+		shaders.SetSourceProvider(provider);
+		shaders.SetIncludeResolver(provider);
+		let wind = shaders.FindEffect("Wind");
+		Test.Assert(wind != null);
+		Test.Assert(wind.Flag == .Wind);
+		Test.Assert(shaders.EffectForFlag(.Wind) === wind);
+		Test.Assert(shaders.Effects.Count == 1);
+	}
 }

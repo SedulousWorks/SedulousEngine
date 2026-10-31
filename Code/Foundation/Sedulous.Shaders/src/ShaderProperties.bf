@@ -40,6 +40,20 @@ class ShaderProperty
 	public uint32 Size = 0;
 	/// A texture's tN or a sampler's sN.
 	public uint32 Binding = 0;
+
+	public void CopyTo(ShaderProperty other)
+	{
+		other.Name.Set(Name);
+		other.Type = Type;
+		other.Value = Value;
+		other.HasRange = HasRange;
+		other.RangeMin = RangeMin;
+		other.RangeMax = RangeMax;
+		other.Line = Line;
+		other.Offset = Offset;
+		other.Size = Size;
+		other.Binding = Binding;
+	}
 }
 
 /// A malformed line of a properties block.
@@ -125,6 +139,28 @@ static class ShaderProperties
 		.("TextureCube", .TextureCube, 0, "TextureCube"),
 		.("Sampler", .Sampler, 0, "SamplerState"));
 
+	/// What a kind of block allows. `properties` and `effect` share one parser; they differ in
+	/// their keyword, whether textures and samplers may be declared (an effect's values live in a
+	/// cbuffer of their own, so it takes uniforms only), and the `(gate)` marker.
+	private struct Grammar : this(StringView Keyword, bool Resources, bool Gates);
+
+	private static readonly Grammar sPropertiesGrammar = .("properties", true, false);
+	private static readonly Grammar sEffectGrammar = .("effect", false, true);
+
+	/// What the shared parse leaves for the block's own rules: the text between the keyword and
+	/// the opening brace on the keyword's line (an effect's name and flag), and the properties
+	/// marked (gate).
+	private class BlockParse
+	{
+		public StringView Header;
+		/// Indices into the block's properties, valid gates only.
+		public List<int> Gates = new .() ~ delete _;
+		/// Every marker written, valid or not.
+		public uint32 GateMarks = 0;
+		/// The block reached its closing brace.
+		public bool Closed = false;
+	}
+
 	/// HLSL's cbuffer packing, the one rule every material block is laid out by: a member is
 	/// aligned to its own size and never crosses a 16 byte row (a float3 then a float share a
 	/// row; a float2 at 12 moves to 16). Returns the member's offset and advances `cursor` past
@@ -149,24 +185,46 @@ static class ShaderProperties
 	public static void Parse(StringView source, ShaderPropertiesBlock outBlock)
 	{
 		var line = (uint32)0;
-		let start = FindBlockStart(source, ref line);
+		let start = FindBlockStart(source, sPropertiesGrammar.Keyword, 0, ref line);
 		if (start >= source.Length)
 			return; // no block: a shader without material parameters
+		let parse = scope BlockParse();
+		ParseBlockAt(source, start, line, sPropertiesGrammar, outBlock, parse);
+	}
+
+	/// Parses the block whose first line starts at `start` (line `line`): the opening brace, the
+	/// declarations a line at a time to the closing brace, then the layout. Fills the block's
+	/// place, table and errors; the header and the gates go to `parse`.
+	private static void ParseBlockAt(StringView source, int start, uint32 firstLine, Grammar grammar,
+		ShaderPropertiesBlock outBlock, BlockParse parse)
+	{
+		var line = firstLine;
 		outBlock.Present = true;
 		outBlock.Begin = start;
 		outBlock.FirstLine = line;
 
+		var keywordEnd = start;
+		while ((keywordEnd < source.Length) && IsSpace(source[keywordEnd]))
+			keywordEnd++;
+		keywordEnd += grammar.Keyword.Length;
+
 		// The opening brace: after the keyword on its line, or alone on a following line.
-		var at = start;
+		var at = keywordEnd;
+		var headerEnd = source.Length;
 		while ((at < source.Length) && (source[at] != '{'))
 		{
 			if (source[at] == '\n')
+			{
+				headerEnd = Math.Min(headerEnd, at);
 				line++;
+			}
 			at++;
 		}
+		headerEnd = Math.Min(headerEnd, at);
+		parse.Header = source.Substring(keywordEnd, headerEnd - keywordEnd);
 		if (at >= source.Length)
 		{
-			AddError(outBlock, outBlock.FirstLine, "properties needs a { ... } block");
+			AddError(outBlock, outBlock.FirstLine, scope $"{grammar.Keyword} needs a {{ ... }} block");
 			outBlock.End = source.Length;
 			outBlock.LastLine = line;
 			return;
@@ -196,7 +254,7 @@ static class ShaderProperties
 				break;
 			}
 			if (!text.IsEmpty)
-				ParseDeclaration(outBlock, text, line);
+				ParseDeclaration(outBlock, text, line, grammar, parse);
 			if (lineEnd >= source.Length)
 				break;
 			at = lineEnd + 1;
@@ -204,11 +262,12 @@ static class ShaderProperties
 		}
 		if (!closed)
 		{
-			AddError(outBlock, outBlock.FirstLine, "the properties block has no closing }");
+			AddError(outBlock, outBlock.FirstLine, scope $"the {grammar.Keyword} block has no closing }}");
 			outBlock.End = source.Length;
 			outBlock.LastLine = line;
 			return;
 		}
+		parse.Closed = true;
 
 		// Lay out: uniforms by HLSL's packing, textures t0.. and samplers s0.. in declaration
 		// order (what the material system assigns a material with this property list).
@@ -237,17 +296,7 @@ static class ShaderProperties
 	/// HLSL packs exactly as PackCbufferMember did), then each texture and sampler at its slot.
 	public static void GenerateMaterialDeclarations(ShaderPropertiesBlock block, String outHlsl)
 	{
-		if (block.UniformSize > 0)
-		{
-			outHlsl.Append("cbuffer Material : register(b0, space2) {\n");
-			for (let property in block.Properties)
-			{
-				if (property.Size == 0)
-					continue;
-				outHlsl.AppendF("    {} {}; // offset {}\n", RowOf(property.Type).Hlsl, property.Name, property.Offset);
-			}
-			outHlsl.Append("};\n");
-		}
+		AppendCbuffer(outHlsl, "Material", "register(b0, space2)", block.Properties);
 		for (let property in block.Properties)
 		{
 			if (property.Size != 0)
@@ -272,11 +321,208 @@ static class ShaderProperties
 		}
 		outSource.Append(source.Substring(0, outBlock.Begin));
 		GenerateMaterialDeclarations(outBlock, outSource);
-		outSource.AppendF("#line {}", outBlock.LastLine + 1);
+		AppendLineDirective(outSource, outBlock.LastLine + 1, fileName);
+		outSource.Append(source.Substring(outBlock.End));
+	}
+
+	// ---- effect blocks ----
+
+	/// Where every effect's cbuffer binds: binding 1 of the material's set (the material's own
+	/// buffer is b0, its textures and samplers sit at their shifts).
+	public const String cEffectRegister = "register(b1, space2)";
+	public const uint32 cNoEffectGate = uint32.MaxValue;
+
+	/// Whether the source declares an effect block at all: the cheap test the compiler makes on
+	/// every include before it parses one.
+	public static bool HasEffect(StringView source)
+	{
+		var line = (uint32)0;
+		return FindBlockStart(source, sEffectGrammar.Keyword, 0, ref line) < source.Length;
+	}
+
+	/// Finds and parses the first effect block at or after byte `from` (a line start) into
+	/// `outBlock`. Errors carry their line, the header's first; a block with errors still
+	/// reports its place.
+	public static void ParseEffect(StringView source, int from, ShaderEffectBlock outBlock)
+	{
+		var line = (uint32)0;
+		let start = FindBlockStart(source, sEffectGrammar.Keyword, from, ref line);
+		if (start >= source.Length)
+			return;
+		let body = scope ShaderPropertiesBlock();
+		let parse = scope BlockParse();
+		ParseBlockAt(source, start, line, sEffectGrammar, body, parse);
+
+		outBlock.Present = true;
+		outBlock.Begin = body.Begin;
+		outBlock.End = body.End;
+		outBlock.FirstLine = body.FirstLine;
+		outBlock.LastLine = body.LastLine;
+		ParseEffectHeader(parse.Header, body.FirstLine, outBlock.Effect, outBlock.Errors);
+		for (let error in body.Errors)
+			outBlock.Errors.Add(error);
+		body.Errors.Clear(); // moved
+
+		// One switch per effect: the renderer turns the variant on while it is above zero, so
+		// none leaves the effect unreachable and two leave it ambiguous. (A block without its
+		// braces has said what is wrong with it already.)
+		if (parse.Closed && (parse.GateMarks == 0))
+			AddError(outBlock.Errors, outBlock.FirstLine, "an effect needs one float property marked (gate): the value that turns it on");
+		else if (parse.Gates.Count > 1)
+		{
+			let second = body.Properties[parse.Gates[1]];
+			AddError(outBlock.Errors, second.Line, scope $"an effect has one (gate); '{body.Properties[parse.Gates[0]].Name}' is it already");
+		}
+		if (!parse.Gates.IsEmpty)
+			outBlock.Effect.GateIndex = (uint32)parse.Gates[0];
+		for (let property in body.Properties)
+			outBlock.Effect.Properties.Add(property);
+		body.Properties.Clear(); // moved
+		outBlock.Effect.UniformSize = body.UniformSize;
+	}
+
+	/// Every effect block in a source, in order, appended to `outBlocks` (which owns them).
+	public static void ParseEffects(StringView source, List<ShaderEffectBlock> outBlocks)
+	{
+		var from = 0;
+		while (from < source.Length)
+		{
+			let block = new ShaderEffectBlock();
+			ParseEffect(source, from, block);
+			if (!block.Present)
+			{
+				delete block;
+				break;
+			}
+			from = (block.End > block.Begin) ? block.End : source.Length;
+			outBlocks.Add(block);
+		}
+	}
+
+	/// The declaration an effect stands for: its cbuffer at the effect binding, its members
+	/// named as declared, so the effect's code reads `Strength`.
+	public static void GenerateEffectDeclaration(ShaderEffect effect, String outHlsl)
+	{
+		AppendCbuffer(outHlsl, effect.Name, cEffectRegister, effect.Properties);
+	}
+
+	/// The source as the compiler sees it: each effect block replaced by its declaration, then
+	/// `#line` so every later line keeps its number and file name. A block with errors becomes an
+	/// `#error` per error at the error's line instead, so a compile that reaches it fails naming
+	/// the file and line even where the caller (an include handler) cannot report otherwise. A
+	/// source without a block is returned as it is. The parses land in `outBlocks`, for their
+	/// tables.
+	public static void ExpandEffects(StringView source, StringView fileName, String outSource,
+		List<ShaderEffectBlock> outBlocks)
+	{
+		let first = outBlocks.Count;
+		ParseEffects(source, outBlocks);
+		if (outBlocks.Count == first)
+		{
+			outSource.Append(source);
+			return;
+		}
+		var cursor = 0;
+		for (int i = first; i < outBlocks.Count; i++)
+		{
+			let block = outBlocks[i];
+			outSource.Append(source.Substring(cursor, block.Begin - cursor));
+			if (block.IsOk)
+				GenerateEffectDeclaration(block.Effect, outSource);
+			else
+			{
+				for (let error in block.Errors)
+				{
+					AppendLineDirective(outSource, error.Line, fileName);
+					outSource.AppendF("#error effect: {}\n", error.Message);
+				}
+			}
+			AppendLineDirective(outSource, block.LastLine + 1, fileName);
+			cursor = block.End;
+		}
+		outSource.Append(source.Substring(cursor));
+	}
+
+	/// An effect's header, `<Name> : <FLAG>`, from the text after the keyword on its line.
+	private static void ParseEffectHeader(StringView header, uint32 line, ShaderEffect effect,
+		List<ShaderPropertyError> errors)
+	{
+		var text = header;
+		let comment = text.IndexOf("//");
+		if (comment >= 0)
+			text = text.Substring(0, comment);
+		var reader = LineReader(text);
+		let name = reader.Identifier();
+		if (name.IsEmpty)
+		{
+			AddError(errors, line, "an effect needs a name: effect <Name> : <FLAG>");
+			return;
+		}
+		effect.Name.Set(name);
+		if (!reader.Take(':'))
+		{
+			AddError(errors, line, "an effect names its variant flag after a colon: effect <Name> : <FLAG>");
+			return;
+		}
+		let flagWord = reader.Identifier();
+		var found = false;
+		for (let entry in ShaderFlagNames.Table)
+		{
+			if (entry.Define == flagWord)
+			{
+				effect.Flag = entry.Flag;
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+		{
+			let message = scope $"unknown variant flag '{flagWord}' (";
+			var first = true;
+			for (let entry in ShaderFlagNames.Table)
+			{
+				if (!first)
+					message.Append(", ");
+				message.Append(entry.Define);
+				first = false;
+			}
+			message.Append(")");
+			AddError(errors, line, message);
+			return;
+		}
+		reader.SkipSpace();
+		if (!reader.AtEnd)
+			AddError(errors, line, "nothing may follow an effect's flag but its {");
+	}
+
+	/// A cbuffer of a block's uniforms in declaration order, which HLSL packs exactly as
+	/// PackCbufferMember did. Nothing when the block has none.
+	private static void AppendCbuffer(String outHlsl, StringView name, StringView registerText,
+		List<ShaderProperty> properties)
+	{
+		var any = false;
+		for (let property in properties)
+			any = any || (property.Size != 0);
+		if (!any)
+			return;
+		outHlsl.AppendF("cbuffer {} : {} {{\n", name, registerText);
+		for (let property in properties)
+		{
+			if (property.Size == 0)
+				continue;
+			outHlsl.AppendF("    {} {}; // offset {}\n", RowOf(property.Type).Hlsl, property.Name, property.Offset);
+		}
+		outHlsl.Append("};\n");
+	}
+
+	/// `#line` so the lines after a replaced block keep the number (and file name) their author
+	/// sees.
+	private static void AppendLineDirective(String outSource, uint32 line, StringView fileName)
+	{
+		outSource.AppendF("#line {}", line);
 		if (!fileName.IsEmpty)
 			outSource.AppendF(" \"{}\"", fileName);
 		outSource.Append('\n');
-		outSource.Append(source.Substring(outBlock.End));
 	}
 
 	private static TypeRow RowOf(ShaderPropertyType type)
@@ -292,18 +538,20 @@ static class ShaderProperties
 	private static bool IsIdentifier(char8 c) => c.IsLetterOrDigit || (c == '_');
 
 	private static void AddError(ShaderPropertiesBlock block, uint32 line, StringView message)
+		=> AddError(block.Errors, line, message);
+
+	private static void AddError(List<ShaderPropertyError> errors, uint32 line, StringView message)
 	{
 		let error = new ShaderPropertyError();
 		error.Line = line;
 		error.Message.Set(message);
-		block.Errors.Add(error);
+		errors.Add(error);
 	}
 
-	/// The `properties` line: a line whose first token is the word `properties`. Its start
-	/// offset, or the source's length when there is none.
-	private static int FindBlockStart(StringView source, ref uint32 outLine)
+	/// A block's first line: a line whose first token is the keyword, at or after byte `from`
+	/// (a line start). Its start offset, or the source's length when there is none.
+	private static int FindBlockStart(StringView source, StringView keyword, int from, ref uint32 outLine)
 	{
-		let keyword = "properties";
 		var lineStart = 0;
 		var line = (uint32)1;
 		while (lineStart < source.Length)
@@ -311,6 +559,12 @@ static class ShaderProperties
 			var lineEnd = lineStart;
 			while ((lineEnd < source.Length) && (source[lineEnd] != '\n'))
 				lineEnd++;
+			if (lineStart < from)
+			{
+				lineStart = lineEnd + 1;
+				line++;
+				continue;
+			}
 			var k = lineStart;
 			while ((k < lineEnd) && IsSpace(source[k]))
 				k++;
@@ -405,7 +659,8 @@ static class ShaderProperties
 	}
 
 	/// One declaration line, already stripped of a trailing `//` comment.
-	private static void ParseDeclaration(ShaderPropertiesBlock block, StringView text, uint32 line)
+	private static void ParseDeclaration(ShaderPropertiesBlock block, StringView text, uint32 line, Grammar grammar,
+		BlockParse parse)
 	{
 		var reader = LineReader(text);
 		let typeWord = reader.Identifier();
@@ -423,6 +678,11 @@ static class ShaderProperties
 		if (!known)
 		{
 			AddError(block, line, scope $"unknown property type '{typeWord}' (float, float2, float3, float4, int, Color, ColorHdr, Texture, TextureCube, Sampler)");
+			return;
+		}
+		if (!grammar.Resources && (row.Components == 0))
+		{
+			AddError(block, line, scope $"'{typeWord}' is not a uniform: an effect takes uniforms only (float, float2, float3, float4, int, Color, ColorHdr)");
 			return;
 		}
 		let name = reader.Identifier();
@@ -448,18 +708,21 @@ static class ShaderProperties
 		else if (property.Type == .ColorHdr)
 			property.Value = .(0, 0, 0, 1);
 
-		if (!ParseRest(block, ref reader, row, property, line))
+		var gate = false;
+		if (!ParseRest(block, ref reader, row, property, line, grammar, parse, ref gate))
 		{
 			delete property;
 			return;
 		}
+		if (gate)
+			parse.Gates.Add(block.Properties.Count);
 		block.Properties.Add(property);
 	}
 
 	/// The default, the range and the terminating `;`: false, with the error added, when the
 	/// line is malformed.
 	private static bool ParseRest(ShaderPropertiesBlock block, ref LineReader reader, TypeRow row, ShaderProperty property,
-		uint32 line)
+		uint32 line, Grammar grammar, BlockParse parse, ref bool gate)
 	{
 		if (reader.Take('='))
 		{
@@ -527,6 +790,24 @@ static class ShaderProperties
 				return false;
 			}
 			property.HasRange = true;
+		}
+
+		// An effect's switch: `(gate)` after the default and range. Only an effect's grammar reads
+		// it; in a properties block the `(` stays the missing `;` error it always was.
+		if (grammar.Gates && reader.Take('('))
+		{
+			parse.GateMarks++; // a mistyped marker is one error, not also a missing gate
+			if ((reader.Identifier() != "gate") || !reader.Take(')'))
+			{
+				AddError(block, line, "the only marker is (gate)");
+				return false;
+			}
+			if (property.Type != .Float)
+			{
+				AddError(block, line, "the (gate) is a float: the effect is on while it is above zero");
+				return false;
+			}
+			gate = true;
 		}
 
 		if (!reader.Take(';'))

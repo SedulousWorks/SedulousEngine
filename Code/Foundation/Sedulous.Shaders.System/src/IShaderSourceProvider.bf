@@ -18,6 +18,11 @@ interface IShaderSourceProvider
 	/// Every shader name this can serve, for tooling.
 	void CollectShaderNames(List<String> outNames);
 
+	/// Every shared include (.hlsli) this serves, as an include names it ("wind.hlsli",
+	/// "surface/forward.hlsli"), appended as owned strings. The shader system reads them through
+	/// its include resolver for the effect blocks they declare.
+	void CollectIncludeNames(List<String> outNames);
+
 	/// Appends the names whose source changed since the last poll, returning whether any
 	/// did.
 	///

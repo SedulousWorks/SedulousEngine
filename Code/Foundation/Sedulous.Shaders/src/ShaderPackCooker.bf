@@ -42,6 +42,9 @@ static class ShaderPackCooker
 		// order, and therefore its bytes, must be reproducible across hosts and runs.
 		files.Sort(scope (a, b) => String.Compare(a, b, false));
 
+		// The effects' tables, from the includes that declare them.
+		CookShaderEffects(options.ShaderDirectory, pack, report);
+
 		StringView[1] includePaths = .(options.ShaderDirectory);
 
 		let translator = scope WgslTranslator(compiler, options.ScratchDirectory);
@@ -76,6 +79,90 @@ static class ShaderPackCooker
 		}
 
 		report.Success = report.Errors.IsEmpty;
+	}
+
+	/// Every .hlsli under `shaderDirectory` and its subfolders, as an include names it
+	/// ("wind.hlsli", "surface/forward.hlsli"), each folder's files then its folders, each sorted.
+	/// Depth limited like the include expansion.
+	public static void CollectShaderLibraryFiles(StringView shaderDirectory, StringView relative, uint32 depth,
+		List<String> outFiles)
+	{
+		let folder = scope String(shaderDirectory);
+		if (!relative.IsEmpty)
+			folder.AppendF("/{}", relative);
+		let files = scope List<String>();
+		let folders = scope List<String>();
+		defer { ClearAndDeleteItems!(files); ClearAndDeleteItems!(folders); }
+		ListDirectory(folder, scope (name, isDirectory) =>
+			{
+				if (isDirectory)
+					folders.Add(new String(name));
+				else if (name.EndsWith(".hlsli"))
+					files.Add(new String(name));
+			});
+		files.Sort(scope (a, b) => String.Compare(a, b, false));
+		folders.Sort(scope (a, b) => String.Compare(a, b, false));
+		for (let file in files)
+		{
+			let path = new String(relative);
+			if (!relative.IsEmpty)
+				path.Append('/');
+			path.Append(file);
+			outFiles.Add(path);
+		}
+		if (depth >= cMaxIncludeDepth)
+			return;
+		for (let sub in folders)
+		{
+			let path = scope String(relative);
+			if (!relative.IsEmpty)
+				path.Append('/');
+			path.Append(sub);
+			CollectShaderLibraryFiles(shaderDirectory, path, depth + 1, outFiles);
+		}
+	}
+
+	/// Records every effect block the corpus's includes declare into the pack, so a game reads
+	/// the effects' tables without the sources. A malformed block, or two effects sharing a name
+	/// or a flag, is a cook error naming the file and line. False when any is.
+	public static bool CookShaderEffects(StringView shaderDirectory, CookedShaderPack pack, ShaderCookReport report)
+	{
+		let files = scope List<String>();
+		defer { ClearAndDeleteItems!(files); }
+		CollectShaderLibraryFiles(shaderDirectory, "", 0, files);
+		var ok = true;
+		for (let file in files)
+		{
+			let text = scope String();
+			if (!ReadStageSource(shaderDirectory, file, text))
+			{
+				report.AddError(file, "could not read the source");
+				ok = false;
+				continue;
+			}
+			if (!ShaderProperties.HasEffect(text))
+				continue;
+			let blocks = scope List<ShaderEffectBlock>();
+			defer { ClearAndDeleteItems!(blocks); }
+			ShaderProperties.ParseEffects(text, blocks);
+			for (let block in blocks)
+			{
+				if (!block.IsOk)
+				{
+					for (let error in block.Errors)
+						report.AddError(scope $"{file}:{error.Line}", error.Message);
+					ok = false;
+					continue;
+				}
+				let error = scope String();
+				if (!pack.AddEffect(block.Effect, error))
+				{
+					report.AddError(scope $"{file}:{block.FirstLine}", error);
+					ok = false;
+				}
+			}
+		}
+		return ok;
 	}
 
 	/// Cooks one shader stage into the pack: records its lattice and entry point, then emits

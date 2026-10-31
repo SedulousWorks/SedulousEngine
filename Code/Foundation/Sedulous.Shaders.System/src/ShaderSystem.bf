@@ -48,6 +48,9 @@ class ShaderSystem
 	private Dictionary<uint64, uint64> mVersions = new Dictionary<uint64, uint64>() ~ delete _;
 	/// BORROWED from whoever set it, usually the file provider.
 	private IShaderIncludeResolver mIncludeResolver = null;
+	/// Development: the effects parsed from the provider's includes (Effects), read lazily.
+	private ShaderEffectLibrary mSourceEffects = new .() ~ delete _;
+	private bool mEffectsScanned = false;
 
 	/// The DXC optimization level every on demand compile asks for. Three is what a build
 	/// wants.
@@ -109,19 +112,89 @@ class ShaderSystem
 	}
 
 	/// The provider is BORROWED and may be null.
-	public void SetSourceProvider(IShaderSourceProvider provider) => mProvider = provider;
+	public void SetSourceProvider(IShaderSourceProvider provider)
+	{
+		mProvider = provider;
+		mEffectsScanned = false;
+	}
 
 	/// The cooked pack is BORROWED. Setting it puts this into shipped mode, where a request
 	/// is canonicalized against the stage's declared mask and looked up rather than
 	/// compiled, and a miss is a loud cook coverage bug.
-	public void SetCookedPack(CookedShaderPack pack) => mPack = pack;
+	public void SetCookedPack(CookedShaderPack pack)
+	{
+		mPack = pack;
+		mEffectsScanned = false;
+	}
 
 	/// Where a shared .hlsli is resolved from, BORROWED.
 	///
 	/// This replaces a list of native directories: the compiler asks the resolver rather than
 	/// opening a path, so a corpus behind a mount or a pak serves includes the same way a
 	/// directory does.
-	public void SetIncludeResolver(IShaderIncludeResolver resolver) => mIncludeResolver = resolver;
+	public void SetIncludeResolver(IShaderIncludeResolver resolver)
+	{
+		mIncludeResolver = resolver;
+		mEffectsScanned = false;
+	}
+
+	/// The effects the engine's shaders declare (`effect` blocks in the corpus's includes): the
+	/// cooked pack's tables when a pack is set, else parsed from the provider's includes, read
+	/// through the include resolver, on the first ask and again after a reload. What a material
+	/// whose shader declares an effect's flag takes its effect group from. The library, and what
+	/// it holds, stay valid until the next reload, pack, provider or resolver change.
+	public ShaderEffectLibrary Effects
+	{
+		get
+		{
+			if (mPack != null)
+				return mPack.Effects;
+			if (!mEffectsScanned)
+				ScanSourceEffects();
+			return mSourceEffects;
+		}
+	}
+
+	/// An effect by its name (`Wind`); null when no include declares it.
+	public ShaderEffect FindEffect(StringView name) => Effects.Find(name);
+
+	/// The effect a variant flag turns on (one flag, `.Wind`); null when none.
+	public ShaderEffect EffectForFlag(ShaderFlags flag) => Effects.ForFlag(flag);
+
+	/// Development: parses the effect blocks of every include the provider serves. A malformed
+	/// block or a second effect for a name or flag is logged and left out (the compile that
+	/// includes it fails naming the line; the cook refuses it).
+	private void ScanSourceEffects()
+	{
+		mSourceEffects.Clear();
+		mEffectsScanned = true;
+		if ((mProvider == null) || (mIncludeResolver == null))
+			return;
+		let includes = scope List<String>();
+		defer { ClearAndDeleteItems!(includes); }
+		mProvider.CollectIncludeNames(includes);
+		for (let include in includes)
+		{
+			let text = scope String();
+			if (!mIncludeResolver.LoadInclude(include, text) || !ShaderProperties.HasEffect(text))
+				continue;
+			let blocks = scope List<ShaderEffectBlock>();
+			defer { ClearAndDeleteItems!(blocks); }
+			ShaderProperties.ParseEffects(text, blocks);
+			for (let block in blocks)
+			{
+				if (!block.IsOk)
+				{
+					for (let error in block.Errors)
+						Console.Error.WriteLine(scope $"Sedulous.Shaders: shader effect in '{include}' line {error.Line}: {error.Message}");
+					continue;
+				}
+				let error = scope String();
+				if (!mSourceEffects.Add(block.Effect, error))
+					Console.Error.WriteLine(scope $"Sedulous.Shaders: shader effect in '{include}': {error}");
+			}
+		}
+	}
 
 	/// Asks the provider what changed, drops those sources and their variants, and bumps
 	/// their versions so a pipeline cache rebuilds.
@@ -147,6 +220,8 @@ class ShaderSystem
 		// A registered shader (a project's) may include a changed library file; the provider
 		// cannot say which, so every remembered failure gets another compile.
 		mFailedVariants.Clear();
+		// An include may have changed an effect block; they are read again on the next ask.
+		mEffectsScanned = false;
 		return changed.Count;
 	}
 
@@ -324,7 +399,8 @@ class ShaderSystem
 		}
 
 		// The entry the cook compiled this stage for; a pack without one predates entry names
-		// (format 3) and is refused at load, so empty here is a cook bug.
+		// (format 3; the reader takes 4 alone) and is refused at load, so empty here is a cook
+		// bug.
 		let entryPoint = mPack.EntryPoint(nameHash, stage);
 		if (entryPoint.IsEmpty)
 		{
