@@ -631,7 +631,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">10199581817052629655</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<array name="bones" count="2">
 					<string name="bone">Neck</string>
@@ -651,7 +651,9 @@
 					<f32 name="y">1</f32>
 					<f32 name="z">0</f32>
 				</object>
-				<f32 name="maxAngle">60</f32>
+				<f32 name="maxTurn">60</f32>
+				<f32 name="maxTilt">40</f32>
+				<u8 name="beyondLimits">1</u8>
 				<f32 name="weight">1</f32>
 				<f32 name="fadeSeconds">0.35</f32>
 				<bool name="active">false</bool>
