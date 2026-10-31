@@ -218,6 +218,36 @@ class ModelResourceTests
 		Test.Assert(ModelPlacement.SkinnedMeshParent(nodes, 1, 3) == 1);
 	}
 
+	/// A mesh's slots give the material indices its submeshes index; a mesh whose parts name no
+	/// material, or one past the list, gives none (the default material draws it); only a model
+	/// with no slot lists at all gives every material, as its submeshes index the model wide list.
+	[Test]
+	public static void AMeshWithoutAMaterialBindsNoneOnlyAModelWithoutSlotListsBindsAll()
+	{
+		let model = scope ModelResource();
+		model.Materials.Add(.(null));
+		model.Materials.Add(.(null));
+		model.MeshMaterialSlot.Add(1);
+		model.MeshSlotStart.Add(0);
+		model.MeshSlotCount.Add(1);
+		model.MeshSlotStart.Add(1);
+		model.MeshSlotCount.Add(0); // its parts name no material
+
+		let indices = scope List<int32>();
+		model.MeshMaterialIndices(0, indices);
+		Test.Assert((indices.Count == 1) && (indices[0] == 1));
+		model.MeshMaterialIndices(1, indices);
+		Test.Assert(indices.IsEmpty, "no material named: none, not the model's first");
+		model.MeshMaterialIndices(5, indices);
+		Test.Assert(indices.IsEmpty);
+
+		model.MeshMaterialSlot.Clear();
+		model.MeshSlotStart.Clear();
+		model.MeshSlotCount.Clear();
+		model.MeshMaterialIndices(1, indices);
+		Test.Assert((indices.Count == 2) && (indices[0] == 0) && (indices[1] == 1), "no slot lists: every material");
+	}
+
 	/// A model with NO skin binds no skeleton, and a nil id in any list is a gap rather than
 	/// an error.
 	[Test]

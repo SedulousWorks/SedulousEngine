@@ -46,21 +46,25 @@ class ModelResource
 		((index >= 0) && (index < Meshes.Count)) ? Meshes[index].Get : null;
 
 	/// The indices into Materials that a mesh's submeshes index, in slot order: the material
-	/// list an entity drawing the mesh binds. A mesh with no slots recorded (a manifest from
-	/// before them) indexes every material, in order.
+	/// list an entity drawing the mesh binds. Empty for a mesh whose parts name no material (the
+	/// default material draws it), or one past the list. Only a manifest recording no slot lists
+	/// at all (one from before them) gives every material, in order, its submeshes indexing the
+	/// model wide list.
 	public void MeshMaterialIndices(int meshIndex, List<int32> outIndices)
 	{
 		outIndices.Clear();
-		if ((meshIndex >= 0) && (meshIndex < MeshSlotStart.Count) && (meshIndex < MeshSlotCount.Count))
+		if (!MeshSlotStart.IsEmpty)
 		{
+			if ((meshIndex < 0) || (meshIndex >= MeshSlotStart.Count) || (meshIndex >= MeshSlotCount.Count))
+				return;
 			let start = MeshSlotStart[meshIndex];
 			let count = MeshSlotCount[meshIndex];
 			if ((start >= 0) && (count > 0) && (start + count <= MeshMaterialSlot.Count))
 			{
 				for (int32 i < count)
 					outIndices.Add(MeshMaterialSlot[start + i]);
-				return;
 			}
+			return;
 		}
 		for (int32 i < (int32)Materials.Count)
 			outIndices.Add(i);

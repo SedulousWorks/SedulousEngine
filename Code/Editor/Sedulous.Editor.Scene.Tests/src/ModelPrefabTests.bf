@@ -280,8 +280,9 @@ class ModelPrefabTests
 		}
 	}
 
-	/// A manifest that records slots binds only what each mesh draws; one that records none
-	/// keeps the whole table, which is what its submeshes index.
+	/// A manifest that records slots binds only what each mesh draws, and a mesh whose parts
+	/// name no material (an empty entry) binds none: the default material draws it, not the
+	/// model's first.
 	[Test]
 	public static void ASlottedMeshBindsOnlyItsOwnMaterials()
 	{
@@ -303,7 +304,7 @@ class ModelPrefabTests
 		m.MaterialGuid.Add(matC);
 		int32[2] narrow = .(2, 0); // the third material, then the first
 		m.AddMeshMaterialSlots(.(&narrow[0], narrow.Count));
-		m.AddMeshMaterialSlots(.()); // no slots recorded for the second
+		m.AddMeshMaterialSlots(.()); // the second's parts name no material
 		AddNode(asset, "Root", -1, -1, .(0, 0, 0));
 		AddNode(asset, "Narrow", 0, 0, .(0, 0, 0));
 		AddNode(asset, "Whole", 0, 1, .(0, 0, 0));
@@ -337,7 +338,7 @@ class ModelPrefabTests
 			if (c.Mesh.Id == meshWhole)
 			{
 				sawWhole = true;
-				Test.Assert(c.Materials.Count == 3);
+				Test.Assert(c.Materials.IsEmpty, "no material named: none bound");
 			}
 		});
 		Test.Assert(sawNarrow && sawWhole);
@@ -402,10 +403,10 @@ class ModelPrefabTests
 		Test.Assert(regen.Instance.Id == sceneId);
 	}
 
-	/// A mesh binds its own material slots, the whole list only without them: the rule the
-	/// prefab and the editor's model thumbnail share (ModelPrefab.BindMeshMaterials).
+	/// A mesh binds its own material slots, the whole list only in a manifest recording none: the
+	/// rule the prefab and the editor's model thumbnail share (ModelPrefab.BindMeshMaterials).
 	[Test]
-	public static void AMeshBindsItsOwnMaterialSlotsTheWholeListOnlyWithoutThem()
+	public static void AMeshBindsItsOwnMaterialSlotsTheWholeListOnlyWhenTheManifestRecordsNone()
 	{
 		let manifest = scope ModelManifestSource();
 		let a = Guid(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -425,12 +426,21 @@ class ModelPrefabTests
 		Test.Assert(ids[1].Id == a);
 		Test.Assert(ids[2].Id == Guid.Empty);
 
-		// No slots (a manifest recording none, or a mesh past the list): the model wide list, in order.
+		// A mesh whose parts name no material (an FBX shadow plane) binds none: the default
+		// material draws it, not the model's first (the plane drew the character's texture).
+		ids.Clear();
+		ModelPrefab.BindMeshMaterials(manifest, 1, ids);
+		Test.Assert(ids.IsEmpty);
+		ids.Clear();
+		ModelPrefab.BindMeshMaterials(manifest, 5, ids);
+		Test.Assert(ids.IsEmpty);
+
+		// A manifest recording no slot lists at all cooked model wide submesh indices: the whole list.
+		manifest.MeshSlotStart.Clear();
+		manifest.MeshSlotCount.Clear();
+		manifest.MeshMaterialSlot.Clear();
 		ids.Clear();
 		ModelPrefab.BindMeshMaterials(manifest, 1, ids);
 		Test.Assert((ids.Count == 3) && (ids[0].Id == a));
-		ids.Clear();
-		ModelPrefab.BindMeshMaterials(manifest, 5, ids);
-		Test.Assert(ids.Count == 3);
 	}
 }

@@ -262,13 +262,15 @@ static class ModelPrefab
 	///
 	/// The manifest records the slots each mesh uses and its submeshes index THAT run, so an
 	/// entity binds only the materials it draws rather than the model's whole table: a model
-	/// sharing one table across thousands of nodes gave every one of them all of it. A
-	/// manifest recording no slots leaves the whole table, which is what its submeshes index.
+	/// sharing one table across thousands of nodes gave every one of them all of it. A mesh
+	/// whose parts name no material has none (the default material draws it, not the model's
+	/// first: an FBX shadow plane drew the character's texture). Only a manifest recording no
+	/// slot lists at all leaves the whole table, which is what its submeshes index.
 	public static void BindMeshMaterials(ModelManifestSource manifest, int meshIndex,
 		List<Ref<Material>> outMaterials)
 	{
 		let slots = manifest.MaterialSlotsOf(meshIndex);
-		if (slots.IsEmpty)
+		if (manifest.MeshSlotStart.IsEmpty)
 		{
 			for (let g in manifest.MaterialGuid)
 				outMaterials.Add(Ref<Material>(g));
