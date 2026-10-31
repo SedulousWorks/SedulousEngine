@@ -5,14 +5,14 @@ namespace Sedulous.Profiler.GUI;
 
 // Profiler.GUI: the profiler's views on the GUI (X7 of Raptor's editor-gui spec): the frame strip, the
 // counters, the timeline, the scope table and a scope's detail, each reading an IProfileSource through
-// one focus, so they work on the live store and on a capture alike. Profiler.UI's counterpart;
-// Profiler.UI stays for the in-game overlay until X8.
+// one focus, so they work on the live store and on a capture alike; and the in-game overlay.
 //
 // ProfileFocus.bf: what a page looks at, held once. ProfilerWidget.bf: what every view shares.
 // FrameStrip.bf: the frames side by side (the strip, the counters' plots) on one frame axis.
 // ProfileTimeline.bf: the frames chosen on one time axis, a lane per thread and the GPU's.
 // ScopeTable.bf: the frames chosen's scopes as a call tree or a flat list. ScopeDetail.bf: the name
-// chosen, apart: its callers, its children, its calls' spread.
+// chosen, apart: its callers, its children, its calls' spread. ProfilerOverlay.bf: the in-game
+// overlay, one panel in a corner taking no pointer.
 // ProfilerSheet.bf: the views' default sheet. Their reflection is their [GuiReflect] attributes: the
 // elements markup places, their focus and axis given in code.
 

@@ -11,6 +11,7 @@ corlib = "*"
 "Sedulous.Profiler" = "*"
 "Sedulous.Profiler.GUI" = "*"
 "Sedulous.GUI" = "*"
+"Sedulous.VG" = "*"
 
 # The known-frames source the viewers' suites share, compiled from Profiler.Tests.
 [ProjectFolder]

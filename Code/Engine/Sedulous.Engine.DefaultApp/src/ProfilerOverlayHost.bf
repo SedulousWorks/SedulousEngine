@@ -1,24 +1,25 @@
 using System;
 using Sedulous.Profiler;
-using Sedulous.Profiler.UI;
-using Sedulous.UI;
-using Sedulous.Engine.UI;
+using Sedulous.Profiler.GUI;
+using Sedulous.Engine.GUI;
 
 namespace Sedulous.Engine.DefaultApp;
 
-/// An application's profiler overlay. Whether an app has one, and what turns it on, is the
-/// app's to decide; the UI only gives it a place to draw, its screen tier's global overlay
-/// layer (PushScreenOverlay), above every scene and run, where a view that takes no pointer
-/// leaves the game playable under it. DefaultApplication owns one (F3, --profile-overlay, the
-/// web page's ?profile-overlay); another app can own its own.
+/// An application's profiler overlay (on the GUI since Raptor's engine-ui-removal spec, layer 1).
+/// Whether an app has one, and what turns it on, is the app's to decide; the GUI only gives it a
+/// place to draw, its overlay layer (GuiSubsystem.PushOverlay), above every screen and run, where a
+/// tree that takes no pointer leaves the game playable under it. DefaultApplication owns one (F3,
+/// --profile-overlay, the web page's ?profile-overlay); another app can own its own.
 class ProfilerOverlayHost
 {
 	/// BORROWED: the store it shows and arms while shown (a test's own, or the process's).
 	private Sedulous.Profiler.Profiler mProfiler;
 	/// BORROWED, while shown.
-	private UISubsystem mUI = null;
+	private GuiSubsystem mGui = null;
 	private LiveProfileSource mSource ~ delete _;
-	/// Ours: the screen tier holds a reference of its own while it is shown.
+	/// Ours: the overlay holds a reference of its own.
+	private ProfileFocus mFocus ~ { if (_ != null) _.ReleaseRef(); };
+	/// Ours: the overlay layer holds a reference of its own while it is shown.
 	private ProfilerOverlay mOverlay ~ { if (_ != null) _.ReleaseRef(); };
 
 	public this(Sedulous.Profiler.Profiler profiler)
@@ -29,57 +30,57 @@ class ProfilerOverlayHost
 	public ~this()
 	{
 		Hide();
+		// The views let go of the source before it goes.
+		if (mFocus != null)
+			mFocus.SetSource(null);
 	}
 
-	/// Shows it on `ui`'s screen tier and arms the profiler (counted: a capture or the panel
-	/// keeps its own arm). Nothing in a ShippingRelease build, or with no profiler.
-	public void Show(UISubsystem ui)
+	/// Shows it on `gui`'s overlay layer and arms the profiler (counted: a capture or the editor's
+	/// profiler keeps its own arm). Nothing in a ShippingRelease build, or with no profiler.
+	public void Show(GuiSubsystem gui)
 	{
 #if !SHIPPING
-		if ((mUI != null) || (mProfiler == null) || (ui == null))
+		if ((mGui != null) || (mProfiler == null) || (gui == null))
 			return;
 		if (mOverlay == null)
 		{
 			mSource = new LiveProfileSource(mProfiler);
+			mFocus = new ProfileFocus();
 			mOverlay = new ProfilerOverlay();
-			mOverlay.Source = mSource;
-			var fill = LayoutStyle();
-			fill.Width = SizeSpec.Match();
-			fill.Height = SizeSpec.Match();
-			mOverlay.SetLayout(fill);
+			mOverlay.Focus = mFocus;
+			mFocus.SetSource(mSource);
 		}
-		mOverlay.AddRef(); // the overlay layer consumes one
-		ui.PushScreenOverlay(mOverlay);
+		gui.PushOverlay(mOverlay);
 		mProfiler.Arm();
-		mUI = ui;
+		mGui = gui;
 		mOverlay.Refresh();
 #endif
 	}
 
-	/// Takes it down and lets the profiler go. Before the UI it shows on shuts down.
+	/// Takes it down and lets the profiler go. Before the GUI it shows on shuts down.
 	public void Hide()
 	{
-		if (mUI == null)
+		if (mGui == null)
 			return;
-		mUI.RemoveScreenOverlay(mOverlay);
+		mGui.RemoveOverlay(mOverlay);
 		mProfiler.Disarm();
-		mUI = null;
+		mGui = null;
 	}
 
-	public void Toggle(UISubsystem ui)
+	public void Toggle(GuiSubsystem gui)
 	{
 		if (Shown)
 			Hide();
 		else
-			Show(ui);
+			Show(gui);
 	}
 
-	public bool Shown => mUI != null;
+	public bool Shown => mGui != null;
 
-	/// Each frame, before the UI draws: the views take the frames that ended since.
+	/// Each frame, before the GUI draws: the overlay reads the frames that ended since.
 	public void Refresh()
 	{
-		if (mUI != null)
+		if (mGui != null)
 			mOverlay.Refresh();
 	}
 

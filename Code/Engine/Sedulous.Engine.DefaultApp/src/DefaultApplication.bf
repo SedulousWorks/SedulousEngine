@@ -202,11 +202,11 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// takes one of the next five); nought takes none.
 	public void SetProfileCaptureSeconds(double seconds) => mProfileCaptureSeconds = seconds;
 
-	/// Shows the profiler overlay once the UI is up (the player's --profile-overlay, the web
+	/// Shows the profiler overlay once the GUI is up (the player's --profile-overlay, the web
 	/// page's ?profile-overlay). F3 toggles it at any time.
 	public void SetProfilerOverlayAtStart(bool shown) => mProfilerOverlayAtStart = shown;
 
-	/// The overlay host, made on first use over the global profiler; it shows on this app's UI.
+	/// The overlay host, made on first use over the global profiler; it shows on this app's GUI.
 	public ProfilerOverlayHost ProfilerOverlay
 	{
 		get
@@ -480,10 +480,10 @@ class DefaultApplication : IApplication, ISceneObserver
 		// toggles. In ShippingRelease it shows nothing and reads unavailable; the calls stay.
 		instance.SetProfilerOverlay(new (shown) =>
 			{
-				if (mUI == null)
+				if (mGui == null)
 					return;
 				if (shown)
-					ProfilerOverlay.Show(mUI);
+					ProfilerOverlay.Show(mGui);
 				else if (mProfilerOverlay != null)
 					mProfilerOverlay.Hide();
 			}, new () =>
@@ -491,7 +491,7 @@ class DefaultApplication : IApplication, ISceneObserver
 #if SHIPPING
 				return false;
 #else
-				return (mUI != null) && HasGlobalProfiler();
+				return (mGui != null) && HasGlobalProfiler();
 #endif
 			});
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
@@ -649,11 +649,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		let resources = Resources;
 		if (mUI != null)
-		{
 			mUI.SetResourceManager(resources); // the game UI's images bind through it
-			if (mProfilerOverlayAtStart)
-				ProfilerOverlay.Show(mUI);
-		}
+		if ((mGui != null) && mProfilerOverlayAtStart)
+			ProfilerOverlay.Show(mGui);
 		if (mGui != null)
 			mGui.SetResourceManager(resources); // the GUI's documents, sheets and images by guid
 		// A headless or content free application attaches one later, or never.
@@ -736,14 +734,14 @@ class DefaultApplication : IApplication, ISceneObserver
 	}
 
 	/// F3: the profiler overlay on and off; and while it shows, the frames that ended since
-	/// reach its views before the UI draws.
+	/// reach it before the GUI draws.
 	private void ProfilerOverlayOnRequest(IApplicationHost host)
 	{
 		let shell = host.Shell;
 		let input = (shell != null) ? shell.Input : null;
 		let keyboard = (input != null) ? input.Keyboard : null;
-		if ((keyboard != null) && keyboard.IsKeyPressed(.F3) && (mUI != null))
-			ProfilerOverlay.Toggle(mUI);
+		if ((keyboard != null) && keyboard.IsKeyPressed(.F3) && (mGui != null))
+			ProfilerOverlay.Toggle(mGui);
 		if (mProfilerOverlay != null)
 			mProfilerOverlay.Refresh();
 	}
@@ -989,7 +987,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnShutdown(IApplicationHost host)
 	{
-		// Off the UI's overlay layer and the profiler let go, while both are alive.
+		// Off the GUI's overlay layer and the profiler let go, while both are alive.
 		if (mProfilerOverlay != null)
 			mProfilerOverlay.Hide();
 		// Paired with the install in OnStartup; owned, so this frees it. One this application
