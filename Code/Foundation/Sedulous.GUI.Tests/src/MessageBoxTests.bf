@@ -166,6 +166,35 @@ class MessageBoxTests
 		Test.Assert(d.PopupCount == 0);
 	}
 
+	/// A box nothing else holds (an editor's prompt: made, opened, its reference dropped) tells its
+	/// answer after its close let the popup layer's reference go: it lives until the event is out.
+	[Test]
+	public static void OneOnlyItsPopupHoldsTellsItsAnswerAfterClosing()
+	{
+		let root = SceneFixtures.NewScene(500.0f, 500.0f);
+		defer root.ReleaseRef();
+		let d = root.EventDispatcher;
+
+		let answer = scope String();
+		Button okButton = null;
+		{
+			let @box = new MessageBox();
+			@box.Configure("Confirm", "Delete it?", .OkCancel);
+			@box.AddEventListener(.Changed, new (e) => { answer.Set(@box.ResultName); });
+			@box.OpenModal(root);
+			root.UpdateLayout();
+			okButton = @box.ButtonAt(1);
+			@box.ReleaseRef(); // the popup layer holds it alone now
+		}
+		Test.Assert(okButton != null);
+		let center = WorldCenter(okButton);
+		d.InjectMouseDown(center, .Left);
+		d.InjectMouseUp(center, .Left);
+
+		Test.Assert(answer == "ok");
+		Test.Assert(d.PopupCount == 0);
+	}
+
 	[Test]
 	public static void ItsCloseButtonClosesItClosableAndResizableShowOrHideItsButtonAndGrip()
 	{

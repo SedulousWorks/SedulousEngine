@@ -416,6 +416,10 @@ class MessageBox : Window
 			if ((MessageBoxDetail.sNames[i] == resultName) && (mOnResult != null))
 				mOnResult((Result)i);
 		}
+		// Closing lets the popup layer's reference go, which may be the last one: kept alive
+		// until its answer has been told.
+		AddRef();
+		defer ReleaseRef();
 		Close();
 		SendEvent(scope Event(.Changed, this));
 	}
