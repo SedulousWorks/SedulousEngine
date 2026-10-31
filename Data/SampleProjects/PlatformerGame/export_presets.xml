@@ -4,7 +4,7 @@
 		<u32 name="version">3</u32>
 	</array>
 	<object>
-		<array name="presets" count="3">
+		<array name="presets" count="4">
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
 				<u32 name="version">1</u32>
@@ -90,6 +90,35 @@
 				<bool name="windowResizable">true</bool>
 				<bool name="overridesOrientation">true</bool>
 				<u8 name="orientation">1</u8>
+				<bool name="includeShaderSource">false</bool>
+			</object>
+			<array name="dataVersions" count="1">
+				<u64 name="type">864580422535781968</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object>
+				<string name="name">Windows Desktop</string>
+				<string name="platform">Win64</string>
+				<string name="templateId">sedulous-win64-release-0.1.0</string>
+				<string name="playerName">SkyHopper</string>
+				<string name="outputSubdir">Windows64</string>
+				<array name="additionalFiles" count="1">
+					<string>CREDITS.md</string>
+				</array>
+				<string name="config"/>
+				<bool name="stageSymbols">false</bool>
+				<bool name="pruneToReachable">false</bool>
+				<bool name="overridesRender">false</bool>
+				<u32 name="renderWidth">0</u32>
+				<u32 name="renderHeight">0</u32>
+				<u8 name="renderFit">1</u8>
+				<bool name="overridesWindow">true</bool>
+				<u32 name="windowWidth">1280</u32>
+				<u32 name="windowHeight">720</u32>
+				<u8 name="windowMode">0</u8>
+				<bool name="windowResizable">true</bool>
+				<bool name="overridesOrientation">false</bool>
+				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
 			</object>
 		</array>
