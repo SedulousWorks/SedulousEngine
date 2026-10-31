@@ -33,6 +33,11 @@ class ReflectionProbeSystemTests
 
 		var listA = ReflectionProbe[1](Probe(1, .(0, 1, 0)));
 		var listB = ReflectionProbe[2](Probe(2, .(5, 1, 0)), Probe(3, .(9, 1, 0)));
+		listB[1].HalfExtents = .(2, 3, 4);
+		listB[1].BlendDistance = 0.5f;
+		listB[1].Intensity = 0.75f;
+		listB[1].Priority = 7;
+		listB[1].Parallax = false;
 
 		probes.BeginFrame();
 		probes.Assign(sceneA, .(&listA[0], 1));
@@ -48,6 +53,22 @@ class ReflectionProbeSystemTests
 
 		let unknown = scope ExtractedScene();
 		Test.Assert(probes.RangeFor(unknown).Count == 0);
+
+		// Each record holds its probe by name, as lighting.hlsli reads it (the box from the centre
+		// and the half extents; the slice is the probe's slot in the array).
+		Test.Assert(probes.CpuProbes.Length == 3);
+		let record = probes.CpuProbes[2];
+		Test.Assert(record.Center.X == 9.0f);
+		Test.Assert(record.Intensity == 0.75f);
+		Test.Assert(record.BoxMin.X == 7.0f);
+		Test.Assert(record.BoxMin.Z == -4.0f);
+		Test.Assert(record.BoxMax.Y == 4.0f);
+		Test.Assert(record.BlendDistance == 0.5f);
+		Test.Assert(record.Priority == 7.0f);
+		Test.Assert(record.Parallax == 0.0f);
+		Test.Assert(probes.CpuProbes[1].Parallax == 1.0f, "the default box projects");
+		Test.Assert(record.MipCount > 0.0f);
+		Test.Assert(record.Slice != probes.CpuProbes[1].Slice, "each probe its own cube");
 	}
 
 	/// A capture renders the probe's OWNING scene: a probe in one scene must never bake
@@ -155,8 +176,8 @@ class ReflectionProbeSystemTests
 
 		probes.BeginFrame();
 		probes.Assign(scene, .(&list[0], 2));
-		let sliceA = probes.CpuProbes[0].BoxMax.W;
-		let sliceB = probes.CpuProbes[1].BoxMax.W;
+		let sliceA = probes.CpuProbes[0].Slice;
+		let sliceB = probes.CpuProbes[1].Slice;
 
 		// A second frame, with the probes given in the OTHER order.
 		var swapped = ReflectionProbe[2](list[1], list[0]);
@@ -164,7 +185,7 @@ class ReflectionProbeSystemTests
 		probes.Assign(scene, .(&swapped[0], 2));
 
 		// The slices follow the KEYS rather than the order they were handed over.
-		Test.Assert(probes.CpuProbes[0].BoxMax.W == sliceB);
-		Test.Assert(probes.CpuProbes[1].BoxMax.W == sliceA);
+		Test.Assert(probes.CpuProbes[0].Slice == sliceB);
+		Test.Assert(probes.CpuProbes[1].Slice == sliceA);
 	}
 }

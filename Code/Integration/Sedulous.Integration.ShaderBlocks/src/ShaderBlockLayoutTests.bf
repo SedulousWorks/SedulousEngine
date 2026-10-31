@@ -42,9 +42,15 @@ class ShaderBlockLayoutTests
 
 	private static FieldRow[?] sGpuProbe = .(
 		.("center", offsetof(GpuProbe, Center)),
+		.("intensity", offsetof(GpuProbe, Intensity)),
 		.("boxMin", offsetof(GpuProbe, BoxMin)),
+		.("blendDistance", offsetof(GpuProbe, BlendDistance)),
 		.("boxMax", offsetof(GpuProbe, BoxMax)),
-		.("params", offsetof(GpuProbe, Params)));
+		.("slice", offsetof(GpuProbe, Slice)),
+		.("mipCount", offsetof(GpuProbe, MipCount)),
+		.("priority", offsetof(GpuProbe, Priority)),
+		.("parallax", offsetof(GpuProbe, Parallax)),
+		.("_probeRecordPad", offsetof(GpuProbe, Pad)));
 
 	private static FieldRow[?] sDecalUniforms = .(
 		.("World", offsetof(DecalUniforms, World)),
@@ -83,9 +89,10 @@ class ShaderBlockLayoutTests
 		.("LocalShadowBase", offsetof(MeshViewData, LocalShadowBase)),
 		.("PrevViewProj", offsetof(MeshViewData, PrevViewProj)),
 		.("Jitter", offsetof(MeshViewData, Jitter)),
-		.("ProbeCenter", offsetof(MeshViewData, ProbeCenter)),
-		.("ProbeBoxMin", offsetof(MeshViewData, ProbeBoxMin)),
-		.("ProbeBoxMax", offsetof(MeshViewData, ProbeBoxMax)),
+		.("ProbeBase", offsetof(MeshViewData, ProbeBase)),
+		.("ProbeCount", offsetof(MeshViewData, ProbeCount)),
+		.("_probePad0", offsetof(MeshViewData, ProbePad0)),
+		.("_probePad1", offsetof(MeshViewData, ProbePad1)),
 		.("ShadowParams", offsetof(MeshViewData, ShadowParams)),
 		.("DebugParams", offsetof(MeshViewData, DebugParams)),
 		.("IblDiffuse", offsetof(MeshViewData, IblDiffuse)),

@@ -31,14 +31,14 @@ TextureCube              PrefilterMap : register(t6, space0);
 Texture2D                BRDFLut      : register(t7, space0);
 SamplerState             EnvSampler   : register(s1, space0);
 // Reflection probes: a cube-ARRAY of prefiltered probe radiance (t8) + a probe metadata buffer
-// (t9). ProbeCenter.w carries the probe COUNT; the forward loops Probes[0..count], box-tests + parallax-
-// projects + blends each by an influence weight (blendDistance falloff) over the global IBL.
+// (t9). The view's ProbeBase and ProbeCount pick this scene's records; the forward loops them, box-tests +
+// parallax-projects + blends each by an influence weight (blendDistance falloff) over the global IBL.
 TextureCubeArray         ProbeArray   : register(t8, space0);
-struct GpuProbe {
-    float4 center;   // xyz = capture center, w = intensity
-    float4 boxMin;   // xyz = box min,        w = blendDistance
-    float4 boxMax;   // xyz = box max,        w = cube slice (array index)
-    float4 params;   // x = mipCount, y = priority, z = parallax (0/1), w = pad
+struct GpuProbe {                 // GpuProbe (GpuProbe.bf; 64 bytes)
+    float3 center;  float intensity;     // the capture centre (world) and the reflection's strength
+    float3 boxMin;  float blendDistance; // the influence box, and the fade at its faces
+    float3 boxMax;  float slice;         // the box's far corner, and the probe's cube in ProbeArray
+    float  mipCount; float priority; float parallax; float _probeRecordPad; // parallax: 1 box-projects
 };
 StructuredBuffer<GpuProbe> Probes : register(t9, space0);
 
@@ -334,27 +334,27 @@ float3 AmbientLight(float3 worldPos, float3 N, float3 V, float3 albedo, float ro
         // blend all by an influence weight that fades to 0 over blendDistance near the box edge (soft seam).
         // The accumulated probe reflection blends over the global IBL by the total weight (parallax = Lagarde
         // box-projected cubemap; a cube captured from a point tracks geometry only after this projection).
-        uint probeBase  = (uint)ProbeCenter.x;   // this view's scene's records (multi-scene frames)
-        uint probeCount = (uint)ProbeCenter.w;
+        uint probeBase  = ProbeBase;    // this view's scene's records (multi-scene frames)
+        uint probeCount = ProbeCount;
         float3 probeAccum = float3(0, 0, 0);
         float  probeWeight = 0.0;
         for (uint pi = 0u; pi < probeCount; ++pi) {
             GpuProbe pr = Probes[probeBase + pi];
-            float3 bmin = pr.boxMin.xyz, bmax = pr.boxMax.xyz;
+            float3 bmin = pr.boxMin, bmax = pr.boxMax;
             // Influence: distance to the nearest box face (negative outside) -> fade over blendDistance.
             float3 d = min(worldPos - bmin, bmax - worldPos);
             float  edge = min(min(d.x, d.y), d.z);
-            float  w = saturate(edge / max(pr.boxMin.w, 1e-3));
+            float  w = saturate(edge / max(pr.blendDistance, 1e-3));
             if (w <= 0.0) { continue; }
             float3 Rp = R;                                              // no-parallax: raw reflect (infinite env)
-            if (pr.params.z > 0.5) {
+            if (pr.parallax > 0.5) {
                 float3 invR = 1.0 / R;                                  // R==0 on an axis -> +-inf, handled by max/min
                 float3 tMin = (bmin - worldPos) * invR;
                 float3 tMax = (bmax - worldPos) * invR;
                 float  dist = min(min(max(tMin.x, tMax.x), max(tMin.y, tMax.y)), max(tMin.z, tMax.z));
-                Rp = (worldPos + R * dist) - pr.center.xyz;     // re-aim from the capture center
+                Rp = (worldPos + R * dist) - pr.center;         // re-aim from the capture center
             }
-            float3 spec = ProbeArray.SampleLevel(EnvSampler, float4(Rp, pr.boxMax.w), roughness * 4.0).rgb * pr.center.w;
+            float3 spec = ProbeArray.SampleLevel(EnvSampler, float4(Rp, pr.slice), roughness * 4.0).rgb * pr.intensity;
             probeAccum += w * spec;
             probeWeight += w;
         }

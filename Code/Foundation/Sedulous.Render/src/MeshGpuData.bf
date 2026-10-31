@@ -54,11 +54,13 @@ struct MeshViewData
 	/// This frame's jitter in the first two, last frame's in the last two.
 	public Float4 Jitter = .(0, 0, 0, 0);
 
-	/// The first component is this view's scene's base into the probe records, and the last
-	/// is its count, which is the shader's loop bound.
-	public Float4 ProbeCenter = .(0, 0, 0, 0);
-	public Float4 ProbeBoxMin = .(0, 0, 0, 0);
-	public Float4 ProbeBoxMax = .(0, 0, 0, 0);
+	/// This view's scene's first record in the probe records (scenes' records are
+	/// concatenated per frame).
+	public uint32 ProbeBase = 0;
+	/// Its reflection probes, the shader's loop bound; nought is none, the global IBL alone.
+	public uint32 ProbeCount = 0;
+	public uint32 ProbePad0 = 0;
+	public uint32 ProbePad1 = 0;
 
 	/// The cascade fade's width in world units and the clip space Y sign; zw unused.
 	public Float4 ShadowParams = .(40.0f, 0, 0, 0);

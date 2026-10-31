@@ -179,11 +179,15 @@ class ReflectionProbeSystem
 			let boxMax = probe.Center + probe.HalfExtents;
 
 			var record = GpuProbe();
-			record.Center = .(probe.Center.X, probe.Center.Y, probe.Center.Z, probe.Intensity);
-			record.BoxMin = .(boxMin.X, boxMin.Y, boxMin.Z, probe.BlendDistance);
-			record.BoxMax = .(boxMax.X, boxMax.Y, boxMax.Z, (float)slot);
-			record.Params = .((float)cPrefilterMips, (float)probe.Priority,
-				probe.Parallax ? 1.0f : 0.0f, 0.0f);
+			record.Center = probe.Center;
+			record.Intensity = probe.Intensity;
+			record.BoxMin = boxMin;
+			record.BlendDistance = probe.BlendDistance;
+			record.BoxMax = boxMax;
+			record.Slice = (float)slot;
+			record.MipCount = (float)cPrefilterMips;
+			record.Priority = (float)probe.Priority;
+			record.Parallax = probe.Parallax ? 1.0f : 0.0f;
 			mCpuProbes[mActive] = record;
 
 			let signature = TransformSignature(probe);

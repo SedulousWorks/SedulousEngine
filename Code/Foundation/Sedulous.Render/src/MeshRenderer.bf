@@ -1476,8 +1476,8 @@ class MeshRenderer : Renderer
 
 		// The probes are off DURING a probe capture, so a metallic surface reflects the sky
 		// rather than the probe that is not built yet, which would bake it black.
-		viewData.ProbeCenter = .((float)context.ProbeBase, 0, 0,
-			context.ProbesEnabled ? (float)context.ProbeCount : 0.0f);
+		viewData.ProbeBase = context.ProbeBase;
+		viewData.ProbeCount = context.ProbesEnabled ? context.ProbeCount : 0;
 
 		viewData.LightCount = (float)lightCount;
 		viewData.LightOffset = lightOffset;

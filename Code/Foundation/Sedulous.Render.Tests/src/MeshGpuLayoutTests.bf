@@ -67,7 +67,7 @@ class MeshGpuLayoutTests
 	[Test]
 	public static void TheViewBlockFitsItsRingSlot()
 	{
-		Test.Assert(sizeof(MeshViewData) == 688, "view.hlsli's View");
+		Test.Assert(sizeof(MeshViewData) == 656, "view.hlsli's View");
 		Test.Assert(sizeof(MeshViewData) <= 1024);
 	}
 
