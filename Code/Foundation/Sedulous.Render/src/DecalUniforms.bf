@@ -15,11 +15,17 @@ struct DecalUniforms
 	/// Screen and depth back into world, for THIS view and its jitter.
 	public Float4x4 InvViewProj = .Identity();
 	public Float4 Color = .(1, 1, 1, 1);
-	/// The inverse of the full target's size in the first two, and the cosines of the fade's
-	/// start and end angles in the last two.
-	public Float4 Params = .(0, 0, 1, 0);
-	/// The vertical correction for the interpolant in the first component; the rest spare.
-	public Float4 Flip = .(1, 0, 0, 0);
+	/// One over the full target's size.
+	public Float2 InvTargetSize = .(0, 0);
+	/// The cosine of the angle fade's start, and of its end.
+	public float FadeStartCos = 1.0f;
+	public float FadeEndCos = 0.0f;
+	/// The vertical correction for the interpolant: one on Vulkan, minus one on a target that
+	/// flips clip space.
+	public float YFlip = 1.0f;
+	public float Pad0 = 0.0f;
+	public float Pad1 = 0.0f;
+	public float Pad2 = 0.0f;
 
 	public this() {}
 }

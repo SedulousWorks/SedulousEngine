@@ -12,12 +12,16 @@ struct SkyUniform
 	/// Last frame's, which the camera motion vectors are the difference against.
 	public Float4x4 PrevViewProj = .Identity();
 
-	/// The eye, with the DISPLAY ONLY background multiplier in its fourth component: the
-	/// environment's own intensity is baked into the cube, so this never touches the lighting.
-	public Float4 CamPosIntensity = .(0, 0, 0, 1);
-	/// The direction to the sun, with its angular size.
-	public Float4 SunDir = .(0, 1, 0, 0.5f);
-	public Float4 SunColor = .(1, 1, 1, 1);
+	/// The eye in world space.
+	public Float3 CameraPos = .(0, 0, 0);
+	/// The DISPLAY ONLY background multiplier: the environment's own intensity is baked into
+	/// the cube, so this never touches the lighting.
+	public float BackgroundIntensity = 1.0f;
+	/// The direction to the sun.
+	public Float3 SunDirection = .(0, 1, 0);
+	public float SunAngularSizeDegrees = 0.5f;
+	public Float3 SunColor = .(1, 1, 1);
+	public float SunIntensity = 1.0f;
 	/// This frame's jitter and last frame's, which the reprojection undoes.
 	public Float4 Jitter = .(0, 0, 0, 0);
 	/// The sign the reconstructed ray's vertical axis is multiplied by: a backend that flips

@@ -127,9 +127,12 @@ class SkyPass
 		var uniform = SkyUniform();
 		uniform.InvViewProj = invViewProj;
 		uniform.PrevViewProj = prevViewProj;
-		uniform.CamPosIntensity = .(cameraPos.X, cameraPos.Y, cameraPos.Z, backgroundIntensity);
-		uniform.SunDir = .(sunDir.X, sunDir.Y, sunDir.Z, sunSize);
-		uniform.SunColor = .(sunColor.X, sunColor.Y, sunColor.Z, sunIntensity);
+		uniform.CameraPos = cameraPos;
+		uniform.BackgroundIntensity = backgroundIntensity;
+		uniform.SunDirection = sunDir;
+		uniform.SunAngularSizeDegrees = sunSize;
+		uniform.SunColor = sunColor;
+		uniform.SunIntensity = sunIntensity;
 		uniform.Jitter = .(jitter.X, jitter.Y, prevJitter.X, prevJitter.Y);
 		uniform.SkyFlags = .(mDevice.NeedsClipSpaceYFlip ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 

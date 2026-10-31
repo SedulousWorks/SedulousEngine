@@ -554,14 +554,14 @@ class IBLSystem
 		push.FaceIndex = face;
 		push.Mode = (int32)context.Sky.Mode;
 		push.SkyIntensity = context.Sky.Intensity;
-		push.Sun = .(context.SunDir.X, context.SunDir.Y, context.SunDir.Z,
-			context.Sky.SunAngularSize);
-		push.Horizon = .(context.Sky.Horizon.X, context.Sky.Horizon.Y, context.Sky.Horizon.Z,
-			context.Sky.SunIntensity);
-		push.Zenith = .(context.Sky.Zenith.X, context.Sky.Zenith.Y, context.Sky.Zenith.Z,
-			context.Sky.Rotation);
-		push.Ground = .(context.Sky.Ground.X, context.Sky.Ground.Y, context.Sky.Ground.Z,
-			context.Sky.Turbidity);
+		push.SunDirection = context.SunDir;
+		push.SunAngularSize = context.Sky.SunAngularSize;
+		push.Horizon = context.Sky.Horizon;
+		push.SunIntensity = context.Sky.SunIntensity;
+		push.Zenith = context.Sky.Zenith;
+		push.SkyRotation = context.Sky.Rotation;
+		push.Ground = context.Sky.Ground;
+		push.Turbidity = context.Sky.Turbidity;
 		return push;
 	}
 

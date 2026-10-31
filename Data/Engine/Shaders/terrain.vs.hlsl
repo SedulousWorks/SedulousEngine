@@ -13,20 +13,14 @@
 // surface normal comes from central differences on the height texture. Emits current + previous clip
 // for the GBuffer motion vector, and worldPos for the PS's shadow + lighting.
 
-#define TERRAIN_CASCADE_COUNT 4
+// The colour pass's view: this stage declares its first four members, by the names terrain.ps.hlsl
+// gives the whole block (one Beef struct, GpuTerrainView, fills the shared slot).
 cbuffer TerrainView : register(b0, space0) {
     float4x4 ChunkToWorld;   // heightfield-local -> world
     float4x4 ViewProj;       // world -> clip (camera)
     float4x4 View;           // world -> view (GBuffer normal + shadow view-depth)
     float4x4 PrevViewProj;   // world -> clip, previous frame (motion vectors)
-    float4x4 CascadeViewProj[TERRAIN_CASCADE_COUNT]; // world -> each cascade's light clip
-    float4   LightDir;       // xyz = direction TO the light (normalized); w unused
-    float4   CameraPos;      // xyz world camera
-    float4   Jitter;         // xy = current TAA jitter, zw = previous
-    float4   CascadeSplitFar;  // view-space far depth per cascade
-    float4   CascadeTexelSize; // world units per texel per cascade
-    float4   ShadowMeta;       // x = cascade count, y = layer base, z = normal bias, w = depth bias
-    float4   ShadowParams;     // x = far-fade width, y = uv.y sign, zw spare
+    // The rest of the block (terrain.ps.hlsl declares it whole) is read by the pixel stage only.
 };
 
 cbuffer TerrainChunk : register(b0, space1) {

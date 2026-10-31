@@ -9,16 +9,16 @@ struct PSIn { float4 pos : SV_Position; float3 dir : TEXCOORD0; float2 ndc : TEX
 struct PSOut { float4 color : SV_Target0; float2 velocity : SV_Target1; };
 PSOut main(PSIn i) {
     float3 dir = normalize(i.dir);
-    // The env cube already carries skyIntensity (baked once; drives IBL too). CamPosIntensity.w is
+    // The env cube already carries skyIntensity (baked once; drives IBL too). BackgroundIntensity is
     // the SEPARATE display-only backdrop multiplier - it dims the VISIBLE sky without touching the
     // IBL lighting derived from the cube. (skyIntensity is never re-applied here - that squared it.)
-    float3 c = EnvMap.SampleLevel(EnvSamp, dir, 0.0).rgb * CamPosIntensity.w;
+    float3 c = EnvMap.SampleLevel(EnvSamp, dir, 0.0).rgb * BackgroundIntensity;
     // Crisp analytic sun disc (screen resolution, round) toward the light, with a soft ~1.5deg edge.
-    float3 L     = normalize(-SunDir.xyz);
+    float3 L     = normalize(-SunDirection);
     float  cd    = dot(dir, L);
-    float  inner = cos(radians(max(SunDir.w, 0.1)));
-    float  outer = cos(radians(max(SunDir.w, 0.1) + 1.5));
-    c += smoothstep(outer, inner, cd) * SunColor.rgb * SunColor.w;
+    float  inner = cos(radians(max(SunAngularSizeDegrees, 0.1)));
+    float  outer = cos(radians(max(SunAngularSizeDegrees, 0.1) + 1.5));
+    c += smoothstep(outer, inner, cd) * SunColor * SunIntensity;
 
     // Camera-motion velocity: reproject the (infinite) view ray through last frame's view-proj (w=0, a
     // direction) and take the UV delta, in UNJITTERED NDC. The ray is reconstructed through the UNJITTERED

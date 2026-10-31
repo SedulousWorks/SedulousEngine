@@ -33,11 +33,11 @@ float3 PreethamRGB(float cosTheta, float gamma, float thetaSun, float T) {
 }
 float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float3 dir    = normalize(DirForFace(pc.FaceIndex, uv));
-    float3 sunDir = normalize(-pc.Sun.xyz);
-    float  T        = clamp(pc.Ground.a, 1.7, 10.0);
+    float3 sunDir = normalize(-pc.SunDirection);
+    float  T        = clamp(pc.Turbidity, 1.7, 10.0);
     float  thetaSun = acos(clamp(sunDir.y, 0.0, 1.0));
     float  gamma    = acos(clamp(dot(dir, sunDir), -1.0, 1.0));
     float3 sky = (dir.y >= 0.0) ? PreethamRGB(dir.y, gamma, thetaSun, T) * 0.05
-                                : pc.Ground.rgb * 0.5;   // below horizon: dim ground tint
+                                : pc.Ground * 0.5;   // below horizon: dim ground tint
     return float4(sky * max(pc.SkyIntensity, 0.0), 1.0);
 }

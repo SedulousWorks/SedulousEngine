@@ -57,8 +57,13 @@ class ShaderBlockLayoutTests
 		.("InvWorld", offsetof(DecalUniforms, InvWorld)),
 		.("InvViewProj", offsetof(DecalUniforms, InvViewProj)),
 		.("Color", offsetof(DecalUniforms, Color)),
-		.("Params", offsetof(DecalUniforms, Params)),
-		.("Flip", offsetof(DecalUniforms, Flip)));
+		.("InvTargetSize", offsetof(DecalUniforms, InvTargetSize)),
+		.("FadeStartCos", offsetof(DecalUniforms, FadeStartCos)),
+		.("FadeEndCos", offsetof(DecalUniforms, FadeEndCos)),
+		.("YFlip", offsetof(DecalUniforms, YFlip)),
+		.("_decalPad0", offsetof(DecalUniforms, Pad0)),
+		.("_decalPad1", offsetof(DecalUniforms, Pad1)),
+		.("_decalPad2", offsetof(DecalUniforms, Pad2)));
 
 	/// The forward view (view.hlsli), as every forward stage declares it.
 	private static FieldRow[?] sView = .(
@@ -152,9 +157,12 @@ class ShaderBlockLayoutTests
 	private static FieldRow[?] sSky = .(
 		.("InvViewProj", offsetof(SkyUniform, InvViewProj)),
 		.("PrevViewProj", offsetof(SkyUniform, PrevViewProj)),
-		.("CamPosIntensity", offsetof(SkyUniform, CamPosIntensity)),
-		.("SunDir", offsetof(SkyUniform, SunDir)),
+		.("CameraPos", offsetof(SkyUniform, CameraPos)),
+		.("BackgroundIntensity", offsetof(SkyUniform, BackgroundIntensity)),
+		.("SunDirection", offsetof(SkyUniform, SunDirection)),
+		.("SunAngularSizeDegrees", offsetof(SkyUniform, SunAngularSizeDegrees)),
 		.("SunColor", offsetof(SkyUniform, SunColor)),
+		.("SunIntensity", offsetof(SkyUniform, SunIntensity)),
 		.("Jitter", offsetof(SkyUniform, Jitter)),
 		.("SkyFlags", offsetof(SkyUniform, SkyFlags)));
 
@@ -163,10 +171,14 @@ class ShaderBlockLayoutTests
 		.("Mode", offsetof(IblPush, Mode)),
 		.("Roughness", offsetof(IblPush, Roughness)),
 		.("SkyIntensity", offsetof(IblPush, SkyIntensity)),
-		.("Sun", offsetof(IblPush, Sun)),
+		.("SunDirection", offsetof(IblPush, SunDirection)),
+		.("SunAngularSize", offsetof(IblPush, SunAngularSize)),
 		.("Horizon", offsetof(IblPush, Horizon)),
+		.("SunIntensity", offsetof(IblPush, SunIntensity)),
 		.("Zenith", offsetof(IblPush, Zenith)),
-		.("Ground", offsetof(IblPush, Ground)));
+		.("SkyRotation", offsetof(IblPush, SkyRotation)),
+		.("Ground", offsetof(IblPush, Ground)),
+		.("Turbidity", offsetof(IblPush, Turbidity)));
 
 	/// probe_prefilter_ps.ps.hlsl's struct Push; its float2 Pad is the mirror's pad0 and pad1.
 	private static FieldRow[?] sPrefilterPush = .(
@@ -297,7 +309,8 @@ class ShaderBlockLayoutTests
 		.("ViewToWorld0", offsetof(SsgiResolvePush, ViewToWorld) + 0),
 		.("ViewToWorld1", offsetof(SsgiResolvePush, ViewToWorld) + 16),
 		.("ViewToWorld2", offsetof(SsgiResolvePush, ViewToWorld) + 32),
-		.("SkyAmbient", offsetof(SsgiResolvePush, SkyAmbient)));
+		.("SkyAmbient", offsetof(SsgiResolvePush, SkyAmbient)),
+		.("ShSkyDimmer", offsetof(SsgiResolvePush, ShSkyDimmer)));
 
 	private static FieldRow[?] sSsrPush = .(
 		.("InvProj", offsetof(SsrPush, InvProj)),
@@ -344,8 +357,8 @@ class ShaderBlockLayoutTests
 		.("LutSize", offsetof(TonemapPush, LutSize)),
 		.("EncodeOutput", offsetof(TonemapPush, EncodeOutput)),
 		.("Rotation", offsetof(TonemapPush, Rotation)),
-		.("Pad1", offsetof(TonemapPush, Pad1)),
-		.("Pad2", offsetof(TonemapPush, Pad2)));
+		.("_tonemapPad0", offsetof(TonemapPush, Pad0)),
+		.("_tonemapPad1", offsetof(TonemapPush, Pad1)));
 
 	private static FieldRow[?] sFxaaPush = .(
 		.("TexelSize", offsetof(FxaaPush, TexelSize)),
@@ -397,9 +410,12 @@ class ShaderBlockLayoutTests
 	private static FieldRow[?] sParticleView = .(
 		.("ViewProj", offsetof(Sedulous.Engine.Particles.GpuParticleView, ViewProj)),
 		.("View", offsetof(Sedulous.Engine.Particles.GpuParticleView, View)),
-		.("DepthParams", offsetof(Sedulous.Engine.Particles.GpuParticleView, DepthParams)));
+		.("ProjZScale", offsetof(Sedulous.Engine.Particles.GpuParticleView, ProjZScale)),
+		.("ProjZOffset", offsetof(Sedulous.Engine.Particles.GpuParticleView, ProjZOffset)),
+		.("ProjWScale", offsetof(Sedulous.Engine.Particles.GpuParticleView, ProjWScale)),
+		.("_particleViewPad0", offsetof(Sedulous.Engine.Particles.GpuParticleView, Pad0)));
 
-	/// TerrainView as terrain.ps.hlsl declares it; terrain.vs.hlsl declares its first twelve
+	/// TerrainView as terrain.ps.hlsl declares it; terrain.vs.hlsl declares its first four
 	/// members and terrain_depth.vs.hlsl its first two (the same rows, a prefix of this table).
 	private static FieldRow[?] sTerrainView = .(
 		.("ChunkToWorld", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ChunkToWorld)),
@@ -408,21 +424,40 @@ class ShaderBlockLayoutTests
 		.("PrevViewProj", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, PrevViewProj)),
 		.("CascadeViewProj", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeViewProj)),
 		.("LightDir", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, LightDir)),
+		.("_terrainViewPad0", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad0)),
 		.("CameraPos", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CameraPos)),
+		.("_terrainViewPad1", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad1)),
 		.("Jitter", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Jitter)),
 		.("CascadeSplitFar", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeSplitFar)),
 		.("CascadeTexelSize", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeTexelSize)),
-		.("ShadowMeta", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowMeta)),
-		.("ShadowParams", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowParams)),
-		.("SplatParams", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, SplatParams)),
-		.("SplatParams2", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, SplatParams2)),
-		.("ShadowLight", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowLight)));
+		.("CascadeCount", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeCount)),
+		.("CascadeLayerBase", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, CascadeLayerBase)),
+		.("ShadowNormalBias", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowNormalBias)),
+		.("ShadowDepthBias", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowDepthBias)),
+		.("ShadowFarFade", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowFarFade)),
+		.("ShadowUvYSign", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowUvYSign)),
+		.("HeightBlendContrast", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, HeightBlendContrast)),
+		.("HeightMapsBound", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, HeightMapsBound)),
+		.("PaletteCount", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, PaletteCount)),
+		.("WeightsBound", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, WeightsBound)),
+		.("BaseTileScale", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, BaseTileScale)),
+		.("BaseBound", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, BaseBound)),
+		.("MaskMapsBound", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, MaskMapsBound)),
+		.("_terrainViewPad2", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad2)),
+		.("_terrainViewPad3", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad3)),
+		.("_terrainViewPad4", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad4)),
+		.("ShadowStrength", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, ShadowStrength)),
+		.("_terrainViewPad5", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad5)),
+		.("_terrainViewPad6", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad6)),
+		.("_terrainViewPad7", offsetof(Sedulous.Engine.Terrain.GpuTerrainView, Pad7)));
 
 	private static FieldRow[?] sTerrainPickView = .(
 		.("ChunkToWorld", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, ChunkToWorld)),
 		.("ViewProj", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, ViewProj)),
-		.("PickId", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, PickIndex)),
-		.("_pvPad", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, Pad0)));
+		.("PickIndex", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, PickIndex)),
+		.("PickGeneration", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, PickGeneration)),
+		.("_pickViewPad0", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, Pad0)),
+		.("_pickViewPad1", offsetof(Sedulous.Engine.Terrain.GpuTerrainPickView, Pad1)));
 
 	private static FieldRow[?] sTerrainChunk = .(
 		.("OriginXZ", offsetof(Sedulous.Engine.Terrain.GpuTerrainChunk, OriginXZ)),
@@ -565,9 +600,9 @@ class ShaderBlockLayoutTests
 		Check("particle", .Fragment, .None, "type.ParticleView", sParticleView);
 		Check("particletrail", .Vertex, .None, "type.ParticleView", sParticleView);
 		Check("terrain", .Fragment, .None, "type.TerrainView", sTerrainView);
-		Check("terrain", .Vertex, .None, "type.TerrainView", .(&sTerrainView[0], 12));
+		Check("terrain", .Vertex, .None, "type.TerrainView", .(&sTerrainView[0], 4));
 		Check("terrain_depth", .Vertex, .None, "type.TerrainView", .(&sTerrainView[0], 2));
-		Check("terrain_pick", .Vertex, .None, "type.TerrainView", sTerrainPickView);
+		Check("terrain_pick", .Vertex, .None, "type.TerrainPickView", sTerrainPickView);
 		Check("terrain", .Vertex, .None, "type.TerrainChunk", sTerrainChunk);
 		Check("terrain_depth", .Vertex, .None, "type.TerrainChunk", sTerrainChunk);
 		Check("terrain_pick", .Vertex, .None, "type.TerrainChunk", sTerrainChunk);

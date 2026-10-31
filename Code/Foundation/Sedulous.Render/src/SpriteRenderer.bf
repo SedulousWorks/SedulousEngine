@@ -186,14 +186,14 @@ class SpriteRenderer : Renderer
 				{
 					let sprite = (SpriteRenderData)items[k].Data;
 					var instance = SpriteInstance();
-					instance.PositionSize = .(sprite.WorldCenter.X, sprite.WorldCenter.Y,
-						sprite.WorldCenter.Z, sprite.Size.X);
-					instance.SizeOrientation = .(sprite.Size.Y, (float)sprite.Orientation, 0, 0);
+					instance.Position = sprite.WorldCenter;
+					instance.Width = sprite.Size.X;
+					instance.Height = sprite.Size.Y;
+					instance.Orientation = (float)sprite.Orientation;
 					instance.Tint = .(sprite.Tint.R, sprite.Tint.G, sprite.Tint.B, sprite.Tint.A);
 					instance.UvRect = sprite.UvRect;
-					instance.AxisRight = .(sprite.AxisRight.X, sprite.AxisRight.Y,
-						sprite.AxisRight.Z, 0);
-					instance.AxisUp = .(sprite.AxisUp.X, sprite.AxisUp.Y, sprite.AxisUp.Z, 0);
+					instance.AxisRight = sprite.AxisRight;
+					instance.AxisUp = sprite.AxisUp;
 					instances[k - i] = instance;
 				}
 
@@ -335,6 +335,7 @@ class SpriteRenderer : Renderer
 		if ((vertex == null) || (fragment == null))
 			return null;
 
+		// Six float4s, each carrying SpriteInstance's named fields at its tested offsets.
 		var attributes = VertexAttribute[6](
 			.(.Float32x4, 0, 0),
 			.(.Float32x4, 16, 1),

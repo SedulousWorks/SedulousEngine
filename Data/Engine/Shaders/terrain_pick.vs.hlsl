@@ -5,15 +5,17 @@
 // variants: HOLES
 
 // Terrain GPU-pick VS: terrain_depth.vs's exact displacement + placement, plus the terrain
-// entity's id for the fragment. The renderer writes a PickView layout into the shared TerrainView
-// slot for this pass (ChunkToWorld, the CROPPED ViewProj, then the id), so only that prefix is
-// declared here. Surface indices only, like the depth pass.
+// entity's id for the fragment. The renderer writes this pass's own block (TerrainPickView: ChunkToWorld,
+// the CROPPED ViewProj, then the id) into the slot the colour pass's TerrainView uses. Surface
+// indices only, like the depth pass.
 
-cbuffer TerrainView : register(b0, space0) {
+cbuffer TerrainPickView : register(b0, space0) {
     float4x4 ChunkToWorld; // heightfield-local -> world
     float4x4 ViewProj;     // world -> clip (the pick crop)
-    uint2    PickId;       // (entity index + 1, generation)
-    uint2    _pvPad;
+    uint     PickIndex;    // entity index + 1 (0 is no entity)
+    uint     PickGeneration;
+    uint     _pickViewPad0;
+    uint     _pickViewPad1;
 };
 
 cbuffer TerrainChunk : register(b0, space1) {
@@ -51,7 +53,7 @@ PickVSOut main(float3 grid : TEXCOORD0) {
     float3 worldPos = mul(float4(lxz.x, y, lxz.y, 1.0), ChunkToWorld).xyz;
     PickVSOut o;
     o.pos = mul(float4(worldPos, 1.0), ViewProj);
-    o.id  = PickId;
+    o.id  = uint2(PickIndex, PickGeneration);
 #ifdef HOLES
     o.splatUV = texelF / max(GridSize, float2(1.0, 1.0));
 #endif

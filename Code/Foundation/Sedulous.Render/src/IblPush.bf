@@ -15,14 +15,17 @@ struct IblPush
 	/// The prefilter's roughness for this mip.
 	public float Roughness = 0.0f;
 	public float SkyIntensity = 1.0f;
-	/// The direction in the first three, and the sun's angular size in degrees in the fourth.
-	public Float4 Sun = .(0, -1, 0, 0.5f);
-	/// The colour in the first three, and the sun's intensity in the fourth.
-	public Float4 Horizon = .(0, 0, 0, 1);
-	/// The colour in the first three, and the rotation in radians in the fourth.
-	public Float4 Zenith = .(0, 0, 0, 0);
-	/// The colour in the first three, and the turbidity in the fourth.
-	public Float4 Ground = .(0, 0, 0, 3);
+	public Float3 SunDirection = .(0, -1, 0);
+	/// In degrees.
+	public float SunAngularSize = 0.5f;
+	public Float3 Horizon = .(0, 0, 0);
+	public float SunIntensity = 1.0f;
+	public Float3 Zenith = .(0, 0, 0);
+	/// In radians, a yaw about +Y.
+	public float SkyRotation = 0.0f;
+	public Float3 Ground = .(0, 0, 0);
+	/// The analytic sky's haze.
+	public float Turbidity = 3.0f;
 
 	public this() {}
 }

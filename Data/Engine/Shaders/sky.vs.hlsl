@@ -19,6 +19,6 @@ VSOut main(uint vid : SV_VertexID) {
     float2 sceneNdc = float2(ndc.x, ndc.y * SkyFlags.x);
     o.ndc = sceneNdc; // scene-convention NDC: the PS velocity reprojection compares like with like
     float4 world = mul(float4(sceneNdc, kDepthFar, 1.0), InvViewProj);  // clip -> world, on the far plane
-    o.dir = world.xyz / world.w - CamPosIntensity.xyz;
+    o.dir = world.xyz / world.w - CameraPos;
     return o;
 }

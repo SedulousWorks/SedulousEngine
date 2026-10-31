@@ -25,8 +25,8 @@ class TerrainRenderer : Renderer
 	private const uint32 cMaxTerrains = 8;
 	/// Matches ShadowCascades.Count.
 	private const uint32 cCascadeCount = 4;
-	/// GpuTerrainView, eight matrices and ten vectors (672 bytes), padded up to the dynamic
-	/// uniform alignment.
+	/// GpuTerrainView (672 bytes; the pick pass's GpuTerrainPickView, 144, shares the slot),
+	/// padded up to the dynamic uniform alignment.
 	private const uint64 cViewSlotSize = 768;
 	/// GpuTerrainChunk, seven pairs (56 bytes), padded the same way.
 	private const uint64 cChunkSlotSize = 256;
@@ -338,14 +338,13 @@ class TerrainRenderer : Renderer
 			uniforms.ViewProj = context.ViewProj;
 			uniforms.View = context.ViewMatrix;
 			uniforms.PrevViewProj = context.PrevViewProj;
-			uniforms.LightDir = .(sun.X, sun.Y, sun.Z, 0.0f);
-			uniforms.CameraPos = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
-				0.0f);
+			uniforms.LightDir = .(sun.X, sun.Y, sun.Z);
+			uniforms.CameraPos = context.CameraPos;
 			uniforms.Jitter = .(context.Jitter.X, context.Jitter.Y, context.PrevJitter.X,
 				context.PrevJitter.Y);
 
 			let uvYSign = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
-			uniforms.ShadowParams = .(0.0f, uvYSign, 0.0f, 0.0f);
+			uniforms.ShadowUvYSign = uvYSign;
 
 			// A cascade count of nought leaves the shader fully lit, which is what a scene
 			// with no directional caster wants.
@@ -362,25 +361,29 @@ class TerrainRenderer : Renderer
 					context.Cascades.TexelWorldSize[3]);
 				// The caster light's own biases (in texels, which the shader scales by the
 				// cascade's world texel size) and strength.
-				uniforms.ShadowMeta = .((float)cCascadeCount, (float)context.CascadeLayerBase,
-					context.Cascades.NormalBias, context.Cascades.DepthBias);
-				uniforms.ShadowLight.X = context.Cascades.Strength;
-				uniforms.ShadowParams.X = context.Cascades.FarFade;
+				uniforms.CascadeCount = (float)cCascadeCount;
+				uniforms.CascadeLayerBase = (float)context.CascadeLayerBase;
+				uniforms.ShadowNormalBias = context.Cascades.NormalBias;
+				uniforms.ShadowDepthBias = context.Cascades.DepthBias;
+				uniforms.ShadowStrength = context.Cascades.Strength;
+				uniforms.ShadowFarFade = context.Cascades.FarFade;
 			}
 
 			let hasWeights = (data.WeightView != null) && (data.IndexView != null)
 				&& (data.PaletteArrayView != null) && (data.PaletteCount > 0);
-			uniforms.SplatParams = .((float)data.PaletteCount, hasWeights ? 1.0f : 0.0f,
-				data.BaseTileScale, (data.BaseAlbedoView != null) ? 1.0f : 0.0f);
+			uniforms.PaletteCount = (float)data.PaletteCount;
+			uniforms.WeightsBound = hasWeights ? 1 : 0;
+			uniforms.BaseTileScale = data.BaseTileScale;
+			uniforms.BaseBound = (data.BaseAlbedoView != null) ? 1 : 0;
 
 			// Height blending off leaves the linear weighting, byte for byte.
 			let heightBound = (data.BaseHeightView != null) || (data.HeightArrayView != null);
-			uniforms.ShadowParams.Z = data.HeightBlendContrast;
-			uniforms.ShadowParams.W = heightBound ? 1.0f : 0.0f;
+			uniforms.HeightBlendContrast = data.HeightBlendContrast;
+			uniforms.HeightMapsBound = heightBound ? 1 : 0;
 
 			// And the coverage multiply is skipped the same way.
 			let maskBound = data.MaskArrayView != null;
-			uniforms.SplatParams2 = .(maskBound ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+			uniforms.MaskMapsBound = maskBound ? 1 : 0;
 
 			Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(GpuTerrainView));
 
@@ -498,8 +501,8 @@ class TerrainRenderer : Renderer
 
 			if (pick)
 			{
-				// The pick vertex shader reads the placement, the cropped projection and the
-				// id; the id sits where the colour pass keeps its view matrix.
+				// The pick vertex shader's own block (TerrainPickView): the placement, the cropped
+				// projection and the id, in the slot the colour pass's view uses.
 				var uniforms = GpuTerrainPickView();
 				uniforms.ChunkToWorld = data.ChunkToWorld;
 				uniforms.ViewProj = context.ViewProj;

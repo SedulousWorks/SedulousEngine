@@ -6,14 +6,16 @@ cbuffer SpriteView : register(b0, space0) {
     float4x4 ViewProj;
     float4x4 View;
 };
+// The instance (SpriteInstance) arrives as six float4 attributes, each named for the fields it
+// carries (padding lanes are never read).
 struct VSIn {
-    float4 PositionSize    : TEXCOORD0;   // xyz = world center, w = width
-    float4 SizeOrientation : TEXCOORD1;   // x = height, y = orientation mode
-    float4 Tint            : TEXCOORD2;
-    float4 UVRect          : TEXCOORD3;    // xy = uv min, zw = uv size
-    float4 AxisRight       : TEXCOORD4;    // xyz entity right (mode 3)
-    float4 AxisUp          : TEXCOORD5;    // xyz entity up (mode 3)
-    uint   VertexID        : SV_VertexID;
+    float4 PositionWidth      : TEXCOORD0;   // xyz = world centre, w = width
+    float4 HeightOrientation  : TEXCOORD1;   // x = height, y = orientation mode, zw = padding
+    float4 Tint               : TEXCOORD2;
+    float4 UVRect             : TEXCOORD3;   // xy = uv min, zw = uv size
+    float4 AxisRight          : TEXCOORD4;   // xyz entity right (mode 3), w = padding
+    float4 AxisUp             : TEXCOORD5;   // xyz entity up (mode 3), w = padding
+    uint   VertexID           : SV_VertexID;
 };
 struct VSOut { float4 pos : SV_Position; float2 uv : TEXCOORD0; float4 col : COLOR0; };
 
@@ -28,9 +30,11 @@ static const float2 UVS[6] = {
 
 VSOut main(VSIn i) {
     VSOut o;
-    float3 worldPos = i.PositionSize.xyz;
-    float2 size     = float2(i.PositionSize.w, i.SizeOrientation.x);
-    int    mode     = (int)(i.SizeOrientation.y + 0.5);
+    float3 worldPos = i.PositionWidth.xyz;
+    float  width    = i.PositionWidth.w;
+    float  height   = i.HeightOrientation.x;
+    float2 size     = float2(width, height);
+    int    mode     = (int)(i.HeightOrientation.y + 0.5);
 
     // Billboard basis in world space.
     float3 right, up;

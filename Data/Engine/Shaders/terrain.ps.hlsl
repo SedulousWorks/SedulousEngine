@@ -17,16 +17,33 @@ cbuffer TerrainView : register(b0, space0) {
     float4x4 View;
     float4x4 PrevViewProj;
     float4x4 CascadeViewProj[TERRAIN_CASCADE_COUNT];
-    float4   LightDir;   // xyz = direction TO the light (normalized)
-    float4   CameraPos;
+    float3   LightDir;   // direction TO the light (normalized)
+    float    _terrainViewPad0;
+    float3   CameraPos;
+    float    _terrainViewPad1;
     float4   Jitter;     // xy = current jitter, zw = previous
     float4   CascadeSplitFar;
     float4   CascadeTexelSize;
-    float4   ShadowMeta;   // x = cascade count, y = layer base, z = normal bias, w = depth bias
-    float4   ShadowParams; // x = far-fade width, y = uv.y sign, z = heightBlendContrast, w = height maps bound
-    float4   SplatParams; // x = palette count, y = weights bound, z = base tile, w = base bound
-    float4   SplatParams2; // x = mask maps bound, yzw spare
-    float4   ShadowLight;  // x = the caster light's shadow strength (1 = full), yzw spare
+    float    CascadeCount;        // 0: no directional caster this frame (fully lit)
+    float    CascadeLayerBase;    // the first cascade's layer in the shadow array
+    float    ShadowNormalBias;
+    float    ShadowDepthBias;
+    float    ShadowFarFade;       // the far edge's fade width (view depth)
+    float    ShadowUvYSign;
+    float    HeightBlendContrast; // the height blend's soft-skirt width
+    uint     HeightMapsBound;     // 1: a base or palette height map is bound (height blend on)
+    float    PaletteCount;
+    uint     WeightsBound;        // 1: the splat weights, indices and palette are bound
+    float    BaseTileScale;       // the base maps' tile size (terrain-local units)
+    uint     BaseBound;           // 1: a base albedo is bound
+    uint     MaskMapsBound;       // 1: a palette coverage mask array is bound
+    float    _terrainViewPad2;
+    float    _terrainViewPad3;
+    float    _terrainViewPad4;
+    float    ShadowStrength;      // the caster light's shadow strength (1 = full)
+    float    _terrainViewPad5;
+    float    _terrainViewPad6;
+    float    _terrainViewPad7;
 };
 
 struct PSIn {
@@ -72,12 +89,12 @@ Texture2D               BaseOrm      : register(t7, space3);
 Texture2DArray          OrmArray     : register(t8, space3);
 // Per-layer HEIGHT/displacement maps: the top-K weights are re-biased
 // toward the tallest layer per texel (Mishkinis), .r channel. Absent -> a 1x1 mid-height dummy binds
-// AND ShadowParams.w reads 0, so the reweight is skipped and the blend stays linear (byte-identical).
+// AND HeightMapsBound reads 0, so the reweight is skipped and the blend stays linear (byte-identical).
 Texture2D               BaseHeight   : register(t9, space3);
 Texture2DArray          HeightArray  : register(t10, space3);
 // Per-layer COVERAGE/opacity mask: multiplies into a palette layer's weight
 // before the base-weight recompute so a sparse layer reveals the base through its gaps. .r channel.
-// Absent -> a 1x1 OPAQUE (1.0) dummy binds AND SplatParams2.x reads 0, so the multiply is skipped.
+// Absent -> a 1x1 OPAQUE (1.0) dummy binds AND MaskMapsBound reads 0, so the multiply is skipped.
 Texture2DArray          MaskArray    : register(t11, space3);
 SamplerState            AlbedoSampler : register(s0, space3); // repeat, trilinear
 
@@ -99,14 +116,14 @@ static const float kTerrainShadowTexel = 1.0 / 1024.0; // 1 / shadow resolution
 // Adapted verbatim from forward.ps.hlsl SampleCascade, mapped to terrain's cbuffer fields.
 float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
     float texelWorld = CascadeTexelSize[cascade];
-    float3 biasedPos = worldPos + N * (ShadowMeta.z * texelWorld * (1.0 - NdotL));
+    float3 biasedPos = worldPos + N * (ShadowNormalBias * texelWorld * (1.0 - NdotL));
     float4 lc = mul(float4(biasedPos, 1.0), CascadeViewProj[cascade]);
     if (lc.w <= 0.0) { return 1.0; }
     float3 ndc = lc.xyz / lc.w;
-    float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);
+    float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowUvYSign * 0.5 + 0.5);
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 1.0; }
-    float compareDepth = BiasTowardViewer(ndc.z, ShadowMeta.w);   // toward the light: fewer false occluders
-    float layer = ShadowMeta.y + (float)cascade;
+    float compareDepth = BiasTowardViewer(ndc.z, ShadowDepthBias);   // toward the light: fewer false occluders
+    float layer = CascadeLayerBase + (float)cascade;
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {
         [unroll] for (int x = -1; x <= 1; ++x) {
@@ -119,7 +136,7 @@ float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
 
 // Cascaded shadow: pick the cascade by view-space depth, sample, blend the seam, fade at the far edge.
 float SampleCSM(float3 worldPos, float3 N, float NdotL, float viewDepth) {
-    int count = (int)ShadowMeta.x;
+    int count = (int)CascadeCount;
     if (count <= 0) { return 1.0; } // no directional caster this frame -> fully lit
 
     int cascade = count - 1;
@@ -137,7 +154,7 @@ float SampleCSM(float3 worldPos, float3 N, float NdotL, float viewDepth) {
     }
 
     float shadowFar = CascadeSplitFar[count - 1];
-    float fadeBand  = max(ShadowParams.x, 0.5);
+    float fadeBand  = max(ShadowFarFade, 0.5);
     float farFade   = saturate((shadowFar - viewDepth) / fadeBand);
     return lerp(1.0, shadow, farFade);
 }
@@ -158,13 +175,13 @@ PSOutput main(PSIn i) {
     if (HoleCoverage(i.splatUV) > 0.5) { discard; }
 #endif
     float3 n = normalize(i.normal);
-    float3 sun = normalize(LightDir.xyz);
+    float3 sun = normalize(LightDir);
 
     float3 base;
     float3 blendedN = float3(0.0, 0.0, 1.0); // tangent-space normal (flat default)
     float3 blendedOrm = float3(1.0, 1.0, 0.0); // AO, roughness, metallic (default material)
-    bool hasBase = SplatParams.w >= 0.5;
-    bool hasWeights = SplatParams.y >= 0.5 && SplatParams.x >= 0.5;
+    bool hasBase = BaseBound != 0;
+    bool hasWeights = WeightsBound != 0 && PaletteCount >= 0.5;
     // The procedural height/slope colour ramp (grass -> rock). It is BOTH the no-material
     // fallback AND the implicit BASE when no base albedo is assigned: a fresh terrain starts on
     // the ramp, and adding paint layers must composite OVER that same look (not flip the
@@ -176,18 +193,18 @@ PSOutput main(PSIn i) {
     if (hasWeights || hasBase) {
         // Base maps tile in terrain-LOCAL XZ (glued to the surface under move/rotate). These are in
         // UNIFORM control flow, so plain Sample (implicit derivatives) is valid.
-        float2 baseUV = i.localXZ / max(SplatParams.z, 1e-3);
+        float2 baseUV = i.localXZ / max(BaseTileScale, 1e-3);
         float3 baseCol =
             hasBase ? BaseAlbedo.Sample(AlbedoSampler, baseUV).rgb : rampCol;
         float3 baseNrm = BaseNormal.Sample(AlbedoSampler, baseUV).rgb * 2.0 - 1.0;
         float3 baseOrm = BaseOrm.Sample(AlbedoSampler, baseUV).rgb;
-        // Height-blend controls: ShadowParams.w = height maps bound,
-        // .z = contrast (soft-skirt width). Both uniform, so branching on heightBound is uniform
+        // Height-blend controls: HeightMapsBound and HeightBlendContrast (the soft-skirt width).
+        // Both uniform, so branching on heightBound is uniform
         // control flow (safe for SampleGrad derivatives; no-height terrains pay nothing).
-        bool  heightBound = ShadowParams.w >= 0.5;
-        float contrast    = max(ShadowParams.z, 1e-3);
+        bool  heightBound = HeightMapsBound != 0;
+        float contrast    = max(HeightBlendContrast, 1e-3);
         float baseH = heightBound ? BaseHeight.Sample(AlbedoSampler, baseUV).r : 0.0;
-        bool  maskBound = SplatParams2.x >= 0.5;
+        bool  maskBound = MaskMapsBound != 0;
         if (hasWeights) {
             // Manual bilinear over the splat texels: Load index+weight at the 4 corners, blend
             // per corner (skip zero-weight slots - the typical texel uses 1-2), lerp the results.
@@ -212,7 +229,7 @@ PSOutput main(PSIn i) {
                 float4 w = WeightMap.Load(int3(texel, 0));
                 // Coverage mask: multiply each palette slot's weight by its
                 // mask BEFORE the base-weight recompute, so masked-out coverage falls to base. Uniform
-                // branch (SplatParams2.x); the freed weight reveals whatever is beneath. Composes with
+                // branch (MaskMapsBound); the freed weight reveals whatever is beneath. Composes with
                 // height-blend below, which then reweights the already-masked weights.
                 if (maskBound) {
                     // Sample each slot's coverage mask and cut its weight; the REMOVED coverage is
@@ -351,7 +368,7 @@ PSOutput main(PSIn i) {
     // CSM: attenuate only the DIRECT (sun) term; ambient is indirect (AO-modulated). The shadow bias
     // uses the stable geometric normal n (perturbed N would add acne from high-frequency detail).
     float viewDepth = -mul(float4(i.worldPos, 1.0), View).z;
-    float shadow = lerp(1.0, SampleCSM(i.worldPos, n, ndlN, viewDepth), saturate(ShadowLight.x));
+    float shadow = lerp(1.0, SampleCSM(i.worldPos, n, ndlN, viewDepth), saturate(ShadowStrength));
 
     const float3 ambient = float3(0.28, 0.30, 0.34);
     float3 lit = base * (ambient * ao + ndlN * shadow);

@@ -130,10 +130,18 @@ class MeshGpuLayoutTests
 	}
 
 	/// A sprite's instance record is six vectors of four, which the vertex layout's six
-	/// attributes step over.
+	/// attributes step over, each field at the offset sprite.vs.hlsl reads it from.
 	[Test]
 	public static void TheSpriteInstanceIsSixVectors()
 	{
 		Test.Assert(sizeof(SpriteInstance) == 96);
+		Test.Assert(offsetof(SpriteInstance, Position) == 0);
+		Test.Assert(offsetof(SpriteInstance, Width) == 12);
+		Test.Assert(offsetof(SpriteInstance, Height) == 16);
+		Test.Assert(offsetof(SpriteInstance, Orientation) == 20);
+		Test.Assert(offsetof(SpriteInstance, Tint) == 32);
+		Test.Assert(offsetof(SpriteInstance, UvRect) == 48);
+		Test.Assert(offsetof(SpriteInstance, AxisRight) == 64);
+		Test.Assert(offsetof(SpriteInstance, AxisUp) == 80);
 	}
 }

@@ -11,22 +11,27 @@ cbuffer DecalUniforms : register(b0, space1) {
     row_major float4x4 InvWorld;
     row_major float4x4 InvViewProj;
     float4   Color;
-    float4   Params;      // xy = 1/full-size, z = cos(fadeStart), w = cos(fadeEnd)
-    float4   Flip;        // x = interpolant Y correction: +1 Vulkan (neg viewport), -1 Y-flip targets
+    float2   InvTargetSize; // 1 / the full target's size
+    float    FadeStartCos;  // cos(the angle fade's start)
+    float    FadeEndCos;    // cos(its end)
+    float    YFlip;         // interpolant Y correction: +1 Vulkan (neg viewport), -1 Y-flip targets
+    float    _decalPad0;
+    float    _decalPad1;
+    float    _decalPad2;
 };
 
 float4 main(float4 pos : SV_Position, float2 ndc : TEXCOORD0) : SV_Target {
     // Sample the scene depth at THIS framebuffer pixel (SV_Position is the framebuffer position, so
     // pixel/size reads the texel the forward pass wrote here - no flip needed for a same-pixel read).
-    float2 uv    = pos.xy * Params.xy;
+    float2 uv    = pos.xy * InvTargetSize;
     float  depth = SceneDepth.SampleLevel(DepthSamp, uv, 0).r;
 
     // Reconstruct world position from the interpolated emitted NDC - which is VIEWPORT-LOCAL,
     // exactly what the per-view InvViewProj expects (a full-target-uv reconstruction breaks
     // split-screen sub-rect views). On Y-flip targets the interpolant's pixel mapping mirrors,
-    // so its Y is corrected by Flip.x (the SkyFlags.x convention: +1 Vulkan keeps it verbatim,
+    // so its Y is corrected by YFlip (the SkyFlags.x convention: +1 Vulkan keeps it verbatim,
     // -1 on Y-flip targets un-mirrors). clip -> world via InvViewProj (same as SkyPass).
-    ndc.y *= Flip.x;
+    ndc.y *= YFlip;
     float4 h        = mul(float4(ndc, depth, 1.0), InvViewProj);
     float3 worldPos = h.xyz / h.w;
 
@@ -42,7 +47,7 @@ float4 main(float4 pos : SV_Position, float2 ndc : TEXCOORD0) : SV_Target {
     float3 N        = normalize(cross(ddy(worldPos), ddx(worldPos)));
     float3 decalFwd = normalize(float3(World._m20, World._m21, World._m22));
     float  cosA     = dot(N, -decalFwd);
-    float  fade     = smoothstep(Params.w, Params.z, cosA);
+    float  fade     = smoothstep(FadeEndCos, FadeStartCos, cosA);
 
     float4 c = DecalTex.Sample(DecalSamp, decalUV) * Color;
     c.a *= fade;

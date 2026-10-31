@@ -4,10 +4,10 @@
 #include "push_constant.hlsli"
 struct IblPush {
     int FaceIndex; int Mode; float Roughness; float SkyIntensity;
-    float4 Sun;        // xyz = direction, w = sun angular size (degrees)
-    float4 Horizon;    // rgb, a = sun intensity
-    float4 Zenith;     // rgb, a = sky rotation (radians)
-    float4 Ground;     // rgb
+    float3 SunDirection; float SunAngularSize;   // the sun's angular size in degrees
+    float3 Horizon;      float SunIntensity;
+    float3 Zenith;       float SkyRotation;      // radians, a yaw about +Y
+    float3 Ground;       float Turbidity;        // the analytic sky's haze (1.7 to 10)
 };
 PUSH_CONSTANT(IblPush, pc, space1);
 

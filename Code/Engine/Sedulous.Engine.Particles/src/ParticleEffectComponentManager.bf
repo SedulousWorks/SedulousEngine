@@ -386,9 +386,12 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 			let size = (sizes != null) ? sizes[i] : Float2(0.1f, 0.1f);
 
 			var instance = ref output[k];
-			instance.PositionSize = .(position.X, position.Y, position.Z, size.X);
-			instance.SizeRotMode = .(size.Y, (rotations != null) ? rotations[i] : 0.0f, mode,
-				softDistance);
+			instance.Position = position;
+			instance.Width = size.X;
+			instance.Height = size.Y;
+			instance.Rotation = (rotations != null) ? rotations[i] : 0.0f;
+			instance.Mode = mode;
+			instance.SoftDistance = softDistance;
 			instance.Color = (colors != null) ? ParticleBillboardInstance.ColorToLinear(colors[i]) : Float4(1.0f, 1.0f, 1.0f, 1.0f);
 
 			let lifeRatio = ((ages != null) && (lifetimes != null) && (lifetimes[i] > 0.0f))
@@ -400,7 +403,8 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 			var velocity = (stretch && (velocities != null)) ? velocities[i] : Float3.Zero;
 			if (localSpace && stretch)
 				velocity = TransformDirection(velocity, transform);
-			instance.Velocity = .(velocity.X, velocity.Y, velocity.Z, stretch ? 0.1f : 0.0f);
+			instance.Velocity = velocity;
+			instance.Stretch = stretch ? 0.1f : 0.0f;
 
 			boundsMin = .(Math.Min(boundsMin.X, position.X), Math.Min(boundsMin.Y, position.Y),
 				Math.Min(boundsMin.Z, position.Z));

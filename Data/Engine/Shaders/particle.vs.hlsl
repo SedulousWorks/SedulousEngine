@@ -5,16 +5,44 @@
 cbuffer ParticleView : register(b0, space0) {
     float4x4 ViewProj;
     float4x4 View;
-    float4   DepthParams;   // x=Proj[2][2], y=Proj[3][2], z=Proj[2][3], w=soft-particle fade distance
+    // The projection terms that turn a sampled NDC depth back into view depth (soft particles).
+    float    ProjZScale;    // Proj[2][2]
+    float    ProjZOffset;   // Proj[3][2]
+    float    ProjWScale;    // Proj[2][3]: -1 perspective, 0 orthographic
+    float    _particleViewPad0;
 };
+// The instance (ParticleBillboardInstance) arrives as five float4 attributes, each named for the
+// fields it carries; Unpack gives every field its name before anything reads it.
 struct VSIn {
-    float4 PositionSize : TEXCOORD0;   // xyz world center, w width
-    float4 SizeRotMode  : TEXCOORD1;   // x height, y rotation(rad), z orientation mode
-    float4 Color        : TEXCOORD2;
-    float4 UVRect       : TEXCOORD3;   // xy uv min, zw uv size
-    float4 Velocity     : TEXCOORD4;   // xyz world velocity, w stretch scale
-    uint   VertexID     : SV_VertexID;
+    float4 PositionWidth                   : TEXCOORD0;
+    float4 HeightRotationModeSoftDistance  : TEXCOORD1;
+    float4 Color                           : TEXCOORD2;
+    float4 UVRect                          : TEXCOORD3;   // xy uv min, zw uv size
+    float4 VelocityStretch                 : TEXCOORD4;
+    uint   VertexID                        : SV_VertexID;
 };
+struct ParticleInstance {
+    float3 Position;      // world centre
+    float  Width;
+    float  Height;
+    float  Rotation;      // radians, the camera-facing roll
+    float  Mode;          // the orientation mode's ordinal
+    float  SoftDistance;  // the soft-particle fade band (0 = off)
+    float3 Velocity;      // world velocity
+    float  Stretch;       // the stretch scale (0 = plain billboard)
+};
+ParticleInstance Unpack(VSIn i) {
+    ParticleInstance p;
+    p.Position     = i.PositionWidth.xyz;
+    p.Width        = i.PositionWidth.w;
+    p.Height       = i.HeightRotationModeSoftDistance.x;
+    p.Rotation     = i.HeightRotationModeSoftDistance.y;
+    p.Mode         = i.HeightRotationModeSoftDistance.z;
+    p.SoftDistance = i.HeightRotationModeSoftDistance.w;
+    p.Velocity     = i.VelocityStretch.xyz;
+    p.Stretch      = i.VelocityStretch.w;
+    return p;
+}
 struct VSOut { float4 pos : SV_Position; float2 uv : TEXCOORD0; float4 col : COLOR0; float linZ : TEXCOORD1; float softDist : TEXCOORD2; };
 
 static const float2 CORNERS[6] = {
@@ -28,23 +56,24 @@ static const float2 UVS[6] = {
 
 VSOut main(VSIn i) {
     VSOut o;
-    float3 worldPos = i.PositionSize.xyz;
-    float2 size     = float2(i.PositionSize.w, i.SizeRotMode.x);
-    int    mode     = (int)(i.SizeRotMode.z + 0.5);
-    float  rot      = i.SizeRotMode.y;
+    ParticleInstance p = Unpack(i);
+    float3 worldPos = p.Position;
+    float2 size     = float2(p.Width, p.Height);
+    int    mode     = (int)(p.Mode + 0.5);
+    float  rot      = p.Rotation;
 
     float3 camRight = float3(View._m00, View._m10, View._m20);
     float3 camUp    = float3(View._m01, View._m11, View._m21);
     float3 camFwd   = float3(View._m02, View._m12, View._m22);
 
     float3 right, up;
-    if (i.Velocity.w > 0.0 && dot(i.Velocity.xyz, i.Velocity.xyz) > 1e-8) {
+    if (p.Stretch > 0.0 && dot(p.Velocity, p.Velocity) > 1e-8) {
         // Stretched billboard: length axis follows velocity, width axis perpendicular in view.
-        float3 v = i.Velocity.xyz;
+        float3 v = p.Velocity;
         float speed = length(v);
         up = v / speed;
         right = normalize(cross(up, camFwd));
-        size.y *= (1.0 + speed * i.Velocity.w);
+        size.y *= (1.0 + speed * p.Stretch);
     } else if (mode == 2) {              // ground-flat (XZ plane, +Y normal) - horizontal billboard
         right = float3(1, 0, 0); up = float3(0, 0, 1);
     } else if (mode == 1) {              // camera-facing about world Y
@@ -62,6 +91,6 @@ VSOut main(VSIn i) {
     o.uv  = i.UVRect.xy + UVS[i.VertexID] * i.UVRect.zw;
     o.col = i.Color;
     o.linZ = -mul(float4(cornerWS, 1.0), View).z;   // positive view-space depth (soft particles)
-    o.softDist = i.SizeRotMode.w;                    // per-system soft-particle fade band (0 = off)
+    o.softDist = p.SoftDistance;                     // per-system soft-particle fade band (0 = off)
     return o;
 }

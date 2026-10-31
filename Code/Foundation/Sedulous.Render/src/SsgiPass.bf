@@ -478,7 +478,8 @@ class SsgiPass
 				sky.ViewToWorld[row, 2], 0.0f);
 		}
 		let shSky = sky.ShBuffer != null;
-		resolvePush.SkyAmbient = .(sky.Ambient.X, sky.Ambient.Y, sky.Ambient.Z, shSky ? sky.IblDiffuse : 0.0f);
+		resolvePush.SkyAmbient = sky.Ambient;
+		resolvePush.ShSkyDimmer = shSky ? sky.IblDiffuse : 0.0f; // nought: no SH sky (the shader's rule)
 		let shBuffer = shSky ? sky.ShBuffer : mDummyShBuffer;
 		let shGeneration = shSky ? sky.Generation : 0;
 		let shHandle = shSky ? sky.ShHandle : RGHandle.Invalid;

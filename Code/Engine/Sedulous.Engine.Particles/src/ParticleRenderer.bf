@@ -241,9 +241,10 @@ class ParticleRenderer : Renderer
 		viewUniforms.ViewProj = context.ViewProj;
 		viewUniforms.View = context.ViewMatrix;
 		// The projection's depth terms (M[2][3] is nought for an orthographic projection, which the
-		// shader linearizes as such) and the soft particle fade distance.
-		viewUniforms.DepthParams = .(projection.M[2][2], projection.M[3][2], projection.M[2][3],
-			0.0f);
+		// shader linearizes as such).
+		viewUniforms.ProjZScale = projection.M[2][2];
+		viewUniforms.ProjZOffset = projection.M[3][2];
+		viewUniforms.ProjWScale = projection.M[2][3];
 		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(GpuParticleView));
 
 		// The scene depth the soft fade reads. The transparent pass hands over the opaque
@@ -517,6 +518,8 @@ class ParticleRenderer : Renderer
 		if ((vs == null) || (ps == null))
 			return null;
 
+		// Five float4s, each carrying four of ParticleBillboardInstance's named fields (its layout
+		// test); particle.vs.hlsl unpacks them by name.
 		var attributes = VertexAttribute[5](
 			.(.Float32x4, 0, 0),
 			.(.Float32x4, 16, 1),

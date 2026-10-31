@@ -36,7 +36,8 @@ struct SsgiResolvePush {
     float4 ViewToWorld0;   // rows of the camera's world rotation: view-space normal -> world
     float4 ViewToWorld1;
     float4 ViewToWorld2;
-    float4 SkyAmbient;     // rgb = flat ambient fill, w = SH sky dimmer (0 = no SH sky)
+    float3 SkyAmbient;     // the flat ambient fill
+    float  ShSkyDimmer;    // the SH sky's multiplier (the view's IBL diffuse); 0 means no SH sky is bound
 };
 PUSH_CONSTANT(SsgiResolvePush, pc, space1);
 
@@ -64,11 +65,11 @@ float3 EvalSH9(float3 n) {
 }
 // The ambient radiance the forward lit this pixel with (diffuse = albedo * this).
 float3 SkyRadiance(float2 uv) {
-    float3 sky = pc.SkyAmbient.rgb;
-    if (pc.SkyAmbient.w > 0.0) {
+    float3 sky = pc.SkyAmbient;
+    if (pc.ShSkyDimmer > 0.0) { // 0 = no SH sky: the flat fill alone, as the forward
         float3 nv = OctDecode(NormalTex.SampleLevel(PointSamp, uv, 0).rg);
         float3 nw = normalize(nv.x * pc.ViewToWorld0.xyz + nv.y * pc.ViewToWorld1.xyz + nv.z * pc.ViewToWorld2.xyz);
-        sky += EvalSH9(nw) / PI * pc.SkyAmbient.w;
+        sky += EvalSH9(nw) / PI * pc.ShSkyDimmer;
     }
     return sky;
 }

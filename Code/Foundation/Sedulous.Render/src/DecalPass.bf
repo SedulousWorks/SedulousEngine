@@ -223,11 +223,13 @@ class DecalPass
 			uniforms.InvWorld = Inverse(decal.World);
 			uniforms.InvViewProj = invViewProj;
 			uniforms.Color = .(decal.Color.R, decal.Color.G, decal.Color.B, decal.Color.A);
-			uniforms.Params = .(invSize.X, invSize.Y, Cos(decal.FadeStart), Cos(decal.FadeEnd));
+			uniforms.InvTargetSize = invSize;
+			uniforms.FadeStartCos = Cos(decal.FadeStart);
+			uniforms.FadeEndCos = Cos(decal.FadeEnd);
 			// The vertical correction: under a negative viewport the emitted coordinates
 			// already land on the right pixel, so the interpolant passes through untouched;
 			// a flipped target mirrors it, and the negative sign un-mirrors it.
-			uniforms.Flip = .(mDevice.NeedsClipSpaceYFlip ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f);
+			uniforms.YFlip = mDevice.NeedsClipSpaceYFlip ? -1.0f : 1.0f;
 			Internal.MemCpy(range.Ptr, &uniforms, sizeof(DecalUniforms));
 
 			mDraws.Add(.() { Offset = range.ByteOffset, Texture = decal.Texture });

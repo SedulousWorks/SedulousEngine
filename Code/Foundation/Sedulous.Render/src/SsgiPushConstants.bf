@@ -80,8 +80,11 @@ struct SsgiResolvePush
 	public float Pad1 = 0.0f;
 	/// The rows of the camera's world rotation, taking a view space normal to world space.
 	public Float4[3] ViewToWorld = .(.Zero, .Zero, .Zero);
-	/// rgb is the flat fill, w the SH sky's dimmer (nought when there is no SH sky).
-	public Float4 SkyAmbient = .Zero;
+	/// The flat ambient fill.
+	public Float3 SkyAmbient = .Zero;
+	/// The SH sky's multiplier (the view's IBL diffuse). Nought is the rule for no SH sky bound:
+	/// the shader then adds the flat fill alone, as the forward does.
+	public float ShSkyDimmer = 0.0f;
 
 	public this() {}
 }

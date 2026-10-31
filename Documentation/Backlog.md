@@ -190,6 +190,27 @@ shadows and picking still draw a mesh (and an instanced set) whole with its firs
 cuts out, on any slot but the first, casts and occludes as if it did neither. Wanted: per
 submesh depth draws where a slot's material has its own depth program, wind, or a cutout.
 
+### No GPU test draws a reflection probe
+Raptor's finding (2026-10-29, naming the probe lanes), the same here: `Sedulous.Render.Tests`
+checks which records each scene gets and their values by name (`ReflectionProbeSystemTests`), and
+`Integration.ShaderBlocks` that `GpuProbe` and `lighting.hlsli` agree, but nothing captures a
+probe and reads back what it reflects, so the forward's probe loop is unexercised. Wanted: a
+probe in `Sedulous.Render.Backend.Tests` on Vulkan, WebGPU and Direct3D 12, a metallic sphere in a
+probe's box with a coloured surround the probe captures (through
+`ReflectionProbeSystem.Captures`), its reflection read back at a texel; the same sphere outside
+the box reflecting the sky instead; parallax on and off moving the reflection.
+
+### The GPU particle simulation is a stub
+Raptor's finding (2026-10-29), the same here: a particle system's `DesiredMode` offers CPU, GPU
+and Auto, and each behaviour and initializer declares where it can run (`BehaviorSupport`), but
+`CPUSimulator` is the only `ParticleSimulator`: `ParticleSystem.ResolveSimulationMode` records
+the choice and nothing reads `ResolvedMode`, so every system updates on the CPU. Wanted: a
+compute pass that spawns, updates and compacts each GPU system's particles in a buffer the
+billboard, trail and mesh renderers draw from, the behaviours that declare GPU support given
+compute versions, and the resolved mode acted on (Auto already picks GPU above 1024 particles),
+on Vulkan, Direct3D 12 and WebGPU (the light clusters already run compute there,
+`ClusterSystem`).
+
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by

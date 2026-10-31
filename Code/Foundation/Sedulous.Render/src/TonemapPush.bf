@@ -30,8 +30,8 @@ struct TonemapPush
 	public float EncodeOutput = 0.0f;
 	/// The screen's quarter turns.
 	public float Rotation = 0.0f;
+	public float Pad0 = 0.0f;
 	public float Pad1 = 0.0f;
-	public float Pad2 = 0.0f;
 
 	public this() {}
 }

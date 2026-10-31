@@ -3,8 +3,9 @@ using Sedulous.Core;
 
 namespace Sedulous.Engine.Terrain;
 
-/// The terrain view block, mirroring terrain.ps.hlsl's TerrainView (the vertex and depth shaders
-/// declare a prefix of it): keep the field order in lockstep.
+/// The terrain view block, mirroring terrain.ps.hlsl's TerrainView (terrain.vs.hlsl declares its
+/// first four members by the same names, terrain_depth.vs.hlsl its first two): keep the field
+/// order in lockstep.
 [CRepr]
 struct GpuTerrainView
 {
@@ -14,24 +15,46 @@ struct GpuTerrainView
 	public Float4x4 PrevViewProj;
 	/// One per shadow cascade (ShadowCascades.Count).
 	public Float4x4[4] CascadeViewProj;
-	public Float4 LightDir;
-	public Float4 CameraPos;
+	/// The direction TO the light, normalised.
+	public Float3 LightDir;
+	public float Pad0;
+	/// The camera in world space.
+	public Float3 CameraPos;
+	public float Pad1;
+	/// This frame's jitter in the first two, last frame's in the last two.
 	public Float4 Jitter;
 	public Float4 CascadeSplitFar;
 	public Float4 CascadeTexelSize;
-	/// x the cascade count, y the layer base, z the normal bias, w the depth bias.
-	public Float4 ShadowMeta;
-	/// x the far fade width, y the uv y sign, z the height blend contrast, w whether a
-	/// height map is bound.
-	public Float4 ShadowParams;
-	/// x the palette count, y whether weights are bound, z the base tile scale, w whether
-	/// a base albedo is bound.
-	public Float4 SplatParams;
-	/// x whether a coverage mask array is bound; the rest spare.
-	public Float4 SplatParams2;
-	/// x the caster light's shadow strength (one is full); the rest spare. Last, so the
-	/// vertex shader's shorter declaration of this block still lines up.
-	public Float4 ShadowLight;
+	/// Nought: no directional caster this frame, so the pixel shader is fully lit.
+	public float CascadeCount;
+	/// The first cascade's layer in the shadow array.
+	public float CascadeLayerBase;
+	public float ShadowNormalBias;
+	public float ShadowDepthBias;
+	/// The far edge's fade width, in view depth.
+	public float ShadowFarFade;
+	public float ShadowUvYSign;
+	/// The height blend's soft skirt width.
+	public float HeightBlendContrast;
+	/// One: a base or palette height map is bound (height blending on).
+	public uint32 HeightMapsBound;
+	public float PaletteCount;
+	/// One: the splat weights, indices and palette are bound.
+	public uint32 WeightsBound;
+	/// The base maps' tile size, in terrain local units.
+	public float BaseTileScale;
+	/// One: a base albedo is bound.
+	public uint32 BaseBound;
+	/// One: a palette coverage mask array is bound.
+	public uint32 MaskMapsBound;
+	public float Pad2;
+	public float Pad3;
+	public float Pad4;
+	/// The caster light's shadow strength, one being full.
+	public float ShadowStrength;
+	public float Pad5;
+	public float Pad6;
+	public float Pad7;
 }
 
 /// The terrain chunk block, mirroring the terrain shaders' TerrainChunk. Shared by the colour, the
@@ -49,8 +72,8 @@ struct GpuTerrainChunk
 	public Float2 Skirt;
 }
 
-/// The pick pass's view slot: the placement and the cropped projection where the depth
-/// pass reads them, then the terrain entity's id. Mirrors terrain_pick.vs's prefix.
+/// The pick pass's own view (cbuffer TerrainPickView, terrain_pick.vs.hlsl), written into the
+/// slot the colour pass's TerrainView uses: the same two matrices first, then the id.
 [CRepr]
 struct GpuTerrainPickView
 {
