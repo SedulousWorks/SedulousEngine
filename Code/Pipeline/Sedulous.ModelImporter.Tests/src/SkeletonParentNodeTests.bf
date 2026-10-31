@@ -123,4 +123,62 @@ class SkeletonParentNodeTests
 			Test.Assert(clip.TrackBone[1] == 1, "the arm, wherever the helper went");
 		}
 	}
+
+	// 3ds Max's Biped animates a weapon's prop node with the hand; the file does not make it a bone
+	// and no vertex is bound to it. Left outside the skeleton, its channels were dropped and the
+	// weapon rode the pelvis.
+	[Test]
+	public static void TheNodeAnUnskinnedMeshHangsUnderJoinsTheSkeletonItsAnimationPlayed()
+	{
+		let model = scope Model();
+		int32 Bone(StringView name, int32 parent, bool isBone, int32 mesh = -1)
+		{
+			let bone = new ModelBone();
+			bone.Name.Set(name);
+			bone.ParentIndex = parent;
+			bone.IsSkeletonBone = isBone;
+			bone.MeshIndex = mesh;
+			return model.AddBone(bone);
+		}
+		for (int i < 4)
+			model.AddMesh(new ModelMesh()); // no joints or weights: unskinned
+		let root = Bone("100001", -1, false);
+		let bip = Bone("Bip001", root, true);
+		let hand = Bone("Bip001 R Hand", bip, true);
+		let prop = Bone("Bip001 Prop1", bip, false); // not a file bone
+		let grip = Bone("Grip", prop, false); // the node the weapon hangs under
+		Bone("Weapon", grip, false, 1);
+		let apart = Bone("Stand", root, false); // a node the skeleton does not reach
+		Bone("Banner", apart, false, 2);
+		Bone("Hilt", hand, false, 3); // under a joint already: nothing to add
+		let skin = scope ModelSkin();
+		skin.AddJoint(bip, Float4x4.Identity());
+		skin.AddJoint(hand, Float4x4.Identity());
+
+		let swing = scope ModelAnimation();
+		swing.Duration = 1.0f;
+		let lift = new AnimationChannel();
+		lift.TargetBone = prop;
+		lift.Path = .Translation;
+		lift.AddKeyframe(0.0f, .(0.0f, 0.0f, 0.0f, 0.0f));
+		lift.AddKeyframe(1.0f, .(0.0f, 1.0f, 0.0f, 0.0f));
+		swing.AddChannel(lift);
+
+		let joints = Joints(model, skin, .. scope .());
+		Test.Assert(joints.Count == 4, "the skin's two, then the prop and the grip; not the stand");
+		Test.Assert(joints[0] == bip);
+		Test.Assert(joints[1] == hand);
+		Test.Assert(joints[2] == prop);
+		Test.Assert(joints[3] == grip);
+		let boneToJoint = scope Dictionary<int32, int32>();
+		AnimConvert.BuildBoneToJoint(joints, boneToJoint);
+		let skeleton = scope SkeletonSource();
+		AnimConvert.SkeletonFromModel(model, skin, joints, boneToJoint, skeleton);
+		Test.Assert(skeleton.BoneName[2] == "Bip001 Prop1");
+		Test.Assert(skeleton.ParentIndex[2] == 0, "under the pelvis's joint");
+		let clip = scope AnimationClipSource();
+		AnimConvert.ClipFromModel(swing, boneToJoint, "swing", clip, AnimConvert.SkeletonParentNode(model, joints));
+		Test.Assert(clip.TrackBone.Count == 1);
+		Test.Assert(clip.TrackBone[0] == 2, "the prop's swing is a track of the pose");
+	}
 }

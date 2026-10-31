@@ -20,7 +20,11 @@ static class AnimConvert
 	/// bone with no vertices of its own, and animates it with the pose (a creature's bob): it is a
 	/// joint, its channels played. An empty node above (Blender's armature object, whose animation is
 	/// the character's travel) stays outside: the node the skeleton hangs from, its channels the
-	/// clip's model tracks. Appended after the skin's joints, so no vertex's joint index moves.
+	/// clip's model tracks. Then the node each unskinned mesh hangs under, with the nodes between it
+	/// and the skeleton, when its chain reaches the skeleton: 3ds Max's Biped animates a weapon's
+	/// prop node with the hand (the file does not make it a bone), and no vertex is bound to it, so
+	/// without it the clip's prop channels were dropped and the weapon's bone attachment rode the
+	/// pelvis. Each is appended after the skin's joints, so no vertex's joint index moves.
 	public static void SkeletonJoints(Model model, ModelSkin skin, List<int32> outJoints)
 	{
 		outJoints.Clear();
@@ -32,6 +36,34 @@ static class AnimConvert
 			if ((hang < 0) || (hang >= bones.Length) || (bones[hang] == null) || !bones[hang].IsSkeletonBone)
 				break;
 			outJoints.Add(hang);
+		}
+
+		let meshes = model.Meshes;
+		bool Valid(int32 bone) => (bone >= 0) && (bone < bones.Length) && (bones[bone] != null);
+		let chain = scope List<int32>();
+		for (let node in bones)
+		{
+			// No mesh, or a skinned one: the palette moves it (a skin with no weights does not, so
+			// a mesh is judged by its vertices, not by its node's skin index).
+			if ((node == null) || (node.MeshIndex < 0) || (node.MeshIndex >= meshes.Length)
+				|| ModelCook.IsSkinned(meshes[node.MeshIndex]))
+				continue;
+			// The node it hangs under.
+			let carrier = node.ParentIndex;
+			if (!Valid(carrier) || outJoints.Contains(carrier))
+				continue;
+			// The nodes from it up to the skeleton, joined parents first; none when it hangs apart.
+			chain.Clear();
+			var up = carrier;
+			for (int guard = 0; Valid(up) && !outJoints.Contains(up) && (guard <= bones.Length); guard++)
+			{
+				chain.Add(up);
+				up = bones[up].ParentIndex;
+			}
+			if (!Valid(up))
+				continue;
+			for (int i = chain.Count - 1; i >= 0; i--)
+				outJoints.Add(chain[i]);
 		}
 	}
 
