@@ -325,8 +325,8 @@ float3 AmbientLight(float3 worldPos, float3 N, float3 V, float3 albedo, float ro
         float3 Fr    = max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0) - F0;
         float3 F_ibl = F0 + Fr * pow(1.0 - NdotV, 5.0);          // roughness-aware indirect Fresnel
         float3 kD    = (1.0 - F_ibl) * (1.0 - metallic);
-        // IblParams.x: the sky-LIGHTING dimmer (authored; visible sky untouched).
-        float3 diffuseIBL = kD * albedo * (EvalSH9(N) / PI) * IblParams.x;
+        // IblDiffuse: the sky-LIGHTING dimmer (authored; visible sky untouched).
+        float3 diffuseIBL = kD * albedo * (EvalSH9(N) / PI) * IblDiffuse;
         float3 R     = reflect(-V, N);
         float3 prefiltered = PrefilterMap.SampleLevel(EnvSampler, R, roughness * IBLMaxLod).rgb;
         // Reflection probes: loop the active probes, and for each whose box contains the fragment,
@@ -366,7 +366,7 @@ float3 AmbientLight(float3 worldPos, float3 N, float3 V, float3 albedo, float ro
         float3 specularIBL = prefiltered * (F_ibl * brdf.x + brdf.y);
         float  Ess   = brdf.x + brdf.y;                          // multi-scatter energy compensation
         specularIBL *= 1.0 + F0 * (1.0 / max(Ess, 1e-3) - 1.0);  // (Kulla-Conty) restore single-scatter's lost energy
-        specularIBL *= IblParams.y;                              // authored sky-reflection dimmer
+        specularIBL *= IblSpecular;                              // authored sky-reflection dimmer
         // The authored flat ambient ADDS as a fill term in every sky mode (intensity 0 = pure
         // IBL) - it is not an either/or with the environment.
         ambient = (diffuseIBL + specularIBL + albedo * Ambient) * ao;

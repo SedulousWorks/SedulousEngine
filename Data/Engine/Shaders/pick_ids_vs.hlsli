@@ -9,7 +9,7 @@
 #endif
 cbuffer PickView : register(b0, space0) {
     row_major float4x4 ViewProj;   // the cropped world->clip
-    float              WindTime;   // time (s) for the WIND sway (the pick follows the swayed card)
+    float              SceneTime;  // the scene clock (s): the WIND sway, a surface's Time()
     float              _pickPad0;
     float              _pickPad1;
     float              _pickPad2;
@@ -116,7 +116,7 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
 #endif
     float4 worldPos = mul(float4(lp, 1.0), world);
 #ifdef WIND
-    worldPos.xyz += WindSway(worldPos.xyz, lp.y, WindTime);
+    worldPos.xyz += WindSway(worldPos.xyz, lp.y, SceneTime);
 #endif
 #ifdef SURFACE_PROGRAM
     // A surface shader's Vertex() moves what this pass picks, as it does the forward pass's.
@@ -128,7 +128,7 @@ PickVSOut PICK_IDS_VS_ENTRY(VSInput input) {
     float3 nWS = mul(float4(ln, 0.0), world).xyz;
     float3 tWS = mul(float4(lt, 0.0), world).xyz;
     float4 color = input.color * tint;
-    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, WindTime);
+    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, SceneTime);
 #endif
     o.pos = mul(worldPos, ViewProj);
 #ifdef INSTANCED

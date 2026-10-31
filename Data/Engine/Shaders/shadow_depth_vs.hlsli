@@ -10,9 +10,12 @@
 #endif
 cbuffer ShadowView : register(b0, space0) {
     row_major float4x4 LightViewProj;
-    float4             ShadowWind;   // x = time (s) for the WIND sway; yzw unused
     float3             ShadowCamera; // the CAMERA's position (the fade is by camera distance, not the light's)
     uint               ShadowFadeFromCamera; // 1: the pass couples to a camera, so a faded set fades
+    float              SceneTime;    // the scene clock (s): the WIND sway, a surface's Time()
+    float              _shadowPad0;
+    float              _shadowPad1;
+    float              _shadowPad2;
 };
 #ifdef WIND
 #include "wind.hlsli"
@@ -111,7 +114,7 @@ float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
 #endif
     float4 worldPos = mul(float4(lp, 1.0), world);
 #ifdef WIND
-    worldPos.xyz += WindSway(worldPos.xyz, lp.y, ShadowWind.x);
+    worldPos.xyz += WindSway(worldPos.xyz, lp.y, SceneTime);
 #endif
 #ifdef SURFACE_PROGRAM
     // A surface shader's Vertex() moves what this pass draws, as it does the forward pass's.
@@ -123,7 +126,7 @@ float4 SHADOW_DEPTH_VS_ENTRY(VSInput input) : SV_Position {
     float3 nWS = mul(float4(ln, 0.0), world).xyz;
     float3 tWS = mul(float4(lt, 0.0), world).xyz;
     float4 color = input.color * tint;
-    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, ShadowWind.x);
+    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, SceneTime);
 #endif
 #if defined(SURFACE_PROGRAM) && defined(ALPHA_TEST)
     o.pos       = mul(worldPos, LightViewProj);

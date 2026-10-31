@@ -472,8 +472,8 @@ class MeshRenderer : Renderer
 		// The depth only path: a vertex stage and a two set layout, the light's view and the
 		// SAME object or instance layouts the forward uses, so those groups are reused. The view
 		// is the pixel stage's too: a masked surface's depth and pick pixel stages run its
-		// Surface() at the view's camera position and time (ShadowCamera and ShadowWind,
-		// PickCamera and WindTime).
+		// Surface() at the view's camera position and time (ShadowCamera and SceneTime,
+		// PickCamera and SceneTime).
 		var shadowViewEntry = BindGroupLayoutEntry.UniformBuffer(0, .Vertex | .Fragment);
 		shadowViewEntry.HasDynamicOffset = true;
 		// Its set nought carries the skinning pool too, so a skinned caster deforms its shadow.
@@ -1460,9 +1460,11 @@ class MeshRenderer : Renderer
 		// lookup onto one row of the atlas.
 		viewData.ShadowParams.Y = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
 		viewData.DebugParams.X = (float)context.DebugSemantic;
-		// zw are the WIND sway's clock: this frame's seconds and last frame's.
-		viewData.IblParams = .(context.IblDiffuseIntensity, context.IblSpecularIntensity,
-			context.TimeSeconds, context.PrevTimeSeconds);
+		viewData.IblDiffuse = context.IblDiffuseIntensity;
+		viewData.IblSpecular = context.IblSpecularIntensity;
+		viewData.SceneTime = context.TimeSeconds;
+		// The previous position sways at last frame's time.
+		viewData.PrevSceneTime = context.PrevTimeSeconds;
 
 		// The ring's base plus THIS view's scene's, the scenes' entries being concatenated and
 		// each light's index being relative to its own scene.
@@ -1577,7 +1579,7 @@ class MeshRenderer : Renderer
 			// their own.
 			var pickView = MeshPickViewData();
 			pickView.ViewProj = context.ViewProj;
-			pickView.WindTime = context.TimeSeconds;
+			pickView.SceneTime = context.TimeSeconds;
 			// The camera the instance fade measures from.
 			pickView.Camera = context.CameraPos;
 			*(MeshPickViewData*)shadowView.Ptr = pickView;
@@ -1585,7 +1587,7 @@ class MeshRenderer : Renderer
 		else
 		{
 			var shadowData = MeshShadowViewData(context.ViewProj);
-			shadowData.Wind.X = context.TimeSeconds;
+			shadowData.SceneTime = context.TimeSeconds;
 			shadowData.Camera = context.CameraPos;
 			// A faded set's shadow fades from the camera the pass couples to; a pass with none
 			// (no view) draws every instance.

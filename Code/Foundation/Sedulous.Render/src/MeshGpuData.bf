@@ -64,9 +64,14 @@ struct MeshViewData
 	public Float4 ShadowParams = .(40.0f, 0, 0, 0);
 	/// The first component is the semantic debug mode, nought being off; the rest spare.
 	public Float4 DebugParams = .(0, 0, 0, 0);
-	/// The diffuse and specular environment dimmers, then the wind's clock: this frame's time in
-	/// seconds and the last frame's.
-	public Float4 IblParams = .(1, 1, 0, 0);
+	/// The sky lighting dimmer (diffuse image lighting).
+	public float IblDiffuse = 1.0f;
+	/// The sky reflection dimmer (specular image lighting).
+	public float IblSpecular = 1.0f;
+	/// The view's scene clock in seconds: the WIND sway, a surface's Time().
+	public float SceneTime = 0.0f;
+	/// Last frame's, so the previous position sways with it for the motion vectors.
+	public float PrevSceneTime = 0.0f;
 
 	public this() {}
 }
@@ -157,18 +162,22 @@ struct MeshDataOffsets
 	}
 }
 
-/// The depth only pass's constants: the light's matrix and the wind clock.
+/// The depth only pass's constants: the light's matrix, the camera a faded set fades from, and
+/// the scene clock.
 [CRepr]
 struct MeshShadowViewData
 {
 	public Float4x4 LightViewProj = .Identity();
-	/// x is the time in seconds the WIND sway reads; yzw unused.
-	public Float4 Wind = .(0, 0, 0, 0);
 	/// The CAMERA's position: an instance fade is by camera distance, not the light's.
 	public Float3 Camera = .(0, 0, 0);
 	/// One when the pass couples to a camera, so a faded set fades; a pass with none draws every
 	/// instance.
 	public uint32 FadeFromCamera = 0;
+	/// The scene clock in seconds: the WIND sway, a surface's Time().
+	public float SceneTime = 0.0f;
+	public float Pad0 = 0.0f;
+	public float Pad1 = 0.0f;
+	public float Pad2 = 0.0f;
 
 	public this() {}
 
@@ -179,14 +188,15 @@ struct MeshShadowViewData
 }
 
 /// The pick pass's set nought view, the PickView block of pick_ids.vs: the cropped world to
-/// clip, the WIND clock and the camera the instance fade measures from. An instanced set's own
+/// clip, the scene clock and the camera the instance fade measures from. An instanced set's own
 /// id is its InstanceSet's. Shares the shadow view ring's slots.
 [CRepr]
 struct MeshPickViewData
 {
 	public Float4x4 ViewProj = .Identity();
-	/// The time in seconds the WIND sway reads, so the pick follows the swayed card.
-	public float WindTime = 0.0f;
+	/// The scene clock in seconds: the WIND sway (the pick follows the swayed card), a
+	/// surface's Time().
+	public float SceneTime = 0.0f;
 	public float Pad0 = 0.0f;
 	public float Pad1 = 0.0f;
 	public float Pad2 = 0.0f;

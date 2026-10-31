@@ -24,7 +24,7 @@ float4 PSMain(VSOutput input) : SV_Target0 {
 #endif
     SurfaceOutput s = SurfaceEvaluate(input.worldPos, input.normalWS, input.tangentWS, input.uv,
                                       input.color, ViewEyeFor(input.worldPos), input.clip,
-                                      IblParams.z);
+                                      SceneTime);
     float alpha = s.alpha;
 #ifdef ALPHA_TEST
     if (alpha < SurfaceAlphaCutoff()) { discard; }

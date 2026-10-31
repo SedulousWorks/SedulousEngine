@@ -119,9 +119,9 @@ VSOutput FORWARD_VS_ENTRY(VSInput input) {
     float4 worldPos     = mul(float4(lp, 1.0), world);
     float4 prevWorldPos = mul(float4(lpPrev, 1.0), prevWorld);
 #ifdef WIND
-    // IblParams.z = this frame's time, .w = last frame's: the previous position sways with it.
-    worldPos.xyz     += WindSway(worldPos.xyz, lp.y, IblParams.z);
-    prevWorldPos.xyz += WindSway(prevWorldPos.xyz, lpPrev.y, IblParams.w);
+    // The previous position sways at last frame's time, so motion vectors follow the sway.
+    worldPos.xyz     += WindSway(worldPos.xyz, lp.y, SceneTime);
+    prevWorldPos.xyz += WindSway(prevWorldPos.xyz, lpPrev.y, PrevSceneTime);
 #endif
 #ifdef SURFACE_PROGRAM
     // A surface shader's Vertex(): this frame's position at this frame's time, and last frame's at
@@ -132,9 +132,9 @@ VSOutput FORWARD_VS_ENTRY(VSInput input) {
     {
         float3 nPrev = nWS;
         float3 tPrev = tWS;
-        SurfaceVertexApply(prevWorldPos.xyz, nPrev, tPrev, lpPrev, input.uv, color, IblParams.w);
+        SurfaceVertexApply(prevWorldPos.xyz, nPrev, tPrev, lpPrev, input.uv, color, PrevSceneTime);
     }
-    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, IblParams.z);
+    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, SceneTime);
 #endif
     o.clip      = mul(worldPos, ViewProj);
 #ifdef SURFACE_PROGRAM

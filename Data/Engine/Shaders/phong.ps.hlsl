@@ -102,7 +102,7 @@ float4 main(PSInput input) : SV_Target0 {
     // The scene's diffuse ambient: the sky's irradiance when it lights the scene, plus the flat fill.
     float3 ambient = diffuse * Ambient;
     if (IBLMaxLod >= 0.0) {
-        ambient += diffuse * (EvalSH9(N) / PI) * IblParams.x;
+        ambient += diffuse * (EvalSH9(N) / PI) * IblDiffuse;
     }
     float3 litColor = ambient + Lo + emissive;
 

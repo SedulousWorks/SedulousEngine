@@ -14,7 +14,7 @@
 uint2 PSMain(PickVSOut input) : SV_Target0 {
 #ifdef ALPHA_TEST
     SurfaceOutput s = SurfaceEvaluate(input.worldPos, input.normalWS, input.tangentWS, input.uv,
-                                      input.color, PickCamera.xyz, input.pos, WindTime);
+                                      input.color, PickCamera.xyz, input.pos, SceneTime);
     if (s.alpha < SurfaceAlphaCutoff()) { discard; }
 #endif
     return input.id;

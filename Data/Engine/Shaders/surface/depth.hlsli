@@ -14,7 +14,7 @@
 #ifdef ALPHA_TEST
 void PSMain(SurfaceVSOut input) {
     SurfaceOutput s = SurfaceEvaluate(input.worldPos, input.normalWS, input.tangentWS, input.uv,
-                                      input.color, ShadowCamera.xyz, input.pos, ShadowWind.x);
+                                      input.color, ShadowCamera.xyz, input.pos, SceneTime);
     if (s.alpha < SurfaceAlphaCutoff()) { discard; }
 }
 #else

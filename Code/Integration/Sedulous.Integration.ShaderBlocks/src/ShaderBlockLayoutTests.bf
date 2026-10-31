@@ -88,7 +88,10 @@ class ShaderBlockLayoutTests
 		.("ProbeBoxMax", offsetof(MeshViewData, ProbeBoxMax)),
 		.("ShadowParams", offsetof(MeshViewData, ShadowParams)),
 		.("DebugParams", offsetof(MeshViewData, DebugParams)),
-		.("IblParams", offsetof(MeshViewData, IblParams)));
+		.("IblDiffuse", offsetof(MeshViewData, IblDiffuse)),
+		.("IblSpecular", offsetof(MeshViewData, IblSpecular)),
+		.("SceneTime", offsetof(MeshViewData, SceneTime)),
+		.("PrevSceneTime", offsetof(MeshViewData, PrevSceneTime)));
 
 	/// The per-draw block: one C++ struct for three passes, each declaring its own part of it
 	/// (phase 3 gives each pass its fields by name; until then each row records what it declares).
@@ -128,13 +131,16 @@ class ShaderBlockLayoutTests
 
 	private static FieldRow[?] sShadowView = .(
 		.("LightViewProj", offsetof(MeshShadowViewData, LightViewProj)),
-		.("ShadowWind", offsetof(MeshShadowViewData, Wind)),
 		.("ShadowCamera", offsetof(MeshShadowViewData, Camera)),
-		.("ShadowFadeFromCamera", offsetof(MeshShadowViewData, FadeFromCamera)));
+		.("ShadowFadeFromCamera", offsetof(MeshShadowViewData, FadeFromCamera)),
+		.("SceneTime", offsetof(MeshShadowViewData, SceneTime)),
+		.("_shadowPad0", offsetof(MeshShadowViewData, Pad0)),
+		.("_shadowPad1", offsetof(MeshShadowViewData, Pad1)),
+		.("_shadowPad2", offsetof(MeshShadowViewData, Pad2)));
 
 	private static FieldRow[?] sPickView = .(
 		.("ViewProj", offsetof(MeshPickViewData, ViewProj)),
-		.("WindTime", offsetof(MeshPickViewData, WindTime)),
+		.("SceneTime", offsetof(MeshPickViewData, SceneTime)),
 		.("_pickPad0", offsetof(MeshPickViewData, Pad0)),
 		.("_pickPad1", offsetof(MeshPickViewData, Pad1)),
 		.("_pickPad2", offsetof(MeshPickViewData, Pad2)),
