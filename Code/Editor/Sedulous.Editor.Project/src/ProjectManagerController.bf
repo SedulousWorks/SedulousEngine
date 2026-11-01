@@ -147,11 +147,47 @@ class ProjectManagerController
 		entry.EngineVersion.Set(probed.EngineVersion);
 	}
 
-	/// New Project's check for a project named `name` made in `location`, in a folder of its name
-	/// there when `ownFolder` is set, else in `location` itself (Raptor's project-manager spec), into
-	/// `outCheck`. Red, Create waiting: no name, a name holding / \ : * ? " < > |, no location, a
-	/// location that is a file, a target that is a project already or holds files. Amber: the
-	/// location does not exist yet (it is made), the name starts or ends with a space. Else green.
+	/// The folder a project named `name` gets, appended to `outFolder`: spaces become '-'; letters,
+	/// digits, '-', '_', '.' and anything past ASCII (accented letters, other scripts) stay; other
+	/// characters, those a file system refuses and those awkward in a path ("'", '!', '&', '#'), go.
+	/// Runs of '-' become one, '-' and '.' at either end go, and a name Windows reserves (CON, NUL,
+	/// COM1) gets "-Project". Nothing when nothing usable is left ("???").
+	public static void FolderNameFor(StringView name, String outFolder)
+	{
+		let folder = scope String();
+		for (let c in name.RawChars)
+		{
+			let keep = ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || ((c >= '0') && (c <= '9')) || (c == '_') || (c == '.')
+				|| ((uint8)c >= 0x80);
+			if (keep)
+				folder.Append(c);
+			else if (((c == ' ') || (c == '-') || (c == '\t')) && !folder.IsEmpty && (folder[folder.Length - 1] != '-'))
+				folder.Append('-');
+		}
+		int start = 0;
+		int end = folder.Length;
+		while ((start < end) && ((folder[start] == '-') || (folder[start] == '.')))
+			start++;
+		while ((end > start) && ((folder[end - 1] == '-') || (folder[end - 1] == '.')))
+			end--;
+		let safe = StringView(folder, start, end - start);
+		// CON, PRN, AUX, NUL, COM1 to COM9 and LPT1 to LPT9, before any extension, any case.
+		var stem = safe;
+		let dot = stem.IndexOf('.');
+		if (dot >= 0)
+			stem = StringView(stem, 0, dot);
+		let numbered = (stem.Length == 4) && (StringView(stem, 0, 3).Equals("COM", true) || StringView(stem, 0, 3).Equals("LPT", true))
+			&& (stem[3] >= '1') && (stem[3] <= '9');
+		outFolder.Append(safe);
+		if (stem.Equals("CON", true) || stem.Equals("PRN", true) || stem.Equals("AUX", true) || stem.Equals("NUL", true) || numbered)
+			outFolder.Append("-Project");
+	}
+
+	/// New Project's check for a project named `name` made in `location`, in a folder named after it
+	/// there (FolderNameFor) when `ownFolder` is set, else in `location` itself (Raptor's
+	/// project-manager spec), into `outCheck`. Red, Create waiting: no name, a name with nothing a
+	/// folder can be named by, no location, a location that is a file, a target that is a project
+	/// already or holds files. Amber: the location does not exist yet (it is made). Else green.
 	/// Folders in the message show under `home` as ~. A sample's download dialog asks the same with
 	/// `action` Download, and the green line says so. It touches nothing on disk, so the dialog runs
 	/// it on every keystroke.
@@ -168,13 +204,11 @@ class ProjectManagerController
 			outCheck.Message.Set("Give the project a name.");
 			return;
 		}
-		for (let c in trimmed)
+		let safeName = FolderNameFor(trimmed, .. scope .());
+		if (ownFolder && safeName.IsEmpty)
 		{
-			if ("/\\:*?\"<>|".Contains(c))
-			{
-				outCheck.Message.Set("A name cannot hold / \\ : * ? \" < > or |.");
-				return;
-			}
+			outCheck.Message.Set("The name needs a letter or a digit for its folder.");
+			return;
 		}
 		let folder = TrimSpaces(location);
 		if (folder.IsEmpty)
@@ -189,7 +223,7 @@ class ProjectManagerController
 			return;
 		}
 		if (ownFolder)
-			PathJoin(folder, trimmed, outCheck.Target);
+			PathJoin(folder, safeName, outCheck.Target);
 		else
 			outCheck.Target.Set(folder);
 		let shownTarget = RecentProjects.ShortenHomePath(outCheck.Target, home, .. scope .());
@@ -212,16 +246,10 @@ class ProjectManagerController
 			return;
 		}
 		outCheck.Level = .Warning;
-		if (trimmed.Length != name.Length)
-		{
-			outCheck.Message.AppendF("The name starts or ends with a space; the {} will be {}.", ownFolder ? "folder" : "name",
-				ownFolder ? StringView(shownTarget) : StringView(outCheck.Name));
-			return;
-		}
 		if (!DirectoryExists(folder))
 		{
 			if (ownFolder)
-				outCheck.Message.AppendF("{} does not exist yet; it will be made, then {} inside it.", shownWhere, trimmed);
+				outCheck.Message.AppendF("{} does not exist yet; it will be made, then {} inside it.", shownWhere, safeName);
 			else
 				outCheck.Message.AppendF("{} does not exist yet; it will be made, and the project made in it.", shownWhere);
 			return;

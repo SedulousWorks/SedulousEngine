@@ -221,6 +221,23 @@ static class ProjectRegistryTests
 	}
 
 	[Test]
+	public static void AProjectsFolderIsItsNameMadeSafeForAFileSystem()
+	{
+		Test.Assert(ProjectManagerController.FolderNameFor("Harbour", .. scope .()) == "Harbour");
+		Test.Assert(ProjectManagerController.FolderNameFor("My Great Game", .. scope .()) == "My-Great-Game");
+		Test.Assert(ProjectManagerController.FolderNameFor("Bob's Game: Part 2!", .. scope .()) == "Bobs-Game-Part-2");
+		Test.Assert(ProjectManagerController.FolderNameFor("a/b\\c*d?e\"f<g>h|i", .. scope .()) == "abcdefghi");
+		Test.Assert(ProjectManagerController.FolderNameFor("  spaced  -  out  ", .. scope .()) == "spaced-out");
+		Test.Assert(ProjectManagerController.FolderNameFor("..hidden.", .. scope .()) == "hidden");
+		Test.Assert(ProjectManagerController.FolderNameFor("v1.2_final", .. scope .()) == "v1.2_final");
+		Test.Assert(ProjectManagerController.FolderNameFor("Caf\u{e9} \u{65e5}\u{672c}", .. scope .()) == "Caf\u{e9}-\u{65e5}\u{672c}"); // letters past ASCII stay
+		Test.Assert(ProjectManagerController.FolderNameFor("???", .. scope .()).IsEmpty);
+		Test.Assert(ProjectManagerController.FolderNameFor("con", .. scope .()) == "con-Project");
+		Test.Assert(ProjectManagerController.FolderNameFor("COM3", .. scope .()) == "COM3-Project");
+		Test.Assert(ProjectManagerController.FolderNameFor("Console", .. scope .()) == "Console");
+	}
+
+	[Test]
 	public static void NewProjectsCheckNamesWhereItGoesAndRefusesWhatCannotBeMade()
 	{
 		let root = Scratch("scratch_new_project_check", .. scope .());
@@ -255,11 +272,12 @@ static class ProjectRegistryTests
 		// Red: what cannot be made, and Create waits.
 		ProjectManagerController.CheckNewProject("  ", root, true, "", c);
 		Test.Assert(c.Message == "Give the project a name.", c.Message);
-		ProjectManagerController.CheckNewProject("A/B", root, true, "", c);
+		ProjectManagerController.CheckNewProject("???", root, true, "", c);
 		Test.Assert(c.Level == .Error);
-		Test.Assert(c.Message == "A name cannot hold / \\ : * ? \" < > or |.", c.Message);
-		ProjectManagerController.CheckNewProject("Why?", root, true, "", c);
-		Test.Assert(c.Level == .Error);
+		Test.Assert(c.Message == "The name needs a letter or a digit for its folder.", c.Message);
+		// Without a folder of its own, the name is the project's alone: anything goes.
+		Check(root, "???", "Empty", false, c);
+		Test.Assert(c.Level == .Ok);
 		ProjectManagerController.CheckNewProject("Harbour", " ", true, "", c);
 		Test.Assert(c.Message == "Choose the folder it is made in.", c.Message);
 		Check(root, "Taken", "", true, c);
@@ -278,10 +296,12 @@ static class ProjectRegistryTests
 		Test.Assert(c.Message == "~/Later/Games does not exist yet; it will be made, then Harbour inside it.", c.Message);
 		Check(root, "Harbour", "Later", false, c);
 		Test.Assert(c.Message == "~/Later does not exist yet; it will be made, and the project made in it.", c.Message);
-		Check(root, " Harbour ", "", true, c);
-		Test.Assert(c.Level == .Warning);
-		Test.Assert(c.Name == "Harbour");
-		Test.Assert(c.Message == "The name starts or ends with a space; the folder will be ~/Harbour.", c.Message);
+		// Green with a folder made safe from the name, which the project keeps as typed (trimmed).
+		Check(root, " Bob's Game: Part 2! ", "", true, c);
+		Test.Assert(c.Level == .Ok);
+		Test.Assert(c.Name == "Bob's Game: Part 2!");
+		Test.Assert(c.Target == PathJoin(root, "Bobs-Game-Part-2", .. scope .()));
+		Test.Assert(c.Message == "Creates ~/Bobs-Game-Part-2, and opens it.", c.Message);
 		Test.Assert(!DirectoryExists(PathJoin(root, "Later", .. scope .())), "checking makes nothing");
 	}
 
