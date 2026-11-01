@@ -49,9 +49,9 @@ static class EngineSurfaceScriptTests
 		let apiPath = scope String();
 		Path.GetAbsolutePath("../../build/engine-script-api-angelscript.txt", Directory.GetCurrentDirectory(.. scope .()), apiPath);
 		File.WriteAllText(apiPath, text).IgnoreError();
-		// One bound type per surface type: the facades, the components, the values they pass,
-		// the globals. 179 = 114 + the engine's GUI's 65 (see EngineScriptSurfaceTests).
-		Test.Assert(api.Count == 179, scope $"{api.Count} bound types");
+		// One bound type per surface type but one: the facades, the components, the values they
+		// pass, the globals. 163 against EngineScriptSurfaceTests' 164.
+		Test.Assert(api.Count == 163, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
