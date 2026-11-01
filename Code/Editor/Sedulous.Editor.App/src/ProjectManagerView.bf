@@ -50,8 +50,8 @@ class ProjectManagerView
 	/// Its frames, under the data root.
 	public const String cMarkupPath = "Editor/ProjectManager.xml";
 	public const String cNewProjectPath = "Editor/NewProject.xml";
-	private const float cDialogWidth = 480.0f;
-	private const float cDialogHeight = 220.0f;
+	private const float cDialogWidth = 600.0f;
+	private const float cDialogHeight = 330.0f;
 	/// The buttons that make a project and open a folder: the toolbar's and the welcome's.
 	private static StringView[2] cNewButtons = .("manager-new", "manager-welcome-new");
 	private static StringView[2] cOpenButtons = .("manager-open", "manager-welcome-open");
@@ -496,8 +496,9 @@ class ProjectManagerView
 		return true;
 	}
 
-	/// New Project: a name and the folder it is made in; Create waits for both. Nothing with no
-	/// GUI, no markup, or with it open already.
+	/// New Project: a name, the folder it is made in (starting where the last project went), and
+	/// whether it gets a folder of its name there. The check line under them says what Create would
+	/// do, and Create waits while it is red. Nothing with no GUI, no markup, or with it open already.
 	public void ShowCreateDialog()
 	{
 		let root = (mContent != null) ? (mContent.RootNode as SceneRoot) : null;
@@ -509,6 +510,9 @@ class ProjectManagerView
 		defer body.ReleaseRef(); // the window holds its own
 		let name = body.FindElement("new-project-name") as Sedulous.GUI.TextField;
 		let parent = body.FindElement("new-project-parent") as Sedulous.GUI.TextField;
+		let ownFolder = body.FindElement("new-project-own-folder") as Sedulous.GUI.CheckBox;
+		let line = body.FindElement("new-project-check") as UIWidget;
+		let icon = body.FindElement("new-project-check-icon") as Sedulous.GUI.Image;
 		let target = body.FindElement("new-project-where") as Sedulous.GUI.Label;
 		let create = body.FindElement("new-project-create") as Sedulous.GUI.Button;
 		let browse = body.FindElement("new-project-browse") as Sedulous.GUI.Button;
@@ -523,38 +527,60 @@ class ProjectManagerView
 		dialog.Title = "New Project";
 		dialog.Size = .(cDialogWidth, cDialogHeight);
 		dialog.Content.AddChild(body);
-		// Create waits for both fields; the line under them says where the project goes.
-		name.SetOnTextChanging(new [=name, =parent, =target, =create] (text) => { RefreshCreate(name, parent, target, create); });
-		parent.SetOnTextChanging(new [=name, =parent, =target, =create] (text) => { RefreshCreate(name, parent, target, create); });
-		create.SetOnClick(new [=this, =dialog, =name, =parent] () =>
+		if (ownFolder != null)
+			ownFolder.Checked = true;
+		StringView last = (mServices.Controller != null) ? mServices.Controller.LastLocation : default;
+		parent.Text = last.IsEmpty ? StringView(mHome) : last;
+		// The check line, kept current: what Create would make, coloured by what it says.
+		name.SetOnTextChanging(new [=this, =name, =parent, =ownFolder, =line, =icon, =target, =create] (text) =>
 			{
-				let projectName = scope String(name.Text);
-				let folder = scope String(parent.Text);
-				if (projectName.IsEmpty || folder.IsEmpty)
+				RefreshCreate(name, parent, ownFolder, line, icon, target, create);
+			});
+		parent.SetOnTextChanging(new [=this, =name, =parent, =ownFolder, =line, =icon, =target, =create] (text) =>
+			{
+				RefreshCreate(name, parent, ownFolder, line, icon, target, create);
+			});
+		if (ownFolder != null)
+		{
+			ownFolder.SetOnToggled(new [=this, =name, =parent, =ownFolder, =line, =icon, =target, =create] (on) =>
+				{
+					RefreshCreate(name, parent, ownFolder, line, icon, target, create);
+				});
+		}
+		create.SetOnClick(new [=this, =dialog, =name, =parent, =ownFolder] () =>
+			{
+				let result = scope NewProjectCheck();
+				CheckCreate(name, parent, ownFolder, result);
+				if (result.Level == .Error)
 					return;
-				let directory = PathJoin(folder, projectName, .. scope .());
+				if (mServices.Controller != null)
+				{
+					mServices.Controller.SetLastLocation(parent.Text);
+					if (mServices.StoreChanged != null)
+						mServices.StoreChanged();
+				}
 				dialog.Close();
 				if (mServices.Create != null)
-					mServices.Create(directory, projectName);
+					mServices.Create(result.Target, result.Name);
 			});
 		if (browse != null)
 		{
-			browse.SetOnClick(new [=this, =name, =parent, =target, =create] () =>
+			browse.SetOnClick(new [=this, =name, =parent, =ownFolder, =line, =icon, =target, =create] () =>
 				{
 					if (mServices.Dialogs == null)
 						return;
-					mServices.Dialogs.ShowOpenFolder(new [=name, =parent, =target, =create] (paths) =>
+					mServices.Dialogs.ShowOpenFolder(new [=this, =name, =parent, =ownFolder, =line, =icon, =target, =create] (paths) =>
 						{
 							if (paths.Length == 0)
 								return; // cancelled
 							parent.Text = paths[0]; // set from code: no edit reported, so refreshed here
-							RefreshCreate(name, parent, target, create);
-						}, "", false, 0);
+							RefreshCreate(name, parent, ownFolder, line, icon, target, create);
+						}, parent.Text, false, 0);
 				});
 		}
 		if (cancel != null)
 			cancel.SetOnClick(new [=dialog] () => { dialog.Close(); });
-		RefreshCreate(name, parent, target, create);
+		RefreshCreate(name, parent, ownFolder, line, icon, target, create);
 		dialog.OpenModal(root);
 		name.FocusElement();
 	}
@@ -562,18 +588,26 @@ class ProjectManagerView
 	/// New Project's window while it is open (a test's); null with none.
 	public Sedulous.GUI.Window CreateDialog => ((mDialog != null) && mDialog.IsOpen) ? mDialog : null;
 
-	/// Create enabled once both fields hold something; the line under them says where then.
-	private static void RefreshCreate(Sedulous.GUI.TextField name, Sedulous.GUI.TextField parent, Sedulous.GUI.Label target,
-		Sedulous.GUI.Button create)
+	/// What Create would make of the fields as they stand (ProjectManagerController.CheckNewProject).
+	private void CheckCreate(Sedulous.GUI.TextField name, Sedulous.GUI.TextField parent, Sedulous.GUI.CheckBox ownFolder,
+		NewProjectCheck outCheck)
 	{
-		let ready = !name.Text.IsEmpty && !parent.Text.IsEmpty;
-		create.Enabled = ready;
-		if (target == null)
-			return;
-		let path = scope String();
-		if (ready)
-			PathJoin(parent.Text, name.Text, path);
-		target.Text = path;
+		ProjectManagerController.CheckNewProject(name.Text, parent.Text, (ownFolder == null) || ownFolder.Checked, mHome, outCheck);
+	}
+
+	/// The check line again: its words, its colour and icon, and Create waiting while it is red.
+	private void RefreshCreate(Sedulous.GUI.TextField name, Sedulous.GUI.TextField parent, Sedulous.GUI.CheckBox ownFolder,
+		UIWidget line, Sedulous.GUI.Image icon, Sedulous.GUI.Label target, Sedulous.GUI.Button create)
+	{
+		let result = scope NewProjectCheck();
+		CheckCreate(name, parent, ownFolder, result);
+		create.Enabled = result.Level != .Error;
+		if (target != null)
+			target.Text = result.Message;
+		SetClass(line, "warning", result.Level == .Warning);
+		SetClass(line, "error", result.Level == .Error);
+		if (icon != null)
+			icon.Source = (result.Level == .Ok) ? "Editor/Icons/check.svg" : ((result.Level == .Warning) ? "Editor/Icons/warning.svg" : "Editor/Icons/error.svg");
 	}
 
 	/// The frame's part with this id, as a T; null when it has none.

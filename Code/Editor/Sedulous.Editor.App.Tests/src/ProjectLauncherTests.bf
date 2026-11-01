@@ -417,32 +417,48 @@ class ProjectLauncherTests
 	}
 
 	[Test]
-	public static void NewProjectWaitsForANameAndAFolderThenMakesItInAFolderOfItsName()
+	public static void NewProjectStartsWhereTheLastProjectWentChecksAsItIsTypedAndMakesAFolderOfItsName()
 	{
 		let l = scope Launcher();
+		l.Controller.SetLastLocation(l.Root);
 		l.View.ShowCreateDialog();
 		l.Scene.UpdateLayout();
 		var dialog = l.View.CreateDialog;
 		Test.Assert(dialog != null);
 		var name = dialog.FindElement("new-project-name") as Sedulous.GUI.TextField;
 		var parent = dialog.FindElement("new-project-parent") as Sedulous.GUI.TextField;
+		let ownFolder = dialog.FindElement("new-project-own-folder") as Sedulous.GUI.CheckBox;
+		let line = dialog.FindElement("new-project-check") as UIWidget;
+		let target = dialog.FindElement("new-project-where") as Sedulous.GUI.Label;
 		var create = dialog.FindElement("new-project-create") as Sedulous.GUI.Button;
-		var target = dialog.FindElement("new-project-where") as Sedulous.GUI.Label;
-		Test.Assert((name != null) && (parent != null) && (create != null) && (target != null));
+		Test.Assert((name != null) && (parent != null) && (ownFolder != null) && (line != null) && (target != null) && (create != null));
+		Test.Assert(parent.Text == l.Root, "the last location");
+		Test.Assert(ownFolder.Checked, "a folder of its name, unless turned off");
 		Test.Assert(!create.Enabled);
+		Test.Assert(line.HasClass("error"));
+		Test.Assert(target.Text == "Give the project a name.");
+
 		let d = l.Scene.EventDispatcher;
 		name.RequestFocus();
 		d.InjectText("Harbour");
-		Test.Assert(!create.Enabled, "no folder yet");
-		Test.Assert(target.Text.IsEmpty);
-		parent.RequestFocus();
-		d.InjectText(l.Root);
 		Test.Assert(create.Enabled);
+		Test.Assert(!line.HasClass("error") && !line.HasClass("warning"));
+
+		// Without a folder of its name, the location itself must be empty: the scratch root is not.
+		Test.Assert(ownFolder.HandleActivate());
+		Test.Assert(!ownFolder.Checked);
+		Test.Assert(!create.Enabled);
+		Test.Assert(line.HasClass("error"));
+		Test.Assert(ownFolder.HandleActivate());
+		Test.Assert(create.Enabled);
+
+		let before = l.Saves;
 		let expected = PathJoin(l.Root, "Harbour", .. scope .());
-		Test.Assert(target.Text == expected);
 		Test.Assert(create.HandleActivate());
 		Test.Assert(l.View.CreateDialog == null);
 		Test.Assert((l.Created.Count == 1) && (l.Created[0] == expected));
+		Test.Assert(l.Controller.LastLocation == l.Root, "remembered for the next one");
+		Test.Assert(l.Saves == before + 1);
 
 		// Browse fills the folder; Cancel makes nothing.
 		l.View.ShowCreateDialog();

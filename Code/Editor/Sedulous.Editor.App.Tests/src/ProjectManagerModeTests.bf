@@ -232,6 +232,8 @@ class ProjectManagerModeTests
 	{
 		let bed = scope ModeBed("scratch_manager_mode_create");
 		bed.Mode.Enter();
+		// New Project starts at the last location (else the home folder): the scratch folder here.
+		bed.Projects.SetLastLocation(bed.Dir);
 		let view = bed.Mode.View;
 		view.ShowCreateDialog();
 		bed.Pages.Root.UpdateLayout();
@@ -240,8 +242,6 @@ class ProjectManagerModeTests
 		let d = bed.Pages.Root.EventDispatcher;
 		(dialog.FindElement("new-project-name") as Sedulous.GUI.TextField).RequestFocus();
 		d.InjectText("Harbour");
-		(dialog.FindElement("new-project-parent") as Sedulous.GUI.TextField).RequestFocus();
-		d.InjectText(bed.Dir);
 		Test.Assert((dialog.FindElement("new-project-create") as Sedulous.GUI.Button).HandleActivate());
 		Test.Assert(bed.Session.Project == null, "not inside the click");
 		bed.Drain();

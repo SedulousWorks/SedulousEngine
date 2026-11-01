@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Shell;
 using Sedulous.GUI;
 using Sedulous.Engine.Project;
@@ -144,7 +145,8 @@ class ProjectManagerMode
 	}
 
 	/// New Project from the manager: a folder that holds a project already is refused; else the
-	/// project is made there with the starter content and opened.
+	/// project is made there (its location too, when that is new) with the starter content and
+	/// opened.
 	public void CreateFrom(StringView directory, StringView name)
 	{
 		let probed = scope ProjectSettings();
@@ -153,6 +155,9 @@ class ProjectManagerMode
 			SetStatus("That folder is a project already: Open Folder opens it.");
 			return;
 		}
+		// New Project's check said a location that does not exist yet is made: the project's own
+		// folder's parent first (CreateDirectory makes the folders on the way).
+		CreateDirectory(PathParent(directory, .. scope .()));
 		var options = EditorSessionOpenOptions();
 		options.Scaffold = true;
 		options.ScaffoldName = name;

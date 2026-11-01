@@ -1,16 +1,22 @@
 <!--
-  New Project (Documentation/Specs/editor-gui.md, 5.1, layer 13): a name and the folder it is made
-  in. Create waits for both; the project is made in a folder of its name there.
+  New Project (Raptor's project-manager spec): a name, the folder it is made in, and
+  whether it gets a folder of its name there (on unless turned off). The check line under them is
+  kept current as the fields change, coloured by what it says; Create waits while it is red.
 -->
 <Panel class="dialog-body new-project">
     <Panel class="form">
         <Label class="form-label" text="Name"/>
         <Panel class="form-field"><TextField id="new-project-name" placeholder="Project name"/></Panel>
-        <Label class="form-label" text="In"/>
+        <Label class="form-label" text="Location"/>
         <Panel class="form-field">
             <Panel class="new-project-folder"><TextField id="new-project-parent" placeholder="The folder it is made in"/><Button id="new-project-browse" text="Browse..."/></Panel>
-            <Label id="new-project-where" class="form-help"/>
+            <CheckBox id="new-project-own-folder" text="Create a folder named after the project in it"/>
+            <Label class="form-help" text="The location starts where your last project went."/>
         </Panel>
+    </Panel>
+    <Panel id="new-project-check" class="new-project-check">
+        <Image id="new-project-check-icon" class="message-icon"/>
+        <Label id="new-project-where" class="new-project-check-text"/>
     </Panel>
     <Panel class="dialog-buttons"><Spacer/><Button id="new-project-cancel" text="Cancel"/><Button id="new-project-create" class="primary" text="Create" enabled="false"/></Panel>
 </Panel>

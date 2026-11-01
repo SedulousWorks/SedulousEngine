@@ -166,6 +166,16 @@ button.manager-card:hover { border-color: var(--border-strong); background-color
 .new-project { flex-direction: column; row-gap: var(--space-m); }
 .new-project-folder { flex-direction: row; column-gap: var(--space-s); }
 .new-project-folder > textfield { flex-grow: 1; min-width: 0; }
+/* The check line: green when it can be made, amber when it goes ahead with a word, red while
+   Create waits. */
+.new-project-check { flex-direction: row; align-items: start; column-gap: 10px; padding: 10px 12px; border-radius: var(--radius);
+                     border: 1px solid var(--success-border); background-color: var(--success-background); }
+.new-project-check > .message-icon { width: 16px; height: 16px; margin-top: 1px; image-color: var(--success); }
+.new-project-check-text { flex-grow: 1; flex-basis: 0; min-width: 0; white-space: normal; color: var(--success); }
+.new-project-check.warning { border-color: var(--warning-border); background-color: var(--warning-background); }
+.new-project-check.warning > .message-icon, .new-project-check.warning > .new-project-check-text { color: var(--warning); image-color: var(--warning); }
+.new-project-check.error { border-color: var(--danger-border); background-color: var(--danger-background); }
+.new-project-check.error > .message-icon, .new-project-check.error > .new-project-check-text { color: var(--danger); image-color: var(--danger); }
 
 /* === Tabs: a compact strip, its text centred === */
 /* A tab view's strip is on top: a tab rounds its top corners and meets its page square. */
