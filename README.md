@@ -122,7 +122,7 @@ every build config.
 Game projects under `Data/SampleProjects/`, opened from the editor's project manager. Each
 was built entirely through the engine's MCP tools by an AI agent, its authoring scripts kept in
 its `Tools/`, and each plays in the browser on
-[SedulousDemos](https://sedulousworks.github.io/SedulousDemos/).
+[SedulousDemos](https://sedulousworks.github.io/SedulousDemos/), Masquerade not yet.
 
 **Sky Hopper** (`PlatformerGame`) is a small 3D platformer, also shipped to a Steam Deck: five
 floating islands, coins, enemies and hazards, menus with volume settings, music and effects,
@@ -161,6 +161,20 @@ the gardens to the vault on the upper floor.
 | The Gardens | The Ground Floor | Away like a ghost |
 |:---:|:---:|:---:|
 | ![Gardens](Documentation/Images/Lamplight-Gardens.png) | ![Ground Floor](Documentation/Images/Lamplight-GroundFloor.png) | ![Results](Documentation/Images/Lamplight-Results.png) |
+
+**Masquerade** is social stealth at a masked ball, alone against bots or with up to four players
+over the network, chosen to show the network stack and crowds: an authoritative host that plays
+and players joining it (natively, or from a browser through its gateway), replicated script state,
+and some 150 guests on navigation drawn as instances of six costumes. Each hunter is given a mark, a guest in one of those costumes, and is
+someone else's mark; guests stroll, gather and dance to the orchestra's cues, and a hunter who
+sprints or stands still through a dance stands out. Three maps: the Palace, the Canal with its
+gondolas, and the Gardens. Masks and silk on custom shaders, music the crowd follows, and the
+models, the music and the sounds all made by its scripts. More in
+[its README](Data/SampleProjects/Masquerade/README.md); it is not on SedulousDemos or the Deck yet.
+
+| The title | On the Canal | The music stops |
+|:---:|:---:|:---:|
+| ![The title](Documentation/Images/Masquerade-Title.png) | ![On the Canal](Documentation/Images/Masquerade-Canal.png) | ![Results](Documentation/Images/Masquerade-Results.png) |
 
 **The Shader Gallery** is the custom shaders sample: a hall of eleven lesson shaders to fly
 through, each on its own plinth and each `.hlsl` a short commented lesson that builds on the one
