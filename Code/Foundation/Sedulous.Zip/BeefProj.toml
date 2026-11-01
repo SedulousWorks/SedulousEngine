@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Zip"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Zip.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"stb_image-Beef" = "*"
