@@ -241,7 +241,9 @@ class PlayerApplication : DefaultApplication
 		}
 
 		// The game script launches FIRST: its launch() may load the first level itself, and
-		// a startup scene, when the manifest names one, loads behind it.
+		// a startup scene, when the manifest names one, loads behind it. The player's one run
+		// plays one session, from here to OnExit.
+		Instance.Start();
 		LoadAndStartGameScript();
 
 		if (instance != null)
@@ -505,6 +507,7 @@ class PlayerApplication : DefaultApplication
 	public override void OnExit(IApplicationHost host)
 	{
 		StopGameScript();
+		Instance.Stop(); // its session ends: whatever follows the run's lifecycle hears it
 		SetPrimaryScene(null);
 		if (mScene != null)
 			mScene.Stop();

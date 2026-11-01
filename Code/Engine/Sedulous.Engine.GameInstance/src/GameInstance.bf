@@ -14,6 +14,7 @@ using Sedulous.Net.Tls.MbedTLS;
 using Sedulous.Http.Script;
 using Sedulous.Http.Client;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Script;
@@ -38,8 +39,11 @@ namespace Sedulous.Engine.GameInstance;
 /// never another's. Its verbs are the level loads, the exit, the time scale and the run
 /// bus, which is what a `Game` orchestrator drives boot and level flow with:
 /// `let t = Run.LoadSceneAsync(id); while (!Run.LoadComplete(t)) yield();`.
+///
+/// It IS its run (Raptor's run-context spec), through RunBase: its id, name, sessions, event
+/// bus, and what it owns registered on it, so others reach those through the run.
 [Scriptable, ScriptService, DisplayName("Run")]
-class GameInstance
+class GameInstance : RunBase
 {
 	/// What the APP does to a scene the moment one of its tracked loads completes: find a
 	/// camera, start it, enable simulation. Pairing it as the current scene is the instance's
@@ -52,11 +56,6 @@ class GameInstance
 		public int32 Ticket;
 		public SceneLoadHandle Handle;
 	}
-
-	/// OWNED: the run scoped bus, injected into every scene this instance creates or adopts,
-	/// so a scene's events and the run's are ONE object and nothing has to relay between
-	/// them.
-	private EventBus mRunEvents = new .() ~ delete _;
 
 	/// OWNED: this run's scenes, ticked once registered with the scene subsystem.
 	private SceneManager mSceneManager = new .() ~ delete _;
@@ -137,13 +136,14 @@ class GameInstance
 	private List<delegate void(Variant)> mGameCallbacks = new .() ~ DeleteContainerAndItems!(_);
 	private List<String> mGameHandlerNames = new .() ~ DeleteContainerAndItems!(_);
 
-	public this()
+	public this() : base("Game")
 	{
-		// Every scene this run creates BORROWS the run bus. Setting it on the GROUP means the
+		// Every scene this run creates BORROWS the run's bus, so a scene's events and the run's
+		// are ONE object and nothing relays between them. Setting it on the GROUP means the
 		// injection happens as a scene is created, before its systems bind, rather than after.
-		mSceneManager.SetSceneEventBus(mRunEvents);
-		// This instance IS the run: its scenes carry it as their run key, so run scoped
-		// systems (audio) group them by it.
+		mSceneManager.SetSceneEventBus(Events);
+		// This instance IS the run: its scenes carry it, so run scoped systems (audio) group
+		// them by it.
 		mSceneManager.SetSceneRun(this);
 		mInputFacade = new InputFacade(mInputRuntime);
 		mRunHost.SetService(this);
@@ -157,6 +157,13 @@ class GameInstance
 		mHttpFacade.SetFactory(new () => HttpClients.Create(TlsBackend));
 		mRunHost.SetService(mHttpFacade);
 		mNetwork.TlsBackendSource = new () => TlsBackend;
+		// What the run owns and others reach through it (RunServices.Get): borrowed, fields all.
+		Register<GameInstance>(this);
+		Register<NetworkController>(mNetwork);
+		Register<ActionRuntime>(mInputRuntime);
+		Register<RunSave>(mSave);
+		Register<ScriptRunHost>(mRunHost);
+		Register<HttpFacade>(mHttpFacade);
 	}
 
 	/// The platform's TLS backend for this run, made on first use; null in a browser.
@@ -177,6 +184,9 @@ class GameInstance
 
 	public ~this()
 	{
+		// Disposed first, while the fields registered on it still exist: their stop hooks run,
+		// and the run's manager hears it go.
+		Dispose();
 		// The game script, then the scenes, whose behaviours live on the host, then the
 		// host itself with the fields. The input source is borrowed and may be gone by now, so
 		// the script's stop asks no pad of it to stop rumbling.
@@ -196,10 +206,10 @@ class GameInstance
 		// Replication follows the current scene across loads.
 		mNetwork.SetReplicatedScene(scene);
 
-		// An ADOPTED scene shares this run's bus and its run key too.
+		// An ADOPTED scene shares this run's bus, and belongs to this run, too.
 		if (scene != null)
 		{
-			scene.SetEventBus(mRunEvents);
+			scene.SetEventBus(Events);
 			scene.SetRun(this);
 		}
 	}
@@ -237,10 +247,6 @@ class GameInstance
 	/// This run's scene group.
 	public SceneManager Scenes => mSceneManager;
 
-	/// This run's ONE event bus. A subscriber here sees what any of the run's scenes emitted,
-	/// because they are the same bus rather than two joined by plumbing.
-	public EventBus RunEvents => mRunEvents;
-
 	/// Delivers this frame's queued events. Cascade bounded like a scene's, and safe with
 	/// nothing subscribed.
 	/// Held while debug paused, so what was published during the pause is delivered after
@@ -248,7 +254,7 @@ class GameInstance
 	public void DrainRunEvents()
 	{
 		if (!mRunHost.IsDebugPaused)
-			mRunEvents.Drain();
+			Events.Drain();
 	}
 
 	// ==================== Scenes ====================
@@ -599,21 +605,21 @@ class GameInstance
 	/// Publishes on the run bus, which every scene of this run shares: the Game orchestrator
 	/// and every behaviour declaring `on<Event>` hear it when the bus drains.
 	[Scriptable]
-	public void Emit(StringView eventName) => mRunEvents.Publish(StringHash(eventName), Variant());
+	public void Emit(StringView eventName) => Events.Publish(StringHash(eventName), Variant());
 	[Scriptable]
-	public void Emit(StringView eventName, float payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, float payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
-	public void Emit(StringView eventName, int32 payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, int32 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
-	public void Emit(StringView eventName, bool payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, bool payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
-	public void Emit(StringView eventName, StringView payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, StringView payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
-	public void Emit(StringView eventName, EntityHandle payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, EntityHandle payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
-	public void Emit(StringView eventName, Float3 payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, Float3 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
-	public void Emit(StringView eventName, Float4 payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	public void Emit(StringView eventName, Float4 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 
 	/// Whether a game script is running: instantiated and not faulted.
 	public bool ScriptRunning => mGame != null;
@@ -791,14 +797,14 @@ class GameInstance
 			delegate void(Variant) callback = new (payload) => { DispatchGameEvent(handlerName, payload); };
 			mGameCallbacks.Add(callback);
 			mGameHandlerNames.Add(handlerName);
-			mGameSubscriptions[name] = mRunEvents.Subscribe(StringHash(eventName), callback);
+			mGameSubscriptions[name] = Events.Subscribe(StringHash(eventName), callback);
 		}
 	}
 
 	private void ClearGameSubscriptions()
 	{
 		for (let entry in mGameSubscriptions)
-			mRunEvents.Unsubscribe(entry.value);
+			Events.Unsubscribe(entry.value);
 		DeleteDictionaryAndKeys!(mGameSubscriptions);
 		mGameSubscriptions = new .();
 		ClearAndDeleteItems!(mGameCallbacks);

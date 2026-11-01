@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Audio;
 using Sedulous.Core;
 using Sedulous.Engine.Audio;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 
@@ -14,6 +15,12 @@ namespace Sedulous.Engine.Audio.Tests;
 /// the host's pause freezes the run.
 class RunAudioTests
 {
+	/// A run of its own (a GameInstance is the real one).
+	private class TestRun : RunBase
+	{
+		public this() : base("test") {}
+	}
+
 	/// A scene of `run` with one looping autoplay source, wired to the subsystem as the scene
 	/// subsystem would wire it.
 	private class RunScene
@@ -21,7 +28,7 @@ class RunAudioTests
 		public Scene Scene = new .("run-scene") ~ delete _;
 		public EntityHandle Source;
 
-		public this(AudioSubsystem audio, Object run, AudioClip clip)
+		public this(AudioSubsystem audio, IRun run, AudioClip clip)
 		{
 			Scene.SetRun(run);
 			AudioScene.AddAudioSceneManagers(Scene);
@@ -62,8 +69,8 @@ class RunAudioTests
 		defer { ClearAndDeleteItems!(clips); }
 		AudioClip Tone(uint32 sampleRate) => clips.Add(.. AudioPlayScene.MakeToneClip(2.0f, sampleRate));
 		// Two games' keys; a GameInstance is the real one.
-		let runA = scope Object();
-		let runB = scope Object();
+		let runA = scope TestRun();
+		let runB = scope TestRun();
 
 		Test.Assert(audio.RunGroupFor(null) == 0, "outside every run");
 		let groupA = audio.RunGroupFor(runA);
@@ -103,9 +110,9 @@ class RunAudioTests
 		// The context drives a registered subsystem but does not own it: it goes first.
 		defer { delete context; delete audio; }
 		let engine = audio.Engine;
-		let runA = scope Object();
-		let runB = scope Object();
-		let runC = scope Object();
+		let runA = scope TestRun();
+		let runB = scope TestRun();
+		let runC = scope TestRun();
 		let a = audio.RunGroupFor(runA);
 		let b = audio.RunGroupFor(runB);
 

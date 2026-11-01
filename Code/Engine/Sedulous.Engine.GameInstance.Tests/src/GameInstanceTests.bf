@@ -7,6 +7,7 @@ using Sedulous.Engine.GameInstance;
 using Sedulous.Input;
 using Sedulous.Messaging;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Shell;
@@ -201,11 +202,39 @@ class GameInstanceTests
 		Test.Assert(held.Events.Length == 1 && (held.Events[0].Kind == .KeyUp));
 	}
 
+	/// A GameInstance is its IRun (Raptor's run-context spec): its scenes are on the run's own bus,
+	/// and what it owns is reached through the run.
+	[Test]
+	public static void TheInstanceIsAnIRunItsScenesOnTheRunsBusItsServicesThroughTheRun()
+	{
+		let instance = scope GameInstance();
+		IRun run = instance;
+		Test.Assert(run.Id != 0);
+		Test.Assert(run.State == .Idle);
+		let level = instance.Scenes.CreateScene("L1");
+		Test.Assert(level != null);
+		Test.Assert(level.Events === run.Events, "one bus: the run's");
+		Test.Assert((Object)level.Run === (Object)run);
+
+		Test.Assert(RunServices.Get<GameInstance>(run) === instance);
+		Test.Assert(RunServices.Get<NetworkController>(run) === instance.Network);
+		Test.Assert(RunServices.Get<ActionRuntime>(run) === instance.InputRuntime);
+		Test.Assert(RunServices.Get<RunSave>(run) === instance.Saves);
+		Test.Assert(RunServices.Get<Sedulous.Engine.Script.ScriptRunHost>(run) === instance.RunHost);
+		Test.Assert(RunServices.Get<Sedulous.Http.Script.HttpFacade>(run) === instance.Http);
+
+		instance.Start();
+		instance.SetPaused(true);
+		Test.Assert(run.State == .Paused);
+		instance.Stop();
+		Test.Assert(run.State == .Idle);
+	}
+
 	[Test]
 	public static void TheRunBusDefersDeliversInOrderAndStaysPerInstance()
 	{
 		let instance = scope GameInstance();
-		let bus = instance.RunEvents;
+		let bus = instance.Events;
 
 		let order = scope List<int32>();
 		var received = 0;
@@ -250,10 +279,10 @@ class GameInstanceTests
 		var hitsA = 0;
 		var hitsB = 0;
 
-		instance.RunEvents.Subscribe(StringHash("Only"), scope [&] (payload) => { hitsA++; });
-		other.RunEvents.Subscribe(StringHash("Only"), scope [&] (payload) => { hitsB++; });
+		instance.Events.Subscribe(StringHash("Only"), scope [&] (payload) => { hitsA++; });
+		other.Events.Subscribe(StringHash("Only"), scope [&] (payload) => { hitsB++; });
 
-		instance.RunEvents.Publish(StringHash("Only"), Variant());
+		instance.Events.Publish(StringHash("Only"), Variant());
 		instance.DrainRunEvents();
 		other.DrainRunEvents();
 
@@ -273,8 +302,8 @@ class GameInstanceTests
 		let b = instance.CreateScene("B");
 		Test.Assert(a != null);
 		Test.Assert(b != null);
-		Test.Assert(a.Events === instance.RunEvents);
-		Test.Assert(b.Events === instance.RunEvents);
+		Test.Assert(a.Events === instance.Events);
+		Test.Assert(b.Events === instance.Events);
 
 		var hits = 0;
 		a.Events.Subscribe(StringHash("Ping"), scope [&] (payload) => { hits++; });

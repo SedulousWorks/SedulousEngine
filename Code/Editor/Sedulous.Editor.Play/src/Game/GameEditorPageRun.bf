@@ -84,6 +84,8 @@ extension GameEditorPage
 		}
 
 		mRunning = true;
+		if (mGameInstance != null)
+			mGameInstance.Start(); // the run's session: whatever follows the run's lifecycle hears it
 		if (mPauseToggle != null)
 			mPauseToggle.Checked = false;
 		if (mGameInstance != null)
@@ -94,6 +96,9 @@ extension GameEditorPage
 		// The tab Play was pressed in is the run that is heard.
 		if ((Audio != null) && (mGameInstance != null))
 			Audio.SetFocusedRun(mGameInstance);
+		// ... and the one the user is playing.
+		if ((mApp != null) && (mApp.Runs != null) && (mGameInstance != null))
+			mApp.Runs.SetFocused(mGameInstance);
 		GlobalLog(.Information, "Editor: Game: running scene '{}'", mSceneTitle);
 		RefreshToolbar();
 	}
@@ -123,6 +128,9 @@ extension GameEditorPage
 			mStoppedRunTime = mGameInstance.RunTime;
 		if (mGameInstance != null)
 			mGameInstance.StopScript();
+		// The run's session ends (its lifecycle's listeners hear it).
+		if (mGameInstance != null)
+			mGameInstance.Stop();
 		// The run's sound ends with it: its music, one shots and whatever is still fading.
 		// Another tab's run and the editor's own sounds play on.
 		if ((Audio != null) && (mGameInstance != null))
@@ -244,9 +252,14 @@ extension GameEditorPage
 		// game's own pause menu is time scale nought, the game's business: its music plays on).
 		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
 		audio.SetRunPaused(mGameInstance, paused);
-		// Clicking into this tab's viewport makes its run the one heard.
+		mGameInstance.SetPaused(paused); // the host's pause: the run hears it once per change
+		// Clicking into this tab's viewport makes its run the one heard, and the one played.
 		if (mViewport.IsFocused && (audio.FocusedRun !== mGameInstance))
+		{
 			audio.SetFocusedRun(mGameInstance);
+			if ((mApp != null) && (mApp.Runs != null))
+				mApp.Runs.SetFocused(mGameInstance);
+		}
 	}
 
 	private void BindBusLayout()

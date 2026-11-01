@@ -12,6 +12,12 @@ namespace Sedulous.Engine.Composition.AngelScript.Tests;
 /// The whole runtime surface in AngelScript: it binds, and a script drives a real scene.
 static class EngineSurfaceScriptTests
 {
+	/// A run of its own (a GameInstance is the real one).
+	private class TestRun : Sedulous.Run.RunBase
+	{
+		public this() : base("test") {}
+	}
+
 	[Test]
 	public static void TheRuntimeSurfaceBinds()
 	{
@@ -774,7 +780,7 @@ static class EngineSurfaceScriptTests
 		defer { delete context; delete audio; }
 		let engine = audio.Engine;
 
-		let run = scope Object();
+		let run = scope TestRun(); // a GameInstance is the real one
 		let facade = scope Sedulous.Engine.Script.Facades.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null, run);
 		vm.SetService(facade);
 

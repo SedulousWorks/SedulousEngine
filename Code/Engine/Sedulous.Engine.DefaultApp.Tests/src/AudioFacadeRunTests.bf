@@ -5,6 +5,7 @@ using Sedulous.Audio;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Script.Facades;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Runtime;
 
 namespace Sedulous.Engine.DefaultApp.Tests;
@@ -14,6 +15,12 @@ namespace Sedulous.Engine.DefaultApp.Tests;
 /// installs one per GameInstance on its run host.
 class AudioFacadeRunTests
 {
+	/// A run of its own (a GameInstance is the real one).
+	private class TestRun : RunBase
+	{
+		public this() : base("test") {}
+	}
+
 	/// A sine encoded as a real wav, decoded as a cooked clip would be. THE CALLER OWNS it.
 	private static AudioClip MakeToneClip(float seconds, uint32 sampleRate = 8000)
 	{
@@ -44,7 +51,7 @@ class AudioFacadeRunTests
 		defer { delete context; delete audio; }
 		let engine = audio.Engine;
 
-		let run = scope Object(); // a GameInstance is the real key
+		let run = scope TestRun(); // a GameInstance is the real one
 		let inRun = scope AudioFacade(audio, new () => (ResourceManager)null, run);
 		let outside = scope AudioFacade(audio, new () => (ResourceManager)null);
 

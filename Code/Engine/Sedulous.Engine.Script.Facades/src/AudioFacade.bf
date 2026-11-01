@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Audio;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Engine.Audio;
@@ -50,9 +51,9 @@ class AudioFacade
 	private AudioSubsystem mAudio;
 	private delegate ResourceManager() mResources ~ delete _;
 	/// BORROWED: the run this facade plays into (a GameInstance); null is outside every run.
-	private Object mRun;
+	private IRun mRun;
 
-	public this(AudioSubsystem audio, delegate ResourceManager() resources, Object run = null)
+	public this(AudioSubsystem audio, delegate ResourceManager() resources, IRun run = null)
 	{
 		mAudio = audio;
 		mResources = resources;

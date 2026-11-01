@@ -79,7 +79,7 @@ static class GameScriptTests
 		Test.Assert(run.Instance.StartScript(game));
 
 		// Published from native code, delivered at the drain, not inside the publish.
-		run.Instance.RunEvents.Publish(StringHash("Score"), Variant.Create((int32)5));
+		run.Instance.Events.Publish(StringHash("Score"), Variant.Create((int32)5));
 		Test.Assert(run.PropInt("score") == 0);
 		run.Step();
 		Test.Assert(run.PropInt("score") == 5);
@@ -95,7 +95,7 @@ static class GameScriptTests
 		run.Instance.StopScript();
 		run.Instance.Emit("Score", 7);
 		run.Step();
-		Test.Assert(run.Instance.RunEvents.SubscriberCount == 0, "unsubscribed with the script");
+		Test.Assert(run.Instance.Events.SubscriberCount == 0, "unsubscribed with the script");
 	}
 
 	[Test]

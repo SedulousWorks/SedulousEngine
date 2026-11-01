@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Messaging;
+using Sedulous.Run;
 
 namespace Sedulous.Scene;
 
@@ -25,8 +26,8 @@ class SceneManager
 
 	/// BORROWED, and injected into every scene this manager creates.
 	private EventBus mSceneEventBus = null;
-	/// BORROWED: the run key every created scene carries.
-	private Object mSceneRun = null;
+	/// BORROWED: the run every created scene belongs to.
+	private IRun mSceneRun = null;
 
 	/// The group term of the chain.
 	private float mTimeScale = 1.0f;
@@ -51,8 +52,8 @@ class SceneManager
 	/// Null leaves scenes with no bus.
 	public void SetSceneEventBus(EventBus bus) => mSceneEventBus = bus;
 
-	/// The run key every scene created here carries (Scene.SetRun), set by the owning run.
-	public void SetSceneRun(Object run) => mSceneRun = run;
+	/// The run every scene created here belongs to (Scene.SetRun), set by the owning run.
+	public void SetSceneRun(IRun run) => mSceneRun = run;
 
 	/// The GROUP term of host by context by GROUP by scene.
 	///

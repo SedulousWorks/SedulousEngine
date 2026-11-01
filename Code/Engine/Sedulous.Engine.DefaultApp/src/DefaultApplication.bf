@@ -33,6 +33,7 @@ using Sedulous.Net.Replication;
 using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
@@ -75,6 +76,12 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// OWNED: the network subsystem borrows this visitor and only clears its reference.
 	private delegate void(delegate void(NetworkManager)) mEndpointSource = null ~ delete _;
 
+	/// The live runs (every GameInstance), handed to the subsystem manager for every subsystem
+	/// (Raptor's run-context spec). Made in Configure; declared before the instances so it
+	/// outlives them and hears each one go.
+	private RunRegistry mRuns = null ~ delete _;
+	/// Names the extra instances' runs ("Game 2", ...).
+	private uint32 mRunsMade = 1;
 	/// The primary running game, which every application level operation targets.
 	/// Each instance's own Audio facade, its run's (installed on its run host). OWNED, and
 	/// declared before the instances so it is freed after them.
@@ -146,6 +153,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	// ==================== accessors ====================
 
 	public GameInstance Instance => mInstance;
+	/// The live runs (null before Configure); also on the subsystem manager, for subsystems.
+	public IRunManager Runs => mRuns;
 	/// The primary instance's scene group: a scene created here renders.
 	public SceneManager PrimaryScenes => mInstance.Scenes;
 
@@ -282,6 +291,11 @@ class DefaultApplication : IApplication, ISceneObserver
 	public virtual void Configure(IApplicationHost host)
 	{
 		mHost = host;
+		// The runs: the primary instance first, extra ones as CreateInstance makes them; every
+		// subsystem finds them through the subsystem manager.
+		mRuns = new RunRegistry();
+		mRuns.Add(mInstance);
+		host.Subsystems.SetRunManager(mRuns);
 
 		// The data root is resolved ONCE, here, and mounted. Nothing below the application
 		// knows where it is, only what it reads relative to it.
@@ -414,6 +428,10 @@ class DefaultApplication : IApplication, ISceneObserver
 			return null;
 
 		let instance = new GameInstance();
+		mRunsMade++;
+		instance.SetName(scope $"Game {mRunsMade}");
+		if (mRuns != null)
+			mRuns.Add(instance); // it leaves the registry as it is destroyed (ReleaseInstance)
 		instance.Headless = headless;
 
 		mScenes.RegisterManager(instance.Scenes);
@@ -922,6 +940,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnShutdown(IApplicationHost host)
 	{
+		// The subsystems have shut down (and stopped listening): nothing reaches the runs through
+		// the subsystem manager after this. The runs themselves go with the app.
+		host.Subsystems.SetRunManager(null);
 		// Off the GUI's overlay layer and the profiler let go, while both are alive.
 		if (mProfilerOverlay != null)
 			mProfilerOverlay.Hide();
