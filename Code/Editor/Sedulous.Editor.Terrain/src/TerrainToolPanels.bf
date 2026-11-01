@@ -119,7 +119,7 @@ class SplatPanelProvider : IViewportToolPanelProvider
 		body.AddSlider("Spacing", 0.05, 1.0, 0.05, new [=t] () => (double)t.Spacing, new [=t] (v) => { t.SetSpacing((float)v); });
 		// Airbrush: stamps on a clock while held, building up where the brush rests.
 		body.AddCheck("Airbrush", new [=t] () => t.IsAirbrush, new [=t] (on) => { t.SetAirbrush(on); });
-		body.AddHelp("Drag to paint. 1 to 9 pick a layer, 0 erases, - smooths, Shift+wheel sizes the brush.");
+		body.AddHelp("Drag to paint. 1 to 9 pick a layer, 0 erases, the minus key smooths, Shift+wheel sizes the brush.");
 		body.Sync();
 		return body;
 	}

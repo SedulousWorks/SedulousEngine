@@ -74,7 +74,7 @@ class VegetationPaintPanelProvider : IViewportToolPanelProvider
 		body.AddSlider("Strength", 0.0, 1.0, 0.05, new [=t] () => (double)t.Strength, new [=t] (v) => { t.SetStrength((float)v); });
 		body.AddSlider("Spacing", 0.05, 1.0, 0.05, new [=t] () => (double)t.Spacing, new [=t] (v) => { t.SetSpacing((float)v); });
 		body.AddCheck("Airbrush", new [=t] () => t.IsAirbrush, new [=t] (on) => { t.SetAirbrush(on); });
-		body.AddHelp("Drag to paint. 1 to 9 pick a plane, 0 erases, - smooths, Shift+wheel sizes the brush.");
+		body.AddHelp("Drag to paint. 1 to 9 pick a plane, 0 erases, the minus key smooths, Shift+wheel sizes the brush.");
 		body.Sync();
 		return body;
 	}
