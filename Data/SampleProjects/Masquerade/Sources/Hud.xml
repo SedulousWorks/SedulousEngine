@@ -1,33 +1,45 @@
-<!-- The HUD (Masquerade.as fills it from the round, Ball.as): whom you hunt (their costume, which
-     guests share, named in its colour) and your points; a word in the middle for a moment (a tag, a
-     miss, a flare); the time left and your place; the controls for a few seconds as a round starts.
+<!-- The HUD (Masquerade.as fills it from the round, Ball.as): whom you hunt (their costume's portrait,
+     which guests share, and its name in its colour); the time left over a bar of it; your points
+     (each change floating beside them) and your place; a word in the middle for a moment (a tag, a
+     miss, a flare); the time left and your place; the main controls' prompts for a few seconds as a round starts.
      Over the round, taking none of its input. Styled by MasqueradeSheet.css. Back (Escape, East) is the game's own
      Pause action (Masquerade.as), not the screen stack's. -->
 <Screen blocks="false" back="none">
   <Panel class="hud">
     <Panel class="hud-top">
-      <Panel class="hud-card">
-        <Panel class="hud-mark-row">
-          <Label class="hud-mark cream" text="Your mark wears"/>
-          <Label id="hud-target" class="hud-mark" text=""/>
+      <Panel class="hud-left">
+        <Panel class="hud-card hud-mark-card">
+          <Image id="hud-portrait" class="hud-portrait"/>
+          <Panel class="hud-mark-words">
+            <Label class="hud-caption" text="Your mark"/>
+            <Label id="hud-target" class="hud-mark" text=""/>
+          </Panel>
         </Panel>
-        <Label id="hud-score" class="hud-score" text=""/>
+        <Label id="hud-near" class="hud-near" text="Your hunter is near"/>
       </Panel>
-      <Label id="hud-note" class="hud-note" text=""/>
-      <Panel class="hud-card hud-right">
-        <Label id="hud-time" class="hud-time" text="4:00"/>
+      <Panel class="hud-middle">
+        <Panel id="hud-clock" class="hud-card hud-clock">
+          <Label id="hud-time" class="hud-time" text="4:00"/>
+          <ProgressBar id="hud-timebar" class="hud-timebar" value="1"/>
+        </Panel>
+        <Label id="hud-note" class="hud-note" text=""/>
+        <Panel id="hud-tag" class="hint hud-tag"><Prompt class="key" action="Tag" set="Gameplay"/><Label class="hint-what" text="Tag"/></Panel>
+      </Panel>
+      <Panel class="hud-card hud-points-card">
+        <Panel class="hud-points-row">
+          <Label id="hud-delta" class="hud-delta" text=""/>
+          <Label id="hud-score" class="hud-score" text="0"/>
+        </Panel>
+        <Label class="hud-caption" text="points"/>
         <Label id="hud-rank" class="hud-rank" text=""/>
       </Panel>
     </Panel>
     <Panel class="hud-foot">
-      <Panel id="hud-controls" class="controls hud-controls">
-        <Panel class="controls-row"><Label class="controls-action" text=""/><Label class="controls-key controls-head" text="Keyboard"/><Label class="controls-pad controls-head" text="Gamepad"/></Panel>
-        <Panel class="controls-row"><Label class="controls-action" text="Move"/><Label class="controls-key" text="W A S D"/><Label class="controls-pad" text="Left stick"/></Panel>
-        <Panel class="controls-row"><Label class="controls-action" text="Sprint: fast, and your hunter sees it"/><Label class="controls-key" text="Left Shift"/><Label class="controls-pad" text="Left stick press"/></Panel>
-        <Panel class="controls-row"><Label class="controls-action" text="Tag the guest in front of you"/><Label class="controls-key" text="F"/><Label class="controls-pad" text="A"/></Panel>
-        <Panel class="controls-row"><Label class="controls-action" text="Dance (hold)"/><Label class="controls-key" text="Space"/><Label class="controls-pad" text="B"/></Panel>
-        <Panel class="controls-row"><Label class="controls-action" text="Turn the view"/><Label class="controls-key" text="Q / E"/><Label class="controls-pad" text="LB / RB"/></Panel>
-        <Panel class="controls-row"><Label class="controls-action" text="Pause"/><Label class="controls-key" text="Escape"/><Label class="controls-pad" text="Start"/></Panel>
+      <Panel id="hud-controls" class="hud-controls">
+        <Panel class="hint"><Prompt class="key" action="Tag" set="Gameplay"/><Label class="hint-what" text="Tag"/></Panel>
+        <Panel class="hint"><Prompt class="key" action="Dance" set="Gameplay"/><Label class="hint-what" text="Dance"/></Panel>
+        <Panel class="hint"><Prompt class="key" action="Sprint" set="Gameplay"/><Label class="hint-what" text="Sprint"/></Panel>
+        <Panel class="hint"><Prompt class="key" action="Pause" set="Gameplay"/><Label class="hint-what" text="Pause"/></Panel>
       </Panel>
     </Panel>
   </Panel>

@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">625415a9-2561-2245-8b31-9312518bb7de</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">13358085703002792026</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Maps.xml</string>
+		</object>
+	</object>
+</root>

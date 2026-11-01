@@ -2,7 +2,7 @@
 	<u32 name="magic">3586350318</u32>
 	<u32 name="version">3</u32>
 	<string name="name">HunterPalace</string>
-	<array name="entities" count="8">
+	<array name="entities" count="9">
 		<string name="id">d2be16fa-f08c-5942-9c4a-bad986ea2578</string>
 		<string name="name">Hunter</string>
 		<u8 name="active">1</u8>
@@ -163,8 +163,28 @@
 			<f32 name="y">1</f32>
 			<f32 name="z">1</f32>
 		</object>
+		<string name="id">120cbde4-7d68-56ac-a3ea-5947fce1d121</string>
+		<string name="name">Ring</string>
+		<u8 name="active">1</u8>
+		<string name="parent">d2be16fa-f08c-5942-9c4a-bad986ea2578</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0.6</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.70710677</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">0.70710677</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
 	</array>
-	<array name="components" count="11">
+	<array name="components" count="12">
 		<object>
 			<string name="owner">d2be16fa-f08c-5942-9c4a-bad986ea2578</string>
 			<string name="type">script</string>
@@ -287,6 +307,31 @@
 					<f32 name="b">1</f32>
 					<f32 name="a">1</f32>
 				</object>
+			</object>
+		</object>
+		<object>
+			<string name="owner">120cbde4-7d68-56ac-a3ea-5947fce1d121</string>
+			<string name="type">decal</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">16284537370911956750</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="texture">1da73b0b-a95d-dd41-8e0c-414abf83fa48</string>
+				<object name="size">
+					<f32 name="x">1.3</f32>
+					<f32 name="y">1.3</f32>
+					<f32 name="z">1.4</f32>
+				</object>
+				<object name="color">
+					<f32 name="r">1</f32>
+					<f32 name="g">0.8</f32>
+					<f32 name="b">0.36</f32>
+					<f32 name="a">0.9</f32>
+				</object>
+				<f32 name="fadeStart">0</f32>
+				<f32 name="fadeEnd">1.3</f32>
+				<bool name="visible">false</bool>
 			</object>
 		</object>
 		<object>

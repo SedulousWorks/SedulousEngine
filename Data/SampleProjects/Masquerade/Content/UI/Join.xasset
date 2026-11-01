@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">bb3b6bce-e2d1-214d-b6af-da38adc2842b</string>
+	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">13358085703002792026</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Join.xml</string>
+		</object>
+	</object>
+</root>

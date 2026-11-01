@@ -1,0 +1,17 @@
+<!-- Joining a host (Masquerade.as): the host's address, then Join; the host's map comes with its
+     welcome, so there is none to choose. The line under it says how the joining goes. Back (Escape,
+     East: the screen stack's own back) returns to the title. Styled by MasqueradeSheet.css. -->
+<Screen class="fades" covers="true" nav-default="join-go">
+  <Panel class="centre">
+    <Panel class="card join-card">
+      <Label class="page-title" text="Join a ball"/>
+      <Label class="page-lead" text="The host's address, on your network"/>
+      <TextField id="address" class="address" text="127.0.0.1" placeholder="the host's address"/>
+      <Label id="net-status" class="net-status" text=""/>
+      <Panel class="page-buttons">
+        <Button id="join-back" class="gold page" text="Back"/>
+        <Button id="join-go" class="gold page primary" text="Join"/>
+      </Panel>
+    </Panel>
+  </Panel>
+</Screen>
