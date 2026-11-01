@@ -540,13 +540,11 @@ class ProjectLauncherTests
 		let right = b.X + b.Width - (p.X + p.Width);
 		let top = p.Y - b.Y;
 		let bottom = b.Y + b.Height - (p.Y + p.Height);
-		// Evenly: as much each side across, and above as below. Raptor's case also has across equal
-		// to down, but its sheet goes in without tokens.css, so the tile's 1px border (a var()) is
-		// dropped there; under the real sheet, as here, the 272px picture rides 1px over each side
-		// of the 270px button until 5a9770cf7 sizes it from the button.
+		// The picture stretches across its button at 16:9, so it fills it evenly on every side.
 		let values = scope $"left {left} top {top} right {right} bottom {bottom}; button {b.Width}x{b.Height}, picture {p.Width}x{p.Height}";
+		Test.Assert(Math.Abs(left - top) < 0.01f, values);
+		Test.Assert(Math.Abs(right - bottom) < 0.01f, values);
 		Test.Assert(Math.Abs(left - right) < 0.01f, values);
-		Test.Assert(Math.Abs(top - bottom) < 0.01f, values);
 		Test.Assert(b.X >= c.X, "inside the card");
 		Test.Assert(b.X + b.Width <= c.X + c.Width + 0.5f);
 	}

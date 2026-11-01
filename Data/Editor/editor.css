@@ -94,7 +94,9 @@ button.manager-tab:checked { background-color: var(--element); color: var(--text
 .manager-count { font-size: var(--font-small); color: var(--text-placeholder); }
 .manager-no-match { color: var(--text-dim); margin: 24px 0; }
 .manager-projects { flex-direction: column; row-gap: 2px; flex-shrink: 0; }
-.manager-projects.grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-xl); row-gap: var(--space-xl); }
+/* As many columns as the width holds, sharing it, the last row starting under the first column. */
+.manager-projects.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); column-gap: var(--space-xl);
+                         row-gap: var(--space-xl); }
 .manager-row { flex-direction: row; align-items: center; column-gap: 14px; padding: var(--space-s) 10px; border-radius: var(--radius);
                border: 2px solid transparent; }
 .manager-row:hover { background-color: var(--row-hover); }
@@ -118,13 +120,13 @@ button.manager-star { width: 30px; padding: 0; background-color: transparent; }
 button.manager-star:hover { background-color: var(--ghost-hover); }
 button.manager-star > icon { image-color: var(--icon-dim); }
 button.manager-star.on > icon { image-color: var(--favourite); }
-.manager-tile { flex-direction: column; width: 272px; background-color: var(--element); border-radius: 7px; border: 1px solid var(--border);
+.manager-tile { flex-direction: column; background-color: var(--element); border-radius: 7px; border: 1px solid var(--border);
                 overflow: hidden; } /* the picture takes the card's rounded top */
 .manager-tile:hover { border-color: var(--border-strong); }
 /* The picture is the card's Open, edge to edge across its top. */
-button.manager-tile-open { padding: 0; height: auto; min-height: 0; background-color: transparent; border-radius: 6px 6px 0 0; }
+button.manager-tile-open { flex-direction: column; padding: 0; height: auto; min-height: 0; background-color: transparent; border-radius: 6px 6px 0 0; }
 button.manager-tile-open:hover { opacity: 0.9; background-color: transparent; }
-.manager-tile-picture { width: 272px; height: 153px; border-radius: 6px 6px 0 0; }
+.manager-tile-picture { align-self: stretch; aspect-ratio: 16 / 9; border-radius: 6px 6px 0 0; } /* as wide as its column */
 .manager-tile-foot { flex-direction: row; align-items: start; column-gap: var(--space-xs); padding: 10px var(--space-s) 10px var(--space-l); }
 .manager-tile-meta { flex-direction: row; column-gap: var(--space-xs); }
 .manager-tile-meta > label { color: var(--text-dim); font-size: var(--font-small); white-space: nowrap; }
