@@ -146,6 +146,7 @@ class ThumbnailStage
 				mFraming.Radius = Math.Max(framing.Radius, 0.001f);
 				mState = .RenderPending;
 			case .Failed:
+				GlobalLog(.Warning, "Thumbnails: {} could not be staged for its thumbnail", mJob.Id);
 				FailJob();
 			case .Pending:
 				if (++mStagingFrames > cMaxStagingFrames)
