@@ -4,9 +4,10 @@
   python3 Code/Tools/pack-samples.py <out-dir>
 
 Packs the games Data/SampleProjects/Samples.json lists: for each, a zip of what git tracks in its
-folder less Tools/ (the authoring scripts), under a top folder of its name, as
-sample-<folder>.zip; its picture as sample-<folder>.png; and samples.json naming them, with each
-zip's size and SHA-256 and the bytes it unpacks to. The version is the engine's own
+folder less Tools/ (the authoring scripts), its Project.xml at the zip's root (the editor
+extracts it into the folder the user chooses), as sample-<folder>.zip; its picture as
+sample-<folder>.png; and samples.json naming them, with each zip's size and SHA-256 and the bytes
+it unpacks to. The version is the engine's own
 (Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf). The editor of that version reads
 samples.json from its release (EngineVersion.ReleaseDownloadUrl) for its Samples tab.
 
@@ -50,7 +51,7 @@ def main():
         unpacked = 0
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             for f in files:
-                name = folder + f[len(root):]
+                name = f[len(root) + 1:]
                 info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)) # fixed: the same files pack the same
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o644 << 16

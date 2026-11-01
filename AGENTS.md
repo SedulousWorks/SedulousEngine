@@ -94,7 +94,7 @@ checks that PaperKid, the Shader Gallery and Masquerade read at the current data
 
 The editor's Samples tab downloads the games `Data/SampleProjects/Samples.json` lists from the
 GitHub release of its own version. `python3 Code/Tools/pack-samples.py <out-dir>` packs them
-(each one's tracked files less `Tools/`, a zip under a top folder of its name, its picture, and a
+(each one's tracked files less `Tools/`, a zip with its `Project.xml` at the root, its picture, and a
 `samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf`). It runs by hand:
 there is no workflow, so whoever makes the release attaches what it writes to release
 `v<version>`. A game joins the tab by an entry in `Samples.json` (its folder, its name, one line,
