@@ -139,8 +139,10 @@ class ScopeDetail : ProfilerWidget
 		let chosen = mFocus.Name;
 		let name = source.NameOf(chosen.Name);
 		let frequency = source.TickFrequency;
-		ctx.VG.FillRoundedRect(.(@box.X, y + cLineHeight * 0.5f - 5.0f, 10.0f, 10.0f), 2.0f, NameColor(name));
-		DrawLabel(ctx, name, .(@box.X + 16.0f, y, @box.Width - 16.0f, cLineHeight + 4.0f), PartTextColor("title"));
+		// The swatch centred on the title's own line, which is taller than the others.
+		let titleHeight = cLineHeight + 4.0f;
+		ctx.VG.FillRoundedRect(.(@box.X, y + titleHeight * 0.5f - 5.0f, 10.0f, 10.0f), 2.0f, NameColor(name));
+		DrawLabel(ctx, name, .(@box.X + 16.0f, y, @box.Width - 16.0f, titleHeight), PartTextColor("title"));
 		y += cLineHeight + 6.0f;
 		line.AppendF("{} {} on {}   total {:F2}   mean {:F2}   max {:F2} ms", summary.Calls, (summary.Calls == 1) ? "call" : "calls", summary.Lanes,
 			ProfileWindow.TicksToMs(summary.TotalTicks, frequency),
