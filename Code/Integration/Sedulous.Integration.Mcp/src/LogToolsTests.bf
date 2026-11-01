@@ -98,5 +98,7 @@ static class LogToolsTests
 		let guidance = scope String();
 		CallErr(bare, "known_issues", Obj(), guidance);
 		Test.Assert(guidance.Contains("checkout"));
+		// It names the file the hosts look for, and both places they look.
+		Test.Assert(guidance.Contains("KnownIssues.md") && guidance.Contains("Documentation/Shipping"), guidance);
 	}
 }

@@ -151,7 +151,7 @@ static class LogTools
 	{
 		if (context.KnownIssuesPath.IsEmpty)
 		{
-			outError.Append("KnownIssues.md was not found near the host executable - run the MCP host from inside the engine checkout");
+			outError.Append("KnownIssues.md was not found beside the host executable or in the engine checkout's Documentation/Shipping; run the MCP host from a distribution or from inside the checkout");
 			return false;
 		}
 		let bytes = scope List<uint8>();
