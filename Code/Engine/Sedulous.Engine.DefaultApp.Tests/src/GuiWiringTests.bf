@@ -18,18 +18,18 @@ class GuiWiringTests
 		let host = scope StubHost();
 		let app = scope DefaultApplication();
 		app.Configure(host);
-		host.Context.Startup();
+		host.Subsystems.Startup();
 		app.OnStartup(host);
 		Test.Assert(app.Gui != null);
-		Test.Assert(host.Context.GetSubsystem<GuiSubsystem>() === app.Gui);
+		Test.Assert(host.Subsystems.GetSubsystem<GuiSubsystem>() === app.Gui);
 		app.AttachResourceManager(resources, host);
 		Test.Assert(app.Gui.Resources.GetResourceManager() === resources);
 		app.AttachResourceManager(null, host);
 		Test.Assert(app.Gui.Resources.GetResourceManager() == null);
 
-		host.Context.Shutdown();
+		host.Subsystems.Shutdown();
 		app.OnShutdown(host);
-		host.Context.Dispose();
+		host.Subsystems.Dispose();
 	}
 
 	[Test]
@@ -38,7 +38,7 @@ class GuiWiringTests
 		let host = scope StubHost();
 		let app = scope DefaultApplication();
 		app.Configure(host);
-		host.Context.Startup();
+		host.Subsystems.Startup();
 		app.OnStartup(host);
 		app.Gui.RunScreens = true;
 		// The primary's Gui was installed with the subsystem.
@@ -53,8 +53,8 @@ class GuiWiringTests
 		Test.Assert(app.Gui.RunScriptFacadeCount == 1, "its Gui gone with it");
 		Test.Assert(app.Gui.RunScreenCount == 0, "and its screen tier");
 
-		host.Context.Shutdown();
+		host.Subsystems.Shutdown();
 		app.OnShutdown(host);
-		host.Context.Dispose();
+		host.Subsystems.Dispose();
 	}
 }

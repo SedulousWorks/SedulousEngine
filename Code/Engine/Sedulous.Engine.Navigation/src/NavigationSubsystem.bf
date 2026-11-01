@@ -8,7 +8,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Navigation;
 
-/// The Context level navigation broker.
+/// The application level navigation broker.
 ///
 /// It owns NO cross scene state: the per scene tick is the scene system's. What this does is
 /// watch the scenes so the persistent debug overlay has something to iterate, which follows
@@ -52,10 +52,10 @@ class NavigationSubsystem : Subsystem, ISceneObserver
 	/// agent paths are drawn into the renderer's per scene debug list each frame.
 	public override void Update(float deltaTime)
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		let render = Context.GetSubsystem<RenderSubsystem>();
+		let render = Manager.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
 
@@ -73,10 +73,10 @@ class NavigationSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
@@ -85,10 +85,10 @@ class NavigationSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnShutdown()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.UnregisterObserver(this);
 	}
 }

@@ -74,8 +74,8 @@ class ThumbnailStage
 		mHost = host;
 		mService = service;
 		mResources = resources;
-		mScenes = host.Context.GetSubsystem<SceneSubsystem>();
-		mRender = host.Context.GetSubsystem<RenderSubsystem>();
+		mScenes = host.Subsystems.GetSubsystem<SceneSubsystem>();
+		mRender = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (mScenes != null)
 		{
 			mScenes.RegisterManager(mSceneManager);

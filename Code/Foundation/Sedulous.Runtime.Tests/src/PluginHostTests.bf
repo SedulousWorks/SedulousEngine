@@ -35,7 +35,7 @@ class TestPlugin : IRuntimePlugin
 
 	public StringView Name => mName;
 
-	public void OnLoad(Context context)
+	public void OnLoad(SubsystemManager context)
 	{
 		Trace.Add(scope $"{mName}.load");
 		if (RegistersASubsystem)
@@ -48,7 +48,7 @@ class TestPlugin : IRuntimePlugin
 			GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 	}
 
-	public void OnUnload(Context context)
+	public void OnUnload(SubsystemManager context)
 	{
 		Trace.Add(scope $"{mName}.unload");
 		// The plugin owns its subsystem, so it takes it back out itself. Doing this here
@@ -69,7 +69,7 @@ class PluginHostTests
 	[Test]
 	public static void AddingAPluginLoadsItIntoTheContext()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		let plugin = scope TestPlugin("alpha");
@@ -90,7 +90,7 @@ class PluginHostTests
 	[Test]
 	public static void PluginsUnloadInReverseOrder()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		let first = scope TestPlugin("first");
@@ -115,7 +115,7 @@ class PluginHostTests
 	[Test]
 	public static void APluginsRegistrationsAreTakenBackOnUnload()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		GlobalSerializableRegistry.Clear();
@@ -148,7 +148,7 @@ class PluginHostTests
 	[Test]
 	public static void APluginThatRegistersNothingRemovesNothing()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		GlobalSerializableRegistry.Clear();
@@ -170,7 +170,7 @@ class PluginHostTests
 	[Test]
 	public static void ReRegisteringAnExistingTypeDoesNotClaimIt()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		GlobalSerializableRegistry.Clear();
@@ -192,7 +192,7 @@ class PluginHostTests
 	[Test]
 	public static void LoadingAMissingLibraryFailsCleanly()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let host = scope PluginHost(context);
 
 		Test.Assert(host.Load("./no_such_plugin_library.so") case .Err);

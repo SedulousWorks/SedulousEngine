@@ -15,7 +15,7 @@ class RecorderTests
 	[Test]
 	public static void ARecordersRegistrationsAreReversedOnUnload()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
 		// Something the layer owned BEFORE any plugin, which must survive.
@@ -42,7 +42,7 @@ class RecorderTests
 	[Test]
 	public static void ARecorderDoesNotReverseWhatAnotherPartyOwns()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 		recorder.Contribute(3000);
 
@@ -60,7 +60,7 @@ class RecorderTests
 	[Test]
 	public static void RecordingDoesNotLeakBetweenPlugins()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
 		let host = scope PluginHost(context);
@@ -80,7 +80,7 @@ class RecorderTests
 	[Test]
 	public static void ARecorderAddedTooLateRecordsNothing()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
 		let host = scope PluginHost(context);
@@ -101,7 +101,7 @@ class RecorderTests
 	[Test]
 	public static void RegistrationsMadeByOthersAreNotAttributedToThePlugin()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		GlobalSerializableRegistry.Clear();
 		defer GlobalSerializableRegistry.Clear();
 

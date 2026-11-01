@@ -11,12 +11,12 @@ namespace Sedulous.Runtime;
 /// runtime type handle. A plugin in a separate library asking for a subsystem by type has
 /// its own copy of that type's runtime identity, so handles diverge across a library
 /// boundary where a name hash does not.
-class Context
+class SubsystemManager
 {
 	private Dictionary<uint64, Subsystem> mByType = new .() ~ delete _;
 	/// Non owning, kept in UpdateOrder.
 	private List<Subsystem> mSorted = new .() ~ delete _;
-	/// The subset this context created and must destroy.
+	/// The subset this manager created and must destroy.
 	private List<Subsystem> mOwned = new .() ~ delete _;
 
 	private bool mRunning;
@@ -52,7 +52,7 @@ class Context
 	}
 
 	/// Creates and registers a subsystem, one per type. THE CONTEXT OWNS what it returns.
-	/// A context that is already running brings it up immediately.
+	/// A manager that is already running brings it up immediately.
 	public T AddSubsystem<T>() where T : Subsystem, new, delete
 	{
 		let subsystem = new T();
@@ -62,7 +62,7 @@ class Context
 	}
 
 	/// Registers a subsystem the CALLER owns, which is how a plugin registers its own. The
-	/// context drives it and looks it up but never destroys it.
+	/// manager drives it and looks it up but never destroys it.
 	public T RegisterSubsystem<T>(T subsystem) where T : Subsystem
 	{
 		RegisterInternal(TypeKey<T>(), subsystem);
@@ -70,7 +70,7 @@ class Context
 	}
 
 	/// Removes the subsystem of this type, shutting it down first, and destroys it if this
-	/// context owns it. Does nothing when there is none.
+	/// manager owns it. Does nothing when there is none.
 	public void RemoveSubsystem<T>() where T : Subsystem
 	{
 		RemoveByKey(TypeKey<T>());
@@ -85,7 +85,7 @@ class Context
 
 	public bool HasSubsystem<T>() where T : Subsystem => mByType.ContainsKey(TypeKey<T>());
 
-	/// Init then Ready, both in UpdateOrder, and the context is running afterwards.
+	/// Init then Ready, both in UpdateOrder, and the manager is running afterwards.
 	///
 	/// Two passes rather than one: every subsystem exists and is initialised before any of
 	/// them starts looking for its peers in Ready.
@@ -133,7 +133,7 @@ class Context
 			mSorted[i].Shutdown();
 	}
 
-	/// Shuts down if running and destroys everything this context owns. Idempotent, so the
+	/// Shuts down if running and destroys everything this manager owns. Idempotent, so the
 	/// destructor and an explicit call do not both tear down.
 	public void Dispose()
 	{
@@ -168,7 +168,7 @@ class Context
 		InsertSorted(subsystem);
 		subsystem.OnRegister(this);
 
-		// Added to a context that is already running, so it joins mid flight rather than
+		// Added to a manager that is already running, so it joins mid flight rather than
 		// sitting uninitialised until a Startup that has already happened.
 		if (mRunning)
 		{

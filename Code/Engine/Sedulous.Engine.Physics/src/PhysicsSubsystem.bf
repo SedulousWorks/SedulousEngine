@@ -8,7 +8,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Physics;
 
-/// The Context level physics broker.
+/// The application level physics broker.
 ///
 /// It holds the shared contact listener list, and drives each scene's render frame
 /// interpolation and debug drawing. The stepping itself is the scene system's.
@@ -88,10 +88,10 @@ class PhysicsSubsystem : Subsystem, ISceneObserver
 
 	public override void Update(float deltaTime)
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		let render = Context.GetSubsystem<RenderSubsystem>();
+		let render = Manager.GetSubsystem<RenderSubsystem>();
 
 		using (ProfileScope("Physics.Interpolate"))
 		{
@@ -112,10 +112,10 @@ class PhysicsSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
@@ -124,10 +124,10 @@ class PhysicsSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnShutdown()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.UnregisterObserver(this);
 	}
 }

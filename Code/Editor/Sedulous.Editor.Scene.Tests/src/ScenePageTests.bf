@@ -52,21 +52,21 @@ namespace Sedulous.Editor.Scene.Tests;
 /// in the inspector binds at once.
 class ScenePageTests
 {
-	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
+	/// A host whose subsystem manager has a scene subsystem and nothing else: no renderer, no window.
 	class SceneHost : IApplicationHost
 	{
-		public Context Context { get; } = new .() ~ delete _;
+		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
 
 		public this()
 		{
 			// The engine's full composition, so a scene's entities take its components.
-			Context.AddSubsystem<SceneSubsystem>().SetComposition(EngineSceneComposition.Build());
-			Context.Startup();
+			Subsystems.AddSubsystem<SceneSubsystem>().SetComposition(EngineSceneComposition.Build());
+			Subsystems.Startup();
 		}
 
 		public ~this()
 		{
-			Context.Shutdown();
+			Subsystems.Shutdown();
 		}
 
 		public IShell Shell => null;

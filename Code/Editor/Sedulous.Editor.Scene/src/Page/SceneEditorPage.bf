@@ -206,9 +206,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		var view = SceneViewportServices();
 		if (host != null)
 		{
-			mScenes = host.Context.GetSubsystem<SceneSubsystem>();
-			view.Render = host.Context.GetSubsystem<RenderSubsystem>();
-			view.GameGui = host.Context.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>();
+			mScenes = host.Subsystems.GetSubsystem<SceneSubsystem>();
+			view.Render = host.Subsystems.GetSubsystem<RenderSubsystem>();
+			view.GameGui = host.Subsystems.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>();
 		}
 		mViewport = new SceneViewport(view);
 

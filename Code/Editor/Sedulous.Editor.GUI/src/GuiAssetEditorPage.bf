@@ -52,7 +52,7 @@ class GuiAssetEditorPage : CodeAssetPage
 		: base(context, services, instance, (kind == .Document) ? typeof(GuiDocumentAsset) : typeof(GuiStyleSheetAsset), cMarkupPath)
 	{
 		mKind = kind;
-		mGui = (Services.Host != null) ? Services.Host.Context.GetSubsystem<GuiSubsystem>() : null;
+		mGui = (Services.Host != null) ? Services.Host.Subsystems.GetSubsystem<GuiSubsystem>() : null;
 
 		// A sheet's preview markup: the page's, kept for the sheet in the project's editor settings
 		// (first from what an older page kept on the asset, else a little of everything).

@@ -24,7 +24,7 @@ class ContactWorld
 {
 	private static bool sRegistered = false;
 
-	public Context Context = new .();
+	public SubsystemManager Context = new .();
 	public SceneSubsystem Scenes;
 	public PhysicsSubsystem Physics;
 	public ScriptSubsystem Scripts;

@@ -71,7 +71,7 @@ class AnimStressTestApp : DefaultApplication
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -135,7 +135,7 @@ class AnimStressTestApp : DefaultApplication
 
 		LoadModel(host);
 
-		if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 			render.Exposure = 0.5f; // the sky and sun together wash out at one
 
 		Console.WriteLine("AnimStressTest: Space adds a batch, Backspace removes one, H hides the");
@@ -150,7 +150,7 @@ class AnimStressTestApp : DefaultApplication
 		if (mOverlay != null)
 		{
 			mOverlay.NewFrame(input, deltaTime);
-			BuildHud(host.Context.GetSubsystem<RenderSubsystem>());
+			BuildHud(host.Subsystems.GetSubsystem<RenderSubsystem>());
 		}
 
 		if (input != null)
@@ -223,7 +223,7 @@ class AnimStressTestApp : DefaultApplication
 
 		if (keyboard.IsKeyPressed(.I))
 		{
-			if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+			if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 			{
 				render.InstanceSharing = !render.InstanceSharing;
 				Console.WriteLine(render.InstanceSharing ? "Instance sharing: ON"

@@ -37,7 +37,7 @@ class AudioFacadeRunTests
 		settings.Headless = true;
 		settings.DedupeWindowSeconds = 0.0f;
 		let audio = new AudioSubsystem(settings);
-		let context = new Context();
+		let context = new SubsystemManager();
 		context.RegisterSubsystem<AudioSubsystem>(audio);
 		context.Startup();
 		// The context drives a registered subsystem but does not own it: it goes first.

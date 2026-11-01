@@ -56,13 +56,13 @@ class InputActionsApp : IApplication
 	{
 		mDataMount = new NativeFileSystem(FindDataRoot(.. scope String()));
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
-		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
+		host.Subsystems.RegisterSubsystem<InputSubsystem>(mInput);
 
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlayGui = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, mDataMount);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlayGui);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlayGui);
 		}
 	}
 
@@ -84,7 +84,7 @@ class InputActionsApp : IApplication
 		let actions = mInput.Runtime;
 		let shellInput = (host.Shell != null) ? host.Shell.Input : null;
 
-		if (let gui = host.Context.GetSubsystem<ImguiSubsystem>())
+		if (let gui = host.Subsystems.GetSubsystem<ImguiSubsystem>())
 		{
 			gui.NewFrame(shellInput, deltaTime);
 			DrawDebugPanel(host);
@@ -107,7 +107,7 @@ class InputActionsApp : IApplication
 	{
 		frame.Clear(0.1f + 0.8f * mX, 0.1f + 0.8f * mY, 0.25f, 1.0f);
 
-		if (let gui = host.Context.GetSubsystem<ImguiSubsystem>())
+		if (let gui = host.Subsystems.GetSubsystem<ImguiSubsystem>())
 			gui.Render(ref frame);
 	}
 
@@ -206,9 +206,9 @@ class InputActionsApp : IApplication
 		igText(scope $"Jump  {actions.IsDown(mJump) ? "DOWN" : "up"}");
 
 		// The engine time scale: Move is flagged for it and slows, Jump's press is not.
-		var scale = host.Context.TimeScale;
+		var scale = host.Subsystems.TimeScale;
 		if (igSliderFloat("time scale", &scale, 0.0f, 2.0f, "%.2f", 0))
-			host.Context.TimeScale = scale;
+			host.Subsystems.TimeScale = scale;
 
 		let menuOpen = actions.ExclusiveDepth > 0;
 		if (igButton(menuOpen ? "Close Menu (gameplay resumes)".CStr()

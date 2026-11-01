@@ -23,7 +23,7 @@ class SceneServicesTests
 	/// A headless host: the import listener only keeps it.
 	class StubHost : IApplicationHost
 	{
-		public Context Context { get; } = new .() ~ delete _;
+		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
 
 		public IShell Shell => null;
 		public GraphicsDevice Graphics => null;

@@ -54,7 +54,7 @@ class CustomShaderApp : DefaultApplication
 	{
 		base.OnStartup(host);
 
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if ((render == null) || (render.Shaders == null) || !RegisterToonShader(render.Shaders))
 			return;
 

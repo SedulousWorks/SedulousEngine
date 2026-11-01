@@ -71,7 +71,7 @@ class PhysicsPlaygroundApp : DefaultApplication
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -403,7 +403,7 @@ class PhysicsPlaygroundApp : DefaultApplication
 	{
 		// A click the GUI took never reaches the world. That gate IS what the HUD button is
 		// there to demonstrate.
-		let gameGui = host.Context.GetSubsystem<GuiSubsystem>();
+		let gameGui = host.Subsystems.GetSubsystem<GuiSubsystem>();
 		if ((gameGui != null) && gameGui.PointerOverGui)
 			return;
 
@@ -491,7 +491,7 @@ class PhysicsPlaygroundApp : DefaultApplication
 
 	private void AdvanceSweeper(IApplicationHost host, float deltaTime)
 	{
-		mSweepAngle += 0.6f * deltaTime * host.Context.TimeScale;
+		mSweepAngle += 0.6f * deltaTime * host.Subsystems.TimeScale;
 		if (!mSweeper.IsAssigned)
 			return;
 
@@ -524,9 +524,9 @@ class PhysicsPlaygroundApp : DefaultApplication
 				mPhysics.World.SetGravity(gravity);
 		}
 
-		var scale = host.Context.TimeScale;
+		var scale = host.Subsystems.TimeScale;
 		if (igSliderFloat("time scale", &scale, 0.0f, 2.0f, "%.2f", 0))
-			host.Context.TimeScale = scale;
+			host.Subsystems.TimeScale = scale;
 
 		if (mHaveSurface)
 			igText(scope $"last hit surface slot: {mLastSurface}");

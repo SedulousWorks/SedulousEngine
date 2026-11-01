@@ -37,7 +37,7 @@ extension DefaultApplication
 		let graphics = host.Graphics;
 		if (graphics != null)
 			services.Add(typeof(IDevice), graphics.Raw);
-		if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 			services.Add(typeof(ShaderSystem), render.Shaders);
 		EngineComposition.CreateFactories(mFactories, services);
 		mFactories.Register(resources);

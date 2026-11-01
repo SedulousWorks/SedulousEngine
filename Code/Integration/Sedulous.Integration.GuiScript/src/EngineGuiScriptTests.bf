@@ -26,7 +26,7 @@ class CookedMenuBed
 	private GuiDocumentFactory mDocuments;
 	private ResourceManager mResources;
 	private NativeFileSystem mDataMount;
-	private Sedulous.Runtime.Context mContext;
+	private Sedulous.Runtime.SubsystemManager mContext;
 
 	public GuiSubsystem Gui;
 	/// The cooked document's guid.
@@ -54,7 +54,7 @@ class CookedMenuBed
 		let dataRoot = FindDataRoot(.. scope String());
 		if (!dataRoot.IsEmpty)
 			mDataMount = new NativeFileSystem(dataRoot);
-		mContext = new Sedulous.Runtime.Context();
+		mContext = new Sedulous.Runtime.SubsystemManager();
 		Gui = new GuiSubsystem(mDataMount);
 		mContext.RegisterSubsystem<GuiSubsystem>(Gui);
 		mContext.Startup();

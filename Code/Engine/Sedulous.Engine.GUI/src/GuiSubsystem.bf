@@ -151,8 +151,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		mRenderState = null;
 	}
 
-	/// The GUI: its data, keymap, commands and resources. Named apart from the subsystem's
-	/// runtime Context, which it would otherwise shadow (Raptor's Context()). The subsystem's.
+	/// The GUI: its data, keymap, commands and resources (Raptor's Context()). Named apart from
+	/// what the subsystem's manager was called when it came, Context. The subsystem's.
 	public GUIContext GuiContext => mContext;
 	/// The GUI with a reference added for the caller, which releases it.
 	public GUIContext ContextRef()
@@ -567,18 +567,18 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
-		mInput = Context.GetSubsystem<InputSubsystem>();
+		mInput = Manager.GetSubsystem<InputSubsystem>();
 		mPrompts.Install(mContext); // every prompt in the game's GUI names its bindings through it
 		SyncPrompts();
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
 		}
 		// Headless contexts (tests, the cooker) have no render subsystem: nothing registers.
-		mRender = Context.GetSubsystem<RenderSubsystem>();
+		mRender = Manager.GetSubsystem<RenderSubsystem>();
 		if (mRender != null)
 		{
 			mRender.RegisterOverlay((ISceneOverlay)this);
@@ -594,9 +594,9 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			mRender.UnregisterOverlay((IScreenOverlay)this);
 			mRender = null;
 		}
-		if (Context != null)
+		if (Manager != null)
 		{
-			if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+			if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 				scenes.UnregisterObserver(this);
 		}
 		mActiveRoot = null;

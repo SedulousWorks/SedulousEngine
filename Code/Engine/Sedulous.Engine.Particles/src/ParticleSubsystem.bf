@@ -6,7 +6,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Particles;
 
-/// The Context level particle broker.
+/// The application level particle broker.
 ///
 /// It owns the ONE renderer, hands each scene's manager its dispatch id, and registers that
 /// manager as the scene's render data provider. The simulation and the packing are the
@@ -36,23 +36,23 @@ class ParticleSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.RegisterObserver(this, .SystemsReady);
 
-		mRender = Context.GetSubsystem<RenderSubsystem>();
+		mRender = Manager.GetSubsystem<RenderSubsystem>();
 		// The GPU systems are up by now, the render subsystem having initialised first.
 		EnsureRenderer();
 	}
 
 	protected override void OnShutdown()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.UnregisterObserver(this);
 	}
 

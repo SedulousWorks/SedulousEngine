@@ -16,7 +16,7 @@ class ProfilerOverlayHostTests
 	[Test]
 	public static void OffUntilShownThenOnTheOverlayLayerArmedAndReading()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let scenes = context.AddSubsystem<SceneSubsystem>();
 		let sceneManager = scope SceneManager();
 		scenes.RegisterManager(sceneManager);

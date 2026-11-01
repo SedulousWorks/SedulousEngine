@@ -22,7 +22,7 @@ class GamePageTests
 	/// A host with an empty context: no renderer, no window, no game.
 	class BareHost : IApplicationHost
 	{
-		public Context Context { get; } = new .() ~ delete _;
+		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
 
 		public IShell Shell => null;
 		public GraphicsDevice Graphics => null;

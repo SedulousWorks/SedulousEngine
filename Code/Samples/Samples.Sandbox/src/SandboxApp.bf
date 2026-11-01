@@ -99,7 +99,7 @@ class SandboxApp : DefaultApplication
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -133,7 +133,7 @@ class SandboxApp : DefaultApplication
 		if (mOverlay != null)
 		{
 			mOverlay.NewFrame((host.Shell != null) ? host.Shell.Input : null, deltaTime);
-			BuildDebugUI(host.Context.GetSubsystem<RenderSubsystem>());
+			BuildDebugUI(host.Subsystems.GetSubsystem<RenderSubsystem>());
 		}
 
 		let input = (host.Shell != null) ? host.Shell.Input : null;
@@ -165,7 +165,7 @@ class SandboxApp : DefaultApplication
 
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		let graphics = host.Graphics;
 		if ((mScene == null) || (render == null) || !render.IsReady || (graphics == null)
 			|| (graphics.Raw == null) || (frame.Encoder == null) || (frame.Backbuffer == null)
@@ -284,7 +284,7 @@ class SandboxApp : DefaultApplication
 	/// missing simply leaves that mode showing nothing.
 	private void LoadSkySources(IApplicationHost host)
 	{
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
 
@@ -901,7 +901,7 @@ class SandboxApp : DefaultApplication
 
 	private void DrawDebug(IApplicationHost host, float deltaTime)
 	{
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
 

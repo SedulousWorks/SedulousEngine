@@ -5,11 +5,11 @@ using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.Scene;
 
-/// The Context level scene driver: it owns the registry and ticks every manager in it.
+/// The application level scene driver: it owns the registry and ticks every manager in it.
 ///
 /// It owns NO scenes. There is no implicit default group: every owner of scenes, a game
 /// instance or an editor page, creates its OWN manager and registers it here. The lifecycle
-/// and the tick live in SceneManager; this only fans the Context's time scale and fixed step
+/// and the tick live in SceneManager; this only fans the subsystem manager's time scale and fixed step
 /// down to them, which is what keeps Scene free of Runtime.
 ///
 /// Assembly is declarative. Each registered manager gets an installer that builds new scenes
@@ -56,7 +56,7 @@ class SceneSubsystem : Subsystem
 	/// While registered, this is where a contribution reaches scenes that ALREADY exist: a
 	/// manager a plugin adds after the fact is installed into every live scene, and the
 	/// records preserved for it resolve into it there.
-	public override void OnRegister(Context context)
+	public override void OnRegister(SubsystemManager context)
 	{
 		base.OnRegister(context);
 
@@ -136,14 +136,14 @@ class SceneSubsystem : Subsystem
 	/// Fixed stepping is PER SCENE, and it runs here so anything fixed rate is fresh before
 	/// any subsystem's Update reads it.
 	///
-	/// THE bridge between the Context's plain floats and the scene's FrameTime: Runtime never
+	/// THE bridge between the subsystem manager's plain floats and the scene's FrameTime: Runtime never
 	/// sees a FrameTime, this builds one and hands it down.
 	public override void BeginFrame(float deltaTime)
 	{
 		mFrameTime = FrameTime(deltaTime,
-			(Context != null) ? Context.TimeScale : 1.0f,
+			(Manager != null) ? Manager.TimeScale : 1.0f,
 			1.0f, 1.0f,
-			(Context != null) ? Context.FixedTimeStep : 0.0f);
+			(Manager != null) ? Manager.FixedTimeStep : 0.0f);
 		mScenes.BeginFrame(mFrameTime);
 	}
 

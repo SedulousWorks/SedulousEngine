@@ -39,7 +39,7 @@ class RunAudioTests
 	}
 
 	/// Registered, so the CALLER owns it: deleted after the context shuts down.
-	private static AudioSubsystem MakeAudio(Context context)
+	private static AudioSubsystem MakeAudio(SubsystemManager context)
 	{
 		let settings = new AudioEngineSettings();
 		settings.Headless = true;
@@ -53,7 +53,7 @@ class RunAudioTests
 	[Test]
 	public static void EndingARunFadesOutItsScenesAndItsMusicNotAnotherRuns()
 	{
-		let context = new Context();
+		let context = new SubsystemManager();
 		let audio = MakeAudio(context);
 		// The context drives a registered subsystem but does not own it: it goes first.
 		defer { delete context; delete audio; }
@@ -98,7 +98,7 @@ class RunAudioTests
 	[Test]
 	public static void OnlyTheFocusedRunIsHeardUnlessEveryRunIsAndPauseFreezesARun()
 	{
-		let context = new Context();
+		let context = new SubsystemManager();
 		let audio = MakeAudio(context);
 		// The context drives a registered subsystem but does not own it: it goes first.
 		defer { delete context; delete audio; }

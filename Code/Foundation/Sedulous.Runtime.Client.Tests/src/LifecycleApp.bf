@@ -33,7 +33,7 @@ class LifecycleApp : IApplication
 	public void Configure(IApplicationHost host)
 	{
 		Order.Add(.Configure);
-		Subsystem = host.Context.AddSubsystem<CountingSubsystem>();
+		Subsystem = host.Subsystems.AddSubsystem<CountingSubsystem>();
 	}
 
 	public void OnStartup(IApplicationHost host)

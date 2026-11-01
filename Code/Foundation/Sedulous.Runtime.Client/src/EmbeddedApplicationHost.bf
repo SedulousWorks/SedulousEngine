@@ -10,7 +10,7 @@ namespace Sedulous.Runtime.Client;
 /// The editor embedding adapter.
 ///
 /// An application programs against IApplicationHost and runs UNCHANGED standalone or
-/// inside an editor. This routes Context to an EMBEDDED runtime context, owned by the
+/// inside an editor. This routes Subsystems to an EMBEDDED subsystem manager, owned by the
 /// embedder and distinct from the outer host's own, while sharing the outer host's shell
 /// and its REAL graphics device.
 ///
@@ -21,18 +21,18 @@ namespace Sedulous.Runtime.Client;
 class EmbeddedApplicationHost : IApplicationHost
 {
 	private IApplicationHost mOuter;
-	private Context mRuntimeContext;
+	private SubsystemManager mSubsystems;
 	private delegate void(int) mOnExit = null;
 
-	/// `outer` is the real host, whose shell and device are borrowed; `runtimeContext` is
-	/// the embedded context the hosted application configures and runs in. Both borrowed.
-	public this(IApplicationHost outer, Context runtimeContext)
+	/// `outer` is the real host, whose shell and device are borrowed; `subsystems` is
+	/// the embedded manager the hosted application configures and runs in. Both borrowed.
+	public this(IApplicationHost outer, SubsystemManager subsystems)
 	{
 		mOuter = outer;
-		mRuntimeContext = runtimeContext;
+		mSubsystems = subsystems;
 	}
 
-	public Context Context => mRuntimeContext;
+	public SubsystemManager Subsystems => mSubsystems;
 	public IShell Shell => mOuter.Shell;
 	public GraphicsDevice Graphics => mOuter.Graphics;
 

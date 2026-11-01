@@ -6,7 +6,7 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Runtime;
 
-/// Loads plugins into a context and, more importantly, gets them back out.
+/// Loads plugins into a subsystem manager and, more importantly, gets them back out.
 ///
 /// Unloading is the hard half. A plugin registers a serializable factory, which is a
 /// FUNCTION POINTER into its library; if the library closes with that pointer still in the
@@ -30,15 +30,15 @@ namespace Sedulous.Runtime;
 /// everything the plugin did.
 class PluginHost
 {
-	private Context mContext;
+	private SubsystemManager mSubsystems;
 	private List<PluginEntry> mEntries = new .() ~ DeleteContainerAndItems!(_);
 	/// BORROWED: each recorder belongs to the layer that supplied it and must outlive the
 	/// host.
 	private List<IRegistrationRecorder> mRecorders = new .() ~ delete _;
 
-	public this(Context context)
+	public this(SubsystemManager subsystems)
 	{
-		mContext = context;
+		mSubsystems = subsystems;
 	}
 
 	public ~this()
@@ -124,7 +124,7 @@ class PluginHost
 
 			// While the library is still open: the plugin's own teardown, then the
 			// registrations that point into it.
-			entry.Plugin.OnUnload(mContext);
+			entry.Plugin.OnUnload(mSubsystems);
 			ReverseRecorded(entry);
 
 			if (closeLibraries && (entry.Library != null))
@@ -148,7 +148,7 @@ class PluginHost
 		for (int i < mRecorders.Count)
 			mRecorders[i].Arm(entry.Recorded[i]);
 
-		entry.Plugin.OnLoad(mContext);
+		entry.Plugin.OnLoad(mSubsystems);
 
 		// Disarmed in reverse, and unconditionally: a recorder left armed would attribute
 		// the NEXT plugin's registrations to this one.

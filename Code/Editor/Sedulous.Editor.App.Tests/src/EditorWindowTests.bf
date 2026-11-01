@@ -21,7 +21,7 @@ static class EditorWindowTests
 	/// No shell, no graphics, no windows: a headless run.
 	private class HeadlessHost : IApplicationHost
 	{
-		public Context Context { get; } = new .() ~ delete _;
+		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
 
 		public IShell Shell => null;
 		public GraphicsDevice Graphics => null;

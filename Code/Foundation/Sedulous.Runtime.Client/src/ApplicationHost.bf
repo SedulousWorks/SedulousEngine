@@ -21,7 +21,7 @@ namespace Sedulous.Runtime.Client;
 /// whole list. Windows open and close at runtime, with the close deferred to frame end.
 class ApplicationHost : IApplicationHost
 {
-	private Context mContext = new .() ~ delete _;
+	private SubsystemManager mSubsystems = new .() ~ delete _;
 	private ApplicationSettings mSettings = .();
 	/// Borrowed, all three: the entry point owns them.
 	private IApplication mApp = null;
@@ -70,7 +70,7 @@ class ApplicationHost : IApplicationHost
 		InitGlobalJobSystem();
 
 		mApp.Configure(this);
-		mContext.Startup();
+		mSubsystems.Startup();
 
 		// The main window already exists on the shell; this gives it a RenderWindow.
 		if ((mShell != null) && (mGraphics != null))
@@ -106,27 +106,27 @@ class ApplicationHost : IApplicationHost
 	public void Tick(float deltaTime)
 	{
 		ProfileFrameBegin();
-		mContext.BeginFrame(deltaTime);
+		mSubsystems.BeginFrame(deltaTime);
 
 		using (ProfileScope("Update"))
 		{
 			// The simulation lanes run on SCALED time, for slow motion and pause; the
 			// application hook and the frame bookkeeping keep the raw delta.
-			let scaledDelta = deltaTime * mContext.TimeScale;
+			let scaledDelta = deltaTime * mSubsystems.TimeScale;
 
 			// The fixed step is CONFIG on the context, which a scene seeds its own stepper
 			// from; there is no context level fixed execution lane. This stepper serves the
 			// application level hook and nothing else.
-			mContext.FixedTimeStep = mSettings.FixedTimeStep;
+			mSubsystems.FixedTimeStep = mSettings.FixedTimeStep;
 			mStepper.Step = mSettings.FixedTimeStep;
 			mStepper.MaxSteps = mSettings.MaxFixedStepsPerFrame;
 			let fixedSteps = mStepper.Advance(scaledDelta);
 			for (uint32 i < fixedSteps)
 				mApp.OnFixedUpdate(this, mSettings.FixedTimeStep);
 
-			mContext.Update(scaledDelta);
+			mSubsystems.Update(scaledDelta);
 			mApp.OnUpdate(this, deltaTime);
-			mContext.PostUpdate(scaledDelta);
+			mSubsystems.PostUpdate(scaledDelta);
 		}
 
 		// Every window, uniformly. The main window is simply the first.
@@ -160,7 +160,7 @@ class ApplicationHost : IApplicationHost
 			}
 		}
 
-		mContext.EndFrame();
+		mSubsystems.EndFrame();
 		FlushPendingCloses();
 #if !SHIPPING
 		// The device's counts for this frame (draws, passes, binds, memory) to the profiler.
@@ -222,7 +222,7 @@ class ApplicationHost : IApplicationHost
 			return;
 
 		mApp.OnExit(this);
-		mContext.Shutdown();
+		mSubsystems.Shutdown();
 		mApp.OnShutdown(this);
 
 		mPendingClose.Clear();
@@ -239,7 +239,7 @@ class ApplicationHost : IApplicationHost
 
 	// ---- IApplicationHost ----
 
-	public Context Context => mContext;
+	public SubsystemManager Subsystems => mSubsystems;
 	public IShell Shell => mShell;
 	public GraphicsDevice Graphics => mGraphics;
 	public RenderWindow MainRenderWindow => mWindows.IsEmpty ? null : mWindows[0];

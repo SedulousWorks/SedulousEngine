@@ -19,7 +19,7 @@ class ClampApp : IApplication
 	}
 
 	public void Configure(IApplicationHost host)
-		=> Subsystem = host.Context.AddSubsystem<CountingSubsystem>();
+		=> Subsystem = host.Subsystems.AddSubsystem<CountingSubsystem>();
 
 	public void OnFixedUpdate(IApplicationHost host, float fixedDeltaTime) { FixedUpdates++; }
 }

@@ -12,7 +12,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Audio;
 
-/// The Context level audio broker.
+/// The application level audio broker.
 ///
 /// It owns the ONE engine, hands it to every scene's audio system, pushes the winning
 /// listeners, and carries the engine global one shot surface that needs no entity at all.
@@ -436,10 +436,10 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
@@ -448,9 +448,9 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnShutdown()
 	{
-		if (Context != null)
+		if (Manager != null)
 		{
-			if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+			if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 				scenes.UnregisterObserver(this);
 		}
 

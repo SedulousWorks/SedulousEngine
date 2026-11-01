@@ -17,7 +17,7 @@ class SceneSubsystemTests
 	[Test]
 	public static void TheCompositionAssemblesASceneAndReadyObserversThenWire()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let scenes = context.AddSubsystem<SceneSubsystem>();
 		let render = context.AddSubsystem<FakeRenderSubsystem>();
 		context.Startup(); // OnReady is where the observer registers
@@ -44,7 +44,7 @@ class SceneSubsystemTests
 	[Test]
 	public static void TheSubsystemTicksItsScenesEachContextUpdate()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let scenes = context.AddSubsystem<SceneSubsystem>();
 		context.Startup();
 
@@ -70,7 +70,7 @@ class SceneSubsystemTests
 	[Test]
 	public static void DestroyingASceneFiresDestroyingAndDropsItFromTheActiveList()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let scenes = context.AddSubsystem<SceneSubsystem>();
 		let render = context.AddSubsystem<FakeRenderSubsystem>();
 		context.Startup();
@@ -101,7 +101,7 @@ class SceneSubsystemTests
 	[Test]
 	public static void SceneScalesIsolateAndAPauseStopsOnlyItsOwnScene()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let scenes = context.AddSubsystem<SceneSubsystem>();
 		context.Startup();
 
@@ -156,7 +156,7 @@ class SceneSubsystemTests
 	[Test]
 	public static void TheFixedAlphaIsTheScenesOwnLeftover()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let scenes = context.AddSubsystem<SceneSubsystem>();
 		context.Startup();
 

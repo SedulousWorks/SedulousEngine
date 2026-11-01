@@ -16,7 +16,7 @@ class InstanceTeardownTests
 		let app = scope DefaultApplication();
 		// The host's order: configured, the context started, then the application.
 		app.Configure(host);
-		host.Context.Startup();
+		host.Subsystems.Startup();
 		app.OnStartup(host);
 		let instance = app.CreateInstance(true);
 		Test.Assert(instance != null);
@@ -25,9 +25,9 @@ class InstanceTeardownTests
 		// The host's order again: the context down (the script subsystem's shutdown is where a
 		// freed system was reached), the application, then the context disposed while the
 		// subsystems the application registered are still alive.
-		host.Context.Shutdown();
+		host.Subsystems.Shutdown();
 		app.OnShutdown(host);
-		host.Context.Dispose();
+		host.Subsystems.Dispose();
 	}
 
 	[Test]
@@ -37,7 +37,7 @@ class InstanceTeardownTests
 		let app = scope DefaultApplication();
 		// The host's order: configured, the context started, then the application.
 		app.Configure(host);
-		host.Context.Startup();
+		host.Subsystems.Startup();
 		app.OnStartup(host);
 		let instance = app.CreateInstance(true);
 		Test.Assert(instance != null);
@@ -46,8 +46,8 @@ class InstanceTeardownTests
 		// The host's order again: the context down (the script subsystem's shutdown is where a
 		// freed system was reached), the application, then the context disposed while the
 		// subsystems the application registered are still alive.
-		host.Context.Shutdown();
+		host.Subsystems.Shutdown();
 		app.OnShutdown(host);
-		host.Context.Dispose();
+		host.Subsystems.Dispose();
 	}
 }

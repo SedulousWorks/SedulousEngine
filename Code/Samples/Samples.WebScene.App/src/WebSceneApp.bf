@@ -106,7 +106,7 @@ class WebSceneApp : DefaultApplication
 		base.OnStartup(host);
 
 		Console.WriteLine("WebScene: building the full renderer scene...");
-		if (host.Context.GetSubsystem<SceneSubsystem>() == null)
+		if (host.Subsystems.GetSubsystem<SceneSubsystem>() == null)
 		{
 			Console.WriteLine("WebScene: no scene subsystem.");
 			return;
@@ -115,7 +115,7 @@ class WebSceneApp : DefaultApplication
 
 		// The exercise scene turns the optional passes ON: it exists to exercise them, and the
 		// panel can put any of them back.
-		if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 		{
 			render.SsrEnabled = true;
 			render.Exposure = 0.9f;
@@ -199,7 +199,7 @@ class WebSceneApp : DefaultApplication
 
 		if (mBadge != null)
 		{
-			if (let gameGui = host.Context.GetSubsystem<GuiSubsystem>())
+			if (let gameGui = host.Subsystems.GetSubsystem<GuiSubsystem>())
 				gameGui.RemoveOverlay(mBadge);
 			mBadge.ReleaseRef();
 			mBadge = null;
@@ -284,7 +284,7 @@ class WebSceneApp : DefaultApplication
 	/// the SCREEN pass and stays on regardless, so one of each is always exercised.
 	private void UpdateDebugDraw(IApplicationHost host, float deltaTime)
 	{
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
 
@@ -659,7 +659,7 @@ class WebSceneApp : DefaultApplication
 		// bottom right corner. PASSIVE (pointer-events none on its root): an overlay that takes
 		// the pointer is modal, which is right for a menu and would shield the HUD from every
 		// click.
-		if (let gameGui = host.Context.GetSubsystem<GuiSubsystem>())
+		if (let gameGui = host.Subsystems.GetSubsystem<GuiSubsystem>())
 		{
 			mBadgeDocument = new GuiDocument();
 			mBadgeDocument.Markup.Set("""

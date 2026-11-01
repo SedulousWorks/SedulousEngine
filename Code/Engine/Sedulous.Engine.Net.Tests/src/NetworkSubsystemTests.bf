@@ -43,7 +43,7 @@ class NetworkSubsystemTests
 		server.StartServer(true);
 		client.ConnectTo(serverSocket.LocalEndpoint);
 
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		let subsystem = context.AddSubsystem<NetworkSubsystem>();
 		context.Startup();
 

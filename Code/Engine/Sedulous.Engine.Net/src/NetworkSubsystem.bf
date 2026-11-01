@@ -26,7 +26,7 @@ class NetworkSubsystem : Subsystem
 	// The component's own reflection is what the serializer reads, so there is no reflected
 	// component to register and no OnInit to write.
 
-	/// The transport pump, on the Context lane.
+	/// The transport pump, on the subsystem manager's lane.
 	///
 	/// PostUpdate rather than BeginFrame so a server's sends, queued this frame by the per
 	/// scene fixed lane, flush on the SAME frame whatever order the subsystems sort in.

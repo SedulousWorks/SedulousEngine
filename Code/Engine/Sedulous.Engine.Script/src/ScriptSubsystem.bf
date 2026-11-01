@@ -79,7 +79,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 		mHost.Configure = new (runtime) =>
 			{
@@ -87,7 +87,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 					Configure(runtime);
 			};
 		mHost.TeardownCheck = new (h) => { MaybeTeardownRunHost(h); };
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
@@ -96,9 +96,9 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnShutdown()
 	{
-		if (Context != null)
+		if (Manager != null)
 		{
-			if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+			if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 				scenes.UnregisterObserver(this);
 		}
 		// A scene stopped after this must not call back into a subsystem that is gone.

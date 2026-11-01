@@ -28,7 +28,7 @@ static class EditorApplicationTests
 	/// No shell, no graphics, no windows; it counts the exits asked of it.
 	private class HeadlessHost : IApplicationHost
 	{
-		public Context Context { get; } = new .() ~ delete _;
+		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
 		public int Exits = 0;
 
 		public IShell Shell => null;

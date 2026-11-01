@@ -5,7 +5,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Vegetation;
 
-/// The Context level vegetation broker: it registers each scene's layer manager as that
+/// The application level vegetation broker: it registers each scene's layer manager as that
 /// scene's render data provider.
 ///
 /// The manager itself is injected by scene composition rather than here, and it owns no GPU
@@ -27,21 +27,21 @@ class VegetationSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.RegisterObserver(this, .SystemsReady);
 
-		mRender = Context.GetSubsystem<RenderSubsystem>();
+		mRender = Manager.GetSubsystem<RenderSubsystem>();
 	}
 
 	protected override void OnShutdown()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.UnregisterObserver(this);
 	}
 }

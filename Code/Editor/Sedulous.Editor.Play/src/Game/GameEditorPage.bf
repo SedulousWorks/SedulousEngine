@@ -133,9 +133,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mApp = embeddedApp;
 		mGameInstance = instance;
 
-		mScenes = host.Context.GetSubsystem<SceneSubsystem>();
-		mRender = host.Context.GetSubsystem<RenderSubsystem>();
-		mInput = host.Context.GetSubsystem<InputSubsystem>();
+		mScenes = host.Subsystems.GetSubsystem<SceneSubsystem>();
+		mRender = host.Subsystems.GetSubsystem<RenderSubsystem>();
+		mInput = host.Subsystems.GetSubsystem<InputSubsystem>();
 		mShellInput = (host.Shell != null) ? host.Shell.Input : null;
 
 		mViewport = new Sedulous.GUI.Viewport();

@@ -51,7 +51,7 @@ static class EditorRegistration
 	public static void RegisterEditors(EditorApplication app, IApplicationHost host)
 	{
 		let context = app.Context;
-		app.SetSceneRenderer(host.Context.GetSubsystem<RenderSubsystem>());
+		app.SetSceneRenderer(host.Subsystems.GetSubsystem<RenderSubsystem>());
 
 		// The pipeline's composition root first: every asset and product type, the script
 		// backend and its cook, which the creators below enumerate.

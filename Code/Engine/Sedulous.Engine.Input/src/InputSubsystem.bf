@@ -105,8 +105,8 @@ class InputSubsystem : Subsystem
 
 	public override void Update(float deltaTime)
 	{
-		if (Context != null)
-			mRuntime.SetTimeScale(Context.TimeScale);
+		if (Manager != null)
+			mRuntime.SetTimeScale(Manager.TimeScale);
 
 		mRuntime.Update(ActiveSource, deltaTime);
 	}

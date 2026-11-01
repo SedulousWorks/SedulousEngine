@@ -78,7 +78,7 @@ class RenderStressTestApp : DefaultApplication
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -147,7 +147,7 @@ class RenderStressTestApp : DefaultApplication
 		AddSphereBatch();
 
 		// The sky and sun together are bright enough that the tone mapper washes out at one.
-		if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 			render.Exposure = 0.5f;
 
 		Console.WriteLine("=== Render Stress Test ===");
@@ -169,7 +169,7 @@ class RenderStressTestApp : DefaultApplication
 		if (mOverlay != null)
 		{
 			mOverlay.NewFrame(input, deltaTime);
-			BuildHud(host.Context.GetSubsystem<RenderSubsystem>());
+			BuildHud(host.Subsystems.GetSubsystem<RenderSubsystem>());
 		}
 
 		if ((mScene == null) || (input == null) || (input.Keyboard == null))
@@ -254,7 +254,7 @@ class RenderStressTestApp : DefaultApplication
 		if (keyboard.IsKeyPressed(.H))
 			mShowStats = !mShowStats;
 
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render != null)
 		{
 			if (keyboard.IsKeyPressed(.T))

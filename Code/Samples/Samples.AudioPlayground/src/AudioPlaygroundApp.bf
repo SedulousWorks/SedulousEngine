@@ -50,7 +50,7 @@ class AudioPlaygroundApp : DefaultApplication
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -227,7 +227,7 @@ class AudioPlaygroundApp : DefaultApplication
 
 	private void DrawEmitterGizmos(IApplicationHost host)
 	{
-		let renderer = host.Context.GetSubsystem<RenderSubsystem>();
+		let renderer = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if ((renderer == null) || (mScene == null))
 			return;
 

@@ -62,7 +62,7 @@ class ShaderEditorPage : CodeAssetPage
 		mShaderLibrary.Set(shaderLibrary);
 		if (Services.Host != null)
 		{
-			if (let render = Services.Host.Context.GetSubsystem<RenderSubsystem>())
+			if (let render = Services.Host.Subsystems.GetSubsystem<RenderSubsystem>())
 				mShaders = render.Shaders;
 		}
 		// A name of the page's own: the preview never replaces the cooked shader a scene draws.

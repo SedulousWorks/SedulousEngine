@@ -85,7 +85,7 @@ class TerrainPlaygroundApp : DefaultApplication
 			// REGISTERED rather than created by the context: the overlay needs the device and
 			// the frame count, which a default construction has no way to supply.
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -156,7 +156,7 @@ class TerrainPlaygroundApp : DefaultApplication
 			// The tufts sway at their tips; the cone's base sits at a local y of -0.7. The wind is
 			// the Wind effect's group, from the shader system's table (the effect block in
 			// wind.hlsli).
-			if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+			if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 			{
 				if (let wind = render.Shaders?.EffectForFlag(.Wind))
 					mGrassMaterial.AddEffectGroup(wind);
@@ -204,7 +204,7 @@ class TerrainPlaygroundApp : DefaultApplication
 		base.OnUpdate(host, deltaTime);
 		mFrameSmooth = mFrameSmooth * 0.9f + deltaTime * 0.1f;
 
-		if (let overlay = host.Context.GetSubsystem<ImguiSubsystem>())
+		if (let overlay = host.Subsystems.GetSubsystem<ImguiSubsystem>())
 		{
 			overlay.NewFrame((host.Shell != null) ? host.Shell.Input : null, deltaTime);
 			BuildPanel();
@@ -231,7 +231,7 @@ class TerrainPlaygroundApp : DefaultApplication
 		RenderFrame(host, ref frame);
 
 		// AFTER the scene, so the panel is drawn over it rather than under.
-		if (let overlay = host.Context.GetSubsystem<ImguiSubsystem>())
+		if (let overlay = host.Subsystems.GetSubsystem<ImguiSubsystem>())
 			overlay.Render(ref frame);
 
 		// After the panel, so a screenshot has it.

@@ -8,7 +8,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation;
 
-/// The Context level animation subsystem.
+/// The application level animation subsystem.
 ///
 /// The managers are scene systems, and the scene's own tick drives them. What this does per
 /// frame is draw the IK components that ask for it (DebugDraw) into each running scene's debug
@@ -37,9 +37,9 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 
 	public override void Update(float deltaTime)
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
-		let render = Context.GetSubsystem<RenderSubsystem>();
+		let render = Manager.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
 
@@ -64,9 +64,9 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
@@ -75,9 +75,9 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnShutdown()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 			scenes.UnregisterObserver(this);
 	}
 }

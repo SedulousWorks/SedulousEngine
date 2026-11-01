@@ -24,7 +24,7 @@ interface IApplication
 	/// Register subsystems and types.
 	void Configure(IApplicationHost host) {}
 
-	/// After the context started.
+	/// After the subsystem manager started.
 	void OnStartup(IApplicationHost host) {}
 
 	/// Entering play.
@@ -40,6 +40,6 @@ interface IApplication
 	/// Leaving play.
 	void OnExit(IApplicationHost host) {}
 
-	/// Before the context shuts down.
+	/// Before the subsystem manager shuts down.
 	void OnShutdown(IApplicationHost host) {}
 }

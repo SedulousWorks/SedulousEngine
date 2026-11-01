@@ -715,7 +715,7 @@ static class EngineSurfaceScriptTests
 		let settings = new Sedulous.Audio.AudioEngineSettings();
 		settings.Headless = true;
 		let audio = new Sedulous.Engine.Audio.AudioSubsystem(settings);
-		let context = new Sedulous.Runtime.Context();
+		let context = new Sedulous.Runtime.SubsystemManager();
 		context.RegisterSubsystem<Sedulous.Engine.Audio.AudioSubsystem>(audio);
 		context.Startup();
 		defer { delete context; delete audio; }
@@ -767,7 +767,7 @@ static class EngineSurfaceScriptTests
 		settings.Headless = true;
 		settings.DedupeWindowSeconds = 0.0f;
 		let audio = new Sedulous.Engine.Audio.AudioSubsystem(settings);
-		let context = new Sedulous.Runtime.Context();
+		let context = new Sedulous.Runtime.SubsystemManager();
 		context.RegisterSubsystem<Sedulous.Engine.Audio.AudioSubsystem>(audio);
 		context.Startup();
 		// The context drives a registered subsystem but does not own it: it goes first.

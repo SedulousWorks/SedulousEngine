@@ -4,7 +4,7 @@ namespace Sedulous.Runtime;
 
 /// A unit of engine functionality delivered separately from the executable.
 ///
-/// A plugin registers its subsystems and services into the context on load and removes
+/// A plugin registers its subsystems and services into the subsystem manager on load and removes
 /// them on unload. It may be linked in and handed to the host directly, or loaded from a
 /// shared library at runtime.
 ///
@@ -15,12 +15,12 @@ interface IRuntimePlugin
 	/// For logs and diagnostics.
 	StringView Name { get; }
 
-	/// Register subsystems and services into the context.
-	void OnLoad(Context context);
+	/// Register subsystems and services into the subsystem manager.
+	void OnLoad(SubsystemManager subsystems);
 
 	/// Remove what OnLoad added.
 	///
 	/// Called BEFORE the backing library is closed, so touching plugin defined types and
 	/// destroying subsystems here is safe. After the close, none of that code exists.
-	void OnUnload(Context context);
+	void OnUnload(SubsystemManager subsystems);
 }

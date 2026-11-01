@@ -3,13 +3,13 @@ using Sedulous.Runtime;
 
 namespace Sedulous.Runtime.Tests;
 
-/// The context that owns the engine's subsystems and drives them.
-class ContextTests
+/// The subsystem manager that owns the engine's subsystems and drives them.
+class SubsystemManagerTests
 {
 	[Test]
 	public static void ASubsystemIsFoundByItsType()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		Test.Assert(!context.HasSubsystem<Middle>());
@@ -31,7 +31,7 @@ class ContextTests
 	[Test]
 	public static void StartupInitialisesEverythingBeforeAnythingIsReady()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		context.AddSubsystem<Early>();
@@ -49,7 +49,7 @@ class ContextTests
 	[Test]
 	public static void OrderIsAscendingForStartupAndReverseForShutdown()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		// Registered out of order on purpose.
@@ -88,7 +88,7 @@ class ContextTests
 		// The context has to go FIRST: its teardown unregisters what it is driving, and a
 		// borrowed subsystem deleted before that leaves it walking freed objects.
 		{
-			let context = scope Context();
+			let context = scope SubsystemManager();
 			context.RegisterSubsystem(first);
 			context.RegisterSubsystem(second);
 			context.Update(0.0f);
@@ -103,7 +103,7 @@ class ContextTests
 	[Test]
 	public static void EveryFramePhaseReachesEverySubsystem()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		let subsystem = context.AddSubsystem<Middle>();
@@ -126,7 +126,7 @@ class ContextTests
 	[Test]
 	public static void AddingToARunningContextBringsItUpAtOnce()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		context.Startup();
@@ -143,7 +143,7 @@ class ContextTests
 	[Test]
 	public static void BringingUpTwiceDoesNothingTheSecondTime()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		context.Startup();
@@ -163,7 +163,7 @@ class ContextTests
 	[Test]
 	public static void RemovingShutsDownAndDetaches()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		context.AddSubsystem<Middle>();
@@ -194,7 +194,7 @@ class ContextTests
 		defer delete borrowed;
 
 		{
-			let context = scope Context();
+			let context = scope SubsystemManager();
 			Trace.Clear();
 			context.RegisterSubsystem(borrowed);
 			context.Startup();
@@ -213,7 +213,7 @@ class ContextTests
 	[Test]
 	public static void DisposeIsIdempotent()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Trace.Clear();
 
 		context.AddSubsystem<Middle>();
@@ -238,7 +238,7 @@ class ContextTests
 	[Test]
 	public static void TimeScaleClampsAtZero()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Test.Assert(context.TimeScale == 1.0f, "realtime by default");
 
 		context.TimeScale = 0.5f;
@@ -254,7 +254,7 @@ class ContextTests
 	[Test]
 	public static void TheFixedStepIsPlainConfiguration()
 	{
-		let context = scope Context();
+		let context = scope SubsystemManager();
 		Test.Assert(context.FixedTimeStep > 0.0f, "sixty hertz by default");
 
 		context.FixedTimeStep = 1.0f / 30.0f;

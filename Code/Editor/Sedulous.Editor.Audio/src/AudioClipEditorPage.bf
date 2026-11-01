@@ -47,7 +47,7 @@ class AudioClipEditorPage : AssetObjectPage, IPlaybackPage
 		: base(context, services, instance, typeof(AudioClipAsset), cMarkupPath)
 	{
 		let host = Services.Host;
-		mVoice = new AuditionVoice((host != null) ? host.Context.GetSubsystem<AudioSubsystem>() : null);
+		mVoice = new AuditionVoice((host != null) ? host.Subsystems.GetSubsystem<AudioSubsystem>() : null);
 		mStage = Find<Node>("audio-stage");
 		mEmpty = Find<Node>("audio-empty");
 		mEmptyText = Find<Sedulous.GUI.Label>("audio-empty-text");

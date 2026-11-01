@@ -127,7 +127,7 @@ class MaterialEditorPage : AssetObjectPage
 		}
 		if (let host = Services.Host)
 		{
-			if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+			if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 				mEffectSystem = render.Shaders;
 		}
 		BindShader(); // a material on a shader asset shows the shader's current properties

@@ -5,7 +5,7 @@ using Sedulous.Engine.Scene;
 
 namespace Sedulous.Engine.Scene.Tests;
 
-/// A Context level subsystem that REACTS to the scene lifecycle and leaves assembly to the
+/// An application level subsystem that REACTS to the scene lifecycle and leaves assembly to the
 /// composition, which is the split a real domain has.
 class FakeRenderSubsystem : Subsystem, ISceneObserver
 {
@@ -14,7 +14,7 @@ class FakeRenderSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnReady()
 	{
-		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);

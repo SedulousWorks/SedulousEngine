@@ -27,11 +27,11 @@ class EmbeddedApplicationHostTests
 		outer.Start(outerApp, shell, device);
 		defer outer.Stop();
 
-		let embeddedContext = scope Context();
-		let embedded = scope EmbeddedApplicationHost(outer, embeddedContext);
+		let embeddedSubsystems = scope SubsystemManager();
+		let embedded = scope EmbeddedApplicationHost(outer, embeddedSubsystems);
 
-		Test.Assert(embedded.Context === embeddedContext, "the embedded context, not the outer's");
-		Test.Assert(embedded.Context !== outer.Context);
+		Test.Assert(embedded.Subsystems === embeddedSubsystems, "the embedded manager, not the outer's");
+		Test.Assert(embedded.Subsystems !== outer.Subsystems);
 		Test.Assert(embedded.Shell === shell, "one shell per process");
 		Test.Assert(embedded.Graphics === device, "the REAL device, shared");
 	}
@@ -51,8 +51,8 @@ class EmbeddedApplicationHostTests
 		outer.Start(outerApp, shell, device);
 		defer outer.Stop();
 
-		let embeddedContext = scope Context();
-		let embedded = scope EmbeddedApplicationHost(outer, embeddedContext);
+		let embeddedSubsystems = scope SubsystemManager();
+		let embedded = scope EmbeddedApplicationHost(outer, embeddedSubsystems);
 
 		Test.Assert(embedded.MainRenderWindow == null);
 		Test.Assert(embedded.OpenWindow(WindowSettings(), RenderWindowDesc()) == null);
@@ -74,8 +74,8 @@ class EmbeddedApplicationHostTests
 		outer.Start(outerApp);
 		defer outer.Stop();
 
-		let embeddedContext = scope Context();
-		let embedded = scope EmbeddedApplicationHost(outer, embeddedContext);
+		let embeddedSubsystems = scope SubsystemManager();
+		let embedded = scope EmbeddedApplicationHost(outer, embeddedSubsystems);
 
 		int seenCode = -1;
 		// Dropped, not fatal.

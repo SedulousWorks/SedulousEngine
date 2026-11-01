@@ -227,7 +227,7 @@ extension GameEditorPage
 	}
 
 	/// The run's sound, BORROWED: its stop, pause and focus. Null with no audio.
-	private AudioSubsystem Audio => mHost?.Context?.GetSubsystem<AudioSubsystem>();
+	private AudioSubsystem Audio => mHost?.Subsystems?.GetSubsystem<AudioSubsystem>();
 
 	/// The run's sound follows the tab: the host's pause, the focus, the hear-all preference.
 	private void SyncRunAudio()
@@ -251,7 +251,7 @@ extension GameEditorPage
 
 	private void BindBusLayout()
 	{
-		let audio = mHost.Context.GetSubsystem<AudioSubsystem>();
+		let audio = mHost.Subsystems.GetSubsystem<AudioSubsystem>();
 		if ((audio == null) || (audio.Engine == null))
 			return;
 		let layoutId = mContext.Project.Settings.DefaultBusLayoutId;

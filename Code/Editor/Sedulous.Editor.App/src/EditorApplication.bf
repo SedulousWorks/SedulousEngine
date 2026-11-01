@@ -55,7 +55,7 @@ class EditorApplication : IApplication
 	// declared after the application and goes first, unregistering them while they are alive.
 	private EmbeddedApplicationHost mEmbeddedHost = null ~ delete _;
 	private DefaultApplication mEmbeddedApp = null ~ delete _;
-	private Context mRuntimeContext = new .() ~ delete _;
+	private SubsystemManager mRuntimeContext = new .() ~ delete _;
 	/// The host borrows it for as long as it is installed.
 	private delegate void(int) mEmbeddedExitHandler = null ~ delete _;
 

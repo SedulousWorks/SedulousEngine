@@ -11,7 +11,7 @@ namespace Sedulous.Engine.DefaultApp.Tests;
 /// gating.
 class StubHost : IApplicationHost
 {
-	public Context Context { get; } = new .() ~ delete _;
+	public SubsystemManager Subsystems { get; } = new .() ~ delete _;
 
 	public IShell Shell => null;
 	public GraphicsDevice Graphics => null;

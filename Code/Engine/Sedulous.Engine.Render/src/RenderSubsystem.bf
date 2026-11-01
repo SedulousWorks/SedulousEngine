@@ -14,7 +14,7 @@ using Sedulous.Shaders;
 
 namespace Sedulous.Engine.Render;
 
-/// The Context level renderer: it owns the frame, the renderer registry and the per scene
+/// The application level renderer: it owns the frame, the renderer registry and the per scene
 /// snapshots, and draws what extraction produced.
 ///
 /// It renders rather than ticks, which is why it sorts LATE: everything that moves has
@@ -675,10 +675,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// Registers as a scene observer, which is how the borrowed providers get cleaned up.
 	protected override void OnReady()
 	{
-		if (Context == null)
+		if (Manager == null)
 			return;
 
-		if (let scenes = Context.GetSubsystem<Sedulous.Engine.Scene.SceneSubsystem>())
+		if (let scenes = Manager.GetSubsystem<Sedulous.Engine.Scene.SceneSubsystem>())
 			scenes.RegisterObserver(this, .Destroying);
 	}
 
@@ -694,9 +694,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 	protected override void OnShutdown()
 	{
-		if (Context != null)
+		if (Manager != null)
 		{
-			if (let scenes = Context.GetSubsystem<Sedulous.Engine.Scene.SceneSubsystem>())
+			if (let scenes = Manager.GetSubsystem<Sedulous.Engine.Scene.SceneSubsystem>())
 				scenes.UnregisterObserver(this);
 		}
 

@@ -86,7 +86,7 @@ static class SceneServices
 				let prefabId = generated.Instance.Id;
 				let resolver = SceneLoading.ProjectPrefabResolver(context);
 				defer delete resolver;
-				if (let scenes = host.Context.GetSubsystem<SceneSubsystem>())
+				if (let scenes = host.Subsystems.GetSubsystem<SceneSubsystem>())
 				{
 					scenes.ForEachScene(scope [&](scene) =>
 					{

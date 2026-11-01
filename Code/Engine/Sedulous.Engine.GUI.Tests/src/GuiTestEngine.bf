@@ -16,7 +16,7 @@ namespace Sedulous.Engine.GUI.Tests;
 /// font through the data root.
 class GuiTestEngine
 {
-	public Context Context = new .() ~ delete _;
+	public SubsystemManager Context = new .() ~ delete _;
 	public SceneManager Scenes = new .() ~ delete _;
 	public SceneSubsystem SceneSystems;
 	/// The active input source, installed on the input subsystem, which borrows it.

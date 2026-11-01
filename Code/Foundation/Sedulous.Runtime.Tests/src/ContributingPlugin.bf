@@ -17,6 +17,6 @@ class ContributingPlugin : IRuntimePlugin
 
 	public StringView Name => "contributor";
 
-	public void OnLoad(Context context) => mRecorder.Contribute(mId);
-	public void OnUnload(Context context) {}
+	public void OnLoad(SubsystemManager context) => mRecorder.Contribute(mId);
+	public void OnUnload(SubsystemManager context) {}
 }

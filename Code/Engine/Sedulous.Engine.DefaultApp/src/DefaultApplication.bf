@@ -299,7 +299,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		mDataMount = new NativeFileSystem(mDataRoot);
 
 		EngineScriptSurface.Populate(mScriptSurface);
-		mScenes = host.Context.AddSubsystem<SceneSubsystem>();
+		mScenes = host.Subsystems.AddSubsystem<SceneSubsystem>();
 		// The assembly blueprint: every registered manager's scene is built from the FULL
 		// composition, which is the single source of truth.
 		// TAKES OWNERSHIP, so nothing here keeps a reference to free a second time.
@@ -315,26 +315,26 @@ class DefaultApplication : IApplication, ISceneObserver
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mRender = new RenderSubsystem(graphics.Raw, graphics.FramesInFlight, mDataMount);
-			host.Context.RegisterSubsystem<RenderSubsystem>(mRender);
+			host.Subsystems.RegisterSubsystem<RenderSubsystem>(mRender);
 
 			// Drives skeletal animation off the scene tick, and needs the render managers.
-			host.Context.AddSubsystem<AnimationSubsystem>();
-			host.Context.AddSubsystem<ParticleSubsystem>();
+			host.Subsystems.AddSubsystem<AnimationSubsystem>();
+			host.Subsystems.AddSubsystem<ParticleSubsystem>();
 			// The terrain renderer registers itself on the opaque category and wires the
 			// manager scene composition already injected.
-			host.Context.AddSubsystem<TerrainSubsystem>();
+			host.Subsystems.AddSubsystem<TerrainSubsystem>();
 			// Vegetation scatters onto that terrain and emits instanced sets through the mesh
 			// renderer, so it follows terrain.
-			host.Context.AddSubsystem<VegetationSubsystem>();
+			host.Subsystems.AddSubsystem<VegetationSubsystem>();
 		}
 
-		mPhysics = host.Context.AddSubsystem<PhysicsSubsystem>();
-		host.Context.AddSubsystem<NavigationSubsystem>();
+		mPhysics = host.Subsystems.AddSubsystem<PhysicsSubsystem>();
+		host.Subsystems.AddSubsystem<NavigationSubsystem>();
 
 		// Scripting: the backend, and the run's surface. The COMPLETE runtime surface, from
 		// the composition root, never a hand picked subset: a list kept here would drift.
 		AngelScriptBackend.Register();
-		let scripts = host.Context.AddSubsystem<ScriptSubsystem>();
+		let scripts = host.Subsystems.AddSubsystem<ScriptSubsystem>();
 		scripts.Configure = new (runtime) =>
 			{
 				runtime.Bind(mScriptSurface);
@@ -362,7 +362,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// network components work, and OWNS the per frame transport pump. It is given the
 		// endpoint enumerator because this application owns the instance list while the
 		// subsystem owns the tick.
-		let net = host.Context.AddSubsystem<NetworkSubsystem>();
+		let net = host.Subsystems.AddSubsystem<NetworkSubsystem>();
 		// The subsystem BORROWS the visitor, so it is held here rather than handed over.
 		mEndpointSource = new (visit) =>
 			{
@@ -375,14 +375,14 @@ class DefaultApplication : IApplication, ISceneObserver
 		net.SetEndpointSource(mEndpointSource);
 
 		mAudio = new AudioSubsystem(mAudioEngineSettings);
-		host.Context.RegisterSubsystem<AudioSubsystem>(mAudio);
+		host.Subsystems.RegisterSubsystem<AudioSubsystem>(mAudio);
 		// Resources is read per call, since the manager may be handed over after this.
 		mAudioFacade = new AudioFacade(mAudio, new () => Resources);
 		// The primary's scripting was wired before the subsystem existed.
 		InstallRunAudio(mInstance);
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
-		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
+		host.Subsystems.RegisterSubsystem<InputSubsystem>(mInput);
 		// Every instance's action runtime, so the GUI's consumption and touch guide reach the game.
 		mInput.SetActionRuntimeProvider(new (visit) => { ForEachInstance(scope [&] (instance) => { visit(instance.InputRuntime); }); });
 		// The primary instance reads the shell's devices by default, which is the player's
@@ -392,7 +392,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// The engine's GUI: every game has it (its screen tier, its components, `Gui` in its
 		// scripts).
 		mGui = new GuiSubsystem(mDataMount);
-		host.Context.RegisterSubsystem<GuiSubsystem>(mGui);
+		host.Subsystems.RegisterSubsystem<GuiSubsystem>(mGui);
 		// Its prompts name the game's bindings: the primary instance's runtime, which the game runs on.
 		mGui.SetPromptRuntime(mInstance.InputRuntime);
 		InstallRunGui(mInstance);
@@ -434,7 +434,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// gets the app's activation, and an exit reaches the host.
 	private void WireInstanceScripting(GameInstance instance, IApplicationHost host)
 	{
-		if (let scripts = host.Context.GetSubsystem<ScriptSubsystem>())
+		if (let scripts = host.Subsystems.GetSubsystem<ScriptSubsystem>())
 			scripts.ConfigureHost(instance.RunHost);
 		instance.SetSceneLoader(new (sceneId) =>
 			{
@@ -640,7 +640,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		if (mOwnedResources != null)
 			mOwnedResources.Pump();
 
-		let contextScale = host.Context.TimeScale;
+		let contextScale = host.Subsystems.TimeScale;
 
 		// Every instance, the primary and any extras. Input FIRST, so a tick sees this
 		// frame's keys.
@@ -878,8 +878,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// backbuffer, which is left in the RenderTarget state.
 	protected void RenderFrame(IApplicationHost host, ref FrameContext frame)
 	{
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
-		let scenes = host.Context.GetSubsystem<SceneSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
+		let scenes = host.Subsystems.GetSubsystem<SceneSubsystem>();
 
 		if ((render == null) || !render.IsReady || (scenes == null) || (frame.Encoder == null)
 			|| (frame.BackbufferView == null) || (frame.Window == null))

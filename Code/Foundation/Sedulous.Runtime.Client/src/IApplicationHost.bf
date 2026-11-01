@@ -11,7 +11,7 @@ namespace Sedulous.Runtime.Client;
 interface IApplicationHost
 {
 	/// Where the application registers its subsystems. The host forces none in.
-	Context Context { get; }
+	SubsystemManager Subsystems { get; }
 
 	IShell Shell { get; }
 	GraphicsDevice Graphics { get; }

@@ -64,7 +64,7 @@ class SoundCueEditorPage : AssetObjectPage, IPlaybackPage
 	{
 		HideAssetRows(); // the cue's fields are a fixed bank of slots: its rows are the page's
 		let host = Services.Host;
-		mVoice = new AuditionVoice((host != null) ? host.Context.GetSubsystem<AudioSubsystem>() : null);
+		mVoice = new AuditionVoice((host != null) ? host.Subsystems.GetSubsystem<AudioSubsystem>() : null);
 		mState = Find<Sedulous.GUI.Label>("cue-state");
 		BuildRows();
 		BindAction(Find<ButtonBase>("cue-restart"), "playback.restart");

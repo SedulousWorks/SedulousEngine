@@ -190,7 +190,7 @@ class PlayerApplication : DefaultApplication
 	/// unloadable module is reported and the run CONTINUES.
 	private void LoadNativeGame(IApplicationHost host)
 	{
-		mPlugins = new PluginHost(host.Context);
+		mPlugins = new PluginHost(host.Subsystems);
 		// Record what the game contributes to scenes, so unloading reverses it.
 		mPlugins.AddRecorder(SceneContributionRecorder.Global);
 
@@ -223,7 +223,7 @@ class PlayerApplication : DefaultApplication
 	{
 		if (mSceneDb == null)
 			return;
-		if (host.Context.GetSubsystem<SceneSubsystem>() == null)
+		if (host.Subsystems.GetSubsystem<SceneSubsystem>() == null)
 			return;
 
 		let instance = ResolveStartupScene(host);
@@ -348,7 +348,7 @@ class PlayerApplication : DefaultApplication
 		if (mSettings.RenderMsaaSamples <= 1)
 			return;
 
-		if (let render = host.Context.GetSubsystem<RenderSubsystem>())
+		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 		{
 			render.MsaaSamples = mSettings.RenderMsaaSamples;
 			GlobalLog(.Information, "Player: scene pass multisampling requested at {}x",

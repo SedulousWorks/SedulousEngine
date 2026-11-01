@@ -97,7 +97,7 @@ class ParticleFXApp : DefaultApplication
 		if ((graphics != null) && (graphics.Raw != null))
 		{
 			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
 
@@ -459,7 +459,7 @@ class ParticleFXApp : DefaultApplication
 	/// cross reference.
 	private void LabelCells(IApplicationHost host)
 	{
-		let render = host.Context.GetSubsystem<RenderSubsystem>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
 
