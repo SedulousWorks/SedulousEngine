@@ -82,6 +82,8 @@ button.manager-tab:checked { background-color: var(--element); color: var(--text
 .manager-toolbar button { height: 30px; }
 .search.manager-search { flex-grow: 0; flex-basis: 280px; height: 30px; margin-right: var(--space-s); }
 .manager-sort { width: 120px; height: 30px; }
+/* The view switch stands as tall as the fields beside it, centred with them. */
+.manager-toolbar > .segmented { align-self: center; height: 30px; }
 button.icon-segment { width: 32px; padding: 0; height: 24px; }
 /* The lists scroll as one column the window's width: the rows stretch across it. */
 .manager-scroll { flex-grow: 1; min-height: 0; flex-direction: column; row-gap: var(--space-xs); overflow-y: auto; overflow-x: hidden;
@@ -107,11 +109,16 @@ button.icon-segment { width: 32px; padding: 0; height: 24px; }
 .manager-version.newer, .manager-tile-meta > .newer { color: var(--warning); }
 .manager-version.older, .manager-tile-meta > .older { color: var(--info); }
 .badge.info { background-color: var(--info-background); color: var(--info); }
+/* A row's buttons stand as tall as the toolbar's, so none looks thin beside the picture. */
+.manager-row > button { height: 30px; padding: 0 14px; flex-shrink: 0; }
+.manager-row > button.slot-button { width: 30px; padding: 0; }
+.manager-row > button.slot-button > icon { width: 16px; height: 16px; }
 button.manager-star { width: 30px; padding: 0; background-color: transparent; }
 button.manager-star:hover { background-color: var(--ghost-hover); }
 button.manager-star > icon { image-color: var(--icon-dim); }
 button.manager-star.on > icon { image-color: var(--favourite); }
-.manager-tile { flex-direction: column; width: 272px; background-color: var(--element); border-radius: 7px; border: 1px solid var(--border); }
+.manager-tile { flex-direction: column; width: 272px; background-color: var(--element); border-radius: 7px; border: 1px solid var(--border);
+                overflow: hidden; } /* the picture takes the card's rounded top */
 .manager-tile:hover { border-color: var(--border-strong); }
 /* The picture is the card's Open, edge to edge across its top. */
 button.manager-tile-open { padding: 0; height: auto; min-height: 0; background-color: transparent; border-radius: 6px 6px 0 0; }
@@ -121,7 +128,7 @@ button.manager-tile-open:hover { opacity: 0.9; background-color: transparent; }
 .manager-tile-meta { flex-direction: row; column-gap: var(--space-xs); }
 .manager-tile-meta > label { color: var(--text-dim); font-size: var(--font-small); white-space: nowrap; }
 .manager-tile-meta > .manager-tile-version { font-family: var(--mono-font); }
-.manager-tile button.manager-star, .manager-tile button.slot-button { height: 26px; }
+.manager-tile button.manager-star, .manager-tile button.slot-button { width: 26px; height: 26px; padding: 0; }
 .manager-missing { flex-direction: column; row-gap: 2px; margin-top: 18px; flex-shrink: 0; }
 .manager-missing-list { flex-direction: column; row-gap: var(--space-xs); }
 .manager-row.missing { border: 1px dashed var(--border); }
@@ -130,7 +137,7 @@ button.manager-tile-open:hover { opacity: 0.9; background-color: transparent; }
                         align-items: center; flex-shrink: 0; }
 .manager-missing-icon > image { width: 20px; height: 20px; image-color: var(--icon-dim); }
 .manager-row.missing .manager-name { color: var(--text-dim); font-weight: 500; }
-button.manager-small { height: 26px; font-size: var(--font-small); color: var(--text-dim); }
+button.manager-small { height: 30px; font-size: var(--font-small); color: var(--text-dim); }
 .manager-footer { flex-direction: row; align-items: center; column-gap: 18px; padding: 10px 40px; flex-shrink: 0;
                   border-top: 1px solid var(--separator); background-color: var(--surface-sunken); }
 .manager-status { color: var(--text); font-size: var(--font-small); white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
