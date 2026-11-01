@@ -182,7 +182,7 @@ class ProjectManagerController
 			outCheck.Message.Set("Choose the folder it is made in.");
 			return;
 		}
-		let shownWhere = ProjectRegistry.ShortenHomePath(folder, home, .. scope .());
+		let shownWhere = RecentProjects.ShortenHomePath(folder, home, .. scope .());
 		if (!DirectoryExists(folder) && FileExists(folder))
 		{
 			outCheck.Message.AppendF("{} is a file, not a folder.", shownWhere);
@@ -192,7 +192,7 @@ class ProjectManagerController
 			PathJoin(folder, trimmed, outCheck.Target);
 		else
 			outCheck.Target.Set(folder);
-		let shownTarget = ProjectRegistry.ShortenHomePath(outCheck.Target, home, .. scope .());
+		let shownTarget = RecentProjects.ShortenHomePath(outCheck.Target, home, .. scope .());
 		if (FileExists(PathJoin(outCheck.Target, ProjectLayout.ManifestFile, .. scope .())))
 		{
 			outCheck.Message.AppendF("{} is a project already: Open Folder opens it.", shownTarget);

@@ -10,11 +10,9 @@ namespace Sedulous.Editor.Project;
 
 /// The headless core of the project manager over the RecentProjects section: touch, remove,
 /// the manifest probe, the engine version relation, and the manifest backup the upgrade
-/// prompt offers.
+/// prompt offers. RecentProjects says how the manager shows the list.
 static class ProjectRegistry
 {
-	private static StringView[12] cMonths = .("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
-
 	/// Records `path` as the most recently opened project, opened now by the wall clock.
 	public static void TouchRecentProject(Settings store, StringView path, StringView name, StringView engineVersion)
 		=> TouchRecentProject(store, path, name, engineVersion, GetUnixTime());
@@ -92,10 +90,86 @@ static class ProjectRegistry
 		return true;
 	}
 
+	/// Reads a project's manifest WITHOUT opening the project: no databases, no scaffolding.
+	/// NotFound when there is no manifest at `directory`.
+	public static Result<void, ErrorCode> ProbeProject(StringView directory, ProjectSettings outSettings)
+	{
+		if (!DirectoryExists(directory))
+			return .Err(.NotFound);
+		let fs = scope NativeFileSystem(directory);
+		return ProjectManifest.Load(fs, outSettings);
+	}
+
+	/// "major.minor.patch", all three numeric, against this engine's constants.
+	public static EngineVersionRelation CompareProjectEngineVersion(StringView projectVersion)
+	{
+		if (projectVersion.IsEmpty)
+			return .Unstamped;
+		uint32[3] parts = .(0, 0, 0);
+		int part = 0;
+		bool anyDigit = false;
+		for (let c in projectVersion)
+		{
+			if (c.IsDigit)
+			{
+				parts[part] = parts[part] * 10 + (uint32)(c - '0');
+				anyDigit = true;
+			}
+			else if ((c == '.') && (part < 2) && anyDigit)
+			{
+				part++;
+				anyDigit = false;
+			}
+			else
+			{
+				return .Unstamped;
+			}
+		}
+		if ((part != 2) || !anyDigit)
+			return .Unstamped;
+		uint32[3] engine = .(EngineVersion.Major, EngineVersion.Minor, EngineVersion.Patch);
+		for (int i < 3)
+		{
+			if (parts[i] < engine[i])
+				return .ProjectOlder;
+			if (parts[i] > engine[i])
+				return .ProjectNewer;
+		}
+		return .Same;
+	}
+
+	/// Backs the manifest up before an engine upgrade rewrites it: Project.xml copied to
+	/// "Project.xml.<stampedVersion>.bak" beside it, "unstamped" for a manifest predating
+	/// the stamp, overwriting an older backup for the SAME version. Content assets are not
+	/// copied: they migrate through their own versioned serializers, and whole tree safety
+	/// is version control's job.
+	public static Result<void, ErrorCode> BackupProjectManifest(StringView directory, String outBackupPath)
+	{
+		let probed = scope ProjectSettings();
+		if (ProbeProject(directory, probed) case .Err(let error))
+			return .Err(error);
+		let manifest = PathJoin(directory, ProjectLayout.ManifestFile, .. scope .());
+		outBackupPath.Set(manifest);
+		outBackupPath.Append('.');
+		outBackupPath.Append(probed.EngineVersion.IsEmpty ? "unstamped" : probed.EngineVersion);
+		outBackupPath.Append(".bak");
+		let bytes = scope List<uint8>();
+		if (ReadFile(manifest, bytes) case .Err(let readError))
+			return .Err(readError);
+		return WriteFile(outBackupPath, bytes);
+	}
+}
+
+/// The manager's view of the recent list: its order, and its words for when and where. A class of
+/// its own, as Raptor's RecentProjects struct is.
+static class RecentProjects
+{
+	private static StringView[12] cMonths = .("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
+
 	/// The entries the manager lists, in its order, into `outEntries` (BORROWED from `registry`,
 	/// valid until it changes): those matching `query` (in the name or the folder, any case; empty
 	/// matches all), pinned ones first, then by name or by recency (the list's own order).
-	public static void ArrangeRecentProjects(RecentProjectsSettings registry, StringView query, bool byName, List<RecentProjectEntry> outEntries)
+	public static void Arrange(RecentProjectsSettings registry, StringView query, bool byName, List<RecentProjectEntry> outEntries)
 	{
 		outEntries.Clear();
 		for (let entry in registry.Entries)
@@ -215,74 +289,5 @@ static class ProjectRegistry
 		}
 		outText.Append('~');
 		outText.Append(path.Substring(root.Length));
-	}
-
-	/// Reads a project's manifest WITHOUT opening the project: no databases, no scaffolding.
-	/// NotFound when there is no manifest at `directory`.
-	public static Result<void, ErrorCode> ProbeProject(StringView directory, ProjectSettings outSettings)
-	{
-		if (!DirectoryExists(directory))
-			return .Err(.NotFound);
-		let fs = scope NativeFileSystem(directory);
-		return ProjectManifest.Load(fs, outSettings);
-	}
-
-	/// "major.minor.patch", all three numeric, against this engine's constants.
-	public static EngineVersionRelation CompareProjectEngineVersion(StringView projectVersion)
-	{
-		if (projectVersion.IsEmpty)
-			return .Unstamped;
-		uint32[3] parts = .(0, 0, 0);
-		int part = 0;
-		bool anyDigit = false;
-		for (let c in projectVersion)
-		{
-			if (c.IsDigit)
-			{
-				parts[part] = parts[part] * 10 + (uint32)(c - '0');
-				anyDigit = true;
-			}
-			else if ((c == '.') && (part < 2) && anyDigit)
-			{
-				part++;
-				anyDigit = false;
-			}
-			else
-			{
-				return .Unstamped;
-			}
-		}
-		if ((part != 2) || !anyDigit)
-			return .Unstamped;
-		uint32[3] engine = .(EngineVersion.Major, EngineVersion.Minor, EngineVersion.Patch);
-		for (int i < 3)
-		{
-			if (parts[i] < engine[i])
-				return .ProjectOlder;
-			if (parts[i] > engine[i])
-				return .ProjectNewer;
-		}
-		return .Same;
-	}
-
-	/// Backs the manifest up before an engine upgrade rewrites it: Project.xml copied to
-	/// "Project.xml.<stampedVersion>.bak" beside it, "unstamped" for a manifest predating
-	/// the stamp, overwriting an older backup for the SAME version. Content assets are not
-	/// copied: they migrate through their own versioned serializers, and whole tree safety
-	/// is version control's job.
-	public static Result<void, ErrorCode> BackupProjectManifest(StringView directory, String outBackupPath)
-	{
-		let probed = scope ProjectSettings();
-		if (ProbeProject(directory, probed) case .Err(let error))
-			return .Err(error);
-		let manifest = PathJoin(directory, ProjectLayout.ManifestFile, .. scope .());
-		outBackupPath.Set(manifest);
-		outBackupPath.Append('.');
-		outBackupPath.Append(probed.EngineVersion.IsEmpty ? "unstamped" : probed.EngineVersion);
-		outBackupPath.Append(".bak");
-		let bytes = scope List<uint8>();
-		if (ReadFile(manifest, bytes) case .Err(let readError))
-			return .Err(readError);
-		return WriteFile(outBackupPath, bytes);
 	}
 }

@@ -142,7 +142,7 @@ static class ProjectRegistryTests
 	private static void Arranged(RecentProjectsSettings registry, StringView query, bool byName, String outText)
 	{
 		let list = scope List<RecentProjectEntry>();
-		ProjectRegistry.ArrangeRecentProjects(registry, query, byName, list);
+		RecentProjects.Arrange(registry, query, byName, list);
 		Names(list, outText);
 	}
 
@@ -180,34 +180,34 @@ static class ProjectRegistryTests
 	public static void WhenAProjectWasOpenedIsSaidForAPersonByTheLocalCalendar()
 	{
 		let now = 1793539320L; // 2026-11-01 13:22 UTC
-		Test.Assert(ProjectRegistry.DescribeLastOpened(0, now, 0, .. scope .()).IsEmpty, "never kept one");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 20, now, 0, .. scope .()) == "Just now");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 60, now, 0, .. scope .()) == "1 minute ago");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 45 * 60, now, 0, .. scope .()) == "45 minutes ago");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 3 * 3600, now, 0, .. scope .()) == "3 hours ago");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 14 * 3600, now, 0, .. scope .()) == "Yesterday", "23:22 the day before");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 3 * 86400, now, 0, .. scope .()) == "3 days ago");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 20 * 86400, now, 0, .. scope .()) == "2 weeks ago");
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 60 * 86400, now, 0, .. scope .()) == "2 Sep 2026");
+		Test.Assert(RecentProjects.DescribeLastOpened(0, now, 0, .. scope .()).IsEmpty, "never kept one");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 20, now, 0, .. scope .()) == "Just now");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 60, now, 0, .. scope .()) == "1 minute ago");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 45 * 60, now, 0, .. scope .()) == "45 minutes ago");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 3 * 3600, now, 0, .. scope .()) == "3 hours ago");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 14 * 3600, now, 0, .. scope .()) == "Yesterday", "23:22 the day before");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 3 * 86400, now, 0, .. scope .()) == "3 days ago");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 20 * 86400, now, 0, .. scope .()) == "2 weeks ago");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 60 * 86400, now, 0, .. scope .()) == "2 Sep 2026");
 		// The day turns at local midnight: 14 hours ago is today where it is 10 hours later.
-		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 14 * 3600, now, 10 * 3600, .. scope .()) == "14 hours ago");
+		Test.Assert(RecentProjects.DescribeLastOpened(now - 14 * 3600, now, 10 * 3600, .. scope .()) == "14 hours ago");
 
-		Test.Assert(ProjectRegistry.DescribeTime(0, 0, .. scope .()).IsEmpty);
-		Test.Assert(ProjectRegistry.DescribeTime(now, 0, .. scope .()) == "1 Nov 2026, 13:22");
-		Test.Assert(ProjectRegistry.DescribeTime(now - 13 * 3600 - 20 * 60, 0, .. scope .()) == "1 Nov 2026, 00:02");
-		Test.Assert(ProjectRegistry.DescribeTime(now, -14 * 3600, .. scope .()) == "31 Oct 2026, 23:22");
+		Test.Assert(RecentProjects.DescribeTime(0, 0, .. scope .()).IsEmpty);
+		Test.Assert(RecentProjects.DescribeTime(now, 0, .. scope .()) == "1 Nov 2026, 13:22");
+		Test.Assert(RecentProjects.DescribeTime(now - 13 * 3600 - 20 * 60, 0, .. scope .()) == "1 Nov 2026, 00:02");
+		Test.Assert(RecentProjects.DescribeTime(now, -14 * 3600, .. scope .()) == "31 Oct 2026, 23:22");
 	}
 
 	[Test]
 	public static void AFolderUnderTheHomeShowsAsTildeAWholeFolderNameOnly()
 	{
-		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games/Snowline", "/home/rob", .. scope .()) == "~/Games/Snowline");
-		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games", "/home/rob/", .. scope .()) == "~/Games");
-		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob", "/home/rob", .. scope .()) == "~");
-		Test.Assert(ProjectRegistry.ShortenHomePath("/home/robert/Games", "/home/rob", .. scope .()) == "/home/robert/Games");
-		Test.Assert(ProjectRegistry.ShortenHomePath("/media/usb/Jam", "/home/rob", .. scope .()) == "/media/usb/Jam");
-		Test.Assert(ProjectRegistry.ShortenHomePath("C:\\Users\\rob\\Games", "C:\\Users\\rob", .. scope .()) == "~\\Games");
-		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games", "", .. scope .()) == "/home/rob/Games");
+		Test.Assert(RecentProjects.ShortenHomePath("/home/rob/Games/Snowline", "/home/rob", .. scope .()) == "~/Games/Snowline");
+		Test.Assert(RecentProjects.ShortenHomePath("/home/rob/Games", "/home/rob/", .. scope .()) == "~/Games");
+		Test.Assert(RecentProjects.ShortenHomePath("/home/rob", "/home/rob", .. scope .()) == "~");
+		Test.Assert(RecentProjects.ShortenHomePath("/home/robert/Games", "/home/rob", .. scope .()) == "/home/robert/Games");
+		Test.Assert(RecentProjects.ShortenHomePath("/media/usb/Jam", "/home/rob", .. scope .()) == "/media/usb/Jam");
+		Test.Assert(RecentProjects.ShortenHomePath("C:\\Users\\rob\\Games", "C:\\Users\\rob", .. scope .()) == "~\\Games");
+		Test.Assert(RecentProjects.ShortenHomePath("/home/rob/Games", "", .. scope .()) == "/home/rob/Games");
 	}
 
 	/// New Project's check of `name` in `inFolder` (under `root`; empty: the root itself), its folders shown

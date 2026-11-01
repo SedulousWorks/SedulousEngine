@@ -615,7 +615,7 @@ class ProjectManagerView
 		if (mServices.StoreChanged != null)
 			mServices.StoreChanged();
 		mFocusPath.Set(to);
-		let shown = ProjectRegistry.ShortenHomePath(to, mHome, .. scope .());
+		let shown = RecentProjects.ShortenHomePath(to, mHome, .. scope .());
 		SetNote(scope $"Found it: the project is listed at {shown} now.");
 		Later(true);
 		return true;
@@ -952,7 +952,7 @@ class ProjectManagerView
 				mServices.Controller.NoteOpened(d.Target, probed.Name, probed.EngineVersion);
 				if (mServices.StoreChanged != null)
 					mServices.StoreChanged();
-				SetNote(scope $"{name} is in your projects, in {ProjectRegistry.ShortenHomePath(d.Target, mHome, .. scope .())}.");
+				SetNote(scope $"{name} is in your projects, in {RecentProjects.ShortenHomePath(d.Target, mHome, .. scope .())}.");
 			}
 			else
 				SetStatus(scope $"{name} downloaded, but holds no Project.xml.");
@@ -1245,7 +1245,7 @@ class ProjectManagerView
 		let now = GetUnixTime();
 		let offset = GetLocalTimeOffset(now);
 		let arranged = scope List<RecentProjectEntry>();
-		ProjectRegistry.ArrangeRecentProjects(mServices.Controller.Entries, mQuery, mServices.Controller.SortByName, arranged);
+		RecentProjects.Arrange(mServices.Controller.Entries, mQuery, mServices.Controller.SortByName, arranged);
 		int present = 0;
 		for (let probe in mProbes)
 			if (probe.Found)
@@ -1264,8 +1264,8 @@ class ProjectManagerView
 			card.Name.Set(probe.Name.IsEmpty ? StringView(entry.Name) : StringView(probe.Name));
 			card.EngineVersion.Set(probe.EngineVersion);
 			card.Relation = ProjectRegistry.CompareProjectEngineVersion(probe.EngineVersion);
-			ProjectRegistry.DescribeLastOpened(entry.LastOpened, now, offset, card.Opened);
-			ProjectRegistry.DescribeTime(entry.LastOpened, offset, card.OpenedAt);
+			RecentProjects.DescribeLastOpened(entry.LastOpened, now, offset, card.Opened);
+			RecentProjects.DescribeTime(entry.LastOpened, offset, card.OpenedAt);
 			card.Favourite = entry.Favourite;
 			if (list != null)
 				Adopt(list, grid ? Tile(card) : Row(card));
@@ -1497,7 +1497,7 @@ class ProjectManagerView
 		else if (!version.IsEmpty)
 			Adopt(title, Text("Upgrades when opened", "badge info"));
 		Adopt(text, title);
-		let path = Text(ProjectRegistry.ShortenHomePath(card.Path, mHome, .. scope .()), "manager-path");
+		let path = Text(RecentProjects.ShortenHomePath(card.Path, mHome, .. scope .()), "manager-path");
 		path.Tooltip = card.Path;
 		Adopt(text, path);
 		Adopt(row, text);
@@ -1580,7 +1580,7 @@ class ProjectManagerView
 		let text = new Sedulous.GUI.Panel();
 		text.AddClass("manager-text");
 		Adopt(text, Text(entry.Name, "manager-name"));
-		let path = Text(ProjectRegistry.ShortenHomePath(entry.Path, mHome, .. scope .()), "manager-path");
+		let path = Text(RecentProjects.ShortenHomePath(entry.Path, mHome, .. scope .()), "manager-path");
 		path.Tooltip = entry.Path;
 		Adopt(text, path);
 		Adopt(row, text);
