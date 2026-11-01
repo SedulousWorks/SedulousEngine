@@ -524,7 +524,7 @@ class ProjectLauncherTests
 	}
 
 	[Test]
-	public static void UnderTheEditorsSheetACardsPictureFillsItsButtonEvenlyInsideTheCard()
+	public static void UnderTheEditorsSheetACardsPictureFillsItEdgeToEdgeInsideItsBorderAt16By9()
 	{
 		let l = scope Launcher();
 		l.View.SetGridView(true);
@@ -561,8 +561,10 @@ class ProjectLauncherTests
 		Test.Assert(Math.Abs(left - top) < 0.01f, values);
 		Test.Assert(Math.Abs(right - bottom) < 0.01f, values);
 		Test.Assert(Math.Abs(left - right) < 0.01f, values);
-		Test.Assert(b.X >= c.X, "inside the card");
-		Test.Assert(b.X + b.Width <= c.X + c.Width + 0.5f);
+		// Inside the card's 1px border (var(--border), so the tokens reached the sheet), edge to edge.
+		Test.Assert(Math.Abs(b.X - (c.X + 1.0f)) < 0.01f, values);
+		Test.Assert(Math.Abs((b.X + b.Width) - (c.X + c.Width - 1.0f)) < 0.01f, values);
+		Test.Assert(Math.Abs(p.Width / p.Height - 16.0f / 9.0f) < 0.01f * (16.0f / 9.0f), "16:9, whatever its column's width");
 	}
 
 	/// The names of the projects listed, in their order.
