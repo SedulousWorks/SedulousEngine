@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.VG; // PathBuilder, ShapeBuilder: the rounded corners' clip
 using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
@@ -303,8 +304,18 @@ class Image : UIWidget
 			return;
 		let at = DrawnBounds;
 		let area = ContentBounds;
-		// What passes the box is clipped, as CSS clips a replaced element's content.
+		// What passes the box is clipped, as CSS clips a replaced element's content, and its corners
+		// are rounded with the box's (a thumbnail on a rounded card).
 		let clip = (at.X < area.X) || (at.Y < area.Y) || (at.X + at.Width > area.X + area.Width) || (at.Y + at.Height > area.Y + area.Height);
+		let rounded = !Box.Radii.IsZero;
+		if (rounded)
+		{
+			let shape = scope PathBuilder();
+			ShapeBuilder.BuildRoundedRect(LocalBounds.ToRectangle(), Box.Radii, shape);
+			let path = shape.ToPath();
+			ctx.VG.PushClipPath(path); // flattened as it is pushed
+			delete path;
+		}
 		if (clip)
 			ctx.PushClip(area);
 		if (mImageColor == .White)
@@ -313,6 +324,8 @@ class Image : UIWidget
 			mDrawable.DrawTinted(ctx, at, mImageColor);
 		if (clip)
 			ctx.PopClip();
+		if (rounded)
+			ctx.VG.PopClipPath();
 	}
 
 	private void LoadSource()

@@ -21,6 +21,17 @@ class EffectProbe : UIWidget
 	}
 }
 
+/// A picture that fills its rectangle with one colour; 100 by 50.
+class SolidProbeDrawable : Drawable
+{
+	public override void Draw(DrawContext ctx, Rect dest)
+	{
+		ctx.VG.FillRect(dest.ToRectangle(), .White);
+	}
+
+	public override Float2? IntrinsicSize => Float2(100.0f, 50.0f);
+}
+
 /// Filters, backdrop filters, blend modes, group opacity, rounded clipping and text effects.
 class EffectsTests
 {
@@ -199,6 +210,32 @@ class EffectsTests
 
 		Apply(card, "card { overflow: visible; }");
 		Test.Assert(!card.ClipsChildren);
+	}
+
+	[Test]
+	public static void AnImageWithRoundedCornersClipsItsPictureToThemAsCssRoundsAReplacedElement()
+	{
+		let picture = new Sedulous.GUI.Image();
+		defer picture.ReleaseRef();
+		picture.Tag = "img";
+		picture.Size = .(100.0f, 50.0f);
+		let drawable = new SolidProbeDrawable();
+		picture.SetDrawable(drawable);
+		drawable.ReleaseRef(); // the image's keeps it
+		Apply(picture, "img { border-radius: 8px; }");
+		let canvas = scope VGContext();
+		DrawWith(picture, canvas, true);
+		bool stencilClipped = false;
+		for (let cmd in canvas.GetBatch().Commands)
+			stencilClipped = stencilClipped || (cmd.ClipMode == .Stencil);
+		Test.Assert(stencilClipped);
+
+		// Square corners: no path clip.
+		Apply(picture, "img { border-radius: 0; }");
+		let square = scope VGContext();
+		DrawWith(picture, square, true);
+		for (let cmd in square.GetBatch().Commands)
+			Test.Assert(cmd.ClipMode != .Stencil);
 	}
 
 	[Test]
