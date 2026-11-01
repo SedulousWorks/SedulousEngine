@@ -586,8 +586,9 @@ class Ball
 			scene.Scripts.Emit("Note", int(what));
 	}
 
-	// The host: a player has joined. They take a bot's seat: a hunter spawned for them where the
-	// bot stands, in its costume; the bot wanders on as a plain guest. No bot seat left: they watch.
+	// The host: a player has joined. They take a bot's seat with a score of their own, from zero: a
+	// hunter spawned for them where the bot stands, in its costume; the bot wanders on as a plain
+	// guest. No bot seat left: they watch.
 	void onJoined(int who)
 	{
 		if (Net.IsClient)
@@ -605,12 +606,14 @@ class Ball
 				hunter.SetParent(players, true); // guests make way for it
 			m_known.insertLast(hunter);
 			setOwner(h, who);
+			addScore(h, -scoreOf(h)); // the player starts at nothing, not at the bot's score
 			return;
 		}
 		Net.RpcNumberTo(who, "note", double(kNoteFull));
 	}
 
-	// The host: a player has left. Their seat goes back to its bot, and their hunter goes.
+	// The host: a player has left. Their seat goes back to its bot, keeping the score they made, and
+	// their hunter goes.
 	void onLeft(int who)
 	{
 		if (Net.IsClient)
