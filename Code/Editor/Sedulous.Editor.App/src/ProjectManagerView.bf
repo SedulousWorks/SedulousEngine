@@ -61,7 +61,7 @@ class ProjectManagerView
 	public const String cDownloadSamplePath = "Editor/DownloadSample.xml";
 	private const float cDialogWidth = 600.0f;
 	private const float cDialogHeight = 330.0f;
-	private const float cDownloadDialogHeight = 260.0f;
+	private const float cDownloadDialogHeight = 200.0f;
 	/// The buttons that make a project and open a folder: the toolbar's and the welcome's.
 	private static StringView[2] cNewButtons = .("manager-new", "manager-welcome-new");
 	private static StringView[2] cOpenButtons = .("manager-open", "manager-welcome-open");

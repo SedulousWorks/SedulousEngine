@@ -740,6 +740,28 @@ class ProjectLauncherTests
 		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.Second));
 	}
 
+	/// A folder with no spaces in it breaks anywhere in the check line, inside its box.
+	[Test]
+	public static void UnderTheEditorsSheetALongFolderWrapsInsideTheCheckLine()
+	{
+		let l = scope Launcher();
+		let folder = scope String(l.Root)..Append('/')..Append('a', 160);
+		l.Controller.SetLastLocation(folder);
+		l.View.ShowCreateDialog();
+		let dialog = l.View.CreateDialog;
+		Test.Assert(dialog != null);
+		// Named, so the line shows the folder it will make.
+		(dialog.FindElement("new-project-name") as Sedulous.GUI.TextField).RequestFocus();
+		l.Scene.EventDispatcher.InjectText("Harbour");
+		l.Sheet = new EditorSheet(true); // text measured: a wrap needs its widths
+		l.Sheet.Apply(l.Scene);
+		l.Scene.UpdateLayout();
+		let text = dialog.FindElement("new-project-where").ScreenBounds;
+		let line = dialog.FindElement("new-project-check").ScreenBounds;
+		Test.Assert(text.X + text.Width <= line.X + line.Width + 0.5f, "inside the line's box");
+		Test.Assert(text.Height > 30.0f, scope $"wrapped onto more than one line ({text.Height})");
+	}
+
 	[Test]
 	public static void UnderTheEditorsSheetARowsMenuButtonStandsAsTallAsOpen()
 	{

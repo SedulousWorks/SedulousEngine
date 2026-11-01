@@ -196,7 +196,7 @@ button.manager-card:hover { border-color: var(--border-strong); background-color
 .new-project-check { flex-direction: row; align-items: start; column-gap: 10px; padding: 10px 12px; border-radius: var(--radius);
                      border: 1px solid var(--success-border); background-color: var(--success-background); }
 .new-project-check > .message-icon { width: 16px; height: 16px; margin-top: 1px; image-color: var(--success); }
-.new-project-check-text { flex-grow: 1; flex-basis: 0; min-width: 0; white-space: normal; color: var(--success); }
+.new-project-check-text { flex-grow: 1; flex-basis: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; color: var(--success); } /* a long path wraps */
 .new-project-check.warning { border-color: var(--warning-border); background-color: var(--warning-background); }
 .new-project-check.warning > .message-icon, .new-project-check.warning > .new-project-check-text { color: var(--warning); image-color: var(--warning); }
 .new-project-check.error { border-color: var(--danger-border); background-color: var(--danger-background); }
