@@ -1,9 +1,17 @@
 /* Masquerade's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): night blue cards
    edged in gold, gold buttons, the costumes' colours for the HUD's mark. Its screens are
-   Title, Hud, Pause and Results (Masquerade.as pushes them). */
+   Title, Maps, Join, Controls, Hud, Pause and Results (Masquerade.as pushes them). */
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 screen.fades:entering { animation: fade-in 0.3s ease-out; }
+
+/* A menu over the ball (pause, the results): the ball dims and blurs behind it. The dim and the blur
+   grow in rather than the screen's opacity, as a faded screen draws through a layer of its own,
+   where its backdrop blur would see nothing behind it. */
+screen.dimmed { background-color: rgba(4, 6, 16, 0.55); backdrop-filter: blur(6px); }
+screen.dimmed:entering { animation: dim-in 0.3s ease-out; }
+@keyframes dim-in { from { background-color: rgba(4, 6, 16, 0); backdrop-filter: blur(0px); }
+                    to { background-color: rgba(4, 6, 16, 0.55); backdrop-filter: blur(6px); } }
 
 .card { flex-direction: column; background-color: rgba(10, 16, 32, 0.91); border-radius: 16px; }
 .centre { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; padding: 12px; }
@@ -20,43 +28,98 @@ button.gold:disabled { background-color: #0A0F1E; border: 2px solid #3A2A20; col
 .sand { color: #E0D0B0; }
 .dust { color: #B8A080; }
 
-/* The controls: a row per action, its key and its pad button. */
-.controls { flex-direction: column; align-items: center; gap: 2px; }
-.controls-row { flex-direction: row; align-items: center; width: 560px; }
-.controls-action { width: 300px; font-size: 15px; color: #E0D0B0; }
-.controls-key { width: 120px; font-size: 16px; color: #FFFFFF; }
-.controls-pad { width: 140px; font-size: 16px; color: #F4D080; }
-.controls-head { font-size: 13px; color: #B09878; }
+/* The prompts: the control an action takes, read from the input map for the device in use. A key is
+   a keycap of its name; a pad button its glyph (Tools/glyphs.py), its text hidden under it. */
+prompt.key { height: 34px; min-width: 34px; padding: 0px 10px; font-size: 16px; color: #F4E6C8;
+             background-color: #0C1428; border: 2px solid #7A5A28; border-radius: 8px; text-align: center; }
+prompt.key[kind="pad"] { width: 38px; min-width: 38px; height: 38px; padding: 0px; color: rgba(0, 0, 0, 0);
+                         background-color: rgba(0, 0, 0, 0); border: 0px solid rgba(0, 0, 0, 0); background-size: 38px 38px; }
+prompt.key[binding="pad-south"] { background-image: url("{{{Texture:PadSouth}}}"); }
+prompt.key[binding="pad-east"] { background-image: url("{{{Texture:PadEast}}}"); }
+prompt.key[binding="pad-west"] { background-image: url("{{{Texture:PadWest}}}"); }
+prompt.key[binding="pad-north"] { background-image: url("{{{Texture:PadNorth}}}"); }
+prompt.key[binding="pad-lb"] { background-image: url("{{{Texture:PadLB}}}"); }
+prompt.key[binding="pad-rb"] { background-image: url("{{{Texture:PadRB}}}"); }
+prompt.key[binding="pad-ls"] { background-image: url("{{{Texture:PadLS}}}"); }
+prompt.key[binding="pad-start"] { background-image: url("{{{Texture:PadStart}}}"); }
+prompt.key[binding="left-stick"] { background-image: url("{{{Texture:LeftStick}}}"); }
 
-/* The title. */
-/* Tight enough to fit a 720-pixel-high view whole. */
-.title-card { padding: 18px 28px; align-items: center; gap: 2px; width: 656px; }
-.title-name { font-size: 62px; color: #F4D080; }
-.title-lead { font-size: 19px; color: #C8B090; margin-bottom: 6px; }
-button.map { width: 420px; height: 42px; font-size: 22px; }
-.map-about { font-size: 15px; color: #B8A080; }
-.map-best { font-size: 14px; color: #A89070; margin-bottom: 4px; }
-.map-choice { font-size: 17px; color: #F4D080; margin-top: 2px; margin-bottom: 4px; }
-.title-row { flex-direction: row; justify-content: center; gap: 10px; margin-bottom: 4px; }
-button.mode { width: 200px; height: 40px; font-size: 20px; }
-textfield.address { width: 200px; height: 40px; }
-.net-status { font-size: 14px; color: #C8A070; }
-.title-quit { margin-top: 4px; margin-bottom: 6px; }
+/* The controls page: a row per action, its prompts and what it does. */
+.controls-card { padding: 28px 44px; align-items: center; gap: 12px; width: 560px; }
+.control-rows { flex-direction: column; align-items: stretch; gap: 10px; width: 440px; }
+.control-row { flex-direction: row; align-items: center; gap: 10px; }
+.control-what { font-size: 18px; color: #E0D0B0; margin-left: 6px; }
+
+/* The title and its pages (Maps, Join): one card in the middle, the ball behind it. */
+.title-card { padding: 36px 56px 40px; align-items: center; gap: 4px; width: 560px; }
+.title-name { font-size: 72px; color: #F4D080; }
+.title-lead { font-size: 18px; color: #C8B090; margin-bottom: 22px; }
+.title-menu { flex-direction: column; align-items: stretch; gap: 10px; width: 300px; }
+button.menu { height: 46px; font-size: 22px; }
+button.menu.gone { display: none; } /* Host, in a browser (Masquerade.as) */
+
+.page-title { font-size: 40px; color: #F4D080; }
+.page-lead { font-size: 17px; color: #C8B090; margin-bottom: 10px; }
+.page-buttons { flex-direction: row; justify-content: center; gap: 14px; margin-top: 14px; }
+button.page { width: 180px; height: 44px; font-size: 21px; }
+button.primary { background-color: #2A1E0C; border: 2px solid #C8963C; }
+button.primary:hover { background-color: #3A2A12; border: 3px solid #F4D080; }
+
+/* The map cards: the name, its line and its best round; the chosen one lit in gold. */
+.maps-card { padding: 28px 32px; align-items: center; gap: 12px; }
+.map-cards { flex-direction: row; gap: 14px; margin-top: 6px; }
+button.map-card { flex-direction: column; align-items: start; gap: 6px; width: 250px; padding: 16px 18px; }
+button.map-card.chosen { background-color: #2A1E0C; border: 3px solid #F4D080; }
+.map-name { font-size: 24px; color: #F4E6C8; }
+.map-about { font-size: 15px; color: #C8B090; white-space: normal; width: 214px; text-align: left; }
+.map-best { font-size: 14px; color: #A89070; margin-top: 4px; }
+
+.join-card { padding: 32px 44px; align-items: center; gap: 8px; width: 520px; }
+textfield.address { width: 320px; height: 44px; font-size: 20px; color: #F4E6C8; background-color: #0C1428; border: 2px solid #7A5A28; border-radius: 10px; padding: 0px 12px; }
+textfield.address:focus-visible { border: 3px solid #F4D080; }
+.net-status { font-size: 15px; color: #C8A070; min-height: 20px; }
 
 /* The HUD: the mark and the points top left, a word in the middle, the time and the place top
    right, the controls below for a moment. It takes no pointer: the round is played beneath it. */
 .hud { flex-grow: 1; flex-direction: column; justify-content: space-between; padding: 18px; gap: 10px; pointer-events: none; }
 .hud-top { flex-direction: row; justify-content: space-between; align-items: start; }
-.hud-card { flex-direction: column; padding: 10px; gap: 2px; background-color: rgba(10, 16, 32, 0.75); border-radius: 10px; }
-.hud-mark-row { flex-direction: row; align-items: center; gap: 6px; }
-.hud-mark { font-size: 20px; }
-.hud-score { font-size: 18px; color: #E0D0B0; }
-.hud-note { font-size: 28px; color: #F4D080; opacity: 0; }
-.hud-time { font-size: 22px; color: #F4E6C8; }
-.hud-rank { font-size: 16px; color: #E0D0B0; }
-.hud-right { align-items: end; }
+.hud-card { flex-direction: column; padding: 10px 14px; gap: 2px; background-color: rgba(10, 16, 32, 0.78); border-radius: 12px; border: 1px solid rgba(200, 150, 60, 0.35); }
+.hud-caption { font-size: 13px; color: #B8A080; }
+
+/* Your mark: the costume's portrait, and its name in its colour. */
+.hud-mark-card { flex-direction: row; align-items: center; gap: 12px; padding: 8px 16px 8px 8px; }
+.hud-portrait { width: 72px; height: 72px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.06); }
+.hud-mark-words { flex-direction: column; gap: 2px; }
+.hud-mark { font-size: 24px; }
+.hud-left { flex-direction: column; align-items: start; gap: 8px; }
+/* The hunter whose mark you are, near (Ball.as): a quiet line under your mark, not an alarm. */
+.hud-near { font-size: 16px; color: #F0B0A0; padding: 5px 12px; background-color: rgba(60, 14, 18, 0.72); border-radius: 8px; opacity: 0; }
+
+/* The clock: the time large over a bar of the round left, warm and pulsing in its last half minute. */
+.hud-middle { flex-direction: column; align-items: center; gap: 10px; }
+.hud-clock { align-items: center; width: 150px; }
+.hud-time { font-size: 30px; color: #F4E6C8; }
+.hud-timebar { width: 120px; height: 5px; }
+.hud-clock.late { border: 1px solid #F4A050; }
+.hud-clock.late .hud-time { color: #F4A050; animation: clock-pulse 0.5s ease-in-out infinite alternate; }
+@keyframes clock-pulse { from { opacity: 1; color: #FFC070; } to { opacity: 0.45; color: #E07830; } }
+
+/* The word a moment in the middle (a tag, a miss, a flare), on a card of its own over the floor. */
+.hud-note { font-size: 26px; color: #F4D080; padding: 6px 16px; background-color: rgba(10, 16, 32, 0.82); border-radius: 10px; opacity: 0; }
+.hud-tag { padding: 6px 12px; background-color: rgba(10, 16, 32, 0.75); border-radius: 10px; opacity: 0; }
+
+/* Your points, large, each change floating up beside them a moment, then your place. */
+.hud-points-card { align-items: end; }
+.hud-points-row { flex-direction: row; align-items: center; gap: 10px; }
+.hud-score { font-size: 34px; color: #F4E6C8; }
+.hud-delta { font-size: 20px; opacity: 0; }
+.hud-delta.gain { color: #F4D080; }
+.hud-delta.loss { color: #D87070; }
+.hud-rank { font-size: 16px; color: #E0D0B0; margin-top: 2px; }
 .hud-foot { flex-direction: row; justify-content: center; }
-.hud-controls { padding: 14px; background-color: rgba(10, 16, 32, 0.78); border-radius: 12px; opacity: 0; }
+.hud-controls { flex-direction: row; gap: 22px; padding: 12px 18px; background-color: rgba(10, 16, 32, 0.78); border-radius: 12px; opacity: 0; }
+.hint { flex-direction: row; align-items: center; gap: 8px; }
+.hint-what { font-size: 17px; color: #E0D0B0; }
 
 /* The mark's costume, in its colour, lightened to read on the night blue (the black coat silver). */
 .costume-0 { color: rgb(242, 115, 140); }
@@ -70,10 +133,14 @@ textfield.address { width: 200px; height: 40px; }
 .pause-card { padding: 24px; gap: 10px; width: 628px; }
 .pause-title { font-size: 36px; color: #F4D080; }
 button.wide { height: 44px; font-size: 22px; }
-.pause-controls { margin-top: 6px; }
-.results-card { padding: 26px; align-items: center; gap: 8px; width: 572px; }
-.results-title { font-size: 40px; color: #F4D080; }
-.results-you { font-size: 22px; color: #F4E6C8; margin-bottom: 4px; }
-.results-line { font-size: 18px; color: #E0D0B0; }
-.results-best { font-size: 15px; color: #B8A080; margin-bottom: 8px; }
-button.results { width: 320px; height: 42px; font-size: 21px; }
+.results-card { padding: 28px 40px; align-items: center; gap: 8px; width: 560px; }
+.results-title { font-size: 42px; color: #F4D080; }
+.results-you { font-size: 20px; color: #F4E6C8; margin-bottom: 8px; }
+.rank-table { flex-direction: column; align-items: stretch; gap: 4px; width: 420px; }
+.rank-row { flex-direction: row; align-items: center; height: 40px; padding: 0px 14px; border-radius: 8px; background-color: rgba(255, 255, 255, 0.04); }
+.rank-row.you { background-color: #2A1E0C; border: 2px solid #C8963C; }
+.rank-place { width: 52px; font-size: 18px; color: #B8A080; }
+.rank-name { flex-grow: 1; font-size: 20px; color: #E0D0B0; }
+.rank-points { width: 90px; font-size: 20px; color: #F4E6C8; text-align: end; }
+.rank-row.you .rank-name { color: #F4D080; }
+.results-best { font-size: 15px; color: #B8A080; margin-top: 6px; }

@@ -41,9 +41,9 @@ class Player
 	private Float4 m_remote = Float4(0.0f, 0.0f, 0.0f, 0.0f); // a remote player's input (the host)
 	private float m_remoteAge = 99.0f;
 	private int m_sent = -1;          // the input last sent to the host (a client)
+	private bool m_ringShown = false; // the ring under this hunter shown (it is this peer's)
 	private float m_sendIn = 0.0f;
 	private bool m_handedOver = false; // a client's: its agent stopped for the host's transforms
-	private bool m_menu = false;       // a menu covers a networked round (Masquerade.as): no input
 
 	void onStart()
 	{
@@ -72,12 +72,6 @@ class Player
 		return owner() == (me < 0 ? 0 : me);
 	}
 
-	// A menu over a networked round (Masquerade.as): this peer's player stands still under it.
-	void onMenu(int shown)
-	{
-		m_menu = shown != 0;
-	}
-
 	// The host: a remote player's stick (x, z), sprint and dance, from Ball.as.
 	void onInput(Float4 input)
 	{
@@ -87,13 +81,29 @@ class Player
 
 	void onUpdate(float dt)
 	{
+		// The ring on the floor under your own guest (maps.py: hidden on every hunter), once whose
+		// this hunter is is known (a joiner's hunter becomes its own as the host's state arrives).
+		bool own = mine();
+		if (own != m_ringShown)
+		{
+			Entity ring = self.FindChildByName("Ring");
+			if (ring.IsValid())
+			{
+				DecalComponent@ decal = DecalComponent::of(ring);
+				if (decal !is null)
+				{
+					decal.Visible = own;
+					m_ringShown = own;
+				}
+			}
+		}
 		// What the player asks for: the stick as a direction on the floor, sprint, dance, a tag.
 		float dx = 0.0f;
 		float dz = 0.0f;
 		bool sprint = false;
 		bool dance = false;
 		bool tag = false;
-		if (mine() && !m_menu)
+		if (mine())
 		{
 			Float2 stick = Input.Value2D("Move");
 			float amount = Sqrt(stick.X * stick.X + stick.Y * stick.Y);

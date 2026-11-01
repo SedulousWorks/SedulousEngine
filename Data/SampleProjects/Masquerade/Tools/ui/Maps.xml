@@ -1,0 +1,32 @@
+<!-- The map, for playing alone or hosting (Masquerade.as): a card per map with its line and its best
+     round, the chosen one lit; then Start (Play, or Host), or Back to the title (Escape, East: the
+     screen stack's own back). Styled by MasqueradeSheet.css. -->
+<Screen class="fades" covers="true" nav-default="map-0">
+  <Panel class="centre">
+    <Panel class="card maps-card">
+      <Label id="maps-heading" class="page-title" text="Choose the ball"/>
+      <Panel class="map-cards">
+        <Button id="map-0" class="gold map-card">
+          <Label class="map-name" text="The Palace"/>
+          <Label class="map-about" text="A ballroom and a courtyard, a hundred and fifty guests"/>
+          <Label id="map-best-0" class="map-best" text=""/>
+        </Button>
+        <Button id="map-1" class="gold map-card">
+          <Label class="map-name" text="The Canal"/>
+          <Label class="map-about" text="A campo at carnival: quays, bridges, gondolas passing under"/>
+          <Label id="map-best-1" class="map-best" text=""/>
+        </Button>
+        <Button id="map-2" class="gold map-card">
+          <Label class="map-name" text="The Gardens"/>
+          <Label class="map-about" text="A hedge maze round a fountain, and the orchestra's orangery"/>
+          <Label id="map-best-2" class="map-best" text=""/>
+        </Button>
+      </Panel>
+      <Label id="net-status" class="net-status" text=""/>
+      <Panel class="page-buttons">
+        <Button id="maps-back" class="gold page" text="Back"/>
+        <Button id="maps-start" class="gold page primary" text="Play"/>
+      </Panel>
+    </Panel>
+  </Panel>
+</Screen>

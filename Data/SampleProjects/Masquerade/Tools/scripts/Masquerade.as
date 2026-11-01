@@ -1,14 +1,17 @@
 // Masquerade - the game's orchestrator (the reserved class Game): the title, a round at the ball
 // under its HUD, the pause menu, and the results.
 //
-// The title picks a map, then plays it alone, hosts it (the server on `kPort`, then the map) or
-// joins a host (the map first, then the connection, so the map's networked entities are in place
-// for the host's first snapshot). The round itself is the scene's (Ball.as): this hears it. "Hud"
-// (four times a second: your points, the seconds left, your target's costume, your place), "Note"
-// (something happened to you, or a mask flared), "RoundOver" (everyone's points) and "RoundStart"
-// (the host began another round). Pause (Escape or Start) shows the pause menu, holding the round
-// still when playing alone (a networked round goes on). The title picks the map; the save keeps
-// each map's best round ("best.Palace", "best.Canal", "best.Gardens").
+// The title offers play alone, host, join or quit; the first two choose a map (Maps), then play it
+// alone or host it (the server on `kPort`, waiting for each joiner's ready, then the map); or joins
+// a host: the connection first, from the title, then the host's map (named in its welcome) loads,
+// and the joiner says it is ready, so the map's networked entities are in place for the host's
+// first snapshot. The round itself is the scene's (Ball.as): this hears it. "InReach" (someone to
+// tag in front of you, or no longer), "HunterNear" (the hunter whose mark you are, near, or no
+// longer), "Hud" (four times a second: your points, the seconds left, your target's costume, your
+// place), "Note" (something happened to you, or a mask flared), "RoundOver" (everyone's points) and
+// "RoundStart" (the host began another round). Pause (Escape or Start) shows the pause menu,
+// holding the round still when playing alone (a networked round goes on). The title picks the map;
+// the save keeps each map's best round ("best.Palace", "best.Canal", "best.Gardens").
 //
 // The game compiles into the run's one module with the behaviours, so its own names for Ball.as's
 // notes carry the game's name.
@@ -16,6 +19,15 @@
 const float kControlsShown = 7.0f; // how long the controls show as a round starts (s)
 // The screens, on the engine GUI's screen stack (pushed by their documents' ids).
 const string kTitleDoc = "{{{GUI:Title}}}";
+const string kMapsDoc = "{{{GUI:Maps}}}";
+const string kJoinDoc = "{{{GUI:Join}}}";
+const string kControlsDoc = "{{{GUI:Controls}}}";
+// Each costume's portrait (Tools/portraits.py), in the costumes' order (rose, teal and gold gowns,
+// black, plum and ivory coats), as the HUD's Image takes a texture: "{id}".
+array<string> kPortraits = {"{{{Texture:PortraitGownRose}}}", "{{{Texture:PortraitGownTeal}}}",
+                            "{{{Texture:PortraitGownGold}}}", "{{{Texture:PortraitCoatBlack}}}",
+                            "{{{Texture:PortraitCoatPlum}}}", "{{{Texture:PortraitCoatIvory}}}"};
+const float kLateSeconds = 30.0f; // the clock warms for the round's last half minute
 const string kHudDoc = "{{{GUI:Hud}}}";
 const string kPauseDoc = "{{{GUI:Pause}}}";
 const string kResultsDoc = "{{{GUI:Results}}}";
@@ -35,10 +47,10 @@ const int kGameNoteGotTarget = 1;
 const int kGameNoteMissed = 2;
 const int kGameNoteTagged = 3;
 const int kGameNoteFlare = 4;
-const int kGameNoteWrongMap = 5;
 const int kGameNoteFull = 6;
 const int kPort = 7777;
 const int kAlone = 0;
+const float kJoinSeconds = 8.0f; // how long a joiner waits for the host's welcome
 const int kHosting = 1;
 const int kJoining = 2;
 
@@ -60,14 +72,25 @@ class Game
 	private bool m_inRound = false;
 	private bool m_paused = false;
 	private float m_note = 0.0f;         // how long the HUD's word shows yet
+	private float m_delta = 0.0f;        // how long the points' change shows yet
+	private int m_shownScore = 0;        // the points the HUD shows
+	private int m_shownCostume = -1;     // the mark whose portrait the HUD shows
+	private bool m_late = false;         // the clock in the round's last half minute
+	private float m_roundSeconds = 0.0f; // the round's length, as its first report gave the time
+	private bool m_inputHeld = false;    // the "Menu" set pushed (holdInput)
 	private float m_controlsShow = 0.0f; // how long the controls panel shows yet
+	private bool m_onTitle = false;      // the title (or a page over it) is up: the camera sweeps before the dais
 	private int m_map = 0;               // 0 the Palace, 1 the Canal, 2 the Gardens
 	private int m_mode = kAlone;
 	private string m_address = "127.0.0.1";
-	private float m_connectIn = -1.0f;   // a joiner: until it connects, once its map has loaded
+	private float m_readyIn = -1.0f;     // a joiner: until it tells the host it is ready, once the host's map has loaded
+	private float m_joinWait = -1.0f;    // a joiner on the title: how long until it gives up on the host
 
 	void launch()
 	{
+		// A joiner hears the host's map in its welcome (Ball.as's onJoined), here rather than in a
+		// scene's behaviour, as it arrives while the title's scene is the one loaded.
+		Net.OnText("map", NetTextHandler(this.onHostMap));
 		showTitle();
 	}
 
@@ -75,35 +98,98 @@ class Game
 	private void showTitle()
 	{
 		m_inRound = false;
+		m_onTitle = true;
 		m_paused = false;
+		m_controlsOpen = false; // the stack is cleared below
 		Run.TimeScale = 0.0f; // whatever is behind the title holds still
+		holdInput();
 		screens().Clear();
 		screens().Push(kTitleDoc);
-		wire("play-btn", EventHandler(this.onPalace));
-		wire("canal-btn", EventHandler(this.onCanal));
 		wire("solo-btn", EventHandler(this.onSolo));
 		wire("host-btn", EventHandler(this.onHost));
+		if (!Net.CanHost)
+			UIWidget::Of(find("host-btn")).AddClass("gone"); // a browser cannot host; it joins a host's ball
 		wire("join-btn", EventHandler(this.onJoin));
-		setText("map-choice", "The map: " + mapTitle(m_map));
-		setText("net-status", "");
-		find("canal-btn").Enabled = !kCanal.IsNil;
-		wire("gardens-btn", EventHandler(this.onGardens));
-		find("gardens-btn").Enabled = !kGardens.IsNil;
+		wire("controls-btn", EventHandler(this.onControls));
 		wire("quit-btn", EventHandler(this.onQuit));
-		setText("palace-best", bestLine(0));
-		setText("canal-best", bestLine(1));
-		setText("gardens-best", bestLine(2));
 	}
 
-	private bool onPalace(GuiEvent@ e) { choose(0); return true; }
-	private bool onCanal(GuiEvent@ e) { choose(1); return true; }
-	private bool onGardens(GuiEvent@ e) { choose(2); return true; }
+	// ---- the controls page, over the title or the pause menu ----
+	private bool m_controlsOpen = false;
 
-	private void choose(int map)
+	private bool onControls(GuiEvent@ e)
 	{
 		sound(kClick);
+		screens().Push(kControlsDoc);
+		wire("controls-back", EventHandler(this.onControlsBack));
+		m_controlsOpen = true;
+		return true;
+	}
+
+	private bool onControlsBack(GuiEvent@ e)
+	{
+		closeControls();
+		return true;
+	}
+
+	// Its Back, or the game's Pause (Escape, Start): the screen stack's own back would also reach
+	// the pause menu under it, as Escape is the game's Pause too.
+	private void closeControls()
+	{
+		if (!m_controlsOpen)
+			return;
+		sound(kClick);
+		m_controlsOpen = false;
+		screens().Pop();
+	}
+
+	// ---- the map, to play alone or to host: a card each, the chosen one lit, then Start ----
+	private bool m_hostChosen = false; // the map page's Start hosts (else it plays alone)
+
+	private void showMaps(bool host)
+	{
+		m_hostChosen = host;
+		screens().Push(kMapsDoc);
+		setText("maps-heading", host ? "Host a ball" : "Play alone");
+		Button::Of(find("maps-start")).Text = host ? "Host" : "Play";
+		wire("map-0", EventHandler(this.onMap0));
+		wire("map-1", EventHandler(this.onMap1));
+		wire("map-2", EventHandler(this.onMap2));
+		find("map-1").Enabled = !kCanal.IsNil;
+		find("map-2").Enabled = !kGardens.IsNil;
+		for (int map = 0; map < 3; ++map)
+			setText("map-best-" + map, bestLine(map));
+		wire("maps-start", EventHandler(this.onStart));
+		wire("maps-back", EventHandler(this.onBack));
+		setText("net-status", "");
+		choose(m_map, false);
+	}
+
+	private bool onMap0(GuiEvent@ e) { choose(0, true); return true; }
+	private bool onMap1(GuiEvent@ e) { choose(1, true); return true; }
+	private bool onMap2(GuiEvent@ e) { choose(2, true); return true; }
+
+	// The chosen card lit; a click on it chooses, Start then plays or hosts it.
+	private void choose(int map, bool click)
+	{
+		if (click)
+			sound(kClick);
 		m_map = map;
-		setText("map-choice", "The map: " + mapTitle(map));
+		for (int i = 0; i < 3; ++i)
+		{
+			UIWidget@ card = UIWidget::Of(find("map-" + i));
+			if (i == map)
+				card.AddClass("chosen");
+			else
+				card.RemoveClass("chosen");
+		}
+	}
+
+	private bool onBack(GuiEvent@ e)
+	{
+		sound(kClick);
+		screens().Pop();
+		return true;
 	}
 
 	private string mapTitle(int map)
@@ -114,33 +200,79 @@ class Game
 	private bool onSolo(GuiEvent@ e)
 	{
 		sound(kClick);
-		m_mode = kAlone;
-		startRound();
+		showMaps(false);
 		return true;
 	}
 
 	private bool onHost(GuiEvent@ e)
 	{
 		sound(kClick);
+		showMaps(true);
+		return true;
+	}
+
+	// The map page's Start: play the chosen map alone, or host it.
+	private bool onStart(GuiEvent@ e)
+	{
+		sound(kClick);
+		if (!m_hostChosen)
+		{
+			m_mode = kAlone;
+			startRound();
+			return true;
+		}
 		if (!Net.StartServer(kPort))
 		{
 			setText("net-status", "Could not host on port " + kPort);
 			return true;
 		}
 		m_mode = kHosting;
+		Net.WaitForReady(true); // a joiner hears no state until it has loaded this map
 		startRound();
 		return true;
 	}
 
+	// ---- joining: the address, then Join; the map is the host's ----
 	private bool onJoin(GuiEvent@ e)
 	{
 		sound(kClick);
+		screens().Push(kJoinDoc);
+		TextField::Of(find("address")).Text = m_address;
+		wire("join-go", EventHandler(this.onJoinGo));
+		wire("join-back", EventHandler(this.onBack));
+		setText("net-status", "");
+		return true;
+	}
+
+	private bool onJoinGo(GuiEvent@ e)
+	{
+		sound(kClick);
+		if (m_joinWait >= 0.0f)
+			return true; // already waiting for the host
 		string typed = TextField::Of(find("address")).Text;
 		m_address = typed.length() > 0 ? typed : "127.0.0.1";
+		// Connect from the title; the host's welcome names its map, which then loads (onHostMap).
+		if (!Net.Connect(m_address, kPort))
+		{
+			setText("net-status", "Could not reach " + m_address);
+			return true;
+		}
 		m_mode = kJoining;
-		startRound();
-		m_connectIn = 0.2f; // once the map has loaded
+		m_joinWait = kJoinSeconds;
+		setText("net-status", "Joining " + m_address + "...");
 		return true;
+	}
+
+	// A joiner: the host's map. It loads, and once it is ready the host's state begins.
+	void onHostMap(int sender, const string &in name)
+	{
+		if (!Net.IsClient || m_mode != kJoining || m_joinWait < 0.0f)
+			return;
+		m_joinWait = -1.0f;
+		m_map = name == "Canal" ? 1 : (name == "Gardens" ? 2 : 0);
+		setText("net-status", "Joining " + mapTitle(m_map) + "...");
+		startRound();
+		m_readyIn = 0.2f; // once the map has loaded, a moment more for its first frame
 	}
 
 	private string mapName(int map) { return map == 0 ? "Palace" : (map == 1 ? "Canal" : "Gardens"); }
@@ -161,28 +293,63 @@ class Game
 	// ---- a round ----
 	private void startRound()
 	{
+		leaveTitle();
 		m_paused = false;
 		m_inRound = true;
 		m_note = 0.0f;
 		screens().Clear();
 		screens().Push(kHudDoc);
 		setText("hud-target", "");
-		setText("hud-score", "Points 0");
+		setText("hud-score", "0");
+		m_shownScore = 0;
+		m_shownCostume = -1;
+		m_roundSeconds = 0.0f;
+		m_late = false;
 		find("hud-controls").Tween("opacity", "1", 0.3f, "ease"); // from the sheet's 0
 		m_controlsShow = kControlsShown;
-		Run.TimeScale = 1.0f;
+		letGo(); // time again, and the player's input: a round may start from any menu
 		Run.LoadScene(m_map == 0 ? kPalace : (m_map == 1 ? kCanal : kGardens));
+	}
+
+	// The camera back behind the player (CameraRig) as the title gives way to a round.
+	private void leaveTitle()
+	{
+		if (m_onTitle)
+		{
+			m_onTitle = false;
+			Run.Emit("TitleView", -1.0f);
+		}
 	}
 
 	void update(float dt)
 	{
-		if (!m_inRound)
-			return;
-		if (m_connectIn >= 0.0f && Run.SceneReady)
+		if (m_controlsOpen && Input.WasPressed("Pause"))
 		{
-			m_connectIn -= dt; // a moment more, for the scene's first frame
-			if (m_connectIn < 0.0f && !Net.Connect(m_address, kPort))
-				note("Could not reach " + m_address);
+			closeControls();
+			return;
+		}
+		// A joiner on the title, waiting for the host's welcome.
+		if (m_joinWait >= 0.0f)
+		{
+			m_joinWait -= dt;
+			if (m_joinWait < 0.0f)
+			{
+				Net.Disconnect();
+				m_mode = kAlone;
+				setText("net-status", "Could not reach " + m_address);
+			}
+		}
+		if (!m_inRound)
+		{
+			if (m_onTitle)
+				Run.Emit("TitleView", dt); // CameraRig sweeps before the dais
+			return;
+		}
+		if (m_readyIn >= 0.0f && Run.SceneReady)
+		{
+			m_readyIn -= dt;
+			if (m_readyIn < 0.0f)
+				Net.Ready();
 		}
 		if (Input.WasPressed("Pause"))
 		{
@@ -206,6 +373,12 @@ class Game
 			if (m_note <= 0.0f)
 				find("hud-note").Tween("opacity", "0", 0.5f, "ease");
 		}
+		if (m_delta > 0.0f)
+		{
+			m_delta -= dt;
+			if (m_delta <= 0.0f)
+				find("hud-delta").Tween("opacity", "0", 0.6f, "ease");
+		}
 	}
 
 	// ---- what the round reports ----
@@ -220,9 +393,56 @@ class Game
 		for (int c = 0; c < 6; ++c)
 			mark.RemoveClass("costume-" + c);
 		mark.AddClass("costume-" + costume);
-		setText("hud-score", "Points " + int(hud.X));
+		// Only as the mark changes: setting the picture again would load it again, blank meanwhile.
+		if (costume != m_shownCostume && costume >= 0 && costume < int(kPortraits.length()))
+		{
+			m_shownCostume = costume;
+			Image::Of(find("hud-portrait")).Source = kPortraits[costume];
+		}
+		// The points, and each change floating beside them a moment, gold up, red down.
+		int score = int(hud.X);
+		if (score != m_shownScore)
+		{
+			int change = score - m_shownScore;
+			m_shownScore = score;
+			setText("hud-score", "" + score);
+			setText("hud-delta", (change > 0 ? "+" : "") + change);
+			UIWidget@ delta = UIWidget::Of(find("hud-delta"));
+			delta.RemoveClass(change > 0 ? "loss" : "gain");
+			delta.AddClass(change > 0 ? "gain" : "loss");
+			find("hud-delta").Tween("opacity", "1", 0.15f, "ease");
+			m_delta = 1.4f;
+		}
+		// The time over a bar of the round left (the round's length: the first time it reports).
+		m_roundSeconds = Max(m_roundSeconds, hud.Y);
 		setText("hud-time", clock(hud.Y));
+		ProgressBar::Of(find("hud-timebar")).Value = m_roundSeconds > 0.0f ? hud.Y / m_roundSeconds : 0.0f;
+		// Only as it changes: the class set again each report would start its pulse over.
+		bool late = hud.Y <= kLateSeconds && hud.Y > 0.0f;
+		if (late != m_late)
+		{
+			m_late = late;
+			UIWidget@ clockCard = UIWidget::Of(find("hud-clock"));
+			if (late)
+				clockCard.AddClass("late");
+			else
+				clockCard.RemoveClass("late");
+		}
 		setText("hud-rank", place(int(hud.W)) + " of 4");
+	}
+
+	// The hunter whose mark you are, near (Ball.as): a quiet line under your mark while it is.
+	void onHunterNear(int yes)
+	{
+		if (m_inRound)
+			find("hud-near").Tween("opacity", yes != 0 ? "1" : "0", yes != 0 ? 0.3f : 0.8f, "ease");
+	}
+
+	// Someone to tag in front of you (Ball.as): Tag's prompt shows by your hunter's line of sight.
+	void onInReach(int yes)
+	{
+		if (m_inRound)
+			find("hud-tag").Tween("opacity", yes != 0 ? "1" : "0", 0.15f, "ease");
 	}
 
 	void onNote(int what)
@@ -248,11 +468,6 @@ class Game
 		{
 			sound(kFlareSound);
 			note("A mask flares: a hunter, there");
-		}
-		else if (what == kGameNoteWrongMap)
-		{
-			sound(kChimeSound);
-			note("The host is at another map: choose it and join again");
 		}
 		else if (what == kGameNoteFull)
 		{
@@ -284,10 +499,31 @@ class Game
 		screens().Push(kResultsDoc);
 		setText("res-title", rank == 1 ? "The ball is yours" : "The music stops");
 		setText("res-you", "You came " + place(rank) + " with " + you + " points");
-		setText("res-0", "You        " + you);
-		setText("res-1", "Hunter 1   " + int(scores.Y));
-		setText("res-2", "Hunter 2   " + int(scores.Z));
-		setText("res-3", "Hunter 3   " + int(scores.W));
+		// Every hunter by points, the most first (yours first among equals), your row lit.
+		array<string> names = {"You", "Hunter 1", "Hunter 2", "Hunter 3"};
+		array<int> points = {you, int(scores.Y), int(scores.Z), int(scores.W)};
+		array<int> order = {0, 1, 2, 3};
+		for (int i = 1; i < 4; ++i)
+		{
+			for (int j = i; j > 0 && points[order[j]] > points[order[j - 1]]; --j)
+			{
+				int t = order[j];
+				order[j] = order[j - 1];
+				order[j - 1] = t;
+			}
+		}
+		for (int row = 0; row < 4; ++row)
+		{
+			int who = order[row];
+			setText("rank-place-" + row, place(row + 1));
+			setText("rank-name-" + row, names[who]);
+			setText("rank-points-" + row, "" + points[who]);
+			UIWidget@ line = UIWidget::Of(find("rank-" + row));
+			if (who == 0)
+				line.AddClass("you");
+			else
+				line.RemoveClass("you");
+		}
 		setText("res-best", record ? "Your best round yet" : "Your best: " + best + " points");
 		wire("again-btn", EventHandler(this.onAgain));
 		find("again-btn").Visible = m_mode != kJoining; // the host starts the next round
@@ -314,6 +550,7 @@ class Game
 		wire("restart-btn", EventHandler(this.onAgain));
 		find("restart-btn").Visible = m_mode != kJoining; // the host's to start over
 		wire("title-btn", EventHandler(this.onTitle));
+		wire("pause-controls-btn", EventHandler(this.onControls));
 	}
 
 	private bool onResume(GuiEvent@ e)
@@ -347,27 +584,47 @@ class Game
 		return true;
 	}
 
-	// Alone, the scene stops behind a menu. In a networked round it goes on (the host runs the
-	// world for everyone, and a joiner's scene must keep hearing the host: a new round, say), so
-	// the player hears "Menu" instead and stands still under it.
+	// Under any menu the player's actions read released: the input map's "Menu" set (Pause alone)
+	// is pushed as the only one in effect, and a press already held when it opens or closes stays
+	// latched until let go, so the press that works a menu's button is never a Tag. Once, however
+	// many menus ask.
+	private void holdInput()
+	{
+		if (!m_inputHeld)
+		{
+			Input.PushSet("Menu");
+			m_inputHeld = true;
+		}
+	}
+
+	private void releaseInput()
+	{
+		if (m_inputHeld)
+		{
+			Input.PopSet();
+			m_inputHeld = false;
+		}
+	}
+
+	// Alone, the scene stops behind a menu too. In a networked round it goes on (the host runs
+	// the world for everyone, and a joiner's scene must keep hearing the host: a new round, say).
 	private void holdStill()
 	{
+		holdInput();
 		if (m_mode == kAlone)
 			Run.TimeScale = 0.0f;
-		else
-			Run.Emit("Menu", 1);
 	}
 
 	private void letGo()
 	{
 		Run.TimeScale = 1.0f;
-		if (m_mode != kAlone)
-			Run.Emit("Menu", 0);
+		releaseInput();
 	}
 
 	// The HUD over the scene that is already running.
 	private void enterRound()
 	{
+		leaveTitle();
 		screens().Clear();
 		screens().Push(kHudDoc);
 		m_inRound = true;
@@ -384,7 +641,8 @@ class Game
 			Net.Disconnect();
 			m_mode = kAlone;
 		}
-		m_connectIn = -1.0f;
+		m_readyIn = -1.0f;
+		m_joinWait = -1.0f;
 		showTitle();
 		return true;
 	}

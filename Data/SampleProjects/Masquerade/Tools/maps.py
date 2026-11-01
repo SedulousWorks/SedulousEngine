@@ -35,6 +35,15 @@ POSES_PER_CLIP = 12  # phases of each clip in the pose pool: guests on a clip sp
 ASSETS = assets()
 
 
+def ring(doc, hunter):
+    """The gold ring on the floor under a hunter, hidden: Player.as shows it under your own (a decal
+    projecting down, its +Z turned to the floor; the picture glyphs.py draws)."""
+    r = doc.stable_id("entity")
+    doc.entity("Ring", (0.0, 0.6, 0.0), rot=(0.70710678, 0.0, 0.0, 0.70710678), parent=hunter, eid=r)
+    doc.add(r, "decal", texture=asset("TextureAsset", "YouRing"), size={"x": 1.3, "y": 1.3, "z": 1.4},
+            color={"r": 1.0, "g": 0.80, "b": 0.36, "a": 0.9}, visible=False)
+
+
 def asset(asset_type, name, group=None):
     found = [a["guid"] for a in ASSETS
              if a["type"] == asset_type and a["name"] == name and (group is None or a.get("group") == group)]
@@ -274,6 +283,7 @@ class Builder:
         d.entity("Flare", (0.0, 2.1, 0.0), parent=e, eid=flare)
         d.add(flare, "light", type=1, color={"r": 1.0, "g": 0.78, "b": 0.30, "a": 1.0}, intensity=0.0, range=6.0,
               castsShadows=False)
+        ring(d, e)
         return e
 
     def networked(self, e):
@@ -300,6 +310,7 @@ class Builder:
         doc.entity("Flare", (0.0, 2.1, 0.0), parent=e, eid=flare)
         doc.add(flare, "light", type=1, color={"r": 1.0, "g": 0.78, "b": 0.30, "a": 1.0}, intensity=0.0, range=6.0,
                 castsShadows=False)
+        ring(doc, e)
         doc.script(e, (asset("ScriptClassAsset", "Player"), {}))
         found = [a["guid"] for a in ASSETS if a["type"] == "PrefabDocument" and a["name"] == doc.name]
         return doc.write(found[0] if found else None, prefab=True, group="Prefabs")

@@ -26,6 +26,7 @@
 // Its globals carry its name where another script has the same: every behaviour compiles into one
 // module here, and Guest.as and Orchestra.as name the clips and the cues too.
 
+const float kNearMetres = 6.0f;  // the hunter whose mark you are, nearer than this: you hear of it
 const int kHunters = 4;
 const int kCostumes = 6;
 const int kBallDanceClip = 3;
@@ -38,7 +39,6 @@ const int kNoteGotTarget = 1;  // you tagged your target
 const int kNoteMissed = 2;     // you tagged the wrong person: your mask flares
 const int kNoteTagged = 3;     // your hunter tagged you: a new costume, somewhere else
 const int kNoteFlare = 4;      // someone's mask flares: a hunter, there
-const int kNoteWrongMap = 5;   // the host is at another map: you have left
 const int kNoteFull = 6;       // every seat is a player's: you watch
 
 class Ball
@@ -104,6 +104,8 @@ class Ball
 	private array<float> m_orderIn; // until a bot's approach order is refreshed
 	private float m_sample = 0.0f;
 	private float m_hud = 0.0f;
+	private bool m_reachTold = false; // the "InReach" last sent
+	private bool m_nearTold = false;  // the "HunterNear" last sent
 	private int m_cue = 0;
 	private Entity m_best;          // a tag's search: the nearest in reach so far
 	private float m_bestDistance = 0.0f;
@@ -119,12 +121,12 @@ class Ball
 			m_bots.insertLast(m_hunters[h]);
 			m_dressed.insertLast(-1);
 		}
-		// The network's half: the host hears input, tags, joins and leaves; a client its notes and
-		// the host's map. Registered on every peer (a handler that never fires costs nothing).
+		// The network's half: the host hears input, tags, joins and leaves; a client its notes (the
+		// host's map is the game's: Masquerade.as). Registered on every peer (a handler that never
+		// fires costs nothing).
 		Net.OnNumber("input", NetNumberHandler(this.onNetInput));
 		Net.On("tag", NetHandler(this.onNetTag));
 		Net.OnNumber("note", NetNumberHandler(this.onNetNote));
-		Net.OnText("map", NetTextHandler(this.onNetMap));
 		Net.OnJoin(NetHandler(this.onJoined));
 		Net.OnLeave(NetHandler(this.onLeft));
 		m_groups.resize(kCostumes);
@@ -298,6 +300,32 @@ class Ball
 		int seat = seatOfPlayer(who);
 		if (Net.IsClient || over || seat < 0 || seat >= kHunters)
 			return;
+		Entity found = inReach(seat);
+		if (found.IsValid())
+			resolve(seat, found);
+	}
+
+	// Whether the hunter whose target `seat` is stands within kNearMetres of it.
+	private bool hunterNear(int seat)
+	{
+		Float3 p = m_hunters[seat].GetWorldPosition();
+		for (int h = 0; h < kHunters; ++h)
+		{
+			if (h == seat || targetOf(h) != seat)
+				continue;
+			Float3 q = m_hunters[h].GetWorldPosition();
+			float dx = q.X - p.X;
+			float dz = q.Z - p.Z;
+			if (dx * dx + dz * dz < kNearMetres * kNearMetres)
+				return true;
+		}
+		return false;
+	}
+
+	// Whom a tag by `seat` would reach: the nearest person within tagReach in front of its hunter
+	// (or right beside it), else none. A tag's search, and the HUD's Tag prompt while it finds one.
+	private Entity inReach(int seat)
+	{
 		Entity tagger = m_hunters[seat];
 		Float3 p = tagger.GetWorldPosition();
 		Float3 ahead = RotateVector(tagger.GetWorldRotation(), Float3(0.0f, 0.0f, 1.0f));
@@ -313,8 +341,7 @@ class Ball
 			if (h != seat)
 				consider(m_hunters[h], p, ahead);
 		}
-		if (m_best.IsValid())
-			resolve(seat, m_best);
+		return m_best;
 	}
 
 	// Someone in reach and in front (or right beside), nearer than the best so far (m_best).
@@ -454,6 +481,20 @@ class Ball
 	private void tell(float d)
 	{
 		int seat = seatOfPlayer(localPlayer());
+		// Someone to tag in front of this peer's hunter: the game shows Tag's prompt while there is.
+		bool reach = !over && seat >= 0 && inReach(seat).IsValid();
+		if (reach != m_reachTold)
+		{
+			m_reachTold = reach;
+			scene.Scripts.Emit("InReach", reach ? 1 : 0);
+		}
+		// The hunter whose mark you are, near: the game says so, quietly.
+		bool near = !over && seat >= 0 && hunterNear(seat);
+		if (near != m_nearTold)
+		{
+			m_nearTold = near;
+			scene.Scripts.Emit("HunterNear", near ? 1 : 0);
+		}
 		m_hud -= d;
 		if (m_hud <= 0.0f && seat >= 0)
 		{
@@ -543,16 +584,6 @@ class Ball
 	{
 		if (Net.IsClient)
 			scene.Scripts.Emit("Note", int(what));
-	}
-
-	// A client: the host's map, on joining. At another map, it leaves and says why.
-	void onNetMap(int sender, const string &in name)
-	{
-		if (Net.IsClient && name != scene.Name)
-		{
-			Net.Disconnect();
-			scene.Scripts.Emit("Note", kNoteWrongMap);
-		}
 	}
 
 	// The host: a player has joined. They take a bot's seat: a hunter spawned for them where the

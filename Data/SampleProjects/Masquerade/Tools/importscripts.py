@@ -6,16 +6,18 @@ script (Masquerade.as, the reserved class Game) made the project's startup scrip
 those (Guest, Hud, ...). A re-run re-imports over the same assets, keeping their ids. An asset is
 named by its file, so a sheet and a document may not share a name.
 
-The documents go first, so a script can name them: a `{{Type:Name}}` in a script (Type one of GUI,
-Scene, Prefab, Audio) is replaced by that asset's id before it is imported (the filled copy goes to
-generated/scripts/), and by the nil id when there is no such asset yet (a level not built).
+The documents go first, so a script can name them: a `{{Type:Name}}` in a script, a document or the
+sheet (Type one of GUI, Scene, Prefab, Audio, Texture: the prompts' glyphs, glyphs.py) is replaced by
+that asset's id before it is imported (the filled copy goes to generated/scripts/), and by the nil id
+when there is no such asset yet (a level not built).
 """
 import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from scenegen import mcp, assets
 
-TYPES = {"GUI": "GuiDocumentAsset", "Scene": "SceneDocument", "Prefab": "PrefabDocument", "Audio": "AudioClipAsset"}
+TYPES = {"GUI": "GuiDocumentAsset", "Scene": "SceneDocument", "Prefab": "PrefabDocument", "Audio": "AudioClipAsset",
+         "Texture": "TextureAsset"}
 NIL = "00000000-0000-0000-0000-000000000000"
 FILLED = os.path.join(HERE, "generated", "scripts")
 
@@ -49,10 +51,10 @@ for folder, ext, group in (("ui", ".xml", "UI"), ("ui", ".css", "UI"), ("scripts
         source = os.path.join(HERE, folder, f)
         if ext in (".xml", ".css"):
             # Checked as its cook will check it: a problem stops the import.
-            check = mcp("gui_validate", {"source": open(source).read(), "kind": "document" if ext == ".xml" else "sheet"})
+            check = mcp("gui_validate", {"source": open(filled(source)).read(), "kind": "document" if ext == ".xml" else "sheet"})
             if not check["valid"] or check["diagnostics"]:
                 sys.exit("%s: %s" % (f, check["diagnostics"]))
-        r = mcp("asset_import", {"source": filled(source) if ext == ".as" else source, "group": group})
+        r = mcp("asset_import", {"source": filled(source), "group": group})
         print(group + "/" + name, r["guid"])
         if ext == ".css":
             sheets.append(r["guid"])

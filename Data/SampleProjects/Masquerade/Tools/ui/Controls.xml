@@ -1,0 +1,21 @@
+<!-- The controls (Masquerade.as), from the title and from the pause menu: each action and the control
+     that does it, as prompts read from the project's input map, so they show the pad's buttons while
+     a pad plays and the keys otherwise, and follow a rebinding. Back, Escape or Start closes it (the
+     game's own Pause action, not the screen stack's back). Styled by MasqueradeSheet.css. -->
+<Screen class="fades" covers="true" nav-default="controls-back" back="none">
+  <Panel class="centre">
+    <Panel class="card controls-card">
+      <Label class="page-title" text="Controls"/>
+      <Panel class="control-rows">
+        <Panel class="control-row"><Prompt class="key" action="Move" set="Gameplay"/><Label class="control-what" text="Move"/></Panel>
+        <Panel class="control-row"><Prompt class="key" action="Sprint" set="Gameplay"/><Label class="control-what" text="Sprint: fast, and your hunter sees it"/></Panel>
+        <Panel class="control-row"><Prompt class="key" action="Tag" set="Gameplay"/><Label class="control-what" text="Tag the guest in front of you"/></Panel>
+        <Panel class="control-row"><Prompt class="key" action="Dance" set="Gameplay"/><Label class="control-what" text="Dance, while held"/></Panel>
+        <Panel class="control-row"><Prompt class="key" action="TurnLeft" set="Gameplay"/><Prompt class="key" action="TurnRight" set="Gameplay"/><Label class="control-what" text="Turn the view"/></Panel>
+        <Panel class="control-row"><Prompt class="key" action="Pause" set="Gameplay"/><Label class="control-what" text="Pause"/></Panel>
+      </Panel>
+      <Label class="page-lead" text="The pad's buttons show while you play with a pad"/>
+      <Button id="controls-back" class="gold page" text="Back"/>
+    </Panel>
+  </Panel>
+</Screen>

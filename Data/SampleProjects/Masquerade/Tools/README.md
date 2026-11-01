@@ -30,9 +30,12 @@ own header says what it makes, what it needs first and how to call it. Generated
    night environment and the post profile every map shares, written when a map is) and
    `sounds.py` (the orchestra's three pieces and the round's sounds, generated and imported into
    `Audio/`; before the scripts, which name them, and the maps, whose crowd plays the murmur).
-3. **Scripts**: `importscripts.py` checks the screens with `gui_validate` and imports them
+3. **Scripts**: `glyphs.py` first (the pad's button glyphs the prompts show, drawn and imported into
+   `UI/Glyphs`) and `portraits.py` (each costume's head and shoulders, rendered by `blender/guest.py`
+   and imported into `UI/Portraits`, for the HUD's mark); then `importscripts.py` checks the
+   screens with `gui_validate` and imports them
    (`ui/*.xml` on the engine GUI, over `ui/MasqueradeSheet.css`, made the project's GUI sheet), then
-   `scripts/*.as`, filling each script's `{{GUI:Hud}}`-style asset ids, and makes `Masquerade.as` (the game: the title, the
+   `scripts/*.as`, filling each script's, document's and the sheet's `{{GUI:Hud}}`-style asset ids, and makes `Masquerade.as` (the game: the title, the
    HUD, pause, the results, the best round in the save) the startup script. The rest: a guest
    (`Guest`: wandering, talking and dancing to the cues; a bot is one too), the player (`Player`),
    the round (`Ball`: four hunters in a ring of targets, tagging, the mask's flare, the bots'
@@ -43,6 +46,8 @@ own header says what it makes, what it needs first and how to call it. Generated
    as instances of their costumes (grouped by costume under the Crowd), the four hunters with a
    look per costume, the camera and the Ball; it bakes the map's navigation and makes the Palace
    the project's default scene.
+5. **Export**: `presets.py` writes the export presets (Snowline's: the Linux desktop, the Steam
+   Deck and the Web, each shipping the credits).
 
 `scenegen.py` (the scene document writer) and `mcp.py` (the MCP client) are the helpers the others
 share.

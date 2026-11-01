@@ -1,10 +1,11 @@
 """Masquerade's guests: the costumes of the ball, modelled, rigged and animated in Blender on the
 figure they share (figure.py), every one on the same rig, so one animation drives them all.
 
-    blender --background --factory-startup --python guest.py -- <out dir> [preview]
+    blender --background --factory-startup --python guest.py -- <out dir> [preview] [portraits]
 
 Writes <out dir>/Guest<Costume>.glb for each costume below (one skinned mesh, its armature and the
-clips) and, with `preview`, PNG renders. A guest stands on the ground at its origin facing the
+clips) and, with `preview`, PNG renders; with `portraits`, Portrait<Costume>.png, the costume's head
+and shoulders at 256 pixels on a clear ground (the HUD's mark and the results show them). A guest stands on the ground at its origin facing the
 engine's +Z, about 1.7 m tall, masked: a half mask over the eyes in the costume's mask colour.
 Gowns have a wide skirt to the floor, long gloves, a bun and a plume on the mask; coats a tailcoat,
 breeches, a cravat and a tricorne. Each costume's materials carry its name (GownRoseSilk), so the
@@ -27,6 +28,7 @@ from kit3d import P, box, tube, ball
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 OUT = os.path.abspath(ARGS[0] if ARGS else "guest-out")
 PREVIEW = "preview" in ARGS
+PORTRAITS = "portraits" in ARGS
 FPS = 24
 
 # kind, the main colour, the trim's, the mask's (linear RGB). Players wear these too: a target is
@@ -155,6 +157,15 @@ def costume(name, kind, main, trim, mask):
                 rig.animation_data.action = actions[clip]
                 scene.frame_set(frame)
                 kit3d.shoot(cam, os.path.join(OUT, "preview-%s.png" % clip), P(-3.0, 3.0, 1.5), target)
+    if PORTRAITS:
+        # Head and shoulders, three-quarter from the front, warm light from the side the mask faces,
+        # on a transparent ground: a picture of the costume to find.
+        cam = kit3d.studio((256, 256))
+        scene.render.film_transparent = True
+        scene.cycles.samples = 48
+        cam.data.lens = 85
+        figure.rest(rig)
+        kit3d.shoot(cam, os.path.join(OUT, "Portrait%s.png" % name), P(-0.75, 1.9, 1.66), P(0, 0, 1.52))
     kit3d.export_rigged(os.path.join(OUT, "Guest%s.glb" % name), rig, body)
 
 
