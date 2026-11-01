@@ -5,6 +5,7 @@ using mbedtls_Beef;
 
 namespace Sedulous.Net.Tls.MbedTLS;
 
+#if !BF_PLATFORM_WASM
 /// One connection's TLS through Mbed TLS, over the wrapper's in-memory buffers.
 class MbedTlsSession : ITlsSession
 {
@@ -267,3 +268,4 @@ class MbedTlsSession : ITlsSession
 		}
 	}
 }
+#endif

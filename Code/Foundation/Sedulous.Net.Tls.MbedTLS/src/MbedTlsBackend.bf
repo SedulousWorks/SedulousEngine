@@ -4,6 +4,7 @@ using mbedtls_Beef;
 
 namespace Sedulous.Net.Tls.MbedTLS;
 
+#if !BF_PLATFORM_WASM
 /// The Mbed TLS backend of the TLS seam: TLS 1.2 and 1.3, the client checking the server's name
 /// and chain against its trust, the server presenting its chain. The only project that links
 /// mbedtls-Beef. Desktop and the Deck compose it; a web build has none (the browser does TLS).
@@ -78,3 +79,4 @@ static class TlsCertificates
 		outTime.AppendF("{0:0000}{1:00}{2:00}{3:00}{4:00}{5:00}", at.Year, at.Month, at.Day, at.Hour, at.Minute, at.Second);
 	}
 }
+#endif

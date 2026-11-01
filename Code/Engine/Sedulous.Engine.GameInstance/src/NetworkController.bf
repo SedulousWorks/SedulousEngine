@@ -3,6 +3,8 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Engine.Net;
 using Sedulous.Net.Manager;
+using Sedulous.Net.WebSocket;
+using Sedulous.Net.Tls;
 using Sedulous.Net.Replication;
 using Sedulous.Scene;
 
@@ -101,22 +103,30 @@ class NetworkController
 		return true;
 	}
 
-	/// Opens a client socket and connects.
+	/// Where a wss join's TLS backend comes from: the run's, made on first use. OWNED.
+	public delegate ITlsBackend() TlsBackendSource ~ delete _;
+
+	/// Opens a client socket and connects. `host` may be a ws:// or wss:// address, which joins
+	/// the host's websocket gateway on every platform (wss through the run's TLS backend).
 	public bool Connect(StringView host, uint16 port)
 	{
 		var port;
-#if BF_PLATFORM_WASM
 		// The SAME game script joins with the UDP port on every platform. A browser cannot
-		// speak UDP, so the web build redirects to the host's websocket gateway, which
-		// StartServer opens one above the UDP port by the convention above. Nought and
-		// 0xFFFF are left alone: an operating system assigned host has no gateway to redirect
-		// to, and 0xFFFF has nowhere above it to go.
-		if ((port != 0) && (port != 0xFFFF))
-			port = (uint16)(port + 1);
+		// speak UDP, so it always joins the host's websocket gateway, and so does a ws:// or
+		// wss:// address anywhere: StartServer opens the gateway one above the UDP port by the
+		// convention above, unless the address names a port of its own. Nought and 0xFFFF are
+		// left alone: an operating system assigned host has no gateway to redirect to, and
+		// 0xFFFF has nowhere above it to go.
+#if BF_PLATFORM_WASM
+		let gateway = true;
+#else
+		let gateway = scope WebSocketClientConfig().ParseAddress(host, 0);
 #endif
+		if (gateway && (port != 0) && (port != 0xFFFF))
+			port = (uint16)(port + 1);
 
 		delete mNet;
-		mNet = NetworkManager.JoinServer(host, port);
+		mNet = NetworkManager.JoinServer(host, port, .(), (TlsBackendSource != null) ? TlsBackendSource() : null);
 		if (mNet == null)
 		{
 			GlobalLog(.Error, "NetworkController: failed to open a client socket");

@@ -7,6 +7,12 @@ using Sedulous.Core.Logging;
 using Sedulous.Input;
 using Sedulous.Messaging;
 using Sedulous.Net.Manager;
+using Sedulous.Net.Tls;
+#if !BF_PLATFORM_WASM
+using Sedulous.Net.Tls.MbedTLS;
+#endif
+using Sedulous.Http.Script;
+using Sedulous.Http.Client;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
@@ -59,8 +65,14 @@ class GameInstance
 
 	private bool mHeadless = false;
 
+	/// OWNED: the platform's TLS backend for this run (Mbed TLS natively; none in a browser,
+	/// which does TLS itself), made on first use: https requests and wss joins check with it.
+	private ITlsBackend mTls = null ~ delete _;
 	/// OWNED: this run's networking.
 	private NetworkController mNetwork = new .() ~ delete _;
+	/// OWNED: `Http` to this run's scripts. Its client is made on the scripts' first request,
+	/// pumped by TickScript and reset by StopScript.
+	private HttpFacade mHttpFacade = new .() ~ delete _;
 
 	/// OWNED: this run's action state, so one instance's input never reaches another's.
 	private ActionRuntime mInputRuntime = new .() ~ delete _;
@@ -140,7 +152,28 @@ class GameInstance
 		mRunHost.SetService(mSaveFacade);
 		mNetFacade = new NetFacade(mNetwork);
 		mRunHost.SetService(mNetFacade);
+		// The run's HTTP client is made on its scripts' first request, and https and a wss join
+		// use the run's TLS backend, made when first needed.
+		mHttpFacade.SetFactory(new () => HttpClients.Create(TlsBackend));
+		mRunHost.SetService(mHttpFacade);
+		mNetwork.TlsBackendSource = new () => TlsBackend;
 	}
+
+	/// The platform's TLS backend for this run, made on first use; null in a browser.
+	public ITlsBackend TlsBackend
+	{
+		get
+		{
+#if !BF_PLATFORM_WASM
+			if (mTls == null)
+				mTls = new MbedTlsBackend();
+#endif
+			return mTls;
+		}
+	}
+
+	/// This run's HTTP for its scripts.
+	public HttpFacade Http => mHttpFacade;
 
 	public ~this()
 	{
@@ -675,6 +708,8 @@ class GameInstance
 			// or joins before the game launches.
 			mNetwork.StopNetworking();
 		}
+		// So do its HTTP requests: no answer reaches a script that has stopped.
+		mHttpFacade.Reset();
 	}
 
 	/// Ticks the game script and moves the run's clock: once per frame, before the run bus
@@ -697,6 +732,9 @@ class GameInstance
 		let gameplay = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale).SceneDelta;
 		mRunTime += hostDeltaTime;
 		mRealDelta = hostDeltaTime;
+		// Answers to the run's HTTP requests reach their handlers here, on the game's thread,
+		// whether a game script or behaviours sent them.
+		mHttpFacade.Pump();
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(orchestrator));
