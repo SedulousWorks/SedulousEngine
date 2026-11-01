@@ -28,6 +28,8 @@ namespace Sedulous.Tools.Editor;
 ///   [--screenshot-exit]] (the main window as a PNG; --screenshot-exit quits once it is written)
 ///   [--mcp] [--mcp-port <n>] (the MCP host for this run: agent access to the open project
 ///   over 127.0.0.1; the persisted preference is in Preferences)
+///   [--release-files <url or folder>] (where the project manager's Samples tab reads this version's
+///   release files instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote)
 ///   [--seed] [--seed-primitives] [--version]
 ///   GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation]
 ///   (validation defaults on for a dev build, off for an optimized one).
@@ -160,6 +162,8 @@ class Program
 				config.ScreenshotPath.Set(args[i + 1]);
 			else if (args[i] == "--screenshot-after")
 				config.ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--release-files")
+				config.ReleaseFiles.Set(args[i + 1]);
 			else if (args[i] == "--mcp-port")
 			{
 				config.McpPort = uint32.Parse(args[i + 1]).GetValueOrDefault();

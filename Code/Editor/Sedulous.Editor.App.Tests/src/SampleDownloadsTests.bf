@@ -4,6 +4,7 @@ using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
+using Sedulous.Http;
 using Sedulous.Http.Client;
 using Sedulous.Editor.App;
 
@@ -143,5 +144,36 @@ class SampleDownloadsTests
 			Test.Assert(download.State == .Cancelled);
 			Test.Assert(f.LeftNothing(target));
 		}
+	}
+
+	/// What a release folder answers `method` `target` with: its status, and its body as text.
+	private static int32 Get(StringView folder, StringView target, String outBody, StringView method = "GET")
+	{
+		let request = scope HttpRequest();
+		request.Method.Set(method);
+		request.Target.Set(target);
+		let response = ReleaseFolder.Serve(folder, request);
+		defer delete response;
+		outBody.Append(response.BodyText);
+		return response.Status;
+	}
+
+	[Test]
+	public static void AReleaseFolderServesItsFilesByPlainNameAndNothingOutsideIt()
+	{
+		let folder = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_release_folder", .. scope .());
+		RemoveDirectoryRecursive(folder);
+		Test.Assert(CreateDirectory(PathJoin(folder, "inner", .. scope .())));
+		let text = "{\"samples\": []}";
+		Test.Assert(WriteFile(PathJoin(folder, "samples.json", .. scope .()), .((uint8*)text.Ptr, text.Length)) case .Ok);
+		let body = scope String();
+		Test.Assert(Get(folder, "/samples.json", body) == 200);
+		Test.Assert(body == text);
+		Test.Assert(Get(folder, "/missing.zip", body..Clear()) == 404);
+		Test.Assert(Get(folder, "/../secret", body..Clear()) == 404);
+		Test.Assert(Get(folder, "/inner/x", body..Clear()) == 404);
+		Test.Assert(Get(folder, "/", body..Clear()) == 404);
+		Test.Assert(Get(folder, "/samples.json", body..Clear(), "POST") == 404);
+		RemoveDirectoryRecursive(folder);
 	}
 }

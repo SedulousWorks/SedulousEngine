@@ -48,6 +48,10 @@ class EditorAppConfig
 	/// editor itself needs no UI. EditorMcpSettings is the persisted preference.
 	public bool McpEnabled = false;
 	public uint32 McpPort = 0;
+	/// --release-files <url or folder>: where the Samples tab reads this version's release files
+	/// instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote, served on
+	/// loopback (to try the tab before a release carries samples). Empty: the release itself.
+	public String ReleaseFiles = new .() ~ delete _;
 
 	/// From Configure: registers the engine subsystems. Owned.
 	public delegate void(IApplicationHost host) ConfigureEngine ~ delete _;

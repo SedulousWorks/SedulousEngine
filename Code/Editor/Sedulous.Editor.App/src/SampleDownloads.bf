@@ -121,6 +121,33 @@ class SampleCatalog
 	}
 }
 
+/// A folder of release files served for --release-files <folder> (a copy Code/Tools/pack-samples.py
+/// made, to try the Samples tab before a release has them): the file a GET names, by a plain name
+/// in the folder alone, or a 404.
+static class ReleaseFolder
+{
+	/// The response to `request`, which the caller owns.
+	public static HttpResponse Serve(StringView folder, HttpRequest request)
+	{
+		let response = new HttpResponse();
+		StringView name = request.Target;
+		if (name.StartsWith("/"))
+			name = StringView(name, 1);
+		bool plain = !name.IsEmpty && (name != ".") && (name != "..") && (request.Method == "GET");
+		for (int i < name.Length)
+		{
+			let c = name[i];
+			plain = plain && (c != '/') && (c != '\\') && (c != ':') && (c != '?');
+		}
+		if (!plain || (ReadFile(PathJoin(folder, name, .. scope .()), response.Body) case .Err))
+		{
+			response.Body.Clear();
+			response.Status = 404;
+		}
+		return response;
+	}
+}
+
 /// One sample's download into `target` (made if need be; a new or empty folder, as New Project's
 /// check requires): streamed to `<target's parent>/.<folder>.download`, hashing it as it arrives,
 /// checked against the catalog's SHA-256, extracted, the zip deleted. Cancelled or failed, it keeps

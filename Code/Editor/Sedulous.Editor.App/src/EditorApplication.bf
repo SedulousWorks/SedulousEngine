@@ -21,6 +21,7 @@ using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;
 using Sedulous.Net.Tls;
 using Sedulous.Net.Tls.MbedTLS;
+using Sedulous.Http;
 using Sedulous.Http.Client;
 
 namespace Sedulous.Editor.App;
@@ -148,6 +149,8 @@ class EditorApplication : IApplication
 	/// Made when the manager first shows; deleted after it, which cancels its requests as it goes.
 	private ITlsBackend mTls ~ delete _;
 	private IHttpClient mHttp ~ delete _;
+	/// --release-files <folder>, served on loopback.
+	private HttpServer mReleaseFiles ~ delete _;
 	private ProjectManagerMode mManagerMode ~ delete _;
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
@@ -400,7 +403,43 @@ class EditorApplication : IApplication
 				}
 				return mHttp;
 			};
+		if (!mConfig.ReleaseFiles.IsEmpty)
+		{
+			services.ReleaseFile = new (file, outUrl) => { ReleaseFileUrl(file, outUrl); };
+			services.OpenOnSamples = true;
+		}
 		return services;
+	}
+
+	/// Where the Samples tab reads `file` of the release: what --release-files names, a base URL
+	/// or a folder served on loopback (started on first use); GitHub's release when that folder
+	/// cannot be served.
+	private void ReleaseFileUrl(StringView file, String outUrl)
+	{
+		StringView from = mConfig.ReleaseFiles;
+		if (from.StartsWith("http://") || from.StartsWith("https://"))
+		{
+			while (from.EndsWith('/'))
+				from = StringView(from, 0, from.Length - 1);
+			outUrl.AppendF("{}/{}", from, file);
+			return;
+		}
+		if (mReleaseFiles == null)
+		{
+			let server = new HttpServer();
+			let folder = new String(from);
+			server.SetHandler(new [=folder] (request) => ReleaseFolder.Serve(folder, request) ~ delete folder);
+			if (!server.Start(.()))
+			{
+				delete server;
+				GlobalLog(.Error, "Editor: --release-files: the folder {} could not be served", from);
+				Sedulous.Engine.Project.EngineVersion.ReleaseDownloadUrl(file, outUrl);
+				return;
+			}
+			mReleaseFiles = server;
+			GlobalLog(.Information, "Editor: --release-files: serving {} on 127.0.0.1:{}", from, server.BoundPort);
+		}
+		outUrl.AppendF("http://127.0.0.1:{}/{}", mReleaseFiles.BoundPort, file);
 	}
 
 	/// The main window presents as every editor window does (EditorWindow.EditorRenderWindowDesc).
@@ -1160,6 +1199,8 @@ class EditorApplication : IApplication
 	{
 		if (mMcp != null)
 			mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
+		if (mReleaseFiles != null)
+			mReleaseFiles.Pump(); // --release-files <folder>: before the client asks again
 		if (mManagerMode != null)
 			mManagerMode.Tick(); // the Samples tab's fetches and downloads, which go on while a project is open
 		// The embedded runtime's frame first (per-scene fixed steps in BeginFrame, physics
@@ -1373,6 +1414,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mAssetPicker); // closed, while the window's root and the context are there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
 		DeleteAndNullify!(mHttp); // after the manager, which cancels its requests as it goes
+		DeleteAndNullify!(mReleaseFiles);
 		DeleteAndNullify!(mTls);
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it

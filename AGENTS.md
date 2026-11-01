@@ -98,7 +98,9 @@ GitHub release of its own version. `python3 Code/Tools/pack-samples.py <out-dir>
 `samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf`). It runs by hand:
 there is no workflow, so whoever makes the release attaches what it writes to release
 `v<version>`. A game joins the tab by an entry in `Samples.json` (its folder, its name, one line,
-its picture from `Documentation/Images`).
+its picture from `Documentation/Images`). To try the tab before a release carries them, pack into
+a folder and run the editor with `--release-files <folder>`: it serves the folder on loopback and
+opens the manager on Samples.
 
 ## Steam Deck
 

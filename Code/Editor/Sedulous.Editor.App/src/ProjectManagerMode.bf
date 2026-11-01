@@ -32,6 +32,10 @@ class ProjectManagerModeServices
 	public delegate void() StoreChanged ~ delete _;
 	/// The Samples tab's client, made on first use and outliving the manager; null: none. Owned.
 	public delegate IHttpClient() Http ~ delete _;
+	/// Where a file of this editor's release is fetched from; null: the release's own URL. Owned.
+	public delegate void(StringView file, String outUrl) ReleaseFile ~ delete _;
+	/// The manager opens on its Samples tab (a run pointed at release files is there to try it).
+	public bool OpenOnSamples = false;
 }
 
 /// The project manager's part of the application (Raptor's editor-gui spec, 5.1, layer 13): the
@@ -98,7 +102,11 @@ class ProjectManagerMode
 				};
 			services.LoadMarkup = new (path) => LoadMarkup(path);
 			services.Http = (mServices.Http != null) ? mServices.Http() : null;
+			if (mServices.ReleaseFile != null)
+				services.ReleaseFile = new (file, outUrl) => { mServices.ReleaseFile(file, outUrl); };
 			mView = new ProjectManagerView(services, LoadMarkup(ProjectManagerView.cMarkupPath));
+			if (mServices.OpenOnSamples)
+				mView.ShowSamples(true);
 		}
 		else
 			mView.Rebuild(); // back from a project: probed again
