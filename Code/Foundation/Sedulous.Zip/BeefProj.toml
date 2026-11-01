@@ -8,4 +8,4 @@ StartupObject = "Sedulous.Zip.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
-"stb_image-Beef" = "*"
+"zlib-Beef" = "*"

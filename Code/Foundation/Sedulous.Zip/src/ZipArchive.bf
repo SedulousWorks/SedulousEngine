@@ -1,7 +1,8 @@
 using System;
 using System.Collections;
+using System.Interop;
 using Sedulous.Core.IO;
-using stb_image;
+using zlib_Beef;
 
 namespace Sedulous.Zip;
 
@@ -26,29 +27,19 @@ class ZipEntry
 
 static
 {
-	/// The CRC-32 table (IEEE 802.3, as zip uses).
-	private static uint32[256] sCrcTable = MakeCrcTable();
-
-	private static uint32[256] MakeCrcTable()
-	{
-		uint32[256] values = ?;
-		for (uint32 i < 256)
-		{
-			var c = i;
-			for (int k < 8)
-				c = ((c & 1) != 0) ? ((uint32)0xEDB88320 ^ (c >> 1)) : (c >> 1);
-			values[i] = c;
-		}
-		return values;
-	}
-
 	/// The CRC-32 (IEEE 802.3, as zip uses) of `bytes`, continuing from `crc`.
 	public static uint32 Crc32(Span<uint8> bytes, uint32 crc = 0)
 	{
-		var c = ~crc;
-		for (let b in bytes)
-			c = sCrcTable[(c ^ b) & 0xFF] ^ (c >> 8);
-		return ~c;
+		// zlib's, fed in pieces its 32-bit count holds.
+		c_ulong value = crc;
+		int at = 0;
+		while (at < bytes.Length)
+		{
+			let piece = Math.Min(bytes.Length - at, 1 << 30);
+			value = z_crc32(value, bytes.Ptr + at, (c_uint)piece);
+			at += piece;
+		}
+		return (uint32)value;
 	}
 
 	/// Whether an entry's name stays inside the folder it is extracted to: a relative path with no
@@ -76,9 +67,9 @@ static
 /// for the sample downloads.
 ///
 /// The central directory is read from the end of the stream; each entry is stored or deflated
-/// (inflated by stb's zlib decoder, which Image.IO already links for PNG) and checked against its
-/// CRC-32. Extracting writes every entry under a folder, refusing the whole archive before anything
-/// is written when a name would land outside it. Not read: Zip64 (over 4 GB or 65535 entries),
+/// (inflated by zlib) and checked against its CRC-32. Extracting writes every entry under a
+/// folder, refusing the whole archive before anything is written when a name would land outside
+/// it. Not read: Zip64 (over 4 GB or 65535 entries),
 /// encrypted entries, and compression methods other than stored and deflate.
 class ZipArchive
 {
@@ -245,11 +236,6 @@ class ZipArchive
 			return false;
 		}
 		let dataAt = entry.LocalHeader + cLocalHeaderSize + U16(header.Ptr + 26) + U16(header.Ptr + 28);
-		if ((entry.CompressedSize > (uint64)int32.MaxValue) || (entry.Size > (uint64)int32.MaxValue))
-		{
-			outError.Set(scope $"{entry.Name} is over 2 GB, which is not read");
-			return false;
-		}
 		let packed = scope List<uint8>();
 		if (!ReadAt(mStream, dataAt, (int)entry.CompressedSize, packed))
 		{
@@ -267,10 +253,21 @@ class ZipArchive
 		}
 		else
 		{
+			// Raw deflate (zip keeps no zlib header), into a buffer of the size the directory gives:
+			// it must end the stream exactly there. Sizes fit zlib's 32-bit counts, as Zip64 is
+			// refused.
 			outBytes.Count = (int)entry.Size;
-			let got = (entry.Size == 0) ? 0
-				: stbi_zlib_decode_noheader_buffer((char8*)outBytes.Ptr, (int32)entry.Size, (char8*)packed.Ptr, (int32)packed.Count);
-			if (got != (int32)entry.Size)
+			ZStream z = default;
+			z.NextIn = packed.Ptr;
+			z.AvailIn = (c_uint)packed.Count;
+			z.NextOut = outBytes.Ptr;
+			z.AvailOut = (c_uint)outBytes.Count;
+			let started = z_inflateInit2(&z, -MAX_WBITS) == Z_OK;
+			let result = started ? z_inflate(&z, Z_FINISH) : Z_MEM_ERROR;
+			let whole = (result == Z_STREAM_END) && ((uint64)z.TotalOut == entry.Size);
+			if (started)
+				z_inflateEnd(&z);
+			if (!whole)
 			{
 				outError.Set(scope $"{entry.Name} does not inflate (the archive is damaged)");
 				outBytes.Clear();
