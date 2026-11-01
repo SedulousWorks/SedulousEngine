@@ -22,7 +22,8 @@ namespace Sedulous.Editor.App.Tests;
 /// pages, the windows, the profiler and the application's own) and its hooks reached by real
 /// calls, the status lines and the log while it runs, the token minted once and saved, a
 /// start refused when disabled or without a log capture, a second start and a second stop
-/// harmless, a port in use reported, and Preferences' Save starting and stopping it. Ports come
+/// harmless, a port in use reported, and Preferences' Save starting and stopping it. With no
+/// project (the project manager's), the editor's own tools serve and the project's refuse. Ports come
 /// from the OS (a listener on port 0, closed before the host takes it), so a running editor's
 /// 7405 is never touched; the user data directory is a scratch folder, so the user's own token
 /// is never touched either.
@@ -335,10 +336,10 @@ class EditorMcpServiceTests
 		Test.Assert(!service.IsRunning);
 		Test.Assert(bench.Preference.Token.IsEmpty);
 		Test.Assert(!bench.HasEvent("addTools"));
-		// No project: nothing to serve.
-		bench.Preference.Enabled = true;
-		Test.Assert(!service.Start(null));
+		// Nor in the project manager.
+		Test.Assert(!service.EnsureRunning());
 		Test.Assert(!service.IsRunning);
+		bench.Preference.Enabled = true;
 		// No log capture: log_read would have nothing to serve, so the host does not start.
 		services.Log = null;
 		Test.Assert(!service.Start(bench.Project));
@@ -467,6 +468,99 @@ class EditorMcpServiceTests
 		Test.Assert(enabled.HandleActivate());
 		Test.Assert(dialog.Save());
 		Test.Assert(!service.IsRunning);
+		Test.Assert(PortIsFree(port));
+	}
+
+	/// The project manager's host: enabled, it serves with no project, once however often the
+	/// manager shows; host_info says so, the project's tools refuse, the editor's answer, and the
+	/// manager's GUI is reached as a user would.
+	[Test]
+	public static void WithNoProjectItServesTheManagerAndTheProjectsToolsRefuse()
+	{
+		let bench = scope Bench("mcp_service_manager");
+		bench.Preference.Enabled = false;
+		bench.Preference.Token.Set(cToken);
+		let port = FreePort();
+		// The manager over the window: a button to find.
+		let gui = new Sedulous.GUI.GUIContext();
+		let root = new Sedulous.GUI.SceneRoot(gui);
+		gui.ReleaseRef(); // the root's keeps it
+		defer root.ReleaseRef();
+		root.Size = .(400.0f, 300.0f);
+		let samples = new Sedulous.GUI.Button();
+		samples.Id = "manager-tab-samples";
+		samples.Text = "Samples";
+		samples.Position = .(10.0f, 10.0f);
+		samples.Size = .(80.0f, 30.0f);
+		root.AddChild(samples);
+		samples.ReleaseRef(); // the root holds it
+		root.UpdateLayout();
+		let services = bench.Services();
+		services.Port = port;
+		services.GuiRoot = new [=root] () => root;
+		let service = scope EditorMcpService(services);
+
+		// Not enabled, no host: the user never asked for one.
+		Test.Assert(!service.EnsureRunning());
+		Test.Assert(!service.IsRunning);
+		services.ForceEnabled = true;
+		Test.Assert(service.EnsureRunning());
+		Test.Assert(service.Host.BoundPort == port);
+		let host = service.Host;
+		Test.Assert(service.EnsureRunning());
+		Test.Assert(service.Host == host, "the manager shown again keeps the host");
+
+		var rng = Sedulous.Core.Random(12);
+		let guidArgument = scope String()..AppendF("{{\"guid\":\"{}\"}}", Guid.Generate(ref rng));
+		JsonValue info = null, assets = null, opened = null, scene = null, pages = null, log = null, found = null;
+		defer { delete info; delete assets; delete opened; delete scene; delete pages; delete log; delete found; }
+		bool done = false;
+		let client = scope Thread(new [&]() =>
+			{
+				info = Call(port, ToolCall(1, "host_info", "{}", .. scope .()));
+				assets = Call(port, ToolCall(2, "asset_list", "{}", .. scope .()));
+				opened = Call(port, ToolCall(3, "page_open", guidArgument, .. scope .()));
+				scene = Call(port, ToolCall(4, "scene_validate", guidArgument, .. scope .()));
+				pages = Call(port, ToolCall(5, "page_list", "{}", .. scope .()));
+				log = Call(port, ToolCall(6, "log_read", "{\"limit\":5}", .. scope .()));
+				found = Call(port, ToolCall(7, "editor_find", "{\"target\":\"#manager-tab-samples\"}", .. scope .()));
+				done = true;
+			});
+		client.Start(false);
+		for (int i = 0; (i < 5000) && !done; i++)
+		{
+			service.Pump();
+			Thread.Sleep(1);
+		}
+		client.Join();
+
+		// host_info: the manager, no project.
+		Test.Assert((info != null) && !IsError(info));
+		let infoPayload = Payload(info);
+		defer delete infoPayload;
+		Test.Assert(infoPayload.Get("host").Get("projectOpen").AsBool() == false);
+		Test.Assert(infoPayload.Get("host").Get("screen").AsString() == "projectManager");
+		Test.Assert(infoPayload.Get("host").Get("projectName") == null);
+		// The project's tools refuse, naming the fix; nothing was asked to open.
+		for (let refused in JsonValue[?](assets, opened, scene))
+		{
+			Test.Assert((refused != null) && IsError(refused));
+			Test.Assert(refused.Get("result").Get("content").At(0).Get("text").AsString().Contains(McpTools.cNoProject));
+		}
+		for (let recorded in bench.Events)
+			Test.Assert(!recorded.StartsWith("open "));
+		// The editor's own answer: no pages, the log, and the manager's GUI.
+		Test.Assert((pages != null) && !IsError(pages));
+		let pagesPayload = Payload(pages);
+		defer delete pagesPayload;
+		Test.Assert(pagesPayload.Get("pages").Count == 0);
+		Test.Assert((log != null) && !IsError(log));
+		Test.Assert((found != null) && !IsError(found));
+		let foundPayload = Payload(found);
+		defer delete foundPayload;
+		Test.Assert(foundPayload.Get("count").AsInt() == 1);
+		Test.Assert(foundPayload.Get("nodes").At(0).Get("text").AsString() == "Samples");
+		service.Stop();
 		Test.Assert(PortIsFree(port));
 	}
 }

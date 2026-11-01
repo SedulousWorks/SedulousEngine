@@ -16,6 +16,8 @@ class PageToolSeams
 	public delegate EditorPage(Guid id) OpenPage ~ delete _;
 	/// Close a page for good, panel and all. Owned.
 	public delegate void(EditorPage page) ClosePage ~ delete _;
+	/// Whether a project is open (null: one is); page_open refuses without one. Owned.
+	public delegate bool() HasProject ~ delete _;
 }
 
 /// The MCP tools over the editor's open PAGES, what only the editor host can serve: page_list,
@@ -52,6 +54,11 @@ static class EditorPageTools
 			openSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) =>
 			{
+				if ((seams.HasProject != null) && !seams.HasProject())
+				{
+					outError.Append(McpTools.cNoProject);
+					return false;
+				}
 				let text = McpTools.ArgString(arguments, "guid", .. scope .());
 				Guid id;
 				if (!McpTools.ParseGuid(text, outError, out id))

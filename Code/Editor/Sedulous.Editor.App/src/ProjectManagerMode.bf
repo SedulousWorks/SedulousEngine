@@ -36,6 +36,8 @@ class ProjectManagerModeServices
 	public delegate void(StringView file, String outUrl) ReleaseFile ~ delete _;
 	/// The manager opens on its Samples tab (a run pointed at release files is there to try it).
 	public bool OpenOnSamples = false;
+	/// Told each time the manager shows (the editor's MCP host serves it then). Owned.
+	public delegate void() Shown ~ delete _;
 }
 
 /// The project manager's part of the application (Raptor's editor-gui spec, 5.1, layer 13): the
@@ -113,6 +115,8 @@ class ProjectManagerMode
 		mView.SetStatus("");
 		ShowScreen(mView.Content);
 		mView.Shown();
+		if (mServices.Shown != null)
+			mServices.Shown();
 	}
 
 	/// Once a frame: the Samples tab's fetches and downloads, which go on while a project is open.

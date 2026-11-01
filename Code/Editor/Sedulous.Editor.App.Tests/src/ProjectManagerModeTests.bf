@@ -42,6 +42,8 @@ class ProjectManagerModeTests
 		public Node Shown = null;
 		public int Seeds = 0;
 		public int StoreSaves = 0;
+		/// How often the manager said it showed (the application's MCP host then serves it).
+		public int Shows = 0;
 
 		public this(StringView leaf)
 		{
@@ -70,6 +72,7 @@ class ProjectManagerModeTests
 			services.ShowScreen = new [=bed] (screen) => { bed.Show(screen); };
 			services.LoadMarkup = new (path) => PagesBed.LoadMarkup(path);
 			services.StoreChanged = new [=bed] () => { bed.StoreSaves++; };
+			services.Shown = new [=bed] () => { bed.Shows++; };
 			Mode = new ProjectManagerMode(services);
 		}
 
@@ -135,6 +138,7 @@ class ProjectManagerModeTests
 		bed.Projects.NoteOpened(dir, "Harbour", EngineVersion.String);
 		bed.Mode.Enter();
 		Test.Assert(bed.ShowsManager);
+		Test.Assert(bed.Shows == 1, "said once it shows");
 		Test.Assert(bed.Mode.View.ShownCount == 1);
 		let open = ProjectLauncherTests.ButtonText(bed.Mode.View.Content, "Open");
 		Test.Assert(open != null);
@@ -148,6 +152,7 @@ class ProjectManagerModeTests
 		bed.Session.Close();
 		bed.Mode.Enter();
 		Test.Assert(bed.ShowsManager);
+		Test.Assert(bed.Shows == 2, "and again after the project closed");
 		bed.Mode.OpenFrom(PathJoin(bed.Dir, "Nowhere", .. scope .()));
 		Test.Assert(bed.Mode.View.Status == "Not a project (no Project.xml there).");
 		Test.Assert(bed.Session.Project == null);

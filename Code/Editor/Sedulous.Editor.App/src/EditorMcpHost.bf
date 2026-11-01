@@ -28,8 +28,9 @@ struct EditorMcpHostConfig
 /// pointed at the editor's LIVE project: one content database, one writer) plus this host's
 /// own host_info, over localhost HTTP and SSE behind a bearer token, and is pumped ONCE PER
 /// FRAME on the main thread, so a tool may touch anything the editor owns. It lives for one
-/// open project: the application starts it once the project's services are up and stops it
-/// before they go. The token is also written to a file beside the editor's settings, so a
+/// open project, or for the project manager with none (the project's tools then refuse, as the
+/// stdio host's do before project_open): the application starts it once the project's services
+/// are up and stops it before they go. The token is also written to a file beside the editor's settings, so a
 /// local agent configures itself.
 class EditorMcpHost
 {
@@ -43,6 +44,9 @@ class EditorMcpHost
 	/// Told (tool, isError) after every finished tools/call: the application shows the
 	/// agent's activity. Owned.
 	public delegate void(StringView tool, bool isError) OnToolFinished ~ delete _;
+	/// What the editor shows, for host_info: "projectManager" or "editor". Null: the project
+	/// manager without a project, the editor with one. Owned.
+	public delegate void(String outScreen) Screen ~ delete _;
 
 	/// Registers the shared engine surface over the session (pointed at the editor's live
 	/// project), this host's host_info, and every domain's MCP tool contribution on the context
@@ -69,9 +73,19 @@ class EditorMcpHost
 			new (outState) =>
 			{
 				outState.Set("kind", JsonValue.MakeString("editor"));
-				outState.Set("projectOpen", JsonValue.MakeBool(true));
-				outState.Set("projectName", JsonValue.MakeString(mSession.Project.Name));
-				outState.Set("projectDirectory", JsonValue.MakeString(mSession.Project.Directory));
+				let project = mSession.Project;
+				let screen = scope String();
+				if (Screen != null)
+					Screen(screen);
+				else
+					screen.Append((project == null) ? "projectManager" : "editor");
+				outState.Set("screen", JsonValue.MakeString(screen));
+				outState.Set("projectOpen", JsonValue.MakeBool(project != null));
+				if (project != null)
+				{
+					outState.Set("projectName", JsonValue.MakeString(project.Name));
+					outState.Set("projectDirectory", JsonValue.MakeString(project.Directory));
+				}
 			});
 		mServer.SetToolObserver(new (tool, isError) =>
 			{

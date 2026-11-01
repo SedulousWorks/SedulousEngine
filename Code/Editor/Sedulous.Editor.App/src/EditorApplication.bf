@@ -403,6 +403,12 @@ class EditorApplication : IApplication
 				}
 				return mHttp;
 			};
+		// The editor's MCP host serves the manager too (its project tools refusing), when enabled.
+		services.Shown = new () =>
+			{
+				if ((mMcp != null) && (mSession.Project == null))
+					mMcp.EnsureRunning();
+			};
 		if (!mConfig.ReleaseFiles.IsEmpty)
 		{
 			services.ReleaseFile = new (file, outUrl) => { ReleaseFileUrl(file, outUrl); };
@@ -606,6 +612,8 @@ class EditorApplication : IApplication
 		mcpServices.GuiRoot = new () => mWindow.Root;
 		// What a file dropped on it does, which editor_drop does too.
 		mcpServices.DropFiles = new (paths, error) => DropFiles(paths, error);
+		// host_info's screen: the manager over the window, or the editor's frame.
+		mcpServices.Screen = new (outScreen) => { outScreen.Append(mWindow.ShowsScreen ? "projectManager" : "editor"); };
 		// The dock's layout tools, over its controller, and the action bridge, its unattended
 		// calls refusing the window root's modal windows (both outlive the host, which stops
 		// first; a headless run has no root, so nothing to refuse).
@@ -803,9 +811,9 @@ class EditorApplication : IApplication
 			services.Contributions = mContext.EditorSettingsContributions;
 			services.McpChanged = new () =>
 				{
-					// The host follows the saved section over the open project: started, moved to
-					// its new port, or stopped (Start stops a running one first).
-					if ((mMcp == null) || (mSession.Project == null))
+					// The host follows the saved section, over the open project or the manager:
+					// started, moved to its new port, or stopped (Start stops a running one first).
+					if (mMcp == null)
 						return;
 					mMcp.Start(mSession.Project);
 				};

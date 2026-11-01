@@ -272,6 +272,11 @@ class PieMcpToolsTests
 			Test.Assert(!start.Ok);
 			Test.Assert(start.Error.StartsWith("the editor refused 'game.play'"), start.Error);
 			Test.Assert(opened.IsEmpty);
+			// The list answers, empty: what the project manager's host says with no project.
+			let list = Call(server, "pie_list", "{}");
+			defer delete list;
+			Test.Assert(list.Ok, list.Error);
+			Test.Assert(list.Payload.Get("count").AsNumber() == 0);
 		}
 		projectOpen = true;
 

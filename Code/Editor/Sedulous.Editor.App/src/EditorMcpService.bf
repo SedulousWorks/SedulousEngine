@@ -65,6 +65,9 @@ class EditorMcpServiceServices
 	/// cannot. Owned.
 	public delegate bool(Span<StringView> paths, String error) DropFiles ~ delete _;
 	public delegate void(McpServer server) AddTools ~ delete _;
+	/// What the editor shows, for host_info: "projectManager" or "editor"; null: from whether a
+	/// project is open. Owned.
+	public delegate void(String outScreen) Screen ~ delete _;
 }
 
 /// The editor's MCP host over the open project, out of the application (Raptor's editor-gui
@@ -99,14 +102,25 @@ class EditorMcpService
 	/// The running host, or null.
 	public EditorMcpHost Host => mHost;
 
+	/// The host for the project manager, with no project: started when enabled and none runs,
+	/// so showing the manager again never restarts one. False when it is not enabled, or could
+	/// not listen.
+	public bool EnsureRunning()
+	{
+		if (IsRunning)
+			return true;
+		return Start(null);
+	}
+
 	/// Starts the host over `project` when enabled, stopping a running one first: false when it
-	/// is not enabled, or it could not listen (logged: another editor may hold the port).
+	/// is not enabled, or it could not listen (logged: another editor may hold the port). With
+	/// no project (the project manager's), the editor's own tools serve and the project's refuse.
 	public bool Start(EditorProject project)
 	{
 		Stop();
 		Runtime.Assert(mServices.UserSettings != null, "EditorMcpService: the user settings are required");
 		let settings = mServices.UserSettings.Section<EditorMcpSettings>();
-		if (!(settings.Enabled || mServices.ForceEnabled) || (project == null))
+		if (!(settings.Enabled || mServices.ForceEnabled))
 			return false;
 		if (mServices.Log == null)
 		{
@@ -164,6 +178,14 @@ class EditorMcpService
 			{
 				context.SetStatus(scope $"MCP: {tool} {isError ? "failed" : "done"}");
 			};
+		if (mServices.Screen != null)
+		{
+			mHost.Screen = new (outScreen) =>
+				{
+					if (mServices.Screen != null)
+						mServices.Screen(outScreen);
+				};
+		}
 
 		// This host's live additions: the pages, over the same open and close paths the tabs take.
 		let pages = new PageToolSeams();
@@ -174,6 +196,7 @@ class EditorMcpService
 				if (mServices.ClosePage != null)
 					mServices.ClosePage(page);
 			};
+		pages.HasProject = new () => mSession.Project != null;
 		EditorPageTools.Register(mHost.Server, pages);
 		// editor_screenshot, over the same capture as View > Screenshot.
 		let windows = new WindowToolSeams();

@@ -11,7 +11,19 @@ the wire.
 The headless host above is `Sedulous.Tools.Mcp`. The EDITOR serves the same engine tools over
 HTTP (`engine-editor-mcp`) for the project it has open (the live one, one content database,
 one writer), so an agent can work on what the user is looking at. Tell them apart by
-`host_info.serverName` and `host_info.host.kind`. What differs: the stdio host has
+`host_info.serverName` and `host_info.host.kind`.
+
+The editor serves the project manager too, when MCP is on (Preferences, or `--mcp`) and no project
+is open: `host_info.host` says `projectOpen: false` and `screen: "projectManager"` (`"editor"`
+once a project is open). There the project's tools refuse with "no project is open" (the asset,
+scene, page_open and PIE tools among them), the lists answer empty (`page_list`, `pie_list`), and
+the editor's own work as they do in a project: `log_read`, `editor_screenshot`, `editor_find`,
+`editor_click` and the other hands on the manager's screen and dialogs, `action_list`, the
+profiler. Opening a project restarts the host over it, and closing one restarts it over the
+manager, on the same port with the same token: reconnect after either. To look at the Samples tab
+before a release carries samples: `python3 Code/Tools/pack-samples.py <folder>`, then
+`Sedulous.Tools.Editor --mcp --release-files <folder>` (it opens on the Samples tab), then
+`editor_screenshot` and `editor_click`. What differs: the stdio host has
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
