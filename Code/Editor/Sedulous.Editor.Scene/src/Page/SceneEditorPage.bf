@@ -913,7 +913,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		let selection = (mEditContext != null) ? mEditContext.EntitySelection.Items : Span<Guid>();
 		if (SceneViewState.Save(mContext.ProjectEditorSettings, InstanceId, mOverlays.Settings, mViewport.Camera, panes, selection,
 			(mTools != null) ? mTools.Place : null))
+		{
 			mContext.RequestProjectEditorSettingsSave();
+			// The scene's thumbnail is taken from this view: the next one asked for takes the new one.
+			if (mContext.Thumbnails != null)
+				mContext.Thumbnails.Invalidate(InstanceId);
+		}
 	}
 
 	/// The panes, the camera and the selection as this scene was left; a pref with no camera leaves

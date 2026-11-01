@@ -157,6 +157,15 @@ static class ThumbnailStaging
 		return bounds;
 	}
 
+	/// The combined world bounds of every entity, as each component kind measures it (a mesh, a
+	/// body's shape: a terrain's heightfield): the editor's own framing measures the same.
+	public static AABB WorldSceneBounds(Sedulous.Scene.Scene stage)
+	{
+		if (SceneLoading.SceneWorldBounds(stage, let bounds))
+			return bounds;
+		return AABB.Empty();
+	}
+
 	public static void FrameFromBounds(AABB bounds, ref ThumbnailFraming outFraming)
 	{
 		if (bounds.IsValid())

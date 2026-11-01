@@ -6,10 +6,13 @@ using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Camera;
 
 namespace Sedulous.Editor.Scene;
 
-/// A scene loaded into a private stage, preferring its own camera for the shot.
+/// A scene loaded into a private stage, viewed as its page last showed it (the editor camera
+/// the page saved when it closed), else framed by its bounds. A scene's own camera is often
+/// placed by a script at play time, so in the editor it can look at nothing.
 class SceneThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private EditorContext mContext;
@@ -41,13 +44,37 @@ class SceneThumbnailGenerator : ISceneThumbnailGenerator
 		if (!ThumbnailStaging.MeshRefsSettled(stage))
 			return .Pending;
 		stage.UpdateTransforms();
-		ThumbnailStaging.FrameFromBounds(ThumbnailStaging.WorldMeshBounds(stage), ref outFraming);
-		outFraming.PreferSceneCamera = true;
+		ThumbnailStaging.FrameFromBounds(ThumbnailStaging.WorldSceneBounds(stage), ref outFraming);
+		let camera = scope EditorCamera();
+		if (SceneViewState.RestoreCamera(SavedView(id), camera))
+		{
+			outFraming.HasView = true;
+			outFraming.Eye = camera.DrawEye;
+			outFraming.View = Float4x4.LookAtRH(outFraming.Eye, outFraming.Eye + camera.Forward, camera.Up);
+			outFraming.Projection = camera.Projection(1.0f); // the thumbnail is square
+			outFraming.FarZ = camera.DrawFar;
+		}
 		return .Ready;
 	}
 
 	public void Unstage(Sedulous.Scene.Scene stage) => mLoaded = false; // the scene is per job
 
-	/// No builder cooks a scene document: its envelope and scene stream name its thumbnail.
-	public uint64 ContentHash(Instance instance) => ThumbnailStaging.DocumentHash(instance);
+	/// No builder cooks a scene document: its envelope and scene stream name its thumbnail,
+	/// with the view it is shown from, so a new view is a new thumbnail.
+	public uint64 ContentHash(Instance instance)
+	{
+		var hash = ThumbnailStaging.DocumentHash(instance);
+		let view = SavedView(instance.Id);
+		if ((view != null) && view.HasCamera)
+		{
+			let camera = view.Camera;
+			float[7] numbers = .(camera.Position.X, camera.Position.Y, camera.Position.Z, camera.Yaw, camera.Pitch,
+				camera.FocusDistance, camera.Orthographic ? 1.0f : 0.0f);
+			hash = HashBytes(&numbers[0], sizeof(float[7]), hash);
+		}
+		return (hash != 0) ? hash : 1;
+	}
+
+	/// The view the scene's page saved when it last closed, BORROWED; null when none was.
+	private SceneViewPref SavedView(Guid id) => SceneViewPrefs.Find(mContext.ProjectEditorSettings, id);
 }

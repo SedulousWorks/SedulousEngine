@@ -231,29 +231,35 @@ class ThumbnailStage
 		// extraction: generators set entity transforms during Stage.
 		mJobScene.UpdateTransforms();
 
-		// Ortho along (1,1,1) aimed at the framing centre, sized from the staged bounds.
-		let direction = Normalized(Float3(1.0f, 1.0f, 1.0f));
-		let distance = mFraming.Radius * 4.0f;
-		let halfExtent = mFraming.Radius * 1.1f;
-		let eye = mFraming.Center + direction * distance;
+		// The generator's own view when it has one, else ortho along (1,1,1) aimed at the
+		// framing centre, sized from the staged bounds.
 		var camera = ViewCamera();
-		camera.View = Float4x4.LookAtRH(eye, mFraming.Center, .(0.0f, 1.0f, 0.0f));
-		camera.Projection = Float4x4.OrthographicRH(halfExtent * 2.0f, halfExtent * 2.0f, 0.05f, distance + mFraming.Radius * 4.0f);
-		camera.Position = eye;
-		camera.FarZ = distance + mFraming.Radius * 4.0f;
+		if (mFraming.HasView)
+		{
+			camera.View = mFraming.View;
+			camera.Projection = mFraming.Projection;
+			camera.Position = mFraming.Eye;
+			camera.FarZ = mFraming.FarZ;
+		}
+		else
+		{
+			let direction = Normalized(Float3(1.0f, 1.0f, 1.0f));
+			let distance = mFraming.Radius * 4.0f;
+			let halfExtent = mFraming.Radius * 1.1f;
+			let eye = mFraming.Center + direction * distance;
+			camera.View = Float4x4.LookAtRH(eye, mFraming.Center, .(0.0f, 1.0f, 0.0f));
+			camera.Projection = Float4x4.OrthographicRH(halfExtent * 2.0f, halfExtent * 2.0f, 0.05f, distance + mFraming.Radius * 4.0f);
+			camera.Position = eye;
+			camera.FarZ = distance + mFraming.Radius * 4.0f;
+		}
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;
 		cameraOverride.ClearColor = .(0.10f, 0.11f, 0.13f, 1.0f); // linear (a render view)
 
-		// Scene documents look like themselves: their own primary camera and clear colour
-		// when one exists (RenderScene extracts both when no override is passed).
-		var sceneCamera = ViewCamera();
-		let useSceneCamera = mFraming.PreferSceneCamera && RenderExtract.ExtractPrimaryCamera(mJobScene, ref sceneCamera);
-
 		let targetState = TargetState(mTarget, mTargetState, .CopySrc);
 		mRender.RenderScene(mJobScene, mTargetView, .RGBA16Float, cRenderSize, cRenderSize,
-			.(0, 0, cRenderSize, cRenderSize), useSceneCamera ? null : &cameraOverride, targetState);
+			.(0, 0, cRenderSize, cRenderSize), &cameraOverride, targetState);
 		mTargetState = .CopySrc;
 		mState = .CopyPending;
 	}

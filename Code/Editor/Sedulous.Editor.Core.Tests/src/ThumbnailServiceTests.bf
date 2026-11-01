@@ -263,7 +263,8 @@ static class ThumbnailServiceTests
 		job.Generator.AssetTypeNames(names);
 		Test.Assert((names[0] == "StubGpuAsset") && !job.Generator.NeedsPrivateScene, "the stub, not the other");
 		let framing = ThumbnailFraming();
-		Test.Assert((framing.Radius == 1.0f) && !framing.PreferSceneCamera && (framing.PrewarmSteps == 0));
+		// The stage frames the bounds unless the generator has a view.
+		Test.Assert((framing.Radius == 1.0f) && !framing.HasView && (framing.PrewarmSteps == 0));
 		fx.Service.Reset();
 	}
 }

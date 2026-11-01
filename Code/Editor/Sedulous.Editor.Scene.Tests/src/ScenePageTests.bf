@@ -389,6 +389,27 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	/// A scene's thumbnail is taken from where its page left the camera, so the page saving its
+	/// view drops the cached picture: the next one asked for takes the new view.
+	[Test]
+	public static void ThePageSavingItsViewDropsTheScenesCachedThumbnail()
+	{
+		let bed = scope Bed();
+		let jobs = scope EditorJobService();
+		let thumbnails = scope ThumbnailService();
+		// Nothing resolves, so a Get caches a negative at once: an entry to drop.
+		thumbnails.Configure(bed.Dir, new (id) => null, jobs, new (id) => 0, bed.Dir);
+		bed.Context.Thumbnails = thumbnails;
+		defer { bed.Context.Thumbnails = null; }
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		Test.Assert(thumbnails.Get(bed.Level.Id) == null);
+		let cached = thumbnails.CachedCount;
+		Test.Assert(cached >= 1);
+		page.OnClose();
+		Test.Assert(thumbnails.CachedCount == cached - 1);
+	}
+
 	[Test]
 	public static void WhereTheSceneWasLeftComesBackWhenItOpensAgain()
 	{
