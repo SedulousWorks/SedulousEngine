@@ -49,6 +49,8 @@ class HttpMessageParser
 	private int32 mStatus = 0;
 	private List<HttpHeader> mHeaders = new .() ~ DeleteContainerAndItems!(_);
 	private List<uint8> mBody = new .() ~ delete _;
+	/// Body bytes TakeBody moved out.
+	private int mBodyTaken = 0;
 
 	public this(HttpMessageMode mode, int maxBodyBytes = 16 * 1024 * 1024)
 	{
@@ -71,6 +73,27 @@ class HttpMessageParser
 	// Both.
 	public List<HttpHeader> Headers => mHeaders;
 	public List<uint8> Body => mBody;
+
+	/// Response mode, to stream a body: moves the body decoded so far into `outBody` (replacing
+	/// what it held), so the parser keeps none of it. Completion and the cap still count every
+	/// byte, taken or not.
+	public void TakeBody(List<uint8> outBody)
+	{
+		outBody.Clear();
+		outBody.AddRange(mBody);
+		mBodyTaken += mBody.Count;
+		mBody.Clear();
+	}
+
+	/// Whether the head has been read (status and headers known).
+	public bool HeadParsed => mHeadParsed;
+
+	/// The body's length as its head gives it (Content-Length), or -1 when it does not (chunked,
+	/// or read until the peer closes).
+	public int64 BodyLength => (mHeadParsed && !mChunked && !mBodyUntilClose) ? (int64)mBodyExpected : -1;
+
+	/// The body so far, taken or kept.
+	private int BodySoFar => mBodyTaken + mBody.Count;
 
 	/// Feeds bytes. The returned state is also what State reports afterwards.
 	public HttpParseState Push(Span<uint8> bytes)
@@ -118,7 +141,7 @@ class HttpMessageParser
 		if (mChunked)
 			return DecodeChunks();
 
-		if (mBody.Count > mMaxBody)
+		if (BodySoFar > mMaxBody)
 		{
 			mTooLarge = true;
 			mState = .Failed;
@@ -128,11 +151,11 @@ class HttpMessageParser
 		if (mBodyUntilClose)
 			return mState;
 
-		if (mBody.Count >= mBodyExpected)
+		if (BodySoFar >= mBodyExpected)
 		{
 			// Drop any over-read. One request per connection means anything past the declared
 			// length is not ours to interpret.
-			mBody.Count = mBodyExpected;
+			mBody.Count = mBodyExpected - mBodyTaken;
 			mState = .Complete;
 		}
 		return mState;
@@ -339,7 +362,7 @@ class HttpMessageParser
 					mChunk = .Trailers;
 					continue;
 				}
-				if (mBody.Count + size > mMaxBody)
+				if (BodySoFar + size > mMaxBody)
 				{
 					mTooLarge = true;
 					mState = .Failed;

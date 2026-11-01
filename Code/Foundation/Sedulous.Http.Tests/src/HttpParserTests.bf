@@ -189,6 +189,48 @@ class HttpParserTests
 		}
 	}
 
+	private static StringView Text(List<uint8> bytes) => .((char8*)bytes.Ptr, bytes.Count);
+
+	/// A body taken as it arrives still completes, has its over-read trimmed and is capped, all by
+	/// every byte, taken or kept.
+	[Test]
+	public static void ABodyTakenAsItArrivesStillCompletesTrimsAndCapsByEveryByte()
+	{
+		// With a length: taken piece by piece, the over-read past it dropped.
+		let p = scope HttpMessageParser(.Response, 64);
+		Test.Assert(!p.HeadParsed);
+		Test.Assert(p.Push(Bytes("HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nhello")) == .NeedMore);
+		Test.Assert(p.HeadParsed);
+		Test.Assert(p.BodyLength == 10);
+		let all = scope String();
+		let piece = scope List<uint8>();
+		p.TakeBody(piece);
+		all.Append(Text(piece));
+		Test.Assert(p.Body.IsEmpty);
+		Test.Assert(p.Push(Bytes("world!!")) == .Complete, "two bytes over");
+		p.TakeBody(piece);
+		all.Append(Text(piece));
+		Test.Assert(all == "helloworld");
+
+		// Chunked: no length; the pieces are the decoded chunks.
+		let c = scope HttpMessageParser(.Response, 64);
+		Test.Assert(c.Push(Bytes("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nWiki\r\n")) == .NeedMore);
+		Test.Assert(c.BodyLength == -1);
+		c.TakeBody(piece);
+		Test.Assert(Text(piece) == "Wiki");
+		Test.Assert(c.Push(Bytes("5\r\npedia\r\n0\r\n\r\n")) == .Complete);
+		c.TakeBody(piece);
+		Test.Assert(Text(piece) == "pedia");
+
+		// The cap counts what was taken: 8 taken, then 8 more is past 12. (A length past the cap is
+		// refused at the head; a chunked body is counted as it comes.)
+		let capped = scope HttpMessageParser(.Response, 12);
+		Test.Assert(capped.Push(Bytes("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n8\r\n12345678\r\n")) == .NeedMore);
+		capped.TakeBody(piece);
+		Test.Assert(capped.Push(Bytes("8\r\n12345678\r\n")) == .Failed);
+		Test.Assert(capped.TooLarge);
+	}
+
 	/// Responses with no body (204, 304, 1xx, a HEAD's) complete at their head; a Content-Length
 	/// past the cap is too large, not malformed.
 	[Test]
