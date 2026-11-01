@@ -107,6 +107,8 @@ class ParticleSystem
 	private Sedulous.Core.Random mRandom;
 	private uint64 mSeed = cDefaultSeed;
 	private float mTotalTime = 0.0f;
+	/// The last Step's delta time: the emitter velocity's divisor.
+	private float mStepDeltaTime = 0.0f;
 	private float mLodRateMultiplier = 1.0f;
 	private bool mPrewarmed = false;
 	private SimulationMode mResolvedMode = .CPU;
@@ -336,6 +338,7 @@ class ParticleSystem
 	public void Step(float deltaTime, Float3 cameraPosition = .(0, 0, 0))
 	{
 		mTotalTime += deltaTime;
+		mStepDeltaTime = deltaTime;
 		mDeathCount = 0;
 		mBirthCount = 0;
 
@@ -393,16 +396,15 @@ class ParticleSystem
 		mStreams.AliveCount = 0;
 		Emitter.Reset();
 		mTotalTime = 0.0f;
+		mStepDeltaTime = 0.0f;
 		mPrewarmed = false;
 		mRandom = .(mSeed);
 	}
 
 	// ---- Internals -------------------------------------------------------------------------
 
-	/// The emitter's own velocity, which a velocity initializer can inherit.
-	///
-	/// Divided by the TOTAL time rather than the step, so the inherited velocity fades as
-	/// the effect runs. Kept as it is because content is authored against it.
+	/// The emitter's own velocity, which a velocity initializer can inherit: its displacement
+	/// over the last step, divided by that step's time, however long the system has run.
 	private Float3 EmitterVelocity
 	{
 		get
@@ -411,7 +413,7 @@ class ParticleSystem
 			// extract, so the emitter contributes nothing at spawn.
 			if (SimulationSpace == .Local)
 				return .Zero;
-			return (Position - PrevPosition) / Max(mTotalTime, 0.001f);
+			return (Position - PrevPosition) / Max(mStepDeltaTime, 0.001f);
 		}
 	}
 

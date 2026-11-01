@@ -40,6 +40,34 @@ class ParticleSystemTests
 		Test.Assert(system.AliveCount == 0);
 	}
 
+	/// A moving emitter passes its velocity on: the displacement over one step divided by that
+	/// step's time, however long the system has run.
+	[Test]
+	public static void TheEmittersVelocityIsItsDisplacementOverTheStep()
+	{
+		let system = scope ParticleSystem(100);
+		let velocity = system.AddInitializer<VelocityInitializer>();
+		velocity.BaseVelocity = .(0, 0, 0);
+		velocity.VelocityInheritance = 1.0f;
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(5.0f, 5.0f);
+		system.Emitter.Mode = .Continuous;
+		system.Emitter.SpawnRate = 0.0f;
+
+		// Run a while standing still, so the total time is far from one step's.
+		for (int i < 50)
+			system.Update(0.1f);
+		Test.Assert(system.AliveCount == 0);
+
+		// Move one unit along x during one tenth of a second that spawns: ten units a second.
+		system.Emitter.SpawnRate = 100.0f;
+		system.Position = .(1, 0, 0);
+		system.Update(0.1f);
+		Test.Assert(system.AliveCount > 0);
+		let v = system.Streams.StartVelocities[0];
+		Test.Assert(Math.Abs(v.X - 10.0f) < 1e-3f, scope $"{v.X}");
+		Test.Assert(Math.Abs(v.Y) < 1e-3f);
+	}
+
 	[Test]
 	public static void TheBudgetIsAHardCap()
 	{
