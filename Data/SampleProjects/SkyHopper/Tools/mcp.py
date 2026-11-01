@@ -9,7 +9,7 @@ Prints each result's text (JSON pretty printed when it parses); exit 1 on an err
 import json, os, subprocess, sys, urllib.request
 
 # The engine checkout (for Sedulous.Tools.Mcp in stdio mode): $SEDULOUS_ROOT, else the one this project
-# sits in (Data/SampleProjects/PlatformerGame/Tools).
+# sits in (Data/SampleProjects/SkyHopper/Tools).
 ENGINE = os.environ.get("SEDULOUS_ROOT",
                         os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../..")))
 TOOLS_MCP = ENGINE + "/Code/build/Debug_Linux64/Sedulous.Tools.Mcp/Sedulous.Tools.Mcp"

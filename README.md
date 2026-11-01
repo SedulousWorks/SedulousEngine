@@ -124,7 +124,7 @@ was built entirely through the engine's MCP tools by an AI agent, its authoring 
 its `Tools/`, and each plays in the browser on
 [SedulousDemos](https://sedulousworks.github.io/SedulousDemos/), Masquerade not yet.
 
-**Sky Hopper** (`PlatformerGame`) is a small 3D platformer, also shipped to a Steam Deck: five
+**Sky Hopper** (`SkyHopper`) is a small 3D platformer, also shipped to a Steam Deck: five
 floating islands, coins, enemies and hazards, menus with volume settings, music and effects,
 and gamepad support throughout.
 

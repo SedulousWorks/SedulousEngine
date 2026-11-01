@@ -12,13 +12,13 @@ namespace Sedulous.Editor.App;
 /// One sample game a release offers.
 class SampleInfo
 {
-	/// Its folder in the repository ("PlatformerGame"), and the one made for it.
+	/// Its folder in the repository ("SkyHopper"), and the one made for it.
 	public String Folder = new .() ~ delete _;
 	/// Its project's name ("Sky Hopper").
 	public String Name = new .() ~ delete _;
 	/// One line on what it is.
 	public String Description = new .() ~ delete _;
-	/// Its zip in the release ("sample-PlatformerGame.zip").
+	/// Its zip in the release ("sample-SkyHopper.zip").
 	public String Archive = new .() ~ delete _;
 	/// Its picture in the release.
 	public String Picture = new .() ~ delete _;

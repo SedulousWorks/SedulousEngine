@@ -2,7 +2,7 @@
     "about": "The sample games a release packs for the editor's Samples tab (Code/Tools/pack-samples.py): each one's folder here, its name, one line on what it is, and its picture.",
     "samples": [
         {
-            "folder": "PlatformerGame",
+            "folder": "SkyHopper",
             "name": "Sky Hopper",
             "description": "A small 3D platformer: five levels of coins, enemies and hazards, three lives, stars and best scores saved, and gamepad support throughout.",
             "picture": "Documentation/Images/SkyHopper-Title.png"
