@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Mcp;
 using Sedulous.Json;
 using Sedulous.GUI;
@@ -9,9 +10,11 @@ using Sedulous.Editor.Mcp;
 
 namespace Sedulous.Editor.App;
 
-// The user's hands over MCP: editor_find, editor_click, editor_hover, editor_scroll, editor_type and
-// editor_key drive the editor's own GUI as a user would, so an agent checks what a page does (a row
-// chosen, a group opened, a key captured) and then looks with editor_screenshot. The input goes to
+// The user's hands over MCP: editor_find, editor_click, editor_hover, editor_scroll, editor_type,
+// editor_key and editor_drop drive the editor's own GUI as a user would, so an agent checks what a
+// page does (a row chosen, a group opened, a key captured, files dropped for import) and then looks
+// with editor_screenshot. editor_drop hands its files to what the window does with a file dropped
+// from the operating system, so the import it opens is the one a user's drop opens. The input goes to
 // the editor's GUI dispatcher, never the operating system: it reaches only this editor, with its
 // window hidden or the user at work beside it. A target is named as the GUI's tests name one
 // (GUI.Testing's Finder: a CSS selector, "text=Jump", "text~=Jum"), or by a point in the
@@ -24,6 +27,9 @@ class InputToolSeams
 {
 	/// Owned.
 	public delegate SceneRoot() Root ~ delete _;
+	/// Drops files on the main window as the operating system would; false with `error` when they
+	/// cannot be taken (no project open). Owned; null: this editor takes no drops.
+	public delegate bool(Span<StringView> paths, String error) Drop ~ delete _;
 
 	/// The root, when it has a dispatcher to drive.
 	public SceneRoot Live
@@ -39,8 +45,8 @@ class InputToolSeams
 static class EditorInputTools
 {
 	/// How many tools Register registers (editor_find, editor_click, editor_hover, editor_scroll,
-	/// editor_type, editor_key); a tripwire like cPageToolCount.
-	public const int cInputToolCount = 6;
+	/// editor_type, editor_key, editor_drop); a tripwire like cPageToolCount.
+	public const int cInputToolCount = 7;
 	/// Nodes editor_find lists; the count says how many there were.
 	private const int cFindLimit = 50;
 	/// Nodes a refusal names when a target finds several.
@@ -336,6 +342,43 @@ static class EditorInputTools
 				let taken = d.InjectKeyDown(stroke.Value.Code, stroke.Value.Modifiers);
 				d.InjectKeyUp(stroke.Value.Code, stroke.Value.Modifiers);
 				answer.Set("handled", JsonValue.MakeBool(taken));
+				return true;
+			}));
+
+		let dropSchema = scope SchemaBuilder();
+		dropSchema.Arr("paths", "string", "absolute paths of the files to drop", true);
+		server.RegisterTool("editor_drop",
+			"Drops files on the editor's window as the operating system would when a user drags them in from a file manager: they are imported into the group the Assets panel shows, at once when nothing needs deciding, else through the import window (editor_screenshot to see it, editor_click to work it). `paths` are absolute paths of files that exist. Refused when one is missing or no project is open. Answers a frame later with {dropped, focus}.",
+			dropSchema.Build(), .Creates,
+			Acting(seams, new [=seams] (root, arguments, answer, error) =>
+			{
+				let list = arguments.Get("paths");
+				if ((list == null) || !list.IsArray || (list.Count == 0))
+				{
+					error.Append("give `paths`: one or more absolute file paths");
+					return false;
+				}
+				let paths = scope List<StringView>();
+				for (int i < list.Count)
+				{
+					let path = list.At(i).AsString();
+					if (!PathIsAbsolute(path) || !FileExists(path))
+					{
+						error.AppendF("no file at \"{}\" (an absolute path to a file that exists)", path);
+						return false;
+					}
+					paths.Add(path);
+				}
+				if ((seams.Drop == null) || !seams.Drop(paths, error))
+				{
+					if (error.IsEmpty)
+						error.Append("this editor takes no dropped files");
+					return false;
+				}
+				let dropped = JsonValue.MakeArray();
+				for (let path in paths)
+					dropped.Add(JsonValue.MakeString(path));
+				answer.Set("dropped", dropped);
 				return true;
 			}));
 	}

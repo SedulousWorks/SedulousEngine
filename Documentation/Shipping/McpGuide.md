@@ -23,7 +23,7 @@ tab's PIE id, `welcome` for Project, `assets`, `console`, `profiler`, with the `
 along the window's edge or floating, as dragging its tab does, `share` setting its part of the
 room it splits), the whole-window capture
 (`editor_screenshot`), the editor's own UI used as a user would (`editor_find`, `editor_click`,
-`editor_hover`, `editor_scroll`, `editor_type`, `editor_key`; see below), the action bridge (`action_list`,
+`editor_hover`, `editor_scroll`, `editor_type`, `editor_key`, `editor_drop`; see below), the action bridge (`action_list`,
 `action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
 menu, over the active page, executed unattended; a disabled action may say why as
 `disabledReason`, in its state and in a refused execute; a dialog an action would open is closed as
@@ -387,7 +387,10 @@ read the file before trusting it, and leave the judgement of how it looks to the
   one (`button` right for a context menu, `clicks` 2 for a double click, `modifiers` held),
   `editor_hover` moves the pointer over one (a tooltip shows after its delay), `editor_scroll`
   turns the wheel, `editor_type` types into the focus and `editor_key` presses a key or a chord
-  (`return`, `escape`, `ctrl-s`; the keymap's names). They go through the editor's own input,
+  (`return`, `escape`, `ctrl-s`; the keymap's names). `editor_drop` drops files (absolute paths)
+  on the window as a file manager would: they import into the group the Assets panel shows, at
+  once when nothing needs deciding, else through the import window, which the other tools then
+  work. They go through the editor's own input,
   never the operating system's, so they reach that editor alone, its window hidden or not. A
   target is named as the GUI's tests name one: a CSS selector (`#input-tree`, `treeitem`),
   `text=Jump`, or `text~=Jum`, with `within` to look under another match and `index` to pick

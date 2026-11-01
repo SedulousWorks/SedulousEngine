@@ -548,6 +548,8 @@ class EditorApplication : IApplication
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
 		// The main window's GUI, which the input tools drive.
 		mcpServices.GuiRoot = new () => mWindow.Root;
+		// What a file dropped on it does, which editor_drop does too.
+		mcpServices.DropFiles = new (paths, error) => DropFiles(paths, error);
 		// The dock's layout tools, over its controller, and the action bridge, its unattended
 		// calls refusing the window root's modal windows (both outlive the host, which stops
 		// first; a headless run has no root, so nothing to refuse).
@@ -969,20 +971,33 @@ class EditorApplication : IApplication
 			} ~ delete key, .(), "", true, 0);
 	}
 
-	/// Files dropped on the editor's windows this frame, imported into the group the Assets panel
-	/// shows (else the top). With no project they are let go.
+	/// Files dropped on the main window (from the operating system, or editor_drop): imported into
+	/// the group the Assets panel shows (else the top). False with `outError` when no project is open.
+	public bool DropFiles(Span<StringView> paths, String outError)
+	{
+		let project = mSession.Project;
+		if (project == null)
+		{
+			outError.Append("no project is open");
+			return false;
+		}
+		ImportFiles(paths, ImportWindow.DropGroup(mAssets, project.SourceDb));
+		return true;
+	}
+
+	/// Files dropped on the editor's windows this frame, handed to DropFiles. With no project they
+	/// are let go.
 	private void ImportDroppedFiles(IShell shell)
 	{
 		let dropped = scope List<DroppedFile>();
 		defer { ClearAndDeleteItems!(dropped); }
 		shell.DrainDroppedFiles(dropped);
-		let project = mSession.Project;
-		if (dropped.IsEmpty || (project == null))
+		if (dropped.IsEmpty)
 			return;
 		let paths = scope List<StringView>();
 		for (let file in dropped)
 			paths.Add(file.Path);
-		ImportFiles(paths, ImportWindow.DropGroup(mAssets, project.SourceDb));
+		DropFiles(paths, scope .()); // with no project open, a drop does nothing
 	}
 
 	/// What an asset slot or a page's picker asks of the editor (the scene page's prefab spawn, the

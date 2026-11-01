@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.GUI;
@@ -9,8 +10,8 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.App.Tests;
 
 /// The input tools over a GUI root of their own: what a target finds, a click reaching what it names
-/// (or refused: none, several, covered), a point clicked, text typed into the focus and a key
-/// pressed, each answering a frame (a pump) after it acts.
+/// (or refused: none, several, covered), a point clicked, text typed into the focus, a key pressed
+/// and files dropped, each answering a frame (a pump) after it acts.
 class EditorInputToolsTests
 {
 	/// A form: "Show" and "OK" buttons, a field, and a second "OK" in a panel.
@@ -24,6 +25,10 @@ class EditorInputToolsTests
 		public Sedulous.GUI.Button DialogOk ~ _.ReleaseRef();
 		public int Shows = 0;
 		public int Oks = 0;
+		/// What the window's drop was handed.
+		public List<String> Dropped = new .() ~ DeleteContainerAndItems!(_);
+		/// False: as with no project open.
+		public bool TakesDrops = true;
 		public McpServer Server = new .() ~ delete _;
 
 		public this()
@@ -46,6 +51,17 @@ class EditorInputToolsTests
 			let seams = new InputToolSeams();
 			let over = Root;
 			seams.Root = new [=over] () => over;
+			seams.Drop = new (paths, error) =>
+				{
+					if (!TakesDrops)
+					{
+						error.Append("no project is open");
+						return false;
+					}
+					for (let path in paths)
+						Dropped.Add(new .(path));
+					return true;
+				};
 			EditorInputTools.Register(Server, seams);
 		}
 
@@ -192,5 +208,45 @@ class EditorInputToolsTests
 		Test.Assert(hover.Ok);
 		Test.Assert(hover.Payload.Get("over").Get("node").AsString().Contains("#show"));
 		Test.Assert(Succeeds(bed.Server, "editor_scroll", "{\"target\":\"#dialog\",\"dy\":-1}"));
+	}
+
+	[Test]
+	public static void ADropHandsExistingFilesToTheWindowsDropAndIsRefusedOtherwise()
+	{
+		let bed = scope Bed();
+		// A file to drop, by its absolute path (forward slashes, so it goes into JSON as it is).
+		let folder = PathJoin(System.IO.Directory.GetCurrentDirectory(.. scope .()), "scratch_editor_input_drop", .. scope .());
+		RemoveDirectoryRecursive(folder);
+		Test.Assert(CreateDirectory(folder));
+		defer RemoveDirectoryRecursive(folder);
+		let file = PathJoin(folder, "crate.png", .. scope .());
+		file.Replace('\\', '/');
+		let bytes = "not really a png";
+		Test.Assert(WriteFile(file, .((uint8*)bytes.Ptr, bytes.Length)) case .Ok);
+
+		let dropped = Call(bed.Server, "editor_drop", scope String()..AppendF("{{\"paths\":[\"{}\"]}}", file));
+		defer delete dropped;
+		Test.Assert(dropped.Ok);
+		Test.Assert(dropped.Pumps == 1, "answered on the frame after, as the other acts are");
+		Test.Assert(bed.Dropped.Count == 1);
+		Test.Assert(bed.Dropped[0] == file);
+		Test.Assert(dropped.Payload.Get("dropped").At(0).AsString() == file);
+
+		// Refused, with nothing handed on: no paths, a relative path, a file that is not there, and a
+		// window that takes no drops (no project open).
+		Test.Assert(!Succeeds(bed.Server, "editor_drop", "{\"paths\":[]}"));
+		Test.Assert(!Succeeds(bed.Server, "editor_drop", "{\"paths\":[\"crate.png\"]}"));
+		let gone = PathJoin(folder, "gone.png", .. scope .());
+		gone.Replace('\\', '/');
+		let missing = Call(bed.Server, "editor_drop", scope String()..AppendF("{{\"paths\":[\"{}\"]}}", gone));
+		defer delete missing;
+		Test.Assert(!missing.Ok);
+		Test.Assert(missing.Error.Contains("no file at"));
+		bed.TakesDrops = false;
+		let closed = Call(bed.Server, "editor_drop", scope String()..AppendF("{{\"paths\":[\"{}\"]}}", file));
+		defer delete closed;
+		Test.Assert(!closed.Ok);
+		Test.Assert(closed.Error.Contains("no project is open"));
+		Test.Assert(bed.Dropped.Count == 1);
 	}
 }

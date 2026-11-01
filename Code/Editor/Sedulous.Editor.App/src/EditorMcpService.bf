@@ -61,6 +61,9 @@ class EditorMcpServiceServices
 	/// bridge), called on every start. Owned.
 	/// The main window's GUI, which the input tools drive; null: none now.
 	public delegate SceneRoot() GuiRoot ~ delete _;
+	/// What a file dropped on the main window does (editor_drop); false with `error` when it
+	/// cannot. Owned.
+	public delegate bool(Span<StringView> paths, String error) DropFiles ~ delete _;
 	public delegate void(McpServer server) AddTools ~ delete _;
 }
 
@@ -193,6 +196,7 @@ class EditorMcpService
 		// editor_find, editor_click and the other hands: the main window's GUI, driven as a user would.
 		let input = new InputToolSeams();
 		input.Root = new [=this] () => (mServices.GuiRoot != null) ? mServices.GuiRoot() : null;
+		input.Drop = new [=this] (paths, error) => (mServices.DropFiles != null) && mServices.DropFiles(paths, error);
 		EditorInputTools.Register(mHost.Server, input);
 		// profiler_capture: the process's recorder, which the host advances after each frame.
 		let profiler = new ProfilerToolSeams();
