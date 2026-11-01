@@ -10,7 +10,9 @@ namespace Sedulous.Http.Client;
 /// redirects and certificates itself. Without pthreads its callbacks run on this thread between
 /// frames; each finished request waits for Pump, as the native client's do. There the response's
 /// Url is the URL asked for, MaxRedirects is the browser's, and a cross-origin request needs the
-/// server's CORS headers (without them it fails, and the browser does not say why).
+/// server's CORS headers (without them it fails, and the browser does not say why). The browser
+/// hands a body over whole, so a streamed request hears its head and one piece together, just
+/// before its end.
 class BrowserHttpClient : IHttpClient
 {
 	private class Flight
@@ -33,6 +35,8 @@ class BrowserHttpClient : IHttpClient
 	private List<Flight> mFlights = new .() ~ DeleteContainerAndItems!(_);
 	/// Answered, waiting for Pump, OWNED.
 	private List<Flight> mDelivered = new .() ~ DeleteContainerAndItems!(_);
+	private List<uint64> mCancelledInPump = new .() ~ delete _;
+	private bool mPumping = false;
 	private uint64 mNextId = 0;
 
 	public ~this()
@@ -113,6 +117,8 @@ class BrowserHttpClient : IHttpClient
 
 	public void Cancel(uint64 id)
 	{
+		if (mPumping)
+			mCancelledInPump.Add(id); // its delivery this Pump already took goes unheard
 		for (int i < mFlights.Count)
 		{
 			if (mFlights[i].Id == id)
@@ -140,12 +146,26 @@ class BrowserHttpClient : IHttpClient
 		let ready = scope List<Flight>();
 		ready.AddRange(mDelivered);
 		mDelivered.Clear();
+		// A request a callback cancels (mCancelledInPump grows as they run) hears nothing more.
+		mPumping = true;
 		for (let f in ready)
 		{
-			if (f.Done != null)
-				f.Done(f.Response);
+			let request = f.Request;
+			let response = f.Response;
+			if (request.Streamed && response.Ok)
+			{
+				if (request.OnHead != null)
+					request.OnHead(response.Status, response.Headers, response.Body.Count);
+				if (!response.Body.IsEmpty && (request.OnBody != null) && !mCancelledInPump.Contains(f.Id))
+					request.OnBody(response.Body);
+				response.Body.Clear(); // a streamed response keeps no body
+			}
+			if ((f.Done != null) && !mCancelledInPump.Contains(f.Id))
+				f.Done(response);
 			delete f;
 		}
+		mPumping = false;
+		mCancelledInPump.Clear();
 	}
 
 	public int Pending => mFlights.Count + mDelivered.Count;

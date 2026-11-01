@@ -9,7 +9,8 @@ namespace Sedulous.Http.Client;
 /// browser's fetch, which does TLS, redirects and certificates itself. HttpClients.Create picks the
 /// platform's.
 ///
-/// What it does: GET, POST and any method; bodies by Content-Length, chunked, or until close;
+/// What it does: GET, POST and any method; bodies by Content-Length, chunked, or until close, kept
+/// or streamed to the request's OnHead and OnBody (a download);
 /// redirects within a limit (an https request is never followed to http); a timeout over the
 /// whole request; cancel; a cap on the response's size. What it does not, by design for now:
 /// keep-alive or HTTP/2 (each request its own connection), cookies, proxies, IPv6 (the socket

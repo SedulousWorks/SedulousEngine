@@ -20,6 +20,39 @@ class NativeHttpClient : IHttpClient
 		public HttpClientRequest Request ~ delete _;
 		public delegate void(HttpClientResponse response) Done ~ delete _;
 		public HttpClientResponse Response ~ delete _;
+		/// Its head and body go out as they arrive.
+		public bool Streamed;
+	}
+
+	private enum DeliveryKind : uint8
+	{
+		Head,
+		Body,
+		Done,
+	}
+
+	/// What a Pump hands its caller: a streamed response's head or a piece of its body, or the end
+	/// of a request.
+	private class Delivery
+	{
+		public DeliveryKind Kind = .Done;
+		public uint64 Id;
+		/// Done: the request and its response, OWNED.
+		public Job Job ~ delete _;
+		/// Head: its status, headers and body length (-1 when not given).
+		public int32 Status;
+		public List<HttpHeader> Headers = new .() ~ DeleteContainerAndItems!(_);
+		public int64 Length = -1;
+		/// Body.
+		public List<uint8> Piece = new .() ~ delete _;
+	}
+
+	/// A request's stream callbacks, kept on the caller's thread while it runs.
+	private class Stream
+	{
+		public uint64 Id;
+		public delegate void(int32 status, List<HttpHeader> headers, int64 length) OnHead ~ delete _;
+		public delegate void(Span<uint8> piece) OnBody ~ delete _;
 	}
 
 	/// BORROWED: the application's, outliving the client.
@@ -30,7 +63,13 @@ class NativeHttpClient : IHttpClient
 	/// Set when a job is queued or the client stops.
 	private WaitEvent mWake = new .() ~ delete _;
 	private List<Job> mQueue = new .() ~ DeleteContainerAndItems!(_);
-	private List<Job> mDelivered = new .() ~ DeleteContainerAndItems!(_);
+	private List<Delivery> mDelivered = new .() ~ DeleteContainerAndItems!(_);
+	/// The caller's thread's alone: Send, Cancel and Pump.
+	private List<Stream> mStreams = new .() ~ DeleteContainerAndItems!(_);
+	private List<uint64> mCancelledInPump = new .() ~ delete _;
+	/// Streams removed during a Pump, deleted at its end: one may be the callback running.
+	private List<Stream> mRetired = new .() ~ DeleteContainerAndItems!(_);
+	private bool mPumping = false;
 	private int mPending = 0;
 	private uint64 mCurrent = 0;
 	private bool mCancelCurrent = false;
@@ -67,6 +106,18 @@ class NativeHttpClient : IHttpClient
 		job.Id = ++mNextId;
 		job.Request = request;
 		job.Done = done;
+		if (request.Streamed)
+		{
+			// The callbacks stay on this thread; the worker only knows to stream.
+			let stream = new Stream();
+			stream.Id = job.Id;
+			stream.OnHead = request.OnHead;
+			stream.OnBody = request.OnBody;
+			request.OnHead = null;
+			request.OnBody = null;
+			mStreams.Add(stream);
+			job.Streamed = true;
+		}
 		using (mLock.Enter())
 		{
 			mQueue.Add(job);
@@ -78,6 +129,9 @@ class NativeHttpClient : IHttpClient
 
 	public void Cancel(uint64 id)
 	{
+		if (mPumping)
+			mCancelledInPump.Add(id); // its deliveries this Pump already took go unheard
+		RemoveStream(id);
 		using (mLock.Enter())
 		{
 			for (int i < mQueue.Count)
@@ -92,33 +146,85 @@ class NativeHttpClient : IHttpClient
 			}
 			if (mCurrent == id)
 				mCancelCurrent = true; // the worker drops it at its next step
-			for (int i < mDelivered.Count)
+			// Its head and pieces waiting for a Pump go too; its end, if it came, ends it.
+			for (int i = mDelivered.Count - 1; i >= 0; i--)
 			{
-				if (mDelivered[i].Id == id)
-				{
-					delete mDelivered[i];
-					mDelivered.RemoveAt(i);
+				if (mDelivered[i].Id != id)
+					continue;
+				if (mDelivered[i].Kind == .Done)
 					mPending--;
-					return;
-				}
+				delete mDelivered[i];
+				mDelivered.RemoveAt(i);
 			}
 		}
 	}
 
 	public void Pump()
 	{
-		let ready = scope List<Job>();
+		let ready = scope List<Delivery>();
 		using (mLock.Enter())
 		{
 			ready.AddRange(mDelivered);
 			mDelivered.Clear();
-			mPending -= ready.Count;
+			for (let d in ready)
+			{
+				if (d.Kind == .Done)
+					mPending--;
+			}
 		}
-		for (let job in ready)
+		// In order: each stream's head, its pieces, then its end, after which its callbacks are
+		// forgotten. A request a callback cancels (mCancelledInPump grows as they run) hears
+		// nothing more.
+		mPumping = true;
+		for (let d in ready)
 		{
-			if (job.Done != null)
-				job.Done(job.Response);
-			delete job;
+			if (!mCancelledInPump.Contains(d.Id))
+			{
+				let stream = FindStream(d.Id);
+				switch (d.Kind)
+				{
+				case .Head:
+					if ((stream != null) && (stream.OnHead != null))
+						stream.OnHead(d.Status, d.Headers, d.Length);
+				case .Body:
+					if ((stream != null) && (stream.OnBody != null))
+						stream.OnBody(d.Piece);
+				case .Done:
+					if (d.Job.Done != null)
+						d.Job.Done(d.Job.Response);
+					RemoveStream(d.Id);
+				}
+			}
+			delete d;
+		}
+		mPumping = false;
+		mCancelledInPump.Clear();
+		ClearAndDeleteItems!(mRetired);
+	}
+
+	private Stream FindStream(uint64 id)
+	{
+		for (let s in mStreams)
+		{
+			if (s.Id == id)
+				return s;
+		}
+		return null;
+	}
+
+	private void RemoveStream(uint64 id)
+	{
+		for (int i < mStreams.Count)
+		{
+			if (mStreams[i].Id == id)
+			{
+				if (mPumping)
+					mRetired.Add(mStreams[i]);
+				else
+					delete mStreams[i];
+				mStreams.RemoveAt(i);
+				return;
+			}
 		}
 	}
 
@@ -153,7 +259,7 @@ class NativeHttpClient : IHttpClient
 					mWake.WaitFor();
 			}
 			job.Response = new HttpClientResponse();
-			Run(job.Request, job.Response);
+			Run(job.Id, job.Streamed, job.Request, job.Response);
 			using (mLock.Enter())
 			{
 				let cancelled = mCancelCurrent;
@@ -166,9 +272,27 @@ class NativeHttpClient : IHttpClient
 					delete job;
 					continue;
 				}
-				mDelivered.Add(job);
+				let end = new Delivery();
+				end.Id = job.Id;
+				end.Job = job;
+				mDelivered.Add(end);
 			}
 		}
+	}
+
+	/// Queues a streamed response's head or a piece of its body for the next Pump. TAKES
+	/// OWNERSHIP of `d`.
+	private void Post(Delivery d)
+	{
+		using (mLock.Enter())
+		{
+			if (!mCancelCurrent)
+			{
+				mDelivered.Add(d);
+				return;
+			}
+		}
+		delete d;
 	}
 
 	private bool Cancelled()
@@ -177,8 +301,9 @@ class NativeHttpClient : IHttpClient
 			return mCancelCurrent || mStopping;
 	}
 
-	/// One request to its end: each redirect a connection of its own.
-	private void Run(HttpClientRequest request, HttpClientResponse response)
+	/// One request to its end: each redirect a connection of its own. A streamed request's final
+	/// response goes out as it arrives (a redirect's own body is never streamed).
+	private void Run(uint64 id, bool streamed, HttpClientRequest request, HttpClientResponse response)
 	{
 		let clock = scope Stopwatch()..Start();
 		let url = scope String(request.Url);
@@ -193,8 +318,35 @@ class NativeHttpClient : IHttpClient
 			let parser = scope:: HttpMessageParser(.Response, request.MaxResponseBytes);
 			if (HttpHeader.AsciiEqualsIgnoreCase(method, "HEAD"))
 				parser.SetNoBody();
-			if (!Exchange(at, method, request.Headers, body, request, clock, parser, response.Error))
+			bool headSent = false;
+			delegate void(HttpMessageParser p) received = scope [&] (p) =>
+				{
+					if (!streamed || !p.HeadParsed || !Heard(p, request))
+						return;
+					if (!headSent)
+					{
+						headSent = true;
+						let head = new Delivery();
+						head.Kind = .Head;
+						head.Id = id;
+						head.Status = p.Status;
+						for (let header in p.Headers)
+							head.Headers.Add(new .(header.Name, header.Value));
+						head.Length = p.BodyLength;
+						Post(head);
+					}
+					let piece = new Delivery();
+					piece.Kind = .Body;
+					piece.Id = id;
+					p.TakeBody(piece.Piece);
+					if (piece.Piece.IsEmpty)
+						delete piece;
+					else
+						Post(piece);
+				};
+			if (!Exchange(at, method, request.Headers, body, request, clock, parser, response.Error, received))
 				return;
+			received(parser); // the last of it
 			let status = parser.Status;
 			let location = HttpHeader.Find(parser.Headers, "Location");
 			let redirect = (status == 301) || (status == 302) || (status == 303) || (status == 307) || (status == 308);
@@ -230,10 +382,20 @@ class NativeHttpClient : IHttpClient
 		}
 	}
 
+	/// Whether this hop's response is the one the caller hears: not a redirect that will be
+	/// followed.
+	private static bool Heard(HttpMessageParser p, HttpClientRequest request)
+	{
+		let s = p.Status;
+		let redirects = (s == 301) || (s == 302) || (s == 303) || (s == 307) || (s == 308);
+		return !(redirects && (request.MaxRedirects > 0) && !HttpHeader.Find(p.Headers, "Location").IsEmpty);
+	}
+
 	/// One connection: the request out, the response read into `parser`. False, `outError`
 	/// saying why, when no whole response arrived.
 	private bool Exchange(HttpUrl at, StringView method, List<HttpHeader> headers, List<uint8> body,
-		HttpClientRequest request, Stopwatch clock, HttpMessageParser parser, String outError)
+		HttpClientRequest request, Stopwatch clock, HttpMessageParser parser, String outError,
+		delegate void(HttpMessageParser p) received)
 	{
 		if (at.Secure && (mTls == null))
 		{
@@ -321,6 +483,7 @@ class NativeHttpClient : IHttpClient
 					parser.Push(.(&buffer[0], (int)n));
 					if (parser.State != .NeedMore)
 						break;
+					received(parser); // a streamed body goes out as it arrives
 					continue;
 				}
 				if (n < 0)

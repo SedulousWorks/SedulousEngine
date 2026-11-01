@@ -12,7 +12,8 @@ namespace Sedulous.Http.Client.Tests;
 
 /// The native HTTP client against real loopback servers: the engine's HttpServer for GET, POST,
 /// redirects (followed, a POST turned GET by 303, a loop stopped), a timeout, a cancel and the
-/// size cap; a raw server for a chunked response, and for https through the Mbed TLS backend with
+/// size cap; a raw server for a chunked response, a streamed body (its head, then its pieces; a
+/// redirect's own not streamed; the cap; a cancel), and for https through the Mbed TLS backend with
 /// a self-signed certificate (trusted, and an https request redirected to http refused). Also URL
 /// parsing and redirect resolution alone.
 class HttpClientTests
@@ -393,6 +394,157 @@ class HttpClientTests
 		Fetch(client, HttpClientRequest.Get(Url(server.Port, "/", false, .. scope .())), scope => server.Pump, r);
 		Test.Assert(r.Status == 200, r.Error);
 		Test.Assert(r.BodyText == "Wikipedia");
+	}
+
+	/// What a streamed request heard: its head, its pieces joined, how many pieces, its end.
+	private class Heard
+	{
+		public int Heads = 0;
+		public int32 Status = 0;
+		public int64 Length = -2;
+		public List<uint8> Body = new .() ~ delete _;
+		public int Pieces = 0;
+		public bool Done = false;
+		public HttpClientResponse Response = new .() ~ delete _;
+
+		public StringView BodyText => .((char8*)Body.Ptr, Body.Count);
+	}
+
+	/// A GET of `url` streaming into `heard`.
+	private static HttpClientRequest Streamed(StringView url, Heard heard)
+	{
+		let request = HttpClientRequest.Get(url);
+		request.OnHead = new (status, headers, length) =>
+			{
+				heard.Heads++;
+				heard.Status = status;
+				heard.Length = length;
+			};
+		request.OnBody = new (piece) =>
+			{
+				Test.Assert(heard.Heads == 1, "the head first");
+				heard.Pieces++;
+				heard.Body.AddRange(piece);
+			};
+		return request;
+	}
+
+	/// The end of a request, kept in `heard`.
+	private static delegate void(HttpClientResponse response) Ended(Heard heard)
+	{
+		return new (r) =>
+			{
+				heard.Done = true;
+				heard.Response.Status = r.Status;
+				heard.Response.Body.AddRange(r.Body);
+				heard.Response.Error.Set(r.Error);
+			};
+	}
+
+	/// Pumps the client and `server` until nothing is pending, about ten seconds at most.
+	private static void Drain(IHttpClient client, RawServer server)
+	{
+		for (int i < 10000)
+		{
+			if (client.Pending == 0)
+				break;
+			server.Pump();
+			client.Pump();
+			if (client.Pending > 0)
+				Thread.Sleep(1);
+		}
+		Test.Assert(client.Pending == 0);
+	}
+
+	[Test]
+	public static void AStreamedBodyArrivesInPiecesAfterItsHeadAndTheResponseKeepsNoneOfIt()
+	{
+		// 200 KB with a length: more than one read's worth, so more than one piece.
+		let big = scope String();
+		for (int i < 200 * 1024)
+			big.Append((char8)('a' + (i * 7) % 26));
+		let server = scope RawServer(new [&](head, reply) =>
+			{
+				reply.AppendF("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", big.Length, big);
+			});
+		let client = scope NativeHttpClient(null);
+		let heard = scope Heard();
+		client.Send(Streamed(Url(server.Port, "/big", false, .. scope .()), heard), Ended(heard));
+		Drain(client, server);
+		Test.Assert(heard.Done);
+		Test.Assert(heard.Response.Ok, heard.Response.Error);
+		Test.Assert(heard.Response.Status == 200);
+		Test.Assert(heard.Response.Body.IsEmpty); // it went to OnBody
+		Test.Assert(heard.Heads == 1);
+		Test.Assert(heard.Status == 200);
+		Test.Assert(heard.Length == big.Length);
+		Test.Assert(heard.Pieces > 1);
+		Test.Assert(heard.BodyText == big);
+
+		// The cap counts a streamed body too.
+		let capped = scope Heard();
+		let small = Streamed(Url(server.Port, "/big", false, .. scope .()), capped);
+		small.MaxResponseBytes = 64 * 1024;
+		client.Send(small, Ended(capped));
+		Drain(client, server);
+		Test.Assert(capped.Done);
+		Test.Assert(!capped.Response.Ok);
+		Test.Assert(capped.Body.Count <= 64 * 1024);
+	}
+
+	[Test]
+	public static void AStreamedChunkedBodyHasNoLengthAndOnlyTheFinalResponseOfARedirectStreams()
+	{
+		let server = scope RawServer(new (head, reply) =>
+			{
+				if (head.Contains("GET /moved ", true))
+					reply.Append("HTTP/1.1 302 Found\r\nLocation: /here\r\nContent-Length: 5\r\nConnection: close\r\n\r\nmoved");
+				else
+					reply.Append("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n");
+			});
+		let client = scope NativeHttpClient(null);
+		let heard = scope Heard();
+		client.Send(Streamed(Url(server.Port, "/moved", false, .. scope .()), heard), Ended(heard));
+		Drain(client, server);
+		Test.Assert(heard.Done);
+		Test.Assert(heard.Response.Ok, heard.Response.Error);
+		Test.Assert(heard.Heads == 1); // the 302 is not heard
+		Test.Assert(heard.Status == 200);
+		Test.Assert(heard.Length == -1); // chunked: no length given
+		Test.Assert(heard.BodyText == "Wikipedia");
+	}
+
+	[Test]
+	public static void AStreamedRequestCancelledAtItsHeadHearsNothingMore()
+	{
+		let big = scope String();
+		big.Append('x', 256 * 1024);
+		let server = scope RawServer(new [&](head, reply) =>
+			{
+				reply.AppendF("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", big.Length, big);
+			});
+		let client = scope NativeHttpClient(null);
+		let heard = scope Heard();
+		uint64 id = 0;
+		let request = Streamed(Url(server.Port, "/", false, .. scope .()), heard);
+		delete request.OnHead;
+		request.OnHead = new [&](status, headers, length) =>
+			{
+				heard.Heads++;
+				heard.Status = status;
+				client.Cancel(id);
+			};
+		id = client.Send(request, new [&](r) => { heard.Done = true; });
+		Drain(client, server);
+		for (int i < 50) // anything still under way is dropped, not delivered
+		{
+			server.Pump();
+			client.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(heard.Heads == 1);
+		Test.Assert(heard.Pieces == 0);
+		Test.Assert(!heard.Done);
 	}
 
 	[Test]

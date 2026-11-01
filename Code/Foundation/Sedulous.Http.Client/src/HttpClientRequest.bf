@@ -15,8 +15,18 @@ class HttpClientRequest
 	public float TimeoutSeconds = 30.0f;
 	/// Nought: a redirect comes back as it is.
 	public int32 MaxRedirects = 5;
-	/// A body past this fails the request.
+	/// A body past this fails the request, streamed or kept.
 	public int MaxResponseBytes = 16 * 1024 * 1024;
+	/// To stream the response (a download): told the final response's status, headers and body
+	/// length (-1 when its head gives none) once they arrive, before any of its body. OWNED.
+	public delegate void(int32 status, List<HttpHeader> headers, int64 length) OnHead ~ delete _;
+	/// To stream the response: each piece of its body as it arrives, in order. When set, the
+	/// response handed to `done` has an empty body. Both are called inside Pump, like `done`, and
+	/// never after a Cancel. OWNED.
+	public delegate void(Span<uint8> piece) OnBody ~ delete _;
+
+	/// Whether the response streams (OnHead or OnBody set).
+	public bool Streamed => (OnHead != null) || (OnBody != null);
 
 	public this() {}
 
