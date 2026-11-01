@@ -7,7 +7,8 @@ namespace Sedulous.Editor.Project;
 /// The per user project registry, a section of the user level settings store, deliberately
 /// OUTSIDE any engine install or project directory: every editor version on the machine
 /// lists the same projects, and a launcher can read the same file. Ordering IS recency,
-/// most recent first; no timestamps to go stale.
+/// most recent first; each entry also keeps when it was last opened (Unix seconds, which the
+/// manager shows as "2 hours ago") and whether the user pinned it.
 [Serializable(1)]
 class RecentProjectsSettings
 {
@@ -17,6 +18,12 @@ class RecentProjectsSettings
 	/// The launcher shows the projects as a grid of their pictures, else as a list.
 	[Appended]
 	public bool GridView = false;
+	/// The list's order: by name, else by when each was last opened.
+	[Appended]
+	public bool SortByName = false;
+	/// The folder the last project was made or downloaded in, where the next one starts.
+	[Appended]
+	public String LastLocation = new .() ~ delete _;
 
 	public RecentProjectEntry Find(StringView path)
 	{

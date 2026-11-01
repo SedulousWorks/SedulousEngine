@@ -14,7 +14,7 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.Core.Tests;
 
 /// The project registry and the manager controller: recency ordering, removal, the store
-/// round trip, the probe, the version relation, the manifest backup, the open gates, and
+/// round trip, when each was opened and its pin, relocating, arranging and saying when, the probe, the version relation, the manifest backup, the open gates, and
 /// every settings section instantiable and surviving a round trip.
 static class ProjectRegistryTests
 {
@@ -68,6 +68,134 @@ static class ProjectRegistryTests
 		Test.Assert((registry.Entries.Count == 1) && (registry.Entries[0].Path == "/projects/keep") && (registry.Entries[0].Name == "Keep"));
 		let missing = scope Settings();
 		Test.Assert(EditorSettingsStore.Load(fs, missing, "no.such.xml") case .Err(.NotFound), "a first run reads as defaults");
+	}
+
+	[Test]
+	public static void AnEntryKeepsWhenItWasOpenedAndItsPinAndTheListItsOrderAndLastLocation()
+	{
+		EditorSerializables.RegisterAll();
+		let store = scope Settings();
+		ProjectRegistry.TouchRecentProject(store, "/projects/a", "A", "0.1.0", 1000);
+		Test.Assert(ProjectRegistry.SetRecentProjectFavourite(store, "/projects/a", true));
+		Test.Assert(!ProjectRegistry.SetRecentProjectFavourite(store, "/projects/none", true));
+		ProjectRegistry.TouchRecentProject(store, "/projects/a", "A", "0.1.0", 2000); // opened again: the pin stays
+		let registry = store.Section<RecentProjectsSettings>();
+		Test.Assert(registry.Entries.Count == 1);
+		Test.Assert(registry.Entries[0].LastOpened == 2000);
+		Test.Assert(registry.Entries[0].Favourite);
+		registry.SortByName = true;
+		registry.LastLocation.Set("/home/me/Games");
+
+		// Opened without a time: now, by the wall clock.
+		let before = GetUnixTime();
+		ProjectRegistry.TouchRecentProject(store, "/projects/b", "B", "0.1.0");
+		Test.Assert(registry.Find("/projects/b").LastOpened >= before);
+
+		// They round trip the store.
+		let dir = Scratch("scratch_registry_fields", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		CreateDirectory(dir);
+		let fs = scope NativeFileSystem(dir);
+		Test.Assert(EditorSettingsStore.Save(fs, store) case .Ok);
+		let loaded = scope Settings();
+		Test.Assert(EditorSettingsStore.Load(fs, loaded) case .Ok);
+		let back = loaded.Section<RecentProjectsSettings>();
+		let a = back.Find("/projects/a");
+		Test.Assert((a != null) && (a.LastOpened == 2000) && a.Favourite);
+		Test.Assert(!back.Find("/projects/b").Favourite);
+		Test.Assert(back.SortByName);
+		Test.Assert(back.LastLocation == "/home/me/Games");
+
+		// A store written before these fields existed still loads, each at its default.
+		let file = PathJoin(dir, EditorSettingsStore.cFileName, .. scope .());
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(file, bytes) case .Ok);
+		let text = scope String(StringView((char8*)bytes.Ptr, bytes.Count));
+		let old = scope String();
+		for (let line in text.Split('\n'))
+		{
+			if (line.Contains("\"lastOpened\"") || line.Contains("\"favourite\"") || line.Contains("\"sortByName\"") || line.Contains("\"lastLocation\""))
+				continue;
+			old.Append(line);
+			old.Append('\n');
+		}
+		Test.Assert(old.Length < text.Length, "the new fields were in it");
+		Test.Assert(WriteFile(file, .((uint8*)old.Ptr, old.Length)) case .Ok);
+		let older = scope Settings();
+		Test.Assert(EditorSettingsStore.Load(fs, older) case .Ok);
+		let olderRegistry = older.Section<RecentProjectsSettings>();
+		Test.Assert(olderRegistry.Entries.Count == 2);
+		Test.Assert(olderRegistry.Find("/projects/a").LastOpened == 0);
+		Test.Assert(!olderRegistry.Find("/projects/a").Favourite);
+		Test.Assert(!olderRegistry.SortByName);
+		Test.Assert(olderRegistry.LastLocation.IsEmpty);
+	}
+
+	/// The names of `entries` in order, each followed by a space.
+	private static void Names(List<RecentProjectEntry> entries, String outText)
+	{
+		for (let entry in entries)
+			outText.AppendF("{} ", entry.Name);
+	}
+
+	/// The arranged names for `query` and `byName`.
+	private static void Arranged(RecentProjectsSettings registry, StringView query, bool byName, String outText)
+	{
+		let list = scope List<RecentProjectEntry>();
+		ProjectRegistry.ArrangeRecentProjects(registry, query, byName, list);
+		Names(list, outText);
+	}
+
+	[Test]
+	public static void AMissingProjectIsRelocatedInPlaceAndArrangingPinsSortsAndSearches()
+	{
+		EditorSerializables.RegisterAll();
+		let store = scope Settings();
+		ProjectRegistry.TouchRecentProject(store, "/games/zeta", "Zeta", "0.1.0", 10);
+		ProjectRegistry.TouchRecentProject(store, "/old/Alpha", "alpha", "0.1.0", 20);
+		ProjectRegistry.TouchRecentProject(store, "/games/Mid", "Mid", "0.1.0", 30);
+		let registry = store.Section<RecentProjectsSettings>();
+
+		// Locate...: the entry takes the new folder and keeps its place; a folder already listed is refused.
+		Test.Assert(ProjectRegistry.RelocateRecentProject(store, "/old/Alpha", "/games/Alpha"));
+		Test.Assert(registry.Entries[1].Path == "/games/Alpha");
+		Test.Assert(registry.Entries[1].LastOpened == 20);
+		Test.Assert(!ProjectRegistry.RelocateRecentProject(store, "/games/Alpha", "/games/zeta"));
+		Test.Assert(!ProjectRegistry.RelocateRecentProject(store, "/nowhere", "/games/new"));
+
+		// By recency (the list's order), by name in any case, and a pinned one first in both.
+		Test.Assert(Arranged(registry, "", false, .. scope .()) == "Mid alpha Zeta ");
+		Test.Assert(Arranged(registry, "", true, .. scope .()) == "alpha Mid Zeta ");
+		Test.Assert(ProjectRegistry.SetRecentProjectFavourite(store, "/games/zeta", true));
+		Test.Assert(Arranged(registry, "", false, .. scope .()) == "Zeta Mid alpha ");
+		Test.Assert(Arranged(registry, "", true, .. scope .()) == "Zeta alpha Mid ");
+
+		// Search looks at the name and the folder, in any case.
+		Test.Assert(Arranged(registry, "ALP", false, .. scope .()) == "alpha ");
+		Test.Assert(Arranged(registry, "games/m", false, .. scope .()) == "Mid ");
+		Test.Assert(Arranged(registry, "nothing", false, .. scope .()).IsEmpty);
+	}
+
+	[Test]
+	public static void WhenAProjectWasOpenedIsSaidForAPersonByTheLocalCalendar()
+	{
+		let now = 1793539320L; // 2026-11-01 13:22 UTC
+		Test.Assert(ProjectRegistry.DescribeLastOpened(0, now, 0, .. scope .()).IsEmpty, "never kept one");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 20, now, 0, .. scope .()) == "Just now");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 60, now, 0, .. scope .()) == "1 minute ago");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 45 * 60, now, 0, .. scope .()) == "45 minutes ago");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 3 * 3600, now, 0, .. scope .()) == "3 hours ago");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 14 * 3600, now, 0, .. scope .()) == "Yesterday", "23:22 the day before");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 3 * 86400, now, 0, .. scope .()) == "3 days ago");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 20 * 86400, now, 0, .. scope .()) == "2 weeks ago");
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 60 * 86400, now, 0, .. scope .()) == "2 Sep 2026");
+		// The day turns at local midnight: 14 hours ago is today where it is 10 hours later.
+		Test.Assert(ProjectRegistry.DescribeLastOpened(now - 14 * 3600, now, 10 * 3600, .. scope .()) == "14 hours ago");
+
+		Test.Assert(ProjectRegistry.DescribeTime(0, 0, .. scope .()).IsEmpty);
+		Test.Assert(ProjectRegistry.DescribeTime(now, 0, .. scope .()) == "1 Nov 2026, 13:22");
+		Test.Assert(ProjectRegistry.DescribeTime(now - 13 * 3600 - 20 * 60, 0, .. scope .()) == "1 Nov 2026, 00:02");
+		Test.Assert(ProjectRegistry.DescribeTime(now, -14 * 3600, .. scope .()) == "31 Oct 2026, 23:22");
 	}
 
 	[Test]
@@ -154,8 +282,30 @@ static class ProjectRegistryTests
 
 		controller.NoteOpened(dir, "Gate Test", "0.1.0");
 		Test.Assert(controller.Entries.Entries.Count == 1);
+		Test.Assert(controller.SetFavourite(dir, true));
+		Test.Assert(controller.Entries.Entries[0].Favourite);
+		controller.SetSortByName(true);
+		Test.Assert(controller.SortByName);
+		controller.SetLastLocation("/home/me/Games");
+		Test.Assert(controller.LastLocation == "/home/me/Games");
 		Test.Assert(controller.Remove(dir));
 		Test.Assert(controller.Entries.Entries.IsEmpty);
+
+		// Locate... takes only a folder holding a project, and refreshes the entry from it; Remove
+		// missing takes off the list every entry whose folder holds none, and touches no files.
+		controller.NoteOpened("scratch_manager_gone", "Old name", "0.0.1");
+		controller.NoteOpened("scratch_manager_gone_too", "Gone", "0.0.1");
+		controller.NoteOpened(dir, "Gate Test", "0.1.0");
+		Test.Assert(!controller.Relocate("scratch_manager_gone", "scratch_manager_no_such_dir"));
+		Test.Assert(!controller.Relocate("scratch_manager_gone", dir), "listed already");
+		Test.Assert(controller.Remove(dir));
+		Test.Assert(controller.Relocate("scratch_manager_gone", dir));
+		let moved = controller.Entries.Find(dir);
+		Test.Assert((moved != null) && (moved.Name == "Gate Test"));
+		Test.Assert(controller.RemoveMissing() == 1);
+		Test.Assert(controller.Entries.Entries.Count == 1);
+		Test.Assert(controller.Entries.Entries[0].Path == dir);
+		Test.Assert(DirectoryExists(dir));
 	}
 
 	[Test]

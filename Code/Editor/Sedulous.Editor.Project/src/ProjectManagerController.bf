@@ -70,6 +70,59 @@ class ProjectManagerController
 
 	public bool Remove(StringView directory) => ProjectRegistry.RemoveRecentProject(mStore, directory);
 
+	/// Pins or unpins a project (pinned ones are listed first); false when it is not listed.
+	public bool SetFavourite(StringView directory, bool favourite) => ProjectRegistry.SetRecentProjectFavourite(mStore, directory, favourite);
+
+	/// Points a missing project's entry at the folder it is in now, refreshed from its manifest;
+	/// false when `to` holds no project, or is listed already.
+	public bool Relocate(StringView from, StringView to)
+	{
+		let probed = scope ProjectSettings();
+		if ((ProjectRegistry.ProbeProject(to, probed) case .Err) || !ProjectRegistry.RelocateRecentProject(mStore, from, to))
+			return false;
+		TouchSnapshot(to, probed);
+		return true;
+	}
+
+	/// Removes every project whose folder no longer holds it; how many went. Files are never
+	/// touched: only the list changes.
+	public int RemoveMissing()
+	{
+		let registry = mStore.Section<RecentProjectsSettings>();
+		int removed = 0;
+		for (int i = registry.Entries.Count - 1; i >= 0; i--)
+		{
+			let probed = scope ProjectSettings();
+			if (ProjectRegistry.ProbeProject(registry.Entries[i].Path, probed) case .Err)
+			{
+				delete registry.Entries[i];
+				registry.Entries.RemoveAt(i);
+				removed++;
+			}
+		}
+		if (removed > 0)
+			mStore.MarkChanged<RecentProjectsSettings>();
+		return removed;
+	}
+
+	/// The list's order, by name or by when each was last opened.
+	public bool SortByName => mStore.Section<RecentProjectsSettings>().SortByName;
+
+	public void SetSortByName(bool byName)
+	{
+		mStore.Section<RecentProjectsSettings>().SortByName = byName;
+		mStore.MarkChanged<RecentProjectsSettings>();
+	}
+
+	/// Where the last project was made or downloaded: where New Project's location starts.
+	public StringView LastLocation => mStore.Section<RecentProjectsSettings>().LastLocation;
+
+	public void SetLastLocation(StringView folder)
+	{
+		mStore.Section<RecentProjectsSettings>().LastLocation.Set(folder);
+		mStore.MarkChanged<RecentProjectsSettings>();
+	}
+
 	/// Lazily creates the section.
 	public RecentProjectsSettings Entries => mStore.Section<RecentProjectsSettings>();
 
@@ -81,5 +134,15 @@ class ProjectManagerController
 	{
 		mStore.Section<RecentProjectsSettings>().GridView = grid;
 		mStore.MarkChanged<RecentProjectsSettings>();
+	}
+
+	// Refreshes an entry's name and version from its manifest, keeping its place and time.
+	private void TouchSnapshot(StringView directory, ProjectSettings probed)
+	{
+		let entry = mStore.Section<RecentProjectsSettings>().Find(directory);
+		if (entry == null)
+			return;
+		entry.Name.Set(probed.Name);
+		entry.EngineVersion.Set(probed.EngineVersion);
 	}
 }
