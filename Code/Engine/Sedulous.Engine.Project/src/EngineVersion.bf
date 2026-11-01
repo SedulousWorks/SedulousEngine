@@ -15,4 +15,15 @@ static class EngineVersion
 	public const uint32 Minor = 1;
 	public const uint32 Patch = 0;
 	public const String String = "0.1.0";
+
+	/// The GitHub repository (owner/name) whose releases carry what this engine downloads for its
+	/// own version, such as the sample games. Kept here beside the version for the same reason.
+	public const String ReleaseRepository = "SedulousWorks/SedulousEngine";
+
+	/// Where `file` attached to this engine's own release is downloaded from: release v<version>
+	/// of ReleaseRepository. A build between releases names a release that may not exist yet.
+	public static void ReleaseDownloadUrl(StringView file, String outUrl)
+	{
+		outUrl.AppendF("https://github.com/{}/releases/download/v{}/{}", ReleaseRepository, EngineVersion.String, file);
+	}
 }

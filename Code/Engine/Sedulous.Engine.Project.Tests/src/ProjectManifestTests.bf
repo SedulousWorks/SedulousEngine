@@ -277,6 +277,18 @@ class ProjectManifestTests
 		Test.Assert(read.EngineVersion == EngineVersion.String);
 	}
 
+	/// This engine's release downloads come from its own version's release.
+	[Test]
+	public static void ThisEnginesReleaseDownloadsComeFromItsOwnVersionsRelease()
+	{
+		Test.Assert(EngineVersion.ReleaseRepository.Contains('/')); // owner/name
+		let url = EngineVersion.ReleaseDownloadUrl("samples.json", .. scope String());
+		let expected = scope String()..AppendF("https://github.com/{}/releases/download/v{}/samples.json",
+			EngineVersion.ReleaseRepository, EngineVersion.String);
+		Test.Assert(url == expected);
+		Test.Assert(url.StartsWith("https://github.com/"));
+	}
+
 	/// A distribution manifest is the same payload under another name, which is the whole
 	/// reason the file name is a parameter.
 	[Test]
