@@ -177,6 +177,44 @@ class TlsTests
 		}
 	}
 
+	/// One backend serves more than one thread (a run's HTTP client on its worker while the game
+	/// thread joins over wss): the crypto layer's shared state is guarded (MBEDTLS_THREADING_C).
+	/// Two threads make sessions and shake hands at once, each a series of times, all from one
+	/// backend.
+	[Test]
+	public static void OneBackendTwoThreadsShakingHandsAtOnce()
+	{
+		let cert = scope Certificate("game.example");
+		let backend = scope MbedTlsBackend();
+		let serverConfig = scope TlsServerConfig();
+		serverConfig.CertificateChainPem.Set(cert.Pem);
+		serverConfig.PrivateKeyPem.Set(cert.Key);
+		let clientConfig = Trusting(cert, "game.example", scope .());
+		int32[2] opened = .(0, 0);
+		void Shake(int slot)
+		{
+			for (int i < 12)
+			{
+				let client = backend.CreateClient(clientConfig);
+				defer delete client;
+				let server = backend.CreateServer(serverConfig);
+				defer delete server;
+				client.Write(Bytes("ping")).IgnoreError();
+				Pump(client, server);
+				if ((client.State == .Open) && (server.State == .Open) && (ReadAll(server, .. scope .()) == "ping"))
+					opened[slot]++;
+			}
+		}
+		let a = scope Thread(new [&] () => Shake(0));
+		let b = scope Thread(new [&] () => Shake(1));
+		a.Start(false);
+		b.Start(false);
+		a.Join();
+		b.Join();
+		Test.Assert(opened[0] == 12);
+		Test.Assert(opened[1] == 12);
+	}
+
 	[Test]
 	public static void ACloseIsSeenByThePeer()
 	{
