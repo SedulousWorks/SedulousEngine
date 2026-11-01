@@ -9,10 +9,64 @@ namespace Sedulous.Editor.App.Tests;
 /// build throwaway panels, and mount and clear callbacks record what the host asked the page
 /// to show. The panel appears and disappears with the tool (mount told the tool it is for), an
 /// unknown or panel-less tool shows nothing, and switching between two panelled tools clears
-/// before mounting.
+/// before mounting. Under the editor's sheet, a row of pictures (a terrain's layers) holds its
+/// pictures.
 static class ToolPanelTests
 {
 	private static void AddTool(ViewportToolManager tools, StringView id) => tools.Add(new FakeTool(id));
+
+	/// Under the editor's sheet a row of pictures is as tall as they are, and many wrap: eight
+	/// 40-pixel layers do not fit one line of a 240-wide panel.
+	[Test]
+	public static void UnderTheEditorsSheetARowOfPicturesIsAsTallAsTheyAreAndManyWrap()
+	{
+		let context = new GUIContext();
+		let root = new SceneRoot(context);
+		context.ReleaseRef(); // the root's keeps it
+		defer root.ReleaseRef();
+		root.Size = .(800.0f, 600.0f);
+		let body = new ToolPanelBody();
+		body.EditLayoutStyle(scope (s) => { s.Width = LayoutLength.Px(240.0f); });
+		let baseChoice = scope ToolPanelChoice();
+		baseChoice.Icon.Set("Editor/Icons/texture.svg");
+		baseChoice.Picture = new () => null; // no picture yet: its icon stands in
+		body.AddPicture("Base", baseChoice);
+		let layers = scope ToolPanelChoice[8];
+		for (int i < layers.Count)
+		{
+			layers[i] = scope:: ToolPanelChoice();
+			layers[i].Icon.Set("Editor/Icons/texture.svg");
+			layers[i].Picture = new () => null;
+		}
+		body.AddChoices("Layer", layers, new () => 0, new (index) => { });
+		root.AddChild(body);
+		body.ReleaseRef(); // the root's keeps it
+		let sheet = scope EditorSheet();
+		sheet.Apply(root);
+
+		// The rows in order: Base's heading and picture, then Layer's heading and pictures.
+		Test.Assert(body.ChildCount == 4);
+		let row = body.GetChildAt(3);
+		let layerRow = row.ScreenBounds;
+		Test.Assert(row.ChildCount == 8);
+		float firstTop = 0.0f;
+		bool wrapped = false;
+		for (int i < row.ChildCount)
+		{
+			let slot = row.GetChildAt(i).ScreenBounds;
+			Test.Assert(slot.Y >= layerRow.Y - 0.5f, "within its row, not over its edges");
+			Test.Assert(slot.Y + slot.Height <= layerRow.Y + layerRow.Height + 0.5f);
+			Test.Assert(slot.X + slot.Width <= layerRow.X + layerRow.Width + 0.5f, "and within the panel's width");
+			Test.Assert(slot.Height >= 40.0f, scope $"a picture big enough to tell apart ({slot.Height})");
+			if (i == 0)
+				firstTop = slot.Y;
+			else if (slot.Y > firstTop + 1.0f)
+				wrapped = true;
+		}
+		Test.Assert(wrapped, "eight do not fit on one line of a 240 wide panel");
+		let baseSlot = body.GetChildAt(1).GetChildAt(0).ScreenBounds;
+		Test.Assert(Math.Abs(baseSlot.Height - row.GetChildAt(0).ScreenBounds.Height) < 0.5f, "the base as big as a layer");
+	}
 
 	[Test]
 	public static void RegistryIsIdempotentAndFirstWinsPerToolId()

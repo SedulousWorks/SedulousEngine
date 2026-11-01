@@ -487,9 +487,10 @@ waveform::playhead { background-color: var(--warning); }
 .tool-panel-body { flex-direction: column; row-gap: var(--space-m); }
 .tool-panel-body > .segmented { align-self: stretch; }
 .tool-panel-body button.segment { flex-grow: 1; }
-.tool-panel-body button.segment.picture { flex-grow: 0; padding: 2px; }
+.tool-panel-body button.segment.picture { flex-grow: 0; padding: 2px; height: auto; } /* as tall as its picture */
 .tool-panel-body .segment.shown { flex-grow: 0; padding: 2px; } /* a picture shown, not chosen (a terrain's base) */
-.segment-picture { width: 24px; height: 24px; border-radius: var(--radius-small); object-fit: cover; }
+.tool-panel-body > .segmented.pictures { flex-wrap: wrap; row-gap: 2px; } /* many layers go on to a second line */
+.segment-picture { width: 40px; height: 40px; border-radius: var(--radius-small); object-fit: cover; }
 .hud-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); }
 /* The real toast card takes the kit's frame. */
 toast { border: 1px solid var(--border-strong); }

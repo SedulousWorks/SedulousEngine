@@ -101,6 +101,7 @@ class ToolPanelBody : UIWidget
 			let picture = new ChoicePicture();
 			if (choice.Picture != null)
 			{
+				row.AddClass("pictures"); // a row of them wraps
 				button.AddClass("picture");
 				let image = new Image();
 				image.AddClass("segment-picture");
@@ -141,6 +142,7 @@ class ToolPanelBody : UIWidget
 			AddHeading(name);
 		let row = new Panel();
 		row.AddClass("segmented");
+		row.AddClass("pictures");
 		let frame = new Panel();
 		frame.AddClass("segment");
 		frame.AddClass("picture");
