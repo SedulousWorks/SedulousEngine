@@ -152,9 +152,11 @@ class ProjectManagerController
 	/// `outCheck`. Red, Create waiting: no name, a name holding / \ : * ? " < > |, no location, a
 	/// location that is a file, a target that is a project already or holds files. Amber: the
 	/// location does not exist yet (it is made), the name starts or ends with a space. Else green.
-	/// Folders in the message show under `home` as ~. It touches nothing on disk, so the dialog runs
+	/// Folders in the message show under `home` as ~. A sample's download dialog asks the same with
+	/// `action` Download, and the green line says so. It touches nothing on disk, so the dialog runs
 	/// it on every keystroke.
-	public static void CheckNewProject(StringView name, StringView location, bool ownFolder, StringView home, NewProjectCheck outCheck)
+	public static void CheckNewProject(StringView name, StringView location, bool ownFolder, StringView home, NewProjectCheck outCheck,
+		NewProjectAction action = .Create)
 	{
 		outCheck.Level = .Error;
 		outCheck.Message.Clear();
@@ -225,7 +227,14 @@ class ProjectManagerController
 			return;
 		}
 		outCheck.Level = .Ok;
-		if (ownFolder)
+		if (action == .Download)
+		{
+			if (ownFolder)
+				outCheck.Message.AppendF("Downloads into {}.", shownTarget);
+			else
+				outCheck.Message.AppendF("Downloads {} into {}.", trimmed, shownTarget);
+		}
+		else if (ownFolder)
 			outCheck.Message.AppendF("Creates {}, and opens it.", shownTarget);
 		else
 			outCheck.Message.AppendF("Creates {} in {}, and opens it.", trimmed, shownTarget);

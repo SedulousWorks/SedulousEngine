@@ -10,6 +10,13 @@ enum NewProjectCheckLevel
 	Error,
 }
 
+/// What New Project's folder is for: a new project made there, or a sample downloaded into it.
+enum NewProjectAction
+{
+	Create,
+	Download,
+}
+
 /// New Project's check, kept current as the fields change: where the project goes, and what to
 /// say about it (ProjectManagerController.CheckNewProject).
 class NewProjectCheck

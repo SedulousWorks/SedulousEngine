@@ -243,6 +243,14 @@ static class ProjectRegistryTests
 		Test.Assert(c.Level == .Ok);
 		Test.Assert(c.Target == PathJoin(root, "Empty", .. scope .()));
 		Test.Assert(c.Message == "Creates Harbour in ~/Empty, and opens it.", c.Message);
+		// A sample's download says what it does instead.
+		ProjectManagerController.CheckNewProject("Snowline", root, true, root, c, .Download);
+		Test.Assert(c.Level == .Ok);
+		Test.Assert(c.Message == "Downloads into ~/Snowline.", c.Message);
+		Check(root, "Snowline", "Empty", false, c);
+		Test.Assert(c.Level == .Ok);
+		ProjectManagerController.CheckNewProject("Snowline", PathJoin(root, "Empty", .. scope .()), false, root, c, .Download);
+		Test.Assert(c.Message == "Downloads Snowline into ~/Empty.", c.Message);
 
 		// Red: what cannot be made, and Create waits.
 		ProjectManagerController.CheckNewProject("  ", root, true, "", c);
