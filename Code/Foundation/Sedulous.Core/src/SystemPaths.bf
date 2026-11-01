@@ -7,8 +7,8 @@ namespace Sedulous.Core;
 ///
 /// Most of what a system module would carry is corlib here: ticks, core counts, page sizes
 /// and file primitives all have Beef equivalents, and the executable's directory is already
-/// in Core.IO. What is left is the environment lookup and the per-user data directory built
-/// on it, which no standard library gives portably.
+/// in Core.IO. What is left is the environment lookup and the folders built on it (the user's
+/// home, the per-user data directory), which no standard library gives portably.
 static
 {
 	/// The application's folder name under the per-user data directory.
@@ -24,6 +24,17 @@ static
 	public static Result<void> GetEnvironmentVariable(StringView name, String outValue)
 	{
 		return Environment.GetEnvironmentVariable(name, outValue);
+	}
+
+	/// The user's home folder ($HOME, else %USERPROFILE%) into `outPath`, replacing what it held;
+	/// empty when neither is set, as in a browser.
+	public static void GetHomeDirectory(String outPath)
+	{
+		outPath.Clear();
+		if ((Environment.GetEnvironmentVariable("HOME", outPath) case .Ok) && !outPath.IsEmpty)
+			return;
+		outPath.Clear();
+		Environment.GetEnvironmentVariable("USERPROFILE", outPath).IgnoreError();
 	}
 
 	/// What makes the user data directory's writes outlive the page, set by the web player

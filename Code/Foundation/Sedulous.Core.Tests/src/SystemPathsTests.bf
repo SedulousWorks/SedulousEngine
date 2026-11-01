@@ -1,9 +1,10 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 
 namespace Sedulous.Core.Tests;
 
-/// GetEnvironmentVariable and UserDataDir.
+/// GetEnvironmentVariable, the home folder and UserDataDir.
 class SystemPathsTests
 {
 	[Test]
@@ -15,6 +16,17 @@ class SystemPathsTests
 
 		let missing = scope String();
 		Test.Assert(GetEnvironmentVariable("ENV_DEFINITELY_NOT_SET_XYZ_123", missing) case .Err);
+	}
+
+	[Test]
+	public static void TheHomeFolderNamesTheUsersHomeWhichExists()
+	{
+		let home = GetHomeDirectory(.. scope .());
+#if !BF_PLATFORM_WASM
+		Test.Assert(!home.IsEmpty);
+		Test.Assert(PathIsAbsolute(home), home);
+		Test.Assert(DirectoryExists(home), home);
+#endif
 	}
 
 	[Test]
