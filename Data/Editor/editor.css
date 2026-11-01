@@ -79,12 +79,13 @@ button.manager-tab:checked { background-color: var(--element); color: var(--text
 .manager-page { flex-grow: 1; flex-direction: column; min-height: 0; }
 .manager-toolbar { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 20px 40px 14px; flex-shrink: 0;
                    border-bottom: 1px solid var(--separator); }
-.manager-toolbar button { height: 30px; }
+/* As tall as the search and the sort (beating button.with-icon's height, which comes later). */
+.manager-toolbar > button, .manager-toolbar > button.with-icon { height: 30px; }
 .search.manager-search { flex-grow: 0; flex-basis: 280px; height: 30px; margin-right: var(--space-s); }
 .manager-sort { width: 120px; height: 30px; }
 /* The view switch stands as tall as the fields beside it, centred with them. */
-.manager-toolbar > .segmented { align-self: center; height: 30px; }
-button.icon-segment { width: 32px; padding: 0; height: 24px; }
+.manager-toolbar > .segmented { align-self: center; align-items: center; height: 30px; }
+.manager-toolbar button.icon-segment { width: 32px; padding: 0; height: 24px; }
 /* The lists scroll as one column the window's width: the rows stretch across it. */
 .manager-scroll { flex-grow: 1; min-height: 0; flex-direction: column; row-gap: var(--space-xs); overflow-y: auto; overflow-x: hidden;
                   padding: 14px 40px 20px; }
