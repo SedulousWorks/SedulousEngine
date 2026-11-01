@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Settings;
 using Sedulous.Engine.Project;
 
@@ -144,5 +145,109 @@ class ProjectManagerController
 			return;
 		entry.Name.Set(probed.Name);
 		entry.EngineVersion.Set(probed.EngineVersion);
+	}
+
+	/// New Project's check for a project named `name` made in `location`, in a folder of its name
+	/// there when `ownFolder` is set, else in `location` itself (Raptor's project-manager spec), into
+	/// `outCheck`. Red, Create waiting: no name, a name holding / \ : * ? " < > |, no location, a
+	/// location that is a file, a target that is a project already or holds files. Amber: the
+	/// location does not exist yet (it is made), the name starts or ends with a space. Else green.
+	/// Folders in the message show under `home` as ~. It touches nothing on disk, so the dialog runs
+	/// it on every keystroke.
+	public static void CheckNewProject(StringView name, StringView location, bool ownFolder, StringView home, NewProjectCheck outCheck)
+	{
+		outCheck.Level = .Error;
+		outCheck.Message.Clear();
+		outCheck.Target.Clear();
+		let trimmed = TrimSpaces(name);
+		outCheck.Name.Set(trimmed);
+		if (trimmed.IsEmpty)
+		{
+			outCheck.Message.Set("Give the project a name.");
+			return;
+		}
+		for (let c in trimmed)
+		{
+			if ("/\\:*?\"<>|".Contains(c))
+			{
+				outCheck.Message.Set("A name cannot hold / \\ : * ? \" < > or |.");
+				return;
+			}
+		}
+		let folder = TrimSpaces(location);
+		if (folder.IsEmpty)
+		{
+			outCheck.Message.Set("Choose the folder it is made in.");
+			return;
+		}
+		let shownWhere = ProjectRegistry.ShortenHomePath(folder, home, .. scope .());
+		if (!DirectoryExists(folder) && FileExists(folder))
+		{
+			outCheck.Message.AppendF("{} is a file, not a folder.", shownWhere);
+			return;
+		}
+		if (ownFolder)
+			PathJoin(folder, trimmed, outCheck.Target);
+		else
+			outCheck.Target.Set(folder);
+		let shownTarget = ProjectRegistry.ShortenHomePath(outCheck.Target, home, .. scope .());
+		if (FileExists(PathJoin(outCheck.Target, ProjectLayout.ManifestFile, .. scope .())))
+		{
+			outCheck.Message.AppendF("{} is a project already: Open Folder opens it.", shownTarget);
+			return;
+		}
+		if (!DirectoryExists(outCheck.Target) && FileExists(outCheck.Target))
+		{
+			outCheck.Message.AppendF("{} is a file, not a folder.", shownTarget);
+			return;
+		}
+		if (HoldsAnything(outCheck.Target))
+		{
+			if (ownFolder)
+				outCheck.Message.AppendF("{} already exists and has files in it. Choose another name or folder.", shownTarget);
+			else
+				outCheck.Message.AppendF("{} already has files in it. A project needs an empty folder: turn on the folder option, or choose an empty one.", shownTarget);
+			return;
+		}
+		outCheck.Level = .Warning;
+		if (trimmed.Length != name.Length)
+		{
+			outCheck.Message.AppendF("The name starts or ends with a space; the {} will be {}.", ownFolder ? "folder" : "name",
+				ownFolder ? StringView(shownTarget) : StringView(outCheck.Name));
+			return;
+		}
+		if (!DirectoryExists(folder))
+		{
+			if (ownFolder)
+				outCheck.Message.AppendF("{} does not exist yet; it will be made, then {} inside it.", shownWhere, trimmed);
+			else
+				outCheck.Message.AppendF("{} does not exist yet; it will be made, and the project made in it.", shownWhere);
+			return;
+		}
+		outCheck.Level = .Ok;
+		if (ownFolder)
+			outCheck.Message.AppendF("Creates {}, and opens it.", shownTarget);
+		else
+			outCheck.Message.AppendF("Creates {} in {}, and opens it.", trimmed, shownTarget);
+	}
+
+	/// `text` without its spaces at either end.
+	private static StringView TrimSpaces(StringView text)
+	{
+		int start = 0;
+		int end = text.Length;
+		while ((start < end) && (text[start] == ' '))
+			start++;
+		while ((end > start) && (text[end - 1] == ' '))
+			end--;
+		return text.Substring(start, end - start);
+	}
+
+	/// Whether a folder holds any file or folder (false when it does not exist).
+	private static bool HoldsAnything(StringView directory)
+	{
+		bool any = false;
+		ListDirectory(directory, scope [&] (name, isDirectory) => { any = true; });
+		return any;
 	}
 }

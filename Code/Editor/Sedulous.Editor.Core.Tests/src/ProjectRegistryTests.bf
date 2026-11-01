@@ -210,6 +210,73 @@ static class ProjectRegistryTests
 		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games", "", .. scope .()) == "/home/rob/Games");
 	}
 
+	/// New Project's check of `name` in `inFolder` (under `root`; empty: the root itself), its folders shown
+	/// under `root` as ~.
+	private static void Check(StringView root, StringView name, StringView inFolder, bool ownFolder, NewProjectCheck outCheck)
+	{
+		let location = scope String(root);
+		if (!inFolder.IsEmpty)
+			PathJoin(root, inFolder, location..Clear());
+		ProjectManagerController.CheckNewProject(name, location, ownFolder, root, outCheck);
+	}
+
+	[Test]
+	public static void NewProjectsCheckNamesWhereItGoesAndRefusesWhatCannotBeMade()
+	{
+		let root = Scratch("scratch_new_project_check", .. scope .());
+		defer RemoveDirectoryRecursive(root);
+		Test.Assert(CreateDirectory(root));
+		let taken = PathJoin(root, "Taken", .. scope .());
+		Test.Assert(CreateDirectory(taken));
+		Test.Assert(WriteFile(PathJoin(taken, "notes.txt", .. scope .()), .()) case .Ok);
+		Test.Assert(CreateDirectory(PathJoin(root, "Empty", .. scope .())));
+		Test.Assert(EditorProject.Create(PathJoin(root, "Made", .. scope .()), "Made") case .Ok);
+		let c = scope NewProjectCheck();
+
+		// Green: a new folder of its name in a folder that exists.
+		ProjectManagerController.CheckNewProject("Harbour", root, true, root, c);
+		Test.Assert(c.Level == .Ok);
+		Test.Assert(c.Target == PathJoin(root, "Harbour", .. scope .()));
+		Test.Assert(c.Message == "Creates ~/Harbour, and opens it.", c.Message);
+		// Without its own folder, an empty folder takes the project.
+		Check(root, "Harbour", "Empty", false, c);
+		Test.Assert(c.Level == .Ok);
+		Test.Assert(c.Target == PathJoin(root, "Empty", .. scope .()));
+		Test.Assert(c.Message == "Creates Harbour in ~/Empty, and opens it.", c.Message);
+
+		// Red: what cannot be made, and Create waits.
+		ProjectManagerController.CheckNewProject("  ", root, true, "", c);
+		Test.Assert(c.Message == "Give the project a name.", c.Message);
+		ProjectManagerController.CheckNewProject("A/B", root, true, "", c);
+		Test.Assert(c.Level == .Error);
+		Test.Assert(c.Message == "A name cannot hold / \\ : * ? \" < > or |.", c.Message);
+		ProjectManagerController.CheckNewProject("Why?", root, true, "", c);
+		Test.Assert(c.Level == .Error);
+		ProjectManagerController.CheckNewProject("Harbour", " ", true, "", c);
+		Test.Assert(c.Message == "Choose the folder it is made in.", c.Message);
+		Check(root, "Taken", "", true, c);
+		Test.Assert(c.Level == .Error);
+		Test.Assert(c.Message == "~/Taken already exists and has files in it. Choose another name or folder.", c.Message);
+		Check(root, "Harbour", "Taken", false, c);
+		Test.Assert(c.Message == "~/Taken already has files in it. A project needs an empty folder: turn on the folder option, or choose an empty one.", c.Message);
+		Check(root, "Made", "", true, c);
+		Test.Assert(c.Message == "~/Made is a project already: Open Folder opens it.", c.Message);
+		Check(root, "Harbour", "Taken/notes.txt", true, c);
+		Test.Assert(c.Message == "~/Taken/notes.txt is a file, not a folder.", c.Message);
+
+		// Amber: it goes ahead, but says what it will do.
+		Check(root, "Harbour", "Later/Games", true, c);
+		Test.Assert(c.Level == .Warning);
+		Test.Assert(c.Message == "~/Later/Games does not exist yet; it will be made, then Harbour inside it.", c.Message);
+		Check(root, "Harbour", "Later", false, c);
+		Test.Assert(c.Message == "~/Later does not exist yet; it will be made, and the project made in it.", c.Message);
+		Check(root, " Harbour ", "", true, c);
+		Test.Assert(c.Level == .Warning);
+		Test.Assert(c.Name == "Harbour");
+		Test.Assert(c.Message == "The name starts or ends with a space; the folder will be ~/Harbour.", c.Message);
+		Test.Assert(!DirectoryExists(PathJoin(root, "Later", .. scope .())), "checking makes nothing");
+	}
+
 	[Test]
 	public static void ProbeReadsTheManifestWithoutOpeningAndNotFoundForNonProjects()
 	{
