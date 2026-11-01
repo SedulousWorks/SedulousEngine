@@ -31,7 +31,7 @@ class ProjectSettings
 	/// KEY, which the generator derives from the field name.
 	public String EngineVersion = new .() ~ delete _;
 
-	[Setting("Default scene", "SceneDocument", "(none)", "Startup")]
+	[Setting("Default scene", "SceneDocument", "(none)", "Startup"), SettingSummary("Default scene")]
 	public Guid DefaultSceneId;
 	/// The default scene's source database path.
 	public String DefaultScene = new .() ~ delete _;
@@ -42,16 +42,16 @@ class ProjectSettings
 	public String NativeModule = new .() ~ delete _;
 
 	/// The input map bound at startup. Nil for none.
-	[Setting("Default input map", "InputMapAsset", "(none)", "Startup")]
+	[Setting("Default input map", "InputMapAsset", "(none)", "Startup"), SettingSummary("Input map")]
 	public Guid DefaultInputMapId;
 	/// The mixer layout applied at startup. Nil for the built in one.
 	[Setting("Default bus layout", "AudioBusLayoutAsset", "(built-in)", "Audio")]
 	public Guid DefaultBusLayoutId;
 	/// The cooked script class the player launches. Nil for none.
-	[Setting("Startup script", "ScriptClassAsset", "(none)", "Startup")]
+	[Setting("Startup script", "ScriptClassAsset", "(none)", "Startup"), SettingSummary("Startup script")]
 	public Guid StartupScriptId;
 	/// The cooked font the game UI defaults to. Nil for the development fallback.
-	[Setting("Default UI font", "FontAsset", "(built-in)", "UI")]
+	[Setting("Default UI font", "FontAsset", "(built-in)", "UI"), SettingSummary("UI font")]
 	public Guid DefaultUiFontId;
 
 	/// The scene pass sample count: one is off. Clamped to what the device can do at
@@ -106,6 +106,16 @@ class ProjectSettings
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);
+
+	/// The player's window in a few words, appended: "1280 × 720, windowed", "1280 × 720,
+	/// fullscreen", or "borderless, the display's size".
+	public void WindowSummary(String outText)
+	{
+		if (WindowMode == .Borderless)
+			outText.Append("borderless, the display's size");
+		else
+			outText.AppendF("{} × {}, {}", WindowWidth, WindowHeight, (WindowMode == .Fullscreen) ? "fullscreen" : "windowed");
+	}
 
 	/// Rewrites the readable path mirrors from their guids (the default scene's, the startup
 	/// script's), after a settings editor changed the guids. `pathOf` appends an asset's path,

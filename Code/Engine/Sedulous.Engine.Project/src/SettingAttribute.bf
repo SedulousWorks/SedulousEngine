@@ -48,6 +48,20 @@ struct SettingAttribute : Attribute
 	}
 }
 
+/// A setting the project's page sums the project up with: the short label it shows there ("Input
+/// map" for the default input map). Which settings the page shows is the settings' own to say, as
+/// their label and category are for the settings dialog.
+[AttributeUsage(.Field, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields)]
+struct SettingSummaryAttribute : Attribute
+{
+	public String Label;
+
+	public this(String label)
+	{
+		Label = label;
+	}
+}
+
 /// What a setting field holds, which decides how it is shown, read and checked.
 enum SettingKind
 {
@@ -87,6 +101,15 @@ static class SettingFields
 	{
 		if (field.GetCustomAttribute<SettingAttribute>() case .Ok(let setting))
 			return setting;
+		return null;
+	}
+
+	/// The short label the project's page sums the project up with this setting by; null when the
+	/// page leaves it out.
+	public static String Summary(FieldInfo field)
+	{
+		if (field.GetCustomAttribute<SettingSummaryAttribute>() case .Ok(let summary))
+			return summary.Label;
 		return null;
 	}
 

@@ -17,6 +17,31 @@ class SettingFieldsTests
 		public String Unsorted = new .() ~ delete _;
 	}
 
+	/// The player's window in a few words, and the settings that sum a project up, by their short
+	/// labels in declaration order.
+	[Test]
+	public static void TheWindowInAFewWordsAndTheSettingsThatSumAProjectUp()
+	{
+		let settings = scope ProjectSettings();
+		Test.Assert(settings.WindowSummary(.. scope .()) == "1280 × 720, windowed");
+		settings.WindowWidth = 1920;
+		settings.WindowHeight = 1080;
+		settings.WindowMode = .Fullscreen;
+		Test.Assert(settings.WindowSummary(.. scope .()) == "1920 × 1080, fullscreen");
+		settings.WindowMode = .Borderless;
+		Test.Assert(settings.WindowSummary(.. scope .()) == "borderless, the display's size", "the display's size, not the setting's");
+
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ProjectSettings), fields);
+		let summary = scope String();
+		for (let field in fields)
+		{
+			if (let label = SettingFields.Summary(field))
+				summary.AppendF("{}{}", summary.IsEmpty ? "" : ",", label);
+		}
+		Test.Assert(summary == "Default scene,Input map,Startup script,UI font", summary);
+	}
+
 	/// Each setting names the group it shows in, the Project Settings dialog's tab; one that
 	/// names none (an export preset's) is General.
 	[Test]
