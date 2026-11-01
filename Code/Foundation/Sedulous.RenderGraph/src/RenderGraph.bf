@@ -712,59 +712,88 @@ class RenderGraph
 		}
 	}
 
-	/// Turns the declared accesses into edges: each read depends on the NEAREST earlier pass
-	/// that wrote an overlapping part of the same resource.
+	/// Turns the declared accesses into edges, so each pass waits for what it must follow on every
+	/// resource it touches: a read waits for the NEAREST earlier writer of what it reads (read
+	/// after write); a write waits for the nearest earlier writer (write after write) and for
+	/// every earlier reader since that writer (write after read). Edges only point back in
+	/// declaration order, so the declared order always satisfies them: the sort may move
+	/// independent passes, never one hazard past another.
 	private void BuildDependencies()
 	{
-		for (int passIndex < mPasses.Count)
+		let passCount = mPasses.Count;
+		// Each live pass's accesses, gathered once.
+		let inputs = scope List<List<RGResourceAccess>>();
+		let outputs = scope List<List<RGResourceAccess>>();
+		defer { ClearAndDeleteItems!(inputs); ClearAndDeleteItems!(outputs); }
+		for (int i < passCount)
+		{
+			inputs.Add(new .());
+			outputs.Add(new .());
+			if (!mPasses[i].IsCulled)
+			{
+				mPasses[i].GetInputs(inputs[i]);
+				mPasses[i].GetOutputs(outputs[i]);
+			}
+		}
+
+		for (int passIndex < passCount)
 		{
 			let pass = mPasses[passIndex];
 			if (pass.IsCulled)
 				continue;
 
-			let reads = scope List<RGResourceAccess>();
-			pass.GetInputs(reads);
-
-			for (let read in reads)
+			for (let read in inputs[passIndex])
 			{
-				if (!read.Handle.IsValid || (read.Handle.Index >= (uint32)mResources.Count))
+				if (!IsTrackedAccess(read))
 					continue;
-
-				let resource = mResources[(int)read.Handle.Index];
-				let totalMips = (resource != null) ? resource.TotalMipLevels : 1;
-				let totalLayers = (resource != null) ? resource.TotalArrayLayers : 1;
-
+				// The NEAREST writer only: anything earlier is already ordered behind it.
 				for (int j = passIndex - 1; j >= 0; j--)
 				{
-					let writer = mPasses[j];
-					if (writer.IsCulled)
-						continue;
-
-					let outputs = scope:: List<RGResourceAccess>();
-					writer.GetOutputs(outputs);
-
-					var overlaps = false;
-					for (let output in outputs)
-					{
-						if (output.Handle != read.Handle)
-							continue;
-						if (read.Subresource.IsAll || output.Subresource.IsAll
-							|| read.Subresource.Overlaps(output.Subresource, totalMips, totalLayers))
-						{
-							overlaps = true;
-							break;
-						}
-					}
-
-					// The NEAREST writer only: anything earlier is already ordered behind it.
-					if (overlaps)
+					if (!mPasses[j].IsCulled && AnyOverlap(outputs[j], read))
 					{
 						AddDependencyIfNew(pass, .((uint32)j));
 						break;
 					}
 				}
 			}
+
+			for (let write in outputs[passIndex])
+			{
+				if (!IsTrackedAccess(write))
+					continue;
+				for (int j = passIndex - 1; j >= 0; j--)
+				{
+					if (mPasses[j].IsCulled)
+						continue;
+					let wrote = AnyOverlap(outputs[j], write);
+					if (wrote || AnyOverlap(inputs[j], write))
+						AddDependencyIfNew(pass, .((uint32)j));
+					// Readers before it are ordered before it already.
+					if (wrote)
+						break;
+				}
+			}
 		}
+	}
+
+	private bool IsTrackedAccess(RGResourceAccess access) =>
+		access.Handle.IsValid && (access.Handle.Index < (uint32)mResources.Count);
+
+	/// Whether any of `accesses` touches the resource and subresources `access` does.
+	private bool AnyOverlap(List<RGResourceAccess> accesses, RGResourceAccess access)
+	{
+		let resource = mResources[(int)access.Handle.Index];
+		let totalMips = (resource != null) ? resource.TotalMipLevels : 1;
+		let totalLayers = (resource != null) ? resource.TotalArrayLayers : 1;
+		for (let other in accesses)
+		{
+			if (other.Handle != access.Handle)
+				continue;
+			if (access.Subresource.IsAll || other.Subresource.IsAll
+				|| access.Subresource.Overlaps(other.Subresource, totalMips, totalLayers))
+				return true;
+		}
+		return false;
 	}
 
 	private static void AddDependencyIfNew(RenderGraphPass pass, PassHandle dependency)

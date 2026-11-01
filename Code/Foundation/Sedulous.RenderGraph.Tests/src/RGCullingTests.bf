@@ -344,4 +344,74 @@ class RGCullingTests
 
 		Test.Assert(graph.Compile() case .Err);
 	}
+
+	/// A pass that overwrites a resource comes after the earlier passes that read it (write after
+	/// read), even with no inputs of its own and the reader waiting on something else: here the
+	/// reader waits on "Lit" while "Overwrite" is free to run at once.
+	[Test]
+	public static void ALaterOverwriteWaitsForAnEarlierReader()
+	{
+		let graph = scope RenderGraph(null);
+		graph.BeginFrame(0);
+		let lit = graph.CreateTransient("Lit", .(TextureFormat.RGBA8Unorm));
+		let history = graph.ImportTarget("History", null, null);
+		let output = graph.CreateTransient("Out", .(TextureFormat.RGBA8Unorm));
+
+		graph.AddRenderPass("Light", scope (builder) =>
+			{
+				builder.SetColorTarget(0, lit, .Clear, .Store);
+				builder.NeverCull();
+			});
+		graph.AddRenderPass("Resolve", scope (builder) =>
+			{
+				builder.ReadTexture(lit);
+				builder.ReadTexture(history); // last frame's content
+				builder.SetColorTarget(0, output, .Clear, .Store);
+				builder.NeverCull();
+			});
+		graph.AddRenderPass("Overwrite", scope (builder) =>
+			{
+				builder.SetColorTarget(0, history, .Clear, .Store);
+				builder.NeverCull();
+			});
+
+		Test.Assert(graph.Compile() case .Ok);
+		Test.Assert(graph.ExecutionOrder.Length == 3);
+		Test.Assert(OrderOf(graph, "Light") < OrderOf(graph, "Resolve"));
+		Test.Assert(OrderOf(graph, "Resolve") < OrderOf(graph, "Overwrite"));
+	}
+
+	/// Two passes that overwrite one resource keep their declared order (write after write), so
+	/// the later declaration's content is what follows: the first writer waits on "Input", the
+	/// second does not.
+	[Test]
+	public static void TwoOverwritesOfOneResourceKeepTheirDeclaredOrder()
+	{
+		let graph = scope RenderGraph(null);
+		graph.BeginFrame(0);
+		let input = graph.CreateTransient("Input", .(TextureFormat.RGBA8Unorm));
+		let target = graph.ImportTarget("Target", null, null);
+
+		graph.AddRenderPass("MakeInput", scope (builder) =>
+			{
+				builder.SetColorTarget(0, input, .Clear, .Store);
+				builder.NeverCull();
+			});
+		graph.AddRenderPass("FirstWrite", scope (builder) =>
+			{
+				builder.ReadTexture(input);
+				builder.SetColorTarget(0, target, .Clear, .Store);
+				builder.NeverCull();
+			});
+		graph.AddRenderPass("SecondWrite", scope (builder) =>
+			{
+				builder.SetColorTarget(0, target, .Clear, .Store);
+				builder.NeverCull();
+			});
+
+		Test.Assert(graph.Compile() case .Ok);
+		Test.Assert(graph.ExecutionOrder.Length == 3);
+		Test.Assert(OrderOf(graph, "MakeInput") < OrderOf(graph, "FirstWrite"));
+		Test.Assert(OrderOf(graph, "FirstWrite") < OrderOf(graph, "SecondWrite"));
+	}
 }
