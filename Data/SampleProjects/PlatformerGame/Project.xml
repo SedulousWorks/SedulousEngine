@@ -4,7 +4,7 @@
 		<u32 name="version">10</u32>
 	</array>
 	<object>
-		<string name="name">Platformer</string>
+		<string name="name">Sky Hopper</string>
 		<string name="engineVersion">0.1.0</string>
 		<string name="defaultSceneId">d54b3804-21ff-724a-a076-4e971ef6b238</string>
 		<string name="defaultScene">Scenes/Level1</string>
