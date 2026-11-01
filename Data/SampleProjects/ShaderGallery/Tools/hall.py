@@ -118,7 +118,7 @@ def main():
           castsShadows=True)
     e = d.entity("HallProbe", (centre, 2.5, 1.0))
     d.add(e, "reflection_probe", halfExtents={"x": length / 2.0 + 2.0, "y": 2.5, "z": 6.0},
-          blendDistance=1.0, resolution=128)
+          blendDistance=1.0)
 
     # The camera, before the first lesson, looking along the row.
     cam = d.entity("Camera", (-SPACING * 0.5, 2.2, 6.5), rot=quat_mul(yaw(-20.0), pitch(-8.0)))

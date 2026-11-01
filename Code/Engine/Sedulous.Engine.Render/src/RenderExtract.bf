@@ -859,7 +859,6 @@ static class RenderExtract
 				probe.HalfExtents = component.HalfExtents;
 				probe.BlendDistance = component.BlendDistance;
 				probe.Intensity = component.Intensity;
-				probe.Resolution = component.Resolution;
 				probe.Priority = component.Priority;
 				probe.Update = component.Update;
 				probe.Parallax = component.Parallax;

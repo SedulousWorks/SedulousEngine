@@ -22,8 +22,6 @@ struct ReflectionProbe
 	public float BlendDistance = 1.0f;
 	public float Intensity = 1.0f;
 
-	/// The captured face size.
-	public uint32 Resolution = 128;
 	/// Breaks the tie where two probes overlap: higher wins.
 	public uint32 Priority = 0;
 

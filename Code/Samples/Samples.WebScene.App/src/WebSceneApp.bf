@@ -449,7 +449,6 @@ class WebSceneApp : DefaultApplication
 
 		let probe = probes.Add(mProbe);
 		probe.HalfExtents = .(5.0f, 3.5f, 5.0f);
-		probe.Resolution = 128;
 		probe.Parallax = true;
 	}
 

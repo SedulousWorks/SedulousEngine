@@ -19,7 +19,7 @@ namespace Sedulous.Render;
 /// six face render per probe per frame would cost more than the reflections are worth.
 class ReflectionProbeSystem
 {
-	/// ONE resolution for every slice: an array cannot vary its size per slice.
+	/// ONE resolution for every probe: they share one cube array, and its slices cannot differ.
 	public const uint32 cCaptureResolution = 128;
 	public const uint32 cPrefilterResolution = 128;
 	/// The roughness of a level is its index over the last.
@@ -426,7 +426,6 @@ class ReflectionProbeSystem
 		Mix!(probe.HalfExtents.X);
 		Mix!(probe.HalfExtents.Y);
 		Mix!(probe.HalfExtents.Z);
-		hash ^= (uint64)probe.Resolution;
 		return hash;
 	}
 

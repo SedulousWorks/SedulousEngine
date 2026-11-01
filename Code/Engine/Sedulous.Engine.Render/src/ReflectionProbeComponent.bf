@@ -11,7 +11,11 @@ namespace Sedulous.Engine.Render;
 ///
 /// The box is BOTH the influence volume and the parallax proxy. The blend distance softens
 /// the influence inward from its edge, so two overlapping probes meet without a seam.
-[SerializableComponent("reflection_probe")]
+///
+/// Every probe captures at the probe system's one size (they share one cube array, whose slices
+/// cannot differ), so a probe has no resolution of its own. Version 2 dropped it; a version 1
+/// record's is read and discarded.
+[SerializableComponent("reflection_probe", 2, 1)]
 [DisplayName("Reflection Probe")]
 [Category("Rendering")]
 [Scriptable]
@@ -29,9 +33,6 @@ struct ReflectionProbeComponent : ISerializable
 	[Scriptable]
 	[Range(0.0f, 5.0f, 0.05f)]
 	public float Intensity = 1.0f;
-	/// The captured cube face size.
-	[Scriptable]
-	public uint32 Resolution = 128;
 	/// The tie break when two volumes overlap. Higher wins.
 	[Scriptable]
 	public uint32 Priority = 0;
@@ -60,7 +61,13 @@ struct ReflectionProbeComponent : ISerializable
 		Sedulous.Core.Serialization.Serialize(ar, ref HalfExtents);
 		SerializeValue(ar, "blendDistance", ref BlendDistance);
 		SerializeValue(ar, "intensity", ref Intensity);
-		SerializeValue(ar, "resolution", ref Resolution);
+		if ((ar.Mode == .Read) && (ar.Version < 2))
+		{
+			// A version 1 probe carried a per-probe resolution the renderer never applied: read
+			// past it.
+			uint32 resolution = 0;
+			SerializeValue(ar, "resolution", ref resolution);
+		}
 		SerializeValue(ar, "priority", ref Priority);
 
 		var update = (uint32)Update;

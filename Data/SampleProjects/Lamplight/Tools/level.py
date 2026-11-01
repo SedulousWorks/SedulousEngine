@@ -269,8 +269,7 @@ class Builder:
             hx, hz = GRID * (i1 - i0) / 2, GRID * (j1 - j0) / 2
             e = self.d.stable_id("entity")
             self.d.entity(room["name"], (cx, 1.5, cz), eid=e)
-            self.d.add(e, "reflection_probe", halfExtents={"x": hx, "y": 1.5, "z": hz}, blendDistance=0.5,
-                       resolution=128)
+            self.d.add(e, "reflection_probe", halfExtents={"x": hx, "y": 1.5, "z": hz}, blendDistance=0.5)
             self.d.add(e, "audio.ReverbZone", radius=max(hx, hz), edgeFade=0.2,
                        roomSize=room.get("roomSize", min(0.9, 0.3 + (hx * hz) / 60.0)),
                        damping=room.get("damping", 0.4), wetLevel=room.get("wet", 0.35))
