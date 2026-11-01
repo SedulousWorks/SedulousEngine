@@ -71,11 +71,13 @@ class LauncherClipboard : IClipboard
 
 /// The project manager over its markup (Data/Editor/ProjectManager.xml): the recent projects as a
 /// list or a grid (remembered), each by its picture (the thumbnail in its editor folder, an image
-/// chosen for it, or its initial), a missing one with no Open, each project's menu and what it
-/// runs, and New Project's dialog. Then what Sedulous adds so each behaviour has a test: a newer
-/// engine's project named in the warning colour, each menu item's action (Show in Folder, Copy
-/// Path, a thumbnail chosen and cleared), the menu a project's "more" button opens, the list taken
-/// back from the grid, and New Project's Browse and Cancel.
+/// chosen for it, or its initial); missing ones in a section of their own with Locate... and no
+/// Open. Also the pin, the sort and the search, the keys and the focus ring, the first run's
+/// welcome, a dropped folder, each project's menu and what it runs, and New Project's dialog. Then
+/// what Sedulous adds so each behaviour has a test: a newer engine's project badged in the warning
+/// colour, each menu item's action (Show in Folder, Copy Path, a thumbnail chosen and cleared), the
+/// menu a project's "more" button opens, the list taken back from the grid, and New Project's
+/// Browse and Cancel.
 class ProjectLauncherTests
 {
 	/// Two projects and one whose folder is gone, most recent first: First, Second, Gone, then any
@@ -232,28 +234,28 @@ class ProjectLauncherTests
 	}
 
 	[Test]
-	public static void TheProjectsShowAsAListOrAGridTheChoiceRememberedAMissingOneHasNoOpen()
+	public static void TheProjectsShowAsAListOrAGridTheChoiceRememberedAMissingOneInItsOwnSectionWithNoOpen()
 	{
 		let l = scope Launcher();
+		Test.Assert(!l.View.IsWelcome);
 		Test.Assert(!l.View.IsGridView);
 		Test.Assert(l.View.ShownCount == 3);
 		Test.Assert(l.View.ThumbnailCount == 0, "no pictures yet: initials");
 		let list = l.Projects;
-		Test.Assert((list != null) && (list.ChildCount == 3));
-		// First, then Second, then Gone (most recent first); Gone missing: dimmed, no Open.
+		let missing = l.View.Content.FindElement("manager-missing-list");
+		Test.Assert((list != null) && (missing != null));
+		// First, then Second (most recent first); Gone is missing, so it is listed apart, with
+		// Locate... and no Open.
+		Test.Assert(list.ChildCount == 2);
+		Test.Assert(missing.ChildCount == 1);
+		Test.Assert(l.View.Content.FindElement("manager-missing").Displayed);
+		Test.Assert((l.View.Content.FindElement("manager-count") as Sedulous.GUI.Label).Text == "2 projects");
 		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null);
-		Test.Assert(ButtonText(list.GetChildAt(2), "Open") == null);
-		Test.Assert((list.GetChildAt(2) as UIWidget).HasClass("missing"));
-		// Open has a slot on every row, at one place, empty for the missing one: the columns line up.
-		for (int i < list.ChildCount)
-		{
-			let row = list.GetChildAt(i);
-			let slot = row.GetChildAt(row.ChildCount - 2) as UIWidget;
-			Test.Assert((slot != null) && slot.HasClass("manager-open-slot"));
-			Test.Assert(slot.ChildCount == ((i == 2) ? 0 : 1));
-		}
+		Test.Assert(ButtonText(missing.GetChildAt(0), "Open") == null);
+		Test.Assert(ButtonText(missing.GetChildAt(0), "Locate...") != null);
+		Test.Assert((missing.GetChildAt(0) as UIWidget).HasClass("missing"));
 		Test.Assert(!(list.GetChildAt(0) as UIWidget).HasClass("missing"));
-		Test.Assert(TextOf(list.GetChildAt(2), "manager-name") == "Gone (missing)");
+		Test.Assert(TextOf(missing.GetChildAt(0), "manager-name") == "Gone");
 		Test.Assert(TextOf(list.GetChildAt(0), "manager-name") == "First");
 		Test.Assert(ButtonText(list.GetChildAt(0), "Open").HandleActivate());
 		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.First));
@@ -263,11 +265,9 @@ class ProjectLauncherTests
 		Test.Assert(l.View.IsGridView);
 		Test.Assert(l.View.ShownCount == 3);
 		Test.Assert((list as UIWidget).HasClass("grid"));
+		Test.Assert(list.ChildCount == 2);
 		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("manager-tile"));
-		// A missing project's tile: dimmed, its picture opening nothing.
-		Test.Assert((list.GetChildAt(2) as UIWidget).HasClass("missing"));
-		Test.Assert(!(WithClass(list.GetChildAt(2), "manager-tile-open") as Sedulous.GUI.Button).Enabled);
-		Test.Assert((WithClass(list.GetChildAt(0), "manager-tile-open") as Sedulous.GUI.Button).Enabled);
+		Test.Assert(missing.ChildCount == 1, "a missing project stays a row in its section");
 		Test.Assert(l.Saves == 1);
 		Test.Assert(l.Controller.Entries.GridView, "kept with the recent projects");
 		l.View.SetGridView(true);
@@ -346,6 +346,7 @@ class ProjectLauncherTests
 		Test.Assert(l.Saves == before + 1);
 		Test.Assert(l.View.ShownCount == 2);
 		Test.Assert(l.Controller.Entries.Entries.Count == 2);
+		Test.Assert(l.View.Status == "Gone was taken off the list; its files are untouched.");
 	}
 
 	[Test]
@@ -354,12 +355,14 @@ class ProjectLauncherTests
 		let l = scope Launcher();
 		l.Scene.UpdateLayout();
 		let list = l.Projects;
-		// The first row's "more": its five items; the missing one's: three.
+		// The first row's "more": its five items; the second's too. A missing row has Locate... and
+		// Remove from list for buttons, and no menu.
 		Test.Assert((WithClass(list.GetChildAt(0), "slot-button") as Sedulous.GUI.Button).HandleActivate());
 		Test.Assert(l.View.OpenMenu != null);
 		Test.Assert(l.View.OpenMenu.ItemCount == 5);
-		Test.Assert((WithClass(list.GetChildAt(2), "slot-button") as Sedulous.GUI.Button).HandleActivate());
-		Test.Assert((l.View.OpenMenu != null) && (l.View.OpenMenu.ItemCount == 3));
+		Test.Assert((WithClass(list.GetChildAt(1), "slot-button") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert((l.View.OpenMenu != null) && (l.View.OpenMenu.ItemCount == 5));
+		Test.Assert(WithClass(l.View.Content.FindElement("manager-missing-list"), "slot-button") == null);
 
 		l.View.Run(l.Second, "Open");
 		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.Second));
@@ -386,23 +389,31 @@ class ProjectLauncherTests
 	}
 
 	[Test]
-	public static void AProjectANewerEngineSavedIsNamedSoInTheWarningColour()
+	public static void AProjectANewerEngineSavedIsBadgedSoInTheWarningColourAndAnOlderOnesUpgrade()
 	{
 		let l = scope Launcher();
 		Stamp(l.First, scope $"{EngineVersion.Major + 1}.0.0");
+		Stamp(l.Second, "0.0.1");
 		l.View.Rebuild();
 		let list = l.Projects;
-		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("newer"));
-		Test.Assert(TextOf(list.GetChildAt(0), "manager-name") == "First (newer engine)");
-		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null, "it still opens (the application asks first)");
-		Test.Assert(!(list.GetChildAt(1) as UIWidget).HasClass("newer"));
-		Test.Assert(!(list.GetChildAt(2) as UIWidget).HasClass("newer"), "a missing one is not probed newer");
+		let first = list.GetChildAt(0);
+		Test.Assert((first as UIWidget).HasClass("newer"));
+		Test.Assert(TextOf(first, "manager-name") == "First");
+		Test.Assert(TextOf(first, "badge") == "Made with a newer engine");
+		Test.Assert((WithClass(first, "manager-version") as UIWidget).HasClass("newer"));
+		Test.Assert(ButtonText(first, "Open") != null, "it still opens (the application asks first)");
+		let second = list.GetChildAt(1);
+		Test.Assert((second as UIWidget).HasClass("older"));
+		Test.Assert(TextOf(second, "badge") == "Upgrades when opened");
 
 		l.View.SetGridView(true);
 		l.Drain();
-		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("newer"));
-		Test.Assert(TextOf(list.GetChildAt(0), "manager-path") == scope $"{EngineVersion.Major + 1}.0.0, newer engine");
-		Test.Assert(TextOf(list.GetChildAt(2), "manager-path") == "0.1.0, missing");
+		let tile = list.GetChildAt(0);
+		let stamp = WithClass(tile, "manager-tile-version") as Sedulous.GUI.Label;
+		Test.Assert((stamp != null) && stamp.HasClass("newer"));
+		Test.Assert(stamp.Text == scope $"{EngineVersion.Major + 1}.0.0");
+		Test.Assert(stamp.Tooltip == "Made with a newer engine");
+		Test.Assert((WithClass(list.GetChildAt(1), "manager-tile-version") as UIWidget).HasClass("older"));
 	}
 
 	[Test]
@@ -461,12 +472,10 @@ class ProjectLauncherTests
 		l.StyleAsTheEditor();
 		let list = l.Projects;
 		Test.Assert(list != null);
-		var scroller = list.Parent;
-		while ((scroller != null) && !(scroller is ScrollView))
-			scroller = scroller.Parent;
-		Test.Assert(scroller != null);
-		// Every notch has room, so each one checks (the pointer comes over the second row's first
-		// card, a missing project's when the older ones are gone, by the fourth).
+		let scroller = l.View.Content.FindElement("manager-scroll");
+		Test.Assert((scroller != null) && scroller.IsScrollContainer);
+		// Every notch has room, so each one checks (the pointer comes over whatever scrolls under it:
+		// the missing projects' rows, when the older ones are gone).
 		Test.Assert(scroller.ScrollRange.Y >= 8 * scroller.ScrollStep);
 		let card = list.GetChildAt(0).ScreenBounds;
 		let at = Float2(card.X + card.Width * 0.5f, card.Y + card.Height * 0.4f);
@@ -485,7 +494,7 @@ class ProjectLauncherTests
 	}
 
 	[Test]
-	public static void TheWheelOverTheGridsCardsScrollsNotchAfterNotchThePointerHeldStillOverAMissingProjectsCardToo()
+	public static void TheWheelOverTheGridsCardsScrollsNotchAfterNotchThePointerHeldStillWithMissingProjectsListed()
 	{
 		let l = scope Launcher(18);
 		WheelOverCards(l);
@@ -499,7 +508,7 @@ class ProjectLauncherTests
 	}
 
 	[Test]
-	public static void UnderTheEditorsSheetACardsPictureButtonRingsItEvenlyInsideTheCard()
+	public static void UnderTheEditorsSheetACardsPictureFillsItsButtonEvenlyInsideTheCard()
 	{
 		let l = scope Launcher();
 		l.View.SetGridView(true);
@@ -531,10 +540,193 @@ class ProjectLauncherTests
 		let right = b.X + b.Width - (p.X + p.Width);
 		let top = p.Y - b.Y;
 		let bottom = b.Y + b.Height - (p.Y + p.Height);
-		Test.Assert(Math.Abs(left - top) < 0.01f);
-		Test.Assert(Math.Abs(right - bottom) < 0.01f);
-		Test.Assert(Math.Abs(left - right) < 0.01f);
+		// Evenly: as much each side across, and above as below. Raptor's case also has across equal
+		// to down, but its sheet goes in without tokens.css, so the tile's 1px border (a var()) is
+		// dropped there; under the real sheet, as here, the 272px picture rides 1px over each side
+		// of the 270px button until 5a9770cf7 sizes it from the button.
+		let values = scope $"left {left} top {top} right {right} bottom {bottom}; button {b.Width}x{b.Height}, picture {p.Width}x{p.Height}";
+		Test.Assert(Math.Abs(left - right) < 0.01f, values);
+		Test.Assert(Math.Abs(top - bottom) < 0.01f, values);
 		Test.Assert(b.X >= c.X, "inside the card");
 		Test.Assert(b.X + b.Width <= c.X + c.Width + 0.5f);
+	}
+
+	/// The names of the projects listed, in their order.
+	private static void ListedNames(Launcher l, List<String> outNames)
+	{
+		let list = l.Projects;
+		for (int i < list.ChildCount)
+			outNames.Add(new String(TextOf(list.GetChildAt(i), "manager-name")));
+	}
+
+	/// The first listed name, else empty.
+	private static void FirstName(Launcher l, String outName)
+	{
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		ListedNames(l, names);
+		if (!names.IsEmpty)
+			outName.Append(names[0]);
+	}
+
+	private static int ListedCount(Launcher l) => l.Projects.ChildCount;
+
+	[Test]
+	public static void APinnedProjectComesFirstWhateverTheSortAndTheSortAndTheSearchArrangeWhatWasProbed()
+	{
+		let l = scope Launcher();
+		Test.Assert(ListedCount(l) == 2);
+		Test.Assert(FirstName(l, .. scope .()) == "First");
+
+		// Pinning Second puts it first, and is saved.
+		l.View.SetFavourite(l.Second, true);
+		l.Drain();
+		Test.Assert(l.Saves == 1);
+		Test.Assert(FirstName(l, .. scope .()) == "Second");
+		Test.Assert(l.View.FocusedPath == l.Second, "the ring went with it");
+		Test.Assert(WithClass(l.Projects.GetChildAt(0), "manager-star").HasClass("on"));
+		l.View.SetFavourite(l.Second, false);
+		l.Drain();
+		Test.Assert(FirstName(l, .. scope .()) == "First");
+
+		// By name: First before Second still, after recency put Second first: it sorts.
+		ProjectRegistry.TouchRecentProject(l.Store, l.Second, "Second", "0.1.0");
+		l.View.Rebuild();
+		Test.Assert(FirstName(l, .. scope .()) == "Second");
+		l.View.SetSortByName(true);
+		l.Drain();
+		Test.Assert(l.Controller.SortByName);
+		Test.Assert(FirstName(l, .. scope .()) == "First");
+
+		// The search matches the name or the folder, any case; the count says how many of how many.
+		l.View.SetQuery("sec");
+		Test.Assert(ListedCount(l) == 1);
+		Test.Assert((l.View.Content.FindElement("manager-count") as Sedulous.GUI.Label).Text == "1 of 2");
+		Test.Assert(!l.View.Content.FindElement("manager-missing").Displayed, "Gone does not match");
+		l.View.SetQuery("nothing like it");
+		Test.Assert(ListedCount(l) == 0);
+		Test.Assert(l.View.Content.FindElement("manager-no-match").Displayed);
+		l.View.SetQuery("");
+		Test.Assert(ListedCount(l) == 2);
+		Test.Assert(!l.View.Content.FindElement("manager-no-match").Displayed);
+	}
+
+	[Test]
+	public static void UpAndDownMoveTheRingEnterOpensItsProjectDelTakesItOffTheListCtrlNIsNewProject()
+	{
+		let l = scope Launcher();
+		l.View.Shown();
+		let d = l.Scene.EventDispatcher;
+		Test.Assert(l.View.FocusedPath == l.First);
+		Test.Assert(d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Down));
+		Test.Assert(l.View.FocusedPath == l.Second);
+		Test.Assert(d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Down));
+		Test.Assert(l.View.FocusedPath == l.Gone, "the missing come after the rest");
+		Test.Assert(d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Down));
+		Test.Assert(l.View.FocusedPath == l.Gone, "the end holds");
+		Test.Assert(d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Up));
+		Test.Assert(d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Return));
+		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.Second));
+
+		Test.Assert(d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Delete));
+		l.Drain();
+		Test.Assert(l.Saves == 1);
+		Test.Assert(l.View.ShownCount == 2);
+		Test.Assert(l.View.Status == "Second was taken off the list; its files are untouched.");
+		Test.Assert(FileExists(PathJoin(l.Second, ProjectLayout.ManifestFile, .. scope .())), "only the list changed");
+
+		// In the search, Del edits the text.
+		l.View.HandleKey((uint32)Sedulous.GUI.KeyCode.F, KeyModCtrl);
+		let search = l.View.Content.FindElement("manager-search") as Sedulous.GUI.TextField;
+		Test.Assert(search != null);
+		Test.Assert(d.FocusNode == search);
+		Test.Assert(!l.View.HandleKey((uint32)Sedulous.GUI.KeyCode.Delete, 0));
+
+		Test.Assert(l.View.CreateDialog == null);
+		Test.Assert(l.View.HandleKey((uint32)Sedulous.GUI.KeyCode.N, KeyModCtrl));
+		Test.Assert(l.View.CreateDialog != null);
+	}
+
+	[Test]
+	public static void LocatePointsAMissingProjectAtItsNewFolderRemoveMissingTakesTheRestOffFilesUntouched()
+	{
+		let l = scope Launcher();
+		// A folder with no project is refused.
+		Test.Assert(!l.View.Locate(l.Gone, l.Root));
+		Test.Assert(l.View.ShownCount == 3);
+		// Gone was moved: its project is at Moved now.
+		let moved = PathJoin(l.Root, "Moved", .. scope .());
+		Test.Assert(EditorProject.Create(moved, "Gone") case .Ok);
+		Test.Assert(l.View.Locate(l.Gone, moved));
+		l.Drain();
+		Test.Assert(l.Saves == 1);
+		Test.Assert(!l.View.Content.FindElement("manager-missing").Displayed);
+		Test.Assert(ListedCount(l) == 3);
+
+		// Two missing, then both off the list at once.
+		ProjectRegistry.TouchRecentProject(l.Store, PathJoin(l.Root, "Lost1", .. scope .()), "Lost1", "0.1.0");
+		ProjectRegistry.TouchRecentProject(l.Store, PathJoin(l.Root, "Lost2", .. scope .()), "Lost2", "0.1.0");
+		l.View.Rebuild();
+		Test.Assert(l.View.Content.FindElement("manager-missing-list").ChildCount == 2);
+		Test.Assert(ButtonText(l.View.Content, "Remove missing from list").HandleActivate());
+		l.Drain();
+		Test.Assert(l.Saves == 2);
+		Test.Assert(l.View.ShownCount == 3);
+		Test.Assert(l.View.Status == "2 missing projects were taken off the list; no files were touched.");
+	}
+
+	[Test]
+	public static void WithNoProjectsAWelcomeWithNewProjectAndOpenFolderStandsInForTheLists()
+	{
+		EditorProjectSerializables.RegisterAll();
+		let store = scope Settings();
+		let controller = scope ProjectManagerController(store);
+		let context = new GUIContext();
+		let scene = new SceneRoot(context);
+		context.ReleaseRef(); // the root's keeps it
+		defer scene.ReleaseRef();
+		let services = new ProjectManagerServices();
+		services.Controller = controller;
+		services.LoadMarkup = new (path) => PagesBed.LoadMarkup(path);
+		let view = new ProjectManagerView(services, PagesBed.LoadMarkup(ProjectManagerView.cMarkupPath));
+		defer delete view; // before the scene
+		scene.AddChild(view.Content);
+		Test.Assert(view.IsWelcome);
+		Test.Assert(view.Content.FindElement("manager-welcome").Displayed);
+		Test.Assert(!view.Content.FindElement("manager-projects-page").Displayed);
+		Test.Assert((view.Content.FindElement("manager-welcome-new") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(view.CreateDialog != null);
+
+		// The Samples tab replaces the welcome while it is chosen.
+		view.ShowSamples(true);
+		Test.Assert(view.IsShowingSamples);
+		Test.Assert(!view.Content.FindElement("manager-welcome").Displayed);
+		Test.Assert(view.Content.FindElement("manager-samples-page").Displayed);
+		Test.Assert((view.Content.FindElement("manager-tab-samples") as Sedulous.GUI.Button).Checked);
+	}
+
+	[Test]
+	public static void AFolderDroppedOnTheManagerOpensItsProjectOrTheStatusSaysItHoldsNone()
+	{
+		let l = scope Launcher();
+		StringView[1] dropped = .(l.Root);
+		Test.Assert(l.View.OpenDropped(.(&dropped[0], 1)));
+		Test.Assert(l.Opened.IsEmpty);
+		Test.Assert(l.View.Status == "scratch_launcher holds no Project.xml, so it is not a project. New Project makes one.");
+		dropped[0] = l.Second;
+		Test.Assert(l.View.OpenDropped(.(&dropped[0], 1)));
+		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.Second));
+	}
+
+	[Test]
+	public static void UnderTheEditorsSheetARowStretchesAcrossTheWindowLessThePagesMargins()
+	{
+		let l = scope Launcher();
+		l.StyleAsTheEditor();
+		let row = l.Projects.GetChildAt(0).ScreenBounds;
+		Test.Assert(Math.Abs(row.X - 40.0f) < 0.01f);
+		Test.Assert(row.Width > 1100.0f, "1280 less 40 each side and a scroll bar at most");
+		let missing = l.View.Content.FindElement("manager-missing-list").GetChildAt(0).ScreenBounds;
+		Test.Assert(Math.Abs(missing.Width - row.Width) < 0.01f);
 	}
 }

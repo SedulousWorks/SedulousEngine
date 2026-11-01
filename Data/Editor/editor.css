@@ -64,38 +64,95 @@ button.link:hover { background-color: var(--ghost-hover); }
 .project-initial > label { color: var(--text-dim); font-size: 40px; }
 .home-picture { width: 192px; height: 108px; }
 
-/* The project manager: a centred column over the whole window. */
-.manager { flex-grow: 1; flex-direction: column; align-items: center; background-color: var(--surface); }
-.manager-column { flex-direction: column; row-gap: var(--space-l); width: 720px; flex-grow: 1; min-height: 0;
-                  padding: calc(2 * var(--space-xl)) 0 var(--space-xl); }
-.manager-header { flex-direction: row; align-items: end; column-gap: var(--space-l); }
-.manager-logo { height: 44px; }
-.manager-actions { flex-direction: row; column-gap: var(--space-m); }
-.manager-list-head { flex-direction: row; align-items: center; }
-.manager-status { color: var(--warning); }
-.manager-scroll { flex-grow: 1; min-height: 0; }
-.manager-projects { flex-direction: column; row-gap: var(--space-s); width: 704px; } /* the column less the scroll bar: a scroller's content takes its own width */
-.manager-projects.grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-m); row-gap: var(--space-m); }
-.manager-row { flex-direction: row; align-items: center; column-gap: var(--space-l); padding: var(--space-s) var(--space-m);
-               background-color: var(--element); border-radius: var(--radius); }
-.manager-row.missing > .manager-text { opacity: 0.5; }
-.manager-text { flex-direction: column; row-gap: var(--space-xs); flex-grow: 1; flex-basis: 0; min-width: 0; }
-.manager-name { color: var(--text-strong); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.manager-row.newer .manager-name, .manager-tile.newer .manager-name { color: var(--warning); }
+/* The project manager (Raptor's project-manager spec): the whole window. A header with the tabs, then
+   a page: Projects (a toolbar over the scrolling lists), Samples, or the first run's welcome; a
+   footer with the status and the keys under all of them. */
+.manager { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
+.manager-header { flex-direction: row; align-items: center; column-gap: var(--space-l); padding: 20px 40px 0; flex-shrink: 0; }
+.manager-logo { height: 34px; width: 150px; }
+.manager-tabs { flex-direction: row; column-gap: var(--space-xs); margin-left: 28px; }
+button.manager-tab { background-color: transparent; color: var(--text-dim); font-weight: 500; padding: 0 var(--space-l); height: 30px; }
+button.manager-tab:hover { background-color: var(--ghost-hover); color: var(--text); }
+button.manager-tab:checked { background-color: var(--element); color: var(--text-strong); font-weight: 600; }
+.manager-meta { color: var(--text-dim); font-size: var(--font-small); white-space: nowrap; }
+.manager-key { font-family: var(--mono-font); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.manager-page { flex-grow: 1; flex-direction: column; min-height: 0; }
+.manager-toolbar { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 20px 40px 14px; flex-shrink: 0;
+                   border-bottom: 1px solid var(--separator); }
+.manager-toolbar button { height: 30px; }
+.search.manager-search { flex-grow: 0; flex-basis: 280px; height: 30px; margin-right: var(--space-s); }
+.manager-sort { width: 120px; height: 30px; }
+button.icon-segment { width: 32px; padding: 0; height: 24px; }
+/* The lists scroll as one column the window's width: the rows stretch across it. */
+.manager-scroll { flex-grow: 1; min-height: 0; flex-direction: column; row-gap: var(--space-xs); overflow-y: auto; overflow-x: hidden;
+                  padding: 14px 40px 20px; }
+.manager-section-head { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: var(--space-xs) 0 6px; flex-shrink: 0; }
+.manager-section { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); }
+.manager-count { font-size: var(--font-small); color: var(--text-placeholder); }
+.manager-no-match { color: var(--text-dim); margin: 24px 0; }
+.manager-projects { flex-direction: column; row-gap: 2px; flex-shrink: 0; }
+.manager-projects.grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-xl); row-gap: var(--space-xl); }
+.manager-row { flex-direction: row; align-items: center; column-gap: 14px; padding: var(--space-s) 10px; border-radius: var(--radius);
+               border: 2px solid transparent; }
+.manager-row:hover { background-color: var(--row-hover); }
+.manager-row.focused, .manager-tile.focused { border-color: var(--focus-ring); }
+.manager-row.focused { background-color: var(--row-hover); }
+.manager-row-picture { width: 96px; height: 54px; }
+.manager-text { flex-direction: column; row-gap: 3px; flex-grow: 1; flex-basis: 0; min-width: 0; }
+.manager-title { flex-direction: row; align-items: center; column-gap: var(--space-s); min-width: 0; }
+.manager-name { color: var(--text-strong); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
 .manager-path { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; }
-.manager-version { color: var(--text-dim); font-size: var(--font-small); width: 56px; text-align: end; flex-shrink: 0; }
-.manager-row-picture { width: 76px; height: 43px; }
-.manager-open-slot { width: 64px; flex-shrink: 0; justify-content: end; }
-.manager-tile { flex-direction: column; row-gap: var(--space-xs); width: 220px; padding: var(--space-s); background-color: var(--element);
-                border-radius: var(--radius); }
-.manager-tile.missing { opacity: 0.6; }
-.manager-tile-picture { width: 204px; height: 115px; }
-/* The picture is the card's Open: its hover the same width all round, inside the card's own edge,
-   the name and the menu below in line with the picture. */
-button.manager-tile-open { padding: var(--space-s); height: auto; min-height: 0; background-color: transparent; border-radius: var(--radius-small); }
-button.manager-tile-open:hover { background-color: var(--ghost-hover); }
-.manager-tile-foot { flex-direction: row; align-items: center; padding: 0 var(--space-s); }
-.manager-empty { color: var(--text-dim); padding: var(--space-l) var(--space-xs); white-space: normal; }
+.manager-opened { color: var(--text-dim); font-size: var(--font-small); width: 120px; flex-shrink: 0; white-space: nowrap; }
+.manager-version { font-family: var(--mono-font); font-size: var(--font-small); color: var(--text-placeholder); width: 56px; text-align: end; flex-shrink: 0; }
+.manager-version.newer, .manager-tile-meta > .newer { color: var(--warning); }
+.manager-version.older, .manager-tile-meta > .older { color: var(--info); }
+.badge.info { background-color: var(--info-background); color: var(--info); }
+button.manager-star { width: 30px; padding: 0; background-color: transparent; }
+button.manager-star:hover { background-color: var(--ghost-hover); }
+button.manager-star > icon { image-color: var(--icon-dim); }
+button.manager-star.on > icon { image-color: var(--favourite); }
+.manager-tile { flex-direction: column; width: 272px; background-color: var(--element); border-radius: 7px; border: 1px solid var(--border); }
+.manager-tile:hover { border-color: var(--border-strong); }
+/* The picture is the card's Open, edge to edge across its top. */
+button.manager-tile-open { padding: 0; height: auto; min-height: 0; background-color: transparent; border-radius: 6px 6px 0 0; }
+button.manager-tile-open:hover { opacity: 0.9; background-color: transparent; }
+.manager-tile-picture { width: 272px; height: 153px; border-radius: 6px 6px 0 0; }
+.manager-tile-foot { flex-direction: row; align-items: start; column-gap: var(--space-xs); padding: 10px var(--space-s) 10px var(--space-l); }
+.manager-tile-meta { flex-direction: row; column-gap: var(--space-xs); }
+.manager-tile-meta > label { color: var(--text-dim); font-size: var(--font-small); white-space: nowrap; }
+.manager-tile-meta > .manager-tile-version { font-family: var(--mono-font); }
+.manager-tile button.manager-star, .manager-tile button.slot-button { height: 26px; }
+.manager-missing { flex-direction: column; row-gap: 2px; margin-top: 18px; flex-shrink: 0; }
+.manager-missing-list { flex-direction: column; row-gap: var(--space-xs); }
+.manager-row.missing { border: 1px dashed var(--border); }
+.manager-row.missing.focused { border: 2px solid var(--focus-ring); }
+.manager-missing-icon { width: 96px; height: 40px; border-radius: var(--radius); background-color: var(--element); justify-content: center;
+                        align-items: center; flex-shrink: 0; }
+.manager-missing-icon > image { width: 20px; height: 20px; image-color: var(--icon-dim); }
+.manager-row.missing .manager-name { color: var(--text-dim); font-weight: 500; }
+button.manager-small { height: 26px; font-size: var(--font-small); color: var(--text-dim); }
+.manager-footer { flex-direction: row; align-items: center; column-gap: 18px; padding: 10px 40px; flex-shrink: 0;
+                  border-top: 1px solid var(--separator); background-color: var(--surface-sunken); }
+.manager-status { color: var(--text); font-size: var(--font-small); white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+.manager-status.warning { color: var(--warning); }
+.manager-keys { flex-direction: row; align-items: center; column-gap: 6px; }
+.manager-keys > .manager-key { color: var(--text); margin-left: 12px; }
+/* The first run: the logo, a welcome and two large cards in the middle of the window. */
+.manager-welcome { flex-grow: 1; flex-direction: column; align-items: center; justify-content: center; row-gap: 28px; padding-bottom: 60px; }
+.manager-welcome-logo { width: 248px; height: 56px; }
+.manager-welcome-text { flex-direction: column; align-items: center; row-gap: var(--space-s); }
+.manager-welcome-title { font-size: 26px; font-weight: 600; color: var(--text-strong); }
+.manager-welcome-cards { flex-direction: row; column-gap: 20px; }
+button.manager-card { flex-direction: column; align-items: start; row-gap: 10px; width: 300px; height: auto; padding: 22px;
+                      background-color: var(--element); border: 1px solid var(--border); border-radius: var(--radius-large); }
+button.manager-card:hover { border-color: var(--border-strong); background-color: var(--element-hover); }
+.manager-card-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: 8px; justify-content: center; align-items: center;
+                     background-color: var(--control); border: 1px solid var(--border); }
+.manager-card-icon.primary { background-color: var(--accent-fill); border-width: 0; }
+.manager-card-icon > image { width: 18px; height: 18px; image-color: var(--icon); }
+.manager-card-icon.primary > image { image-color: var(--on-accent); }
+.manager-card-title { font-size: 15px; font-weight: 600; color: var(--text-strong); }
+.manager-card-text { color: var(--text-dim); white-space: normal; text-align: start; }
 .new-project { flex-direction: column; row-gap: var(--space-m); }
 .new-project-folder { flex-direction: row; column-gap: var(--space-s); }
 .new-project-folder > textfield { flex-grow: 1; min-width: 0; }

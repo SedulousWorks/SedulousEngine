@@ -10,13 +10,16 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-// ProjectManagerView: the project manager (Raptor's editor-gui spec, 5.1, layer 13), the window's
-// whole screen at startup with no project given, and after File > Close Project. Its frame is
-// markup (Data/Editor/ProjectManager.xml): New Project and Open Folder first, then every recent
-// project as a row (its picture, name, folder and engine, Open, a menu) or a tile of its picture.
-// There is no selection: an action is one click on the project it is for. Each project is probed as
-// it is shown: one whose folder no longer holds it is dimmed with no Open; one saved by a newer
-// engine is named in the warning colour. The status line under the head says what went wrong.
+// ProjectManagerView: the project manager (Raptor's project-manager spec), the window's whole screen
+// at startup with no project given, and after File > Close Project. Its frame is markup
+// (Data/Editor/ProjectManager.xml): a header with the Projects and Samples tabs; on Projects a
+// toolbar (New Project, Open Folder, a search, the sort, list or grid) over the projects as rows or
+// as tiles, and under them the missing ones, each with Locate... and Remove from list; a footer with
+// the status and the keys. With no projects at all, a welcome stands in for the lists.
+//
+// There is no selection: an action is one click on the project it is for. A focus ring that Up and
+// Down move marks the project Enter opens and Del takes off the list. Each project is probed when the
+// list is rebuilt; a search or a sort only arranges what was probed.
 //
 // Everything with consequences for the project goes through the services the application binds:
 // opening (the application runs the version check), creating, and saving the list after a change.
@@ -49,15 +52,39 @@ class ProjectManagerView
 	public const String cNewProjectPath = "Editor/NewProject.xml";
 	private const float cDialogWidth = 480.0f;
 	private const float cDialogHeight = 220.0f;
+	/// The buttons that make a project and open a folder: the toolbar's and the welcome's.
+	private static StringView[2] cNewButtons = .("manager-new", "manager-welcome-new");
+	private static StringView[2] cOpenButtons = .("manager-open", "manager-welcome-open");
 
-	/// One recent project as it was probed when shown.
+	/// A listed project as the last probe found it.
+	private class Probe
+	{
+		public String Path = new .() ~ delete _;
+		/// From its manifest, when found.
+		public String Name = new .() ~ delete _;
+		public String EngineVersion = new .() ~ delete _;
+		public bool Found = false;
+	}
+
+	/// A project on the page, in the order the focus ring walks: the projects, then the missing.
+	private class Listed
+	{
+		public String Path = new .() ~ delete _;
+		public bool Missing = false;
+	}
+
+	/// What a row or a tile shows.
 	private class Card
 	{
 		public String Path = new .() ~ delete _;
 		public String Name = new .() ~ delete _;
 		public String EngineVersion = new .() ~ delete _;
-		public bool Missing = false;
-		public bool Newer = false;
+		/// "2 hours ago".
+		public String Opened = new .() ~ delete _;
+		/// Its exact time, for the tooltip.
+		public String OpenedAt = new .() ~ delete _;
+		public EngineVersionRelation Relation = .Same;
+		public bool Favourite = false;
 	}
 
 	private ProjectManagerServices mServices ~ delete _;
@@ -69,7 +96,22 @@ class ProjectManagerView
 	private Sedulous.GUI.Window mDialog = null ~ _?.ReleaseRef();
 	/// A project's menu, a reference of ours while it is the last one made.
 	private Sedulous.GUI.Menu mMenu = null ~ _?.ReleaseRef();
-	private List<Card> mShown = new .() ~ DeleteContainerAndItems!(_);
+	/// Every listed project, as the last rebuild found it.
+	private List<Probe> mProbes = new .() ~ DeleteContainerAndItems!(_);
+	/// The projects on the page, in the ring's order.
+	private List<Listed> mShown = new .() ~ DeleteContainerAndItems!(_);
+	/// Their rows or tiles, in the same order: the tree's.
+	private List<Node> mRows = new .() ~ delete _;
+	/// Shown as ~ in a folder.
+	private String mHome = new .() ~ delete _;
+	private String mQuery = new .() ~ delete _;
+	private String mStatus = new .() ~ delete _;
+	private String mFocusPath = new .() ~ delete _;
+	private int mFocus = 0;
+	private bool mProblem = false;
+	private bool mSamples = false;
+	/// The page's keys, on the content.
+	private uint32 mKeyListener = 0;
 
 	/// The manager over `services`, its frame `content` (the markup's: its parts by id). TAKES
 	/// OWNERSHIP of the services and of a reference to `content`; null shows nothing.
@@ -77,21 +119,54 @@ class ProjectManagerView
 	{
 		mServices = services;
 		mContent = content;
+		if ((GetEnvironmentVariable("HOME", mHome) case .Err) || mHome.IsEmpty)
+		{
+			mHome.Clear();
+			GetEnvironmentVariable("USERPROFILE", mHome).IgnoreError();
+		}
 		if (mContent == null)
 			return;
-		if (let create = Find<Sedulous.GUI.Button>("manager-new"))
-			create.SetOnClick(new () => { ShowCreateDialog(); });
-		if (let open = Find<Sedulous.GUI.Button>("manager-open"))
-			open.SetOnClick(new () => { BrowseAndOpen(); });
+		for (let id in cNewButtons)
+			if (let create = Find<Sedulous.GUI.Button>(id))
+				create.SetOnClick(new () => { ShowCreateDialog(); });
+		for (let id in cOpenButtons)
+			if (let open = Find<Sedulous.GUI.Button>(id))
+				open.SetOnClick(new () => { BrowseAndOpen(); });
 		if (let asList = Find<Sedulous.GUI.Button>("manager-list"))
 			asList.SetOnClick(new () => { SetGridView(false); });
 		if (let asGrid = Find<Sedulous.GUI.Button>("manager-grid"))
 			asGrid.SetOnClick(new () => { SetGridView(true); });
+		if (let projects = Find<Sedulous.GUI.Button>("manager-tab-projects"))
+			projects.SetOnClick(new () => { ShowSamples(false); });
+		if (let samples = Find<Sedulous.GUI.Button>("manager-tab-samples"))
+			samples.SetOnClick(new () => { ShowSamples(true); });
+		if (let removeMissing = Find<Sedulous.GUI.Button>("manager-remove-missing"))
+			removeMissing.SetOnClick(new () => { RemoveMissing(); });
+		if (let search = Find<Sedulous.GUI.TextField>("manager-search"))
+			search.SetOnTextChanging(new (text) => { SetQuery(text); });
+		if (let sort = Find<Sedulous.GUI.ComboBox>("manager-sort"))
+		{
+			if (mServices.Controller != null)
+				sort.SelectedIndex = mServices.Controller.SortByName ? 1 : 0;
+			sort.SetOnSelectionChanged(new (index) => { SetSortByName(index == 1); });
+		}
 		if (let engine = Find<Sedulous.GUI.Label>("manager-engine"))
-			engine.Text = scope $"engine {EngineVersion.String}";
+			engine.Text = scope $"Editor {EngineVersion.String}";
+		// The scroller takes the focus when the page is clicked, so the keys reach the page.
+		if (let scroll = Find<Node>("manager-scroll"))
+			scroll.TabFocusable = true;
+		// Capture: the page's keys come before the search field's (Up, Down and Enter move and
+		// open, as in a palette).
+		mKeyListener = mContent.AddEventListener(.KeyDown, new (e) =>
+			{
+				let key = (KeyEvent)e;
+				if (HandleKey(key.KeyCode, key.Modifiers))
+					e.Handled = true;
+			}, true);
 		Rebuild();
 	}
 
+	/// The content may outlive this: what of it calls back here goes first.
 	public ~this()
 	{
 		// Open as it goes, New Project would make into nothing and the menu run on nothing.
@@ -99,75 +174,54 @@ class ProjectManagerView
 			mDialog.Close();
 		if ((mMenu != null) && mMenu.IsOpen)
 			mMenu.Close();
+		if (mContent != null)
+		{
+			mContent.RemoveEventListener(mKeyListener);
+			Clear(Find<Node>("manager-projects"));
+			Clear(Find<Node>("manager-missing-list"));
+		}
 	}
 
 	/// Its frame. Ours: a caller that keeps it takes a reference.
 	public Node Content => mContent;
 
-	/// The status line (empty hides it).
-	public void SetStatus(StringView text)
+	/// Called once the page is on screen: the list takes the keys.
+	public void Shown()
 	{
-		if (let status = Find<Sedulous.GUI.Label>("manager-status"))
-		{
-			status.Text = text;
-			status.Displayed = !text.IsEmpty;
-		}
+		let scroll = Find<Node>("manager-scroll");
+		if ((scroll != null) && scroll.IsTreeVisible)
+			scroll.RequestFocus();
 	}
 
-	public StringView Status
-	{
-		get
-		{
-			let status = Find<Sedulous.GUI.Label>("manager-status");
-			return (status != null) ? status.Text : default;
-		}
-	}
+	/// The status line to a problem, in the warning colour (empty shows the idle hint).
+	public void SetStatus(StringView text) => ShowStatus(text, true);
 
-	/// The projects again, each probed now.
+	/// The status line to what just happened, in the text colour.
+	public void SetNote(StringView text) => ShowStatus(text, false);
+
+	public StringView Status => mStatus;
+
+	/// Probes every listed project, then lays the list out again.
 	public void Rebuild()
 	{
-		let list = Find<Node>("manager-projects");
-		if ((list == null) || (mServices.Controller == null))
-			return;
-		list.RemoveAllChildren(); // the pictures it showed go before their images
-		ClearAndDeleteItems(mPictures);
-		ClearAndDeleteItems(mShown);
-		let grid = mServices.Controller.GridView;
-		if (let asList = Find<Sedulous.GUI.Button>("manager-list"))
-			asList.Checked = !grid;
-		if (let asGrid = Find<Sedulous.GUI.Button>("manager-grid"))
-			asGrid.Checked = grid;
-		if (let view = list as UIWidget)
+		ClearAndDeleteItems(mProbes);
+		if (mServices.Controller != null)
 		{
-			if (grid)
-				view.AddClass("grid");
-			else
-				view.RemoveClass("grid");
-		}
-		let recent = mServices.Controller.Entries;
-		if (recent.Entries.IsEmpty)
-		{
-			Adopt(list, Text("No projects yet. Make a new project, or open a project's folder.", "manager-empty"));
-			return;
-		}
-		for (let entry in recent.Entries)
-		{
-			let card = new Card();
-			card.Path.Set(entry.Path);
-			card.Name.Set(entry.Name);
-			card.EngineVersion.Set(entry.EngineVersion);
-			let probed = scope ProjectSettings();
-			if (ProjectRegistry.ProbeProject(entry.Path, probed) case .Ok)
+			for (let entry in mServices.Controller.Entries.Entries)
 			{
-				card.Name.Set(probed.Name);
-				card.EngineVersion.Set(probed.EngineVersion);
-				card.Newer = ProjectRegistry.CompareProjectEngineVersion(probed.EngineVersion) == .ProjectNewer;
+				let probe = new Probe();
+				probe.Path.Set(entry.Path);
+				let probed = scope ProjectSettings();
+				if (ProjectRegistry.ProbeProject(entry.Path, probed) case .Ok)
+				{
+					probe.Found = true;
+					probe.Name.Set(probed.Name);
+					probe.EngineVersion.Set(probed.EngineVersion);
+				}
+				mProbes.Add(probe);
 			}
-			else
-				card.Missing = true;
-			mShown.Add(card);
-			Adopt(list, grid ? Tile(card) : Row(card));
 		}
+		Populate();
 	}
 
 	/// The list's layout: a grid of the pictures, else rows (kept in the store).
@@ -180,14 +234,180 @@ class ProjectManagerView
 		mServices.Controller.SetGridView(grid);
 		if (mServices.StoreChanged != null)
 			mServices.StoreChanged();
-		RebuildLater();
+		Later(false);
 	}
 
-	/// The projects shown, and how many show their thumbnail (a test's).
+	/// The order: by name, else by when each was last opened (kept in the store).
+	public void SetSortByName(bool byName)
+	{
+		if ((mServices.Controller == null) || (byName == mServices.Controller.SortByName))
+			return;
+		mServices.Controller.SetSortByName(byName);
+		if (mServices.StoreChanged != null)
+			mServices.StoreChanged();
+		Later(false);
+	}
+
+	/// Shows only the projects whose name or folder holds `query` (any case).
+	public void SetQuery(StringView query)
+	{
+		mQuery.Set(query);
+		Populate();
+	}
+
+	/// Pins a project to the top, or unpins it.
+	public void SetFavourite(StringView path, bool favourite)
+	{
+		if ((mServices.Controller == null) || !mServices.Controller.SetFavourite(path, favourite))
+			return;
+		if (mServices.StoreChanged != null)
+			mServices.StoreChanged();
+		mFocusPath.Set(path); // the ring follows the project to its new place
+		Later(false);
+	}
+
+	/// The Samples tab, else the Projects tab.
+	public void ShowSamples(bool samples)
+	{
+		mSamples = samples;
+		Populate();
+	}
+
+	public bool IsShowingSamples => mSamples;
+
+	/// Whether the first run's welcome stands in for the lists (no projects at all).
+	public bool IsWelcome => !mSamples && mProbes.IsEmpty;
+
+	/// The projects shown (missing ones too), and how many show their thumbnail (a test's).
 	public int ShownCount => mShown.Count;
 	public int ThumbnailCount => mPictures.Count;
 	/// A project's menu while it is open (a test's); null with none.
 	public Sedulous.GUI.Menu OpenMenu => ((mMenu != null) && mMenu.IsOpen) ? mMenu : null;
+
+	/// The folder of the project the focus ring is on (empty with none).
+	public StringView FocusedPath => (mFocus < mShown.Count) ? StringView(mShown[mFocus].Path) : default;
+
+	/// The page's keys: Ctrl+F searches, Ctrl+N is New Project, Ctrl+O is Open Folder; Up and Down
+	/// move the focus ring, Enter opens its project (Locate... for a missing one), Del takes it off
+	/// the list. A key the focused widget needs for itself (Enter on a button, Del in the search, the
+	/// arrows in an open list) stays with it. True when it took the key.
+	public bool HandleKey(uint32 keyCode, uint32 modifiers)
+	{
+		let code = (Sedulous.GUI.KeyCode)keyCode;
+		if (modifiers == KeyModCtrl)
+		{
+			if ((code == .F) && !mSamples)
+			{
+				let search = Find<Sedulous.GUI.TextField>("manager-search");
+				if ((search != null) && search.IsTreeVisible)
+					search.RequestFocus();
+				return true;
+			}
+			if (code == .N)
+			{
+				ShowCreateDialog();
+				return true;
+			}
+			if (code == .O)
+			{
+				BrowseAndOpen();
+				return true;
+			}
+			return false;
+		}
+		if ((modifiers != 0) || mSamples || mShown.IsEmpty)
+			return false;
+		let dispatcher = (mContent != null) ? mContent.EventDispatcher : null;
+		let focus = (dispatcher != null) ? dispatcher.FocusNode : null;
+		if ((code == .Down) || (code == .Up))
+		{
+			if (focus is Sedulous.GUI.ComboBox)
+				return false;
+			MoveFocus((code == .Down) ? 1 : -1);
+			return true;
+		}
+		if ((code == .Return) || (code == .KeypadEnter))
+		{
+			if ((focus is ButtonBase) || (focus is Sedulous.GUI.ComboBox))
+				return false;
+			let shown = mShown[Math.Min(mFocus, mShown.Count - 1)];
+			if (shown.Missing)
+				BrowseAndLocate(shown.Path);
+			else
+				Open(shown.Path);
+			return true;
+		}
+		if (code == .Delete)
+		{
+			if (focus is Sedulous.GUI.TextField)
+				return false;
+			Run(scope String(mShown[Math.Min(mFocus, mShown.Count - 1)].Path), "Remove from List");
+			return true;
+		}
+		return false;
+	}
+
+	/// Moves the focus ring by `step` projects, stopping at the ends.
+	public void MoveFocus(int step)
+	{
+		if (mShown.IsEmpty)
+			return;
+		SetFocusIndex(Math.Clamp(Math.Min(mFocus, mShown.Count - 1) + step, 0, mShown.Count - 1));
+	}
+
+	/// A folder dropped on the window: opens the project in it, or says it holds none. False when
+	/// nothing was dropped.
+	public bool OpenDropped(Span<StringView> paths)
+	{
+		if (paths.Length == 0)
+			return false;
+		let probed = scope ProjectSettings();
+		if (ProjectRegistry.ProbeProject(paths[0], probed) case .Err)
+		{
+			let folder = PathFilename(paths[0], .. scope .());
+			SetStatus(scope $"{folder} holds no Project.xml, so it is not a project. New Project makes one.");
+			return true;
+		}
+		Open(paths[0]);
+		return true;
+	}
+
+	/// Points a missing project at the folder it is in now (Locate...'s second half), and says so;
+	/// a folder that holds no project is refused.
+	public bool Locate(StringView from, StringView to)
+	{
+		if (mServices.Controller == null)
+			return false;
+		if (!mServices.Controller.Relocate(from, to))
+		{
+			SetStatus("That folder holds no Project.xml, or is listed already.");
+			return false;
+		}
+		if (mServices.StoreChanged != null)
+			mServices.StoreChanged();
+		mFocusPath.Set(to);
+		let shown = ProjectRegistry.ShortenHomePath(to, mHome, .. scope .());
+		SetNote(scope $"Found it: the project is listed at {shown} now.");
+		Later(true);
+		return true;
+	}
+
+	/// Takes every missing project off the list. No files are touched.
+	public void RemoveMissing()
+	{
+		if (mServices.Controller == null)
+			return;
+		let removed = mServices.Controller.RemoveMissing();
+		if (removed == 0)
+			return;
+		if (mServices.StoreChanged != null)
+			mServices.StoreChanged();
+		if (removed == 1)
+			SetNote("The missing project was taken off the list; no files were touched.");
+		else
+			SetNote(scope $"{removed} missing projects were taken off the list; no files were touched.");
+		Later(true);
+	}
 
 	/// What a project's menu offers, appended.
 	public static void MenuItemsFor(StringView path, List<StringView> outItems)
@@ -222,7 +442,7 @@ class ProjectManagerView
 			if ((dispatcher != null) && (dispatcher.Clipboard != null))
 			{
 				dispatcher.Clipboard.SetText(path);
-				SetStatus("Copied the project's path.");
+				SetNote("Copied the project's path.");
 			}
 		}
 		else if (item == "Choose Thumbnail Image...")
@@ -241,15 +461,17 @@ class ProjectManagerView
 		else if (item == "Clear Thumbnail")
 		{
 			DeleteFile(EditorProject.ThumbnailPath(path, .. scope .()));
-			RebuildLater();
+			Later(false);
 		}
 		else if (item == "Remove from List")
 		{
+			let name = NameOf(path, .. scope .());
 			if ((mServices.Controller == null) || !mServices.Controller.Remove(path))
 				return;
 			if (mServices.StoreChanged != null)
 				mServices.StoreChanged();
-			RebuildLater();
+			SetNote(scope $"{name} was taken off the list; its files are untouched.");
+			Later(true);
 		}
 	}
 
@@ -270,7 +492,7 @@ class ProjectManagerView
 			SetStatus("The thumbnail could not be saved (an 8-bit image is needed).");
 			return false;
 		}
-		RebuildLater();
+		Later(false);
 		return true;
 	}
 
@@ -360,6 +582,24 @@ class ProjectManagerView
 		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
 	}
 
+	private static void SetClass(Node node, StringView name, bool on)
+	{
+		if (let widget = node as UIWidget)
+		{
+			if (on)
+				widget.AddClass(name);
+			else
+				widget.RemoveClass(name);
+		}
+	}
+
+	/// Its children gone (the pictures they showed go after, with mPictures).
+	private static void Clear(Node node)
+	{
+		if (node != null)
+			node.RemoveAllChildren();
+	}
+
 	/// Adds `child` to `into`, the tree's reference taking the place of the one it was made with.
 	private static void Adopt(Node into, Node child)
 	{
@@ -376,17 +616,197 @@ class ProjectManagerView
 		return label;
 	}
 
-	/// Rebuilds at the GUI's next drain (the clicked button is in what a rebuild takes away); at
-	/// once in no GUI.
-	private void RebuildLater()
+	/// At the GUI's next drain (the clicked button is in what a rebuild takes away), the projects
+	/// probed again (`probe`) or only laid out again; at once in no GUI.
+	private void Later(bool probe)
 	{
 		let queue = (mContent != null) ? mContent.MutationQueue : null;
 		if (queue == null)
 		{
-			Rebuild();
+			if (probe)
+				Rebuild();
+			else
+				Populate();
 			return;
 		}
-		queue.Enqueue(new () => { Rebuild(); });
+		queue.Enqueue(new [=this, =probe] () =>
+			{
+				if (probe)
+					Rebuild();
+				else
+					Populate();
+			});
+	}
+
+	private void ShowStatus(StringView text, bool problem)
+	{
+		mStatus.Set(text);
+		mProblem = problem;
+		let status = Find<Sedulous.GUI.Label>("manager-status");
+		if (status == null)
+			return;
+		// Nothing to say: how to open a project, while there are some.
+		let idle = text.IsEmpty;
+		status.Text = (idle && !mShown.IsEmpty && !mSamples) ? "Double-click a project or press Enter to open it." : text;
+		SetClass(status, "warning", problem && !idle);
+	}
+
+	private Probe ProbeOf(StringView path)
+	{
+		for (let probe in mProbes)
+			if (probe.Path == path)
+				return probe;
+		return null;
+	}
+
+	/// The listed name of the project at `path`, else its folder's name.
+	private void NameOf(StringView path, String outName)
+	{
+		if (mServices.Controller != null)
+		{
+			if (let entry = mServices.Controller.Entries.Find(path))
+			{
+				outName.Append(entry.Name);
+				return;
+			}
+		}
+		PathFilename(path, outName);
+	}
+
+	/// Lays the page out from the last probe: the tab, the welcome or the lists in their order, the
+	/// counts, the focus ring.
+	private void Populate()
+	{
+		if ((mContent == null) || (mServices.Controller == null))
+			return;
+		if (let projects = Find<Sedulous.GUI.Button>("manager-tab-projects"))
+			projects.Checked = !mSamples;
+		if (let samples = Find<Sedulous.GUI.Button>("manager-tab-samples"))
+			samples.Checked = mSamples;
+		let welcome = IsWelcome;
+		if (let page = Find<Node>("manager-projects-page"))
+			page.Displayed = !mSamples && !welcome;
+		if (let page = Find<Node>("manager-samples-page"))
+			page.Displayed = mSamples;
+		if (let page = Find<Node>("manager-welcome"))
+			page.Displayed = welcome;
+		if (let logo = Find<Node>("manager-logo"))
+			logo.Displayed = !welcome; // the welcome shows it large
+		let grid = mServices.Controller.GridView;
+		if (let asList = Find<Sedulous.GUI.Button>("manager-list"))
+			asList.Checked = !grid;
+		if (let asGrid = Find<Sedulous.GUI.Button>("manager-grid"))
+			asGrid.Checked = grid;
+
+		let list = Find<Node>("manager-projects");
+		let missingList = Find<Node>("manager-missing-list");
+		Clear(list); // the pictures they showed go before their images
+		Clear(missingList);
+		ClearAndDeleteItems(mPictures);
+		ClearAndDeleteItems(mShown);
+		mRows.Clear();
+		SetClass(list, "grid", grid);
+
+		let now = GetUnixTime();
+		let offset = GetLocalTimeOffset(now);
+		let arranged = scope List<RecentProjectEntry>();
+		ProjectRegistry.ArrangeRecentProjects(mServices.Controller.Entries, mQuery, mServices.Controller.SortByName, arranged);
+		int present = 0;
+		for (let probe in mProbes)
+			if (probe.Found)
+				present++;
+		let missing = scope List<RecentProjectEntry>();
+		for (let entry in arranged)
+		{
+			let probe = ProbeOf(entry.Path);
+			if ((probe == null) || !probe.Found)
+			{
+				missing.Add(entry);
+				continue;
+			}
+			let card = scope Card();
+			card.Path.Set(entry.Path);
+			card.Name.Set(probe.Name.IsEmpty ? StringView(entry.Name) : StringView(probe.Name));
+			card.EngineVersion.Set(probe.EngineVersion);
+			card.Relation = ProjectRegistry.CompareProjectEngineVersion(probe.EngineVersion);
+			ProjectRegistry.DescribeLastOpened(entry.LastOpened, now, offset, card.Opened);
+			ProjectRegistry.DescribeTime(entry.LastOpened, offset, card.OpenedAt);
+			card.Favourite = entry.Favourite;
+			if (list != null)
+				Adopt(list, grid ? Tile(card) : Row(card));
+			AddShown(card.Path, false);
+		}
+		let matched = mShown.Count;
+		for (let entry in missing)
+		{
+			if (missingList != null)
+				Adopt(missingList, MissingRow(entry));
+			AddShown(entry.Path, true);
+		}
+
+		if (let count = Find<Sedulous.GUI.Label>("manager-count"))
+		{
+			if (matched == present)
+				count.Text = scope $"{present} project{(present == 1) ? "" : "s"}";
+			else
+				count.Text = scope $"{matched} of {present}";
+		}
+		if (let noMatch = Find<Sedulous.GUI.Label>("manager-no-match"))
+		{
+			noMatch.Displayed = !mQuery.IsEmpty && (matched == 0);
+			noMatch.Text = scope $"No project matches \"{mQuery}\". Search looks at names and folders.";
+		}
+		if (let section = Find<Node>("manager-missing"))
+			section.Displayed = !missing.IsEmpty;
+		if (let missingCount = Find<Sedulous.GUI.Label>("manager-missing-count"))
+			missingCount.Text = scope $"{missing.Count} project{(missing.Count == 1) ? "" : "s"}, their folders are not where they were";
+		if (let keys = Find<Node>("manager-keys"))
+			keys.Displayed = !mSamples && !welcome;
+
+		// The ring stays on its project when that is still shown, else on the same place.
+		var focus = Math.Min(mFocus, mShown.IsEmpty ? 0 : (mShown.Count - 1));
+		for (int i < mShown.Count)
+			if (mShown[i].Path == mFocusPath)
+				focus = i;
+		SetFocusIndex(focus);
+		ShowStatus(scope String(mStatus), mProblem);
+		// A rebuild removed the focused button: the list takes the keys again.
+		let dispatcher = mContent.EventDispatcher;
+		if ((dispatcher != null) && (dispatcher.FocusNode == null))
+			Shown();
+	}
+
+	private void AddShown(StringView path, bool missing)
+	{
+		let shown = new Listed();
+		shown.Path.Set(path);
+		shown.Missing = missing;
+		mShown.Add(shown);
+	}
+
+	private void SetFocusIndex(int index)
+	{
+		mFocus = index;
+		if (index < mShown.Count)
+			mFocusPath.Set(mShown[index].Path);
+		else
+			mFocusPath.Clear();
+		for (int i < mRows.Count)
+			SetClass(mRows[i], "focused", i == index);
+		if (index < mRows.Count)
+		{
+			let scroll = Find<Node>("manager-scroll");
+			if ((scroll != null) && IsInTree(mRows[index], scroll))
+				scroll.ScrollIntoView(mRows[index]);
+		}
+	}
+
+	private static bool IsInTree(Node node, Node ancestor)
+	{
+		for (var n = node; n != null; n = n.Parent)
+			if (n == ancestor)
+				return true;
+		return false;
 	}
 
 	private void Open(StringView path)
@@ -411,6 +831,20 @@ class ProjectManagerView
 				}
 				Open(paths[0]);
 			}, "", false, 0);
+	}
+
+	/// Locate...: asks for the folder a missing project is in now.
+	private void BrowseAndLocate(StringView from)
+	{
+		if (mServices.Dialogs == null)
+			return;
+		let path = new String(from);
+		// The service consumes the callback once it answers.
+		mServices.Dialogs.ShowOpenFolder(new [=this, =path] (paths) =>
+			{
+				if (paths.Length > 0) // none: cancelled
+					Locate(path, paths[0]);
+			} ~ delete path, "", false, 0);
 	}
 
 	/// The menu of the project at `path`, under `anchor`.
@@ -448,6 +882,21 @@ class ProjectManagerView
 		return more;
 	}
 
+	/// The pin: on, it unpins; off, it pins to the top. A node with one reference, the caller's.
+	private Sedulous.GUI.Button StarButton(Card card)
+	{
+		let star = new Sedulous.GUI.Button();
+		star.AddClass("manager-star");
+		if (card.Favourite)
+			star.AddClass("on");
+		star.Icon = card.Favourite ? "Editor/Icons/star-filled.svg" : "Editor/Icons/star.svg";
+		star.Tooltip = card.Favourite ? "Unpin" : "Pin to the top";
+		let projectPath = new String(card.Path);
+		let pin = !card.Favourite;
+		star.SetOnClick(new [=this, =projectPath, =pin] () => { SetFavourite(projectPath, pin); } ~ delete projectPath);
+		return star;
+	}
+
 	/// A click on `button` opens the project at `path`.
 	private void OnClickOpens(Sedulous.GUI.Button button, StringView path)
 	{
@@ -455,86 +904,166 @@ class ProjectManagerView
 		button.SetOnClick(new [=this, =projectPath] () => { Open(projectPath); } ~ delete projectPath);
 	}
 
-	private static StringView NameOf(Card card) => card.Name.IsEmpty ? "(unnamed)" : StringView(card.Name);
-
-	/// A row's name: what is wrong with the project, if anything, after it.
-	private static void Title(Card card, String outText)
+	/// The version's class: none when it is this editor's, else newer or older.
+	private static StringView VersionClass(EngineVersionRelation relation)
 	{
-		outText.Append(NameOf(card));
-		if (card.Missing)
-			outText.Append(" (missing)");
-		else if (card.Newer)
-			outText.Append(" (newer engine)");
+		switch (relation)
+		{
+		case .ProjectNewer:
+			return "newer";
+		case .ProjectOlder, .Unstamped:
+			return "older";
+		default:
+			return "";
+		}
 	}
 
-	private static void Classes(Sedulous.GUI.Panel panel, Card card)
+	private static StringView VersionText(Card card) => card.EngineVersion.IsEmpty ? "unknown" : StringView(card.EngineVersion);
+
+	/// A project's row or tile: a press puts the ring on it, a double-click opens it, its context
+	/// menu is the project's.
+	private void Listen(Node node, int index, StringView path)
 	{
-		if (card.Missing)
-			panel.AddClass("missing");
-		if (card.Newer)
-			panel.AddClass("newer");
+		let projectPath = new String(path);
+		node.AddEventListener(.MouseClick, new [=this, =index, =projectPath] (e) =>
+			{
+				let click = (MouseEvent)e;
+				if (index < mRows.Count)
+					SetFocusIndex(index);
+				if ((click.ClickCount == 2) && !e.Handled)
+					Open(projectPath);
+			} ~ delete projectPath);
+		let menuPath = new String(path);
+		node.AddEventListener(.ContextMenu, new [=this, =menuPath, =node] (e) =>
+			{
+				ShowMenu(menuPath, node);
+				e.Handled = true;
+			} ~ delete menuPath);
 	}
 
-	/// A row: the picture, the name over the folder, the engine, Open (none when missing), the
-	/// menu. A node with one reference, the caller's.
+	/// A row: the picture, the name (with a badge when its engine is not this one's) over the
+	/// folder, when it was opened, the engine, the pin, Open, the menu. A node with one reference,
+	/// the caller's.
 	private Node Row(Card card)
 	{
 		let row = new Sedulous.GUI.Panel();
 		row.AddClass("manager-row");
-		Classes(row, card);
-		Adopt(row, ProjectPicture.Make(card.Missing ? "" : StringView(card.Path), card.Name, "manager-row-picture", mPictures));
+		let version = VersionClass(card.Relation);
+		if (!version.IsEmpty)
+			row.AddClass(version);
+		Adopt(row, ProjectPicture.Make(card.Path, card.Name, "manager-row-picture", mPictures));
 		let text = new Sedulous.GUI.Panel();
 		text.AddClass("manager-text");
-		Adopt(text, Text(Title(card, .. scope .()), "manager-name"));
-		let path = Text(card.Path, "manager-path");
+		let title = new Sedulous.GUI.Panel();
+		title.AddClass("manager-title");
+		Adopt(title, Text(card.Name, "manager-name"));
+		if (card.Relation == .ProjectNewer)
+			Adopt(title, Text("Made with a newer engine", "badge warning"));
+		else if (!version.IsEmpty)
+			Adopt(title, Text("Upgrades when opened", "badge info"));
+		Adopt(text, title);
+		let path = Text(ProjectRegistry.ShortenHomePath(card.Path, mHome, .. scope .()), "manager-path");
 		path.Tooltip = card.Path;
 		Adopt(text, path);
 		Adopt(row, text);
-		Adopt(row, Text(card.EngineVersion, "manager-version"));
-		// Open in a slot of its own, empty for a missing project: every row's columns line up.
-		let slot = new Sedulous.GUI.Panel();
-		slot.AddClass("manager-open-slot");
-		if (!card.Missing)
-		{
-			let open = new Sedulous.GUI.Button();
-			open.Text = "Open";
-			OnClickOpens(open, card.Path);
-			Adopt(slot, open);
-		}
-		Adopt(row, slot);
+		let opened = Text(card.Opened, "manager-opened");
+		opened.Tooltip = card.OpenedAt;
+		Adopt(row, opened);
+		let stamp = Text(VersionText(card), "manager-version");
+		if (!version.IsEmpty)
+			stamp.AddClass(version);
+		Adopt(row, stamp);
+		Adopt(row, StarButton(card));
+		let open = new Sedulous.GUI.Button();
+		open.Text = "Open";
+		OnClickOpens(open, card.Path);
+		Adopt(row, open);
 		Adopt(row, MoreButton(card.Path));
+		Listen(row, mRows.Count, card.Path);
+		mRows.Add(row);
 		return row;
 	}
 
-	/// A tile: the picture (a click opens it), then the name and the engine with the menu. A node
-	/// with one reference, the caller's.
+	/// A tile: the picture (a click opens it), then the name over when it was opened and the engine,
+	/// with the pin and the menu. A node with one reference, the caller's.
 	private Node Tile(Card card)
 	{
 		let tile = new Sedulous.GUI.Panel();
 		tile.AddClass("manager-tile");
-		Classes(tile, card);
+		let version = VersionClass(card.Relation);
 		// The picture opens it: a flat button holding it.
 		let picture = new Sedulous.GUI.Button();
-		picture.AddClass("manager-tile-open"); // its hover rings the picture evenly
-		Adopt(picture, ProjectPicture.Make(card.Missing ? "" : StringView(card.Path), card.Name, "manager-tile-picture", mPictures));
+		picture.AddClass("manager-tile-open");
+		Adopt(picture, ProjectPicture.Make(card.Path, card.Name, "manager-tile-picture", mPictures));
 		picture.Tooltip = card.Path;
-		picture.Enabled = !card.Missing;
 		OnClickOpens(picture, card.Path);
 		Adopt(tile, picture);
 		let foot = new Sedulous.GUI.Panel();
 		foot.AddClass("manager-tile-foot");
 		let text = new Sedulous.GUI.Panel();
 		text.AddClass("manager-text");
-		Adopt(text, Text(NameOf(card), "manager-name"));
-		let subtitle = scope String(card.EngineVersion);
-		if (card.Missing)
-			subtitle.Append(", missing");
-		else if (card.Newer)
-			subtitle.Append(", newer engine");
-		Adopt(text, Text(subtitle, "manager-path"));
+		Adopt(text, Text(card.Name, "manager-name"));
+		let meta = new Sedulous.GUI.Panel();
+		meta.AddClass("manager-tile-meta");
+		if (!card.Opened.IsEmpty)
+		{
+			let opened = Text(card.Opened, "manager-tile-opened");
+			opened.Tooltip = card.OpenedAt;
+			Adopt(meta, opened);
+			Adopt(meta, Text("·", "manager-tile-dot"));
+		}
+		let stamp = Text(VersionText(card), "manager-tile-version");
+		if (!version.IsEmpty)
+		{
+			stamp.AddClass(version);
+			stamp.Tooltip = (card.Relation == .ProjectNewer) ? "Made with a newer engine" : "Upgrades when opened";
+		}
+		Adopt(meta, stamp);
+		Adopt(text, meta);
 		Adopt(foot, text);
+		Adopt(foot, StarButton(card));
 		Adopt(foot, MoreButton(card.Path));
 		Adopt(tile, foot);
+		Listen(tile, mRows.Count, card.Path);
+		mRows.Add(tile);
 		return tile;
+	}
+
+	/// A missing project: its folder marked broken, its name and old folder, Locate... and Remove
+	/// from list. A node with one reference, the caller's.
+	private Node MissingRow(RecentProjectEntry entry)
+	{
+		let row = new Sedulous.GUI.Panel();
+		row.AddClass("manager-row");
+		row.AddClass("missing");
+		let icon = new Sedulous.GUI.Panel();
+		icon.AddClass("manager-missing-icon");
+		let broken = new Sedulous.GUI.Image();
+		broken.Source = "Editor/Icons/folder-missing.svg";
+		Adopt(icon, broken);
+		Adopt(row, icon);
+		let text = new Sedulous.GUI.Panel();
+		text.AddClass("manager-text");
+		Adopt(text, Text(entry.Name, "manager-name"));
+		let path = Text(ProjectRegistry.ShortenHomePath(entry.Path, mHome, .. scope .()), "manager-path");
+		path.Tooltip = entry.Path;
+		Adopt(text, path);
+		Adopt(row, text);
+		let locate = new Sedulous.GUI.Button();
+		locate.Text = "Locate...";
+		locate.Tooltip = "Choose the folder the project is in now";
+		let locatePath = new String(entry.Path);
+		locate.SetOnClick(new [=this, =locatePath] () => { BrowseAndLocate(locatePath); } ~ delete locatePath);
+		Adopt(row, locate);
+		let remove = new Sedulous.GUI.Button();
+		remove.AddClass("ghost");
+		remove.Text = "Remove from list";
+		let removePath = new String(entry.Path);
+		remove.SetOnClick(new [=this, =removePath] () => { Run(removePath, "Remove from List"); } ~ delete removePath);
+		Adopt(row, remove);
+		let index = mShown.Count; // its place in the ring's walk
+		row.AddEventListener(.MouseClick, new [=this, =index] (e) => { SetFocusIndex(index); });
+		mRows.Add(row);
+		return row;
 	}
 }

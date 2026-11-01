@@ -99,6 +99,7 @@ class ProjectManagerMode
 			mView.Rebuild(); // back from a project: probed again
 		mView.SetStatus("");
 		ShowScreen(mView.Content);
+		mView.Shown();
 	}
 
 	/// Opens the project in `directory` from the manager: one saved by another engine version asks

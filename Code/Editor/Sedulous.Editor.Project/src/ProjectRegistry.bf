@@ -189,6 +189,34 @@ static class ProjectRegistry
 		outText.AppendF("{} {}{} ago", n, unit, (n == 1) ? "" : "s");
 	}
 
+	/// A folder as the manager shows it: under `home`, the home written as "~" ("~/Games/Snowline");
+	/// anywhere else, or with no home, as it is. Only a whole folder name matches, so "/home/rob"
+	/// does not shorten "/home/robert".
+	public static void ShortenHomePath(StringView path, StringView home, String outText)
+	{
+		var root = home;
+		while ((root.Length > 1) && ((root[root.Length - 1] == '/') || (root[root.Length - 1] == '\\')))
+			root = root.Substring(0, root.Length - 1);
+		if (root.IsEmpty || !path.StartsWith(root))
+		{
+			outText.Append(path);
+			return;
+		}
+		if (path.Length == root.Length)
+		{
+			outText.Append('~');
+			return;
+		}
+		let next = path[root.Length];
+		if ((next != '/') && (next != '\\'))
+		{
+			outText.Append(path);
+			return;
+		}
+		outText.Append('~');
+		outText.Append(path.Substring(root.Length));
+	}
+
 	/// Reads a project's manifest WITHOUT opening the project: no databases, no scaffolding.
 	/// NotFound when there is no manifest at `directory`.
 	public static Result<void, ErrorCode> ProbeProject(StringView directory, ProjectSettings outSettings)

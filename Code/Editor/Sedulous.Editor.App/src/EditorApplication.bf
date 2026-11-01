@@ -972,10 +972,14 @@ class EditorApplication : IApplication
 	}
 
 	/// Files dropped on the main window (from the operating system, or editor_drop): imported into
-	/// the group the Assets panel shows (else the top). False with `outError` when no project is open.
+	/// the group the Assets panel shows (else the top). On the project manager, a folder opens its
+	/// project (or the status says it holds none). False with `outError` when no project is open and
+	/// the manager is not shown.
 	public bool DropFiles(Span<StringView> paths, String outError)
 	{
 		let project = mSession.Project;
+		if ((project == null) && (mManagerMode != null) && (mManagerMode.View != null) && mWindow.ShowsScreen)
+			return mManagerMode.View.OpenDropped(paths); // a folder dropped on the manager opens its project
 		if (project == null)
 		{
 			outError.Append("no project is open");
@@ -997,7 +1001,7 @@ class EditorApplication : IApplication
 		let paths = scope List<StringView>();
 		for (let file in dropped)
 			paths.Add(file.Path);
-		DropFiles(paths, scope .()); // with no project open, a drop does nothing
+		DropFiles(paths, scope .()); // with no project and no manager, a drop does nothing
 	}
 
 	/// What an asset slot or a page's picker asks of the editor (the scene page's prefab spawn, the

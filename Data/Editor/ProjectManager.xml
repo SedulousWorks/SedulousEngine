@@ -1,25 +1,94 @@
 <!--
-  The project manager (Documentation/Specs/editor-gui.md, 5.1, layer 13): the window's whole screen
-  while no project is open. New Project and Open Folder first, then every recent project as a row
-  or a tile, each with its own Open and menu: one click per action, no selection. Code fills the
-  projects and the status line by id.
+  The project manager (Raptor's project-manager spec): the window's whole screen while no
+  project is open. A header with the Projects and Samples tabs; on Projects a toolbar (New Project,
+  Open Folder, a search, the sort, list or grid) over the projects, the missing ones in a section of
+  their own, and a footer with the status and the keys. With no projects at all, a welcome in their
+  place. Code fills the lists, the counts and the status line by id.
 -->
 <Panel class="manager">
-    <Panel class="manager-column">
-        <Panel class="manager-header">
-            <Image class="manager-logo" src="Branding/sedulous-logo.svg"/>
-            <Label id="manager-engine" class="home-meta"/>
+    <Panel class="manager-header">
+        <Image id="manager-logo" class="manager-logo" src="Branding/sedulous-logo.svg"/>
+        <Panel class="manager-tabs">
+            <Button id="manager-tab-projects" class="manager-tab" name="manager-tab" toggle="true" text="Projects"/>
+            <Button id="manager-tab-samples" class="manager-tab" name="manager-tab" toggle="true" text="Samples"/>
         </Panel>
-        <Panel class="manager-actions">
+        <Spacer/>
+        <Label id="manager-engine" class="manager-meta"/>
+    </Panel>
+
+    <Panel id="manager-projects-page" class="manager-page">
+        <Panel class="manager-toolbar">
             <Button id="manager-new" class="primary with-icon" icon="Editor/Icons/plus.svg" text="New Project..."/>
             <Button id="manager-open" class="with-icon" icon="Editor/Icons/folder-open.svg" text="Open Folder..."/>
-        </Panel>
-        <Panel class="manager-list-head">
-            <Label class="home-heading" text="Recent projects"/>
             <Spacer/>
-            <Panel class="segmented"><Button id="manager-list" class="segment" name="manager-view" toggle="true" text="List"/><Button id="manager-grid" class="segment" name="manager-view" toggle="true" text="Grid"/></Panel>
+            <Panel class="search manager-search">
+                <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                <TextField id="manager-search" class="search-field" placeholder="Search by name or folder"/>
+                <Label class="manager-key" text="Ctrl+F"/>
+            </Panel>
+            <Label class="manager-meta" text="Sort"/>
+            <ComboBox id="manager-sort" class="manager-sort" items="Last opened|Name" selected="0"/>
+            <Panel class="segmented">
+                <Button id="manager-list" class="segment icon-segment" name="manager-view" toggle="true" icon="Editor/Icons/list.svg" tooltip="List"/>
+                <Button id="manager-grid" class="segment icon-segment" name="manager-view" toggle="true" icon="Editor/Icons/tiles.svg" tooltip="Grid"/>
+            </Panel>
         </Panel>
+        <Panel id="manager-scroll" class="manager-scroll">
+            <Panel class="manager-section-head">
+                <Label class="manager-section" text="PROJECTS"/>
+                <Label id="manager-count" class="manager-count"/>
+            </Panel>
+            <Label id="manager-no-match" class="manager-no-match"/>
+            <Panel id="manager-projects" class="manager-projects"/>
+            <Panel id="manager-missing" class="manager-missing">
+                <Panel class="manager-section-head">
+                    <Label class="manager-section" text="MISSING"/>
+                    <Label id="manager-missing-count" class="manager-count"/>
+                    <Spacer/>
+                    <Button id="manager-remove-missing" class="ghost manager-small" text="Remove missing from list"/>
+                </Panel>
+                <Panel id="manager-missing-list" class="manager-missing-list"/>
+            </Panel>
+        </Panel>
+    </Panel>
+
+    <Panel id="manager-samples-page" class="manager-page state-box">
+        <Image class="state-icon" src="Editor/Icons/world.svg"/>
+        <Label class="state-title" text="Samples"/>
+        <Label class="state-text" text="The sample games will download from here in a later build."/>
+    </Panel>
+
+    <Panel id="manager-welcome" class="manager-welcome">
+        <Image class="manager-welcome-logo" src="Branding/sedulous-logo.svg"/>
+        <Panel class="manager-welcome-text">
+            <Label class="manager-welcome-title" text="Welcome"/>
+            <Label class="manager-meta" text="Make a project, or open one you already have. Projects you open are listed here."/>
+        </Panel>
+        <Panel class="manager-welcome-cards">
+            <Button id="manager-welcome-new" class="manager-card">
+                <Panel class="manager-card-icon primary"><Image src="Editor/Icons/plus.svg"/></Panel>
+                <Label class="manager-card-title" text="New Project"/>
+                <Label class="manager-card-text" text="Name it and choose the folder it goes in. It opens as soon as it is made."/>
+                <Label class="manager-key" text="Ctrl+N"/>
+            </Button>
+            <Button id="manager-welcome-open" class="manager-card">
+                <Panel class="manager-card-icon"><Image src="Editor/Icons/folder-open.svg"/></Panel>
+                <Label class="manager-card-title" text="Open Folder"/>
+                <Label class="manager-card-text" text="Pick a project's folder, the one holding its Project.xml. You can also drop the folder on this window."/>
+                <Label class="manager-key" text="Ctrl+O"/>
+            </Button>
+        </Panel>
+    </Panel>
+
+    <Panel class="manager-footer">
         <Label id="manager-status" class="manager-status"/>
-        <ScrollView class="manager-scroll"><Panel id="manager-projects" class="manager-projects"/></ScrollView>
+        <Spacer/>
+        <Panel id="manager-keys" class="manager-keys">
+            <Label class="manager-key" text="Up Down"/><Label class="manager-meta" text="move"/>
+            <Label class="manager-key" text="Enter"/><Label class="manager-meta" text="open"/>
+            <Label class="manager-key" text="Del"/><Label class="manager-meta" text="remove from list"/>
+            <Label class="manager-key" text="Ctrl+N"/><Label class="manager-meta" text="new"/>
+            <Label class="manager-key" text="Ctrl+O"/><Label class="manager-meta" text="open folder"/>
+        </Panel>
     </Panel>
 </Panel>

@@ -199,6 +199,18 @@ static class ProjectRegistryTests
 	}
 
 	[Test]
+	public static void AFolderUnderTheHomeShowsAsTildeAWholeFolderNameOnly()
+	{
+		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games/Snowline", "/home/rob", .. scope .()) == "~/Games/Snowline");
+		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games", "/home/rob/", .. scope .()) == "~/Games");
+		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob", "/home/rob", .. scope .()) == "~");
+		Test.Assert(ProjectRegistry.ShortenHomePath("/home/robert/Games", "/home/rob", .. scope .()) == "/home/robert/Games");
+		Test.Assert(ProjectRegistry.ShortenHomePath("/media/usb/Jam", "/home/rob", .. scope .()) == "/media/usb/Jam");
+		Test.Assert(ProjectRegistry.ShortenHomePath("C:\\Users\\rob\\Games", "C:\\Users\\rob", .. scope .()) == "~\\Games");
+		Test.Assert(ProjectRegistry.ShortenHomePath("/home/rob/Games", "", .. scope .()) == "/home/rob/Games");
+	}
+
+	[Test]
 	public static void ProbeReadsTheManifestWithoutOpeningAndNotFoundForNonProjects()
 	{
 		let dir = Scratch("scratch_registry_probe", .. scope .());
