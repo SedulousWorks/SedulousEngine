@@ -336,6 +336,23 @@ class EditorApplication : IApplication
 				{
 					mHome = new ProjectHomeView(mContext, mCookService, mWindow.LoadMarkup(ProjectHomeView.cMarkupPath));
 					mHome.SetOnOpenAsset(new (id) => { mPages.Open(id); });
+					mHome.SetOnNewScene(new () =>
+						{
+							for (let creator in mContext.Creators)
+							{
+								if (creator.SetsDefaultScene) // the scene's creator, as File > New Scene
+								{
+									mCreation.CreateAndOpen(creator);
+									return;
+								}
+							}
+						});
+					mHome.SetOnShowFolder(new (folder) =>
+						{
+							if (let dialogs = ShellDialogs())
+								dialogs.OpenPath(folder);
+						});
+					mHome.SetOnProjectSettings(new () => { OpenProjectSettings(); });
 					mDock.SetProjectContent(mHome.Content);
 				}
 				if (mExport != null)

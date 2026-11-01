@@ -6,43 +6,58 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.GUI;
 using Sedulous.Engine.Project;
-using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-/// The Project panel with a project open (Raptor's editor-gui spec, 5.1, layer 13). Its frame is
-/// markup (Data/Editor/ProjectHome.xml); it fills the project's picture, name, engine and folder;
-/// a Start column (open the default scene, the Game menu's actions, every scene in the project);
-/// and a Project column (every setting the project's settings carry, by category, each asset a
-/// link that opens it, a missing one in the warning colour, then the Project menu's actions).
-/// Nothing here is a list of its own: the settings are ProjectSettings' [Setting] fields
-/// (SettingFields), the actions the registry's Game and Project menus, the scenes the assets of
-/// the default scene setting's type.
+/// The Project panel with a project open (Raptor's editor-gui spec, 5.1, layer 13), in two columns
+/// over its markup (Data/Editor/ProjectHome.xml). On the left the project: its picture, name,
+/// location (under ~) and engine version, the settings that sum it up (those carrying a
+/// [SettingSummary], by that label, each asset a link that opens it, a missing one in the warning
+/// colour), and the player's window; Show in Folder and Project Settings under them. On the right
+/// its scenes (the assets of the default scene setting's type), each a card that opens it, with its
+/// thumbnail once the thumbnail service has one and its type's icon until then; or, with none, a
+/// note with New Scene. Nothing here keeps a list of its own: the rows come from ProjectSettings'
+/// reflection (SettingFields).
 ///
 /// Refresh (each frame) fills it again when the settings changed (MarkChanged, from the settings'
-/// save), the cook revision moved (assets added, renamed or removed) or the thumbnail changed.
+/// save), the cook revision moved (assets added, renamed or removed) or the project's picture
+/// changed, and asks again for the thumbnails the cards still lack.
 class ProjectHomeView
 {
 	/// Its frame under the data root.
 	public const String cMarkupPath = "Editor/ProjectHome.xml";
 
+	/// A scene's card: where its thumbnail goes, and the icon shown until then (both the tree's).
+	private class Card
+	{
+		public Guid Id;
+		public Sedulous.GUI.Panel Picture;
+		public Sedulous.GUI.Image Icon;
+		public bool Shown = false;
+	}
+
 	/// Borrowed.
 	private EditorContext mContext;
 	/// Borrowed; null when there is none to watch.
 	private EditorCookService mCook;
-	/// What the header's picture shows: declared before the content, so they outlive it.
+	/// What the picture shows: declared before the content, so they outlive it.
 	private List<Sedulous.Image.Image> mPictures = new .() ~ DeleteContainerAndItems!(_);
 	/// A reference of ours; the panel showing it takes its own.
 	private Node mContent ~ _?.ReleaseRef();
+	/// Shortens the location to ~.
+	private String mHome = new .() ~ delete _;
 	private delegate void(Guid id) mOnOpenAsset = null ~ delete _;
+	private delegate void() mOnNewScene = null ~ delete _;
+	private delegate void(StringView folder) mOnShowFolder = null ~ delete _;
+	private delegate void() mOnProjectSettings = null ~ delete _;
 	private bool mChanged = false;
 	private uint64 mCookRevision = 0;
 	private int64 mThumbnailTime = 0;
 	private List<Guid> mScenes = new .() ~ delete _;
 	private List<String> mRows = new .() ~ DeleteContainerAndItems!(_);
-	private List<String> mActions = new .() ~ DeleteContainerAndItems!(_);
+	private List<Card> mCards = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Over `context`'s project, its frame `content` (the markup's: its parts by id); `cook`
 	/// (nullable) says when the project's assets changed. TAKES OWNERSHIP of a reference to
@@ -52,6 +67,34 @@ class ProjectHomeView
 		mContext = context;
 		mCook = cook;
 		mContent = content;
+		GetHomeDirectory(mHome);
+		if (let show = Find<Sedulous.GUI.Button>("home-show-folder"))
+		{
+			show.SetOnClick(new () =>
+				{
+					if ((mOnShowFolder != null) && (mContext.Project != null))
+						mOnShowFolder(mContext.Project.Directory);
+				});
+		}
+		if (let settings = Find<Sedulous.GUI.Button>("home-settings"))
+		{
+			settings.SetOnClick(new () =>
+				{
+					if (mOnProjectSettings != null)
+						mOnProjectSettings();
+				});
+		}
+		for (let id in StringView[2]("home-new-scene", "home-first-scene"))
+		{
+			if (let create = Find<Sedulous.GUI.Button>(id))
+			{
+				create.SetOnClick(new () =>
+					{
+						if (mOnNewScene != null)
+							mOnNewScene();
+					});
+			}
+		}
 		Rebuild();
 	}
 
@@ -63,18 +106,41 @@ class ProjectHomeView
 		mOnOpenAsset = open;
 	}
 
+	/// Makes a scene and opens it (File > New Scene). TAKES OWNERSHIP of `create`.
+	public void SetOnNewScene(delegate void() create)
+	{
+		delete mOnNewScene;
+		mOnNewScene = create;
+	}
+
+	/// Shows the project's folder in the system's file manager. TAKES OWNERSHIP of `show`.
+	public void SetOnShowFolder(delegate void(StringView folder) show)
+	{
+		delete mOnShowFolder;
+		mOnShowFolder = show;
+	}
+
+	/// Opens the Project Settings dialog. TAKES OWNERSHIP of `open`.
+	public void SetOnProjectSettings(delegate void() open)
+	{
+		delete mOnProjectSettings;
+		mOnProjectSettings = open;
+	}
+
 	/// Its frame. Ours: a caller that keeps it takes a reference.
 	public Node Content => mContent;
 
 	/// The settings changed: filled again at the next Refresh.
 	public void MarkChanged() => mChanged = true;
 
-	/// Fills it again when something it shows changed (see the class comment).
+	/// Fills it again when something it shows changed (see the class comment), and shows the scene
+	/// thumbnails that have become ready.
 	public void Refresh()
 	{
 		let revision = (mCook != null) ? mCook.Revision : 0;
 		if (mChanged || (revision != mCookRevision) || (ThumbnailTime() != mThumbnailTime))
 			Rebuild();
+		ShowThumbnails();
 	}
 
 	public void Rebuild()
@@ -84,20 +150,29 @@ class ProjectHomeView
 		mThumbnailTime = ThumbnailTime();
 		mScenes.Clear();
 		ClearAndDeleteItems(mRows);
-		ClearAndDeleteItems(mActions);
+		ClearAndDeleteItems(mCards);
 		let project = mContext.Project;
 		if ((mContent == null) || (project == null))
 			return;
-		Header(project);
-		StartColumn(project);
-		ProjectColumn(project);
+		Side(project);
+		SceneCards(project);
+		ShowThumbnails();
 	}
 
-	/// What it shows, for tests: the scenes listed (in order), each setting row as
-	/// "Label: value", and the actions offered (ids).
+	/// What it shows, for tests: the scenes (in order), each summary row as "Label: value", and
+	/// how many cards show their thumbnail.
 	public List<Guid> Scenes => mScenes;
-	public List<String> SettingRows => mRows;
-	public List<String> ActionIds => mActions;
+	public List<String> SummaryRows => mRows;
+	public int ThumbnailsShown
+	{
+		get
+		{
+			int shown = 0;
+			for (let card in mCards)
+				shown += card.Shown ? 1 : 0;
+			return shown;
+		}
+	}
 
 	/// The frame's part with this id, as a T; null when it has none.
 	private T Find<T>(StringView id) where T : Node
@@ -123,7 +198,7 @@ class ProjectHomeView
 	}
 
 	/// A label of `text` with the sheet's `classes`: a node with one reference, the caller's.
-	private static Node Text(StringView text, StringView classes = default)
+	private static Sedulous.GUI.Label Text(StringView text, StringView classes = default)
 	{
 		let label = new Sedulous.GUI.Label();
 		label.Text = text;
@@ -132,39 +207,50 @@ class ProjectHomeView
 		return label;
 	}
 
-	/// A link: a flat button of its text, at its own width. TAKES OWNERSHIP of `onClick`; a node
-	/// with one reference, the caller's.
-	private static Node Link(StringView text, StringView tooltip, delegate void() onClick)
-	{
-		let link = new Sedulous.GUI.Button();
-		link.AddClass("link");
-		link.Text = text;
-		if (!tooltip.IsEmpty)
-			link.Tooltip = tooltip;
-		link.SetOnClick(onClick);
-		return link;
-	}
-
 	private void OpenAsset(Guid id)
 	{
 		if (mOnOpenAsset != null)
 			mOnOpenAsset(id);
 	}
 
-	/// An asset as a link that opens it; an unset one by `emptyText`, a missing one in the
-	/// warning colour. A node with one reference, the caller's.
-	private Node AssetLink(Guid id, StringView emptyText)
+	/// An asset setting's value: a link that opens the asset, its empty text when unset, or a
+	/// warning when the asset is gone; `outText` gets what it says. A node with one reference, the
+	/// caller's.
+	private Node AssetValue(Guid id, StringView emptyText, String outText)
 	{
 		if (!id.IsSet)
+		{
+			outText.Append(emptyText);
 			return Text(emptyText, "home-value dim");
+		}
 		let instance = mContext.Project.SourceDb.GetInstance(id);
 		if (instance == null)
-			return Text("(missing)", "home-value missing");
-		return Link(instance.Name, instance.GetPath(.. scope .()), new [=this, =id]() => { OpenAsset(id); });
+		{
+			outText.Append("(missing)");
+			return Text(outText, "home-value missing");
+		}
+		outText.Append(instance.Name);
+		let link = new Sedulous.GUI.Button();
+		link.AddClass("link");
+		link.Text = instance.Name;
+		link.Tooltip = instance.GetPath(.. scope .());
+		link.SetOnClick(new [=this, =id] () => { OpenAsset(id); });
+		return link;
 	}
 
-	/// The picture, the name, the engine and the folder.
-	private void Header(EditorProject project)
+	/// A summary row: its label, its value (TAKEN), and "Label: text" for the tests.
+	private void AddRow(Node summary, StringView label, Node value, StringView text)
+	{
+		let row = new Sedulous.GUI.Panel();
+		row.AddClass("home-row");
+		Adopt(row, Text(label, "home-label"));
+		Adopt(row, value);
+		Adopt(summary, row);
+		mRows.Add(new $"{label}: {text}");
+	}
+
+	/// The left column: the picture, the name, and the summary.
+	private void Side(EditorProject project)
 	{
 		let settings = project.Settings;
 		if (let slot = Find<Node>("home-picture"))
@@ -175,61 +261,42 @@ class ProjectHomeView
 		}
 		if (let name = Find<Sedulous.GUI.Label>("home-name"))
 			name.Text = settings.Name.IsEmpty ? "(unnamed)" : StringView(settings.Name);
-		if (let engine = Find<Sedulous.GUI.Label>("home-engine"))
-			engine.Text = scope $"SedulousEngine {settings.EngineVersion}";
-		if (let folder = Find<Sedulous.GUI.Label>("home-folder"))
+		let summary = Find<Node>("home-summary");
+		if (summary == null)
+			return;
+		summary.RemoveAllChildren();
+		let location = RecentProjects.ShortenHomePath(project.Directory, mHome, .. scope .());
+		let place = Text(location, "home-value");
+		place.Tooltip = project.Directory;
+		AddRow(summary, "Location", place, location);
+		AddRow(summary, "Engine version", Text(settings.EngineVersion, "home-value"), settings.EngineVersion);
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ProjectSettings), fields);
+		for (let field in fields)
 		{
-			folder.Text = project.Directory;
-			folder.Tooltip = project.Directory;
+			let label = SettingFields.Summary(field);
+			if (label == null)
+				continue;
+			SettingFields.KindOf(field, let kind);
+			if (kind != .Asset)
+				continue; // the summary names assets; the window has its own row
+			let setting = SettingFields.Setting(field).Value;
+			let text = scope String();
+			let value = AssetValue(*(Guid*)SettingFields.Address(settings, field), (setting.EmptyText != null) ? StringView(setting.EmptyText) : "Not set", text);
+			AddRow(summary, label, value, text);
 		}
+		let window = settings.WindowSummary(.. scope .());
+		AddRow(summary, "Window", Text(window, "home-value"), window);
 	}
 
-	/// The actions under `menu` ("Game/"), by their menu order, as buttons in `into`.
-	private void MenuActions(StringView menu, Node into)
-	{
-		into.RemoveAllChildren();
-		let found = scope List<EditorActionDeclaration>();
-		for (let action in mContext.Actions.Actions)
-		{
-			if (action.MenuPath.StartsWith(menu))
-				found.Add(action);
-		}
-		found.Sort(scope (a, b) => a.MenuOrder <=> b.MenuOrder);
-		let context = mContext;
-		for (let action in found)
-		{
-			let button = new Sedulous.GUI.Button();
-			button.Text = action.Label;
-			button.Tooltip = action.Description;
-			button.Enabled = EditorActionRegistry.IsEnabled(action, null);
-			let id = new String(action.Id);
-			button.SetOnClick(new [=context, =id]() => { context.Actions.Execute(id, null).IgnoreError(); } ~ delete id);
-			Adopt(into, button);
-			mActions.Add(new String(action.Id));
-		}
-	}
-
-	/// Open the default scene, play, and every scene in the project.
-	private void StartColumn(EditorProject project)
+	/// The right column: a card per scene, or the note for a project with none.
+	private void SceneCards(EditorProject project)
 	{
 		let settings = project.Settings;
-		if (let open = Find<Sedulous.GUI.Button>("home-open-default"))
-		{
-			let scene = settings.DefaultSceneId.IsSet ? project.SourceDb.GetInstance(settings.DefaultSceneId) : null;
-			open.Text = (scene != null) ? scope:: $"Open {scene.Name}" : "No default scene";
-			open.Enabled = scene != null;
-			let id = settings.DefaultSceneId;
-			open.SetOnClick(new [=this, =id]() => { OpenAsset(id); });
-		}
-		if (let game = Find<Node>("home-game-actions"))
-			MenuActions("Game/", game);
-
-		// The scenes: every asset of the type the default scene setting names.
-		let list = Find<Node>("home-scenes");
-		let heading = Find<Sedulous.GUI.Label>("home-scenes-heading");
-		if (list == null)
+		let grid = Find<Node>("home-scenes");
+		if (grid == null)
 			return;
-		list.RemoveAllChildren();
+		grid.RemoveAllChildren();
 		var sceneType = StringView();
 		if (typeof(ProjectSettings).GetField("DefaultSceneId") case .Ok(let field))
 		{
@@ -240,18 +307,75 @@ class ProjectHomeView
 		let scenes = scope List<Instance>();
 		if (!sceneType.IsEmpty)
 			CollectInstances(project.SourceDb.RootGroup, sceneType, scenes); // a group keeps its instances and its groups in name order, so the walk is in order
-		if (heading != null)
-			heading.Text = scope $"Scenes ({scenes.Count})";
+		if (let count = Find<Sedulous.GUI.Label>("home-scene-count"))
+			count.Text = scope $"{scenes.Count}";
+		let any = !scenes.IsEmpty;
+		grid.Displayed = any;
+		if (let none = Find<Node>("home-no-scenes"))
+			none.Displayed = !any;
+		if (let create = Find<Node>("home-new-scene"))
+			create.Displayed = any; // with none, the note has its own
+		let icon = scope String("Editor/Icons/Types/");
+		if (sceneType.IsEmpty)
+			icon.Append("Asset");
+		else
+			icon.Append(sceneType);
+		icon.Append(".svg");
 		for (let scene in scenes)
 		{
 			let id = scene.Id;
-			let isDefault = id == settings.DefaultSceneId;
-			Adopt(list, Link(isDefault ? scope:: $"{scene.Name} (default)" : scene.Name, scene.GetPath(.. scope .()),
-				new [=this, =id]() => { OpenAsset(id); }));
+			let card = new Sedulous.GUI.Button();
+			card.AddClass("home-scene");
+			card.Tooltip = scene.GetPath(.. scope .());
+			card.SetOnClick(new [=this, =id] () => { OpenAsset(id); });
+			let picture = new Sedulous.GUI.Panel();
+			picture.AddClass("home-scene-picture");
+			picture.HitTestVisible = false;
+			let stand = new Sedulous.GUI.Image();
+			stand.AddClass("home-scene-icon");
+			stand.Source = icon;
+			Adopt(picture, stand);
+			if (id == settings.DefaultSceneId)
+				Adopt(picture, Text("Default", "badge info"));
+			Adopt(card, picture);
+			let body = new Sedulous.GUI.Panel();
+			body.AddClass("home-scene-body");
+			body.HitTestVisible = false;
+			Adopt(body, Text(scene.Name, "home-scene-name"));
+			Adopt(body, Text(scene.GetPath(.. scope .()), "home-scene-path"));
+			Adopt(card, body);
+			Adopt(grid, card);
 			mScenes.Add(id);
+			let entry = new Card();
+			entry.Id = id;
+			entry.Picture = picture;
+			entry.Icon = stand;
+			mCards.Add(entry);
 		}
-		if (scenes.IsEmpty)
-			Adopt(list, Text("No scenes yet.", "home-value dim"));
+	}
+
+	/// Puts each ready thumbnail in its card, in place of the type's icon.
+	private void ShowThumbnails()
+	{
+		let thumbnails = mContext.Thumbnails;
+		if (thumbnails == null)
+			return;
+		for (let card in mCards)
+		{
+			if (card.Shown)
+				continue;
+			let drawable = thumbnails.Get(card.Id);
+			if (drawable == null)
+				continue;
+			let thumb = new Sedulous.GUI.Image();
+			thumb.AddClass("home-scene-thumb");
+			thumb.Fit = .Cover;
+			thumb.SetDrawable(drawable);
+			card.Icon.Displayed = false;
+			card.Picture.AddChildAt(thumb, 0);
+			thumb.ReleaseRef(); // the picture's keeps it
+			card.Shown = true;
+		}
 	}
 
 	private static void CollectInstances(Group group, StringView typeName, List<Instance> outInstances)
@@ -263,110 +387,5 @@ class ProjectHomeView
 		}
 		for (let child in group.Groups)
 			CollectInstances(child, typeName, outInstances);
-	}
-
-	/// A setting's value as text: a choice by its case's name, a flag as On or Off, a count (the
-	/// MSAA level by its label, as the settings dialog shows it), a text ("Not set" when empty).
-	/// Empty for a kind this page does not show.
-	private static void SettingText(ProjectSettings settings, FieldInfo field, SettingKind kind, String outText)
-	{
-		let address = SettingFields.Address(settings, field);
-		switch (kind)
-		{
-		case .Choice:
-			let current = SettingFields.ReadChoice(settings, field);
-			for (var (name, data) in Enum.GetEnumerator(field.FieldType))
-			{
-				if (data == current)
-				{
-					outText.Append(name);
-					break;
-				}
-			}
-		case .Flag:
-			outText.Append(*(bool*)address ? "On" : "Off");
-		case .Count:
-			if (field.Name == "RenderMsaaSamples")
-				outText.Append(MsaaLevels.All[MsaaLevels.IndexForSamples(*(uint32*)address)].Label);
-			else
-				outText.AppendF("{}", *(uint32*)address);
-		case .Text:
-			let text = *(String*)address;
-			outText.Append(text.IsEmpty ? "Not set" : StringView(text));
-		default:
-		}
-	}
-
-	/// Every setting by category, then the Project menu's actions.
-	private void ProjectColumn(EditorProject project)
-	{
-		let column = Find<Node>("home-settings");
-		if (column == null)
-			return;
-		column.RemoveAllChildren();
-		let settings = project.Settings;
-		let fields = scope List<FieldInfo>();
-		SettingFields.Of(typeof(ProjectSettings), fields);
-		// The categories in the order the settings first name them.
-		let categories = scope List<StringView>();
-		for (let field in fields)
-		{
-			let category = SettingFields.Category(field);
-			if (!categories.Contains(category))
-				categories.Add(category);
-		}
-		for (let category in categories)
-		{
-			Adopt(column, Text(category, "home-category"));
-			for (let field in fields)
-			{
-				if (SettingFields.Category(field) != category)
-					continue;
-				let setting = SettingFields.Setting(field).Value;
-				SettingFields.KindOf(field, let kind);
-				let emptyText = (setting.EmptyText != null) ? StringView(setting.EmptyText) : "Not set";
-				Node value = null;
-				let text = scope String();
-				switch (kind)
-				{
-				case .Asset:
-					let id = *(Guid*)SettingFields.Address(settings, field);
-					value = AssetLink(id, emptyText);
-					let instance = id.IsSet ? project.SourceDb.GetInstance(id) : null;
-					text.Append(!id.IsSet ? emptyText : (instance != null) ? instance.Name : "(missing)");
-				case .AssetList:
-					let ids = *(List<Guid>*)SettingFields.Address(settings, field);
-					let list = new Sedulous.GUI.Panel();
-					list.AddClass("home-links");
-					for (let id in ids)
-					{
-						Adopt(list, AssetLink(id, "Not set"));
-						let instance = project.SourceDb.GetInstance(id);
-						if (!text.IsEmpty)
-							text.Append(", ");
-						text.Append((instance != null) ? instance.Name : "(missing)");
-					}
-					if (ids.IsEmpty)
-					{
-						text.Append("Not set");
-						Adopt(list, Text(text, "home-value dim"));
-					}
-					value = list;
-				default:
-					SettingText(settings, field, kind, text);
-					if (text.IsEmpty)
-						continue; // a kind this page does not show
-					value = Text(text, "home-value");
-				}
-				mRows.Add(new $"{setting.Label}: {text}");
-				let row = new Sedulous.GUI.Panel();
-				row.AddClass("home-setting");
-				Adopt(row, Text(setting.Label, "home-label"));
-				Adopt(row, value);
-				Adopt(column, row);
-			}
-		}
-		if (let actions = Find<Node>("home-project-actions"))
-			MenuActions("Project/", actions);
 	}
 }

@@ -36,35 +36,47 @@ statusbar { height: var(--statusbar); flex-shrink: 0; padding: 0 var(--space-m);
 /* A panel's placeholder: a quiet line, centred, while the panel has nothing else to show. */
 .panel-placeholder { flex-grow: 1; text-align: center; color: var(--text-placeholder); }
 
-/* The Project panel with a project open: its header, then Start beside Project, wrapping when
-   narrow. */
-.home-scroll { flex-grow: 1; min-height: 0; }
-.home { flex-direction: column; row-gap: var(--space-xl); padding: var(--space-xl) calc(2 * var(--space-xl)); }
-.home-header { flex-direction: row; align-items: center; column-gap: var(--space-xl); }
-.home-identity { flex-direction: column; row-gap: var(--space-xs); flex-grow: 1; flex-basis: 0; min-width: 0; }
-.home-name { font-size: var(--font-heading); font-weight: 600; color: var(--text-strong); text-overflow: ellipsis; white-space: nowrap; }
-.home-meta { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; }
-.home-columns { flex-direction: row; flex-wrap: wrap; column-gap: calc(2 * var(--space-xl)); row-gap: var(--space-xl); }
-.home-column { flex-direction: column; row-gap: var(--space-s); }
-.home-start { width: 280px; }
-.home-project { width: 440px; }
-.home-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); margin-top: var(--space-m); }
-.home-open { align-self: start; }
-.home-actions { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); }
-.home-links { flex-direction: column; align-items: start; }
-.home-settings { flex-direction: column; row-gap: var(--space-xs); }
-.home-category { color: var(--text-strong); font-weight: 500; margin-top: var(--space-m); }
-.home-setting { flex-direction: row; align-items: start; column-gap: var(--space-m); }
-.home-label { width: 150px; flex-shrink: 0; color: var(--text-dim); }
-.home-value.dim { color: var(--text-dim); }
+/* The Project panel with a project open, in two columns: the project on the left, a line, then its
+   scenes as cards, as many to a row as the panel holds (or the note for a project with none). */
+.home-scroll { flex-grow: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; } /* the width is the panel's, so the scenes fill it */
+.home { flex-direction: row; align-items: stretch; column-gap: calc(2 * var(--space-xl)); padding: calc(1.5 * var(--space-xl)) calc(2 * var(--space-xl)); }
+.home-side { width: 340px; flex-shrink: 0; flex-direction: column; row-gap: var(--space-l); }
+.home-divider { width: 1px; flex-shrink: 0; background-color: var(--border); }
+.home-name { font-size: 22px; font-weight: 600; color: var(--text-strong); text-overflow: ellipsis; white-space: nowrap; }
+.home-summary { flex-direction: column; row-gap: var(--space-s); }
+.home-row { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: 20px; }
+.home-label { width: 112px; flex-shrink: 0; color: var(--text-dim); }
+.home-value { min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.home-value.dim { color: var(--text-placeholder); }
 .home-value.missing { color: var(--warning); }
+.home-buttons { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); }
+.home-main { flex-grow: 1; flex-basis: 0; min-width: 0; flex-direction: column; row-gap: var(--space-l); }
+.home-section-head { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.home-section { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); }
+.home-count { font-size: var(--font-small); color: var(--text-placeholder); }
+.home-scenes { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-l); row-gap: var(--space-l); }
+button.home-scene { width: 232px; height: auto; padding: 0; flex-direction: column; align-items: stretch; background-color: var(--element);
+                    border: 1px solid var(--border); border-radius: var(--radius-large); overflow: hidden; }
+button.home-scene:hover { background-color: var(--element); border-color: var(--border-strong); }
+.home-scene-picture { align-self: stretch; aspect-ratio: 16 / 9; background-color: var(--surface-sunken); justify-content: center; align-items: center; }
+.home-scene-picture > .home-scene-thumb { flex-grow: 1; align-self: stretch; object-fit: cover; }
+.home-scene-picture > .home-scene-icon { width: 32px; height: 32px; image-color: var(--icon-dim); }
+.home-scene-picture > .badge { position: absolute; left: 8px; top: 8px; }
+.home-scene-body { flex-direction: column; align-items: stretch; row-gap: 2px; padding: 10px 12px; }
+.home-scene-name { text-align: start; font-weight: 600; color: var(--text-strong); text-overflow: ellipsis; white-space: nowrap; }
+.home-scene-path { text-align: start; font-size: var(--font-small); color: var(--text-dim); text-overflow: ellipsis; white-space: nowrap; }
+.home-no-scenes { flex-direction: column; align-items: center; row-gap: var(--space-s); padding: 48px 32px; border: 1px dashed var(--border);
+                  border-radius: var(--radius-large); }
+.home-no-scenes-icon { width: 32px; height: 32px; image-color: var(--icon-dim); }
+.home-no-scenes-title { font-weight: 600; color: var(--text-strong); }
+.home-no-scenes-text { color: var(--text-dim); text-align: center; white-space: normal; max-width: 440px; }
 button.link { background-color: transparent; color: var(--accent-strong); padding: 0 var(--space-xs); height: auto; min-height: 0; }
 button.link:hover { background-color: var(--ghost-hover); }
 /* A project's picture: its thumbnail, else its initial on a quiet tile. */
 .project-picture { border-radius: var(--radius); flex-shrink: 0; }
 .project-initial { background-color: var(--element); border: 1px solid var(--border); justify-content: center; align-items: center; }
 .project-initial > label { color: var(--text-dim); font-size: 40px; }
-.home-picture { width: 192px; height: 108px; }
+.home-picture { width: 340px; height: 191px; }
 
 /* The project manager fills the whole window. A header holds the tabs, then comes a page: Projects
    (a toolbar over the scrolling lists), Samples, or the first run's welcome; a footer with the

@@ -13,13 +13,13 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The Project page over its markup (Data/Editor/ProjectHome.xml): the project's name, the scenes
-/// (the assets of the default scene setting's type) as links that open them, the default scene's
-/// button opening it, every setting by its label under its category (title case, as the settings
-/// name them), an asset by its name, an unset one by its empty text, a missing one in the warning
-/// colour, the Game and Project menus' actions as buttons that run through the registry, and the
-/// page filled again when the settings are marked changed, when a cook lands and when the
-/// thumbnail changes. The Project panel shows it while a project is open, the welcome after.
+/// The Project page over its markup (Data/Editor/ProjectHome.xml): the project's name and summary
+/// (location, engine version, the settings carrying a [SettingSummary] with an asset shown by its
+/// name, an unset one by its empty text, a missing one in the warning colour, and the window), its
+/// buttons, the scenes (the assets of the default scene setting's type) as cards that open them
+/// with the default one marked, a project with no scenes, and the page filled again when the
+/// settings are marked changed, when a cook lands and when the thumbnail changes. The Project panel
+/// shows it while a project is open, the welcome after.
 class ProjectHomeTests
 {
 	private static bool Has(List<String> items, StringView item)
@@ -48,14 +48,14 @@ class ProjectHomeTests
 		return loader.LoadFromString(text);
 	}
 
-	/// The value beside the setting labelled `label`; null when no row is.
+	/// The value beside the summary row labelled `label`; null when no row is.
 	private static Node ValueOf(Node content, StringView label)
 	{
-		let settings = content.FindElement("home-settings");
-		Test.Assert(settings != null);
-		for (int i < settings.ChildCount)
+		let summary = content.FindElement("home-summary");
+		Test.Assert(summary != null);
+		for (int i < summary.ChildCount)
 		{
-			let row = settings.GetChildAt(i);
+			let row = summary.GetChildAt(i);
 			if (row.ChildCount != 2)
 				continue;
 			let name = row.GetChildAt(0) as Sedulous.GUI.Label;
@@ -65,11 +65,19 @@ class ProjectHomeTests
 		return null;
 	}
 
-	private static EditorActionDeclaration Action(StringView id, StringView label, StringView menuPath, int32 order, int* runs)
+	/// Whether a card's picture carries the Default badge.
+	private static bool Marked(Node card)
 	{
-		let d = new EditorActionDeclaration(id, label, "", menuPath, order);
-		d.Execute = new (page) => { (*runs)++; };
-		return d;
+		let picture = card.GetChildAt(0);
+		for (int i < picture.ChildCount)
+		{
+			if (let label = picture.GetChildAt(i) as Sedulous.GUI.Label)
+			{
+				if (label.Text == "Default")
+					return true;
+			}
+		}
+		return false;
 	}
 
 	/// A scratch project named Harbour with the scenes Docks (the default) and Arrival, and an
@@ -91,7 +99,7 @@ class ProjectHomeTests
 	}
 
 	[Test]
-	public static void TheScenesTheSettingsAndTheProjectsActions()
+	public static void TheSummaryTheButtonsAndTheScenesAsCardsThatOpenThem()
 	{
 		let dir = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_project_home", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
@@ -106,121 +114,111 @@ class ProjectHomeTests
 		let context = scope EditorContext();
 		context.SetProject(project);
 		defer context.SetProject(null);
-		int plays = 0;
-		int exports = 0;
-		int others = 0;
-		bool playAllowed = true;
-		// Registered out of menu order: the page orders them as the menu does.
-		Test.Assert(context.Actions.Register(Action("test.export", "Export...", "Project/Export...", 300, &exports)));
-		let play = Action("test.play", "Play", "Game/Play", 100, &plays);
-		play.Enabled = new [&playAllowed](page) => playAllowed;
-		Test.Assert(context.Actions.Register(play));
-		Test.Assert(context.Actions.Register(Action("test.reset", "Reset Layout", "View/Reset Layout", 100, &others)));
-		Test.Assert(context.Actions.Register(Action("test.settings", "Project Settings...", "Project/Project Settings...", 100, &others)));
-
 		let content = LoadHome();
 		Test.Assert(content != null);
 		let home = scope ProjectHomeView(context, null, content);
 		let opened = scope List<Guid>();
-		home.SetOnOpenAsset(new [=opened](id) => { opened.Add(id); });
+		let shown = scope String();
+		int settingsOpened = 0;
+		int scenesMade = 0;
+		home.SetOnOpenAsset(new [=opened] (id) => { opened.Add(id); });
+		home.SetOnShowFolder(new [=shown] (folder) => { shown.Set(folder); });
+		home.SetOnProjectSettings(new [&settingsOpened] () => { settingsOpened++; });
+		home.SetOnNewScene(new [&scenesMade] () => { scenesMade++; });
 		let name = content.FindElement("home-name") as Sedulous.GUI.Label;
 		Test.Assert((name != null) && (name.Text == "Harbour"));
 
-		// The default scene's button opens it.
-		let openDefault = content.FindElement("home-open-default") as Sedulous.GUI.Button;
-		Test.Assert(openDefault != null);
-		Test.Assert(openDefault.Text == "Open Docks");
-		Test.Assert(openDefault.Enabled);
-		Test.Assert(openDefault.HandleActivate());
-		Test.Assert(opened.Count == 1);
-		Test.Assert(opened[0] == docks.Id);
-
-		// Each scene a link that opens it, the default one marked.
-		let heading = content.FindElement("home-scenes-heading") as Sedulous.GUI.Label;
-		Test.Assert((heading != null) && (heading.Text == "Scenes (2)"));
-		let scenes = content.FindElement("home-scenes");
-		Test.Assert(scenes != null);
-		Test.Assert(scenes.ChildCount == 2);
-		let first = scenes.GetChildAt(0) as Sedulous.GUI.Button;
-		Test.Assert(first != null);
-		Test.Assert(first.Text == "Arrival");
-		Test.Assert(first.HandleActivate());
-		Test.Assert(opened.Back == arrival.Id);
-		let second = scenes.GetChildAt(1) as Sedulous.GUI.Button;
-		Test.Assert((second != null) && (second.Text == "Docks (default)"));
-
-		// The Game menu's actions as buttons that run them, through the registry: one the registry
-		// no longer allows does not run.
-		let game = content.FindElement("home-game-actions");
-		Test.Assert(game != null);
-		Test.Assert(game.ChildCount == 1);
-		let playButton = game.GetChildAt(0) as Sedulous.GUI.Button;
-		Test.Assert((playButton != null) && (playButton.Text == "Play"));
-		Test.Assert(playButton.HandleActivate());
-		Test.Assert(plays == 1);
-		playAllowed = false;
-		playButton.HandleActivate();
-		Test.Assert(plays == 1, "the registry refuses what it does not allow");
-		playAllowed = true;
-		let projectActions = content.FindElement("home-project-actions");
-		Test.Assert((projectActions != null) && (projectActions.ChildCount == 2));
-
-		// Every scene, in the asset tree's order (by name).
-		Test.Assert(home.Scenes.Count == 2);
-		Test.Assert((home.Scenes[0] == arrival.Id) && (home.Scenes[1] == docks.Id));
-
-		// Every labelled setting, an asset by its name, an unset one by its empty text.
-		Test.Assert(Has(home.SettingRows, "Name: Harbour"));
-		Test.Assert(Has(home.SettingRows, "Default scene: Docks"));
-		Test.Assert(Has(home.SettingRows, "Default bus layout: (built-in)"));
-		Test.Assert(Has(home.SettingRows, "MSAA: Off"));
-		Test.Assert(Has(home.SettingRows, "Window mode: Windowed"));
-		Test.Assert(Has(home.SettingRows, "Window resizable: On"));
-
-		// An asset the project does not hold, in the warning colour; one it holds, a link to it.
-		Test.Assert(Has(home.SettingRows, "Default input map: (missing)"));
-		let missing = ValueOf(content, "Default input map") as Sedulous.GUI.Label;
-		Test.Assert(missing != null);
-		Test.Assert(missing.Text == "(missing)");
-		Test.Assert(missing.HasClass("missing"));
+		// The summary: where it is, its engine, the settings marked for it (in declaration order),
+		// and the window; no others.
+		let rows = home.SummaryRows;
+		Test.Assert(rows.Count == 7, scope $"{rows.Count} rows");
+		Test.Assert(rows[0].StartsWith("Location: "));
+		Test.Assert(rows[1] == scope $"Engine version: {project.Settings.EngineVersion}");
+		Test.Assert(rows[2] == "Default scene: Docks", rows[2]);
+		Test.Assert(rows[3] == "Input map: (missing)", rows[3]);
+		Test.Assert(rows[4] == "Startup script: (none)", rows[4]);
+		Test.Assert(rows[5].StartsWith("UI font: "), rows[5]);
+		Test.Assert(rows[6] == "Window: 1280 × 720, windowed", rows[6]);
+		Test.Assert(!Has(rows, "Default bus layout: (built-in)"));
+		// An asset the project holds, a link to it; one it does not, in the warning colour; an unset
+		// one by its empty text.
 		let defaultScene = ValueOf(content, "Default scene") as Sedulous.GUI.Button;
 		Test.Assert((defaultScene != null) && defaultScene.HasClass("link") && (defaultScene.Text == "Docks"));
-		let unset = ValueOf(content, "Default bus layout") as Sedulous.GUI.Label;
-		Test.Assert((unset != null) && !unset.HasClass("missing") && unset.HasClass("dim"));
+		let missing = ValueOf(content, "Input map") as Sedulous.GUI.Label;
+		Test.Assert((missing != null) && missing.HasClass("missing"));
+		let unset = ValueOf(content, "Startup script") as Sedulous.GUI.Label;
+		Test.Assert((unset != null) && unset.HasClass("dim") && !unset.HasClass("missing"));
 
-		// The categories in the order the settings first name them, in title case as they name
-		// them.
-		let categories = scope List<StringView>();
-		let settings = content.FindElement("home-settings");
-		for (int i < settings.ChildCount)
-		{
-			let category = settings.GetChildAt(i) as Sedulous.GUI.Label;
-			if ((category != null) && category.HasClass("home-category"))
-				categories.Add(category.Text);
-		}
-		Test.Assert(categories.Count == 5);
-		Test.Assert((categories[0] == "General") && (categories[1] == "Startup") && (categories[2] == "Audio")
-			&& (categories[3] == "UI") && (categories[4] == "Display"));
+		// Its buttons.
+		Test.Assert((content.FindElement("home-show-folder") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(shown == project.Directory);
+		Test.Assert((content.FindElement("home-settings") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(settingsOpened == 1);
+		let newScene = content.FindElement("home-new-scene") as Sedulous.GUI.Button;
+		Test.Assert(newScene != null);
+		Test.Assert(newScene.Displayed);
+		Test.Assert(newScene.HandleActivate());
+		Test.Assert(scenesMade == 1);
+		Test.Assert(!content.FindElement("home-no-scenes").Displayed);
 
-		// The Game menu's actions, then the Project menu's, each in menu order; no others.
-		Test.Assert(home.ActionIds.Count == 3);
-		Test.Assert(home.ActionIds[0] == "test.play");
-		Test.Assert(home.ActionIds[1] == "test.settings");
-		Test.Assert(home.ActionIds[2] == "test.export");
+		// A card per scene, in the asset tree's order (by name); each opens its scene, and the
+		// default one is marked. With no thumbnail service, each shows the scene type's icon.
+		Test.Assert(home.Scenes.Count == 2);
+		Test.Assert((home.Scenes[0] == arrival.Id) && (home.Scenes[1] == docks.Id));
+		Test.Assert((content.FindElement("home-scene-count") as Sedulous.GUI.Label).Text == "2");
+		let grid = content.FindElement("home-scenes");
+		Test.Assert((grid != null) && (grid.ChildCount == 2));
+		let first = grid.GetChildAt(0) as Sedulous.GUI.Button;
+		Test.Assert(first != null);
+		Test.Assert(first.HandleActivate());
+		Test.Assert((opened.Count == 1) && (opened[0] == arrival.Id));
+		Test.Assert(!Marked(grid.GetChildAt(0)));
+		Test.Assert(Marked(grid.GetChildAt(1)));
+		Test.Assert(home.ThumbnailsShown == 0);
 
 		// A change to the settings shows at the next refresh, once marked.
 		project.Settings.DefaultSceneId = arrival.Id;
 		home.Refresh();
-		Test.Assert(Has(home.SettingRows, "Default scene: Docks"));
+		Test.Assert(Has(home.SummaryRows, "Default scene: Docks"));
 		home.MarkChanged();
 		home.Refresh();
-		Test.Assert(Has(home.SettingRows, "Default scene: Arrival"));
-		Test.Assert(openDefault.Text == "Open Arrival");
+		Test.Assert(Has(home.SummaryRows, "Default scene: Arrival"));
+		Test.Assert(Marked(grid.GetChildAt(0)));
 
 		// Without a project, nothing to show.
 		context.SetProject(null);
 		home.Rebuild();
-		Test.Assert(home.Scenes.IsEmpty && home.SettingRows.IsEmpty);
+		Test.Assert(home.Scenes.IsEmpty && home.SummaryRows.IsEmpty);
+	}
+
+	/// A project with no scenes shows a note with its own New Scene, in place of the cards.
+	[Test]
+	public static void AProjectWithNoScenesShowsANoteWithNewScene()
+	{
+		let dir = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_project_home_empty", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Harbour") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let context = scope EditorContext();
+		context.SetProject(project);
+		defer context.SetProject(null);
+		let content = LoadHome();
+		Test.Assert(content != null);
+		let home = scope ProjectHomeView(context, null, content);
+		int scenesMade = 0;
+		home.SetOnNewScene(new [&scenesMade] () => { scenesMade++; });
+
+		Test.Assert(home.Scenes.IsEmpty);
+		Test.Assert(Has(home.SummaryRows, "Default scene: (none)"));
+		Test.Assert((content.FindElement("home-scene-count") as Sedulous.GUI.Label).Text == "0");
+		Test.Assert(content.FindElement("home-no-scenes").Displayed);
+		Test.Assert(!content.FindElement("home-scenes").Displayed);
+		Test.Assert(!content.FindElement("home-new-scene").Displayed, "the note has its own");
+		Test.Assert((content.FindElement("home-first-scene") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(scenesMade == 1);
 	}
 
 	/// A cook that lands fills the page again (a new scene listed), as does a new thumbnail (the
@@ -264,7 +262,7 @@ class ProjectHomeTests
 		Test.Assert(cook.Revision == 1);
 		home.Refresh();
 		Test.Assert(home.Scenes.Count == 3);
-		Test.Assert(content.FindElement("home-scenes").ChildCount == 3);
+		Test.Assert(content.FindElement("home-scenes").ChildCount == 3, "a card for the new scene");
 
 		// A thumbnail written: the picture shows it at the next refresh.
 		let thumbnail = EditorProject.ThumbnailPath(project.Directory, .. scope .());

@@ -1,31 +1,34 @@
 <!--
-  The Project panel with a project open: the project's picture, name, engine and folder; Start
-  (open the default scene, the Game menu's actions, every scene); and Project (every setting by
-  category, with an asset shown as a link that opens it, then the Project menu's actions). Code
-  fills each part by id from the project, its settings' reflection and the action registry.
+  The Project panel with a project open, in two columns. On the left the project: its picture,
+  name, location, engine version and the settings that sum it up, then Show in Folder and Project
+  Settings. On the right its scenes, each a card that opens it, or, with none yet, a note with New
+  Scene. Code fills each part by id from the project and its settings' reflection.
 -->
 <ScrollView class="home-scroll">
     <Panel class="home">
-        <Panel class="home-header">
+        <Panel class="home-side">
             <Panel id="home-picture" class="home-picture-slot"/>
-            <Panel class="home-identity">
-                <Label id="home-name" class="home-name"/>
-                <Label id="home-engine" class="home-meta"/>
-                <Label id="home-folder" class="home-meta home-folder"/>
+            <Label id="home-name" class="home-name"/>
+            <Panel id="home-summary" class="home-summary"/>
+            <Panel class="home-buttons">
+                <Button id="home-show-folder" class="with-icon" icon="Editor/Icons/folder-open.svg" text="Show in Folder"/>
+                <Button id="home-settings" class="with-icon" icon="Editor/Icons/settings.svg" text="Project Settings..."/>
             </Panel>
         </Panel>
-        <Panel class="home-columns">
-            <Panel class="home-column home-start">
-                <Label class="home-heading" text="Start"/>
-                <Button id="home-open-default" class="primary home-open"/>
-                <Panel id="home-game-actions" class="home-actions"/>
-                <Label id="home-scenes-heading" class="home-heading"/>
-                <Panel id="home-scenes" class="home-links"/>
+        <Panel class="home-divider"/>
+        <Panel class="home-main">
+            <Panel class="home-section-head">
+                <Label class="home-section" text="SCENES"/>
+                <Label id="home-scene-count" class="home-count"/>
+                <Spacer/>
+                <Button id="home-new-scene" class="ghost with-icon" icon="Editor/Icons/plus.svg" text="New Scene"/>
             </Panel>
-            <Panel class="home-column home-project">
-                <Label class="home-heading" text="Project"/>
-                <Panel id="home-settings" class="home-settings"/>
-                <Panel id="home-project-actions" class="home-actions"/>
+            <Panel id="home-scenes" class="home-scenes"/>
+            <Panel id="home-no-scenes" class="home-no-scenes">
+                <Image class="home-no-scenes-icon" src="Editor/Icons/Types/SceneDocument.svg"/>
+                <Label class="home-no-scenes-title" text="No scenes yet"/>
+                <Label class="home-no-scenes-text" text="A scene holds what the game shows: a sun, a floor, a camera. The first one you make becomes the default scene, where the game starts."/>
+                <Button id="home-first-scene" class="primary with-icon" icon="Editor/Icons/plus.svg" text="New Scene"/>
             </Panel>
         </Panel>
     </Panel>
