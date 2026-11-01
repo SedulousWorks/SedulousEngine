@@ -289,6 +289,9 @@ class LayoutStyle
 	public LayoutLength MinHeight = .();
 	public LayoutLength MaxWidth = LayoutLength.None();
 	public LayoutLength MaxHeight = LayoutLength.None();
+	/// Width over height (CSS's `aspect-ratio: 16 / 9`), of the box its sizing names: with one side
+	/// given or fixed by its container and the other auto, the other follows. Nought: none.
+	public float AspectRatio = 0.0f;
 	public Thickness Margin = .();
 	/// Percentages of the containing box's width each side adds (CSS's `margin: 5%`), resolved at
 	/// layout, where that width is known.
@@ -357,6 +360,7 @@ class LayoutStyle
 		MinHeight = other.MinHeight;
 		MaxWidth = other.MaxWidth;
 		MaxHeight = other.MaxHeight;
+		AspectRatio = other.AspectRatio;
 		Margin = other.Margin;
 		MarginPercent = other.MarginPercent;
 		Sizing = other.Sizing;
@@ -425,6 +429,7 @@ enum StyleSlot : uint32
 	SlotWhiteSpace, SlotLineHeight, SlotLetterSpacing,
 	SlotDirection,
 	SlotFontWeight, SlotFontStyle, SlotOverflowWrap,
+	SlotAspectRatio,
 	SlotCount,
 }
 
@@ -478,7 +483,8 @@ internal static class LayoutStyleDetail
 		"color", "font-family", "font-size", "text-align", "vertical-align",
 		"white-space", "line-height", "letter-spacing",
 		"direction",
-		"font-weight", "font-style", "overflow-wrap");
+		"font-weight", "font-style", "overflow-wrap",
+		"aspect-ratio");
 
 	public static bool SameTracks(List<GridTrack> a, List<GridTrack> b)
 	{
@@ -570,6 +576,7 @@ static
 		if (a.Kind != b.Kind) bits |= SlotBit(.SlotDisplay);
 		if (a.Placement != b.Placement) bits |= SlotBit(.SlotPosition);
 		if (a.Sizing != b.Sizing) bits |= SlotBit(.SlotBoxSizing);
+		if (a.AspectRatio != b.AspectRatio) bits |= SlotBit(.SlotAspectRatio);
 		if (a.OverflowX != b.OverflowX) bits |= SlotBit(.SlotOverflowX);
 		if (a.OverflowY != b.OverflowY) bits |= SlotBit(.SlotOverflowY);
 		if (a.Direction != b.Direction) bits |= SlotBit(.SlotFlexDirection);

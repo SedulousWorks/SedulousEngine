@@ -865,6 +865,54 @@ class LayoutEngineTests
 	}
 
 	[Test]
+	public static void AspectRatioGivesTheAutoSideFromTheOtherStretchedOrGiven()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 800.0f); // a column 400 wide: its children stretch across, with room to stand at their sizes
+		defer root.ReleaseRef();
+		Panel Add(Node parent, StringView cls)
+		{
+			let panel = new Panel();
+			panel.AddClass(cls);
+			parent.AddChild(panel);
+			panel.ReleaseRef(); // the parent's keeps it
+			return panel;
+		}
+		let column = Add(root, "column");
+		let stretched = Add(column, "wide");
+		let sized = Add(column, "sized");
+		let row = Add(column, "row");
+		let tall = Add(row, "tall");
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".column { width: 400px; } .wide { aspect-ratio: 16 / 9; } .sized { width: 160px; aspect-ratio: 16/9; align-self: start; }" +
+			".row { flex-direction: row; align-items: start; } .tall { height: 90px; aspect-ratio: 2; }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(Near(stretched.LayoutStyle.AspectRatio, 16.0f / 9.0f));
+		Test.Assert(Near(stretched.Size.X, 400.0f));
+		Test.Assert(Near(stretched.Size.Y, 225.0f), "the stretch's width, at 16:9");
+		Test.Assert(Near(sized.Size.Y, 90.0f));
+		Test.Assert(Near(tall.Size.X, 180.0f), "the height given, twice as wide");
+
+		// The ratio of the content box when the sizing says so: 16 + 9 inside 8px of padding a side.
+		let contentSheet = scope StyleSheet();
+		CSSParser.Parse(".column { width: 400px; } .sized { width: 176px; padding: 8px; box-sizing: content-box; aspect-ratio: 16 / 9; align-self: start; }", contentSheet);
+		let content = scope StyleManager(contentSheet);
+		content.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(Near(sized.Size.X, 192.0f));
+		Test.Assert(Near(sized.Size.Y, 99.0f + 16.0f));
+
+		let noneSheet = scope StyleSheet();
+		CSSParser.Parse(".wide { aspect-ratio: auto; } .sized { aspect-ratio: 0 / 1; } .tall { aspect-ratio: -2; }", noneSheet);
+		let none = scope StyleManager(noneSheet);
+		none.ApplyTree(root);
+		Test.Assert(stretched.LayoutStyle.AspectRatio == 0.0f);
+		Test.Assert(sized.LayoutStyle.AspectRatio == 0.0f, "refused");
+		Test.Assert(tall.LayoutStyle.AspectRatio == 0.0f);
+	}
+
+	[Test]
 	public static void PercentageMarginsPaddingAndGapsAreOfTheContainersContentSizeAsCSSs()
 	{
 		let root = SceneFixtures.NewScene(400.0f, 300.0f); // 400 wide

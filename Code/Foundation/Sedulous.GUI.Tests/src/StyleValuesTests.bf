@@ -107,7 +107,7 @@ class StyleValuesTests
 	[Test]
 	public static void StyleSlotSetsHoldABitPerSlotAcrossBothWords()
 	{
-		Test.Assert((int)StyleSlot.SlotCount == 65);
+		Test.Assert((int)StyleSlot.SlotCount == 66);
 		Test.Assert(SlotBit(.SlotOpacity).Words[0] == 1);
 		Test.Assert(SlotBit(.SlotWidth).Words[0] == (uint64)1 << 9);
 		Test.Assert(SlotBit(.SlotFontStyle).Words[0] == (uint64)1 << 63);
@@ -437,7 +437,7 @@ class StyleValuesTests
 	[Test]
 	public static void ThePropertyTableNamesEachLonghandOnce()
 	{
-		Test.Assert(AllStyleProperties().Length == 113);
+		Test.Assert(AllStyleProperties().Length == 114);
 		let color = FindStyleProperty("color");
 		Test.Assert((color != null) && (color.Grammar == .Color) && color.Inherited && (color.Initial === null));
 		let opacity = FindStyleProperty("opacity");

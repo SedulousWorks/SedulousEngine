@@ -1011,8 +1011,19 @@ extension Node
 					return v.Value + chromeAxis;
 				return v;
 			}
-			let w = BorderBoxOf(s.Width, constraints.PercentBase.X, ch);
-			let h = BorderBoxOf(s.Height, constraints.PercentBase.Y, cv);
+			var w = BorderBoxOf(s.Width, constraints.PercentBase.X, ch);
+			var h = BorderBoxOf(s.Height, constraints.PercentBase.Y, cv);
+			// An aspect ratio gives the auto side from the other: one the style gives, else one the
+			// container fixes (a stretch). It is the ratio of the box the sizing names.
+			if (s.AspectRatio > 0.0f)
+			{
+				let rw = contentBox ? ch : 0.0f;
+				let rh = contentBox ? cv : 0.0f;
+				if (!h.HasValue && (w.HasValue || constraints.ExactWidth))
+					h = Max(0.0f, (w.HasValue ? w.Value : constraints.Min.X) - rw) / s.AspectRatio + rh;
+				else if (!w.HasValue && (h.HasValue || constraints.ExactHeight))
+					w = Max(0.0f, (h.HasValue ? h.Value : constraints.Min.Y) - rh) * s.AspectRatio + rw;
+			}
 			let minW = BorderBoxOf(s.MinWidth, constraints.PercentBase.X, ch) ?? 0.0f;
 			let minH = BorderBoxOf(s.MinHeight, constraints.PercentBase.Y, cv) ?? 0.0f;
 			let maxW = Max(minW, BorderBoxOf(s.MaxWidth, constraints.PercentBase.X, ch) ?? cUnbounded);

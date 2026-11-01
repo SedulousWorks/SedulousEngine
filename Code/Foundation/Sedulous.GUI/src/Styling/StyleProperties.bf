@@ -144,7 +144,7 @@ internal static class StylePropertiesDetail
 	public static String[10] sPaintOnly = .("opacity", "color", "background-color", "background-image", "border-top-color",
 		"border-right-color", "border-bottom-color", "border-left-color", "caret-color", "accent-color");
 
-	public static StylePropertySpec[113] sProperties = .(
+	public static StylePropertySpec[114] sProperties = .(
 		.("opacity", .Number, "1"),
 		.("width", .Size, "auto"),
 		.("height", .Size, "auto"),
@@ -237,6 +237,7 @@ internal static class StylePropertiesDetail
 		.("flex-grow", .Number),
 		.("flex-shrink", .Number),
 		.("flex-basis", .Size),
+		.("aspect-ratio", .Text),
 		.("align-self", .Keyword),
 		.("justify-self", .Keyword),
 		.("order", .Number),

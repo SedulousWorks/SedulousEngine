@@ -352,6 +352,13 @@ static
 					if (g.HasValue)
 						ls.Row = g.Value;
 				}
+				let aspectRatio = KeywordOf("aspect-ratio");
+				if (aspectRatio.Length != 0)
+				{
+					let ratio = StyleApplierDetail.ParseAspectRatio(aspectRatio);
+					if (ratio.HasValue)
+						ls.AspectRatio = ratio.Value;
+				}
 				let result = scope LayoutStyle();
 				result.Set(node.LayoutStyle);
 				StyleApplierDetail.TakeFreeLayoutFields(node, ls, result);
@@ -881,6 +888,7 @@ internal static class StyleApplierDetail
 		if (Free(.SlotDisplay)) to.Kind = from.Kind;
 		if (Free(.SlotPosition)) to.Placement = from.Placement;
 		if (Free(.SlotBoxSizing)) to.Sizing = from.Sizing;
+		if (Free(.SlotAspectRatio)) to.AspectRatio = from.AspectRatio;
 		if (Free(.SlotOverflowX)) to.OverflowX = from.OverflowX;
 		if (Free(.SlotOverflowY)) to.OverflowY = from.OverflowY;
 		if (Free(.SlotFlexDirection)) to.Direction = from.Direction;
@@ -975,6 +983,24 @@ internal static class StyleApplierDetail
 
 	/// A track list: sizes separated by spaces, `repeat(<n>, <sizes>)` among them, added to
 	/// `outTracks`; false when it does not parse.
+	/// aspect-ratio: `auto` (nought, none), a number (`1.5`), or a width over a height (`16 / 9`).
+	/// Nothing for a ratio that is not positive.
+	public static float? ParseAspectRatio(StringView value)
+	{
+		let text = ParseUtil.Trim(value);
+		if (text == "auto")
+			return 0.0f;
+		let parts = scope List<StringView>();
+		SplitTopLevel(text, '/', parts);
+		if (parts.IsEmpty || (parts.Count > 2))
+			return null;
+		let w = ParseLength(ParseUtil.Trim(parts[0]));
+		let h = (parts.Count == 2) ? ParseLength(ParseUtil.Trim(parts[1])) : (float?)1.0f;
+		if (!w.HasValue || !h.HasValue || (w.Value <= 0.0f) || (h.Value <= 0.0f))
+			return null;
+		return w.Value / h.Value;
+	}
+
 	/// Where a track list's `repeat(auto-fill, <sizes>)` sits: its first track and how many it
 	/// repeats (At -1: none).
 	public struct GridAutoRepeat
