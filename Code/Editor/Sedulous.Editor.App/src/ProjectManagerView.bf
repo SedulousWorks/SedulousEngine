@@ -1416,7 +1416,7 @@ class ProjectManagerView
 		if (let section = Find<Node>("manager-missing"))
 			section.Displayed = !missing.IsEmpty;
 		if (let missingCount = Find<Sedulous.GUI.Label>("manager-missing-count"))
-			missingCount.Text = scope $"{missing.Count} project{(missing.Count == 1) ? "" : "s"}, their folders are not where they were";
+			missingCount.Text = scope $"{missing.Count} · not found at the last known location"; // right for any count
 		if (let keys = Find<Node>("manager-keys"))
 			keys.Displayed = !mSamples && !welcome;
 

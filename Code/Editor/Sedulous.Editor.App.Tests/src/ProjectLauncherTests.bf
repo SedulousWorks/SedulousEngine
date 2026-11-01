@@ -259,6 +259,8 @@ class ProjectLauncherTests
 		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null);
 		Test.Assert(ButtonText(missing.GetChildAt(0), "Open") == null);
 		Test.Assert(ButtonText(missing.GetChildAt(0), "Locate...") != null);
+		// The heading reads right for one as for many.
+		Test.Assert((l.View.Content.FindElement("manager-missing-count") as Sedulous.GUI.Label).Text == "1 · not found at the last known location");
 		Test.Assert((missing.GetChildAt(0) as UIWidget).HasClass("missing"));
 		Test.Assert(!(list.GetChildAt(0) as UIWidget).HasClass("missing"));
 		Test.Assert(TextOf(missing.GetChildAt(0), "manager-name") == "Gone");
