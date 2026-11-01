@@ -304,10 +304,14 @@ static
 				if (columns.Length != 0)
 				{
 					tracks.Clear();
-					if (StyleApplierDetail.ParseGridTracks(columns, lengths, tracks) && !LayoutStyleDetail.SameTracks(ls.Columns, tracks))
+					var columnsRepeat = StyleApplierDetail.GridAutoRepeat();
+					if (StyleApplierDetail.ParseGridTracks(columns, lengths, tracks, &columnsRepeat) &&
+						(!LayoutStyleDetail.SameTracks(ls.Columns, tracks) || (ls.ColumnsRepeatAt != columnsRepeat.At) || (ls.ColumnsRepeatSize != columnsRepeat.Size)))
 					{
 						ls.Columns.Clear();
 						ls.Columns.AddRange(tracks);
+						ls.ColumnsRepeatAt = columnsRepeat.At;
+						ls.ColumnsRepeatSize = columnsRepeat.Size;
 					}
 				}
 				let rows = KeywordOf("grid-template-rows");
@@ -893,6 +897,8 @@ internal static class StyleApplierDetail
 		{
 			to.Columns.Clear();
 			to.Columns.AddRange(from.Columns);
+			to.ColumnsRepeatAt = from.ColumnsRepeatAt;
+			to.ColumnsRepeatSize = from.ColumnsRepeatSize;
 		}
 		if (Free(.SlotGridTemplateRows))
 		{
@@ -969,8 +975,20 @@ internal static class StyleApplierDetail
 
 	/// A track list: sizes separated by spaces, `repeat(<n>, <sizes>)` among them, added to
 	/// `outTracks`; false when it does not parse.
-	public static bool ParseGridTracks(StringView text, LengthContext lengths, List<GridTrack> outTracks)
+	/// Where a track list's `repeat(auto-fill, <sizes>)` sits: its first track and how many it
+	/// repeats (At -1: none).
+	public struct GridAutoRepeat
 	{
+		public int32 At = -1;
+		public int32 Size = 0;
+	}
+
+	/// A track list: sizes separated by spaces, which may include `repeat(<n>, <sizes>)`, and, where
+	/// `autoRepeat` is given, one `repeat(auto-fill, <sizes>)` of fixed or minmax sizes.
+	public static bool ParseGridTracks(StringView text, LengthContext lengths, List<GridTrack> outTracks, GridAutoRepeat* autoRepeat = null)
+	{
+		if (autoRepeat != null)
+			*autoRepeat = .();
 		if (ParseUtil.Trim(text) == "none")
 			return true;
 		let parts = scope List<StringView>();
@@ -983,9 +1001,14 @@ internal static class StyleApplierDetail
 				SplitTopLevel(part.Substring(7, part.Length - 8), ',', args);
 				if (args.Count != 2)
 					return false;
-				let count = ParseLength(ParseUtil.Trim(args[0]));
+				let fill = ParseUtil.Trim(args[0]) == "auto-fill";
+				if (fill && ((autoRepeat == null) || (autoRepeat.At >= 0)))
+					return false; // one auto repeat, and only where the caller takes one
+				let count = fill ? (float?)1.0f : ParseLength(ParseUtil.Trim(args[0]));
 				if (!count.HasValue || (count.Value < 1.0f))
 					return false;
+				if (fill)
+					autoRepeat.At = (int32)outTracks.Count;
 				let unit = scope List<GridTrack>();
 				let sizes = scope List<StringView>();
 				SplitTopLevel(ParseUtil.Trim(args[1]), ' ', sizes);
@@ -994,8 +1017,12 @@ internal static class StyleApplierDetail
 					let track = ParseTrack(size, lengths);
 					if (!track.HasValue)
 						return false;
+					if (fill && (track.Value.Min.Kind != .Px))
+						return false; // an auto repeat counts with fixed sizes: 1fr or auto alone has none
 					unit.Add(track.Value);
 				}
+				if (fill)
+					autoRepeat.Size = (int32)unit.Count;
 				for (int32 n = 0; n < (int32)count.Value; n++)
 					outTracks.AddRange(unit);
 				continue;

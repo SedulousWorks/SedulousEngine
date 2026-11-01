@@ -521,10 +521,10 @@ internal static class LayoutImplDetail
 
 	// Places items on the grid: those with both lines where they say, the rest flowed into the
 	// first cells free (row by row, or column by column). Gives the track counts.
-	public static void PlaceGridItems(Sedulous.GUI.LayoutStyle s, List<GridItem> items, out int32 columns, out int32 rows)
+	public static void PlaceGridItems(Sedulous.GUI.LayoutStyle s, List<GridTrack> templateColumns, List<GridItem> items, out int32 columns, out int32 rows)
 	{
 		let byRow = s.AutoFlow == .Row;
-		int32 columnCount = Math.Max((int32)1, (int32)s.Columns.Count);
+		int32 columnCount = Math.Max((int32)1, (int32)templateColumns.Count);
 		int32 rowCount = Math.Max((int32)0, (int32)s.Rows.Count);
 		for (let item in items)
 		{
@@ -741,6 +741,52 @@ internal static class LayoutImplDetail
 	private static float AlignOffset(Align a, float room, float size) =>
 		(a == .End) ? room - size : ((a == .Center) ? (room - size) * 0.5f : 0.0f);
 
+	// The column tracks with a `repeat(auto-fill, ...)` repeated as often as `available` holds them
+	// (as CSS counts: each track at its fixed maximum, else its fixed minimum, with the gaps), at
+	// least once; once when the width is not known.
+	public static void TemplateColumns(Sedulous.GUI.LayoutStyle s, float available, float gap, List<GridTrack> outTracks)
+	{
+		if ((s.ColumnsRepeatAt < 0) || (s.ColumnsRepeatSize <= 0))
+		{
+			outTracks.AddRange(s.Columns);
+			return;
+		}
+		let at = (int)s.ColumnsRepeatAt;
+		let size = (int)s.ColumnsRepeatSize;
+		float FixedSize(GridTrack t)
+		{
+			if ((t.Fr <= 0.0f) && (t.Max.Kind == .Px))
+				return t.Max.Value;
+			return (t.Min.Kind == .Px) ? t.Min.Value : 0.0f;
+		}
+		float unit = 0.0f;
+		float others = 0.0f;
+		for (int i < s.Columns.Count)
+		{
+			if ((i >= at) && (i < at + size))
+				unit += FixedSize(s.Columns[i]);
+			else
+				others += FixedSize(s.Columns[i]);
+		}
+		let otherCount = s.Columns.Count - size;
+		int32 repeats = 1;
+		if (!IsUnbounded(available) && (unit + gap * (float)size > 0.0f))
+		{
+			// others + n * unit + gap * (otherCount + n * size - 1) <= available
+			let room = available - others - gap * ((float)otherCount - 1.0f);
+			repeats = Math.Max((int32)1, (int32)(room / (unit + gap * (float)size)));
+		}
+		for (int i < at)
+			outTracks.Add(s.Columns[i]);
+		for (int32 n < repeats)
+		{
+			for (int i = at; i < at + size; i++)
+				outTracks.Add(s.Columns[i]);
+		}
+		for (int i = at + size; i < s.Columns.Count; i++)
+			outTracks.Add(s.Columns[i]);
+	}
+
 	public static Float2 Grid(Flow f)
 	{
 		let s = f.Style;
@@ -755,9 +801,11 @@ internal static class LayoutImplDetail
 			let cs = child.LayoutStyle;
 			items.Add(.(child, cs.Column.Start, cs.Row.Start, Math.Max((int32)1, cs.Column.Span), Math.Max((int32)1, cs.Row.Span)));
 		}
-		PlaceGridItems(s, items, let columns, let rows);
+		let templateColumns = scope List<GridTrack>();
+		TemplateColumns(s, f.Width, columnGap, templateColumns);
+		PlaceGridItems(s, templateColumns, items, let columns, let rows);
 		let widths = scope List<float>();
-		SizeTracks(s.Columns, s.AutoColumns, columns, f.Width, columnGap, items, true,
+		SizeTracks(templateColumns, s.AutoColumns, columns, f.Width, columnGap, items, true,
 			scope (item) => MeasureItem(item.Node, cUnbounded, cUnbounded, percentBase).X, widths);
 		let heights = scope List<float>();
 		SizeTracks(s.Rows, s.AutoRows, rows, f.Height, rowGap, items, false,

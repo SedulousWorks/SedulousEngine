@@ -797,6 +797,74 @@ class LayoutEngineTests
 	}
 
 	[Test]
+	public static void RepeatAutoFillMakesAsManyColumnsAsTheWidthHoldsWhichShareWhatIsLeft()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f); // the grid's content is 380 inside its padding
+		defer root.ReleaseRef();
+		let grid = new Panel();
+		defer grid.ReleaseRef();
+		grid.AddClass("cards");
+		root.AddChild(grid);
+		let cards = scope List<Panel>();
+		defer
+		{
+			for (let c in cards)
+				c.ReleaseRef();
+		}
+		for (int i < 5)
+		{
+			let card = new Panel();
+			card.AddClass("card");
+			grid.AddChild(card);
+			cards.Add(card);
+		}
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; padding: 10px; }" +
+			".card { height: 40px; }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(grid.LayoutStyle.ColumnsRepeatAt == 0);
+		Test.Assert(grid.LayoutStyle.ColumnsRepeatSize == 1);
+		// Three columns of at least 100 and two gaps of 10 fit in 380, four do not; the three share
+		// the rest: (380 - 20) / 3 each.
+		let column = (380.0f - 20.0f) / 3.0f;
+		Test.Assert(Near(cards[0].Size.X, column));
+		Test.Assert(Near(cards[2].Position.X, 10.0f + 2.0f * (column + 10.0f)));
+		// The last row starts at the first column, its cards as wide as the rows above.
+		Test.Assert(Near(cards[3].Position.X, 10.0f));
+		Test.Assert(Near(cards[3].Position.Y, 10.0f + 40.0f + 10.0f));
+		Test.Assert(Near(cards[4].Size.X, column));
+
+		// Narrower, fewer columns; never fewer than one.
+		root.Size = .(250.0f, 300.0f); // 230 inside: two of 100 and a gap
+		root.UpdateLayout();
+		Test.Assert(Near(cards[1].Position.Y, 10.0f));
+		Test.Assert(Near(cards[2].Position.Y, 60.0f));
+		root.Size = .(60.0f, 300.0f);
+		root.UpdateLayout();
+		Test.Assert(Near(cards[1].Position.X, 10.0f), "one column, under the first");
+
+		// Fixed tracks beside the repeat count against the width; a size to count with is required,
+		// and rows take no auto repeat.
+		let mixedSheet = scope StyleSheet();
+		CSSParser.Parse(".cards { display: grid; grid-template-columns: 60px repeat(auto-fill, 50px); gap: 0; padding: 0; }", mixedSheet);
+		let mixed = scope StyleManager(mixedSheet);
+		root.Size = .(400.0f, 300.0f);
+		mixed.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(grid.LayoutStyle.ColumnsRepeatAt == 1);
+		Test.Assert(Near(cards[4].Position.X, 60.0f + 3.0f * 50.0f), "60 + 6 x 50 = 360 fit, a seventh does not");
+		let refusedSheet = scope StyleSheet();
+		CSSParser.Parse(".cards { grid-template-columns: repeat(auto-fill, 1fr); grid-template-rows: repeat(auto-fill, 40px); }", refusedSheet);
+		let refused = scope StyleManager(refusedSheet);
+		refused.ApplyTree(root);
+		Test.Assert(grid.LayoutStyle.ColumnsRepeatAt == -1, "refused, as an invalid declaration: no columns set");
+		Test.Assert(grid.LayoutStyle.Columns.IsEmpty);
+		Test.Assert(grid.LayoutStyle.Rows.IsEmpty);
+	}
+
+	[Test]
 	public static void PercentageMarginsPaddingAndGapsAreOfTheContainersContentSizeAsCSSs()
 	{
 		let root = SceneFixtures.NewScene(400.0f, 300.0f); // 400 wide

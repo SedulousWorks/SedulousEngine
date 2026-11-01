@@ -325,6 +325,11 @@ class LayoutStyle
 	/// Of its content width.
 	public float ColumnGapPercent = 0.0f;
 	public List<GridTrack> Columns = new .() ~ delete _;
+	/// `repeat(auto-fill, <tracks>)` among the columns: the ColumnsRepeatSize tracks of Columns from
+	/// ColumnsRepeatAt repeat as often as the grid's width holds them, at least once
+	/// (ColumnsRepeatAt -1: none).
+	public int32 ColumnsRepeatAt = -1;
+	public int32 ColumnsRepeatSize = 0;
 	public List<GridTrack> Rows = new .() ~ delete _;
 	public GridTrack AutoRows = .();
 	public GridTrack AutoColumns = .();
@@ -380,6 +385,8 @@ class LayoutStyle
 		ColumnGapPercent = other.ColumnGapPercent;
 		Columns.Clear();
 		Columns.AddRange(other.Columns);
+		ColumnsRepeatAt = other.ColumnsRepeatAt;
+		ColumnsRepeatSize = other.ColumnsRepeatSize;
 		Rows.Clear();
 		Rows.AddRange(other.Rows);
 		AutoRows = other.AutoRows;
@@ -576,6 +583,7 @@ static
 		if (a.AutoFlow != b.AutoFlow) bits |= SlotBit(.SlotGridAutoFlow);
 		if (a.DockSide != b.DockSide) bits |= SlotBit(.SlotDock);
 		if (!LayoutStyleDetail.SameTracks(a.Columns, b.Columns)) bits |= SlotBit(.SlotGridTemplateColumns);
+		if ((a.ColumnsRepeatAt != b.ColumnsRepeatAt) || (a.ColumnsRepeatSize != b.ColumnsRepeatSize)) bits |= SlotBit(.SlotGridTemplateColumns);
 		if (!LayoutStyleDetail.SameTracks(a.Rows, b.Rows)) bits |= SlotBit(.SlotGridTemplateRows);
 		if (a.AutoRows != b.AutoRows) bits |= SlotBit(.SlotGridAutoRows);
 		if (a.AutoColumns != b.AutoColumns) bits |= SlotBit(.SlotGridAutoColumns);
