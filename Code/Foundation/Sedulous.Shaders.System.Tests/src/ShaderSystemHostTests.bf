@@ -216,6 +216,9 @@ class ShaderSystemHostTests
 		let path = PathJoin(shaderDir, "hosted.vs.hlsl", .. scope String());
 		let source = "float4 main(uint id : SV_VertexID) : SV_Position { return float4(0, 0, 0, 1); }\n";
 		WriteFile(path, .((uint8*)source.Ptr, source.Length)).IgnoreError();
+		let includePath = PathJoin(shaderDir, "hosted_common.hlsli", .. scope String());
+		let include = "float HostedZero() { return 0.0; }\n";
+		WriteFile(includePath, .((uint8*)include.Ptr, include.Length)).IgnoreError();
 		{
 			let host = scope ShaderSystemHost();
 			Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
@@ -231,6 +234,15 @@ class ShaderSystemHostTests
 			Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
 			Test.Assert(host.UsingPack, "the marker chooses the pack");
 			Test.Assert(host.PackVariantCount == 1);
+			// A registered source (a project's custom shader) still compiles with a compiler, and
+			// its includes of the engine's .hlsli files resolve from the sources beside the pack.
+			if (HaveDxc())
+			{
+				host.System.RegisterSource("custom", .Vertex,
+					"#include \"hosted_common.hlsli\"\nfloat4 main(uint id : SV_VertexID) : SV_Position { return float4(HostedZero(), 0, 0, 1); }\n",
+					"main");
+				Test.Assert(host.GetVariant("custom", .Vertex, .None) != null, "an include resolves beside the pack");
+			}
 		}
 	}
 }

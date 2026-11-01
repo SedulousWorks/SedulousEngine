@@ -93,6 +93,11 @@ class ShaderSystemHost
 		{
 			mShaders.SetCookedPack(mPack);
 			Console.WriteLine(scope $"Sedulous.Shaders: cooked pack with {mPack.Count} variants{(mCompiler != null) ? ", and registered sources still compile" : ""}");
+			// A registered source (a project's custom shader in an editor dist) includes the
+			// engine's .hlsli files, so with a compiler and the sources at hand they resolve
+			// through the provider. The engine's own shaders still come from the pack.
+			if ((mCompiler != null) && haveSources)
+				AttachIncludeResolver();
 			return .Ok;
 		}
 
@@ -171,6 +176,19 @@ class ShaderSystemHost
 		mShaders.SetSourceProvider(mProvider);
 		// The provider is the include resolver too, so an #include is read back through the
 		// same mount the sources came from.
+		mShaders.SetIncludeResolver(mProvider);
+	}
+
+	/// The file provider as the include resolver only, beside a pack that serves the sources.
+	private void AttachIncludeResolver()
+	{
+		let provider = new FileShaderSourceProvider();
+		if (provider.Initialize(mDataFileSystem, cShaderFolder) case .Err)
+		{
+			delete provider;
+			return;
+		}
+		mProvider = provider;
 		mShaders.SetIncludeResolver(mProvider);
 	}
 
