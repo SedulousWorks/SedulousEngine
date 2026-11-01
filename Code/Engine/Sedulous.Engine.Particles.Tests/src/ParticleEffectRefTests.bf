@@ -277,6 +277,54 @@ class ParticleEffectRefTests
 		Test.Assert(linear.W == 0.25f);
 	}
 
+	/// A sorted alpha system's billboards come farthest first, on two frames running (the second
+	/// sorting the order the first left), at more particles than a small sort's threshold.
+	[Test]
+	public static void ASortedAlphaSystemsBillboardsComeFarthestFirstFrameAfterFrame()
+	{
+		ParticleResources.RegisterAll();
+
+		let scene = scope Scene();
+		let manager = scene.AddSystem<ParticleEffectComponentManager>();
+
+		let resource = scope ParticleEffectResource();
+		let system = resource.Effect.AddSystem(200);
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(5.0f, 5.0f);
+		system.BlendMode = .Alpha;
+		system.SortParticles = true;
+		system.Emitter.Mode = .Burst;
+		system.Emitter.BurstCount = 150;
+
+		let component = manager.Add(scene.CreateEntity("Smoke"));
+		component.EffectAsset.SetDirect(resource);
+		scene.Update(0.016f);
+		Test.Assert(component.Instance != null);
+		let live = component.Instance.Effect.GetSystem(0);
+		Test.Assert(live.AliveCount == 150);
+
+		for (int frame < 2)
+		{
+			// Spread them so their distances from the camera (the origin, there being none) differ.
+			uint32 seed = 31 + (uint32)frame;
+			for (int32 i < 150)
+			{
+				seed = seed &* 1664525 &+ 1013904223;
+				live.Streams.Positions[i] = .((float)(seed >> 24), 0.0f, (float)(i % 7));
+			}
+			let snapshot = scope ExtractedScene();
+			manager.ExtractRenderData(snapshot);
+			Test.Assert(snapshot.Size == 1, "the billboard batch");
+			let batch = (ParticleBillboardRenderData)snapshot.Items[0];
+			Test.Assert(batch.Count == 150);
+			for (int i = 1; i < batch.Count; i++)
+			{
+				let p = batch.Instances[i].Position;
+				let q = batch.Instances[i - 1].Position;
+				Test.Assert(p.X * p.X + p.Z * p.Z <= q.X * q.X + q.Z * q.Z, "farthest first");
+			}
+		}
+	}
+
 	/// The alpha sort and the trail ribbons work from the scene's primary camera: it used to
 	/// stay at the origin for the life of the scene (read in three places, written in none).
 	[Test]
