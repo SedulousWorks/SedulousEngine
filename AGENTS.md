@@ -59,7 +59,10 @@ nothing else links them, and enabling them builds the sandbox.
   and no `Co-Authored-By` or session trailer lines. Push only when asked.
 - **Third-party content**: check its licence before adding it. Nothing goes in that may not be
   published (a "free for personal use" font may not); keep the licence text beside it, and
-  credit what requires it.
+  credit what requires it. A library that ships in a binary also joins
+  `Code/Tools/third-party-notices.py`, which writes the `Dependencies/THIRD-PARTY-NOTICES.txt`
+  every player, editor and export carries; run it after adding or updating one (Integration.Mcp
+  fails while the committed file is stale).
 
 ## Raptor
 

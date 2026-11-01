@@ -195,6 +195,12 @@ static class ExportTemplateTests
 		Test.Assert(host.Directory == dir);
 		// A library carried by its soname counts too.
 		Test.Assert((host.Sidecars.Count == 2) && (host.Sidecars[0] == "libSDL3.so.0") && (host.Sidecars[1] == "libjoltc.so"), scope $"{host.Sidecars.Count} sidecars");
+
+		// The third-party notices beside the player go with it too.
+		SaveText(dir, BuildLayout.cThirdPartyNotices, "notices\n");
+		let noticed = scope ExportTemplate();
+		ExportTemplates.SynthesizeHost(dir, noticed);
+		Test.Assert((noticed.Sidecars.Count == 3) && (noticed.Sidecars[2] == BuildLayout.cThirdPartyNotices), scope $"{noticed.Sidecars.Count} sidecars");
 	}
 
 	[Test]
@@ -516,6 +522,7 @@ static class ExportTemplateTests
 		SaveText(distDir, scope $"{BuildLayout.cWebPlayerBaseName}.wasm", "wasm\n");
 		SaveText(distDir, "serve.py", "print()\n");
 		SaveText(distDir, BuildLayout.cWebLogoName, "<svg/>\n");
+		SaveText(distDir, BuildLayout.cThirdPartyNotices, "notices\n");
 		let createdId = scope String();
 		let createdDir = scope String();
 		Test.Assert(ExportTemplates.Create(distDir, root, .Install, createdId, createdDir) case .Ok);
@@ -532,7 +539,8 @@ static class ExportTemplateTests
 		let manifest = scope ExportTemplate();
 		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(createdDir), manifest) case .Ok);
 		Test.Assert((manifest.Platform == "Web") && (manifest.PlayerBinary == page) && (manifest.Compiler == "Emscripten"));
-		Test.Assert(manifest.Sidecars.Count == 4, scope $"{manifest.Sidecars.Count} web parts");
+		Test.Assert(manifest.Sidecars.Count == 5, scope $"{manifest.Sidecars.Count} web parts");
+		Test.Assert(FileExists(PathJoin(createdDir, BuildLayout.cThirdPartyNotices, .. scope .())), "the third-party notices ship with it");
 		Test.Assert(FileExists(PathJoin(createdDir, "serve.py", .. scope .())), "the export's server ships with the page");
 		Test.Assert(FileExists(PathJoin(createdDir, BuildLayout.cWebLogoName, .. scope .())), "and the loading card's logo");
 		Test.Assert(FileExists(PathJoin(createdDir, scope $"{BuildLayout.cWebPlayerBaseName}.wasm", .. scope .())));

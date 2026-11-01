@@ -19,6 +19,10 @@ static class BuildLayout
 	public const String cCompilerName = "Beef";
 	/// The engine's logo the web page's loading card shows, staged beside the page.
 	public const String cWebLogoName = "sedulous-logo.svg";
+	/// The licences of the third-party components a binary carries, which their notices must go
+	/// with: beside every player and editor as they build (Dependencies/THIRD-PARTY-NOTICES.txt),
+	/// and so a sidecar of every template made from one.
+	public const String cThirdPartyNotices = "THIRD-PARTY-NOTICES.txt";
 	/// The platform tag of the web build; the Beef directory says wasm32.
 	public const String cWebPlatform = "Web";
 
@@ -147,7 +151,8 @@ static class BuildLayout
 					return;
 				// serve.py and the engine's logo (the loading card's): what the build stages beside
 				// the page, which an export ships.
-				if (name.EndsWith(".js") || name.EndsWith(".wasm") || name.EndsWith(".data") || (name == "serve.py") || (name == cWebLogoName))
+				if (name.EndsWith(".js") || name.EndsWith(".wasm") || name.EndsWith(".data") || (name == "serve.py") || (name == cWebLogoName)
+					|| (name == cThirdPartyNotices))
 					outNames.Add(new String(name));
 			});
 		outNames.Sort(scope (a, b) => a <=> b);

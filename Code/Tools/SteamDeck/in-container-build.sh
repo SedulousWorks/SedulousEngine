@@ -68,6 +68,8 @@ for lib in "$PLAYER_BUILD"/*.so; do
 done
 # SDL by its soname, which is what the player asks for.
 cp -L /usr/lib/x86_64-linux-gnu/libSDL3.so.0 "$BUNDLE/"
+# The third-party notices go with every copy of the player.
+cp "$PLAYER_BUILD/THIRD-PARTY-NOTICES.txt" "$BUNDLE/"
 
 log "glibc floors (at most $MAX_GLIBC)"
 fail=0

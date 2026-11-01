@@ -67,6 +67,10 @@ static class ExportTemplates
 				outTemplate.Sidecars.RemoveAt(i);
 			}
 		}
+		// The third-party notices go with every copy of the player, a template and an export
+		// included.
+		if (FileExists(PathJoin(playerDir, BuildLayout.cThirdPartyNotices, .. scope .())))
+			outTemplate.Sidecars.Add(new String(BuildLayout.cThirdPartyNotices));
 	}
 
 	public static void DefaultRoot(String outPath) => PathJoin(GetUserDataDirectory(.. scope .()), "templates", outPath);

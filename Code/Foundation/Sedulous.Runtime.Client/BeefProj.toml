@@ -14,3 +14,31 @@ corlib = "*"
 "Sedulous.Profiler.Capture" = "*"
 "Sedulous.Runtime" = "*"
 "Sedulous.Shell" = "*"
+
+# The third-party notices (Dependencies/THIRD-PARTY-NOTICES.txt, Code/Tools/third-party-notices.py)
+# beside every executable over this project: the player, the editor, the tools. Their licences want
+# the notice with every copy, and an export template carries it from beside the player.
+
+[Configs.Debug.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.Debug.Linux64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.Release.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.Release.Linux64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.Test.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.Test.Linux64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.ShippingRelease.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+
+[Configs.ShippingRelease.Linux64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
