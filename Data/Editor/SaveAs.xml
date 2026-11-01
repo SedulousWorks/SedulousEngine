@@ -1,6 +1,6 @@
 <!--
-  Save As (Documentation/Specs/editor-gui.md, 5.1, layer 11): the new asset's name, beside the one
-  the page edits. A name empty or taken shows why under the field, the dialog kept open.
+  Save As: the new asset's name, beside the one the page edits. An empty or taken name shows why
+  under the field, and the dialog stays open.
 -->
 <Panel class="dialog-body save-as">
     <Label id="save-as-prompt" class="dialog-text"/>

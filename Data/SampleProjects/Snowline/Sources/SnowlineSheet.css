@@ -1,6 +1,6 @@
-/* Snowline's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): night blue cards,
-   slate buttons that light gold when focused, the medals' discs. Its screens are Title, Hud, Pause,
-   Finish and Ending (Snowline.as pushes them). */
+/* Snowline's look on the engine GUI, and the project's GUI sheet (guiStyleSheetIds): night blue
+   cards, slate buttons that light gold when focused, and the medals' discs. Its screens are Title,
+   Hud, Pause, Finish and Ending, which Snowline.as pushes. */
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 screen.fades:entering { animation: fade-in 0.3s ease-out; }
@@ -15,22 +15,22 @@ screen.fades:entering { animation: fade-in 0.3s ease-out; }
 .sun { color: #FFE38A; }
 .rule { height: 2px; background-color: #3A4A6A; border-radius: 1px; }
 
-/* The buttons: slate, brighter as they are hovered and pressed, edged gold when focused; a locked
-   course's card dims. */
+/* The buttons: slate, brighter as they are hovered and pressed, and edged gold when focused. A
+   locked course's card dims. */
 button.slate { color: #FFFFFF; background-color: #1C2740; border: 2px solid #5A6E96; border-radius: 10px; }
 button.slate:hover { background-color: #26345A; border: 3px solid #B8C8E8; }
 button.slate:active { background-color: #304070; border: 4px solid #FFD966; }
 button.slate:focus-visible { border: 4px solid #FFD966; }
 button.slate:disabled { background-color: #0E1424; border: 2px solid #3A4A6A; color: #6A7A9A; }
 
-/* The medals: a disc each, its colour by class (medal-none, -bronze, -silver, -gold). */
+/* The medals: a disc each, coloured by its class (medal-none, -bronze, -silver, -gold). */
 .medal { width: 26px; height: 26px; border-radius: 13px; border: 2px solid #4A5A7A; }
-.medal.large { width: 64px; height: 64px; border-radius: 32px; border: 4px solid #4A5A7A; opacity: 0; } /* until the tally reaches it */
+.medal.large { width: 64px; height: 64px; border-radius: 32px; border: 4px solid #4A5A7A; opacity: 0; } /* Hidden until the tally reaches it. */
 .medal-bronze { background-color: #C27A3E; border-color: #E8A56A; }
 .medal-silver { background-color: #AEB8C6; border-color: #E4EAF2; }
 .medal-gold { background-color: #E2A81E; border-color: #FFE07A; }
 
-/* The controls: a row per action, its key and its pad button. */
+/* The controls: a row per action, with its key and its pad button. */
 .controls { flex-direction: column; align-items: center; gap: 4px; }
 .controls-row { flex-direction: row; align-items: center; width: 480px; }
 .controls-action { width: 240px; font-size: 15px; color: #B8C8E8; }
@@ -38,7 +38,7 @@ button.slate:disabled { background-color: #0E1424; border: 2px solid #3A4A6A; co
 .controls-pad { width: 120px; font-size: 16px; color: #FFE38A; }
 .controls-head { font-size: 13px; color: #8FA3C8; }
 
-/* The title: a card per course, its picture over its name and its best. */
+/* The title: a card per course, with its picture over its name and its best. */
 .title-card { padding: 24px; gap: 6px; }
 .title-name { font-size: 72px; color: #FFFFFF; }
 .title-lead { font-size: 20px; color: #B8C8E8; margin-bottom: 16px; }
@@ -52,8 +52,9 @@ button.course:disabled .course-name { color: #6A7A9A; }
 button.quit { width: 200px; height: 40px; font-size: 20px; margin-top: 12px; }
 .title-hint { font-size: 15px; color: #8FA3C8; margin-top: 8px; }
 
-/* The HUD: the clock top left, a landed trick in the middle, the gates and gems top right, the
-   controls along the foot for a moment. It takes no pointer: the run is ridden beneath it. */
+/* The HUD: the clock top left, a landed trick in the middle, the gates and gems top right, and
+   the controls along the foot for a moment. It takes no pointer input, since the run is ridden
+   beneath it. */
 .hud { flex-grow: 1; flex-direction: column; justify-content: space-between; padding: 18px; pointer-events: none; }
 .hud-top { flex-direction: row; justify-content: space-between; align-items: start; }
 .hud-left { flex-direction: column; align-items: start; gap: 4px; }
@@ -61,11 +62,11 @@ button.quit { width: 200px; height: 40px; font-size: 20px; margin-top: 12px; }
 .hud-right { flex-direction: column; align-items: end; gap: 8px; }
 .hud-card { flex-direction: row; align-items: center; gap: 8px; padding: 10px; background-color: rgba(16, 24, 42, 0.69); border-radius: 10px; }
 .hud-time { font-size: 30px; color: #FFFFFF; }
-.hud-penalty { font-size: 24px; color: #FF5A4A; opacity: 0; } /* these three until there is one */
+.hud-penalty { font-size: 24px; color: #FF5A4A; opacity: 0; } /* Hidden until there is a penalty to show. */
 .hud-avalanche-card { background-color: rgba(90, 26, 26, 0.75); }
 .hud-avalanche-name { font-size: 18px; color: #FFC8C0; }
 .hud-avalanche { font-size: 26px; color: #FFFFFF; }
-.hud-avalanche.close { color: #FF7366; } /* under 15 m */
+.hud-avalanche.close { color: #FF7366; } /* When the avalanche is under 15 m behind. */
 .hud-trick { font-size: 30px; color: #FFE38A; opacity: 0; }
 .hud-combo { font-size: 22px; color: #FFFFFF; opacity: 0; }
 .hud-name { font-size: 18px; }

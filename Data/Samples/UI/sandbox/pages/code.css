@@ -1,4 +1,5 @@
-/* The Code page's look: the editors in the sandbox's monospaced face, the status under the script. */
+/* The Code page's look: the editors use the sandbox's monospaced face, and the status sits under
+   the script. */
 .code-editor { width: 590px; font-family: DejaVu; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; }
 .code-editor.script { height: 380px; }
 .code-editor.shader { height: 300px; }

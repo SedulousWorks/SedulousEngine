@@ -1,11 +1,11 @@
 <!--
-  The input map page, design A: one outline (the old page's outline, on the kit). The whole map in
-  one column: each set a section (its name, priority and actions counted in its header, Add Action
-  and its menu at its end), each action a header of its own (its name and kind) over its rows: its
-  kind and interaction, its bindings as the grid's list (each binding a group: its source and the
-  key capture, then its settings), then its processing. Sets and actions are added from their
-  headers and renamed in place; a binding is captured by pressing the input on its key capture.
-  The same map as design B's (input-split.xml), to compare.
+  The input map page, design A: one outline (the old page's outline, built on the kit). The whole
+  map is in one column: each set is a section (its header holds its name, priority and action
+  count, with Add Action and its menu at the end), and each action is a header of its own (its name
+  and kind) over its rows: its kind and interaction, its bindings as the grid's list (each binding a
+  group: its source and the key capture, then its settings), then its processing. Sets and actions
+  are added from their headers and renamed in place; a binding is captured by pressing the input on
+  its key capture. It shows the same map as design B (input-split.xml), to compare.
 -->
 <Panel class="page input-page mock">
     <ToolBar class="page-toolbar">

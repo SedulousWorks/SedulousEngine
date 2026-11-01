@@ -1,6 +1,7 @@
 <!-- A level's intro (PlatformerGame.as): its number and name on a cloud that drops in from above
-     once the fade clears, until Jump starts play. Over the frozen level, taking none of its input.
-     Styled by SkyHopperSheet.css. Back (Escape, East) is the game's own Pause action. -->
+     once the fade clears, and stays until Jump starts play. It lies over the frozen level and takes
+     none of its input. Styled by SkyHopperSheet.css. The screen stack's back (Escape, East) is off
+     here: the game's own Pause action (PlatformerGame.as) takes its place. -->
 <Screen blocks="false" back="none">
   <Panel class="centre">
     <Panel id="intro-card" class="cloud intro-card">

@@ -1,8 +1,7 @@
 <!--
-  Create Asset (Documentation/Specs/editor-gui.md, 5.2, layer 5; 5.6, gap 21): the groups a tree
-  (the one a new asset goes in chosen, a click choosing another, as the old dialog had them) over
-  its name, checked as it is typed: the line under the name says why Create waits, or what it will
-  make.
+  Create Asset: the groups as a tree (the group a new asset goes in is chosen, and a click chooses
+  another) over its name, which is checked as it is typed. The line under the name says why Create
+  waits, or what it will make.
 -->
 <Panel class="dialog-body asset-create">
     <Panel class="form">

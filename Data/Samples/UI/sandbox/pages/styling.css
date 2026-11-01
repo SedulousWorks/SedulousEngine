@@ -14,7 +14,7 @@
 .tf-skew { transform: skew(-12deg, 0deg); }
 .tf-origin { transform-origin: 0% 100%; transform: rotate(6deg); }
 
-/* Selectors, inheritance and parts (E3). */
+/* Selectors, inheritance and parts. */
 .pick-row { width: 590px; padding-top: 8px; }
 .zebra { width: 140px; padding: 6px 0; background-color: var(--shell-surface-2); border-radius: 10; font-family: Roboto; font-size: 14px; color: var(--ink); }
 .zebra > label { height: 26px; padding: 0 12px; vertical-align: middle; }

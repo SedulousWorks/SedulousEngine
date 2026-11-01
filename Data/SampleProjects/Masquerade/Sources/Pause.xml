@@ -1,5 +1,6 @@
-<!-- The pause menu over a round that holds still (Masquerade.as), the ball dimmed and blurred behind it. Styled by MasqueradeSheet.css. Back (Escape, East) is the game's own
-     Pause action (Masquerade.as), not the screen stack's. -->
+<!-- The pause menu, over a round that holds still (Masquerade.as), with the ball dimmed and blurred
+     behind it. Styled by MasqueradeSheet.css. The screen stack's back (Escape, East) is off here:
+     the game's own Pause action (Masquerade.as) takes its place. -->
 <Screen class="dimmed" nav-default="resume-btn" back="none">
   <Panel class="centre">
     <Panel class="card pause-card">

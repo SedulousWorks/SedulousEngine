@@ -1,12 +1,12 @@
 <!--
-  The preview pages (Raptor's editor-gui spec, 5.4, layers 3 and 4): the mesh viewer, the
-  collision shape, the material and the settings profile, one shape. The kit's bar (Save, Undo,
-  Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; the page's own
-  after them; its kind at the end) over the 3D preview beside the grid. The preview has its own bar: Frame, then the preview's own choices
+  The preview pages: the mesh viewer, the collision shape, the material and the settings profile,
+  all one shape. The kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each
+  an action over the page; the page's own after them; and the asset's kind at the end) sits over the
+  3D preview beside the grid. The preview has its own bar: Frame, then the preview's own choices
   (what it shows the asset on: a material, a level of detail, a shape), and the camera's controls
-  named, as no preview said them before. A preview with nothing to show says why; an asset that did
-  not read says so in place of the grid.
-  Code puts the viewport in its stage, the page's choices after `preview-own`, and fills the grid.
+  named. A preview with nothing to show says why; an asset that did not read says so in place of the
+  grid. Code puts the viewport in its stage and the page's choices after `preview-own`, and fills
+  the grid.
 -->
 <Panel class="page preview-page">
     <ToolBar id="page-bar" class="page-toolbar">

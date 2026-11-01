@@ -1,6 +1,6 @@
-<!-- A failed block (PaperKidGame.as): why, the lives left, and try again or the title. Styled by
-     PaperKidSheet.css. Back (Escape, East) is the game's own Pause
-     action (PaperKidGame.as), not the screen stack's. -->
+<!-- A failed block (PaperKidGame.as): why it failed, the lives left, and a choice of trying again
+     or going to the title. Styled by PaperKidSheet.css. The screen stack's back (Escape, East) is
+     off here: the game's own Pause action (PaperKidGame.as) takes its place. -->
 <Screen class="fades" nav-default="retry-btn" back="none">
   <Panel class="dim">
     <Panel class="card card-bad result-card">

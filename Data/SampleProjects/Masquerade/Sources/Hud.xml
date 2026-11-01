@@ -1,9 +1,10 @@
-<!-- The HUD (Masquerade.as fills it from the round, Ball.as): whom you hunt (their costume's portrait,
-     which guests share, and its name in its colour); the time left over a bar of it; your points
-     (each change floating beside them) and your place; a word in the middle for a moment (a tag, a
-     miss, a flare); the time left and your place; the main controls' prompts for a few seconds as a round starts.
-     Over the round, taking none of its input. Styled by MasqueradeSheet.css. Back (Escape, East) is the game's own
-     Pause action (Masquerade.as), not the screen stack's. -->
+<!-- The HUD, which Masquerade.as fills from the round (Ball.as). Top left is whom you hunt: their
+     costume's portrait (which guests share too) and its name in its colour. In the middle are the
+     time left over a bar of it, and a word for a moment (a tag, a miss, a flare). Top right are
+     your points, with each change floating beside them, and your place. The main controls' prompts
+     show for a few seconds as a round starts. The HUD lies over the round and takes none of its
+     input. Styled by MasqueradeSheet.css. The screen stack's back (Escape, East) is off here: the
+     game's own Pause action (Masquerade.as) takes its place. -->
 <Screen blocks="false" back="none">
   <Panel class="hud">
     <Panel class="hud-top">

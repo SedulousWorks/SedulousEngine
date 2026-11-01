@@ -1,6 +1,7 @@
-<!-- The win (PlatformerGame.as): the run's coins, falls and time, its final score and stars, the
-     best run, on a cloud edged in gold. Styled by SkyHopperSheet.css. Back (Escape, East) is the
-     game's own Pause action, not the screen stack's. -->
+<!-- The win (PlatformerGame.as): the run's coins, falls and time, its final score and stars, and
+     the best run, on a cloud edged in gold. Styled by SkyHopperSheet.css. The screen stack's back
+     (Escape, East) is off here: the game's own Pause action (PlatformerGame.as) takes its place.
+     -->
 <Screen class="fades" nav-default="victory-title-btn" back="none">
   <Panel class="veil heavy">
     <Panel class="cloud gold card end-card">

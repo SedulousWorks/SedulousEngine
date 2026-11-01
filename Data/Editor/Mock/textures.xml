@@ -1,8 +1,8 @@
 <!--
-  The render textures picker (ruling 21): the graph's textures of the last frame, the picker's, under
-  their passes and searched, where they had been one long menu. A row is a texture, its size and
-  format beside it; a depth texture shows as distance. Picking one shows it in the view and the
-  shading chip names it. The mock's rows are a frame's of the default renderer.
+  The render textures picker: the graph's textures from the last frame, in a picker, grouped under
+  their passes and searchable, where they had been one long menu. A row is a texture, with its size
+  and format beside it; a depth texture shows as distance. Picking one shows it in the view, and
+  the shading chip names it. The mock's rows are a frame of the default renderer.
 -->
 <Panel class="dialog picker texture-picker">
     <Panel class="picker-search">

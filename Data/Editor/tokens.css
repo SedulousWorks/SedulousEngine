@@ -1,11 +1,11 @@
 /*
-  The editor's design tokens (Documentation/Specs/editor-gui.md, 3.1), in three layers:
+  The editor's design tokens, in three layers:
 
   1. Inputs: the few a user sets in Preferences. The editor writes its own `:root` block of them
      after this sheet (the accent, the radius); the defaults are here. The density is a sheet of
      its own (density-*.css), its sizes in whole pixels, which the editor adds after this one.
   2. Semantic tokens, derived from the inputs: surfaces, elements, text and icons, status, regions,
-     metrics, motion. Dark by default; the light block under prefers-color-scheme sets the same
+     metrics, motion. Dark is the default; the light block under prefers-color-scheme sets the same
      names. Nothing below the editor reads a colour literal: only these.
   3. The GUI's own tokens (the widgets', the satellites'), set from the semantic ones, so the core
      widgets, docking, the toolkit and the code editor follow with no rules of their own.
@@ -13,11 +13,11 @@
   Contrast notes are WCAG ratios against the surface the pair sits on.
 */
 
-@import "Editor/density-compact.css"; /* the spacing and sizes: compact by default (ruling) */
+@import "Editor/density-compact.css"; /* the spacing and sizes: compact by default */
 
 /* === 1. Inputs === */
 :root {
-    --accent-input: #2f6fdf;   /* azure (ruling): the fill behind on-accent text: buttons, menu highlight, checks */
+    --accent-input: #2f6fdf;   /* azure: the fill behind on-accent text (buttons, the menu highlight, checks) */
     --radius-input: 5px;
     --ui-font: "Inter";
     --mono-font: "JetBrains Mono";
@@ -41,7 +41,7 @@
     --element-disabled: #23262c;
     --ghost-hover: rgba(255, 255, 255, 0.07);
     --ghost-active: rgba(255, 255, 255, 0.12);
-    /* An element on a dialog or a popup (--surface-overlay): a step lighter, as --element is
+    /* An element on a dialog or a popup (--surface-overlay): a step lighter, since --element is
        nearly the overlay's own colour and a neutral button there read as text. */
     --element-on-overlay: #383d47;
     --element-on-overlay-hover: #434956;
@@ -62,7 +62,7 @@
     --icon-dim: #858c98;
 
     /* The accent: the input as the fill, a lighter tone for strokes, text and icons on dark, and
-       a quiet tone for selection behind normal text. */
+       a quiet tone for the selection behind normal text. */
     --accent-fill: var(--accent-input);
     --accent-fill-hover: color-mix(in srgb, var(--accent-input) 88%, white);
     --accent-strong: color-mix(in srgb, var(--accent-input) 62%, white);
@@ -191,7 +191,7 @@
     --easing-out: ease-out-quint;
 }
 
-/* Less motion: every duration nothing, so every transition and animation lands at once. */
+/* Reduced motion: every duration is zero, so every transition and animation lands at once. */
 @media (prefers-reduced-motion: reduce) {
     :root {
         --motion-instant: 0s;
@@ -321,7 +321,7 @@
     --propertygrid-popup: var(--surface-overlay);
     --timeline-playhead: var(--accent-strong);
     --timeline-marker: var(--warning);           /* a clip's events on the ruler */
-    --timeline-marker-chosen: var(--text-strong); /* apart from the playhead's accent */
+    --timeline-marker-chosen: var(--text-strong); /* set apart from the playhead's accent */
     --curveview-background: var(--surface-sunken);
     --curveview-grid: var(--separator);
     --curveview-selected: var(--accent-strong);

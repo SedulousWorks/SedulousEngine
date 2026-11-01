@@ -33,8 +33,9 @@
              border-radius: var(--radius-small); }
 .type-cell:hover { background-color: var(--ghost-hover); }
 .type-name { font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
-/* The input map page's two designs (input-outline.xml, input-split.xml): the grid's look, the sheet
-   filling the page; an action's rows and a binding's settings indented under their headers. */
+/* The input map page's two designs (input-outline.xml, input-split.xml): the grid's look, with the
+   sheet filling the page, and an action's rows and a binding's settings indented under their
+   headers. */
 .input-page { flex-direction: column; background-color: var(--surface); }
 .input-outline { padding: var(--space-m); }
 .input-sheet { align-self: stretch; }

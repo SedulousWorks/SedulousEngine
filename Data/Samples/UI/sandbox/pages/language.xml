@@ -1,9 +1,9 @@
 <!--
-  Language and direction (E9e of Documentation/Specs/gui-lab-evolution.md): every text a key in
-  i18n/sandbox.strings.xml (English and Arabic), resolved through the GUI's localization. The
-  language buttons switch it (Pseudo English is English pseudolocalized), and Arabic turns the GUI
-  right to left; the direction buttons set this page's own. A plural from the GUI's data, a form
-  that mirrors, and mixed-direction text with a field to edit it in.
+  Language and direction: every text is a key in i18n/sandbox.strings.xml (English and Arabic),
+  resolved through the GUI's localization. The language buttons switch the language (Pseudo English
+  is English pseudolocalized), and Arabic turns the GUI right to left; the direction buttons set
+  this page's own direction. The page also shows a plural from the GUI's data, a form that mirrors,
+  and mixed-direction text with a field to edit it in.
 -->
 <Panel id="page-language" class="page" gap="18">
     <Label class="page-title" text="@lang.title"/>

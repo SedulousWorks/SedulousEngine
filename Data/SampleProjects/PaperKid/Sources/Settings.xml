@@ -1,6 +1,6 @@
-<!-- The settings (PaperKidGame.as): a volume per audio bus, and Back to whichever screen opened it.
-     Styled by PaperKidSheet.css. Back (Escape, East) is the game's own Pause
-     action (PaperKidGame.as), not the screen stack's. -->
+<!-- The settings (PaperKidGame.as): a volume per audio bus, and Back to whichever screen opened
+     them. Styled by PaperKidSheet.css. The screen stack's back (Escape, East) is off here: the
+     game's own Pause action (PaperKidGame.as) takes its place. -->
 <Screen class="fades" nav-default="master-slider" back="none">
   <Panel class="dim">
     <Panel class="card result-card">

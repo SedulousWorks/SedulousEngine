@@ -1,12 +1,11 @@
 <!--
-  The image pages (Raptor's editor-gui spec, 5.4, layer 2): Texture, Image, Heightfield and Fonts,
-  one shape. The kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an
-  action over the page; the page's own after them; its kind at the end) over the picture beside the
-  grid. The picture has its own bar: Fit, 1:1 and the zoom, the channel shown, and the pixel under
-  the pointer. A picture that is not there says why; an asset that did not read says so in place of
-  the grid.
+  The image pages: Texture, Image, Heightfield and Fonts, all one shape. The kit's bar (Save, Undo,
+  Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; the page's own
+  after them; and the asset's kind at the end) sits over the picture beside the grid. The picture
+  has its own bar: Fit, 1:1 and the zoom, the channel shown, and the pixel under the pointer. A
+  picture that is not there says why; an asset that did not read says so in place of the grid.
   Code puts the picture in its stage and fills the grid: the asset's properties, then what the page
-  says of its source, read only.
+  reads from its source, read only.
 -->
 <Panel class="page image-page">
     <ToolBar id="page-bar" class="page-toolbar">

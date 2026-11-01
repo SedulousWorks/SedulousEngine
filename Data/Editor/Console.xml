@@ -1,7 +1,7 @@
 <!--
-  The Console (Documentation/Specs/editor-gui.md, 5.2, layer 1): the editor's log. Its levels as
-  chips that show or hide their lines (Debug holds the trace lines too), a search, Clear,
-  then the lines; code fills the list and the chips' counts.
+  The Console: the editor's log. Its levels are chips that show or hide their lines (Debug holds the
+  trace lines too), then come a search, Clear and the lines; code fills the list and the chips'
+  counts.
 -->
 <Panel class="panel console">
     <Panel class="panel-toolbar">

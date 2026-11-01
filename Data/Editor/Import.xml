@@ -1,8 +1,8 @@
 <!--
-  Import (Documentation/Specs/editor-gui.md, 5.2, layer 7): one window for one file or many. Where
-  they go (a click picks another group); the files, when there are several, each kept or not with
-  its state; the chosen file's importer, options and what it would create, each kept or not and
-  named; the line saying what Import does or why it waits. Code fills the files and the detail.
+  Import: one window for one file or many. It shows where they go (a click picks another group);
+  the files, when there are several, each kept or not, with its state; the chosen file's importer,
+  its options and what it would create, each kept or not and named; and the line saying what Import
+  does or why it waits. Code fills the files and the detail.
 -->
 <Panel class="dialog-body import">
     <Panel class="form import-into">

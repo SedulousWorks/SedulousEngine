@@ -1,9 +1,9 @@
 <!--
-  The Profiler page (X7 of Documentation/Specs/editor-gui.md), a tab in the page area: its bar
-  (record, follow the newest, open and save a capture, what it shows, the budget, stop on a
-  spike), the frame strip with the counters under it on the same frames, the frames chosen's
-  timeline across the full width, and under it the scope table beside the chosen scope's detail.
-  Code gives the views their focus and adds a plot per counter.
+  The Profiler page, a tab in the page area: its bar (record, follow the newest frame, open, clear
+  and save a capture, what it shows, the budget, stop on a spike), the frame strip with the counters
+  under it on the same frames, the chosen frames' timeline across the full width, and under it the
+  scope table beside the chosen scope's detail. Code gives the views their focus and adds a plot per
+  counter.
 -->
 <Panel class="page profiler-page">
     <ToolBar class="page-toolbar">

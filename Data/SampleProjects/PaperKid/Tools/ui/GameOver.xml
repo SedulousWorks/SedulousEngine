@@ -1,6 +1,6 @@
-<!-- The end of a run (PaperKidGame.as): won or lost, the score and how far it got. Styled by
-     PaperKidSheet.css. Back (Escape, East) is the game's own Pause
-     action (PaperKidGame.as), not the screen stack's. -->
+<!-- The end of a run (PaperKidGame.as): whether it was won or lost, the score, and how far it got.
+     Styled by PaperKidSheet.css. The screen stack's back (Escape, East) is off here: the game's own
+     Pause action (PaperKidGame.as) takes its place. -->
 <Screen class="fades" nav-default="again-btn" back="none">
   <Panel class="dim heavy">
     <Panel class="card result-card">

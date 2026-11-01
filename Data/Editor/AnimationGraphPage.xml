@@ -1,14 +1,15 @@
 <!--
-  The animation graph page (Raptor's editor-gui spec, 5.4, layer 10, part 5): the kit's bar
-  (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its
-  kind at the end) over three panes. The graph's layers and parameters as lists, each with its bar
-  (Add, Remove; a parameter added by its type). The chosen layer's states and transitions on the
-  graph view (a state added from its menu, a transition dragged from a state's edge), the preview
-  under it with the kit's transport, the state it plays lit on the graph and named beside the
-  transport, and the preview's own choices (the skeleton and mesh it plays on, kept per graph). The
-  grid shows what is chosen (a layer, a parameter, a state or a transition), and the preview's
-  parameters, whose values are the page's alone, never the graph's. An asset that did not read says
-  so in place of the grid. Code puts the viewport in its stage and fills the lists and the grid.
+  The animation graph page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this
+  asset, each an action over the page, with the asset's kind at the end) over three panes. The
+  graph's layers and parameters are lists, each with its own bar (Add and Remove; a parameter is
+  added by its type). The chosen layer's states and transitions are on the graph view (a state is
+  added from its menu, a transition dragged from a state's edge), with the preview under it. The
+  preview has the kit's transport and Travel; the state it plays is highlighted on the graph and
+  named beside the transport, and its own choices (the skeleton and mesh it plays on) are kept per
+  graph. The grid shows what is chosen (a layer, a parameter, a state or a transition) and the
+  preview's parameters, whose values belong to the page alone, never to the graph. An asset that
+  did not read says so in place of the grid. Code puts the viewport in its stage and fills the
+  lists and the grid.
 -->
 <Panel class="page preview-page graph-page">
     <ToolBar id="page-bar" class="page-toolbar">

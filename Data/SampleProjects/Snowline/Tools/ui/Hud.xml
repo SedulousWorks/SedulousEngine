@@ -1,9 +1,9 @@
-<!-- The HUD (Snowline.as fills it from the run): the clock (penalties included), the flash of a
-     missed gate's penalty and how far behind the avalanche is (Ridge) top left; a landed trick with
-     its points, and the combo, in the middle; the gates passed and the gems taken top right; the
-     controls along the foot for a few seconds as a run starts. Over the run, taking none of its
-     input. Styled by SnowlineSheet.css. Back (Escape, East) is the game's own
-     Pause action (Snowline.as), not the screen stack's. -->
+<!-- The HUD, which Snowline.as fills from the run. Top left are the clock (penalties included), the
+     flash of a missed gate's penalty, and how far behind the avalanche is (on Ridge). In the middle
+     are a landed trick with its points, and the combo. Top right are the gates passed and the gems
+     taken. The controls show along the foot for a few seconds as a run starts. The HUD lies over
+     the run and takes none of its input. Styled by SnowlineSheet.css. The screen stack's back
+     (Escape, East) is off here: the game's own Pause action (Snowline.as) takes its place. -->
 <Screen blocks="false" back="none">
   <Panel class="hud">
     <Panel class="hud-top">

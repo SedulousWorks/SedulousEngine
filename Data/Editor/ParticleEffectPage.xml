@@ -1,15 +1,15 @@
 <!--
-  The particle effect page (Raptor's editor-gui spec, 5.4, layer 8): the kit's bar (Save,
-  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its kind
-  at the end) over three panes. The effect's systems as a tree, each its emitter, initializers,
-  behaviors and sub-emitters; the tree's bar adds a system and removes the chosen system, module
-  or sub-emitter. The live preview with its own bar: Frame, the kit's transport (Restart, Play, Stop, each an action over the page,
-  Play showing Pause while it plays), the particles alive, and the preview's speed, which is the
-  page's alone and not saved; the chosen system's emission shape is drawn over it. The grid shows
-  the chosen system: its options, its emitter, its initializers and behaviors as lists (an add
-  chooses the module's type) and its sub-emitters, a module or a sub-emitter chosen in the tree
-  opening there. An asset that did not read says so in place of the grid.
-  Code puts the viewport in its stage and fills the tree and the grid.
+  The particle effect page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this
+  asset, each an action over the page, with the asset's kind at the end) over three panes. The
+  effect's systems are a tree, each with its emitter, initializers, behaviors and sub-emitters; the
+  tree's bar adds a system and removes the chosen system, module or sub-emitter. The live preview
+  has its own bar: Frame, the kit's transport (Restart, Play and Stop, each an action over the page,
+  with Play showing Pause while it plays), the count of particles alive, and the preview's speed,
+  which belongs to the page alone and is not saved; the chosen system's emission shape is drawn
+  over it. The grid shows the chosen system: its options, its emitter, its initializers and
+  behaviors as lists (an add chooses the module's type) and its sub-emitters; a module or a
+  sub-emitter chosen in the tree opens there. An asset that did not read says so in place of the
+  grid. Code puts the viewport in its stage and fills the tree and the grid.
 -->
 <Panel class="page preview-page particle-page">
     <ToolBar id="page-bar" class="page-toolbar">

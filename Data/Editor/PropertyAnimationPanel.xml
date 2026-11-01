@@ -1,15 +1,16 @@
 <!--
-  The property animation panel (Raptor's editor-gui spec, 5.4, layer 9): under the scene
-  page's viewport, a clip of its own, not the scene. Its bar: the clip (New, Open, Save, its own
-  Undo and Redo), the entity it animates (named, Use Selected binds the
-  scene's selection, Pick one from the scene's entities), the tracks (Add Track offers the entity's animatable properties, Key keys the
-  chosen tracks with what the entity shows at the playhead, Remove takes the chosen tracks away),
-  the kit's transport over the preview (Restart, Play showing Pause while it plays, Stop, Loop),
-  Frame (the curves shown) and the clip's length; at its end the clip's name and its unsaved mark,
-  which grow into the space before them so no button moves, and Close. Under it the ruler, the dopesheet and the curve view on one time axis, the
-  curve view showing the chosen tracks' curves. With no clip, a state says so in their place.
-  While the panel holds the focus its keys are its own (Ctrl+Z, Ctrl+Y, Ctrl+S act on the clip);
-  the rest go on to the scene page. Code fills the names and wires the parts.
+  The property animation panel: under the scene page's viewport, it edits a clip of its own, not the
+  scene. Its bar holds the clip (New, Open, Save, and its own Undo and Redo); the entity it animates
+  (named; Use Selected binds the scene's selection, and Pick chooses one from the scene's entities);
+  the tracks (Add Track offers the entity's animatable properties, Key keys the chosen tracks with
+  what the entity shows at the playhead, and Remove takes the chosen tracks away); the kit's
+  transport over the preview (Restart, Play showing Pause while it plays, Stop, Loop); Frame (on
+  the curves shown) and the clip's length; and at its end the clip's name and its unsaved mark,
+  which grow into the space before them so no button moves, and Close. Under it are the ruler, the
+  dopesheet and the curve view on one time axis, the curve view showing the chosen tracks' curves.
+  With no clip, a state says so in their place. While the panel holds the focus its keys are its
+  own (Ctrl+Z, Ctrl+Y and Ctrl+S act on the clip); the rest go on to the scene page. Code fills the
+  names and wires the parts.
 -->
 <Panel class="anim-panel">
     <ToolBar id="anim-bar" class="panel-toolbar anim-bar">

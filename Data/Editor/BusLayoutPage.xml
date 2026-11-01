@@ -1,10 +1,10 @@
 <!--
-  The audio bus layout page (Raptor's editor-gui spec, 5.4, layer 5): the kit's bar (Save,
-  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its kind at
-  the end) over the buses' tree beside the grid. The tree has its own bar: Add a bus (under Master,
-  in the first free slot) and Remove the chosen one (a custom bus; its children move to Master). The
-  grid shows the chosen bus: its name and parent (a custom bus's), then its mix, its filters, its
-  delay and its reverb. An asset that did not read says so in place of the grid.
+  The audio bus layout page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this
+  asset, each an action over the page, with the asset's kind at the end) over the buses' tree beside
+  the grid. The tree has its own bar: Add a bus (under Master, in the first free slot) and Remove
+  the chosen one (a custom bus; its children move to Master). The grid shows the chosen bus: its
+  name and parent (for a custom bus), then its mix, its filters, its delay and its reverb. An asset
+  that did not read says so in place of the grid.
 -->
 <Panel class="page bus-page">
     <ToolBar id="page-bar" class="page-toolbar">

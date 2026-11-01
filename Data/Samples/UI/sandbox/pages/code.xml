@@ -1,5 +1,5 @@
-<!-- The Code page (C8 of Specs/gui-lab-evolution-3.md): GUI.Code's editor as a host uses it. The
-     host (GUISandbox's CodePage) fills both editors, checks the script and serves completion. -->
+<!-- The Code page: GUI.Code's editor as a host uses it. The host (GUISandbox's CodePage) fills
+     both editors, checks the script and serves completion. -->
 <Panel id="page-code" class="page" gap="18">
     <Label class="page-title" text="Code"/>
     <Label class="page-lead" white-space="normal"

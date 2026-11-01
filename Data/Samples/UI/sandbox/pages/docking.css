@@ -6,5 +6,5 @@
 .docking-keys { width: 590px; font-family: Roboto; font-size: 13px; color: var(--muted); }
 .dock-content { padding: 10px; gap: 6px; }
 .dock-content label { font-family: Roboto; font-size: 13px; white-space: normal; }
-tabview.dock-stack > tabbar { font-family: Roboto; font-size: 13px; } /* its tabs and its tab list share it */
+tabview.dock-stack > tabbar { font-family: Roboto; font-size: 13px; } /* Its tabs and its tab list share this font. */
 .docking-buttons { width: 590px; flex-wrap: wrap; }

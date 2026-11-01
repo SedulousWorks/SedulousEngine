@@ -1,9 +1,9 @@
 <!--
-  The asset picker (Raptor's editor-gui spec, ruling 24): an asset slot's pick, shaped as
-  the assets browser. The search and the tiles or list toggles; the project's groups a tree at the
-  left (Favourites and All first); what the chosen group holds at the right, under a line saying
-  where and how many; the state when there is nothing to show; the foot's hint. Its close at the
-  bar's end keeps the value, as Esc does; a slot's own clear sets it to nothing. Code fills it.
+  The asset picker: an asset slot's pick, shaped as the assets browser is. It has the search and the
+  tiles or list toggles; the project's groups as a tree at the left (Favourites and All first); what
+  the chosen group holds at the right, under a line saying where and how many; a state for when
+  there is nothing to show; and the foot's hint. Its close button at the bar's end keeps the value,
+  as Esc does; a slot's own clear sets it to nothing. Code fills it.
 -->
 <Panel class="dialog picker asset-picker">
     <Panel class="picker-search asset-picker-bar">

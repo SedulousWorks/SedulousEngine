@@ -1,9 +1,8 @@
 <!--
-  The Project panel with a project open (Documentation/Specs/editor-gui.md, 5.1, layer 13): the
-  project's picture, name, engine and folder; Start (open the default scene, the Game menu's
-  actions, every scene); Project (every setting by category, an asset a link that opens it, then
-  the Project menu's actions). Code fills each part by id from the project, its settings'
-  reflection and the action registry.
+  The Project panel with a project open: the project's picture, name, engine and folder; Start
+  (open the default scene, the Game menu's actions, every scene); and Project (every setting by
+  category, with an asset shown as a link that opens it, then the Project menu's actions). Code
+  fills each part by id from the project, its settings' reflection and the action registry.
 -->
 <ScrollView class="home-scroll">
     <Panel class="home">

@@ -1,8 +1,8 @@
 <!--
-  The generic asset page (Raptor's editor-gui spec, 5.4, layer 1): the fallback for an asset with no
-  page of its own, its saved fields on the property grid. Its bar is the kit's (Save, Undo, Redo,
-  Discard Changes, each an action over the page), its type named at the end; a search over the rows
-  above them. An asset that did not read says so in place of the rows.
+  The generic asset page: the fallback for an asset with no page of its own, showing its saved
+  fields on the property grid. Its bar is the kit's (Save, Undo, Redo, Discard Changes, each an
+  action over the page), with its type named at the end, and a search over the rows sits above
+  them. An asset that did not read says so in place of the rows.
   Code binds the bar to the actions and fills the grid from the asset's fields.
 -->
 <Panel class="page asset-form-page">

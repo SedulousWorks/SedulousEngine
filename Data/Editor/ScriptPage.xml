@@ -1,11 +1,10 @@
 <!--
-  The script page (Raptor's editor-gui spec, 5.4, layer 6, part 3): the kit's bar (Save,
-  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; then the
-  page's own: the API browser opened and closed; its kind at the end) over the code and its problems,
-  one above the other, beside the API browser (its search over the language's bound API as a tree)
-  when it is open. The code is coloured by the script's language, checked a moment after each edit;
-  its gutter takes breakpoints, shared with the Game tabs. An asset that did not read says so in
-  place of the code.
+  The script page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset,
+  each an action over the page; then the page's own, which opens and closes the API browser; and the
+  asset's kind at the end) over the code and its problems, one above the other, beside the API
+  browser (its search over the language's bound API as a tree) when it is open. The code is
+  coloured by the script's language and checked a moment after each edit; its gutter takes
+  breakpoints, shared with the Game tabs. An asset that did not read says so in place of the code.
 -->
 <Panel class="page code-page script-page">
     <ToolBar id="page-bar" class="page-toolbar">

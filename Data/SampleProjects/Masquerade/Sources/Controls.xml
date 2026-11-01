@@ -1,7 +1,8 @@
-<!-- The controls (Masquerade.as), from the title and from the pause menu: each action and the control
-     that does it, as prompts read from the project's input map, so they show the pad's buttons while
-     a pad plays and the keys otherwise, and follow a rebinding. Back, Escape or Start closes it (the
-     game's own Pause action, not the screen stack's back). Styled by MasqueradeSheet.css. -->
+<!-- The controls page (Masquerade.as), opened from the title and from the pause menu. It lists each
+     action and the control that does it, as prompts read from the project's input map, so they show
+     the pad's buttons while a pad is in use and the keys otherwise, and they follow a rebinding.
+     Back, Escape or Start closes it; that is the game's own Pause action, not the screen stack's
+     back. Styled by MasqueradeSheet.css. -->
 <Screen class="fades" covers="true" nav-default="controls-back" back="none">
   <Panel class="centre">
     <Panel class="card controls-card">

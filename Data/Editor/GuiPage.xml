@@ -1,12 +1,12 @@
 <!--
-  The GUI document and sheet page (Raptor's editor-gui spec, 5.4, layer 6, part 5): the
-  kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the
-  page; a sheet's page then its own: the preview over a document's markup; its kind at the end) over
-  the code and its problems, one above the other, beside the preview the game's GUI draws (its fonts,
-  theme and sheets). A sheet is previewed over markup of the page's own, edited above the preview
-  and kept for the sheet in the project's editor settings, never in the asset. While the code does
-  not build the preview keeps the last that did, and says so. An asset that did not read says so in
-  place of the code.
+  The GUI document and sheet page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and
+  Rebuild this asset, each an action over the page; then the page's own, the preview over a
+  document's markup for a sheet; and the asset's kind at the end) over the code and its problems,
+  one above the other, beside the preview drawn by the game's GUI (its fonts, theme and sheets). A
+  sheet is previewed over markup of the page's own, edited above the preview and kept for the sheet
+  in the project's editor settings, never in the asset. While the code does not build, the preview
+  keeps the last version that did, and says so. An asset that did not read says so in place of the
+  code.
 -->
 <Panel class="page code-page gui-page">
     <ToolBar id="page-bar" class="page-toolbar">

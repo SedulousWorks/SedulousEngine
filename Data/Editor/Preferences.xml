@@ -1,8 +1,7 @@
 <!--
-  Preferences (Documentation/Specs/editor-gui.md, 5.1, layer 12): the user's own settings, a tab per
-  category. Appearance previews as it changes; Save keeps it, Cancel (or closing) puts it back.
-  The accents' segments, the preview resolutions' rows, the shortcuts' rows and a tab per category
-  other parts of the editor contribute are made by code.
+  Preferences: the user's own settings, with a tab per category. Appearance previews as it changes;
+  Save keeps it, and Cancel (or closing) puts it back. Code makes the accents' segments, the
+  preview resolutions' rows, the shortcuts' rows and the tabs other parts of the editor contribute.
 -->
 <Panel class="preferences">
     <TabView id="pref-tabs" class="pref-tabs">

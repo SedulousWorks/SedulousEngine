@@ -1,13 +1,13 @@
-/* Masquerade's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): night blue cards
-   edged in gold, gold buttons, the costumes' colours for the HUD's mark. Its screens are
-   Title, Maps, Join, Controls, Hud, Pause and Results (Masquerade.as pushes them). */
+/* Masquerade's look on the engine GUI, and the project's GUI sheet (guiStyleSheetIds): night blue
+   cards edged in gold, gold buttons, and the costumes' colours for the HUD's mark. Its screens are
+   Title, Maps, Join, Controls, Hud, Pause and Results, which Masquerade.as pushes. */
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 screen.fades:entering { animation: fade-in 0.3s ease-out; }
 
-/* A menu over the ball (pause, the results): the ball dims and blurs behind it. The dim and the blur
-   grow in rather than the screen's opacity, as a faded screen draws through a layer of its own,
-   where its backdrop blur would see nothing behind it. */
+/* A menu over the ball (pause, the results): the ball dims and blurs behind it. The dim and the
+   blur grow in, rather than the screen's opacity, because a fading screen draws into a layer of its
+   own, where its backdrop blur would see nothing behind it. */
 screen.dimmed { background-color: rgba(4, 6, 16, 0.55); backdrop-filter: blur(6px); }
 screen.dimmed:entering { animation: dim-in 0.3s ease-out; }
 @keyframes dim-in { from { background-color: rgba(4, 6, 16, 0); backdrop-filter: blur(0px); }
@@ -28,8 +28,9 @@ button.gold:disabled { background-color: #0A0F1E; border: 2px solid #3A2A20; col
 .sand { color: #E0D0B0; }
 .dust { color: #B8A080; }
 
-/* The prompts: the control an action takes, read from the input map for the device in use. A key is
-   a keycap of its name; a pad button its glyph (Tools/glyphs.py), its text hidden under it. */
+/* The prompts: the control an action takes, read from the input map for the device in use. A key
+   shows as a keycap with its name; a pad button shows as its glyph (Tools/glyphs.py), with its text
+   hidden underneath. */
 prompt.key { height: 34px; min-width: 34px; padding: 0px 10px; font-size: 16px; color: #F4E6C8;
              background-color: #0C1428; border: 2px solid #7A5A28; border-radius: 8px; text-align: center; }
 prompt.key[kind="pad"] { width: 38px; min-width: 38px; height: 38px; padding: 0px; color: rgba(0, 0, 0, 0);
@@ -44,7 +45,7 @@ prompt.key[binding="pad-ls"] { background-image: url("{{{Texture:PadLS}}}"); }
 prompt.key[binding="pad-start"] { background-image: url("{{{Texture:PadStart}}}"); }
 prompt.key[binding="left-stick"] { background-image: url("{{{Texture:LeftStick}}}"); }
 
-/* The controls page: a row per action, its prompts and what it does. */
+/* The controls page: a row per action, with its prompts and what it does. */
 .controls-card { padding: 28px 44px; align-items: center; gap: 12px; width: 560px; }
 .control-rows { flex-direction: column; align-items: stretch; gap: 10px; width: 440px; }
 .control-row { flex-direction: row; align-items: center; gap: 10px; }
@@ -56,7 +57,7 @@ prompt.key[binding="left-stick"] { background-image: url("{{{Texture:LeftStick}}
 .title-lead { font-size: 18px; color: #C8B090; margin-bottom: 22px; }
 .title-menu { flex-direction: column; align-items: stretch; gap: 10px; width: 300px; }
 button.menu { height: 46px; font-size: 22px; }
-button.menu.gone { display: none; } /* Host, in a browser (Masquerade.as) */
+button.menu.gone { display: none; } /* Hides Host in a browser, which cannot host (Masquerade.as). */
 
 .page-title { font-size: 40px; color: #F4D080; }
 .page-lead { font-size: 17px; color: #C8B090; margin-bottom: 10px; }
@@ -65,7 +66,7 @@ button.page { width: 180px; height: 44px; font-size: 21px; }
 button.primary { background-color: #2A1E0C; border: 2px solid #C8963C; }
 button.primary:hover { background-color: #3A2A12; border: 3px solid #F4D080; }
 
-/* The map cards: the name, its line and its best round; the chosen one lit in gold. */
+/* The map cards: the name, its line and its best round, with the chosen one lit in gold. */
 .maps-card { padding: 28px 32px; align-items: center; gap: 12px; }
 .map-cards { flex-direction: row; gap: 14px; margin-top: 6px; }
 button.map-card { flex-direction: column; align-items: start; gap: 6px; width: 250px; padding: 16px 18px; }
@@ -79,8 +80,9 @@ textfield.address { width: 320px; height: 44px; font-size: 20px; color: #F4E6C8;
 textfield.address:focus-visible { border: 3px solid #F4D080; }
 .net-status { font-size: 15px; color: #C8A070; min-height: 20px; }
 
-/* The HUD: the mark and the points top left, a word in the middle, the time and the place top
-   right, the controls below for a moment. It takes no pointer: the round is played beneath it. */
+/* The HUD: the mark top left, the clock and a word in the middle, the points and the place top
+   right, and the controls below for a moment. It takes no pointer input, since the round is played
+   beneath it. */
 .hud { flex-grow: 1; flex-direction: column; justify-content: space-between; padding: 18px; gap: 10px; pointer-events: none; }
 .hud-top { flex-direction: row; justify-content: space-between; align-items: start; }
 .hud-card { flex-direction: column; padding: 10px 14px; gap: 2px; background-color: rgba(10, 16, 32, 0.78); border-radius: 12px; border: 1px solid rgba(200, 150, 60, 0.35); }
@@ -92,10 +94,12 @@ textfield.address:focus-visible { border: 3px solid #F4D080; }
 .hud-mark-words { flex-direction: column; gap: 2px; }
 .hud-mark { font-size: 24px; }
 .hud-left { flex-direction: column; align-items: start; gap: 8px; }
-/* The hunter whose mark you are, near (Ball.as): a quiet line under your mark, not an alarm. */
+/* When the hunter whose mark you are is near (Ball.as): a quiet line under your mark, not an
+   alarm. */
 .hud-near { font-size: 16px; color: #F0B0A0; padding: 5px 12px; background-color: rgba(60, 14, 18, 0.72); border-radius: 8px; opacity: 0; }
 
-/* The clock: the time large over a bar of the round left, warm and pulsing in its last half minute. */
+/* The clock: the time, large, over a bar of the round left; it turns warm and pulses in the last
+   half minute. */
 .hud-middle { flex-direction: column; align-items: center; gap: 10px; }
 .hud-clock { align-items: center; width: 150px; }
 .hud-time { font-size: 30px; color: #F4E6C8; }
@@ -104,11 +108,12 @@ textfield.address:focus-visible { border: 3px solid #F4D080; }
 .hud-clock.late .hud-time { color: #F4A050; animation: clock-pulse 0.5s ease-in-out infinite alternate; }
 @keyframes clock-pulse { from { opacity: 1; color: #FFC070; } to { opacity: 0.45; color: #E07830; } }
 
-/* The word a moment in the middle (a tag, a miss, a flare), on a card of its own over the floor. */
+/* The word shown for a moment in the middle (a tag, a miss, a flare), on its own card over the
+   floor. */
 .hud-note { font-size: 26px; color: #F4D080; padding: 6px 16px; background-color: rgba(10, 16, 32, 0.82); border-radius: 10px; opacity: 0; }
 .hud-tag { padding: 6px 12px; background-color: rgba(10, 16, 32, 0.75); border-radius: 10px; opacity: 0; }
 
-/* Your points, large, each change floating up beside them a moment, then your place. */
+/* Your points, large, with each change floating up beside them for a moment, then your place. */
 .hud-points-card { align-items: end; }
 .hud-points-row { flex-direction: row; align-items: center; gap: 10px; }
 .hud-score { font-size: 34px; color: #F4E6C8; }
@@ -121,7 +126,8 @@ textfield.address:focus-visible { border: 3px solid #F4D080; }
 .hint { flex-direction: row; align-items: center; gap: 8px; }
 .hint-what { font-size: 17px; color: #E0D0B0; }
 
-/* The mark's costume, in its colour, lightened to read on the night blue (the black coat silver). */
+/* The mark's costume in its colour, lightened to read on the night blue (the black coat shows as
+   silver). */
 .costume-0 { color: rgb(242, 115, 140); }
 .costume-1 { color: rgb(89, 217, 217); }
 .costume-2 { color: rgb(250, 204, 89); }

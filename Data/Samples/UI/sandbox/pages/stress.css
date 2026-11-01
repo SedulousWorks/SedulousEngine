@@ -1,5 +1,6 @@
-/* Stress (E8a): rows, text, effects, animations and nesting, with descendant, child, sibling and
-   :nth-child rules so the cascade works for its matches. Native code appends generated rules. */
+/* Stress: rows, text, effects, animations and nesting, with descendant, child, sibling and
+   :nth-child rules so the cascade has to work for its matches. Native code appends generated rules.
+   */
 .stress-stats { color: #9fb3c8; }
 .stress-number { width: 90px; height: 30px; font-family: Roboto; font-size: 15px; padding-inline-start: 8px; border-radius: 6; }
 .stress-check { height: 26px; font-family: Roboto; font-size: 15px; color: var(--ink); }

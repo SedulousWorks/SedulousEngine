@@ -1,8 +1,9 @@
 <!--
-  The input map page, design B with a set chosen: the set's rows on the right, its name and
-  priority, then its actions as the grid's list, its Add adding an action to this set (the tree's bar
-  adds sets only: an add there would guess which set). An action's row names it and its kind, and
-  opens it (as choosing it in the tree). The same map as input-split.xml's.
+  The input map page, design B with a set chosen: the set's rows are on the right, its name and
+  priority, then its actions as the grid's list, whose Add adds an action to this set (the tree's
+  bar adds sets only, since an add there would have to guess which set). An action's row names it
+  and its kind, and opens it (as choosing it in the tree does). It shows the same map as
+  input-split.xml.
 -->
 <Panel class="page input-page mock">
     <ToolBar class="page-toolbar">

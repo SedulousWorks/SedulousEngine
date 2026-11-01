@@ -1,6 +1,6 @@
 <!--
-  The command palette (Documentation/Specs/editor-gui.md, 5.1, layer 10): the kit's picker, its rows
-  every action by name, filled by code into palette-list.
+  The command palette: the kit's picker, with a row for every action by name, which code fills into
+  palette-list.
 -->
 <Panel class="dialog picker palette">
     <Panel class="picker-search">

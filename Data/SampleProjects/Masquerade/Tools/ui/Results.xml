@@ -1,7 +1,7 @@
-<!-- The round's end (Masquerade.as): who won, then every hunter ranked by points (you lit), your best
-     round on this map, and what next. The ball dims and blurs behind it. Styled by
-     MasqueradeSheet.css. Back (Escape, East) is the game's own Pause action (Masquerade.as), not
-     the screen stack's. -->
+<!-- The round's end (Masquerade.as): who won, then every hunter ranked by points (with you lit),
+     your best round on this map, and what to do next. The ball dims and blurs behind it. Styled by
+     MasqueradeSheet.css. The screen stack's back (Escape, East) is off here: the game's own Pause
+     action (Masquerade.as) takes its place. -->
 <Screen class="dimmed" nav-default="again-btn" back="none">
   <Panel class="centre">
     <Panel class="card results-card">

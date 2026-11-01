@@ -1,6 +1,7 @@
-<!-- The game over (PlatformerGame.as): where the run got to, its score and the best run, then
-     try again or the title. Styled by SkyHopperSheet.css. Back (Escape, East) is the game's own
-     Pause action, not the screen stack's. -->
+<!-- The game over screen (PlatformerGame.as): how far the run got, its score and the best run, then
+     a choice of trying again or going to the title. Styled by SkyHopperSheet.css. The screen
+     stack's back (Escape, East) is off here: the game's own Pause action (PlatformerGame.as) takes
+     its place. -->
 <Screen class="pops" nav-default="gameover-retry-btn" back="none">
   <Panel class="veil heavy">
     <Panel class="cloud card end-card">

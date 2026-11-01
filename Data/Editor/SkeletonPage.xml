@@ -1,10 +1,10 @@
 <!--
-  The skeleton page (Raptor's editor-gui spec, 5.4, layer 10, part 3): a viewer. The kit's
-  bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page;
-  its kind at the end) over three panes: the bones as a tree with its search (a bone found keeps the
-  bones above it, so where it hangs still shows); the bind pose, the chosen bone drawn apart; the
-  grid, the chosen bone's facts and the skeleton's, read only. An asset that did not read says so
-  in place of the grid. Code puts the viewport in its stage and fills the tree and the grid.
+  The skeleton page, a viewer. The kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild
+  this asset, each an action over the page, with the asset's kind at the end) sits over three panes:
+  the bones as a tree with its search (a bone found keeps the bones above it, so where it hangs
+  still shows); the bind pose, with the chosen bone drawn apart; and the grid, with the chosen
+  bone's facts and the skeleton's, read only. An asset that did not read says so in place of the
+  grid. Code puts the viewport in its stage and fills the tree and the grid.
 -->
 <Panel class="page preview-page skeleton-page">
     <ToolBar id="page-bar" class="page-toolbar">

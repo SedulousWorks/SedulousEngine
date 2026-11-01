@@ -1,8 +1,7 @@
-/* The GUI lab's showcase (G6 of Documentation/Specs/vg-and-gui-lab.md): every look here comes
-   from the lab's sheet: gradients, shadows, borders, transforms, blur filters, a frosted backdrop,
-   text glow, transitions and keyframes. No colour or position is set in code. Its screens come and
-   go on the gamekit's stack (K7 of gui-lab-evolution-3.md): each plays its entrance while
-   :entering and its exit while :leaving, and the stack waits for them. */
+/* The GUI showcase: every look here comes from this sheet: gradients, shadows, borders,
+   transforms, blur filters, a frosted backdrop, text glow, transitions and keyframes. No colour or
+   position is set in code. Its screens come and go on the gamekit's stack: each plays its entrance
+   while :entering and its exit while :leaving, and the stack waits for them. */
 
 /* The sandbox's built-in theme styles its widgets beneath this sheet (one root); its tokens say
    what the menu keeps for itself: its panels have no surface of their own. */
@@ -10,8 +9,8 @@
             --ink: #fff4e2; --muted: #b9b2d0; --accent: #f3a047; --accent-deep: #c4552c; --glow: rgba(255, 176, 86, 0.55);
              background: radial-gradient(#2a1f4d, #120d24 70%, #07050f); }
 
-/* Lilita and Roboto have no Arabic: what they lack is drawn in DejaVu, the family after them (E11),
-   so the menu reads in Arabic too (E17a). */
+/* Lilita and Roboto have no Arabic: what they lack is drawn in DejaVu, the family listed after
+   them, so the menu reads in Arabic too. */
 
 /* The backdrop's orbs: big soft gradients, blurred, drifting slowly. Placed by percentages of the
    backdrop, so all three show at any window size, and drifting by small translations from there.
@@ -39,7 +38,7 @@
 /* The title sits a fixed way down; a page of the menu puts its panel under it, top-aligned, so a
    taller page (settings) never moves the title. */
 .stage { padding-top: 110px; }
-.menu-page { padding-top: 270px; } /* the stage's padding, the title, the subtitle and their gaps */
+.menu-page { padding-top: 270px; } /* The stage's padding, the title, the subtitle and their gaps. */
 
 /* Pages rise into place as they enter and sink out as they leave. */
 .panel { width: 440px; }
@@ -54,7 +53,8 @@
          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
 #confirm { height: 160px; }
 
-/* Loading: a screen of its own, its status and bar low and centred. Whole screens fade in and out. */
+/* Loading: a screen of its own, with its status and bar low and centred. Whole screens fade in and
+   out. */
 .loading-screen { padding-bottom: 90px; }
 .loading-status { width: 420px; height: 44px; font-family: Lilita, DejaVu; font-size: 34px; color: var(--ink);
                   text-align: center; vertical-align: middle; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
@@ -117,7 +117,7 @@
 slider::track { background-color: rgba(255, 255, 255, 0.15); }
 slider::fill { background-color: #f3a047; }
 slider::thumb { background-color: #fff4e2; }
-slider::focus { border-color: #f3a047; } /* the thumb's ring when focused: the slider's own mark */
+slider::focus { border-color: #f3a047; } /* The thumb's ring when focused, as the slider's own focus mark. */
 checkbox::box { border-color: rgba(255, 255, 255, 0.15); }
 checkbox::mark { background-color: #f3a047; }
 progressbar::track { background-color: rgba(255, 255, 255, 0.12); }
@@ -131,33 +131,34 @@ progressbar::fill { background-color: #f3a047; }
 .hud-card { padding: 12px 16px; background-color: rgba(10, 6, 24, 0.45); backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 14; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4); }
 .hud-caption { width: 160px; height: 18px; font-family: Roboto, DejaVu; font-size: 13px; color: var(--muted); }
-.hud-right .hud-caption { width: 220px; text-align: end; } /* as wide as the health card: the objective centred */
+.hud-right .hud-caption { width: 220px; text-align: end; } /* As wide as the health card, so the objective stays centred. */
 .hud-health { width: 220px; height: 14px; border-radius: 7; }
 #hud-health::fill { background-color: #6fd38a; }
 #hud-health.hp-low::fill { background-color: #e0607a; }
 .hud-health.hp-low { animation: warn 0.6s ease-in-out infinite alternate; }
 @keyframes warn { from { box-shadow: 0 0 0 rgba(224, 96, 122, 0); } to { box-shadow: 0 0 18px 3px rgba(224, 96, 122, 0.8); } }
 .hud-score { width: 220px; height: 46px; font-family: Lilita, DejaVu; font-size: 40px; color: var(--ink); text-align: end;
-             vertical-align: middle; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6); transform-origin: center; } /* pops in place, either way the text runs */
-/* A point scored: the number pops; two classes taking turns so each score replays it. */
+             vertical-align: middle; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6); transform-origin: center; } /* Pops in place, whichever way the text runs. */
+/* A point scored: the number pops; two classes take turns so each score replays the animation. */
 .pop-a { animation: pop-a 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .pop-b { animation: pop-b 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes pop-a { from { transform: scale(1.35); text-glow: 14px var(--glow); } to { transform: scale(1); text-glow: 0px var(--glow); } }
 @keyframes pop-b { from { transform: scale(1.35); text-glow: 14px var(--glow); } to { transform: scale(1); text-glow: 0px var(--glow); } }
-.hud-middle { padding-top: 8px; flex: 1 1 0; } /* what the two cards leave: a narrow window never pushes a card off the edge */
+.hud-middle { padding-top: 8px; flex: 1 1 0; } /* The space the two cards leave, so a narrow window never pushes a card off the edge. */
 .hud-objective { width: 100%; height: 30px; font-family: Lilita, DejaVu; font-size: 26px; color: var(--ink); text-align: center;
                  vertical-align: middle; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6); }
 .hud-clock { width: 200px; height: 24px; font-family: Roboto, DejaVu; font-size: 18px; color: var(--muted); text-align: center;
              vertical-align: middle; }
 .hud-key { height: 26px; padding: 0 10px; font-family: Roboto, DejaVu; font-size: 14px; color: var(--ink);
            vertical-align: middle; background-color: rgba(10, 6, 24, 0.55); border: 1px solid rgba(255, 255, 255, 0.24);
-           border-radius: 8; } /* the control for the device in hand: a key's or a pad button's name */
-.hud-key[kind="pad"] { border-radius: 13; } /* a pad's button a round cap (a game draws its glyphs here) */
+           border-radius: 8; } /* The control for the device in use: a key's or a pad button's name. */
+.hud-key[kind="pad"] { border-radius: 13; } /* A pad button is a round cap (a game would draw its glyphs here). */
 .hud-prompt { height: 26px; font-family: Roboto, DejaVu; font-size: 15px; color: var(--muted); text-align: start;
               vertical-align: middle; }
 #pause-panel { height: 230px; }
 
-/* Controls: an action and its key in a row; the key a pill that, while it listens, breathes. */
+/* Controls: an action and its key in a row; the key is a pill that pulses while it waits for input.
+   */
 .controls { height: 350px; }
 .row-label.wide { width: 150px; }
 .bind-btn { width: 200px; height: 34px; font-family: Roboto, DejaVu; font-size: 17px; color: var(--ink); text-align: center;

@@ -1,4 +1,4 @@
-<!-- Loading: a screen of its own over the menu, the status and bar low and centred. -->
+<!-- Loading: a screen of its own over the menu, with the status and bar low and centred. -->
 <Screen class="screen loading-screen" covers="true" flex-direction="column" justify-content="end" align-items="center" gap="16">
     <Label class="loading-status" text="{{status}}"/>
     <ProgressBar value="{{progress}}" class="loading-bar"/>

@@ -3,8 +3,8 @@
   hierarchy and inspector, so two scene pages side by side each show their own scene.
 -->
 <Panel class="page scene-page mock">
-    <!-- The bar keeps the editing controls (ruling 22): the transform tools as one choice, the
-         space, Snap with its increments, Vertex Snap; Simulate; the scene tools by category; Frame. -->
+    <!-- The bar keeps the editing controls: the transform tools as one choice, the space, Snap
+         with its increments, Vertex Snap; Simulate; the scene tools by category; and Frame. -->
     <ToolBar class="page-toolbar">
         <ToolButton command="mock.save" icon="Editor/Icons/save.svg"/>
         <ToolButton command="mock.undo" icon="Editor/Icons/undo.svg"/>
@@ -87,11 +87,11 @@
             </TreeView>
         </Panel>
         <Panel class="viewport">
-            <!-- The HUD's fixed zones (catalog 2.6), so nothing collides in the corners: the view's
-                 menus and a tool's panel at the top start; the stats and the view gizmo at the top
-                 end; the tool's status at the bottom start; the camera preview at the bottom end. -->
+            <!-- The HUD's fixed zones, so nothing collides in the corners: the view's menus and a
+                 tool's panel at the top start; the stats and the view gizmo at the top end; the
+                 tool's status at the bottom start; the camera preview at the bottom end. -->
             <Panel class="hud-zone hud-top-start">
-                <!-- The view's controls (ruling 22), each chip saying what is on. -->
+                <!-- The view's controls, each chip saying what is on. -->
                 <Panel class="hud-bar">
                     <ToolMenuButton id="chip-projection" class="hud-chip" text="Perspective" tooltip="Projection and the axis views">
                         <MenuItem text="Perspective" checkable="true" checked="true"/>

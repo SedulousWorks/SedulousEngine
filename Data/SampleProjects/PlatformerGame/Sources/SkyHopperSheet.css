@@ -1,10 +1,10 @@
-/* Sky Hopper's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): cloud islands.
-   Every screen floats in the game's blue sky on white cloud cards with a sky-blue edge and a soft
-   drop shadow; headlines are the deep blue of the zenith, the main button and whatever a key or pad
-   has focused are coin gold (focus as loud as hover: the menus are driven by keys and pads), and
-   the final win is edged in gold. Its screens are Title, Intro, Hud, Pause, Settings, LevelClear,
-   GameOver, Victory and Fade (PlatformerGame.as pushes them); its icons are the project's SVGs
-   (UI/Icons), drawn in their own colours.
+/* Sky Hopper's look on the engine GUI, and the project's GUI sheet (guiStyleSheetIds): cloud
+   islands. Every screen floats in the game's blue sky on white cloud cards with a sky-blue edge and
+   a soft drop shadow. Headlines are the deep blue of the zenith; the main button and whatever a key
+   or pad has focused are coin gold (focus is as loud as hover, since keys and pads drive the
+   menus); and the final win is edged in gold. Its screens are Title, Intro, Hud, Pause, Settings,
+   LevelClear, GameOver, Victory and Fade, which PlatformerGame.as pushes. Its icons are the
+   project's SVGs (UI/Icons), drawn in their own colours.
 
    The palette: cloud #FFFFFF, mist #EAF4FF, sky #4DA3EE, deep sky #1F5FAF, ink #233249, soft ink
    #5A6B85, coin gold #FFC93C (deep gold #D99A00). */
@@ -39,7 +39,7 @@ label { color: #233249; }
 .icon-28 { width: 28px; height: 28px; }
 .icon-30 { width: 30px; height: 30px; }
 
-/* ---- buttons: cloud pills with a sky edge; the main one coin gold ---- */
+/* ---- buttons: cloud pills with a sky edge, and the main one coin gold ---- */
 
 button { height: 46px; font-size: 20px; color: #1F5FAF; background-color: #FFFFFF; border: 2px solid #4DA3EE;
          border-radius: 22px; padding: 6px 18px; box-shadow: 0 3px 8px rgba(31, 95, 175, 0.3); }
@@ -95,7 +95,7 @@ slider::fill { background-color: #4DA3EE; border-radius: 5px; }
 slider::thumb { background-color: #FFFFFF; border: 2px solid #1F5FAF; border-radius: 12px; width: 24px; }
 slider:hover::thumb { background-color: #EAF4FF; border: 3px solid #1F5FAF; }
 slider:focus-visible::thumb { background-color: #FFC93C; border: 3px solid #1F5FAF; }
-slider::focus { opacity: 0; } /* the focused thumb is marked by its colour, as every focused control is: no ring as well */
+slider::focus { opacity: 0; } /* The focused thumb is marked by its colour, as every focused control is, so it needs no ring. */
 button.back { width: 220px; height: 44px; margin-top: 26px; }
 .settings-hint { font-size: 14px; margin-top: 14px; }
 
@@ -109,7 +109,7 @@ button.back { width: 220px; height: 44px; margin-top: 26px; }
 .hud-gap { margin-left: 10px; }
 .hud-number { font-size: 24px; }
 .hud-clock { font-size: 22px; }
-.hud-gem { opacity: 0; } /* until the level's gem is found */
+.hud-gem { opacity: 0; } /* Hidden until the level's gem is found. */
 .hud-coins { color: #D99A00; }
 .hud-value { color: #233249; }
 .hud-level { font-size: 18px; color: #1F5FAF; margin-right: 8px; white-space: pre; }
@@ -130,7 +130,7 @@ button.back { width: 220px; height: 44px; margin-top: 26px; }
 .star-56 { width: 56px; height: 56px; }
 .star-64 { width: 64px; height: 64px; }
 .star-icon { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-.star-filled { opacity: 0; } /* until the game fills it */
+.star-filled { opacity: 0; } /* Hidden until the game fills it. */
 .star-caption { font-size: 13px; }
 .tally-row { flex-direction: row; justify-content: space-between; align-items: center; width: 340px; opacity: 0; }
 .tally-name { font-size: 18px; color: #5A6B85; }

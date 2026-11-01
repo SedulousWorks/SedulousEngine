@@ -1,7 +1,7 @@
-<!-- A level's results (Lamplight.as fills them): how long, what was taken, how often seen and
-     caught, the ghost medal for never being seen, and the best on this level. Styled by
-     LamplightSheet.css. Back (Escape, East) is the game's own
-     Pause action (Lamplight.as), not the screen stack's. -->
+<!-- A level's results, which Lamplight.as fills: the time taken, what was taken, how often the
+     thief was seen and caught, the ghost medal for never being seen, and the best run on this
+     level. Styled by LamplightSheet.css. The screen stack's back (Escape, East) is off here: the
+     game's own Pause action (Lamplight.as) takes its place. -->
 <Screen class="fades" nav-default="next-btn" back="none">
   <Panel class="centre">
     <Panel class="card results-card">

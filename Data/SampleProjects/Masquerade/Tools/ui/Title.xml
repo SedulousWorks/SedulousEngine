@@ -1,7 +1,7 @@
-<!-- The title (Masquerade.as): the game's name over the ball, and what to do: play alone or host
-     (each then choosing the map, Maps.xml), join a host (Join.xml), see the controls (Controls.xml),
-     or quit. Styled by
-     MasqueradeSheet.css. Back (Escape, East) does nothing here: the title is the bottom of the stack. -->
+<!-- The title (Masquerade.as): the game's name over the ball, and the choices. Play alone or host
+     (each then picks the map, Maps.xml), join a host (Join.xml), see the controls (Controls.xml),
+     or quit. Styled by MasqueradeSheet.css. Back (Escape, East) does nothing here, because the
+     title is the bottom of the stack. -->
 <Screen class="fades" nav-default="solo-btn" back="none">
   <Panel class="centre">
     <Panel class="card title-card">

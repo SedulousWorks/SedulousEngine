@@ -1,6 +1,7 @@
-<!-- The title (Lamplight.as fills it from the save): a button per level with the best taken on
-     it, or what opens it; Quit ends the game. Styled by LamplightSheet.css. Back (Escape, East) is the game's own
-     Pause action (Lamplight.as), not the screen stack's. -->
+<!-- The title, which Lamplight.as fills from the save: a button per level with the best run on it,
+     or what unlocks it. Quit ends the game. Styled by LamplightSheet.css.
+     The screen stack's back (Escape, East) is off here: the game's own Pause action (Lamplight.as)
+     takes its place. -->
 <Screen class="fades" nav-default="level-0" back="none">
   <Panel class="centre">
     <Panel class="card title-card">

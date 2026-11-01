@@ -1,13 +1,13 @@
 <!--
-  The input map page (Raptor's editor-gui spec, 5.4, layer 5, part 4; the user's choice of
-  the designs in Editor/Mock/input-*.xml): the kit's bar (Save, Undo, Redo, Discard Changes, Cook and
-  Rebuild this asset, each an action over the page; its kind at the end) over the sets and their
-  actions as a tree beside the grid. The tree's bar adds a set and removes the chosen row (a set and
-  its actions, or an action); its search keeps the actions whose name or input matches. The grid
-  shows the chosen set: its name and priority, then its actions, each opening in place to its kind,
-  interaction, bindings and processing; an action chosen in the tree opens there. A map the game
-  could not read (an action's binding its kind does not take) says so over the rows. An asset that
-  did not read says so in place of the grid.
+  The input map page (the design chosen from Editor/Mock/input-*.xml): the kit's bar (Save, Undo,
+  Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page, with the
+  asset's kind at the end) over the sets and their actions as a tree beside the grid. The tree's
+  bar adds a set and removes the chosen row (a set and its actions, or an action); its search keeps
+  the actions whose name or input matches. The grid shows the chosen set: its name and priority,
+  then its actions, each opening in place to its kind, interaction, bindings and processing; an
+  action chosen in the tree opens there. A map the game could not read (an action with a binding
+  its kind does not take) says so over the rows. An asset that did not read says so in place of
+  the grid.
 -->
 <Panel class="page input-map-page">
     <ToolBar id="page-bar" class="page-toolbar">

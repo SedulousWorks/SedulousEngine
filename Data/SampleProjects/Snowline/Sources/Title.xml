@@ -1,8 +1,8 @@
-<!-- The title (Snowline.as fills it from the save): a card per course, its picture (thumbnails.py,
-     UI/Thumbs) with its name and the best medal and time won on it, or what unlocks it. A card is one
-     button holding its picture and labels; a locked card is disabled and dims. Quit, under the cards,
-     ends the game. Styled by SnowlineSheet.css. Back (Escape, East) is the game's own
-     Pause action (Snowline.as), not the screen stack's. -->
+<!-- The title, which Snowline.as fills from the save: a card per course, with its picture
+     (thumbnails.py, UI/Thumbs), its name, and the best medal and time won on it, or what unlocks
+     it. A card is one button holding its picture and labels; a locked card is disabled and dims.
+     Quit, under the cards, ends the game. Styled by SnowlineSheet.css. The screen stack's back
+     (Escape, East) is off here: the game's own Pause action (Snowline.as) takes its place. -->
 <Screen class="fades" nav-default="course-0" back="none">
   <Panel class="centre">
     <Panel class="card title-card">

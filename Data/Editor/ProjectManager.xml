@@ -1,9 +1,10 @@
 <!--
-  The project manager (Raptor's project-manager spec): the window's whole screen while no
-  project is open. A header with the Projects and Samples tabs; on Projects a toolbar (New Project,
-  Open Folder, a search, the sort, list or grid) over the projects, the missing ones in a section of
-  their own; on Samples the sample games of this editor's release, each with its Download...; and
-  a footer with the status and the keys. With no projects at all, a welcome in their place. Code fills the lists, the counts and the status line by id.
+  The project manager: the window's whole screen while no project is open. A header holds the
+  Projects and Samples tabs. On Projects a toolbar (New Project, Open Folder, a search, the sort,
+  list or grid) sits over the projects, with the missing ones in a section of their own; on Samples
+  are the sample games of this editor's release, each with its Download... button; and a footer
+  shows the status and the keys. With no projects at all, a welcome takes their place. Code fills
+  the lists, the counts and the status line by id.
 -->
 <Panel class="manager">
     <Panel class="manager-header">

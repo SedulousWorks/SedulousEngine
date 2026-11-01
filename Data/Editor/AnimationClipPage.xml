@@ -1,14 +1,15 @@
 <!--
-  The animation clip page (Raptor's editor-gui spec, 5.4, layer 10): the preview pages'
-  shape. The kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an
-  action over the page; its kind at the end) over the preview beside the grid. The preview's bar:
-  Frame, the kit's transport (Restart, Play showing Pause while it plays, Stop, each an action over
-  the page) and where it is, then the preview's own choices: Travel (the preview walks by the clip's
-  root motion; off, it plays in place), and the skeleton and skinned mesh it plays on, kept per
-  clip. Under the preview the ruler on the clip's time: a drag scrubs, and the clip's events are its
-  markers, one dragged moving its time. The grid has the clip's rows (Looping, its root motion, its
-  events) and its facts read only. An asset that did not read says so in place of the grid.
-  Code puts the viewport in its stage, the slots after `preview-own`, and fills the rest.
+  The animation clip page, shaped as the preview pages are. The kit's bar (Save, Undo, Redo,
+  Discard Changes, Cook and Rebuild this asset, each an action over the page, with the asset's kind
+  at the end) sits over the preview beside the grid. The preview's bar holds Frame, the kit's
+  transport (Restart, Play, which shows Pause while it plays, and Stop, each an action over the
+  page) and the current time, then the preview's own choices: Travel (the preview walks by the
+  clip's root motion; when it is off, the clip plays in place), and the skeleton and skinned mesh it
+  plays on, kept per clip. Under the preview is the ruler on the clip's time: dragging it scrubs,
+  and the clip's events are its markers, each moving its event's time when dragged. The grid has
+  the clip's rows (Looping, its root motion, its events) and its read-only facts. An asset that did
+  not read says so in place of the grid.
+  Code puts the viewport in its stage and the slots after `preview-own`, and fills the rest.
 -->
 <Panel class="page preview-page clip-page">
     <ToolBar id="page-bar" class="page-toolbar">

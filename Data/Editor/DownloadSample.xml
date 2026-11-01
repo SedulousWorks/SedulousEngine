@@ -1,9 +1,8 @@
 <!--
-  A sample's download (Raptor's project-manager spec, Samples), in three stages in one
-  window: where it goes (the location, whether it gets a folder of its name there, and New
-  Project's check line; Download waits while it is red); its progress, with Cancel; and how it
-  ended: done, with Open for the new project, or why not, with Try again. Code shows one stage at a
-  time.
+  A sample's download, in three stages in one window: where it goes (the location, whether it gets
+  a folder of its name there, and New Project's check line; Download waits while the line is red);
+  its progress, with Cancel; and how it ended: done, with Open for the new project, or why not, with
+  Try again. Code shows one stage at a time.
 -->
 <Panel class="dialog-body new-project">
     <Panel id="download-sample-choose" class="new-project">

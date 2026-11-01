@@ -1,4 +1,4 @@
-<!-- Quit: a question over the menu, which dims and blurs behind it and takes nothing until it is
+<!-- Quit: a question over the menu, which dims and blurs behind it and takes no input until it is
      answered; Stay (or Back) is the safe answer. -->
 <Screen class="modal" nav-default="confirm-no" flex-direction="column" justify-content="center" align-items="center">
     <Panel id="confirm" class="panel glass" flex-direction="column" align-items="center" gap="14">

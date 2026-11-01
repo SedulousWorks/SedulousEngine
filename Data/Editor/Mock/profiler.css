@@ -1,5 +1,5 @@
-/* The profiler page mock's own layout (X7 of Raptor's editor-gui spec). Generated with
-   profiler.xml: the numbered classes place its bars. */
+/* The profiler page mock's own layout. It is generated with profiler.xml: the numbered classes
+   place its bars. */
 .pm-page { min-width: 0; }
 .pm-abs { position: absolute; }
 .pm-source, .pm-bar-label { color: var(--text-dim); white-space: nowrap; }

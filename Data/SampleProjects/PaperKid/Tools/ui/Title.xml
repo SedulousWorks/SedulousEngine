@@ -1,6 +1,6 @@
-<!-- The title (PaperKidGame.as): the front page, the masthead over a rule and the day's headline,
-     then the buttons and a hint. Styled by PaperKidSheet.css. Back (Escape, East) is the game's own Pause
-     action (PaperKidGame.as), not the screen stack's. -->
+<!-- The title (PaperKidGame.as) is the front page: the masthead over a rule and the day's headline,
+     then the buttons and a hint. Styled by PaperKidSheet.css. The screen stack's back (Escape,
+     East) is off here: the game's own Pause action (PaperKidGame.as) takes its place. -->
 <Screen class="fades" nav-default="play-btn" back="none">
   <Panel class="dim">
     <Panel class="card front-page">

@@ -8,7 +8,8 @@
 .shell.light { --bg: #eef1f6; --shell-surface: #ffffff; --shell-surface-2: #e9edf4; --line: #d4dae4; --ink: #1b2230;
                --muted: #5b6678; --shell-accent: #2f7de1; --glow: rgba(47, 125, 225, 0.35); }
 
-/* Roboto's bold face (E11): a [b] run and font-weight: bold draw in it, not emboldened. */
+/* Roboto's bold face: a [b] run and font-weight: bold draw in it rather than emboldening the
+   regular face. */
 @font-face { font-family: Roboto; src: url(Engine/Fonts/roboto/Roboto-Bold.ttf); font-weight: bold; }
 
 /* Header */
@@ -49,14 +50,15 @@
 .btn:focus-visible { box-shadow: 0 0 0 2px var(--shell-accent); }
 .btn:disabled { opacity: 0.4; }
 tooltip { font-family: Roboto; font-size: 13px; color: var(--ink); }
-window, messagebox { font-family: Roboto; font-size: 16px; } /* a script's too (native code sets Roboto 16 on its own) */
+window, messagebox { font-family: Roboto; font-size: 16px; } /* Script windows too (native code sets Roboto 16 on its own windows). */
 
-/* The page's bars as parts (E6): a quiet thumb that lights under the pointer and while held. */
+/* The page's scroll bars, styled as parts: a quiet thumb that highlights under the pointer and
+   while held. */
 .content::scrollbar-thumb { background-color: rgba(151, 162, 180, 0.35); border-radius: 4; }
 .content::scrollbar-thumb:hover { background-color: rgba(151, 162, 180, 0.6); }
 .content::scrollbar-thumb:active { background-color: var(--shell-accent); }
-dragpreview { font-family: Roboto; font-size: 14px; } /* the top layer: the shell's sheet reaches it, a page's does not */
-toasthost { font-family: Roboto; font-size: 13px; } /* over the window, outside any page: the shell's sheet styles it */
+dragpreview { font-family: Roboto; font-size: 14px; } /* The drag preview is in the top layer: the shell's sheet reaches it, a page's does not. */
+toasthost { font-family: Roboto; font-size: 13px; } /* Toasts sit over the window, outside any page, so the shell's sheet styles them. */
 .achievement { padding: 12px 18px; font-family: Lilita; font-size: 20px; color: #2b1a00; border-radius: 10px;
                background: linear-gradient(135deg, #f7d774, #e8a33a); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
 .toast-progress { width: 220px; height: 6px; }

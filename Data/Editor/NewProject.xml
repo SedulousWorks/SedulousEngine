@@ -1,7 +1,7 @@
 <!--
-  New Project (Raptor's project-manager spec): a name, the folder it is made in, and
-  whether it gets a folder of its name there (on unless turned off). The check line under them is
-  kept current as the fields change, coloured by what it says; Create waits while it is red.
+  New Project: a name, the folder it is made in, and whether it gets a folder of its name there (on
+  unless turned off). The check line under them is kept current as the fields change and is
+  coloured by what it says; Create waits while it is red.
 -->
 <Panel class="dialog-body new-project">
     <Panel class="form">

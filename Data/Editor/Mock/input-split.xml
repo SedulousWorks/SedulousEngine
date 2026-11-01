@@ -1,13 +1,12 @@
 <!--
-  The input map page, design B: a tree beside the grid (as the bus layout page). The sets and their
-  actions a tree on the left (each action's kind beside its name), its bar adding a set and removing
-  the chosen one; the chosen one's rows on the right: an action's name, kind and interaction, its
-  bindings as the grid's list (each binding a group: its source and the key capture, then its
-  settings), then its processing; a set's name and priority, then its actions as the grid's list,
-  where an action is added to that set (input-split-set.xml: no add on the tree's bar guessing which
-  set, the user 2026-10-26). A binding is
-  captured by pressing the input on its key capture. The same map as design A's
-  (input-outline.xml), to compare.
+  The input map page, design B: a tree beside the grid (as on the bus layout page). The sets and
+  their actions are a tree on the left (each action's kind beside its name), whose bar adds a set
+  and removes the chosen row. The chosen row's fields are on the right: for an action, its name,
+  kind and interaction, its bindings as the grid's list (each binding a group: its source and the
+  key capture, then its settings), then its processing; for a set, its name and priority, then its
+  actions as the grid's list, where an action is added to that set (see input-split-set.xml; the
+  tree's bar has no add that would guess which set). A binding is captured by pressing the input
+  on its key capture. It shows the same map as design A (input-outline.xml), to compare.
 -->
 <Panel class="page input-page mock">
     <ToolBar class="page-toolbar">

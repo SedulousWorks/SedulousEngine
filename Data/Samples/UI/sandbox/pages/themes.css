@@ -1,5 +1,5 @@
-/* Themes (E13 of Specs/gui-lab-evolution-2.md): the same settings in the built-in theme's tokens,
-   and in a subtree that overrides some of them and skins its controls with nine-slice art. */
+/* Themes: the same settings in the built-in theme's tokens, and in a subtree that overrides some
+   of them and skins its controls with nine-slice art. */
 .theme-card { width: 304px; padding: 18px; background-color: var(--shell-surface); border: 1px solid var(--line); border-radius: 12; }
 .theme-title { width: 268px; height: 30px; font-family: Roboto; font-size: 18px; color: var(--ink); }
 .setting { width: 268px; height: 34px; }
@@ -12,7 +12,7 @@
 .setting-button { width: 96px; height: 34px; font-family: Roboto; font-size: 15px; border-radius: 6; }
 
 /* Ember: a few base tokens retint everything inside; skin tokens give buttons, fields and the combo
-   box their art (the art drawn by themes/ember/MakeArt.py); the card itself is a nine-slice panel. */
+   box their art (drawn by themes/ember/MakeArt.py); the card itself is a nine-slice panel. */
 .ember {
     --accent: #c2652a; --on-accent: #fff1de; --accent-strong: #e0873c; --selection: #7a3b17; --focus-ring: #ffb35c;
     --control: #120c08; --track: #3b2616; --outline: #b37a3c; --text: #f1dcc0; --text-strong: #fff1de;
@@ -20,15 +20,15 @@
     --button-skin: url(Samples/UI/sandbox/themes/ember/button.png) 8 fill / 8px stretch;
     --button-hover-skin: url(Samples/UI/sandbox/themes/ember/button-hover.png) 8 fill / 8px stretch;
     --field-skin: url(Samples/UI/sandbox/themes/ember/field.png) 5 fill / 5px stretch;
-    --button-radius: 6px; --field-radius: 4px; /* as round as the art: focus rings follow */
+    --button-radius: 6px; --field-radius: 4px; /* As round as the art; focus rings follow these radii. */
     --slider-thumb: #f1dcc0;
     background-color: transparent; border-width: 0;
     border-image: url(Samples/UI/sandbox/themes/ember/panel.png) 16 fill / 16px stretch;
 }
 .ember .theme-title { font-family: Lilita; font-size: 24px; color: #ffcf8a; text-shadow: 0 2px 2px rgba(0, 0, 0, 0.6); }
 
-/* Border styles (E13): dashes and dots fitted to each side, sides of different styles meeting on
-   the corner's diagonal, square and rounded. */
+/* Border styles: dashes and dots fitted to each side, and sides of different styles meeting on
+   the corner's diagonal, on square and rounded boxes. */
 .border-sample { width: 140px; height: 52px; font-family: Roboto; font-size: 13px; color: var(--ink); text-align: center;
                  vertical-align: middle; padding: 0 8px; border-color: var(--muted); }
 .border-sample.solid { border: 2px solid var(--muted); }

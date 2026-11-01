@@ -1,7 +1,8 @@
-<!-- A level's clear (PlatformerGame.as): its three stars (all the coins, no falls, under par),
-     each empty until the game fills it in turn, then the tally, a row at a time, the level's score
-     and its best, and when the next level comes. Over the level, where the confetti still flies.
-     Styled by SkyHopperSheet.css. Back (Escape, East) is the game's own Pause action. -->
+<!-- A cleared level (PlatformerGame.as): its three stars (all the coins, no falls, under par), each
+     empty until the game fills it in turn; then the tally a row at a time, the level's score and
+     its best, and when the next level comes. It lies over the level, where the confetti still
+     flies. Styled by SkyHopperSheet.css. The screen stack's back (Escape, East) is off here: the
+     game's own Pause action (PlatformerGame.as) takes its place. -->
 <Screen class="pops" back="none">
   <Panel class="centre">
     <Panel class="cloud card clear-card">

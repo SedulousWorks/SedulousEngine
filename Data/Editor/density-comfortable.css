@@ -1,7 +1,7 @@
 /*
   The editor's Comfortable density: its spacing and sizes in whole pixels, so every edge lands on
   a pixel. The editor adds the chosen density's sheet after its own (tokens.css imports Compact).
-  The Default density's sizes times 1.15, each rounded.
+  These are the Default density's sizes times 1.15, each rounded.
 */
 :root {
     --space-xs: 2px; /* spacing, smallest to largest */

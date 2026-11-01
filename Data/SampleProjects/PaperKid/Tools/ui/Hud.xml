@@ -1,10 +1,10 @@
-<!-- The HUD (PaperKidGame.as and Level.as fill it): a folded strip of paper top left with the time,
-     the deliveries, the papers, the score and the lives; the minimap top right (the Minimap render
-     texture the block's top-down camera draws) with markers over it that MapMarkers.as places from
-     world positions; a delivery's points rising from under the score, and a cleared block's banner
-     dropping in, both over the street. Over the block, taking none of its input. Styled by
-     PaperKidSheet.css. Back (Escape, East) is the game's own Pause
-     action (PaperKidGame.as), not the screen stack's. -->
+<!-- The HUD, which PaperKidGame.as and Level.as fill. Top left is a folded strip of paper with the
+     time, the deliveries, the papers, the score and the lives. Top right is the minimap (the
+     Minimap render texture that the block's top-down camera draws), with markers over it that
+     MapMarkers.as places from world positions. Over the street, a delivery's points rise from under
+     the score and a cleared block's banner drops in. The HUD lies over the block and takes none of
+     its input. Styled by PaperKidSheet.css. The screen stack's back (Escape, East) is off here: the
+     game's own Pause action (PaperKidGame.as) takes its place. -->
 <Screen blocks="false" back="none">
   <Panel class="hud-screen">
     <Panel class="hud stats">
@@ -29,7 +29,7 @@
         <Panel id="map-bike" class="map-bike"><Panel class="map-bike-nose"/></Panel>
       </Panel>
     </Panel>
-    <!-- A delivery's points (PaperKidGame.as moves it from under the score). -->
+    <!-- A delivery's points, which PaperKidGame.as moves up from under the score. -->
     <Label id="hud-pop" class="over-scene hud-pop" text="+100"/>
     <!-- A cleared block's banner, in the middle of the street. -->
     <Panel class="banner-layer"><Label id="hud-banner" class="over-scene hud-banner" text="Block cleared!"/></Panel>

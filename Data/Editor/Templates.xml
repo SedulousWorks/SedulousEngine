@@ -1,8 +1,7 @@
 <!--
-  Export Templates (Documentation/Specs/editor-gui.md, 5.2, layer 6): the player builds this
-  editor exports with, the editor's and not a project's. The templates on the left, the selected
-  one's details on the right with what can be done to it, and the ways to add one below. Code fills
-  the list and the detail rows.
+  Export Templates: the player builds this editor exports with, which belong to the editor and not
+  to a project. The templates are on the left, the selected one's details on the right with what
+  can be done to it, and the ways to add one below. Code fills the list and the detail rows.
 -->
 <Panel class="dialog-body templates">
     <Panel class="templates-split">

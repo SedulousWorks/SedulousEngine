@@ -1,11 +1,11 @@
 <!--
-  The asset picker with its groups beside it (the user, 2026-10-25): the asset slot's pick, shaped
-  as the assets browser is. At the left the project's groups, a tree (Favourites and All first); at
-  the right what the chosen group holds of the slot's type, the current value checked; the search
-  over every group while it has text (each match then says where it lives). Beside the search, tiles
-  or a list for what the group holds, as the assets browser (the picker keeps the last one chosen).
-  Enter picks, Esc keeps the value, None clears it. The mock shows a material slot over the Props
-  group; its two view buttons switch.
+  The asset picker with its groups beside it: the asset slot's pick, shaped as the assets browser
+  is. At the left are the project's groups as a tree (Favourites and All first); at the right, what
+  the chosen group holds of the slot's type, with the current value checked. While the search has
+  text it covers every group, and each match then says where it lives. Beside the search, tiles or
+  a list show what the group holds, as in the assets browser (the picker keeps the last one
+  chosen). Enter picks, Esc keeps the value, None clears it. The mock shows a material slot over
+  the Props group; its two view buttons switch.
 -->
 <Panel class="dialog picker asset-picker">
     <Panel class="picker-search asset-picker-bar">

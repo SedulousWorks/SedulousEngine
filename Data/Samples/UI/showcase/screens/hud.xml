@@ -1,5 +1,6 @@
-<!-- In the game: the HUD over the backdrop (health, the objective and the run's clock, the score
-     along the top; the pause prompt low on the right, the control shown for the device in hand). -->
+<!-- In the game: the HUD over the backdrop (health, the objective, the run's clock and the score
+     along the top; the pause prompt low on the right, showing the control for the device in use).
+     -->
 <Screen class="screen hud" covers="true" flex-direction="column" justify-content="space-between">
     <Panel class="hud-top" flex-direction="row" justify-content="space-between" align-items="start">
         <Panel class="hud-card" flex-direction="column" gap="6">

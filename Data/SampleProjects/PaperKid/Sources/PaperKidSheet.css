@@ -1,8 +1,8 @@
-/* PaperKid's look on the engine GUI, the project's GUI sheet (guiStyleSheetIds): the morning
+/* PaperKid's look on the engine GUI, and the project's GUI sheet (guiStyleSheetIds): the morning
    edition. Every screen is printed on the paper the kid delivers: cream newsprint cards with an
    inked border and an offset print shadow, ink text, headlines in the paper band's red, and the
    porch markers' yellow for whatever a key or pad has focused. Its screens are Title, Hud, Cleared,
-   Failed, GameOver, Pause and Settings (PaperKidGame.as pushes them).
+   Failed, GameOver, Pause and Settings, which PaperKidGame.as pushes.
 
    The palette: paper #F4ECD8, paper shade #E4D6B8, ink #2A251F, soft ink #6A5F52, headline red
    #C8372D (pressed #9C2820), marker yellow #FFD23F. */
@@ -36,7 +36,7 @@ label { color: #2A251F; }
 /* A strip of paper for the hint under the title's buttons. */
 .strip { padding: 8px; background-color: #F4ECD8; border: 2px solid #2A251F; border-radius: 4px; }
 
-/* ---- buttons: paper with an inked edge; the main one in headline red ---- */
+/* ---- buttons: paper with an inked edge, and the main one in headline red ---- */
 
 button { height: 52px; font-size: 31px; color: #2A251F; background-color: #F4ECD8; border: 2px solid #2A251F;
          border-radius: 6px; padding: 6px 16px; box-shadow: 4px 5px 0 rgba(42, 37, 31, 0.4); }
@@ -82,7 +82,7 @@ slider::fill { background-color: #C8372D; border-radius: 4px; }
 slider::thumb { background-color: #F4ECD8; border: 2px solid #2A251F; border-radius: 12px; width: 24px; }
 slider:hover::thumb { background-color: #FFF7E4; border: 3px solid #C8372D; }
 slider:focus-visible::thumb { background-color: #FFD23F; border: 3px solid #2A251F; }
-slider::focus { opacity: 0; } /* the focused thumb is marked by its colour, as every focused control is: no ring as well */
+slider::focus { opacity: 0; } /* The focused thumb is marked by its colour, as every focused control is, so it needs no ring. */
 button.back { width: 240px; margin-top: 28px; }
 .settings-hint { font-size: 23px; margin-top: 14px; }
 
@@ -97,19 +97,19 @@ button.back { width: 240px; margin-top: 28px; }
 .hud-caption { font-size: 21px; color: #6A5F52; }
 .hud-value { font-size: 44px; color: #2A251F; }
 .hud-alert { font-size: 44px; color: #C8372D; }
-/* Over the street itself (the points rising from the score, a cleared block's banner): the
-   marker yellow, which reads over road, grass and sky alike. */
+/* Text over the street itself (the points rising from the score, a cleared block's banner) is
+   the marker yellow, which reads over road, grass and sky alike. */
 .over-scene { color: #FFD23F; font-family: "Alfa Slab One"; }
 .hud-pop { position: absolute; left: 18px; top: 18px; font-size: 30px; opacity: 0; }
 .banner-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; justify-content: center; align-items: center; }
 .hud-banner { font-size: 84px; opacity: 0; }
 
-/* The minimap: the image, and markers placed over it from its corner (MapMarkers.as). */
+/* The minimap: the image, and the markers MapMarkers.as places over it from its corner. */
 .map-card { padding: 6px; }
 .map { width: 200px; height: 200px; }
 .map-image { position: absolute; left: 0; top: 0; width: 200px; height: 200px; }
 .map-dot { position: absolute; left: 0; top: 0; width: 12px; height: 12px; border-radius: 6px;
-           background-color: rgb(255, 214, 102); border: 2px solid rgb(20, 22, 28); opacity: 0; } /* until MapMarkers.as places it */
+           background-color: rgb(255, 214, 102); border: 2px solid rgb(20, 22, 28); opacity: 0; } /* Hidden until MapMarkers.as places it. */
 .map-bike { position: absolute; left: 0; top: 0; width: 10px; height: 16px; border-radius: 3px; align-items: center;
-            background-color: rgb(240, 70, 60); border: 1px solid rgb(20, 22, 28); opacity: 0; } /* until MapMarkers.as places it */
+            background-color: rgb(240, 70, 60); border: 1px solid rgb(20, 22, 28); opacity: 0; } /* Hidden until MapMarkers.as places it. */
 .map-bike-nose { width: 6px; height: 5px; margin-top: 1px; border-radius: 2px; background-color: rgb(255, 255, 255); }

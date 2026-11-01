@@ -1,11 +1,10 @@
 <!--
-  The shader page (Raptor's editor-gui spec, 5.4, layer 6, part 4): the kit's bar (Save,
-  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its kind
-  at the end) over the code and its problems, one above the other, beside the preview (a sphere
-  drawn with the code being edited, its material laid out by the properties block at its defaults)
-  over the shader's grid (its name and entry points). The preview has its own bar: Frame, and, while
-  the code does not compile, a note that it shows the last version that did. An asset that did not
-  read says so in place of the grid.
+  The shader page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset,
+  each an action over the page, with the asset's kind at the end) over the code and its problems,
+  one above the other, beside the preview (a sphere drawn with the code being edited, its material
+  laid out by the properties block at its defaults) over the shader's grid (its name and entry
+  points). The preview has its own bar: Frame, and, while the code does not compile, a note that it
+  shows the last version that did. An asset that did not read says so in place of the grid.
 -->
 <Panel class="page code-page shader-page">
     <ToolBar id="page-bar" class="page-toolbar">

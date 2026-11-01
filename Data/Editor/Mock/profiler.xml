@@ -1,8 +1,8 @@
 <!--
-  The profiler page (X7 of Raptor's editor-gui spec), a static mock of made-up data for the user to judge:
-  the page bar, the frame strip with the counters under it over the same frames, one frame's
-  timeline across the full width, and under it the scope table beside the chosen scope's detail.
-  Generated: each bar is placed by a class of its own in profiler.css.
+  The profiler page, a static mock of made-up data for judging the design: the page bar, the frame
+  strip with the counters under it over the same frames, one frame's timeline across the full
+  width, and under it the scope table beside the chosen scope's detail. It is generated: each bar
+  is placed by a class of its own in profiler.css.
 -->
 <Panel class="page pm-page">
     <ToolBar class="page-toolbar">

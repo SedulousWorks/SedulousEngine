@@ -1,8 +1,8 @@
 <!--
-  The GUI sandbox's shell (Documentation/Specs/vg-and-gui-lab.md): a header, a sidebar of pages
-  and the page on show. Each sidebar button runs the command page.<id>; the host finds the pages
-  from them and loads pages/<id>.xml (with pages/<id>.css and pages/<id>.as when there are), so a
-  new page is a button and its files. The game menu is a second root of the same GUI.
+  The GUI sandbox's shell: a header, a sidebar of pages and the page on show. Each sidebar button
+  runs the command page.<id>; the host finds the pages from those buttons and loads pages/<id>.xml
+  (with pages/<id>.css and pages/<id>.as when they exist), so a new page is a button and its files.
+  The game menu is a second root of the same GUI.
 -->
 <Panel id="shell" class="shell">
     <Panel id="header" class="header" flex-direction="row" align-items="center" gap="16">

@@ -1,6 +1,5 @@
 <!--
-  The Project panel without a project (Documentation/Specs/editor-gui.md, 5.1, layer 4): the logo
-  over a quiet line, centred.
+  The Project panel without a project: the logo over a quiet line, centred.
 -->
 <Panel class="welcome">
     <Image class="welcome-logo" src="Branding/sedulous-logo.svg"/>

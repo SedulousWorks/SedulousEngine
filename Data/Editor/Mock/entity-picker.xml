@@ -1,8 +1,9 @@
 <!--
-  The entity picker (an entity slot's pick) shown as the scene hierarchy shows the scene: the same
-  tree, the scene its top row, each entity by its type's icon in its category's colour, opened and
-  closed by its arrow, the current entity lit. The search keeps each match with what holds it.
-  Enter picks, Esc keeps the value, None clears it. The mock's scene is the scene page's.
+  The entity picker (an entity slot's pick), showing the scene as the scene hierarchy does: the same
+  tree, with the scene as its top row, each entity by its type's icon in its category's colour,
+  opened and closed by its arrow, and the current entity highlighted. The search keeps each match
+  with what holds it. Enter picks, Esc keeps the value, None clears it. The mock's scene is the
+  scene page's.
 -->
 <Panel class="dialog picker entity-picker">
     <Panel class="picker-search">

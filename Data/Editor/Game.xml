@@ -1,9 +1,9 @@
 <!--
-  The Game tab (Raptor's editor-gui spec, 5.3, layer 7, part 3): a fresh run of the project
-  as the player runs it. Its bar is the kit's transport (Restart, Play, Pause, Stop, the state named
-  beside them and the scene it runs; a Play waiting for the cook says so), then the resolution the
-  game draws at, the phone held upright, and the script debugger's toggle. Under it the game (code
-  puts its viewport in the pane) beside the debugger in a split, which opens by its toggle or at a break.
+  The Game tab: a fresh run of the project as the player runs it. Its bar is the kit's transport
+  (Restart, Play, Pause, Stop, with the state and the scene it runs named beside them; a Play
+  waiting for the cook says so), then the resolution the game draws at, the phone held upright, and
+  the script debugger's toggle. Under it the game (code puts its viewport in the pane) sits beside
+  the debugger in a split, which opens by its toggle or at a break.
 -->
 <Panel class="page game-page">
     <ToolBar id="game-bar" class="page-toolbar">
@@ -20,8 +20,8 @@
         <Separator/>
         <ToolButton id="game-debugger-toggle" toggle="true" icon="Editor/Icons/bug.svg" tooltip="Script debugger: the call stack and the locals at a break"/>
     </ToolBar>
-    <!-- The game beside the debugger, a handle between them to give either the room; the debugger
-         leaves the split while it is off, the game taking it all. -->
+    <!-- The game beside the debugger, with a handle between them to give either the room; the
+         debugger leaves the split while it is off, and the game takes it all. -->
     <Splitter id="game-stage" class="page-body game-stage" axis="horizontal" weights="0.78 0.22">
         <Panel id="game-view-pane" class="game-view-pane"/>
         <Panel id="game-debugger" class="panel game-debugger">

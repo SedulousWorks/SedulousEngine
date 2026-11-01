@@ -1,9 +1,11 @@
-<!-- The HUD (Lamplight.as fills it from the level): the target and what has been taken top left, a
-     word for a moment in the middle (a checkpoint reached, the exit with nothing to show), the time
-     top right; what the thief can do here (put out a lamp, pick a lock: Lamp.as, Door.as) above the
-     controls, which show for a few seconds as a level starts; the light meter bottom left
-     (LightMeter.as). Over the level, taking none of its input. Styled by LamplightSheet.css. Back (Escape, East) is the game's own
-     Pause action (Lamplight.as), not the screen stack's. -->
+<!-- The HUD, which Lamplight.as fills from the level. The target and what has been taken sit top
+     left, a word shows in the middle for a moment (a checkpoint reached, or the exit reached
+     without the target), and the time sits top right. Along the foot, what the thief can do here
+     (put out a lamp, pick a lock: Lamp.as, Door.as) shows above the controls, which show for a few
+     seconds as a level starts, and the light meter (LightMeter.as) sits bottom left. The HUD lies
+     over the level and takes none of its input. Styled by LamplightSheet.css. The screen stack's
+     back (Escape, East) is off here: the game's own Pause action (Lamplight.as) takes its place.
+     -->
 <Screen blocks="false" back="none">
   <Panel class="hud">
     <Panel class="hud-top">

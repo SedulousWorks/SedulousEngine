@@ -1,6 +1,7 @@
-<!-- Joining a host (Masquerade.as): the host's address, then Join; the host's map comes with its
-     welcome, so there is none to choose. The line under it says how the joining goes. Back (Escape,
-     East: the screen stack's own back) returns to the title. Styled by MasqueradeSheet.css. -->
+<!-- Joining a host (Masquerade.as): the host's address, then Join. The host's map arrives with its
+     welcome, so there is no map to choose. The line underneath reports how the joining goes. Back
+     (Escape, East: the screen stack's own back) returns to the title. Styled by
+     MasqueradeSheet.css. -->
 <Screen class="fades" covers="true" nav-default="join-go">
   <Panel class="centre">
     <Panel class="card join-card">

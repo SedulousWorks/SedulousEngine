@@ -1,7 +1,7 @@
-<!-- The ending (Snowline.as shows it after a run that wins a better medal on Ridge, the last
-     course): the best medal and time on each course, their total and the medals won. Jump goes back
-     to the courses. Styled by SnowlineSheet.css. Back (Escape, East) is the game's own
-     Pause action (Snowline.as), not the screen stack's. -->
+<!-- The ending, which Snowline.as shows after a run that wins a better medal on Ridge, the last
+     course: the best medal and time on each course, their total and the medals won. Jump goes back
+     to the courses. Styled by SnowlineSheet.css. The screen stack's back (Escape, East) is off
+     here: the game's own Pause action (Snowline.as) takes its place. -->
 <Screen class="fades" back="none">
   <Panel class="centre">
     <Panel class="card ending-card">

@@ -1,6 +1,6 @@
-<!-- The map, for playing alone or hosting (Masquerade.as): a card per map with its line and its best
-     round, the chosen one lit; then Start (Play, or Host), or Back to the title (Escape, East: the
-     screen stack's own back). Styled by MasqueradeSheet.css. -->
+<!-- The map choice, for playing alone or hosting (Masquerade.as): a card per map with its line and
+     its best round, the chosen one lit. Then Start (Play or Host), or Back to the title (Escape,
+     East: the screen stack's own back). Styled by MasqueradeSheet.css. -->
 <Screen class="fades" covers="true" nav-default="map-0">
   <Panel class="centre">
     <Panel class="card maps-card">

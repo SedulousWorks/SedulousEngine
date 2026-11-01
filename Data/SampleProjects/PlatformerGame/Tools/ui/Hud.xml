@@ -1,10 +1,11 @@
-<!-- The HUD (PlatformerGame.as fills it): lives and coins top left (the gem beside them once
-     found), the level and its clock in the middle, the score top right with the gains that float
-     up under it. Over the level, taking none of its input. Styled by SkyHopperSheet.css. Back
-     (Escape, East) is the game's own Pause action, not the screen stack's. -->
+<!-- The HUD, which PlatformerGame.as fills: lives and coins top left (with the gem beside them once
+     it is found), the level and its clock in the middle, and the score top right, with the gains
+     that float up under it. The HUD lies over the level and takes none of its input. Styled by
+     SkyHopperSheet.css. The screen stack's back (Escape, East) is off here: the game's own Pause
+     action (PlatformerGame.as) takes its place. -->
 <Screen blocks="false" back="none">
   <Panel class="hud-screen">
-    <!-- Lives and coins: the run's stakes, each an icon and a count. -->
+    <!-- Lives and coins, the run's stakes, each shown as an icon and a count. -->
     <Panel class="hud hud-row">
       <Image id="hud-heart" class="icon icon-30" src="{d44e698e-ec68-d744-93e0-a8f8a73f5a8f}"/>
       <Label id="hud-lives" class="hud-value lilita hud-number" text="x 3"/>

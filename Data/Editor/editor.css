@@ -1,11 +1,12 @@
 /*
-  The editor's sheet (Documentation/Specs/editor-gui.md, 3.1): the one place the editor's look is
-  written. Over the GUI's built-in theme and its satellites' sheets, which follow the tokens alone;
-  the rules here are the editor's own regions, written only in semantic tokens.
+  The editor's sheet: the one place the editor's look is written. It sits over the GUI's built-in
+  theme and its satellites' sheets, which follow the tokens alone; the rules here style the
+  editor's own regions, written only in semantic tokens.
 */
 @import "Editor/tokens.css";
 
-/* The faces (OFL, their licences beside them): Inter for the interface, JetBrains Mono for code. */
+/* The typefaces (OFL, with their licences beside them): Inter for the interface, JetBrains Mono for
+   code. */
 @font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Regular.ttf); }
 @font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Italic.ttf); font-style: italic; }
 @font-face { font-family: Inter; src: url(Editor/Fonts/inter/Inter-Medium.ttf); font-weight: 500; }
@@ -32,10 +33,11 @@ statusbar { height: var(--statusbar); flex-shrink: 0; padding: 0 var(--space-m);
 .welcome { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; gap: var(--space-l); }
 .welcome-logo { width: 319px; height: 72px; opacity: 0.9; }
 .welcome-hint { color: var(--text-dim); font-size: var(--font-small); }
-/* A panel whose contents come with a later phase. */
+/* A panel's placeholder: a quiet line, centred, while the panel has nothing else to show. */
 .panel-placeholder { flex-grow: 1; text-align: center; color: var(--text-placeholder); }
 
-/* The Project panel with a project open: its header, then Start beside Project, wrapping. */
+/* The Project panel with a project open: its header, then Start beside Project, wrapping when
+   narrow. */
 .home-scroll { flex-grow: 1; min-height: 0; }
 .home { flex-direction: column; row-gap: var(--space-xl); padding: var(--space-xl) calc(2 * var(--space-xl)); }
 .home-header { flex-direction: row; align-items: center; column-gap: var(--space-xl); }
@@ -64,9 +66,9 @@ button.link:hover { background-color: var(--ghost-hover); }
 .project-initial > label { color: var(--text-dim); font-size: 40px; }
 .home-picture { width: 192px; height: 108px; }
 
-/* The project manager (Raptor's project-manager spec): the whole window. A header with the tabs, then
-   a page: Projects (a toolbar over the scrolling lists), Samples, or the first run's welcome; a
-   footer with the status and the keys under all of them. */
+/* The project manager fills the whole window. A header holds the tabs, then comes a page: Projects
+   (a toolbar over the scrolling lists), Samples, or the first run's welcome; a footer with the
+   status and the keys sits under all of them. */
 .manager { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
 .manager-header { flex-direction: row; align-items: center; column-gap: var(--space-l); padding: 20px 40px 0; flex-shrink: 0; }
 .manager-logo { height: 34px; width: 150px; }
@@ -79,14 +81,14 @@ button.manager-tab:checked { background-color: var(--element); color: var(--text
 .manager-page { flex-grow: 1; flex-direction: column; min-height: 0; }
 .manager-toolbar { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 20px 40px 14px; flex-shrink: 0;
                    border-bottom: 1px solid var(--separator); }
-/* As tall as the search and the sort (beating button.with-icon's height, which comes later). */
+/* As tall as the search and the sort (this beats button.with-icon's height, which comes later). */
 .manager-toolbar > button, .manager-toolbar > button.with-icon { height: 30px; }
 .search.manager-search { flex-grow: 0; flex-basis: 280px; height: 30px; margin-right: var(--space-s); }
 .manager-sort { width: 120px; height: 30px; }
 /* The view switch stands as tall as the fields beside it, centred with them. */
 .manager-toolbar > .segmented { align-self: center; align-items: center; height: 30px; }
 .manager-toolbar button.icon-segment { width: 32px; padding: 0; height: 24px; }
-/* The lists scroll as one column the window's width: the rows stretch across it. */
+/* The lists scroll as one column the window's width, and the rows stretch across it. */
 .manager-scroll { flex-grow: 1; min-height: 0; flex-direction: column; row-gap: var(--space-xs); overflow-y: auto; overflow-x: hidden;
                   padding: 14px 40px 20px; }
 .manager-section-head { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: var(--space-xs) 0 6px; flex-shrink: 0; }
@@ -94,7 +96,8 @@ button.manager-tab:checked { background-color: var(--element); color: var(--text
 .manager-count { font-size: var(--font-small); color: var(--text-placeholder); }
 .manager-no-match { color: var(--text-dim); margin: 24px 0; }
 .manager-projects { flex-direction: column; row-gap: 2px; flex-shrink: 0; }
-/* As many columns as the width holds, sharing it, the last row starting under the first column. */
+/* As many columns as the width holds, sharing it, with the last row starting under the first
+   column. */
 .manager-projects.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); column-gap: var(--space-xl);
                          row-gap: var(--space-xl); }
 .manager-row { flex-direction: row; align-items: center; column-gap: 14px; padding: var(--space-s) 10px; border-radius: var(--radius);
@@ -165,7 +168,7 @@ button.manager-small { height: 30px; font-size: var(--font-small); color: var(--
 .manager-sample-stage > label { flex-grow: 1; font-size: var(--font-small); color: var(--text); }
 .manager-sample-stage > button { height: 26px; }
 .manager-samples-state { flex-grow: 1; }
-/* The download dialog's middle stage: the bar across the dialog, the words under it. */
+/* The download dialog's middle stage: the bar across the dialog, with the words under it. */
 .download-sample-progress { flex-direction: column; row-gap: var(--space-s); padding: var(--space-l) 0; }
 .download-sample-progress > progressbar { height: 6px; align-self: stretch; }
 
@@ -188,8 +191,8 @@ button.manager-card:hover { border-color: var(--border-strong); background-color
 .new-project { flex-direction: column; row-gap: var(--space-m); }
 .new-project-folder { flex-direction: row; column-gap: var(--space-s); }
 .new-project-folder > textfield { flex-grow: 1; min-width: 0; }
-/* The check line: green when it can be made, amber when it goes ahead with a word, red while
-   Create waits. */
+/* The check line: green when the project can be made, amber when it can go ahead with a warning,
+   red while Create waits. */
 .new-project-check { flex-direction: row; align-items: start; column-gap: 10px; padding: 10px 12px; border-radius: var(--radius);
                      border: 1px solid var(--success-border); background-color: var(--success-background); }
 .new-project-check > .message-icon { width: 16px; height: 16px; margin-top: 1px; image-color: var(--success); }
@@ -199,16 +202,16 @@ button.manager-card:hover { border-color: var(--border-strong); background-color
 .new-project-check.error { border-color: var(--danger-border); background-color: var(--danger-background); }
 .new-project-check.error > .message-icon, .new-project-check.error > .new-project-check-text { color: var(--danger); image-color: var(--danger); }
 
-/* === Tabs: a compact strip, its text centred === */
+/* === Tabs: a compact strip with its text centred === */
 /* A tab view's strip is on top: a tab rounds its top corners and meets its page square. */
 tab { height: var(--tab); padding: 0 var(--space-l); align-items: center;
       border-radius: var(--radius) var(--radius) 0 0; }
-/* The strip's list arrow and close-all cross: a small glyph in a button as tall as a tab, the
-   density's sizes. */
+/* The strip's list arrow and close-all cross: a small glyph in a button as tall as a tab, sized by
+   the density. */
 tablist, closeall { height: var(--tab); width: var(--strip-button);
                     padding: calc((var(--tab) - var(--glyph-box) + 2 * var(--glyph-inset)) / 2) calc((var(--strip-button) - var(--glyph-box) + 2 * var(--glyph-inset)) / 2); }
-/* A tab's close part: a cross in a small square, the density's sizes, quiet until
-   the pointer is on it. */
+/* A tab's close part: a cross in a small square, sized by the density, quiet until the pointer is
+   on it. */
 tab > close { width: var(--glyph-box); height: var(--glyph-box); padding: var(--glyph-inset);
               border-radius: var(--radius-small); color: var(--icon-dim); }
 tab > close:hover { color: var(--text-strong); background-color: var(--ghost-hover); }
@@ -261,14 +264,14 @@ textfield:focus, numberfield:focus { border-color: var(--accent-strong); }
 /* === Rows === */
 treerow, listviewrow, propertyrow, menuitem, menusubmenu { min-height: var(--row); }
 
-/* === Motion: what moves (3.3) === */
+/* === Motion: what moves === */
 button, toolbutton, toolmenubutton, tab, .menubutton {
     transition: background-color var(--motion-fast) var(--easing), color var(--motion-fast) var(--easing);
 }
-/* A popup enters as it opens: menus, lists and tooltips slide 4 px from their anchor and fade in
-   (a submenu from its parent's side) and close at once (ruling 14); a dialog grows from 98% and
-   fades in, slower, and shrinks back and fades out as it closes. Less motion makes every duration
-   nothing, so each lands at once. */
+/* A popup animates as it opens: menus, lists and tooltips slide 4 px from their anchor and fade in
+   (a submenu from its parent's side), and close at once; a dialog grows from 98% and fades in,
+   more slowly, then shrinks back and fades out as it closes. Reduced motion makes every duration
+   zero, so each change lands at once. */
 menu, combobox > listbox, propertyflagslist, propertycolorpopup, tooltip {
     transition: opacity var(--motion-fast) var(--easing-out), transform var(--motion-fast) var(--easing-out);
 }
@@ -281,25 +284,26 @@ window:entering, window:leaving { opacity: 0; transform: scale(0.98); }
 
 /* === A panel's bar: its search and its actions, under the dock tab === */
 .panel { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
-/* Its height holds: a column whose body wants more room does not squeeze it (the assets bar). */
+/* Its height holds: a column whose body wants more room does not squeeze it (as in the assets bar).
+   */
 .panel-toolbar { height: var(--bar); flex-shrink: 0; padding: 0 var(--space-m); column-gap: var(--space-s); align-items: center;
                  flex-direction: row; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
 
-/* === The search field: one look everywhere (2.3) === */
-/* It fills its bar up to the bar's buttons, which stay at the end however wide the pane grows;
-   beside a breadcrumb (the assets bar) it keeps a width of its own, at the end with its buttons,
-   giving way when the bar is narrow. */
+/* === The search field: one look everywhere === */
+/* It fills its bar up to the bar's buttons, which stay at the end however wide the pane grows.
+   Beside a breadcrumb (in the assets bar) it keeps a width of its own, at the end with its
+   buttons, and gives way when the bar is narrow. */
 .search { flex-direction: row; align-items: center; flex-grow: 1; flex-shrink: 1; min-width: 0; height: var(--control-height);
           background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small);
           padding: 0 var(--space-s); column-gap: var(--space-s); }
-.search.beside-crumbs { flex-grow: 0; flex-basis: 320px; }  /* the spacer before it takes the room: it and its buttons sit at the end */
+.search.beside-crumbs { flex-grow: 0; flex-basis: 320px; }  /* the spacer before it takes the room, so it and its buttons sit at the end */
 .search:hover { border-color: var(--border-strong); }
 .search:focus-within { border-color: var(--accent-strong); }
 .search-field:focus { box-shadow: none; } /* the frame shows the focus, not the field inside it */
 .search-icon { width: var(--icon-size); height: var(--icon-size); image-color: var(--icon-dim); }
 .search-field { flex-grow: 1; min-width: 0; border-width: 0; background-color: transparent; padding: 0; height: auto; }
 
-/* === Icon buttons: ghost, square, the icon tinted === */
+/* === Icon buttons: ghost, square, with the icon tinted === */
 /* A bar's buttons keep their size; its search field gives way first. */
 .panel-toolbar > button { flex-shrink: 0; }
 button.icon-button { width: var(--control-height); height: var(--control-height); padding: 0; background-color: transparent;
@@ -316,7 +320,7 @@ button.chip.debug.checked { color: var(--text-dim); }
 button.chip.warning.checked { color: var(--warning); border-color: var(--warning-border); }
 button.chip.error.checked { color: var(--danger); border-color: var(--danger-border); }
 
-/* === A page and its viewport. A page carries its own panes (a scene page its hierarchy and
+/* === A page and its viewport. A page carries its own panes (a scene page has its hierarchy and
        inspector) in splits of its own, so pages can stand side by side. === */
 .page-body { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; }
 .page-pane { min-width: 160px; }
@@ -324,14 +328,17 @@ button.chip.error.checked { color: var(--danger); border-color: var(--danger-bor
 .viewport { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; background-color: var(--surface-sunken); display: stack; }
 /* The mock's still of a scene, standing in for the renderer (never behind a real viewport). */
 .scene-page.mock .viewport { background-image: url(Editor/Mock/viewport.png); background-size: cover; background-position: center; }
-/* The real page: the scene fills its pane; what a scene that did not load says sits over it. */
+/* The real page: the scene fills its pane, and the message for a scene that did not load sits over
+   it. */
 .scene-view { flex-grow: 1; }
 .scene-state { background-color: var(--surface-sunken); }
 .page-kind { align-self: center; }
-/* The hierarchy: a prefab's members read apart, an entity that is not active dims (with its icon). */
+/* The hierarchy: a prefab's members stand apart, and an entity that is not active is dimmed (with
+   its icon). */
 treerowcontent.member > treecell { color: var(--accent-strong); }
 treerowcontent.inactive { opacity: 0.45; }
-/* The inspector: what a simulation leaves read only says so over the grid; nothing selected fills the pane. */
+/* The inspector: a note over the grid says what a simulation leaves read only; with nothing
+   selected, a state fills the pane. */
 .inspector-note { padding: var(--space-s) var(--space-m); }
 .inspector-state { flex-grow: 1; }
 
@@ -345,16 +352,16 @@ treerowcontent.inactive { opacity: 0.45; }
 .image-stage { flex-grow: 1; min-height: 0; background-color: var(--surface-sunken); }
 .image-inspect { flex-grow: 1; }
 .image-empty { flex-grow: 1; background-color: var(--surface-sunken); }
-/* The audio clip page: the waveform under its transport, in the theme's colours; the audition's
-   volume a short slider at the bar's end. */
+/* The audio clip page: the waveform under its transport, in the theme's colours, with the
+   audition's volume as a short slider at the bar's end. */
 .audio-pane { flex-direction: column; }
 .audio-stage { flex-grow: 1; min-height: 0; flex-direction: column; padding: var(--space-m); background-color: var(--surface-sunken); }
 .audio-stage > .waveform { flex-grow: 1; min-height: 0; }
 .audio-empty { flex-grow: 1; background-color: var(--surface-sunken); }
 .audio-volume { width: 96px; }
 .preview-speed { width: 96px; }
-/* The property animation panel (layer 9): its bar over the ruler, dopesheet and curve view, the
-   ruler and the curves starting where the dopesheet's keys do (its names' width). */
+/* The property animation panel: its bar over the ruler, dopesheet and curve view, with the ruler
+   and the curves starting where the dopesheet's keys do (after its names' width). */
 .anim-panel { flex-direction: column; flex-grow: 1; background-color: var(--surface); }
 .anim-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
 .anim-clip { font-weight: 600; padding: 0 var(--space-s); }
@@ -377,7 +384,8 @@ waveform::playhead { background-color: var(--warning); }
 .input-tree-pane { flex-direction: column; }
 .input-tree-pane > .search-row { flex-direction: row; padding: var(--space-s); }
 .input-tree { flex-grow: 1; min-height: 0; }
-/* A code page: its code over its problems, beside what is the page's own (a script's API). */
+/* A code page: its code over its problems, beside what is the page's own (such as a script's API
+   browser). */
 .code-page { flex-direction: column; }
 .code-pane { flex-grow: 1; min-width: 0; }
 .page-code { font-family: var(--mono-font); font-size: var(--font-code); min-height: 0; }
@@ -388,7 +396,8 @@ waveform::playhead { background-color: var(--warning); }
 .api-pane { flex-direction: column; }
 .api-pane > .search-row { flex-direction: row; padding: var(--space-s); }
 .api-tree { flex-grow: 1; min-height: 0; }
-/* A code page's problems: how many over a row each, its severity's icon, its place, its message. */
+/* A code page's problems: a count over one row each, with its severity's icon, its place and its
+   message. */
 .problems { flex-direction: column; }
 .problems-summary { padding: var(--space-xs) var(--space-s); color: var(--text-dim); font-size: var(--font-small); }
 .problems-list { flex-grow: 1; min-height: 0; }
@@ -407,19 +416,19 @@ waveform::playhead { background-color: var(--warning); }
 .preview-view { flex-grow: 1; }
 .preview-empty { flex-grow: 1; background-color: var(--surface-sunken); }
 .preview-hint { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
-/* An editor grid's notice: what it says wraps, in the warning's colour. */
+/* An editor grid's notice: its text wraps, in the warning's colour. */
 .notice-text { white-space: normal; color: var(--warning); }
-/* The HUD's zones: each a corner of the viewport, its pieces stacked from that corner, so they
-   never meet whatever the viewport's size. Over any scene, so in the HUD's own colours in both
-   schemes. */
-.hud-zone { padding: var(--space-m); row-gap: var(--space-m); flex-direction: column; pointer-events: none; } /* its pieces take the pointer, the space between them is the view's */
+/* The HUD's zones: each is a corner of the viewport, with its pieces stacked from that corner, so
+   they never meet whatever the viewport's size. They sit over any scene, so they use the HUD's own
+   colours in both schemes. */
+.hud-zone { padding: var(--space-m); row-gap: var(--space-m); flex-direction: column; pointer-events: none; } /* its pieces take the pointer; the space between them belongs to the view */
 .hud-top-start { justify-self: start; align-self: start; align-items: start; }
 .hud-top-end { justify-self: end; align-self: start; align-items: end; }
 .hud-bottom-start { justify-self: start; align-self: end; align-items: start; }
 .hud-bottom-end { justify-self: end; align-self: end; align-items: end; }
 .hud-bar { flex-direction: row; column-gap: 2px; padding: 2px; border-radius: var(--radius); background-color: var(--hud-background); }
-/* A chip: what the view shows, its menu below it; one off its default (a debug view, an axis view)
-   in the accent, so it is not forgotten. */
+/* A chip: what the view shows, with its menu below it. One set off its default (a debug view, an
+   axis view) shows in the accent, so it is not forgotten. */
 .hud-chip { height: calc(var(--control-height) - 2px); padding: 0 var(--space-s) 0 var(--space-m); background-color: transparent;
             color: var(--hud-text); font-size: var(--font-small); border-radius: var(--radius-small); }
 .hud-chip:hover { background-color: rgba(255, 255, 255, 0.1); }
@@ -432,7 +441,7 @@ waveform::playhead { background-color: var(--warning); }
 .hud-status-icon { width: 14px; height: 14px; image-color: var(--hud-text); }
 .hud-status label, .camera-preview-foot label { color: var(--hud-text); }
 .hud-status label.hud-dim { color: var(--hud-text-dim); }
-/* The view gizmo: the axes as the gizmos colour them; one pressed looks along it. */
+/* The view gizmo: the axes in the gizmos' colours; pressing one looks along it. */
 .view-gizmo { width: 64px; height: 64px; border-radius: 32px; background-color: var(--hud-background);
               flex-direction: column; align-items: center; justify-content: center; row-gap: 2px; }
 .axis-row { flex-direction: row; align-items: center; column-gap: 2px; }
@@ -441,12 +450,12 @@ waveform::playhead { background-color: var(--warning); }
 .axis-y { background-color: var(--axis-y); }
 .axis-z { background-color: var(--axis-z); }
 .axis-centre { width: 8px; height: 8px; border-radius: 4px; background-color: var(--hud-text-dim); }
-/* The real view gizmo: on a disc, its knobs drawn, their letters these. */
-.hud-gizmo { border-radius: 45px; background-color: var(--hud-background); } /* a disc: half its 90 px side */
+/* The real view gizmo: on a disc, with its knobs drawn and these colours for their letters. */
+.hud-gizmo { border-radius: 45px; background-color: var(--hud-background); } /* a disc: the radius is half its 90 px side */
 .axis-label { font-size: 11px; font-weight: 600; color: #101214; }
 .axis-label.negative { color: var(--hud-text); }
-/* The zoom readout, a moment after a wheel zoom: the distance to the focus, the grid's cell and a
-   scale bar of a round length. */
+/* The zoom readout, shown for a moment after a wheel zoom: the distance to the focus, the grid's
+   cell, and a scale bar of a round length. */
 .hud-zoom { flex-direction: column; row-gap: 2px; padding: var(--space-s) var(--space-m); border-radius: var(--radius-small);
             background-color: var(--hud-background); font-size: var(--font-small); color: var(--hud-text); }
 .hud-zoom label { color: var(--hud-text); }
@@ -462,7 +471,7 @@ waveform::playhead { background-color: var(--warning); }
 .camera-preview-foot > button.camera-preview-pin { width: 20px; height: 20px; }
 .camera-preview-foot > button.camera-preview-pin > icon { width: 14px; height: 14px; image-color: var(--hud-text-dim); }
 .camera-preview-foot > button.camera-preview-pin.checked > icon { image-color: var(--hud-text); }
-/* A tool's panel: one chrome for every tool (its name, help, close), under the view's menus. */
+/* A tool's panel: one chrome for every tool (its name, help and close), under the view's menus. */
 .hud-panel { width: 240px; flex-direction: column; row-gap: var(--space-m); padding: var(--space-m);
              background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
              box-shadow: 0 6px 18px var(--shadow-color); }
@@ -474,7 +483,7 @@ waveform::playhead { background-color: var(--warning); }
 .hud-name { width: 64px; color: var(--text-dim); flex-shrink: 0; }
 .hud-row > .slider-field { flex-grow: 1; min-width: 0; }
 .hud-help { font-size: var(--font-small); color: var(--text-dim); white-space: normal; }
-/* A tool panel's body (its kit: choices, sliders, checks, help), under its chrome's head. */
+/* A tool panel's body (its kit: choices, sliders, checks and help), under its chrome's head. */
 .tool-panel-body { flex-direction: column; row-gap: var(--space-m); }
 .tool-panel-body > .segmented { align-self: stretch; }
 .tool-panel-body button.segment { flex-grow: 1; }
@@ -505,7 +514,8 @@ toast { border: 1px solid var(--border-strong); }
 .asset-picture { width: 64px; height: 56px; border-radius: var(--radius-small); object-fit: cover; } /* its thumbnail, filling the frame */
 .asset-name { font-size: var(--font-small); color: var(--text); }
 .asset-name { max-width: 88px; text-overflow: ellipsis; white-space: nowrap; }
-/* A tile's marks sit in its picture's corners: a star top right, a stale or failed badge below. */
+/* A tile's marks sit in its picture's corners: a star at the top right, a stale or failed badge
+   below it. */
 .asset-thumb > .badge-icon { position: absolute; top: 3px; right: 3px; }
 .asset-thumb > .badge { position: absolute; left: 3px; bottom: 3px; font-size: 10px; padding: 0 3px; }
 /* Always Export: a mark in a tile's top left corner; in a row, an icon in its own column. */
@@ -515,11 +525,11 @@ toast { border: 1px solid var(--border-strong); }
    then its badge, Always Export and star in columns of their own, so every kind ends in line. */
 .asset-row-text { flex-direction: row; align-items: baseline; flex-grow: 1; min-width: 0; column-gap: var(--space-l); }
 .asset-row-text > .row-name { flex-grow: 1; }
-/* The name keeps its room; the kind gives way first, in an ellipsis, never over the name (a picker's
-   kind says where the asset is, a long path). */
+/* The name keeps its room; the kind gives way first, in an ellipsis, never over the name (a
+   picker's kind says where the asset is, which can be a long path). */
 .asset-row-text > .row-kind { flex-grow: 0; flex-shrink: 1000; min-width: 0; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
 .asset-list .asset-row > .badge { width: 52px; flex-shrink: 0; text-align: center; }
-/* A row's Always Export and star: on every row, lit when so, greyed when not. */
+/* A row's Always Export and star: on every row, highlighted when set, greyed when not. */
 .asset-list .asset-row > .badge-icon { margin-left: var(--space-xs); image-color: var(--icon-dim); opacity: var(--disabled-opacity); }
 .asset-list .asset-row > .badge-icon:last-child { margin-right: var(--space-xs); }
 .asset-list .asset-row > .badge-icon.on { opacity: 1; }
@@ -528,7 +538,7 @@ toast { border: 1px solid var(--border-strong); }
 .asset-tile.group > .asset-thumb > .asset-glyph, .asset-row.group > .row-icon { image-color: var(--icon); }
 .assets-state { flex-grow: 1; background-color: var(--surface); }
 
-/* A tile's hover and its selection are the cell, one shape. */
+/* A tile's hover and its selection both use the cell, in one shape. */
 .asset-tiles listviewrow { border-radius: var(--radius); }
 .asset-tiles::selection { border-radius: var(--radius); }
 
@@ -536,7 +546,7 @@ toast { border: 1px solid var(--border-strong); }
 listview::selection, treeview::selection, tableview::selection { border-radius: var(--radius-small); }
 
 /* === The console's rows === */
-.log { flex-grow: 1; background-color: var(--surface); row-height: 22px; } /* every line one high: measured ones resized the bar as they came into view */
+.log { flex-grow: 1; background-color: var(--surface); row-height: 22px; } /* every line one row high: measured lines resized the scroll bar as they came into view */
 .log-row { flex-direction: row; column-gap: var(--space-m); padding: 0 var(--space-m); align-items: center; }
 .log-time { color: var(--text-disabled); font-size: var(--font-small); }
 .log-text { flex-grow: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }
@@ -545,8 +555,8 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
 .log-row.error > .log-text { color: var(--danger); }
 .console-empty { color: var(--text-dim); padding: var(--space-l); }
 
-/* === The Profiler page (X7): its bar, the strip and counters, the timeline over the table and
-   the detail. The views draw themselves (Profiler.GUI's sheet); these place them. === */
+/* === The Profiler page: its bar, the strip and counters, and the timeline over the table and
+   the detail. The views draw themselves (Profiler.GUI's sheet); these rules place them. === */
 .profiler-page { min-width: 0; }
 .profiler-source, .profiler-bar-label { color: var(--text-dim); white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
 .profiler-combo { width: 96px; }
@@ -556,7 +566,7 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
 .profiler-strip-area { flex-direction: column; flex-shrink: 0; padding: var(--space-xs) var(--space-m) var(--space-s); row-gap: 3px;
                        border-bottom: 1px solid var(--separator); background-color: var(--surface); }
 .profiler-strip-bar { flex-direction: row; align-items: center; column-gap: var(--space-m); height: 26px; }
-/* The engine registers a dozen counters: three plots high, the rest a scroll away. */
+/* The engine registers a dozen counters: three plots show, and the rest are a scroll away. */
 .profiler-counters { flex-direction: column; row-gap: 3px; max-height: 87px; overflow-y: auto; overflow-x: hidden; flex-shrink: 0; }
 .profiler-timeline { min-height: 0; min-width: 0; background-color: var(--surface); }
 .profiler-lower { min-height: 0; }
@@ -572,15 +582,15 @@ propertyrowcontent { padding-right: var(--space-m); }
 treeview { arrow-size: var(--arrow); indent-width: var(--tree-indent); icon-size: var(--icon-size); }
 treeicon { image-color: var(--icon); }
 propertygrid { arrow-size: var(--arrow); indent-width: var(--grid-indent); }
-/* A closed group's line: what it holds, dim, where an editor would be. */
+/* A closed group's line: a dim summary of what it holds, where an editor would be. */
 propertysummary { color: var(--text-dim); font-size: var(--font-small); }
 /* A vector's parts keep their room for their numbers: a small inset, not a field's full one. */
 propertyeditor.floats numberfield { padding: 0 var(--space-xs); }
 
 /* === Popups: one surface for everything that opens over the editor (menus, a combo box's
-       list, the property grid's flags and colour popups, tooltips): raised above the panels,
-       bordered and shadowed, so it reads apart from what it covers; its rows inset from its
-       rounded edge and rounded to match. === */
+       list, the property grid's flags and colour popups, tooltips). It is raised above the
+       panels, bordered and shadowed, so it reads apart from what it covers; its rows are inset
+       from its rounded edge and rounded to match. === */
 menu, combobox > listbox, propertyflagslist, propertycolorpopup, tooltip {
     background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
     box-shadow: 0 6px 18px var(--shadow-color);
@@ -591,9 +601,9 @@ combobox > listbox listboxitem { border-radius: var(--radius-small); }
 combobox > listbox::selection { border-radius: var(--radius-small); }
 
 /* ======================================================================================
-   The kit's pieces (editor-gui-catalog.md, section 2): designed once, used by every page.
-   Where a widget for a piece does not exist yet (the component header, the slots, the
-   problems list) these rules are its look, to move onto the widget when it is built.
+   The kit's pieces: designed once, used by every page. Where a piece is drawn from plain
+   panels rather than a widget of its own, these rules are its look, to move onto a widget
+   when one is built.
    ====================================================================================== */
 
 /* === Type icons: tinted by category where lists are scanned === */
@@ -688,7 +698,7 @@ button.search-clear:hover { background-color: var(--ghost-hover); }
 .tile-badges { justify-self: end; align-self: start; padding: var(--space-xs); flex-direction: row; }
 .tile-name { font-size: var(--font-small); max-width: 88px; text-overflow: ellipsis; white-space: nowrap; }
 
-/* === The drag ghost: what moves, its count; refused says why === */
+/* === The drag ghost: what moves and its count; a refused drop says why === */
 .drag-ghost { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: var(--space-xs) var(--space-m);
               background-color: var(--surface-overlay); border: 1px solid var(--accent-strong); border-radius: var(--radius);
               box-shadow: 0 4px 12px var(--shadow-color); align-self: start; }
@@ -696,7 +706,7 @@ button.search-clear:hover { background-color: var(--ghost-hover); }
 .drag-ghost.refused { border-color: var(--danger-border); }
 .drag-reason { font-size: var(--font-small); color: var(--danger); }
 
-/* === The inspector: a component's header, its rows, the slots, the list editor === */
+/* === The inspector: a component's header, its rows, the slots and the list editor === */
 .component-header { flex-direction: row; align-items: center; column-gap: var(--space-s); height: var(--row);
                     padding: 0 var(--space-xs) 0 var(--space-s); background-color: var(--surface-raised);
                     border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
@@ -711,7 +721,8 @@ button.search-clear:hover { background-color: var(--ghost-hover); }
 .prop-name { width: 38%; flex-shrink: 0; color: var(--text-dim); text-overflow: ellipsis; white-space: nowrap; }
 .prop-row > textfield, .prop-row > combobox, .prop-row > numberfield, .prop-row > .with-unit, .prop-row > .slot, .prop-row > .prop-stack { flex-grow: 1; min-width: 0; }
 .prop-stack { flex-direction: column; }
-/* Changed from the default: a bar at the row's start and a strong name; a prefab override in the accent. */
+/* Changed from the default: a bar at the row's start and a strong name; a prefab override shows in
+   the accent. */
 .change-bar { width: 2px; height: calc(var(--row) - 6px); border-radius: 1px; background-color: var(--text-dim);
               margin-left: calc(0px - var(--arrow) + 2px); margin-right: calc(var(--arrow) - 4px - var(--space-s)); }
 .changed > .prop-name, .overridden > .prop-name { color: var(--text-strong); }
@@ -729,7 +740,7 @@ button.revert:hover > icon { image-color: var(--text-strong); }
 .notice-text { flex-grow: 1; flex-shrink: 1; min-width: 0; white-space: normal; font-size: var(--font-small); color: var(--text); }
 button.key-capture { height: var(--control-height); font-family: var(--mono-font); font-size: var(--font-small); padding: 0 var(--space-m);
                      background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small); }
-/* A slot: an asset's or an entity's, picked, dropped on, cleared. */
+/* A slot: an asset's or an entity's, which can be picked, dropped on and cleared. */
 .slot { flex-direction: row; align-items: center; column-gap: var(--space-s); height: var(--control-height);
         padding: 0 2px 0 2px; background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small); }
 .slot:hover { border-color: var(--border-strong); }
@@ -746,7 +757,8 @@ button.slot-button { width: 18px; height: 18px; padding: 2px; background-color: 
 button.slot-button > icon { width: 14px; height: 14px; image-color: var(--icon-dim); }
 button.slot-button:hover { background-color: var(--ghost-hover); }
 button.slot-button:hover > icon { image-color: var(--text-strong); }
-/* The list editor: a count and an add in its head; each item a grip, its index, its value, a remove. */
+/* The list editor: a count and an add button in its head; each item has a grip, its index, its
+   value and a remove button. */
 .list-head > .row-arrow { width: var(--arrow); height: var(--arrow); image-color: var(--icon-dim); margin-left: calc(0px - var(--arrow) - var(--space-s)); }
 .list-head > .prop-name { width: auto; }
 .list-count { font-size: 11px; color: var(--text-dim); background-color: var(--element); border-radius: 8px; padding: 0 6px; }
@@ -766,14 +778,14 @@ button.add-component { align-self: stretch; justify-content: center; margin: var
 .transport-state.stopped { color: var(--text-dim); }
 .clip-time { width: 116px; flex-shrink: 0; } /* a running time never moves what follows it */
 .graph-playing { width: 168px; flex-shrink: 0; } /* nor does the state a graph plays */
-.particle-count { width: 128px; flex-shrink: 0; } /* a running count of the particles alive, the same */
-.scene-simulate-state { width: 84px; flex-shrink: 0; text-align: center; } /* Paused and Simulating take one width: the centred Simulate buttons stay put */
-/* The Game tab: the game beside the script debugger, the bar's resolution a fixed width. */
+.particle-count { width: 128px; flex-shrink: 0; } /* nor does a running count of the particles alive */
+.scene-simulate-state { width: 84px; flex-shrink: 0; text-align: center; } /* Paused and Simulating take one width, so the centred Simulate buttons stay put */
+/* The Game tab: the game beside the script debugger, with the bar's resolution at a fixed width. */
 .game-view-pane { flex-grow: 1; flex-basis: 0; min-width: 0; min-height: 0; background-color: var(--surface-sunken); }
 .game-view { flex-grow: 1; }
 .game-scene { font-size: var(--font-small); color: var(--text-dim); margin-left: var(--space-s); }
 .game-resolution { width: 200px; flex-shrink: 0; }
-.game-debugger { min-width: 200px; flex-direction: column; } /* its share of the split, its handle the edge */
+.game-debugger { min-width: 200px; flex-direction: column; } /* its share of the split, with its handle at the edge */
 .game-debugger-bar { flex-direction: row; column-gap: var(--space-xs); }
 .game-debugger-state { font-size: var(--font-small); color: var(--text-dim); padding: var(--space-xs) var(--space-m); }
 .game-debugger-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-m) var(--space-xs); }
@@ -837,25 +849,26 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .form-help.refused { color: var(--danger); }
 .confirm-list { flex-direction: column; background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small);
                 padding: var(--space-xs); }
-.picker { padding-bottom: var(--space-s); width: 420px; } /* its own width: a dialog's 380 is a form's */
+.picker { padding-bottom: var(--space-s); width: 420px; } /* a width of its own: a dialog's 380 is for forms */
 .picker-search { padding: var(--space-m); border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); margin-bottom: var(--space-s); }
 /* The search, then the picker's close at its end. */
 .picker-search { flex-direction: row; align-items: center; column-gap: var(--space-s); }
 .picker-search > .search { flex-grow: 1; }
 .picker-group { font-size: 11px; font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-l) var(--space-xs); }
 .picker > .asset-row { margin: 0 var(--space-s); }
-/* A tree picker's rows: indented by level (the width is the row's), a row kept only to show where
-   a match is dimmed. */
+/* A tree picker's rows: indented by level (the width is the row's); a row kept only to show where
+   a match is, dimmed. */
 .picker-indent { flex-shrink: 0; }
 .asset-row.context > .row-name { color: var(--text-dim); }
 .picker-foot { flex-direction: row; align-items: center; padding: var(--space-s) var(--space-m) 0; margin-top: var(--space-s);
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
-.picker-hint.described { color: var(--text-dim); white-space: normal; flex-shrink: 1; min-width: 0; } /* the lit item's sentence */
+.picker-hint.described { color: var(--text-dim); white-space: normal; flex-shrink: 1; min-width: 0; } /* the highlighted item's description */
 /* A row's name keeps its room; its detail gives way first, in an ellipsis, never over the name. */
 .picker-list .row-kind { flex-shrink: 1000; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
-/* The asset picker: its groups a tree beside what the chosen one holds, as the assets browser. */
+/* The asset picker: its groups as a tree beside what the chosen group holds, as in the assets
+   browser. */
 .dialog.asset-picker { width: 640px; }
 .asset-picker-body { flex-direction: row; height: 320px; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
 .asset-picker-groups { width: 220px; flex-shrink: 0; background-color: transparent; border-right-width: 1px; border-right-style: solid;
@@ -863,25 +876,26 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .asset-picker-items { flex-grow: 1; min-width: 0; flex-direction: column; padding: var(--space-xs) var(--space-s); }
 .asset-picker-where { font-size: var(--font-small); color: var(--text-dim); padding: var(--space-xs) var(--space-m) var(--space-s); }
 .asset-picker-bar { flex-direction: row; align-items: center; column-gap: var(--space-s); }
-.asset-picker-grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); padding: var(--space-xs) var(--space-s); } /* the mock's */
+.asset-picker-grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); padding: var(--space-xs) var(--space-s); } /* the mock's tiles */
 .asset-picker-grid > .asset-tile { width: 88px; }
 .asset-picker-items > .asset-picker-list { flex-grow: 1; min-height: 0; background-color: transparent; padding: 0; }
-/* A row's name a column of its own, so where each asset lives starts at one x down the list (as the
-   grid's names are): a name longer than it ends in an ellipsis. Where it lives is cut in the
-   middle, its start and the asset's own folder kept. */
+/* A row's name is a column of its own, so where each asset lives starts at the same x down the list
+   (as the grid's names do); a longer name ends in an ellipsis. Where it lives is cut in the middle,
+   keeping its start and the asset's own folder. */
 .asset-picker-list .asset-row-text > .row-name { flex-grow: 0; flex-shrink: 0; width: 40%; }
 .asset-picker-list .asset-row-text > .row-kind { flex-grow: 1; text-align: start; text-overflow: ellipsis-middle; }
 .asset-picker-state { flex-grow: 1; color: var(--text-dim); text-align: center; padding: var(--space-xl) var(--space-l); }
 /* The entity picker: the scene's tree as the hierarchy draws it, in a picker's frame. */
 .entity-picker-tree { height: 340px; background-color: transparent; padding: 0 var(--space-s); }
 .entity-picker-state { height: 340px; color: var(--text-dim); text-align: center; padding: var(--space-xl) var(--space-l); } /* in the tree's room */
-/* The render textures picker: its passes a tree, wide enough for a texture's size and format. */
+/* The render textures picker: its passes as a tree, wide enough for a texture's size and format. */
 .texture-picker { width: 460px; }
 .texture-tree { height: 360px; }
 /* The picker's own window: its rows a list of a fixed size, the empty state in the same room. */
 .picker-list { align-self: stretch; height: 300px; background-color: transparent; padding: 0 var(--space-s); } /* the frame's width, not one of its own */
 .picker > .state-box { align-self: stretch; height: 300px; }
-/* Import: where it goes, the files when several, the chosen file's detail, the line. */
+/* Import: where it goes, the files when there are several, the chosen file's detail and the line.
+   */
 .import { flex-grow: 1; padding-bottom: 0; }
 .import-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
 .import-files { width: 220px; flex-shrink: 0; }
@@ -898,7 +912,7 @@ button.import-file-name { flex-grow: 1; justify-content: flex-start; background-
 .import-entry > textfield { flex-grow: 1; }
 .import-why.refused { color: var(--text-dim); }
 .import > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
-/* Create Asset: its group a field that opens the group picker. */
+/* Import's group: a field that opens the group picker. Create Asset's groups: a tree. */
 button.group-field { justify-content: flex-start; }
 .asset-create-groups { height: 200px; border: 1px solid var(--border); border-radius: var(--radius-small); background-color: var(--surface-sunken); }
 .save-as-error { color: var(--danger); }
@@ -911,8 +925,9 @@ button.group-field { justify-content: flex-start; }
 .templates, .export { flex-grow: 1; padding-bottom: 0; }
 .templates-split, .export-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
 .templates-list { width: 290px; flex-shrink: 0; }
-/* A template's and a preset's row is two lines with room above and below (.template-row's height):
-   the lists' own row height, where the views' default one line had squeezed them into each other. */
+/* A template's and a preset's row is two lines with room above and below (.template-row's height).
+   This is the lists' own row height; the views' default single line had squeezed the rows together.
+   */
 .templates-list, .export-list { row-height: 52px; }
 .templates-side { flex-grow: 1; min-width: 0; }
 .templates-detail { flex-direction: column; row-gap: var(--space-m); }
@@ -926,7 +941,8 @@ button.group-field { justify-content: flex-start; }
 .template-value { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 .template-value.warning, .export-card-detail.warning { color: var(--warning); }
 .templates-verbs { flex-direction: row; column-gap: var(--space-s); }
-/* A template a two-line card: room above and below its name and summary, a gap between them. */
+/* A template is a two-line card: room above and below its name and summary, and a gap between them.
+   */
 .template-row { flex-direction: row; align-items: center; column-gap: var(--space-l); min-height: 52px; padding: var(--space-m) var(--space-l); }
 .template-row-icon { width: 28px; height: 28px; image-color: var(--icon); flex-shrink: 0; }
 .template-row-text { flex-direction: column; flex-grow: 1; min-width: 0; row-gap: var(--space-xs); }
@@ -969,8 +985,9 @@ button.pref-preview-add { align-self: start; }
 button.shortcut-capture.capturing { color: var(--accent-strong); }
 .save-as > .dialog-buttons { padding: var(--space-l) 0 0; }
 
-/* The command palette: the picker's frame, a row per action (its name, where it is in the menus, its
-   chord), the lit one as a picker's current, a disabled one dimmed. */
+/* The command palette: the picker's frame, with a row per action (its name, its place in the menus
+   and its chord), the highlighted row shown as a picker's current one, and a disabled one dimmed.
+   */
 .palette { width: 560px; }
 .palette-list { flex-direction: column; max-height: 360px; overflow-y: auto; padding: 0 var(--space-s); }
 .palette-row { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: var(--row);

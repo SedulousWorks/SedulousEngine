@@ -1,7 +1,7 @@
 <!--
-  The editor mock's frame (Documentation/Specs/editor-gui.md, 3.6): the menu bar, the dock and the
-  status bar, static, for judging the design. The dock's panels are the other files here; the Look
-  menu stands in for Preferences' appearance inputs.
+  The editor mock's frame: the menu bar, the dock and the status bar, static, for judging the
+  design. The dock's panels are the other files here; the Look menu stands in for Preferences'
+  appearance inputs.
 -->
 <Panel id="frame" class="frame">
     <MenuBar id="menubar">

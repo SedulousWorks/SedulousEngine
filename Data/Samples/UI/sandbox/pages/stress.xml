@@ -1,6 +1,6 @@
-<!-- Stress (E8a of Specs/gui-lab-evolution.md): the worst case the lab is measured on. Native code
-     (GUI.Sandbox/StressPage.cppm) builds its sections into #stress-root at the load chosen here or
-     by the stress option. Measure in RelWithDebInfo: Debug runs far slower on Vulkan. -->
+<!-- Stress: the worst case the GUI is measured on. Native code (GUISandbox/StressPage.cppm)
+     builds its sections into #stress-root at the load chosen here or by the stress option.
+     Measure in RelWithDebInfo: Debug runs far slower on Vulkan. -->
 <Panel id="page-stress" class="page" gap="18">
     <Label class="page-title" text="Stress"/>
     <Label class="page-lead" white-space="normal"

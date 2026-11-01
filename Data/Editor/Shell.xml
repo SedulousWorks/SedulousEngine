@@ -1,6 +1,6 @@
 <!--
-  The editor's frame (Documentation/Specs/editor-gui.md, 5.1): the menu bar (its menus made from
-  the actions), the dock (pages and the shared panels) and the status bar. Code fills each by id.
+  The editor's frame: the menu bar (its menus made from the actions), the dock (pages and the shared
+  panels) and the status bar. Code fills each by id.
 -->
 <Panel id="frame" class="frame">
     <MenuBar id="menubar"/>

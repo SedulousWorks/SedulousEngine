@@ -1,8 +1,8 @@
 <!--
-  The kit (Documentation/Specs/editor-gui-catalog.md, section 2): every piece the editor's pages
-  share, designed once, shown in its states. A state the pointer or the focus makes (hover, press,
-  focus) is live on the real widgets; where a piece is drawn here before its widget exists (the
-  component header, the slots, the problems list), its states are drawn side by side.
+  The kit: every piece the editor's pages share, designed once and shown in its states. A state the
+  pointer or the focus makes (hover, press, focus) is live on the real widgets; where a piece is
+  drawn here without a widget of its own (the component header, the slots, the problems list), its
+  states are drawn side by side.
 -->
 <Panel class="page kit-page">
     <ScrollView id="kit-scroll" class="kit-scroll">

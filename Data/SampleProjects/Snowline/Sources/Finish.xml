@@ -1,7 +1,8 @@
-<!-- The results of a run (Snowline.as fills it): the rows come in one at a time, then the final
-     time beside the disc of the medal it earned, then the score. Jump skips to the end, then rides
-     again. Over the course, which shows around it. Styled by SnowlineSheet.css. Back (Escape, East) is the game's own
-     Pause action (Snowline.as), not the screen stack's. -->
+<!-- The results of a run, which Snowline.as fills: the rows come in one at a time, then the final
+     time beside the disc of the medal it earned, then the score. Jump skips to the end, and then
+     rides again. It lies over the course, which shows around it. Styled by SnowlineSheet.css.
+     The screen stack's back (Escape, East) is off here: the game's own Pause action (Snowline.as)
+     takes its place. -->
 <Screen blocks="false" back="none">
   <Panel class="centre">
     <Panel class="card finish-card">

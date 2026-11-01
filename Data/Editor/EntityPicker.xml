@@ -1,8 +1,8 @@
 <!--
-  The entity picker (Raptor's editor-gui spec, ruling 25): an entity slot's pick, the scene
-  as its hierarchy shows it, the same tree in a picker's frame. The search over the scene (a match
-  kept with what holds it), the tree with the scene its top row, the foot's hint. Its close at the
-  search's end keeps the value, as Esc does; a slot's own clear sets it to nothing. Code fills it.
+  The entity picker: an entity slot's pick, showing the scene as its hierarchy does, with the same
+  tree in a picker's frame. It has the search over the scene (a match is kept with what holds it),
+  the tree with the scene as its top row, and the foot's hint. Its close button at the search's end
+  keeps the value, as Esc does; a slot's own clear sets it to nothing. Code fills it.
 -->
 <Panel class="dialog picker entity-picker">
     <Panel class="picker-search">
