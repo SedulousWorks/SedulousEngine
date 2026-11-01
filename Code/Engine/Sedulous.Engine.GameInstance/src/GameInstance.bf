@@ -734,6 +734,11 @@ class GameInstance : RunBase
 		// still, like the scene sim.
 		if (mRunHost.IsDebugPaused)
 			return;
+		// The host's pause (the editor's toolbar) holds the game still with its scene: no update
+		// for the Game class, the run's clock not counting, and its HTTP answers waiting. A game's
+		// own pause (time scale nought) is the game's business and still ticks it.
+		if (State == .Paused)
+			return;
 		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
 		let orchestrator = FrameTime(hostDeltaTime, contextTimeScale, 1.0f, sceneScale).SceneDelta;
 		let gameplay = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale).SceneDelta;

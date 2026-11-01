@@ -71,6 +71,32 @@ static class GameScriptTests
 		run.Instance.StopScript(); // idempotent
 	}
 
+	/// The host's pause (the editor's toolbar) holds the Game class still: no update, the run's
+	/// clock stopped; resumed, both go on.
+	[Test]
+	public static void TheHostsPauseHoldsTheGameClassStillNoUpdateTheRunsClockStopped()
+	{
+		let run = scope GameRun("scratch_game_host_pause");
+		let game = run.Class("Game", cGame);
+		Test.Assert(run.Instance.StartScript(game));
+		run.Instance.Start();
+		run.Step();
+		Test.Assert(run.PropInt("updates") == 1);
+		let before = run.Instance.RunTime;
+
+		run.Instance.SetPaused(true);
+		Test.Assert(run.Instance.State == .Paused);
+		run.Step(2);
+		Test.Assert(run.PropInt("updates") == 1, "a level clock in update does not run on");
+		Test.Assert(run.Instance.RunTime == before, "nor does the run's");
+
+		run.Instance.SetPaused(false);
+		run.Step();
+		Test.Assert(run.PropInt("updates") == 2);
+		Test.Assert(run.Instance.RunTime > before);
+		run.Instance.StopScript();
+	}
+
 	[Test]
 	public static void TheRunBusReachesTheOrchestratorsHandlers()
 	{
