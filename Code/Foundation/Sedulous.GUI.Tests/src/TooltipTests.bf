@@ -282,7 +282,17 @@ class TooltipTests
 		Test.Assert(menu.IsOpen);
 		Test.Assert(menu.Parent == field);
 		Test.Assert(menu.ItemCount == 4);
-		// Nothing selected, no clipboard: only select all is lit.
+		// Nothing selected, no clipboard: only select all is lit. The menu's children are Cut, Copy,
+		// Paste, a separator, then Select all.
+		{
+			MenuItem ItemAt(int index) => menu.GetChildAt(index) as MenuItem;
+			Test.Assert((ItemAt(0) != null) && (ItemAt(1) != null) && (ItemAt(2) != null) && (ItemAt(4) != null));
+			Test.Assert(!ItemAt(0).Enabled, "Cut");
+			Test.Assert(!ItemAt(1).Enabled, "Copy");
+			Test.Assert(!ItemAt(2).Enabled, "Paste");
+			Test.Assert(ItemAt(4).Text == "Select all");
+			Test.Assert(ItemAt(4).Enabled);
+		}
 		menu.Close();
 		field.SelectAll();
 		bed.D.InjectMouseDown(.(20.0f, 160.0f), .Right);
