@@ -45,7 +45,7 @@ class ProjectManagerServices
 	/// A dialog's markup by its path (New Project's): a node with one reference, the caller's.
 	/// Owned.
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
-	/// The Samples tab's client, BORROWED (null: the tab says it cannot reach GitHub). It must
+	/// The Samples tab's client, BORROWED (null: the tab says the samples could not be fetched). It must
 	/// outlive the view, which pumps it in Tick.
 	public IHttpClient Http = null;
 	/// Where a file of this editor's release is fetched from (null: the release's own URL,
@@ -105,7 +105,7 @@ class ProjectManagerView
 		Loaded,
 		/// The release has no samples.json (a build between releases).
 		NotPublished,
-		/// GitHub was not reached, or answered with nothing readable.
+		/// The release was not reached, or answered with nothing readable.
 		Failed,
 	}
 
@@ -156,6 +156,18 @@ class ProjectManagerView
 	private List<SampleCard> mSampleCards = new .() ~ DeleteContainerAndItems!(_);
 	/// The sample the download dialog is for, while it is open.
 	private SampleInfo mDialogSample = new .() ~ delete _;
+	/// Where it goes, once Download is pressed.
+	private String mDialogTarget = new .() ~ delete _;
+
+	/// Where the download dialog is: choosing where, downloading, or how it ended.
+	private enum DialogStage : uint8
+	{
+		Choosing,
+		Downloading,
+		Done,
+		Failed,
+		Cancelled,
+	}
 
 	/// The manager over `services`, its frame `content` (the markup's: its parts by id). TAKES
 	/// OWNERSHIP of the services and of a reference to `content`; null shows nothing.
@@ -399,8 +411,10 @@ class ProjectManagerView
 		Populate();
 	}
 
-	/// A sample's download: where it goes, starting where the last project went, and whether it
-	/// gets a folder of its name there. Download waits while the check line is red.
+	/// A sample's download, in one window from start to end: where it goes (starting where the last
+	/// project went, and whether it gets a folder of its name there; Download waits while the check
+	/// line is red), its progress with Cancel, and how it ended, with Open for the new project or Try
+	/// again. Closing it mid-way leaves the download going, its card showing it.
 	public void ShowDownloadDialog(SampleInfo sample)
 	{
 		let root = (mContent != null) ? (mContent.RootNode as SceneRoot) : null;
@@ -419,11 +433,15 @@ class ProjectManagerView
 		let go = body.FindElement("download-sample-go") as Sedulous.GUI.Button;
 		let browse = body.FindElement("download-sample-browse") as Sedulous.GUI.Button;
 		let cancel = body.FindElement("download-sample-cancel") as Sedulous.GUI.Button;
+		let close = body.FindElement("download-sample-close") as Sedulous.GUI.Button;
+		let retry = body.FindElement("download-sample-retry") as Sedulous.GUI.Button;
+		let open = body.FindElement("download-sample-open") as Sedulous.GUI.Button;
 		if ((parent == null) || (go == null))
 			return;
 
 		if (sample != mDialogSample)
 			mDialogSample.CopyFrom(sample);
+		mDialogTarget.Clear();
 		if (mDialog != null)
 			mDialog.ReleaseRef();
 		let dialog = new Sedulous.GUI.Window();
@@ -437,7 +455,7 @@ class ProjectManagerView
 			ownFolder.Checked = true;
 		}
 		if (size != null)
-			size.Text = scope $"{SizeText(sample.Size, .. scope .())} from GitHub";
+			size.Text = scope $"{SizeText(sample.Size, .. scope .())} download";
 		StringView last = (mServices.Controller != null) ? mServices.Controller.LastLocation : default;
 		parent.Text = last.IsEmpty ? StringView(mHome) : last;
 		parent.SetOnTextChanging(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] (text) =>
@@ -451,7 +469,7 @@ class ProjectManagerView
 					RefreshDownload(parent, ownFolder, line, icon, checkText, go);
 				});
 		}
-		go.SetOnClick(new [=this, =dialog, =parent, =ownFolder] () =>
+		go.SetOnClick(new [=this, =parent, =ownFolder] () =>
 			{
 				let result = scope NewProjectCheck();
 				CheckDownload(parent, ownFolder, result);
@@ -463,8 +481,9 @@ class ProjectManagerView
 					if (mServices.StoreChanged != null)
 						mServices.StoreChanged();
 				}
-				dialog.Close();
+				mDialogTarget.Set(result.Target);
 				StartDownload(mDialogSample, result.Target);
+				ShowDialogStage(.Downloading);
 			});
 		if (browse != null)
 		{
@@ -482,9 +501,39 @@ class ProjectManagerView
 				});
 		}
 		if (cancel != null)
-			cancel.SetOnClick(new [=dialog] () => { dialog.Close(); });
+		{
+			cancel.SetOnClick(new [=this, =dialog] () =>
+				{
+					// Choosing: the dialog goes. Downloading: the download stops, and the dialog
+					// says so when Tick hears it.
+					if (let d = DownloadOf(mDialogSample.Folder))
+						d.Cancel();
+					else
+						dialog.Close();
+				});
+		}
+		if (close != null)
+			close.SetOnClick(new [=dialog] () => { dialog.Close(); });
+		if (retry != null)
+		{
+			retry.SetOnClick(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] () =>
+				{
+					ShowDialogStage(.Choosing);
+					RefreshDownload(parent, ownFolder, line, icon, checkText, go);
+				});
+		}
+		if (open != null)
+		{
+			open.SetOnClick(new [=this, =dialog] () =>
+				{
+					let target = scope String(mDialogTarget);
+					dialog.Close();
+					Open(target);
+				});
+		}
 		RefreshDownload(parent, ownFolder, line, icon, checkText, go);
 		dialog.OpenModal(root);
+		ShowDialogStage(.Choosing); // once open: a closed window's stages are left alone
 	}
 
 	/// The download dialog's window while it is open (a test's); null with none.
@@ -850,6 +899,44 @@ class ProjectManagerView
 		ShowCheck(result, line, icon, checkText, go);
 	}
 
+	/// Shows one stage of the download dialog: its panel and the buttons it offers. Nothing unless
+	/// the download dialog is the one open.
+	private void ShowDialogStage(DialogStage stage, StringView words = default)
+	{
+		if ((mDialog == null) || !mDialog.IsOpen)
+			return;
+		let body = mDialog.Content;
+		if (body.FindElement("download-sample-choose") == null)
+			return; // New Project's
+		let ended = (stage == .Done) || (stage == .Failed) || (stage == .Cancelled);
+		ShowPart(body, "download-sample-choose", stage == .Choosing);
+		ShowPart(body, "download-sample-progress", stage == .Downloading);
+		ShowPart(body, "download-sample-result", ended);
+		ShowPart(body, "download-sample-go", stage == .Choosing);
+		ShowPart(body, "download-sample-cancel", (stage == .Choosing) || (stage == .Downloading));
+		ShowPart(body, "download-sample-close", ended);
+		ShowPart(body, "download-sample-retry", stage == .Failed);
+		ShowPart(body, "download-sample-open", stage == .Done);
+		if (ended)
+		{
+			let line = body.FindElement("download-sample-result");
+			SetClass(line, "error", stage == .Failed);
+			SetClass(line, "warning", stage == .Cancelled);
+			if (let text = body.FindElement("download-sample-result-text") as Sedulous.GUI.Label)
+				text.Text = words;
+			if (let icon = body.FindElement("download-sample-result-icon") as Sedulous.GUI.Image)
+				icon.Source = (stage == .Done) ? "Editor/Icons/check.svg" : ((stage == .Failed) ? "Editor/Icons/error.svg" : "Editor/Icons/warning.svg");
+		}
+		if (stage == .Downloading)
+			ShowProgress();
+	}
+
+	private static void ShowPart(Node body, StringView id, bool shown)
+	{
+		if (let part = body.FindElement(id))
+			part.Displayed = shown;
+	}
+
 	/// A check line (New Project's, a download's): its words, its colour, its icon, and whether the
 	/// dialog's button may go ahead.
 	private static void ShowCheck(NewProjectCheck result, UIWidget line, Sedulous.GUI.Image icon, Sedulous.GUI.Label checkText,
@@ -893,7 +980,7 @@ class ProjectManagerView
 			mCatalogState = .Failed;
 			mCatalogError.Clear();
 			if (response.Ok)
-				mCatalogError.AppendF("GitHub answered {}", response.Status);
+				mCatalogError.AppendF("the release answered {}", response.Status);
 			else
 				mCatalogError.Append(response.Error);
 		}
@@ -944,6 +1031,10 @@ class ProjectManagerView
 	private void Finished(SampleDownload d)
 	{
 		let name = scope String(d.Sample.Name);
+		// The dialog that started it, if it is still open, says how it ended too.
+		let told = (mDialog != null) && mDialog.IsOpen && (mDialogSample.Folder == d.Sample.Folder);
+		let words = scope String();
+		DialogStage stage = .Failed;
 		if (d.State == .Done)
 		{
 			let probed = scope ProjectSettings();
@@ -952,20 +1043,48 @@ class ProjectManagerView
 				mServices.Controller.NoteOpened(d.Target, probed.Name, probed.EngineVersion);
 				if (mServices.StoreChanged != null)
 					mServices.StoreChanged();
-				SetNote(scope $"{name} is in your projects, in {RecentProjects.ShortenHomePath(d.Target, mHome, .. scope .())}.");
+				words.AppendF("{} is in your projects, in {}.", name, RecentProjects.ShortenHomePath(d.Target, mHome, .. scope .()));
+				stage = .Done;
+				SetNote(words);
 			}
 			else
-				SetStatus(scope $"{name} downloaded, but holds no Project.xml.");
+			{
+				words.AppendF("{} downloaded, but holds no Project.xml.", name);
+				SetStatus(words);
+			}
 		}
 		else if (d.State == .Failed)
-			SetStatus(scope $"{name} did not download: {d.Error}.");
+		{
+			words.AppendF("{} did not download: {}.", name, d.Error);
+			SetStatus(words);
+		}
 		else
-			SetNote(scope $"{name}'s download was cancelled; nothing was kept.");
+		{
+			words.AppendF("{}'s download was cancelled; nothing was kept.", name);
+			stage = .Cancelled;
+			SetNote(words);
+		}
+		if (told)
+			ShowDialogStage(stage, words);
 	}
 
 	/// The bars and words of the downloads under way, without laying the page out again.
 	private void ShowProgress()
 	{
+		if ((mDialog != null) && mDialog.IsOpen)
+		{
+			if (let d = DownloadOf(mDialogSample.Folder))
+			{
+				if (let bar = mDialog.Content.FindElement("download-sample-bar") as Sedulous.GUI.ProgressBar)
+				{
+					bar.Min = 0.0;
+					bar.Max = 1.0;
+					bar.Value = d.Progress;
+				}
+				if (let words = mDialog.Content.FindElement("download-sample-stage") as Sedulous.GUI.Label)
+					words.Text = scope $"Downloading {SizeText(d.Received, .. scope .())} of {SizeText(d.Total, .. scope .())}";
+			}
+		}
 		for (let card in mSampleCards)
 		{
 			let d = DownloadOf(card.Folder);
@@ -990,12 +1109,12 @@ class ProjectManagerView
 			state.Displayed = !loaded;
 		if (!loaded)
 		{
-			StringView title = "Reaching GitHub...";
+			StringView title = "Fetching the samples...";
 			let text = scope String();
 			if (mCatalogState == .Failed)
 			{
 				title = "The samples could not be fetched";
-				text.AppendF("GitHub was not reached ({}).", mCatalogError);
+				text.AppendF("The release was not reached: {}.", mCatalogError);
 			}
 			else if ((mCatalogState == .NotPublished) || (mCatalogState == .Loaded))
 			{
@@ -1177,7 +1296,7 @@ class ProjectManagerView
 		let idle = text.IsEmpty;
 		let idleText = scope String();
 		if (idle && mSamples)
-			idleText.AppendF("From the {} release on GitHub, checked against its published checksum before it is unpacked.", EngineVersion.String);
+			idleText.AppendF("From the {} release, each checked against its published checksum before it is unpacked.", EngineVersion.String);
 		else if (idle && !mShown.IsEmpty)
 			idleText.Append("Double-click a project or press Enter to open it.");
 		status.Text = idle ? StringView(idleText) : text;

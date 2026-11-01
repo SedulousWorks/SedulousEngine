@@ -830,19 +830,41 @@ class ProjectLauncherTests
 		Test.Assert(download != null);
 		Test.Assert(!l.View.InProjects(l.View.Samples.Samples[0]));
 
-		// Download... asks where; the location starts where the last project went.
+		// Download... asks where; the location starts where the last project went. Only the first
+		// stage shows.
 		l.Controller.SetLastLocation(l.Root);
 		Test.Assert(download.HandleActivate());
 		let dialog = l.View.DownloadDialog;
 		Test.Assert(dialog != null);
+		Test.Assert(dialog.FindElement("download-sample-choose").Displayed);
+		Test.Assert(dialog.FindElement("download-sample-go").Displayed);
+		Test.Assert(dialog.FindElement("download-sample-cancel").Displayed);
+		Test.Assert(!dialog.FindElement("download-sample-progress").Displayed);
+		Test.Assert(!dialog.FindElement("download-sample-result").Displayed);
+		Test.Assert(!dialog.FindElement("download-sample-close").Displayed);
+		Test.Assert(!dialog.FindElement("download-sample-retry").Displayed);
+		Test.Assert(!dialog.FindElement("download-sample-open").Displayed);
 		Test.Assert((dialog.FindElement("download-sample-where") as Sedulous.GUI.Label).Text.StartsWith("Downloads into"));
 		let go = dialog.FindElement("download-sample-go") as Sedulous.GUI.Button;
 		Test.Assert(go != null);
 		Test.Assert(go.Enabled);
 		Test.Assert(go.HandleActivate());
-		Test.Assert(l.View.DownloadDialog == null);
+		// The dialog stays, showing the download, then how it ended.
+		Test.Assert(l.View.DownloadDialog != null);
+		Test.Assert(dialog.FindElement("download-sample-progress").Displayed);
+		Test.Assert(!dialog.FindElement("download-sample-choose").Displayed);
 		l.Drain();
 		RunUntil(l, server, scope () => l.View.DownloadOf("Gallery") == null);
+		Test.Assert(l.View.DownloadDialog != null);
+		Test.Assert(dialog.FindElement("download-sample-result").Displayed);
+		Test.Assert((dialog.FindElement("download-sample-result-text") as Sedulous.GUI.Label).Text.Contains("is in your projects", true));
+		let openIt = dialog.FindElement("download-sample-open") as Sedulous.GUI.Button;
+		Test.Assert(openIt != null);
+		Test.Assert(openIt.Displayed);
+		Test.Assert(openIt.HandleActivate()); // opens the new project
+		Test.Assert(l.View.DownloadDialog == null);
+		Test.Assert(l.Opened.Count == 1);
+		Test.Assert(l.Opened[0] == PathJoin(l.Root, "Gallery", .. scope .()));
 
 		// It is one of the projects now, and its card says so.
 		let target = PathJoin(l.Root, "Gallery", .. scope .());
