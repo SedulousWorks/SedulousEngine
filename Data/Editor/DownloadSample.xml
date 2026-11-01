@@ -1,0 +1,19 @@
+<!--
+  A sample's download (Raptor's project-manager spec, Samples): where it goes, and whether it
+  gets a folder of its name there (on unless turned off). The check line under them is New
+  Project's, kept current as the fields change; Download waits while it is red.
+-->
+<Panel class="dialog-body new-project">
+    <Panel class="form">
+        <Label class="form-label" text="Location"/>
+        <Panel class="form-field">
+            <Panel class="new-project-folder"><TextField id="download-sample-parent" placeholder="The folder it goes in"/><Button id="download-sample-browse" text="Browse..."/></Panel>
+            <CheckBox id="download-sample-own-folder"/>
+        </Panel>
+    </Panel>
+    <Panel id="download-sample-check" class="new-project-check">
+        <Image id="download-sample-check-icon" class="message-icon"/>
+        <Label id="download-sample-where" class="new-project-check-text"/>
+    </Panel>
+    <Panel class="dialog-buttons"><Label id="download-sample-size" class="manager-meta"/><Spacer/><Button id="download-sample-cancel" text="Cancel"/><Button id="download-sample-go" class="primary" text="Download" enabled="false"/></Panel>
+</Panel>

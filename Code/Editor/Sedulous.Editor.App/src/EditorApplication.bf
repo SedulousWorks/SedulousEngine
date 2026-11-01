@@ -19,6 +19,9 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;
+using Sedulous.Net.Tls;
+using Sedulous.Net.Tls.MbedTLS;
+using Sedulous.Http.Client;
 
 namespace Sedulous.Editor.App;
 
@@ -141,6 +144,10 @@ class EditorApplication : IApplication
 	private EditorSession mSession ~ delete _;
 	/// The project manager while no project is open: after the session and the pages it reaches,
 	/// so it goes first.
+	/// The Samples tab's network: Mbed TLS for https, the system's roots, the platform's client.
+	/// Made when the manager first shows; deleted after it, which cancels its requests as it goes.
+	private ITlsBackend mTls ~ delete _;
+	private IHttpClient mHttp ~ delete _;
 	private ProjectManagerMode mManagerMode ~ delete _;
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
@@ -383,6 +390,16 @@ class EditorApplication : IApplication
 		services.ShowScreen = new (screen) => { mWindow.ShowScreen(screen); };
 		services.LoadMarkup = new (path) => mWindow.LoadMarkup(path);
 		services.StoreChanged = new () => { EditorSettingsStore.SaveToUserData(mEditorSettings).IgnoreError(); };
+		// The Samples tab downloads from GitHub over https, with the system's roots.
+		services.Http = new () =>
+			{
+				if (mHttp == null)
+				{
+					mTls = new MbedTlsBackend();
+					mHttp = HttpClients.Create(mTls);
+				}
+				return mHttp;
+			};
 		return services;
 	}
 
@@ -1143,6 +1160,8 @@ class EditorApplication : IApplication
 	{
 		if (mMcp != null)
 			mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
+		if (mManagerMode != null)
+			mManagerMode.Tick(); // the Samples tab's fetches and downloads, which go on while a project is open
 		// The embedded runtime's frame first (per-scene fixed steps in BeginFrame, physics
 		// interpolation in Update), so pages read fresh state; EndFrame closes in OnRenderWindow
 		// after the scene bracket. The embedded app's own OnUpdate ticks every game instance's
@@ -1353,6 +1372,8 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mAssetPicker); // closed, while the window's root and the context are there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
+		DeleteAndNullify!(mHttp); // after the manager, which cancels its requests as it goes
+		DeleteAndNullify!(mTls);
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there

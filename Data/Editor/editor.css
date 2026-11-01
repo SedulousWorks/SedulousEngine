@@ -147,6 +147,25 @@ button.manager-small { height: 30px; font-size: var(--font-small); color: var(--
 .manager-status.warning { color: var(--warning); }
 .manager-keys { flex-direction: row; align-items: center; column-gap: 6px; }
 .manager-keys > .manager-key { color: var(--text); margin-left: 12px; }
+/* The Samples tab: a card per sample game, as many to a row as the window holds. */
+.manager-samples { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); column-gap: 18px; row-gap: 18px; flex-shrink: 0; }
+.manager-sample { flex-direction: column; background-color: var(--element); border-radius: var(--radius-large); border: 1px solid var(--border);
+                  overflow: hidden; }
+.manager-sample-picture { align-self: stretch; aspect-ratio: 16 / 9; background-color: var(--surface-sunken); }
+.manager-sample-body { flex-direction: column; row-gap: 6px; padding: 12px 14px 14px; flex-grow: 1; }
+.manager-sample-title { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.manager-sample-name { font-size: 15px; font-weight: 600; color: var(--text-strong); flex-grow: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.manager-sample-text { color: var(--text-dim); white-space: normal; flex-grow: 1; }
+.manager-sample-actions { flex-direction: row; align-items: center; column-gap: 10px; margin-top: 6px; }
+.manager-sample-actions > button { height: 30px; }
+.manager-sample-have { color: var(--success); font-size: var(--font-small); }
+.manager-sample-progress { flex-direction: column; row-gap: 6px; margin-top: 6px; }
+.manager-sample-progress > progressbar { height: 6px; align-self: stretch; }
+.manager-sample-stage { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.manager-sample-stage > label { flex-grow: 1; font-size: var(--font-small); color: var(--text); }
+.manager-sample-stage > button { height: 26px; }
+.manager-samples-state { flex-grow: 1; }
+
 /* The first run: the logo, a welcome and two large cards in the middle of the window. */
 .manager-welcome { flex-grow: 1; flex-direction: column; align-items: center; justify-content: center; row-gap: 28px; padding-bottom: 60px; }
 .manager-welcome-logo { width: 248px; height: 56px; }

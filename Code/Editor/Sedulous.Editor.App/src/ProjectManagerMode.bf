@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Shell;
 using Sedulous.GUI;
+using Sedulous.Http.Client;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 
@@ -29,6 +30,8 @@ class ProjectManagerModeServices
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
 	/// The recent list or its layout changed: the user's settings are saved. Owned.
 	public delegate void() StoreChanged ~ delete _;
+	/// The Samples tab's client, made on first use and outliving the manager; null: none. Owned.
+	public delegate IHttpClient() Http ~ delete _;
 }
 
 /// The project manager's part of the application (Raptor's editor-gui spec, 5.1, layer 13): the
@@ -94,6 +97,7 @@ class ProjectManagerMode
 						mServices.StoreChanged();
 				};
 			services.LoadMarkup = new (path) => LoadMarkup(path);
+			services.Http = (mServices.Http != null) ? mServices.Http() : null;
 			mView = new ProjectManagerView(services, LoadMarkup(ProjectManagerView.cMarkupPath));
 		}
 		else
@@ -101,6 +105,13 @@ class ProjectManagerMode
 		mView.SetStatus("");
 		ShowScreen(mView.Content);
 		mView.Shown();
+	}
+
+	/// Once a frame: the Samples tab's fetches and downloads, which go on while a project is open.
+	public void Tick()
+	{
+		if (mView != null)
+			mView.Tick();
 	}
 
 	/// Opens the project in `directory` from the manager: one saved by another engine version asks

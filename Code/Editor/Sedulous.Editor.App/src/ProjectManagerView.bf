@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Shell;
 using Sedulous.Image.IO;
 using Sedulous.GUI;
+using Sedulous.Http.Client;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 
@@ -14,8 +15,9 @@ namespace Sedulous.Editor.App;
 // at startup with no project given, and after File > Close Project. Its frame is markup
 // (Data/Editor/ProjectManager.xml): a header with the Projects and Samples tabs; on Projects a
 // toolbar (New Project, Open Folder, a search, the sort, list or grid) over the projects as rows or
-// as tiles, and under them the missing ones, each with Locate... and Remove from list; a footer with
-// the status and the keys. With no projects at all, a welcome stands in for the lists.
+// as tiles, and under them the missing ones, each with Locate... and Remove from list; on Samples
+// the sample games of this editor's release, each with its Download...; a footer with the status
+// and the keys. With no projects at all, a welcome stands in for the lists.
 //
 // There is no selection: an action is one click on the project it is for. A focus ring that Up and
 // Down move marks the project Enter opens and Del takes off the list. Each project is probed when the
@@ -43,6 +45,12 @@ class ProjectManagerServices
 	/// A dialog's markup by its path (New Project's): a node with one reference, the caller's.
 	/// Owned.
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
+	/// The Samples tab's client, BORROWED (null: the tab says it cannot reach GitHub). It must
+	/// outlive the view, which pumps it in Tick.
+	public IHttpClient Http = null;
+	/// Where a file of this editor's release is fetched from (null: the release's own URL,
+	/// EngineVersion.ReleaseDownloadUrl); tests point it at a loopback server. Owned.
+	public delegate void(StringView file, String outUrl) ReleaseFile ~ delete _;
 }
 
 class ProjectManagerView
@@ -50,8 +58,10 @@ class ProjectManagerView
 	/// Its frames, under the data root.
 	public const String cMarkupPath = "Editor/ProjectManager.xml";
 	public const String cNewProjectPath = "Editor/NewProject.xml";
+	public const String cDownloadSamplePath = "Editor/DownloadSample.xml";
 	private const float cDialogWidth = 600.0f;
 	private const float cDialogHeight = 330.0f;
+	private const float cDownloadDialogHeight = 260.0f;
 	/// The buttons that make a project and open a folder: the toolbar's and the welcome's.
 	private static StringView[2] cNewButtons = .("manager-new", "manager-welcome-new");
 	private static StringView[2] cOpenButtons = .("manager-open", "manager-welcome-open");
@@ -87,9 +97,32 @@ class ProjectManagerView
 		public bool Favourite = false;
 	}
 
+	/// Where the Samples tab's list of samples stands.
+	public enum CatalogState : uint8
+	{
+		NotFetched,
+		Fetching,
+		Loaded,
+		/// The release has no samples.json (a build between releases).
+		NotPublished,
+		/// GitHub was not reached, or answered with nothing readable.
+		Failed,
+	}
+
+	/// A sample's card on the Samples tab, while it shows.
+	private class SampleCard
+	{
+		public String Folder = new .() ~ delete _;
+		/// While it downloads; the tree's.
+		public Sedulous.GUI.ProgressBar Bar = null;
+		public Sedulous.GUI.Label Stage = null;
+	}
+
 	private ProjectManagerServices mServices ~ delete _;
 	/// What the pictures show: declared before the content, so they outlive it.
 	private List<Sedulous.Image.Image> mPictures = new .() ~ DeleteContainerAndItems!(_);
+	/// Each sample's picture, by the catalog's order; null until it arrives. Before the content too.
+	private List<Sedulous.Image.Image> mSamplePictures = new .() ~ DeleteContainerAndItems!(_);
 	/// A reference of ours; the window showing it takes its own.
 	private Node mContent ~ _?.ReleaseRef();
 	/// New Project, a reference of ours while it is the last one made.
@@ -112,6 +145,17 @@ class ProjectManagerView
 	private bool mSamples = false;
 	/// The page's keys, on the content.
 	private uint32 mKeyListener = 0;
+	// The Samples tab.
+	private CatalogState mCatalogState = .NotFetched;
+	private SampleCatalog mCatalog = new .() ~ delete _;
+	private String mCatalogError = new .() ~ delete _;
+	private uint64 mCatalogRequest = 0;
+	private List<uint64> mPictureRequests = new .() ~ delete _;
+	/// Under way, OWNED; each holds its callbacks, so it goes before the client.
+	private List<SampleDownload> mDownloads = new .() ~ DeleteContainerAndItems!(_);
+	private List<SampleCard> mSampleCards = new .() ~ DeleteContainerAndItems!(_);
+	/// The sample the download dialog is for, while it is open.
+	private SampleInfo mDialogSample = new .() ~ delete _;
 
 	/// The manager over `services`, its frame `content` (the markup's: its parts by id). TAKES
 	/// OWNERSHIP of the services and of a reference to `content`; null shows nothing.
@@ -142,6 +186,10 @@ class ProjectManagerView
 			samples.SetOnClick(new () => { ShowSamples(true); });
 		if (let removeMissing = Find<Sedulous.GUI.Button>("manager-remove-missing"))
 			removeMissing.SetOnClick(new () => { RemoveMissing(); });
+		if (let retry = Find<Sedulous.GUI.Button>("manager-samples-retry"))
+			retry.SetOnClick(new () => { FetchCatalog(); });
+		if (let intro = Find<Sedulous.GUI.Label>("manager-samples-intro"))
+			intro.Text = scope $"Sample games made with this engine, for engine {EngineVersion.String}. A sample you download becomes one of your projects.";
 		if (let search = Find<Sedulous.GUI.TextField>("manager-search"))
 			search.SetOnTextChanging(new (text) => { SetQuery(text); });
 		if (let sort = Find<Sedulous.GUI.ComboBox>("manager-sort"))
@@ -179,7 +227,16 @@ class ProjectManagerView
 			mContent.RemoveEventListener(mKeyListener);
 			Clear(Find<Node>("manager-projects"));
 			Clear(Find<Node>("manager-missing-list"));
+			Clear(Find<Node>("manager-samples")); // the cards before their pictures
 		}
+		if (mServices.Http != null)
+		{
+			if (mCatalogRequest != 0)
+				mServices.Http.Cancel(mCatalogRequest);
+			for (let id in mPictureRequests)
+				mServices.Http.Cancel(id);
+		}
+		ClearAndDeleteItems(mDownloads); // each cancels itself and deletes what it wrote
 	}
 
 	/// Its frame. Ours: a caller that keeps it takes a reference.
@@ -266,11 +323,183 @@ class ProjectManagerView
 		Later(false);
 	}
 
-	/// The Samples tab, else the Projects tab.
+	/// The Samples tab, else the Projects tab. The first visit fetches the release's samples.
 	public void ShowSamples(bool samples)
 	{
 		mSamples = samples;
+		if (samples && (mCatalogState == .NotFetched))
+			FetchCatalog();
 		Populate();
+	}
+
+	/// Once a frame: the HTTP client's answers, then the downloads under way (their bars, and what
+	/// each that ended leaves: a project in the list, or a word in the status line).
+	public void Tick()
+	{
+		if (mServices.Http != null)
+			mServices.Http.Pump();
+		bool ended = false;
+		for (int i = mDownloads.Count - 1; i >= 0; i--)
+		{
+			let d = mDownloads[i];
+			if (d.State == .Downloading)
+				continue;
+			Finished(d);
+			mDownloads.RemoveAt(i);
+			delete d;
+			ended = true;
+		}
+		if (ended)
+			Later(true);
+		else
+			ShowProgress();
+	}
+
+	public CatalogState SampleCatalogState => mCatalogState;
+	public SampleCatalog Samples => mCatalog;
+
+	/// The download of the sample in `folder`, while one is under way (null else).
+	public SampleDownload DownloadOf(StringView folder)
+	{
+		for (let d in mDownloads)
+		{
+			if (d.Sample.Folder == folder)
+				return d;
+		}
+		return null;
+	}
+
+	/// Whether a sample is already one of the user's projects (a listed project of its name).
+	public bool InProjects(SampleInfo sample)
+	{
+		for (let probe in mProbes)
+		{
+			if (probe.Found && (probe.Name == sample.Name))
+				return true;
+		}
+		return false;
+	}
+
+	/// Fetches the release's samples.json, then each sample's picture.
+	public void FetchCatalog()
+	{
+		if (mServices.Http == null)
+		{
+			mCatalogState = .Failed;
+			mCatalogError.Set("this editor has no network client");
+			Populate();
+			return;
+		}
+		if (mCatalogRequest != 0)
+			mServices.Http.Cancel(mCatalogRequest);
+		mCatalogState = .Fetching;
+		let request = HttpClientRequest.Get(ReleaseFile("samples.json", .. scope .()));
+		request.MaxResponseBytes = 1024 * 1024;
+		mCatalogRequest = mServices.Http.Send(request, new (response) => { OnCatalog(response); });
+		Populate();
+	}
+
+	/// A sample's download: where it goes, starting where the last project went, and whether it
+	/// gets a folder of its name there. Download waits while the check line is red.
+	public void ShowDownloadDialog(SampleInfo sample)
+	{
+		let root = (mContent != null) ? (mContent.RootNode as SceneRoot) : null;
+		if ((root == null) || ((mDialog != null) && mDialog.IsOpen))
+			return;
+		let body = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cDownloadSamplePath) : null;
+		if (body == null)
+			return;
+		defer body.ReleaseRef(); // the window holds its own
+		let parent = body.FindElement("download-sample-parent") as Sedulous.GUI.TextField;
+		let ownFolder = body.FindElement("download-sample-own-folder") as Sedulous.GUI.CheckBox;
+		let line = body.FindElement("download-sample-check") as UIWidget;
+		let icon = body.FindElement("download-sample-check-icon") as Sedulous.GUI.Image;
+		let checkText = body.FindElement("download-sample-where") as Sedulous.GUI.Label;
+		let size = body.FindElement("download-sample-size") as Sedulous.GUI.Label;
+		let go = body.FindElement("download-sample-go") as Sedulous.GUI.Button;
+		let browse = body.FindElement("download-sample-browse") as Sedulous.GUI.Button;
+		let cancel = body.FindElement("download-sample-cancel") as Sedulous.GUI.Button;
+		if ((parent == null) || (go == null))
+			return;
+
+		if (sample != mDialogSample)
+			mDialogSample.CopyFrom(sample);
+		if (mDialog != null)
+			mDialog.ReleaseRef();
+		let dialog = new Sedulous.GUI.Window();
+		mDialog = dialog;
+		dialog.Title = scope $"Download {sample.Name}";
+		dialog.Size = .(cDialogWidth, cDownloadDialogHeight);
+		dialog.Content.AddChild(body);
+		if (ownFolder != null)
+		{
+			ownFolder.Text = scope $"Create a folder named {sample.Folder} in it";
+			ownFolder.Checked = true;
+		}
+		if (size != null)
+			size.Text = scope $"{SizeText(sample.Size, .. scope .())} from GitHub";
+		StringView last = (mServices.Controller != null) ? mServices.Controller.LastLocation : default;
+		parent.Text = last.IsEmpty ? StringView(mHome) : last;
+		parent.SetOnTextChanging(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] (text) =>
+			{
+				RefreshDownload(parent, ownFolder, line, icon, checkText, go);
+			});
+		if (ownFolder != null)
+		{
+			ownFolder.SetOnToggled(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] (on) =>
+				{
+					RefreshDownload(parent, ownFolder, line, icon, checkText, go);
+				});
+		}
+		go.SetOnClick(new [=this, =dialog, =parent, =ownFolder] () =>
+			{
+				let result = scope NewProjectCheck();
+				CheckDownload(parent, ownFolder, result);
+				if (result.Level == .Error)
+					return;
+				if (mServices.Controller != null)
+				{
+					mServices.Controller.SetLastLocation(parent.Text);
+					if (mServices.StoreChanged != null)
+						mServices.StoreChanged();
+				}
+				dialog.Close();
+				StartDownload(mDialogSample, result.Target);
+			});
+		if (browse != null)
+		{
+			browse.SetOnClick(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] () =>
+				{
+					if (mServices.Dialogs == null)
+						return;
+					mServices.Dialogs.ShowOpenFolder(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] (paths) =>
+						{
+							if (paths.Length == 0)
+								return; // cancelled
+							parent.Text = paths[0]; // set from code: no edit reported, so refreshed here
+							RefreshDownload(parent, ownFolder, line, icon, checkText, go);
+						}, parent.Text, false, 0);
+				});
+		}
+		if (cancel != null)
+			cancel.SetOnClick(new [=dialog] () => { dialog.Close(); });
+		RefreshDownload(parent, ownFolder, line, icon, checkText, go);
+		dialog.OpenModal(root);
+	}
+
+	/// The download dialog's window while it is open (a test's); null with none.
+	public Sedulous.GUI.Window DownloadDialog => CreateDialog;
+
+	/// Starts `sample`'s download into `target` (the dialog's second half).
+	public void StartDownload(SampleInfo sample, StringView target)
+	{
+		if ((mServices.Http == null) || (DownloadOf(sample.Folder) != null))
+			return;
+		let download = new SampleDownload(mServices.Http, sample, ReleaseFile(sample.Archive, .. scope .()), target);
+		mDownloads.Add(download);
+		download.Start();
+		SetNote(scope $"Downloading {sample.Name}...");
+		Later(false);
 	}
 
 	public bool IsShowingSamples => mSamples;
@@ -601,13 +830,277 @@ class ProjectManagerView
 	{
 		let result = scope NewProjectCheck();
 		CheckCreate(name, parent, ownFolder, result);
-		create.Enabled = result.Level != .Error;
-		if (target != null)
-			target.Text = result.Message;
+		ShowCheck(result, line, icon, target, create);
+	}
+
+	/// What Download would do with the fields as they stand: New Project's check, worded as a
+	/// download.
+	private void CheckDownload(Sedulous.GUI.TextField parent, Sedulous.GUI.CheckBox ownFolder, NewProjectCheck outCheck)
+	{
+		ProjectManagerController.CheckNewProject(mDialogSample.Folder, parent.Text, (ownFolder == null) || ownFolder.Checked, mHome, outCheck,
+			.Download);
+	}
+
+	/// The download dialog's check line again.
+	private void RefreshDownload(Sedulous.GUI.TextField parent, Sedulous.GUI.CheckBox ownFolder, UIWidget line, Sedulous.GUI.Image icon,
+		Sedulous.GUI.Label checkText, Sedulous.GUI.Button go)
+	{
+		let result = scope NewProjectCheck();
+		CheckDownload(parent, ownFolder, result);
+		ShowCheck(result, line, icon, checkText, go);
+	}
+
+	/// A check line (New Project's, a download's): its words, its colour, its icon, and whether the
+	/// dialog's button may go ahead.
+	private static void ShowCheck(NewProjectCheck result, UIWidget line, Sedulous.GUI.Image icon, Sedulous.GUI.Label checkText,
+		Sedulous.GUI.Button go)
+	{
+		go.Enabled = result.Level != .Error;
+		if (checkText != null)
+			checkText.Text = result.Message;
 		SetClass(line, "warning", result.Level == .Warning);
 		SetClass(line, "error", result.Level == .Error);
 		if (icon != null)
 			icon.Source = (result.Level == .Ok) ? "Editor/Icons/check.svg" : ((result.Level == .Warning) ? "Editor/Icons/warning.svg" : "Editor/Icons/error.svg");
+	}
+
+	/// A size for a person: "7.2 MB".
+	private static void SizeText(uint64 bytes, String outText)
+	{
+		let tenths = (bytes * 10 + 512 * 1024) / (1024 * 1024);
+		if (tenths < 10)
+			outText.AppendF("{} KB", Math.Max((uint64)1, (bytes + 512) / 1024));
+		else
+			outText.AppendF("{}.{} MB", tenths / 10, tenths % 10);
+	}
+
+	/// Where `file` of this editor's release is fetched from.
+	private void ReleaseFile(StringView file, String outUrl)
+	{
+		if (mServices.ReleaseFile != null)
+			mServices.ReleaseFile(file, outUrl);
+		else
+			EngineVersion.ReleaseDownloadUrl(file, outUrl);
+	}
+
+	private void OnCatalog(HttpClientResponse response)
+	{
+		mCatalogRequest = 0;
+		if (response.Ok && (response.Status == 404))
+			mCatalogState = .NotPublished;
+		else if (!response.Ok || (response.Status != 200))
+		{
+			mCatalogState = .Failed;
+			mCatalogError.Clear();
+			if (response.Ok)
+				mCatalogError.AppendF("GitHub answered {}", response.Status);
+			else
+				mCatalogError.Append(response.Error);
+		}
+		else if (!SampleCatalog.Parse(response.BodyText, mCatalog, mCatalogError))
+			mCatalogState = .Failed;
+		else
+		{
+			mCatalogState = .Loaded;
+			FetchPictures();
+		}
+		Later(false);
+	}
+
+	/// Each sample's picture, shown on its card as it arrives.
+	private void FetchPictures()
+	{
+		Clear(Find<Node>("manager-samples")); // the cards before the pictures they show
+		ClearAndDeleteItems(mSampleCards);
+		for (let picture in mSamplePictures)
+			delete picture;
+		mSamplePictures.Clear();
+		mPictureRequests.Clear();
+		for (int i < mCatalog.Samples.Count)
+		{
+			mSamplePictures.Add(null);
+			if (mCatalog.Samples[i].Picture.IsEmpty)
+				continue;
+			let request = HttpClientRequest.Get(ReleaseFile(mCatalog.Samples[i].Picture, .. scope .()));
+			let index = i;
+			mPictureRequests.Add(mServices.Http.Send(request, new [=this, =index] (response) =>
+				{
+					if (!response.Ok || (response.Status != 200) || (index >= mSamplePictures.Count))
+						return;
+					let image = new Sedulous.Image.Image();
+					if (ImageIO.LoadImageFromMemory(response.Body, image) case .Err)
+					{
+						delete image;
+						return;
+					}
+					delete mSamplePictures[index];
+					mSamplePictures[index] = image;
+					Later(false);
+				}));
+		}
+	}
+
+	/// What a finished download leaves: a project in the list, or why it did not.
+	private void Finished(SampleDownload d)
+	{
+		let name = scope String(d.Sample.Name);
+		if (d.State == .Done)
+		{
+			let probed = scope ProjectSettings();
+			if ((mServices.Controller != null) && (ProjectRegistry.ProbeProject(d.Target, probed) case .Ok))
+			{
+				mServices.Controller.NoteOpened(d.Target, probed.Name, probed.EngineVersion);
+				if (mServices.StoreChanged != null)
+					mServices.StoreChanged();
+				SetNote(scope $"{name} is in your projects, in {ProjectRegistry.ShortenHomePath(d.Target, mHome, .. scope .())}.");
+			}
+			else
+				SetStatus(scope $"{name} downloaded, but holds no Project.xml.");
+		}
+		else if (d.State == .Failed)
+			SetStatus(scope $"{name} did not download: {d.Error}.");
+		else
+			SetNote(scope $"{name}'s download was cancelled; nothing was kept.");
+	}
+
+	/// The bars and words of the downloads under way, without laying the page out again.
+	private void ShowProgress()
+	{
+		for (let card in mSampleCards)
+		{
+			let d = DownloadOf(card.Folder);
+			if ((d == null) || (card.Bar == null))
+				continue;
+			card.Bar.Value = d.Progress;
+			if (card.Stage != null)
+				card.Stage.Text = scope $"Downloading {SizeText(d.Received, .. scope .())} of {SizeText(d.Total, .. scope .())}";
+		}
+	}
+
+	/// The Samples tab: the cards, or where the list stands.
+	private void PopulateSamples()
+	{
+		let grid = Find<Node>("manager-samples");
+		Clear(grid);
+		ClearAndDeleteItems(mSampleCards);
+		let loaded = (mCatalogState == .Loaded) && !mCatalog.Samples.IsEmpty;
+		if (let scroll = Find<Node>("manager-samples-scroll"))
+			scroll.Displayed = loaded;
+		if (let state = Find<Node>("manager-samples-state"))
+			state.Displayed = !loaded;
+		if (!loaded)
+		{
+			StringView title = "Reaching GitHub...";
+			let text = scope String();
+			if (mCatalogState == .Failed)
+			{
+				title = "The samples could not be fetched";
+				text.AppendF("GitHub was not reached ({}).", mCatalogError);
+			}
+			else if ((mCatalogState == .NotPublished) || (mCatalogState == .Loaded))
+			{
+				title = "No samples for this version yet";
+				text.AppendF("Release {} has no samples published: they come with each release of the editor.", EngineVersion.String);
+			}
+			if (let label = Find<Sedulous.GUI.Label>("manager-samples-state-title"))
+				label.Text = title;
+			if (let label = Find<Sedulous.GUI.Label>("manager-samples-state-text"))
+				label.Text = text;
+			if (let retry = Find<Node>("manager-samples-retry"))
+				retry.Displayed = mCatalogState == .Failed;
+			return;
+		}
+		if (grid != null)
+		{
+			for (int i < mCatalog.Samples.Count)
+				Adopt(grid, SampleCardFor(i));
+		}
+		ShowProgress();
+	}
+
+	/// A sample's card: its picture, its name and size, its line, then Download... (with "In your
+	/// projects" once it is one) or, while it downloads, the bar and Cancel. A node with one
+	/// reference, the caller's.
+	private Node SampleCardFor(int index)
+	{
+		let sample = mCatalog.Samples[index];
+		let card = new Sedulous.GUI.Panel();
+		card.AddClass("manager-sample");
+		let image = (index < mSamplePictures.Count) ? mSamplePictures[index] : null;
+		if (image != null)
+		{
+			let picture = new Sedulous.GUI.Image();
+			picture.AddClass("manager-sample-picture");
+			picture.Fit = .Cover;
+			let drawable = new ImageDrawable(image);
+			defer drawable.ReleaseRef(); // the picture takes its own
+			picture.SetDrawable(drawable);
+			Adopt(card, picture);
+		}
+		else
+		{
+			let blank = new Sedulous.GUI.Panel();
+			blank.AddClass("manager-sample-picture");
+			Adopt(card, blank);
+		}
+		let body = new Sedulous.GUI.Panel();
+		body.AddClass("manager-sample-body");
+		let title = new Sedulous.GUI.Panel();
+		title.AddClass("manager-sample-title");
+		Adopt(title, Text(sample.Name, "manager-sample-name"));
+		Adopt(title, Text(SizeText(sample.Size, .. scope .()), "manager-count"));
+		Adopt(body, title);
+		Adopt(body, Text(sample.Description, "manager-sample-text"));
+		let entry = new SampleCard();
+		entry.Folder.Set(sample.Folder);
+		if (DownloadOf(sample.Folder) != null)
+		{
+			let progress = new Sedulous.GUI.Panel();
+			progress.AddClass("manager-sample-progress");
+			let bar = new Sedulous.GUI.ProgressBar();
+			bar.Min = 0.0;
+			bar.Max = 1.0;
+			Adopt(progress, bar);
+			let stage = new Sedulous.GUI.Panel();
+			stage.AddClass("manager-sample-stage");
+			let words = Text("Downloading", "");
+			Adopt(stage, words);
+			let cancel = new Sedulous.GUI.Button();
+			cancel.AddClass("ghost");
+			cancel.Text = "Cancel";
+			let folder = new String(sample.Folder);
+			cancel.SetOnClick(new [=this, =folder] () =>
+				{
+					if (let d = DownloadOf(folder))
+						d.Cancel(); // Tick takes it off and says so
+				} ~ delete folder);
+			Adopt(stage, cancel);
+			Adopt(progress, stage);
+			Adopt(body, progress);
+			entry.Bar = bar;
+			entry.Stage = words;
+		}
+		else
+		{
+			let actions = new Sedulous.GUI.Panel();
+			actions.AddClass("manager-sample-actions");
+			let download = new Sedulous.GUI.Button();
+			download.AddClasses("primary");
+			download.Text = "Download...";
+			download.Enabled = mServices.Http != null;
+			download.SetOnClick(new [=this, =index] () =>
+				{
+					if (index < mCatalog.Samples.Count)
+						ShowDownloadDialog(mCatalog.Samples[index]);
+				});
+			Adopt(actions, download);
+			if (InProjects(sample))
+				Adopt(actions, Text("In your projects", "manager-sample-have"));
+			Adopt(body, actions);
+		}
+		Adopt(card, body);
+		mSampleCards.Add(entry);
+		return card;
 	}
 
 	/// The frame's part with this id, as a T; null when it has none.
@@ -679,9 +1172,15 @@ class ProjectManagerView
 		let status = Find<Sedulous.GUI.Label>("manager-status");
 		if (status == null)
 			return;
-		// Nothing to say: how to open a project, while there are some.
+		// Nothing to say: where the samples come from on Samples, how to open a project while there
+		// are some.
 		let idle = text.IsEmpty;
-		status.Text = (idle && !mShown.IsEmpty && !mSamples) ? "Double-click a project or press Enter to open it." : text;
+		let idleText = scope String();
+		if (idle && mSamples)
+			idleText.AppendF("From the {} release on GitHub, checked against its published checksum before it is unpacked.", EngineVersion.String);
+		else if (idle && !mShown.IsEmpty)
+			idleText.Append("Double-click a project or press Enter to open it.");
+		status.Text = idle ? StringView(idleText) : text;
 		SetClass(status, "warning", problem && !idle);
 	}
 
@@ -722,6 +1221,8 @@ class ProjectManagerView
 			page.Displayed = !mSamples && !welcome;
 		if (let page = Find<Node>("manager-samples-page"))
 			page.Displayed = mSamples;
+		if (mSamples)
+			PopulateSamples();
 		if (let page = Find<Node>("manager-welcome"))
 			page.Displayed = welcome;
 		if (let logo = Find<Node>("manager-logo"))

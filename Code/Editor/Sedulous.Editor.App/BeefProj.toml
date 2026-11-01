@@ -61,3 +61,6 @@ corlib = "*"
 "Sedulous.Http" = "*"
 "Sedulous.Http.Client" = "*"
 "Sedulous.Zip" = "*"
+# The editor's client over https: Mbed TLS with the system's roots.
+"Sedulous.Net.Tls" = "*"
+"Sedulous.Net.Tls.MbedTLS" = "*"

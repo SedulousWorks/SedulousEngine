@@ -2,8 +2,8 @@
   The project manager (Raptor's project-manager spec): the window's whole screen while no
   project is open. A header with the Projects and Samples tabs; on Projects a toolbar (New Project,
   Open Folder, a search, the sort, list or grid) over the projects, the missing ones in a section of
-  their own, and a footer with the status and the keys. With no projects at all, a welcome in their
-  place. Code fills the lists, the counts and the status line by id.
+  their own; on Samples the sample games of this editor's release, each with its Download...; and
+  a footer with the status and the keys. With no projects at all, a welcome in their place. Code fills the lists, the counts and the status line by id.
 -->
 <Panel class="manager">
     <Panel class="manager-header">
@@ -52,10 +52,19 @@
         </Panel>
     </Panel>
 
-    <Panel id="manager-samples-page" class="manager-page state-box">
-        <Image class="state-icon" src="Editor/Icons/world.svg"/>
-        <Label class="state-title" text="Samples"/>
-        <Label class="state-text" text="The sample games will download from here in a later build."/>
+    <Panel id="manager-samples-page" class="manager-page">
+        <Panel class="manager-toolbar">
+            <Label id="manager-samples-intro" class="manager-meta"/>
+        </Panel>
+        <Panel id="manager-samples-scroll" class="manager-scroll">
+            <Panel id="manager-samples" class="manager-samples"/>
+        </Panel>
+        <Panel id="manager-samples-state" class="state-box manager-samples-state">
+            <Image id="manager-samples-state-icon" class="state-icon" src="Editor/Icons/world.svg"/>
+            <Label id="manager-samples-state-title" class="state-title"/>
+            <Label id="manager-samples-state-text" class="state-text"/>
+            <Button id="manager-samples-retry" text="Retry"/>
+        </Panel>
     </Panel>
 
     <Panel id="manager-welcome" class="manager-welcome">

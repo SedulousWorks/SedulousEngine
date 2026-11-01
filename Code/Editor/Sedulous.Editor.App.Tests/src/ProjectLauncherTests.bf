@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Image.IO;
 using Sedulous.Settings;
 using Sedulous.Shell;
 using Sedulous.GUI;
+using Sedulous.Http.Client;
+using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
@@ -100,8 +103,9 @@ class ProjectLauncherTests
 		/// The editor's sheet, once StyleAsTheEditor has styled the tree.
 		public EditorSheet Sheet;
 
-		/// `more` older projects after the three, there (`real`) or no longer there.
-		public this(int more = 0, bool real = false)
+		/// `more` older projects after the three, there (`real`) or no longer there; `configure` adds
+		/// to the view's services (the Samples tab's client).
+		public this(int more = 0, bool real = false, delegate void(ProjectManagerServices services) configure = null)
 		{
 			EditorProjectSerializables.RegisterAll();
 			PathJoin(GetCurrentDirectory(.. scope .()), "scratch_launcher", Root);
@@ -138,6 +142,8 @@ class ProjectLauncherTests
 			services.Create = new [=launcher] (directory, name) => { launcher.Created.Add(new String(directory)); };
 			services.StoreChanged = new [=launcher] () => { launcher.Saves++; };
 			services.LoadMarkup = new (path) => PagesBed.LoadMarkup(path);
+			if (configure != null)
+				configure(services);
 			View = new .(services, PagesBed.LoadMarkup(ProjectManagerView.cMarkupPath));
 			Test.Assert(View.Content != null);
 			Scene.AddChild(View.Content);
@@ -744,5 +750,121 @@ class ProjectLauncherTests
 		Test.Assert(row.Width > 1100.0f, "1280 less 40 each side and a scroll bar at most");
 		let missing = l.View.Content.FindElement("manager-missing-list").GetChildAt(0).ScreenBounds;
 		Test.Assert(Math.Abs(missing.Width - row.Width) < 0.01f);
+	}
+
+	/// The Launcher's view pumped with `server` until `until` holds, about five seconds at most.
+	private static void RunUntil(Launcher l, LoopbackFiles server, delegate bool() until)
+	{
+		for (int i < 5000)
+		{
+			if (until())
+				break;
+			server.Pump();
+			l.View.Tick();
+			l.Drain();
+			Thread.Sleep(1);
+		}
+	}
+
+	/// Whether `node`'s subtree has a label showing `text`.
+	private static bool HasLabel(Node node, StringView text)
+	{
+		if (let label = node as Sedulous.GUI.Label)
+		{
+			if (label.Text == text)
+				return true;
+		}
+		for (int i < node.ChildCount)
+		{
+			if (HasLabel(node.GetChildAt(i), text))
+				return true;
+		}
+		return false;
+	}
+
+	[Test]
+	public static void TheSamplesTabListsTheReleasesSamplesAndOneDownloadedJoinsTheProjects()
+	{
+		let client = scope NativeHttpClient(null);
+		let server = scope LoopbackFiles();
+		let l = scope Launcher(0, false, scope [&] (services) =>
+			{
+				services.Http = client;
+				services.ReleaseFile = new [=server] (file, outUrl) => { server.Url(scope $"/{file}", outUrl); };
+			});
+		// The release: its samples.json, one sample's zip (a project's manifest at its root) and picture.
+		let zip = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(FindDataRoot(.. scope .()), "Tests/Zip/sample.zip", .. scope .()), zip) case .Ok);
+		let picture = scope List<uint8>();
+		Test.Assert(ReadFile(l.WritePicture("picture.png", .. scope .()), picture) case .Ok);
+		let catalog = scope String();
+		catalog.AppendF("""
+			{{"version": "0.1.0", "samples": [{{"folder": "Gallery", "name": "Shader Gallery", "description": "A hall of shaders.",
+			 "archive": "sample-Gallery.zip", "size": {}, "sha256": "{}", "picture": "sample-Gallery.png"}}]}}
+			""", zip.Count, Sha256.Of(zip).ToHex(.. scope .()));
+		server.Serve("/samples.json", catalog);
+		server.Serve("/sample-Gallery.zip", zip);
+		server.Serve("/sample-Gallery.png", picture);
+
+		l.View.ShowSamples(true);
+		RunUntil(l, server, scope () => l.View.SampleCatalogState == .Loaded);
+		Test.Assert(l.View.SampleCatalogState == .Loaded);
+		Test.Assert(l.View.Samples.Samples.Count == 1);
+		let grid = l.View.Content.FindElement("manager-samples");
+		Test.Assert(grid != null);
+		Test.Assert(grid.ChildCount == 1);
+		let download = ButtonText(grid, "Download...");
+		Test.Assert(download != null);
+		Test.Assert(!l.View.InProjects(l.View.Samples.Samples[0]));
+
+		// Download... asks where; the location starts where the last project went.
+		l.Controller.SetLastLocation(l.Root);
+		Test.Assert(download.HandleActivate());
+		let dialog = l.View.DownloadDialog;
+		Test.Assert(dialog != null);
+		Test.Assert((dialog.FindElement("download-sample-where") as Sedulous.GUI.Label).Text.StartsWith("Downloads into"));
+		let go = dialog.FindElement("download-sample-go") as Sedulous.GUI.Button;
+		Test.Assert(go != null);
+		Test.Assert(go.Enabled);
+		Test.Assert(go.HandleActivate());
+		Test.Assert(l.View.DownloadDialog == null);
+		l.Drain();
+		RunUntil(l, server, scope () => l.View.DownloadOf("Gallery") == null);
+
+		// It is one of the projects now, and its card says so.
+		let target = PathJoin(l.Root, "Gallery", .. scope .());
+		Test.Assert(FileExists(PathJoin(target, "Project.xml", .. scope .())), scope String(l.View.Status));
+		bool listed = false;
+		for (let e in l.Controller.Entries.Entries)
+			listed = listed || (e.Path == target);
+		Test.Assert(listed);
+		l.Drain();
+		Test.Assert(l.View.InProjects(l.View.Samples.Samples[0]));
+		Test.Assert(HasLabel(l.View.Content.FindElement("manager-samples").GetChildAt(0), "In your projects"));
+		Test.Assert(l.View.Status.Contains("in your projects", true), scope String(l.View.Status));
+	}
+
+	[Test]
+	public static void TheSamplesTabSaysWhenTheReleaseHasNoSamplesAndWhenGitHubIsNotReached()
+	{
+		let client = scope NativeHttpClient(null);
+		let server = scope LoopbackFiles(); // serves nothing: samples.json is a 404
+		let l = scope Launcher(0, false, scope [&] (services) =>
+			{
+				services.Http = client;
+				services.ReleaseFile = new [=server] (file, outUrl) => { server.Url(scope $"/{file}", outUrl); };
+			});
+		l.View.ShowSamples(true);
+		RunUntil(l, server, scope () => l.View.SampleCatalogState != .Fetching);
+		Test.Assert(l.View.SampleCatalogState == .NotPublished);
+		Test.Assert(l.View.Content.FindElement("manager-samples-state").Displayed);
+		Test.Assert((l.View.Content.FindElement("manager-samples-state-title") as Sedulous.GUI.Label).Text == "No samples for this version yet");
+		Test.Assert(!l.View.Content.FindElement("manager-samples-retry").Displayed);
+
+		// With no client at all, it cannot be reached, and Retry is offered.
+		let offline = scope Launcher();
+		offline.View.ShowSamples(true);
+		Test.Assert(offline.View.SampleCatalogState == .Failed);
+		Test.Assert(offline.View.Content.FindElement("manager-samples-retry").Displayed);
 	}
 }
