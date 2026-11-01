@@ -184,6 +184,23 @@ static class ThumbnailServiceTests
 		Test.Assert(fx.Service.QueuedSceneJobs == 1, "now it renders");
 	}
 
+	/// The cook keeps no record of a scene or a prefab, so its recipe hash is always nought;
+	/// waiting for one left them with their icons for good. The generator's own hash names them.
+	[Test]
+	public static void ADocumentTheCookKeepsNoRecordOfIsNamedByItsGeneratorsHash()
+	{
+		Scratch("thumbs_gpu_document", .. scope .());
+		let fx = scope ThumbnailFixture("thumbs_gpu_document", 0, false, true, 85);
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 1, "queued, not left waiting for a cook");
+		let job = fx.Service.TakeSceneJob();
+		Test.Assert(job.Id == fx.Known);
+		fx.Service.AcceptSceneResult(fx.Known, SolidTile(90), true);
+		Test.Assert(fx.Service.Get(fx.Known) != null);
+		fx.PumpLight();
+		Test.Assert(FileExists(scope $"{fx.CacheDir}/{fx.Known}-85.png"), "saved under its own hash");
+	}
+
 	[Test]
 	public static void AFailedStageResultCachesANegativeAndNeverRequeues()
 	{

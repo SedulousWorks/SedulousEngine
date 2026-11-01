@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
@@ -50,4 +51,7 @@ class PrefabThumbnailGenerator : ISceneThumbnailGenerator
 	}
 
 	public void Unstage(Sedulous.Scene.Scene stage) => mSpawned = false; // the scene is per job
+
+	/// No builder cooks a prefab document: its envelope and scene stream name its thumbnail.
+	public uint64 ContentHash(Instance instance) => ThumbnailStaging.DocumentHash(instance);
 }

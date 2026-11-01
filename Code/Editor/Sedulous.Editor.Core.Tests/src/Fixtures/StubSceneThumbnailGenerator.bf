@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Editor.Core;
@@ -11,12 +12,17 @@ class StubSceneThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private String mType = new .() ~ delete _;
 	private bool mPrivate;
+	/// What it names a document's content by (nought: the cook's recipe hash does).
+	private uint64 mContentHash;
 
-	public this(StringView type, bool privateScene = false)
+	public this(StringView type, bool privateScene = false, uint64 contentHash = 0)
 	{
 		mType.Set(type);
 		mPrivate = privateScene;
+		mContentHash = contentHash;
 	}
+
+	public uint64 ContentHash(Instance instance) => mContentHash;
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add(mType);
 	public bool NeedsPrivateScene => mPrivate;

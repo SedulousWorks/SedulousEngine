@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
@@ -21,4 +22,12 @@ interface ISceneThumbnailGenerator
 	bool NeedsPrivateScene { get; }
 	ThumbnailStageStep Stage(Guid id, Scene scene, ResourceManager resources, ref ThumbnailFraming outFraming);
 	void Unstage(Scene scene);
+
+	/// A hash of what the thumbnail shows, for a type the cook keeps no record of (a scene or a
+	/// prefab document, which no builder cooks): the cache file is named by it, so a change to it
+	/// makes a new thumbnail. Nought, the default, leaves it to the cook's recipe hash.
+	uint64 ContentHash(Instance instance)
+	{
+		return 0;
+	}
 }

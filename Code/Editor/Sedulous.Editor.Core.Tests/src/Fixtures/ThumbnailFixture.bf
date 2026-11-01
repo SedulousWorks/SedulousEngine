@@ -28,7 +28,9 @@ class ThumbnailFixture
 	/// The content hash the service sees (0: not cooked yet).
 	public uint64 Hash;
 
-	public this(StringView cacheDir, uint64 hash = 0x77, bool failGenerate = false, bool gpu = false)
+	/// `generatorHash` is what a GPU generator names the asset's content by (a document no builder
+	/// cooks); nought leaves it to `hash`.
+	public this(StringView cacheDir, uint64 hash = 0x77, bool failGenerate = false, bool gpu = false, uint64 generatorHash = 0)
 	{
 		Hash = hash;
 		PathJoin(Directory.GetCurrentDirectory(.. scope .()), cacheDir, CacheDir);
@@ -41,7 +43,7 @@ class ThumbnailFixture
 		Instance = new Instance(Db, Db.RootGroup, Known, gpu ? "StubGpu" : "Stub", gpu ? "StubGpuAsset" : "StubAsset");
 		if (gpu)
 		{
-			Service.RegisterSceneGenerator(new StubSceneThumbnailGenerator("StubGpuAsset"));
+			Service.RegisterSceneGenerator(new StubSceneThumbnailGenerator("StubGpuAsset", false, generatorHash));
 		}
 		else
 		{

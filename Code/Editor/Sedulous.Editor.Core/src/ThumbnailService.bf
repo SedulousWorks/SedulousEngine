@@ -196,7 +196,7 @@ class ThumbnailService
 		}
 		// Persisted on the light lane, the PNG encode off the main thread, and published
 		// now: the drawable owns its pixels, so the UI swaps in before the file lands.
-		let hash = (mContentHash != null) ? mContentHash(id) : 0;
+		let hash = HashFor(id);
 		if ((hash != 0) && (mJobs != null))
 		{
 			let file = new Image(pixels.Width, pixels.Height, pixels.Format, pixels.PixelData);
@@ -243,7 +243,7 @@ class ThumbnailService
 		// An unknown content hash, mid cook or no record yet, is RAM only: never a cache
 		// file that can never match again. The cook finished invalidation regenerates with
 		// the real hash and THEN persists.
-		let hash = (mContentHash != null) ? mContentHash(id) : 0;
+		let hash = HashFor(id);
 		if (hash != 0)
 			CachePathFor(id, hash, slot.DiskPath);
 		let diskHit = !slot.DiskPath.IsEmpty && FileExists(slot.DiskPath);
@@ -392,6 +392,20 @@ class ThumbnailService
 					return generator;
 		}
 		return null;
+	}
+
+	/// What names an asset's cache file: the cook's recipe hash, else (a document no builder cooks:
+	/// a scene, a prefab) its GPU generator's ContentHash; nought when neither knows it yet.
+	private uint64 HashFor(Guid id)
+	{
+		let recipe = (mContentHash != null) ? mContentHash(id) : 0;
+		if (recipe != 0)
+			return recipe;
+		let instance = (mResolve != null) ? mResolve(id) : null;
+		if ((instance == null) || (GeneratorFor(instance.TypeName) != null))
+			return 0;
+		let generator = SceneGeneratorFor(instance.TypeName);
+		return (generator != null) ? generator.ContentHash(instance) : 0;
 	}
 
 	private ISceneThumbnailGenerator SceneGeneratorFor(StringView typeName)

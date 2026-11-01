@@ -15,6 +15,36 @@ namespace Sedulous.Editor.Scene;
 /// waiting on mesh references, posing skinned meshes, and framing what was staged.
 static class ThumbnailStaging
 {
+	/// What a scene's or a prefab's thumbnail shows, as a hash: its envelope and its "scene"
+	/// stream. No builder cooks these documents, so the cook keeps no recipe for them.
+	public static uint64 DocumentHash(Instance instance)
+	{
+		var hash = HashBytes(null, 0);
+		let chunk = scope uint8[16 * 1024]*;
+		void Fold(IStream stream)
+		{
+			if (stream == null)
+			{
+				hash = HashBytes("-".Ptr, 1, hash); // absent differs from empty
+				return;
+			}
+			while (true)
+			{
+				let read = stream.Read(.(chunk, 16 * 1024));
+				if (read <= 0)
+					break;
+				hash = HashBytes(chunk, read, hash);
+			}
+		}
+		let envelope = instance.OpenEnvelope();
+		Fold(envelope);
+		delete envelope;
+		let body = instance.ReadData("scene");
+		Fold(body);
+		delete body;
+		return (hash != 0) ? hash : 1; // nought means unknown to the service
+	}
+
 	/// Pending while a bind is still loading; failed once the handle says so, or when there
 	/// is no handle at all.
 	public static ThumbnailStageStep StepForPending<T>(Proxy<T> proxy) where T : class
