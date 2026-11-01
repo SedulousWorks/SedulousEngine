@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using Sedulous.Core;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Net;
 
@@ -12,16 +13,18 @@ class WebSocketJoinRunTests
 	[Test]
 	public static void AWsAddressJoinsTheHostsGatewayAtPortPlusOneNatively()
 	{
-		// Two free ports in a row (the game's and its gateway's).
+		// Two free ports in a row (the game's and its gateway's), searched among ordinary ports from a
+		// start that differs run to run. Not beside an ephemeral port the system hands out: on
+		// Windows the next one up is often taken or reserved.
 		uint16 port = 0;
-		for (int attempt < 20)
+		let start = 20000 + (int)(GetUnixTime() % 1000) * 30;
+		for (int candidate = start; candidate < start + 2000; candidate += 2)
 		{
-			let probe = scope TcpListener(0, true);
-			let candidate = probe.BoundPort;
-			let next = scope TcpListener((uint16)(candidate + 1), true);
-			if ((candidate < 65000) && next.IsOpen)
+			let game = scope TcpListener((uint16)candidate, true);
+			let gateway = scope TcpListener((uint16)(candidate + 1), true);
+			if (game.IsOpen && gateway.IsOpen)
 			{
-				port = candidate;
+				port = (uint16)candidate;
 				break;
 			}
 		}
