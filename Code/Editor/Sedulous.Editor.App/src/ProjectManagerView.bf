@@ -176,11 +176,7 @@ class ProjectManagerView
 	{
 		mServices = services;
 		mContent = content;
-		if ((GetEnvironmentVariable("HOME", mHome) case .Err) || mHome.IsEmpty)
-		{
-			mHome.Clear();
-			GetEnvironmentVariable("USERPROFILE", mHome).IgnoreError();
-		}
+		GetHomeDirectory(mHome);
 		if (mContent == null)
 			return;
 		for (let id in cNewButtons)
