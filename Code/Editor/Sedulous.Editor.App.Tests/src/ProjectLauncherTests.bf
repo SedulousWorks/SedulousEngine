@@ -895,6 +895,11 @@ class ProjectLauncherTests
 		Test.Assert(l.View.Content.FindElement("manager-samples-state").Displayed);
 		Test.Assert((l.View.Content.FindElement("manager-samples-state-title") as Sedulous.GUI.Label).Text == "No samples for this version yet");
 		Test.Assert(!l.View.Content.FindElement("manager-samples-retry").Displayed);
+		// Nothing to say, the footer says nothing; back on Projects, how to open one.
+		let footer = l.View.Content.FindElement("manager-status") as Sedulous.GUI.Label;
+		Test.Assert(footer.Text.IsEmpty, scope String(footer.Text));
+		l.View.ShowSamples(false);
+		Test.Assert(footer.Text == "Double-click a project or press Enter to open it.", scope String(footer.Text));
 
 		// With no client at all, it cannot be reached, and Retry is offered.
 		let offline = scope Launcher();

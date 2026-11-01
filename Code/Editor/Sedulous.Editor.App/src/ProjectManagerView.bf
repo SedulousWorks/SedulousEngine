@@ -1291,15 +1291,15 @@ class ProjectManagerView
 		let status = Find<Sedulous.GUI.Label>("manager-status");
 		if (status == null)
 			return;
-		// Nothing to say: where the samples come from on Samples, how to open a project while there
-		// are some.
+		// Nothing to say: how to open a project, while there are some; the Samples tab says nothing
+		// until something happens (its intro already names the engine the samples are for).
 		let idle = text.IsEmpty;
-		let idleText = scope String();
-		if (idle && mSamples)
-			idleText.AppendF("From the {} release, each checked against its published checksum before it is unpacked.", EngineVersion.String);
-		else if (idle && !mShown.IsEmpty)
-			idleText.Append("Double-click a project or press Enter to open it.");
-		status.Text = idle ? StringView(idleText) : text;
+		if (!idle)
+			status.Text = text;
+		else if (!mSamples && !mShown.IsEmpty)
+			status.Text = "Double-click a project or press Enter to open it.";
+		else
+			status.Text = "";
 		SetClass(status, "warning", problem && !idle);
 	}
 
