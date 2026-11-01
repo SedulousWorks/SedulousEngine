@@ -57,3 +57,7 @@ corlib = "*"
 "Sedulous.Profiler.Capture" = "*"
 "Sedulous.Profiler.GUI" = "*"
 "Sedulous.Editor.Mcp" = "*"
+# The Samples tab's downloads: a release's list, streamed over the HTTP client, unzipped.
+"Sedulous.Http" = "*"
+"Sedulous.Http.Client" = "*"
+"Sedulous.Zip" = "*"

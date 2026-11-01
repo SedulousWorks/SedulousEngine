@@ -40,6 +40,8 @@ corlib = "*"
 # The MCP host over loopback.
 "Sedulous.Net" = "*"
 "Sedulous.Http" = "*"
+# The Samples tab's downloads, against a loopback server.
+"Sedulous.Http.Client" = "*"
 "Sedulous.Json" = "*"
 "Sedulous.Mcp" = "*"
 "Sedulous.Mcp.Http" = "*"

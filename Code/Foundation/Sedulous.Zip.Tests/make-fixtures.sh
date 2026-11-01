@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Makes the zips Sedulous.Zip.Tests reads, in Data/Tests/Zip, with the system's tools: Info-ZIP's zip for a
-# project-shaped archive (deflated, stored and empty files, folders) and one stored outright, and
+# Makes the zips Sedulous.Zip.Tests and the editor's sample tests read, in Data/Tests/Zip, with the
+# system's tools: Info-ZIP's zip for a project-shaped archive (deflated, stored and empty files,
+# folders), one stored outright and a sample as a release packs it (sample.zip), and
 # Python's zipfile for what zip refuses to make: a name outside the folder, a damaged entry, and an
 # archive with a comment. Run from the repository root; the zips are committed.
 set -euo pipefail
@@ -14,6 +15,9 @@ for i in $(seq 1 200); do echo "line $i of a scene that compresses well"; done >
 head -c 3000 /dev/urandom > "$work/Game/Audio/noise.bin" # does not compress: zip stores it
 (cd "$work" && rm -f "$out/project.zip" && TZ=UTC zip -q -X -r "$out/project.zip" Game)
 (cd "$work" && rm -f "$out/stored.zip" && TZ=UTC zip -q -X -0 -r "$out/stored.zip" Game/Project.xml Game/Scenes)
+# A release's sample as Raptor's pack-samples.py packs one: a real project's manifest at the root
+# (the editor's Samples tab test downloads and probes it).
+(cd Data/SampleProjects/ShaderGallery && rm -f "$out/sample.zip" && TZ=UTC zip -q -X "$out/sample.zip" Project.xml)
 python3 -I - "$out" <<'PY'
 import sys, zipfile, os
 out = sys.argv[1]
