@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Run;
+using Sedulous.Runtime;
 using Sedulous.Input;
 using Sedulous.Engine.Input;
 
@@ -66,19 +68,36 @@ class InputSubsystemTests
 		Test.Assert(input.ActiveSource !== tabA);
 	}
 
-	/// The runtimes in play: the subsystem's own, then each the host registers (a game
-	/// instance's), so the UI's consumption and the touch guide reach the game too.
+	/// A run of its own (a GameInstance is the real one).
+	private class TestRun : RunBase
+	{
+		public this() : base("test") {}
+	}
+
+	/// The runtimes in play: the subsystem's own, then each run's (a game instance's, the
+	/// ActionRuntime it holds as a service), found through the runs on its subsystem manager, so
+	/// the UI's consumption and the touch guide reach the game too.
 	[Test]
 	public static void EveryRuntimeInPlayIsReached()
 	{
 		let input = scope InputSubsystem(null);
 		int seen = 0;
 		input.ForEachActionRuntime(scope [&] (runtime) => { Test.Assert(runtime === input.Runtime); seen++; });
-		Test.Assert(seen == 1, "unset: its own alone");
+		Test.Assert(seen == 1, "no runs: its own alone");
 
 		let first = scope ActionRuntime();
 		let second = scope ActionRuntime();
-		input.SetActionRuntimeProvider(new [=first, =second] (visit) => { visit(first); visit(second); });
+		let runs = scope RunRegistry();
+		let runA = scope TestRun();
+		let runB = scope TestRun();
+		runA.Register<ActionRuntime>(first);
+		runB.Register<ActionRuntime>(second);
+		runs.Add(runA);
+		runs.Add(runB);
+		// Registered, so the context drives it and finds the runs for it; it goes first.
+		let context = scope SubsystemManager();
+		context.RegisterSubsystem(input);
+		context.SetRunManager(runs);
 		let order = scope System.Collections.List<ActionRuntime>();
 		input.ForEachActionRuntime(scope [&] (runtime) => { order.Add(runtime); });
 		Test.Assert((order.Count == 3) && (order[0] === input.Runtime) && (order[1] === first) && (order[2] === second));

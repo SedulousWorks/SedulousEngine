@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Net.Manager;
 
@@ -14,15 +15,6 @@ namespace Sedulous.Engine.Net;
 /// Replication itself rides the per scene fixed lane. This is the socket half.
 class NetworkSubsystem : Subsystem
 {
-	/// Visits every LIVE endpoint across every instance. The app sets it, because the app
-	/// owns the instance list; re-read each frame, so no endpoint pointer is held across
-	/// one. BORROWED, like everything else handed in.
-	private delegate void(delegate void(NetworkManager)) mEndpoints = null;
-
-	/// Clear this at shutdown, so a stored visitor never outlives the app that made it.
-	public void SetEndpointSource(delegate void(delegate void(NetworkManager)) source) =>
-		mEndpoints = source;
-
 	// The component's own reflection is what the serializer reads, so there is no reflected
 	// component to register and no OnInit to write.
 
@@ -32,12 +24,24 @@ class NetworkSubsystem : Subsystem
 	/// scene fixed lane, flush on the SAME frame whatever order the subsystems sort in.
 	/// What arrives is buffered here and applied by the next frame's fixed lane, where
 	/// interpolation absorbs the lag.
+	///
+	/// The endpoints are the runs' (Raptor's run-context spec): each run's network controller
+	/// (its INetworkController service) holds its live endpoint, re-read every frame, so no
+	/// endpoint is held across frames.
 	public override void PostUpdate(float deltaTime)
 	{
-		if (mEndpoints == null)
+		let runs = (Manager != null) ? Manager.RunManager : null;
+		if (runs == null)
 			return;
 
 		let deltaMs = deltaTime * 1000.0f;
-		mEndpoints(scope (endpoint) => endpoint.UpdateTransport(deltaMs));
+		runs.ForEachRun(scope (run) =>
+			{
+				if (let controller = RunServices.Get<INetworkController>(run))
+				{
+					if (let endpoint = controller.NetEndpoint)
+						endpoint.UpdateTransport(deltaMs);
+				}
+			});
 	}
 }

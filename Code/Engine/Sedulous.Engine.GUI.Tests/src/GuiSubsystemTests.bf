@@ -352,8 +352,12 @@ class GuiSubsystemTests
 		let engine = scope GuiTestEngine();
 		engine.Gui.EnsureRenderReady(device, 2);
 		Test.Assert(engine.Gui.IsRenderReady);
-		let runA = scope Object();
-		let runB = scope Object();
+		let runA = scope GuiTestRun();
+		let runB = scope GuiTestRun();
+		engine.Runs.Add(runA);
+		engine.Runs.Add(runB);
+		runA.Start();
+		runB.Start();
 		Test.Assert(engine.Gui.ScreensFor(runA) === engine.Gui.Screens, "off: one tier for every run");
 		engine.Gui.RunScreens = true;
 		let a = engine.Gui.ScreensFor(runA);
@@ -391,9 +395,16 @@ class GuiSubsystemTests
 		pass.End();
 		engine.Gui.SetRenderRun(null);
 
-		engine.Gui.EndRunScreens(runA);
+		// Its run's session ends (the tab's Stop): its tier goes, with no call to the GUI. A run gone
+		// without a stop takes its tier too.
+		runA.Stop();
 		Test.Assert(engine.Gui.RunScreenCount == 1);
-		engine.Gui.EndRunScreens(runB);
+		runB.Dispose();
+		Test.Assert(engine.Gui.RunScreenCount == 0);
+		// A's next session starts with a new tier, which its stop ends in turn.
+		runA.Start();
+		Test.Assert(engine.Gui.ScreensFor(runA) != null);
+		runA.Stop();
 		Test.Assert(engine.Gui.RunScreenCount == 0);
 	}
 

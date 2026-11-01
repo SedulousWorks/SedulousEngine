@@ -93,10 +93,7 @@ extension GameEditorPage
 		mSceneTitle.Set((mScene != null) ? mScene.Name : "(no scene)");
 		BindInput();
 		BindBusLayout();
-		// The tab Play was pressed in is the run that is heard.
-		if ((Audio != null) && (mGameInstance != null))
-			Audio.SetFocusedRun(mGameInstance);
-		// ... and the one the user is playing.
+		// The tab Play was pressed in is the one played (and heard).
 		if ((mApp != null) && (mApp.Runs != null) && (mGameInstance != null))
 			mApp.Runs.SetFocused(mGameInstance);
 		GlobalLog(.Information, "Editor: Game: running scene '{}'", mSceneTitle);
@@ -128,16 +125,10 @@ extension GameEditorPage
 			mStoppedRunTime = mGameInstance.RunTime;
 		if (mGameInstance != null)
 			mGameInstance.StopScript();
-		// The run's session ends (its lifecycle's listeners hear it).
+		// The run's session ends: its sound fades out and its screens go with it, as everything
+		// following the run's lifecycle hears (another tab's run and the editor's own play on).
 		if (mGameInstance != null)
 			mGameInstance.Stop();
-		// The run's sound ends with it: its music, one shots and whatever is still fading.
-		// Another tab's run and the editor's own sounds play on.
-		if ((Audio != null) && (mGameInstance != null))
-			Audio.EndRun(mGameInstance);
-		// Its screens go with it; another tab's run keeps its own.
-		if ((mApp != null) && (mApp.Gui != null) && (mGameInstance != null))
-			mApp.Gui.EndRunScreens(mGameInstance);
 		{
 			let active = scope List<Sedulous.Scene.Scene>();
 			active.AddRange(SceneGroup.ActiveScenes);
@@ -234,10 +225,11 @@ extension GameEditorPage
 		}
 	}
 
-	/// The run's sound, BORROWED: its stop, pause and focus. Null with no audio.
+	/// The sound, BORROWED: the hear-all preference (the run's stop, pause and focus reach it through
+	/// the run). Null with no audio.
 	private AudioSubsystem Audio => mHost?.Subsystems?.GetSubsystem<AudioSubsystem>();
 
-	/// The run's sound follows the tab: the host's pause, the focus, the hear-all preference.
+	/// The run follows the tab: the host's pause and the focus, and the sound the hear-all preference.
 	private void SyncRunAudio()
 	{
 		let audio = Audio;
@@ -251,15 +243,11 @@ extension GameEditorPage
 		// The toolbar's pause and a debugger break freeze the run's sound with the game (a
 		// game's own pause menu is time scale nought, the game's business: its music plays on).
 		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
-		audio.SetRunPaused(mGameInstance, paused);
-		mGameInstance.SetPaused(paused); // the host's pause: the run hears it once per change
-		// Clicking into this tab's viewport makes its run the one heard, and the one played.
-		if (mViewport.IsFocused && (audio.FocusedRun !== mGameInstance))
-		{
-			audio.SetFocusedRun(mGameInstance);
-			if ((mApp != null) && (mApp.Runs != null))
-				mApp.Runs.SetFocused(mGameInstance);
-		}
+		mGameInstance.SetPaused(paused); // the host's pause: the run (its sound with it) hears it once per change
+		// Clicking into this tab's viewport makes its run the one played, and the one heard.
+		let runs = (mApp != null) ? mApp.Runs : null;
+		if (mViewport.IsFocused && (runs != null) && ((Object)runs.Focused !== mGameInstance))
+			runs.SetFocused(mGameInstance);
 	}
 
 	private void BindBusLayout()

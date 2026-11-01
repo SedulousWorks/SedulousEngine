@@ -160,6 +160,7 @@ class GameInstance : RunBase
 		// What the run owns and others reach through it (RunServices.Get): borrowed, fields all.
 		Register<GameInstance>(this);
 		Register<NetworkController>(mNetwork);
+		Register<INetworkController>(mNetwork); // how the engine's network subsystem reaches it (below this library)
 		Register<ActionRuntime>(mInputRuntime);
 		Register<RunSave>(mSave);
 		Register<ScriptRunHost>(mRunHost);

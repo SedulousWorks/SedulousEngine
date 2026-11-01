@@ -5,17 +5,26 @@ using Sedulous.Engine.Input;
 using Sedulous.Engine.Scene;
 using Sedulous.GUI;
 using Sedulous.GUI.Resources;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.VFS;
 
 namespace Sedulous.Engine.GUI.Tests;
 
+/// A run of its own, for the run screen tests (a GameInstance is the real one).
+class GuiTestRun : RunBase
+{
+	public this() : base("test") {}
+}
+
 /// A context with the scene subsystem and the GUI's (and the input subsystem's, on fake devices,
 /// with what an earlier pump claims before the GUI), started, the GUI reading its shaders and built-in
 /// font through the data root.
 class GuiTestEngine
 {
+	/// The host's runs: declared first, so it outlives the subsystems.
+	public RunRegistry Runs = new .() ~ delete _;
 	public SubsystemManager Context = new .() ~ delete _;
 	public SceneManager Scenes = new .() ~ delete _;
 	public SceneSubsystem SceneSystems;
@@ -51,6 +60,7 @@ class GuiTestEngine
 			DataMount = new NativeFileSystem(dataRoot);
 		Gui = new GuiSubsystem(DataMount);
 		Context.RegisterSubsystem<GuiSubsystem>(Gui);
+		Context.SetRunManager(Runs);
 		Context.Startup();
 		Input.SetSourceProvider(Devices);
 	}

@@ -15,7 +15,7 @@ namespace Sedulous.Engine.GameInstance;
 /// It owns the endpoint, the role lifecycle, and which scene is replicated. The controller
 /// outlives every endpoint it opens, so anything holding the controller never dangles; the
 /// endpoint inside it comes and goes.
-class NetworkController
+class NetworkController : INetworkController
 {
 	/// Makes a fresh spawn resolver for EVERY endpoint the controller opens, so a reconnect
 	/// keeps it.

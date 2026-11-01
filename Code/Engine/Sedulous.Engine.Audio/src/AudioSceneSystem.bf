@@ -4,6 +4,7 @@ using Sedulous.Audio;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Profiler;
+using Sedulous.Run;
 using Sedulous.Scene;
 
 namespace Sedulous.Engine.Audio;
@@ -27,7 +28,7 @@ class AudioSceneSystem : SceneSystem
 	private uint64 mSceneGroup = 0;
 	/// How the scene finds its run's group when it starts: the subsystem's registry. Without
 	/// it the scene plays outside every run. BORROWED.
-	private delegate uint64(Object run) mRunGroupFor = null;
+	private delegate uint64(IRun run) mRunGroupFor = null;
 	private bool mStarted = false;
 	private bool mWasSimulating = true;
 
@@ -48,7 +49,7 @@ class AudioSceneSystem : SceneSystem
 
 	/// The subsystem wires its run registry in with its engine, so a scene of a run nests
 	/// under the run's groups.
-	public void SetRunGroupResolver(delegate uint64(Object run) resolver) => mRunGroupFor = resolver;
+	public void SetRunGroupResolver(delegate uint64(IRun run) resolver) => mRunGroupFor = resolver;
 
 	/// The subsystem wires its engine in right after the system is added. A test injects a
 	/// headless one the same way.

@@ -115,7 +115,9 @@ class GuiScriptTests
 	{
 		let engine = scope GuiTestEngine();
 		engine.Gui.RunScreens = true;
-		let run = scope Object();
+		let run = scope GuiTestRun();
+		engine.Runs.Add(run);
+		run.Start();
 		let shared = engine.Gui.ScriptFacadeFor(null);
 		let mine = engine.Gui.ScriptFacadeFor(run);
 		Test.Assert(shared.Root() === engine.Gui.ScreenRoot);
@@ -125,9 +127,10 @@ class GuiScriptTests
 		Test.Assert(mine.Root() !== engine.Gui.ScreenRoot, "its own tier");
 		Test.Assert(engine.Gui.RunScreenCount == 1, "made by the facade's first call");
 
-		// Its screens end; it plays again, and gets a tier back.
-		engine.Gui.EndRunScreens(run);
+		// Its screens end with its session; it plays again, and gets a tier back.
+		run.Stop();
 		Test.Assert(engine.Gui.RunScreenCount == 0);
+		run.Start();
 		Test.Assert((mine.Root() != null) && (engine.Gui.RunScreenCount == 1));
 
 		// A script's runtime given it: AngelScript finds the root it was given. In a block, so
@@ -149,7 +152,7 @@ class GuiScriptTests
 			vm.DiscardModule("run");
 		}
 
-		engine.Gui.EndRunScripts(run);
+		engine.Gui.EndRunScripts(run.Id);
 		Test.Assert(engine.Gui.RunScriptFacadeCount == 0);
 		engine.Context.Shutdown();
 		Test.Assert(shared.Root() == null, "the shared tier is gone, so no root");

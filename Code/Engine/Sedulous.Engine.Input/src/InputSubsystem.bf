@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Shell;
 using Sedulous.Input;
@@ -23,8 +24,6 @@ class InputSubsystem : Subsystem
 	/// What ForEachActionRuntime calls with each runtime.
 	public typealias ActionRuntimeVisitor = delegate void(ActionRuntime runtime);
 
-	/// The host's instances' runtimes (SetActionRuntimeProvider). Owned.
-	private delegate void(ActionRuntimeVisitor visit) mActionRuntimeProvider = null ~ delete _;
 
 	/// A null device hub is tolerated: a headless run reads every device as released.
 	public this(IInputManager input)
@@ -34,22 +33,22 @@ class InputSubsystem : Subsystem
 
 	public ActionRuntime Runtime => mRuntime;
 
-	/// How to reach the action runtimes a host's game instances each run (the player, the
-	/// editor's Game tabs), beside this subsystem's own: the UI marks what it takes on every one
-	/// (else a tap on a menu also reached the game's actions) and shows their touch controls.
-	/// Unset: this subsystem's runtime alone. Consumed.
-	public void SetActionRuntimeProvider(delegate void(ActionRuntimeVisitor visit) forEach)
-	{
-		delete mActionRuntimeProvider;
-		mActionRuntimeProvider = forEach;
-	}
-
-	/// This subsystem's runtime, then each in play.
+	/// This subsystem's runtime, then each run's (the player's, the editor's Game tabs': the
+	/// ActionRuntime a run holds as a service, Raptor's run-context spec): the UI marks what it
+	/// takes on every one (else a tap on a menu also reached the game's actions) and shows their
+	/// touch controls. No runs here: this subsystem's runtime alone.
 	public void ForEachActionRuntime(ActionRuntimeVisitor visit)
 	{
 		visit(mRuntime);
-		if (mActionRuntimeProvider != null)
-			mActionRuntimeProvider(visit);
+		let runs = (Manager != null) ? Manager.RunManager : null;
+		if (runs != null)
+		{
+			runs.ForEachRun(scope (run) =>
+				{
+					if (let runtime = RunServices.Get<ActionRuntime>(run))
+						visit(runtime);
+				});
+		}
 	}
 
 	/// The raw shell devices as a source, for a host with no gated viewport to point at.

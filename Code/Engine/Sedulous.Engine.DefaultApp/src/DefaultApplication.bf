@@ -73,9 +73,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
 	private GuiSubsystem mGui = null ~ delete _;
 
-	/// OWNED: the network subsystem borrows this visitor and only clears its reference.
-	private delegate void(delegate void(NetworkManager)) mEndpointSource = null ~ delete _;
-
 	/// The live runs (every GameInstance), handed to the subsystem manager for every subsystem
 	/// (Raptor's run-context spec). Made in Configure; declared before the instances so it
 	/// outlives them and hears each one go.
@@ -373,20 +370,9 @@ class DefaultApplication : IApplication, ISceneObserver
 		WireInstanceScripting(mInstance, host);
 
 		// The net subsystem injects the replication managers into every scene so authored
-		// network components work, and OWNS the per frame transport pump. It is given the
-		// endpoint enumerator because this application owns the instance list while the
-		// subsystem owns the tick.
-		let net = host.Subsystems.AddSubsystem<NetworkSubsystem>();
-		// The subsystem BORROWS the visitor, so it is held here rather than handed over.
-		mEndpointSource = new (visit) =>
-			{
-				ForEachInstance(scope (instance) =>
-					{
-						if (let endpoint = instance.NetEndpoint)
-							visit(endpoint);
-					});
-			};
-		net.SetEndpointSource(mEndpointSource);
+		// network components work, and OWNS the per frame transport pump, over the runs'
+		// endpoints (it finds the runs on the subsystem manager).
+		host.Subsystems.AddSubsystem<NetworkSubsystem>();
 
 		mAudio = new AudioSubsystem(mAudioEngineSettings);
 		host.Subsystems.RegisterSubsystem<AudioSubsystem>(mAudio);
@@ -397,8 +383,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Subsystems.RegisterSubsystem<InputSubsystem>(mInput);
-		// Every instance's action runtime, so the GUI's consumption and touch guide reach the game.
-		mInput.SetActionRuntimeProvider(new (visit) => { ForEachInstance(scope [&] (instance) => { visit(instance.InputRuntime); }); });
+		// Every run's action runtime reaches the GUI's consumption and touch guide through the runs.
 		// The primary instance reads the shell's devices by default, which is the player's
 		// path; an editor tab overrides this to its own gated source.
 		mInstance.SetInputSource(mInput.ShellSource);
@@ -546,22 +531,18 @@ class DefaultApplication : IApplication, ISceneObserver
 		instance.Scenes.Clear();
 		if (mScenes != null)
 			mScenes.UnregisterManager(instance.Scenes);
-		// Its sound and its screens end with it.
-		if (mAudio != null)
-			mAudio.EndRun(instance);
-		if (mGui != null)
-			mGui.EndRunScreens(instance);
-
 		mExtraInstances.RemoveAt(at);
 		// Its services after its run host is gone, found while the instance is still a key.
 		AudioFacade runAudio = null;
 		if (mRunAudio.GetAndRemove(instance) case .Ok(let entry))
 			runAudio = entry.value;
+		// Its sound and its screens end with it: its run's end reaches every subsystem.
+		let runId = instance.Id;
 		delete instance;
 		delete runAudio;
 		// Its Gui after every runtime it made, which borrow it.
 		if (mGui != null)
-			mGui.EndRunScripts(instance);
+			mGui.EndRunScripts(runId);
 	}
 
 	/// The primary first, then every extra.

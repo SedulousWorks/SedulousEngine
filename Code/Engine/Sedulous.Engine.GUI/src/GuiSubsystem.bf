@@ -17,6 +17,7 @@ using Sedulous.Input;
 using Sedulous.Profiler;
 using Sedulous.Render;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Script;
@@ -50,7 +51,7 @@ namespace Sedulous.Engine.GUI;
 ///
 /// The scripts: `Gui` to a run's scripts is a GuiFacade whose root is that run's screen tier
 /// (ExposeToScript, ScriptFacadeFor); the components reach their trees as nodes (`Root()`).
-class GuiSubsystem : Subsystem, ISceneObserver
+class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 {
 	/// Early in the frame, so a game's GUI sees the same frame; all work in BeginFrame.
 	public override int32 UpdateOrder => -640;
@@ -79,8 +80,11 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// A tier per run, with run screens on.
 	private List<GuiScreenTier> mRunTiers = new .() ~ DeleteContainerAndItems!(_);
 	private bool mRunScreens = false;
-	/// The run whose tier the next screen overlay draws under the shared one's; a key only.
-	private Object mRenderRun = null;
+	/// The run whose tier the next screen overlay draws under the shared one's, by id; nought for
+	/// none.
+	private RunId mRenderRun = 0;
+	/// BORROWED: the runs subscribed to, from OnReady to OnShutdown.
+	private IRunManager mRunManager = null;
 	/// The shared tier's overlay layer. A HELD reference.
 	private UIWidget mOverlay = null;
 	/// The touch controls' guide, beneath the shared tier's screens. A HELD reference.
@@ -92,9 +96,9 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// `Gui` to every run's scripts, its root the shared tier's (ExposeToScript). OWNED: each
 	/// runtime it is set on borrows it, so it lives as long as the subsystem.
 	private GuiFacade mScriptFacade ~ delete _;
-	/// `Gui` to one run's scripts, its root that run's tier (ScriptFacadeFor), each OWNED; a run
-	/// is a key only.
-	private List<(Object run, GuiFacade facade)> mRunFacades = new .() ~ { for (let entry in _) delete entry.facade; delete _; };
+	/// `Gui` to one run's scripts, its root that run's tier (ScriptFacadeFor), each OWNED, by the
+	/// run's id.
+	private List<(RunId run, GuiFacade facade)> mRunFacades = new .() ~ { for (let entry in _) delete entry.facade; delete _; };
 	private List<GuiSceneTier> mSceneTiers = new .() ~ DeleteContainerAndItems!(_);
 	/// The roots of their own a render-texture canvas and a world panel draw in, OWNED.
 	private List<GuiTextureRoot> mTextureRoots = new .() ~ DeleteContainerAndItems!(_);
@@ -345,16 +349,20 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	}
 
 	/// `run`'s screen stack and root, made on first use; the shared tier's with run screens off
-	/// or no run. The subsystem's.
-	public ScreenStack ScreensFor(Object run)
+	/// or no run. The subsystem's. A run's tier goes with its session (the run's stop, or the run
+	/// gone without one), every screen on it too: the run manager says so (Raptor's run-context
+	/// spec).
+	public ScreenStack ScreensFor(IRun run)
 	{
 		let tier = TierOfRoot(ScreenRootFor(run));
 		return (tier != null) ? tier.Screens : null;
 	}
 
-	public SceneRoot ScreenRootFor(Object run)
+	public SceneRoot ScreenRootFor(IRun run) => ScreenRootFor((run != null) ? run.Id : 0);
+
+	private SceneRoot ScreenRootFor(RunId run)
 	{
-		if (!mRunScreens || (run == null) || (mScreen.Root == null))
+		if (!mRunScreens || (run == 0) || (mScreen.Root == null))
 			return mScreen.Root;
 		if (let found = FindRunTier(run))
 			return found.Root;
@@ -366,13 +374,13 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	}
 
 	/// `run`'s tier sized, made on first use so a tab can size it before anything is pushed.
-	public void SetScreenResolution(Object run, uint32 width, uint32 height, FitMode fit)
+	public void SetScreenResolution(IRun run, uint32 width, uint32 height, FitMode fit)
 	{
 		if (let tier = TierOfRoot(ScreenRootFor(run)))
 			ApplyResolution(tier, width, height, fit);
 	}
 
-	public void SetScreenOrientation(Object run, ScreenOrientation orientation)
+	public void SetScreenOrientation(IRun run, ScreenOrientation orientation)
 	{
 		if (let tier = TierOfRoot(ScreenRootFor(run)))
 			tier.Orientation = orientation;
@@ -380,14 +388,14 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	/// The run whose screen tier the next screen overlay draws under the shared one's overlays
 	/// (null: none), set by a host around its overlays for that run's view.
-	public void SetRenderRun(Object run) => mRenderRun = run;
+	public void SetRenderRun(IRun run) => mRenderRun = (run != null) ? run.Id : 0;
 
-	/// The run ended: its screen tier and every screen on it go.
-	public void EndRunScreens(Object run)
+	/// The run's tier and every screen on it go.
+	private void EndRunScreens(RunId run)
 	{
 		for (int i < mRunTiers.Count)
 		{
-			if (mRunTiers[i].Run !== run)
+			if (mRunTiers[i].Run != run)
 				continue;
 			let tier = mRunTiers[i];
 			ForgetInputRoot(tier.Root);
@@ -396,9 +404,13 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			delete tier;
 			break;
 		}
-		if (mRenderRun === run)
-			mRenderRun = null;
+		if (mRenderRun == run)
+			mRenderRun = 0;
 	}
+
+	// IRunListener: a run's tier goes with its session.
+	public void OnRunStopping(IRun run) => EndRunScreens(run.Id);
+	public void OnRunDestroyed(IRun run) => EndRunScreens(run.Id);
 
 	public int RunScreenCount => mRunTiers.Count;
 
@@ -487,7 +499,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	/// The same for one run: `Gui.Root()` is `run`'s screen tier (ScreenRootFor), its own with run
 	/// screens on, the shared one without.
-	public void ExposeToScript(ScriptRuntime runtime, Object run)
+	public void ExposeToScript(ScriptRuntime runtime, IRun run)
 	{
 		if (runtime != null)
 			runtime.SetService(ScriptFacadeFor(run));
@@ -496,29 +508,31 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// The `Gui` a run's scripts are given, made on first use, for a host that installs a run's
 	/// services on its run host (`instance.RunHost.SetService(gui.ScriptFacadeFor(instance))`),
 	/// which applies them to each runtime the run makes. Its root is asked at each call, so a run
-	/// whose screens ended (EndRunScreens) and plays again gets its tier back. The shared one
-	/// with no run. The subsystem's until EndRunScripts or its own end; BORROWED by the runtime.
-	public GuiFacade ScriptFacadeFor(Object run)
+	/// whose screens ended (its stop) and plays again gets its tier back. The shared one with no
+	/// run. The subsystem's until EndRunScripts or its own end; BORROWED by the runtime.
+	public GuiFacade ScriptFacadeFor(IRun run)
 	{
 		if (run == null)
 			return mScriptFacade;
+		let id = run.Id;
 		for (let entry in mRunFacades)
 		{
-			if (entry.run === run)
+			if (entry.run == id)
 				return entry.facade;
 		}
-		let facade = new GuiFacade(new [=this, =run] () => ScreenRootFor(run));
-		mRunFacades.Add((run, facade));
+		let facade = new GuiFacade(new [=this, =id] () => ScreenRootFor(id));
+		mRunFacades.Add((id, facade));
 		return facade;
 	}
 
 	/// The run is gone for good: its `Gui` goes. After every runtime the run made, which borrow
-	/// it, is gone.
-	public void EndRunScripts(Object run)
+	/// it, is gone, so its host says so (by the run's id, the run itself gone by then): the run's
+	/// destruction comes first.
+	public void EndRunScripts(RunId run)
 	{
 		for (int i < mRunFacades.Count)
 		{
-			if (mRunFacades[i].run !== run)
+			if (mRunFacades[i].run != run)
 				continue;
 			delete mRunFacades[i].facade;
 			mRunFacades.RemoveAt(i);
@@ -577,6 +591,10 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
 		}
+		// The runs' lifecycle: a run's tier goes with its session.
+		mRunManager = Manager.RunManager;
+		if (mRunManager != null)
+			mRunManager.Subscribe(this);
 		// Headless contexts (tests, the cooker) have no render subsystem: nothing registers.
 		mRender = Manager.GetSubsystem<RenderSubsystem>();
 		if (mRender != null)
@@ -588,6 +606,11 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	protected override void OnShutdown()
 	{
+		if (mRunManager != null)
+		{
+			mRunManager.Unsubscribe(this);
+			mRunManager = null;
+		}
 		if (mRender != null)
 		{
 			mRender.UnregisterOverlay((ISceneOverlay)this);
@@ -621,7 +644,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		for (let tier in mRunTiers)
 			tier.Screens.Clear();
 		ClearAndDeleteItems!(mRunTiers);
-		mRenderRun = null;
+		mRenderRun = 0;
 		// The shared tier's bridge borrows its root's dispatcher: it goes before the root.
 		delete mScreen.Bridge;
 		mScreen.Bridge = null;
@@ -766,17 +789,19 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	}
 
 	/// `run`'s own tier, or null when none was made.
-	private GuiScreenTier FindRunTier(Object run)
+	private GuiScreenTier FindRunTier(RunId run)
 	{
-		if (run == null)
+		if (run == 0)
 			return null;
 		for (let tier in mRunTiers)
 		{
-			if (tier.Run === run)
+			if (tier.Run == run)
 				return tier;
 		}
 		return null;
 	}
+
+	private GuiScreenTier FindRunTier(IRun run) => (run != null) ? FindRunTier(run.Id) : null;
 
 	/// The tier whose root is `root`, or null.
 	private GuiScreenTier TierOfRoot(SceneRoot root)

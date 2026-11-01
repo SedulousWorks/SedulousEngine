@@ -7,6 +7,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Profiler;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 
@@ -16,7 +17,7 @@ namespace Sedulous.Engine.Audio;
 ///
 /// It owns the ONE engine, hands it to every scene's audio system, pushes the winning
 /// listeners, and carries the engine global one shot surface that needs no entity at all.
-class AudioSubsystem : Subsystem, ISceneObserver
+class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 {
 	/// One watched scene and its audio system, both BORROWED.
 	private struct SceneEntry
@@ -31,10 +32,10 @@ class AudioSubsystem : Subsystem, ISceneObserver
 		}
 	}
 
-	/// One live run's group: the run is an opaque key (a GameInstance), BORROWED.
+	/// One live run's group, by its run's id.
 	private struct RunEntry
 	{
-		public Object Run;
+		public RunId Run;
 		public uint64 Group;
 	}
 
@@ -66,12 +67,14 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	private List<RunEntry> mRuns = new .() ~ delete _;
 	private List<EndingRun> mEndingRuns = new .() ~ delete _;
-	/// BORROWED: the heard run; null hears every run.
-	private Object mFocusedRun = null;
+	/// The heard run; nought hears every run.
+	private RunId mFocusedRun = 0;
+	/// BORROWED: the runs subscribed to, from OnReady to OnShutdown.
+	private IRunManager mRunManager = null;
 	/// The editor's preference, every Game tab heard rather than the focused one.
 	private bool mHearAllRuns = false;
 	/// The scene systems' way back to the run registry. OWNED.
-	private delegate uint64(Object run) mRunGroupResolver ~ delete _;
+	private delegate uint64(IRun run) mRunGroupResolver ~ delete _;
 
 	public this(AudioEngineSettings engineSettings = null)
 	{
@@ -234,43 +237,51 @@ class AudioSubsystem : Subsystem, ISceneObserver
 			mEngine.StopMusic(fadeSeconds, runGroup);
 	}
 
-	// ---- runs: what one running game plays, keyed by its run (Scene.Run) ----
+	// ---- runs: what one running game plays, keyed by its run's id (Scene.Run) ----
+	//
+	// A run's group follows its lifecycle (Raptor's run-context spec): its session's stop (or its
+	// destruction) fades the group out, the host's pause pauses it, the run manager's focus decides
+	// who is heard. No host relays any of it.
+
+	private const float cRunFadeSeconds = 0.1f;
 
 	/// The run's group, made on first use; nought for no run or no engine. A new run starts
-	/// muted when another run holds the focus and only the focused run is heard.
-	public uint64 RunGroupFor(Object run)
+	/// muted when another run holds the focus and only the focused run is heard, and paused when
+	/// its run is.
+	public uint64 RunGroupFor(IRun run)
 	{
 		if ((run == null) || (mEngine == null))
 			return 0;
-		for (let entry in mRuns)
-		{
-			if (entry.Run === run)
-				return entry.Group;
-		}
+		let found = FindRunGroup(run.Id);
+		if (found != 0)
+			return found;
 		let group = mEngine.CreateRunGroup();
-		mRuns.Add(.() { Run = run, Group = group });
-		mEngine.SetRunGroupMuted(group, !IsRunAudible(run));
+		mRuns.Add(.() { Run = run.Id, Group = group });
+		mEngine.SetRunGroupMuted(group, !IsRunAudible(run.Id));
+		mEngine.SetRunGroupPaused(group, run.State == .Paused);
 		return group;
 	}
 
 	/// The run's group if it has one, without making it; nought otherwise.
-	public uint64 FindRunGroup(Object run)
+	public uint64 FindRunGroup(IRun run) => (run != null) ? FindRunGroup(run.Id) : 0;
+
+	private uint64 FindRunGroup(RunId run)
 	{
 		for (let entry in mRuns)
 		{
-			if (entry.Run === run)
+			if (entry.Run == run)
 				return entry.Group;
 		}
 		return 0;
 	}
 
-	/// The run is over (its Stop, its instance released): everything it plays fades out over
-	/// `fadeSeconds`, then its group is freed. Other runs and the editor are untouched.
-	public void EndRun(Object run, float fadeSeconds = 0.1f)
+	/// The run's session is over (stopped, or the run gone without a stop): what it plays fades
+	/// out over `fadeSeconds`, then its group is freed. Other runs and the editor are untouched.
+	private void EndRunGroup(RunId run, float fadeSeconds)
 	{
 		for (int i < mRuns.Count)
 		{
-			if (mRuns[i].Run !== run)
+			if (mRuns[i].Run != run)
 				continue;
 			if (mEngine != null)
 			{
@@ -278,33 +289,26 @@ class AudioSubsystem : Subsystem, ISceneObserver
 				mEndingRuns.Add(.() { Group = mRuns[i].Group, SecondsLeft = fadeSeconds + 0.05f });
 			}
 			mRuns.RemoveAt(i);
-			break;
-		}
-		if (mFocusedRun === run)
-		{
-			mFocusedRun = null;
-			ApplyRunAudibility();
+			return;
 		}
 	}
 
-	/// The host's pause (the toolbar's, a debugger break): the run's music and one shots
-	/// freeze with the game. A game's own pause menu (time scale nought) is the game's business.
-	public void SetRunPaused(Object run, bool paused)
+	// IRunListener: the run manager's announcements.
+	public void OnRunStopping(IRun run) => EndRunGroup(run.Id, cRunFadeSeconds);
+	public void OnRunDestroyed(IRun run) => EndRunGroup(run.Id, cRunFadeSeconds);
+
+	public void OnRunPaused(IRun run, bool paused)
 	{
-		let group = FindRunGroup(run);
-		if (group != 0)
+		let group = FindRunGroup(run.Id);
+		if ((group != 0) && (mEngine != null))
 			mEngine.SetRunGroupPaused(group, paused);
 	}
 
-	/// The run the user is playing (the focused Game tab): with HearAllRuns off, only it is
-	/// heard, and the others keep running muted. Null is no preference: every run is heard.
-	public void SetFocusedRun(Object run)
+	public void OnFocusChanged(IRun focused)
 	{
-		mFocusedRun = run;
+		mFocusedRun = (focused != null) ? focused.Id : 0;
 		ApplyRunAudibility();
 	}
-
-	public Object FocusedRun => mFocusedRun;
 
 	/// The editor's preference, every Game tab heard (default off: the focused one only).
 	public void SetHearAllRuns(bool all)
@@ -316,7 +320,9 @@ class AudioSubsystem : Subsystem, ISceneObserver
 	public bool HearAllRuns => mHearAllRuns;
 
 	/// Whether `run` is heard; scenes outside every run always are.
-	public bool IsRunAudible(Object run) => (run == null) || mHearAllRuns || (mFocusedRun == null) || (mFocusedRun === run);
+	public bool IsRunAudible(IRun run) => (run == null) || IsRunAudible(run.Id);
+
+	private bool IsRunAudible(RunId run) => mHearAllRuns || (mFocusedRun == 0) || (mFocusedRun == run);
 
 	private void ApplyRunAudibility()
 	{
@@ -444,10 +450,23 @@ class AudioSubsystem : Subsystem, ISceneObserver
 			scenes.RegisterObserver(this, .SystemsReady);
 			scenes.RegisterObserver(this, .Destroying);
 		}
+		// The runs' lifecycle; caught up on what holds already (the focus; paused groups are made
+		// paused when their run first plays).
+		mRunManager = Manager.RunManager;
+		if (mRunManager != null)
+		{
+			mRunManager.Subscribe(this);
+			OnFocusChanged(mRunManager.Focused);
+		}
 	}
 
 	protected override void OnShutdown()
 	{
+		if (mRunManager != null)
+		{
+			mRunManager.Unsubscribe(this);
+			mRunManager = null;
+		}
 		if (Manager != null)
 		{
 			if (let scenes = Manager.GetSubsystem<SceneSubsystem>())

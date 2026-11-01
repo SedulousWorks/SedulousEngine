@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Net;
@@ -32,9 +33,29 @@ class NetworkSubsystemTests
 		Test.Assert(scene.GetSystem<NetworkSceneSystem>() != null);
 	}
 
-	/// The pump alone connects a peer: no fan out from the app, and no scene involved.
+	/// A network controller holding an endpoint, as a GameInstance's does.
+	private class Controller : INetworkController
+	{
+		private NetworkManager mEndpoint;
+
+		public this(NetworkManager endpoint)
+		{
+			mEndpoint = endpoint;
+		}
+
+		public NetworkManager NetEndpoint => mEndpoint;
+	}
+
+	/// A run of its own (a GameInstance is the real one).
+	private class TestRun : RunBase
+	{
+		public this() : base("test") {}
+	}
+
+	/// The pump alone connects a peer: no fan out from the app, and no scene involved. It pumps
+	/// every run's endpoint, found through the runs on its subsystem manager.
 	[Test]
-	public static void TheTransportPumpDrivesEveryEnumeratedEndpoint()
+	public static void TheTransportPumpDrivesEveryRunsEndpoint()
 	{
 		let network = scope SimDatagramNetwork(SimConditions());
 		let serverSocket = network.CreateSocket();
@@ -43,18 +64,21 @@ class NetworkSubsystemTests
 		server.StartServer(true);
 		client.ConnectTo(serverSocket.LocalEndpoint);
 
-		let context = scope SubsystemManager();
-		let subsystem = context.AddSubsystem<NetworkSubsystem>();
-		context.Startup();
+		// Two runs, each with a network controller holding its endpoint.
+		let serverController = scope Controller(server);
+		let clientController = scope Controller(client);
+		let serverRun = scope TestRun();
+		let clientRun = scope TestRun();
+		serverRun.Register<INetworkController>(serverController);
+		clientRun.Register<INetworkController>(clientController);
+		let runs = scope RunRegistry();
+		runs.Add(serverRun);
+		runs.Add(clientRun);
 
-		// Typed rather than inferred: the parameter is itself a delegate, so there is
-		// nothing for the compiler to infer it from.
-		delegate void(delegate void(NetworkManager)) source = scope (visit) =>
-			{
-				visit(server);
-				visit(client);
-			};
-		subsystem.SetEndpointSource(source);
+		let context = scope SubsystemManager();
+		context.AddSubsystem<NetworkSubsystem>();
+		context.SetRunManager(runs);
+		context.Startup();
 
 		for (int i < 200)
 		{
@@ -64,9 +88,6 @@ class NetworkSubsystemTests
 			context.PostUpdate(0.010f); // ten milliseconds, which the pump converts
 		}
 		Test.Assert(server.Session.PeerCount == 1, "the pump alone connected the peer");
-
-		// Cleared before the visitor goes, which is the contract the setter documents.
-		subsystem.SetEndpointSource(null);
 		context.Shutdown();
 	}
 }

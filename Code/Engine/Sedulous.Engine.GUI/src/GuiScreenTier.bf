@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.GUI;
+using Sedulous.Run;
 
 namespace Sedulous.Engine.GUI;
 
@@ -9,8 +10,8 @@ namespace Sedulous.Engine.GUI;
 /// editor Game tab's game) has one of its own.
 class GuiScreenTier
 {
-	/// The run it belongs to; null for the shared tier. A key only, never called.
-	public Object Run = null;
+	/// The run it belongs to, by id; nought for the shared tier.
+	public RunId Run = 0;
 	/// A HELD reference each; the stack is the root's child (its id "screens", what a script
 	/// finds). Released in reverse, the stack before the root.
 	public SceneRoot Root = null ~ _?.ReleaseRef();

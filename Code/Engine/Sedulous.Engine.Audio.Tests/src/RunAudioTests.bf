@@ -10,9 +10,10 @@ using Sedulous.Scene;
 namespace Sedulous.Engine.Audio.Tests;
 
 /// Run audio: the subsystem groups what one running game plays by its run. A run's scenes nest
-/// under the run's group and its music plays into it; ending the run fades all of it out and
+/// under the run's group and its music plays into it; the run's stop fades all of it out and
 /// leaves other runs and the editor alone; only the focused run is heard unless every run is;
-/// the host's pause freezes the run.
+/// the host's pause freezes the run. All of it follows the runs' lifecycle, through the run
+/// manager on the subsystem manager: no call to the audio.
 class RunAudioTests
 {
 	/// A run of its own (a GameInstance is the real one).
@@ -45,33 +46,39 @@ class RunAudioTests
 		public VoiceHandle Voice => Scene.GetSystem<AudioSourceComponentManager>().Get(Source).Voice;
 	}
 
-	/// Registered, so the CALLER owns it: deleted after the context shuts down.
-	private static AudioSubsystem MakeAudio(SubsystemManager context)
+	/// Registered, so the CALLER owns it: deleted after the context shuts down. `runs` are the
+	/// host's, on the context before it starts.
+	private static AudioSubsystem MakeAudio(SubsystemManager context, IRunManager runs)
 	{
 		let settings = new AudioEngineSettings();
 		settings.Headless = true;
 		settings.DedupeWindowSeconds = 0.0f;
 		let audio = new AudioSubsystem(settings);
 		context.RegisterSubsystem<AudioSubsystem>(audio);
+		context.SetRunManager(runs);
 		context.Startup();
 		return audio;
 	}
 
 	[Test]
-	public static void EndingARunFadesOutItsScenesAndItsMusicNotAnotherRuns()
+	public static void ARunsStopFadesOutItsScenesAndItsMusicNotAnotherRuns()
 	{
+		// The host's runs; two games.
+		let runs = scope RunRegistry();
+		let runA = scope TestRun();
+		let runB = scope TestRun();
+		runs.Add(runA);
+		runs.Add(runB);
+		runA.Start();
+		runB.Start();
 		let context = new SubsystemManager();
-		let audio = MakeAudio(context);
+		let audio = MakeAudio(context, runs);
 		// The context drives a registered subsystem but does not own it: it goes first.
 		defer { delete context; delete audio; }
 		let engine = audio.Engine;
 		let clips = scope List<AudioClip>();
 		defer { ClearAndDeleteItems!(clips); }
 		AudioClip Tone(uint32 sampleRate) => clips.Add(.. AudioPlayScene.MakeToneClip(2.0f, sampleRate));
-		// Two games' keys; a GameInstance is the real one.
-		let runA = scope TestRun();
-		let runB = scope TestRun();
-
 		Test.Assert(audio.RunGroupFor(null) == 0, "outside every run");
 		let groupA = audio.RunGroupFor(runA);
 		Test.Assert(groupA != 0);
@@ -85,7 +92,7 @@ class RunAudioTests
 		Test.Assert(sceneA.Voice.IsValid && sceneB.Voice.IsValid && musicA.IsValid && musicB.IsValid);
 		let sourceA = sceneA.Voice;
 
-		audio.EndRun(runA); // the Game tab's Stop
+		runA.Stop(); // the Game tab's Stop: no call to the audio, the run's lifecycle reaches it
 		for (int i < 4)
 			audio.Update(0.1f);
 		Test.Assert(!engine.IsValidHandle(musicA), "the music stopped with its run");
@@ -105,28 +112,33 @@ class RunAudioTests
 	[Test]
 	public static void OnlyTheFocusedRunIsHeardUnlessEveryRunIsAndPauseFreezesARun()
 	{
-		let context = new SubsystemManager();
-		let audio = MakeAudio(context);
-		// The context drives a registered subsystem but does not own it: it goes first.
-		defer { delete context; delete audio; }
-		let engine = audio.Engine;
+		let runs = scope RunRegistry();
 		let runA = scope TestRun();
 		let runB = scope TestRun();
 		let runC = scope TestRun();
+		runs.Add(runA);
+		runs.Add(runB);
+		runs.Add(runC);
+		runA.Start();
+		let context = new SubsystemManager();
+		let audio = MakeAudio(context, runs);
+		// The context drives a registered subsystem but does not own it: it goes first.
+		defer { delete context; delete audio; }
+		let engine = audio.Engine;
 		let a = audio.RunGroupFor(runA);
 		let b = audio.RunGroupFor(runB);
 
 		// No focus yet: every run is heard (the player's one run never needs one).
 		Test.Assert(!engine.IsRunGroupMuted(a) && !engine.IsRunGroupMuted(b));
 
-		audio.SetFocusedRun(runA); // clicking into a Game tab
+		runs.SetFocused(runA); // clicking into a Game tab
 		Test.Assert(!engine.IsRunGroupMuted(a));
 		Test.Assert(engine.IsRunGroupMuted(b), "runs on, muted");
 		Test.Assert(audio.IsRunAudible(null), "the editor's own sounds are always heard");
 		let c = audio.RunGroupFor(runC);
 		Test.Assert(engine.IsRunGroupMuted(c), "a new run while another is focused starts muted");
 
-		audio.SetFocusedRun(runB);
+		runs.SetFocused(runB);
 		Test.Assert(engine.IsRunGroupMuted(a));
 		Test.Assert(!engine.IsRunGroupMuted(b));
 
@@ -134,14 +146,38 @@ class RunAudioTests
 		Test.Assert(!engine.IsRunGroupMuted(a) && !engine.IsRunGroupMuted(b) && !engine.IsRunGroupMuted(c));
 		audio.SetHearAllRuns(false);
 
-		audio.EndRun(runB); // the focused run ends: no focus, every remaining run heard
-		Test.Assert(audio.FocusedRun == null);
+		runB.Dispose(); // the focused run goes (a tab closed, no stop first): no focus, every remaining run heard
+		Test.Assert(runs.Focused == null);
 		Test.Assert(!engine.IsRunGroupMuted(a));
+		Test.Assert(audio.FindRunGroup(runB) == 0, "its group went with it");
 
-		audio.SetRunPaused(runA, true); // the toolbar's pause, a debugger break
+		runA.SetPaused(true); // the toolbar's pause, a debugger break
 		Test.Assert(engine.IsRunGroupPaused(a));
-		audio.SetRunPaused(runA, false);
+		runA.SetPaused(false);
 		Test.Assert(!engine.IsRunGroupPaused(a));
 		context.Shutdown();
+	}
+
+	[Test]
+	public static void ASubsystemMadeAfterTheRunsCatchesUpOnTheFocusAndAPausedRun()
+	{
+		let runs = scope RunRegistry();
+		let runA = scope TestRun();
+		let runB = scope TestRun();
+		runs.Add(runA);
+		runs.Add(runB);
+		runB.Start();
+		runB.SetPaused(true);
+		runs.SetFocused(runA); // before any audio exists (a plugin's subsystem arriving late)
+		let context = new SubsystemManager();
+		let audio = MakeAudio(context, runs);
+		defer { delete context; delete audio; }
+		let engine = audio.Engine;
+		let b = audio.RunGroupFor(runB);
+		Test.Assert(engine.IsRunGroupMuted(b), "not the focused run");
+		Test.Assert(engine.IsRunGroupPaused(b), "its run is paused");
+		Test.Assert(!engine.IsRunGroupMuted(audio.RunGroupFor(runA)));
+		context.Shutdown();
+		runs.SetFocused(null); // the audio stopped listening at its shutdown: nothing reaches it
 	}
 }
