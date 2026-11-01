@@ -6,7 +6,8 @@ namespace Sedulous.GUI.Tests;
 
 /// The window: a title-bar drag moves it, the grip resizes it (clamped to the minimum), title
 /// clicks fall through to the draggable bar, and a press raises it to the front; a move or resize
-/// reported when the press lets go, and a title bar handed to a drag source.
+/// reported when the press lets go, and a title bar handed to a drag source. One asked to fit its
+/// height to its content.
 class WindowTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -298,5 +299,39 @@ class WindowTests
 		d.InjectKeyDown((uint32)KeyCode.Escape);
 		d.InjectMouseUp(.(at.X + 20.0f, at.Y), .Left);
 		Test.Assert(arranged == 2);
+	}
+
+	/// One that fits its height to its content follows the content at each layout, its middle kept.
+	[Test]
+	public static void OneThatFitsItsHeightToItsContentFollowsItAtEachLayoutItsMiddleKept()
+	{
+		let root = SceneFixtures.NewScene(600.0f, 400.0f);
+		defer root.ReleaseRef();
+		let win = new Window();
+		defer win.ReleaseRef();
+		win.Size = .(200.0f, 150.0f);
+		win.Position = .(50.0f, 50.0f); // its middle at y 125
+		win.TitleBarHeight = 30.0f;
+		let body = new UIWidget();
+		defer body.ReleaseRef();
+		body.Size = .(100.0f, 80.0f);
+		win.Content.AddChild(body);
+		root.AddChild(win);
+
+		root.UpdateLayout();
+		Test.Assert(Near(win.Size.Y, 150.0f), "not asked to fit: as set");
+
+		win.FitsHeightToContent = true;
+		root.UpdateLayout();
+		Test.Assert(Near(win.Size.X, 200.0f));
+		Test.Assert(Near(win.Size.Y, 110.0f), "the title bar and the content");
+		Test.Assert(Near(win.Position.Y, 70.0f));
+		Test.Assert(Near(win.Content.Size.Y, 80.0f));
+
+		// The content grows (a line that wraps, a stage shown): the window grows with it.
+		body.Size = .(100.0f, 120.0f);
+		root.UpdateLayout();
+		Test.Assert(Near(win.Size.Y, 150.0f));
+		Test.Assert(Near(win.Position.Y, 50.0f));
 	}
 }

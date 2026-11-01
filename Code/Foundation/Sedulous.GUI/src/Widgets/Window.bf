@@ -195,6 +195,8 @@ class Window : UIWidget
 	// Its `back` handler while open modal.
 	private uint32 mBackHandler = 0;
 	private Float2 mMinSize = .(120.0f, 60.0f);
+	/// The height follows the content (FitsHeightToContent).
+	private bool mFitsHeight = false;
 	private float mTitleBarHeight = 28.0f;
 	private float mGripSize = 14.0f;
 	private Color mBodyColor = .(0.16f, 0.17f, 0.21f, 1.0f);
@@ -266,6 +268,20 @@ class Window : UIWidget
 	public void SetMinSize(Float2 size)
 	{
 		mMinSize = size;
+	}
+
+	/// Whether its height follows its content: at each layout the height becomes what the content
+	/// asks for at the window's width, under the title bar, the window's middle kept where it was.
+	/// For a dialog whose content changes while it is open (a stage shown, a line that wraps); the
+	/// resize grip then changes only the width.
+	public bool FitsHeightToContent
+	{
+		get => mFitsHeight;
+		set
+		{
+			mFitsHeight = value;
+			RequestLayout();
+		}
 	}
 
 	/// Its close button shows (a click on it, like Escape on a dialog, closes it).
@@ -452,10 +468,28 @@ class Window : UIWidget
 	}
 
 	// Its parts at their places: the title bar across the top, the content under it, the grip in
-	// the corner.
+	// the corner. In the layout pass, where the content's sheet has applied, as MessageBox fits its
+	// message.
 	public override void OnLayout()
 	{
+		if (mFitsHeight)
+			FitHeight();
 		Relayout();
+	}
+
+	// The height the content asks for at this width, under the title bar, about the same middle.
+	private void FitHeight()
+	{
+		let size = Size;
+		let across = LayoutConstraints(.(size.X, 0.0f), .(size.X, cUnbounded), .(size.X, -1.0f), true, false);
+		let height = mTitleBarHeight + mContentHost.Measure(across).Y;
+		if (Math.Abs(height - size.Y) <= 0.5f)
+			return;
+		using (StyleWriteScope(this))
+		{
+			Position = .(Position.X, Position.Y + (size.Y - height) * 0.5f);
+			Size = .(size.X, height);
+		}
 	}
 
 	// Its title takes its font (a sheet's inheritance gives the same).
