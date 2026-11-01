@@ -216,6 +216,8 @@ class EditorAppActionsTests
 		let view = new ViewActions();
 		view.Context = bench.Context;
 		view.ResetLayout = bench.Record("resetLayout");
+		view.Assets = bench.Record("assets");
+		view.Console = bench.Record("console");
 		view.Profiler = bench.Record("profiler");
 		view.ProfilerRecord = bench.Record("profilerRecord");
 		view.Screenshot = bench.Record("screenshot");
@@ -259,8 +261,17 @@ class EditorAppActionsTests
 
 		let view = new ViewActions();
 		view.Screenshot = bench.Record("screenshot");
+		view.Assets = bench.Record("assets");
+		view.Console = bench.Record("console");
 		EditorAppActions.RegisterViewActions(actions, view);
 		Test.Assert(actions.Shortcut("view.screenshot") == EditorShortcut.Of("f12"));
+		// Assets and Console come back from the View menu, with no project as with one.
+		Test.Assert(actions.Find("view.assets") != null);
+		Test.Assert(actions.Find("view.assets").MenuPath == "View/Assets");
+		Test.Assert(actions.Find("view.console").MenuPath == "View/Console");
+		Test.Assert(actions.Execute("view.assets", null) case .Ok);
+		Test.Assert(actions.Execute("view.console", null) case .Ok);
+		Test.Assert((bench.Events.Count == 2) && (bench.Events[0] == "assets") && (bench.Events[1] == "console"));
 		Test.Assert(actions.Find("view.commandPalette") == null);
 	}
 
@@ -294,7 +305,7 @@ class EditorAppActionsTests
 	{
 		let bench = scope Bench();
 		RegisterAll(bench);
-		Row[26] expected = .(
+		Row[28] expected = .(
 			.("file.save", "Save", "File/Save", 100, "ctrl-s"),
 			.("file.saveAs", "Save As...", "File/Save As...", 101),
 			.("file.saveLayout", "Save Layout", "File/Save Layout", 200),
@@ -316,6 +327,8 @@ class EditorAppActionsTests
 			.("game.play", "Play", "Game/Play", 100),
 			.("game.playNewInstance", "Play New Instance", "Game/Play New Instance", 101),
 			.("view.resetLayout", "Reset Layout", "View/Reset Layout", 100),
+			.("view.assets", "Assets", "View/Assets", 150, "", "", true),
+			.("view.console", "Console", "View/Console", 160, "", "", true),
 			.("view.profiler", "Profiler", "View/Profiler", 210, "", "", true),
 			.("profiler.record", "Profiler Record", "View/Profiler Record", 211, "", "", true, true),
 			.("view.screenshot", "Screenshot Editor", "View/Screenshot Editor", 300, "f12", "", true),

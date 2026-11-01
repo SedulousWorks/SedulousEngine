@@ -66,6 +66,10 @@ class ViewActions
 	public EditorContext Context = null;
 	/// Puts the panels back in the default layout. Owned.
 	public delegate void() ResetLayout ~ delete _;
+	/// Brings the Assets panel back, or to the front. Owned.
+	public delegate void() Assets ~ delete _;
+	/// Brings the Console panel back, or to the front. Owned.
+	public delegate void() Console ~ delete _;
 	/// Shows the Profiler page. Owned.
 	public delegate void() Profiler ~ delete _;
 	/// Whether the profiler is recording: Profiler Record's checked state; null is never.
@@ -292,6 +296,18 @@ static class EditorAppActions
 						context.SetStatus("Layout reset to default.");
 				} ~ delete resetLayout;
 			actions.Register(d);
+		}
+		// The closable panels, each shown again where it belongs (or brought to the front) without
+		// undoing the rest of the layout, as Reset Layout would. The Project panel cannot be closed.
+		{
+			let d = new EditorActionDeclaration("view.assets", "Assets", "Show the Assets panel", "View/Assets", 150);
+			d.ReadOnly = true; // shows a panel; nothing in the project changes
+			Add(actions, d, ref run.Assets);
+		}
+		{
+			let d = new EditorActionDeclaration("view.console", "Console", "Show the Console panel", "View/Console", 160);
+			d.ReadOnly = true;
+			Add(actions, d, ref run.Console);
 		}
 		{
 			let d = new EditorActionDeclaration("view.profiler", "Profiler", "Show the Profiler page: record the editor process, open a player's capture", "View/Profiler", 210);

@@ -395,6 +395,25 @@ static class EditorDockTests
 		Test.Assert(bed.Into.ChildCount == 0);
 	}
 
+	[Test]
+	public static void AClosedConsoleOrAssetsComesBackWhereItBelongsTheRestOfTheLayoutKept()
+	{
+		let bed = scope DockBed();
+		let controller = bed.Dock.Controller;
+		// Moved first, so a reset would show: Assets beside the Project panel instead of under it.
+		Test.Assert(controller.Edit(scope (l) => l.MoveBeside(EditorDock.cPanelAssets, l.CentralStack, .End, 0.3f)).Ok);
+		let assetsStack = bed.Layout.StackOf(EditorDock.cPanelAssets);
+		Test.Assert(controller.Close(EditorDock.cPanelConsole).Ok);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelConsole) == cNoDock);
+		bed.Dock.BringToFront(EditorDock.cPanelConsole);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelAssets) == assetsStack, "not reset");
+
+		Test.Assert(controller.Close(EditorDock.cPanelAssets).Ok);
+		bed.Dock.BringToFront(EditorDock.cPanelAssets);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelAssets) != cNoDock);
+	}
+
 	/// BringToFront shows a closed panel where it belongs, and puts a docked one's tab in front of
 	/// the tab before it in its stack (Show alone refuses a docked panel): an asset slot's Reveal
 	/// reaches the Assets panel either way.

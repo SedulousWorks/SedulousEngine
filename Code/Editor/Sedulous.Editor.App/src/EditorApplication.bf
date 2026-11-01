@@ -1170,6 +1170,8 @@ class EditorApplication : IApplication
 		let view = new ViewActions();
 		view.Context = mContext;
 		view.ResetLayout = new () => { mDock.ResetLayout(); };
+		view.Assets = new () => { mDock.BringToFront(EditorDock.cPanelAssets); };
+		view.Console = new () => { mDock.BringToFront(EditorDock.cPanelConsole); };
 		view.Profiler = new () => { mDock.BringToFront(EditorDock.cPanelProfiler); };
 		view.ProfilerRecording = new () => (mProfiler != null) && mProfiler.IsRecording;
 		view.ProfilerRecord = new () =>
