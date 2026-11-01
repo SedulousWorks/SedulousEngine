@@ -32,6 +32,7 @@ COMPONENTS = [
     ("meshoptimizer", "https://github.com/zeux/meshoptimizer", "MIT", ["meshoptimizer-Beef/meshoptimizer/LICENSE.md"]),
     ("Recast & Detour", "https://github.com/recastnavigation/recastnavigation", "Zlib",
      ["recastnavigation-Beef/recastnavigation-c/recastnavigation/License.txt"]),
+    ("zlib", "https://zlib.net", "Zlib", ["zlib-Beef/zlib/LICENSE"]),
     ("Mbed TLS (with TF-PSA-Crypto)", "https://github.com/Mbed-TLS/mbedtls", "Apache-2.0 (chosen of Apache-2.0 OR GPL-2.0-or-later)",
      ["mbedtls-Beef/mbedtls/LICENSE"]),
     ("Dear ImGui (with cimgui)", "https://github.com/ocornut/imgui", "MIT", ["cimgui-Beef/cimgui/imgui/LICENSE.txt", "cimgui-Beef/cimgui/LICENSE"]),

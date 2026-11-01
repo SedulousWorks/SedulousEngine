@@ -1,0 +1,29 @@
+FileVersion = 1
+
+[Project]
+Name = "zlib-Beef"
+TargetType = "BeefLib"
+StartupObject = "zlib_Beef.Program"
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libzlib-c.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libzlib-c.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libzlib-c.a"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libzlib-c.a"]
+
+[Configs.Debug.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libzlib-c.a"]
+
+[Configs.Release.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libzlib-c.a"]
+
+[Configs.ShippingRelease.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libzlib-c.a"]
+
+# No Win64 archive yet: build-native.ps1 and the Windows libraries are owed, as Mbed TLS's are.
