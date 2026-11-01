@@ -214,17 +214,16 @@ class EditorInputToolsTests
 	public static void ADropHandsExistingFilesToTheWindowsDropAndIsRefusedOtherwise()
 	{
 		let bed = scope Bed();
-		// A file to drop, by its absolute path (forward slashes, so it goes into JSON as it is).
+		// A file to drop, by its absolute path.
 		let folder = PathJoin(System.IO.Directory.GetCurrentDirectory(.. scope .()), "scratch_editor_input_drop", .. scope .());
 		RemoveDirectoryRecursive(folder);
 		Test.Assert(CreateDirectory(folder));
 		defer RemoveDirectoryRecursive(folder);
 		let file = PathJoin(folder, "crate.png", .. scope .());
-		file.Replace('\\', '/');
 		let bytes = "not really a png";
 		Test.Assert(WriteFile(file, .((uint8*)bytes.Ptr, bytes.Length)) case .Ok);
 
-		let dropped = Call(bed.Server, "editor_drop", scope String()..AppendF("{{\"paths\":[\"{}\"]}}", file));
+		let dropped = Call(bed.Server, "editor_drop", DropArguments(file, .. scope .()));
 		defer delete dropped;
 		Test.Assert(dropped.Ok);
 		Test.Assert(dropped.Pumps == 1, "answered on the frame after, as the other acts are");
@@ -237,16 +236,26 @@ class EditorInputToolsTests
 		Test.Assert(!Succeeds(bed.Server, "editor_drop", "{\"paths\":[]}"));
 		Test.Assert(!Succeeds(bed.Server, "editor_drop", "{\"paths\":[\"crate.png\"]}"));
 		let gone = PathJoin(folder, "gone.png", .. scope .());
-		gone.Replace('\\', '/');
-		let missing = Call(bed.Server, "editor_drop", scope String()..AppendF("{{\"paths\":[\"{}\"]}}", gone));
+		let missing = Call(bed.Server, "editor_drop", DropArguments(gone, .. scope .()));
 		defer delete missing;
 		Test.Assert(!missing.Ok);
 		Test.Assert(missing.Error.Contains("no file at"));
 		bed.TakesDrops = false;
-		let closed = Call(bed.Server, "editor_drop", scope String()..AppendF("{{\"paths\":[\"{}\"]}}", file));
+		let closed = Call(bed.Server, "editor_drop", DropArguments(file, .. scope .()));
 		defer delete closed;
 		Test.Assert(!closed.Ok);
 		Test.Assert(closed.Error.Contains("no project is open"));
 		Test.Assert(bed.Dropped.Count == 1);
+	}
+
+	/// editor_drop's arguments for one path, written by the JSON writer: a Windows path's
+	/// backslashes must be escaped.
+	private static void DropArguments(StringView path, String outJson)
+	{
+		let list = JsonValue.MakeArray();
+		list.Add(JsonValue.MakeString(path));
+		let args = scope JsonValue();
+		args.Set("paths", list);
+		JsonWriter.Write(args, outJson);
 	}
 }
