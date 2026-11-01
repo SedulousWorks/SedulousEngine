@@ -1,0 +1,41 @@
+{
+    "about": "The sample games a release packs for the editor's Samples tab (Code/Tools/pack-samples.py): each one's folder here, its name, one line on what it is, and its picture.",
+    "samples": [
+        {
+            "folder": "PlatformerGame",
+            "name": "Sky Hopper",
+            "description": "A small 3D platformer: five levels of coins, enemies and hazards, three lives, stars and best scores saved, and gamepad support throughout.",
+            "picture": "Documentation/Images/SkyHopper-Title.png"
+        },
+        {
+            "folder": "PaperKid",
+            "name": "PaperKid",
+            "description": "An arcade paper-route game: five town blocks to deliver on, traffic and pedestrians in the way, and a live minimap.",
+            "picture": "Documentation/Images/PaperKid-Title.png"
+        },
+        {
+            "folder": "Snowline",
+            "name": "Snowline",
+            "description": "A snowboard time trial with tricks on three courses of generated terrain, opened by medals, with a ghost of your best run.",
+            "picture": "Documentation/Images/Snowline-Title.png"
+        },
+        {
+            "folder": "Lamplight",
+            "name": "Lamplight",
+            "description": "A night-time manor heist in pure stealth: five levels from the gardens to the vault, past guards who see by their lanterns.",
+            "picture": "Documentation/Images/Lamplight-Gardens.png"
+        },
+        {
+            "folder": "Masquerade",
+            "name": "Masquerade",
+            "description": "Social stealth at a masked ball, alone against bots or with up to four players over the network.",
+            "picture": "Documentation/Images/Masquerade-Title.png"
+        },
+        {
+            "folder": "ShaderGallery",
+            "name": "Shader Gallery",
+            "description": "A hall of custom shader lessons, each a short commented shader on its own plinth, surface shaders first.",
+            "picture": "Documentation/Images/ShaderGallery-Hall.png"
+        }
+    ]
+}
