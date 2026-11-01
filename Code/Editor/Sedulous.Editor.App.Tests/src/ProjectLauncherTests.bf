@@ -741,6 +741,19 @@ class ProjectLauncherTests
 	}
 
 	[Test]
+	public static void UnderTheEditorsSheetARowsMenuButtonStandsAsTallAsOpen()
+	{
+		let l = scope Launcher();
+		l.StyleAsTheEditor();
+		let row = l.Projects.GetChildAt(0);
+		let open = ButtonText(row, "Open").ScreenBounds;
+		let more = WithClass(row, "slot-button").ScreenBounds;
+		Test.Assert(Math.Abs(open.Height - 30.0f) < 0.01f);
+		Test.Assert(Math.Abs(more.Height - open.Height) < 0.01f, "the menu button beside Open, not the slot button's 18px");
+		Test.Assert(Math.Abs(more.Width - 30.0f) < 0.01f);
+	}
+
+	[Test]
 	public static void UnderTheEditorsSheetARowStretchesAcrossTheWindowLessThePagesMargins()
 	{
 		let l = scope Launcher();

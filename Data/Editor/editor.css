@@ -114,7 +114,7 @@ button.manager-tab:checked { background-color: var(--element); color: var(--text
 .badge.info { background-color: var(--info-background); color: var(--info); }
 /* A row's buttons stand as tall as the toolbar's, so none looks thin beside the picture. */
 .manager-row > button { height: 30px; padding: 0 14px; flex-shrink: 0; }
-.manager-row > button.slot-button { width: 30px; padding: 0; }
+.manager-row > button.slot-button { width: 30px; height: 30px; padding: 0; }
 .manager-row > button.slot-button > icon { width: 16px; height: 16px; }
 button.manager-star { width: 30px; padding: 0; background-color: transparent; }
 button.manager-star:hover { background-color: var(--ghost-hover); }
