@@ -60,7 +60,8 @@ class ProjectManagerView
 	public const String cNewProjectPath = "Editor/NewProject.xml";
 	public const String cDownloadSamplePath = "Editor/DownloadSample.xml";
 	private const float cDialogWidth = 600.0f;
-	private const float cDialogHeight = 330.0f;
+	/// The heights the dialogs open at; their content's height replaces them at the first layout.
+	private const float cDialogHeight = 250.0f;
 	private const float cDownloadDialogHeight = 200.0f;
 	/// The buttons that make a project and open a folder: the toolbar's and the welcome's.
 	private static StringView[2] cNewButtons = .("manager-new", "manager-welcome-new");
@@ -448,6 +449,7 @@ class ProjectManagerView
 		mDialog = dialog;
 		dialog.Title = scope $"Download {sample.Name}";
 		dialog.Size = .(cDialogWidth, cDownloadDialogHeight);
+		dialog.FitsHeightToContent = true; // each stage, and a check line that wraps
 		dialog.Content.AddChild(body);
 		if (ownFolder != null)
 		{
@@ -804,6 +806,7 @@ class ProjectManagerView
 		mDialog = dialog;
 		dialog.Title = "New Project";
 		dialog.Size = .(cDialogWidth, cDialogHeight);
+		dialog.FitsHeightToContent = true; // a check line that wraps grows it
 		dialog.Content.AddChild(body);
 		if (ownFolder != null)
 			ownFolder.Checked = true;

@@ -740,6 +740,30 @@ class ProjectLauncherTests
 		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.Second));
 	}
 
+	/// New Project is as tall as what it holds, under the editor's sheet: it ends just under its
+	/// buttons, with a check line wrapped onto several lines as with one.
+	[Test]
+	public static void UnderTheEditorsSheetNewProjectEndsJustUnderItsButtons()
+	{
+		let l = scope Launcher();
+		let folder = scope String(l.Root)..Append('/')..Append('a', 320);
+		l.Controller.SetLastLocation(folder);
+		l.View.ShowCreateDialog();
+		let dialog = l.View.CreateDialog;
+		Test.Assert(dialog != null);
+		// Named, so the line shows the folder, wrapped taller than the height it opens at.
+		(dialog.FindElement("new-project-name") as Sedulous.GUI.TextField).RequestFocus();
+		l.Scene.EventDispatcher.InjectText("Harbour");
+		l.Sheet = new EditorSheet(true); // text measured, as the window draws it
+		l.Sheet.Apply(l.Scene);
+		l.Scene.UpdateLayout();
+		let window = dialog.ScreenBounds;
+		let button = dialog.FindElement("new-project-create").ScreenBounds;
+		Test.Assert(button.Y + button.Height <= window.Y + window.Height + 0.5f, "inside the window");
+		Test.Assert(window.Y + window.Height - (button.Y + button.Height) < 40.0f,
+			scope $"no empty area under the buttons ({window.Y + window.Height - (button.Y + button.Height)})");
+	}
+
 	/// A folder with no spaces in it breaks anywhere in the check line, inside its box.
 	[Test]
 	public static void UnderTheEditorsSheetALongFolderWrapsInsideTheCheckLine()
