@@ -94,6 +94,7 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 
 	// ---- runtime ----
 
+	[Hidden]
 	public VoiceHandle Voice = .();
 
 	/// The entity active LATCH: true while the voice is stopped BECAUSE its entity is

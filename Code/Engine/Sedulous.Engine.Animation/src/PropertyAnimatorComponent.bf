@@ -50,6 +50,7 @@ struct PropertyAnimatorComponent : ISerializable, IComponentResources
 	[Hidden]
 	public int8 PingPongDirection = 1;
 	/// The clip the bindings were built for, BORROWED and compared by reference.
+	[Hidden]
 	public PropertyAnimationClip BoundClip = null;
 	/// OWNED BY THE MANAGER, like every other list a component points at.
 	[Hidden]

@@ -68,6 +68,7 @@ struct CharacterComponent : ISerializable
 
 	// ---- runtime ----
 
+	[Hidden]
 	public CharacterId Character = .();
 	/// The effective active state this domain last reconciled against.
 	[Hidden]

@@ -46,10 +46,13 @@ struct GuiBillboardComponent : ISerializable, IComponentResources
 	// ---- runtime, never serialized ----
 
 	/// The tree built from the document. A HELD reference.
+	[Hidden]
 	public Node Root = null;
 	/// What the tree was built from and the sheet applied, compared by reference (see
 	/// GuiCanvasComponent.BuiltFrom). Borrowed.
+	[Hidden]
 	public GuiDocument BuiltFrom = null;
+	[Hidden]
 	public GuiStyleSheet SheetFrom = null;
 
 	public this() {}

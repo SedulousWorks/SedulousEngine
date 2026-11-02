@@ -42,15 +42,21 @@ struct GuiWorldPanelComponent : ISerializable, IComponentResources
 	// ---- runtime, never serialized ----
 
 	/// The tree built from the document. A HELD reference.
+	[Hidden]
 	public Node Root = null;
 	/// Its own root, never in a scene's GUI. A HELD reference.
+	[Hidden]
 	public SceneRoot RenderRoot = null;
 	/// What the tree was built from and the sheet applied, compared by reference (see
 	/// GuiCanvasComponent.BuiltFrom). Borrowed.
+	[Hidden]
 	public GuiDocument BuiltFrom = null;
+	[Hidden]
 	public GuiStyleSheet SheetFrom = null;
 	/// The subsystem's, and null until first drawn.
+	[Hidden]
 	public ITexture RenderTexture = null;
+	[Hidden]
 	public ITextureView RenderTextureView = null;
 
 	public this() {}

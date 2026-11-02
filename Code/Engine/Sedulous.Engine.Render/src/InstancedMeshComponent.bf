@@ -57,8 +57,10 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// A shared pose pool for a skinned crowd, set per frame by the animation side: instance
 	/// i uses pose i modulo the count, so N animated instances cost only PoseCount palette
 	/// computes. BORROWED for the frame; null draws the set static.
+	[Hidden]
 	public Float4x4* PosePool = null;
 	/// Last frame's palettes, for per bone motion vectors. Null reuses the current ones.
+	[Hidden]
 	public Float4x4* PrevPosePool = null;
 	/// The number of distinct phase buckets.
 	[Hidden]

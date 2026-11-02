@@ -63,6 +63,7 @@ struct JointComponent : ISerializable
 
 	// ---- runtime ----
 
+	[Hidden]
 	public JointId Joint = .();
 	/// The effective active state this domain last reconciled against.
 	[Hidden]

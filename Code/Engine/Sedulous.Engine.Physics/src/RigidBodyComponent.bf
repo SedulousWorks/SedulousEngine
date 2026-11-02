@@ -84,6 +84,7 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 
 	// ---- runtime ----
 
+	[Hidden]
 	public BodyId Body = .();
 
 	/// An impulse applied BEFORE the body existed, which is what a script that spawns a thing

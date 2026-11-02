@@ -52,19 +52,26 @@ struct GuiCanvasComponent : ISerializable, IComponentResources
 	// ---- runtime, never serialized ----
 
 	/// The tree built from the document. A HELD reference.
+	[Hidden]
 	public Node Root = null;
 	/// Its place in the scene's root, which carries the order and the scaler. A HELD reference.
+	[Hidden]
 	public UIWidget Host = null;
 	/// The document product it was built from, compared by reference so a re-cook rebuilds
 	/// (the resource manager parks a replaced product for frames, so a new one never takes its
 	/// address while the GUI polls each frame). Borrowed.
+	[Hidden]
 	public GuiDocument BuiltFrom = null;
 	/// The sheet product applied, compared as BuiltFrom is. Borrowed.
+	[Hidden]
 	public GuiStyleSheet SheetFrom = null;
 	/// Render texture mode: a root of its own, never in a scene's GUI. A HELD reference.
+	[Hidden]
 	public SceneRoot RenderRoot = null;
 	/// Render texture mode: the subsystem's, and null until first drawn.
+	[Hidden]
 	public ITexture RenderTexture = null;
+	[Hidden]
 	public ITextureView RenderTextureView = null;
 
 	public this() {}
