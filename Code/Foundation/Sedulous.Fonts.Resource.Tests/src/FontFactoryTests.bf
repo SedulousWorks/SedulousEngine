@@ -121,8 +121,8 @@ class FontFactoryTests
 	[Test]
 	public static void AnAsyncLoadMatchesTheSyncProduct()
 	{
-		let jobs = scope JobSystem(2);
-		let fixture = scope FontFixture("scratch_font_async", jobs);
+		let tasks = scope TaskPool(2);
+		let fixture = scope FontFixture("scratch_font_async", tasks);
 
 		let pixels = scope List<uint8>();
 		FontFixture.CoveragePixels(pixels);
@@ -132,7 +132,7 @@ class FontFactoryTests
 		let expected = syncProxy.Get;
 		Test.Assert(expected != null);
 
-		let asyncFixture = scope FontFixture("scratch_font_async2", jobs);
+		let asyncFixture = scope FontFixture("scratch_font_async2", tasks);
 		let asyncId = asyncFixture.Cook("font", .Coverage, pixels);
 
 		let asyncProxy = asyncFixture.Manager.BindAsync<Font>(asyncId);
@@ -296,8 +296,8 @@ class FontFactoryTests
 	[Test]
 	public static void ManyConcurrentDecodesEachProduceTheirOwnFont()
 	{
-		let jobs = scope JobSystem(4);
-		let fixture = scope FontFixture("scratch_font_concurrent", jobs);
+		let tasks = scope TaskPool(4);
+		let fixture = scope FontFixture("scratch_font_concurrent", tasks);
 
 		let pixels = scope List<uint8>();
 		FontFixture.CoveragePixels(pixels);

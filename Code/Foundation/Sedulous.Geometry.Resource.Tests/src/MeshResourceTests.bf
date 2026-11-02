@@ -80,8 +80,8 @@ class MeshResourceTests
 	[Test]
 	public static void AnAsyncLoadMatchesTheSynchronousProduct()
 	{
-		let jobs = scope JobSystem(2);
-		let fixture = scope MeshFixture("scratch_mesh_async", jobs);
+		let tasks = scope TaskPool(2);
+		let fixture = scope MeshFixture("scratch_mesh_async", tasks);
 		let source = Primitives.Cylinder(0.5f, 2.0f, 12);
 		defer delete source;
 
@@ -107,8 +107,8 @@ class MeshResourceTests
 	[Test]
 	public static void ManyConcurrentDecodesEachProduceTheirOwnMesh()
 	{
-		let jobs = scope JobSystem(4);
-		let fixture = scope MeshFixture("scratch_mesh_many", jobs);
+		let tasks = scope TaskPool(4);
+		let fixture = scope MeshFixture("scratch_mesh_many", tasks);
 
 		const int kCount = 12;
 		let ids = scope List<Guid>();

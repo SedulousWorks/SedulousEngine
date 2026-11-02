@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.Graphics;
 using Sedulous.Runtime;
 using Sedulous.Shell;
@@ -29,4 +30,9 @@ interface IApplicationHost
 	void CloseWindow(RenderWindow window);
 
 	void RequestExit(int code = 0);
+
+	/// Long work off the frame (Raptor's task-layer spec): resource decodes and whatever else must
+	/// not hold the frame's workers. The host pumps it once a frame. Null: none, as for a test's
+	/// host, and decodes are then synchronous.
+	TaskPool Tasks => null;
 }

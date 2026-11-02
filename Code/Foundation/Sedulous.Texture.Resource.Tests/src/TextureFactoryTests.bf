@@ -142,7 +142,7 @@ class TextureFactoryTests
 	[Test]
 	public static void TheAsyncLoadMatchesTheSynchronousOne()
 	{
-		let jobs = scope JobSystem(2);
+		let tasks = scope TaskPool(2);
 		let fixture = scope TextureFixture("scratch_texture_async");
 		let id = fixture.AuthorSimple("tex", 4, 2);
 
@@ -151,7 +151,7 @@ class TextureFactoryTests
 		let reference = syncManager.Bind<Texture>(id);
 		Test.Assert(reference.Get != null);
 
-		let asyncManager = scope ResourceManager(fixture.Database, jobs);
+		let asyncManager = scope ResourceManager(fixture.Database, tasks);
 		asyncManager.AddFactory(fixture.Textures);
 		let loaded = asyncManager.BindAsync<Texture>(id);
 		asyncManager.WaitAll();
@@ -174,14 +174,14 @@ class TextureFactoryTests
 	[Test]
 	public static void ManyConcurrentAsyncLoadsAllArrive()
 	{
-		let jobs = scope JobSystem(4);
+		let tasks = scope TaskPool(4);
 		let fixture = scope TextureFixture("scratch_texture_concurrent");
 
 		let ids = scope List<Guid>();
 		for (int i = 0; i < 12; i++)
 			ids.Add(fixture.AuthorSimple(scope $"tex{i:00}"));
 
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(fixture.Textures);
 
 		let textures = scope List<Proxy<Texture>>();

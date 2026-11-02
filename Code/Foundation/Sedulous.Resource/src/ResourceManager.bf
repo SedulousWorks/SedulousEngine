@@ -24,9 +24,10 @@ namespace Sedulous.Resource;
 class ResourceManager
 {
 	private IContentDatabase mDatabase;
-	/// Shared, and optional: with none, an asynchronous bind degrades to a synchronous one
-	/// and every caller keeps working.
-	private JobSystem mJobs;
+	/// The pool async decodes run on, never the frame's job system, so a big load does not hold the
+	/// workers the frame's fan out needs. Optional: with none, an asynchronous bind degrades to a
+	/// synchronous one and every caller keeps working. Borrowed: it outlives this.
+	private TaskPool mTasks;
 	private int mMainThreadId;
 	private Dictionary<Guid, ResourceHandle> mHandles = new .() ~ delete _;
 	private Dictionary<uint64, IResourceFactory> mFactories = new .() ~ delete _;
@@ -61,23 +62,24 @@ class ResourceManager
 	public bool ReportsMissingFactories = true;
 
 	/// The constructing thread is the main one: finalizing and pumping happen there.
-	public this(IContentDatabase database, JobSystem jobs = null)
+	public this(IContentDatabase database, TaskPool tasks = null)
 	{
 		mDatabase = database;
-		mJobs = jobs;
+		mTasks = tasks;
 		mMainThreadId = Thread.CurrentThread.Id;
 	}
 
 	public ~this()
 	{
-		// Drain, so no decode job is still holding this manager when it goes. Waiting
-		// participates in the pool, so a queued but unstarted decode still runs; its result
-		// is then discarded rather than finalized, because finalizing would touch factories
-		// and the GPU during teardown.
-		if (mJobs != null)
+		// Ends the decodes still out, so none is holding this manager when it goes: one not yet
+		// started is dropped, one running is waited for. Their results are discarded rather than
+		// finalized, because finalizing would touch factories and the GPU during teardown.
+		if (mTasks != null)
 		{
 			for (let entry in mPending)
-				mJobs.Wait(entry.value.Counter);
+				entry.value.Task.Cancel();
+			for (let entry in mPending)
+				mTasks.Wait(entry.value.Task);
 		}
 		for (let entry in mPending)
 			delete entry.value;
@@ -192,6 +194,35 @@ class ResourceManager
 		return .(BindHandleAsync(ProductTypeIdOf<T>(), id));
 	}
 
+	/// The product type a registered factory makes from `id`'s cooked form, the instance asked
+	/// rather than a list of types; 0 when there is no such instance or no factory reads its form.
+	public uint64 ProductTypeIdFor(Guid id)
+	{
+		let instance = mDatabase.GetInstance(id);
+		if (instance == null)
+			return 0;
+		let cooked = scope String();
+		for (let entry in mFactories)
+		{
+			let type = entry.value.CookedType;
+			if (type == null)
+				continue;
+			cooked.Clear();
+			type.GetFullName(cooked);
+			if (cooked == instance.TypeName)
+				return entry.key;
+		}
+		return 0;
+	}
+
+	/// BindHandleAsync of `id` as whatever its cooked form makes (ProductTypeIdFor); null when
+	/// nothing reads it. What a loader warming a set of resources it knows only by id calls.
+	public ResourceHandle BindAsyncAny(Guid id)
+	{
+		let product = ProductTypeIdFor(id);
+		return (product != 0) ? BindHandleAsync(product, id) : null;
+	}
+
 	public ResourceHandle BindHandleAsync(uint64 productTypeId, Guid id)
 	{
 		if (!mBuildStack.IsEmpty)
@@ -259,7 +290,7 @@ class ResourceManager
 				// Nothing has run the decode, and with no workers nothing will. Driving one
 				// inline is still subject to the budget: a single frame must not be spent
 				// decoding a whole scene.
-				if ((mJobs != null) && (mJobs.WorkerCount == 0) && (Elapsed() < budgetSeconds)
+				if ((mTasks != null) && (mTasks.WorkerCount == 0) && (Elapsed() < budgetSeconds)
 					&& DriveOneInlineDecode())
 					continue;
 				break;
@@ -287,15 +318,15 @@ class ResourceManager
 		for (int guard < 4096)
 		{
 			var outstanding = false;
-			if (mJobs != null)
+			if (mTasks != null)
 			{
 				for (let entry in mPending)
 				{
 					if (!entry.value.Finalized)
 					{
 						outstanding = true;
-						// Waiting participates, so an unstarted decode runs here.
-						mJobs.Wait(entry.value.Counter);
+						// A pool of no workers runs an unstarted decode here.
+						mTasks.Wait(entry.value.Task);
 					}
 				}
 			}
@@ -589,7 +620,7 @@ class ResourceManager
 			factory = found;
 
 		// Anything missing, and this is just a synchronous build.
-		if ((mJobs == null) || (instance == null) || (factory == null) || !factory.SupportsAsync)
+		if ((mTasks == null) || (instance == null) || (factory == null) || !factory.SupportsAsync)
 		{
 			BuildInto(handle, productTypeId, id);
 			return;
@@ -605,13 +636,15 @@ class ResourceManager
 		pending.Id = id;
 		mPending[id] = pending;
 
-		// The job touches only what is safe to touch from a worker: the factory and
+		// The task touches only what is safe to touch from a worker: the factory and
 		// instance, which outlive the load, and the identity by value. It never reads the
 		// handle or either map; those stay on the main thread. The result is handed back
-		// through the locked list.
+		// through the locked list, and this manager's own Pump finalizes it, so the task needs
+		// no completion of the pool's. Its handle lets WaitAll and the synchronous upgrade wait
+		// on this decode.
 		// Captured BY VALUE. A by-reference capture would point at locals of this method,
-		// and the job runs after it has returned.
-		mJobs.Submit(new () =>
+		// and the task runs after it has returned.
+		let task = mTasks.Submit(instance.Name, new (context) =>
 			{
 				let decoded = factory.DecodeStage(instance);
 				using (mCompletedLock.Enter())
@@ -624,7 +657,10 @@ class ResourceManager
 							Decoded = decoded
 						});
 				}
-			}, pending.Counter);
+				return Result<void, ErrorCode>.Ok;
+			});
+		task.AddRef(); // the record's
+		pending.Task = task;
 	}
 
 	/// Turns one decoded entry into its product, on the main thread.
@@ -681,8 +717,8 @@ class ResourceManager
 	/// that is still decoding.
 	private void CompletePending(Guid id)
 	{
-		if (mPending.TryGetValue(id, let record) && (mJobs != null))
-			mJobs.Wait(record.Counter); // runs the decode here if no worker has
+		if (mPending.TryGetValue(id, let record) && (mTasks != null))
+			mTasks.Wait(record.Task); // a pool of no workers runs it here
 
 		// Finalize THIS id alone. Draining every decoded entry here, which an unbounded Pump
 		// does, made one synchronous bind pay for the whole burst's finalizes, GPU uploads
@@ -719,22 +755,24 @@ class ResourceManager
 	{
 		for (let entry in mPending)
 		{
-			if (!entry.value.Finalized && (entry.value.Counter.Value != 0))
+			if (!entry.value.Finalized && !entry.value.Task.IsEnded)
 			{
-				mJobs.Wait(entry.value.Counter);
+				mTasks.Wait(entry.value.Task);
 				return true;
 			}
 		}
 		return false;
 	}
 
-	/// Drops the records of loads that have finalized.
+	/// Drops the records of loads that have finalized and whose decode has ended. Finalized alone
+	/// is not enough: the worker queues its result under the completed lock and is still on its way
+	/// out when the main thread can already take the result.
 	private void ReapPending()
 	{
 		let done = scope List<Guid>();
 		for (let entry in mPending)
 		{
-			if (entry.value.Finalized && (entry.value.Counter.Value == 0))
+			if (entry.value.Finalized && entry.value.Task.IsEnded)
 				done.Add(entry.key);
 		}
 		for (let id in done)

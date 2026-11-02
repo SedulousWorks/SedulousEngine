@@ -21,8 +21,8 @@ class AsyncSurfaceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_onready");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(factory);
 
 		let id = fixture.Author("mesh", 3, 1);
@@ -72,8 +72,8 @@ class AsyncSurfaceTests
 
 		{
 			let factory = scope AsyncProductFactory();
-			let jobs = scope JobSystem(2);
-			let manager = scope ResourceManager(fixture.Database, jobs);
+			let tasks = scope TaskPool(2);
+			let manager = scope ResourceManager(fixture.Database, tasks);
 			factory.SupportsAsyncStage = false;
 			manager.AddFactory(factory);
 
@@ -108,8 +108,8 @@ class AsyncSurfaceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_budget");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		// Each finalize costs more than the budget, so at most one fits in a pump.
 		factory.FinalizeSleepMs = 5;
 		manager.AddFactory(factory);
@@ -152,8 +152,8 @@ class AsyncSurfaceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_scope");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.Gate = new WaitEvent(); // Hold the decode so the pending state is observable.
 		manager.AddFactory(factory);
 
@@ -213,8 +213,8 @@ class AsyncSurfaceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_batch");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(3);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(3);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.Gate = new WaitEvent(); // Hold every decode.
 		manager.AddFactory(factory);
 

@@ -582,10 +582,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		if ((mBorrowedResources == null) && (mContentDatabase != null))
 		{
-			// Shares the global job pool where there is one, so a factory can decode off the
-			// main thread; without one, loads are synchronous.
-			mOwnedResources = new ResourceManager(mContentDatabase,
-				HasGlobalJobSystem() ? GlobalJobs() : null);
+			// The host's task pool, so a factory that supports it decodes off the main thread
+			// without holding the frame's workers; with none, loads are synchronous.
+			mOwnedResources = new ResourceManager(mContentDatabase, host.Tasks);
 		}
 		PointSpawnersAtContent();
 

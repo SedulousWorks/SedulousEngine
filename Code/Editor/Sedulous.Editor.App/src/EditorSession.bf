@@ -374,11 +374,10 @@ class EditorSession
 	}
 
 	/// The project's resources over its cooked database, attached to the embedded runtime (which
-	/// registers the engine's factories into it), decoding on the global job system when there
-	/// is one, null meaning sync.
+	/// registers the engine's factories into it), decoding on the editor's task pool.
 	private void AttachResources()
 	{
-		mResources = new ResourceManager(mProject.CookedDb, HasGlobalJobSystem() ? GlobalJobs() : null);
+		mResources = new ResourceManager(mProject.CookedDb, mServices.Context.Tasks);
 		mServices.Context.Resources = mResources;
 		if (mServices.EmbeddedApp != null)
 			mServices.EmbeddedApp.AttachResourceManager(mResources, mServices.EmbeddedHost);

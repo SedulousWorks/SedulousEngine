@@ -40,6 +40,9 @@ class ApplicationHost : IApplicationHost
 	private bool mRunning = false;
 	private int mExitCode = 0;
 	private FixedStepper mStepper = .();
+	/// Long work off the frame: the resource decodes. Kept until this goes, after the application
+	/// has shut down and its managers have ended their tasks.
+	private TaskPool mTasks = new .(TaskPool.DefaultWorkerCount()) ~ delete _;
 
 	/// Brings the application up: read its settings, let it register subsystems, start the
 	/// context, wrap the shell's main window, then enter play. IDEMPOTENT.
@@ -106,6 +109,7 @@ class ApplicationHost : IApplicationHost
 	public void Tick(float deltaTime)
 	{
 		ProfileFrameBegin();
+		mTasks.Pump(); // long work's completions, before this frame's update reads them
 		mSubsystems.BeginFrame(deltaTime);
 
 		using (ProfileScope("Update"))
@@ -240,6 +244,7 @@ class ApplicationHost : IApplicationHost
 	// ---- IApplicationHost ----
 
 	public SubsystemManager Subsystems => mSubsystems;
+	public TaskPool Tasks => mTasks;
 	public IShell Shell => mShell;
 	public GraphicsDevice Graphics => mGraphics;
 	public RenderWindow MainRenderWindow => mWindows.IsEmpty ? null : mWindows[0];

@@ -22,7 +22,7 @@ class MeshFixture
 
 	private String mRoot = new .() ~ delete _;
 
-	public this(StringView root, JobSystem jobs = null)
+	public this(StringView root, TaskPool tasks = null)
 	{
 		GeometryResources.RegisterAll();
 
@@ -33,7 +33,7 @@ class MeshFixture
 		Mount = new NativeFileSystem(mRoot);
 		Factory = new (stream, mode) => new BinarySerializerContext(stream, mode);
 		Database = new ContentDatabase(Mount, Factory, "asset");
-		Manager = new ResourceManager(Database, jobs);
+		Manager = new ResourceManager(Database, tasks);
 
 		Manager.AddFactory(StaticMeshes);
 		Manager.AddFactory(SkinnedMeshes);

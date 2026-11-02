@@ -13,8 +13,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_pending");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.Gate = new WaitEvent();
 		manager.AddFactory(factory);
 
@@ -49,8 +49,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_threads");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(factory);
 
 		let mainThreadId = Thread.CurrentThread.Id;
@@ -100,8 +100,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_optout");
 		let factory = scope TestProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		// The plain factory: SupportsAsync is the interface default, which is false.
 		manager.AddFactory(factory);
 
@@ -117,8 +117,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_upgrade");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.Gate = new WaitEvent();
 		manager.AddFactory(factory);
 
@@ -143,8 +143,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_share");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.Gate = new WaitEvent();
 		manager.AddFactory(factory);
 
@@ -168,11 +168,11 @@ class AsyncResourceTests
 	public static void APoolWithNoWorkersStillCompletes()
 	{
 		let fixture = scope ResourceFixture("scratch_async_zero");
-		let jobs = scope JobSystem(0);
-		Test.Assert(jobs.WorkerCount == 0);
+		let tasks = scope TaskPool(0);
+		Test.Assert(tasks.WorkerCount == 0);
 
 		let factory = scope AsyncProductFactory();
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(factory);
 
 		let proxy = manager.BindAsync<TestProduct>(fixture.Author("mesh", 3, 4));
@@ -191,8 +191,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_fail");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(factory);
 
 		// An identity with no instance behind it cannot decode, so it falls back to the
@@ -213,8 +213,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_refuse_decode");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.RefuseDecode = true;
 		manager.AddFactory(factory);
 
@@ -233,8 +233,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_refuse_finalize");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		factory.RefuseFinalize = true;
 		manager.AddFactory(factory);
 
@@ -255,8 +255,8 @@ class AsyncResourceTests
 	public static void AChildSettlingRebuildsTheCompositeThatWaitedOnIt()
 	{
 		let fixture = scope ResourceFixture("scratch_async_revive");
-		let jobs = scope JobSystem(2);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		let child = scope AsyncProductFactory();
 		child.Gate = new WaitEvent();
 		manager.AddFactory(child);
@@ -286,8 +286,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_async_many");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(4);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(4);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(factory);
 
 		let proxies = scope System.Collections.List<Proxy<TestProduct>>();
@@ -309,24 +309,27 @@ class AsyncResourceTests
 	/// Destroying the manager with a decode still in flight must DRAIN it.
 	///
 	/// The decode job holds the manager. Freeing the manager while a worker is inside one is
-	/// a use after free that only shows up under load, so the destructor waits the jobs out
+	/// a use after free that only shows up under load, so the destructor waits the tasks out
 	/// and discards their results rather than finalising during teardown.
 	[Test]
-	public static void DestroyingTheManagerWithAnInFlightDecodeDrainsIt()
+	public static void DestroyingTheManagerDropsADecodeNotYetStartedAndWaitsForOneRunning()
 	{
 		let fixture = scope ResourceFixture("scratch_async_teardown");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(2);
+		let tasks = scope TaskPool(2);
 
 		{
-			let manager = scope ResourceManager(fixture.Database, jobs);
+			let manager = scope ResourceManager(fixture.Database, tasks);
 			manager.AddFactory(factory);
 			manager.BindAsync<TestProduct>(fixture.Author("mesh", 2, 2));
 			// Deliberately never pumped: the decode is left in flight and the destructor at
 			// the end of this scope is what has to see it out.
 		}
 
-		Test.Assert(factory.DecodesFinished == 1, "the decode ran to completion during teardown");
+		Test.Assert(factory.DecodesFinished <= 1, "dropped unrun, or run once and waited for");
+		Test.Assert(tasks.InFlight <= 1, "ended either way; only its hand back is left");
+		tasks.Finish();
+		Test.Assert(factory.Finalizes == 0, "a manager that went never finalizes");
 	}
 
 	/// A synchronous bind of a pending id finalizes THAT id, and the rest keep their turn.
@@ -339,8 +342,8 @@ class AsyncResourceTests
 	{
 		let fixture = scope ResourceFixture("scratch_sync_one");
 		let factory = scope AsyncProductFactory();
-		let jobs = scope JobSystem(3);
-		let manager = scope ResourceManager(fixture.Database, jobs);
+		let tasks = scope TaskPool(3);
+		let manager = scope ResourceManager(fixture.Database, tasks);
 		manager.AddFactory(factory);
 
 		let a = fixture.Author("a", 1, 1);
@@ -369,5 +372,28 @@ class AsyncResourceTests
 		Test.Assert(factory.Finalizes == 3);
 		Test.Assert(pa.Get != null);
 		Test.Assert(pc.Get != null);
+	}
+
+	/// BindAsyncAny binds an id as whatever its cooked form makes, asking the instance; nothing for
+	/// an id no factory reads.
+	[Test]
+	public static void BindAsyncAnyBindsAnIdAsWhateverItsCookedFormMakes()
+	{
+		let fixture = scope ResourceFixture("scratch_async_any");
+		let factory = scope AsyncProductFactory();
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
+		manager.AddFactory(factory);
+		let id = fixture.Author("a", 11, 1);
+
+		Test.Assert(manager.ProductTypeIdFor(id) == factory.ProductTypeId);
+		Test.Assert(manager.BindAsyncAny(id) != null);
+		manager.WaitAll();
+		let product = manager.Bind<TestProduct>(id); // the same handle, ready
+		Test.Assert(product.Get != null);
+		Test.Assert(factory.Decodes == 1, "decoded on the pool, once");
+
+		Test.Assert(manager.ProductTypeIdFor(Guid.Create()) == 0, "no such instance");
+		Test.Assert(manager.BindAsyncAny(Guid.Create()) == null);
 	}
 }

@@ -33,6 +33,8 @@ class EmbeddedApplicationHost : IApplicationHost
 	}
 
 	public SubsystemManager Subsystems => mSubsystems;
+	/// The outer host's: it pumps it.
+	public TaskPool Tasks => mOuter.Tasks;
 	public IShell Shell => mOuter.Shell;
 	public GraphicsDevice Graphics => mOuter.Graphics;
 
