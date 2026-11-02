@@ -39,6 +39,40 @@ class ModelImportOptionTests
 		Test.Assert(convex.GetCustomAttribute<VisibleWhenAttribute>() case .Ok, "shown only while Generate collision is on");
 	}
 
+	/// The settings as text, a line each, read back into fresh options; a line naming nothing, or a
+	/// value that does not read, is skipped.
+	[Test]
+	public static void TheSettingsAsTextALineEachReadBackALineNamingNothingSkipped()
+	{
+		let from = scope ModelImportOptions();
+		from.Scale = 0.01f;
+		from.UpAxis = .Z;
+		from.GenerateScene = true;
+		from.ImportTextures = false;
+		let text = from.SettingsText(.. scope .());
+		Test.Assert(text.StartsWith("Scale="), scope String(text));
+		Test.Assert(text.Contains("\nUpAxis=Z\n"));
+		Test.Assert(text.Contains("\nGenerateScene=true\n"));
+		Test.Assert(text.Contains("\nImportTextures=false\n"));
+		Test.Assert(!text.Contains("Selection"), "the plan is not a setting");
+
+		let to = scope ModelImportOptions();
+		to.ReadSettingsText(text);
+		Test.Assert(Math.Abs(to.Scale - 0.01f) < 1e-6f);
+		Test.Assert(to.UpAxis == .Z);
+		Test.Assert(to.GenerateScene);
+		Test.Assert(!to.ImportTextures);
+		Test.Assert(to.ImportMaterials, "as recorded: on");
+
+		// What an older or another importer recorded: unknown names and bad values change nothing.
+		let kept = scope ModelImportOptions();
+		kept.ReadSettingsText("NoSuchSetting=true\nScale=wide\nUpAxis=Sideways\nGeneratePrefab=false\nRootMotion=yes\n");
+		Test.Assert(kept.Scale == 1.0f);
+		Test.Assert(kept.UpAxis == .Y);
+		Test.Assert(!kept.GeneratePrefab);
+		Test.Assert(!kept.RootMotion);
+	}
+
 	/// Geometry ALWAYS imports; the three toggles gate everything else, and nothing of those
 	/// types is left in the group.
 	[Test]

@@ -37,6 +37,9 @@ class ModelFileImporter : IFileImporter
 
 	public ImportOptions CreateOptions() => new ModelImportOptions();
 
+	/// The import makes the model's folder group, named after the file.
+	public bool ImportsIntoItsOwnGroup => true;
+
 	/// Parsing the file and decoding its images is nearly all of a model import, and none of
 	/// it touches the project, so it belongs off the interface thread.
 	public bool WantsWorkerPrepare => true;

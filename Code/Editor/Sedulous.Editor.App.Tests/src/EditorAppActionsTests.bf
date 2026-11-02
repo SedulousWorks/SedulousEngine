@@ -614,9 +614,11 @@ class EditorAppActionsTests
 		defer { ClearAndDeleteItems!(ran); }
 		EditorAppActions.RegisterBuildActions(actions, bench.Context,
 			new [=ran] (page) => { ran.Add(new $"cook {page.Title}"); },
-			new [=ran] (page) => { ran.Add(new $"rebuild {page.Title}"); });
+			new [=ran] (page) => { ran.Add(new $"rebuild {page.Title}"); },
+			new [=ran] (page) => { ran.Add(new $"reimport {page.Title}"); });
 		Test.Assert(actions.Find("build.cookPage") != null);
 		Test.Assert(actions.Find("build.rebuildPage") != null);
+		Test.Assert(actions.Find("build.reimportPage").MenuPath == "Build/Reimport...");
 		Test.Assert(actions.Find("build.cookPage").MenuPath == "Build/Cook This Asset");
 
 		let page = scope TestPage("Crate");
@@ -631,9 +633,11 @@ class EditorAppActionsTests
 		Test.Assert(actions.IsEnabled("build.cookPage", page));
 		Test.Assert(actions.Execute("build.cookPage", page) case .Ok);
 		Test.Assert(actions.Execute("build.rebuildPage", page) case .Ok);
-		Test.Assert(ran.Count == 2);
+		Test.Assert(actions.Execute("build.reimportPage", page) case .Ok);
+		Test.Assert(ran.Count == 3);
 		Test.Assert(ran[0] == "cook Crate");
 		Test.Assert(ran[1] == "rebuild Crate");
+		Test.Assert(ran[2] == "reimport Crate");
 		Test.Assert(bench.Cooks.IsEmpty, "the page's own cook, not the whole project's");
 	}
 
@@ -642,7 +646,7 @@ class EditorAppActionsTests
 	public static void ThePageCooksAreLeftOutWithNoContext()
 	{
 		let actions = scope EditorActionRegistry();
-		EditorAppActions.RegisterBuildActions(actions, null, new (page) => {}, new (page) => {});
+		EditorAppActions.RegisterBuildActions(actions, null, new (page) => {}, new (page) => {}, new (page) => {});
 		Test.Assert(actions.Count == 0);
 	}
 }

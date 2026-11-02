@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
@@ -22,8 +23,42 @@ namespace Sedulous.Editor.App.Tests;
 /// and an import waiting for a cook, its group found again when it runs. A name another asset
 /// holds: one of another type waits for a rename, another file's of its type for Replace or Keep
 /// both.
+/// An asset made from a file of its own, as a texture or a sound is.
+[Serializable]
+class PaintAsset : Asset
+{
+}
+
 static class AssetImportTests
 {
+	/// One setting, so a reimport has something to take back.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
+	class PaintOptions : ImportOptions
+	{
+		public bool Glossy = false;
+	}
+
+	/// Takes ".paint": one PaintAsset naming its file, with a setting.
+	class PaintImporter : IFileImporter
+	{
+		public StringView Label => "Paint";
+		public bool Accepts(StringView ext) => ext == "paint";
+		public ImportOptions CreateOptions() => new PaintOptions();
+
+		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
+			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
+		{
+			let made = group.CreateInstance(ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath)), typeof(PaintAsset).GetFullName(.. scope .()));
+			if (made == null)
+				return .Err(.InvalidArgument);
+			let asset = scope PaintAsset();
+			asset.FileName.Set(ImportPaths.FileNameOf(sourcePath));
+			if (!(made.WriteObject(asset) case .Ok))
+				return .Err(.InvalidArgument);
+			return made;
+		}
+	}
+
 	/// A single-asset importer of `ext` making a `typeName` asset (the clash check's input).
 	class SingleImporter : IFileImporter
 	{
@@ -266,6 +301,8 @@ static class AssetImportTests
 			importers.Register(new ScriptImporter("Document", "ui", "Hud"));
 			importers.Register(new ScriptImporter("Layout", "ui", "Hud"));
 			importers.Register(new ToggledImporter());
+			importers.Register(new PaintImporter());
+			GlobalSerializableRegistry.Register(TypeIdOf(typeof(PaintAsset).GetFullName(.. scope .())), () => (ISerializable)new PaintAsset());
 			Raw = new HeavyImporter("Raw", "mesh");
 			importers.Register(Raw);
 			importers.Register(new HeavyImporter("Broken", "bad", true));
@@ -643,5 +680,39 @@ static class AssetImportTests
 		Test.Assert(why.Contains("replace it, or keep both", true));
 		same.Files[0].OnConflict = .KeepBoth;
 		Test.Assert(AssetImport.CanImport(same, why..Clear()));
+	}
+
+	/// An import records its settings with its asset; a reimport takes the asset's file, its group
+	/// and those settings; an asset made from no file of its own cannot be reimported, and says so.
+	[Test]
+	public static void AnImportRecordsItsSettingsAReimportTakesTheAssetsFileItsGroupAndThoseSettings()
+	{
+		let bed = scope Bed("scratch_asset_import_reimport");
+		let file = PathJoin(bed.Project.SourcesRoot(.. scope .()), "wall.paint", .. scope .());
+		Test.Assert(WriteFile(file, scope List<uint8>() { (uint8)'p' }) case .Ok);
+		let session = bed.Import.Begin(scope StringView[](file), bed.Top);
+		Test.Assert(session != null);
+		defer session.ReleaseRef();
+		(session.Files[0].Options as PaintOptions).Glossy = true;
+		Test.Assert(bed.Import.Commit(session));
+		let wall = bed.Top.GetInstance("wall");
+		Test.Assert(wall != null);
+		Test.Assert(ImportPaths.RecordedImportSettings(wall, .. scope .()) == "Glossy=true\n");
+
+		// Reimported: the same file into the same group, glossy as before.
+		let why = scope String();
+		let again = bed.Import.BeginReimport(wall.Id, why);
+		Test.Assert(again != null, scope String(why));
+		defer again.ReleaseRef();
+		Test.Assert(again.Files.Count == 1);
+		Test.Assert(again.Files[0].Path == file);
+		Test.Assert(again.GroupKey == GroupPicker.KeyOf(bed.Top, .. scope .()));
+		Test.Assert((again.Files[0].Options as PaintOptions).Glossy, "as it was imported");
+
+		// An asset made from no file of its own cannot be: it says so.
+		let loose = bed.Top.CreateInstance("Loose", "Tests.ImportedThing");
+		Test.Assert(loose != null);
+		Test.Assert(bed.Import.BeginReimport(loose.Id, why..Clear()) == null);
+		Test.Assert(why.Contains("was not imported from a file of its own"), scope String(why));
 	}
 }

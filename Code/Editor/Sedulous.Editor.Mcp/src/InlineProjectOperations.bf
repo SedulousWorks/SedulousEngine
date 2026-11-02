@@ -106,6 +106,7 @@ class InlineProjectOperations : IProjectOperations
 		outOutcome.FlushMs = (Stopwatch.GetTimestamp() - started) / 1000;
 		outOutcome.DeferredWrites = deferred.Count;
 		outOutcome.SetIdentity(imported.Get());
+		ImportPaths.RecordImportSettings(imported.Get(), request.Options); // a reimport starts from them
 		if (OnImported != null)
 			OnImported(imported.Get(), request.Options);
 		return .Finished;

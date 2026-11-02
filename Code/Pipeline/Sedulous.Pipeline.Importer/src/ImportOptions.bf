@@ -76,6 +76,117 @@ class ImportOptions : ISerializable
 		return false;
 	}
 
+	/// The settings as text, a line each, "Name=value", appended: a flag true or false, a number, a
+	/// choice by its case's name. An import records them beside what it made
+	/// (ImportPaths.RecordImportSettings), so a reimport starts from them.
+	public void SettingsText(String outText)
+	{
+		let self = (uint8*)Internal.UnsafeCastToPtr(this);
+		let value = scope String();
+		for (let setting in GetSettings(.. scope .()))
+		{
+			let address = self + setting.MemberOffset;
+			let type = setting.FieldType;
+			value.Clear();
+			if (type == typeof(bool))
+				value.Append(*(bool*)address ? "true" : "false");
+			else if (type == typeof(float))
+				(*(float*)address).ToString(value);
+			else if (type.IsEnum)
+			{
+				let raw = ReadInteger(address, type.Size);
+				for (var (caseName, data) in Enum.GetEnumerator(type))
+				{
+					if (data == raw)
+					{
+						value.Append(caseName);
+						break;
+					}
+				}
+				if (value.IsEmpty)
+					continue; // a value no case names
+			}
+			else
+				continue; // not a kind a setting is yet
+			outText.AppendF("{}={}\n", setting.Name, value);
+		}
+	}
+
+	/// Takes settings from SettingsText's text. A line naming no setting, or a value that does not
+	/// read, is skipped: what an older import recorded still applies as far as it goes.
+	public void ReadSettingsText(StringView text)
+	{
+		let self = (uint8*)Internal.UnsafeCastToPtr(this);
+		let settings = GetSettings(.. scope .());
+		for (let line in text.Split('\n'))
+		{
+			let eq = line.IndexOf('=');
+			if (eq <= 0)
+				continue;
+			let name = line.Substring(0, eq);
+			let value = line.Substring(eq + 1);
+			FieldInfo setting = default;
+			bool found = false;
+			for (let candidate in settings)
+			{
+				if (candidate.Name == name)
+				{
+					setting = candidate;
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				continue;
+			let address = self + setting.MemberOffset;
+			let type = setting.FieldType;
+			if (type == typeof(bool))
+			{
+				if ((value == "true") || (value == "false"))
+					*(bool*)address = value == "true";
+			}
+			else if (type == typeof(float))
+			{
+				if (float.Parse(value) case .Ok(let number))
+					*(float*)address = number;
+			}
+			else if (type.IsEnum)
+			{
+				for (var (caseName, data) in Enum.GetEnumerator(type))
+				{
+					if (caseName == value)
+					{
+						WriteInteger(address, type.Size, data);
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	/// The integer stored at `address`, sized by its type (an enum's).
+	private static int64 ReadInteger(void* address, int size)
+	{
+		switch (size)
+		{
+		case 1: return *(uint8*)address;
+		case 2: return *(uint16*)address;
+		case 8: return *(int64*)address;
+		default: return *(int32*)address;
+		}
+	}
+
+	private static void WriteInteger(void* address, int size, int64 value)
+	{
+		switch (size)
+		{
+		case 1: *(uint8*)address = (uint8)value;
+		case 2: *(uint16*)address = (uint16)value;
+		case 8: *(int64*)address = value;
+		default: *(int32*)address = (int32)value;
+		}
+	}
+
 	/// Takes `other`'s settings when it is the same type of options (the import window's "Use these
 	/// for every ..."); false, changing nothing, when it is not. The plan's choices stay. A setting is
 	/// a value (a bool, a number, a choice) copied as it is; one held by reference is left alone.

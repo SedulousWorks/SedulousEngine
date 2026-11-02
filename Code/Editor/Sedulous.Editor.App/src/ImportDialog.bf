@@ -156,6 +156,13 @@ class ImportWindow
 			import.Commit(session);
 			return;
 		}
+		Review(context, session, root, window);
+	}
+
+	/// Opens the window made by `window` over `root` on `session` (a drop's, or a reimport's), which
+	/// says so when one is open already.
+	public static void Review(EditorContext context, AssetImport.Session session, SceneRoot root, delegate ImportWindow() window)
+	{
 		if (root == null)
 			return;
 		let shown = window();

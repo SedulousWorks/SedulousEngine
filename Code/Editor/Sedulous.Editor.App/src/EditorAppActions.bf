@@ -220,13 +220,16 @@ static class EditorAppActions
 	/// cook service while a project is open); they need a project open. Left out with no
 	/// context. `cookPage` and `rebuildPage` cook the page's asset and what it needs (rebuild:
 	/// again, whether changed or not), its unsaved changes saved first so the cook reads them;
-	/// each is left out when null. TAKES OWNERSHIP of both.
-	public static void RegisterBuildActions(EditorActionRegistry actions, EditorContext context, delegate void(EditorPage page) cookPage = null, delegate void(EditorPage page) rebuildPage = null)
+	/// `reimportPage` opens the import window on the page's asset's file, with the settings it was
+	/// imported with; each is left out when null. TAKES OWNERSHIP of all three.
+	public static void RegisterBuildActions(EditorActionRegistry actions, EditorContext context, delegate void(EditorPage page) cookPage = null, delegate void(EditorPage page) rebuildPage = null,
+		delegate void(EditorPage page) reimportPage = null)
 	{
 		if (context == null)
 		{
 			delete cookPage;
 			delete rebuildPage;
+			delete reimportPage;
 			return;
 		}
 		{
@@ -243,6 +246,7 @@ static class EditorAppActions
 		// collision page had its own Cook now, every asset page has these.
 		AddPageCook(actions, context, new .("build.cookPage", "Cook This Asset", "Save the page's changes, then cook its asset and what it needs", "Build/Cook This Asset", 200), cookPage);
 		AddPageCook(actions, context, new .("build.rebuildPage", "Rebuild This Asset", "Save the page's changes, then cook its asset and what it needs again, changed or not", "Build/Rebuild This Asset", 201), rebuildPage);
+		AddPageCook(actions, context, new .("build.reimportPage", "Reimport...", "Import the asset's file again, in the import window, with the settings it was imported with", "Build/Reimport...", 202), reimportPage);
 	}
 
 	/// Registers `d` running `cook` over the page, on while a project is open and the page shows

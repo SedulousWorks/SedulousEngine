@@ -1014,17 +1014,35 @@ class EditorApplication : IApplication
 	/// window over the main window (made the first time), which says so when one is open already.
 	public void ImportFiles(Span<StringView> paths, Group group)
 	{
-		ImportWindow.Run(mAssetImport, mContext, paths, group, mWindow.Root, scope () =>
-			{
-				if (mImportWindow == null)
-				{
-					mImportWindow = new ImportWindow(mAssetImport, PickerMade(), mWindow.LoadMarkup(ImportWindow.cMarkupPath));
-					mImportWindow.Icons = TypeIcons();
-					mImportWindow.Previews = mContext.ImportPreviews;
-					mImportWindow.PreviewReader = mContext.ImportPreviewReads;
-				}
-				return mImportWindow;
-			});
+		ImportWindow.Run(mAssetImport, mContext, paths, group, mWindow.Root, scope () => ImportWindowMade());
+	}
+
+	/// The import window over the main window, made the first time.
+	private ImportWindow ImportWindowMade()
+	{
+		if (mImportWindow == null)
+		{
+			mImportWindow = new ImportWindow(mAssetImport, PickerMade(), mWindow.LoadMarkup(ImportWindow.cMarkupPath));
+			mImportWindow.Icons = TypeIcons();
+			mImportWindow.Previews = mContext.ImportPreviews;
+			mImportWindow.PreviewReader = mContext.ImportPreviewReads;
+		}
+		return mImportWindow;
+	}
+
+	/// Build > Reimport...: the import window on the page's asset's file, into its group, with the
+	/// settings it was imported with; said when it cannot be.
+	private void ReimportPage(EditorPage page)
+	{
+		let why = scope String();
+		let session = mAssetImport.BeginReimport(page.InstanceId, why);
+		if (session == null)
+		{
+			mContext.Notify(.Warning, why);
+			return;
+		}
+		defer session.ReleaseRef(); // the window takes its own
+		ImportWindow.Review(mContext, session, mWindow.Root, scope () => ImportWindowMade());
 	}
 
 	/// Import... in a group's menu: files picked with the OS's dialog, imported into the group,
@@ -1179,7 +1197,8 @@ class EditorApplication : IApplication
 		// One page's asset: its changes saved first, so what cooks is what it shows.
 		EditorAppActions.RegisterBuildActions(actions, mContext,
 			new (page) => { CookPage(page, false); },
-			new (page) => { CookPage(page, true); });
+			new (page) => { CookPage(page, true); },
+			new (page) => { ReimportPage(page); });
 
 		// The Game tab through the context's GamePageFactory: unset until the play library
 		// registers it, Play says so.

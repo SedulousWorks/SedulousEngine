@@ -55,6 +55,10 @@ interface IFileImporter
 	{
 	}
 
+	/// Whether an import makes a group of its own, named after the file, in the group it is given (a
+	/// model's folder), so a reimport goes into that group's parent. Default: no.
+	bool ImportsIntoItsOwnGroup => false;
+
 	/// Sets `options` (CreateOptions') as this importer would choose them for the file at
 	/// `sourcePath`, before anyone sees them: a texture's usage guessed from its name, say. Reads
 	/// at most a file's header. Default: the options' own defaults stand.

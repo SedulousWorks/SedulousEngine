@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Pipeline.Importer;
@@ -69,6 +70,8 @@ class AssetImport
 		/// What it does over another file's asset of its type under its name (ClashOf): Refuse
 		/// until the user chooses.
 		public ImportConflictChoice OnConflict = .Refuse;
+		/// Settings to start from, as an earlier import recorded them (a reimport); empty: none.
+		public String Settings = new .() ~ delete _;
 
 		public IFileImporter Importer => (ImporterIndex < Importers.Count) ? Importers[ImporterIndex] : null;
 		public StringView Name => ImportPaths.FileNameOf(Path);
@@ -125,9 +128,10 @@ class AssetImport
 	}
 
 	/// An import of `paths` into `into`: each file with the importers that take it (one none takes
-	/// is said and left out), each described or being read. Null when none is left; else the
-	/// caller's reference (ReleaseRef when done with it).
-	public Session Begin(Span<StringView> paths, Group into)
+	/// is said and left out), each described or being read, its settings starting from `settings`
+	/// when given (as an earlier import recorded them). Null when none is left; else the caller's
+	/// reference (ReleaseRef when done with it).
+	public Session Begin(Span<StringView> paths, Group into, StringView settings = default)
 	{
 		let session = new Session();
 		GroupPicker.KeyOf(into, session.GroupKey);
@@ -145,6 +149,7 @@ class AssetImport
 				continue;
 			}
 			file.Path.Set(path);
+			file.Settings.Set(settings);
 			session.Files.Add(file);
 		}
 		if (session.Files.IsEmpty)
@@ -154,6 +159,79 @@ class AssetImport
 		}
 		for (int i < session.Files.Count)
 			Describe(session, i);
+		return session;
+	}
+
+	/// What reimporting an asset takes: the file it came from (the OS file the ledger names, while it
+	/// is there, else its copy in Sources/), the group the import goes in, and the settings its
+	/// import recorded.
+	public class Reimport
+	{
+		public String Path = new .() ~ delete _;
+		/// Borrowed: the project's.
+		public Group Group = null;
+		public String Settings = new .() ~ delete _;
+	}
+
+	/// Finds what reimporting asset `id` takes, into `outFound`; false, with why in `outWhy`, when it
+	/// cannot be: no such asset, an asset made from no file of its own (a model's mesh: reimport its
+	/// model), or a file nothing imports.
+	public bool FindReimport(Guid id, Reimport outFound, String outWhy)
+	{
+		let project = Context.Project;
+		let instance = (project != null) ? project.SourceDb.GetInstance(id) : null;
+		if (instance == null)
+		{
+			outWhy.Set("There is no such asset.");
+			return false;
+		}
+		let object = instance.ReadObject();
+		defer delete object;
+		let asset = (object != null) ? Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Sedulous.Pipeline.Core.Asset : null;
+		if ((asset == null) || asset.FileName.IsEmpty)
+		{
+			outWhy.Set(scope $"{instance.Name} was not imported from a file of its own.");
+			return false;
+		}
+		let sourcesName = asset.FileName.Value;
+		let ledger = ImportPaths.ImportLedgerPath(project.CacheRoot(.. scope .()), .. scope .());
+		let origin = ImportPaths.ImportOriginOf(ledger, sourcesName, .. scope .());
+		outFound.Path.Clear();
+		if (!origin.IsEmpty && FileExists(origin))
+			outFound.Path.Set(origin);
+		else
+			PathJoin(project.SourcesRoot(.. scope .()), sourcesName, outFound.Path);
+		if (!FileExists(outFound.Path))
+		{
+			outWhy.Set(scope $"Its file, {sourcesName}, is missing.");
+			return false;
+		}
+		let importers = scope List<IFileImporter>();
+		Context.Importers.FindAllFor(ImportPaths.ExtensionLower(outFound.Path, .. scope .()), importers);
+		if (importers.IsEmpty)
+		{
+			outWhy.Set(scope $"Nothing imports {ImportPaths.FileNameOf(outFound.Path)}.");
+			return false;
+		}
+		outFound.Group = instance.OwningGroup;
+		if (importers[0].ImportsIntoItsOwnGroup && (outFound.Group.Parent != null))
+			outFound.Group = outFound.Group.Parent;
+		outFound.Settings.Clear();
+		ImportPaths.RecordedImportSettings(instance, outFound.Settings);
+		return true;
+	}
+
+	/// Starts a reimport of asset `id`: its file, into its group, its settings as its import
+	/// recorded them and its choices as it made them. Null, with why in `outWhy`, when it cannot be;
+	/// else the caller's reference.
+	public Session BeginReimport(Guid id, String outWhy)
+	{
+		let found = scope Reimport();
+		if (!FindReimport(id, found, outWhy))
+			return null;
+		let session = Begin(scope StringView[](found.Path), found.Group, found.Settings);
+		if (session == null)
+			outWhy.Set(scope $"Nothing imports {ImportPaths.FileNameOf(found.Path)}.");
 		return session;
 	}
 
@@ -333,6 +411,8 @@ class AssetImport
 		if (file.Options == null)
 			file.Options = new ImportOptions(); // a bare one carries the plan's choices
 		importer.InitializeOptions(file.Path, file.Options); // as the importer chooses for this file
+		if (!file.Settings.IsEmpty)
+			file.Options.ReadSettingsText(file.Settings); // then as it was imported before
 		DeleteAndNullify!(file.Prepared);
 		ClearAndDeleteItems!(file.Plan.Entries);
 		let generation = ++file.Generation;
@@ -481,6 +561,7 @@ class AssetImport
 	// Said, then what follows any import.
 	private void Finish(Instance primary, Pending pending)
 	{
+		ImportPaths.RecordImportSettings(primary, pending.Options); // a reimport starts from them
 		Context.Notify(.Success, scope $"Imported {primary.Name} ({pending.Importer.Label}).");
 		AfterImport(primary, pending.Options);
 	}

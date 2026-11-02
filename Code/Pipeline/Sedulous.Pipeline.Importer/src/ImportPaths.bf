@@ -133,6 +133,36 @@ static class ImportPaths
 		outOrigin.Append(found);
 	}
 
+	/// The data stream an import's primary asset keeps its settings in (ImportOptions.SettingsText).
+	public const String cImportSettingsStream = "importSettings";
+
+	/// Records `options`' settings with `primary` (the asset an import made first), so a reimport
+	/// starts from them; nothing when the importer has no settings.
+	public static void RecordImportSettings(Instance primary, ImportOptions options)
+	{
+		if ((primary == null) || (options == null) || !options.HasSettings)
+			return;
+		let text = options.SettingsText(.. scope .());
+		primary.WriteData(cImportSettingsStream, Span<uint8>((uint8*)text.Ptr, text.Length), .Text).IgnoreError();
+	}
+
+	/// The settings `instance` recorded (RecordImportSettings), appended; nothing when it has none.
+	public static void RecordedImportSettings(Instance instance, String outText)
+	{
+		let stream = instance.ReadData(cImportSettingsStream);
+		if (stream == null)
+			return;
+		defer delete stream;
+		let size = (int)stream.Size();
+		if (size <= 0)
+			return;
+		let bytes = scope List<uint8>();
+		bytes.GrowUninitialized(size);
+		if (stream.Read(Span<uint8>(bytes.Ptr, size)) != size)
+			return;
+		outText.Append((char8*)bytes.Ptr, size);
+	}
+
 	/// Notes that `sourcesName` came from `origin`, its line replaced.
 	public static void RecordImportOrigin(StringView ledgerPath, StringView sourcesName, StringView origin)
 	{

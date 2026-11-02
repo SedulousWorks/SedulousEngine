@@ -322,11 +322,16 @@ class EditorProjectOperations : IProjectOperations
 	{
 		import.Outcome.FlushMs = import.Shared.FlushMs;
 		import.Outcome.CopyTo(outOutcome);
-		// Every write has landed: the import is whole, so what follows an import runs now.
-		if (mSeams.OnImported != null)
+		// Every write has landed: the import is whole, so what follows an import runs now, its
+		// settings recorded first (a reimport starts from them).
+		if (mSeams.Project != null)
 		{
 			if (let primary = mSeams.Project.SourceDb.GetInstance(outOutcome.Id))
-				mSeams.OnImported(primary, options);
+			{
+				ImportPaths.RecordImportSettings(primary, options);
+				if (mSeams.OnImported != null)
+					mSeams.OnImported(primary, options);
+			}
 		}
 		return .Finished;
 	}
