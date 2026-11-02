@@ -77,6 +77,78 @@ class TextureImportTests
 		Test.Assert(TextureUsageInference.Infer("grass_diff") == .Color);
 		Test.Assert(TextureUsageInference.Infer("my_armor") == .Color);
 		Test.Assert(TextureUsageInference.Infer("town_north") == .Color);
+
+		// The token that decided it, for the import window's note.
+		let token = scope String();
+		Test.Assert(TextureUsageInference.Infer("foo_nor_gl_4k", token) == .Normal);
+		Test.Assert(token == "_nor");
+		Test.Assert(TextureUsageInference.Infer("kit_orm", token..Clear()) == .Mask);
+		Test.Assert(token == "_orm");
+		Test.Assert(TextureUsageInference.Infer("grass_diff", token..Clear()) == .Color);
+		Test.Assert(token.IsEmpty);
+	}
+
+	/// The settings start as the file's preset, its usage guessed from its name with the reason
+	/// in the usage's note; the import takes what is set.
+	[Test]
+	public static void TheSettingsStartAsTheFilesPresetItsUsageGuessedWithTheReasonTheImportTakesThem()
+	{
+		let importer = scope TextureFileImporter();
+		let created = importer.CreateOptions();
+		defer delete created;
+		let options = created as TextureImportOptions;
+		Test.Assert(options != null);
+		Test.Assert(options.GetSettings(.. scope .()).Count == 5);
+		Test.Assert(options.FindSetting("Usage", let usage));
+
+		// A normal map by its name: Normal and linear, and the note says which token decided it.
+		importer.InitializeOptions("/somewhere/rock_nor_gl.png", options);
+		Test.Assert(options.Usage == .Normal);
+		Test.Assert(options.ColorSpace == .Linear);
+		Test.Assert(options.GenerateMipmaps);
+		let effect = scope String();
+		let reason = scope String();
+		importer.DescribeSetting("/somewhere/rock_nor_gl.png", options, null, usage, effect, reason);
+		Test.Assert(effect == "Its name has \"_nor\"", scope String(effect));
+		Test.Assert(reason.IsEmpty);
+		// Another usage chosen: the note says what the name suggested.
+		options.Usage = .Mask;
+		importer.DescribeSetting("/somewhere/rock_nor_gl.png", options, null, usage, effect..Clear(), reason);
+		Test.Assert(effect == "Its name suggests Normal", scope String(effect));
+		// A plain name: Color, sRGB, and nothing to say.
+		importer.InitializeOptions("/somewhere/brick.png", options);
+		Test.Assert(options.Usage == .Color);
+		Test.Assert(options.ColorSpace == .Srgb);
+		importer.DescribeSetting("/somewhere/brick.png", options, null, usage, effect..Clear(), reason);
+		Test.Assert(effect.IsEmpty);
+		// An .hdr: an environment, said so.
+		importer.InitializeOptions("/somewhere/dusk.hdr", options);
+		Test.Assert(options.Usage == .HDR);
+		Test.Assert(!options.GenerateMipmaps);
+		importer.DescribeSetting("/somewhere/dusk.hdr", options, null, usage, effect..Clear(), reason);
+		Test.Assert(effect == "An .hdr is an environment");
+
+		// The import takes what is set: a mask with no mipmaps, clamped.
+		let fixture = scope TexturePipelineFixture("import_settings");
+		let loose = scope String();
+		fixture.PathIn("brick.png", loose);
+		WriteFile(loose, scope List<uint8>() { 0x89, 0x50, 0x4E, 0x47, 1, 2 }).IgnoreError();
+		options.Usage = .Mask;
+		options.ColorSpace = .Linear;
+		options.GenerateMipmaps = false;
+		options.Wrap = .ClampToEdge;
+		let context = scope ImportContext(fixture.Root);
+		let instance = importer.Import(loose, context, fixture.Database.RootGroup, options, null, null);
+		Test.Assert(instance case .Ok);
+		let object = instance.Value.ReadObject();
+		defer delete object;
+		let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as TextureAsset;
+		Test.Assert(asset != null);
+		Test.Assert(asset.Usage == .Mask);
+		Test.Assert(asset.ColorSpace == .Linear);
+		Test.Assert(!asset.GenerateMipmaps);
+		Test.Assert(asset.WrapU == .ClampToEdge);
+		Test.Assert(asset.WrapV == .ClampToEdge);
 	}
 
 	[Test]

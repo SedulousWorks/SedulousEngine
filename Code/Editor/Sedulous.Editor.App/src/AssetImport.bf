@@ -332,6 +332,7 @@ class AssetImport
 		file.Options = importer.CreateOptions();
 		if (file.Options == null)
 			file.Options = new ImportOptions(); // a bare one carries the plan's choices
+		importer.InitializeOptions(file.Path, file.Options); // as the importer chooses for this file
 		DeleteAndNullify!(file.Prepared);
 		ClearAndDeleteItems!(file.Plan.Entries);
 		let generation = ++file.Generation;

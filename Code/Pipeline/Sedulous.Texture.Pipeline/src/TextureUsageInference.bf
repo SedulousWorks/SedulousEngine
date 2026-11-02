@@ -19,8 +19,9 @@ static class TextureUsageInference
 	///
 	/// That boundary rule is what keeps ordinary words out: "foo_nor_gl_4k" is a normal map and
 	/// "my_armor" is not a mask. A name matching nothing infers colour, which is the default
-	/// and the least destructive guess.
-	public static SourceUsage Infer(StringView stem)
+	/// and the least destructive guess. `outToken`, when given, is set to the token that decided
+	/// it (left alone for colour).
+	public static SourceUsage Infer(StringView stem, String outToken = null)
 	{
 		let lower = scope String();
 		lower.Reserve(stem.Length);
@@ -33,12 +34,20 @@ static class TextureUsageInference
 		for (let token in cNormalTokens)
 		{
 			if (HasToken(lower, token))
+			{
+				if (outToken != null)
+					outToken.Set(token);
 				return .Normal;
+			}
 		}
 		for (let token in cMaskTokens)
 		{
 			if (HasToken(lower, token))
+			{
+				if (outToken != null)
+					outToken.Set(token);
 				return .Mask;
+			}
 		}
 		return .Color;
 	}

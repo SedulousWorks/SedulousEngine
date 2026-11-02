@@ -125,12 +125,18 @@ static class AssetImportTests
 		public bool Flip = true;
 	}
 
-	/// Takes ".cfg": options with a toggle, no plan.
+	/// Takes ".cfg": options with a toggle, no plan; a file named "off" starts with it off.
 	class ToggledImporter : IFileImporter
 	{
 		public StringView Label => "Config";
 		public bool Accepts(StringView ext) => ext == "cfg";
 		public ImportOptions CreateOptions() => new ToggledOptions();
+
+		public void InitializeOptions(StringView sourcePath, ImportOptions options)
+		{
+			if (let toggled = options as ToggledOptions)
+				toggled.Flip = !sourcePath.EndsWith("off.cfg");
+		}
 
 		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
 			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
@@ -440,6 +446,12 @@ static class AssetImportTests
 		defer toggled.ReleaseRef();
 		Test.Assert(toggled.Files[0].Options is ToggledOptions, "the importer's own options");
 		Test.Assert(!AssetImport.NeedsNoReview(toggled), "its options are reviewed");
+		Test.Assert((toggled.Files[0].Options as ToggledOptions).Flip, "its defaults stand");
+		// The importer sets a file's options up before the window shows them.
+		let off = bed.Import.Begin(scope StringView[]("/somewhere/off.cfg"), bed.Top);
+		Test.Assert(off != null);
+		defer off.ReleaseRef();
+		Test.Assert(!(off.Files[0].Options as ToggledOptions).Flip, "set up for this file");
 	}
 
 	/// A heavy file is read on a worker, the import waiting, saying so; another importer chosen

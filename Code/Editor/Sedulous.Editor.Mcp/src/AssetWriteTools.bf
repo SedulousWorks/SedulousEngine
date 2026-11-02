@@ -101,6 +101,8 @@ static class AssetWriteTools
 		// The options: the importer's defaults, then the call's settings by label.
 		let options = importer.CreateOptions();
 		defer { if (options != null) delete options; }
+		if (options != null)
+			importer.InitializeOptions(source, options); // as the window would start them
 		let settings = scope List<FieldInfo>();
 		if (options != null)
 			options.GetSettings(settings);

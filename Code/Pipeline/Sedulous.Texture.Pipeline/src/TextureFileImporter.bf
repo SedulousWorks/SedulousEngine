@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
@@ -7,6 +8,7 @@ using Sedulous.Image;
 using Sedulous.Image.DDS;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
+using Sedulous.Texture.Compression; // SourceUsage
 
 namespace Sedulous.Texture.Pipeline;
 
@@ -41,6 +43,69 @@ class TextureFileImporter : IFileImporter
 
 	public StringView AssetTypeName(StringView sourcePath) => cAssetType;
 
+	public ImportOptions CreateOptions() => new TextureImportOptions();
+
+	/// The preset the file calls for, as an import with no settings makes it: an environment for
+	/// an .hdr, what a DDS's header says, else the usage its name suggests.
+	public static void SetupForFile(TextureAsset asset, StringView sourcePath)
+	{
+		let stem = ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath));
+		let suffix = ImportPaths.ExtensionLower(sourcePath, .. scope .());
+		if (suffix == "hdr")
+			asset.SetupForEquirectangularSkybox(); // radiance is an environment, not a surface
+		else if (suffix == "dds")
+			SetupForDds(asset, sourcePath, stem);
+		else
+			SetupForInferredUsage(asset, stem);
+	}
+
+	public void InitializeOptions(StringView sourcePath, ImportOptions options)
+	{
+		if (let texture = options as TextureImportOptions)
+		{
+			let preset = scope TextureAsset();
+			SetupForFile(preset, sourcePath);
+			texture.From(preset);
+		}
+	}
+
+	/// The usage's note: why it was guessed so (the token in the file's name, its .hdr or DDS
+	/// header), or what its name suggests when another is chosen.
+	public void DescribeSetting(StringView sourcePath, ImportOptions options, Object prepared, FieldInfo setting,
+		String outEffect, String outReason)
+	{
+		let texture = options as TextureImportOptions;
+		if ((texture == null) || (setting.Name != "Usage"))
+			return;
+		let stem = ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath));
+		let suffix = ImportPaths.ExtensionLower(sourcePath, .. scope .());
+		SourceUsage guessed = .Color;
+		let why = scope String();
+		if (suffix == "hdr")
+		{
+			guessed = .HDR;
+			why.Append("An .hdr is an environment");
+		}
+		else if (suffix == "dds")
+		{
+			let preset = scope TextureAsset();
+			SetupForDds(preset, sourcePath, stem);
+			guessed = preset.Usage;
+			why.Append("From its DDS header");
+		}
+		else
+		{
+			let token = scope String();
+			guessed = TextureUsageInference.Infer(stem, token);
+			if (!token.IsEmpty)
+				why.AppendF("Its name has \"{}\"", token);
+		}
+		if (texture.Usage == guessed)
+			outEffect.Append(why);
+		else if ((guessed != .Color) || !why.IsEmpty)
+			outEffect.AppendF("Its name suggests {}", guessed);
+	}
+
 	public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context,
 		Group group, ImportOptions options, Object prepared,
 		List<DeferredImportWrite> deferredWrites)
@@ -72,19 +137,16 @@ class TextureFileImporter : IFileImporter
 		if (claimed case .Err(let claimError))
 			return .Err(claimError);
 		let instance = claimed.Value;
-		let stem = ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath));
 
 		let asset = scope TextureAsset();
 		asset.FileName.Set(fileName);
 
-		let suffix = scope String();
-		ImportPaths.ExtensionLower(sourcePath, suffix);
-		if (suffix == "hdr")
-			asset.SetupForEquirectangularSkybox(); // radiance is an environment, not a surface
-		else if (suffix == "dds")
-			SetupForDds(asset, sourcePath, stem);
+		// The window's settings when there are some (they start as the file's preset); the preset
+		// itself when not (a headless import).
+		if (let texture = options as TextureImportOptions)
+			texture.ApplyTo(asset);
 		else
-			SetupForInferredUsage(asset, stem);
+			SetupForFile(asset, sourcePath);
 
 		if (instance.WriteObject(asset) case .Err(let writeError))
 			return .Err(writeError);

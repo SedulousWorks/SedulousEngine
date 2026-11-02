@@ -55,6 +55,13 @@ interface IFileImporter
 	{
 	}
 
+	/// Sets `options` (CreateOptions') as this importer would choose them for the file at
+	/// `sourcePath`, before anyone sees them: a texture's usage guessed from its name, say. Reads
+	/// at most a file's header. Default: the options' own defaults stand.
+	void InitializeOptions(StringView sourcePath, ImportOptions options)
+	{
+	}
+
 	/// The asset type a SINGLE-ASSET importer makes of `sourcePath`, for the name clash check before
 	/// an import; empty for an importer that makes several (a model's), which keeps its own names
 	/// apart.
