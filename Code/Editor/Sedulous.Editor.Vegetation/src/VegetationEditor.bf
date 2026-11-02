@@ -1,3 +1,4 @@
+using Sedulous.Vegetation.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Editor.App;
@@ -15,6 +16,7 @@ static class VegetationEditor
 	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
 		context.Pages.Register(new VegetationMaskPageFactory(services));
+		ImageFilePreviewFactory.Register(context, typeof(VegetationMaskAsset));
 	}
 
 	/// The brushes' panels, once for the process.

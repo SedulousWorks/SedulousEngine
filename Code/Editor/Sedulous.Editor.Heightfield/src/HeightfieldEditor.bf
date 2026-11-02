@@ -14,6 +14,7 @@ static class HeightfieldEditor
 	{
 		HeightfieldPipeline.RegisterAll();
 		context.Pages.Register(new HeightfieldEditorPageFactory(services));
+		ImageFilePreviewFactory.Register(context, typeof(HeightfieldAsset));
 		if (context.Thumbnails != null)
 			context.Thumbnails.RegisterGenerator(new HeightfieldThumbnailGenerator());
 	}

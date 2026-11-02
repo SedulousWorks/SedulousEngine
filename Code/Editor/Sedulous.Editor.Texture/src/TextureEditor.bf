@@ -14,6 +14,7 @@ static class TextureEditor
 	{
 		TexturePipeline.RegisterAll();
 		context.Pages.Register(new TextureEditorPageFactory(services));
+		ImageFilePreviewFactory.Register(context, typeof(TextureAsset));
 		if (context.Thumbnails != null)
 			context.Thumbnails.RegisterGenerator(new TextureThumbnailGenerator());
 	}

@@ -1,6 +1,8 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.GUI;
+using Sedulous.Image.IO;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
@@ -8,7 +10,8 @@ namespace Sedulous.Editor.App.Tests;
 /// The image pages' picture (ImageInspectView): it fits its view, centred, until zoomed or panned;
 /// the wheel zooms about the pointer, a drag pans, Fit and 1:1; a picture of another size fits
 /// again; a pixel read and said; a channel shown on its own, the picture's pixels untouched; a new
-/// picture a new image, so the renderer draws it.
+/// picture a new image, so the renderer draws it. The import window's preview of a picture file
+/// (ImageFilePreview) shows it with the facts its header gives.
 class ImageInspectViewTests
 {
 	/// A 40x20 picture: every pixel (10, 20, 30, 200) but (5, 2), which is (255, 128, 0, 64).
@@ -131,5 +134,44 @@ class ImageInspectViewTests
 		view.SetImage(Picture());
 		Test.Assert(view.Pixels.InstanceId != first);
 		Test.Assert(view.Fitting, "the same size: kept as it was");
+	}
+
+	/// The import window's preview of a picture file: shown, with its size, its channels as the
+	/// file stores them and, when it has alpha, whether that is used; a file that does not decode
+	/// shows why, and no facts.
+	[Test]
+	public static void APictureFileIsShownWithItsSizeItsChannelsAsStoredAndWhetherItsAlphaIsUsed()
+	{
+		let path = scope $"scratch_image_file_preview.png";
+		defer DeleteFile(path);
+		let picture = Picture();
+		defer delete picture;
+		Test.Assert(ImageIO.SaveImage(picture, path, .PNG) case .Ok);
+		{
+			let preview = scope ImageFilePreview(path);
+			Test.Assert(preview.Picture.View.HasImage);
+			let facts = preview.Facts;
+			Test.Assert(facts.Length == 3);
+			Test.Assert(facts[0] == "40 × 20");
+			Test.Assert(facts[1] == "RGBA, 8-bit");
+			Test.Assert(facts[2] == "Uses alpha");
+		}
+
+		// One grey channel: no alpha to speak of.
+		let grey = scope $"scratch_image_file_preview_grey.png";
+		defer DeleteFile(grey);
+		uint8[4] values = .(0, 80, 160, 240);
+		let narrow = scope Sedulous.Image.Image(2, 2, .R8, .(&values[0], 4));
+		Test.Assert(ImageIO.SaveImage(narrow, grey, .PNG) case .Ok);
+		{
+			let preview = scope ImageFilePreview(grey);
+			Test.Assert(preview.Picture.View.HasImage);
+			Test.Assert((preview.Facts.Length == 2) && (preview.Facts[0] == "2 × 2") && (preview.Facts[1] == "Grey, 8-bit"));
+		}
+
+		let missing = scope ImageFilePreview("scratch_image_file_preview_missing.png");
+		Test.Assert(!missing.Picture.View.HasImage);
+		Test.Assert(missing.Facts.IsEmpty);
+		Test.Assert(missing.View != null);
 	}
 }

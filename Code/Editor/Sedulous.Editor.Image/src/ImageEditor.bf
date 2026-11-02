@@ -14,5 +14,6 @@ static class ImageEditor
 	{
 		ImagePipeline.RegisterAll();
 		context.Pages.Register(new ImageEditorPageFactory(services));
+		ImageFilePreviewFactory.Register(context, typeof(ImageAsset));
 	}
 }

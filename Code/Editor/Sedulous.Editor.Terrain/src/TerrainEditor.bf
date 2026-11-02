@@ -1,3 +1,4 @@
+using Sedulous.Terrain.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Editor.App;
@@ -26,6 +27,7 @@ static class TerrainEditor
 	public static void Register(EditorContext context, AssetPageServicesSource services)
 	{
 		context.Pages.Register(new TerrainEditorPageFactory(services));
+		ImageFilePreviewFactory.Register(context, typeof(SplatmapAsset));
 	}
 
 	/// The brushes into every viewport tool set, once for the process.
