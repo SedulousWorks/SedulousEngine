@@ -38,20 +38,35 @@ static class ModelCook
 	///
 	/// The prefix namespaces every instance created, so two models in one database cannot
 	/// collide over a name they happen to share.
+	///
+	/// It only reads `model`, so a worker may cook a model the main thread reads too (the import
+	/// window's preview cooks the model the importer read). `cancel` (null: never) is checked
+	/// between textures, clips and meshes: once cancelled it returns ErrorCode.Cancelled, what it
+	/// made so far left in outDb for its owner to discard.
 	public static Result<Guid, ErrorCode> Cook(Model model, ContentDatabase outDb,
-		StringView namePrefix)
+		StringView namePrefix, CancelToken cancel = null)
 	{
 		let root = outDb.RootGroup;
 		if (root == null)
 			return .Err(.Unknown);
 
+		// The model space box from the meshes' own (the loaders work each out), worked out here
+		// rather than written into the model, which another thread may be reading.
 		let manifest = scope ModelManifestSource();
-		model.CalculateBounds();
-		manifest.BoundsMin = model.Bounds.Min;
-		manifest.BoundsMax = model.Bounds.Max;
+		var any = false;
+		for (let mesh in model.Meshes)
+		{
+			if (mesh == null)
+				continue;
+			manifest.BoundsMin = any ? Min(manifest.BoundsMin, mesh.Bounds.Min) : mesh.Bounds.Min;
+			manifest.BoundsMax = any ? Max(manifest.BoundsMax, mesh.Bounds.Max) : mesh.Bounds.Max;
+			any = true;
+		}
 
 		let textureGuids = scope List<Guid>();
-		ModelCookTextures.Cook(model, root, namePrefix, textureGuids);
+		ModelCookTextures.Cook(model, root, namePrefix, textureGuids, cancel);
+		if (CancelToken.Requested(cancel))
+			return .Err(.Cancelled);
 		ModelCookMaterials.Cook(model, root, namePrefix, textureGuids, manifest.MaterialGuid,
 			manifest.MaterialAlbedo);
 
@@ -59,10 +74,10 @@ static class ModelCook
 		// and would need a manifest that can carry more than one.
 		let boneToJoint = scope Dictionary<int32, int32>();
 		let hasSkin = !model.Skins.IsEmpty;
-		if (hasSkin)
-			CookSkeletonAndAnimations(model, root, namePrefix, boneToJoint, manifest);
+		if (hasSkin && (CookSkeletonAndAnimations(model, root, namePrefix, boneToJoint, manifest, cancel) case .Err(let clipError)))
+			return .Err(clipError);
 
-		if (CookMeshes(model, root, namePrefix, hasSkin, manifest) case .Err(let meshError))
+		if (CookMeshes(model, root, namePrefix, hasSkin, manifest, cancel) case .Err(let meshError))
 			return .Err(meshError);
 
 		CookNodes(model, manifest);
@@ -77,8 +92,8 @@ static class ModelCook
 		return .Ok(manifestInstance.Id);
 	}
 
-	private static void CookSkeletonAndAnimations(Model model, Group root, StringView namePrefix,
-		Dictionary<int32, int32> boneToJoint, ModelManifestSource manifest)
+	private static Result<void, ErrorCode> CookSkeletonAndAnimations(Model model, Group root, StringView namePrefix,
+		Dictionary<int32, int32> boneToJoint, ModelManifestSource manifest, CancelToken cancel)
 	{
 		let skin = model.Skins[0];
 		let joints = scope List<int32>(); // the skin's, then the bones it hangs from
@@ -106,6 +121,8 @@ static class ModelCook
 		let animations = model.Animations;
 		for (int a < animations.Length)
 		{
+			if (CancelToken.Requested(cancel))
+				return .Err(.Cancelled);
 			let clipName = scope String();
 			ImportedNames.ForAsset(animations[a].Name, "anim", a, clipName);
 			let qualified = scope $"{namePrefix}.{clipName}";
@@ -123,10 +140,11 @@ static class ModelCook
 			if (clipBuilder.Build(clipAsset, context) case .Ok)
 				manifest.AnimationGuid.Add(clipInstance.Id);
 		}
+		return .Ok;
 	}
 
 	private static Result<void, ErrorCode> CookMeshes(Model model, Group root,
-		StringView namePrefix, bool hasSkin, ModelManifestSource manifest)
+		StringView namePrefix, bool hasSkin, ModelManifestSource manifest, CancelToken cancel)
 	{
 		let staticBuilder = scope StaticMeshAssetBuilder();
 		let skinnedBuilder = scope SkinnedMeshAssetBuilder();
@@ -134,6 +152,8 @@ static class ModelCook
 		let meshes = model.Meshes;
 		for (int i < meshes.Length)
 		{
+			if (CancelToken.Requested(cancel))
+				return .Err(.Cancelled);
 			let mesh = meshes[i];
 			let skinned = IsSkinned(mesh) && hasSkin;
 

@@ -194,4 +194,28 @@ class ModelCookTests
 		}
 		Test.Assert(sawSeveral, "the character's body draws several of its materials");
 	}
+
+	/// Told to stop, a cook returns Cancelled and makes no model; untold, it cooks. It leaves the
+	/// model's own bounds alone: the manifest's box is worked out from the meshes'.
+	[Test]
+	public static void ToldToStopItReturnsCancelledAndMakesNoModelUntoldItCooks()
+	{
+		let fixture = scope Fixture("scratch_model_cook_cancel");
+		let model = scope Model();
+		ModelFixture.Character(model);
+		let bounds = model.Bounds;
+		model.Bounds = .(.(-9.0f, -9.0f, -9.0f), .(9.0f, 9.0f, 9.0f)); // what a cook must not write over
+
+		let cancel = scope CancelSource();
+		cancel.Cancel();
+		Test.Assert(ModelCook.Cook(model, fixture.Database, "Character", cancel.Token) case .Err(.Cancelled));
+
+		let cooked = ModelCook.Cook(model, fixture.Database, "Character");
+		Test.Assert(cooked case .Ok(let manifestId));
+		Test.Assert(manifestId != Guid.Empty);
+		Test.Assert(model.Bounds.Max.X == 9.0f, "the model only read");
+		let manifest = fixture.Manager.Bind<ModelResource>(manifestId);
+		Test.Assert(manifest.Get != null);
+		Test.Assert(NearlyEqual(manifest.Get.BoundsMax.X, bounds.Max.X), "the box from the meshes'");
+	}
 }

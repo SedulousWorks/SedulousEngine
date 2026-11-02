@@ -28,7 +28,7 @@ static class ModelCookTextures
 	///
 	/// The list stays parallel to the model's own, index for index, because every material
 	/// refers to its textures by that index.
-	public static void Cook(Model model, Group root, StringView namePrefix, List<Guid> outGuids)
+	public static void Cook(Model model, Group root, StringView namePrefix, List<Guid> outGuids, CancelToken cancel = null)
 	{
 		let linear = scope List<bool>();
 		ModelTextureClassify.LinearTextures(model, linear);
@@ -37,6 +37,8 @@ static class ModelCookTextures
 		let decoded = scope Image();
 		for (int i < textures.Length)
 		{
+			if (CancelToken.Requested(cancel))
+				return; // short: the caller checks it
 			let texture = textures[i];
 			var pixels = (texture != null) ? texture.Data : Span<uint8>();
 			var width = (texture != null) ? (uint32)Math.Max(texture.Width, 0) : 0;
