@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Fonts;
 using Sedulous.GUI;
 using static Sedulous.GUI.Toolkit.Tests.ToolkitFixtures;
 
@@ -271,6 +272,30 @@ class PropertyGridTests
 		let plain = bed.Grid.FindRowContent("loop");
 		Test.Assert(plain != null);
 		Test.Assert(!plain.Note.Displayed);
+	}
+
+	[Test]
+	public static void ANoteBesideAWideEditorKeepsItsOwnWidthTheEditorTakesWhatIsLeft()
+	{
+		let font = scope CachedFont(new SixFont(), null); // outlives the widgets: the bed goes first
+		let bed = scope GridBed();
+		let scale = bed.Add("scale", .Float, Sedulous.GUI.Variant(2.0));
+		scale.Note.Set("Twice");
+		bed.Show();
+		let row = bed.Grid.FindRowContent("scale");
+		Test.Assert(row != null);
+		Test.Assert(row.Note.Displayed);
+		Test.Assert(row.Editor != null);
+		row.Note.Font = font; // the bed has no font; a note measured with one has a width to keep
+		bed.Frame();
+		// A number field measures as wide as its column; the short note must still show whole.
+		let wants = row.Note.Measure(LayoutConstraints(.(0.0f, 0.0f), .(1000.0f, 40.0f), .(1000.0f, -1.0f), false, false)).X;
+		Test.Assert(wants > 0.0f);
+		let note = row.Note.ScreenBounds;
+		Test.Assert(note.Width + 0.5f >= wants, "its own width, not an ellipsis");
+		let editor = row.Editor.ScreenBounds;
+		Test.Assert(editor.Width > 0.0f, "the editor keeps the rest");
+		Test.Assert(note.X >= editor.X + editor.Width, "after the editor, not over it");
 	}
 
 	[Test]

@@ -288,7 +288,7 @@ class PropertyCategoryContent : UIWidget
 
 /// A property's row: indented by its depth, a group's chevron, its name (its description the
 /// tooltip), the split, and its editor (none for a group). A row whose info has a Note shows it after
-/// its editor, which then takes only its own width.
+/// its editor, which then leaves the note its own width.
 [GuiReflect]
 class PropertyRowContent : UIWidget
 {
@@ -429,10 +429,15 @@ class PropertyRowContent : UIWidget
 		{
 			let room = Math.Max(0.0f, @box.Width - split - 2.0f);
 			let height = Math.Max(0.0f, @box.Height - 2.0f);
-			// With a note the editor takes its own width and the note the rest; otherwise all of it.
+			// With a note, the note takes its own width (up to most of the column) and the editor at
+			// most its own of the rest, the note after it; without one, the editor takes it all.
 			var width = room;
 			if (mNote.Displayed)
-				width = Math.Min(room, mEditor.Measure(LayoutConstraints(.(0.0f, 0.0f), .(room, height), .(room, -1.0f), false, false)).X);
+			{
+				let within = LayoutConstraints(.(0.0f, 0.0f), .(room, height), .(room, -1.0f), false, false);
+				let note = Math.Min(mNote.Measure(within).X, room * 0.6f);
+				width = Math.Max(0.0f, Math.Min(mEditor.Measure(within).X, room - note - 8.0f));
+			}
 			mEditor.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f, @box.Y + 1.0f, width, height), @box, rtl));
 			if (mNote.Displayed)
 				mNote.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f + width + 8.0f, @box.Y, Math.Max(0.0f, room - width - 8.0f), @box.Height), @box, rtl));
