@@ -11,8 +11,9 @@ using Sedulous.Editor.Camera;
 namespace Sedulous.Editor.Scene;
 
 /// A scene loaded into a private stage, viewed as its page last showed it (the editor camera
-/// the page saved when it closed), else framed by its bounds. A scene's own camera is often
-/// placed by a script at play time, so in the editor it can look at nothing.
+/// the page saved when it closed), else in perspective from above, far enough back to hold its
+/// bounds. A scene's own camera is often placed by a script at play time, so in the editor it
+/// can look at nothing.
 class SceneThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private EditorContext mContext;
@@ -46,14 +47,23 @@ class SceneThumbnailGenerator : ISceneThumbnailGenerator
 		stage.UpdateTransforms();
 		ThumbnailStaging.FrameFromBounds(ThumbnailStaging.WorldSceneBounds(stage), ref outFraming);
 		let camera = scope EditorCamera();
-		if (SceneViewState.RestoreCamera(SavedView(id), camera))
+		if (!SceneViewState.RestoreCamera(SavedView(id), camera))
 		{
-			outFraming.HasView = true;
-			outFraming.Eye = camera.DrawEye;
-			outFraming.View = Float4x4.LookAtRH(outFraming.Eye, outFraming.Eye + camera.Forward, camera.Up);
-			outFraming.Projection = camera.Projection(1.0f); // the thumbnail is square
-			outFraming.FarZ = camera.DrawFar;
+			// Never viewed: the whole scene in perspective, from 30 degrees above the ground and
+			// turned a little, far enough back to hold its bounds: a shot of the place more than a
+			// plan of it.
+			camera.Yaw = 0.6f;
+			camera.Pitch = -0.52f;
+			let distance = outFraming.Radius / Sin(0.5f * camera.FovY);
+			camera.Position = outFraming.Center - camera.Forward * distance;
+			camera.NearZ = Max(0.1f, 0.5f * (distance - outFraming.Radius));
+			camera.FarZ = distance + 2.0f * outFraming.Radius;
 		}
+		outFraming.HasView = true;
+		outFraming.Eye = camera.DrawEye;
+		outFraming.View = Float4x4.LookAtRH(outFraming.Eye, outFraming.Eye + camera.Forward, camera.Up);
+		outFraming.Projection = camera.Projection(1.0f); // the thumbnail is square
+		outFraming.FarZ = camera.DrawFar;
 		return .Ready;
 	}
 

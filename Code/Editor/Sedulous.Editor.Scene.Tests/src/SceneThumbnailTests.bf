@@ -70,8 +70,8 @@ class SceneThumbnailTests
 	}
 
 	/// A scene's thumbnail is taken as its page last showed it: the view the page saved is part
-	/// of the hash naming the picture, and the stage is handed that view; with none saved, the
-	/// stage frames the bounds.
+	/// of the hash naming the picture, and the stage is handed that view; with none saved, a
+	/// perspective shot from above that holds the scene's bounds.
 	[Test]
 	public static void ASceneIsShownAsItsPageLastShowedItTheViewNamingItsThumbnail()
 	{
@@ -116,9 +116,15 @@ class SceneThumbnailTests
 		{
 			let stage = scope Sedulous.Scene.Scene("stage");
 			EngineSceneComposition.AddAllSceneManagers(stage);
+			stage.AddSystem<FarBox>(); // the crate measured far from the origin
 			var framing = ThumbnailFraming();
 			Test.Assert(generator.Stage(level.Id, stage, resources, ref framing) == .Ready);
-			Test.Assert(!framing.HasView, "never viewed: the bounds frame it");
+			// Never viewed: in perspective from above the middle, just far enough back to hold it.
+			Test.Assert(framing.HasView);
+			let center = FarBox.Box.Center();
+			let radius = Length(FarBox.Box.Extents());
+			Test.Assert(Math.Abs(Length(framing.Eye - center) - radius / Sin(0.5f * 1.0472f)) < 0.01f);
+			Test.Assert(framing.Eye.Y > center.Y, "from above");
 			generator.Unstage(stage);
 		}
 
