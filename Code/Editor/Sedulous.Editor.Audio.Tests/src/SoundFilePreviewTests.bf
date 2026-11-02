@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Audio;
+using Sedulous.Audio.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Audio;
 
@@ -10,7 +11,8 @@ namespace Sedulous.Editor.Audio.Tests;
 
 /// The import window's preview of a sound file: read off the main thread, then its waveform and its
 /// facts (length, channels and rate, peak). Play needs an audio engine, which a test has none of,
-/// and says so. A file that does not decode says that instead.
+/// and says so. A file that does not decode says that instead. The file's settings show on the
+/// waveform: the trimmed tail shaded, the bars normalized, as each changes.
 class SoundFilePreviewTests
 {
 	[Test]
@@ -29,7 +31,7 @@ class SoundFilePreviewTests
 
 		let reader = scope ImportPreviewReader();
 		{
-			let preview = scope SoundFilePreview(path, reader, null);
+			let preview = scope SoundFilePreview(path, null, reader, null);
 			int changed = 0;
 			preview.SetOnChanged(new [&changed] () => { changed++; });
 			Test.Assert(!preview.HasSound, "still reading");
@@ -52,10 +54,52 @@ class SoundFilePreviewTests
 			Test.Assert(preview.Waveform.Playhead < 0.0f);
 		}
 
-		let missing = scope SoundFilePreview("scratch_sound_file_preview_missing.wav", reader, null);
+		let missing = scope SoundFilePreview("scratch_sound_file_preview_missing.wav", null, reader, null);
 		reader.Finish();
 		Test.Assert(!missing.HasSound);
 		Test.Assert(missing.Facts.IsEmpty);
+	}
+
+	[Test]
+	public static void TheTrimShadesTheTailItCutsAndNormalizeScalesTheBarsAsTheSettingsChange()
+	{
+		// One second of mono 8 kHz at half scale, then half a second of silence.
+		const uint32 cRate = 8000;
+		let samples = scope List<int16>();
+		for (uint32 i < cRate)
+			samples.Add((int16)(((i % 8) < 4) ? 16384 : -16384));
+		for (uint32 i < cRate / 2)
+			samples.Add(0);
+		let wav = scope List<uint8>();
+		Test.Assert(AudioCodec.EncodeWav(samples, 1, cRate, wav));
+		let path = scope $"scratch_sound_file_preview_settings.wav";
+		defer DeleteFile(path);
+		Test.Assert(WriteFile(path, wav) case .Ok);
+
+		let options = scope AudioImportOptions();
+		let reader = scope ImportPreviewReader();
+		let preview = scope SoundFilePreview(path, options, reader, null);
+		reader.Finish();
+		Test.Assert(preview.HasSound);
+		// Off: the waveform as it is.
+		Test.Assert(preview.Waveform.CutFrom == 1.0f);
+		Test.Assert(preview.Waveform.Gain == 1.0f);
+		// On: the trim keeps what the cook keeps of 12000 frames, and Normalize lifts half scale to -1 dBFS.
+		options.TrimTrailingSilence = true;
+		options.Normalize = true;
+		preview.OnSettingsChanged();
+		let kept = AudioEdits.AudibleFrames(samples, 1, cRate);
+		Test.Assert((kept > 8000) && (kept < 12000), "the silence cut, the sound kept");
+		Test.Assert(Math.Abs(preview.Waveform.CutFrom - (float)kept / 12000.0f) < 0.001f);
+		Test.Assert(Math.Abs(preview.Waveform.Gain - 0.891f * 32767.0f / 16384.0f) < 0.001f);
+		// Off again: as it is.
+		options.Normalize = false;
+		preview.OnSettingsChanged();
+		Test.Assert(preview.Waveform.Gain == 1.0f);
+		Test.Assert(preview.Waveform.CutFrom < 1.0f, "the trim still on");
+		Test.Assert(!preview.AsImported);
+		preview.SetAsImported(true);
+		Test.Assert(preview.AsImported);
 	}
 
 	[Test]

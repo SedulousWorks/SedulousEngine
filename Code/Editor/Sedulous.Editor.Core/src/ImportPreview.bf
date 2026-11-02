@@ -119,6 +119,10 @@ interface IImportPreview
 	/// Set by the window: called when the preview's facts change (its read arrived). TAKES
 	/// OWNERSHIP; null clears it.
 	void SetOnChanged(delegate void() onChanged);
+	/// Called by the window when the file's settings changed, for a preview that shows them.
+	void OnSettingsChanged()
+	{
+	}
 }
 
 /// Makes previews of the files an importer lists by one asset type (and, by nearest type
@@ -127,8 +131,10 @@ interface IImportPreviewFactory
 {
 	Type AssetType { get; }
 	/// A preview of the source file at `path`, its read started on `reader` (borrowed: it outlives
-	/// the preview), OWNED by the caller; null when it shows nothing of it.
-	IImportPreview Create(StringView path, ImportPreviewReader reader);
+	/// the preview), OWNED by the caller; null when it shows nothing of it. `options` are the file's
+	/// settings (null when it has none), BORROWED: alive as long as the preview, for one that shows
+	/// what they will do.
+	IImportPreview Create(StringView path, Sedulous.Pipeline.Importer.ImportOptions options, ImportPreviewReader reader);
 }
 
 /// The import previews, by asset type: the factory nearest along a type's base chain wins, as

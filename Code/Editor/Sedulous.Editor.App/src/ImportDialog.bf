@@ -71,6 +71,9 @@ class ImportWindow
 	private IImportPreview mPreview = null ~ delete _;
 	private String mPreviewPath = new .() ~ delete _;
 	private String mPreviewType = new .() ~ delete _;
+	/// The options the preview was made with (the file's, which it borrows): new ones (another
+	/// importer chosen) make it again.
+	private ImportOptions mPreviewOptions = null;
 	/// Whether the picker is open for this: it answers here, so it closes when this goes.
 	private bool mPicking = false;
 	// The body's: the tree holds them.
@@ -297,12 +300,13 @@ class ImportWindow
 	{
 		if (mSession == null)
 			return;
+		DeleteAndNullify!(mPreview); // first: it may read the session's files' settings (its view stays in the pane until the next one shows)
+		mPreviewOptions = null;
 		DeleteAndNullify!(mSession.OnChanged);
 		mSession.Closed = true;
 		mSession.ReleaseRef();
 		mSession = null;
 		DropSettings(); // its grid's source reads the session's options
-		DeleteAndNullify!(mPreview); // its view stays in the pane until the next one shows
 		mPreviewPath.Clear();
 		mPreviewType.Clear();
 	}
@@ -460,16 +464,17 @@ class ImportWindow
 		let typeName = scope String();
 		if (importer != null)
 			typeName.Append(importer.ListedTypeName(file.Path));
-		if ((file.Path != mPreviewPath) || (typeName != mPreviewType))
+		if ((file.Path != mPreviewPath) || (typeName != mPreviewType) || (file.Options !== mPreviewOptions))
 		{
 			mPreviewView.RemoveAllChildren();
 			DeleteAndNullify!(mPreview);
 			mPreviewPath.Set(file.Path);
 			mPreviewType.Set(typeName);
+			mPreviewOptions = file.Options;
 			if ((Previews != null) && (PreviewReader != null))
 			{
 				if (let factory = Previews.FindByName(typeName))
-					mPreview = factory.Create(file.Path, PreviewReader);
+					mPreview = factory.Create(file.Path, file.Options, PreviewReader);
 			}
 			if (mPreview != null)
 			{
@@ -555,7 +560,13 @@ class ImportWindow
 			let options = file.Options;
 			mSettings = new FieldPropertySource(options.GetType(), 1,
 				new [=options] (index) => Internal.UnsafeCastToPtr(options),
-				new [=options] (apply) => { apply(0, Internal.UnsafeCastToPtr(options)); });
+				new [=this, =options] (apply) =>
+				{
+					apply(0, Internal.UnsafeCastToPtr(options));
+					// A change shows in the preview at once (a sound's trim shaded on its waveform).
+					if (mPreview != null)
+						mPreview.OnSettingsChanged();
+				});
 			// Each setting beside what its importer says it does to this file, or disabled with why
 			// it cannot apply.
 			mSettings.SetOnDescribe(new [=this, =index] (path, info) =>

@@ -220,7 +220,7 @@ class ImageFilePreviewFactory : IImportPreviewFactory
 	}
 
 	public Type AssetType => mType;
-	public IImportPreview Create(StringView path, ImportPreviewReader reader) => new ImageFilePreview(path, reader);
+	public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader) => new ImageFilePreview(path, reader);
 
 	/// Registers the picture preview for the files listed by `type`.
 	public static void Register(EditorContext context, Type type)

@@ -73,7 +73,7 @@ static class EditorContextTests
 		}
 
 		public Type AssetType => mType;
-		public IImportPreview Create(StringView path, ImportPreviewReader reader) => null;
+		public IImportPreview Create(StringView path, Sedulous.Pipeline.Importer.ImportOptions options, ImportPreviewReader reader) => null;
 	}
 
 	[Test]

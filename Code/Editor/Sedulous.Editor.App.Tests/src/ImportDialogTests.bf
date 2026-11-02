@@ -128,6 +128,11 @@ static class ImportDialogTests
 			mOnChanged = onChanged;
 		}
 
+		/// The file's settings it was made with (borrowed), and how often it was told they changed.
+		public ImportOptions Options;
+		public int SettingsChanged = 0;
+		public void OnSettingsChanged() { SettingsChanged++; }
+
 		/// As a read coming back does: a new fact, and the window told.
 		public void Arrive(StringView fact)
 		{
@@ -155,7 +160,7 @@ static class ImportDialogTests
 	private class FramedPreviewFactory : IImportPreviewFactory
 	{
 		public Type AssetType => typeof(ImportPreviewThing);
-		public IImportPreview Create(StringView path, ImportPreviewReader reader) => new FramedPreview(path);
+		public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader) => new FramedPreview(path);
 	}
 
 	/// Previews the box files' type, counting how many it has made.
@@ -165,10 +170,12 @@ static class ImportDialogTests
 
 		public Type AssetType => typeof(ImportPreviewThing);
 
-		public IImportPreview Create(StringView path, ImportPreviewReader reader)
+		public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader)
 		{
 			Made++;
-			return new NamePreview(path);
+			let made = new NamePreview(path);
+			made.Options = options;
+			return made;
 		}
 	}
 
@@ -185,6 +192,7 @@ static class ImportDialogTests
 	{
 		public StringView Label => "Config";
 		public bool Accepts(StringView ext) => ext == "cfg";
+		public StringView ListedTypeName(StringView sourcePath) => "Sedulous.Editor.App.Tests.ImportPreviewThing";
 		public ImportOptions CreateOptions() => new ToggledOptions();
 
 		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
@@ -692,11 +700,13 @@ static class ImportDialogTests
 	}
 
 	/// A file's settings, as its importer's options declare them, in the inspector's property grid,
-	/// written through to the options; a file whose importer declares none shows none.
+	/// written through to the options, its preview made with them and told of the change; a file
+	/// whose importer declares none shows none.
 	[Test]
 	public static void TheSettingsShowInTheInspectorsGridAndWriteThroughToTheOptions()
 	{
 		let bed = scope Bed("scratch_import_window_options");
+		bed.Context.ImportPreviews.Register(new NamePreviewFactory());
 		let session = bed.Open(scope StringView[]("/somewhere/game.cfg", "/somewhere/crate.box"));
 		defer session.ReleaseRef();
 		let grids = scope List<PropertyGrid>();
@@ -706,8 +716,13 @@ static class ImportDialogTests
 		defer { ClearAndDeleteItems!(rows); }
 		grids[0].Source.GetProperties("", rows);
 		Test.Assert((rows.Count == 1) && (rows[0].DisplayName == "Flip") && (rows[0].Description == "Flips it"));
+		let preview = bed.Window.Preview as NamePreview;
+		Test.Assert(preview != null);
+		Test.Assert(preview.Options === session.Files[0].Options, "made with the file's settings");
+		Test.Assert(preview.SettingsChanged == 0);
 		grids[0].Source.CommitEdit("Flip", PropertyWrite(Sedulous.GUI.Variant(false)));
 		Test.Assert(!(session.Files[0].Options as ToggledOptions).Flip, "written through");
+		Test.Assert(preview.SettingsChanged == 1, "the preview told");
 		Test.Assert(Says(bed.Window.Detail, "It makes one asset, named after the file."));
 
 		// The box's importer declares none: no grid.

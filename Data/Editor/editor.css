@@ -389,6 +389,7 @@ treerowcontent.inactive { opacity: 0.45; }
 .audio-volume-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
 waveform::wave { background-color: var(--accent); }
 waveform::playhead { background-color: var(--warning); }
+waveform::cut { background-color: rgba(0, 0, 0, 0.45); }
 /* The bus layout page: the buses' tree under its bar, beside the chosen bus's grid. */
 .bus-pane { flex-direction: column; }
 .bus-tree { flex-grow: 1; min-height: 0; }

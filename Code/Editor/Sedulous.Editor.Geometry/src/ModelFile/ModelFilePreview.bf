@@ -423,7 +423,7 @@ class ModelFilePreviewFactory : IImportPreviewFactory
 
 	public Type AssetType => mType;
 
-	public IImportPreview Create(StringView path, ImportPreviewReader reader)
+	public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader)
 	{
 		if (mContext.Project == null)
 			return null;
