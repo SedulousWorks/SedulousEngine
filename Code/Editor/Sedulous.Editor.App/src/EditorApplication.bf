@@ -1044,6 +1044,8 @@ class EditorApplication : IApplication
 			mImportWindow.Icons = TypeIcons();
 			mImportWindow.Previews = mContext.ImportPreviews;
 			mImportWindow.PreviewReader = mContext.ImportPreviewReads;
+			mImportWindow.AskName = new (request) => { AskName(request); };
+			mImportWindow.Operations = mAssetOps;
 		}
 		return mImportWindow;
 	}

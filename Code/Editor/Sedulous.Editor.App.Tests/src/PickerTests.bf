@@ -521,6 +521,43 @@ static class PickerTests
 		bed.View.Close();
 	}
 
+	/// A right-click's menu from the request, on an item or the space under them; refilled while
+	/// open, the search cleared and the new item lit.
+	[Test]
+	public static void ARightClicksMenuFromTheRequestRefilledWhileOpenTheNewItemLit()
+	{
+		let bed = scope PickerBed();
+		let clicked = scope String("none");
+		let request = bed.Materials();
+		request.OnContextMenu = new [=clicked] (menu, key) =>
+			{
+				clicked.Set(key);
+				menu.AddItem("New Material...", new () => { });
+			};
+		bed.Open(request);
+		bed.View.OpenContextMenu("wood");
+		Test.Assert(clicked == "wood");
+		Test.Assert(bed.View.ContextMenu != null);
+		Test.Assert(bed.View.ContextMenu.ItemCount == 1);
+		bed.View.ContextMenu.Close();
+		bed.View.OpenContextMenu(default); // the space under the items
+		Test.Assert(clicked.IsEmpty);
+		bed.View.ContextMenu.Close();
+
+		// Something made: the rows refilled, the search cleared, the new one lit, still open.
+		bed.View.SetQuery("woo");
+		let shownWhileSearching = bed.View.RowCount;
+		let more = bed.Materials();
+		defer delete more;
+		more.Add("cedar", "Cedar", "Props", "MaterialAsset");
+		bed.View.Refill(more.Items, "cedar");
+		Test.Assert(more.Items.IsEmpty, "taken");
+		Test.Assert(bed.View.IsOpen);
+		Test.Assert(bed.View.LitKey == "cedar");
+		Test.Assert(bed.View.RowCount > shownWhileSearching, "every row again, not the search's");
+		bed.View.Close();
+	}
+
 	/// It opens in the window's middle; a lit item's description is the foot's, else what the keys
 	/// do.
 	[Test]

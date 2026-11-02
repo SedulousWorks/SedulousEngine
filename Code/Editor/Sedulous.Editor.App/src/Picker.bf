@@ -57,6 +57,9 @@ class PickerRequest
 	public String EmptyVerb = new .() ~ delete _;
 	public delegate void() OnEmptyVerb ~ delete _;
 	public delegate void(StringView key) OnPicked ~ delete _;
+	/// Adds what can be done where the picker was right-clicked to `menu`: on the item `key`, or in
+	/// the space under the items (`key` empty). An empty menu is not shown; null: no menu.
+	public delegate void(Sedulous.GUI.Menu menu, StringView key) OnContextMenu ~ delete _;
 
 	/// An item at the end, its texts copied; it is the request's.
 	public PickerItem Add(StringView key, StringView name, StringView section = default, StringView detail = default)
@@ -230,6 +233,9 @@ class Picker
 	/// The sections in the order each first came, the request's strings.
 	private List<StringView> mSections = new .() ~ delete _;
 	private RowModel mModel ~ delete _;
+	/// A right-click's menu (the request's OnContextMenu), while it is the last one: one reference.
+	private Sedulous.GUI.Menu mMenu = null ~ _?.ReleaseRef();
+	private uint32 mListMenuListener = 0;
 
 	/// The picker in `content` (the markup's: `picker-search`, `picker-list`, `picker-state` and
 	/// its parts, `picker-hint`, `picker-close`, by id). TAKES OWNERSHIP of a reference to
@@ -257,6 +263,16 @@ class Picker
 			mList.Model = mModel;
 			mList.SetOnActivated(new (index) => { PickRow(index.Row); });
 			mList.SetOnSelectionChanged(new (index) => { ShowHint(); });
+			// A right-click's menu, from the request: on an item, or in the space under them.
+			mListMenuListener = mList.AddEventListener(.ContextMenu, new (e) =>
+				{
+					if (mRequest.OnContextMenu == null)
+						return;
+					let at = ((MouseEvent)e).Position;
+					let row = mList.ItemAt(at);
+					OpenMenu(IsItemRow(row) ? (StringView)mRequest.Items[mRows[row].Item].Key : default, at);
+					e.Handled = true;
+				});
 		}
 		if (let close = CloseButton)
 			close.SetOnClick(new () => { Close(); });
@@ -286,8 +302,11 @@ class Picker
 	public ~this()
 	{
 		Close();
+		if ((mMenu != null) && mMenu.IsOpen)
+			mMenu.Close();
 		if (mList != null)
 		{
+			mList.RemoveEventListener(mListMenuListener);
 			mList.Model = null;
 			mList.SetRowFactory(null);
 		}
@@ -392,6 +411,52 @@ class Picker
 			row = next;
 		}
 		Light(row);
+	}
+
+	/// Shows the items `items` holds in place of the request's, while it stays open (one was just
+	/// made), the search cleared and the item `lit` lit. TAKES the items out of `items`.
+	public void Refill(List<PickerItem> items, StringView lit)
+	{
+		// The rows view the old items' strings: none are left once they go.
+		mRows.Clear();
+		mSections.Clear();
+		ClearAndDeleteItems!(mRequest.Items);
+		mRequest.Items.AddRange(items);
+		items.Clear();
+		SetQuery(default);
+		for (int32 row < (int32)mRows.Count)
+		{
+			if (IsItemRow(row) && (mRequest.Items[mRows[row].Item].Key == lit))
+			{
+				Light(row);
+				break;
+			}
+		}
+	}
+
+	/// The menu a right-click opened, while it is the last one (tests).
+	public Sedulous.GUI.Menu ContextMenu => mMenu;
+
+	/// Opens the right-click menu as a right-click on the item `key` (empty: the space under the
+	/// items) does, for tests and a keyboard's menu key.
+	public void OpenContextMenu(StringView key) => OpenMenu(key, .(0.0f, 0.0f));
+
+	/// The request's menu for `key` at `at` (in the list's space); an empty one is not shown.
+	private void OpenMenu(StringView key, Float2 at)
+	{
+		if ((mRequest.OnContextMenu == null) || (mList == null))
+			return;
+		if (mMenu != null)
+		{
+			if (mMenu.IsOpen)
+				mMenu.Close();
+			mMenu.ReleaseRef();
+		}
+		mMenu = new Sedulous.GUI.Menu();
+		let held = scope String(key); // the request's string, which the menu's verbs may replace
+		mRequest.OnContextMenu(mMenu, held);
+		if (mMenu.ItemCount > 0)
+			mMenu.Open(mList, at);
 	}
 
 	/// Picks the lit item; with none lit, nothing.

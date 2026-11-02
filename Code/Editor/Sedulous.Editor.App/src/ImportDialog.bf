@@ -93,6 +93,11 @@ class ImportWindow
 	/// null: none, each file shows its icon.
 	public ImportPreviewRegistry Previews = null;
 	public ImportPreviewReader PreviewReader = null;
+	/// Asks for a name (the name prompt), taking the request; null: the group picker offers no New
+	/// Group.... Owned.
+	public delegate void(NameRequest request) AskName ~ delete _;
+	/// Makes the group New Group... names; borrowed; null: no New Group....
+	public AssetOperations Operations = null;
 
 	/// The window over `body` (the markup's controls by id), showing sessions of `import`, its group
 	/// field opening `picker` (both borrowed: they outlive it; a null picker picks nothing). TAKES
@@ -339,7 +344,75 @@ class ImportWindow
 			return;
 		let request = GroupPicker.Request(sources, mImport.GroupOf(mSession));
 		request.OnPicked = new (key) => { PickedGroup(key); };
+		request.OnContextMenu = new (menu, key) => { GroupMenu(menu, key); };
 		mPicking = mPicker.Open(mRoot, request);
+	}
+
+	// Right-click a group (or the space under them, for the top one): New Group..., its name asked;
+	// the picker stays open with the new group lit to pick. Each step finds its group again by key.
+	private void GroupMenu(Sedulous.GUI.Menu menu, StringView key)
+	{
+		let sources = mImport.Sources;
+		if ((sources == null) || (AskName == null) || (Operations == null))
+			return;
+		let parent = key.IsEmpty ? sources.RootGroup : GroupPicker.Find(sources, key);
+		if (parent == null)
+			return;
+		let parentKey = GroupPicker.KeyOf(parent, .. new .());
+		menu.AddItem("New Group...", new [=this, =parentKey] () => { AskNewGroup(parentKey); } ~ delete parentKey);
+	}
+
+	private void AskNewGroup(StringView parentKey)
+	{
+		let sources = mImport.Sources;
+		let parent = (sources != null) ? GroupPicker.Find(sources, parentKey) : null;
+		if ((parent == null) || (AskName == null))
+			return;
+		let request = new NameRequest();
+		request.Title.Append("New Group in ");
+		GroupPicker.ShownName(parent, request.Title);
+		parent.UniqueGroupName("Group", request.Suggested);
+		request.Accept.Set("Create");
+		let refusalKey = new String(parentKey);
+		request.Refusal = new [=this, =refusalKey] (name, outWhy) =>
+			{
+				if (let found = GroupFor(refusalKey))
+					AssetNames.GroupRefusal(found, name, outWhy);
+			} ~ delete refusalKey;
+		let describeKey = new String(parentKey);
+		request.Describe = new [=this, =describeKey] (name, outText) =>
+			{
+				if (let found = GroupFor(describeKey))
+				{
+					outText.AppendF("Makes the group {} in ", name);
+					GroupPicker.ShownName(found, outText);
+					outText.Append('.');
+				}
+			} ~ delete describeKey;
+		let acceptedKey = new String(parentKey);
+		request.Accepted = new [=this, =acceptedKey] (name) => { NewGroupNamed(acceptedKey, name); } ~ delete acceptedKey;
+		AskName(request);
+	}
+
+	/// The group `key` names in the project's sources; null when it has gone.
+	private Group GroupFor(StringView key)
+	{
+		let sources = mImport.Sources;
+		return (sources != null) ? GroupPicker.Find(sources, key) : null;
+	}
+
+	// The group made in the one `parentKey` names, and the open picker refilled with it lit.
+	private void NewGroupNamed(StringView parentKey, StringView name)
+	{
+		let parent = GroupFor(parentKey);
+		if ((parent == null) || (Operations == null))
+			return;
+		let made = Operations.CreateGroup(parent, name);
+		if ((made == null) || (mPicker == null) || !mPicker.IsOpen)
+			return;
+		let fresh = GroupPicker.Request(mImport.Sources, null);
+		defer delete fresh;
+		mPicker.Refill(fresh.Items, GroupPicker.KeyOf(made, .. scope .()));
 	}
 
 	private void PickedGroup(StringView key)
