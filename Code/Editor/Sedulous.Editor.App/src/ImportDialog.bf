@@ -614,6 +614,7 @@ class ImportWindow
 				});
 			mSettingsGrid = new PropertyGrid();
 			mSettingsGrid.AddClass("import-settings");
+			mSettingsGrid.FitsRows = true; // as tall as its settings: what the file makes follows right under them
 			mSettingsGrid.Source = mSettings;
 			mDetail.AddChild(mSettingsGrid);
 			// The same settings for the drop's other files of this importer, in one click.

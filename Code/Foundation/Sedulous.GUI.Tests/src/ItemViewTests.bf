@@ -119,6 +119,30 @@ class ItemViewTests
 		Test.Assert(Near(h.Total, 65.0f));
 	}
 
+	/// Fitting its rows, it measures as tall as they are, and follows their count.
+	[Test]
+	public static void FittingItsRowsItMeasuresAsTallAsTheyAreAndFollowsTheirCount()
+	{
+		let model = ItemViewFixtures.Numbered(5);
+		defer delete model;
+		// A list with no height of its own, as one placed among other content.
+		let root = SceneFixtures.NewScene(300.0f, 600.0f);
+		defer root.ReleaseRef(); // the tree, the list with it
+		let list = new ListView();
+		list.RowHeight = 20.0f;
+		root.AddChild(list);
+		list.ReleaseRef(); // the tree holds it
+		list.Model = model;
+		let open = LayoutConstraints(.(0.0f, 0.0f), .(300.0f, 10000.0f), .(300.0f, -1.0f), false, false);
+		list.FitsRows = true;
+		root.UpdateLayout();
+		Test.Assert(Near(list.Measure(open).Y, 100.0f), "five rows of 20");
+		model.RemoveItem(4);
+		model.RemoveItem(3);
+		root.UpdateLayout();
+		Test.Assert(Near(list.Measure(open).Y, 60.0f));
+	}
+
 	[Test]
 	public static void MeasuredRowsTakeTheirOwnHeightsOnceRealisedEstimatedUntilThen()
 	{

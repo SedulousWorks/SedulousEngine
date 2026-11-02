@@ -350,6 +350,8 @@ abstract class ItemView : UIWidget, IModelClient
 	private delegate void(DragPayload payload, Span<Sedulous.GUI.ItemId> ids) mOnDragPayload ~ delete _; // the owner's payload
 	private float mRowHeight = 24.0f;
 	private float mEstimate = 24.0f;
+	/// FitsRows.
+	private bool mFitsRows = false;
 	private ItemLayout mLayout = .List;
 	private Float2 mCellSize = .(96.0f, 96.0f);
 	private int32 mScrollAnchor = 0;
@@ -506,6 +508,21 @@ abstract class ItemView : UIWidget, IModelClient
 			mRowHeight = Math.Max(0.0f, value);
 			ScrollStep = (mRowHeight > 0.0f) ? mRowHeight : mEstimate;
 			mHeights.Reset(ItemCount(), RowEstimate);
+			RequestLayout();
+		}
+	}
+
+	/// Whether its natural height is its rows' (a short list among other content, as an import's
+	/// settings above what the file makes). Off, as by default, it measures as a box of its pooled
+	/// rows does and takes the height its layout gives it, which a long list wants.
+	public bool FitsRows
+	{
+		get => mFitsRows;
+		set
+		{
+			if (value == mFitsRows)
+				return;
+			mFitsRows = value;
 			RequestLayout();
 		}
 	}
@@ -1098,6 +1115,13 @@ abstract class ItemView : UIWidget, IModelClient
 	protected abstract void BindContent(Node content, int32 item, ModelIndex index);
 	/// Room above the rows (a table's header).
 	protected virtual float ContentTopInset => 0.0f;
+
+	/// With FitsRows, as tall as its rows (and what is above them); otherwise as any box.
+	public override Float2 MeasureContent(Float2 available)
+	{
+		let measured = base.MeasureContent(available);
+		return mFitsRows ? Float2(measured.X, ContentTopInset + ContentHeight) : measured;
+	}
 	/// How wide a row is in a content box `width` wide (a table's columns may be wider).
 	protected virtual float RowWidth(float width) => width;
 	/// The model was set or reset (a tree flattens, a table rebuilds its header).
