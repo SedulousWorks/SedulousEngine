@@ -458,6 +458,24 @@ class AssetImport
 			} ~ { delete slot; session.ReleaseRef(); });
 	}
 
+	/// Describes file `index` again with its settings as they are now (one changed: a model without
+	/// textures makes none), keeping what was read and the choices made on its plan.
+	public void RefreshPlan(Session session, int index)
+	{
+		if ((index < 0) || (index >= session.Files.Count))
+			return;
+		let file = session.Files[index];
+		let importer = file.Importer;
+		if ((importer == null) || (file.State != .Ready))
+			return;
+		let chosen = scope ImportPlan();
+		CopyPlan(file.Plan, chosen);
+		ClearAndDeleteItems!(file.Plan.Entries);
+		importer.DescribeImport(file.Path, file.Options, file.Prepared, file.Plan);
+		LayStoredOver(session, file);
+		file.Plan.MergeStoredSelection(chosen); // what was chosen here wins
+	}
+
 	// A previous import's choices in the session's group, laid over the file's plan.
 	private void LayStoredOver(Session session, File file)
 	{

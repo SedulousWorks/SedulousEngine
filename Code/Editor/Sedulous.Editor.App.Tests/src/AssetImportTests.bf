@@ -31,6 +31,36 @@ class PaintAsset : Asset
 
 static class AssetImportTests
 {
+	/// A lid, or not.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
+	class KitOptions : ImportOptions
+	{
+		[DisplayName("With lid")]
+		public bool WithLid = false;
+	}
+
+	/// Takes ".kit": a body, and a lid when its setting says so (a plan that follows a setting).
+	class KitImporter : IFileImporter
+	{
+		public StringView Label => "Kit";
+		public bool Accepts(StringView ext) => ext == "kit";
+		public ImportOptions CreateOptions() => new KitOptions();
+
+		public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared, ImportPlan outPlan)
+		{
+			outPlan.Add(new ImportPlanEntry(.Mesh, "Body", "Body"));
+			if (let kit = options as KitOptions)
+			{
+				if (kit.WithLid)
+					outPlan.Add(new ImportPlanEntry(.Mesh, "Lid", "Lid"));
+			}
+		}
+
+		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
+			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
+			=> .Err(.NotSupported);
+	}
+
 	/// One setting, so a reimport has something to take back.
 	[Reflect(.NonStaticFields | .DefaultConstructor)]
 	class PaintOptions : ImportOptions
@@ -302,6 +332,7 @@ static class AssetImportTests
 			importers.Register(new ScriptImporter("Layout", "ui", "Hud"));
 			importers.Register(new ToggledImporter());
 			importers.Register(new PaintImporter());
+			importers.Register(new KitImporter());
 			GlobalSerializableRegistry.Register(TypeIdOf(typeof(PaintAsset).GetFullName(.. scope .())), () => (ISerializable)new PaintAsset());
 			Raw = new HeavyImporter("Raw", "mesh");
 			importers.Register(Raw);
@@ -714,5 +745,28 @@ static class AssetImportTests
 		Test.Assert(loose != null);
 		Test.Assert(bed.Import.BeginReimport(loose.Id, why..Clear()) == null);
 		Test.Assert(why.Contains("was not imported from a file of its own"), scope String(why));
+	}
+
+	/// A changed setting describes the file again, keeping the choices made on its plan.
+	[Test]
+	public static void AChangedSettingDescribesTheFileAgainKeepingTheChoicesMadeOnItsPlan()
+	{
+		let bed = scope Bed("scratch_asset_import_refresh");
+		let session = bed.Import.Begin(scope StringView[]("/somewhere/box.kit"), bed.Top);
+		Test.Assert(session != null);
+		defer session.ReleaseRef();
+		let file = session.Files[0];
+		Test.Assert(file.Plan.Entries.Count == 1);
+		file.Plan.Entries[0].TargetName.Set("Hull"); // renamed in the window
+		(file.Options as KitOptions).WithLid = true;
+		bed.Import.RefreshPlan(session, 0);
+		Test.Assert(file.Plan.Entries.Count == 2, "the lid now");
+		Test.Assert(file.Plan.Entries[0].TargetName == "Hull", "the rename kept");
+		Test.Assert(file.Plan.Entries[1].SourceName == "Lid");
+		// Off again: the lid goes, the rename stays.
+		(file.Options as KitOptions).WithLid = false;
+		bed.Import.RefreshPlan(session, 0);
+		Test.Assert(file.Plan.Entries.Count == 1);
+		Test.Assert(file.Plan.Entries[0].TargetName == "Hull");
 	}
 }

@@ -580,10 +580,15 @@ class ImportWindow
 						&& (changed.Options.GetType().GetField(scope String(path)) case .Ok(let setting)))
 					{
 						changed.Importer.SettingChanged(changed.Options, setting);
-						Later(new [=this] () =>
+						// What the file makes, described again with the change, and its settings
+						// shown again with what followed; not inside the grid's own edit.
+						Later(new [=this, =index] () =>
 							{
-								if (mSettings != null)
-									mSettings.Refresh(); // not inside the grid's own edit
+								if ((mSession == null) || (index != mSelected) || (index >= mSession.Files.Count))
+									return;
+								mImport.RefreshPlan(mSession, index);
+								ShowDetail();
+								ShowWhy();
 							});
 					}
 					if (mPreview != null)
