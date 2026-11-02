@@ -35,6 +35,9 @@ class ModelFilePreviewTests
 			Test.Assert(!preview.IsOpen, "still reading");
 			Test.Assert(preview.Facts.IsEmpty);
 			tasks.Finish();
+			Test.Assert(preview.IsLoading, "cooked; its parts now load on the pool, a few a frame");
+			Test.Assert(!preview.IsOpen);
+			preview.FinishLoading();
 			Test.Assert(changed == 1);
 			Test.Assert(preview.IsOpen);
 			// Fox.gltf: one mesh of 576 triangles, one material and texture, 24 bones, three clips.
@@ -50,11 +53,14 @@ class ModelFilePreviewTests
 			Test.Assert(preview.Clips[0] == "Survey");
 		}
 
-		// Opened again, it binds what the first open cooked, with no read.
+		// Opened again, it loads what the first open cooked, with no read and no cook: its parts load
+		// on the pool, never on the window's thread.
 		{
 			let again = scope ModelFilePreview(fox, cache, tasks, services);
+			Test.Assert(again.IsLoading);
+			Test.Assert(!again.IsOpen);
+			again.FinishLoading();
 			Test.Assert(again.IsOpen);
-			Test.Assert(tasks.InFlight == 0);
 			Test.Assert(again.Facts.Length == 6);
 		}
 
@@ -91,7 +97,8 @@ class ModelFilePreviewTests
 		Test.Assert(!preview.IsOpen, "its cook is a task: the window's thread goes on");
 		Test.Assert(tasks.InFlight == 1, "the cook alone, no read of its own");
 		tasks.Finish();
-		Test.Assert(preview.IsOpen, "bound in the completion");
+		preview.FinishLoading(); // its parts, then the bind
+		Test.Assert(preview.IsOpen);
 		Test.Assert(preview.Facts.Length == 6);
 	}
 

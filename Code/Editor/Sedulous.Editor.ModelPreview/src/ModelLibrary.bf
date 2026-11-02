@@ -446,6 +446,8 @@ class OpenModel
 		BindFailed,
 		/// Its cook was told to stop.
 		Cancelled,
+		/// Its parts load on the task pool; Update binds it once they have.
+		Loading,
 	}
 
 	public enum Begun : uint8
@@ -454,6 +456,8 @@ class OpenModel
 		Bound,
 		/// The file must be read (LoadFile, on any thread), then Finish called.
 		NeedsFile,
+		/// Cooked before: its parts load on the task pool, and Update binds it.
+		Loading,
 		Failed,
 	}
 
@@ -466,6 +470,14 @@ class OpenModel
 	/// A reference of ours while open; a cook running on a worker keeps its own.
 	private ModelCache mCache = null;
 	private ResourceManager mResources = null;
+	/// Where the model's parts decode; borrowed; null: they bind at once.
+	private TaskPool mTasks = null;
+	/// While its parts load: the model to bind once they are in, what the open will come to, and
+	/// how many were asked for.
+	private bool mLoading = false;
+	private Guid mLoadingGuid = .();
+	private Outcome mLoadingOutcome = .Opened;
+	private int mPartsAsked = 0;
 	private ResourceFactorySet mFactories = null;
 	/// Retained while open (mRetained): the manager's cache owns the handle.
 	private Proxy<ModelResource> mModel = .(null);
@@ -474,6 +486,14 @@ class OpenModel
 	public ~this()
 	{
 		Close();
+	}
+
+	/// Where the model's parts decode (before Begin). With a pool the model loads over frames: Begin
+	/// and Bind answer Loading, and Update binds it once every part is in. Without one, everything
+	/// binds at once on the calling thread. BORROWED: it outlives this.
+	public void SetTasks(TaskPool tasks)
+	{
+		mTasks = tasks;
 	}
 
 	/// Whether a material without its texture takes an image beside the model (ApplyLooseTextures).
@@ -550,7 +570,7 @@ class OpenModel
 		if (!CreateDirectory(folder) && !DirectoryExists(folder))
 			return .Failed;
 		mCache = new ModelCache(folder);
-		mResources = new ResourceManager(mCache.Database);
+		mResources = new ResourceManager(mCache.Database, mTasks);
 		mFactories = new ResourceFactorySet();
 		let services = scope ResourceServiceTable();
 		if (device != null)
@@ -572,6 +592,12 @@ class OpenModel
 		}
 		delete mStats;
 		mStats = read;
+		if (mTasks != null)
+		{
+			StartLoading(guid, .FromCache);
+			outOutcome = .Loading;
+			return .Loading;
+		}
 		outOutcome = BindCooked(guid, .FromCache);
 		return (outOutcome == .FromCache) ? .Bound : .Failed;
 	}
@@ -622,14 +648,77 @@ class OpenModel
 		return .Opened;
 	}
 
-	/// Binds what Cook made, on the thread that owns the resources. TAKES OWNERSHIP of `stats`.
+	/// Binds what Cook made, on the thread that owns the resources (with a pool: starts its parts
+	/// loading, and answers Loading). TAKES OWNERSHIP of `stats`.
 	public Outcome Bind(Guid guid, ModelStats stats)
 	{
 		delete mStats;
 		mStats = stats;
 		if (mResources == null)
 			return .BindFailed;
+		if (mTasks != null)
+		{
+			StartLoading(guid, .Opened);
+			return .Loading;
+		}
 		return BindCooked(guid, .Opened);
+	}
+
+	/// Once a frame on the thread that owns the resources: finishes the parts decoded since, within
+	/// the frame's share, and binds the model once none is left. Loading until then; then what the
+	/// open came to (Opened or FromCache once, BindFailed when it did not bind).
+	public Outcome Update()
+	{
+		if (mResources == null)
+			return .BindFailed;
+		mResources.Pump();
+		if (!mLoading)
+			return IsOpen ? .Opened : .BindFailed;
+		if (mResources.PendingCount > 0)
+			return .Loading;
+		mLoading = false;
+		return BindCooked(mLoadingGuid, mLoadingOutcome);
+	}
+
+	/// While it loads: the parts asked for, and how many are still on their way.
+	public bool IsLoading => mLoading;
+	public int PartsAsked => mPartsAsked;
+	public int PartsPending => (mResources != null) ? mResources.PendingCount : 0;
+
+	/// Asks for every part the model's manifest names, each as whatever its cooked form makes, so
+	/// their decodes run on the pool; with async binds on, so a material's textures do too. The model
+	/// binds in Update once none is pending: from parts all in, at once.
+	private void StartLoading(Guid model, Outcome done)
+	{
+		mLoading = true;
+		mLoadingGuid = model;
+		mLoadingOutcome = done;
+		mPartsAsked = 0;
+		let instance = mCache.Database.GetInstance(model);
+		let object = (instance != null) ? instance.ReadObject() : null;
+		defer delete object;
+		let manifest = (object != null) ? Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as ModelManifestSource : null;
+		if (manifest == null)
+			return; // Update binds it at once, and says why it did not
+		let previous = mResources.AsyncBindsEnabled;
+		mResources.SetAsyncBinds(true);
+		defer mResources.SetAsyncBinds(previous);
+		for (let id in manifest.MeshGuid)
+			AskPart(id);
+		for (let id in manifest.MaterialAlbedo)
+			AskPart(id);
+		for (let id in manifest.MaterialGuid)
+			AskPart(id);
+		AskPart(manifest.SkeletonGuid);
+		for (let id in manifest.AnimationGuid)
+			AskPart(id);
+	}
+
+	/// One part asked for, as whatever its cooked form makes (the manager's cache keeps it).
+	private void AskPart(Guid id)
+	{
+		if ((id != Guid.Empty) && (mResources.BindAsyncAny(id) != null))
+			mPartsAsked++;
 	}
 
 	/// Releases the model and everything it bound: the manager before the factories it uses, then
@@ -640,6 +729,8 @@ class OpenModel
 			mModel.Forget();
 		mRetained = false;
 		mModel = .(null);
+		mLoading = false;
+		mPartsAsked = 0;
 		DeleteAndNullify!(mResources);
 		DeleteAndNullify!(mFactories);
 		if (mCache != null)

@@ -116,7 +116,9 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 
 	public void OnUpdate(IApplicationHost host, float dt)
 	{
-		if (mOpen.Resources != null)
+		if (mOpen.IsLoading)
+			UpdateLoading(); // its parts finish a few a frame; it binds once they are in
+		else if (mOpen.Resources != null)
 			mOpen.Resources.Pump(); // the model's textures finish loading
 		if (mViewport == null)
 			return;
@@ -219,10 +221,17 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		// As the importer reads it: without the viewer's loose texture rule, which the import does
 		// not apply either, so the preview shows what will come in.
 		mOpen.LooseTextures = false;
+		mPool = tasks;
+		mOpen.SetTasks(tasks); // its parts decode there, and OnUpdate binds it once they are in
 		let begun = mOpen.Begin(mPath, cacheRoot, mDevice, let outcome);
 		if (begun == .Bound)
 		{
 			Opened();
+			return;
+		}
+		if (begun == .Loading)
+		{
+			ShowLoading();
 			return;
 		}
 		if (begun == .Failed)
@@ -233,7 +242,6 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		// Read (unless the importer has) and cooked on the worker, bound here. The task holds the
 		// cache by reference, so a preview that goes first frees nothing under it; the importer's read
 		// is the window's, which stops the task (StopReading) before it changes or frees that.
-		mPool = tasks;
 		let result = new Read(); // the done's reference
 		result.AddRef(); // the work's
 		if (imported != null)
@@ -283,10 +291,51 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		let stats = result.Stats;
 		result.Stats = null; // Bind takes it
 		let bound = mOpen.Bind(result.Guid, stats);
-		if (bound == .Opened)
+		if (bound == .Loading)
+			ShowLoading();
+		else if (bound == .Opened)
 			Opened();
 		else
 			Failed(bound);
+	}
+
+	/// While its parts load: how many are in.
+	private void ShowLoading()
+	{
+		let asked = mOpen.PartsAsked;
+		let pending = mOpen.PartsPending;
+		mMessage.Text = scope $"Loading {(asked > pending) ? (asked - pending) : 0} of {asked} parts...";
+		mMessage.Displayed = true;
+	}
+
+	/// Once a frame while it loads: binds it when its parts are in.
+	private void UpdateLoading()
+	{
+		if (!mOpen.IsLoading)
+			return;
+		let outcome = mOpen.Update();
+		if (outcome == .Loading)
+			ShowLoading();
+		else if ((outcome == .Opened) || (outcome == .FromCache))
+			Opened();
+		else
+			Failed(outcome);
+	}
+
+	/// Whether its parts are loading (it binds once they are in).
+	public bool IsLoading => mOpen.IsLoading;
+
+	/// Runs its pool and its loading to the end, as frames would, without a host (tests).
+	public void FinishLoading()
+	{
+		for (int frame < 100000)
+		{
+			if (mPool != null)
+				mPool.Finish();
+			if (!mOpen.IsLoading)
+				break;
+			UpdateLoading();
+		}
 	}
 
 	private void Failed(OpenModel.Outcome outcome)
