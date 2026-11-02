@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
@@ -72,7 +73,7 @@ static class EditorContextTests
 		}
 
 		public Type AssetType => mType;
-		public IImportPreview Create(StringView path) => null;
+		public IImportPreview Create(StringView path, ImportPreviewReader reader) => null;
 	}
 
 	[Test]
@@ -94,6 +95,27 @@ static class EditorContextTests
 		Test.Assert(registry.FindByName("") == null);
 		registry.Register(new TestPreviewFactory(null));
 		Test.Assert(registry.Count == 2, "one with no type is dropped");
+	}
+
+	/// A read runs off the main thread and is handed back only in Pump; one cancelled meanwhile (its
+	/// preview gone) is dropped.
+	[Test]
+	public static void AReadRunsOffTheMainThreadAndIsHandedBackInPumpACancelledOneIsDropped()
+	{
+		let reader = scope ImportPreviewReader();
+		int32 reads = 0;
+		int handed = 0;
+		let kept = reader.Read(new [&reads] () => { Interlocked.Increment(ref reads); }, new [&handed] () => { handed++; });
+		let dropped = reader.Read(new [&reads] () => { Interlocked.Increment(ref reads); }, new [&handed] () => { handed += 10; });
+		dropped.Cancel(); // the preview went before its read came back
+		Test.Assert(reader.InFlight == 2);
+		Test.Assert(handed == 0, "nothing is handed back outside Pump");
+		reader.Finish();
+		Test.Assert(handed == 1, "only the kept read's result");
+		Test.Assert(reader.InFlight == 0);
+		Test.Assert(reads >= 1, "the cancelled read may have started before it was cancelled");
+		kept.ReleaseRef();
+		dropped.ReleaseRef();
 	}
 
 	[Test]

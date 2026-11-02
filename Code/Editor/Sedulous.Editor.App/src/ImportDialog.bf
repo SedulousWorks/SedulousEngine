@@ -71,9 +71,10 @@ class ImportWindow
 	/// The asset types' icons, as the Assets panel shows them. BORROWED: the application's, which
 	/// outlives the window; null: the generic one.
 	public EditorIcons Icons = null;
-	/// The domains' previews by asset type. BORROWED: the context's; null: none, each file shows
-	/// its icon.
+	/// The domains' previews by asset type, and what reads their files. BORROWED: the context's;
+	/// null: none, each file shows its icon.
 	public ImportPreviewRegistry Previews = null;
+	public ImportPreviewReader PreviewReader = null;
 
 	/// The window over `body` (the markup's controls by id), showing sessions of `import`, its group
 	/// field opening `picker` (both borrowed: they outlive it; a null picker picks nothing). TAKES
@@ -413,10 +414,10 @@ class ImportWindow
 			DeleteAndNullify!(mPreview);
 			mPreviewPath.Set(file.Path);
 			mPreviewType.Set(typeName);
-			if (Previews != null)
+			if ((Previews != null) && (PreviewReader != null))
 			{
 				if (let factory = Previews.FindByName(typeName))
-					mPreview = factory.Create(file.Path);
+					mPreview = factory.Create(file.Path, PreviewReader);
 			}
 			if (mPreview != null)
 				mPreviewView.AddChild(mPreview.View); // the preview keeps its own reference

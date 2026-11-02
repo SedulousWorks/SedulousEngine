@@ -19,6 +19,7 @@ class ImageFilePreview : IImportPreview
 	private Node mRoot ~ _.ReleaseRef();
 	private ImagePreview mPicture ~ delete _;
 	private List<String> mFacts = new .() ~ DeleteContainerAndItems!(_);
+	private delegate void() mOnChanged ~ delete _;
 
 	/// Reads and shows the picture at `path`; a file that does not decode shows why, and no facts.
 	public this(StringView path)
@@ -53,6 +54,12 @@ class ImageFilePreview : IImportPreview
 
 	public Node View => mRoot;
 	public Span<String> Facts => mFacts;
+
+	public void SetOnChanged(delegate void() onChanged)
+	{
+		delete mOnChanged;
+		mOnChanged = onChanged;
+	}
 
 	// For tests.
 	public ImagePreview Picture => mPicture;
@@ -159,7 +166,7 @@ class ImageFilePreviewFactory : IImportPreviewFactory
 	}
 
 	public Type AssetType => mType;
-	public IImportPreview Create(StringView path) => new ImageFilePreview(path);
+	public IImportPreview Create(StringView path, ImportPreviewReader reader) => new ImageFilePreview(path);
 
 	/// Registers the picture preview for the files listed by `type`.
 	public static void Register(EditorContext context, Type type)

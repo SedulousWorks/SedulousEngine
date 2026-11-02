@@ -1021,6 +1021,7 @@ class EditorApplication : IApplication
 					mImportWindow = new ImportWindow(mAssetImport, PickerMade(), mWindow.LoadMarkup(ImportWindow.cMarkupPath));
 					mImportWindow.Icons = TypeIcons();
 					mImportWindow.Previews = mContext.ImportPreviews;
+					mImportWindow.PreviewReader = mContext.ImportPreviewReads;
 				}
 				return mImportWindow;
 			});

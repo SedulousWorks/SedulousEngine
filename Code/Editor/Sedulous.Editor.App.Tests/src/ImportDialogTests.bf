@@ -118,6 +118,7 @@ static class ImportDialogTests
 
 		public Node View => mView;
 		public Span<String> Facts => mFacts;
+		public void SetOnChanged(delegate void() onChanged) { delete onChanged; }
 	}
 
 	/// Previews the box files' type, counting how many it has made.
@@ -127,7 +128,7 @@ static class ImportDialogTests
 
 		public Type AssetType => typeof(ImportPreviewThing);
 
-		public IImportPreview Create(StringView path)
+		public IImportPreview Create(StringView path, ImportPreviewReader reader)
 		{
 			Made++;
 			return new NamePreview(path);
@@ -207,6 +208,7 @@ static class ImportDialogTests
 			Window = new ImportWindow(Import, Groups, PagesBed.LoadMarkup(ImportWindow.cMarkupPath));
 			Test.Assert(Window.Window != null);
 			Window.Previews = Context.ImportPreviews;
+			Window.PreviewReader = Context.ImportPreviewReads;
 		}
 
 		public ~this()
