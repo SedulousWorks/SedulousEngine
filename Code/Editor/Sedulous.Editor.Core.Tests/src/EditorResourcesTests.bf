@@ -115,6 +115,27 @@ static class EditorResourcesTests
 		Test.Assert(square.Elements.Count == 1, "the set-aside square is still whole");
 	}
 
+	/// The editor watches its own folder: a sweep walks every file it watches, and the data root
+	/// beside Editor/ holds the sample projects. A file there still loads; its change is not one.
+	[Test]
+	public static void OnlyTheWatchedFolderIsSweptForChanges()
+	{
+		let root = Scratch("scratch_editor_resources_watched", .. scope .());
+		Write(root, "Editor/editor.css", "a { color: red; }");
+		Write(root, "SampleProjects/Game/Content/level.scene", "one");
+		let resources = scope EditorResources(root, "Editor");
+
+		Write(root, "SampleProjects/Game/Content/level.scene", "two, longer");
+		Write(root, "SampleProjects/Game/Content/new.scene", "new");
+		Test.Assert(!resources.Poll(), "outside the watched folder");
+		let text = scope String();
+		Test.Assert(resources.LoadText("SampleProjects/Game/Content/level.scene", text) && (text == "two, longer"));
+
+		Write(root, "Editor/editor.css", "a { color: blue; text-align: center; }");
+		Test.Assert(resources.Poll());
+		Test.Assert((resources.LastChanged.Length == 1) && (resources.LastChanged[0] == "Editor/editor.css"));
+	}
+
 	[Test]
 	public static void ATypeHasItsOwnIconTintedByTheNearestCategory()
 	{

@@ -1262,11 +1262,15 @@ class EditorApplication : IApplication
 		if (mProfiler != null)
 			mProfiler.Update(); // the frames recorded since, while recording
 		if (mAssets != null)
-			mAssets.Refresh(); // an agent's write, a cook's badges: shown this frame
+		{
+			using (ProfileScope("Editor.Assets"))
+				mAssets.Refresh(); // an agent's write, a cook's badges: shown this frame
+		}
 		if (host.Shell != null)
 			ImportDroppedFiles(host.Shell);
 		mWindow.Update(dt);
-		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
+		using (ProfileScope("Editor.Pages"))
+			mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 		if (mHome != null)
 			mHome.Refresh();
 	}

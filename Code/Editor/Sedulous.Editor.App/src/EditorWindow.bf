@@ -6,6 +6,7 @@ using Sedulous.Fonts.TrueType;
 using Sedulous.Fonts.HarfBuzz; // the shaper the editor's fonts get
 using Sedulous.Fonts.Bidi; // mixed-direction lines in visual order
 using Sedulous.Graphics;
+using Sedulous.Profiler;
 using Sedulous.Runtime.Client; // IApplicationHost
 using Sedulous.VFS;
 using Sedulous.GUI; // with GUI.Hosting's host, GUI.Docking's, GUI.Toolkit's and GUI.Code's sheets and elements
@@ -204,7 +205,7 @@ class EditorWindow
 		HarfBuzzShaping.Install();
 		BidiAlgorithm.Install();
 		mFonts = new TrueTypeFontService();
-		mResources = new EditorResources(dataRoot);
+		mResources = new EditorResources(dataRoot, "Editor");
 		if (!themeFolder.IsEmpty)
 		{
 			// A place for the file the user writes (the data folder first, should it be new).
@@ -393,10 +394,13 @@ class EditorWindow
 		mSinceSweep += deltaTime;
 		if (mSinceSweep >= cSweepSeconds)
 		{
-			mSinceSweep = 0.0f;
-			mResources.Poll();
-			if ((mTheme != null) && mTheme.Poll())
-				GlobalLog(.Information, "Editor: the theme overrides applied again ({})", cThemeOverridesPath);
+			using (ProfileScope("Editor.Sweep"))
+			{
+				mSinceSweep = 0.0f;
+				mResources.Poll();
+				if ((mTheme != null) && mTheme.Poll())
+					GlobalLog(.Information, "Editor: the theme overrides applied again ({})", cThemeOverridesPath);
+			}
 		}
 		mHost.Update(deltaTime);
 	}

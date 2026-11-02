@@ -48,11 +48,13 @@ class EditorResources : IResourceProvider
 	private Observable mChanged = new .() ~ delete _;
 
 	/// Over the folder `root` (the one holding Editor/ and Assets/): paths are relative to it
-	/// ("Editor/Icons/save.svg"). The whole folder is tracked for changes from here on.
-	public this(StringView root)
+	/// ("Editor/Icons/save.svg"). The folder `watched` under it (empty: the whole of it) is
+	/// tracked for changes from here on. A sweep walks every file there, so the editor watches
+	/// its own folder: the data root also holds the sample projects, thousands of files.
+	public this(StringView root, StringView watched = default)
 	{
 		mFs = new NativeFileSystem(root);
-		mFs.ChangeSource.Track("");
+		mFs.ChangeSource.Track(watched);
 	}
 
 	// ---- IResourceProvider ----
