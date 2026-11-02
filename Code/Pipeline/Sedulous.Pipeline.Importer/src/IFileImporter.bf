@@ -55,6 +55,16 @@ interface IFileImporter
 	{
 	}
 
+	/// What part `part` (an entry of this file's plan) holds, as the file has it, a fact each,
+	/// appended to `outFacts` (the caller's, items too): a material's colour and roughness, a mesh's
+	/// triangles. Read only: changing them is the asset's page after import. `prepared` is
+	/// PrepareOnWorker's payload when the two phase path ran; without it an importer that would have
+	/// to read the file again says nothing. Default: nothing.
+	void DescribePart(StringView sourcePath, ImportOptions options, Object prepared, ImportPlanEntry part,
+		List<ImportPartFact> outFacts)
+	{
+	}
+
 	/// `setting` of `options` was just changed (in the import window, or by an agent): the importer
 	/// may change the settings that follow from it, as a texture's colour space follows its usage.
 	/// Default: none follow.

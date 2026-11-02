@@ -57,6 +57,210 @@ class ModelFileImporter : IFileImporter
 
 	/// The scale's note: how tall the model comes in with it (and the up axis), from the model read
 	/// on the worker.
+	/// What a part holds, read from the model the worker read: a mesh's triangles and its parts by
+	/// material; a material's shading, colour, metallic, roughness, textures and the parts that draw
+	/// with it; a texture's size and the materials using it; the skeleton's bones; a clip's length; a
+	/// collision shape's mesh and kind. A part is matched to the model by the name the plan gives it.
+	/// Nothing without that read.
+	public void DescribePart(StringView sourcePath, ImportOptions options, Object prepared, ImportPlanEntry part,
+		List<ImportPartFact> outFacts)
+	{
+		let loaded = prepared as LoadedModel;
+		if (loaded == null)
+			return;
+		let model = loaded.Model;
+		let name = scope String();
+		switch (part.Kind)
+		{
+		case .Mesh, .Collision:
+			let collision = part.Kind == .Collision;
+			let meshes = model.Meshes;
+			for (int i < meshes.Length)
+			{
+				let mesh = meshes[i];
+				let meshName = ImportedNames.ForAsset(mesh.Name, "mesh", i, .. scope .());
+				name.Set(meshName);
+				if (collision)
+					name.Append(".collision");
+				if (name != part.SourceName)
+					continue;
+				if (collision)
+				{
+					let modelOptions = options as ModelImportOptions;
+					Fact(outFacts, "From the mesh", meshName);
+					Fact(outFacts, "Shape", ((modelOptions != null) && modelOptions.CollisionConvex) ? "Convex hull" : "Triangle mesh");
+					Fact(outFacts, "Triangles", Grouped(MeshTriangles(mesh), .. scope .()));
+					break;
+				}
+				Fact(outFacts, "Triangles", Grouped(MeshTriangles(mesh), .. scope .()));
+				Fact(outFacts, "Skinned", ModelCook.IsSkinned(mesh) ? "Yes" : "No");
+				let parts = mesh.Parts;
+				Fact(outFacts, "Parts", Grouped((uint64)parts.Length, .. scope .()));
+				for (int p < parts.Length)
+				{
+					let value = MaterialName(model, parts[p].MaterialIndex, .. scope .());
+					value.Append(", ");
+					Grouped((uint64)Math.Max(parts[p].IndexCount, 0) / 3, value);
+					value.Append(" triangles");
+					Fact(outFacts, scope $"Part {p + 1}", value);
+				}
+				break;
+			}
+		case .Material:
+			let materials = model.Materials;
+			for (int i < materials.Length)
+			{
+				let material = materials[i];
+				name.Clear();
+				ImportedNames.ForAsset(material.Name, "mat", i, name);
+				if (name != part.SourceName)
+					continue;
+				StringView shading;
+				switch (material.Shading)
+				{
+				case .Phong: shading = "Phong";
+				case .Lambert: shading = "Lambert";
+				case .Unlit: shading = "Unlit";
+				default: shading = "PBR, metallic and roughness";
+				}
+				Fact(outFacts, "Shading", shading);
+				let colour = material.BaseColorFactor;
+				Fact(outFacts, "Base colour", scope String()..AppendF("R {:F2} G {:F2} B {:F2}", colour.X, colour.Y, colour.Z));
+				Fact(outFacts, "Metallic", scope String()..AppendF("{:F2}", material.MetallicFactor));
+				Fact(outFacts, "Roughness", scope String()..AppendF("{:F2}", material.RoughnessFactor));
+				let slots = scope String();
+				TextureSlot(model, material.BaseColorTextureIndex, "base colour", slots);
+				TextureSlot(model, material.NormalTextureIndex, "normal", slots);
+				TextureSlot(model, material.MetallicRoughnessTextureIndex, "metal rough", slots);
+				TextureSlot(model, material.OcclusionTextureIndex, "occlusion", slots);
+				TextureSlot(model, material.EmissiveTextureIndex, "emissive", slots);
+				Fact(outFacts, "Textures", slots.IsEmpty ? "None" : (StringView)slots);
+				let users = scope String();
+				int count = 0;
+				let drawing = model.Meshes;
+				for (int mi < drawing.Length)
+				{
+					let parts = drawing[mi].Parts;
+					for (int pi < parts.Length)
+					{
+						if (parts[pi].MaterialIndex != (int32)i)
+							continue;
+						if (count < 3)
+						{
+							if (!users.IsEmpty)
+								users.Append(", ");
+							users.Append(ImportedNames.ForAsset(drawing[mi].Name, "mesh", mi, .. scope .()));
+							users.AppendF(", part {}", pi + 1);
+						}
+						count++;
+					}
+				}
+				if (count > 3)
+					users.AppendF(", and {} more", count - 3);
+				Fact(outFacts, "Used by", (count == 0) ? "No part" : (StringView)users);
+				break;
+			}
+		case .Texture:
+			let textures = model.Textures;
+			for (int i < textures.Length)
+			{
+				name.Clear();
+				ImportedNames.ForTexture(textures[i], i, name);
+				if (name != part.SourceName)
+					continue;
+				Fact(outFacts, "Size", scope String()..AppendF("{} × {}", textures[i].Width, textures[i].Height));
+				let users = scope String();
+				for (let material in model.Materials)
+				{
+					if (material == null)
+						continue;
+					StringView slot = default;
+					if (material.BaseColorTextureIndex == (int32)i)
+						slot = "base colour";
+					else if (material.NormalTextureIndex == (int32)i)
+						slot = "normal";
+					else if (material.MetallicRoughnessTextureIndex == (int32)i)
+						slot = "metal rough";
+					else if (material.OcclusionTextureIndex == (int32)i)
+						slot = "occlusion";
+					else if (material.EmissiveTextureIndex == (int32)i)
+						slot = "emissive";
+					if (slot.IsEmpty)
+						continue;
+					if (!users.IsEmpty)
+						users.Append(", ");
+					users.AppendF("{} ({})", material.Name, slot);
+				}
+				Fact(outFacts, "Used by", users.IsEmpty ? "No material" : (StringView)users);
+				break;
+			}
+		case .Skeleton:
+			if (!model.Skins.IsEmpty)
+			{
+				let skin = model.Skins[0];
+				Fact(outFacts, "Bones", Grouped((uint64)skin.JointCount, .. scope .()));
+				let joints = skin.Joints;
+				if (!joints.IsEmpty && (joints[0] >= 0) && (joints[0] < model.Bones.Length))
+					Fact(outFacts, "Root bone", model.Bones[joints[0]].Name);
+			}
+		case .AnimationClip:
+			let animations = model.Animations;
+			for (int a < animations.Length)
+			{
+				name.Clear();
+				ImportedNames.ForAsset(animations[a].Name, "anim", a, name);
+				if (name != part.SourceName)
+					continue;
+				Fact(outFacts, "Length", scope String()..AppendF("{:F2} s", animations[a].Duration));
+				Fact(outFacts, "Channels", Grouped((uint64)animations[a].ChannelCount, .. scope .()));
+				break;
+			}
+		default:
+		}
+	}
+
+	/// `count` with its thousands grouped ("4,992"), appended.
+	public static void Grouped(uint64 count, String outText)
+	{
+		let digits = scope String()..AppendF("{}", count);
+		for (int i < digits.Length)
+		{
+			if ((i > 0) && (((digits.Length - i) % 3) == 0))
+				outText.Append(',');
+			outText.Append(digits[i]);
+		}
+	}
+
+	private static void Fact(List<ImportPartFact> outFacts, StringView label, StringView value) => outFacts.Add(new ImportPartFact(label, value));
+
+	/// A mesh's triangles: its corners, three at a time (a mesh with no index buffer draws its
+	/// vertices so).
+	private static uint64 MeshTriangles(ModelMesh mesh)
+	{
+		let corners = (mesh.IndexCount > 0) ? mesh.IndexCount : mesh.VertexCount;
+		return (uint64)Math.Max(corners, 0) / 3;
+	}
+
+	/// The material `index` names in `model`, appended; "No material" when it names none.
+	private static void MaterialName(Model model, int32 index, String outName)
+	{
+		if ((index >= 0) && (index < model.Materials.Length))
+			outName.Append(model.Materials[index].Name);
+		else
+			outName.Append("No material");
+	}
+
+	/// The texture `index` names, with its `slot`, appended to the list `outText` holds.
+	private static void TextureSlot(Model model, int32 index, StringView slot, String outText)
+	{
+		if ((index < 0) || (index >= model.Textures.Length))
+			return;
+		if (!outText.IsEmpty)
+			outText.Append(", ");
+		outText.Append(ImportedNames.ForTexture(model.Textures[index], index, .. scope .()));
+		outText.AppendF(" ({})", slot);
+	}
+
 	public void DescribeSetting(StringView sourcePath, ImportOptions options, Object prepared, FieldInfo setting,
 		String outEffect, String outReason)
 	{

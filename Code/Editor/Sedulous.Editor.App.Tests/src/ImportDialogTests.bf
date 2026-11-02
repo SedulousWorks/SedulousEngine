@@ -48,6 +48,14 @@ static class ImportDialogTests
 			outPlan.Add(new ImportPlanEntry(.Texture, "Rust", "Rust"));
 		}
 
+		/// A texture tells its size; the rest say nothing.
+		public void DescribePart(StringView sourcePath, ImportOptions options, Object prepared, ImportPlanEntry part,
+			List<ImportPartFact> outFacts)
+		{
+			if (part.Kind == .Texture)
+				outFacts.Add(new ImportPartFact("Size", scope String()..AppendF("{} is 64 × 64", part.SourceName)));
+		}
+
 		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
 			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
 		{
@@ -410,6 +418,11 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.SelectedPart == 1);
 		Test.Assert(Count<TextField>(detail) == 1);
 		Test.Assert(Says(detail, "Texture"));
+		Test.Assert(Says(detail, "As the file has it"));
+		Test.Assert(Says(detail, "Wood is 64 × 64"), "its facts, as the importer tells them");
+		bed.Window.SelectPart(0, 0); // Box: a mesh, nothing to tell
+		Test.Assert(!Says(detail, "As the file has it"));
+		bed.Window.SelectPart(0, 1);
 		Test.Assert(!(FileRow(bed.Window, 0) as UIWidget).HasClass("selected"));
 		let parts = scope List<Sedulous.GUI.Panel>();
 		RowsOf<Sedulous.GUI.Panel>(bed.Window, "import-part", parts);

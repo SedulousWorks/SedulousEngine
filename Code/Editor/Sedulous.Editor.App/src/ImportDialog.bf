@@ -920,6 +920,24 @@ class ImportWindow
 					});
 			});
 		Add(mDetail, keep);
+		// What the part holds, as the file has it: read only, from the importer's read.
+		let file = mSession.Files[index];
+		let importer = file.Importer;
+		if (importer == null)
+			return;
+		let facts = scope List<ImportPartFact>();
+		defer { ClearAndDeleteItems!(facts); }
+		importer.DescribePart(file.Path, file.Options, file.Prepared, entry, facts);
+		if (facts.IsEmpty)
+			return;
+		Add(mDetail, Text("As the file has it", "import-part-kind"));
+		for (let fact in facts)
+		{
+			let row = Row("import-part-fact");
+			Add(row, Text(fact.Label, "form-label"));
+			Add(row, Text(fact.Value, "import-part-fact-value"));
+			Add(mDetail, row);
+		}
 	}
 
 	/// The settings' grid lets go of its source, then both go: the grid out of the detail.

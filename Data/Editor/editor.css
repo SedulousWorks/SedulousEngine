@@ -950,6 +950,9 @@ button.import-part-name { flex-grow: 1; justify-content: flex-start; text-align:
 .import-part-kind { font-size: var(--font-small); color: var(--text-dim); }
 .import-part-name-line { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); }
 .import-part-name-line > textfield { flex-grow: 1; }
+.import-part-fact { align-self: stretch; flex-direction: row; align-items: flex-start; column-gap: var(--space-s); }
+.import-part-fact > .form-label { flex-shrink: 0; width: 96px; line-height: normal; }
+.import-part-fact-value { flex-grow: 1; min-width: 0; white-space: normal; }
 .import-footer { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-m) var(--space-l); }
 .import-footer > .group-field { min-width: 220px; }
 .import-why { flex-shrink: 1; min-width: 0; }
