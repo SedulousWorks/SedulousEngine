@@ -346,4 +346,44 @@ class ModelPreviewTests
 		Test.Assert(counted.TextureList[0].File == "Texture.png");
 		Test.Assert(counted.TextureList[0].Width > 0);
 	}
+
+	/// A cook told to stop says so and clears its folder, so the next open cooks afresh; Cook and
+	/// Bind are Finish's two halves.
+	[Test]
+	public static void ACookToldToStopSaysSoAndClearsItsFolderCookAndBindAreFinishsTwoHalves()
+	{
+		let fox = TestModel(cFox, .. scope .());
+		let cache = FreshCache("scratch_model_viewer_cook_cancel", .. scope .());
+		defer RemoveDirectoryRecursive(cache);
+		let model = scope Model();
+		let stats = scope ModelStats();
+		Test.Assert(OpenModel.LoadFile(fox, true, model, stats) == .Opened);
+
+		let folder = scope String();
+		{
+			let open = scope OpenModel();
+			Test.Assert(open.Begin(fox, cache, null, let outcome) == .NeedsFile);
+			folder.Set(open.CacheFolder);
+			let kept = open.Cache;
+			Test.Assert(kept != null);
+			kept.AddRef(); // as a worker's cook keeps it
+			let cancel = scope CancelSource();
+			cancel.Cancel();
+			Test.Assert(OpenModel.Cook(kept, model, stats, let guid, cancel.Token) == .Cancelled);
+			Test.Assert(!DirectoryExists(folder), "nothing half made is left for the next open");
+			Test.Assert(!open.IsOpen);
+			kept.ReleaseRef();
+		}
+
+		// The next open finds no record and cooks; split, as a window runs it, it binds what Cook made.
+		let reopened = scope OpenModel();
+		Test.Assert(reopened.Begin(fox, cache, null, let begun) == .NeedsFile);
+		Test.Assert(OpenModel.Cook(reopened.Cache, model, stats, let cooked) == .Opened);
+		Test.Assert(FileExists(PathJoin(folder, OpenModel.cRecordName, .. scope .())));
+		let bound = new ModelStats();
+		bound.Triangles = stats.Triangles;
+		Test.Assert(reopened.Bind(cooked, bound) == .Opened);
+		Test.Assert(reopened.IsOpen);
+		Test.Assert(reopened.Stats.Triangles == stats.Triangles);
+	}
 }

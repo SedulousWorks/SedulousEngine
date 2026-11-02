@@ -404,6 +404,32 @@ static class ModelLibrary
 	}
 }
 
+/// A model's cook cache: its folder and the content database over it. Reference counted, so a cook
+/// running on a worker keeps it alive when the OpenModel that made it goes first.
+class ModelCache : RefCounted
+{
+	public String Folder = new .() ~ delete _;
+	// Gone in this order: the database before what backs it.
+	public SerializerFactory Serializers;
+	public NativeFileSystem FileSystem;
+	public ContentDatabase Database;
+
+	public this(StringView folder)
+	{
+		Folder.Set(folder);
+		Serializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
+		FileSystem = new NativeFileSystem(folder);
+		Database = new ContentDatabase(FileSystem, Serializers, "rasset");
+	}
+
+	public ~this()
+	{
+		delete Database;
+		delete FileSystem;
+		delete Serializers;
+	}
+}
+
 /// A model file open for viewing: its stats and the bound cooked model, which lives as long as this.
 class OpenModel
 {
@@ -418,6 +444,8 @@ class OpenModel
 		LoadFailed,
 		CookFailed,
 		BindFailed,
+		/// Its cook was told to stop.
+		Cancelled,
 	}
 
 	public enum Begun : uint8
@@ -434,11 +462,9 @@ class OpenModel
 
 	private String mPath = new .() ~ delete _;
 	private bool mLooseTextures = true;
-	private String mFolder = new .() ~ delete _;
 	private ModelStats mStats = new .() ~ delete _;
-	private SerializerFactory mSerializers = null;
-	private NativeFileSystem mFileSystem = null;
-	private ContentDatabase mDatabase = null;
+	/// A reference of ours while open; a cook running on a worker keeps its own.
+	private ModelCache mCache = null;
 	private ResourceManager mResources = null;
 	private ResourceFactorySet mFactories = null;
 	/// Retained while open (mRetained): the manager's cache owns the handle.
@@ -523,11 +549,8 @@ class OpenModel
 		outOutcome = .CookFailed;
 		if (!CreateDirectory(folder) && !DirectoryExists(folder))
 			return .Failed;
-		mFolder.Set(folder);
-		mSerializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
-		mFileSystem = new NativeFileSystem(folder);
-		mDatabase = new ContentDatabase(mFileSystem, mSerializers, "rasset");
-		mResources = new ResourceManager(mDatabase);
+		mCache = new ModelCache(folder);
+		mResources = new ResourceManager(mCache.Database);
 		mFactories = new ResourceFactorySet();
 		let services = scope ResourceServiceTable();
 		if (device != null)
@@ -554,20 +577,58 @@ class OpenModel
 	}
 
 	/// The last step, after Begin returned NeedsFile: cooks `model` (as LoadFile read it) into the
-	/// cache, writes its record, and binds it. TAKES OWNERSHIP of `stats`.
+	/// cache, writes its record, and binds it. Cook and Bind are the same two halves, for a window
+	/// that cooks on a worker. TAKES OWNERSHIP of `stats`.
 	public Outcome Finish(Model model, ModelStats stats)
+	{
+		if (mCache == null)
+		{
+			delete stats;
+			return .CookFailed;
+		}
+		let cooked = Cook(mCache, model, stats, let guid);
+		if (cooked != .Opened)
+		{
+			delete stats;
+			return cooked;
+		}
+		return Bind(guid, stats);
+	}
+
+	/// The cache Begin made (null before it): what a worker cooks into. BORROWED: a cook that runs
+	/// past this takes a reference.
+	public ModelCache Cache => mCache;
+
+	/// Cooks `model` into `cache` and writes its record; safe on a worker while nothing else uses the
+	/// cache (Begin made it and binds nothing until Bind). Stops when `cancel` (null: never) is
+	/// cancelled and clears the folder of what it made, so the next open cooks afresh; the OpenModel
+	/// that cancelled it is going, and binds nothing from it. Opened on success, `outGuid` the model
+	/// to Bind. Borrows `stats`.
+	public static Outcome Cook(ModelCache cache, Model model, ModelStats stats, out Guid outGuid, CancelToken cancel = null)
+	{
+		outGuid = .();
+		switch (ModelCook.Cook(model, cache.Database, "model", cancel))
+		{
+		case .Ok(let cooked):
+			outGuid = cooked;
+		case .Err(let error):
+			if (error != .Cancelled)
+				return .CookFailed;
+			RemoveDirectoryRecursive(cache.Folder);
+			return .Cancelled;
+		}
+		let record = ModelLibrary.WriteRecord(outGuid, stats, .. scope .());
+		WriteFile(PathJoin(cache.Folder, cRecordName, .. scope .()), .((uint8*)record.Ptr, record.Length)).IgnoreError();
+		return .Opened;
+	}
+
+	/// Binds what Cook made, on the thread that owns the resources. TAKES OWNERSHIP of `stats`.
+	public Outcome Bind(Guid guid, ModelStats stats)
 	{
 		delete mStats;
 		mStats = stats;
-		if (mDatabase == null)
-			return .CookFailed;
-		Guid guid;
-		if (ModelCook.Cook(model, mDatabase, "model") case .Ok(let cooked))
-			guid = cooked;
-		else
-			return .CookFailed;
-		let record = ModelLibrary.WriteRecord(guid, mStats, .. scope .());
-		WriteFile(RecordPath(.. scope .()), .((uint8*)record.Ptr, record.Length)).IgnoreError();
+		if (mResources == null)
+			return .BindFailed;
 		return BindCooked(guid, .Opened);
 	}
 
@@ -581,20 +642,22 @@ class OpenModel
 		mModel = .(null);
 		DeleteAndNullify!(mResources);
 		DeleteAndNullify!(mFactories);
-		DeleteAndNullify!(mDatabase);
-		DeleteAndNullify!(mFileSystem);
-		DeleteAndNullify!(mSerializers);
+		if (mCache != null)
+		{
+			mCache.ReleaseRef(); // a cook still running keeps its own reference
+			mCache = null;
+		}
 	}
 
 	public bool IsOpen => mModel.Get != null;
 	public ModelResource Model => mModel.Get;
 	public ModelStats Stats => mStats;
 	public StringView Path => mPath;
-	public StringView CacheFolder => mFolder;
+	public StringView CacheFolder => (mCache != null) ? (StringView)mCache.Folder : default;
 	/// The resource manager; its loads finish as it is pumped.
 	public ResourceManager Resources => mResources;
 
-	private void RecordPath(String outPath) => PathJoin(mFolder, cRecordName, outPath);
+	private void RecordPath(String outPath) => PathJoin(mCache.Folder, cRecordName, outPath);
 
 	private Outcome BindCooked(Guid guid, Outcome done)
 	{
