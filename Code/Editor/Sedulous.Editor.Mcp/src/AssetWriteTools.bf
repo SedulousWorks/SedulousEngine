@@ -6,6 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.Json;
 using Sedulous.Mcp;
+using Sedulous.Engine.Project;
 using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.Editor.Mcp;
@@ -41,7 +42,7 @@ static class AssetWriteTools
 		importSchema.Str("source", "absolute path to the file to import", true);
 		importSchema.Str("group", "source-DB group path to place it in (slash-joined; default root)");
 		importSchema.Str("importer", "which importer to use when several claim the extension, by label (the result of an unhinted import lists them)");
-		importSchema.Map("options", "the importer's settings, as the import window shows them: {\"<setting>\": true|false}, the setting named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Convex collision, Generate LODs, Root motion); an unknown one is refused with the importer's list, unnamed settings keep their defaults, and the result lists every setting's value");
+		importSchema.Map("options", "the importer's settings, as the import window shows them: {\"<setting>\": value}, a flag true or false, a number, or a choice by its value's name (a model's \"Up axis\": \"Z\"), the setting named by its label, case and spaces ignored (a model's: Scale, Up axis, Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Convex collision, Generate LODs, Root motion); an unknown one is refused with the importer's list, unnamed settings keep their defaults, and the result lists every setting's value");
 		importSchema.Str("name", "the asset's name (a single-asset importer's; default: the file's stem)");
 		importSchema.Str("onConflict", "when another file's asset of this type has the name: refuse (default), replace, or keepBoth");
 		server.RegisterTool("asset_import",
@@ -128,17 +129,49 @@ static class AssetWriteTools
 					}
 					return .Failed;
 				}
-				if (found.FieldType != typeof(bool))
+				let address = SettingAt(options, found);
+				let type = found.FieldType;
+				if (type == typeof(bool))
+				{
+					if (!value.IsBool)
+					{
+						outError.AppendF("option '{}' takes true or false", key);
+						return .Failed;
+					}
+					*(bool*)address = value.AsBool();
+				}
+				else if (type == typeof(float))
+				{
+					if (!value.IsNumber)
+					{
+						outError.AppendF("option '{}' takes a number", key);
+						return .Failed;
+					}
+					*(float*)address = (float)value.AsNumber();
+				}
+				else if (type.IsEnum)
+				{
+					// By a case's name only (Enum.Parse would take a number too).
+					bool named = false;
+					for (var (name, data) in Enum.GetEnumerator(type))
+					{
+						if (value.IsString && (name == value.AsString()))
+						{
+							named = true;
+							SettingFields.WriteChoice(options, found, data);
+						}
+					}
+					if (!named)
+					{
+						outError.AppendF("option '{}' takes {}", key, SettingFields.ChoiceNames(type, .. scope .()));
+						return .Failed;
+					}
+				}
+				else
 				{
 					outError.AppendF("option '{}' is not one asset_import sets", key);
 					return .Failed;
 				}
-				if (!value.IsBool)
-				{
-					outError.AppendF("option '{}' takes true or false", key);
-					return .Failed;
-				}
-				*SettingAt(options, found) = value.AsBool();
 			}
 		}
 
@@ -212,8 +245,18 @@ static class AssetWriteTools
 			let applied = JsonValue.MakeObject();
 			for (let setting in settings)
 			{
+				let label = ImportOptions.SettingLabel(setting, .. scope .());
+				let address = SettingAt(options, setting);
 				if (setting.FieldType == typeof(bool))
-					applied.Set(ImportOptions.SettingLabel(setting, .. scope .()), JsonValue.MakeBool(*SettingAt(options, setting)));
+					applied.Set(label, JsonValue.MakeBool(*(bool*)address));
+				else if (setting.FieldType == typeof(float))
+					applied.Set(label, JsonValue.MakeNumber(*(float*)address));
+				else if (setting.FieldType.IsEnum)
+				{
+					let name = scope String();
+					Enum.EnumToString(setting.FieldType, name, SettingFields.ReadChoice(options, setting));
+					applied.Set(label, JsonValue.MakeString(name));
+				}
 			}
 			outResult.Set("options", applied);
 		}
@@ -229,8 +272,8 @@ static class AssetWriteTools
 	}
 
 	/// A bool setting's value in `options`, where it lives.
-	private static bool* SettingAt(ImportOptions options, FieldInfo setting)
-		=> (bool*)((uint8*)Internal.UnsafeCastToPtr(options) + setting.MemberOffset);
+	private static void* SettingAt(ImportOptions options, FieldInfo setting)
+		=> (uint8*)Internal.UnsafeCastToPtr(options) + setting.MemberOffset;
 
 	private static void AppendLabels(List<IFileImporter> importers, IFileImporter except, String outText)
 	{

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
@@ -49,6 +50,26 @@ class ModelFileImporter : IFileImporter
 			return null;
 		}
 		return loaded;
+	}
+
+	/// The scale's note: how tall the model comes in with it (and the up axis), from the model read
+	/// on the worker.
+	public void DescribeSetting(StringView sourcePath, ImportOptions options, Object prepared, FieldInfo setting,
+		String outEffect, String outReason)
+	{
+		let loaded = prepared as LoadedModel;
+		let chosen = options as ModelImportOptions;
+		if ((loaded == null) || (chosen == null) || (setting.Name != "Scale"))
+			return;
+		let bounds = loaded.Model.Bounds;
+		if (!bounds.IsValid())
+			return;
+		let scale = (chosen.Scale > 0.0f) ? chosen.Scale : 1.0f;
+		let height = ((chosen.UpAxis == .Z) ? (bounds.Max.Z - bounds.Min.Z) : (bounds.Max.Y - bounds.Min.Y)) * scale;
+		if (height < 1.0f)
+			outEffect.AppendF("Makes it {:F3} m tall", height);
+		else
+			outEffect.AppendF("Makes it {:F2} m tall", height);
 	}
 
 	public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared,
@@ -264,6 +285,7 @@ class ModelFileImporter : IFileImporter
 		{
 			return .Err(.InvalidArgument);
 		}
+		ModelImportFrame.Apply(model, opt.Scale, opt.UpAxis); // before anything reads a length or a direction
 
 		let suffix = scope String();
 		ImportPaths.ExtensionLower(sourcePath, suffix);

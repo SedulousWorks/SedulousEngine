@@ -29,8 +29,11 @@ class ModelImportOptionTests
 		Test.Assert(!options.RootMotion);
 
 		let settings = options.GetSettings(.. scope .());
-		Test.Assert(settings.Count == 9); // + Root motion and Generate LODs
-		Test.Assert(ImportOptions.SettingLabel(settings[0], .. scope .()) == "Textures");
+		Test.Assert(settings.Count == 11); // Scale and Up axis first, then Root motion and Generate LODs among the rest
+		Test.Assert(ImportOptions.SettingLabel(settings[0], .. scope .()) == "Scale");
+		Test.Assert(ImportOptions.SettingLabel(settings[2], .. scope .()) == "Textures");
+		Test.Assert(options.Scale == 1.0f);
+		Test.Assert(options.UpAxis == .Y);
 		Test.Assert(options.FindSetting("Generate collision", ?));
 		Test.Assert(options.FindSetting("convex collision", let convex));
 		Test.Assert(convex.GetCustomAttribute<VisibleWhenAttribute>() case .Ok, "shown only while Generate collision is on");

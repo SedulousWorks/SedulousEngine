@@ -6,11 +6,30 @@ using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.ModelImporter;
 
+/// Which way is up in a model file whose loader reads it as Y up but whose content is not (an
+/// export whose Z-up axis was not written into the file). Its cases are reflected: the import
+/// window offers them, and an agent names one.
+[Reflect(.StaticFields)]
+enum ModelUpAxis : uint8
+{
+	/// As the file is read.
+	case Y;
+	/// Turned so its Z points up.
+	case Z;
+}
+
 /// What one model import is allowed to create: its settings, which the import window draws and an
 /// agent sets by label.
 [Reflect(.NonStaticFields | .DefaultConstructor)]
 class ModelImportOptions : ImportOptions
 {
+	/// Every length times this (a file in centimetres: 0.01), applied before the fan out
+	/// (ModelImportFrame).
+	[DisplayName("Scale"), Description("Every length times this: 0.01 for a file in centimetres, 100 for one in metres read as centimetres")]
+	public float Scale = 1.0f;
+	/// The file's up, turned to the engine's Y.
+	[DisplayName("Up axis"), Description("The axis that is up in the model: Z turns a Z-up model upright")]
+	public ModelUpAxis UpAxis = .Y;
 	/// Embedded and sidecar images become texture assets.
 	[DisplayName("Textures"), Description("Import the model's images as texture assets")]
 	public bool ImportTextures = true;
@@ -53,5 +72,12 @@ class ModelImportOptions : ImportOptions
 		// Appended: options saved before it read as off.
 		if ((ar.Mode != .Read) || ar.HasKey("rootMotion"))
 			SerializeValue(ar, "rootMotion", ref RootMotion);
+		// Appended: before them, 1 and Y.
+		if ((ar.Mode != .Read) || ar.HasKey("scale"))
+			SerializeValue(ar, "scale", ref Scale);
+		if ((ar.Mode != .Read) || ar.HasKey("upAxis"))
+			SerializeValue(ar, "upAxis", ref UpAxis);
+		if (UpAxis != .Z)
+			UpAxis = .Y;
 	}
 }

@@ -211,6 +211,8 @@ static class FullFlowTests
 		public bool SawModelOptions = false;
 		public bool SawCollision = false;
 		public bool SawPrefab = false;
+		public float SawScale = 1.0f;
+		public ModelUpAxis SawUpAxis = .Y;
 
 		public OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError)
 		{
@@ -220,6 +222,8 @@ static class FullFlowTests
 				SawModelOptions = true;
 				SawCollision = model.GenerateCollision;
 				SawPrefab = model.GeneratePrefab;
+				SawScale = model.Scale;
+				SawUpAxis = model.UpAxis;
 			}
 			if (ImportEntries < AnswerOnEntry)
 				return .NotYet;
@@ -342,10 +346,31 @@ static class FullFlowTests
 			let response = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Hero.gltf\",\"options\":{\"wings\":true}}", .. scope .()));
 			defer delete response;
 			let text = response.Get("result").Get("content").At(0).Get("text").AsString();
-			Test.Assert(text.StartsWith("the Model importer has no option 'wings'; its options are: Textures, Materials"), scope String(text));
+			Test.Assert(text.StartsWith("the Model importer has no option 'wings'; its options are: Scale, Up axis, Textures, Materials"), scope String(text));
 			let none = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Mover.as\",\"options\":{\"x\":true}}", .. scope .()));
 			defer delete none;
 			Test.Assert(none.Get("result").Get("content").At(0).Get("text").AsString().EndsWith("its options are: none"));
+		}
+		// A number, and a choice by its case's name; the result lists them so.
+		{
+			let response = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Hero.gltf\",\"options\":{\"Scale\":0.01,\"up axis\":\"Z\"}}", .. scope .()));
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(!result.Get("isError").AsBool(), scope String(result.Get("content").At(0).Get("text").AsString()));
+			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
+			defer delete payload;
+			Test.Assert(Math.Abs(payload.Get("options").Get("Scale").AsNumber() - 0.01) < 1e-6);
+			Test.Assert(payload.Get("options").Get("Up axis").AsString() == "Z");
+			Test.Assert(Math.Abs(slow.SawScale - 0.01f) < 1e-6f);
+			Test.Assert(slow.SawUpAxis == .Z);
+		}
+		{
+			let badChoice = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Hero.gltf\",\"options\":{\"Up axis\":\"X\"}}", .. scope .()));
+			defer delete badChoice;
+			Test.Assert(badChoice.Get("result").Get("content").At(0).Get("text").AsString() == "option 'Up axis' takes Y, Z");
+			let badNumber = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Hero.gltf\",\"options\":{\"Scale\":true}}", .. scope .()));
+			defer delete badNumber;
+			Test.Assert(badNumber.Get("result").Get("content").At(0).Get("text").AsString() == "option 'Scale' takes a number");
 		}
 
 		// project_export: the preset is resolved by the tool (the synthesized host preset
