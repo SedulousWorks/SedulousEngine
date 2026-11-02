@@ -251,6 +251,29 @@ class PropertyGridTests
 	}
 
 	[Test]
+	public static void ANoteShowsAfterItsRowsEditorWhichThenTakesOnlyItsOwnWidthARowWithoutOneHasNone()
+	{
+		let bed = scope GridBed();
+		let mono = bed.Add("mono", .Bool, Sedulous.GUI.Variant(false));
+		mono.Note.Set("It is mono already");
+		mono.ReadOnly = true;
+		bed.Add("loop", .Bool, Sedulous.GUI.Variant(false));
+		bed.Show();
+		let row = bed.Grid.FindRowContent("mono");
+		Test.Assert(row != null);
+		Test.Assert(row.Note.Displayed);
+		Test.Assert(row.Note.Text == "It is mono already");
+		Test.Assert(row.Editor != null);
+		Test.Assert(row.Editor.IsReadOnly);
+		let editor = row.Editor.ScreenBounds;
+		Test.Assert(row.Note.ScreenBounds.X >= editor.X + editor.Width, "after the editor, not over it");
+		Test.Assert(row.Note.ScreenBounds.Width > 0.0f, "the rest of the row");
+		let plain = bed.Grid.FindRowContent("loop");
+		Test.Assert(plain != null);
+		Test.Assert(!plain.Note.Displayed);
+	}
+
+	[Test]
 	public static void ASearchKeepsMatchesByNameOrPathWithWhatHoldsThemOpenedTheFoldingStays()
 	{
 		let bed = scope GridBed();

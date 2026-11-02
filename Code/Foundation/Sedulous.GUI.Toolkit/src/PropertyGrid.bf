@@ -287,7 +287,8 @@ class PropertyCategoryContent : UIWidget
 }
 
 /// A property's row: indented by its depth, a group's chevron, its name (its description the
-/// tooltip), the split, and its editor (none for a group).
+/// tooltip), the split, and its editor (none for a group). A row whose info has a Note shows it after
+/// its editor, which then takes only its own width.
 [GuiReflect]
 class PropertyRowContent : UIWidget
 {
@@ -297,6 +298,8 @@ class PropertyRowContent : UIWidget
 	private Sedulous.GUI.Label mLabel ~ _.ReleaseRef();
 	/// A closed group's line (its info's Summary), where an editor would be.
 	private Sedulous.GUI.Label mSummary ~ _.ReleaseRef();
+	/// Its info's Note, after the editor.
+	private Sedulous.GUI.Label mNote ~ _.ReleaseRef();
 	private PropertySplitHandle mSplit ~ _.ReleaseRef();
 	private PropertyGrip mGrip ~ _.ReleaseRef();
 	private PropertyEditor mEditor ~ _?.ReleaseRef();
@@ -339,6 +342,17 @@ class PropertyRowContent : UIWidget
 		AddChild(mSummary);
 		if (mEditor != null)
 			AddChild(mEditor);
+		// A note (its info's Note) after the editor: what the value does here, or why it is read only.
+		mNote = new Sedulous.GUI.Label();
+		mNote.Tag = "propertynote";
+		mNote.SetTextAlignment(.Start, .Middle);
+		using (StyleWriteScope(mNote))
+		{
+			mNote.TextOverflow = .Ellipsis;
+		}
+		mNote.HitTestVisible = false;
+		mNote.Displayed = false;
+		AddChild(mNote);
 		mGrip = new PropertyGrip(grid);
 		AddChild(mGrip);
 		mSplit = new PropertySplitHandle(grid);
@@ -357,6 +371,10 @@ class PropertyRowContent : UIWidget
 		mSummary.Displayed = says;
 		if (says)
 			mSummary.Text = row.Info.Summary;
+		let notes = (mEditor != null) && !row.Info.Note.IsEmpty;
+		mNote.Displayed = notes;
+		if (notes)
+			mNote.Text = row.Info.Note;
 		mMovable = row.Element && ((row.ListOps & PropertyListMove) != 0) && (row.Count > 1);
 		mGrip.Displayed = mMovable;
 		mGrip.Path = row.Path;
@@ -367,6 +385,7 @@ class PropertyRowContent : UIWidget
 	public PropertyEditor Editor => mEditor;
 	public Sedulous.GUI.Label Label => mLabel;
 	public Sedulous.GUI.Label Summary => mSummary;
+	public Sedulous.GUI.Label Note => mNote;
 	public PropertySplitHandle SplitHandle => mSplit;
 	public PropertyGrip Grip => mGrip;
 
@@ -407,7 +426,17 @@ class PropertyRowContent : UIWidget
 		let textX = indent + arrow + 2.0f;
 		mLabel.Arrange(Rect.MirroredIn(.(@box.X + textX, @box.Y, Math.Max(0.0f, split - textX - 4.0f), @box.Height), @box, rtl));
 		if (mEditor != null)
-			mEditor.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f, @box.Y + 1.0f, Math.Max(0.0f, @box.Width - split - 2.0f), Math.Max(0.0f, @box.Height - 2.0f)), @box, rtl));
+		{
+			let room = Math.Max(0.0f, @box.Width - split - 2.0f);
+			let height = Math.Max(0.0f, @box.Height - 2.0f);
+			// With a note the editor takes its own width and the note the rest; otherwise all of it.
+			var width = room;
+			if (mNote.Displayed)
+				width = Math.Min(room, mEditor.Measure(LayoutConstraints(.(0.0f, 0.0f), .(room, height), .(room, -1.0f), false, false)).X);
+			mEditor.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f, @box.Y + 1.0f, width, height), @box, rtl));
+			if (mNote.Displayed)
+				mNote.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f + width + 8.0f, @box.Y, Math.Max(0.0f, room - width - 8.0f), @box.Height), @box, rtl));
+		}
 		if (mSummary.Displayed)
 			mSummary.Arrange(Rect.MirroredIn(.(@box.X + split + 4.0f, @box.Y, Math.Max(0.0f, @box.Width - split - 8.0f), @box.Height), @box, rtl));
 		mSplit.Arrange(Rect.MirroredIn(.(@box.X + split - 3.0f, @box.Y, 6.0f, @box.Height), @box, rtl));
@@ -430,6 +459,7 @@ class PropertyRowContent : UIWidget
 	{
 		ShareTextStyle(mLabel);
 		ShareTextStyle(mSummary);
+		ShareTextStyle(mNote);
 		if (mEditor != null)
 			ShareTextStyle(mEditor);
 	}

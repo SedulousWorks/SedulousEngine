@@ -597,6 +597,7 @@ treeicon { image-color: var(--icon); }
 propertygrid { arrow-size: var(--arrow); indent-width: var(--grid-indent); }
 /* A closed group's line: a dim summary of what it holds, where an editor would be. */
 propertysummary { color: var(--text-dim); font-size: var(--font-small); }
+propertynote { color: var(--text-dim); font-size: var(--font-small); }
 /* A vector's parts keep their room for their numbers: a small inset, not a field's full one. */
 propertyeditor.floats numberfield { padding: 0 var(--space-xs); }
 

@@ -112,6 +112,8 @@ class PropertyInfo
 	public bool Visible = true;
 	/// A group's: what it holds, said in a line on its row while it is closed.
 	public String Summary = new .() ~ delete _;
+	/// A short line beside its editor: what the value does here, or why it is read only.
+	public String Note = new .() ~ delete _;
 	/// A colour's alpha is edited (not an HDR colour's, nor one with `noAlpha`).
 	public bool ShowsAlpha = true;
 	/// A list's: the PropertyList* bits.
@@ -158,6 +160,7 @@ class PropertyInfo
 		ReadOnly = other.ReadOnly;
 		Visible = other.Visible;
 		Summary.Set(other.Summary);
+		Note.Set(other.Note);
 		ShowsAlpha = other.ShowsAlpha;
 		ListOps = other.ListOps;
 		MaxCount = other.MaxCount;
