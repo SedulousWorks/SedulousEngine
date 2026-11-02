@@ -1,10 +1,11 @@
 <!--
   The command palette: the kit's picker, with a row for every action by name, which code fills into
-  palette-list.
+  palette-list; a close button at the search's end closes it, as Esc does.
 -->
 <Panel class="dialog picker palette">
     <Panel class="picker-search">
         <Panel class="search"><Image class="search-icon" src="Editor/Icons/search.svg"/><TextField id="palette-search" class="search-field" placeholder="Type an action's name"/></Panel>
+        <Button id="palette-close" class="icon-button" icon="Editor/Icons/close.svg" tooltip="Close (Esc)"/>
     </Panel>
     <Panel id="palette-list" class="palette-list"/>
     <Panel class="picker-foot"><Label id="palette-hint" class="picker-hint" text="Enter runs it, Esc closes"/></Panel>

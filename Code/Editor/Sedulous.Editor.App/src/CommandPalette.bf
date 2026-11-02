@@ -12,8 +12,8 @@ namespace Sedulous.Editor.App;
 // with it first, then labels that hold it, then a description or id that does. A row shows the
 // action's label, its menu path and its chord; one disabled over the active page is dimmed and
 // refuses with a line in the hint. Up and Down move along the rows, Enter or a click runs the lit
-// one through the registry and closes the palette, Escape or a press outside closes it. It opens
-// as a modal popup near the top of the window, the field focused.
+// one through the registry and closes the palette, Escape, its close button or a press outside
+// closes it. It opens as a modal popup near the top of the window, the field focused.
 
 /// One action's row: its label, where it is in the menus, its chord. The pointer over it lights
 /// it; a click runs it.
@@ -103,7 +103,7 @@ class CommandPalette
 	private int32 mLit = -1;
 
 	/// The palette over `actions`, its frame `content` (the markup's: `palette-search`,
-	/// `palette-list`, `palette-hint` by id). TAKES OWNERSHIP of a reference to `content`; null
+	/// `palette-list`, `palette-hint` and `palette-close` by id). TAKES OWNERSHIP of a reference to `content`; null
 	/// makes a palette that never opens.
 	public this(EditorActionRegistry actions, Node content)
 	{
@@ -118,6 +118,8 @@ class CommandPalette
 			mIdleHint.Set(mHint.Text);
 		if (mSearch != null)
 			mSearch.SetOnTextChanging(new (text) => { Filter(text); });
+		if (let close = CloseButton)
+			close.SetOnClick(new () => { Close(); });
 		// Up, Down and Enter before the search field takes them.
 		mContent.AddEventListener(.KeyDown, new (e) =>
 			{
@@ -191,6 +193,8 @@ class CommandPalette
 	public int32 Lit => mLit;
 	/// The rows shown, in their order. The palette's.
 	public List<CommandPaletteRow> Rows => mRows;
+	/// The close button at the search's end. The markup's.
+	public Sedulous.GUI.Button CloseButton => (mContent != null) ? mContent.FindElement("palette-close") as Sedulous.GUI.Button : null;
 
 	public void Light(int32 index)
 	{

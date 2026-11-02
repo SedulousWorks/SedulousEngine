@@ -261,6 +261,12 @@ static class CommandPaletteTests
 		bed.Press(.Escape);
 		Test.Assert(!palette.IsOpen);
 		Test.Assert((bench.Saves == 1) && (bench.Resets == 1), "Escape runs nothing");
+		// Its close button at the search's end closes it too.
+		Test.Assert(palette.Open(bed.Root));
+		Test.Assert(palette.CloseButton != null);
+		Test.Assert(palette.CloseButton.HandleActivate());
+		Test.Assert(!palette.IsOpen);
+		Test.Assert((bench.Saves == 1) && (bench.Resets == 1), "the button runs nothing");
 	}
 
 	[Test]
