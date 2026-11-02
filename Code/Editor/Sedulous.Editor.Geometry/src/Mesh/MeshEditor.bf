@@ -5,8 +5,9 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Geometry;
 
-/// The mesh editor's composition: the preview preference serializables and a page for each of the
-/// two mesh asset types (sibling Asset subclasses, so a factory each, not one by nearest type).
+/// The mesh editor's composition: the preview preference serializables, a page for each of the two
+/// mesh asset types (sibling Asset subclasses, so a factory each, not one by nearest type), and the
+/// import window's preview of a model file.
 static class MeshEditor
 {
 	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
@@ -16,5 +17,6 @@ static class MeshEditor
 		GeometryEditorSerializables.Register();
 		context.Pages.Register(new MeshEditorPageFactory(typeof(StaticMeshAsset), services));
 		context.Pages.Register(new MeshEditorPageFactory(typeof(SkinnedMeshAsset), services));
+		ModelFilePreviewFactory.Register(context, services); // the import window's preview of a model file
 	}
 }

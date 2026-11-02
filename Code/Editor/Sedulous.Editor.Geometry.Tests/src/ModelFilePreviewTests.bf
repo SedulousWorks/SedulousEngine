@@ -1,0 +1,69 @@
+using System;
+using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.VFS;
+using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
+using Sedulous.Editor.Geometry;
+
+namespace Sedulous.Editor.Geometry.Tests;
+
+/// The import window's preview of a model file, without a host (no view): the file is read on the
+/// preview reader, cooked into its cache folder and bound, and its facts and clips show; opened again
+/// it binds from the cache at once. It takes the frame hooks the window drives. A file the loaders
+/// cannot read opens nothing and says so.
+class ModelFilePreviewTests
+{
+	[Test]
+	public static void ReadOffTheMainThreadCookedAndBoundItsFactsAndClipsShownOpenedAgainFromTheCache()
+	{
+		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview", .. scope .());
+		RemoveDirectoryRecursive(cache);
+		Test.Assert(CreateDirectory(cache));
+		defer RemoveDirectoryRecursive(cache);
+		let root = FindDataRoot(.. scope .());
+		Test.Assert(!root.IsEmpty);
+		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
+		let reader = scope ImportPreviewReader();
+		let services = scope AssetPageServices(); // no host: no view
+		{
+			let preview = scope ModelFilePreview(fox, cache, reader, services);
+			Test.Assert((preview as IImportPreviewFrames) != null, "the window drives its frames");
+			int changed = 0;
+			preview.SetOnChanged(new [&changed] () => { changed++; });
+			Test.Assert(!preview.IsOpen, "still reading");
+			Test.Assert(preview.Facts.IsEmpty);
+			reader.Finish();
+			Test.Assert(changed == 1);
+			Test.Assert(preview.IsOpen);
+			// Fox.gltf: one mesh of 576 triangles, one material and texture, 24 bones, three clips.
+			let facts = preview.Facts;
+			Test.Assert(facts.Length == 6);
+			Test.Assert(facts[0] == "Meshes 1");
+			Test.Assert(facts[1] == "Triangles 576");
+			Test.Assert(facts[2] == "Materials 1");
+			Test.Assert(facts[3] == "Textures 1");
+			Test.Assert(facts[4] == "Bones 24");
+			Test.Assert(facts[5] == "Clips 3");
+			Test.Assert(preview.Clips.Length == 3);
+			Test.Assert(preview.Clips[0] == "Survey");
+		}
+
+		// Opened again, it binds what the first open cooked, with no read.
+		{
+			let again = scope ModelFilePreview(fox, cache, reader, services);
+			Test.Assert(again.IsOpen);
+			Test.Assert(reader.InFlight == 0);
+			Test.Assert(again.Facts.Length == 6);
+		}
+
+		// A file the loaders cannot read: nothing opens, no facts.
+		let junk = PathJoin(cache, "junk.glb", .. scope .());
+		let text = "not a model";
+		Test.Assert(WriteFile(junk, .((uint8*)text.Ptr, text.Length)) case .Ok);
+		let broken = scope ModelFilePreview(junk, cache, reader, services);
+		reader.Finish();
+		Test.Assert(!broken.IsOpen);
+		Test.Assert(broken.Facts.IsEmpty);
+	}
+}
