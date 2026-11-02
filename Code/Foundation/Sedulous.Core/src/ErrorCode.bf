@@ -16,5 +16,7 @@ enum ErrorCode
 	NotFound,
 	NotSupported,
 	AlreadyExists,
-	Internal
+	Internal,
+	/// Told to stop through its CancelToken, and stopped.
+	Cancelled
 }
