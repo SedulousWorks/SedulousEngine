@@ -34,6 +34,11 @@ class ImportPreviewThing
 /// the window, a second refused while one is open.
 static class ImportDialogTests
 {
+	/// Previews stopped so far, and how many had been when a box last imported: Import must stop the
+	/// preview before the import runs.
+	private static int sPreviewStops = 0;
+	private static int sStopsWhenImported = 0;
+
 	/// Takes ".box": would make a mesh and two textures, each kept or not and named as chosen.
 	private class BoxImporter : IFileImporter
 	{
@@ -59,6 +64,7 @@ static class ImportDialogTests
 		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
 			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
 		{
+			sStopsWhenImported = sPreviewStops;
 			Instance primary = null;
 			for (let entry in options.Selection.Entries)
 			{
@@ -140,6 +146,7 @@ static class ImportDialogTests
 		public ImportOptions Options;
 		public int SettingsChanged = 0;
 		public void OnSettingsChanged() { SettingsChanged++; }
+		public void StopReading() { sPreviewStops++; }
 
 		/// As a read coming back does: a new fact, and the window told.
 		public void Arrive(StringView fact)
@@ -534,7 +541,13 @@ static class ImportDialogTests
 		// A preview's read coming back shows its facts again.
 		(bed.Window.Preview as NamePreview).Arrive("Read at last");
 		Test.Assert(Says(bed.Window.Facts, "Read at last"));
-		bed.Window.Close();
+
+		// Import stops the preview first: the import may change what the importer read, which a
+		// preview may be reading.
+		let before = sPreviewStops;
+		Test.Assert(bed.Window.Import());
+		Test.Assert(sPreviewStops == before + 1);
+		Test.Assert(sStopsWhenImported == before + 1, "stopped before the box imported");
 		Test.Assert(bed.Window.Preview == null, "let go with its session");
 	}
 

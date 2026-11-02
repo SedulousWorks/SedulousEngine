@@ -68,9 +68,10 @@ class ModelFilePreviewTests
 		Test.Assert(broken.Facts.IsEmpty);
 	}
 
-	/// Given the importer's read, it cooks that at once and reads nothing itself.
+	/// Given the importer's read, it cooks that on the pool, never on the window's thread, and reads
+	/// nothing itself.
 	[Test]
-	public static void GivenTheImportersReadItCooksThatAndReadsNothingItself()
+	public static void GivenTheImportersReadItCooksThatOnThePoolAndReadsNothingItself()
 	{
 		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_read", .. scope .());
 		RemoveDirectoryRecursive(cache);
@@ -87,8 +88,35 @@ class ModelFilePreviewTests
 		let tasks = scope TaskPool(1);
 		let services = scope AssetPageServices(); // no host: no view
 		let preview = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model);
-		Test.Assert(preview.IsOpen, "at once");
-		Test.Assert(tasks.InFlight == 0, "no read of its own");
+		Test.Assert(!preview.IsOpen, "its cook is a task: the window's thread goes on");
+		Test.Assert(tasks.InFlight == 1, "the cook alone, no read of its own");
+		tasks.Finish();
+		Test.Assert(preview.IsOpen, "bound in the completion");
 		Test.Assert(preview.Facts.Length == 6);
+	}
+
+	/// StopReading ends its cook before the import may change the importer's model; it then never
+	/// opens.
+	[Test]
+	public static void StopReadingEndsItsCookBeforeTheImportMayChangeTheImportersModel()
+	{
+		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_stop", .. scope .());
+		RemoveDirectoryRecursive(cache);
+		Test.Assert(CreateDirectory(cache));
+		defer RemoveDirectoryRecursive(cache);
+		let root = FindDataRoot(.. scope .());
+		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
+		let importer = scope ModelFileImporter();
+		let prepared = importer.PrepareOnWorker(fox);
+		defer delete prepared;
+		let loaded = prepared as LoadedModel;
+		Test.Assert(loaded != null);
+		let tasks = scope TaskPool(1);
+		let services = scope AssetPageServices(); // no host: no view
+		let preview = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model);
+		preview.StopReading();
+		Test.Assert(tasks.InFlight <= 1, "ended (cancelled, or finished just before), only its hand-back left");
+		tasks.Finish();
+		Test.Assert(!preview.IsOpen, "a stopped preview's completion does not run");
 	}
 }

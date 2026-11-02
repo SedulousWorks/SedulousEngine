@@ -258,8 +258,17 @@ class ImportWindow
 	/// Imports what is kept and closes; false (it stays, saying why) when it cannot yet.
 	public bool Import()
 	{
-		if ((mSession == null) || !mImport.Commit(mSession))
+		if (mSession == null)
 			return false;
+		if (mPreview != null)
+			mPreview.StopReading(); // before the import changes what the importer read
+		if (!mImport.Commit(mSession))
+		{
+			// The window stays, saying why: its preview is made again rather than stay stopped.
+			mPreviewPath.Clear();
+			ShowPreview();
+			return false;
+		}
 		Close();
 		return true;
 	}
@@ -678,6 +687,8 @@ class ImportWindow
 				{
 					if ((mSession == null) || (picked < 0))
 						return;
+					if (mPreview != null)
+						mPreview.StopReading(); // another importer frees what this one read
 					mImport.SetImporter(mSession, index, picked);
 					Later(new [=this] () => { ShowAll(); }); // not under the combo's own event
 				});

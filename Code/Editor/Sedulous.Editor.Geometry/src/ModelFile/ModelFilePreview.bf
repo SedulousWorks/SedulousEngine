@@ -43,6 +43,8 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		public Model Model = new .() ~ delete _;
 		/// Handed to OpenModel.Finish, which takes it.
 		public ModelStats Stats = new .() ~ delete _;
+		/// What the cook made, to bind.
+		public Guid Guid = .();
 		public OpenModel.Outcome Outcome = .NotFound;
 	}
 
@@ -66,13 +68,16 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 	private List<Float4x4> mBonePoses = new .() ~ delete _;
 	private Float3 mCenter = .Zero;
 	private float mRadius = 1.0f;
-	/// The read it started, cancelled as it goes: a reference of ours.
+	/// The read and cook it started, cancelled and waited for as it goes: a reference of ours.
 	private TaskHandle mRead = null;
+	/// What it runs on; borrowed: it outlives this.
+	private TaskPool mPool = null;
 	private delegate void() mOnChanged ~ delete _;
 
 	/// Opens `path` with its cooked files under `cacheRoot`: bound at once when opened before, else
-	/// cooked from `imported` (the model the importer read; borrowed, used only in this call), else
-	/// read as a task on `tasks` (borrowed: it outlives this). `services` give the host and GUI the view needs
+	/// cooked on `tasks` (borrowed: it outlives this) from `imported` (the model the importer read;
+	/// borrowed: the window stops this before it changes or frees it, StopReading), else read and
+	/// cooked there. `services` give the host and GUI the view needs
 	/// (no host: no view); borrowed.
 	public this(StringView path, StringView cacheRoot, TaskPool tasks, AssetPageServices services, Model imported = null)
 	{
@@ -85,7 +90,7 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 	{
 		if (mRead != null)
 		{
-			mRead.Cancel();
+			StopReading(); // what the cook reads, the importer's model, is not ours to outlive
 			mRead.ReleaseRef();
 		}
 		// The frames in flight still draw the model's textures, so the GPU finishes them before the
@@ -225,32 +230,47 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 			Failed(outcome);
 			return;
 		}
-		// The importer read it already: cook and bind that, with no second read.
-		if (imported != null)
-		{
-			let stats = new ModelStats();
-			ModelLibrary.CountModel(imported, stats);
-			let finished = mOpen.Finish(imported, stats); // it takes the stats
-			if (finished == .Opened)
-				Opened();
-			else
-				Failed(finished);
-			return;
-		}
+		// Read (unless the importer has) and cooked on the worker, bound here. The task holds the
+		// cache by reference, so a preview that goes first frees nothing under it; the importer's read
+		// is the window's, which stops the task (StopReading) before it changes or frees that.
+		mPool = tasks;
 		let result = new Read(); // the done's reference
-		result.AddRef(); // the read's
+		result.AddRef(); // the work's
+		if (imported != null)
+			ModelLibrary.CountModel(imported, result.Stats); // here: this thread reads the model too
+		let cache = mOpen.Cache;
+		cache.AddRef(); // the work's
 		let file = new String(mPath);
-		mRead = tasks.Submit(scope $"Reading {ImportPaths.FileNameOf(mPath)}",
-			// On the worker: only the file and `result` (LoadFile makes its own loaders).
-			new [=file, =result] (context) =>
+		mRead = tasks.Submit(scope $"Previewing {ImportPaths.FileNameOf(mPath)}",
+			// On the worker: only the file, `result`, the cache and the importer's model.
+			new [=file, =result, =cache, =imported] (context) =>
 			{
-				result.Outcome = OpenModel.LoadFile(file, false, result.Model, result.Stats);
-				return Result<void, ErrorCode>.Ok; // Arrived says when it did not read
-			} ~ { delete file; result.ReleaseRef(); },
-			// On the main thread, which owns the cache's database and resources, and only while this
-			// preview lives (it cancels its task as it goes).
+				var model = imported;
+				if (model == null)
+				{
+					result.Outcome = OpenModel.LoadFile(file, false, result.Model, result.Stats);
+					if (result.Outcome != .Opened)
+						return Result<void, ErrorCode>.Ok; // Arrived says why
+					model = result.Model;
+				}
+				result.Outcome = OpenModel.Cook(cache, model, result.Stats, out result.Guid, context.Token);
+				return (result.Outcome == .Cancelled) ? Result<void, ErrorCode>.Err(.Cancelled) : Result<void, ErrorCode>.Ok;
+			} ~ { delete file; result.ReleaseRef(); cache.ReleaseRef(); },
+			// On the main thread, which owns the cache's resources, and only while this preview lives
+			// (it cancels its task as it goes).
 			new [=this, =result] (status) => { Arrived(result); } ~ { result.ReleaseRef(); });
 		mRead.AddRef(); // ours
+	}
+
+	/// Before the import changes the importer's model, or another importer frees it: the cook stops
+	/// at its next item, and is waited for. It then never opens.
+	public void StopReading()
+	{
+		if ((mRead != null) && (mPool != null))
+		{
+			mRead.Cancel();
+			mPool.Wait(mRead);
+		}
 	}
 
 	private void Arrived(Read result)
@@ -261,12 +281,12 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 			return;
 		}
 		let stats = result.Stats;
-		result.Stats = null; // Finish takes it
-		let finished = mOpen.Finish(result.Model, stats);
-		if (finished == .Opened)
+		result.Stats = null; // Bind takes it
+		let bound = mOpen.Bind(result.Guid, stats);
+		if (bound == .Opened)
 			Opened();
 		else
-			Failed(finished);
+			Failed(bound);
 	}
 
 	private void Failed(OpenModel.Outcome outcome)

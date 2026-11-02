@@ -31,6 +31,13 @@ interface IImportPreview
 	void OnSettingsChanged()
 	{
 	}
+	/// Called by the window before it imports or chooses another importer: stop what reads the
+	/// file's prepared payload and wait for it, since the import may change that payload (a model's
+	/// scale is applied to the model the importer read) and another importer frees it. A preview
+	/// that reads none has nothing to stop.
+	void StopReading()
+	{
+	}
 }
 
 /// The file a preview is made for: its path, its settings (null when its importer has none), and
