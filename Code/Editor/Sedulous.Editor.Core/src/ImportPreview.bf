@@ -11,101 +11,9 @@ namespace Sedulous.Editor.Core;
 // window asks for the one nearest the type the file's importer lists it by
 // (IFileImporter.ListedTypeName), and shows its view with its facts under it. A type with no
 // preview shows its facts alone. A preview reads the source file itself (nothing has been imported
-// yet), off the main thread through the ImportPreviewReader, so a drop of large files never holds
-// the window: it shows that it is reading, then its result.
-
-/// One read a preview started. Cancelled when the preview goes, so its result is dropped.
-class ImportPreviewRead : RefCounted
-{
-	private volatile bool mCancelled = false;
-
-	public void Cancel() { mCancelled = true; }
-	public bool Cancelled => mCancelled;
-}
-
-/// Runs the previews' reads on a worker of their own and hands each result back on the main
-/// thread. Not the editor's job service: that runs one job at a time so a cook never races the
-/// databases, and a preview queued behind a cook would wait for it; a preview only reads its
-/// source file. The worker starts with the first read.
-class ImportPreviewReader
-{
-	/// A read the worker finished, waiting for Pump.
-	private class Finished
-	{
-		public ImportPreviewRead Ticket ~ _.ReleaseRef();
-		public delegate void() Done ~ delete _;
-	}
-
-	private JobSystem mJobs = null;
-	private Monitor mLock = new .() ~ delete _;
-	/// Filled by the worker, under mLock.
-	private List<Finished> mDone = new .() ~ DeleteContainerAndItems!(_);
-	private volatile int32 mInFlight = 0;
-
-	/// The reads still running finish (nothing they hold leaks); none is handed back.
-	public ~this()
-	{
-		if (mJobs != null)
-		{
-			mJobs.WaitForAll();
-			delete mJobs;
-		}
-	}
-
-	/// Runs `read` on the worker, then `done` on the main thread in Pump; each is skipped once the
-	/// returned read is cancelled. `read` must not touch the GUI or anything the main thread
-	/// changes: it fills what `done` shows. TAKES OWNERSHIP of both delegates; the returned read
-	/// carries a reference of the caller's.
-	public ImportPreviewRead Read(delegate void() read, delegate void() done)
-	{
-		if (mJobs == null)
-			mJobs = new JobSystem(1);
-		let ticket = new ImportPreviewRead(); // the caller's reference
-		ticket.AddRef(); // the job's, handed on to Finished
-		Interlocked.Increment(ref mInFlight);
-		mJobs.Submit(new [=this, =ticket, =read, =done] () =>
-			{
-				if (!ticket.Cancelled)
-					read();
-				delete read; // what it captured goes here, on the worker
-				let finished = new Finished();
-				finished.Ticket = ticket;
-				finished.Done = done;
-				using (mLock.Enter())
-					mDone.Add(finished);
-			});
-		return ticket;
-	}
-
-	/// Hands back the reads finished since the last Pump (the editor's frame calls it).
-	public void Pump()
-	{
-		let finished = scope List<Finished>();
-		using (mLock.Enter())
-		{
-			finished.AddRange(mDone);
-			mDone.Clear();
-		}
-		for (let read in finished)
-		{
-			Interlocked.Decrement(ref mInFlight);
-			if (!read.Ticket.Cancelled)
-				read.Done();
-			delete read;
-		}
-	}
-
-	/// Reads started and not yet handed back.
-	public int32 InFlight => mInFlight;
-
-	/// Waits for every read, then hands them back (tests; a host closing).
-	public void Finish()
-	{
-		if (mJobs != null)
-			mJobs.WaitForAll();
-		Pump();
-	}
-}
+// yet), off the main thread as a task on the editor's TaskPool, so a drop of large files never holds
+// the window: it shows that it is reading, then its result; a preview that goes cancels its task, so
+// its completion never runs after.
 
 /// One file's preview, made for the window and dropped (deleted) when another file is chosen.
 interface IImportPreview
@@ -148,9 +56,9 @@ struct ImportPreviewSource
 interface IImportPreviewFactory
 {
 	Type AssetType { get; }
-	/// A preview of `file`, any read it needs started on `reader` (borrowed: it outlives the
+	/// A preview of `file`, any read it needs submitted to `tasks` (borrowed: it outlives the
 	/// preview), OWNED by the caller; null when it shows nothing of it.
-	IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader);
+	IImportPreview Create(ImportPreviewSource file, TaskPool tasks);
 }
 
 /// The import previews, by asset type: the factory nearest along a type's base chain wins, as

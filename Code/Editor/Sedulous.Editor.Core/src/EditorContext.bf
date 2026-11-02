@@ -57,7 +57,9 @@ class EditorContext : IAssetEditSink
 	private ImporterRegistry mImporters = new .() ~ delete _;
 	private EditorPageRegistry mPageRegistry = new .() ~ delete _;
 	private ImportPreviewRegistry mImportPreviews = new .() ~ delete _;
-	private ImportPreviewReader mPreviewReader = new .() ~ delete _;
+	/// The editor's long work off the frame (Raptor's task-layer spec): the workers start with the
+	/// first task.
+	private TaskPool mTasks = new .(TaskPool.DefaultWorkerCount()) ~ delete _;
 	private AssetCreatorRegistry mCreators = new .() ~ delete _;
 	private List<EditorSettingsContribution> mSettingsContributions = new .() ~ DeleteContainerAndItems!(_);
 	private List<delegate void(McpServer server)> mMcpToolContributions = new .() ~ DeleteContainerAndItems!(_);
@@ -413,8 +415,9 @@ class EditorContext : IAssetEditSink
 	public EditorPageRegistry Pages => mPageRegistry;
 	/// The import window's previews, by asset type: a domain registers one beside its page.
 	public ImportPreviewRegistry ImportPreviews => mImportPreviews;
-	/// The previews' reads, off the main thread; the host pumps it each frame.
-	public ImportPreviewReader ImportPreviewReads => mPreviewReader;
+	/// The editor's long work off the frame: the import previews' reads, cooks, imports, exports.
+	/// The host pumps it each frame, which runs the completions.
+	public TaskPool Tasks => mTasks;
 
 	/// File > New's creators, every pipeline domain's (PipelineRegistration.RegisterAllCreators
 	/// fills it); the host runs one and does what follows a creation.

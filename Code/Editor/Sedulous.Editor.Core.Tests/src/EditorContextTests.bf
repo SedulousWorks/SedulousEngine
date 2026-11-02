@@ -73,7 +73,7 @@ static class EditorContextTests
 		}
 
 		public Type AssetType => mType;
-		public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader) => null;
+		public IImportPreview Create(ImportPreviewSource file, TaskPool tasks) => null;
 	}
 
 	[Test]
@@ -100,22 +100,24 @@ static class EditorContextTests
 	/// A read runs off the main thread and is handed back only in Pump; one cancelled meanwhile (its
 	/// preview gone) is dropped.
 	[Test]
-	public static void AReadRunsOffTheMainThreadAndIsHandedBackInPumpACancelledOneIsDropped()
+	public static void TheEditorsLongWorkRunsOnTheContextsPoolItsCompletionInPumpACancelledTasksNever()
 	{
-		let reader = scope ImportPreviewReader();
+		let editor = scope EditorContext();
+		let tasks = editor.Tasks;
+		Test.Assert(tasks.WorkerCount == TaskPool.DefaultWorkerCount());
 		int32 reads = 0;
 		int handed = 0;
-		let kept = reader.Read(new [&reads] () => { Interlocked.Increment(ref reads); }, new [&handed] () => { handed++; });
-		let dropped = reader.Read(new [&reads] () => { Interlocked.Increment(ref reads); }, new [&handed] () => { handed += 10; });
+		tasks.Submit("kept", new [&reads] (context) => { Interlocked.Increment(ref reads); return Result<void, ErrorCode>.Ok; },
+			new [&handed] (result) => { handed++; });
+		let dropped = tasks.Submit("dropped", new [&reads] (context) => { Interlocked.Increment(ref reads); return Result<void, ErrorCode>.Ok; },
+			new [&handed] (result) => { handed += 10; });
 		dropped.Cancel(); // the preview went before its read came back
-		Test.Assert(reader.InFlight == 2);
+		Test.Assert(tasks.InFlight == 2);
 		Test.Assert(handed == 0, "nothing is handed back outside Pump");
-		reader.Finish();
-		Test.Assert(handed == 1, "only the kept read's result");
-		Test.Assert(reader.InFlight == 0);
-		Test.Assert(reads >= 1, "the cancelled read may have started before it was cancelled");
-		kept.ReleaseRef();
-		dropped.ReleaseRef();
+		tasks.Finish();
+		Test.Assert(handed == 1, "only the kept task's completion");
+		Test.Assert(tasks.InFlight == 0);
+		Test.Assert(reads >= 1, "the cancelled one may have started before it was cancelled");
 	}
 
 	[Test]

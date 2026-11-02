@@ -27,7 +27,7 @@ namespace Sedulous.Editor.Geometry;
 // drawn over it on request; and the facts the file gives (meshes, triangles, materials, textures,
 // bones, clips). It opens through Editor.ModelPreview's OpenModel into a cache folder under the
 // project's cache: a model opened before binds from there, and one that must be read is read on the
-// ImportPreviewReader's worker, then cooked and bound on the main thread, which owns the resources.
+// editor's task pool, then cooked and bound on the main thread, which owns the resources.
 // Without a host (a test) there is no view, but the model still opens and its facts show. The window
 // drives it each frame (IImportPreviewFrames).
 
@@ -67,18 +67,18 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 	private Float3 mCenter = .Zero;
 	private float mRadius = 1.0f;
 	/// The read it started, cancelled as it goes: a reference of ours.
-	private ImportPreviewRead mRead = null;
+	private TaskHandle mRead = null;
 	private delegate void() mOnChanged ~ delete _;
 
 	/// Opens `path` with its cooked files under `cacheRoot`: bound at once when opened before, else
 	/// cooked from `imported` (the model the importer read; borrowed, used only in this call), else
-	/// read on `reader` (borrowed: it outlives this). `services` give the host and GUI the view needs
+	/// read as a task on `tasks` (borrowed: it outlives this). `services` give the host and GUI the view needs
 	/// (no host: no view); borrowed.
-	public this(StringView path, StringView cacheRoot, ImportPreviewReader reader, AssetPageServices services, Model imported = null)
+	public this(StringView path, StringView cacheRoot, TaskPool tasks, AssetPageServices services, Model imported = null)
 	{
 		mPath.Set(path);
 		BuildView(services);
-		Start(cacheRoot, reader, imported);
+		Start(cacheRoot, tasks, imported);
 	}
 
 	public ~this()
@@ -208,7 +208,7 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		}
 	}
 
-	private void Start(StringView cacheRoot, ImportPreviewReader reader, Model imported)
+	private void Start(StringView cacheRoot, TaskPool tasks, Model imported)
 	{
 		mMessage.Text = scope $"Reading {ImportPaths.FileNameOf(mPath)}...";
 		// As the importer reads it: without the viewer's loose texture rule, which the import does
@@ -240,13 +240,17 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		let result = new Read(); // the done's reference
 		result.AddRef(); // the read's
 		let file = new String(mPath);
-		mRead = reader.Read(
+		mRead = tasks.Submit(scope $"Reading {ImportPaths.FileNameOf(mPath)}",
 			// On the worker: only the file and `result` (LoadFile makes its own loaders).
-			new [=file, =result] () => { result.Outcome = OpenModel.LoadFile(file, false, result.Model, result.Stats); }
-				~ { delete file; result.ReleaseRef(); },
+			new [=file, =result] (context) =>
+			{
+				result.Outcome = OpenModel.LoadFile(file, false, result.Model, result.Stats);
+				return Result<void, ErrorCode>.Ok; // Arrived says when it did not read
+			} ~ { delete file; result.ReleaseRef(); },
 			// On the main thread, which owns the cache's database and resources, and only while this
-			// preview lives (it cancels the read as it goes).
-			new [=this, =result] () => { Arrived(result); } ~ { result.ReleaseRef(); });
+			// preview lives (it cancels its task as it goes).
+			new [=this, =result] (status) => { Arrived(result); } ~ { result.ReleaseRef(); });
+		mRead.AddRef(); // ours
 	}
 
 	private void Arrived(Read result)
@@ -439,7 +443,7 @@ class ModelFilePreviewFactory : IImportPreviewFactory
 
 	public Type AssetType => mType;
 
-	public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader)
+	public IImportPreview Create(ImportPreviewSource file, TaskPool tasks)
 	{
 		if (mContext.Project == null)
 			return null;
@@ -449,7 +453,7 @@ class ModelFilePreviewFactory : IImportPreviewFactory
 		let services = (mServices != null) ? mServices.Make() : new AssetPageServices();
 		defer delete services;
 		let loaded = file.Prepared as LoadedModel;
-		return new ModelFilePreview(file.Path, cacheRoot, reader, services, (loaded != null) ? loaded.Model : null);
+		return new ModelFilePreview(file.Path, cacheRoot, tasks, services, (loaded != null) ? loaded.Model : null);
 	}
 
 	/// Registers the model preview for the files the model importer lists (its manifests).

@@ -11,7 +11,7 @@ namespace Sedulous.Editor.App;
 // The import window's preview of a picture file (Raptor's import-window spec, W2): the image pages'
 // ImagePreview over a bar of its own (Fit, 1:1, the zoom, the channels, the pixel under the
 // pointer), with the facts the file's header gives: its size, its channels and depth as stored, and
-// whether its alpha is used. It decodes the file on the ImportPreviewReader's worker, saying it is
+// whether its alpha is used. It decodes the file as a task on the editor's pool, saying it is
 // reading meanwhile. A domain whose importer makes an asset from a picture registers it for that
 // asset type (ImageFilePreviewFactory.Register).
 
@@ -33,11 +33,11 @@ class ImageFilePreview : IImportPreview
 	}
 
 	/// The read it started, cancelled as it goes: a reference of ours.
-	private ImportPreviewRead mRead = null;
+	private TaskHandle mRead = null;
 
-	/// Shows that it is reading `path` and starts the read on `reader` (borrowed: it outlives this);
+	/// Shows that it is reading `path` and submits the read to `tasks` (borrowed: it outlives this);
 	/// the picture and its facts show when it comes back, or why it did not decode.
-	public this(StringView path, ImportPreviewReader reader)
+	public this(StringView path, TaskPool tasks)
 	{
 		mRoot = BuildView();
 		mPicture = new ImagePreview(mRoot);
@@ -45,11 +45,16 @@ class ImageFilePreview : IImportPreview
 		let decoded = new Decoded(); // the done's reference
 		decoded.AddRef(); // the read's
 		let file = new String(path);
-		mRead = reader.Read(
+		mRead = tasks.Submit(scope $"Reading {ImportPaths.FileNameOf(path)}",
 			// On the worker: only the file and `decoded`.
-			new [=file, =decoded] () => { Decode(file, decoded); } ~ { delete file; decoded.ReleaseRef(); },
-			// On the main thread, and only while this preview lives (it cancels the read as it goes).
-			new [=this, =decoded] () => { Show(decoded); } ~ { decoded.ReleaseRef(); });
+			new [=file, =decoded] (context) =>
+			{
+				Decode(file, decoded);
+				return Result<void, ErrorCode>.Ok; // Show says when it did not decode
+			} ~ { delete file; decoded.ReleaseRef(); },
+			// On the main thread, and only while this preview lives (it cancels its task as it goes).
+			new [=this, =decoded] (status) => { Show(decoded); } ~ { decoded.ReleaseRef(); });
+		mRead.AddRef(); // ours
 	}
 
 	public ~this()
@@ -220,7 +225,7 @@ class ImageFilePreviewFactory : IImportPreviewFactory
 	}
 
 	public Type AssetType => mType;
-	public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader) => new ImageFilePreview(file.Path, reader);
+	public IImportPreview Create(ImportPreviewSource file, TaskPool tasks) => new ImageFilePreview(file.Path, tasks);
 
 	/// Registers the picture preview for the files listed by `type`.
 	public static void Register(EditorContext context, Type type)

@@ -149,15 +149,15 @@ class ImageInspectViewTests
 		let picture = Picture();
 		defer delete picture;
 		Test.Assert(ImageIO.SaveImage(picture, path, .PNG) case .Ok);
-		let reader = scope ImportPreviewReader();
+		let tasks = scope TaskPool(1);
 		{
-			let preview = scope ImageFilePreview(path, reader);
+			let preview = scope ImageFilePreview(path, tasks);
 			int changed = 0;
 			preview.SetOnChanged(new [&changed] () => { changed++; });
 			// Reading: no picture and no facts until the read is handed back.
 			Test.Assert(!preview.Picture.View.HasImage);
 			Test.Assert(preview.Facts.IsEmpty);
-			reader.Finish();
+			tasks.Finish();
 			Test.Assert(changed == 1);
 			Test.Assert(preview.Picture.View.HasImage);
 			let facts = preview.Facts;
@@ -169,11 +169,11 @@ class ImageInspectViewTests
 
 		// A preview gone before its read comes back: the result is dropped.
 		{
-			let gone = scope ImageFilePreview(path, reader);
+			let gone = scope ImageFilePreview(path, tasks);
 			Test.Assert(!gone.Picture.View.HasImage);
 		}
-		reader.Finish();
-		Test.Assert(reader.InFlight == 0);
+		tasks.Finish();
+		Test.Assert(tasks.InFlight == 0);
 
 		// One grey channel: no alpha to speak of.
 		let grey = scope $"scratch_image_file_preview_grey.png";
@@ -182,14 +182,14 @@ class ImageInspectViewTests
 		let narrow = scope Sedulous.Image.Image(2, 2, .R8, .(&values[0], 4));
 		Test.Assert(ImageIO.SaveImage(narrow, grey, .PNG) case .Ok);
 		{
-			let preview = scope ImageFilePreview(grey, reader);
-			reader.Finish();
+			let preview = scope ImageFilePreview(grey, tasks);
+			tasks.Finish();
 			Test.Assert(preview.Picture.View.HasImage);
 			Test.Assert((preview.Facts.Length == 2) && (preview.Facts[0] == "2 × 2") && (preview.Facts[1] == "Grey, 8-bit"));
 		}
 
-		let missing = scope ImageFilePreview("scratch_image_file_preview_missing.png", reader);
-		reader.Finish();
+		let missing = scope ImageFilePreview("scratch_image_file_preview_missing.png", tasks);
+		tasks.Finish();
 		Test.Assert(!missing.Picture.View.HasImage);
 		Test.Assert(missing.Facts.IsEmpty);
 		Test.Assert(missing.View != null);

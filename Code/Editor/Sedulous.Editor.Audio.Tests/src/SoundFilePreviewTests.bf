@@ -29,14 +29,14 @@ class SoundFilePreviewTests
 		defer DeleteFile(path);
 		Test.Assert(WriteFile(path, wav) case .Ok);
 
-		let reader = scope ImportPreviewReader();
+		let tasks = scope TaskPool(1);
 		{
-			let preview = scope SoundFilePreview(path, null, reader, null);
+			let preview = scope SoundFilePreview(path, null, tasks, null);
 			int changed = 0;
 			preview.SetOnChanged(new [&changed] () => { changed++; });
 			Test.Assert(!preview.HasSound, "still reading");
 			Test.Assert(preview.Facts.IsEmpty);
-			reader.Finish();
+			tasks.Finish();
 			Test.Assert(changed == 1);
 			Test.Assert(preview.HasSound);
 			Test.Assert(!preview.Waveform.Peaks.IsEmpty);
@@ -54,8 +54,8 @@ class SoundFilePreviewTests
 			Test.Assert(preview.Waveform.Playhead < 0.0f);
 		}
 
-		let missing = scope SoundFilePreview("scratch_sound_file_preview_missing.wav", null, reader, null);
-		reader.Finish();
+		let missing = scope SoundFilePreview("scratch_sound_file_preview_missing.wav", null, tasks, null);
+		tasks.Finish();
 		Test.Assert(!missing.HasSound);
 		Test.Assert(missing.Facts.IsEmpty);
 	}
@@ -77,9 +77,9 @@ class SoundFilePreviewTests
 		Test.Assert(WriteFile(path, wav) case .Ok);
 
 		let options = scope AudioImportOptions();
-		let reader = scope ImportPreviewReader();
-		let preview = scope SoundFilePreview(path, options, reader, null);
-		reader.Finish();
+		let tasks = scope TaskPool(1);
+		let preview = scope SoundFilePreview(path, options, tasks, null);
+		tasks.Finish();
 		Test.Assert(preview.HasSound);
 		// Off: the waveform as it is.
 		Test.Assert(preview.Waveform.CutFrom == 1.0f);

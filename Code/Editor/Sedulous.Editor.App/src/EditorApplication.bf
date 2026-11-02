@@ -1043,7 +1043,7 @@ class EditorApplication : IApplication
 			mImportWindow = new ImportWindow(mAssetImport, PickerMade(), mWindow.LoadMarkup(ImportWindow.cMarkupPath));
 			mImportWindow.Icons = TypeIcons();
 			mImportWindow.Previews = mContext.ImportPreviews;
-			mImportWindow.PreviewReader = mContext.ImportPreviewReads;
+			mImportWindow.Tasks = mContext.Tasks;
 			mImportWindow.AskName = new (request) => { AskName(request); };
 			mImportWindow.Operations = mAssetOps;
 		}
@@ -1296,7 +1296,9 @@ class EditorApplication : IApplication
 		mJobService.Update(scope (line) => { mContext.SetStatus(line); });
 		if (mExport != null)
 			mExport.Pump();
-		mContext.ImportPreviewReads.Pump(); // the import window's previews, read off this thread
+		// The editor's long work: the import previews' reads, done off this thread; their completions
+		// run here, their lines go to the status bar.
+		mContext.Tasks.Pump(scope (task, line) => { mContext.SetStatus(line); });
 		UpdateStatusBar();
 		if (let resources = mSession.Resources)
 		{

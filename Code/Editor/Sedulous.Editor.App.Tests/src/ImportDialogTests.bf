@@ -168,7 +168,7 @@ static class ImportDialogTests
 	private class FramedPreviewFactory : IImportPreviewFactory
 	{
 		public Type AssetType => typeof(ImportPreviewThing);
-		public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader) => new FramedPreview(file.Path);
+		public IImportPreview Create(ImportPreviewSource file, TaskPool tasks) => new FramedPreview(file.Path);
 	}
 
 	/// Previews the box files' type, counting how many it has made.
@@ -178,7 +178,7 @@ static class ImportDialogTests
 
 		public Type AssetType => typeof(ImportPreviewThing);
 
-		public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader)
+		public IImportPreview Create(ImportPreviewSource file, TaskPool tasks)
 		{
 			Made++;
 			let made = new NamePreview(file.Path);
@@ -261,7 +261,7 @@ static class ImportDialogTests
 			Window = new ImportWindow(Import, Groups, PagesBed.LoadMarkup(ImportWindow.cMarkupPath));
 			Test.Assert(Window.Window != null);
 			Window.Previews = Context.ImportPreviews;
-			Window.PreviewReader = Context.ImportPreviewReads;
+			Window.Tasks = Context.Tasks;
 		}
 
 		public ~this()

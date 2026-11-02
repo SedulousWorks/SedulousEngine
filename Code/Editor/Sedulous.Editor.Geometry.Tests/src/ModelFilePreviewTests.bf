@@ -10,7 +10,7 @@ using Sedulous.ModelImporter; // the importer's own read
 namespace Sedulous.Editor.Geometry.Tests;
 
 /// The import window's preview of a model file, without a host (no view): the file is read on the
-/// preview reader, cooked into its cache folder and bound, and its facts and clips show; opened again
+/// editor's task pool, cooked into its cache folder and bound, and its facts and clips show; opened again
 /// it binds from the cache at once. It takes the frame hooks the window drives. A file the loaders
 /// cannot read opens nothing and says so.
 class ModelFilePreviewTests
@@ -25,16 +25,16 @@ class ModelFilePreviewTests
 		let root = FindDataRoot(.. scope .());
 		Test.Assert(!root.IsEmpty);
 		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
-		let reader = scope ImportPreviewReader();
+		let tasks = scope TaskPool(1);
 		let services = scope AssetPageServices(); // no host: no view
 		{
-			let preview = scope ModelFilePreview(fox, cache, reader, services);
+			let preview = scope ModelFilePreview(fox, cache, tasks, services);
 			Test.Assert((preview as IImportPreviewFrames) != null, "the window drives its frames");
 			int changed = 0;
 			preview.SetOnChanged(new [&changed] () => { changed++; });
 			Test.Assert(!preview.IsOpen, "still reading");
 			Test.Assert(preview.Facts.IsEmpty);
-			reader.Finish();
+			tasks.Finish();
 			Test.Assert(changed == 1);
 			Test.Assert(preview.IsOpen);
 			// Fox.gltf: one mesh of 576 triangles, one material and texture, 24 bones, three clips.
@@ -52,9 +52,9 @@ class ModelFilePreviewTests
 
 		// Opened again, it binds what the first open cooked, with no read.
 		{
-			let again = scope ModelFilePreview(fox, cache, reader, services);
+			let again = scope ModelFilePreview(fox, cache, tasks, services);
 			Test.Assert(again.IsOpen);
-			Test.Assert(reader.InFlight == 0);
+			Test.Assert(tasks.InFlight == 0);
 			Test.Assert(again.Facts.Length == 6);
 		}
 
@@ -62,8 +62,8 @@ class ModelFilePreviewTests
 		let junk = PathJoin(cache, "junk.glb", .. scope .());
 		let text = "not a model";
 		Test.Assert(WriteFile(junk, .((uint8*)text.Ptr, text.Length)) case .Ok);
-		let broken = scope ModelFilePreview(junk, cache, reader, services);
-		reader.Finish();
+		let broken = scope ModelFilePreview(junk, cache, tasks, services);
+		tasks.Finish();
 		Test.Assert(!broken.IsOpen);
 		Test.Assert(broken.Facts.IsEmpty);
 	}
@@ -84,11 +84,11 @@ class ModelFilePreviewTests
 		defer delete prepared;
 		let loaded = prepared as LoadedModel;
 		Test.Assert(loaded != null);
-		let reader = scope ImportPreviewReader();
+		let tasks = scope TaskPool(1);
 		let services = scope AssetPageServices(); // no host: no view
-		let preview = scope ModelFilePreview(fox, cache, reader, services, loaded.Model);
+		let preview = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model);
 		Test.Assert(preview.IsOpen, "at once");
-		Test.Assert(reader.InFlight == 0, "no read of its own");
+		Test.Assert(tasks.InFlight == 0, "no read of its own");
 		Test.Assert(preview.Facts.Length == 6);
 	}
 }

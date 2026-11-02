@@ -16,7 +16,7 @@ namespace Sedulous.Editor.Audio;
 // length, its channels and rate, and its peak. The file's settings show on the waveform as the cook
 // will apply them (the trimmed tail shaded, the bars normalized), and with "As imported" on, Play
 // plays it so (louder or softer by Normalize, stopping where the trim cuts). The file is read,
-// probed and reduced to its peaks on the ImportPreviewReader's worker; it plays through the runtime
+// probed and reduced to its peaks as a task on the editor's pool; it plays through the runtime
 // context's audio, as the clip page auditions (nothing plays without an engine, as in a test). The
 // audio domain registers it for audio clips.
 
@@ -58,13 +58,13 @@ class SoundFilePreview : IImportPreview
 	/// Following the voice on the GUI's clock while it plays: a reference of ours.
 	private TickAction mFollow = null;
 	/// The read it started, cancelled as it goes: a reference of ours.
-	private ImportPreviewRead mRead = null;
+	private TaskHandle mRead = null;
 	private delegate void() mOnChanged ~ delete _;
 
-	/// Shows that it is reading `path` and starts the read on `reader` (borrowed: it outlives this);
+	/// Shows that it is reading `path` and submits the read to `tasks` (borrowed: it outlives this);
 	/// `options` are the file's settings (borrowed; null: none); `audio` is what Play plays through
 	/// (null: nothing plays).
-	public this(StringView path, Sedulous.Pipeline.Importer.ImportOptions options, ImportPreviewReader reader, AudioSubsystem audio)
+	public this(StringView path, Sedulous.Pipeline.Importer.ImportOptions options, TaskPool tasks, AudioSubsystem audio)
 	{
 		mOptions = options;
 		mVoice = new AuditionVoice(audio);
@@ -106,11 +106,16 @@ class SoundFilePreview : IImportPreview
 		let decoded = new Decoded(); // the done's reference
 		decoded.AddRef(); // the read's
 		let file = new String(path);
-		mRead = reader.Read(
+		mRead = tasks.Submit(scope $"Reading {PathFilename(path, .. scope .())}",
 			// On the worker: only the file and `decoded`.
-			new [=file, =decoded] () => { Decode(file, decoded); } ~ { delete file; decoded.ReleaseRef(); },
-			// On the main thread, and only while this preview lives (it cancels the read as it goes).
-			new [=this, =decoded] () => { Show(decoded); } ~ { decoded.ReleaseRef(); });
+			new [=file, =decoded] (context) =>
+			{
+				Decode(file, decoded);
+				return Result<void, ErrorCode>.Ok; // Show says when it did not decode
+			} ~ { delete file; decoded.ReleaseRef(); },
+			// On the main thread, and only while this preview lives (it cancels its task as it goes).
+			new [=this, =decoded] (status) => { Show(decoded); } ~ { decoded.ReleaseRef(); });
+		mRead.AddRef(); // ours
 	}
 
 	public ~this()
@@ -335,7 +340,7 @@ class SoundFilePreviewFactory : IImportPreviewFactory
 
 	public Type AssetType => mType;
 
-	public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader)
+	public IImportPreview Create(ImportPreviewSource file, TaskPool tasks)
 	{
 		AudioSubsystem audio = null;
 		if (mServices != null)
@@ -345,6 +350,6 @@ class SoundFilePreviewFactory : IImportPreviewFactory
 			if (services.Host != null)
 				audio = services.Host.Subsystems.GetSubsystem<AudioSubsystem>();
 		}
-		return new SoundFilePreview(file.Path, file.Options, reader, audio);
+		return new SoundFilePreview(file.Path, file.Options, tasks, audio);
 	}
 }

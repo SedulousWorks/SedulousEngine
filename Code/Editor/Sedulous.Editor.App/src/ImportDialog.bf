@@ -109,7 +109,8 @@ class ImportWindow
 	/// The domains' previews by asset type, and what reads their files. BORROWED: the context's;
 	/// null: none, each file shows its icon.
 	public ImportPreviewRegistry Previews = null;
-	public ImportPreviewReader PreviewReader = null;
+	/// The pool the previews read their files on; null: no previews. Borrowed.
+	public TaskPool Tasks = null;
 	/// Asks for a name (the name prompt), taking the request; null: the group picker offers no New
 	/// Group.... Owned.
 	public delegate void(NameRequest request) AskName ~ delete _;
@@ -596,7 +597,7 @@ class ImportWindow
 			mPreviewView.RemoveAllChildren();
 			DeleteAndNullify!(mPreview);
 			IImportPreviewFactory factory = null;
-			if ((Previews != null) && (PreviewReader != null))
+			if ((Previews != null) && (Tasks != null))
 				factory = Previews.FindByName(typeName);
 			// While the importer reads the file, its preview waits to show that read rather than
 			// read it again (made when the read arrives, see Open).
@@ -614,7 +615,7 @@ class ImportWindow
 				mPreviewOptions = file.Options;
 			}
 			if ((factory != null) && !waits)
-				mPreview = factory.Create(ImportPreviewSource(file.Path, file.Options, file.Prepared), PreviewReader);
+				mPreview = factory.Create(ImportPreviewSource(file.Path, file.Options, file.Prepared), Tasks);
 			if (mPreview != null)
 			{
 				mPreview.SetOnChanged(new [=this] () => { ShowFacts(); });
