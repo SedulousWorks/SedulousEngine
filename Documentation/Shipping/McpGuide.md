@@ -212,11 +212,11 @@ alone is normal, clear it with `asset_cook`.
 **Assets**: `asset_import` (an OS file into Sources/ plus a typed asset) then `asset_cook`
 (incremental; `force` for a full one). When several importers claim an extension, `.png`
 say, the first is used and the result lists the others under `alsoClaimableBy`; re-import
-with `importer` set to choose. `options` sets the importer's toggles, the import dialog's
-checkboxes by label (`{"Generate collision": true}` gives an imported model's prefab
-colliders and a static body; a model also takes Textures, Materials, Animations, Generate
-prefab, Generate scene, Generate LODs, Convex collision); the result lists every toggle's
-value. An imported model gets its prefab, the `Prefab` asset beside its manifest, in both
+with `importer` set to choose. `options` sets the importer's settings by label, as the import
+window shows them (`{"Generate collision": true}` gives an imported model's prefab colliders and
+a static body; a model also takes Textures, Materials, Animations, Generate prefab, Generate
+scene, Convex collision, Generate LODs, Root motion); an unknown one is refused with the
+importer's list, and the result lists every setting's value. An imported model gets its prefab, the `Prefab` asset beside its manifest, in both
 hosts (and a scene with `Generate scene`). Its materials come in as authored: an FBX Phong or
 Lambert material and a classic OBJ `.mtl` on the built-in Phong, a glTF material with
 `KHR_materials_unlit` on Unlit, everything else (glTF, Blender's FBX, an `.mtl` with PBR keys) on

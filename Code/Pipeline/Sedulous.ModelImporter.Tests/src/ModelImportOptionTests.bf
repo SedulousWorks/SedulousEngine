@@ -28,9 +28,12 @@ class ModelImportOptionTests
 		Test.Assert(!options.CollisionConvex);
 		Test.Assert(!options.RootMotion);
 
-		let toggles = scope List<ImportToggle>();
-		options.GetToggles(toggles);
-		Test.Assert(toggles.Count == 9); // + Root motion
+		let settings = options.GetSettings(.. scope .());
+		Test.Assert(settings.Count == 9); // + Root motion and Generate LODs
+		Test.Assert(ImportOptions.SettingLabel(settings[0], .. scope .()) == "Textures");
+		Test.Assert(options.FindSetting("Generate collision", ?));
+		Test.Assert(options.FindSetting("convex collision", let convex));
+		Test.Assert(convex.GetCustomAttribute<VisibleWhenAttribute>() case .Ok, "shown only while Generate collision is on");
 	}
 
 	/// Geometry ALWAYS imports; the three toggles gate everything else, and nothing of those

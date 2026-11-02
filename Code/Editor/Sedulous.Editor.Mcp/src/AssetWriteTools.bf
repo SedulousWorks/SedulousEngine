@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Content;
@@ -40,7 +41,7 @@ static class AssetWriteTools
 		importSchema.Str("source", "absolute path to the file to import", true);
 		importSchema.Str("group", "source-DB group path to place it in (slash-joined; default root)");
 		importSchema.Str("importer", "which importer to use when several claim the extension, by label (the result of an unhinted import lists them)");
-		importSchema.Map("options", "the importer's options, as the import dialog's checkboxes: {\"<toggle>\": true|false}, the toggle named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Generate LODs, Convex collision); unnamed toggles keep their defaults, and the result lists every toggle's value");
+		importSchema.Map("options", "the importer's settings, as the import window shows them: {\"<setting>\": true|false}, the setting named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Convex collision, Generate LODs, Root motion); an unknown one is refused with the importer's list, unnamed settings keep their defaults, and the result lists every setting's value");
 		importSchema.Str("name", "the asset's name (a single-asset importer's; default: the file's stem)");
 		importSchema.Str("onConflict", "when another file's asset of this type has the name: refuse (default), replace, or keepBoth");
 		server.RegisterTool("asset_import",
@@ -96,36 +97,40 @@ static class AssetWriteTools
 			}
 		}
 
-		// The options: the importer's defaults, then the call's toggles by label.
+		// The options: the importer's defaults, then the call's settings by label.
 		let options = importer.CreateOptions();
 		defer { if (options != null) delete options; }
-		let toggles = scope List<ImportToggle>();
+		let settings = scope List<FieldInfo>();
 		if (options != null)
-			options.GetToggles(toggles);
+			options.GetSettings(settings);
 		if (let asked = arguments.Get("options"))
 		{
 			if (!asked.IsObject)
 			{
-				outError.Append("`options` takes an object of toggles: {\"Generate collision\": true}");
+				outError.Append("`options` takes an object of settings: {\"Generate collision\": true}");
 				return .Failed;
 			}
 			for (int i < asked.Count)
 			{
 				let key = asked.KeyAt(i);
 				let value = asked.Get(key);
-				ImportToggle? found = null;
-				for (let toggle in toggles)
-				{
-					if (SameToggleName(toggle.Label, key))
-						found = toggle;
-				}
-				if (found == null)
+				FieldInfo found = default;
+				if ((options == null) || !options.FindSetting(key, out found))
 				{
 					outError.AppendF("the {} importer has no option '{}'; its options are: ", importer.Label, key);
-					if (toggles.IsEmpty)
+					if (settings.IsEmpty)
 						outError.Append("none");
-					for (int t < toggles.Count)
-						outError.AppendF("{}{}", (t > 0) ? ", " : "", toggles[t].Label);
+					for (int t < settings.Count)
+					{
+						if (t > 0)
+							outError.Append(", ");
+						ImportOptions.SettingLabel(settings[t], outError);
+					}
+					return .Failed;
+				}
+				if (found.FieldType != typeof(bool))
+				{
+					outError.AppendF("option '{}' is not one asset_import sets", key);
 					return .Failed;
 				}
 				if (!value.IsBool)
@@ -133,7 +138,7 @@ static class AssetWriteTools
 					outError.AppendF("option '{}' takes true or false", key);
 					return .Failed;
 				}
-				*found.Value.Value = value.AsBool();
+				*SettingAt(options, found) = value.AsBool();
 			}
 		}
 
@@ -202,11 +207,14 @@ static class AssetWriteTools
 		outResult.Set("mainMs", JsonValue.MakeNumber((double)done.MainMs));
 		outResult.Set("flushMs", JsonValue.MakeNumber((double)done.FlushMs));
 		outResult.Set("importer", JsonValue.MakeString(importer.Label));
-		if (!toggles.IsEmpty)
+		if (!settings.IsEmpty)
 		{
 			let applied = JsonValue.MakeObject();
-			for (let toggle in toggles)
-				applied.Set(toggle.Label, JsonValue.MakeBool(*toggle.Value));
+			for (let setting in settings)
+			{
+				if (setting.FieldType == typeof(bool))
+					applied.Set(ImportOptions.SettingLabel(setting, .. scope .()), JsonValue.MakeBool(*SettingAt(options, setting)));
+			}
 			outResult.Set("options", applied);
 		}
 		if (claimants.Count > 1)
@@ -220,20 +228,9 @@ static class AssetWriteTools
 		return true;
 	}
 
-	/// A toggle's label against a caller's key: case and spaces ignored, so "Generate collision",
-	/// "generate collision" and "generateCollision" all name it.
-	private static bool SameToggleName(StringView label, StringView key)
-	{
-		let a = scope String();
-		let b = scope String();
-		for (let c in label)
-			if (c != ' ')
-				a.Append(c.ToLower);
-		for (let c in key)
-			if (c != ' ')
-				b.Append(c.ToLower);
-		return a == b;
-	}
+	/// A bool setting's value in `options`, where it lives.
+	private static bool* SettingAt(ImportOptions options, FieldInfo setting)
+		=> (bool*)((uint8*)Internal.UnsafeCastToPtr(options) + setting.MemberOffset);
 
 	private static void AppendLabels(List<IFileImporter> importers, IFileImporter except, String outText)
 	{

@@ -118,15 +118,11 @@ static class AssetImportTests
 		}
 	}
 
-	/// One checkbox, so a file with them is reviewed though it plans nothing.
+	/// One setting, so a file with it is reviewed though it plans nothing.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
 	class ToggledOptions : ImportOptions
 	{
 		public bool Flip = true;
-
-		public override void GetToggles(List<ImportToggle> outToggles)
-		{
-			outToggles.Add(.("Flip", "", &Flip));
-		}
 	}
 
 	/// Takes ".cfg": options with a toggle, no plan.

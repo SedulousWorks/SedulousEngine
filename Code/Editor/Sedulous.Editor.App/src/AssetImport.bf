@@ -166,9 +166,7 @@ class AssetImport
 		let file = session.Files[0];
 		if ((file.State != .Ready) || !file.Plan.IsEmpty || (file.Options == null) || (file.Importers.Count != 1))
 			return false;
-		let toggles = scope List<ImportToggle>();
-		file.Options.GetToggles(toggles);
-		return toggles.IsEmpty && ImportPaths.ImportClashAllows(ClashOf(session, file, .. scope .()), .Refuse);
+		return !file.Options.HasSettings && ImportPaths.ImportClashAllows(ClashOf(session, file, .. scope .()), .Refuse);
 	}
 
 	/// The name clash a file's import would meet in the session's group under its plan's names,

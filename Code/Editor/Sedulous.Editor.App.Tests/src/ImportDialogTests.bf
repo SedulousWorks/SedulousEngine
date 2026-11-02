@@ -172,16 +172,12 @@ static class ImportDialogTests
 		}
 	}
 
-	/// A box that writes through to its field, and one that points at nothing.
+	/// One setting, declared as a real importer's are.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
 	private class ToggledOptions : ImportOptions
 	{
+		[DisplayName("Flip"), Description("Flips it")]
 		public bool Flip = true;
-
-		public override void GetToggles(List<ImportToggle> outToggles)
-		{
-			outToggles.Add(.("Flip", "Flips it", &Flip));
-			outToggles.Add(.("Ghost", "", null));
-		}
 	}
 
 	/// Takes ".cfg": options with toggles, no plan.
@@ -665,21 +661,35 @@ static class ImportDialogTests
 		Test.Assert(bed.Top.GetInstance("Kit") == null);
 	}
 
+	/// A file's settings, as its importer's options declare them, in the inspector's property grid,
+	/// written through to the options; a file whose importer declares none shows none.
 	[Test]
-	public static void TheOptionsBoxesWriteThroughToTheirFields()
+	public static void TheSettingsShowInTheInspectorsGridAndWriteThroughToTheOptions()
 	{
 		let bed = scope Bed("scratch_import_window_options");
-		let session = bed.Open(scope StringView[]("/somewhere/game.cfg"));
+		let session = bed.Open(scope StringView[]("/somewhere/game.cfg", "/somewhere/crate.box"));
 		defer session.ReleaseRef();
-		let boxes = scope List<Sedulous.GUI.CheckBox>();
-		Collect<Sedulous.GUI.CheckBox>(bed.Window.Detail, boxes);
-		Test.Assert(boxes.Count == 1, "Ghost points at nothing: not shown");
-		Test.Assert(boxes[0].Text == "Flip");
-		Test.Assert(boxes[0].Tooltip == "Flips it");
-		Test.Assert(boxes[0].Checked);
+		let grids = scope List<PropertyGrid>();
+		Collect<PropertyGrid>(bed.Window.Detail, grids);
+		Test.Assert(grids.Count == 1, "the config's options declare Flip: one grid of its settings");
+		let rows = scope List<Sedulous.GUI.PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		grids[0].Source.GetProperties("", rows);
+		Test.Assert((rows.Count == 1) && (rows[0].DisplayName == "Flip") && (rows[0].Description == "Flips it"));
+		grids[0].Source.CommitEdit("Flip", PropertyWrite(Sedulous.GUI.Variant(false)));
+		Test.Assert(!(session.Files[0].Options as ToggledOptions).Flip, "written through");
 		Test.Assert(Says(bed.Window.Detail, "It makes one asset, named after the file."));
-		Test.Assert(boxes[0].HandleActivate());
-		Test.Assert(!(session.Files[0].Options as ToggledOptions).Flip);
+
+		// The box's importer declares none: no grid.
+		bed.Window.Select(1);
+		grids.Clear();
+		Collect<PropertyGrid>(bed.Window.Detail, grids);
+		Test.Assert(grids.Count == 0);
+		bed.Window.Select(0);
+		grids.Clear();
+		Collect<PropertyGrid>(bed.Window.Detail, grids);
+		Test.Assert(grids.Count == 1);
+		bed.Window.Close();
 	}
 
 	[Test]

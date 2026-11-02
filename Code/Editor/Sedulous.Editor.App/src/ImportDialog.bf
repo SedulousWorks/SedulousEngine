@@ -64,6 +64,9 @@ class ImportWindow
 	private int mSelected = 0;
 	/// The chosen file's kinds shown item by item; the rest are closed to their counts.
 	private List<ImportResourceKind> mOpenKinds = new .() ~ delete _;
+	/// The chosen file's settings, which its grid shows; the grid a reference of ours.
+	private FieldPropertySource mSettings = null;
+	private PropertyGrid mSettingsGrid = null;
 	/// The chosen file's preview, kept while its path and listed type stay; null: its type has none.
 	private IImportPreview mPreview = null ~ delete _;
 	private String mPreviewPath = new .() ~ delete _;
@@ -129,6 +132,7 @@ class ImportWindow
 			mPicker.Close();
 		Close();
 		Release();
+		DropSettings();
 		if (mWindow != null)
 			mWindow.SetOnClose(null);
 	}
@@ -280,6 +284,7 @@ class ImportWindow
 		mSession.Closed = true;
 		mSession.ReleaseRef();
 		mSession = null;
+		DropSettings(); // its grid's source reads the session's options
 		DeleteAndNullify!(mPreview); // its view stays in the pane until the next one shows
 		mPreviewPath.Clear();
 		mPreviewType.Clear();
@@ -525,25 +530,19 @@ class ImportWindow
 			Add(mDetail, Text("It could not be read; the Console says why.", "form-help refused"));
 			return;
 		}
-		// Its options: a box per toggle, writing straight through to the field it points at (one
-		// pointing at none shows nothing).
-		if (file.Options != null)
+		// Its settings, as its importer declares them, drawn by the inspector's property editors,
+		// written straight through to the options.
+		DropSettings();
+		if ((file.Options != null) && file.Options.HasSettings)
 		{
-			let toggles = scope List<ImportToggle>();
-			file.Options.GetToggles(toggles);
-			for (let toggle in toggles)
-			{
-				if (toggle.Value == null)
-					continue;
-				let toggleBox = new Sedulous.GUI.CheckBox();
-				toggleBox.Text = toggle.Label;
-				if (!toggle.Description.IsEmpty)
-					toggleBox.Tooltip = toggle.Description;
-				toggleBox.Checked = *toggle.Value;
-				let value = toggle.Value;
-				toggleBox.SetOnToggled(new [=value] (on) => { *value = on; });
-				Add(mDetail, toggleBox);
-			}
+			let options = file.Options;
+			mSettings = new FieldPropertySource(options.GetType(), 1,
+				new [=options] (index) => Internal.UnsafeCastToPtr(options),
+				new [=options] (apply) => { apply(0, Internal.UnsafeCastToPtr(options)); });
+			mSettingsGrid = new PropertyGrid();
+			mSettingsGrid.AddClass("import-settings");
+			mSettingsGrid.Source = mSettings;
+			mDetail.AddChild(mSettingsGrid);
 		}
 		ShowClash(file, index);
 		if (file.Plan.IsEmpty)
@@ -628,6 +627,19 @@ class ImportWindow
 				Add(mDetail, line);
 			}
 		}
+	}
+
+	/// The settings' grid lets go of its source, then both go: the grid out of the detail.
+	private void DropSettings()
+	{
+		if (mSettingsGrid != null)
+		{
+			mSettingsGrid.Source = null;
+			mSettingsGrid.RemoveFromParent();
+			mSettingsGrid.ReleaseRef();
+			mSettingsGrid = null;
+		}
+		DeleteAndNullify!(mSettings);
 	}
 
 	// What the file's name meets (AssetImport.ClashOf): nothing said when it is free or the file's
