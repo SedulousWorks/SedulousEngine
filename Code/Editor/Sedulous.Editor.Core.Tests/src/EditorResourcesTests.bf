@@ -175,6 +175,26 @@ static class EditorResourcesTests
 		Test.Assert(component.Class == "cat-physics");
 	}
 
+	/// The import window lists a file by the asset type its importer names: found by that full name
+	/// and given its icon as For gives it; a name no type has takes the generic one.
+	[Test]
+	public static void ATypeFoundByItsFullNameAndANameNoTypeHasTakesTheGenericOne()
+	{
+		let there = scope List<String>() { "Editor/Icons/Types/IconLight.svg", "Editor/Icons/Types/Asset.svg" };
+		let icons = scope EditorIcons(Over(there));
+
+		let named = icons.ForTypeName("Sedulous.Editor.Core.Tests.IconLight", "Asset");
+		Test.Assert(named.Source == "Editor/Icons/Types/IconLight.svg");
+		Test.Assert(named.Class == "cat-visualeffects", "as For finds it, category and all");
+		Test.Assert(icons.ForTypeName("Sedulous.Editor.Core.Tests.IconLight", "Asset") == named, "asked again, the same answer");
+		Test.Assert(icons.ForTypeName("IconLight", "Asset").Source == "Editor/Icons/Types/Asset.svg", "by the FULL name only");
+		Test.Assert(icons.ForTypeName("No.Such.Type", "Asset").Source == "Editor/Icons/Types/Asset.svg");
+		Test.Assert(icons.ForTypeName("No.Such.Type", "Missing").Source.IsEmpty, "no icon anywhere");
+		Test.Assert(icons.ForTypeName("", "Asset").Source == "Editor/Icons/Types/Asset.svg", "no name: the generic one");
+		icons.Forget();
+		Test.Assert(icons.ForTypeName("No.Such.Type", "Asset").Source == "Editor/Icons/Types/Asset.svg", "found again after a Forget");
+	}
+
 	[Test]
 	public static void ACategoryIsAClassOfItsLettersAndDigits()
 	{

@@ -37,6 +37,10 @@ class EditorIcons
 	private delegate bool(StringView path) mExists ~ delete _;
 	/// By the type; freed in ~this, its lists' items with them.
 	private Dictionary<Type, List<Known>> mCache = new .();
+	/// The types ForTypeName looked for, by full name; null is a name no type has. Keys owned.
+	private Dictionary<String, Type> mTypesByName = new .() ~ DeleteDictionaryAndKeys!(_);
+	/// ForTypeName's answers for a name no type has, by fallback; freed by Forget.
+	private Dictionary<String, TypeIcon> mUnnamed = new .();
 
 	/// `exists` says whether a file is there (the editor's resources answer it). OWNERSHIP
 	/// transfers.
@@ -49,6 +53,7 @@ class EditorIcons
 	{
 		Forget();
 		delete mCache;
+		delete mUnnamed;
 	}
 
 	/// The icon of `type`: its own, else its nearest base's, else `fallback`'s (a generic type
@@ -103,12 +108,51 @@ class EditorIcons
 		return icon;
 	}
 
-	/// Forgets what it found (the icon files changed on disk). What For returned is freed.
+	/// The icon of the type named `typeFullName` (as an importer names the asset type it makes:
+	/// IFileImporter.ListedTypeName), as For finds it; `fallback`'s when no type has that name, else
+	/// none. Borrowed: kept until Forget.
+	public TypeIcon ForTypeName(StringView typeFullName, StringView fallback)
+	{
+		Type type = null;
+		if (!typeFullName.IsEmpty)
+		{
+			if (mTypesByName.TryGetValue(scope String(typeFullName), let known))
+				type = known;
+			else
+			{
+				type = EditorPageRegistry.FindTypeByFullName(typeFullName);
+				mTypesByName[new String(typeFullName)] = type;
+			}
+		}
+		if (type != null)
+			return For(type, fallback);
+
+		if (mUnnamed.TryGetValue(scope String(fallback), let shown))
+			return shown;
+		let icon = new TypeIcon();
+		mUnnamed[new String(fallback)] = icon;
+		if (!fallback.IsEmpty)
+		{
+			let path = IconPath(fallback, .. scope .());
+			if (Exists(path))
+				icon.Source.Set(path);
+		}
+		return icon;
+	}
+
+	/// Forgets what it found (the icon files changed on disk). What For and ForTypeName returned
+	/// is freed.
 	public void Forget()
 	{
 		for (let list in mCache.Values)
 			DeleteContainerAndItems!(list);
 		mCache.Clear();
+		for (let pair in mUnnamed)
+		{
+			delete pair.key;
+			delete pair.value;
+		}
+		mUnnamed.Clear();
 	}
 
 	/// The class a category tints by: "cat-" and its letters and digits in lower case

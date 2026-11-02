@@ -63,7 +63,15 @@ class EditorPageRegistry
 	{
 		if (mTypesByName.TryGetValue(scope String(typeFullName), let known))
 			return known;
-		Type found = null;
+		let found = FindTypeByFullName(typeFullName);
+		mTypesByName[new String(typeFullName)] = found;
+		return found;
+	}
+
+	/// The Beef type for a full name, or null, by a walk of every type; not remembered (ResolveType
+	/// and EditorIcons.ForTypeName remember what it finds).
+	public static Type FindTypeByFullName(StringView typeFullName)
+	{
 		let name = scope String();
 		for (let type in Type.Types)
 		{
@@ -76,13 +84,9 @@ class EditorPageRegistry
 			name.Clear();
 			type.GetFullName(name);
 			if (name == typeFullName)
-			{
-				found = type;
-				break;
-			}
+				return type;
 		}
-		mTypesByName[new String(typeFullName)] = found;
-		return found;
+		return null;
 	}
 
 	private static Type BaseOf(Type type)
