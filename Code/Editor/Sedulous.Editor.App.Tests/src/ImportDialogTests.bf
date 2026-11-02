@@ -260,13 +260,26 @@ static class ImportDialogTests
 		return false;
 	}
 
-	/// The files' row `index`: its box, its name, its state.
+	/// The files' row `index` (the group heads skipped): its box, its icon, its name, its size or
+	/// state.
 	private static Node FileRow(ImportWindow window, int index)
 	{
-		let row = window.Files.GetChildAt(index);
-		Test.Assert(row != null);
-		return row;
+		int seen = 0;
+		for (int i < window.Files.ChildCount)
+		{
+			let row = window.Files.GetChildAt(i) as UIWidget;
+			if ((row == null) || !row.HasClass("import-file"))
+				continue;
+			if (seen == index)
+				return row;
+			seen++;
+		}
+		Test.FatalError("no such row");
+		return null;
 	}
+
+	/// The name's button on a file's row.
+	private static Sedulous.GUI.Button NameOf(Node row) => row.GetChildAt(2) as Sedulous.GUI.Button;
 
 	[Test]
 	public static void AFilesPlanByKindEachKeptAndNamedImportOpenSayingWhatItDoesImportMakesWhatIsKeptAndCloses()
@@ -276,13 +289,25 @@ static class ImportDialogTests
 		defer session.ReleaseRef();
 		Test.Assert(bed.Window.IsOpen);
 		Test.Assert(bed.Window.Window.Title == "Import");
-		Test.Assert(!bed.Window.FilesScroll.Displayed, "one file: no list of them");
+		Test.Assert(bed.Window.FilesScroll.Displayed, "one file is listed too");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 1);
+		Test.Assert(Says(bed.Window.Files, "Box · 1"), "under its importer's label");
+		Test.Assert(Says(bed.Window.Facts, "Box"), "the preview's facts name its importer");
+		Test.Assert(Says(bed.Window.PreviewView, "crate.box"));
 		Test.Assert(bed.Window.GroupField.Text == "Content");
-		// Two kinds' boxes, three entries' boxes and names (no option toggles here).
+		// The two kinds, closed: a box each and a count, no names yet (no option toggles here).
 		let detail = bed.Window.Detail;
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(detail) == 2);
+		Test.Assert(Count<TextField>(detail) == 0);
+		Test.Assert(Says(detail, "1 of 1") && Says(detail, "2 of 2"));
+		Test.Assert(!bed.Window.IsKindOpen(.Texture));
+		// Opened, each kind lists its items, each kept or not and named.
+		bed.Window.SetKindOpen(.Mesh, true);
+		bed.Window.SetKindOpen(.Texture, true);
 		Test.Assert(Count<Sedulous.GUI.CheckBox>(detail) == 5);
 		Test.Assert(Count<TextField>(detail) == 3);
 		Test.Assert(Says(detail, "crate.box"), "its title");
+		Test.Assert(bed.Window.ImportButton.Text == "Import");
 		Test.Assert(Count<ComboBox>(detail) == 0, "one importer: no choice");
 		Test.Assert(bed.Window.ImportButton.Enabled, "the regression: open once described");
 		Test.Assert(bed.Window.Why == "Into Content.");
@@ -308,9 +333,11 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.ImportButton.Enabled);
 		Test.Assert(bed.Window.Why == "2 of 2 files into Content.");
 		Test.Assert(bed.Window.FilesScroll.Displayed);
-		Test.Assert(bed.Window.Files.ChildCount == 2);
-		Test.Assert(Says(FileRow(bed.Window, 1), "b.box"));
-		Test.Assert(Says(FileRow(bed.Window, 1), "Ready"));
+		Test.Assert(bed.Window.Files.ChildCount == 3, "one group's head, two rows");
+		Test.Assert(Says(bed.Window.Files, "Box · 2"), "both under their importer's label");
+		Test.Assert(bed.Window.ImportButton.Text == "Import 2 Files");
+		Test.Assert(NameOf(FileRow(bed.Window, 1)).Text == "b.box");
+		Test.Assert(!Says(FileRow(bed.Window, 1), "Ready"), "a ready file shows no state");
 		Test.Assert((FileRow(bed.Window, 0) as UIWidget).HasClass("selected"));
 		Test.Assert(!(FileRow(bed.Window, 1) as UIWidget).HasClass("selected"));
 
@@ -325,24 +352,25 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.IsOpen);
 		Test.Assert(bed.Top.GetInstance("Box") == null);
 		// Its row's name chooses it: its detail says it is being read.
-		Test.Assert((FileRow(bed.Window, 1).GetChildAt(1) as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(NameOf(FileRow(bed.Window, 1)).HandleActivate());
 		Test.Assert(bed.Window.Selected == 0, "not under the click");
 		bed.Drain();
 		Test.Assert(bed.Window.Selected == 1);
 		Test.Assert((FileRow(bed.Window, 1) as UIWidget).HasClass("selected"));
 		Test.Assert(Says(bed.Window.Detail, "Reading b.box..."));
 		Test.Assert(Count<ProgressBar>(bed.Window.Detail) == 1);
-		Test.Assert(Count<TextField>(bed.Window.Detail) == 0, "no plan while it is read");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Detail) == 0, "no plan while it is read");
 		session.Files[1].State = .Ready;
 		session.OnChanged(1);
 		Test.Assert(bed.Window.ImportButton.Enabled);
 		Test.Assert(!bed.Window.WhyLine.HasClass("refused"));
-		Test.Assert(Count<TextField>(bed.Window.Detail) == 3, "the chosen file's detail shown again");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Detail) == 2, "the chosen file's kinds shown again, closed");
 
 		// A file read but not kept keeps nothing waiting: only a kept file must be ready.
 		Test.Assert((FileRow(bed.Window, 1).GetChildAt(0) as Sedulous.GUI.CheckBox).HandleActivate());
 		Test.Assert(!session.Files[1].Kept);
 		Test.Assert(bed.Window.Why == "1 of 2 files into Content.");
+		Test.Assert(bed.Window.ImportButton.Text == "Import", "one kept");
 		session.Files[1].State = .Reading;
 		session.OnChanged(1);
 		Test.Assert(bed.Window.ImportButton.Enabled);
@@ -408,20 +436,25 @@ static class ImportDialogTests
 		let bed = scope Bed("scratch_import_window_importer");
 		let session = bed.Open(scope StringView[]("/somewhere/set.kit"));
 		defer session.ReleaseRef();
+		// Opened first: opening a kind makes the detail again, the combo with it.
+		bed.Window.SetKindOpen(.Mesh, true);
+		Test.Assert(Count<TextField>(bed.Window.Detail) == 1);
 		let combos = scope List<ComboBox>();
 		Collect<ComboBox>(bed.Window.Detail, combos);
 		Test.Assert(combos.Count == 1, "two importers take it: a choice");
 		Test.Assert(combos[0].ItemCount == 2);
 		Test.Assert(combos[0].SelectedText == "Kit");
 		Test.Assert(Says(bed.Window.Detail, "Import as"));
-		Test.Assert(Count<TextField>(bed.Window.Detail) == 1);
 		combos[0].SelectByUser(1);
 		Test.Assert(session.Files[0].ImporterIndex == 1);
 		Test.Assert(session.Files[0].Plan.Entries.Count == 3, "described again");
 		bed.Drain(); // the detail made again, not under the combo's own event
+		Test.Assert(Count<TextField>(bed.Window.Detail) == 2, "the meshes still open");
+		Test.Assert(Says(bed.Window.Detail, "2 of 2"));
+		Test.Assert(Says(bed.Window.Detail, "1 of 1"), "the material");
+		Test.Assert(Says(bed.Window.Facts, "Parts"), "the facts follow the importer");
+		bed.Window.SetKindOpen(.Material, true);
 		Test.Assert(Count<TextField>(bed.Window.Detail) == 3);
-		Test.Assert(Says(bed.Window.Detail, "Meshes (2)"));
-		Test.Assert(Says(bed.Window.Detail, "Materials (1)"));
 		combos.Clear();
 		Collect<ComboBox>(bed.Window.Detail, combos);
 		Test.Assert((combos.Count == 1) && (combos[0].SelectedText == "Parts"));
@@ -437,12 +470,19 @@ static class ImportDialogTests
 		let session = bed.Open(scope StringView[]("/somewhere/crate.box"));
 		defer session.ReleaseRef();
 		let entries = session.Files[0].Plan.Entries;
-		// [Meshes (1)][Box][Textures (2)][Wood][Rust], in the kinds' order.
+		// Opened by their toggles: [Meshes][Box][Textures][Wood][Rust], in the kinds' order.
+		let toggles = scope List<Sedulous.GUI.Button>();
+		Collect<Sedulous.GUI.Button>(bed.Window.Detail, toggles);
+		Test.Assert((toggles.Count == 2) && (toggles[0].Text == "Meshes") && (toggles[1].Text == "Textures"));
+		Test.Assert(toggles[1].HandleActivate());
+		Test.Assert(!bed.Window.IsKindOpen(.Texture), "not under the click");
+		bed.Drain();
+		Test.Assert(bed.Window.IsKindOpen(.Texture));
+		bed.Window.SetKindOpen(.Mesh, true);
 		let boxes = scope List<Sedulous.GUI.CheckBox>();
 		Collect<Sedulous.GUI.CheckBox>(bed.Window.Detail, boxes);
 		Test.Assert(boxes.Count == 5);
-		Test.Assert(boxes[0].Text == "Meshes (1)");
-		Test.Assert(boxes[2].Text == "Textures (2)");
+		Test.Assert(Says(bed.Window.Detail, "2 of 2"));
 		Test.Assert(boxes[2].Checked && !boxes[2].Indeterminate);
 
 		// The textures' box leaves both, not the mesh.
@@ -453,6 +493,7 @@ static class ImportDialogTests
 		boxes.Clear();
 		Collect<Sedulous.GUI.CheckBox>(bed.Window.Detail, boxes);
 		Test.Assert(!boxes[2].Checked && !boxes[3].Checked && !boxes[4].Checked);
+		Test.Assert(Says(bed.Window.Detail, "0 of 2"), "the kind stays open, its count with it");
 
 		// One kept again: the kind's box mixed; pressed, it keeps all.
 		Test.Assert(boxes[3].HandleActivate());
@@ -471,6 +512,8 @@ static class ImportDialogTests
 		let bed = scope Bed("scratch_import_window_rename");
 		let session = bed.Open(scope StringView[]("/somewhere/crate.box"));
 		defer session.ReleaseRef();
+		bed.Window.SetKindOpen(.Mesh, true);
+		bed.Window.SetKindOpen(.Texture, true);
 		let fields = scope List<TextField>();
 		Collect<TextField>(bed.Window.Detail, fields);
 		Test.Assert(fields.Count == 3);

@@ -909,22 +909,38 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .picker > .state-box { align-self: stretch; height: 300px; }
 /* Import: where it goes, the files when there are several, the chosen file's detail and the line.
    */
-.import { flex-grow: 1; padding-bottom: 0; }
-.import-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
-.import-files { width: 220px; flex-shrink: 0; }
-.import-files-body { flex-direction: column; row-gap: var(--space-xs); }
-.import-file { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 0 var(--space-s); border-radius: var(--radius-small); min-height: var(--row); }
+/* The import window: three panes (the files by importer, the preview with its facts, the settings),
+   then the footer: where they go, the line, the buttons. */
+.import { flex-grow: 1; flex-direction: column; padding: 0; row-gap: 0; } /* a dialog-body for its buttons, edge to edge */
+.import-panes { flex-direction: row; flex-grow: 1; min-height: 0; border-bottom: 1px solid var(--border); }
+.import-files { width: 250px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden; background-color: var(--surface-sunken); border-right: 1px solid var(--border); }
+.import-files-body { flex-direction: column; row-gap: 2px; padding: var(--space-m) var(--space-s); }
+.import-section { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); padding: var(--space-m) var(--space-s) var(--space-xs); }
+.import-file { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 0 var(--space-s); border-radius: var(--radius-small); min-height: var(--row); }
 .import-file.selected { background-color: var(--accent-subtle); }
-button.import-file-name { flex-grow: 1; justify-content: flex-start; background-color: transparent; padding: 0; min-width: 0; }
-.import-detail { flex-grow: 1; min-width: 0; }
-.import-detail-body { flex-direction: column; row-gap: var(--space-s); }
+.import-file-icon { width: 16px; height: 16px; flex-shrink: 0; image-color: var(--icon); }
+button.import-file-name { flex-grow: 1; justify-content: flex-start; text-align: start; background-color: transparent; padding: 0; min-width: 0; }
+.import-file-size { font-size: var(--font-small); color: var(--text-placeholder); flex-shrink: 0; }
+.import-preview { flex-grow: 1; flex-basis: 0; min-width: 0; flex-direction: column; background-color: var(--surface-sunken); }
+.import-preview-view { flex-grow: 1; min-height: 0; flex-direction: column; align-items: center; justify-content: center; row-gap: var(--space-m); }
+.import-preview-icon { width: 64px; height: 64px; image-color: var(--icon-dim); }
+.import-preview-name { color: var(--text-dim); }
+.import-facts { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-l); row-gap: var(--space-xs); padding: var(--space-s) var(--space-m);
+                border-top: 1px solid var(--border); min-height: 30px; align-items: center; }
+.import-fact { font-size: var(--font-small); color: var(--text-dim); }
+.import-detail { width: 380px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--border); }
+.import-detail-body { flex-direction: column; row-gap: var(--space-s); padding: var(--space-m) var(--space-l); }
 .import-title { color: var(--text-strong); font-weight: 600; }
 .import-importer { flex-direction: row; align-items: center; column-gap: var(--space-m); }
-.import-kind { font-weight: 600; margin-top: var(--space-s); }
+.import-kind { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); margin-top: var(--space-xs); }
+button.import-kind-toggle { background-color: transparent; padding: 0 var(--space-xs); font-weight: 600; }
+.import-kind-count { font-size: var(--font-small); color: var(--text-dim); }
 .import-entry { flex-direction: row; align-items: center; column-gap: var(--space-s); padding-left: var(--space-xl); }
 .import-entry > textfield { flex-grow: 1; }
+.import-footer { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-m) var(--space-l); }
+.import-footer > .group-field { min-width: 220px; }
+.import-why { flex-shrink: 1; min-width: 0; }
 .import-why.refused { color: var(--text-dim); }
-.import > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
 /* Import's group: a field that opens the group picker. Create Asset's groups: a tree. */
 button.group-field { justify-content: flex-start; }
 .asset-create-groups { height: 200px; border: 1px solid var(--border); border-radius: var(--radius-small); background-color: var(--surface-sunken); }

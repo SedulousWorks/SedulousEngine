@@ -1,20 +1,26 @@
 using System;
 using System.Collections;
 using Sedulous.Content;
+using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.GUI;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// The import window (Raptor's editor-gui spec, 5.2, layer 7), over its markup
-// (Data/Editor/Import.xml): one window for one file or many, where the old editor had a single-file
-// and a batch dialog. Where they go, a field that opens the group picker; the files, when there are
-// several, each kept or not, with its state (reading, ready, failed), one chosen; the chosen file's
-// importer (a choice when several take it), its options (a check box per toggle), and what it
-// would create by kind, each kept or not and named, a kind's box keeping or leaving all of it. A
-// file still being read says so and shows when it is ready. The line under it says what Import
-// does, or why it waits, Import waiting with it. A name another asset holds is said on the file
+// The import window (Raptor's editor-gui spec, 5.2, layer 7; its import-window spec), over its
+// markup (Data/Editor/Import.xml): one window for one file or many, where the old editor had a
+// single-file and a batch dialog, in three panes. The files, grouped by the importer each resolves
+// to and headed by that importer's Label, each kept or not, with its asset type's icon, its size,
+// its state while it needs attention (reading, failed), one chosen. The chosen file's preview, a
+// line of facts under it. Its settings: its importer (a choice when several take it), its options
+// (a check box per toggle), and what it would create by kind, each kind closed to its count and
+// opening to its items, each kept or not and named, a kind's box keeping or leaving all of it.
+// Under the panes, where they go, in a field that opens the group picker. A file still being read
+// says so and shows its settings when it is ready. Nothing here names a file type: each part comes
+// from the file's importer. The line under the panes says what Import does, or why it waits,
+// Import waiting with it. A name another asset holds is said on the file
 // (AssetImport.ClashOf): one of another type waits for a rename; another file's of its type offers
 // Replace or Keep both, Import waiting for the choice. It is the view of an AssetImport session,
 // which does the work. Run is the editor's one import (a drop, Import...): at once when nothing needs
@@ -24,8 +30,8 @@ class ImportWindow
 {
 	/// Its markup, under the data root.
 	public const String cMarkupPath = "Editor/Import.xml";
-	private const float cWidth = 640.0f;
-	private const float cHeight = 520.0f;
+	private const float cWidth = 1100.0f;
+	private const float cHeight = 680.0f;
 	/// The kinds a plan shows, in the order they show; a kind with nothing planned is left out.
 	private static readonly ImportResourceKind[7] cKinds = .(.Mesh, .Material, .Texture, .Skeleton, .AnimationClip, .Collision, .Asset);
 
@@ -42,17 +48,25 @@ class ImportWindow
 	private SceneRoot mRoot = null;
 	/// The import it shows: a reference of ours while it is open, null closed.
 	private AssetImport.Session mSession = null;
-	/// The file whose detail shows.
+	/// The file whose preview and settings show.
 	private int mSelected = 0;
+	/// The chosen file's kinds shown item by item; the rest are closed to their counts.
+	private List<ImportResourceKind> mOpenKinds = new .() ~ delete _;
 	/// Whether the picker is open for this: it answers here, so it closes when this goes.
 	private bool mPicking = false;
 	// The body's: the tree holds them.
 	private Sedulous.GUI.Button mGroupField = null;
 	private Node mFilesScroll = null;
 	private Node mFiles = null;
+	private Node mPreviewView = null;
+	private Node mFacts = null;
 	private Node mDetail = null;
 	private Sedulous.GUI.Label mWhy = null;
 	private Sedulous.GUI.Button mRun = null;
+
+	/// The asset types' icons, as the Assets panel shows them. BORROWED: the application's, which
+	/// outlives the window; null: the generic one.
+	public EditorIcons Icons = null;
 
 	/// The window over `body` (the markup's controls by id), showing sessions of `import`, its group
 	/// field opening `picker` (both borrowed: they outlive it; a null picker picks nothing). TAKES
@@ -72,6 +86,8 @@ class ImportWindow
 		mGroupField = Find<Sedulous.GUI.Button>("import-group");
 		mFilesScroll = Find<Node>("import-files-scroll");
 		mFiles = Find<Node>("import-files");
+		mPreviewView = Find<Node>("import-preview-view");
+		mFacts = Find<Node>("import-facts");
 		mDetail = Find<Node>("import-detail");
 		mWhy = Find<Sedulous.GUI.Label>("import-why");
 		mRun = Find<Sedulous.GUI.Button>("import-run");
@@ -140,6 +156,7 @@ class ImportWindow
 		mSession = session;
 		mRoot = root;
 		mSelected = 0;
+		mOpenKinds.Clear();
 		delete mSession.OnChanged;
 		mSession.OnChanged = new (file) =>
 			{
@@ -170,15 +187,32 @@ class ImportWindow
 		return true;
 	}
 
-	/// Shows file `index`'s detail.
+	/// Shows file `index`'s preview and settings, its kinds closed.
 	public void Select(int index)
 	{
 		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count))
 			return;
 		mSelected = index;
+		mOpenKinds.Clear();
 		ShowFiles();
+		ShowPreview();
 		ShowDetail();
 	}
+
+	/// Opens or closes a kind of what the chosen file would create (its items listed or not).
+	public void SetKindOpen(ImportResourceKind kind, bool open)
+	{
+		if (open)
+		{
+			if (!mOpenKinds.Contains(kind))
+				mOpenKinds.Add(kind);
+		}
+		else
+			mOpenKinds.Remove(kind);
+		ShowDetail();
+	}
+
+	public bool IsKindOpen(ImportResourceKind kind) => mOpenKinds.Contains(kind);
 
 	// For tests: the session, the window, the chosen file, the line, its parts.
 	public AssetImport.Session Session => mSession;
@@ -189,10 +223,13 @@ class ImportWindow
 	public Sedulous.GUI.Label WhyLine => mWhy;
 	public Sedulous.GUI.Button ImportButton => mRun;
 	public Sedulous.GUI.Button GroupField => mGroupField;
-	/// The files' list, and what holds it (shown only when there are several).
+	/// The files' list, by importer, and what holds it.
 	public Node Files => mFiles;
 	public Node FilesScroll => mFilesScroll;
-	/// The chosen file's detail.
+	/// The chosen file's preview, and the facts under it.
+	public Node PreviewView => mPreviewView;
+	public Node Facts => mFacts;
+	/// The chosen file's settings.
 	public Node Detail => mDetail;
 
 	// The session lets go of it: told no more, a read that arrives after dropped.
@@ -211,6 +248,7 @@ class ImportWindow
 		if ((mGroupField != null) && (mSession != null))
 			mGroupField.Text = AssetImport.ShownGroup(mSession, .. scope .());
 		ShowFiles();
+		ShowPreview();
 		ShowDetail();
 		ShowWhy();
 	}
@@ -239,59 +277,130 @@ class ImportWindow
 		}
 	}
 
-	// The files, when there are several: each kept or not (a failed one's box off), its state, the
-	// chosen one marked.
+	/// What heads the file's group: its importer's label.
+	private static StringView LabelOf(AssetImport.File file)
+	{
+		let importer = file.Importer;
+		if (importer == null)
+			return "Other";
+		return importer.Label;
+	}
+
+	/// The icon of the asset type the file's importer makes, as the Assets panel shows that type,
+	/// appended to `outSource`.
+	private void IconOf(AssetImport.File file, String outSource)
+	{
+		let importer = file.Importer;
+		StringView typeName = default;
+		if (importer != null)
+			typeName = importer.ListedTypeName(file.Path);
+		if (Icons == null)
+			outSource.Append("Editor/Icons/Types/Asset.svg");
+		else
+			outSource.Append(Icons.ForTypeName(typeName, "Asset").Source);
+	}
+
+	/// The file's size on disk, appended to `outSize`; nothing when it cannot be read.
+	private static void SizeOf(AssetImport.File file, String outSize)
+	{
+		if (FileStat(file.Path, let size, ?))
+			ByteSizeText((uint64)size, outSize);
+	}
+
+	// The files, grouped by the importer each resolves to, in the order those first come, each group
+	// headed by its label and count: each file kept or not (a failed one's box off), its icon, its
+	// size, its state while it needs attention, the chosen one marked.
 	private void ShowFiles()
 	{
-		if ((mFilesScroll == null) || (mFiles == null) || (mSession == null))
+		if ((mFiles == null) || (mSession == null))
 			return;
-		let several = mSession.Files.Count > 1;
-		mFilesScroll.Displayed = several;
 		mFiles.RemoveAllChildren();
-		if (!several)
-			return;
-		for (int i < mSession.Files.Count)
+		let labels = scope List<StringView>();
+		for (let file in mSession.Files)
 		{
-			let file = mSession.Files[i];
-			let row = new Sedulous.GUI.Panel();
-			row.AddClass("import-file");
-			if (i == mSelected)
-				row.AddClass("selected");
-			let kept = new Sedulous.GUI.CheckBox();
-			kept.Checked = file.Kept;
-			kept.Enabled = file.State != .Failed;
-			kept.Tooltip = "Import this file";
-			kept.SetOnToggled(new [=this, =i] (keep) =>
-				{
-					if ((mSession != null) && (i < mSession.Files.Count))
-						mSession.Files[i].Kept = keep;
-					ShowWhy();
-				});
-			let name = new Sedulous.GUI.Button();
-			name.AddClass("import-file-name");
-			name.Text = file.Name;
-			name.Tooltip = file.Path;
-			// The rows are made again: not under the click.
-			name.SetOnClick(new [=this, =i] () => { Later(new [=this, =i] () => { Select(i); }); });
-			let state = new Sedulous.GUI.Label();
-			state.AddClass("badge");
-			switch (file.State)
-			{
-			case .Ready:
-				state.AddClass("success");
-				state.Text = "Ready";
-			case .Failed:
-				state.AddClass("danger");
-				state.Text = "Failed";
-			case .Reading:
-				state.AddClass("warning");
-				state.Text = "Reading";
-			}
-			Add(row, kept);
-			Add(row, name);
-			Add(row, state);
-			Add(mFiles, row);
+			let label = LabelOf(file);
+			if (!labels.Contains(label))
+				labels.Add(label);
 		}
+		for (let label in labels)
+		{
+			int count = 0;
+			for (let file in mSession.Files)
+			{
+				if (LabelOf(file) == label)
+					count++;
+			}
+			Add(mFiles, Text(scope $"{label} · {count}", "import-section"));
+			for (int i < mSession.Files.Count)
+			{
+				if (LabelOf(mSession.Files[i]) == label)
+					Add(mFiles, FileRow(i));
+			}
+		}
+	}
+
+	/// File `i`'s row: a node with one reference, the caller's.
+	private Node FileRow(int i)
+	{
+		let file = mSession.Files[i];
+		let row = new Sedulous.GUI.Panel();
+		row.AddClass("import-file");
+		if (i == mSelected)
+			row.AddClass("selected");
+		let kept = new Sedulous.GUI.CheckBox();
+		kept.Checked = file.Kept;
+		kept.Enabled = file.State != .Failed;
+		kept.Tooltip = "Import this file";
+		kept.SetOnToggled(new [=this, =i] (keep) =>
+			{
+				if ((mSession != null) && (i < mSession.Files.Count))
+					mSession.Files[i].Kept = keep;
+				ShowWhy();
+			});
+		let name = new Sedulous.GUI.Button();
+		name.AddClass("import-file-name");
+		name.Text = file.Name;
+		name.Tooltip = file.Path;
+		// The rows are made again: not under the click.
+		name.SetOnClick(new [=this, =i] () => { Later(new [=this, =i] () => { Select(i); }); });
+		let icon = new Sedulous.GUI.Image();
+		icon.AddClass("import-file-icon");
+		icon.Source = IconOf(file, .. scope .());
+		icon.HitTestVisible = false;
+		Add(row, kept);
+		Add(row, icon);
+		Add(row, name);
+		// Its state only while it needs attention; a ready file shows its size.
+		switch (file.State)
+		{
+		case .Ready:
+			Add(row, Text(SizeOf(file, .. scope .()), "import-file-size"));
+		case .Failed:
+			Add(row, Text("Failed", "badge danger"));
+		case .Reading:
+			Add(row, Text("Reading", "badge warning"));
+		}
+		return row;
+	}
+
+	// The chosen file's preview, its facts under it: until a domain registers a preview for its
+	// type, its type's icon and its name.
+	private void ShowPreview()
+	{
+		if ((mPreviewView == null) || (mFacts == null) || (mSession == null) || (mSelected >= mSession.Files.Count))
+			return;
+		mPreviewView.RemoveAllChildren();
+		mFacts.RemoveAllChildren();
+		let file = mSession.Files[mSelected];
+		let icon = new Sedulous.GUI.Image();
+		icon.AddClass("import-preview-icon");
+		icon.Source = IconOf(file, .. scope .());
+		Add(mPreviewView, icon);
+		Add(mPreviewView, Text(file.Name, "import-preview-name"));
+		Add(mFacts, Text(LabelOf(file), "import-fact"));
+		let size = SizeOf(file, .. scope .());
+		if (!size.IsEmpty)
+			Add(mFacts, Text(size, "import-fact"));
 	}
 
 	// The chosen file: its importer, its options, what it would create by kind.
@@ -375,9 +484,11 @@ class ImportWindow
 			}
 			if (count == 0)
 				continue;
+			// The kind: open or close it, keep or leave all of it, and how many are kept.
+			let open = IsKindOpen(kind);
+			let head = Row("import-kind");
 			let all = new Sedulous.GUI.CheckBox();
-			all.AddClass("import-kind");
-			all.Text = scope $"{kind.Label} ({count})";
+			all.Tooltip = "Keep or leave all of them";
 			all.Checked = kept == count;
 			all.Indeterminate = (kept > 0) && (kept < count); // after Checked, which settles it
 			all.SetOnToggled(new [=this, =index, =kind] (on) =>
@@ -391,7 +502,20 @@ class ImportWindow
 					}
 					Later(new [=this] () => { ShowDetail(); });
 				});
-			Add(mDetail, all);
+			let toggle = new Sedulous.GUI.Button();
+			toggle.AddClass("import-kind-toggle");
+			toggle.AddClass("with-icon");
+			toggle.Icon = open ? "Editor/Icons/chevron-down.svg" : "Editor/Icons/chevron-right.svg";
+			toggle.Text = kind.Label;
+			toggle.Tooltip = open ? "Hide them" : "Show them, each with its name";
+			toggle.SetOnClick(new [=this, =kind, =open] () => { Later(new [=this, =kind, =open] () => { SetKindOpen(kind, !open); }); });
+			Add(head, all);
+			Add(head, toggle);
+			Add(head, new Sedulous.GUI.Spacer());
+			Add(head, Text(scope $"{kept} of {count}", "import-kind-count"));
+			Add(mDetail, head);
+			if (!open)
+				continue;
 			for (int e < file.Plan.Entries.Count)
 			{
 				let entry = file.Plan.Entries[e];
@@ -488,7 +612,19 @@ class ImportWindow
 				mWhy.AddClass("refused");
 		}
 		if (mRun != null)
+		{
 			mRun.Enabled = can;
+			int kept = 0;
+			for (let file in mSession.Files)
+			{
+				if (file.Kept)
+					kept++;
+			}
+			if (kept > 1)
+				mRun.Text = scope $"Import {kept} Files";
+			else
+				mRun.Text = "Import";
+		}
 	}
 
 	/// `work` after the event that asked (a control's own callback rebuilding the controls), at

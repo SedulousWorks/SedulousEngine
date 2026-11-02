@@ -1017,7 +1017,10 @@ class EditorApplication : IApplication
 		ImportWindow.Run(mAssetImport, mContext, paths, group, mWindow.Root, scope () =>
 			{
 				if (mImportWindow == null)
+				{
 					mImportWindow = new ImportWindow(mAssetImport, PickerMade(), mWindow.LoadMarkup(ImportWindow.cMarkupPath));
+					mImportWindow.Icons = TypeIcons();
+				}
 				return mImportWindow;
 			});
 	}

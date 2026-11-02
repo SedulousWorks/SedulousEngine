@@ -1,18 +1,26 @@
 <!--
-  Import: one window for one file or many. It shows where they go (a click picks another group);
-  the files, when there are several, each kept or not, with its state; the chosen file's importer,
-  its options and what it would create, each kept or not and named; and the line saying what Import
-  does or why it waits. Code fills the files and the detail.
+  Import: one window for one file or many, in three panes. The files, grouped by the importer each
+  resolves to (its label heads its group), each kept or not; the selected file's preview, with a
+  line of facts under it; its settings: the importer, its options, and what it would create by
+  kind, each kind opening to its items, kept or not and named. Under them, where the files go (a
+  click picks another group), the line saying what Import does or why it waits, and the buttons.
+  Code fills the files, the preview and the settings.
 -->
 <Panel class="dialog-body import">
-    <Panel class="form import-into">
-        <Label class="form-label" text="Into"/>
-        <Panel class="form-field"><Button id="import-group" class="with-icon group-field" icon="Editor/Icons/folder.svg" tooltip="Pick the group"/></Panel>
-    </Panel>
-    <Panel class="import-split">
+    <Panel class="import-panes">
         <ScrollView id="import-files-scroll" class="import-files"><Panel id="import-files" class="import-files-body"/></ScrollView>
+        <Panel class="import-preview">
+            <Panel id="import-preview-view" class="import-preview-view"/>
+            <Panel id="import-facts" class="import-facts"/>
+        </Panel>
         <ScrollView class="import-detail"><Panel id="import-detail" class="import-detail-body"/></ScrollView>
     </Panel>
-    <Label id="import-why" class="form-help import-why"/>
-    <Panel class="dialog-buttons"><Spacer/><Button id="import-cancel" text="Cancel"/><Button id="import-run" class="primary" text="Import"/></Panel>
+    <Panel class="import-footer">
+        <Label class="form-label" text="Into"/>
+        <Button id="import-group" class="with-icon group-field" icon="Editor/Icons/folder.svg" tooltip="Pick the group"/>
+        <Label id="import-why" class="form-help import-why"/>
+        <Spacer/>
+        <Button id="import-cancel" text="Cancel"/>
+        <Button id="import-run" class="primary" text="Import"/>
+    </Panel>
 </Panel>
