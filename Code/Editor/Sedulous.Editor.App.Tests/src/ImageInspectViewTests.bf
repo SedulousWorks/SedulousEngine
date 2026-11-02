@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.GUI;
 using Sedulous.Image.IO;
+using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
@@ -136,19 +137,28 @@ class ImageInspectViewTests
 		Test.Assert(view.Fitting, "the same size: kept as it was");
 	}
 
-	/// The import window's preview of a picture file: shown, with its size, its channels as the
-	/// file stores them and, when it has alpha, whether that is used; a file that does not decode
-	/// shows why, and no facts.
+	/// The import window's preview of a picture file: read off the main thread, saying so, then
+	/// shown with its size, its channels as the file stores them and, when it has alpha, whether that
+	/// is used; one gone before its read comes back is dropped; a file that does not decode shows
+	/// why, and no facts.
 	[Test]
-	public static void APictureFileIsShownWithItsSizeItsChannelsAsStoredAndWhetherItsAlphaIsUsed()
+	public static void APictureFileIsReadOffTheMainThreadThenShownWithItsSizeItsChannelsAsStoredAndWhetherItsAlphaIsUsed()
 	{
 		let path = scope $"scratch_image_file_preview.png";
 		defer DeleteFile(path);
 		let picture = Picture();
 		defer delete picture;
 		Test.Assert(ImageIO.SaveImage(picture, path, .PNG) case .Ok);
+		let reader = scope ImportPreviewReader();
 		{
-			let preview = scope ImageFilePreview(path);
+			let preview = scope ImageFilePreview(path, reader);
+			int changed = 0;
+			preview.SetOnChanged(new [&changed] () => { changed++; });
+			// Reading: no picture and no facts until the read is handed back.
+			Test.Assert(!preview.Picture.View.HasImage);
+			Test.Assert(preview.Facts.IsEmpty);
+			reader.Finish();
+			Test.Assert(changed == 1);
 			Test.Assert(preview.Picture.View.HasImage);
 			let facts = preview.Facts;
 			Test.Assert(facts.Length == 3);
@@ -157,6 +167,14 @@ class ImageInspectViewTests
 			Test.Assert(facts[2] == "Uses alpha");
 		}
 
+		// A preview gone before its read comes back: the result is dropped.
+		{
+			let gone = scope ImageFilePreview(path, reader);
+			Test.Assert(!gone.Picture.View.HasImage);
+		}
+		reader.Finish();
+		Test.Assert(reader.InFlight == 0);
+
 		// One grey channel: no alpha to speak of.
 		let grey = scope $"scratch_image_file_preview_grey.png";
 		defer DeleteFile(grey);
@@ -164,12 +182,14 @@ class ImageInspectViewTests
 		let narrow = scope Sedulous.Image.Image(2, 2, .R8, .(&values[0], 4));
 		Test.Assert(ImageIO.SaveImage(narrow, grey, .PNG) case .Ok);
 		{
-			let preview = scope ImageFilePreview(grey);
+			let preview = scope ImageFilePreview(grey, reader);
+			reader.Finish();
 			Test.Assert(preview.Picture.View.HasImage);
 			Test.Assert((preview.Facts.Length == 2) && (preview.Facts[0] == "2 × 2") && (preview.Facts[1] == "Grey, 8-bit"));
 		}
 
-		let missing = scope ImageFilePreview("scratch_image_file_preview_missing.png");
+		let missing = scope ImageFilePreview("scratch_image_file_preview_missing.png", reader);
+		reader.Finish();
 		Test.Assert(!missing.Picture.View.HasImage);
 		Test.Assert(missing.Facts.IsEmpty);
 		Test.Assert(missing.View != null);

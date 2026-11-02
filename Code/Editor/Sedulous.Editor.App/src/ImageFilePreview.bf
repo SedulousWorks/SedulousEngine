@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.GUI;
 using Sedulous.Image.IO;
+using Sedulous.Pipeline.Importer; // FileNameOf
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
@@ -10,8 +11,9 @@ namespace Sedulous.Editor.App;
 // The import window's preview of a picture file (Raptor's import-window spec, W2): the image pages'
 // ImagePreview over a bar of its own (Fit, 1:1, the zoom, the channels, the pixel under the
 // pointer), with the facts the file's header gives: its size, its channels and depth as stored, and
-// whether its alpha is used. A domain whose importer makes an asset from a picture registers it for
-// that asset type (ImageFilePreviewFactory.Register).
+// whether its alpha is used. It decodes the file on the ImportPreviewReader's worker, saying it is
+// reading meanwhile. A domain whose importer makes an asset from a picture registers it for that
+// asset type (ImageFilePreviewFactory.Register).
 
 class ImageFilePreview : IImportPreview
 {
@@ -21,16 +23,51 @@ class ImageFilePreview : IImportPreview
 	private List<String> mFacts = new .() ~ DeleteContainerAndItems!(_);
 	private delegate void() mOnChanged ~ delete _;
 
-	/// Reads and shows the picture at `path`; a file that does not decode shows why, and no facts.
-	public this(StringView path)
+	/// What the worker reads, for the main thread to show: nothing else touches it until it is back.
+	private class Decoded : RefCounted
+	{
+		/// RGBA8, shown as is; Show takes it.
+		public Sedulous.Image.Image Pixels = null ~ delete _;
+		public List<String> Facts = new .() ~ DeleteContainerAndItems!(_);
+		public bool Ok = false;
+	}
+
+	/// The read it started, cancelled as it goes: a reference of ours.
+	private ImportPreviewRead mRead = null;
+
+	/// Shows that it is reading `path` and starts the read on `reader` (borrowed: it outlives this);
+	/// the picture and its facts show when it comes back, or why it did not decode.
+	public this(StringView path, ImportPreviewReader reader)
 	{
 		mRoot = BuildView();
 		mPicture = new ImagePreview(mRoot);
+		mPicture.ShowNone(scope $"Reading {ImportPaths.FileNameOf(path)}...");
+		let decoded = new Decoded(); // the done's reference
+		decoded.AddRef(); // the read's
+		let file = new String(path);
+		mRead = reader.Read(
+			// On the worker: only the file and `decoded`.
+			new [=file, =decoded] () => { Decode(file, decoded); } ~ { delete file; decoded.ReleaseRef(); },
+			// On the main thread, and only while this preview lives (it cancels the read as it goes).
+			new [=this, =decoded] () => { Show(decoded); } ~ { decoded.ReleaseRef(); });
+	}
+
+	public ~this()
+	{
+		if (mRead != null)
+		{
+			mRead.Cancel();
+			mRead.ReleaseRef();
+		}
+	}
+
+	/// On the worker: the picture at `file` into `decoded`, as RGBA8, and its facts.
+	private static void Decode(StringView file, Decoded decoded)
+	{
 		var shown = new Sedulous.Image.Image();
-		if (!(ImageIO.LoadImage(path, shown) case .Ok) || (shown.Width == 0) || (shown.Height == 0))
+		if (!(ImageIO.LoadImage(file, shown) case .Ok) || (shown.Width == 0) || (shown.Height == 0))
 		{
 			delete shown;
-			mPicture.ShowNone("This file did not decode as a picture.");
 			return;
 		}
 		// The display is 8-bit: converted through the image library (floats clamp).
@@ -40,16 +77,33 @@ class ImageFilePreview : IImportPreview
 			delete shown;
 			shown = converted;
 		}
+		decoded.Pixels = shown;
 		let size = new String();
 		size.AppendF("{} × {}", shown.Width, shown.Height);
-		mFacts.Add(size);
-		if (ImageIO.ReadImageFileInfo(path, let info))
+		decoded.Facts.Add(size);
+		if (ImageIO.ReadImageFileInfo(file, let info))
 		{
-			mFacts.Add(ChannelsText(info, .. new .()));
+			decoded.Facts.Add(ChannelsText(info, .. new .()));
 			if ((info.Channels == 2) || (info.Channels == 4))
-				mFacts.Add(new String(UsesAlpha(shown) ? "Uses alpha" : "Alpha unused"));
+				decoded.Facts.Add(new String(UsesAlpha(shown) ? "Uses alpha" : "Alpha unused"));
 		}
-		mPicture.Show(shown);
+		decoded.Ok = true;
+	}
+
+	/// On the main thread: the read's result shown, or why there is none; the window told.
+	private void Show(Decoded decoded)
+	{
+		if (!decoded.Ok)
+			mPicture.ShowNone("This file did not decode as a picture.");
+		else
+		{
+			mFacts.AddRange(decoded.Facts); // taken
+			decoded.Facts.Clear();
+			mPicture.Show(decoded.Pixels); // taken
+			decoded.Pixels = null;
+		}
+		if (mOnChanged != null)
+			mOnChanged();
 	}
 
 	public Node View => mRoot;
@@ -166,7 +220,7 @@ class ImageFilePreviewFactory : IImportPreviewFactory
 	}
 
 	public Type AssetType => mType;
-	public IImportPreview Create(StringView path, ImportPreviewReader reader) => new ImageFilePreview(path);
+	public IImportPreview Create(StringView path, ImportPreviewReader reader) => new ImageFilePreview(path, reader);
 
 	/// Registers the picture preview for the files listed by `type`.
 	public static void Register(EditorContext context, Type type)

@@ -1257,6 +1257,7 @@ class EditorApplication : IApplication
 		mJobService.Update(scope (line) => { mContext.SetStatus(line); });
 		if (mExport != null)
 			mExport.Pump();
+		mContext.ImportPreviewReads.Pump(); // the import window's previews, read off this thread
 		UpdateStatusBar();
 		if (let resources = mSession.Resources)
 		{

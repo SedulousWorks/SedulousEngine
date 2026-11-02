@@ -108,6 +108,7 @@ static class ImportDialogTests
 	{
 		private Sedulous.GUI.Label mView = new .() ~ _.ReleaseRef();
 		private List<String> mFacts = new .() ~ DeleteContainerAndItems!(_);
+		private delegate void() mOnChanged ~ delete _;
 
 		public this(StringView path)
 		{
@@ -118,7 +119,20 @@ static class ImportDialogTests
 
 		public Node View => mView;
 		public Span<String> Facts => mFacts;
-		public void SetOnChanged(delegate void() onChanged) { delete onChanged; }
+
+		public void SetOnChanged(delegate void() onChanged)
+		{
+			delete mOnChanged;
+			mOnChanged = onChanged;
+		}
+
+		/// As a read coming back does: a new fact, and the window told.
+		public void Arrive(StringView fact)
+		{
+			mFacts.Add(new String(fact));
+			if (mOnChanged != null)
+				mOnChanged();
+		}
 	}
 
 	/// Previews the box files' type, counting how many it has made.
@@ -447,6 +461,10 @@ static class ImportDialogTests
 		bed.Window.Select(1);
 		Test.Assert(factory.Made == 2);
 		Test.Assert(Says(bed.Window.Facts, "Made for b.box"));
+
+		// A preview's read coming back shows its facts again.
+		(bed.Window.Preview as NamePreview).Arrive("Read at last");
+		Test.Assert(Says(bed.Window.Facts, "Read at last"));
 		bed.Window.Close();
 		Test.Assert(bed.Window.Preview == null, "let go with its session");
 	}

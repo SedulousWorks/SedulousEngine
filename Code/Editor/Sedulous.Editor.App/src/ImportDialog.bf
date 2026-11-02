@@ -398,7 +398,8 @@ class ImportWindow
 
 	// The chosen file's preview, its facts under it: the preview a domain registers for the type its
 	// importer lists it by, made again only when the file or that type changes (choosing a file again
-	// reads it once); with none, its type's icon and its name. Its size ends the facts.
+	// reads it once); with none, its type's icon and its name. A preview reads its file off the main
+	// thread, and its facts show again when the read comes back.
 	private void ShowPreview()
 	{
 		if ((mPreviewView == null) || (mFacts == null) || (mSession == null) || (mSelected >= mSession.Files.Count))
@@ -420,7 +421,10 @@ class ImportWindow
 					mPreview = factory.Create(file.Path, PreviewReader);
 			}
 			if (mPreview != null)
+			{
+				mPreview.SetOnChanged(new [=this] () => { ShowFacts(); });
 				mPreviewView.AddChild(mPreview.View); // the preview keeps its own reference
+			}
 			else
 			{
 				let icon = new Sedulous.GUI.Image();
@@ -430,6 +434,15 @@ class ImportWindow
 				Add(mPreviewView, Text(file.Name, "import-preview-name"));
 			}
 		}
+		ShowFacts();
+	}
+
+	// The chosen file's facts: its preview's (its importer's label without one), then its size.
+	private void ShowFacts()
+	{
+		if ((mFacts == null) || (mSession == null) || (mSelected >= mSession.Files.Count))
+			return;
+		let file = mSession.Files[mSelected];
 		mFacts.RemoveAllChildren();
 		if (mPreview != null)
 		{
