@@ -3,6 +3,8 @@ using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Graphics; // FrameContext
+using Sedulous.Runtime.Client; // IApplicationHost
 using Sedulous.GUI;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
@@ -25,6 +27,16 @@ namespace Sedulous.Editor.App;
 // Replace or Keep both, Import waiting for the choice. It is the view of an AssetImport session,
 // which does the work. Run is the editor's one import (a drop, Import...): at once when nothing needs
 // review, else here.
+
+/// What a preview that renders (a model's live view) implements beside IImportPreview: the editor's
+/// frame hooks, which the window passes on while it is open, as the editor drives a page's.
+interface IImportPreviewFrames
+{
+	/// Each frame, after the GUI laid out.
+	void OnUpdate(IApplicationHost host, float dt);
+	/// Each frame, inside the scene renderer's bracket, before the GUI draws.
+	void OnRenderWindow(IApplicationHost host, ref FrameContext frame);
+}
 
 class ImportWindow
 {
@@ -184,6 +196,23 @@ class ImportWindow
 	{
 		if (IsOpen)
 			mWindow.Close();
+	}
+
+	/// The editor's frame, passed to the chosen file's preview while the window is open.
+	public void OnUpdate(IApplicationHost host, float dt)
+	{
+		if (!IsOpen)
+			return;
+		if (let frames = mPreview as IImportPreviewFrames)
+			frames.OnUpdate(host, dt);
+	}
+
+	public void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
+	{
+		if (!IsOpen)
+			return;
+		if (let frames = mPreview as IImportPreviewFrames)
+			frames.OnRenderWindow(host, ref frame);
 	}
 
 	/// Imports what is kept and closes; false (it stays, saying why) when it cannot yet.

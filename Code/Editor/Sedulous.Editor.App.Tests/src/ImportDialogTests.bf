@@ -3,6 +3,8 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Content;
+using Sedulous.Graphics;
+using Sedulous.Runtime.Client;
 using Sedulous.GUI;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
@@ -133,6 +135,27 @@ static class ImportDialogTests
 			if (mOnChanged != null)
 				mOnChanged();
 		}
+	}
+
+	/// A preview that renders, counting the frames it is given.
+	private class FramedPreview : NamePreview, IImportPreviewFrames
+	{
+		public int Updates = 0;
+		public int Renders = 0;
+
+		public this(StringView path) : base(path)
+		{
+		}
+
+		public void OnUpdate(IApplicationHost host, float dt) => Updates++;
+		public void OnRenderWindow(IApplicationHost host, ref FrameContext frame) => Renders++;
+	}
+
+	/// Previews the box files' type with FramedPreviews.
+	private class FramedPreviewFactory : IImportPreviewFactory
+	{
+		public Type AssetType => typeof(ImportPreviewThing);
+		public IImportPreview Create(StringView path, ImportPreviewReader reader) => new FramedPreview(path);
 	}
 
 	/// Previews the box files' type, counting how many it has made.
@@ -467,6 +490,27 @@ static class ImportDialogTests
 		Test.Assert(Says(bed.Window.Facts, "Read at last"));
 		bed.Window.Close();
 		Test.Assert(bed.Window.Preview == null, "let go with its session");
+	}
+
+	/// A preview that renders gets the editor's frame from the window while the window is open, and
+	/// one that does not is passed nothing.
+	[Test]
+	public static void APreviewThatRendersIsGivenTheEditorsFrameWhileTheWindowIsOpen()
+	{
+		let bed = scope Bed("scratch_import_window_frames");
+		bed.Context.ImportPreviews.Register(new FramedPreviewFactory());
+		let session = bed.Open(scope StringView[]("/somewhere/a.box"));
+		defer session.ReleaseRef();
+		let framed = bed.Window.Preview as FramedPreview;
+		Test.Assert(framed != null);
+		var frame = FrameContext();
+		bed.Window.OnUpdate(null, 1.0f / 60.0f);
+		bed.Window.OnRenderWindow(null, ref frame);
+		Test.Assert((framed.Updates == 1) && (framed.Renders == 1));
+		bed.Window.Close();
+		Test.Assert(bed.Window.Preview == null, "closed, it lets go of the preview and passes no frame");
+		bed.Window.OnUpdate(null, 1.0f / 60.0f);
+		bed.Window.OnRenderWindow(null, ref frame);
 	}
 
 	[Test]

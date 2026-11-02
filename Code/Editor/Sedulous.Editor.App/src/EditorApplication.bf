@@ -1277,6 +1277,8 @@ class EditorApplication : IApplication
 		mWindow.Update(dt);
 		using (ProfileScope("Editor.Pages"))
 			mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
+		if (mImportWindow != null)
+			mImportWindow.OnUpdate(host, dt); // the same for the import window's preview (a model's view)
 		if (mHome != null)
 			mHome.Refresh();
 	}
@@ -1369,6 +1371,8 @@ class EditorApplication : IApplication
 			if (mSceneRenderer != null)
 				mSceneRenderer.BeginRendering(frame.Encoder, frame.FrameIndex);
 			mPages.Render(host, ref frame);
+			if (mImportWindow != null)
+				mImportWindow.OnRenderWindow(host, ref frame); // the import window's model preview
 			if (let stage = mSession.Stage)
 				stage.Render(ref frame); // a thumbnail in the same bracket
 			if (mSceneRenderer != null)
