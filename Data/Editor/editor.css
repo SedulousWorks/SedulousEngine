@@ -925,6 +925,8 @@ button.import-file-name { flex-grow: 1; justify-content: flex-start; text-align:
 .import-preview-view { flex-grow: 1; min-height: 0; flex-direction: column; align-items: center; justify-content: center; row-gap: var(--space-m); }
 .import-preview-icon { width: 64px; height: 64px; image-color: var(--icon-dim); }
 .import-preview-name { color: var(--text-dim); }
+/* A registered preview fills the pane (the picture: its bar over its stage). */
+.import-image { align-self: stretch; flex-grow: 1; min-height: 0; flex-direction: column; }
 .import-facts { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-l); row-gap: var(--space-xs); padding: var(--space-s) var(--space-m);
                 border-top: 1px solid var(--border); min-height: 30px; align-items: center; }
 .import-fact { font-size: var(--font-small); color: var(--text-dim); }

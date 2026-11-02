@@ -52,6 +52,10 @@ class ImportWindow
 	private int mSelected = 0;
 	/// The chosen file's kinds shown item by item; the rest are closed to their counts.
 	private List<ImportResourceKind> mOpenKinds = new .() ~ delete _;
+	/// The chosen file's preview, kept while its path and listed type stay; null: its type has none.
+	private IImportPreview mPreview = null ~ delete _;
+	private String mPreviewPath = new .() ~ delete _;
+	private String mPreviewType = new .() ~ delete _;
 	/// Whether the picker is open for this: it answers here, so it closes when this goes.
 	private bool mPicking = false;
 	// The body's: the tree holds them.
@@ -67,6 +71,9 @@ class ImportWindow
 	/// The asset types' icons, as the Assets panel shows them. BORROWED: the application's, which
 	/// outlives the window; null: the generic one.
 	public EditorIcons Icons = null;
+	/// The domains' previews by asset type. BORROWED: the context's; null: none, each file shows
+	/// its icon.
+	public ImportPreviewRegistry Previews = null;
 
 	/// The window over `body` (the markup's controls by id), showing sessions of `import`, its group
 	/// field opening `picker` (both borrowed: they outlive it; a null picker picks nothing). TAKES
@@ -228,6 +235,8 @@ class ImportWindow
 	public Node FilesScroll => mFilesScroll;
 	/// The chosen file's preview, and the facts under it.
 	public Node PreviewView => mPreviewView;
+	/// The chosen file's registered preview; null when its type has none.
+	public IImportPreview Preview => mPreview;
 	public Node Facts => mFacts;
 	/// The chosen file's settings.
 	public Node Detail => mDetail;
@@ -241,6 +250,9 @@ class ImportWindow
 		mSession.Closed = true;
 		mSession.ReleaseRef();
 		mSession = null;
+		DeleteAndNullify!(mPreview); // its view stays in the pane until the next one shows
+		mPreviewPath.Clear();
+		mPreviewType.Clear();
 	}
 
 	private void ShowAll()
@@ -383,21 +395,48 @@ class ImportWindow
 		return row;
 	}
 
-	// The chosen file's preview, its facts under it: until a domain registers a preview for its
-	// type, its type's icon and its name.
+	// The chosen file's preview, its facts under it: the preview a domain registers for the type its
+	// importer lists it by, made again only when the file or that type changes (choosing a file again
+	// reads it once); with none, its type's icon and its name. Its size ends the facts.
 	private void ShowPreview()
 	{
 		if ((mPreviewView == null) || (mFacts == null) || (mSession == null) || (mSelected >= mSession.Files.Count))
 			return;
-		mPreviewView.RemoveAllChildren();
-		mFacts.RemoveAllChildren();
 		let file = mSession.Files[mSelected];
-		let icon = new Sedulous.GUI.Image();
-		icon.AddClass("import-preview-icon");
-		icon.Source = IconOf(file, .. scope .());
-		Add(mPreviewView, icon);
-		Add(mPreviewView, Text(file.Name, "import-preview-name"));
-		Add(mFacts, Text(LabelOf(file), "import-fact"));
+		let importer = file.Importer;
+		let typeName = scope String();
+		if (importer != null)
+			typeName.Append(importer.ListedTypeName(file.Path));
+		if ((file.Path != mPreviewPath) || (typeName != mPreviewType))
+		{
+			mPreviewView.RemoveAllChildren();
+			DeleteAndNullify!(mPreview);
+			mPreviewPath.Set(file.Path);
+			mPreviewType.Set(typeName);
+			if (Previews != null)
+			{
+				if (let factory = Previews.FindByName(typeName))
+					mPreview = factory.Create(file.Path);
+			}
+			if (mPreview != null)
+				mPreviewView.AddChild(mPreview.View); // the preview keeps its own reference
+			else
+			{
+				let icon = new Sedulous.GUI.Image();
+				icon.AddClass("import-preview-icon");
+				icon.Source = IconOf(file, .. scope .());
+				Add(mPreviewView, icon);
+				Add(mPreviewView, Text(file.Name, "import-preview-name"));
+			}
+		}
+		mFacts.RemoveAllChildren();
+		if (mPreview != null)
+		{
+			for (let fact in mPreview.Facts)
+				Add(mFacts, Text(fact, "import-fact"));
+		}
+		else
+			Add(mFacts, Text(LabelOf(file), "import-fact"));
 		let size = SizeOf(file, .. scope .());
 		if (!size.IsEmpty)
 			Add(mFacts, Text(size, "import-fact"));

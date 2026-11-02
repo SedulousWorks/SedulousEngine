@@ -11,6 +11,13 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
+/// The type the tests' box files are listed by, so a preview can be registered for it; included,
+/// so a lookup by its name finds it.
+[AlwaysInclude]
+class ImportPreviewThing
+{
+}
+
 /// The import window over its markup (Data/Editor/Import.xml) and an import of the test's own: what
 /// a file would create shown by kind, each kept or not and named; Import open with what it will do,
 /// and waiting, saying why, while a file is being read or nothing is kept; the files listed when
@@ -30,6 +37,7 @@ static class ImportDialogTests
 	{
 		public StringView Label => "Box";
 		public bool Accepts(StringView ext) => ext == "box";
+		public StringView ListedTypeName(StringView sourcePath) => "Sedulous.Editor.App.Tests.ImportPreviewThing";
 
 		public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared, ImportPlan outPlan)
 		{
@@ -93,6 +101,37 @@ static class ImportDialogTests
 		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
 			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
 			=> group.CreateInstance("Player", "Tests.WindowThing");
+	}
+
+	/// A preview naming its file.
+	private class NamePreview : IImportPreview
+	{
+		private Sedulous.GUI.Label mView = new .() ~ _.ReleaseRef();
+		private List<String> mFacts = new .() ~ DeleteContainerAndItems!(_);
+
+		public this(StringView path)
+		{
+			let fact = new String();
+			fact.AppendF("Made for {}", ImportPaths.FileNameOf(path));
+			mFacts.Add(fact);
+		}
+
+		public Node View => mView;
+		public Span<String> Facts => mFacts;
+	}
+
+	/// Previews the box files' type, counting how many it has made.
+	private class NamePreviewFactory : IImportPreviewFactory
+	{
+		public int Made = 0;
+
+		public Type AssetType => typeof(ImportPreviewThing);
+
+		public IImportPreview Create(StringView path)
+		{
+			Made++;
+			return new NamePreview(path);
+		}
 	}
 
 	/// A box that writes through to its field, and one that points at nothing.
@@ -167,6 +206,7 @@ static class ImportDialogTests
 			Test.Assert(Groups.Content != null);
 			Window = new ImportWindow(Import, Groups, PagesBed.LoadMarkup(ImportWindow.cMarkupPath));
 			Test.Assert(Window.Window != null);
+			Window.Previews = Context.ImportPreviews;
 		}
 
 		public ~this()
@@ -381,6 +421,32 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.Why == "No file is kept.");
 		bed.Window.Close();
 		Test.Assert(session.Closed);
+	}
+
+	/// The preview registered for the type a file is listed by fills the pane, its facts and the size
+	/// under it in place of the importer's label; made again only for another file.
+	[Test]
+	public static void ThePreviewForTheTypeAFileIsListedByIsShownWithItsFactsMadeAgainOnlyForAnotherFile()
+	{
+		let bed = scope Bed("scratch_import_window_preview");
+		let factory = new NamePreviewFactory();
+		bed.Context.ImportPreviews.Register(factory); // the context's now; borrowed here
+		let session = bed.Open(scope StringView[]("/somewhere/a.box", "/somewhere/b.box"));
+		defer session.ReleaseRef();
+		Test.Assert(bed.Window.Preview != null);
+		Test.Assert(factory.Made == 1);
+		Test.Assert(bed.Window.PreviewView.ChildCount == 1, "the preview fills the pane");
+		Test.Assert(Says(bed.Window.Facts, "Made for a.box"));
+		Test.Assert(!Says(bed.Window.Facts, "Box"), "the preview's facts in place of the label");
+
+		// The same file again keeps its preview; another file gets its own.
+		bed.Window.Select(0);
+		Test.Assert(factory.Made == 1);
+		bed.Window.Select(1);
+		Test.Assert(factory.Made == 2);
+		Test.Assert(Says(bed.Window.Facts, "Made for b.box"));
+		bed.Window.Close();
+		Test.Assert(bed.Window.Preview == null, "let go with its session");
 	}
 
 	[Test]
