@@ -55,8 +55,6 @@ class ModelFileImporter : IFileImporter
 		return loaded;
 	}
 
-	/// The scale's note: how tall the model comes in with it (and the up axis), from the model read
-	/// on the worker.
 	/// What a part holds, read from the model the worker read: a mesh's triangles and its parts by
 	/// material; a material's shading, colour, metallic, roughness, textures and the parts that draw
 	/// with it; a texture's size and the materials using it; the skeleton's bones; a clip's length; a
@@ -261,6 +259,8 @@ class ModelFileImporter : IFileImporter
 		outText.AppendF(" ({})", slot);
 	}
 
+	/// The scale's note: how tall the model comes in with it (and the up axis), from the model read
+	/// on the worker.
 	public void DescribeSetting(StringView sourcePath, ImportOptions options, Object prepared, FieldInfo setting,
 		String outEffect, String outReason)
 	{
