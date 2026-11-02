@@ -255,6 +255,23 @@ class ImportWindow
 
 	public bool IsKindOpen(ImportResourceKind kind) => mOpenKinds.Contains(kind);
 
+	/// Gives file `index`'s settings to the session's other files of its importer (its "Use these
+	/// for every ..."); how many took them.
+	public int ShareSettings(int index)
+	{
+		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count) || (mSession.Files[index].Options == null))
+			return 0;
+		let from = mSession.Files[index];
+		int shared = 0;
+		for (int i < mSession.Files.Count)
+		{
+			let to = mSession.Files[i];
+			if ((i != index) && (to.Importer == from.Importer) && (to.Options != null) && to.Options.CopySettingsFrom(from.Options))
+				shared++;
+		}
+		return shared;
+	}
+
 	// For tests: the session, the window, the chosen file, the line, its parts.
 	public AssetImport.Session Session => mSession;
 	/// Its window. Ours: a caller that keeps it takes a reference.
@@ -566,6 +583,22 @@ class ImportWindow
 			mSettingsGrid.AddClass("import-settings");
 			mSettingsGrid.Source = mSettings;
 			mDetail.AddChild(mSettingsGrid);
+			// The same settings for the drop's other files of this importer, in one click.
+			int others = 0;
+			for (int i < mSession.Files.Count)
+			{
+				if ((i != index) && (mSession.Files[i].Importer == file.Importer) && (mSession.Files[i].Options != null))
+					others++;
+			}
+			if (others > 0)
+			{
+				let share = new Sedulous.GUI.Button();
+				share.AddClass("import-share");
+				share.Text = scope $"Use these for every {LabelOf(file)} in this import";
+				share.Tooltip = scope $"Gives the {others} other {LabelOf(file)} files these settings";
+				share.SetOnClick(new [=this, =index] () => { ShareSettings(index); });
+				Add(mDetail, share);
+			}
 		}
 		ShowClash(file, index);
 		if (file.Plan.IsEmpty)

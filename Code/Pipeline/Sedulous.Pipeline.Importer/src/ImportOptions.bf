@@ -76,6 +76,26 @@ class ImportOptions : ISerializable
 		return false;
 	}
 
+	/// Takes `other`'s settings when it is the same type of options (the import window's "Use these
+	/// for every ..."); false, changing nothing, when it is not. The plan's choices stay. A setting is
+	/// a value (a bool, a number, a choice) copied as it is; one held by reference is left alone.
+	public bool CopySettingsFrom(ImportOptions other)
+	{
+		if (other === this)
+			return true;
+		if ((other == null) || (other.GetType() != GetType()))
+			return false;
+		let from = (uint8*)Internal.UnsafeCastToPtr(other);
+		let to = (uint8*)Internal.UnsafeCastToPtr(this);
+		for (let setting in GetSettings(.. scope .()))
+		{
+			let type = setting.FieldType;
+			if (!type.IsObject)
+				Internal.MemCpy(to + setting.MemberOffset, from + setting.MemberOffset, type.Size);
+		}
+		return true;
+	}
+
 	/// `text` lower cased without its spaces, appended.
 	private static void Squeeze(StringView text, String outText)
 	{

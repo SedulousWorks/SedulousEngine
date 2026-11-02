@@ -39,4 +39,20 @@ class ImportSettingsTests
 		let none = scope ImportOptions();
 		Test.Assert(!none.HasSettings, "the base declares none");
 	}
+
+	[Test]
+	public static void SettingsCopyToOptionsOfTheSameTypeAndNotToAnother()
+	{
+		let from = scope CrateOptions();
+		from.Hollow = true;
+		from.Lid = false;
+		from.Cached = true;
+		let to = scope CrateOptions();
+		Test.Assert(to.CopySettingsFrom(from));
+		Test.Assert(to.Hollow && !to.Lid);
+		Test.Assert(!to.Cached, "a hidden field is no setting: it stays");
+		let bare = scope ImportOptions();
+		Test.Assert(!bare.CopySettingsFrom(from), "another type: nothing changes");
+		Test.Assert(to.CopySettingsFrom(to));
+	}
 }

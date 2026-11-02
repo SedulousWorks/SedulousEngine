@@ -509,6 +509,36 @@ static class ImportDialogTests
 		bed.Window.OnRenderWindow(null, ref frame);
 	}
 
+	/// "Use these for every <label> in this import" gives the chosen file's settings to the drop's
+	/// other files of its importer.
+	[Test]
+	public static void UseTheseForEveryLabelGivesTheChosenFilesSettingsToTheOtherFilesOfItsImporter()
+	{
+		let bed = scope Bed("scratch_import_window_share");
+		let session = bed.Open(scope StringView[]("/somewhere/a.cfg", "/somewhere/b.cfg", "/somewhere/c.box"));
+		defer session.ReleaseRef();
+		// Another config in the drop: the button offers the settings to it.
+		let buttons = scope List<Sedulous.GUI.Button>();
+		Collect<Sedulous.GUI.Button>(bed.Window.Detail, buttons);
+		int offered = 0;
+		for (let button in buttons)
+		{
+			if (button.Text == "Use these for every Config in this import")
+				offered++;
+		}
+		Test.Assert(offered == 1);
+		(session.Files[0].Options as ToggledOptions).Flip = false;
+		Test.Assert(bed.Window.ShareSettings(0) == 1, "the other config; the box has its own importer");
+		Test.Assert(!(session.Files[1].Options as ToggledOptions).Flip);
+		// The box has no other of its kind: no button.
+		bed.Window.Select(2);
+		buttons.Clear();
+		Collect<Sedulous.GUI.Button>(bed.Window.Detail, buttons);
+		for (let button in buttons)
+			Test.Assert(!button.Text.StartsWith("Use these for every"));
+		bed.Window.Close();
+	}
+
 	[Test]
 	public static void AFailedFilesBoxIsOffItsStateAndDetailSayingSo()
 	{
