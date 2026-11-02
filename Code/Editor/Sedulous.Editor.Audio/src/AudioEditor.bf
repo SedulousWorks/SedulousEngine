@@ -5,7 +5,8 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Audio;
 
 /// The audio editor's composition: the asset serializables, the clip, sound cue and bus layout
-/// pages, and the clip thumbnails when the context has a thumbnail service.
+/// pages, the sound files' import preview, and the clip thumbnails when the context has a
+/// thumbnail service.
 static class AudioEditor
 {
 	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
@@ -16,6 +17,7 @@ static class AudioEditor
 		context.Pages.Register(new AudioClipPageFactory(services));
 		context.Pages.Register(new SoundCuePageFactory(services));
 		context.Pages.Register(new AudioBusLayoutPageFactory(services));
+		context.ImportPreviews.Register(new SoundFilePreviewFactory(typeof(AudioClipAsset), services));
 		if (context.Thumbnails != null)
 			context.Thumbnails.RegisterGenerator(new AudioClipThumbnailGenerator());
 	}
