@@ -56,6 +56,7 @@ class EditorContext : IAssetEditSink
 	// ---- owned state ----
 	private ImporterRegistry mImporters = new .() ~ delete _;
 	private EditorPageRegistry mPageRegistry = new .() ~ delete _;
+	private ImportPreviewRegistry mImportPreviews = new .() ~ delete _;
 	private AssetCreatorRegistry mCreators = new .() ~ delete _;
 	private List<EditorSettingsContribution> mSettingsContributions = new .() ~ DeleteContainerAndItems!(_);
 	private List<delegate void(McpServer server)> mMcpToolContributions = new .() ~ DeleteContainerAndItems!(_);
@@ -409,6 +410,8 @@ class EditorContext : IAssetEditSink
 	// ---- registries ----
 
 	public EditorPageRegistry Pages => mPageRegistry;
+	/// The import window's previews, by asset type: a domain registers one beside its page.
+	public ImportPreviewRegistry ImportPreviews => mImportPreviews;
 
 	/// File > New's creators, every pipeline domain's (PipelineRegistration.RegisterAllCreators
 	/// fills it); the host runs one and does what follows a creation.

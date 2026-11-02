@@ -61,6 +61,41 @@ static class EditorContextTests
 		Test.Assert((byName != null) && (byName.PrimaryType == typeof(DerivedAsset)));
 	}
 
+	/// A preview factory for one type that shows nothing.
+	private class TestPreviewFactory : IImportPreviewFactory
+	{
+		private Type mType;
+
+		public this(Type type)
+		{
+			mType = type;
+		}
+
+		public Type AssetType => mType;
+		public IImportPreview Create(StringView path) => null;
+	}
+
+	[Test]
+	public static void TheNearestTypesPreviewIsFoundByTheTypeOrItsName()
+	{
+		let context = scope EditorContext();
+		let registry = context.ImportPreviews;
+		registry.Register(new TestPreviewFactory(typeof(BaseAsset)));
+		// The base's preview serves the derived type until a nearer one is registered.
+		Test.Assert(registry.Find(typeof(DerivedAsset)).AssetType == typeof(BaseAsset));
+		registry.Register(new TestPreviewFactory(typeof(DerivedAsset)));
+		Test.Assert(registry.Find(typeof(DerivedAsset)).AssetType == typeof(DerivedAsset));
+		Test.Assert(registry.Find(typeof(BaseAsset)).AssetType == typeof(BaseAsset));
+		Test.Assert(registry.Find(typeof(UnrelatedAsset)) == null);
+		// By full name, as an importer names the type it lists a file by.
+		let byName = registry.FindByName(FullName(typeof(DerivedAsset), .. scope .()));
+		Test.Assert((byName != null) && (byName.AssetType == typeof(DerivedAsset)));
+		Test.Assert(registry.FindByName("NoSuchAssetType") == null);
+		Test.Assert(registry.FindByName("") == null);
+		registry.Register(new TestPreviewFactory(null));
+		Test.Assert(registry.Count == 2, "one with no type is dropped");
+	}
+
 	[Test]
 	public static void OpenFocusAndClosePages()
 	{
