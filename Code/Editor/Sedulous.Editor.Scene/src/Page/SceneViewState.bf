@@ -9,7 +9,8 @@ namespace Sedulous.Editor.Scene;
 // Where a scene was left, kept per scene in the project's editor settings (SceneViewPref): the
 // overlays, the camera, the selection and the page's panes. The page reads it when it opens and
 // writes the whole of it on a toggle and when it closes, so saving one part never brings back
-// another's default. The panes are one splitter of three on the GUI (hierarchy, viewport,
+// another's default. A scene with no saved view is shown whole (FrameWhole), as its thumbnail
+// shows it. The panes are one splitter of three on the GUI (hierarchy, viewport,
 // inspector) where the prefs keep the old page's nested ratios (hierarchy | the rest, then viewport
 // | inspector), so the weights convert both ways and the prefs' format stands; the bottom dock's
 // ratio is kept as it was. Out of the page's class (Raptor's editor-gui spec, 5.3, layer 2).
@@ -33,6 +34,27 @@ struct ScenePaneWeights
 
 static class SceneViewState
 {
+	/// Places `camera` to show `bounds` (a scene's: SceneLoading.SceneWorldBounds) whole: in
+	/// perspective, 30 degrees above the ground and turned a little, far enough back for its field
+	/// of view to hold them. A shot of the place more than a plan of it. False, the camera
+	/// untouched, when there are no bounds.
+	public static bool FrameWhole(AABB bounds, EditorCamera camera)
+	{
+		if (!bounds.IsValid())
+			return false;
+		let center = bounds.Center();
+		let radius = Max(Length(bounds.Extents()), 0.05f);
+		camera.SetOrthographic(false);
+		camera.Yaw = 0.6f;
+		camera.Pitch = -0.52f;
+		let distance = radius / Sin(0.5f * camera.FovY);
+		camera.Position = center - camera.Forward * distance;
+		camera.FocusDistance = distance; // an orbit turns about the scene's middle
+		camera.NearZ = Max(0.1f, 0.5f * (distance - radius));
+		camera.FarZ = Max(camera.FarZ, distance + 2.0f * radius);
+		return true;
+	}
+
 	/// The weights from the prefs' nested ratios: `hierarchy` of the whole, then `inspector` (the
 	/// viewport's share) of the rest.
 	public static ScenePaneWeights WeightsFromSplits(float hierarchy, float inspector)

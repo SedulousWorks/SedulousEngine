@@ -115,6 +115,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	// there is none yet, and on every save of it.
 	private bool mThumbnailChecked = false;
 	private float mThumbnailWait = 0.0f;
+	// A scene with no saved view is shown whole once its content has loaded (its bounds known),
+	// unless the camera was moved meanwhile: where it opened, to tell.
+	private bool mFrameWholePending = false;
+	private Float3 mOpenedEye = .Zero;
+	private float mOpenedYaw = 0.0f;
+	private float mOpenedPitch = 0.0f;
 
 	/// Takes `services`; `context` borrowed.
 	public this(EditorContext context, SceneEditorPageServices services, Instance instance)
@@ -556,6 +562,19 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
 		mViewport.CompleteCapture(host); // a capture recorded last frame: the GPU finished the copy
+		// A scene with no saved view opens showing it whole once nothing is left loading, so its
+		// bounds are whole; a camera the user has moved by then stays where they put it.
+		if (mFrameWholePending && (mScene != null) && ((mContext.Resources == null) || (mContext.Resources.PendingCount == 0)))
+		{
+			mFrameWholePending = false;
+			let camera = mViewport.Camera;
+			if ((camera.Position == mOpenedEye) && (camera.Yaw == mOpenedYaw) && (camera.Pitch == mOpenedPitch))
+			{
+				mScene.UpdateTransforms(); // the bounds are world bounds
+				if (SceneLoading.SceneWorldBounds(mScene, let bounds))
+					SceneViewState.FrameWhole(bounds, camera);
+			}
+		}
 		// A project with no launcher picture gets one from its default scene, once the view has been
 		// up a moment with nothing left loading (content pops in asynchronously).
 		if (!mThumbnailChecked && IsProjectDefaultScene)
@@ -921,14 +940,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 	}
 
-	/// The panes, the camera and the selection as this scene was left; a pref with no camera leaves
-	/// the origin's framing standing.
+	/// The panes, the camera and the selection as this scene was left; with no camera saved, the
+	/// scene is shown whole once its content has loaded (OnUpdate).
 	private void RestoreViewState()
 	{
 		let pref = SceneViewPrefs.Find(mContext.ProjectEditorSettings, InstanceId);
-		if (pref == null)
-			return;
-		if (pref.HasSplits)
+		if ((pref != null) && pref.HasSplits)
 		{
 			if (let body = Find<Splitter>("scene-body"))
 			{
@@ -937,10 +954,18 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				body.SetWeights(weights);
 			}
 		}
-		if (mTools != null)
+		if ((pref != null) && (mTools != null))
 			mTools.SetPlace(pref.HasToolPanelPlace ? (Float2?)pref.ToolPanelPlace : null);
 		if (!SceneViewState.RestoreCamera(pref, mViewport.Camera))
-			return; // never saved by a page: the origin's framing stands
+		{
+			// Never saved by a page: shown whole once its content has loaded (OnUpdate).
+			let camera = mViewport.Camera;
+			mFrameWholePending = true;
+			mOpenedEye = camera.Position;
+			mOpenedYaw = camera.Yaw;
+			mOpenedPitch = camera.Pitch;
+			return;
+		}
 		if ((mEditContext != null) && (mScene != null))
 		{
 			let live = scope List<Guid>();

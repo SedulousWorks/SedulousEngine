@@ -22,6 +22,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Scene;
+using Sedulous.Editor.Camera;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Render; // DebugDraw
 using Sedulous.PropertyAnimation;
@@ -438,6 +439,58 @@ class ScenePageTests
 		let total = weights[0] + weights[1] + weights[2];
 		Test.Assert(Math.Abs(weights[0] / total - 0.3f) < 0.001f);
 		Test.Assert(Math.Abs(weights[2] / total - 0.2f) < 0.001f);
+		again.OnClose();
+	}
+
+	[Test]
+	public static void ASceneIsFramedWholeInPerspectiveFromAboveAndNothingMeasuredLeavesTheCamera()
+	{
+		let camera = scope EditorCamera();
+		let before = camera.Position;
+		Test.Assert(!SceneViewState.FrameWhole(AABB.Empty(), camera));
+		Test.Assert(camera.Position == before);
+
+		let bounds = AABB(.(90.0f, 0.0f, 90.0f), .(110.0f, 10.0f, 110.0f));
+		camera.SetOrthographic(true);
+		Test.Assert(SceneViewState.FrameWhole(bounds, camera));
+		Test.Assert(!camera.Orthographic);
+		let toCenter = bounds.Center() - camera.Position;
+		let distance = Length(toCenter);
+		Test.Assert(Math.Abs(Dot(toCenter / distance, camera.Forward) - 1.0f) < 0.001f, "it looks at the middle");
+		Test.Assert(camera.Position.Y > bounds.Center().Y, "from above");
+		Test.Assert(distance * Sin(0.5f * camera.FovY) >= Length(bounds.Extents()) - 0.01f, "the bounds fit its view");
+		Test.Assert(Math.Abs(camera.FocusDistance - distance) < 0.01f, "an orbit turns about it");
+		Test.Assert(camera.FarZ > distance + Length(bounds.Extents()));
+	}
+
+	/// A scene built away from the origin (a terrain) opened on the sky; one with no saved view
+	/// now opens showing what is in it, and once its view is saved, opens where it was left.
+	[Test]
+	public static void ASceneWithNoSavedViewOpensShowingWhatIsInItNotTheOrigin()
+	{
+		let bed = scope Bed();
+		var shown = Float3.Zero;
+		{
+			let page = bed.Open(bed.Level);
+			defer delete page;
+			let opened = page.Viewport.Camera.Position;
+			// The crate measured far from the origin, as a domain would.
+			page.ScenePtr.AddSystem<FarBox>();
+			page.OnUpdate(bed.Host, 1.0f / 60.0f);
+			let camera = page.Viewport.Camera;
+			Test.Assert(camera.Position != opened);
+			let toCenter = FarBox.Box.Center() - camera.Position;
+			Test.Assert(Math.Abs(Dot(Normalized(toCenter), camera.Forward) - 1.0f) < 0.001f);
+			shown = camera.Position;
+			page.OnClose();
+		}
+		// Its view was saved as it closed: the next open keeps it, framing nothing again.
+		let again = bed.Open(bed.Level);
+		defer delete again;
+		let kept = again.Viewport.Camera.Position;
+		again.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(again.Viewport.Camera.Position == kept);
+		Test.Assert(Math.Abs(kept.X - shown.X) < 0.001f);
 		again.OnClose();
 	}
 

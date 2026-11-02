@@ -45,20 +45,13 @@ class SceneThumbnailGenerator : ISceneThumbnailGenerator
 		if (!ThumbnailStaging.MeshRefsSettled(stage))
 			return .Pending;
 		stage.UpdateTransforms();
-		ThumbnailStaging.FrameFromBounds(ThumbnailStaging.WorldSceneBounds(stage), ref outFraming);
+		var bounds = AABB.Empty();
+		if (SceneLoading.SceneWorldBounds(stage, let measured))
+			bounds = measured;
+		ThumbnailStaging.FrameFromBounds(bounds, ref outFraming);
 		let camera = scope EditorCamera();
 		if (!SceneViewState.RestoreCamera(SavedView(id), camera))
-		{
-			// Never viewed: the whole scene in perspective, from 30 degrees above the ground and
-			// turned a little, far enough back to hold its bounds: a shot of the place more than a
-			// plan of it.
-			camera.Yaw = 0.6f;
-			camera.Pitch = -0.52f;
-			let distance = outFraming.Radius / Sin(0.5f * camera.FovY);
-			camera.Position = outFraming.Center - camera.Forward * distance;
-			camera.NearZ = Max(0.1f, 0.5f * (distance - outFraming.Radius));
-			camera.FarZ = distance + 2.0f * outFraming.Radius;
-		}
+			SceneViewState.FrameWhole(bounds, camera); // never viewed: the whole scene, as its page first shows it
 		outFraming.HasView = true;
 		outFraming.Eye = camera.DrawEye;
 		outFraming.View = Float4x4.LookAtRH(outFraming.Eye, outFraming.Eye + camera.Forward, camera.Up);
