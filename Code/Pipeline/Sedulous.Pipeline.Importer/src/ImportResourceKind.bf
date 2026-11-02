@@ -36,4 +36,22 @@ extension ImportResourceKind
 			}
 		}
 	}
+
+	/// One resource of this kind, as a heading over it says ("Material", "Animation clip").
+	public StringView ItemName
+	{
+		get
+		{
+			switch (this)
+			{
+			case .Texture: return "Texture";
+			case .Material: return "Material";
+			case .Mesh: return "Mesh";
+			case .Skeleton: return "Skeleton";
+			case .AnimationClip: return "Animation clip";
+			case .Collision: return "Collision shape";
+			case .Asset: return "Asset";
+			}
+		}
+	}
 }

@@ -28,8 +28,8 @@ class ImportPreviewThing
 /// happens"). Then what Sedulous adds so each behaviour has a test: a file being read but not kept
 /// keeps nothing waiting; a failed file's box off and its detail saying so; a row's name choosing
 /// its file; the group field picking another group; the importer's choice describing the file
-/// again; a kind's box keeping or leaving all of it, and mixed when its entries are; a rename in
-/// place; the options' boxes writing through (one pointing at nothing shown not); Import and
+/// again; a kind's box keeping or leaving all of it, and mixed when its entries are; a part's
+/// rename in its details; the options' boxes writing through (one pointing at nothing shown not); Import and
 /// Cancel by their buttons; and the editor's one import, at once when nothing needs review, else in
 /// the window, a second refused while one is open.
 static class ImportDialogTests
@@ -368,8 +368,20 @@ static class ImportDialogTests
 	/// The name's button on a file's row.
 	private static Sedulous.GUI.Button NameOf(Node row) => row.GetChildAt(2) as Sedulous.GUI.Button;
 
+	/// The rows under the files with `cssClass` (a kind's toggle, a part's name), in tree order.
+	private static void RowsOf<T>(ImportWindow window, StringView cssClass, List<T> outFound) where T : UIWidget
+	{
+		let all = scope List<T>();
+		Collect<T>(window.Files, all);
+		for (let found in all)
+		{
+			if (found.HasClass(cssClass))
+				outFound.Add(found);
+		}
+	}
+
 	[Test]
-	public static void AFilesPlanByKindEachKeptAndNamedImportOpenSayingWhatItDoesImportMakesWhatIsKeptAndCloses()
+	public static void AFilesPartsInATreeUnderItByKindEachKeptAPartSelectedShowsItsNameToGiveItImportMakesWhatIsKeptAndCloses()
 	{
 		let bed = scope Bed("scratch_import_window_plan");
 		let session = bed.Open(scope StringView[]("/somewhere/crate.box"));
@@ -377,22 +389,35 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.IsOpen);
 		Test.Assert(bed.Window.Window.Title == "Import");
 		Test.Assert(bed.Window.FilesScroll.Displayed, "one file is listed too");
-		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 1);
 		Test.Assert(Says(bed.Window.Files, "Box · 1"), "under its importer's label");
 		Test.Assert(Says(bed.Window.Facts, "Box"), "the preview's facts name its importer");
 		Test.Assert(Says(bed.Window.PreviewView, "crate.box"));
 		Test.Assert(bed.Window.GroupField.Text == "Content");
-		// The two kinds, closed: a box each and a count, no names yet (no option toggles here).
+		// Under the file, its two kinds, closed: a box each beside the file's own, and a count.
 		let detail = bed.Window.Detail;
-		Test.Assert(Count<Sedulous.GUI.CheckBox>(detail) == 2);
-		Test.Assert(Count<TextField>(detail) == 0);
-		Test.Assert(Says(detail, "1 of 1") && Says(detail, "2 of 2"));
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 3);
+		Test.Assert(Says(bed.Window.Files, "1 of 1") && Says(bed.Window.Files, "2 of 2"));
 		Test.Assert(!bed.Window.IsKindOpen(.Texture));
-		// Opened, each kind lists its items, each kept or not and named.
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(detail) == 0, "the file's settings: what it makes is in the tree");
+		Test.Assert(Count<TextField>(detail) == 0);
+		Test.Assert(Says(detail, "What it makes is in the tree under it: open a kind, and select an item to see it."));
+		// Opened, each kind lists its items, each with its box.
 		bed.Window.SetKindOpen(.Mesh, true);
 		bed.Window.SetKindOpen(.Texture, true);
-		Test.Assert(Count<Sedulous.GUI.CheckBox>(detail) == 5);
-		Test.Assert(Count<TextField>(detail) == 3);
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 6);
+		// A part selected: what it is, its name to give it, its box; the file's row unlit.
+		bed.Window.SelectPart(0, 1); // Wood
+		Test.Assert(bed.Window.SelectedPart == 1);
+		Test.Assert(Count<TextField>(detail) == 1);
+		Test.Assert(Says(detail, "Texture"));
+		Test.Assert(!(FileRow(bed.Window, 0) as UIWidget).HasClass("selected"));
+		let parts = scope List<Sedulous.GUI.Panel>();
+		RowsOf<Sedulous.GUI.Panel>(bed.Window, "import-part", parts);
+		Test.Assert((parts.Count == 3) && parts[1].HasClass("selected") && !parts[0].HasClass("selected"));
+		bed.Window.Select(0);
+		Test.Assert(bed.Window.SelectedPart == -1);
+		Test.Assert((FileRow(bed.Window, 0) as UIWidget).HasClass("selected"));
+		Test.Assert(bed.Window.IsKindOpen(.Texture), "the tree stays open");
 		Test.Assert(Says(detail, "crate.box"), "its title");
 		Test.Assert(bed.Window.ImportButton.Text == "Import");
 		Test.Assert(Count<ComboBox>(detail) == 0, "one importer: no choice");
@@ -420,7 +445,7 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.ImportButton.Enabled);
 		Test.Assert(bed.Window.Why == "2 of 2 files into Content.");
 		Test.Assert(bed.Window.FilesScroll.Displayed);
-		Test.Assert(bed.Window.Files.ChildCount == 3, "one group's head, two rows");
+		Test.Assert(bed.Window.Files.ChildCount == 7, "one group's head, two rows, each with its two kinds");
 		Test.Assert(Says(bed.Window.Files, "Box · 2"), "both under their importer's label");
 		Test.Assert(bed.Window.ImportButton.Text == "Import 2 Files");
 		Test.Assert(NameOf(FileRow(bed.Window, 1)).Text == "b.box");
@@ -446,12 +471,12 @@ static class ImportDialogTests
 		Test.Assert((FileRow(bed.Window, 1) as UIWidget).HasClass("selected"));
 		Test.Assert(Says(bed.Window.Detail, "Reading b.box..."));
 		Test.Assert(Count<ProgressBar>(bed.Window.Detail) == 1);
-		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Detail) == 0, "no plan while it is read");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 4, "no kinds under it while it is read");
 		session.Files[1].State = .Ready;
 		session.OnChanged(1);
 		Test.Assert(bed.Window.ImportButton.Enabled);
 		Test.Assert(!bed.Window.WhyLine.HasClass("refused"));
-		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Detail) == 2, "the chosen file's kinds shown again, closed");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 6, "its kinds under it again, closed");
 
 		// A file read but not kept keeps nothing waiting: only a kept file must be ready.
 		Test.Assert((FileRow(bed.Window, 1).GetChildAt(0) as Sedulous.GUI.CheckBox).HandleActivate());
@@ -629,9 +654,9 @@ static class ImportDialogTests
 		let bed = scope Bed("scratch_import_window_importer");
 		let session = bed.Open(scope StringView[]("/somewhere/set.kit"));
 		defer session.ReleaseRef();
-		// Opened first: opening a kind makes the detail again, the combo with it.
+		// Opened first: the meshes' item under the file.
 		bed.Window.SetKindOpen(.Mesh, true);
-		Test.Assert(Count<TextField>(bed.Window.Detail) == 1);
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 3);
 		let combos = scope List<ComboBox>();
 		Collect<ComboBox>(bed.Window.Detail, combos);
 		Test.Assert(combos.Count == 1, "two importers take it: a choice");
@@ -642,12 +667,12 @@ static class ImportDialogTests
 		Test.Assert(session.Files[0].ImporterIndex == 1);
 		Test.Assert(session.Files[0].Plan.Entries.Count == 3, "described again");
 		bed.Drain(); // the detail made again, not under the combo's own event
-		Test.Assert(Count<TextField>(bed.Window.Detail) == 2, "the meshes still open");
-		Test.Assert(Says(bed.Window.Detail, "2 of 2"));
-		Test.Assert(Says(bed.Window.Detail, "1 of 1"), "the material");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 5, "the meshes still open");
+		Test.Assert(Says(bed.Window.Files, "2 of 2"));
+		Test.Assert(Says(bed.Window.Files, "1 of 1"), "the material");
 		Test.Assert(Says(bed.Window.Facts, "Parts"), "the facts follow the importer");
 		bed.Window.SetKindOpen(.Material, true);
-		Test.Assert(Count<TextField>(bed.Window.Detail) == 3);
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 6);
 		combos.Clear();
 		Collect<ComboBox>(bed.Window.Detail, combos);
 		Test.Assert((combos.Count == 1) && (combos[0].SelectedText == "Parts"));
@@ -663,9 +688,10 @@ static class ImportDialogTests
 		let session = bed.Open(scope StringView[]("/somewhere/crate.box"));
 		defer session.ReleaseRef();
 		let entries = session.Files[0].Plan.Entries;
-		// Opened by their toggles: [Meshes][Box][Textures][Wood][Rust], in the kinds' order.
+		// Opened by their toggles in the tree: [file][Meshes][Box][Textures][Wood][Rust], in the
+		// kinds' order.
 		let toggles = scope List<Sedulous.GUI.Button>();
-		Collect<Sedulous.GUI.Button>(bed.Window.Detail, toggles);
+		RowsOf<Sedulous.GUI.Button>(bed.Window, "import-kind-toggle", toggles);
 		Test.Assert((toggles.Count == 2) && (toggles[0].Text == "Meshes") && (toggles[1].Text == "Textures"));
 		Test.Assert(toggles[1].HandleActivate());
 		Test.Assert(!bed.Window.IsKindOpen(.Texture), "not under the click");
@@ -673,47 +699,60 @@ static class ImportDialogTests
 		Test.Assert(bed.Window.IsKindOpen(.Texture));
 		bed.Window.SetKindOpen(.Mesh, true);
 		let boxes = scope List<Sedulous.GUI.CheckBox>();
-		Collect<Sedulous.GUI.CheckBox>(bed.Window.Detail, boxes);
-		Test.Assert(boxes.Count == 5);
-		Test.Assert(Says(bed.Window.Detail, "2 of 2"));
-		Test.Assert(boxes[2].Checked && !boxes[2].Indeterminate);
+		Collect<Sedulous.GUI.CheckBox>(bed.Window.Files, boxes);
+		Test.Assert(boxes.Count == 6);
+		Test.Assert(Says(bed.Window.Files, "2 of 2"));
+		Test.Assert(boxes[3].Checked && !boxes[3].Indeterminate);
 
 		// The textures' box leaves both, not the mesh.
-		Test.Assert(boxes[2].HandleActivate());
+		Test.Assert(boxes[3].HandleActivate());
 		Test.Assert(entries[0].Enabled);
 		Test.Assert(!entries[1].Enabled && !entries[2].Enabled);
 		bed.Drain();
 		boxes.Clear();
-		Collect<Sedulous.GUI.CheckBox>(bed.Window.Detail, boxes);
-		Test.Assert(!boxes[2].Checked && !boxes[3].Checked && !boxes[4].Checked);
-		Test.Assert(Says(bed.Window.Detail, "0 of 2"), "the kind stays open, its count with it");
+		Collect<Sedulous.GUI.CheckBox>(bed.Window.Files, boxes);
+		Test.Assert(!boxes[3].Checked && !boxes[4].Checked && !boxes[5].Checked);
+		Test.Assert(Says(bed.Window.Files, "0 of 2"), "the kind stays open, its count with it");
 
 		// One kept again: the kind's box mixed; pressed, it keeps all.
-		Test.Assert(boxes[3].HandleActivate());
+		Test.Assert(boxes[4].HandleActivate());
 		Test.Assert(entries[1].Enabled && !entries[2].Enabled);
 		bed.Drain();
 		boxes.Clear();
-		Collect<Sedulous.GUI.CheckBox>(bed.Window.Detail, boxes);
-		Test.Assert(boxes[2].Indeterminate);
-		Test.Assert(boxes[2].HandleActivate());
+		Collect<Sedulous.GUI.CheckBox>(bed.Window.Files, boxes);
+		Test.Assert(boxes[3].Indeterminate);
+		Test.Assert(boxes[3].HandleActivate());
 		Test.Assert(entries[1].Enabled && entries[2].Enabled);
 	}
 
 	[Test]
-	public static void ANameIsEditedInPlaceAndImportedSoCancelImportsNothing()
+	public static void APartsNameIsEditedInItsDetailsAndImportedSoCancelImportsNothing()
 	{
 		let bed = scope Bed("scratch_import_window_rename");
 		let session = bed.Open(scope StringView[]("/somewhere/crate.box"));
 		defer session.ReleaseRef();
 		bed.Window.SetKindOpen(.Mesh, true);
-		bed.Window.SetKindOpen(.Texture, true);
+		// Its name in the tree, pressed: its details.
+		let names = scope List<Sedulous.GUI.Button>();
+		RowsOf<Sedulous.GUI.Button>(bed.Window, "import-part-name", names);
+		Test.Assert((names.Count == 1) && (names[0].Text == "Box"));
+		Test.Assert(names[0].HandleActivate());
+		bed.Drain();
+		Test.Assert(bed.Window.SelectedPart == 0);
+		Test.Assert(Says(bed.Window.Detail, "Mesh"));
 		let fields = scope List<TextField>();
 		Collect<TextField>(bed.Window.Detail, fields);
-		Test.Assert(fields.Count == 3);
+		Test.Assert(fields.Count == 1);
 		Test.Assert((fields[0].Text == "Box") && (fields[0].Placeholder == "Box"));
 		bed.Type(fields[0], "Hull");
 		Test.Assert(session.Files[0].Plan.Entries[0].TargetName == "Hull");
 		Test.Assert(session.Files[0].Plan.Entries[1].TargetName == "Wood", "untouched entries keep their names");
+		// Shown again: the file's own name beside the new one, and the tree's row renamed.
+		bed.Window.SelectPart(0, 0);
+		Test.Assert(Says(bed.Window.Detail, "In the file it is Box."));
+		names.Clear();
+		RowsOf<Sedulous.GUI.Button>(bed.Window, "import-part-name", names);
+		Test.Assert(names[0].Text == "Hull");
 		Test.Assert(bed.Window.ImportButton.HandleActivate());
 		Test.Assert(!bed.Window.IsOpen);
 		Test.Assert(bed.Top.GetInstance("Hull") != null);

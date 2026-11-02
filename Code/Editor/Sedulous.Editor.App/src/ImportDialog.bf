@@ -63,7 +63,24 @@ class ImportWindow
 	/// The file whose preview and settings show.
 	private int mSelected = 0;
 	/// The chosen file's kinds shown item by item; the rest are closed to their counts.
-	private List<ImportResourceKind> mOpenKinds = new .() ~ delete _;
+	/// A kind open in the tree under a file.
+	private struct OpenKind
+	{
+		public int File;
+		public ImportResourceKind Kind;
+
+		public this(int file, ImportResourceKind kind)
+		{
+			File = file;
+			Kind = kind;
+		}
+
+		public static bool operator==(OpenKind a, OpenKind b) => (a.File == b.File) && (a.Kind == b.Kind);
+	}
+	/// The kinds open in the tree, by file.
+	private List<OpenKind> mOpenKinds = new .() ~ delete _;
+	/// The selected part, an entry of the selected file's plan; -1: the file itself.
+	private int mPart = -1;
 	/// The chosen file's settings, which its grid shows; the grid a reference of ours.
 	private FieldPropertySource mSettings = null;
 	private PropertyGrid mSettingsGrid = null;
@@ -246,32 +263,56 @@ class ImportWindow
 		return true;
 	}
 
-	/// Shows file `index`'s preview and settings, its kinds closed.
+	/// Shows file `index`'s preview and settings.
 	public void Select(int index)
 	{
 		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count))
 			return;
 		mSelected = index;
-		mOpenKinds.Clear();
+		mPart = -1;
 		ShowFiles();
 		ShowPreview();
 		ShowDetail();
 	}
 
-	/// Opens or closes a kind of what the chosen file would create (its items listed or not).
-	public void SetKindOpen(ImportResourceKind kind, bool open)
+	/// Shows part `entry` of file `index` (an entry of its plan): its preview and its details.
+	public void SelectPart(int index, int entry)
 	{
-		if (open)
+		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count) || (entry < 0)
+			|| (entry >= mSession.Files[index].Plan.Entries.Count))
 		{
-			if (!mOpenKinds.Contains(kind))
-				mOpenKinds.Add(kind);
+			return;
 		}
-		else
-			mOpenKinds.Remove(kind);
+		mSelected = index;
+		mPart = entry;
+		ShowFiles();
+		ShowPreview();
 		ShowDetail();
 	}
 
-	public bool IsKindOpen(ImportResourceKind kind) => mOpenKinds.Contains(kind);
+	/// The selected part's index in the selected file's plan; -1 when the file itself is selected.
+	public int SelectedPart => mPart;
+
+	/// Opens or closes a kind of what file `index` would create, in the tree under it (its items
+	/// listed or not).
+	public void SetKindOpen(int index, ImportResourceKind kind, bool open)
+	{
+		let key = OpenKind(index, kind);
+		if (open)
+		{
+			if (!mOpenKinds.Contains(key))
+				mOpenKinds.Add(key);
+		}
+		else
+			mOpenKinds.Remove(key);
+		ShowFiles();
+	}
+
+	/// SetKindOpen for the chosen file.
+	public void SetKindOpen(ImportResourceKind kind, bool open) => SetKindOpen(mSelected, kind, open);
+
+	public bool IsKindOpen(int index, ImportResourceKind kind) => mOpenKinds.Contains(OpenKind(index, kind));
+	public bool IsKindOpen(ImportResourceKind kind) => IsKindOpen(mSelected, kind);
 
 	/// Gives file `index`'s settings to the session's other files of its importer (its "Apply to all
 	/// ... in this import"); how many took them.
@@ -485,7 +526,10 @@ class ImportWindow
 			for (int i < mSession.Files.Count)
 			{
 				if (LabelOf(mSession.Files[i]) == label)
+				{
 					Add(mFiles, FileRow(i));
+					AddPartRows(i);
+				}
 			}
 		}
 	}
@@ -496,7 +540,7 @@ class ImportWindow
 		let file = mSession.Files[i];
 		let row = new Sedulous.GUI.Panel();
 		row.AddClass("import-file");
-		if (i == mSelected)
+		if ((i == mSelected) && (mPart < 0))
 			row.AddClass("selected");
 		let kept = new Sedulous.GUI.CheckBox();
 		kept.Checked = file.Kept;
@@ -615,6 +659,11 @@ class ImportWindow
 		mDetail.RemoveAllChildren();
 		let file = mSession.Files[mSelected];
 		let index = mSelected;
+		if ((mPart >= 0) && (mPart < file.Plan.Entries.Count))
+		{
+			ShowPart(index, mPart);
+			return;
+		}
 		Add(mDetail, Text(file.Name, "import-title"));
 		if (file.Importers.Count > 1)
 		{
@@ -733,7 +782,23 @@ class ImportWindow
 			Add(mDetail, Text("It makes one asset, named after the file.", "form-help"));
 			return;
 		}
-		// What it would create, by kind: a kind's box keeps or leaves all of it.
+		if (HasTree(file))
+			Add(mDetail, Text("What it makes is in the tree under it: open a kind, and select an item to see it.", "form-help"));
+	}
+
+	/// Whether a file's plan makes a tree under it: more than the one asset a single-file importer
+	/// makes.
+	private static bool HasTree(AssetImport.File file)
+		=> (file.Plan.Entries.Count > 1) || ((file.Plan.Entries.Count == 1) && (file.Plan.Entries[0].Kind != .Asset));
+
+	// The tree under file `index`: each kind it makes, its box keeping or leaving all of it (mixed
+	// while some are kept), its chevron and its count; an open kind lists its items, each with its
+	// box and its name, selected to show it.
+	private void AddPartRows(int index)
+	{
+		let file = mSession.Files[index];
+		if ((file.State != .Ready) || !HasTree(file))
+			return;
 		for (let kind in cKinds)
 		{
 			int count = 0;
@@ -749,7 +814,7 @@ class ImportWindow
 			if (count == 0)
 				continue;
 			// The kind: open or close it, keep or leave all of it, and how many are kept.
-			let open = IsKindOpen(kind);
+			let open = IsKindOpen(index, kind);
 			let head = Row("import-kind");
 			let all = new Sedulous.GUI.CheckBox();
 			all.Tooltip = "Keep or leave all of them";
@@ -764,20 +829,24 @@ class ImportWindow
 						if (entry.Kind == kind)
 							entry.Enabled = on;
 					}
-					Later(new [=this] () => { ShowDetail(); });
+					Later(new [=this] () =>
+						{
+							ShowFiles();
+							ShowDetail();
+							ShowWhy();
+						});
 				});
 			let toggle = new Sedulous.GUI.Button();
 			toggle.AddClass("import-kind-toggle");
 			toggle.AddClass("with-icon");
 			toggle.Icon = open ? "Editor/Icons/chevron-down.svg" : "Editor/Icons/chevron-right.svg";
 			toggle.Text = kind.Label;
-			toggle.Tooltip = open ? "Hide them" : "Show them, each with its name";
-			toggle.SetOnClick(new [=this, =kind, =open] () => { Later(new [=this, =kind, =open] () => { SetKindOpen(kind, !open); }); });
+			toggle.Tooltip = open ? "Hide them" : "Show them";
+			toggle.SetOnClick(new [=this, =index, =kind, =open] () => { Later(new [=this, =index, =kind, =open] () => { SetKindOpen(index, kind, !open); }); });
 			Add(head, all);
 			Add(head, toggle);
-			Add(head, new Sedulous.GUI.Spacer());
 			Add(head, Text(scope $"{kept} of {count}", "import-kind-count"));
-			Add(mDetail, head);
+			Add(mFiles, head);
 			if (!open)
 				continue;
 			for (int e < file.Plan.Entries.Count)
@@ -785,31 +854,72 @@ class ImportWindow
 				let entry = file.Plan.Entries[e];
 				if (entry.Kind != kind)
 					continue;
-				let line = Row("import-entry");
+				let line = Row("import-part");
+				if ((index == mSelected) && (mPart == e))
+					(line as UIWidget).AddClass("selected");
 				let keep = new Sedulous.GUI.CheckBox();
 				keep.Checked = entry.Enabled;
+				keep.Tooltip = "Import it";
 				keep.SetOnToggled(new [=this, =index, =e] (on) =>
 					{
 						if (let planned = Planned(index, e))
 							planned.Enabled = on;
-						Later(new [=this] () => { ShowDetail(); }); // its kind's box follows
+						Later(new [=this] () =>
+							{
+								ShowFiles(); // its kind's box follows
+								ShowDetail();
+								ShowWhy();
+							});
 					});
-				let name = new Sedulous.GUI.TextField();
-				name.Text = entry.TargetName;
-				name.Placeholder = entry.SourceName; // emptied, it keeps the importer's name
-				name.SetOnTextChanging(new [=this, =index, =e] (text) =>
-					{
-						if (let planned = Planned(index, e))
-							planned.TargetName.Set(text);
-						ShowWhy(); // a rename may free the name, or take one
-					});
-				// Committed (Enter, or leaving it): the clash line says what the name meets now.
-				name.SetOnTextChanged(new [=this] (text) => { Later(new [=this] () => { ShowDetail(); }); });
+				let name = new Sedulous.GUI.Button();
+				name.AddClass("import-part-name");
+				name.Text = entry.TargetName.IsEmpty ? entry.SourceName : entry.TargetName;
+				// The rows are made again: not under the click.
+				name.SetOnClick(new [=this, =index, =e] () => { Later(new [=this, =index, =e] () => { SelectPart(index, e); }); });
 				Add(line, keep);
 				Add(line, name);
-				Add(mDetail, line);
+				Add(mFiles, line);
 			}
 		}
+	}
+
+	// The selected part's details: what it is, its name to give it (with the file's own name when
+	// it differs), and its box.
+	private void ShowPart(int index, int e)
+	{
+		let entry = mSession.Files[index].Plan.Entries[e];
+		Add(mDetail, Text(entry.Kind.ItemName, "import-part-kind"));
+		let line = Row("import-part-name-line");
+		Add(line, Text("Name", "form-label"));
+		let name = new Sedulous.GUI.TextField();
+		name.Text = entry.TargetName;
+		name.Placeholder = entry.SourceName; // emptied, it keeps the importer's name
+		name.SetOnTextChanging(new [=this, =index, =e] (text) =>
+			{
+				if (let planned = Planned(index, e))
+					planned.TargetName.Set(text);
+				ShowWhy(); // a rename may free the name, or take one
+			});
+		// Committed (Enter, or leaving it): the tree shows the new name.
+		name.SetOnTextChanged(new [=this] (text) => { Later(new [=this] () => { ShowFiles(); }); });
+		Add(line, name);
+		Add(mDetail, line);
+		if (!entry.TargetName.IsEmpty && (entry.TargetName != entry.SourceName))
+			Add(mDetail, Text(scope $"In the file it is {entry.SourceName}.", "form-help"));
+		let keep = new Sedulous.GUI.CheckBox();
+		keep.Text = "Import it";
+		keep.Checked = entry.Enabled;
+		keep.SetOnToggled(new [=this, =index, =e] (on) =>
+			{
+				if (let planned = Planned(index, e))
+					planned.Enabled = on;
+				Later(new [=this] () =>
+					{
+						ShowFiles();
+						ShowWhy();
+					});
+			});
+		Add(mDetail, keep);
 	}
 
 	/// The settings' grid lets go of its source, then both go: the grid out of the detail.

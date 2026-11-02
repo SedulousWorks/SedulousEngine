@@ -939,11 +939,17 @@ button.import-file-name { flex-grow: 1; justify-content: flex-start; text-align:
 .import-detail-body { flex-direction: column; row-gap: var(--space-s); padding: var(--space-m) var(--space-l); }
 .import-title { color: var(--text-strong); font-weight: 600; }
 .import-importer { flex-direction: row; align-items: center; column-gap: var(--space-m); }
-.import-kind { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); margin-top: var(--space-xs); }
-button.import-kind-toggle { background-color: transparent; padding: 0 var(--space-xs); font-weight: 600; }
-.import-kind-count { font-size: var(--font-small); color: var(--text-dim); }
-.import-entry { flex-direction: row; align-items: center; column-gap: var(--space-s); padding-left: var(--space-xl); }
-.import-entry > textfield { flex-grow: 1; }
+/* A file's parts, in the tree under it: its kinds, then an open kind's items. */
+.import-kind { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); min-height: var(--row); padding-left: 26px; padding-right: var(--space-s); }
+button.import-kind-toggle { flex-grow: 1; justify-content: flex-start; text-align: start; background-color: transparent; padding: 0 var(--space-xs); }
+.import-kind-count { font-size: var(--font-small); color: var(--text-dim); flex-shrink: 0; }
+.import-part { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); min-height: var(--row); padding-left: 52px; padding-right: var(--space-s); border-radius: var(--radius-small); }
+.import-part.selected { background-color: var(--accent-subtle); }
+button.import-part-name { flex-grow: 1; justify-content: flex-start; text-align: start; background-color: transparent; padding: 0; min-width: 0; }
+/* A part's details: what it is, its name, its box. */
+.import-part-kind { font-size: var(--font-small); color: var(--text-dim); }
+.import-part-name-line { align-self: stretch; flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.import-part-name-line > textfield { flex-grow: 1; }
 .import-footer { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-m) var(--space-l); }
 .import-footer > .group-field { min-width: 220px; }
 .import-why { flex-shrink: 1; min-width: 0; }
