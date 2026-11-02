@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Content;
 using Sedulous.Core;
 
@@ -42,6 +43,15 @@ interface IFileImporter
 	/// means no per resource review.
 	void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared,
 		ImportPlan outPlan)
+	{
+	}
+
+	/// What one of the options' settings will do to this file ("Cuts 0.19 s from the end"), into
+	/// `outEffect`, or why it cannot apply to it ("It is mono already"), into `outReason`, which shows
+	/// the setting disabled. `prepared` is PrepareOnWorker's payload when the two phase path ran
+	/// (null: nothing read, nothing to say). Default: nothing to say.
+	void DescribeSetting(StringView sourcePath, ImportOptions options, Object prepared, FieldInfo setting,
+		String outEffect, String outReason)
 	{
 	}
 

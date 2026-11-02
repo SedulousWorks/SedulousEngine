@@ -19,9 +19,6 @@ class AudioClipAssetBuilder : IAssetBuilder
 	/// The stream the container bytes travel in.
 	public const String cDataStreamName = "data";
 
-	/// The threshold a trailing silence trim measures against, about sixty decibels down.
-	private const int16 cSilenceThreshold = 33;
-
 	public Type AssetType => typeof(AudioClipAsset);
 	public Type ProductType => typeof(AudioClipSource);
 
@@ -96,59 +93,28 @@ class AudioClipAssetBuilder : IAssetBuilder
 		return .Ok;
 	}
 
-	/// Drops the tail below the threshold, keeping ten milliseconds of pad so nothing clicks.
+	/// Drops the silent tail, keeping ten milliseconds of pad so nothing clicks (AudioEdits, as the
+	/// import window's note says it).
 	private static void TrimSilence(List<int16> samples, ref AudioClipMetadata metadata)
 	{
 		if (metadata.Channels == 0)
 			return;
 
-		let frameCount = samples.Count / (int)metadata.Channels;
-		var lastAudibleFrame = 0;
-		for (int frame = frameCount; frame > 0; --frame)
-		{
-			var audible = false;
-			for (uint32 channel < metadata.Channels)
-			{
-				let sample = samples[(frame - 1) * (int)metadata.Channels + (int)channel];
-				if (Math.Abs((int)sample) > cSilenceThreshold)
-				{
-					audible = true;
-					break;
-				}
-			}
-			if (audible)
-			{
-				lastAudibleFrame = frame;
-				break;
-			}
-		}
-
-		let pad = (int)metadata.SampleRate / 100;
-		var keepFrames = lastAudibleFrame + pad;
-		if (keepFrames > frameCount)
-			keepFrames = frameCount;
-
+		let keepFrames = AudioEdits.AudibleFrames(samples, metadata.Channels, metadata.SampleRate);
 		samples.Count = keepFrames * (int)metadata.Channels;
 		metadata.FrameCount = (uint64)keepFrames;
 		metadata.DurationSeconds = (metadata.SampleRate > 0)
 			? (float)((double)keepFrames / metadata.SampleRate) : 0.0f;
 	}
 
-	/// Scales so the loudest sample lands a decibel below full scale.
+	/// Scales so the loudest sample lands a decibel below full scale (AudioEdits).
 	private static void NormalizePeak(List<int16> samples)
 	{
-		var peak = 0;
-		for (let sample in samples)
-		{
-			let magnitude = Math.Abs((int32)sample);
-			if (magnitude > peak)
-				peak = magnitude;
-		}
+		let peak = AudioEdits.Peak(samples);
 		if (peak <= 0)
 			return;
 
-		let target = 0.891f * 32767.0f; // one decibel of headroom
-		let scale = target / (float)peak;
+		let scale = AudioEdits.cNormalizeTarget / (float)peak;
 		for (int i < samples.Count)
 		{
 			let scaled = Math.Clamp((float)samples[i] * scale, -32768.0f, 32767.0f);

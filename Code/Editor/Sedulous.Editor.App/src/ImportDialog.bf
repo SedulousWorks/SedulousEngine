@@ -539,6 +539,29 @@ class ImportWindow
 			mSettings = new FieldPropertySource(options.GetType(), 1,
 				new [=options] (index) => Internal.UnsafeCastToPtr(options),
 				new [=options] (apply) => { apply(0, Internal.UnsafeCastToPtr(options)); });
+			// Each setting beside what its importer says it does to this file, or disabled with why
+			// it cannot apply.
+			mSettings.SetOnDescribe(new [=this, =index] (path, info) =>
+				{
+					if ((mSession == null) || (index >= mSession.Files.Count))
+						return;
+					let described = mSession.Files[index];
+					let importer = described.Importer;
+					if ((importer == null) || (described.Options == null))
+						return;
+					if (!(described.Options.GetType().GetField(scope String(path)) case .Ok(let setting)))
+						return;
+					let effect = scope String();
+					let reason = scope String();
+					importer.DescribeSetting(described.Path, described.Options, described.Prepared, setting, effect, reason);
+					if (!reason.IsEmpty)
+					{
+						info.ReadOnly = true;
+						info.Note.Set(reason);
+					}
+					else
+						info.Note.Set(effect);
+				});
 			mSettingsGrid = new PropertyGrid();
 			mSettingsGrid.AddClass("import-settings");
 			mSettingsGrid.Source = mSettings;
