@@ -50,6 +50,11 @@ interface IFileImporter
 	/// apart.
 	StringView AssetTypeName(StringView sourcePath) => default;
 
+	/// The asset type that stands for `sourcePath` where the file is listed (its icon in the import
+	/// window): the one asset a single-asset importer makes, else the one the others hang from (a
+	/// model's manifest).
+	StringView ListedTypeName(StringView sourcePath) => AssetTypeName(sourcePath);
+
 	/// The clash an import of `sourcePath` would meet in `group` under the names `plan` gives (null:
 	/// the file's own): what the editor's window shows on the file's row, and what an agent's import
 	/// is refused with. Default: a single asset (AssetTypeName) under its Asset entry's target, else

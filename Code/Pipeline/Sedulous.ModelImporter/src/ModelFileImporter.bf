@@ -20,6 +20,8 @@ class ModelFileImporter : IFileImporter
 	private const String cManifestType = "Sedulous.ModelImporter.ModelManifestAsset";
 
 	public StringView Label => "Model";
+	/// Listed by its manifest, while it names no single asset type (AssetTypeName): it makes several.
+	public StringView ListedTypeName(StringView sourcePath) => cManifestType;
 
 	public bool Accepts(StringView @extension)
 	{

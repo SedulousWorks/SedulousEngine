@@ -64,4 +64,14 @@ class ModelImportClashTests
 		Test.Assert(FileOf(beside.Value, .. scope .()) == "character.2.glb");
 		Test.Assert(FileOf(fixture.Db.GetInstance(manifest), .. scope .()) == "character.glb");
 	}
+
+	/// The import window lists a model file by its manifest's icon; the clash check still sees no
+	/// single asset type, the model keeping its own names apart.
+	[Test]
+	public static void AModelFileIsListedByItsManifestWhileItNamesNoSingleAssetType()
+	{
+		IFileImporter importer = scope ModelFileImporter();
+		Test.Assert(importer.AssetTypeName("rider.glb").IsEmpty, "several assets: it keeps its own names apart");
+		Test.Assert(importer.ListedTypeName("rider.glb") == "Sedulous.ModelImporter.ModelManifestAsset");
+	}
 }
