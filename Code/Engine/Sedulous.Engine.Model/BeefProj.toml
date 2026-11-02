@@ -1,0 +1,18 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Model"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.Model.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Model.Resource" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Animation" = "*"

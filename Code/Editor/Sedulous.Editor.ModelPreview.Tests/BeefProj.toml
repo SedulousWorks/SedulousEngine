@@ -1,0 +1,20 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.ModelPreview.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.ModelPreview.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Model" = "*"
+"Sedulous.Model.Resource" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Engine.Model" = "*"
+"Sedulous.Editor.ModelPreview" = "*"
