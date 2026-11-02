@@ -196,7 +196,10 @@ class ImportWindow
 			{
 				ShowFiles();
 				if (file == mSelected)
+				{
+					ShowPreview(); // one waiting for the importer's read is made now
 					ShowDetail();
+				}
 				ShowWhy();
 			};
 		ShowAll();
@@ -475,14 +478,26 @@ class ImportWindow
 		{
 			mPreviewView.RemoveAllChildren();
 			DeleteAndNullify!(mPreview);
-			mPreviewPath.Set(file.Path);
-			mPreviewType.Set(typeName);
-			mPreviewOptions = file.Options;
+			IImportPreviewFactory factory = null;
 			if ((Previews != null) && (PreviewReader != null))
+				factory = Previews.FindByName(typeName);
+			// While the importer reads the file, its preview waits to show that read rather than
+			// read it again (made when the read arrives, see Open).
+			let waits = (factory != null) && (file.State == .Reading);
+			if (waits)
 			{
-				if (let factory = Previews.FindByName(typeName))
-					mPreview = factory.Create(file.Path, file.Options, PreviewReader);
+				mPreviewPath.Clear();
+				mPreviewType.Clear();
+				mPreviewOptions = null;
 			}
+			else
+			{
+				mPreviewPath.Set(file.Path);
+				mPreviewType.Set(typeName);
+				mPreviewOptions = file.Options;
+			}
+			if ((factory != null) && !waits)
+				mPreview = factory.Create(ImportPreviewSource(file.Path, file.Options, file.Prepared), PreviewReader);
 			if (mPreview != null)
 			{
 				mPreview.SetOnChanged(new [=this] () => { ShowFacts(); });
@@ -494,7 +509,7 @@ class ImportWindow
 				icon.AddClass("import-preview-icon");
 				icon.Source = IconOf(file, .. scope .());
 				Add(mPreviewView, icon);
-				Add(mPreviewView, Text(file.Name, "import-preview-name"));
+				Add(mPreviewView, Text(waits ? scope $"Reading {file.Name}..." : file.Name, "import-preview-name"));
 			}
 		}
 		ShowFacts();

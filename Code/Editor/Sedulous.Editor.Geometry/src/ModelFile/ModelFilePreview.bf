@@ -71,13 +71,14 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 	private delegate void() mOnChanged ~ delete _;
 
 	/// Opens `path` with its cooked files under `cacheRoot`: bound at once when opened before, else
-	/// read on `reader` (borrowed: it outlives this). `services` give the host and GUI the view
-	/// needs (no host: no view); borrowed.
-	public this(StringView path, StringView cacheRoot, ImportPreviewReader reader, AssetPageServices services)
+	/// cooked from `imported` (the model the importer read; borrowed, used only in this call), else
+	/// read on `reader` (borrowed: it outlives this). `services` give the host and GUI the view needs
+	/// (no host: no view); borrowed.
+	public this(StringView path, StringView cacheRoot, ImportPreviewReader reader, AssetPageServices services, Model imported = null)
 	{
 		mPath.Set(path);
 		BuildView(services);
-		Start(cacheRoot, reader);
+		Start(cacheRoot, reader, imported);
 	}
 
 	public ~this()
@@ -207,9 +208,12 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		}
 	}
 
-	private void Start(StringView cacheRoot, ImportPreviewReader reader)
+	private void Start(StringView cacheRoot, ImportPreviewReader reader, Model imported)
 	{
 		mMessage.Text = scope $"Reading {ImportPaths.FileNameOf(mPath)}...";
+		// As the importer reads it: without the viewer's loose texture rule, which the import does
+		// not apply either, so the preview shows what will come in.
+		mOpen.LooseTextures = false;
 		let begun = mOpen.Begin(mPath, cacheRoot, mDevice, let outcome);
 		if (begun == .Bound)
 		{
@@ -221,12 +225,24 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 			Failed(outcome);
 			return;
 		}
+		// The importer read it already: cook and bind that, with no second read.
+		if (imported != null)
+		{
+			let stats = new ModelStats();
+			ModelLibrary.CountModel(imported, stats);
+			let finished = mOpen.Finish(imported, stats); // it takes the stats
+			if (finished == .Opened)
+				Opened();
+			else
+				Failed(finished);
+			return;
+		}
 		let result = new Read(); // the done's reference
 		result.AddRef(); // the read's
 		let file = new String(mPath);
 		mRead = reader.Read(
 			// On the worker: only the file and `result` (LoadFile makes its own loaders).
-			new [=file, =result] () => { result.Outcome = OpenModel.LoadFile(file, true, result.Model, result.Stats); }
+			new [=file, =result] () => { result.Outcome = OpenModel.LoadFile(file, false, result.Model, result.Stats); }
 				~ { delete file; result.ReleaseRef(); },
 			// On the main thread, which owns the cache's database and resources, and only while this
 			// preview lives (it cancels the read as it goes).
@@ -423,7 +439,7 @@ class ModelFilePreviewFactory : IImportPreviewFactory
 
 	public Type AssetType => mType;
 
-	public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader)
+	public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader)
 	{
 		if (mContext.Project == null)
 			return null;
@@ -432,7 +448,8 @@ class ModelFilePreviewFactory : IImportPreviewFactory
 		CreateDirectory(cacheRoot);
 		let services = (mServices != null) ? mServices.Make() : new AssetPageServices();
 		defer delete services;
-		return new ModelFilePreview(path, cacheRoot, reader, services);
+		let loaded = file.Prepared as LoadedModel;
+		return new ModelFilePreview(file.Path, cacheRoot, reader, services, (loaded != null) ? loaded.Model : null);
 	}
 
 	/// Registers the model preview for the files the model importer lists (its manifests).

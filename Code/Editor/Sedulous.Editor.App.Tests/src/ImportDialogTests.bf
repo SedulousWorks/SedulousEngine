@@ -160,7 +160,7 @@ static class ImportDialogTests
 	private class FramedPreviewFactory : IImportPreviewFactory
 	{
 		public Type AssetType => typeof(ImportPreviewThing);
-		public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader) => new FramedPreview(path);
+		public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader) => new FramedPreview(file.Path);
 	}
 
 	/// Previews the box files' type, counting how many it has made.
@@ -170,11 +170,11 @@ static class ImportDialogTests
 
 		public Type AssetType => typeof(ImportPreviewThing);
 
-		public IImportPreview Create(StringView path, ImportOptions options, ImportPreviewReader reader)
+		public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader)
 		{
 			Made++;
-			let made = new NamePreview(path);
-			made.Options = options;
+			let made = new NamePreview(file.Path);
+			made.Options = file.Options;
 			return made;
 		}
 	}
@@ -498,6 +498,31 @@ static class ImportDialogTests
 		Test.Assert(Says(bed.Window.Facts, "Read at last"));
 		bed.Window.Close();
 		Test.Assert(bed.Window.Preview == null, "let go with its session");
+	}
+
+	/// While a file's importer reads it, its preview waits (its name says so), and is made when the
+	/// read arrives.
+	[Test]
+	public static void WhileAFilesImporterReadsItItsPreviewWaitsAndIsMadeWhenTheReadArrives()
+	{
+		let bed = scope Bed("scratch_import_window_preview_waits");
+		let factory = new NamePreviewFactory();
+		bed.Context.ImportPreviews.Register(factory); // the context's now; borrowed here
+		let session = bed.Open(scope StringView[]("/somewhere/a.box", "/somewhere/b.box"));
+		defer session.ReleaseRef();
+		Test.Assert(factory.Made == 1);
+		// b.box as a heavy importer's file, still being read: selected, it waits.
+		session.Files[1].State = .Reading;
+		bed.Window.Select(1);
+		Test.Assert(factory.Made == 1);
+		Test.Assert(bed.Window.Preview == null);
+		Test.Assert(Says(bed.Window.PreviewView, "Reading b.box..."));
+		// The read arrives: the preview is made, with it.
+		session.Files[1].State = .Ready;
+		session.OnChanged(1);
+		Test.Assert(factory.Made == 2);
+		Test.Assert(bed.Window.Preview != null);
+		bed.Window.Close();
 	}
 
 	/// A preview that renders gets the editor's frame from the window while the window is open, and

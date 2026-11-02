@@ -5,6 +5,7 @@ using Sedulous.VFS;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Geometry;
+using Sedulous.ModelImporter; // the importer's own read
 
 namespace Sedulous.Editor.Geometry.Tests;
 
@@ -65,5 +66,29 @@ class ModelFilePreviewTests
 		reader.Finish();
 		Test.Assert(!broken.IsOpen);
 		Test.Assert(broken.Facts.IsEmpty);
+	}
+
+	/// Given the importer's read, it cooks that at once and reads nothing itself.
+	[Test]
+	public static void GivenTheImportersReadItCooksThatAndReadsNothingItself()
+	{
+		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_read", .. scope .());
+		RemoveDirectoryRecursive(cache);
+		Test.Assert(CreateDirectory(cache));
+		defer RemoveDirectoryRecursive(cache);
+		let root = FindDataRoot(.. scope .());
+		Test.Assert(!root.IsEmpty);
+		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
+		let importer = scope ModelFileImporter();
+		let prepared = importer.PrepareOnWorker(fox);
+		defer delete prepared;
+		let loaded = prepared as LoadedModel;
+		Test.Assert(loaded != null);
+		let reader = scope ImportPreviewReader();
+		let services = scope AssetPageServices(); // no host: no view
+		let preview = scope ModelFilePreview(fox, cache, reader, services, loaded.Model);
+		Test.Assert(preview.IsOpen, "at once");
+		Test.Assert(reader.InFlight == 0, "no read of its own");
+		Test.Assert(preview.Facts.Length == 6);
 	}
 }

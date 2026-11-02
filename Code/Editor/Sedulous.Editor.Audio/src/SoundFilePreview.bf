@@ -335,7 +335,7 @@ class SoundFilePreviewFactory : IImportPreviewFactory
 
 	public Type AssetType => mType;
 
-	public IImportPreview Create(StringView path, Sedulous.Pipeline.Importer.ImportOptions options, ImportPreviewReader reader)
+	public IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader)
 	{
 		AudioSubsystem audio = null;
 		if (mServices != null)
@@ -345,6 +345,6 @@ class SoundFilePreviewFactory : IImportPreviewFactory
 			if (services.Host != null)
 				audio = services.Host.Subsystems.GetSubsystem<AudioSubsystem>();
 		}
-		return new SoundFilePreview(path, options, reader, audio);
+		return new SoundFilePreview(file.Path, file.Options, reader, audio);
 	}
 }

@@ -125,16 +125,32 @@ interface IImportPreview
 	}
 }
 
+/// The file a preview is made for: its path, its settings (null when its importer has none), and
+/// what its importer read of it on a worker (null when it reads nothing ahead, or has not yet),
+/// which a preview may show rather than read the file again. All BORROWED: the path and the
+/// settings stay alive as long as the preview, the read at least through Create.
+struct ImportPreviewSource
+{
+	public StringView Path;
+	public Sedulous.Pipeline.Importer.ImportOptions Options;
+	public Object Prepared;
+
+	public this(StringView path, Sedulous.Pipeline.Importer.ImportOptions options = null, Object prepared = null)
+	{
+		Path = path;
+		Options = options;
+		Prepared = prepared;
+	}
+}
+
 /// Makes previews of the files an importer lists by one asset type (and, by nearest type
 /// dispatch, its subclasses, unless a nearer factory is registered).
 interface IImportPreviewFactory
 {
 	Type AssetType { get; }
-	/// A preview of the source file at `path`, its read started on `reader` (borrowed: it outlives
-	/// the preview), OWNED by the caller; null when it shows nothing of it. `options` are the file's
-	/// settings (null when it has none), BORROWED: alive as long as the preview, for one that shows
-	/// what they will do.
-	IImportPreview Create(StringView path, Sedulous.Pipeline.Importer.ImportOptions options, ImportPreviewReader reader);
+	/// A preview of `file`, any read it needs started on `reader` (borrowed: it outlives the
+	/// preview), OWNED by the caller; null when it shows nothing of it.
+	IImportPreview Create(ImportPreviewSource file, ImportPreviewReader reader);
 }
 
 /// The import previews, by asset type: the factory nearest along a type's base chain wins, as
