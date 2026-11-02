@@ -195,6 +195,10 @@ static class ImportDialogTests
 		public StringView ListedTypeName(StringView sourcePath) => "Sedulous.Editor.App.Tests.ImportPreviewThing";
 		public ImportOptions CreateOptions() => new ToggledOptions();
 
+		/// The settings changed, by name, as the window passes each on.
+		public List<String> Changed = new .() ~ DeleteContainerAndItems!(_);
+		public void SettingChanged(ImportOptions options, System.Reflection.FieldInfo setting) { Changed.Add(new String(setting.Name)); }
+
 		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
 			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
 			=> group.CreateInstance("Config", "Tests.WindowThing");
@@ -723,6 +727,8 @@ static class ImportDialogTests
 		grids[0].Source.CommitEdit("Flip", PropertyWrite(Sedulous.GUI.Variant(false)));
 		Test.Assert(!(session.Files[0].Options as ToggledOptions).Flip, "written through");
 		Test.Assert(preview.SettingsChanged == 1, "the preview told");
+		let toggled = session.Files[0].Importer as ToggledImporter;
+		Test.Assert((toggled != null) && (toggled.Changed.Count == 1) && (toggled.Changed[0] == "Flip"), "its importer told which");
 		Test.Assert(Says(bed.Window.Detail, "It makes one asset, named after the file."));
 
 		// The box's importer declares none: no grid.

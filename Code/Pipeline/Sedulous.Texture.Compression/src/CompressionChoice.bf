@@ -4,6 +4,7 @@ namespace Sedulous.Texture.Compression;
 
 /// The compression the asset asked for, as authored.
 [Scriptable(.AllPublic)]
+[System.Reflect(.StaticFields)] // its cases by name: an import setting is offered and set by them
 enum CompressionChoice : uint8
 {
 	/// Whatever the policy picks.

@@ -59,6 +59,20 @@ class TextureFileImporter : IFileImporter
 			SetupForInferredUsage(asset, stem);
 	}
 
+	/// A new usage brings the colour space, wrap and mipmaps its profile gives (a mask is linear, an
+	/// HDR environment clamped and without mipmaps); they can be changed again after it.
+	public void SettingChanged(ImportOptions options, FieldInfo setting)
+	{
+		let texture = options as TextureImportOptions;
+		if ((texture == null) || (setting.Name != "Usage"))
+			return;
+		let preset = scope TextureAsset();
+		TextureImportOptions.SetupForUsage(preset, texture.Usage);
+		texture.ColorSpace = preset.ColorSpace;
+		texture.Wrap = preset.WrapU;
+		texture.GenerateMipmaps = preset.GenerateMipmaps;
+	}
+
 	public void InitializeOptions(StringView sourcePath, ImportOptions options)
 	{
 		if (let texture = options as TextureImportOptions)

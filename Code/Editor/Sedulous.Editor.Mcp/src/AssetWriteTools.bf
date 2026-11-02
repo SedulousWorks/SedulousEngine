@@ -113,6 +113,10 @@ static class AssetWriteTools
 				outError.Append("`options` takes an object of settings: {\"Generate collision\": true}");
 				return .Failed;
 			}
+			// Twice: the first pass sets each and lets the importer change what follows from it (a
+			// texture's colour space with its usage); the second sets each again, so a setting asked
+			// for explicitly keeps its value whatever followed.
+			for (int pass < 2)
 			for (int i < asked.Count)
 			{
 				let key = asked.KeyAt(i);
@@ -174,6 +178,8 @@ static class AssetWriteTools
 					outError.AppendF("option '{}' is not one asset_import sets", key);
 					return .Failed;
 				}
+				if (pass == 0)
+					importer.SettingChanged(options, found);
 			}
 		}
 

@@ -8,6 +8,7 @@ namespace Sedulous.Image;
 /// wrong on a normal map or a mask corrupts the values rather than merely shifting the
 /// look.
 [Scriptable(.AllPublic)]
+[System.Reflect(.StaticFields)] // its cases by name: an import setting is offered and set by them
 enum ImageColorSpace : uint32
 {
 	/// sRGB encoded, for photographs and interface art.

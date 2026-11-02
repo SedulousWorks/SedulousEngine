@@ -351,6 +351,26 @@ static class FullFlowTests
 			defer delete none;
 			Test.Assert(none.Get("result").Get("content").At(0).Get("text").AsString().EndsWith("its options are: none"));
 		}
+		// A texture's usage brings its colour space; a colour space asked for as well is kept as asked.
+		{
+			let response = Answered(server, ToolCallLine("asset_import", "{\"source\":\"wall.png\",\"importer\":\"Texture\",\"options\":{\"Usage\":\"Mask\"}}", .. scope .()));
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(!result.Get("isError").AsBool(), scope String(result.Get("content").At(0).Get("text").AsString()));
+			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
+			defer delete payload;
+			Test.Assert(payload.Get("options").Get("Usage").AsString() == "Mask");
+			Test.Assert(payload.Get("options").Get("Colour space").AsString() == "Linear", "a mask is data");
+		}
+		{
+			let response = Answered(server, ToolCallLine("asset_import", "{\"source\":\"wall.png\",\"importer\":\"Texture\",\"options\":{\"Usage\":\"Mask\",\"Colour space\":\"Srgb\"}}", .. scope .()));
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(!result.Get("isError").AsBool(), scope String(result.Get("content").At(0).Get("text").AsString()));
+			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
+			defer delete payload;
+			Test.Assert(payload.Get("options").Get("Colour space").AsString() == "Srgb", "asked for: kept");
+		}
 		// A number, and a choice by its case's name; the result lists them so.
 		{
 			let response = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Hero.gltf\",\"options\":{\"Scale\":0.01,\"up axis\":\"Z\"}}", .. scope .()));

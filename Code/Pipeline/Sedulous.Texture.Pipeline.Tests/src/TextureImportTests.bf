@@ -88,6 +88,35 @@ class TextureImportTests
 		Test.Assert(token.IsEmpty);
 	}
 
+	/// A new usage brings its profile's colour space, wrap and mipmaps; another setting changed
+	/// brings nothing along.
+	[Test]
+	public static void ANewUsageBringsItsProfilesColourSpaceWrapAndMipmaps()
+	{
+		let importer = scope TextureFileImporter();
+		let options = scope TextureImportOptions(); // Color: sRGB, repeat, mipmaps
+		Test.Assert(options.FindSetting("Usage", let usage));
+		Test.Assert(options.FindSetting("Mipmaps", let mipmaps));
+		options.Usage = .Mask;
+		importer.SettingChanged(options, usage);
+		Test.Assert(options.ColorSpace == .Linear, "a mask is data");
+		Test.Assert(options.GenerateMipmaps);
+		Test.Assert(options.Wrap == .Repeat);
+		options.Usage = .HDR;
+		importer.SettingChanged(options, usage);
+		Test.Assert(options.ColorSpace == .Linear);
+		Test.Assert(!options.GenerateMipmaps);
+		Test.Assert(options.Wrap == .ClampToEdge);
+		options.Usage = .Color;
+		importer.SettingChanged(options, usage);
+		Test.Assert(options.ColorSpace == .Srgb);
+		Test.Assert(options.GenerateMipmaps);
+		// Another setting changed brings nothing along.
+		options.ColorSpace = .Linear;
+		importer.SettingChanged(options, mipmaps);
+		Test.Assert(options.ColorSpace == .Linear);
+	}
+
 	/// The settings start as the file's preset, its usage guessed from its name with the reason
 	/// in the usage's note; the import takes what is set.
 	[Test]

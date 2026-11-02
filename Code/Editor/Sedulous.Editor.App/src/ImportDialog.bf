@@ -567,10 +567,25 @@ class ImportWindow
 			let options = file.Options;
 			mSettings = new FieldPropertySource(options.GetType(), 1,
 				new [=options] (index) => Internal.UnsafeCastToPtr(options),
-				new [=this, =options] (apply) =>
+				new [=options] (apply) => { apply(0, Internal.UnsafeCastToPtr(options)); });
+			// A change brings the settings that follow from it (its importer's to say: a texture's
+			// colour space with its usage), and shows in the preview at once (a sound's trim shaded
+			// on its waveform).
+			mSettings.SetOnCommitted(new [=this, =index] (path) =>
 				{
-					apply(0, Internal.UnsafeCastToPtr(options));
-					// A change shows in the preview at once (a sound's trim shaded on its waveform).
+					if ((mSession == null) || (index >= mSession.Files.Count))
+						return;
+					let changed = mSession.Files[index];
+					if ((changed.Importer != null) && (changed.Options != null)
+						&& (changed.Options.GetType().GetField(scope String(path)) case .Ok(let setting)))
+					{
+						changed.Importer.SettingChanged(changed.Options, setting);
+						Later(new [=this] () =>
+							{
+								if (mSettings != null)
+									mSettings.Refresh(); // not inside the grid's own edit
+							});
+					}
 					if (mPreview != null)
 						mPreview.OnSettingsChanged();
 				});

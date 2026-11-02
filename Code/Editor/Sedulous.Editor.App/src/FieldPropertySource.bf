@@ -172,6 +172,8 @@ class FieldPropertySource : IPropertySource
 	private Committer mCommit ~ delete _;
 	/// SetOnDescribe's; null: none.
 	private delegate void(StringView path, PropertyInfo info) mOnDescribe = null ~ delete _;
+	/// SetOnCommitted's; null: none.
+	private delegate void(StringView path) mOnCommitted = null ~ delete _;
 	// Not owned: what a reference written binds through; null binds it on its next resolve.
 	private ResourceManager mResources;
 	// The type's defaults; null when its default constructor is not reflected.
@@ -232,6 +234,20 @@ class FieldPropertySource : IPropertySource
 				mOnDescribe(path, outInfos[i]);
 			}
 		}
+	}
+
+	/// Told after each change committed through it (an edit, a revert, a paste, a list's change),
+	/// with the path it changed. OWNERSHIP of `onCommitted` transfers.
+	public void SetOnCommitted(delegate void(StringView path) onCommitted)
+	{
+		delete mOnCommitted;
+		mOnCommitted = onCommitted;
+	}
+
+	private void Committed(StringView path)
+	{
+		if (mOnCommitted != null)
+			mOnCommitted(path);
 	}
 
 	/// Told of each row as it is described, its info to change: what the fields cannot say of it (an
@@ -297,6 +313,7 @@ class FieldPropertySource : IPropertySource
 		mCommit(scope [&] (object, value) => { WriteAt(held, value, object, write); });
 		mEditPath.Clear();
 		DisposeAll(mOriginals, false);
+		Committed(held);
 	}
 
 	public override void CancelEdit(StringView path)
@@ -325,6 +342,8 @@ class FieldPropertySource : IPropertySource
 				if ((list != null) && (objects ? ChangeObjectList(list, edit) : ChangeList(list, edit)))
 					changed = true;
 			});
+		if (changed)
+			Committed(held);
 		return changed;
 	}
 
@@ -370,6 +389,8 @@ class FieldPropertySource : IPropertySource
 					Write(Resolve(leaf, value), wanted);
 				}
 			});
+		for (let leaf in leaves)
+			Committed(leaf);
 		return true;
 	}
 
@@ -425,6 +446,7 @@ class FieldPropertySource : IPropertySource
 		}
 		let held = scope String(path);
 		mCommit(scope [&] (object, at) => { Write(Resolve(held, at), value); });
+		Committed(held);
 		return true;
 	}
 

@@ -35,11 +35,10 @@ class TextureImportOptions : ImportOptions
 		GenerateMipmaps = asset.GenerateMipmaps;
 	}
 
-	/// Sets `asset` up for the usage chosen (its sampler and the like, as the profiles do), then
-	/// gives it these settings.
-	public void ApplyTo(TextureAsset asset)
+	/// Sets `asset` up as `chosen`'s profile does (its sampler, colour space, wrap and mipmaps).
+	public static void SetupForUsage(TextureAsset asset, SourceUsage chosen)
 	{
-		switch (Usage)
+		switch (chosen)
 		{
 		case .Normal:
 			asset.SetupForNormalMap();
@@ -50,6 +49,13 @@ class TextureImportOptions : ImportOptions
 		default:
 			asset.SetupFor3D();
 		}
+	}
+
+	/// Sets `asset` up for the usage chosen (its sampler and the like, as the profiles do), then
+	/// gives it these settings.
+	public void ApplyTo(TextureAsset asset)
+	{
+		SetupForUsage(asset, Usage);
 		asset.ColorSpace = ColorSpace;
 		asset.Compression = Compression;
 		asset.WrapU = Wrap;

@@ -55,6 +55,13 @@ interface IFileImporter
 	{
 	}
 
+	/// `setting` of `options` was just changed (in the import window, or by an agent): the importer
+	/// may change the settings that follow from it, as a texture's colour space follows its usage.
+	/// Default: none follow.
+	void SettingChanged(ImportOptions options, FieldInfo setting)
+	{
+	}
+
 	/// Whether an import makes a group of its own, named after the file, in the group it is given (a
 	/// model's folder), so a reimport goes into that group's parent. Default: no.
 	bool ImportsIntoItsOwnGroup => false;
