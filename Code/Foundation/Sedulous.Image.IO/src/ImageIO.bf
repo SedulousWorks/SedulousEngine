@@ -93,6 +93,23 @@ static class ImageIO
 		return Adopt16(data, width, height, image);
 	}
 
+	/// Reads `path`'s header into `outInfo` without decoding the pixels: its size, its channels as
+	/// stored and its depth. False when stb does not read it (a DDS among them).
+	public static bool ReadImageFileInfo(StringView path, out ImageFileInfo outInfo)
+	{
+		outInfo = .();
+		let terminated = scope String(path);
+		int32 width = 0, height = 0, channels = 0;
+		if (stbi_info(terminated, &width, &height, &channels) == 0)
+			return false;
+		outInfo.Width = (uint32)width;
+		outInfo.Height = (uint32)height;
+		outInfo.Channels = (uint32)channels;
+		outInfo.SixteenBit = stbi_is_16_bit(terminated) != 0;
+		outInfo.Hdr = stbi_is_hdr(terminated) != 0;
+		return true;
+	}
+
 	/// Writes an image to a file.
 	///
 	/// Eight bit formats only. A float or sixteen bit image has no meaning in a PNG or a

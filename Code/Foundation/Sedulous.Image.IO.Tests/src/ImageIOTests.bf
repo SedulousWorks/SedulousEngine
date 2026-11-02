@@ -105,6 +105,32 @@ class ImageIOTests
 		Test.Assert(ImageIO.LoadImage16("./no_such_image_file.png", image) case .Err);
 	}
 
+	/// A file's header says its size, channels and depth without decoding it, though every load
+	/// widens it to RGBA: a grey PNG is one channel; a 16-bit one says so; a missing file says
+	/// nothing.
+	[Test]
+	public static void AFilesHeaderSaysItsSizeChannelsAndDepth()
+	{
+		let grey = scope $"scratch_imageio_info.png";
+		defer DeleteFile(grey);
+		uint8[6] values = .(0, 40, 80, 120, 160, 200);
+		let source = scope Image(3, 2, .R8, .(&values[0], 6));
+		Test.Assert(ImageIO.SaveImage(source, grey, .PNG) case .Ok);
+		Test.Assert(ImageIO.ReadImageFileInfo(grey, let info));
+		Test.Assert((info.Width == 3) && (info.Height == 2));
+		Test.Assert(info.Channels == 1, "as stored");
+		Test.Assert(!info.SixteenBit && !info.Hdr);
+
+		let deep = scope $"scratch_imageio_info16.png";
+		defer DeleteFile(deep);
+		Test.Assert(System.IO.File.WriteAll(deep, .(&Fixtures.Gray16_2x1Png[0], Fixtures.Gray16_2x1Png.Count)) case .Ok);
+		Test.Assert(ImageIO.ReadImageFileInfo(deep, let deepInfo));
+		Test.Assert((deepInfo.Width == 2) && (deepInfo.Height == 1) && (deepInfo.Channels == 1));
+		Test.Assert(deepInfo.SixteenBit && !deepInfo.Hdr);
+
+		Test.Assert(!ImageIO.ReadImageFileInfo("scratch_imageio_info_missing.png", ?));
+	}
+
 	/// The round trip: an image written out and read back is the image that went in.
 	///
 	/// PNG is lossless, so this is an equality check rather than an approximation, and it
