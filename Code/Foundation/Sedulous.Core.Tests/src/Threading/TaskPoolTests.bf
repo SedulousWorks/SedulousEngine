@@ -253,6 +253,33 @@ class TaskPoolTests
 		Test.Assert(!completed);
 	}
 
+	/// Finish waits for every task, then hands them back; InFlight counts what is not handed back
+	/// yet. The workers start with the first task.
+	[Test]
+	public static void FinishWaitsForEveryTaskThenHandsThemBackInFlightCountsWhatIsNotHandedBackYet()
+	{
+		int32[2] counts = .(0, 2); // no workers, then two
+		for (let workers in counts)
+		{
+			let pool = scope TaskPool(workers); // gone with each round, its workers joined
+			Test.Assert(pool.WorkerCount == workers);
+			Test.Assert(pool.[Friend]mWorkers.IsEmpty, "no threads before the first task");
+			let lane = pool.CreateLane("serial");
+			int ran = 0;
+			int completed = 0;
+			for (int i < 3)
+				pool.Submit("shared", new [&ran] (context) => { Interlocked.Increment(ref ran); return Result<void, ErrorCode>.Ok; }, new [&completed] (result) => { completed++; });
+			for (int i < 3)
+				pool.Submit("lane", new [&ran] (context) => { Interlocked.Increment(ref ran); return Result<void, ErrorCode>.Ok; }, new [&completed] (result) => { completed++; }, lane);
+			Test.Assert(pool.InFlight == 6);
+			Test.Assert(pool.[Friend]mWorkers.Count == workers);
+			pool.Finish();
+			Test.Assert(Volatile.Read(ref ran) == 6);
+			Test.Assert(completed == 6);
+			Test.Assert(pool.InFlight == 0);
+		}
+	}
+
 	[Test]
 	public static void TheDefaultWorkerCountLeavesTheFrameItsThreads()
 	{

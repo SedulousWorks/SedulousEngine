@@ -178,6 +178,8 @@ class TaskPool
 	private List<TaskHandle> mRunning = new .() ~ delete _;
 	private List<TaskHandle> mFinished = new .() ~ delete _;
 	private volatile bool mStopping = false;
+	/// How many workers it runs, started with the first task.
+	private int32 mWorkerCount;
 	private List<Thread> mWorkers = new .() ~ delete _;
 
 	/// The workers for long work: the logical cores less two (the frame keeps its threads), at least
@@ -194,18 +196,14 @@ class TaskPool
 #endif
 	}
 
-	/// `workerCount` 0 runs every task in Pump on the calling thread.
+	/// `workerCount` 0 runs every task in Pump on the calling thread. The workers start with the first
+	/// task, so a pool nothing uses costs no threads.
 	public this(int32 workerCount)
 	{
+		mWorkerCount = Math.Max(workerCount, 0);
 		let shared = new Lane(); // TaskLane.Shared, never busy
 		shared.Name.Set("Shared");
 		mLanes.Add(shared);
-		for (int32 i < workerCount)
-		{
-			let thread = new Thread(new () => { WorkerLoop(); });
-			mWorkers.Add(thread);
-			thread.Start(false);
-		}
 	}
 
 	/// Cancels everything: what is queued is dropped, what runs is told, and waited for. No
@@ -252,6 +250,12 @@ class TaskPool
 	public TaskHandle Submit(StringView name, TaskWork work, TaskDone done = null, TaskLane lane = .Shared)
 	{
 		let task = new TaskHandle(name, lane, work, done); // the pool's reference
+		while (mWorkers.Count < mWorkerCount)
+		{
+			let thread = new Thread(new () => { WorkerLoop(); });
+			mWorkers.Add(thread);
+			thread.Start(false);
+		}
 		using (mLock.Enter())
 		{
 			Debug.Assert((int)lane < mLanes.Count);
@@ -274,7 +278,7 @@ class TaskPool
 	/// one).
 	public void Pump(delegate void(TaskHandle task, StringView line) log = null, int budgetMs = 8)
 	{
-		if (mWorkers.IsEmpty)
+		if (mWorkerCount == 0)
 		{
 			let clock = scope Stopwatch(true);
 			repeat
@@ -326,13 +330,53 @@ class TaskPool
 				if ((task.State == .Queued) && task.IsCancelled && DropIfQueued(task))
 					return;
 			}
-			if (!mWorkers.IsEmpty)
+			if (mWorkerCount != 0)
 			{
 				mEnded.WaitFor(1);
 				continue;
 			}
 			if (!RunOneInline())
 				return; // nothing left to run: it was never this pool's
+		}
+	}
+
+	/// Waits for every task to end, then pumps: the completions run here (tests; a host that must
+	/// have its work done before it goes on). A pool of no workers runs them all here.
+	public void Finish(delegate void(TaskHandle task, StringView line) log = null)
+	{
+		if (mWorkerCount == 0)
+		{
+			while (RunOneInline())
+			{
+			}
+		}
+		else
+		{
+			for (;;)
+			{
+				using (mLock.Enter())
+				{
+					if (mRunnable.IsEmpty && mRunning.IsEmpty && !AnyLaneQueued())
+						break;
+				}
+				mEnded.WaitFor(1);
+			}
+		}
+		Pump(log);
+	}
+
+	/// Tasks submitted and not yet handed back by Pump.
+	public int InFlight
+	{
+		get
+		{
+			using (mLock.Enter())
+			{
+				var count = mRunnable.Count + mRunning.Count + mFinished.Count;
+				for (let lane in mLanes)
+					count += lane.Queued.Count;
+				return count;
+			}
 		}
 	}
 
@@ -359,7 +403,18 @@ class TaskPool
 		}
 	}
 
-	public int32 WorkerCount => (int32)mWorkers.Count;
+	public int32 WorkerCount => mWorkerCount;
+
+	/// Whether a lane has a task waiting behind the one it runs (mLock held).
+	private bool AnyLaneQueued()
+	{
+		for (let lane in mLanes)
+		{
+			if (!lane.Queued.IsEmpty)
+				return true;
+		}
+		return false;
+	}
 
 	/// Drops every task in `queue` unrun, its result Cancelled (mLock held).
 	private static void DropQueued(List<TaskHandle> queue)
