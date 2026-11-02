@@ -232,6 +232,68 @@ static class AssetCreateTests
 		Test.Assert(Says(bed.Top, "Models", scope .()).IsEmpty, "a group of the name is not an asset");
 	}
 
+	/// A group's name refused as an asset's is, and when a group of that name is there.
+	[Test]
+	public static void AGroupsNameRefusedAsAnAssetsIsAndWhenAGroupOfThatNameIsThere()
+	{
+		let bed = scope ProjectBed();
+		Test.Assert(AssetNames.GroupRefusal(bed.Top, "", .. scope .()) == "Enter a name.");
+		Test.Assert(AssetNames.GroupRefusal(bed.Top, "a:b", .. scope .()) == "A name cannot hold :.");
+		Test.Assert(AssetNames.GroupRefusal(bed.Top, "Models", .. scope .()) == "Content already has a group named Models.");
+		Test.Assert(AssetNames.GroupRefusal(bed.Top, "Crate", .. scope .()).IsEmpty, "an asset's name does not take a group's");
+		Test.Assert(AssetNames.GroupRefusal(bed.Town, "Models", .. scope .()).IsEmpty);
+	}
+
+	/// The name prompt: the name checked as it is typed, the line under it saying why or what it
+	/// makes; accepting answers and closes.
+	[Test]
+	public static void TheNamePromptChecksTheNameAsItIsTypedAndAcceptingAnswersAndCloses()
+	{
+		let bed = scope ProjectBed();
+		let scene = scope SceneBed();
+		let accepted = scope String();
+		let request = new NameRequest();
+		request.Title.Set("New Group in Content");
+		request.Suggested.Set("Models");
+		request.Accept.Set("Create");
+		let top = bed.Top;
+		request.Refusal = new [=top] (name, outWhy) => { AssetNames.GroupRefusal(top, name, outWhy); };
+		request.Describe = new (name, outText) => { outText.AppendF("Makes the group {} in Content.", name); };
+		request.Accepted = new [=accepted] (name) => { accepted.Set(name); };
+		let prompt = NamePrompt.Open(scene.Root, PagesBed.LoadMarkup(NamePrompt.cMarkupPath), request);
+		Test.Assert(prompt != null);
+		defer delete prompt;
+		scene.Layout();
+		Test.Assert(prompt.IsOpen);
+		Test.Assert(prompt.Window.Title == "New Group in Content");
+		let name = prompt.Window.FindElement("name-prompt-name") as TextField;
+		let why = prompt.Window.FindElement("name-prompt-why") as Sedulous.GUI.Label;
+		let accept = prompt.Window.FindElement("name-prompt-accept") as Sedulous.GUI.Button;
+		Test.Assert((name != null) && (why != null) && (accept != null));
+		Test.Assert(accept.Text == "Create");
+		Test.Assert(scene.Root.EventDispatcher.FocusNode === name, "the name focused");
+		// The suggestion is taken: Create waits, saying why.
+		Test.Assert(!accept.Enabled);
+		Test.Assert(why.Text == "Content already has a group named Models.");
+		Test.Assert(why.HasClass("refused"));
+		Test.Assert(accept.HandleActivate());
+		Test.Assert(accepted.IsEmpty, "pressed while it waits: nothing");
+		Test.Assert(prompt.IsOpen);
+		// Typed over (the suggestion is selected): free, and the line says what it makes.
+		scene.Type(name, "Props");
+		Test.Assert(accept.Enabled);
+		Test.Assert(why.Text == "Makes the group Props in Content.");
+		Test.Assert(!why.HasClass("refused"));
+		Test.Assert(accept.HandleActivate());
+		Test.Assert(accepted == "Props");
+		Test.Assert(!prompt.IsOpen);
+		Test.Assert(bed.Top.GetGroup("Props") == null, "its request makes it, not it");
+
+		// Markup without its parts opens nothing, the request let go.
+		let empty = new Sedulous.GUI.Panel();
+		Test.Assert(NamePrompt.Open(scene.Root, empty, new NameRequest()) == null);
+	}
+
 	[Test]
 	public static void CreateAssetTheGroupsATreeInItAClickChoosingOneCreateWaitsWhileTheNameIsRefusedCreateAnswersAndCloses()
 	{

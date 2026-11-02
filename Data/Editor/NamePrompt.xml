@@ -1,0 +1,12 @@
+<!--
+  Name: one name asked for (a new group, a new asset), checked as it is typed. The line under the
+  field says why the name is refused, or what accepting will make. Code titles it and labels the
+  button.
+-->
+<Panel class="dialog-body name-prompt">
+    <Panel class="form">
+        <Label class="form-label" text="Name"/>
+        <Panel class="form-field"><TextField id="name-prompt-name"/><Label id="name-prompt-why" class="form-help"/></Panel>
+    </Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="name-prompt-cancel" text="Cancel"/><Button id="name-prompt-accept" class="primary" text="Create"/></Panel>
+</Panel>

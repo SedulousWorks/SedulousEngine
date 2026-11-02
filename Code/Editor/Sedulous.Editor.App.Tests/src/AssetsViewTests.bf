@@ -108,6 +108,11 @@ static class AssetsViewTests
 		/// What New ran, by its creator's label, and the groups it ran into.
 		public List<String> Created = new .() ~ DeleteContainerAndItems!(_);
 		public List<Group> CreatedIn = new .() ~ delete _;
+		/// And the name each was given (empty: the creator's own).
+		public List<String> CreatedNames = new .() ~ DeleteContainerAndItems!(_);
+		/// Whether the view asks for names (the name prompt), and what asked, in order.
+		public bool AsksNames = false;
+		public List<NameRequest> Asked = new .() ~ DeleteContainerAndItems!(_);
 		/// The groups Import... asked files for.
 		public List<Group> ImportInto = new .() ~ delete _;
 		/// The notices said.
@@ -124,10 +129,11 @@ static class AssetsViewTests
 		public Guid Pictured = .Empty;
 		public Sedulous.GUI.Drawable Picture = null ~ _?.ReleaseRef();
 
-		public this(StringView dir, bool withCook = false, bool cooksMeshes = false, bool forSheet = false)
+		public this(StringView dir, bool withCook = false, bool cooksMeshes = false, bool forSheet = false, bool asksNames = false)
 		{
 			Dir.Set(dir);
 			ForSheet = forSheet;
+			AsksNames = asksNames; // before the view is made: its services read it
 			RemoveDirectoryRecursive(Dir);
 			Test.Assert(EditorProject.Create(Dir, "Browse") case .Ok);
 			Project = EditorProject.Open(Dir);
@@ -212,11 +218,14 @@ static class AssetsViewTests
 			services.Open = new [=bed] (instance) => { bed.Opened.Add(instance.Id); };
 			services.Operations = Ops;
 			services.Picture = new [=bed] (id) => (id == bed.Pictured) ? bed.Picture : null;
-			services.Create = new [=bed] (creator, group) =>
+			services.Create = new [=bed] (creator, group, name) =>
 				{
 					bed.Created.Add(new String(creator.Label));
 					bed.CreatedIn.Add(group);
+					bed.CreatedNames.Add(new String(name));
 				};
+			if (AsksNames)
+				services.AskName = new [=bed] (request) => { bed.Asked.Add(request); };
 			services.Import = new [=bed] (group) => { bed.ImportInto.Add(group); };
 			let view = new AssetsView(services, LoadAssets());
 			Test.Assert((view.Content != null) && (view.List != null) && (view.Tree != null) && (view.Crumbs != null));
@@ -1070,7 +1079,7 @@ static class AssetsViewTests
 		// The group shown: Content's makes new things and cooks all.
 		view.Navigate(bed.Top);
 		menu = bed.MenuFor(-1);
-		Test.Assert(MenuRows.Is(menu, "New>|New Group|Import...|-|Cook All|Rebuild All"), "Content: neither renamed, flagged nor deleted");
+		Test.Assert(MenuRows.Is(menu, "New>|New Group...|Import...|-|Cook All|Rebuild All"), "Content: neither renamed, flagged nor deleted");
 		let create = MenuRows.SubMenuNamed(menu, "New");
 		Test.Assert(create != null);
 		Test.Assert(MenuRows.Is(create, "Material|-|Primitives>"));
@@ -1081,12 +1090,12 @@ static class AssetsViewTests
 		// Another's, into it.
 		view.Navigate(bed.Town);
 		menu = bed.MenuFor(-1);
-		Test.Assert(MenuRows.Is(menu, "New>|New Group|Import...|-|Rename|Always Export Its Contents|-|Cook Group|Rebuild Group|-|Delete Group..."));
+		Test.Assert(MenuRows.Is(menu, "New>|New Group...|Import...|-|Rename|Always Export Its Contents|-|Cook Group|Rebuild Group|-|Delete Group..."));
 		Test.Assert(MenuRows.ItemNamed(MenuRows.SubMenuNamed(MenuRows.SubMenuNamed(menu, "New"), "Primitives"), "Cube").HandleActivate());
 		Test.Assert((bed.Created.Count == 2) && (bed.Created[1] == "Cube") && (bed.CreatedIn[1] == bed.Town), "into the group shown");
 		bed.Choose(-1, "Import...");
 		Test.Assert((bed.ImportInto.Count == 1) && (bed.ImportInto[0] == bed.Town), "files asked for into the group shown");
-		bed.Choose(-1, "New Group");
+		bed.Choose(-1, "New Group...");
 		let made = view.CurrentGroup;
 		Test.Assert((made != null) && (made.Name == "Group") && (made.Parent == bed.Town), "made and shown");
 		Test.Assert(bed.TreeItem("Group") >= 0, "in the tree");
@@ -1107,14 +1116,54 @@ static class AssetsViewTests
 		Test.Assert(list.ItemAt(room) < 0, "no row there");
 		bed.RightClick(room);
 		menu = view.OpenMenu;
-		Test.Assert((menu != null) && MenuRows.Is(menu, "New>|New Group|Import...|-|Cook All|Rebuild All"), "the shown group's");
+		Test.Assert((menu != null) && MenuRows.Is(menu, "New>|New Group...|Import...|-|Cook All|Rebuild All"), "the shown group's");
 		menu.Close();
 		bed.Root.MutationQueue.Drain();
 		bed.RightClick(bed.Middle(view.Tree, 0)); // Content, the group shown
 		menu = view.OpenMenu;
-		Test.Assert((menu != null) && (MenuRows.ItemNamed(menu, "New Group") != null), "the tree's: the group shown");
+		Test.Assert((menu != null) && (MenuRows.ItemNamed(menu, "New Group...") != null), "the tree's: the group shown");
 		menu.Close();
 	}
+
+	/// With a name to ask with, New Group... and New > (an asset) ask for the name first: a group's
+	/// refused when one of that name is there, an asset's as Create Asset refuses it; the name given
+	/// is what is made.
+	[Test]
+	public static void NewGroupAndNewAssetAskForTheNameFirstTheNameGivenIsWhatIsMade()
+	{
+		let bed = scope Bed("scratch_assets_view_names", false, false, false, true);
+		let view = bed.View;
+		bed.Choose(-1, "New Group...");
+		Test.Assert(bed.Asked.Count == 1, "asked first");
+		let group = bed.Asked[0];
+		Test.Assert(group.Title == "New Group in Content");
+		Test.Assert(group.Accept == "Create");
+		Test.Assert(group.Suggested == "Group");
+		Test.Assert(!Refused(group, "Models", .. scope .()).IsEmpty, "a group of the name is there");
+		Test.Assert(Refused(group, "Props", .. scope .()).IsEmpty);
+		Test.Assert(Refused(group, "Crate", .. scope .()).IsEmpty, "an asset's name does not take a group's");
+		group.Accepted("Props");
+		let made = view.CurrentGroup;
+		Test.Assert((made != null) && (made.Name == "Props") && (made.Parent == bed.Top), "made under the name given, and shown");
+
+		view.Navigate(bed.Top);
+		bed.Root.MutationQueue.Drain();
+		bed.Layout();
+		let menu = bed.MenuFor(-1);
+		Test.Assert(MenuRows.ItemNamed(MenuRows.SubMenuNamed(menu, "New"), "Material").HandleActivate());
+		Test.Assert(bed.Created.IsEmpty, "asked first");
+		Test.Assert(bed.Asked.Count == 2);
+		let asset = bed.Asked[1];
+		Test.Assert(asset.Title == "New Material in Content");
+		Test.Assert(asset.Suggested == "Material");
+		Test.Assert(Refused(asset, "Crate", .. scope .()) == "Crate is already in Content.");
+		asset.Accepted("Lamp");
+		Test.Assert((bed.Created.Count == 1) && (bed.Created[0] == "Material") && (bed.CreatedIn[0] == bed.Top));
+		Test.Assert(bed.CreatedNames[0] == "Lamp");
+	}
+
+	/// Why `request` refuses `name`, into `outWhy`.
+	private static void Refused(NameRequest request, StringView name, String outWhy) => request.Refusal(name, outWhy);
 
 	/// Delete asks first, naming what goes and what follows: on the list the selected assets, else
 	/// the selected group's row (what it holds counted); on the tree the group shown, Content

@@ -167,9 +167,10 @@ class AssetOperations
 		return copy;
 	}
 
-	/// A new group in `parent` ("Group", "Group.2"), a folder on disk at once so it stays while
-	/// empty; null when it could not be made or waits for a cook.
-	public Group CreateGroup(Group parent)
+	/// A new group in `parent` named `wanted` ("Group", "Group.2" when taken), a folder on disk at
+	/// once so it stays while empty; null when it could not be made or waits for a cook (and is made
+	/// after it).
+	public Group CreateGroup(Group parent, StringView wanted = "Group")
 	{
 		let project = CurrentProject;
 		if ((project == null) || (parent == null))
@@ -177,15 +178,16 @@ class AssetOperations
 		if (Locked)
 		{
 			let parentPath = parent.GetPath(.. new .());
-			Wait(new [=this, =parentPath] () =>
+			let wantedName = new String(wanted);
+			Wait(new [=this, =parentPath, =wantedName] () =>
 				{
 					let sources = (CurrentProject != null) ? CurrentProject.SourceDb : null;
 					if (let found = (sources != null) ? GroupAt(sources, parentPath) : null)
-						CreateGroup(found);
-				} ~ delete parentPath, "New group");
+						CreateGroup(found, wantedName);
+				} ~ { delete parentPath; delete wantedName; }, "New group");
 			return null;
 		}
-		let name = parent.UniqueGroupName("Group", .. scope .());
+		let name = parent.UniqueGroupName(wanted.IsEmpty ? "Group" : wanted, .. scope .());
 		let created = parent.CreateGroup(name);
 		if (created == null)
 			return null;

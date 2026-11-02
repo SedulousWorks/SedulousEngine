@@ -53,13 +53,14 @@ class EditorAssetCreation
 
 	/// `creator` writes a new asset into `group` (the creator's choice when null) and its page
 	/// opens.
-	public void CreateAndOpen(AssetCreator creator, Group group = null)
+	public void CreateAndOpen(AssetCreator creator, Group group = null, StringView name = default)
 	{
 		let context = mServices.Context;
 		// The cook gate: the plan worker reads the databases with their structure frozen.
 		if (mServices.Cook.MutationLocked)
 		{
-			mServices.Cook.RunWhenIdle(new [=creator, =group, =this]() => { CreateAndOpen(creator, group); });
+			let wanted = new String(name);
+			mServices.Cook.RunWhenIdle(new [=creator, =group, =wanted, =this]() => { CreateAndOpen(creator, group, wanted); } ~ delete wanted);
 			context.Notify(.Info, "Create queued until the current cook finishes.");
 			return;
 		}
@@ -68,7 +69,7 @@ class EditorAssetCreation
 			context.Notify(.Error, "Create failed: no project is open.");
 			return;
 		}
-		let instance = creator.Create(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .()));
+		let instance = creator.Create(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .()), name);
 		if (instance == null)
 		{
 			context.Notify(.Error, scope $"Create failed: the {creator.Label} could not be written.");

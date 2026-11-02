@@ -22,6 +22,33 @@ static class AssetNames
 	/// space at an end or a dot at the end, taken there), appended to `outWhy`; nothing when it can.
 	public static void Refusal(Group group, StringView name, String outWhy)
 	{
+		let start = outWhy.Length;
+		FormRefusal(name, outWhy);
+		if ((outWhy.Length == start) && (group.GetInstance(name) != null))
+		{
+			outWhy.AppendF("{} is already in ", name);
+			GroupPicker.ShownName(group, outWhy);
+			outWhy.Append('.');
+		}
+	}
+
+	/// Why `name` cannot name a new group in `parent` (as Refusal, a group of that name being what
+	/// takes it), appended to `outWhy`; nothing when it can.
+	public static void GroupRefusal(Group parent, StringView name, String outWhy)
+	{
+		let start = outWhy.Length;
+		FormRefusal(name, outWhy);
+		if ((outWhy.Length == start) && (parent.GetGroup(name) != null))
+		{
+			GroupPicker.ShownName(parent, outWhy);
+			outWhy.AppendF(" already has a group named {}.", name);
+		}
+	}
+
+	/// Why `name` cannot name a file (empty, a character a file cannot hold, a space at an end, a
+	/// dot at its end), appended to `outWhy`; nothing when it can.
+	public static void FormRefusal(StringView name, String outWhy)
+	{
 		if (name.IsEmpty)
 		{
 			outWhy.Append("Enter a name.");
@@ -39,12 +66,6 @@ static class AssetNames
 		{
 			outWhy.Append("A name cannot start or end with a space, or end with a dot.");
 			return;
-		}
-		if (group.GetInstance(name) != null)
-		{
-			outWhy.AppendF("{} is already in ", name);
-			GroupPicker.ShownName(group, outWhy);
-			outWhy.Append('.');
 		}
 	}
 }

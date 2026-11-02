@@ -51,8 +51,13 @@ class AssetsViewServices
 	/// only. A picture that arrives later is told through the context's thumbnail listeners.
 	/// Owned.
 	public delegate Sedulous.GUI.Drawable(Guid id) Picture ~ delete _;
-	/// Runs a creator into a group (File > New's create-and-open); unset: no New menu. Owned.
-	public delegate void(AssetCreator creator, Group group) Create ~ delete _;
+	/// Runs a creator into a group under a name (empty: the creator's own), as File > New's
+	/// create-and-open does; unset: no New menu. Owned.
+	public delegate void(AssetCreator creator, Group group, StringView name) Create ~ delete _;
+	/// Asks for a name (the name prompt) before something new is made, TAKING OWNERSHIP of the
+	/// request; unset: what is made takes a name of its own ("Group", "Group.2"), as in a test.
+	/// Owned.
+	public delegate void(NameRequest request) AskName ~ delete _;
 	/// Asks for files to import into a group (the OS's picker); unset: no Import.... Owned.
 	public delegate void(Group group) Import ~ delete _;
 }
@@ -1247,14 +1252,7 @@ class AssetsView
 		if (shown)
 		{
 			AddNewMenu(menu, group);
-			menu.AddItem("New Group", OnGroup(group, new (into) =>
-				{
-					if (let made = mServices.Operations.CreateGroup(into))
-					{
-						Rebuild(); // the tree shows it
-						Navigate(made);
-					}
-				}));
+			menu.AddItem("New Group...", OnGroup(group, new (into) => { NewGroup(into); }));
 			if (mServices.Import != null)
 				menu.AddItem("Import...", OnGroup(group, new (into) => { mServices.Import(into); }));
 			menu.AddSeparator();
@@ -1301,11 +1299,110 @@ class AssetsView
 				let path = new String(into);
 				sub.AddItem(creator.Label, new [=this, =creator, =path] () =>
 					{
-						let found = GroupAt(path);
-						if ((found != null) && (mServices.Create != null))
-							mServices.Create(creator, found);
+						if (let found = GroupAt(path))
+							NewAsset(creator, found);
 					} ~ delete path);
 			});
+	}
+
+	/// A group just made (null: none) shown, in the tree too.
+	private void ShowMade(Group made)
+	{
+		if (made == null)
+			return;
+		Rebuild(); // the tree shows it
+		Navigate(made);
+	}
+
+	/// A new group in `parent`, its name asked first (the name prompt) when there is one to ask with;
+	/// then shown. The request finds the group again by its path each time it runs.
+	private void NewGroup(Group parent)
+	{
+		let ops = mServices.Operations;
+		if (ops == null)
+			return;
+		if (mServices.AskName == null)
+		{
+			ShowMade(ops.CreateGroup(parent));
+			return;
+		}
+		let request = new NameRequest();
+		request.Title.Append("New Group in ");
+		GroupPicker.ShownName(parent, request.Title);
+		parent.UniqueGroupName("Group", request.Suggested);
+		request.Accept.Set("Create");
+		let refusalPath = parent.GetPath(.. new .());
+		request.Refusal = new [=this, =refusalPath] (name, outWhy) =>
+			{
+				if (let found = GroupAt(refusalPath))
+					AssetNames.GroupRefusal(found, name, outWhy);
+			} ~ delete refusalPath;
+		let describePath = parent.GetPath(.. new .());
+		request.Describe = new [=this, =describePath] (name, outText) =>
+			{
+				if (let found = GroupAt(describePath))
+				{
+					outText.AppendF("Makes the group {} in ", name);
+					GroupPicker.ShownName(found, outText);
+					outText.Append('.');
+				}
+			} ~ delete describePath;
+		let acceptedPath = parent.GetPath(.. new .());
+		request.Accepted = new [=this, =acceptedPath] (name) =>
+			{
+				let found = GroupAt(acceptedPath);
+				if ((found != null) && (mServices.Operations != null))
+					ShowMade(mServices.Operations.CreateGroup(found, name));
+			} ~ delete acceptedPath;
+		mServices.AskName(request);
+	}
+
+	/// A new asset by `creator` in `group`, its name asked first (the name prompt) when there is one
+	/// to ask with: the creator's label as a name ("Input Map" suggests InputMap).
+	private void NewAsset(AssetCreator creator, Group group)
+	{
+		if (mServices.Create == null)
+			return;
+		if (mServices.AskName == null)
+		{
+			mServices.Create(creator, group, default);
+			return;
+		}
+		let stem = scope String();
+		for (let c in creator.Label.RawChars)
+		{
+			if (c != ' ')
+				stem.Append(c);
+		}
+		let request = new NameRequest();
+		request.Title.AppendF("New {} in ", creator.Label);
+		GroupPicker.ShownName(group, request.Title);
+		group.UniqueInstanceName(stem, request.Suggested);
+		request.Accept.Set("Create");
+		let refusalPath = group.GetPath(.. new .());
+		request.Refusal = new [=this, =refusalPath] (name, outWhy) =>
+			{
+				if (let found = GroupAt(refusalPath))
+					AssetNames.Refusal(found, name, outWhy);
+			} ~ delete refusalPath;
+		let describePath = group.GetPath(.. new .());
+		request.Describe = new [=this, =describePath] (name, outText) =>
+			{
+				if (let found = GroupAt(describePath))
+				{
+					outText.AppendF("Makes {} in ", name);
+					GroupPicker.ShownName(found, outText);
+					outText.Append('.');
+				}
+			} ~ delete describePath;
+		let acceptedPath = group.GetPath(.. new .());
+		request.Accepted = new [=this, =creator, =acceptedPath] (name) =>
+			{
+				let found = GroupAt(acceptedPath);
+				if ((found != null) && (mServices.Create != null))
+					mServices.Create(creator, found, name);
+			} ~ delete acceptedPath;
+		mServices.AskName(request);
 	}
 
 	/// Edits the name of the row `rowId` names in place, once the menu that asked has closed (its

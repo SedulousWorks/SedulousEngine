@@ -110,6 +110,8 @@ class EditorApplication : IApplication
 	private AssetPickerWindow mAssetPicker = null ~ delete _;
 	/// Create Asset, while open (and after, until the next one opens).
 	private AssetCreate mCreateAsset = null ~ delete _;
+	/// The name prompt, while open (and after, until the next).
+	private NamePrompt mNamePrompt = null ~ delete _;
 	/// What an asset slot asks of the editor, made the first time a slot needs it; after the icons
 	/// and the picker it reaches, so it goes first.
 	private ResourceRefServices mRefs = null ~ delete _;
@@ -711,7 +713,8 @@ class EditorApplication : IApplication
 			assets.Open = new (instance) => { mPages.OpenForUser(instance.Id); };
 			assets.Picture = new (id) => mThumbnailService.Get(id);
 			assets.Operations = mAssetOps;
-			assets.Create = new (creator, group) => { mCreation.CreateAndOpen(creator, group); };
+			assets.Create = new (creator, group, name) => { mCreation.CreateAndOpen(creator, group, name); };
+			assets.AskName = new (request) => { AskName(request); };
 			assets.Import = new (group) => { PickFilesToImport(group); };
 			mAssets = new AssetsView(assets, mWindow.LoadMarkup(AssetsView.cMarkupPath));
 			// A slot's reveal (and any other) shows the asset where it lives, the panel to the front.
@@ -981,6 +984,21 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mCreateAsset);
 		mCreateAsset = AssetCreate.Open(root, mWindow.LoadMarkup(AssetCreate.cMarkupPath), sources,
 			(group != null) ? group : sources.RootGroup, title, suggested, create);
+	}
+
+	/// Asks for a name (the name prompt) for `request` over the window. TAKES OWNERSHIP of
+	/// `request`.
+	public void AskName(NameRequest request)
+	{
+		let root = mWindow.Root;
+		if (root == null)
+		{
+			delete request;
+			return;
+		}
+		// The one before is closed: the prompt is modal, so it is asked again only once it is.
+		DeleteAndNullify!(mNamePrompt);
+		mNamePrompt = NamePrompt.Open(root, mWindow.LoadMarkup(NamePrompt.cMarkupPath), request);
 	}
 
 	public void ShowAssetPicker(AssetPickRequest request)
