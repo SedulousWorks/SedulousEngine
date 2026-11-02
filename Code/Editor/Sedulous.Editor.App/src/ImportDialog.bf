@@ -268,8 +268,8 @@ class ImportWindow
 
 	public bool IsKindOpen(ImportResourceKind kind) => mOpenKinds.Contains(kind);
 
-	/// Gives file `index`'s settings to the session's other files of its importer (its "Use these
-	/// for every ..."); how many took them.
+	/// Gives file `index`'s settings to the session's other files of its importer (its "Apply to all
+	/// ... in this import"); how many took them.
 	public int ShareSettings(int index)
 	{
 		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count) || (mSession.Files[index].Options == null))
@@ -648,7 +648,7 @@ class ImportWindow
 			{
 				let share = new Sedulous.GUI.Button();
 				share.AddClass("import-share");
-				share.Text = scope $"Use these for every {LabelOf(file)} in this import";
+				share.Text = scope $"Apply to all {LabelOf(file)} in this import";
 				share.Tooltip = scope $"Gives the {others} other {LabelOf(file)} files these settings";
 				share.SetOnClick(new [=this, =index] () => { ShareSettings(index); });
 				Add(mDetail, share);

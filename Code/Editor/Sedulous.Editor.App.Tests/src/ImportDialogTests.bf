@@ -546,10 +546,10 @@ static class ImportDialogTests
 		bed.Window.OnRenderWindow(null, ref frame);
 	}
 
-	/// "Use these for every <label> in this import" gives the chosen file's settings to the drop's
-	/// other files of its importer.
+	/// "Apply to all <label> in this import" gives the chosen file's settings to the drop's other files
+	/// of its importer.
 	[Test]
-	public static void UseTheseForEveryLabelGivesTheChosenFilesSettingsToTheOtherFilesOfItsImporter()
+	public static void ApplyToAllLabelInThisImportGivesTheChosenFilesSettingsToTheOtherFilesOfItsImporter()
 	{
 		let bed = scope Bed("scratch_import_window_share");
 		let session = bed.Open(scope StringView[]("/somewhere/a.cfg", "/somewhere/b.cfg", "/somewhere/c.box"));
@@ -560,7 +560,7 @@ static class ImportDialogTests
 		int offered = 0;
 		for (let button in buttons)
 		{
-			if (button.Text == "Use these for every Config in this import")
+			if (button.Text == "Apply to all Config in this import")
 				offered++;
 		}
 		Test.Assert(offered == 1);
@@ -572,7 +572,7 @@ static class ImportDialogTests
 		buttons.Clear();
 		Collect<Sedulous.GUI.Button>(bed.Window.Detail, buttons);
 		for (let button in buttons)
-			Test.Assert(!button.Text.StartsWith("Use these for every"));
+			Test.Assert(!button.Text.StartsWith("Apply to all"));
 		bed.Window.Close();
 	}
 
