@@ -453,7 +453,7 @@ class ProjectManagerView
 			ownFolder.Checked = true;
 		}
 		if (size != null)
-			size.Text = scope $"{SizeText(sample.Size, .. scope .())} download";
+			size.Text = scope $"{ByteSizeText(sample.Size, .. scope .())} download";
 		StringView last = (mServices.Controller != null) ? mServices.Controller.LastLocation : default;
 		parent.Text = last.IsEmpty ? StringView(mHome) : last;
 		parent.SetOnTextChanging(new [=this, =parent, =ownFolder, =line, =icon, =checkText, =go] (text) =>
@@ -950,16 +950,6 @@ class ProjectManagerView
 			icon.Source = (result.Level == .Ok) ? "Editor/Icons/check.svg" : ((result.Level == .Warning) ? "Editor/Icons/warning.svg" : "Editor/Icons/error.svg");
 	}
 
-	/// A size for a person: "7.2 MB".
-	private static void SizeText(uint64 bytes, String outText)
-	{
-		let tenths = (bytes * 10 + 512 * 1024) / (1024 * 1024);
-		if (tenths < 10)
-			outText.AppendF("{} KB", Math.Max((uint64)1, (bytes + 512) / 1024));
-		else
-			outText.AppendF("{}.{} MB", tenths / 10, tenths % 10);
-	}
-
 	/// Where `file` of this editor's release is fetched from.
 	private void ReleaseFile(StringView file, String outUrl)
 	{
@@ -1081,7 +1071,7 @@ class ProjectManagerView
 					bar.Value = d.Progress;
 				}
 				if (let words = mDialog.Content.FindElement("download-sample-stage") as Sedulous.GUI.Label)
-					words.Text = scope $"Downloading {SizeText(d.Received, .. scope .())} of {SizeText(d.Total, .. scope .())}";
+					words.Text = scope $"Downloading {ByteSizeText(d.Received, .. scope .())} of {ByteSizeText(d.Total, .. scope .())}";
 			}
 		}
 		for (let card in mSampleCards)
@@ -1091,7 +1081,7 @@ class ProjectManagerView
 				continue;
 			card.Bar.Value = d.Progress;
 			if (card.Stage != null)
-				card.Stage.Text = scope $"Downloading {SizeText(d.Received, .. scope .())} of {SizeText(d.Total, .. scope .())}";
+				card.Stage.Text = scope $"Downloading {ByteSizeText(d.Received, .. scope .())} of {ByteSizeText(d.Total, .. scope .())}";
 		}
 	}
 
@@ -1166,7 +1156,7 @@ class ProjectManagerView
 		let title = new Sedulous.GUI.Panel();
 		title.AddClass("manager-sample-title");
 		Adopt(title, Text(sample.Name, "manager-sample-name"));
-		Adopt(title, Text(SizeText(sample.Size, .. scope .()), "manager-count"));
+		Adopt(title, Text(ByteSizeText(sample.Size, .. scope .()), "manager-count"));
 		Adopt(body, title);
 		Adopt(body, Text(sample.Description, "manager-sample-text"));
 		let entry = new SampleCard();
