@@ -633,6 +633,9 @@ class OpenModel
 	public static Outcome Cook(ModelCache cache, Model model, ModelStats stats, out Guid outGuid, CancelToken cancel = null)
 	{
 		outGuid = .();
+		// The folder again: a cook cancelled before this one on the same cache folder cleared it.
+		if (!CreateDirectory(cache.Folder) && !DirectoryExists(cache.Folder))
+			return .CookFailed;
 		switch (ModelCook.Cook(model, cache.Database, "model", cancel))
 		{
 		case .Ok(let cooked):

@@ -372,6 +372,10 @@ class ModelPreviewTests
 			Test.Assert(OpenModel.Cook(kept, model, stats, let guid, cancel.Token) == .Cancelled);
 			Test.Assert(!DirectoryExists(folder), "nothing half made is left for the next open");
 			Test.Assert(!open.IsOpen);
+			// A cook after it on the same cache makes the folder again, and cooks.
+			Test.Assert(OpenModel.Cook(kept, model, stats, let after) == .Opened);
+			Test.Assert(DirectoryExists(folder));
+			RemoveDirectoryRecursive(folder); // the next open, below, finds no record and cooks
 			kept.ReleaseRef();
 		}
 
