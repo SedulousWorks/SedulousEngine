@@ -120,8 +120,19 @@ static class ImportDialogTests
 	}
 
 	/// A preview naming its file.
-	private class NamePreview : IImportPreview
+	private class NamePreview : IImportPreview, IImportPartPreview
 	{
+		/// What it was last asked to show: "whole", or "part <name>"; it shows a mesh part alone and
+		/// nothing else.
+		public String Shown = new .() ~ delete _;
+		public bool ShowPart(ImportPlanEntry part)
+		{
+			Shown.Clear();
+			Shown.AppendF("part {}", part.SourceName);
+			return part.Kind == .Mesh;
+		}
+		public void ShowWhole() { Shown.Set("whole"); }
+
 		private Sedulous.GUI.Label mView = new .() ~ _.ReleaseRef();
 		private List<String> mFacts = new .() ~ DeleteContainerAndItems!(_);
 		private delegate void() mOnChanged ~ delete _;
@@ -537,6 +548,19 @@ static class ImportDialogTests
 		bed.Window.Select(1);
 		Test.Assert(factory.Made == 2);
 		Test.Assert(Says(bed.Window.Facts, "Made for b.box"));
+
+		// A part selected in the tree is asked of the preview; one it cannot show leaves the whole
+		// file, and selecting the file shows the whole file again.
+		let named = bed.Window.Preview as NamePreview;
+		Test.Assert(named.Shown == "whole");
+		bed.Window.SelectPart(1, 0); // b.box's Box, a mesh
+		Test.Assert((bed.Window.Preview as NamePreview).Shown == "part Box");
+		bed.Window.SelectPart(1, 1); // its Wood, a texture this preview cannot show
+		Test.Assert((bed.Window.Preview as NamePreview).Shown == "whole");
+		bed.Window.SelectPart(1, 0);
+		bed.Window.Select(1);
+		Test.Assert((bed.Window.Preview as NamePreview).Shown == "whole");
+		Test.Assert(factory.Made == 2, "the same preview throughout");
 
 		// A preview's read coming back shows its facts again.
 		(bed.Window.Preview as NamePreview).Arrive("Read at last");

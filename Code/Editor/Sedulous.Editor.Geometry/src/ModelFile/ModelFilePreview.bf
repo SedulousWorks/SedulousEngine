@@ -31,8 +31,19 @@ namespace Sedulous.Editor.Geometry;
 // Without a host (a test) there is no view, but the model still opens and its facts show. The window
 // drives it each frame (IImportPreviewFrames).
 
-class ModelFilePreview : IImportPreview, IImportPreviewFrames
+class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPreview
 {
+	/// The part the window asked to show alone (shown once the model is in), and what showing it
+	/// changed, to undo for the whole file.
+	private bool mShowsPart = false;
+	private ImportResourceKind mPartKind = .Asset;
+	private String mPartName = new .() ~ delete _;
+	private EntityHandle mSphere = .Invalid;
+	/// The sphere a material part is shown on, made the first time; ours.
+	private Sedulous.Geometry.StaticMesh mSphereMesh = null ~ delete _;
+	/// The skeleton part turned the bones on.
+	private bool mBonesByPart = false;
+
 	/// Where the import window's model previews cook, under a project's cache folder.
 	public const String cCacheFolder = "ModelPreviews";
 
@@ -371,6 +382,8 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 		mMessage.Displayed = false;
 		Place();
 		ShowClips();
+		if (mShowsPart)
+			ApplyPart();
 		if (mOnChanged != null)
 			mOnChanged();
 	}
@@ -463,6 +476,134 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames
 			let b = mBonePoses[i];
 			draw.DrawLineOverlay(TransformPoint(.(a.M[3][0], a.M[3][1], a.M[3][2]), model),
 				TransformPoint(.(b.M[3][0], b.M[3][1], b.M[3][2]), model), color);
+		}
+	}
+
+	/// A part alone: a mesh by itself, a material on a sphere, the skeleton's bones over the model, a
+	/// clip playing on it. False for a texture or a collision shape (the preview's cook makes no
+	/// collision, and pictures are another page's). Asked before the model is in, it is shown once it
+	/// is.
+	public bool ShowPart(ImportPlanEntry part)
+	{
+		if ((part.Kind != .Mesh) && (part.Kind != .Material) && (part.Kind != .Skeleton) && (part.Kind != .AnimationClip))
+		{
+			ShowWhole();
+			return false; // a picture or a collision shape: the whole model stays
+		}
+		mPartKind = part.Kind;
+		mPartName.Set(part.SourceName);
+		mShowsPart = true;
+		ApplyPart(); // or once the model is in (Opened)
+		return true;
+	}
+
+	public void ShowWhole()
+	{
+		mShowsPart = false;
+		ShowWholeModel();
+	}
+
+	/// Undoes what showing a part changed: every mesh drawn, the sphere gone, the bones as they were.
+	private void ShowWholeModel()
+	{
+		let level = (mViewport != null) ? mViewport.Scene : null;
+		if (level != null)
+		{
+			if (let meshes = level.GetSystem<MeshComponentManager>())
+			{
+				if (level.IsValid(mInstance.Root))
+				{
+					meshes.ForEach(scope [&] (component, entity) =>
+						{
+							if (Under(level, entity, mInstance.Root))
+								component.Visible = true;
+						});
+				}
+			}
+			if (level.IsValid(mSphere))
+				level.DestroyEntity(mSphere);
+		}
+		mSphere = .Invalid;
+		if (mBonesByPart)
+			mSkeleton.Checked = false;
+		mBonesByPart = false;
+	}
+
+	/// Draws only the model's meshes `keep` says to.
+	private void ShowMeshes(delegate bool(Sedulous.Geometry.StaticMesh mesh) keep)
+	{
+		let level = (mViewport != null) ? mViewport.Scene : null;
+		let meshes = (level != null) ? level.GetSystem<MeshComponentManager>() : null;
+		if ((meshes == null) || !level.IsValid(mInstance.Root))
+			return;
+		meshes.ForEach(scope [&] (component, entity) =>
+			{
+				if (Under(level, entity, mInstance.Root))
+					component.Visible = keep(component.Mesh.Get);
+			});
+	}
+
+	/// Shows the part asked for in place of the whole model, as far as the bound model has it.
+	private void ApplyPart()
+	{
+		ShowWholeModel();
+		let level = (mViewport != null) ? mViewport.Scene : null;
+		if (!mOpen.IsOpen)
+			return;
+		switch (mPartKind)
+		{
+		case .Mesh:
+			if (let found = mOpen.FindPart(mPartName, typeof(Sedulous.Geometry.StaticMesh)))
+			{
+				let mesh = found.Product;
+				ShowMeshes(scope (drawn) => (Object)drawn === mesh);
+				if (mPlayback != null)
+					mPlayback.SetPlaying(false); // still, as it is
+				ShowPlay();
+			}
+		case .Material:
+			if (let found = mOpen.FindPart(mPartName, typeof(Sedulous.Materials.Material)))
+			{
+				let material = found.Product as Sedulous.Materials.Material;
+				let meshes = (level != null) ? level.GetSystem<MeshComponentManager>() : null;
+				if ((material == null) || (meshes == null))
+					return;
+				ShowMeshes(scope (drawn) => false);
+				if (mSphereMesh == null)
+					mSphereMesh = Sedulous.Geometry.Primitives.Sphere(0.5f, 48, 24);
+				mSphere = level.CreateEntity("material.sphere");
+				var at = Transform();
+				at.Position = mCenter;
+				at.Scale = .(mRadius * 1.2f, mRadius * 1.2f, mRadius * 1.2f); // about the model's size, so the framing holds
+				level.SetLocalTransform(mSphere, at);
+				let drawn = meshes.Add(mSphere);
+				drawn.Mesh.SetDirect(mSphereMesh); // runtime built, not an asset
+				drawn.SetMaterial(material); // the cache's, borrowed
+			}
+		case .Skeleton:
+			if (!mInstance.Skinned.IsEmpty && !mSkeleton.Checked)
+			{
+				mSkeleton.Checked = true;
+				mBonesByPart = true;
+			}
+		case .AnimationClip:
+			let name = scope String();
+			for (int a < mClipNames.Count)
+			{
+				name.Clear();
+				ImportedNames.ForAsset(mClipNames[a], "anim", a, name);
+				if (name != mPartName)
+					continue;
+				if (mPlayback != null)
+				{
+					mPlayback.Select((int32)a);
+					mPlayback.SetPlaying(true);
+				}
+				mClips.SelectedIndex = (int32)a;
+				ShowPlay();
+				break;
+			}
+		default:
 		}
 	}
 

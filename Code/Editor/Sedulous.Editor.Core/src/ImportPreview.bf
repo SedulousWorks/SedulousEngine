@@ -40,6 +40,18 @@ interface IImportPreview
 	}
 }
 
+/// What a preview implements when it can show one part of its file alone (the import window's tree):
+/// the window asks for it when a part is selected in the tree, and for the whole file again when the
+/// file is.
+interface IImportPartPreview
+{
+	/// Shows `part` (an entry of the file's plan, borrowed) in place of the whole file; false when it
+	/// cannot show that part, the whole file then staying in view.
+	bool ShowPart(Sedulous.Pipeline.Importer.ImportPlanEntry part);
+	/// Shows the whole file again.
+	void ShowWhole();
+}
+
 /// The file a preview is made for: its path, its settings (null when its importer has none), and
 /// what its importer read of it on a worker (null when it reads nothing ahead, or has not yet),
 /// which a preview may show rather than read the file again. All BORROWED: the path and the

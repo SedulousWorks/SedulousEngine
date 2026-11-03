@@ -639,7 +639,23 @@ class ImportWindow
 				Add(mPreviewView, Text(waits ? scope $"Reading {file.Name}..." : file.Name, "import-preview-name"));
 			}
 		}
+		ShowSelectedPart(); // the whole file, or the part selected in the tree
 		ShowFacts();
+	}
+
+	// Asks the preview to show the part selected in the tree, or the whole file when none is (or when
+	// it cannot show that part): a preview that implements IImportPartPreview.
+	private void ShowSelectedPart()
+	{
+		if ((mPreview == null) || (mSession == null) || (mSelected >= mSession.Files.Count))
+			return;
+		let parts = mPreview as IImportPartPreview;
+		if (parts == null)
+			return;
+		let plan = mSession.Files[mSelected].Plan;
+		if ((mPart >= 0) && (mPart < plan.Entries.Count) && parts.ShowPart(plan.Entries[mPart]))
+			return;
+		parts.ShowWhole();
 	}
 
 	// The chosen file's facts: its preview's (its importer's label without one), then its size.
