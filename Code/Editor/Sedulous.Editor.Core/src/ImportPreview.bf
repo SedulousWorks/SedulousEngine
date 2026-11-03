@@ -50,6 +50,10 @@ interface IImportPartPreview
 	bool ShowPart(Sedulous.Pipeline.Importer.ImportPlanEntry part);
 	/// Shows the whole file again.
 	void ShowWhole();
+	/// A view of `part` for its details in the window (a skeleton's bones in a tree), a node with one
+	/// reference, the caller's; null when it has none (or not yet: the window asks again when the
+	/// preview's facts change).
+	Node PartView(Sedulous.Pipeline.Importer.ImportPlanEntry part) => null;
 }
 
 /// The file a preview is made for: its path, its settings (null when its importer has none), and

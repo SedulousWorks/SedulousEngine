@@ -799,7 +799,12 @@ class ImportWindow
 			}
 			if (mPreview != null)
 			{
-				mPreview.SetOnChanged(new [=this] () => { ShowFacts(); });
+				mPreview.SetOnChanged(new [=this] () =>
+					{
+						ShowFacts();
+						if (mPart >= 0)
+							Later(new [=this] () => { ShowDetail(); }); // a part's view, now its preview has it
+					});
 				mPreviewView.AddChild(mPreview.View); // the preview keeps its own reference
 			}
 			else
@@ -1140,6 +1145,16 @@ class ImportWindow
 			}
 		}
 		ShowPartSettings(index, e);
+		// What the preview shows of the part in its details (a skeleton's bones).
+		if ((mPreview != null) && (index == mSelected))
+		{
+			if (let parts = mPreview as IImportPartPreview)
+			{
+				let view = parts.PartView(mSession.Files[index].Plan.Entries[e]);
+				if (view != null)
+					Add(mDetail, view);
+			}
+		}
 	}
 
 	// The part's own settings (a clip's root motion), as its importer makes them, in a grid; the plan

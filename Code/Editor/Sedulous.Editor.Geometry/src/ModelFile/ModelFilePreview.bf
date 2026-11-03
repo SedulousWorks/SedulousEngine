@@ -20,6 +20,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 using Sedulous.Editor.ModelPreview;
+using Sedulous.Editor.Animation; // DrawSkeletonBones, FillBoneTree: the skeleton page's, shared
 
 namespace Sedulous.Editor.Geometry;
 
@@ -54,6 +55,14 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	private ImagePreview mPicture = null ~ delete _;
 	/// The model's bar; the tree's.
 	private Node mBar = null;
+	/// The skeleton's bones in a tree for its details, and the bone chosen there (drawn apart): the
+	/// model ours, the tree last shown a reference of ours, let go of the model before it goes.
+	private TreeModel mBoneModel = null;
+	private List<int32> mBoneRows = new .() ~ delete _;
+	private int32 mChosenBone = -1;
+	private TreeView mBoneTree = null;
+	/// The bones' rest, when no clip plays.
+	private List<BoneTransform> mBindPoses = new .() ~ delete _;
 	/// The file's import settings (borrowed: the window keeps them past this), and each mesh's own
 	/// materials while the import leaves them out (it draws the default then).
 	private ImportOptions mOptions = null;
@@ -151,6 +160,8 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 			delete made.Copy;
 		ClearAndDeleteItems!(mRetired);
 		delete mFallbackMaterial;
+		DropBoneTree();
+		delete mBoneModel;
 	}
 
 	public Node View => mRoot;
@@ -514,25 +525,89 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	{
 		if (!mSkeleton.Checked || (mViewport == null) || !mViewport.IsValid || mInstance.Skinned.IsEmpty || (mOpen.Model == null))
 			return;
-		let player = (mPlayback != null) ? mPlayback.Player : null;
 		let bones = mOpen.Model.Skeleton.Get;
 		if (bones == null)
 			return;
 		let count = (int)bones.BoneCount;
-		mBonePoses.Count = count;
-		bones.ComputeWorldPoses((player != null) ? player.GetFinalPoses() : default, mBonePoses);
-		let model = mViewport.Scene.ComposeWorldMatrix(mInstance.Skinned[0]);
-		let color = Color(0.35f, 0.85f, 1.0f, 1.0f);
-		let draw = mViewport.SceneDebugDraw;
-		for (int i < count)
+		let player = (mPlayback != null) ? mPlayback.Player : null;
+		Span<BoneTransform> poses = (player != null) ? player.GetFinalPoses() : default;
+		if (poses.Length < count)
 		{
-			let parent = bones.GetBone((int32)i).ParentIndex;
-			if ((parent < 0) || (parent >= count))
-				continue;
-			let a = mBonePoses[parent];
-			let b = mBonePoses[i];
-			draw.DrawLineOverlay(TransformPoint(.(a.M[3][0], a.M[3][1], a.M[3][2]), model),
-				TransformPoint(.(b.M[3][0], b.M[3][1], b.M[3][2]), model), color);
+			mBindPoses.Count = count;
+			for (int b < count)
+				mBindPoses[b] = bones.GetBone((int32)b).LocalBindPose;
+			poses = mBindPoses;
+		}
+		let model = mViewport.Scene.ComposeWorldMatrix(mInstance.Skinned[0]);
+		AnimationPreview.DrawSkeletonBones(mViewport.SceneDebugDraw, bones, poses, mBonePoses, model, mChosenBone, true); // over the mesh
+	}
+
+	/// The skeleton's bones in a tree, for its details: choosing one draws it apart, the bones on. A
+	/// node with one reference, the caller's; null before the model is in, or with no bones.
+	private Node BoneView()
+	{
+		let bones = (mOpen.Model != null) ? mOpen.Model.Skeleton.Get : null;
+		if ((bones == null) || (bones.BoneCount == 0))
+			return null;
+		DropBoneTree(); // the one shown before, in a detail gone or going
+		if (mBoneModel == null)
+			mBoneModel = new TreeModel();
+		AnimationPreview.FillBoneTree(mBoneModel, mBoneRows, bones);
+		let panel = new Sedulous.GUI.Panel();
+		panel.AddClass("import-part-view");
+		let heading = new Sedulous.GUI.Label();
+		heading.Text = "Its bones";
+		heading.AddClass("import-part-kind");
+		let tree = new TreeView();
+		tree.AddClasses("tree import-bone-tree");
+		tree.Model = mBoneModel;
+		for (int node < mBoneRows.Count)
+			tree.SetIdExpanded((ItemId)node, true);
+		for (int node < mBoneRows.Count)
+		{
+			if (mBoneRows[node] == mChosenBone)
+			{
+				ItemId[1] id = .((ItemId)node);
+				tree.SetSelectedIds(id);
+			}
+		}
+		tree.SetOnSelectionChanged(new [=this] (index) =>
+			{
+				let node = index.IsValid ? (int)index.InternalId : mBoneRows.Count;
+				ChooseBone(((node >= 0) && (node < mBoneRows.Count)) ? mBoneRows[node] : -1);
+			});
+		tree.AddRef(); // ours
+		mBoneTree = tree;
+		Add(panel, heading);
+		Add(panel, tree);
+		return panel;
+	}
+
+	/// The bone tree last shown lets go of the model and of this.
+	private void DropBoneTree()
+	{
+		if (mBoneTree == null)
+			return;
+		mBoneTree.SetOnSelectionChanged(null);
+		mBoneTree.Model = null;
+		mBoneTree.ReleaseRef();
+		mBoneTree = null;
+	}
+
+	/// The skeleton's bones in a tree; choosing one draws the bones with it apart.
+	public Node PartView(ImportPlanEntry part) => (part.Kind == .Skeleton) ? BoneView() : null;
+
+	/// The bone chosen in the skeleton's tree (-1: none).
+	public int32 ChosenBone => mChosenBone;
+
+	/// Chooses `bone` as the tree does: drawn apart, the bones turned on to see it.
+	public void ChooseBone(int32 bone)
+	{
+		mChosenBone = bone;
+		if ((bone >= 0) && !mSkeleton.Checked)
+		{
+			mSkeleton.Checked = true; // to see it
+			mBonesByPart = true;
 		}
 	}
 

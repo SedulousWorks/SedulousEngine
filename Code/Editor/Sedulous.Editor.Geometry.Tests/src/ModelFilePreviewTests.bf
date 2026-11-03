@@ -180,6 +180,53 @@ class ModelFilePreviewTests
 		}
 	}
 
+	/// The skeleton's details show its bones in a tree; a bone chosen there is the one drawn apart.
+	[Test]
+	public static void TheSkeletonsDetailsShowItsBonesInATreeABoneChosenThereIsTheOneDrawnApart()
+	{
+		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_bones", .. scope .());
+		RemoveDirectoryRecursive(cache);
+		Test.Assert(CreateDirectory(cache));
+		defer RemoveDirectoryRecursive(cache);
+		let root = FindDataRoot(.. scope .());
+		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
+		let importer = scope ModelFileImporter();
+		let prepared = importer.PrepareOnWorker(fox);
+		defer delete prepared;
+		let loaded = prepared as LoadedModel;
+		Test.Assert(loaded != null);
+		let options = importer.CreateOptions();
+		defer delete options;
+		let plan = scope ImportPlan();
+		importer.DescribeImport(fox, options, prepared, plan);
+		ImportPlanEntry skeleton = null;
+		ImportPlanEntry mesh = null;
+		for (let entry in plan.Entries)
+		{
+			if (entry.Kind == .Skeleton)
+				skeleton = entry;
+			if (entry.Kind == .Mesh)
+				mesh = entry;
+		}
+		Test.Assert((skeleton != null) && (mesh != null));
+		let tasks = scope TaskPool(1);
+		let services = scope AssetPageServices(); // no host: no view
+		{
+			let preview = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model);
+			Test.Assert(preview.PartView(skeleton) == null, "not before the model is in");
+			tasks.Finish();
+			preview.FinishLoading();
+			Test.Assert(preview.IsOpen);
+			let bones = preview.PartView(skeleton);
+			Test.Assert(bones != null, "the bones' tree");
+			defer bones.ReleaseRef();
+			Test.Assert(preview.PartView(mesh) == null, "a mesh has no view of its own");
+			Test.Assert(preview.ChosenBone == -1);
+			preview.ChooseBone(3);
+			Test.Assert(preview.ChosenBone == 3);
+		}
+	}
+
 	/// It draws the model as it will import: a material left out (all, or one) as the default, a
 	/// texture left out (all, or one) not drawn.
 	[Test]

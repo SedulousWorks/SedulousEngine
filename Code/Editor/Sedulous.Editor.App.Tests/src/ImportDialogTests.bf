@@ -132,6 +132,15 @@ static class ImportDialogTests
 			return part.Kind == .Mesh;
 		}
 		public void ShowWhole() { Shown.Set("whole"); }
+		/// A mesh has a view of its own for its details.
+		public Node PartView(ImportPlanEntry part)
+		{
+			if (part.Kind != .Mesh)
+				return null;
+			let view = new Sedulous.GUI.Label();
+			view.Text = scope $"A view of {part.SourceName}";
+			return view;
+		}
 
 		private Sedulous.GUI.Label mView = new .() ~ _.ReleaseRef();
 		private List<String> mFacts = new .() ~ DeleteContainerAndItems!(_);
@@ -641,6 +650,7 @@ static class ImportDialogTests
 		Test.Assert(named.Shown == "whole");
 		bed.Window.SelectPart(1, 0); // b.box's Box, a mesh
 		Test.Assert((bed.Window.Preview as NamePreview).Shown == "part Box");
+		Test.Assert(Says(bed.Window.Detail, "A view of Box"), "its view in its details");
 		bed.Window.SelectPart(1, 1); // its Wood, a texture this preview cannot show
 		Test.Assert((bed.Window.Preview as NamePreview).Shown == "whole");
 		bed.Window.SelectPart(1, 0);
