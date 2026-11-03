@@ -86,6 +86,13 @@ static class ModelImportSkeleton
 				asset.Source.RootHorizontal = modelOptions.RootMotion;
 				asset.Source.RootYaw = modelOptions.RootMotion;
 			}
+			// Set for this clip in the review (the import window's clip details): that, over both.
+			if (let own = options.SelectionSettings(.AnimationClip, clipName) as ClipImportSettings)
+			{
+				asset.Source.RootHorizontal = own.Travel;
+				asset.Source.RootVertical = own.Vertical;
+				asset.Source.RootYaw = own.Turn;
+			}
 
 			if ((instance != null) && (instance.WriteObject(asset) case .Ok))
 				manifest.AnimationGuid.Add(instance.Id);

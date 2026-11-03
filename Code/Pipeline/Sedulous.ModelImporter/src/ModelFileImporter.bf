@@ -37,6 +37,37 @@ class ModelFileImporter : IFileImporter
 
 	public ImportOptions CreateOptions() => new ModelImportOptions();
 
+	/// A clip's root motion: as its asset has it from an earlier import into `group`, else the
+	/// file's Root motion default (travel and turn).
+	public RefCounted PartSettings(StringView sourcePath, ImportOptions options, ImportPlanEntry part, Group group)
+	{
+		if (part.Kind != .AnimationClip)
+			return null;
+		let settings = new ClipImportSettings();
+		let opt = options as ModelImportOptions;
+		settings.Travel = settings.Turn = (opt != null) && opt.RootMotion;
+		// The clip as an earlier import made it: its folder group, named after the file.
+		let stem = ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath));
+		let folder = (group != null) ? group.GetGroup(stem) : null;
+		let name = part.TargetName.IsEmpty ? part.SourceName : part.TargetName;
+		let clip = (folder != null) ? folder.GetInstance(name) : null;
+		if (clip != null)
+		{
+			let read = clip.ReadObject(); // ours
+			defer { if (read != null) delete read; }
+			if (let before = read as Sedulous.Animation.Pipeline.AnimationClipAsset)
+			{
+				settings.Travel = before.Source.RootHorizontal;
+				settings.Vertical = before.Source.RootVertical;
+				settings.Turn = before.Source.RootYaw;
+			}
+		}
+		return settings;
+	}
+
+	/// Root motion is each clip's own; the file's setting is the default for new clips.
+	public bool SettingIsPerPart(StringView setting) => setting == "RootMotion";
+
 	/// Textures, materials, and the skeleton with its clips each have a setting that leaves them out.
 	public StringView KindSetting(ImportResourceKind kind)
 	{

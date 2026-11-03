@@ -241,6 +241,13 @@ class ImportOptions : ISerializable
 		return (entry == null) || entry.Enabled;
 	}
 
+	/// The part's own settings when the review set them (ImportPlanEntry.Settings), else null.
+	public RefCounted SelectionSettings(ImportResourceKind kind, StringView sourceName)
+	{
+		let entry = Selection.Find(kind, sourceName);
+		return (entry != null) ? entry.Settings : null;
+	}
+
 	/// The user's target name for the resource, falling back to the importer's base name.
 	public StringView SelectionName(ImportResourceKind kind, StringView sourceName)
 	{

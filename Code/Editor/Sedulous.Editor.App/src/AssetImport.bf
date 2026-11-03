@@ -496,6 +496,7 @@ class AssetImport
 		{
 			let copy = new ImportPlanEntry(entry.Kind, entry.SourceName, entry.TargetName);
 			copy.Enabled = entry.Enabled;
+			copy.SetSettings(entry.Settings);
 			outCopy.Add(copy);
 		}
 	}

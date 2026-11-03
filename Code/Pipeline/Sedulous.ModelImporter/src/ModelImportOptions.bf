@@ -54,9 +54,10 @@ class ModelImportOptions : ImportOptions
 	/// Level of detail chains for big static meshes. An AUTHORED chain always wins.
 	[DisplayName("Generate LODs"), Description("Simplified LOD chains for large static meshes; meshes with authored _LOD1/_LOD2 levels keep those instead")]
 	public bool GenerateLods = true;
-	/// New clips move the character by their root's travel and turn, and play in place
-	/// (root-motion.md); a re-import keeps what each clip says.
-	[DisplayName("Root motion"), Description("New clips move the character by their root's travel and turn, and play in place (each clip's page can change it; a re-import keeps what the clip says)")]
+	/// The default for each new clip: it moves the character by its root's travel and turn, and
+	/// plays in place (root-motion.md); each clip sets its own (ClipImportSettings), and a re-import
+	/// keeps what each clip says.
+	[DisplayName("Root motion"), Description("The default for each new clip: it moves the character by its root's travel and turn, and plays in place (each clip sets its own in the import window and on its page; a re-import keeps what the clip says)")]
 	public bool RootMotion = false;
 
 	public override void Serialize(ISerializer ar)

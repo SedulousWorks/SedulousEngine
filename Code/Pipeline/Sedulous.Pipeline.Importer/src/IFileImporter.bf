@@ -55,6 +55,19 @@ interface IFileImporter
 	{
 	}
 
+	/// A part's own settings (a clip's root motion), a reflected object the import window shows in
+	/// the part's details and the import applies to that part (ImportOptions.SelectionSettings); null
+	/// when parts of its kind have none. It starts as the part would import: its asset's own, when
+	/// `group` (the group the file imports into) has it from an earlier import, else the file's
+	/// settings' default. THE CALLER OWNS the reference that comes back (ImportPlanEntry.SetSettings
+	/// takes its own).
+	RefCounted PartSettings(StringView sourcePath, ImportOptions options, ImportPlanEntry part, Group group) => null;
+
+	/// Whether `setting` (a field's name) of this importer's options is only the default for a
+	/// setting each part carries (PartSettings): the import window shows it on the parts, not among
+	/// the file's.
+	bool SettingIsPerPart(StringView setting) => false;
+
 	/// The bool setting of this importer's options (its field's name) that, off, leaves every part
 	/// of `kind` out of the import (a model's ImportTextures for its textures); empty when none does.
 	/// The import window makes a kind's row in its tree that setting, and hides it among the settings.

@@ -49,6 +49,8 @@ class ImportPlan : ISerializable
 				entry.Enabled = match.Enabled;
 				if (!match.TargetName.IsEmpty)
 					entry.TargetName.Set(match.TargetName);
+				if (match.Settings != null)
+					entry.SetSettings(match.Settings);
 			}
 		}
 	}

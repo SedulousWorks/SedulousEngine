@@ -18,6 +18,22 @@ class ImportPlanEntry : ISerializable
 	/// An unchecked entry is skipped.
 	public bool Enabled = true;
 
+	/// The part's own settings (a clip's root motion), a reflected object its importer made
+	/// (IFileImporter.PartSettings), shared with the plan's copies; null while nobody asked, the
+	/// part then importing as it would have. Not stored with a previous import's selection: the
+	/// part's asset holds them.
+	private RefCounted mSettings ~ _?.ReleaseRef();
+
+	public RefCounted Settings => mSettings;
+
+	/// Shares `settings` (null: none), letting go of what the entry had.
+	public void SetSettings(RefCounted settings)
+	{
+		settings?.AddRef();
+		mSettings?.ReleaseRef();
+		mSettings = settings;
+	}
+
 	public this() {}
 
 	public this(ImportResourceKind kind, StringView sourceName, StringView targetName)

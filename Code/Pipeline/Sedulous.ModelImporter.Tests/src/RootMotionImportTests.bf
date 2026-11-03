@@ -118,5 +118,47 @@ class RootMotionImportTests
 			Test.Assert(run.Source.RootHorizontal);
 			Test.Assert(run.Source.RootYaw);
 		}
+
+		// Its own settings in the review (the import window's clip details): they start as the clip
+		// has them, and what is set there is what the clip gets; a clip not set keeps its own.
+		let reviewed = scope ModelImportOptions();
+		let walkEntry = new ImportPlanEntry(.AnimationClip, "Walk", "Walk");
+		reviewed.Selection.Add(walkEntry);
+		let made = importer.PartSettings(dropped, reviewed, walkEntry, fixture.RootGroup);
+		walkEntry.SetSettings(made);
+		made?.ReleaseRef(); // the entry's reference holds it
+		let own = walkEntry.Settings as ClipImportSettings;
+		Test.Assert(own != null);
+		Test.Assert(own.Travel, "as the clip has it");
+		Test.Assert(!own.Turn);
+		Test.Assert(!own.Vertical);
+		own.Travel = false;
+		own.Vertical = true;
+		let third = scope LoadedModel();
+		Prepare(third.Model, true);
+		Test.Assert(importer.Import(dropped, fixture.Context, fixture.RootGroup, reviewed, third, null) case .Ok);
+		{
+			let walkSet = ReadClip(group, "Walk");
+			Test.Assert(walkSet != null);
+			defer delete walkSet;
+			Test.Assert(!walkSet.Source.RootHorizontal);
+			Test.Assert(walkSet.Source.RootVertical);
+			Test.Assert(!walkSet.Source.RootYaw);
+			Test.Assert(walkSet.Source.RootBone == "Hips", "what the review does not set stays");
+		}
+		{
+			let runAfter = ReadClip(group, "Run");
+			Test.Assert(runAfter != null);
+			defer delete runAfter;
+			Test.Assert(runAfter.Source.RootHorizontal, "not set in the review: its own");
+			Test.Assert(runAfter.Source.RootYaw);
+		}
+
+		// A part of another kind has no settings of its own; root motion among the file's settings is
+		// only their default.
+		let body = scope ImportPlanEntry(.Mesh, "Body", "");
+		Test.Assert(importer.PartSettings(dropped, reviewed, body, null) == null);
+		Test.Assert(importer.SettingIsPerPart("RootMotion"));
+		Test.Assert(!importer.SettingIsPerPart("Scale"));
 	}
 }
