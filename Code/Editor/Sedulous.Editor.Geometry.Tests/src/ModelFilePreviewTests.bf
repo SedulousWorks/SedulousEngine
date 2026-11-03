@@ -168,6 +168,15 @@ class ModelFilePreviewTests
 			Test.Assert(!preview.ShowPart(missing), "no picture of that name: the model stays");
 			Test.Assert(!preview.ShowsPicture);
 			tasks.Finish();
+			preview.FinishLoading(); // cooked into the cache, for the open after
+		}
+		{
+			// Opened again, from the preview's cache (no cook): the picture still comes from the read.
+			let again = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model);
+			Test.Assert(again.IsLoading, "bound from the cache, not cooked");
+			Test.Assert(again.ShowPart(texture));
+			Test.Assert(again.ShowsPicture);
+			again.FinishLoading();
 		}
 	}
 

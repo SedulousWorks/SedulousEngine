@@ -119,7 +119,7 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		ImportOptions options = null)
 	{
 		mPath.Set(path);
-		mImported = imported;
+		mImported = imported; // kept whichever way it opens: a texture's picture comes from it
 		mOptions = options;
 		BuildView(services);
 		Start(cacheRoot, tasks, imported);
