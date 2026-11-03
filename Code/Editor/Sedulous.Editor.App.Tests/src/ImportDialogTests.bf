@@ -996,6 +996,10 @@ static class ImportDialogTests
 		Test.Assert(options.Books);
 		Test.Assert(!session.Files[0].Plan.Entries[0].Enabled);
 		Test.Assert(Says(bed.Window.Files, "0 of 1"));
+		// The settings carry the plan as the review stands, for a preview that draws it so.
+		let board = options.Selection.Find(.Mesh, "Board");
+		Test.Assert(board != null);
+		Test.Assert(!board.Enabled);
 		bed.Window.Close();
 	}
 

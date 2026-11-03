@@ -27,6 +27,22 @@ class ImportPlan : ISerializable
 	/// Appends an entry and TAKES OWNERSHIP of it.
 	public void Add(ImportPlanEntry entry) => Entries.Add(entry);
 
+	/// Becomes a copy of `other`, letting go of what it had: each entry copied, a part's own settings
+	/// shared (ImportPlanEntry.Settings).
+	public void CopyFrom(ImportPlan other)
+	{
+		if (other === this)
+			return;
+		ClearAndDeleteItems!(Entries);
+		for (let entry in other.Entries)
+		{
+			let copy = new ImportPlanEntry(entry.Kind, entry.SourceName, entry.TargetName);
+			copy.Enabled = entry.Enabled;
+			copy.SetSettings(entry.Settings);
+			Entries.Add(copy);
+		}
+	}
+
 	public void Serialize(ISerializer ar)
 	{
 		ar.Key("entries");

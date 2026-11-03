@@ -308,6 +308,7 @@ class ImportWindow
 						sourceName.Set(file.Plan.Entries[mPart].SourceName);
 					}
 					mImport.RefreshPlan(mSession, index);
+					PlanChanged(index);
 					if (hadPart)
 					{
 						mPart = -1;
@@ -378,12 +379,27 @@ class ImportWindow
 			if (entry.Kind == kind)
 				entry.Enabled = on;
 		}
+		PlanChanged(index);
 		Later(new [=this] () =>
 			{
 				ShowFiles();
 				ShowDetail();
 				ShowWhy();
 			});
+	}
+
+	/// File `index`'s plan changed (a part kept or dropped, the file described again): its settings
+	/// carry the plan as the review stands, what the import will make part by part, and its preview
+	/// draws that (a material dropped draws the default).
+	private void PlanChanged(int index)
+	{
+		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count))
+			return;
+		let file = mSession.Files[index];
+		if (file.Options != null)
+			file.Options.Selection.CopyFrom(file.Plan);
+		if ((index == mSelected) && (mPreview != null))
+			mPreview.OnSettingsChanged();
 	}
 
 	/// Gives the other parts of part `e`'s kind in file `index` its own settings (the "Apply to all"
@@ -776,7 +792,11 @@ class ImportWindow
 				mPreviewOptions = file.Options;
 			}
 			if ((factory != null) && !waits)
+			{
+				if (file.Options != null)
+					file.Options.Selection.CopyFrom(file.Plan); // the preview draws the plan as it stands
 				mPreview = factory.Create(ImportPreviewSource(file.Path, file.Options, file.Prepared), Tasks);
+			}
 			if (mPreview != null)
 			{
 				mPreview.SetOnChanged(new [=this] () => { ShowFacts(); });
@@ -1042,6 +1062,7 @@ class ImportWindow
 					{
 						if (let planned = Planned(index, e))
 							planned.Enabled = on;
+						PlanChanged(index);
 						Later(new [=this] () =>
 							{
 								ShowFiles(); // its kind's box follows
@@ -1091,6 +1112,7 @@ class ImportWindow
 			{
 				if (let planned = Planned(index, e))
 					planned.Enabled = on;
+				PlanChanged(index);
 				Later(new [=this] () =>
 					{
 						ShowFiles();

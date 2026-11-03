@@ -491,14 +491,7 @@ class AssetImport
 	// `plan` copied into `outCopy`, what was there let go: the session's file keeps its own.
 	private static void CopyPlan(ImportPlan plan, ImportPlan outCopy)
 	{
-		ClearAndDeleteItems!(outCopy.Entries);
-		for (let entry in plan.Entries)
-		{
-			let copy = new ImportPlanEntry(entry.Kind, entry.SourceName, entry.TargetName);
-			copy.Enabled = entry.Enabled;
-			copy.SetSettings(entry.Settings);
-			outCopy.Add(copy);
-		}
+		outCopy.CopyFrom(plan);
 	}
 
 	// One file into its group, found again by its key: waiting for a cook; its bulk writes flushed
