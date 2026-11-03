@@ -271,11 +271,15 @@ class ModelPreviewTests
 		Test.Assert(model.Textures[model.Materials[cloak].BaseColorTextureIndex].Uri == "Knight.png");
 		Test.Assert(model.Materials[kept].BaseColorTextureIndex == own);
 
-		// With neither name's image present, the first image in name order.
+		// With neither name's image present, nothing: the other images beside it are not its, and the
+		// material keeps its own colour (a model of plain colours among a game's sources).
 		let other = scope Model();
-		Material(other, "Helm", -1);
-		Test.Assert(ModelLibrary.ApplyLooseTextures(other, PathJoin(folder, "Squire.fbx", .. scope .())) == 1);
-		Test.Assert(other.Textures[0].Uri == "Body.png");
+		let jacket = Material(other, "Jacket", -1);
+		other.Materials[jacket].BaseColorFactor = .(0.95f, 0.4f, 0.1f, 1.0f);
+		Test.Assert(ModelLibrary.ApplyLooseTextures(other, PathJoin(folder, "Rider.glb", .. scope .())) == 0);
+		Test.Assert(other.Materials[jacket].BaseColorTextureIndex == -1);
+		Test.Assert(other.Textures.IsEmpty);
+		Test.Assert(Near(other.Materials[jacket].BaseColorFactor.X, 0.95f));
 		// A folder without images: nothing is applied.
 		let bare = scope Model();
 		Material(bare, "", -1);

@@ -78,7 +78,7 @@ static class ModelLibrary
 	public const String cModelExtensions = "gltf;glb;fbx;obj";
 	/// The version of the cache's cooked files. Raise it when the import changes what it makes, so a
 	/// model opened again cooks afresh.
-	public const uint32 cCacheVersion = 6; // 6: the record lists the materials and textures
+	public const uint32 cCacheVersion = 7; // 7: the loose texture rule takes only an image named like the material or the model
 
 	/// Whether `path` names a model file (by its extension, any case).
 	public static bool IsModelFile(StringView path)
@@ -127,8 +127,9 @@ static class ModelLibrary
 
 	/// The loose texture rule: a material that names no colour texture (the link is often lost on
 	/// export, common with FBX files from packs and extractions) takes an image beside the model
-	/// file: the one named like the material, else the one named like the model, else the first PNG
-	/// or JPEG in name order. Returns how many materials took an image.
+	/// file named like the material, else one named like the model. Any other image there is left
+	/// alone, and so is a material neither names: a model of plain colours in a folder of other images
+	/// (a game's sources) keeps its colours. Returns how many materials took an image.
 	public static uint32 ApplyLooseTextures(Model model, StringView modelPath)
 	{
 		var slash = modelPath.Length;
@@ -168,7 +169,7 @@ static class ModelLibrary
 			if (chosen == null)
 				chosen = Find(modelStem);
 			if (chosen == null)
-				chosen = images[0];
+				continue; // no image of its name or the model's: its own colour stays
 			int32 index = -1;
 			for (int i < added.Count)
 			{
