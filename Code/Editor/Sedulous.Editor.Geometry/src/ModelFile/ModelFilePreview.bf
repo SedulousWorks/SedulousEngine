@@ -58,7 +58,15 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	/// materials while the import leaves them out (it draws the default then).
 	private ImportOptions mOptions = null;
 	private List<(EntityHandle Entity, List<Sedulous.Resource.Ref<Sedulous.Materials.Material>> Materials)> mKeptMaterials = new .() ~ { for (let kept in _) delete kept.Materials; delete _; };
+	/// A material drawn as the default, and one drawn without a texture.
 	private bool mDefaultMaterial = false;
+	private bool mWithoutTextures = false;
+	/// What a material left out draws (made the first time), and the copies drawn without a texture
+	/// left out, by the material each is of (null: it uses none of them): ours. A change's copies are
+	/// kept, retired, until this goes after the GPU is done (the frames in flight may draw them).
+	private Sedulous.Materials.Material mFallbackMaterial = null;
+	private List<(Sedulous.Materials.Material From, Sedulous.Materials.Material Copy)> mStripped = new .() ~ delete _;
+	private List<Sedulous.Materials.Material> mRetired = new .() ~ delete _;
 
 	/// Where the import window's model previews cook, under a project's cache folder.
 	public const String cCacheFolder = "ModelPreviews";
@@ -138,6 +146,11 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 			mPictureView.ReleaseRef();
 		if (mOwnRead != null)
 			mOwnRead.ReleaseRef();
+		// After the GPU is done (above): the materials it drew in place of the model's.
+		for (let made in mStripped)
+			delete made.Copy;
+		ClearAndDeleteItems!(mRetired);
+		delete mFallbackMaterial;
 	}
 
 	public Node View => mRoot;
@@ -174,8 +187,10 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	public bool IsOpen => mOpen.IsOpen;
 	/// Whether a texture's picture shows in place of the model.
 	public bool ShowsPicture => (mPictureView != null) && mPictureView.Displayed;
-	/// Whether the model draws the default material, its own being left out of the import.
+	/// Whether the model draws the default material for a material left out of the import.
 	public bool DrawsDefaultMaterial => mDefaultMaterial;
+	/// Whether the model draws a material without a texture left out of the import.
+	public bool DrawsWithoutTextures => mWithoutTextures;
 
 	/// The file's settings changed: the model drawn as it will import (materials left out draw the
 	/// default material).
@@ -557,46 +572,156 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		ShowWholeModel();
 	}
 
-	/// Draws the model as the import will make it: with the default material while its materials are
-	/// left out (the Materials row unticked), its own again when they are not.
+	/// Draws the model as the import will make it, from the file's settings and the plan as the
+	/// review stands (the settings' selection): a material left out (all of them, or one) draws the
+	/// default material, and a texture left out (all, or one) is drawn without, on a copy of each
+	/// material that uses it, the bound materials untouched. Undone and done again on each change.
 	private void ShowAsImported()
 	{
-		let model = mOptions as ModelImportOptions;
-		let leftOut = (model != null) && !model.ImportMaterials;
-		if (leftOut == mDefaultMaterial)
-			return;
-		mDefaultMaterial = leftOut;
 		let level = (mViewport != null) ? mViewport.Scene : null;
 		let meshes = (level != null) ? level.GetSystem<MeshComponentManager>() : null;
-		if ((meshes == null) || !level.IsValid(mInstance.Root))
-			return;
-		if (leftOut)
+		if (meshes != null)
 		{
-			ForgetKeptMaterials();
-			meshes.ForEach(scope [&] (component, entity) =>
-				{
-					if (!Under(level, entity, mInstance.Root))
-						return;
-					let own = new List<Sedulous.Resource.Ref<Sedulous.Materials.Material>>();
-					for (let reference in component.Materials)
-						own.Add(reference);
-					mKeptMaterials.Add((entity, own));
-					component.Materials.Clear(); // no material: the renderer's default
-					component.MaterialCache.Clear();
-				});
-			return;
-		}
-		for (let kept in mKeptMaterials)
-		{
-			let component = meshes.Get(kept.Entity);
-			if (component != null)
+			for (let kept in mKeptMaterials)
 			{
-				component.Materials.Clear();
-				for (let reference in kept.Materials)
-					component.Materials.Add(reference);
+				let component = meshes.Get(kept.Entity);
+				if (component != null)
+				{
+					component.Materials.Clear();
+					for (let reference in kept.Materials)
+						component.Materials.Add(reference);
+					component.MaterialCache.Clear();
+				}
 			}
 		}
 		ForgetKeptMaterials();
+		for (let made in mStripped)
+		{
+			if (made.Copy != null)
+				mRetired.Add(made.Copy);
+		}
+		mStripped.Clear();
+		mDefaultMaterial = false;
+		mWithoutTextures = false;
+		let model = mOptions as ModelImportOptions;
+		if ((model == null) || !mOpen.IsOpen)
+			return;
+		let allMaterials = !model.ImportMaterials;
+		let allTextures = !model.ImportTextures;
+		let droppedMaterials = scope List<Object>();
+		let droppedTextures = scope List<ITextureView>();
+		int texturesFound = 0; // left out and found, drawn on the GPU or not (a test has no device)
+		for (let entry in model.Selection.Entries)
+		{
+			if (entry.Enabled)
+				continue;
+			if (entry.Kind == .Material)
+			{
+				if (let found = mOpen.FindPart(entry.SourceName, typeof(Sedulous.Materials.Material)))
+					droppedMaterials.Add(found.Product);
+			}
+			else if (entry.Kind == .Texture)
+			{
+				if (let found = mOpen.FindPart(entry.SourceName, typeof(Sedulous.Texture.Resource.Texture)))
+				{
+					texturesFound++;
+					let texture = found.Product as Sedulous.Texture.Resource.Texture;
+					if ((texture != null) && (texture.View != null))
+						droppedTextures.Add(texture.View);
+				}
+			}
+		}
+		if (!allMaterials && !allTextures && droppedMaterials.IsEmpty && (texturesFound == 0))
+			return;
+		if ((meshes == null) || !level.IsValid(mInstance.Root))
+		{
+			mDefaultMaterial = allMaterials || !droppedMaterials.IsEmpty; // no view (a test): what it would draw
+			mWithoutTextures = !mDefaultMaterial && (allTextures || (texturesFound > 0));
+			return;
+		}
+		if (mFallbackMaterial == null)
+			mFallbackMaterial = Sedulous.Materials.MaterialPresets.CreatePbr("preview.default"); // as the renderer draws a mesh with none
+		meshes.ForEach(scope [&] (component, entity) =>
+			{
+				if (!Under(level, entity, mInstance.Root))
+					return;
+				let drawn = scope List<Sedulous.Resource.Ref<Sedulous.Materials.Material>>();
+				bool changed = false;
+				for (let slot in component.Materials)
+				{
+					let material = slot.Get;
+					if ((material != null) && (allMaterials || Holds(droppedMaterials, material)))
+					{
+						var reference = Sedulous.Resource.Ref<Sedulous.Materials.Material>(Guid());
+						reference.SetDirect(mFallbackMaterial); // ours, borrowed
+						drawn.Add(reference);
+						mDefaultMaterial = changed = true;
+						continue;
+					}
+					if ((material != null) && (allTextures || !droppedTextures.IsEmpty))
+					{
+						if (let without = Without(material, allTextures, droppedTextures))
+						{
+							var reference = Sedulous.Resource.Ref<Sedulous.Materials.Material>(Guid());
+							reference.SetDirect(without); // ours, borrowed
+							drawn.Add(reference);
+							mWithoutTextures = changed = true;
+							continue;
+						}
+					}
+					drawn.Add(slot);
+				}
+				if (!changed)
+					return;
+				let own = new List<Sedulous.Resource.Ref<Sedulous.Materials.Material>>();
+				for (let reference in component.Materials)
+					own.Add(reference);
+				mKeptMaterials.Add((entity, own));
+				component.Materials.Clear();
+				for (let reference in drawn)
+					component.Materials.Add(reference);
+				component.MaterialCache.Clear();
+			});
+	}
+
+	/// Whether `list` holds `item`, by reference.
+	private static bool Holds(List<Object> list, Object item)
+	{
+		for (let each in list)
+		{
+			if (each === item)
+				return true;
+		}
+		return false;
+	}
+
+	/// `material` without the textures the import leaves out (every one when `all`), as a copy made
+	/// once per change (ours); null when it uses none of them.
+	private Sedulous.Materials.Material Without(Sedulous.Materials.Material material, bool all, List<ITextureView> dropped)
+	{
+		for (let made in mStripped)
+		{
+			if (made.From === material)
+				return made.Copy;
+		}
+		Sedulous.Materials.Material copy = null;
+		for (int i < material.PropertyCount)
+		{
+			let property = material.GetProperty(i);
+			let texture = property.IsTexture ? material.GetDefaultTexture(i) : null;
+			if (texture == null)
+				continue;
+			bool drop = all;
+			for (let each in dropped)
+				drop = drop || (each === texture);
+			if (!drop)
+				continue;
+			if (copy == null)
+				copy = material.Clone();
+			copy.SetDefaultTexture(property.Name, null); // drawn with the renderer's plain fallback
+		}
+		mStripped.Add((material, copy));
+		return copy;
 	}
 
 	private void ForgetKeptMaterials()

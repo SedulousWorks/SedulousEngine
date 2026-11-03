@@ -171,10 +171,10 @@ class ModelFilePreviewTests
 		}
 	}
 
-	/// With its materials left out of the import it draws the default material, and its own again
-	/// when they are back.
+	/// It draws the model as it will import: a material left out (all, or one) as the default, a
+	/// texture left out (all, or one) not drawn.
 	[Test]
-	public static void WithItsMaterialsLeftOutOfTheImportItDrawsTheDefaultMaterialAndItsOwnWhenTheyAreBack()
+	public static void ItDrawsTheModelAsItWillImportAMaterialLeftOutAsTheDefaultATextureLeftOutNotDrawn()
 	{
 		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_default_material", .. scope .());
 		RemoveDirectoryRecursive(cache);
@@ -205,6 +205,32 @@ class ModelFilePreviewTests
 			options.ImportMaterials = false;
 			preview.OnSettingsChanged();
 			Test.Assert(preview.DrawsDefaultMaterial);
+
+			// One material left out in the review (the plan as the window keeps it in the settings).
+			options.ImportMaterials = true;
+			let plan = scope ImportPlan();
+			importer.DescribeImport(fox, options, prepared, plan);
+			options.Selection.CopyFrom(plan);
+			for (let entry in options.Selection.Entries)
+			{
+				if (entry.Kind == .Material)
+					entry.Enabled = false;
+			}
+			preview.OnSettingsChanged();
+			Test.Assert(preview.DrawsDefaultMaterial);
+			Test.Assert(!preview.DrawsWithoutTextures);
+
+			// (One texture left out is found by its texture, which a preview without a device has none
+			// of: that case is the editor's to check.) All textures left out by the setting; then
+			// nothing left out.
+			options.Selection.CopyFrom(plan);
+			options.ImportTextures = false;
+			preview.OnSettingsChanged();
+			Test.Assert(preview.DrawsWithoutTextures);
+			options.ImportTextures = true;
+			preview.OnSettingsChanged();
+			Test.Assert(!preview.DrawsWithoutTextures);
+			Test.Assert(!preview.DrawsDefaultMaterial);
 		}
 	}
 }
