@@ -84,6 +84,11 @@ class ImportWindow
 	/// The chosen file's settings, which its grid shows; the grid a reference of ours.
 	private FieldPropertySource mSettings = null;
 	private PropertyGrid mSettingsGrid = null;
+	/// The selected part's own settings, which its grid shows; the grid and the settings references
+	/// of ours.
+	private FieldPropertySource mPartSettings = null;
+	private PropertyGrid mPartGrid = null;
+	private RefCounted mPartObject = null;
 	/// The chosen file's preview, kept while its path and listed type stay; null: its type has none.
 	private IImportPreview mPreview = null ~ delete _;
 	private String mPreviewPath = new .() ~ delete _;
@@ -379,6 +384,65 @@ class ImportWindow
 				ShowDetail();
 				ShowWhy();
 			});
+	}
+
+	/// Gives the other parts of part `e`'s kind in file `index` its own settings (the "Apply to all"
+	/// in a part's details); how many it gave them to.
+	public int SharePartSettings(int index, int e)
+	{
+		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count) || (e < 0)
+			|| (e >= mSession.Files[index].Plan.Entries.Count))
+		{
+			return 0;
+		}
+		let file = mSession.Files[index];
+		let given = file.Plan.Entries[e];
+		if ((given.Settings == null) || (file.Importer == null))
+			return 0;
+		int count = 0;
+		for (int i < file.Plan.Entries.Count)
+		{
+			let other = file.Plan.Entries[i];
+			if ((i == e) || (other.Kind != given.Kind))
+				continue;
+			if (other.Settings == null)
+				MakePartSettings(file, other);
+			if ((other.Settings != null) && (other.Settings.GetType() == given.Settings.GetType()))
+			{
+				CopyScalars(given.Settings, other.Settings);
+				count++;
+			}
+		}
+		return count;
+	}
+
+	// `entry`'s own settings as its importer makes them, kept by the plan for the import; none when
+	// parts of its kind have none.
+	private void MakePartSettings(AssetImport.File file, ImportPlanEntry entry)
+	{
+		if (file.Importer == null)
+			return;
+		let group = (mSession.FindGroup != null) ? mSession.FindGroup() : null;
+		let made = file.Importer.PartSettings(file.Path, file.Options, entry, group);
+		entry.SetSettings(made);
+		made?.ReleaseRef(); // the entry's reference holds it
+	}
+
+	// Copies `source`'s shown settings that are values (a flag, a number, a choice) into `target`, an
+	// object of the same type; one held by reference is left alone.
+	private static void CopyScalars(Object source, Object target)
+	{
+		let read = (uint8*)Internal.UnsafeCastToPtr(source);
+		let write = (uint8*)Internal.UnsafeCastToPtr(target);
+		for (Type t = source.GetType(); (t != null) && (t != typeof(RefCounted)) && (t != typeof(Object)); t = t.BaseType)
+		{
+			for (let field in t.GetFields())
+			{
+				if (!field.IsPublic || field.IsStatic || field.HasCustomAttribute<HiddenAttribute>() || field.FieldType.IsObject)
+					continue;
+				Internal.MemCpy(write + field.MemberOffset, read + field.MemberOffset, field.FieldType.Size);
+			}
+		}
 	}
 
 	/// The importer's setting that leaves `kind` out of `file`'s import, or null when it has none.
@@ -770,6 +834,7 @@ class ImportWindow
 	{
 		if ((mDetail == null) || (mSession == null) || (mSelected >= mSession.Files.Count))
 			return;
+		DropSettings(); // first: a part's grid reads its settings
 		mDetail.RemoveAllChildren();
 		let file = mSession.Files[mSelected];
 		let index = mSelected;
@@ -835,6 +900,12 @@ class ImportWindow
 					let importer = described.Importer;
 					if ((importer == null) || (described.Options == null))
 						return;
+					// Only each part's default (each part carries its own): shown on the parts.
+					if (importer.SettingIsPerPart(path))
+					{
+						info.Visible = false;
+						return;
+					}
 					// A setting a kind row in the tree stands for is that row, not a second switch here.
 					for (let kind in cKinds)
 					{
@@ -1035,16 +1106,54 @@ class ImportWindow
 		let facts = scope List<ImportPartFact>();
 		defer { ClearAndDeleteItems!(facts); }
 		importer.DescribePart(file.Path, file.Options, file.Prepared, entry, facts);
-		if (facts.IsEmpty)
-			return;
-		Add(mDetail, Text("As the file has it", "import-part-kind"));
-		for (let fact in facts)
+		if (!facts.IsEmpty)
 		{
-			let row = Row("import-part-fact");
-			Add(row, Text(fact.Label, "form-label"));
-			Add(row, Text(fact.Value, "import-part-fact-value"));
-			Add(mDetail, row);
+			Add(mDetail, Text("As the file has it", "import-part-kind"));
+			for (let fact in facts)
+			{
+				let row = Row("import-part-fact");
+				Add(row, Text(fact.Label, "form-label"));
+				Add(row, Text(fact.Value, "import-part-fact-value"));
+				Add(mDetail, row);
+			}
 		}
+		ShowPartSettings(index, e);
+	}
+
+	// The part's own settings (a clip's root motion), as its importer makes them, in a grid; the plan
+	// keeps them for the import. With others of its kind in the file, a button gives them all the
+	// same.
+	private void ShowPartSettings(int index, int e)
+	{
+		let file = mSession.Files[index];
+		let entry = file.Plan.Entries[e];
+		if (entry.Settings == null)
+			MakePartSettings(file, entry);
+		let settings = entry.Settings;
+		if (settings == null)
+			return;
+		Add(mDetail, Text("Its own settings", "import-part-kind"));
+		settings.AddRef(); // ours while the grid shows them: a new plan may let the entry's go
+		mPartObject = settings;
+		mPartSettings = new FieldPropertySource(settings.GetType(), 1,
+			new [=settings] (slot) => Internal.UnsafeCastToPtr(settings),
+			new [=settings] (apply) => { apply(0, Internal.UnsafeCastToPtr(settings)); });
+		mPartGrid = new PropertyGrid();
+		mPartGrid.AddClass("import-settings");
+		mPartGrid.FitsRows = true;
+		mPartGrid.Source = mPartSettings;
+		mDetail.AddChild(mPartGrid);
+		int others = 0;
+		for (int i < file.Plan.Entries.Count)
+			others += ((i != e) && (file.Plan.Entries[i].Kind == entry.Kind)) ? 1 : 0;
+		if (others == 0)
+			return;
+		let share = new Sedulous.GUI.Button();
+		share.AddClass("import-share");
+		share.Text = scope $"Apply to all {entry.Kind.Label} in this file";
+		share.Tooltip = "Gives every part of this kind in the file these settings";
+		share.SetOnClick(new [=this, =index, =e] () => { SharePartSettings(index, e); });
+		Add(mDetail, share);
 	}
 
 	/// The settings' grid lets go of its source, then both go: the grid out of the detail.
@@ -1058,6 +1167,19 @@ class ImportWindow
 			mSettingsGrid = null;
 		}
 		DeleteAndNullify!(mSettings);
+		if (mPartGrid != null)
+		{
+			mPartGrid.Source = null;
+			mPartGrid.RemoveFromParent();
+			mPartGrid.ReleaseRef();
+			mPartGrid = null;
+		}
+		DeleteAndNullify!(mPartSettings);
+		if (mPartObject != null)
+		{
+			mPartObject.ReleaseRef();
+			mPartObject = null;
+		}
 	}
 
 	// What the file's name meets (AssetImport.ClashOf): nothing said when it is free or the file's

@@ -261,12 +261,23 @@ static class ImportDialogTests
 			=> .Err(.NotSupported);
 	}
 
-	/// A shelf's options: whether its books (textures) come in, a setting that leaves a whole kind out.
+	/// A shelf's options: whether its books (textures) come in, a setting that leaves a whole kind out,
+	/// and the default each book's own Glossy starts from.
 	[Reflect(.NonStaticFields | .DefaultConstructor)]
 	private class ShelfOptions : ImportOptions
 	{
 		[DisplayName("Books")]
 		public bool Books = true;
+		[DisplayName("Glossy by default")]
+		public bool GlossyDefault = false;
+	}
+
+	/// A book's own settings in the import.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
+	private class BookSettings : RefCounted
+	{
+		[DisplayName("Glossy")]
+		public bool Glossy = false;
 	}
 
 	/// Takes ".shelf": a board (a mesh) and, while Books is on, two books (textures).
@@ -276,6 +287,16 @@ static class ImportDialogTests
 		public bool Accepts(StringView ext) => ext == "shelf";
 		public ImportOptions CreateOptions() => new ShelfOptions();
 		public StringView KindSetting(ImportResourceKind kind) => (kind == .Texture) ? "Books" : default;
+		public RefCounted PartSettings(StringView sourcePath, ImportOptions options, ImportPlanEntry part, Group group)
+		{
+			if (part.Kind != .Texture)
+				return null;
+			let book = new BookSettings();
+			let shelf = options as ShelfOptions;
+			book.Glossy = (shelf != null) && shelf.GlossyDefault;
+			return book;
+		}
+		public bool SettingIsPerPart(StringView setting) => setting == "GlossyDefault";
 
 		public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared, ImportPlan outPlan)
 		{
@@ -975,6 +996,64 @@ static class ImportDialogTests
 		Test.Assert(options.Books);
 		Test.Assert(!session.Files[0].Plan.Entries[0].Enabled);
 		Test.Assert(Says(bed.Window.Files, "0 of 1"));
+		bed.Window.Close();
+	}
+
+	/// A part's own settings in its details, given to every part of its kind by one button; a file
+	/// setting that is only their default is not shown.
+	[Test]
+	public static void APartsOwnSettingsShowInItsDetailsOneButtonGivesThemToItsKindAndTheirDefaultIsNoFileSetting()
+	{
+		let bed = scope Bed("scratch_import_window_part_settings");
+		let session = bed.Open(scope StringView[]("/somewhere/a.shelf"));
+		defer session.ReleaseRef();
+		let grids = scope List<PropertyGrid>();
+		Collect<PropertyGrid>(bed.Window.Detail, grids);
+		Test.Assert(grids.Count == 1, "the shelf's settings");
+		let rows = scope List<Sedulous.GUI.PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		grids[0].Source.GetProperties("", rows);
+		bool listed = false;
+		for (let row in rows)
+		{
+			if (row.DisplayName == "Glossy by default")
+			{
+				listed = true;
+				Test.Assert(!row.Visible, "each book's own, shown on the books");
+			}
+		}
+		Test.Assert(listed);
+		Test.Assert(!Says(bed.Window.Detail, "Glossy by default"));
+
+		bed.Window.SelectPart(0, 1); // Atlas, a texture
+		grids.Clear();
+		Collect<PropertyGrid>(bed.Window.Detail, grids);
+		Test.Assert(grids.Count == 1, "its own settings");
+		Test.Assert(Says(bed.Window.Detail, "Its own settings"));
+		let buttons = scope List<Sedulous.GUI.Button>();
+		Collect<Sedulous.GUI.Button>(bed.Window.Detail, buttons);
+		int offered = 0;
+		for (let button in buttons)
+		{
+			if (button.Text == "Apply to all Textures in this file")
+				offered++;
+		}
+		Test.Assert(offered == 1);
+		let atlas = session.Files[0].Plan.Entries[1].Settings as BookSettings;
+		Test.Assert(atlas != null, "made when shown, kept by the plan for the import");
+		Test.Assert(!atlas.Glossy, "the file's default");
+		Test.Assert(session.Files[0].Plan.Entries[2].Settings == null, "the other book's not asked for yet");
+		atlas.Glossy = true;
+		Test.Assert(bed.Window.SharePartSettings(0, 1) == 1, "the other book");
+		let other = session.Files[0].Plan.Entries[2].Settings as BookSettings;
+		Test.Assert((other != null) && other.Glossy);
+		Test.Assert(session.Files[0].Plan.Entries[0].Settings == null, "the board is another kind");
+
+		bed.Window.SelectPart(0, 0); // the board, a mesh: none of its own
+		grids.Clear();
+		Collect<PropertyGrid>(bed.Window.Detail, grids);
+		Test.Assert(grids.Count == 0);
+		Test.Assert(!Says(bed.Window.Detail, "Its own settings"));
 		bed.Window.Close();
 	}
 
