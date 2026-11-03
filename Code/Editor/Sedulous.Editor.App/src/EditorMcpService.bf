@@ -25,7 +25,6 @@ class EditorMcpServiceServices
 {
 	public EditorContext Context = null;
 	public EditorCookService Cook = null;
-	public EditorJobService Jobs = null;
 	public BuilderRegistry Builders = null;
 	/// The per-user editor settings: their EditorMcpSettings section (enabled, port, token) is
 	/// the preference, and a minted token is saved with them. Required.
@@ -150,7 +149,8 @@ class EditorMcpService
 		operations.Project = project;
 		operations.Context = mServices.Context;
 		operations.Cook = mServices.Cook;
-		operations.Jobs = mServices.Jobs;
+		operations.Tasks = mServices.Context.Tasks; // each step on the build lane
+		operations.Lane = mServices.Context.BuildLane;
 		operations.Builders = mServices.Builders;
 		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), operations.PlayerDir);
 		if (mServices.TemplatesRoot != null)

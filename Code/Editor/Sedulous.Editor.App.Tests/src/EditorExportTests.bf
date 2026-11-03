@@ -24,7 +24,8 @@ class EditorExportTests
 		public EditorContext Context = new .() ~ delete _;
 		public BuilderRegistry Builders = new .() ~ delete _;
 		public EditorCookService Cook = new .() ~ delete _;
-		public EditorJobService Jobs = new .() ~ delete _;
+		public TaskPool Tasks = new .(2) ~ delete _;
+		public TaskLane Lane = Tasks.CreateLane("Build");
 		public Settings User = new .() ~ delete _;
 		public List<String> Said = new .() ~ DeleteContainerAndItems!(_);
 		public EditorProject Project = null ~ delete _;
@@ -39,7 +40,7 @@ class EditorExportTests
 		public ~this()
 		{
 			Cook.Shutdown();
-			Jobs.Shutdown();
+			DeleteAndNullify!(Tasks); // drops what waits and joins what runs, before the project goes
 			if (Project != null)
 			{
 				DeleteAndNullify!(Project);
@@ -56,8 +57,9 @@ class EditorExportTests
 			Project = EditorProject.Open(Dir);
 			Test.Assert(Project != null);
 			Cook.Initialize(Project, Builders);
-			let jobs = Jobs;
-			Cook.ExternalMutationLock = new [=jobs]() => jobs.IsBusy;
+			let tasks = Tasks;
+			let lane = Lane;
+			Cook.ExternalMutationLock = new [=tasks, =lane]() => tasks.IsLaneBusy(lane);
 		}
 
 		/// The services over this bench; the exporter owns them.
@@ -66,7 +68,8 @@ class EditorExportTests
 			let services = new EditorExportServices();
 			services.Context = Context;
 			services.Cook = Cook;
-			services.Jobs = Jobs;
+			services.Tasks = Tasks;
+			services.Lane = Lane;
 			services.Builders = Builders;
 			services.UserSettings = User;
 			return services;
@@ -133,10 +136,10 @@ class EditorExportTests
 		for (int i < 5000)
 		{
 			bench.Cook.Update();
-			bench.Jobs.Update();
+			bench.Tasks.Pump();
 			exporter.Pump();
-			sawJob = sawJob || bench.Jobs.IsBusy;
-			if (!exporter.IsPending && !bench.Jobs.IsBusy && (bench.Last == "Export failed (see Console)."))
+			sawJob = sawJob || (bench.Tasks.InFlight > 0); // submitted by the pump above, handed back by the next
+			if (!exporter.IsPending && (bench.Tasks.InFlight == 0) && (bench.Last == "Export failed (see Console)."))
 				break;
 			Thread.Sleep(1);
 		}

@@ -295,13 +295,11 @@ class ProjectHomeTests
 		let context = scope EditorContext();
 		let builders = scope BuilderRegistry();
 		let cook = scope EditorCookService();
-		let jobs = scope EditorJobService();
 		let thumbnails = scope ThumbnailService();
 		ProjectHomeView home = null;
 		let services = new EditorSessionServices();
 		services.Context = context;
 		services.Cook = cook;
-		services.Jobs = jobs;
 		services.Builders = builders;
 		services.Thumbnails = thumbnails;
 		// As the application's hooks do.

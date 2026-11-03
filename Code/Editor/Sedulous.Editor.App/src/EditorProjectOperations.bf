@@ -22,7 +22,9 @@ class EditorProjectOperationsSeams
 	/// SceneStreamStager and SceneRefScanner, when wired.
 	public EditorContext Context = null;
 	public EditorCookService Cook = null;
-	public EditorJobService Jobs = null;
+	/// The pool and lane each step runs on (the context's build lane). Borrowed.
+	public TaskPool Tasks = null;
+	public TaskLane Lane = .Shared;
 	public BuilderRegistry Builders = null;
 	/// The player and its sidecars beside the executable: the host template.
 	public String PlayerDir = new .() ~ delete _;
@@ -201,17 +203,17 @@ class EditorProjectOperations : IProjectOperations
 		shared.AddRef();
 		shared.AddRef();
 		let name = new String(source);
-		mSeams.Jobs.Submit(scope $"Writing {ImportPaths.FileNameOf(source)}",
-			new [=shared, =name](job) =>
+		mSeams.Tasks.Submit(scope $"Writing {ImportPaths.FileNameOf(source)}",
+			new [=shared, =name](task) =>
 			{
-				// Pure mount IO on the worker; the job lock keeps cooks out meanwhile.
+				// Pure mount IO on the worker; the build lane keeps cooks out meanwhile.
 				Result<void, ErrorCode> result = .Ok;
 				let started = Stopwatch.GetTimestamp();
 				let writes = shared.Writes;
 				for (int i < writes.Count)
 				{
-					job.SetStep(writes[i].Label, i + 1, writes.Count);
-					job.SetFraction((float)i / (float)writes.Count);
+					task.SetStep(writes[i].Label, i + 1, writes.Count);
+					task.SetFraction((float)i / (float)writes.Count);
 					if (writes[i].Execute() case .Err(let error))
 					{
 						GlobalLog(.Error, "Import: '{}': deferred write failed: '{}'", ImportPaths.FileNameOf(name), writes[i].Label);
@@ -225,7 +227,7 @@ class EditorProjectOperations : IProjectOperations
 			{
 				shared.JobOk = (result case .Ok);
 				shared.JobDone = true;
-			} ~ shared.ReleaseRef());
+			} ~ shared.ReleaseRef(), mSeams.Lane);
 	}
 
 	public OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError)
@@ -244,10 +246,10 @@ class EditorProjectOperations : IProjectOperations
 				shared.AddRef();
 				let importer = request.Importer;
 				let source = new String(request.Source);
-				mSeams.Jobs.Submit(scope $"Reading {ImportPaths.FileNameOf(request.Source)}",
-					new [=shared, =importer, =source](job) =>
+				mSeams.Tasks.Submit(scope $"Reading {ImportPaths.FileNameOf(request.Source)}",
+					new [=shared, =importer, =source](task) =>
 					{
-						job.SetStep("loading + decoding", 1, 2);
+						task.SetStep("loading + decoding", 1, 2);
 						let started = Stopwatch.GetTimestamp();
 						shared.Prepared = importer.PrepareOnWorker(source);
 						shared.PrepareMs = (Stopwatch.GetTimestamp() - started) / 1000;
@@ -257,7 +259,7 @@ class EditorProjectOperations : IProjectOperations
 					{
 						shared.JobOk = (result case .Ok);
 						shared.JobDone = true;
-					} ~ shared.ReleaseRef());
+					} ~ shared.ReleaseRef(), mSeams.Lane);
 				return .NotYet;
 			}
 		}
@@ -352,15 +354,15 @@ class EditorProjectOperations : IProjectOperations
 		let playerDir = new String(mSeams.PlayerDir);
 		let templatesRoot = new String(mSeams.TemplatesRoot);
 		let dataRoot = new String(mSeams.DataRoot);
-		mSeams.Jobs.Submit(scope $"Export {shared.Preset.Name}",
-			new [=shared, =project, =builders, =playerDir, =templatesRoot, =dataRoot](job) =>
+		mSeams.Tasks.Submit(scope $"Export {shared.Preset.Name}",
+			new [=shared, =project, =builders, =playerDir, =templatesRoot, =dataRoot](task) =>
 			{
 				let templates = scope TemplateRegistry();
 				templates.Refresh(templatesRoot, playerDir);
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
-						job.SetStep(step);
-						job.SetFraction(fraction);
+						task.SetStep(step);
+						task.SetFraction(fraction);
 					};
 				// The cook already ran through the cook service (cook false); the scene streams
 				// and the reachable set were computed on the main thread.
@@ -372,7 +374,7 @@ class EditorProjectOperations : IProjectOperations
 			{
 				shared.JobOk = (result case .Ok);
 				shared.JobDone = true;
-			} ~ shared.ReleaseRef());
+			} ~ shared.ReleaseRef(), mSeams.Lane);
 	}
 
 	/// On the main thread, never while a cook or an export reads the databases (it waits, as a

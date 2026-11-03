@@ -30,7 +30,6 @@ class ProjectManagerModeTests
 		public EditorContext Context = new .() ~ delete _;
 		public BuilderRegistry Builders = new .() ~ delete _;
 		public EditorCookService Cook = new .() ~ delete _;
-		public EditorJobService Jobs = new .() ~ delete _;
 		public ThumbnailService Thumbnails = new .() ~ delete _;
 		/// The user's project registry, never written to the user data.
 		public Settings Registry = new .() ~ delete _;
@@ -56,7 +55,6 @@ class ProjectManagerModeTests
 			let session = new EditorSessionServices();
 			session.Context = Context;
 			session.Cook = Cook;
-			session.Jobs = Jobs;
 			session.Builders = Builders;
 			session.Thumbnails = Thumbnails;
 			session.Projects = Projects;

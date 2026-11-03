@@ -31,9 +31,10 @@ class AssetImportServices
 	public EditorContext Context = null;
 	/// The cook an import waits for and asks of; null: nothing waits (a test). Borrowed.
 	public EditorCookService Cook = null;
-	/// Where a heavy file is read and an import's bulk writes are flushed; null: everything on
-	/// this thread (a test). Borrowed.
-	public EditorJobService Jobs = null;
+	/// Where a heavy file is read and an import's bulk writes are flushed, and on which lane (the
+	/// context's build lane); null: everything on this thread (a test). Borrowed.
+	public TaskPool Tasks = null;
+	public TaskLane Lane = .Shared;
 }
 
 class AssetImport
@@ -416,7 +417,7 @@ class AssetImport
 		DeleteAndNullify!(file.Prepared);
 		ClearAndDeleteItems!(file.Plan.Entries);
 		let generation = ++file.Generation;
-		if (!importer.WantsWorkerPrepare || (mServices.Jobs == null))
+		if (!importer.WantsWorkerPrepare || (mServices.Tasks == null))
 		{
 			importer.DescribeImport(file.Path, file.Options, null, file.Plan);
 			LayStoredOver(session, file);
@@ -427,10 +428,10 @@ class AssetImport
 		let path = new String(file.Path);
 		let slot = new ReadSlot();
 		session.AddRef();
-		mServices.Jobs.Submit(scope $"Reading {file.Name}",
-			new [=importer, =path, =slot] (job) =>
+		mServices.Tasks.Submit(scope $"Reading {file.Name}",
+			new [=importer, =path, =slot] (task) =>
 			{
-				job.SetStep("loading and decoding", 1, 2);
+				task.SetStep("loading and decoding", 1, 2);
 				slot.Value = importer.PrepareOnWorker(path);
 				return (slot.Value != null) ? .Ok : .Err(.InvalidArgument);
 			} ~ delete path,
@@ -455,7 +456,7 @@ class AssetImport
 				}
 				if (session.OnChanged != null)
 					session.OnChanged(index);
-			} ~ { delete slot; session.ReleaseRef(); });
+			} ~ { delete slot; session.ReleaseRef(); }, mServices.Lane);
 	}
 
 	/// Describes file `index` again with its settings as they are now (one changed: a model without
@@ -525,7 +526,7 @@ class AssetImport
 		context.OnConflict = pending.OnConflict;
 		context.LedgerPath.Set(pending.LedgerPath);
 		let imported = pending.Importer.Import(pending.Path, context, group, pending.Options, pending.Prepared,
-			(mServices.Jobs != null) ? pending.Writes : null);
+			(mServices.Tasks != null) ? pending.Writes : null);
 		GlobalLog(.Information, "Import: '{}': {} ms on the main thread, {} deferred write(s)", name,
 			(Stopwatch.GetTimestamp() - started) / 1000, pending.Writes.Count);
 		Instance primary = null;
@@ -536,7 +537,7 @@ class AssetImport
 			Context.Notify(.Error, scope $"{name} could not be imported (see the Console).");
 			return;
 		}
-		if (pending.Writes.IsEmpty || (mServices.Jobs == null))
+		if (pending.Writes.IsEmpty || (mServices.Tasks == null))
 		{
 			Finish(primary, pending);
 			return;
@@ -546,15 +547,15 @@ class AssetImport
 		let primaryId = primary.Id;
 		pending.AddRef();
 		pending.AddRef();
-		mServices.Jobs.Submit(scope $"Writing {name}",
-			new [=pending] (job) =>
+		mServices.Tasks.Submit(scope $"Writing {name}",
+			new [=pending] (task) =>
 			{
 				Result<void, ErrorCode> result = .Ok;
 				let writes = pending.Writes;
 				for (int i < writes.Count)
 				{
-					job.SetStep(writes[i].Label, i + 1, writes.Count);
-					job.SetFraction((float)i / (float)writes.Count);
+					task.SetStep(writes[i].Label, i + 1, writes.Count);
+					task.SetFraction((float)i / (float)writes.Count);
 					if (writes[i].Execute() case .Err(let error))
 					{
 						GlobalLog(.Error, "Import: a deferred write failed: '{}'", writes[i].Label);
@@ -573,7 +574,7 @@ class AssetImport
 					return;
 				}
 				Finish(written, pending);
-			} ~ pending.ReleaseRef());
+			} ~ pending.ReleaseRef(), mServices.Lane);
 	}
 
 	// Said, then what follows any import.

@@ -294,7 +294,7 @@ static class AssetImportTests
 	/// Script (".as"), Document and Layout (both ".ui"), Config (".cfg"), Raw (".mesh", heavy) and
 	/// Broken (".bad", heavy, its read failing); with `second`, Varnish (".crate") and Baked
 	/// (".mesh", heavy) after them. The notices in Said, the imported primaries the editor was told
-	/// of in Told. With jobs (`withJobs`) a heavy file is read and the bulk written on a worker; with
+	/// of in Told. With a pool (`withJobs`) a heavy file is read and the bulk written on a worker; with
 	/// a cook over no builders (`withCook`), its mutation lock the bed's Locked.
 	class Bed
 	{
@@ -303,7 +303,8 @@ static class AssetImportTests
 		public EditorContext Context = new .();
 		public BuilderRegistry Builders = null;
 		public EditorCookService Cook = null;
-		public EditorJobService Jobs = null;
+		public TaskPool Tasks = null;
+		public TaskLane Lane = .Shared;
 		public bool Locked = false;
 		public AssetImport Import;
 		public List<String> Said = new .() ~ DeleteContainerAndItems!(_);
@@ -346,7 +347,10 @@ static class AssetImportTests
 				importers.Register(Baked);
 			}
 			if (withJobs)
-				Jobs = new .();
+			{
+				Tasks = new .(2);
+				Lane = Tasks.CreateLane("Build");
+			}
 			if (withCook)
 			{
 				Builders = new .();
@@ -357,25 +361,22 @@ static class AssetImportTests
 			let services = new AssetImportServices();
 			services.Context = Context;
 			services.Cook = Cook;
-			services.Jobs = Jobs;
+			services.Tasks = Tasks;
+			services.Lane = Lane;
 			Import = new AssetImport(services);
 		}
 
 		public ~this()
 		{
-			// The cook and the jobs first (each drops what waits on it), then the import, the
-			// context (its importers) before the project it borrows.
+			// The pool first (it drops what waits and joins what runs, no completion run), then the
+			// cook, the import, the context (its importers) before the project it borrows.
+			DeleteAndNullify!(Tasks);
 			if (Cook != null)
 			{
 				Cook.Shutdown();
 				delete Cook;
 			}
 			delete Builders;
-			if (Jobs != null)
-			{
-				Jobs.Shutdown();
-				delete Jobs;
-			}
 			delete Import;
 			Context.SetProject(null);
 			delete Context;
@@ -390,8 +391,8 @@ static class AssetImportTests
 			{
 				if (done())
 					return true;
-				if (Jobs != null)
-					Jobs.Update();
+				if (Tasks != null)
+					Tasks.Pump();
 				if (Cook != null)
 					Cook.Update();
 				Thread.Sleep(1);
@@ -562,7 +563,7 @@ static class AssetImportTests
 		closed.OnChanged = new [&heard] (index) => { heard++; };
 		closed.Closed = true;
 		let closedFile = closed.Files[0];
-		Test.Assert(bed.PumpUntil(scope [&] () => !bed.Jobs.IsBusy));
+		Test.Assert(bed.PumpUntil(scope [&] () => bed.Tasks.InFlight == 0));
 		Test.Assert(closedFile.State == .Reading, "let go");
 		Test.Assert(closedFile.Prepared == null);
 		Test.Assert(heard == 0);

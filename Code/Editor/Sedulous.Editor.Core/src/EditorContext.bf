@@ -47,7 +47,6 @@ class EditorContext : IAssetEditSink
 
 	// ---- borrowed services ----
 	private EditorProject mProject = null;
-	private EditorJobService mJobs = null;
 	private ThumbnailService mThumbnails = null;
 	private ResourceManager mResources = null;
 	private Settings mProjectEditorSettings = null;
@@ -60,6 +59,13 @@ class EditorContext : IAssetEditSink
 	/// The editor's long work off the frame (Raptor's task-layer spec): the workers start with the
 	/// first task.
 	private TaskPool mTasks = new .(TaskPool.DefaultWorkerCount()) ~ delete _;
+	/// The lane that changes the project, one task at a time so nothing races the content databases:
+	/// imports' reads and writes, project operations, export. The cook gates its own changes on it
+	/// being idle.
+	private TaskLane mBuildLane = mTasks.CreateLane("Build");
+	/// Short side work that must never wait behind the build lane (thumbnails, a font page's bake),
+	/// one at a time.
+	private TaskLane mLightLane = mTasks.CreateLane("Light");
 	private AssetCreatorRegistry mCreators = new .() ~ delete _;
 	private List<EditorSettingsContribution> mSettingsContributions = new .() ~ DeleteContainerAndItems!(_);
 	private List<delegate void(McpServer server)> mMcpToolContributions = new .() ~ DeleteContainerAndItems!(_);
@@ -152,13 +158,10 @@ class EditorContext : IAssetEditSink
 
 	public EditorProject Project => mProject;
 
-	/// The app's background job runner. Null in a headless or test context, and callers
-	/// then fall back to synchronous work.
-	public EditorJobService Jobs
-	{
-		get => mJobs;
-		set => mJobs = value;
-	}
+	/// The build lane of Tasks: the project's changes, one at a time.
+	public TaskLane BuildLane => mBuildLane;
+	/// The light lane of Tasks: side work, one at a time, never behind the build lane.
+	public TaskLane LightLane => mLightLane;
 
 	/// The app's thumbnail service, borrowed; null in a headless context.
 	public ThumbnailService Thumbnails

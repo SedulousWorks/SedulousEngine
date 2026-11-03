@@ -38,7 +38,6 @@ class EditorMcpServiceTests
 		public EditorContext Context = new .() ~ delete _;
 		public BuilderRegistry Builders = new .() ~ delete _;
 		public EditorCookService Cook = new .() ~ delete _;
-		public EditorJobService Jobs = new .() ~ delete _;
 		public Settings UserSettings = new .() ~ delete _;
 		public EditorLogBuffer Log = new .() ~ delete _;
 		public EditorProject Project ~ delete _;
@@ -85,7 +84,6 @@ class EditorMcpServiceTests
 			let services = new EditorMcpServiceServices();
 			services.Context = Context;
 			services.Cook = Cook;
-			services.Jobs = Jobs;
 			services.Builders = Builders;
 			services.UserSettings = UserSettings;
 			services.Log = Log;

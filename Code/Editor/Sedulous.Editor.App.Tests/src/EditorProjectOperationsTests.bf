@@ -79,7 +79,8 @@ class EditorProjectOperationsTests
 		public EditorContext Context = new .() ~ delete _;
 		public BuilderRegistry Builders = new .() ~ delete _;
 		public EditorCookService Cook = new .() ~ delete _;
-		public EditorJobService Jobs = new .() ~ delete _;
+		public TaskPool Tasks = new .(2) ~ delete _;
+		public TaskLane Lane = Tasks.CreateLane("Build");
 		public String Dir = new .() ~ delete _;
 
 		public this(StringView leaf)
@@ -90,15 +91,16 @@ class EditorProjectOperationsTests
 			Project = EditorProject.Open(Dir);
 			Test.Assert(Project != null);
 			Cook.Initialize(Project, Builders);
-			// The app's wiring: a running job holds the databases like a cook does.
-			let jobs = Jobs;
-			Cook.ExternalMutationLock = new [=jobs]() => jobs.IsBusy;
+			// The app's wiring: a running task of the build lane holds the databases like a cook does.
+			let tasks = Tasks;
+			let lane = Lane;
+			Cook.ExternalMutationLock = new [=tasks, =lane]() => tasks.IsLaneBusy(lane);
 		}
 
 		public ~this()
 		{
 			Cook.Shutdown();
-			Jobs.Shutdown();
+			DeleteAndNullify!(Tasks); // drops what waits and joins what runs, before the project goes
 			DeleteAndNullify!(Project);
 			RemoveDirectoryRecursive(Dir);
 		}
@@ -110,7 +112,8 @@ class EditorProjectOperationsTests
 			seams.Project = Project;
 			seams.Context = Context;
 			seams.Cook = Cook;
-			seams.Jobs = Jobs;
+			seams.Tasks = Tasks;
+			seams.Lane = Lane;
 			seams.Builders = Builders;
 			seams.TimeoutSeconds = timeoutSeconds;
 			return seams;
@@ -120,7 +123,7 @@ class EditorProjectOperationsTests
 		public void Pump()
 		{
 			Cook.Update();
-			Jobs.Update();
+			Tasks.Pump();
 			Thread.Sleep(1);
 		}
 	}
@@ -265,12 +268,12 @@ class EditorProjectOperationsTests
 		}
 		for (int i < 5000)
 		{
-			if (!bench.Jobs.IsBusy)
+			if (bench.Tasks.InFlight == 0)
 				break;
 			bench.Pump();
 		}
 		bench.Pump();
-		Test.Assert(!bench.Jobs.IsBusy);
+		Test.Assert(bench.Tasks.InFlight == 0);
 		Test.Assert(importer.Imports == 2, "the abandoned import placed nothing");
 	}
 
@@ -294,7 +297,7 @@ class EditorProjectOperationsTests
 		Test.Assert(error.StartsWith("export of preset '"), error);
 		Test.Assert(waited >= 2);
 		Test.Assert(bench.Cook.Revision == 1); // the export's cook went through the cook service
-		Test.Assert(!bench.Jobs.IsBusy);
+		Test.Assert(!bench.Tasks.IsLaneBusy(bench.Lane));
 	}
 
 	/// A tiny data asset for the creation test; its content is beside the point.

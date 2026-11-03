@@ -21,7 +21,9 @@ class EditorExportServices
 	/// scanner, when wired.
 	public EditorContext Context = null;
 	public EditorCookService Cook = null;
-	public EditorJobService Jobs = null;
+	/// The pool and lane the export runs on (the context's build lane). Borrowed.
+	public TaskPool Tasks = null;
+	public TaskLane Lane = .Shared;
 	public BuilderRegistry Builders = null;
 	/// The per-user editor settings: the templates root override. Null reads as no override.
 	public Settings UserSettings = null;
@@ -98,7 +100,7 @@ class EditorExport
 			context.Notify(.Info, "Open a project first.");
 			return;
 		}
-		if (mServices.Jobs.IsBusy || mPending.Active)
+		if (mServices.Tasks.IsLaneBusy(mServices.Lane) || mPending.Active)
 		{
 			context.Notify(.Info, "An export is already in progress.");
 			return;
@@ -269,15 +271,15 @@ class EditorExport
 		let name = new String(presetName);
 		let revealRoot = new String(outRoot);
 
-		mServices.Jobs.Submit(all ? "Export All" : "Export",
-			new [=project, =builders, =toolDir, =templatesRoot, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets](job) =>
+		mServices.Tasks.Submit(all ? "Export All" : "Export",
+			new [=project, =builders, =toolDir, =templatesRoot, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets](task) =>
 			{
 				let registry = scope TemplateRegistry();
 				registry.Refresh(templatesRoot, BuildLayout.PlayerDirectoryBeside(toolDir, .. scope .()));
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
-						job.SetStep(step);
-						job.SetFraction(fraction);
+						task.SetStep(step);
+						task.SetFraction(fraction);
 					};
 				if (all)
 				{

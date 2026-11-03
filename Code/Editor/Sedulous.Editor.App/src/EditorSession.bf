@@ -23,7 +23,6 @@ class EditorSessionServices
 {
 	public EditorContext Context = null;
 	public EditorCookService Cook = null;
-	public EditorJobService Jobs = null;
 	public BuilderRegistry Builders = null;
 	public ThumbnailService Thumbnails = null;
 	/// The per-user editor settings, saved after an open is recorded. Null: not saved.
@@ -210,6 +209,10 @@ class EditorSession
 			mServices.OnClosing();
 		mClosingViews = false;
 		mServices.Cook.Shutdown(); // joins a cook in flight before the databases go
+		// The editor's long work reads the project (an export, an import's writes, a preview): what
+		// waits is dropped and what runs is told to stop and waited for, before the project goes.
+		context.Tasks.CancelAll();
+		context.Tasks.Finish();
 		DeleteAndNullify!(mServices.Cook.OnCookFinished); // it reaches this session
 		DeleteAndNullify!(mThumbnailStage); // unstages and drops its GPU objects while the renderer lives
 		mServices.Thumbnails.Reset(); // in-flight slots outlive harmlessly; the entries drop
@@ -339,7 +342,7 @@ class EditorSession
 		let cook = mServices.Cook;
 		mServices.Thumbnails.Configure(thumbsDir,
 			new [=project](id) => project.SourceDb.GetInstance(id),
-			mServices.Jobs,
+			mServices.Context.Tasks, mServices.Context.LightLane,
 			new [=cook](id) => cook.RecipeHashFor(id),
 			mProject.SourcesRoot(.. scope .()));
 	}
@@ -388,7 +391,6 @@ class EditorSession
 	{
 		let context = mServices.Context;
 		let cook = mServices.Cook;
-		let jobs = mServices.Jobs;
 		let builders = mServices.Builders;
 		cook.Initialize(mProject, builders);
 		// Pages request re-cooks after saving builder-backed assets.
@@ -400,11 +402,10 @@ class EditorSession
 		context.CookBusy = new [=cook]() => cook.IsReady && !cook.IsIdle;
 		delete context.SourceAssetTypesOf;
 		context.SourceAssetTypesOf = new [=builders](product, outAssets) => SceneReference.SourceAssetTypesFor(builders, product, outAssets);
-		// A background job (an export) reads the databases: mutations and new cooks wait, as
-		// during a cook.
+		// The build lane's work (an export, an import's writes) reads the databases: mutations and
+		// new cooks wait while it has any, as during a cook.
 		delete cook.ExternalMutationLock;
-		cook.ExternalMutationLock = new [=jobs]() => jobs.IsBusy;
-		context.Jobs = jobs; // pages submit light work here
+		cook.ExternalMutationLock = new [=context]() => context.Tasks.IsLaneBusy(context.BuildLane);
 		delete cook.OnCookFinished;
 		cook.OnCookFinished = new () => { CookFinished(); };
 	}

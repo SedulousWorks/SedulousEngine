@@ -73,8 +73,6 @@ class EditorApplication : IApplication
 	/// Exe-assembled (RegisterEditors).
 	private BuilderRegistry mBuilders = new .() ~ delete _;
 	private EditorCookService mCookService = new .() ~ delete _;
-	/// Background jobs: export, imports.
-	private EditorJobService mJobService = new .() ~ delete _;
 	/// Per project (the session configures it).
 	private ThumbnailService mThumbnailService = new .() ~ delete _;
 	/// The per-user editor preferences, <user-data>/editor.settings.xml.
@@ -185,7 +183,8 @@ class EditorApplication : IApplication
 			let imports = new AssetImportServices();
 			imports.Context = mContext;
 			imports.Cook = mCookService;
-			imports.Jobs = mJobService;
+			imports.Tasks = mContext.Tasks; // reads and writes on the build lane
+			imports.Lane = mContext.BuildLane;
 			mAssetImport = new AssetImport(imports);
 		}
 		mCreation = new EditorAssetCreation(CreationServices());
@@ -307,7 +306,6 @@ class EditorApplication : IApplication
 		let services = new EditorSessionServices();
 		services.Context = mContext;
 		services.Cook = mCookService;
-		services.Jobs = mJobService;
 		services.Builders = mBuilders;
 		services.Thumbnails = mThumbnailService;
 		services.UserSettings = mEditorSettings;
@@ -588,7 +586,8 @@ class EditorApplication : IApplication
 		let exportServices = new EditorExportServices();
 		exportServices.Context = mContext;
 		exportServices.Cook = mCookService;
-		exportServices.Jobs = mJobService;
+		exportServices.Tasks = mContext.Tasks;
+		exportServices.Lane = mContext.BuildLane;
 		exportServices.Builders = mBuilders;
 		exportServices.UserSettings = mEditorSettings;
 		exportServices.DataRoot.Set(mConfig.DataRoot);
@@ -607,7 +606,6 @@ class EditorApplication : IApplication
 		let mcpServices = new EditorMcpServiceServices();
 		mcpServices.Context = mContext;
 		mcpServices.Cook = mCookService;
-		mcpServices.Jobs = mJobService;
 		mcpServices.Builders = mBuilders;
 		mcpServices.UserSettings = mEditorSettings;
 		mcpServices.Log = mConfig.LogBuffer;
@@ -658,7 +656,10 @@ class EditorApplication : IApplication
 		mSession.Close();
 		DeleteAndNullify!(mMcp);
 		mCookService.Shutdown(); // joins a cook in flight
-		mJobService.Shutdown(); // joins a job in flight (an export reading EditorExport's copies)
+		// The editor's long work: what waits is dropped, what runs is told and waited for (an export
+		// reading EditorExport's copies), no cancelled completion run.
+		mContext.Tasks.CancelAll();
+		mContext.Tasks.Finish();
 	}
 
 	/// The editor owns a second, persistent runtime context populated by the SAME
@@ -1293,7 +1294,6 @@ class EditorApplication : IApplication
 		// The cook's and the jobs' progress to the status line; an export waiting on its cook
 		// starts.
 		mCookService.Update(scope (line) => { mContext.SetStatus(line); });
-		mJobService.Update(scope (line) => { mContext.SetStatus(line); });
 		if (mExport != null)
 			mExport.Pump();
 		// The editor's long work: the import previews' reads, done off this thread; their completions
@@ -1333,8 +1333,15 @@ class EditorApplication : IApplication
 		if (status == null)
 			return;
 		let progress = scope JobProgress();
-		if (mJobService.IsBusy)
-			mJobService.Progress(progress);
+		if (let job = mContext.Tasks.RunningIn(mContext.BuildLane))
+		{
+			progress.Active = true;
+			progress.Title.Set(job.Name);
+			progress.Fraction = job.Fraction;
+			job.GetStep(progress.Step);
+			progress.StepIndex = job.StepIndex;
+			progress.StepCount = job.StepCount;
+		}
 		status.ShowWork(progress, mCookService.IsCooking);
 		let host = (mMcp != null) ? mMcp.Host : null;
 		if ((host != null) && host.IsRunning)

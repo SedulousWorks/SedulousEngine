@@ -51,7 +51,6 @@ class EditorSessionTests
 		public EditorContext Context = new .() ~ delete _;
 		public BuilderRegistry Builders = new .() ~ delete _;
 		public EditorCookService Cook = new .() ~ delete _;
-		public EditorJobService Jobs = new .() ~ delete _;
 		public ThumbnailService Thumbnails = new .() ~ delete _;
 		/// The user's project registry, never written to the user data (no UserSettings).
 		public Settings Registry = new .() ~ delete _;
@@ -119,7 +118,6 @@ class EditorSessionTests
 			let services = new EditorSessionServices();
 			services.Context = Context;
 			services.Cook = Cook;
-			services.Jobs = Jobs;
 			services.Builders = Builders;
 			services.Thumbnails = Thumbnails;
 			services.Projects = Projects;
@@ -138,7 +136,7 @@ class EditorSessionTests
 					bench.OpenedSawServicesUp = (bench.Session.Project == project) && (context.Project == project)
 						&& (context.Resources != null) && (context.Resources == bench.Session.Resources)
 						&& (context.ProjectEditorSettings != null) && (context.ProjectEditorSettings == bench.Session.Store)
-						&& (context.Jobs == bench.Jobs) && bench.Cook.IsReady;
+						&& bench.Cook.IsReady;
 					bench.Events.Add(new .("opened"));
 				};
 			services.OnClosing = new [=bench]() =>
@@ -396,7 +394,7 @@ class EditorSessionTests
 		Test.Assert(context.ProjectEditorSettings == session.Store);
 		Test.Assert(context.OnProjectEditorSettingsSaveRequested != null);
 		Test.Assert(context.OnFavoritesChanged != null);
-		Test.Assert(context.Jobs == bench.Jobs);
+		Test.Assert(!context.Tasks.IsLaneBusy(context.BuildLane), "the build lane idle");
 		Test.Assert(bench.Cook.IsReady);
 		Test.Assert(bench.Cook.ExternalMutationLock != null);
 		Test.Assert(DirectoryExists(PathJoin(dir, ".cache/thumbs", .. scope .())));

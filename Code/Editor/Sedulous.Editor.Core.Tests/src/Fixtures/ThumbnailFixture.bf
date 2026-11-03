@@ -20,7 +20,8 @@ class ThumbnailFixture
 	public NativeFileSystem Mount ~ delete _;
 	public ContentDatabase Db ~ delete _;
 	public Instance Instance ~ delete _;
-	public EditorJobService Jobs = new .() ~ delete _;
+	public TaskPool Tasks = new .(1) ~ delete _;
+	public TaskLane Light = Tasks.CreateLane("Light");
 	public ThumbnailService Service = new .() ~ delete _;
 	public Guid Known;
 	public int Prepares = 0;
@@ -53,15 +54,17 @@ class ThumbnailFixture
 			generator.FailGenerate = failGenerate;
 			Service.RegisterGenerator(generator);
 		}
-		Service.Configure(CacheDir, new (id) => (id == Known) ? Instance : null, Jobs, new (id) => Hash, MountDir);
+		Service.Configure(CacheDir, new (id) => (id == Known) ? Instance : null, Tasks, Light, new (id) => Hash, MountDir);
 	}
 
 	/// Pumps the light lane to completion; bounded so a hang fails.
 	public void PumpLight()
 	{
-		int guard = 0;
-		while (Jobs.IsLightBusy && (guard++ < 2000000))
-			Jobs.Update();
-		Jobs.Update();
+		for (int guard < 8)
+		{
+			Tasks.Finish(); // waits for the lane's tasks, then hands them back
+			if (Tasks.InFlight == 0)
+				break;
+		}
 	}
 }

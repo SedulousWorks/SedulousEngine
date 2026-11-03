@@ -396,10 +396,10 @@ class ScenePageTests
 	public static void ThePageSavingItsViewDropsTheScenesCachedThumbnail()
 	{
 		let bed = scope Bed();
-		let jobs = scope EditorJobService();
+		let tasks = scope TaskPool(1);
 		let thumbnails = scope ThumbnailService();
 		// Nothing resolves, so a Get caches a negative at once: an entry to drop.
-		thumbnails.Configure(bed.Dir, new (id) => null, jobs, new (id) => 0, bed.Dir);
+		thumbnails.Configure(bed.Dir, new (id) => null, tasks, tasks.CreateLane("Light"), new (id) => 0, bed.Dir);
 		bed.Context.Thumbnails = thumbnails;
 		defer { bed.Context.Thumbnails = null; }
 		let page = bed.Open(bed.Level);

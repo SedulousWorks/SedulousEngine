@@ -40,6 +40,8 @@ class FontEditorPage : AssetObjectPage
 	private FontBakeRequest mPendingRequest = null ~ delete _;
 	/// The in flight slot, borrowed: the completion closure owns and deletes it.
 	private FontBakeSlot mActiveSlot = null;
+	/// The bake running or last run: a reference of ours, cancelled as the page closes.
+	private TaskHandle mBake = null;
 
 	/// It takes `services`.
 	public this(EditorContext context, AssetPageServices services, Instance instance)
@@ -71,6 +73,11 @@ class FontEditorPage : AssetObjectPage
 		{
 			mActiveSlot.PageAlive = false; // the completion closure still owns and deletes it
 			mActiveSlot = null;
+		}
+		if (mBake != null)
+		{
+			mBake.Cancel(); // its completion never reaches a closed page
+			mBake.ReleaseRef();
 		}
 	}
 
@@ -171,8 +178,8 @@ class FontEditorPage : AssetObjectPage
 	{
 		let request = CaptureBakeRequest();
 		request.Generation = ++mBakeGeneration;
-		let jobs = Context.Jobs;
-		if (jobs == null)
+		let tasks = Context.Tasks;
+		if (tasks == null)
 		{
 			let outcome = scope FontBakeOutcome();
 			FontBake.Run(request, outcome);
@@ -192,15 +199,21 @@ class FontEditorPage : AssetObjectPage
 	/// `request` is consumed.
 	private void StartBake(FontBakeRequest request)
 	{
-		let jobs = Context.Jobs;
+		let tasks = Context.Tasks;
 		let slot = new FontBakeSlot();
 		delete slot.Request;
 		slot.Request = request;
 		mActiveSlot = slot;
 		mBakeBusy = true;
 		SetFact("Atlas", "Baking...");
-		jobs.SubmitLight(new [=slot]() => { FontBake.Run(slot.Request, slot.Outcome); },
-			new [=this, =slot]() =>
+		if (mBake != null)
+			mBake.ReleaseRef();
+		mBake = tasks.Submit("Baking a font atlas", new [=slot] (task) =>
+			{
+				FontBake.Run(slot.Request, slot.Outcome);
+				return Result<void, ErrorCode>.Ok;
+			},
+			new [=this, =slot] (status) =>
 			{
 				// The main thread. The page may have closed mid flight; the slot's flag is the
 				// guard (set and read on the main thread only).
@@ -216,8 +229,8 @@ class FontEditorPage : AssetObjectPage
 						StartBake(next);
 					}
 				}
-				delete slot;
-			});
+			} ~ { delete slot; }, Context.LightLane); // the slot goes with it, run or not
+		mBake.AddRef(); // ours, to cancel it as the page closes
 	}
 
 	/// Shows a bake's atlas, unless a newer request has since been made (a stale outcome never

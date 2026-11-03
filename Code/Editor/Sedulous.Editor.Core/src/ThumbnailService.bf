@@ -72,7 +72,9 @@ class ThumbnailService
 	private NativeFileSystem mSources = null ~ delete _;
 	private Resolve mResolve = null ~ delete _;
 	private ContentHash mContentHash = null ~ delete _;
-	private EditorJobService mJobs = null;
+	/// The pool and lane its loads and writes run on; borrowed; null: not configured.
+	private TaskPool mTasks = null;
+	private TaskLane mLane = .Shared;
 	private List<IThumbnailGenerator> mGenerators = new .() ~ DeleteContainerAndItems!(_);
 	private List<ISceneThumbnailGenerator> mSceneGenerators = new .() ~ DeleteContainerAndItems!(_);
 	private Dictionary<Guid, Entry> mEntries = new .() ~ DeleteDictionaryAndValues!(_);
@@ -98,13 +100,14 @@ class ThumbnailService
 	/// Project open wiring: where the cache lives, how to resolve instances, the job lane,
 	/// the content hash source and the sources root. Previous state is dropped; the delegates
 	/// are OWNED.
-	public void Configure(StringView cacheDirectory, Resolve resolve, EditorJobService jobs,
+	public void Configure(StringView cacheDirectory, Resolve resolve, TaskPool tasks, TaskLane lane,
 		ContentHash contentHash, StringView sourcesRoot)
 	{
 		Reset();
 		mCacheDirectory.Set(cacheDirectory);
 		mResolve = resolve;
-		mJobs = jobs;
+		mTasks = tasks;
+		mLane = lane;
 		mContentHash = contentHash;
 		mSources = new NativeFileSystem(sourcesRoot);
 	}
@@ -124,7 +127,7 @@ class ThumbnailService
 		mCacheDirectory.Clear();
 		DeleteAndNullify!(mResolve);
 		DeleteAndNullify!(mContentHash);
-		mJobs = null;
+		mTasks = null;
 		DeleteAndNullify!(mSources);
 	}
 
@@ -133,7 +136,7 @@ class ThumbnailService
 	/// OnThumbnailReady fires when the swap in is ready. Main thread only.
 	public Sedulous.GUI.Drawable Get(Guid id)
 	{
-		if (!id.IsSet || (mJobs == null) || (mResolve == null))
+		if (!id.IsSet || (mTasks == null) || (mResolve == null))
 			return null;
 		if (mEntries.TryGetValue(id, let entry))
 			return entry.Drawable;
@@ -197,14 +200,18 @@ class ThumbnailService
 		// Persisted on the light lane, the PNG encode off the main thread, and published
 		// now: the drawable owns its pixels, so the UI swaps in before the file lands.
 		let hash = HashFor(id);
-		if ((hash != 0) && (mJobs != null))
+		if ((hash != 0) && (mTasks != null))
 		{
 			let file = new Image(pixels.Width, pixels.Height, pixels.Format, pixels.PixelData);
 			file.SetColorSpace(pixels.ColorSpace);
 			let path = new String();
 			CachePathFor(id, hash, path);
-			mJobs.SubmitLight(new [=file, =path]() => { ImageIO.SaveImage(file, path, .PNG).IgnoreError(); },
-				new [=file, =path]() => { delete file; delete path; });
+			mTasks.Submit("Writing a thumbnail", new [=file, =path] (task) =>
+				{
+					ImageIO.SaveImage(file, path, .PNG).IgnoreError();
+					return Result<void, ErrorCode>.Ok;
+				},
+				new (status) => { } ~ { delete file; delete path; }, mLane); // gone, run or not
 		}
 		let drawable = new OwnedThumbnailDrawable(pixels);
 		Store(id, drawable);
@@ -287,7 +294,12 @@ class ThumbnailService
 		}
 
 		mInFlight.Add(slot);
-		mJobs.SubmitLight(new [=slot]() => { Produce(slot); }, new [=slot, =this]() => { CompleteLoad(slot); });
+		mTasks.Submit("Loading a thumbnail", new [=slot] (task) =>
+			{
+				Produce(slot);
+				return Result<void, ErrorCode>.Ok;
+			},
+			new [=slot, =this] (status) => { CompleteLoad(slot); } ~ { delete slot; }, mLane); // the slot goes with it, run or not
 	}
 
 	/// LIGHT worker: the disk cache first, else generate and persist.
@@ -339,8 +351,8 @@ class ThumbnailService
 			ImageIO.SaveImage(slot.Pixels, slot.DiskPath, .PNG).IgnoreError();
 	}
 
-	/// Main thread. The service may have been Reset mid flight; the slot's flag is the guard
-	/// and the slot is always deleted here.
+	/// Main thread. The service may have been Reset mid flight; the slot's flag is the guard. The
+	/// slot goes with the completion, run or not (a cancelled task's never runs).
 	private void CompleteLoad(JobSlot slot)
 	{
 		if (slot.ServiceAlive)
@@ -367,7 +379,6 @@ class ThumbnailService
 				Store(slot.Id, null);
 			}
 		}
-		delete slot;
 	}
 
 	/// Inserts or replaces the entry; a null drawable is the negative cache.

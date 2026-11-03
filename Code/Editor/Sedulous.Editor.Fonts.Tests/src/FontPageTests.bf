@@ -104,7 +104,9 @@ class FontPageTests
 					delete Picked;
 					Picked = request;
 				};
-			return new FontEditorPage(Context, services, Roboto);
+			let page = new FontEditorPage(Context, services, Roboto);
+			Context.Tasks.Finish(); // its atlas bakes on the light lane: this runs the bake and hands it back
+			return page;
 		}
 	}
 
