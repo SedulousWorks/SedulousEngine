@@ -13,6 +13,7 @@ using Sedulous.Model;
 using Sedulous.Model.Resource;
 using Sedulous.Engine.Model;
 using Sedulous.GUI;
+using Sedulous.Image.IO; // a texture part's picture, from the file beside the model
 using Sedulous.Pipeline.Importer;
 using Sedulous.ModelImporter;
 using Sedulous.Editor.Core;
@@ -43,6 +44,16 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	private Sedulous.Geometry.StaticMesh mSphereMesh = null ~ delete _;
 	/// The skeleton part turned the bones on.
 	private bool mBonesByPart = false;
+	/// The model as read, for a texture part's picture: the importer's (borrowed: the window stops
+	/// this before it changes or frees it), or the preview's own read (a reference of ours).
+	private Model mImported = null;
+	private Read mOwnRead = null;
+	/// A texture part's picture, in place of the model's view, made the first time: the view a
+	/// reference of ours (the root holds its own).
+	private Node mPictureView = null;
+	private ImagePreview mPicture = null ~ delete _;
+	/// The model's bar; the tree's.
+	private Node mBar = null;
 
 	/// Where the import window's model previews cook, under a project's cache folder.
 	public const String cCacheFolder = "ModelPreviews";
@@ -93,6 +104,7 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	public this(StringView path, StringView cacheRoot, TaskPool tasks, AssetPageServices services, Model imported = null)
 	{
 		mPath.Set(path);
+		mImported = imported;
 		BuildView(services);
 		Start(cacheRoot, tasks, imported);
 	}
@@ -114,6 +126,10 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		DeleteAndNullify!(mViewport);
 		mOpen.Close();
 		delete mOpen;
+		if (mPictureView != null)
+			mPictureView.ReleaseRef();
+		if (mOwnRead != null)
+			mOwnRead.ReleaseRef();
 	}
 
 	public Node View => mRoot;
@@ -148,6 +164,8 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	// For tests.
 	/// Whether the model opened (cooked or from the cache, and bound).
 	public bool IsOpen => mOpen.IsOpen;
+	/// Whether a texture's picture shows in place of the model.
+	public bool ShowsPicture => (mPictureView != null) && mPictureView.Displayed;
 	/// The clips the picker lists, by name.
 	public Span<String> Clips => mClipNames;
 
@@ -157,6 +175,7 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		panel.AddClass("import-model");
 		let bar = new Sedulous.GUI.Panel();
 		bar.AddClass("panel-toolbar");
+		mBar = bar;
 		let frame = Tool("Editor/Icons/frame-selection.svg", "Frame it (F)");
 		frame.SetOnClick(new [=this] () => { Frame(); });
 		let clipChoice = new ComboBox();
@@ -298,6 +317,11 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		{
 			Failed(result.Outcome);
 			return;
+		}
+		if (mImported == null)
+		{
+			result.AddRef(); // the model it read itself, for a texture's picture
+			mOwnRead = result;
 		}
 		let stats = result.Stats;
 		result.Stats = null; // Bind takes it
@@ -480,15 +504,27 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	}
 
 	/// A part alone: a mesh by itself, a material on a sphere, the skeleton's bones over the model, a
-	/// clip playing on it. False for a texture or a collision shape (the preview's cook makes no
-	/// collision, and pictures are another page's). Asked before the model is in, it is shown once it
-	/// is.
+	/// clip playing on it, a texture's picture in place of the model. False for a collision shape (the
+	/// preview's cook makes none), and for a texture when the model was not read here (bound from the
+	/// preview's cache). Asked before the model is in, it is shown once it is.
 	public bool ShowPart(ImportPlanEntry part)
 	{
+		if (part.Kind == .Texture)
+		{
+			// Its picture, from the model as read: shown now, or not at all (nothing read here).
+			ShowWholeModel();
+			mShowsPart = ShowTexture(part.SourceName);
+			if (mShowsPart)
+			{
+				mPartKind = part.Kind;
+				mPartName.Set(part.SourceName);
+			}
+			return mShowsPart;
+		}
 		if ((part.Kind != .Mesh) && (part.Kind != .Material) && (part.Kind != .Skeleton) && (part.Kind != .AnimationClip))
 		{
 			ShowWhole();
-			return false; // a picture or a collision shape: the whole model stays
+			return false; // a collision shape: the preview's cook makes none, so the whole model stays
 		}
 		mPartKind = part.Kind;
 		mPartName.Set(part.SourceName);
@@ -503,9 +539,79 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		ShowWholeModel();
 	}
 
-	/// Undoes what showing a part changed: every mesh drawn, the sphere gone, the bones as they were.
+	/// The model as read (the importer's, or the preview's own read), or null when neither is here
+	/// (the model came from the preview's cache with nothing read).
+	private Model ModelAsRead => (mImported != null) ? mImported : ((mOwnRead != null) ? mOwnRead.Model : null);
+
+	/// The picture of texture part `name` (the plan's name for it), from the model as read: its
+	/// decoded pixels, or the file beside the model it names. False when there is none to show.
+	private bool ShowTexture(StringView name)
+	{
+		let model = ModelAsRead;
+		if (model == null)
+			return false;
+		let textures = model.Textures;
+		let textureName = scope String();
+		for (int i < textures.Length)
+		{
+			let texture = textures[i];
+			textureName.Clear();
+			ImportedNames.ForTexture(texture, i, textureName);
+			if (textureName != name)
+				continue;
+			Sedulous.Image.Image pixels = null;
+			if (texture.HasEmbeddedData && (texture.Width > 0) && (texture.Height > 0)
+				&& (texture.DataSize == (int)texture.Width * texture.Height * 4))
+			{
+				pixels = new .((uint32)texture.Width, (uint32)texture.Height, .RGBA8, texture.Data); // a copy
+			}
+			else if (!texture.SourceFile.IsEmpty)
+			{
+				let source = new Sedulous.Image.Image();
+				if (!(ImageIO.LoadImage(texture.SourceFile, source) case .Ok) || (source.Width == 0))
+				{
+					delete source;
+					return false;
+				}
+				if (source.Format == .RGBA8)
+					pixels = source;
+				else
+				{
+					pixels = source.ConvertFormat(.RGBA8);
+					delete source;
+				}
+			}
+			else
+				return false;
+			if (mPictureView == null)
+			{
+				mPictureView = ImageFilePreview.BuildImageView(); // one reference, ours
+				mPicture = new ImagePreview(mPictureView);
+				mRoot.AddChild(mPictureView);
+			}
+			mPicture.Show(pixels); // it takes them
+			ShowPicture(true);
+			return true;
+		}
+		return false;
+	}
+
+	/// The model's view, or a texture's picture in its place.
+	private void ShowPicture(bool shown)
+	{
+		if (mPictureView != null)
+			mPictureView.Displayed = shown;
+		if (mBar != null)
+			mBar.Displayed = !shown;
+		if (mStage != null)
+			mStage.Displayed = !shown;
+	}
+
+	/// Undoes what showing a part changed: every mesh drawn, the sphere gone, the bones as they were,
+	/// the model's view in place of a picture.
 	private void ShowWholeModel()
 	{
+		ShowPicture(false);
 		let level = (mViewport != null) ? mViewport.Scene : null;
 		if (level != null)
 		{
@@ -586,6 +692,8 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 				mSkeleton.Checked = true;
 				mBonesByPart = true;
 			}
+		case .Texture:
+			ShowTexture(mPartName);
 		case .AnimationClip:
 			let name = scope String();
 			for (int a < mClipNames.Count)

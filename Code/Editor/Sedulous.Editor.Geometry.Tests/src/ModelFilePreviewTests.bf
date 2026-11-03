@@ -5,6 +5,7 @@ using Sedulous.VFS;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Geometry;
+using Sedulous.Pipeline.Importer; // ImportPlan, a texture part to show
 using Sedulous.ModelImporter; // the importer's own read
 
 namespace Sedulous.Editor.Geometry.Tests;
@@ -125,5 +126,48 @@ class ModelFilePreviewTests
 		Test.Assert(tasks.InFlight <= 1, "ended (cancelled, or finished just before), only its hand-back left");
 		tasks.Finish();
 		Test.Assert(!preview.IsOpen, "a stopped preview's completion does not run");
+	}
+
+	/// A texture part shows its picture in place of the model, from the importer's read; the whole
+	/// file brings the model back, and a texture it has no picture of keeps the model.
+	[Test]
+	public static void ATexturePartShowsItsPictureInPlaceOfTheModelFromTheImportersReadTheWholeFileBringsItBack()
+	{
+		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_texture", .. scope .());
+		RemoveDirectoryRecursive(cache);
+		Test.Assert(CreateDirectory(cache));
+		defer RemoveDirectoryRecursive(cache);
+		let root = FindDataRoot(.. scope .());
+		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
+		let importer = scope ModelFileImporter();
+		let prepared = importer.PrepareOnWorker(fox);
+		defer delete prepared;
+		let loaded = prepared as LoadedModel;
+		Test.Assert(loaded != null);
+		let options = importer.CreateOptions();
+		defer delete options;
+		let plan = scope ImportPlan();
+		importer.DescribeImport(fox, options, prepared, plan);
+		ImportPlanEntry texture = null;
+		for (let entry in plan.Entries)
+		{
+			if (entry.Kind == .Texture)
+				texture = entry;
+		}
+		Test.Assert(texture != null);
+		let tasks = scope TaskPool(1);
+		let services = scope AssetPageServices(); // no host: no view
+		{
+			let preview = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model);
+			Test.Assert(!preview.ShowsPicture);
+			Test.Assert(preview.ShowPart(texture), "the importer read it: its pixels are here");
+			Test.Assert(preview.ShowsPicture);
+			preview.ShowWhole();
+			Test.Assert(!preview.ShowsPicture);
+			let missing = scope ImportPlanEntry(.Texture, "no_such_texture", "no_such_texture");
+			Test.Assert(!preview.ShowPart(missing), "no picture of that name: the model stays");
+			Test.Assert(!preview.ShowsPicture);
+			tasks.Finish();
+		}
 	}
 }
