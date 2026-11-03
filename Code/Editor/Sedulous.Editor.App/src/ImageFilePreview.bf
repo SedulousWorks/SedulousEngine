@@ -39,7 +39,7 @@ class ImageFilePreview : IImportPreview
 	/// the picture and its facts show when it comes back, or why it did not decode.
 	public this(StringView path, TaskPool tasks)
 	{
-		mRoot = BuildView();
+		mRoot = BuildImageView();
 		mPicture = new ImagePreview(mRoot);
 		mPicture.ShowNone(scope $"Reading {ImportPaths.FileNameOf(path)}...");
 		let decoded = new Decoded(); // the done's reference
@@ -154,9 +154,11 @@ class ImageFilePreview : IImportPreview
 		return false;
 	}
 
-	/// The bar over the picture and the stage it shows in, with the ids ImagePreview binds (as the
-	/// image pages' markup has them): a node with one reference, the caller's.
-	private static Node BuildView()
+	/// The picture's view: its bar (Fit, 1:1, the zoom, the channel, the pixel under the pointer) and
+	/// the stage it shows in, with the ids an ImagePreview binds (as the image pages' markup has them),
+	/// for a preview that shows a picture (a picture file's, a model's texture): a node with one
+	/// reference, the caller's.
+	public static Node BuildImageView()
 	{
 		let root = new Sedulous.GUI.Panel();
 		root.AddClass("import-image");
