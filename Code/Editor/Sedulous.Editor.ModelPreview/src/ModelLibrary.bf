@@ -684,6 +684,41 @@ class OpenModel
 		return BindCooked(mLoadingGuid, mLoadingOutcome);
 	}
 
+	/// One part of the bound model, as `productType` (or a type made from it: a skinned mesh for a
+	/// mesh), found by the name the import's plan gives it (`sourceName`, an ImportPlanEntry's): the
+	/// cook names each part's instance `model.<name>`, with `.2` and on when a name was taken. Null
+	/// when it has none (a part the preview's cook does not make, such as a collision shape).
+	/// BORROWED: the resource manager's handle.
+	public ResourceHandle FindPart(StringView sourceName, Type productType)
+	{
+		if ((mCache == null) || (mResources == null) || !IsOpen)
+			return null;
+		let root = mCache.Database.RootGroup;
+		if (root == null)
+			return null;
+		let stem = scope $"model.{sourceName}";
+		for (let instance in root.Instances)
+		{
+			let name = instance.Name;
+			var named = name == stem;
+			if (!named && (name.Length > stem.Length + 1) && name.StartsWith(stem) && (name[stem.Length] == '.'))
+			{
+				named = true;
+				for (int i = stem.Length + 1; i < name.Length; i++)
+					named = named && name[i].IsDigit;
+			}
+			if (!named)
+				continue;
+			let made = mResources.ProductTypeIdFor(instance.Id);
+			if (made == 0)
+				continue;
+			let handle = mResources.BindHandle(made, instance.Id);
+			if ((handle != null) && (handle.Product != null) && handle.Product.GetType().IsSubtypeOf(productType))
+				return handle;
+		}
+		return null;
+	}
+
 	/// While it loads: the parts asked for, and how many are still on their way.
 	public bool IsLoading => mLoading;
 	public int PartsAsked => mPartsAsked;

@@ -394,4 +394,28 @@ class ModelPreviewTests
 		Test.Assert(reopened.IsOpen);
 		Test.Assert(reopened.Stats.Triangles == stats.Triangles);
 	}
+
+	/// A part of the bound model found by the name the import's plan gives it, as its type.
+	[Test]
+	public static void APartOfTheBoundModelFoundByTheNameTheImportsPlanGivesItAsItsType()
+	{
+		let fox = TestModel(cFox, .. scope .());
+		let cache = FreshCache("scratch_model_viewer_parts", .. scope .());
+		defer RemoveDirectoryRecursive(cache);
+		let open = scope OpenModel();
+		open.LooseTextures = false;
+		Test.Assert(open.Open(fox, cache, null) == .Opened);
+
+		// Fox.gltf: the mesh "fox1" and the material "fox_material", named as the plan names them.
+		let mesh = open.FindPart("fox1", typeof(Sedulous.Geometry.StaticMesh));
+		Test.Assert(mesh != null);
+		Test.Assert(mesh.Product === open.Model.Meshes[0].Get, "the model's own (a skinned mesh, as a mesh)");
+		let material = open.FindPart("fox_material", typeof(Sedulous.Materials.Material));
+		Test.Assert(material != null);
+		Test.Assert((material.Product as Sedulous.Materials.Material) != null);
+
+		Test.Assert(open.FindPart("fox1", typeof(Sedulous.Materials.Material)) == null, "a mesh is not a material");
+		Test.Assert(open.FindPart("fox", typeof(Sedulous.Geometry.StaticMesh)) == null, "only the whole name");
+		Test.Assert(open.FindPart("no_such_part", typeof(Sedulous.Geometry.StaticMesh)) == null);
+	}
 }
