@@ -54,6 +54,11 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	private ImagePreview mPicture = null ~ delete _;
 	/// The model's bar; the tree's.
 	private Node mBar = null;
+	/// The file's import settings (borrowed: the window keeps them past this), and each mesh's own
+	/// materials while the import leaves them out (it draws the default then).
+	private ImportOptions mOptions = null;
+	private List<(EntityHandle Entity, List<Sedulous.Resource.Ref<Sedulous.Materials.Material>> Materials)> mKeptMaterials = new .() ~ { for (let kept in _) delete kept.Materials; delete _; };
+	private bool mDefaultMaterial = false;
 
 	/// Where the import window's model previews cook, under a project's cache folder.
 	public const String cCacheFolder = "ModelPreviews";
@@ -100,11 +105,14 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	/// cooked on `tasks` (borrowed: it outlives this) from `imported` (the model the importer read;
 	/// borrowed: the window stops this before it changes or frees it, StopReading), else read and
 	/// cooked there. `services` give the host and GUI the view needs
-	/// (no host: no view); borrowed.
-	public this(StringView path, StringView cacheRoot, TaskPool tasks, AssetPageServices services, Model imported = null)
+	/// (no host: no view); borrowed. `options` (the file's import settings, which outlive this) say
+	/// what the import leaves out: materials left out draw the default.
+	public this(StringView path, StringView cacheRoot, TaskPool tasks, AssetPageServices services, Model imported = null,
+		ImportOptions options = null)
 	{
 		mPath.Set(path);
 		mImported = imported;
+		mOptions = options;
 		BuildView(services);
 		Start(cacheRoot, tasks, imported);
 	}
@@ -166,6 +174,15 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	public bool IsOpen => mOpen.IsOpen;
 	/// Whether a texture's picture shows in place of the model.
 	public bool ShowsPicture => (mPictureView != null) && mPictureView.Displayed;
+	/// Whether the model draws the default material, its own being left out of the import.
+	public bool DrawsDefaultMaterial => mDefaultMaterial;
+
+	/// The file's settings changed: the model drawn as it will import (materials left out draw the
+	/// default material).
+	public void OnSettingsChanged()
+	{
+		ShowAsImported();
+	}
 	/// The clips the picker lists, by name.
 	public Span<String> Clips => mClipNames;
 
@@ -406,6 +423,7 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 		mMessage.Displayed = false;
 		Place();
 		ShowClips();
+		ShowAsImported();
 		if (mShowsPart)
 			ApplyPart();
 		if (mOnChanged != null)
@@ -537,6 +555,55 @@ class ModelFilePreview : IImportPreview, IImportPreviewFrames, IImportPartPrevie
 	{
 		mShowsPart = false;
 		ShowWholeModel();
+	}
+
+	/// Draws the model as the import will make it: with the default material while its materials are
+	/// left out (the Materials row unticked), its own again when they are not.
+	private void ShowAsImported()
+	{
+		let model = mOptions as ModelImportOptions;
+		let leftOut = (model != null) && !model.ImportMaterials;
+		if (leftOut == mDefaultMaterial)
+			return;
+		mDefaultMaterial = leftOut;
+		let level = (mViewport != null) ? mViewport.Scene : null;
+		let meshes = (level != null) ? level.GetSystem<MeshComponentManager>() : null;
+		if ((meshes == null) || !level.IsValid(mInstance.Root))
+			return;
+		if (leftOut)
+		{
+			ForgetKeptMaterials();
+			meshes.ForEach(scope [&] (component, entity) =>
+				{
+					if (!Under(level, entity, mInstance.Root))
+						return;
+					let own = new List<Sedulous.Resource.Ref<Sedulous.Materials.Material>>();
+					for (let reference in component.Materials)
+						own.Add(reference);
+					mKeptMaterials.Add((entity, own));
+					component.Materials.Clear(); // no material: the renderer's default
+					component.MaterialCache.Clear();
+				});
+			return;
+		}
+		for (let kept in mKeptMaterials)
+		{
+			let component = meshes.Get(kept.Entity);
+			if (component != null)
+			{
+				component.Materials.Clear();
+				for (let reference in kept.Materials)
+					component.Materials.Add(reference);
+			}
+		}
+		ForgetKeptMaterials();
+	}
+
+	private void ForgetKeptMaterials()
+	{
+		for (let kept in mKeptMaterials)
+			delete kept.Materials;
+		mKeptMaterials.Clear();
 	}
 
 	/// The model as read (the importer's, or the preview's own read), or null when neither is here
@@ -771,7 +838,7 @@ class ModelFilePreviewFactory : IImportPreviewFactory
 		let services = (mServices != null) ? mServices.Make() : new AssetPageServices();
 		defer delete services;
 		let loaded = file.Prepared as LoadedModel;
-		return new ModelFilePreview(file.Path, cacheRoot, tasks, services, (loaded != null) ? loaded.Model : null);
+		return new ModelFilePreview(file.Path, cacheRoot, tasks, services, (loaded != null) ? loaded.Model : null, file.Options);
 	}
 
 	/// Registers the model preview for the files the model importer lists (its manifests).

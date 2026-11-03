@@ -170,4 +170,41 @@ class ModelFilePreviewTests
 			tasks.Finish();
 		}
 	}
+
+	/// With its materials left out of the import it draws the default material, and its own again
+	/// when they are back.
+	[Test]
+	public static void WithItsMaterialsLeftOutOfTheImportItDrawsTheDefaultMaterialAndItsOwnWhenTheyAreBack()
+	{
+		let cache = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_model_file_preview_default_material", .. scope .());
+		RemoveDirectoryRecursive(cache);
+		Test.Assert(CreateDirectory(cache));
+		defer RemoveDirectoryRecursive(cache);
+		let root = FindDataRoot(.. scope .());
+		let fox = DataPath(root, "Tests/Models/FoxNested/glTF/Fox.gltf", .. scope .());
+		let importer = scope ModelFileImporter();
+		let prepared = importer.PrepareOnWorker(fox);
+		defer delete prepared;
+		let loaded = prepared as LoadedModel;
+		Test.Assert(loaded != null);
+		let options = importer.CreateOptions() as ModelImportOptions;
+		defer delete options;
+		Test.Assert(options != null);
+		options.ImportMaterials = false;
+		let tasks = scope TaskPool(1);
+		let services = scope AssetPageServices(); // no host: no view
+		{
+			let preview = scope ModelFilePreview(fox, cache, tasks, services, loaded.Model, options);
+			tasks.Finish();
+			preview.FinishLoading();
+			Test.Assert(preview.IsOpen);
+			Test.Assert(preview.DrawsDefaultMaterial, "as it will import: no materials");
+			options.ImportMaterials = true;
+			preview.OnSettingsChanged();
+			Test.Assert(!preview.DrawsDefaultMaterial);
+			options.ImportMaterials = false;
+			preview.OnSettingsChanged();
+			Test.Assert(preview.DrawsDefaultMaterial);
+		}
+	}
 }
