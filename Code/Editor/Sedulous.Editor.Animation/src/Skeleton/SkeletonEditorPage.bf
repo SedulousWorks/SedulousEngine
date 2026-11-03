@@ -247,7 +247,6 @@ class SkeletonEditorPage : AssetObjectPage
 		if (mSkeleton == null)
 			return;
 		mShowing = true;
-		let count = mSkeleton.BoneCount;
 		// A bone the user folded stays folded through the rebuild (a search, a reload).
 		let folded = scope List<int32>();
 		if (mTree != null)
@@ -259,28 +258,12 @@ class SkeletonEditorPage : AssetObjectPage
 			}
 		}
 		// A search keeps the bones whose names hold it, and every bone above one (where it hangs).
-		let kept = scope List<bool>();
-		for (int b < count)
-			kept.Add(mSearch.IsEmpty);
-		if (!mSearch.IsEmpty)
-		{
-			for (int32 b < count)
-			{
-				if (!mSkeleton.GetBone(b).Name.Contains(mSearch, true))
-					continue;
-				for (var walk = b; (walk >= 0) && (walk < count) && !kept[walk]; walk = mSkeleton.GetBone(walk).ParentIndex)
-					kept[walk] = true;
-			}
-		}
-		mModel.Clear();
-		mRows.Clear();
+		AnimationPreview.FillBoneTree(mModel, mRows, mSkeleton, mSearch);
 		int32 chosen = -1;
-		// Each bone under its parent, in the skeleton's order among its siblings.
-		for (int32 b < count)
+		for (int node < mRows.Count)
 		{
-			let parent = mSkeleton.GetBone(b).ParentIndex;
-			if (((parent < 0) || (parent >= count)) && kept[b])
-				AddBone(b, TreeModel.Root, kept, ref chosen);
+			if (mRows[node] == mChosen)
+				chosen = (int32)node;
 		}
 		if (mTree != null)
 		{
@@ -293,21 +276,6 @@ class SkeletonEditorPage : AssetObjectPage
 			}
 		}
 		mShowing = false;
-	}
-
-	private void AddBone(int32 bone, int32 parentNode, List<bool> kept, ref int32 chosen)
-	{
-		let data = mSkeleton.GetBone(bone);
-		let node = mModel.AddNode(parentNode, data.Name.IsEmpty ? (StringView)scope:: String()..AppendF("Bone {}", bone) : (StringView)data.Name);
-		mModel.SetIcon(node, "Editor/Icons/Types/SkeletonAsset.svg", "cat-animation");
-		mRows.Add(bone);
-		if (bone == mChosen)
-			chosen = node;
-		for (int32 child < mSkeleton.BoneCount)
-		{
-			if ((mSkeleton.GetBone(child).ParentIndex == bone) && kept[child])
-				AddBone(child, node, kept, ref chosen);
-		}
 	}
 
 	private void ShowBone()

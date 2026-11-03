@@ -24,10 +24,11 @@ namespace Sedulous.Editor.Animation;
 static class AnimationPreview
 {
 	/// `skeleton` in the pose `localPoses` as its bones, placed by `placement`; `chosen` (-1: none)
-	/// drawn apart. `worldScratch` is the caller's, kept between frames; it holds every bone's world
-	/// matrix after.
+	/// drawn apart, over everything. `worldScratch` is the caller's, kept between frames; it holds
+	/// every bone's world matrix after. `overTheModel` draws every bone over everything (bones inside
+	/// a mesh).
 	public static void DrawSkeletonBones(DebugDraw draw, Skeleton skeleton, Span<BoneTransform> localPoses,
-		List<Float4x4> worldScratch, Float4x4 placement, int32 chosen = -1)
+		List<Float4x4> worldScratch, Float4x4 placement, int32 chosen = -1, bool overTheModel = false)
 	{
 		let boneCount = skeleton.BoneCount;
 		if ((boneCount == 0) || (localPoses.Length < boneCount))
@@ -45,8 +46,57 @@ static class AnimationPreview
 			let color = isChosen ? chosenColor : boneColor;
 			let joint = JointPosition(worldScratch[b]);
 			if ((bone != null) && (bone.ParentIndex >= 0) && (bone.ParentIndex < boneCount))
-				draw.DrawLine(JointPosition(worldScratch[bone.ParentIndex]), joint, color, isChosen);
+				draw.DrawLine(JointPosition(worldScratch[bone.ParentIndex]), joint, color, isChosen || overTheModel);
 			draw.DrawCross(joint, isChosen ? 0.05f : 0.02f, color);
+		}
+	}
+
+	/// Fills `model` with `skeleton`'s bones, each under its parent in the skeleton's order among its
+	/// siblings, a bone icon each; `rows` gets the bone each node is, by node (a TreeView's item id).
+	/// With `search`, only the bones whose names hold it (any case) and every bone above one, so its
+	/// place in the hierarchy shows. For the skeleton page and the import window.
+	public static void FillBoneTree(TreeModel model, List<int32> rows, Skeleton skeleton, StringView search = default)
+	{
+		model.Clear();
+		rows.Clear();
+		let count = skeleton.BoneCount;
+		let kept = scope List<bool>();
+		for (int b < count)
+			kept.Add(search.IsEmpty);
+		if (!search.IsEmpty)
+		{
+			for (int32 b < count)
+			{
+				if (!skeleton.GetBone(b).Name.Contains(search, true))
+					continue;
+				for (var walk = b; (walk >= 0) && (walk < count) && !kept[walk]; walk = skeleton.GetBone(walk).ParentIndex)
+					kept[walk] = true;
+			}
+		}
+		for (int32 b < count)
+		{
+			let parent = skeleton.GetBone(b).ParentIndex;
+			if (((parent < 0) || (parent >= count)) && kept[b])
+				AddBoneNode(model, rows, skeleton, kept, b, TreeModel.Root);
+		}
+	}
+
+	/// Bone `bone` under node `parentNode`, then the bones kept under it.
+	private static void AddBoneNode(TreeModel model, List<int32> rows, Skeleton skeleton, List<bool> kept, int32 bone, int32 parentNode)
+	{
+		let data = skeleton.GetBone(bone);
+		let label = scope String();
+		if (data.Name.IsEmpty)
+			label.AppendF("Bone {}", bone);
+		else
+			label.Set(data.Name);
+		let node = model.AddNode(parentNode, label);
+		model.SetIcon(node, "Editor/Icons/Types/SkeletonAsset.svg", "cat-animation");
+		rows.Add(bone);
+		for (int32 child < skeleton.BoneCount)
+		{
+			if ((skeleton.GetBone(child).ParentIndex == bone) && kept[child])
+				AddBoneNode(model, rows, skeleton, kept, child, node);
 		}
 	}
 

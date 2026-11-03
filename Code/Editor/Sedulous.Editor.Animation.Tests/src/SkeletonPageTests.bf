@@ -190,6 +190,32 @@ class SkeletonPageTests
 		Test.Assert(turned == "90° about 0, -1, 0", turned);
 	}
 
+	/// Each bone under its parent in the skeleton's order, its node's bone kept; a search keeps a bone
+	/// found and the bones above it.
+	[Test]
+	public static void TheBoneTreeHasEachBoneUnderItsParentAndASearchKeepsWhatItFindsAndTheBonesAboveIt()
+	{
+		let skeleton = scope Skeleton(5);
+		StringView[5] names = .("root", "hips", "spine", "leg_l", "prop");
+		int32[5] parents = .(-1, 0, 1, 1, -1); // prop: a second root
+		for (int b < 5)
+		{
+			skeleton.Bones[b].Name.Set(names[b]);
+			skeleton.Bones[b].ParentIndex = parents[b];
+		}
+		let model = scope TreeModel();
+		let rows = scope List<int32>();
+		AnimationPreview.FillBoneTree(model, rows, skeleton);
+		// Depth first under each root, siblings in the skeleton's order: root, hips, spine, leg_l, prop.
+		Test.Assert(rows.Count == 5);
+		for (int32 b < 5)
+			Test.Assert(rows[b] == b);
+
+		AnimationPreview.FillBoneTree(model, rows, skeleton, "LEG");
+		Test.Assert(rows.Count == 3, "leg_l and the bones above it, any case");
+		Test.Assert((rows[0] == 0) && (rows[1] == 1) && (rows[2] == 3));
+	}
+
 	/// Root -> Spine -> Head, plus a second root; the spine rises one unit per bone.
 	private static Skeleton Rig()
 	{
