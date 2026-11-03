@@ -69,6 +69,9 @@ class TaskHandle : RefCounted
 	private Monitor mLock = new .() ~ delete _;
 	private float mFraction = -1.0f;
 	private String mStep = new .() ~ delete _;
+	/// Which step of mStepCount (0 based); a count of 0 says none.
+	private int mStepIndex = 0;
+	private int mStepCount = 0;
 	private List<String> mLog = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(StringView name, TaskLane lane, TaskWork work, TaskDone done)
@@ -110,6 +113,25 @@ class TaskHandle : RefCounted
 			outStep.Append(mStep);
 	}
 
+	/// Which step it is on, 0 based, of StepCount ("3 of 12"); a count of 0 says none.
+	public int StepIndex
+	{
+		get
+		{
+			using (mLock.Enter())
+				return mStepIndex;
+		}
+	}
+
+	public int StepCount
+	{
+		get
+		{
+			using (mLock.Enter())
+				return mStepCount;
+		}
+	}
+
 	/// Tells it to stop: dropped if it has not started, told through its token if it has. Its
 	/// completion will not run. Never waits (TaskPool.Wait does).
 	public void Cancel() => mCancel.Cancel();
@@ -144,6 +166,25 @@ class TaskContext
 		{
 			mTask.[Friend]mFraction = fraction;
 			mTask.[Friend]mStep.Set(step);
+		}
+	}
+
+	/// How far, 0 to 1, keeping the step.
+	public void SetFraction(float fraction)
+	{
+		using (mTask.[Friend]mLock.Enter())
+			mTask.[Friend]mFraction = fraction;
+	}
+
+	/// What it does now, as step `index` (0 based) of `count` ("Writing Rider.glb", 3 of 12),
+	/// keeping the fraction.
+	public void SetStep(StringView step, int index = 0, int count = 0)
+	{
+		using (mTask.[Friend]mLock.Enter())
+		{
+			mTask.[Friend]mStep.Set(step);
+			mTask.[Friend]mStepIndex = index;
+			mTask.[Friend]mStepCount = count;
 		}
 	}
 
@@ -363,6 +404,25 @@ class TaskPool
 			}
 		}
 		Pump(log);
+	}
+
+	/// Cancels every task, queued and running: what has not started is dropped, what runs is told.
+	/// Never waits; Finish then waits for those running, and runs no cancelled completion (an owner
+	/// closing what the tasks use: a project, a session).
+	public void CancelAll()
+	{
+		using (mLock.Enter())
+		{
+			for (let task in mRunning)
+				task.Cancel();
+			for (let task in mRunnable)
+				task.Cancel();
+			for (let lane in mLanes)
+			{
+				for (let task in lane.Queued)
+					task.Cancel();
+			}
+		}
 	}
 
 	/// Tasks submitted and not yet handed back by Pump.

@@ -93,6 +93,20 @@ class TaskPoolTests
 		pool.Pump(scope [&] (task, line) => { lines.Add(new String()..AppendF("{}: {}", task.Name, line)); });
 		Test.Assert(Math.Abs(reporting.Fraction - 0.5f) < 1e-6f);
 		Test.Assert(reporting.GetStep(.. scope .()) == "Halfway");
+
+		let stepped = pool.Submit("stepped", new (context) =>
+			{
+				context.SetFraction(0.25f);
+				context.SetStep("Writing Rider.glb", 2, 12);
+				return Result<void, ErrorCode>.Ok;
+			});
+		stepped.AddRef();
+		defer stepped.ReleaseRef();
+		pool.Pump();
+		Test.Assert(Math.Abs(stepped.Fraction - 0.25f) < 1e-6f, "a step keeps the fraction");
+		Test.Assert(stepped.GetStep(.. scope .()) == "Writing Rider.glb");
+		Test.Assert(stepped.StepIndex == 2);
+		Test.Assert(stepped.StepCount == 12);
 		Test.Assert((lines.Count == 1) && (lines[0] == "reporting: half done"));
 	}
 
@@ -277,6 +291,39 @@ class TaskPoolTests
 			Test.Assert(Volatile.Read(ref ran) == 6);
 			Test.Assert(completed == 6);
 			Test.Assert(pool.InFlight == 0);
+		}
+	}
+
+	/// CancelAll drops what waits and tells what runs; Finish then waits, and no cancelled
+	/// completion runs.
+	[Test]
+	public static void CancelAllDropsWhatWaitsAndTellsWhatRunsFinishThenWaitsAndNoCancelledCompletionRuns()
+	{
+		int32[2] counts = .(0, 2);
+		for (let workers in counts)
+		{
+			let pool = scope TaskPool(workers); // gone with each round, its workers joined
+			let lane = pool.CreateLane("serial");
+			bool started = false;
+			int completed = 0;
+			pool.Submit("long", new [&started] (context) =>
+				{
+					Volatile.Write(ref started, true);
+					while (!context.IsCancelled)
+						Thread.Yield();
+					return Result<void, ErrorCode>.Err(.Cancelled);
+				}, new [&completed] (result) => { completed++; }, lane);
+			bool queuedRan = false;
+			pool.Submit("behind", new [&queuedRan] (context) => { queuedRan = true; return Result<void, ErrorCode>.Ok; },
+				new [&completed] (result) => { completed++; }, lane);
+			if (workers > 0)
+				Eventually(scope [&] () => Volatile.Read(ref started));
+			pool.CancelAll();
+			pool.Finish();
+			Test.Assert(!queuedRan);
+			Test.Assert(completed == 0);
+			Test.Assert(pool.InFlight == 0);
+			Test.Assert(!pool.IsLaneBusy(lane));
 		}
 	}
 
