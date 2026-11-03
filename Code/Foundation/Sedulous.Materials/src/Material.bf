@@ -326,6 +326,38 @@ class Material
 		mEffectGroups.AddRange(kept);
 	}
 
+	/// A copy of this material, with its own uid: its shader, pipeline state, properties, values,
+	/// effect groups, textures and samplers (the views and samplers shared, borrowed as the
+	/// original's are). For a caller that draws a variant without touching the shared material (the
+	/// import preview drawing it without a texture the import leaves out). THE CALLER OWNS it.
+	public Material Clone()
+	{
+		let copy = new Material();
+		copy.SamplerU = SamplerU;
+		copy.SamplerV = SamplerV;
+		copy.Name.Set(Name);
+		copy.ShaderName.Set(ShaderName);
+		copy.DepthShaderName.Set(DepthShaderName);
+		copy.PickShaderName.Set(PickShaderName);
+		copy.ShaderFlags = ShaderFlags;
+		copy.Pipeline = Pipeline;
+		// The config's name is a view: of this material's own name (the builder's, the source's), it
+		// becomes the copy's, which outlives this.
+		if (Pipeline.ShaderName.Ptr == ShaderName.Ptr)
+			copy.Pipeline.ShaderName = copy.ShaderName;
+		for (let property in mProperties)
+			copy.AddProperty(property); // its own copy of the name
+		copy.AllocateDefaultUniformData();
+		copy.SetRawDefaultUniformData(mDefaultUniformData);
+		for (let group in mEffectGroups)
+			copy.SetEffectGroup(group.Name, group.Flag, group.GateIndex, group.UniformSize, group.Properties, group.Defaults);
+		for (let (index, texture) in mDefaultTextures)
+			copy.mDefaultTextures[index] = texture;
+		for (let (index, sampler) in mDefaultSamplers)
+			copy.mDefaultSamplers[index] = sampler;
+		return copy;
+	}
+
 	public void ClearEffectGroups()
 	{
 		ClearAndDeleteItems!(mEffectGroups);
