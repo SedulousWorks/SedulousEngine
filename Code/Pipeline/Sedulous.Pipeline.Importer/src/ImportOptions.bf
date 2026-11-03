@@ -76,6 +76,18 @@ class ImportOptions : ISerializable
 		return false;
 	}
 
+	/// The bool setting named `name` (its field's name), for a caller that reads or flips it (the
+	/// import window's kind rows); null when the options have no bool setting of that name.
+	public bool* FindBoolSetting(StringView name)
+	{
+		for (let setting in GetSettings(.. scope .()))
+		{
+			if ((setting.Name == name) && (setting.FieldType == typeof(bool)))
+				return (bool*)((uint8*)Internal.UnsafeCastToPtr(this) + setting.MemberOffset);
+		}
+		return null;
+	}
+
 	/// The settings as text, a line each, "Name=value", appended: a flag true or false, a number, a
 	/// choice by its case's name. An import records them beside what it made
 	/// (ImportPaths.RecordImportSettings), so a reimport starts from them.

@@ -37,6 +37,18 @@ class ModelFileImporter : IFileImporter
 
 	public ImportOptions CreateOptions() => new ModelImportOptions();
 
+	/// Textures, materials, and the skeleton with its clips each have a setting that leaves them out.
+	public StringView KindSetting(ImportResourceKind kind)
+	{
+		switch (kind)
+		{
+		case .Texture: return "ImportTextures";
+		case .Material: return "ImportMaterials";
+		case .Skeleton, .AnimationClip: return "ImportAnimations";
+		default: return default;
+		}
+	}
+
 	/// The import makes the model's folder group, named after the file.
 	public bool ImportsIntoItsOwnGroup => true;
 

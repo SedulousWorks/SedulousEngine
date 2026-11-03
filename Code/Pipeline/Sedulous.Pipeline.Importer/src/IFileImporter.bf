@@ -55,6 +55,11 @@ interface IFileImporter
 	{
 	}
 
+	/// The bool setting of this importer's options (its field's name) that, off, leaves every part
+	/// of `kind` out of the import (a model's ImportTextures for its textures); empty when none does.
+	/// The import window makes a kind's row in its tree that setting, and hides it among the settings.
+	StringView KindSetting(ImportResourceKind kind) => default;
+
 	/// What part `part` (an entry of this file's plan) holds, as the file has it, a fact each,
 	/// appended to `outFacts` (the caller's, items too): a material's colour and roughness, a mesh's
 	/// triangles. Read only: changing them is the asset's page after import. `prepared` is

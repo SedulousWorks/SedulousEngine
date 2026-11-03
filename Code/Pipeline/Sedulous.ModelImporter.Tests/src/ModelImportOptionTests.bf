@@ -73,6 +73,31 @@ class ModelImportOptionTests
 		Test.Assert(!kept.RootMotion);
 	}
 
+	/// Textures, materials and the skeleton with its clips each have a setting that leaves them out,
+	/// one its options have, a bool on by default.
+	[Test]
+	public static void TexturesMaterialsAndTheSkeletonWithItsClipsEachHaveASettingThatLeavesThemOut()
+	{
+		let importer = scope ModelFileImporter();
+		let options = importer.CreateOptions();
+		defer delete options;
+		for (let kind in ImportResourceKind[4](.Texture, .Material, .Skeleton, .AnimationClip))
+		{
+			let name = importer.KindSetting(kind);
+			Test.Assert(!name.IsEmpty);
+			let setting = options.FindBoolSetting(name);
+			Test.Assert(setting != null);
+			Test.Assert(*setting, "on by default");
+		}
+		Test.Assert(importer.KindSetting(.Skeleton) == importer.KindSetting(.AnimationClip), "one setting for both");
+		Test.Assert(importer.KindSetting(.Mesh).IsEmpty);
+		Test.Assert(options.FindBoolSetting("Scale") == null, "not a bool");
+		Test.Assert(options.FindBoolSetting("NoSuchSetting") == null);
+		// What it reads is the setting itself.
+		*options.FindBoolSetting("ImportTextures") = false;
+		Test.Assert(!(options as ModelImportOptions).ImportTextures);
+	}
+
 	/// Geometry ALWAYS imports; the three toggles gate everything else, and nothing of those
 	/// types is left in the group.
 	[Test]
