@@ -230,6 +230,37 @@ static class ImportDialogTests
 			=> group.CreateInstance("Config", "Tests.WindowThing");
 	}
 
+	/// A hollow crate is lined: its plan has the lining's texture as well.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
+	private class CrateOptions : ImportOptions
+	{
+		[DisplayName("Hollow"), Description("Lined inside")]
+		public bool Hollow = false;
+	}
+
+	/// Takes ".crate": one asset, and a lining's texture while it is hollow (a plan that follows a
+	/// setting).
+	private class CrateImporter : IFileImporter
+	{
+		public StringView Label => "Crate";
+		public bool Accepts(StringView ext) => ext == "crate";
+		public ImportOptions CreateOptions() => new CrateOptions();
+
+		public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared, ImportPlan outPlan)
+		{
+			outPlan.Add(new ImportPlanEntry(.Asset, "Crate", "Crate"));
+			if (let crate = options as CrateOptions)
+			{
+				if (crate.Hollow)
+					outPlan.Add(new ImportPlanEntry(.Texture, "Lining", "Lining"));
+			}
+		}
+
+		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
+			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
+			=> .Err(.NotSupported);
+	}
+
 	/// A scratch project (Content, Models) open in an editor context, its importers registered; the
 	/// window over its markup in a root of 1000 by 700, its group field opening the picker over its
 	/// own markup. The notices in Said.
@@ -267,6 +298,7 @@ static class ImportDialogTests
 			importers.Register(new KitImporter("Parts"));
 			importers.Register(new ScriptImporter());
 			importers.Register(new ToggledImporter());
+			importers.Register(new CrateImporter());
 			let services = new AssetImportServices();
 			services.Context = Context;
 			Import = new AssetImport(services);
@@ -854,6 +886,27 @@ static class ImportDialogTests
 		grids.Clear();
 		Collect<PropertyGrid>(bed.Window.Detail, grids);
 		Test.Assert(grids.Count == 1);
+		bed.Window.Close();
+	}
+
+	/// A setting that changes what the file makes changes the tree under it.
+	[Test]
+	public static void ASettingThatChangesWhatTheFileMakesChangesTheTreeUnderIt()
+	{
+		let bed = scope Bed("scratch_import_window_setting_tree");
+		let session = bed.Open(scope StringView[]("/somewhere/a.crate"));
+		defer session.ReleaseRef();
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 1, "the file alone: it makes one asset");
+		(session.Files[0].Options as CrateOptions).Hollow = true;
+		bed.Window.SettingChanged(0, "Hollow");
+		bed.Drain(); // a frame: the window's deferred work runs
+		Test.Assert(session.Files[0].Plan.Entries.Count == 2);
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 3, "and now a tree under it: its asset's kind and its textures");
+		Test.Assert(Says(bed.Window.Files, "1 of 1"));
+		(session.Files[0].Options as CrateOptions).Hollow = false;
+		bed.Window.SettingChanged(0, "Hollow");
+		bed.Drain();
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 1);
 		bed.Window.Close();
 	}
 

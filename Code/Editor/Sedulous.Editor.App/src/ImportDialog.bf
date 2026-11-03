@@ -273,6 +273,55 @@ class ImportWindow
 		return true;
 	}
 
+	/// Setting `name` of file `index`'s options was changed (in the grid, or by a kind row's box):
+	/// the settings that follow from it (its importer's to say: a texture's colour space with its
+	/// usage), what the file makes described again, shown in the tree and the details, and in the
+	/// preview at once (a sound's trim shaded on its waveform).
+	public void SettingChanged(int index, StringView name)
+	{
+		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count))
+			return;
+		let changed = mSession.Files[index];
+		if ((changed.Importer != null) && (changed.Options != null)
+			&& (changed.Options.GetType().GetField(scope String(name)) case .Ok(let setting)))
+		{
+			changed.Importer.SettingChanged(changed.Options, setting);
+			// Not inside the grid's own edit.
+			Later(new [=this, =index] () =>
+				{
+					if ((mSession == null) || (index >= mSession.Files.Count))
+						return;
+					// The part selected, found again in the new plan by what it is (its place may
+					// move, or it may be gone: the file is selected then).
+					let file = mSession.Files[index];
+					let hadPart = (index == mSelected) && (mPart >= 0) && (mPart < file.Plan.Entries.Count);
+					var kind = ImportResourceKind.Asset;
+					let sourceName = scope String();
+					if (hadPart)
+					{
+						kind = file.Plan.Entries[mPart].Kind;
+						sourceName.Set(file.Plan.Entries[mPart].SourceName);
+					}
+					mImport.RefreshPlan(mSession, index);
+					if (hadPart)
+					{
+						mPart = -1;
+						for (int e < file.Plan.Entries.Count)
+						{
+							if ((file.Plan.Entries[e].Kind == kind) && (file.Plan.Entries[e].SourceName == sourceName))
+								mPart = e;
+						}
+					}
+					ShowFiles(); // the tree: what it makes now
+					if (index == mSelected)
+						ShowDetail();
+					ShowWhy();
+				});
+		}
+		if (mPreview != null)
+			mPreview.OnSettingsChanged();
+	}
+
 	/// Shows file `index`'s preview and settings.
 	public void Select(int index)
 	{
@@ -736,29 +785,7 @@ class ImportWindow
 			// A change brings the settings that follow from it (its importer's to say: a texture's
 			// colour space with its usage), and shows in the preview at once (a sound's trim shaded
 			// on its waveform).
-			mSettings.SetOnCommitted(new [=this, =index] (path) =>
-				{
-					if ((mSession == null) || (index >= mSession.Files.Count))
-						return;
-					let changed = mSession.Files[index];
-					if ((changed.Importer != null) && (changed.Options != null)
-						&& (changed.Options.GetType().GetField(scope String(path)) case .Ok(let setting)))
-					{
-						changed.Importer.SettingChanged(changed.Options, setting);
-						// What the file makes, described again with the change, and its settings
-						// shown again with what followed; not inside the grid's own edit.
-						Later(new [=this, =index] () =>
-							{
-								if ((mSession == null) || (index != mSelected) || (index >= mSession.Files.Count))
-									return;
-								mImport.RefreshPlan(mSession, index);
-								ShowDetail();
-								ShowWhy();
-							});
-					}
-					if (mPreview != null)
-						mPreview.OnSettingsChanged();
-				});
+			mSettings.SetOnCommitted(new [=this, =index] (path) => { SettingChanged(index, path); });
 			// Each setting beside what its importer says it does to this file, or disabled with why
 			// it cannot apply.
 			mSettings.SetOnDescribe(new [=this, =index] (path, info) =>
