@@ -261,6 +261,38 @@ static class ImportDialogTests
 			=> .Err(.NotSupported);
 	}
 
+	/// A shelf's options: whether its books (textures) come in, a setting that leaves a whole kind out.
+	[Reflect(.NonStaticFields | .DefaultConstructor)]
+	private class ShelfOptions : ImportOptions
+	{
+		[DisplayName("Books")]
+		public bool Books = true;
+	}
+
+	/// Takes ".shelf": a board (a mesh) and, while Books is on, two books (textures).
+	private class ShelfImporter : IFileImporter
+	{
+		public StringView Label => "Shelf";
+		public bool Accepts(StringView ext) => ext == "shelf";
+		public ImportOptions CreateOptions() => new ShelfOptions();
+		public StringView KindSetting(ImportResourceKind kind) => (kind == .Texture) ? "Books" : default;
+
+		public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared, ImportPlan outPlan)
+		{
+			outPlan.Add(new ImportPlanEntry(.Mesh, "Board", "Board"));
+			let shelf = options as ShelfOptions;
+			if ((shelf == null) || shelf.Books)
+			{
+				outPlan.Add(new ImportPlanEntry(.Texture, "Atlas", "Atlas"));
+				outPlan.Add(new ImportPlanEntry(.Texture, "Index", "Index"));
+			}
+		}
+
+		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
+			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
+			=> group.CreateInstance("Shelf", "Tests.WindowThing");
+	}
+
 	/// A scratch project (Content, Models) open in an editor context, its importers registered; the
 	/// window over its markup in a root of 1000 by 700, its group field opening the picker over its
 	/// own markup. The notices in Said.
@@ -299,6 +331,7 @@ static class ImportDialogTests
 			importers.Register(new ScriptImporter());
 			importers.Register(new ToggledImporter());
 			importers.Register(new CrateImporter());
+			importers.Register(new ShelfImporter());
 			let services = new AssetImportServices();
 			services.Context = Context;
 			Import = new AssetImport(services);
@@ -907,6 +940,41 @@ static class ImportDialogTests
 		bed.Window.SettingChanged(0, "Hollow");
 		bed.Drain();
 		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 1);
+		bed.Window.Close();
+	}
+
+	/// A kind row is its importer's setting for the kind: unticked it leaves them all out and stays,
+	/// ticked they come back; that setting is not shown twice. A kind with no setting: its box keeps
+	/// or leaves the parts, nothing else.
+	[Test]
+	public static void AKindRowIsItsImportersSettingForTheKindUntickedItLeavesThemOutAndStays()
+	{
+		let bed = scope Bed("scratch_import_window_kind_setting");
+		let session = bed.Open(scope StringView[]("/somewhere/a.shelf"));
+		defer session.ReleaseRef();
+		let options = session.Files[0].Options as ShelfOptions;
+		Test.Assert(options != null);
+		Test.Assert(Says(bed.Window.Files, "2 of 2"));
+		Test.Assert(!Says(bed.Window.Detail, "Books"), "the Textures row is that setting");
+
+		bed.Window.SetKindKept(0, .Texture, false);
+		bed.Drain();
+		Test.Assert(!options.Books);
+		Test.Assert(session.Files[0].Plan.Entries.Count == 1, "the importer leaves them out");
+		Test.Assert(Says(bed.Window.Files, "Left out"), "the row stays, to tick them back");
+		Test.Assert(Count<Sedulous.GUI.CheckBox>(bed.Window.Files) == 3, "the file, Meshes, Textures");
+
+		bed.Window.SetKindKept(0, .Texture, true);
+		bed.Drain();
+		Test.Assert(options.Books);
+		Test.Assert(session.Files[0].Plan.Entries.Count == 3);
+		Test.Assert(Says(bed.Window.Files, "2 of 2"));
+
+		bed.Window.SetKindKept(0, .Mesh, false);
+		bed.Drain();
+		Test.Assert(options.Books);
+		Test.Assert(!session.Files[0].Plan.Entries[0].Enabled);
+		Test.Assert(Says(bed.Window.Files, "0 of 1"));
 		bed.Window.Close();
 	}
 

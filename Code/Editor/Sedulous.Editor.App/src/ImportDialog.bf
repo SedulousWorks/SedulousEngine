@@ -352,6 +352,45 @@ class ImportWindow
 	/// The selected part's index in the selected file's plan; -1 when the file itself is selected.
 	public int SelectedPart => mPart;
 
+	/// A kind row's box: keeps or leaves every part of `kind` in file `index`. Where its importer has
+	/// a setting for the kind, the box is that setting: unticked leaves them out as the importer does
+	/// (a model's materials then name no textures), ticked imports them again; ticked while the
+	/// setting is on but every part was left, it keeps them all again.
+	public void SetKindKept(int index, ImportResourceKind kind, bool on)
+	{
+		if ((mSession == null) || (index < 0) || (index >= mSession.Files.Count))
+			return;
+		let file = mSession.Files[index];
+		let setting = KindFlag(file, kind);
+		if ((setting != null) && (*setting != on))
+		{
+			*setting = on;
+			SettingChanged(index, file.Importer.KindSetting(kind));
+			return;
+		}
+		for (let entry in file.Plan.Entries)
+		{
+			if (entry.Kind == kind)
+				entry.Enabled = on;
+		}
+		Later(new [=this] () =>
+			{
+				ShowFiles();
+				ShowDetail();
+				ShowWhy();
+			});
+	}
+
+	/// The importer's setting that leaves `kind` out of `file`'s import, or null when it has none.
+	private static bool* KindFlag(AssetImport.File file, ImportResourceKind kind)
+	{
+		let importer = file.Importer;
+		if ((importer == null) || (file.Options == null))
+			return null;
+		let name = importer.KindSetting(kind);
+		return name.IsEmpty ? null : file.Options.FindBoolSetting(name);
+	}
+
 	/// Opens or closes a kind of what file `index` would create, in the tree under it (its items
 	/// listed or not).
 	public void SetKindOpen(int index, ImportResourceKind kind, bool open)
@@ -796,6 +835,16 @@ class ImportWindow
 					let importer = described.Importer;
 					if ((importer == null) || (described.Options == null))
 						return;
+					// A setting a kind row in the tree stands for is that row, not a second switch here.
+					for (let kind in cKinds)
+					{
+						let flag = importer.KindSetting(kind);
+						if (!flag.IsEmpty && (flag == path))
+						{
+							info.Visible = false;
+							return;
+						}
+					}
 					if (!(described.Options.GetType().GetField(scope String(path)) case .Ok(let setting)))
 						return;
 					let effect = scope String();
@@ -844,7 +893,17 @@ class ImportWindow
 	/// Whether a file's plan makes a tree under it: more than the one asset a single-file importer
 	/// makes.
 	private static bool HasTree(AssetImport.File file)
-		=> (file.Plan.Entries.Count > 1) || ((file.Plan.Entries.Count == 1) && (file.Plan.Entries[0].Kind != .Asset));
+	{
+		if ((file.Plan.Entries.Count > 1) || ((file.Plan.Entries.Count == 1) && (file.Plan.Entries[0].Kind != .Asset)))
+			return true;
+		for (let kind in cKinds) // a kind left out still has its row, to tick it back
+		{
+			let setting = KindFlag(file, kind);
+			if ((setting != null) && !*setting)
+				return true;
+		}
+		return false;
+	}
 
 	// The tree under file `index`: each kind it makes, its box keeping or leaving all of it (mixed
 	// while some are kept), its chevron and its count; an open kind lists its items, each with its
@@ -866,43 +925,36 @@ class ImportWindow
 				if (entry.Enabled)
 					kept++;
 			}
-			if (count == 0)
+			// A kind its importer's setting has left out keeps its row, unticked, so it is turned back
+			// on where it was turned off.
+			let setting = KindFlag(file, kind);
+			let off = (setting != null) && !*setting;
+			if ((count == 0) && !off)
 				continue;
 			// The kind: open or close it, keep or leave all of it, and how many are kept.
 			let open = IsKindOpen(index, kind);
 			let head = Row("import-kind");
 			let all = new Sedulous.GUI.CheckBox();
-			all.Tooltip = "Keep or leave all of them";
-			all.Checked = kept == count;
-			all.Indeterminate = (kept > 0) && (kept < count); // after Checked, which settles it
-			all.SetOnToggled(new [=this, =index, =kind] (on) =>
-				{
-					if ((mSession == null) || (index >= mSession.Files.Count))
-						return;
-					for (let entry in mSession.Files[index].Plan.Entries)
-					{
-						if (entry.Kind == kind)
-							entry.Enabled = on;
-					}
-					Later(new [=this] () =>
-						{
-							ShowFiles();
-							ShowDetail();
-							ShowWhy();
-						});
-				});
+			all.Tooltip = (setting != null) ? "Import them, or leave them all out" : "Keep or leave all of them";
+			all.Checked = !off && (kept == count);
+			all.Indeterminate = !off && (kept > 0) && (kept < count); // after Checked, which settles it
+			all.SetOnToggled(new [=this, =index, =kind] (on) => { SetKindKept(index, kind, on); });
 			let toggle = new Sedulous.GUI.Button();
 			toggle.AddClass("import-kind-toggle");
 			toggle.AddClass("with-icon");
 			toggle.Icon = open ? "Editor/Icons/chevron-down.svg" : "Editor/Icons/chevron-right.svg";
 			toggle.Text = kind.Label;
-			toggle.Tooltip = open ? "Hide them" : "Show them";
+			toggle.Tooltip = off ? "Left out: tick to import them" : (open ? "Hide them" : "Show them");
+			toggle.Enabled = !off;
 			toggle.SetOnClick(new [=this, =index, =kind, =open] () => { Later(new [=this, =index, =kind, =open] () => { SetKindOpen(index, kind, !open); }); });
 			Add(head, all);
 			Add(head, toggle);
-			Add(head, Text(scope $"{kept} of {count}", "import-kind-count"));
+			if (off)
+				Add(head, Text("Left out", "import-kind-count"));
+			else
+				Add(head, Text(scope $"{kept} of {count}", "import-kind-count"));
 			Add(mFiles, head);
-			if (!open)
+			if (!open || off)
 				continue;
 			for (int e < file.Plan.Entries.Count)
 			{
