@@ -79,10 +79,15 @@ class SceneSettingsSource : IPropertySource
 
 	public Type SettingsType => mType;
 
-	/// The values found again (a block or a profile may have moved), the grid told.
+	/// The values found again (a block or a profile may have moved), the grid told when one changed.
 	public void Refresh()
 	{
-		if (!Bind())
+		let bound = Bind(); // a profile taken or let go: the rows told already
+		// Called every frame while the settings show: the grid hears of it only when a value moved.
+		// Both sources are looked at, so each remembers what it showed.
+		let own = mOwn.TakeChanges();
+		let profile = mProfile.TakeChanges();
+		if (!bound && (own || profile))
 			NotifyValuesChanged();
 	}
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Reflection;
 using Sedulous.Core;
+using Sedulous.Core.Serialization; // the components' values, as they serialize
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Script.Resource;
@@ -44,6 +45,8 @@ class ScriptBehaviorsSource : IPropertySource
 	private EditorContext mContext;
 	private List<Guid> mEntities = new .() ~ delete _;
 	private uint64 mSignature = 0;
+	/// The components' values at the last look.
+	private ShownState mShown = new .() ~ delete _;
 	private uint64 mGroups = 0;
 
 	/// The behaviours of `entities`' script components; `edit` and `context` are borrowed and
@@ -57,16 +60,28 @@ class ScriptBehaviorsSource : IPropertySource
 		mSignature = Signature();
 	}
 
-	/// Tells the grid when the behaviours changed outside it (an undo, a pick elsewhere).
+	/// Tells the grid when the behaviours changed outside it (an undo, a pick elsewhere): their
+	/// rows when the behaviours or their classes did, their values when only a value did.
 	public void Refresh()
 	{
+		// Called every frame while the entities are selected: the grid hears of it only when the
+		// components' values moved.
+		let moved = mShown.Take(scope (ar) =>
+			{
+				for (int o < mEntities.Count)
+				{
+					let component = Component(o);
+					if (component != null)
+						component.Serialize(ar);
+				}
+			});
 		let signature = Signature();
 		if (signature != mSignature)
 		{
 			mSignature = signature;
 			NotifyPropertiesChanged();
 		}
-		else
+		else if (moved)
 			NotifyValuesChanged();
 	}
 

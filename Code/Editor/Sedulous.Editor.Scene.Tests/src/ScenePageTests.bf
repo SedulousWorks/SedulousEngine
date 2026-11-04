@@ -1067,6 +1067,71 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	/// A frame where nothing moved costs the grid no layout; a value moved from outside reaches it.
+	[Test]
+	public static void InspectorAFrameWhereNothingMovedCostsTheGridNoLayoutAValueMovedFromOutsideReachesIt()
+	{
+		BuiltinInspectorExtras.Register(); // the extras look every frame too
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let shown = scope Shown(page);
+		let inspector = page.Inspector;
+
+		// An entity selected: the inspector looks at it every frame.
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		Settle(page, bed, shown);
+		Frame(page, bed, shown);
+		Test.Assert(!Waiting(shown), "the inspector found nothing new, so nothing is laid out again");
+
+		let scene = page.ScenePtr;
+		let crate = scene.FindEntity(bed.Crate);
+		var moved = scene.GetLocalTransform(crate);
+		moved.Position.X = 12.5f; // moved from outside the inspector (a gizmo's drag, a simulation)
+		scene.SetLocalTransform(crate, moved);
+		Frame(page, bed, shown);
+		Test.Assert(Waiting(shown), "the grid heard of it and shows it");
+		shown.Root.UpdateLayout();
+		var shownX = inspector.Grid.ReadPropertyValue(inspector.PathOf("Transform", "Position.x", .. scope String()), .Float);
+		defer shownX.Dispose();
+		Test.Assert(Math.Abs(shownX.Value.AsFloat - 12.5) < 1e-4);
+
+		// The scene selected: its settings, and their extras (the physics block's collision groups),
+		// are looked at every frame the same way.
+		shown.Click(page.Hierarchy.Tree, 0);
+		Settle(page, bed, shown);
+		let rows = scope List<Sedulous.GUI.PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		inspector.Sections.GetProperties("", rows);
+		var groups = false;
+		for (let row in rows)
+			groups = groups || (row.DisplayName == "Collision Groups");
+		Test.Assert(groups, "the extras show");
+		Frame(page, bed, shown);
+		Test.Assert(!Waiting(shown));
+		page.OnClose();
+	}
+
+	// One frame of the page, the sheet over what it changed.
+	private static void Frame(SceneEditorPage page, Bed bed, Shown shown)
+	{
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Restyle();
+	}
+
+	// A few frames, each laid out.
+	private static void Settle(SceneEditorPage page, Bed bed, Shown shown)
+	{
+		for (int i < 4)
+		{
+			Frame(page, bed, shown);
+			shown.Root.UpdateLayout();
+		}
+	}
+
+	// Whether anything waits to be laid out again.
+	private static bool Waiting(Shown shown) => shown.Root.IsLayoutDirty || shown.Root.HasLayoutDirtyDescendant;
+
 	[Test]
 	public static void InspectorSeveralEntitiesEditedAtOnceAComponentsHeaderHasItsVerbsReadOnlyWhileThePageSimulates()
 	{

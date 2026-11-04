@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Serialization; // a block's values, as the scene serializes them
 using Sedulous.Scene;
 using Sedulous.Physics;
 using Sedulous.Script.Resource;
@@ -41,6 +42,8 @@ class CollisionGroupsSource : IPropertySource
 
 	private SceneEditContext mEdit;
 	private uint64 mSignature = 0;
+	/// The physics block's values at the last look.
+	private ShownState mShown = new .() ~ delete _;
 
 	/// `edit` is borrowed and outlives it.
 	public this(SceneEditContext edit)
@@ -49,17 +52,27 @@ class CollisionGroupsSource : IPropertySource
 		mSignature = Signature();
 	}
 
-	/// Tells the grid when the groups changed outside it (an undo).
+	/// Tells the grid when the groups changed outside it (an undo): their rows when a group came,
+	/// went or was renamed, their values when only a mask did.
 	public void Refresh()
 	{
+		// Called every frame while the scene is selected: the grid hears of it only when a value moved.
+		let moved = mShown.Take(scope (ar) => { WriteBlock(mEdit, typeof(PhysicsSceneSettings), ar); });
 		let signature = Signature();
 		if (signature != mSignature)
 		{
 			mSignature = signature;
 			NotifyPropertiesChanged(); // the group rows and the matrix's names are the groups'
 		}
-		else
+		else if (moved)
 			NotifyValuesChanged();
+	}
+
+	// The settings block of `type`, as the scene serializes it (nothing when the scene has none).
+	private static void WriteBlock(SceneEditContext edit, Type type, ISerializer ar)
+	{
+		if (let system = edit.FindSystemBySettingsType(type))
+			system.SerializeSettings(ar);
 	}
 
 	// === IPropertySource ===
@@ -333,6 +346,9 @@ class LevelScriptSource : IPropertySource
 	private EditorContext mContext;
 	private uint64 mSignature = 0;
 
+	/// The scene script block's values at the last look.
+	private ShownState mShown = new .() ~ delete _;
+
 	/// `edit` and `context` are borrowed and outlive it.
 	public this(SceneEditContext edit, EditorContext context)
 	{
@@ -341,16 +357,23 @@ class LevelScriptSource : IPropertySource
 		mSignature = Signature();
 	}
 
-	/// Tells the grid when the level's class or values changed outside it (an undo, a cook).
+	/// Tells the grid when the level's class or values changed outside it (an undo, a cook): its
+	/// rows when the class did, its values when only a value did.
 	public void Refresh()
 	{
+		// Called every frame while the scene is selected: the grid hears of it only when a value moved.
+		let moved = mShown.Take(scope (ar) =>
+			{
+				if (let system = mEdit.FindSystemBySettingsType(typeof(SceneScriptSettings)))
+					system.SerializeSettings(ar);
+			});
 		let signature = Signature();
 		if (signature != mSignature)
 		{
 			mSignature = signature;
 			NotifyPropertiesChanged();
 		}
-		else
+		else if (moved)
 			NotifyValuesChanged();
 	}
 

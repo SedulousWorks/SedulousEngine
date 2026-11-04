@@ -396,12 +396,14 @@ class SceneInspectorView
 		ShowPaste();
 		PullTransforms();
 		RefreshExtras();
+		// Each frame: the grid hears only of a source whose values moved, so an entity at rest costs
+		// its rows nothing.
 		if ((mGrid != null) && !mGrid.IsEditing)
 		{
 			for (let section in mComponents)
 			{
 				if (!section.Source.Editing)
-					section.Source.Refresh();
+					section.Source.RefreshIfChanged();
 			}
 		}
 	}
@@ -915,7 +917,7 @@ class SceneInspectorView
 		for (int i < mEntities.Count)
 			mTransforms[i] = scene.GetLocalTransform(scene.FindEntity(mEntities[i]));
 		if (mTransform != null)
-			mTransform.Refresh();
+			mTransform.RefreshIfChanged();
 	}
 
 	private void BuildComponents()
