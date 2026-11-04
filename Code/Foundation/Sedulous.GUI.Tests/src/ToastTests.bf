@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using Sedulous.Core;
 using Sedulous.Fonts;
+using Sedulous.VG;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -312,6 +313,45 @@ class ToastTests
 		Test.Assert(card.Content != null);
 		Test.Assert(madeOn == gui);
 		Test.Assert(card.HasClass("warning"));
+	}
+
+	[Test]
+	public static void AnIdleHostAsksForNoFramesAPostAsksForOneFromAnotherThreadTooAndNoneOnceItHasGone()
+	{
+		let bed = scope ToastBed();
+		let canvas = scope VGContext();
+		// A host's frame: tick, lay out, ask whether a frame is needed, draw.
+		bool Frame(float seconds)
+		{
+			bed.Frame(seconds);
+			let needed = bed.Root.NeedsFrame();
+			canvas.Clear();
+			let dc = scope DrawContext(canvas);
+			bed.Root.DrawFrame(dc);
+			return needed;
+		}
+		for (int i = 0; i < 3; ++i)
+			Frame(0.016f);
+		Test.Assert(!Frame(0.016f)); // its clock runs, but nothing shows, so nothing is drawn
+		Test.Assert(!Frame(0.016f));
+
+		ToastId id = 0;
+		let worker = scope Thread(new [&] () =>
+			{
+				let request = ToastBed.Text(scope ToastRequest(), "Saved");
+				request.Duration = 0.1f;
+				request.Classes = "still"; // leaves at once when its time is up
+				id = bed.Host.PostFromAnyThread(request);
+			});
+		worker.Start(false);
+		worker.Join();
+		Test.Assert(Frame(0.016f)); // the post shows at the next update and asks for the frame
+		Test.Assert(bed.Host.IsShown(id));
+		for (int i = 0; i < 20 && bed.Host.ChildCount != 0; ++i)
+			Frame(0.05f);
+		Test.Assert(!bed.Host.IsShown(id));
+		Frame(0.016f);
+		Test.Assert(!Frame(0.016f));
 	}
 
 	[Test]

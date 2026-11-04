@@ -62,6 +62,11 @@ abstract class Action : RefCounted, Sedulous.Core.IScriptCounted
 	/// shows. True unless an action knows better.
 	public virtual bool CanMoveTarget => true;
 
+	/// Whether running it asks for frames. One that only keeps time, and changes what shows through
+	/// the usual paths (a node added, a class set), says no: what it changes invalidates, and a
+	/// frame with no change is skipped. True unless an action knows better.
+	public virtual bool AsksForFrames => true;
+
 	/// How much of the time its last Update was given ran past its end: a group's next step starts
 	/// with it, so a sequence keeps time whatever the frames.
 	public virtual TimeSpan Overrun => default;

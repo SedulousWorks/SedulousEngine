@@ -497,7 +497,7 @@ class SceneRoot : Node
 		{
 			mContext.ActionManager.AnyAction(scope [&] (action, target) =>
 				{
-					if ((target.SceneRoot != this) || !target.IsTreeVisible)
+					if ((target.SceneRoot != this) || !target.IsTreeVisible || !action.AsksForFrames)
 						return false;
 					// Out of view at the last frame (culled, or under something culled), an animation
 					// that cannot bring it into view changes nothing that shows.

@@ -15,11 +15,14 @@ class TickAction : Sedulous.GUI.Action
 
 	private Tick mTick ~ delete _;
 	private bool mDone = false;
+	private bool mAsksForFrames = true;
 
-	/// OWNERSHIP of `tick` transfers.
-	public this(Tick tick)
+	/// OWNERSHIP of `tick` transfers. A clock (`asksForFrames` false) runs every GUI update but
+	/// asks for no frames itself, as for a timer whose effects invalidate what they change.
+	public this(Tick tick, bool asksForFrames = true)
 	{
 		mTick = tick;
+		mAsksForFrames = asksForFrames;
 	}
 
 	public override void Start()
@@ -44,4 +47,5 @@ class TickAction : Sedulous.GUI.Action
 	public override bool IsDone => mDone;
 	public override float CurrentProgress => mDone ? 1.0f : 0.0f;
 	public override TimeSpan TotalTime => default;
+	public override bool AsksForFrames => mAsksForFrames;
 }

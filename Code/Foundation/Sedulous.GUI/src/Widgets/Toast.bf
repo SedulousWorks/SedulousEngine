@@ -547,11 +547,14 @@ class ToastHost : UIWidget
 		if (mTicking || (ActionManager == null))
 			return;
 		mTicking = true;
+		// The host's clock runs for as long as the host, so it asks for no frames itself, or its
+		// window would draw every frame with nothing changed. What it does (a card shown or
+		// removed) invalidates as any change does.
 		let tick = new TickAction(new (elapsed) =>
 			{
 				Tick((float)elapsed.TotalSeconds);
 				return true;
-			});
+			}, false);
 		RunAction(tick);
 		tick.ReleaseRef();
 	}
