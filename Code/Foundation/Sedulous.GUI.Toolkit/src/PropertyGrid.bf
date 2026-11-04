@@ -361,6 +361,11 @@ class PropertyRowContent : UIWidget
 
 	public void Show(PropertyRow row)
 	{
+		// This row's own layout reads its depth and whether its grip shows; its parts ask for
+		// layout themselves when what they show changes. A row bound again to the same property,
+		// as every row is when the grid reads its source again, so asks for none.
+		let movable = row.Element && ((row.ListOps & PropertyListMove) != 0) && (row.Count > 1);
+		let placed = (mDepth != row.Depth) || (mMovable != movable);
 		mPath.Set(row.Path);
 		mDepth = row.Depth;
 		mDescription.Set(row.Info.Description);
@@ -375,10 +380,11 @@ class PropertyRowContent : UIWidget
 		mNote.Displayed = notes;
 		if (notes)
 			mNote.Text = row.Info.Note;
-		mMovable = row.Element && ((row.ListOps & PropertyListMove) != 0) && (row.Count > 1);
+		mMovable = movable;
 		mGrip.Displayed = mMovable;
 		mGrip.Path = row.Path;
-		RequestLayout();
+		if (placed)
+			RequestLayout();
 	}
 
 	public StringView Path => mPath;

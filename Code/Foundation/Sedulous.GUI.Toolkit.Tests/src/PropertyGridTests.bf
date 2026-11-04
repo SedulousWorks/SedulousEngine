@@ -1053,4 +1053,23 @@ class PropertyGridTests
 		// Its box ends before the editor starts.
 		Test.Assert(name.ScreenBounds.X + name.ScreenBounds.Width <= editor.ScreenBounds.X);
 	}
+
+	/// A row bound again to the property it shows asks for no layout: what each read of the source
+	/// does to every row.
+	[Test]
+	public static void ARowBoundAgainToThePropertyItShowsAsksForNoLayout()
+	{
+		let bed = scope GridBed();
+		bed.Add("name", .String, Sedulous.GUI.Variant("Lamp"));
+		bed.Add("intensity", .Float, Sedulous.GUI.Variant(1.0), "Light");
+		bed.Show();
+		let content = bed.Grid.FindRowContent("intensity");
+		Test.Assert(content != null);
+		let row = bed.Grid.GetRow(bed.Grid.FindRow("intensity"));
+		Test.Assert(row != null);
+		Test.Assert(!content.IsLayoutDirty);
+		content.Show(row);
+		Test.Assert(!content.IsLayoutDirty);
+		Test.Assert(!bed.Root.HasLayoutDirtyDescendant);
+	}
 }

@@ -181,6 +181,8 @@ class FieldPropertySource : IPropertySource
 	private String mEditPath = new .() ~ delete _;
 	// Each object's value at mEditPath when its edit began, for a cancel and the commit.
 	private List<Sedulous.GUI.Variant> mOriginals = new .() ~ DisposeAll(_);
+	// Each object's shown values as text at the last look (TakeChanges).
+	private List<String> mSeen = new .() ~ DeleteContainerAndItems!(_);
 
 	/// `count` objects of `type`, each found by `resolve` and changed through `commit` (both
 	/// taken); a reference written binds through `resources` (null: on its next resolve).
@@ -212,6 +214,57 @@ class FieldPropertySource : IPropertySource
 
 	/// The values changed elsewhere (a gizmo's drag, an undo): what shows is read again.
 	public void Refresh() => NotifyPropertiesChanged();
+
+	/// For a host that looks at the objects every frame (they may change under it: a gizmo's drag,
+	/// a simulation): tells the grid as Refresh does, but only when TakeChanges finds the values
+	/// moved. The grid reads its rows again on each notice, so an unchanged frame then costs it
+	/// nothing.
+	public void RefreshIfChanged()
+	{
+		if (TakeChanges())
+			NotifyPropertiesChanged();
+	}
+
+	/// Whether the objects' shown values (each top-level row's, as CopyValue writes it) differ from
+	/// the last look, remembering them. The first look returns true.
+	public bool TakeChanges()
+	{
+		let now = scope List<String>();
+		var same = mSeen.Count == mCount;
+		for (int object < mCount)
+		{
+			let text = new String();
+			WriteState(object, text);
+			now.Add(text);
+			same = same && (text == mSeen[object]);
+		}
+		if (same)
+		{
+			ClearAndDeleteItems!(now);
+			return false;
+		}
+		ClearAndDeleteItems!(mSeen);
+		mSeen.AddRange(now); // they move over
+		return true;
+	}
+
+	// Object `object`'s top-level rows, each its name and its value as CopyValue writes it, appended.
+	private void WriteState(int object, String outText)
+	{
+		let root = Address(object);
+		if (root == null)
+			return;
+		let infos = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(infos); }
+		ListProperties("", infos);
+		for (let info in infos)
+		{
+			outText.Append(info.Name);
+			outText.Append('=');
+			ValueText(Resolve(info.Name, root), outText);
+			outText.Append('\n');
+		}
+	}
 
 	// === IPropertySource ===
 
@@ -402,7 +455,13 @@ class FieldPropertySource : IPropertySource
 
 	public override void CopyValue(StringView path, String outText)
 	{
-		let target = Resolve(path, Address(0));
+		ValueText(Resolve(path, Address(0)), outText);
+	}
+
+	// What `target` holds as text, appended: an angle as its number, else its JSON; nothing when it
+	// is not there.
+	private void ValueText(Target target, String outText)
+	{
 		if (target.Address == null)
 			return;
 		if (target.Euler >= 0)

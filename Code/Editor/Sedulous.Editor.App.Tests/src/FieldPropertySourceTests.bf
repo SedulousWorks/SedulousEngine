@@ -416,4 +416,47 @@ class FieldPropertySourceTests
 		source.GetProperties("", rows);
 		Test.Assert(Row(rows, "WhenTwo").Visible);
 	}
+
+	/// Counts what a source tells its grid.
+	private class NoticeCounter : IPropertySourceClient
+	{
+		public int Properties = 0;
+		public int Values = 0;
+		public void OnPropertiesChanged() { Properties++; }
+		public void OnValuesChanged() { Values++; }
+	}
+
+	/// A look each frame tells the grid only when a value it shows moved; Refresh still tells it
+	/// every time.
+	[Test]
+	public static void ALookEachFrameTellsTheGridOnlyWhenAValueItShowsMoved()
+	{
+		let steps = scope FieldSourceSteps();
+		let address = Internal.UnsafeCastToPtr(steps);
+		let source = scope FieldPropertySource(typeof(FieldSourceSteps), 1, new (object) => address,
+			new (apply) => { apply(0, address); });
+		let counter = scope NoticeCounter();
+		source.Client = counter;
+		defer { source.Client = null; }
+
+		source.RefreshIfChanged(); // the first look tells it
+		Test.Assert(counter.Properties == 1);
+		for (int frame < 3)
+			source.RefreshIfChanged();
+		Test.Assert(counter.Properties == 1, "nothing moved: nothing said");
+
+		steps.Count = 7; // moved under the source, as a gizmo's drag or a simulation does
+		source.RefreshIfChanged();
+		Test.Assert(counter.Properties == 2);
+		source.RefreshIfChanged();
+		Test.Assert(counter.Properties == 2);
+
+		steps.Steps.Add(4); // a private list an inspector is given is a shown value too
+		source.RefreshIfChanged();
+		Test.Assert(counter.Properties == 3);
+
+		source.Refresh();
+		Test.Assert(counter.Properties == 4, "Refresh tells it every time");
+		Test.Assert(!source.TakeChanges(), "nothing moved since the last look");
+	}
 }
