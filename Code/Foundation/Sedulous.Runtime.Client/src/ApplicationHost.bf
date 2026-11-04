@@ -109,8 +109,11 @@ class ApplicationHost : IApplicationHost
 	public void Tick(float deltaTime)
 	{
 		ProfileFrameBegin();
-		mTasks.Pump(); // long work's completions, before this frame's update reads them
-		mSubsystems.BeginFrame(deltaTime);
+		// Each phase scoped, so nothing in the frame goes unaccounted for in a capture.
+		using (ProfileScope("Update.Tasks"))
+			mTasks.Pump(); // long work's completions, before this frame's update reads them
+		using (ProfileScope("Update.BeginFrame"))
+			mSubsystems.BeginFrame(deltaTime);
 
 		using (ProfileScope("Update"))
 		{
@@ -125,12 +128,21 @@ class ApplicationHost : IApplicationHost
 			mStepper.Step = mSettings.FixedTimeStep;
 			mStepper.MaxSteps = mSettings.MaxFixedStepsPerFrame;
 			let fixedSteps = mStepper.Advance(scaledDelta);
-			for (uint32 i < fixedSteps)
-				mApp.OnFixedUpdate(this, mSettings.FixedTimeStep);
+			if (fixedSteps > 0)
+			{
+				using (ProfileScope("Update.Fixed"))
+				{
+					for (uint32 i < fixedSteps)
+						mApp.OnFixedUpdate(this, mSettings.FixedTimeStep);
+				}
+			}
 
-			mSubsystems.Update(scaledDelta);
-			mApp.OnUpdate(this, deltaTime);
-			mSubsystems.PostUpdate(scaledDelta);
+			using (ProfileScope("Update.Subsystems"))
+				mSubsystems.Update(scaledDelta);
+			using (ProfileScope("Update.App"))
+				mApp.OnUpdate(this, deltaTime);
+			using (ProfileScope("Update.PostSubsystems"))
+				mSubsystems.PostUpdate(scaledDelta);
 		}
 
 		// Every window, uniformly. The main window is simply the first.
@@ -153,7 +165,8 @@ class ApplicationHost : IApplicationHost
 					if (!frame.Valid)
 						continue;
 
-					mApp.OnRenderWindow(this, ref frame);
+					using (ProfileScope("Render.App"))
+						mApp.OnRenderWindow(this, ref frame);
 
 					using (ProfileScope("Render.Present"))
 						window.EndFrame(ref frame);

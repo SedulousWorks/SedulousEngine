@@ -1269,45 +1269,68 @@ class EditorApplication : IApplication
 
 	public void OnUpdate(IApplicationHost host, float dt)
 	{
-		if (mMcp != null)
-			mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
-		if (mReleaseFiles != null)
-			mReleaseFiles.Pump(); // --release-files <folder>: before the client asks again
-		if (mManagerMode != null)
-			mManagerMode.Tick(); // the Samples tab's fetches and downloads, which go on while a project is open
+		// Each step is scoped, so a frame capture accounts for the whole update.
+		using (ProfileScope("Editor.Pumps"))
+		{
+			if (mMcp != null)
+				mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
+			if (mReleaseFiles != null)
+				mReleaseFiles.Pump(); // --release-files <folder>: before the client asks again
+			if (mManagerMode != null)
+				mManagerMode.Tick(); // the Samples tab's fetches and downloads, which go on while a project is open
+		}
 		// The embedded runtime's frame first (per-scene fixed steps in BeginFrame, physics
 		// interpolation in Update), so pages read fresh state; EndFrame closes in OnRenderWindow
 		// after the scene bracket. The embedded app's own OnUpdate ticks every game instance's
 		// script once a frame, however many Game tabs.
 		if (mEmbeddedApp != null)
 		{
-			let scaled = dt * mRuntimeContext.TimeScale;
-			mRuntimeContext.BeginFrame(dt);
-			mRuntimeContext.Update(scaled);
-			mRuntimeContext.PostUpdate(scaled);
-			mEmbeddedApp.OnUpdate(mEmbeddedHost, dt);
+			using (ProfileScope("Editor.Runtime"))
+			{
+				let scaled = dt * mRuntimeContext.TimeScale;
+				mRuntimeContext.BeginFrame(dt);
+				mRuntimeContext.Update(scaled);
+				mRuntimeContext.PostUpdate(scaled);
+				mEmbeddedApp.OnUpdate(mEmbeddedHost, dt);
+			}
 		}
-		UpdateCaptures(host, dt);
-		if (let stage = mSession.Stage)
-			stage.Update(); // take and stage the next queued GPU thumbnail
-		LeakProbe.Update(dt);
+		using (ProfileScope("Editor.Captures"))
+		{
+			UpdateCaptures(host, dt);
+			if (let stage = mSession.Stage)
+				stage.Update(); // take and stage the next queued GPU thumbnail
+			LeakProbe.Update(dt);
+		}
 		// The cook's and the jobs' progress to the status line; an export waiting on its cook
 		// starts.
-		mCookService.Update(scope (line) => { mContext.SetStatus(line); });
-		if (mExport != null)
-			mExport.Pump();
+		using (ProfileScope("Editor.Cook"))
+		{
+			mCookService.Update(scope (line) => { mContext.SetStatus(line); });
+			if (mExport != null)
+				mExport.Pump();
+		}
 		// The editor's long work: the import previews' reads, done off this thread; their completions
 		// run here, their lines go to the status bar.
-		mContext.Tasks.Pump(scope (task, line) => { mContext.SetStatus(line); });
-		UpdateStatusBar();
+		using (ProfileScope("Editor.Tasks"))
+		{
+			mContext.Tasks.Pump(scope (task, line) => { mContext.SetStatus(line); });
+			UpdateStatusBar();
+		}
 		if (let resources = mSession.Resources)
 		{
-			resources.Pump(); // async loads finish
-			resources.CollectGarbage(); // products a hot reload replaced go
+			using (ProfileScope("Editor.Resources"))
+			{
+				resources.Pump(); // async loads finish
+				resources.CollectGarbage(); // products a hot reload replaced go
+			}
 		}
-		DrainLog();
+		using (ProfileScope("Editor.Log"))
+			DrainLog();
 		if (mProfiler != null)
-			mProfiler.Update(); // the frames recorded since, while recording
+		{
+			using (ProfileScope("Editor.Profiler"))
+				mProfiler.Update(); // the frames recorded since, while recording
+		}
 		if (mAssets != null)
 		{
 			using (ProfileScope("Editor.Assets"))
@@ -1315,13 +1338,20 @@ class EditorApplication : IApplication
 		}
 		if (host.Shell != null)
 			ImportDroppedFiles(host.Shell);
-		mWindow.Update(dt);
+		using (ProfileScope("Editor.Window"))
+			mWindow.Update(dt);
 		using (ProfileScope("Editor.Pages"))
 			mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 		if (mImportWindow != null)
-			mImportWindow.OnUpdate(host, dt); // the same for the import window's preview (a model's view)
+		{
+			using (ProfileScope("Editor.ImportWindow"))
+				mImportWindow.OnUpdate(host, dt); // the same for the import window's preview (a model's view)
+		}
 		if (mHome != null)
-			mHome.Refresh();
+		{
+			using (ProfileScope("Editor.Home"))
+				mHome.Refresh();
+		}
 	}
 
 	/// The status bar's job (a job's title, how far, its step of how many; else a cook, of
@@ -1418,18 +1448,29 @@ class EditorApplication : IApplication
 			// The bracket self-guards while the renderer is not ready.
 			if (mSceneRenderer != null)
 				mSceneRenderer.BeginRendering(frame.Encoder, frame.FrameIndex);
-			mPages.Render(host, ref frame);
+			using (ProfileScope("Editor.PagesRender"))
+				mPages.Render(host, ref frame);
 			if (mImportWindow != null)
-				mImportWindow.OnRenderWindow(host, ref frame); // the import window's model preview
+			{
+				using (ProfileScope("Editor.ImportWindowRender"))
+					mImportWindow.OnRenderWindow(host, ref frame); // the import window's model preview
+			}
 			if (let stage = mSession.Stage)
 				stage.Render(ref frame); // a thumbnail in the same bracket
 			if (mSceneRenderer != null)
-				mSceneRenderer.EndRendering();
-			mPages.AfterSceneRender(host, ref frame); // overlays on the composed targets (the Game tab's UI)
-			if (mEmbeddedApp != null)
-				mRuntimeContext.EndFrame();
+			{
+				using (ProfileScope("Editor.SceneEnd"))
+					mSceneRenderer.EndRendering();
+			}
+			using (ProfileScope("Editor.AfterScene"))
+			{
+				mPages.AfterSceneRender(host, ref frame); // overlays on the composed targets (the Game tab's UI)
+				if (mEmbeddedApp != null)
+					mRuntimeContext.EndFrame();
+			}
 		}
-		mWindow.Render(ref frame);
+		using (ProfileScope("Editor.WindowRender"))
+			mWindow.Render(ref frame);
 		// A window screenshot: this window's finished backbuffer, the GUI included, when one of it
 		// is armed. The copy sits in this frame's command stream; OnUpdate writes it next frame.
 		if (frame.Valid && (frame.Window != null) && (frame.Encoder != null)

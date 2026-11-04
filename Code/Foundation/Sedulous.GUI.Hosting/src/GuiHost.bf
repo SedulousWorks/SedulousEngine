@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Fonts;
 using Sedulous.Graphics;
+using Sedulous.Profiler; // ProfileScope (skipped when profiling is compiled out)
 using Sedulous.RHI;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
@@ -643,13 +644,25 @@ class GuiHost
 	{
 		// What the player uses now, from this frame's devices, before the panes' bridges pass it
 		// on with their input (K2b).
-		let devices = scope Sedulous.Input.ShellInputSource(mShell.Input);
-		mInputKind.Update(devices);
-		mRouter.Update();
-		ReportWindowEvents();
-		RouteInput();
+		using (ProfileScope("GUI.Input"))
+		{
+			using (ProfileScope("GUI.Input.Kind"))
+			{
+				let devices = scope Sedulous.Input.ShellInputSource(mShell.Input);
+				mInputKind.Update(devices);
+			}
+			using (ProfileScope("GUI.Input.Router"))
+				mRouter.Update();
+			using (ProfileScope("GUI.Input.WindowEvents"))
+				ReportWindowEvents();
+			using (ProfileScope("GUI.Input.Route"))
+				RouteInput();
+		}
 		// By ticks: TimeSpan.FromSeconds would round to whole milliseconds.
-		mContext.Update(TimeSpan((int64)((double)deltaTime * (double)TimeSpan.TicksPerSecond)));
+		using (ProfileScope("GUI.Context")) // actions, effects, mutations, accessibility
+			mContext.Update(TimeSpan((int64)((double)deltaTime * (double)TimeSpan.TicksPerSecond)));
+		var panes = ProfileScope("GUI.Panes"); // each pane styled and laid out, then the hosted content placed
+		defer panes.Dispose();
 		for (let attached in mAttached)
 		{
 			let data = attached.Data;
@@ -713,11 +726,14 @@ class GuiHost
 			mBakesRecorded = true;
 		}
 		// What the window's nodes show from outside the GUI, drawn before the GUI samples it.
-		for (let hosted in mContents)
+		using (ProfileScope("GUI.Hosted"))
 		{
-			let node = hosted.Content.HostedNode;
-			if ((hosted.Window == frame.Window) && (node != null) && node.IsTreeVisible)
-				hosted.Content.Record(frame.Encoder, (int32)frame.FrameIndex);
+			for (let hosted in mContents)
+			{
+				let node = hosted.Content.HostedNode;
+				if ((hosted.Window == frame.Window) && (node != null) && node.IsTreeVisible)
+					hosted.Content.Record(frame.Encoder, (int32)frame.FrameIndex);
+			}
 		}
 		// Every size a window's drawing depends on, once per frame size: on a scaled display the
 		// window's units, its pixels, the swapchain and the root's viewport must agree to fill it.
@@ -738,8 +754,13 @@ class GuiHost
 		let batch = data.Canvas.GetBatch();
 		let slot = (int32)frame.FrameIndex;
 		data.Renderer.BeginFrame(slot);
-		let slice = data.Renderer.Prepare(batch, slot, frame.Width, frame.Height);
-		data.Renderer.RenderLayers(frame.Encoder, slot, slice);
+		VGRenderSlice slice;
+		using (ProfileScope("GUI.Prepare")) // the batch's vertices, textures and bind groups for the GPU
+			slice = data.Renderer.Prepare(batch, slot, frame.Width, frame.Height);
+		using (ProfileScope("GUI.Layers")) // offscreen layers, each a pass of its own
+			data.Renderer.RenderLayers(frame.Encoder, slot, slice);
+		var encode = ProfileScope("GUI.Encode"); // the window's pass: every draw command
+		defer encode.Dispose();
 		let clear = ClearFor(data.Encoded);
 		let view = data.Encoded ? frame.BackbufferAlternateView : frame.BackbufferView;
 		// The targets follow the backbuffer this frame draws into, not the window: while a window

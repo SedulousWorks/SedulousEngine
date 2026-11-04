@@ -8,6 +8,7 @@ StartupObject = "Sedulous.GUI.Hosting.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Profiler" = "*"
 "Sedulous.Fonts" = "*"
 "Sedulous.GUI" = "*"
 "Sedulous.GUI.Shell" = "*"
