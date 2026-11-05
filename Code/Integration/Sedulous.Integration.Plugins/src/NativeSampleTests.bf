@@ -124,6 +124,48 @@ static class NativeSampleTests
 		}
 	}
 
+	/// In a player's host the spin manager joins a scene and turns each spinning entity about its
+	/// axis while the scene simulates, and not while it does not.
+	[Test]
+	public static void InAPlayersHostTheSpinTurnsItsEntitiesWhileTheSceneSimulates()
+	{
+		let engineServices = scope EnginePluginServices();
+		let entries = scope List<EnabledPlugin>();
+		defer { ClearAndDeleteItems!(entries); }
+		Entries(entries);
+		let subsystems = scope SubsystemManager();
+		let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
+		Test.Assert(engineServices.Attach(host));
+		Test.Assert(host.AddRegistered() case .Ok);
+		host.Load((Span<EnabledPlugin>)entries, scope .());
+		Test.Assert(host.IsLoaded(cId));
+		{
+			let scene = scope Sedulous.Scene.Scene("spinners");
+			SceneModuleContributions.Global.InstallAll(scene);
+			let spins = scene.GetSystem<SpinManager>();
+			Test.Assert(spins != null);
+			let entity = scene.CreateEntity("Spinner");
+			let spin = spins.Add(entity);
+			spin.TurnsPerSecond = 0.25f;
+			let tilted = scene.CreateEntity("Tilted");
+			let tiltedSpin = spins.Add(tilted);
+			tiltedSpin.Axis = .(1.0f, 0.0f, 0.0f);
+			tiltedSpin.TurnsPerSecond = 0.5f;
+			scene.Update(1.0f);
+			// A quarter turn about up, a half about x.
+			let quarter = scene.GetLocalTransform(entity).Rotation;
+			Test.Assert((Math.Abs(quarter.Y - 0.70710678f) < 1e-4f) && (Math.Abs(quarter.W - 0.70710678f) < 1e-4f), "a quarter turn");
+			let half = scene.GetLocalTransform(tilted).Rotation;
+			Test.Assert((Math.Abs(Math.Abs(half.X) - 1.0f) < 1e-4f) && (Math.Abs(half.W) < 1e-4f), "a half turn about x");
+			scene.SetSimulationEnabled(false);
+			scene.Update(1.0f);
+			let still = scene.GetLocalTransform(entity).Rotation;
+			Test.Assert((Math.Abs(still.Y - quarter.Y) < 1e-6f) && (Math.Abs(still.W - quarter.W) < 1e-6f), "not while it does not simulate");
+		}
+		host.Unload();
+		Test.Assert(!SpinContributed());
+	}
+
 	/// Through the standalone MCP host: an agent opens a project that enables the package, creates
 	/// a note with its creator, cooks it with its builder and reads it with its tool; a project
 	/// that does not enable it has neither the tool nor the creator.

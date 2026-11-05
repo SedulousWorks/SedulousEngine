@@ -10,7 +10,8 @@ namespace NativeSample;
 /// NativeSample.Engine: the reference game's runtime code, the Engine part of its plugin package,
 /// loaded by every host.
 ///
-/// Load is the one registration point: it adds the spin manager to every scene, live ones
+/// Load is the one registration point: it adds the spin manager, which turns the entities with a
+/// spin component, to every scene, live ones
 /// included, through the engine's service (a host without one, such as the cook, offers none, and
 /// nothing is added). What it adds is recorded and taken out again when the plugin unloads (the
 /// project closing). The part registers itself when the program starts, so linking the project
