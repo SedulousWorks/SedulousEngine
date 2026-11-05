@@ -143,6 +143,7 @@ static class PipelineRegistration
 		{
 			sSurface = new ScriptSurface();
 			PipelineScriptSurface.Populate(sSurface);
+			ScriptSurfaces.Register(sSurface); // the plugins' own types join it while they are enabled
 		}
 		if (ScriptLanguageCooks.Find(AngelScriptBackend.cLanguage) == null)
 			AngelScriptCook.Register(sSurface);
@@ -152,6 +153,7 @@ static class PipelineRegistration
 	public static void Teardown()
 	{
 		ScriptLanguageCooks.Clear();
+		ScriptSurfaces.Unregister(sSurface);
 		delete sSurface;
 		sSurface = null;
 	}

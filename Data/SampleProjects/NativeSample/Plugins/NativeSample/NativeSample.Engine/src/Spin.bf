@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
+using Sedulous.Script;
 
 namespace NativeSample;
 
@@ -11,11 +12,12 @@ namespace NativeSample;
 [DisplayName("Spin")]
 [Category("Native Sample")]
 [Description("Turns the entity about an axis of its own while the scene simulates.")]
+[Scriptable]
 struct SpinComponent : ISerializable
 {
-	[DisplayName("Turns Per Second")]
+	[DisplayName("Turns Per Second"), Scriptable]
 	public float TurnsPerSecond = 0.25f;
-	[DisplayName("Axis")]
+	[DisplayName("Axis"), Scriptable]
 	public Float3 Axis = .(0.0f, 1.0f, 0.0f);
 
 	public this() {}

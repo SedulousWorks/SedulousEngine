@@ -13,6 +13,9 @@ namespace Sedulous.Script;
 class ScriptSurface
 {
 	public List<ScriptTypeInfo> Types = new .() ~ DeleteContainerAndItems!(_);
+	/// Moves with every change to what is on it, so a cook caching its hash knows to take it again.
+	public uint64 Revision => mRevision;
+	private uint64 mRevision = 0;
 
 	/// A hash of what a player's scripts compile against: every runtime-domain type, its name,
 	/// kind, fields, methods and enum values, whatever order they were added in (a sum of each
@@ -62,6 +65,7 @@ class ScriptSurface
 
 	public ScriptTypeInfo AddType(StringView fullName, ScriptTypeKind kind, StringView domain)
 	{
+		mRevision++;
 		let t = new ScriptTypeInfo();
 		t.FullName.Set(fullName);
 		t.Kind = kind;
@@ -97,6 +101,60 @@ class ScriptSurface
 				return t;
 		}
 		return null;
+	}
+
+	/// Moves `from`'s types onto this surface as plugin `pluginId`'s, each tagged with it: what a
+	/// plugin's Engine part publishes while the plugin is enabled (its types alone, the walk of its
+	/// own namespace). Refused, with nothing moved and why in `outError`, when one is on the surface
+	/// already: a plugin's type there while the plugin is not enabled is a leak (the engine's root
+	/// reaching it, or another plugin of the name), and binding it twice would hide which is meant.
+	public bool AddPluginTypes(StringView pluginId, ScriptSurface from, String outError)
+	{
+		for (let t in from.Types)
+		{
+			if (let existing = Find(t.FullName))
+			{
+				outError.AppendF("plugin '{}' publishes {}, which is on the surface already ({}): a plugin's types are on it only while it is enabled",
+					pluginId, t.FullName, existing.Plugin.IsEmpty ? "the engine's" : scope:: $"plugin '{existing.Plugin}''s");
+				return false;
+			}
+		}
+		for (let t in from.Types)
+		{
+			t.Plugin.Set(pluginId);
+			Types.Add(t);
+		}
+		from.Types.Clear();
+		mRevision++;
+		return true;
+	}
+
+	/// Takes plugin `pluginId`'s types off the surface; how many went.
+	public int RemovePluginTypes(StringView pluginId)
+	{
+		int removed = 0;
+		for (int i = Types.Count - 1; i >= 0; i--)
+		{
+			if (Types[i].Plugin == pluginId)
+			{
+				delete Types[i];
+				Types.RemoveAt(i);
+				removed++;
+			}
+		}
+		if (removed > 0)
+			mRevision++;
+		return removed;
+	}
+
+	/// The full names of plugin `pluginId`'s types, appended.
+	public void PluginTypes(StringView pluginId, List<String> outNames)
+	{
+		for (let t in Types)
+		{
+			if (t.Plugin == pluginId)
+				outNames.Add(new .(t.FullName));
+		}
 	}
 
 	/// The distinct domains present, in first seen order.

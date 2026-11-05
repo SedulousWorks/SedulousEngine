@@ -23,6 +23,8 @@ class AngelScriptCook : IScriptLanguageCook
 	/// The surface's hash, worked out on first use: the surface is fixed for the cook's life.
 	private uint64 mSurfaceHash = 0;
 	private bool mHashed = false;
+	/// The surface's revision the hash was taken at: a plugin's types joining or leaving moves it.
+	private uint64 mHashedRevision = 0;
 
 	public this(ScriptSurface surface)
 	{
@@ -35,10 +37,12 @@ class AngelScriptCook : IScriptLanguageCook
 	{
 		get
 		{
-			if (!mHashed)
+			let revision = (mSurface != null) ? mSurface.Revision : 0;
+			if (!mHashed || (revision != mHashedRevision))
 			{
 				mSurfaceHash = (mSurface != null) ? mSurface.RuntimeHash() : 0;
 				mHashed = true;
+				mHashedRevision = revision;
 			}
 			return mSurfaceHash;
 		}

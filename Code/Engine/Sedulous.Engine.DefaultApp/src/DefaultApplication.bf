@@ -104,7 +104,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// database unless the host names another, the player's authored source database say.
 	private ContentDatabase mSceneDatabase = null;
 	/// The runtime script surface, populated once from the root; every run binds it.
-	private ScriptSurface mScriptSurface = new .() ~ delete _;
+	/// Registered with ScriptSurfaces once populated, so the plugins' Engine parts put their own
+	/// types on it.
+	private ScriptSurface mScriptSurface = new .() ~ { ScriptSurfaces.Unregister(_); delete _; };
 
 	private NetworkStartup mNetStartup = .();
 
@@ -343,6 +345,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		mDataMount = new NativeFileSystem(mDataRoot);
 
 		EngineScriptSurface.Populate(mScriptSurface);
+		ScriptSurfaces.Register(mScriptSurface);
 		mScenes = host.Subsystems.AddSubsystem<SceneSubsystem>();
 		// The assembly blueprint: every registered manager's scene is built from the FULL
 		// composition, which is the single source of truth.

@@ -8,6 +8,7 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Runtime;
 using Sedulous.Scene;
+using Sedulous.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Engine.Project;
@@ -122,6 +123,53 @@ static class NativeSampleTests
 				"a cook takes no Tooling or Editor part");
 			host.Unload();
 			Test.Assert(builders.Find(typeof(NoteAsset)) == null);
+		}
+	}
+
+	/// The package's own script types (the Spin component) are on the process's surfaces only while
+	/// it is enabled, tagged with it, and a cook's surface hash follows them; the engine's surface
+	/// holds none of them while it is not, and one leaked onto it refuses the plugin's publication.
+	[Test]
+	public static void ThePackagesScriptTypesAreOnTheSurfaceOnlyWhileItIsEnabled()
+	{
+		let surface = scope ScriptSurface();
+		EngineScriptSurface.Populate(surface);
+		ScriptSurfaces.Register(surface);
+		defer ScriptSurfaces.Unregister(surface);
+		const String cSpin = "NativeSample.SpinComponent";
+		for (let t in surface.Types)
+			Test.Assert(!t.FullName.StartsWith("NativeSample."), scope $"{t.FullName}: a plugin's type on the engine's surface");
+		let before = surface.RuntimeHash();
+
+		let engineServices = scope EnginePluginServices();
+		let entries = scope List<EnabledPlugin>();
+		defer { ClearAndDeleteItems!(entries); }
+		Entries(entries);
+		{
+			let subsystems = scope SubsystemManager();
+			let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
+			Test.Assert(engineServices.Attach(host));
+			Test.Assert(host.AddRegistered() case .Ok);
+			host.Load((Span<EnabledPlugin>)entries, scope .());
+			let spin = surface.Find(cSpin);
+			Test.Assert((spin != null) && (spin.Plugin == cId));
+			Test.Assert(surface.RuntimeHash() != before, "the cooks' hash follows the enabled set");
+			host.Unload();
+		}
+		Test.Assert(surface.Find(cSpin) == null);
+		Test.Assert(surface.RuntimeHash() == before);
+
+		// A leak: the type on the surface while the plugin is not enabled refuses its publication.
+		surface.AddType(cSpin, .Struct, ScriptDomains.Runtime);
+		{
+			let subsystems = scope SubsystemManager();
+			let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
+			Test.Assert(engineServices.Attach(host));
+			Test.Assert(host.AddRegistered() case .Ok);
+			host.Load((Span<EnabledPlugin>)entries, scope .());
+			Test.Assert(NativeSampleEnginePart.ScriptTypesRefused, "refused, loudly");
+			Test.Assert(surface.Find(cSpin).Plugin.IsEmpty, "the leaked one untouched, none added");
+			host.Unload();
 		}
 	}
 

@@ -20,6 +20,9 @@ class ScriptTypeInfo
 	public String ManagerTypeName = new .() ~ delete _;
 	/// For a Component: the [SerializableComponent] type id, when it has one.
 	public String ComponentTypeId = new .() ~ delete _;
+	/// The plugin whose Engine part published it (ScriptSurface.AddPluginTypes); empty for the
+	/// engine's.
+	public String Plugin = new .() ~ delete _;
 	public String DisplayName = new .() ~ delete _;
 	public String Description = new .() ~ delete _;
 	public String Category = new .() ~ delete _;
