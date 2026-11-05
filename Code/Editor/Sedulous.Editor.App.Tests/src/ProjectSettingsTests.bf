@@ -485,6 +485,69 @@ class ProjectSettingsTests
 		host.Unload();
 	}
 
+	/// The plugins section: the entries under "In this project", each with an Enabled box; what the
+	/// project could enable under "Available", unchecked. Save removes an entry left unchecked and
+	/// adds a plugin checked, saying the plugins changed.
+	[Test]
+	public static void ThePluginsSectionShowsEntriesAndWhatCouldBeEnabledAndSaveAddsAndRemoves()
+	{
+		let bed = scope Bed();
+		bed.Dialog.Close();
+		let settings = bed.Project.Settings;
+		let steam = new EnabledPlugin();
+		steam.Id.Set("steam");
+		settings.Plugins.Add(steam);
+		{
+			let lantern = scope PluginManifest();
+			lantern.Id.Set("lantern");
+			lantern.Name.Set("Lantern");
+			lantern.Version.Set("0.3.0");
+			lantern.EngineVersion.Set(EngineVersion.String);
+			let part = new PluginManifestPart();
+			part.Kind.Set("Engine");
+			lantern.Parts.Add(part);
+			let platform = new PluginPlatform();
+			platform.Platform.Set("Linux64");
+			lantern.Platforms.Add(platform);
+			let packageDir = PathJoin(bed.Project.Directory, "Plugins/Lantern", .. scope .());
+			CreateDirectory(PathJoin(bed.Project.Directory, "Plugins", .. scope .()));
+			CreateDirectory(packageDir);
+			let xml = lantern.Write(.. scope .());
+			Test.Assert(WriteFile(PathJoin(packageDir, "Plugin.xml", .. scope .()), .((uint8*)xml.Ptr, xml.Length)) case .Ok);
+		}
+		let said = scope String();
+		bed.Context.OnStatus = new [&] (text) => { said.Set(text); };
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let bag = bed.Bag;
+		let entries = bag.FindInfo("plugins");
+		Test.Assert((entries != null) && (entries.Kind == .Group) && (entries.DisplayName == "In this project"), "the entries' parent row");
+		Test.Assert(bed.Dialog.Grid.IsOpen("plugins") && bed.Dialog.Grid.IsOpen("plugins.steam"), "opened");
+		{
+			var enabled = bag.GetValue("plugins.steam.enabled", 0);
+			defer enabled.Dispose();
+			Test.Assert(enabled.AsBool);
+		}
+		let available = bag.FindInfo("available");
+		Test.Assert((available != null) && (available.DisplayName == "Available"));
+		let lanternHeader = bag.FindInfo("available.0");
+		Test.Assert((lanternHeader != null) && (lanternHeader.DisplayName == "Lantern 0.3.0 (Plugins/Lantern)"), scope String(lanternHeader.DisplayName));
+		Test.Assert(bed.TextIs("available.0.state", "available: Engine part on Linux64"));
+		{
+			var enabled = bag.GetValue("available.0.enabled", 0);
+			defer enabled.Dispose();
+			Test.Assert(!enabled.AsBool);
+		}
+
+		bed.Edit("plugins.steam.enabled", Sedulous.GUI.Variant(false));
+		bed.Edit("available.0.enabled", Sedulous.GUI.Variant(true));
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(settings.FindPlugin("steam") == null, "removed");
+		let added = settings.FindPlugin("lantern");
+		Test.Assert((added != null) && (added.Path == "Plugins/Lantern") && added.Platforms.IsEmpty, "added, on every platform it supports");
+		Test.Assert(DirectoryExists(PathJoin(bed.Project.Directory, "Plugins/Lantern", .. scope .())), "a package's folder stays");
+		Test.Assert(said.Contains("The plugins changed"), said);
+	}
+
 	[Test]
 	public static void SaveKeepsThePathMirrorsAndTellsTheEditorCancelAndClosingLeaveTheManifest()
 	{

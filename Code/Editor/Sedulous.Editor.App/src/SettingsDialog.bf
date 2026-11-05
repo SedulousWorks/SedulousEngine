@@ -19,13 +19,18 @@ namespace Sedulous.Editor.App;
 // reference to the source type it names (a list of them for a list setting), so the slot picks,
 // drops and clears as an inspector's does. MSAA's choices are the render subsystem's levels. The
 // engine version the project was last saved with shows, read only. The project's plugins follow in
-// their own section, a group per entry in its order: its state in the process's plugin host, and
-// for a loaded plugin its settings, rows made the same way from its settings type; an entry whose
-// plugin is not loaded keeps its settings as written. Save writes the rows back (a list's empty and
-// repeated entries dropped), keeps the path mirrors beside the guids, writes each loaded plugin's
-// settings into its entry, persists the manifest and tells the editor (the context's
-// settings-changed hook, which the session's settings-derived state follows); Cancel or closing
-// leaves the manifest as it was.
+// their own section, a group per entry in its order under "In this project": an Enabled box, its
+// state in the process's plugin host, and for a loaded plugin its settings, rows made the same way
+// from its settings type; an entry whose plugin is not loaded keeps its settings as written. After
+// them, under "Available", what the project could enable (PluginDiscovery, read from its Plugins
+// folder each time the dialog opens): each package no entry names and each linked plugin no entry
+// enables, unchecked, or with why it cannot be enabled. Save writes the rows back (a list's empty
+// and repeated entries dropped), keeps the path mirrors beside the guids, writes each loaded
+// plugin's settings into its entry, removes the entries left unchecked (a package's folder stays)
+// and adds the plugins checked (on every platform their manifests support), persists the manifest
+// and tells the editor (the context's settings-changed hook, which the session's settings-derived
+// state follows); a changed plugin list takes effect when the project opens again. Cancel or
+// closing leaves the manifest as it was.
 
 class ProjectSettingsDialog
 {
@@ -38,6 +43,10 @@ class ProjectSettingsDialog
 	/// The section the project's plugins show in; plugin `id`'s group is `plugins.<id>`, its state
 	/// `plugins.<id>.state` and each setting `plugins.<id>.<name>`.
 	public const String cPluginsCategory = "Plugins";
+	/// The row the entries' groups sit under (`plugins.<id>`), and the one the plugins the project
+	/// could enable sit under (`available.<n>`): the grid reaches a row through its parent's.
+	public const String cPluginEntriesGroup = "plugins";
+	public const String cAvailablePluginsGroup = "available";
 	private const float cWidth = 620.0f;
 	private const float cHeight = 480.0f;
 
@@ -58,6 +67,12 @@ class ProjectSettingsDialog
 	/// into (the plugin host's, alive while the plugin is enabled).
 	private List<String> mPluginIds = new .() ~ DeleteContainerAndItems!(_);
 	private List<Object> mPluginSettings = new .() ~ delete _;
+	/// What the project could enable, read at each open.
+	private List<AvailablePlugin> mAvailable = new .() ~ DeleteContainerAndItems!(_);
+
+	/// The plugin parts the editor links, which the project may enable; null is the parts that
+	/// registered in this binary (PluginRegistry). BORROWED.
+	public List<PluginPart> LinkedParts = null;
 
 	/// The dialog over `context`'s project, its body `body` (the markup's controls by id). `refs`
 	/// (what the asset slots ask of the editor) outlives it. TAKES OWNERSHIP of a reference to
@@ -104,6 +119,7 @@ class ProjectSettingsDialog
 		Fill(mContext.Project.Settings);
 		if (mGrid != null)
 			mGrid.Source = mBag;
+		OpenPluginGroups();
 		mWindow.OpenModal(root);
 		return mWindow.IsOpen;
 	}
@@ -130,6 +146,7 @@ class ProjectSettingsDialog
 		}
 		let settings = project.Settings;
 		WriteBack(settings);
+		let pluginsChanged = ApplyPluginChanges(settings);
 		// The source-database path mirrors, for display and the older manifest fallback.
 		settings.RefreshPathMirrors(scope (id, outPath) =>
 			{
@@ -141,7 +158,7 @@ class ProjectSettingsDialog
 			mContext.Notify(.Error, "Project settings save FAILED (see console).");
 			return false;
 		}
-		mContext.SetStatus("Project settings saved.");
+		mContext.SetStatus(pluginsChanged ? "Project settings saved. The plugins changed: they load when the project opens again (a package of the project's in its own build, Project > Build Project)." : "Project settings saved.");
 		// Settings-derived session state (the default UI font and theme binds) re-applies now;
 		// without this a changed default font kept the old bind until reopen.
 		mContext.NotifyProjectSettingsChanged();
@@ -236,20 +253,31 @@ class ProjectSettingsDialog
 		FillPlugins(settings);
 	}
 
-	/// A group per plugin entry: its state, and a loaded plugin's settings.
+	/// A group per plugin entry: whether it stays enabled, its state, and a loaded plugin's
+	/// settings; then a group per plugin the project could enable.
 	private void FillPlugins(ProjectSettings settings)
 	{
 		ClearAndDeleteItems!(mPluginIds);
 		mPluginSettings.Clear();
 		let host = mContext.Plugins;
 		let path = scope String();
+		if (!settings.Plugins.IsEmpty)
+		{
+			let entries = mBag.Add(cPluginEntriesGroup, .Group);
+			entries.DisplayName.Set("In this project");
+			entries.Category.Set(cPluginsCategory);
+		}
 		for (let entry in settings.Plugins)
 		{
-			let group = scope $"plugins.{entry.Id}";
+			let group = scope $"{cPluginEntriesGroup}.{entry.Id}";
 			let manifest = (host != null) ? host.Manifest(entry.Id) : null;
 			let header = mBag.Add(group, .Group);
 			header.DisplayName.Set(((manifest != null) && !manifest.Name.IsEmpty) ? StringView(manifest.Name) : StringView(entry.Id));
 			header.Category.Set(cPluginsCategory);
+			let enabled = mBag.Add(scope $"{group}.enabled", .Bool, Sedulous.GUI.Variant(true));
+			enabled.DisplayName.Set("Enabled");
+			enabled.Category.Set(cPluginsCategory);
+			enabled.Description.Set("Unchecked, Save removes it and its settings from the project; a package's folder stays.");
 			let status = scope Sedulous.Engine.Project.PluginStatus();
 			Sedulous.Engine.Project.PluginStatus.Of(entry, host, status);
 			let state = scope String(status.State.Name);
@@ -282,6 +310,118 @@ class ProjectSettingsDialog
 				row.Category.Set(cPluginsCategory);
 			}
 		}
+		FillAvailablePlugins(settings);
+	}
+
+	/// Opens the plugins' groups (groups start folded), so each one's Enabled box shows.
+	private void OpenPluginGroups()
+	{
+		if ((mGrid == null) || (mContext.Project == null))
+			return;
+		mGrid.SetOpen(cPluginEntriesGroup, true);
+		mGrid.SetOpen(cAvailablePluginsGroup, true);
+		for (let entry in mContext.Project.Settings.Plugins)
+			mGrid.SetOpen(scope $"{cPluginEntriesGroup}.{entry.Id}", true);
+		for (int i < mAvailable.Count)
+			mGrid.SetOpen(scope $"{cAvailablePluginsGroup}.{i}", true);
+	}
+
+	/// A group per plugin the project could enable (`available.<n>`, PluginDiscovery): unchecked,
+	/// with what it is, or with why it cannot be enabled.
+	private void FillAvailablePlugins(ProjectSettings settings)
+	{
+		ClearAndDeleteItems!(mAvailable);
+		let project = mContext.Project;
+		if (project == null)
+			return;
+		let linked = (LinkedParts != null) ? (Span<PluginPart>)LinkedParts : PluginRegistry.Parts;
+		PluginDiscovery.Discover(project.Directory, settings, linked, mAvailable);
+		if (!mAvailable.IsEmpty)
+		{
+			let available = mBag.Add(cAvailablePluginsGroup, .Group);
+			available.DisplayName.Set("Available");
+			available.Category.Set(cPluginsCategory);
+		}
+		for (int i < mAvailable.Count)
+		{
+			let plugin = mAvailable[i];
+			let group = scope $"{cAvailablePluginsGroup}.{i}";
+			let header = mBag.Add(group, .Group);
+			// Its name and version, then where it is: its folder, or linked; a package whose
+			// manifest does not read is only its folder.
+			if (plugin.Id.IsEmpty)
+				header.DisplayName.Set(plugin.Path);
+			else
+			{
+				header.DisplayName.Set(!plugin.Name.IsEmpty ? StringView(plugin.Name) : StringView(plugin.Id));
+				if (!plugin.Version.IsEmpty)
+					header.DisplayName.AppendF(" {}", plugin.Version);
+				if (plugin.Path.IsEmpty)
+					header.DisplayName.Append(" (linked)");
+				else
+					header.DisplayName.AppendF(" ({})", plugin.Path);
+			}
+			header.Category.Set(cPluginsCategory);
+			let state = scope String();
+			if (plugin.Problem.IsEmpty)
+			{
+				let enabled = mBag.Add(scope $"{group}.enabled", .Bool, Sedulous.GUI.Variant(false));
+				enabled.DisplayName.Set("Enabled");
+				enabled.Category.Set(cPluginsCategory);
+				enabled.Description.Set("Checked, Save enables it in the project; it loads when the project opens again (a package of the project's in its own build: Project > Build Project).");
+				state.Append("available:");
+				for (int k < plugin.Parts.Count)
+					state.AppendF("{}{}", (k == 0) ? " " : ", ", plugin.Parts[k]);
+				state.Append((plugin.Parts.Count == 1) ? " part on" : " parts on");
+				for (int k < plugin.Platforms.Count)
+					state.AppendF("{}{}", (k == 0) ? " " : ", ", plugin.Platforms[k]);
+			}
+			else
+			{
+				state.AppendF("not offered: {}", plugin.Problem);
+			}
+			let stateRow = mBag.Add(scope $"{group}.state", .String, Sedulous.GUI.Variant(state));
+			stateRow.DisplayName.Set("State");
+			stateRow.Category.Set(cPluginsCategory);
+			stateRow.ReadOnly = true;
+		}
+	}
+
+	/// The entries left unchecked go, with their settings (a package's folder stays); the plugins
+	/// checked join, on every platform their manifests support. Whether anything changed.
+	private bool ApplyPluginChanges(ProjectSettings settings)
+	{
+		bool changed = false;
+		for (int i = settings.Plugins.Count - 1; i >= 0; i--)
+		{
+			let path = scope $"{cPluginEntriesGroup}.{settings.Plugins[i].Id}.enabled";
+			if (mBag.FindInfo(path) == null)
+				continue;
+			var value = mBag.GetValue(path, 0);
+			defer value.Dispose();
+			if (value.AsBool)
+				continue;
+			delete settings.Plugins[i];
+			settings.Plugins.RemoveAt(i);
+			changed = true;
+		}
+		for (int i < mAvailable.Count)
+		{
+			let plugin = mAvailable[i];
+			let path = scope $"{cAvailablePluginsGroup}.{i}.enabled";
+			if (!plugin.Problem.IsEmpty || (mBag.FindInfo(path) == null) || (settings.FindPlugin(plugin.Id) != null))
+				continue;
+			var value = mBag.GetValue(path, 0);
+			defer value.Dispose();
+			if (!value.AsBool)
+				continue;
+			let entry = new EnabledPlugin();
+			entry.Id.Set(plugin.Id);
+			entry.Path.Set(plugin.Path);
+			settings.Plugins.Add(entry);
+			changed = true;
+		}
+		return changed;
 	}
 
 	/// The row a setting is, or null for one no row shows (a text list: the MCP tools set it
