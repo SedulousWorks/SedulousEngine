@@ -453,7 +453,14 @@ when the project has no `export_presets.xml`). The dist lands under `<project>/D
 `out` says otherwise: the player, its runtime libraries, `Content.pak`, `player.xml` and
 `Data/Engine/Shaders/shaders.dpak`. A web export, its template and serving it: `docs://Web.md`.
 A project's custom shaders ship as bytecode in the dist's shader pack, their HLSL left out unless
-the preset's `includeShaderSource` is set.
+the preset's `includeShaderSource` is set. The project's plugins choose the player: its own build's
+(Project > Build Project) when a package of its own is enabled on the host platform, else the
+template's when it carries every plugin enabled on the preset's platform at a version at least
+the plugin's; otherwise the export is refused, the response naming why (a plugin the template
+lacks or carries older, one enabled where it is not supported, the project's own player not
+built). The response's `player` says which ran and why. Each enabled plugin's deploy files ship
+beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
+export with its reason.
 
 `export_presets` lists the project's presets, each its fields by the names
 `export_preset_set` takes, and the templates this machine can export them with;
@@ -488,8 +495,8 @@ project and templates do not; the preset's `template` comes back null until one 
 - `profiler_capture` keeps the call open for the capture plus a few frames for the GPU's
   last passes; the editor must be drawing (not minimised), or it gives up. One capture runs
   at a time, a game's F9 included.
-- `project_export` failures say little in the response by design; the detail is in
-  `log_read` (the Cook and Export categories).
+- `project_export` failures say little in the response by design, a refusal by the project's
+  plugins aside; the detail is in `log_read` (the Cook and Export categories).
 
 ## When something looks wrong
 

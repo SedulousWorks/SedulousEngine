@@ -92,6 +92,7 @@ static class ProjectExportTool
 		outResult.Set("scenesStaged", JsonValue.MakeNumber((double)result.Content.ScenesStaged));
 		outResult.Set("filesPacked", JsonValue.MakeNumber((double)result.Content.FilesPacked));
 		outResult.Set("filesStaged", JsonValue.MakeNumber((double)result.FilesStaged));
+		outResult.Set("player", JsonValue.MakeString(result.PlayerReason));
 		if (!result.EngineVersionWarning.IsEmpty)
 			outResult.Set("warning", JsonValue.MakeString(result.EngineVersionWarning));
 		if (result.Pruning.Pruned)

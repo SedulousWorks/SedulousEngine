@@ -162,6 +162,9 @@ class EditorContext : IAssetEditSink
 	/// Project Settings reports each entry against it and edits the settings it holds. BORROWED:
 	/// the application owns it.
 	public Sedulous.Runtime.PluginHost Plugins;
+	/// The export hooks the project's plugins added, which the editor's exports run; null while no
+	/// project is open. BORROWED: the session's.
+	public ExportPluginServices ExportHooks;
 
 	/// The build lane of Tasks: the project's changes, one at a time.
 	public TaskLane BuildLane => mBuildLane;

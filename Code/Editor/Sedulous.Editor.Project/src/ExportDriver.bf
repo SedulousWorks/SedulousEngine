@@ -17,9 +17,12 @@ namespace Sedulous.Editor.Project;
 /// of the entry points when the preset prunes; stage the scenes as binary products; pack
 /// the cooked content, one pak on the desktop and the BC and ASTC siblings on the web; write
 /// the dist manifest; cook the shader pack into the dist's Data; stage the resolved
-/// template's player and sidecars and the preset's extra files. A project with a package of its
-/// own ships its own build's player instead of the template's, refused until Build Project made
-/// it for the preset's config. The ONE entry point the
+/// template's player and sidecars and the preset's extra files. The project's plugins choose the
+/// player (ExportPlugins.ChoosePlayer): its own build's when a package of its own is enabled,
+/// refused until Build Project made it for the preset's config, else the template's when it
+/// carries every plugin enabled there, else none, and the export is refused saying why. The
+/// plugins' deploy files ship beside the player, and their export hooks run over the staged
+/// dist. The ONE entry point the
 /// editor's Export menu, the CLI and the MCP host share, so a preset produces the same dist
 /// whichever surface triggers it.
 static class ExportDriver
@@ -471,7 +474,7 @@ static class ExportDriver
 	public static Result<void, ErrorCode> ExportOne(EditorProject project, ExportPreset preset, TemplateRegistry templates,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportResult outResult = null,
 		ExportProgress onProgress = null, bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null,
-		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null)
+		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null)
 	{
 		let template = templates.Resolve(preset);
 		if (template == null)
@@ -489,6 +492,8 @@ static class ExportDriver
 				outResult.OutputDir.Set(result.OutputDir);
 				outResult.EngineVersionWarning.Set(result.EngineVersionWarning);
 				result.Pruning.CopyTo(outResult.Pruning);
+				outResult.PlayerReason.Set(result.PlayerReason);
+				outResult.Refusal.Set(result.Refusal);
 			}
 		}
 		if (!template.EngineVersion.IsEmpty && (template.EngineVersion != EngineVersion.String))
@@ -496,20 +501,32 @@ static class ExportDriver
 			GlobalLog(.Warning, "Export: template '{}' was built against engine {} but this build is {} - exporting anyway", template.Id, template.EngineVersion, EngineVersion.String);
 			result.EngineVersionWarning.AppendF("Template '{}' targets engine {} (this build is {}).", template.Id, template.EngineVersion, EngineVersion.String);
 		}
+		// The player this dist runs, and whether the project's plugins let the export go ahead.
+		let choice = scope PlayerChoice();
+		ExportPlugins.ChoosePlayer(project, template, preset.Platform, choice);
+		if (!choice.Refusal.IsEmpty)
+		{
+			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, choice.Refusal);
+			result.Refusal.Set(choice.Refusal);
+			return .Err(.InvalidArgument);
+		}
 		// A package of the project's is compiled into the project's own player, so that player
 		// ships, built for the preset's config and newer than every file of the packages; the
-		// template still gives the sidecars. Another platform's preset is the template's.
+		// template still gives the sidecars.
 		let ownPlayer = scope String();
-		if (ProjectBuild.HasPackages(project.Settings) && (preset.Platform == BuildLayout.HostPlatformName))
+		if (choice.OwnPlayer)
 		{
 			let config = ProjectBuild.BuildConfigFor(preset.Config, .. scope .());
 			if (ProjectBuild.FreshPlayer(project.Directory, project.Settings, config, ownPlayer) case .Err(let err))
 			{
-				GlobalLog(.Error, "Export: preset '{}' needs the project's own player for {}, and it is {}: Build Project first",
-					preset.Name, config, (err == .NotFound) ? "not built" : "older than the project's packages");
+				result.Refusal.AppendF("the project's own player for {} is {}: Build Project first", config,
+					(err == .NotFound) ? "not built" : "older than the project's packages");
+				GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
 				return .Err(err);
 			}
 		}
+		result.PlayerReason.Set(choice.Reason);
+		GlobalLog(.Information, "Export: preset '{}': {} player ({})", preset.Name, choice.OwnPlayer ? "the project's own" : "the template's", choice.Reason);
 		let subdir = preset.OutputSubdir.IsEmpty ? ExportStaging.SanitizeName(preset.Name, .. scope :: .()) : StringView(preset.OutputSubdir);
 		PathJoin(outRoot, subdir, result.OutputDir);
 		CreateDirectory(result.OutputDir);
@@ -621,6 +638,29 @@ static class ExportDriver
 			else
 				GlobalLog(.Warning, "Export: additional file '{}' not found", extra);
 		}
+		// The deploy files of the plugins the project enables on this platform, beside the player.
+		if (!ExportPlugins.StageDeployFiles(project, template, choice, preset.Platform, result.OutputDir, ref result.FilesStaged))
+		{
+			result.Refusal.Set("a plugin's deploy file is missing (see the log)");
+			return .Err(.NotFound);
+		}
+		// The project's plugins' export hooks, over the staged dist.
+		if ((hooks != null) && (hooks.Count > 0))
+		{
+			if (onProgress != null)
+				onProgress("Running the plugins' export hooks...", 0.99f);
+			var context = ExportHookContext();
+			context.Project = project;
+			context.Preset = preset;
+			context.OutputDir = result.OutputDir;
+			let failure = scope String();
+			if (!hooks.Run(context, failure))
+			{
+				result.Refusal.AppendF("export hook {}", failure);
+				GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
+				return .Err(.Internal);
+			}
+		}
 		if (onProgress != null)
 			onProgress("Done", 1.0f);
 		return .Ok;
@@ -630,7 +670,7 @@ static class ExportDriver
 	public static Result<void, ErrorCode> ExportAll(EditorProject project, List<ExportPreset> presets, TemplateRegistry templates,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportProgress onProgress = null,
 		bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null, SceneReferenceScanner scanner = null,
-		List<Guid> precomputedReachableRoots = null)
+		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null)
 	{
 		int ok = 0;
 		let n = presets.Count;
@@ -644,14 +684,14 @@ static class ExportDriver
 						onProgress(scope $"{preset.Name}: {step}", ((float)index + fraction) / (float)n);
 				};
 			let result = scope ExportResult();
-			if (ExportOne(project, preset, templates, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots) case .Ok)
+			if (ExportOne(project, preset, templates, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks) case .Ok)
 			{
 				ok++;
 				GlobalLog(.Information, "Export: exported '{}' -> {} ({} files staged)", preset.Name, result.OutputDir, result.FilesStaged);
 			}
 			else
 			{
-				GlobalLog(.Error, "Export: preset '{}' failed", preset.Name);
+				GlobalLog(.Error, "Export: preset '{}' failed{}", preset.Name, result.Refusal.IsEmpty ? "" : scope $": {result.Refusal}");
 			}
 		}
 		return (ok == n) ? .Ok : .Err(.Internal);

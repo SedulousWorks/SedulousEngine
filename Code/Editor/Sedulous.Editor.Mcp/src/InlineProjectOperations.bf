@@ -156,9 +156,12 @@ class InlineProjectOperations : IProjectOperations
 				SceneExportSupport.ScanSceneReferences(instance, db, outReferences.Resources, outReferences.Prefabs);
 			};
 		if (ExportDriver.ExportOne(project, request.Preset, templates, builders, request.OutRoot, dataRoot,
-			request.Rebuild, outResult, null, true, sceneStreams, scanner) case .Err)
+			request.Rebuild, outResult, null, true, sceneStreams, scanner, null, session.ExportHooks) case .Err)
 		{
-			outError.AppendF("export of preset '{}' failed - read log_read (category Export/Cook) for the failing step", request.Preset.Name);
+			if (!outResult.Refusal.IsEmpty)
+				outError.AppendF("export of preset '{}' refused: {}", request.Preset.Name, outResult.Refusal);
+			else
+				outError.AppendF("export of preset '{}' failed - read log_read (category Export/Cook) for the failing step", request.Preset.Name);
 			return .Failed;
 		}
 		return .Finished;

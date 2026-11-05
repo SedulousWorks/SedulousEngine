@@ -142,7 +142,7 @@ class Program
 
 		if (all)
 		{
-			if (ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner) case .Err)
+			if (ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks) case .Err)
 			{
 				Console.Error.WriteLine("Sedulous.Tools.Export: one or more presets failed (see log)");
 				return 1;
@@ -157,13 +157,16 @@ class Program
 			return 1;
 		}
 		let result = scope ExportResult();
-		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner) case .Err)
+		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks) case .Err)
 		{
+			if (!result.Refusal.IsEmpty)
+				Console.Error.WriteLine("Sedulous.Tools.Export: export refused: {}", result.Refusal);
 			Console.Error.WriteLine("Sedulous.Tools.Export: export failed (see log)");
 			return 1;
 		}
 		Console.WriteLine("exported '{}' -> {}\n  cook: {} cooked, {} scene(s), {} packed | staged {} file(s)",
 			preset.Name, result.OutputDir, result.Content.Cooked, result.Content.ScenesStaged, result.Content.FilesPacked, result.FilesStaged);
+		Console.WriteLine("  player: {}", result.PlayerReason);
 		if (!result.EngineVersionWarning.IsEmpty)
 			Console.WriteLine("  warning: {}", result.EngineVersionWarning);
 		if (result.Pruning.Pruned)

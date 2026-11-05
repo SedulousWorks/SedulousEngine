@@ -26,6 +26,9 @@ class ProjectSession
 	/// entry against it and plugin_settings_set edits the settings it holds. Null where the host
 	/// enables no plugins. BORROWED.
 	public Sedulous.Runtime.PluginHost Plugins = null;
+	/// The export hooks the project's plugins added, which project_export runs; null for none.
+	/// BORROWED.
+	public ExportPluginServices ExportHooks = null;
 
 	public bool IsOpen => Project != null;
 }

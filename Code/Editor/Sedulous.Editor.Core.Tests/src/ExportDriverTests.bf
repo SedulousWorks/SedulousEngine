@@ -19,6 +19,19 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core.Tests;
 
+/// A Tooling part that adds an export hook through the service its host offers.
+class HookingPart : PluginPart
+{
+	public override StringView PluginId => "hooked";
+	public override PluginPartKind Kind => .Tooling;
+
+	public override void Load(PluginContext context)
+	{
+		if (let hooks = context.Find<ExportPluginServices>())
+			hooks.AddHook("hooked", new (hookContext, outWhy) => true);
+	}
+}
+
 /// The export driver: a project into a dist the player loads back, the closure pruned and
 /// reported or not, the roots seeded, the variants per platform, the player and sidecars
 /// staged from the resolved template with the shader pack, symbols when opted in, a foreign
@@ -338,10 +351,22 @@ static class ExportDriverTests
 		let source = PathJoin(fx.ProjectDir, "Plugins/Export/Plugin.xml", .. scope .());
 		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins", .. scope .()));
 		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins/Export", .. scope .()));
-		let manifest = "<root/>\n";
+		let manifest = scope String();
+		{
+			let package = scope PluginManifest();
+			package.Id.Set("export");
+			package.Version.Set("0.1.0");
+			package.EngineVersion.Set("0.1");
+			let platform = new PluginPlatform();
+			platform.Platform.Set(BuildLayout.HostPlatformName);
+			package.Platforms.Add(platform);
+			Test.Assert(package.Write(manifest) case .Ok);
+		}
 		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
 
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotFound), "never built");
+		let never = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, never) case .Err(.NotFound), "never built");
+		Test.Assert(never.Refusal.Contains("Build Project first"), never.Refusal);
 		Test.Assert(!DirectoryExists(PathJoin(fx.OutRoot, "host", .. scope .())), "refused before anything is written");
 
 		// Past the file system's timestamp step, so the player is newer than the package.
@@ -361,10 +386,159 @@ static class ExportDriverTests
 		Test.Assert(ReadFile(PathJoin(result.OutputDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .()), staged) case .Ok);
 		Test.Assert(StringView((char8*)staged.Ptr, staged.Count) == built, "the project's player, not the template's");
 		Test.Assert(FileExists(PathJoin(result.OutputDir, "libfoo.so", .. scope .())), "the template's sidecars still");
+		Test.Assert(result.PlayerReason.Contains("own package 'export'"), result.PlayerReason);
 
 		System.Threading.Thread.Sleep(50);
 		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
 		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.InvalidArgument), "a package changed since");
+	}
+
+	/// A template of the host's platform carrying the meter plugin at `listed`, its files under
+	/// plugins/meter/ at `carried` (the manifest's version), its deploy file beside it; installed
+	/// under `templatesRoot` as "meter-template".
+	private static void MeterTemplate(StringView templatesRoot, StringView listed, StringView carried, bool supportsHost = true)
+	{
+		let dir = PathJoin(templatesRoot, "meter-template", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		CreateDirectory(templatesRoot);
+		CreateDirectory(dir);
+		let template = scope ExportTemplate();
+		template.Id.Set("meter-template");
+		template.Platform.Set(BuildLayout.HostPlatformName);
+		template.Config.Set("Release");
+		template.EngineVersion.Set(EngineVersion.String);
+		BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, template.PlayerBinary);
+		let plugin = new TemplatePlugin();
+		plugin.Id.Set("meter");
+		plugin.Version.Set(listed);
+		template.Plugins.Add(plugin);
+		Test.Assert(ExportTemplates.SaveManifest(scope NativeFileSystem(dir), template) case .Ok);
+		let player = "#!meter player\n";
+		Test.Assert(WriteFile(PathJoin(dir, template.PlayerBinary, .. scope .()), .((uint8*)player.Ptr, player.Length)) case .Ok);
+		let manifest = scope PluginManifest();
+		manifest.Id.Set("meter");
+		manifest.Version.Set(carried);
+		manifest.EngineVersion.Set("0.1");
+		let platform = new PluginPlatform();
+		platform.Platform.Set(supportsHost ? BuildLayout.HostPlatformName : "Web");
+		platform.Deploy.Add(new .("libmeter.so"));
+		manifest.Platforms.Add(platform);
+		let files = PathJoin(dir, "plugins/meter", .. scope .());
+		CreateDirectory(PathJoin(dir, "plugins", .. scope .()));
+		CreateDirectory(files);
+		let xml = manifest.Write(.. scope .());
+		Test.Assert(WriteFile(PathJoin(files, "Plugin.xml", .. scope .()), .((uint8*)xml.Ptr, xml.Length)) case .Ok);
+		let lib = "so\n";
+		Test.Assert(WriteFile(PathJoin(files, "libmeter.so", .. scope .()), .((uint8*)lib.Ptr, lib.Length)) case .Ok);
+	}
+
+	/// The template's player runs a dist when the template carries every plugin the project enables
+	/// on the preset's platform at a version at least its manifest's, their deploy files beside it;
+	/// otherwise the export is refused before anything is written, naming why: a plugin the
+	/// template lacks or carries older, one enabled where it is not supported. A plugin not enabled
+	/// on the platform asks nothing.
+	[Test]
+	public static void ATemplateCarryingTheProjectsPluginsRunsItsDistAndOneLackingThemIsRefused()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_plugins");
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		let templatesRoot = PathJoin(fx.ToolDir, "templates", .. scope .());
+		let preset = ExportProjectFixture.HostPreset("Host", "host");
+		defer delete preset;
+		preset.TemplateId.Set("meter-template");
+		let entry = new EnabledPlugin();
+		entry.Id.Set("meter");
+		fx.Project.Settings.Plugins.Add(entry);
+
+		MeterTemplate(templatesRoot, "1.2.0", "1.0.0");
+		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
+		let result = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok, result.Refusal);
+		Test.Assert(result.PlayerReason.Contains("carries every plugin"), result.PlayerReason);
+		Test.Assert(FileExists(PathJoin(result.OutputDir, "libmeter.so", .. scope .())), "its deploy file beside the player");
+
+		// Older than the plugin's manifest.
+		MeterTemplate(templatesRoot, "0.9.0", "1.0.0");
+		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
+		let older = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, older) case .Err(.InvalidArgument));
+		Test.Assert(older.Refusal.Contains("carries plugin 'meter' 0.9.0, older than 1.0.0"), older.Refusal);
+
+		// Enabled here, which the plugin does not support.
+		MeterTemplate(templatesRoot, "1.0.0", "1.0.0", false);
+		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
+		entry.Platforms.Add(new .(BuildLayout.HostPlatformName));
+		let unsupported = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, unsupported) case .Err(.InvalidArgument));
+		Test.Assert(unsupported.Refusal.Contains("which it does not support"), unsupported.Refusal);
+		// Not enabled on this platform: nothing asked, nothing deployed.
+		ClearAndDeleteItems!(entry.Platforms);
+		entry.Platforms.Add(new .("Web"));
+		let elsewhere = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, elsewhere) case .Ok, elsewhere.Refusal);
+
+		// A template that does not carry it.
+		ClearAndDeleteItems!(entry.Platforms);
+		preset.TemplateId.Clear();
+		fx.Templates.Refresh("", fx.ToolDir);
+		let lacking = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, lacking) case .Err(.InvalidArgument));
+		Test.Assert(lacking.Refusal.Contains("plugin 'meter'"), lacking.Refusal);
+	}
+
+	/// A plugin's export hooks run over the staged dist, in order, the dist there to read; one that
+	/// fails fails the export with its name and reason.
+	[Test]
+	public static void ThePluginsExportHooksRunOverTheStagedDistAndAFailureFailsTheExport()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_hooks");
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		let preset = ExportProjectFixture.HostPreset("Host", "host");
+		defer delete preset;
+		let hooks = scope ExportPluginServices();
+		let seen = scope String();
+		Test.Assert(hooks.AddHook("probe", new [&] (context, outWhy) =>
+			{
+				seen.Set(context.OutputDir);
+				return FileExists(PathJoin(context.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
+			}));
+		let result = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result,
+			null, true, null, null, null, hooks) case .Ok, result.Refusal);
+		Test.Assert(seen == result.OutputDir, "run over the staged dist");
+		Test.Assert(!hooks.AddHook("none", null));
+		Test.Assert(hooks.AddHook("refuser", new (context, outWhy) => { outWhy.Set("no signing key"); return false; }));
+		let failed = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, failed,
+			null, true, null, null, null, hooks) case .Err(.Internal));
+		Test.Assert(failed.Refusal == "export hook refuser: no signing key", failed.Refusal);
+	}
+
+	/// A Tooling part's hooks leave with its plugin: the service records them against the part's
+	/// load, and the host's unload reverses them.
+	[Test]
+	public static void APluginsExportHooksLeaveWithIt()
+	{
+		let hooks = scope ExportPluginServices();
+		let subsystems = scope Sedulous.Runtime.SubsystemManager();
+		let host = scope PluginHost(subsystems, .Export, EngineVersion.String);
+		Test.Assert(hooks.Attach(host));
+		let manifest = scope PluginManifest();
+		manifest.Id.Set("hooked");
+		manifest.Version.Set("1.0.0");
+		manifest.EngineVersion.Set(EngineVersion.String);
+		let part = new PluginManifestPart();
+		part.Kind.Set("Tooling");
+		manifest.Parts.Add(part);
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
+		let hooking = scope HookingPart();
+		Test.Assert(host.AddLinked(manifest.Write(.. scope .()), scope PluginPart[](hooking)) case .Ok);
+		host.Load(scope StringView[]("hooked"), scope .());
+		Test.Assert(hooks.Count == 1);
+		host.Unload();
+		Test.Assert(hooks.Count == 0);
 	}
 
 	[Test]

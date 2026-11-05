@@ -29,6 +29,7 @@ class ProjectOwner
 	public void Open(ProjectSession session, EditorProject project)
 	{
 		session.Plugins = null;
+		session.ExportHooks = null;
 		DeleteAndNullify!(Plugins);
 		session.Project = null;
 		delete Project;
@@ -42,5 +43,6 @@ class ProjectOwner
 			});
 		session.Project = project;
 		session.Plugins = Plugins.Host;
+		session.ExportHooks = Plugins.ExportHooks;
 	}
 }

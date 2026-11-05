@@ -21,6 +21,8 @@ class ToolPlugins
 	private EnginePluginServices mEngine = new .() ~ delete _;
 	/// What the Pipeline parts add, reversed as they unload.
 	private PipelinePluginServices mPipeline ~ delete _;
+	/// The export hooks the Tooling parts add, reversed as they unload.
+	private ExportPluginServices mExport = new .() ~ delete _;
 	/// After what it runs over and records through, so it goes first.
 	private PluginHost mHost ~ delete _;
 	private PluginLoadReport mReport = new .() ~ delete _;
@@ -35,6 +37,7 @@ class ToolPlugins
 		mHost = new .(mSubsystems, role, EngineVersion.String);
 		mEngine.Attach(mHost);
 		mPipeline.Attach(mHost);
+		mExport.Attach(mHost);
 		if (attach != null)
 			attach(mHost);
 		ProjectPlugins.Load(mHost, parts, project.Settings, mReport);
@@ -53,6 +56,8 @@ class ToolPlugins
 	}
 
 	public PluginHost Host => mHost;
+	/// The export hooks the tool's plugins added, which its exports run. BORROWED.
+	public ExportPluginServices ExportHooks => mExport;
 	/// What the load did: the plugins enabled, those refused with why, those not enabled here.
 	public PluginLoadReport Report => mReport;
 }

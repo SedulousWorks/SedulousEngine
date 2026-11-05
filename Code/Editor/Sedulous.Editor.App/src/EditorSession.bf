@@ -97,6 +97,8 @@ class EditorSession
 	/// What the projects' Pipeline parts add to the editor's registries, attached to each
 	/// project's plugin host, which goes before it.
 	private PipelinePluginServices mPipelinePlugins = null ~ delete _;
+	/// The export hooks the projects' Tooling parts add, attached to each project's plugin host.
+	private ExportPluginServices mExportHooks = null ~ delete _;
 	private Settings mStore = null ~ delete _;
 	/// Close is closing the views: a save writes, captures nothing.
 	private bool mClosingViews = false;
@@ -136,6 +138,10 @@ class EditorSession
 		mPipelinePlugins.Attach(plugins);
 		if (mServices.PluginTools != null)
 			mServices.PluginTools.Attach(plugins);
+		if (mExportHooks == null)
+			mExportHooks = new .();
+		mExportHooks.Attach(plugins);
+		context.ExportHooks = mExportHooks;
 		let parts = (mServices.PluginParts != null) ? (Span<PluginPart>)mServices.PluginParts : PluginRegistry.Parts;
 		ProjectPlugins.Load(plugins, parts, project.Settings, scope .());
 		context.Plugins = plugins;
@@ -288,6 +294,7 @@ class EditorSession
 		DeleteAndNullify!(mResources);
 		// The project's plugins after what may hold their types (the resources), before the project.
 		context.Plugins = null;
+		context.ExportHooks = null;
 		if (let app = mServices.EmbeddedApp)
 			app.DestroyPluginHost();
 		context.ProjectEditorSettings = null;
