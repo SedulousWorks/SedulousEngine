@@ -89,11 +89,11 @@ class DefaultApplication : IApplication, ISceneObserver
 	private String mDataRoot = new .() ~ delete _;
 	/// OWNED: resolved once in Configure and handed to every consumer of engine data.
 	private NativeFileSystem mDataMount = null ~ delete _;
-	/// What CreatePluginHost hands the process's plugin host, which OnShutdown unloads.
+	/// What CreatePluginHost hands the process's plugin host, which goes before them.
 	private ClientServices mClientServices = new .() ~ delete _;
 	private EnginePluginServices mEnginePluginServices = null ~ delete _;
-	/// BORROWED: the caller owns it, alive until OnShutdown.
-	private PluginHost mPlugins = null;
+	/// The process's plugin host. Declared after what it borrows, so it goes first.
+	private PluginHost mPlugins = null ~ delete _;
 
 	/// OWNED only when this application made it. Embedded in a larger host it BORROWS one,
 	/// and then the host pumps it.
@@ -225,13 +225,15 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// The process's plugin host, for `role`: over this app's subsystem manager, checking plugins
 	/// against this engine's version, and given what this app offers its plugins (the client
 	/// services, its host and data mount, and the engine's service for Engine parts). One per
-	/// process; THE CALLER OWNS it, adds the plugins compiled in and enables the project's. The
-	/// app unloads it in OnShutdown, so no plugin outlives the subsystems it added to: it stays
-	/// alive until then, and an app overriding OnShutdown calls this one. Null before Configure.
+	/// process, OWNED by the app: the caller adds the plugins compiled in and enables the
+	/// project's. A host made before is unloaded and replaced (the editor makes one per open
+	/// project). The app destroys it in OnShutdown, so no plugin outlives the subsystems it added
+	/// to, and an app overriding OnShutdown calls this one. Null before Configure. BORROWED.
 	public PluginHost CreatePluginHost(HostRole role)
 	{
 		if (mHost == null)
 			return null; // not configured yet: there is no host or data mount to offer
+		DestroyPluginHost(); // one per process
 		let plugins = new PluginHost(mHost.Subsystems, role, Sedulous.Engine.Project.EngineVersion.String);
 		mClientServices.Host = mHost;
 		mClientServices.Data = mDataMount;
@@ -242,6 +244,18 @@ class DefaultApplication : IApplication, ISceneObserver
 		mPlugins = plugins;
 		return plugins;
 	}
+
+	/// Unloads the process's plugins and destroys their host (nothing when there is none).
+	public void DestroyPluginHost()
+	{
+		if (mPlugins == null)
+			return;
+		mPlugins.Unload();
+		DeleteAndNullify!(mPlugins);
+	}
+
+	/// The process's plugin host, or null when none is made. BORROWED.
+	public PluginHost Plugins => mPlugins;
 
 	/// A data-root-relative path as an absolute one, for the few things that take a path
 	/// rather than a mount: a cooked output database, a model a loader opens itself.
@@ -906,11 +920,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	{
 		// The plugins first, after the subsystems have stopped and before anything they added to
 		// goes: the reverse of their load, which came between Configure and the start.
-		if (mPlugins != null)
-		{
-			mPlugins.Unload();
-			mPlugins = null;
-		}
+		DestroyPluginHost();
 		// The subsystems have shut down (and stopped listening): nothing reaches the runs through
 		// the subsystem manager after this. The runs themselves go with the app.
 		host.Subsystems.SetRunManager(null);

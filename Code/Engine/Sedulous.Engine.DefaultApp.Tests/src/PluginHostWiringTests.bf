@@ -29,11 +29,12 @@ class AppProbePart : PluginPart
 
 /// The process's plugin host from the app: made only once the app is configured, it gives the
 /// plugins this app's client services (its host and data mount) and the engine's service for
-/// Engine parts, and the app's shutdown unloads them.
+/// Engine parts. The app owns it: making another unloads the first one's plugins (the editor
+/// makes one per open project), and the app's shutdown unloads them and destroys it.
 class PluginHostWiringTests
 {
 	[Test]
-	public static void CreatePluginHostOffersTheAppsServicesAndTheAppsShutdownUnloadsThePlugins()
+	public static void CreatePluginHostOffersTheAppsServicesAnotherReplacesItTheAppsShutdownUnloadsThePlugins()
 	{
 		AppProbePart.Client = null;
 		AppProbePart.EngineServices = null;
@@ -43,9 +44,9 @@ class PluginHostWiringTests
 		let app = scope DefaultApplication();
 		Test.Assert(app.CreatePluginHost(.Player) == null, "not configured: nothing to offer");
 		app.Configure(host);
-		let plugins = app.CreatePluginHost(.Player);
+		var plugins = app.CreatePluginHost(.Player);
 		Test.Assert(plugins != null);
-		defer delete plugins;
+		Test.Assert(app.Plugins == plugins);
 		Test.Assert(plugins.Role == .Player);
 
 		let manifest = scope PluginManifest();
@@ -71,12 +72,24 @@ class PluginHostWiringTests
 		Test.Assert(AppProbePart.EngineServices != null);
 		Test.Assert(AppProbePart.Unloads == 0);
 
+		// Another host replaces it, its plugins unloaded first.
+		let xml = manifest.Write(.. scope .());
+		plugins = app.CreatePluginHost(.Editor);
+		Test.Assert(plugins != null);
+		Test.Assert(AppProbePart.Unloads == 1);
+		Test.Assert(plugins.Role == .Editor);
+		Test.Assert(plugins.AddLinked(xml, parts) case .Ok);
+		let again = scope PluginLoadReport();
+		plugins.Load(scope StringView[]("app_probe"), again);
+		Test.Assert(again.Loaded.Count == 1);
+
 		host.Subsystems.Startup();
 		app.OnStartup(host);
 		host.Subsystems.Shutdown();
 		app.OnShutdown(host);
-		Test.Assert(AppProbePart.Unloads == 1);
-		Test.Assert(!plugins.IsLoaded("app_probe"));
+		Test.Assert(AppProbePart.Unloads == 2);
+		Test.Assert(app.Plugins == null);
+		app.DestroyPluginHost(); // nothing left: nothing happens
 		host.Subsystems.Dispose();
 	}
 }

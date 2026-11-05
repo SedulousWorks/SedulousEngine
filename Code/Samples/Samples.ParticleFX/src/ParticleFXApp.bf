@@ -62,8 +62,6 @@ class ParticleFXApp : DefaultApplication
 	private List<Material> mMaterials = new .() ~ DeleteContainerAndItems!(_);
 
 	private BlastAtlas mBlastAtlas = null ~ delete _;
-	/// The process's plugins (Dear ImGui): enabled in Configure, unloaded when the app shuts down.
-	private PluginHost mPlugins = null ~ delete _;
 	/// The subsystem Imgui's part added, null without a graphics device. BORROWED.
 	private ImguiSubsystem mOverlay = null;
 
@@ -99,11 +97,10 @@ class ParticleFXApp : DefaultApplication
 
 		// Dear ImGui is a plugin: this process's host enables it, and it adds its own subsystem
 		// from what the app offers (its graphics device and data mount).
-		mPlugins = CreatePluginHost(.Player);
-		if (mPlugins != null)
+		if (let plugins = CreatePluginHost(.Player))
 		{
-			mPlugins.AddRegistered().IgnoreError();
-			mPlugins.Load(scope StringView[]("imgui"), scope .());
+			plugins.AddRegistered().IgnoreError();
+			plugins.Load(scope StringView[]("imgui"), scope .());
 		}
 		mOverlay = host.Subsystems.GetSubsystem<ImguiSubsystem>();
 	}
