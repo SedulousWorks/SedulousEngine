@@ -36,6 +36,32 @@ class LoggedPart : PluginPart
 	public override void Unload(PluginContext context) => PluginHostTests.Record("unload", context, mKind);
 }
 
+/// A service a host provides, and one it does not.
+class ClockService
+{
+	public int Ticks;
+}
+
+class AbsentService
+{
+}
+
+/// A part that uses the services its host provides.
+class ServiceUserPart : PluginPart
+{
+	public static bool SawAbsent = true;
+
+	public override StringView PluginId => "service_user";
+	public override PluginPartKind Kind => .Engine;
+
+	public override void Load(PluginContext context)
+	{
+		if (let clock = context.Find<ClockService>())
+			clock.Ticks++;
+		SawAbsent = context.Find<AbsentService>() != null;
+	}
+}
+
 /// The registrar's Engine part: registers a serializable type and adds a subsystem.
 class RegistrarPart : PluginPart
 {
@@ -378,6 +404,29 @@ class PluginHostTests
 
 		Test.Assert(host.AddLinked("<root>not a manifest", .()) case .Err(.Internal));
 		ClearLog();
+	}
+
+	[Test]
+	public static void APartFindsTheServicesItsHostProvidesByTypeAndNullForTheRest()
+	{
+		let subsystems = scope SubsystemManager();
+		let linked = scope Linked();
+		PluginPartKind[1] engine = .(.Engine);
+		linked.Add("service_user", engine, scope PluginPart[](new ServiceUserPart()));
+		let clock = scope ClockService();
+		let replacement = scope ClockService();
+		let host = scope PluginHost(subsystems, .Player, "0.1.0");
+		linked.AddTo(host);
+		Test.Assert(host.Provide(clock));
+		Test.Assert(host.Provide(replacement), "one per type: this one replaces the first");
+		let report = scope PluginLoadReport();
+		host.Load(scope StringView[]("service_user"), report);
+		Test.Assert(report.Loaded.Count == 1);
+		Test.Assert(clock.Ticks == 0);
+		Test.Assert(replacement.Ticks == 1);
+		Test.Assert(!ServiceUserPart.SawAbsent);
+		Test.Assert(!host.Provide(clock), "loaded plugins read the table: it is fixed now");
+		host.Unload();
 	}
 
 	[Test]

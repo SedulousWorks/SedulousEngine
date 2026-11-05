@@ -64,6 +64,8 @@ class PluginHost
 	private SubsystemManager mSubsystems;
 	private HostRole mRole;
 	private String mEngineVersion = new .() ~ delete _;
+	/// What the layers above provide, by type. BORROWED values.
+	private Dictionary<Type, Object> mServices = new .() ~ delete _;
 	private List<Candidate> mCandidates = new .() ~ DeleteContainerAndItems!(_);
 	/// One per enabled plugin, alive until its parts unload. Declared before the loader, so the
 	/// loader (which unloads through them) goes first.
@@ -90,6 +92,17 @@ class PluginHost
 
 	/// The loader the parts load through, for adding recorders before Load.
 	public PluginLoader Loader => mLoader;
+
+	/// Hands `service` (BORROWED; it must outlive the host) to every plugin this host enables,
+	/// as PluginContext.Find<T>. One service per type: a second Provide of a type replaces the
+	/// first. False once plugins are loaded: their contexts read the table, so it is fixed then.
+	public bool Provide<T>(T service) where T : class
+	{
+		if (!mContexts.IsEmpty || (service == null))
+			return false;
+		mServices[typeof(T)] = service;
+		return true;
+	}
 
 	/// A plugin compiled into this binary: its manifest's text and its parts linked here
 	/// (BORROWED; they outlive the host). A manifest that does not read is a build defect:
@@ -415,7 +428,7 @@ class PluginHost
 				return;
 			}
 		}
-		let context = new PluginContext(mRole, mSubsystems, manifest.Id);
+		let context = new PluginContext(mRole, mSubsystems, manifest.Id, mServices);
 		mContexts.Add(context);
 		for (int i < PluginPartKind.Count)
 		{

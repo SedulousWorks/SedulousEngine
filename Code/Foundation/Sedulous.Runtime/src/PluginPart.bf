@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 
 namespace Sedulous.Runtime;
@@ -35,18 +36,32 @@ class PluginContext
 	private HostRole mRole;
 	private SubsystemManager mSubsystems;
 	private String mPluginId = new .() ~ delete _;
+	/// The host's, which outlives every context. BORROWED; null for none.
+	private Dictionary<Type, Object> mServices;
 
-	/// `subsystems` is BORROWED and outlives the context.
-	public this(HostRole role, SubsystemManager subsystems, StringView pluginId)
+	/// `subsystems` and `services` are BORROWED and outlive the context.
+	public this(HostRole role, SubsystemManager subsystems, StringView pluginId, Dictionary<Type, Object> services = null)
 	{
 		mRole = role;
 		mSubsystems = subsystems;
 		mPluginId.Set(pluginId);
+		mServices = services;
 	}
 
 	public HostRole Role => mRole;
 	public SubsystemManager Subsystems => mSubsystems;
 	public StringView PluginId => mPluginId;
+
+	/// The host's service of type T, or null when this host has none (a cook has no window, so
+	/// no application host): a part checks, and leaves out what the host cannot support.
+	/// Foundation's Runtime cannot name the engine's, the pipeline's or the editor's services;
+	/// the layer that owns each provides it (PluginHost.Provide).
+	public T Find<T>() where T : class
+	{
+		if ((mServices != null) && mServices.TryGetValue(typeof(T), let found))
+			return (T)found;
+		return null;
+	}
 }
 
 /// One part of a plugin package, compiled into this binary: its load and unload, nothing else.
