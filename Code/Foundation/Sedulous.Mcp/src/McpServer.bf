@@ -93,6 +93,36 @@ class McpServer
 	public StringView ServerName => mServerName;
 	public StringView ServerVersion => mServerVersion;
 	public int ToolCount => mTools.Count;
+
+	/// The registered tools' names, in registration order, appended.
+	public void ToolNames(List<String> outNames)
+	{
+		for (let tool in mTools)
+			outNames.Add(new .(tool.Name));
+	}
+
+	public bool HasTool(StringView name) => FindTool(name) != null;
+
+	/// Removes the tool `name` (a plugin's, as it unloads); false when there is none. A call to
+	/// it in flight ends with it, its state deleted; when its transport hands it back, it is a
+	/// call to an unknown tool.
+	public bool UnregisterTool(StringView name)
+	{
+		for (int i < mTools.Count)
+		{
+			if (mTools[i].Name != name)
+				continue;
+			delete mTools[i];
+			mTools.RemoveAt(i);
+			for (int c = mCalls.Count - 1; c >= 0; c--)
+			{
+				if (mCalls[c].Tool == name)
+					EndCall(c);
+			}
+			return true;
+		}
+		return false;
+	}
 	public int ResourceCount => mResources.Count;
 
 	public void SetServerInfo(StringView name, StringView version)

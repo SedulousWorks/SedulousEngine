@@ -598,6 +598,43 @@ class McpServerTests
 
 	private const String cTicketCall = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"ticket\",\"arguments\":{}}}";
 
+	/// A tool can leave the server (a plugin's, as its plugin unloads): it is no longer listed or
+	/// callable, and a call to it in flight ends, its state deleted.
+	[Test]
+	public static void AnUnregisteredToolIsGoneFromTheListAndTheCallsItsCallsInFlightWithIt()
+	{
+		let server = scope McpServer();
+		server.RegisterTool("echo", "echoes", scope SchemaBuilder().Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+		int issued = 0;
+		RegisterTicketed(server, &issued);
+		Ticket.Deleted = 0;
+		Test.Assert(server.ToolCount == 2);
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		server.ToolNames(names);
+		Test.Assert((names.Count == 2) && (names[0] == "echo") && (names[1] == "ticket"));
+		Test.Assert(server.HasTool("echo"));
+
+		let reply = scope String();
+		Test.Assert(server.HandleLine(cTicketCall, reply, 5) == .NotFinished);
+		Test.Assert(server.CallsInFlight == 1);
+
+		Test.Assert(server.UnregisterTool("ticket"));
+		Test.Assert(!server.UnregisterTool("ticket"), "gone already");
+		Test.Assert(server.ToolCount == 1);
+		Test.Assert(!server.HasTool("ticket"));
+		Test.Assert(server.CallsInFlight == 0);
+		Test.Assert(Ticket.Deleted == 1, "its state went with it");
+		// Handed back, the call is to a tool there is none of.
+		let again = Ask(server, cTicketCall);
+		defer delete again;
+		Test.Assert(again.Get("error").Get("message").AsString().Contains("unknown tool 'ticket'"));
+		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}");
+		defer delete listed;
+		Test.Assert(listed.Get("result").Get("tools").Count == 1);
+	}
+
 	[Test]
 	public static void TwoIdenticalCallsInFlightEachKeepTheirOwnState()
 	{
