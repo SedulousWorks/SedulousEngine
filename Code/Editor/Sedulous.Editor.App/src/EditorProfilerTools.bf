@@ -161,7 +161,7 @@ static class EditorProfilerTools
 		schema.Number("seconds", "How long to capture (default 3, at most 30).");
 		server.RegisterTool("profiler_capture",
 			"Capture the next few seconds of the running editor (its pages and any Play-in-editor game) with the profiler, and answer a summary: frame times (min, median, max), the CPU scopes and GPU passes that took longest over the capture, and each counter's average (draws, passes, GPU memory). The capture is written as a .aeprofile (the profile stream) and Chrome trace JSON beside it (Perfetto, chrome://tracing); both paths are in the answer. The call lasts the capture plus a few frames.",
-			schema.Build(), .Creates,
+			schema.Build(), .ReadOnly,
 			new (call, arguments, outResult, outError) => CaptureCall(seams, call, arguments, outResult, outError), seams);
 	}
 

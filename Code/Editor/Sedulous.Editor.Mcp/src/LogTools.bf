@@ -80,7 +80,7 @@ static class LogTools
 			"""
 			Write a marker line into the host's engine log (category 'Agent'). Use it to correlate your actions with engine output: drop a marker before a risky operation, then log_read from the returned sequence to see exactly what the engine said afterwards.
 			""",
-			writeSchema.Build(), .Creates,
+			writeSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) => Write(context, arguments, outResult, outError));
 
 		server.RegisterTool("known_issues",

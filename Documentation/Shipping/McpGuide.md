@@ -149,7 +149,7 @@ behaviour's properties under `live` beside what is authored.
 
 1. `tools/list`: read the real surface before guessing; the descriptions carry the contract,
    and each tool's `annotations` say what it does to the project: `readOnlyHint` (changes
-   nothing), `destructiveHint` (overwrites what exists: the scene and prefab writes),
+   nothing of it; a screenshot or a capture written outside it does not count), `destructiveHint` (overwrites what exists: the scene and prefab writes),
    `idempotentHint`.
 2. `host_info`: the pid (kill a hung host by it) and the `buildStamp`. After rebuilding the
    engine, compare stamps: a stale host serves yesterday's engine.

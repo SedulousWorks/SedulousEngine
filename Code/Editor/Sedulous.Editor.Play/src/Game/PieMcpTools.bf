@@ -59,7 +59,7 @@ static class PieMcpTools
 		startSchema.Boolean("newInstance", "open another Game tab with an instance of its own (Play New Instance) instead of the primary");
 		server.RegisterTool("pie_start",
 			"Start playing the project in the editor (PIE): the primary Game tab, or with `newInstance` another tab running an instance of its own - a host and a client, say. Cooks first, as Play does, loads the default scene and the startup script, and answers once the instance's first frame has rendered, with its state as pie_state gives it; `pie` is the id every other PIE tool takes. A primary already running is answered as it is, with `alreadyRunning`. A run that fails to start (a default scene that does not load) is an error; log_read says why.",
-			startSchema.Build(), .Creates,
+			startSchema.Build(), .Adjusts,
 			new (call, arguments, outResult, outError) => Start(context, call, arguments, outResult, outError));
 
 		let stopSchema = scope SchemaBuilder();
@@ -119,7 +119,7 @@ static class PieMcpTools
 		let serial = new CaptureSerial();
 		server.RegisterTool("pie_screenshot",
 			"What one running PIE instance's Game tab renders, as a PNG: the game through its own camera, with its UI and overlays, without the letterbox bars, as the pixels the tab drew. Brings the tab to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {pie, path, width, height}; read the file. When the tab is smaller than the game's render resolution it draws the game scaled down, and the answer adds renderWidth, renderHeight and scale (width / renderWidth): the PNG is that scaled image, so soft text there is the scale, and pie_run's mouse positions (render resolution pixels) are its pixels divided by scale. `path` is where to write (an existing directory; default: <user-data>/screenshots/<pie>-<pid>-<n>.png). Refused for a stopped instance; gives up after ten seconds without a rendered frame.",
-			shotSchema.Build(), .Creates,
+			shotSchema.Build(), .ReadOnly,
 			new (call, arguments, outResult, outError) => Screenshot(context, serial, call, arguments, outResult, outError),
 			serial);
 
