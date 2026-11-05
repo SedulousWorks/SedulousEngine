@@ -223,8 +223,13 @@ class EditorMcpServiceTests
 		let service = scope EditorMcpService(services);
 		Test.Assert(!service.IsRunning);
 		Test.Assert(service.Host == null);
+		// The project's plugins' export hooks, which project_export through this host runs.
+		let hooks = scope ExportPluginServices();
+		bench.Context.ExportHooks = hooks;
+		defer { bench.Context.ExportHooks = null; }
 
 		Test.Assert(service.Start(bench.Project));
+		Test.Assert(service.Session.ExportHooks === hooks, "the session carries them");
 		Test.Assert(service.IsRunning);
 		Test.Assert(service.Host != null);
 		Test.Assert(service.Host.IsRunning);
@@ -311,6 +316,7 @@ class EditorMcpServiceTests
 		service.Stop();
 		Test.Assert(!service.IsRunning);
 		Test.Assert(service.Host == null);
+		Test.Assert(service.Session.ExportHooks == null, "dropped as it stops");
 		Test.Assert(PortIsFree(commandLinePort)); // released
 
 		// Without the command line's port, the preference's.

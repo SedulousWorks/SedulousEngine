@@ -115,6 +115,8 @@ class EditorMcpService
 	public bool IsRunning => mHost != null;
 	/// The running host, or null.
 	public EditorMcpHost Host => mHost;
+	/// What the host's tools work through: the open project, its plugins and their export hooks.
+	public ProjectSession Session => mSession;
 
 	/// The host for the project manager, with no project: started when enabled and none runs,
 	/// so showing the manager again never restarts one. False when it is not enabled, or could
@@ -158,6 +160,7 @@ class EditorMcpService
 		DataPath(mServices.DataRoot, "Engine/Shaders", paths.ShaderLibrary);
 		mSession.Project = project;
 		mSession.Plugins = mServices.Context.Plugins; // the project's plugins, enabled with it
+		mSession.ExportHooks = mServices.Context.ExportHooks; // and their export hooks, for project_export
 
 		// The operations run on the application's services, so an agent's cook, import or export
 		// takes the same background paths the menus do and the editor stays live. The hooks are
@@ -331,6 +334,7 @@ class EditorMcpService
 		DeleteAndNullify!(mOperations);
 		mSession.Project = null;
 		mSession.Plugins = null;
+		mSession.ExportHooks = null;
 	}
 
 	/// Each frame, on the main thread: the calls that arrived are answered here, so a tool may
