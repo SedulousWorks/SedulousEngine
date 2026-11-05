@@ -88,6 +88,9 @@ static class EnginePluginServicesTests
 		let part = new PluginManifestPart();
 		part.Kind.Set("Engine");
 		manifest.Parts.Add(part);
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
 		let xml = manifest.Write(.. scope .());
 		let probe = scope ServicesProbePart();
 		ServicesProbePart.DomainTypes = 0;
@@ -133,6 +136,9 @@ static class EnginePluginServicesTests
 		let part = new PluginManifestPart();
 		part.Kind.Set("Engine");
 		manifest.Parts.Add(part);
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
 		let probe = scope ServicesProbePart();
 		let subsystems = scope SubsystemManager();
 		let host = scope PluginHost(subsystems, .Cook, "0.1.0");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Serialization;
 
 namespace Sedulous.Runtime;
 
@@ -29,8 +30,9 @@ enum HostRole : uint8
 	}
 }
 
-/// What a part's load and unload are handed: the host's services, as far as its role has them.
-/// One context per plugin, shared by its parts, alive from the plugin's load to its unload.
+/// What a part's load and unload are handed: the host's services, as far as its role has them,
+/// and the project's settings for the plugin. One context per plugin, shared by its parts, alive
+/// from the plugin's load to its unload.
 class PluginContext
 {
 	private HostRole mRole;
@@ -38,14 +40,21 @@ class PluginContext
 	private String mPluginId = new .() ~ delete _;
 	/// The host's, which outlives every context. BORROWED; null for none.
 	private Dictionary<Type, Object> mServices;
+	/// The project entry's settings, read by Settings<T>.
+	private List<uint8> mSettingsXml = new .() ~ delete _;
+	/// The settings object a part asked for; null until one did.
+	private Object mSettings = null ~ delete _;
+	private bool mSettingsRead = true;
 
-	/// `subsystems` and `services` are BORROWED and outlive the context.
-	public this(HostRole role, SubsystemManager subsystems, StringView pluginId, Dictionary<Type, Object> services = null)
+	/// `subsystems` and `services` are BORROWED and outlive the context; `settings` is copied.
+	public this(HostRole role, SubsystemManager subsystems, StringView pluginId, Dictionary<Type, Object> services = null,
+		Span<uint8> settings = default)
 	{
 		mRole = role;
 		mSubsystems = subsystems;
 		mPluginId.Set(pluginId);
 		mServices = services;
+		mSettingsXml.AddRange(settings);
 	}
 
 	public HostRole Role => mRole;
@@ -62,6 +71,33 @@ class PluginContext
 			return (T)found;
 		return null;
 	}
+
+	/// The plugin's settings, read from the project's entry into T, its reflected settings type,
+	/// on the first call (T's defaults when the entry has none); every part asking for them
+	/// shares one object, alive until the plugin unloads. A plugin has one settings type: null
+	/// when an earlier call named another. When the entry's settings do not read as a T, the
+	/// defaults are used and SettingsRead says so, so an editor never writes them over what it
+	/// could not read.
+	public T Settings<T>() where T : class, ISerializable, new, delete
+	{
+		if (mSettings != null)
+			return (mSettings.GetType() == typeof(T)) ? (T)mSettings : null;
+		let settings = new T();
+		mSettings = settings;
+		if (EnabledPlugin.ReadSettings((Span<uint8>)mSettingsXml, settings) case .Err)
+		{
+			mSettingsRead = false;
+			delete mSettings;
+			mSettings = new T(); // the defaults, not what the reader left
+		}
+		return (T)mSettings;
+	}
+
+	/// The settings object a part asked for (Settings<T>), or null when none did. BORROWED.
+	public Object SettingsObject => mSettings;
+
+	/// False when the project's settings did not read into the plugin's type.
+	public bool SettingsRead => mSettingsRead;
 }
 
 /// One part of a plugin package, compiled into this binary: its load and unload, nothing else.

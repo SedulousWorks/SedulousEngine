@@ -96,6 +96,9 @@ class PluginHostTests
 
 	private static void ClearLog() => ClearAndDeleteItems!(sLog);
 
+	/// The platforms a test plugin supports unless it names its own.
+	private static StringView[3] sEveryPlatform = .("Linux64", "Win64", "Web");
+
 	/// The parts compiled into the test, and the manifests their plugins carry.
 	private class Linked
 	{
@@ -105,7 +108,8 @@ class PluginHostTests
 
 		/// A plugin of `id` whose manifest lists `kinds`, compiled in with `parts`.
 		public void Add(StringView id, Span<PluginPartKind> kinds, Span<PluginPart> parts, StringView dependsOn = "",
-			StringView dependsOnVersion = "0.1", StringView provides = "", StringView version = "0.1.0", StringView engineVersion = "0.1")
+			StringView dependsOnVersion = "0.1", StringView provides = "", StringView version = "0.1.0", StringView engineVersion = "0.1",
+			Span<StringView> platforms = default)
 		{
 			let manifest = scope PluginManifest();
 			manifest.Id.Set(id);
@@ -126,6 +130,12 @@ class PluginHostTests
 				let part = new PluginManifestPart();
 				kind.ToString(part.Kind);
 				manifest.Parts.Add(part);
+			}
+			for (let platform in (platforms.IsEmpty ? (Span<StringView>)sEveryPlatform : platforms))
+			{
+				let entry = new PluginPlatform();
+				entry.Platform.Set(platform);
+				manifest.Platforms.Add(entry);
 			}
 			let xml = new String();
 			Test.Assert(manifest.Write(xml) case .Ok);

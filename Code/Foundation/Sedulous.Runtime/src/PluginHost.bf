@@ -11,11 +11,36 @@ class PluginRefusal
 	public String Reason = new .() ~ delete _;
 }
 
-/// What one Load did: the plugins enabled, in load order, and the ones refused, with why.
+/// What one Load did: the plugins enabled, in load order, the ones refused, with why, and the
+/// ones not enabled on this platform, which are absent rather than refused.
 class PluginLoadReport
 {
 	public List<String> Loaded = new .() ~ DeleteContainerAndItems!(_);
 	public List<PluginRefusal> Refused = new .() ~ DeleteContainerAndItems!(_);
+	public List<String> NotEnabled = new .() ~ DeleteContainerAndItems!(_);
+
+	/// This report's lines appended to `into`.
+	public void CopyTo(PluginLoadReport into)
+	{
+		for (let id in Loaded)
+			into.Loaded.Add(new .(id));
+		for (let refusal in Refused)
+		{
+			let copy = new PluginRefusal();
+			copy.Id.Set(refusal.Id);
+			copy.Reason.Set(refusal.Reason);
+			into.Refused.Add(copy);
+		}
+		for (let id in NotEnabled)
+			into.NotEnabled.Add(new .(id));
+	}
+
+	public void Clear()
+	{
+		ClearAndDeleteItems!(Loaded);
+		ClearAndDeleteItems!(Refused);
+		ClearAndDeleteItems!(NotEnabled);
+	}
 
 	/// The refusal of `id`, or null. BORROWED.
 	public PluginRefusal FindRefusal(StringView id)
@@ -30,9 +55,9 @@ class PluginLoadReport
 }
 
 /// The enabled plugins of one process. It knows the plugins compiled into the binary and, given
-/// the ids a project enables:
+/// the entries a project enables:
 ///
-///   1. resolves each id;
+///   1. resolves each id, and keeps those enabled on the host's platform;
 ///   2. checks each manifest, the dependencies (enabled, loadable, recent enough) and the
 ///      `provides` slots (one provider each), refusing with a message, never faulting;
 ///   3. loads the parts the host's role takes, in dependency order, through the PluginLoader's
@@ -64,6 +89,10 @@ class PluginHost
 	private SubsystemManager mSubsystems;
 	private HostRole mRole;
 	private String mEngineVersion = new .() ~ delete _;
+	/// The tag the project's entries and the manifests name platforms by.
+	private String mPlatform = new .() ~ delete _;
+	/// What the last Load did.
+	private PluginLoadReport mReport = new .() ~ delete _;
 	/// What the layers above provide, by type. BORROWED values.
 	private Dictionary<Type, Object> mServices = new .() ~ delete _;
 	private List<Candidate> mCandidates = new .() ~ DeleteContainerAndItems!(_);
@@ -75,11 +104,13 @@ class PluginHost
 
 	/// `subsystems` is BORROWED and outlives the host. `engineVersion` is the version every
 	/// manifest is checked against (the engine's numbers, as compatibility compares them).
-	public this(SubsystemManager subsystems, HostRole role, StringView engineVersion)
+	/// `platform` is the one the host enables plugins for; empty is the one it runs on.
+	public this(SubsystemManager subsystems, HostRole role, StringView engineVersion, StringView platform = default)
 	{
 		mSubsystems = subsystems;
 		mRole = role;
 		mEngineVersion.Set(engineVersion);
+		mPlatform.Set(platform.IsEmpty ? HostPlatform : platform);
 		mLoader = new PluginLoader(subsystems);
 	}
 
@@ -89,6 +120,24 @@ class PluginHost
 	}
 
 	public HostRole Role => mRole;
+	public StringView Platform => mPlatform;
+
+	/// The platform tag of the running build, as the export templates and manifests name it.
+	public static StringView HostPlatform
+	{
+		get
+		{
+#if BF_PLATFORM_WINDOWS
+			return "Win64";
+#elif BF_PLATFORM_MACOS
+			return "macOS";
+#elif BF_PLATFORM_WASM
+			return "Web";
+#else
+			return "Linux64";
+#endif
+		}
+	}
 
 	/// The loader the parts load through, for adding recorders before Load.
 	public PluginLoader Loader => mLoader;
@@ -190,33 +239,92 @@ class PluginHost
 
 	public bool IsLoaded(StringView id) => Contains(mLoaded, id);
 
-	/// Enables the plugins `enabled` names (ids, in the project's order), the report appended to
-	/// `outReport`. Call once; Unload first to enable another set.
-	public void Load(Span<StringView> enabled, PluginLoadReport outReport)
+	/// The manifest of a plugin compiled in, or null. BORROWED.
+	public PluginManifest Manifest(StringView id)
+	{
+		let candidate = Find(id);
+		return (candidate != null) ? candidate.Manifest : null;
+	}
+
+	/// What the last Load did (empty before one, and after Unload). BORROWED.
+	public PluginLoadReport Report => mReport;
+
+	/// The settings an enabled plugin's parts read (PluginContext.Settings<T>), or null when it is
+	/// not enabled or asked for none. An editor edits them here and writes them into the
+	/// project's entry. BORROWED.
+	public Object Settings(StringView id)
+	{
+		let context = FindContext(id);
+		return (context != null) ? context.SettingsObject : null;
+	}
+
+	/// False when an enabled plugin's settings did not read from the project's entry, so its
+	/// settings object holds the defaults and must not be written over the entry.
+	public bool SettingsRead(StringView id)
+	{
+		let context = FindContext(id);
+		return (context == null) || context.SettingsRead;
+	}
+
+	/// Enables the plugins `ids` names as entries naming no platforms and no settings (every
+	/// platform their manifests support, their settings' defaults).
+	public void Load(Span<StringView> ids, PluginLoadReport outReport)
+	{
+		let entries = scope List<EnabledPlugin>();
+		defer { ClearAndDeleteItems!(entries); }
+		for (let id in ids)
+		{
+			let entry = new EnabledPlugin();
+			entry.Id.Set(id);
+			entries.Add(entry);
+		}
+		Load((Span<EnabledPlugin>)entries, outReport);
+	}
+
+	/// Enables the plugins the project's entries enable on this host's platform, in the project's
+	/// order, the report appended to `outReport` and kept (Report). Call once; Unload first to
+	/// enable another set.
+	public void Load(Span<EnabledPlugin> enabled, PluginLoadReport outReport)
 	{
 		let accepted = scope List<Candidate>();
+		// Beside accepted: each one's entry.
+		let acceptedEntries = scope List<EnabledPlugin>();
+		let report = scope PluginLoadReport();
 
-		// 1. Resolve and check each manifest; then the slots, first come first served.
-		for (let id in enabled)
+		// 1. Resolve and check each manifest and the platform; then the slots, first come first
+		// served.
+		for (let entry in enabled)
 		{
-			if ((FindIn(accepted, id) != null) || (outReport.FindRefusal(id) != null))
+			let id = entry.Id;
+			if ((FindIn(accepted, id) != null) || (report.FindRefusal(id) != null) || Contains(report.NotEnabled, id))
 				continue; // listed twice
 			let candidate = Find(id);
 			if (candidate == null)
 			{
-				Refuse(outReport, id, scope $"plugin '{id}' is not in this build");
+				Refuse(report, id, scope $"plugin '{id}' is not in this build");
+				continue;
+			}
+			let enablement = entry.EnablementOn(candidate.Manifest, mPlatform);
+			if (enablement == .NotEnabled)
+			{
+				report.NotEnabled.Add(new .(id));
+				continue;
+			}
+			if (enablement == .Unsupported)
+			{
+				Refuse(report, id, scope $"plugin '{id}' is enabled on {mPlatform}, which it does not support");
 				continue;
 			}
 			let whyNot = scope String();
 			if (!candidate.Manifest.Check(mEngineVersion, whyNot))
 			{
-				Refuse(outReport, id, whyNot);
+				Refuse(report, id, whyNot);
 				continue;
 			}
 			let missing = MissingPart(candidate, .. scope .());
 			if (!missing.IsEmpty)
 			{
-				Refuse(outReport, id, missing);
+				Refuse(report, id, missing);
 				continue;
 			}
 			String taken = null;
@@ -237,10 +345,11 @@ class PluginHost
 			}
 			if (taken != null)
 			{
-				Refuse(outReport, id, scope $"plugin '{id}' provides '{slot}', which '{taken}' already provides");
+				Refuse(report, id, scope $"plugin '{id}' provides '{slot}', which '{taken}' already provides");
 				continue;
 			}
 			accepted.Add(candidate);
+			acceptedEntries.Add(entry);
 		}
 
 		// 2. Dependencies, to a fixed point: refusing one plugin may strand its dependents.
@@ -249,11 +358,12 @@ class PluginHost
 			changed = false;
 			for (int i < accepted.Count)
 			{
-				let why = UnmetDependency(accepted[i].Manifest, accepted, outReport, .. scope .());
+				let why = UnmetDependency(accepted[i].Manifest, accepted, report, .. scope .());
 				if (!why.IsEmpty)
 				{
-					Refuse(outReport, accepted[i].Id, why);
+					Refuse(report, accepted[i].Id, why);
 					accepted.RemoveAt(i);
+					acceptedEntries.RemoveAt(i);
 					changed = true;
 					break;
 				}
@@ -274,7 +384,7 @@ class PluginHost
 			let manifest = candidate.Manifest;
 			if (Contains(cyclic, manifest.Id))
 			{
-				Refuse(outReport, manifest.Id, scope $"plugin '{manifest.Id}' is in a dependency cycle");
+				Refuse(report, manifest.Id, scope $"plugin '{manifest.Id}' is in a dependency cycle");
 				continue;
 			}
 			PluginDependency failed = null;
@@ -288,18 +398,21 @@ class PluginHost
 			}
 			if (failed != null)
 			{
-				Refuse(outReport, manifest.Id, scope $"plugin '{manifest.Id}' needs '{failed.Id}', which did not load");
+				Refuse(report, manifest.Id, scope $"plugin '{manifest.Id}' needs '{failed.Id}', which did not load");
 				continue;
 			}
-			let why = LoadParts(candidate, .. scope .());
+			let why = LoadParts(candidate, acceptedEntries[accepted.IndexOf(candidate)], .. scope .());
 			if (!why.IsEmpty)
 			{
-				Refuse(outReport, manifest.Id, why);
+				Refuse(report, manifest.Id, why);
 				continue;
 			}
 			mLoaded.Add(new .(manifest.Id));
-			outReport.Loaded.Add(new .(manifest.Id));
+			report.Loaded.Add(new .(manifest.Id));
 		}
+		mReport.Clear();
+		report.CopyTo(mReport);
+		report.CopyTo(outReport);
 	}
 
 	/// Unloads every enabled part in reverse load order, reversing what each registered.
@@ -308,6 +421,17 @@ class PluginHost
 		mLoader.UnloadAll();
 		ClearAndDeleteItems!(mContexts);
 		ClearAndDeleteItems!(mLoaded);
+		mReport.Clear();
+	}
+
+	private PluginContext FindContext(StringView id)
+	{
+		for (let context in mContexts)
+		{
+			if (context.PluginId == id)
+				return context;
+		}
+		return null;
 	}
 
 	private static void Refuse(PluginLoadReport report, StringView id, StringView reason)
@@ -410,9 +534,9 @@ class PluginHost
 		order.Add(candidate);
 	}
 
-	/// Loads the candidate's parts for this role in kind order; appends why not, and loads
-	/// nothing, when one is not this plugin's.
-	private void LoadParts(Candidate candidate, String outWhy)
+	/// Loads the candidate's parts for this role in kind order, handed the entry's settings;
+	/// appends why not, and loads nothing, when one is not this plugin's.
+	private void LoadParts(Candidate candidate, EnabledPlugin entry, String outWhy)
 	{
 		let manifest = candidate.Manifest;
 		// Every part is checked before any loads, so a plugin refused here leaves nothing behind.
@@ -428,7 +552,7 @@ class PluginHost
 				return;
 			}
 		}
-		let context = new PluginContext(mRole, mSubsystems, manifest.Id, mServices);
+		let context = new PluginContext(mRole, mSubsystems, manifest.Id, mServices, (Span<uint8>)entry.Settings);
 		mContexts.Add(context);
 		for (int i < PluginPartKind.Count)
 		{

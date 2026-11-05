@@ -25,7 +25,20 @@ static class ProbeManifests
 						<string name="kind">Engine</string>
 					</object>
 				</array>
-				<array name="platforms" count="0"/>
+				<array name="platforms" count="3">
+					<object>
+						<string name="platform">Linux64</string>
+						<array name="deploy" count="0"/>
+					</object>
+					<object>
+						<string name="platform">Win64</string>
+						<array name="deploy" count="0"/>
+					</object>
+					<object>
+						<string name="platform">Web</string>
+						<array name="deploy" count="0"/>
+					</object>
+				</array>
 			</object>
 		</root>
 		""";
@@ -59,7 +72,20 @@ static class ProbeManifests
 						<string name="kind">Editor</string>
 					</object>
 				</array>
-				<array name="platforms" count="0"/>
+				<array name="platforms" count="3">
+					<object>
+						<string name="platform">Linux64</string>
+						<array name="deploy" count="0"/>
+					</object>
+					<object>
+						<string name="platform">Win64</string>
+						<array name="deploy" count="0"/>
+					</object>
+					<object>
+						<string name="platform">Web</string>
+						<array name="deploy" count="0"/>
+					</object>
+				</array>
 			</object>
 		</root>
 		""";

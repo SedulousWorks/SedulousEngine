@@ -55,6 +55,9 @@ class PluginHostWiringTests
 		let part = new PluginManifestPart();
 		part.Kind.Set("Engine");
 		manifest.Parts.Add(part);
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
 		let probe = scope AppProbePart();
 		PluginPart[1] parts = .(probe);
 		Test.Assert(plugins.AddLinked(manifest.Write(.. scope .()), parts) case .Ok);
