@@ -218,6 +218,7 @@ class EditorAppActionsTests
 		view.ResetLayout = bench.Record("resetLayout");
 		view.Assets = bench.Record("assets");
 		view.Console = bench.Record("console");
+		view.Mcp = bench.Record("mcp");
 		view.Profiler = bench.Record("profiler");
 		view.ProfilerRecord = bench.Record("profilerRecord");
 		view.Screenshot = bench.Record("screenshot");
@@ -263,6 +264,7 @@ class EditorAppActionsTests
 		view.Screenshot = bench.Record("screenshot");
 		view.Assets = bench.Record("assets");
 		view.Console = bench.Record("console");
+		view.Mcp = bench.Record("mcp");
 		EditorAppActions.RegisterViewActions(actions, view);
 		Test.Assert(actions.Shortcut("view.screenshot") == EditorShortcut.Of("f12"));
 		// Assets and Console come back from the View menu, with no project as with one.
@@ -271,7 +273,10 @@ class EditorAppActionsTests
 		Test.Assert(actions.Find("view.console").MenuPath == "View/Console");
 		Test.Assert(actions.Execute("view.assets", null) case .Ok);
 		Test.Assert(actions.Execute("view.console", null) case .Ok);
-		Test.Assert((bench.Events.Count == 2) && (bench.Events[0] == "assets") && (bench.Events[1] == "console"));
+		Test.Assert(actions.Find("view.mcp").MenuPath == "View/MCP");
+		Test.Assert(actions.Find("view.mcp").ReadOnly);
+		Test.Assert(actions.Execute("view.mcp", null) case .Ok);
+		Test.Assert((bench.Events.Count == 3) && (bench.Events[0] == "assets") && (bench.Events[1] == "console") && (bench.Events[2] == "mcp"));
 		Test.Assert(actions.Find("view.commandPalette") == null);
 	}
 
@@ -305,7 +310,7 @@ class EditorAppActionsTests
 	{
 		let bench = scope Bench();
 		RegisterAll(bench);
-		Row[28] expected = .(
+		Row[29] expected = .(
 			.("file.save", "Save", "File/Save", 100, "ctrl-s"),
 			.("file.saveAs", "Save As...", "File/Save As...", 101),
 			.("file.saveLayout", "Save Layout", "File/Save Layout", 200),
@@ -329,6 +334,7 @@ class EditorAppActionsTests
 			.("view.resetLayout", "Reset Layout", "View/Reset Layout", 100),
 			.("view.assets", "Assets", "View/Assets", 150, "", "", true),
 			.("view.console", "Console", "View/Console", 160, "", "", true),
+			.("view.mcp", "MCP", "View/MCP", 170, "", "", true),
 			.("view.profiler", "Profiler", "View/Profiler", 210, "", "", true),
 			.("profiler.record", "Profiler Record", "View/Profiler Record", 211, "", "", true, true),
 			.("view.screenshot", "Screenshot Editor", "View/Screenshot Editor", 300, "f12", "", true),

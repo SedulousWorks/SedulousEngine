@@ -124,6 +124,8 @@ class EditorApplication : IApplication
 	private LogView mConsole = null ~ delete _;
 	/// The Profiler page's content, made with the dock.
 	private ProfilerPanel mProfiler = null ~ delete _;
+	/// The MCP panel's content, made with the dock.
+	private McpPanel mMcpPanel = null ~ delete _;
 	/// The Assets panel's content, made with the dock; after the type icons it borrows, so it
 	/// goes first.
 	private AssetsView mAssets = null ~ delete _;
@@ -774,7 +776,57 @@ class EditorApplication : IApplication
 					content.AddRef(); // the dock's
 				return content;
 			};
+		{
+			let seams = new McpPanelSeams();
+			seams.Activity = new () => (mMcp != null) ? mMcp.Activity : null;
+			seams.Listening = new () => (mMcp != null) && mMcp.IsRunning;
+			seams.Port = new () => (mMcp != null) ? mMcp.Port : 0;
+			seams.ConfiguredPort = new () => (mMcp != null) ? mMcp.ConfiguredPort : 0;
+			seams.Client = new (outClient) =>
+				{
+					if ((mMcp == null) || mMcp.ClientName.IsEmpty)
+						return;
+					outClient.Append(mMcp.ClientName);
+					if (!mMcp.ClientVersion.IsEmpty)
+						outClient.AppendF(" {}", mMcp.ClientVersion);
+				};
+			seams.Start = new () => (mMcp != null) && mMcp.StartByUser(mSession.Project);
+			seams.Stop = new () =>
+				{
+					if (mMcp != null)
+						mMcp.StopByUser();
+				};
+			seams.ConnectCommand = new (outCommand) =>
+				{
+					if (mMcp != null)
+						mMcp.ConnectCommand(outCommand);
+				};
+			seams.StartsWithProject = new () => mEditorSettings.Section<EditorMcpSettings>().Enabled;
+			seams.SetStartsWithProject = new (on) =>
+				{
+					mEditorSettings.Section<EditorMcpSettings>().Enabled = on;
+					if (!(EditorSettingsStore.SaveToUserData(mEditorSettings) case .Ok))
+						mContext.Notify(.Warning, "The MCP preference could not be saved.");
+				};
+			seams.Copy = new (text, what) =>
+				{
+					let root = mWindow.Root;
+					let dispatcher = (root != null) ? root.EventDispatcher : null;
+					mContext.CopyText((dispatcher != null) ? dispatcher.Clipboard : null, text, what);
+				};
+			seams.Preferences = new () => { OpenPreferences(); };
+			mMcpPanel = new McpPanel(seams, mWindow.LoadMarkup(McpPanel.cMarkupPath));
+		}
+		contents.Mcp = new () =>
+			{
+				let content = mMcpPanel.Content;
+				if (content != null)
+					content.AddRef(); // the dock's
+				return content;
+			};
 		mDock.Open(into, mWindow.Host, contents);
+		if (let status = mWindow.StatusBar)
+			status.SetOnAgentClicked(new () => { mDock.BringToFront(EditorDock.cPanelMcp); });
 	}
 
 	/// The log's new lines into the Console, once a frame on the main thread.
@@ -1235,6 +1287,7 @@ class EditorApplication : IApplication
 		view.ResetLayout = new () => { mDock.ResetLayout(); };
 		view.Assets = new () => { mDock.BringToFront(EditorDock.cPanelAssets); };
 		view.Console = new () => { mDock.BringToFront(EditorDock.cPanelConsole); };
+		view.Mcp = new () => { mDock.BringToFront(EditorDock.cPanelMcp); };
 		view.Profiler = new () => { mDock.BringToFront(EditorDock.cPanelProfiler); };
 		view.ProfilerRecording = new () => (mProfiler != null) && mProfiler.IsRecording;
 		view.ProfilerRecord = new () =>
@@ -1332,6 +1385,11 @@ class EditorApplication : IApplication
 			using (ProfileScope("Editor.Profiler"))
 				mProfiler.Update(); // the frames recorded since, while recording
 		}
+		if (mMcpPanel != null)
+		{
+			using (ProfileScope("Editor.McpPanel"))
+				mMcpPanel.Update(); // the host's state and the calls agents made since
+		}
 		if (mAssets != null)
 		{
 			using (ProfileScope("Editor.Assets"))
@@ -1356,8 +1414,8 @@ class EditorApplication : IApplication
 	}
 
 	/// The status bar's job (a job's title, how far, its step of how many; else a cook, of
-	/// unknown length) and agent (the MCP host while it listens). A job's progress no longer takes
-	/// the message line.
+	/// unknown length) and the MCP item (its port or off, and the tool of a call still running). A
+	/// job's progress no longer takes the message line.
 	private void UpdateStatusBar()
 	{
 		let status = mWindow.StatusBar;
@@ -1376,9 +1434,18 @@ class EditorApplication : IApplication
 		status.ShowWork(progress, mCookService.IsCooking);
 		let host = (mMcp != null) ? mMcp.Host : null;
 		if ((host != null) && host.IsRunning)
-			status.SetAgent(scope $"MCP on 127.0.0.1:{host.BoundPort}");
+		{
+			let running = mMcp.Activity.RunningCall;
+			let client = mMcp.ClientName;
+			let tooltip = scope String();
+			if (client.IsEmpty)
+				tooltip.AppendF("MCP: listening on 127.0.0.1:{}. Show the MCP panel", host.BoundPort);
+			else
+				tooltip.AppendF("MCP: listening on 127.0.0.1:{}, {} connected. Show the MCP panel", host.BoundPort, client);
+			status.SetAgent(true, scope $"MCP {host.BoundPort}", (running != null) ? (StringView)running.Tool : "", tooltip);
+		}
 		else
-			status.SetAgent("");
+			status.SetAgent(false, "MCP off", "", "MCP: stopped. Show the MCP panel to start it");
 	}
 
 	/// Window screenshots: last frame's written, missing windows failed, the user told, and the
@@ -1553,6 +1620,7 @@ class EditorApplication : IApplication
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
 		DeleteAndNullify!(mConsole); // its list let go, the dock having let go of its content
 		DeleteAndNullify!(mProfiler); // the store let go if it records, the dock having let go of its content
+		DeleteAndNullify!(mMcpPanel); // its list let go, the dock having let go of its content
 		DeleteAndNullify!(mAssets); // its list and tree let go, the dock having let go of its content
 		mWindow.Close();
 		if (mStarted)

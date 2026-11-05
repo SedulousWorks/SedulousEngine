@@ -13,21 +13,23 @@ class EditorDockContents
 	public delegate Node() Welcome ~ delete _;
 	public delegate Node() Assets ~ delete _;
 	public delegate Node() Console ~ delete _;
+	public delegate Node() Mcp ~ delete _;
 	public delegate Node() Profiler ~ delete _;
 }
 
-/// The editor's dock (Raptor's editor-gui spec, 5.1, layer 4). A GUI.Docking controller with its
-/// area in the frame's `frame-dock`, its floats in OS windows of their own where the GUI's host
-/// opens them (else over the main window), and the panels every project shares: the Project panel
-/// (the open project's page, or the welcome without one), Assets, Console and the Profiler (X7: a tab
-/// in the page area, not in the default layout until shown). Their ids are the ones saved layouts
-/// and the MCP layout tools name: `welcome` (the Project panel kept the id it had as the Welcome
-/// panel), `assets`, `console`, `profiler`. Pages come through it (EditorPages).
+/// The editor's dock. A GUI.Docking controller with its area in the frame's `frame-dock`, its
+/// floats in OS windows of their own where the GUI's host opens them (else over the main window),
+/// and the panels every project shares: the Project panel (the open project's page, or the welcome
+/// without one), Assets, Console, MCP (a tab behind the Console) and the Profiler (a tab in the
+/// page area, not in the default layout until shown). Their ids are the ones saved layouts and the
+/// MCP layout tools name: `welcome` (the Project panel kept the id it had as the Welcome panel),
+/// `assets`, `console`, `mcp`, `profiler`. Pages come through it (EditorPages).
 class EditorDock
 {
 	public const String cPanelProject = "welcome";
 	public const String cPanelAssets = "assets";
 	public const String cPanelConsole = "console";
+	public const String cPanelMcp = "mcp";
 	public const String cPanelProfiler = "profiler";
 
 	/// The pane under the document: 30% of the height.
@@ -65,6 +67,7 @@ class EditorDock
 		RegisterPanel(cPanelProject, "Project", false, new () => Holder());
 		RegisterPanel(cPanelAssets, "Assets", true, new () => Make(mContents.Assets));
 		RegisterPanel(cPanelConsole, "Console", true, new () => Make(mContents.Console));
+		RegisterPanel(cPanelMcp, "MCP", true, new () => Make(mContents.Mcp));
 		RegisterPanel(cPanelProfiler, "Profiler", true, new () => Make(mContents.Profiler));
 		AdoptDefault();
 		mArea = new DockArea();
@@ -96,8 +99,8 @@ class EditorDock
 	}
 
 	/// The default layout: the Project panel in the central stack, under it a pane of Assets and
-	/// Console side by side (the document 70% of the height; Assets 65% of the pane). The caller
-	/// owns it.
+	/// Console side by side (the document 70% of the height; Assets 65% of the pane), the MCP panel
+	/// a tab behind the Console. The caller owns it.
 	public static DockLayout DefaultLayout()
 	{
 		let layout = new DockLayout();
@@ -105,6 +108,8 @@ class EditorDock
 		layout.InsertTab(cPanelProject, central);
 		layout.InsertBeside(cPanelAssets, central, .Bottom, cPaneShare);
 		layout.InsertBeside(cPanelConsole, layout.StackOf(cPanelAssets), .End, cConsoleShare);
+		layout.InsertTab(cPanelMcp, layout.StackOf(cPanelConsole));
+		layout.Activate(cPanelConsole);
 		return layout;
 	}
 

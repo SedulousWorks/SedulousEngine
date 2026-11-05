@@ -10,6 +10,12 @@
         <StatusItem id="status-job" zone="end" title="Jobs">
             <Panel class="job"><Label id="status-job-name" class="job-name"/><ProgressBar id="status-job-progress" class="job-progress"/><Label id="status-job-count" class="job-count"/></Panel>
         </StatusItem>
-        <StatusItem id="status-agent" zone="end" title="Agent"><Label id="status-agent-text"/></StatusItem>
+        <StatusItem id="status-agent" zone="end" title="MCP">
+            <Panel class="status-mcp">
+                <Label id="status-agent-call" class="status-mcp-call mono"/>
+                <Panel id="status-agent-dot" class="status-mcp-dot"/>
+                <Button id="status-agent-text" class="status-mcp-button"/>
+            </Panel>
+        </StatusItem>
     </StatusBar>
 </Panel>

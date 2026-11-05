@@ -4,11 +4,11 @@ using Sedulous.Editor.Project; // JobProgress
 
 namespace Sedulous.Editor.App;
 
-// EditorStatusBar: what the frame's status bar says (Raptor's editor-gui spec, 5.1, layer 9), over
-// its items by id: the message (`status-message`: the context's status line), the job at the end
-// (`status-job`: its name, a progress bar, its count; a sweep when its length is unknown, as a
-// cook's) and the agent (`status-agent`: the MCP host while it listens). An item with nothing to
-// say is not shown.
+// EditorStatusBar: what the frame's status bar says, over its items by id: the message
+// (`status-message`: the context's status line), the job at the end (`status-job`: its name, a
+// progress bar, its count; a sweep when its length is unknown, as a cook's; hidden when none
+// runs) and the MCP host (`status-agent`, always shown: a dot lit while it listens, its port or
+// "off", the tool of a call still running beside it; clicked, it shows the MCP panel).
 
 class EditorStatusBar
 {
@@ -19,7 +19,9 @@ class EditorStatusBar
 	private Sedulous.GUI.ProgressBar mJobProgress = null;
 	private Sedulous.GUI.Label mJobCount = null;
 	private Node mAgentItem = null;
-	private Sedulous.GUI.Label mAgent = null;
+	private Sedulous.GUI.Button mAgent = null;
+	private UIWidget mAgentDot = null;
+	private Sedulous.GUI.Label mAgentCall = null;
 
 	/// Over `frame`'s items; one it lacks is skipped.
 	public this(Node frame)
@@ -30,9 +32,11 @@ class EditorStatusBar
 		mJobProgress = frame.FindElement("status-job-progress") as Sedulous.GUI.ProgressBar;
 		mJobCount = frame.FindElement("status-job-count") as Sedulous.GUI.Label;
 		mAgentItem = frame.FindElement("status-agent");
-		mAgent = frame.FindElement("status-agent-text") as Sedulous.GUI.Label;
+		mAgent = frame.FindElement("status-agent-text") as Sedulous.GUI.Button;
+		mAgentDot = frame.FindElement("status-agent-dot") as UIWidget;
+		mAgentCall = frame.FindElement("status-agent-call") as Sedulous.GUI.Label;
 		ClearJob();
-		SetAgent("");
+		SetAgent(false, "MCP off", "", "MCP: stopped. Show the MCP panel to start it");
 	}
 
 	public void SetMessage(StringView text)
@@ -96,14 +100,47 @@ class EditorStatusBar
 			ClearJob();
 	}
 
-	/// The agent's line ("MCP on 127.0.0.1:7405"); empty hides it.
-	public void SetAgent(StringView text)
+	/// The MCP host's item: whether it listens (the dot lit), its text ("MCP 7405", "MCP off"),
+	/// the tool of a call still running (empty: none) and the item's tooltip.
+	public void SetAgent(bool listening, StringView text, StringView runningCall, StringView tooltip)
 	{
 		if (mAgent != null)
-			mAgent.Text = text;
-		if (mAgentItem != null)
-			mAgentItem.Displayed = !text.IsEmpty;
+		{
+			if (mAgent.Text != text)
+				mAgent.Text = text;
+			if (mAgent.Tooltip != tooltip)
+				mAgent.Tooltip = tooltip;
+		}
+		if ((mAgentDot != null) && (mAgentDot.HasClass("on") != listening))
+		{
+			if (listening)
+				mAgentDot.AddClass("on");
+			else
+				mAgentDot.RemoveClass("on");
+		}
+		if (mAgentCall != null)
+		{
+			if (mAgentCall.Text != runningCall)
+				mAgentCall.Text = runningCall;
+			mAgentCall.Displayed = !runningCall.IsEmpty;
+		}
+	}
+
+	/// What a click on the MCP item does (shows the MCP panel). TAKES OWNERSHIP of `clicked`;
+	/// deleted at once when the frame has no item.
+	public void SetOnAgentClicked(delegate void() clicked)
+	{
+		if (mAgent != null)
+			mAgent.SetOnClick(clicked);
+		else
+			delete clicked;
 	}
 
 	public bool ShowsAgent => (mAgentItem != null) && mAgentItem.Displayed;
+	/// The item's text; empty with no item.
+	public StringView AgentText => (mAgent != null) ? mAgent.Text : "";
+	/// Whether the dot is lit.
+	public bool AgentListening => (mAgentDot != null) && mAgentDot.HasClass("on");
+	/// The tool of the call still running; empty with none.
+	public StringView AgentCall => ((mAgentCall != null) && mAgentCall.Displayed) ? mAgentCall.Text : "";
 }

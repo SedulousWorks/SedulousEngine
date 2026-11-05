@@ -9,7 +9,8 @@ namespace Sedulous.Editor.App.Tests;
 
 /// EditorStatusBar over the editor's own frame (Data/Editor/Shell.xml): the message line; the job
 /// with its name, progress and count, a sweep when its length is unknown, hidden when none runs;
-/// the agent hidden while there is none; a frame without the items skipped. And the toasts: over
+/// the MCP item, always shown, lit while the host listens, naming a call still running and
+/// showing the MCP panel when clicked; a frame without the items skipped. And the toasts: over
 /// the frame's dock, the same message again counted on the one shown, an error staying until it is
 /// dismissed while the rest go.
 class EditorStatusBarTests
@@ -32,7 +33,7 @@ class EditorStatusBarTests
 	}
 
 	[Test]
-	public static void TheMessageAJobWithItsProgressAndCountOrASweepTheAgentAnItemWithNothingToSayHidden()
+	public static void TheMessageAJobWithItsProgressAndCountOrASweepTheMcpItemAJobHiddenWhenNoneRuns()
 	{
 		let frame = LoadFrame();
 		Test.Assert(frame != null);
@@ -47,7 +48,10 @@ class EditorStatusBarTests
 		Test.Assert(progress != null);
 		Test.Assert(count != null);
 		Test.Assert(!job.Displayed, "nothing running");
-		Test.Assert(!agent.Displayed);
+		Test.Assert(agent.Displayed, "the MCP item, off");
+		Test.Assert(status.AgentText == "MCP off");
+		Test.Assert(!status.AgentListening);
+		Test.Assert(status.AgentCall.IsEmpty);
 
 		status.SetMessage("Saved 'Level 1'.");
 		Test.Assert(status.Message == "Saved 'Level 1'.");
@@ -68,13 +72,28 @@ class EditorStatusBarTests
 		Test.Assert(!job.Displayed);
 		Test.Assert(!progress.Indeterminate);
 
-		status.SetAgent("MCP on 127.0.0.1:7405");
+		status.SetAgent(true, "MCP 7405", "asset_cook", "MCP: listening on 127.0.0.1:7405");
+		Test.Assert(status.ShowsAgent);
+		Test.Assert(status.AgentListening);
+		Test.Assert((frame.FindElement("status-agent-dot") as UIWidget).HasClass("on"));
+		Test.Assert(status.AgentText == "MCP 7405");
+		Test.Assert(status.AgentCall == "asset_cook");
+		let button = frame.FindElement("status-agent-text") as Sedulous.GUI.Button;
+		Test.Assert(button != null);
+		Test.Assert(button.Tooltip == "MCP: listening on 127.0.0.1:7405");
+		status.SetAgent(true, "MCP 7405", "", "MCP: listening on 127.0.0.1:7405");
+		Test.Assert(status.AgentCall.IsEmpty);
+		Test.Assert(!(frame.FindElement("status-agent-call") as Sedulous.GUI.Label).Displayed);
+		status.SetAgent(false, "MCP off", "", "MCP: stopped");
 		Test.Assert(status.ShowsAgent);
 		Test.Assert(agent.Displayed);
-		Test.Assert((frame.FindElement("status-agent-text") as Sedulous.GUI.Label).Text == "MCP on 127.0.0.1:7405");
-		status.SetAgent("");
-		Test.Assert(!status.ShowsAgent);
-		Test.Assert(!agent.Displayed);
+		Test.Assert(!status.AgentListening);
+		Test.Assert(button.Tooltip == "MCP: stopped");
+
+		int clicks = 0;
+		status.SetOnAgentClicked(new [&clicks] () => { clicks++; });
+		Test.Assert(button.HandleActivate());
+		Test.Assert(clicks == 1);
 	}
 
 	[Test]
@@ -85,8 +104,11 @@ class EditorStatusBarTests
 		let status = scope EditorStatusBar(bare);
 		status.SetMessage("nothing to show it on");
 		status.SetJob("Cooking", -1.0f, "");
-		status.SetAgent("MCP");
+		status.SetAgent(true, "MCP 7405", "", "");
+		status.SetOnAgentClicked(new () => {}); // deleted: nothing to click
 		Test.Assert(status.Message.IsEmpty);
+		Test.Assert(status.AgentText.IsEmpty);
+		Test.Assert(!status.AgentListening);
 		Test.Assert(!status.ShowsJob);
 		Test.Assert(!status.ShowsAgent);
 	}

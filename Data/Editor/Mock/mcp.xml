@@ -1,0 +1,139 @@
+<!--
+  The MCP panel, running: the host's state and its controls in the bar, the calls agents made down
+  the left (newest first, each with its outcome and time), and the chosen call's arguments and
+  result beside them. A static mock of made-up calls for judging the design.
+-->
+<Panel class="panel mcp-panel">
+    <Panel class="panel-toolbar">
+        <Panel class="mcp-dot on"/>
+        <Label class="mcp-state" text="Listening on 127.0.0.1:7405"/>
+        <Label class="mcp-dim" text="claude-code, last call 4 s ago"/>
+        <Button text="Stop" icon="Editor/Icons/stop.svg" tooltip="Stop the MCP host: agents can no longer reach this project"/>
+        <Button text="Copy Connect Command" icon="Editor/Icons/copy.svg" tooltip="Copies the command that wires an agent to this host, with its token"/>
+        <Spacer/>
+        <Button class="chip checked" text="All  214"/>
+        <Button class="chip" text="Edits  37"/>
+        <Button class="chip error" text="Failed  2"/>
+        <Panel class="search">
+            <Image class="search-icon" src="Editor/Icons/search.svg"/>
+            <TextField class="search-field" placeholder="Search the calls"/>
+        </Panel>
+        <Button class="icon-button" icon="Editor/Icons/trash.svg" tooltip="Clear the list"/>
+        <Button class="icon-button" icon="Editor/Icons/settings.svg" tooltip="MCP preferences: the port, the token, start with each project"/>
+    </Panel>
+    <Panel class="mcp-body">
+        <Panel class="mcp-calls">
+            <Panel class="mcp-call running">
+                <Label class="mcp-time mono" text="12:04:31"/>
+                <Panel class="mcp-mark running"/>
+                <Label class="mcp-tool mono" text="asset_cook"/>
+                <Label class="mcp-summary" text="Content/Scenes/Level1.scene"/>
+                <Label class="mcp-took mono" text="1.8 s"/>
+            </Panel>
+            <Panel class="mcp-call chosen">
+                <Label class="mcp-time mono" text="12:04:27"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="component_set"/>
+                <Label class="mcp-summary" text="Lamp 3: PointLight.intensity = 4.5"/>
+                <Label class="mcp-badge edit" text="Edit"/>
+                <Label class="mcp-took mono" text="2 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:26"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="entity_inspect"/>
+                <Label class="mcp-summary" text="Lamp 3"/>
+                <Label class="mcp-took mono" text="1 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:22"/>
+                <Panel class="mcp-mark warning"/>
+                <Label class="mcp-tool mono" text="action_execute"/>
+                <Label class="mcp-summary" text="file.save-as: closed a dialog as cancelled"/>
+                <Label class="mcp-took mono" text="4 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:15"/>
+                <Panel class="mcp-mark error"/>
+                <Label class="mcp-tool mono" text="script_validate"/>
+                <Label class="mcp-summary" text="Scripts/Player.as: 'speed' is not a member of Player"/>
+                <Label class="mcp-took mono" text="38 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:09"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="scene_write"/>
+                <Label class="mcp-summary" text="Content/Scenes/Level1.scene, 3 entities added"/>
+                <Label class="mcp-badge edit" text="Edit"/>
+                <Label class="mcp-took mono" text="12 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:02"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="viewport_screenshot"/>
+                <Label class="mcp-summary" text="Level 1, 1280 x 720"/>
+                <Label class="mcp-took mono" text="410 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:03:58"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="viewport_camera_set"/>
+                <Label class="mcp-summary" text="look at (12, 2, -4)"/>
+                <Label class="mcp-took mono" text="1 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:03:51"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="scene_read"/>
+                <Label class="mcp-summary" text="Content/Scenes/Level1.scene"/>
+                <Label class="mcp-took mono" text="6 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:03:50"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="asset_list"/>
+                <Label class="mcp-summary" text="Content/Scenes, 5 assets"/>
+                <Label class="mcp-took mono" text="3 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:03:49"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="host_info"/>
+                <Label class="mcp-summary" text="editor host, build 74e406c16"/>
+                <Label class="mcp-took mono" text="0 ms"/>
+            </Panel>
+            <Panel class="mcp-session">
+                <Label class="mcp-dim" text="12:03:48   claude-code connected"/>
+            </Panel>
+        </Panel>
+        <Panel class="mcp-detail">
+            <Panel class="mcp-detail-head">
+                <Label class="mcp-detail-tool mono" text="component_set"/>
+                <Label class="mcp-badge ok" text="Done"/>
+                <Label class="mcp-dim" text="12:04:27, 2 ms"/>
+                <Spacer/>
+                <Button class="icon-button" icon="Editor/Icons/undo.svg" tooltip="Undo this edit (it is the page's step labelled mcp)"/>
+                <Button class="icon-button" icon="Editor/Icons/target.svg" tooltip="Select Lamp 3 in Level 1"/>
+                <Button class="icon-button" icon="Editor/Icons/copy.svg" tooltip="Copy the call as JSON"/>
+            </Panel>
+            <Label class="mcp-section" text="Arguments"/>
+            <Panel class="mcp-code">
+                <Label class="mono" text="{"/>
+                <Label class="mono" text="  &quot;page&quot;: &quot;9f2c41d0-6b1e-4a0e-8d55-0c7a2e1b3f90&quot;,"/>
+                <Label class="mono" text="  &quot;entity&quot;: &quot;Lamp 3&quot;,"/>
+                <Label class="mono" text="  &quot;component&quot;: &quot;PointLight&quot;,"/>
+                <Label class="mono" text="  &quot;property&quot;: &quot;intensity&quot;,"/>
+                <Label class="mono" text="  &quot;value&quot;: 4.5"/>
+                <Label class="mono" text="}"/>
+            </Panel>
+            <Label class="mcp-section" text="Result"/>
+            <Panel class="mcp-code">
+                <Label class="mono" text="{"/>
+                <Label class="mono" text="  &quot;before&quot;: 3.0,"/>
+                <Label class="mono" text="  &quot;after&quot;: 4.5,"/>
+                <Label class="mono" text="  &quot;dirty&quot;: true"/>
+                <Label class="mono" text="}"/>
+            </Panel>
+        </Panel>
+    </Panel>
+</Panel>

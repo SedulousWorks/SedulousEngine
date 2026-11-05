@@ -24,6 +24,7 @@
             <MenuItem command="mock.view-assets"/>
             <MenuItem command="mock.view-console"/>
             <MenuItem command="mock.view-profiler"/>
+            <MenuItem command="mock.view-mcp"/>
             <MenuSeparator/>
             <MenuItem command="mock.palette"/>
             <MenuItem command="mock.side-by-side"/>
@@ -65,6 +66,12 @@
     <StatusBar id="statusbar">
         <StatusItem id="status-message" title="Message"><Label class="message" text="Saved Level 1"/></StatusItem>
         <StatusItem id="status-job" zone="end" title="Jobs"><Label text="Cooking 12 of 40"/></StatusItem>
-        <StatusItem id="status-agent" zone="end" title="Agent"><Label text="Agent connected"/></StatusItem>
+        <StatusItem id="status-agent" zone="end" title="MCP">
+            <Panel class="status-mcp">
+                <Label class="status-mcp-call mono" text="asset_cook"/>
+                <Panel class="mcp-dot on"/>
+                <Button command="mock.view-mcp" text="MCP 7405" tooltip="MCP: listening on 127.0.0.1:7405, claude-code. Opens the MCP panel"/>
+            </Panel>
+        </StatusItem>
     </StatusBar>
 </Panel>

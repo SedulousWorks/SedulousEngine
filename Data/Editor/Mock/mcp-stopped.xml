@@ -1,0 +1,50 @@
+<!--
+  The MCP panel, stopped: the bar offers Start on the port Preferences hold, and the last session's
+  calls stay listed (dimmed) until cleared, so what an agent did is still there to read.
+-->
+<Panel class="panel mcp-panel">
+    <Panel class="panel-toolbar">
+        <Panel class="mcp-dot"/>
+        <Label class="mcp-state" text="Stopped"/>
+        <Label class="mcp-dim" text="Agents cannot reach this project"/>
+        <Button text="Start" icon="Editor/Icons/play.svg" tooltip="Start the MCP host on 127.0.0.1:7405"/>
+        <Label class="mcp-dim" text="Port"/>
+        <TextField class="mcp-port mono" text="7405"/>
+        <CheckBox text="Start with each project"/>
+        <Spacer/>
+        <Button class="icon-button" icon="Editor/Icons/trash.svg" tooltip="Clear the list"/>
+        <Button class="icon-button" icon="Editor/Icons/settings.svg" tooltip="MCP preferences: the port, the token, start with each project"/>
+    </Panel>
+    <Panel class="mcp-body">
+        <Panel class="mcp-calls stopped">
+            <Panel class="mcp-session">
+                <Label class="mcp-dim" text="12:06:02   the host stopped"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:05:40"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="asset_cook"/>
+                <Label class="mcp-summary" text="Content/Scenes/Level1.scene"/>
+                <Label class="mcp-took mono" text="2.3 s"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:27"/>
+                <Panel class="mcp-mark ok"/>
+                <Label class="mcp-tool mono" text="component_set"/>
+                <Label class="mcp-summary" text="Lamp 3: PointLight.intensity = 4.5"/>
+                <Label class="mcp-badge edit" text="Edit"/>
+                <Label class="mcp-took mono" text="2 ms"/>
+            </Panel>
+            <Panel class="mcp-call">
+                <Label class="mcp-time mono" text="12:04:15"/>
+                <Panel class="mcp-mark error"/>
+                <Label class="mcp-tool mono" text="script_validate"/>
+                <Label class="mcp-summary" text="Scripts/Player.as: 'speed' is not a member of Player"/>
+                <Label class="mcp-took mono" text="38 ms"/>
+            </Panel>
+        </Panel>
+        <Panel class="mcp-detail empty">
+            <Label class="panel-placeholder" text="Choose a call to see its arguments and result"/>
+        </Panel>
+    </Panel>
+</Panel>

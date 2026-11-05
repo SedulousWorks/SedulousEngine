@@ -1,0 +1,51 @@
+<!--
+  The MCP panel: the host's state and its controls in the bar (Start or Stop, the command that wires
+  an agent, the filters, a search, Clear, the preferences), then what agents did, newest first, beside
+  the chosen call's arguments and answer. Code fills the list, the counts and the detail.
+-->
+<Panel class="panel mcp-panel">
+    <Panel class="panel-toolbar">
+        <Panel id="mcp-dot" class="mcp-dot"/>
+        <Label id="mcp-state" class="mcp-state" text="Stopped"/>
+        <Label id="mcp-client" class="mcp-dim"/>
+        <Button id="mcp-start" text="Start" icon="Editor/Icons/play.svg"/>
+        <Button id="mcp-stop" text="Stop" icon="Editor/Icons/stop.svg" tooltip="Stop the MCP host: agents can no longer reach the editor"/>
+        <Button id="mcp-copy-connect" text="Copy Connect Command" icon="Editor/Icons/copy.svg"
+                tooltip="Copies the command that wires Claude Code to this host, with its token"/>
+        <CheckBox id="mcp-with-project" text="Start with each project"
+                  tooltip="Start the MCP host whenever a project opens (Preferences: MCP enabled)"/>
+        <Spacer/>
+        <Button id="mcp-all" class="chip checked" text="All"/>
+        <Button id="mcp-edits" class="chip" text="Edits" tooltip="Calls whose tool creates, overwrites or deletes authored data"/>
+        <Button id="mcp-failed" class="chip error" text="Failed"/>
+        <Panel class="search">
+            <Image class="search-icon" src="Editor/Icons/search.svg"/>
+            <TextField id="mcp-search" class="search-field" placeholder="Search the calls"/>
+            <Button id="mcp-clear-search" class="slot-button" icon="Editor/Icons/close.svg" tooltip="Clear the search"/>
+        </Panel>
+        <Button id="mcp-clear" class="icon-button" icon="Editor/Icons/trash.svg" tooltip="Clear the list"/>
+        <Button id="mcp-preferences" class="icon-button" icon="Editor/Icons/settings.svg" tooltip="MCP preferences: the port and the token"/>
+    </Panel>
+    <Panel class="mcp-body">
+        <Panel class="mcp-list-pane">
+            <ListView id="mcp-list" class="mcp-list" row-height="24"/>
+            <Label id="mcp-empty" class="console-empty" text="No calls yet."/>
+        </Panel>
+        <Panel id="mcp-detail" class="mcp-detail">
+            <Panel class="mcp-detail-head">
+                <Label id="mcp-detail-tool" class="mcp-detail-tool mono"/>
+                <Label id="mcp-detail-outcome" class="mcp-badge"/>
+                <Label id="mcp-detail-when" class="mcp-dim"/>
+                <Spacer/>
+                <Button id="mcp-detail-copy" class="icon-button" icon="Editor/Icons/copy.svg" tooltip="Copy the call as JSON"/>
+            </Panel>
+            <Label class="mcp-section" text="Arguments"/>
+            <TextArea id="mcp-arguments" class="mcp-code mono"/>
+            <Label id="mcp-result-title" class="mcp-section" text="Result"/>
+            <TextArea id="mcp-result" class="mcp-code mono grow"/>
+        </Panel>
+        <Panel id="mcp-no-detail" class="mcp-detail empty">
+            <Label class="panel-placeholder" text="Choose a call to see its arguments and result"/>
+        </Panel>
+    </Panel>
+</Panel>

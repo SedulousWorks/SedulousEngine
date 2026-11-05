@@ -30,7 +30,7 @@ give the client a generous timeout rather than polling. The editor adds the page
 (`page_list`, `page_open`, `page_reload`, `page_close`), the layout tools (`layout_get`, the
 dock's tree: a split is `{split, children, weights}` with any number of children, each weight its
 child's share, and a stack is `{tabs, active}`, every panel by id: a page's asset guid, a Game
-tab's PIE id, `welcome` for Project, `assets`, `console`, `profiler`, with the `floating` and
+tab's PIE id, `welcome` for Project, `assets`, `console`, `mcp`, `profiler`, with the `floating` and
 `hidden` panels listed apart; `panel_dock`, which moves a panel beside another, into its tabs,
 along the window's edge or floating, as dragging its tab does, `share` setting its part of the
 room it splits), the whole-window capture
@@ -83,6 +83,12 @@ never bakes) into the zone's Navigation Zone asset, which must be assigned first
 itself is unchanged; cook for the game to see the navmesh. A `scene_write`, `prefab_write` or `asset_data_write` over an asset the user has open reaches
 its page at once: a clean page reloads in place, a page with unsaved edits keeps them and
 warns the user. Ask before `page_reload` with `force`, which discards them.
+
+The user sees what you do: the editor's MCP panel (View > MCP, or the status bar's MCP item, which
+names a call while it runs) lists every tools/call with its arguments, its answer, how long it took
+and whether its tool changes authored data, and the user starts and stops the host from it. A Stop
+there holds until the user starts it again, so a host that went away mid-session was most likely
+stopped by the user: ask before anything else.
 
 Play in editor (PIE) is the editor's too, and it is how gameplay is tested: `simulate_start`
 previews ONE scene in its page, while PIE runs the project as the player does (the default

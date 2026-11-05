@@ -70,6 +70,8 @@ class ViewActions
 	public delegate void() Assets ~ delete _;
 	/// Brings the Console panel back, or to the front. Owned.
 	public delegate void() Console ~ delete _;
+	/// Likewise the MCP panel. Owned.
+	public delegate void() Mcp ~ delete _;
 	/// Shows the Profiler page. Owned.
 	public delegate void() Profiler ~ delete _;
 	/// Whether the profiler is recording: Profiler Record's checked state; null is never.
@@ -312,6 +314,11 @@ static class EditorAppActions
 			let d = new EditorActionDeclaration("view.console", "Console", "Show the Console panel", "View/Console", 160);
 			d.ReadOnly = true;
 			Add(actions, d, ref run.Console);
+		}
+		{
+			let d = new EditorActionDeclaration("view.mcp", "MCP", "Show the MCP panel: start or stop the host, see what agents did", "View/MCP", 170);
+			d.ReadOnly = true;
+			Add(actions, d, ref run.Mcp);
 		}
 		{
 			let d = new EditorActionDeclaration("view.profiler", "Profiler", "Show the Profiler page: record the editor process, open a player's capture", "View/Profiler", 210);

@@ -159,9 +159,9 @@ class DockWindowsBed
 	}
 }
 
-/// EditorDock (Raptor's editor-gui spec, 5.1, layer 4): the shared panels by the ids saved layouts
-/// and the MCP tools name, their titles and which may close; the default layout (Project central,
-/// Assets and Console under it side by side, at their shares); a layout that places none puts each
+/// EditorDock: the shared panels by the ids saved layouts and the MCP tools name, their titles and
+/// which may close; the default layout (Project central, Assets and Console under it side by side,
+/// at their shares, the MCP panel a tab behind the Console); a layout that places none puts each
 /// at its default place; the Project panel's content the open project's page or the welcome
 /// wherever the panel shows; Assets' and Console's what their contents make, else an empty panel;
 /// Reset Layout; a project's layout taken from its store, else the default, and captured into it;
@@ -209,7 +209,7 @@ static class EditorDockTests
 		Test.Assert(Near(pane.Weights[0], 0.65f) && Near(pane.Weights[1], 0.35f));
 
 		let controller = dock.Controller;
-		Test.Assert(controller.Panels.Length == 4); // and the Profiler, a page closed until shown
+		Test.Assert(controller.Panels.Length == 5); // and the Profiler, a page closed until shown
 		let project = controller.Describe(EditorDock.cPanelProject);
 		Test.Assert(project != null);
 		Test.Assert(project.Title == "Project");
@@ -220,6 +220,13 @@ static class EditorDockTests
 		Test.Assert(controller.Describe(EditorDock.cPanelAssets).Closable);
 		Test.Assert(controller.Describe(EditorDock.cPanelConsole).Title == "Console");
 		Test.Assert(controller.Describe(EditorDock.cPanelConsole).Closable);
+		// The MCP panel a tab behind the Console, which stays in front.
+		Test.Assert(layout.StackOf(EditorDock.cPanelMcp) == console);
+		let tabs = layout.FindNode(console);
+		Test.Assert((tabs.Panels.Count == 2) && (tabs.Panels[0] == EditorDock.cPanelConsole) && (tabs.Panels[1] == EditorDock.cPanelMcp));
+		Test.Assert(tabs.Panels[tabs.Active] == EditorDock.cPanelConsole);
+		Test.Assert(controller.Describe(EditorDock.cPanelMcp).Title == "MCP");
+		Test.Assert(controller.Describe(EditorDock.cPanelMcp).Closable);
 	}
 
 	[Test]
@@ -366,7 +373,7 @@ static class EditorDockTests
 		bed.Root.AddChild(other);
 		bed.Dock.Open(other, null, new EditorDockContents());
 		Test.Assert(bed.Dock.Area.Parent == other);
-		Test.Assert(controller.Panels.Length == 4, "registered once"); // the Profiler among them
+		Test.Assert(controller.Panels.Length == 5, "registered once"); // the Profiler and MCP among them
 		Test.Assert(controller.Content(EditorDock.cPanelProject) == holder);
 		Test.Assert(holder.GetChildAt(0) == bed.Welcome, "the welcome kept");
 	}

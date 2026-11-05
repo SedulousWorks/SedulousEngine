@@ -1,0 +1,41 @@
+/* The MCP panel mock and the status bar's MCP item. */
+.mcp-dot { width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background-color: var(--text-disabled); }
+.mcp-dot.on { background-color: var(--success); }
+.mcp-state { font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+.mcp-dim { color: var(--text-dim); white-space: nowrap; }
+.mcp-port { width: 64px; }
+.mcp-body { flex-direction: row; flex-grow: 1; min-height: 0; }
+.mcp-calls { flex-direction: column; flex-grow: 1; flex-basis: 0; min-width: 0; overflow-y: auto; padding: var(--space-xs) 0; }
+.mcp-calls.stopped { opacity: 0.6; }
+.mcp-call { flex-direction: row; align-items: center; column-gap: var(--space-m); height: 24px; padding: 0 var(--space-m); flex-shrink: 0; }
+.mcp-call:hover { background-color: var(--ghost-hover); }
+.mcp-call.chosen { background-color: var(--element); }
+.mcp-time { color: var(--text-disabled); font-size: var(--font-small); flex-shrink: 0; }
+.mcp-mark { width: 6px; height: 14px; border-radius: 2px; flex-shrink: 0; background-color: var(--text-disabled); }
+.mcp-mark.ok { background-color: var(--success); }
+.mcp-mark.warning { background-color: var(--warning); }
+.mcp-mark.error { background-color: var(--danger); }
+.mcp-mark.running { background-color: var(--accent); }
+.mcp-tool { width: 150px; flex-shrink: 0; color: var(--text-strong); white-space: nowrap; text-overflow: ellipsis; }
+.mcp-summary { flex-grow: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; color: var(--text); }
+.mcp-call.running > .mcp-summary { color: var(--text-dim); }
+.mcp-took { width: 56px; flex-shrink: 0; text-align: right; color: var(--text-dim); font-size: var(--font-small); }
+.mcp-badge { font-size: 10px; padding: 0 var(--space-s); border-radius: var(--radius-small); flex-shrink: 0; }
+.mcp-badge.edit { background-color: var(--info-background); color: var(--info); }
+.mcp-badge.ok { background-color: var(--element); color: var(--success); }
+.mcp-session { flex-direction: row; height: 24px; align-items: center; padding: 0 var(--space-m); flex-shrink: 0; }
+.mcp-detail { flex-direction: column; width: 380px; flex-shrink: 0; border-left: 1px solid var(--separator);
+              background-color: var(--surface); padding: var(--space-s) var(--space-m); row-gap: var(--space-s); overflow-y: auto; }
+.mcp-detail.empty { justify-content: center; }
+.mcp-detail-head { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: var(--bar); }
+.mcp-detail-tool { font-weight: 600; color: var(--text-strong); }
+.mcp-section { font-size: 11px; font-weight: 600; color: var(--text-dim); margin-top: var(--space-s); }
+.mcp-code { flex-direction: column; padding: var(--space-s) var(--space-m); background-color: var(--surface-sunken);
+            border-radius: var(--radius-small); }
+.mcp-code > label { white-space: nowrap; color: var(--text); }
+
+/* The status bar's item: the dot and the host's port, a flat button that opens the panel. */
+.status-mcp { flex-direction: row; align-items: center; column-gap: var(--space-s); height: var(--statusbar); }
+.status-mcp > button { height: calc(var(--statusbar) - 4px); padding: 0 var(--space-s); background-color: transparent; border-width: 0; }
+.status-mcp > button:hover { background-color: var(--ghost-hover); }
+.status-mcp-call { color: var(--text-dim); white-space: nowrap; }

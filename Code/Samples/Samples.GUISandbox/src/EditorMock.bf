@@ -218,6 +218,7 @@ class EditorMock
 		Define("mock.view-assets", "Assets");
 		Define("mock.view-console", "Console");
 		Define("mock.view-profiler", "Profiler");
+		Define("mock.view-mcp", "MCP");
 		Define("mock.palette", "Command Palette...", "ctrl-shift-p");
 		Define("mock.side-by-side", "Pages Side by Side");
 		Define("mock.play", "Play", "f5", "Editor/Icons/play.svg");
@@ -269,6 +270,8 @@ class EditorMock
 		mRoot.OnCommand("mock.textures", new (e) => { ShowPicker(ref mTextures, "Editor/Mock/textures.xml"); });
 		mRoot.OnCommand("mock.asset-picker", new (e) => { ShowPicker(ref mAssetPicker, "Editor/Mock/asset-picker.xml"); });
 		mRoot.OnCommand("mock.entity-picker", new (e) => { ShowPicker(ref mEntityPicker, "Editor/Mock/entity-picker.xml"); });
+		// The status bar's MCP item brings the MCP panel to front, as View > MCP does.
+		mRoot.OnCommand("mock.view-mcp", new (e) => { ShowPage("mcp"); });
 		mRoot.OnCommand("mock.side-by-side", new (e) => { SetSideBySide(!mSideBySide); });
 		Define("look.dark", "Dark");
 		Define("look.light", "Light");
@@ -414,6 +417,8 @@ class EditorMock
 		mHost.Read("Editor/Mock/kit.css", text); // the kit page's own layout
 		text.Append("\n");
 		mHost.Read("Editor/Mock/profiler.css", text); // the profiler page's, and its bars
+		text.Append("\n");
+		mHost.Read("Editor/Mock/mcp.css", text); // the MCP panel's, and its status bar item
 		text.AppendF("\n:root {{ --accent-input: {}; }}\n", sAccents[mAccent].Fill);
 		let sheet = scope StyleSheet();
 		CSSParser.Parse(text, "Editor/editor.css", sheet);
@@ -450,6 +455,9 @@ class EditorMock
 		Register("profiler", "Profiler", "Editor/Mock/profiler.xml");
 		Register("assets", "Assets", "Editor/Mock/assets.xml");
 		Register("console", "Console", "Editor/Mock/console.xml");
+		// The MCP panel's two states, to compare: the host listening, and stopped.
+		Register("mcp", "MCP", "Editor/Mock/mcp.xml");
+		Register("mcp-stopped", "MCP: Stopped", "Editor/Mock/mcp-stopped.xml");
 		{
 			let layout = DefaultLayout(false);
 			defer delete layout;
@@ -488,6 +496,8 @@ class EditorMock
 		Said(layout.Activate("profiler"));
 		Said(layout.InsertBeside("assets", central, .Bottom, 0.28f));
 		Said(layout.InsertTab("console", layout.StackOf("assets")));
+		Said(layout.InsertTab("mcp", layout.StackOf("assets")));
+		Said(layout.InsertTab("mcp-stopped", layout.StackOf("assets")));
 		Said(layout.Activate("assets"));
 		return layout;
 	}
