@@ -5,8 +5,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Scene;
 
-// The physics block's collision groups as a grid (Raptor's editor-gui spec, 5.6: the user's ruling,
-// the old editor's matrix): a row per group and a column per group, the column headers the groups'
+// The physics block's collision groups as a grid (the user's ruling, the old editor's matrix): a
+// row per group and a column per group, the column headers the groups'
 // numbers (each named in its tooltip), the rows the numbers and names, and a check box where row and
 // column meet on and below the diagonal, so each pair has one: whether the two collide. A click is
 // the pair's write through the groups' source (both ways, one undo step). The grid's row for it is
@@ -43,6 +43,9 @@ class CollisionMatrixEditor : PropertyEditor
 	{
 		registry.RegisterHint(cHint, new () => new CollisionMatrixEditor(), true);
 	}
+
+	/// A line per group under the headers, so its grid row is as tall as they are.
+	public override bool IsMultiline => true;
 
 	/// How many groups it shows.
 	public int Count => mNames.Count;
@@ -167,6 +170,7 @@ class CollisionMatrixEditor : PropertyEditor
 			let number = new Label();
 			number.AddClass("collision-matrix-column");
 			number.Text = scope $"{column}";
+			number.SetTextAlignment(.Center, .Middle); // over its boxes
 			number.Tooltip = mNames[column];
 			Cell(number, cCell);
 			header.AddChild(number);
@@ -178,6 +182,7 @@ class CollisionMatrixEditor : PropertyEditor
 			let name = new Label();
 			name.AddClass("collision-matrix-name");
 			name.Text = scope $"{r} {mNames[r]}";
+			name.SetTextAlignment(.Start, .Middle);
 			Cell(name, cNameWidth);
 			line.AddChild(name);
 			name.ReleaseRef();

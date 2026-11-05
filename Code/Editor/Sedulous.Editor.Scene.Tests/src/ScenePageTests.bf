@@ -1586,6 +1586,7 @@ class ScenePageTests
 	[Test]
 	public static void InspectorThePhysicsBlocksCollisionGroupsDefaultFirstANewGroupCollidesWithAllAPairBothWaysOnlyTheLastRemoved()
 	{
+		BuiltinInspectorExtras.Register(); // the groups block is an extra; run alone, nothing else registered it
 		let bed = scope Bed();
 		let page = bed.Open(bed.Level);
 		defer delete page;
@@ -1634,6 +1635,14 @@ class ScenePageTests
 		let matrix = inspector.Grid.FindEditor(matrixPath) as CollisionMatrixEditor;
 		Test.Assert(matrix != null);
 		Test.Assert(matrix.Count == 2);
+		// Its grid row is as tall as the headers and a line per group, so the last line's boxes lie
+		// in the row, not over the rows below it.
+		Test.Assert(matrix.Parent != null);
+		let rowBounds = matrix.Parent.ScreenBounds;
+		Test.Assert(rowBounds.Height >= 3.0f * CollisionMatrixEditor.cCell, scope $"{rowBounds.Height}");
+		Test.Assert(matrix.Box(1, 1) != null);
+		let lastBox = matrix.Box(1, 1).ScreenBounds;
+		Test.Assert(lastBox.Y + lastBox.Height <= rowBounds.Y + rowBounds.Height + 0.5f);
 		Test.Assert(matrix.Box(1, 0) != null);
 		Test.Assert(matrix.Box(0, 1) == null, "above the diagonal: the same pair as (1, 0)");
 		Test.Assert(matrix.Box(1, 0).Checked);
@@ -1664,6 +1673,15 @@ class ScenePageTests
 		remove.Index = 1;
 		Test.Assert(groups.EditList("groups", remove));
 		Test.Assert(IntOf("groups") == 1);
+		// With one group fewer, the row is a line shorter.
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		inspector.Grid.ScrollToItem(inspector.Grid.FindRow(matrixPath));
+		shown.Root.UpdateLayout();
+		let shorter = inspector.Grid.FindEditor(matrixPath) as CollisionMatrixEditor;
+		Test.Assert(shorter != null);
+		Test.Assert(shorter.Count == 1);
+		let shorterHeight = shorter.Parent.ScreenBounds.Height;
+		Test.Assert(shorterHeight < rowBounds.Height - CollisionMatrixEditor.cCell * 0.5f, scope $"{shorterHeight}");
 		remove.Index = 0;
 		Test.Assert(!groups.EditList("groups", remove)); // Default stays
 		page.Commands.Undo(); // the remove
