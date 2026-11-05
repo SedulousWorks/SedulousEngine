@@ -352,6 +352,49 @@ static class SceneReferenceTests
 		Test.Assert(refused.Contains("light"));
 	}
 
+	/// The reference describes what is registered when it is read: a component contributed after
+	/// the tools are registered (a game's native module loading) is in component_schema and the
+	/// schema, and gone again once its contribution is removed (the module unloading).
+	[Test]
+	public static void AComponentContributedAfterTheToolsIsServedAndLeavesWithItsContribution()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
+		let importers = scope ImporterRegistry();
+		let logBuffer = scope EditorLogBuffer();
+		let session = scope ProjectSession();
+		let server = scope McpServer();
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
+
+		let contributions = SceneModuleContributions.Global;
+		let probeType = TypeIdOf(typeof(ProbeManager).GetFullName(.. scope .()));
+		contributions.Remove(probeType); // the list is process wide: start without it
+		CallErr(server, "component_schema", With(Obj(), "type", "test.Probe"), .. scope .());
+
+		var probe = SceneModuleContribution();
+		probe.Id = "test.probe";
+		probe.Install = => InstallProbe;
+		probe.SystemType = probeType;
+		contributions.Add(probe);
+		defer contributions.Remove(probeType);
+
+		let entry = CallOk(server, "component_schema", With(Obj(), "type", "test.Probe"));
+		defer delete entry;
+		Test.Assert(entry.Get("wireName").AsString() == "test.Probe");
+		Test.Assert(Field(entry.Get("fields"), "rate") != null, "its fields recorded");
+		let listed = Ask(server, scope $"{{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"resources/read\",\"params\":{{\"uri\":\"{SceneReference.cSchemaUri}\"}}}}");
+		defer delete listed;
+		Test.Assert(listed.Get("result").Get("contents").At(0).Get("text").AsString().Contains("test.Probe"), "in the schema too");
+
+		contributions.Remove(probeType);
+		CallErr(server, "component_schema", With(Obj(), "type", "test.Probe"), .. scope .());
+	}
+
+	private static void InstallProbe(Scene scene) => scene.AddSystem<ProbeManager>();
+
 	/// The documented prefab instance record is the serializer's: a scene holding one instance
 	/// writes exactly the documented keys, in the documented order, and the format section
 	/// lists them.
@@ -397,4 +440,22 @@ static class SceneReferenceTests
 		for (int i < fields.Count)
 			Test.Assert(fields.At(i).Get("key").AsString() == SceneReference.cPrefabInstanceKeys[i]);
 	}
+}
+
+/// A component a game's native module would contribute at run time.
+[SerializableComponent("test.Probe")]
+struct ProbeComponent : ISerializable
+{
+	public float Rate = 2.0f;
+
+	public this() {}
+
+	public void Serialize(ISerializer ar) mut
+	{
+		SerializeValue(ar, "rate", ref Rate);
+	}
+}
+
+class ProbeManager : SerializableComponentManager<ProbeComponent>
+{
 }

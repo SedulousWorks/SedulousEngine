@@ -56,11 +56,10 @@ static class EngineTools
 		ExportPresetTools.Register(server, session);
 		ProjectExportTool.Register(server, session, operations);
 
-		// The scene format reference, generated from this host's own registrations and served
-		// live: docs://generated/* and component_schema.
-		let reference = SceneReference.Generate(builders);
-		defer delete reference;
-		reference.RegisterResources(server);
-		reference.RegisterComponentSchemaTool(server);
+		// The scene format reference, generated from this host's own registrations (a game's
+		// native module's scene managers among them) each time it is read: docs://generated/*
+		// and component_schema.
+		SceneReference.RegisterResources(server, builders);
+		SceneReference.RegisterComponentSchemaTool(server, builders);
 	}
 }
