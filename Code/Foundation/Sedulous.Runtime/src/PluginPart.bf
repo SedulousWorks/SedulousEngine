@@ -53,11 +53,16 @@ class PluginContext
 /// A part linked in but not enabled does no work: its load runs only when the host enables its
 /// plugin. Every registration is explicit in Load; what the loader records (serializable types,
 /// the recorders' tables) it reverses itself, and Unload removes the rest, such as a subsystem.
+/// A package's part registers itself (PluginRegistry) and carries its package's manifest.
 abstract class PluginPart
 {
 	/// The manifest's id, checked against it when the plugin is enabled.
 	public abstract StringView PluginId { get; }
 	public abstract PluginPartKind Kind { get; }
+	/// The package's Plugin.xml, compiled in (`Compiler.ReadText`), so a player with no package
+	/// files on disk still checks versions, dependencies and slots. A registered part must have
+	/// one; a part handed to PluginHost.AddLinked with its manifest needs none.
+	public virtual StringView ManifestXml => "";
 
 	public abstract void Load(PluginContext context);
 	public virtual void Unload(PluginContext context) {}

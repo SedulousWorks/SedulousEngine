@@ -118,6 +118,60 @@ class PluginHost
 		return .Ok;
 	}
 
+	/// The parts registered in this binary (PluginRegistry): AddParts over them.
+	public Result<void, ErrorCode> AddRegistered() => AddParts(PluginRegistry.Parts);
+
+	/// Plugins as their parts carry them (BORROWED; they outlive the host): grouped by plugin,
+	/// each plugin's manifest its first part's, in id order, so the order the parts came in
+	/// (their static constructors') changes nothing. A plugin whose manifest is missing or does
+	/// not read is a build defect: Internal, and nothing of the set is added.
+	public Result<void, ErrorCode> AddParts(Span<PluginPart> parts)
+	{
+		let ids = scope List<StringView>();
+		for (let part in parts)
+		{
+			if ((part != null) && !ids.Contains(part.PluginId))
+				ids.Add(part.PluginId);
+		}
+		ids.Sort(scope (a, b) => a.CompareTo(b));
+
+		let groups = scope List<List<PluginPart>>();
+		defer { ClearAndDeleteItems!(groups); }
+		let manifests = scope List<StringView>();
+		for (let id in ids)
+		{
+			let group = new List<PluginPart>();
+			groups.Add(group);
+			StringView xml = default;
+			for (let part in parts)
+			{
+				if ((part == null) || (part.PluginId != id))
+					continue;
+				group.Add(part);
+				if (xml.IsEmpty)
+					xml = part.ManifestXml;
+			}
+			// Read before any is added, so a defect leaves the host as it was.
+			if (xml.IsEmpty || (PluginManifest.Read(xml, scope PluginManifest()) case .Err))
+				return .Err(.Internal);
+			manifests.Add(xml);
+		}
+		for (int i < groups.Count)
+			Try!(AddLinked(manifests[i], (Span<PluginPart>)groups[i]));
+		return .Ok;
+	}
+
+	/// The ids of the plugins compiled in, comma separated, in the order they were added.
+	public void KnownIds(String outIds)
+	{
+		for (let candidate in mCandidates)
+		{
+			if (!outIds.IsEmpty)
+				outIds.Append(',');
+			outIds.Append(candidate.Id);
+		}
+	}
+
 	/// Whether a plugin of this id is compiled in.
 	public bool Knows(StringView id) => Find(id) != null;
 
