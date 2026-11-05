@@ -26,14 +26,6 @@ static class ParticleEffectSerialization
 	private static Object AsObject(ISerializable value) =>
 		(value != null) ? Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(value)) : null;
 
-	private static Object AsObject(ISerializer value) =>
-		(value != null) ? Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(value)) : null;
-
-	/// The serializer behind the interface, for the framing operations the interface does not
-	/// carry. Null for a backend that is not one of Core's, which then gets no framing.
-	private static Serializer AsSerializer(ISerializer ar) =>
-		AsObject(ar) as Serializer;
-
 	/// Reads or writes one module list.
 	///
 	/// Each module's parameters sit in a FRAMED REGION, so a module whose type this build does
@@ -75,13 +67,10 @@ static class ParticleEffectSerialization
 					delete created;
 			}
 
-			let framed = AsSerializer(ar);
-			if (framed != null)
-				framed.BeginFramedRegion();
+			ar.BeginFramedRegion();
 			if (module != null)
 				((ISerializable)module).Serialize(ar);
-			if (framed != null)
-				framed.EndFramedRegion();
+			ar.EndFramedRegion();
 			ar.EndObject();
 
 			// Added AFTER its parameters are read, because adding declares its streams and a
@@ -124,13 +113,10 @@ static class ParticleEffectSerialization
 					delete created;
 			}
 
-			let framed = AsSerializer(ar);
-			if (framed != null)
-				framed.BeginFramedRegion();
+			ar.BeginFramedRegion();
 			if (module != null)
 				((ISerializable)module).Serialize(ar);
-			if (framed != null)
-				framed.EndFramedRegion();
+			ar.EndFramedRegion();
 			ar.EndObject();
 
 			if (reading && (module != null))

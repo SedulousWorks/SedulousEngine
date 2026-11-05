@@ -146,6 +146,44 @@ class FramedRegionTests
 			Test.Assert(a[i] == b[i], scope $"byte {i}");
 	}
 
+	// A Serialize body as every one is written: it holds the interface alone.
+	private static void KeepUnread(ISerializer ar, List<uint8> unread, ref uint32 after)
+	{
+		ar.BeginFramedRegion();
+		ar.RawRemainder(unread);
+		ar.EndFramedRegion();
+		Serialize(ar, ref after);
+	}
+
+	/// A body holding only the interface frames what it keeps unread: through binary, the frame
+	/// says where the unread bytes end, and what follows reads after them.
+	[Test]
+	public static void ABodyHoldingOnlyTheInterfaceFramesWhatItKeepsUnread()
+	{
+		let unread = scope List<uint8>();
+		unread.Add(7);
+		unread.Add(8);
+		unread.Add(9);
+		uint32 after = 999;
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			KeepUnread(writer, unread, ref after);
+			Test.Assert(writer.IsOk);
+		}
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let read = scope List<uint8>();
+		uint32 readAfter = 0;
+		{
+			let reader = scope BinarySerializer(stream, .Read);
+			KeepUnread(reader, read, ref readAfter);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(read.Count == 3, "the frame says where the unread bytes end");
+		Test.Assert((read[0] == 7) && (read[2] == 9));
+		Test.Assert(readAfter == 999);
+	}
+
 	/// Binary needs an active frame to know where an unknown region ends, so outside one it
 	/// says so rather than guessing.
 	[Test]

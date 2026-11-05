@@ -60,6 +60,14 @@ interface ISerializer
 	void FailPayload(ErrorCode code);
 	bool IsPayloadOk { get; }
 
+	/// Brackets a self-delimiting sub-region, so a payload whose type this build cannot
+	/// instantiate can be captured (RawRemainder) or skipped uniformly. On the interface beside
+	/// RawRemainder because every Serialize body holds an ISerializer: a body that keeps an unread
+	/// payload frames it here, in binary as much as in a self-describing format. No frames by
+	/// default; Serializer's backends override (binary length-prefixes; regions may nest).
+	void BeginFramedRegion() {}
+	void EndFramedRegion() {}
+
 	/// Captures on read, or re-injects on write, the current framed region's remaining
 	/// content verbatim, so a payload whose type this build cannot instantiate survives a
 	/// round trip. False where an unknown region cannot be preserved.

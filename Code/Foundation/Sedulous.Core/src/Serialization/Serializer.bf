@@ -129,8 +129,8 @@ abstract class Serializer : ISerializer
 		}
 	}
 
-	/// Brackets a self-delimiting sub-region, so a payload whose type this build cannot
-	/// instantiate can be captured or skipped uniformly. Binary length-prefixes the
+	/// Brackets a self-delimiting sub-region (ISerializer's), so a payload whose type this build
+	/// cannot instantiate can be captured or skipped uniformly. Binary length-prefixes the
 	/// enclosed bytes; a self-describing format leans on its own element boundaries and
 	/// does nothing. Regions may nest.
 	public virtual void BeginFramedRegion() {}
