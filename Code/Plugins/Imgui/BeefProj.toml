@@ -1,7 +1,7 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Extensions.Imgui"
+Name = "Imgui"
 TargetType = "BeefLib"
 
 [Dependencies]

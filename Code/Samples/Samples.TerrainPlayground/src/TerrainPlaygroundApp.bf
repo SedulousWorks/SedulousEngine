@@ -4,7 +4,7 @@ using Sedulous.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Terrain;
-using Sedulous.Extensions.Imgui;
+using Imgui;
 using Sedulous.Geometry;
 using Sedulous.Graphics;
 using Sedulous.Heightfield;

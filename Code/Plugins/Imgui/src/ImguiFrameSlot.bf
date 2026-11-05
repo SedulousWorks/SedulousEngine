@@ -1,6 +1,6 @@
 using Sedulous.RHI;
 
-namespace Sedulous.Extensions.Imgui;
+namespace Imgui;
 
 /// One frame in flight's own geometry, projection and bindings.
 ///

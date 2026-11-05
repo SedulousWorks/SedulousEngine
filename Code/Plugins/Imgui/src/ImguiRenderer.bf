@@ -5,7 +5,7 @@ using Sedulous.RHI;
 using Sedulous.Shaders;
 using cimgui_Beef;
 
-namespace Sedulous.Extensions.Imgui;
+namespace Imgui;
 
 /// A Dear ImGui renderer on the engine's own RHI, rather than one of the stock backends.
 ///

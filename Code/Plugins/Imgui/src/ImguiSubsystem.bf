@@ -7,7 +7,7 @@ using Sedulous.Shaders;
 using Sedulous.Shell;
 using cimgui_Beef;
 
-namespace Sedulous.Extensions.Imgui;
+namespace Imgui;
 
 /// The debug interface as a SUBSYSTEM: the context owns it, and an application drives two
 /// hooks around its own frame.

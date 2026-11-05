@@ -5,7 +5,7 @@ using Sedulous.Core;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Render;
-using Sedulous.Extensions.Imgui;
+using Imgui;
 using Sedulous.Graphics;
 using Sedulous.Render;
 using Sedulous.Runtime.Client;

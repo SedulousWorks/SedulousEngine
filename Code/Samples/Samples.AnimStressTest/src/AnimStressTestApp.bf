@@ -6,7 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Render;
-using Sedulous.Extensions.Imgui;
+using Imgui;
 using Sedulous.Geometry;
 using Sedulous.Graphics;
 using Sedulous.Materials;

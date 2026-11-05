@@ -5,7 +5,7 @@ using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.GUI;
-using Sedulous.Extensions.Imgui;
+using Imgui;
 using Sedulous.Graphics;
 using Sedulous.Physics;
 using Sedulous.Physics.Resource;

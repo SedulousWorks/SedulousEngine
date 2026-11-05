@@ -6,7 +6,7 @@ using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Engine.Input;
-using Sedulous.Extensions.Imgui;
+using Imgui;
 using Sedulous.Graphics;
 using Sedulous.Input;
 using Sedulous.Input.Resource;

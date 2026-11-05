@@ -9,7 +9,7 @@ using Sedulous.Engine.Composition;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Particles;
 using Sedulous.Engine.Render;
-using Sedulous.Extensions.Imgui;
+using Imgui;
 using Sedulous.Geometry;
 using Sedulous.Graphics;
 using Sedulous.Materials;
