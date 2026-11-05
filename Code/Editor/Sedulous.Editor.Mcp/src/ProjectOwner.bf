@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Sedulous.Runtime;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Project;
 
@@ -15,6 +17,11 @@ class ProjectOwner
 	/// The host's pipeline registries a project's plugins add to as it opens (BORROWED); none
 	/// leaves a Pipeline part nothing to add to.
 	public PipelineRegistries PluginRegistries;
+	/// What a project's plugins' Tooling parts add MCP tools through (BORROWED); null: none.
+	public McpPluginServices PluginTools = null;
+	/// The plugin parts a project may enable; null is the parts that registered in this binary
+	/// (PluginRegistry). BORROWED.
+	public List<PluginPart> PluginParts = null;
 
 	/// Takes ownership of `project`, releasing whatever was open, and points the session at
 	/// it, the plugins it enables enabled for MCP. The session is cleared first, so it never names
@@ -26,7 +33,13 @@ class ProjectOwner
 		session.Project = null;
 		delete Project;
 		Project = project;
-		Plugins = new ToolPlugins(.Mcp, project, PluginRegistries);
+		let tools = PluginTools;
+		let parts = (PluginParts != null) ? (Span<PluginPart>)PluginParts : PluginRegistry.Parts;
+		Plugins = new ToolPlugins(.Mcp, project, parts, PluginRegistries, scope (host) =>
+			{
+				if (tools != null)
+					tools.Attach(host);
+			});
 		session.Project = project;
 		session.Plugins = Plugins.Host;
 	}

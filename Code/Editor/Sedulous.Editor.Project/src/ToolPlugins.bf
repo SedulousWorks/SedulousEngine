@@ -20,18 +20,23 @@ class ToolPlugins
 	private PluginLoadReport mReport = new .() ~ delete _;
 
 	/// Over `parts` (BORROWED; PluginRegistry.Parts in a tool) and `project`'s list, a Pipeline
-	/// part adding to `registries` (BORROWED; those the tool has, the rest null).
-	public this(HostRole role, EditorProject project, Span<PluginPart> parts, PipelineRegistries registries = default)
+	/// part adding to `registries` (BORROWED; those the tool has, the rest null). `attach` hands the
+	/// host what else the tool offers its plugins, before they load (BORROWED, called here).
+	public this(HostRole role, EditorProject project, Span<PluginPart> parts, PipelineRegistries registries = default,
+		delegate void(PluginHost host) attach = null)
 	{
 		mPipeline = new .(registries);
 		mHost = new .(mSubsystems, role, EngineVersion.String);
 		mPipeline.Attach(mHost);
+		if (attach != null)
+			attach(mHost);
 		ProjectPlugins.Load(mHost, parts, project.Settings, mReport);
 	}
 
 	/// Over the parts this binary links.
-	public this(HostRole role, EditorProject project, PipelineRegistries registries = default)
-		: this(role, project, PluginRegistry.Parts, registries)
+	public this(HostRole role, EditorProject project, PipelineRegistries registries = default,
+		delegate void(PluginHost host) attach = null)
+		: this(role, project, PluginRegistry.Parts, registries, attach)
 	{
 	}
 

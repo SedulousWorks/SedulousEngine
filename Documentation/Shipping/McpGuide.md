@@ -224,7 +224,10 @@ another plugin. `plugin_disable` removes an entry and its settings. A host enabl
 plugins when it opens the project, so either takes effect there. A loaded plugin reports its
 `settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`
 takes its kind) changes them, checked in full first, then saved. An entry whose plugin is not
-loaded keeps its settings as written: no tool reads or changes them. `project_health` is
+loaded keeps its settings as written: no tool reads or changes them. A loaded plugin may serve
+tools of its own: `tools/list` shows them while it is loaded (each host enables the open project's
+plugins when it opens the project), and none takes a name the engine's tools hold. `project_health`
+is
 the one call soundness sweep (dangling refs, broken sources, cook state); a dirty count
 alone is normal, clear it with `asset_cook`.
 

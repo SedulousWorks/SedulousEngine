@@ -72,10 +72,18 @@ class Program
 		// The session every tool works through. This host OWNS the project it opens:
 		// project_open stores it in the owner and points the session at it. Both outlive
 		// the server.
+		// The MCP tools a project's plugins add through their Tooling parts: served by this
+		// server, and gone from it with their plugin. Before the owner, so it outlives the
+		// project's plugins.
+		let pluginTools = scope McpPluginServices();
 		let owner = scope ProjectOwner();
-		// A project's plugins (those this host links) add to the registries above as it opens.
+		// A project's plugins (those this host links) add to the registries above, and their tools
+		// to this server, as it opens.
 		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
+		owner.PluginTools = pluginTools;
 		let session = scope ProjectSession();
+		pluginTools.AttachServer(server, session);
+		defer pluginTools.DetachServer(server);
 		// The engine surface every host serves, one list in Editor.Mcp, with the paths only
 		// this host knows how to find: the curated docs and known issues by the walk up from
 		// the executable.

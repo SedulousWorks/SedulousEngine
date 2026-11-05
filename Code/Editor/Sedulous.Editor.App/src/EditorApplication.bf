@@ -142,6 +142,10 @@ class EditorApplication : IApplication
 	/// tells, so it goes first.
 	private TemplatesDialog mTemplates = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
+	/// The MCP tools the project's plugins add through their Tooling parts: attached to each
+	/// project's plugin host by the session, and serving the MCP host's server while it runs.
+	/// Before the two, so it goes after them.
+	private Sedulous.Editor.Mcp.McpPluginServices mMcpPluginTools = new .() ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
 	/// The open project: after the parts its hooks reach, so it closes first.
 	private EditorSession mSession ~ delete _;
@@ -312,6 +316,7 @@ class EditorApplication : IApplication
 		services.Thumbnails = mThumbnailService;
 		services.UserSettings = mEditorSettings;
 		services.Projects = mProjectManager;
+		services.PluginTools = mMcpPluginTools;
 		services.SeedNewProject = new (context, project) =>
 			{
 				if (mConfig.SeedNewProject != null)
@@ -611,6 +616,7 @@ class EditorApplication : IApplication
 		mcpServices.Builders = mBuilders;
 		mcpServices.UserSettings = mEditorSettings;
 		mcpServices.Log = mConfig.LogBuffer;
+		mcpServices.PluginTools = mMcpPluginTools;
 		mcpServices.DataRoot.Set(mConfig.DataRoot);
 		mcpServices.ForceEnabled = mConfig.McpEnabled;
 		mcpServices.Port = mConfig.McpPort;

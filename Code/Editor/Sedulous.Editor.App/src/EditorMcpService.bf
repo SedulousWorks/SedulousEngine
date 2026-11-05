@@ -64,6 +64,9 @@ class EditorMcpServiceServices
 	/// cannot. Owned.
 	public delegate bool(Span<StringView> paths, String error) DropFiles ~ delete _;
 	public delegate void(McpServer server) AddTools ~ delete _;
+	/// The tools the project's plugins add; the host's server serves them while it runs.
+	/// BORROWED; null: none.
+	public McpPluginServices PluginTools = null;
 	/// What the editor shows, for host_info: "projectManager" or "editor"; null: from whether a
 	/// project is open. Owned.
 	public delegate void(String outScreen) Screen ~ delete _;
@@ -246,6 +249,9 @@ class EditorMcpService
 		EditorProfilerTools.Register(mHost.Server, profiler);
 		if (mServices.AddTools != null)
 			mServices.AddTools(mHost.Server);
+		// The project's plugins' tools, last, so none takes a name the editor's own tools hold.
+		if (mServices.PluginTools != null)
+			mServices.PluginTools.AttachServer(mHost.Server, mSession);
 
 		EditorMcpHostConfig config = .();
 		config.Port = (uint16)((mServices.Port != 0) ? mServices.Port : settings.Port);
@@ -319,6 +325,8 @@ class EditorMcpService
 	{
 		if ((mHost != null) && mHost.IsRunning)
 			mActivity.HostStopped(LocalNow()); // a host that never listened has nothing to stop
+		if ((mHost != null) && (mServices.PluginTools != null))
+			mServices.PluginTools.DetachServer(mHost.Server); // its plugins' tools leave before it goes
 		DeleteAndNullify!(mHost);
 		DeleteAndNullify!(mOperations);
 		mSession.Project = null;

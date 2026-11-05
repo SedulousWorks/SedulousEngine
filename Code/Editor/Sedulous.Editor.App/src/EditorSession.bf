@@ -39,6 +39,9 @@ class EditorSessionServices
 	/// The plugin parts a project may enable; null is the parts that registered in this binary
 	/// (PluginRegistry). BORROWED.
 	public List<PluginPart> PluginParts = null;
+	/// What the project's plugins' Tooling parts add their MCP tools through (null: none).
+	/// BORROWED.
+	public Sedulous.Editor.Mcp.McpPluginServices PluginTools = null;
 	/// Seeds a new project's starter content (the executable composes it); null: none. Owned.
 	public delegate void(EditorContext context, EditorProject project) SeedNewProject ~ delete _;
 	/// The project opened, its services up: the application brings its views up (the MCP host,
@@ -131,6 +134,8 @@ class EditorSession
 		if (mPipelinePlugins == null)
 			mPipelinePlugins = new .(PipelineRegistries(mServices.Builders, context.Importers, context.Creators));
 		mPipelinePlugins.Attach(plugins);
+		if (mServices.PluginTools != null)
+			mServices.PluginTools.Attach(plugins);
 		let parts = (mServices.PluginParts != null) ? (Span<PluginPart>)mServices.PluginParts : PluginRegistry.Parts;
 		ProjectPlugins.Load(plugins, parts, project.Settings, scope .());
 		context.Plugins = plugins;
