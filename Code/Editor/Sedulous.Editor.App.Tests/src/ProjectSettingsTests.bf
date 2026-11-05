@@ -302,9 +302,9 @@ class ProjectSettingsTests
 	{
 		let bed = scope Bed();
 		let bag = bed.Bag;
-		let module = bag.FindInfo("nativeModule");
-		Test.Assert((module != null) && (module.Kind == .String));
-		Test.Assert(module.Category == "General");
+		let name = bag.FindInfo("name");
+		Test.Assert((name != null) && (name.Kind == .String));
+		Test.Assert(name.Category == "General");
 
 		let height = bag.FindInfo("windowHeight");
 		Test.Assert((height != null) && (height.Kind == .Integer));

@@ -317,11 +317,6 @@ static class ExportDriverTests
 		defer delete nowhere;
 		nowhere.Platform.Set("Nonexistent64");
 		Test.Assert(ExportDriver.ExportOne(fx.Project, nowhere, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotFound));
-		// A native module is not supported yet.
-		fx.Project.Settings.NativeModule.Set("Native/libGame.so");
-		let native = ExportProjectFixture.HostPreset("Native", "native");
-		defer delete native;
-		Test.Assert(ExportDriver.ExportOne(fx.Project, native, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotSupported));
 	}
 
 	[Test]

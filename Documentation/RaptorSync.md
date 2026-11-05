@@ -76,10 +76,11 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 
 Recorded so a port audit does not flag them as missed halves:
 
-- Game native code: the player half is here (`PluginLoader`, the native module setting), but the
-  editor and export halves are not. An export refuses a project that names a native module
-  (`ExportDriver`), so Raptor's native module build, reload and export commits have nothing to
-  land on yet.
+- Game native code: no library is ever loaded. Beef shared libraries cannot share a runtime, so
+  every plugin is compiled in; a game's native code is a package of the project's (Plugins/<Name>)
+  compiled into a per-project editor and player, and the nativeModule setting is gone (a manifest
+  naming one reads with the path dropped, not migrated, at the same data version). Raptor's
+  development libraries, reload and staged copies have no counterpart.
 - Script values cross by copy: a scene's environment and post settings are read and set whole
   through `scene.Render` (`GetEnvironment` / `SetEnvironment`, `GetPostProcess` /
   `SetPostProcess`) rather than through Raptor's re-resolving `EnvironmentSettings.of(scene)`

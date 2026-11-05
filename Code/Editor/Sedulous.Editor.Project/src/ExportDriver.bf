@@ -20,8 +20,6 @@ namespace Sedulous.Editor.Project;
 /// template's player and sidecars and the preset's extra files. The ONE entry point the
 /// editor's Export menu, the CLI and the MCP host share, so a preset produces the same dist
 /// whichever surface triggers it.
-///
-/// A project naming a native module is refused: native game modules are not supported.
 static class ExportDriver
 {
 	// ---- the scene streams ----
@@ -478,11 +476,6 @@ static class ExportDriver
 		{
 			GlobalLog(.Error, "Export: no export template for preset '{}' (platform '{}') - import one", preset.Name, preset.Platform);
 			return .Err(.NotFound);
-		}
-		if (!project.Settings.NativeModule.IsEmpty)
-		{
-			GlobalLog(.Error, "Export: the project names a native module '{}'; native game modules are not supported yet", project.Settings.NativeModule);
-			return .Err(.NotSupported);
 		}
 		let result = scope ExportResult();
 		defer

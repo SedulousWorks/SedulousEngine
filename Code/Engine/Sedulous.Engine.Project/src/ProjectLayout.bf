@@ -15,6 +15,9 @@ static class ProjectLayout
 	public const String CookedDir = "Cooked";
 	public const String EditorDir = "Editor";
 	public const String CacheDir = ".cache";
+	/// The project's own plugin packages (its game code, project-local plugins):
+	/// Plugins/<Name>/, each a Plugin.xml and its parts.
+	public const String PluginsDir = "Plugins";
 
 	/// Readable and diffable envelopes, against the binary ones a cook produces. Without
 	/// the dot, as a ContentDatabase takes them: it adds its own, and a dotted one here had
@@ -27,6 +30,24 @@ static class ProjectLayout
 	/// What the export stages. The player detects a distribution by the pak.
 	public const String DistContentPak = "Content.pak";
 	public const String DistManifestFile = "player.xml";
+
+	// ---- a project's packages --------------------------------------------------------------
+
+	/// A plugin id from a package's name ("NativeSample" gives "nativesample"): lower case,
+	/// anything but letters, digits and underscores an underscore, prefixed with "game_" when
+	/// it does not start with a letter, so it is always a valid id.
+	public static void PluginIdFromName(StringView name, String outId)
+	{
+		outId.Clear();
+		for (let c in name.RawChars)
+		{
+			let lower = c.ToLower;
+			let ok = ((lower >= 'a') && (lower <= 'z')) || ((lower >= '0') && (lower <= '9')) || (lower == '_');
+			outId.Append(ok ? lower : '_');
+		}
+		if (outId.IsEmpty || !((outId[0] >= 'a') && (outId[0] <= 'z')))
+			outId.Insert(0, "game_");
+	}
 
 	// ---- a game's save ---------------------------------------------------------------------
 

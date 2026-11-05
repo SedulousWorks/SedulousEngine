@@ -592,7 +592,7 @@ static class ProjectFlowTests
 		{
 			let unknown = scope String();
 			CallRefusedArgument(server, "project_settings_set", With(With(Obj(), "defaultScene", sceneId), "defaultSceneId", sceneId), unknown);
-			Test.Assert(unknown.StartsWith("project_settings_set: no argument 'defaultScene' (it takes: name, defaultSceneId, nativeModule,"), unknown);
+			Test.Assert(unknown.StartsWith("project_settings_set: no argument 'defaultScene' (it takes: name, defaultSceneId, defaultInputMapId,"), unknown);
 			let msaa = scope String();
 			CallErr(server, "project_settings_set", With(Obj(), "renderMsaaSamples", 3), msaa);
 			Test.Assert(msaa == "`renderMsaaSamples` takes 1, 2, 4", msaa);

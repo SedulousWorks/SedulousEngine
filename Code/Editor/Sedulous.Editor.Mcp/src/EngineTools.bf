@@ -59,7 +59,7 @@ static class EngineTools
 		ProjectExportTool.Register(server, session, operations);
 
 		// The scene format reference, generated from this host's own registrations (a game's
-		// native module's scene managers among them) each time it is read: docs://generated/*
+		// enabled plugins' scene managers among them) each time it is read: docs://generated/*
 		// and component_schema.
 		SceneReference.RegisterResources(server, builders);
 		SceneReference.RegisterComponentSchemaTool(server, builders);

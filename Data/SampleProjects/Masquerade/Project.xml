@@ -9,7 +9,6 @@
 		<string name="defaultSceneId">9f75a606-4c88-6646-8c10-0f79b1ec6760</string>
 		<string name="defaultScene">Scenes/Palace</string>
 		<string name="startupScript">Scripts/Masquerade</string>
-		<string name="nativeModule"/>
 		<string name="defaultInputMapId">ebd9f292-e4f5-f449-a6d6-c04c9318c60f</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">221ba031-6dff-bb4b-843d-2ae8d95bd855</string>

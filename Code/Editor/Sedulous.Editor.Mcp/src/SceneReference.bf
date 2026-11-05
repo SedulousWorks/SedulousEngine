@@ -31,7 +31,7 @@ namespace Sedulous.Editor.Mcp;
 /// Both are deterministic (seeded guids, composition order, no stamps). The hosts serve them
 /// as docs://generated/* beside the shipping docs, and component_schema answers one entry; each
 /// is generated when it is asked for, so it describes what is registered then, the scene
-/// managers a game's native module contributes included.
+/// managers an enabled plugin contributes included.
 class SceneReference
 {
 	public const String cExampleUri = "docs://generated/SceneExample.scene.xml";
@@ -51,7 +51,7 @@ class SceneReference
 		let reference = new SceneReference();
 		let world = scope Scene("SceneReference");
 		EngineSceneComposition.AddAllSceneManagers(world);
-		// And what a game's native module contributed, as every instantiation appends it.
+		// And what an enabled plugin contributed, as every instantiation appends it.
 		SceneModuleContributions.Global.InstallAll(world);
 		// Fixed: the example's guids reproduce run after run.
 		var rng = Sedulous.Core.Random(0x5CE7EF0247A7UL);

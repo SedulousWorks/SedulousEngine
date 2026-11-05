@@ -9,7 +9,6 @@
 		<string name="defaultSceneId">d54b3804-21ff-724a-a076-4e971ef6b238</string>
 		<string name="defaultScene">Scenes/Level1</string>
 		<string name="startupScript">Scripts/PlatformerGame</string>
-		<string name="nativeModule"/>
 		<string name="defaultInputMapId">ddc8a18e-d7bf-2849-a2b7-540ed7ddc674</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">cdc1ed58-4cc2-184f-9021-aca36cc0f5f8</string>

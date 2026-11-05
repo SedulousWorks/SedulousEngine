@@ -353,7 +353,7 @@ static class SceneReferenceTests
 	}
 
 	/// The reference describes what is registered when it is read: a component contributed after
-	/// the tools are registered (a game's native module loading) is in component_schema and the
+	/// the tools are registered (a plugin loading) is in component_schema and the
 	/// schema, and gone again once its contribution is removed (the module unloading).
 	[Test]
 	public static void AComponentContributedAfterTheToolsIsServedAndLeavesWithItsContribution()
@@ -442,7 +442,7 @@ static class SceneReferenceTests
 	}
 }
 
-/// A component a game's native module would contribute at run time.
+/// A component a plugin would contribute at run time.
 [SerializableComponent("test.Probe")]
 struct ProbeComponent : ISerializable
 {

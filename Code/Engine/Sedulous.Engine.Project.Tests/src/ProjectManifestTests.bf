@@ -76,6 +76,50 @@ class ProjectManifestTests
 		Test.Assert(!saved.Contains("defaultUiThemeId") && !saved.Contains("name=\"loadingDocumentId\""));
 	}
 
+	/// A version 10 manifest naming a native module (a library path, before a game's native code
+	/// was a package) still opens: the path is passed by and lost, every setting after it reads,
+	/// no plugin entry stands in for it, and a save writes the manifest without it.
+	[Test]
+	public static void AVersion10ManifestsNativeModuleIsPassedByAndDropped()
+	{
+		FreshScratch();
+		const String cVersion10 = """
+			<root>
+				<array name="dataVersions" count="1">
+					<u64 name="type">15697994609334965484</u64>
+					<u32 name="version">10</u32>
+				</array>
+				<object>
+					<string name="name">Old</string>
+					<string name="engineVersion">0.1.0</string>
+					<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
+					<string name="defaultScene">Scenes/Start</string>
+					<string name="startupScript"/>
+					<string name="nativeModule">Native/libOldGame.so</string>
+					<string name="defaultInputMapId">7c0d2a51-0f6e-4b8e-9a3d-5e2f1c4b6a70</string>
+					<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+					<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
+					<string name="defaultUiFontId">00000000-0000-0000-0000-000000000000</string>
+					<u32 name="renderMsaaSamples">2</u32>
+				</object>
+			</root>
+			""";
+		let fs = scope NativeFileSystem(kScratch);
+		Test.Assert(fs.Save("Project.xml", .((uint8*)cVersion10.Ptr, cVersion10.Length)) case .Ok);
+		let settings = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(fs, settings, "Project.xml") case .Ok);
+		Test.Assert(settings.Name == "Old");
+		Test.Assert(settings.DefaultInputMapId == Guid.Parse("7c0d2a51-0f6e-4b8e-9a3d-5e2f1c4b6a70").Get(), "after the dropped path");
+		Test.Assert(settings.RenderMsaaSamples == 2);
+		Test.Assert(settings.Plugins.IsEmpty, "the path is lost, not migrated");
+
+		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
+		let saved = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
+		Test.Assert(saved.Contains("<u32 name=\"version\">10</u32>"));
+		Test.Assert(!saved.Contains("nativeModule"));
+	}
+
 	/// A copy goes through the settings' own serialization, so it carries every field, the
 	/// ones added after it was written too: the two manifests are the same document.
 	[Test]
@@ -122,7 +166,6 @@ class ProjectManifestTests
 		written.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
 		written.DefaultScene.Set("Scenes/Main");
 		written.StartupScript.Set("Scripts/Game");
-		written.NativeModule.Set("demo_native");
 		written.RenderMsaaSamples = 4;
 
 		{
@@ -138,7 +181,6 @@ class ProjectManifestTests
 		Test.Assert(read.DefaultSceneId == written.DefaultSceneId);
 		Test.Assert(read.DefaultScene == "Scenes/Main");
 		Test.Assert(read.StartupScript == "Scripts/Game");
-		Test.Assert(read.NativeModule == "demo_native");
 		Test.Assert(read.RenderMsaaSamples == 4);
 	}
 

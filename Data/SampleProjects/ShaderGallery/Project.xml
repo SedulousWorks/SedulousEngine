@@ -9,7 +9,6 @@
 		<string name="defaultSceneId">b48d6255-4379-9d4a-9127-c21f844eeb6c</string>
 		<string name="defaultScene">Hall</string>
 		<string name="startupScript"/>
-		<string name="nativeModule"/>
 		<string name="defaultInputMapId">f20a4054-7426-c543-8188-1814dc645589</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>

@@ -22,7 +22,10 @@ namespace Sedulous.Engine.Project;
 /// FIELD ORDER IS THE WIRE: the generator walks the declaration, so inserting a field in the
 /// middle changes what existing manifests mean. Append, and bump the version when the shape
 /// has to change. Version 10 dropped the old UI's theme and loading document (Engine.UI,
-/// deleted); a version 9 manifest still reads, its keyed reader passing the two by.
+/// deleted); a version 9 manifest still reads, its keyed reader passing the two by. A field
+/// dropped without a version bump is passed by the same way: nativeModule, the library path
+/// of a game's native module, went when a game's native code became a package of the
+/// project's (Plugins/<Name>), and a manifest that names one reads with the path dropped.
 [Serializable(10, false, 9)]
 class ProjectSettings
 {
@@ -38,9 +41,6 @@ class ProjectSettings
 	public String DefaultScene = new .() ~ delete _;
 	/// The startup script's source database path. Superseded by StartupScriptId.
 	public String StartupScript = new .() ~ delete _;
-	/// A project-relative path to the built native game module; empty is scripts only.
-	[Setting("Native module", "General")]
-	public String NativeModule = new .() ~ delete _;
 
 	/// The input map bound at startup. Nil for none.
 	[Setting("Default input map", "InputMapAsset", "(none)", "Startup"), SettingSummary("Input map")]

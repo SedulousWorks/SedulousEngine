@@ -207,20 +207,6 @@ class PlayerApplication : DefaultApplication
 				mOptions.NativeGame.Name);
 			return;
 		}
-
-		if (mSettings.NativeModule.IsEmpty)
-			return;
-
-		let modulePath = scope String();
-		PathJoin(mOptions.ProjectDir, mSettings.NativeModule, modulePath);
-
-		if (mPlugins.Load(modulePath) case .Ok)
-			GlobalLog(.Information, "Player: native game module '{}' loaded",
-				mSettings.NativeModule);
-		else
-			GlobalLog(.Error,
-				"Player: the native game module '{}' failed to load, so the run continues without it",
-				modulePath);
 	}
 
 	// ==================== launch ====================

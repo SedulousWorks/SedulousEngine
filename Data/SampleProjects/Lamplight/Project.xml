@@ -9,7 +9,6 @@
 		<string name="defaultSceneId">5fa1899e-3821-bd48-8496-af9ac424f3af</string>
 		<string name="defaultScene">Scenes/Gardens</string>
 		<string name="startupScript">Scripts/Lamplight</string>
-		<string name="nativeModule"/>
 		<string name="defaultInputMapId">97a6f059-4e19-904a-a287-5d77506a62e9</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">6d8c5968-c68f-b446-be76-b2ff79f6a746</string>

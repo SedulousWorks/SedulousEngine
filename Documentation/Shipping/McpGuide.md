@@ -162,7 +162,7 @@ behaviour's properties under `live` beside what is authored.
    engine, compare stamps: a stale host serves yesterday's engine.
 3. `resources/list`: the curated `docs://` shipping docs (Scripting, Assets, Scenes,
    KnownIssues), the scene format reference this host generates from what it has
-   registered when you read it, its build and the open project's native module
+   registered when you read it, its build and the open project's enabled plugins
    (`docs://generated/SceneSchema.json` and `docs://generated/SceneExample.scene.xml`) and,
    once a project is open, every scene and prefab as `project://scene|prefab/<guid>`.
 
@@ -277,8 +277,7 @@ dependency of the cook. A scene shows them with `gui.Canvas`, `gui.Billboard` an
 `gui.WorldPanel`; the editor's page for each is its text beside a live preview.
 
 **Scenes**: read `docs://generated/SceneSchema.json` once (or `component_schema` for one
-component; a component a game's native module adds is there while the module is loaded, and a
-reload shows on the next read), copy from `docs://generated/SceneExample.scene.xml`, read the target with
+component; a component an enabled plugin adds is there while the plugin is loaded), copy from `docs://generated/SceneExample.scene.xml`, read the target with
 `scene_read` (or the `project://` resource), author the XML, loop on `scene_validate` (`xml`
 or `guid`; `valid` with empty `warnings` means the engine will load it), then `scene_write`.
 Prefabs mirror it with the single root rule. To PLACE a prefab (an imported model's is the
