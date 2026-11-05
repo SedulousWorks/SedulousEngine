@@ -26,6 +26,14 @@ class McpServer
 		public ToolCall Call ~ delete _;
 		/// The line, when the call has no id. OWNED.
 		public String Line ~ delete _;
+		/// The server's number for the call, the same in each of its reports.
+		public uint64 Serial;
+		/// The tool it calls, what it was called with and the tool's annotations, for its reports.
+		public String Tool = new .() ~ delete _;
+		public JsonValue Arguments ~ delete _;
+		public ToolAnnotations Annotations;
+		/// Since its first entry.
+		public System.Diagnostics.Stopwatch Clock = new .(true) ~ delete _;
 	}
 
 	/// The calls that answered NotFinished and have not answered since. OWNED.
@@ -47,6 +55,7 @@ class McpServer
 		let entry = new CallEntry();
 		entry.Call = new ToolCall();
 		entry.Call.Id = mCallId;
+		entry.Serial = mNextSerial++;
 		if (mCallId == 0)
 			entry.Line = new String(mCallLine);
 		mCalls.Add(entry);
@@ -75,7 +84,11 @@ class McpServer
 	private List<ResourceProvider> mProviders = new .() ~ DeleteContainerAndItems!(_);
 	private String mServerName = new .("engine-mcp") ~ delete _;
 	private String mServerVersion = new .("0.1.0") ~ delete _;
-	private delegate void(StringView toolName, bool isError) mToolObserver ~ delete _;
+	private delegate void(ToolCallReport report) mToolObserver ~ delete _;
+	/// The client that last initialized, by its clientInfo.
+	private String mClientName = new .() ~ delete _;
+	private String mClientVersion = new .() ~ delete _;
+	private uint64 mNextSerial = 1;
 
 	public StringView ServerName => mServerName;
 	public StringView ServerVersion => mServerVersion;
@@ -88,13 +101,33 @@ class McpServer
 		mServerVersion.Set(version);
 	}
 
-	/// Told (toolName, isError) after every FINISHED tools/call, on the dispatching thread: a
-	/// host refreshes what a write tool changed, or logs the agent's activity. Not finished
-	/// attempts and protocol failures (no tool ran) are not reported. OWNERSHIP transfers.
-	public void SetToolObserver(delegate void(StringView toolName, bool isError) observer)
+	/// Told of each tools/call as it starts running across pumps, finishes or is abandoned
+	/// (ToolCallReport), on the dispatching thread: a host refreshes what a write tool changed,
+	/// or shows the agent's activity. OWNERSHIP transfers.
+	public void SetToolObserver(delegate void(ToolCallReport report) observer)
 	{
 		delete mToolObserver;
 		mToolObserver = observer;
+	}
+
+	/// The client that last initialized, by its clientInfo; empty before any did.
+	public StringView ClientName => mClientName;
+	public StringView ClientVersion => mClientVersion;
+
+	private void Report(CallEntry entry, ToolCallPhase phase, bool isError = false, StringView result = default)
+	{
+		if (mToolObserver == null)
+			return;
+		var report = ToolCallReport();
+		report.Serial = entry.Serial;
+		report.Phase = phase;
+		report.Tool = entry.Tool;
+		report.Arguments = entry.Arguments;
+		report.Annotations = entry.Annotations;
+		report.IsError = isError;
+		report.Result = result;
+		report.Elapsed = entry.Clock.Elapsed;
+		mToolObserver(report);
 	}
 
 	/// Registers a tool. OWNERSHIP of the schema and the handler transfers.
@@ -125,6 +158,9 @@ class McpServer
 		{
 			if (mCalls[i].Call.Id == callId)
 			{
+				// Heard Started before (a call in flight answered NotFinished), so heard ending too.
+				if (mCalls[i].Call.IsReentry)
+					Report(mCalls[i], .Abandoned);
 				EndCall(i);
 				return;
 			}
@@ -209,7 +245,7 @@ class McpServer
 	{
 		switch (method)
 		{
-		case "initialize": return Initialize(id);
+		case "initialize": return Initialize(id, parameters);
 		case "ping": return MakeResult(id, JsonValue.MakeObject());
 		case "tools/list": return ToolsList(id);
 		case "tools/call": return ToolsCall(id, parameters);
@@ -220,8 +256,22 @@ class McpServer
 		}
 	}
 
-	private JsonValue Initialize(JsonValue id)
+	private JsonValue Initialize(JsonValue id, JsonValue parameters)
 	{
+		// Who connected, as it named itself; a client that names nothing replaces the last one with
+		// nobody in particular.
+		mClientName.Clear();
+		mClientVersion.Clear();
+		let client = (parameters != null) ? parameters.Get("clientInfo") : null;
+		if (client != null)
+		{
+			let clientName = client.Get("name");
+			let clientVersion = client.Get("version");
+			if ((clientName != null) && clientName.IsString)
+				mClientName.Set(clientName.AsString());
+			if ((clientVersion != null) && clientVersion.IsString)
+				mClientVersion.Set(clientVersion.AsString());
+		}
 		let result = JsonValue.MakeObject();
 		result.Set("protocolVersion", JsonValue.MakeString(ProtocolVersion));
 
@@ -295,16 +345,27 @@ class McpServer
 		let toolError = scope String();
 		// The call this is: the one already in flight under this identity, or a new one.
 		let callIndex = FindOrStartCall();
-		let call = mCalls[callIndex].Call;
+		let entry = mCalls[callIndex];
+		let call = entry.Call;
+		if (!call.IsReentry)
+		{
+			entry.Tool.Set(tool.Name);
+			delete entry.Arguments;
+			entry.Arguments = arguments.Clone();
+			entry.Annotations = tool.Annotations;
+		}
 		let outcome = (tool.CallRun != null)
 			? tool.CallRun(call, arguments, toolResult, toolError)
 			: tool.Run(arguments, toolResult, toolError);
 		if (outcome == .NotFinished)
 		{
-			call.IsReentry = true;
+			if (!call.IsReentry)
+			{
+				call.IsReentry = true;
+				Report(entry, .Started);
+			}
 			return null;
 		}
-		EndCall(FindCallIndex(call)); // answered: its state goes
 
 		let item = JsonValue.MakeObject();
 		item.Set("type", JsonValue.MakeString("text"));
@@ -324,8 +385,9 @@ class McpServer
 		let content = JsonValue.MakeArray();
 		content.Add(item);
 		result.Set("content", content);
-		if (mToolObserver != null)
-			mToolObserver(tool.Name, outcome != .Answered);
+		let isError = outcome != .Answered;
+		Report(entry, .Finished, isError, isError ? StringView(toolError) : item.Get("text").AsString());
+		EndCall(FindCallIndex(call)); // answered: its state goes
 		return MakeResult(id, result);
 	}
 

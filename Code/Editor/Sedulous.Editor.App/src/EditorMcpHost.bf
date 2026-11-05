@@ -41,9 +41,9 @@ class EditorMcpHost
 	private McpHttpHost mHttp ~ delete _;
 	private ProjectSession mSession;
 
-	/// Told (tool, isError) after every finished tools/call: the application shows the
-	/// agent's activity. Owned.
-	public delegate void(StringView tool, bool isError) OnToolFinished ~ delete _;
+	/// Told of each tools/call as it starts running, finishes or is abandoned, so the application
+	/// can show the agent's activity. Owned.
+	public delegate void(ToolCallReport report) OnCall ~ delete _;
 	/// What the editor shows, for host_info: "projectManager" or "editor". Null: the project
 	/// manager without a project, the editor with one. Owned.
 	public delegate void(String outScreen) Screen ~ delete _;
@@ -87,10 +87,10 @@ class EditorMcpHost
 					outState.Set("projectDirectory", JsonValue.MakeString(project.Directory));
 				}
 			});
-		mServer.SetToolObserver(new (tool, isError) =>
+		mServer.SetToolObserver(new (report) =>
 			{
-				if (OnToolFinished != null)
-					OnToolFinished(tool, isError);
+				if (OnCall != null)
+					OnCall(report);
 			});
 	}
 

@@ -174,9 +174,10 @@ class EditorMcpService
 		mHost = new EditorMcpHost(mServices.Context, mSession, mServices.Log, mServices.Builders, mServices.Context.Importers,
 			paths, mOperations, BuildStamp(.. scope .()));
 		let context = mServices.Context;
-		mHost.OnToolFinished = new (tool, isError) =>
+		mHost.OnCall = new (report) =>
 			{
-				context.SetStatus(scope $"MCP: {tool} {isError ? "failed" : "done"}");
+				if (report.Phase == .Finished)
+					context.SetStatus(scope $"MCP: {report.Tool} {report.IsError ? "failed" : "done"}");
 			};
 		if (mServices.Screen != null)
 		{

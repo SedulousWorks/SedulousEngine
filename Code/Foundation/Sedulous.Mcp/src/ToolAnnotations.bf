@@ -35,4 +35,9 @@ struct ToolAnnotations
 	public static Self Rebuilds => .(false, false, true, false);
 	/// Changes the editor's SESSION (a page opened, a selection) and no authored data.
 	public static Self Adjusts => .(false, false, true, false);
+
+	/// Whether the tool changes authored data: it creates, overwrites or deletes (Creates,
+	/// Overwrites, Deletes), where a read, a rebuild of derived output or a change to the
+	/// editor's session leaves the project's data as it was.
+	public bool ChangesAuthoredData => !IsReadOnly && (IsDestructive || !IsIdempotent);
 }

@@ -94,7 +94,7 @@ class EditorMcpHostTests
 		let host = scope EditorMcpHost(context, session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
 		let finished = scope List<String>();
 		defer ClearAndDeleteItems(finished);
-		host.OnToolFinished = new (tool, isError) => finished.Add(new $"{tool}:{isError ? "err" : "ok"}");
+		host.OnCall = new (report) => finished.Add(new $"{report.Tool}:{report.IsError ? "err" : "ok"}");
 		Test.Assert(!host.IsRunning);
 
 		// The host wires a tool's write over a source asset to the open pages editing it, the

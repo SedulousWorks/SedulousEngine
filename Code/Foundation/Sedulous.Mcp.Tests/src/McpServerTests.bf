@@ -393,7 +393,16 @@ class McpServerTests
 			});
 		let heard = scope List<String>();
 		defer ClearAndDeleteItems(heard);
-		server.SetToolObserver(new (tool, isError) => heard.Add(new $"{tool}:{isError ? "err" : "ok"}"));
+		let serials = scope List<uint64>();
+		server.SetToolObserver(new (report) =>
+			{
+				Test.Assert(report.Phase == .Finished);
+				Test.Assert(report.Arguments != null);
+				Test.Assert(report.Annotations.IsReadOnly);
+				Test.Assert(report.Elapsed >= TimeSpan(0));
+				heard.Add(new $"{report.Tool}:{report.IsError ? "err" : "ok"}:{report.Arguments.ToString(.. scope .())}:{report.Result}");
+				serials.Add(report.Serial);
+			});
 
 		for (let line in scope String[](
 			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"message\":\"hi\"}}}",
@@ -405,8 +414,36 @@ class McpServerTests
 			delete Ask(server, line);
 
 		Test.Assert(heard.Count == 2);
-		Test.Assert(heard[0] == "echo:ok");
-		Test.Assert(heard[1] == "fail:err");
+		Test.Assert(heard[0] == "echo:ok:{\"message\":\"hi\"}:{}", heard[0]);
+		Test.Assert(heard[1] == "fail:err:{}:no", heard[1]); // no arguments read as {}
+		Test.Assert(serials[0] != serials[1]);
+	}
+
+	/// A tool's annotations say whether it changes authored data.
+	[Test]
+	public static void AToolsAnnotationsSayWhetherItChangesAuthoredData()
+	{
+		Test.Assert(ToolAnnotations.Creates.ChangesAuthoredData);
+		Test.Assert(ToolAnnotations.Overwrites.ChangesAuthoredData);
+		Test.Assert(ToolAnnotations.Deletes.ChangesAuthoredData);
+		Test.Assert(!ToolAnnotations.ReadOnly.ChangesAuthoredData);
+		Test.Assert(!ToolAnnotations.Rebuilds.ChangesAuthoredData);
+		Test.Assert(!ToolAnnotations.Adjusts.ChangesAuthoredData);
+	}
+
+	/// The server keeps the client that last initialized, by its clientInfo.
+	[Test]
+	public static void TheServerKeepsTheClientThatLastInitialized()
+	{
+		let server = scope McpServer();
+		Test.Assert(server.ClientName.IsEmpty);
+		delete Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"clientInfo\":{\"name\":\"claude-code\",\"version\":\"2.1.0\"}}}");
+		Test.Assert(server.ClientName == "claude-code");
+		Test.Assert(server.ClientVersion == "2.1.0");
+		// A client that names nothing replaces the last one with nobody in particular.
+		delete Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"initialize\",\"params\":{}}");
+		Test.Assert(server.ClientName.IsEmpty);
+		Test.Assert(server.ClientVersion.IsEmpty);
 	}
 
 	// ---- a tool that is not finished ----
@@ -433,6 +470,61 @@ class McpServerTests
 				outResult.Set("calls", JsonValue.MakeNumber(slow.Calls));
 				return .Answered;
 			});
+	}
+
+	/// What the observer heard of one report.
+	private class Heard
+	{
+		public uint64 Serial;
+		public ToolCallPhase Phase;
+		public String Tool = new .() ~ delete _;
+		public bool Changes;
+	}
+
+	/// The observer hears a call that keeps running as Started once, then Finished or Abandoned,
+	/// under the same serial.
+	[Test]
+	public static void TheObserverHearsACallThatKeepsRunningStartedThenFinishedOrAbandoned()
+	{
+		let server = scope McpServer();
+		let slow = scope SlowTool();
+		RegisterSlow(server, slow);
+		server.RegisterTool("forever", "never finishes", scope SchemaBuilder().Build(), .Overwrites,
+			new (arguments, outResult, outError) => ToolOutcome.NotFinished);
+		let heard = scope List<Heard>();
+		defer { ClearAndDeleteItems!(heard); }
+		server.SetToolObserver(new (report) =>
+			{
+				let one = new Heard();
+				one.Serial = report.Serial;
+				one.Phase = report.Phase;
+				one.Tool.Set(report.Tool);
+				one.Changes = report.Annotations.ChangesAuthoredData;
+				heard.Add(one);
+			});
+
+		let line = scope String();
+		Test.Assert(server.HandleLine(cSlowCall, line) == .NotFinished);
+		Test.Assert(server.HandleLine(cSlowCall, line) == .NotFinished);
+		Test.Assert(server.HandleLine(cSlowCall, line) == .Answered);
+		Test.Assert(heard.Count == 2);
+		Test.Assert(heard[0].Phase == .Started);
+		Test.Assert(heard[1].Phase == .Finished);
+		Test.Assert(heard[0].Serial == heard[1].Serial);
+		Test.Assert(heard[1].Tool == "slow");
+
+		// Its caller leaves: Abandoned, under the serial it started with.
+		const String cForever = "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"forever\"}}";
+		line.Clear();
+		Test.Assert(server.HandleLine(cForever, line, 41) == .NotFinished);
+		Test.Assert(server.HandleLine(cForever, line, 41) == .NotFinished);
+		server.AbandonCall(41);
+		Test.Assert(heard.Count == 4);
+		Test.Assert(heard[2].Phase == .Started);
+		Test.Assert(heard[2].Changes);
+		Test.Assert(heard[3].Phase == .Abandoned);
+		Test.Assert(heard[3].Serial == heard[2].Serial);
+		Test.Assert(heard[2].Serial != heard[0].Serial);
 	}
 
 	[Test]
