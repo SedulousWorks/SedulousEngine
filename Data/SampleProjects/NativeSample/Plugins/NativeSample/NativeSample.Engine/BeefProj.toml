@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "NativeSample.Engine"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+
