@@ -263,6 +263,8 @@ class PropertyCategoryContent : UIWidget
 	public StringView Path => mPath;
 	public Sedulous.GUI.Label Label => mLabel;
 
+	public override Float2 MeasureContent(Float2 available) => .(available.X, PropertyRowContent.LineOf(this));
+
 	protected override void OnMouseClick(MouseEvent e)
 	{
 		if (e.Button != .Left)
@@ -288,10 +290,14 @@ class PropertyCategoryContent : UIWidget
 
 /// A property's row: indented by its depth, a group's chevron, its name (its description the
 /// tooltip), the split, and its editor (none for a group). A row whose info has a Note shows it after
-/// its editor, which then leaves the note its own width.
+/// its editor, which then leaves the note its own width. A row is one line high (its row's
+/// min-height when a sheet gives one, the density's), or as tall as a multi-line editor measures,
+/// its name in the first line.
 [GuiReflect]
 class PropertyRowContent : UIWidget
 {
+	/// A line's height when no sheet gives the row a min-height.
+	public const float cLine = 24.0f;
 	private const float cGrip = 12.0f;
 	private PropertyGrid mGrid;
 	private TreeArrow mArrow ~ _.ReleaseRef();
@@ -419,6 +425,33 @@ class PropertyRowContent : UIWidget
 
 	public override StringView TooltipText => mDescription;
 
+	/// A line's height for `content`: its row's min-height from the sheet, or cLine without one.
+	public static float LineOf(Node content)
+	{
+		let row = content.Parent;
+		if (row == null)
+			return cLine;
+		let min = row.LayoutStyle.MinHeight.Resolve(-1.0f);
+		return (min.HasValue && (min.Value > 0.0f)) ? min.Value : cLine;
+	}
+
+	private bool Multiline => (mEditor != null) && mEditor.IsMultiline;
+
+	/// Only a multi-line editor is measured; any other row is a line, whatever its editor's own
+	/// height, so measuring the rows in view costs nothing on each refresh.
+	public override Float2 MeasureContent(Float2 available)
+	{
+		var height = LineOf(this);
+		if (Multiline && (available.X > 0.0f) && !IsUnbounded(available.X))
+		{
+			let split = Math.Floor(available.X * mGrid.LabelRatio);
+			let room = Math.Max(0.0f, available.X - split - 2.0f);
+			let within = LayoutConstraints(.(room, 0.0f), .(room, cUnbounded), .(room, -1.0f), false, false);
+			height = Math.Max(height, mEditor.Measure(within).Y + 2.0f);
+		}
+		return .(available.X, height);
+	}
+
 	public override void OnLayout()
 	{
 		let @box = ContentBounds;
@@ -426,11 +459,14 @@ class PropertyRowContent : UIWidget
 		let split = Math.Floor(@box.Width * mGrid.LabelRatio);
 		let indent = (float)mDepth * mGrid.IndentWidth;
 		let arrow = mGrid.ArrowSize;
-		mArrow.Arrange(Rect.MirroredIn(.(@box.X + indent, @box.Y, arrow, @box.Height), @box, rtl));
+		// The name, chevron, grip, note and summary sit in the first line; only a multi-line
+		// editor takes the row's whole height.
+		let line = Multiline ? Math.Min(@box.Height, LineOf(this)) : @box.Height;
+		mArrow.Arrange(Rect.MirroredIn(.(@box.X + indent, @box.Y, arrow, line), @box, rtl));
 		if (mMovable) // in the indent before the element
-			mGrip.Arrange(Rect.MirroredIn(.(@box.X + Math.Max(0.0f, indent - cGrip), @box.Y, cGrip, @box.Height), @box, rtl));
+			mGrip.Arrange(Rect.MirroredIn(.(@box.X + Math.Max(0.0f, indent - cGrip), @box.Y, cGrip, line), @box, rtl));
 		let textX = indent + arrow + 2.0f;
-		mLabel.Arrange(Rect.MirroredIn(.(@box.X + textX, @box.Y, Math.Max(0.0f, split - textX - 4.0f), @box.Height), @box, rtl));
+		mLabel.Arrange(Rect.MirroredIn(.(@box.X + textX, @box.Y, Math.Max(0.0f, split - textX - 4.0f), line), @box, rtl));
 		if (mEditor != null)
 		{
 			let room = Math.Max(0.0f, @box.Width - split - 2.0f);
@@ -446,10 +482,10 @@ class PropertyRowContent : UIWidget
 			}
 			mEditor.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f, @box.Y + 1.0f, width, height), @box, rtl));
 			if (mNote.Displayed)
-				mNote.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f + width + 8.0f, @box.Y, Math.Max(0.0f, room - width - 8.0f), @box.Height), @box, rtl));
+				mNote.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f + width + 8.0f, @box.Y, Math.Max(0.0f, room - width - 8.0f), line), @box, rtl));
 		}
 		if (mSummary.Displayed)
-			mSummary.Arrange(Rect.MirroredIn(.(@box.X + split + 4.0f, @box.Y, Math.Max(0.0f, @box.Width - split - 8.0f), @box.Height), @box, rtl));
+			mSummary.Arrange(Rect.MirroredIn(.(@box.X + split + 4.0f, @box.Y, Math.Max(0.0f, @box.Width - split - 8.0f), line), @box, rtl));
 		mSplit.Arrange(Rect.MirroredIn(.(@box.X + split - 3.0f, @box.Y, 6.0f, @box.Height), @box, rtl));
 	}
 
@@ -524,7 +560,10 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 	public this()
 	{
 		Tag = "propertygrid";
-		RowHeight = 24.0f;
+		// Rows are measured, so a multi-line editor (a grid of values) gets its height and a row
+		// takes its sheet's min-height (the density's); one line is the estimate until then.
+		RowHeight = 0.0f;
+		EstimatedRowHeight = PropertyRowContent.cLine;
 		RegisterDefaultPropertyEditors(mEditors);
 		mEditorGeneration = mEditors.Generation;
 		SetRowFactory(MakeFactory());

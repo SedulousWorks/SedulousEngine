@@ -56,6 +56,9 @@ abstract class PropertyEditor : UIWidget
 	/// Being typed into: the grid then leaves what it shows alone as the values refresh (a
 	/// value typed is the edit's until Return or the focus leaving commits it).
 	public virtual bool IsTyping => false;
+	/// Shows more than one line (a grid of values): its row is then as tall as it measures, the
+	/// name and the chevron in the row's first line. Any other editor fills its row's one line.
+	public virtual bool IsMultiline => false;
 
 	protected IPropertyEditHost Host => mHost;
 

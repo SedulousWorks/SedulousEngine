@@ -474,6 +474,53 @@ class PropertyGridTests
 		Test.Assert(bed.Grid.ScrollOffset.Y > 0.0f);
 	}
 
+	/// An editor two lines high, as a grid of values is.
+	private class TwoLineEditor : PropertyEditor
+	{
+		public this()
+		{
+			EditLayoutStyle(scope (s) => { s.Height = LayoutLength.Px(50.0f); });
+		}
+
+		public override bool IsMultiline => true;
+
+		protected override void OnBind(PropertyInfo info, PropertyValue value) { }
+	}
+
+	/// A multi-line editor's row is as tall as the editor, its name in the first line; other rows
+	/// are a line, and the row after it starts below it. Read again, it keeps its height.
+	[Test]
+	public static void AMultilineEditorsRowIsAsTallAsTheEditorItsNameInTheFirstLine()
+	{
+		let bed = scope GridBed();
+		bed.Grid.Editors.RegisterHint("two-lines", new () => new TwoLineEditor());
+		bed.Add("before", .Float, Sedulous.GUI.Variant(1.0));
+		bed.Add("grid", .Group).Hint.Set("two-lines");
+		bed.Add("after", .Float, Sedulous.GUI.Variant(2.0));
+		bed.Show();
+		let tall = bed.Grid.FindEditor("grid");
+		let before = bed.Grid.FindEditor("before");
+		let after = bed.Grid.FindEditor("after");
+		Test.Assert((tall is TwoLineEditor) && (before != null) && (after != null));
+		let row = tall.Parent as PropertyRowContent;
+		Test.Assert(row != null);
+		CheckNear(row.Size.Y, 52.0f); // the editor and its 1px above and below
+		CheckNear(tall.Size.Y, 50.0f);
+		CheckNear(row.Label.Size.Y, PropertyRowContent.cLine);
+		CheckNear(before.Parent.Size.Y, PropertyRowContent.cLine);
+		// The next row starts below it, not over its second line.
+		let bounds = row.ScreenBounds;
+		CheckNear(after.Parent.ScreenBounds.Y, bounds.Y + bounds.Height);
+
+		// Read again (as every refresh does), it keeps its height.
+		bed.Grid.Refresh();
+		bed.Frame();
+		let again = bed.Grid.FindEditor("grid");
+		Test.Assert(again != null);
+		CheckNear(again.Parent.Size.Y, 52.0f);
+		CheckNear(bed.Grid.FindEditor("after").Parent.ScreenBounds.Y, again.Parent.ScreenBounds.Y + 52.0f);
+	}
+
 	[Test]
 	public static void AnApplicationsEditorForAHintAHintNoneTakesAndMarkupMakesAGrid()
 	{
