@@ -378,7 +378,7 @@ class McpServerTests
 	// ---- the tool observer ----
 
 	[Test]
-	public static void TheToolObserverHearsEveryFinishedCallByNameAndOutcomeAndNothingElse()
+	public static void TheToolObserverHearsEveryCallARefusedOneAsRefusedAndNoOtherMethod()
 	{
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
@@ -396,27 +396,44 @@ class McpServerTests
 		let serials = scope List<uint64>();
 		server.SetToolObserver(new (report) =>
 			{
-				Test.Assert(report.Phase == .Finished);
+				Test.Assert((report.Phase == .Finished) || (report.Phase == .Refused));
 				Test.Assert(report.Arguments != null);
 				Test.Assert(report.Annotations.IsReadOnly);
 				Test.Assert(report.Elapsed >= TimeSpan(0));
-				heard.Add(new $"{report.Tool}:{report.IsError ? "err" : "ok"}:{report.Arguments.ToString(.. scope .())}:{report.Result}");
+				heard.Add(new $"{(report.Phase == .Refused) ? "refused" : "finished"}:{report.Tool}:{report.IsError ? "err" : "ok"}:{report.Arguments.ToString(.. scope .())}:{report.Result}");
 				serials.Add(report.Serial);
 			});
 
 		for (let line in scope String[](
 			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"message\":\"hi\"}}}",
 			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"fail\"}}",
-			// Not a finished tool run: a schema refusal, an unknown tool, a ping.
+			// Refused before any tool ran (-32602): arguments the schema refuses, an unknown tool, no
+			// name, its arguments heard. Not a tools/call at all: a ping.
 			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{}}}",
 			"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"nope\"}}",
-			"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"ping\"}"))
+			"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"arguments\":{\"x\":1}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"ping\"}"))
 			delete Ask(server, line);
 
-		Test.Assert(heard.Count == 2);
-		Test.Assert(heard[0] == "echo:ok:{\"message\":\"hi\"}:{}", heard[0]);
-		Test.Assert(heard[1] == "fail:err:{}:no", heard[1]); // no arguments read as {}
+		Test.Assert(heard.Count == 5);
+		Test.Assert(heard[0] == "finished:echo:ok:{\"message\":\"hi\"}:{}", heard[0]);
+		Test.Assert(heard[1] == "finished:fail:err:{}:no", heard[1]); // no arguments read as {}
+		Test.Assert(heard[2].StartsWith("refused:echo:err:{}:echo: "), heard[2]);
+		Test.Assert(heard[3] == "refused:nope:err:{}:unknown tool 'nope'", heard[3]);
+		Test.Assert(heard[4] == "refused::err:{\"x\":1}:tools/call requires a string 'name'", heard[4]);
 		Test.Assert(serials[0] != serials[1]);
+		Test.Assert((serials[2] != serials[3]) && (serials[3] != serials[4]));
+		Test.Assert((serials[2] != serials[0]) && (serials[2] != serials[1]));
+
+		// The agent is still answered -32602, the observer told or not.
+		let refused = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"nope\"}}");
+		defer delete refused;
+		Test.Assert(ErrorCode(refused) == (int64)RpcError.InvalidParams);
+		server.SetToolObserver(null);
+		let unheard = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"nope\"}}");
+		defer delete unheard;
+		Test.Assert(ErrorCode(unheard) == (int64)RpcError.InvalidParams);
+		Test.Assert(heard.Count == 6);
 	}
 
 	/// A tool's annotations say whether it changes authored data.

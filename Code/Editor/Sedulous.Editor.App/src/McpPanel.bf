@@ -36,7 +36,8 @@ class McpPanelSeams
 /// dot lit while it listens, where it listens, the client that connected), Start or Stop, Copy
 /// Connect Command (the command that wires Claude Code to the host, with its token) and whether
 /// the host starts with each project (the MCP preference); then a chip per filter (All; Edits, the
-/// calls whose tool creates, overwrites or deletes authored data; Failed), each with its count, a
+/// calls whose tool creates, overwrites or deletes authored data; Failed, holding the calls refused
+/// before any tool ran too: an unknown tool, arguments the schema refuses), each with its count, a
 /// search over a call's tool, summary and arguments, Clear and the preferences. Under it the
 /// activity (McpActivity), newest first: each call's time, outcome, tool, summary, an Edit badge
 /// and how long it took, with the host's own events between; beside it the chosen call's
@@ -91,8 +92,8 @@ class McpPanel
 		public void Reset() => NotifyReset();
 	}
 
-	private static StringView[4] sOutcomeClasses = .("running", "done", "failed", "abandoned");
-	private static StringView[5] sRowClasses = .("running", "done", "failed", "abandoned", "event");
+	private static StringView[5] sOutcomeClasses = .("running", "done", "failed", "abandoned", "refused");
+	private static StringView[6] sRowClasses = .("running", "done", "failed", "abandoned", "refused", "event");
 
 	/// A reference of ours; the panel showing it takes its own. Declared first: it goes last,
 	/// after the model the list it holds borrows.
@@ -322,8 +323,8 @@ class McpPanel
 		call.Set("arguments", ParsedOrText(entry.Arguments));
 		call.Set("outcome", JsonValue.MakeString(OutcomeName(entry.Outcome)));
 		call.Set("milliseconds", JsonValue.MakeNumber((double)(int64)(entry.Elapsed.TotalSeconds * 1000.0 + 0.5)));
-		if ((entry.Outcome == .Done) || (entry.Outcome == .Failed))
-			call.Set((entry.Outcome == .Failed) ? "error" : "result", ParsedOrText(entry.Result));
+		if ((entry.Outcome == .Done) || WentWrong(entry))
+			call.Set(WentWrong(entry) ? "error" : "result", ParsedOrText(entry.Result));
 		call.ToString(outJson, true);
 	}
 
@@ -382,6 +383,10 @@ class McpPanel
 			widget.RemoveClass(name);
 	}
 
+	/// Failed, or refused before any tool ran: what the Failed filter shows.
+	private static bool WentWrong(McpActivity.Entry entry) =>
+		entry.IsCall && ((entry.Outcome == .Failed) || (entry.Outcome == .Refused));
+
 	private static StringView OutcomeName(McpActivity.Outcome outcome)
 	{
 		switch (outcome)
@@ -389,6 +394,7 @@ class McpPanel
 		case .Running: return "running";
 		case .Failed: return "failed";
 		case .Abandoned: return "abandoned";
+		case .Refused: return "refused";
 		default: return "done";
 		}
 	}
@@ -420,7 +426,7 @@ class McpPanel
 	{
 		if ((mFilter == .Edits) && !(entry.IsCall && entry.Changes))
 			return false;
-		if ((mFilter == .Failed) && !(entry.IsCall && (entry.Outcome == .Failed)))
+		if ((mFilter == .Failed) && !WentWrong(entry))
 			return false;
 		if (mSearch.IsEmpty)
 			return true;
@@ -444,7 +450,7 @@ class McpPanel
 					mCounts[(int)Filter.All]++;
 					if (entry.Changes)
 						mCounts[(int)Filter.Edits]++;
-					if (entry.Outcome == .Failed)
+					if (WentWrong(entry))
 						mCounts[(int)Filter.Failed]++;
 				}
 				if (Passes(entry))
@@ -547,13 +553,13 @@ class McpPanel
 		SetText(Find<Sedulous.GUI.Label>("mcp-detail-tool"), entry.Tool);
 		if (let outcome = Find<Sedulous.GUI.Label>("mcp-detail-outcome"))
 		{
-			StringView[4] texts = .("Running", "Done", "Failed", "Abandoned");
+			StringView[5] texts = .("Running", "Done", "Failed", "Abandoned", "Refused");
 			SetText(outcome, texts[(int)entry.Outcome]);
 			for (let name in sOutcomeClasses)
 				SetClass(outcome, name, name == OutcomeName(entry.Outcome));
 		}
 		let stamp = TimeText(entry.At, .. scope .());
-		if (entry.Outcome != .Running)
+		if ((entry.Outcome != .Running) && (entry.Outcome != .Refused)) // a refusal took no time
 		{
 			stamp.Append(", ");
 			TookText(entry.Elapsed, stamp);
@@ -564,7 +570,7 @@ class McpPanel
 			arguments.Text = Pretty(entry.Arguments, .. scope .());
 			arguments.Caret = 0; // read from the top
 		}
-		SetText(Find<Sedulous.GUI.Label>("mcp-result-title"), (entry.Outcome == .Failed) ? "Error" : "Result");
+		SetText(Find<Sedulous.GUI.Label>("mcp-result-title"), WentWrong(entry) ? "Error" : "Result");
 		if (let result = Find<TextArea>("mcp-result"))
 		{
 			if (entry.Outcome == .Running)
@@ -636,6 +642,8 @@ class McpPanel
 		{
 			if (entry.Outcome == .Running)
 				took.Set("running");
+			else if (entry.Outcome == .Refused)
+				took.Set("refused");
 			else
 				TookText(entry.Elapsed, took);
 		}

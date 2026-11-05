@@ -130,6 +130,25 @@ class McpServer
 		mToolObserver(report);
 	}
 
+	/// Answers a tools/call refused before any tool ran (-32602), and tells the observer, with a
+	/// serial of its own.
+	private JsonValue Refuse(JsonValue id, StringView tool, JsonValue arguments, ToolAnnotations annotations, StringView why)
+	{
+		if (mToolObserver != null)
+		{
+			var report = ToolCallReport();
+			report.Serial = mNextSerial++;
+			report.Phase = .Refused;
+			report.Tool = tool;
+			report.Arguments = arguments;
+			report.Annotations = annotations;
+			report.IsError = true;
+			report.Result = why;
+			mToolObserver(report);
+		}
+		return MakeError(id, .InvalidParams, why);
+	}
+
 	/// Registers a tool. OWNERSHIP of the schema and the handler transfers.
 	/// The annotations say what the tool does to the world, and have no default: an
 	/// unannotated write would read as a read. The context, when given, is owned by the tool
@@ -314,16 +333,9 @@ class McpServer
 
 	private JsonValue ToolsCall(JsonValue id, JsonValue parameters)
 	{
-		let name = (parameters != null) ? parameters.Get("name") : null;
-		if ((name == null) || !name.IsString)
-			return MakeError(id, .InvalidParams, "tools/call requires a string 'name'");
-
-		let tool = FindTool(name.AsString());
-		if (tool == null)
-			return MakeError(id, .InvalidParams, scope $"unknown tool '{name.AsString()}'");
-
-		// Absent arguments are an empty object, so a tool taking none needs no special case.
-		var arguments = parameters.Get("arguments");
+		// Absent arguments are an empty object, so a tool taking none needs no special case; read
+		// first, so a refused call is heard with them.
+		var arguments = (parameters != null) ? parameters.Get("arguments") : null;
 		JsonValue owned = null;
 		defer { delete owned; }
 		if ((arguments == null) || arguments.IsNull)
@@ -332,9 +344,17 @@ class McpServer
 			arguments = owned;
 		}
 
+		let name = (parameters != null) ? parameters.Get("name") : null;
+		if ((name == null) || !name.IsString)
+			return Refuse(id, "", arguments, .ReadOnly, "tools/call requires a string 'name'");
+
+		let tool = FindTool(name.AsString());
+		if (tool == null)
+			return Refuse(id, name.AsString(), arguments, .ReadOnly, scope $"unknown tool '{name.AsString()}'");
+
 		let schemaError = scope String();
 		if (!McpSchema.ValidateArgs(arguments, tool.InputSchema, schemaError))
-			return MakeError(id, .InvalidParams, scope $"{tool.Name}: {schemaError}");
+			return Refuse(id, tool.Name, arguments, tool.Annotations, scope $"{tool.Name}: {schemaError}");
 
 		// Run the tool. One that is not finished is asked again next pump, with the same line
 		// and so the same arguments. BOTH finished outcomes are successful JSON-RPC responses:

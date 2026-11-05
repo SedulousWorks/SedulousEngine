@@ -86,8 +86,9 @@ warns the user. Ask before `page_reload` with `force`, which discards them.
 
 The user sees what you do: the editor's MCP panel (View > MCP, or the status bar's MCP item, which
 names a call while it runs) lists every tools/call with its arguments, its answer, how long it took
-and whether its tool changes authored data, and the user starts and stops the host from it. A Stop
-there holds until the user starts it again, so a host that went away mid-session was most likely
+and whether its tool changes authored data (by its annotations), a call refused before its tool ran
+(an unknown tool, arguments the schema refuses) among them, and the user starts and stops the host
+from it. A Stop there holds until the user starts it again, so a host that went away mid-session was most likely
 stopped by the user: ask before anything else.
 
 Play in editor (PIE) is the editor's too, and it is how gameplay is tested: `simulate_start`

@@ -30,6 +30,8 @@ class McpActivity
 		Failed,
 		/// Its caller went away, or the host stopped, before it answered.
 		Abandoned,
+		/// No tool ran: an unknown tool, or arguments its schema refuses.
+		Refused,
 	}
 
 	public class Entry
@@ -83,7 +85,7 @@ class McpActivity
 				report.Arguments.ToString(added.Arguments);
 			else
 				added.Arguments.Set("{}");
-			added.Changes = report.Annotations.ChangesAuthoredData;
+			added.Changes = (report.Phase != .Refused) && report.Annotations.ChangesAuthoredData;
 			added.At = at - (int64)report.Elapsed.TotalSeconds;
 			entry = Add(added);
 			var call = InFlight();
@@ -102,6 +104,9 @@ class McpActivity
 			entry.Result.Set(report.Result);
 		case .Abandoned:
 			entry.Outcome = .Abandoned;
+		case .Refused:
+			entry.Outcome = .Refused;
+			entry.Result.Set(report.Result);
 		}
 		ForgetRunning(entry.Id);
 		mRevision++;
@@ -166,15 +171,15 @@ class McpActivity
 	/// Summary cut at 160.
 	public static void Summary(Entry entry, String outText) => Summary(entry, 160, outText);
 
-	/// One line saying what a call was about, for its row, appended: a failure's first line of
-	/// error, else its arguments as `name: value` pairs (strings bare, the rest as JSON), cut at
-	/// `maxLength`.
+	/// One line saying what a call was about, for its row, appended: a failure's or a refusal's
+	/// first line, else its arguments as `name: value` pairs (strings bare, the rest as JSON), cut
+	/// at `maxLength`.
 	public static void Summary(Entry entry, int maxLength, String outText)
 	{
 		let text = scope String();
 		if (!entry.IsCall)
 			text.Set(entry.Tool);
-		else if (entry.Outcome == .Failed)
+		else if ((entry.Outcome == .Failed) || (entry.Outcome == .Refused))
 		{
 			let end = entry.Result.IndexOf('\n');
 			text.Set((end < 0) ? StringView(entry.Result) : StringView(entry.Result, 0, end));

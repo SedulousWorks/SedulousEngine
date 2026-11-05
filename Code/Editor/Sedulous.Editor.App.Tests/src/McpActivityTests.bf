@@ -76,6 +76,20 @@ static class McpActivityTests
 		Test.Assert(activity[3].Outcome == .Abandoned);
 		activity.Record(Report(9, .Abandoned, "pie_run", none, .Adjusts), 1031);
 		Test.Assert(activity.Count == 4);
+
+		// Refused before any tool ran: an entry of its own with the refusal, never an edit.
+		let revision = activity.Revision;
+		activity.Record(Report(10, .Refused, "scene_write", none, .Overwrites, true, "scene_write: missing required field 'source'"), 1040);
+		Test.Assert(activity.Revision != revision);
+		Test.Assert(activity.Count == 5);
+		Test.Assert(activity[4].IsCall);
+		Test.Assert(activity[4].Outcome == .Refused);
+		Test.Assert(!activity[4].Changes);
+		Test.Assert(activity[4].Result == "scene_write: missing required field 'source'");
+		Test.Assert(activity[4].At == 1040);
+		Test.Assert(McpActivity.Summary(activity[4], .. scope .()) == "scene_write: missing required field 'source'");
+		Test.Assert(activity.RunningCall == null);
+		Test.Assert(activity.LastCall == activity[4]);
 	}
 
 	[Test]

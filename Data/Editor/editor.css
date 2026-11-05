@@ -582,6 +582,7 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
 .mcp-mark { width: 6px; height: 14px; border-radius: 2px; flex-shrink: 0; background-color: var(--text-disabled); }
 .mcp-mark.done { background-color: var(--success); }
 .mcp-mark.failed { background-color: var(--danger); }
+.mcp-mark.refused { background-color: var(--warning); }
 .mcp-mark.running { background-color: var(--accent); }
 .mcp-mark.event { background-color: transparent; }
 .mcp-tool { width: 150px; flex-shrink: 0; color: var(--text-strong); white-space: nowrap; text-overflow: ellipsis; }
@@ -592,6 +593,7 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
 .mcp-badge.edit { background-color: var(--info-background); color: var(--info); }
 .mcp-badge.done { background-color: var(--element); color: var(--success); }
 .mcp-badge.failed { background-color: var(--element); color: var(--danger); }
+.mcp-badge.refused { background-color: var(--element); color: var(--warning); }
 .mcp-badge.running, .mcp-badge.abandoned { background-color: var(--element); color: var(--text-dim); }
 .mcp-detail { flex-direction: column; width: 400px; flex-shrink: 0; border-left: 1px solid var(--separator);
               background-color: var(--surface); padding: var(--space-s) var(--space-m); row-gap: var(--space-s); min-height: 0; }

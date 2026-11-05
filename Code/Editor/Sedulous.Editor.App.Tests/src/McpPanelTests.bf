@@ -92,13 +92,13 @@ class McpPanelTests
 		public StringView Text(StringView id) => Find<Sedulous.GUI.Label>(id).Text;
 
 		public void Call(uint64 serial, StringView tool, StringView arguments, ToolAnnotations annotations, bool isError, StringView result,
-			int64 at, double seconds = 0.002)
+			int64 at, double seconds = 0.002, ToolCallPhase phase = .Finished)
 		{
 			let args = JsonValue.Parse(arguments);
 			defer delete args;
 			var report = ToolCallReport();
 			report.Serial = serial;
-			report.Phase = .Finished;
+			report.Phase = phase;
 			report.Tool = tool;
 			report.Arguments = args;
 			report.Annotations = annotations;
@@ -178,16 +178,18 @@ class McpPanelTests
 		bed.Call(1, "scene_read", "{\"path\":\"Content/Scenes/Level1.scene\"}", .ReadOnly, false, "{}", 101);
 		bed.Call(2, "component_set", "{\"entity\":\"Lamp 3\",\"value\":4.5}", .Overwrites, false, "{\"after\":4.5}", 102);
 		bed.Call(3, "script_validate", "{\"path\":\"Scripts/Player.as\"}", .ReadOnly, true, "'speed' is not a member", 103);
+		bed.Call(4, "scene_write", "{}", .Overwrites, true, "scene_write: missing required field 'source'", 104, 0.0, .Refused);
 		bed.Panel.Update();
 
-		Test.Assert(bed.Panel.ShownCount == 4);
-		Test.Assert(bed.Panel.ShownEntry(0).Tool == "script_validate", "newest first");
-		Test.Assert(bed.Panel.ShownEntry(3).Tool == "Listening on 127.0.0.1:7405");
-		Test.Assert(bed.Panel.ShownEntry(4) == null);
+		Test.Assert(bed.Panel.ShownCount == 5);
+		Test.Assert(bed.Panel.ShownEntry(0).Tool == "scene_write", "newest first");
+		Test.Assert(bed.Panel.ShownEntry(1).Tool == "script_validate");
+		Test.Assert(bed.Panel.ShownEntry(4).Tool == "Listening on 127.0.0.1:7405");
+		Test.Assert(bed.Panel.ShownEntry(5) == null);
 		Test.Assert(!bed.Find<Sedulous.GUI.Label>("mcp-empty").Displayed);
-		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-all").Text == "All  3", "calls, not events");
-		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-edits").Text == "Edits  1");
-		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-failed").Text == "Failed  1");
+		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-all").Text == "All  4", "calls, not events");
+		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-edits").Text == "Edits  1", "a refused write is no edit");
+		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-failed").Text == "Failed  2", "a failure and a refusal");
 		Test.Assert(bed.Find<Sedulous.GUI.Button>("mcp-all").HasClass("checked"));
 
 		bed.Click("mcp-edits");
@@ -198,10 +200,23 @@ class McpPanelTests
 		Test.Assert(!bed.Find<Sedulous.GUI.Button>("mcp-all").HasClass("checked"));
 		bed.Click("mcp-failed");
 		Test.Assert(bed.Panel.CurrentFilter == .Failed);
-		Test.Assert(bed.Panel.ShownCount == 1);
-		Test.Assert(bed.Panel.ShownEntry(0).Tool == "script_validate");
+		Test.Assert(bed.Panel.ShownCount == 2);
+		Test.Assert(bed.Panel.ShownEntry(0).Tool == "scene_write");
+		Test.Assert(bed.Panel.ShownEntry(1).Tool == "script_validate");
+		bed.Panel.Select(0); // the refusal: its reason under Error, no duration
+		Test.Assert(bed.Text("mcp-detail-outcome") == "Refused");
+		Test.Assert(bed.Find<UIWidget>("mcp-detail-outcome").HasClass("refused"));
+		Test.Assert(bed.Text("mcp-detail-when") == "00:01:44");
+		Test.Assert(bed.Text("mcp-result-title") == "Error");
+		Test.Assert(bed.Find<TextArea>("mcp-result").Text == "scene_write: missing required field 'source'");
+		bed.Panel.CopySelectedCall();
+		let copied = JsonValue.Parse(bed.Copied);
+		defer delete copied;
+		Test.Assert(copied.Get("outcome").AsString() == "refused");
+		Test.Assert(copied.Get("error").AsString() == "scene_write: missing required field 'source'");
+		Test.Assert(copied.Get("result") == null);
 		bed.Click("mcp-all");
-		Test.Assert(bed.Panel.ShownCount == 4);
+		Test.Assert(bed.Panel.ShownCount == 5);
 
 		// The search reads a call's tool, its summary and its arguments, ignoring case.
 		bed.Panel.SetSearch("level1");
@@ -223,14 +238,14 @@ class McpPanelTests
 		field.Text = "nothing like it";
 		bed.Click("mcp-clear-search");
 		Test.Assert(field.Text.IsEmpty);
-		Test.Assert(bed.Panel.ShownCount == 4);
+		Test.Assert(bed.Panel.ShownCount == 5);
 		Test.Assert(!bed.Find<Sedulous.GUI.Button>("mcp-clear-search").Visible);
 
 		// A new call shows on the next update.
-		bed.Call(4, "asset_list", "{}", .ReadOnly, false, "[]", 104);
-		Test.Assert(bed.Panel.ShownCount == 4);
-		bed.Panel.Update();
+		bed.Call(5, "asset_list", "{}", .ReadOnly, false, "[]", 105);
 		Test.Assert(bed.Panel.ShownCount == 5);
+		bed.Panel.Update();
+		Test.Assert(bed.Panel.ShownCount == 6);
 		Test.Assert(bed.Panel.ShownEntry(0).Tool == "asset_list");
 
 		bed.Click("mcp-clear");
@@ -333,6 +348,7 @@ class McpPanelTests
 		bed.Activity.RecordEvent("Listening on 127.0.0.1:7405", 3600 * 9);
 		bed.Call(1, "component_set", "{\"entity\":\"Lamp 3\"}", .Overwrites, false, "{}", 3600 * 9 + 3 * 60 + 7, 0.038);
 		bed.Call(2, "script_validate", "{}", .ReadOnly, true, "'speed' is not a member\nat line 3", 3600 * 9 + 4 * 60, 2.34);
+		bed.Call(3, "scene_write", "{}", .Overwrites, true, "scene_write: missing required field 'source'", 3600 * 9 + 5 * 60, 0.0, .Refused);
 		bed.Panel.Update();
 		let list = bed.Panel.List;
 		Test.Assert(list != null);
@@ -345,7 +361,7 @@ class McpPanelTests
 		bed.Root.UpdateLayout();
 		bed.Root.UpdateLayout();
 		let rows = scope List<UIWidget>();
-		for (int32 item < 3)
+		for (int32 item < 4)
 		{
 			let row = list.RowForItem(item);
 			Test.Assert(row != null, scope $"row {item} realised");
@@ -354,8 +370,17 @@ class McpPanelTests
 			rows.Add(content);
 		}
 
-		// The failure, newest: its first line of error.
-		let failure = rows[0];
+		// The refusal, newest: its reason, no Edit badge though its tool writes, no duration.
+		let refusal = rows[0];
+		Test.Assert(refusal.HasClass("refused"));
+		Test.Assert(!refusal.HasClass("failed"));
+		Test.Assert((refusal.GetChildAt(1) as UIWidget).HasClass("refused"));
+		Test.Assert(Part(refusal, 2).Text == "scene_write");
+		Test.Assert(Part(refusal, 3).Text == "scene_write: missing required field 'source'");
+		Test.Assert(!Part(refusal, 4).Displayed);
+		Test.Assert(Part(refusal, 5).Text == "refused");
+		// The failure: its first line of error.
+		let failure = rows[1];
 		Test.Assert(failure.HasClass("failed"));
 		Test.Assert((failure.GetChildAt(1) as UIWidget).HasClass("failed"));
 		Test.Assert(Part(failure, 0).Text == "09:03:58", "it answered at 09:04:00 after 2.34 s");
@@ -364,7 +389,7 @@ class McpPanelTests
 		Test.Assert(!Part(failure, 4).Displayed, "a read: no Edit badge");
 		Test.Assert(Part(failure, 5).Text == "2.3 s");
 		// The edit: its badge, its arguments as the summary.
-		let edit = rows[1];
+		let edit = rows[2];
 		Test.Assert(edit.HasClass("done"));
 		Test.Assert(!edit.HasClass("failed"));
 		Test.Assert(Part(edit, 0).Text == "09:03:07");
@@ -374,7 +399,7 @@ class McpPanelTests
 		Test.Assert(Part(edit, 4).HasClass("edit"));
 		Test.Assert(Part(edit, 5).Text == "38 ms");
 		// The event: no tool, its text, no duration.
-		let listening = rows[2];
+		let listening = rows[3];
 		Test.Assert(listening.HasClass("event"));
 		Test.Assert((listening.GetChildAt(1) as UIWidget).HasClass("event"));
 		Test.Assert(!Part(listening, 2).Displayed);
