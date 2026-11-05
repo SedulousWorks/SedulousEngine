@@ -353,14 +353,7 @@ class EditorMcpService
 
 	/// The build identity host_info reports: the executable's write time (the About box shows
 	/// the same).
-	public static void BuildStamp(String outStamp)
-	{
-		let exe = Environment.GetExecutableFilePath(.. scope .());
-		if (System.IO.File.GetLastWriteTimeUtc(exe) case .Ok(let time))
-			time.ToString(outStamp, "yyyy-MM-ddTHH:mm:ssZ");
-		else
-			outStamp.Set("unknown");
-	}
+	public static void BuildStamp(String outStamp) => Sedulous.Engine.Project.EngineVersion.ExecutableStamp(outStamp);
 
 	/// The services' directory, or the user data directory when they name none.
 	private void UserDataDirectory(String outPath)

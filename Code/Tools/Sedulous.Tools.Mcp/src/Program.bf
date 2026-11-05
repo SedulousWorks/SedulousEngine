@@ -66,7 +66,7 @@ class Program
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
-		server.SetServerInfo("engine-mcp", "0.1.0");
+		server.SetServerInfo("engine-mcp", Sedulous.Engine.Project.EngineVersion.Display);
 
 
 		// The session every tool works through. This host OWNS the project it opens:
@@ -109,12 +109,5 @@ class Program
 		return 0;
 	}
 
-	private static void BuildStamp(String outStamp)
-	{
-		let exe = Environment.GetExecutableFilePath(.. scope .());
-		if (File.GetLastWriteTimeUtc(exe) case .Ok(let time))
-			time.ToString(outStamp, "yyyy-MM-ddTHH:mm:ssZ");
-		else
-			outStamp.Set("unknown");
-	}
+	private static void BuildStamp(String outStamp) => Sedulous.Engine.Project.EngineVersion.ExecutableStamp(outStamp);
 }

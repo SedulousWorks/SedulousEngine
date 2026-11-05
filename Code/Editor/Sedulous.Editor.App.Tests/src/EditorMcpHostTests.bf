@@ -155,6 +155,7 @@ class EditorMcpHostTests
 		let infoPayload = Payload(info);
 		defer delete infoPayload;
 		Test.Assert(infoPayload.Get("serverName").AsString() == "engine-editor-mcp");
+		Test.Assert(infoPayload.Get("serverVersion").AsString() == Sedulous.Engine.Project.EngineVersion.Display, "the version with its label");
 		Test.Assert(infoPayload.Get("buildStamp").AsString() == "test-stamp");
 		Test.Assert(infoPayload.Get("host").Get("kind").AsString() == "editor");
 		Test.Assert(infoPayload.Get("host").Get("projectOpen").AsBool());

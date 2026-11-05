@@ -198,7 +198,7 @@ class ProjectManagerView
 		if (let retry = Find<Sedulous.GUI.Button>("manager-samples-retry"))
 			retry.SetOnClick(new () => { FetchCatalog(); });
 		if (let intro = Find<Sedulous.GUI.Label>("manager-samples-intro"))
-			intro.Text = scope $"Sample games made with this engine, for engine {EngineVersion.String}. A sample you download becomes one of your projects.";
+			intro.Text = scope $"Sample games made with this engine, for engine {EngineVersion.Display}. A sample you download becomes one of your projects.";
 		if (let search = Find<Sedulous.GUI.TextField>("manager-search"))
 			search.SetOnTextChanging(new (text) => { SetQuery(text); });
 		if (let sort = Find<Sedulous.GUI.ComboBox>("manager-sort"))
@@ -208,7 +208,7 @@ class ProjectManagerView
 			sort.SetOnSelectionChanged(new (index) => { SetSortByName(index == 1); });
 		}
 		if (let engine = Find<Sedulous.GUI.Label>("manager-engine"))
-			engine.Text = scope $"Editor {EngineVersion.String}";
+			engine.Text = scope $"Editor {EngineVersion.Display}";
 		// The scroller takes the focus when the page is clicked, so the keys reach the page.
 		if (let scroll = Find<Node>("manager-scroll"))
 			scroll.TabFocusable = true;
@@ -1108,7 +1108,7 @@ class ProjectManagerView
 			else if ((mCatalogState == .NotPublished) || (mCatalogState == .Loaded))
 			{
 				title = "No samples for this version yet";
-				text.AppendF("Release {} has no samples published: they come with each release of the editor.", EngineVersion.String);
+				text.AppendF("Release {} has no samples published: they come with each release of the editor.", EngineVersion.Display);
 			}
 			if (let label = Find<Sedulous.GUI.Label>("manager-samples-state-title"))
 				label.Text = title;

@@ -33,7 +33,7 @@ class Program
 		// A console sink FIRST, because GlobalLog drops every record until a logger exists and
 		// a failure in the browser otherwise looks like a blank canvas and a silent console.
 		InitGlobalLogger(new ConsoleLogger(.Information, "Player"), true);
-		GlobalLog(.Information, "Player {}", EngineVersion.String);
+		GlobalLog(.Information, "Player {}", EngineVersion.BuildIdentity(.. scope .()));
 
 		WebPage.ApplyInputTrace();
 		// Before the player reads the user's settings or a game its save.

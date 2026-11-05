@@ -95,9 +95,11 @@ checks that PaperKid, the Shader Gallery and Masquerade read at the current data
 The editor's Samples tab downloads the games `Data/SampleProjects/Samples.json` lists from the
 GitHub release of its own version. `python3 Code/Tools/pack-samples.py <out-dir>` packs them
 (each one's tracked files less `Tools/`, a zip with its `Project.xml` at the root, its picture, and a
-`samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf`). It runs by hand:
-there is no workflow, so whoever makes the release attaches what it writes to release
-`v<version>`. A game joins the tab by an entry in `Samples.json` (its folder, its name, one line,
+`samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf` with its label,
+0.1.0-beta). It runs by hand: there is no workflow, so whoever makes the release attaches what it
+writes to release `v<version>` (v0.1.0-beta). Compatibility checks compare the numbers alone
+(`EngineVersion.String`); what people read carries the label (`EngineVersion.Display`), and a build
+handed out gets its `EngineVersion.BuildNumber`, set by hand (0 is a local build). A game joins the tab by an entry in `Samples.json` (its folder, its name, one line,
 its picture from `Documentation/Images`). To try the tab before a release carries them, pack into
 a folder and run the editor with `--release-files <folder>`: it serves the folder on loopback and
 opens the manager on Samples.

@@ -277,16 +277,43 @@ class ProjectManifestTests
 		Test.Assert(read.EngineVersion == EngineVersion.String);
 	}
 
-	/// This engine's release downloads come from its own version's release.
+	/// This engine's release downloads come from its own version's release, tagged with the
+	/// version and its label.
 	[Test]
 	public static void ThisEnginesReleaseDownloadsComeFromItsOwnVersionsRelease()
 	{
 		Test.Assert(EngineVersion.ReleaseRepository.Contains('/')); // owner/name
 		let url = EngineVersion.ReleaseDownloadUrl("samples.json", .. scope String());
 		let expected = scope String()..AppendF("https://github.com/{}/releases/download/v{}/samples.json",
-			EngineVersion.ReleaseRepository, EngineVersion.String);
+			EngineVersion.ReleaseRepository, EngineVersion.Display);
 		Test.Assert(url == expected);
 		Test.Assert(url.StartsWith("https://github.com/"));
+	}
+
+	/// The version a person reads is the compared one with the release's label, if any; the
+	/// compared one stays numbers (its parts the three constants); a build names itself by it,
+	/// its build number or as a local build, and its stamp.
+	[Test]
+	public static void TheDisplayVersionCarriesTheLabelAndABuildsIdentityItsNumberOrLocal()
+	{
+		let display = scope String(EngineVersion.String);
+		if (!StringView(EngineVersion.Label).IsEmpty)
+			display.AppendF("-{}", EngineVersion.Label);
+		Test.Assert(EngineVersion.Display == display, EngineVersion.Display);
+		Test.Assert(EngineVersion.String == scope String()..AppendF("{}.{}.{}", EngineVersion.Major, EngineVersion.Minor, EngineVersion.Patch));
+		for (let c in EngineVersion.String.RawChars)
+			Test.Assert(c.IsDigit || (c == '.'), "the compared version is numbers alone");
+
+		Test.Assert(EngineVersion.BuildIdentity("2026-11-05T15:03:00Z", 3, .. scope .()) == scope String()..AppendF("{} (build 3, 2026-11-05T15:03:00Z)", display));
+		Test.Assert(EngineVersion.BuildIdentity("2026-11-05T15:03:00Z", 0, .. scope .()) == scope String()..AppendF("{} (local build, 2026-11-05T15:03:00Z)", display));
+		// This build's: its number's form, and the test executable's stamp.
+		let stamp = EngineVersion.ExecutableStamp(.. scope .());
+		Test.Assert(!stamp.IsEmpty && (stamp != "unknown"), "a desktop test reads its executable's time");
+		Test.Assert(stamp.EndsWith('Z'));
+		let identity = EngineVersion.BuildIdentity(.. scope .());
+		Test.Assert(identity.StartsWith(scope String()..AppendF("{} (", display)));
+		Test.Assert(identity.EndsWith(scope String()..AppendF(", {})", stamp)));
+		Test.Assert(identity.Contains((EngineVersion.BuildNumber == 0) ? "(local build, " : "(build "));
 	}
 
 	/// A distribution manifest is the same payload under another name, which is the whole

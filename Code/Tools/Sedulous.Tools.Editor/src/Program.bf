@@ -51,7 +51,7 @@ class Program
 		{
 			if (arg == "--version")
 			{
-				Console.WriteLine(scope $"Editor {EngineVersion.String}");
+				Console.WriteLine(scope $"Editor {EngineVersion.BuildIdentity(.. scope .())}");
 				return 0;
 			}
 		}
@@ -64,7 +64,7 @@ class Program
 		logger.Add(new ConsoleLogger(.Debug, "Editor"), true);
 		InitGlobalLogger(logger, true);
 		defer ShutdownGlobalLogger();
-		GlobalLog(.Information, "Editor {}", EngineVersion.String);
+		GlobalLog(.Information, "Editor {}", EngineVersion.BuildIdentity(.. scope .()));
 
 		let dataRoot = scope String();
 		ResolveDataRoot(args, dataRoot);
@@ -110,7 +110,7 @@ class Program
 		// The splash, from now until the editor is ready: startup holds the main thread with
 		// nothing drawn (the device, the shader compiles, the fonts, the project). Declared
 		// before the app, so it outlives the app's calls into it.
-		let splash = EditorSplash.Open(shell, dataRoot, splashFontPath, cEmbeddedFont, scope $"Version {EngineVersion.String}");
+		let splash = EditorSplash.Open(shell, dataRoot, splashFontPath, cEmbeddedFont, scope $"Version {EngineVersion.Display}");
 		defer delete splash;
 		if (splash != null)
 			splash.Step("Starting the graphics device", 0.05f);

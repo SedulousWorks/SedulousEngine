@@ -7,8 +7,8 @@ Packs the games Data/SampleProjects/Samples.json lists: for each, a zip of what 
 folder less Tools/ (the authoring scripts), its Project.xml at the zip's root (the editor
 extracts it into the folder the user chooses), as sample-<folder>.zip; its picture as
 sample-<folder>.png; and samples.json naming them, with each zip's size and SHA-256 and the bytes
-it unpacks to. The version is the engine's own
-(Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf). The editor of that version reads
+it unpacks to. The version is the engine's own with its pre-release label, 0.1.0-beta
+(Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf: String and Label). The editor of that version reads
 samples.json from its release (EngineVersion.ReleaseDownloadUrl) for its Samples tab.
 
 Run by hand, in a checkout (only tracked files go in), and attach everything it writes to the
@@ -22,11 +22,15 @@ VERSION_FILE = os.path.join(ROOT, "Code", "Engine", "Sedulous.Engine.Project", "
 
 
 def engine_version():
+    """The version with its label: the release's tag less its v."""
     text = open(VERSION_FILE, encoding="utf-8").read()
     found = re.search(r'public const String String = "([0-9]+\.[0-9]+\.[0-9]+)";', text)
     if not found:
         sys.exit(f"no version in {VERSION_FILE}")
-    return found.group(1)
+    label = re.search(r'public const String Label = "([^"]*)";', text)
+    if not label:
+        sys.exit(f"no label in {VERSION_FILE}")
+    return found.group(1) + ("-" + label.group(1) if label.group(1) else "")
 
 
 def main():

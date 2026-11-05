@@ -59,7 +59,7 @@ class EditorMcpHost
 		mHttp = new .(mServer);
 		mSession = session;
 		// Distinct from the stdio host's "engine-mcp": an agent talking to both tells them apart.
-		mServer.SetServerInfo("engine-editor-mcp", "0.1.0");
+		mServer.SetServerInfo("engine-editor-mcp", Sedulous.Engine.Project.EngineVersion.Display);
 		EngineTools.Register(mServer, mSession, builders, importers, context.Creators, logBuffer, paths, operations);
 		context.ApplyMcpToolContributions(mServer); // the domains' live tools
 		// An agent's write over a source asset is a change made outside its page, like an apply

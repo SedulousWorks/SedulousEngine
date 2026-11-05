@@ -39,14 +39,14 @@ class Program
 		{
 			if (arg == "--version")
 			{
-				Console.WriteLine(scope $"Player {EngineVersion.String}");
+				Console.WriteLine(scope $"Player {EngineVersion.BuildIdentity(.. scope .())}");
 				return 0;
 			}
 		}
 
 		InitGlobalLogger(new ConsoleLogger(.Information, "Player"), true);
 		defer ShutdownGlobalLogger();
-		GlobalLog(.Information, "Player {}", EngineVersion.String);
+		GlobalLog(.Information, "Player {}", EngineVersion.BuildIdentity(.. scope .()));
 
 		let options = scope PlayerOptions();
 		ReadCommandLine(args, options);
