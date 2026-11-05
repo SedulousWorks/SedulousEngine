@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Engine.Composition.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
 "Sedulous.Content" = "*"
 "Sedulous.Resource" = "*"
 "Sedulous.Scene" = "*"
