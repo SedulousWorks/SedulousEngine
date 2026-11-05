@@ -15,6 +15,7 @@ using Sedulous.Engine.Composition;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
+using Sedulous.VFS;
 using NativeSample;
 using NativeSample.Notes;
 
@@ -304,6 +305,27 @@ static class NativeSampleTests
 		session.Project = null;
 		DeleteAndNullify!(owner.Project);
 		pluginTools.DetachServer(server);
+	}
+
+	/// The sample's export presets: its desktop preset, which ships the project's own player, so
+	/// Build Project makes that player in the preset's config (ShippingRelease) beside Debug.
+	[Test]
+	public static void TheSamplesDesktopPresetShipsTheProjectsOwnPlayer()
+	{
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		let source = PathJoin(dataRoot, "SampleProjects/NativeSample", .. scope .());
+		let presets = scope ExportPresetSet();
+		Test.Assert(ExportPresetsFile.Load(scope NativeFileSystem(source), presets) case .Ok);
+		Test.Assert(presets.Presets.Count == 1);
+		let desktop = presets.Presets[0];
+		Test.Assert((desktop.Platform == "Linux64") && desktop.TemplateId.IsEmpty && (desktop.EffectiveConfig == "Release"));
+#if BF_PLATFORM_LINUX
+		let configs = scope List<String>();
+		defer { ClearAndDeleteItems!(configs); }
+		ProjectBuild.PlayerConfigs(presets, configs);
+		Test.Assert((configs.Count == 2) && (configs[0] == "Debug") && (configs[1] == "ShippingRelease"));
+#endif
 	}
 
 	private static JsonValue Arguments(StringView key, StringView value)
