@@ -176,8 +176,12 @@ class SubsystemManager
 		if (mRunning)
 			Shutdown();
 
-		for (let subsystem in mSorted)
-			subsystem.OnUnregister();
+		// Unregistered as RemoveSubsystem does, in reverse UpdateOrder, so what a subsystem
+		// installed outside itself on registration (its services, a sink it hooked) is taken out
+		// before it is destroyed, by the subsystem that installed it, while what it was built on is
+		// still registered.
+		for (int i = mSorted.Count - 1; i >= 0; i--)
+			mSorted[i].OnUnregister();
 
 		mServices.Clear();
 		mSorted.Clear();

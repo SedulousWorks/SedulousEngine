@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Runtime;
 
 namespace Sedulous.Runtime.Tests;
@@ -206,6 +207,64 @@ class SubsystemManagerTests
 		// one and not a double free.
 		borrowed.Label.Set("still here");
 		Test.Assert(borrowed.Label == "still here");
+	}
+
+	/// Counts its unregistrations, into a shared order.
+	private class Unregistering : Subsystem
+	{
+		public static List<String> Order = new .() ~ DeleteContainerAndItems!(_);
+		public String Label = new .() ~ delete _;
+		public int32 Unregisters;
+		private int32 mOrder;
+
+		public this(StringView label, int32 order)
+		{
+			Label.Set(label);
+			mOrder = order;
+		}
+
+		public override int32 UpdateOrder => mOrder;
+
+		public override void OnUnregister()
+		{
+			Unregisters++;
+			Order.Add(new String(Label));
+			base.OnUnregister();
+		}
+	}
+
+	private class Lower : Unregistering
+	{
+		public this() : base("lower", 0) {}
+	}
+
+	private class Upper : Unregistering
+	{
+		public this() : base("upper", 10) {}
+	}
+
+	/// A disposed context unregisters each subsystem once, in reverse UpdateOrder, as removing
+	/// one does, so a subsystem it does not own can undo what it installed on registration.
+	[Test]
+	public static void ADisposedContextUnregistersEachSubsystemOnceInReverseOrder()
+	{
+		ClearAndDeleteItems!(Unregistering.Order);
+		let lower = scope Lower();
+		let upper = scope Upper();
+		{
+			let context = scope SubsystemManager();
+			context.RegisterSubsystem(upper);
+			context.RegisterSubsystem(lower);
+			context.Startup();
+			// The context disposes here: it shuts both down and unregisters them, destroying neither.
+		}
+		Test.Assert(lower.Unregisters == 1);
+		Test.Assert(upper.Unregisters == 1);
+		Test.Assert(Unregistering.Order.Count == 2);
+		Test.Assert(Unregistering.Order[0] == "upper", "the later in UpdateOrder first");
+		Test.Assert(Unregistering.Order[1] == "lower");
+		Test.Assert(lower.Manager == null, "it no longer names the context");
+		ClearAndDeleteItems!(Unregistering.Order);
 	}
 
 	/// Disposing tears down what the context owns and is idempotent, so an explicit call
