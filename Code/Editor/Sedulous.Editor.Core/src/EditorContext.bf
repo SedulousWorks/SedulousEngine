@@ -158,6 +158,11 @@ class EditorContext : IAssetEditSink
 
 	public EditorProject Project => mProject;
 
+	/// The process's plugin host, which enabled the project's plugins; null where none does.
+	/// Project Settings reports each entry against it and edits the settings it holds. BORROWED:
+	/// the application owns it.
+	public Sedulous.Runtime.PluginHost Plugins;
+
 	/// The build lane of Tasks: the project's changes, one at a time.
 	public TaskLane BuildLane => mBuildLane;
 	/// The light lane of Tasks: side work, one at a time, never behind the build lane.

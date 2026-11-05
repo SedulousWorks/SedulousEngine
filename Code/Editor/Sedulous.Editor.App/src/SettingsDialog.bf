@@ -2,23 +2,28 @@ using System;
 using System.Collections;
 using System.Reflection;
 using Sedulous.Core;
+using Sedulous.Core.Serialization;
 using Sedulous.Core.Logging;
 using Sedulous.GUI;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Project;
+using Sedulous.Runtime;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// Project Settings (Raptor's editor-gui spec, 5.2, layer 6; ruling 20): the project's manifest
-// (Project.xml) on the property grid, a window over its markup (Data/Editor/ProjectSettings.xml).
-// The rows are a bag made from ProjectSettings' reflection (SettingFields), a section per category
-// the settings name, each by its label: text, a number within its range, a check box, an enum's
-// choices by name, and each asset setting an asset reference to the source type it names (a list
-// of them for a list setting), so the slot picks, drops and clears as an inspector's does. MSAA's
-// choices are the render subsystem's levels. The engine version the project was last saved with
-// shows, read only. Save writes the rows back (a list's empty and repeated entries dropped), keeps
-// the path mirrors beside the guids, persists the manifest and tells the editor (the context's
+// Project Settings: the project's manifest (Project.xml) on the property grid, a window over its
+// markup (Data/Editor/ProjectSettings.xml). The rows are a bag made from ProjectSettings'
+// reflection (SettingFields), a section per category the settings name, each by its label: text, a
+// number within its range, a check box, an enum's choices by name, and each asset setting an asset
+// reference to the source type it names (a list of them for a list setting), so the slot picks,
+// drops and clears as an inspector's does. MSAA's choices are the render subsystem's levels. The
+// engine version the project was last saved with shows, read only. The project's plugins follow in
+// their own section, a group per entry in its order: its state in the process's plugin host, and
+// for a loaded plugin its settings, rows made the same way from its settings type; an entry whose
+// plugin is not loaded keeps its settings as written. Save writes the rows back (a list's empty and
+// repeated entries dropped), keeps the path mirrors beside the guids, writes each loaded plugin's
+// settings into its entry, persists the manifest and tells the editor (the context's
 // settings-changed hook, which the session's settings-derived state follows); Cancel or closing
 // leaves the manifest as it was.
 
@@ -30,6 +35,9 @@ class ProjectSettingsDialog
 	public const String cEngineVersionRow = "engineVersion";
 	/// The MSAA setting's key, whose choices are the render subsystem's levels.
 	public const String cMsaaSetting = "renderMsaaSamples";
+	/// The section the project's plugins show in; plugin `id`'s group is `plugins.<id>`, its state
+	/// `plugins.<id>.state` and each setting `plugins.<id>.<name>`.
+	public const String cPluginsCategory = "Plugins";
 	private const float cWidth = 620.0f;
 	private const float cHeight = 480.0f;
 
@@ -46,6 +54,10 @@ class ProjectSettingsDialog
 	/// The source asset types the settings name, by the name they give, resolved once each (a walk
 	/// of the type table); null for a name no type has.
 	private Dictionary<String, Type> mSourceTypes = new .() ~ DeleteDictionaryAndKeys!(_);
+	/// The loaded plugins whose settings the rows show: their ids, and the objects the rows write
+	/// into (the plugin host's, alive while the plugin is enabled).
+	private List<String> mPluginIds = new .() ~ DeleteContainerAndItems!(_);
+	private List<Object> mPluginSettings = new .() ~ delete _;
 
 	/// The dialog over `context`'s project, its body `body` (the markup's controls by id). `refs`
 	/// (what the asset slots ask of the editor) outlives it. TAKES OWNERSHIP of a reference to
@@ -221,11 +233,60 @@ class ProjectSettingsDialog
 		version.Category.Set(SettingFields.cDefaultCategory);
 		version.Description.Set("The engine this project was last saved with; a save stamps the running one.");
 		version.ReadOnly = true;
+		FillPlugins(settings);
+	}
+
+	/// A group per plugin entry: its state, and a loaded plugin's settings.
+	private void FillPlugins(ProjectSettings settings)
+	{
+		ClearAndDeleteItems!(mPluginIds);
+		mPluginSettings.Clear();
+		let host = mContext.Plugins;
+		let path = scope String();
+		for (let entry in settings.Plugins)
+		{
+			let group = scope $"plugins.{entry.Id}";
+			let manifest = (host != null) ? host.Manifest(entry.Id) : null;
+			let header = mBag.Add(group, .Group);
+			header.DisplayName.Set(((manifest != null) && !manifest.Name.IsEmpty) ? StringView(manifest.Name) : StringView(entry.Id));
+			header.Category.Set(cPluginsCategory);
+			let status = scope Sedulous.Engine.Project.PluginStatus();
+			Sedulous.Engine.Project.PluginStatus.Of(entry, host, status);
+			let state = scope String(status.State.Name);
+			if (!status.Reason.IsEmpty)
+				state.AppendF(": {}", status.Reason);
+			for (let platform in status.UnsupportedPlatforms)
+				state.AppendF("; {} is not a platform it supports", platform);
+			let stateRow = mBag.Add(scope $"{group}.state", .String, Sedulous.GUI.Variant(state));
+			stateRow.DisplayName.Set("State");
+			stateRow.Category.Set(cPluginsCategory);
+			stateRow.ReadOnly = true;
+			let object = (host != null) ? host.Settings(entry.Id) : null;
+			if ((object == null) || !host.SettingsRead(entry.Id))
+				continue; // kept as written
+			mPluginIds.Add(new .(entry.Id));
+			mPluginSettings.Add(object);
+			let fields = scope List<FieldInfo>();
+			SettingFields.Of(object.GetType(), fields);
+			for (let field in fields)
+			{
+				let setting = SettingFields.Setting(field).Value;
+				if (setting.Label == null)
+					continue;
+				path..Clear()..AppendF("{}.", group);
+				SettingFields.Key(field, path);
+				let row = AddRow(object, field, path);
+				if (row == null)
+					continue;
+				row.DisplayName.Set(setting.Label);
+				row.Category.Set(cPluginsCategory);
+			}
+		}
 	}
 
 	/// The row a setting is, or null for one no row shows (a text list: the MCP tools set it
 	/// whole).
-	private PropertyInfo AddRow(ProjectSettings settings, FieldInfo field, StringView name)
+	private PropertyInfo AddRow(Object settings, FieldInfo field, StringView name)
 	{
 		SettingFields.KindOf(field, let kind);
 		let setting = SettingFields.Setting(field).Value;
@@ -289,18 +350,37 @@ class ProjectSettingsDialog
 		}
 	}
 
-	/// The rows into `settings`: each setting a row shows and may edit.
+	/// The rows into `settings`, and each loaded plugin's into its object and its entry.
 	private void WriteBack(ProjectSettings settings)
 	{
 		if (mBag == null)
 			return;
+		WriteRows(settings, "");
+		for (int i < mPluginIds.Count)
+		{
+			let entry = settings.FindPlugin(mPluginIds[i]);
+			if (entry == null)
+				continue;
+			WriteRows(mPluginSettings[i], scope $"plugins.{mPluginIds[i]}");
+			if (EnabledPlugin.WriteSettings((ISerializable)mPluginSettings[i], entry.Settings) case .Err)
+				GlobalLog(.Error, "Editor: plugin '{}': its settings did not write into the project", mPluginIds[i]);
+		}
+	}
+
+	/// The rows under `group` (top level when empty) into `settings`: each setting a row shows and
+	/// may edit.
+	private void WriteRows(Object settings, StringView group)
+	{
 		let fields = scope List<FieldInfo>();
-		SettingFields.Of(typeof(ProjectSettings), fields);
+		SettingFields.Of(settings.GetType(), fields);
 		let key = scope String();
 		let path = scope String();
 		for (let field in fields)
 		{
-			SettingFields.Key(field, key..Clear());
+			key.Clear();
+			if (!group.IsEmpty)
+				key.AppendF("{}.", group);
+			SettingFields.Key(field, key);
 			let info = mBag.FindInfo(key);
 			if ((info == null) || info.ReadOnly)
 				continue;

@@ -4,7 +4,9 @@ using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.GUI;
+using Sedulous.Core.Serialization;
 using Sedulous.Engine.Project;
+using Sedulous.Runtime;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
@@ -45,6 +47,27 @@ class ProjectSettingsTests
 	{
 		id.ToString(outText);
 		return outText;
+	}
+
+	/// A plugin's settings type, labelled as the project's settings are.
+	[Serializable(1)]
+	public class MeterSettings
+	{
+		[Setting("Volume"), Range(0, 10, 1)]
+		public uint32 Volume = 3;
+		[Setting("Greeting")]
+		public String Greeting = new .("hello") ~ delete _;
+	}
+
+	/// The meter plugin's part: it asks for its settings.
+	public class MeterPart : PluginPart
+	{
+		public override StringView PluginId => "meter";
+		public override PluginPartKind Kind => .Engine;
+		public override void Load(PluginContext context)
+		{
+			context.Settings<MeterSettings>();
+		}
 	}
 
 	/// A project named Settings, its default scene a scene of its own, one other UI font, MSAA 4x
@@ -386,6 +409,80 @@ class ProjectSettingsTests
 		bed.Edit("windowHeight", Sedulous.GUI.Variant((int64)100000));
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(bed.Project.Settings.WindowHeight == 16384, "held at its most");
+	}
+
+	/// A group per plugin entry, its state, and a loaded plugin's settings, which Save writes into
+	/// its entry; an entry whose plugin is missing keeps its settings as written.
+	[Test]
+	public static void AGroupPerPluginEntryItsStateAndALoadedPluginsSettingsWhichSaveWritesIntoItsEntry()
+	{
+		let bed = scope Bed();
+		bed.Dialog.Close();
+		let settings = bed.Project.Settings;
+		let meter = new EnabledPlugin();
+		meter.Id.Set("meter");
+		settings.Plugins.Add(meter);
+		let steam = new EnabledPlugin();
+		steam.Id.Set("steam");
+		let unknown = "<i32 name=\"appId\">480</i32>";
+		steam.Settings.AddRange(Span<uint8>((uint8*)unknown.Ptr, unknown.Length));
+		settings.Plugins.Add(steam);
+
+		let manifest = scope PluginManifest();
+		manifest.Id.Set("meter");
+		manifest.Name.Set("Meter");
+		manifest.Version.Set("1.0");
+		manifest.EngineVersion.Set(EngineVersion.String);
+		let part = new PluginManifestPart();
+		part.Kind.Set("Engine");
+		manifest.Parts.Add(part);
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
+		let meterPart = scope MeterPart();
+		let subsystems = scope SubsystemManager();
+		let host = scope PluginHost(subsystems, .Editor, EngineVersion.String);
+		Test.Assert(host.AddLinked(manifest.Write(.. scope .()), scope PluginPart[](meterPart)) case .Ok);
+		host.Load((Span<EnabledPlugin>)settings.Plugins, scope .());
+		bed.Context.Plugins = host;
+		Test.Assert(bed.Dialog.Open(bed.Root));
+
+		let bag = bed.Bag;
+		let group = bag.FindInfo("plugins.meter");
+		Test.Assert(group != null);
+		Test.Assert(group.Kind == .Group);
+		Test.Assert(group.DisplayName == "Meter");
+		Test.Assert(group.Category == ProjectSettingsDialog.cPluginsCategory);
+		Test.Assert(bed.TextIs("plugins.meter.state", "loaded"));
+		Test.Assert(bag.FindInfo("plugins.meter.volume") != null);
+		Test.Assert(bag.FindInfo("plugins.meter.volume").DisplayName == "Volume");
+		{
+			var volume = bag.GetValue("plugins.meter.volume", 0);
+			defer volume.Dispose();
+			Test.Assert(volume.AsInt == 3);
+			var state = bag.GetValue("plugins.steam.state", 0);
+			defer state.Dispose();
+			Test.Assert(state.AsString.StartsWith("missing: plugin 'steam' is not in this build"));
+		}
+		Test.Assert(bag.FindInfo("plugins.steam.appId") == null, "its settings are not read here");
+
+		bed.Edit("plugins.meter.volume", Sedulous.GUI.Variant((int64)8));
+		bed.Edit("plugins.meter.greeting", Sedulous.GUI.Variant("hi"));
+		Test.Assert(bed.Dialog.Save());
+		let live = host.Settings("meter") as MeterSettings;
+		Test.Assert(live != null);
+		Test.Assert(live.Volume == 8);
+		let saved = scope MeterSettings();
+		let entry = settings.FindPlugin("meter");
+		Test.Assert(entry != null);
+		Test.Assert(EnabledPlugin.ReadSettings((Span<uint8>)entry.Settings, saved) case .Ok);
+		Test.Assert(saved.Volume == 8);
+		Test.Assert(saved.Greeting == "hi");
+		let kept = settings.FindPlugin("steam").Settings;
+		Test.Assert(StringView((char8*)kept.Ptr, kept.Count) == unknown);
+
+		bed.Context.Plugins = null;
+		host.Unload();
 	}
 
 	[Test]

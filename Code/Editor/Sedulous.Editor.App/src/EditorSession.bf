@@ -108,6 +108,26 @@ class EditorSession
 
 	/// Opens the project in `directory`, closing the one open first: false (said on the status
 	/// line) when there is none there and none may be made.
+	/// Tells the user which of the project's plugins did not load here (missing or refused), each
+	/// with why in the log; their entries and settings are kept as written.
+	private static void ReportPluginsNotLoaded(EditorProject project, EditorContext context)
+	{
+		let names = scope String();
+		for (let entry in project.Settings.Plugins)
+		{
+			let status = scope Sedulous.Engine.Project.PluginStatus();
+			Sedulous.Engine.Project.PluginStatus.Of(entry, context.Plugins, status);
+			if ((status.State != .Missing) && (status.State != .Refused))
+				continue;
+			GlobalLog(.Warning, "Editor: {}; its entry and settings are kept as written", status.Reason);
+			if (!names.IsEmpty)
+				names.Append(", ");
+			names.Append(entry.Id);
+		}
+		if (!names.IsEmpty)
+			context.Notify(.Warning, scope $"Plugins not loaded: {names} (the Console says why; their settings are kept).");
+	}
+
 	public bool Open(StringView directory, EditorSessionOpenOptions options = .())
 	{
 		let context = mServices.Context;
@@ -154,6 +174,7 @@ class EditorSession
 		let app = mServices.EmbeddedApp;
 		if (app != null)
 			app.SetContentDatabase(project.SourceDb); // scripted scene loads read the sources
+		ReportPluginsNotLoaded(project, context);
 		ApplyGameUiDefaults();
 		if ((app != null) && (app.Gui != null) && !project.Settings.DefaultUiFontId.IsSet && HasFontAssets(project.SourceDb.RootGroup))
 		{

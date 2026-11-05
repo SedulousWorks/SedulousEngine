@@ -22,5 +22,10 @@ class ProjectSession
 	/// them, as its Project Settings dialog's Save does; the stdio host leaves it unset. Owned.
 	public delegate void() OnSettingsChanged ~ delete _;
 
+	/// The process's plugin host, which enabled the project's plugins: plugin_list reports each
+	/// entry against it and plugin_settings_set edits the settings it holds. Null where the host
+	/// enables no plugins. BORROWED.
+	public Sedulous.Runtime.PluginHost Plugins = null;
+
 	public bool IsOpen => Project != null;
 }

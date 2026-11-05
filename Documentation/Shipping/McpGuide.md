@@ -213,7 +213,18 @@ order (General, Startup, Audio, UI, Display), each with the names of its setting
 setting is refused with the list): each asset setting must name an asset of its type, `""`
 clears it, `uiFontIds` and `guiStyleSheetIds` take the whole list, a choice takes one of its
 values by name (`Borderless`, `IntegerScale`), and nothing changes when any of it is refused.
-`project_health` is
+`plugin_list` reports the plugins the project enables, in order: each
+entry's id, path (a project-local package, empty for the engine's), platforms (empty is every
+platform its manifest supports) and its state in this host (`loaded`, `notEnabled` on this
+platform, `refused` or `missing`, with the reason), plus `unsupportedPlatforms`, platforms the
+entry names that its plugin does not support. `plugin_enable` (`id`, optional `path` and
+`platforms`) adds an entry or changes an enabled one's path and platforms, keeping its settings;
+it refuses a platform the plugin's manifest does not support and a `path` whose package is
+another plugin. `plugin_disable` removes an entry and its settings. A host enables the project's
+plugins when it opens the project, so either takes effect there. A loaded plugin reports its
+`settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`
+takes its kind) changes them, checked in full first, then saved. An entry whose plugin is not
+loaded keeps its settings as written: no tool reads or changes them. `project_health` is
 the one call soundness sweep (dangling refs, broken sources, cook state); a dirty count
 alone is normal, clear it with `asset_cook`.
 
