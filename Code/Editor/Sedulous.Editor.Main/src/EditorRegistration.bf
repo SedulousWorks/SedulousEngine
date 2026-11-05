@@ -30,16 +30,15 @@ using Sedulous.Editor.Animation;
 using Sedulous.Editor.Terrain;
 using Sedulous.Editor.Vegetation;
 
-namespace Sedulous.Tools.Editor;
+namespace Sedulous.Editor.Main;
 
 /// The ASSEMBLY point: every per subsystem editor module is linked here and registered on the
 /// app's context, since the editor core and app libraries never link the engine subsystems.
 /// Runs once during the app's startup, against the embedded host so every page resolves to the
 /// runtime context.
 ///
-/// The pages are parked while the editor moves onto the GUI (Raptor's editor-gui spec, 4.1):
-/// each one's Register comes back here with its port, and with them the thumbnail generators
-/// they fold in (counted below).
+/// Each page library's Register is called here, and with them the thumbnail generators they
+/// fold in (counted below).
 static class EditorRegistration
 {
 	/// The thumbnail generators the domains fold in: five drawn from an image (heightfield,

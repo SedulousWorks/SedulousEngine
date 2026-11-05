@@ -2,9 +2,9 @@ using System;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 
-namespace Sedulous.Tools.Editor;
+namespace Sedulous.Editor.Main;
 
-/// The starter content a new project gets: ProjectSeed, with this executable's data root and
+/// The starter content a new project gets: ProjectSeed, with the editor's data root and
 /// its --seed-primitives switch.
 static class EditorSeed
 {

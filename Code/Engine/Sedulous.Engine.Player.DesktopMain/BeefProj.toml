@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Player.DesktopMain"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
+"Sedulous.Engine.Player" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Profiler.Capture" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
+# Every engine plugin's parts this role loads, compiled in: each registers itself and does
+# nothing until a project enables it.
+"Imgui.Engine" = "*"
