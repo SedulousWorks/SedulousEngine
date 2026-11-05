@@ -154,6 +154,7 @@ class EditorMcpService
 		// shader_validate compiles against the engine's shader library under the data root.
 		DataPath(mServices.DataRoot, "Engine/Shaders", paths.ShaderLibrary);
 		mSession.Project = project;
+		mSession.Plugins = mServices.Context.Plugins; // the project's plugins, enabled with it
 
 		// The operations run on the application's services, so an agent's cook, import or export
 		// takes the same background paths the menus do and the editor stays live. The hooks are
@@ -321,6 +322,7 @@ class EditorMcpService
 		DeleteAndNullify!(mHost);
 		DeleteAndNullify!(mOperations);
 		mSession.Project = null;
+		mSession.Plugins = null;
 	}
 
 	/// Each frame, on the main thread: the calls that arrived are answered here, so a tool may

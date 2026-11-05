@@ -107,6 +107,12 @@ class PlayerApplication : DefaultApplication
 		if ((Gui != null) && (host.Shell != null))
 			Gui.SetTextInputTarget(host.Shell.MainWindow);
 
+		// The plugins the project enables that this player links, after the base startup so a part
+		// finds the engine's subsystems, and before the native game, which may use them, and the
+		// first scene, whose components may be theirs.
+		if (let plugins = CreatePluginHost(.Player))
+			ProjectPlugins.Load(plugins, mSettings, scope .());
+
 		LoadNativeGame(host);
 	}
 

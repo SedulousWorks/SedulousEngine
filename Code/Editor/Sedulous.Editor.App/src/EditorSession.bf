@@ -7,9 +7,11 @@ using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Fonts.Resource;
+using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Pipeline.Core;
 using Sedulous.Engine.DefaultApp;
+using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
@@ -33,8 +35,9 @@ class EditorSessionServices
 	/// starts it (SetEmbedded), and a headless session runs without one.
 	public IApplicationHost EmbeddedHost = null;
 	public DefaultApplication EmbeddedApp = null;
-	// Raptor's Services carries the runtime context and the EditorNativeModule here: Sedulous's
-	// editor does not handle a project's native code (RaptorSync.md, "Standing differences").
+	/// The plugin parts a project may enable; null is the parts that registered in this binary
+	/// (PluginRegistry). BORROWED.
+	public List<PluginPart> PluginParts = null;
 	/// Seeds a new project's starter content (the executable composes it); null: none. Owned.
 	public delegate void(EditorContext context, EditorProject project) SeedNewProject ~ delete _;
 	/// The project opened, its services up: the application brings its views up (the MCP host,
@@ -108,6 +111,24 @@ class EditorSession
 
 	/// Opens the project in `directory`, closing the one open first: false (said on the status
 	/// line) when there is none there and none may be made.
+	/// Enables the plugins the project enables, those this editor links, in the embedded runtime's
+	/// plugin host, before anything reads their types (the resources, the pages): their Engine,
+	/// Pipeline, Tooling and Editor parts, each part offered the editor's context. Without an
+	/// embedded runtime no plugin loads.
+	private void LoadPlugins(EditorProject project, EditorContext context)
+	{
+		let app = mServices.EmbeddedApp;
+		if (app == null)
+			return;
+		let plugins = app.CreatePluginHost(.Editor);
+		if (plugins == null)
+			return;
+		plugins.Provide(context);
+		let parts = (mServices.PluginParts != null) ? (Span<PluginPart>)mServices.PluginParts : PluginRegistry.Parts;
+		ProjectPlugins.Load(plugins, parts, project.Settings, scope .());
+		context.Plugins = plugins;
+	}
+
 	/// Tells the user which of the project's plugins did not load here (missing or refused), each
 	/// with why in the log; their entries and settings are kept as written.
 	private static void ReportPluginsNotLoaded(EditorProject project, EditorContext context)
@@ -119,7 +140,8 @@ class EditorSession
 			Sedulous.Engine.Project.PluginStatus.Of(entry, context.Plugins, status);
 			if ((status.State != .Missing) && (status.State != .Refused))
 				continue;
-			GlobalLog(.Warning, "Editor: {}; its entry and settings are kept as written", status.Reason);
+			if (context.Plugins == null) // a host logged its own refusals as it loaded
+				GlobalLog(.Warning, "Editor: {}; its entry and settings are kept as written", status.Reason);
 			if (!names.IsEmpty)
 				names.Append(", ");
 			names.Append(entry.Id);
@@ -154,6 +176,7 @@ class EditorSession
 		}
 		let project = mProject;
 		context.SetProject(project);
+		LoadPlugins(project, context);
 		ConfigureThumbnails();
 		{
 			// What the open-time header scans cost (the parse volume decides the partial-parse work).
@@ -254,6 +277,10 @@ class EditorSession
 		}
 		context.Resources = null;
 		DeleteAndNullify!(mResources);
+		// The project's plugins after what may hold their types (the resources), before the project.
+		context.Plugins = null;
+		if (let app = mServices.EmbeddedApp)
+			app.DestroyPluginHost();
 		context.ProjectEditorSettings = null;
 		DeleteAndNullify!(context.OnProjectEditorSettingsSaveRequested);
 		DeleteAndNullify!(mStore);

@@ -99,11 +99,20 @@ static class PluginToolsTests
 		settings.Plugins.Add(steam);
 		Test.Assert(session.Project.SaveSettings() case .Ok);
 
-		// Without a plugin host every entry is missing, and nothing can be set.
+		// The host's own plugins (project_open enabled the ones it links, none here): every entry is
+		// missing, and nothing can be set.
+		Test.Assert(session.Plugins != null);
 		{
 			let listed = CallOk(server, "plugin_list", Obj());
 			defer delete listed;
 			Test.Assert(listed.Get("plugins").At(0).Get("state").AsString() == "missing");
+			let refused = scope String();
+			CallErr(server, "plugin_settings_set", SettingsArgs("meter", Obj()), refused);
+			Test.Assert(refused.Contains("not in this build; its settings are kept as written"), refused);
+		}
+		// With no plugin host at all, the same, said so.
+		session.Plugins = null;
+		{
 			let refused = scope String();
 			CallErr(server, "plugin_settings_set", SettingsArgs("meter", Obj()), refused);
 			Test.Assert(refused.Contains("this host loads no plugins; its settings are kept as written"), refused);

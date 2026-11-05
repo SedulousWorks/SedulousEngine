@@ -8,14 +8,22 @@ namespace Sedulous.Editor.Mcp;
 class ProjectOwner
 {
 	public EditorProject Project ~ delete _;
+	/// The open project's plugins, those this host links. Declared after the project, so they go
+	/// first.
+	public ToolPlugins Plugins ~ delete _;
 
 	/// Takes ownership of `project`, releasing whatever was open, and points the session at
-	/// it. The session is cleared first, so it never names a project that is being deleted.
+	/// it, the plugins it enables enabled for MCP. The session is cleared first, so it never names
+	/// a project that is being deleted, and the previous project's plugins go before it.
 	public void Open(ProjectSession session, EditorProject project)
 	{
+		session.Plugins = null;
+		DeleteAndNullify!(Plugins);
 		session.Project = null;
 		delete Project;
 		Project = project;
+		Plugins = new ToolPlugins(.Mcp, project);
 		session.Project = project;
+		session.Plugins = Plugins.Host;
 	}
 }

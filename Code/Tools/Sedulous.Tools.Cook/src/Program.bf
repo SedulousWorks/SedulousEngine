@@ -87,6 +87,10 @@ class Program
 			return 1;
 		}
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
+		// The plugins the project enables that this tool links, their Engine and Pipeline parts.
+		let plugins = scope ToolPlugins(.Cook, project);
+		for (let refusal in plugins.Report.Refused)
+			Console.Error.WriteLine("Sedulous.Tools.Cook: {}", refusal.Reason);
 
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));

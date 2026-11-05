@@ -659,6 +659,119 @@ class EditorSessionTests
 		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
 	}
 
+	/// A part of the four-part plugin: records its kind as it loads and unloads, and the Editor part
+	/// whether the editor's context was offered.
+	class SessionPart : PluginPart
+	{
+		public static List<String> Log = new .() ~ DeleteContainerAndItems!(_);
+		public static EditorContext ContextSeen;
+		private PluginPartKind mKind;
+
+		public this(PluginPartKind kind) { mKind = kind; }
+
+		public override StringView PluginId => "four_parts";
+		public override PluginPartKind Kind => mKind;
+
+		public override void Load(PluginContext context)
+		{
+			Log.Add(new $"load:{mKind}");
+			if (mKind == .Editor)
+				ContextSeen = context.Find<EditorContext>();
+		}
+
+		public override void Unload(PluginContext context) => Log.Add(new $"unload:{mKind}");
+	}
+
+	/// A project's plugins enable with it in the embedded runtime, every part an editor takes, the
+	/// Editor part offered the editor's context, and unload as it closes, in reverse.
+	[Test]
+	public static void AProjectsPluginsEnableWithItInTheEmbeddedRuntimeAndUnloadAsItCloses()
+	{
+		let bench = scope Bench();
+		let dir = bench.MadeProject("scratch_editor_session_plugins", "Plugins");
+		{
+			let project = EditorProject.Open(dir);
+			Test.Assert(project != null);
+			defer delete project;
+			let entry = new EnabledPlugin();
+			entry.Id.Set("four_parts");
+			project.Settings.Plugins.Add(entry);
+			Test.Assert(project.SaveSettings() case .Ok);
+		}
+		let manifest = scope PluginManifest();
+		manifest.Id.Set("four_parts");
+		manifest.Version.Set("1.0");
+		manifest.EngineVersion.Set(Sedulous.Engine.Project.EngineVersion.String);
+		for (int i < PluginPartKind.Count)
+		{
+			let part = new PluginManifestPart();
+			((PluginPartKind)i).ToString(part.Kind);
+			manifest.Parts.Add(part);
+		}
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
+		let xml = manifest.Write(.. scope .());
+		let parts = scope List<PluginPart>();
+		defer { ClearAndDeleteItems!(parts); }
+		for (int i < PluginPartKind.Count)
+			parts.Add(new ManifestPart(new SessionPart((PluginPartKind)i), xml));
+
+		let host = scope HostOnly();
+		let embedded = scope Sedulous.Engine.DefaultApp.DefaultApplication();
+		// The host's order: configured, the context started, then the application.
+		embedded.Configure(host);
+		host.Subsystems.Startup();
+		embedded.OnStartup(host);
+		ClearAndDeleteItems!(SessionPart.Log);
+		SessionPart.ContextSeen = null;
+		{
+			let services = bench.Services();
+			services.PluginParts = parts;
+			let session = scope EditorSession(services);
+			bench.Session = session;
+			session.SetEmbedded(host, embedded);
+			Test.Assert(session.Open(dir));
+			let plugins = bench.Context.Plugins;
+			Test.Assert(plugins != null);
+			Test.Assert(plugins === embedded.Plugins);
+			Test.Assert(plugins.Role == .Editor);
+			Test.Assert(plugins.IsLoaded("four_parts"));
+			Test.Assert(SessionPart.Log.Count == 4);
+			Test.Assert(SessionPart.Log[0] == "load:Engine");
+			Test.Assert(SessionPart.Log[3] == "load:Editor");
+			Test.Assert(SessionPart.ContextSeen === bench.Context);
+			session.Close();
+			Test.Assert(bench.Context.Plugins == null);
+			Test.Assert(embedded.Plugins == null);
+			Test.Assert(SessionPart.Log.Count == 8);
+			Test.Assert(SessionPart.Log[4] == "unload:Editor", "the reverse of the load");
+		}
+		host.Subsystems.Shutdown();
+		embedded.OnShutdown(host);
+		host.Subsystems.Dispose();
+		ClearAndDeleteItems!(SessionPart.Log);
+	}
+
+	/// A part wrapped with its manifest, so a test's parts carry one as registered parts do.
+	class ManifestPart : PluginPart
+	{
+		private PluginPart mInner ~ delete _;
+		private String mManifest = new .() ~ delete _;
+
+		public this(PluginPart inner, StringView manifest)
+		{
+			mInner = inner;
+			mManifest.Set(manifest);
+		}
+
+		public override StringView PluginId => mInner.PluginId;
+		public override PluginPartKind Kind => mInner.Kind;
+		public override StringView ManifestXml => mManifest;
+		public override void Load(PluginContext context) => mInner.Load(context);
+		public override void Unload(PluginContext context) => mInner.Unload(context);
+	}
+
 	/// The stage is made as a project opens over an embedded runtime's host, after its resources,
 	/// and goes as it closes; a headless session, with no host, has none.
 	[Test]

@@ -109,6 +109,11 @@ class Program
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
+		// The plugins the project enables that this tool links, their Engine, Pipeline and Tooling
+		// parts.
+		let plugins = scope ToolPlugins(.Export, project);
+		for (let refusal in plugins.Report.Refused)
+			Console.Error.WriteLine("Sedulous.Tools.Export: {}", refusal.Reason);
 
 		// The scene streams pre-transcoded over the FULL manager set, and the scanner the
 		// pruning walks with; both from the engine's scene surface.
