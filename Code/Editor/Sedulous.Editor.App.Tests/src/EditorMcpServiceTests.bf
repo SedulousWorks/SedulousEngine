@@ -501,6 +501,26 @@ class EditorMcpServiceTests
 		// Not enabled, no host: the user never asked for one.
 		Test.Assert(!service.EnsureRunning());
 		Test.Assert(!service.IsRunning);
+		// The user's Start (the MCP panel's) runs it whatever the preference says; their Stop
+		// holds, over the manager and every project, until they start it again or the preferences
+		// change.
+		Test.Assert(service.StartByUser(null));
+		Test.Assert(service.Port == port);
+		Test.Assert(service.ConnectCommand(.. scope .()).Contains(scope $"http://127.0.0.1:{port}/mcp"));
+		service.StopByUser();
+		Test.Assert(!service.IsRunning);
+		Test.Assert(service.IsStopHeld);
+		Test.Assert(service.Port == 0);
+		Test.Assert(service.ConnectCommand(.. scope .()).IsEmpty);
+		Test.Assert(!service.EnsureRunning());
+		service.Restart(null); // the preferences changed, and they say off
+		Test.Assert(!service.IsStopHeld);
+		Test.Assert(!service.IsRunning);
+		// The activity kept the host's own events.
+		Test.Assert(service.Activity.Count == 2);
+		Test.Assert(service.Activity[0].Tool.StartsWith("Listening on 127.0.0.1:"));
+		Test.Assert(service.Activity[1].Tool == "Stopped");
+		service.Activity.Clear();
 		services.ForceEnabled = true;
 		Test.Assert(service.EnsureRunning());
 		Test.Assert(service.Host.BoundPort == port);
@@ -515,6 +535,7 @@ class EditorMcpServiceTests
 		bool done = false;
 		let client = scope Thread(new [&]() =>
 			{
+				delete Call(port, "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"clientInfo\":{\"name\":\"test-agent\",\"version\":\"1.0\"}}}");
 				info = Call(port, ToolCall(1, "host_info", "{}", .. scope .()));
 				assets = Call(port, ToolCall(2, "asset_list", "{}", .. scope .()));
 				opened = Call(port, ToolCall(3, "page_open", guidArgument, .. scope .()));
@@ -558,7 +579,31 @@ class EditorMcpServiceTests
 		defer delete foundPayload;
 		Test.Assert(foundPayload.Get("count").AsInt() == 1);
 		Test.Assert(foundPayload.Get("nodes").At(0).Get("text").AsString() == "Samples");
-		service.Stop();
+
+		// The activity: the host listening, the client, then each call in order with its outcome.
+		let activity = service.Activity;
+		Test.Assert(service.ClientName == "test-agent");
+		let seen = scope List<String>();
+		defer { ClearAndDeleteItems!(seen); }
+		for (int i < activity.Count)
+		{
+			let entry = activity[i];
+			if (entry.IsCall)
+				seen.Add(new $"{entry.Tool}:{(entry.Outcome == .Failed) ? "failed" : "done"}");
+			else
+				seen.Add(new String(entry.Tool));
+		}
+		Test.Assert(seen.Count == 9);
+		Test.Assert(seen[0].StartsWith("Listening on 127.0.0.1:"));
+		Test.Assert(seen[1] == "test-agent 1.0 connected", seen[1]);
+		Test.Assert(seen[2] == "host_info:done");
+		Test.Assert(seen[3] == "asset_list:failed");
+		Test.Assert(seen[8] == "editor_find:done");
+		Test.Assert(activity[4].Arguments == guidArgument);
+
+		// The user's Stop holds even over --mcp.
+		service.StopByUser();
+		Test.Assert(!service.EnsureRunning());
 		Test.Assert(PortIsFree(port));
 	}
 }

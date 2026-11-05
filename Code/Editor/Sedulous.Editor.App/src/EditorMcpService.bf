@@ -69,13 +69,16 @@ class EditorMcpServiceServices
 	public delegate void(String outScreen) Screen ~ delete _;
 }
 
-/// The editor's MCP host over the open project, out of the application (Raptor's editor-gui
-/// spec, 5.1, layer 3). It starts when a project opens (when the user enabled it, or --mcp
-/// asked for it), minting the token the first time, with the shared engine tools over the
-/// application's own services (an agent's cook, import or export takes the paths the menus do)
-/// and the editor host's live additions: the pages, the windows' screenshots, the profiler. The
-/// application adds the tools that need its other parts through AddTools. It stops before the
-/// project's services go, and its calls are answered from Pump, once a frame.
+/// The editor's MCP host over the open project, out of the application. It starts when a
+/// project opens (when the user enabled it, or --mcp asked for it), minting the token the first
+/// time, with the shared engine tools over the application's own services (an agent's cook,
+/// import or export takes the paths the menus do) and the editor host's live additions: the
+/// pages, the windows' screenshots, the profiler. The application adds the tools that need its
+/// other parts through AddTools. It stops before the project's services go, and its calls are
+/// answered from Pump, once a frame. The user starts and stops it from the MCP panel too: their
+/// Start runs it whatever the preference says, and their Stop holds until they start it again or
+/// change the MCP preferences, across the projects opened between. What agents did is kept in its
+/// activity (McpActivity), which outlives the host's restarts.
 class EditorMcpService
 {
 	private EditorMcpServiceServices mServices ~ delete _;
@@ -84,6 +87,15 @@ class EditorMcpService
 	private EditorProjectOperations mOperations = null;
 	/// Gone before the operations it runs through (Stop).
 	private EditorMcpHost mHost = null;
+	/// What agents did through the host in this run.
+	private McpActivity mActivity = new .() ~ delete _;
+	/// The client that last connected, as it named itself.
+	private String mClientName = new .() ~ delete _;
+	private String mClientVersion = new .() ~ delete _;
+	/// The user's Start runs the host whatever the preference says.
+	private bool mUserStarted = false;
+	/// The user's Stop holds until their Start or a preference change.
+	private bool mStopHeld = false;
 
 	/// TAKES OWNERSHIP of the services.
 	public this(EditorMcpServiceServices services)
@@ -111,15 +123,16 @@ class EditorMcpService
 		return Start(null);
 	}
 
-	/// Starts the host over `project` when enabled, stopping a running one first: false when it
-	/// is not enabled, or it could not listen (logged: another editor may hold the port). With
-	/// no project (the project manager's), the editor's own tools serve and the project's refuse.
+	/// Starts the host over `project` when the preference, the command line or the user's own
+	/// Start asks for it and the user's Stop does not hold, stopping a running one first: false
+	/// when none asks, or it could not listen (logged: another editor may hold the port). With no
+	/// project (the project manager's), the editor's own tools serve and the project's refuse.
 	public bool Start(EditorProject project)
 	{
 		Stop();
 		Runtime.Assert(mServices.UserSettings != null, "EditorMcpService: the user settings are required");
 		let settings = mServices.UserSettings.Section<EditorMcpSettings>();
-		if (!(settings.Enabled || mServices.ForceEnabled))
+		if (mStopHeld || !(settings.Enabled || mServices.ForceEnabled || mUserStarted))
 			return false;
 		if (mServices.Log == null)
 		{
@@ -174,8 +187,9 @@ class EditorMcpService
 		mHost = new EditorMcpHost(mServices.Context, mSession, mServices.Log, mServices.Builders, mServices.Context.Importers,
 			paths, mOperations, BuildStamp(.. scope .()));
 		let context = mServices.Context;
-		mHost.OnCall = new (report) =>
+		mHost.OnCall = new [=] (report) =>
 			{
+				mActivity.Record(report, LocalNow());
 				if (report.Phase == .Finished)
 					context.SetStatus(scope $"MCP: {report.Tool} {report.IsError ? "failed" : "done"}");
 			};
@@ -244,13 +258,66 @@ class EditorMcpService
 		}
 		GlobalLog(.Information, scope $"MCP: listening on 127.0.0.1:{mHost.BoundPort} (the token is in <user-data>/{EditorMcpHost.cTokenFileName})");
 		context.SetStatus(scope $"MCP host on 127.0.0.1:{mHost.BoundPort}");
+		mActivity.RecordEvent(scope $"Listening on 127.0.0.1:{mHost.BoundPort}", LocalNow());
+		mClientName.Clear();
+		mClientVersion.Clear();
 		return true;
+	}
+
+	/// The user's Start (the MCP panel's): runs the host over `project` whatever the preference
+	/// says, until the user stops it. False when it could not listen.
+	public bool StartByUser(EditorProject project)
+	{
+		mStopHeld = false;
+		mUserStarted = true;
+		return Start(project);
+	}
+
+	/// The user's Stop: the host stops and stays stopped, over every project opened, until the
+	/// user starts it again or changes the MCP preferences.
+	public void StopByUser()
+	{
+		mUserStarted = false;
+		mStopHeld = true;
+		Stop();
+	}
+
+	/// The MCP preferences changed: the user's own Start or Stop no longer holds, and the host
+	/// follows the preferences again over `project`.
+	public void Restart(EditorProject project)
+	{
+		mUserStarted = false;
+		mStopHeld = false;
+		Start(project);
+	}
+
+	/// Whether the user's Stop holds the host stopped.
+	public bool IsStopHeld => mStopHeld;
+	/// What agents did through the host in this run. BORROWED.
+	public McpActivity Activity => mActivity;
+	/// The client that last connected (empty before any did).
+	public StringView ClientName => mClientName;
+	public StringView ClientVersion => mClientVersion;
+	/// The port the host listens on (0: stopped), and the one it starts on.
+	public uint16 Port => (mHost != null) ? mHost.BoundPort : 0;
+	public uint32 ConfiguredPort => (mServices.Port != 0) ? mServices.Port : mServices.UserSettings.Section<EditorMcpSettings>().Port;
+
+	/// The command that wires an agent (Claude Code) to the running host, with its token,
+	/// appended; nothing while stopped.
+	public void ConnectCommand(String outCommand)
+	{
+		if (mHost == null)
+			return;
+		outCommand.AppendF("claude mcp add --transport http engine-editor http://127.0.0.1:{}/mcp --header \"Authorization: Bearer {}\"",
+			mHost.BoundPort, mServices.UserSettings.Section<EditorMcpSettings>().Token);
 	}
 
 	/// Stops and releases the host, before the project's services go: a waiting agent sees its
 	/// connection close. Nothing when none runs.
 	public void Stop()
 	{
+		if ((mHost != null) && mHost.IsRunning)
+			mActivity.HostStopped(LocalNow()); // a host that never listened has nothing to stop
 		DeleteAndNullify!(mHost);
 		DeleteAndNullify!(mOperations);
 		mSession.Project = null;
@@ -260,8 +327,28 @@ class EditorMcpService
 	/// touch anything the editor owns.
 	public void Pump()
 	{
-		if (mHost != null)
-			mHost.Pump();
+		if (mHost == null)
+			return;
+		mHost.Pump();
+		// A client that initialized since: recorded once per change of who it is.
+		let server = mHost.Server;
+		if (!server.ClientName.IsEmpty && ((server.ClientName != mClientName) || (server.ClientVersion != mClientVersion)))
+		{
+			mClientName.Set(server.ClientName);
+			mClientVersion.Set(server.ClientVersion);
+			let line = scope String(mClientName);
+			if (!mClientVersion.IsEmpty)
+				line.AppendF(" {}", mClientVersion);
+			line.Append(" connected");
+			mActivity.RecordEvent(line, LocalNow());
+		}
+	}
+
+	/// The local time now, in seconds since 1970 (CivilTimeOf reads it).
+	private static int64 LocalNow()
+	{
+		let now = GetUnixTime();
+		return now + GetLocalTimeOffset(now);
 	}
 
 	/// The build identity host_info reports: the executable's write time (the About box shows

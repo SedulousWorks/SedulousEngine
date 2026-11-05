@@ -833,10 +833,11 @@ class EditorApplication : IApplication
 			services.McpChanged = new () =>
 				{
 					// The host follows the saved section, over the open project or the manager:
-					// started, moved to its new port, or stopped (Start stops a running one first).
+					// started, moved to its new port, or stopped (Start stops a running one first);
+					// the user's own Start or Stop no longer holds.
 					if (mMcp == null)
 						return;
-					mMcp.Start(mSession.Project);
+					mMcp.Restart(mSession.Project);
 				};
 			services.ShowLook = new (look) => { mWindow.SetLook(look); };
 			// Said on the status line, or as an error, as the Sedulous.UI dialog said it.
