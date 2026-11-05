@@ -8,12 +8,31 @@ class ImporterRegistry
 {
 	/// OWNED: registering hands the importer over.
 	private List<IFileImporter> mImporters = new .() ~ DeleteContainerAndItems!(_);
+	/// Beside mImporters: each one's key.
+	private List<uint64> mKeys = new .() ~ delete _;
+	private uint64 mNextKey = 1;
 
-	/// Takes ownership of the importer.
-	public void Register(IFileImporter importer)
+	/// Takes ownership of the importer; its key for Unregister (0, nothing added, for null).
+	public uint64 Register(IFileImporter importer)
 	{
-		if (importer != null)
-			mImporters.Add(importer);
+		if (importer == null)
+			return 0;
+		mImporters.Add(importer);
+		mKeys.Add(mNextKey);
+		return mNextKey++;
+	}
+
+	/// Removes (and deletes) the importer Register gave `key` for; false when there is none. A
+	/// plugin's importers leave with it this way.
+	public bool Unregister(uint64 key)
+	{
+		let index = mKeys.IndexOf(key);
+		if (index < 0)
+			return false;
+		delete mImporters[index];
+		mImporters.RemoveAt(index);
+		mKeys.RemoveAt(index);
+		return true;
 	}
 
 	/// The FIRST importer claiming the extension, or null.

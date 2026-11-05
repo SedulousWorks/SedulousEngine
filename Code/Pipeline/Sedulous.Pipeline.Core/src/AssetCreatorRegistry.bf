@@ -9,9 +9,32 @@ namespace Sedulous.Pipeline.Core;
 class AssetCreatorRegistry
 {
 	private List<AssetCreator> mCreators = new .() ~ DeleteContainerAndItems!(_);
+	/// Beside mCreators: each one's key.
+	private List<uint64> mKeys = new .() ~ delete _;
+	private uint64 mNextKey = 1;
 
-	/// TAKES OWNERSHIP.
-	public void Register(AssetCreator creator) => mCreators.Add(creator);
+	/// TAKES OWNERSHIP; its key for Unregister (0, nothing added, for null).
+	public uint64 Register(AssetCreator creator)
+	{
+		if (creator == null)
+			return 0;
+		mCreators.Add(creator);
+		mKeys.Add(mNextKey);
+		return mNextKey++;
+	}
+
+	/// Removes (and deletes) the creator Register gave `key` for; false when there is none. A
+	/// plugin's creators leave with it this way.
+	public bool Unregister(uint64 key)
+	{
+		let index = mKeys.IndexOf(key);
+		if (index < 0)
+			return false;
+		delete mCreators[index];
+		mCreators.RemoveAt(index);
+		mKeys.RemoveAt(index);
+		return true;
+	}
 
 	public int Count => mCreators.Count;
 	public AssetCreator this[int index] => mCreators[index];

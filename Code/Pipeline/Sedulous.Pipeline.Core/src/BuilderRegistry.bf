@@ -11,12 +11,31 @@ class BuilderRegistry
 {
 	/// OWNED: registering hands the builder over.
 	private List<IAssetBuilder> mBuilders = new .() ~ DeleteContainerAndItems!(_);
+	/// Beside mBuilders: each one's key.
+	private List<uint64> mKeys = new .() ~ delete _;
+	private uint64 mNextKey = 1;
 
-	/// Takes ownership of the builder.
-	public void Register(IAssetBuilder builder)
+	/// Takes ownership of the builder; its key for Unregister (0, nothing added, for null).
+	public uint64 Register(IAssetBuilder builder)
 	{
-		if (builder != null)
-			mBuilders.Add(builder);
+		if (builder == null)
+			return 0;
+		mBuilders.Add(builder);
+		mKeys.Add(mNextKey);
+		return mNextKey++;
+	}
+
+	/// Removes (and deletes) the builder Register gave `key` for; false when there is none
+	/// (removed already). A plugin's builders leave with it this way.
+	public bool Unregister(uint64 key)
+	{
+		let index = mKeys.IndexOf(key);
+		if (index < 0)
+			return false;
+		delete mBuilders[index];
+		mBuilders.RemoveAt(index);
+		mKeys.RemoveAt(index);
+		return true;
 	}
 
 	public IAssetBuilder Find(Type assetType)
