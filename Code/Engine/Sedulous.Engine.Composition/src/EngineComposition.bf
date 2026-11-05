@@ -31,14 +31,25 @@ namespace Sedulous.Engine.Composition;
 ///
 /// Where a facet needs something a domain cannot know (a graphics device), the domain's
 /// description names the need and the consumer supplies it through IResourceServices.
+///
+/// Plugins add domains of their own (AddPluginDomain), after the engine's, so factory creation
+/// and the resource facets include a plugin's.
 static class EngineComposition
 {
 	/// The prefabs module: Foundation's spawn system and the scene document types, which no
 	/// engine library owns, so the root declares it.
 	private static DomainModule sPrefabs ~ delete _;
+	/// The engine's domains, then the plugins'.
 	private static List<DomainModule> sModules ~ delete _;
+	/// The engine's own count, at the front of sModules.
+	private static int sEngineCount;
+	/// The plugin domains, BORROWED (their plugins' own), and the tokens that remove them.
+	private static List<DomainModule> sPluginModules ~ delete _;
+	private static List<uint64> sPluginTokens ~ delete _;
+	private static uint64 sNextToken = 1;
 
-	/// Every domain, in scene construction order. Built on first use.
+	/// Every domain: the engine's in scene construction order, then the ones plugins added. Built
+	/// on first use.
 	public static List<DomainModule> Modules
 	{
 		get
@@ -64,9 +75,59 @@ static class EngineComposition
 						// The engine's GUI on Sedulous.GUI.
 						GuiDomain.Module
 					};
+				sEngineCount = sModules.Count;
 			}
 			return sModules;
 		}
+	}
+
+	/// Adds a plugin's domain after the engine's, and registers its resource modules' types at
+	/// once (which factories then include), since a host may have done its startup registration
+	/// before the plugin loaded. A plugin's scene managers do not come this way (they reach live
+	/// scenes through SceneModuleContributions), so a module with scene content is refused: 0.
+	/// Otherwise the token RemovePluginDomain takes. `module` is BORROWED and outlives its
+	/// removal. Call with nothing else reading the composition (a host enables its plugins
+	/// before it runs anything).
+	public static uint64 AddPluginDomain(DomainModule module)
+	{
+		if ((module == null) || module.HasScene)
+			return 0;
+		if (sPluginModules == null)
+		{
+			sPluginModules = new .();
+			sPluginTokens = new .();
+		}
+		let token = sNextToken++;
+		sPluginModules.Add(module);
+		sPluginTokens.Add(token);
+		Rebuild();
+		for (let resources in module.Resources)
+			resources.RegisterTypes();
+		return token;
+	}
+
+	/// Takes a plugin's domain back out. An unknown token does nothing.
+	public static void RemovePluginDomain(uint64 token)
+	{
+		if (sPluginTokens == null)
+			return;
+		let index = sPluginTokens.IndexOf(token);
+		if (index < 0)
+			return;
+		sPluginTokens.RemoveAt(index);
+		sPluginModules.RemoveAt(index);
+		Rebuild();
+	}
+
+	/// The list again: the engine's domains, then the plugins' in the order they were added.
+	private static void Rebuild()
+	{
+		let modules = Modules;
+		// RemoveRange asserts its start is inside the list, even for nothing to remove.
+		if (modules.Count > sEngineCount)
+			modules.RemoveRange(sEngineCount, modules.Count - sEngineCount);
+		if (sPluginModules != null)
+			modules.AddRange(sPluginModules);
 	}
 
 	/// Every domain's resource modules, each id once, in domain order.

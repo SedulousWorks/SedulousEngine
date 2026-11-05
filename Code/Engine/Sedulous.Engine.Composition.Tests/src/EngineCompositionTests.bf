@@ -64,6 +64,54 @@ static class EngineCompositionTests
 		}
 	}
 
+	private static int sPluginTypesRegistered = 0;
+	private static void RegisterPluginTypes() => sPluginTypesRegistered++;
+	private static void InstallPluginScene(Sedulous.Scene.Scene scene) {}
+
+	/// A plugin's domain joins after the engine's, registers its resource types at once, and
+	/// leaves on removal; one with scene content is refused (its managers reach scenes through
+	/// SceneModuleContributions instead).
+	[Test]
+	public static void APluginsDomainJoinsAfterTheEnginesRegistersAtOnceAndLeavesOnRemoval()
+	{
+		let modules = EngineComposition.Modules.Count;
+		let resources = scope List<ResourceModule>();
+		EngineComposition.ResourceModules(resources);
+		let resourceCount = resources.Count;
+		sPluginTypesRegistered = 0;
+
+		let pluginResources = scope ResourceModule("plugin_probe", => RegisterPluginTypes, null);
+		let domain = scope DomainModule("plugin_probe", null, new .(pluginResources));
+		let token = EngineComposition.AddPluginDomain(domain);
+		Test.Assert(token != 0);
+		Test.Assert(EngineComposition.Modules.Count == modules + 1);
+		Test.Assert(EngineComposition.Modules[modules] === domain, "after the engine's own");
+		let joined = scope List<ResourceModule>();
+		EngineComposition.ResourceModules(joined);
+		Test.Assert(joined.Count == resourceCount + 1);
+		Test.Assert(sPluginTypesRegistered == 1, "registered at once");
+		EngineComposition.RegisterResourceTypes(); // a later startup registration reaches it too
+		Test.Assert(sPluginTypesRegistered == 2);
+
+		// A second one, removed first: each token takes its own out.
+		let second = scope DomainModule("plugin_second", null);
+		let secondToken = EngineComposition.AddPluginDomain(second);
+		Test.Assert((secondToken != 0) && (secondToken != token));
+		EngineComposition.RemovePluginDomain(token);
+		Test.Assert(EngineComposition.Modules.Count == modules + 1);
+		Test.Assert(EngineComposition.Modules[modules] === second);
+		EngineComposition.RemovePluginDomain(secondToken);
+		EngineComposition.RemovePluginDomain(secondToken); // twice: nothing
+		Test.Assert(EngineComposition.Modules.Count == modules);
+		let left = scope List<ResourceModule>();
+		EngineComposition.ResourceModules(left);
+		Test.Assert(left.Count == resourceCount);
+
+		let withScene = scope DomainModule("plugin_scene", => InstallPluginScene);
+		Test.Assert(EngineComposition.AddPluginDomain(withScene) == 0);
+		Test.Assert(EngineComposition.Modules.Count == modules);
+	}
+
 	[Test]
 	public static void AHeadlessHostCreatesEveryFactoryButTheTwoThatNeedAService()
 	{
