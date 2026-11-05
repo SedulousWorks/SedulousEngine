@@ -1,0 +1,33 @@
+<root>
+	<array name="dataVersions" count="1">
+		<u64 name="type">17008328439509122599</u64>
+		<u32 name="version">1</u32>
+	</array>
+	<object>
+		<string name="id">imgui</string>
+		<string name="name">Dear ImGui</string>
+		<string name="version">0.1.0</string>
+		<string name="engineVersion">0.1</string>
+		<array name="dependsOn" count="0"/>
+		<array name="provides" count="0"/>
+		<array name="parts" count="1">
+			<object>
+				<string name="kind">Engine</string>
+			</object>
+		</array>
+		<array name="platforms" count="3">
+			<object>
+				<string name="platform">Linux64</string>
+				<array name="deploy" count="0"/>
+			</object>
+			<object>
+				<string name="platform">Win64</string>
+				<array name="deploy" count="0"/>
+			</object>
+			<object>
+				<string name="platform">Web</string>
+				<array name="deploy" count="0"/>
+			</object>
+		</array>
+	</object>
+</root>

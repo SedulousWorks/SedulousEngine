@@ -1,7 +1,7 @@
 FileVersion = 1
 
 [Project]
-Name = "Imgui"
+Name = "Imgui.Engine"
 TargetType = "BeefLib"
 
 [Dependencies]

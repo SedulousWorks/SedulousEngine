@@ -150,6 +150,22 @@ class PluginManifestTests
 		Test.Assert((again.Id == "probe") && (again.DependsOn.Count == 1) && (again.Parts.Count == 2));
 	}
 
+	/// The engine's own packages' manifests, as their parts compile them in.
+	private const String cImguiManifest = Compiler.ReadText("../../Plugins/Imgui/Plugin.xml");
+
+	/// Each engine package's Plugin.xml reads and passes the checks for the engine it names.
+	[Test]
+	public static void TheEnginesPackagesManifestsReadAndPassTheirChecks()
+	{
+		let imgui = scope PluginManifest();
+		Test.Assert(PluginManifest.Read(cImguiManifest, imgui) case .Ok);
+		Test.Assert(imgui.Id == "imgui");
+		Test.Assert(imgui.HasPart(.Engine));
+		Test.Assert((imgui.FindPlatform("Linux64") != null) && (imgui.FindPlatform("Win64") != null) && (imgui.FindPlatform("Web") != null));
+		let whyNot = scope String();
+		Test.Assert(imgui.Check(scope $"{imgui.EngineVersion}.0", whyNot), whyNot);
+	}
+
 	[Test]
 	public static void APackagesManifestIsLoadedFromItsFolderNotFoundWithoutOne()
 	{
