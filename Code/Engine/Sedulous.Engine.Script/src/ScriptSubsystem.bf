@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Runtime;
 using Sedulous.Engine.Scene;
+using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Script;
 
@@ -42,6 +43,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 			};
 		delete host.TeardownCheck;
 		host.TeardownCheck = new (h) => { MaybeTeardownRunHost(h); };
+		host.Subsystems = Manager; // the application's services, after the host's and its run's
 	}
 
 	/// Tears `host` down when nothing pins it: no game script holding it, no scene bound to
@@ -87,6 +89,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 					Configure(runtime);
 			};
 		mHost.TeardownCheck = new (h) => { MaybeTeardownRunHost(h); };
+		mHost.Subsystems = Manager;
 		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
@@ -107,6 +110,17 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 		mSystems.Clear();
 		DeleteAndNullify!(mHost.TeardownCheck);
 		mHost.Teardown();
+		// The hosts may outlive the manager (a run goes with its application, after the host's
+		// subsystems): none asks it again.
+		mHost.Subsystems = null;
+		if ((Manager != null) && (Manager.RunManager != null))
+		{
+			Manager.RunManager.ForEachRun(scope (run) =>
+				{
+					if (let host = RunServices.Get<ScriptRunHost>(run))
+						host.Subsystems = null;
+				});
+		}
 	}
 
 	// ---- contact events, the neutral ingress ----

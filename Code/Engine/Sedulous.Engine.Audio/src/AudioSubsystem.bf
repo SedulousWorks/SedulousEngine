@@ -75,10 +75,20 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	private bool mHearAllRuns = false;
 	/// The scene systems' way back to the run registry. OWNED.
 	private delegate uint64(IRun run) mRunGroupResolver ~ delete _;
+	/// `Audio` to scripts outside every run, on the application's services; OWNED.
+	private AudioFacade mScriptFacade = null ~ delete _;
+	/// `Audio` to each run's scripts, among its services, carrying the run; OWNED, by the run's id,
+	/// until the run goes (or this subsystem shuts down).
+	private List<(RunId run, AudioFacade facade)> mRunFacades = new .() ~ { for (let entry in _) delete entry.facade; delete _; };
+
+	/// Where a script's asset ids resolve: the application's resource manager, read per call, since
+	/// it may be handed over after this is made. Null resolves none. OWNED.
+	public delegate ResourceManager() ScriptResources = null ~ delete _;
 
 	public this(AudioEngineSettings engineSettings = null)
 	{
 		mEngineSettings = engineSettings;
+		mScriptFacade = new AudioFacade(this, new [=this] () => ResolveScriptResources());
 		mRunGroupResolver = new (run) => RunGroupFor(run);
 	}
 
@@ -294,8 +304,86 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	}
 
 	// IRunListener: the run manager's announcements.
+	public void OnRunCreated(IRun run) => OfferRunFacade(run);
 	public void OnRunStopping(IRun run) => EndRunGroup(run.Id, cRunFadeSeconds);
-	public void OnRunDestroyed(IRun run) => EndRunGroup(run.Id, cRunFadeSeconds);
+	public void OnRunDestroyed(IRun run)
+	{
+		EndRunGroup(run.Id, cRunFadeSeconds);
+		// Its services are gone with it (the run disposed them first): its Audio goes too.
+		for (int i < mRunFacades.Count)
+		{
+			if (mRunFacades[i].run != run.Id)
+				continue;
+			delete mRunFacades[i].facade;
+			mRunFacades.RemoveAt(i);
+			break;
+		}
+	}
+
+	// ==================== scripts ====================
+
+	/// The facades offered: the shared one on the application's services, each run's among the
+	/// run's.
+	public AudioFacade ScriptFacade => mScriptFacade;
+	public int RunScriptFacadeCount => mRunFacades.Count;
+
+	public override void OnRegister(SubsystemManager manager)
+	{
+		base.OnRegister(manager);
+		manager.RegisterService(mScriptFacade);
+	}
+
+	public override void OnUnregister()
+	{
+		if (Manager != null)
+			Manager.UnregisterService<AudioFacade>();
+		base.OnUnregister();
+	}
+
+	private ResourceManager ResolveScriptResources() => (ScriptResources != null) ? ScriptResources() : null;
+
+	// `run`'s own `Audio` among its services, carrying the run, so what its scripts play goes into
+	// it and its bus volumes are its own. Once per run.
+	private void OfferRunFacade(IRun run)
+	{
+		let held = run as RunBase;
+		if (held == null)
+			return;
+		for (let entry in mRunFacades)
+		{
+			if (entry.run == run.Id)
+				return;
+		}
+		let facade = new AudioFacade(this, new [=this] () => ResolveScriptResources(), run);
+		mRunFacades.Add((run.Id, facade));
+		held.Register<AudioFacade>(facade);
+	}
+
+	// The runs still alive let go of their `Audio`, which goes with this subsystem.
+	private void WithdrawRunFacades()
+	{
+		if (mRunManager != null)
+		{
+			mRunManager.ForEachRun(scope (run) =>
+				{
+					let held = run as RunBase;
+					if (held == null)
+						return;
+					let offered = held.FindService(typeof(AudioFacade));
+					for (let entry in mRunFacades)
+					{
+						if (entry.facade === offered)
+						{
+							held.Remove<AudioFacade>();
+							break;
+						}
+					}
+				});
+		}
+		for (let entry in mRunFacades)
+			delete entry.facade;
+		mRunFacades.Clear();
+	}
 
 	public void OnRunPaused(IRun run, bool paused)
 	{
@@ -457,11 +545,14 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 		{
 			mRunManager.Subscribe(this);
 			OnFocusChanged(mRunManager.Focused);
+			// The runs made before this was ready get their `Audio` too.
+			mRunManager.ForEachRun(scope (run) => { OfferRunFacade(run); });
 		}
 	}
 
 	protected override void OnShutdown()
 	{
+		WithdrawRunFacades();
 		if (mRunManager != null)
 		{
 			mRunManager.Unsubscribe(this);

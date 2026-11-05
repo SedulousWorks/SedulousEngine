@@ -25,8 +25,24 @@ abstract class ScriptCallContext
 		ReleasePending(0);
 	}
 
-	/// The host's service of `type`, for a Service role call, or null when the run has none.
+	/// Asked for a service the context does not hold itself (SetService's): its owner's lookup, a
+	/// run host's (its own, its run's, the application's). OWNED; null asks no one.
+	private delegate Object(Type type) mResolver = null ~ delete _;
+
+	/// The host's service of `type`, for a Service role call, or null when the run has none: the
+	/// context's own (SetService), else what its resolver finds.
 	public abstract Object FindService(Type type);
+
+	/// Who answers for a service the context does not hold itself. TAKES OWNERSHIP; null asks no
+	/// one.
+	public void SetServiceResolver(delegate Object(Type type) resolver)
+	{
+		delete mResolver;
+		mResolver = resolver;
+	}
+
+	/// What the resolver finds of `type`; null without one.
+	protected Object ResolveService(Type type) => (mResolver != null) ? mResolver(type) : null;
 
 	/// Installs, or with null removes, the service a Service role call of `type` reaches.
 	/// BORROWED: the host owns it and outlives the run.

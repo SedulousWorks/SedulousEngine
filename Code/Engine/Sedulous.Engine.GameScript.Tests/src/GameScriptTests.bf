@@ -8,6 +8,8 @@ using Sedulous.Script;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Script.Facades;
+using Sedulous.Engine.Input; // InputFacade
+using Sedulous.Runtime; // the application's services
 using Sedulous.Script.AngelScript;
 
 namespace Sedulous.Engine.GameScript.Tests;
@@ -772,24 +774,30 @@ static class GameScriptTests
 	}
 
 	/// A run's behaviours get its services with no game script at all: the run's own Input
-	/// (its action runtime, with the project's map), its Save and Run, never the idle ones
-	/// the application's configurator installs for scripts outside a run.
+	/// (its action runtime, with the project's map), its Save and Run, before the idle ones the
+	/// application offers scripts outside a run; a type only the application offers is the
+	/// application's; and once the run is gone its scripts find the application's alone.
 	[Test]
-	public static void ARunsBehavioursGetItsServicesWithoutAGameScript()
+	public static void ARunsBehavioursGetItsServicesBeforeTheApplicationsWithoutAGameScript()
 	{
 		let run = scope GameRun("scratch_game_services");
 		let surface = run.Surface;
 		let idleInput = scope InputFacade(null);
 		let idleSave = scope SaveFacade(null);
-		// What the application does: bind the surface and install the idle services first.
+		let appOnly = scope ScriptRandom();
+		// What the subsystems do: offer the idle services on the application's.
+		let application = scope SubsystemManager();
+		application.RegisterService(idleInput);
+		application.RegisterService(idleSave);
+		application.RegisterService(appOnly);
 		delete run.Instance.RunHost.Configure;
 		run.Instance.RunHost.Configure = new [=](runtime) =>
 			{
 				runtime.Bind(surface);
 				ClearAndDeleteItems!(runtime.Problems);
-				runtime.SetService(idleInput);
-				runtime.SetService(idleSave);
 			};
+		run.Instance.RunHost.Subsystems = application;
+		defer { run.Instance.RunHost.Subsystems = null; }
 
 		Test.Assert(!run.Instance.ScriptRunning);
 		let runtime = run.Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
@@ -798,5 +806,12 @@ static class GameScriptTests
 		Test.Assert(context.FindService(typeof(InputFacade)) === run.Instance.[Friend]mInputFacade, "the run's Input");
 		Test.Assert(context.FindService(typeof(SaveFacade)) === run.Instance.[Friend]mSaveFacade, "the run's Save");
 		Test.Assert(context.FindService(typeof(GameInstance)) === run.Instance, "and Run");
+		Test.Assert(context.FindService(typeof(ScriptRandom)) === run.Instance.RunHost.Random, "the context's own first");
+
+		// The run gone (disposed: its services with it), its scripts find the application's.
+		run.Instance.Dispose();
+		Test.Assert(context.FindService(typeof(InputFacade)) === idleInput, "the application's, the run's gone");
+		Test.Assert(context.FindService(typeof(SaveFacade)) === idleSave);
+		Test.Assert(context.FindService(typeof(GameInstance)) == null);
 	}
 }

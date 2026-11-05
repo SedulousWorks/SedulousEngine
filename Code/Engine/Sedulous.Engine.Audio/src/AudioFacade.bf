@@ -3,43 +3,15 @@ using Sedulous.Core;
 using Sedulous.Audio;
 using Sedulous.Resource;
 using Sedulous.Run;
-using Sedulous.Scene;
 using Sedulous.Script;
-using Sedulous.Engine.Audio;
 
-namespace Sedulous.Engine.Script.Facades;
+namespace Sedulous.Engine.Audio;
 
-/// `scene.Audio`: the sound source on an entity.
-[Scriptable, SceneFacade("Audio")]
-class AudioSceneFacade : SceneFacade
-{
-	private AudioSceneSystem System => Scene.GetSystem<AudioSceneSystem>();
-
-	/// Plays the entity's source; the voice, for a later stop or check.
-	[Scriptable]
-	public VoiceHandle Play(EntityHandle entity) => System?.Play(entity) ?? .();
-	[Scriptable]
-	public void Stop(EntityHandle entity) => System?.Stop(entity);
-	[Scriptable]
-	public void SetPaused(EntityHandle entity, bool paused) => System?.SetPaused(entity, paused);
-	[Scriptable]
-	public bool IsPlaying(EntityHandle entity) => System?.IsPlaying(entity) ?? false;
-	/// The source's volume, eased onto its playing voice over `seconds` and kept for its next
-	/// play. The component's volume is otherwise read only when the source starts.
-	[Scriptable]
-	public void SetVolume(EntityHandle entity, float volume, float seconds = 0.0f) => System?.SetVolume(entity, volume, seconds);
-	/// The source's pitch, eased and kept the same way.
-	[Scriptable]
-	public void SetPitch(EntityHandle entity, float pitch, float seconds = 0.0f) => System?.SetPitch(entity, pitch, seconds);
-	/// The clip by asset id.
-	[Scriptable]
-	public void SetClip(EntityHandle entity, Guid clip) => System?.SetClip(entity, clip);
-}
-
-/// `Audio`: the run's music and one shots, by asset id, and the buses. Installed by the
-/// application, which owns the resources the ids resolve through.
+/// `Audio`: the run's music and one shots, by asset id, and the buses. The subsystem's own
+/// (AudioSubsystem makes and offers them): one to scripts outside every run, on the application's
+/// services, and one per run, among the run's services, which its scripts find first.
 ///
-/// One per run: a GameInstance's own, on its run host, carries the instance as its run, so
+/// One per run: a run's own carries the run, so
 /// what its scripts play goes into the run (the run's stop, pause and mute reach it) and its
 /// bus volumes are the run's own (a game's options sliders never move the editor's buses or
 /// another run's). A facade with no run plays outside every run, on the engine's buses.

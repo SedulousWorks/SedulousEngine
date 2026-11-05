@@ -10,6 +10,19 @@ namespace Sedulous.Engine.Input.Tests;
 /// active source speaks for.
 class InputSubsystemTests
 {
+	/// The subsystem offers its idle `Input` on the application's services while it is registered.
+	[Test]
+	public static void TheIdleInputIsTheApplicationsServiceWhileRegistered()
+	{
+		let context = scope SubsystemManager();
+		let input = scope InputSubsystem(null);
+		context.RegisterSubsystem(input);
+		Test.Assert(context.FindService(typeof(InputFacade)) === input.ScriptFacade);
+		Test.Assert(!input.ScriptFacade.IsDown("jump"), "idle: every action released");
+		context.RemoveSubsystem<InputSubsystem>();
+		Test.Assert(context.FindService(typeof(InputFacade)) == null, "gone as it leaves");
+	}
+
 	/// The binding rides the override rather than being set on its own, so a source and the
 	/// scene it represents can never disagree.
 	[Test]

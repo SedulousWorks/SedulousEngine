@@ -11,7 +11,8 @@ namespace Sedulous.Engine.GUI.Tests;
 
 /// The scripts: the engine's runtime surface names `Gui` and the three components, a component
 /// reaches its tree as a node, and a run's `Gui.Root()` is its screen tier, through the
-/// subsystem's facades (ExposeToScript, ScriptFacadeFor), in AngelScript.
+/// subsystem's facades (ScriptFacadeFor, offered on the application's services and each run's),
+/// in AngelScript.
 class GuiScriptTests
 {
 	private static ScriptMethodInfo Method(ScriptTypeInfo t, StringView name)
@@ -56,7 +57,7 @@ class GuiScriptTests
 
 		let vm = scope AngelScriptRuntime();
 		vm.Bind(surface);
-		engine.Gui.ExposeToScript(vm);
+		vm.SetService(engine.Gui.ScriptFacadeFor(null)); // a bare runtime: the shared tier's `Gui`
 		let ok = vm.Compile("hud", "hud.as", """
 			bool unbuilt(const Entity &in hud) { return GuiCanvasComponent::of(hud).Root() is null; }
 			bool built(const Entity &in hud)
@@ -96,7 +97,7 @@ class GuiScriptTests
 		let engine = scope GuiTestEngine();
 		let vm = scope AngelScriptRuntime();
 		vm.Bind(surface);
-		engine.Gui.ExposeToScript(vm);
+		vm.SetService(engine.Gui.ScriptFacadeFor(null));
 		let ok = vm.Compile("roots", "roots.as", """
 			Node@ canvas(const Entity &in e) { return GuiCanvasComponent::of(e).Root(); }
 			Node@ board(const Entity &in e) { return GuiBillboardComponent::of(e).Root(); }
@@ -140,7 +141,7 @@ class GuiScriptTests
 			EngineScriptSurface.Populate(surface);
 			let vm = scope AngelScriptRuntime();
 			vm.Bind(surface);
-			engine.Gui.ExposeToScript(vm, run);
+			vm.SetService(engine.Gui.ScriptFacadeFor(run));
 			let ok = vm.Compile("run", "run.as", """
 				bool mine() { Node@ root = Gui.Root(); return root !is null && root.Find("screens") !is null; }
 				""");
@@ -156,5 +157,22 @@ class GuiScriptTests
 		Test.Assert(engine.Gui.RunScriptFacadeCount == 0);
 		engine.Context.Shutdown();
 		Test.Assert(shared.Root() == null, "the shared tier is gone, so no root");
+	}
+
+	/// The subsystem offers its own `Gui`: the shared tier's on the application's services, and
+	/// each run's among that run's, made as the run is; taken back from the runs still alive as it
+	/// shuts down.
+	[Test]
+	public static void TheSharedGuiIsTheApplicationsServiceAndEachRunsItsOwnAmongTheRuns()
+	{
+		let engine = scope GuiTestEngine();
+		let later = scope GuiTestRun(); // after the engine, so it goes first (the registry is the engine's)
+		Test.Assert(engine.Context.FindService(typeof(GuiFacade)) === engine.Gui.ScriptFacadeFor(null), "the shared one");
+		engine.Runs.Add(later);
+		Test.Assert(later.FindService(typeof(GuiFacade)) === engine.Gui.ScriptFacadeFor(later), "made as the run is");
+		Test.Assert(later.FindService(typeof(GuiFacade)) !== engine.Gui.ScriptFacadeFor(null));
+		Test.Assert(engine.Gui.RunScriptFacadeCount == 1);
+		engine.Context.Shutdown();
+		Test.Assert(later.FindService(typeof(GuiFacade)) == null, "taken back as the subsystem goes");
 	}
 }

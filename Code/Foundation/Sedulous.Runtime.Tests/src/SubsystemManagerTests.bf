@@ -260,4 +260,28 @@ class SubsystemManagerTests
 		context.FixedTimeStep = 1.0f / 30.0f;
 		Test.Assert(context.FixedTimeStep == 1.0f / 30.0f);
 	}
+
+	private class ServiceA { }
+	private class ServiceB { }
+
+	/// The application's services: found by exact type, one per type (a second replaces), gone
+	/// when removed.
+	[Test]
+	public static void AServiceIsFoundByItsTypeOnePerTypeAndGoneWhenRemoved()
+	{
+		let context = scope SubsystemManager();
+		let a = scope ServiceA();
+		let other = scope ServiceA();
+		let b = scope ServiceB();
+		Test.Assert(context.FindService(typeof(ServiceA)) == null);
+		context.RegisterService(a);
+		context.RegisterService(b);
+		Test.Assert(context.GetService<ServiceA>() === a);
+		Test.Assert(context.FindService(typeof(ServiceB)) === b);
+		context.RegisterService(other);
+		Test.Assert(context.GetService<ServiceA>() === other, "a second replaces");
+		context.UnregisterService<ServiceA>();
+		Test.Assert(context.FindService(typeof(ServiceA)) == null);
+		Test.Assert(context.FindService(typeof(ServiceB)) === b, "another type stays");
+	}
 }

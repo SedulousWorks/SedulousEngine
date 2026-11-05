@@ -19,6 +19,7 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Script;
 using Sedulous.Script.Resource;
+using Sedulous.Engine.Input; // InputFacade
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Script.Facades;
 
@@ -103,8 +104,9 @@ class GameInstance : RunBase
 	public typealias ProfilerAvailability = delegate bool();
 
 	/// OWNED: this run's script host, the gameplay context the game script AND this
-	/// instance's scenes' behaviours share. The subsystem wires it like its own; the
-	/// instance installs itself on it as the `Run` service, and its actions as `Input`.
+	/// instance's scenes' behaviours share. The subsystem wires it like its own; its scripts find
+	/// this run's services (`Run`, `Input`, `Save`, `Net`, `Http`) through it, before the
+	/// application's.
 	private ScriptRunHost mRunHost = new .() ~ delete _;
 	/// OWNED: `Input` to this run's scripts, over this run's action runtime alone.
 	private InputFacade mInputFacade = null ~ delete _;
@@ -146,19 +148,21 @@ class GameInstance : RunBase
 		// them by it.
 		mSceneManager.SetSceneRun(this);
 		mInputFacade = new InputFacade(mInputRuntime);
-		mRunHost.SetService(this);
-		mRunHost.SetService(mInputFacade);
 		mSaveFacade = new SaveFacade(mSave);
-		mRunHost.SetService(mSaveFacade);
 		mNetFacade = new NetFacade(mNetwork);
-		mRunHost.SetService(mNetFacade);
+		// Every context of this run finds this run's services through the run (Run, its input, its
+		// save, its HTTP, its networking), a behaviour's as much as a game script's.
+		mRunHost.OwningRun = this;
 		// The run's HTTP client is made on its scripts' first request, and https and a wss join
 		// use the run's TLS backend, made when first needed.
 		mHttpFacade.SetFactory(new () => HttpClients.Create(TlsBackend));
-		mRunHost.SetService(mHttpFacade);
 		mNetwork.TlsBackendSource = new () => TlsBackend;
-		// What the run owns and others reach through it (RunServices.Get): borrowed, fields all.
+		// What the run owns and others reach through it (RunServices.Get, and its scripts by type):
+		// borrowed, fields all.
 		Register<GameInstance>(this);
+		Register<InputFacade>(mInputFacade);
+		Register<SaveFacade>(mSaveFacade);
+		Register<NetFacade>(mNetFacade);
 		Register<NetworkController>(mNetwork);
 		Register<INetworkController>(mNetwork); // how the engine's network subsystem reaches it (below this library)
 		Register<ActionRuntime>(mInputRuntime);

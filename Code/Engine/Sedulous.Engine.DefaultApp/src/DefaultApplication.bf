@@ -80,9 +80,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Names the extra instances' runs ("Game 2", ...).
 	private uint32 mRunsMade = 1;
 	/// The primary running game, which every application level operation targets.
-	/// Each instance's own Audio facade, its run's (installed on its run host). OWNED, and
-	/// declared before the instances so it is freed after them.
-	private Dictionary<GameInstance, AudioFacade> mRunAudio = new .() ~ DeleteDictionaryAndValues!(_);
 	private GameInstance mInstance = new .() ~ delete _;
 	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
 
@@ -108,11 +105,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
 	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
-	/// `Input` where no run installs its own: scene scripts outside a run (the editor's
-	/// Simulate) read every action released and at rest rather than faulting on a missing
-	/// service. A run's own InputFacade replaces it.
-	private InputFacade mIdleInput = new .(null) ~ delete _;
-	/// `Save` for the same scripts: every fallback read, nothing written. A run's own replaces it.
+	/// `Save` to scripts outside every run (the editor's Simulate): every fallback read, nothing
+	/// written, rather than a fault on a missing service. On the application's services, since no
+	/// subsystem sits beside RunSave's owner (GameInstance, a run); a run's own comes first.
 	private SaveFacade mIdleSave = new .(null) ~ delete _;
 	/// The resolution the game draws at, fitted into the window by mRenderFit; nought draws at
 	/// the window's size. With it, the pointer the game and its screen UI read is in render
@@ -122,8 +117,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	private FitMode mRenderFit = .Letterbox;
 	private FittedInputSource mFittedInput = null ~ delete _;
 	private ScreenOrientation mOrientation = .Any;
-	/// OWNED: `Audio` to a script, over the subsystem and the app's resources.
-	private AudioFacade mAudioFacade = null ~ delete _;
 
 	// ---- screenshots ----
 	private ScreenshotCapture mScreenshot = new .() ~ delete _;
@@ -352,16 +345,10 @@ class DefaultApplication : IApplication, ISceneObserver
 				for (let p in runtime.Problems)
 					GlobalLog(.Warning, scope $"Script: {p}");
 				ClearAndDeleteItems!(runtime.Problems);
-				// The engine services a script reaches by handle: what the surface's Service
-				// role types resolve to in this run.
-				// The service facades a script reaches by handle: the run's audio over the
-				// app's resources, the screen tier. Input is per instance, installed below.
-				runtime.SetService(mAudioFacade);
-				if (mGui != null)
-					mGui.ExposeToScript(runtime); // `Gui`: the shared screen tier
-				runtime.SetService(mIdleInput);
-				runtime.SetService(mIdleSave);
+				// The services a script reaches by handle are found by type as it calls: its run
+				// host's, its run's, then the application's, which each subsystem offers itself.
 			};
+		host.Subsystems.RegisterService(mIdleSave);
 		// The scene facades' drawer.
 		DebugFacade.Renderer = mRender;
 		// Physics contacts reach behaviours through the composition root's bridge: neither
@@ -376,10 +363,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		mAudio = new AudioSubsystem(mAudioEngineSettings);
 		host.Subsystems.RegisterSubsystem<AudioSubsystem>(mAudio);
-		// Resources is read per call, since the manager may be handed over after this.
-		mAudioFacade = new AudioFacade(mAudio, new () => Resources);
-		// The primary's scripting was wired before the subsystem existed.
-		InstallRunAudio(mInstance);
+		// What a script's audio ids resolve through: read per call, since the manager may be handed
+		// over after this.
+		mAudio.ScriptResources = new () => Resources;
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Subsystems.RegisterSubsystem<InputSubsystem>(mInput);
@@ -394,7 +380,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		host.Subsystems.RegisterSubsystem<GuiSubsystem>(mGui);
 		// Its prompts name the game's bindings: the primary instance's runtime, which the game runs on.
 		mGui.SetPromptRuntime(mInstance.InputRuntime);
-		InstallRunGui(mInstance);
 
 		// Each instance owns its OWN endpoint and goes online at runtime through the facade,
 		// so there is no application owned socket. The primary carries the prefab spawn
@@ -475,28 +460,6 @@ class DefaultApplication : IApplication, ISceneObserver
 #endif
 			});
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
-		InstallRunAudio(instance);
-		InstallRunGui(instance);
-	}
-
-	/// The instance's own Gui: its run's screen tier, as the GUI keeps them (each run its own with
-	/// run screens on; the shared one otherwise). The GUI owns it until the run ends.
-	private void InstallRunGui(GameInstance instance)
-	{
-		if (mGui != null)
-			instance.RunHost.SetService(mGui.ScriptFacadeFor(instance));
-	}
-
-	/// The instance's own Audio facade, carrying the instance as its run: what its scripts play
-	/// goes into its run, and its bus volumes are the run's. It overrides the shared facade the
-	/// subsystem installs, as the instance's Input does.
-	private void InstallRunAudio(GameInstance instance)
-	{
-		if ((mAudio == null) || mRunAudio.ContainsKey(instance))
-			return;
-		let facade = new AudioFacade(mAudio, new () => Resources, instance);
-		mRunAudio[instance] = facade;
-		instance.RunHost.SetService(facade);
 	}
 
 	/// What a scene gets the moment a script driven load lands: started and simulating.
@@ -532,15 +495,10 @@ class DefaultApplication : IApplication, ISceneObserver
 		if (mScenes != null)
 			mScenes.UnregisterManager(instance.Scenes);
 		mExtraInstances.RemoveAt(at);
-		// Its services after its run host is gone, found while the instance is still a key.
-		AudioFacade runAudio = null;
-		if (mRunAudio.GetAndRemove(instance) case .Ok(let entry))
-			runAudio = entry.value;
-		// Its sound and its screens end with it: its run's end reaches every subsystem.
+		// Its sound, its screens and its Audio end with it: its run's end reaches every subsystem.
 		let runId = instance.Id;
 		delete instance;
-		delete runAudio;
-		// Its Gui after every runtime it made, which borrow it.
+		// Its Gui after every runtime it made.
 		if (mGui != null)
 			mGui.EndRunScripts(runId);
 	}
@@ -923,6 +881,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// The subsystems have shut down (and stopped listening): nothing reaches the runs through
 		// the subsystem manager after this. The runs themselves go with the app.
 		host.Subsystems.SetRunManager(null);
+		host.Subsystems.UnregisterService<SaveFacade>();
 		// Off the GUI's overlay layer and the profiler let go, while both are alive.
 		if (mProfilerOverlay != null)
 			mProfilerOverlay.Hide();

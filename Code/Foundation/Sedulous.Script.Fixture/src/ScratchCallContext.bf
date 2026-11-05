@@ -20,7 +20,7 @@ class ScratchCallContext : ScriptCallContext
 	{
 		if (Services.TryGetValue(type, let service))
 			return service;
-		return null;
+		return ResolveService(type);
 	}
 
 	public override void SetService(Type type, Object service)

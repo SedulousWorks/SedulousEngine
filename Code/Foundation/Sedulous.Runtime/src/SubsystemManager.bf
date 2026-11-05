@@ -26,6 +26,8 @@ class SubsystemManager
 	private float mTimeScale = 1.0f;
 	/// BORROWED: the live runs (SetRunManager); null is none.
 	private IRunManager mRuns = null;
+	/// BORROWED: the application's services by exact type (RegisterService).
+	private Dictionary<Type, Object> mServices = new .() ~ delete _;
 
 	public bool IsRunning => mRunning;
 	public int SubsystemCount => mSorted.Count;
@@ -36,6 +38,26 @@ class SubsystemManager
 	/// editor's outer runtime), so no runs. Borrowed.
 	public void SetRunManager(IRunManager runs) => mRuns = runs;
 	public IRunManager RunManager => mRuns;
+
+	/// The application's services, by exact type: what its subsystems offer beyond themselves (the
+	/// facades a script reaches, through its run host's lookup). A subsystem registers its own when
+	/// it is registered and removes them when it leaves; a run's own services come first for that
+	/// run's scripts. BORROWED: the owner keeps each alive while registered. One per type; a second
+	/// replaces.
+	public void RegisterService<T>(T service) where T : class
+	{
+		mServices[typeof(T)] = service;
+	}
+
+	public void UnregisterService<T>() where T : class
+	{
+		mServices.Remove(typeof(T));
+	}
+
+	public T GetService<T>() where T : class => (T)FindService(typeof(T));
+
+	/// The application's service of exactly `type`, or null.
+	public Object FindService(Type type) => mServices.TryGetValue(type, let found) ? found : null;
 
 	public ~this()
 	{
@@ -157,6 +179,7 @@ class SubsystemManager
 		for (let subsystem in mSorted)
 			subsystem.OnUnregister();
 
+		mServices.Clear();
 		mSorted.Clear();
 		mByType.Clear();
 

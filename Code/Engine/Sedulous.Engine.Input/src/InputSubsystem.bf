@@ -21,6 +21,10 @@ class InputSubsystem : Subsystem
 	private void* mBoundSceneKey = null;
 	private UnboundInputScenePolicy mUnboundScenePolicy = .AllScenes;
 	private ActionRuntime mRuntime = new .() ~ delete _;
+	/// `Input` to scripts outside every run (the editor's Simulate), on the application's services:
+	/// every action released and at rest rather than a fault on a missing service. A run's own (a
+	/// GameInstance's, over its action runtime) comes first for its scripts. OWNED.
+	private InputFacade mScriptFacade = new .(null) ~ delete _;
 	/// What ForEachActionRuntime calls with each runtime.
 	public typealias ActionRuntimeVisitor = delegate void(ActionRuntime runtime);
 
@@ -32,6 +36,21 @@ class InputSubsystem : Subsystem
 	}
 
 	public ActionRuntime Runtime => mRuntime;
+	/// The idle `Input` offered on the application's services.
+	public InputFacade ScriptFacade => mScriptFacade;
+
+	public override void OnRegister(SubsystemManager manager)
+	{
+		base.OnRegister(manager);
+		manager.RegisterService(mScriptFacade);
+	}
+
+	public override void OnUnregister()
+	{
+		if (Manager != null)
+			Manager.UnregisterService<InputFacade>();
+		base.OnUnregister();
+	}
 
 	/// This subsystem's runtime, then each run's (the player's, the editor's Game tabs': the
 	/// ActionRuntime a run holds as a service, Raptor's run-context spec): the UI marks what it

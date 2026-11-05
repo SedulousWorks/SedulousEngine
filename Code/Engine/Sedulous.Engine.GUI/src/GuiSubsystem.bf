@@ -50,7 +50,8 @@ namespace Sedulous.Engine.GUI;
 /// GUI.Shell's bridge, the action layer told what the GUI took.
 ///
 /// The scripts: `Gui` to a run's scripts is a GuiFacade whose root is that run's screen tier
-/// (ExposeToScript, ScriptFacadeFor); the components reach their trees as nodes (`Root()`).
+/// (ScriptFacadeFor), offered among the run's services, the shared tier's on the application's;
+/// the components reach their trees as nodes (`Root()`).
 class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 {
 	/// Early in the frame, so a game's GUI sees the same frame; all work in BeginFrame.
@@ -93,7 +94,8 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private bool mTouchSeen = false;
 	/// The GUI input reaches is editing text, as of the last input pump.
 	private bool mTextWanted = false;
-	/// `Gui` to every run's scripts, its root the shared tier's (ExposeToScript). OWNED: each
+	/// `Gui` to scripts outside every run, its root the shared tier's, on the application's
+	/// services. OWNED: each
 	/// runtime it is set on borrows it, so it lives as long as the subsystem.
 	private GuiFacade mScriptFacade ~ delete _;
 	/// `Gui` to one run's scripts, its root that run's tier (ScriptFacadeFor), each OWNED, by the
@@ -408,7 +410,8 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			mRenderRun = 0;
 	}
 
-	// IRunListener: a run's tier goes with its session.
+	// IRunListener: a run's `Gui` as it is made; its tier goes with its session.
+	public void OnRunCreated(IRun run) => OfferRunFacade(run);
 	public void OnRunStopping(IRun run) => EndRunScreens(run.Id);
 	public void OnRunDestroyed(IRun run) => EndRunScreens(run.Id);
 
@@ -487,29 +490,56 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	// ==================== scripts ====================
 
-	/// `runtime`'s scripts given `Gui`, its root the shared screen tier's (`Gui.Root()`, its
-	/// stack `ScreenStack::Of(Gui.Root().Find("screens"))`): what a host does for every run's
-	/// runtime as it configures one. BORROWED by the runtime, which must not outlive the
-	/// subsystem.
-	public void ExposeToScript(ScriptRuntime runtime)
+	/// `Gui` to scripts outside every run is the shared tier's facade (`Gui.Root()`, its stack
+	/// `ScreenStack::Of(Gui.Root().Find("screens"))`), on the application's services; each run's
+	/// own is among the run's services, offered as the run is made, so its scripts find it first.
+	public override void OnRegister(SubsystemManager manager)
 	{
-		if (runtime != null)
-			runtime.SetService(mScriptFacade);
+		base.OnRegister(manager);
+		manager.RegisterService(mScriptFacade);
 	}
 
-	/// The same for one run: `Gui.Root()` is `run`'s screen tier (ScreenRootFor), its own with run
-	/// screens on, the shared one without.
-	public void ExposeToScript(ScriptRuntime runtime, IRun run)
+	public override void OnUnregister()
 	{
-		if (runtime != null)
-			runtime.SetService(ScriptFacadeFor(run));
+		if (Manager != null)
+			Manager.UnregisterService<GuiFacade>();
+		base.OnUnregister();
 	}
 
-	/// The `Gui` a run's scripts are given, made on first use, for a host that installs a run's
-	/// services on its run host (`instance.RunHost.SetService(gui.ScriptFacadeFor(instance))`),
-	/// which applies them to each runtime the run makes. Its root is asked at each call, so a run
-	/// whose screens ended (its stop) and plays again gets its tier back. The shared one with no
-	/// run. The subsystem's until EndRunScripts or its own end; BORROWED by the runtime.
+	// `run`'s own `Gui` among its services: `Gui.Root()` is its screen tier (ScreenRootFor), its
+	// own with run screens on, the shared one without.
+	private void OfferRunFacade(IRun run)
+	{
+		if (let held = run as RunBase)
+			held.Register<GuiFacade>(ScriptFacadeFor(run));
+	}
+
+	// The runs still alive let go of their `Gui` as this subsystem shuts down.
+	private void WithdrawRunFacades()
+	{
+		if (mRunManager == null)
+			return;
+		mRunManager.ForEachRun(scope (run) =>
+			{
+				let held = run as RunBase;
+				if (held == null)
+					return;
+				let offered = held.FindService(typeof(GuiFacade));
+				for (let entry in mRunFacades)
+				{
+					if (entry.facade === offered)
+					{
+						held.Remove<GuiFacade>();
+						break;
+					}
+				}
+			});
+	}
+
+	/// The `Gui` a run's scripts are given, made on first use (as the run is made, among its
+	/// services). Its root is asked at each call, so a run whose screens ended (its stop) and plays
+	/// again gets its tier back. The shared one with no run. The subsystem's until EndRunScripts or
+	/// its own end; BORROWED by the run.
 	public GuiFacade ScriptFacadeFor(IRun run)
 	{
 		if (run == null)
@@ -594,7 +624,11 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		// The runs' lifecycle: a run's tier goes with its session.
 		mRunManager = Manager.RunManager;
 		if (mRunManager != null)
+		{
 			mRunManager.Subscribe(this);
+			// The runs made before this was ready get their `Gui` too.
+			mRunManager.ForEachRun(scope (run) => { OfferRunFacade(run); });
+		}
 		// Headless contexts (tests, the cooker) have no render subsystem: nothing registers.
 		mRender = Manager.GetSubsystem<RenderSubsystem>();
 		if (mRender != null)
@@ -606,6 +640,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	protected override void OnShutdown()
 	{
+		WithdrawRunFacades();
 		if (mRunManager != null)
 		{
 			mRunManager.Unsubscribe(this);

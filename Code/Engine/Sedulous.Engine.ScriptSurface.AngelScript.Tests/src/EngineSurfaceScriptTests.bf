@@ -726,7 +726,7 @@ static class EngineSurfaceScriptTests
 		context.Startup();
 		defer { delete context; delete audio; }
 		let engine = audio.Engine;
-		let facade = scope Sedulous.Engine.Script.Facades.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null);
+		let facade = scope Sedulous.Engine.Audio.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null);
 		vm.SetService(facade);
 
 		var r = ScriptValue.Nil;
@@ -781,7 +781,7 @@ static class EngineSurfaceScriptTests
 		let engine = audio.Engine;
 
 		let run = scope TestRun(); // a GameInstance is the real one
-		let facade = scope Sedulous.Engine.Script.Facades.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null, run);
+		let facade = scope Sedulous.Engine.Audio.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null, run);
 		vm.SetService(facade);
 
 		let samples = scope List<int16>();

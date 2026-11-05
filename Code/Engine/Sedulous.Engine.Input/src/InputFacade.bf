@@ -3,10 +3,11 @@ using Sedulous.Core;
 using Sedulous.Input;
 using Sedulous.Script;
 
-namespace Sedulous.Engine.Script.Facades;
+namespace Sedulous.Engine.Input;
 
-/// `Input`: the run's actions, by name. Each run has its own action runtime, so the
-/// application installs one of these per run, and instance A's script never sees B's keys.
+/// `Input`: the run's actions, by name. Each run has its own action runtime and its own one of
+/// these among its services (a GameInstance's), so instance A's script never sees B's keys; the
+/// subsystem offers an idle one, over no runtime, to scripts outside every run.
 [Scriptable, ServiceFacade("Input")]
 class InputFacade
 {

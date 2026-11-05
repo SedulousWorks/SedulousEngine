@@ -82,9 +82,9 @@ static class EngineScriptSurfaceTests
 					found = true;
 			Test.Assert(found, name);
 		}
-		let audio = s.Find("Sedulous.Engine.Script.Facades.AudioFacade");
+		let audio = s.Find("Sedulous.Engine.Audio.AudioFacade");
 		Test.Assert((audio != null) && (audio.Role == .Service) && (audio.DisplayName == "Audio"));
-		let input = s.Find("Sedulous.Engine.Script.Facades.InputFacade");
+		let input = s.Find("Sedulous.Engine.Input.InputFacade");
 		Test.Assert((input != null) && (input.Role == .Service) && (input.DisplayName == "Input"));
 		Test.Assert(s.Find("Sedulous.Engine.GameInstance.GameInstance").Role == .Service, "Run");
 		let save = s.Find("Sedulous.Engine.GameInstance.SaveFacade");

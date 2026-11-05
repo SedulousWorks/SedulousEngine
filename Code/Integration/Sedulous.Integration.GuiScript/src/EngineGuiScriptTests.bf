@@ -124,7 +124,7 @@ static class EngineGuiScriptTests
 		GamekitScriptSurface.Populate(surface);
 		let vm = scope AngelScriptRuntime();
 		vm.Bind(surface);
-		bed.Gui.ExposeToScript(vm);
+		vm.SetService(bed.Gui.ScriptFacadeFor(null)); // a bare runtime: the shared tier's `Gui`
 		// The script's source with the document's guid where it says {MENU}.
 		let source = scope String(cScript);
 		source.Replace("{MENU}", bed.Braced(.. scope String()));

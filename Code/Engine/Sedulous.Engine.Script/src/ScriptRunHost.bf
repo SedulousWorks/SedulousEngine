@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
+using Sedulous.Run;
+using Sedulous.Runtime;
 using Sedulous.Script;
 using Sedulous.Script.Resource;
 
@@ -27,9 +29,15 @@ class ScriptRunHost
 	private ScriptRuntime mRuntime = null ~ delete _;
 	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner.
 	private ScriptRandom mRandom = new .() ~ delete _;
-	/// BORROWED: the services the owner installed on this run, by exact type, applied to
-	/// the runtime when it exists and to the next one after a teardown.
+	/// BORROWED: the services the owner installed on this host, by exact type, which its scripts
+	/// find first (FindService).
 	private List<(Type type, Object service)> mServices = new .() ~ delete _;
+	/// BORROWED: the run this host belongs to (a GameInstance), whose services its scripts find
+	/// after the host's own; null outside every run (the editor's scenes).
+	public IRun OwningRun = null;
+	/// BORROWED: the application's subsystems, whose services its scripts find last; set by the
+	/// ScriptSubsystem that wires the host, and cleared as it shuts down. Null: none.
+	public SubsystemManager Subsystems = null;
 	private String mLanguage = new .() ~ delete _;
 	/// BORROWED: the resource manager owns the products.
 	/// The classes compiled into the current module, as COPIES of their names and sources: a
@@ -72,8 +80,8 @@ class ScriptRunHost
 			TeardownCheck(this);
 	}
 
-	/// Installs a service on this run, `Input` say: reached by a script as the handle of
-	/// its type, on the runtime now and on any later one. BORROWED.
+	/// Installs a service on this host, reached by a script as the handle of its type before its
+	/// run's and the application's, by the runtime now and any later one. BORROWED.
 	public void SetService<T>(T service) where T : class
 	{
 		for (int i = 0; i < mServices.Count; i++)
@@ -81,14 +89,29 @@ class ScriptRunHost
 			if (mServices[i].type == typeof(T))
 			{
 				mServices[i] = (typeof(T), service);
-				if (mRuntime?.Context != null)
-					mRuntime.Context.SetService(typeof(T), service);
 				return;
 			}
 		}
 		mServices.Add((typeof(T), service));
-		if (mRuntime?.Context != null)
-			mRuntime.Context.SetService(typeof(T), service);
+	}
+
+	/// The service of exactly `type` this host's scripts reach: the host's own (SetService), then
+	/// its run's (OwningRun), then the application's (Subsystems); null when none has one. Asked as
+	/// each call is made, so a run's service that goes with the run is not found after it.
+	public Object FindService(Type type)
+	{
+		for (let entry in mServices)
+		{
+			if (entry.type == type)
+				return entry.service;
+		}
+		if (OwningRun != null)
+		{
+			let found = OwningRun.FindService(type);
+			if (found != null)
+				return found;
+		}
+		return (Subsystems != null) ? Subsystems.FindService(type) : null;
 	}
 	public bool IsActive => mRuntime != null;
 	public StringView ModuleName => mModuleName;
@@ -120,10 +143,10 @@ class ScriptRunHost
 		mLanguage.Set(language);
 		if (Configure != null)
 			Configure(runtime);
-		// The run's own services: its random numbers, and what the owner installed.
+		// The run's random numbers on the runtime itself; everything else a script reaches is looked
+		// up as it is asked for: the host's own, then its run's, then the application's.
 		runtime.SetService(mRandom);
-		for (let entry in mServices)
-			runtime.Context?.SetService(entry.type, entry.service);
+		runtime.Context?.SetServiceResolver(new [=this] (type) => FindService(type));
 		EnsureDebugger(); // a debugger requested before the runtime existed attaches now
 		return runtime;
 	}

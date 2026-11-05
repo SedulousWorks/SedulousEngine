@@ -3,7 +3,6 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Audio;
 using Sedulous.Engine.Audio;
-using Sedulous.Engine.Script.Facades;
 using Sedulous.Resource;
 using Sedulous.Run;
 using Sedulous.Runtime;
@@ -11,8 +10,8 @@ using Sedulous.Runtime;
 namespace Sedulous.Engine.DefaultApp.Tests;
 
 /// A run's Audio facade: its bus volumes and mutes are the run's own and its music stop is
-/// its run's, while a facade outside every run works the engine's buses. The application
-/// installs one per GameInstance on its run host.
+/// its run's, while a facade outside every run works the engine's buses. The audio subsystem
+/// offers one per run among the run's services.
 class AudioFacadeRunTests
 {
 	/// A run of its own (a GameInstance is the real one).

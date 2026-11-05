@@ -60,6 +60,36 @@ class RunAudioTests
 		return audio;
 	}
 
+	/// The subsystem offers its own `Audio`: one on the application's services, and each run's among
+	/// that run's, carrying the run (the runs made before it was ready too); a run's goes with the
+	/// run, and the rest are taken back as the subsystem shuts down.
+	[Test]
+	public static void TheSharedAudioIsTheApplicationsServiceAndEachRunsItsOwnGoneWithTheRun()
+	{
+		let runs = scope RunRegistry();
+		let first = scope TestRun();
+		let second = scope TestRun();
+		runs.Add(first); // before the subsystem is ready
+		let context = new SubsystemManager();
+		let audio = MakeAudio(context, runs);
+		defer { delete context; delete audio; }
+		Test.Assert(context.FindService(typeof(AudioFacade)) === audio.ScriptFacade, "the shared one");
+		let firsts = first.FindService(typeof(AudioFacade));
+		Test.Assert((firsts != null) && (firsts !== audio.ScriptFacade), "caught up as it got ready");
+		runs.Add(second);
+		let seconds = second.FindService(typeof(AudioFacade));
+		Test.Assert((seconds != null) && (seconds !== firsts), "each run its own");
+		Test.Assert(audio.RunScriptFacadeCount == 2);
+
+		second.Dispose(); // the run's end reaches the subsystem
+		Test.Assert(audio.RunScriptFacadeCount == 1, "gone with its run");
+		Test.Assert(second.FindService(typeof(AudioFacade)) == null);
+
+		context.Shutdown();
+		Test.Assert(first.FindService(typeof(AudioFacade)) == null, "taken back as the subsystem goes");
+		Test.Assert(audio.RunScriptFacadeCount == 0);
+	}
+
 	[Test]
 	public static void ARunsStopFadesOutItsScenesAndItsMusicNotAnotherRuns()
 	{
