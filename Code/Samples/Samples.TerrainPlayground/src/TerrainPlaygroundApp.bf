@@ -5,6 +5,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Terrain;
 using Imgui;
+using Sedulous.Runtime;
 using Sedulous.Geometry;
 using Sedulous.Graphics;
 using Sedulous.Heightfield;
@@ -55,7 +56,10 @@ class TerrainPlaygroundApp : DefaultApplication
 	private Material mCasterMaterial = null ~ delete _;
 
 	/// OWNED here, because the context drives a registered subsystem but never frees it.
-	private ImguiSubsystem mOverlay = null ~ delete _;
+	/// The process's plugins (Dear ImGui): enabled in Configure, unloaded when the app shuts down.
+	private PluginHost mPlugins = null ~ delete _;
+	/// The subsystem Imgui's part added, null without a graphics device. BORROWED.
+	private ImguiSubsystem mOverlay = null;
 
 	private FlyCamera mFly = .();
 	private float mFrameSmooth = 0.016f;
@@ -79,14 +83,15 @@ class TerrainPlaygroundApp : DefaultApplication
 	{
 		base.Configure(host);
 
-		let graphics = host.Graphics;
-		if ((graphics != null) && (graphics.Raw != null))
+		// Dear ImGui is a plugin: this process's host enables it, and it adds its own subsystem
+		// from what the app offers (its graphics device and data mount).
+		mPlugins = CreatePluginHost(.Player);
+		if (mPlugins != null)
 		{
-			// REGISTERED rather than created by the context: the overlay needs the device and
-			// the frame count, which a default construction has no way to supply.
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			mPlugins.AddRegistered().IgnoreError();
+			mPlugins.Load(scope StringView[]("imgui"), scope .());
 		}
+		mOverlay = host.Subsystems.GetSubsystem<ImguiSubsystem>();
 	}
 
 	public override void OnStartup(IApplicationHost host)

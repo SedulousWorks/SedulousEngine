@@ -6,6 +6,7 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.GUI;
 using Imgui;
+using Sedulous.Runtime;
 using Sedulous.Graphics;
 using Sedulous.Physics;
 using Sedulous.Physics.Resource;
@@ -56,7 +57,10 @@ class PhysicsPlaygroundApp : DefaultApplication
 
 	/// OWNED, because it takes the device and the frame count a default construction cannot
 	/// supply.
-	private ImguiSubsystem mOverlay = null ~ delete _;
+	/// The process's plugins (Dear ImGui): enabled in Configure, unloaded when the app shuts down.
+	private PluginHost mPlugins = null ~ delete _;
+	/// The subsystem Imgui's part added, null without a graphics device. BORROWED.
+	private ImguiSubsystem mOverlay = null;
 
 	private FlyCamera mFly = .();
 	private float mSweepAngle = 0.0f;
@@ -67,12 +71,15 @@ class PhysicsPlaygroundApp : DefaultApplication
 		// two instances ticking the same scene.
 		base.Configure(host);
 
-		let graphics = host.Graphics;
-		if ((graphics != null) && (graphics.Raw != null))
+		// Dear ImGui is a plugin: this process's host enables it, and it adds its own subsystem
+		// from what the app offers (its graphics device and data mount).
+		mPlugins = CreatePluginHost(.Player);
+		if (mPlugins != null)
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			mPlugins.AddRegistered().IgnoreError();
+			mPlugins.Load(scope StringView[]("imgui"), scope .());
 		}
+		mOverlay = host.Subsystems.GetSubsystem<ImguiSubsystem>();
 	}
 
 	public override void OnLaunch(IApplicationHost host)

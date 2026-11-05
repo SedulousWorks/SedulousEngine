@@ -7,6 +7,7 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Engine.Input;
 using Imgui;
+using Sedulous.Runtime;
 using Sedulous.Graphics;
 using Sedulous.Input;
 using Sedulous.Input.Resource;
@@ -26,9 +27,12 @@ namespace Samples.InputActions;
 /// about drawing: the colour is just somewhere to put the numbers.
 class InputActionsApp : IApplication
 {
-	/// OWNED, because both take constructor arguments a default construction cannot supply.
+	/// OWNED, because it takes constructor arguments a default construction cannot supply.
 	private InputSubsystem mInput = null ~ delete _;
-	private ImguiSubsystem mOverlayGui = null ~ delete _;
+	/// The process's plugins (Dear ImGui), and what this app offers them: a bare IApplication
+	/// makes its own host, as a DefaultApplication's CreatePluginHost would.
+	private PluginHost mPlugins = null ~ delete _;
+	private ClientServices mClientServices = new .() ~ delete _;
 
 	/// The pristine defaults, kept UNTOUCHED so a reset has something to go back to.
 	private InputMap mAsset = null ~ delete _;
@@ -58,12 +62,20 @@ class InputActionsApp : IApplication
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Subsystems.RegisterSubsystem<InputSubsystem>(mInput);
 
-		let graphics = host.Graphics;
-		if ((graphics != null) && (graphics.Raw != null))
-		{
-			mOverlayGui = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, mDataMount);
-			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlayGui);
-		}
+		// Dear ImGui is a plugin: it adds its own subsystem from the host and the data mount.
+		mClientServices.Host = host;
+		mClientServices.Data = mDataMount;
+		mPlugins = new PluginHost(host.Subsystems, .Player, Sedulous.Engine.Project.EngineVersion.String);
+		mPlugins.Provide(mClientServices);
+		mPlugins.AddRegistered().IgnoreError();
+		mPlugins.Load(scope StringView[]("imgui"), scope .());
+	}
+
+	/// The plugins come out before the subsystems they added to go.
+	public void OnShutdown(IApplicationHost host)
+	{
+		if (mPlugins != null)
+			mPlugins.Unload();
 	}
 
 	public void OnStartup(IApplicationHost host)

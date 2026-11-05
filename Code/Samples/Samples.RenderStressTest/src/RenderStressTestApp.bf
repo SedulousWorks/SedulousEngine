@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Render;
 using Imgui;
+using Sedulous.Runtime;
 using Sedulous.Geometry;
 using Sedulous.Graphics;
 using Sedulous.Materials;
@@ -45,7 +46,10 @@ class RenderStressTestApp : DefaultApplication
 	private List<Float4x4> mInstanceTransforms = new .() ~ delete _;
 	private EntityHandle mMultiMeshEntity = .Invalid;
 
-	private ImguiSubsystem mOverlay = null ~ delete _;
+	/// The process's plugins (Dear ImGui): enabled in Configure, unloaded when the app shuts down.
+	private PluginHost mPlugins = null ~ delete _;
+	/// The subsystem Imgui's part added, null without a graphics device. BORROWED.
+	private ImguiSubsystem mOverlay = null;
 
 	private int32 mBatchCount = 0;
 	private int32 mGridSize = 0;
@@ -74,12 +78,15 @@ class RenderStressTestApp : DefaultApplication
 	{
 		base.Configure(host);
 
-		let graphics = host.Graphics;
-		if ((graphics != null) && (graphics.Raw != null))
+		// Dear ImGui is a plugin: this process's host enables it, and it adds its own subsystem
+		// from what the app offers (its graphics device and data mount).
+		mPlugins = CreatePluginHost(.Player);
+		if (mPlugins != null)
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
-			host.Subsystems.RegisterSubsystem<ImguiSubsystem>(mOverlay);
+			mPlugins.AddRegistered().IgnoreError();
+			mPlugins.Load(scope StringView[]("imgui"), scope .());
 		}
+		mOverlay = host.Subsystems.GetSubsystem<ImguiSubsystem>();
 	}
 
 	public override void OnStartup(IApplicationHost host)
