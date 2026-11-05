@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
+using Sedulous.Runtime;
 
 namespace Sedulous.Engine.Project;
 
@@ -103,6 +104,22 @@ class ProjectSettings
 	/// the engine's own loading screen. [Appended].
 	[Appended, Setting("Loading screen", "GuiDocumentAsset", "(built-in)", "Startup")]
 	public Guid GuiLoadingDocumentId;
+	/// The plugins the project enables, in order, each with its platforms and settings. An entry
+	/// whose plugin is missing is kept as read and written back unchanged. [Appended], so a
+	/// manifest saved before it reads none.
+	[Appended]
+	public List<EnabledPlugin> Plugins = new .() ~ DeleteContainerAndItems!(_);
+
+	/// The project's entry for plugin `id`, or null when it enables no such plugin. BORROWED.
+	public EnabledPlugin FindPlugin(StringView id)
+	{
+		for (let entry in Plugins)
+		{
+			if (entry.Id == id)
+				return entry;
+		}
+		return null;
+	}
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);
