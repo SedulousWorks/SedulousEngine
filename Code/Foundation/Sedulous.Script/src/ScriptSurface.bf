@@ -19,8 +19,8 @@ class ScriptSurface
 
 	/// A hash of what a player's scripts compile against: every runtime-domain type, its name,
 	/// kind, fields, methods and enum values, whatever order they were added in (a sum of each
-	/// type's hash). Another domain's types stay out, so every host that cooks gets the same answer
-	/// for the same build.
+	/// type's hash), the enabled plugins' among them. Another domain's types stay out, so every host
+	/// that cooks gets the same answer for the same build and plugins.
 	public uint64 RuntimeHash()
 	{
 		uint64 sum = 0;

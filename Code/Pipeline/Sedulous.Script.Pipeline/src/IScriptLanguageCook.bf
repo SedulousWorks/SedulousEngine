@@ -13,7 +13,8 @@ interface IScriptLanguageCook
 	int32 CookVersion => 1;
 
 	/// A hash of the surface the cook compiles against (ScriptSurface.RuntimeHash), folded into
-	/// the products' recipes so a changed surface recooks them; nought: none.
+	/// the products' recipes so a changed surface (a plugin enabled, removed or updated) recooks
+	/// them; nought: none.
 	uint64 SurfaceHash => 0;
 
 	/// The source a new asset of this language and tier starts with. A behaviour's class is
