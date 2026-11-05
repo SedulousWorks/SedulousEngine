@@ -396,6 +396,39 @@ class PluginHostTests
 		ClearLog();
 	}
 
+	/// The host says which loaded plugin registered a type (what a script's facade belongs to), lists
+	/// a plugin's types, and knows none once it unloads; the engine's types belong to no plugin.
+	[Test]
+	public static void ATypesOwnerIsThePluginWhoseLoadRegisteredIt()
+	{
+		ClearLog();
+		GlobalSerializableRegistry.Unregister(HostProbeSettings.TypeId);
+		let subsystems = scope SubsystemManager();
+		let linked = scope Linked();
+		AddStandardPlugins(linked);
+		let host = scope PluginHost(subsystems, .Player, "0.1.0");
+		linked.AddTo(host);
+		let report = scope PluginLoadReport();
+		host.Load(scope StringView[]("alpha", "registrar"), report);
+		Test.Assert(report.Loaded.Count == 2);
+		Test.Assert(host.OwnerOf(HostProbeSettings.TypeId) == "registrar");
+		Test.Assert(host.OwnerOf(PluginManifest.TypeId).IsEmpty, "the engine's");
+		let types = scope List<uint64>();
+		host.TypesOf("registrar", types);
+		Test.Assert((types.Count == 1) && (types[0] == HostProbeSettings.TypeId));
+		types.Clear();
+		host.TypesOf("alpha", types);
+		Test.Assert(types.IsEmpty, "alpha registered nothing");
+		Test.Assert(host.Loaded.Length == 2);
+		Test.Assert(host.IsLoaded("registrar") && host.IsLoaded("alpha"));
+		host.Unload();
+		Test.Assert(host.OwnerOf(HostProbeSettings.TypeId).IsEmpty);
+		host.TypesOf("registrar", types);
+		Test.Assert(types.IsEmpty);
+		Test.Assert(host.Loaded.IsEmpty);
+		ClearLog();
+	}
+
 	[Test]
 	public static void APluginListedTwiceLoadsOnceAndAManifestThatDoesNotReadIsInternal()
 	{

@@ -49,6 +49,28 @@ class PluginLoader
 
 	public int Count => mEntries.Count;
 
+	/// The plugin whose parts' loads registered serializable type `id`, or empty for a type no
+	/// loaded part registered (the engine's).
+	public StringView OwnerOf(uint64 id)
+	{
+		for (let entry in mEntries)
+		{
+			if ((entry.Context != null) && entry.RegisteredIds.Contains(id))
+				return entry.Context.PluginId;
+		}
+		return default;
+	}
+
+	/// Appends to `outIds` every serializable type the parts of plugin `pluginId` registered.
+	public void TypesOf(StringView pluginId, List<uint64> outIds)
+	{
+		for (let entry in mEntries)
+		{
+			if ((entry.Context != null) && (entry.Context.PluginId == pluginId))
+				outIds.AddRange(entry.RegisteredIds);
+		}
+	}
+
 	/// Adds a recorder. BORROWED; it must outlive the loader.
 	///
 	/// Add before loading anything: a plugin already loaded was not recorded through this

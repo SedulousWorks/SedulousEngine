@@ -239,6 +239,17 @@ class PluginHost
 
 	public bool IsLoaded(StringView id) => Contains(mLoaded, id);
 
+	/// The plugins loaded, in load order. BORROWED.
+	public Span<String> Loaded => (Span<String>)mLoaded;
+
+	/// The loaded plugin whose load registered serializable type `id`, or empty for a type none
+	/// did (the engine's). What a script's facade belongs to.
+	public StringView OwnerOf(uint64 id) => mLoader.OwnerOf(id);
+
+	/// Appends to `outIds` the serializable types a loaded plugin registered (none for one not
+	/// loaded).
+	public void TypesOf(StringView id, List<uint64> outIds) => mLoader.TypesOf(id, outIds);
+
 	/// The manifest of a plugin compiled in, or null. BORROWED.
 	public PluginManifest Manifest(StringView id)
 	{
