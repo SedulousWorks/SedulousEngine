@@ -22,7 +22,7 @@ namespace Sedulous.Tools.Export;
 ///   Sedulous.Tools.Export --template list
 ///   Sedulous.Tools.Export --template import <templateDir>
 ///   Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
-///                                           [--id <id>] [--name <name>] [--notes <text>]
+///                                           [--id <id>] [--name <name>] [--notes <text>] [--plugins-root <dir>]
 ///                                           [--icon <desktop|windows|linux|handheld|web|phone | file.svg>]
 ///
 /// The host template is the player built beside this tool, build/<Config>_<Platform>/
@@ -182,7 +182,7 @@ class Program
 			  Sedulous.Tools.Export --template list
 			  Sedulous.Tools.Export --template import <templateDir>
 			  Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
-			                                           [--id <id>] [--name <name>] [--notes <text>]
+			                                           [--id <id>] [--name <name>] [--notes <text>] [--plugins-root <dir>]
 			                                           [--icon <desktop|windows|linux|handheld|web|phone | file.svg>]
 			""");
 		return 1;
@@ -248,6 +248,8 @@ class Program
 				identity.Name = args[++i];
 			else if ((args[i] == "--notes") && (i + 1 < args.Count))
 				identity.Notes = args[++i];
+			else if ((args[i] == "--plugins-root") && (i + 1 < args.Count))
+				identity.PluginsRoot = args[++i];
 			else if ((args[i] == "--icon") && (i + 1 < args.Count))
 			{
 				identity.Icon = args[++i];
@@ -261,6 +263,18 @@ class Program
 			{
 				Console.Error.WriteLine("unknown option: {}", args[i]);
 				return Usage();
+			}
+		}
+		// The linked plugins' packages, for their files: --plugins-root, else the checkout this
+		// tool's data root is in (a container's build carries the host checkout's plugins).
+		let pluginsRoot = scope String();
+		if (identity.PluginsRoot.IsEmpty)
+		{
+			let checkout = scope String();
+			if (ProjectBuild.FindCheckout(FindDataRoot(.. scope .()), checkout))
+			{
+				PathJoin(checkout, "Code/Plugins", pluginsRoot);
+				identity.PluginsRoot = pluginsRoot;
 			}
 		}
 		let destRoot = install ? TemplatesRoot(.. scope :: .()) : StringView(outFolder);

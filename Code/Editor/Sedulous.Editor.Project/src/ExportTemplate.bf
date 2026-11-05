@@ -36,12 +36,39 @@ class ExportTemplate
 	/// platform's built-in icon. [Appended], so an older manifest reads as none.
 	[Appended]
 	public String Icon = new .() ~ delete _;
+	/// The plugins the player links (its --plugins), each carrying its Plugin.xml and its deploy
+	/// files for the platform under plugins/<id>/. None in a manifest from before it, and for a
+	/// web template, whose player links none. [Appended].
+	[Appended]
+	public List<TemplatePlugin> Plugins = new .() ~ DeleteContainerAndItems!(_);
 
 	/// The absolute directory the bundle lives in; the host's build directory for the
 	/// synthesized one. Set by the registry.
 	[NotSerialized] public String Directory = new .() ~ delete _;
 	/// The synthesized host template, against one imported from disk.
 	[NotSerialized] public bool IsHost = false;
+	/// The host template's plugin packages (its checkout's Code/Plugins), since its bundle is a
+	/// build directory with no plugins/ folder; empty for an imported one. Set by the synthesis.
+	[NotSerialized] public String PackagesRoot = new .() ~ delete _;
 
 	public StringView EffectiveConfig => Config.IsEmpty ? "Release" : StringView(Config);
+
+	/// The plugin of `id` the player links, or null.
+	public TemplatePlugin FindPlugin(StringView id)
+	{
+		for (let plugin in Plugins)
+		{
+			if (plugin.Id == id)
+				return plugin;
+		}
+		return null;
+	}
+}
+
+/// A plugin a template's player links: its id and the version its manifest names.
+[Serializable]
+class TemplatePlugin
+{
+	public String Id = new .() ~ delete _;
+	public String Version = new .() ~ delete _;
 }

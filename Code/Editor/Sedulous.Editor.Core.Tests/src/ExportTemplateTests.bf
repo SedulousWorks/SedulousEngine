@@ -7,6 +7,7 @@ using Sedulous.VFS;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Runtime;
 
 namespace Sedulous.Editor.Core.Tests;
 
@@ -202,6 +203,75 @@ static class ExportTemplateTests
 		ExportTemplates.SynthesizeHost(dir, noticed);
 		Test.Assert((noticed.Sidecars.Count == 3) && (noticed.Sidecars[2] == BuildLayout.cThirdPartyNotices), scope $"{noticed.Sidecars.Count} sidecars");
 	}
+
+	/// A player's --plugins lines are the plugins it links; anything else it prints (an older
+	/// player's version) is none.
+	[Test]
+	public static void APlayersPluginLinesAreItsPluginsAndNothingElseIs()
+	{
+		let plugins = scope List<TemplatePlugin>();
+		defer { ClearAndDeleteItems!(plugins); }
+		ExportTemplates.ParsePlugins("imgui|0.1.0\nnativesample|0.2.0\r\nPlayer 0.1.0-beta (local build)\n\n", plugins);
+		Test.Assert((plugins.Count == 2) && (plugins[0].Id == "imgui") && (plugins[0].Version == "0.1.0"));
+		Test.Assert((plugins[1].Id == "nativesample") && (plugins[1].Version == "0.2.0"), "a CR is not part of it");
+	}
+
+#if BF_PLATFORM_LINUX
+	/// A created template records the plugins its player links (asked with --plugins) and carries
+	/// each one's Plugin.xml and deploy files for its platform under plugins/<id>/; a player from
+	/// before the flag answers its version, and the template lists none.
+	[Test]
+	public static void ACreatedTemplateRecordsItsPlayersPluginsAndCarriesTheirFiles()
+	{
+		let basePath = Scratch("scratch_plugintmpl", .. scope .());
+		let outFolder = Scratch("scratch_plugintmpl_bundle", .. scope .());
+		defer { RemoveDirectoryRecursive(basePath); RemoveDirectoryRecursive(outFolder); }
+		let buildDir = PathJoin(PathJoin(basePath, scope $"Release_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
+		CreateDirectory(buildDir);
+		let player = PathJoin(buildDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .());
+		SaveText(buildDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()),
+			"#!/bin/sh\nif [ \"$1\" = \"--plugins\" ]; then echo 'imgui|0.1.0'; else echo 'Player 0.1.0'; fi\n");
+		let result = scope ProcessResult();
+		Sedulous.Core.Process.Run("/bin/chmod", scope StringView[]("+x", player), result);
+		Test.Assert(result.ExitCode == 0);
+
+		// The package: its manifest deploys a library on this platform.
+		let packages = PathJoin(basePath, "Plugins", .. scope .());
+		let manifest = scope PluginManifest();
+		manifest.Id.Set("imgui");
+		manifest.Version.Set("0.1.0");
+		manifest.EngineVersion.Set("0.1");
+		let platform = new PluginPlatform();
+		platform.Platform.Set(BuildLayout.HostPlatformName);
+		platform.Deploy.Add(new .("libimgui_extra.so"));
+		manifest.Platforms.Add(platform);
+		SaveText(PathJoin(packages, "Imgui", .. scope .()), "Plugin.xml", manifest.Write(.. scope .()));
+		SaveText(PathJoin(packages, "Imgui", .. scope .()), "libimgui_extra.so", "so\n");
+
+		var identity = TemplateIdentity();
+		identity.PluginsRoot = packages;
+		let createdDir = scope String();
+		Test.Assert(ExportTemplates.Create(buildDir, outFolder, .ExportFolder, null, createdDir, identity) case .Ok);
+		let made = scope ExportTemplate();
+		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(createdDir), made) case .Ok);
+		Test.Assert((made.Plugins.Count == 1) && (made.Plugins[0].Id == "imgui") && (made.Plugins[0].Version == "0.1.0"));
+		Test.Assert(made.FindPlugin("imgui") != null);
+		Test.Assert(FileExists(PathJoin(createdDir, "plugins/imgui/Plugin.xml", .. scope .())));
+		Test.Assert(FileExists(PathJoin(createdDir, "plugins/imgui/libimgui_extra.so", .. scope .())), "its deploy file");
+
+		// The host template beside a build lists them too.
+		let host = scope ExportTemplate();
+		ExportTemplates.SynthesizeHost(buildDir, host);
+		Test.Assert((host.Plugins.Count == 1) && (host.Plugins[0].Id == "imgui"));
+
+		// A player from before --plugins answers its version: no plugins, and nothing started.
+		SaveText(buildDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), "#!/bin/sh\necho 'Player 0.0.9'\n");
+		let older = scope List<TemplatePlugin>();
+		defer { ClearAndDeleteItems!(older); }
+		ExportTemplates.ReadPlayerPlugins(player, older);
+		Test.Assert(older.IsEmpty);
+	}
+#endif
 
 	[Test]
 	public static void TheRegistryResolvesByIdByPlatformAndFallsBackToTheHost()

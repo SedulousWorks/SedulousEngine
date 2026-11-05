@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
+using System.Threading;
+using Sedulous.Runtime;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
 
@@ -18,6 +21,9 @@ struct TemplateIdentity
 	/// A built-in icon's name (TemplateIcons.BuiltInNames: `handheld` for the Steam Deck build)
 	/// or the path of an .svg to carry; empty gives the platform's built-in icon.
 	public StringView Icon;
+	/// Where the packages of the plugins the player links are (an engine checkout's Code/Plugins),
+	/// for their files; empty: the checkout the player's build directory is in.
+	public StringView PluginsRoot;
 }
 
 /// The template operations: the manifest file, the host synthesis, creating a bundle from a
@@ -71,6 +77,10 @@ static class ExportTemplates
 		// included.
 		if (FileExists(PathJoin(playerDir, BuildLayout.cThirdPartyNotices, .. scope .())))
 			outTemplate.Sidecars.Add(new String(BuildLayout.cThirdPartyNotices));
+		// The plugins it links, as its --plugins lists them, and where their packages are.
+		ClearAndDeleteItems(outTemplate.Plugins);
+		PackagesRootOf(playerDir, outTemplate.PackagesRoot);
+		HostPlugins(PathJoin(playerDir, outTemplate.PlayerBinary, .. scope .()), outTemplate.Plugins);
 	}
 
 	public static void DefaultRoot(String outPath) => PathJoin(GetUserDataDirectory(.. scope .()), "templates", outPath);
@@ -121,6 +131,7 @@ static class ExportTemplates
 				template.Config.Set("Profile");
 			ClearAndDeleteItems(template.Sidecars);
 			BuildLayout.CollectWebParts(playerDir, webPage, template.Sidecars);
+			ClearAndDeleteItems(template.Plugins); // the web player links none
 		}
 		let parsedConfig = scope String();
 		let parsedPlatform = scope String();
@@ -174,6 +185,8 @@ static class ExportTemplates
 		for (let sidecar in template.Sidecars)
 			if (!CopyFile(playerDir, sidecar, bundleDir, sidecar))
 				return .Err(.Internal);
+		if (CarryPluginFiles(template, identity.PluginsRoot.IsEmpty ? StringView(template.PackagesRoot) : identity.PluginsRoot, bundleDir) case .Err(let carried))
+			return .Err(carried);
 		// Read and written whole: a copy over a longer icon must not keep its tail.
 		let iconBytes = scope List<uint8>();
 		if (customIcon)
@@ -194,6 +207,148 @@ static class ExportTemplates
 			outId.Set(template.Id);
 		if (outDir != null)
 			outDir.Set(bundleDir);
+		return .Ok;
+	}
+
+	// ---- the plugins a template's player links ----
+
+	/// Where a bundle carries its plugins' files: plugins/<id>/, each its Plugin.xml and its deploy
+	/// files for the template's platform.
+	public const String cPluginsDir = "plugins";
+
+	/// The plugins in a player's --plugins output, one `id|version` line each, appended. A line
+	/// without the bar is not one (an older player, asked as ReadPlayerPlugins asks, prints its
+	/// version instead).
+	public static void ParsePlugins(StringView lines, List<TemplatePlugin> outPlugins)
+	{
+		for (var line in lines.Split('\n'))
+		{
+			line.Trim();
+			let bar = line.IndexOf('|');
+			if (bar <= 0)
+				continue;
+			let plugin = new TemplatePlugin();
+			plugin.Id.Set(line.Substring(0, bar));
+			plugin.Version.Set(line.Substring(bar + 1));
+			outPlugins.Add(plugin);
+		}
+	}
+
+	/// The plugins the player at `playerPath` links, appended: it is run for its --plugins, with
+	/// --version after it, so a player from before the flag prints its version and lists nothing
+	/// rather than starting a game. None for a player that does not run here.
+	public static void ReadPlayerPlugins(StringView playerPath, List<TemplatePlugin> outPlugins)
+	{
+		let result = scope ProcessResult();
+		Process.Run(playerPath, scope StringView[]("--plugins", "--version"), result);
+		if (result.ExitCode == 0)
+			ParsePlugins(result.Output, outPlugins);
+	}
+
+	/// The host template's plugins, by the player's modification time: refreshing the registry
+	/// runs the player only when it was rebuilt.
+	private static Monitor sHostPluginsLock = new .() ~ delete _;
+	private static String sHostPluginsPlayer = new .() ~ delete _;
+	private static int64 sHostPluginsTicks = 0;
+	private static List<TemplatePlugin> sHostPlugins = new .() ~ DeleteContainerAndItems!(_);
+
+	private static void HostPlugins(StringView playerPath, List<TemplatePlugin> outPlugins)
+	{
+		if (!FileStat(playerPath, let size, let ticks))
+			return;
+		using (sHostPluginsLock.Enter())
+		{
+			if ((sHostPluginsPlayer != playerPath) || (sHostPluginsTicks != ticks))
+			{
+				ClearAndDeleteItems!(sHostPlugins);
+				ReadPlayerPlugins(playerPath, sHostPlugins);
+				sHostPluginsPlayer.Set(playerPath);
+				sHostPluginsTicks = ticks;
+			}
+			for (let plugin in sHostPlugins)
+			{
+				let copy = new TemplatePlugin();
+				copy.Id.Set(plugin.Id);
+				copy.Version.Set(plugin.Version);
+				outPlugins.Add(copy);
+			}
+		}
+	}
+
+	/// The engine checkout's plugin packages a player in its build directory was built from:
+	/// <checkout>/Code/Plugins, three folders above build/<Config>_<Platform>/<Player>. Empty when
+	/// there is none.
+	public static void PackagesRootOf(StringView playerDir, String outRoot)
+	{
+		outRoot.Clear();
+		let trimmed = scope String(playerDir);
+		while (trimmed.EndsWith("/") || trimmed.EndsWith("\\"))
+			trimmed.RemoveFromEnd(1);
+		let code = PathParent(PathParent(PathParent(trimmed, .. scope .()), .. scope .()), .. scope .());
+		let root = PathJoin(code, "Plugins", .. scope .());
+		if (!code.IsEmpty && DirectoryExists(root))
+			outRoot.Set(root);
+	}
+
+	/// The package folder under `packagesRoot` whose Plugin.xml is plugin `id`'s.
+	public static bool FindPackage(StringView packagesRoot, StringView id, String outDir)
+	{
+		if (packagesRoot.IsEmpty)
+			return false;
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		ListDirectory(packagesRoot, scope [&](name, isDirectory) =>
+			{
+				if (isDirectory)
+					names.Add(new .(name));
+			});
+		for (let name in names)
+		{
+			let dir = PathJoin(packagesRoot, name, .. scope .());
+			let manifest = scope PluginManifest();
+			if ((PluginManifest.Load(dir, manifest) case .Ok) && (manifest.Id == id))
+			{
+				outDir.Set(dir);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// Copies each of `template`'s plugins' Plugin.xml and its deploy files for the template's
+	/// platform from its package under `packagesRoot` into `bundleDir`/plugins/<id>/, so an export
+	/// has them with no engine checkout. A plugin with no package there is warned about and carries
+	/// nothing; a deploy file its manifest names that is not there fails.
+	private static Result<void, ErrorCode> CarryPluginFiles(ExportTemplate template, StringView packagesRoot, StringView bundleDir)
+	{
+		for (let plugin in template.Plugins)
+		{
+			let package = scope String();
+			if (!FindPackage(packagesRoot, plugin.Id, package))
+			{
+				GlobalLog(.Warning, "Template: the player links plugin '{}', whose package is not under '{}': its files are not carried", plugin.Id, packagesRoot);
+				continue;
+			}
+			let into = PathJoin(PathJoin(bundleDir, cPluginsDir, .. scope .()), plugin.Id, .. scope .());
+			CreateDirectory(PathJoin(bundleDir, cPluginsDir, .. scope .()));
+			CreateDirectory(into);
+			if (!CopyFile(package, PluginManifest.cFileName, into, PluginManifest.cFileName))
+				return .Err(.Internal);
+			let manifest = scope PluginManifest();
+			if (PluginManifest.Load(package, manifest) case .Err)
+				return .Err(.Internal);
+			if (let platform = manifest.FindPlatform(template.Platform))
+			{
+				for (let file in platform.Deploy)
+				{
+					if (!CopyFile(package, file, into, file))
+					{
+						GlobalLog(.Error, "Template: plugin '{}' deploys '{}' on {}, which its package lacks", plugin.Id, file, template.Platform);
+						return .Err(.NotFound);
+					}
+				}
+			}
+		}
 		return .Ok;
 	}
 
