@@ -1309,15 +1309,21 @@ class EditorApplication : IApplication
 		EditorAppActions.RegisterHelpActions(actions, help);
 	}
 
-	/// The version, in a message box over the editor. Nothing with no interface.
+	/// This build's identity, in a message box over the editor, with a button that copies it.
+	/// Nothing with no interface.
 	private void ShowAbout()
 	{
 		let root = mWindow.Root;
 		if (root == null)
 			return;
-		let about = new Sedulous.GUI.MessageBox();
+		let identity = Sedulous.Engine.Project.EngineVersion.BuildIdentity(.. scope .());
+		let about = AboutBox.Make(identity, new (line) =>
+			{
+				let r = mWindow.Root;
+				let dispatcher = (r != null) ? r.EventDispatcher : null;
+				mContext.CopyText((dispatcher != null) ? dispatcher.Clipboard : null, line, "the version");
+			});
 		defer about.ReleaseRef(); // the popup and the tree hold it while it is open
-		about.Configure("About SedulousEngine", scope $"Version {EditorMcpService.BuildStamp(.. scope .())}", .Ok);
 		about.OpenModal(root);
 	}
 

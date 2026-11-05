@@ -29,6 +29,8 @@ static class EngineVersion
 	/// The build number of a build handed out, set here by hand before building it; 0 is a local
 	/// build.
 	public const uint32 BuildNumber = 0;
+	/// The engine's name, as the About box says it.
+	public const String ProductName = "SedulousEngine";
 
 	/// The GitHub repository (owner/name) whose releases carry what this engine downloads for its
 	/// own version, such as the sample games. Kept here beside the version for the same reason.
