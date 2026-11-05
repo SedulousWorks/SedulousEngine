@@ -17,15 +17,14 @@ class HostOwnedType
 	public int32 Value;
 }
 
-/// A statically linked plugin that registers a subsystem and a serializable type, the way
-/// a real one would.
-class TestPlugin : IRuntimePlugin
+/// A part that registers a subsystem and a serializable type, the way a real one would.
+class TestPart : PluginPart
 {
 	private String mName = new .() ~ delete _;
 	private Recording mSubsystem ~ delete _;
 	public bool RegistersASerializable;
-	/// Off for tests that only care about ordering. Two plugins registering the SAME
-	/// subsystem type is a genuine conflict, and not the thing under test here.
+	/// Off for tests that only care about ordering. Two parts registering the SAME subsystem
+	/// type is a genuine conflict, and not the thing under test here.
 	public bool RegistersASubsystem = true;
 
 	public this(StringView name)
@@ -33,37 +32,37 @@ class TestPlugin : IRuntimePlugin
 		mName.Set(name);
 	}
 
-	public StringView Name => mName;
+	public override StringView PluginId => mName;
+	public override PluginPartKind Kind => .Engine;
 
-	public void OnLoad(SubsystemManager context)
+	public override void Load(PluginContext context)
 	{
 		Trace.Add(scope $"{mName}.load");
 		if (RegistersASubsystem)
 		{
 			mSubsystem = new Recording(mName, 0);
-			context.RegisterSubsystem(mSubsystem);
+			context.Subsystems.RegisterSubsystem(mSubsystem);
 		}
 
 		if (RegistersASerializable)
 			GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 	}
 
-	public void OnUnload(SubsystemManager context)
+	public override void Unload(PluginContext context)
 	{
 		Trace.Add(scope $"{mName}.unload");
-		// The plugin owns its subsystem, so it takes it back out itself. Doing this here
-		// rather than later is the point: a dynamically loaded plugin's code is still
-		// mapped during OnUnload and gone afterwards.
+		// The part owns its subsystem, so it takes it back out itself: the recording reverses
+		// registrations, not what a part made.
 		if (mSubsystem != null)
 		{
-			context.RemoveSubsystem<Recording>();
+			context.Subsystems.RemoveSubsystem<Recording>();
 			delete mSubsystem;
 			mSubsystem = null;
 		}
 	}
 }
 
-/// The plugin loader, and specifically getting a plugin back OUT.
+/// The plugin loader, and specifically getting a part back OUT.
 class PluginLoaderTests
 {
 	[Test]
@@ -72,10 +71,10 @@ class PluginLoaderTests
 		let context = scope SubsystemManager();
 		Trace.Clear();
 
-		let plugin = scope TestPlugin("alpha");
-		let host = scope PluginLoader(context);
+		let plugin = scope TestPart("alpha");
+		let host = scope PluginLoader();
 
-		host.Add(plugin);
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 		Test.Assert(host.Count == 1);
 		Test.Assert(Trace.Has("alpha.load"));
 		Test.Assert(context.HasSubsystem<Recording>(), "the plugin registered its subsystem");
@@ -93,14 +92,14 @@ class PluginLoaderTests
 		let context = scope SubsystemManager();
 		Trace.Clear();
 
-		let first = scope TestPlugin("first");
-		let second = scope TestPlugin("second");
+		let first = scope TestPart("first");
+		let second = scope TestPart("second");
 		first.RegistersASubsystem = false;
 		second.RegistersASubsystem = false;
-		let host = scope PluginLoader(context);
+		let host = scope PluginLoader();
 
-		host.Add(first);
-		host.Add(second);
+		host.AddPart(first, scope:: PluginContext(.Player, context, first.PluginId));
+		host.AddPart(second, scope:: PluginContext(.Player, context, second.PluginId));
 		Test.Assert(Trace.Before("first.load", "second.load"));
 
 		host.UnloadAll();
@@ -109,9 +108,8 @@ class PluginLoaderTests
 
 	/// The reason the host records anything at all.
 	///
-	/// A factory is a function pointer into the plugin's library. Left in the registry
-	/// after the library closes, the next load of that type jumps into unmapped memory.
-	/// The host takes the registration back without the plugin having to declare it.
+	/// A plugin that is no longer enabled must leave no type of its constructible: the
+	/// loader takes the registration back without the part having to declare it.
 	[Test]
 	public static void APluginsRegistrationsAreTakenBackOnUnload()
 	{
@@ -125,11 +123,11 @@ class PluginLoaderTests
 		GlobalSerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
 		Test.Assert(GlobalSerializableRegistry.Count == 1);
 
-		let plugin = scope TestPlugin("registrar");
+		let plugin = scope TestPart("registrar");
 		plugin.RegistersASerializable = true;
 
-		let host = scope PluginLoader(context);
-		host.Add(plugin);
+		let host = scope PluginLoader();
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 
 		Test.Assert(GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId), "the plugin added its type");
 		Test.Assert(GlobalSerializableRegistry.Count == 2);
@@ -156,9 +154,9 @@ class PluginLoaderTests
 		GlobalSerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
 		GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 
-		let plugin = scope TestPlugin("quiet");
-		let host = scope PluginLoader(context);
-		host.Add(plugin);
+		let plugin = scope TestPart("quiet");
+		let host = scope PluginLoader();
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 		host.UnloadAll();
 
 		Test.Assert(GlobalSerializableRegistry.Count == 2, "both registrations are untouched");
@@ -177,25 +175,14 @@ class PluginLoaderTests
 		defer GlobalSerializableRegistry.Clear();
 		GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 
-		let plugin = scope TestPlugin("overrider");
+		let plugin = scope TestPart("overrider");
 		plugin.RegistersASerializable = true; // registers the SAME id the host already had
 
-		let host = scope PluginLoader(context);
-		host.Add(plugin);
+		let host = scope PluginLoader();
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 		host.UnloadAll();
 
 		Test.Assert(GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId),
 			"it was already registered before the plugin, so it stays");
-	}
-
-	/// A library that is not there fails with a reason rather than taking the host down.
-	[Test]
-	public static void LoadingAMissingLibraryFailsCleanly()
-	{
-		let context = scope SubsystemManager();
-		let host = scope PluginLoader(context);
-
-		Test.Assert(host.Load("./no_such_plugin_library.so") case .Err);
-		Test.Assert(host.Count == 0, "nothing was recorded for a load that did not happen");
 	}
 }

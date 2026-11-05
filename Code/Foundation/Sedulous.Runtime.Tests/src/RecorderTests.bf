@@ -21,14 +21,14 @@ class RecorderTests
 		// Something the layer owned BEFORE any plugin, which must survive.
 		recorder.Contribute(1000);
 
-		let host = scope PluginLoader(context);
+		let host = scope PluginLoader();
 		host.AddRecorder(recorder);
 
-		let plugin = scope ContributingPlugin(recorder, 2000);
-		host.Add(plugin);
+		let plugin = scope ContributingPart(recorder, 2000);
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 
 		Test.Assert(recorder.ArmCount == 1 && recorder.DisarmCount == 1,
-			"armed for exactly the duration of OnLoad");
+			"armed for exactly the duration of its load");
 		Test.Assert(recorder.Contributions.Contains(2000), "the plugin contributed");
 		Test.Assert(recorder.Contributions.Contains(1000));
 
@@ -46,9 +46,9 @@ class RecorderTests
 		let recorder = scope FakeContributionRecorder();
 		recorder.Contribute(3000);
 
-		let host = scope PluginLoader(context);
+		let host = scope PluginLoader();
 		host.AddRecorder(recorder);
-		host.Add(scope ContributingPlugin(recorder, 3000));
+		host.AddPart(scope:: ContributingPart(recorder, 3000), scope:: PluginContext(.Player, context, "contributor"));
 
 		host.UnloadAll();
 		Test.Assert(recorder.Contributions.Contains(3000),
@@ -63,10 +63,10 @@ class RecorderTests
 		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
-		let host = scope PluginLoader(context);
+		let host = scope PluginLoader();
 		host.AddRecorder(recorder);
-		host.Add(scope ContributingPlugin(recorder, 4000));
-		host.Add(scope ContributingPlugin(recorder, 5000));
+		host.AddPart(scope:: ContributingPart(recorder, 4000), scope:: PluginContext(.Player, context, "contributor"));
+		host.AddPart(scope:: ContributingPart(recorder, 5000), scope:: PluginContext(.Player, context, "contributor"));
 
 		Test.Assert(recorder.ArmCount == 2 && recorder.DisarmCount == 2);
 		Test.Assert(recorder.Contributions.Count == 2);
@@ -83,9 +83,9 @@ class RecorderTests
 		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
-		let host = scope PluginLoader(context);
-		let plugin = scope ContributingPlugin(recorder, 6000);
-		host.Add(plugin);
+		let host = scope PluginLoader();
+		let plugin = scope ContributingPart(recorder, 6000);
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 		host.AddRecorder(recorder); // Too late.
 
 		Test.Assert(recorder.ArmCount == 0);
@@ -96,8 +96,8 @@ class RecorderTests
 
 	/// The observer records only what the PLUGIN inserted.
 	///
-	/// A snapshot either side of OnLoad cannot tell who added an id: anything else that
-	/// registered while OnLoad ran would be attributed to the plugin and torn out with it.
+	/// A snapshot either side of a load cannot tell who added an id: anything else that
+	/// registered while it ran would be attributed to the plugin and torn out with it.
 	[Test]
 	public static void RegistrationsMadeByOthersAreNotAttributedToThePlugin()
 	{
@@ -105,15 +105,15 @@ class RecorderTests
 		GlobalSerializableRegistry.Clear();
 		defer GlobalSerializableRegistry.Clear();
 
-		let host = scope PluginLoader(context);
+		let host = scope PluginLoader();
 
-		// A plugin whose OnLoad causes a THIRD party to register as a side effect, which is
+		// A part whose load causes a THIRD party to register as a side effect, which is
 		// what a snapshot cannot distinguish from the plugin registering it itself.
-		let plugin = scope TestPlugin("registrar");
+		let plugin = scope TestPart("registrar");
 		plugin.RegistersASerializable = true;
-		host.Add(plugin);
+		host.AddPart(plugin, scope:: PluginContext(.Player, context, plugin.PluginId));
 
-		// Registered after OnLoad returned, by someone else.
+		// Registered after its load returned, by someone else.
 		GlobalSerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
 
 		host.UnloadAll();

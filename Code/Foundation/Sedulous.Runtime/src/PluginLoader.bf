@@ -6,41 +6,35 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Runtime;
 
-/// Loads plugins into a subsystem manager and, more importantly, gets them back out. The
-/// PluginHost, which decides what a project enables, loads plugin parts through it.
+/// Loads plugin parts and, more importantly, gets them back out. The PluginHost, which
+/// decides what a project enables, loads parts through it; every part is compiled in.
 ///
-/// Unloading is the hard half. A plugin registers a serializable factory, which is a
-/// FUNCTION POINTER into its library; if the library closes with that pointer still in the
-/// registry, the next load of that type jumps into unmapped memory. So the loader records
-/// what each plugin added and takes it back before closing anything.
+/// Unloading is the hard half. A part registers serializable factories and table entries; a
+/// plugin no longer enabled must leave none of them behind, or its types stay constructible
+/// and its contributions keep joining scenes. So the loader records what each part added and
+/// takes it back when the part unloads.
 ///
-/// It records that by OBSERVING the registry across OnLoad rather than by asking the
-/// plugin to declare it. A plugin that forgets to declare something is exactly the plugin
-/// that crashes on unload, so the loader does not rely on being told.
+/// It records that by OBSERVING the registry across the part's load rather than by asking
+/// the part to declare it. A part that forgets to declare something is exactly the part that
+/// leaves something behind, so the loader does not rely on being told.
 ///
 /// Observing rather than comparing snapshots either side, because a snapshot cannot tell
-/// WHO added an id. Anything else that registered while OnLoad ran would be attributed to
-/// the plugin and torn out with it, and an id the plugin re-registered over one that
-/// already existed would be reversed although another party still owns it. The observer
-/// fires only on a real insert, which is exactly the set that has to come back out.
+/// WHO added an id. Anything else that registered while the load ran would be attributed to
+/// the part and torn out with it, and an id the part re-registered over one that already
+/// existed would be reversed although another party still owns it. The observer fires only
+/// on a real insert, which is exactly the set that has to come back out.
 ///
 /// There is no runtime type registry to reverse: Beef resolves types at compile time and
 /// ids are hashed from names. What the extension point does cover is anything a plugin
 /// registers in a layer ABOVE Runtime (a scene manager's contributions being the case that
 /// exists today), which plugs in through AddRecorder, so one unload still reverses
-/// everything the plugin did.
+/// everything the part did.
 class PluginLoader
 {
-	private SubsystemManager mSubsystems;
 	private List<PluginEntry> mEntries = new .() ~ DeleteContainerAndItems!(_);
 	/// BORROWED: each recorder belongs to the layer that supplied it and must outlive the
 	/// loader.
 	private List<IRegistrationRecorder> mRecorders = new .() ~ delete _;
-
-	public this(SubsystemManager subsystems)
-	{
-		mSubsystems = subsystems;
-	}
 
 	public ~this()
 	{
@@ -73,7 +67,7 @@ class PluginLoader
 
 	/// Adds a recorder. BORROWED; it must outlive the loader.
 	///
-	/// Add before loading anything: a plugin already loaded was not recorded through this
+	/// Add before loading anything: a part already loaded was not recorded through this
 	/// recorder and unloading it will not reverse what it added there.
 	public void AddRecorder(IRegistrationRecorder recorder)
 	{
@@ -81,25 +75,8 @@ class PluginLoader
 			mRecorders.Add(recorder);
 	}
 
-	/// Adds a statically linked plugin. THE CALLER OWNS the plugin object; the loader only
-	/// drives it.
-	public void Add(IRuntimePlugin plugin)
-	{
-		if (plugin == null)
-			return;
-
-		let entry = new PluginEntry();
-		entry.Plugin = plugin;
-		entry.Library = null;
-		entry.Name.Set(plugin.Name);
-		mEntries.Add(entry);
-
-		LoadRecording(entry);
-	}
-
 	/// Loads a plugin part compiled into this binary: calls its Load with `context` under the
-	/// recording, as a plugin's OnLoad is. Both are BORROWED, and `context` must outlive the
-	/// part's unload.
+	/// recording. Both are BORROWED, and `context` must outlive the part's unload.
 	public void AddPart(PluginPart part, PluginContext context)
 	{
 		if ((part == null) || (context == null))
@@ -114,72 +91,22 @@ class PluginLoader
 		LoadRecording(entry);
 	}
 
-	/// Loads a plugin from a shared library and brings it up.
-	///
-	/// The library stays open until UnloadAll, because the plugin's code, its vtables and
-	/// anything it registered all live there.
-	public Result<void, ErrorCode> Load(StringView path)
-	{
-		let terminated = scope String(path);
-		let library = Platform.BfpDynLib_Load(terminated);
-		if (library == null)
-		{
-			GlobalLog(.Error, "PluginLoader: could not open '{}'", path);
-			return .Err(.NotFound);
-		}
-
-		let create = (function IRuntimePlugin())Platform.BfpDynLib_GetProcAddress(library, "CreatePlugin");
-		if (create == null)
-		{
-			GlobalLog(.Error, "PluginLoader: '{}' exports no CreatePlugin", path);
-			Platform.BfpDynLib_Release(library);
-			return .Err(.NotSupported);
-		}
-
-		let plugin = create();
-		if (plugin == null)
-		{
-			GlobalLog(.Error, "PluginLoader: CreatePlugin returned nothing in '{}'", path);
-			Platform.BfpDynLib_Release(library);
-			return .Err(.Internal);
-		}
-
-		let entry = new PluginEntry();
-		entry.Plugin = plugin;
-		entry.Library = library;
-		entry.Name.Set(plugin.Name);
-		mEntries.Add(entry);
-
-		LoadRecording(entry);
-		return .Ok;
-	}
-
-	/// Unloads everything in REVERSE load order, so a plugin built on another comes down
-	/// before the one it was built on.
-	public void UnloadAll(bool closeLibraries = true)
+	/// Unloads everything in REVERSE load order, so a part built on another comes down
+	/// before the one it was built on: each part's own teardown, then what it registered.
+	public void UnloadAll()
 	{
 		for (int i = mEntries.Count - 1; i >= 0; i--)
 		{
 			let entry = mEntries[i];
-
-			// While the library is still open: the plugin's own teardown, then the
-			// registrations that point into it.
-			if (entry.Plugin != null)
-				entry.Plugin.OnUnload(mSubsystems);
-			else
-				entry.Part.Unload(entry.Context);
+			entry.Part.Unload(entry.Context);
 			ReverseRecorded(entry);
-
-			if (closeLibraries && (entry.Library != null))
-				Platform.BfpDynLib_Release((Platform.BfpDynLib*)entry.Library);
-
 			delete entry;
 			mEntries.RemoveAt(i);
 		}
 	}
 
-	/// Runs OnLoad with every registry observed, so whatever the plugin added is known
-	/// without the plugin having to say.
+	/// Runs the part's load with every registry observed, so whatever it added is known
+	/// without the part having to say.
 	private void LoadRecording(PluginEntry entry)
 	{
 		GlobalSerializableRegistry.SetRegistrationObserver(new (id) => entry.RegisteredIds.Add(id));
@@ -191,19 +118,16 @@ class PluginLoader
 		for (int i < mRecorders.Count)
 			mRecorders[i].Arm(entry.Recorded[i]);
 
-		if (entry.Plugin != null)
-			entry.Plugin.OnLoad(mSubsystems);
-		else
-			entry.Part.Load(entry.Context);
+		entry.Part.Load(entry.Context);
 
 		// Disarmed in reverse, and unconditionally: a recorder left armed would attribute
-		// the NEXT plugin's registrations to this one.
+		// the NEXT part's registrations to this one.
 		for (int i = mRecorders.Count - 1; i >= 0; i--)
 			mRecorders[i].Disarm();
 		GlobalSerializableRegistry.SetRegistrationObserver(null);
 	}
 
-	/// Takes back everything this plugin registered, in the reverse of the order it was
+	/// Takes back everything this part registered, in the reverse of the order it was
 	/// recorded.
 	///
 	/// The extra recorders go FIRST: a scene manager has to let go of live scenes before

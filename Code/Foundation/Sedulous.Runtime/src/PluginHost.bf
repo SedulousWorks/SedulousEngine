@@ -111,7 +111,7 @@ class PluginHost
 		mRole = role;
 		mEngineVersion.Set(engineVersion);
 		mPlatform.Set(platform.IsEmpty ? HostPlatform : platform);
-		mLoader = new PluginLoader(subsystems);
+		mLoader = new PluginLoader();
 	}
 
 	public ~this()
