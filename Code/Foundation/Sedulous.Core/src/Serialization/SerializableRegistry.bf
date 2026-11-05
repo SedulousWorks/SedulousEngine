@@ -24,15 +24,18 @@ class SerializableRegistry
 	private Dictionary<uint64, function ISerializable()> mFactories = new .() ~ delete _;
 	private delegate void(uint64) mObserver ~ delete _;
 
-	/// Registers a constructor for a type id. Registering the same id twice replaces the
-	/// first, so a later module can deliberately take over a type.
+	/// Registers a constructor for a type id. A held id keeps the constructor it holds: the
+	/// same type registered again, from another library whose constructor is its own copy,
+	/// changes nothing. Replacing it would leave the id pointing into that library once it
+	/// unloads, since its unload reverses only what it added.
 	public void Register(uint64 typeId, function ISerializable() factory)
 	{
-		let isNew = !mFactories.ContainsKey(typeId);
+		if (mFactories.ContainsKey(typeId))
+			return;
 		mFactories[typeId] = factory;
 		// Only a REAL insert is reported, so a module re-registering what it already owns
 		// does not look to a recorder like a second acquisition it must later reverse.
-		if (isNew && (mObserver != null))
+		if (mObserver != null)
 			mObserver(typeId);
 	}
 

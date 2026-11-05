@@ -22,6 +22,26 @@ class SerializableRegistryTests
 		Test.Assert(GlobalSerializableRegistry.Count >= 2);
 	}
 
+	/// A held id keeps its constructor: registered again, even with another constructor (another
+	/// library's copy), it changes nothing, and the registration observer hears only the first.
+	[Test]
+	public static void AHeldTypeIdKeepsItsConstructor()
+	{
+		let registry = scope SerializableRegistry();
+		int heard = 0;
+		registry.SetRegistrationObserver(new [&heard] (id) => { heard++; });
+		registry.Register(SerializableSample.TypeId, () => new SerializableSample());
+		registry.Register(SerializableSample.TypeId, () => new SerializableSample());
+		registry.Register(SerializableSample.TypeId, () => new VersionedSample()); // another under the held id
+		Test.Assert(heard == 1, "only the real insert");
+		Test.Assert(registry.Count == 1);
+		let made = registry.Create(SerializableSample.TypeId);
+		Test.Assert(made != null);
+		defer delete made;
+		Test.Assert(made is SerializableSample, "the held constructor");
+		registry.SetRegistrationObserver(null);
+	}
+
 	[Test]
 	public static void CreatesByTypeId()
 	{
