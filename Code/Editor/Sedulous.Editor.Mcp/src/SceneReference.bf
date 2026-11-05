@@ -50,9 +50,8 @@ class SceneReference
 	{
 		let reference = new SceneReference();
 		let world = scope Scene("SceneReference");
+		// The engine's managers and what enabled plugins contributed.
 		EngineSceneComposition.AddAllSceneManagers(world);
-		// And what an enabled plugin contributed, as every instantiation appends it.
-		SceneModuleContributions.Global.InstallAll(world);
 		// Fixed: the example's guids reproduce run after run.
 		var rng = Sedulous.Core.Random(0x5CE7EF0247A7UL);
 		let example = scope Example();

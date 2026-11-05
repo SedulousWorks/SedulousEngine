@@ -65,8 +65,8 @@ static class NativeSampleTests
 	}
 
 	/// An editor's host loads every part, each contribution arriving through its service; a cook's
-	/// takes the Engine and Pipeline parts alone and offers no engine service, so only the builder
-	/// arrives. Everything leaves as the host unloads.
+	/// takes the Engine and Pipeline parts alone, and a host that offers no engine service (an Engine
+	/// part finds none and adds nothing) gets no scene manager. Everything leaves as the host unloads.
 	[Test]
 	public static void EachHostLoadsItsRolesPartsAndEveryContributionLeavesWithIt()
 	{
@@ -116,7 +116,7 @@ static class NativeSampleTests
 			host.Load((Span<EnabledPlugin>)entries, scope .());
 			Test.Assert(host.IsLoaded(cId));
 			Test.Assert(builders.Find(typeof(NoteAsset)) != null, "the cook's builder");
-			Test.Assert(!SpinContributed(), "a cook offers no engine service, so no scene manager");
+			Test.Assert(!SpinContributed(), "no engine service offered, so no scene manager");
 			Test.Assert(!server.HasTool(NativeSampleToolingPart.cTool) && (editor.Actions.Find(NativeSampleEditorPart.cAction) == null),
 				"a cook takes no Tooling or Editor part");
 			host.Unload();
@@ -166,6 +166,31 @@ static class NativeSampleTests
 		Test.Assert(!SpinContributed());
 	}
 
+	/// A tool's plugins (the cook's) take the Engine and Pipeline parts, offered the engine's service
+	/// as the player and the editor offer it: the builder and the scene manager arrive, and leave
+	/// with the tool's plugins.
+	[Test]
+	public static void ACooksPluginsBringTheBuilderAndTheSceneManagerAndTakeThemAway()
+	{
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_plugins_cook", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Cook Notes") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		Entries(project.Settings.Plugins);
+		let builders = scope BuilderRegistry();
+		{
+			let plugins = scope ToolPlugins(.Cook, project, PipelineRegistries(builders, null, null));
+			Test.Assert(plugins.Host.IsLoaded(cId));
+			Test.Assert(builders.Find(typeof(NoteAsset)) != null);
+			Test.Assert(SpinContributed(), "a tool offers the engine's service, so its scenes get the manager");
+		}
+		Test.Assert(builders.Find(typeof(NoteAsset)) == null);
+		Test.Assert(!SpinContributed());
+	}
+
 	/// Through the standalone MCP host: an agent opens a project that enables the package, creates
 	/// a note with its creator, cooks it with its builder and reads it with its tool; a project
 	/// that does not enable it has neither the tool nor the creator.
@@ -200,6 +225,8 @@ static class NativeSampleTests
 		let operations = scope InlineProjectOperations(session, builders, "", "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		AssetCreateTools.Register(server, session, creators, operations);
+		SceneTools.Register(server, session);
+		SceneReference.RegisterComponentSchemaTool(server, builders);
 		ProjectOpenTools.Register(server, session, owner);
 		pluginTools.AttachServer(server, session);
 
@@ -236,6 +263,35 @@ static class NativeSampleTests
 			Test.Assert(notesJson.Get("count").AsInt() == 1, notes);
 			Test.Assert(notesJson.Get("notes").At(0).Get("name").AsString() == "First", notes);
 			Test.Assert(notesJson.Get("notes").At(0).Get("text").AsString() == "A note from the game's own code", notes);
+		}
+
+		// The scene tools know the Engine part's component: the schema has it, and a scene holding one
+		// validates without a warning.
+		let schemaText = scope String();
+		Test.Assert(Call(server, "component_schema", Arguments("type", "nativesample.Spin"), schemaText), schemaText);
+		{
+			let schema = JsonValue.Parse(schemaText);
+			defer delete schema;
+			Test.Assert(schema.Get("wireName").AsString() == "nativesample.Spin", schemaText);
+			let version = schema.Get("dataVersions").At(0);
+			let entity = "6d1c1a52-3a51-4f0e-9a1b-2a6c7d8e9f01";
+			let xml = scope String();
+			xml.AppendF("<root><u32 name=\"magic\">3586350318</u32><u32 name=\"version\">3</u32><string name=\"name\">Spin</string>");
+			xml.AppendF("<array name=\"entities\" count=\"1\"><string name=\"id\">{}</string><string name=\"name\">Spinner</string><u8 name=\"active\">1</u8>", entity);
+			xml.Append("<string name=\"parent\">00000000-0000-0000-0000-000000000000</string>");
+			xml.Append("<object name=\"position\"><f32 name=\"x\">0</f32><f32 name=\"y\">0</f32><f32 name=\"z\">0</f32></object>");
+			xml.Append("<object name=\"rotation\"><f32 name=\"x\">0</f32><f32 name=\"y\">0</f32><f32 name=\"z\">0</f32><f32 name=\"w\">1</f32></object>");
+			xml.Append("<object name=\"scale\"><f32 name=\"x\">1</f32><f32 name=\"y\">1</f32><f32 name=\"z\">1</f32></object></array>");
+			xml.AppendF("<array name=\"components\" count=\"1\"><object><string name=\"owner\">{}</string><string name=\"type\">nativesample.Spin</string>", entity);
+			xml.AppendF("<object name=\"data\"><array name=\"dataVersions\" count=\"1\"><u64 name=\"type\">{}</u64><u32 name=\"version\">{}</u32></array>",
+				version.Get("type").AsString(), version.Get("version").AsInt());
+			xml.Append("<f32 name=\"turnsPerSecond\">0.5</f32><object name=\"axis\"><f32 name=\"x\">0</f32><f32 name=\"y\">1</f32><f32 name=\"z\">0</f32></object>");
+			xml.Append("</object></object></array><array name=\"systemSettings\" count=\"0\"/><u8 name=\"prefabMode\">4</u8><array name=\"prefabInstances\" count=\"0\"/></root>");
+			let validated = scope String();
+			Test.Assert(Call(server, "scene_validate", Arguments("xml", xml), validated), validated);
+			let result = JsonValue.Parse(validated);
+			defer delete result;
+			Test.Assert(result.Get("valid").AsBool() && (result.Get("warnings").Count == 0), validated);
 		}
 
 		// A project that does not enable it: the plugin's tool and creator leave with it.

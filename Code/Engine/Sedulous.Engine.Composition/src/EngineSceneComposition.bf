@@ -34,7 +34,8 @@ static class EngineSceneComposition
 	}
 
 	/// Adds EVERY manager to a scene, for a headless scratch scene that has to deserialize
-	/// an arbitrary stream.
+	/// an arbitrary stream: the domains' and then what enabled plugins contributed, so a
+	/// plugin's components are known to every tool that reads a scene.
 	public static void AddAllSceneManagers(Scene scene)
 	{
 		for (let domain in EngineComposition.Modules)
@@ -42,5 +43,6 @@ static class EngineSceneComposition
 			if (domain.HasScene)
 				domain.Scene.Install(scene);
 		}
+		SceneModuleContributions.Global.InstallAll(scene);
 	}
 }
