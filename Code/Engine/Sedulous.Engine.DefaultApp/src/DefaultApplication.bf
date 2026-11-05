@@ -89,6 +89,11 @@ class DefaultApplication : IApplication, ISceneObserver
 	private String mDataRoot = new .() ~ delete _;
 	/// OWNED: resolved once in Configure and handed to every consumer of engine data.
 	private NativeFileSystem mDataMount = null ~ delete _;
+	/// What CreatePluginHost hands the process's plugin host, which OnShutdown unloads.
+	private ClientServices mClientServices = new .() ~ delete _;
+	private EnginePluginServices mEnginePluginServices = null ~ delete _;
+	/// BORROWED: the caller owns it, alive until OnShutdown.
+	private PluginHost mPlugins = null;
 
 	/// OWNED only when this application made it. Embedded in a larger host it BORROWS one,
 	/// and then the host pumps it.
@@ -216,6 +221,27 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// The mount over that root, which is what every consumer of engine data is handed.
 	public IFileSystem DataFileSystem => mDataMount;
+
+	/// The process's plugin host, for `role`: over this app's subsystem manager, checking plugins
+	/// against this engine's version, and given what this app offers its plugins (the client
+	/// services, its host and data mount, and the engine's service for Engine parts). One per
+	/// process; THE CALLER OWNS it, adds the plugins compiled in and enables the project's. The
+	/// app unloads it in OnShutdown, so no plugin outlives the subsystems it added to: it stays
+	/// alive until then, and an app overriding OnShutdown calls this one. Null before Configure.
+	public PluginHost CreatePluginHost(HostRole role)
+	{
+		if (mHost == null)
+			return null; // not configured yet: there is no host or data mount to offer
+		let plugins = new PluginHost(mHost.Subsystems, role, Sedulous.Engine.Project.EngineVersion.String);
+		mClientServices.Host = mHost;
+		mClientServices.Data = mDataMount;
+		if (mEnginePluginServices == null)
+			mEnginePluginServices = new .();
+		plugins.Provide(mClientServices); // a new host has enabled nothing: both are accepted
+		mEnginePluginServices.Attach(plugins);
+		mPlugins = plugins;
+		return plugins;
+	}
 
 	/// A data-root-relative path as an absolute one, for the few things that take a path
 	/// rather than a mount: a cooked output database, a model a loader opens itself.
@@ -878,6 +904,13 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnShutdown(IApplicationHost host)
 	{
+		// The plugins first, after the subsystems have stopped and before anything they added to
+		// goes: the reverse of their load, which came between Configure and the start.
+		if (mPlugins != null)
+		{
+			mPlugins.Unload();
+			mPlugins = null;
+		}
 		// The subsystems have shut down (and stopped listening): nothing reaches the runs through
 		// the subsystem manager after this. The runs themselves go with the app.
 		host.Subsystems.SetRunManager(null);

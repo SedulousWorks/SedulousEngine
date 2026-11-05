@@ -14,6 +14,7 @@ corlib = "*"
 "Sedulous.Profiler.Capture" = "*"
 "Sedulous.Runtime" = "*"
 "Sedulous.Shell" = "*"
+"Sedulous.VFS" = "*"
 
 # The third-party notices (Dependencies/THIRD-PARTY-NOTICES.txt, Code/Tools/third-party-notices.py)
 # beside every executable over this project: the player, the editor, the tools. Their licences want
