@@ -3,10 +3,15 @@ using System.Collections;
 
 namespace Sedulous.Runtime;
 
-/// One loaded plugin, and what closing it will take with it.
+/// One loaded plugin or plugin part, and what closing it will take with it.
 class PluginEntry
 {
+	/// A game's native module, or null for a part.
 	public IRuntimePlugin Plugin;
+	/// A package's part, or null for a native module. BORROWED: compiled in.
+	public PluginPart Part;
+	/// The context the part's load and unload are handed. BORROWED: the plugin host's.
+	public PluginContext Context;
 	/// The library handle, or null for a statically linked plugin.
 	public void* Library;
 	/// Serializable ids this plugin added, so they can be taken back before its code goes.

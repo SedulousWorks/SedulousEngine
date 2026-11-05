@@ -6,7 +6,8 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Runtime;
 
-/// Loads plugins into a subsystem manager and, more importantly, gets them back out.
+/// Loads plugins into a subsystem manager and, more importantly, gets them back out. The
+/// PluginHost, which decides what a project enables, loads plugin parts through it.
 ///
 /// Unloading is the hard half. A plugin registers a serializable factory, which is a
 /// FUNCTION POINTER into its library; if the library closes with that pointer still in the
@@ -74,6 +75,23 @@ class PluginLoader
 		LoadRecording(entry);
 	}
 
+	/// Loads a plugin part compiled into this binary: calls its Load with `context` under the
+	/// recording, as a plugin's OnLoad is. Both are BORROWED, and `context` must outlive the
+	/// part's unload.
+	public void AddPart(PluginPart part, PluginContext context)
+	{
+		if ((part == null) || (context == null))
+			return;
+
+		let entry = new PluginEntry();
+		entry.Part = part;
+		entry.Context = context;
+		entry.Name.AppendF("{}.{}", part.PluginId, part.Kind);
+		mEntries.Add(entry);
+
+		LoadRecording(entry);
+	}
+
 	/// Loads a plugin from a shared library and brings it up.
 	///
 	/// The library stays open until UnloadAll, because the plugin's code, its vtables and
@@ -124,7 +142,10 @@ class PluginLoader
 
 			// While the library is still open: the plugin's own teardown, then the
 			// registrations that point into it.
-			entry.Plugin.OnUnload(mSubsystems);
+			if (entry.Plugin != null)
+				entry.Plugin.OnUnload(mSubsystems);
+			else
+				entry.Part.Unload(entry.Context);
 			ReverseRecorded(entry);
 
 			if (closeLibraries && (entry.Library != null))
@@ -148,7 +169,10 @@ class PluginLoader
 		for (int i < mRecorders.Count)
 			mRecorders[i].Arm(entry.Recorded[i]);
 
-		entry.Plugin.OnLoad(mSubsystems);
+		if (entry.Plugin != null)
+			entry.Plugin.OnLoad(mSubsystems);
+		else
+			entry.Part.Load(entry.Context);
 
 		// Disarmed in reverse, and unconditionally: a recorder left armed would attribute
 		// the NEXT plugin's registrations to this one.

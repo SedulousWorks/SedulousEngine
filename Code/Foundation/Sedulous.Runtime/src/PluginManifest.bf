@@ -80,6 +80,17 @@ struct PluginVersion
 		return PluginVersion(fields[0], fields[1], fields[2]);
 	}
 
+	/// Whether `version` is `minimum` or later (a dependency's version against what a plugin
+	/// asks).
+	public static bool AtLeast(PluginVersion version, PluginVersion minimum)
+	{
+		if (version.Major != minimum.Major)
+			return version.Major > minimum.Major;
+		if (version.Minor != minimum.Minor)
+			return version.Minor > minimum.Minor;
+		return version.Patch >= minimum.Patch;
+	}
+
 	/// Whether an engine at `engine` satisfies a plugin written for `required`: the same major,
 	/// and at least the required minor and patch. Before 1.0 a minor release may break plugins,
 	/// so there the minor must match too.
