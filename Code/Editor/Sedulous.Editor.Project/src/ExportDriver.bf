@@ -10,6 +10,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
+using Sedulous.Runtime;
 
 namespace Sedulous.Editor.Project;
 
@@ -474,7 +475,8 @@ static class ExportDriver
 	public static Result<void, ErrorCode> ExportOne(EditorProject project, ExportPreset preset, TemplateRegistry templates,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportResult outResult = null,
 		ExportProgress onProgress = null, bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null,
-		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null)
+		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null,
+		PluginHost plugins = null)
 	{
 		let template = templates.Resolve(preset);
 		if (template == null)
@@ -527,6 +529,14 @@ static class ExportDriver
 		}
 		result.PlayerReason.Set(choice.Reason);
 		GlobalLog(.Information, "Export: preset '{}': {} player ({})", preset.Name, choice.OwnPlayer ? "the project's own" : "the template's", choice.Reason);
+		// The project's scripts against what the platform has of its plugins (as `plugins` loaded
+		// them), before anything cooks: a script cooks once and ships to every platform.
+		ExportPlugins.CheckScriptsOn(project, plugins, preset.Platform, result.Refusal);
+		if (!result.Refusal.IsEmpty)
+		{
+			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
+			return .Err(.InvalidArgument);
+		}
 		let subdir = preset.OutputSubdir.IsEmpty ? ExportStaging.SanitizeName(preset.Name, .. scope :: .()) : StringView(preset.OutputSubdir);
 		PathJoin(outRoot, subdir, result.OutputDir);
 		CreateDirectory(result.OutputDir);
@@ -670,7 +680,7 @@ static class ExportDriver
 	public static Result<void, ErrorCode> ExportAll(EditorProject project, List<ExportPreset> presets, TemplateRegistry templates,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportProgress onProgress = null,
 		bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null, SceneReferenceScanner scanner = null,
-		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null)
+		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null, PluginHost plugins = null)
 	{
 		int ok = 0;
 		let n = presets.Count;
@@ -684,7 +694,7 @@ static class ExportDriver
 						onProgress(scope $"{preset.Name}: {step}", ((float)index + fraction) / (float)n);
 				};
 			let result = scope ExportResult();
-			if (ExportOne(project, preset, templates, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks) case .Ok)
+			if (ExportOne(project, preset, templates, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks, plugins) case .Ok)
 			{
 				ok++;
 				GlobalLog(.Information, "Export: exported '{}' -> {} ({} files staged)", preset.Name, result.OutputDir, result.FilesStaged);

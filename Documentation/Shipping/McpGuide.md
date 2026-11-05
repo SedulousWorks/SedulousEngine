@@ -453,7 +453,11 @@ when the project has no `export_presets.xml`). The dist lands under `<project>/D
 `out` says otherwise: the player, its runtime libraries, `Content.pak`, `player.xml` and
 `Data/Engine/Shaders/shaders.dpak`. A web export, its template and serving it: `docs://Web.md`.
 A project's custom shaders ship as bytecode in the dist's shader pack, their HLSL left out unless
-the preset's `includeShaderSource` is set. The project's plugins choose the player: its own build's
+the preset's `includeShaderSource` is set. A script cooks once and ships to every platform, so before
+an export cooks, every script is checked against what the preset's platform has of the project's
+plugins: one using a type of a plugin the project does not enable there refuses the export,
+naming the script, the plugin and the problem; `script_validate` with `platform` makes the same
+check for an agent (its `absentPlugins` says what was left out). The project's plugins choose the player: its own build's
 (Project > Build Project) when a package of its own is enabled on the host platform, else the
 template's when it carries every plugin enabled on the preset's platform at a version at least
 the plugin's; otherwise the export is refused, the response naming why (a plugin the template

@@ -142,7 +142,7 @@ class Program
 
 		if (all)
 		{
-			if (ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks) case .Err)
+			if (ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host) case .Err)
 			{
 				Console.Error.WriteLine("Sedulous.Tools.Export: one or more presets failed (see log)");
 				return 1;
@@ -157,7 +157,7 @@ class Program
 			return 1;
 		}
 		let result = scope ExportResult();
-		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks) case .Err)
+		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host) case .Err)
 		{
 			if (!result.Refusal.IsEmpty)
 				Console.Error.WriteLine("Sedulous.Tools.Export: export refused: {}", result.Refusal);

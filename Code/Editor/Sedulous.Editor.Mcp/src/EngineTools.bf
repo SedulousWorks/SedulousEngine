@@ -50,7 +50,7 @@ static class EngineTools
 		if (!paths.ShippingDocsDir.IsEmpty)
 			ShippingDocResources.Register(server, paths.ShippingDocsDir);
 		ProjectResources.Register(server, session);
-		ScriptValidateTool.Register(server);
+		ScriptValidateTool.Register(server, session);
 		ShaderValidateTool.Register(server, paths.ShaderLibrary);
 		GuiValidateTool.Register(server);
 		MaterialShaderTool.Register(server, session, paths.ShaderLibrary);

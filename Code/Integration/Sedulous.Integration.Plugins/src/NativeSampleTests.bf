@@ -11,6 +11,8 @@ using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
+using Sedulous.Pipeline.Registration;
+using Sedulous.Script.Pipeline;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Composition;
 using Sedulous.Editor.Core;
@@ -171,6 +173,73 @@ static class NativeSampleTests
 			Test.Assert(surface.Find(cSpin).Plugin.IsEmpty, "the leaked one untouched, none added");
 			host.Unload();
 		}
+	}
+
+	/// A script using the package's own type cannot run where the project does not enable the
+	/// package: an export for that platform is refused naming the script and the plugin, and
+	/// script_validate with that platform says so; where it is enabled, both pass.
+	[Test]
+	public static void AScriptUsingThePackagesTypeIsRefusedWhereThePackageIsNotEnabled()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_plugins_scripts", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Scripted Spins") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let entry = new EnabledPlugin();
+		entry.Id.Set(cId);
+		entry.Platforms.Add(new .("Linux64"));
+		project.Settings.Plugins.Add(entry);
+		let source = "class Spinner\n{\n\tSpinComponent@ spin;\n}\n";
+		let sources = project.SourcesRoot(.. scope .());
+		CreateDirectory(PathJoin(sources, "scripts", .. scope .()));
+		Test.Assert(WriteFile(PathJoin(sources, "scripts/Spinner.as", .. scope .()), .((uint8*)source.Ptr, source.Length)) case .Ok);
+		let instance = project.SourceDb.RootGroup.CreateInstance("Spinner", typeof(ScriptClassAsset).GetFullName(.. scope .()));
+		let asset = scope ScriptClassAsset();
+		asset.FileName.Set("scripts/Spinner.as");
+		asset.Language.Set("angelscript");
+		Test.Assert(instance.WriteObject(asset) case .Ok);
+
+		let engineServices = scope EnginePluginServices();
+		let subsystems = scope SubsystemManager();
+		let host = scope PluginHost(subsystems, .Export, EngineVersion.String);
+		Test.Assert(engineServices.Attach(host));
+		Test.Assert(host.AddRegistered() case .Ok);
+		host.Load((Span<EnabledPlugin>)project.Settings.Plugins, scope .());
+		Test.Assert(host.IsLoaded(cId));
+
+		let web = scope String();
+		ExportPlugins.CheckScriptsOn(project, host, "Web", web);
+		Test.Assert(web.Contains("script 'scripts/Spinner.as' cannot run on Web, where plugin(s) 'nativesample' are not enabled"), web);
+		let linux = scope String();
+		ExportPlugins.CheckScriptsOn(project, host, "Linux64", linux);
+		Test.Assert(linux.IsEmpty, linux);
+
+		// script_validate with a platform: the same check, for an agent.
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		session.Project = project;
+		session.Plugins = host;
+		ScriptValidateTool.Register(server, session);
+		let arguments = JsonValue.MakeObject();
+		arguments.Set("source", JsonValue.MakeString(source));
+		arguments.Set("language", JsonValue.MakeString("angelscript"));
+		arguments.Set("platform", JsonValue.MakeString("Web"));
+		let validated = scope String();
+		Test.Assert(Call(server, "script_validate", arguments, validated), validated);
+		{
+			let result = JsonValue.Parse(validated);
+			defer delete result;
+			Test.Assert(!result.Get("valid").AsBool(), validated);
+			Test.Assert(result.Get("absentPlugins").AsString() == "'nativesample'", validated);
+		}
+		session.Project = null;
+		session.Plugins = null;
+		host.Unload();
 	}
 
 	/// In a player's host the spin manager joins a scene and turns each spinning entity about its

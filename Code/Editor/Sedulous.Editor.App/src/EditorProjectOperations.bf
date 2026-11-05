@@ -355,8 +355,9 @@ class EditorProjectOperations : IProjectOperations
 		let templatesRoot = new String(mSeams.TemplatesRoot);
 		let dataRoot = new String(mSeams.DataRoot);
 		let hooks = (mSeams.Context != null) ? mSeams.Context.ExportHooks : null;
+		let plugins = (mSeams.Context != null) ? mSeams.Context.Plugins : null;
 		mSeams.Tasks.Submit(scope $"Export {shared.Preset.Name}",
-			new [=shared, =project, =builders, =playerDir, =templatesRoot, =dataRoot, =hooks](task) =>
+			new [=shared, =project, =builders, =playerDir, =templatesRoot, =dataRoot, =hooks, =plugins](task) =>
 			{
 				let templates = scope TemplateRegistry();
 				templates.Refresh(templatesRoot, playerDir);
@@ -369,7 +370,7 @@ class EditorProjectOperations : IProjectOperations
 				// and the reachable set were computed on the main thread.
 				return ExportDriver.ExportOne(project, shared.Preset, templates, builders, shared.OutRoot, dataRoot,
 					false, shared.Result, onProgress, false, shared.SceneStreams, null,
-					shared.ReachableValid ? shared.ReachableRoots : null, hooks);
+					shared.ReachableValid ? shared.ReachableRoots : null, hooks, plugins);
 			} ~ { shared.ReleaseRef(); delete playerDir; delete templatesRoot; delete dataRoot; },
 			new [=shared](result) =>
 			{

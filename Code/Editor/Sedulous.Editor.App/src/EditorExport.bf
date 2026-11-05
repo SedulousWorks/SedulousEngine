@@ -258,6 +258,7 @@ class EditorExport
 		let presets = mPresets;
 		let sceneStreams = mSceneStreams;
 		let hooks = context.ExportHooks;
+		let plugins = context.Plugins;
 
 		// Resolved here, on the main thread (the templates root reads settings); the work
 		// delegate owns its copies and the completion its own, so a job dropped at shutdown,
@@ -273,7 +274,7 @@ class EditorExport
 		let revealRoot = new String(outRoot);
 
 		mServices.Tasks.Submit(all ? "Export All" : "Export",
-			new [=project, =builders, =toolDir, =templatesRoot, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks](task) =>
+			new [=project, =builders, =toolDir, =templatesRoot, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks, =plugins](task) =>
 			{
 				let registry = scope TemplateRegistry();
 				registry.Refresh(templatesRoot, BuildLayout.PlayerDirectoryBeside(toolDir, .. scope .()));
@@ -285,13 +286,13 @@ class EditorExport
 				if (all)
 				{
 					return ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot,
-						false, onProgress, false, sceneStreams, null, reachableRoots, hooks);
+						false, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
 				}
 				let preset = presets.Find(name);
 				if (preset == null)
 					return .Err(.NotFound);
 				return ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot,
-					false, null, onProgress, false, sceneStreams, null, reachableRoots, hooks);
+					false, null, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
 			} ~ { delete toolDir; delete templatesRoot; delete dataRoot; delete name; delete outRoot; },
 			new [=revealRoot, =this](result) => // main thread
 			{
