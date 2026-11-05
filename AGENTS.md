@@ -85,11 +85,15 @@ the previous engine, on the `v0` branch.
 `Data/SampleProjects/` holds game projects: **Sky Hopper** (`SkyHopper`), built entirely
 through the MCP tools, **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`),
 **Snowline**, Raptor's snowboard demo ported through the same tools (its scripts in `Tools/`),
-**Lamplight**, Raptor's stealth heist ported the same way (its scripts in `Tools/`), and the
+**Lamplight**, Raptor's stealth heist ported the same way (its scripts in `Tools/`), the
 **Shader Gallery**, Raptor's custom shaders sample ported the same way (its scripts in `Tools/`),
-and **Masquerade**, Raptor's networked masked ball ported the same way (its scripts in `Tools/`).
+**Masquerade**, Raptor's networked masked ball ported the same way (its scripts in `Tools/`), and
+**NativeSample**, a game's own native code: a plugin package of all four parts (projects of the
+workspace, linked by Integration.Plugins) and a scene its Spin component turns, built through the
+project's own editor by its scripts in `Tools/`.
 Their `Cooked/`, `.cache/`, `Editor/` and `Dist/` are generated and ignored. Integration.Mcp
-checks that PaperKid, the Shader Gallery and Masquerade read at the current data versions and cook. Each one's `CREDITS.md` and
+checks that PaperKid, the Shader Gallery and Masquerade read at the current data versions and cook;
+Integration.Plugins checks that NativeSample reads with its package loaded and cooks. Each one's `CREDITS.md` and
 `Licenses/` must stay in step with its assets.
 
 The editor's Samples tab downloads the games `Data/SampleProjects/Samples.json` lists from the

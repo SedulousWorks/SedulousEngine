@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">1321af8b-101a-634e-9168-5bdd2ed4ca68</string>
+	<string name="typeName">NativeSample.Notes.NoteAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">11847070626440050197</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<string name="text">A note from the game's own code</string>
+		</object>
+	</object>
+</root>

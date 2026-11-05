@@ -186,6 +186,10 @@ dissolve, waves and a flag that move their vertices, the built-in PBR) and then 
 |:---:|:---:|:---:|
 | ![Hall](Documentation/Images/ShaderGallery-Hall.png) | ![Hologram](Documentation/Images/ShaderGallery-Hologram.png) | ![Toon](Documentation/Images/ShaderGallery-Toon.png) |
 
+**NativeSample** is the reference for a game's own native Beef code: a plugin package with all
+four parts (runtime, pipeline, tooling and editor), built into the project's own editor and player
+(Project > Build Project), and a scene of cubes its native Spin component turns.
+
 ## Repository layout
 
 ```

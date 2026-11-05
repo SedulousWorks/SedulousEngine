@@ -4,10 +4,12 @@ using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Content;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Runtime;
 using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 using Sedulous.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
@@ -443,6 +445,106 @@ static class NativeSampleTests
 		ProjectBuild.PlayerConfigs(presets, configs);
 		Test.Assert((configs.Count == 2) && (configs[0] == "Debug") && (configs[1] == "ShippingRelease"));
 #endif
+	}
+
+	/// The sample itself (Data/SampleProjects/NativeSample) reads at the current data versions with
+	/// its package loaded, every spin record of its scene resolving into the plugin's manager, and
+	/// cooks through the tools an agent uses, its note through the plugin's builder. A scratch copy
+	/// of its sources, so nothing writes into the tracked tree.
+	[Test]
+	public static void TheSampleReadsWithItsPackageLoadedItsSpinsResolveAndItCooks()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");
+		let source = PathJoin(dataRoot, "SampleProjects/NativeSample", .. scope .());
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_nativesample_versions", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		// Its sources and package alone: a local Build Project's .cache stays behind.
+		Test.Assert(CreateDirectory(dir));
+		Test.Assert(ExportTemplates.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
+		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
+		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.PluginsDir, .. scope .()), PathJoin(dir, ProjectLayout.PluginsDir, .. scope .())));
+
+		let builders = scope BuilderRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
+		let importers = scope ImporterRegistry();
+		PipelineRegistration.RegisterAllImporters(importers);
+		let creators = scope AssetCreatorRegistry();
+		{
+			let project = EditorProject.Open(dir);
+			Test.Assert(project != null);
+			defer delete project;
+			Test.Assert(project.Settings.FindPlugin(cId) != null, "the sample enables its package");
+			let engineServices = scope EnginePluginServices();
+			let pipelineServices = scope PipelinePluginServices(PipelineRegistries(builders, importers, creators));
+			let subsystems = scope SubsystemManager();
+			let host = scope PluginHost(subsystems, .Editor, EngineVersion.String);
+			Test.Assert(engineServices.Attach(host) && pipelineServices.Attach(host));
+			Test.Assert(host.AddRegistered() case .Ok);
+			host.Load((Span<EnabledPlugin>)project.Settings.Plugins, scope .());
+			Test.Assert(host.IsLoaded(cId));
+			int read = 0;
+			int spins = 0;
+			ReadAll(project.SourceDb.RootGroup, ref read, ref spins);
+			// The Cube and Plane primitives, the Welcome note and the scene Spinners; ten spins: the
+			// row of five, the carousel's hub and its four riders.
+			Test.Assert(read >= 4, scope $"read {read} instances");
+			Test.Assert(spins == 10, scope $"{spins} spin records resolved");
+			host.Unload();
+		}
+
+		// And it COOKS, the stdio host enabling the package as it opens the project.
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
+		ProjectOpenTools.Register(server, session, owner);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetWriteTools.Register(server, session, importers, operations);
+		let opened = scope String();
+		Test.Assert(Call(server, "project_open", Arguments("directory", dir), opened), opened);
+		let force = JsonValue.MakeObject();
+		force.Set("force", JsonValue.MakeBool(true));
+		let cooked = scope String();
+		Test.Assert(Call(server, "asset_cook", force, cooked), cooked);
+		{
+			let cookedJson = JsonValue.Parse(cooked);
+			defer delete cookedJson;
+			// The two meshes and the note; the scene stages rather than cooks.
+			Test.Assert(cookedJson.Get("cooked").AsInt() >= 3, cooked);
+			Test.Assert(cookedJson.Get("failed").AsInt() == 0, cooked);
+		}
+		session.Plugins = null;
+		DeleteAndNullify!(owner.Plugins);
+		session.Project = null;
+		DeleteAndNullify!(owner.Project);
+	}
+
+	/// Every instance under `group` reads back, a scene as its stream into a scratch scene of the
+	/// full composition and the scene managers the loaded plugins contribute; the spin components
+	/// the scenes hold counted into `spins`.
+	private static void ReadAll(Group group, ref int read, ref int spins)
+	{
+		for (let instance in group.Instances)
+		{
+			let object = instance.ReadObject();
+			Test.Assert(object != null, scope $"sample instance refused: {instance.Name}");
+			delete object;
+			if (instance.TypeName == McpDocumentNames.cSceneDocument)
+			{
+				let scratch = scope Sedulous.Scene.Scene(instance.Name);
+				EngineSceneComposition.AddAllSceneManagers(scratch); // the plugin's Spin manager among them
+				Test.Assert(SceneStorage.LoadScene(instance, scratch) case .Ok, scope $"sample scene stream refused: {instance.Name}");
+				spins += (int)scratch.GetSystem<SpinManager>().Count;
+			}
+			read++;
+		}
+		for (let child in group.Groups)
+			ReadAll(child, ref read, ref spins);
 	}
 
 	private static JsonValue Arguments(StringView key, StringView value)
