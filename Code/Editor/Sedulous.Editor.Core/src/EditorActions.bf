@@ -171,6 +171,19 @@ class EditorActionRegistry
 		return true;
 	}
 
+	/// Removes (and deletes) the action `id` (a plugin's, as it unloads); false when there is none.
+	/// A shortcut the user bound to it is kept, so it holds again if the action comes back.
+	public bool Unregister(StringView id)
+	{
+		if (!mIndex.TryGetValue(id, let action))
+			return false;
+		mIndex.Remove(id);
+		mActions.Remove(action);
+		delete action;
+		mChanged.Notify();
+		return true;
+	}
+
 	public EditorActionDeclaration Find(StringView id)
 	{
 		if (mIndex.TryGetValue(id, let action))

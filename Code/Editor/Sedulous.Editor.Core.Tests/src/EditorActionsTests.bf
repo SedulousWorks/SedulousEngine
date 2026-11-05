@@ -117,6 +117,27 @@ static class EditorActionsTests
 		return d;
 	}
 
+	/// A plugin's action leaves the registry as its plugin unloads: the others keep their places and
+	/// their lookups, and a shortcut the user bound to it holds again when it comes back.
+	[Test]
+	public static void AnUnregisteredActionIsGoneTheRestStillFoundItsUserShortcutKept()
+	{
+		let context = scope EditorContext();
+		let actions = context.Actions;
+		Test.Assert(actions.Register(Declare("a.one", "Label")));
+		Test.Assert(actions.Register(Declare("b.two", "Label")));
+		Test.Assert(actions.Register(Declare("c.three", "Label")));
+		Test.Assert(actions.Rebind("b.two", EditorShortcut.Of("ctrl-k")) case .Ok);
+		Test.Assert(actions.Unregister("b.two"));
+		Test.Assert(!actions.Unregister("b.two"), "gone already");
+		Test.Assert(actions.Count == 2);
+		Test.Assert(actions.Find("b.two") == null);
+		Test.Assert((actions.Find("c.three") != null) && (actions.Find("c.three").Id == "c.three"));
+		Test.Assert((actions.Actions[0].Id == "a.one") && (actions.Actions[1].Id == "c.three"));
+		Test.Assert(actions.Register(Declare("b.two", "Back")));
+		Test.Assert(actions.Shortcut("b.two") == EditorShortcut.Of("ctrl-k"));
+	}
+
 	[Test]
 	public static void DeclarationsBindThroughTheSubjectPageAndExecuteIsTheFunnel()
 	{
