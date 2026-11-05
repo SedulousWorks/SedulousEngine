@@ -665,6 +665,7 @@ class EditorSessionTests
 	{
 		public static List<String> Log = new .() ~ DeleteContainerAndItems!(_);
 		public static EditorContext ContextSeen;
+		public static Sedulous.Pipeline.Importer.PipelinePluginServices PipelineSeen;
 		private PluginPartKind mKind;
 
 		public this(PluginPartKind kind) { mKind = kind; }
@@ -677,6 +678,8 @@ class EditorSessionTests
 			Log.Add(new $"load:{mKind}");
 			if (mKind == .Editor)
 				ContextSeen = context.Find<EditorContext>();
+			if (mKind == .Pipeline)
+				PipelineSeen = context.Find<Sedulous.Pipeline.Importer.PipelinePluginServices>();
 		}
 
 		public override void Unload(PluginContext context) => Log.Add(new $"unload:{mKind}");
@@ -741,6 +744,11 @@ class EditorSessionTests
 			Test.Assert(SessionPart.Log[0] == "load:Engine");
 			Test.Assert(SessionPart.Log[3] == "load:Editor");
 			Test.Assert(SessionPart.ContextSeen === bench.Context);
+			// A Pipeline part adds to the editor's registries.
+			Test.Assert(SessionPart.PipelineSeen != null);
+			Test.Assert(SessionPart.PipelineSeen.Registries.Builders === bench.Builders);
+			Test.Assert(SessionPart.PipelineSeen.Registries.Importers === bench.Context.Importers);
+			Test.Assert(SessionPart.PipelineSeen.Registries.Creators === bench.Context.Creators);
 			session.Close();
 			Test.Assert(bench.Context.Plugins == null);
 			Test.Assert(embedded.Plugins == null);

@@ -6,6 +6,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Pipeline.Core;
+using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Project;
@@ -87,8 +88,9 @@ class Program
 			return 1;
 		}
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
-		// The plugins the project enables that this tool links, their Engine and Pipeline parts.
-		let plugins = scope ToolPlugins(.Cook, project);
+		// The plugins the project enables that this tool links, their Engine and Pipeline parts
+		// (their builders join this cook's).
+		let plugins = scope ToolPlugins(.Cook, project, PipelineRegistries(builders, null, null));
 		for (let refusal in plugins.Report.Refused)
 			Console.Error.WriteLine("Sedulous.Tools.Cook: {}", refusal.Reason);
 

@@ -8,6 +8,7 @@ using Sedulous.VFS;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Composition;
 using Sedulous.Pipeline.Core;
+using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Project;
 
@@ -110,8 +111,8 @@ class Program
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 		// The plugins the project enables that this tool links, their Engine, Pipeline and Tooling
-		// parts.
-		let plugins = scope ToolPlugins(.Export, project);
+		// parts (their builders join the export's cook).
+		let plugins = scope ToolPlugins(.Export, project, PipelineRegistries(builders, null, null));
 		for (let refusal in plugins.Report.Refused)
 			Console.Error.WriteLine("Sedulous.Tools.Export: {}", refusal.Reason);
 

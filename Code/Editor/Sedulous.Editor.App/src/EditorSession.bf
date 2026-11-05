@@ -9,6 +9,7 @@ using Sedulous.Settings;
 using Sedulous.Fonts.Resource;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
+using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Core;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Project;
@@ -90,6 +91,9 @@ class EditorSession
 {
 	private EditorSessionServices mServices ~ delete _;
 	private EditorProject mProject = null ~ delete _;
+	/// What the projects' Pipeline parts add to the editor's registries, attached to each
+	/// project's plugin host, which goes before it.
+	private PipelinePluginServices mPipelinePlugins = null ~ delete _;
 	private Settings mStore = null ~ delete _;
 	/// Close is closing the views: a save writes, captures nothing.
 	private bool mClosingViews = false;
@@ -124,6 +128,9 @@ class EditorSession
 		if (plugins == null)
 			return;
 		plugins.Provide(context);
+		if (mPipelinePlugins == null)
+			mPipelinePlugins = new .(PipelineRegistries(mServices.Builders, context.Importers, context.Creators));
+		mPipelinePlugins.Attach(plugins);
 		let parts = (mServices.PluginParts != null) ? (Span<PluginPart>)mServices.PluginParts : PluginRegistry.Parts;
 		ProjectPlugins.Load(plugins, parts, project.Settings, scope .());
 		context.Plugins = plugins;

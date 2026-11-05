@@ -73,6 +73,8 @@ class Program
 		// project_open stores it in the owner and points the session at it. Both outlive
 		// the server.
 		let owner = scope ProjectOwner();
+		// A project's plugins (those this host links) add to the registries above as it opens.
+		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
 		let session = scope ProjectSession();
 		// The engine surface every host serves, one list in Editor.Mcp, with the paths only
 		// this host knows how to find: the curated docs and known issues by the walk up from
