@@ -184,6 +184,25 @@ class PluginRegistryTests
 		}
 	}
 
+	/// The plugins linked, once each however many parts they have, sorted by id with the version
+	/// their manifest names: a player's --plugins.
+	[Test]
+	public static void TheLinkedListNamesEachPluginOnceWithItsVersionSorted()
+	{
+		let lines = PluginRegistry.Linked(.. scope .());
+		let probe = scope PluginManifest();
+		Test.Assert(PluginManifest.Read(ProbePart.Of("probe", .Engine).ManifestXml, probe) case .Ok);
+		let probeBase = scope PluginManifest();
+		Test.Assert(PluginManifest.Read(ProbePart.Of("probe_base", .Engine).ManifestXml, probeBase) case .Ok);
+		let probeLine = scope $"probe|{probe.Version}\n";
+		let baseLine = scope $"probe_base|{probeBase.Version}\n";
+		Test.Assert(lines.Contains(probeLine) && lines.Contains(baseLine), lines);
+		Test.Assert(lines.IndexOf(probeLine) < lines.IndexOf(baseLine), "sorted by id");
+		Test.Assert(lines.IndexOf(probeLine, lines.IndexOf(probeLine) + 1) == -1, "once, for three parts");
+		for (let line in lines.Split('\n', .RemoveEmptyEntries))
+			Test.Assert(line.Contains('|'), scope String(line));
+	}
+
 	[Test]
 	public static void TheHostReadsTheCompiledInManifestsAndEnablesTheRolesPartsThroughThem()
 	{
