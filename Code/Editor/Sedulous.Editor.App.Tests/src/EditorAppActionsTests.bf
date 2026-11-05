@@ -250,12 +250,16 @@ class EditorAppActionsTests
 		Test.Assert(actions.Find("edit.preferences") == null);
 		Test.Assert(!actions.IsEnabled("edit.undo", null), "no page");
 
-		// Raptor checks this with Reload Native Module, which Sedulous's editor does not have.
 		let project = new ProjectActions();
 		project.Context = bench.Context;
 		project.Settings = bench.Record("settings");
+		project.BuildProject = bench.Record("build");
+		project.OpenWithThisBuild = bench.Record("open-with-build");
 		EditorAppActions.RegisterProjectActions(actions, project);
 		Test.Assert(!actions.IsEnabled("project.settings", null), "no project open");
+		Test.Assert(!actions.IsEnabled("project.build", null) && !actions.IsEnabled("project.openWithBuild", null), "no project open");
+		Test.Assert(actions.Find("project.build").MenuPath == "Project/Build Project");
+		Test.Assert(actions.Find("project.openWithBuild").MenuOrder > actions.Find("project.build").MenuOrder);
 		Test.Assert(actions.Execute("project.settings", null) case .Err(.NotSupported));
 		Test.Assert(bench.Events.IsEmpty);
 		Test.Assert(actions.Find("project.reportResourceMemory").ReadOnly);

@@ -98,6 +98,26 @@ static class Process
 		outResult.ExitCode = process.ExitCode;
 	}
 
+	/// Starts `executable` with `arguments` and returns without waiting: the child runs on its
+	/// own, its output going where the parent's does. An explicit path, each argument passed
+	/// whole, as Run's. False when it could not be started.
+	public static bool Start(StringView executable, Span<StringView> arguments)
+	{
+		let commandLine = scope String();
+		for (let argument in arguments)
+		{
+			if (!commandLine.IsEmpty)
+				commandLine.Append(' ');
+			AppendQuoted(commandLine, argument);
+		}
+		let startInfo = scope ProcessStartInfo();
+		startInfo.SetFileName(executable);
+		startInfo.SetArguments(commandLine);
+		startInfo.UseShellExecute = false;
+		let process = scope SpawnedProcess();
+		return process.Start(startInfo) case .Ok;
+	}
+
 	/// Reads ONE pipe to its end.
 	///
 	/// Its own caller runs a second copy of this on another thread for the other pipe; see

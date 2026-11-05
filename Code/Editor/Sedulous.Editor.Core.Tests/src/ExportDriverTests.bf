@@ -11,6 +11,7 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Project;
+using Sedulous.Runtime;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 using Sedulous.Editor.Core;
@@ -317,6 +318,53 @@ static class ExportDriverTests
 		defer delete nowhere;
 		nowhere.Platform.Set("Nonexistent64");
 		Test.Assert(ExportDriver.ExportOne(fx.Project, nowhere, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotFound));
+	}
+
+	/// A project with a package of its own ships its own player: the project's build for the
+	/// preset's config, newer than every file of its packages, the template giving the rest.
+	/// Never built, or older than a package's file, the export is refused before anything is
+	/// written: Build Project first.
+	[Test]
+	public static void AProjectWithAPackageShipsItsOwnBuildsPlayerOrIsRefused()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_own_player");
+		let preset = ExportProjectFixture.HostPreset("Host", "host");
+		defer delete preset;
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		let entry = new EnabledPlugin();
+		entry.Id.Set("export");
+		entry.Path.Set("Plugins/Export");
+		fx.Project.Settings.Plugins.Add(entry);
+		let source = PathJoin(fx.ProjectDir, "Plugins/Export/Plugin.xml", .. scope .());
+		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins", .. scope .()));
+		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins/Export", .. scope .()));
+		let manifest = "<root/>\n";
+		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
+
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotFound), "never built");
+		Test.Assert(!DirectoryExists(PathJoin(fx.OutRoot, "host", .. scope .())), "refused before anything is written");
+
+		// Past the file system's timestamp step, so the player is newer than the package.
+		System.Threading.Thread.Sleep(50);
+		let player = ProjectBuild.ExecutablePath(fx.ProjectDir, "Export", false, "ShippingRelease", .. scope .());
+		let built = "#!own\n";
+		let buildDir = PathParent(player, .. scope .());
+		CreateDirectory(PathJoin(fx.ProjectDir, ".cache", .. scope .()));
+		CreateDirectory(PathJoin(fx.ProjectDir, ".cache/build", .. scope .()));
+		CreateDirectory(PathJoin(fx.ProjectDir, ".cache/build/build", .. scope .()));
+		CreateDirectory(PathParent(buildDir, .. scope .()));
+		CreateDirectory(buildDir);
+		Test.Assert(WriteFile(player, .((uint8*)built.Ptr, built.Length)) case .Ok);
+		let result = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
+		let staged = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(result.OutputDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .()), staged) case .Ok);
+		Test.Assert(StringView((char8*)staged.Ptr, staged.Count) == built, "the project's player, not the template's");
+		Test.Assert(FileExists(PathJoin(result.OutputDir, "libfoo.so", .. scope .())), "the template's sidecars still");
+
+		System.Threading.Thread.Sleep(50);
+		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.InvalidArgument), "a package changed since");
 	}
 
 	[Test]

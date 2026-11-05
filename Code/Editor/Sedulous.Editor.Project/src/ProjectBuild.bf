@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
 using Sedulous.Runtime;
 using Sedulous.Engine.Project;
 
@@ -319,6 +320,190 @@ static class ProjectBuild
 		let call = editor ? "Sedulous.Editor.Main.EditorMain.Run" : "Sedulous.Engine.Player.DesktopMain.DesktopPlayerMain.Run";
 		outText.AppendF("namespace {}{};\n\nclass Program\n{{\n\tpublic static int Main(System.String[] args) => {}(args);\n}}\n",
 			game, editor ? cEditorSuffix : cPlayerSuffix, call);
+	}
+
+	/// The build config a preset's template config names: a Release template is a ShippingRelease
+	/// build and a Profile one a Release build (BuildLayout.TemplateConfigFor, inverted); Debug and
+	/// Test are themselves.
+	public static void BuildConfigFor(StringView presetConfig, String outConfig)
+	{
+		if (presetConfig.IsEmpty || (presetConfig == "Release"))
+			outConfig.Set("ShippingRelease");
+		else if (presetConfig == "Profile")
+			outConfig.Set("Release");
+		else
+			outConfig.Set(presetConfig);
+	}
+
+	/// The configs Build Project makes the player in: Debug, then each one a preset for this host
+	/// exports with, once each in the order the presets name them. The editor is built in Debug.
+	public static void PlayerConfigs(ExportPresetSet presets, List<String> outConfigs)
+	{
+		outConfigs.Add(new .("Debug"));
+		for (let preset in presets.Presets)
+		{
+			if (preset.Platform != BuildLayout.HostPlatformName)
+				continue;
+			let config = BuildConfigFor(preset.Config, .. scope .());
+			bool listed = false;
+			for (let existing in outConfigs)
+				listed |= existing == config;
+			if (!listed)
+				outConfigs.Add(new .(config));
+		}
+	}
+
+	/// Whether the project enables a package of its own (an entry with a path).
+	public static bool HasPackages(ProjectSettings settings)
+	{
+		for (let entry in settings.Plugins)
+		{
+			if (!entry.Path.IsEmpty)
+				return true;
+		}
+		return false;
+	}
+
+	/// The first `name` (with the host's executable suffix) in the directories of `searchPath`,
+	/// a PATH value. False when none holds it.
+	public static bool FindOnPath(StringView searchPath, StringView name, String outPath)
+	{
+		let file = BuildLayout.ExecutableName(name, .. scope .());
+#if BF_PLATFORM_WINDOWS
+		let separator = ';';
+#else
+		let separator = ':';
+#endif
+		for (let dir in searchPath.Split(separator))
+		{
+			if (dir.IsEmpty)
+				continue;
+			let candidate = PathJoin(dir, file, .. scope .());
+			if (FileExists(candidate))
+			{
+				outPath.Set(candidate);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// BeefBuild, found on PATH only.
+	public static bool FindBeefBuild(String outPath)
+	{
+		let searchPath = scope String();
+		if (Environment.GetEnvironmentVariable("PATH", searchPath) case .Err)
+			return false;
+		return FindOnPath(searchPath, "BeefBuild", outPath);
+	}
+
+	/// The project's player for `config`, when it is built and newer than every file of the
+	/// project's packages: what an export of a project with packages ships. NotFound for a player
+	/// never built, InvalidArgument for one older than a file of a package.
+	public static Result<void, ErrorCode> FreshPlayer(StringView projectDir, ProjectSettings settings, StringView config, String outPath)
+	{
+		let game = GameName(settings.Name, .. scope .());
+		ExecutablePath(projectDir, game, false, config, outPath);
+		if (!FileStat(outPath, let size, let built))
+			return .Err(.NotFound);
+		for (let entry in settings.Plugins)
+		{
+			if (entry.Path.IsEmpty)
+				continue;
+			if (NewestFile(PathJoin(projectDir, entry.Path, .. scope .())) > built)
+				return .Err(.InvalidArgument);
+		}
+		return .Ok;
+	}
+
+	/// The newest modification time of any file under `dir`, nought for none.
+	private static int64 NewestFile(StringView dir)
+	{
+		int64 newest = 0;
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		let directories = scope List<String>();
+		defer { ClearAndDeleteItems!(directories); }
+		ListDirectory(dir, scope [&](name, isDirectory) =>
+			{
+				if (isDirectory)
+					directories.Add(new .(name));
+				else
+					names.Add(new .(name));
+			});
+		for (let name in names)
+		{
+			if (FileStat(PathJoin(dir, name, .. scope .()), let size, let ticks) && (ticks > newest))
+				newest = ticks;
+		}
+		for (let sub in directories)
+			newest = Math.Max(newest, NewestFile(PathJoin(dir, sub, .. scope .())));
+		return newest;
+	}
+
+	/// Build Project: generates the workspace, then runs BeefBuild over it once per executable
+	/// and config (the editor in Debug, the player in PlayerConfigs), one at a time, each run's
+	/// output to the log. Refused, with why in `outError`, outside an engine checkout (`dataRoot`
+	/// is in none), for a project with no package of its own, without BeefBuild on PATH, or at
+	/// the first run that fails. Blocking: run it on the build lane.
+	public static Result<void, ErrorCode> Build(StringView projectDir, ProjectSettings settings, ExportPresetSet presets, StringView dataRoot, String outError)
+	{
+		let checkout = scope String();
+		if (!FindCheckout(dataRoot, checkout))
+		{
+			outError.Set(scope $"a project's build needs an engine checkout, and '{dataRoot}' is in none");
+			return .Err(.NotSupported);
+		}
+		if (!HasPackages(settings))
+		{
+			outError.Set("the project has no package of its own (Add Native Code makes one)");
+			return .Err(.NotFound);
+		}
+		let beefBuild = scope String();
+		if (!FindBeefBuild(beefBuild))
+		{
+			outError.Set("BeefBuild is not on PATH");
+			return .Err(.NotFound);
+		}
+		if (Generate(projectDir, settings, checkout, outError) case .Err(let err))
+			return .Err(err);
+
+		let game = GameName(settings.Name, .. scope .());
+		let configs = scope List<String>();
+		defer { ClearAndDeleteItems!(configs); }
+		PlayerConfigs(presets, configs);
+		let workspace = Directory(projectDir, .. scope .());
+		if (RunBeefBuild(beefBuild, workspace, scope $"{game}{cEditorSuffix}", "Debug", outError) case .Err(let editorErr))
+			return .Err(editorErr);
+		for (let config in configs)
+		{
+			if (RunBeefBuild(beefBuild, workspace, scope $"{game}{cPlayerSuffix}", config, outError) case .Err(let playerErr))
+				return .Err(playerErr);
+		}
+		return .Ok;
+	}
+
+	/// One BeefBuild run over the workspace, its output to the log line by line.
+	private static Result<void, ErrorCode> RunBeefBuild(StringView beefBuild, StringView workspace, StringView project, StringView config, String outError)
+	{
+		GlobalLog(.Information, "Build Project: {} ({})", project, config);
+		let workspaceArg = scope $"-workspace={workspace}";
+		let configArg = scope $"-config={config}";
+		let platformArg = scope $"-platform={BuildLayout.HostPlatformName}";
+		let projectArg = scope $"-project={project}";
+		let result = scope ProcessResult();
+		Process.Run(beefBuild, scope StringView[](workspaceArg, configArg, platformArg, projectArg), result);
+		for (let line in result.Output.Split('\n'))
+		{
+			if (!line.IsWhiteSpace)
+				GlobalLog(.Information, "Build Project: {}", line);
+		}
+		if (result.ExitCode != 0)
+		{
+			outError.Set(scope $"BeefBuild failed building {project} ({config}), exit {result.ExitCode}");
+			return .Err(.Internal);
+		}
+		return .Ok;
 	}
 
 	/// A path with forward slashes, as the workspace and project files take one on every host.

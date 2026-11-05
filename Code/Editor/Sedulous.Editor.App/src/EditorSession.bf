@@ -204,8 +204,6 @@ class EditorSession
 		// render subsystems. It goes before the service resets, so a job in flight unstages.
 		if ((mServices.EmbeddedHost != null) && (mServices.Thumbnails != null))
 			mThumbnailStage = new ThumbnailStage(mServices.EmbeddedHost, mServices.Thumbnails, mResources);
-		// Raptor loads the project's native module here: not in Sedulous's editor (RaptorSync.md,
-		// "Standing differences").
 		let app = mServices.EmbeddedApp;
 		if (app != null)
 			app.SetContentDatabase(project.SourceDb); // scripted scene loads read the sources
@@ -279,7 +277,6 @@ class EditorSession
 		DeleteAndNullify!(context.CookBusy);
 		DeleteAndNullify!(context.OnFavoritesChanged);
 		DeleteAndNullify!(context.OnProjectSettingsChanged);
-		// Raptor unloads the project's native module here: not in Sedulous's editor.
 		if (let app = mServices.EmbeddedApp)
 		{
 			// The resources detach before they go; the runtime's consumers are null-tolerant

@@ -222,4 +222,94 @@ class ProjectBuildTests
 		Test.Assert(error.Contains("holds no Plugin.xml of that id"), error);
 		Test.Assert(!DirectoryExists(ProjectBuild.Directory(bed.ProjectDir, .. scope .())), "nothing written");
 	}
+
+	/// A preset's template config names the build it is made from: Release a ShippingRelease build,
+	/// Profile a Release one; the player is built in Debug and in each config a preset for this
+	/// host exports with, once each; a preset for another platform takes a template, not this
+	/// build.
+	[Test]
+	public static void ThePlayerIsBuiltInDebugAndEachHostPresetsConfig()
+	{
+		Test.Assert(ProjectBuild.BuildConfigFor("", .. scope String()) == "ShippingRelease");
+		Test.Assert(ProjectBuild.BuildConfigFor("Release", .. scope String()) == "ShippingRelease");
+		Test.Assert(ProjectBuild.BuildConfigFor("Profile", .. scope String()) == "Release");
+		Test.Assert(ProjectBuild.BuildConfigFor("Debug", .. scope String()) == "Debug");
+
+		let presets = scope ExportPresetSet();
+		for (let config in StringView[4]("", "Profile", "Release", "Debug"))
+		{
+			let preset = new ExportPreset();
+			preset.Platform.Set(BuildLayout.HostPlatformName);
+			preset.Config.Set(config);
+			presets.Presets.Add(preset);
+		}
+		let web = new ExportPreset();
+		web.Platform.Set("Web");
+		web.Config.Set("Test");
+		presets.Presets.Add(web);
+		let configs = scope List<String>();
+		defer { ClearAndDeleteItems!(configs); }
+		ProjectBuild.PlayerConfigs(presets, configs);
+		Test.Assert((configs.Count == 3) && (configs[0] == "Debug") && (configs[1] == "ShippingRelease") && (configs[2] == "Release"));
+	}
+
+	/// BeefBuild is looked for on PATH alone: the first directory holding it, none for a path
+	/// without it.
+	[Test]
+	public static void BeefBuildIsTheFirstOnThePath()
+	{
+		let bed = scope Bed();
+		let first = PathJoin(bed.Root, "first", .. scope .());
+		let second = PathJoin(bed.Root, "second", .. scope .());
+		let file = BuildLayout.ExecutableName("BeefBuild", .. scope .());
+		Bed.Write(second, file, "");
+		Test.Assert(CreateDirectory(first));
+#if BF_PLATFORM_WINDOWS
+		let searchPath = scope $"{first};;{second}";
+#else
+		let searchPath = scope $"{first}::{second}";
+#endif
+		let found = scope String();
+		Test.Assert(ProjectBuild.FindOnPath(searchPath, "BeefBuild", found));
+		Test.Assert(found == PathJoin(second, file, .. scope .()), found);
+		Bed.Write(first, file, "");
+		Test.Assert(ProjectBuild.FindOnPath(searchPath, "BeefBuild", found) && (found == PathJoin(first, file, .. scope .())), found);
+		Test.Assert(!ProjectBuild.FindOnPath(first, "Nothing", found));
+	}
+
+	/// Build Project is refused outside an engine checkout and for a project with no package of
+	/// its own, before anything runs.
+	[Test]
+	public static void BuildProjectNeedsACheckoutAndAPackage()
+	{
+		let bed = scope Bed();
+		let presets = scope ExportPresetSet();
+		let error = scope String();
+		Test.Assert(ProjectBuild.Build(bed.ProjectDir, bed.Settings, presets, bed.ProjectDir, error) case .Err(.NotSupported));
+		Test.Assert(error.Contains("needs an engine checkout"), error);
+		let dataRoot = PathJoin(bed.Checkout, "Data", .. scope .());
+		ClearAndDeleteItems!(bed.Settings.Plugins);
+		Test.Assert(!ProjectBuild.HasPackages(bed.Settings));
+		Test.Assert(ProjectBuild.Build(bed.ProjectDir, bed.Settings, presets, dataRoot, error) case .Err(.NotFound));
+		Test.Assert(error.Contains("no package of its own"), error);
+		Test.Assert(!DirectoryExists(ProjectBuild.Directory(bed.ProjectDir, .. scope .())), "nothing generated");
+	}
+
+	/// The project's player is fresh when built and newer than every file of its packages, a
+	/// file in a part's folder included.
+	[Test]
+	public static void ThePlayerIsFreshWhenNewerThanEveryPackageFile()
+	{
+		let bed = scope Bed();
+		let player = scope String();
+		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Err(.NotFound));
+		System.Threading.Thread.Sleep(50);
+		let relative = player.Substring(bed.ProjectDir.Length + 1);
+		Bed.Write(bed.ProjectDir, relative, "#!player\n");
+		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Ok);
+		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Release", player) case .Err(.NotFound), "another config's is not built");
+		System.Threading.Thread.Sleep(50);
+		Bed.Write(bed.ProjectDir, "Plugins/NativeGame/NativeGame.Engine/src/Part.bf", "// changed\n");
+		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Err(.InvalidArgument));
+	}
 }

@@ -43,9 +43,11 @@ class ProjectActions
 	public delegate void() Settings ~ delete _;
 	/// Opens the export presets panel. Owned.
 	public delegate void() ExportPresets ~ delete _;
-	// Raptor's native module actions (Add Native Code, Build and Reload Native Module) are not
-	// here: Sedulous's editor does not handle a project's native code (RaptorSync.md, "Standing
-	// differences").
+	/// Builds the project's own editor and player, its packages linked in, on the build lane.
+	/// Owned.
+	public delegate void() BuildProject ~ delete _;
+	/// Opens the project in its own build's editor, and this editor exits. Owned.
+	public delegate void() OpenWithThisBuild ~ delete _;
 }
 
 /// What Game's actions run; they need a project open in Context. Owned hooks, as FileActions'.
@@ -207,6 +209,8 @@ static class EditorAppActions
 		defer delete run;
 		let context = run.Context;
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.settings", "Project Settings...", "Open the project settings", "Project/Project Settings...", 100)), ref run.Settings);
+		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.build", "Build Project", "Build the project's own editor and player, its packages linked in", "Project/Build Project", 201)), ref run.BuildProject);
+		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.openWithBuild", "Open With This Build", "Open the project in its own build's editor, closing this one", "Project/Open With This Build", 202)), ref run.OpenWithThisBuild);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.export", "Export...", "Open the export presets panel", "Project/Export...", 300)), ref run.ExportPresets);
 		{
 			// What is resident, from the log: counts by product type, unreferenced being the

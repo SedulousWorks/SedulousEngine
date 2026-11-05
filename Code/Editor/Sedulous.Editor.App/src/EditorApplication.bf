@@ -37,8 +37,8 @@ namespace Sedulous.Editor.App;
 /// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
 /// same DefaultApplication the player runs.
 ///
-/// Raptor's native module is not a part here: Sedulous's editor does not handle a project's
-/// native code (RaptorSync.md, "Standing differences").
+/// A project's packages are compiled into its own build, never loaded into this editor:
+/// Project > Build Project makes that build and Open With This Build moves the project to it.
 class EditorApplication : IApplication
 {
 	private EditorAppConfig mConfig ~ delete _;
@@ -970,6 +970,78 @@ class EditorApplication : IApplication
 		mTemplates.Open(root, closed);
 	}
 
+	/// Project > Build Project: the project's own editor and player (ProjectBuild.Build) on the
+	/// build lane, BeefBuild's output to the Console.
+	private void BuildProject()
+	{
+		let project = mSession.Project;
+		if (project == null)
+			return;
+		if (mContext.Tasks.IsLaneBusy(mContext.BuildLane))
+		{
+			mContext.Notify(.Info, "The build lane is busy: build the project once it is done.");
+			return;
+		}
+		// The job's own copies: the session's settings and presets change on this thread meanwhile.
+		let settings = new Sedulous.Engine.Project.ProjectSettings();
+		if (Sedulous.Engine.Project.ProjectManifest.Copy(project.Settings, settings) case .Err)
+		{
+			delete settings;
+			mContext.Notify(.Error, "Build Project: the project's settings did not copy.");
+			return;
+		}
+		let presets = new ExportPresetSet();
+		{
+			let projectFs = scope Sedulous.VFS.NativeFileSystem(project.Directory);
+			if (ExportPresetsFile.Load(projectFs, presets) case .Err)
+				ExportPresetsFile.Defaults(presets);
+		}
+		let projectDir = new String(project.Directory);
+		let dataRoot = new String(mConfig.DataRoot);
+		let error = new String();
+		mContext.SetStatus("Building the project...");
+		mContext.Tasks.Submit("Build Project",
+			new [=settings, =presets, =projectDir, =dataRoot, =error](task) =>
+			{
+				task.SetStep("BeefBuild");
+				return ProjectBuild.Build(projectDir, settings, presets, dataRoot, error);
+			} ~ { delete settings; delete presets; delete projectDir; delete dataRoot; },
+			new [=error, =this](result) => // main thread
+			{
+				if (result case .Err)
+				{
+					GlobalLog(.Error, "Build Project: {}", error);
+					mContext.Notify(.Error, scope $"Build Project failed: {error}");
+					return;
+				}
+				mContext.SetStatus("Build Project done: Project > Open With This Build runs it.");
+			} ~ delete error, mContext.BuildLane);
+	}
+
+	/// Project > Open With This Build: starts the project's own editor (Build Project's, in
+	/// Debug) on the project and this editor's data root, then this one exits the usual way,
+	/// asking about unsaved pages.
+	private void OpenWithThisBuild()
+	{
+		let project = mSession.Project;
+		if (project == null)
+			return;
+		let game = ProjectBuild.GameName(project.Settings.Name, .. scope .());
+		let editor = ProjectBuild.ExecutablePath(project.Directory, game, true, "Debug", .. scope .());
+		if (!FileExists(editor))
+		{
+			mContext.Notify(.Error, "Build Project first: the project's own editor is not built.");
+			return;
+		}
+		if (!Sedulous.Core.Process.Start(editor, scope StringView[]("--project", project.Directory, "--data-root", mConfig.DataRoot)))
+		{
+			mContext.Notify(.Error, scope $"Could not start '{editor}'.");
+			return;
+		}
+		GlobalLog(.Information, "Editor: the project opened in its own build ({}); this editor exits", editor);
+		ConfirmExit();
+	}
+
 	/// Export over the main window, for the open project (made again for each project: it edits
 	/// that project's presets). Nothing with no interface or no project.
 	private void OpenExport()
@@ -1272,6 +1344,8 @@ class EditorApplication : IApplication
 		project.Context = mContext; // Report Resource Memory reads the session's resources through it
 		project.Settings = new () => { OpenProjectSettings(); };
 		project.ExportPresets = new () => { OpenExport(); };
+		project.BuildProject = new () => { BuildProject(); };
+		project.OpenWithThisBuild = new () => { OpenWithThisBuild(); };
 		EditorAppActions.RegisterProjectActions(actions, project);
 
 		// One page's asset: its changes saved first, so what cooks is what it shows.

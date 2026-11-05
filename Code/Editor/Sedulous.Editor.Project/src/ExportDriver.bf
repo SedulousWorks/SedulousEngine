@@ -17,7 +17,9 @@ namespace Sedulous.Editor.Project;
 /// of the entry points when the preset prunes; stage the scenes as binary products; pack
 /// the cooked content, one pak on the desktop and the BC and ASTC siblings on the web; write
 /// the dist manifest; cook the shader pack into the dist's Data; stage the resolved
-/// template's player and sidecars and the preset's extra files. The ONE entry point the
+/// template's player and sidecars and the preset's extra files. A project with a package of its
+/// own ships its own build's player instead of the template's, refused until Build Project made
+/// it for the preset's config. The ONE entry point the
 /// editor's Export menu, the CLI and the MCP host share, so a preset produces the same dist
 /// whichever surface triggers it.
 static class ExportDriver
@@ -494,6 +496,20 @@ static class ExportDriver
 			GlobalLog(.Warning, "Export: template '{}' was built against engine {} but this build is {} - exporting anyway", template.Id, template.EngineVersion, EngineVersion.String);
 			result.EngineVersionWarning.AppendF("Template '{}' targets engine {} (this build is {}).", template.Id, template.EngineVersion, EngineVersion.String);
 		}
+		// A package of the project's is compiled into the project's own player, so that player
+		// ships, built for the preset's config and newer than every file of the packages; the
+		// template still gives the sidecars. Another platform's preset is the template's.
+		let ownPlayer = scope String();
+		if (ProjectBuild.HasPackages(project.Settings) && (preset.Platform == BuildLayout.HostPlatformName))
+		{
+			let config = ProjectBuild.BuildConfigFor(preset.Config, .. scope .());
+			if (ProjectBuild.FreshPlayer(project.Directory, project.Settings, config, ownPlayer) case .Err(let err))
+			{
+				GlobalLog(.Error, "Export: preset '{}' needs the project's own player for {}, and it is {}: Build Project first",
+					preset.Name, config, (err == .NotFound) ? "not built" : "older than the project's packages");
+				return .Err(err);
+			}
+		}
 		let subdir = preset.OutputSubdir.IsEmpty ? ExportStaging.SanitizeName(preset.Name, .. scope :: .()) : StringView(preset.OutputSubdir);
 		PathJoin(outRoot, subdir, result.OutputDir);
 		CreateDirectory(result.OutputDir);
@@ -549,7 +565,15 @@ static class ExportDriver
 		if (onProgress != null)
 			onProgress("Staging player...", 0.93f);
 		let outName = ExportStaging.PlayerOutputName(preset.Platform, preset.PlayerName, template.PlayerBinary, .. scope .());
-		if (!ExportTemplates.CopyFile(template.Directory, template.PlayerBinary, result.OutputDir, outName))
+		if (!ownPlayer.IsEmpty)
+		{
+			if (!ExportTemplates.CopyFile(PathParent(ownPlayer, .. scope .()), PathFilename(ownPlayer, .. scope .()), result.OutputDir, outName))
+			{
+				GlobalLog(.Error, "Export: failed to stage the project's own player '{}'", ownPlayer);
+				return .Err(.Internal);
+			}
+		}
+		else if (!ExportTemplates.CopyFile(template.Directory, template.PlayerBinary, result.OutputDir, outName))
 		{
 			GlobalLog(.Error, "Export: failed to stage player '{}' from {}", template.PlayerBinary, template.Id);
 			return .Err(.Internal);
