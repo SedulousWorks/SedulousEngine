@@ -60,6 +60,31 @@ static class PluginToolsTests
 		return manifest.Write(.. new .());
 	}
 
+	/// A linked part carrying its plugin's manifest, as a registered part does.
+	class ListedPart : PluginPart
+	{
+		private String mManifest = new .() ~ delete _;
+		public this(StringView manifest) { mManifest.Set(manifest); }
+		public override StringView PluginId => "meter";
+		public override PluginPartKind Kind => .Engine;
+		public override StringView ManifestXml => mManifest;
+		public override void Load(PluginContext context) {}
+	}
+
+	/// Whether plugin_list offers `id` under `available`.
+	private static bool Offered(McpServer server, StringView id)
+	{
+		let listed = CallOk(server, "plugin_list", Obj());
+		defer delete listed;
+		let available = listed.Get("available");
+		for (int i < available.Count)
+		{
+			if (available.At(i).Get("id").AsString() == id)
+				return available.At(i).Get("offered").AsBool();
+		}
+		return false;
+	}
+
 	private static JsonValue SettingsArgs(StringView id, JsonValue settings)
 	{
 		let arguments = With(Obj(), "id", id);
@@ -277,6 +302,54 @@ static class PluginToolsTests
 		defer delete reopened;
 		Test.Assert(reopened.Settings.Plugins.Count == 1);
 		Test.Assert(reopened.Settings.Plugins[0].Id == "meter");
+	}
+
+	/// plugin_list offers what the project could enable: a package extracted into its Plugins folder,
+	/// until plugin_enable names it, and a plugin this host links that no entry enables.
+	[Test]
+	public static void PluginListOffersAnExtractedPackageAndALinkedPluginNoEntryEnables()
+	{
+		let dir = Scratch("mcp_plugin_available", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		let meterXml = MeterManifest();
+		defer delete meterXml;
+		let parts = scope List<PluginPart>();
+		defer { ClearAndDeleteItems!(parts); }
+		parts.Add(new ListedPart(meterXml));
+		owner.PluginParts = parts;
+		ProjectOpenTools.Register(server, session, owner);
+		PluginTools.Register(server, session);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Offers"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+		{
+			let lantern = scope PluginManifest();
+			lantern.Id.Set("lantern");
+			lantern.Name.Set("Lantern");
+			lantern.Version.Set("0.3.0");
+			lantern.EngineVersion.Set(EngineVersion.String);
+			let part = new PluginManifestPart();
+			part.Kind.Set("Engine");
+			lantern.Parts.Add(part);
+			let platform = new PluginPlatform();
+			platform.Platform.Set(PluginHost.HostPlatform);
+			lantern.Platforms.Add(platform);
+			let packageDir = PathJoin(dir, "Plugins/Lantern", .. scope .());
+			CreateDirectory(PathJoin(dir, "Plugins", .. scope .()));
+			CreateDirectory(packageDir);
+			let xml = lantern.Write(.. scope .());
+			Test.Assert(WriteFile(PathJoin(packageDir, "Plugin.xml", .. scope .()), .((uint8*)xml.Ptr, xml.Length)) case .Ok);
+		}
+		Test.Assert(Offered(server, "lantern"), "the extracted package");
+		Test.Assert(Offered(server, "meter"), "the linked plugin no entry enables");
+		delete CallOk(server, "plugin_enable", With(With(Obj(), "id", "lantern"), "path", "Plugins/Lantern"));
+		Test.Assert(!Offered(server, "lantern"), "an entry now");
+		session.Plugins = null;
+		DeleteAndNullify!(owner.Plugins);
+		session.Project = null;
+		DeleteAndNullify!(owner.Project);
 	}
 
 	/// plugin_scaffold makes the game's package (Engine by default) and enables it, adds the parts

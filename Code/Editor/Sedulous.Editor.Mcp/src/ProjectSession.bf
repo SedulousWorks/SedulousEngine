@@ -29,6 +29,9 @@ class ProjectSession
 	/// The export hooks the project's plugins added, which project_export runs; null for none.
 	/// BORROWED.
 	public ExportPluginServices ExportHooks = null;
+	/// The plugin parts this host links, what plugin_list offers the project; null is the parts that
+	/// registered in this binary (PluginRegistry). BORROWED.
+	public System.Collections.List<Sedulous.Runtime.PluginPart> PluginParts = null;
 
 	public bool IsOpen => Project != null;
 }

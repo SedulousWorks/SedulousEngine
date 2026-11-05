@@ -42,6 +42,7 @@ class ProjectOwner
 					tools.Attach(host);
 			});
 		session.Project = project;
+		session.PluginParts = PluginParts;
 		session.Plugins = Plugins.Host;
 		session.ExportHooks = Plugins.ExportHooks;
 	}

@@ -26,7 +26,7 @@ static class PluginTools
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("plugin_list",
-			"The plugins the open project enables, in its order: each entry's id, path (a project-local package; empty for the engine's), platforms (empty is every platform its manifest supports), and its state in this host on `platform`: loaded, notEnabled (not enabled on this platform), refused or missing, with the reason when it is not loaded. unsupportedPlatforms lists platforms the entry names that its manifest does not support. A loaded plugin with settings reports them (`settings`, as project_info reports the project's), and settingsEditable says whether plugin_settings_set may change them; any other entry's settings are kept as written.",
+			"The plugins the open project enables, in its order: each entry's id, path (a project-local package; empty for the engine's), platforms (empty is every platform its manifest supports), and its state in this host on `platform`: loaded, notEnabled (not enabled on this platform), refused or missing, with the reason when it is not loaded. unsupportedPlatforms lists platforms the entry names that its manifest does not support. A loaded plugin with settings reports them (`settings`, as project_info reports the project's), and settingsEditable says whether plugin_settings_set may change them; any other entry's settings are kept as written. `available` lists what the project could enable: each package in its Plugins folder no entry names and each plugin this host links that no entry enables (path empty), with name, version, parts and platforms; `offered` false with a `problem` when it cannot be enabled (its manifest does not read or suit this engine, or its id is taken). Enable one with plugin_enable (its id, and its path for a package).",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -197,6 +197,35 @@ static class PluginTools
 		}
 		outResult.Set("platform", JsonValue.MakeString((session.Plugins != null) ? session.Plugins.Platform : PluginHost.HostPlatform));
 		outResult.Set("plugins", plugins);
+
+		// What the project could enable: its Plugins folder's packages and this host's linked
+		// plugins that no entry names, each with why it is not offered when it is not.
+		let found = scope List<AvailablePlugin>();
+		defer { ClearAndDeleteItems!(found); }
+		let parts = (session.PluginParts != null) ? (Span<PluginPart>)session.PluginParts : PluginRegistry.Parts;
+		PluginDiscovery.Discover(session.Project.Directory, session.Project.Settings, parts, found);
+		let available = JsonValue.MakeArray();
+		for (let plugin in found)
+		{
+			let item = JsonValue.MakeObject();
+			item.Set("id", JsonValue.MakeString(plugin.Id));
+			item.Set("path", JsonValue.MakeString(plugin.Path));
+			item.Set("name", JsonValue.MakeString(plugin.Name));
+			item.Set("version", JsonValue.MakeString(plugin.Version));
+			let kinds = JsonValue.MakeArray();
+			for (let part in plugin.Parts)
+				kinds.Add(JsonValue.MakeString(part));
+			item.Set("parts", kinds);
+			let platforms = JsonValue.MakeArray();
+			for (let platform in plugin.Platforms)
+				platforms.Add(JsonValue.MakeString(platform));
+			item.Set("platforms", platforms);
+			item.Set("offered", JsonValue.MakeBool(plugin.Problem.IsEmpty));
+			if (!plugin.Problem.IsEmpty)
+				item.Set("problem", JsonValue.MakeString(plugin.Problem));
+			available.Add(item);
+		}
+		outResult.Set("available", available);
 	}
 
 	/// Saves the manifest after a change to the list and tells the host; the list, or why not.
