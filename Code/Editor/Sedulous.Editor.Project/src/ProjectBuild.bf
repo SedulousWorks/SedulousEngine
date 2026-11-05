@@ -441,11 +441,34 @@ static class ProjectBuild
 		return newest;
 	}
 
+	/// The first executable a build of `game` should have made and has not, in `outPath`: the
+	/// editor in Debug, then the player in each of `playerConfigs`. False when all are there.
+	public static bool FindUnbuilt(StringView projectDir, StringView game, List<String> playerConfigs, String outPath)
+	{
+		ExecutablePath(projectDir, game, true, "Debug", outPath..Clear());
+		if (!FileExists(outPath))
+			return true;
+		for (let config in playerConfigs)
+		{
+			ExecutablePath(projectDir, game, false, config, outPath..Clear());
+			if (!FileExists(outPath))
+				return true;
+		}
+		outPath.Clear();
+		return false;
+	}
+
 	/// Build Project: generates the workspace, then runs BeefBuild over it once per executable
 	/// and config (the editor in Debug, the player in PlayerConfigs), one at a time, each run's
 	/// output to the log. Refused, with why in `outError`, outside an engine checkout (`dataRoot`
-	/// is in none), for a project with no package of its own, without BeefBuild on PATH, or at
-	/// the first run that fails. Blocking: run it on the build lane.
+	/// is in none), for a project with no package of its own, without BeefBuild on PATH, at the
+	/// first run that fails, or when a run said it built and an executable is not there.
+	/// Blocking: run it on the build lane.
+	///
+	/// Each step is logged, and the end is the line "Build Project: built": it runs for minutes
+	/// (the first one compiles the engine beside the packages), and someone reading the log, or
+	/// a caller driving the editor over MCP, has nothing else to tell a running build from a
+	/// finished one.
 	public static Result<void, ErrorCode> Build(StringView projectDir, ProjectSettings settings, ExportPresetSet presets, StringView dataRoot, String outError)
 	{
 		let checkout = scope String();
@@ -473,6 +496,7 @@ static class ProjectBuild
 		defer { ClearAndDeleteItems!(configs); }
 		PlayerConfigs(presets, configs);
 		let workspace = Directory(projectDir, .. scope .());
+		GlobalLog(.Information, "Build Project: generated the workspace in '{}' (the first build compiles the engine too)", workspace);
 		if (RunBeefBuild(beefBuild, workspace, scope $"{game}{cEditorSuffix}", "Debug", outError) case .Err(let editorErr))
 			return .Err(editorErr);
 		for (let config in configs)
@@ -480,6 +504,15 @@ static class ProjectBuild
 			if (RunBeefBuild(beefBuild, workspace, scope $"{game}{cPlayerSuffix}", config, outError) case .Err(let playerErr))
 				return .Err(playerErr);
 		}
+		// BeefBuild's exit alone is not the word on it: a run can end well with nothing built
+		// (a project it did not find), so the executables themselves are checked.
+		let unbuilt = scope String();
+		if (FindUnbuilt(projectDir, game, configs, unbuilt))
+		{
+			outError.Set(scope $"BeefBuild ended without building '{unbuilt}'");
+			return .Err(.NotFound);
+		}
+		GlobalLog(.Information, "Build Project: built - Project > Open With This Build runs it");
 		return .Ok;
 	}
 

@@ -295,6 +295,26 @@ class ProjectBuildTests
 		Test.Assert(!DirectoryExists(ProjectBuild.Directory(bed.ProjectDir, .. scope .())), "nothing generated");
 	}
 
+	/// A build is finished when its executables are there: the editor in Debug first, then the
+	/// player in each config, the first missing one named.
+	[Test]
+	public static void ABuildIsFinishedWhenItsExecutablesAreThere()
+	{
+		let bed = scope Bed();
+		let configs = scope List<String>() { "Debug", "Release" };
+		let unbuilt = scope String();
+		let editor = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .());
+		let debugPlayer = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", false, "Debug", .. scope .());
+		let releasePlayer = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", false, "Release", .. scope .());
+		Test.Assert(ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && (unbuilt == editor), unbuilt);
+		Bed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
+		Test.Assert(ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && (unbuilt == debugPlayer), unbuilt);
+		Bed.Write(bed.ProjectDir, debugPlayer.Substring(bed.ProjectDir.Length + 1), "#!player\n");
+		Test.Assert(ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && (unbuilt == releasePlayer), unbuilt);
+		Bed.Write(bed.ProjectDir, releasePlayer.Substring(bed.ProjectDir.Length + 1), "#!player\n");
+		Test.Assert(!ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && unbuilt.IsEmpty, unbuilt);
+	}
+
 	/// The project's player is fresh when built and newer than every file of its packages, a
 	/// file in a part's folder included.
 	[Test]

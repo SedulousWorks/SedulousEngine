@@ -1036,6 +1036,9 @@ class EditorApplication : IApplication
 		let dataRoot = new String(mConfig.DataRoot);
 		let error = new String();
 		mContext.SetStatus("Building the project...");
+		// Said when it starts, not only when it ends: the first build compiles the engine beside
+		// the project's packages, which takes minutes.
+		mContext.Notify(.Info, "Building the project - this takes a few minutes (see Console).");
 		mContext.Tasks.Submit("Build Project",
 			new [=settings, =presets, =projectDir, =dataRoot, =error](task) =>
 			{
