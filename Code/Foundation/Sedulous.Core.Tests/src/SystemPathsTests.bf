@@ -4,7 +4,7 @@ using Sedulous.Core.IO;
 
 namespace Sedulous.Core.Tests;
 
-/// GetEnvironmentVariable, the home folder and UserDataDir.
+/// Get and SetEnvironmentVariable, the home folder and UserDataDir.
 class SystemPathsTests
 {
 	[Test]
@@ -16,6 +16,20 @@ class SystemPathsTests
 
 		let missing = scope String();
 		Test.Assert(GetEnvironmentVariable("ENV_DEFINITELY_NOT_SET_XYZ_123", missing) case .Err);
+	}
+
+	/// A variable set here reads back, and a value set again replaces it.
+	[Test]
+	public static void AnEnvironmentVariableSetHereReadsBack()
+	{
+#if !BF_PLATFORM_WASM
+		const String cName = "SEDULOUS_SET_ENVIRONMENT_TEST";
+		Test.Assert(SetEnvironmentVariable(cName, "first"));
+		let value = scope String();
+		Test.Assert((GetEnvironmentVariable(cName, value) case .Ok) && (value == "first"), value);
+		Test.Assert(SetEnvironmentVariable(cName, "second"));
+		Test.Assert((GetEnvironmentVariable(cName, value..Clear()) case .Ok) && (value == "second"), value);
+#endif
 	}
 
 	[Test]

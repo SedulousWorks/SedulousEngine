@@ -26,6 +26,20 @@ static
 		return Environment.GetEnvironmentVariable(name, outValue);
 	}
 
+	/// Sets environment variable `name` for this process, and so for the children it spawns after.
+	/// False when the platform refused it (a browser has no environment). It cannot reach the shell
+	/// that launched this process, and a child already running keeps the environment it started
+	/// with. It is process-global state, so set it before the threads that spawn those children,
+	/// not alongside them.
+	public static bool SetEnvironmentVariable(StringView name, StringView value)
+	{
+#if BF_PLATFORM_WASM
+		return false;
+#else
+		return Environment.SetEnvironmentVariable(name, value) case .Ok;
+#endif
+	}
+
 	/// The user's home folder ($HOME, else %USERPROFILE%) into `outPath`, replacing what it held;
 	/// empty when neither is set, as in a browser.
 	public static void GetHomeDirectory(String outPath)
