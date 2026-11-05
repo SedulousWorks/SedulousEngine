@@ -110,6 +110,8 @@ class EditorApplication : IApplication
 	private AssetCreate mCreateAsset = null ~ delete _;
 	/// The name prompt, while open (and after, until the next).
 	private NamePrompt mNamePrompt = null ~ delete _;
+	/// Add Native Code's dialog, while open (and after, until the next).
+	private NativeCodeDialog mNativeCodeDialog = null ~ delete _;
 	/// What an asset slot asks of the editor, made the first time a slot needs it; after the icons
 	/// and the picker it reaches, so it goes first.
 	private ResourceRefServices mRefs = null ~ delete _;
@@ -970,6 +972,40 @@ class EditorApplication : IApplication
 		mTemplates.Open(root, closed);
 	}
 
+	/// Project > Add Native Code: asks which parts of the game's package to scaffold (those it has
+	/// show checked), then scaffolds them (GamePackage.Scaffold) and says what it did.
+	private void AddNativeCode()
+	{
+		let project = mSession.Project;
+		let root = mWindow.Root;
+		if ((project == null) || (root == null))
+			return;
+		let info = scope GamePackageInfo();
+		let request = new NativeCodeRequest();
+		if (GamePackage.Find(project, info))
+			request.Existing.AddRange(info.Parts);
+		request.Path.Set(info.Path);
+		request.Accepted = new [=this] (parts) =>
+			{
+				let open = mSession.Project;
+				if (open == null)
+					return;
+				if (GamePackage.Scaffold(open, parts) case .Err(let err))
+				{
+					if (err == .AlreadyExists)
+						mContext.Notify(.Warning, "Those parts are there already, or Plugins/ holds another folder of that name: nothing was touched.");
+					else
+						mContext.Notify(.Error, "Add Native Code failed (see Console).");
+					return;
+				}
+				mContext.NotifyProjectSettingsChanged();
+				mContext.Notify(.Success, "Native code scaffolded in the game's plugin package: Project > Build Project builds it.");
+			};
+		// The one before is closed: the dialog is modal, so it is asked again only once it is.
+		DeleteAndNullify!(mNativeCodeDialog);
+		mNativeCodeDialog = NativeCodeDialog.Open(root, mWindow.LoadMarkup(NativeCodeDialog.cMarkupPath), request);
+	}
+
 	/// Project > Build Project: the project's own editor and player (ProjectBuild.Build) on the
 	/// build lane, BeefBuild's output to the Console.
 	private void BuildProject()
@@ -1344,6 +1380,7 @@ class EditorApplication : IApplication
 		project.Context = mContext; // Report Resource Memory reads the session's resources through it
 		project.Settings = new () => { OpenProjectSettings(); };
 		project.ExportPresets = new () => { OpenExport(); };
+		project.AddNativeCode = new () => { AddNativeCode(); };
 		project.BuildProject = new () => { BuildProject(); };
 		project.OpenWithThisBuild = new () => { OpenWithThisBuild(); };
 		EditorAppActions.RegisterProjectActions(actions, project);

@@ -25,7 +25,7 @@ static class EngineTools
 	/// How many tools Register registers. A new engine tool bumps this DELIBERATELY, and a
 	/// lost registration fails its test loudly. host_info and the stdio host's project_create
 	/// and project_open are not in it: each host registers its own.
-	public const int cEngineToolCount = 37;
+	public const int cEngineToolCount = 38;
 
 	/// The pipeline's types, builders and script surface must already be registered: the
 	/// script tools read that surface, the asset tools the two registries. The operations are

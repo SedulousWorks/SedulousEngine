@@ -278,4 +278,60 @@ static class PluginToolsTests
 		Test.Assert(reopened.Settings.Plugins.Count == 1);
 		Test.Assert(reopened.Settings.Plugins[0].Id == "meter");
 	}
+
+	/// plugin_scaffold makes the game's package (Engine by default) and enables it, adds the parts
+	/// asked for that it lacks in load order, and refuses parts all there or a name that is no
+	/// part, touching nothing.
+	[Test]
+	public static void AnAgentScaffoldsTheGamesPackageAndAddsPartsToIt()
+	{
+		let dir = Scratch("mcp_plugin_scaffold", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		PluginTools.Register(server, session);
+		int changed = 0;
+		session.OnSettingsChanged = new [&changed] () => { changed++; };
+		let refused = scope String();
+		CallErr(server, "plugin_scaffold", Obj(), refused);
+		Test.Assert(refused.Contains(McpTools.cNoProject), refused);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Spin Game"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		{
+			let made = CallOk(server, "plugin_scaffold", Obj());
+			defer delete made;
+			Test.Assert((made.Get("id").AsString() == "spingame") && (made.Get("path").AsString() == "Plugins/SpinGame"));
+			Test.Assert((made.Get("parts").Count == 1) && (made.Get("parts").At(0).AsString() == "Engine"));
+		}
+		Test.Assert(changed == 1);
+		Test.Assert(session.Project.Settings.FindPlugin("spingame") != null);
+		{
+			let parts = JsonValue.MakeArray();
+			parts.Add(JsonValue.MakeString("Editor"));
+			parts.Add(JsonValue.MakeString("Engine"));
+			parts.Add(JsonValue.MakeString("Tooling"));
+			let arguments = Obj();
+			arguments.Set("parts", parts);
+			let added = CallOk(server, "plugin_scaffold", arguments);
+			defer delete added;
+			let kinds = added.Get("parts");
+			Test.Assert((kinds.Count == 3) && (kinds.At(0).AsString() == "Engine") && (kinds.At(1).AsString() == "Tooling") && (kinds.At(2).AsString() == "Editor"));
+		}
+		Test.Assert(FileExists(PathJoin(dir, "Plugins/SpinGame/SpinGame.Tooling/src/SpinGameTooling.bf", .. scope .())));
+
+		CallErr(server, "plugin_scaffold", Obj(), refused..Clear());
+		Test.Assert(refused.StartsWith("every part asked for is there already"), refused);
+		let bad = Obj();
+		let badParts = JsonValue.MakeArray();
+		badParts.Add(JsonValue.MakeString("Renderer"));
+		bad.Set("parts", badParts);
+		CallErr(server, "plugin_scaffold", bad, refused..Clear());
+		Test.Assert(refused.Contains("takes part kinds"), refused);
+		Test.Assert(changed == 2, "only what was made said so");
+		session.Project = null;
+		DeleteAndNullify!(owner.Project);
+	}
 }

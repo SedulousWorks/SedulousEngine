@@ -8,13 +8,16 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Runtime;
 using Sedulous.Engine.Project;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Mcp;
 
 /// The open project's plugins over MCP: plugin_list reports each entry of the project's list as
 /// the process's plugin host left it (loaded, not enabled here, refused, missing) with its
 /// settings, plugin_enable adds an entry or changes its path and platforms, plugin_disable removes
-/// one, and plugin_settings_set changes a loaded plugin's settings. A plugin's settings are its own
+/// one, plugin_settings_set changes a loaded plugin's settings, and plugin_scaffold makes the
+/// game's own package or adds parts to it (what the editor's Add Native Code does). A plugin's
+/// settings are its own
 /// reflected type, labelled as the project's settings are ([Setting]), so both read and check them
 /// through ReflectedFields. An entry whose plugin is not loaded keeps its settings as written:
 /// nothing here can read them, so nothing here changes them.
@@ -79,6 +82,68 @@ static class PluginTools
 				.Build(),
 			.Adjusts,
 			new (arguments, outResult, outError) => SetSettings(session, arguments, outResult, outError));
+
+		server.RegisterTool("plugin_scaffold",
+			"Scaffold the game's native code, as the editor's Add Native Code does: the game's plugin package, Plugins/<Game> (its name from the project's), with the `parts` asked for (Engine, Pipeline, Tooling, Editor; default Engine), each <Game>.<Kind>/ with its BeefProj.toml and a source whose Load finds the service its host hands that kind. A package already there gains the parts it lacks. Lists them in its Plugin.xml, enables the package in the project and saves. Refused when every part asked for is there, or Plugins/ holds another folder of that name; it never overwrites code. The editor's Project > Build Project builds it into the project's own editor and player. Returns the package's id, path and parts.",
+			scope SchemaBuilder().Arr("parts", "string", "the parts to make: Engine, Pipeline, Tooling, Editor (default Engine)").Build(),
+			.Adjusts,
+			new (arguments, outResult, outError) => Scaffold(session, arguments, outResult, outError));
+	}
+
+	/// plugin_scaffold: the game's package, or the parts it lacks, as Add Native Code makes them.
+	private static bool Scaffold(ProjectSession session, JsonValue arguments, JsonValue outResult, String outError)
+	{
+		if (!session.IsOpen)
+		{
+			outError.Append(McpTools.cNoProject);
+			return false;
+		}
+		let parts = scope List<PluginPartKind>();
+		if (let given = arguments.Get("parts"))
+		{
+			for (int i < given.Count)
+			{
+				let name = given.At(i);
+				PluginPartKind kind = .Engine;
+				bool known = false;
+				if (name.IsString)
+				{
+					if (PluginPartKind.Parse(name.AsString()) case .Ok(let parsed))
+					{
+						kind = parsed;
+						known = true;
+					}
+				}
+				if (!known)
+				{
+					outError.Append("`parts` takes part kinds: Engine, Pipeline, Tooling or Editor");
+					return false;
+				}
+				if (!parts.Contains(kind))
+					parts.Add(kind);
+			}
+		}
+		if (parts.IsEmpty)
+			parts.Add(.Engine);
+		if (GamePackage.Scaffold(session.Project, (Span<PluginPartKind>)parts) case .Err(let err))
+		{
+			if (err == .AlreadyExists)
+				outError.Append("every part asked for is there already, or Plugins/ holds another folder of the game package's name; nothing was touched");
+			else
+				outError.Append("the scaffold failed (log_read says why)");
+			return false;
+		}
+		if (session.OnSettingsChanged != null)
+			session.OnSettingsChanged();
+		let package = scope GamePackageInfo();
+		GamePackage.Find(session.Project, package);
+		outResult.Set("id", JsonValue.MakeString(package.Id));
+		outResult.Set("path", JsonValue.MakeString(package.Path));
+		let kinds = JsonValue.MakeArray();
+		for (let kind in package.Parts)
+			kinds.Add(JsonValue.MakeString(kind.ToString(.. scope .())));
+		outResult.Set("parts", kinds);
+		return true;
 	}
 
 	/// The settings object an enabled plugin's parts read, or null.

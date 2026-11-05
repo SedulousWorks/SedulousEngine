@@ -1,0 +1,18 @@
+<!--
+  Add Native Code: the parts of the game's plugin package to scaffold, a check box each, with the
+  hosts that load it. A part the package has is checked and cannot be unchecked. The line under them
+  says what Add makes; Add does nothing until a part the package lacks is checked.
+-->
+<Panel class="dialog-body add-native-code">
+    <Panel class="form">
+        <Label class="form-label" text="Parts"/>
+        <Panel class="form-field">
+            <CheckBox id="native-code-engine" text="Engine: the game's code (every host)"/>
+            <CheckBox id="native-code-pipeline" text="Pipeline: asset types, importers, cooks (the editor and the tools)"/>
+            <CheckBox id="native-code-tooling" text="Tooling: MCP tools (the editor, the exporter, the MCP host)"/>
+            <CheckBox id="native-code-editor" text="Editor: the editor's own additions (the editor)"/>
+            <Label id="native-code-what" class="form-help"/>
+        </Panel>
+    </Panel>
+    <Panel class="dialog-buttons"><Spacer/><Button id="native-code-cancel" text="Cancel"/><Button id="native-code-add" class="primary" text="Add"/></Panel>
+</Panel>

@@ -43,6 +43,8 @@ class ProjectActions
 	public delegate void() Settings ~ delete _;
 	/// Opens the export presets panel. Owned.
 	public delegate void() ExportPresets ~ delete _;
+	/// Asks which parts of the game's package to scaffold, then scaffolds them. Owned.
+	public delegate void() AddNativeCode ~ delete _;
 	/// Builds the project's own editor and player, its packages linked in, on the build lane.
 	/// Owned.
 	public delegate void() BuildProject ~ delete _;
@@ -209,6 +211,7 @@ static class EditorAppActions
 		defer delete run;
 		let context = run.Context;
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.settings", "Project Settings...", "Open the project settings", "Project/Project Settings...", 100)), ref run.Settings);
+		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.addNativeCode", "Add Native Code...", "Scaffold the game's native code, a plugin package under Plugins/", "Project/Add Native Code...", 200)), ref run.AddNativeCode);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.build", "Build Project", "Build the project's own editor and player, its packages linked in", "Project/Build Project", 201)), ref run.BuildProject);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.openWithBuild", "Open With This Build", "Open the project in its own build's editor, closing this one", "Project/Open With This Build", 202)), ref run.OpenWithThisBuild);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.export", "Export...", "Open the export presets panel", "Project/Export...", 300)), ref run.ExportPresets);

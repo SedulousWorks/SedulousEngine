@@ -34,7 +34,7 @@ class GamePackageTests
 		{
 			let project = EditorProject.Open(dir);
 			defer delete project;
-			Test.Assert(GamePackage.Scaffold(project) case .Ok);
+			Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Engine)) case .Ok);
 			let entry = project.Settings.FindPlugin("nativegame");
 			Test.Assert((entry != null) && (entry.Path == "Plugins/NativeGame") && entry.Platforms.IsEmpty);
 		}
@@ -78,16 +78,16 @@ class GamePackageTests
 		Test.Assert(EditorProject.Create(dir, "Game") case .Ok);
 		let project = EditorProject.Open(dir);
 		defer delete project;
-		Test.Assert(GamePackage.Scaffold(project) case .Ok);
+		Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Engine)) case .Ok);
 		let source = PathJoin(dir, "Plugins/Game/Game.Engine/src/GameEngine.bf", .. scope .());
 		let edited = "// the game's own code\n";
 		Test.Assert(WriteFile(source, .((uint8*)edited.Ptr, edited.Length)) case .Ok);
-		Test.Assert(GamePackage.Scaffold(project) case .Err(.AlreadyExists), "enabled already");
+		Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Engine)) case .Err(.AlreadyExists), "enabled already");
 
 		let entry = project.Settings.FindPlugin("game");
 		project.Settings.Plugins.Remove(entry);
 		delete entry;
-		Test.Assert(GamePackage.Scaffold(project) case .Err(.AlreadyExists), "the folder is there");
+		Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Engine)) case .Err(.AlreadyExists), "the folder is there");
 		Test.Assert(project.Settings.Plugins.IsEmpty, "no entry added for a refusal");
 		Test.Assert(Read(source, .. scope .()) == edited, "the game's code untouched");
 	}
@@ -113,5 +113,47 @@ class GamePackageTests
 		Test.Assert(settings.Name == "NativeSample");
 		let entry = settings.FindPlugin("nativesample");
 		Test.Assert((entry != null) && (entry.Path == "Plugins/NativeSample") && entry.Platforms.IsEmpty && entry.Settings.IsEmpty);
+	}
+
+	/// A package gains the parts asked for that it lacks, its manifest listing every part in load
+	/// order; each part's project depends on the library of the service its host hands it, and its
+	/// source finds that service; the project's build takes them all. Parts all there are refused.
+	[Test]
+	public static void APackageGainsThePartsItLacksInLoadOrderEachFindingItsService()
+	{
+		RemoveDirectoryRecursive(cRoot);
+		Test.Assert(CreateDirectory(cRoot));
+		defer RemoveDirectoryRecursive(cRoot);
+		let dir = PathJoin(GetCurrentDirectory(.. scope .()), scope $"{cRoot}/Game", .. scope .());
+		Test.Assert(EditorProject.Create(dir, "Game") case .Ok);
+		let project = EditorProject.Open(dir);
+		defer delete project;
+		let info = scope GamePackageInfo();
+		Test.Assert(!GamePackage.Find(project, info) && (info.Path == "Plugins/Game") && (info.Id == "game"));
+		Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Engine)) case .Ok);
+		Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Editor, .Engine, .Pipeline)) case .Ok);
+		Test.Assert(GamePackage.Find(project, info));
+		Test.Assert((info.Parts.Count == 3) && (info.Parts[0] == .Engine) && (info.Parts[1] == .Pipeline) && (info.Parts[2] == .Editor));
+		Test.Assert(project.Settings.Plugins.Count == 1, "one entry");
+
+		let manifest = scope PluginManifest();
+		Test.Assert(PluginManifest.Load(PathJoin(dir, "Plugins/Game", .. scope .()), manifest) case .Ok);
+		Test.Assert((manifest.Parts[0].Kind == "Engine") && (manifest.Parts[1].Kind == "Pipeline") && (manifest.Parts[2].Kind == "Editor"));
+		let pipelineProject = Read(PathJoin(dir, "Plugins/Game/Game.Pipeline/BeefProj.toml", .. scope .()), .. scope .());
+		Test.Assert(pipelineProject.Contains("Name = \"Game.Pipeline\"") && pipelineProject.Contains("\"Sedulous.Pipeline.Importer\" = \"*\""), pipelineProject);
+		let pipelineSource = Read(PathJoin(dir, "Plugins/Game/Game.Pipeline/src/GamePipeline.bf", .. scope .()), .. scope .());
+		Test.Assert(pipelineSource.Contains("using Sedulous.Pipeline.Importer;") && pipelineSource.Contains("context.Find<PipelinePluginServices>()"), pipelineSource);
+		Test.Assert(pipelineSource.Contains("public override PluginPartKind Kind => .Pipeline;") && pipelineSource.Contains("class GamePipelinePart"), pipelineSource);
+		let editorSource = Read(PathJoin(dir, "Plugins/Game/Game.Editor/src/GameEditor.bf", .. scope .()), .. scope .());
+		Test.Assert(editorSource.Contains("context.Find<EditorContext>()") && !editorSource.Contains("@"), editorSource);
+		Test.Assert(Read(PathJoin(dir, "Plugins/Game/Game.Editor/BeefProj.toml", .. scope .()), .. scope .()).Contains("\"Sedulous.Editor.Core\" = \"*\""));
+
+		let packages = scope List<ProjectPackage>();
+		defer { ClearAndDeleteItems!(packages); }
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems!(problems); }
+		ProjectBuild.Packages(dir, project.Settings, packages, problems);
+		Test.Assert((packages.Count == 1) && (packages[0].Parts.Count == 3) && problems.IsEmpty);
+		Test.Assert(GamePackage.Scaffold(project, scope PluginPartKind[](.Pipeline, .Editor)) case .Err(.AlreadyExists), "all there");
 	}
 }
