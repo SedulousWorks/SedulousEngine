@@ -76,7 +76,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 
 Recorded so a port audit does not flag them as missed halves:
 
-- Game native code: the player half is here (`PluginHost`, the native module setting), but the
+- Game native code: the player half is here (`PluginLoader`, the native module setting), but the
   editor and export halves are not. An export refuses a project that names a native module
   (`ExportDriver`), so Raptor's native module build, reload and export commits have nothing to
   land on yet.

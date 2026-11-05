@@ -21,7 +21,7 @@ class RecorderTests
 		// Something the layer owned BEFORE any plugin, which must survive.
 		recorder.Contribute(1000);
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		host.AddRecorder(recorder);
 
 		let plugin = scope ContributingPlugin(recorder, 2000);
@@ -46,7 +46,7 @@ class RecorderTests
 		let recorder = scope FakeContributionRecorder();
 		recorder.Contribute(3000);
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		host.AddRecorder(recorder);
 		host.Add(scope ContributingPlugin(recorder, 3000));
 
@@ -63,7 +63,7 @@ class RecorderTests
 		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		host.AddRecorder(recorder);
 		host.Add(scope ContributingPlugin(recorder, 4000));
 		host.Add(scope ContributingPlugin(recorder, 5000));
@@ -83,7 +83,7 @@ class RecorderTests
 		let context = scope SubsystemManager();
 		let recorder = scope FakeContributionRecorder();
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		let plugin = scope ContributingPlugin(recorder, 6000);
 		host.Add(plugin);
 		host.AddRecorder(recorder); // Too late.
@@ -105,7 +105,7 @@ class RecorderTests
 		GlobalSerializableRegistry.Clear();
 		defer GlobalSerializableRegistry.Clear();
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 
 		// A plugin whose OnLoad causes a THIRD party to register as a side effect, which is
 		// what a snapshot cannot distinguish from the plugin registering it itself.

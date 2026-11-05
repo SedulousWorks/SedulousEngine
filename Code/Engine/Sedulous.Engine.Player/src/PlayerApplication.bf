@@ -41,7 +41,7 @@ class PlayerApplication : DefaultApplication
 
 	private ProjectSettings mSettings = new .() ~ delete _;
 	/// The native game, static or loaded.
-	private PluginHost mPlugins = null ~ delete _;
+	private PluginLoader mPlugins = null ~ delete _;
 
 	private NativeFileSystem mRoot = null ~ delete _;
 	/// Distribution only.
@@ -190,7 +190,7 @@ class PlayerApplication : DefaultApplication
 	/// unloadable module is reported and the run CONTINUES.
 	private void LoadNativeGame(IApplicationHost host)
 	{
-		mPlugins = new PluginHost(host.Subsystems);
+		mPlugins = new PluginLoader(host.Subsystems);
 		// Record what the game contributes to scenes, so unloading reverses it.
 		mPlugins.AddRecorder(SceneContributionRecorder.Global);
 

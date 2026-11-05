@@ -10,12 +10,12 @@ namespace Sedulous.Runtime;
 ///
 /// Unloading is the hard half. A plugin registers a serializable factory, which is a
 /// FUNCTION POINTER into its library; if the library closes with that pointer still in the
-/// registry, the next load of that type jumps into unmapped memory. So the host records
+/// registry, the next load of that type jumps into unmapped memory. So the loader records
 /// what each plugin added and takes it back before closing anything.
 ///
 /// It records that by OBSERVING the registry across OnLoad rather than by asking the
 /// plugin to declare it. A plugin that forgets to declare something is exactly the plugin
-/// that crashes on unload, so the host does not rely on being told.
+/// that crashes on unload, so the loader does not rely on being told.
 ///
 /// Observing rather than comparing snapshots either side, because a snapshot cannot tell
 /// WHO added an id. Anything else that registered while OnLoad ran would be attributed to
@@ -28,12 +28,12 @@ namespace Sedulous.Runtime;
 /// registers in a layer ABOVE Runtime (a scene manager's contributions being the case that
 /// exists today), which plugs in through AddRecorder, so one unload still reverses
 /// everything the plugin did.
-class PluginHost
+class PluginLoader
 {
 	private SubsystemManager mSubsystems;
 	private List<PluginEntry> mEntries = new .() ~ DeleteContainerAndItems!(_);
 	/// BORROWED: each recorder belongs to the layer that supplied it and must outlive the
-	/// host.
+	/// loader.
 	private List<IRegistrationRecorder> mRecorders = new .() ~ delete _;
 
 	public this(SubsystemManager subsystems)
@@ -48,7 +48,7 @@ class PluginHost
 
 	public int Count => mEntries.Count;
 
-	/// Adds a recorder. BORROWED; it must outlive the host.
+	/// Adds a recorder. BORROWED; it must outlive the loader.
 	///
 	/// Add before loading anything: a plugin already loaded was not recorded through this
 	/// recorder and unloading it will not reverse what it added there.
@@ -58,7 +58,7 @@ class PluginHost
 			mRecorders.Add(recorder);
 	}
 
-	/// Adds a statically linked plugin. THE CALLER OWNS the plugin object; the host only
+	/// Adds a statically linked plugin. THE CALLER OWNS the plugin object; the loader only
 	/// drives it.
 	public void Add(IRuntimePlugin plugin)
 	{
@@ -84,14 +84,14 @@ class PluginHost
 		let library = Platform.BfpDynLib_Load(terminated);
 		if (library == null)
 		{
-			GlobalLog(.Error, "PluginHost: could not open '{}'", path);
+			GlobalLog(.Error, "PluginLoader: could not open '{}'", path);
 			return .Err(.NotFound);
 		}
 
 		let create = (function IRuntimePlugin())Platform.BfpDynLib_GetProcAddress(library, "CreatePlugin");
 		if (create == null)
 		{
-			GlobalLog(.Error, "PluginHost: '{}' exports no CreatePlugin", path);
+			GlobalLog(.Error, "PluginLoader: '{}' exports no CreatePlugin", path);
 			Platform.BfpDynLib_Release(library);
 			return .Err(.NotSupported);
 		}
@@ -99,7 +99,7 @@ class PluginHost
 		let plugin = create();
 		if (plugin == null)
 		{
-			GlobalLog(.Error, "PluginHost: CreatePlugin returned nothing in '{}'", path);
+			GlobalLog(.Error, "PluginLoader: CreatePlugin returned nothing in '{}'", path);
 			Platform.BfpDynLib_Release(library);
 			return .Err(.Internal);
 		}

@@ -63,8 +63,8 @@ class TestPlugin : IRuntimePlugin
 	}
 }
 
-/// The plugin host, and specifically getting a plugin back OUT.
-class PluginHostTests
+/// The plugin loader, and specifically getting a plugin back OUT.
+class PluginLoaderTests
 {
 	[Test]
 	public static void AddingAPluginLoadsItIntoTheContext()
@@ -73,7 +73,7 @@ class PluginHostTests
 		Trace.Clear();
 
 		let plugin = scope TestPlugin("alpha");
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 
 		host.Add(plugin);
 		Test.Assert(host.Count == 1);
@@ -97,7 +97,7 @@ class PluginHostTests
 		let second = scope TestPlugin("second");
 		first.RegistersASubsystem = false;
 		second.RegistersASubsystem = false;
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 
 		host.Add(first);
 		host.Add(second);
@@ -128,7 +128,7 @@ class PluginHostTests
 		let plugin = scope TestPlugin("registrar");
 		plugin.RegistersASerializable = true;
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		host.Add(plugin);
 
 		Test.Assert(GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId), "the plugin added its type");
@@ -157,7 +157,7 @@ class PluginHostTests
 		GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 
 		let plugin = scope TestPlugin("quiet");
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		host.Add(plugin);
 		host.UnloadAll();
 
@@ -180,7 +180,7 @@ class PluginHostTests
 		let plugin = scope TestPlugin("overrider");
 		plugin.RegistersASerializable = true; // registers the SAME id the host already had
 
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 		host.Add(plugin);
 		host.UnloadAll();
 
@@ -193,7 +193,7 @@ class PluginHostTests
 	public static void LoadingAMissingLibraryFailsCleanly()
 	{
 		let context = scope SubsystemManager();
-		let host = scope PluginHost(context);
+		let host = scope PluginLoader(context);
 
 		Test.Assert(host.Load("./no_such_plugin_library.so") case .Err);
 		Test.Assert(host.Count == 0, "nothing was recorded for a load that did not happen");
