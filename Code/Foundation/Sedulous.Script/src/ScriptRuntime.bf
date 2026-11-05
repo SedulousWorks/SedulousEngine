@@ -17,18 +17,36 @@ abstract class ScriptRuntime
 	public abstract StringView Name { get; }
 
 	/// Registers the surface's types with the backend: every one, or only those in the
-	/// domains given. A host holding a wider surface than a script may use (the cook, with
-	/// the pipeline's) binds the runtime subset for a game script.
-	public virtual void Bind(ScriptSurface surface, Span<StringView> domains = default)
+	/// domains given, less the `hidden` ones (by full name). A host holding a wider surface
+	/// than a script may use (the cook, with the pipeline's) binds the runtime subset for a
+	/// game script; the surface of a platform without some plugins is the full one less their
+	/// types, so a script checked against it fails where it uses one of them.
+	public virtual void Bind(ScriptSurface surface, Span<StringView> domains = default, Span<StringView> hidden = default)
 	{
 		mSurface = surface;
 		ClearAndDeleteItems!(mDomains);
 		for (let d in domains)
 			mDomains.Add(new String(d));
+		ClearAndDeleteItems!(mHidden);
+		for (let h in hidden)
+			mHidden.Add(new String(h));
 	}
 
 	/// The domains bound, empty for all.
 	protected List<String> mDomains = new .() ~ DeleteContainerAndItems!(_);
+	/// The types left out by full name.
+	protected List<String> mHidden = new .() ~ DeleteContainerAndItems!(_);
+
+	/// Whether Bind registers `t`: in a bound domain and not hidden.
+	protected bool IsBound(ScriptTypeInfo t)
+	{
+		for (let h in mHidden)
+		{
+			if (h == t.FullName)
+				return false;
+		}
+		return InBoundDomains(t);
+	}
 
 	protected bool InBoundDomains(ScriptTypeInfo t)
 	{

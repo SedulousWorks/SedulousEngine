@@ -152,7 +152,7 @@ static class ScriptClassCookTests
 			}
 			""";
 		let className = scope String();
-		Test.Assert(cook.Check(faulting, "Mover.as", className, problems), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.Check(faulting, "Mover.as", className, problems, default), problems.IsEmpty ? "" : problems[0]);
 		Test.Assert(className == "Mover");
 		Test.Assert(problems.IsEmpty);
 		let record = scope ScriptClassSource();
@@ -160,9 +160,43 @@ static class ScriptClassCookTests
 
 		// A compile error still fails it, where it is.
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Check("class Broken { void onStart() { Nope(); } }", "Broken.as", className, problems));
+		Test.Assert(!cook.Check("class Broken { void onStart() { Nope(); } }", "Broken.as", className, problems, default));
 		Test.Assert(className.IsEmpty);
 		Test.Assert(!problems.IsEmpty && problems.Back.StartsWith("Broken.as(1,"), problems.IsEmpty ? "" : problems.Back);
+	}
+
+	/// A check against a surface without some types (a platform without the plugin that registers
+	/// them) fails a script that uses one and passes one that does not; the full surface passes
+	/// both, and the types that name a hidden one in a member still bind without that member.
+	[Test]
+	public static void ACheckWithoutATypeFailsTheScriptThatUsesItAndOnlyThatOne()
+	{
+		Registered();
+		let cook = ScriptLanguageCooks.Find("angelscript");
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems(problems); }
+		let usesVec2 = """
+			class Mover
+			{
+				float reach() { Vec2 v = Vec2(1, 2); return v.X; }
+			}
+			""";
+		let usesThing = """
+			class Holder
+			{
+				Thing@ held;
+			}
+			""";
+		let hidden = scope StringView[]("Sedulous.Script.Fixture.Vec2");
+		let className = scope String();
+		Test.Assert(cook.Check(usesVec2, "Mover.as", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(!cook.Check(usesVec2, "Mover.as", className, problems, hidden));
+		Test.Assert(!problems.IsEmpty && problems.Back.StartsWith("Mover.as(3,"), problems.IsEmpty ? "" : problems.Back);
+		ClearAndDeleteItems(problems);
+		Test.Assert(cook.Check(usesThing, "Holder.as", className, problems, hidden), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(className == "Holder");
+		Test.Assert(cook.Check("double twice(double v) { return v * 2.0; }", "Twice.as", className, problems, hidden));
+		Test.Assert(problems.IsEmpty);
 	}
 
 	[Test]

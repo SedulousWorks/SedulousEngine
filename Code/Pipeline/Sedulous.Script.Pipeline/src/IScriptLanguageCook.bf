@@ -29,5 +29,7 @@ interface IScriptLanguageCook
 	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
 	/// harvest: the problems into `problems`, the first class (empty when none) into
 	/// `outClassName`. For checking a script as it is typed. False when it does not compile.
-	bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems);
+	/// Against the surface less the `hidden` types (by full name): a platform without a plugin
+	/// lacks that plugin's types, and a script that uses one does not compile there.
+	bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden);
 }

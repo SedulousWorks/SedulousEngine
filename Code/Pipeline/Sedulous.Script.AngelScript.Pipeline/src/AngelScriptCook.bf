@@ -135,10 +135,10 @@ class AngelScriptCook : IScriptLanguageCook
 	}
 
 	/// Through the runtime's Check, so unlike Cook no global initializer runs.
-	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems)
+	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden)
 	{
 		let runtime = scope AngelScriptRuntime();
-		runtime.Bind(mSurface);
+		runtime.Bind(mSurface, default, hidden);
 		ClearAndDeleteItems!(runtime.Problems);
 
 		let ok = runtime.Check(sourceName, source);

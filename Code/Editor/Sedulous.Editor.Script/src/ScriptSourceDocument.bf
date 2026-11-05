@@ -79,7 +79,7 @@ class ScriptSourceDocument
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems!(problems); }
 		let className = scope String();
-		let ok = cook.Check(mSource, mFileName, className, problems);
+		let ok = cook.Check(mSource, mFileName, className, problems, default);
 		for (let problem in problems)
 			mErrors.Add(ScriptCompileError.Parse(problem));
 		if (ok)
