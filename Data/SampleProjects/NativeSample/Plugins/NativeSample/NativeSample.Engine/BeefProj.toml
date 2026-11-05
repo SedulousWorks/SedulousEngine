@@ -8,4 +8,5 @@ TargetType = "BeefLib"
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Runtime" = "*"
-
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"

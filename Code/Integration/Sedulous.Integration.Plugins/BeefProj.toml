@@ -1,0 +1,26 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Integration.Plugins"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Composition" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Editor.Mcp" = "*"
+# The reference game's package, every part, as an editor links them.
+"NativeSample.Engine" = "*"
+"NativeSample.Pipeline" = "*"
+"NativeSample.Tooling" = "*"
+"NativeSample.Editor" = "*"

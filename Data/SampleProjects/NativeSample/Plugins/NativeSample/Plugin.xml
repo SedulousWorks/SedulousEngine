@@ -10,9 +10,18 @@
 		<string name="engineVersion">0.1</string>
 		<array name="dependsOn" count="0"/>
 		<array name="provides" count="0"/>
-		<array name="parts" count="1">
+		<array name="parts" count="4">
 			<object>
 				<string name="kind">Engine</string>
+			</object>
+			<object>
+				<string name="kind">Pipeline</string>
+			</object>
+			<object>
+				<string name="kind">Tooling</string>
+			</object>
+			<object>
+				<string name="kind">Editor</string>
 			</object>
 		</array>
 		<array name="platforms" count="3">

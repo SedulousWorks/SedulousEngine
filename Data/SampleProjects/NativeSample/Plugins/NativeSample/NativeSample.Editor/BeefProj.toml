@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "NativeSample.Editor"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Project" = "*"
+"NativeSample.Pipeline" = "*"

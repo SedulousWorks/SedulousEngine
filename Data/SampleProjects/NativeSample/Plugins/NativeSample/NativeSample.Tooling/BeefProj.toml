@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "NativeSample.Tooling"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Editor.Mcp" = "*"
+"NativeSample.Pipeline" = "*"
