@@ -20,6 +20,9 @@ class AngelScriptCook : IScriptLanguageCook
 
 	/// BORROWED: the host owns the surface for the cook's life.
 	private ScriptSurface mSurface;
+	/// The surface's hash, worked out on first use: the surface is fixed for the cook's life.
+	private uint64 mSurfaceHash = 0;
+	private bool mHashed = false;
 
 	public this(ScriptSurface surface)
 	{
@@ -27,6 +30,19 @@ class AngelScriptCook : IScriptLanguageCook
 	}
 
 	public int32 CookVersion => 1;
+
+	public uint64 SurfaceHash
+	{
+		get
+		{
+			if (!mHashed)
+			{
+				mSurfaceHash = (mSurface != null) ? mSurface.RuntimeHash() : 0;
+				mHashed = true;
+			}
+			return mSurfaceHash;
+		}
+	}
 
 	public void NewAssetTemplate(ScriptTier tier, StringView className, String outSource)
 	{

@@ -101,6 +101,22 @@ class CookPlanTests
 			let plan = scope CookPlan();
 			driver.Plan(plan);
 			Test.Assert(plan.Dirty.Count == 2);
+			driver.Execute(plan, scope CookStats());
+		}
+
+		// So does a change of what the builder compiles against (a script cook's surface).
+		CookWidgetBuilder.CurrentEnvironment = 0x5EED;
+		defer { CookWidgetBuilder.CurrentEnvironment = 0; }
+		{
+			let plan = scope CookPlan();
+			driver.Plan(plan);
+			Test.Assert(plan.Dirty.Count == 2);
+			driver.Execute(plan, scope CookStats());
+		}
+		{
+			let plan = scope CookPlan();
+			driver.Plan(plan);
+			Test.Assert(plan.Dirty.IsEmpty, "cooked against it, clean again");
 		}
 	}
 

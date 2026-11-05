@@ -11,12 +11,15 @@ class CookWidgetBuilder : IAssetBuilder
 {
 	/// Settable, so a case can bump it and watch every product of this builder re-cook.
 	public static int32 CurrentVersion = 1;
+	/// Settable, so a case can change what the builder compiles against.
+	public static uint64 CurrentEnvironment = 0;
 	/// Settable, so a case can make the build fail on demand.
 	public static bool ShouldFail = false;
 
 	public Type AssetType => typeof(CookWidgetAsset);
 	public Type ProductType => typeof(CookWidgetProduct);
 	public int32 Version => CurrentVersion;
+	public uint64 EnvironmentHash => CurrentEnvironment;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{

@@ -51,6 +51,7 @@ class CookFixture
 		Builders.Register(new VariantBuilder());
 
 		CookWidgetBuilder.CurrentVersion = 1;
+		CookWidgetBuilder.CurrentEnvironment = 0;
 		CookWidgetBuilder.ShouldFail = false;
 		CookTestTypes.RegisterAll();
 	}

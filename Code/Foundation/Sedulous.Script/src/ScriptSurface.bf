@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core; // the hashes, and the runtime domain
 
 namespace Sedulous.Script;
 
@@ -12,6 +13,52 @@ namespace Sedulous.Script;
 class ScriptSurface
 {
 	public List<ScriptTypeInfo> Types = new .() ~ DeleteContainerAndItems!(_);
+
+	/// A hash of what a player's scripts compile against: every runtime-domain type, its name,
+	/// kind, fields, methods and enum values, whatever order they were added in (a sum of each
+	/// type's hash). Another domain's types stay out, so every host that cooks gets the same answer
+	/// for the same build.
+	public uint64 RuntimeHash()
+	{
+		uint64 sum = 0;
+		for (let t in Types)
+		{
+			if (t.Domain != ScriptDomains.Runtime)
+				continue;
+			var h = HashText(t.FullName);
+			h = Mix(h, (uint64)t.Kind);
+			for (let field in t.Fields)
+			{
+				h = Mix(h, HashText(field.Name));
+				h = Mix(h, HashText(field.TypeName));
+				h = Mix(h, (field.IsStatic ? (uint64)2 : (uint64)0) | (field.CanWrite ? (uint64)1 : (uint64)0));
+			}
+			for (let method in t.Methods)
+			{
+				h = Mix(h, HashText(method.Name));
+				h = Mix(h, HashText(method.ReturnTypeName));
+				h = Mix(h, (method.IsStatic ? (uint64)2 : (uint64)0) | (method.IsConstructor ? (uint64)1 : (uint64)0));
+				for (let param in method.Params)
+				{
+					h = Mix(h, HashText(param.TypeName));
+					h = Mix(h, param.IsByRef ? (uint64)1 : (uint64)0);
+				}
+			}
+			for (let value in t.EnumValues)
+			{
+				h = Mix(h, HashText(value.Name));
+				h = Mix(h, (uint64)value.Value);
+			}
+			sum += HashInteger(h); // a sum: the order the types were added in does not matter
+		}
+		return sum;
+	}
+
+	private static uint64 Mix(uint64 hash, uint64 value)
+	{
+		var copy = value;
+		return HashBytes(&copy, sizeof(uint64), hash);
+	}
 
 	public ScriptTypeInfo AddType(StringView fullName, ScriptTypeKind kind, StringView domain)
 	{

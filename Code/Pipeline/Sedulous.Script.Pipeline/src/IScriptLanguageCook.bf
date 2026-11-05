@@ -12,6 +12,10 @@ interface IScriptLanguageCook
 	/// Folded into the builder's version: bump when the cook's output changes.
 	int32 CookVersion => 1;
 
+	/// A hash of the surface the cook compiles against (ScriptSurface.RuntimeHash), folded into
+	/// the products' recipes so a changed surface recooks them; nought: none.
+	uint64 SurfaceHash => 0;
+
 	/// The source a new asset of this language and tier starts with. A behaviour's class is
 	/// `className` (a valid identifier: ScriptCreators.ClassNameFor makes one); the level and
 	/// game tiers keep their reserved class names and ignore it.

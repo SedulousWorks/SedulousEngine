@@ -19,6 +19,10 @@ class ScriptClassAssetBuilder : IAssetBuilder
 	/// cook change recooks.
 	public int32 Version => 3 + ScriptLanguageCooks.VersionSum;
 
+	/// The surface the scripts are checked against: a change (an engine whose facades changed)
+	/// recooks them, so a script that no longer compiles is found at cook time, not at load.
+	public uint64 EnvironmentHash => ScriptLanguageCooks.SurfaceHashSum;
+
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
 		if (context.Output == null)

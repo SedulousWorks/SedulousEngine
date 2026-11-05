@@ -91,6 +91,18 @@ static class ScriptLanguageCooks
 		}
 	}
 
+	/// Every cook's surface hash summed, for what the builder compiles against.
+	public static uint64 SurfaceHashSum
+	{
+		get
+		{
+			uint64 sum = 0;
+			for (let entry in sEntries)
+				sum += entry.Cook.SurfaceHash;
+			return sum;
+		}
+	}
+
 	/// Tests only: drops every registration.
 	public static void Clear() => ClearAndDeleteItems!(sEntries);
 }

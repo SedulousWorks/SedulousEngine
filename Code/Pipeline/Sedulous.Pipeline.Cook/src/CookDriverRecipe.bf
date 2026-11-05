@@ -68,6 +68,11 @@ extension CookDriver
 		// The builder's own version, which is how a cook logic change forces a re-cook.
 		h = RecipeHash.Fold(h, (uint64)'V', (uint64)builder.Version);
 
+		// What the build compiles against (the script surface), when the builder has one.
+		let environment = builder.EnvironmentHash;
+		if (environment != 0)
+			h = RecipeHash.Fold(h, (uint64)'X', environment);
+
 		// The platform salt, on a VARIANT builder ONLY, so the same source produces a distinct
 		// product per target while an invariant one keeps a target independent recipe and can
 		// copy forward untouched.
