@@ -211,6 +211,17 @@ compute versions, and the resolved mode acted on (Auto already picks GPU above 1
 on Vulkan, Direct3D 12 and WebGPU (the light clusters already run compute there,
 `ClusterSystem`).
 
+### A model's clips from other files
+Raptor's finding (2026-11-05), the same here: a model import takes the skeleton and clips of its
+own file only (`ModelImportSkeleton`, `ModelCook`: a skeleton from the file's first skin, a clip
+per animation in it), so a character whose clips each come in a file of their own (as animation
+packs ship them, each with its own copy of the skin) imports as one model, skeleton and mesh per
+clip file, every clip named by its file's take. Wanted: a model's import takes animation files
+beside it as its clips, bound to the model's skeleton, each named by its file (a naming rule such
+as `Model@Clip`, or listed in the import's settings), root motion per clip as now; a mesh in a
+clip file is ignored, and the import says so when it differs from the model's. A file of clips
+with no model of its own names the skeleton it animates.
+
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by
