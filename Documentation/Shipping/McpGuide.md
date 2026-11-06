@@ -134,11 +134,12 @@ it holds is let go at the end. `probes` read entities (by guid, name or slash pa
 paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
 as `entity_inspect` names them, or `<BehaviorClass>.<field>` for a behaviour running on the
 entity, private fields too, then `.x`/`.y`/`.z` or a key or an index) and game script
-fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), sampled `every` N seconds (0.5 by default) or at
+fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), and the scene's
+level script's (`{"level": "m_round"}`), sampled `every` N seconds (0.5 by default) or at
 `sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
 gone by then reads null. `screenshots` writes the tab at those run times. `until` ends the
 run early, on a death or a win: `{"entity": "Player", "field": "worldPosition.y", "op": "<",
-"value": -10}`. `endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
+"value": -10}`, or on a script's value (`{"level": "m_over", "op": "==", "value": true}`). `endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
 is played the same way: `pie_screenshot`, find the button, click it with a timeline. The tools
 check probes and names against the running game before the run starts, so a typo fails at
 once. Runs are real frames at real frame rates: a time lands within a frame of where it was
@@ -182,7 +183,7 @@ behaviour's properties under `live` beside what is authored.
   protocol error, -32602, naming the tool, the argument and the ones it takes
   (`pie_run: no argument 'timeline' (it takes: ...)`): a misspelt argument never silently
   does nothing. The same holds at every depth, the field named by its path
-  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, script)`); only a map of
+  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level)`); only a map of
   names the tool resolves itself (asset_import's `options`, a behaviour's `properties`) takes
   any key, and the tool refuses one it does not know. `tools/list` gives each tool's schema.
 - **Check `known_issues` before re-diagnosing** an odd symptom; if it matches a recorded

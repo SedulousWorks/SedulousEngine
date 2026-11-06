@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Input;
 using Sedulous.Script;
+using Sedulous.Engine.Script;
 
 namespace Sedulous.Editor.Play;
 
@@ -45,6 +46,14 @@ extension GameEditorPage
 	public bool GetScriptProperty(StringView name, ref ScriptValue value)
 	{
 		return (mGameInstance != null) && mGameInstance.GetScriptProperty(name, ref value);
+	}
+
+	public bool GetLevelProperty(StringView name, ref ScriptValue value)
+	{
+		if (!mRunning || (mScene == null))
+			return false;
+		let level = mScene.GetSystem<ScriptSceneSystem>();
+		return (level != null) && level.GetLevelProperty(name, ref value);
 	}
 
 	/// Once per frame from OnUpdate.

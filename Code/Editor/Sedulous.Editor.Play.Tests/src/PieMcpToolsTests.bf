@@ -80,6 +80,15 @@ class PieMcpToolsTests
 			value = .FromFloat(Score);
 			return true;
 		}
+		/// The scene's level script, with one property, `wave`.
+		public double Wave = 0;
+		public bool GetLevelProperty(StringView name, ref ScriptValue value)
+		{
+			if (!Running || (name != "wave"))
+				return false;
+			value = .FromFloat(Wave);
+			return true;
+		}
 
 		/// The scripted input a run installed, advanced by Frame as the page's OnUpdate does.
 		public ScriptedInputSource Scripted ~ delete _;
@@ -601,13 +610,13 @@ class PieMcpToolsTests
 			// The nested shapes are checked by name: `field` for `fields` read worldPosition.
 			let probeField = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Player\",\"field\":\"position.x\"}]}");
 			defer delete probeField;
-			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script)", probeField.Error);
+			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level)", probeField.Error);
 			let inputTypo = Call(server, "pie_run", "{\"duration\":1,\"input\":[{\"at\":0,\"key\":\"D\",\"donw\":false}]}");
 			defer delete inputTypo;
 			Test.Assert(inputTypo.Error.StartsWith("pie_run: no field 'input[0].donw' (it takes: at, "), inputTypo.Error);
 			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\">\",\"valeu\":1}}");
 			defer delete untilTypo;
-			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, op, value)", untilTypo.Error);
+			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, level, op, value)", untilTypo.Error);
 			let noDuration = Call(server, "pie_run", "{\"duration\":0}");
 			defer delete noDuration;
 			Test.Assert(noDuration.Error.StartsWith("`duration` takes run seconds"), noDuration.Error);
@@ -703,6 +712,51 @@ class PieMcpToolsTests
 		Test.Assert(answer.Payload.Get("endedBy").AsString() == "stopped");
 		Test.Assert(answer.Payload.Get("samples").Count == 1);
 		Test.Assert(!answer.Payload.Get("state").Get("running").AsBool());
+	}
+
+	/// A run reads the scene's level script as `level.<name>`, and ends on it; a property it
+	/// does not have is refused before the run starts.
+	[Test]
+	public static void ARunReadsTheScenesLevelScriptAndEndsOnIt()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+		Answer answer;
+
+		{
+			let missing = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"lives\"}]}");
+			defer delete missing;
+			Test.Assert(!missing.Ok);
+			Test.Assert(missing.Error.StartsWith("the level script of PIE instance 'game-page' has no property 'lives'"), missing.Error);
+			Test.Assert(host.ScriptsBegun == 0);
+		}
+
+		host.Wave = 2;
+		let sample = "{\"duration\":1,\"probes\":[{\"level\":\"wave\"}],\"every\":0.5}";
+		while (Pump(server, "pie_run", sample, out answer) == .NotFinished)
+			PlayFrame(host, 0.05);
+		{
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			let samples = answer.Payload.Get("samples");
+			Test.Assert(samples.Count > 0);
+			Test.Assert(samples.At(samples.Count - 1).Get("values").Get("level.wave").AsNumber() == 2);
+		}
+
+		PlayFrame(host, 0.1); // the ended script goes
+		let until = "{\"duration\":10,\"until\":{\"level\":\"wave\",\"op\":\">=\",\"value\":3}}";
+		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished);
+		PlayFrame(host, 0.1);
+		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished, "below 3, it plays on");
+		host.Wave = 3;
+		while (Pump(server, "pie_run", until, out answer) == .NotFinished)
+			PlayFrame(host, 0.05);
+		defer delete answer;
+		Test.Assert(answer.Ok, answer.Error);
+		Test.Assert(answer.Payload.Get("endedBy").AsString() == "until");
+		Test.Assert(answer.Payload.Get("until").Get("probe").AsString() == "level.wave");
 	}
 
 	/// A second run on a busy instance is refused, not taken for the first's re-entry; a run

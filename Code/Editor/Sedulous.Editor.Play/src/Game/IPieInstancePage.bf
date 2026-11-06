@@ -53,6 +53,9 @@ interface IPieInstancePage : IGameScenePage
 
 	/// Reads a property of the running game script into `value`; false without one.
 	bool GetScriptProperty(StringView name, ref ScriptValue value);
+	/// Reads a property of the running scene's level script into `value`; false without one or
+	/// with no such property.
+	bool GetLevelProperty(StringView name, ref ScriptValue value);
 
 	/// Plays `source` into this instance in place of the viewport's input, its time zero now:
 	/// the page advances it each frame by the run's time. OWNERSHIP transfers; a script

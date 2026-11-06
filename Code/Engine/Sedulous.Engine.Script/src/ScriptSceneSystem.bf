@@ -749,4 +749,13 @@ class ScriptSceneSystem : SceneSystem
 	}
 
 	public ScriptObject Level => mLevel;
+
+	/// Reads a property of the live Level object into `value` (a playtest probes a level's
+	/// state with it); false with no Level live or no such property.
+	public bool GetLevelProperty(StringView name, ref ScriptValue value)
+	{
+		if ((mLevel == null) || (mHost == null) || (mHost.Runtime == null))
+			return false;
+		return mHost.Runtime.GetProperty(mLevel, name, ref value);
+	}
 }

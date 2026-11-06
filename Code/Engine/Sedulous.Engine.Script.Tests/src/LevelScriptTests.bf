@@ -47,12 +47,16 @@ static class LevelScriptTests
 		play.Scripts.Settings.SetOverride(ScriptPropertyNames.HashOf("gravity"), .Float(2));
 
 		Test.Assert(play.Scripts.Level == null, "nothing before simulation");
+		var read = ScriptValue.Nil;
+		Test.Assert(!play.Scripts.GetLevelProperty("updates", ref read), "no Level to read");
 		play.Start();
 		play.Step(3);
 		let object = play.Scripts.Level;
 		Test.Assert(object != null);
 		Test.Assert(Int(play, object, "starts") == 1);
 		Test.Assert(Int(play, object, "updates") == 3);
+		Test.Assert(play.Scripts.GetLevelProperty("updates", ref read) && (read.AsInt == 3), "read through the scene's system");
+		Test.Assert(!play.Scripts.GetLevelProperty("lives", ref read), "no such property");
 		var v = ScriptValue.Nil;
 		play.Runtime.GetProperty(object, "gravity", ref v);
 		Test.Assert(v.AsFloat == 2, "the override, before onStart");
@@ -64,6 +68,7 @@ static class LevelScriptTests
 
 		play.Stop();
 		Test.Assert(play.Scripts.Level == null, "released on stop, after onStop");
+		Test.Assert(!play.Scripts.GetLevelProperty("updates", ref read), "gone with it");
 		Test.Assert(play.Scripts.InstanceCount == 0);
 	}
 

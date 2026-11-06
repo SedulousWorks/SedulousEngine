@@ -33,7 +33,8 @@ static class PieRunTool
 	/// The most samples one run takes.
 	public const int cMaxSamples = 5000;
 
-	/// One value a run reads: a field of an entity, or a property of the game script.
+	/// One value a run reads: a field of an entity, a property of the game script, or one of
+	/// the scene's level script.
 	private class Probe
 	{
 		/// A guid, a name or a slash path; empty for a script probe.
@@ -41,6 +42,8 @@ static class PieRunTool
 		public String Field = new .() ~ delete _;
 		/// The game script property; empty for an entity probe.
 		public String Script = new .() ~ delete _;
+		/// The scene's level script property; empty otherwise.
+		public String Level = new .() ~ delete _;
 		public String Label = new .() ~ delete _;
 	}
 
@@ -115,7 +118,8 @@ static class PieRunTool
 		probe.Str("entity", "the entity, by guid, name or slash path");
 		probe.Arr("fields", "string", "its field paths (default [\"worldPosition\"])");
 		probe.Str("script", "or a game script property");
-		schema.ObjectArr("probes", probe, "what to read: {entity, fields} (entity by guid, name or slash path; fields default [\"worldPosition\"]) or {script: \"<game script property>\"}");
+		probe.Str("level", "or a property of the scene's level script");
+		schema.ObjectArr("probes", probe, "what to read: {entity, fields} (entity by guid, name or slash path; fields default [\"worldPosition\"]), {script: \"<game script property>\"} or {level: \"<the scene's level script property>\"}");
 		schema.Number("every", "sample the probes every N run seconds (default 0.5)");
 		schema.Arr("sampleAt", "number", "or sample at these run times instead");
 		schema.Arr("screenshots", "number", "run times at which to write a PNG of the tab");
@@ -124,13 +128,14 @@ static class PieRunTool
 		untilSchema.Str("entity", "the entity, by guid, name or slash path");
 		untilSchema.Str("field", "its field path, as in probes (default worldPosition; worldPosition.y for the height)");
 		untilSchema.Str("script", "or a game script property");
+		untilSchema.Str("level", "or a property of the scene's level script");
 		untilSchema.Str("op", "<, <=, >, >=, == or !=");
 		untilSchema.Any("value", "the value to cross: a number, or with == and != a boolean or a string");
-		schema.Obj("until", untilSchema, "end the run early when one value crosses: {entity, field, op, value} or {script, op, value}; `value` is a number, or with == and != a boolean or a string");
+		schema.Obj("until", untilSchema, "end the run early when one value crosses: {entity, field, op, value}, {script, op, value} or {level, op, value}; `value` is a number, or with == and != a boolean or a string");
 		let runs = new Runs();
 		server.RegisterTool("pie_run",
 			"""
-			Playtest one running PIE instance (pie_start first): play a device-level input timeline into it for `duration` run seconds and answer what happened. The timeline replaces that tab's real input for the run (the user's mouse and keys do not reach it; other instances keep theirs) and goes through the project's input map as a player's would: keys by KeyCode name ("D", "Space", "LeftShift"), mouse buttons ("Left"), gamepad buttons ("South", "DPadUp") and axes ("LeftX", -1 to 1). Held keys are let go when the run ends. `probes` read entity fields (the paths are `worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>` as entity_inspect names them, then `.x`/`.y`/`.z` or a key or index to go inside) and game script properties, sampled `every` N seconds or at `sampleAt` times, one row per sample {t, frame, values} with a final row at the end; an entity missing at a sample reads null. `screenshots` writes the tab at those run times. `until` ends the run when its value crosses ("player worldPosition.y < -10", "script score >= 3"). Returns {pie, endedBy: duration | until | stopped | timeout, gameTime, frames, samples, screenshots, until, state}. Runs are real frames: a time lands within a frame of where it was asked, so compare with tolerances. Start from pie_start for a reproducible run. One run per instance at a time.
+			Playtest one running PIE instance (pie_start first): play a device-level input timeline into it for `duration` run seconds and answer what happened. The timeline replaces that tab's real input for the run (the user's mouse and keys do not reach it; other instances keep theirs) and goes through the project's input map as a player's would: keys by KeyCode name ("D", "Space", "LeftShift"), mouse buttons ("Left"), gamepad buttons ("South", "DPadUp") and axes ("LeftX", -1 to 1). Held keys are let go when the run ends. `probes` read entity fields (the paths are `worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>` as entity_inspect names them, then `.x`/`.y`/`.z` or a key or index to go inside), game script properties and the scene's level script's (`level`), sampled `every` N seconds or at `sampleAt` times, one row per sample {t, frame, values} with a final row at the end; an entity missing at a sample reads null. `screenshots` writes the tab at those run times. `until` ends the run when its value crosses ("player worldPosition.y < -10", "script score >= 3"). Returns {pie, endedBy: duration | until | stopped | timeout, gameTime, frames, samples, screenshots, until, state}. Runs are real frames: a time lands within a frame of where it was asked, so compare with tolerances. Start from pie_start for a reproducible run. One run per instance at a time.
 			""",
 			schema.Build(), .Adjusts,
 			new (call, arguments, outResult, outError) => Handle(context, runs, call, arguments, outResult, outError),
@@ -454,10 +459,18 @@ static class PieRunTool
 			outProbes.Add(probe);
 			return true;
 		}
+		if (let level = entry.Get("level"))
+		{
+			let probe = new Probe();
+			probe.Level.Set(level.AsString());
+			probe.Label.AppendF("level.{}", probe.Level);
+			outProbes.Add(probe);
+			return true;
+		}
 		let entity = entry.Get("entity");
 		if ((entity == null) || !entity.IsString || entity.AsString().IsEmpty)
 		{
-			outError.AppendF("probes[{}]: name an `entity` (guid, name or slash path) or a `script` property", i);
+			outError.AppendF("probes[{}]: name an `entity` (guid, name or slash path), a `script` property or a `level` property", i);
 			return false;
 		}
 		let fields = entry.Get("fields");
@@ -482,7 +495,7 @@ static class PieRunTool
 	{
 		if (!until.IsObject)
 		{
-			outError.Append("`until` takes {entity, field, op, value} or {script, op, value}");
+			outError.Append("`until` takes {entity, field, op, value}, {script, op, value} or {level, op, value}");
 			return false;
 		}
 		let probe = new Probe();
@@ -492,12 +505,17 @@ static class PieRunTool
 			probe.Script.Set(script.AsString());
 			probe.Label.AppendF("script.{}", probe.Script);
 		}
+		else if (let level = until.Get("level"))
+		{
+			probe.Level.Set(level.AsString());
+			probe.Label.AppendF("level.{}", probe.Level);
+		}
 		else
 		{
 			let entity = until.Get("entity");
 			if ((entity == null) || !entity.IsString || entity.AsString().IsEmpty)
 			{
-				outError.Append("`until` names an `entity` (with a `field`) or a `script` property");
+				outError.Append("`until` names an `entity` (with a `field`), a `script` property or a `level` property");
 				return false;
 			}
 			probe.Entity.Set(entity.AsString());
@@ -565,6 +583,16 @@ static class PieRunTool
 			if (!pie.GetScriptProperty(probe.Script, ref value))
 			{
 				outError.AppendF("the game script of PIE instance '{}' has no property '{}' (or no script runs)", pie.PieId, probe.Script);
+				return null;
+			}
+			return ComponentJson.ScriptJson(value, pie.RunningScene);
+		}
+		if (!probe.Level.IsEmpty)
+		{
+			var value = ScriptValue.Nil;
+			if (!pie.GetLevelProperty(probe.Level, ref value))
+			{
+				outError.AppendF("the level script of PIE instance '{}' has no property '{}' (or its scene runs none)", pie.PieId, probe.Level);
 				return null;
 			}
 			return ComponentJson.ScriptJson(value, pie.RunningScene);
