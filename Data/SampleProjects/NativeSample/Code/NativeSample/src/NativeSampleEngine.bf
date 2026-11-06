@@ -7,7 +7,7 @@ using Sedulous.Engine.Composition;
 
 namespace NativeSample;
 
-/// NativeSample.Engine: the reference game's runtime code, the Engine part of its plugin package,
+/// NativeSample: the reference game's runtime code, the Engine part of its plugin package,
 /// loaded by every host.
 ///
 /// Load is the one registration point: it adds the spin manager, which turns the entities with a

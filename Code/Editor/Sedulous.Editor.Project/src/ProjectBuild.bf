@@ -18,7 +18,7 @@ class ProjectPackage
 	/// The folder as the project's entry names it, relative to the project.
 	public String Path = new .() ~ delete _;
 	/// The prefix of each part's project: the game's name for the game's package, the folder's
-	/// name for any other ("NativeSample" gives NativeSample.Engine).
+	/// name for any other (a package in Plugins/Weather gives Weather.Engine).
 	public String Name = new .() ~ delete _;
 	/// The game's own package (Code/), whose Engine part is the project <Game>, not <Game>.Engine.
 	public bool IsGame;
