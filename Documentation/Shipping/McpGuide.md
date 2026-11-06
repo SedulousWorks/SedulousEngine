@@ -233,10 +233,12 @@ taken). `plugin_enable` (`id`, optional `path` and
 it refuses a platform the plugin's manifest does not support and a `path` whose package is
 another plugin. `plugin_disable` removes an entry and its settings. A host enables the project's
 plugins when it opens the project, so either takes effect there. `plugin_scaffold` (`parts`: any of
-Engine, Pipeline, Tooling, Editor; default Engine) makes the game's own native code, a plugin package
-at `Plugins/<Game>` enabled in the project, or adds to it the parts it lacks, as the editor's Add
-Native Code does; it never overwrites code, and the editor's Project > Build Project builds it into
-the project's own editor and player. A loaded plugin reports its
+Engine, Pipeline, Tooling, Editor; default Engine) makes the game's own native code, a package in
+the project's Beef workspace `Code/` enabled in the project (path `Code`), or adds to it the parts it
+lacks, as the editor's Add Native Code does: the Engine part is `Code/<Game>`, any other
+`Code/<Game>.<Kind>`, and `Code/BeefSpace.toml` lists them (the user's own lines stay). It never
+overwrites code, and the editor's Project > Build Project builds it into the project's own editor
+and player, finding the engine SDK through `SEDULOUS_SDK` or the checkout the editor runs from. A loaded plugin reports its
 `settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`
 takes its kind) changes them, checked in full first, then saved. An entry whose plugin is not
 loaded keeps its settings as written: no tool reads or changes them. A loaded plugin may serve

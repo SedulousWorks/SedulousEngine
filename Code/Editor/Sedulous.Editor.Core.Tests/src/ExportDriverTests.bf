@@ -410,9 +410,8 @@ static class ExportDriverTests
 		let player = ProjectBuild.ExecutablePath(fx.ProjectDir, "Export", false, "ShippingRelease", .. scope .());
 		let built = "#!own\n";
 		let buildDir = PathParent(player, .. scope .());
-		CreateDirectory(PathJoin(fx.ProjectDir, ".cache", .. scope .()));
-		CreateDirectory(PathJoin(fx.ProjectDir, ".cache/build", .. scope .()));
-		CreateDirectory(PathJoin(fx.ProjectDir, ".cache/build/build", .. scope .()));
+		CreateDirectory(PathJoin(fx.ProjectDir, "Code", .. scope .()));
+		CreateDirectory(PathJoin(fx.ProjectDir, "Code/build", .. scope .()));
 		CreateDirectory(PathParent(buildDir, .. scope .()));
 		CreateDirectory(buildDir);
 		Test.Assert(WriteFile(player, .((uint8*)built.Ptr, built.Length)) case .Ok);

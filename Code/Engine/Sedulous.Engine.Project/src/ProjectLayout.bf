@@ -23,9 +23,14 @@ static class ProjectLayout
 	/// the project's own to pick.
 	public static bool IsOutputFolder(StringView name) => (name == CookedDir) || name.StartsWith("Cooked-") ||
 		(name == EditorDir) || (name == CacheDir) || (name == DistDir);
-	/// The project's own plugin packages (its game code, project-local plugins):
-	/// Plugins/<Name>/, each a Plugin.xml and its parts.
+	/// The project's reusable packages: Plugins/<Name>/, each a Plugin.xml and its parts,
+	/// <Name>.<Kind>/. The game's own package lives in CodeDir.
 	public const String PluginsDir = "Plugins";
+	/// The project's Beef workspace: its BeefSpace.toml (the user's, kept up to date by the
+	/// editor), the game's own package (its Plugin.xml, the Engine part <Game>/ and any
+	/// <Game>.<Kind>/ part), and what builds write (the generated entries, BeefConfig.toml and
+	/// BeefBuild's output), which stays out of version control.
+	public const String CodeDir = "Code";
 
 	/// Readable and diffable envelopes, against the binary ones a cook produces. Without
 	/// the dot, as a ContentDatabase takes them: it adds its own, and a dotted one here had

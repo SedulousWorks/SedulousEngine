@@ -7,25 +7,29 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
 
-/// The game's package as it stands: its id, its name (the folder's and its parts' prefix), its
+/// The game's package as it stands: its id, its name (its parts' prefix), its
 /// path in the project, and the parts its manifest lists, in load order.
 class GamePackageInfo
 {
 	public String Id = new .() ~ delete _;
 	public String Name = new .() ~ delete _;
-	/// Relative to the project: Plugins/<Game>.
+	/// Relative to the project: Code.
 	public String Path = new .() ~ delete _;
 	public List<PluginPartKind> Parts = new .() ~ delete _;
 }
 
-/// The game's native code, scaffolded: its plugin package under Plugins/<Game>, with its
-/// Plugin.xml and the parts asked for (each a part's project and a source whose Load is the one
-/// registration point, finding the service its host hands that kind), and the project's entry for
-/// it. The NativeSample shape, with the game's name filled in.
+/// The game's native code, scaffolded: the project's own package in Code/, the project's Beef
+/// workspace, with its Plugin.xml and the parts asked for (each a part's project and a source
+/// whose Load is the one registration point, finding the service its host hands that kind), the
+/// workspace's BeefSpace.toml and .gitignore, and the project's entry for it. The Engine part is
+/// Code/<Game> (the project <Game>), any other Code/<Game>.<Kind>.
+///
+/// A project whose game package is still a plugin package under Plugins/ keeps building through
+/// its entry's path; Find does not report it, and Scaffold refuses, since the entry is taken.
 static class GamePackage
 {
-	/// The package's name and folder for a project: the project's name as the project's build
-	/// names its executables (ProjectBuild.GameName), so "Sky Hopper" gives SkyHopper.
+	/// The package's name for a project, its parts' prefix: the project's name as the project's
+	/// build names its executables (ProjectBuild.GameName), so "Sky Hopper" gives SkyHopper.
 	public static void NameFor(StringView projectName, String outName) => ProjectBuild.GameName(projectName, outName);
 
 	/// The game's package of `project` into `outInfo`: its id, name and path always, and its parts
@@ -34,7 +38,7 @@ static class GamePackage
 	{
 		NameFor(project.Settings.Name, outInfo.Name);
 		ProjectLayout.PluginIdFromName(outInfo.Name, outInfo.Id);
-		outInfo.Path.Set(scope $"{ProjectLayout.PluginsDir}/{outInfo.Name}");
+		outInfo.Path.Set(ProjectLayout.CodeDir);
 		outInfo.Parts.Clear();
 		let manifest = scope PluginManifest();
 		if (PluginManifest.Load(PathJoin(project.Directory, outInfo.Path, .. scope .()), manifest) case .Err)
@@ -48,9 +52,11 @@ static class GamePackage
 	}
 
 	/// Add Native Code: writes the game's package into `project` with `parts`, or adds to the
-	/// package there the parts it lacks; its Plugin.xml lists them in load order, and the project
-	/// enables it and saves. Refused with AlreadyExists when every part asked for is there, or the
-	/// folder or the project's entry is not this package's, so it never overwrites the game's code.
+	/// package there the parts it lacks; its Plugin.xml lists them in load order, the workspace
+	/// lists them (ProjectBuild.UpdateWorkspace), and the project enables the package and saves.
+	/// Refused with AlreadyExists when every part asked for is there, or, for a new package, when
+	/// the project's entry of its id is taken or a part's folder is there already, so it never
+	/// overwrites the game's code.
 	public static Result<void, ErrorCode> Scaffold(EditorProject project, Span<PluginPartKind> parts)
 	{
 		let info = scope GamePackageInfo();
@@ -64,8 +70,15 @@ static class GamePackage
 		}
 		else
 		{
-			if (DirectoryExists(packageDir) || (project.Settings.FindPlugin(info.Id) != null))
+			if (project.Settings.FindPlugin(info.Id) != null)
 				return .Err(.AlreadyExists);
+			// Code/ itself may be there (a workspace of the user's); a part's folder is code.
+			for (let kind in parts)
+			{
+				let partName = ProjectBuild.PartName(info.Name, true, kind, .. scope .());
+				if (DirectoryExists(PathJoin(packageDir, partName, .. scope .())))
+					return .Err(.AlreadyExists);
+			}
 			manifest.Id.Set(info.Id);
 			manifest.Name.Set(project.Settings.Name);
 			manifest.Version.Set("0.1.0");
@@ -105,6 +118,8 @@ static class GamePackage
 			entry.Path.Set(info.Path);
 			project.Settings.Plugins.Add(entry);
 		}
+		if (ProjectBuild.UpdateWorkspace(project.Directory, project.Settings) case .Err)
+			return .Err(.Internal);
 		return project.SaveSettings();
 	}
 
@@ -130,11 +145,11 @@ static class GamePackage
 		parts.AddRange(ordered);
 	}
 
-	/// One part's folder, <Game>.<Kind>, with its project and its source. Refused with
-	/// AlreadyExists when the folder is there.
+	/// One part's folder, <Game> for the Engine part and <Game>.<Kind> for another, with its
+	/// project and its source. Refused with AlreadyExists when the folder is there.
 	private static Result<void, ErrorCode> WritePart(StringView packageDir, StringView name, StringView id, PluginPartKind kind)
 	{
-		let partDir = PathJoin(packageDir, scope $"{name}.{kind}", .. scope .());
+		let partDir = PathJoin(packageDir, ProjectBuild.PartName(name, true, kind, .. scope .()), .. scope .());
 		if (DirectoryExists(partDir))
 			return .Err(.AlreadyExists);
 		if ((WriteText(PathJoin(partDir, "BeefProj.toml", .. scope .()), PartProject(name, kind, .. scope .())) case .Err)
@@ -144,14 +159,16 @@ static class GamePackage
 	}
 
 	/// A part's project: a library over the runtime and the library of the service its host hands
-	/// its kind, named <Game>.<Kind> as the project's build expects a part's project to be.
+	/// its kind, named as the project's build expects the game's part to be (ProjectBuild.PartName:
+	/// <Game> for the Engine part, <Game>.<Kind> for another). Beef's registry finds the engine's
+	/// libraries it depends on.
 	public static void PartProject(StringView name, PluginPartKind kind, String outText)
 	{
 		outText.AppendF("""
 			FileVersion = 1
 
 			[Project]
-			Name = "{}.{}"
+			Name = "{}"
 			TargetType = "BeefLib"
 
 			[Dependencies]
@@ -159,7 +176,7 @@ static class GamePackage
 			"Sedulous.Core" = "*"
 			"Sedulous.Runtime" = "*"
 
-			""", name, kind);
+			""", ProjectBuild.PartName(name, true, kind, .. scope .()));
 		if (kind == .Pipeline)
 			outText.Append("\"Sedulous.Pipeline.Importer\" = \"*\"\n");
 		else if (kind == .Tooling)

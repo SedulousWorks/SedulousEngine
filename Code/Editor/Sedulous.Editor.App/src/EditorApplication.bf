@@ -1011,7 +1011,8 @@ class EditorApplication : IApplication
 		let request = new NativeCodeRequest();
 		if (GamePackage.Find(project, info))
 			request.Existing.AddRange(info.Parts);
-		request.Path.Set(info.Path);
+		// "Code/", the folder the dialog says it makes or adds to.
+		request.Path.AppendF("{}/", info.Path);
 		request.Accepted = new [=this] (parts) =>
 			{
 				let open = mSession.Project;
@@ -1020,13 +1021,13 @@ class EditorApplication : IApplication
 				if (GamePackage.Scaffold(open, parts) case .Err(let err))
 				{
 					if (err == .AlreadyExists)
-						mContext.Notify(.Warning, "Those parts are there already, or Plugins/ holds another folder of that name: nothing was touched.");
+						mContext.Notify(.Warning, "Those parts are there already, or the game's id is enabled elsewhere or a part's folder is in Code/ already: nothing was touched.");
 					else
 						mContext.Notify(.Error, "Add Native Code failed (see Console).");
 					return;
 				}
 				mContext.NotifyProjectSettingsChanged();
-				mContext.Notify(.Success, "Native code scaffolded in the game's plugin package: Project > Build Project builds it.");
+				mContext.Notify(.Success, "Native code scaffolded in the game's package in Code/: Project > Build Project builds it.");
 			};
 		// The one before is closed: the dialog is modal, so it is asked again only once it is.
 		DeleteAndNullify!(mNativeCodeDialog);
