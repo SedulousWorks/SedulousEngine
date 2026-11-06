@@ -40,7 +40,7 @@ corlib = "*"
 # The WGSL shader cook a Web export runs needs naga and tint BESIDE the executable, where
 # ShaderPackCooker looks for them, exactly as Tools.ShaderPack ships them.
 [Configs.Test.Linux64]
-PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x $(TargetDir)/naga $(TargetDir)/tint\")"]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x \\\"$(TargetDir)/naga\\\" \\\"$(TargetDir)/tint\\\"\")"]
 
 [Configs.Test.Win64]
 PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/win-x64/naga.exe\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/win-x64/tint.exe\")"]
