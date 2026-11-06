@@ -256,24 +256,72 @@ static class ImportPaths
 
 		let name = scope String();
 		SourcesNameFor(context, sourcePath, name, mayOverwrite, bytes);
-		let target = scope String();
-		PathJoin(context.SourcesRoot, name, target);
-
-		if (FileExists(target))
-		{
-			let existing = scope List<uint8>();
-			if ((ReadFile(target, existing) case .Ok) && SameBytes(existing, bytes))
-			{
-				outFileName.Append(name);
-				return .Ok; // identical, so no touch and no re-cook churn
-			}
-		}
-
-		if (WriteFile(target, bytes) case .Err(let writeError))
+		if (WriteSourcesCopy(context, name, bytes) case .Err(let writeError))
 			return .Err(writeError);
 
 		outFileName.Append(name);
 		return .Ok;
+	}
+
+	/// Writes `bytes` to `sourcesName` under the sources tree, leaving the same bytes already
+	/// there untouched (no re-cook churn).
+	private static Result<void, ErrorCode> WriteSourcesCopy(ImportContext context, StringView sourcesName, List<uint8> bytes)
+	{
+		let target = PathJoin(context.SourcesRoot, sourcesName, .. scope .());
+		if (FileExists(target))
+		{
+			let existing = scope List<uint8>();
+			if ((ReadFile(target, existing) case .Ok) && SameBytes(existing, bytes))
+				return .Ok;
+		}
+		if (WriteFile(target, bytes) case .Err(let writeError))
+			return .Err(writeError);
+		return .Ok;
+	}
+
+	/// Copies an OS file over `sourcesName` under the sources tree, a copy the caller owns (the
+	/// asset a re-import or a Replace lands on), and notes it in the ledger as `sourcePath`'s.
+	/// The same bytes already there are left untouched.
+	public static Result<void, ErrorCode> CopyIntoSourcesAs(ImportContext context, StringView sourcePath, StringView sourcesName)
+	{
+		if (FileNameOf(sourcePath).IsEmpty || sourcesName.IsEmpty)
+			return .Err(.InvalidArgument);
+		let bytes = scope List<uint8>();
+		if (ReadFile(sourcePath, bytes) case .Err(let error))
+			return .Err(error);
+		if (WriteSourcesCopy(context, sourcesName, bytes) case .Err(let writeError))
+			return .Err(writeError);
+		RecordImportOrigin(context.LedgerPath, sourcesName, sourcePath);
+		return .Ok;
+	}
+
+	/// Whether an asset other than `except`, anywhere in the database `group` belongs to, names
+	/// `sourcesName` as its file: a copy two assets share (the same bytes imported from two
+	/// folders) is overwritten for neither.
+	public static bool SourcesCopyUsedByOther(Group group, StringView sourcesName, Instance except)
+	{
+		var root = group;
+		while (root.Parent != null)
+			root = root.Parent;
+		let pending = scope List<Group>();
+		pending.Add(root);
+		let held = scope String();
+		while (!pending.IsEmpty)
+		{
+			let at = pending.PopBack();
+			for (let instance in at.Instances)
+			{
+				if (instance === except)
+					continue;
+				held.Clear();
+				AssetFileOf(instance, held);
+				if (held == sourcesName)
+					return true;
+			}
+			for (let child in at.Groups)
+				pending.Add(child);
+		}
+		return false;
 	}
 
 	// === name clashes ===
@@ -358,31 +406,49 @@ static class ImportPaths
 	/// The asset a SINGLE-ASSET importer writes: its name (the user's, else the stem) claimed in
 	/// `group` by the clash rule and the context's choice, and the file copied into the sources
 	/// tree, never over another file's copy. `outFileName` gets the copy's name for the asset's
-	/// file name. Refused (AlreadyExists) for an asset of another type, or of its type from another
-	/// file when the choice is Refuse; nothing is copied or made then.
+	/// file name. An asset the import lands on (a re-import, or Replace) keeps its own copy, which
+	/// takes the new bytes, when that copy has the file's extension and no other asset uses it;
+	/// else the file is copied in beside, as a new asset's is. Refused (AlreadyExists) for an asset
+	/// of another type, or of its type from another file when the choice is Refuse; nothing is
+	/// copied or made then. `outClash`, when given, gets what the name met (Reimport: this file's
+	/// own earlier import), for an importer that keeps something across a re-import.
 	public static Result<Instance, ErrorCode> ClaimSingleAsset(ImportContext context, Group group,
-		ImportOptions options, StringView sourcePath, StringView typeName, String outFileName)
+		ImportOptions options, StringView sourcePath, StringView typeName, String outFileName, ImportClash outClash = null)
 	{
 		let stem = StemOf(FileNameOf(sourcePath));
 		let name = scope String(SingleAssetName(options, stem));
-		let clash = scope ImportClash();
+		var clash = outClash;
+		if (clash == null)
+			clash = scope:: ImportClash();
 		FindImportClash(group, name, typeName, sourcePath, context.LedgerPath, clash);
 		if (!ImportClashAllows(clash, context.OnConflict))
 			return .Err(.AlreadyExists);
 		Instance reuse = null;
-		var overwriteOwn = false; // its copy under the sources tree is the asset's own, to be overwritten
+		var overwriteOwn = false; // the file's own name under the sources tree is the asset's, to be overwritten
+		let own = scope String(); // the reused asset's copy, when it may take the new bytes
 		if ((clash.Kind == .Reimport) || ((clash.Kind == .SameType) && (context.OnConflict == .Replace)))
 		{
 			reuse = clash.Existing;
 			let held = scope String();
 			AssetFileOf(reuse, held);
 			overwriteOwn = held == FileNameOf(sourcePath);
+			if (!held.IsEmpty && (ExtensionLower(held, .. scope .()) == ExtensionLower(sourcePath, .. scope .()))
+				&& !SourcesCopyUsedByOther(group, held, reuse))
+				own.Set(held);
 		}
 		else if (clash.Kind == .SameType)
 		{
 			let free = scope String();
 			group.UniqueInstanceName(name, free); // KeepBoth
 			name.Set(free);
+		}
+		if (!own.IsEmpty)
+		{
+			// Its own copy takes the new bytes in place: no copy beside it, none left behind.
+			if (CopyIntoSourcesAs(context, sourcePath, own) case .Err(let ownError))
+				return .Err(ownError);
+			outFileName.Append(own);
+			return .Ok(reuse);
 		}
 		let copied = scope String();
 		if (CopyIntoSources(context, sourcePath, copied, overwriteOwn) case .Err(let error))

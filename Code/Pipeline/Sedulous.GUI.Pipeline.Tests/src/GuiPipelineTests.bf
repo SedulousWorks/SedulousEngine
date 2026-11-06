@@ -13,7 +13,7 @@ using Sedulous.VFS;
 
 namespace Sedulous.GUI.Pipeline.Tests;
 
-/// Raptor's GUI.Pipeline tests: a `.xml` document and a `.css` sheet cooked through their
+/// The GUI pipeline's tests: a `.xml` document and a `.css` sheet cooked through their
 /// validating builders and loaded as products; what cannot be read fails the cook, what was dropped
 /// is said with its line; the guids a source names are found; the importer takes the two
 /// extensions and the creators make the two kinds.
@@ -232,12 +232,19 @@ static class GuiPipelineTests
 		outFileName.Append((Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Asset).FileName.Value);
 	}
 
+	private static void ReadText(StringView path, String outText)
+	{
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(path, bytes) case .Ok, scope String(path));
+		outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
+	}
+
 	/// The import's name clash rule, through the GUI importer (a document and a sheet share a stem
 	/// easily): a sheet over a document of the same name is refused, the document untouched;
 	/// re-importing the document's own file replaces it in place (its guid kept); another folder's
 	/// file of the same name is refused, kept beside ("menu.2", its own copy "menu.2.xml"), or takes
-	/// the asset over (guid kept), as the context says; and the window's check (FindClash) says so
-	/// first.
+	/// the asset over (guid kept, the other file's bytes in the asset's own copy, nothing left
+	/// behind), as the context says; and the window's check (FindClash) says so first.
 	[Test]
 	public static void AnImportsNameClashesAnotherTypeRefusedAnotherFileRefusedKeptBesideOrReplacing()
 	{
@@ -315,12 +322,67 @@ static class GuiPipelineTests
 		Test.Assert((beside != null) && (beside.Name == "menu.2") && (beside.Id != id));
 		Test.Assert(FileOf(beside, .. scope .()) == "menu.2.xml");
 		Test.Assert(FileOf(group.GetInstance("menu"), .. scope .()) == "menu.xml");
-		// Replacing: the first asset takes the other file, its guid kept.
+		// Replacing: the first asset takes the other file, its guid kept, into its own copy (no copy
+		// beside it, none orphaned); the kept-beside asset's copy is untouched.
 		context.OnConflict = .Replace;
 		Instance replaced = null;
 		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
 			replaced = made;
 		Test.Assert((replaced != null) && (replaced.Id == id));
-		Test.Assert(FileOf(replaced, .. scope .()) == "menu.2.xml"); // the other file's copy, the first's left alone
+		Test.Assert(FileOf(replaced, .. scope .()) == "menu.xml");
+		Test.Assert(ReadText(PathJoin(sources, "menu.xml", .. scope .()), .. scope .()) == "<Label/>\n");
+		Test.Assert(FileOf(group.GetInstance("menu.2"), .. scope .()) == "menu.2.xml");
+		Test.Assert(!FileExists(PathJoin(sources, "menu.3.xml", .. scope .())));
+		Test.Assert(ImportPaths.ImportOriginOf(context.LedgerPath, "menu.xml", .. scope .()) == otherDoc);
+	}
+
+	/// Replace over an asset whose copy another asset shares (the same bytes imported from two
+	/// folders share one copy): the shared copy is left as it is, for the other asset, and the
+	/// replaced asset takes a copy of its own.
+	[Test]
+	public static void ReplaceLeavesACopyAnotherAssetSharesAndCopiesInBesideIt()
+	{
+		GuiPipeline.RegisterAll();
+		let root = "scratch_guipipe_shared";
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let sources = PathJoin(root, "Sources", .. scope .());
+		let one = PathJoin(root, "one", .. scope .());
+		let two = PathJoin(root, "two", .. scope .());
+		let three = PathJoin(root, "three", .. scope .());
+		let dbRoot = PathJoin(root, "db", .. scope .());
+		for (let folder in scope StringView[](sources, one, two, three, dbRoot))
+			Test.Assert(CreateDirectory(folder));
+		let first = PathJoin(one, "menu.xml", .. scope .());
+		let twin = PathJoin(two, "menu.xml", .. scope .());
+		let other = PathJoin(three, "menu.xml", .. scope .());
+		Write(first, "<Panel/>\n");
+		Write(twin, "<Panel/>\n"); // the same bytes
+		Write(other, "<Label/>\n");
+
+		let mount = scope NativeFileSystem(dbRoot);
+		SerializerFactory factory = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let sourceDb = scope ContentDatabase(mount, factory, "asset");
+		let group = sourceDb.RootGroup;
+		IFileImporter importer = scope GuiFileImporter();
+		let context = scope ImportContext(sources);
+		ImportPaths.ImportLedgerPath(PathJoin(root, ".cache", .. scope .()), context.LedgerPath);
+
+		Test.Assert(importer.Import(first, context, group, null, null, null) case .Ok);
+		context.OnConflict = .KeepBoth;
+		Instance beside = null;
+		if (importer.Import(twin, context, group, null, null, null) case .Ok(let made))
+			beside = made;
+		Test.Assert((beside != null) && (beside.Name == "menu.2"));
+		Test.Assert(FileOf(beside, .. scope .()) == "menu.xml", "shared: the very same bytes");
+
+		context.OnConflict = .Replace;
+		Instance replaced = null;
+		if (importer.Import(other, context, group, null, null, null) case .Ok(let made))
+			replaced = made;
+		Test.Assert((replaced != null) && (replaced.Name == "menu"));
+		Test.Assert(FileOf(replaced, .. scope .()) != "menu.xml");
+		Test.Assert(ReadText(PathJoin(sources, "menu.xml", .. scope .()), .. scope .()) == "<Panel/>\n", "the other asset's, untouched");
+		Test.Assert(FileOf(group.GetInstance("menu.2"), .. scope .()) == "menu.xml");
 	}
 }

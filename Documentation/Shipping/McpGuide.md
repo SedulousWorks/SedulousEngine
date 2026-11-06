@@ -257,9 +257,11 @@ PBR; to draw one another way, `material_set_shader` after the
 import. Names: re-importing the same file replaces its asset (guid and references kept), so an
 authoring script can run again as it is. A name held by an asset of ANOTHER type is refused (pass
 `name`); one held by an asset of its type that a DIFFERENT file made (two `a.png`s from two
-folders) is refused unless `onConflict` says `replace` (that asset takes this file) or `keepBoth`
-(this one under the next free name, "a.2"). A model claims its folder the same way. Under
-Sources/, a copy never overwrites another file's: it takes the next free name ("a.2.png"); which
+folders) is refused unless `onConflict` says `replace` (that asset takes this file, into its own
+copy under Sources/, which keeps its name) or `keepBoth` (this one under the next free name,
+"a.2"). A model claims its folder the same way. Under Sources/, a copy never overwrites another
+file's: it takes the next free name ("a.2.png"); a copy two assets share (the very same bytes from
+two folders) is overwritten for neither, so a `replace` over one of them copies in beside. Which
 OS file each came from is kept in the project's ignored `.cache/imports.txt`.
 `asset_list` and `asset_info` inspect either database.
 Assets that are authored rather than imported (input maps, materials, scenes, prefabs,
