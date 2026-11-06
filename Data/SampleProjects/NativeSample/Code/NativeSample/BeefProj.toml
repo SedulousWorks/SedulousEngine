@@ -1,7 +1,7 @@
 FileVersion = 1
 
 [Project]
-Name = "NativeSample.Engine"
+Name = "NativeSample"
 TargetType = "BeefLib"
 
 [Dependencies]

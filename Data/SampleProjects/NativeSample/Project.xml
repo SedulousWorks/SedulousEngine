@@ -28,7 +28,7 @@
 		<array name="plugins" count="1">
 			<object>
 				<string name="id">nativesample</string>
-				<string name="path">Plugins/NativeSample</string>
+				<string name="path">Code</string>
 				<array name="platforms" count="0"/>
 				<object name="settings"/>
 			</object>

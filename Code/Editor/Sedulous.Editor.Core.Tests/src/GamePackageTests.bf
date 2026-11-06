@@ -130,12 +130,12 @@ class GamePackageTests
 		Test.Assert(merged.Contains("StartupProject = \"Mine\"") && !merged.Contains("StartupProject = \"GameEditor\""), merged);
 	}
 
-	/// NativeSample is the scaffold's shape: its manifest names its Engine part, and its project
-	/// enables the package by its folder.
+	/// NativeSample is the scaffold's shape: its manifest in Code/ names its Engine part, and its
+	/// project enables the package as Code.
 	[Test]
 	public static void NativeSampleEnablesItsOwnPackage()
 	{
-		const String cManifest = Compiler.ReadText("../../../Data/SampleProjects/NativeSample/Plugins/NativeSample/Plugin.xml");
+		const String cManifest = Compiler.ReadText("../../../Data/SampleProjects/NativeSample/Code/Plugin.xml");
 		const String cProject = Compiler.ReadText("../../../Data/SampleProjects/NativeSample/Project.xml");
 		let manifest = scope PluginManifest();
 		Test.Assert(PluginManifest.Read(cManifest, manifest) case .Ok);
@@ -150,7 +150,7 @@ class GamePackageTests
 		Test.Assert(ProjectManifest.Load(fs, settings, "Project.xml") case .Ok);
 		Test.Assert(settings.Name == "NativeSample");
 		let entry = settings.FindPlugin("nativesample");
-		Test.Assert((entry != null) && (entry.Path == "Plugins/NativeSample") && entry.Platforms.IsEmpty && entry.Settings.IsEmpty);
+		Test.Assert((entry != null) && (entry.Path == "Code") && entry.Platforms.IsEmpty && entry.Settings.IsEmpty);
 	}
 
 	/// A package gains the parts asked for that it lacks, its manifest listing every part in load

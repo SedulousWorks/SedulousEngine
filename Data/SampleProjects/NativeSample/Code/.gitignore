@@ -1,0 +1,6 @@
+# Written by builds and the Beef IDE.
+/build/
+/.generated/
+/recovery/
+/BeefConfig.toml
+/BeefSpace_User.toml
