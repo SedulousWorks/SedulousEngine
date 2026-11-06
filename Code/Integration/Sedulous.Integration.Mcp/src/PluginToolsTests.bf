@@ -376,7 +376,7 @@ static class PluginToolsTests
 		{
 			let made = CallOk(server, "plugin_scaffold", Obj());
 			defer delete made;
-			Test.Assert((made.Get("id").AsString() == "spingame") && (made.Get("path").AsString() == "Plugins/SpinGame"));
+			Test.Assert((made.Get("id").AsString() == "spingame") && (made.Get("path").AsString() == "Code"));
 			Test.Assert((made.Get("parts").Count == 1) && (made.Get("parts").At(0).AsString() == "Engine"));
 		}
 		Test.Assert(changed == 1);
@@ -393,7 +393,7 @@ static class PluginToolsTests
 			let kinds = added.Get("parts");
 			Test.Assert((kinds.Count == 3) && (kinds.At(0).AsString() == "Engine") && (kinds.At(1).AsString() == "Tooling") && (kinds.At(2).AsString() == "Editor"));
 		}
-		Test.Assert(FileExists(PathJoin(dir, "Plugins/SpinGame/SpinGame.Tooling/src/SpinGameTooling.bf", .. scope .())));
+		Test.Assert(FileExists(PathJoin(dir, "Code/SpinGame.Tooling/src/SpinGameTooling.bf", .. scope .())));
 
 		CallErr(server, "plugin_scaffold", Obj(), refused..Clear());
 		Test.Assert(refused.StartsWith("every part asked for is there already"), refused);

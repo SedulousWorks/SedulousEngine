@@ -287,15 +287,16 @@ class Program
 				return Usage();
 			}
 		}
-		// The linked plugins' packages, for their files: --plugins-root, else the checkout this
-		// tool's data root is in (a container's build carries the host checkout's plugins).
+		// The linked plugins' packages, for their files: --plugins-root, else the engine SDK's
+		// (SEDULOUS_SDK, or the checkout this tool's data root is in: a container's build carries
+		// the host checkout's plugins).
 		let pluginsRoot = scope String();
 		if (identity.PluginsRoot.IsEmpty)
 		{
-			let checkout = scope String();
-			if (ProjectBuild.FindCheckout(FindDataRoot(.. scope .()), checkout))
+			let sdk = scope String();
+			if (ProjectBuild.FindSdk(FindDataRoot(.. scope .()), sdk))
 			{
-				PathJoin(checkout, "Code/Plugins", pluginsRoot);
+				PathJoin(sdk, "Code/Plugins", pluginsRoot);
 				identity.PluginsRoot = pluginsRoot;
 			}
 		}

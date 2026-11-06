@@ -84,7 +84,7 @@ static class PluginTools
 			new (arguments, outResult, outError) => SetSettings(session, arguments, outResult, outError));
 
 		server.RegisterTool("plugin_scaffold",
-			"Scaffold the game's native code, as the editor's Add Native Code does: the game's plugin package, Plugins/<Game> (its name from the project's), with the `parts` asked for (Engine, Pipeline, Tooling, Editor; default Engine), each <Game>.<Kind>/ with its BeefProj.toml and a source whose Load finds the service its host hands that kind. A package already there gains the parts it lacks. Lists them in its Plugin.xml, enables the package in the project and saves. Refused when every part asked for is there, or Plugins/ holds another folder of that name; it never overwrites code. The editor's Project > Build Project builds it into the project's own editor and player. Returns the package's id, path and parts.",
+			"Scaffold the game's native code, as the editor's Add Native Code does: the game's own package in Code/, the project's Beef workspace (<Game> named from the project's name), with the `parts` asked for (Engine, Pipeline, Tooling, Editor; default Engine): the Engine part Code/<Game>/, any other Code/<Game>.<Kind>/, each with its BeefProj.toml and a source whose Load finds the service its host hands that kind. A package already there gains the parts it lacks. Lists them in Code/Plugin.xml and Code/BeefSpace.toml (keeping the user's lines), writes Code/.gitignore when there is none, enables the package in the project (path `Code`) and saves. Refused when every part asked for is there, the project already enables a plugin of the game's id elsewhere, or a part's folder is there already; it never overwrites code. The editor's Project > Build Project builds it into the project's own editor and player. Returns the package's id, path and parts.",
 			scope SchemaBuilder().Arr("parts", "string", "the parts to make: Engine, Pipeline, Tooling, Editor (default Engine)").Build(),
 			.Adjusts,
 			new (arguments, outResult, outError) => Scaffold(session, arguments, outResult, outError));
@@ -128,7 +128,7 @@ static class PluginTools
 		if (GamePackage.Scaffold(session.Project, (Span<PluginPartKind>)parts) case .Err(let err))
 		{
 			if (err == .AlreadyExists)
-				outError.Append("every part asked for is there already, or Plugins/ holds another folder of the game package's name; nothing was touched");
+				outError.Append("every part asked for is there already, or the game's id is enabled elsewhere or a part's folder is in Code/ already; nothing was touched");
 			else
 				outError.Append("the scaffold failed (log_read says why)");
 			return false;
