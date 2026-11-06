@@ -70,8 +70,9 @@ static class ModelImportSkeleton
 				asset.RestRotation = armature.Rotation;
 				asset.RestScale = armature.Scale;
 			}
-			// A re-import keeps what was authored on the clip, its root motion; a clip new to the
-			// import takes the import's option.
+			// A re-import keeps what was authored on the clip (its page): its root motion, whether
+			// it loops (a model file does not say; a Die plays once) and its events, each held
+			// inside the clip's new length. A clip new to the import takes the import's option.
 			let previous = (instance != null) ? instance.ReadObject() : null;
 			defer { if (previous != null) delete previous; }
 			if (let before = previous as AnimationClipAsset)
@@ -80,6 +81,14 @@ static class ModelImportSkeleton
 				asset.Source.RootHorizontal = before.Source.RootHorizontal;
 				asset.Source.RootVertical = before.Source.RootVertical;
 				asset.Source.RootYaw = before.Source.RootYaw;
+				asset.Source.IsLooping = before.Source.IsLooping;
+				asset.Source.EventTime.Clear();
+				ClearAndDeleteItems!(asset.Source.EventName);
+				for (int e < Math.Min(before.Source.EventTime.Count, before.Source.EventName.Count))
+				{
+					asset.Source.EventTime.Add(Math.Clamp(before.Source.EventTime[e], 0.0f, asset.Source.Duration));
+					asset.Source.EventName.Add(new String(before.Source.EventName[e]));
+				}
 			}
 			else if (let modelOptions = options as ModelImportOptions)
 			{

@@ -63,7 +63,7 @@ class RootMotionImportTests
 	}
 
 	[Test]
-	public static void AClipKeepsTheArmaturesChannelsItsSkeletonAndRestAndARe_ImportKeepsItsRootMotion()
+	public static void AClipKeepsTheArmaturesChannelsItsSkeletonAndRestAndARe_ImportKeepsItsRootMotionLoopingAndEvents()
 	{
 		let fixture = scope ImportFixture("scratch_model_root_motion");
 		let dropped = scope String();
@@ -89,10 +89,18 @@ class RootMotionImportTests
 			Test.Assert((skeleton != null) && (walk.Skeleton == skeleton.Id));
 			Test.Assert(Math.Abs(Dot(walk.RestRotation, Turn)) > 1.0f - 1.0e-5f);
 			Test.Assert(!walk.Source.RootMotionAny, "off unless asked");
+			Test.Assert(walk.Source.IsLooping, "a model file does not say: a clip loops");
+			Test.Assert(walk.Source.EventTime.IsEmpty);
 
-			// Authored on the clip, kept by a re-import.
+			// Authored on the clip, kept by a re-import: its root motion, its looping and its
+			// events (the file has neither), an event held inside the clip.
 			walk.Source.RootHorizontal = true;
 			walk.Source.RootBone.Set("Hips");
+			walk.Source.IsLooping = false;
+			walk.Source.EventTime.Add(0.0f);
+			walk.Source.EventName.Add(new String("step"));
+			walk.Source.EventTime.Add(walk.Source.Duration + 5.0f);
+			walk.Source.EventName.Add(new String("past"));
 			Test.Assert(group.GetInstance("Walk").WriteObject(walk) case .Ok);
 		}
 
@@ -109,6 +117,11 @@ class RootMotionImportTests
 			Test.Assert(kept.Source.RootHorizontal);
 			Test.Assert(!kept.Source.RootYaw, "the clip's, not the option's");
 			Test.Assert(kept.Source.RootBone == "Hips");
+			Test.Assert(!kept.Source.IsLooping);
+			Test.Assert((kept.Source.EventTime.Count == 2) && (kept.Source.EventName.Count == 2));
+			Test.Assert((kept.Source.EventName[0] == "step") && (kept.Source.EventTime[0] == 0.0f));
+			Test.Assert(kept.Source.EventName[1] == "past");
+			Test.Assert(kept.Source.EventTime[1] == kept.Source.Duration, "held inside the clip");
 		}
 		{
 			// A clip new to the import takes the option.
@@ -117,6 +130,7 @@ class RootMotionImportTests
 			defer delete run;
 			Test.Assert(run.Source.RootHorizontal);
 			Test.Assert(run.Source.RootYaw);
+			Test.Assert(run.Source.IsLooping, "not authored: as imported");
 		}
 
 		// Its own settings in the review (the import window's clip details): they start as the clip
