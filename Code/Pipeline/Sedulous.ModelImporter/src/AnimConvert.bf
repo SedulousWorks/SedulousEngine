@@ -20,7 +20,10 @@ static class AnimConvert
 	/// bone with no vertices of its own, and animates it with the pose (a creature's bob): it is a
 	/// joint, its channels played. An empty node above (Blender's armature object, whose animation is
 	/// the character's travel) stays outside: the node the skeleton hangs from, its channels the
-	/// clip's model tracks. Then the node each unskinned mesh hangs under, with the nodes between it
+	/// clip's model tracks. Then the bones between a joint and the skeleton above it: a bone no vertex
+	/// is bound to, between two that are (a spine bone under the ribcage, a neck under the head), is
+	/// not among the skin's joints, so without it the joint under it rooted a skeleton of its own and
+	/// its pose left out the bone's rest and animation. Then the node each unskinned mesh hangs under, with the nodes between it
 	/// and the skeleton, when its chain reaches the skeleton: 3ds Max's Biped animates a weapon's
 	/// prop node with the hand (the file does not make it a bone), and no vertex is bound to it, so
 	/// without it the clip's prop channels were dropped and the weapon's bone attachment rode the
@@ -41,6 +44,30 @@ static class AnimConvert
 		let meshes = model.Meshes;
 		bool Valid(int32 bone) => (bone >= 0) && (bone < bones.Length) && (bones[bone] != null);
 		let chain = scope List<int32>();
+
+		// Each chain from a joint up to the skeleton joins, parents first, when it reaches the
+		// skeleton; one that does not (a second root under the file's node) stays as it is.
+		for (int j = 0; j < outJoints.Count; j++)
+		{
+			let joint = outJoints[j];
+			if (!Valid(joint))
+				continue;
+			let parent = bones[joint].ParentIndex;
+			if (!Valid(parent) || outJoints.Contains(parent))
+				continue;
+			chain.Clear();
+			var up = parent;
+			for (int guard = 0; Valid(up) && !outJoints.Contains(up) && (guard <= bones.Length); guard++)
+			{
+				chain.Add(up);
+				up = bones[up].ParentIndex;
+			}
+			if (!Valid(up) || !outJoints.Contains(up))
+				continue;
+			for (int i = chain.Count - 1; i >= 0; i--)
+				outJoints.Add(chain[i]);
+		}
+
 		for (let node in bones)
 		{
 			// No mesh, or a skinned one: the palette moves it (a skin with no weights does not, so

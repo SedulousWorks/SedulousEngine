@@ -124,6 +124,64 @@ class SkeletonParentNodeTests
 		}
 	}
 
+	// A rig whose second spine bone carries no vertices: the skin's joints are the pelvis and the
+	// ribcage, with the spine between them. Left out, the ribcage rooted a skeleton of its own and
+	// the upper body ignored the spine's rest and its sway.
+	[Test]
+	public static void ABoneBetweenTwoJointsThatNoVertexIsBoundToJoinsTheSkeletonItsAnimationPlayed()
+	{
+		let model = scope Model();
+		int32 Bone(StringView name, int32 parent)
+		{
+			let bone = new ModelBone();
+			bone.Name.Set(name);
+			bone.ParentIndex = parent;
+			bone.IsSkeletonBone = true;
+			return model.AddBone(bone);
+		}
+		let pelvis = Bone("RigPelvis", -1);
+		let spine1 = Bone("RigSpine1", pelvis);
+		let spine2 = Bone("RigSpine2", spine1);
+		let ribcage = Bone("RigRibcage", spine2);
+		let head = Bone("RigHead", ribcage);
+		let apart = Bone("Apart", -1);
+		let tail = Bone("RigTail", apart); // a joint under a node the skeleton does not reach
+		let skin = scope ModelSkin();
+		skin.AddJoint(pelvis, Float4x4.Identity());
+		skin.AddJoint(ribcage, Float4x4.Identity());
+		skin.AddJoint(head, Float4x4.Identity());
+		skin.AddJoint(tail, Float4x4.Identity());
+
+		let idle = scope ModelAnimation();
+		idle.Duration = 1.0f;
+		let sway = new AnimationChannel();
+		sway.TargetBone = spine2;
+		sway.Path = .Rotation;
+		sway.AddKeyframe(0.0f, .(0.0f, 0.0f, 0.0f, 1.0f));
+		sway.AddKeyframe(1.0f, .(0.0f, 0.0f, 0.38f, 0.92f));
+		idle.AddChannel(sway);
+
+		let joints = Joints(model, skin, .. scope .());
+		Test.Assert(joints.Count == 6, "the skin's four (no vertex's joint index moves), then the spine, parents first");
+		Test.Assert(joints[0] == pelvis);
+		Test.Assert(joints[3] == tail);
+		Test.Assert(joints[4] == spine1);
+		Test.Assert(joints[5] == spine2);
+		let boneToJoint = scope Dictionary<int32, int32>();
+		AnimConvert.BuildBoneToJoint(joints, boneToJoint);
+		let skeleton = scope SkeletonSource();
+		AnimConvert.SkeletonFromModel(model, skin, joints, boneToJoint, skeleton);
+		Test.Assert(skeleton.ParentIndex[4] == 0, "spine 1 under the pelvis");
+		Test.Assert(skeleton.ParentIndex[5] == 4, "spine 2 under spine 1");
+		Test.Assert(skeleton.ParentIndex[1] == 5, "the ribcage under spine 2, not a root");
+		Test.Assert(skeleton.ParentIndex[2] == 1, "the head under the ribcage");
+		Test.Assert(skeleton.ParentIndex[3] < 0, "the tail's chain never reaches the skeleton: a root, as before");
+		let clip = scope AnimationClipSource();
+		AnimConvert.ClipFromModel(idle, boneToJoint, "idle", clip, AnimConvert.SkeletonParentNode(model, joints));
+		Test.Assert(clip.TrackBone.Count == 1);
+		Test.Assert(clip.TrackBone[0] == 5, "the spine's sway is a track of the pose");
+	}
+
 	// 3ds Max's Biped animates a weapon's prop node with the hand; the file does not make it a bone
 	// and no vertex is bound to it. Left outside the skeleton, its channels were dropped and the
 	// weapon rode the pelvis.
