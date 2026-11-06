@@ -33,6 +33,7 @@ static class ScriptClassCookTests
 		FixtureSurface.Populate(sSurface);
 		AngelScriptCook.Register(sSurface);
 		ScriptResources.RegisterAll();
+		ScriptPipeline.RegisterAll();
 	}
 
 	[Test]
@@ -77,7 +78,7 @@ static class ScriptClassCookTests
 			context.Sources = mount;
 			context.Output = instance;
 			let builder = scope ScriptClassAssetBuilder();
-			Test.Assert(builder.Version == 4, "the shell's 3 plus the cook's 1");
+			Test.Assert(builder.Version == 5, "the shell's 4 plus the cook's 1");
 			Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
 		}
 
@@ -89,7 +90,7 @@ static class ScriptClassCookTests
 		let product = proxy.Get;
 		Test.Assert(product != null, "bound");
 		Test.Assert(product.Language == "angelscript");
-		Test.Assert(product.ClassName == "Mover", "the first class, found through the comment");
+		Test.Assert(product.ClassName == "Mover", "its only class, found through the comment");
 		Test.Assert(product.SourceName == "scripts/Mover.as");
 		Test.Assert(product.Source == source);
 		Test.Assert(product.Properties.Count == 3, scope $"{product.Properties.Count} properties: the annotated ones, not self, not a plain field, not the private state");
@@ -114,10 +115,10 @@ static class ScriptClassCookTests
 		Test.Assert(!cook.Cook("class Broken { void onStart() { Nope(); } }", "Broken.as", "", record, problems));
 		Test.Assert(!problems.IsEmpty && problems[0].Contains("Broken.as"), problems[0]);
 
-		// The wrong class name is a failure too, not a silent empty record.
+		// Several classes and none named as asked is a failure naming them, not a guess.
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Cook("class Fine {}", "Fine.as", "Other", record, problems));
-		Test.Assert(problems.Back.Contains("Other"));
+		Test.Assert(!cook.Cook("class Fine {}\nclass Also {}\n", "Fine.as", "Other", record, problems));
+		Test.Assert(problems.Back.Contains("'Other'") && problems.Back.Contains("Fine, Also"), problems.Back);
 
 		// A script reaching beyond the surface it is cooked against is refused here.
 		ClearAndDeleteItems(problems);
@@ -152,7 +153,7 @@ static class ScriptClassCookTests
 			}
 			""";
 		let className = scope String();
-		Test.Assert(cook.Check(faulting, "Mover.as", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.Check(faulting, "Mover.as", "", className, problems, default), problems.IsEmpty ? "" : problems[0]);
 		Test.Assert(className == "Mover");
 		Test.Assert(problems.IsEmpty);
 		let record = scope ScriptClassSource();
@@ -160,7 +161,7 @@ static class ScriptClassCookTests
 
 		// A compile error still fails it, where it is.
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Check("class Broken { void onStart() { Nope(); } }", "Broken.as", className, problems, default));
+		Test.Assert(!cook.Check("class Broken { void onStart() { Nope(); } }", "Broken.as", "", className, problems, default));
 		Test.Assert(className.IsEmpty);
 		Test.Assert(!problems.IsEmpty && problems.Back.StartsWith("Broken.as(1,"), problems.IsEmpty ? "" : problems.Back);
 	}
@@ -189,14 +190,156 @@ static class ScriptClassCookTests
 			""";
 		let hidden = scope StringView[]("Sedulous.Script.Fixture.Vec2");
 		let className = scope String();
-		Test.Assert(cook.Check(usesVec2, "Mover.as", className, problems, default), problems.IsEmpty ? "" : problems[0]);
-		Test.Assert(!cook.Check(usesVec2, "Mover.as", className, problems, hidden));
+		Test.Assert(cook.Check(usesVec2, "Mover.as", "", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(!cook.Check(usesVec2, "Mover.as", "", className, problems, hidden));
 		Test.Assert(!problems.IsEmpty && problems.Back.StartsWith("Mover.as(3,"), problems.IsEmpty ? "" : problems.Back);
 		ClearAndDeleteItems(problems);
-		Test.Assert(cook.Check(usesThing, "Holder.as", className, problems, hidden), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.Check(usesThing, "Holder.as", "", className, problems, hidden), problems.IsEmpty ? "" : problems[0]);
 		Test.Assert(className == "Holder");
-		Test.Assert(cook.Check("double twice(double v) { return v * 2.0; }", "Twice.as", className, problems, hidden));
+		Test.Assert(cook.Check("double twice(double v) { return v * 2.0; }", "Twice.as", "", className, problems, hidden));
 		Test.Assert(problems.IsEmpty);
+	}
+
+	/// The class scan lists every top-level class in order, comments and strings aside; the
+	/// class a script plays is the preferred one (the asset's, else its file's stem), else its
+	/// only one; several and none preferred is a problem naming them; none is a utility module.
+	[Test]
+	public static void TheClassAScriptPlaysIsThePreferredOneOrItsOnlyOneNeverAGuess()
+	{
+		let two = scope List<String>();
+		defer { ClearAndDeleteItems!(two); }
+		ScriptClasses.ListClasses("class Helper {\n}\nclass Mover {\n}\n", two);
+		Test.Assert((two.Count == 2) && (two[0] == "Helper") && (two[1] == "Mover"));
+		let real = scope List<String>();
+		defer { ClearAndDeleteItems!(real); }
+		ScriptClasses.ListClasses("// class Fake {\n/* class Ghost { */\nstring s = \"class Quoted\";\nclass Real {\n}\n", real);
+		Test.Assert((real.Count == 1) && (real[0] == "Real"));
+
+		let several = scope List<String>();
+		defer { ClearAndDeleteItems!(several); }
+		ScriptClasses.ListClasses("class EffectDef {}\nclass Fighter {}\nclass Battle {}\n", several);
+		let played = scope String();
+		let problem = scope String();
+		Test.Assert(ScriptClasses.Choose(several, "Battle", played, problem) && (played == "Battle") && problem.IsEmpty);
+		Test.Assert(!ScriptClasses.Choose(several, "Battle.2", played, problem) && played.IsEmpty, "a copy's stem names none");
+		Test.Assert(problem.Contains("EffectDef, Fighter, Battle") && problem.Contains("'Battle.2'"), problem);
+
+		let one = scope List<String>() { "Game" };
+		problem.Clear();
+		Test.Assert(ScriptClasses.Choose(one, "Lamplight", played, problem) && (played == "Game") && problem.IsEmpty);
+		Test.Assert(ScriptClasses.Choose(scope List<String>(), "Twice", played, problem) && played.IsEmpty && problem.IsEmpty);
+
+		// An asset prefers the class it records, else the one named like its file.
+		let asset = scope ScriptClassAsset();
+		asset.FileName.Set("Battle.2.as");
+		Test.Assert(ScriptClasses.Preferred(asset, .. scope .()) == "Battle.2");
+		asset.ClassName.Set("Battle");
+		Test.Assert(ScriptClasses.Preferred(asset, .. scope .()) == "Battle");
+		Test.Assert(ScriptClasses.StarterClassName(.Level, "Mover") == "Level");
+		Test.Assert(ScriptClasses.StarterClassName(.Game, "Mover") == "Game");
+		Test.Assert(ScriptClasses.StarterClassName(.Behavior, "Mover") == "Mover");
+	}
+
+	/// An imported script plays the class its file is named for, wherever its copy lands: kept
+	/// beside another file's ("Battle.2.as") it still plays Battle, where the first class
+	/// (EffectDef) used to be played. With no class recorded, a file declaring several and none
+	/// named like it does not cook; a class set by hand survives a re-import of the same file.
+	[Test]
+	public static void AnImportedScriptPlaysTheClassItsFileIsNamedForWhereverItsCopyLands()
+	{
+		Registered();
+		let root = "scratch_scriptpipe_import_class";
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let sources = PathJoin(root, "Sources", .. scope .());
+		let one = PathJoin(root, "one", .. scope .());
+		let two = PathJoin(root, "two", .. scope .());
+		let dbRoot = PathJoin(root, "db", .. scope .());
+		CreateDirectory(root);
+		for (let folder in scope StringView[](sources, one, two, dbRoot))
+			Test.Assert(CreateDirectory(folder));
+		let first = PathJoin(one, "Battle.as", .. scope .());
+		let second = PathJoin(two, "Battle.as", .. scope .());
+		Test.Assert(File.WriteAllText(first, "class EffectDef { int turns; }\nclass Battle { void onStart() {} }\n") case .Ok);
+		Test.Assert(File.WriteAllText(second, "class EffectDef { int turns; }\nclass Fighter { int hp; }\nclass Battle { void onUpdate(float dt) {} }\n") case .Ok);
+
+		let mount = scope NativeFileSystem(dbRoot);
+		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let sourceDb = scope ContentDatabase(mount, serializers, "asset");
+		let group = sourceDb.RootGroup;
+		let context = scope Sedulous.Pipeline.Importer.ImportContext(sources);
+		Sedulous.Pipeline.Importer.ImportPaths.ImportLedgerPath(PathJoin(root, ".cache", .. scope .()), context.LedgerPath);
+		let importer = scope ScriptFileImporter();
+
+		ScriptClassAsset AssetOf(Instance instance)
+		{
+			let object = instance.ReadObject();
+			let asset = object as ScriptClassAsset;
+			Test.Assert(asset != null);
+			return asset;
+		}
+		let sourcesMount = scope NativeFileSystem(sources);
+		let cookedMount = scope NativeFileSystem(PathJoin(root, "cooked", .. scope .()));
+		CreateDirectory(PathJoin(root, "cooked", .. scope .()));
+		let cooked = scope ContentDatabase(cookedMount, serializers, "rasset");
+		let output = cooked.RootGroup.CreateInstance("cooked", cProductType);
+		bool CookClass(ScriptClassAsset asset, String outClass)
+		{
+			let build = scope AssetBuildContext();
+			build.Sources = sourcesMount;
+			build.Output = output;
+			let builder = scope ScriptClassAssetBuilder();
+			if (builder.Build(asset, build) case .Err)
+				return false;
+			let object = output.ReadObject();
+			defer delete object;
+			if (let record = object as ScriptClassSource)
+				outClass.Set(record.ClassName);
+			return true;
+		}
+
+		Instance made = null;
+		if (importer.Import(first, context, group, null, null, null) case .Ok(let instance))
+			made = instance;
+		Test.Assert(made != null);
+		{
+			let asset = AssetOf(made);
+			defer delete asset;
+			Test.Assert(asset.ClassName == "Battle");
+		}
+
+		context.OnConflict = .KeepBoth;
+		Instance beside = null;
+		if (importer.Import(second, context, group, null, null, null) case .Ok(let instance))
+			beside = instance;
+		Test.Assert(beside != null);
+		let kept = AssetOf(beside);
+		defer delete kept;
+		Test.Assert(kept.FileName.Value == "Battle.2.as", scope String(kept.FileName.Value));
+		Test.Assert(kept.ClassName == "Battle");
+		let played = scope String();
+		Test.Assert(CookClass(kept, played));
+		Test.Assert(played == "Battle");
+
+		// Nothing recorded: Battle.2 names no class of the three, and the cook says so.
+		kept.ClassName.Clear();
+		Test.Assert(!CookClass(kept, played));
+
+		// A class chosen by hand survives a re-import of the same file (under its asset's name,
+		// as the editor's reimport asks for it).
+		kept.ClassName.Set("Fighter");
+		Test.Assert(beside.WriteObject(kept) case .Ok);
+		context.OnConflict = .Refuse;
+		let named = scope Sedulous.Pipeline.Importer.ImportOptions();
+		Sedulous.Pipeline.Importer.ImportPaths.SingleAssetPlan(second, named.Selection);
+		named.Selection.Entries[0].TargetName.Set(beside.Name);
+		Instance again = null;
+		if (importer.Import(second, context, group, named, null, null) case .Ok(let instance))
+			again = instance;
+		Test.Assert(again === beside);
+		let reimported = AssetOf(again);
+		defer delete reimported;
+		Test.Assert(reimported.ClassName == "Fighter");
 	}
 
 	[Test]

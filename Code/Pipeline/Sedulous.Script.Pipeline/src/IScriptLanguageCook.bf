@@ -22,15 +22,18 @@ interface IScriptLanguageCook
 	/// game tiers keep their reserved class names and ignore it.
 	void NewAssetTemplate(ScriptTier tier, StringView className, String outSource);
 
-	/// Compiles `source`, harvests `className` (or the first class when empty) into the record,
-	/// reporting anything wrong into `problems`. False when the source does not compile or
-	/// the class is not in it.
+	/// Compiles `source` and harvests the class it plays into the record, reporting anything
+	/// wrong into `problems`. The class is ScriptClasses.Choose's by `className` (the asset's
+	/// recorded class; empty: the one named like `sourceName`'s file): that one, else the
+	/// source's only class. False when the source does not compile, or declares several classes
+	/// and none so named.
 	bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems);
 
 	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
-	/// harvest: the problems into `problems`, the first class (empty when none) into
-	/// `outClassName`. For checking a script as it is typed. False when it does not compile.
-	/// Against the surface less the `hidden` types (by full name): a platform without a plugin
-	/// lacks that plugin's types, and a script that uses one does not compile there.
-	bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden);
+	/// harvest: the problems into `problems`, the class it plays (chosen by `className` as Cook
+	/// chooses it; empty when it declares none) into `outClassName`. For checking a script as it
+	/// is typed. False when it does not compile or the class cannot be chosen. Against the
+	/// surface less the `hidden` types (by full name): a platform without a plugin lacks that
+	/// plugin's types, and a script that uses one does not compile there.
+	bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden);
 }

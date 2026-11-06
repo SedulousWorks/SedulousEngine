@@ -15,9 +15,9 @@ class ScriptClassAssetBuilder : IAssetBuilder
 	public Type ProductType => typeof(ScriptClassSource);
 
 	/// The shell's own version (2: each property a replicated flag; 3: the record carries
-	/// data version 1, so the reader refuses one from before the flag) plus every cook's, so a
-	/// cook change recooks.
-	public int32 Version => 3 + ScriptLanguageCooks.VersionSum;
+	/// data version 1, so the reader refuses one from before the flag; 4: the class is the
+	/// asset's choice, never a guess among several) plus every cook's, so a cook change recooks.
+	public int32 Version => 4 + ScriptLanguageCooks.VersionSum;
 
 	/// The surface the scripts are checked against: a change (an engine whose facades changed)
 	/// recooks them, so a script that no longer compiles is found at cook time, not at load.
@@ -49,7 +49,8 @@ class ScriptClassAssetBuilder : IAssetBuilder
 		record.Source.Set(source);
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
-		if (!cook.Cook(source, authored.FileName.Value, authored.ClassName, record, problems))
+		let preferred = ScriptClasses.Preferred(authored, .. scope .());
+		if (!cook.Cook(source, authored.FileName.Value, preferred, record, problems))
 		{
 			for (let p in problems)
 				GlobalLog(.Error, "Cook: {}", p);

@@ -75,7 +75,8 @@ static class ScriptCreators
 		fileName.Append('.');
 		fileName.Append(fileSuffix);
 		let starter = scope String();
-		cook.NewAssetTemplate(tier, ClassNameFor(name, baseName, .. scope .()), starter);
+		let className = ClassNameFor(name, baseName, .. scope .());
+		cook.NewAssetTemplate(tier, className, starter);
 		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
 		if (!(WriteFile(path, .((uint8*)starter.Ptr, starter.Length)) case .Ok))
 			return null;
@@ -85,6 +86,7 @@ static class ScriptCreators
 		let asset = scope ScriptClassAsset();
 		asset.FileName.Set(fileName);
 		asset.Language.Set(languageId);
+		asset.ClassName.Set(ScriptClasses.StarterClassName(tier, className));
 		if (!(instance.WriteObject(asset) case .Ok))
 			return null;
 		return instance;

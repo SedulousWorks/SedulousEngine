@@ -15,18 +15,22 @@ class ScriptSourceDocument
 	private String mSourcesRoot = new .() ~ delete _;
 	private String mFileName = new .() ~ delete _;
 	private String mLanguage = new .() ~ delete _;
+	/// The class the asset prefers (its Class Name; empty: the one named like its file).
+	private String mPreferredClass = new .() ~ delete _;
 	private String mSource = new .() ~ delete _;
 	private String mSaved = new .() ~ delete _;
 	private String mClassName = new .() ~ delete _;
 	private List<ScriptCompileError> mErrors = new .() ~ DeleteContainerAndItems!(_);
 	private bool mLastCompileOk = true;
 
-	/// An empty language means AngelScript, the default backend.
-	public void Bind(StringView sourcesRoot, StringView fileName, StringView language)
+	/// An empty language means AngelScript, the default backend; `preferredClass` is the
+	/// asset's Class Name (empty: the class named like the file), which the check plays.
+	public void Bind(StringView sourcesRoot, StringView fileName, StringView language, StringView preferredClass = default)
 	{
 		mSourcesRoot.Set(sourcesRoot);
 		mFileName.Set(fileName);
 		mLanguage.Set(language.IsEmpty ? "angelscript" : language);
+		mPreferredClass.Set(preferredClass);
 	}
 
 	public StringView FileName => mFileName;
@@ -79,7 +83,7 @@ class ScriptSourceDocument
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems!(problems); }
 		let className = scope String();
-		let ok = cook.Check(mSource, mFileName, className, problems, default);
+		let ok = cook.Check(mSource, mFileName, mPreferredClass, className, problems, default);
 		for (let problem in problems)
 			mErrors.Add(ScriptCompileError.Parse(problem));
 		if (ok)

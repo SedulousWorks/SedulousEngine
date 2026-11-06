@@ -61,7 +61,7 @@ class ScriptEditorPage : CodeAssetPage
 			let sourcesRoot = scope String();
 			if (context.Project != null)
 				context.Project.SourcesRoot(sourcesRoot);
-			mDoc.Bind(sourcesRoot, asset.FileName.Value, asset.Language);
+			mDoc.Bind(sourcesRoot, asset.FileName.Value, asset.Language, asset.ClassName);
 		}
 		mSurface.SetLanguage(mDoc.Language);
 		mSurface.SetSurface(surface);

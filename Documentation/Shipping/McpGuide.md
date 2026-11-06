@@ -335,7 +335,11 @@ writable only where its setter is bound (an asset reference, a skeletal animatio
 and writes as the Guid it holds). A member with `readOnly: true` (a network identity's
 `Authority`, for one) reads and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
 edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
-class attachable.
+class attachable. A script file may declare several classes (data, helpers); the one it plays is
+its asset's Class Name (`ClassName`: the name its file was imported under, or a new script's
+starter class), else the one named like its file, else its only one. Several and none so named
+fails the cook, naming them: set the asset's Class Name, or pass `script_validate` the file's
+`name` (or `className`).
 
 **Shaders**: a custom shader is one `.hlsl` with a `properties` block declaring its materials'
 parameters, in one of two kinds. A SURFACE shader (a `// surface: lit` or `// surface: unlit`

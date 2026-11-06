@@ -116,18 +116,17 @@ class AngelScriptCook : IScriptLanguageCook
 		if (!ok)
 			return false;
 
-		let name = scope String(className);
+		let name = scope String();
+		if (!ChooseClass(source, sourceName, className, name, problems))
+			return false;
 		if (name.IsEmpty)
 		{
-			// The first class the module declares, or a utility module with none.
-			if (!FirstClass(source, name))
-			{
-				outRecord.ClassName.Clear();
-				ClearAndDeleteItems!(outRecord.Properties);
-				ClearAndDeleteItems!(outRecord.Handlers);
-				outRecord.UsesCoroutines = source.Contains("startCoroutine");
-				return true;
-			}
+			// A utility module: no class.
+			outRecord.ClassName.Clear();
+			ClearAndDeleteItems!(outRecord.Properties);
+			ClearAndDeleteItems!(outRecord.Handlers);
+			outRecord.UsesCoroutines = source.Contains("startCoroutine");
+			return true;
 		}
 		outRecord.ClassName.Set(name);
 		let harvestProblems = scope List<String>();
@@ -139,7 +138,7 @@ class AngelScriptCook : IScriptLanguageCook
 	}
 
 	/// Through the runtime's Check, so unlike Cook no global initializer runs.
-	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden)
+	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden)
 	{
 		let runtime = scope AngelScriptRuntime();
 		runtime.Bind(mSurface, default, hidden);
@@ -149,67 +148,24 @@ class AngelScriptCook : IScriptLanguageCook
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		outClassName.Clear();
-		if (ok)
-			FirstClass(source, outClassName);
-		return ok;
+		if (!ok)
+			return false;
+		return ChooseClass(source, sourceName, className, outClassName, problems);
 	}
 
-	/// The first top level `class Name` in the source, comments aside.
-	private static bool FirstClass(StringView source, String outName)
+	/// The class `source` plays, by `className` (empty: the one named like `sourceName`'s
+	/// file), into `outClass`; false with the problem when it declares several and none so named.
+	private static bool ChooseClass(StringView source, StringView sourceName, StringView className, String outClass, List<String> problems)
 	{
-		let stripped = StripComments(source, .. scope .());
-		int depth = 0;
-		int i = 0;
-		while (i < stripped.Length)
-		{
-			let c = stripped[i];
-			if (c == '{') depth++;
-			else if (c == '}') depth--;
-			else if ((depth == 0) && stripped.Substring(i).StartsWith("class") && ((i == 0) || !stripped[i - 1].IsLetterOrDigit))
-			{
-				int j = i + 5;
-				while ((j < stripped.Length) && stripped[j].IsWhiteSpace) j++;
-				int start = j;
-				while ((j < stripped.Length) && (stripped[j].IsLetterOrDigit || (stripped[j] == '_'))) j++;
-				if (j > start)
-				{
-					outName.Set(stripped.Substring(start, j - start));
-					return true;
-				}
-			}
-			i++;
-		}
+		let declared = scope List<String>();
+		defer { ClearAndDeleteItems!(declared); }
+		ScriptClasses.ListClasses(source, declared);
+		let preferred = ScriptClasses.PreferredFor(className, sourceName, .. scope .());
+		let problem = scope String();
+		if (ScriptClasses.Choose(declared, preferred, outClass, problem))
+			return true;
+		problems.Add(new $"{sourceName}: {problem}");
 		return false;
-	}
-
-	private static void StripComments(StringView source, String outStripped)
-	{
-		int i = 0;
-		while (i < source.Length)
-		{
-			if ((i + 1 < source.Length) && (source[i] == '/') && (source[i + 1] == '/'))
-			{
-				while ((i < source.Length) && (source[i] != '\n')) i++;
-				continue;
-			}
-			if ((i + 1 < source.Length) && (source[i] == '/') && (source[i + 1] == '*'))
-			{
-				i += 2;
-				while ((i + 1 < source.Length) && !((source[i] == '*') && (source[i + 1] == '/'))) i++;
-				i += 2;
-				continue;
-			}
-			if (source[i] == '"')
-			{
-				outStripped.Append(' ');
-				i++;
-				while ((i < source.Length) && (source[i] != '"')) { if (source[i] == '\\') i++; i++; }
-				i++;
-				continue;
-			}
-			outStripped.Append(source[i]);
-			i++;
-		}
 	}
 
 	/// Registers this cook for `.as`, with the surface the host cooks against.

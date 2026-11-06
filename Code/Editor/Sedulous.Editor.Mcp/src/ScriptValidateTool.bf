@@ -36,8 +36,8 @@ static class ScriptValidateTool
 		let schema = scope SchemaBuilder();
 		schema.Str("source", "the full script source text", true);
 		schema.Enum("language", choices, "the script backend to compile against", true);
-		schema.Str("name", "a display name for error messages (e.g. the intended file name; default 'script')");
-		schema.Str("className", "the class to harvest (default: the first class the source declares)");
+		schema.Str("name", "a display name for error messages (e.g. the intended file name; default 'script'); its stem is the class it plays when the source declares several");
+		schema.Str("className", "the class it plays when the source declares several (a script asset's Class Name); default: the one named like `name`");
 		schema.Str("platform", "also check it for this platform's plugins (Linux64, Win64, Web); needs an open project");
 		server.RegisterTool("script_validate",
 			"""
@@ -83,7 +83,7 @@ static class ScriptValidateTool
 				let views = scope List<StringView>();
 				for (let hiddenName in hidden)
 					views.Add(hiddenName);
-				ok = cook.Check(source, name, scope .(), problems, (Span<StringView>)views);
+				ok = cook.Check(source, name, className, scope .(), problems, (Span<StringView>)views);
 			}
 		}
 
