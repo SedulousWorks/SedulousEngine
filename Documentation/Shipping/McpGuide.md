@@ -327,8 +327,10 @@ values (Wind's Strength, Speed and Height) are floats in the group's own `values
 `uniformDefaults`.
 
 **Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
-signatures. A member with `readOnly: true` (a network identity's `Authority`, for one) reads
-and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
+signatures. A property is listed only when a script can use it: a type's own and its bases',
+writable only where its setter is bound (an asset reference, a skeletal animation's `Clip`, reads
+and writes as the Guid it holds). A member with `readOnly: true` (a network identity's
+`Authority`, for one) reads and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
 edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
 class attachable.
 

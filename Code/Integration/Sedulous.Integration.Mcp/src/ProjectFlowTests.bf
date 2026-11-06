@@ -327,6 +327,50 @@ static class ProjectFlowTests
 		Test.Assert(run.Get("scriptName").AsString() == "GameInstance", "the class; its members spell Run");
 	}
 
+	/// What script_api lists is what a script can use: a type's own properties and its bases',
+	/// each writable only when its setter is bound. A skeletal animation's clip is a Ref, which
+	/// crosses as the Guid it holds, so it is listed and writable; a Button's text is its base's
+	/// property, bound on the Button too.
+	[Test]
+	public static void ScriptApiListsThePropertiesAScriptCanUseInheritedOnesToo()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let server = scope McpServer();
+		ScriptTools.Register(server, PipelineRegistration.Surface);
+		let api = CallOk(server, "script_api", With(Obj(), "language", "angelscript"));
+		defer delete api;
+		let types = api.Get("languages").At(0).Get("types");
+
+		let animation = TypeEndingIn(types, "SkeletalAnimationComponent");
+		Test.Assert(animation != null);
+		let clip = PropertyNamed(animation, "Clip");
+		Test.Assert(clip != null, "a Ref crosses as its Guid");
+		Test.Assert(!clip.Get("readOnly").AsBool());
+		Test.Assert(clip.Get("signature").AsString().StartsWith("Guid "), scope String(clip.Get("signature").AsString()));
+		let speed = PropertyNamed(animation, "Speed");
+		Test.Assert((speed != null) && !speed.Get("readOnly").AsBool());
+
+		let button = TypeEndingIn(types, "Button");
+		Test.Assert(button != null);
+		let text = PropertyNamed(button, "Text");
+		Test.Assert(text != null, "its base's property, bound on it");
+		Test.Assert(!text.Get("readOnly").AsBool());
+	}
+
+	/// The property `name` of a listed type, or null.
+	private static JsonValue PropertyNamed(JsonValue type, StringView name)
+	{
+		let members = type.Get("members");
+		for (int i < members.Count)
+		{
+			let member = members.At(i);
+			if ((member.Get("name").AsString() == name) && (member.Get("kind").AsString() == "property"))
+				return member;
+		}
+		return null;
+	}
+
 	/// The bound type whose surface type name ends in `.name`, or null.
 	private static JsonValue TypeEndingIn(JsonValue types, StringView name)
 	{

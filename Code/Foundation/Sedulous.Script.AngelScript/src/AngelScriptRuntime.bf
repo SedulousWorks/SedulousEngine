@@ -862,15 +862,7 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 			bound = Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(target)).CStr(), getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
 		}
-		if (bound)
-		{
-			// Spelled as a script reads it: `Type::Field` for a static, `Type.Field` on an
-			// instance, a bare name in the global namespace.
-			let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(target), target.FullName, false);
-			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(target)}.{f.ScriptName}");
-			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{(f.Set != null) ? "" : " (read only)"}", isGlobal, .Property, f.Set == null);
-		}
-
+		bool setBound = false;
 		if (f.Set != null)
 		{
 			let set = new AngelScriptBinding();
@@ -889,12 +881,23 @@ class AngelScriptRuntime : ScriptRuntime
 			}
 			let setDecl = scope $"void set_{f.ScriptName}({paramDecl}) property";
 			if (isGlobal)
-				Check(AS.asc_engine_register_global_function(mEngine, setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
+				setBound = Check(AS.asc_engine_register_global_function(mEngine, setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
 			else
-				Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(target)).CStr(), setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
+				setBound = Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(target)).CStr(), setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
 		}
 		if (isGlobal)
 			AS.asc_engine_set_default_namespace(mEngine, "");
+
+		// Listed as bound: when the getter registered, and writable only when the setter did too,
+		// so script_api never offers an assignment the compiler then refuses.
+		if (bound)
+		{
+			// Spelled as a script reads it: `Type::Field` for a static, `Type.Field` on an
+			// instance, a bare name in the global namespace.
+			let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(target), target.FullName, false);
+			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(target)}.{f.ScriptName}");
+			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{setBound ? "" : " (read only)"}", isGlobal, .Property, !setBound);
+		}
 	}
 
 	/// A method is registered once per arity its defaults allow.
