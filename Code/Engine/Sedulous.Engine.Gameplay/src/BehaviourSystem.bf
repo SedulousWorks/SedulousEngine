@@ -16,7 +16,8 @@ namespace Sedulous.Engine.Gameplay;
 ///   1. the edges, for every instance: OnEnable when it became active, OnStart the first
 ///      time, OnDisable when it stopped being;
 ///   2. OnUpdate, for the started and active instances of the types that override it;
-///   3. the end of the tick, where what was queued before it drains: the contacts.
+///   3. the end of the tick, where what was queued before it drains: the contacts, then the
+///      queued calls (Post), each in the order queued.
 /// OnFixedUpdate runs on the scene's fixed step, which runs before the frame's Update, and
 /// OnLateUpdate in PostUpdate, after every system's Update.
 ///
@@ -36,6 +37,11 @@ namespace Sedulous.Engine.Gameplay;
 /// destroyed by the scene at the end of the frame; one destroyed during the fixed step goes at
 /// once (the scene defers only during Update), its behaviours released then and deleted as
 /// the pass ends.
+///
+/// A queued call is a direct call deferred: it runs at the drain with an update's footing,
+/// whatever queued it. One bound to a behaviour (Behaviour.Post) is dropped when the
+/// behaviour is released before the drain. What a drain's deliveries queue, contacts or
+/// calls, waits for the next drain, so a call that queues itself cannot keep one going.
 ///
 /// A behaviour of an inactive entity freezes: OnDisable on the edge, then nothing until the
 /// entity is active again, when OnEnable follows (OnStart only if it never started).
@@ -71,6 +77,18 @@ class BehaviourSystem : SceneSystem, IContactListener
 	/// what a delivery queues waits for the next drain.
 	private List<PendingContact> mContacts = new .() ~ delete _;
 	private List<PendingContact> mDrainingContacts = new .() ~ delete _;
+
+	/// A call waiting for the drain. The call is OWNED; the owner, BORROWED, is the behaviour
+	/// it is bound to, or null. A dropped call (its owner released) is nulled in place.
+	private struct QueuedCall
+	{
+		public Behaviour Owner;
+		public delegate void() Call;
+	}
+
+	/// The calls queued since the last drain, and the ones the drain in progress runs.
+	private List<QueuedCall> mCalls = new .() ~ { DeleteCalls(_); delete _; };
+	private List<QueuedCall> mDrainingCalls = new .() ~ { DeleteCalls(_); delete _; };
 
 	public override int32 UpdateOrder => cUpdateOrder;
 	public override bool IsSimulationOnly => true;
@@ -110,6 +128,8 @@ class BehaviourSystem : SceneSystem, IContactListener
 	public int ContactCount => mContactManagers.Count;
 	/// The contact sides waiting for the end of the tick.
 	public int PendingContactCount => mContacts.Count;
+	/// The calls waiting for the end of the tick, dropped ones included.
+	public int PendingCallCount => mCalls.Count;
 
 	internal void Register(BehaviourManagerBase manager)
 	{
@@ -166,10 +186,67 @@ class BehaviourSystem : SceneSystem, IContactListener
 		mContacts.Add(pending);
 	}
 
-	/// A stopped scene's queue goes with it: nothing queued in one play reaches the next.
+	/// Queues `call` for the end of the next tick's Update, where the scene's queued work
+	/// drains. TAKES OWNERSHIP: deleted once it has run, or unrun if the scene stops first.
+	public void Post(delegate void() call)
+	{
+		Post(null, call);
+	}
+
+	/// As Post, bound to `owner`: dropped (deleted unrun) if the behaviour is released first.
+	internal void Post(Behaviour owner, delegate void() call)
+	{
+		if (call == null)
+			return;
+		QueuedCall queued;
+		queued.Owner = owner;
+		queued.Call = call;
+		mCalls.Add(queued);
+		if (owner != null)
+			owner.mQueuedCalls++;
+	}
+
+	/// Drops `owner`'s queued calls, those of the drain in progress included: its release.
+	internal void DropCalls(Behaviour owner)
+	{
+		DropCalls(mCalls, owner);
+		DropCalls(mDrainingCalls, owner);
+	}
+
+	private static void DropCalls(List<QueuedCall> calls, Behaviour owner)
+	{
+		for (var queued in ref calls)
+		{
+			if ((queued.Owner === owner) && (queued.Call != null))
+			{
+				delete queued.Call;
+				queued.Call = null;
+				queued.Owner = null;
+			}
+		}
+	}
+
+	/// A stopped scene's queues go with it: nothing queued in one play reaches the next.
 	public override void OnSceneStopped()
 	{
 		mContacts.Clear();
+		for (let queued in mCalls)
+		{
+			if (queued.Owner != null)
+				queued.Owner.mQueuedCalls = 0;
+		}
+		DeleteCalls(mCalls);
+	}
+
+	/// Deletes what is still queued, leaving the list empty.
+	private static void DeleteCalls(List<QueuedCall> calls)
+	{
+		for (let queued in calls)
+		{
+			if (queued.Call != null)
+				delete queued.Call;
+		}
+		calls.Clear();
 	}
 
 	public override void OnUpdate(ScenePhase phase, float deltaTime)
@@ -208,16 +285,35 @@ class BehaviourSystem : SceneSystem, IContactListener
 		Run(mManagers, .End, 0.0f);
 	}
 
-	/// Delivers what was queued before the drain began; what it queues waits for the next.
+	/// Delivers what was queued before the drain began, the contacts and then the calls;
+	/// what it queues waits for the next.
 	private void Drain()
 	{
-		if (mContacts.IsEmpty)
+		if (mContacts.IsEmpty && mCalls.IsEmpty)
 			return;
 
 		Swap(ref mContacts, ref mDrainingContacts);
+		Swap(ref mCalls, ref mDrainingCalls);
+
 		for (let contact in mDrainingContacts)
 			DeliverContact(contact);
 		mDrainingContacts.Clear();
+
+		for (int i < mDrainingCalls.Count)
+		{
+			let queued = mDrainingCalls[i];
+			if (queued.Call == null)
+				continue;
+			// Taken out first: the owner's release during its own call finds nothing to drop,
+			// and the call is deleted only once it has returned.
+			mDrainingCalls[i].Call = null;
+			mDrainingCalls[i].Owner = null;
+			if (queued.Owner != null)
+				queued.Owner.mQueuedCalls--;
+			queued.Call();
+			delete queued.Call;
+		}
+		mDrainingCalls.Clear();
 	}
 
 	/// One side to every behaviour of its entity whose class hears contacts, in registration

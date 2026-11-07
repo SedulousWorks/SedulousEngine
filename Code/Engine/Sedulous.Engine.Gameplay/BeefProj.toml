@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Engine.Gameplay.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Messaging" = "*"
 "Sedulous.Run" = "*"
 "Sedulous.Scene" = "*"
 "Sedulous.Physics" = "*"

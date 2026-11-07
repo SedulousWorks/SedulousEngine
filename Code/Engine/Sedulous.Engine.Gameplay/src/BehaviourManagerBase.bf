@@ -58,6 +58,12 @@ abstract class BehaviourManagerBase : ComponentManagerBase
 	/// Closes the pass and deletes what was removed during it.
 	protected internal abstract void EndPass();
 
+	/// Defers the delete of what is removed, as a pass does, while one of its instances' own
+	/// callbacks runs outside a pass (an event handler): the instance returns into itself
+	/// alive. Unhold closing the last hold, outside a pass, deletes what was removed.
+	protected internal abstract void Hold();
+	protected internal abstract void Unhold();
+
 	/// The enable and start edges for every instance of the pass (Behaviour.SettleEnabled).
 	protected internal abstract void DeliverEdges();
 	protected internal abstract void RunUpdate(float deltaTime);

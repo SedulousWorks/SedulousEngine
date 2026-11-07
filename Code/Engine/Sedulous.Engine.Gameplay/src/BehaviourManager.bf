@@ -57,6 +57,8 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 	/// closes.
 	private List<T> mRetired = new .() ~ delete _;
 	private bool mInPass = false;
+	/// The holds open (Hold), each deferring deletes as a pass does.
+	private int32 mHolds = 0;
 
 	public this()
 	{
@@ -170,7 +172,7 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 		Debug.Assert(!HasComponent(entity), "one behaviour of a type per entity");
 
 		let instance = new T();
-		instance.Attach(Scene, entity);
+		instance.Attach(Scene, entity, this);
 		let slot = mDense.Count;
 		mDense.Add(instance);
 		mOwners.Add(entity);
@@ -271,7 +273,7 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 			// The fresh one takes the slot (and so the pool order) of the one it replaces.
 			replaced = mDense[(int)index];
 			instance = new T();
-			instance.Attach(Scene, entity);
+			instance.Attach(Scene, entity, this);
 			mDense[(int)index] = instance;
 		}
 
@@ -287,15 +289,22 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 
 	/// Ends an instance already out of the pool: its closing edges (Release), then detached,
 	/// so a pass still holding it finds it inactive with nothing owed, then deleted, at once
-	/// or, during a pass, as the pass ends.
+	/// or, during a pass or a hold, as the last of them ends.
 	private void Retire(T instance)
 	{
 		instance.Release();
 		instance.Detach();
-		if (mInPass)
+		if (mInPass || (mHolds > 0))
 			mRetired.Add(instance);
 		else
 			delete instance;
+	}
+
+	private void DeleteRetired()
+	{
+		for (let instance in mRetired)
+			delete instance;
+		mRetired.Clear();
 	}
 
 	// ---- the system's pass ----
@@ -317,9 +326,19 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 	{
 		mInPass = false;
 		mPass.Clear();
-		for (let instance in mRetired)
-			delete instance;
-		mRetired.Clear();
+		if (mHolds == 0)
+			DeleteRetired();
+	}
+
+	protected internal override void Hold()
+	{
+		mHolds++;
+	}
+
+	protected internal override void Unhold()
+	{
+		if ((--mHolds == 0) && !mInPass)
+			DeleteRetired();
 	}
 
 	protected internal override void DeliverEdges()
