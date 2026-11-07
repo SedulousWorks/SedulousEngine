@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Gameplay.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.Gameplay.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Xml.Serialization" = "*"
+"Sedulous.Engine.Gameplay" = "*"

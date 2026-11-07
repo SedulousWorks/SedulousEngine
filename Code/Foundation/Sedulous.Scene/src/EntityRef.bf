@@ -27,6 +27,12 @@ struct EntityRef : IHashable
 
 	public bool IsNil => Id == Guid();
 
+	/// The id alone, as the free Serialize beside the type writes it. A member as well, so a
+	/// generated body ([Serializable]'s field walk) finds it as a type that describes itself:
+	/// Core's dispatcher cannot know what an EntityRef is.
+	public void Serialize(ISerializer ar) mut
+		=> Sedulous.Core.Serialization.Serialize(ar, ref Id);
+
 	[Commutable]
 	public static bool operator==(EntityRef a, EntityRef b) => a.Id == b.Id;
 

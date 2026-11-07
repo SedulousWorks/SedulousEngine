@@ -86,7 +86,29 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 		}
 
 		body.Append("\tar.BeginObject();\n");
+		AppendFieldMoves(type, body);
+		body.Append("\tar.EndObject();\n");
+		if (mDataVersion > 0)
+			body.Append("\tSedulous.Core.Serialization.EndVersionedPayload(ar);\n");
+		if (mAfterRead)
+			body.Append("\tif (ar.Mode == .Read)\n\t\tAfterRead();\n");
+		body.Append("}");
 
+		Compiler.EmitTypeBody(type, body);
+		Compiler.EmitAddInterface(type, typeof(ISerializable));
+	}
+
+	/// The statements that move each stored field of `type`, one per field under its key,
+	/// appended to `body`: the part of a generated Serialize that IS the type's layout.
+	///
+	/// Shared, so every attribute that emits a Serialize over a declaration walks it the same
+	/// way (keys, base first, declaration order, [NotSerialized], [Appended]): [Serializable]
+	/// wraps it in an object and its version envelope, and a behaviour's manager wraps it in
+	/// the component record's. `publicOnly` also leaves out every field that is not public,
+	/// for a type whose private fields are runtime state rather than data.
+	[Comptime]
+	public static void AppendFieldMoves(Type type, String body, bool publicOnly = false)
+	{
 		// Base first, then this type. An inherited field is part of what this object IS,
 		// so leaving it out writes an object that cannot be reconstructed: the base state
 		// simply vanishes, and a binary read is positional, so it vanishes SILENTLY.
@@ -119,6 +141,8 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				// Deliberately left out: state that is not part of what the object IS, or bulk
 				// that travels beside the envelope rather than inside it.
 				if (field.GetCustomAttribute<NotSerializedAttribute>() case .Ok)
+					continue;
+				if (publicOnly && !field.IsPublic)
 					continue;
 
 				// The statement that moves the value, by what the field's type is.
@@ -161,16 +185,6 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 					body.AppendF("\tar.Key(\"{}\");\n\t{}\n", key, move);
 			}
 		}
-
-		body.Append("\tar.EndObject();\n");
-		if (mDataVersion > 0)
-			body.Append("\tSedulous.Core.Serialization.EndVersionedPayload(ar);\n");
-		if (mAfterRead)
-			body.Append("\tif (ar.Mode == .Read)\n\t\tAfterRead();\n");
-		body.Append("}");
-
-		Compiler.EmitTypeBody(type, body);
-		Compiler.EmitAddInterface(type, typeof(ISerializable));
 	}
 
 	/// Whether any ancestor also carries [Serializable], and so declares the constants

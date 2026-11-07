@@ -82,6 +82,28 @@ class Scene
 		mName.Set(name);
 	}
 
+	/// Deletes the systems newest first, each taken out of the lookups before it goes, while
+	/// the scene is still whole: a system's teardown (a behaviour's OnDestroy) may still
+	/// reach the scene and the systems older than it, never one already deleted.
+	public ~this()
+	{
+		while (!mSystems.IsEmpty)
+		{
+			let system = mSystems.PopBack();
+			for (let pair in mSystemsByType)
+			{
+				if (pair.value === system)
+				{
+					@pair.Remove();
+					break;
+				}
+			}
+			mSortedSystems.Remove(system);
+			mManagersByComponent.Clear();
+			delete system;
+		}
+	}
+
 	[Scriptable]
 	public StringView Name => mName;
 	public void SetName(StringView name) => mName.Set(name);
