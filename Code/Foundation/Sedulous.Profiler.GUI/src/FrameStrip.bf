@@ -711,7 +711,7 @@ class CounterPlot : FrameAxisView
 		let source = Source;
 		if ((source == null) || (mCounter >= (uint32)source.Counters.Length))
 			return;
-		let unit = source.Counters[mCounter].Unit;
+		let unit = source.Counters[(int)mCounter].Unit;
 		ProfileWindow.FormatCounter(least, unit, outText);
 		outText.Append(" to ");
 		ProfileWindow.FormatCounter(most, unit, outText);
@@ -749,7 +749,7 @@ class CounterPlot : FrameAxisView
 		let source = Source;
 		if ((source == null) || (mCounter >= (uint32)source.Counters.Length))
 			return;
-		let info = source.Counters[mCounter];
+		let info = source.Counters[(int)mCounter];
 		var column = FrameColumn();
 		column.First = frame;
 		column.Last = frame;
@@ -770,7 +770,7 @@ class CounterPlot : FrameAxisView
 		let source = Source;
 		if ((source == null) || (mCounter >= (uint32)source.Counters.Length))
 			return;
-		let info = source.Counters[mCounter];
+		let info = source.Counters[(int)mCounter];
 		DrawLabel(ctx, info.Name, .(plot.X - cGutterWidth, plot.Y, cGutterWidth - 6.0f, plot.Height), PartTextColor("name"), .End);
 
 		let columns = scope List<FrameColumn>();

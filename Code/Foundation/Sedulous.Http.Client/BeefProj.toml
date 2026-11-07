@@ -11,3 +11,13 @@ corlib = "*"
 "Sedulous.Http" = "*"
 "Sedulous.Net" = "*"
 "Sedulous.Net.Tls" = "*"
+
+# The browser client calls emscripten's fetch, which is in the link only when asked for.
+[Configs.Debug.wasm32]
+OtherLinkFlags = "-sFETCH=1"
+
+[Configs.Release.wasm32]
+OtherLinkFlags = "-sFETCH=1"
+
+[Configs.ShippingRelease.wasm32]
+OtherLinkFlags = "-sFETCH=1"

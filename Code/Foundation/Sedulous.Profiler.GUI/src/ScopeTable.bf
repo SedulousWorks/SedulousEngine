@@ -104,14 +104,14 @@ class ScopeTree
 		{
 			int64 children = 0;
 			for (let child in node.Children)
-				children += Nodes[child].TotalTicks;
+				children += Nodes[(int)child].TotalTicks;
 			node.SelfTicks = node.TotalTicks - Math.Min(children, node.TotalTicks);
 		}
 		// The GPU's group last; the threads' in their order.
 		Roots.Sort(scope (a, b) =>
 			{
-				let x = Nodes[a];
-				let y = Nodes[b];
+				let x = Nodes[(int)a];
+				let y = Nodes[(int)b];
 				if (x.Gpu != y.Gpu)
 					return x.Gpu ? 1 : -1;
 				return x.Thread <=> y.Thread;
@@ -131,7 +131,7 @@ class ScopeTree
 	{
 		for (let root in Roots)
 		{
-			if ((Nodes[root].Gpu == gpu) && (Nodes[root].Thread == thread))
+			if ((Nodes[(int)root].Gpu == gpu) && (Nodes[(int)root].Thread == thread))
 				return root;
 		}
 		let group = new ScopeNode();
@@ -184,7 +184,7 @@ class ScopeTree
 			let ticks = Cut(run.BeginTick, run.EndTick, span);
 			if ((ticks > 0) || !span.Any)
 			{
-				let at = Nodes[node];
+				let at = Nodes[(int)node];
 				at.Calls++;
 				at.TotalTicks += ticks;
 				at.MaxTicks = Math.Max(at.MaxTicks, ticks);
@@ -196,21 +196,21 @@ class ScopeTree
 
 	private uint32 Child(uint32 parent, uint32 name, bool gpu)
 	{
-		for (let child in Nodes[parent].Children)
+		for (let child in Nodes[(int)parent].Children)
 		{
-			if (Nodes[child].Name == name)
+			if (Nodes[(int)child].Name == name)
 				return child;
 		}
 		let node = new ScopeNode();
 		node.Name = name;
 		node.Gpu = gpu;
 		node.Parent = (int32)parent;
-		node.Thread = Nodes[parent].Thread;
-		node.Depth = Nodes[parent].Depth + 1;
-		node.Key = Mix(Nodes[parent].Key, (uint64)name + 1);
+		node.Thread = Nodes[(int)parent].Thread;
+		node.Depth = Nodes[(int)parent].Depth + 1;
+		node.Key = Mix(Nodes[(int)parent].Key, (uint64)name + 1);
 		Nodes.Add(node);
 		let at = (uint32)(Nodes.Count - 1);
-		Nodes[parent].Children.Add(at);
+		Nodes[(int)parent].Children.Add(at);
 		return at;
 	}
 
@@ -587,7 +587,7 @@ class ScopeTable : ProfilerWidget
 	// Whether a node, or one under it, holds the filter's text.
 	private bool Shows(uint32 index, IProfileSource source)
 	{
-		let node = mTree.Nodes[index];
+		let node = mTree.Nodes[(int)index];
 		if (!node.Group && (node.Calls > 0) && Matches(source.NameOf(node.Name)))
 			return true; // a node with no call ran only outside the span: shown for its children
 		for (let child in node.Children)
@@ -611,7 +611,7 @@ class ScopeTable : ProfilerWidget
 
 	private void AddTreeRows(uint32 index, IProfileSource source)
 	{
-		let node = mTree.Nodes[index];
+		let node = mTree.Nodes[(int)index];
 		if (!Shows(index, source))
 			return;
 		Row row = .();
@@ -633,7 +633,7 @@ class ScopeTable : ProfilerWidget
 		// Children by their total, the longest first.
 		let children = scope List<uint32>();
 		children.AddRange(node.Children);
-		children.Sort(scope (a, b) => mTree.Nodes[b].TotalTicks <=> mTree.Nodes[a].TotalTicks);
+		children.Sort(scope (a, b) => mTree.Nodes[(int)b].TotalTicks <=> mTree.Nodes[(int)a].TotalTicks);
 		for (let child in children)
 			AddTreeRows(child, source);
 	}

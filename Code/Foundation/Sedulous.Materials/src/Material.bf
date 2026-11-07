@@ -316,7 +316,7 @@ class Material
 					if (previous.FindProperty(def.Name, let was) && (was.Type == def.Type) && (was.Size == def.Size)
 						&& ((int)was.Offset + (int)was.Size <= previous.Defaults.Count)
 						&& ((int)def.Offset + (int)def.Size <= fresh.Defaults.Count))
-						Internal.MemCpy(fresh.Defaults.Ptr + def.Offset, previous.Defaults.Ptr + was.Offset, def.Size);
+						Internal.MemCpy(fresh.Defaults.Ptr + (int)def.Offset, previous.Defaults.Ptr + (int)was.Offset, (int)def.Size);
 				}
 				delete previous;
 			}

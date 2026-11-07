@@ -246,7 +246,7 @@ class ScopeDetail : ProfilerWidget
 				lanes.Add(group);
 				if (!@out.Lanes.IsEmpty)
 					@out.Lanes.Append(", ");
-				@out.Lanes.Append(tree.Nodes[group].GroupName);
+				@out.Lanes.Append(tree.Nodes[(int)group].GroupName);
 			}
 			// What called it, each once.
 			let parent = tree.Nodes[node.Parent];
@@ -254,7 +254,7 @@ class ScopeDetail : ProfilerWidget
 			if (parent.Group)
 				caller.AppendF("The top of {}", parent.GroupName);
 			else
-				caller.AppendF("{} ({})", source.NameOf(parent.Name), tree.Nodes[group].GroupName);
+				caller.AppendF("{} ({})", source.NameOf(parent.Name), tree.Nodes[(int)group].GroupName);
 			var known = false;
 			for (let at in @out.Callers)
 				known = known || (at == caller);
@@ -262,7 +262,7 @@ class ScopeDetail : ProfilerWidget
 				@out.Callers.Add(new String(caller));
 			// Its children by name, and its own time.
 			for (let child in node.Children)
-				AddChildTime(@out, source.NameOf(tree.Nodes[child].Name), tree.Nodes[child].Name, tree.Nodes[child].TotalTicks, false);
+				AddChildTime(@out, source.NameOf(tree.Nodes[(int)child].Name), tree.Nodes[(int)child].Name, tree.Nodes[(int)child].TotalTicks, false);
 			AddChildTime(@out, "Self", 0, node.SelfTicks, true);
 		}
 		if (!@out.Any)
@@ -284,7 +284,7 @@ class ScopeDetail : ProfilerWidget
 		while (at.Parent >= 0)
 		{
 			index = (uint32)at.Parent;
-			at = tree.Nodes[index];
+			at = tree.Nodes[(int)index];
 		}
 		return index;
 	}

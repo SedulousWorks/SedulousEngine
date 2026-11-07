@@ -524,7 +524,7 @@ class ProfileTimeline : ProfilerWidget
 			ctx.VG.FillRect(.(plot.X, lane.Y + lane.Height + cLaneGap * 0.5f, plot.Width, 1.0f), separator);
 		for (let bar in mBars)
 		{
-			let lane = mLanes[bar.LaneIndex];
+			let lane = mLanes[(int)bar.LaneIndex];
 			if (bar.Merged > 0)
 			{
 				DrawHatch(ctx, bar.Box, hatch);
@@ -792,7 +792,7 @@ class ProfileTimeline : ProfilerWidget
 		// The scopes in view, a lane and a depth at a time so narrow ones join their neighbours.
 		for (uint32 l < (uint32)mLanes.Count)
 		{
-			let lane = mLanes[l];
+			let lane = mLanes[(int)l];
 			for (uint32 depth < (lane.Folded ? 1 : lane.Depths))
 			{
 				var pending = Pending();
@@ -859,7 +859,7 @@ class ProfileTimeline : ProfilerWidget
 		let x1 = XAt((double)end);
 		if ((x1 < plot.X) || (x0 > plot.Right))
 			return;
-		let top = mLanes[lane].Y + (float)depth * cRowHeight + 1.0f;
+		let top = mLanes[(int)lane].Y + (float)depth * cRowHeight + 1.0f;
 		if (x1 - x0 >= cMinBarWidth)
 		{
 			Flush(ref pending);
