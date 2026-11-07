@@ -4,8 +4,9 @@ using Sedulous.Messaging;
 
 namespace Sedulous.Messaging.Tests;
 
-/// The bus's whole contract: delivery is deferred, order is subscription order, and a
-/// cascade is bounded.
+/// The bus's whole contract: delivery is deferred (or, sent, at once), order is subscription
+/// order, a cascade is bounded, a post waits for the next drain, and a subscription may end
+/// mid delivery.
 class EventBusTests
 {
 	/// Publishing does NOT deliver. That is the point: a handler runs at the top of a
@@ -125,5 +126,105 @@ class EventBusTests
 
 		bus.Drain();
 		Test.Assert(calls == 0);
+	}
+
+	/// Send delivers inside the caller, in subscription order, without queueing, and leaves
+	/// the payload the caller's: one referencing the caller's own value is fine.
+	[Test]
+	public static void SendDeliversNowAndBorrowsThePayload()
+	{
+		let bus = scope EventBus();
+		let order = scope String();
+		delegate void(Variant) first = scope [&](payload) => { order.AppendF("1:{} ", payload.Get<int64>()); };
+		delegate void(Variant) second = scope [&](payload) => { order.AppendF("2:{} ", payload.Get<int64>()); };
+		bus.Subscribe(StringHash("A"), first);
+		bus.Subscribe(StringHash("A"), second);
+
+		int64 value = 42;
+		bus.Send(StringHash("A"), Variant.Create<int64>(ref value));
+		Test.Assert(order == "1:42 2:42 ", order);
+		Test.Assert(bus.PendingCount == 0, "nothing queued");
+	}
+
+	/// What a handler posts during a drain waits for the next drain, where a publish would
+	/// cascade into this one.
+	[Test]
+	public static void APostDuringADrainWaitsForTheNext()
+	{
+		let bus = scope EventBus();
+		int aCalls = 0;
+		int bCalls = 0;
+		delegate void(Variant) onA = scope [&](payload) =>
+		{
+			aCalls++;
+			bus.Post(StringHash("B"), Variant());
+		};
+		delegate void(Variant) onB = scope [&](payload) => { bCalls++; };
+		bus.Subscribe(StringHash("A"), onA);
+		bus.Subscribe(StringHash("B"), onB);
+
+		bus.Post(StringHash("A"), Variant());
+		Test.Assert(aCalls == 0, "a post is queued");
+		bus.Drain();
+		Test.Assert((aCalls == 1) && (bCalls == 0), "the handler's post waits");
+		Test.Assert(bus.PendingCount == 1);
+		bus.Drain();
+		Test.Assert(bCalls == 1, "and is delivered by the next drain");
+		Test.Assert(bus.PendingCount == 0);
+	}
+
+	/// A handler that ends its own subscription, and an earlier one's, mid delivery: the
+	/// subscribers after it are still reached once each, the ended ones not again, and an
+	/// owned callback outlives its own call (ASan would see it otherwise).
+	[Test]
+	public static void ASubscriptionMayEndMidDelivery()
+	{
+		let bus = scope EventBus();
+		let order = scope String();
+		uint32 firstHandle = 0;
+		uint32 selfHandle = 0;
+		delegate void(Variant) first = scope [&](payload) => { order.Append("1"); };
+		firstHandle = bus.Subscribe(StringHash("A"), first);
+		selfHandle = bus.SubscribeOwned(StringHash("A"), new [&](payload) =>
+			{
+				order.Append("S");
+				bus.Unsubscribe(firstHandle);
+				bus.Unsubscribe(selfHandle);
+				order.Append("s");
+			});
+		delegate void(Variant) last = scope [&](payload) => { order.Append("3"); };
+		bus.Subscribe(StringHash("A"), last);
+		Test.Assert(bus.SubscriberCount == 3);
+
+		int64 value = 1;
+		bus.Send(StringHash("A"), Variant.Create<int64>(ref value));
+		Test.Assert(order == "1Ss3", order);
+		Test.Assert(bus.SubscriberCount == 1);
+
+		order.Clear();
+		bus.Publish(StringHash("A"), Variant());
+		bus.Drain();
+		Test.Assert(order == "3", order);
+	}
+
+	/// An owned callback goes with its subscription, with a clear, and with the bus (ASan
+	/// checks the leaks).
+	[Test]
+	public static void AnOwnedCallbackIsDeletedByTheBus()
+	{
+		let bus = scope EventBus();
+		int calls = 0;
+		let handle = bus.SubscribeOwned(StringHash("A"), new [&](payload) => { calls++; });
+		bus.SubscribeOwned(StringHash("A"), new [&](payload) => { calls++; });
+		bus.Publish(StringHash("A"), Variant());
+		bus.Drain();
+		Test.Assert(calls == 2);
+
+		bus.Unsubscribe(handle);
+		Test.Assert(bus.SubscriberCount == 1);
+		bus.Clear();
+		Test.Assert(bus.SubscriberCount == 0);
+
+		bus.SubscribeOwned(StringHash("A"), new [&](payload) => { calls++; });
 	}
 }
