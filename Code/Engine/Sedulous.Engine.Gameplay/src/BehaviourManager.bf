@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Reflection;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
 using internal Sedulous.Engine.Gameplay;
@@ -13,12 +14,18 @@ namespace Sedulous.Engine.Gameplay;
 ///
 /// It OWNS its instances, kept as a sparse set as ComponentManager keeps its values: a dense
 /// list in pool order, the owner per slot, and an entity index for O(1) lookup, with removal
-/// swapping the last into the hole. An instance goes (OnDestroy first, when it had started,
-/// then deleted) when it is removed, when its entity is destroyed and when the manager is
-/// (the scene torn down, or the manager removed).
+/// swapping the last into the hole. An instance goes (OnDisable and OnDestroy first, as they
+/// are owed, then deleted) when it is removed, when its entity is destroyed and when the
+/// manager is (the scene torn down, or the manager removed).
 ///
-/// The identity on disk is the class's own [Behaviour], read at compile time.
-class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delete
+/// While the scene's BehaviourSystem runs a pass over it, the pool keeps that shape (a removal
+/// still swaps at once, so the pool and the index are always whole), but the pass walks the
+/// instances it held when it began, and what is removed is deleted only as the pass ends: an
+/// instance a callback removes, its own included, stays alive until no callback can be running
+/// on it.
+///
+/// The identity on disk and the tick lists it joins are the class's own, read at compile time.
+class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delete
 {
 	private const uint32 cInvalid = 0xFFFFFFFF;
 
@@ -34,14 +41,28 @@ class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delet
 	/// The oldest stored version a legacy reader accepts; nought is the current one alone.
 	private uint32 mMinReadDataVersion = 0;
 
+	/// Whether `T` overrides each tick, baked in at compile time.
+	private bool mTicksUpdate = false;
+	private bool mTicksFixedUpdate = false;
+	private bool mTicksLateUpdate = false;
+
+	/// The instances the open pass visits, as they were when it began. BORROWED from the
+	/// pool, or, once removed, from mRetired.
+	private List<T> mPass = new .() ~ delete _;
+	/// OWNED: what was removed during the open pass, released and detached, deleted as it
+	/// closes.
+	private List<T> mRetired = new .() ~ delete _;
+	private bool mInPass = false;
+
 	public this()
 	{
 		EmitIdentity(typeof(T));
+		EmitTickLists(typeof(T));
 	}
 
-	/// Deletes what is still held, OnDestroy first for the started. The scene deletes its
-	/// systems newest first while it is still whole, so OnDestroy still has its scene and
-	/// the systems older than this one.
+	/// Deletes what is still held, OnDisable and OnDestroy first as they are owed. The scene
+	/// deletes its systems newest first while it is still whole, so they still have its scene
+	/// and the systems older than this one.
 	public ~this()
 	{
 		while (!mDense.IsEmpty)
@@ -52,6 +73,9 @@ class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delet
 			instance.Detach();
 			delete instance;
 		}
+		mPass.Clear();
+		for (let instance in mRetired)
+			delete instance;
 	}
 
 	/// Bakes the class's [Behaviour] in at compile time, as SerializableComponentManager bakes
@@ -87,6 +111,45 @@ class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delet
 		Compiler.MixinRoot(code);
 	}
 
+	/// Finds, at compile time, which ticks `T` overrides, so a class joins only the tick lists
+	/// it has work in: a class without an OnUpdate costs the frame nothing. Found from the
+	/// methods themselves rather than by reflection at run time, which would need every
+	/// behaviour's methods reflected into the binary.
+	///
+	/// The unspecialized generic has no methods to look at, and bakes in nothing.
+	[Comptime]
+	private static void EmitTickLists(Type type)
+	{
+		String code = scope .();
+		if (Overrides(type, "OnUpdate"))
+			code.Append("mTicksUpdate = true;\n");
+		if (Overrides(type, "OnFixedUpdate"))
+			code.Append("mTicksFixedUpdate = true;\n");
+		if (Overrides(type, "OnLateUpdate"))
+			code.Append("mTicksLateUpdate = true;\n");
+		if (!code.IsEmpty)
+			Compiler.MixinRoot(code);
+	}
+
+	/// Whether `type`, or a class between it and Behaviour, declares the tick `name` (one
+	/// float). The walk runs from `type` down through its bases, so Behaviour's own empty
+	/// virtual is the one declaration that does not count.
+	[Comptime]
+	private static bool Overrides(Type type, StringView name)
+	{
+		let instance = type as TypeInstance;
+		if (instance == null)
+			return false;
+		for (let method in instance.GetMethods(.Instance | .Public | .NonPublic))
+		{
+			if ((method.Name != name) || (method.ParamCount != 1) || (method.GetParamType(0) != typeof(float)))
+				continue;
+			if (method.DeclaringType != typeof(Behaviour))
+				return true;
+		}
+		return false;
+	}
+
 	/// A new `T` on `entity`, one per entity. Nothing runs on it until the scene simulates.
 	public T Add(EntityHandle entity)
 	{
@@ -118,9 +181,9 @@ class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delet
 		return true;
 	}
 
-	/// Removes and deletes `entity`'s `T`, OnDestroy first when it had started. It leaves the
-	/// pool before OnDestroy runs, so what OnDestroy does to the pool (removing another) does
-	/// not move it under the removal.
+	/// Removes and deletes `entity`'s `T`, OnDisable and OnDestroy first as they are owed. It
+	/// leaves the pool before they run, so what they do to the pool (removing another) does
+	/// not move it under the removal. During a pass the delete waits for the pass to end.
 	public override void RemoveComponent(EntityHandle entity)
 	{
 		let index = DenseIndex(entity);
@@ -140,8 +203,7 @@ class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delet
 		mOwners.PopBack();
 		mSparse.Remove(entity.Index);
 
-		instance.Release();
-		delete instance;
+		Retire(instance);
 	}
 
 	/// The instance itself: an object's fields sit at offsets from its own address, which is
@@ -206,9 +268,78 @@ class BehaviourManager<T> : ComponentManagerBase where T : Behaviour, new, delet
 
 		// Last, so whatever its OnDestroy does to the pool happens after the read.
 		if (replaced != null)
+			Retire(replaced);
+	}
+
+	/// Ends an instance already out of the pool: its closing edges (Release), then detached,
+	/// so a pass still holding it finds it inactive with nothing owed, then deleted, at once
+	/// or, during a pass, as the pass ends.
+	private void Retire(T instance)
+	{
+		instance.Release();
+		instance.Detach();
+		if (mInPass)
+			mRetired.Add(instance);
+		else
+			delete instance;
+	}
+
+	// ---- the system's pass ----
+
+	protected internal override bool TicksUpdate => mTicksUpdate;
+	protected internal override bool TicksFixedUpdate => mTicksFixedUpdate;
+	protected internal override bool TicksLateUpdate => mTicksLateUpdate;
+
+	protected internal override void BeginPass()
+	{
+		Debug.Assert(!mInPass, "passes do not nest");
+		mPass.Clear();
+		mPass.AddRange(mDense);
+		mInPass = true;
+	}
+
+	protected internal override void EndPass()
+	{
+		mInPass = false;
+		mPass.Clear();
+		for (let instance in mRetired)
+			delete instance;
+		mRetired.Clear();
+	}
+
+	protected internal override void DeliverEdges()
+	{
+		for (let instance in mPass)
+			instance.SettleEnabled();
+	}
+
+	// The ticks call `T`'s own override, reached past its protection: the manager is the one
+	// caller the lifecycle has.
+
+	protected internal override void RunUpdate(float deltaTime)
+	{
+		for (let instance in mPass)
 		{
-			replaced.Release();
-			delete replaced;
+			if (instance.Ticks)
+				instance.[Friend]OnUpdate(deltaTime);
+		}
+	}
+
+	protected internal override void RunFixedUpdate(float fixedDeltaTime)
+	{
+		for (let instance in mPass)
+		{
+			if (instance.Ticks)
+				instance.[Friend]OnFixedUpdate(fixedDeltaTime);
+		}
+	}
+
+	protected internal override void RunLateUpdate(float deltaTime)
+	{
+		for (let instance in mPass)
+		{
+			if (instance.Ticks)
+				instance.[Friend]OnLateUpdate(deltaTime);
 		}
 	}
 

@@ -80,8 +80,9 @@ abstract class Behaviour
 	protected virtual void OnLateUpdate(float dt) {}
 	/// The behaviour stopped being active: disabled, or its entity deactivated.
 	protected virtual void OnDisable() {}
-	/// Before it is deleted, when it had started. While its manager tears down (the scene
-	/// going, or the manager removed) it is already detached: Scene is null.
+	/// Before it is deleted, when it had started, and after OnDisable when it was enabled.
+	/// It still has its scene, and its entity's components: removal, the entity's
+	/// destruction and the scene's teardown all run it before anything else goes.
 	protected virtual void OnDestroy() {}
 
 	/// Two bodies began touching, `other` the far side's entity; `speed` is the closing speed
@@ -106,12 +107,51 @@ abstract class Behaviour
 		mScene = null;
 	}
 
-	/// What its manager runs before deleting it: OnDestroy, when it had started.
+	/// Whether a tick reaches it: started, its enable delivered, and active now. One that
+	/// went inactive since the last edges is skipped until those deliver its OnDisable.
+	internal bool Ticks => mStarted && mEnabledDelivered && IsActive;
+
+	/// The enable edges, once per frame before the updates: OnEnable when it became active
+	/// (then OnStart, the first time), OnDisable when it stopped being. A removed instance is
+	/// detached and released, so it is never active and has nothing delivered: nothing runs.
+	internal void SettleEnabled()
+	{
+		if (IsActive)
+		{
+			if (!mEnabledDelivered)
+			{
+				mEnabledDelivered = true;
+				OnEnable();
+			}
+			// Re-checked: OnEnable may have disabled it, and then the start waits for the
+			// next time it is enabled.
+			if (!mStarted && mEnabledDelivered && IsActive)
+			{
+				mStarted = true;
+				OnStart();
+			}
+		}
+		else if (mEnabledDelivered)
+		{
+			mEnabledDelivered = false;
+			OnDisable();
+		}
+	}
+
+	/// What its manager runs before deleting it, and the one place the closing edges run:
+	/// OnDisable when its enable was delivered, then OnDestroy when it had started. Each flag
+	/// is cleared before its call, so a removal that reaches it again runs nothing twice.
 	internal void Release()
 	{
-		if (!mStarted)
-			return;
-		mStarted = false;
-		OnDestroy();
+		if (mEnabledDelivered)
+		{
+			mEnabledDelivered = false;
+			OnDisable();
+		}
+		if (mStarted)
+		{
+			mStarted = false;
+			OnDestroy();
+		}
 	}
 }
