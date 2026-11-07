@@ -28,9 +28,11 @@ class EditorPagesServices
 	public delegate ResourceManager() Resources ~ delete _;
 	/// Where its dialogs show; unset or null: none shows (a dirty page then stays open). Owned.
 	public delegate SceneRoot() DialogRoot ~ delete _;
-	/// A dialog's markup by its path under the data root (Save As's), its one reference the
-	/// caller's; unset, or null back: no dialog. Owned.
+	/// A dialog's markup by its path under the data root (Save As's, a source file's page), its one
+	/// reference the caller's; unset, or null back: no dialog. Owned.
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
+	/// What colours a source file's page (OpenFile); null: uncoloured.
+	public CodeLanguages Languages = null;
 }
 
 /// The open pages in the dock. A page is a panel of
@@ -137,6 +139,40 @@ class EditorPages
 		Dock(uiPage, PanelIdOf(instance.Id, .. new .()));
 		CookMissing(instance);
 		return uiPage;
+	}
+
+	/// Opens (or brings forward) the page over a file of the project's own code (SourceFilePage),
+	/// `path` relative to the project or absolute, docked by its path ("file:Code/Game/src/Game.bf").
+	/// Null, with why in `outError`, with no project, or for a file not under the project's Code/
+	/// or Plugins/ or not there (SourceFilePage.Resolve).
+	public SourceFilePage OpenFile(StringView path, String outError)
+	{
+		let project = (mServices.Project != null) ? mServices.Project() : null;
+		if (project == null)
+		{
+			outError.Append("no project is open");
+			return null;
+		}
+		let full = scope String();
+		let file = scope String();
+		if (!SourceFilePage.Resolve(project.Directory, path, full, file, outError))
+			return null;
+		for (let open in mOpen)
+		{
+			if (let filePage = open.Page as SourceFilePage)
+			{
+				if (filePage.FilePath == full)
+				{
+					Reveal(filePage); // open already: its tab to front
+					return filePage;
+				}
+			}
+		}
+		let content = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(SourceFilePage.cMarkupPath) : null;
+		let page = new SourceFilePage(mServices.Context, content, mServices.Languages, full, file);
+		mServices.Context.AdoptPage(page);
+		Dock(page, new $"file:{file}");
+		return page;
 	}
 
 	/// A user's open of the source asset `id` (the browser's, a slot's Open): an editor that claims
@@ -402,7 +438,7 @@ class EditorPages
 		for (let open in mOpen)
 		{
 			if (!open.Page.InstanceId.IsSet)
-				continue; // a Game tab: nothing to reopen
+				continue; // a Game tab, a source file's page: nothing to reopen
 			pages.Add(open.Page.InstanceId);
 			if (mServices.Context.ActivePage === open.Page)
 				active = open.Page.InstanceId;

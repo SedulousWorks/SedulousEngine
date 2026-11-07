@@ -52,8 +52,10 @@ class EditorMcpServiceServices
 	public delegate void(AssetCreator creator, Instance instance) OnCreated ~ delete _;
 	public delegate bool(Guid id) DeleteAsset ~ delete _;
 	public delegate void(Instance primary, ImportOptions options) OnImported ~ delete _;
-	/// The pages, over the paths the tabs take. Owned, both.
+	/// The pages, over the paths the tabs take; OpenFile a source file of the project's packages
+	/// (EditorPages.OpenFile), null with why in its error. Owned, all.
 	public delegate EditorPage(Guid id) OpenPage ~ delete _;
+	public delegate EditorPage(StringView path, String outError) OpenFile ~ delete _;
 	public delegate void(EditorPage page) ClosePage ~ delete _;
 	/// The windows' screenshots, over the application's capture (WindowToolSeams). Owned, all.
 	public delegate void(List<uint32> outWindows) Windows ~ delete _;
@@ -279,6 +281,13 @@ class EditorMcpService
 		let pages = new PageToolSeams();
 		pages.Context = mServices.Context;
 		pages.OpenPage = new (id) => (mServices.OpenPage != null) ? mServices.OpenPage(id) : null;
+		pages.OpenFile = new (path, outError) =>
+			{
+				if (mServices.OpenFile != null)
+					return mServices.OpenFile(path, outError);
+				outError.Append("this editor opens no source file");
+				return null;
+			};
 		pages.ClosePage = new (page) =>
 			{
 				if (mServices.ClosePage != null)

@@ -72,6 +72,12 @@ class EditorApplication : IApplication
 	/// Build Project's builds, run on the build lane. Declared before the context, so it outlives
 	/// a build the context's tasks still hold.
 	private ProjectBuildService mBuildService = new .() ~ delete _;
+	/// The watch over the open project's own code (WatchCode), swept every CodeWatch.cPollSeconds.
+	private CodeWatch mCodeWatch = new .() ~ delete _;
+	/// The project the watch last swept; null for none.
+	private EditorProject mCodeWatched = null;
+	/// When it last swept, on the stopwatch; 0: at the next frame.
+	private int64 mCodeWatchSwept = 0;
 	// The services the parts share. Declared before the parts, so they outlive them.
 	private EditorContext mContext = new .() ~ delete _;
 	/// Exe-assembled (RegisterEditors).
@@ -183,6 +189,8 @@ class EditorApplication : IApplication
 	public this(EditorAppConfig config)
 	{
 		mConfig = config;
+		// What the running editor was built as: a build replaces the file it runs from, not it.
+		EditorBuildTools.NoteRunningExecutable();
 		mPageServices = new .(new [=this] () => PageServices());
 		mCodeLanguages = new .(new [=this] (path, outText) => mWindow.LoadText(path, outText));
 		mProjectManager = new ProjectManagerController(mEditorSettings);
@@ -299,6 +307,7 @@ class EditorApplication : IApplication
 		services.Resources = new () => mSession.Resources;
 		services.DialogRoot = new () => mWindow.Root;
 		services.LoadMarkup = new (path) => mWindow.LoadMarkup(path);
+		services.Languages = mCodeLanguages;
 		return services;
 	}
 
@@ -643,6 +652,7 @@ class EditorApplication : IApplication
 		mcpServices.OnImported = new (primary, options) => { mContext.NotifyImported(primary, options); };
 		// The pages, over the paths the tabs take (a close at the next frame).
 		mcpServices.OpenPage = new (id) => mPages.Open(id);
+		mcpServices.OpenFile = new (path, outError) => mPages.OpenFile(path, outError);
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
 		// An agent's delete is the browser's own: its pages closed, the default scene let go.
 		mcpServices.DeleteAsset = new (id) => mAssetOps.DeleteOne(id);
@@ -1094,6 +1104,35 @@ class EditorApplication : IApplication
 		return seams;
 	}
 
+	/// The watch over the open project's own code, swept every CodeWatch.cPollSeconds on this
+	/// thread as the cook's watch over Sources/ is (the packages less what builds write are a
+	/// game's source, a few files): a change this editor lacks is said once, with what to do.
+	private void WatchCode()
+	{
+		let project = mSession.Project;
+		if (project !== mCodeWatched)
+		{
+			mCodeWatch.Reset();
+			mCodeWatched = project;
+			mCodeWatchSwept = 0;
+		}
+		if ((project == null) || !ProjectBuild.HasPackages(project.Settings))
+			return;
+		let now = System.Diagnostics.Stopwatch.GetTimestamp();
+		if ((mCodeWatchSwept != 0) && ((now - mCodeWatchSwept) < (int64)(CodeWatch.cPollSeconds * 1000000)))
+			return;
+		mCodeWatchSwept = now;
+		let game = ProjectBuild.GameName(project.Settings.Name, .. scope .());
+		let editor = ProjectBuild.ExecutablePath(project.Directory, game, true, EditorBuildTools.cEditorConfig, .. scope .());
+		if (!mCodeWatch.Observe(ProjectBuild.NewestSource(project.Directory, project.Settings), ProjectBuild.FileTime(editor),
+			EditorBuildTools.RunningExecutableTime, ProjectBuild.LinksPackages(project.Settings, mContext.Plugins)))
+			return;
+		let text = CodeWatch.NoticeText(mCodeWatch.State, .. scope .());
+		GlobalLog(.Information, "Editor: {}", text);
+		mContext.Notify(.Info, text);
+		mContext.SetStatus(text);
+	}
+
 	/// Project > Open With This Build: starts the project's own editor (Build Project's, in
 	/// Debug) on the project and this editor's data root, then this one exits the usual way,
 	/// asking about unsaved pages. When this editor serves MCP, the new one serves it on the same
@@ -1542,6 +1581,7 @@ class EditorApplication : IApplication
 			mCookService.Update(scope (line) => { mContext.SetStatus(line); });
 			if (mExport != null)
 				mExport.Pump();
+			WatchCode();
 		}
 		// The editor's long work: the import previews' reads, done off this thread; their completions
 		// run here, their lines go to the status bar.

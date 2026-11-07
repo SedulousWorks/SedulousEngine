@@ -1,0 +1,17 @@
+<!--
+  A source file's page, a file of the project's own code (a .bf under Code/ or Plugins/): the kit's
+  bar (Save, Undo, Redo and Discard Changes, each an action over the page; the file's path in the
+  project at the end) over the code, coloured by the file's language. Save writes the file; the
+  build checks it.
+-->
+<Panel class="page code-page source-file-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <CodeEditor id="page-code" class="page-code code-pane"/>
+</Panel>

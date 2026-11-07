@@ -4,6 +4,7 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.Json;
 using Sedulous.Mcp;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
@@ -227,6 +228,123 @@ class EditorPageToolsTests
 			defer delete reload;
 			Test.Assert(!reload.Ok);
 			Test.Assert(reload.Error.StartsWith("no open page for guid"), reload.Error);
+		}
+	}
+
+	/// A source file's page by its file: page_open takes the code to a line, its identity names the
+	/// file and no guid; page_list lists it so; page_reload reads the file again; page_close
+	/// refuses its unsaved changes and closes it by its file. A file outside the project's code, a
+	/// file and a guid both, or neither, is refused.
+	[Test]
+	public static void ASourceFilesPageOpensAtALineAndIsNamedByItsFile()
+	{
+		SourceFilePageTests.RegisterElements();
+		RemoveDirectoryRecursive("mcp_page_tools_files");
+		defer RemoveDirectoryRecursive("mcp_page_tools_files");
+		Test.Assert(EditorProject.Create("mcp_page_tools_files", "Files") case .Ok);
+		let project = EditorProject.Open("mcp_page_tools_files");
+		Test.Assert(project != null);
+		defer delete project;
+		SourceFilePageTests.Write(project.Directory, "Code/Game/src/Spin.bf", SourceFilePageTests.cGame);
+
+		let context = scope EditorContext();
+		let seams = new PageToolSeams();
+		seams.Context = context;
+		seams.OpenPage = new (id) => null;
+		// The editor's OpenFile without its dock: resolved, one page per file.
+		seams.OpenFile = new [&](path, outError) =>
+			{
+				let full = scope String();
+				let file = scope String();
+				if (!SourceFilePage.Resolve(project.Directory, path, full, file, outError))
+					return null;
+				for (let open in context.OpenPages)
+				{
+					if (let filePage = open as SourceFilePage)
+					{
+						if (filePage.FilePath == full)
+							return open;
+					}
+				}
+				return context.AdoptPage(new SourceFilePage(context, PagesBed.LoadMarkup(SourceFilePage.cMarkupPath), null, full, file));
+			};
+		seams.ClosePage = new [&](page) => { context.ClosePage(page); };
+		let server = scope McpServer();
+		EditorPageTools.Register(server, seams);
+
+		{
+			let opened = Call(server, "page_open", "{\"file\":\"Code/Game/src/Spin.bf\",\"line\":6,\"column\":2}");
+			defer delete opened;
+			Test.Assert(opened.Ok, opened.Error);
+			Test.Assert(opened.Payload.Get("file").AsString() == "Code/Game/src/Spin.bf");
+			Test.Assert(opened.Payload.Get("guid").IsNull, "it edits no asset");
+			Test.Assert(opened.Payload.Get("title").AsString() == "Spin.bf");
+			Test.Assert(opened.Payload.Get("active").AsBool());
+		}
+		Test.Assert(context.OpenPages.Count == 1);
+		let page = context.OpenPages[0] as SourceFilePage;
+		Test.Assert(page != null);
+		Test.Assert(page.Code.Primary.Head == CodePosition(5, 1), "at the line and column, from 1");
+		{
+			let again = Call(server, "page_open", "{\"file\":\"Code/Game/src/Spin.bf\",\"line\":2}");
+			defer delete again;
+			Test.Assert(again.Ok, again.Error);
+			Test.Assert(context.OpenPages.Count == 1, "focused, not opened again");
+			Test.Assert(page.Code.Primary.Head == CodePosition(1, 0));
+		}
+		{
+			let listed = Call(server, "page_list", "{}");
+			defer delete listed;
+			Test.Assert(listed.Ok);
+			Test.Assert(listed.Payload.Get("pages").Count == 1);
+			Test.Assert(listed.Payload.Get("pages").At(0).Get("file").AsString() == "Code/Game/src/Spin.bf");
+		}
+
+		// Refusals: outside the project's code, both names, neither.
+		{
+			let outside = Call(server, "page_open", "{\"file\":\"../elsewhere.bf\"}");
+			defer delete outside;
+			Test.Assert(!outside.Ok);
+			Test.Assert(outside.Error.Contains("not in the project"), outside.Error);
+			let both = Call(server, "page_open", "{\"file\":\"Code/Game/src/Spin.bf\",\"guid\":\"00000000-0000-0000-0000-000000000000\"}");
+			defer delete both;
+			Test.Assert(!both.Ok);
+			Test.Assert(both.Error.StartsWith("give `guid` or `file`"), both.Error);
+			let neither = Call(server, "page_open", "{}");
+			defer delete neither;
+			Test.Assert(!neither.Ok);
+			Test.Assert(neither.Error.StartsWith("give the `guid`"), neither.Error);
+		}
+
+		// Written outside: page_reload by its file reads it again.
+		SourceFilePageTests.Write(project.Directory, "Code/Game/src/Spin.bf", "class Spin {}\n");
+		{
+			let reload = Call(server, "page_reload", "{\"file\":\"Code/Game/src/Spin.bf\"}");
+			defer delete reload;
+			Test.Assert(reload.Ok, reload.Error);
+			Test.Assert(page.Text(.. scope .()) == "class Spin {}\n");
+		}
+
+		// Unsaved changes refuse the close; discard closes it, by its file.
+		page.MarkDirty();
+		{
+			let close = Call(server, "page_close", "{\"file\":\"Code/Game/src/Spin.bf\"}");
+			defer delete close;
+			Test.Assert(!close.Ok);
+			Test.Assert(close.Error.StartsWith("page 'Spin.bf' has unsaved changes"), close.Error);
+		}
+		{
+			let close = Call(server, "page_close", "{\"file\":\"Code/Game/src/Spin.bf\",\"discard\":true}");
+			defer delete close;
+			Test.Assert(close.Ok, close.Error);
+			Test.Assert(close.Payload.Get("file").AsString() == "Code/Game/src/Spin.bf");
+			Test.Assert(context.OpenPages.IsEmpty);
+		}
+		{
+			let close = Call(server, "page_close", "{\"file\":\"Code/Game/src/Spin.bf\"}");
+			defer delete close;
+			Test.Assert(!close.Ok);
+			Test.Assert(close.Error.StartsWith("no open page for file"), close.Error);
 		}
 	}
 }

@@ -27,7 +27,8 @@ before a release carries samples: `python3 Code/Tools/pack-samples.py <folder>`,
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
-(`page_list`, `page_open`, `page_reload`, `page_close`), the layout tools (`layout_get`, the
+(`page_list`, `page_open`, `page_reload`, `page_close`; a page is named by its asset's `guid`, or
+a source file's page, a file of the project's own code edited as text, by its `file`), the layout tools (`layout_get`, the
 dock's tree: a split is `{split, children, weights}` with any number of children, each weight its
 child's share, and a stack is `{tabs, active}`, every panel by id: a page's asset guid, a Game
 tab's PIE id, `welcome` for Project, `assets`, `console`, `mcp`, `profiler`, with the `floating` and
@@ -523,7 +524,11 @@ Build Project builds and Project > Open With This Build opens. A project gets co
    `code`, `message` and `notes`; `errorCount`, `warningCount` and `diagnosticsOmitted` count them
    all. A failed build is an answer, not a tool error. Past the timeout it answers the running
    state with `timedOut`, and the build goes on.
-3. Read the diagnostics, fix, build again. `build_status` follows the latest build (`last`, with
+3. Read the diagnostics, fix, build again. To show the user an error, `page_open` with the
+   diagnostic's `file` and `line` (and `column`) opens that file in the editor, coloured as Beef,
+   at that place; the page saves back to the file (`action_execute` `file.save`), and a file you
+   wrote meanwhile reads again with `page_reload` by its `file`. Only files under the project's
+   `Code/` and `Plugins/` open. `build_status` follows the latest build (`last`, with
    BeefBuild's last `tail` lines as `output`, and `stale`: whether the project's editor is missing
    or older than the code), for one started with `wait: false` or past its timeout; `build_cancel`
    stops it. A build is refused while another runs, naming it.
@@ -532,7 +537,12 @@ Build Project builds and Project > Open With This Build opens. A project gets co
    have unsaved changes, which it names: save each (`page_open` it, then `action_execute`
    `file.save`) or pass `discardUnsaved: true` to drop them.
 5. Reconnect a few seconds later (the new editor tries the port for up to 10 s while the old one
-   lets it go), then `host_info`: a new `pid` and `buildStamp`, and `host.buildStale` false.
+   lets it go), then `host_info`: a new `pid` and `buildStamp`, and `host.buildStale` and
+   `host.runningStale` false. `host.buildStale` says the project's editor is missing or older than
+   the code (build); `host.runningStale` says the editor you are connected to does not link the
+   project's own code (the stock editor) or is older than the code or than the built editor
+   (relaunch). The editor watches `Code/` and `Plugins/` and tells
+   the user once when the code changes past the editor running it.
 6. Verify: `component_schema` for a new component's fields, `scene_validate` on a scene that uses
    it (no warnings), then `pie_run` to play it.
 

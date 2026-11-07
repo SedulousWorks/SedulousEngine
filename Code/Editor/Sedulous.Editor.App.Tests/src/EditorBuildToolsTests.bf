@@ -580,7 +580,9 @@ class EditorBuildToolsTests
 	}
 
 	/// host_info says whether the project's own editor is stale, for a project with a package of
-	/// its own: true unbuilt, false once built; nothing for one the stock editor runs.
+	/// its own: true unbuilt, false once built; nothing for one the stock editor runs. And whether
+	/// this process is: older than the code before the build (the bench's files are written as the
+	/// test runs), older than the built editor after it.
 	[Test]
 	public static void HostInfoSaysWhetherTheProjectsEditorIsStale()
 	{
@@ -612,9 +614,15 @@ class EditorBuildToolsTests
 			let hostState = payload.Get("host");
 			switch (round)
 			{
-			case 0: Test.Assert(hostState.Get("buildStale").AsBool(), "not built");
-			case 1: Test.Assert(!hostState.Get("buildStale").AsBool(), "just built");
-			default: Test.Assert(!hostState.Has("buildStale"), "no package of its own");
+			case 0:
+				Test.Assert(hostState.Get("buildStale").AsBool(), "not built");
+				Test.Assert(hostState.Get("runningStale").AsBool(), "this process is older than the code");
+			case 1:
+				Test.Assert(!hostState.Get("buildStale").AsBool(), "just built");
+				Test.Assert(hostState.Get("runningStale").AsBool(), "this process is older than the built editor");
+			default:
+				Test.Assert(!hostState.Has("buildStale"), "no package of its own");
+				Test.Assert(!hostState.Has("runningStale"));
 			}
 		}
 		session.Project = null;
