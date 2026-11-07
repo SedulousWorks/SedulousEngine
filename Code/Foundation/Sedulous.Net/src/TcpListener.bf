@@ -34,6 +34,7 @@ class TcpListener
 #endif
 		if (opened case .Ok)
 		{
+			SocketInheritance.KeepFromChildren(mSocket);
 			mSocket.Blocking = false;
 			mBoundPort = NetAddress.BoundPort(mSocket);
 			mBoundIp = NetAddress.BoundIp(mSocket);
@@ -65,6 +66,7 @@ class TcpListener
 			delete accepted;
 			return null;
 		}
+		SocketInheritance.KeepFromChildren(accepted);
 		accepted.Blocking = false;
 		return new TcpSocket(accepted);
 	}

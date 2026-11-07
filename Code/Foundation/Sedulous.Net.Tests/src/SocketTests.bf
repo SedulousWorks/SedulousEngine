@@ -385,4 +385,32 @@ class SocketTests
 		Test.Assert(again.IsOpen, "the port rebinds while its old connection is in TIME_WAIT");
 		Test.Assert(again.BoundPort == port);
 	}
+
+	/// No socket is handed to a child process: a relaunched editor once inherited its parent's
+	/// listening socket and found its own port taken by it, with nothing answering there.
+	[Test]
+	public static void NoSocketIsInheritedByAChildProcess()
+	{
+		let listener = scope TcpListener(0, true);
+		Test.Assert(listener.IsOpen);
+		Test.Assert(SocketInheritance.IsKeptFromChildren(listener.[Friend]mSocket), "the listener");
+
+		let client = TcpSocket.Connect("127.0.0.1", listener.BoundPort);
+		defer delete client;
+		Test.Assert(SocketInheritance.IsKeptFromChildren(client.[Friend]mSocket), "a connecting client");
+
+		TcpSocket server = null;
+		defer { if (server != null) delete server; }
+		for (int i = 0; (i < cPollAttempts) && (server == null); i++)
+		{
+			server = listener.Accept();
+			if (server == null)
+				Thread.Sleep(1);
+		}
+		Test.Assert(server != null);
+		Test.Assert(SocketInheritance.IsKeptFromChildren(server.[Friend]mSocket), "an accepted connection");
+
+		let datagrams = scope UdpSocket(0);
+		Test.Assert(SocketInheritance.IsKeptFromChildren(datagrams.[Friend]mSocket), "a datagram socket");
+	}
 }

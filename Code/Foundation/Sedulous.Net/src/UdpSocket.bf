@@ -25,6 +25,7 @@ class UdpSocket : IDatagramSocket
 		Socket.Init();
 		if (mSocket.OpenUDP((int32)port) case .Ok)
 		{
+			SocketInheritance.KeepFromChildren(mSocket);
 			mSocket.Blocking = false;
 			mBoundPort = NetAddress.BoundPort(mSocket);
 		}

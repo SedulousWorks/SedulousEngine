@@ -47,6 +47,7 @@ class TcpSocket
 			result.mConnectFailed = true;
 			return result;
 		}
+		SocketInheritance.KeepFromChildren(result.mSocket);
 		result.mSocket.Blocking = false;
 		return result;
 	}
