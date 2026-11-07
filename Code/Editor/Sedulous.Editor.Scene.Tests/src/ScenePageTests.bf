@@ -1180,6 +1180,9 @@ class ScenePageTests
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(inspector.Sections.ReadOnly);
 		Test.Assert(FindId<Node>(page.Content, "inspector-note").Displayed);
+		let addComponent = FindId<Sedulous.GUI.Button>(page.Content, "inspector-add");
+		Test.Assert(addComponent != null);
+		Test.Assert(!addComponent.Enabled, "Add Component is off too, not refused without a word");
 		let write = PropertyWrite(Sedulous.GUI.Variant(5.0));
 		inspector.Sections.BeginEdit(intensity);
 		inspector.Sections.CommitEdit(intensity, write);
@@ -1187,6 +1190,7 @@ class ScenePageTests
 		page.StopSimulation();
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!inspector.Sections.ReadOnly);
+		Test.Assert(addComponent.Enabled);
 		page.OnClose();
 	}
 

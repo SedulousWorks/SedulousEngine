@@ -382,6 +382,9 @@ class SceneInspectorView
 			mSections.ReadOnly = readOnly;
 			if (let note = Find<Node>("inspector-note"))
 				note.Displayed = readOnly;
+			// Refused visibly: a component cannot be added while the scene simulates.
+			if (let add = Find<Sedulous.GUI.Button>("inspector-add"))
+				add.Enabled = !readOnly;
 		}
 		let signature = Signature();
 		if (signature != mSignature)
@@ -419,7 +422,7 @@ class SceneInspectorView
 	/// Add Component's picker.
 	public void OpenAddComponent()
 	{
-		if ((mServices.Pick == null) || mEntities.IsEmpty)
+		if ((mServices.Pick == null) || mEntities.IsEmpty || mReadOnly)
 			return;
 		let request = new PickerRequest();
 		request.Placeholder.Set("Search components");
