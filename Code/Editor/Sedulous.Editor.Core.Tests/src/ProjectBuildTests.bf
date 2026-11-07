@@ -13,10 +13,15 @@ namespace Sedulous.Editor.Core.Tests;
 class ProjectBuildTests
 {
 	private const String cRoot = "scratch_project_build";
+	/// The engine's own stock web player and MCP host projects, whose configs the web player and
+	/// the tools take over: a change to them shows here.
+	private const String cStockWeb = Compiler.ReadText("../../Engine/Sedulous.Engine.Player.Web/BeefProj.toml");
+	private const String cStockTools = Compiler.ReadText("../../Tools/Sedulous.Tools.Mcp/BeefProj.toml");
 
-	/// An SDK with the files the build reads (the startup libraries, the stock editor's project)
-	/// and a data root, a second SDK, and a project with the game's package in Code/ (an Engine
-	/// and an Editor part) and a project-local package in Plugins/Lantern (an Engine part).
+	/// An SDK with the files the build reads (the startup libraries, the stock editor's, web
+	/// player's and MCP host's projects) and a data root, a second SDK, and a project with the
+	/// game's package in Code/ (an Engine and an Editor part) and a project-local package in
+	/// Plugins/Lantern (an Engine, a Pipeline and a Tooling part).
 	private class Bed
 	{
 		public String Root = new .() ~ delete _;
@@ -37,8 +42,12 @@ class ProjectBuildTests
 			{
 				Write(sdk, "Code/Tools/Sedulous.Tools.Editor/BeefProj.toml",
 					"FileVersion = 1\n\n[Project]\nName = \"Sedulous.Tools.Editor\"\n\n[Configs.Debug.Linux64]\nPostBuildCmds = [\"CopyToTarget(\\\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\\\")\"]\n");
-				Write(sdk, "Code/Editor/Sedulous.Editor.Main/BeefProj.toml", "");
-				Write(sdk, "Code/Engine/Sedulous.Engine.Player.DesktopMain/BeefProj.toml", "");
+				Write(sdk, ProjectBuild.cStockWebProject, cStockWeb);
+				Write(sdk, ProjectBuild.cStockToolsProject, cStockTools);
+				for (let library in StringView[6]("Code/Editor/Sedulous.Editor.Main", "Code/Engine/Sedulous.Engine.Player.DesktopMain",
+					"Code/Engine/Sedulous.Engine.Player.WebMain", "Code/Editor/Sedulous.Editor.McpMain", "Code/Editor/Sedulous.Editor.CookMain",
+					"Code/Editor/Sedulous.Editor.ExportMain"))
+					Write(sdk, scope $"{library}/BeefProj.toml", "");
 				Test.Assert(CreateDirectory(PathJoin(sdk, "Data", .. scope .())));
 			}
 
@@ -46,8 +55,10 @@ class ProjectBuildTests
 			AddPackage("nativegame", "Code", scope StringView[]("Engine", "Editor"));
 			Write(ProjectDir, "Code/NativeGame/BeefProj.toml", "");
 			Write(ProjectDir, "Code/NativeGame.Editor/BeefProj.toml", "");
-			AddPackage("lantern", "Plugins/Lantern", scope StringView[]("Engine"));
+			AddPackage("lantern", "Plugins/Lantern", scope StringView[]("Engine", "Pipeline", "Tooling"));
 			Write(ProjectDir, "Plugins/Lantern/Lantern.Engine/BeefProj.toml", "");
+			Write(ProjectDir, "Plugins/Lantern/Lantern.Pipeline/BeefProj.toml", "");
+			Write(ProjectDir, "Plugins/Lantern/Lantern.Tooling/BeefProj.toml", "");
 		}
 
 		public ~this()
@@ -147,6 +158,9 @@ class ProjectBuildTests
 		Test.Assert(!ProjectBuild.FindSdkFrom("", PathJoin(bed.ProjectDir, "Data", .. scope .()), found) && found.IsEmpty);
 		Test.Assert(!ProjectBuild.FindSdkFrom("", "", found));
 		Test.Assert(ProjectBuild.IsSdk(bed.Sdk) && !ProjectBuild.IsSdk(bed.ProjectDir));
+		// Every startup library an entry calls is part of an SDK: one without the tools' is not.
+		DeleteFile(PathJoin(bed.OtherSdk, "Code/Editor/Sedulous.Editor.CookMain/BeefProj.toml", .. scope .()));
+		Test.Assert(!ProjectBuild.IsSdk(bed.OtherSdk));
 	}
 
 	/// BeefConfig.toml points Beef's registry at the SDK's six library folders, by absolute path.
@@ -163,8 +177,9 @@ class ProjectBuildTests
 	}
 
 	/// A new workspace starts the project's editor, lists the game's parts (the Engine part as
-	/// the game), the Plugins/ package's parts by path relative to Code/, and the two entries, and
-	/// carries the engine's configs. Beside it go the registry file and a .gitignore.
+	/// the game), the Plugins/ package's parts by path relative to Code/, and the three desktop
+	/// entries (not the web player),
+	/// and carries the engine's configs. Beside it go the registry file and a .gitignore.
 	[Test]
 	public static void ANewWorkspaceListsTheGamesPartsThePackagesAndTheEntries()
 	{
@@ -179,6 +194,8 @@ class ProjectBuildTests
 		Test.Assert(space.Contains("\"Lantern.Engine\" = {Path = \"../Plugins/Lantern/Lantern.Engine\"}\n"), space);
 		Test.Assert(space.Contains("\"NativeGameEditor\" = {Path = \".generated/NativeGameEditor\"}\n"), space);
 		Test.Assert(space.Contains("\"NativeGamePlayer\" = {Path = \".generated/NativeGamePlayer\"}\n"), space);
+		Test.Assert(space.Contains("\"NativeGameTools\" = {Path = \".generated/NativeGameTools\"}\n"), space);
+		Test.Assert(!space.Contains("PlayerWeb"), "the web player has a workspace of its own");
 		Test.Assert(space.EndsWith(ProjectBuild.cWorkspaceConfigs), space);
 		Test.Assert(!space.Contains("Sedulous."), "the engine's projects come from the registry");
 
@@ -212,6 +229,89 @@ class ProjectBuildTests
 		Test.Assert(program.Contains("namespace NativeGameEditor;"), program);
 		Test.Assert(program.Contains("=> Sedulous.Editor.Main.EditorMain.Run(args);"), program);
 		Test.Assert(bed.Read(".generated/NativeGamePlayer/src/Program.bf", .. scope .()).Contains("DesktopPlayerMain.Run(args)"));
+		Test.Assert(!player.Contains("\"Lantern.Pipeline\"") && !player.Contains("\"Lantern.Tooling\""), "a player loads no Pipeline or Tooling part");
+	}
+
+	/// The web player boots through WebPlayerMain with the parts a player loads, and takes the stock
+	/// web player's wasm link: every path the stock reaches from its own folder (serve.py, the
+	/// shell, the logo, the notices) is the stock folder in the SDK, absolute, while the output
+	/// folder stays the generated project's own.
+	[Test]
+	public static void TheWebPlayerTakesTheStockLinkWithItsOwnOutputFolder()
+	{
+		let bed = scope Bed();
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+
+		let web = bed.Read(".generated/NativeGamePlayerWeb/BeefProj.toml", .. scope .());
+		Test.Assert(web.Contains("Name = \"NativeGamePlayerWeb\"\nTargetType = \"BeefGUIApplication\"\nStartupObject = \"NativeGamePlayerWeb.Program\""), web);
+		Test.Assert(web.Contains("\"Sedulous.Engine.Player.WebMain\" = \"*\""), web);
+		Test.Assert(web.Contains("\"NativeGame\" = \"*\"") && web.Contains("\"Lantern.Engine\" = \"*\""), web);
+		Test.Assert(!web.Contains("\"NativeGame.Editor\"") && !web.Contains("\"Lantern.Pipeline\"") && !web.Contains("\"Lantern.Tooling\""), web);
+
+		let stockDir = PathJoin(bed.Sdk, ProjectBuild.cStockWebDir, .. scope .());
+		Test.Assert(web.Contains("[Configs.Debug.wasm32]\n") && web.Contains("[Configs.ShippingRelease.wasm32]\n"), web);
+		Test.Assert(web.Contains(scope $"CopyToTarget(\\\"{stockDir}/serve.py\\\")"), web);
+		Test.Assert(web.Contains(scope $"--js-library {stockDir}/player.js --shell-file {stockDir}/shell.html"), web);
+		Test.Assert(web.Contains("TargetName = \"$(ProjectName).html\"\nTargetDirectory = \"$(ProjectDir)/dist\"\n"), web);
+		// $(ProjectDir) is left on the output folder's lines alone.
+		int ownLines = 0;
+		for (let line in web.Split('\n'))
+		{
+			if (!line.Contains("$(ProjectDir)"))
+				continue;
+			Test.Assert(line.StartsWith("TargetDirectory = "), scope String(line));
+			ownLines++;
+		}
+		Test.Assert(ownLines == 3, "one output folder per wasm32 config");
+
+		let program = bed.Read(".generated/NativeGamePlayerWeb/src/Program.bf", .. scope .());
+		Test.Assert(program.Contains("namespace NativeGamePlayerWeb;"), program);
+		Test.Assert(program.Contains("=> Sedulous.Engine.Player.WebMain.WebPlayerMain.Run(args);"), program);
+	}
+
+	/// The tools are one console executable over the MCP host's, the cook's and the export's
+	/// startup, linking the parts any of those roles loads (no Editor part); its Main runs the
+	/// subcommand its first argument names with the rest, and anything else is a usage line and
+	/// exit 2. It takes the stock MCP host's post-build steps, reaching the SDK's Bin.
+	[Test]
+	public static void TheToolsDispatchTheirSubcommandsAndLinkTheToolRolesParts()
+	{
+		let bed = scope Bed();
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+
+		let tools = bed.Read(".generated/NativeGameTools/BeefProj.toml", .. scope .());
+		Test.Assert(tools.Contains("Name = \"NativeGameTools\"\nTargetType = \"BeefConsoleApplication\"\nStartupObject = \"NativeGameTools.Program\""), tools);
+		for (let library in StringView[3]("Sedulous.Editor.McpMain", "Sedulous.Editor.CookMain", "Sedulous.Editor.ExportMain"))
+			Test.Assert(tools.Contains(scope $"\"{library}\" = \"*\""), tools);
+		for (let part in StringView[4]("NativeGame", "Lantern.Engine", "Lantern.Pipeline", "Lantern.Tooling"))
+			Test.Assert(tools.Contains(scope $"\"{part}\" = \"*\""), tools);
+		Test.Assert(!tools.Contains("\"NativeGame.Editor\""), "the tools load no Editor part");
+		Test.Assert(tools.Contains(scope $"CopyToTarget(\\\"{bed.Sdk}/Bin/Naga/bin/linux-x86_64/naga\\\")"), tools);
+		Test.Assert(tools.Contains(scope $"CopyToTarget(\\\"{bed.Sdk}/Bin/Tint/bin/win-x64/tint.exe\\\")"), tools);
+		Test.Assert(tools.Contains("ExecuteRaw(\\\"chmod +x \\\\\\\"$(TargetDir)/naga\\\\\\\" \\\\\\\"$(TargetDir)/tint\\\\\\\"\\\")"), tools);
+		Test.Assert(!tools.Contains("$(WorkspaceDir)"), tools);
+
+		let program = bed.Read(".generated/NativeGameTools/src/Program.bf", .. scope .());
+		Test.Assert(program.Contains("namespace NativeGameTools;"), program);
+		Test.Assert(program.Contains("if (args[0] == \"mcp\")\n\t\t\t\treturn Sedulous.Editor.McpMain.McpMain.Run(rest);"), program);
+		Test.Assert(program.Contains("if (args[0] == \"cook\")\n\t\t\t\treturn Sedulous.Editor.CookMain.CookMain.Run(rest);"), program);
+		Test.Assert(program.Contains("if (args[0] == \"export\")\n\t\t\t\treturn Sedulous.Editor.ExportMain.ExportMain.Run(rest);"), program);
+		Test.Assert(program.Contains("rest[i] = args[i + 1];"), program);
+		Test.Assert(program.Contains("usage: NativeGameTools mcp|cook|export [arguments]") && program.Contains("return 2;"), program);
+	}
+
+	/// An SDK without a stock project an entry takes its configs from refuses the generate,
+	/// naming it.
+	[Test]
+	public static void AnSdkWithoutAStockProjectRefusesTheGenerate()
+	{
+		let bed = scope Bed();
+		DeleteFile(PathJoin(bed.Sdk, ProjectBuild.cStockWebProject, .. scope .()));
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Err(.NotFound));
+		Test.Assert(error.Contains(ProjectBuild.cStockWebProject), error);
 	}
 
 	/// The workspace is the user's: a second generate keeps a project line they added and an edit
@@ -237,17 +337,32 @@ class ProjectBuildTests
 		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
 		let restored = bed.Read("BeefSpace.toml", .. scope .());
 		Test.Assert(restored.Contains("\"MyTool\" = {Path = \"../Tools/MyTool\"}") && restored.Contains("OptimizationLevel = \"O1\""), restored);
-		Test.Assert(restored.Contains(scope $"\"NativeGamePlayer\" = {{Path = \".generated/NativeGamePlayer\"}}\n{lantern}\n[Configs."), restored);
+		Test.Assert(restored.Contains(scope $"\"NativeGameTools\" = {{Path = \".generated/NativeGameTools\"}}\n{lantern}\n[Configs."), restored);
 
-		let space = PathJoin(ProjectBuild.Directory(bed.ProjectDir, .. scope .()), "BeefSpace.toml", .. scope .());
-		let program = PathJoin(ProjectBuild.Directory(bed.ProjectDir, .. scope .()), ".generated/NativeGamePlayer/src/Program.bf", .. scope .());
-		Test.Assert(FileStat(space, let size, let ticks));
-		Test.Assert(FileStat(program, let programSize, let programTicks));
+		// Every file a generate writes, each entry's project and Main among them.
+		let written = scope List<String>();
+		defer { ClearAndDeleteItems!(written); }
+		let workspace = ProjectBuild.Directory(bed.ProjectDir, .. scope .());
+		written.Add(PathJoin(workspace, "BeefSpace.toml", .. new .()));
+		written.Add(PathJoin(workspace, "BeefConfig.toml", .. new .()));
+		written.Add(PathJoin(workspace, ".generated/Web/BeefSpace.toml", .. new .()));
+		written.Add(PathJoin(workspace, ".generated/Web/BeefConfig.toml", .. new .()));
+		for (let entry in StringView[4]("NativeGameEditor", "NativeGamePlayer", "NativeGamePlayerWeb", "NativeGameTools"))
+		{
+			written.Add(PathJoin(workspace, scope $".generated/{entry}/BeefProj.toml", .. new .()));
+			written.Add(PathJoin(workspace, scope $".generated/{entry}/src/Program.bf", .. new .()));
+		}
+		let ticks = scope List<int64>();
+		for (let path in written)
+		{
+			Test.Assert(FileStat(path, let size, let fileTicks), path);
+			ticks.Add(fileTicks);
+		}
 		// Past the file system's timestamp step, so a write would show.
 		System.Threading.Thread.Sleep(50);
 		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
-		Test.Assert(FileStat(space, let sizeAgain, let ticksAgain) && (sizeAgain == size) && (ticksAgain == ticks));
-		Test.Assert(FileStat(program, let programSizeAgain, let programTicksAgain) && (programTicksAgain == programTicks));
+		for (int i < written.Count)
+			Test.Assert(FileStat(written[i], let sizeAgain, let ticksAgain) && (ticksAgain == ticks[i]), written[i]);
 	}
 
 	/// A workspace of the user's without [Workspace] or configs gains them, the [Workspace] before
@@ -264,7 +379,7 @@ class ProjectBuildTests
 		let existing = "FileVersion = 1\n\n[Projects]\n\"Mine\" = {Path = \"Mine\"}\n";
 		let text = ProjectBuild.WorkspaceText(existing, "NativeGame", packages, .. scope .());
 		Test.Assert(text.StartsWith("FileVersion = 1\n\n[Workspace]\nStartupProject = \"NativeGameEditor\"\n\n[Projects]\n\"Mine\" = {Path = \"Mine\"}\n\"NativeGame\" = {Path = \"NativeGame\"}\n"), text);
-		Test.Assert(text.EndsWith(scope $"\"NativeGamePlayer\" = {{Path = \".generated/NativeGamePlayer\"}}\n\n{ProjectBuild.cWorkspaceConfigs}"), text);
+		Test.Assert(text.EndsWith(scope $"\"NativeGameTools\" = {{Path = \".generated/NativeGameTools\"}}\n\n{ProjectBuild.cWorkspaceConfigs}"), text);
 
 		let noProjects = ProjectBuild.WorkspaceText("FileVersion = 1\n", "NativeGame", packages, .. scope .());
 		Test.Assert(noProjects.Contains("[Workspace]\nStartupProject = \"NativeGameEditor\"\n\n[Projects]\n\"NativeGame\""), noProjects);
@@ -292,6 +407,35 @@ class ProjectBuildTests
 		stripped.TrimEnd();
 		let expected = scope String(ProjectBuild.cWorkspaceConfigs)..TrimEnd();
 		Test.Assert(stripped == expected, stripped);
+	}
+
+	/// The web player builds in a workspace of its own, Code/.generated/Web, which lists the parts
+	/// a player loads (by path from there) and the web entry alone, with the engine's configs and
+	/// a registry file of its own: nothing the editor or the tools bring in is compiled for wasm32.
+	[Test]
+	public static void TheWebPlayerHasAWorkspaceOfItsOwn()
+	{
+		let bed = scope Bed();
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+
+		let webDir = ProjectBuild.WebWorkspaceDirectory(bed.ProjectDir, .. scope .());
+		Test.Assert(webDir == scope $"{bed.ProjectDir}/Code/.generated/Web", webDir);
+		let space = bed.Read(".generated/Web/BeefSpace.toml", .. scope .());
+		Test.Assert(space.StartsWith("FileVersion = 1\n\n[Workspace]\nStartupProject = \"NativeGamePlayerWeb\"\n\n[Projects]\n"), space);
+		Test.Assert(space.Contains("\n\"NativeGame\" = {Path = \"../../NativeGame\"}\n"), space);
+		Test.Assert(space.Contains("\"Lantern.Engine\" = {Path = \"../../../Plugins/Lantern/Lantern.Engine\"}\n"), space);
+		Test.Assert(space.Contains("\"NativeGamePlayerWeb\" = {Path = \"../NativeGamePlayerWeb\"}\n\n"), space);
+		for (let absent in StringView[6]("NativeGame.Editor", "Lantern.Pipeline", "Lantern.Tooling", "NativeGameEditor", "NativeGamePlayer\"", "NativeGameTools"))
+			Test.Assert(!space.Contains(absent), scope String(absent));
+		Test.Assert(space.EndsWith(ProjectBuild.cWorkspaceConfigs) && !space.Contains("ConfigSelections"), space);
+		Test.Assert(bed.Read(".generated/Web/BeefConfig.toml", .. scope .()) == ProjectBuild.ConfigText(bed.Sdk, .. scope .()));
+
+		// Its page lands in the entry's own output folder, as the stock web player's TargetDirectory has it.
+		let page = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "Debug", .. scope .());
+		Test.Assert(page == scope $"{bed.ProjectDir}/Code/.generated/NativeGamePlayerWeb/dist/NativeGamePlayerWeb.html", page);
+		let profile = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "Release", .. scope .());
+		Test.Assert(profile.EndsWith("/NativeGamePlayerWeb/dist-profile/NativeGamePlayerWeb.html"), profile);
 	}
 
 	/// A package whose folder lacks a manifest of its id, or a part's project, refuses the build,

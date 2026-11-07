@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.CookMain"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Cook" = "*"
+"Sedulous.Pipeline.Registration" = "*"
+"Sedulous.Editor.Project" = "*"

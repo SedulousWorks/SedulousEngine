@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Runtime.Client;
 
-namespace Sedulous.Engine.Player.Web;
+namespace Sedulous.Engine.Player.WebMain;
 
 /// The player in a page: it tells the page when the game is running (its first update, so the
 /// loading card can go) and when it has stopped (the card comes back, with a way to play again).

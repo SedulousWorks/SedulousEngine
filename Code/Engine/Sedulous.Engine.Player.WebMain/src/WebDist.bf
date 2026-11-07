@@ -3,7 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 
-namespace Sedulous.Engine.Player.Web;
+namespace Sedulous.Engine.Player.WebMain;
 
 /// Pulling the player's dist files out of the serving folder and into the browser's in memory
 /// filesystem.

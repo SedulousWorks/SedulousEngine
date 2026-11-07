@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.ExportMain"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Engine.Composition" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Registration" = "*"
+"Sedulous.Editor.Project" = "*"

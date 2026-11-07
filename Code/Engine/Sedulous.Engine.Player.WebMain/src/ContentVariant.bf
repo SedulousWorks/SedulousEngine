@@ -5,7 +5,7 @@ using Sedulous.Core.Logging;
 using Sedulous.RHI;
 using Sedulous.RHI.WebGPU;
 
-namespace Sedulous.Engine.Player.Web;
+namespace Sedulous.Engine.Player.WebMain;
 
 /// Choosing which content pak this browser should be served.
 ///

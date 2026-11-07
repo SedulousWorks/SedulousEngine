@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.McpMain"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
+"Sedulous.Mcp.Reflection" = "*"
+"Sedulous.Mcp.Script" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Pipeline.Registration" = "*"
+"Sedulous.Engine.Composition" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Editor.Mcp" = "*"

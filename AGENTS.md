@@ -19,6 +19,16 @@ Project Settings, export, the MCP host over `--mcp`), the scene page with its hi
 inspector, the Game tab with the play-in-editor tools, every asset page and the Profiler page.
 The old editor's files are deleted (the swap); the last editor on Sedulous.UI builds at e293ee1f.
 `Sedulous.Tools.Mcp` is the headless MCP host, and `Samples.GUISandbox --editor-mock` shows the design.
+Each stock executable is a one-line Main over a startup library: `Sedulous.Tools.Editor` over
+`Sedulous.Editor.Main`, `Sedulous.Engine.Player.Desktop` over `Sedulous.Engine.Player.DesktopMain`,
+`Sedulous.Engine.Player.Web` (wasm32) over `Sedulous.Engine.Player.WebMain`, and
+`Sedulous.Tools.Mcp`, `Sedulous.Tools.Cook` and `Sedulous.Tools.Export` over
+`Sedulous.Editor.McpMain`, `Sedulous.Editor.CookMain` and `Sedulous.Editor.ExportMain`. A project
+with packages of its own generates `<Game>Editor`, `<Game>Player`, `<Game>PlayerWeb` and
+`<Game>Tools` (its `mcp`, `cook` and `export` subcommands) over the same libraries, so they
+start exactly as the stock ones do: the desktop ones in its `Code/` workspace, the web player in
+a workspace of its own, `Code/.generated/Web` (BeefBuild compiles every enabled project of a
+workspace, and the editor's dependencies do not compile for wasm32).
 The old UI framework (Sedulous.UI and its toolkit, shell, runtime, application and VFS libraries)
 and its UISandbox live under `Code/Deprecated/UI`, in the workspace but disabled in every config:
 nothing else links them, and enabling them builds the sandbox.

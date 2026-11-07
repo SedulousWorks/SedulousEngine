@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Logging;
 
-namespace Sedulous.Tools.Mcp;
+namespace Sedulous.Editor.McpMain;
 
 /// Every engine log line to standard error: standard output is the JSON-RPC wire, and a
 /// stray line there corrupts the protocol stream.
