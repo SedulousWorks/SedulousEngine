@@ -82,14 +82,16 @@ class Scene
 		mName.Set(name);
 	}
 
-	/// Deletes the systems newest first, each taken out of the lookups before it goes, while
-	/// the scene is still whole: a system's teardown (a behaviour's OnDestroy) may still
-	/// reach the scene and the systems older than it, never one already deleted.
+	/// Deletes the systems in the order they were added, as a system of a scene may borrow
+	/// one added after it (a manager its system), each taken out of the lookups before it
+	/// goes, while the rest of the scene is still whole: a system's teardown (a behaviour's
+	/// OnDestroy) still has its scene, and a system already deleted is not found, rather than
+	/// found freed.
 	public ~this()
 	{
 		while (!mSystems.IsEmpty)
 		{
-			let system = mSystems.PopBack();
+			let system = mSystems.PopFront();
 			for (let pair in mSystemsByType)
 			{
 				if (pair.value === system)

@@ -61,8 +61,8 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 	}
 
 	/// Deletes what is still held, OnDisable and OnDestroy first as they are owed. The scene
-	/// deletes its systems newest first while it is still whole, so they still have its scene
-	/// and the systems older than this one.
+	/// deletes its systems in the order they were added, while the rest of it is whole, so
+	/// they still have its scene and the systems added after this one.
 	public ~this()
 	{
 		while (!mDense.IsEmpty)
