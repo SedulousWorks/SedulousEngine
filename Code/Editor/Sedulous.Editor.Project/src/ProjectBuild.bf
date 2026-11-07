@@ -28,6 +28,22 @@ class ProjectPackage
 	public void PartName(PluginPartKind kind, String outName) => ProjectBuild.PartName(Name, IsGame, kind, outName);
 }
 
+/// Where the project's code stands against the editors that run it (ProjectBuild.Staleness).
+struct CodeStaleness
+{
+	/// The project's built editor is missing or older than a file of the project's packages: a
+	/// build is due.
+	public bool BuildStale;
+	/// The running editor does not link the project's own packages (the stock editor), or is
+	/// older than a file of the packages, or than the built editor: it runs code that is not the
+	/// project's now, and a relaunch into the built editor is due (after a build while
+	/// BuildStale).
+	public bool RunningStale;
+	/// The running editor does not link the project's own packages at all, whatever the times:
+	/// the project's own editor is the one that runs its code.
+	public bool Unlinked;
+}
+
 /// The executables a project's build generates under Code/.generated, each named <Game><Suffix>.
 enum BuildEntry
 {
@@ -1108,14 +1124,75 @@ static class ProjectBuild
 		ExecutablePath(projectDir, game, editor, config, outPath);
 		if (!FileStat(outPath, let size, let built))
 			return .Err(.NotFound);
+		if (NewestSource(projectDir, settings) > built)
+			return .Err(.InvalidArgument);
+		return .Ok;
+	}
+
+	/// The newest modification time (FileStat's ticks) of a file of the project's packages, nought
+	/// for none: in the game's package (Code/) less what builds write at its top (cWrittenDirs,
+	/// cWrittenFiles), every file of a Plugins/ package. One stat sweep of them all.
+	public static int64 NewestSource(StringView projectDir, ProjectSettings settings)
+	{
+		int64 newest = 0;
 		for (let entry in settings.Plugins)
 		{
 			if (entry.Path.IsEmpty)
 				continue;
-			if (NewestFile(PathJoin(projectDir, entry.Path, .. scope .()), IsGamePath(entry.Path)) > built)
-				return .Err(.InvalidArgument);
+			newest = Math.Max(newest, NewestFile(PathJoin(projectDir, entry.Path, .. scope .()), IsGamePath(entry.Path)));
 		}
-		return .Ok;
+		return newest;
+	}
+
+	/// A file's modification time (FileStat's ticks), nought for none.
+	public static int64 FileTime(StringView path)
+	{
+		if (path.IsEmpty)
+			return 0;
+		if (!FileStat(path, let size, let ticks))
+			return 0;
+		return ticks;
+	}
+
+	/// Where code whose newest file is `newestSource` stands against the project's built editor,
+	/// written at `built`, and the running one, written at `running` (FileStat's ticks; 0: no
+	/// built editor, or a running one whose time is not known, which says nothing of it), which
+	/// links the project's packages or not (`linked`, LinksPackages).
+	public static CodeStaleness Staleness(int64 newestSource, int64 built, int64 running, bool linked = true)
+	{
+		CodeStaleness state = .();
+		state.BuildStale = (built == 0) || (newestSource > built);
+		state.Unlinked = !linked;
+		state.RunningStale = !linked || ((running != 0) && ((newestSource > running) || (built > running)));
+		return state;
+	}
+
+	/// Whether the process whose plugin host is `host` links every package of the project's own
+	/// (each entry with a path): none its host reports missing, not in this build. A null host,
+	/// which loads no plugins, links none.
+	public static bool LinksPackages(ProjectSettings settings, PluginHost host)
+	{
+		for (let entry in settings.Plugins)
+		{
+			if (entry.Path.IsEmpty)
+				continue;
+			let status = scope PluginStatus();
+			PluginStatus.Of(entry, host, status);
+			if (status.State == .Missing)
+				return false;
+		}
+		return true;
+	}
+
+	/// Staleness read from the files now: the packages' newest file (NewestSource), the project's
+	/// editor for `config`, and the running editor's time, `running`, read when it started (a
+	/// build replaces the file an editor runs from, not the editor running), and whether it links
+	/// the project's packages (`linked`, LinksPackages).
+	public static CodeStaleness Staleness(StringView projectDir, ProjectSettings settings, StringView config, int64 running, bool linked = true)
+	{
+		let game = GameName(settings.Name, .. scope .());
+		let editor = ExecutablePath(projectDir, game, true, config, .. scope .());
+		return Staleness(NewestSource(projectDir, settings), FileTime(editor), running, linked);
 	}
 
 	/// The newest modification time of any file under `dir`, nought for none; with `skipWritten`,

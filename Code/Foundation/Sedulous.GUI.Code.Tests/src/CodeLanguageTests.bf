@@ -147,6 +147,33 @@ class CodeLanguageTests
 		Test.Assert(state.Depth == 0);
 	}
 
+	/// A number's prefix (0x, 0b, 0o) takes its digits and a suffix; the language's digit separators
+	/// join digits only where a digit follows, so without them, or at a number's end, the separator
+	/// is not the number's. A copy of the language separates alike.
+	[Test]
+	public static void ANumbersPrefixesAndItsLanguagesDigitSeparators()
+	{
+		let lang = CLike();
+		defer delete lang;
+		var state = CodeLexState();
+		CheckRuns(lang, "x = 0b1010 + 0o17 + 0x1Fu;", ref state,
+			"text:x operator:= number:0b1010 operator:+ number:0o17 operator:+ number:0x1Fu punctuation:;");
+		CheckRuns(lang, "0bad", ref state, "number:0bad"); // no binary digit: a 0 and its suffix, as before
+		CheckRuns(lang, "1'000", ref state, "number:1 text:' number:000"); // no separators: not the number's
+
+		lang.DigitSeparators.Set("'");
+		CheckRuns(lang, "1'000'000 + 0xFFFF'FFFF + 0x'FF + 2'5.0'1f", ref state,
+			"number:1'000'000 operator:+ number:0xFFFF'FFFF operator:+ number:0x'FF operator:+ number:2'5.0'1f");
+		CheckRuns(lang, "n = 1'", ref state, "text:n operator:= number:1 text:'");
+		CheckRuns(lang, "0b10'01 0o7'7", ref state, "number:0b10'01 number:0o7'7");
+		CheckRuns(lang, "0b1'2", ref state, "number:0b1 text:' number:2"); // 2 is no binary digit
+
+		let copy = scope CodeLanguage();
+		copy.Set(lang);
+		Test.Assert(copy.DigitSeparators == "'");
+		CheckRuns(copy, "1'000", ref state, "number:1'000");
+	}
+
 	[Test]
 	public static void ALongBracketClosesAtItsOwnLevel()
 	{

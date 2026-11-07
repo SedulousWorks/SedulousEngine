@@ -70,7 +70,8 @@ enum CodeMatch : uint8
 	Literal,
 	/// A name (letters, digits, underscores; not first a digit), looked up in the words.
 	Identifier,
-	/// A number: decimal, 0x hex, with a fraction, an exponent, a suffix.
+	/// A number: decimal, 0x hex, 0b binary, 0o octal, with a fraction, an exponent, a suffix, and
+	/// the language's digit separators between its digits.
 	Number,
 	/// One of its text's characters.
 	AnyOf,
@@ -298,6 +299,9 @@ class CodeLanguage : ISerializable
 	public List<String> Extensions = new .() ~ DeleteContainerAndItems!(_);
 	/// Names may hold '-' and begin with it (CSS's).
 	public bool IdentifierDashes = false;
+	/// What may stand between a number's digits besides '_' (Beef's `1'000'000`, `0xFFFF'FFFF`):
+	/// taken only where a digit follows, so a character literal after a number stays one.
+	public String DigitSeparators = new .() ~ delete _;
 	public List<CodeWords> Words = new .() ~ DeleteContainerAndItems!(_);
 	/// The first is where a file starts.
 	public List<CodeContext> Contexts = new .() ~ DeleteContainerAndItems!(_);
@@ -337,6 +341,7 @@ class CodeLanguage : ISerializable
 		for (let @extension in other.Extensions)
 			Extensions.Add(new String(@extension));
 		IdentifierDashes = other.IdentifierDashes;
+		DigitSeparators.Set(other.DigitSeparators);
 		ClearAndDeleteItems!(Words);
 		for (let words in other.Words)
 		{
@@ -498,6 +503,7 @@ class CodeLanguage : ISerializable
 		CodeLanguageDetail.Optional(ar, "name", Name);
 		CodeLanguageDetail.Optional(ar, "extensions", Extensions);
 		CodeLanguageDetail.Optional(ar, "identifierDashes", ref IdentifierDashes);
+		CodeLanguageDetail.Optional(ar, "digitSeparators", DigitSeparators);
 		CodeLanguageDetail.Optional(ar, "words", Words);
 		CodeLanguageDetail.Optional(ar, "contexts", Contexts);
 		CodeLanguageDetail.Optional(ar, "lineComment", LineComment);
@@ -562,6 +568,33 @@ class CodeLanguage : ISerializable
 
 	private static bool IsDigit(char8 c) => (c >= '0') && (c <= '9');
 
+	/// A digit of a number in `radix` (2, 8, 10 or 16).
+	private static bool IsDigitOf(char8 c, int radix)
+	{
+		if (radix == 16)
+			return IsDigit(c) || ((c >= 'a') && (c <= 'f')) || ((c >= 'A') && (c <= 'F'));
+		return IsDigit(c) && (((int)c - (int)'0') < radix);
+	}
+
+	/// Whether the number goes on at `at` in `radix`: a digit, a '_', or one of the language's
+	/// separators with a digit after it.
+	private bool NumberGoesOn(StringView line, int at, int radix)
+	{
+		let c = line[at];
+		if (IsDigitOf(c, radix) || (c == '_'))
+			return true;
+		return Holds(DigitSeparators, c) && (at + 1 < line.Length) && IsDigitOf(line[at + 1], radix);
+	}
+
+	/// Where a number's suffix (1.0f, 10u, 2ull) ends, from `end`.
+	private static int SuffixEnd(StringView line, int end)
+	{
+		var end;
+		while ((end < line.Length) && (((line[end] >= 'a') && (line[end] <= 'z')) || ((line[end] >= 'A') && (line[end] <= 'Z'))))
+			++end;
+		return end;
+	}
+
 	private static bool IsNameStart(char8 c)
 	{
 		return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || (c == '_') || ((uint8)c >= 0x80);
@@ -593,23 +626,33 @@ class CodeLanguage : ISerializable
 				if ((pos > 0) && IsNamePart(line[pos - 1]))
 					return 0; // a digit inside a name
 				int end = pos;
+				int radix = 0;
 				if (StartsAt(line, pos, "0x") || StartsAt(line, pos, "0X"))
+					radix = 16;
+				else if (StartsAt(line, pos, "0b") || StartsAt(line, pos, "0B"))
+					radix = 2;
+				else if (StartsAt(line, pos, "0o") || StartsAt(line, pos, "0O"))
+					radix = 8;
+				if (radix != 0)
 				{
 					end += 2;
-					while ((end < line.Length) && (IsDigit(line[end]) || ((line[end] >= 'a') && (line[end] <= 'f')) ||
-						((line[end] >= 'A') && (line[end] <= 'F')) || (line[end] == '_')))
+					while ((end < line.Length) && NumberGoesOn(line, end, radix))
 						++end;
-					return (end > pos + 2) ? end - pos : 0;
+					if (end > pos + 2)
+						return SuffixEnd(line, end) - pos;
+					if (radix == 16)
+						return 0;
+					end = pos; // "0b" with no binary digit after: a 0 with a suffix, as before
 				}
 				let startsWithDot = line[pos] == '.';
 				if (!IsDigit(line[pos]) && !(startsWithDot && (pos + 1 < line.Length) && IsDigit(line[pos + 1])))
 					return 0;
-				while ((end < line.Length) && (IsDigit(line[end]) || (line[end] == '_')))
+				while ((end < line.Length) && NumberGoesOn(line, end, 10))
 					++end;
 				if ((end < line.Length) && (line[end] == '.') && !((end + 1 < line.Length) && (line[end + 1] == '.')))
 				{
 					++end;
-					while ((end < line.Length) && IsDigit(line[end]))
+					while ((end < line.Length) && (IsDigit(line[end]) || ((line[end] != '_') && NumberGoesOn(line, end, 10))))
 						++end;
 				}
 				if ((end < line.Length) && ((line[end] == 'e') || (line[end] == 'E')))
@@ -624,9 +667,7 @@ class CodeLanguage : ISerializable
 							++end;
 					}
 				}
-				while ((end < line.Length) && (((line[end] >= 'a') && (line[end] <= 'z')) || ((line[end] >= 'A') && (line[end] <= 'Z'))))
-					++end; // a suffix: 1.0f, 10u, 2ull
-				return end - pos;
+				return SuffixEnd(line, end) - pos; // a suffix: 1.0f, 10u, 2ull
 			}
 		case .AnyOf:
 			return Holds(rule.Text, line[pos]) ? 1 : 0;

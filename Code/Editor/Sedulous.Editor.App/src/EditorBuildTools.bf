@@ -148,14 +148,42 @@ static class EditorBuildTools
 		}
 	}
 
-	/// host_info's word on the project's own editor, when the project has a package of its own:
-	/// `buildStale`, whether that editor is missing or older than the game's code
-	/// (ProjectBuild.IsStale). Nothing for no project, or one the stock editor runs.
-	public static void ReportBuild(EditorProject project, JsonValue outState)
+	/// When this process's executable was written (FileStat's ticks; 0 unknown), read once: a
+	/// build replaces the file the project's editor runs from, not the editor running, so the time
+	/// is the one it started with. The editor notes it as it starts (NoteRunningExecutable).
+	private static int64 sRunningTime = -1;
+
+	/// Reads the running executable's time, kept for RunningExecutableTime.
+	public static void NoteRunningExecutable()
+	{
+		sRunningTime = ProjectBuild.FileTime(Environment.GetExecutableFilePath(.. scope .()));
+	}
+
+	/// When this process's executable was written, as it started (NoteRunningExecutable; read
+	/// now when it was not noted).
+	public static int64 RunningExecutableTime
+	{
+		get
+		{
+			if (sRunningTime < 0)
+				NoteRunningExecutable();
+			return sRunningTime;
+		}
+	}
+
+	/// host_info's word on the project's code, when the project has a package of its own:
+	/// `buildStale`, whether its own editor is missing or older than the code (build), and
+	/// `runningStale`, whether this editor does not link the project's packages (its plugin host,
+	/// `plugins`, has them missing) or is older than the code or than the built editor (relaunch).
+	/// Nothing for no project, or one with no package of its own.
+	public static void ReportBuild(EditorProject project, Sedulous.Runtime.PluginHost plugins, JsonValue outState)
 	{
 		if ((project == null) || !ProjectBuild.HasPackages(project.Settings))
 			return;
-		outState.Set("buildStale", JsonValue.MakeBool(ProjectBuild.IsStale(project.Directory, project.Settings, cEditorConfig)));
+		let state = ProjectBuild.Staleness(project.Directory, project.Settings, cEditorConfig, RunningExecutableTime,
+			ProjectBuild.LinksPackages(project.Settings, plugins));
+		outState.Set("buildStale", JsonValue.MakeBool(state.BuildStale));
+		outState.Set("runningStale", JsonValue.MakeBool(state.RunningStale));
 	}
 
 	/// OWNERSHIP of the seams transfers; the first tool holds them for all four.
@@ -235,7 +263,7 @@ static class EditorBuildTools
 		let relaunchSchema = scope SchemaBuilder();
 		relaunchSchema.Boolean("discardUnsaved", "exit even when pages have unsaved changes, dropping them (default false: refused, naming them)");
 		server.RegisterTool("editor_relaunch",
-			"Open the project in its own built editor (Project > Open With This Build) and quit this one: the editor that runs the game's code. REFUSED for a project with no package of its own, while a build runs, when the project's editor is not built or is older than the game's code (project_build first), and while pages have unsaved changes (they are named; save each with page_open then action_execute file.save, or pass discardUnsaved). The new editor serves MCP on this host's port with the same token; it takes a few seconds to listen. Reconnect then, and host_info: a new pid and buildStamp, `host.buildStale` false. Returns {relaunched, executable, port}.",
+			"Open the project in its own built editor (Project > Open With This Build) and quit this one: the editor that runs the game's code. REFUSED for a project with no package of its own, while a build runs, when the project's editor is not built or is older than the game's code (project_build first), and while pages have unsaved changes (they are named; save each with page_open then action_execute file.save, or pass discardUnsaved). The new editor serves MCP on this host's port with the same token; it takes a few seconds to listen. Reconnect then, and host_info: a new pid and buildStamp, `host.buildStale` and `host.runningStale` false. Returns {relaunched, executable, port}.",
 			relaunchSchema.Build(), .(false, true, false, false),
 			new (arguments, outResult, outError) => Relaunch(seams, arguments, outResult, outError));
 	}
