@@ -21,8 +21,9 @@ class ProjectBuildTests
 	/// An SDK with the files the build reads (the startup libraries, the stock editor's, web
 	/// player's and MCP host's projects) and a data root, a second SDK, and a project with the
 	/// game's package in Code/ (an Engine and an Editor part) and a project-local package in
-	/// Plugins/Lantern (an Engine, a Pipeline and a Tooling part).
-	private class Bed
+	/// Plugins/Lantern (an Engine, a Pipeline and a Tooling part). The build service's tests
+	/// (ProjectBuildServiceTests) build over it too.
+	public class Bed
 	{
 		public String Root = new .() ~ delete _;
 		public String Sdk = new .() ~ delete _;
@@ -522,27 +523,89 @@ class ProjectBuildTests
 		Test.Assert(!ProjectBuild.FindOnPath(first, "Nothing", found));
 	}
 
-	/// Build Project is refused without an SDK and for a project with no package of its own,
-	/// before anything runs.
+	/// A fake Beef install under the bed: BeefBuild at `exe` (relative to the bed's root), the
+	/// BeefConfig.toml beside it naming `libraries` (none: no config), and corlib at `corlib`
+	/// (relative to the root; empty: none). Its BeefBuild's path.
+	private static void FakeInstall(Bed bed, StringView exe, StringView libraries, StringView corlib, String outBeefBuild)
+	{
+		let file = BuildLayout.ExecutableName(exe, .. scope .());
+		Bed.Write(bed.Root, file, "#!beefbuild\n");
+		if (!libraries.IsEmpty)
+		{
+			let dir = PathParent(file, .. scope .());
+			Bed.Write(bed.Root, scope $"{dir}/BeefConfig.toml", scope $"Version = 1\nUnversionedLibDirs = [{libraries}]\n");
+		}
+		if (!corlib.IsEmpty)
+			Bed.Write(bed.Root, scope $"{corlib}/BeefProj.toml", "FileVersion = 1\n");
+		PathJoin(bed.Root, file, outBeefBuild);
+	}
+
+	/// BeefBuild is taken where its install has corlib, laid out as BeefBuild finds it: a source
+	/// build's IDE/dist reaching ../../BeefLibs, an installed one's bin reaching ../BeefLibs.
+	/// BEEFBUILD wins over PATH.
 	[Test]
-	public static void BuildProjectNeedsAnSdkAndAPackage()
+	public static void BeefBuildIsTakenWhereItsInstallHasCorlib()
 	{
 		let bed = scope Bed();
-		let presets = scope ExportPresetSet();
+		let source = FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
+		let installed = FakeInstall(bed, "installed/bin/BeefBuild", "'../BeefLibs'", "installed/BeefLibs/corlib", .. scope .());
+		Test.Assert(ProjectBuild.HasCorlib(source, scope .()));
+		Test.Assert(ProjectBuild.HasCorlib(installed, scope .()));
+
+		let found = scope String();
 		let error = scope String();
-		// SEDULOUS_SDK set where the tests run would find that SDK: the refusal is checked without.
-		let variable = scope String();
-		if ((Environment.GetEnvironmentVariable(ProjectBuild.cSdkVariable, variable) case .Err) || !ProjectBuild.IsSdk(variable))
-		{
-			Test.Assert(ProjectBuild.Build(bed.ProjectDir, bed.Settings, presets, bed.ProjectDir, error) case .Err(.NotSupported));
-			Test.Assert(error.Contains("needs the engine SDK: set SEDULOUS_SDK, or run from an engine checkout"), error);
-		}
-		let dataRoot = PathJoin(bed.Sdk, "Data", .. scope .());
-		ClearAndDeleteItems!(bed.Settings.Plugins);
-		Test.Assert(!ProjectBuild.HasPackages(bed.Settings));
-		Test.Assert(ProjectBuild.Build(bed.ProjectDir, bed.Settings, presets, dataRoot, error) case .Err(.NotFound));
-		Test.Assert(error.Contains("no package of its own"), error);
-		Test.Assert(!FileExists(PathJoin(bed.ProjectDir, "Code/BeefSpace.toml", .. scope .())), "nothing generated");
+		let sourceDir = PathParent(source, .. scope .());
+		Test.Assert(ProjectBuild.FindBeefBuildFrom("", sourceDir, found, error) && (found == source), error);
+		Test.Assert(ProjectBuild.FindBeefBuildFrom(installed, sourceDir, found, error) && (found == installed), found);
+	}
+
+	/// A BeefBuild whose install has no corlib, or no BeefConfig.toml, is passed over for the next
+	/// on PATH; with none left, the refusal names each one tried and why.
+	[Test]
+	public static void ABeefBuildWithoutCorlibIsPassedOver()
+	{
+		let bed = scope Bed();
+		let bare = FakeInstall(bed, "bare/bin/BeefBuild", "\"../BeefLibs\"", "bare/BeefLibs/minlib", .. scope .());
+		let unconfigured = FakeInstall(bed, "unconfigured/BeefBuild", "", "", .. scope .());
+		let good = FakeInstall(bed, "good/bin/BeefBuild", "\"../Libraries/Extra\", \"../BeefLibs\"", "good/BeefLibs/Core/corlib", .. scope .());
+		let why = scope String();
+		Test.Assert(!ProjectBuild.HasCorlib(bare, why) && why.Contains("no corlib"), why);
+		Test.Assert(!ProjectBuild.HasCorlib(unconfigured, why..Clear()) && why.Contains("no BeefConfig.toml"), why);
+		Test.Assert(ProjectBuild.HasCorlib(good, why..Clear()), "corlib a level down in the second library folder");
+
+#if BF_PLATFORM_WINDOWS
+		let separator = ";";
+#else
+		let separator = ":";
+#endif
+		let bareDir = PathParent(bare, .. scope .());
+		let unconfiguredDir = PathParent(unconfigured, .. scope .());
+		let goodDir = PathParent(good, .. scope .());
+		let found = scope String();
+		let error = scope String();
+		Test.Assert(ProjectBuild.FindBeefBuildFrom("", scope $"{bareDir}{separator}{unconfiguredDir}{separator}{goodDir}", found, error) && (found == good), error);
+
+		let missing = PathJoin(bed.Root, "nowhere/BeefBuild", .. scope .());
+		Test.Assert(!ProjectBuild.FindBeefBuildFrom(missing, scope $"{bareDir}{separator}{unconfiguredDir}", found, error));
+		Test.Assert(error.StartsWith("BeefBuild not found: set BEEFBUILD, or put BeefBuild on PATH (tried: "), error);
+		Test.Assert(error.Contains(scope $"BEEFBUILD '{missing}': no such file"), error);
+		Test.Assert(error.Contains(scope $"PATH '{bare}': no corlib"), error);
+		Test.Assert(error.Contains(scope $"PATH '{unconfigured}': no BeefConfig.toml"), error);
+		Test.Assert(!ProjectBuild.FindBeefBuildFrom("", "", found, error) && error.Contains("PATH: no BeefBuild there"), error);
+	}
+
+	/// A BeefConfig.toml's library folders: each string of the array, on one line or several,
+	/// either kind of quote, a basic string's escaped backslash read as one.
+	[Test]
+	public static void TheLibraryFoldersAreReadFromBeefConfig()
+	{
+		let dirs = scope List<String>();
+		defer { ClearAndDeleteItems!(dirs); }
+		ProjectBuild.LibraryDirs("Version = 1\nUnversionedLibDirs = [\n\t\"../../BeefLibs\",\n\t'C:\\Beef\\Libs', \"D:\\\\Libs\"\n]\n", dirs);
+		Test.Assert(dirs.Count == 3, scope String()..AppendF("{} folders", dirs.Count));
+		Test.Assert((dirs[0] == "../../BeefLibs") && (dirs[1] == "C:\\Beef\\Libs") && (dirs[2] == "D:\\Libs"), dirs[2]);
+		ProjectBuild.LibraryDirs("Version = 1\n", dirs);
+		Test.Assert(dirs.Count == 3, "none without the key");
 	}
 
 	/// The executables are BeefBuild's output in Code/build. A build is finished when they are

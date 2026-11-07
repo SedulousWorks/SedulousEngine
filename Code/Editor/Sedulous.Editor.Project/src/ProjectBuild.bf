@@ -108,6 +108,8 @@ static class ProjectBuild
 
 	/// Names an SDK root ahead of any other.
 	public const String cSdkVariable = "SEDULOUS_SDK";
+	/// Names the BeefBuild executable ahead of any other (FindBeefBuild).
+	public const String cBeefBuildVariable = "BEEFBUILD";
 	/// The SDK's folders Beef's registry walks for projects, relative to the SDK root. Not the
 	/// whole of Code/: the registry walks every directory under each, and Code/build is huge; and
 	/// not Code/Tools, Integration, Samples or Deprecated, which no game links.
@@ -869,6 +871,19 @@ static class ProjectBuild
 	/// a PATH value. False when none holds it.
 	public static bool FindOnPath(StringView searchPath, StringView name, String outPath)
 	{
+		let found = scope List<String>();
+		defer { ClearAndDeleteItems!(found); }
+		AllOnPath(searchPath, name, found);
+		if (found.IsEmpty)
+			return false;
+		outPath.Set(found[0]);
+		return true;
+	}
+
+	/// Every `name` (with the host's executable suffix) in the directories of `searchPath`, in
+	/// its order, into `outPaths` (the caller's).
+	public static void AllOnPath(StringView searchPath, StringView name, List<String> outPaths)
+	{
 		let file = BuildLayout.ExecutableName(name, .. scope .());
 #if BF_PLATFORM_WINDOWS
 		let separator = ';';
@@ -881,21 +896,202 @@ static class ProjectBuild
 				continue;
 			let candidate = PathJoin(dir, file, .. scope .());
 			if (FileExists(candidate))
-			{
-				outPath.Set(candidate);
+				outPaths.Add(new .(candidate));
+		}
+	}
+
+	/// BeefBuild: the one BEEFBUILD names, else the first on PATH whose install has corlib, else
+	/// the managed install (ManagedBeefBuild). Refused, with every candidate tried and why each
+	/// was passed over in `outError`, when none will build.
+	public static bool FindBeefBuild(String outPath, String outError)
+	{
+		let variable = scope String();
+		if (Environment.GetEnvironmentVariable(cBeefBuildVariable, variable) case .Err)
+			variable.Clear();
+		let searchPath = scope String();
+		if (Environment.GetEnvironmentVariable("PATH", searchPath) case .Err)
+			searchPath.Clear();
+		return FindBeefBuildFrom(variable, searchPath, outPath, outError);
+	}
+
+	/// FindBeefBuild over given values of BEEFBUILD and PATH (empty for unset).
+	public static bool FindBeefBuildFrom(StringView variable, StringView searchPath, String outPath, String outError)
+	{
+		let tried = scope String();
+		if (!variable.IsEmpty && AcceptBeefBuild(variable, cBeefBuildVariable, tried, outPath))
+			return true;
+
+		let onPath = scope List<String>();
+		defer { ClearAndDeleteItems!(onPath); }
+		AllOnPath(searchPath, "BeefBuild", onPath);
+		for (let candidate in onPath)
+		{
+			if (AcceptBeefBuild(candidate, "PATH", tried, outPath))
 				return true;
+		}
+		if (onPath.IsEmpty)
+			AppendTried(tried, "PATH: no BeefBuild there");
+
+		let managed = scope String();
+		if (ManagedBeefBuild(managed) && AcceptBeefBuild(managed, "the managed install", tried, outPath))
+			return true;
+
+		outError.Set(scope $"BeefBuild not found: set {cBeefBuildVariable}, or put BeefBuild on PATH (tried: {tried})");
+		return false;
+	}
+
+	/// The BeefBuild of a toolchain the editor installs and keeps up to date itself. None yet:
+	/// that install is to come, and until it does this finds nothing, so BEEFBUILD and PATH are
+	/// the only places looked.
+	public static bool ManagedBeefBuild(String outPath)
+	{
+		outPath.Clear();
+		return false;
+	}
+
+	/// `candidate` into `outPath` when it is a file and its install has corlib (HasCorlib); else
+	/// why not, after `source` (where it came from), appended to `tried`.
+	private static bool AcceptBeefBuild(StringView candidate, StringView source, String tried, String outPath)
+	{
+		if (!FileExists(candidate))
+		{
+			AppendTried(tried, scope $"{source} '{candidate}': no such file");
+			return false;
+		}
+		let why = scope String();
+		if (!HasCorlib(candidate, why))
+		{
+			AppendTried(tried, scope $"{source} '{candidate}': {why}");
+			return false;
+		}
+		outPath.Set(candidate);
+		return true;
+	}
+
+	private static void AppendTried(String tried, StringView entry)
+	{
+		if (!tried.IsEmpty)
+			tried.Append("; ");
+		tried.Append(entry);
+	}
+
+	/// Whether the Beef install of the BeefBuild at `executable` has corlib, which every build
+	/// needs, found the way BeefBuild finds it: the BeefConfig.toml in the executable's folder
+	/// (links followed first, as BeefBuild reads its own path) lists library folders
+	/// (UnversionedLibDirs, relative to that folder), and corlib is a folder named corlib with a
+	/// BeefProj.toml somewhere under one of them. A source build's IDE/dist lists ../../BeefLibs,
+	/// an installed one's bin ../BeefLibs. When not, why not in `outWhy`.
+	public static bool HasCorlib(StringView executable, String outWhy)
+	{
+		let real = ResolveLinks(executable, .. scope .());
+		let install = PathParent(real, .. scope .());
+		let configPath = PathJoin(install, cConfigFile, .. scope .());
+		let config = scope String();
+		if (ReadText(configPath, config) case .Err)
+		{
+			outWhy.Set(scope $"no {cConfigFile} beside it, where BeefBuild looks for its libraries");
+			return false;
+		}
+		let libraries = scope List<String>();
+		defer { ClearAndDeleteItems!(libraries); }
+		LibraryDirs(config, libraries);
+		for (let library in libraries)
+		{
+			if (FindLibrary(PathJoin(install, library, .. scope .()), "corlib", cLibrarySearchDepth))
+				return true;
+		}
+		outWhy.Set(scope $"no corlib under the library folders its {cConfigFile} names");
+		return false;
+	}
+
+	/// The UnversionedLibDirs of a BeefConfig.toml, each string of the array as written (one
+	/// line or several, "basic" or 'literal' strings).
+	public static void LibraryDirs(StringView config, List<String> outDirs)
+	{
+		let key = config.IndexOf("UnversionedLibDirs");
+		if (key < 0)
+			return;
+		let open = config.IndexOf('[', key);
+		if (open < 0)
+			return;
+		int i = open + 1;
+		while (i < config.Length)
+		{
+			let c = config[i];
+			if (c == ']')
+				break;
+			if ((c == '"') || (c == '\''))
+			{
+				let value = new String();
+				i++;
+				while ((i < config.Length) && (config[i] != c))
+				{
+					// A basic string's escape: the next character as it is (a path's backslash).
+					if ((c == '"') && (config[i] == '\\') && (i + 1 < config.Length))
+						i++;
+					value.Append(config[i]);
+					i++;
+				}
+				outDirs.Add(value);
 			}
+			i++;
+		}
+	}
+
+	/// How deep FindLibrary looks under a library folder. BeefBuild's registry walks every
+	/// folder; corlib sits at the top of BeefLibs, and the bound keeps a folder linked into
+	/// itself from walking forever.
+	private const int cLibrarySearchDepth = 8;
+
+	/// Whether a folder `name` holding a BeefProj.toml is under `dir`, `depth` levels down at most.
+	private static bool FindLibrary(StringView dir, StringView name, int depth)
+	{
+		if (depth <= 0)
+			return false;
+		let subs = scope List<String>();
+		defer { ClearAndDeleteItems!(subs); }
+		ListDirectory(dir, scope [&](entry, isDirectory) =>
+			{
+				if (isDirectory)
+					subs.Add(new .(entry));
+			});
+		for (let sub in subs)
+		{
+			let path = PathJoin(dir, sub, .. scope .());
+			if ((sub == name) && FileExists(PathJoin(path, "BeefProj.toml", .. scope .())))
+				return true;
+		}
+		for (let sub in subs)
+		{
+			if (FindLibrary(PathJoin(dir, sub, .. scope .()), name, depth - 1))
+				return true;
 		}
 		return false;
 	}
 
-	/// BeefBuild, found on PATH only.
-	public static bool FindBeefBuild(String outPath)
+#if BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+	[CLink]
+	private static extern char8* realpath(char8* path, char8* resolved);
+#endif
+
+	/// `path` with its links followed, as the system resolves an executable's own path; `path`
+	/// as it is where that cannot be done (Windows, which BeefBuild does not resolve either).
+	private static void ResolveLinks(StringView path, String outPath)
 	{
-		let searchPath = scope String();
-		if (Environment.GetEnvironmentVariable("PATH", searchPath) case .Err)
-			return false;
-		return FindOnPath(searchPath, "BeefBuild", outPath);
+		outPath.Set(path);
+#if BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+		// PATH_MAX on both.
+		let resolved = scope char8[4096];
+		if (realpath(scope String(path).CStr(), resolved.Ptr) != null)
+			outPath.Set(StringView(resolved.Ptr));
+#endif
+	}
+
+	/// Whether the project's editor for `config` is missing or older than a file of the project's
+	/// packages: a change to the game's code the editor running it has not been built with.
+	public static bool IsStale(StringView projectDir, ProjectSettings settings, StringView config)
+	{
+		return FreshExecutable(projectDir, settings, true, config, scope .()) case .Err;
 	}
 
 	/// The project's player for `config`, when it is built and newer than every file of the
@@ -903,9 +1099,13 @@ static class ProjectBuild
 	/// (Code/) what builds write is not counted, or the player would never be fresh. NotFound for
 	/// a player never built, InvalidArgument for one older than a file of a package.
 	public static Result<void, ErrorCode> FreshPlayer(StringView projectDir, ProjectSettings settings, StringView config, String outPath)
+		=> FreshExecutable(projectDir, settings, false, config, outPath);
+
+	/// FreshPlayer for the editor or the player.
+	private static Result<void, ErrorCode> FreshExecutable(StringView projectDir, ProjectSettings settings, bool editor, StringView config, String outPath)
 	{
 		let game = GameName(settings.Name, .. scope .());
-		ExecutablePath(projectDir, game, false, config, outPath);
+		ExecutablePath(projectDir, game, editor, config, outPath);
 		if (!FileStat(outPath, let size, let built))
 			return .Err(.NotFound);
 		for (let entry in settings.Plugins)
@@ -961,87 +1161,6 @@ static class ProjectBuild
 		}
 		outPath.Clear();
 		return false;
-	}
-
-	/// Build Project: generates the workspace, then runs BeefBuild over Code/ once per executable
-	/// and config (the editor in Debug, the player in PlayerConfigs), one at a time, each run's
-	/// output to the log. Refused, with why in `outError`, without an engine SDK (FindSdk), for a
-	/// project with no package of its own, without BeefBuild on PATH, at the first run that fails,
-	/// or when a run said it built and an executable is not there. Blocking: run it on the build
-	/// lane.
-	///
-	/// Each step is logged, and the end is the line "Build Project: built": it runs for minutes
-	/// (the first one compiles the engine beside the packages), and someone reading the log, or
-	/// a caller driving the editor over MCP, has nothing else to tell a running build from a
-	/// finished one.
-	public static Result<void, ErrorCode> Build(StringView projectDir, ProjectSettings settings, ExportPresetSet presets, StringView dataRoot, String outError)
-	{
-		let sdk = scope String();
-		if (!FindSdk(dataRoot, sdk))
-		{
-			outError.Set(scope $"a project's build needs the engine SDK: set {cSdkVariable}, or run from an engine checkout");
-			return .Err(.NotSupported);
-		}
-		if (!HasPackages(settings))
-		{
-			outError.Set("the project has no package of its own (Add Native Code makes one)");
-			return .Err(.NotFound);
-		}
-		let beefBuild = scope String();
-		if (!FindBeefBuild(beefBuild))
-		{
-			outError.Set("BeefBuild is not on PATH");
-			return .Err(.NotFound);
-		}
-		if (Generate(projectDir, settings, sdk, outError) case .Err(let err))
-			return .Err(err);
-
-		let game = GameName(settings.Name, .. scope .());
-		let configs = scope List<String>();
-		defer { ClearAndDeleteItems!(configs); }
-		PlayerConfigs(presets, configs);
-		let workspace = Directory(projectDir, .. scope .());
-		GlobalLog(.Information, "Build Project: generated the workspace in '{}' over the SDK at '{}' (the first build compiles the engine too)", workspace, sdk);
-		if (RunBeefBuild(beefBuild, workspace, scope $"{game}{cEditorSuffix}", "Debug", outError) case .Err(let editorErr))
-			return .Err(editorErr);
-		for (let config in configs)
-		{
-			if (RunBeefBuild(beefBuild, workspace, scope $"{game}{cPlayerSuffix}", config, outError) case .Err(let playerErr))
-				return .Err(playerErr);
-		}
-		// BeefBuild's exit alone is not the word on it: a run can end well with nothing built
-		// (a project it did not find), so the executables themselves are checked.
-		let unbuilt = scope String();
-		if (FindUnbuilt(projectDir, game, configs, unbuilt))
-		{
-			outError.Set(scope $"BeefBuild ended without building '{unbuilt}'");
-			return .Err(.NotFound);
-		}
-		GlobalLog(.Information, "Build Project: built - Project > Open With This Build runs it");
-		return .Ok;
-	}
-
-	/// One BeefBuild run over the workspace, its output to the log line by line.
-	private static Result<void, ErrorCode> RunBeefBuild(StringView beefBuild, StringView workspace, StringView project, StringView config, String outError)
-	{
-		GlobalLog(.Information, "Build Project: {} ({})", project, config);
-		let workspaceArg = scope $"-workspace={workspace}";
-		let configArg = scope $"-config={config}";
-		let platformArg = scope $"-platform={BuildLayout.HostPlatformName}";
-		let projectArg = scope $"-project={project}";
-		let result = scope ProcessResult();
-		Process.Run(beefBuild, scope StringView[](workspaceArg, configArg, platformArg, projectArg), result);
-		for (let line in result.Output.Split('\n'))
-		{
-			if (!line.IsWhiteSpace)
-				GlobalLog(.Information, "Build Project: {}", line);
-		}
-		if (result.ExitCode != 0)
-		{
-			outError.Set(scope $"BeefBuild failed building {project} ({config}), exit {result.ExitCode}");
-			return .Err(.Internal);
-		}
-		return .Ok;
 	}
 
 	/// Whether `name`, at the top of the game's package, is something builds write.
