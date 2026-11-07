@@ -409,7 +409,7 @@ class ParticleEffectEditorPage : AssetObjectPage, IPlaybackPage
 		case .Emitter, .SubEmitters:
 			return; // the emitter is the system's own; a link is added in the grid, where its child is chosen
 		}
-		mRowMenu.Open(owner, at);
+		mRowMenu.Open(owner, owner.RootNode.ConvertToNodeSpace(at)); // `at` is a pointer's, in world space
 	}
 
 	/// The tree row's menu, while it is open.

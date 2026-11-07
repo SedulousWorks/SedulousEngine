@@ -449,6 +449,6 @@ class AudioBusLayoutEditorPage : AssetObjectPage
 		mMenu.AddItem("Add Bus", new [=this] () => { AddBus(); });
 		if (!mSelected.IsFixed)
 			mMenu.AddItem("Remove Bus", new [=this] () => { RemoveSelected(); });
-		mMenu.Open(mTree, at);
+		mMenu.Open(mTree, mTree.RootNode.ConvertToNodeSpace(at)); // `at` is a pointer's, in world space
 	}
 }

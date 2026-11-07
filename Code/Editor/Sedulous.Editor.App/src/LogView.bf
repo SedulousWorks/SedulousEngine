@@ -425,6 +425,6 @@ class LogView
 		mMenu.AddItem("Select All", new () => { mList.SelectAll(); });
 		mMenu.AddSeparator();
 		mMenu.AddItem("Clear", new () => { Clear(); });
-		mMenu.Open(mList, at);
+		mMenu.Open(mList, mList.RootNode.ConvertToNodeSpace(at)); // `at` is a pointer's, in world space
 	}
 }

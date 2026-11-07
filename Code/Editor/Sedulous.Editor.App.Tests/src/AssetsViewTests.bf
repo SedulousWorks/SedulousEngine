@@ -991,6 +991,22 @@ static class AssetsViewTests
 		Test.Assert(Math.Abs(nameLine - kindLine) < 0.1f, scope $"the name's baseline at {nameLine}, the kind's at {kindLine}");
 	}
 
+	/// At a UI scale a row's menu opens at the point asked for, not at that point scaled again: the
+	/// point is a pointer's, in world space (device pixels), and a menu opens in the root's.
+	[Test]
+	public static void AtAUIScaleARowsMenuOpensAtThePointAskedNotAtThatPointScaledAgain()
+	{
+		let bed = scope Bed("scratch_assets_view_menu_scale");
+		bed.Root.DisplayScale = 1.25f; // world space is device pixels, the root's units times 1.25
+		bed.Layout();
+		let at = bed.View.List.ConvertToWorldSpace(.(4.0f, 4.0f)); // where ShowMenuFor opens it
+		let menu = bed.MenuFor(bed.RowOf("Crate"));
+		Test.Assert(menu != null);
+		let bounds = menu.ScreenBounds;
+		Test.Assert(Math.Abs(bounds.X - at.X) < 0.5f, scope $"the menu at x {bounds.X}, asked at {at.X}");
+		Test.Assert(Math.Abs(bounds.Y - at.Y) < 0.5f, scope $"the menu at y {bounds.Y}, asked at {at.Y}");
+	}
+
 	/// An asset's menu: what acts on it, then what acts on the selection holding it (else on it
 	/// alone), each item reaching what it names (the copies on the clipboard, the guid hyphened; the
 	/// star and the export flag shown after); a group's row's; the shown group's, with New from the

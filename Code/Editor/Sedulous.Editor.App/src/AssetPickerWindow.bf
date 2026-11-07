@@ -252,8 +252,8 @@ class AssetPickerWindow
 			mTree.Model = null;
 	}
 
-	/// A row's menu at `at` (the root's space): Pin as Favourite, or Unpin Favourite. No row, or no
-	/// context: none.
+	/// A row's menu at `at` (world space, a pointer's): Pin as Favourite, or Unpin Favourite. No
+	/// row, or no context: none.
 	public void ShowRowMenu(int32 row, Float2 at)
 	{
 		if ((mList == null) || (mServices.Context == null) || (row < 0) || (row >= mRows.Count))
@@ -274,7 +274,7 @@ class AssetPickerWindow
 				else
 					mModel.Changed(); // its star
 			});
-		mMenu.Open(mList, at);
+		mMenu.Open(mList, mList.RootNode.ConvertToNodeSpace(at)); // a menu opens in the root's space
 	}
 
 	/// The row menu, while it is open.

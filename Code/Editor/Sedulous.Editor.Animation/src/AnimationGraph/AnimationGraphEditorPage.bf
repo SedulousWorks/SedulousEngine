@@ -341,7 +341,7 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 					RemoveParameter();
 			});
 		remove.Enabled = !layers || (mDoc.Layers.Count > 1); // the last layer stays
-		mListMenu.Open(owner, at);
+		mListMenu.Open(owner, owner.RootNode.ConvertToNodeSpace(at)); // `at` is a pointer's, in world space
 	}
 
 	/// That menu, while it is open.

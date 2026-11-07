@@ -401,7 +401,7 @@ class SceneHierarchyView
 			mMenu.AddSeparator();
 			actions.AppendActionItems(mMenu, page, SceneActionIds.EntityDelete);
 		}
-		mMenu.Open(mTree, at);
+		mMenu.Open(mTree, mTree.RootNode.ConvertToNodeSpace(at)); // `at` is a pointer's, in world space
 	}
 
 	// === For tests ===

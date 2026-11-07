@@ -1165,7 +1165,7 @@ class AssetsView
 			} ~ { delete path; delete act; };
 	}
 
-	/// A row's menu at `at` (in the root's space), or the shown group's where no row is.
+	/// A row's menu at `at` (world space, a pointer's), or the shown group's where no row is.
 	private void ShowMenuAt(Node owner, Float2 at, int32 row)
 	{
 		if ((mServices.Operations == null) || (Sources() == null))
@@ -1235,7 +1235,7 @@ class AssetsView
 		menu.AddSeparator();
 		let deletes = new List<Guid>(targets.GetEnumerator());
 		menu.AddItem((count == 1) ? "Delete..." : scope:: $"Delete {count} Assets...", new [=this, =deletes] () => { ConfirmDelete(deletes); } ~ delete deletes).Shortcut = "Del";
-		menu.Open(owner, at);
+		menu.Open(owner, owner.RootNode.ConvertToNodeSpace(at)); // a menu opens in the root's space
 	}
 
 	// A group's: a row's, or the one shown (`shown`), which also makes new things in it. The top
@@ -1283,7 +1283,7 @@ class AssetsView
 			menu.AddItem("Cook All", new [=ops] () => { ops.CookAll(false); });
 			menu.AddItem("Rebuild All", new [=ops] () => { ops.CookAll(true); });
 		}
-		menu.Open(owner, at);
+		menu.Open(owner, owner.RootNode.ConvertToNodeSpace(at));
 	}
 
 	// New: every creator into the group, those of no category first, then a submenu per category.

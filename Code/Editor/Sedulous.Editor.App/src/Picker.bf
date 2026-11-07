@@ -441,7 +441,7 @@ class Picker
 	/// items) does, for tests and a keyboard's menu key.
 	public void OpenContextMenu(StringView key) => OpenMenu(key, .(0.0f, 0.0f));
 
-	/// The request's menu for `key` at `at` (in the list's space); an empty one is not shown.
+	/// The request's menu for `key` at `at` (world space, a pointer's); an empty one is not shown.
 	private void OpenMenu(StringView key, Float2 at)
 	{
 		if ((mRequest.OnContextMenu == null) || (mList == null))
@@ -456,7 +456,7 @@ class Picker
 		let held = scope String(key); // the request's string, which the menu's verbs may replace
 		mRequest.OnContextMenu(mMenu, held);
 		if (mMenu.ItemCount > 0)
-			mMenu.Open(mList, at);
+			mMenu.Open(mList, mList.RootNode.ConvertToNodeSpace(at)); // a menu opens in the root's space
 	}
 
 	/// Picks the lit item; with none lit, nothing.
