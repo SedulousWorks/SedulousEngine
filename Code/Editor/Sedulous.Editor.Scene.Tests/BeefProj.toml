@@ -65,6 +65,8 @@ corlib = "*"
 "Sedulous.Runtime.Client" = "*"
 "Sedulous.Graphics" = "*"
 "Sedulous.Engine.Composition" = "*"
+# A behaviour (Hopper) through the inspector, the edit verbs and the MCP tools.
+"Sedulous.Engine.Gameplay" = "*"
 "Sedulous.Engine.Scene" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.GUI.Toolkit" = "*"

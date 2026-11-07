@@ -152,7 +152,7 @@ dissolve, waves and a flag that move their vertices, the built-in PBR) and then 
 **NativeSample** is the reference for a game's own native Beef code: its `Code/` folder is the
 project's Beef workspace, the game library with all four parts (runtime, pipeline, tooling and
 editor), built into the project's own editor and player (Project > Build Project), and a scene of
-cubes its native Spin component turns.
+cubes its native Spin component turns, one of them moved up and down by its Bob behaviour.
 
 ## Repository layout
 

@@ -6,6 +6,7 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Engine.Composition;
+using Sedulous.Engine.Gameplay;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
@@ -99,6 +100,18 @@ class SceneMcpEditToolsTests
 		else
 			answer.Error.Set(text);
 		return answer;
+	}
+
+	/// `entity`'s component of wire name `wire` as entity_inspect shows it; null without one.
+	private static JsonValue ComponentOf(JsonValue entity, StringView wire)
+	{
+		let components = entity.Get("components");
+		for (int i < components.Count)
+		{
+			if (components.At(i).Get("type").AsString() == wire)
+				return components.At(i);
+		}
+		return null;
 	}
 
 	private static bool HasComponent(JsonValue entity, StringView wire)
@@ -238,5 +251,114 @@ class SceneMcpEditToolsTests
 			defer delete gone;
 			Test.Assert(!gone.Ok);
 		}
+	}
+
+	/// A behaviour is one more component to the tools: added by the id its [Behaviour] states, at
+	/// its defaults; entity_inspect shows its public fields and the base's Enabled (an enum by name,
+	/// an entity reference by guid) and not its private state; component_set writes a float, an
+	/// enum by name, an entity reference, a string and Enabled, a step each; component_remove
+	/// deletes it, and its undo brings it back with every value.
+	[Test]
+	public static void ABehaviourIsOneMoreComponentToTheTools()
+	{
+		let context = scope EditorContext();
+		let page = (EditablePage)context.AdoptPage(new EditablePage(Guid.Create()));
+		context.SetActivePage(page);
+		let edit = page.EditContext;
+		let scene = edit.Scene;
+		let hoppers = scene.AddSystem<BehaviourManager<Hopper>>();
+		let frogId = edit.CreateEntity("Frog");
+		let padId = edit.CreateEntity("Pad");
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		let commands = page.Commands;
+		Hopper Live()
+		{
+			return hoppers.Get(edit.Resolve(frogId));
+		}
+
+		{
+			let added = Call(server, "component_add", "{\"entity\":\"Frog\",\"component\":\"test.hopper\"}");
+			defer delete added;
+			Test.Assert(added.Ok, added.Error);
+			let hopper = ComponentOf(added.Payload.Get("entity"), "test.hopper");
+			Test.Assert(hopper != null, "named by its [Behaviour] id");
+			Test.Assert(hopper.Get("typeName").AsString() == "Hopper");
+			let properties = hopper.Get("properties");
+			Test.Assert(properties.Get("Height").AsNumber() == 1.5);
+			Test.Assert(properties.Get("Mode").AsString() == "Off", "an enum by name");
+			Test.Assert(properties.Get("Target").IsNull, "an unset entity reference");
+			Test.Assert(properties.Get("Label").AsString() == "hop");
+			Test.Assert(properties.Get("Enabled").AsBool(), "the base's field");
+			Test.Assert(!properties.Has("mAirTime"), "runtime state is not shown");
+			Test.Assert(Live() != null);
+		}
+
+		void SetOk(StringView property, StringView valueJson)
+		{
+			let got = Call(server, "component_set", scope $"{{\"entity\":\"Frog\",\"component\":\"test.hopper\",\"property\":\"{property}\",\"value\":{valueJson}}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(got.Payload.Get("component").AsString() == "test.hopper");
+		}
+		SetOk("Height", "2.5");
+		Test.Assert(Live().Height == 2.5f);
+		SetOk("Mode", "\"Fast\"");
+		Test.Assert(Live().Mode == .Fast);
+		SetOk("Target", scope $"\"{padId}\"");
+		Test.Assert(Live().Target.Id == padId);
+		SetOk("Label", "\"leapy\"");
+		Test.Assert(Live().Label == "leapy");
+		SetOk("Enabled", "false");
+		Test.Assert(!Live().Enabled);
+		// A step a call: one undo takes back the last set alone, and redo puts it back.
+		commands.Undo();
+		Test.Assert(Live().Enabled && (Live().Label == "leapy"));
+		commands.Undo();
+		Test.Assert(Live().Label == "hop");
+		Test.Assert(Live().Target.Id == padId);
+		commands.Redo();
+		commands.Redo();
+		Test.Assert(!Live().Enabled && (Live().Label == "leapy"));
+		{
+			let inspected = Call(server, "entity_inspect", "{\"entity\":\"Frog\"}");
+			defer delete inspected;
+			Test.Assert(inspected.Ok, inspected.Error);
+			let properties = ComponentOf(inspected.Payload.Get("entity"), "test.hopper").Get("properties");
+			Test.Assert(properties.Get("Mode").AsString() == "Fast");
+			Test.Assert(properties.Get("Target").AsString() == padId.ToString(.. scope .()));
+			Test.Assert(!properties.Get("Enabled").AsBool());
+		}
+		{
+			let wrong = Call(server, "component_set", "{\"entity\":\"Frog\",\"component\":\"test.hopper\",\"property\":\"Mode\",\"value\":\"Sideways\"}");
+			defer delete wrong;
+			Test.Assert(!wrong.Ok);
+			Test.Assert(wrong.Error.StartsWith("field 'Mode' takes one of: Off, Slow, Fast"), wrong.Error);
+			let hidden = Call(server, "component_set", "{\"entity\":\"Frog\",\"component\":\"test.hopper\",\"property\":\"mAirTime\",\"value\":1}");
+			defer delete hidden;
+			Test.Assert(!hidden.Ok, "private state is not a field the tools set");
+		}
+		commands.Undo();
+		Test.Assert(Live().Enabled);
+		commands.Undo();
+		Test.Assert(Live().Label == "hop");
+		commands.Undo();
+		Test.Assert(Live().Target.IsNil);
+		commands.Redo();
+		commands.Redo();
+		commands.Redo();
+
+		// Removed and brought back by its undo, every value read from its record.
+		{
+			let removed = Call(server, "component_remove", "{\"entity\":\"Frog\",\"component\":\"test.hopper\"}");
+			defer delete removed;
+			Test.Assert(removed.Ok, removed.Error);
+			Test.Assert(!HasComponent(removed.Payload.Get("entity"), "test.hopper"));
+			Test.Assert(Live() == null);
+		}
+		commands.Undo();
+		Test.Assert(Live() != null);
+		Test.Assert((Live().Height == 2.5f) && (Live().Mode == .Fast) && (Live().Target.Id == padId));
+		Test.Assert((Live().Label == "leapy") && !Live().Enabled);
 	}
 }

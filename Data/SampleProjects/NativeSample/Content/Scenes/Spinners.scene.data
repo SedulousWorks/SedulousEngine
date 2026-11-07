@@ -364,7 +364,7 @@
 			<f32 name="z">1</f32>
 		</object>
 	</array>
-	<array name="components" count="23">
+	<array name="components" count="24">
 		<object>
 			<string name="owner">5e86dbb9-57e9-5dbe-9b70-953b046a1de0</string>
 			<string name="type">mesh</string>
@@ -817,6 +817,19 @@
 					<f32 name="y">0</f32>
 					<f32 name="z">0</f32>
 				</object>
+			</object>
+		</object>
+		<object>
+			<string name="owner">e70eeb73-0b1b-546c-95de-f29a1699bc8c</string>
+			<string name="type">nativesample.Bob</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">924881072566358101</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="height">0.5</f32>
+				<f32 name="speed">0.25</f32>
 			</object>
 		</object>
 	</array>

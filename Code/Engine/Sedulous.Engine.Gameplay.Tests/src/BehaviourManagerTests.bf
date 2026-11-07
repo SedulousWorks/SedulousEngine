@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Sedulous.Scene;
 using Sedulous.Engine.Gameplay;
 using internal Sedulous.Engine.Gameplay;
@@ -66,6 +67,30 @@ class BehaviourManagerTests
 				found = *speed == 4.25f;
 		}
 		Test.Assert(found, "[Behaviour] reflects the fields, read at their offsets from the instance");
+	}
+
+	/// Behaviour's own Enabled is reflected, so the tools find it through a subclass beside the
+	/// subclass's fields and read it at its offset from the instance.
+	[Test]
+	public static void TheBasesEnabledIsReflectedThroughASubclass()
+	{
+		let scene = scope Scene();
+		let movers = scene.AddSystem<BehaviourManager<Mover>>();
+		let entity = scene.CreateEntity("e");
+		let mover = movers.Add(entity);
+		mover.Enabled = false;
+		let address = movers.GetComponentAddress(entity);
+
+		FieldInfo field = default;
+		var found = false;
+		if (typeof(Mover).GetField("Enabled") case .Ok(out field))
+			found = true;
+		Test.Assert(found, "found through the subclass");
+		Test.Assert(found && field.IsPublic && (field.DeclaringType == typeof(Behaviour)));
+		var read = false;
+		if (found && (field.GetValueReference<bool>(address, typeof(Mover)) case .Ok(let enabled)))
+			read = !*enabled;
+		Test.Assert(read, "read at its offset from the instance");
 	}
 
 	/// A behaviour reaches a component and a sibling behaviour on its own entity, and gets
