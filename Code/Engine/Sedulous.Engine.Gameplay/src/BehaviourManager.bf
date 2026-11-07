@@ -3,6 +3,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Physics;
 using Sedulous.Scene;
@@ -26,8 +27,9 @@ namespace Sedulous.Engine.Gameplay;
 /// instance a callback removes, its own included, stays alive until no callback can be running
 /// on it.
 ///
-/// The identity on disk and the tick lists it joins are the class's own, read at compile time.
-class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delete
+/// The identity on disk, the tick lists it joins and the fields it replicates are the class's
+/// own, read at compile time.
+class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T : Behaviour, new, delete
 {
 	private const uint32 cInvalid = 0xFFFFFFFF;
 
@@ -403,6 +405,136 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 		case .TriggerEnter: instance.[Friend]OnTriggerEnter(other);
 		case .TriggerExit: instance.[Friend]OnTriggerExit(other);
 		}
+	}
+
+	// ---- replication ----
+
+	/// Its class's [Replicated] fields travel with a networked entity, in the bytes
+	/// BehaviourReplication describes. Every manager is a source, one whose class marks no
+	/// field writing nothing, so a peer never reads its records as reflected fields.
+	public override IReplicatedStateSource AsReplicatedStateSource => this;
+
+	/// `entity`'s replicated fields, live; false when it has no `T` or its class marks none.
+	public bool WriteReplicatedState(EntityHandle entity, List<uint8> outState)
+	{
+		outState.Clear();
+		let instance = Get(entity);
+		if (instance == null)
+			return false;
+		let stream = scope MemoryStream();
+		let writer = scope BinaryWriter(stream);
+		uint32 count = 0;
+		writer.Write(count); // patched below
+		EmitWriteReplicated(typeof(T));
+		if (count == 0)
+			return false;
+		let bytes = stream.Bytes;
+		*(uint32*)bytes.Ptr = count;
+		outState.AddRange(bytes);
+		return writer.IsOk;
+	}
+
+	/// Writes a peer's values into `entity`'s `T`, straight into its fields: nothing is called,
+	/// as a script's replicated property is set without a callback, so a behaviour that reacts
+	/// to a change compares with what it last saw. An entry whose name or kind matches no
+	/// replicated field of `T` is passed over; one cut short stops the read, and what came
+	/// before it stays applied.
+	public void ReadReplicatedState(EntityHandle entity, Span<uint8> state)
+	{
+		let instance = Get(entity);
+		if (instance == null)
+			return;
+		let stream = scope MemoryStream();
+		stream.Write(state);
+		stream.Seek(0, .Begin);
+		let reader = scope BinaryReader(stream);
+		uint32 count = 0;
+		if (!reader.Read(out count))
+			return;
+		let text = scope String();
+		for (uint32 i < count)
+		{
+			uint64 hash = 0;
+			uint8 kind = 0;
+			reader.Read(out hash);
+			reader.Read(out kind);
+			var value = ReplicatedValue();
+			if (!BehaviourReplication.ReadValue(reader, (ReplicatedKind)kind, ref value, text))
+				return; // cut short: nothing half read is applied
+			EmitReadReplicated(typeof(T));
+		}
+	}
+
+	/// One write per [Replicated] field of `type`, in declaration order, base first, its name's
+	/// hash baked in. [BehaviourAttribute] has already refused a field of a kind the wire does
+	/// not carry; one here is passed over all the same, so this emits only what compiles.
+	/// Private fields are reached past their protection: replication is the manager's to do.
+	[Comptime]
+	private static void EmitWriteReplicated(Type type)
+	{
+		if (!(type is TypeInstance))
+			return;
+		let fields = scope List<FieldInfo>();
+		BehaviourReplication.ReplicatedFields(type, fields);
+		let code = scope String();
+		for (let field in fields)
+		{
+			if (!field.IsInstanceField || (BehaviourReplication.KindOf(field.FieldType) == .None))
+				continue;
+			code.Append("BehaviourReplication.Write(writer, ");
+			BehaviourReplication.FieldHash(field.Name).ToString(code);
+			code.Append("UL, instance.[Friend]");
+			code.Append(field.Name);
+			code.Append(");\ncount++;\n");
+		}
+		if (!code.IsEmpty)
+			Compiler.MixinRoot(code);
+	}
+
+	/// The match per [Replicated] field of `type`: the entry's hash and kind against the
+	/// field's, the value into the field when both agree. A String field takes the text into
+	/// its own String (a null one is left alone: the instance owns what it holds).
+	[Comptime]
+	private static void EmitReadReplicated(Type type)
+	{
+		if (!(type is TypeInstance))
+			return;
+		let fields = scope List<FieldInfo>();
+		BehaviourReplication.ReplicatedFields(type, fields);
+		let code = scope String();
+		for (let field in fields)
+		{
+			let kind = BehaviourReplication.KindOf(field.FieldType);
+			if (!field.IsInstanceField || (kind == .None))
+				continue;
+			code.Append("if ((hash == ");
+			BehaviourReplication.FieldHash(field.Name).ToString(code);
+			// By number: the emitted line needs no enum name looked up at compile time.
+			code.Append("UL) && (value.Kind == (ReplicatedKind)");
+			((int)kind).ToString(code);
+			code.Append("))\n{\n");
+			let target = scope String();
+			target.Append("instance.[Friend]");
+			target.Append(field.Name);
+			switch (kind)
+			{
+			case .Bool: code.Append(target); code.Append(" = value.BoolValue;\n");
+			case .Int: code.Append(target); code.Append(" = value.IntValue;\n");
+			case .Float: code.Append(target); code.Append(" = value.FloatValue;\n");
+			case .Float3: code.Append(target); code.Append(" = value.VectorValue;\n");
+			case .Color: code.Append(target); code.Append(" = value.ColorValue;\n");
+			case .String:
+				code.Append("if (");
+				code.Append(target);
+				code.Append(" != null)\n");
+				code.Append(target);
+				code.Append(".Set(text);\n");
+			default:
+			}
+			code.Append("continue;\n}\n");
+		}
+		if (!code.IsEmpty)
+			Compiler.MixinRoot(code);
 	}
 
 	/// The dense index of a live, generation matching instance, or cInvalid.

@@ -53,7 +53,7 @@ The six samples' `Sources/*.as` hold 58 files:
 
 ## The Behaviour tier
 
-A new library holds all three tiers: `Code/Engine/Sedulous.Engine.Gameplay` (namespace `Sedulous.Engine.Gameplay`). Its dependencies are Scene, Scene.Resource, Run, Messaging, Engine.Physics, Engine.GameInstance and Engine.Composition. Nothing script-related.
+A new library holds all three tiers: `Code/Engine/Sedulous.Engine.Gameplay` (namespace `Sedulous.Engine.Gameplay`). Its dependencies are Scene, Scene.Resource, Run, Messaging, Net.Replication (its `[Replicated]`), Engine.Physics, Engine.GameInstance and Engine.Composition. Nothing script-related.
 
 ```beef
 [Behaviour("skyhopper.coin"), DisplayName("Coin"), Category("Sky Hopper")]
@@ -95,7 +95,7 @@ class Coin : Behaviour
 - **Registration:** explicit, in the Engine part's `Load`, as Spin's is:
   - `GameplayServices.AddBehaviour<Coin>(engine)` adds a `SceneModuleContribution` for `BehaviourManager<Coin>`, recorded and reversed by the existing scene contribution recorder;
   - the first one also contributes `BehaviourSystem`.
-- **Networking:** `[Replicated]` fields travel through `BehaviourManager<T>`'s `IReplicatedStateSource`, by reflection with the same kinds `ScriptReplication` sends. An `EntityRef` or asset field marked `[Replicated]` is refused at registration, as the cook refuses one today.
+- **Networking:** `[Replicated]` (Net.Replication's attribute) fields travel through `BehaviourManager<T>`'s `IReplicatedStateSource`, found at compile time like the tick lists, with the kinds `ScriptReplication` sends (bool, int32, float, String, Float3, Color), each entry named by its field's hash. A received value is written into the field with no callback, as a script's is. An `EntityRef`, asset or other field the wire cannot carry, marked `[Replicated]`, is refused at compile time by `[Behaviour]`, in the cook's words.
 - **Performance:** a Behaviour is per-entity convenience: a virtual call per instance per frame. A thousand of a kind belongs in a `SerializableComponentManager`, which stays the fast path.
 
 ## The Level tier

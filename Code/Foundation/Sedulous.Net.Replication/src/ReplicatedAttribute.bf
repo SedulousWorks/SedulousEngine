@@ -4,6 +4,10 @@ namespace Sedulous.Net.Replication;
 
 /// Marks a component field for replication.
 ///
+/// A manager with state of its own (IReplicatedStateSource) may read the mark itself: a
+/// behaviour's manager sends its class's marked fields in its own bytes, by the kinds it
+/// carries, and refuses at compile time a marked field it cannot send.
+///
 /// A real attribute rather than a string keyed property mark looked up through reflection
 /// tables, so a typo is a compile error rather than a field that silently never
 /// replicates.

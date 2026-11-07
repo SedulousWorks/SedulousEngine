@@ -19,6 +19,9 @@ namespace Sedulous.Engine.Gameplay;
 /// reflected (defaults, Add Component), and the type always included, so a class nothing else
 /// names still links.
 ///
+/// It refuses, as a compile error naming the field, a [Replicated] field of a kind the wire
+/// does not carry (BehaviourReplication.KindOf): an entity or asset reference, a list, a class.
+///
 /// DisplayName, Category and Description go beside it, as on a component.
 [AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple,
 	ReflectUser = .Type | .NonStaticFields | .DefaultConstructor, AlwaysIncludeUser = .Type | .AssumeInstantiated)]
@@ -42,6 +45,8 @@ struct BehaviourAttribute : Attribute, IComptimeTypeApply
 	public void ApplyToType(Type type)
 	{
 		Runtime.Assert(DerivesFromBehaviour(type), "[Behaviour] marks a class derived from Behaviour");
+		// Here rather than when it is registered: a class nothing registers still fails to build.
+		BehaviourReplication.RefuseUnsupported(type);
 
 		// Only the fields. The record's version envelope is the manager's, as a component's
 		// is SerializableComponentManager's, and a component record's fields sit directly in
