@@ -327,6 +327,36 @@ static class PreferencesDialogTests
 		Test.Assert(bed.Last.Dark, "kept: not put back");
 	}
 
+	/// The UI scale's percentage follows a drag as it goes; the scale applies on release.
+	[Test]
+	public static void TheUIScalesPercentageFollowsADragTheScaleAppliesOnRelease()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		bed.Root.UpdateLayout();
+		let window = bed.Window;
+		let scale = Find<Sedulous.GUI.Slider>(window, "pref-scale");
+		let shown = Find<Sedulous.GUI.Label>(window, "pref-scale-value");
+		Test.Assert((scale != null) && (shown != null));
+		Test.Assert(shown.Text == "100%");
+
+		// Mid-drag the slider reports input: the label shows where it is, nothing is applied.
+		let y = scale.Size.Y * 0.5f;
+		let d = bed.Dispatcher;
+		d.InjectMouseDown(scale.ConvertToWorldSpace(.(scale.Size.X * 0.25f, y)), .Left);
+		d.InjectMouseMove(scale.ConvertToWorldSpace(.(scale.Size.X * 0.75f, y)));
+		let dragged = (float)scale.Value;
+		Test.Assert(dragged > 1.0f, "dragged up from 100%");
+		Test.Assert(shown.Text == scope $"{(int32)(dragged * 100.0f + 0.5f)}%", "the label follows the drag");
+		Test.Assert(bed.Shown.IsEmpty, "not applied mid-drag");
+
+		// The release commits it, which applies it.
+		d.InjectMouseUp(scale.ConvertToWorldSpace(.(scale.Size.X * 0.75f, y)), .Left);
+		Test.Assert(bed.Shown.Count == 1);
+		Test.Assert(Near(bed.Last.UiScale, dragged));
+		Test.Assert(shown.Text == scope $"{(int32)(dragged * 100.0f + 0.5f)}%");
+	}
+
 	[Test]
 	public static void CancelEscapeItsCloseButtonOrGoingWhileOpenPutTheLookBackTheStoreUnchanged()
 	{

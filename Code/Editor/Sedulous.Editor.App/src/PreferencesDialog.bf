@@ -216,7 +216,12 @@ class EditorPreferencesDialog
 		// A committed change (a drag let go, a key): the whole editor relayouts at a new scale, so
 		// not under every step of a drag.
 		if (let scale = Find<Sedulous.GUI.Slider>("pref-scale"))
+		{
 			scale.SetOnValueChanged(new (chosen) => { mLook.UiScale = (float)chosen; Changed(); });
+			// The percentage follows a drag as it goes; the scale itself applies on release, since
+			// rescaling the editor mid-drag would move the slider from under the pointer.
+			scale.SetOnValueChanging(new (moving) => { ShowScaleValue((float)moving); });
+		}
 		if (let add = Find<Sedulous.GUI.Button>("pref-preview-add"))
 			add.SetOnClick(new () => { AddPreview("Custom", 1920, 1080); });
 		AddContributions();
@@ -492,8 +497,14 @@ class EditorPreferencesDialog
 			motion.Checked = mLook.ReduceMotion;
 		if (let scale = Find<Sedulous.GUI.Slider>("pref-scale"))
 			scale.Value = mLook.UiScale;
+		ShowScaleValue(mLook.UiScale);
+	}
+
+	/// The UI scale's percentage beside its slider.
+	private void ShowScaleValue(float scale)
+	{
 		if (let shown = Find<Sedulous.GUI.Label>("pref-scale-value"))
-			shown.Text = scope $"{(int32)(mLook.UiScale * 100.0f + 0.5f)}%";
+			shown.Text = scope $"{(int32)(scale * 100.0f + 0.5f)}%";
 	}
 
 	/// One preview resolution's row; its views are the tree's.
