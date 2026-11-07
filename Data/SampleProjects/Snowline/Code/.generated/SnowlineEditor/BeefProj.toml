@@ -1,0 +1,29 @@
+FileVersion = 1
+
+[Project]
+Name = "SnowlineEditor"
+TargetType = "BeefGUIApplication"
+StartupObject = "SnowlineEditor.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Editor.Main" = "*"
+"Snowline" = "*"
+
+[Configs.Debug.Linux64]
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x \\\"$(TargetDir)/naga\\\" \\\"$(TargetDir)/tint\\\"\")"]
+
+[Configs.Debug.Win64]
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Naga/bin/win-x64/naga.exe\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Tint/bin/win-x64/tint.exe\")"]
+
+[Configs.Release.Linux64]
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x \\\"$(TargetDir)/naga\\\" \\\"$(TargetDir)/tint\\\"\")"]
+
+[Configs.Release.Win64]
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Naga/bin/win-x64/naga.exe\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Tint/bin/win-x64/tint.exe\")"]
+
+[Configs.ShippingRelease.Linux64]
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x \\\"$(TargetDir)/naga\\\" \\\"$(TargetDir)/tint\\\"\")"]
+
+[Configs.ShippingRelease.Win64]
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Naga/bin/win-x64/naga.exe\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Bin/Tint/bin/win-x64/tint.exe\")"]

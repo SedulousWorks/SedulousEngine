@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "SkyHopperPlayer"
+TargetType = "BeefGUIApplication"
+StartupObject = "SkyHopperPlayer.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.Player.DesktopMain" = "*"
+"SkyHopper" = "*"

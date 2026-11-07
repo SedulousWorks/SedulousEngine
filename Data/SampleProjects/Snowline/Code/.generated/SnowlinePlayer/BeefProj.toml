@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "SnowlinePlayer"
+TargetType = "BeefGUIApplication"
+StartupObject = "SnowlinePlayer.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.Player.DesktopMain" = "*"
+"Snowline" = "*"

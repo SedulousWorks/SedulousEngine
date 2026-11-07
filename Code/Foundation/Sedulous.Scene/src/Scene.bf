@@ -70,6 +70,9 @@ class Scene : IScriptWeaklyHeld
 	private Dictionary<uint64, SceneSystem> mSystemsByType = new .() ~ delete _;
 	/// Non owning, sorted by UpdateOrder.
 	private List<SceneSystem> mSortedSystems = new .() ~ delete _;
+	/// GetComponent's answers by component type id, misses (null) included. Cleared when a
+	/// system comes or goes, the only times a type's manager can change.
+	private Dictionary<int32, ComponentManagerBase> mManagersByComponent = new .() ~ delete _;
 
 	private List<UnresolvedComponent> mUnresolvedComponents = new .() ~ DeleteContainerAndItems!(_);
 	private List<UnresolvedSettings> mUnresolvedSettings = new .() ~ DeleteContainerAndItems!(_);
@@ -750,6 +753,7 @@ class Scene : IScriptWeaklyHeld
 		let system = new T();
 		mSystems.Add(system);
 		mSystemsByType[TypeKey<T>()] = system;
+		mManagersByComponent.Clear();
 		InsertSortedSystem(system);
 		system.AttachScene(this);
 		system.OnSceneCreate(this);
@@ -871,6 +875,36 @@ class Scene : IScriptWeaklyHeld
 		return null;
 	}
 
+	/// The LIVE `T` on `entity`, or null when the entity has none, its handle is stale or no
+	/// manager here stores `T`.
+	///
+	/// Game code's way to reach another component by type alone. The manager is found once
+	/// per type and remembered; the address is not, and is as transient as the manager's
+	/// Get: re-ask after anything that adds or removes a `T`.
+	public T* GetComponent<T>(EntityHandle entity) where T : struct
+	{
+		let manager = ManagerForComponent(typeof(T));
+		return (manager != null) ? (T*)manager.GetComponentAddress(entity) : null;
+	}
+
+	/// Whether `entity` has a `T`.
+	public bool HasComponent<T>(EntityHandle entity) where T : struct
+	{
+		let manager = ManagerForComponent(typeof(T));
+		return (manager != null) && manager.HasComponent(entity);
+	}
+
+	/// FindManagerByComponentType, remembered per type until the systems change.
+	public ComponentManagerBase ManagerForComponent(Type componentType)
+	{
+		let key = (int32)componentType.TypeId;
+		if (mManagersByComponent.TryGetValue(key, let cached))
+			return cached;
+		let found = FindManagerByComponentType(componentType);
+		mManagersByComponent[key] = found;
+		return found;
+	}
+
 	/// Removes and destroys the system registered under `systemType`; a manager's pool dies
 	/// with it. Returns whether there was one.
 	///
@@ -884,6 +918,7 @@ class Scene : IScriptWeaklyHeld
 		mSystemsByType.Remove(systemType);
 		if (let manager = system.AsComponentManager)
 			mLeavingManagers.Remove(manager); // its components go with it
+		mManagersByComponent.Clear();
 		mSortedSystems.Remove(system);
 		if (mSystems.Remove(system))
 			delete system;

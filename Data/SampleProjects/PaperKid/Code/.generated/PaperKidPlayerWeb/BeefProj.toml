@@ -1,0 +1,29 @@
+FileVersion = 1
+
+[Project]
+Name = "PaperKidPlayerWeb"
+TargetType = "BeefGUIApplication"
+StartupObject = "PaperKidPlayerWeb.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.Player.WebMain" = "*"
+"PaperKid" = "*"
+
+[Configs.Debug.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(WorkspaceDir)/build/Debug_wasm32/PaperKidPlayerWeb"
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/serve.py\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/../../../Data/Branding/sedulous-logo.svg\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library /home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/player.js --shell-file /home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/shell.html"
+
+[Configs.Release.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(WorkspaceDir)/build/Release_wasm32/PaperKidPlayerWeb"
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/serve.py\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/../../../Data/Branding/sedulous-logo.svg\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library /home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/player.js --shell-file /home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/shell.html"
+
+[Configs.ShippingRelease.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(WorkspaceDir)/build/ShippingRelease_wasm32/PaperKidPlayerWeb"
+PostBuildCmds = ["CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/serve.py\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/../../../Data/Branding/sedulous-logo.svg\")", "CopyToTarget(\"/home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/../../../Dependencies/THIRD-PARTY-NOTICES.txt\")"]
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library /home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/player.js --shell-file /home/robert/Dev/Beef/SedulousEngine-x2/Code/Engine/Sedulous.Engine.Player.Web/shell.html"

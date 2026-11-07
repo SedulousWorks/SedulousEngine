@@ -1,0 +1,6 @@
+namespace MasqueradePlayer;
+
+class Program
+{
+	public static int Main(System.String[] args) => Sedulous.Engine.Player.DesktopMain.DesktopPlayerMain.Run(args);
+}

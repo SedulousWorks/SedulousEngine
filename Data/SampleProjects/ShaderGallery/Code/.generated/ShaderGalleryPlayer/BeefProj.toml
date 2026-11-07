@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "ShaderGalleryPlayer"
+TargetType = "BeefGUIApplication"
+StartupObject = "ShaderGalleryPlayer.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.Player.DesktopMain" = "*"
+"ShaderGallery" = "*"

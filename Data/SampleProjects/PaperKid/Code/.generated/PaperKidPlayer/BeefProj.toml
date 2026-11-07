@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "PaperKidPlayer"
+TargetType = "BeefGUIApplication"
+StartupObject = "PaperKidPlayer.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.Player.DesktopMain" = "*"
+"PaperKid" = "*"
