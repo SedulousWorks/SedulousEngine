@@ -212,6 +212,10 @@ class GltfLoader : IModelLoader
 			if (source.emissive_texture.texture != null)
 				material.EmissiveTextureIndex = (int32)cgltf_texture_index(mData, source.emissive_texture.texture);
 
+			// KHR_materials_transmission: glass, a lens, a wrap (its factor; the texture is not read).
+			if (source.has_transmission != 0)
+				material.Transmission = source.transmission.transmission_factor;
+
 			switch (source.alpha_mode)
 			{
 			case .cgltf_alpha_mode_mask: material.AlphaMode = .Mask;

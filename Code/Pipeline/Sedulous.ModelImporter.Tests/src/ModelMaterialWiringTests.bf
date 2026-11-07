@@ -158,8 +158,8 @@ class ModelMaterialWiringTests
 			== packed.Id);
 	}
 
-	// Each material made on the built-in its shading model names, as its file authored it (Raptor's
-	// phong-material spec), by the one function both cooks make materials with.
+	// Each material made on the built-in its shading model names, as its file authored it, by the
+	// one function both cooks make materials with. Glass (transmission) draws blended.
 	[Test]
 	public static void AMaterialIsMadeOnTheBuiltInItsShadingModelNamesItsMapsWired()
 	{
@@ -238,5 +238,24 @@ class ModelMaterialWiringTests
 		Test.Assert(onPbr.Source.ShaderName == "forward");
 		Test.Assert(Slots(onPbr, .. scope .()) == "AlbedoMap NormalMap OcclusionMap MetallicRoughnessMap");
 		Test.Assert(bakes == 1, "its separate rough map baked into the packed one by the caller");
+		Test.Assert(onPbr.Source.BlendMode == .Opaque);
+
+		// Glass (transmission): the engine does not refract, so it draws blended, as see-through
+		// as it transmits, down to the opacity a pane keeps. A masked one stays masked.
+		let glass = Add(.Pbr);
+		glass.Transmission = 1.0f;
+		let onGlass = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, glass, "m", textures, packed, onGlass);
+		Test.Assert(onGlass.Source.BlendMode == .AlphaBlend);
+		Test.Assert(Math.Abs(Uniform(onGlass, "BaseColor").W - ModelMaterialBuild.cTransmissiveMinOpacity) < 1e-5f);
+		glass.Transmission = 0.5f;
+		let halfGlass = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, glass, "m", textures, packed, halfGlass);
+		Test.Assert(Math.Abs(Uniform(halfGlass, "BaseColor").W - (1.0f - 0.5f * (1.0f - ModelMaterialBuild.cTransmissiveMinOpacity))) < 1e-5f);
+		glass.AlphaMode = .Mask;
+		let maskedGlass = scope MaterialAsset();
+		ModelMaterialBuild.Build(model, glass, "m", textures, packed, maskedGlass);
+		Test.Assert(maskedGlass.Source.BlendMode == .Masked);
+		Test.Assert(Math.Abs(Uniform(maskedGlass, "BaseColor").W - 1.0f) < 1e-5f);
 	}
 }

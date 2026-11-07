@@ -254,7 +254,9 @@ hosts (and a scene with `Generate scene`). Its materials come in as authored: an
 Lambert material and a classic OBJ `.mtl` on the built-in Phong, a glTF material with
 `KHR_materials_unlit` on Unlit, everything else (glTF, Blender's FBX, an `.mtl` with PBR keys) on
 PBR; to draw one another way, `material_set_shader` after the
-import. Its clips come in looping (a model file does not say); a clip that plays once and holds
+import. Glass (a glTF material's transmission, an FBX PBR shader's) comes in blended, as
+see-through as it transmits (the engine does not refract); a classic FBX material is as
+see-through as its TransparencyFactor. Its clips come in looping (a model file does not say); a clip that plays once and holds
 its last pose (a Die) is set so on its page or with `asset_data_write` (`isLooping` false). A
 re-import keeps what was authored on each clip: its root motion, whether it loops, and its events.
 Names: re-importing the same file replaces its asset (guid and references kept), so an

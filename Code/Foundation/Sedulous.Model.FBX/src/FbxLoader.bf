@@ -188,15 +188,41 @@ class FbxLoader : IModelLoader
 				material.DoubleSided = true;
 
 			// Only the SCALAR opacity here. Alpha carried in a texture is decided after the
-			// textures have been read, which is what DetectAlphaFromTextures is for.
-			if (source.features.opacity.enabled)
+			// textures have been read, which is what DetectAlphaFromTextures is for. The opacity
+			// rides the base colour's alpha, which the blend reads. A classic material (Lambert,
+			// Phong, or a shading model ufbx does not know) is as see-through as its
+			// TransparencyFactor says (ufbx enables no opacity feature for it); a PBR shader by
+			// its opacity.
+			let classic = (source.shader_type == .UFBX_SHADER_FBX_LAMBERT) || (source.shader_type == .UFBX_SHADER_FBX_PHONG)
+				|| (source.shader_type == .UFBX_SHADER_UNKNOWN);
+			if (classic)
+			{
+				if (source.fbx.transparency_factor.has_value
+					&& ((float)source.fbx.transparency_factor.value_real > 0.0f))
+				{
+					material.AlphaMode = .Blend;
+					material.BaseColorFactor.W *= 1.0f - Math.Clamp((float)source.fbx.transparency_factor.value_real, 0.0f, 1.0f);
+				}
+			}
+			else if (source.features.opacity.enabled)
 			{
 				if (source.pbr.opacity.has_value && ((float)source.pbr.opacity.value_real < 1.0f))
+				{
 					material.AlphaMode = .Blend;
+					material.BaseColorFactor.W *= Math.Clamp((float)source.pbr.opacity.value_real, 0.0f, 1.0f);
+				}
 				else if (source.fbx.transparency_factor.has_value
 					&& ((float)source.fbx.transparency_factor.value_real > 0.0f))
+				{
 					material.AlphaMode = .Blend;
+					material.BaseColorFactor.W *= 1.0f - Math.Clamp((float)source.fbx.transparency_factor.value_real, 0.0f, 1.0f);
+				}
 			}
+			// Transmission (glass), as a PBR shader means it: Standard Surface's, 3ds Max
+			// Physical's, a glTF material's. ufbx maps a classic material's TransparencyFactor
+			// there too, but that is its opacity (above), not glass.
+			if (!classic && source.pbr.transmission_factor.has_value)
+				material.Transmission = Math.Clamp((float)source.pbr.transmission_factor.value_real, 0.0f, 1.0f);
 
 			let index = model.AddMaterial(material);
 			mMaterialToIndex[source.element.typed_id] = index;

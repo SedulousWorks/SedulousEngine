@@ -8,11 +8,14 @@ using Sedulous.Model;
 
 namespace Sedulous.ModelImporter;
 
-/// A model's material as a material asset on the built-in its shading model names (Raptor's
-/// phong-material spec), as its file authored it. Both cooks (the file import's and the direct
-/// one) make their materials here.
+/// A model's material as a material asset on the built-in its shading model names, as its file
+/// authored it. Both cooks (the file import's and the direct one) make their materials here.
 static class ModelMaterialBuild
 {
+	/// The opacity a fully transmissive surface keeps, drawn blended: enough for a pane of glass
+	/// to show its tint, its frame's reflection and its highlights rather than vanish.
+	public const float cTransmissiveMinOpacity = 0.15f;
+
 	/// `material` into `asset`, named `name`: PBR its factors and its five maps (FBX's separate metal
 	/// and rough maps baked into one packed map by `packedMetallicRoughness`, the caller's, as each
 	/// cook makes textures its own way); Phong its diffuse and highlight, Lambert its diffuse alone,
@@ -22,6 +25,13 @@ static class ModelMaterialBuild
 	public static void Build(Model model, ModelMaterial material, StringView name, List<Guid> textureGuids,
 		delegate Guid(int32 roughIndex, int32 metalIndex) packedMetallicRoughness, MaterialAsset asset)
 	{
+		// A transmissive surface (glass) that is otherwise opaque: the engine does not refract,
+		// so it draws blended, as see-through as it transmits (down to cTransmissiveMinOpacity),
+		// its base colour's alpha carrying the opacity.
+		let transmissive = (material.Transmission > 0.0f) && (material.AlphaMode == .Opaque) && (material.Shading == .Pbr);
+		var baseColor = material.BaseColorFactor;
+		if (transmissive)
+			baseColor.W *= 1.0f - Math.Clamp(material.Transmission, 0.0f, 1.0f) * (1.0f - cTransmissiveMinOpacity);
 		Material built;
 		switch (material.Shading)
 		{
@@ -33,7 +43,7 @@ static class ModelMaterialBuild
 		case .Unlit:
 			built = MaterialPresets.CreateUnlit(name, material.BaseColorFactor);
 		default:
-			built = MaterialPresets.CreatePbr(name, material.BaseColorFactor, material.MetallicFactor, material.RoughnessFactor);
+			built = MaterialPresets.CreatePbr(name, baseColor, material.MetallicFactor, material.RoughnessFactor);
 			built.SetDefaultFloat("OcclusionStrength", material.OcclusionStrength);
 		}
 		defer delete built;
@@ -86,10 +96,11 @@ static class ModelMaterialBuild
 		}
 
 		// The authored pipeline state. A masked material is an alpha tested cutout, which also
-		// gives its shadow holes; a blended one goes to the transparent pass.
+		// gives its shadow holes; a blended one, or a transmissive opaque one, goes to the
+		// transparent pass.
 		if (material.AlphaMode == .Mask)
 			source.BlendMode = .Masked;
-		else if (material.AlphaMode == .Blend)
+		else if ((material.AlphaMode == .Blend) || transmissive)
 			source.BlendMode = .AlphaBlend;
 
 		if (material.DoubleSided)

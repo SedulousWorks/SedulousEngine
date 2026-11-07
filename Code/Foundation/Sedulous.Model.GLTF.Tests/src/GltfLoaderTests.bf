@@ -439,4 +439,30 @@ class GltfLoaderTests
 		Test.Assert(Near(model.Materials[0].BaseColorFactor.X, 0.5f, 0.002f), scope $"{model.Materials[0].BaseColorFactor.X}");
 		Test.Assert(model.Materials[1].Shading == .Pbr);
 	}
+
+	/// KHR_materials_transmission: its factor is read (glass); a material without it transmits
+	/// nothing.
+	[Test]
+	public static void KhrMaterialsTransmissionsFactorIsReadAMaterialWithoutItTransmitsNothing()
+	{
+		let path = scope String("scratch_gltf_transmission.gltf");
+		File.WriteAllText(path, """
+			{
+			  "asset": {"version": "2.0"},
+			  "extensionsUsed": ["KHR_materials_transmission"],
+			  "materials": [
+			    {"name": "glass", "pbrMetallicRoughness": {"baseColorFactor": [1.0, 1.0, 1.0, 1.0]},
+			     "extensions": {"KHR_materials_transmission": {"transmissionFactor": 0.8}}},
+			    {"name": "brick", "pbrMetallicRoughness": {"baseColorFactor": [1.0, 1.0, 1.0, 1.0]}}
+			  ]
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope GltfLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		Test.Assert(model.Materials.Length == 2);
+		Test.Assert(Near(model.Materials[0].Transmission, 0.8f), scope $"{model.Materials[0].Transmission}");
+		Test.Assert(model.Materials[1].Transmission == 0.0f);
+	}
 }

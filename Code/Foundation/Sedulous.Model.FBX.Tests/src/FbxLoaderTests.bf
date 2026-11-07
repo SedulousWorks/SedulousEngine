@@ -408,4 +408,72 @@ f 1/1/1 2/2/1 3/3/1
 		}
 		Test.Assert(rotations == 1);
 	}
+
+	/// A classic material's transparency is its opacity, carried by the base colour's alpha (the
+	/// blend reads it); it is not glass. A 3ds Max Physical material's transparency is
+	/// transmission: glass, which the import draws blended.
+	[Test]
+	public static void AClassicMaterialsTransparencyIsItsOpacityAPbrShadersTransmissionIsGlass()
+	{
+		let path = scope String("scratch_fbx_opacity.fbx");
+		File.WriteAllText(path, """
+			; FBX 7.4.0 project file
+			FBXHeaderExtension:  {
+				FBXHeaderVersion: 1003
+				FBXVersion: 7400
+			}
+			Objects:  {
+				Material: 1000, "Material::Tinted", "" {
+					Version: 102
+					ShadingModel: "phong"
+					Properties70:  {
+						P: "DiffuseColor", "Color", "", "A",1,1,1
+						P: "TransparencyFactor", "Number", "", "A",0.6
+					}
+				}
+				Material: 1001, "Material::Solid", "" {
+					Version: 102
+					ShadingModel: "lambert"
+					Properties70:  {
+						P: "DiffuseColor", "Color", "", "A",1,1,1
+					}
+				}
+				Material: 1002, "Material::Glass", "" {
+					Version: 102
+					ShadingModel: "unknown"
+					Properties70:  {
+						P: "3dsMax|ClassIDa", "int", "Integer", "",1030429932
+						P: "3dsMax|ClassIDb", "int", "Integer", "",-559038463
+						P: "3dsMax|Parameters|transparency", "Float", "", "A",0.9
+					}
+				}
+			}
+			Connections:  {
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+		let model = scope ModelData();
+		let loader = scope FbxLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		ModelMaterial tinted = null;
+		ModelMaterial solid = null;
+		ModelMaterial glass = null;
+		for (let material in model.Materials)
+		{
+			if (material.Name == "Tinted")
+				tinted = material;
+			else if (material.Name == "Solid")
+				solid = material;
+			else if (material.Name == "Glass")
+				glass = material;
+		}
+		Test.Assert((tinted != null) && (solid != null) && (glass != null));
+		Test.Assert(tinted.AlphaMode == .Blend);
+		Test.Assert(Near(tinted.BaseColorFactor.W, 0.4f), scope $"{tinted.BaseColorFactor.W}"); // 1 - 0.6
+		Test.Assert(tinted.Transmission == 0.0f, "classic transparency is not glass");
+		Test.Assert(solid.AlphaMode == .Opaque);
+		Test.Assert(Near(solid.BaseColorFactor.W, 1.0f));
+		Test.Assert(Near(glass.Transmission, 0.9f), scope $"{glass.Transmission}");
+		Test.Assert(glass.AlphaMode == .Opaque, "the import draws it blended (ModelMaterialBuild)");
+	}
 }

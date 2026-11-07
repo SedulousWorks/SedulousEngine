@@ -68,6 +68,10 @@ class ModelMaterial
 
 	public AlphaMode AlphaMode = .Opaque;
 	public float AlphaCutoff = 0.5f;
+	/// The share of light the surface lets through, nought (none) to one (clear glass): glTF
+	/// KHR_materials_transmission's factor, an FBX PBR shader's. The engine does not refract; an
+	/// import draws a transmissive surface blended (ModelMaterialBuild.Build).
+	public float Transmission = 0.0f;
 
 	public bool DoubleSided;
 }
