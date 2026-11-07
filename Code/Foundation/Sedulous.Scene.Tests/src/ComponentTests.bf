@@ -203,4 +203,43 @@ class ComponentTests
 		manager.RemoveComponent(e2);
 		Test.Assert(manager.Get(e2) == null);
 	}
+
+	/// A component reached by its type alone: the live one, null without a manager or a
+	/// component, and the remembered manager forgotten when the systems change.
+	[Test]
+	public static void GetComponentFindsTheLiveComponentByType()
+	{
+		let scene = scope Scene("by type");
+		let health = scene.AddSystem<HealthManager>();
+		let e0 = scene.CreateEntity("e0");
+		let e1 = scene.CreateEntity("e1");
+		health.Add(e0).Value = 10.0f;
+		health.Add(e1).Value = 20.0f;
+
+		Test.Assert(scene.GetComponent<Health>(e1).Value == 20.0f);
+		Test.Assert(scene.HasComponent<Health>(e0));
+
+		// Live, not remembered: the swap remove moves e1 and the answer follows it.
+		health.RemoveComponent(e0);
+		Test.Assert(scene.GetComponent<Health>(e0) == null);
+		Test.Assert(!scene.HasComponent<Health>(e0));
+		Test.Assert(scene.GetComponent<Health>(e1) == health.Get(e1));
+		Test.Assert(scene.GetComponent<Health>(e1).Value == 20.0f);
+
+		// No manager yet: a miss, and the miss is not kept once one arrives.
+		Test.Assert(scene.GetComponent<Mana>(e1) == null);
+		let mana = scene.AddSystem<ComponentManager<Mana>>();
+		mana.Add(e1).Value = 5.0f;
+		Test.Assert(scene.GetComponent<Mana>(e1).Value == 5.0f);
+
+		// Nor is a manager kept once it is gone.
+		Test.Assert(scene.RemoveSystem<ComponentManager<Mana>>());
+		Test.Assert(scene.GetComponent<Mana>(e1) == null);
+		Test.Assert(!scene.HasComponent<Mana>(e1));
+
+		// A stale handle answers null.
+		scene.DestroyEntity(e1);
+		scene.Update(0.016f);
+		Test.Assert(scene.GetComponent<Health>(e1) == null);
+	}
 }
