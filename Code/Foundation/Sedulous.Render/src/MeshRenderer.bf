@@ -229,6 +229,8 @@ class MeshRenderer : Renderer
 	/// This frame's palettes, keyed by their address.
 	private Dictionary<int, BoneSlot> mBoneStart = new .() ~ delete _;
 	private List<SkinnedRef> mSkinnedScratch = new .() ~ delete _;
+	/// A depth like draw's ranges, reused.
+	private List<DepthLikeRange> mDepthRanges = new .() ~ delete _;
 
 	/// The per entity previous world, for a rigid object's motion vectors. A FLAT double
 	/// buffer indexed by the entity's own index rather than a map: direct, with no hashing or
@@ -1573,7 +1575,8 @@ class MeshRenderer : Renderer
 					let next = (MeshRenderData)items[j].Data;
 					if (next.MultiMesh || (next.Mesh != head.Mesh)
 						|| (next.Material != head.Material) || ((next.Fade > 0.0f) != headFaded)
-						|| (next.OverrideCount > 0))
+						|| (next.OverrideCount > 0)
+						|| (next.CategorySlots != head.CategorySlots)) // a split mesh's item draws some slots only
 						break;
 					j++;
 				}
@@ -1674,7 +1677,8 @@ class MeshRenderer : Renderer
 			while (j < items.Length)
 			{
 				let next = (MeshRenderData)items[j].Data;
-				if (next.MultiMesh || (next.Mesh != head.Mesh) || (next.Material != head.Material))
+				if (next.MultiMesh || (next.Mesh != head.Mesh) || (next.Material != head.Material)
+					|| (next.CategorySlots != head.CategorySlots)) // a split mesh's item draws some slots only
 					break;
 				j++;
 			}
@@ -1907,6 +1911,8 @@ class MeshRenderer : Renderer
 					candidate = md.Material;
 					slot = 0;
 				}
+				if (md.CategorySlots && (RenderCategories.MeshSlotCategory(candidate, md.Fade) != md.Category))
+					continue; // another of this mesh's items draws it, in its own pass
 
 				Emit(candidate, slot, mesh.IndexOffset + (uint64)sub.StartIndex * stride,
 					(uint32)sub.IndexCount);
@@ -1924,41 +1930,13 @@ class MeshRenderer : Renderer
 		var skinned = (md.BoneMatrices != null) && (md.BoneCount > 0) && (md.Mesh != null)
 			&& md.Mesh.IsSkinned && (mesh.SkinBuffer != null);
 
-		let choice = DepthLikeFor(context, md.Material, false, pick);
-		var config = choice.Config;
-
 		if (skinned)
 		{
 			if (mBoneStart.TryGetValue((int)(void*)md.BoneMatrices, let slot))
-			{
 				boneBase = slot.Base;
-				config.VertexLayout = .SkinnedMesh;
-				config.ShaderFlags |= .Skinned;
-			}
 			else
-			{
 				skinned = false;
-			}
 		}
-
-		IBindGroup materialSet = null;
-		var layout = mShadowPipelineLayoutSingle;
-		if (choice.MaterialSet)
-		{
-			let set2 = mMaterials.GetOrCreateLayout(md.Material);
-			layout = GetOrCreateShadowMaskedLayout(set2, false);
-			materialSet = mMaterials.PrepareInstance(InstanceFor(md.Material), set2);
-			if (layout == null)
-			{
-				layout = mShadowPipelineLayoutSingle;
-				materialSet = null;
-				config = pick ? PickConfigFor(context, false, false) : ShadowConfigFor(context, false, false);
-			}
-		}
-
-		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
-		if (pipeline == null)
-			return;
 
 		let object = mObjectRing.Allocate();
 		if (!object.Ok)
@@ -1976,14 +1954,12 @@ class MeshRenderer : Renderer
 		*(MeshObjectData*)object.Ptr = objectData;
 
 		var draw = ResolvedDraw();
-		draw.Pso = pipeline;
 		draw.ViewSet = mShadowViewBindGroup;
 		draw.ViewOffset = shadowViewOffset;
 		draw.ViewDynamic = true;
 		draw.DrawSet = mObjectBindGroup;
 		draw.DrawOffset = object.ByteOffset;
 		draw.DrawDynamic = true;
-		draw.MaterialSet = materialSet;
 		draw.VertexBuffer0 = mesh.VertexBuffer;
 		draw.VertexOffset0 = mesh.VertexOffset;
 		if (skinned)
@@ -1997,7 +1973,7 @@ class MeshRenderer : Renderer
 		draw.IndexCount = mesh.IndexCount;
 		draw.InstanceCount = 1;
 
-		EmitDepth(context, draw, md, mesh, outDraws);
+		EmitDepthRanges(context, draw, md, mesh, false, pick, skinned, outDraws);
 	}
 
 	private void ResolveDepthInstanced(RenderRecordContext context, uint32 shadowViewOffset,
@@ -2007,38 +1983,6 @@ class MeshRenderer : Renderer
 		let head = (MeshRenderData)items[first].Data;
 		let skinned = (head.BoneMatrices != null) && (head.Mesh != null) && head.Mesh.IsSkinned
 			&& (mesh.SkinBuffer != null);
-		let choice = DepthLikeFor(context, head.Material, true, pick);
-		var config = choice.Config;
-		if (skinned)
-		{
-			config.VertexLayout = .SkinnedMesh;
-			config.ShaderFlags |= .Skinned;
-		}
-
-		IBindGroup materialSet = null;
-		var layout = mShadowPipelineLayoutInstanced;
-		if (choice.MaterialSet)
-		{
-			let set2 = mMaterials.GetOrCreateLayout(head.Material);
-			layout = GetOrCreateShadowMaskedLayout(set2, true);
-			materialSet = mMaterials.PrepareInstance(InstanceFor(head.Material), set2);
-			if (layout == null)
-			{
-				layout = mShadowPipelineLayoutInstanced;
-				materialSet = null;
-				config = pick ? PickConfigFor(context, true, false) : ShadowConfigFor(context, true, false);
-				if (skinned)
-				{
-					config.VertexLayout = .SkinnedMesh;
-					config.ShaderFlags |= .Skinned;
-				}
-			}
-		}
-
-		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
-		if (pipeline == null)
-			return;
-
 		let instances = mInstanceRing.AllocateRange(count);
 		let offsets = mOffsetsRing.AllocateRange(count);
 		if (!instances.Ok || !offsets.Ok)
@@ -2086,13 +2030,11 @@ class MeshRenderer : Renderer
 		}
 
 		var draw = ResolvedDraw();
-		draw.Pso = pipeline;
 		draw.ViewSet = mShadowViewBindGroup;
 		draw.ViewOffset = shadowViewOffset;
 		draw.ViewDynamic = true;
 		draw.DrawSet = mInstanceBindGroup;
 		draw.DrawDynamic = false;
-		draw.MaterialSet = materialSet;
 		draw.VertexBuffer0 = mesh.VertexBuffer;
 		draw.VertexOffset0 = mesh.VertexOffset;
 		if (skinned)
@@ -2113,30 +2055,162 @@ class MeshRenderer : Renderer
 		draw.IndexCount = mesh.IndexCount;
 		draw.InstanceCount = count;
 
-		EmitDepth(context, draw, head, mesh, outDraws);
+		EmitDepthRanges(context, draw, head, mesh, true, pick, skinned, outDraws);
 	}
 
-	/// Appends a depth draw, split per submesh when the mesh has a detail chain: the whole
-	/// buffer path would cast every concatenated level's shadow at once.
-	private void EmitDepth(RenderRecordContext context, ResolvedDraw draw, MeshRenderData md,
-		GpuMesh mesh, List<ResolvedDraw> outDraws)
+	/// The submeshes a depth like draw of `md` resolves per slot: the view's level of a detail
+	/// chain, every submesh when it has per submesh materials, else none (its one material covers
+	/// it).
+	private Span<SubMesh> DepthLikeSubMeshes(RenderRecordContext context, MeshRenderData md, bool chain)
 	{
-		if ((md.Mesh != null) && (md.Mesh.LodCount > 1))
-		{
-			let subMeshes = md.Mesh.SubMeshesForLod(SelectLod(context, md));
-			let stride = (mesh.IndexFormat == .UInt16) ? 2UL : 4UL;
+		if (md.Mesh == null)
+			return default;
+		if (chain)
+			return md.Mesh.SubMeshesForLod(SelectLod(context, md));
+		if (md.SubmeshMaterialCount == 0)
+			return default; // one material covers the mesh
+		return .(md.Mesh.SubMeshes.Ptr, md.Mesh.SubMeshes.Count);
+	}
 
-			for (let sub in subMeshes)
-			{
-				var copy = draw;
-				copy.IndexOffset = mesh.IndexOffset + (uint64)sub.StartIndex * stride;
-				copy.IndexCount = (uint32)sub.IndexCount;
-				outDraws.Add(copy);
-			}
+	/// One range of a mesh's depth like draw: its material and its indices (`Whole`: the mesh's
+	/// whole index range).
+	public struct DepthLikeRange
+	{
+		public Material Material;
+		public uint32 StartIndex;
+		public uint32 IndexCount;
+		public bool Whole;
+
+		public this(Material material, uint32 startIndex, uint32 indexCount, bool whole)
+		{
+			Material = material;
+			StartIndex = startIndex;
+			IndexCount = indexCount;
+			Whole = whole;
+		}
+	}
+
+	/// The ranges of a mesh's depth like draw (the depth prepass, shadows, or the pick), into
+	/// `outRanges`: each of `subMeshes` with its slot's material (`slots[MaterialIndex]`, else
+	/// `slot0`), as the forward pass draws them, so a masked material, an active effect or a
+	/// material's own depth program in any slot casts and prepasses as itself. One whole range
+	/// when there are no submeshes, or, outside a detail chain (`chain`: a level is its own
+	/// ranges), when every range draws alike (one material, or the plain program with no material
+	/// set for all). For `only`, an item of a mesh split by category (CategorySlots), its
+	/// category's ranges alone.
+	public static void DepthLikeRanges(RenderRecordContext context, Material slot0, Material* slots, uint32 slotCount,
+		Span<SubMesh> subMeshes, bool chain, bool instanced, bool pick, List<DepthLikeRange> outRanges,
+		MeshRenderData only = null)
+	{
+		let filter = (only != null) && only.CategorySlots;
+		outRanges.Clear();
+		if (subMeshes.IsEmpty)
+		{
+			outRanges.Add(.(slot0, 0, 0, true));
 			return;
 		}
+		for (let sub in subMeshes)
+		{
+			var material = ((slots != null) && (sub.MaterialIndex >= 0) && ((uint32)sub.MaterialIndex < slotCount))
+				? slots[sub.MaterialIndex]
+				: null;
+			if (material == null)
+				material = slot0; // an unresolved slot draws as slot zero, as the forward does
+			if (filter && (RenderCategories.MeshSlotCategory(material, only.Fade) != only.Category))
+				continue; // another of the mesh's items draws it (in its own pass, or none)
+			outRanges.Add(.(material, (uint32)sub.StartIndex, (uint32)sub.IndexCount, false));
+		}
+		if (chain || filter || outRanges.IsEmpty)
+			return; // a level is its ranges (the buffer holds every level), as is a filtered mesh's
+		// One draw of the whole mesh when every range draws alike: one material, or the plain
+		// program with no material set for all (opaque slots), as most meshes' shadows are.
+		let first = DepthLikeFor(context, outRanges[0].Material, instanced, pick);
+		var alike = true;
+		for (int i = 1; (i < outRanges.Count) && alike; i++)
+		{
+			if (outRanges[i].Material === outRanges[0].Material)
+				continue;
+			let other = DepthLikeFor(context, outRanges[i].Material, instanced, pick);
+			alike = !first.MaterialSet && !other.MaterialSet && (other.Config == first.Config);
+		}
+		if (alike)
+		{
+			let material = outRanges[0].Material;
+			outRanges.Clear();
+			outRanges.Add(.(material, 0, 0, true));
+		}
+	}
 
-		outDraws.Add(draw);
+	/// The depth like pipeline and material set (set two) of a draw of `material` onto `draw`;
+	/// false when no pipeline is had.
+	private bool DepthLikeDraw(RenderRecordContext context, Material material, bool instanced, bool pick,
+		bool skinned, ref ResolvedDraw draw)
+	{
+		let choice = DepthLikeFor(context, material, instanced, pick);
+		var config = choice.Config;
+		if (skinned)
+		{
+			config.VertexLayout = .SkinnedMesh;
+			config.ShaderFlags |= .Skinned;
+		}
+		let plain = instanced ? mShadowPipelineLayoutInstanced : mShadowPipelineLayoutSingle;
+		var layout = plain;
+		IBindGroup materialSet = null;
+		if (choice.MaterialSet && (material != null))
+		{
+			let set2 = mMaterials.GetOrCreateLayout(material);
+			layout = GetOrCreateShadowMaskedLayout(set2, instanced);
+			materialSet = mMaterials.PrepareInstance(InstanceFor(material), set2);
+			if (layout == null)
+			{
+				// No layout over the material's set: the built-in program, without it.
+				layout = plain;
+				materialSet = null;
+				config = pick ? PickConfigFor(context, instanced, false) : ShadowConfigFor(context, instanced, false);
+				if (skinned)
+				{
+					config.VertexLayout = .SkinnedMesh;
+					config.ShaderFlags |= .Skinned;
+				}
+			}
+		}
+		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
+		if (pipeline == null)
+			return false;
+		draw.Pso = pipeline;
+		draw.MaterialSet = materialSet; // set two: the material (a cut-out, wind, or its own program)
+		return true;
+	}
+
+	/// Appends `template` once per range, each with its range's pipeline, material set and
+	/// indices.
+	private void EmitDepthLike(RenderRecordContext context, ResolvedDraw template, GpuMesh mesh,
+		List<DepthLikeRange> ranges, bool instanced, bool pick, bool skinned, List<ResolvedDraw> outDraws)
+	{
+		let stride = (mesh.IndexFormat == .UInt16) ? 2UL : 4UL;
+		for (let range in ranges)
+		{
+			var draw = template;
+			if (!DepthLikeDraw(context, range.Material, instanced, pick, skinned, ref draw))
+				continue;
+			if (!range.Whole)
+			{
+				draw.IndexOffset = mesh.IndexOffset + (uint64)range.StartIndex * stride;
+				draw.IndexCount = range.IndexCount;
+			}
+			outDraws.Add(draw);
+		}
+	}
+
+	/// Each submesh of `md` with its own slot's material, as the forward draws it (a masked slot
+	/// cuts its holes in the prepass and the shadows), in the view's level for a detail chain.
+	private void EmitDepthRanges(RenderRecordContext context, ResolvedDraw template, MeshRenderData md, GpuMesh mesh,
+		bool instanced, bool pick, bool skinned, List<ResolvedDraw> outDraws)
+	{
+		let chain = (md.Mesh != null) && (md.Mesh.LodCount > 1);
+		DepthLikeRanges(context, md.Material, md.SubmeshMaterials, md.SubmeshMaterialCount,
+			DepthLikeSubMeshes(context, md, chain), chain, instanced, pick, mDepthRanges, md);
+		EmitDepthLike(context, template, mesh, mDepthRanges, instanced, pick, skinned, outDraws);
 	}
 
 	/// The forward draw for an instanced set: this set's own persistent instances and the
@@ -2212,46 +2286,12 @@ class MeshRenderer : Renderer
 		// The set's fade and its one pick id ride its InstanceSet (EnsureMultiMeshSet).
 		let viewOffset = shadowViewOffset;
 
-		let choice = DepthLikeFor(context, multiMesh.Material, true, pick);
-		var config = choice.Config;
-		if (skinned)
-		{
-			config.VertexLayout = .SkinnedMesh;
-			config.ShaderFlags |= .Skinned;
-		}
-
-		IBindGroup materialSet = null;
-		var layout = mShadowPipelineLayoutInstanced;
-		if (choice.MaterialSet)
-		{
-			let set2 = mMaterials.GetOrCreateLayout(multiMesh.Material);
-			layout = GetOrCreateShadowMaskedLayout(set2, true);
-			materialSet = mMaterials.PrepareInstance(InstanceFor(multiMesh.Material), set2);
-			if (layout == null)
-			{
-				layout = mShadowPipelineLayoutInstanced;
-				materialSet = null;
-				config = pick ? PickConfigFor(context, true, false) : ShadowConfigFor(context, true, false);
-				if (skinned)
-				{
-					config.VertexLayout = .SkinnedMesh;
-					config.ShaderFlags |= .Skinned;
-				}
-			}
-		}
-
-		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
-		if (pipeline == null)
-			return;
-
 		var draw = ResolvedDraw();
-		draw.Pso = pipeline;
 		draw.ViewSet = mShadowViewBindGroup;
 		draw.ViewOffset = viewOffset;
 		draw.ViewDynamic = true;
 		draw.DrawSet = set.ActiveInstanceBindGroup;
 		draw.DrawDynamic = false;
-		draw.MaterialSet = materialSet;
 		draw.VertexBuffer0 = mesh.VertexBuffer;
 		draw.VertexOffset0 = mesh.VertexOffset;
 		if (skinned)
@@ -2274,7 +2314,7 @@ class MeshRenderer : Renderer
 		draw.IndexCount = mesh.IndexCount;
 		draw.InstanceCount = set.Count;
 
-		EmitDepth(context, draw, multiMesh, mesh, outDraws);
+		EmitDepthRanges(context, draw, multiMesh, mesh, true, pick, skinned, outDraws);
 	}
 
 	// ==================== Pipeline configuration ====================
@@ -2399,19 +2439,21 @@ class MeshRenderer : Renderer
 		bool instanced) => ConfigFor(md, md.Material, context, instanced);
 
 	/// A submesh's pipeline: its slot material's when that differs from the mesh's and draws in
-	/// the same pass (the same colour targets), with the mesh's skinning; else the mesh's own.
-	/// A slot drawing with the mesh's program bound the slot's material group to a layout it
-	/// was not made for: a custom shader on any slot but the first drew wrongly or, on WebGPU,
-	/// not at all.
-	private static PipelineConfig SlotConfigFor(MeshRenderData md, PipelineConfig meshConfig, Material slot,
+	/// the same pass (the same colour targets), or always for an item of a mesh split by
+	/// category (CategorySlots: every slot it draws is of its pass), with the mesh's skinning;
+	/// else the mesh's own. A slot drawing with the mesh's program bound the slot's material
+	/// group to a layout it was not made for: a custom shader on any slot but the first drew
+	/// wrongly or, on WebGPU, not at all.
+	public static PipelineConfig SlotConfigFor(MeshRenderData md, PipelineConfig meshConfig, Material slot,
 		RenderRecordContext context, bool instanced)
 	{
 		if ((slot == null) || (slot === md.Material))
 			return meshConfig;
 		var config = ConfigFor(md, slot, context, instanced);
 		// A slot of another blend class (a transparent slot on an opaque mesh) belongs to another
-		// pass, whose targets this one does not have: it keeps the mesh's pipeline.
-		if (config.ColorTargetCount != meshConfig.ColorTargetCount)
+		// pass, whose targets this one does not have: it keeps the mesh's pipeline. An item of a
+		// mesh split by category draws its own pass's slots alone, each with its own pipeline.
+		if (!md.CategorySlots && (config.ColorTargetCount != meshConfig.ColorTargetCount))
 			return meshConfig;
 		if (meshConfig.VertexLayout == .SkinnedMesh)
 		{
@@ -2423,7 +2465,7 @@ class MeshRenderer : Renderer
 
 	/// The forward configuration of `material` (null: the default opaque one) for one item: a
 	/// slot draws with its own program over the item's per draw state (its fade).
-	private static PipelineConfig ConfigFor(MeshRenderData md, Material material, RenderRecordContext context,
+	public static PipelineConfig ConfigFor(MeshRenderData md, Material material, RenderRecordContext context,
 		bool instanced)
 	{
 		var config = (material != null)

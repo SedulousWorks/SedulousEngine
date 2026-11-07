@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Render;
 using Sedulous.Shaders;
@@ -181,5 +183,118 @@ class WindTests
 			Test.Assert(sway.Config.ShaderFlags.HasFlag(.Wind));
 			Test.Assert(sway.Config.ShaderName == (pick ? "pick_ids" : "shadow_depth"));
 		}
+	}
+
+	/// A tree: bark in slot zero, a masked foliage card in slot one. The prepass and the shadows
+	/// cut the foliage's holes, as the forward does: drawn with slot zero's choice, the cards
+	/// would write their whole quads' depth, and the gaps would show the clear colour. Slots that
+	/// draw alike stay one draw of the whole mesh; a detail chain's level keeps its ranges.
+	[Test]
+	public static void EachSubmeshDrawsItsDepthWithItsOwnSlotsMaterialAMaskedSlotAsACutOut()
+	{
+		let context = RenderRecordContext();
+		let bark = MaterialPresets.CreatePbr("bark");
+		defer delete bark;
+		let leaves = MaterialPresets.CreatePbr("leaves");
+		defer delete leaves;
+		leaves.Pipeline.BlendMode = .Masked;
+		Material[2] slots = .(bark, leaves);
+		SubMesh[2] subs = .(.(0, 300, 0, .Triangles), .(300, 120, 1, .Triangles));
+		let ranges = scope List<MeshRenderer.DepthLikeRange>();
+		for (int pass < 2)
+		{
+			let pick = pass == 1;
+			MeshRenderer.DepthLikeRanges(context, bark, &slots[0], 2, .(&subs[0], 2), false, false, pick, ranges);
+			Test.Assert(ranges.Count == 2);
+			Test.Assert((ranges[0].Material === bark) && (ranges[1].Material === leaves));
+			Test.Assert(!ranges[1].Whole && (ranges[1].StartIndex == 300) && (ranges[1].IndexCount == 120));
+			let cut = MeshRenderer.DepthLikeFor(context, ranges[1].Material, false, pick);
+			Test.Assert(cut.Config.ShaderFlags.HasFlag(.AlphaTest));
+			Test.Assert(cut.MaterialSet);
+		}
+
+		// Two opaque slots draw alike: one draw of the whole mesh, as before.
+		let trim = MaterialPresets.CreatePbr("trim");
+		defer delete trim;
+		Material[2] opaque = .(bark, trim);
+		MeshRenderer.DepthLikeRanges(context, bark, &opaque[0], 2, .(&subs[0], 2), false, true, false, ranges);
+		Test.Assert((ranges.Count == 1) && ranges[0].Whole);
+
+		// One masked material in every slot: one whole draw with it.
+		Material[2] allLeaves = .(leaves, leaves);
+		MeshRenderer.DepthLikeRanges(context, leaves, &allLeaves[0], 2, .(&subs[0], 2), false, false, false, ranges);
+		Test.Assert((ranges.Count == 1) && ranges[0].Whole && (ranges[0].Material === leaves));
+
+		// No submeshes: the whole mesh with slot zero. A slot out of range draws as slot zero.
+		MeshRenderer.DepthLikeRanges(context, leaves, null, 0, default, false, false, false, ranges);
+		Test.Assert((ranges.Count == 1) && ranges[0].Whole && (ranges[0].Material === leaves));
+		subs[1].MaterialIndex = 7;
+		MeshRenderer.DepthLikeRanges(context, bark, &slots[0], 2, .(&subs[0], 2), false, false, false, ranges);
+		Test.Assert((ranges.Count == 1) && (ranges[0].Material === bark), "both bark now: alike");
+
+		// A detail chain's level keeps its ranges even when they draw alike (the buffer holds
+		// every level).
+		MeshRenderer.DepthLikeRanges(context, bark, &opaque[0], 2, .(&subs[0], 2), true, false, false, ranges);
+		Test.Assert(ranges.Count == 2);
+	}
+
+	/// The pane's opaque item: its frame in the prepass and the shadows, never its glass (the
+	/// transparent item draws that, in no depth pass). Unsplit, both draw alike as one.
+	[Test]
+	public static void AnItemOfAMeshSplitByCategoryDrawsItsOwnCategorysRangesAlone()
+	{
+		let context = RenderRecordContext();
+		let frame = MaterialPresets.CreatePbr("frame");
+		defer delete frame;
+		let glass = MaterialPresets.CreatePbr("glass");
+		defer delete glass;
+		glass.Pipeline.BlendMode = .AlphaBlend;
+		Test.Assert(RenderCategories.CategoryForMaterial(frame) == RenderCategories.Opaque);
+		Test.Assert(RenderCategories.CategoryForMaterial(glass) == RenderCategories.Transparent);
+		Test.Assert(RenderCategories.MeshSlotCategory(frame, 0.5f) == RenderCategories.Masked, "fading: out of the prepass");
+		Test.Assert(RenderCategories.MeshSlotCategory(glass, 0.5f) == RenderCategories.Transparent);
+
+		Material[2] slots = .(frame, glass);
+		SubMesh[2] subs = .(.(0, 60, 0, .Triangles), .(60, 12, 1, .Triangles));
+		let item = scope MeshRenderData();
+		item.Material = frame;
+		item.SubmeshMaterials = &slots[0];
+		item.SubmeshMaterialCount = 2;
+		item.Category = RenderCategories.Opaque;
+		item.CategorySlots = true;
+		let ranges = scope List<MeshRenderer.DepthLikeRange>();
+		MeshRenderer.DepthLikeRanges(context, frame, &slots[0], 2, .(&subs[0], 2), false, false, false, ranges, item);
+		Test.Assert((ranges.Count == 1) && (ranges[0].Material === frame));
+		Test.Assert(!ranges[0].Whole && (ranges[0].IndexCount == 60), "the frame's indices, not the whole mesh's");
+
+		item.CategorySlots = false; // not split: the plain program for both, so one whole draw
+		MeshRenderer.DepthLikeRanges(context, frame, &slots[0], 2, .(&subs[0], 2), false, false, false, ranges, item);
+		Test.Assert((ranges.Count == 1) && ranges[0].Whole);
+	}
+
+	/// The pane's transparent item: its glass blends with the transparent pass's one colour
+	/// target, never with the frame's opaque five (the frame is slot zero, the item's material).
+	/// Unsplit, a slot of another pass keeps the mesh's pipeline, as before.
+	[Test]
+	public static void AnItemOfAMeshSplitByCategoryDrawsItsSlotsWithTheirOwnPipelines()
+	{
+		let context = RenderRecordContext();
+		let frame = MaterialPresets.CreatePbr("frame");
+		defer delete frame;
+		let glass = MaterialPresets.CreatePbr("glass");
+		defer delete glass;
+		glass.Pipeline.BlendMode = .AlphaBlend;
+		let item = scope MeshRenderData();
+		item.Material = frame;
+		item.Category = RenderCategories.Transparent;
+		item.CategorySlots = true;
+		let meshConfig = MeshRenderer.ConfigFor(item, frame, context, false);
+		Test.Assert(meshConfig.ColorTargetCount == 5);
+		let own = MeshRenderer.SlotConfigFor(item, meshConfig, glass, context, false);
+		Test.Assert((own.BlendMode == .AlphaBlend) && (own.ColorTargetCount == 1));
+
+		item.CategorySlots = false;
+		let kept = MeshRenderer.SlotConfigFor(item, meshConfig, glass, context, false);
+		Test.Assert(kept.ColorTargetCount == 5);
 	}
 }

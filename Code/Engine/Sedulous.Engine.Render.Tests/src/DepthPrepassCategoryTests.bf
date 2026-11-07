@@ -16,13 +16,13 @@ class DepthPrepassCategoryTests
 	{
 		let plain = MaterialPresets.CreatePbr("plain");
 		defer delete plain;
-		Test.Assert(RenderExtract.CategoryForMaterial(plain) == RenderCategories.Opaque);
+		Test.Assert(RenderCategories.CategoryForMaterial(plain) == RenderCategories.Opaque);
 		let waves = MaterialPresets.CreatePbr("waves");
 		defer delete waves;
 		waves.DepthShaderName.Set("waves.depth");
-		Test.Assert(RenderExtract.CategoryForMaterial(waves) == RenderCategories.Masked);
+		Test.Assert(RenderCategories.CategoryForMaterial(waves) == RenderCategories.Masked);
 		waves.Pipeline.BlendMode = .AlphaBlend;
-		Test.Assert(RenderExtract.CategoryForMaterial(waves) == RenderCategories.Transparent);
-		Test.Assert(RenderExtract.CategoryForMaterial(null) == RenderCategories.Opaque);
+		Test.Assert(RenderCategories.CategoryForMaterial(waves) == RenderCategories.Transparent);
+		Test.Assert(RenderCategories.CategoryForMaterial(null) == RenderCategories.Opaque);
 	}
 }

@@ -586,7 +586,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			rd.WorldCenter = set.WorldCenter;
 			rd.WorldRadius = set.WorldRadius;
 			rd.EntityId = RenderExtract.PackEntity(owner);
-			rd.Category = RenderExtract.CategoryForMaterial(material);
+			rd.Category = RenderCategories.CategoryForMaterial(material);
 			rd.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(mesh),
 				(material != null) ? Internal.UnsafeCastToPtr(material) : null);
 			rd.CastShadows = layer.CastShadows;

@@ -283,6 +283,77 @@ class ExtractSceneTests
 		Test.Assert(snapshot.Items[0].Category == RenderCategories.Transparent);
 	}
 
+	/// A storefront pane, its frame opaque in slot zero and its glass blended in slot one, comes
+	/// as one item per category, on both extraction paths: one item would draw the glass in the
+	/// opaque pass (and its depth in the prepass), hiding the store behind it. A mesh whose slots
+	/// are all opaque stays one item.
+	[Test]
+	public static void AMeshWhoseSlotsDrawInDifferentCategoriesSplitsOneItemPerCategory()
+	{
+		let scene = scope Scene();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let mesh = Primitives.Quad();
+		defer delete mesh;
+		let frameBuilder = scope MaterialBuilder("frame");
+		let frame = frameBuilder..Shader("forward").Build();
+		defer delete frame;
+		let trimBuilder = scope MaterialBuilder("trim");
+		let trim = trimBuilder..Shader("forward").Build();
+		defer delete trim;
+		let glassBuilder = scope MaterialBuilder("glass");
+		let glass = glassBuilder..Shader("forward")..Transparent().Build();
+		defer delete glass;
+
+		let pane = scene.CreateEntity();
+		{
+			let component = meshes.Add(pane);
+			component.Mesh.SetDirect(mesh);
+			component.SetMaterials(scope Material[](frame, glass, trim));
+		}
+		let wall = scene.CreateEntity();
+		{
+			let component = meshes.Add(wall);
+			component.Mesh.SetDirect(mesh);
+			component.SetMaterials(scope Material[](frame, trim));
+		}
+		scene.UpdateTransforms();
+
+		for (int pass < 2)
+		{
+			let snapshot = scope ExtractedScene();
+			let context = scope RenderContext();
+			if (pass == 0)
+				RenderExtract.ExtractSceneInto(scene, snapshot);
+			else
+			{
+				context.BeginFrame(1);
+				RenderExtract.ExtractSceneInto(scene, snapshot, context); // the context's path splits alike
+			}
+			Test.Assert(snapshot.Size == 3, "the pane twice (opaque, transparent), the wall once");
+			int paneOpaque = 0;
+			int paneGlass = 0;
+			int walls = 0;
+			for (let item in snapshot.Items)
+			{
+				let data = (MeshRenderData)item;
+				if (data.SubmeshMaterialCount == 3)
+				{
+					Test.Assert(data.CategorySlots);
+					Test.Assert(data.Material === frame);
+					paneOpaque += (data.Category == RenderCategories.Opaque) ? 1 : 0;
+					paneGlass += (data.Category == RenderCategories.Transparent) ? 1 : 0;
+				}
+				else
+				{
+					Test.Assert(!data.CategorySlots, "every slot opaque: one item, as before");
+					Test.Assert(data.Category == RenderCategories.Opaque);
+					walls++;
+				}
+			}
+			Test.Assert((paneOpaque == 1) && (paneGlass == 1) && (walls == 1));
+		}
+	}
+
 	/// A mesh's fade is carried clamped, and a faded opaque mesh draws Masked: out of the depth
 	/// prepass, whose depth would hide what shows through it. A faded transparent one stays
 	/// Transparent.

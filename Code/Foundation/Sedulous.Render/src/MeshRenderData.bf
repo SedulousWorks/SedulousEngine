@@ -31,6 +31,10 @@ class MeshRenderData : RenderData
 	/// are here each submesh draws with its own; otherwise the one material covers the mesh.
 	public Material* SubmeshMaterials = null;
 	public uint32 SubmeshMaterialCount = 0;
+	/// A multi material mesh whose slots draw in different categories (a pane's glass blended,
+	/// its frame opaque) comes as one item per category: this item draws only the submeshes
+	/// whose material is in its Category (RenderCategories.MeshSlotCategory).
+	public bool CategorySlots = false;
 
 	/// Material properties set for this mesh alone, borrowed from its owner for the frame, and
 	/// their version, which changes whenever they do. A mesh with any draws alone (it never
@@ -60,4 +64,35 @@ class MeshRenderData : RenderData
 	/// True when this is really an instanced SET. The resolve loop sees mesh data and
 	/// branches on this rather than asking what type it is.
 	public bool MultiMesh = false;
+
+	/// Takes every field of `other`, the render data's own with them: another item of the same
+	/// mesh (RenderExtract.SplitMeshByCategory).
+	public void CopyFrom(MeshRenderData other)
+	{
+		Category = other.Category;
+		RendererId = other.RendererId;
+		Kind = other.Kind;
+		WorldCenter = other.WorldCenter;
+		WorldRadius = other.WorldRadius;
+		SortBatchKey = other.SortBatchKey;
+		CastShadows = other.CastShadows;
+		EntityId = other.EntityId;
+		World = other.World;
+		Color = other.Color;
+		Fade = other.Fade;
+		Mesh = other.Mesh;
+		Material = other.Material;
+		SubmeshMaterials = other.SubmeshMaterials;
+		SubmeshMaterialCount = other.SubmeshMaterialCount;
+		CategorySlots = other.CategorySlots;
+		Overrides = other.Overrides;
+		OverrideCount = other.OverrideCount;
+		OverrideVersion = other.OverrideVersion;
+		BoneMatrices = other.BoneMatrices;
+		PreviousBoneMatrices = other.PreviousBoneMatrices;
+		BoneCount = other.BoneCount;
+		LodBias = other.LodBias;
+		ForceLod = other.ForceLod;
+		MultiMesh = other.MultiMesh;
+	}
 }

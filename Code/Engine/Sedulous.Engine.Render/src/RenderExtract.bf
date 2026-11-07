@@ -33,24 +33,39 @@ static class RenderExtract
 	public static uint64 PackEntity(EntityHandle entity) =>
 		EntityTag.Pack(entity.Index, entity.Generation); // the one layout the pick readback decodes
 
-	/// Maps a material's blend preset onto the category that decides dispatch and sort order.
-	public static uint16 CategoryForMaterial(Material material)
+	/// A multi material mesh's items: `data` for its first slot's category and, when its other
+	/// slots draw in other categories (a pane's glass beside its frame), a copy for each from
+	/// `copy` (null: none made), each marked to draw only its own category's submeshes. Returns
+	/// how many copies it made.
+	public static uint32 SplitMeshByCategory(MeshRenderData data, delegate MeshRenderData() copy)
 	{
-		if (material == null)
-			return RenderCategories.Opaque;
-
-		switch (material.Pipeline.BlendMode)
+		if (data.SubmeshMaterials == null)
+			return 0;
+		uint16[4] others = default;
+		uint32 count = 0;
+		for (uint32 i < data.SubmeshMaterialCount)
 		{
-		case .Opaque:
-			// A material whose shader moves its vertices draws its depth with a program of its
-			// own (Material.DepthShaderName), compiled apart from its forward program: the two
-			// need not place a vertex to the last bit, and the forward pass's equal test against
-			// the camera depth prepass would flicker where they differ. Out of the prepass, as a
-			// fading mesh is.
-			return material.DepthShaderName.IsEmpty ? RenderCategories.Opaque : RenderCategories.Masked;
-		case .Masked: return RenderCategories.Masked;
-		default: return RenderCategories.Transparent;
+			let category = RenderCategories.MeshSlotCategory(data.SubmeshMaterials[i], data.Fade);
+			var seen = category == data.Category;
+			for (uint32 k = 0; (k < count) && !seen; k++)
+				seen = others[k] == category;
+			if (!seen && (count < 4))
+				others[count++] = category;
 		}
+		if (count == 0)
+			return 0;
+		data.CategorySlots = true;
+		uint32 made = 0;
+		for (uint32 k < count)
+		{
+			if (let other = copy())
+			{
+				other.CopyFrom(data);
+				other.Category = others[k];
+				made++;
+			}
+		}
+		return made;
 	}
 
 	/// The world space bounding sphere radius of a local box under a transform.
@@ -98,12 +113,10 @@ static class RenderExtract
 		data.Mesh = component.Mesh.Get;
 		data.Material = primary;
 		data.EntityId = PackEntity(entity);
-		data.Category = CategoryForMaterial(primary);
 		data.Fade = Math.Clamp(component.Fade, 0.0f, 1.0f);
 		// A faded opaque mesh leaves the depth prepass, whose depth would hide what the dither
 		// lets through.
-		if ((data.Fade > 0.0f) && (data.Category == RenderCategories.Opaque))
-			data.Category = RenderCategories.Masked;
+		data.Category = RenderCategories.MeshSlotCategory(primary, data.Fade);
 		// The batch key keeps opaque draws contiguous by mesh and material. The renderer id
 		// keeps its default, because the mesh renderer registers first.
 		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),
@@ -125,6 +138,7 @@ static class RenderExtract
 		let multiMaterial = component.MaterialCache.Count > 1;
 		data.SubmeshMaterials = multiMaterial ? component.MaterialCache.Ptr : null;
 		data.SubmeshMaterialCount = multiMaterial ? (uint32)component.MaterialCache.Count : 0;
+		data.CategorySlots = false;
 		// Borrowed for the frame, like the material cache.
 		let overrides = component.MaterialOverrides;
 		let overridden = (overrides != null) && !overrides.IsEmpty;
@@ -152,7 +166,10 @@ static class RenderExtract
 					return;
 
 				if (let data = outScene.Add<MeshRenderData>())
+				{
 					FillMeshRenderData(scene, component, entity, data);
+					SplitMeshByCategory(data, scope () => outScene.Add<MeshRenderData>());
+				}
 			});
 	}
 
@@ -200,6 +217,13 @@ static class RenderExtract
 
 					FillMeshRenderData(scene, component, owners[i], data);
 					context.Items(slot).Add(data);
+					SplitMeshByCategory(data, scope () =>
+						{
+							let other = new:arena MeshRenderData();
+							if (other != null)
+								context.Items(slot).Add(other);
+							return other;
+						});
 				});
 		}
 		else
@@ -219,6 +243,13 @@ static class RenderExtract
 
 				FillMeshRenderData(scene, component, owners[i], data);
 				items.Add(data);
+				SplitMeshByCategory(data, scope () =>
+					{
+						let other = new:arena MeshRenderData();
+						if (other != null)
+							items.Add(other);
+						return other;
+					});
 			}
 		}
 
@@ -366,7 +397,7 @@ static class RenderExtract
 				data.WorldCenter = component.CachedCenter;
 				data.WorldRadius = component.CachedRadius;
 				data.EntityId = PackEntity(entity);
-				data.Category = CategoryForMaterial(primary);
+				data.Category = RenderCategories.CategoryForMaterial(primary);
 				data.SortBatchKey = SortKeys.BatchKey(
 					Internal.UnsafeCastToPtr(component.Mesh.Get),
 					Internal.UnsafeCastToPtr(primary));
