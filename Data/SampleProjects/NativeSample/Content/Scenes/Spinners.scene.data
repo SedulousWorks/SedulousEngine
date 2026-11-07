@@ -833,7 +833,18 @@
 			</object>
 		</object>
 	</array>
-	<array name="systemSettings" count="5">
+	<array name="systemSettings" count="6">
+		<object>
+			<string name="system">nativesample.arena</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">631544298851091997</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<bool name="active">true</bool>
+				<f32 name="timeLimit">30</f32>
+			</object>
+		</object>
 		<object>
 			<string name="system">script</string>
 			<array name="dataVersions" count="1">

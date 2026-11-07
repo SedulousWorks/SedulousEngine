@@ -327,6 +327,12 @@ plugin is loaded) is one more component to all of these and to `component_schema
 id its `[Behaviour]` states, and its public fields, with `Enabled` (whether it runs), read and set
 as a component's, enums by name and entity references by guid. Its private fields are runtime
 state, neither saved nor shown. `behavior_add` and `behavior_set` are for script behaviours alone.
+A native level (a class of the game's own code marked `[Level("<id>")]`, there while its plugin is
+loaded) is a scene settings block instead: `component_schema` with its id gives its fields,
+`active` first (whether the scene runs it), then its public fields. A scene runs the levels whose
+block it holds with `active` true, written in its `systemSettings` with `scene_write`; the editor
+shows the block in the scene's settings when no entity is selected. A scene saved while the plugin
+is not loaded keeps the block as it was written.
 
 **A game's look (render profiles)**: a scene's `environment` and `postprocess` settings take
 their values from the scene itself or from a shared profile, by their `source`: 0 (Scene) uses

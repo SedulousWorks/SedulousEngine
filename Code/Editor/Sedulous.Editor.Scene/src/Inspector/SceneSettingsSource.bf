@@ -62,7 +62,7 @@ class SceneSettingsSource : IPropertySource
 							apply(0, values);
 					});
 				mEdit.Commands.EndGroup();
-			});
+			}, null, IsSystem(settingsType));
 		mOwn.Client = mForwarder;
 		mProfile = new FieldPropertySource(settingsType, 1,
 			new [=this] (object) => mProfileId.IsNil ? null : mEdit.SettingsEditTarget(mType, mProfileId),
@@ -78,6 +78,11 @@ class SceneSettingsSource : IPropertySource
 	}
 
 	public Type SettingsType => mType;
+
+	// A block that is its system itself (a game's level) has defaults, from an instance its
+	// reflected default constructor makes, so its rows revert as a behaviour's do; a block
+	// kept apart from its system has none.
+	private static bool IsSystem(Type settingsType) => settingsType.IsSubtypeOf(typeof(SceneSystem));
 
 	/// The values found again (a block or a profile may have moved), the grid told when one changed.
 	public void Refresh()

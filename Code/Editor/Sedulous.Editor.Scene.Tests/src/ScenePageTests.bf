@@ -1928,6 +1928,59 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	/// A game's level is one more settings block with the scene selected: its section, titled by
+	/// its [DisplayName], shows Active and its public fields (its runtime state not), an edit lands
+	/// in the level itself as one undo step, and its defaults come from an instance its default
+	/// constructor makes, so a field reverts. Edit mode runs none of it.
+	[Test]
+	public static void InspectorALevelIsASettingsBlockItsActiveTogglesAndAFieldReverts()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let level = page.ScenePtr.AddSystem<Siege>();
+		let shown = scope Shown(page);
+		shown.Click(page.Hierarchy.Tree, 0); // the scene's row
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Kind == "Scene");
+		Test.Assert(page.EditContext.FindSystemBySettingsType(typeof(Siege)) === level);
+		let section = inspector.SettingsOf("Siege");
+		Test.Assert(section != null);
+
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		section.GetProperties("", rows);
+		let names = scope String();
+		for (let row in rows)
+			names.AppendF("{} ", row.Name);
+		Test.Assert(names.Contains("Active ") && names.Contains("Waves "), names);
+		Test.Assert(!names.Contains("Clock") && !names.Contains("Started"), names);
+
+		section.BeginEdit("Active");
+		section.CommitEdit("Active", PropertyWrite(Sedulous.GUI.Variant(true)));
+		Test.Assert(level.Active);
+		page.Commands.Undo();
+		Test.Assert(!level.Active, "one step");
+		page.Commands.Redo();
+		Test.Assert(level.Active);
+
+		section.BeginEdit("Waves");
+		section.CommitEdit("Waves", PropertyWrite(Sedulous.GUI.Variant((int64)9)));
+		Test.Assert(level.Waves == 9);
+		var shownDefault = section.GetDefault("Waves", 0);
+		Test.Assert(shownDefault.AsInt == 4, "the default constructed instance's value");
+		shownDefault.Dispose();
+		Test.Assert(section.Revert("Waves"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(level.Waves == 4, "reset to the default");
+		page.Commands.Undo();
+		Test.Assert(level.Waves == 9, "the reset is one step too");
+
+		Test.Assert(!level.Started, "edit mode runs nothing, Active or not");
+		page.OnClose();
+	}
+
 	[Test]
 	public static void InspectorThePhysicsBlocksCollisionGroupsDefaultFirstANewGroupCollidesWithAllAPairBothWaysOnlyTheLastRemoved()
 	{
