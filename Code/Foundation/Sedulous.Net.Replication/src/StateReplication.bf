@@ -529,6 +529,10 @@ class StateReplication : IReplicationModel
 							return;
 						if (!componentManager.HasComponent(entity))
 							return;
+						// A manager with state of its own applies it as it arrives, and nothing
+						// of it was buffered; its type's fields are not the layout it sends.
+						if (componentManager.AsReplicatedStateSource != null)
+							return;
 						if (!ReplicatedLayout.HasInterpolatableField(componentManager.ComponentType))
 							return;
 
