@@ -1,0 +1,19 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Player.WebMain"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.Player" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.WebGPU" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Web" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Web" = "*"

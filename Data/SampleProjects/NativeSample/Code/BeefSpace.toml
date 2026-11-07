@@ -10,6 +10,7 @@ StartupProject = "NativeSampleEditor"
 "NativeSample.Editor" = {Path = "NativeSample.Editor"}
 "NativeSampleEditor" = {Path = ".generated/NativeSampleEditor"}
 "NativeSamplePlayer" = {Path = ".generated/NativeSamplePlayer"}
+"NativeSampleTools" = {Path = ".generated/NativeSampleTools"}
 
 [Configs.Debug.wasm32]
 AllocType = "CRT"

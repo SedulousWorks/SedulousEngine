@@ -3,7 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 
-namespace Sedulous.Engine.Player.Web;
+namespace Sedulous.Engine.Player.WebMain;
 
 /// What the player tells the page, and the browser storage behind the user data directory:
 /// the calls into player.js, linked with --js-library.

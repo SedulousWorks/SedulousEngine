@@ -28,14 +28,32 @@ class ProjectPackage
 	public void PartName(PluginPartKind kind, String outName) => ProjectBuild.PartName(Name, IsGame, kind, outName);
 }
 
-/// A project's own build: the editor and the player linked with the project's packages.
+/// The executables a project's build generates under Code/.generated, each named <Game><Suffix>.
+enum BuildEntry
+{
+	case Editor;
+	/// The desktop player.
+	case Player;
+	/// The browser player, built for wasm32.
+	case PlayerWeb;
+	/// The project's tooling: the MCP host, the cook and the export, one subcommand each.
+	case Tools;
+
+	public const int Count = 4;
+}
+
+/// A project's own build: the editor, the players and the tools linked with the project's
+/// packages.
 ///
 /// A Beef library cannot be loaded beside the engine (each carries a runtime of its own), so a
-/// package's parts are compiled in. The stock editor and player link the engine's plugins; a
-/// project with packages of its own builds <Game>Editor and <Game>Player in its own workspace,
-/// Code/. Each is a one-line Main over the stock startup (EditorMain, DesktopPlayerMain) with the
-/// parts its role loads as dependencies, generated under Code/.generated. They are named without a
-/// dot, so no part (<Game> or <Name>.<Kind>) can take the name.
+/// package's parts are compiled in. The stock executables link the engine's plugins; a project
+/// with packages of its own builds its entries (BuildEntry: <Game>Editor, <Game>Player,
+/// <Game>PlayerWeb and <Game>Tools) in its own workspace, Code/ (the web player in one of its
+/// own, Code/.generated/Web, which nothing desktop-only reaches). Each is a one-line Main over the
+/// stock startup (EditorMain, DesktopPlayerMain, WebPlayerMain; the tools dispatch to McpMain,
+/// CookMain and ExportMain) with the parts its roles load as dependencies, generated under
+/// Code/.generated. They are named without a dot, so no part (<Game> or <Name>.<Kind>) can take
+/// the name.
 ///
 /// The workspace lists only the project's own projects. Everything else (the engine's libraries
 /// and their dependencies) Beef finds through its library registry: Code/BeefConfig.toml, written
@@ -45,6 +63,8 @@ static class ProjectBuild
 {
 	/// Under Code/: the generated entries, and BeefBuild's output.
 	public const String cGeneratedDir = ".generated";
+	/// Under .generated: the web player's own workspace (WebWorkspaceText).
+	public const String cWebWorkspaceDir = "Web";
 	public const String cBuildDir = "build";
 	public const String cSpaceFile = "BeefSpace.toml";
 	/// The per-machine registry file that points Beef at the SDK.
@@ -58,12 +78,33 @@ static class ProjectBuild
 
 	public const String cEditorSuffix = "Editor";
 	public const String cPlayerSuffix = "Player";
-	/// The library each executable's Main calls, and its call.
+	public const String cPlayerWebSuffix = "PlayerWeb";
+	public const String cToolsSuffix = "Tools";
+	/// The library each executable's Main calls.
 	public const String cEditorStartup = "Sedulous.Editor.Main";
 	public const String cPlayerStartup = "Sedulous.Engine.Player.DesktopMain";
+	public const String cPlayerWebStartup = "Sedulous.Engine.Player.WebMain";
+	/// The tools' libraries, one per subcommand of cToolCommands, in its order.
+	public const String[3] cToolStartups = .("Sedulous.Editor.McpMain", "Sedulous.Editor.CookMain", "Sedulous.Editor.ExportMain");
+	/// The first argument <Game>Tools takes, naming what it runs; and each one's call.
+	public const String[3] cToolCommands = .("mcp", "cook", "export");
+	public const String[3] cToolCalls = .("Sedulous.Editor.McpMain.McpMain.Run", "Sedulous.Editor.CookMain.CookMain.Run", "Sedulous.Editor.ExportMain.ExportMain.Run");
+	/// The exit code of <Game>Tools given no subcommand it knows.
+	public const int cToolsUsageExit = 2;
 	/// The stock editor's project, whose post-build steps (naga and tint beside the executable)
 	/// the project's editor takes over.
 	public const String cStockEditorProject = "Code/Tools/Sedulous.Tools.Editor/BeefProj.toml";
+	/// The stock web player's folder and project, whose wasm link (emcc's flags, the shell page,
+	/// and serve.py, the logo and the notices staged beside the page) the project's web player
+	/// takes over.
+	public const String cStockWebDir = "Code/Engine/Sedulous.Engine.Player.Web";
+	public const String cStockWebProject = "Code/Engine/Sedulous.Engine.Player.Web/BeefProj.toml";
+	/// The stock MCP host's project, whose post-build steps (naga and tint, which the export's
+	/// WGSL cook runs from beside the executable) the project's tools take over.
+	public const String cStockToolsProject = "Code/Tools/Sedulous.Tools.Mcp/BeefProj.toml";
+	/// The stock web player's setting each config keeps as the generated project's own: its
+	/// output stays beside the generated project, not in the SDK.
+	public const String cWebOwnKey = "TargetDirectory";
 
 	/// Names an SDK root ahead of any other.
 	public const String cSdkVariable = "SEDULOUS_SDK";
@@ -75,7 +116,8 @@ static class ProjectBuild
 	/// The engine workspace's workspace-level settings per config and platform (Code/BeefSpace.toml
 	/// less every ConfigSelections line, which name the engine's own projects): the wasm32 heap and
 	/// debug checks, the debug info a release drops, and SHIPPING. A project's new workspace starts
-	/// with them; ProjectBuildTests checks they match the engine's.
+	/// with them, and so does the web player's (WebWorkspaceText); ProjectBuildTests checks they
+	/// match the engine's.
 	public const String cWorkspaceConfigs = """
 		[Configs.Debug.wasm32]
 		AllocType = "CRT"
@@ -141,15 +183,28 @@ static class ProjectBuild
 
 	// ---- the SDK ---------------------------------------------------------------------------
 
-	/// Whether `root` is an engine SDK: Code/ with the two startup libraries the entries call
-	/// (and Dependencies/ beside it). A checkout is one; so is a source package of the engine,
-	/// which needs no workspace of its own.
+	/// Whether `root` is an engine SDK: Code/ with the startup libraries the entries call (and
+	/// Dependencies/ beside it). A checkout is one; so is a source package of the engine, which
+	/// needs no workspace of its own.
 	public static bool IsSdk(StringView root)
 	{
 		if (root.IsEmpty)
 			return false;
-		return FileExists(PathJoin(root, "Code/Editor/Sedulous.Editor.Main/BeefProj.toml", .. scope .()))
-			&& FileExists(PathJoin(root, "Code/Engine/Sedulous.Engine.Player.DesktopMain/BeefProj.toml", .. scope .()));
+		if (!HasProject(root, "Code/Editor", cEditorStartup) || !HasProject(root, "Code/Engine", cPlayerStartup)
+			|| !HasProject(root, "Code/Engine", cPlayerWebStartup))
+			return false;
+		for (int i < cToolStartups.Count)
+		{
+			if (!HasProject(root, "Code/Editor", cToolStartups[i]))
+				return false;
+		}
+		return true;
+	}
+
+	/// Whether the project `name` is in `folder` (relative) under `root`.
+	private static bool HasProject(StringView root, StringView folder, StringView name)
+	{
+		return FileExists(PathJoin(root, scope $"{folder}/{name}/BeefProj.toml", .. scope .()));
 	}
 
 	/// The engine SDK a project's build compiles against, absolute: the one SEDULOUS_SDK names,
@@ -225,11 +280,59 @@ static class ProjectBuild
 	/// Code/build/<Config>_<Platform>/<Game>Editor/<Game>Editor.
 	public static void ExecutablePath(StringView projectDir, StringView gameName, bool editor, StringView config, String outPath)
 	{
-		let project = scope $"{gameName}{editor ? cEditorSuffix : cPlayerSuffix}";
+		let project = EntryName(gameName, editor ? BuildEntry.Editor : BuildEntry.Player, .. scope .());
 		let workspace = Directory(projectDir, .. scope .());
 		let build = scope $"{cBuildDir}/{config}_{BuildLayout.HostPlatformName}/{project}";
 		let file = BuildLayout.ExecutableName(project, .. scope .());
 		PathJoin(PathJoin(workspace, build, .. scope .()), file, outPath);
+	}
+
+	/// The web player's workspace: <project>/Code/.generated/Web, with its own BeefSpace.toml and
+	/// BeefConfig.toml.
+	public static void WebWorkspaceDirectory(StringView projectDir, String outDir)
+	{
+		PathJoin(Directory(projectDir, .. scope .()), scope $"{cGeneratedDir}/{cWebWorkspaceDir}", outDir);
+	}
+
+	/// Where BeefBuild puts the project's web player page for `config`: the stock web player's
+	/// TargetDirectory, which the entry keeps as its own (Code/.generated/<Game>PlayerWeb/dist,
+	/// dist-profile for Release), and its TargetName, <Game>PlayerWeb.html.
+	public static void WebPagePath(StringView projectDir, StringView gameName, StringView config, String outPath)
+	{
+		let project = EntryName(gameName, .PlayerWeb, .. scope .());
+		StringView output = (config == "Release") ? "dist-profile" : "dist";
+		let dir = scope $"{cGeneratedDir}/{project}/{output}";
+		PathJoin(PathJoin(Directory(projectDir, .. scope .()), dir, .. scope .()), scope $"{project}.html", outPath);
+	}
+
+	/// The suffix of an entry's name.
+	public static StringView EntrySuffix(BuildEntry entry)
+	{
+		if (entry == .Editor)
+			return cEditorSuffix;
+		if (entry == .Player)
+			return cPlayerSuffix;
+		if (entry == .PlayerWeb)
+			return cPlayerWebSuffix;
+		return cToolsSuffix;
+	}
+
+	/// An entry's project name, its folder's and its executable's: <Game><Suffix>.
+	public static void EntryName(StringView gameName, BuildEntry entry, String outName)
+	{
+		outName.Set(gameName);
+		outName.Append(EntrySuffix(entry));
+	}
+
+	/// Whether an entry links parts of `kind`: those its host's role loads, and for the tools those
+	/// of any of the three roles it runs (MCP, cook, export).
+	public static bool Loads(BuildEntry entry, PluginPartKind kind)
+	{
+		if (entry == .Editor)
+			return HostRole.Editor.Loads(kind);
+		if ((entry == .Player) || (entry == .PlayerWeb))
+			return HostRole.Player.Loads(kind);
+		return HostRole.Mcp.Loads(kind) || HostRole.Cook.Loads(kind) || HostRole.Export.Loads(kind);
 	}
 
 	// ---- packages --------------------------------------------------------------------------
@@ -287,8 +390,9 @@ static class ProjectBuild
 	// ---- generation ------------------------------------------------------------------------
 
 	/// Writes what a build of the project needs in Code/: BeefConfig.toml (the registry pointed
-	/// at `sdk`), BeefSpace.toml (merged, WorkspaceText), a .gitignore when there is none, and the
-	/// entries <Game>Editor and <Game>Player under .generated. A file whose content is unchanged
+	/// at `sdk`), BeefSpace.toml (merged, WorkspaceText), a .gitignore when there is none, and
+	/// every entry (BuildEntry) under .generated, with the web player's own workspace
+	/// (.generated/Web: WebWorkspaceText and its registry file). A file whose content is unchanged
 	/// is left alone, so a build after a generate that changed nothing rebuilds nothing. Refused,
 	/// with why in `outError`, for a problem with a package or an SDK it cannot read.
 	public static Result<void, ErrorCode> Generate(StringView projectDir, ProjectSettings settings, StringView sdk, String outError)
@@ -304,34 +408,69 @@ static class ProjectBuild
 			return .Err(.InvalidArgument);
 		}
 
-		let stockEditor = scope String();
-		if (ReadText(PathJoin(sdk, cStockEditorProject, .. scope .()), stockEditor) case .Err)
-		{
-			outError.Set(scope $"the engine SDK at '{sdk}' has no stock editor project ({cStockEditorProject})");
+		// The configs the entries take over from the stock executables, made to reach the SDK: the
+		// editor's and the tools' post-build steps, the web player's link and what it stages (all
+		// but its output folder). The desktop player has none.
+		let editorConfigs = scope String();
+		let webConfigs = scope String();
+		let toolsConfigs = scope String();
+		let webDir = PathJoin(sdk, cStockWebDir, .. scope .());
+		if ((ReadStockConfigs(sdk, cStockEditorProject, "$(WorkspaceDir)/..", sdk, "", editorConfigs, outError) case .Err)
+			|| (ReadStockConfigs(sdk, cStockWebProject, "$(ProjectDir)", webDir, cWebOwnKey, webConfigs, outError) case .Err)
+			|| (ReadStockConfigs(sdk, cStockToolsProject, "$(WorkspaceDir)/..", sdk, "", toolsConfigs, outError) case .Err))
 			return .Err(.NotFound);
-		}
 
 		let game = GameName(settings.Name, .. scope .());
 		let workspace = Directory(projectDir, .. scope .());
-		let editor = scope String();
-		ExecutableProject(game, true, packages, StockEditorConfigs(stockEditor, sdk, .. scope .()), editor);
-		let player = scope String();
-		ExecutableProject(game, false, packages, "", player);
-
 		let generated = PathJoin(workspace, cGeneratedDir, .. scope .());
-		let editorDir = PathJoin(generated, scope $"{game}{cEditorSuffix}", .. scope .());
-		let playerDir = PathJoin(generated, scope $"{game}{cPlayerSuffix}", .. scope .());
 		if ((WriteWorkspace(projectDir, game, packages) case .Err)
 			|| (WriteIfChanged(PathJoin(workspace, cConfigFile, .. scope .()), ConfigText(sdk, .. scope .())) case .Err)
 			|| (WriteIgnore(workspace) case .Err)
-			|| (WriteIfChanged(PathJoin(editorDir, "BeefProj.toml", .. scope .()), editor) case .Err)
-			|| (WriteIfChanged(PathJoin(editorDir, "src/Program.bf", .. scope .()), ProgramText(game, true, .. scope .())) case .Err)
-			|| (WriteIfChanged(PathJoin(playerDir, "BeefProj.toml", .. scope .()), player) case .Err)
-			|| (WriteIfChanged(PathJoin(playerDir, "src/Program.bf", .. scope .()), ProgramText(game, false, .. scope .())) case .Err))
+			|| (WriteEntry(generated, game, .Editor, packages, editorConfigs) case .Err)
+			|| (WriteEntry(generated, game, .Player, packages, "") case .Err)
+			|| (WriteEntry(generated, game, .PlayerWeb, packages, webConfigs) case .Err)
+			|| (WriteEntry(generated, game, .Tools, packages, toolsConfigs) case .Err)
+			|| (WriteWebWorkspace(projectDir, game, packages, sdk) case .Err))
 		{
 			outError.Set(scope $"could not write the project's workspace in '{workspace}'");
 			return .Err(.Internal);
 		}
+		return .Ok;
+	}
+
+	/// The stock project at `relative` in the SDK, its configs made to reach the SDK (StockConfigs)
+	/// into `outText`. Refused, with why in `outError`, when the SDK has no such project.
+	private static Result<void> ReadStockConfigs(StringView sdk, StringView relative, StringView macro, StringView path, StringView ownKey,
+		String outText, String outError)
+	{
+		let stock = scope String();
+		if (ReadText(PathJoin(sdk, relative, .. scope .()), stock) case .Err)
+		{
+			outError.Set(scope $"the engine SDK at '{sdk}' has no stock project {relative}");
+			return .Err;
+		}
+		StockConfigs(stock, macro, path, ownKey, outText);
+		return .Ok;
+	}
+
+	/// The web player's workspace and the registry file beside it (Beef reads the BeefConfig.toml
+	/// in a workspace's folder), each written when it changed.
+	private static Result<void> WriteWebWorkspace(StringView projectDir, StringView game, List<ProjectPackage> packages, StringView sdk)
+	{
+		let dir = WebWorkspaceDirectory(projectDir, .. scope .());
+		if ((WriteIfChanged(PathJoin(dir, cSpaceFile, .. scope .()), WebWorkspaceText(game, packages, .. scope .())) case .Err)
+			|| (WriteIfChanged(PathJoin(dir, cConfigFile, .. scope .()), ConfigText(sdk, .. scope .())) case .Err))
+			return .Err;
+		return .Ok;
+	}
+
+	/// An entry's project and Main in .generated/<Game><Suffix>, each written when it changed.
+	private static Result<void> WriteEntry(StringView generated, StringView game, BuildEntry entry, List<ProjectPackage> packages, StringView configs)
+	{
+		let dir = PathJoin(generated, EntryName(game, entry, .. scope .()), .. scope .());
+		if ((WriteIfChanged(PathJoin(dir, "BeefProj.toml", .. scope .()), ExecutableProject(game, entry, packages, configs, .. scope .())) case .Err)
+			|| (WriteIfChanged(PathJoin(dir, "src/Program.bf", .. scope .()), ProgramText(game, entry, .. scope .())) case .Err))
+			return .Err;
 		return .Ok;
 	}
 
@@ -384,7 +523,8 @@ static class ProjectBuild
 	}
 
 	/// The projects the workspace must list, and each one's path relative to Code/: every part
-	/// of every package, then the two entries.
+	/// of every package, then the desktop entries (the editor, the player and the tools). The web
+	/// player is not among them: it has a workspace of its own (WebWorkspaceText).
 	public static void WorkspaceProjects(StringView game, List<ProjectPackage> packages, List<String> outNames, List<String> outPaths)
 	{
 		for (let package in packages)
@@ -393,24 +533,55 @@ static class ProjectBuild
 			{
 				let part = package.PartName(kind, .. new .());
 				outNames.Add(part);
-				let path = new String();
-				if (package.IsGame)
-					path.Set(part);
-				else if (PathIsAbsolute(package.Path))
-					PathJoin(package.Directory, part, path);
-				else
-				{
-					path.AppendF("../{}/{}", TrimSlashes(package.Path), part);
-				}
-				path.Replace('\\', '/');
-				outPaths.Add(path);
+				outPaths.Add(PartPath(package, part, 0, .. new .()));
 			}
 		}
-		for (let suffix in StringView[2](cEditorSuffix, cPlayerSuffix))
+		for (let entry in BuildEntry[3](.Editor, .Player, .Tools))
 		{
-			outNames.Add(new $"{game}{suffix}");
-			outPaths.Add(new $"{cGeneratedDir}/{game}{suffix}");
+			let name = EntryName(game, entry, .. new .());
+			outNames.Add(name);
+			outPaths.Add(new $"{cGeneratedDir}/{name}");
 		}
+	}
+
+	/// A part's project folder relative to a workspace `depth` folders below Code/ (0 for Code/
+	/// itself), or absolute for a package the project names by absolute path.
+	private static void PartPath(ProjectPackage package, StringView part, int depth, String outPath)
+	{
+		let up = scope String();
+		for (int i < depth)
+			up.Append("../");
+		if (package.IsGame)
+			outPath.AppendF("{}{}", up, part);
+		else if (PathIsAbsolute(package.Path))
+			PathJoin(package.Directory, part, outPath);
+		else
+			outPath.AppendF("{}../{}/{}", up, TrimSlashes(package.Path), part);
+		outPath.Replace('\\', '/');
+	}
+
+	/// The web player's own workspace, Code/.generated/Web/BeefSpace.toml: the parts a player
+	/// loads and <Game>PlayerWeb, with the engine's configs. A workspace of its own because
+	/// BeefBuild compiles every enabled project of a workspace, and the editor's and the tools'
+	/// dependencies, which the registry brings into the project's workspace, do not compile for
+	/// wasm32; disabling the entries there would not disable what they bring in. Generated whole:
+	/// it is not the user's.
+	public static void WebWorkspaceText(StringView game, List<ProjectPackage> packages, String outText)
+	{
+		let entry = EntryName(game, .PlayerWeb, .. scope .());
+		outText.AppendF("FileVersion = 1\n\n[Workspace]\nStartupProject = \"{}\"\n\n[Projects]\n", entry);
+		for (let package in packages)
+		{
+			for (let kind in package.Parts)
+			{
+				if (!Loads(.PlayerWeb, kind))
+					continue;
+				let part = package.PartName(kind, .. scope .());
+				ProjectLine(part, PartPath(package, part, 2, .. scope .()), outText);
+			}
+		}
+		ProjectLine(entry, scope $"../{entry}", outText);
+		outText.AppendF("\n{}", cWorkspaceConfigs);
 	}
 
 	/// Code/BeefSpace.toml from `existing` (the file as it is; empty for none). The file is the
@@ -537,19 +708,26 @@ static class ProjectBuild
 		outText.AppendF("\"{}\" = {{Path = \"{}\"}}\n", name, path);
 	}
 
-	/// An executable's project: the stock startup and every part its role loads.
-	public static void ExecutableProject(StringView game, bool editor, List<ProjectPackage> packages, StringView configs, String outText)
+	/// An executable's project: the stock startup (the tools' three) and every part its roles load.
+	/// The tools are a console application, as the stock ones are.
+	public static void ExecutableProject(StringView game, BuildEntry entry, List<ProjectPackage> packages, StringView configs, String outText)
 	{
-		let name = scope $"{game}{editor ? cEditorSuffix : cPlayerSuffix}";
-		outText.AppendF("FileVersion = 1\n\n[Project]\nName = \"{}\"\nTargetType = \"BeefGUIApplication\"\n", name);
+		let name = EntryName(game, entry, .. scope .());
+		let targetType = (entry == .Tools) ? "BeefConsoleApplication" : "BeefGUIApplication";
+		outText.AppendF("FileVersion = 1\n\n[Project]\nName = \"{}\"\nTargetType = \"{}\"\n", name, targetType);
 		outText.AppendF("StartupObject = \"{}.Program\"\n\n[Dependencies]\ncorlib = \"*\"\n", name);
-		outText.AppendF("\"{}\" = \"*\"\n", editor ? cEditorStartup : cPlayerStartup);
-		let role = editor ? HostRole.Editor : HostRole.Player;
+		if (entry == .Tools)
+		{
+			for (int i < cToolStartups.Count)
+				outText.AppendF("\"{}\" = \"*\"\n", cToolStartups[i]);
+		}
+		else
+			outText.AppendF("\"{}\" = \"*\"\n", StartupLibrary(entry));
 		for (let package in packages)
 		{
 			for (let kind in package.Parts)
 			{
-				if (role.Loads(kind))
+				if (Loads(entry, kind))
 					outText.AppendF("\"{}\" = \"*\"\n", package.PartName(kind, .. scope .()));
 			}
 		}
@@ -557,24 +735,90 @@ static class ProjectBuild
 			outText.AppendF("\n{}", configs);
 	}
 
-	/// The stock editor's [Configs.*] sections, its post-build steps among them, with the
-	/// workspace-relative paths into the engine made the SDK's absolute path (the entry is
-	/// generated per machine).
-	public static void StockEditorConfigs(StringView stockEditor, StringView sdk, String outText)
+	/// The startup library of an entry other than the tools.
+	private static StringView StartupLibrary(BuildEntry entry)
 	{
-		let index = stockEditor.IndexOf("\n[Configs.");
-		if (index < 0)
-			return;
-		outText.Append(stockEditor.Substring(index + 1));
-		outText.Replace("$(WorkspaceDir)/..", Slashed(sdk, .. scope .()));
+		if (entry == .Editor)
+			return cEditorStartup;
+		if (entry == .PlayerWeb)
+			return cPlayerWebStartup;
+		return cPlayerStartup;
 	}
 
-	/// The executable's Main: one call into the stock startup.
-	public static void ProgramText(StringView game, bool editor, String outText)
+	/// The call the Main of an entry other than the tools makes (cToolCalls holds the tools').
+	private static StringView StartupCall(BuildEntry entry)
 	{
-		let call = editor ? "Sedulous.Editor.Main.EditorMain.Run" : "Sedulous.Engine.Player.DesktopMain.DesktopPlayerMain.Run";
-		outText.AppendF("namespace {}{};\n\nclass Program\n{{\n\tpublic static int Main(System.String[] args) => {}(args);\n}}\n",
-			game, editor ? cEditorSuffix : cPlayerSuffix, call);
+		if (entry == .Editor)
+			return "Sedulous.Editor.Main.EditorMain.Run";
+		if (entry == .PlayerWeb)
+			return "Sedulous.Engine.Player.WebMain.WebPlayerMain.Run";
+		return "Sedulous.Engine.Player.DesktopMain.DesktopPlayerMain.Run";
+	}
+
+	/// A stock project's [Configs.*] sections, its post-build steps and link settings among them,
+	/// with `macro` made `path`, absolute (the entry is generated per machine), so what the stock
+	/// reaches relative to itself the entry reaches in the SDK. A line setting `ownKey` keeps the
+	/// macro: that setting stays the generated project's own.
+	public static void StockConfigs(StringView stockProject, StringView macro, StringView path, StringView ownKey, String outText)
+	{
+		let index = stockProject.IndexOf("\n[Configs.");
+		if (index < 0)
+			return;
+		let slashed = Slashed(path, .. scope .());
+		bool first = true;
+		for (let line in stockProject.Substring(index + 1).Split('\n'))
+		{
+			if (!first)
+				outText.Append('\n');
+			first = false;
+			if (!ownKey.IsEmpty && SetsKey(line, ownKey))
+			{
+				outText.Append(line);
+				continue;
+			}
+			let made = scope String(line);
+			made.Replace(macro, slashed);
+			outText.Append(made);
+		}
+	}
+
+	/// Whether a TOML line sets `key` (`key = ...`).
+	private static bool SetsKey(StringView line, StringView key)
+	{
+		var trimmed = line;
+		trimmed.Trim();
+		if (!trimmed.StartsWith(key))
+			return false;
+		var rest = trimmed.Substring(key.Length);
+		rest.TrimStart();
+		return rest.StartsWith('=');
+	}
+
+	/// The executable's Main: one call into the stock startup. The tools' dispatches on its first
+	/// argument (cToolCommands) and hands the rest to that subcommand's startup; anything else is
+	/// a usage line and cToolsUsageExit.
+	public static void ProgramText(StringView game, BuildEntry entry, String outText)
+	{
+		let name = EntryName(game, entry, .. scope .());
+		if (entry != .Tools)
+		{
+			outText.AppendF("namespace {};\n\nclass Program\n{{\n\tpublic static int Main(System.String[] args) => {}(args);\n}}\n",
+				name, StartupCall(entry));
+			return;
+		}
+		outText.AppendF("namespace {};\n\nclass Program\n{{\n\tpublic static int Main(System.String[] args)\n\t{{\n", name);
+		outText.Append("\t\tif (args.Count > 0)\n\t\t{\n");
+		outText.Append("\t\t\tlet rest = scope System.String[args.Count - 1];\n");
+		outText.Append("\t\t\tfor (int i < rest.Count)\n\t\t\t\trest[i] = args[i + 1];\n");
+		let commands = scope String();
+		for (int i < cToolCommands.Count)
+		{
+			outText.AppendF("\t\t\tif (args[0] == \"{}\")\n\t\t\t\treturn {}(rest);\n", cToolCommands[i], cToolCalls[i]);
+			commands.AppendF("{}{}", (i == 0) ? "" : "|", cToolCommands[i]);
+		}
+		outText.Append("\t\t}\n");
+		outText.AppendF("\t\tSystem.Console.Error.WriteLine(\"usage: {} {} [arguments]\");\n", name, commands);
+		outText.AppendF("\t\treturn {};\n\t}}\n}}\n", cToolsUsageExit);
 	}
 
 	// ---- builds ----------------------------------------------------------------------------

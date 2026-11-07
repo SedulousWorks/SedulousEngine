@@ -7,17 +7,7 @@ StartupObject = "Sedulous.Engine.Player.Web.Program"
 
 [Dependencies]
 corlib = "*"
-"Sedulous.Core" = "*"
-"Sedulous.Engine.Player" = "*"
-"Sedulous.Engine.Project" = "*"
-"Sedulous.Graphics" = "*"
-"Sedulous.Graphics.Gpu" = "*"
-"Sedulous.RHI" = "*"
-"Sedulous.RHI.WebGPU" = "*"
-"Sedulous.Runtime" = "*"
-"Sedulous.Runtime.Web" = "*"
-"Sedulous.Shell" = "*"
-"Sedulous.Shell.Web" = "*"
+"Sedulous.Engine.Player.WebMain" = "*"
 
 # The wasm link, which is the other half of why this is a separate project: none of it is
 # expressible in code.

@@ -7,20 +7,7 @@ StartupObject = "Sedulous.Tools.Mcp.Program"
 
 [Dependencies]
 corlib = "*"
-"Sedulous.Core" = "*"
-"Sedulous.Json" = "*"
-"Sedulous.Mcp" = "*"
-"Sedulous.Mcp.Reflection" = "*"
-"Sedulous.Mcp.Script" = "*"
-"Sedulous.Content" = "*"
-"Sedulous.VFS" = "*"
-"Sedulous.Pipeline.Core" = "*"
-"Sedulous.Pipeline.Importer" = "*"
-"Sedulous.Pipeline.Registration" = "*"
-"Sedulous.Engine.Composition" = "*"
-"Sedulous.Editor.Project" = "*"
-"Sedulous.Engine.Project" = "*"
-"Sedulous.Editor.Mcp" = "*"
+"Sedulous.Editor.McpMain" = "*"
 
 # The WGSL shader cook a Web export runs needs naga and tint BESIDE the executable, where
 # ShaderPackCooker looks for them, exactly as Tools.ShaderPack ships them.
