@@ -69,6 +69,9 @@ class EditorApplication : IApplication
 	private AssetPageServicesSource mPageServices ~ delete _;
 	/// The code pages' languages, read through the window's resources.
 	private CodeLanguages mCodeLanguages ~ delete _;
+	/// Build Project's builds, run on the build lane. Declared before the context, so it outlives
+	/// a build the context's tasks still hold.
+	private ProjectBuildService mBuildService = new .() ~ delete _;
 	// The services the parts share. Declared before the parts, so they outlive them.
 	private EditorContext mContext = new .() ~ delete _;
 	/// Exe-assembled (RegisterEditors).
@@ -1034,8 +1037,8 @@ class EditorApplication : IApplication
 		mNativeCodeDialog = NativeCodeDialog.Open(root, mWindow.LoadMarkup(NativeCodeDialog.cMarkupPath), request);
 	}
 
-	/// Project > Build Project: the project's own editor and player (ProjectBuild.Build) on the
-	/// build lane, BeefBuild's output to the Console.
+	/// Project > Build Project: the project's own editor and player (a BuildJob of BuildTarget.All)
+	/// on the build lane through the build service, BeefBuild's output to the Console as it comes.
 	private void BuildProject()
 	{
 		let project = mSession.Project;
@@ -1060,29 +1063,35 @@ class EditorApplication : IApplication
 			if (ExportPresetsFile.Load(projectFs, presets) case .Err)
 				ExportPresetsFile.Defaults(presets);
 		}
-		let projectDir = new String(project.Directory);
-		let dataRoot = new String(mConfig.DataRoot);
-		let error = new String();
+		// The job takes the settings; the presets are read now, for the configs it builds.
+		let job = new BuildJob(.All, project.Directory, mConfig.DataRoot, settings, presets);
+		delete presets;
+		mBuildService.Track(job);
+		let service = mBuildService;
 		mContext.SetStatus("Building the project...");
 		// Said when it starts, not only when it ends: the first build compiles the engine beside
 		// the project's packages, which takes minutes.
 		mContext.Notify(.Info, "Building the project - this takes a few minutes (see Console).");
+		// The work and the completion each hold a reference: the completion reads the job's error
+		// after the work has gone. Work dropped unrun (the project closed first) ends the job.
+		job.AddRef();
 		mContext.Tasks.Submit("Build Project",
-			new [=settings, =presets, =projectDir, =dataRoot, =error](task) =>
+			new [=job, =service](task) =>
 			{
 				task.SetStep("BeefBuild");
-				return ProjectBuild.Build(projectDir, settings, presets, dataRoot, error);
-			} ~ { delete settings; delete presets; delete projectDir; delete dataRoot; },
-			new [=error, =this](result) => // main thread
+				return service.Run(job, task.Token);
+			} ~ { job.Dropped(); job.ReleaseRef(); },
+			new [=job, =this](result) => // main thread
 			{
 				if (result case .Err)
 				{
+					let error = job.GetError(.. scope .());
 					GlobalLog(.Error, "Build Project: {}", error);
 					mContext.Notify(.Error, scope $"Build Project failed: {error}");
 					return;
 				}
 				mContext.SetStatus("Build Project done: Project > Open With This Build runs it.");
-			} ~ delete error, mContext.BuildLane);
+			} ~ job.ReleaseRef(), mContext.BuildLane);
 	}
 
 	/// Project > Open With This Build: starts the project's own editor (Build Project's, in

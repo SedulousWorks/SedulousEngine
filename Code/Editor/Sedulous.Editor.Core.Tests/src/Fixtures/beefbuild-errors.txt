@@ -1,0 +1,45 @@
+[                              ]ERROR: Expression expected at line 7:17 in /home/user/Games/Spike/Code/Game/src/Other.bf
+  undefinedCall(
+                ^
+*ERROR: Identifier not found at line 8:11 in /home/user/Games/Spike/Code/Game/src/Program.bf
+  let x = Missing.Thing();
+          ^^^^^^^
+ERROR: Unable to implicitly cast 'System.String' to 'int' at line 9:11 in /home/user/Games/Spike/Code/Game/src/Program.bf
+  int y = "text";
+          ^^^^^^
+WARNING(4): BF0168: The variable 'unused' is assigned but its value is never used at line 7:7 in /home/user/Games/Spike/Code/Game/src/Program.bf
+  int unused = 3;
+      ^
+WARNING(5): BF0168: The variable 'x' is assigned but its value is never used at line 8:7 in /home/user/Games/Spike/Code/Game/src/Program.bf
+  let x = Missing.Thing();
+      ^
+WARNING(6): BF0168: The variable 'y' is assigned but its value is never used at line 9:7 in /home/user/Games/Spike/Code/Game/src/Program.bf
+  int y = "text";
+      ^
+**********WARNING(7): BF4200: A variable named 'a' has already been declared in this scope at line 82:62 in /home/user/Sedulous/Code/Foundation/Sedulous.Core/src/Math/Gradient.bf
+  if (GradientBracket(alphas, (stop) => stop.Time, time, var a, var b, var t))
+                                                             ^
+  > Previous declaration at line 60:62 in /home/user/Sedulous/Code/Foundation/Sedulous.Core/src/Math/Gradient.bf
+   if (GradientBracket(colors, (stop) => stop.Time, time, var a, var b, var t))
+                                                              ^
+WARNING(8): BF4200: A variable named 'b' has already been declared in this scope at line 82:69 in /home/user/Sedulous/Code/Foundation/Sedulous.Core/src/Math/Gradient.bf
+  if (GradientBracket(alphas, (stop) => stop.Time, time, var a, var b, var t))
+                                                                    ^
+  > Previous declaration at line 60:69 in /home/user/Sedulous/Code/Foundation/Sedulous.Core/src/Math/Gradient.bf
+   if (GradientBracket(colors, (stop) => stop.Time, time, var a, var b, var t))
+                                                                     ^
+WARNING(9): BF4200: A variable named 't' has already been declared in this scope at line 82:76 in /home/user/Sedulous/Code/Foundation/Sedulous.Core/src/Math/Gradient.bf
+  if (GradientBracket(alphas, (stop) => stop.Time, time, var a, var b, var t))
+                                                                           ^
+  > Previous declaration at line 60:76 in /home/user/Sedulous/Code/Foundation/Sedulous.Core/src/Math/Gradient.bf
+   if (GradientBracket(colors, (stop) => stop.Time, time, var a, var b, var t))
+                                                                            ^
+ERROR: Method 'undefinedCall' does not exist at line 7:3 in /home/user/Games/Spike/Code/Game/src/Other.bf
+  undefinedCall(
+  ^^^^^^^^^^^^^
+*******************
+Beef compilation time: 0.62s
+Frontend time: 0.55s
+Comptime execution time: 0.05s
+Errors: 4. Warnings: 6.
+ERROR-SOFT: Compile failed. Total build time: 0.62s
