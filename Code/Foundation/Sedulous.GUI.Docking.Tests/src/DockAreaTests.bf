@@ -457,6 +457,25 @@ class DockAreaTests
 	}
 
 	[Test]
+	public static void AtADisplayScaleMoveToOpensBelowItsTabNotAtThatPointScaledAgain()
+	{
+		let bed = scope AreaBed();
+		bed.Root.DisplayScale = 1.25f; // world space is device pixels, the root's units times 1.25
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertBeside("profiler", l.CentralStack, .End, 0.4f)).Ok);
+		bed.Lay();
+		let tab = bed.TabOf("profiler");
+		Test.Assert(tab != null);
+		tab.RequestFocus();
+		let menu = bed.Area.MainSpace.OpenMoveToFocused();
+		Test.Assert(menu != null);
+		bed.Lay();
+		let below = tab.ConvertToWorldSpace(.(0.0f, tab.Size.Y));
+		let bounds = menu.ScreenBounds;
+		Test.Assert(Near(bounds.X, below.X, 0.01));
+		Test.Assert(Near(bounds.Y, below.Y, 0.01));
+	}
+
+	[Test]
 	public static void MoveTosFloatAndDockFloatFloatAPanelOverItsStack()
 	{
 		let bed = scope AreaBed();

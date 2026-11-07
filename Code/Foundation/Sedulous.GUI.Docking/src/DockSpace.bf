@@ -161,7 +161,7 @@ class DockStack : TabView
 			if (panel != null)
 			{
 				let moving = scope String(panel);
-				e.Handled = mSpace.OpenMoveTo(moving, tab, e.Position) != null;
+				e.Handled = mSpace.OpenMoveTo(moving, tab, tab.RootNode.ConvertToNodeSpace(e.Position)) != null; // the pointer's world point, in root space
 			}
 			return;
 		}
@@ -627,7 +627,7 @@ class DockSpace : UIWidget, IDockView
 		if ((node == null) || node.Panels.IsEmpty || (tab == null))
 			return null;
 		let panel = scope String(node.Panels[Math.Min((int)node.Active, node.Panels.Count - 1)]);
-		return OpenMoveTo(panel, tab, tab.ConvertToWorldSpace(.(0.0f, tab.Size.Y)));
+		return OpenMoveTo(panel, tab, tab.ConvertToRootSpace(.(0.0f, tab.Size.Y)));
 	}
 
 	/// The menu last opened (open or not); null before one is.
