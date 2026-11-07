@@ -40,7 +40,8 @@ room it splits), the whole-window capture
 menu, over the active page, executed unattended; a disabled action may say why as
 `disabledReason`, in its state and in a refused execute; a dialog an action would open is closed as
 cancelled and named under `suppressedDialogs`, so the action most likely did nothing: use a
-dedicated tool or ask the user) and the scene page's live tools
+dedicated tool or ask the user), the build tools (`project_build`, `build_status`, `build_cancel`,
+`editor_relaunch`: the game's own code, see Writing game code) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, `entity_inspect`,
 `component_set`, `viewport_camera_get`, `viewport_camera_set`, `viewport_frame`, `viewport_screenshot`,
 `viewport_run`, `navigation_bake`, each addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
@@ -506,6 +507,34 @@ window for it (`overridesRender` with `renderWidth`, `renderHeight` and `renderF
 `overridesOrientation` with `orientation`, a phone-facing Web preset's `Landscape` say; a
 choice by its value's name, `Fullscreen`). A template the machine lacks is kept, since presets travel with the
 project and templates do not; the preset's `template` comes back null until one is installed.
+
+## Writing game code
+
+The stock editor does not run a game's own code: the project's own editor does, the one Project >
+Build Project builds and Project > Open With This Build opens. A project gets code from
+`plugin_scaffold` (or Add Native Code). Building and relaunching need the editor host; the loop:
+
+1. Edit `Code/<Game>/src/*.bf` with your own file tools.
+2. `project_build` (`target` `editor`, the default; `all` is Build Project, the players too). The
+   call holds until the build ends (`timeoutSeconds`, 900 by default; the first build compiles the
+   engine and takes minutes) and answers `state` (`succeeded`, `failed`, `cancelled`), the
+   `steps` it ran, `error`, `durationMs`, `executables` and the `diagnostics`: errors first, at most
+   50, each with `severity`, `file` (relative to the project when inside it), `line`, `column`,
+   `code`, `message` and `notes`; `errorCount`, `warningCount` and `diagnosticsOmitted` count them
+   all. A failed build is an answer, not a tool error. Past the timeout it answers the running
+   state with `timedOut`, and the build goes on.
+3. Read the diagnostics, fix, build again. `build_status` follows the latest build (`last`, with
+   BeefBuild's last `tail` lines as `output`, and `stale`: whether the project's editor is missing
+   or older than the code), for one started with `wait: false` or past its timeout; `build_cancel`
+   stops it. A build is refused while another runs, naming it.
+4. `editor_relaunch`: the project's own editor starts on the same project, data root and MCP port,
+   and this editor quits. It is refused until that editor is built and not stale, and while pages
+   have unsaved changes, which it names: save each (`page_open` it, then `action_execute`
+   `file.save`) or pass `discardUnsaved: true` to drop them.
+5. Reconnect a few seconds later (the new editor tries the port for up to 10 s while the old one
+   lets it go), then `host_info`: a new `pid` and `buildStamp`, and `host.buildStale` false.
+6. Verify: `component_schema` for a new component's fields, `scene_validate` on a scene that uses
+   it (no warnings), then `pie_run` to play it.
 
 ## Per tool gotchas
 

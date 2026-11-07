@@ -656,9 +656,9 @@ class EditorApplication : IApplication
 		mcpServices.DropFiles = new (paths, error) => DropFiles(paths, error);
 		// host_info's screen: the manager over the window, or the editor's frame.
 		mcpServices.Screen = new (outScreen) => { outScreen.Append(mWindow.ShowsScreen ? "projectManager" : "editor"); };
-		// The dock's layout tools, over its controller, and the action bridge, its unattended
+		// The dock's layout tools, over its controller, the action bridge, its unattended
 		// calls refusing the window root's modal windows (both outlive the host, which stops
-		// first; a headless run has no root, so nothing to refuse).
+		// first; a headless run has no root, so nothing to refuse), and the build tools.
 		mcpServices.AddTools = new (server) =>
 			{
 				EditorLayoutTools.Register(server, mDock.Controller);
@@ -666,6 +666,7 @@ class EditorApplication : IApplication
 				actionSeams.Context = mContext;
 				actionSeams.Dialogs = (mWindow.Root != null) ? mWindow.Root.EventDispatcher : null;
 				EditorActionTools.Register(server, actionSeams);
+				EditorBuildTools.Register(server, BuildToolServices());
 			};
 		mMcp = new EditorMcpService(mcpServices);
 
@@ -1049,54 +1050,55 @@ class EditorApplication : IApplication
 			mContext.Notify(.Info, "The build lane is busy: build the project once it is done.");
 			return;
 		}
-		// The job's own copies: the session's settings and presets change on this thread meanwhile.
-		let settings = new Sedulous.Engine.Project.ProjectSettings();
-		if (Sedulous.Engine.Project.ProjectManifest.Copy(project.Settings, settings) case .Err)
+		let error = scope String();
+		let job = EditorBuildTools.StartBuild(mContext, mBuildService, project, mConfig.DataRoot, .All, error);
+		if (job == null)
 		{
-			delete settings;
-			mContext.Notify(.Error, "Build Project: the project's settings did not copy.");
+			mContext.Notify(.Error, scope $"Build Project: {error}.");
 			return;
 		}
-		let presets = new ExportPresetSet();
-		{
-			let projectFs = scope Sedulous.VFS.NativeFileSystem(project.Directory);
-			if (ExportPresetsFile.Load(projectFs, presets) case .Err)
-				ExportPresetsFile.Defaults(presets);
-		}
-		// The job takes the settings; the presets are read now, for the configs it builds.
-		let job = new BuildJob(.All, project.Directory, mConfig.DataRoot, settings, presets);
-		delete presets;
-		mBuildService.Track(job);
-		let service = mBuildService;
+		job.ReleaseRef();
 		mContext.SetStatus("Building the project...");
 		// Said when it starts, not only when it ends: the first build compiles the engine beside
 		// the project's packages, which takes minutes.
 		mContext.Notify(.Info, "Building the project - this takes a few minutes (see Console).");
-		// The work and the completion each hold a reference: the completion reads the job's error
-		// after the work has gone. Work dropped unrun (the project closed first) ends the job.
-		job.AddRef();
-		mContext.Tasks.Submit("Build Project",
-			new [=job, =service](task) =>
+	}
+
+	/// What the build tools work through: the build service, the open project, the pages'
+	/// unsaved work, this host's port, and the launch and exit Open With This Build makes.
+	private BuildToolSeams BuildToolServices()
+	{
+		let seams = new BuildToolSeams();
+		seams.Service = mBuildService;
+		seams.DataRoot.Set(mConfig.DataRoot);
+		seams.Start = new (target, outError) =>
 			{
-				task.SetStep("BeefBuild");
-				return service.Run(job, task.Token);
-			} ~ { job.Dropped(); job.ReleaseRef(); },
-			new [=job, =this](result) => // main thread
-			{
-				if (result case .Err)
+				let project = mSession.Project;
+				if (project == null)
 				{
-					let error = job.GetError(.. scope .());
-					GlobalLog(.Error, "Build Project: {}", error);
-					mContext.Notify(.Error, scope $"Build Project failed: {error}");
-					return;
+					outError.Append("no project is open");
+					return null;
 				}
-				mContext.SetStatus("Build Project done: Project > Open With This Build runs it.");
-			} ~ job.ReleaseRef(), mContext.BuildLane);
+				return EditorBuildTools.StartBuild(mContext, mBuildService, project, mConfig.DataRoot, target, outError);
+			};
+		seams.Project = new () => mSession.Project;
+		seams.UnsavedWork = new (outLines) => { mPages.UnsavedWork(outLines); };
+		seams.McpPort = new () => (mMcp != null) ? mMcp.Port : 0;
+		seams.Launch = new (executable, arguments) => Sedulous.Core.Process.Start(executable, arguments);
+		// The agent chose to drop what is unsaved, or nothing is: no prompt.
+		seams.Exit = new () =>
+			{
+				if (mHost != null)
+					mHost.RequestExit();
+			};
+		return seams;
 	}
 
 	/// Project > Open With This Build: starts the project's own editor (Build Project's, in
 	/// Debug) on the project and this editor's data root, then this one exits the usual way,
-	/// asking about unsaved pages.
+	/// asking about unsaved pages. When this editor serves MCP, the new one serves it on the same
+	/// port, so a connected agent reconnects there; otherwise the command line's MCP options
+	/// pass on as given.
 	private void OpenWithThisBuild()
 	{
 		let project = mSession.Project;
@@ -1109,7 +1111,15 @@ class EditorApplication : IApplication
 			mContext.Notify(.Error, "Build Project first: the project's own editor is not built.");
 			return;
 		}
-		if (!Sedulous.Core.Process.Start(editor, scope StringView[]("--project", project.Directory, "--data-root", mConfig.DataRoot)))
+		let listening = (mMcp != null) && mMcp.IsRunning;
+		let commandLine = scope List<String>();
+		defer { ClearAndDeleteItems!(commandLine); }
+		EditorBuildTools.RelaunchArguments(project.Directory, mConfig.DataRoot, listening || mConfig.McpEnabled,
+			listening ? (uint32)mMcp.Port : mConfig.McpPort, commandLine);
+		let arguments = scope StringView[commandLine.Count];
+		for (int i < commandLine.Count)
+			arguments[i] = commandLine[i];
+		if (!Sedulous.Core.Process.Start(editor, arguments))
 		{
 			mContext.Notify(.Error, scope $"Could not start '{editor}'.");
 			return;

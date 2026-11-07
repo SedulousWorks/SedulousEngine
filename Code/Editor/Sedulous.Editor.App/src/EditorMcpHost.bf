@@ -85,6 +85,9 @@ class EditorMcpHost
 				{
 					outState.Set("projectName", JsonValue.MakeString(project.Name));
 					outState.Set("projectDirectory", JsonValue.MakeString(project.Directory));
+					// Whether the project's own editor lags its code: a reconnected agent sees at
+					// once that it runs the new build.
+					EditorBuildTools.ReportBuild(project, outState);
 				}
 			});
 		mServer.SetToolObserver(new (report) =>

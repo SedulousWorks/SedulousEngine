@@ -480,6 +480,15 @@ class EditorPages
 			outLines.Add(new String()..AppendF("{}, in {}", work, page.Title));
 	}
 
+	/// What is unsaved on every open page, as the exit prompt lists it (UnsavedLines), into
+	/// `outLines` (the caller's, and so are the lines): what an agent's relaunch names when it
+	/// refuses.
+	public void UnsavedWork(List<String> outLines)
+	{
+		for (let open in mOpen)
+			UnsavedLines(open.Page, outLines);
+	}
+
 	/// The prompt's words for `lines`: one in a sentence, several listed.
 	private static void UnsavedText(List<String> lines, String outText)
 	{

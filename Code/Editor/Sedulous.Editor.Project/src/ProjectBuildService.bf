@@ -66,6 +66,9 @@ class BuildJob : RefCounted
 	/// Unix seconds, 0 until it starts or ends.
 	private int64 mStartTime;
 	private int64 mEndTime;
+	/// The same on the stopwatch, in microseconds, for its duration.
+	private int64 mStartMicros;
+	private int64 mEndMicros;
 	private BuildDiagnostics mDiagnostics = new .() ~ delete _;
 	/// The last cOutputLines lines, their progress bar taken off, blank ones left out.
 	private List<String> mOutput = new .() ~ DeleteContainerAndItems!(_);
@@ -107,6 +110,11 @@ class BuildJob : RefCounted
 		mStepConfigs.Add(new .(config));
 	}
 
+	/// The service's number for it, from 1, given when it is first tracked (main thread, before
+	/// it runs); 0 before.
+	private int mId;
+
+	public int Id => mId;
 	public BuildTarget Target => mTarget;
 	public StringView ProjectDirectory => mProjectDir;
 	public StringView DataRoot => mDataRoot;
@@ -150,6 +158,22 @@ class BuildJob : RefCounted
 		{
 			using (mLock.Enter())
 				return mEndTime;
+		}
+	}
+
+	/// How long it has run, in milliseconds: to its end once it has ended, to now while it runs;
+	/// 0 before it starts.
+	public int64 DurationMs
+	{
+		get
+		{
+			using (mLock.Enter())
+			{
+				if (mStartMicros == 0)
+					return 0;
+				let end = (mEndMicros != 0) ? mEndMicros : System.Diagnostics.Stopwatch.GetTimestamp();
+				return (end - mStartMicros) / 1000;
+			}
 		}
 	}
 
@@ -243,6 +267,7 @@ class BuildJob : RefCounted
 			mState = .Cancelled;
 			mError.Set("cancelled");
 			mEndTime = GetUnixTime();
+			mEndMicros = System.Diagnostics.Stopwatch.GetTimestamp();
 		}
 	}
 
@@ -254,6 +279,7 @@ class BuildJob : RefCounted
 		{
 			mState = .Generating;
 			mStartTime = GetUnixTime();
+			mStartMicros = System.Diagnostics.Stopwatch.GetTimestamp();
 		}
 	}
 
@@ -328,6 +354,7 @@ class BuildJob : RefCounted
 			mState = state;
 			mError.Set(error);
 			mEndTime = GetUnixTime();
+			mEndMicros = System.Diagnostics.Stopwatch.GetTimestamp();
 		}
 	}
 }
@@ -350,6 +377,8 @@ class ProjectBuildService
 	private Monitor mLock = new .() ~ delete _;
 	/// The job last handed to Track or Run, one reference of ours.
 	private BuildJob mLatest;
+	/// The next job's Id.
+	private int mNextId = 1;
 
 	/// `runner` runs BeefBuild (TAKES OWNERSHIP; null: Process.RunStreaming); `beefBuild`, when
 	/// given, is the BeefBuild every job runs, without FindBeefBuild.
@@ -367,12 +396,15 @@ class ProjectBuildService
 			mLatest.ReleaseRef();
 	}
 
-	/// Makes `job` the latest, the one status reads see, before it runs (when it is queued).
+	/// Makes `job` the latest, the one status reads see, before it runs (when it is queued), and
+	/// numbers it when it has no Id yet.
 	public void Track(BuildJob job)
 	{
 		job.AddRef();
 		using (mLock.Enter())
 		{
+			if (job.[Friend]mId == 0)
+				job.[Friend]mId = mNextId++;
 			if (mLatest != null)
 				mLatest.ReleaseRef();
 			mLatest = job;
