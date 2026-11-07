@@ -50,8 +50,11 @@ namespace Sedulous.Editor.App;
 /// its commit puts the originals back and hands the owner the write to apply as one change, the
 /// owner's undo (a component's through its edit context, a transform's through its command).
 /// Defaults are the type's, from an instance its default constructor makes. An object type's value
-/// is the object itself at its address (a settings block a system keeps as a class); a field that
-/// holds one is the reference to it.
+/// is the object itself at its address (a settings block a system keeps as a class, a behaviour a
+/// manager keeps for an entity); a field that holds one is the reference to it. An object type has
+/// defaults only when its owner asks for them (objectDefaults: a behaviour, whose default
+/// constructed instance is what Add Component makes): an asset or a settings object has none, so
+/// its page offers no revert.
 class FieldPropertySource : IPropertySource
 {
 	/// Object `object`'s live value; null when it is gone.
@@ -176,8 +179,11 @@ class FieldPropertySource : IPropertySource
 	private delegate void(StringView path) mOnCommitted = null ~ delete _;
 	// Not owned: what a reference written binds through; null binds it on its next resolve.
 	private ResourceManager mResources;
-	// The type's defaults; null when its default constructor is not reflected.
+	// The type's defaults; null when its default constructor is not reflected, or the type is an
+	// object type and its defaults were not asked for. OWNED: a value's bytes, or an object
+	// (mDefaultIsObject) deleted as one.
 	private void* mDefault = null;
+	private bool mDefaultIsObject = false;
 	private String mEditPath = new .() ~ delete _;
 	// Each object's value at mEditPath when its edit began, for a cancel and the commit.
 	private List<Sedulous.GUI.Variant> mOriginals = new .() ~ DisposeAll(_);
@@ -185,8 +191,11 @@ class FieldPropertySource : IPropertySource
 	private List<String> mSeen = new .() ~ DeleteContainerAndItems!(_);
 
 	/// `count` objects of `type`, each found by `resolve` and changed through `commit` (both
-	/// taken); a reference written binds through `resources` (null: on its next resolve).
-	public this(Type type, int count, Resolver resolve, Committer commit, ResourceManager resources = null)
+	/// taken); a reference written binds through `resources` (null: on its next resolve). An object
+	/// type's defaults come from an instance of it made by its reflected default constructor when
+	/// `objectDefaults` asks for them; a value type's always do.
+	public this(Type type, int count, Resolver resolve, Committer commit, ResourceManager resources = null,
+		bool objectDefaults = false)
 	{
 		mType = type;
 		mCount = count;
@@ -195,15 +204,33 @@ class FieldPropertySource : IPropertySource
 		mResources = resources;
 		if (let instance = type as TypeInstance)
 		{
-			if (instance.CreateValue() case .Ok(let made))
+			// CreateValue makes value types alone; a class is made as an object, its fields at
+			// offsets from its own address as the live one's are.
+			if (type.IsObject)
+			{
+				if (objectDefaults && !type.IsAbstract && (instance.CreateObject() case .Ok(let made)))
+				{
+					mDefault = Internal.UnsafeCastToPtr(made);
+					mDefaultIsObject = true;
+				}
+			}
+			else if (instance.CreateValue() case .Ok(let made))
+			{
 				mDefault = made;
+			}
 		}
 	}
 
 	public ~this()
 	{
+		// No early return: the fields' own destructors run after this body, and a return skips them.
 		if (mDefault != null)
-			delete mDefault;
+		{
+			if (mDefaultIsObject)
+				delete Internal.UnsafeCastToObject(mDefault);
+			else
+				delete mDefault;
+		}
 	}
 
 	public Type ValueType => mType;

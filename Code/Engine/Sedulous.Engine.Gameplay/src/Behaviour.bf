@@ -17,6 +17,11 @@ namespace Sedulous.Engine.Gameplay;
 ///
 /// The constructor and the field initialisers must not touch the scene: a default constructed
 /// instance is also where the inspector reads a field's default, and it has no scene.
+///
+/// Its own fields are reflected, as [Behaviour] reflects a subclass's: Enabled is data the tools
+/// show and set like a subclass's public fields, and the private ones stay out of them as every
+/// private field does.
+[Reflect(.NonStaticFields)]
 abstract class Behaviour
 {
 	/// BORROWED: the scene outlives its managers, and so their instances.

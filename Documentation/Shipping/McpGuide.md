@@ -322,6 +322,11 @@ Each call is one undo step, the page dirty after and nothing saved; an entity is
 name or slash path; each answers the entity as `entity_inspect` shows it, a Script component's
 `behaviors` included. The user watches the level take shape and can undo any step; `file.save`
 (action_execute) keeps it. XML suits a whole level written at once, these tools an edit.
+A native behaviour (a class of the game's own code marked `[Behaviour("<id>")]`, there while its
+plugin is loaded) is one more component to all of these and to `component_schema`: its type is the
+id its `[Behaviour]` states, and its public fields, with `Enabled` (whether it runs), read and set
+as a component's, enums by name and entity references by guid. Its private fields are runtime
+state, neither saved nor shown. `behavior_add` and `behavior_set` are for script behaviours alone.
 
 **A game's look (render profiles)**: a scene's `environment` and `postprocess` settings take
 their values from the scene itself or from a shared profile, by their `source`: 0 (Scene) uses

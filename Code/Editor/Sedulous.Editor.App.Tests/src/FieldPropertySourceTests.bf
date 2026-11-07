@@ -143,6 +143,24 @@ class FieldSourceBudget
 	public int32 GetTwice() => mBudget * 2;
 }
 
+/// A base whose own field the class deriving from it shows, as a behaviour shows Behaviour's
+/// Enabled.
+[Reflect(.NonStaticFields)]
+abstract class FieldSourceBase
+{
+	public bool Enabled = true;
+}
+
+/// A class a manager keeps for an entity, as a behaviour is kept: its defaults are an instance its
+/// reflected default constructor makes.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor), AlwaysInclude(AssumeInstantiated=true)]
+class FieldSourceDefaults : FieldSourceBase
+{
+	public float Rate = 1.5f;
+	public String Label = new .("start") ~ delete _;
+	public int32 Mode = 2;
+}
+
 /// The field source's colours kept as four floats, its lists of named ids, the private fields an
 /// inspector is given and the computed rows.
 class FieldPropertySourceTests
@@ -489,5 +507,52 @@ class FieldPropertySourceTests
 		source.Refresh();
 		Test.Assert(counter.Properties == 4, "Refresh tells it every time");
 		Test.Assert(!source.TakeChanges(), "nothing moved since the last look");
+	}
+
+	/// An object type's defaults when its owner asks for them (the scene inspector, for a
+	/// behaviour): an instance made by its reflected default constructor, its base's fields
+	/// among them, which Reset writes back over the live values. Not asked for (an asset page, a
+	/// settings object), it has none and nothing reverts, as before.
+	[Test]
+	public static void AnObjectTypesDefaultsAreAnInstanceItMakesWhenAskedFor()
+	{
+		let live = scope FieldSourceDefaults();
+		live.Rate = 4.0f;
+		live.Label.Set("moved");
+		live.Mode = 5;
+		live.Enabled = false;
+		let address = Internal.UnsafeCastToPtr(live);
+		let source = scope FieldPropertySource(typeof(FieldSourceDefaults), 1, new (object) => address,
+			new (apply) => { apply(0, address); }, null, true);
+
+		var rate = source.GetDefault("Rate", 0);
+		Test.Assert(Math.Abs(rate.AsFloat - 1.5) < 1e-6, "the initialiser's value");
+		rate.Dispose();
+		var label = source.GetDefault("Label", 0);
+		Test.Assert(label.AsString == "start");
+		label.Dispose();
+		var enabled = source.GetDefault("Enabled", 0);
+		Test.Assert(enabled.AsBool, "the base's field, from the same instance");
+		enabled.Dispose();
+		let revertText = source.GetRevertText("Rate", .. scope String());
+		Test.Assert(!revertText.IsEmpty);
+
+		Test.Assert(source.Revert(""), "the live values differ from the defaults");
+		Test.Assert(live.Rate == 1.5f);
+		Test.Assert(live.Label == "start");
+		Test.Assert(live.Mode == 2);
+		Test.Assert(live.Enabled, "the base's field reverted too");
+		Test.Assert(!source.Revert(""), "nothing differs any more");
+
+		// Not asked for: no defaults, so nothing to revert to.
+		live.Rate = 4.0f;
+		let plain = scope FieldPropertySource(typeof(FieldSourceDefaults), 1, new (object) => address,
+			new (apply) => { apply(0, address); });
+		var none = plain.GetDefault("Rate", 0);
+		Test.Assert(none.IsEmpty);
+		none.Dispose();
+		Test.Assert(!plain.Revert("Rate"));
+		Test.Assert(live.Rate == 4.0f);
+		Test.Assert(plain.GetRevertText("Rate", .. scope String()).IsEmpty);
 	}
 }

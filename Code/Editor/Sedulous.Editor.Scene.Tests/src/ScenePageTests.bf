@@ -1346,6 +1346,68 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	/// A behaviour in the inspector as one more component: Add Component offers it by its class
+	/// (titled by its [DisplayName]), its section shows its fields and the base's Enabled, an edit
+	/// is one undo step though the read that keeps it replaces the instance, and its defaults come
+	/// from an instance its default constructor makes, so Reset puts a field back.
+	[Test]
+	public static void InspectorABehaviourIsAddedEditedAndResetAsAComponent()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let hoppers = page.ScenePtr.AddSystem<Sedulous.Engine.Gameplay.BehaviourManager<Hopper>>();
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Hopper Live()
+		{
+			return hoppers.Get(page.ScenePtr.FindEntity(bed.Crate));
+		}
+
+		let addable = scope List<String>();
+		defer { ClearAndDeleteItems!(addable); }
+		inspector.AddableComponents(addable);
+		var offered = false;
+		for (let name in addable)
+			offered = offered || (name == "Hopper");
+		Test.Assert(offered, "Add Component offers it");
+		Test.Assert(inspector.AddComponent("Hopper"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(Live() != null);
+		Test.Assert(TitlesAre(inspector, "Entity | Transform | Hopper"));
+
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		inspector.Sections.GetProperties("", rows);
+		let names = scope String();
+		for (let row in rows)
+		{
+			if (row.Category == "Hopper")
+				names.AppendF("{} ", row.DisplayName);
+		}
+		Test.Assert(names.Contains("Height ") && names.Contains("Mode ") && names.Contains("Target ") && names.Contains("Label ") && names.Contains("Enabled "), names);
+		Test.Assert(!names.Contains("Air"), names);
+
+		let height = inspector.PathOf("Hopper", "Height", .. scope String());
+		Commit(page, bed, height, 4.0);
+		Test.Assert(Live().Height == 4.0f);
+		var shown = inspector.Sections.GetDefault(height, 0);
+		Test.Assert(Math.Abs(shown.AsFloat - 1.5) < 1e-6, "the default constructed instance's value");
+		shown.Dispose();
+		page.Commands.Undo();
+		Test.Assert(Live().Height == 1.5f, "one step");
+		page.Commands.Redo();
+		Test.Assert(Live().Height == 4.0f);
+
+		Test.Assert(inspector.Sections.Revert(height));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(Live().Height == 1.5f, "reset to the default");
+		page.Commands.Undo();
+		Test.Assert(Live().Height == 4.0f, "the reset is one step too");
+		page.OnClose();
+	}
+
 	/// A frame where nothing moved costs the grid no layout; a value moved from outside reaches it.
 	[Test]
 	public static void InspectorAFrameWhereNothingMovedCostsTheGridNoLayoutAValueMovedFromOutsideReachesIt()

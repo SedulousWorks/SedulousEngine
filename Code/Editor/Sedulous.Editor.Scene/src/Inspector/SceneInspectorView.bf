@@ -941,10 +941,12 @@ class SceneInspectorView
 				section.Key.AppendF("c{}", mComponents.Count);
 				TitleOf(type, section.Title);
 				section.Type = type;
+				// A behaviour is a class: its defaults are an instance made as Add Component makes
+				// one, so Reset and the changed marks work on it as on a struct component.
 				section.Source = new FieldPropertySource(type, mEntities.Count,
 					new [=this, =type] (object) => ComponentAddress(type, object),
 					new [=this, =type] (apply) => { CommitComponent(type, apply); },
-					mServices.Resources);
+					mServices.Resources, true);
 				mSections.Add(section.Key, section.Title, section.Source);
 				section.Extras = BuildExtras(type, section.Key, section.Title, true);
 				mComponents.Add(section);

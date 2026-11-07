@@ -54,10 +54,15 @@ static class RawFieldAccess
 	}
 
 	/// Writes a Variant of the field's exact type.
+	///
+	/// The target is named by the type that DECLARES the field: reflection's write refuses any
+	/// other, and an inherited field (a behaviour's Enabled, declared by Behaviour) sits at its
+	/// offset from the same address.
 	public static Result<void> Write(FieldInfo field, void* instance, Type instanceType,
 		Variant value)
 	{
-		let target = Variant.CreateReference(instanceType, instance);
+		let declaring = (field.DeclaringType != null) ? (Type)field.DeclaringType : instanceType;
+		let target = Variant.CreateReference(declaring, instance);
 		if (field.SetValue(target, value) case .Err)
 			return .Err;
 		return .Ok;
