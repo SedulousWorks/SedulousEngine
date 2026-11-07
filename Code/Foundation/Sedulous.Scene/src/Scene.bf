@@ -95,6 +95,9 @@ class Scene : IScriptWeaklyHeld
 		mName.Set(name);
 	}
 
+	/// Deletes the systems newest first, each taken out of the lookups before it goes, while
+	/// the scene is still whole: a system's teardown (a behaviour's OnDestroy) may still
+	/// reach the scene and the systems older than it, never one already deleted.
 	public ~this()
 	{
 		// What scripts hold reads as gone from here, before any of the scene is torn down.
@@ -103,6 +106,22 @@ class Scene : IScriptWeaklyHeld
 		// it was given (a test's, a tool's), and has nothing queued on it by then.
 		if (mRunFlushQueued && (mRun != null))
 			mRun.Mutations.Cancel(this);
+
+		while (!mSystems.IsEmpty)
+		{
+			let system = mSystems.PopBack();
+			for (let pair in mSystemsByType)
+			{
+				if (pair.value === system)
+				{
+					@pair.Remove();
+					break;
+				}
+			}
+			mSortedSystems.Remove(system);
+			mManagersByComponent.Clear();
+			delete system;
+		}
 	}
 
 	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
