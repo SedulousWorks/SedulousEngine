@@ -409,6 +409,7 @@ class EditorMcpServiceTests
 		Test.Assert(PortIsFree(port));
 	}
 
+	/// The preference's port, taken, is reported at once: no retry.
 	[Test]
 	public static void APortInUseIsReported()
 	{
@@ -418,11 +419,12 @@ class EditorMcpServiceTests
 		var holder = new Sedulous.Net.TcpListener(0, true); // another editor, as far as this one knows
 		Test.Assert(holder.IsOpen);
 		let port = holder.BoundPort;
+		bench.Preference.Port = port;
 		let services = bench.Services();
-		services.Port = port;
 		let service = scope EditorMcpService(services);
 		Test.Assert(!service.Start(bench.Project));
 		Test.Assert(!service.IsRunning);
+		Test.Assert(!service.IsRetrying);
 		Test.Assert(service.Host == null);
 		// Said in the log, with the way out; the status line does not claim a host.
 		Test.Assert(bench.Logged(.Warning, scope $"could not listen on 127.0.0.1:{port}"));
@@ -431,6 +433,90 @@ class EditorMcpServiceTests
 		DeleteAndNullify!(holder);
 		Test.Assert(service.Start(bench.Project));
 		Test.Assert(service.Host.BoundPort == port);
+	}
+
+	/// The retry policy, over times given: a try due every interval from the first refusal, the
+	/// last refusal past the window ending it, a window of none never retrying, and End stopping it.
+	[Test]
+	public static void ARefusedBindIsTriedEveryIntervalUntilTheWindowPasses()
+	{
+		var retry = BindRetry();
+		Test.Assert(!retry.IsActive);
+		Test.Assert(retry.Begin(1000, 1000));
+		Test.Assert(retry.IsActive);
+		Test.Assert(!retry.IsDue(1000 + BindRetry.cIntervalMs - 1));
+		Test.Assert(retry.IsDue(1000 + BindRetry.cIntervalMs));
+		Test.Assert(retry.Refused(1000 + BindRetry.cIntervalMs), "inside the window: on");
+		Test.Assert(!retry.IsDue(1000 + 2 * BindRetry.cIntervalMs - 1), "the next an interval after that try");
+		Test.Assert(retry.IsDue(1000 + 2 * BindRetry.cIntervalMs));
+		Test.Assert(retry.Refused(1999));
+		Test.Assert(!retry.Refused(2000), "the window passed");
+		Test.Assert(!retry.IsActive);
+		Test.Assert(!retry.IsDue(5000));
+
+		Test.Assert(!retry.Begin(0, 0), "a window of none tries once");
+		Test.Assert(!retry.IsActive);
+		Test.Assert(retry.Begin(0));
+		retry.End();
+		Test.Assert(!retry.IsActive && !retry.IsDue(BindRetry.cWindowMs));
+	}
+
+	/// The command line's port, busy as a relaunched editor finds it while the one before exits:
+	/// the start says no, the host tries again from Pump without blocking it, and listens once the
+	/// port is let go. Still taken past the window, it is logged and released.
+	[Test]
+	public static void TheCommandLinesPortIsTriedAgainUntilItIsLetGo()
+	{
+		let bench = scope Bench("mcp_service_retry");
+		bench.Preference.Token.Set(cToken);
+		var holder = new Sedulous.Net.TcpListener(0, true); // the editor before this one, exiting
+		Test.Assert(holder.IsOpen);
+		let port = holder.BoundPort;
+		{
+			let services = bench.Services();
+			services.Port = port;
+			services.ForceEnabled = true;
+			let service = scope EditorMcpService(services);
+			Test.Assert(!service.Start(bench.Project));
+			Test.Assert(service.IsRetrying);
+			Test.Assert(!service.IsRunning);
+			Test.Assert(!bench.Logged(.Warning, scope $"could not listen on 127.0.0.1:{port}"), "not yet");
+			service.Pump(); // nothing due yet: it returns at once
+			Test.Assert(service.IsRetrying);
+			DeleteAndNullify!(holder); // that editor has gone
+			for (int i = 0; (i < 3000) && !service.IsRunning; i++)
+			{
+				service.Pump();
+				System.Threading.Thread.Sleep(1);
+			}
+			Test.Assert(service.IsRunning);
+			Test.Assert(!service.IsRetrying);
+			Test.Assert(service.Port == port);
+			Test.Assert(bench.HasSaid(scope $"MCP host on 127.0.0.1:{port}"));
+			service.Stop();
+		}
+		// Taken for good: given up once the window passes.
+		holder = new Sedulous.Net.TcpListener(port, true);
+		defer delete holder;
+		Test.Assert(holder.IsOpen);
+		{
+			let services = bench.Services();
+			services.Port = port;
+			services.ForceEnabled = true;
+			services.BindRetryMs = 300;
+			let service = scope EditorMcpService(services);
+			Test.Assert(!service.Start(bench.Project));
+			Test.Assert(service.IsRetrying);
+			for (int i = 0; (i < 3000) && service.IsRetrying; i++)
+			{
+				service.Pump();
+				System.Threading.Thread.Sleep(1);
+			}
+			Test.Assert(!service.IsRetrying);
+			Test.Assert(!service.IsRunning);
+			Test.Assert(service.Host == null);
+			Test.Assert(bench.Logged(.Warning, scope $"could not listen on 127.0.0.1:{port}"));
+		}
 	}
 
 	/// Preferences' Save over a real host, as the application wires it (the open project's host

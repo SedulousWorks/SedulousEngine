@@ -37,6 +37,9 @@ class EditorMcpServiceServices
 	/// its own (0: the preference's).
 	public bool ForceEnabled = false;
 	public uint32 Port = 0;
+	/// How long a bind of the command line's port is tried again while the port is busy, in
+	/// milliseconds (BindRetry); 0 tries once.
+	public int64 BindRetryMs = BindRetry.cWindowMs;
 	/// Where the token file, the settings a minted token is saved with and the profiler's
 	/// captures go. Empty: the user data directory, as the editor runs; a test points it at a
 	/// scratch folder so a run leaves the user's own token alone.
@@ -72,6 +75,57 @@ class EditorMcpServiceServices
 	public delegate void(String outScreen) Screen ~ delete _;
 }
 
+/// When a refused bind is tried again: every cIntervalMs from the first refusal until the window
+/// has passed, then given up. The editor an agent relaunches is started while the one before it
+/// still holds the port, which it lets go as it exits. Times are the caller's milliseconds, so
+/// the policy is read without a clock.
+struct BindRetry
+{
+	public const int64 cIntervalMs = 250;
+	public const int64 cWindowMs = 10000;
+
+	private int64 mStartMs;
+	private int64 mNextMs;
+	private int64 mWindowMs;
+	private bool mActive;
+
+	/// Retrying: a bind was refused and the window has not passed.
+	public bool IsActive => mActive;
+
+	/// The first refusal, at `nowMs`: true when it is to be tried again (a window of none tries
+	/// once).
+	public bool Begin(int64 nowMs, int64 windowMs = cWindowMs) mut
+	{
+		mStartMs = nowMs;
+		mNextMs = nowMs + cIntervalMs;
+		mWindowMs = windowMs;
+		mActive = windowMs > 0;
+		return mActive;
+	}
+
+	/// Whether the next try is due at `nowMs`.
+	public bool IsDue(int64 nowMs) => mActive && (nowMs >= mNextMs);
+
+	/// A try at `nowMs` refused again: true to go on (the next due an interval later), false once
+	/// the window has passed, which ends the retrying.
+	public bool Refused(int64 nowMs) mut
+	{
+		if (nowMs - mStartMs >= mWindowMs)
+		{
+			mActive = false;
+			return false;
+		}
+		mNextMs = nowMs + cIntervalMs;
+		return true;
+	}
+
+	/// It listens, or the host stopped: no more tries.
+	public void End() mut
+	{
+		mActive = false;
+	}
+}
+
 /// The editor's MCP host over the open project, out of the application. It starts when a
 /// project opens (when the user enabled it, or --mcp asked for it), minting the token the first
 /// time, with the shared engine tools over the application's own services (an agent's cook,
@@ -81,7 +135,8 @@ class EditorMcpServiceServices
 /// answered from Pump, once a frame. The user starts and stops it from the MCP panel too: their
 /// Start runs it whatever the preference says, and their Stop holds until they start it again or
 /// change the MCP preferences, across the projects opened between. What agents did is kept in its
-/// activity (McpActivity), which outlives the host's restarts.
+/// activity (McpActivity), which outlives the host's restarts. A busy port the command line named
+/// is tried again from Pump for a while (BindRetry), never blocking the frame.
 class EditorMcpService
 {
 	private EditorMcpServiceServices mServices ~ delete _;
@@ -99,6 +154,10 @@ class EditorMcpService
 	private bool mUserStarted = false;
 	/// The user's Stop holds until their Start or a preference change.
 	private bool mStopHeld = false;
+	/// A bind of the command line's port that was refused, tried again from Pump.
+	private BindRetry mRetry = .();
+	/// The port it tries.
+	private uint16 mRetryPort = 0;
 
 	/// TAKES OWNERSHIP of the services.
 	public this(EditorMcpServiceServices services)
@@ -112,8 +171,11 @@ class EditorMcpService
 		Stop();
 	}
 
-	public bool IsRunning => mHost != null;
-	/// The running host, or null.
+	/// The host listens.
+	public bool IsRunning => (mHost != null) && mHost.IsRunning;
+	/// The host is made and tries its busy port again (BindRetry): it listens once the port is let go.
+	public bool IsRetrying => mRetry.IsActive;
+	/// The host, listening or trying its port again, or null.
 	public EditorMcpHost Host => mHost;
 	/// What the host's tools work through: the open project, its plugins and their export hooks.
 	public ProjectSession Session => mSession;
@@ -125,13 +187,17 @@ class EditorMcpService
 	{
 		if (IsRunning)
 			return true;
+		if (IsRetrying)
+			return false; // it listens once the port is let go
 		return Start(null);
 	}
 
 	/// Starts the host over `project` when the preference, the command line or the user's own
 	/// Start asks for it and the user's Stop does not hold, stopping a running one first: false
-	/// when none asks, or it could not listen (logged: another editor may hold the port). With no
-	/// project (the project manager's), the editor's own tools serve and the project's refuse.
+	/// when none asks, or it could not listen (logged: another editor may hold the port). A port
+	/// the command line named is tried again from Pump while it is busy (IsRetrying), for
+	/// BindRetryMs, before that is logged. With no project (the project manager's), the editor's
+	/// own tools serve and the project's refuse.
 	public bool Start(EditorProject project)
 	{
 		Stop();
@@ -262,17 +328,63 @@ class EditorMcpService
 		config.TokenFileDirectory = userData;
 		if (!mHost.Start(config))
 		{
-			GlobalLog(.Warning, scope $"MCP: could not listen on 127.0.0.1:{config.Port}, another editor may hold the port; pass --mcp-port <n> or change it in Preferences");
-			Stop();
+			// The editor before this one may still be exiting with the port: the command line's
+			// port is what an agent reconnects to, so it is tried again while that editor goes.
+			if ((mServices.Port != 0) && mRetry.Begin(NowMs(), mServices.BindRetryMs))
+			{
+				mRetryPort = config.Port;
+				GlobalLog(.Information, scope $"MCP: 127.0.0.1:{config.Port} is busy, trying again for up to {mServices.BindRetryMs / 1000} s");
+				return false;
+			}
+			CouldNotListen(config.Port);
 			return false;
 		}
+		Listening();
+		return true;
+	}
+
+	/// The host listens: said on the log, the status line and the activity.
+	private void Listening()
+	{
 		GlobalLog(.Information, scope $"MCP: listening on 127.0.0.1:{mHost.BoundPort} (the token is in <user-data>/{EditorMcpHost.cTokenFileName})");
-		context.SetStatus(scope $"MCP host on 127.0.0.1:{mHost.BoundPort}");
+		mServices.Context.SetStatus(scope $"MCP host on 127.0.0.1:{mHost.BoundPort}");
 		mActivity.RecordEvent(scope $"Listening on 127.0.0.1:{mHost.BoundPort}", LocalNow());
 		mClientName.Clear();
 		mClientVersion.Clear();
-		return true;
 	}
+
+	/// The port stayed taken: logged with the way out, and the host released.
+	private void CouldNotListen(uint16 port)
+	{
+		GlobalLog(.Warning, scope $"MCP: could not listen on 127.0.0.1:{port}, another editor may hold the port; pass --mcp-port <n> or change it in Preferences");
+		Stop();
+	}
+
+	/// A try of the busy port, when one is due: it listens, waits for the next, or gives up once
+	/// the window has passed.
+	private void RetryBind()
+	{
+		let now = NowMs();
+		if (!mRetry.IsDue(now))
+			return;
+		let settings = mServices.UserSettings.Section<EditorMcpSettings>();
+		EditorMcpHostConfig config = .();
+		config.Port = mRetryPort;
+		config.Token = settings.Token;
+		let userData = UserDataDirectory(.. scope .());
+		config.TokenFileDirectory = userData;
+		if (mHost.Start(config))
+		{
+			mRetry.End();
+			Listening();
+			return;
+		}
+		if (!mRetry.Refused(now))
+			CouldNotListen(mRetryPort);
+	}
+
+	/// Milliseconds on the stopwatch, BindRetry's clock.
+	private static int64 NowMs() => System.Diagnostics.Stopwatch.GetTimestamp() / 1000;
 
 	/// The user's Start (the MCP panel's): runs the host over `project` whatever the preference
 	/// says, until the user stops it. False when it could not listen.
@@ -326,6 +438,7 @@ class EditorMcpService
 	/// connection close. Nothing when none runs.
 	public void Stop()
 	{
+		mRetry.End();
 		if ((mHost != null) && mHost.IsRunning)
 			mActivity.HostStopped(LocalNow()); // a host that never listened has nothing to stop
 		if ((mHost != null) && (mServices.PluginTools != null))
@@ -343,6 +456,11 @@ class EditorMcpService
 	{
 		if (mHost == null)
 			return;
+		if (mRetry.IsActive)
+		{
+			RetryBind();
+			return;
+		}
 		mHost.Pump();
 		// A client that initialized since: recorded once per change of who it is.
 		let server = mHost.Server;
