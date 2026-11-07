@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
+using Sedulous.Physics;
 using Sedulous.Scene;
+using Sedulous.Engine.Physics;
 using internal Sedulous.Engine.Gameplay;
 
 namespace Sedulous.Engine.Gameplay;
@@ -13,9 +16,19 @@ namespace Sedulous.Engine.Gameplay;
 ///   1. the edges, for every instance: OnEnable when it became active, OnStart the first
 ///      time, OnDisable when it stopped being;
 ///   2. OnUpdate, for the started and active instances of the types that override it;
-///   3. the end of the tick, where what was queued during it drains.
+///   3. the end of the tick, where what was queued before it drains: the contacts.
 /// OnFixedUpdate runs on the scene's fixed step, which runs before the frame's Update, and
 /// OnLateUpdate in PostUpdate, after every system's Update.
+///
+/// Contacts come from the scene's physics, which it listens to as a scene listener (the
+/// physics step pushes them, on the main thread, from inside the fixed step). Each is queued,
+/// one entry per side, and delivered at the end of the next tick, so a contact callback has
+/// the footing of an update and never runs inside the physics step. Each side's behaviours
+/// hear it, the far side as `other`: OnContactBegin and OnContactEnd for a collision, with its
+/// point, normal and speed; OnTriggerEnter and OnTriggerExit when either body is a trigger
+/// (physics decides the kind). A side that no longer maps to an entity is not queued; at
+/// delivery an entity destroyed since, and a behaviour not ticking (not started, disabled or
+/// inactive), hears nothing.
 ///
 /// An instance added during a pass is not visited by it: it starts with the next frame's
 /// edges. One removed during a pass is not visited after its removal, the rest are visited
@@ -26,7 +39,7 @@ namespace Sedulous.Engine.Gameplay;
 ///
 /// A behaviour of an inactive entity freezes: OnDisable on the edge, then nothing until the
 /// entity is active again, when OnEnable follows (OnStart only if it never started).
-class BehaviourSystem : SceneSystem
+class BehaviourSystem : SceneSystem, IContactListener
 {
 	/// The script tier's slot: before what acts on what game code writes (the navigation crowd
 	/// at -100, animation at -2 and -1). The scene script system shares it; the two keep the
@@ -40,11 +53,30 @@ class BehaviourSystem : SceneSystem
 	private List<BehaviourManagerBase> mUpdates = new .() ~ delete _;
 	private List<BehaviourManagerBase> mFixedUpdates = new .() ~ delete _;
 	private List<BehaviourManagerBase> mLateUpdates = new .() ~ delete _;
+	/// BORROWED: the managers whose class overrides a contact callback.
+	private List<BehaviourManagerBase> mContactManagers = new .() ~ delete _;
+
+	/// One side of a contact, waiting for the end of the tick.
+	private struct PendingContact
+	{
+		public EntityHandle Self;
+		public EntityHandle Other;
+		public ContactKind Kind;
+		public Float3 Point;
+		public Float3 Normal;
+		public float Speed;
+	}
+
+	/// The contacts queued since the last drain, and the ones the drain in progress delivers:
+	/// what a delivery queues waits for the next drain.
+	private List<PendingContact> mContacts = new .() ~ delete _;
+	private List<PendingContact> mDrainingContacts = new .() ~ delete _;
 
 	public override int32 UpdateOrder => cUpdateOrder;
 	public override bool IsSimulationOnly => true;
 
-	/// Finds the managers added before it; the ones added after find it.
+	/// Finds the managers added before it; the ones added after find it. The same with the
+	/// scene's physics: one there already takes it as a listener, one added after finds it.
 	public override void OnSceneCreate(Scene scene)
 	{
 		for (let system in scene.Systems)
@@ -52,13 +84,22 @@ class BehaviourSystem : SceneSystem
 			if (let manager = system as BehaviourManagerBase)
 				Register(manager);
 		}
+		if (let physics = scene.GetSystem<PhysicsSceneSystem>())
+			physics.AddSceneContactListener(this);
 	}
 
-	/// Lets go of the managers it drives, which may outlive it.
+	/// Lets go of the managers it drives, which may outlive it, and of the scene's physics. The
+	/// scene takes a system out of its lookups before deleting it, so a physics system found
+	/// here is still alive.
 	public ~this()
 	{
 		for (let manager in mManagers)
 			manager.mSystem = null;
+		if (Scene != null)
+		{
+			if (let physics = Scene.GetSystem<PhysicsSceneSystem>())
+				physics.RemoveSceneContactListener(this);
+		}
 	}
 
 	/// The registered managers, and how many are on each tick list.
@@ -66,6 +107,9 @@ class BehaviourSystem : SceneSystem
 	public int UpdateCount => mUpdates.Count;
 	public int FixedUpdateCount => mFixedUpdates.Count;
 	public int LateUpdateCount => mLateUpdates.Count;
+	public int ContactCount => mContactManagers.Count;
+	/// The contact sides waiting for the end of the tick.
+	public int PendingContactCount => mContacts.Count;
 
 	internal void Register(BehaviourManagerBase manager)
 	{
@@ -79,6 +123,8 @@ class BehaviourSystem : SceneSystem
 			mFixedUpdates.Add(manager);
 		if (manager.TicksLateUpdate)
 			mLateUpdates.Add(manager);
+		if (manager.Contacts != .None)
+			mContactManagers.Add(manager);
 	}
 
 	internal void Unregister(BehaviourManagerBase manager)
@@ -90,6 +136,40 @@ class BehaviourSystem : SceneSystem
 		mUpdates.Remove(manager);
 		mFixedUpdates.Remove(manager);
 		mLateUpdates.Remove(manager);
+		mContactManagers.Remove(manager);
+	}
+
+	/// A contact of the scene's physics: queued, one entry per side that maps to an entity,
+	/// each seeing the other. Only queues, as the physics step it is called from asks; nothing
+	/// is queued while no class here hears contacts.
+	public void OnContact(EntityContact contact)
+	{
+		if ((contact.Scene !== Scene) || mContactManagers.IsEmpty)
+			return;
+		QueueContactSide(contact.A, contact.B, contact);
+		QueueContactSide(contact.B, contact.A, contact);
+	}
+
+	private void QueueContactSide(EntityHandle self, EntityHandle other, EntityContact contact)
+	{
+		// A side whose body no longer maps to a live entity, an end after a destroy, has
+		// nobody to tell.
+		if (!self.IsAssigned)
+			return;
+		PendingContact pending;
+		pending.Self = self;
+		pending.Other = other;
+		pending.Kind = contact.Kind;
+		pending.Point = contact.Point;
+		pending.Normal = contact.Normal;
+		pending.Speed = contact.Speed;
+		mContacts.Add(pending);
+	}
+
+	/// A stopped scene's queue goes with it: nothing queued in one play reaches the next.
+	public override void OnSceneStopped()
+	{
+		mContacts.Clear();
 	}
 
 	public override void OnUpdate(ScenePhase phase, float deltaTime)
@@ -123,8 +203,42 @@ class BehaviourSystem : SceneSystem
 
 		// The end of the tick drains here, inside the pass, so what it calls has the same
 		// footing as an update.
+		Drain();
 
 		Run(mManagers, .End, 0.0f);
+	}
+
+	/// Delivers what was queued before the drain began; what it queues waits for the next.
+	private void Drain()
+	{
+		if (mContacts.IsEmpty)
+			return;
+
+		Swap(ref mContacts, ref mDrainingContacts);
+		for (let contact in mDrainingContacts)
+			DeliverContact(contact);
+		mDrainingContacts.Clear();
+	}
+
+	/// One side to every behaviour of its entity whose class hears contacts, in registration
+	/// order. An entity destroyed since is not looked at.
+	private void DeliverContact(PendingContact contact)
+	{
+		if (!Scene.IsValid(contact.Self))
+			return;
+		let count = mContactManagers.Count;
+		for (int i = 0; (i < count) && (i < mContactManagers.Count); i++)
+		{
+			mContactManagers[i].DeliverContact(contact.Self, contact.Other, contact.Kind, contact.Point,
+				contact.Normal, contact.Speed);
+		}
+	}
+
+	private static void Swap<L>(ref L a, ref L b) where L : class
+	{
+		let held = a;
+		a = b;
+		b = held;
 	}
 
 	private enum Step

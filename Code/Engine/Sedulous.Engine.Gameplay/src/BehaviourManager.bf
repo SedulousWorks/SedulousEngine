@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
+using Sedulous.Physics;
 using Sedulous.Scene;
 using internal Sedulous.Engine.Gameplay;
 
@@ -45,6 +47,8 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 	private bool mTicksUpdate = false;
 	private bool mTicksFixedUpdate = false;
 	private bool mTicksLateUpdate = false;
+	/// And which contact callbacks it overrides.
+	private ContactCallbacks mContacts = .None;
 
 	/// The instances the open pass visits, as they were when it began. BORROWED from the
 	/// pool, or, once removed, from mRetired.
@@ -111,8 +115,9 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 		Compiler.MixinRoot(code);
 	}
 
-	/// Finds, at compile time, which ticks `T` overrides, so a class joins only the tick lists
-	/// it has work in: a class without an OnUpdate costs the frame nothing. Found from the
+	/// Finds, at compile time, which ticks and contact callbacks `T` overrides, so a class
+	/// joins only the lists it has work in: a class without an OnUpdate costs the frame
+	/// nothing, and one without a contact callback costs a contact nothing. Found from the
 	/// methods themselves rather than by reflection at run time, which would need every
 	/// behaviour's methods reflected into the binary.
 	///
@@ -121,28 +126,37 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 	private static void EmitTickLists(Type type)
 	{
 		String code = scope .();
-		if (Overrides(type, "OnUpdate"))
+		if (Overrides(type, "OnUpdate", 1, typeof(float)))
 			code.Append("mTicksUpdate = true;\n");
-		if (Overrides(type, "OnFixedUpdate"))
+		if (Overrides(type, "OnFixedUpdate", 1, typeof(float)))
 			code.Append("mTicksFixedUpdate = true;\n");
-		if (Overrides(type, "OnLateUpdate"))
+		if (Overrides(type, "OnLateUpdate", 1, typeof(float)))
 			code.Append("mTicksLateUpdate = true;\n");
+		if (Overrides(type, "OnContactBegin", 4, typeof(EntityHandle)))
+			code.Append("mContacts |= .ContactBegin;\n");
+		if (Overrides(type, "OnContactEnd", 4, typeof(EntityHandle)))
+			code.Append("mContacts |= .ContactEnd;\n");
+		if (Overrides(type, "OnTriggerEnter", 1, typeof(EntityHandle)))
+			code.Append("mContacts |= .TriggerEnter;\n");
+		if (Overrides(type, "OnTriggerExit", 1, typeof(EntityHandle)))
+			code.Append("mContacts |= .TriggerExit;\n");
 		if (!code.IsEmpty)
 			Compiler.MixinRoot(code);
 	}
 
-	/// Whether `type`, or a class between it and Behaviour, declares the tick `name` (one
-	/// float). The walk runs from `type` down through its bases, so Behaviour's own empty
-	/// virtual is the one declaration that does not count.
+	/// Whether `type`, or a class between it and Behaviour, declares the callback `name`
+	/// (`paramCount` parameters, the first a `firstParam`). The walk runs from `type` down
+	/// through its bases, so Behaviour's own empty virtual is the one declaration that does
+	/// not count.
 	[Comptime]
-	private static bool Overrides(Type type, StringView name)
+	private static bool Overrides(Type type, StringView name, int paramCount, Type firstParam)
 	{
 		let instance = type as TypeInstance;
 		if (instance == null)
 			return false;
 		for (let method in instance.GetMethods(.Instance | .Public | .NonPublic))
 		{
-			if ((method.Name != name) || (method.ParamCount != 1) || (method.GetParamType(0) != typeof(float)))
+			if ((method.Name != name) || (method.ParamCount != paramCount) || (method.GetParamType(0) != firstParam))
 				continue;
 			if (method.DeclaringType != typeof(Behaviour))
 				return true;
@@ -289,6 +303,7 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 	protected internal override bool TicksUpdate => mTicksUpdate;
 	protected internal override bool TicksFixedUpdate => mTicksFixedUpdate;
 	protected internal override bool TicksLateUpdate => mTicksLateUpdate;
+	protected internal override ContactCallbacks Contacts => mContacts;
 
 	protected internal override void BeginPass()
 	{
@@ -340,6 +355,34 @@ class BehaviourManager<T> : BehaviourManagerBase where T : Behaviour, new, delet
 		{
 			if (instance.Ticks)
 				instance.[Friend]OnLateUpdate(deltaTime);
+		}
+	}
+
+	protected internal override void DeliverContact(EntityHandle self, EntityHandle other, ContactKind kind,
+		Float3 point, Float3 normal, float speed)
+	{
+		ContactCallbacks callback = .None;
+		switch (kind)
+		{
+		case .Begin: callback = .ContactBegin;
+		case .End: callback = .ContactEnd;
+		case .TriggerEnter: callback = .TriggerEnter;
+		case .TriggerExit: callback = .TriggerExit;
+		}
+		if (!mContacts.HasFlag(callback))
+			return;
+
+		// The live instance, not the pass's: one removed since the contact is gone, and one
+		// added since has not started.
+		let instance = Get(self);
+		if ((instance == null) || !instance.Ticks)
+			return;
+		switch (kind)
+		{
+		case .Begin: instance.[Friend]OnContactBegin(other, point, normal, speed);
+		case .End: instance.[Friend]OnContactEnd(other, point, normal, speed);
+		case .TriggerEnter: instance.[Friend]OnTriggerEnter(other);
+		case .TriggerExit: instance.[Friend]OnTriggerExit(other);
 		}
 	}
 

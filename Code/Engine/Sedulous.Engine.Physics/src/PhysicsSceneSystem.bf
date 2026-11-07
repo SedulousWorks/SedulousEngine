@@ -28,6 +28,9 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	/// BORROWED from the subsystem, whose list has a stable address. Null means nothing is
 	/// listening, which is what a bare harness with no subsystem gets.
 	private List<IContactListener> mListeners = null;
+	/// BORROWED: the listeners of this scene alone, systems of the same scene (gameplay's), which
+	/// hear its contacts with or without a subsystem. Each removes itself as it goes.
+	private List<IContactListener> mSceneListeners = new .() ~ delete _;
 
 	/// Sample buffers held alive across ONE body build, because the backend copies them when
 	/// the body is created rather than when the shape is described.
@@ -54,9 +57,16 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	public void ReleaseCharacter(CharacterId character) => mReleasedCharacters.Add(character);
 	public void ReleaseJoint(JointId joint) => mReleasedJoints.Add(joint);
 
+	/// Finds the scene's contact listening systems added before it; one added after registers
+	/// itself (AddSceneContactListener).
 	public override void OnSceneCreate(Scene scene)
 	{
 		mScene = scene;
+		for (let system in scene.Systems)
+		{
+			if (let listener = system as IContactListener)
+				AddSceneContactListener(listener);
+		}
 	}
 
 	public override Type SettingsType => typeof(PhysicsSceneSettings);
@@ -78,6 +88,35 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	{
 		mListeners = listeners;
 	}
+
+	/// Adds a listener to this scene's contacts alone: a system of the same scene, which cannot
+	/// reach the subsystem. A duplicate is ignored. BORROWED: it must remove itself before it
+	/// goes.
+	public void AddSceneContactListener(IContactListener listener)
+	{
+		if (listener == null)
+			return;
+		for (let existing in mSceneListeners)
+		{
+			if (existing === listener)
+				return;
+		}
+		mSceneListeners.Add(listener);
+	}
+
+	public void RemoveSceneContactListener(IContactListener listener)
+	{
+		for (int i = mSceneListeners.Count - 1; i >= 0; i--)
+		{
+			if (mSceneListeners[i] === listener)
+			{
+				mSceneListeners.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
+	public int SceneContactListenerCount => mSceneListeners.Count;
 
 	/// Launches a body, QUEUEING the impulse when the body does not exist yet.
 	///
@@ -1053,13 +1092,14 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	}
 
 	/// Resolves each drained contact's packed word back to a live entity and pushes the result
-	/// to every listener.
+	/// to every listener, the subsystem's then this scene's own.
 	///
 	/// A side that does not resolve, because its body was destroyed or its slot went stale,
 	/// arrives unassigned; a contact with NEITHER side live is dropped, having nothing to say.
 	private void DispatchContacts()
 	{
-		if ((mListeners == null) || mListeners.IsEmpty || (mScene == null))
+		let shared = (mListeners != null) && !mListeners.IsEmpty;
+		if ((!shared && mSceneListeners.IsEmpty) || (mScene == null))
 			return;
 
 		for (let event in mEvents)
@@ -1080,11 +1120,16 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 			contact.Normal = event.Normal;
 			contact.Speed = event.Speed;
 
-			for (let listener in mListeners)
+			if (shared)
 			{
-				if (listener != null)
-					listener.OnContact(contact);
+				for (let listener in mListeners)
+				{
+					if (listener != null)
+						listener.OnContact(contact);
+				}
 			}
+			for (let listener in mSceneListeners)
+				listener.OnContact(contact);
 		}
 	}
 }

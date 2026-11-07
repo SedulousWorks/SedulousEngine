@@ -1,8 +1,20 @@
 using System;
+using Sedulous.Core;
+using Sedulous.Physics;
 using Sedulous.Scene;
 using internal Sedulous.Engine.Gameplay;
 
 namespace Sedulous.Engine.Gameplay;
+
+/// The contact callbacks a behaviour class overrides.
+enum ContactCallbacks : uint8
+{
+	None = 0,
+	ContactBegin = 1,
+	ContactEnd = 2,
+	TriggerEnter = 4,
+	TriggerExit = 8
+}
 
 /// The non generic face of a BehaviourManager, which is what lets the scene's BehaviourSystem
 /// hold the managers of every behaviour class together and drive each one's own typed loop.
@@ -21,6 +33,9 @@ abstract class BehaviourManagerBase : ComponentManagerBase
 	protected internal abstract bool TicksUpdate { get; }
 	protected internal abstract bool TicksFixedUpdate { get; }
 	protected internal abstract bool TicksLateUpdate { get; }
+	/// The contact callbacks its class overrides, found the same way: a class with none is not
+	/// on the system's contact list, so a contact costs it nothing.
+	protected internal abstract ContactCallbacks Contacts { get; }
 
 	public override void OnSceneCreate(Scene scene)
 	{
@@ -48,4 +63,9 @@ abstract class BehaviourManagerBase : ComponentManagerBase
 	protected internal abstract void RunUpdate(float deltaTime);
 	protected internal abstract void RunFixedUpdate(float fixedDeltaTime);
 	protected internal abstract void RunLateUpdate(float deltaTime);
+
+	/// One side of a contact to `self`'s instance, when it ticks and its class overrides the
+	/// callback `kind` reaches: `other` is the far side, as it was when the contact happened.
+	protected internal abstract void DeliverContact(EntityHandle self, EntityHandle other, ContactKind kind,
+		Float3 point, Float3 normal, float speed);
 }
