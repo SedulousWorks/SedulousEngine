@@ -11,5 +11,5 @@ corlib = "*"
 "Sedulous.Scene" = "*"
 "Sedulous.Script" = "*"
 "Sedulous.Engine.Composition" = "*"
-# Its behaviour (Bob): the Behaviour tier and its registration.
+# Its behaviour (Bob) and its level (Arena): the Behaviour and Level tiers and their registration.
 "Sedulous.Engine.Gameplay" = "*"

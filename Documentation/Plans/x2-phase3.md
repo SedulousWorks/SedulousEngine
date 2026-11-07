@@ -113,7 +113,7 @@ class Block : Level
 - **Base:** `abstract class Level : SceneSystem`, sim-only, `UpdateOrder -111` (the Level updated before behaviours).
 - **Settings:** its settings block IS itself (`SettingsType => GetType()`, `SettingsInstance => this`, `SettingsId` = the level id, `SerializeSettings` emitted by `[Level]`), plus a base `Active` bool, false by default.
 - **Naming the level:** `AddLevel<Block>(engine)` contributes it to every scene. A scene chooses it by setting `Active` in the inspector's scene settings, which already shows system blocks when nothing is selected. This replaces `SceneScriptSettings.Script`, and old scenes are unaffected.
-- **Lifecycle:** OnStart (at `OnSceneStarted` when Active), OnUpdate, OnFixedUpdate and OnStop (`OnSceneStopped`).
+- **Lifecycle:** OnStart (at the first simulated tick while Active, as the script tier's Level starts), OnUpdate, OnFixedStep and OnStop (Active turned off, or `OnSceneStopped`). The fixed hook is not `OnFixedUpdate`, which is `SceneSystem`'s own signature and the level's driver; `AddLevel` refuses a class that overrides the driver. A level deleted while running gets no OnStop (its subclass's fields are gone by then), but its subscriptions and queued calls end.
 
 ## The Game tier
 

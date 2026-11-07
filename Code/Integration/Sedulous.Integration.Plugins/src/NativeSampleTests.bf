@@ -31,8 +31,9 @@ namespace Sedulous.Integration.Plugins;
 /// four parts are Beef projects of the workspace, linked here as a host links its plugins; a
 /// project that enables it loads, in each host, the parts that host's role takes, and each part's
 /// contribution arrives with it and leaves with it:
-///   - Engine: the spin manager and the Bob behaviour's manager with the system that runs
-///     behaviours, in every scene (where the host offers the engine's service);
+///   - Engine: the spin manager, the Bob behaviour's manager with the system that runs
+///     behaviours, and the Arena level, in every scene (where the host offers the engine's
+///     service);
 ///   - Pipeline: the note asset type, its builder and its creator, in the host's registries;
 ///   - Tooling: the nativesample_notes MCP tool, in every MCP server the host serves;
 ///   - Editor: the Project > Native Sample Notes action, in the editor.
@@ -52,6 +53,8 @@ static class NativeSampleTests
 	/// Bob's manager, and the system that runs behaviours, which the first behaviour brings.
 	private static bool BobContributed() => SceneModuleContributions.Global.Contains(GameplayServices.SystemTypeOf<BehaviourManager<Bob>>());
 	private static bool BehavioursContributed() => SceneModuleContributions.Global.Contains(GameplayServices.SystemTypeOf<BehaviourSystem>());
+	/// The Arena level.
+	private static bool ArenaContributed() => SceneModuleContributions.Global.Contains(GameplayServices.SystemTypeOf<Arena>());
 
 	/// The four parts register themselves with the package's manifest, which reads and passes the
 	/// checks for this engine.
@@ -107,6 +110,7 @@ static class NativeSampleTests
 			Test.Assert(host.IsLoaded(cId));
 			Test.Assert(SpinContributed(), "Engine");
 			Test.Assert(BobContributed() && BehavioursContributed(), "Engine: its behaviour, and the system that runs it");
+			Test.Assert(ArenaContributed(), "Engine: its level");
 			Test.Assert(builders.Find(typeof(NoteAsset)) != null, "Pipeline: the builder");
 			Test.Assert(creators.FindByLabel(Notes.cCreator) != null, "and the creator");
 			Test.Assert(GlobalSerializableRegistry.IsRegistered(NoteAsset.TypeId), "and its types");
@@ -115,6 +119,7 @@ static class NativeSampleTests
 			host.Unload();
 			Test.Assert(!SpinContributed());
 			Test.Assert(!BobContributed() && !BehavioursContributed(), "the behaviour and its system leave with it");
+			Test.Assert(!ArenaContributed(), "and the level");
 			Test.Assert(builders.Find(typeof(NoteAsset)) == null);
 			Test.Assert(creators.FindByLabel(Notes.cCreator) == null);
 			Test.Assert(!GlobalSerializableRegistry.IsRegistered(NoteAsset.TypeId));
@@ -130,7 +135,7 @@ static class NativeSampleTests
 			host.Load((Span<EnabledPlugin>)entries, scope .());
 			Test.Assert(host.IsLoaded(cId));
 			Test.Assert(builders.Find(typeof(NoteAsset)) != null, "the cook's builder");
-			Test.Assert(!SpinContributed() && !BobContributed(), "no engine service offered, so no scene manager");
+			Test.Assert(!SpinContributed() && !BobContributed() && !ArenaContributed(), "no engine service offered, so no scene manager");
 			Test.Assert(!server.HasTool(NativeSampleToolingPart.cTool) && (editor.Actions.Find(NativeSampleEditorPart.cAction) == null),
 				"a cook takes no Tooling or Editor part");
 			host.Unload();
@@ -445,6 +450,27 @@ static class NativeSampleTests
 			Test.Assert(schema.Get("unreflected").Count == 0, bobText);
 		}
 
+		// And its level, a settings block to the tools under its id: Active first, then its time
+		// limit at its default, each joined to its reflected field; its runtime state is not there.
+		let arenaText = scope String();
+		Test.Assert(Call(server, "component_schema", Arguments("type", "nativesample.arena"), arenaText), arenaText);
+		{
+			let schema = JsonValue.Parse(arenaText);
+			defer delete schema;
+			Test.Assert(schema.Get("system").AsString() == "nativesample.arena", arenaText);
+			Test.Assert(schema.Get("type").Get("name").AsString() == "Arena", arenaText);
+			let fields = schema.Get("fields");
+			Test.Assert(fields.Count == 2, arenaText);
+			Test.Assert((fields.At(0).Get("key").AsString() == "active") && (fields.At(0).Get("kind").AsString() == "bool"), arenaText);
+			Test.Assert(fields.At(1).Get("key").AsString() == "timeLimit", arenaText);
+			var limit = 0.0f;
+			if (float.Parse(fields.At(1).Get("default").AsString()) case .Ok(let parsed))
+				limit = parsed;
+			Test.Assert(limit == 60.0f, arenaText);
+			Test.Assert(fields.At(1).Get("displayName").AsString() == "Time Limit", arenaText);
+			Test.Assert(schema.Get("unreflected").Count == 0, arenaText);
+		}
+
 		// A project that does not enable it: the plugin's tool and creator leave with it.
 		Test.Assert(Call(server, "project_open", Arguments("directory", plain), opened..Clear()), opened);
 		Test.Assert(!server.HasTool(NativeSampleToolingPart.cTool));
@@ -479,9 +505,10 @@ static class NativeSampleTests
 	}
 
 	/// The sample itself (Data/SampleProjects/NativeSample) reads at the current data versions with
-	/// its package loaded, every spin record of its scene resolving into the plugin's manager and
-	/// its Bob record into an instance of the behaviour with the scene's values, which moves its
-	/// entity as the scene simulates; and it cooks through the tools an agent uses, its note
+	/// its package loaded, every spin record of its scene resolving into the plugin's manager, its
+	/// Bob record into an instance of the behaviour with the scene's values, which moves its
+	/// entity as the scene simulates, and its Arena block into the level, on, which counts down
+	/// as the scene simulates; and it cooks through the tools an agent uses, its note
 	/// through the plugin's builder. A scratch copy of its sources, so nothing writes into the
 	/// tracked tree.
 	[Test]
@@ -561,8 +588,8 @@ static class NativeSampleTests
 
 	/// Every instance under `group` reads back, a scene as its stream into a scratch scene of the
 	/// full composition and the scene managers the loaded plugins contribute; the spin components
-	/// the scenes hold counted into `spins`, and the Bob behaviours into `bobs`, each checked by
-	/// CheckBobs.
+	/// the scenes hold counted into `spins`, and the Bob behaviours into `bobs`, a scene with one
+	/// checked by CheckGameCode.
 	private static void ReadAll(Group group, ref int read, ref int spins, ref int bobs)
 	{
 		for (let instance in group.Instances)
@@ -580,7 +607,7 @@ static class NativeSampleTests
 				Test.Assert(behaviours != null, "the plugin's Bob manager among them");
 				bobs += (int)behaviours.Count;
 				if (behaviours.Count > 0)
-					CheckBobs(instance);
+					CheckGameCode(instance);
 			}
 			read++;
 		}
@@ -590,12 +617,17 @@ static class NativeSampleTests
 
 	/// The scene `instance` read again into a scene of what the plugins contribute alone (the
 	/// rest of its records kept unresolved): each Bob holds the values its record says, and the
-	/// scene's first simulated second moves its entity a quarter cycle, to the top of its travel.
-	private static void CheckBobs(Instance instance)
+	/// scene's first simulated second moves its entity a quarter cycle, to the top of its travel;
+	/// the Arena level is on with the scene's time limit, and that second takes one off it.
+	private static void CheckGameCode(Instance instance)
 	{
 		let scene = scope Sedulous.Scene.Scene(instance.Name);
 		SceneModuleContributions.Global.InstallAll(scene);
 		Test.Assert(SceneStorage.LoadScene(instance, scene) case .Ok, scope $"sample scene stream refused: {instance.Name}");
+		let arena = scene.GetSystem<Arena>();
+		Test.Assert(arena != null, "the plugin's level came with it");
+		Test.Assert(arena.Active && (arena.TimeLimit == 30.0f), "the scene's block, not the defaults");
+		Test.Assert(!arena.Started);
 		let behaviours = scene.GetSystem<BehaviourManager<Bob>>();
 		Test.Assert((behaviours != null) && (behaviours.Count == 1), "the one Bob, on the row's middle cube");
 		Test.Assert(scene.GetSystem<BehaviourSystem>() != null, "the system that runs it came with it");
@@ -610,10 +642,12 @@ static class NativeSampleTests
 		scene.Update(1.0f);
 		let topY = scene.GetLocalTransform(entity).Position.Y;
 		Test.Assert(Math.Abs(topY - 1.5f) < 1e-4f, scope $"at {topY} after a second");
+		Test.Assert(arena.Started && (arena.Remaining == 29.0f), scope $"{arena.Remaining} seconds left after one");
 		// Not while the scene does not simulate.
 		scene.SetSimulationEnabled(false);
 		scene.Update(1.0f);
 		Test.Assert(scene.GetLocalTransform(entity).Position.Y == topY, "still while it does not simulate");
+		Test.Assert(arena.Remaining == 29.0f, "its clock stands still with it");
 	}
 
 	private static JsonValue Arguments(StringView key, StringView value)

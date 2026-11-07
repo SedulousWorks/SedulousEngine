@@ -40,7 +40,8 @@ namespace Sedulous.Engine.Gameplay;
 ///
 /// A queued call is a direct call deferred: it runs at the drain with an update's footing,
 /// whatever queued it. One bound to a behaviour (Behaviour.Post) is dropped when the
-/// behaviour is released before the drain. What a drain's deliveries queue, contacts or
+/// behaviour is released before the drain, and one bound to a level (Level.Post) when the
+/// level stops. What a drain's deliveries queue, contacts or
 /// calls, waits for the next drain, so a call that queues itself cannot keep one going.
 ///
 /// A behaviour of an inactive entity freezes: OnDisable on the edge, then nothing until the
@@ -79,10 +80,10 @@ class BehaviourSystem : SceneSystem, IContactListener
 	private List<PendingContact> mDrainingContacts = new .() ~ delete _;
 
 	/// A call waiting for the drain. The call is OWNED; the owner, BORROWED, is the behaviour
-	/// it is bound to, or null. A dropped call (its owner released) is nulled in place.
+	/// or level it is bound to, or null. A dropped call (its owner released) is nulled in place.
 	private struct QueuedCall
 	{
-		public Behaviour Owner;
+		public Object Owner;
 		public delegate void() Call;
 	}
 
@@ -193,8 +194,9 @@ class BehaviourSystem : SceneSystem, IContactListener
 		Post(null, call);
 	}
 
-	/// As Post, bound to `owner`: dropped (deleted unrun) if the behaviour is released first.
-	internal void Post(Behaviour owner, delegate void() call)
+	/// As Post, bound to `owner`, a behaviour or a level: dropped (deleted unrun) if the
+	/// behaviour is released, or the level stops, first.
+	internal void Post(Object owner, delegate void() call)
 	{
 		if (call == null)
 			return;
@@ -202,18 +204,19 @@ class BehaviourSystem : SceneSystem, IContactListener
 		queued.Owner = owner;
 		queued.Call = call;
 		mCalls.Add(queued);
-		if (owner != null)
-			owner.mQueuedCalls++;
+		if (let behaviour = owner as Behaviour)
+			behaviour.mQueuedCalls++;
 	}
 
-	/// Drops `owner`'s queued calls, those of the drain in progress included: its release.
-	internal void DropCalls(Behaviour owner)
+	/// Drops `owner`'s queued calls, those of the drain in progress included: its release, or
+	/// a level's stop.
+	internal void DropCalls(Object owner)
 	{
 		DropCalls(mCalls, owner);
 		DropCalls(mDrainingCalls, owner);
 	}
 
-	private static void DropCalls(List<QueuedCall> calls, Behaviour owner)
+	private static void DropCalls(List<QueuedCall> calls, Object owner)
 	{
 		for (var queued in ref calls)
 		{
@@ -232,8 +235,8 @@ class BehaviourSystem : SceneSystem, IContactListener
 		mContacts.Clear();
 		for (let queued in mCalls)
 		{
-			if (queued.Owner != null)
-				queued.Owner.mQueuedCalls = 0;
+			if (let behaviour = queued.Owner as Behaviour)
+				behaviour.mQueuedCalls = 0;
 		}
 		DeleteCalls(mCalls);
 	}
@@ -308,8 +311,8 @@ class BehaviourSystem : SceneSystem, IContactListener
 			// and the call is deleted only once it has returned.
 			mDrainingCalls[i].Call = null;
 			mDrainingCalls[i].Owner = null;
-			if (queued.Owner != null)
-				queued.Owner.mQueuedCalls--;
+			if (let behaviour = queued.Owner as Behaviour)
+				behaviour.mQueuedCalls--;
 			queued.Call();
 			delete queued.Call;
 		}

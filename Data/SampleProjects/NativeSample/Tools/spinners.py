@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """spinners.py: the sample's content, written through the editor's MCP and made the project's
 default scene: the Cube and Plane primitives, a note (the Pipeline part's asset type), and the
-scene Spinners, where the Engine part's Spin component turns what it is on and its Bob behaviour
-moves the middle cube up and down.
+scene Spinners, where the Engine part's Spin component turns what it is on, its Bob behaviour
+moves the middle cube up and down, and its Arena level, turned on in the scene's settings, counts
+a round down while the scene plays.
 
 The scene: a floor, a row of cubes before the camera that each spin at their own rate about their
 own axis (up, sideways, a diagonal), and behind them a carousel, a spinning hub whose arms each
@@ -12,12 +13,14 @@ light it. Every cube is the Cube primitive on the default material, told apart b
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from scenegen import Doc, mcp, assets, colour, axis, yaw, pitch, quat_mul
+from scenegen import Doc, mcp, assets, settings, colour, axis, yaw, pitch, quat_mul
 
 # The cube of the row that also bobs, and its Bob behaviour's height and cycles a second.
 BOBBER = "Tumble"
 BOB_HEIGHT = 0.5
 BOB_SPEED = 0.25
+# The Arena level's round, in seconds.
+ARENA_TIME_LIMIT = 30.0
 
 # The row: name, x, turns a second, axis, tint.
 ROW = [
@@ -78,6 +81,9 @@ def main():
 
     cam = d.entity("Camera", (0.0, 3.6, 9.5), rot=pitch(-14.0))
     d.add(cam, "camera")
+
+    # The scene runs the plugin's level: its block, by the level's id, turned on.
+    d.settings.append(settings("nativesample.arena", active=True, timeLimit=ARENA_TIME_LIMIT))
 
     guid = d.write(scenes.get("Spinners"), group="Scenes")
     mcp("project_settings_set", {"defaultSceneId": guid})
