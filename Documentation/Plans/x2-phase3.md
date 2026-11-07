@@ -161,7 +161,7 @@ class SkyHopperGame : Game
 - **`Send`:** dropped as a string message. Native code reaches the target directly, two ways:
   - **direct:** a method call now (`Scene.GetSystem<BehaviourManager<Door>>()?.Get(e)?.Knock()`);
   - **queued:** the same call deferred, `Post(delegate void())` on the scene's `BehaviourSystem`, run at the end of the tick where scripts' deferred messages drain today. Typed events have both forms too: `Emit<T>` delivers now, `Post<T>` at the drain.
-- **Contacts:** `BehaviourSystem` registers an `IContactListener` with `PhysicsSubsystem`. It queues and delivers at the end of the tick, as scripts do.
+- **Contacts:** `BehaviourSystem` is an `IContactListener` of its own scene's `PhysicsSceneSystem` (a scene listener: a scene system cannot reach `PhysicsSubsystem`, whose list the script tier's bridge joins from the composition root). It queues and delivers at the end of the tick, as scripts do.
 - **Coroutines:** none (the samples have zero `yield()`). Timers stay floats in fields. Revisit only if a phase 4 port needs one (Q7).
 
 ## pie_run probes
