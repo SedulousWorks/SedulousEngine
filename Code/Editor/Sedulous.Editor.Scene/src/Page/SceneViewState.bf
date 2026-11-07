@@ -36,8 +36,10 @@ static class SceneViewState
 {
 	/// Places `camera` to show `bounds` (a scene's: SceneLoading.SceneWorldBounds) whole: in
 	/// perspective, 30 degrees above the ground and turned a little, far enough back for its field
-	/// of view to hold them. A shot of the place more than a plan of it. False, the camera
-	/// untouched, when there are no bounds.
+	/// of view to hold them. A shot of the place more than a plan of it. The near plane is left as
+	/// it is: the page's camera keeps it all session, and one pushed out to the scene's front
+	/// clipped everything nearer than metres once the view zoomed in. False, the camera untouched,
+	/// when there are no bounds.
 	public static bool FrameWhole(AABB bounds, EditorCamera camera)
 	{
 		if (!bounds.IsValid())
@@ -50,7 +52,6 @@ static class SceneViewState
 		let distance = radius / Sin(0.5f * camera.FovY);
 		camera.Position = center - camera.Forward * distance;
 		camera.FocusDistance = distance; // an orbit turns about the scene's middle
-		camera.NearZ = Max(0.1f, 0.5f * (distance - radius));
 		camera.FarZ = Max(camera.FarZ, distance + 2.0f * radius);
 		return true;
 	}

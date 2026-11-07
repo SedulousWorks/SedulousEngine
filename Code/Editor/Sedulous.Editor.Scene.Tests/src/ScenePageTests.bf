@@ -461,6 +461,7 @@ class ScenePageTests
 		Test.Assert(distance * Sin(0.5f * camera.FovY) >= Length(bounds.Extents()) - 0.01f, "the bounds fit its view");
 		Test.Assert(Math.Abs(camera.FocusDistance - distance) < 0.01f, "an orbit turns about it");
 		Test.Assert(camera.FarZ > distance + Length(bounds.Extents()));
+		Test.Assert(camera.NearZ == scope EditorCamera().NearZ, "the near plane is the camera's own, so zooming in does not clip");
 	}
 
 	/// A scene built away from the origin (a terrain) opened on the sky; one with no saved view
