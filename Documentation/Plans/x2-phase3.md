@@ -228,3 +228,8 @@ Elsewhere:
 ## Rulings (2026-11-07)
 
 Q1-Q5 and Q7-Q9 as recommended. Q6: `Send` goes, but a call or an event can be direct or queued.
+
+## To discuss
+
+- **Destroy during the fixed step.** Destroying an entity during `OnFixedUpdate` happens immediately, while during `OnUpdate` it waits for the end of the frame (`Scene.Update` sets `mIsUpdating`; `Scene.FixedUpdate` does not). A test shows the immediate case is safe, so the scene's fixed step was left alone. Making both wait would be a change to every scene.
+- **Active toggles.** Turning an entity off calls its behaviours' `OnDisable`, and turning it back on calls `OnEnable`, but not `OnStart` again. Scripts got no call when an entity was switched on or off.
