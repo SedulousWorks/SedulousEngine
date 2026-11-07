@@ -22,7 +22,7 @@ Suggested order: B, then C when rebinding or prompts are a goal. It also decides
 B (circle) closes Sky Hopper's settings menu. Waiting on the Raptor port settling.
 
 ### The Beef requirement wording
-The README and `AGENTS.md` say upstream Beef is sufficient. The engine needs the fork's
+`Documentation/BUILDING.md` and `AGENTS.md` say upstream Beef is sufficient. The engine needs the fork's
 `working` branch again: `fix/interface-slots-past-incomplete-base` (a type's interfaces were
 slotted over `IHashable` when a base further up was mid rebuild; `PhysicsWorld` static geometry
 depends on it) is pushed and awaiting its upstream PR. Reword once it merges, or say so now.
