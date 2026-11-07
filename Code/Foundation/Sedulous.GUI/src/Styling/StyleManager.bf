@@ -374,6 +374,7 @@ class StyleManager
 			mFiltering = false;
 			if (mOwners.Count > mSweepAt)
 				SweepGone();
+			root.RootNode.OnStylePassEnded(); // a focus asked before the sheet showed its node
 			let stats = root.FrameStats; // the GUI's frame stats
 			if (stats != null)
 			{

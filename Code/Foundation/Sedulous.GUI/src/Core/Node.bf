@@ -1754,14 +1754,23 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Focuses this widget, or, for a container (a page, a dialog), its entry: what was last
 	/// focused in it, else its default focus (nav-default), else its first focusable widget.
-	/// False when there is nothing to focus, or the node is in no GUI.
+	/// False when there is nothing to focus now, or the node is in no GUI. With nothing to focus
+	/// now, the request waits for the next style pass, since a class just taken off (`hidden`)
+	/// shows the node only once the sheet applies, as a browser restyles before it focuses: the
+	/// node takes focus after that pass if it can by then, unless another focus came first or it
+	/// left.
 	[Scriptable, ScriptName("Focus")]
 	public bool FocusElement()
 	{
 		let dispatcher = EventDispatcher;
-		let target = (dispatcher != null) ? FocusTargetOf(this) : null;
-		if (target == null)
+		if (dispatcher == null)
 			return false;
+		let target = FocusTargetOf(this);
+		if (target == null)
+		{
+			dispatcher.RequestFocusAfterStyle(this); // shown by a class the sheet has not applied yet
+			return false;
+		}
 		dispatcher.FocusNode = target;
 		return true;
 	}
@@ -2171,6 +2180,12 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	}
 
 	public bool HasStylePass => mStyledTree;
+
+	/// Called on the tree's root when a style pass over the tree has ended (StyleManager.ApplyTree):
+	/// a scene root grants a focus that waited for it (FocusElement).
+	public virtual void OnStylePassEnded()
+	{
+	}
 
 	/// It owns a press at `local` for a drag of its own (a slider's thumb, a scroll bar, a field
 	/// selecting): a drag from an ancestor is not offered.

@@ -486,4 +486,60 @@ class NavigationTests
 		bed.Key(.Tab);
 		Test.Assert(bed.Focused == "second");
 	}
+
+	/// A game script shows a box by taking its `hidden` class off and focuses a button in it in
+	/// the same call: until the sheet applies, the box is hidden and nothing in it can take focus.
+	/// The focus waits for the pass; one given meanwhile outranks it; a node the sheet still hides
+	/// after the pass drops it; a node removed takes it with it.
+	[Test]
+	public static void FocusingAWidgetAClassStillHidesWaitsForTheSheetThenTakesIt()
+	{
+		let bed = scope NavBed();
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".hidden { display: none; }", sheet);
+		let styles = scope StyleManager(sheet);
+		let panel = new UIWidget();
+		defer panel.ReleaseRef();
+		panel.AddClass("hidden");
+		bed.Root.AddChild(panel);
+		let next = NavBed.Cell(panel, "next", 10.0f, 10.0f);
+		let other = NavBed.Cell(bed.Root, "other", 200.0f, 10.0f);
+		styles.ApplyTree(bed.Root);
+		Test.Assert(!next.IsTreeVisible);
+
+		panel.RemoveClass("hidden");
+		Test.Assert(!next.FocusElement(), "not yet: the sheet has not shown it");
+		Test.Assert(bed.D.FocusNode == null);
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.Focused == "next", "granted when the pass ends");
+
+		// A focus given while one waits outranks it.
+		panel.AddClass("hidden");
+		styles.ApplyTree(bed.Root);
+		panel.RemoveClass("hidden");
+		Test.Assert(!next.FocusElement());
+		bed.D.FocusNode = other;
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.Focused == "other");
+
+		// One the sheet still hides after the pass is dropped, not kept for a later showing.
+		panel.AddClass("hidden");
+		styles.ApplyTree(bed.Root);
+		Test.Assert(!next.FocusElement());
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.D.PendingFocus == null);
+		panel.RemoveClass("hidden");
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.Focused == "other");
+
+		// A node removed while its focus waits takes nothing with it.
+		panel.AddClass("hidden");
+		styles.ApplyTree(bed.Root);
+		panel.RemoveClass("hidden");
+		Test.Assert(!next.FocusElement());
+		bed.Root.RemoveChild(panel);
+		Test.Assert(bed.D.PendingFocus == null);
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.Focused == "other");
+	}
 }

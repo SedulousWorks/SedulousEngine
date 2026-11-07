@@ -609,6 +609,7 @@ class SceneRoot : Node
 	public override Sedulous.GUI.ActionManager ActionManager => mContext.ActionManager;
 	public override Sedulous.GUI.MutationQueue MutationQueue => mContext.MutationQueue;
 	public override Sedulous.GUI.EventDispatcher EventDispatcher => mEventDispatcher;
+	public override void OnStylePassEnded() => mEventDispatcher.GrantPendingFocus();
 	public override IFontService FontService => mContext.FontService;
 	public override IResourceProvider ResourceProvider => mContext.ResourceProvider;
 	public override Sedulous.GUI.ElementTable ElementTable => mContext.ElementTable;

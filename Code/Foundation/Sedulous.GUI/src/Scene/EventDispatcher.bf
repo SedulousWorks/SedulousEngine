@@ -1012,6 +1012,30 @@ class EventDispatcher
 			FocusNode = null;
 	}
 
+	/// Asks for focus on `node` (or its entry) once the next style pass has run: it cannot take
+	/// focus now, most often because a class that hid it was just taken off and the sheet has not
+	/// applied yet. One request waits at a time; the latest wins. BORROWED.
+	public void RequestFocusAfterStyle(Node node)
+	{
+		mPendingFocus = node;
+	}
+
+	/// The focus waiting for the next style pass, or null.
+	public Node PendingFocus => mPendingFocus;
+
+	/// Grants the waiting request, at the end of a style pass: its node, or the entry inside it,
+	/// takes focus if it can now; if it still cannot, the request is dropped, never kept for a
+	/// later frame that shows the node for some other reason.
+	public void GrantPendingFocus()
+	{
+		let waiting = mPendingFocus;
+		mPendingFocus = null;
+		if (waiting == null)
+			return;
+		if (let target = FocusTargetOf(waiting))
+			FocusNode = target;
+	}
+
 	/// The focused node. Set, focus moves there (null: nowhere); what leaves or is inert takes no
 	/// focus.
 	public Node FocusNode
@@ -1019,6 +1043,8 @@ class EventDispatcher
 		get => mFocusNode;
 		set
 		{
+			if (value != null)
+				mPendingFocus = null; // a focus given now outranks one still waiting for the sheet
 			if ((value == mFocusNode) || ((value != null) && value.IsTreeInert))
 				return;
 			let previous = mFocusNode;
@@ -1664,6 +1690,8 @@ class EventDispatcher
 		}
 		if (IsInSubtree(mFocusNode, removed))
 			FocusNode = null;
+		if (IsInSubtree(mPendingFocus, removed))
+			mPendingFocus = null;
 		if (IsInSubtree(mDropTarget, removed))
 			mDropTarget = null;
 		if (IsInSubtree(mDragSource, removed))
@@ -3390,6 +3418,8 @@ class EventDispatcher
 	private Float2 mPanLast = .(0.0f, 0.0f); // where the finger was at the last pan step
 	private bool mClickSuppressed = false; // the press activated already (SuppressClick)
 	private Node mFocusNode = null;
+	/// A focus asked before the sheet showed its node (RequestFocusAfterStyle). BORROWED.
+	private Node mPendingFocus = null;
 	private List<PopupEntry> mPopups = new .() ~ DeleteContainerAndItems!(_); // the top layer, bottom first
 	private Keystroke mCaptureRelease = .((uint32)KeyCode.F1, KeyModShift, false);
 	private List<LeavingPopup> mLeaving = new .() ~ DeleteContainerAndItems!(_); // closed popups playing their exit: drawn under the open ones, no input
