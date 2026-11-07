@@ -175,7 +175,7 @@ class BehaviourManagerTests
 
 	/// The manager going (the scene torn down, or the manager removed) deletes what it holds,
 	/// OnDestroy for the started. At teardown the scene is still whole, so OnDestroy reaches
-	/// a component of an older manager.
+	/// a component of a manager added after it.
 	[Test]
 	public static void TheManagerGoingDeletesItsBehaviours()
 	{
@@ -183,8 +183,8 @@ class BehaviourManagerTests
 		Mover.LastDestroyFoundTag = false;
 		{
 			let torn = scope Scene();
-			let tags = torn.AddSystem<ComponentManager<Tag>>();
 			let pool = torn.AddSystem<BehaviourManager<Mover>>();
+			let tags = torn.AddSystem<ComponentManager<Tag>>();
 			let started = torn.CreateEntity("started");
 			tags.Add(started);
 			pool.Add(started).mStarted = true;
@@ -192,6 +192,20 @@ class BehaviourManagerTests
 		}
 		Test.Assert(Mover.Destroyed == 1, "the scene's teardown");
 		Test.Assert(Mover.LastDestroyFoundTag, "the scene still whole");
+
+		// A manager added before it is deleted before it: not found, rather than found freed.
+		Mover.Destroyed = 0;
+		Mover.LastDestroyFoundTag = true;
+		{
+			let torn = scope Scene();
+			let tags = torn.AddSystem<ComponentManager<Tag>>();
+			let pool = torn.AddSystem<BehaviourManager<Mover>>();
+			let started = torn.CreateEntity("started");
+			tags.Add(started);
+			pool.Add(started).mStarted = true;
+		}
+		Test.Assert(Mover.Destroyed == 1);
+		Test.Assert(!Mover.LastDestroyFoundTag, "the older manager already gone");
 
 		Mover.Destroyed = 0;
 		let kept = scope Scene();
