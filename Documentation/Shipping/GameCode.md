@@ -202,22 +202,24 @@ managers:
 | Script | Native |
 |---|---|
 | `scene.Prefabs.Spawn(prefab, at)` | `Scene.GetSystem<PrefabSpawnSystem>().Spawn(prefab, position, rotation, parent)` |
-| `scene.Physics.RayCast`, `OverlapSphere`, `Gravity`, `ApplyImpulse`, `SetVelocity`, `SetForce` | the same on `Scene.GetSystem<PhysicsSceneSystem>()` |
+| `scene.Physics.RayCast`, `OverlapSphere`, `NearestOverlap`, `Gravity`, `ApplyImpulse`, `SetVelocity`, `SetForce` | the same on `Scene.GetSystem<PhysicsSceneSystem>()` |
 | `scene.Physics.MoveCharacter(e, vx, vz)`, `JumpCharacter` | `Scene.GetComponent<CharacterComponent>(e).Move(vx, vz)`, `.Jump(speed)` |
 | `scene.Animation.Play(e)`, `Stop`, `SetClip` | the same on `SkeletalAnimationComponentManager` |
 | `scene.Animation.SetFloat(e, name, v)`, `SetBool`, `SetTrigger` | the same on `AnimationGraphComponentManager` |
 | `scene.Animation.SetIkTarget(e, at)` | `IkScene.SetTarget(Scene, e, at)` |
-| `scene.Audio.Play(e)`, `Stop` | the same on `AudioSceneSystem` |
+| `scene.Audio.Play(e)`, `Stop`, `SetVolume(e, v, seconds)`, `SetPitch` | the same on `AudioSceneSystem` |
+| `scene.Splines.Length(e)`, `SampleAtDistance(e, d)`, `ClosestPoint(e, at)` | the same on `SplineComponentManager` (`Sedulous.Engine.Spline`) |
 | `scene.Particles.Play(e)`, `Stop`, `Restart` | the same on `ParticleEffectComponentManager` |
 | `Audio.PlayOneShot(clip)`, `PlayOneShot3D(clip, at)` | the same on `AudioFacade` |
 | `scene.Render.SetMaterial(e, material, slot)`, `SetMaterialFloat4(e, slot, name, v)` | `MeshComponentManager.SetMaterial(e, material, slot)`, `SetMaterialProperty(e, slot, name, v, sizeof(Float4))` |
 | `scene.Render.LightAt(at, groupMask)` | `RenderExtract.LightAt(Scene, at, groupMask)` |
 | `Audio.PlayMusic`, `StopMusic`, `SetVoicePitch(Audio.MusicVoice(), ...)`, `BusVolume` | the same on `AudioFacade` |
 | `Input.WasPressed("Throw")`, `Value2D`, `Rumble` | the same on `InputFacade` |
+| `Save.GetFloats(key, list)`, `SetFloats(key, list)` | the same on `SaveFacade`, with a `List<float>` |
 | `NavAgentComponent::of(e).Navigate(at)`, `SkeletalAnimationComponent::of(e).Speed` | `Scene.GetComponent<NavAgentComponent>(e)` (a `T*`, null without one), then the same |
 | `self.FindChildByName(n)`, `GetFirstChild()`, `GetNextSibling()`, `GetParent()`, `GetWorldPosition()`, `SetActive(b)`, `Destroy()` | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `GetNextSibling(Entity)`, `GetParent(Entity)`, `GetWorldPosition(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
-| `node.Tween(property, to, seconds, easing).From(v)` | `node.Animate(property, to, seconds, easing).From(v)`, then `ReleaseRef()` (GUI) |
-| `Label::Of(node).Text = t`, `ProgressBar::Of(node).Value = v` | `(node as Label).Text = t`, `(node as ProgressBar).Value = v` |
+| `node.Tween(property, to, seconds, easing).From(v)`, `.Repeats(n)` | `node.Animate(property, to, seconds, easing).From(v)`, `.Repeat(n)`, then `ReleaseRef()` (GUI) |
+| `Label::Of(node).Text = t`, `ProgressBar::Of(node).Value = v`, `UIWidget::Of(node).AddClass(c)` | `(node as Label).Text = t`, `(node as ProgressBar).Value = v`, `(node as UIWidget).AddClass(c)` |
 | `GuiBillboardComponent::of(e).Root()` | `Scene.GetComponent<GuiBillboardComponent>(e).Root` (null until it is built) |
 | `Run.LoadScene(id)`, `Run.TimeScale` | `GameInstance.LoadScene(id)`, `InstanceTimeScale` |
 | `scene.Scripts.Emit("CoinCollected", 1)` | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |

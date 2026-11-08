@@ -1,0 +1,32 @@
+FileVersion = 1
+
+[Project]
+Name = "Snowline"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"
+# The game and its behaviours: the run (its scene loads, time scale, save), its input, audio and
+# GUI screens; the board's character, the course line and the path follows riding it, the gate
+# flags' bodies and the ray and overlap queries, the rider's graph and head aim, the board's snow,
+# the wind and the rumble, the track marks' decals; prefab spawns.
+"Sedulous.Run" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Engine.Spline" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Engine.Particles" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"

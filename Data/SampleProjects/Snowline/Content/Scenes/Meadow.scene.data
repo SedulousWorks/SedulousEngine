@@ -982,828 +982,6 @@
 			</object>
 		</object>
 		<object>
-			<string name="owner">54bd9756-ee08-5f8b-8c62-5eb3cc5aceb3</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">cb7084ca-5930-b14b-98f8-13a6fc04526d</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">1585764864008969528</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">065070a5-4575-5d84-a490-e922e4f304a9</string>
-						<u64 name="nameHash">9517829521062631700</u64>
-						<u8 name="kind">3</u8>
-						<bool name="boolean">false</bool>
-						<u64 name="nameHash">14048288576725864660</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9299645626063141414</u64>
-						<u8 name="kind">3</u8>
-						<bool name="boolean">false</bool>
-						<u64 name="nameHash">14566644583805537333</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">d112537e-7280-dd48-ab30-222476fa84d4</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">090f9efc-5f7e-5fc2-b579-a7fa49ec19df</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.4528702574470271</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">07afa01c-c354-563b-abf7-2084f6099311</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.11370739713962301</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">aaee6011-92b7-5389-9e03-2021f19ff671</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">2</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">-0.4528702574470271</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">542b10ad-63a9-5fe2-9b17-42116a381449</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">3</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">-0.5211200365123093</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">2f30e249-4737-5678-a2fc-3992aa426f00</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">4</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">-0.4528702574470271</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">6fbca249-7547-50da-ab97-b6a69efd23e7</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">5</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.11370739713962301</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">32d00883-9528-5958-a662-554ea189ac5a</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">6</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.4528702574470271</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">ff9b0f8f-53b9-5e90-99bb-ef5dc3bb0099</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">7</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.5211200365123093</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">6533134d-f888-5610-bac7-4362ac8b84d8</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">41188750-6c18-0e4a-8243-006a8e8c81fe</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">9497966886403524235</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">8</f64>
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.3143675629717009</f64>
-						<u64 name="nameHash">9156890441598243680</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">2b54197d-2248-54c8-81c5-f32eea7ed427</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">5c4f3e83-fe09-509a-b3db-259e65862c75</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">0988b16a-76dd-5da8-baa7-21f3fddffa99</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">0a9cf57e-f072-5fc1-b96a-1d8a6df48259</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">61b81c92-e380-5060-8530-004eb75bf3bc</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">aa30ff77-44c7-5533-9144-736c7563873e</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">f245396b-877f-53d4-848a-4c0f611ab245</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">13b7e9c1-3c96-5893-b20c-57dcf94e55e3</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">149f2e62-b20f-52c2-ae98-8d53f71c065d</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">e330520e-6d20-501d-b336-e9cf21f719f4</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">f9c2b1cf-a515-5899-b858-045c408009d1</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">07d2987e-6075-5f1e-9bf2-da3d4ae1d46a</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">1cb26452-2df6-5d17-811e-0800bb02b423</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">8d27809a-d4b7-58ad-8d5b-b545fcf34b06</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">c4b6d7db-51ef-51c9-a4bb-3befaa6f2265</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">c002819f-eaa5-56a3-beda-e94076e35249</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">03730f42-f22a-5466-a076-b7ea41608ad7</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">3b40f5f3-db49-57e6-8824-110a108fa639</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">5297a89c-c556-5d7e-bdce-17db89cf41e5</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">52e38a29-0fb4-5f31-bc74-fd79d022955f</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">d4633bd7-4a8b-5532-b042-158ce6fc39a8</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">804030b9-db00-57e1-b17b-848aaa69f73d</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">3f1442bb-ef94-53b9-a522-469a0e126e90</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">dec7eef8-ff47-5832-8af4-fef3fe1aabc9</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">39f52f4f-cd8f-3443-a95e-77e4fe92e0ea</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">362ee691-5c7e-54da-9d45-6785af47b03c</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">33df6a1a-0809-4048-b3fc-ab926ee50c1b</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="4">
-						<u64 name="nameHash">9922177756001819210</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">3.8827309852376564</f64>
-						<u64 name="nameHash">9093520131650123089</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1.4</f64>
-						<u64 name="nameHash">3874714633435874321</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">29.3778997372891</f64>
-						<u64 name="nameHash">15842200671275313599</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">5</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">994dd76a-6b38-545e-959c-e30e1084069c</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">4656c2c2-9fd5-7847-b7bd-2d4b01bd1e1f</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="4">
-						<u64 name="nameHash">12765596705492701045</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.11370739713962301</f64>
-						<u64 name="nameHash">11308477581548224723</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">30</f64>
-						<u64 name="nameHash">15815876403879441056</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">34</f64>
-						<u64 name="nameHash">9630002406616468145</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">40</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">3b0c847e-a8d5-550d-a0fd-4f543aa2292e</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">42b96568-6561-8d4d-b9f6-d1ee317b289e</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="2">
-						<u64 name="nameHash">12920444459159475084</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">2012925440499928953</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">432.4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">f6b68deb-1446-5281-92af-68de2806cbe4</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">42b96568-6561-8d4d-b9f6-d1ee317b289e</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="2">
-						<u64 name="nameHash">12920444459159475084</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">2012925440499928953</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">432.4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">e9d790ec-0a9f-5b47-9a4e-b7075a1e9d23</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">42b96568-6561-8d4d-b9f6-d1ee317b289e</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="2">
-						<u64 name="nameHash">12920444459159475084</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">2</f64>
-						<u64 name="nameHash">2012925440499928953</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">432.4</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">563b710d-d9fa-5d92-be4f-46360705993a</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">ad87abeb-063a-4741-80e4-e1034e20a511</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">b6da0d13-62b1-5e29-93d9-7979c3270702</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">772b6be9-ba98-ea42-baf9-d4f897f31b34</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="4">
-						<u64 name="nameHash">1653916590517707752</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">54bd9756-ee08-5f8b-8c62-5eb3cc5aceb3</string>
-						<u64 name="nameHash">15956180055569954882</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">5.5</f64>
-						<u64 name="nameHash">1689425963507806754</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">2</f64>
-						<u64 name="nameHash">9031216941060899837</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.9</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
 			<string name="owner">b6da0d13-62b1-5e29-93d9-7979c3270702</string>
 			<string name="type">camera</string>
 			<object name="data">
@@ -2483,6 +1661,702 @@
 				<bool name="playing">true</bool>
 				<bool name="loop">false</bool>
 				<bool name="alignToTangent">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">54bd9756-ee08-5f8b-8c62-5eb3cc5aceb3</string>
+			<string name="type">snowline.board</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">31664014721863626</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="course">065070a5-4575-5d84-a490-e922e4f304a9</string>
+				<bool name="autopilot">false</bool>
+				<f32 name="lookAhead">15</f32>
+				<f32 name="autopilotSpin">0</f32>
+				<bool name="autopilotGrab">false</bool>
+				<f32 name="gazeAhead">12</f32>
+				<f32 name="lookEase">4</f32>
+				<f32 name="carveRate">80</f32>
+				<f32 name="carveScrub">0.35</f32>
+				<f32 name="scrubSpeed">12</f32>
+				<f32 name="friction">0.04</f32>
+				<f32 name="drag">0.0025</f32>
+				<f32 name="tuckDrag">0.45</f32>
+				<f32 name="tuckTurn">0.5</f32>
+				<f32 name="jumpSpeed">5.5</f32>
+				<f32 name="spinRate">540</f32>
+				<f32 name="minAir">0.35</f32>
+				<f32 name="landTolerance">35</f32>
+				<f32 name="landBurst">3</f32>
+				<f32 name="crashKeep">0.25</f32>
+				<f32 name="crashTime">1.2</f32>
+				<f32 name="hitLoss">5</f32>
+				<i32 name="treesGroup">2</i32>
+				<f32 name="nearMissReach">2.2</f32>
+				<f32 name="nearMissSpeed">9</f32>
+				<string name="trackMark">d112537e-7280-dd48-ab30-222476fa84d4</string>
+				<f32 name="trackSpacing">1.5</f32>
+				<f32 name="trackSpeed">2</f32>
+				<f32 name="sprayCarve">0.45</f32>
+				<f32 name="spraySpeed">6</f32>
+				<f32 name="windSpeed">25</f32>
+				<f32 name="windVolume">0.7</f32>
+				<f32 name="fullLean">40</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">090f9efc-5f7e-5fc2-b579-a7fa49ec19df</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">0</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">0.45287025</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">07afa01c-c354-563b-abf7-2084f6099311</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">1</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">0.1137074</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">aaee6011-92b7-5389-9e03-2021f19ff671</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">2</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">-0.45287025</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">542b10ad-63a9-5fe2-9b17-42116a381449</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">3</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">-0.52112</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2f30e249-4737-5678-a2fc-3992aa426f00</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">4</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">-0.45287025</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">6fbca249-7547-50da-ab97-b6a69efd23e7</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">5</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">0.1137074</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">32d00883-9528-5958-a662-554ea189ac5a</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">6</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">0.45287025</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">ff9b0f8f-53b9-5e90-99bb-ef5dc3bb0099</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">7</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">0.52112</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">6533134d-f888-5610-bac7-4362ac8b84d8</string>
+			<string name="type">snowline.gate</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6029339788979877093</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<i32 name="index">8</i32>
+				<f32 name="halfWidth">4</f32>
+				<f32 name="heading">0.31436756</f32>
+				<f32 name="brushAlong">0.9</f32>
+				<f32 name="brushOut">0.8</f32>
+				<f32 name="brushIn">0.4</f32>
+				<f32 name="brushPush">0.05</f32>
+				<f32 name="flagSpring">0.9</f32>
+				<f32 name="flagDamping">0.15</f32>
+				<f32 name="flagReach">0.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">994dd76a-6b38-545e-959c-e30e1084069c</string>
+			<string name="type">snowline.finish</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1676795074846917045</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="heading">0.1137074</f32>
+				<f32 name="gold">30</f32>
+				<f32 name="silver">34</f32>
+				<f32 name="bronze">40</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2b54197d-2248-54c8-81c5-f32eea7ed427</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">5c4f3e83-fe09-509a-b3db-259e65862c75</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">0988b16a-76dd-5da8-baa7-21f3fddffa99</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">0a9cf57e-f072-5fc1-b96a-1d8a6df48259</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">61b81c92-e380-5060-8530-004eb75bf3bc</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">aa30ff77-44c7-5533-9144-736c7563873e</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f245396b-877f-53d4-848a-4c0f611ab245</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">13b7e9c1-3c96-5893-b20c-57dcf94e55e3</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">149f2e62-b20f-52c2-ae98-8d53f71c065d</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">e330520e-6d20-501d-b336-e9cf21f719f4</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f9c2b1cf-a515-5899-b858-045c408009d1</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">07d2987e-6075-5f1e-9bf2-da3d4ae1d46a</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">1cb26452-2df6-5d17-811e-0800bb02b423</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">8d27809a-d4b7-58ad-8d5b-b545fcf34b06</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">c4b6d7db-51ef-51c9-a4bb-3befaa6f2265</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">c002819f-eaa5-56a3-beda-e94076e35249</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">03730f42-f22a-5466-a076-b7ea41608ad7</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">3b40f5f3-db49-57e6-8824-110a108fa639</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">5297a89c-c556-5d7e-bdce-17db89cf41e5</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">52e38a29-0fb4-5f31-bc74-fd79d022955f</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">d4633bd7-4a8b-5532-b042-158ce6fc39a8</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">804030b9-db00-57e1-b17b-848aaa69f73d</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">3f1442bb-ef94-53b9-a522-469a0e126e90</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">dec7eef8-ff47-5832-8af4-fef3fe1aabc9</string>
+			<string name="type">snowline.gem</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5032278851284652929</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">1.4</f32>
+				<f32 name="spinSpeed">2.5</f32>
+				<f32 name="bobHeight">0.15</f32>
+				<i32 name="value">1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">362ee691-5c7e-54da-9d45-6785af47b03c</string>
+			<string name="type">snowline.kicker</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">8291706299989182339</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="rampRun">3.882731</f32>
+				<f32 name="lipHeight">1.4</f32>
+				<f32 name="lipAngle">29.3779</f32>
+				<f32 name="width">5</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">3b0c847e-a8d5-550d-a0fd-4f543aa2292e</string>
+			<string name="type">snowline.ghost</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6788756832784803425</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<u8 name="medal">0</u8>
+				<f32 name="finishDistance">432.4</f32>
+				<f32 name="rampSeconds">3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f6b68deb-1446-5281-92af-68de2806cbe4</string>
+			<string name="type">snowline.ghost</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6788756832784803425</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<u8 name="medal">1</u8>
+				<f32 name="finishDistance">432.4</f32>
+				<f32 name="rampSeconds">3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">e9d790ec-0a9f-5b47-9a4e-b7075a1e9d23</string>
+			<string name="type">snowline.ghost</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6788756832784803425</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<u8 name="medal">2</u8>
+				<f32 name="finishDistance">432.4</f32>
+				<f32 name="rampSeconds">3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">563b710d-d9fa-5d92-be4f-46360705993a</string>
+			<string name="type">snowline.player_ghost</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">3879483160320105315</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="sampleRate">10</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">b6da0d13-62b1-5e29-93d9-7979c3270702</string>
+			<string name="type">snowline.follow_camera</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5096980878042315383</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="target">54bd9756-ee08-5f8b-8c62-5eb3cc5aceb3</string>
+				<f32 name="distance">5.5</f32>
+				<f32 name="height">2</f32>
+				<f32 name="lookHeight">0.9</f32>
+				<f32 name="positionSmoothing">4.5</f32>
+				<f32 name="shakeTime">0.35</f32>
+				<f32 name="shakeAmount">0.35</f32>
+				<f32 name="snapDistance">40</f32>
 			</object>
 		</object>
 	</array>

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Snowline's particle effects, written through the editor's MCP tools (PaperKid's fx.py, its
 helpers kept): a soft round sprite (a texture made here) and the board's snow:
-- Spray: powder thrown off the board's edge while it carves hard (continuous; Board.as plays and
+- Spray: powder thrown off the board's edge while it carves hard (continuous; the Board plays and
   stops it on the rider's Spray entity).
-- Powder: a burst of snow as the board lands (Board.as restarts it on the rider's Powder entity).
+- Powder: a burst of snow as the board lands (the Board restarts it on the rider's Powder entity).
 - GemSparkle: a gem taken, a bright burst of glints (Prefabs/GemSparkle, gems.py, plays it once).
 - Avalanche: the front of an avalanche, a wall of billowing snow as wide as the valley floor,
-  rising and spreading as it is left behind (continuous; Avalanche.as plays and stops it as the
+  rising and spreading as it is left behind (continuous; the Avalanche plays and stops it as the
   avalanche follows the course line).
 
 Each effect starts from the engine's own new effect (asset_create, then asset_data_read), so the

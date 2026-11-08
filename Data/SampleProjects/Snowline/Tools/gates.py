@@ -10,17 +10,18 @@ GatePole, GateFlagRed, GateFlagBlue and Finish, each a model with its prefab.
   the joint's target is nil), limited to about 75 degrees either way: gravity does not swing it,
   and its damping takes a swing out. The flags are in collision group FLAG_GROUP, which the scene
   keeps from colliding with anything (course.py): a flag pinned at its limit is a wall, and a rider
-  riding into one stopped dead. Gate.as swings a flag the rider brushes past instead.
+  riding into one stopped dead. The Gate behaviour swings a flag the rider brushes past instead.
 - Prefabs/GateRedNarrow, Prefabs/GateBlueNarrow: the same, NARROW_HALF_WIDTH either side (Forest).
 - Prefabs/FinishLine: the finish arch.
 
-The scene places them (course.py): a gate is an entity with Gate.as and one of these under it.
+The scene places them (course.py): a gate is an entity with the Gate behaviour and one of these
+under it.
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from snowgen import Doc, mcp, yaw, assets
 
-HALF_WIDTH = 4.0      # half the gap between a gate's poles (m); Gate.as's halfWidth
+HALF_WIDTH = 4.0      # half the gap between a gate's poles (m); the Gate's HalfWidth
 NARROW_HALF_WIDTH = 3.0 # Forest's narrower gates (Prefabs/GateRedNarrow, GateBlueNarrow)
 FLAG_HEIGHT = 1.55    # the hinge's height, half way up the panel (m)
 FLAG_REACH = 0.3      # from the hinge to the panel's centre (m)

@@ -88,7 +88,7 @@ def finish():
 
 def gem():
     """A gem about 0.85 m tall (big enough to pick out down the slope): an eight-sided double cone,
-    its centre at the origin (Gem.as spins and bobs it there), a brighter band round its waist."""
+    its centre at the origin (the Gem spins and bobs it there), a brighter band round its waist."""
     tube("Crown", P(0, 0, 0), P(0, 0, 0.36), 0.31, "Gem", "root", 8, 0.0)
     tube("Pavilion", P(0, 0, 0), P(0, 0, -0.48), 0.31, "Gem", "root", 8, 0.0)
     tube("Girdle", P(0, 0, -0.03), P(0, 0, 0.03), 0.318, "GemCore", "root", 8)

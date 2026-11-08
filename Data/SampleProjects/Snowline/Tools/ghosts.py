@@ -5,7 +5,7 @@
   blended) and glowing a little, so a ghost reads as a ghost against the snow and in the shade.
   course.py gives a ghost's rider model this material in every slot: a silhouette in the medal's
   colour.
-- Materials/GhostPlayer: the player's own best run (PlayerGhost.as), the same, in pale blue.
+- Materials/GhostPlayer: the player's own best run (the PlayerGhost), the same, in pale blue.
 
 A material starts from the engine's own new PBR material (asset_create, then asset_data_read), so
 the fields this does not set keep the engine's defaults; its uniforms are written by the offsets

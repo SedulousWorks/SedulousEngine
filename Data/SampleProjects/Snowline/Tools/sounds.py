@@ -5,9 +5,9 @@ Generated here (no third-party content):
 
 - Audio/Wind: four seconds of wind, looping seamlessly (its last half second crossfaded into its
   first): noise through two low-pass filters (a low roar and a thinner hiss), swelling in slow
-  gusts. Board.as plays it on the rider's Wind source, louder and higher as the rider goes faster.
+  gusts. The Board plays it on the rider's Wind source, louder and higher as the rider goes faster.
 - Audio/Rumble: four seconds of an avalanche's roar, looping the same way: noise through a very low
-  filter, thudding unevenly. Avalanche.as plays it on its Rumble source, louder as it closes in.
+  filter, thudding unevenly. The Avalanche plays it on its Rumble source, louder as it closes in.
 
 Taken from Kenney's packs (CC0; `--kenney` is the folder holding the unzipped packs), each imported
 under the name the game knows it by (KENNEY): the board's pop, landing, crash and a hit on a tree;

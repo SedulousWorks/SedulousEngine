@@ -3,10 +3,11 @@
 
 - Effects/Track.png (generated: no third-party content): one stretch of the board's track, a soft
   groove a board wide, its ends tapered so the next mark's overlap joins it.
-- Prefabs/TrackMark: the track's mark, as the board drops them behind it (Board.as spawns one every
-  `trackSpacing` metres and turns it to the heading): an unrotated root carrying TrackMark.as (it
-  fades the mark and removes it) and a child decal pitched to project down onto the snow (a decal
-  projects along its local +Z).
+- Prefabs/TrackMark: the track's mark, as the board drops them behind it (the Board spawns one
+  every `trackSpacing` metres and turns it to the heading): an unrotated root carrying the game's
+  TrackMark behaviour (snowline.track_mark: it fades the mark and removes it; the editor this talks
+  to is the project's own, Tools/README.md) and a child decal pitched to project down onto the snow
+  (a decal projects along its local +Z).
 """
 import math, os, random, sys
 from PIL import Image
@@ -41,10 +42,9 @@ def main():
     track_texture(path)
     texture = mcp("asset_import", {"source": path, "group": "Effects", "importer": "Texture"})["guid"]
     listed = assets()
-    script = next(a["guid"] for a in listed if a["type"] == "ScriptClassAsset" and a["name"] == "TrackMark")
     d = Doc("TrackMark")
     root = d.entity("TrackMark")
-    d.script(root, (script, {}))
+    d.add(root, "snowline.track_mark")
     mark = d.entity("Decal", (0, 0.4, 0), pitch(90), parent=root)  # +Z down onto the snow
     d.add(mark, "decal", texture=texture, size={"x": 0.34, "y": 1.9, "z": 1.2},
           color={"r": 1.0, "g": 1.0, "b": 1.0, "a": 0.85})

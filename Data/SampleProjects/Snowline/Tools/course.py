@@ -8,27 +8,30 @@ Needs terrain.py <course> and importall.py <course> first: it places what they m
   vegetation mask is painted, which it is not until someone paints it);
 - the course line: a spline down the middle of the course (terrain.py's points, with Catmull-Rom
   handles, stored as written);
-- the rider (Board.as on a character, the modelled rider and board under it) at the top gate;
-- the slalom gates (Gate.as on each, the course's red and blue prefabs in turn under them) every
+- the rider (the Board behaviour on a character, the modelled rider and board under it) at the top
+  gate;
+- the slalom gates (a Gate on each, the course's red and blue prefabs in turn under them) every
   gate_spacing metres down the course (RULES), swinging side to side of the line, standing on the
-  snow (terrain.py's mountain), none on a shortcut's bend; and the finish (Finish.as,
+  snow (terrain.py's mountain), none on a shortcut's bend; and the finish (a Finish,
   Prefabs/FinishLine) at the line's end;
-- the gems (Gem.as on each, the Gem model under it): an arc over each kicker's flight and the
+- the gems (a Gem on each, the Gem model under it): an arc over each kicker's flight and the
   gap's, so the air is worth taking; between the gates without a kicker, a row of GEM_ROW on the
   course line, or every third gap gem_offset metres out on the side of the gate before it (a
   wider line than the gates ask for); and a row down a shortcut;
-- the medal ghosts (Ghost.as, a path_follow on the course line, the rider model under it in a
+- the medal ghosts (a Ghost, a path_follow on the course line, the rider model under it in a
   medal's see-through colour, ghosts.py's materials): one per medal, each riding to the finish at
   its medal's time;
-- the player's ghost (PlayerGhost.as, the rider model under it in ghosts.py's GhostPlayer): the
+- the player's ghost (a PlayerGhost, the rider model under it in ghosts.py's GhostPlayer): the
   course's best run, saved, ridden again beside the player; hidden until there is one;
-- the kickers (Kicker.as, which sets the launch off the lip, on Models/Props/KickerModel with its
+- the kickers (a Kicker, which sets the launch off the lip, on Models/Props/KickerModel with its
   collision) on the course line between gates;
 - a gap, if the course has one (terrain.py's crevasse): a kicker whose lip stands at its edge, and
-  the Gap (Gap.as) judging the landing past it; no gate stands near it;
-- an avalanche, if the course has one (RULES): Avalanche.as on a path_follow on the course line,
+  the Gap judging the landing past it; no gate stands near it;
+- an avalanche, if the course has one (RULES): an Avalanche on a path_follow on the course line,
   with the Avalanche particle effect and the Rumble sound (particles.py, sounds.py) under it;
-- the chase camera (FollowCamera.as).
+- the chase camera (a FollowCamera).
+Each piece's behaviour is the game's own (snowline.board, snowline.gate, ...: Code/Snowline), so
+the editor this talks to is the project's own (Tools/README.md).
 """
 import json, math, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -83,17 +86,8 @@ MASK = asset("VegetationMaskAsset", name + "Mask")
 PINE_MATERIALS = model_materials("Pine")
 ROCK_MATERIALS = model_materials("Rock")
 SHRUB_MATERIALS = model_materials("Shrub")
-BOARD = asset("ScriptClassAsset", "Board")
-GATE = asset("ScriptClassAsset", "Gate")
-FINISH = asset("ScriptClassAsset", "Finish")
-GHOST = asset("ScriptClassAsset", "Ghost")
-PLAYER_GHOST = asset("ScriptClassAsset", "PlayerGhost")
-KICKER = asset("ScriptClassAsset", "Kicker")
-GAP = asset("ScriptClassAsset", "Gap") if "gap" in info else None
-GEM = asset("ScriptClassAsset", "Gem")
 GEM_MODEL = next(a["guid"] for a in ASSETS if a["type"] == "PrefabDocument"
                  and a.get("group", "") == "Models/Props/GemModel")
-CAMERA = asset("ScriptClassAsset", "FollowCamera")
 RIDER_MODEL = next(a["guid"] for a in ASSETS if a["type"] == "PrefabDocument"
                    and a.get("group") == "Models/Rider/RiderModel")
 RIDER_GRAPH = asset("AnimationGraphAsset", "RiderGraph")
@@ -113,10 +107,11 @@ GAP_CLEAR = (30.0, 15.0) # no gate this far before a gap's lip, nor this far pas
 # - air_speed, gap_speed: the launch speed (m/s) the arcs of gems over the kickers and the gap
 #   follow: a rider riding the line untucked (the autopilot leaves Meadow's kicker at 16.8 m/s and
 #   Ridge's gap at 20), a little under, so a slower rider still meets them early in the flight;
-# - medals: gold, silver, bronze (s, penalties included). Snowline.as judges a run by them and the
+# - medals: gold, silver, bronze (s, penalties included). The game judges a run by them and the
 #   medal ghosts ride at their pace;
-# - avalanche (optional): where down the line the rider sets it off (release, m; Avalanche.as). Ridge's
-#   breaks loose 47 m before the crevasse's lip, so the chase runs over the gap to the finish.
+# - avalanche (optional): where down the line the rider sets it off (release, m; the Avalanche's
+#   releaseAt). Ridge's breaks loose 47 m before the crevasse's lip, so the chase runs over the gap
+#   to the finish.
 # Meadow's medals: the autopilot, riding the line untucked and missing two or three gates,
 # finishes in about 36 s (31 s riding): a bronze. Silver asks for the gates; gold for the gates
 # and a tucked line.
@@ -135,7 +130,7 @@ RULES = {
 }
 COURSE = RULES[name]
 # The kicker's shape (blender/props.py, which models it from the same numbers): its curve, buried
-# KICKER_BURY at its start, rises to the lip KICKER_HEIGHT over KICKER_CURVE. Kicker.as needs the
+# KICKER_BURY at its start, rises to the lip KICKER_HEIGHT over KICKER_CURVE. The Kicker needs the
 # lip: how far up the ramp from where it leaves the snow, how high, at what angle.
 KICKER_CURVE, KICKER_HEIGHT, KICKER_BURY, KICKER_WIDTH = 5.4, 1.4, 0.12, 5.0
 KICKER_RUN = KICKER_CURVE - KICKER_CURVE * math.sqrt(KICKER_BURY / (KICKER_HEIGHT + KICKER_BURY))
@@ -184,7 +179,7 @@ def gate_distances(points, length):
 
 
 def gates(d, points, length):
-    """The gates and the finish, each an entity carrying its script with its prefab under it; then
+    """The gates and the finish, each an entity carrying its behaviour with its prefab under it; then
     the gems and kickers between the gates."""
     import terrain
     mountain = terrain.Mountain(terrain.COURSES[name])
@@ -197,7 +192,7 @@ def gates(d, points, length):
         x = p[0] + math.cos(heading) * swing * side  # +X across a heading of 0
         z = p[2] - math.sin(heading) * swing * side
         e = d.entity("Gate%d" % index, (x, mountain.height(x, z), z), yaw(math.degrees(heading)))
-        d.script(e, (GATE, {"index": index, "heading": heading, "halfWidth": COURSE["gate_half"]}))
+        d.add(e, "snowline.gate", index=index, heading=heading, halfWidth=float(COURSE["gate_half"]))
         d.instance(prefabs[COURSE["gate_prefabs"][index % 2]], parent=e)
     gems(d, points, mountain, placed)
     kickers(d, points, mountain, placed)
@@ -205,7 +200,7 @@ def gates(d, points, length):
     p, heading = along_course(points, length - FINISH_BEFORE)
     e = d.entity("Finish", (p[0], mountain.height(p[0], p[2]), p[2]), yaw(math.degrees(heading)))
     gold, silver, bronze = COURSE["medals"]
-    d.script(e, (FINISH, {"heading": heading, "gold": gold, "silver": silver, "bronze": bronze}))
+    d.add(e, "snowline.finish", heading=heading, gold=float(gold), silver=float(silver), bronze=float(bronze))
     d.instance(prefabs["FinishLine"], parent=e)
     return len(placed)
 
@@ -220,14 +215,14 @@ def gems(d, points, mountain, placed):
     def gem(x, z):
         nonlocal count
         e = d.entity("Gem%d" % count, (x, mountain.height(x, z) + GEM_HEIGHT, z))
-        d.script(e, (GEM, {}))
+        d.add(e, "snowline.gem")
         d.instance(GEM_MODEL, parent=e)
         count += 1
 
     def gem_at(x, y, z):
         nonlocal count
         e = d.entity("Gem%d" % count, (x, y, z))
-        d.script(e, (GEM, {}))
+        d.add(e, "snowline.gem")
         d.instance(GEM_MODEL, parent=e)
         count += 1
 
@@ -268,7 +263,7 @@ def kicker_tilt(points, mountain, distance):
 
 def air_arc(points, mountain, distance, speed, past):
     """Points along the flight off a kicker whose ramp leaves the snow `distance` metres down the
-    line, launched at `speed` (Kicker.as: off the lip at its angle above level, the lip's angle
+    line, launched at `speed` (the Kicker: off the lip at its angle above level, the lip's angle
     less the slope it stands on), `past` metres past the lip, level: the rider's centre there."""
     tilt = kicker_tilt(points, mountain, distance)
     lip_distance = distance + KICKER_RUN * math.cos(math.radians(tilt))
@@ -305,8 +300,8 @@ def kicker(d, points, mountain, prefab, label, distance):
     slope = kicker_tilt(points, mountain, distance)
     e = d.entity(label, (p[0], mountain.height(p[0], p[2]) - KICKER_SINK, p[2]),
                  qmul(yaw(math.degrees(heading)), pitch(slope)))
-    d.script(e, (KICKER, {"run": KICKER_RUN, "lipHeight": KICKER_HEIGHT, "lipAngle": KICKER_LIP_ANGLE,
-                          "width": KICKER_WIDTH}))
+    d.add(e, "snowline.kicker", rampRun=KICKER_RUN, lipHeight=KICKER_HEIGHT, lipAngle=KICKER_LIP_ANGLE,
+          width=KICKER_WIDTH)
     d.instance(prefab, parent=e)
 
 
@@ -326,7 +321,7 @@ def distance_to(points, target):
 
 
 def gap(d, points, mountain):
-    """The crevasse (terrain.py's gap): a kicker whose lip stands at its edge, and the Gap (Gap.as)
+    """The crevasse (terrain.py's gap): a kicker whose lip stands at its edge, and the Gap
     that judges the landing past it: short of the ramp up is a crash, beyond it a cleared gap."""
     info_gap = info.get("gap")
     if not info_gap:
@@ -339,7 +334,7 @@ def gap(d, points, mountain):
     kicker(d, points, mountain, prefab, "GapKicker", at - KICKER_RUN)
     _, heading = along_course(points, at)
     e = d.entity("Gap", tuple(lip), yaw(math.degrees(heading)))
-    d.script(e, (GAP, {"heading": heading, "short": info_gap["short"], "reach": info_gap["reach"]}))
+    d.add(e, "snowline.gap", heading=heading, short=float(info_gap["short"]), reach=float(info_gap["reach"]))
 
 
 def aim_bone(name, share):
@@ -381,22 +376,22 @@ def rider_ops(material=None):
     return ops
 
 
-# The medal ghosts, in Ghost.as's order (0 gold, 1 silver, 2 bronze), each with its material.
+# The medal ghosts, in the Ghost's medal order (0 gold, 1 silver, 2 bronze), each with its material.
 GHOSTS = (("GhostGold", 0), ("GhostSilver", 1), ("GhostBronze", 2))
 
 
 def ghosts(d, course, length):
-    """A ghost per medal: on the course line from its top (path_follow, stopped until Ghost.as sets
+    """A ghost per medal: on the course line from its top (path_follow, stopped until the Ghost sets
     its pace), the rider model under it in the medal's material. The follower turns its -Z down
     the line; the model faces +Z, so it is turned about."""
     for label, medal in GHOSTS:
         e = d.entity(label, tuple(info["course"][0]))
         d.add(e, "path_follow", spline=course, speed=0.0, loop=False, playing=True, alignToTangent=True)
-        d.script(e, (GHOST, {"medal": medal, "finishDistance": length - FINISH_BEFORE}))
+        d.add(e, "snowline.ghost", medal=medal, finishDistance=length - FINISH_BEFORE)
         d.instance(RIDER_MODEL, rot=yaw(180), parent=e, ops=rider_ops(asset("MaterialAsset", label)))
 
 def avalanche(d, course):
-    """The avalanche, if the course has one: parked at the line's top, still (Avalanche.as sets it
+    """The avalanche, if the course has one: parked at the line's top, still (the Avalanche sets it
     off), its front of billowing snow and its rumble under it. The follower turns its -Z down the
     line, so the front's width (the effect's X) lies across it."""
     rule = COURSE.get("avalanche")
@@ -404,7 +399,7 @@ def avalanche(d, course):
         return
     e = d.entity("Avalanche", tuple(info["course"][0]))
     d.add(e, "path_follow", spline=course, speed=0.0, loop=False, playing=True, alignToTangent=True)
-    d.script(e, (asset("ScriptClassAsset", "Avalanche"), {"course": ("entity", course), "release": rule["release"]}))
+    d.add(e, "snowline.avalanche", course=course, releaseAt=float(rule["release"]))
     front = d.entity("Front", (0, 1.0, 0), parent=e)
     d.add(front, "particle_effect", effect=asset("ParticleEffectAsset", "Avalanche"))
     rumble = d.entity("Rumble", parent=e)
@@ -455,7 +450,7 @@ def vegetation_layer(label, mesh, materials, placement, density, scale, slope, f
 
 UNIFORM, SPLAT, MASK_PLACEMENT = 0, 1, 2
 # Collision groups: 0 everything, 1 the gates' flags (gates.py's FLAG_GROUP), 2 the trees and rocks
-# (the vegetation's trunks: Board.as finds a near miss by this group).
+# (the vegetation's trunks: the Board finds a near miss by this group).
 FLAGS_GROUP, TREES_GROUP = 1, 2
 PINE_TRUNK = (0.35, 6.0)  # a pine's solid core (radius, height): the trunk and its lowest boughs
 ROCK_SOLID = (0.7, 1.0)   # a boulder, half sunk
@@ -466,7 +461,7 @@ def build():
     d = Doc(name)
     look(d)
     # The collision groups (FLAGS_GROUP, TREES_GROUP): the flags collide with nothing (a flag at its
-    # hinge's limit would stop the rider dead; Gate.as swings it instead); the trees and rocks stop
+    # hinge's limit would stop the rider dead; the Gate swings it instead); the trees and rocks stop
     # the rider (group 0) like any solid, said explicitly.
     everything_but_flags = 0xFFFFFFFF & ~(1 << FLAGS_GROUP)
     d.settings.append(settings("physics",
@@ -506,10 +501,9 @@ def build():
     # it on the terrain's small dips, but at the default 0.5 m it held the rider down over a kicker's
     # lip and rode it down the back instead of into the air (as often as not, by the frame timing).
     d.add(rider, "physics.Character", radius=0.35, halfHeight=0.55, maxSlopeDegrees=60.0, stepDown=0.1)
-    d.script(rider, (BOARD, {"course": ("entity", course), "autopilot": AUTOPILOT, "autopilotSpin": AUTOPILOT_SPIN,
-                             "autopilotGrab": AUTOPILOT_GRAB,
-                             "trackMark": ("asset", asset("PrefabDocument", "TrackMark", "Prefabs"))}))
-    # The rider's head looks down the course line ahead (Board.as sets the point each frame; the
+    d.add(rider, "snowline.board", course=course, autopilot=AUTOPILOT, autopilotSpin=AUTOPILOT_SPIN,
+          autopilotGrab=AUTOPILOT_GRAB, trackMark=asset("PrefabDocument", "TrackMark", "Prefabs"))
+    # The rider's head looks down the course line ahead (the Board sets the point each frame; the
     # next gate once the course has gates): an aim on the rider, which drives the graph below it.
     # The rig's spine and head face +Z, up +Y (blender/rider.py), the aim's defaults.
     d.add(rider, "aim_ik", bones=[aim_bone("spine", 0.3), aim_bone("head", 1.0)], maxTurn=70.0, maxTilt=70.0, fadeSeconds=0.5)
@@ -520,7 +514,7 @@ def build():
     for fx in ("Spray", "Powder"):
         e = d.entity(fx, (0, -0.85, 0), parent=rider)
         d.add(e, "particle_effect", effect=asset("ParticleEffectAsset", fx))
-    # The wind in the rider's ears (sounds.py): looping, not placed, silent until Board.as sets
+    # The wind in the rider's ears (sounds.py): looping, not placed, silent until the Board sets
     # its volume by the speed.
     wind = d.entity("Wind", parent=rider)
     d.add(wind, "audio.Source", clip=asset("AudioClipAsset", "Wind"), loop=True, spatial=False, autoPlay=True,
@@ -532,12 +526,12 @@ def build():
     # The player's best run: it rides where the rider rode, so it sits as the rider does, the model
     # 0.9 m below the capsule's centre it was recorded at.
     player_ghost = d.entity("PlayerGhost", (top[0], top[1] + 0.9, top[2]), yaw(heading))
-    d.script(player_ghost, (PLAYER_GHOST, {}))
+    d.add(player_ghost, "snowline.player_ghost")
     d.instance(RIDER_MODEL, (0, -0.9, 0), parent=player_ghost, ops=rider_ops(asset("MaterialAsset", "GhostPlayer")))
 
     cam = d.entity("Camera", (top[0], top[1] + 4.0, top[2] - 8.0))
     d.add(cam, "camera", farZ=1200.0, fovYRadians=1.05)
-    d.script(cam, (CAMERA, {"target": ("entity", rider), "distance": 5.5, "height": 2.0, "lookHeight": 0.9}))
+    d.add(cam, "snowline.follow_camera", target=rider, distance=5.5, height=2.0, lookHeight=0.9)
     return d
 
 

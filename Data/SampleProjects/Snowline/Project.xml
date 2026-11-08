@@ -8,10 +8,10 @@
 		<string name="engineVersion">0.1.0</string>
 		<string name="defaultSceneId">3bf5f9c4-b106-8e4a-b815-0cfd3bfabdf0</string>
 		<string name="defaultScene">Scenes/Meadow</string>
-		<string name="startupScript">Scripts/Snowline</string>
+		<string name="startupScript"/>
 		<string name="defaultInputMapId">ea81481e-caf6-6543-bc0a-6c9a95c93f62</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="startupScriptId">b150195f-3b97-e341-a4b3-2f7c5fe047bc</string>
+		<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
 		<string name="defaultUiFontId">c94db512-6cc2-b449-bfe0-0b528d1c45a1</string>
 		<u32 name="renderMsaaSamples">1</u32>
 		<array name="uiFontIds" count="0"/>
@@ -27,5 +27,13 @@
 			<string>162c22d6-7e8b-764f-b4f0-1165a452ccfd</string>
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<array name="plugins" count="1">
+			<object>
+				<string name="id">snowline</string>
+				<string name="path">Code</string>
+				<array name="platforms" count="0"/>
+				<object name="settings"/>
+			</object>
+		</array>
 	</object>
 </root>

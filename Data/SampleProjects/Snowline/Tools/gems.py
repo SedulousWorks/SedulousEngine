@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """gems.py: the sparkle a taken gem leaves, its prefab written through the editor's MCP.
 
-Needs particles.py (FX GemSparkle) and the Expire script imported first.
+Needs particles.py (FX GemSparkle) first, and the project's own editor (Tools/README.md): the
+Expire behaviour is the game's code.
 
-- Prefabs/GemSparkle: the burst where a gem was taken (Gem.as spawns it): the GemSparkle effect,
-  which plays once, and Expire.as, which removes the entity once the burst is spent.
+- Prefabs/GemSparkle: the burst where a gem was taken (the Gem spawns it): the GemSparkle effect,
+  which plays once, and the game's Expire behaviour (snowline.expire), which removes the entity
+  once the burst is spent.
 
-The scene places the gems themselves (course.py): a gem is an entity with Gem.as and the Gem
-model's prefab under it.
+The scene places the gems themselves (course.py): a gem is an entity with the Gem behaviour and the
+Gem model's prefab under it.
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,5 +31,5 @@ def existing(name):
 d = Doc("GemSparkle")
 root = d.entity("GemSparkle")
 d.add(root, "particle_effect", effect=asset("ParticleEffectAsset", "GemSparkle"))
-d.script(root, (asset("ScriptClassAsset", "Expire"), {"life": 1.2}))
+d.add(root, "snowline.expire", life=1.2)
 print("GemSparkle", d.write(existing("GemSparkle"), prefab=True, group="Prefabs"))

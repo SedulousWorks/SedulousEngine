@@ -1,6 +1,7 @@
 <root>
 	<string name="guid">44874676-6ba8-b84a-84d8-8fee02fef806</string>
 	<string name="typeName">Sedulous.Scene.Resource.SceneDocument</string>
+	<string name="source"/>
 	<array name="dataVersions" count="1">
 		<u64 name="type">10229835977738824634</u64>
 		<u32 name="version">0</u32>
