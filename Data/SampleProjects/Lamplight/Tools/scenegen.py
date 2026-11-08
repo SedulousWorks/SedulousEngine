@@ -2,7 +2,9 @@
 """Lamplight's scene/prefab XML (Snowline's generator, PaperKid's pkgen.py before it), built from the
 RUNNING editor's schema (component_schema): every
 record starts from the schema's defaults and takes only the fields given, so nothing here is
-hand-kept against an engine build."""
+hand-kept against an engine build. The game's own behaviours (lamplight.*: Code/Lamplight) are
+written as components like the engine's, so the editor this talks to is the project's own
+(README.md)."""
 import json, os, subprocess, sys, uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -89,29 +91,6 @@ def vec(name, xyz, keys="xyz"):
     return '<object name="%s">%s</object>' % (name, "".join('<f32 name="%s">%s</f32>' % (k, num(float(v))) for k, v in zip(keys, xyz)))
 
 
-def fnv(name):
-    """ScriptPropertyNameHash: FNV-1a 64 over the property's name."""
-    h = 14695981039346656037
-    for b in name.encode():
-        h ^= b
-        h = (h * 1099511628211) & 0xFFFFFFFFFFFFFFFF
-    return h
-
-
-def override(name, value):
-    """A script property override: a bool, a float, an int, or ('entity'|'asset', guid)."""
-    h = fnv(name)
-    if isinstance(value, tuple):
-        kind = {"entity": 7, "asset": 8}[value[0]]
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">%d</u8><string name="id">%s</string>' % (h, kind, value[1])
-    if isinstance(value, bool):
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">3</u8><bool name="boolean">%s</bool>' % (
-            h, "true" if value else "false")
-    if isinstance(value, int) and not isinstance(value, bool):
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">2</u8><f64 name="number">%s</f64>' % (h, float(value))
-    return '<u64 name="nameHash">%d</u64><u8 name="kind">1</u8><f64 name="number">%s</f64>' % (h, float(value))
-
-
 def settings(block, **values):
     """A settings block by its system id, or its type name where a component shares the id."""
     s = schema(block)
@@ -146,18 +125,6 @@ class Doc:
 
     def add(self, owner, wire, **values):
         self.components.append(record(owner, wire, **values))
-
-    def script(self, owner, *behaviors):
-        """behaviors: (script guid, {property: value}) pairs."""
-        items = ['<string name="script">%s</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32>'
-                 '<array name="overrides" count="%d">%s</array>' % (g, len(o), "".join(override(k, v) for k, v in o.items()))
-                 for g, o in behaviors]
-        self.components.append(record(owner, "script", behaviors=items))
-
-    def level_script(self, guid, **overrides):
-        # The level script's block shares its system id (script) with the Script component.
-        self.settings.append(settings("SceneScriptSettings", script=guid,
-                                      overrides=[override(k, v) for k, v in overrides.items()]))
 
     def instance(self, prefab, pos=(0, 0, 0), rot=(0, 0, 0, 1), scale=(1, 1, 1), parent=None, ops=()):
         """A prefab instance; `ops` its component overrides (component_removed / component_added /

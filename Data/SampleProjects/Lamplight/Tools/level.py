@@ -7,13 +7,15 @@ table into the scene: every piece from the kits (blender/manor.py, blender/groun
 each with its own unscaled collider placed from the same sizes and made of a surface (surfaces.py,
 for footsteps); a cutaway on every wall piece; the thief with his camera rig and HUD; each guard
 with his round, lantern, capsule and meter; the navigation zone over it all, baked after writing.
+The pieces' behaviours are the game's own (lamplight.*: Code/Lamplight), written as components, so
+the editor this talks to is the project's own (README.md).
 
 Tables are in grid cells for the ground and the walls (a cell is 2 m: cell (i, j) spans x 2i..2i+2,
 z 2j..2j+2) and in metres for everything placed in the world; the level's origin is its north-west
 corner, north being -Z. The camera starts south of the thief looking north.
 
 Run with the editor open on the project and its MCP server on, after the models are imported,
-graph.py has written the graphs, importscripts.py and prefabs.py have run:
+graph.py has written the graphs, importui.py and prefabs.py have run:
     python3 level.py Gardens Room
 """
 import math, os, sys
@@ -26,7 +28,7 @@ from surfaces import surfaces
 import levels
 
 GRID = 2.0
-GUARD_GROUP = 2  # the guards' collision group (Guard.as looks past it)
+GUARD_GROUP = 2  # the guards' collision group (the Guard looks past it)
 DOOR_W, DOOR_H = 1.2, 2.2  # a doorway's opening (manor.py)
 LEAF_W, LEAF_H = 1.04, 2.12  # the door's leaf inside the frame (manor.py's Door)
 GATE_W, GATE_H = 1.2, 1.8  # an iron gate's leaf (grounds.py's Gate)
@@ -44,7 +46,7 @@ GROUND = {"Floor": (("Manor", "Floor"), "Wood"), "Grass": (("Grounds", "Grass"),
           "Gravel": (("Grounds", "Gravel"), "Gravel"), "Flags": (("Grounds", "Flags"), "Stone"),
           "Cobbles": (("Grounds", "Cobbles"), "Stone")}
 # Lamps on tables by kind: the piece, where its light hangs over the tabletop and how bright, and
-# its glowing material slots (Lamp.as swaps them out while it is out). The oil lamp casts shadows
+# its glowing material slots (the Lamp swaps them out while it is out). The oil lamp casts shadows
 # (six shadow tiles, a point light); a candelabra does not, so a room can have several.
 TABLE_LAMPS = {
     "OilLamp": dict(piece=("Manor", "OilLamp"), lightY=0.75, intensity=6.0, range=7.0, shadows=True,
@@ -56,8 +58,8 @@ TABLE_LAMPS = {
 PROPS = {"HayBale": (("Grounds", "HayBale"), (1.2, 0.6, 0.8)), "Trough": (("Grounds", "Trough"), (1.8, 0.6, 0.6)),
          "Barrel": (("Manor", "Barrel"), (0.6, 0.9, 0.6)), "WineRack": (("Manor", "WineRack"), (2.0, 2.0, 0.5)),
          "Table": (("Manor", "Table"), (1.6, 0.8, 0.9))}
-# A torch on its stand: its light where the flame burns, flickering (Flicker.as), and the flame's
-# slot for Lamp.as (manor.py's order: Hoop, TorchWood, Fire). Its shadow is cached (Static: the
+# A torch on its stand: its light where the flame burns, flickering (the Flicker), and the flame's
+# slot for the Lamp (manor.py's order: Hoop, TorchWood, Fire). Its shadow is cached (Static: the
 # stand never moves; the renderer redraws it where a guard or the thief walks through) and comes
 # from the static layer's own tiles, which go to the lights nearest the camera; a torch that gets
 # none lights through walls, so each still stands well inside its room.
@@ -69,7 +71,7 @@ ASSETS = assets()
 def asset(asset_type, name):
     found = [a["guid"] for a in ASSETS if a["type"] == asset_type and a["name"] == name]
     if not found:
-        raise SystemExit("no %s %s (run importscripts.py / prefabs.py first)" % (asset_type, name))
+        raise SystemExit("no %s %s (run importui.py / prefabs.py first)" % (asset_type, name))
     return found[0]
 
 
@@ -93,7 +95,7 @@ def piece(kit, name):
 
 
 def model_ops(prefab, graph_name):
-    """A model's import plays one clip; its script drives a graph instead (Snowline's rider does the
+    """A model's import plays one clip; its behaviour drives a graph instead (Snowline's rider does the
     same): the prefab's root loses the clip animator, and the skinned mesh gains the graph."""
     root = ET.fromstring(mcp("prefab_read", {"guid": prefab})["xml"])
     parts = {}
@@ -157,14 +159,14 @@ class Builder:
                    halfExtents={"x": size[0] / 2, "y": size[1] / 2, "z": size[2] / 2}, material=self.surf[surface])
         return e
 
-    def trigger(self, name, rect, script, props):
+    def trigger(self, name, rect, behaviour, **values):
         """A trigger volume over `rect` (metres: x0, z0, x1, z1) carrying a behaviour."""
         x0, z0, x1, z1 = rect
         e = self.d.stable_id("entity")
         self.d.entity(name, ((x0 + x1) / 2, 1.0, (z0 + z1) / 2), eid=e)
         self.d.add(e, "physics.RigidBody", motion=0, layer=3, shape=0, isTrigger=True,
                    halfExtents={"x": (x1 - x0) / 2, "y": 1.0, "z": (z1 - z0) / 2})
-        self.d.script(e, (asset("ScriptClassAsset", script), props))
+        self.d.add(e, behaviour, **values)
         return e
 
     # ---- the ground: a tile per cell, the later rectangle winning, each with its collider ----
@@ -222,7 +224,7 @@ class Builder:
         self.solid(name, (at[0], w["h"] / 2, at[2]), (w["c"], w["h"], w["c"]))
 
     def doorway(self, name, at, rot, along_x, normal, opening):
-        """A manor doorway with its door, locked or not (Door.as)."""
+        """A manor doorway with its door, locked or not (the Door)."""
         self.fading.append((self.place(name, "Manor", "Doorway", at, rot), normal, GRID / 2))
         side = (GRID - DOOR_W) / 2
         for s in (-1, 1):
@@ -239,7 +241,7 @@ class Builder:
 
     def leaf(self, name, at, along_x, model, width, height, lock_along, lock_height, opening):
         """A door or gate leaf on its hinge (this entity, at the opening's west or north edge), the
-        leaf and its kinematic collider under it so they swing with it (Door.as)."""
+        leaf and its kinematic collider under it so they swing with it (the Door)."""
         hinge_at = (at[0] - width / 2, 0.0, at[2]) if along_x else (at[0], 0.0, at[2] + width / 2)
         shut = 0.0 if along_x else 90.0  # the leaf runs along +X from the hinge; turned for a z run
         hinge = self.d.stable_id("entity")
@@ -329,7 +331,7 @@ class Builder:
                 self.d.add(light, "light", type=1, color={"r": 1.0, "g": 0.62, "b": 0.32, "a": 1.0},
                            intensity=lamp.get("intensity", TORCH["intensity"]), range=TORCH["range"],
                            castsShadows=True, shadowUpdate=1)
-                self.d.script(light, (asset("ScriptClassAsset", "Flicker"), {}))
+                self.d.add(light, "lamplight.flicker")
                 slots = piece("Manor", "TorchStand")[1]
                 self.lamps.append((stand, light, dict(flameSlot=TORCH["flameSlot"], chimneySlot=-1,
                                                       flameLit=slots[TORCH["flameSlot"]])))
@@ -361,17 +363,16 @@ class Builder:
         d.add(thief, "physics.Character", radius=0.3, halfHeight=0.6, maxSlopeDegrees=45.0, stepUp=0.3)
         model = model_prefab("Models/Thief")
         d.instance(model, (0, -0.9, 0), parent=thief, ops=model_ops(model, "ThiefGraph"))
-        # The right hand reaches for a lock (Door.as sets the target and the weight while picking).
+        # The right hand reaches for a lock (the Door sets the target and the weight while picking).
         d.add(thief, "two_bone_ik", startBone="upperarm_R", midBone="forearm_R", endBone="hand_R", weight=0.0,
               fadeSeconds=0.25)
         cam = d.stable_id("entity")
         d.entity("Camera", (sx, 7.9, sz + 6.5), pitch(-42.0), eid=cam)
         d.add(cam, "camera", fovYRadians=0.9)
-        d.script(thief, (asset("ScriptClassAsset", "Thief"), {"camera": ("entity", cam),
-                                                              "pebble": ("asset", asset("PrefabDocument", "Pebble"))}),
-                 (asset("ScriptClassAsset", "LightMeter"), {}),  # the HUD is the game's (Lamplight.as)
-                 (asset("ScriptClassAsset", "Footsteps"), {s.lower(): ("asset", self.surf[s]) for s in self.surf}))
-        d.script(cam, (asset("ScriptClassAsset", "CameraRig"), {"target": ("entity", thief)}))
+        d.add(thief, "lamplight.thief", camera=cam, pebble=asset("PrefabDocument", "Pebble"))
+        d.add(thief, "lamplight.light_meter")  # the HUD is the game's (LamplightGame)
+        d.add(thief, "lamplight.footsteps", **{s.lower(): self.surf[s] for s in self.surf})
+        d.add(cam, "lamplight.camera_rig", target=thief)
         self.thief, self.cam = thief, cam
 
         for n, round_ in enumerate(t.get("guards", [])):
@@ -380,12 +381,12 @@ class Builder:
             self.loot("Loot%d" % n, item["kind"], item["at"], item.get("value", 10), False)
         target = t["target"]
         self.loot("Target", target["kind"], target["at"], target.get("value", 100), True)
-        self.trigger("Exit", t["exit"], "Exit", {"thief": ("entity", thief)})
+        self.trigger("Exit", t["exit"], "lamplight.exit", thief=thief)
         for n, rect in enumerate(t.get("checkpoints", [])):
-            self.trigger("Checkpoint%d" % n, rect, "Checkpoint", {"thief": ("entity", thief)})
+            self.trigger("Checkpoint%d" % n, rect, "lamplight.checkpoint", thief=thief)
 
     def guard(self, n, points):
-        """A guard on his round: a navigation agent walking the points (Guard.as), his model under
+        """A guard on his round: a navigation agent walking the points (the Guard), his model under
         him driven by its graph, a kinematic capsule in the guards' own collision group (the thief
         cannot walk through him; his own sight looks past it), his lantern's spot light where the
         model holds the lantern (0.26 m left, 1.02 up, 0.41 ahead, measured on the held pose), and
@@ -412,40 +413,34 @@ class Builder:
         meter = d.stable_id("entity")
         d.entity("Meter", (0, 2.25, 0), parent=guard, eid=meter)
         d.add(meter, "gui.Billboard", document=asset("GuiDocumentAsset", "GuardMeter"), visible=False)
-        d.script(guard, (asset("ScriptClassAsset", "Guard"), {
-            "thief": ("entity", self.thief), "route": ("entity", round_), "lantern": ("entity", lantern),
-            "meter": ("entity", meter), "group": GUARD_GROUP}))
+        d.add(guard, "lamplight.guard", thief=self.thief, route=round_, lantern=lantern, meter=meter,
+              group=GUARD_GROUP)
 
     def loot(self, name, kind, at, value, target):
         x, z = at
         e = self.place(name, "Loot", kind, (x, 0.0, z))
-        self.d.script(e, (asset("ScriptClassAsset", "Loot"), {"thief": ("entity", self.thief), "value": value,
-                                                             "target": target}))
+        self.d.add(e, "lamplight.loot", thief=self.thief, value=value, target=target)
 
     # ---- behaviours that need the thief and camera: lamps, doors, the cutaway ----
     def wiring(self):
         d, thief, cam = self.d, self.thief, self.cam
         for lamp, light, slots in self.lamps:
-            props = {"thief": ("entity", thief), "light": ("entity", light),
-                     "flameSlot": slots["flameSlot"], "chimneySlot": slots["chimneySlot"],
-                     "flameLit": ("asset", slots["flameLit"]), "flameOut": ("asset", self.mats["FlameOut"]),
-                     "chimneyOut": ("asset", self.mats["ChimneyOut"])}
+            values = dict(thief=thief, light=light, flameSlot=slots["flameSlot"], chimneySlot=slots["chimneySlot"],
+                          flameLit=slots["flameLit"], flameOut=self.mats["FlameOut"], chimneyOut=self.mats["ChimneyOut"])
             if "chimneyLit" in slots:
-                props["chimneyLit"] = ("asset", slots["chimneyLit"])
-            d.script(lamp, (asset("ScriptClassAsset", "Lamp"), props))
+                values["chimneyLit"] = slots["chimneyLit"]
+            d.add(lamp, "lamplight.lamp", **values)
         for hinge, shut, lock_along, lock_height, locked, pick in self.doors:
-            d.script(hinge, (asset("ScriptClassAsset", "Door"), {
-                "thief": ("entity", thief), "locked": locked, "shutYaw": shut, "lockAlong": lock_along,
-                "lockHeight": lock_height, "pickSeconds": float(pick)}))
+            d.add(hinge, "lamplight.door", thief=thief, locked=locked, shutYaw=shut, lockAlong=lock_along,
+                  lockHeight=lock_height, pickSeconds=float(pick))
         if self.t.get("alarm"):
-            # The floor's bell: a guard giving chase rings it and brings every guard (Alarm.as).
+            # The floor's bell: a guard giving chase rings it and brings every guard (the Alarm).
             e = d.stable_id("entity")
             d.entity("Alarm", eid=e)
-            d.script(e, (asset("ScriptClassAsset", "Alarm"), {"thief": ("entity", thief)}))
-        cutaway = asset("ScriptClassAsset", "CutawayWall")
+            d.add(e, "lamplight.alarm", thief=thief)
         for e, (nx, nz), half in self.fading:
-            d.script(e, (cutaway, {"camera": ("entity", cam), "thief": ("entity", thief),
-                                   "normalX": float(nx), "normalZ": float(nz), "halfLength": float(half)}))
+            d.add(e, "lamplight.cutaway_wall", camera=cam, thief=thief, normalX=float(nx), normalZ=float(nz),
+                  halfLength=float(half))
 
     def navigation(self):
         x0, z0, x1, z1 = self.t["bounds"]

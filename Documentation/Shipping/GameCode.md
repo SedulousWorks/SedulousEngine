@@ -209,13 +209,16 @@ managers:
 | `scene.Animation.SetIkTarget(e, at)` | `IkScene.SetTarget(Scene, e, at)` |
 | `scene.Audio.Play(e)`, `Stop` | the same on `AudioSceneSystem` |
 | `scene.Particles.Play(e)`, `Stop`, `Restart` | the same on `ParticleEffectComponentManager` |
-| `Audio.PlayOneShot(clip)` | `AudioFacade.PlayOneShot(clip)` |
+| `Audio.PlayOneShot(clip)`, `PlayOneShot3D(clip, at)` | the same on `AudioFacade` |
+| `scene.Render.SetMaterial(e, material, slot)`, `SetMaterialFloat4(e, slot, name, v)` | `MeshComponentManager.SetMaterial(e, material, slot)`, `SetMaterialProperty(e, slot, name, v, sizeof(Float4))` |
+| `scene.Render.LightAt(at, groupMask)` | `RenderExtract.LightAt(Scene, at, groupMask)` |
 | `Audio.PlayMusic`, `StopMusic`, `SetVoicePitch(Audio.MusicVoice(), ...)`, `BusVolume` | the same on `AudioFacade` |
 | `Input.WasPressed("Throw")`, `Value2D`, `Rumble` | the same on `InputFacade` |
 | `NavAgentComponent::of(e).Navigate(at)`, `SkeletalAnimationComponent::of(e).Speed` | `Scene.GetComponent<NavAgentComponent>(e)` (a `T*`, null without one), then the same |
-| `self.FindChildByName(n)`, `GetFirstChild()`, `SetActive(b)`, `Destroy()` | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
+| `self.FindChildByName(n)`, `GetFirstChild()`, `GetNextSibling()`, `GetParent()`, `GetWorldPosition()`, `SetActive(b)`, `Destroy()` | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `GetNextSibling(Entity)`, `GetParent(Entity)`, `GetWorldPosition(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
 | `node.Tween(property, to, seconds, easing).From(v)` | `node.Animate(property, to, seconds, easing).From(v)`, then `ReleaseRef()` (GUI) |
-| `Label::Of(node).Text = t` | `(node as Label).Text = t` |
+| `Label::Of(node).Text = t`, `ProgressBar::Of(node).Value = v` | `(node as Label).Text = t`, `(node as ProgressBar).Value = v` |
+| `GuiBillboardComponent::of(e).Root()` | `Scene.GetComponent<GuiBillboardComponent>(e).Root` (null until it is built) |
 | `Run.LoadScene(id)`, `Run.TimeScale` | `GameInstance.LoadScene(id)`, `InstanceTimeScale` |
 | `scene.Scripts.Emit("CoinCollected", 1)` | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |
 | `other.Send("Hurt")` | a call on the other entity's behaviour, made now (Events and queued calls) |

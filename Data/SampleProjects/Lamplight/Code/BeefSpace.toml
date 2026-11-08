@@ -1,0 +1,40 @@
+FileVersion = 1
+
+[Workspace]
+StartupProject = "LamplightEditor"
+
+[Projects]
+"Lamplight" = {Path = "Lamplight"}
+"LamplightEditor" = {Path = ".generated/LamplightEditor"}
+"LamplightPlayer" = {Path = ".generated/LamplightPlayer"}
+"LamplightTools" = {Path = ".generated/LamplightTools"}
+
+[Configs.Debug.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Debug.Linux64]
+
+[Configs.Debug.Win64]
+
+[Configs.Release.wasm32]
+EmitDebugInfo = "No"
+
+[Configs.Release.Linux64]
+
+[Configs.Release.Win64]
+
+[Configs.Test.Linux64]
+
+[Configs.Test.Win64]
+
+[Configs.ShippingRelease.wasm32]
+PreprocessorMacros = ["SHIPPING"]
+EmitDebugInfo = "No"
+
+[Configs.ShippingRelease.Linux64]
+PreprocessorMacros = ["SHIPPING"]
+
+[Configs.ShippingRelease.Win64]
+PreprocessorMacros = ["SHIPPING"]

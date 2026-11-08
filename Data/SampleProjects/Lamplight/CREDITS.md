@@ -4,6 +4,8 @@ Made with SedulousEngine. Third-party assets, with thanks:
 
 ## Made for this game
 
+- The game's code (`Code/`), the levels and the screens are written for Lamplight (Raptor's
+  Lamplight, ported).
 - Every model: the thief and the guards, the manor's pieces and furniture, the cellars, the grounds
   (hedges, walls, gates, lantern posts) and the loot, built for Lamplight from Blender scripts
   (`Tools/blender/`).
@@ -16,4 +18,4 @@ All under the project's own licence.
 - **Roboto** by Google, the UI font (cooked as a distance-field font, `Content/Fonts`), [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
   (`Licenses/Roboto-NOTICE.txt`).
 
-Everything else (the scenes, the scripts and the profiles) is the project's own.
+Everything else (the scenes, the game's code and the profiles) is the project's own.
