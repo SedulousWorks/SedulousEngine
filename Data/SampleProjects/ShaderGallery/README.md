@@ -3,7 +3,7 @@
 The custom shaders sample: a hall of lesson shaders to fly through, each on its own plinth, each
 `.hlsl` a short commented lesson that builds on the one before. Surface shaders first (the kind to
 start with), then the low-level kind. It is Raptor's Shader Gallery, ported: the same lessons,
-exhibits and hall, its camera's script in this engine's AngelScript API.
+exhibits and hall, its camera's behaviour written in Beef as the game's own code (`Code/`).
 
 ![The Shader Gallery: the lesson list and the hall of plinths](../../../Documentation/Images/ShaderGallery-Hall.png)
 
@@ -42,7 +42,15 @@ part of its lesson: open it on the material page and drag its sliders.
 
 Through the editor's MCP tools, by the scripts in `Tools/` (their README says the order): the
 lessons table (`lessons.py`) drives the shaders and their materials (`shaders.py`), the hall
-(`hall.py`) and the list and the camera's script (`ui.py`); the exhibits that are not primitives
+(`hall.py`) and the list and the game code's lesson table (`ui.py`); the exhibits that are not primitives
 (the knot, the rock, the water, the flag) are modelled in Blender from code (`blender/exhibits.py`).
 The lesson shaders are Raptor's unchanged: both engines compile the same surface and low-level
 shaders.
+
+## Its code
+
+The camera's `Gallery` behaviour (`Code/ShaderGallery/src/Gallery.bf`) is the game's own code, a
+Beef package the project builds into its own editor and player (Project > Build Project): it
+pushes the lesson list, wires its rows, flies the camera and glides it to a lesson. The stock
+editor does not run it; open the project in the editor its build makes (Project > Open With This
+Build). `Lessons.bf` beside it is the lesson table, written by `Tools/ui.py` from `lessons.py`.

@@ -131,7 +131,7 @@ A networked game is played with two tabs at once: `pie_start`, then `pie_start` 
 other, each driven by its own `pie_run`. A narrow tab draws the game scaled down, so read each
 screenshot's `scale` before clicking.
 
-`pie_run` is the playtest: it plays a device-level input timeline into one running instance
+`pie_run` is the playtest: it plays a device-level input timeline (its `input` argument) into one running instance
 for `duration` seconds of run time and answers what happened. The timeline takes keys by their
 KeyCode names (`{"at": 0, "key": "D"}`, `{"at": 0.4, "key": "Space", "down": false}`), mouse
 moves, buttons and the wheel (`{"at": 0, "mouseMove": [650, 253]}`, `{"at": 0.2, "mouseButton":

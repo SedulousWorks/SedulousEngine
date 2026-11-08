@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "ShaderGallery"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"
+# The Gallery behaviour: the run's services and actions, its GUI, its screens and the lesson
+# list's document.
+"Sedulous.Run" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"
+"Sedulous.GUI.Resources" = "*"
