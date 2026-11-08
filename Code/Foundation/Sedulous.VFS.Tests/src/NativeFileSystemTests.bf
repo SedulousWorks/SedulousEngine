@@ -175,4 +175,40 @@ class NativeFileSystemTests
 
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
+
+	/// Each write through the mount names the path it touched, after the fact: what lets a
+	/// watcher of the folder tell its own process's writes from someone else's.
+	[Test]
+	public static void EveryWriteNamesThePathItTouched()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+		let heard = scope List<String>();
+		defer { ClearAndDeleteItems!(heard); }
+		int sizeWhenHeard = -1;
+		fs.OnWritten = new [&heard, &sizeWhenHeard, =fs] (path) =>
+			{
+				heard.Add(new String(path));
+				// Told once the file is as it stays: a stat then sees the whole of it.
+				if ((path == "a/one.txt") && fs.Stat(path, let info))
+					sizeWhenHeard = (int)info.Size;
+			};
+
+		uint8[3] payload = .(1, 2, 3);
+		Test.Assert(fs.Save("a/one.txt", .(&payload[0], 3)) case .Ok);
+		Test.Assert(sizeWhenHeard == 3);
+		Test.Assert(fs.Move("a/one.txt", "b/two.txt") case .Ok);
+		Test.Assert(fs.Delete("b/two.txt") case .Ok);
+		Test.Assert(fs.CreateDirectory("c") case .Ok);
+		Test.Assert(fs.DeleteDirectory("c") case .Ok);
+		StringView[?] expected = .("a/one.txt", "a/one.txt", "b/two.txt", "b/two.txt", "c", "c");
+		Test.Assert(heard.Count == expected.Count);
+		for (int i < expected.Count)
+			Test.Assert(heard[i] == expected[i]);
+
+		// A delete of nothing touches nothing, and says nothing.
+		Test.Assert(fs.Delete("nope.txt") case .Err(.NotFound));
+		Test.Assert(heard.Count == expected.Count);
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
 }

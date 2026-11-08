@@ -241,7 +241,7 @@ class EditorPages
 	{
 		let sources = Sources;
 		let context = mServices.Context;
-		if (page.Save() case .Ok)
+		if (context.SavePage(page) case .Ok) // a page whose file went on disk writes it back
 			context.Notify(.Success, scope $"Saved '{page.Title}'.");
 		else
 			context.Notify(.Error, "Save FAILED (see Console).");
@@ -300,7 +300,7 @@ class EditorPages
 		bool all = true;
 		for (let open in mOpen)
 		{
-			if (open.Page.IsDirty && !(open.Page.Save() case .Ok))
+			if (open.Page.IsDirty && !(mServices.Context.SavePage(open.Page) case .Ok))
 				all = false;
 			if (open.Page.HasUnsavedWork && !(open.Page.SaveBesides() case .Ok))
 				all = false; // a clip its panel edits
@@ -577,7 +577,7 @@ class EditorPages
 			return; // closed meanwhile
 		if (answer == "save")
 		{
-			if ((page.IsDirty && !(page.Save() case .Ok)) || !(page.SaveBesides() case .Ok))
+			if ((page.IsDirty && !(mServices.Context.SavePage(page) case .Ok)) || !(page.SaveBesides() case .Ok))
 			{
 				mServices.Context.Notify(.Error, "Save FAILED (see Console) - the page stays open.");
 				return;

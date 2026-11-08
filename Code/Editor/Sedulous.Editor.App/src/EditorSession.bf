@@ -274,6 +274,7 @@ class EditorSession
 		context.Tasks.CancelAll();
 		context.Tasks.Finish();
 		DeleteAndNullify!(mServices.Cook.OnCookFinished); // it reaches this session
+		DeleteAndNullify!(mServices.Cook.OnContentChanged);
 		DeleteAndNullify!(mThumbnailStage); // unstages and drops its GPU objects while the renderer lives
 		mServices.Thumbnails.Reset(); // in-flight slots outlive harmlessly; the entries drop
 		// What the views put in it as they closed (the open pages), the views not captured again:
@@ -472,6 +473,10 @@ class EditorSession
 		cook.ExternalMutationLock = new [=context]() => context.Tasks.IsLaneBusy(context.BuildLane);
 		delete cook.OnCookFinished;
 		cook.OnCookFinished = new () => { CookFinished(); };
+		// What changed under Content/ outside the editor reaches the open pages, the thumbnails and
+		// the asset selection; the assets view follows the database's revision.
+		delete cook.OnContentChanged;
+		cook.OnContentChanged = new [=context](changes, removed) => { context.ApplyContentChanges(changes, removed); };
 	}
 
 	/// Rebuilt products swap in behind their handles (live scenes see them, no reopen), then the

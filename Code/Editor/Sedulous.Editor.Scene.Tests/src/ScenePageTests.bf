@@ -51,7 +51,9 @@ namespace Sedulous.Editor.Scene.Tests;
 /// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
 /// view gizmo, the zoom readout and the tool's status. Its viewport tools: each an action, on the bar
 /// by category, the active one's panel under the chips, moved, kept and put back. A reference set
-/// in the inspector binds at once.
+/// in the inspector binds at once. Its scene's file changed outside the editor reloads a clean page
+/// and warns a dirty one; deleted, the page stays and its save writes the file back; its own save
+/// is never taken for an outside change.
 class ScenePageTests
 {
 	/// A host whose subsystem manager has the scene and script subsystems and nothing else: no
@@ -625,6 +627,139 @@ class ScenePageTests
 		Test.Assert(!flows.Spawn(.(), .()), "nothing picked");
 		Test.Assert(said.IsEmpty, "nothing picked is no warning");
 		page.OnClose();
+	}
+
+	/// A writer outside the editor over the bed's Content/ (a pull, another tool): a database on a
+	/// mount of its own, whose writes the project never hears of.
+	class OutsideWriter
+	{
+		public Sedulous.VFS.NativeFileSystem Mount;
+		public ContentDatabase Database;
+
+		public this(Bed bed)
+		{
+			Mount = new .(PathJoin(bed.Dir, Sedulous.Engine.Project.ProjectLayout.ContentDir, .. scope .()));
+			Database = new .(Mount, bed.Project.SourceDb.Serializers, bed.Project.SourceDb.Extension);
+		}
+
+		public ~this()
+		{
+			delete Database;
+			delete Mount;
+		}
+	}
+
+	/// The watcher looks twice (seen, then settled), the database takes the change in, and the
+	/// context tells the pages, as the editor's cook service and session do.
+	static void TakeInOutsideChange(Bed bed, ContentWatcher watcher, ContentChanges changes)
+	{
+		Test.Assert(!watcher.Poll(changes), "seen once: it may still be being written");
+		Test.Assert(watcher.Poll(changes), "settled");
+		bed.Context.ApplyContentChanges(changes, watcher.RemovedRecords);
+	}
+
+	[Test]
+	public static void AScenesFileReplacedOutsideReloadsItsCleanPageAndADirtyOneWarnsKeepingItsEdits()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		bed.Context.AdoptPage(page); // the context's now, as an opened page is
+		let levelId = bed.Level.Id;
+		let outside = scope OutsideWriter(bed);
+		let watcher = scope ContentWatcher(bed.Project);
+		let changes = scope ContentChanges();
+		let said = scope String();
+		bed.Context.OnNotice = new [&said](kind, message) => { said.Set(message); };
+
+		// Clean: what came from outside is read in, the history before it gone.
+		Guid lamp;
+		{
+			let pulled = scope Sedulous.Scene.Scene("pulled");
+			lamp = pulled.GetEntityId(pulled.CreateEntity("Lamp"));
+			Test.Assert(SceneStorage.SaveScene(pulled, outside.Database.GetInstance(levelId)) case .Ok);
+		}
+		TakeInOutsideChange(bed, watcher, changes);
+		// By name: a fresh scene's first entity gets the same id in every scene, so the pulled
+		// Lamp has the Crate's.
+		Test.Assert(page.ScenePtr.FindEntity(lamp).IsAssigned, "reloaded");
+		Test.Assert(page.ScenePtr.FindEntityByName("Lamp").IsAssigned);
+		Test.Assert(!page.ScenePtr.FindEntityByName("Crate").IsAssigned, "the old content gone");
+		Test.Assert(!page.IsDirty);
+
+		// Dirty: its edits kept, the user warned.
+		let mine = page.EditContext.CreateEntity("Mine");
+		Test.Assert(page.IsDirty);
+		{
+			let again = scope Sedulous.Scene.Scene("pulled again");
+			again.CreateEntity("Lamp");
+			again.CreateEntity("Post");
+			Test.Assert(SceneStorage.SaveScene(again, outside.Database.GetInstance(levelId)) case .Ok);
+		}
+		TakeInOutsideChange(bed, watcher, changes);
+		Test.Assert(page.ScenePtr.FindEntity(mine).IsAssigned && page.IsDirty, "its edits kept");
+		Test.Assert(said.Contains("unsaved edits"), said);
+		page.OnClose();
+		bed.Context.ClosePage(page);
+	}
+
+	[Test]
+	public static void AScenesFileDeletedOutsideLeavesItsPageOpenToldAndItsSaveWritesItBack()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		bed.Context.AdoptPage(page);
+		let levelId = bed.Level.Id;
+		let outside = scope OutsideWriter(bed);
+		let watcher = scope ContentWatcher(bed.Project);
+		let changes = scope ContentChanges();
+		let said = scope String();
+		bed.Context.OnNotice = new [&said](kind, message) => { said.Set(message); };
+
+		// Its envelope and its scene stream go; the bed's Level record goes with them.
+		Test.Assert(outside.Database.DeleteInstance(levelId) case .Ok);
+		TakeInOutsideChange(bed, watcher, changes);
+		Test.Assert(bed.Project.SourceDb.GetInstance(levelId) == null);
+		Test.Assert(bed.Context.OpenPages.Contains(page), "never closed under the user");
+		Test.Assert(page.IsAssetDeleted && page.IsDirty);
+		Test.Assert(page.ScenePtr.FindEntity(bed.Crate).IsAssigned, "what it shows is kept");
+		Test.Assert(said.Contains("deleted on disk"), said);
+
+		// Saved: the record back at its place with its identity, the scene written whole.
+		Test.Assert(bed.Context.SavePage(page) case .Ok);
+		Test.Assert(!page.IsAssetDeleted && !page.IsDirty);
+		let back = bed.Project.SourceDb.GetInstance(levelId);
+		Test.Assert((back != null) && (back.Name == "Level"));
+		{
+			let stored = scope Sedulous.Scene.Scene("stored");
+			Test.Assert(SceneStorage.LoadScene(back, stored) case .Ok);
+			Test.Assert(stored.FindEntity(bed.Crate).IsAssigned);
+		}
+		Test.Assert(!watcher.Poll(changes) && !watcher.Poll(changes) && changes.IsEmpty, "the save is the editor's own write");
+		page.OnClose();
+		bed.Context.ClosePage(page);
+	}
+
+	[Test]
+	public static void APagesOwnSaveIsNotTakenForAnOutsideChangeSoItsHistoryStays()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		bed.Context.AdoptPage(page);
+		let watcher = scope ContentWatcher(bed.Project);
+		let changes = scope ContentChanges();
+
+		page.EditContext.CreateEntity("Barrel");
+		Test.Assert(bed.Context.SavePage(page) case .Ok);
+		Test.Assert(!page.IsDirty && page.Commands.CanUndo);
+		for (int i < 3)
+		{
+			Test.Assert(!watcher.Poll(changes) && changes.IsEmpty);
+			bed.Context.ApplyContentChanges(changes, watcher.RemovedRecords);
+		}
+		Test.Assert(watcher.PendingCount == 0);
+		Test.Assert(page.Commands.CanUndo, "not reloaded: its history stays");
+		page.OnClose();
+		bed.Context.ClosePage(page);
 	}
 
 	/// The page laid out in a GUI of its own under the editor's sheet, for its hierarchy's rows to

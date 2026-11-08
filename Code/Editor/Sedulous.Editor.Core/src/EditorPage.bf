@@ -16,6 +16,10 @@ abstract class EditorPage
 	protected EditorCommandStack mCommands = new .() ~ delete _;
 	protected Guid mInstanceId = .Empty;
 	protected bool mDirty = false;
+	/// Where its asset's record lived when its file went outside the editor, and its stored type;
+	/// null while the asset is there.
+	private String mDeletedPath = null ~ delete _;
+	private String mDeletedTypeName = null ~ delete _;
 
 	public this()
 	{
@@ -72,12 +76,39 @@ abstract class EditorPage
 	/// A page that caches loaded content overrides to refresh itself.
 	public virtual void OnAssetExternallyModified() {}
 
+	/// Its asset's file went outside the editor (a pull, another tool) and the source database
+	/// let its record go (EditorContext.NotifyAssetDeleted): the page stays open with what it
+	/// shows, marked unsaved, and saving it (EditorContext.SavePage) writes the file back. A page
+	/// with more to say of it overrides.
+	public virtual void OnAssetDeleted() {}
+
+	/// Its asset's file went outside the editor and has not been written back.
+	public bool IsAssetDeleted => mDeletedPath != null;
+	/// Where its asset's record lived ("group/name") while IsAssetDeleted; empty otherwise.
+	public StringView DeletedRecordPath => (mDeletedPath != null) ? (StringView)mDeletedPath : "";
+	/// Its asset's stored type while IsAssetDeleted; empty otherwise.
+	public StringView DeletedTypeName => (mDeletedTypeName != null) ? (StringView)mDeletedTypeName : "";
+
+	internal void NoteAssetDeleted(StringView recordPath, StringView typeName)
+	{
+		String.NewOrSet!(mDeletedPath, recordPath);
+		String.NewOrSet!(mDeletedTypeName, typeName);
+	}
+
+	/// The asset is back (written again, or returned on disk).
+	internal void ForgetAssetDeleted()
+	{
+		DeleteAndNullify!(mDeletedPath);
+		DeleteAndNullify!(mDeletedTypeName);
+	}
+
 	/// Rebinds the page to a DIFFERENT source instance, Save As: the caller created it and
 	/// calls Save next, so the page's current content lands there. A page caching the
 	/// asset's name overrides, calling the base, to refresh it.
 	public virtual void OnSavedAs(Instance instance)
 	{
 		mInstanceId = instance.Id;
+		ForgetAssetDeleted(); // it edits an asset that is there now
 	}
 
 	/// The source database instance this page edits, Empty for an instance less page.

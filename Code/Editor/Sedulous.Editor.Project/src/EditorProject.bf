@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
@@ -34,6 +36,13 @@ class EditorProject
 	private SerializerFactory mCookedFactory ~ delete _;
 	private ContentDatabase mSourceDb ~ delete _;
 	private ContentDatabase mCookedDb ~ delete _;
+	/// The paths written through the Content/ mount while a watcher listens (RecordContentWrites),
+	/// from whichever thread wrote, until it takes them (TakeContentWrites). The project holds
+	/// them, not the watcher: a write on a worker can land while the watcher goes, and the
+	/// mount's hook must never reach a freed listener.
+	private Monitor mContentWritesLock = new .() ~ delete _;
+	private List<String> mContentWrites = new .() ~ DeleteContainerAndItems!(_);
+	private bool mRecordContentWrites = false;
 
 	private static String[5] sDirectories = .(ProjectLayout.ContentDir, ProjectLayout.SourcesDir,
 		ProjectLayout.CookedDir, ProjectLayout.EditorDir, ProjectLayout.CacheDir);
@@ -104,6 +113,7 @@ class EditorProject
 		mSettings = settings;
 
 		mContentMount = new NativeFileSystem(PathJoin(directory, ProjectLayout.ContentDir, .. scope .()));
+		mContentMount.OnWritten = new (path) => NoteContentWrite(path);
 		mCookedMount = new NativeFileSystem(PathJoin(directory, ProjectLayout.CookedDir, .. scope .()));
 		mSourceFactory = XmlSerializerFactory();
 		mCookedFactory = new (stream, mode) => new BinarySerializerContext(stream, mode);
@@ -133,6 +143,42 @@ class EditorProject
 	public ContentDatabase SourceDb => mSourceDb;
 	/// The cooked output database, binary envelopes: what the runtime loads.
 	public ContentDatabase CookedDb => mCookedDb;
+
+	/// The Content/ mount the source database reads and writes through: what the Content/
+	/// watcher sweeps.
+	public NativeFileSystem ContentMount => mContentMount;
+
+	/// Starts or stops keeping the paths written through the Content/ mount, for the watcher
+	/// that must not take the editor's own writes for outside changes. Stopping drops what was
+	/// kept; starting begins empty. Any thread.
+	public void RecordContentWrites(bool record)
+	{
+		using (mContentWritesLock.Enter())
+		{
+			mRecordContentWrites = record;
+			ClearAndDeleteItems!(mContentWrites);
+		}
+	}
+
+	/// Moves the paths written since the last take into `outPaths`, the caller's to delete. Any
+	/// thread.
+	public void TakeContentWrites(List<String> outPaths)
+	{
+		using (mContentWritesLock.Enter())
+		{
+			outPaths.AddRange(mContentWrites);
+			mContentWrites.Clear();
+		}
+	}
+
+	private void NoteContentWrite(StringView path)
+	{
+		using (mContentWritesLock.Enter())
+		{
+			if (mRecordContentWrites)
+				mContentWrites.Add(new String(path));
+		}
+	}
 
 	/// Raw import sources, mounted as the build context's sources at cook time.
 	public void SourcesRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.SourcesDir, outPath);

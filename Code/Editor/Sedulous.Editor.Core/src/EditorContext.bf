@@ -577,11 +577,107 @@ class EditorContext : IAssetEditSink
 		{
 			if (page.InstanceId == assetId)
 			{
+				page.[Friend]ForgetAssetDeleted(); // modified is there: a deleted asset came back
 				page.OnAssetExternallyModified();
 				told++;
 			}
 		}
 		return told;
+	}
+
+	/// The source asset's file went OUTSIDE the editor (a pull, another tool) and the source
+	/// database let its record go: every open page editing it is told (EditorPage.OnAssetDeleted)
+	/// and stays open, marked unsaved, so its content can be saved again, which writes the file
+	/// back where it was (SavePage); the asset's thumbnail goes, and the asset selection lets the
+	/// record go. `recordPath` ("group/name") and `typeName` are where it lived and what it was;
+	/// `former` is the record the database dropped, FREED, compared and never read (null: none
+	/// held). Returns how many pages were told.
+	public int NotifyAssetDeleted(Guid assetId, StringView recordPath, StringView typeName, Instance former = null)
+	{
+		if (mThumbnails != null)
+			mThumbnails.Invalidate(assetId);
+		if (former != null)
+			mAssetSelection.Remove(former);
+		int told = 0;
+		for (let page in mPages)
+		{
+			if (page.InstanceId != assetId)
+				continue;
+			page.[Friend]NoteAssetDeleted(recordPath, typeName);
+			page.MarkDirty();
+			page.OnAssetDeleted();
+			Notify(.Warning, scope $"'{page.Title}' was deleted on disk. It stays open; saving it writes it back.");
+			told++;
+		}
+		return told;
+	}
+
+	/// What the Content/ watcher found changed outside the editor, the source database brought in
+	/// line already (EditorCookService.OnContentChanged): each record changed or added has its
+	/// thumbnail dropped and its open pages told (NotifyAssetExternallyModified: they reload, or
+	/// warn with unsaved edits); each removed one goes through NotifyAssetDeleted. A record is
+	/// told once.
+	public void ApplyContentChanges(ContentChanges changes, Span<ContentWatcher.RemovedRecord> removed)
+	{
+		for (let id in changes.Changed)
+		{
+			if (changes.Removed.Contains(id) || changes.Added.Contains(id))
+				continue;
+			if (mThumbnails != null)
+				mThumbnails.Invalidate(id);
+			NotifyAssetExternallyModified(id);
+		}
+		for (let id in changes.Added)
+		{
+			if (mThumbnails != null)
+				mThumbnails.Invalidate(id);
+			NotifyAssetExternallyModified(id);
+		}
+		for (let record in removed)
+			NotifyAssetDeleted(record.Id, record.Path, record.TypeName, record.Former);
+	}
+
+	/// Saves `page` (Save), first putting back the record of an asset whose file went outside the
+	/// editor (EditorPage.IsAssetDeleted): at its old place, with its identity and type, so what
+	/// referred to it does again; the save writes its file. A save that fails takes the record out
+	/// again. Refused, said, when another asset has taken the place: Save As keeps the content.
+	public Result<void, ErrorCode> SavePage(EditorPage page)
+	{
+		if (!page.IsAssetDeleted || (mProject == null))
+			return page.Save();
+		let db = mProject.SourceDb;
+		if (db.GetInstance(page.InstanceId) != null)
+		{
+			page.[Friend]ForgetAssetDeleted(); // back on disk already
+			return page.Save();
+		}
+		let path = page.DeletedRecordPath;
+		var group = db.RootGroup;
+		var name = path;
+		let slash = path.LastIndexOf('/');
+		if (slash >= 0)
+		{
+			for (let part in StringView(path, 0, slash).Split('/'))
+			{
+				if (!part.IsEmpty)
+					group = group.CreateGroup(part);
+			}
+			name = StringView(path, slash + 1);
+		}
+		if (group.GetInstance(name) != null)
+		{
+			Notify(.Warning, scope $"'{page.Title}' was deleted on disk and another asset is at '{path}' now: Save As keeps it.");
+			return .Err(.AlreadyExists);
+		}
+		let restored = group.CreateInstanceWithId(page.InstanceId, name, page.DeletedTypeName);
+		let saved = page.Save();
+		if (saved case .Err)
+		{
+			db.DeleteInstance(restored.Id).IgnoreError();
+			return saved;
+		}
+		page.[Friend]ForgetAssetDeleted();
+		return saved;
 	}
 
 	public EditorPage ActivePage => mActivePage;

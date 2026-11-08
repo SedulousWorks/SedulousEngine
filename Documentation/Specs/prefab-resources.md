@@ -168,10 +168,12 @@ B1. `Content: a database refreshes a changed, added or removed record` (Content.
    keeping the record, a data stream, delete, an envelope cut off in its header reported unreadable
    and its record kept). The index reads headers alone, so waiting out a file still being written
    is the watcher's (B2).
-B2. `Editor: Content/ is watched, so an open scene or prefab follows its file`: OS notification or
-   a slow sweep plus focus-in, a file read only once settled, batched, the editor's own writes
-   skipped, unreadable paths retried, the deleted-asset
-   notification (Editor.Project.Tests, Editor.Scene.Tests; CHANGELOG Fixed).
+B2. `Editor: Content/ is watched, so an open scene or prefab follows its file`: a stat sweep (no OS
+   notification yet) about once a second plus focus-in, a file read only once settled, batched,
+   the editor's own writes skipped (the Content/ mount reports each path it writes, which the
+   watcher takes in silently), unreadable paths retried, the deleted-asset notification, a page
+   of a deleted asset kept and its save writing it back (VFS.Tests, Editor.Core.Tests,
+   Editor.Scene.Tests; CHANGELOG Fixed).
 C. `Export: a script's asset properties are references`: fixes (e) (Integration.Mcp or
    Editor.Project.Tests: a prefab named only by a script property is in a pruned export).
 

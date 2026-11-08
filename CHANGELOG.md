@@ -19,6 +19,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: a scene, prefab or asset changed, added or deleted in the project's `Content/` outside
+  the editor (a git pull, a text editor, another tool) is picked up: an open page reloads, or
+  warns when it has unsaved edits, and a page whose file was deleted stays open and writes it
+  back when saved; before, the editor kept the old copy and a later save overwrote the change.
 - Play: a game run from its project folder spawns prefabs (a script's Spawn, a networked spawn);
   only the prefabs placed in its scenes came through.
 - Physics: a destroyed entity, or a removed rigid body, character or joint, no longer leaves its

@@ -22,6 +22,18 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 
 	public StringView Root => mRoot;
 
+	/// Told, after the attempt, of each path a write through this mount touched: a file saved or
+	/// deleted, a directory made or removed, both ends of a move. Whoever watches the folder for
+	/// changes made elsewhere hears its own process's writes here, so they never come back to it as
+	/// outside changes. Called on the thread that wrote. Owned.
+	public delegate void(StringView path) OnWritten ~ delete _;
+
+	private void Wrote(StringView path)
+	{
+		if (OnWritten != null)
+			OnWritten(path);
+	}
+
 	private void Resolve(StringView path, String outFull) => PathJoin(mRoot, path, outFull);
 
 	// ---- IFileSystem ----
@@ -87,12 +99,13 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 		let full = Resolve(path, .. scope String());
 		EnsureParentDirectories(full);
 
-		let stream = scope FileStream(full, .Write);
-		if (!stream.IsValid)
-			return .Err(.Internal);
-		if ((data.Length > 0) && (stream.Write(data) != data.Length))
-			return .Err(.Internal);
-		return .Ok;
+		bool written;
+		{
+			let stream = scope FileStream(full, .Write);
+			written = stream.IsValid && ((data.Length == 0) || (stream.Write(data) == data.Length));
+		}
+		Wrote(path); // the stream closed: the file is as it will stay
+		return written ? .Ok : .Err(.Internal);
 	}
 
 	public Result<void, ErrorCode> Delete(StringView path)
@@ -104,7 +117,9 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 		// this to be idempotent asks Exists first.
 		if (!FileExists(full))
 			return .Err(.NotFound);
-		return DeleteFile(full) ? .Ok : .Err(.Internal);
+		let deleted = DeleteFile(full);
+		Wrote(path);
+		return deleted ? .Ok : .Err(.Internal);
 	}
 
 	public Result<void, ErrorCode> Move(StringView from, StringView to)
@@ -112,20 +127,27 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 		let fullFrom = Resolve(from, .. scope String());
 		let fullTo = Resolve(to, .. scope String());
 		EnsureParentDirectories(fullTo);
-		return MoveFile(fullFrom, fullTo) ? .Ok : .Err(.NotFound);
+		let moved = MoveFile(fullFrom, fullTo);
+		Wrote(from);
+		Wrote(to);
+		return moved ? .Ok : .Err(.NotFound);
 	}
 
 	public Result<void, ErrorCode> DeleteDirectory(StringView path)
 	{
 		let full = Resolve(path, .. scope String());
-		return RemoveDirectory(full) ? .Ok : .Err(.NotFound);
+		let removed = RemoveDirectory(full);
+		Wrote(path);
+		return removed ? .Ok : .Err(.NotFound);
 	}
 
 	public Result<void, ErrorCode> CreateDirectory(StringView path)
 	{
 		let full = Resolve(path, .. scope String());
 		EnsureParentDirectories(full);
-		return Sedulous.Core.IO.CreateDirectory(full) ? .Ok : .Err(.Unknown);
+		let made = Sedulous.Core.IO.CreateDirectory(full);
+		Wrote(path);
+		return made ? .Ok : .Err(.Unknown);
 	}
 
 	/// Creates every ancestor directory of a full path. The last component is the file

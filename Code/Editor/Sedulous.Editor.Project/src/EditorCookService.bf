@@ -23,8 +23,11 @@ namespace Sedulous.Editor.Project;
 /// then the builds on the worker over snapshotted pointers.
 ///
 /// The service also watches Sources/ through the native mount's stat sweep, polled every
-/// couple of seconds from Update: an external edit queues an incremental cook. After every
-/// cook LastCookedProducts lists the rebuilt guids for the application to hot reload.
+/// couple of seconds from Update: an external edit queues an incremental cook. And Content/,
+/// through a ContentWatcher polled about once a second and when the window regains focus: a
+/// record changed, added or deleted outside the editor is taken into the source database and
+/// reported (OnContentChanged), an asset that cooks cooked again. After every cook
+/// LastCookedProducts lists the rebuilt guids for the application to hot reload.
 ///
 /// The v1 hazard Traktor shares: editing a source asset WHILE a cook runs races the
 /// driver's reads; the UI disables the cook triggers during a cook but does not lock edits.
@@ -44,6 +47,8 @@ struct CookSummary
 class EditorCookService
 {
 	private const double cWatchPollSeconds = 2.0;
+	/// Content/ is looked at more often than Sources/: what changes there is what open pages show.
+	private const double cContentPollSeconds = 1.0;
 
 	private EditorProject mProject = null;
 	private BuilderRegistry mBuilders = null;
@@ -82,9 +87,20 @@ class EditorCookService
 	private IChangeSource mWatcher = null;
 	private List<String> mWatchChanged = new .() ~ DeleteContainerAndItems!(_);
 	private int64 mLastWatchPoll = 0;
+	private ContentWatcher mContentWatcher = null;
+	private ContentChanges mContentChanges = new .() ~ delete _;
+	private int64 mLastContentPoll = 0;
+	/// The window came back: Content/ is looked at on the next Update, whatever the clock says.
+	private bool mContentPollSoon = false;
 
 	/// Fired on the main thread, from Update, when a cook finishes.
 	public delegate void() OnCookFinished ~ delete _;
+
+	/// Records changed, added or removed under Content/ by something other than the editor, the
+	/// source database brought in line already: fired on the main thread from Update (or
+	/// PollContent), once a batch. `removed` says where each removed record lived. Both are valid
+	/// for the call. Owned.
+	public delegate void(ContentChanges changes, Span<ContentWatcher.RemovedRecord> removed) OnContentChanged ~ delete _;
 
 	/// The external contributor to the mutation lock, wired by the app: a background EXPORT
 	/// reads the source database's structure and packs cooked files from its worker, so
@@ -112,6 +128,11 @@ class EditorCookService
 		if (mWatcher != null)
 			mWatcher.Track("");
 		mLastWatchPoll = Stopwatch.GetTimestamp();
+		// Content/ watched for outside edits: a stat sweep, throttled from Update, the editor's
+		// own writes taken in silently.
+		mContentWatcher = new ContentWatcher(project);
+		mLastContentPoll = mLastWatchPoll;
+		mContentPollSoon = false;
 	}
 
 	public void Shutdown()
@@ -129,6 +150,8 @@ class EditorCookService
 		mPendingRootsForce = false;
 		ClearAndDeleteItems(mIdleQueue);
 		mWatcher = null;
+		DeleteAndNullify!(mContentWatcher); // before the project goes: it stops the project keeping writes
+		mContentPollSoon = false;
 		DeleteAndNullify!(mDriver);
 		DeleteAndNullify!(mJobs);
 		DeleteAndNullify!(mCache);
@@ -358,6 +381,63 @@ class EditorCookService
 				}
 			}
 		}
+
+		// Content/, about once a second and at once when the window comes back (a pull is made
+		// with the editor behind another window); never while a background reader has the
+		// databases, since taking a change in changes the source database's index.
+		if ((mContentWatcher != null) && !MutationLocked)
+		{
+			let now = Stopwatch.GetTimestamp();
+			if (mContentPollSoon || ((now - mLastContentPoll) >= (int64)(cContentPollSeconds * 1000000)))
+				PollContent();
+		}
+	}
+
+	/// The editor's window regained focus: Content/ is looked at on the next Update, since what
+	/// changed on disk changed while the user was elsewhere.
+	public void PollContentSoon()
+	{
+		mContentPollSoon = true;
+	}
+
+	/// One look at Content/ now (Update calls it on its clock; a test drives it): what has settled
+	/// since is taken into the source database and goes to OnContentChanged, and an asset that
+	/// cooks, changed, added or removed, has a cook asked for, as a Sources/ change does. False,
+	/// with nothing looked at, while a background reader has the databases; else whether any
+	/// record changed.
+	public bool PollContent()
+	{
+		if ((mContentWatcher == null) || MutationLocked)
+			return false;
+		mContentPollSoon = false;
+		mLastContentPoll = Stopwatch.GetTimestamp();
+		if (!mContentWatcher.Poll(mContentChanges))
+			return false;
+		GlobalLog(.Information, "Content: {} added, {} changed, {} removed outside the editor",
+			mContentChanges.Added.Count, mContentChanges.Changed.Count, mContentChanges.Removed.Count);
+		if (OnContentChanged != null)
+			OnContentChanged(mContentChanges, mContentWatcher.RemovedRecords);
+
+		// A scene or a prefab has no builder: it stages at export and loads from its source. A
+		// removed record's product is swept as an orphan by the whole plan.
+		bool Cooks(StringView typeName) => (mBuilders != null) && (mBuilders.FindByTypeName(typeName) != null);
+		bool cooks = false;
+		let db = mProject.SourceDb;
+		for (let id in mContentChanges.Added)
+		{
+			if (let instance = db.GetInstance(id))
+				cooks |= Cooks(instance.TypeName);
+		}
+		for (let id in mContentChanges.Changed)
+		{
+			if (let instance = db.GetInstance(id))
+				cooks |= Cooks(instance.TypeName);
+		}
+		for (let removed in mContentWatcher.RemovedRecords)
+			cooks |= Cooks(removed.TypeName);
+		if (cooks)
+			RequestCook(false);
+		return true;
 	}
 
 	/// Defers a MAIN THREAD source database mutation, an import or a delete, until no cook is

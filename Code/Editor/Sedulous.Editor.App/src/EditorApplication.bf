@@ -163,6 +163,8 @@ class EditorApplication : IApplication
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
 	private EditorWindowCapture mWindowCapture = new .() ~ delete _;
+	/// The window's focus listener's token (0: none), which has Content/ looked at on a return.
+	private uint32 mFocusListener = 0;
 	/// The auto-exit, auto-rebuild and screenshot accumulator.
 	private float mElapsed = 0.0f;
 	/// The --screenshot one shot is armed.
@@ -533,7 +535,16 @@ class EditorApplication : IApplication
 		let look = scope EditorLook();
 		look.ReadFrom(mEditorSettings.Find<EditorUiSettings>());
 		if (mWindow.Open(host, mConfig.DataRoot, look, PathJoin(GetUserDataDirectory(.. scope .()), EditorWindow.cThemeFolder, .. scope .())))
+		{
 			OpenDock();
+			// Back from another window (where a pull or another tool changed the project's files):
+			// Content/ is looked at now, not at the next tick of its clock.
+			mFocusListener = mWindow.Host.AddWindowEventListener(new (root, event) =>
+				{
+					if (event.Type == .FocusGained)
+						mCookService.PollContentSoon();
+				});
+		}
 		// The window's close button asks about unsaved pages first, as File > Exit does.
 		if (host.Shell != null)
 			host.Shell.SetMainWindowCloseHandler(new () => ConfirmExit());
@@ -1743,6 +1754,9 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
+		if ((mFocusListener != 0) && (mWindow.Host != null))
+			mWindow.Host.RemoveWindowEventListener(mFocusListener);
+		mFocusListener = 0;
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
 		DeleteAndNullify!(mConsole); // its list let go, the dock having let go of its content
 		DeleteAndNullify!(mProfiler); // the store let go if it records, the dock having let go of its content
