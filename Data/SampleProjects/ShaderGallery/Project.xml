@@ -26,7 +26,14 @@
 			<string>f6591793-691e-ea47-bdda-853135f3ecba</string>
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
-		<array name="plugins" count="0"/>
+		<array name="plugins" count="1">
+			<object>
+				<string name="id">shadergallery</string>
+				<string name="path">Code</string>
+				<array name="platforms" count="0"/>
+				<object name="settings"/>
+			</object>
+		</array>
 		<array name="qualityLevelIds" count="3">
 			<string>3c9683fd-3a28-394f-9c78-c184f7c34e28</string>
 			<string>3817ead8-464c-8e47-8811-1370580f7044</string>

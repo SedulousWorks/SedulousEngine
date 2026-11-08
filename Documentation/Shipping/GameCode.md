@@ -273,6 +273,14 @@ body, StringView error)`, deleted after the answer, on `Cancel`, or as the sessi
   `BindProperty` binds any.
 - `node.Animate(property, to, seconds)` answers a tween; `.OnFinished(delegate void())` runs at
   its end. Release the tween with `ReleaseRef()` when done shaping it.
+- Screens: the root's `"screens"` element is the run's `ScreenStack`. `PushDocument(guid)` takes
+  a GUI document's asset id as a string (a `Ref<GuiDocument>` field's `Id.ToString()`) and
+  answers its `Screen`; `Pop()` takes the top one off.
+- Holding a node: a node kept past the call that found it (a screen, a row) is reference
+  counted; `AddRef()` when you keep it and `ReleaseRef()` when you let it go.
+- A handler that captures the behaviour (`new [=this] (e) => ...`) outlives it unless taken off:
+  `Off` each token in `OnDestroy` (and pop a screen it pushed), or the GUI calls into a deleted
+  instance. ShaderGallery's `Gallery` does all three.
 
 ## Rules that bite
 

@@ -33,6 +33,10 @@ corlib = "*"
 "Sedulous.Shaders.Pipeline" = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Mcp" = "*"
+# The samples' game code, read and cooked with each one's package loaded, as its own editor does.
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Gameplay" = "*"
+"ShaderGallery" = "*"
 
 # A Web export's WGSL cook needs naga and tint beside the executable.
 [Configs.Test.Linux64]

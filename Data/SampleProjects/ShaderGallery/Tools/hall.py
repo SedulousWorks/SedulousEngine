@@ -8,9 +8,10 @@ exhibit on it (its mesh, its material: Materials/<Name>), and in front of it a v
 two end walls in the hall's own dark materials; the sun through the open side, a soft light over
 each plinth, and a reflection probe over the hall. An exhibit may sit higher or lower, larger or
 smaller, on a wider plinth or hung from a flagpole (lessons.py's placement fields). The camera
-carries the Gallery behaviour.
-importmodels.py, shaders.py and importscripts.py run first (the meshes, the materials and the
-script it names).
+carries the game's Gallery behaviour (shadergallery.gallery), naming the lesson list's document.
+importmodels.py, shaders.py and importui.py run first (the meshes, the materials and the list's
+document it names), and the editor this talks to is the project's own (Tools/README.md): the
+stock one does not know the behaviour.
 """
 import math, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -69,7 +70,7 @@ def main():
     meshes = assets("StaticMeshAsset")
     meshes.update(exhibit_meshes())
     materials = assets("MaterialAsset")
-    scripts = assets("ScriptClassAsset")
+    documents = assets("GuiDocumentAsset")
     scenes = assets("SceneDocument")
     hall = hall_materials()
 
@@ -123,7 +124,7 @@ def main():
     # The camera, before the first lesson, looking along the row.
     cam = d.entity("Camera", (-SPACING * 0.5, 2.2, 6.5), rot=quat_mul(yaw(-20.0), pitch(-8.0)))
     d.add(cam, "camera", fovYRadians=1.0)
-    d.script(cam, (scripts["Gallery"], {"startYaw": -20.0, "startPitch": -8.0}))
+    d.add(cam, "shadergallery.gallery", startYaw=-20.0, startPitch=-8.0, lessonList=documents["Gallery"])
 
     guid = d.write(scenes.get("Hall"))
     mcp("project_settings_set", {"defaultSceneId": guid})

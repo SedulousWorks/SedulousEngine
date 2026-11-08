@@ -7,7 +7,10 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Runtime;
 using Sedulous.Engine.Composition;
+using Sedulous.Engine.Gameplay;
+using Sedulous.Engine.Project;
 using Sedulous.Engine.Script;
 using Sedulous.Script.Resource;
 using Sedulous.Pipeline.Core;
@@ -16,6 +19,7 @@ using Sedulous.Pipeline.Registration;
 using Sedulous.VFS;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
+using ShaderGallery;
 using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
@@ -26,7 +30,9 @@ namespace Sedulous.Integration.Mcp;
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
-/// are comptime here), so it holds when run alone.
+/// are comptime here), so it holds when run alone. A sample with game code of its own (the
+/// Shader Gallery's Code/) has its package linked here, as its own editor links it, and reads
+/// with the package loaded, so its behaviours' records resolve rather than stay unknown.
 static class SampleProjectTests
 {
 	/// Every instance under a group, recursively, reads back. A scene or prefab is its STREAM,
@@ -55,11 +61,44 @@ static class SampleProjectTests
 		return read;
 	}
 
+	/// The sample's tree from `source` into `dir`, less what builds, cooks and the editor write
+	/// there (a local Build Project's Code/build alone is gigabytes): of Code/, only the package's
+	/// manifest, its parts being linked into this binary.
+	private static bool CopySample(StringView source, StringView dir)
+	{
+		if (!CreateDirectory(dir))
+			return false;
+		let names = scope List<(String name, bool isDirectory)>();
+		defer
+		{
+			for (let entry in names)
+				delete entry.name;
+		}
+		ListDirectory(source, scope [&](name, isDirectory) => { names.Add((new String(name), isDirectory)); });
+		bool ok = true;
+		for (let entry in names)
+		{
+			let from = PathJoin(source, entry.name, .. scope .());
+			let to = PathJoin(dir, entry.name, .. scope .());
+			if (!entry.isDirectory)
+				ok = ExportTemplates.CopyFile(source, entry.name, dir, entry.name) && ok;
+			else if (entry.name == ProjectLayout.CodeDir)
+				ok = CreateDirectory(to) && ExportTemplates.CopyFile(from, "Plugin.xml", to, "Plugin.xml") && ok;
+			else if ((entry.name != ProjectLayout.CacheDir) && (entry.name != ProjectLayout.EditorDir) && (entry.name != "Dist")
+				&& !entry.name.StartsWith(ProjectLayout.CookedDir))
+				ok = ExportTemplates.CopyTree(from, to) && ok;
+		}
+		return ok;
+	}
+
 	/// Reads every instance of the sample in Data/SampleProjects/`name` from a scratch copy,
 	/// cooks it through the tools an agent uses, and checks every script override it stores names
 	/// a property of its cooked class. The floors catch a group silently skipped or a cook that
-	/// built less than the sample has.
-	private static void CheckSampleProject(StringView name, StringView scratch, int readFloor, int cookedFloor, int overrideFloor)
+	/// built less than the sample has. With `packageId`, the sample's own package (linked here)
+	/// is loaded while it reads, as in the project's own editor, and `checkGameCode` sees the
+	/// project then.
+	private static void CheckSampleProject(StringView name, StringView scratch, int readFloor, int cookedFloor, int overrideFloor,
+		StringView packageId = default, function void(EditorProject project) checkGameCode = null)
 	{
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
@@ -72,13 +111,28 @@ static class SampleProjectTests
 
 		let dir = Scratch(scratch, .. scope .());
 		defer RemoveDirectoryRecursive(dir);
-		Test.Assert(ExportTemplates.CopyTree(source, dir), "the sample copies to scratch");
+		Test.Assert(CopySample(source, dir), "the sample copies to scratch");
 		{
 			let project = EditorProject.Open(dir);
 			Test.Assert(project != null);
 			defer delete project;
+			let engineServices = scope EnginePluginServices();
+			let subsystems = scope SubsystemManager();
+			let host = scope PluginHost(subsystems, .Editor, EngineVersion.String);
+			if (!packageId.IsEmpty)
+			{
+				Test.Assert(project.Settings.FindPlugin(packageId) != null, scope $"{name} enables its package");
+				Test.Assert(engineServices.Attach(host));
+				Test.Assert(host.AddRegistered() case .Ok);
+				host.Load((Span<EnabledPlugin>)project.Settings.Plugins, scope .());
+				Test.Assert(host.IsLoaded(packageId), scope $"{name}'s package loads");
+			}
 			let read = ReadAllInstances(project.SourceDb.RootGroup);
 			Test.Assert(read >= readFloor, scope $"{name}: read {read} instances");
+			if (checkGameCode != null)
+				checkGameCode(project);
+			if (!packageId.IsEmpty)
+				host.Unload();
 		}
 
 		// And it COOKS, through the same tools an agent uses.
@@ -111,6 +165,12 @@ static class SampleProjectTests
 			let overrides = CheckOverrides(project, project.SourceDb.RootGroup);
 			Test.Assert(overrides >= overrideFloor, scope $"{name}: {overrides} overrides checked");
 		}
+		// The MCP host's plugins (the sample's package, when it enables one this binary links) go
+		// before its project, and both before the session that names them.
+		session.Plugins = null;
+		DeleteAndNullify!(owner.Plugins);
+		session.Project = null;
+		DeleteAndNullify!(owner.Project);
 	}
 
 	[Test]
@@ -133,10 +193,50 @@ static class SampleProjectTests
 	{
 		// 50 instances: 11 lesson shaders (surface and low-level, every program compiled by the
 		// cook) and their materials, the hall's 3 materials, 4 textures and the sky, 4 Blender
-		// models with their meshes and prefabs, the 3 primitives, the hall, the camera's script,
-		// the list, the font and the input map. 45 cook: all but the hall and the 4 prefabs. The 2
-		// overrides are the camera's starting yaw and pitch.
-		CheckSampleProject("ShaderGallery", "scratch_shadergallery_versions", 50, 45, 2);
+		// models with their meshes and prefabs, the 3 primitives, the hall, the list and its
+		// sheet, the font and the input map. At least 44 cook; the hall and the 4 prefabs stage
+		// rather than cook. No script overrides: the camera's behaviour is the game's code, its
+		// package loaded to read the hall.
+		CheckSampleProject("ShaderGallery", "scratch_shadergallery_versions", 50, 44, 0, "shadergallery", => CheckGallery);
+	}
+
+	/// The hall's camera carries the game's Gallery behaviour, resolved into its manager with the
+	/// values the hall gives it (its starting yaw and pitch, and the lesson list's document), not
+	/// the defaults.
+	private static void CheckGallery(EditorProject project)
+	{
+		let hall = FindInstance(project.SourceDb.RootGroup, "Hall", McpDocumentNames.cSceneDocument);
+		let list = FindInstance(project.SourceDb.RootGroup, "Gallery", "GuiDocumentAsset");
+		Test.Assert((hall != null) && (list != null), "the hall and the lesson list");
+		if ((hall == null) || (list == null))
+			return;
+		let scene = scope Scene(hall.Name);
+		EngineSceneComposition.AddAllSceneManagers(scene); // the package's Gallery manager among them
+		Test.Assert(SceneStorage.LoadScene(hall, scene) case .Ok, "the hall's stream");
+		let galleries = scene.GetSystem<BehaviourManager<Gallery>>();
+		Test.Assert((galleries != null) && (galleries.Count == 1), "one Gallery, resolved");
+		if ((galleries == null) || (galleries.Count != 1))
+			return;
+		Test.Assert(scene.GetEntityName(galleries.OwnerHandles[0]) == "Camera");
+		let gallery = galleries.Instances[0];
+		Test.Assert((gallery.StartYaw == -20.0f) && (gallery.StartPitch == -8.0f), "the hall's values, not the defaults");
+		Test.Assert(gallery.LessonList.Id == list.Id, "the lesson list's document");
+	}
+
+	/// The first instance under `group` named `name` whose type name ends with `typeName`, or null.
+	private static Instance FindInstance(Group group, StringView name, StringView typeName)
+	{
+		for (let instance in group.Instances)
+		{
+			if ((instance.Name == name) && instance.TypeName.EndsWith(typeName))
+				return instance;
+		}
+		for (let child in group.Groups)
+		{
+			if (let found = FindInstance(child, name, typeName))
+				return found;
+		}
+		return null;
 	}
 
 	[Test]

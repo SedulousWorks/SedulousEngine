@@ -1046,29 +1046,6 @@
 	</array>
 	<array name="components" count="42">
 		<object>
-			<string name="owner">4689cda4-76dd-54d6-a916-6bd13cd3e35f</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">a2621a61-e54d-3f4c-8b1d-1860c57a6dd4</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="2">
-						<u64 name="nameHash">11695439974411991770</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">-20</f64>
-						<u64 name="nameHash">2720509765207269419</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">-8</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
 			<string name="owner">973c03dd-825f-53c9-b764-977ba6aee36a</string>
 			<string name="type">mesh</string>
 			<object name="data">
@@ -2084,6 +2061,26 @@
 				<u32 name="update">0</u32>
 				<bool name="parallax">true</bool>
 				<bool name="enabled">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">4689cda4-76dd-54d6-a916-6bd13cd3e35f</string>
+			<string name="type">shadergallery.gallery</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">4936171969134306582</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="speed">4</f32>
+				<f32 name="fastFactor">3</f32>
+				<f32 name="mouseLook">0.15</f32>
+				<f32 name="stickLook">110</f32>
+				<f32 name="glideTime">1.2</f32>
+				<f32 name="startYaw">-20</f32>
+				<f32 name="startPitch">-8</f32>
+				<f32 name="listYaw">12</f32>
+				<string name="lessonList">994ae329-2812-9943-846e-89860e0d43be</string>
 			</object>
 		</object>
 	</array>

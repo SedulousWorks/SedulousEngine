@@ -5,7 +5,7 @@ Each lesson is a shader in shaders/ (its file name: NN_Name.hlsl), the material 
 with (its parameters by property name, the textures it binds by slot, and its blend and cull modes
 when not opaque and back-culled), the mesh it stands on its plinth as, and the one line the
 gallery's list says about it. Adding a lesson is a row here and its .hlsl; shaders.py, hall.py,
-ui.py and the game script follow from the table.
+ui.py and the game's lesson table (ui.py writes it into Code/) follow from the table.
 
 A value the lesson leaves out keeps the shader's default, except where the material had a value of
 the same name and type before (material_set_shader carries it: a new material's PBR BaseColor is
