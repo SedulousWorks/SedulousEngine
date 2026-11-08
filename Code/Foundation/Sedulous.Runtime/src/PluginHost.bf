@@ -121,6 +121,8 @@ class PluginHost
 
 	public HostRole Role => mRole;
 	public StringView Platform => mPlatform;
+	/// The subsystems its plugins load beside, and through them the live runs. BORROWED.
+	public SubsystemManager Subsystems => mSubsystems;
 
 	/// The platform tag of the running build, as the export templates and manifests name it.
 	public static StringView HostPlatform
