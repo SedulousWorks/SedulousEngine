@@ -1,0 +1,30 @@
+FileVersion = 1
+
+[Project]
+Name = "PaperKid"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"
+# The game and its behaviours: the run (its scene loads, time scale), its input, audio and GUI
+# screens; the bike's character and the papers' bodies, the walkers' and cars' navigation agents,
+# the clips the kid, the walkers and the pets play; prefab spawns.
+"Sedulous.Run" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Engine.Navigation" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"

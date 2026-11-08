@@ -31,9 +31,9 @@ namespace Sedulous.Integration.Mcp;
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
 /// are comptime here), so it holds when run alone. A sample with game code of its own (the
-/// Shader Gallery's and Sky Hopper's Code/) has its package linked here, as its own editor links
-/// it, and reads with the package loaded, so its behaviours' records resolve rather than stay
-/// unknown.
+/// Shader Gallery's, Sky Hopper's and PaperKid's Code/) has its package linked here, as its own
+/// editor links it, and reads with the package loaded, so its behaviours' records and its levels'
+/// blocks resolve rather than stay unknown.
 static class SampleProjectTests
 {
 	/// Every instance under a group, recursively, reads back. A scene or prefab is its STREAM,
@@ -177,16 +177,108 @@ static class SampleProjectTests
 	[Test]
 	public static void EveryPaperKidSourceReadsAtTheCurrentDataVersionsAndCooks()
 	{
-		// 234 instances: 6 scenes (five blocks and the title), 19 kit prefabs, 13 scripts, 18
-		// audio clips, 4 fonts, 5 meshes, 5 navigation zones, 7 UI documents and their theme, 4
-		// particle effects and their sprite, 2 animation clips, a material, the two render
-		// profiles, the input map, the minimap's render texture, and the 13 Blender models with
-		// their prefabs, meshes, materials, skeletons and clips (146). 196 cook: all but the
-		// scenes and the prefabs, which stage rather than cook. 107 overrides: the five blocks'
-		// Level settings (35), their camera's and minimap's behaviours (15), the kit's (13, the
-		// pedestrian's walk clip among them) and the title street's strollers and pets (44).
-		// Raise the floors when the sample grows.
-		CheckSampleProject("PaperKid", "scratch_paperkid_versions", 234, 196, 107);
+		// 222 instances: 6 scenes (five blocks and the title), 19 kit prefabs, 18 audio clips, 4
+		// fonts, 5 meshes, 5 navigation zones, 7 UI documents and their sheet, 4 particle effects,
+		// their sprite and the minimap's render texture, 2 animation clips and a material, the two
+		// render profiles, the toon shader, the input map, and the 13 Blender models with their
+		// prefabs, meshes, materials, skeletons and clips (144). 184 cook: all but the scenes and
+		// the 32 prefabs, which stage rather than cook. No script overrides: the behaviours and the
+		// blocks' level are the game's code, its package loaded to read the scenes. Raise the floors
+		// when the sample grows.
+		CheckSampleProject("PaperKid", "scratch_paperkid_versions", 222, 184, 0, "paperkid", => CheckPaperKid);
+	}
+
+	/// Block1 runs the game's level with its own numbers and carries the bike, its camera and the
+	/// minimap's markers with the values the block gives them, not the defaults, and no script;
+	/// the title's street carries its strollers and its pets (their clips set); the kit's prefabs
+	/// carry their behaviours with their values (each lane's direction, each obstacle's reach,
+	/// each burst's life).
+	private static void CheckPaperKid(EditorProject project)
+	{
+		let block = FindInstance(project.SourceDb.RootGroup, "Block1", McpDocumentNames.cSceneDocument);
+		Test.Assert(block != null, "Block1");
+		if (block == null)
+			return;
+		let scene = scope Scene(block.Name);
+		EngineSceneComposition.AddAllSceneManagers(scene); // the package's behaviour managers and level among them
+		Test.Assert(SceneStorage.LoadScene(block, scene) case .Ok, "Block1's stream");
+		let level = scene.GetSystem<PaperKid.Block>();
+		Test.Assert(level != null, "the game's level came with its package");
+		if (level != null)
+		{
+			Test.Assert(level.Active, "Block1 runs it");
+			Test.Assert((level.TimeLimit == 55.0f) && (level.Quota == 4) && (level.Papers == 8) && (level.TrafficSpeed == 7.5f)
+				&& (level.PedestrianSpeed == 1.4f) && (level.Ring == 24.0f) && (level.CrashPenalty == 5.0f), "Block1's numbers, not the defaults");
+		}
+		let levelScripts = scene.GetSystem<ScriptSceneSystem>();
+		Test.Assert((levelScripts == null) || (levelScripts.Settings.Script.Id == Guid.Empty), "no level script left");
+		let bikes = scene.GetSystem<BehaviourManager<PaperKid.Bike>>();
+		Test.Assert((bikes != null) && (bikes.Count == 1), "one Bike, resolved");
+		if ((bikes == null) || (bikes.Count != 1))
+			return;
+		let bike = bikes.OwnerHandles[0];
+		Test.Assert(scene.GetEntityName(bike) == "Bike");
+		let cameras = scene.GetSystem<BehaviourManager<PaperKid.FollowCamera>>();
+		Test.Assert((cameras != null) && (cameras.Count == 1) && (cameras.Instances[0].Target.Id == scene.GetEntityId(bike)),
+			"the camera follows the bike");
+		let markers = scene.GetSystem<BehaviourManager<PaperKid.MapMarkers>>();
+		Test.Assert((markers != null) && (markers.Count == 1) && (markers.Instances[0].Bike.Id == scene.GetEntityId(bike))
+			&& (markers.Instances[0].Span == 84.0f), "the minimap marks the bike, over the block's span");
+		let scripts = scene.GetSystem<ScriptComponentManager>();
+		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+
+		let start = FindInstance(project.SourceDb.RootGroup, "Start", McpDocumentNames.cSceneDocument);
+		Test.Assert(start != null, "Start");
+		if (start != null)
+		{
+			let street = scope Scene(start.Name);
+			EngineSceneComposition.AddAllSceneManagers(street);
+			Test.Assert(SceneStorage.LoadScene(start, street) case .Ok, "Start's stream");
+			let strollers = street.GetSystem<BehaviourManager<PaperKid.Stroller>>();
+			Test.Assert((strollers != null) && (strollers.Count == 5), "the title's three cars and two walkers");
+			let pets = street.GetSystem<BehaviourManager<PaperKid.Pet>>();
+			Test.Assert((pets != null) && (pets.Count == 2), "the dog and the cat");
+			if (pets != null)
+			{
+				for (let pet in pets.Instances)
+				{
+					Test.Assert((pet.WalkClip.Id != Guid.Empty) && (pet.IdleClip.Id != Guid.Empty) && (pet.SitClip.Id != Guid.Empty)
+						&& (pet.LieClip.Id != Guid.Empty) && (pet.OwnClip.Id != Guid.Empty), "a pet's clips");
+				}
+			}
+			let titleLevel = street.GetSystem<PaperKid.Block>();
+			Test.Assert((titleLevel == null) || !titleLevel.Active, "the title runs no block");
+		}
+
+		CheckKitPiece<PaperKid.Vehicle>(project, "Car", scope (vehicle) => vehicle.Direction == 1);
+		CheckKitPiece<PaperKid.Obstacle>(project, "Car", scope (obstacle) => obstacle.Radius == 2.0f);
+		CheckKitPiece<PaperKid.Vehicle>(project, "CarOuter", scope (vehicle) => vehicle.Direction == -1);
+		CheckKitPiece<PaperKid.Pedestrian>(project, "Pedestrian", scope (walker) => walker.WalkClip.Id != Guid.Empty);
+		CheckKitPiece<PaperKid.Obstacle>(project, "Pedestrian", scope (obstacle) => obstacle.Radius == 0.8f);
+		CheckKitPiece<PaperKid.Obstacle>(project, "Bin", scope (obstacle) => obstacle.Radius == 0.85f);
+		CheckKitPiece<PaperKid.Subscriber>(project, "DeliveryZone", scope (subscriber) => subscriber.Value == 100);
+		CheckKitPiece<PaperKid.Paper>(project, "Newspaper", scope (paper) => paper.Lifetime == 6.0f);
+		CheckKitPiece<PaperKid.Fx>(project, "FxConfetti", scope (fx) => fx.Lifetime == 4.0f);
+		CheckKitPiece<PaperKid.Fx>(project, "FxSparkle", scope (fx) => fx.Lifetime == 1.5f);
+		CheckKitPiece<PaperKid.Fx>(project, "FxDust", scope (fx) => fx.Lifetime == 1.5f);
+		CheckKitPiece<PaperKid.Fx>(project, "FxPuff", scope (fx) => fx.Lifetime == 1.0f);
+	}
+
+	/// The kit's prefab `name` carries one `T`, for which `check` holds.
+	private static void CheckKitPiece<T>(EditorProject project, StringView name, delegate bool(T behaviour) check) where T : Behaviour, new, delete
+	{
+		let prefab = FindInstance(project.SourceDb.RootGroup, name, McpDocumentNames.cPrefabDocument);
+		Test.Assert(prefab != null, scope $"the {name} prefab");
+		if (prefab == null)
+			return;
+		let piece = scope Scene(prefab.Name);
+		EngineSceneComposition.AddAllSceneManagers(piece);
+		Test.Assert(SceneStorage.LoadScene(prefab, piece) case .Ok, scope $"{name}'s stream");
+		let behaviours = piece.GetSystem<BehaviourManager<T>>();
+		let typeName = typeof(T).GetName(.. scope .());
+		Test.Assert((behaviours != null) && (behaviours.Count == 1), scope $"{name} carries one {typeName}");
+		if ((behaviours != null) && (behaviours.Count == 1))
+			Test.Assert(check(behaviours.Instances[0]), scope $"{name}'s {typeName}, with the kit's values");
 	}
 
 	[Test]

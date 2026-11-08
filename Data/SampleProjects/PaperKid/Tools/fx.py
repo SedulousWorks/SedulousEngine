@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The game's particle effects, written through the editor's MCP tools: a soft round sprite
-(a texture made here), and the one-shot bursts the scripts spawn (as the Fx* prefabs kit.py
+(a texture made here), and the one-shot bursts the game's code spawns (as the Fx* prefabs kit.py
 makes): Confetti over a cleared block, a Sparkle on a delivery, Dust off a crash and a Puff where
 a paper lands.
 

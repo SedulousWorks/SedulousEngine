@@ -125,17 +125,6 @@ edit_payload(created("Minimap", "RenderTextureAsset", "Render Texture", "Texture
 # The screens are importui.py's (ui/*.xml on the engine GUI, over ui/PaperKidSheet.css), run after
 # this: the HUD's minimap is the Minimap texture above, by id.
 
-# The scripts' assets (render.py writes their sources): the Game, each block's Level, and the
-# behaviours.
-SCRIPTS = {"PaperKidGame": "game", "Level": "level"}
-for behaviour in ("Bike", "FollowCamera", "Fx", "MapMarkers", "Obstacle", "Paper", "Pedestrian", "Pet", "Stroller",
-                  "Subscriber", "Vehicle"):
-    SCRIPTS[behaviour] = "behavior"
-for name, tier in SCRIPTS.items():
-    if (name, "ScriptClassAsset") not in existing():
-        r = mcp("script_create", {"name": name, "language": "angelscript", "tier": tier, "group": "Scripts"})
-        print("created", name, r.get("guid"))
-
 # The Blender models (Tools/blender/*.py write them into <raw-dir>): the kid on his bike, and the
 # town's houses, cars, street furniture, people and animals. Each lands in its own group,
 # Models/KidBike/KidBike or Models/Town/<Name>Model, with its prefab beside its manifest.
@@ -149,13 +138,14 @@ for block in range(1, 6):
 for scene in ("Start", "Block1", "Block2", "Block3", "Block4", "Block5"):
     created(scene, "SceneDocument", "Scene")
 
-# The manifest: the title's scene first, the Game script, the controls, Oswald
+# The manifest: the title's scene first, no startup script (the game's code runs the run: its
+# [Game], Code/PaperKid), the controls, Oswald
 # for the HUD and text with the masthead's, the headlines' and Roboto beside it, and a 1280x720
 # frame, letterboxed.
 have = existing()
 mcp("project_settings_set", {
     "defaultSceneId": have[("Start", "SceneDocument")],
-    "startupScriptId": have[("PaperKidGame", "ScriptClassAsset")],
+    "startupScriptId": "",
     "defaultInputMapId": have[("Controls", "InputMapAsset")],
     "defaultUiThemeId": "", # cleared: the newsprint look is the GUI sheet's now (importui.py)
     "defaultUiFontId": have[("Oswald-SemiBold", "FontAsset")],

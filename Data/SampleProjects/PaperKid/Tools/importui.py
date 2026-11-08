@@ -2,9 +2,9 @@
 """importui.py [name ...]: the game's screens on the engine GUI (ui/*.xml and its sheet
 ui/PaperKidSheet.css, group UI, each checked with gui_validate first) imported through the editor's
 MCP, the sheet made the project's GUI sheet, then cooked. With names, only those (Hud, Title, ...).
-A re-run re-imports over the same assets, keeping their ids. Run render.py PaperKidGame after a
-first import: the game script names the screens by id. An asset is named by its file, so a sheet
-and a document may not share a name. The HUD's minimap image is the Minimap render texture, by id
+A re-run re-imports over the same assets, keeping their ids: the game's code pushes the screens by
+those ids (Code/PaperKid/src/Assets.bf), so a first import into a fresh project means those ids
+change there. An asset is named by its file, so a sheet and a document may not share a name. The HUD's minimap image is the Minimap render texture, by id
 ({{Minimap}} in its source, filled in here: setup.py makes the texture first).
 """
 import os, sys, tempfile

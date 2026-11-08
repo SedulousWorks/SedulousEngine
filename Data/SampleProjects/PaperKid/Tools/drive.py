@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """drive.py [laps]: a closed-loop playtest of Block1 over pie_run. The bike laps the ring road
 clockwise, steering with the left stick toward the next corner, and throws at each subscriber's
-zone once when it is near and ahead. Short runs; the bike coasts between them."""
+zone once when it is near and ahead. Short runs; the bike coasts between them. The deliveries are
+read off the block's level (paperkid.level's mDelivered), which runs in the project's own editor."""
 import json, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pkgen import mcp
@@ -18,7 +19,7 @@ def read(run):
 
 def state():
     r = mcp("pie_run", {"duration": 0.02, "probes": [
-        {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"script": "m_delivered"}]})
+        {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"level": "mDelivered"}]})
     return read(r)
 
 
@@ -72,17 +73,17 @@ def main():
                 print("throw at zone", zi, "from", [round(v, 1) for v in pos], "dist", round(d, 1))
                 break
         r = mcp("pie_run", {"duration": STEP, "input": inputs, "probes": [
-            {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"script": "m_delivered"}], "every": 1.0})
+            {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"level": "mDelivered"}], "every": 1.0})
         s = read(r)
         if i % 10 == 0:
             print(i, [round(v, 1) for v in s["Bike.worldPosition"]], "heading", round(math.degrees(heading(s["Bike.rotation"]))),
-                  "target", CORNERS[target], "delivered", s["script.m_delivered"])
-        if s["script.m_delivered"] >= 4:
-            print("delivered", s["script.m_delivered"], "at step", i)
+                  "target", CORNERS[target], "delivered", s["level.mDelivered"])
+        if s["level.mDelivered"] >= 4:
+            print("delivered", s["level.mDelivered"], "at step", i)
             shot = mcp("pie_screenshot", {})
             print(shot.get("path"))
             return
-    print("ran out of steps; delivered", s["script.m_delivered"])
+    print("ran out of steps; delivered", s["level.mDelivered"])
 
 
 main()

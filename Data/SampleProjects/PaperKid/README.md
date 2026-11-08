@@ -3,8 +3,8 @@
 A small arcade paper-route game, built entirely through the engine's MCP tools: the second test,
 after Sky Hopper, of how far an agent gets making a game with them, where every missing or wrong
 tool or engine behaviour was fixed in the engine as part of the work. It mirrors Raptor's PaperKid,
-rebuilt here by its authoring scripts (`Tools/`) ported to this engine's formats and script API:
-the two engines' projects are not interchangeable. It replaces an earlier PaperKid that stopped
+rebuilt here by its authoring scripts (`Tools/`) ported to this engine's formats, its scripts
+ported to the game's own Beef code: the two engines' projects are not interchangeable. It replaces an earlier PaperKid that stopped
 after one block.
 
 ![PaperKid, riding a block](../../../Documentation/Images/PaperKid-Play.png)
@@ -46,22 +46,37 @@ tap on the menus; they show once the screen is touched (`Tools/touch.py` binds t
 
 ## Project layout
 
-- `Project.xml`: the manifest: the start scene, the Game script, the input map, the UI theme, the
-  fonts and the render resolution (1280x720, letterboxed).
-- `Sources/`: the raw sources: the AngelScript scripts, the UI markup and theme, the fonts, the
-  sound effects and the music.
+- `Project.xml`: the manifest: the start scene, the input map, the GUI's sheet and fonts, the
+  render resolution (1280x720, letterboxed), and the game's own package (`Code`).
+- `Code/`: the game's own code, a Beef package the project builds into its own editor and player
+  (below).
+- `Sources/`: the raw sources: the UI markup and sheet, the fonts, the sound effects and the music.
 - `Content/`: the asset envelopes (`*.xasset`) and their sidecars: the five blocks and the title
   scene, the blockout kit's prefabs, each block's baked navmesh, the minimap's render texture, the
   audio clips, the markers' animation clips, the particle effects, the UI theme and the shared
   environment and post profiles every scene uses.
 - `Tools/`: the authoring scripts that drove the editor's MCP tools to build the game (the first
-  run's setup, the kit, the block generator, the scripts with their asset ids, a closed-loop
-  playtest). Not game content; `Tools/README.md` says what each does.
+  run's setup, the kit, the block generator, the move from scripts to the game's code, a
+  closed-loop playtest). Not game content; `Tools/README.md` says what each does.
 - `export_presets.xml`: the export targets (Linux desktop, Steam Deck, Web).
 - `CREDITS.md` and `Licenses/`: the music (Juhani Junkala, CC0), the fanfare (celestialghost8,
   CC0), the sound effects (Kenney, CC0) and the fonts (OFL, and Apache 2.0). The kid on his
   bike, the houses, cars, street furniture, people and animals are modelled, rigged and animated
   in the project by Blender scripts (`Tools/blender/`); the road, kerbs and lawns are primitives.
 - `Cooked/`, `.cache/`, `Editor/`, `Dist/`: generated, and gitignored; the tools rebuild them.
+
+## Its code
+
+The game is Beef, the project's own code in `Code/PaperKid/src`: `PaperKidGame` is the run (the
+title, the blocks in order, the HUD's score and lives, the celebration, the pause, cleared, failed
+and game over screens, and the settings), `Block` is each block's rules (its clock, papers and
+quota, the traffic's pace, the outcome; a block's numbers are its scene's settings for it), and
+the behaviours on the entities are the bike (`Bike`), the chase camera (`FollowCamera`), the
+minimap's markers (`MapMarkers`), the cars (`Vehicle`), the walkers (`Pedestrian`), what the bike
+crashes into (`Obstacle`), the porches (`Subscriber`), the papers (`Paper`), the bursts' `Fx`, and
+the title's pets (`Pet`) and strollers (`Stroller`). They report to one another through the run's
+events (`Events.bf`). The project builds it into its own editor and player (Project > Build
+Project); the stock editor does not run it, so open the project in the editor its build makes
+(Project > Open With This Build).
 
 Open the project from the editor's project manager.

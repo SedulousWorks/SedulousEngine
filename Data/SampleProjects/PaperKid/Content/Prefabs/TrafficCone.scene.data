@@ -46,26 +46,6 @@
 	</array>
 	<array name="components" count="2">
 		<object>
-			<string name="owner">25cb0bab-1e9a-5a95-93bb-c21aae1de451</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">11714910769601064179</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.85</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
 			<string name="owner">ab0e9dc2-d6df-5416-9813-a7e39196e0c2</string>
 			<string name="type">physics.RigidBody</string>
 			<object name="data">
@@ -95,6 +75,19 @@
 				<string name="heightfield">00000000-0000-0000-0000-000000000000</string>
 				<bool name="continuousCollision">false</bool>
 				<f32 name="mass">0</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">25cb0bab-1e9a-5a95-93bb-c21aae1de451</string>
+			<string name="type">paperkid.obstacle</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">329763887199202798</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">0.85</f32>
+				<f32 name="cooldown">2</f32>
 			</object>
 		</object>
 	</array>

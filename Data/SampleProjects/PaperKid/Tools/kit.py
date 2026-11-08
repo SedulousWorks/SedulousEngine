@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """The blockout kit: one prefab per piece, primitives coloured per mesh. Colliders sit on their own
-unscaled child entity, so a box's half extents are what they say."""
+unscaled child entity, so a box's half extents are what they say. The pieces' behaviours are the
+game's own (paperkid.*: Code/PaperKid), so the editor this talks to is the project's own
+(Tools/README.md)."""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pkgen import Doc, mcp, NIL, yaw, assets
 
-# Every asset by name (scripts and meshes the prefabs use), and the prefabs apart: a prefab may
-# share its name with a script (Pedestrian), and only a prefab is overwritten here.
+# Every asset by name (the meshes, materials, effects and clips the prefabs use), and the prefabs
+# apart: a prefab may share its name with another asset, and only a prefab is overwritten here.
 ids, prefabs = {}, {}
 for a in assets():
     (prefabs if a["type"] == "PrefabDocument" else ids)[a["name"]] = a["guid"]
@@ -77,15 +79,16 @@ def kerb():
 
 def obstacle(d, r, radius):
     """What the bike crashes into: an Obstacle behaviour with its reach."""
-    return (ids["Obstacle"], {"radius": radius})
+    d.add(r, "paperkid.obstacle", radius=radius)
 
 
 def car(name="Car", direction=1, body=(0.2, 0.45, 0.8), cabin=(0.15, 0.3, 0.55)):
-    """A car on the ring road: a navigation agent driving laps of the lane it is placed on (Vehicle.as)."""
+    """A car on the ring road: a navigation agent driving laps of the lane it is placed on (Vehicle)."""
     d = Doc(name)
     r = d.entity(name)
     d.add(r, "navigation.Agent", radius=1.0, height=1.6, maxSpeed=12.0, maxAcceleration=10.0)
-    d.script(r, (ids["Vehicle"], {"direction": direction}), obstacle(d, r, 2.0))
+    d.add(r, "paperkid.vehicle", direction=direction)
+    obstacle(d, r, 2.0)
     model(d, r, name)
     return d
 
@@ -94,7 +97,8 @@ def pedestrian():
     d = Doc("Pedestrian")
     r = d.entity("Pedestrian")
     d.add(r, "navigation.Agent", radius=0.4, height=1.6, maxSpeed=3.0, maxAcceleration=6.0)
-    d.script(r, (ids["Pedestrian"], {"walkClip": ("asset", clip("Pedestrian", "Walk"))}), obstacle(d, r, 0.8))
+    d.add(r, "paperkid.pedestrian", walkClip=clip("Pedestrian", "Walk"))
+    obstacle(d, r, 0.8)
     model(d, r, "Pedestrian")  # rigged, with its Walk clip (blender/pedestrian.py)
     return d
 
@@ -102,7 +106,7 @@ def pedestrian():
 def bin_():
     d = Doc("Bin")
     r = d.entity("Bin")
-    d.script(r, obstacle(d, r, 0.85))
+    obstacle(d, r, 0.85)
     model(d, r, "Bin")
     static_box(d, r, (0, 0.5, 0), (0.3, 0.5, 0.3))
     return d
@@ -111,7 +115,7 @@ def bin_():
 def hydrant():
     d = Doc("Hydrant")
     r = d.entity("Hydrant")
-    d.script(r, obstacle(d, r, 0.85))
+    obstacle(d, r, 0.85)
     model(d, r, "Hydrant")
     static_box(d, r, (0, 0.4, 0), (0.2, 0.4, 0.2))
     return d
@@ -120,7 +124,7 @@ def hydrant():
 def traffic_cone():
     d = Doc("TrafficCone")
     r = d.entity("TrafficCone")
-    d.script(r, obstacle(d, r, 0.85))
+    obstacle(d, r, 0.85)
     model(d, r, "TrafficCone")
     static_box(d, r, (0, 0.4, 0), (0.22, 0.4, 0.22))
     return d
@@ -132,7 +136,7 @@ def paper():
     d.add(r, "physics.RigidBody", motion=2, layer=1, shape=0, halfExtents={"x": 0.18, "y": 0.06, "z": 0.12},
           mass=0.4, collisionGroup=1, continuousCollision=True, friction=0.8)
     model(d, r, "Newspaper")
-    d.script(r, (ids["Paper"], {}))
+    d.add(r, "paperkid.paper")
     return d
 
 
@@ -142,7 +146,7 @@ def delivery_zone():
     r = d.entity("DeliveryZone")
     d.add(r, "physics.RigidBody", motion=0, layer=3, shape=0, isTrigger=True, collisionGroup=2,
           halfExtents={"x": 1.8, "y": 1.2, "z": 1.5})
-    d.script(r, (ids["Subscriber"], {}))
+    d.add(r, "paperkid.subscriber")
     m = d.entity("Marker", parent=r)
     # The tells (anim.py's clips, whose keys are these places): the arrow bobs, the mat breathes.
     arrow = part(d, m, "Arrow", CONE, (0, 6.6, -1.2), (1.0, 1.3, 1.0), (1.0, 0.82, 0.15), (1.0, 0.0, 0.0, 0.0))
@@ -156,7 +160,7 @@ GUIDE = (0.1, 0.7, 1.0)  # the throw's guides: cyan, apart from the yellow porch
 
 
 def aim_dot():
-    """One dot of the throw's arc (Bike.as places a row of them along the path)."""
+    """One dot of the throw's arc (the Bike behaviour places a row of them along the path)."""
     d = Doc("AimDot")
     r = d.entity("AimDot")
     glow_part(d, r, "Dot", SPHERE, (0, 0, 0), (0.24, 0.24, 0.24), GUIDE)
@@ -166,7 +170,7 @@ def aim_dot():
 def target_ring():
     """The reticle on the porch a throw is pulled toward: eight dashes round a 1.7 m circle (just
     outside the porch mat), each
-    turned along it (Bike.as spins and pulses the root)."""
+    turned along it (the Bike behaviour spins and pulses the root)."""
     import math
     d = Doc("TargetRing")
     r = d.entity("TargetRing")
@@ -178,12 +182,12 @@ def target_ring():
 
 
 def fx(name, effect, lifetime):
-    """A one-shot burst the scripts spawn (fx.py makes the effects): its effect fires when it is
-    spawned, and Fx.as takes it away once the burst has played out."""
+    """A one-shot burst the game's code spawns (fx.py makes the effects): its effect fires when it
+    is spawned, and the Fx behaviour takes it away once the burst has played out."""
     d = Doc(name)
     r = d.entity(name)
     d.add(r, "particle_effect", effect=ids[effect])
-    d.script(r, (ids["Fx"], {"lifetime": lifetime}))
+    d.add(r, "paperkid.fx", lifetime=lifetime)
     return d
 
 

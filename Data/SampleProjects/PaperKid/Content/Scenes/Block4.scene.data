@@ -306,65 +306,6 @@
 	</array>
 	<array name="components" count="18">
 		<object>
-			<string name="owner">b1ce0000-0000-4000-8000-00000000b1ce</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">40cbe1cb-2fb4-8745-80b8-830a5916122f</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">2a3c574b-dbff-5f2e-ad8f-b3c88d37be99</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">0e6cac69-a27e-bf46-8c68-62483fc77c50</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">1653916590517707752</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">b1ce0000-0000-4000-8000-00000000b1ce</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">f858b733-6a48-5492-adee-5dbb3afd33fb</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">d3163a34-974d-a142-a4b3-e22de92ef877</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="2">
-						<u64 name="nameHash">16056539505054007560</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">b1ce0000-0000-4000-8000-00000000b1ce</string>
-						<u64 name="nameHash">10051401157122511073</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">100</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
 			<string name="owner">81bc5a74-7c2a-514d-be50-1aad703dbbce</string>
 			<string name="type">mesh</string>
 			<object name="data">
@@ -751,8 +692,86 @@
 				<i32 name="maxAgents">128</i32>
 			</object>
 		</object>
+		<object>
+			<string name="owner">b1ce0000-0000-4000-8000-00000000b1ce</string>
+			<string name="type">paperkid.bike</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">8154731594001688930</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="maxSpeed">11</f32>
+				<f32 name="reverseSpeed">3.5</f32>
+				<f32 name="acceleration">10</f32>
+				<f32 name="braking">22</f32>
+				<f32 name="coastDeceleration">5</f32>
+				<f32 name="turnSpeedDegrees">120</f32>
+				<f32 name="minSteerFraction">0.3</f32>
+				<f32 name="throwSpeed">9</f32>
+				<f32 name="throwArc">0.55</f32>
+				<f32 name="autoAim">0.85</f32>
+				<f32 name="aimRange">16</f32>
+				<i32 name="zoneGroup">2</i32>
+				<f32 name="crashTime">1.5</f32>
+				<f32 name="crashControl">0.25</f32>
+				<f32 name="knockback">4</f32>
+				<f32 name="maxLean">14</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2a3c574b-dbff-5f2e-ad8f-b3c88d37be99</string>
+			<string name="type">paperkid.follow_camera</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9946339457918685256</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="target">b1ce0000-0000-4000-8000-00000000b1ce</string>
+				<f32 name="distance">8</f32>
+				<f32 name="height">3.4</f32>
+				<f32 name="lookHeight">1.2</f32>
+				<f32 name="positionSmoothing">4.5</f32>
+				<f32 name="shakeTime">0.35</f32>
+				<f32 name="shakeAmount">0.35</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f858b733-6a48-5492-adee-5dbb3afd33fb</string>
+			<string name="type">paperkid.map_markers</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">11370216392946903883</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="bike">b1ce0000-0000-4000-8000-00000000b1ce</string>
+				<f32 name="span">100</f32>
+				<f32 name="mapSize">200</f32>
+				<i32 name="zoneGroup">2</i32>
+			</object>
+		</object>
 	</array>
-	<array name="systemSettings" count="5">
+	<array name="systemSettings" count="6">
+		<object>
+			<string name="system">paperkid.level</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">791257084648480223</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<bool name="active">true</bool>
+				<f32 name="timeLimit">60</f32>
+				<i32 name="quota">6</i32>
+				<i32 name="papers">9</i32>
+				<f32 name="paperGrace">3</f32>
+				<f32 name="trafficSpeed">10</f32>
+				<f32 name="pedestrianSpeed">1.8</f32>
+				<f32 name="crashPenalty">5</f32>
+				<f32 name="ring">32</f32>
+			</object>
+		</object>
 		<object>
 			<string name="system">script</string>
 			<array name="dataVersions" count="1">
@@ -760,31 +779,9 @@
 				<u32 name="version">1</u32>
 			</array>
 			<object name="settings">
-				<string name="script">7193521c-3060-e04f-9f68-a3d0ce3b86c5</string>
+				<string name="script">00000000-0000-0000-0000-000000000000</string>
 				<bool name="enabled">true</bool>
-				<array name="overrides" count="7">
-					<u64 name="nameHash">12852231136807574283</u64>
-					<u8 name="kind">1</u8>
-					<f64 name="number">32</f64>
-					<u64 name="nameHash">3628799494235625965</u64>
-					<u8 name="kind">1</u8>
-					<f64 name="number">5</f64>
-					<u64 name="nameHash">13555333221183339639</u64>
-					<u8 name="kind">1</u8>
-					<f64 name="number">60</f64>
-					<u64 name="nameHash">6512465732325855275</u64>
-					<u8 name="kind">2</u8>
-					<f64 name="number">6</f64>
-					<u64 name="nameHash">10024413440862419326</u64>
-					<u8 name="kind">2</u8>
-					<f64 name="number">9</f64>
-					<u64 name="nameHash">7321916813768143705</u64>
-					<u8 name="kind">1</u8>
-					<f64 name="number">10</f64>
-					<u64 name="nameHash">16269461283229414295</u64>
-					<u8 name="kind">1</u8>
-					<f64 name="number">1.8</f64>
-				</array>
+				<array name="overrides" count="0"/>
 			</object>
 		</object>
 		<object>

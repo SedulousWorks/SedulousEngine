@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""native.py: the project's script behaviours become its game code's native behaviours, in every
-scene and prefab, through the editor's MCP; then the scripts are retired.
+"""native.py: the project's script behaviours and level scripts become its game code's native
+behaviours and levels, in every scene and prefab, through the editor's MCP; then the scripts are
+retired.
 
     python3 native.py                every scene and prefab, then the scripts retired
     python3 native.py --dry-run      what would change, nothing written
@@ -18,11 +19,18 @@ it does not know, a throttled behaviour (updateInterval) or a script record insi
 instance's overrides stops the run before anything is written. A property left at its script
 default has no override, and takes the native field's default, which is the same.
 
+A scene's LEVEL script (its `script` settings block: the Level class, its enable flag, its
+overrides) becomes the native level's settings block (LEVELS: the [Level] that replaces it), its
+`active` the script's enable flag and its fields the overridden values (the rest at the native
+defaults, the same as the script's); the `script` block is left naming no class, as a scene that
+never had one. A level script LEVELS does not name, or an override it does not, stops the run as
+above, and so does a scene that already turned the native level on.
+
 Retiring the scripts: the startup script setting cleared (the game's [Game] class runs instead),
 each script asset deleted (asset_delete refuses one still in use) and its source under Sources/
 removed, then a cook.
 
-Generic: another sample copies this file and replaces TABLE and GAME_SCRIPTS with its own.
+Generic: another sample copies this file and replaces TABLE, LEVELS and GAME_SCRIPTS with its own.
 """
 import os, sys
 import xml.etree.ElementTree as ET
@@ -60,6 +68,10 @@ TABLE = {
     "c648f5bb-9c34-2242-9cb7-1e0c531e834b": ("Goal.as", "skyhopper.goal", {"radius": "Radius"}),
     "6ef6446f-c654-d942-9c53-28c80475de7d": ("TimedLife.as", "skyhopper.timed_life", {"seconds": "Seconds"}),
 }
+
+# Each level script's asset guid: (its source under Sources/, the native level's id (its [Level]),
+# {script property name: native field name}), every property listed as above.
+LEVELS = {}
 
 # The startup (Game) scripts the game's [Game] class replaces: guid -> source under Sources/.
 GAME_SCRIPTS = {"cdc1ed58-4cc2-184f-9021-aca36cc0f5f8": "PlatformerGame.as"}
@@ -151,6 +163,29 @@ def field_xml(field, value):
     return ET.tostring(element, encoding="unicode")
 
 
+def native_values(component, names, source, enabled_key, enabled, overrides, where):
+    """A native record's or block's schema and values: `enabled_key` (the record's `enabled`, the
+    block's `active`) set from the script's flag, each override under its native field's key."""
+    s = schema(component)
+    fields = {f["key"]: f for f in s["fields"]}
+    by_hash = {fnv(name): name for name in names}
+    values = {enabled_key: enabled}
+    for name_hash, kind, payload in overrides:
+        if name_hash not in by_hash:
+            raise Refused("%s: %s has an override (hash %d) of a property the table does not name" % (where, source, name_hash))
+        name = by_hash[name_hash]
+        key = wire_key(names[name])
+        if key not in fields:
+            raise Refused("%s: %s has no field %s (its fields: %s)" % (where, component, names[name], sorted(fields)))
+        values[key] = override_value(kind, payload, fields[key])
+    return s, values
+
+
+def body_xml(s, values):
+    """Every field of a record or block, in its schema's order: a value given, else the default."""
+    return "".join(field_xml(f, values.get(f["key"])) for f in s["fields"])
+
+
 def native_records(owner, behaviours, where):
     """The native records for one `script` component's behaviours, in their order."""
     records = []
@@ -160,25 +195,68 @@ def native_records(owner, behaviours, where):
         source, component, names = TABLE[script]
         if float(interval) != 0.0:
             raise Refused("%s: %s updates every %s s, which a native behaviour does not" % (where, source, interval))
-        s = schema(component)
-        fields = {f["key"]: f for f in s["fields"]}
-        by_hash = {fnv(name): name for name in names}
-        values = {"enabled": enabled}
-        for name_hash, kind, payload in overrides:
-            if name_hash not in by_hash:
-                raise Refused("%s: %s has an override (hash %d) of a property the table does not name" % (where, source, name_hash))
-            name = by_hash[name_hash]
-            key = wire_key(names[name])
-            if key not in fields:
-                raise Refused("%s: %s has no field %s (its fields: %s)" % (where, component, names[name], sorted(fields)))
-            values[key] = override_value(kind, payload, fields[key])
+        s, values = native_values(component, names, source, "enabled", enabled, overrides, where)
         dv = s["dataVersions"][0]
-        body = "".join(field_xml(f, values.get(f["key"])) for f in s["fields"])
+        body = body_xml(s, values)
         xml = ('<object><string name="owner">%s</string><string name="type">%s</string><object name="data">'
                '<array name="dataVersions" count="1"><u64 name="type">%s</u64><u32 name="version">%s</u32></array>'
                '%s</object></object>' % (owner, s["wireName"], dv["type"], dv["version"], body))
         records.append((component, values, ET.fromstring(xml)))
     return records
+
+
+def overrides_of(array):
+    """A script's overrides, written flat: [(name hash, kind, payload element)]."""
+    values = list(array)
+    return [(int(values[j].text), int(values[j + 1].text), values[j + 2]) for j in range(0, len(values), 3)]
+
+
+def level_script_of(root):
+    """The scene's level script block (its `script` settings) and the class it names; (None, NIL)
+    when the document has none."""
+    for block in root.findall("array[@name='systemSettings']/object"):
+        if block.find("string[@name='system']").text == "script":
+            settings = block.find("object[@name='settings']")
+            return settings, settings.find("string[@name='script']").text
+    return None, NIL
+
+
+def convert_level(name, root):
+    """The scene's level script as its native level's settings block; False when it has none."""
+    settings, script = level_script_of(root)
+    if settings is None or script == NIL:
+        return False
+    where = "%s, its level script" % name
+    if script not in LEVELS:
+        raise Refused("%s: a level script (%s) the table does not name" % (where, script))
+    source, level, names = LEVELS[script]
+    s, values = native_values(level, names, source, "active", settings.find("bool[@name='enabled']").text,
+                              overrides_of(settings.find("array[@name='overrides']")), where)
+    dv = s["dataVersions"][0]
+    block = ET.fromstring(
+        '<object><string name="system">%s</string><array name="dataVersions" count="1"><u64 name="type">%s</u64>'
+        '<u32 name="version">%s</u32></array><object name="settings">%s</object></object>' % (
+            s["system"], dv["type"], dv["version"], body_xml(s, values)))
+    blocks = root.find("array[@name='systemSettings']")
+    for existing in list(blocks):
+        if existing.find("string[@name='system']").text != s["system"]:
+            continue
+        active = existing.find("object[@name='settings']/bool[@name='active']")
+        if active is not None and active.text == "true":
+            raise Refused("%s: the scene already runs %s" % (where, level))
+        blocks.remove(existing)
+    blocks.append(block)
+    blocks.set("count", str(len(blocks)))
+    # The script block names no class now, as a scene that never had one.
+    settings.find("string[@name='script']").text = NIL
+    settings.find("bool[@name='enabled']").text = "true"
+    overrides = settings.find("array[@name='overrides']")
+    for item in list(overrides):
+        overrides.remove(item)
+    overrides.text = None
+    overrides.set("count", "0")
+    print("  level %s %s" % (level, {k: v for k, v in values.items() if k != "active" or v != "true"}))
+    return True
 
 
 def behaviours_of(record):
@@ -187,9 +265,7 @@ def behaviours_of(record):
     out = []
     for i in range(0, len(items), 4):
         script, enabled, interval, overrides = items[i:i + 4]
-        values = list(overrides)
-        out.append((script.text, enabled.text, interval.text,
-                    [(int(values[j].text), int(values[j + 1].text), values[j + 2]) for j in range(0, len(values), 3)]))
+        out.append((script.text, enabled.text, interval.text, overrides_of(overrides)))
     return out
 
 
@@ -199,8 +275,9 @@ def convert(name, xml):
     for instances in root.iter("array"):
         if instances.get("name") == "componentOps" and "<string name=\"type\">script</string>" in ET.tostring(instances, encoding="unicode"):
             raise Refused("%s: a prefab instance overrides a script record, which this does not carry over" % name)
+    changed = convert_level(name, root)
     components = root.find("array[@name='components']")
-    out, changed = [], False
+    out = []
     for record in list(components):
         if record.find("string[@name='type']").text != "script":
             out.append(record)
@@ -251,8 +328,11 @@ def main():
         call(write, {"guid": guid, "xml": converted})
         print(name, "written")
     for guid, name, read, write in documents():
-        if '<string name="type">script</string>' in call(read, {"guid": guid})["xml"]:
+        xml = call(read, {"guid": guid})["xml"]
+        if '<string name="type">script</string>' in xml:
             raise SystemExit("%s still holds a script record" % name)
+        if level_script_of(ET.fromstring(xml))[1] != NIL:
+            raise SystemExit("%s still names a level script" % name)
     if KEEP:
         return
 
@@ -268,6 +348,7 @@ def main():
     if not os.path.isabs(sources):
         sources = os.path.join(project, os.path.relpath(sources, info["directory"]))
     scripts = dict((g, entry[0]) for g, entry in TABLE.items())
+    scripts.update((g, entry[0]) for g, entry in LEVELS.items())
     scripts.update(GAME_SCRIPTS)
     present = set(a["guid"].strip("{}") for a in call("asset_list", {})["assets"])
     for guid, source in scripts.items():
