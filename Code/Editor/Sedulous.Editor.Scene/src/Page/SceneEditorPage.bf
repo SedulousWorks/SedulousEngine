@@ -4,7 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.IO;
 using Sedulous.Content;
-using Sedulous.Messaging;
+using Sedulous.Run;
 using Sedulous.Shell;
 using Sedulous.Graphics;
 using Sedulous.Runtime.Client;
@@ -55,6 +55,9 @@ class SceneEditorPageServices
 	/// group and the name chosen (the animation panel's New Clip); OWNERSHIP of `create` transfers.
 	/// Null: none, a test.
 	public delegate void(StringView title, StringView suggested, Group group, delegate void(Group group, StringView name) create) CreateAsset ~ delete _;
+	/// The live runs, which the page's run joins so the subsystems keeping per run state (the
+	/// GUI's screens, audio) hear it. Null: none, a test.
+	public RunRegistry Runs = null;
 }
 
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
@@ -65,10 +68,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneEditorPageServices mServices ~ delete _;
 	/// The context's (registry and tick).
 	private SceneSubsystem mScenes = null;
-	/// This page's own scene group.
+	/// The page's run and its Simulate. Declared before the scene group so it is destroyed after
+	/// it (fields go in reverse order): the run outlives the scenes, whose destruction may tear its
+	/// script host down.
+	private SceneSimulation mSimulation = new .("Scene") ~ delete _;
+	/// This page's own scene group, in the page's run.
 	private SceneManager mSceneManager = new .() ~ delete _;
-	/// The page's run scope (edit mode Simulate).
-	private EventBus mPageEvents = new .() ~ delete _;
 	private String mTitle = new .() ~ delete _;
 	/// The scene manager's.
 	private Sedulous.Scene.Scene mScene = null;
@@ -78,7 +83,6 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneEditContext mEditContext = null;
 	private SceneViewport mViewport ~ delete _;
 	private SceneOverlays mOverlays = new .() ~ delete _;
-	private SceneSimulation mSimulation = new .() ~ delete _;
 	private PrefabFlows mPrefabs = null ~ delete _;
 	private SceneHierarchyView mHierarchy = null;
 	private SceneInspectorView mInspector = null;
@@ -218,13 +222,27 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 		mViewport = new SceneViewport(view);
 
+		// The page's run: its scenes belong to it, and the runs it joins tell the subsystems that
+		// keep per run state (the GUI's screens, audio) when a Simulate starts and stops.
+		let run = mSimulation.Run;
+		run.SetName(mTitle);
+		if (mServices.Runs != null)
+			mServices.Runs.Add(run); // it leaves the registry as it is destroyed, with the page
+		if (host != null)
+		{
+			if (let scripts = host.Subsystems.GetSubsystem<Sedulous.Engine.Script.ScriptSubsystem>())
+				scripts.ConfigureHost(run.Scripts); // the surface and services, before its first runtime
+		}
+
 		// Its own live scene in its own scene manager, registered with the subsystem so it ticks.
 		if (mScenes != null)
 		{
 			mScenes.RegisterManager(mSceneManager);
-			// The page is edit mode Simulate's run scope: its bus is set before the scene is made,
-			// so systems binding as it is assembled see it; OnUpdate drains it once a frame.
-			mSceneManager.SetSceneEventBus(mPageEvents);
+			// The run and its bus are set before the scene is made, so systems binding as it is
+			// assembled see them (its behaviours bind to the run's script host); OnUpdate drains
+			// the bus once a frame.
+			mSceneManager.SetSceneRun(run);
+			mSceneManager.SetSceneEventBus(run.Events);
 			mScene = mSceneManager.CreateScene(instance.Name);
 			mScene.SetSimulationEnabled(false); // edit mode is frozen; Simulate unfreezes it
 			let loaded = SceneLoading.LoadEditorScene(context, instance, mScene);
@@ -601,9 +619,17 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mHud.Zoomed();
 		if (mEditContext != null)
 			UpdateTools(active, dt);
-		// The page is this scene's run scope: its bus drains once a frame (events a Simulate tick
-		// emitted last frame arrive now).
-		mPageEvents.Drain();
+		// The page's run: its scripts' clock, and its bus drained once a frame (events a Simulate
+		// tick emitted last frame arrive now). The clock moves by the scene's time, as a game's
+		// moves by its gameplay time, and holds while the Simulate is paused, as a game's while
+		// the toolbar pauses it.
+		let run = mSimulation.Run;
+		if ((run.State == .Running) && (mScene != null))
+		{
+			let contextScale = (host != null) ? host.Subsystems.TimeScale : 1.0f;
+			run.Scripts.Advance(FrameTime(dt, contextScale, mSceneManager.TimeScale, mScene.TimeScale).SceneDelta);
+		}
+		run.Events.Drain();
 
 		// The overlays into this viewport's own debug list (the lists clear each frame, so they are
 		// drawn again every frame); none on the frame a project picture is captured.
@@ -754,18 +780,27 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			SaveViewState();
 		DeleteAndNullify!(mTools); // a tool's panel goes before the scene it shows
 		mViewport.Close(mServices.Host);
-		if (mSimulation.IsRunning)
-		{
-			mSimulation.Abandon(); // the scene goes with the page; its screens with the last run
-			EndSimulationScreens();
-		}
 		if (mScene != null)
 		{
+			// A Simulate under way ends here: the scene stops and the run's session with it, so
+			// what its scripts showed and played goes now, not when the page is destroyed.
+			mSimulation.Abandon(mScene);
 			mSceneManager.DestroyScene(mScene); // aware subsystems are told OnSceneDestroyed
 			mScene = null;
 		}
 		if (mScenes != null)
 			mScenes.UnregisterManager(mSceneManager);
+		// The run's `Gui` goes with the page, as a game's goes with its instance, after the run's
+		// runtime: that went with its scene (nothing else runs on the host), and goes here for
+		// certain. The run, which lives on with the page, lets go of it first.
+		let run = mSimulation.Run;
+		run.Scripts.Teardown();
+		run.Remove<GuiFacade>();
+		if (mServices.Host != null)
+		{
+			if (let gui = mServices.Host.Subsystems.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>())
+				gui.EndRunScripts(run.Id);
+		}
 	}
 
 	/// Saves the scene, or the prefab once it has one root and does not hold itself; a saved
@@ -820,6 +855,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		// SavePrefab stamps the document's name from the scene, so the fork gets its own.
 		if (mScene != null)
 			mScene.SetName(instance.Name);
+		mSimulation.Run.SetName(instance.Name);
 	}
 
 	/// The asset changed under this page (apply to prefab from another page): read again, its
@@ -873,18 +909,6 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		if (mScene != null)
 			mSimulation.Stop(mScene, Commands, mContext.Resources);
-		EndSimulationScreens();
-	}
-
-	/// Takes the simulations' screens off the GUI's unbound tier once none runs: what their
-	/// scripts pushed is there, shared by every page's simulation, so it goes when the last of them
-	/// stops.
-	private void EndSimulationScreens()
-	{
-		if ((SceneSimulation.RunningCount != 0) || (mServices.Host == null))
-			return;
-		if (let gui = mServices.Host.Subsystems.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>())
-			gui.EndUnboundScreens();
 	}
 
 	public void SetMarkersShown(bool shown)

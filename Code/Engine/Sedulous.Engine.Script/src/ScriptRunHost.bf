@@ -32,8 +32,9 @@ class ScriptRunHost
 	/// BORROWED: the services the owner installed on this host, by exact type, which its scripts
 	/// find first (FindService).
 	private List<(Type type, Object service)> mServices = new .() ~ delete _;
-	/// BORROWED: the run this host belongs to (a GameInstance), whose services its scripts find
-	/// after the host's own; null outside every run (the editor's scenes).
+	/// BORROWED: the run this host belongs to (a GameInstance, a scene page's run), whose
+	/// services its scripts find after the host's own; null outside every run (the subsystem's
+	/// default host).
 	public IRun OwningRun = null;
 	/// BORROWED: the application's subsystems, whose services its scripts find last; set by the
 	/// ScriptSubsystem that wires the host, and cleared as it shuts down. Null: none.
@@ -190,10 +191,10 @@ class ScriptRunHost
 	}
 
 	/// Advances the run's coroutines by gameplay time: its scripts' clock. Once per frame, by
-	/// whoever owns the host (a game's run, the subsystem for its default host), never per
-	/// scene: a run with three scenes has one clock, and a run with no scene yet, a game script
-	/// loading its first level, still has to move. With no runtime (a run whose game has no
-	/// scripts) there is nothing to move, and none is made.
+	/// whoever owns the host (a game's run, a scene page's, the subsystem for its default host),
+	/// never per scene: a run with three scenes has one clock, and a run with no scene yet, a game
+	/// script loading its first level, still has to move. With no runtime (a run whose game has
+	/// no scripts) there is nothing to move, and none is made.
 	public void Advance(float deltaTime)
 	{
 		if ((mRuntime != null) && !IsDebugPaused)

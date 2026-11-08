@@ -150,8 +150,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	// ==================== accessors ====================
 
 	public GameInstance Instance => mInstance;
-	/// The live runs (null before Configure); also on the subsystem manager, for subsystems.
-	public IRunManager Runs => mRuns;
+	/// The live runs (null before Configure); also on the subsystem manager, for subsystems. A
+	/// run the application does not make (an editor scene page's) joins them here.
+	public RunRegistry Runs => mRuns;
 	/// The primary instance's scene group: a scene created here renders.
 	public SceneManager PrimaryScenes => mInstance.Scenes;
 

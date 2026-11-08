@@ -67,6 +67,8 @@ static class SceneEditor
 		services.Icons = app.TypeIcons();
 		services.Pick = new [=app] (request) => { app.ShowPicker(request); };
 		services.CreateAsset = new [=app] (title, suggested, group, create) => { app.ShowCreateAsset(title, suggested, group, create); };
+		if (let game = app.EmbeddedApplication)
+			services.Runs = game.Runs; // the page's run joins the game's runs
 		return services;
 	}
 }

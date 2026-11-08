@@ -2,11 +2,40 @@ using System;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
+
+/// A scene page's run: its Simulate's scripts, screens and sounds. It holds a script host and
+/// nothing a game has besides (no input map, save, network or `Run` service), as Simulate has none
+/// of those.
+class SimulationRun : RunBase
+{
+	/// OWNED: the run's scripts, registered among its services so its scenes' behaviours bind to
+	/// it; its scripts find this run's services through it.
+	private ScriptRunHost mScripts = new .() ~ delete _;
+
+	public this(StringView name) : base(name)
+	{
+		Register<ScriptRunHost>(mScripts);
+		mScripts.OwningRun = this;
+	}
+
+	public ~this()
+	{
+		// Disposed while the host it registered still exists; the host's runtime after. The
+		// subsystem that installed the host's check may be gone by now: it is not asked again.
+		Dispose();
+		DeleteAndNullify!(mScripts.TeardownCheck);
+		mScripts.Teardown();
+	}
+
+	public ScriptRunHost Scripts => mScripts;
+}
 
 /// Edit mode Simulate over a page's scene: a snapshot taken, the scene started and run, the page's
 /// command stack locked meanwhile (runtime mutations do not belong on the edit history, and undoing
@@ -14,21 +43,29 @@ namespace Sedulous.Editor.Scene;
 /// the scene stops and the snapshot is restored into the same scene, so borrowed scene pointers
 /// stay valid and the guid keyed selection resolves again (what the run spawned drops out). The
 /// game's UI stays not interactive meanwhile: Simulate's pointer serves selection and the camera,
-/// the Game tab is the interactive run. A simulated scene has no run, so the screens its scripts
-/// push go on the GUI's unbound tier, which no tab draws; the page takes them down when the last
-/// simulation stops (RunningCount). Out of the page's class, so the page stays the view and
+/// the Game tab is the interactive run. Out of the page's class, so the page stays the view and
 /// this the run.
+///
+/// The page's scene belongs to a run of its own (SimulationRun), as a game's scenes belong to the
+/// game's: its behaviours run on the run's script host, and what they put on screen and play is
+/// the run's, ended when the run's session stops. Each Simulate is one session of the run; edit
+/// mode is between sessions. The run lives as long as the page, so its scenes always carry it.
 class SceneSimulation
 {
+	private SimulationRun mRun ~ delete _;
 	private SceneSnapshot mSnapshot = null ~ delete _;
 	private bool mRunning = false;
 	private bool mPaused = false;
-	/// The simulations running across every page.
-	private static int sRunning = 0;
 
+	/// The run named `name` (the page's title).
+	public this(StringView name)
+	{
+		mRun = new .(name);
+	}
+
+	/// The page's run: its scenes carry it whether or not a Simulate is under way.
+	public SimulationRun Run => mRun;
 	public bool IsRunning => mRunning;
-	/// How many simulations run across every page: the GUI's unbound tier is theirs together.
-	public static int RunningCount => sRunning;
 	public bool IsPaused => mPaused;
 
 	/// Snapshots `scene` and runs it, `commands` locked; false when it runs already or the
@@ -44,27 +81,29 @@ class SceneSimulation
 			GlobalLog(.Error, "Editor: Simulate: scene snapshot capture failed");
 			return false;
 		}
+		mRun.Start(); // the session first, so the scene starts inside it
 		scene.Start();
 		scene.SetSimulationEnabled(true);
 		commands.IsLocked = true;
 		mRunning = true;
 		mPaused = false;
-		sRunning++;
 		return true;
 	}
 
 	/// Holds or resumes a running simulation (the per frame freeze, not the start and stop
-	/// callbacks the systems get on the big transitions).
+	/// callbacks the systems get on the big transitions); the run pauses with it.
 	public void Pause(Sedulous.Scene.Scene scene, bool paused)
 	{
 		if (!mRunning)
 			return;
 		mPaused = paused;
 		scene.SetSimulationEnabled(!paused);
+		mRun.SetPaused(paused);
 	}
 
 	/// Stops and restores the snapshot into `scene`, its resources resolved through `resources`
-	/// (null: none), `commands` unlocked.
+	/// (null: none), `commands` unlocked. The run's session ends last, after the scene's behaviours
+	/// have stopped, taking down what they left on screen and playing.
 	public void Stop(Sedulous.Scene.Scene scene, EditorCommandStack commands, ResourceManager resources)
 	{
 		if (!mRunning)
@@ -80,17 +119,19 @@ class SceneSimulation
 		commands.IsLocked = false;
 		mRunning = false;
 		mPaused = false;
-		sRunning--;
+		mRun.Stop();
 	}
 
-	/// A page closing with its scene running: no restore (the scene is going), only the count.
-	public void Abandon()
+	/// A page closing with its scene running: the scene stops and the session ends, with no
+	/// restore (the scene is going).
+	public void Abandon(Sedulous.Scene.Scene scene)
 	{
 		if (!mRunning)
 			return;
+		scene.Stop();
 		DeleteAndNullify!(mSnapshot);
 		mRunning = false;
 		mPaused = false;
-		sRunning--;
+		mRun.Stop();
 	}
 }

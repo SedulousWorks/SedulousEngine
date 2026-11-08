@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.Graphics;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Settings;
@@ -53,7 +54,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// in the inspector binds at once.
 class ScenePageTests
 {
-	/// A host whose subsystem manager has a scene subsystem and nothing else: no renderer, no window.
+	/// A host whose subsystem manager has the scene and script subsystems and nothing else: no
+	/// renderer, no window.
 	class SceneHost : IApplicationHost
 	{
 		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
@@ -62,6 +64,7 @@ class ScenePageTests
 		{
 			// The engine's full composition, so a scene's entities take its components.
 			Subsystems.AddSubsystem<SceneSubsystem>().SetComposition(EngineSceneComposition.Build());
+			Subsystems.AddSubsystem<ScriptSubsystem>(); // binds a scene's behaviours to its run's host
 			Subsystems.Startup();
 		}
 
@@ -187,10 +190,11 @@ class ScenePageTests
 		/// What the page last asked its picker to show; the bed's.
 		public PickerRequest Picked = null ~ delete _;
 
-		public SceneEditorPage Open(Instance instance)
+		public SceneEditorPage Open(Instance instance, RunRegistry runs = null)
 		{
 			let services = new SceneEditorPageServices();
 			services.Host = Host;
+			services.Runs = runs;
 			services.LoadMarkup = new (path) => LoadMarkup(path);
 			services.Pick = new [=this] (request) =>
 				{
@@ -388,6 +392,76 @@ class ScenePageTests
 		Test.Assert(page.ScenePtr.FindEntity(bed.Crate).IsAssigned);
 		Test.Assert(!page.EditContext.CreateEntity("Allowed").IsNil);
 		page.OnClose();
+	}
+
+	/// What the runs announce, counted.
+	class RunsHeard : IRunListener
+	{
+		public int Started = 0;
+		public int Paused = 0;
+		public int Stopping = 0;
+		public int Destroyed = 0;
+
+		public void OnRunStarted(IRun run) { Started++; }
+		public void OnRunPaused(IRun run, bool paused) { Paused++; }
+		public void OnRunStopping(IRun run) { Stopping++; }
+		public void OnRunDestroyed(IRun run) { Destroyed++; }
+	}
+
+	/// The page is a run, which joins the live runs: its scene carries it, its behaviours bind to
+	/// its own script host, and each Simulate is one session of it, paused with it and ended at Stop
+	/// or at a close mid run. Another page is another run, with a host of its own; the run leaves
+	/// with its page.
+	[Test]
+	public static void ThePageIsARunItsSceneCarriesItAndItsScriptHostAndEachSimulateIsOneSession()
+	{
+		let bed = scope Bed();
+		let heard = scope RunsHeard();
+		let runs = scope RunRegistry();
+		runs.Subscribe(heard);
+		let page = bed.Open(bed.Level, runs);
+		let run = page.ScenePtr.Run;
+		Test.Assert(run != null);
+		Test.Assert(runs.Count == 1);
+		Test.Assert((Object)runs.Find(run.Id) === (Object)run);
+		Test.Assert(run.Name == "Level");
+		Test.Assert(run.State == .Idle, "editing is between sessions");
+		let host = RunServices.Get<ScriptRunHost>(run);
+		Test.Assert(host != null);
+		Test.Assert((Object)host.OwningRun === (Object)run);
+		Test.Assert(page.ScenePtr.GetSystem<ScriptSceneSystem>().Host === host);
+		Test.Assert(page.ScenePtr.Events === run.Events, "the scene's bus is the run's");
+
+		page.StartSimulation();
+		Test.Assert(run.State == .Running);
+		page.PauseSimulation(true);
+		Test.Assert(run.State == .Paused);
+		page.PauseSimulation(false);
+		page.StopSimulation();
+		Test.Assert(run.State == .Idle);
+		Test.Assert(heard.Started == 1);
+		Test.Assert(heard.Paused == 2);
+		Test.Assert(heard.Stopping == 1);
+
+		// Another page is another run, with a host of its own.
+		let other = bed.Open(bed.Barrel, runs);
+		let otherRun = other.ScenePtr.Run;
+		Test.Assert(otherRun != null);
+		Test.Assert((Object)otherRun !== (Object)run);
+		Test.Assert(RunServices.Get<ScriptRunHost>(otherRun) !== host);
+		Test.Assert(runs.Count == 2);
+
+		// Closed mid Simulate, the session ends with the close; the run leaves with the page.
+		page.StartSimulation();
+		page.OnClose();
+		Test.Assert(heard.Stopping == 2);
+		delete page;
+		Test.Assert(heard.Destroyed == 1);
+		Test.Assert(runs.Count == 1);
+		other.OnClose();
+		delete other;
+		Test.Assert(runs.Count == 0);
+		runs.Unsubscribe(heard);
 	}
 
 	/// A scene's thumbnail is taken from where its page left the camera, so the page saving its
@@ -1178,7 +1252,6 @@ class ScenePageTests
 		// Simulating: read only, and said.
 		page.StartSimulation();
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
-		Test.Assert(SceneSimulation.RunningCount == 1, "the GUI's unbound tier is the simulations' together");
 		Test.Assert(inspector.Sections.ReadOnly);
 		Test.Assert(FindId<Node>(page.Content, "inspector-note").Displayed);
 		let addComponent = FindId<Sedulous.GUI.Button>(page.Content, "inspector-add");
@@ -1190,14 +1263,9 @@ class ScenePageTests
 		Test.Assert(LightOf(page, lamp).Intensity == 3.0f);
 		page.StopSimulation();
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
-		Test.Assert(SceneSimulation.RunningCount == 0);
 		Test.Assert(!inspector.Sections.ReadOnly);
 		Test.Assert(addComponent.Enabled);
-		// A page closed while it simulates leaves no simulation counted (its screens go with the last).
-		page.StartSimulation();
-		Test.Assert(SceneSimulation.RunningCount == 1);
 		page.OnClose();
-		Test.Assert(SceneSimulation.RunningCount == 0);
 	}
 
 	[Test]
