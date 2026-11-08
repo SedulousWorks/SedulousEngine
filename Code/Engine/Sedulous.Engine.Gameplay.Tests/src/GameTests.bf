@@ -13,6 +13,7 @@ namespace Sedulous.Engine.Gameplay.Tests;
 
 /// A game that logs each hook into GameLog as "<call> ", listens for doors from its launch,
 /// sums its updates' deltas, and saves the doors it heard as it exits.
+[Game]
 class ProbeGame : Game
 {
 	private float mElapsed = 0.0f;
@@ -49,6 +50,7 @@ class ProbeGame : Game
 }
 
 /// A second game, which a build that has one already may not register.
+[Game]
 class OtherGame : Game
 {
 }

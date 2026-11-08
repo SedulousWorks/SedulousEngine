@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Json;
 using Sedulous.Content;
 using Sedulous.Run;
 using Sedulous.Scene.Resource;
@@ -384,6 +385,78 @@ class GamePageTests
 		Test.Assert(factory.Deleted == 1, "deleted with it");
 		Test.Assert(!bed.TabRun.HasNativeGame && !bed.TabRun.GameRunning);
 		Test.Assert(bed.TabRun.State == .Idle, "no session started");
+	}
+
+	/// A Game tab reads its native game's fields, public and private, and its scene's active
+	/// native level's, for the PIE probes, and names the game for pie_state. A scene with no
+	/// level active gives no value and no reason (a probe then reads the level script); a stopped
+	/// tab has no game.
+	[Test]
+	public static void TheTabReadsItsNativeGameAndActiveLevelFieldsAndNamesTheGame()
+	{
+		let factory = scope PieArcadeFactory();
+		let bed = scope Bed(true);
+		bed.TabRun.Register<IGameFactory>(factory);
+		bed.AddDefaultScene("Level", false);
+		let reason = scope String();
+
+		Test.Assert(!bed.Page.GetNativeGame(scope .()), "no game before the play");
+		Test.Assert(bed.Page.GetGameField("Lives", reason) == null);
+		Test.Assert(reason == "no native game runs", reason);
+
+		bed.Page.Play();
+		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(bed.Page.IsRunning);
+		Test.Assert(factory.Made == 1);
+		let typeName = scope String();
+		Test.Assert(bed.Page.GetNativeGame(typeName));
+		Test.Assert(typeName == "PieArcadeGame", typeName);
+		{
+			let lives = bed.Page.GetGameField("Lives", reason..Clear());
+			defer delete lives;
+			Test.Assert((lives != null) && (lives.AsNumber() == 3), reason);
+			let phase = bed.Page.GetGameField("mPhase", reason..Clear());
+			defer delete phase;
+			Test.Assert((phase != null) && (phase.AsString() == "Lobby"), "a private enum, by its name");
+			let spawn = bed.Page.GetGameField("mSpawn.z", reason..Clear());
+			defer delete spawn;
+			Test.Assert((spawn != null) && (spawn.AsNumber() == 3), reason);
+			Test.Assert(bed.Page.GetGameField("mScore", reason..Clear()) == null);
+			Test.Assert(reason.StartsWith("the game 'PieArcadeGame' has no field 'mScore'"), reason);
+		}
+
+		Test.Assert(bed.Page.GetLevelField("TimeLimit", reason..Clear()) == null);
+		Test.Assert(reason.IsEmpty, reason);
+		let arena = bed.Page.RunningScene.AddSystem<PieArena>();
+		arena.Active = true;
+		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		{
+			let remaining = bed.Page.GetLevelField("mRemaining", reason..Clear());
+			defer delete remaining;
+			Test.Assert((remaining != null) && (remaining.AsNumber() == 42), reason);
+			let limit = bed.Page.GetLevelField("PieArena.TimeLimit", reason..Clear());
+			defer delete limit;
+			Test.Assert((limit != null) && (limit.AsNumber() == 60), reason);
+		}
+
+		{
+			let state = JsonValue.MakeObject();
+			defer delete state;
+			PieMcpTools.WriteState(bed.Page, state);
+			let game = state.Get("game");
+			Test.Assert(game.Get("kind").AsString() == "native");
+			Test.Assert(game.Get("type").AsString() == "PieArcadeGame");
+			Test.Assert(game.Get("running").AsBool());
+		}
+
+		bed.Page.Stop();
+		Test.Assert(!bed.Page.GetNativeGame(scope .()), "the stop ends it");
+		Test.Assert(bed.Page.GetGameField("Lives", reason..Clear()) == null);
+		Test.Assert(bed.Page.GetLevelField("TimeLimit", reason..Clear()) == null);
+		let stopped = JsonValue.MakeObject();
+		defer delete stopped;
+		PieMcpTools.WriteState(bed.Page, stopped);
+		Test.Assert(stopped.Get("game").Get("kind").AsString() == "none");
 	}
 
 	/// The Game tab draws at the project's scene pass MSAA, its look untouched: the player sets

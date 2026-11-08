@@ -69,8 +69,11 @@ static class GameplayServices
 	/// makes a `T`, held for that session. One game per engine: a second registration is
 	/// refused, logged. False, with nothing added, then, without the engine's service, or in a
 	/// host without runs (a cook, a tool).
+	///
+	/// Refuses at compile time a class without [Game] (Game.EmitChecks).
 	public static bool SetGame<T>(EnginePluginServices engine) where T : Game, new, delete
 	{
+		Game.EmitChecks(typeof(T));
 		if (engine == null)
 			return false;
 		if (engine.FindRunListener<GameRunner>() != null)

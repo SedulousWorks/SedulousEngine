@@ -32,6 +32,8 @@ corlib = "*"
 "Sedulous.Engine.Render" = "*"
 "Sedulous.Engine.Scene" = "*"
 "Sedulous.Engine.Script" = "*"
+# The native game's tiers, whose levels and behaviours the PIE probes read.
+"Sedulous.Engine.Gameplay" = "*"
 "Sedulous.Runtime.Client" = "*"
 "Sedulous.GUI" = "*"
 "Sedulous.GUI.Hosting" = "*"

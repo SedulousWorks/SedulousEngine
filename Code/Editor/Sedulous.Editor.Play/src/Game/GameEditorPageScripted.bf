@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Input;
+using Sedulous.Json;
 using Sedulous.Script;
 using Sedulous.Engine.Script;
 
@@ -54,6 +55,23 @@ extension GameEditorPage
 			return false;
 		let level = mScene.GetSystem<ScriptSceneSystem>();
 		return (level != null) && level.GetLevelProperty(name, ref value);
+	}
+
+	public bool GetNativeGame(String outTypeName)
+	{
+		return (mGameInstance != null) && NativeGameFields.GameTypeName(mGameInstance.NativeGame, outTypeName);
+	}
+
+	public JsonValue GetGameField(StringView path, String outError)
+	{
+		return NativeGameFields.GameField((mGameInstance != null) ? mGameInstance.NativeGame : null, path, outError);
+	}
+
+	public JsonValue GetLevelField(StringView path, String outError)
+	{
+		if (!mRunning)
+			return null;
+		return NativeGameFields.LevelField(mScene, path, outError);
 	}
 
 	/// Once per frame from OnUpdate.

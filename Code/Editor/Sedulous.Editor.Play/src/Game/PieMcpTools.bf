@@ -73,7 +73,7 @@ static class PieMcpTools
 		let stateSchema = scope SchemaBuilder();
 		stateSchema.Str("pie", cPieArgument);
 		server.RegisterTool("pie_state",
-			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: it keeps going while the game pauses its scene at time scale 0, as behind a menu), the frames rendered since, and its startup script's state (`none`, `running`, or `faulted` with the reason).",
+			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: it keeps going while the game pauses its scene at time scale 0, as behind a menu), the frames rendered since, its startup script's state (`none`, `running`, or `faulted` with the reason), and `game`, the game that runs: {kind: \"native\", type: \"<its Game class>\", running: true} for the build's native game, {kind: \"script\", running: true} for a startup script, or {kind: \"none\", running: false}.",
 			stateSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -476,5 +476,21 @@ static class PieMcpTools
 			script.Set("fault", JsonValue.MakeString(pie.ScriptFault));
 		}
 		outResult.Set("script", script);
+		// The game of either kind: the native one by its class, else the startup script.
+		let game = JsonValue.MakeObject();
+		let typeName = scope String();
+		if (pie.GetNativeGame(typeName))
+		{
+			game.Set("kind", JsonValue.MakeString("native"));
+			game.Set("type", JsonValue.MakeString(typeName));
+			game.Set("running", JsonValue.MakeBool(true));
+		}
+		else
+		{
+			let scripted = pie.ScriptState == .Running;
+			game.Set("kind", JsonValue.MakeString(scripted ? "script" : "none"));
+			game.Set("running", JsonValue.MakeBool(scripted));
+		}
+		outResult.Set("game", game);
 	}
 }

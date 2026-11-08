@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Engine.GameInstance;
@@ -18,6 +19,9 @@ namespace Sedulous.Engine.Gameplay;
 /// scene becomes the run's current one, started and with the scene it replaced gone. OnExit
 /// runs once, as the session stops, before the run writes its save, so what it saves there is
 /// kept; its event subscriptions end after it returns.
+///
+/// A subclass carries [Game], which reflects its fields (public and private) for the editor's
+/// play tools; SetGame refuses one without it.
 ///
 /// The constructor and the field initialisers must not touch the run: Instance is set after
 /// them.
@@ -142,5 +146,23 @@ abstract class Game : IGameHooks
 		for (var subscription in ref mSubscriptions)
 			subscription.Dispose();
 		mSubscriptions.Clear();
+	}
+
+	/// What GameplayServices.SetGame checks of `type` at compile time: it carries [Game], so
+	/// its fields are reflected for the tools. The refusal is a compile error naming the class.
+	/// The unspecialized generic (a generic parameter, not a class) is passed over: it is never
+	/// built.
+	[Comptime]
+	internal static void EmitChecks(Type type)
+	{
+		if (!(type is TypeInstance) || type.IsGenericParam)
+			return;
+		if (!(type.GetCustomAttribute<GameAttribute>() case .Ok))
+		{
+			let message = scope String();
+			type.GetFullName(message);
+			message.Append(" is registered as the Game but carries no [Game] attribute");
+			Runtime.FatalError(message);
+		}
 	}
 }

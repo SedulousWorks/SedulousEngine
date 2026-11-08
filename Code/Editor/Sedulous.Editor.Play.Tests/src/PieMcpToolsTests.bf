@@ -8,6 +8,7 @@ using Sedulous.Input;
 using Sedulous.Script;
 using Sedulous.Shell;
 using Sedulous.Editor.Scene;
+using Sedulous.Engine.GameInstance;
 
 namespace Sedulous.Editor.Play.Tests;
 
@@ -88,6 +89,22 @@ class PieMcpToolsTests
 				return false;
 			value = .FromFloat(Wave);
 			return true;
+		}
+
+		/// The run's native game, read as the Game tab reads its run's: BORROWED, a test's.
+		public IGameHooks NativeGame = null;
+		public bool GetNativeGame(String outTypeName)
+		{
+			return Running && NativeGameFields.GameTypeName(NativeGame, outTypeName);
+		}
+		public JsonValue GetGameField(StringView path, String outError)
+		{
+			return NativeGameFields.GameField(Running ? NativeGame : null, path, outError);
+		}
+		/// The scene's native levels, the systems a test adds to it.
+		public JsonValue GetLevelField(StringView path, String outError)
+		{
+			return Running ? NativeGameFields.LevelField(Level, path, outError) : null;
 		}
 
 		/// The scripted input a run installed, advanced by Frame as the page's OnUpdate does.
@@ -610,13 +627,13 @@ class PieMcpToolsTests
 			// The nested shapes are checked by name: `field` for `fields` read worldPosition.
 			let probeField = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Player\",\"field\":\"position.x\"}]}");
 			defer delete probeField;
-			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level)", probeField.Error);
+			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level, game)", probeField.Error);
 			let inputTypo = Call(server, "pie_run", "{\"duration\":1,\"input\":[{\"at\":0,\"key\":\"D\",\"donw\":false}]}");
 			defer delete inputTypo;
 			Test.Assert(inputTypo.Error.StartsWith("pie_run: no field 'input[0].donw' (it takes: at, "), inputTypo.Error);
 			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\">\",\"valeu\":1}}");
 			defer delete untilTypo;
-			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, level, op, value)", untilTypo.Error);
+			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, level, game, op, value)", untilTypo.Error);
 			let noDuration = Call(server, "pie_run", "{\"duration\":0}");
 			defer delete noDuration;
 			Test.Assert(noDuration.Error.StartsWith("`duration` takes run seconds"), noDuration.Error);
@@ -757,6 +774,204 @@ class PieMcpToolsTests
 		Test.Assert(answer.Ok, answer.Error);
 		Test.Assert(answer.Payload.Get("endedBy").AsString() == "until");
 		Test.Assert(answer.Payload.Get("until").Get("probe").AsString() == "level.wave");
+	}
+
+	/// A run through to its answer, the instance playing a frame per pump. OWNED.
+	private static Answer RunToEnd(McpServer server, HeadlessPiePage host, StringView args)
+	{
+		Answer answer;
+		int pumps = 0;
+		while (Pump(server, "pie_run", args, out answer) == .NotFinished)
+		{
+			PlayFrame(host, 0.05);
+			Test.Assert(++pumps < 400, "the run ends");
+		}
+		return answer;
+	}
+
+	/// The values of a finished run's last sample row.
+	private static JsonValue LastValues(Answer answer)
+	{
+		let samples = answer.Payload.Get("samples");
+		return samples.At(samples.Count - 1).Get("values");
+	}
+
+	/// A run reads the native game's fields, public and private, as `game.<field>` (an enum by
+	/// its name, inside a vector by `.y`), and ends on one; with no native game, or a field it
+	/// lacks, the probe is refused before the run starts, saying which. pie_state names the
+	/// game that runs, native, script or none.
+	[Test]
+	public static void ARunReadsTheNativeGamesFieldsPublicAndPrivateAndEndsOnOne()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+
+		{
+			let none = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"game\":\"Lives\"}]}");
+			defer delete none;
+			Test.Assert(!none.Ok);
+			Test.Assert(none.Error.StartsWith("PIE instance 'game-page' runs no native game"), none.Error);
+			let state = Call(server, "pie_state", "{}");
+			defer delete state;
+			Test.Assert(state.Payload.Get("game").Get("kind").AsString() == "none");
+			Test.Assert(!state.Payload.Get("game").Get("running").AsBool());
+		}
+		host.Script = .Running;
+		{
+			let state = Call(server, "pie_state", "{}");
+			defer delete state;
+			Test.Assert(state.Payload.Get("game").Get("kind").AsString() == "script");
+			Test.Assert(state.Payload.Get("game").Get("running").AsBool());
+			Test.Assert(state.Payload.Get("script").Get("state").AsString() == "running", "the script's own state stays");
+		}
+
+		let game = scope PieArcadeGame();
+		host.NativeGame = game;
+		{
+			let state = Call(server, "pie_state", "{}");
+			defer delete state;
+			let described = state.Payload.Get("game");
+			Test.Assert(described.Get("kind").AsString() == "native");
+			Test.Assert(described.Get("type").AsString() == "PieArcadeGame", scope String(described.Get("type").AsString()));
+			Test.Assert(described.Get("running").AsBool());
+
+			let missing = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"game\":\"mScore\"}]}");
+			defer delete missing;
+			Test.Assert(!missing.Ok);
+			Test.Assert(missing.Error.StartsWith("PIE instance 'game-page': the game 'PieArcadeGame' has no field 'mScore' (its fields: "), missing.Error);
+			Test.Assert(missing.Error.Contains("mRoundsUp") && missing.Error.Contains("Lives"), "the fields it has are listed, private ones too");
+			let inside = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"game\":\"mSpawn.w\",\"op\":\">\",\"value\":0}}");
+			defer delete inside;
+			Test.Assert(inside.Error == "PIE instance 'game-page': 'mSpawn.w' of the game 'PieArcadeGame': nothing at 'w'", inside.Error);
+			Test.Assert(host.ScriptsBegun == 0, "refused before the run");
+		}
+
+		// The private state moves mid-run: the last row reads it.
+		let args = "{\"duration\":1,\"probes\":[{\"game\":\"Lives\"},{\"game\":\"mRoundsUp\"},{\"game\":\"mPhase\"},{\"game\":\"mSpawn.y\"}],\"every\":0.5}";
+		Answer answer;
+		Test.Assert(Pump(server, "pie_run", args, out answer) == .NotFinished);
+		game.EndRound();
+		while (Pump(server, "pie_run", args, out answer) == .NotFinished)
+			PlayFrame(host, 0.05);
+		{
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			let values = LastValues(answer);
+			Test.Assert(values.Get("game.Lives").AsNumber() == 3);
+			Test.Assert(values.Get("game.mRoundsUp").AsNumber() == 1);
+			Test.Assert(values.Get("game.mPhase").AsString() == "Over", "an enum by its name");
+			Test.Assert(values.Get("game.mSpawn.y").AsNumber() == 2);
+		}
+
+		// Ends on a private field crossing.
+		PlayFrame(host, 0.1); // the ended script goes
+		let until = "{\"duration\":10,\"until\":{\"game\":\"mRoundsUp\",\"op\":\">=\",\"value\":2}}";
+		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished);
+		PlayFrame(host, 0.1);
+		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished, "one round up, it plays on");
+		game.EndRound();
+		while (Pump(server, "pie_run", until, out answer) == .NotFinished)
+			PlayFrame(host, 0.05);
+		defer delete answer;
+		Test.Assert(answer.Ok, answer.Error);
+		Test.Assert(answer.Payload.Get("endedBy").AsString() == "until");
+		Test.Assert(answer.Payload.Get("until").Get("probe").AsString() == "game.mRoundsUp");
+		Test.Assert(answer.Payload.Get("until").Get("value").AsNumber() == 2);
+		Test.Assert(answer.Payload.Get("state").Get("game").Get("kind").AsString() == "native");
+	}
+
+	/// `level` reads the scene's active native Level, public and private fields, by itself while
+	/// it is the only one active, or named by its class or its level id (which holds a dot); with
+	/// two active an unnamed field is refused naming them, a named inactive one is refused, and a
+	/// scene with none active reads its level script as before.
+	[Test]
+	public static void ALevelProbeReadsTheActiveNativeLevelAloneOrByName()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+		host.Wave = 2;
+		let arena = host.Level.AddSystem<PieArena>();
+		let vault = host.Level.AddSystem<PieVault>();
+
+		// None active: the level script answers.
+		{
+			let answer = RunToEnd(server, host, "{\"duration\":0.5,\"probes\":[{\"level\":\"wave\"}]}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(LastValues(answer).Get("level.wave").AsNumber() == 2);
+			PlayFrame(host, 0.1); // the ended script goes
+		}
+
+		arena.Active = true;
+		{
+			let wave = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"wave\"}]}");
+			defer delete wave;
+			Test.Assert(wave.Error.StartsWith("PIE instance 'game-page': level 'PieArena' has no field 'wave' (its fields: "), wave.Error);
+			let asleep = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"PieVault.Quota\"}]}");
+			defer delete asleep;
+			Test.Assert(asleep.Error == "PIE instance 'game-page': level 'PieVault' is not active in scene 'Level1'", asleep.Error);
+			Test.Assert(host.ScriptsBegun == 1, "refused before the run");
+
+			let answer = RunToEnd(server, host, "{\"duration\":0.5,\"probes\":[{\"level\":\"TimeLimit\"},{\"level\":\"mRemaining\"},{\"level\":\"PieArena.TimeLimit\"},{\"level\":\"pietest.arena.mRemaining\"}]}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			let values = LastValues(answer);
+			Test.Assert(values.Get("level.TimeLimit").AsNumber() == 60);
+			Test.Assert(values.Get("level.mRemaining").AsNumber() == 42, "a private field");
+			Test.Assert(values.Get("level.PieArena.TimeLimit").AsNumber() == 60, "named by its class");
+			Test.Assert(values.Get("level.pietest.arena.mRemaining").AsNumber() == 42, "named by its level id");
+			PlayFrame(host, 0.1);
+		}
+
+		vault.Active = true;
+		vault.Loot();
+		{
+			let unnamed = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"TimeLimit\"}]}");
+			defer delete unnamed;
+			Test.Assert(unnamed.Error.StartsWith("PIE instance 'game-page': 2 levels are active in scene 'Level1' ("), unnamed.Error);
+			Test.Assert(unnamed.Error.Contains("PieArena") && unnamed.Error.Contains("PieVault") && unnamed.Error.Contains(": name one, as "), unnamed.Error);
+
+			let answer = RunToEnd(server, host, "{\"duration\":0.5,\"probes\":[{\"level\":\"PieArena.TimeLimit\"},{\"level\":\"PieVault.mLooted\"},{\"level\":\"pietest.vault.Quota\"}]}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			let values = LastValues(answer);
+			Test.Assert(values.Get("level.PieArena.TimeLimit").AsNumber() == 60);
+			Test.Assert(values.Get("level.PieVault.mLooted").AsNumber() == 1);
+			Test.Assert(values.Get("level.pietest.vault.Quota").AsNumber() == 4);
+		}
+	}
+
+	/// A native behaviour's fields are read as `<Class>.<field>` (or its type id), its private
+	/// runtime state too; a field it lacks is refused naming the entity.
+	[Test]
+	public static void AnEntityProbeReadsANativeBehavioursPrivateFields()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+		let movers = host.Level.AddSystem<Sedulous.Engine.Gameplay.BehaviourManager<PieMover>>();
+		let mover = movers.Add(host.Level.FindEntityByName("Player"));
+		mover.Travel(1.5f);
+
+		{
+			let missing = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Player\",\"fields\":[\"PieMover.mFlown\"]}]}");
+			defer delete missing;
+			Test.Assert(missing.Error.StartsWith("entity 'Player' has no field 'PieMover.mFlown'"), missing.Error);
+		}
+
+		let answer = RunToEnd(server, host, "{\"duration\":0.5,\"probes\":[{\"entity\":\"Player\",\"fields\":[\"PieMover.Speed\",\"PieMover.mTravelled\",\"pietest.mover.mTravelled\",\"PieMover.Enabled\"]}]}");
+		defer delete answer;
+		Test.Assert(answer.Ok, answer.Error);
+		let values = LastValues(answer);
+		Test.Assert(values.Get("Player.PieMover.Speed").AsNumber() == 2);
+		Test.Assert(values.Get("Player.PieMover.mTravelled").AsNumber() == 1.5, "a private field");
+		Test.Assert(values.Get("Player.pietest.mover.mTravelled").AsNumber() == 1.5, "by its type id");
+		Test.Assert(values.Get("Player.PieMover.Enabled").AsBool(), "the base's field");
 	}
 
 	/// A second run on a busy instance is refused, not taken for the first's re-entry; a run

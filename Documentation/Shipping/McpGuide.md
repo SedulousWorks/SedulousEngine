@@ -106,8 +106,10 @@ instance), default the primary. `pie_start` cooks, opens and runs the primary (o
 `newInstance` another tab, a host and a client say) and answers once the first frame has
 rendered; `pie_state` reports whether it runs, its scene, `runTime` (seconds of frames since
 the start, unscaled, so it keeps going while the game pauses its scene at time scale 0, as
-behind a menu), the frames rendered
-and the startup script (`running`, or `faulted` with the reason);
+behind a menu), the frames rendered, the startup script (`running`, or `faulted` with the
+reason) and `game`, the game that runs
+(`{"kind": "native", "type": "NativeSampleGame", "running": true}` for the build's native game,
+`{"kind": "script", "running": true}` for a startup script, `{"kind": "none", "running": false}`);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
 instance's tab renders, the game through its own camera with its UI, as `viewport_screenshot`
@@ -139,14 +141,22 @@ when it reports one) and gamepads (`{"at": 0, "gamepad": 0, "axis":
 runs, that tab ignores the real mouse and keys, the other instances keep theirs, and whatever
 it holds is let go at the end. `probes` read entities (by guid, name or slash path) at field
 paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
-as `entity_inspect` names them, or `<BehaviorClass>.<field>` for a behaviour running on the
-entity, private fields too, then `.x`/`.y`/`.z` or a key or an index) and game script
-fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), and the scene's
-level script's (`{"level": "m_round"}`), sampled `every` N seconds (0.5 by default) or at
+as `entity_inspect` names them, a native behaviour's private fields too (`Bob.mPhase`), or
+`<BehaviorClass>.<field>` for a script behaviour running on the entity, private fields too, then
+`.x`/`.y`/`.z` or a key or an index), the native game's fields, public or private
+(`{"game": "mRoundsUp"}`), the scene's active native level's (`{"level": "TimeLimit"}`, or
+`{"level": "Arena.TimeLimit"}`, by class name or level id, when several are active; a scene with
+none active reads its level script's property, `{"level": "m_round"}`), and game script
+fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), sampled `every` N seconds (0.5 by default) or at
 `sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
 gone by then reads null. `screenshots` writes the tab at those run times. `until` ends the
 run early, on a death or a win: `{"entity": "Player", "field": "worldPosition.y", "op": "<",
-"value": -10}`, or on a script's value (`{"level": "m_over", "op": "==", "value": true}`). `endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
+"value": -10}`, or on a game's or a script's value (`{"game": "mRoundsUp", "op": ">=", "value": 1}`,
+`{"level": "m_over", "op": "==", "value": true}`). A native field reads as `entity_inspect`
+writes one: an enum by its name, an entity reference or an asset as its guid. A native game's
+class carries `[Game]`, which reflects its fields for these probes (as `[Behaviour]` and
+`[Level]` do theirs); `GameplayServices.SetGame` refuses one without it at compile time.
+`endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
 is played the same way: `pie_screenshot`, find the button, click it with a timeline. The tools
 check probes and names against the running game before the run starts, so a typo fails at
 once. Runs are real frames at real frame rates: a time lands within a frame of where it was
@@ -193,7 +203,7 @@ behaviour's properties under `live` beside what is authored.
   protocol error, -32602, naming the tool, the argument and the ones it takes
   (`pie_run: no argument 'timeline' (it takes: ...)`): a misspelt argument never silently
   does nothing. The same holds at every depth, the field named by its path
-  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level)`); only a map of
+  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level, game)`); only a map of
   names the tool resolves itself (asset_import's `options`, a behaviour's `properties`) takes
   any key, and the tool refuses one it does not know. `tools/list` gives each tool's schema.
 - **Check `known_issues` before re-diagnosing** an odd symptom; if it matches a recorded
