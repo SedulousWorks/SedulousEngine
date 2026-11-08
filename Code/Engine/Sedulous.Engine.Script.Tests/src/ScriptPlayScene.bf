@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Messaging;
+using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
@@ -11,13 +11,14 @@ using Sedulous.Engine.Composition;
 
 namespace Sedulous.Engine.Script.Tests;
 
-/// A headless scene with the script systems, an event bus, and a run host on the real
-/// backend bound to the real engine surface. Script classes are compiled and harvested
+/// A headless scene with the script systems, in a run of its own (whose bus is the scene's), and
+/// a run host on the real backend bound to the real engine surface. Script classes are compiled and harvested
 /// here from source, standing in for the cook.
 class ScriptPlayScene
 {
 	public Scene Scene;
-	public EventBus Bus = new .();
+	/// The scenes' run: its bus is theirs, drained once a frame as a game's run drains its own.
+	public RunBase SceneRun = new .("play");
 	public ScriptComponentManager Components;
 	public ScriptSceneSystem Scripts;
 	public ScriptRunHost Host = new .();
@@ -33,7 +34,7 @@ class ScriptPlayScene
 		DeleteContainerAndItems!(mExtraScenes);
 		delete Host;
 		DeleteContainerAndItems!(mClasses);
-		delete Bus;
+		delete SceneRun;
 		delete mSurface;
 	}
 
@@ -55,7 +56,7 @@ class ScriptPlayScene
 			};
 
 		Scene = new Scene(name);
-		Scene.SetEventBus(Bus);
+		Scene.SetRun(SceneRun); // before its systems: they bind to its bus as they are made
 		ScriptScene.AddScriptSceneManagers(Scene);
 		Components = Scene.GetSystem<ScriptComponentManager>();
 		Scripts = Scene.GetSystem<ScriptSceneSystem>();
@@ -66,7 +67,7 @@ class ScriptPlayScene
 	public Scene AddScene(StringView name)
 	{
 		let scene = new Scene(name);
-		scene.SetEventBus(Bus);
+		scene.SetRun(SceneRun);
 		ScriptScene.AddScriptSceneManagers(scene);
 		scene.GetSystem<ScriptSceneSystem>().SetRunHost(Host);
 		mExtraScenes.Add(scene);
@@ -149,7 +150,7 @@ class ScriptPlayScene
 			s.Stop();
 	}
 
-	/// Ticks the scene(s) and drains the bus, as a frame does.
+	/// Ticks the scene(s) and drains the run's bus, as a frame does.
 	public void Step(int frames = 1, float dt = 1.0f / 60.0f)
 	{
 		for (int i = 0; i < frames; i++)
@@ -157,7 +158,7 @@ class ScriptPlayScene
 			Scene.Update(dt);
 			for (let s in mExtraScenes)
 				s.Update(dt);
-			Bus.Drain();
+			SceneRun.Events.Drain();
 			// Once per frame, as the host's owner does: the run's one clock.
 			Host.Advance(dt);
 		}

@@ -53,11 +53,7 @@ class Scene
 	private uint32 mAliveCount = 0;
 	private uint64 mRevision = 0;
 
-	/// BORROWED from the run scope that injected it. There is no owned fallback: a scope
-	/// injects before assembly, so a system binding in OnSceneCreate sees the very bus its
-	/// emits land on. Null on a scene with no scope, which never emits.
-	private EventBus mEventBus = null;
-	/// BORROWED: the owning run; null is outside every run.
+	/// BORROWED: the owning run, whose bus is the scene's; null is outside every run.
 	private IRun mRun = null;
 
 	private List<SceneSystem> mSystems = new .() ~ DeleteContainerAndItems!(_);
@@ -841,17 +837,16 @@ class Scene
 
 	// ---- events ----
 
-	/// This scene's bus: the BORROWED scope bus, so a scene's emit and the run's bus are
-	/// the same object and there is no relay to cross. Null on a scene with no scope.
-	public EventBus Events => mEventBus;
+	/// This scene's bus: its run's (IRun.Events), so a scene's emit and the run's bus are one
+	/// object and there is no relay to cross. A scene has no bus of its own and never drains it;
+	/// its run does. The run is set before assembly, so a system binding in OnSceneCreate sees
+	/// the very bus its emits land on. Null on a scene outside every run (a tool's scratch scene),
+	/// which never emits.
+	public EventBus Events => (mRun != null) ? mRun.Events : null;
 
-	/// Borrows a scope's bus. The owning scope drains it, not the scene. Set before the
-	/// scene ticks; null clears it.
-	public void SetEventBus(EventBus bus) => mEventBus = bus;
-
-	/// The run that owns this scene (Raptor's run-context spec): run scoped systems group the
-	/// scene by it. Its audio nests under the run's, so the run's stop, pause and mute reach it.
-	/// Null is outside every run (an editor page's scene, a test's).
+	/// The run that owns this scene: its bus is the scene's, and run scoped systems group the
+	/// scene by it (its audio nests under the run's, so the run's stop, pause and mute reach it).
+	/// Null is outside every run (a tool's scratch scene, a test's).
 	public IRun Run => mRun;
 	public void SetRun(IRun run) => mRun = run;
 

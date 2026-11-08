@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Messaging;
+using Sedulous.Run;
 using Sedulous.Physics;
 using Sedulous.Runtime;
 using Sedulous.Scene;
@@ -30,7 +30,8 @@ class ContactWorld
 	public ScriptSubsystem Scripts;
 	public ScriptPhysicsContactBridge Bridge = new .();
 	public SceneManager Manager = new .();
-	public EventBus Bus = new .();
+	/// The scene's run: its bus is the scene's.
+	public RunBase SceneRun = new .("contacts");
 	public Scene Scene;
 
 	private ScriptSurface mSurface = new .();
@@ -66,8 +67,8 @@ class ContactWorld
 		Bridge.Install(Physics, Scripts);
 
 		Scenes.RegisterManager(Manager);
+		Manager.SetSceneRun(SceneRun); // before the scene is made: its systems bind to the run's bus
 		Scene = Manager.CreateScene("level");
-		Scene.SetEventBus(Bus);
 	}
 
 	public ~this()
@@ -82,7 +83,7 @@ class ContactWorld
 		delete Bridge;
 		delete Manager;
 		delete Context;
-		delete Bus;
+		delete SceneRun;
 		ClearAndDeleteItems!(mClasses);
 		delete mClasses;
 		delete mSurface;

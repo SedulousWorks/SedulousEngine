@@ -238,11 +238,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (mScenes != null)
 		{
 			mScenes.RegisterManager(mSceneManager);
-			// The run and its bus are set before the scene is made, so systems binding as it is
-			// assembled see them (its behaviours bind to the run's script host); OnUpdate drains
-			// the bus once a frame.
+			// The run is set before the scene is made, so systems binding as it is assembled see
+			// it and its bus (its behaviours bind to the run's script host); OnUpdate drains the
+			// run's bus once a frame.
 			mSceneManager.SetSceneRun(run);
-			mSceneManager.SetSceneEventBus(run.Events);
 			mScene = mSceneManager.CreateScene(instance.Name);
 			mScene.SetSimulationEnabled(false); // edit mode is frozen; Simulate unfreezes it
 			let loaded = SceneLoading.LoadEditorScene(context, instance, mScene);

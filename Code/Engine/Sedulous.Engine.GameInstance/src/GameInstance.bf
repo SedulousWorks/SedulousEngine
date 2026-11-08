@@ -140,12 +140,9 @@ class GameInstance : RunBase
 
 	public this() : base("Game")
 	{
-		// Every scene this run creates BORROWS the run's bus, so a scene's events and the run's
-		// are ONE object and nothing relays between them. Setting it on the GROUP means the
-		// injection happens as a scene is created, before its systems bind, rather than after.
-		mSceneManager.SetSceneEventBus(Events);
-		// This instance IS the run: its scenes carry it, so run scoped systems (audio) group
-		// them by it.
+		// This instance IS the run: its scenes carry it, so their bus is the run's (ONE object,
+		// nothing relaying between them) and run scoped systems (audio) group them by it. Set on
+		// the GROUP, so each scene has it as it is created, before its systems bind.
 		mSceneManager.SetSceneRun(this);
 		mInputFacade = new InputFacade(mInputRuntime);
 		mSaveFacade = new SaveFacade(mSave);
@@ -211,12 +208,9 @@ class GameInstance : RunBase
 		// Replication follows the current scene across loads.
 		mNetwork.SetReplicatedScene(scene);
 
-		// An ADOPTED scene shares this run's bus, and belongs to this run, too.
+		// An ADOPTED scene belongs to this run too, and so shares its bus.
 		if (scene != null)
-		{
-			scene.SetEventBus(Events);
 			scene.SetRun(this);
-		}
 	}
 
 	public Scene GetScene() => mScene;
@@ -271,9 +265,9 @@ class GameInstance : RunBase
 	/// load wants: a scene being streamed must not be seen until it is whole.
 	public Scene CreateScene(StringView name, bool activate = true)
 	{
-		// The group gives the scene this run and its bus before it assembles, so the script
-		// subsystem binds its behaviours to this run's host (the one registered on it), and the
-		// scene's events and the run's are one object by the time anything binds to either.
+		// The group gives the scene this run before it assembles, so the script subsystem binds
+		// its behaviours to this run's host (the one registered on it), and the scene's events
+		// and the run's are one object by the time anything binds to either.
 		return mSceneManager.CreateScene(name, activate);
 	}
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Messaging;
+using Sedulous.Run;
 using Sedulous.Scene;
 
 namespace Sedulous.Scene.Tests;
@@ -151,33 +152,33 @@ class SceneSystemTests
 		Test.Assert(order[1] == 10);
 	}
 
-	/// The scene's bus is BORROWED and the scene never drains it. Only the owning scope
-	/// does, at a point where nothing else is in flight, which is what makes a handler safe
-	/// to run.
+	/// A scene has no bus of its own: its run's is its bus, null outside every run, and the
+	/// scene never drains it. Only the run does, at a point where nothing else is in flight,
+	/// which is what makes a handler safe to run.
 	[Test]
-	public static void TheEventBusIsBorrowedAndNeverDrainedByTheScene()
+	public static void TheEventBusIsTheRunsNoneOutsideEveryRunAndNeverDrainedByTheScene()
 	{
 		let scene = scope Scene();
-		Test.Assert(scene.Events == null, "unwired: nothing to emit into");
+		Test.Assert(scene.Events == null, "outside every run: nothing to emit into");
 
-		let bus = scope EventBus();
-		scene.SetEventBus(bus);
-		Test.Assert(scene.Events === bus);
+		let run = scope RunBase("run");
+		scene.SetRun(run);
+		Test.Assert(scene.Events === run.Events);
 
 		int fired = 0;
 		delegate void(Variant) handler = scope [&](payload) => { fired++; };
-		bus.Subscribe(StringHash("Ping"), handler);
+		run.Events.Subscribe(StringHash("Ping"), handler);
 		scene.Events.Publish(StringHash("Ping"), Variant());
 
 		scene.Update(0.016f);
 		Test.Assert(fired == 0, "the scene did not drain");
-		Test.Assert(bus.PendingCount == 1, "still queued for the owning scope");
+		Test.Assert(run.Events.PendingCount == 1, "still queued for the run");
 
-		bus.Drain();
+		run.Events.Drain();
 		Test.Assert(fired == 1);
 
-		// Tearing the scope down detaches cleanly.
-		scene.SetEventBus(null);
+		// Leaving the run leaves its bus.
+		scene.SetRun(null);
 		Test.Assert(scene.Events == null);
 	}
 

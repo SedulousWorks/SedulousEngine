@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Messaging;
 using Sedulous.Run;
 
 namespace Sedulous.Scene;
@@ -24,8 +23,6 @@ class SceneManager
 	/// The teardown notification, run on destroy and on clear.
 	private delegate void(Scene) mUninstaller = null;
 
-	/// BORROWED, and injected into every scene this manager creates.
-	private EventBus mSceneEventBus = null;
 	/// BORROWED: the run every created scene belongs to.
 	private IRun mSceneRun = null;
 
@@ -47,12 +44,9 @@ class SceneManager
 	public void SetSceneUninstaller(delegate void(Scene) uninstaller) => mUninstaller = uninstaller;
 	public void ClearSceneUninstaller() => mUninstaller = null;
 
-	/// The scope bus every scene created here BORROWS, so a scene's emits and the run's bus
-	/// are one object. Applied BEFORE assembly, so a system binding at creation sees it.
-	/// Null leaves scenes with no bus.
-	public void SetSceneEventBus(EventBus bus) => mSceneEventBus = bus;
-
-	/// The run every scene created here belongs to (Scene.SetRun), set by the owning run.
+	/// The run every scene created here belongs to (Scene.SetRun), set by the owning run: its
+	/// bus is the scenes' bus. Applied BEFORE assembly, so a system binding at creation sees it.
+	/// Null leaves scenes outside every run, with no bus.
 	public void SetSceneRun(IRun run) => mSceneRun = run;
 
 	/// The GROUP term of host by context by GROUP by scene.
@@ -93,9 +87,8 @@ class SceneManager
 				mCurrent = scene;
 		}
 
-		// Before assembly, so a system binding at OnSceneCreate sees the same bus its emits
-		// land on.
-		scene.SetEventBus(mSceneEventBus);
+		// The run before assembly, so a system binding at OnSceneCreate sees its run and the
+		// bus its emits land on (the run's).
 		scene.SetRun(mSceneRun);
 
 		if (mInstaller != null)

@@ -293,10 +293,10 @@ class GameInstanceTests
 	[Test]
 	public static void CreatedScenesShareTheRunBus()
 	{
-		// Every scene the instance creates BORROWS the run bus, so a scene's events and the
-		// run's are one object. A subscriber in one scene hears an emit from another with no
-		// relay at all, delivered exactly once by the instance's drain: the borrowing scenes
-		// never drain it themselves.
+		// Every scene the instance creates is in its run and so uses the run bus: a scene's
+		// events and the run's are one object. A subscriber in one scene hears an emit from
+		// another with no relay at all, delivered exactly once by the instance's drain: the
+		// scenes never drain it themselves.
 		let instance = scope GameInstance();
 		let a = instance.CreateScene("A");
 		let b = instance.CreateScene("B");
@@ -309,7 +309,7 @@ class GameInstanceTests
 		a.Events.Subscribe(StringHash("Ping"), scope [&] (payload) => { hits++; });
 		b.Events.Publish(StringHash("Ping"), Variant());
 
-		// Ticking the BORROWING scenes must not deliver it.
+		// Ticking the scenes must not deliver it.
 		a.Update(0.016f);
 		b.Update(0.016f);
 		Test.Assert(hits == 0);
@@ -347,6 +347,7 @@ class GameInstanceTests
 		Test.Assert(adopted.Run == null);
 		instance.SetScene(adopted);
 		Test.Assert(adopted.Run === instance);
+		Test.Assert(adopted.Events === instance.Events, "and its bus with it");
 		instance.SetScene(created); // not left holding the scoped scene
 	}
 }
