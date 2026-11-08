@@ -405,6 +405,41 @@ static class BehaviorLifecycleTests
 		Test.Assert(!play.Host.IsActive, "released, it goes");
 	}
 
+	/// A run host's Advance is its scripts' clock, called once a frame by whoever owns the host:
+	/// with no runtime (a run whose game has no scripts) it moves nothing and makes none; with one,
+	/// it moves the waits of its coroutines, which the scene's own ticks do not.
+	[Test]
+	public static void ARunHostsAdvanceIsItsScriptsClockWithARuntimeOrNone()
+	{
+		let bare = scope ScriptRunHost();
+		bare.Advance(0.25f);
+		bare.Advance(0.5f);
+		Test.Assert(!bare.IsActive, "advancing makes no runtime");
+
+		let play = scope ScriptPlayScene();
+		let waiter = play.Class("Waiter", """
+			class Waiter
+			{
+				int fired = 0;
+				void onStart() { startCoroutine(ScriptCoroutine(this.later)); }
+				void later() { wait(0.5); fired++; }
+			}
+			""");
+		let entity = play.AddBehavior(waiter, "waiter");
+		play.Start();
+		play.Step(); // started, its wait begun, a frame of it gone
+		Test.Assert(play.Runtime.CoroutineCount == 1);
+		// A second of scene ticks with no Advance: the wait holds.
+		for (int i < 60)
+			play.Scene.Update(1.0f / 60.0f);
+		Test.Assert(play.PropInt(entity, "fired") == 0, "the scene's ticks do not move it");
+		play.Host.Advance(0.25f);
+		Test.Assert(play.PropInt(entity, "fired") == 0, "not yet");
+		play.Host.Advance(0.25f);
+		Test.Assert(play.PropInt(entity, "fired") == 1, "the host's clock reached the wait's end");
+		Test.Assert(play.Runtime.CoroutineCount == 0);
+	}
+
 	/// A behaviour with no class names nothing to run: AddBehavior refuses it, and an entity
 	/// without scripts is not given a component for it.
 	[Test]

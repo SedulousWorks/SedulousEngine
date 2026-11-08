@@ -189,10 +189,11 @@ class ScriptRunHost
 		delete configurator;
 	}
 
-	/// Advances the run's coroutines by gameplay time. Once per frame, by the host's OWNER,
-	/// the game instance or the subsystem, never per scene: a run with three scenes has one
-	/// clock, and a run with no scene yet, a game script loading its first level, still has
-	/// to move.
+	/// Advances the run's coroutines by gameplay time: its scripts' clock. Once per frame, by
+	/// whoever owns the host (a game's run, the subsystem for its default host), never per
+	/// scene: a run with three scenes has one clock, and a run with no scene yet, a game script
+	/// loading its first level, still has to move. With no runtime (a run whose game has no
+	/// scripts) there is nothing to move, and none is made.
 	public void Advance(float deltaTime)
 	{
 		if ((mRuntime != null) && !IsDebugPaused)
