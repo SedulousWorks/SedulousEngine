@@ -94,6 +94,8 @@ class SceneViewport
 	}
 
 	public bool IsHovered => (mScripted != null) ? ScriptedPointerInside : mView.Hovered;
+	/// Whether its content has the keyboard focus (a click into it gives it).
+	public bool IsFocused => mView.IsFocused;
 	/// The mouse, in the targets' pixels.
 	public IMouse Mouse => (mScripted != null) ? mScripted.Mouse : mView.Mouse;
 

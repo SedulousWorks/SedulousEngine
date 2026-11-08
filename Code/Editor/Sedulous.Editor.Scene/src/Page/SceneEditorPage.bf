@@ -630,6 +630,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			run.Scripts.Advance(FrameTime(dt, contextScale, mSceneManager.TimeScale, mScene.TimeScale).SceneDelta);
 		}
 		run.Events.Drain();
+		// Clicking into a simulating viewport makes its run the one heard, as with a Game tab.
+		if (mSimulation.IsRunning && (mServices.Runs != null) && mViewport.IsFocused && ((Object)mServices.Runs.Focused !== run))
+			mServices.Runs.SetFocused(run);
 
 		// The overlays into this viewport's own debug list (the lists clear each frame, so they are
 		// drawn again every frame); none on the frame a project picture is captured.
@@ -894,6 +897,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mAnimation.StopPreview();
 		if ((mScene == null) || !mSimulation.Start(mScene, Commands))
 			return;
+		// The page Simulate was pressed in is the run heard, as the tab Play was pressed in is.
+		if (mServices.Runs != null)
+			mServices.Runs.SetFocused(mSimulation.Run);
 		// Modal edit tools (terrain sculpt) share runtime state with the simulation (the collider):
 		// back to the default select tool for the run.
 		mViewportTools.ActivateDefault();

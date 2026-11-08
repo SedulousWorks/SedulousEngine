@@ -464,6 +464,27 @@ class ScenePageTests
 		runs.Unsubscribe(heard);
 	}
 
+	/// Simulate makes the page's run the focused one, the one heard, as Play does for its tab; Stop
+	/// keeps it, as a stopped Game tab keeps it, and it goes with the page's run.
+	[Test]
+	public static void SimulateMakesThePagesRunTheFocusedOneAsPlayDoesForItsTab()
+	{
+		let bed = scope Bed();
+		let runs = scope RunRegistry();
+		let game = scope RunBase("Game 1"); // a Game tab's run, focused by its Play
+		runs.Add(game);
+		runs.SetFocused(game);
+		let page = bed.Open(bed.Level, runs);
+		Test.Assert((Object)runs.Focused === game, "opening a page takes nothing");
+		page.StartSimulation();
+		Test.Assert((Object)runs.Focused === (Object)page.ScenePtr.Run);
+		page.StopSimulation();
+		Test.Assert((Object)runs.Focused === (Object)page.ScenePtr.Run, "kept");
+		page.OnClose();
+		delete page;
+		Test.Assert(runs.Focused == null, "its run gone, nothing is focused");
+	}
+
 	/// A scene's thumbnail is taken from where its page left the camera, so the page saving its
 	/// view drops the cached picture: the next one asked for takes the new view.
 	[Test]
