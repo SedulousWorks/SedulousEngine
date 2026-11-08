@@ -2,9 +2,8 @@ using System;
 
 namespace Sedulous.Editor.Scene.Tests;
 
-/// Reflected, as an enum a component or behaviour field uses must be for the tools to name its
-/// values.
-[Reflect]
+/// NOT reflected, as a game's enum is not: the tools name its cases because Hopper's [Behaviour]
+/// registers them with EnumCases.
 enum TestMode : uint32
 {
 	Off = 0,

@@ -17,7 +17,8 @@ namespace Sedulous.Engine.Gameplay;
 /// It also asks for what the tools need: the type and its instance fields reflected (the
 /// inspector, the MCP tools and the prefab EntityRef remap read them), its default constructor
 /// reflected (defaults, Add Component), and the type always included, so a class nothing else
-/// names still links.
+/// names still links. The enums its fields hold are registered with EnumCases, so the tools name
+/// their cases without the enum being reflected.
 ///
 /// It refuses, as a compile error naming the field, a [Replicated] field of a kind the wire
 /// does not carry (BehaviourReplication.KindOf): an entity or asset reference, a list, a class.
@@ -55,6 +56,7 @@ struct BehaviourAttribute : Attribute, IComptimeTypeApply
 		body.Append("public override void Serialize(Sedulous.Core.Serialization.ISerializer ar)\n{\n");
 		Sedulous.Core.Serialization.SerializableAttribute.AppendFieldMoves(type, body, true);
 		body.Append("}\n");
+		Sedulous.Core.EnumCases.AppendRegistration(type, body);
 		Compiler.EmitTypeBody(type, body);
 	}
 

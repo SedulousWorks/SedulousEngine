@@ -15,7 +15,7 @@ namespace Sedulous.Editor.App;
 ///
 /// - a leaf by its type: numbers, booleans, strings, guids, vectors, quaternions, colours;
 /// - a resource reference (a Ref<T>) as its asset guid, through ReferenceShape;
-/// - an enum by its case's name;
+/// - an enum by its case's name (EnumCases: registered, or reflected);
 /// - an entity reference as its guid;
 /// - a list as an array of its elements, through IReflectedList;
 /// - a reflected object (a list's element) by its fields;
@@ -56,7 +56,7 @@ static class FieldJson
 		if (type.IsEnum)
 		{
 			let name = scope String();
-			Enum.EnumToString(type, name, RawFieldAccess.ReadRawInt(address, type.Size));
+			EnumCases.NameOf(type, RawFieldAccess.ReadRawInt(address, type.Size), name);
 			return JsonValue.MakeString(name);
 		}
 		switch (type)
@@ -225,13 +225,14 @@ static class FieldJson
 		}
 	}
 
-	/// An enum case by name or by number; false when neither names one.
+	/// An enum case by name or by number; false when neither names one. The cases are
+	/// EnumCases', so an enum a game registered without reflecting it takes its names too.
 	public static bool EnumValueOf(Type type, JsonValue value, out int64 outValue)
 	{
 		outValue = 0;
 		if (value == null)
 			return false;
-		for (var (name, data) in Enum.GetEnumerator(type))
+		for (var (name, data) in EnumCases.Of(type))
 		{
 			if ((value.IsString && (value.AsString() == name)) || (value.IsNumber && ((int64)value.AsNumber() == data)))
 			{
@@ -244,7 +245,7 @@ static class FieldJson
 
 	public static void EnumNames(Type type, String outNames)
 	{
-		for (var (name, data) in Enum.GetEnumerator(type))
+		for (var (name, data) in EnumCases.Of(type))
 		{
 			if (!outNames.IsEmpty)
 				outNames.Append(", ");

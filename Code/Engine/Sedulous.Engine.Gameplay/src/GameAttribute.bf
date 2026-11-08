@@ -10,9 +10,19 @@ namespace Sedulous.Engine.Gameplay;
 /// by name while it runs. A reflection request reaches only the class that carries it, never a
 /// subclass, which is why the base cannot ask for it and each game class states it.
 ///
-/// A game has no identity on disk and nothing is generated for it: it is never saved.
+/// A game has no identity on disk and no Serialize: it is never saved. What is generated is the
+/// registration of the enums its fields hold with EnumCases, so a probe names an enum field's
+/// case without the enum being reflected.
 [AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple,
 	ReflectUser = .Type | .NonStaticFields)]
-struct GameAttribute : Attribute
+struct GameAttribute : Attribute, IComptimeTypeApply
 {
+	[Comptime]
+	public void ApplyToType(Type type)
+	{
+		let body = scope String();
+		Sedulous.Core.EnumCases.AppendRegistration(type, body);
+		if (!body.IsEmpty)
+			Compiler.EmitTypeBody(type, body);
+	}
 }

@@ -16,8 +16,11 @@ namespace Sedulous.Scene;
 ///
 /// Its default constructor is reflected too: an inspector's Reset reads the type's defaults
 /// from an instance it makes.
+///
+/// The enums its fields hold are registered with EnumCases, so the tools name their cases
+/// without the enum being reflected: a game's component needs no [Reflect] on its enums.
 [AttributeUsage(.Struct, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields | .DefaultConstructor)]
-struct SerializableComponentAttribute : Attribute
+struct SerializableComponentAttribute : Attribute, IComptimeTypeApply
 {
 	public String TypeId;
 	/// Bumped when the stored shape changes.
@@ -40,5 +43,14 @@ struct SerializableComponentAttribute : Attribute
 		TypeId = typeId;
 		DataVersion = dataVersion;
 		MinReadDataVersion = minReadDataVersion;
+	}
+
+	[Comptime]
+	public void ApplyToType(Type type)
+	{
+		let body = scope String();
+		Sedulous.Core.EnumCases.AppendRegistration(type, body);
+		if (!body.IsEmpty)
+			Compiler.EmitTypeBody(type, body);
 	}
 }
