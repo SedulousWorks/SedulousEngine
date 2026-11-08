@@ -15,6 +15,9 @@ class AngelScriptBinding
 		case EntityCall;
 		/// A property getter: Field.Get.
 		case Get;
+		/// A struct field's getter, returning a reference to where the value lives:
+		/// Field.Place, asked again on every read.
+		case Place;
 		/// A property setter: Field.Set.
 		case Set;
 		/// `X::of(entity)`: a handle to the entity's component, null without one. Owner.IsOn

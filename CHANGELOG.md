@@ -16,6 +16,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 - Editor: importing an asset no longer freezes the editor for seconds in a large project: each
   import read every asset in the project to check one file name.
+- Scripts: assigning a field of a struct-valued field, such as a light's colour
+  (`light.Color.R = 0.5f`), now writes it; it landed in a copy and was lost.
 - Editor: context menus open at the pointer under a UI scale other than 100%, and a tab's Move to
   opens below its tab.
 - Editor: the UI scale preference shows its percentage while its slider is dragged.

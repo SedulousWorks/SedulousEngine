@@ -761,7 +761,7 @@ static class ScriptSurfaceWalker
 			if (readOnly)
 				code.Append(".ReadOnly()");
 			EmitFieldMetadata(f, code);
-			EmitAccessors(ctx, f.Name, f.FieldType, f.IsStatic, readOnly);
+			EmitAccessors(ctx, f.Name, f.FieldType, f.IsStatic, readOnly, true);
 			code.Append(";\n");
 		}
 	}
@@ -836,9 +836,10 @@ static class ScriptSurfaceWalker
 	}
 
 	/// The get and set thunks for a field or property, bound into the registration, or the
-	/// member marked Blocked when its type cannot cross.
+	/// member marked Blocked when its type cannot cross. A field (`isField`) whose value is a
+	/// struct also gets its place thunk (ScriptFieldInfo.Place).
 	[Comptime]
-	private static void EmitAccessors(TypeCtx ctx, StringView member, Type memberType, bool isStatic, bool readOnly)
+	private static void EmitAccessors(TypeCtx ctx, StringView member, Type memberType, bool isStatic, bool readOnly, bool isField = false)
 	{
 		let code = ctx.Code;
 		if (!isStatic && !CanReachSelf(ctx))
@@ -932,6 +933,34 @@ static class ScriptSurfaceWalker
 		let setName = ctx.NextThunk(.. scope .());
 		EmitThunk(ctx, setName, isStatic, setBody, true);
 		code.AppendF(".Bind(=> {}, => {})", getName, setName);
+
+		// A struct field's place: its owner resolved as the getter resolves it, then the address
+		// of the member in it, so a write to one of its fields lands where the value lives.
+		if (isField && HasPlace(ctx, memberType, isStatic))
+		{
+			let placeBody = scope String();
+			placeBody.AppendF("\tframe.Result = .FromStruct(&{}, typeof({}));\n", access, memberName);
+			let placeName = ctx.NextThunk(.. scope .());
+			EmitThunk(ctx, placeName, isStatic, placeBody, false);
+			code.AppendF(".Placed(=> {})", placeName);
+		}
+	}
+
+	/// Whether a writable field of `memberType` has a place a script can write through: a
+	/// struct value (a math value or a surface struct; not an entity or a Guid, which cross as
+	/// something else) in an owner that is not a copy. An inline struct's self is a local copy
+	/// written back after the call, so a field of one has no lasting address.
+	[Comptime]
+	private static bool HasPlace(TypeCtx ctx, Type memberType, bool isStatic)
+	{
+		let kind = ScriptValueMap.KindOf(memberType, .. scope .());
+		switch (kind)
+		{
+		case "Struct", "Float2", "Float3", "Float4", "Quaternion", "Color":
+			return isStatic || !((ctx.Role == .Plain) && ctx.IsInlineStruct);
+		default:
+			return false;
+		}
 	}
 
 	[Comptime]

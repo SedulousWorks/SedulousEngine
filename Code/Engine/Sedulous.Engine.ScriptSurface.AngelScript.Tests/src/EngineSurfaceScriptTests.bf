@@ -495,9 +495,9 @@ static class EngineSurfaceScriptTests
 		Test.Assert(sets.Get(e).PoseAssignment == .Unison);
 	}
 
-	/// A struct-valued property written through a handle reaches the component: a whole value
-	/// assigned goes through the property's setter. (A field of it assigned in place still lands in
-	/// the copy the getter returns: Documentation/Backlog.md.)
+	/// A struct-valued property through a component handle (a light's colour) is written where
+	/// it lives: a whole value assigned, a field of it written, and one light's assigned from
+	/// another's all reach the components, while a copy taken out stays apart from the light.
 	[Test]
 	public static void AStructPropertyWrittenThroughAHandleReachesTheComponent()
 	{
@@ -506,10 +506,14 @@ static class EngineSurfaceScriptTests
 		let vm = scope AngelScriptRuntime();
 		vm.Bind(s);
 		let ok = vm.Compile("game", "game.as", """
-			void tint(const Entity &in self)
+			bool tint(const Entity &in self, const Entity &in other)
 			{
 				LightComponent@ light = LightComponent::of(self);
+				Color saved = light.Color;
 				light.Color = Color(0.25f, 0.5f, 0.75f, 1.0f);
+				light.Color.R = 0.9f;
+				LightComponent::of(other).Color = light.Color;
+				return saved.R == 1.0f;
 			}
 			""");
 		for (let p in vm.Problems)
@@ -520,12 +524,17 @@ static class EngineSurfaceScriptTests
 		defer Sedulous.Script.SceneFacades.Release(scene);
 		let lights = scene.AddSystem<Sedulous.Engine.Render.LightComponentManager>();
 		let e = scene.CreateEntity("lamp");
-		lights.Add(e);
-		var args = ScriptValue[1](.FromEntity(e, scene));
+		let other = scene.CreateEntity("other");
+		lights.Add(e).Color = .(1.0f, 1.0f, 1.0f, 1.0f);
+		lights.Add(other).Color = .(0.0f, 0.0f, 0.0f, 1.0f);
+		var args = ScriptValue[2](.FromEntity(e, scene), .FromEntity(other, scene));
 		var r = ScriptValue.Nil;
-		Test.Assert(vm.Call("game", "void tint(const Entity &in)", args, ref r), "ran");
+		Test.Assert(vm.Call("game", "bool tint(const Entity &in, const Entity &in)", args, ref r), "ran");
+		Test.Assert(r.AsBool, "the copy kept the authored colour");
 		let color = lights.Get(e).Color;
-		Test.Assert((color.R == 0.25f) && (color.G == 0.5f) && (color.B == 0.75f), "the whole value reached the component");
+		Test.Assert((color.R == 0.9f) && (color.G == 0.5f) && (color.B == 0.75f), "the whole value, then the field, reached the component");
+		let copied = lights.Get(other).Color;
+		Test.Assert((copied.R == 0.9f) && (copied.G == 0.5f) && (copied.B == 0.75f), "one light's from another's");
 	}
 
 	/// `X::of(entity)` is a handle, null when the entity has no such component, so `is null`

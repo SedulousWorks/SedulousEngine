@@ -834,6 +834,15 @@ class AngelScriptRuntime : ScriptRuntime
 	/// A field or property becomes a virtual property: `T get_X() property` and its setter.
 	/// `on` is the type it is registered on when that is not its own: a derived class taking a
 	/// base's member.
+	///
+	/// A writable struct-valued field's getter returns a REFERENCE, `T &get_X() property`, to
+	/// the value where it lives (Field.Place): `light.Color.R = 0.9f` then writes the light,
+	/// where a value getter would hand back a copy and the write would land in it. The reference
+	/// is found again through the owner on every read and used at once (AngelScript evaluates a
+	/// call's arguments before its object), so a component pool that moves between reads is
+	/// never written through stale. A whole value still goes through the setter, and a local
+	/// declared from the property (`Color saved = light.Color;`) is a copy. A read-only member
+	/// reads as a value, so nothing reaches it.
 	private void BindField(ScriptTypeInfo t, ScriptFieldInfo f, StringView statics, ScriptTypeInfo on = null)
 	{
 		let target = on ?? t;
@@ -844,14 +853,15 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		}
 
+		let placed = (f.Place != null) && (f.Set != null);
 		let get = new AngelScriptBinding();
-		get.Kind = .Get;
+		get.Kind = placed ? .Place : .Get;
 		get.Owner = t;
 		get.Field = f;
 		mBindings.Add(get);
 
 		let isGlobal = f.IsStatic || (t.Kind == .Global);
-		let getDecl = scope $"{typeDecl} get_{f.ScriptName}() property";
+		let getDecl = scope $"{typeDecl} {placed ? "&" : ""}get_{f.ScriptName}() property";
 		bool bound;
 		if (isGlobal)
 		{
@@ -1355,6 +1365,22 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Operator:
 			DispatchOperator(gen, b);
 			return;
+		case .Place:
+		{
+			// The member where it lives, its owner resolved now as a getter resolves it; the
+			// script writes through the reference before anything can move it.
+			var frame = ScriptCallFrame(context, default);
+			if (!b.Field.IsStatic && (b.Owner.Kind != .Global))
+				frame.Self = ReadSelf(AS.asc_generic_get_object(gen), SelfKind(b.Owner), b.Owner);
+			b.Field.Place(ref frame);
+			if (frame.Failed)
+			{
+				AS.asc_set_active_exception(scope String(frame.Error).CStr());
+				return;
+			}
+			AS.asc_generic_set_return_address(gen, frame.Result.AsStruct);
+			return;
+		}
 		case .Resolve:
 			// `scene.Physics`: the scene's instance of the system.
 			var frame = ScriptCallFrame(context, default);
