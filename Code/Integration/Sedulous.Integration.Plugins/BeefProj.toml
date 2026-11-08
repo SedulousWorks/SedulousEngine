@@ -16,6 +16,9 @@ corlib = "*"
 "Sedulous.Engine.Composition" = "*"
 # The package's behaviour, read into its manager and ticked.
 "Sedulous.Engine.Gameplay" = "*"
+# The package's game, launched by a run.
+"Sedulous.Run" = "*"
+"Sedulous.Engine.GameInstance" = "*"
 "Sedulous.Script" = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Pipeline.Core" = "*"

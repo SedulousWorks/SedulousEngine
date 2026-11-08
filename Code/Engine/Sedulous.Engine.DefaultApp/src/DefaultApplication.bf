@@ -554,7 +554,27 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// stops the script, not the game.
 	public bool StartGameScript(ScriptClass scriptClass) => mInstance.StartScript(scriptClass);
 	public void StopGameScript() => mInstance.StopScript();
-	public bool GameScriptRunning => mInstance.ScriptRunning;
+	/// A game of either kind runs on the primary instance: the native game, or a game script.
+	public bool GameRunning => mInstance.GameRunning;
+
+	/// Launches the primary instance's game, as the player does before its boot scene: the
+	/// native game when the build registered one (GameInstance.LaunchGame), otherwise the game
+	/// script `startupScript` resolves (null for none; it says why). `scriptNamed` is whether
+	/// the project names a startup script: with a native game as well, the native game runs, the
+	/// script is never resolved, and a warning says so. True when a game of either kind runs.
+	public bool LaunchGame(bool scriptNamed, delegate ScriptClass() startupScript)
+	{
+		if (mInstance.LaunchGame())
+		{
+			if (scriptNamed)
+				GlobalLog(.Warning, "Game: the build has a native game, which runs; the project's startup script is not started");
+			return true;
+		}
+		if (!scriptNamed || (startupScript == null))
+			return false;
+		let scriptClass = startupScript();
+		return (scriptClass != null) && StartGameScript(scriptClass);
+	}
 
 	public void ReleaseInstance(GameInstance instance)
 	{

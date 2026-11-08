@@ -128,14 +128,14 @@ class SkyHopperGame : Game
 ```
 
 - **Registering:** `GameplayServices.SetGame<SkyHopperGame>(engine)`, recorded by a new `EnginePluginServices.AddRunListener(IRunListener)` that is reversed on unload by unsubscribing and deleting. The listener is the engine's `GameRunner`, which registers itself on every run as its `IGameFactory` (and takes itself off as it is deleted). A second `SetGame` is refused.
-- **Launching:** `GameInstance.LaunchGame()` asks the run's `IGameFactory`, holds the game as a session service (`AddForSession`, under `IGameHooks`) and calls its launch; false with no factory, or with a game running. The hosts call it where they call `StartScript` today (player before the boot scene; PIE before the scene load), so both keep their current order (Q4). `StopGame()` ends one launched outside a session.
+- **Launching:** `GameInstance.LaunchGame()` asks the run's `IGameFactory`, holds the game as a session service (`AddForSession`, under `IGameHooks`) and calls its launch; false with no factory, or with a game running. The hosts call it where they call `StartScript` today (player before the boot scene; PIE before the scene load), so both keep their current order (Q4). `StopGame()` ends one launched outside a session (PIE's default scene failing to load). Both hosts launch before their first scene and make it current through `SetScene`, so in either a game sees `OnLaunch`, then `OnSceneActivated` with that scene; the player starts its session before the launch, PIE after the scene loads.
 - **What the game receives:**
   - `GameInstance` gets an `IGameHooks` interface (Launch, Update, SceneActivated, Exit), which `Game` implements explicitly so its own `OnLaunch`/`OnUpdate`/`OnSceneActivated`/`OnExit` stay protected;
   - `TickScript` ticks the hooks with the same delta rule (unscaled by `Run.TimeScale`);
   - `SetScene` and `PumpLoads` report scene switches (a load after the app's policy, the replaced scene gone);
   - `GameInstance`'s own `IRunService.OnRunStopping` (the last service hook, as it registers first) runs the game's exit, then writes `RunSave`, then closes the networking.
 - **What it can reach:** `Instance` is the run (LoadScene, LoadSceneAsync, RequestExit, InstanceTimeScale, RealDeltaTime, Saves), with the services through `Run.Get<T>()`.
-- **While both exist (phase 4):** a project with a native game and a `StartupScriptId` runs the native game and logs a warning. `GameScriptRunning` becomes "a game is running", of either kind.
+- **While both exist (phase 4):** a project with a native game and a `StartupScriptId` runs the native game and logs a warning (PIE says it as a notice); the script is never resolved. `DefaultApplication.GameScriptRunning` became `GameRunning`, a game of either kind; the player's launch is `DefaultApplication.LaunchGame(scriptNamed, startupScript)`.
 
 ## Native API replacements
 
@@ -207,7 +207,7 @@ Elsewhere:
 7. **Editor:** a behaviour in the inspector, Add Component, `component_schema` and `entity_inspect`/`component_set`; NativeSample gains a Behaviour. Tests, McpGuide.
 8. **Gameplay:** the `Level` tier and `AddLevel<T>`; NativeSample gains a Level. Tests.
 9. **Run/GameInstance/Composition:** `IGameHooks`, `LaunchGame`, `EnginePluginServices.AddRunListener`, `GameRunner`, `SetGame<T>`. Tests.
-10. **Player and Editor.Play:** launch the native game at the `StartScript` sites, with the both-present warning; NativeSample gains a Game. Tests in DefaultApp.Integration and Editor.Play.
+10. **Player and Editor.Play:** launch the native game at the `StartScript` sites, with the both-present warning; NativeSample gains a Game. Tests in DefaultApp.Tests, Editor.Play.Tests and Integration.Plugins.
 11. **Run:** `RunRandom` service. **Net/Http:** delegate overloads. Tests.
 12. **GUI:** `Node.On` with a delegate, typed Bind sugar, `Tween.OnFinished`. Tests in GUI.Tests.
 13. **Editor MCP:** `pie_run` `game`/`level` probes and private behaviour fields. Tests, McpGuide.
