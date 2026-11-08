@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
@@ -47,13 +48,23 @@ static class GuiPipeline
 
 		""";
 
-	/// Registers every element type a GUI document may name, once (the tools' set).
+	/// Held while the element types register. A cook validates on several workers at once, and the
+	/// libraries' registrations are not safe side by side: each marks itself done as it starts, so a
+	/// second worker would validate against a half-filled set, and two workers building the same
+	/// type's record lazily would leak one of them.
+	private static Monitor sRegisterLock = new .() ~ delete _;
+
+	/// Registers every element type a GUI document may name, once (the tools' set). Safe from any
+	/// thread: a caller returns once the whole set is there.
 	public static void RegisterValidationElements()
 	{
-		RegisterGuiElements();
-		RegisterGamekitElements();
-		RegisterToolkitElements();
-		RegisterCodeElements();
+		using (sRegisterLock.Enter())
+		{
+			RegisterGuiElements();
+			RegisterGamekitElements();
+			RegisterToolkitElements();
+			RegisterCodeElements();
+		}
 	}
 
 	/// Validates `markup` as a cook does: false when it cannot be read; what was dropped, and the
