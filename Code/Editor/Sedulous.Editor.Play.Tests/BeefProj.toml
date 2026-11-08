@@ -22,6 +22,8 @@ corlib = "*"
 "Sedulous.Run" = "*"
 "Sedulous.Engine.Scene" = "*"
 "Sedulous.Engine.GameInstance" = "*"
+# A native game, level and behaviour for the PIE probes to read.
+"Sedulous.Engine.Gameplay" = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Core" = "*"

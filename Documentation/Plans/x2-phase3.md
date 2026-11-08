@@ -118,6 +118,7 @@ class Block : Level
 ## The Game tier
 
 ```beef
+[Game]
 class SkyHopperGame : Game
 {
 	protected override void OnLaunch() { ... }
@@ -127,7 +128,7 @@ class SkyHopperGame : Game
 }
 ```
 
-- **Registering:** `GameplayServices.SetGame<SkyHopperGame>(engine)`, recorded by a new `EnginePluginServices.AddRunListener(IRunListener)` that is reversed on unload by unsubscribing and deleting. The listener is the engine's `GameRunner`, which registers itself on every run as its `IGameFactory` (and takes itself off as it is deleted). A second `SetGame` is refused.
+- **Registering:** `[Game]` on the class reflects its instance fields, private ones too, for the PIE probes (Beef's reflection requests reach only the class that states them, so the base cannot ask for its subclasses); `SetGame` refuses a class without it at compile time. `GameplayServices.SetGame<SkyHopperGame>(engine)`, recorded by a new `EnginePluginServices.AddRunListener(IRunListener)` that is reversed on unload by unsubscribing and deleting. The listener is the engine's `GameRunner`, which registers itself on every run as its `IGameFactory` (and takes itself off as it is deleted). A second `SetGame` is refused.
 - **Launching:** `GameInstance.LaunchGame()` asks the run's `IGameFactory`, holds the game as a session service (`AddForSession`, under `IGameHooks`) and calls its launch; false with no factory, or with a game running. The hosts call it where they call `StartScript` today (player before the boot scene; PIE before the scene load), so both keep their current order (Q4). `StopGame()` ends one launched outside a session (PIE's default scene failing to load). Both hosts launch before their first scene and make it current through `SetScene`, so in either a game sees `OnLaunch`, then `OnSceneActivated` with that scene; the player starts its session before the launch, PIE after the scene loads.
 - **What the game receives:**
   - `GameInstance` gets an `IGameHooks` interface (Launch, Update, SceneActivated, Exit), which `Game` implements explicitly so its own `OnLaunch`/`OnUpdate`/`OnSceneActivated`/`OnExit` stay protected;
@@ -166,11 +167,12 @@ class SkyHopperGame : Game
 
 ## pie_run probes
 
-- `{"game": "Field"}` reads the running `Game`'s reflected instance fields, public or private.
-- `{"level": "Field"}` reads the active Level (`"Block.Field"` when several are active).
+- `{"game": "Field"}` reads the running `Game`'s reflected instance fields, public or private (`[Game]` reflects them).
+- `{"level": "Field"}` reads the active Level (`"Block.Field"`, by class name or level id, when several are active); a scene with no native level active reads its level script's property as before.
 - Behaviour probes keep `<Type>.<field>` on the entity, now private fields too (reflection opt-in from `[Behaviour]`).
 - `script` and the script-behaviour path stay until phase 6.
-- The work goes in `PieRunTool` and `IPieInstancePage` (`GetGameField`, `GetLevelField` returning a `Variant`, beside `GetScriptProperty`).
+- The work goes in `PieRunTool` and `IPieInstancePage` (`GetNativeGame`, and `GetGameField`, `GetLevelField` returning the value as JSON, written by `FieldJson` as an inspected field is, beside `GetScriptProperty`).
+- `pie_state` adds `game`: `{kind: "native", type, running}`, `{kind: "script", running}` or `{kind: "none"}`.
 
 ## Data and migration
 

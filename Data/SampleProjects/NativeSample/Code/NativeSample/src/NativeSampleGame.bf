@@ -8,6 +8,7 @@ namespace NativeSample;
 /// The reference game's code for the whole run: it says it launched, keeps the name of each scene
 /// that becomes current, and hears the Arena's round run out, which it counts and logs. Each
 /// play (a player's run, a Game tab's Play) makes a fresh one.
+[Game]
 class NativeSampleGame : Game
 {
 	/// The scene that became current last; empty before the first.
