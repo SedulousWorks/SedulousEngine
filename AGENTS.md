@@ -89,7 +89,9 @@ the previous engine, on the `v0` branch.
 - `Sedulous.Tools.Mcp` is the headless MCP host; the editor serves the same tools over HTTP for
   its open project (`--mcp` or `--mcp-port <port>`), plus page and play-in-editor tools.
   `.claude/skills/engine-mcp` is the recipe to build and wire it; once connected, read
-  `docs://McpGuide.md` (`Documentation/Shipping/McpGuide.md`), the operating manual.
+  `docs://McpGuide.md` (`Documentation/Shipping/McpGuide.md`), the operating manual. A game's
+  own Beef code (its Behaviour, Level and Game tiers) is `docs://GameCode.md`
+  (`Documentation/Shipping/GameCode.md`).
 - When an MCP tool is missing or wrong for a task, that is a finding: fix the tool in the
   engine, rather than routing around it by editing project files by hand.
 

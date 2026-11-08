@@ -178,7 +178,7 @@ behaviour's properties under `live` beside what is authored.
    `idempotentHint`.
 2. `host_info`: the pid (kill a hung host by it) and the `buildStamp`. After rebuilding the
    engine, compare stamps: a stale host serves yesterday's engine.
-3. `resources/list`: the curated `docs://` shipping docs (Scripting, Assets, Scenes,
+3. `resources/list`: the curated `docs://` shipping docs (Scripting, GameCode, Assets, Scenes,
    KnownIssues), the scene format reference this host generates from what it has
    registered when you read it, its build and the open project's enabled plugins
    (`docs://generated/SceneSchema.json` and `docs://generated/SceneExample.scene.xml`) and,
@@ -536,7 +536,9 @@ project and templates do not; the preset's `template` comes back null until one 
 
 The stock editor does not run a game's own code: the project's own editor does, the one Project >
 Build Project builds and Project > Open With This Build opens. A project gets code from
-`plugin_scaffold` (or Add Native Code). Building and relaunching need the editor host; the loop:
+`plugin_scaffold` (or Add Native Code). How the code itself is written (the Behaviour, Level and
+Game tiers, struct components, reaching the engine, events) is `docs://GameCode.md`. Building
+and relaunching need the editor host; the loop:
 
 1. Edit `Code/<Game>/src/*.bf` with your own file tools.
 2. `project_build` (`target` `editor`, the default; `all` is Build Project, the players too). The

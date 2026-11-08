@@ -1,6 +1,14 @@
 # x2 phase 3: native game tiers
 
-**Status:** design note, 2026-11-07, approved the same day (see Rulings). It expands phase 3 of `x2.md` (D2, D3).
+**Status:** built, 2026-11-07 (design approved the same day, see Rulings); the guide is `Documentation/Shipping/GameCode.md`. It expands phase 3 of `x2.md` (D2, D3). Where the build diverged from the first design:
+- **OnFixedStep:** a Level's fixed hook is `OnFixedStep(dt)`, since `OnFixedUpdate` is `SceneSystem`'s own and drives the level; `AddLevel` refuses a class overriding the driver (`OnUpdate(ScenePhase, float)`, `OnFixedUpdate`, `OnSceneStopped`), or one without `[Level]`.
+- **`[Game]` required:** a game class carries `[Game]`, which reflects its fields (private ones too) for the PIE probes, since a reflection request reaches only the class stating it; `SetGame` refuses one without it at compile time.
+- **Contacts:** `BehaviourSystem` joins its own scene's `PhysicsSceneSystem` contact listener list (`AddSceneContactListener`), not `PhysicsSubsystem`'s, which a scene system cannot reach.
+- **EventBus:** it gained `Send` (deliver now, the payload borrowed), `Post` (no cascade within a drain), subscriptions it owns, and unsubscribing at any time, a handler's own included, without skipping the next subscriber.
+- **Teardown order:** a scene deletes its systems oldest first, as it always had (deleting newest first, tried with behaviours, was undone: a system may borrow one added after it), taking each out of its lookups before it goes. A behaviour's `OnDestroy` therefore finds the systems added after its manager, and one deleted before it missing rather than freed.
+- **Random:** `Random` is a property on Behaviour, Level and Game (the run's `RunRandom`), beside `RunServices.Get<RunRandom>(run)`.
+
+The tables and sections below are the design as approved, kept for the reasoning; the code and `GameCode.md` are the reference where they differ.
 
 ## What exists
 
@@ -236,3 +244,7 @@ Q1-Q5 and Q7-Q9 as recommended. Q6: `Send` goes, but a call or an event can be d
 - **Destroy during the fixed step.** Destroying an entity during `OnFixedUpdate` happens immediately, while during `OnUpdate` it waits for the end of the frame (`Scene.Update` sets `mIsUpdating`; `Scene.FixedUpdate` does not). A test shows the immediate case is safe, so the scene's fixed step was left alone. Making both wait would be a change to every scene.
 - **Active toggles.** Turning an entity off calls its behaviours' `OnDisable`, and turning it back on calls `OnEnable`, but not `OnStart` again. Scripts got no call when an entity was switched on or off.
 - **Enum names need reflection.** The tools name an enum field's values (`entity_inspect`, `component_set` by name) only when the enum is reflected. Engine enums get that from `[Scriptable]`, which phase 6 removes; a game's enum needs `[Reflect]` by hand today. Options: `[Behaviour]` refuses an unreflected enum field at compile time, or a Gameplay attribute for game enums, and a replacement for `[Scriptable]`'s reflection on engine enums before phase 6.
+- **A new game's Engine part cannot use the tiers yet.** The scaffold (`GamePackage`) writes a part that depends on Core and Runtime only and whose `Load` never finds `EnginePluginServices`; a game must add Scene, Engine.Composition and Engine.Gameplay by hand. The scaffold should write them, with the deferred "new project born with Code/".
+- **Loading a scene from a behaviour or level destroys its own scene.** `GameInstance.LoadScene` replaces and destroys the current scene at once; GameCode.md advises an event the Game answers, but nothing guards it.
+- **Phase 6 must keep `GuiFacade` and `HttpFacade`.** Native code reaches the GUI root and HTTP through them, so they move out of the script libraries rather than going with them.
+- **Untested:** a `Ref<T>` field on a behaviour saves its id, but nothing binds it on resolve and no test covers it.
