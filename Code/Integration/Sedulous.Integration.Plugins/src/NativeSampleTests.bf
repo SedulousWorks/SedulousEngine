@@ -7,6 +7,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.Json;
 using Sedulous.Mcp;
+using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
@@ -18,6 +19,7 @@ using Sedulous.Script.Pipeline;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.Gameplay;
+using Sedulous.Engine.GameInstance;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
@@ -33,7 +35,7 @@ namespace Sedulous.Integration.Plugins;
 /// contribution arrives with it and leaves with it:
 ///   - Engine: the spin manager, the Bob behaviour's manager with the system that runs
 ///     behaviours, and the Arena level, in every scene (where the host offers the engine's
-///     service);
+///     service), and its game, on every run (where the host has runs);
 ///   - Pipeline: the note asset type, its builder and its creator, in the host's registries;
 ///   - Tooling: the nativesample_notes MCP tool, in every MCP server the host serves;
 ///   - Editor: the Project > Native Sample Notes action, in the editor.
@@ -584,6 +586,86 @@ static class NativeSampleTests
 		DeleteAndNullify!(owner.Plugins);
 		session.Project = null;
 		DeleteAndNullify!(owner.Project);
+	}
+
+	/// The package's game in a player's run: the run made before the package loaded is offered
+	/// it, and the launch makes a NativeSampleGame. As the player does, the session starts, the game
+	/// launches, then the sample's default scene (Spinners) becomes current, which the game hears;
+	/// it hears the Arena's round run out once, as its 30 seconds pass in simulated time, and not
+	/// before. The session's stop ends it, and the unload takes the game off the run.
+	[Test]
+	public static void ThePackagesGameLaunchesHearsTheSamplesSceneAndTheArenasRoundRunOut()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");
+		let source = PathJoin(dataRoot, "SampleProjects/NativeSample", .. scope .());
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_nativesample_game", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		// Its manifest and content alone, so nothing writes into the tracked tree.
+		Test.Assert(CreateDirectory(dir));
+		Test.Assert(ExportTemplates.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
+		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let sceneInstance = project.SourceDb.GetInstance(project.Settings.DefaultSceneId);
+		Test.Assert(sceneInstance != null, "the sample's default scene");
+
+		// A player's runs: the primary instance made before the plugins load.
+		let instance = scope GameInstance();
+		let runs = scope RunRegistry();
+		runs.Add(instance);
+		let subsystems = scope SubsystemManager();
+		subsystems.SetRunManager(runs);
+		let engineServices = scope EnginePluginServices();
+		let entries = scope List<EnabledPlugin>();
+		defer { ClearAndDeleteItems!(entries); }
+		Entries(entries);
+		let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
+		Test.Assert(engineServices.Attach(host));
+		Test.Assert(host.AddRegistered() case .Ok);
+		host.Load((Span<EnabledPlugin>)entries, scope .());
+		Test.Assert(host.IsLoaded(cId));
+		Test.Assert(engineServices.FindRunListener<GameRunner>() != null, "Engine: its game");
+		Test.Assert(instance.Get<IGameFactory>() != null, "offered to the run made before it");
+
+		instance.Start();
+		Test.Assert(instance.LaunchGame());
+		let game = (Object)instance.NativeGame as NativeSampleGame;
+		Test.Assert((game != null) && game.Running, "the package's game");
+		Test.Assert(game.ScenesActivated == 0, "no scene before the boot scene");
+
+		let scene = instance.CreateScene(sceneInstance.Name);
+		SceneModuleContributions.Global.InstallAll(scene);
+		Test.Assert(SceneStorage.LoadScene(sceneInstance, scene) case .Ok);
+		Test.Assert(scene.GetSystem<Arena>() != null, "the plugin's level came with it");
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		instance.SetScene(scene);
+		Test.Assert(game.ScenesActivated == 1, scope $"{game.ScenesActivated} scenes heard");
+		Test.Assert(game.SceneName == "Spinners", scope $"heard '{game.SceneName}'");
+
+		// The scene's round is 30 seconds: one simulated second short of it, nothing is heard.
+		for (int i < 29)
+			scene.Update(1.0f);
+		Test.Assert(game.RoundsUp == 0, "not before the limit");
+		scene.Update(1.0f);
+		Test.Assert(game.RoundsUp == 1, scope $"{game.RoundsUp} rounds heard at the limit");
+		Test.Assert(game.LastTimeLimit == 30.0f, scope $"a round of {game.LastTimeLimit}");
+		scene.Update(1.0f);
+		Test.Assert(game.RoundsUp == 1, "once");
+
+		instance.Stop(); // the game is deleted with the session: not read after
+		Test.Assert(!instance.HasNativeGame, "the session's stop ends it");
+		instance.ClearScenes();
+		host.Unload();
+		Test.Assert(engineServices.FindRunListener<GameRunner>() == null);
+		Test.Assert(instance.Get<IGameFactory>() == null, "the unload takes the game off the run");
+		Test.Assert(!instance.LaunchGame());
 	}
 
 	/// Every instance under `group` reads back, a scene as its stream into a scratch scene of the

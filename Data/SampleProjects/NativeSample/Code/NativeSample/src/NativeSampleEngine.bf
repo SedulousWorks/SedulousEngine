@@ -13,8 +13,9 @@ namespace NativeSample;
 ///
 /// Load is the one registration point: it adds the spin manager, which turns the entities with a
 /// spin component, the Bob behaviour's manager and the Arena level to every scene, live ones
-/// included, through the engine's service (a host without one, such as the cook, offers none, and
-/// nothing is added). What it adds is recorded and taken out again when the plugin unloads (the
+/// included, and makes NativeSampleGame the game each run launches, through the engine's service
+/// (a host without one, such as the cook, offers none, and nothing is added; one without runs
+/// takes no game). What it adds is recorded and taken out again when the plugin unloads (the
 /// project closing). The part registers itself when the program starts, so linking the project
 /// is all it takes; the project's entry enables it.
 [AlwaysInclude]
@@ -55,6 +56,8 @@ class NativeSampleEnginePart : PluginPart
 		GameplayServices.AddBehaviour<Bob>(engine);
 		// Its level: the Arena round clock in every scene, run where a scene turns it on.
 		GameplayServices.AddLevel<Arena>(engine);
+		// Its game: each run's launch (the player's, a Game tab's Play) makes one.
+		GameplayServices.SetGame<NativeSampleGame>(engine);
 		// Its own script types (the Spin component) on the process's surfaces while it is enabled.
 		ScriptTypesRefused = !engine.AddScriptTypes(PluginId, => NativeSampleScriptSurface.Populate);
 		GlobalLog(.Information, "NativeSample loaded");

@@ -153,7 +153,7 @@ dissolve, waves and a flag that move their vertices, the built-in PBR) and then 
 project's Beef workspace, the game library with all four parts (runtime, pipeline, tooling and
 editor), built into the project's own editor and player (Project > Build Project), and a scene of
 cubes its native Spin component turns, one of them moved up and down by its Bob behaviour, under
-the round clock of its Arena level.
+the round clock of its Arena level, which its Game hears run out.
 
 ## Repository layout
 

@@ -246,35 +246,33 @@ class PlayerApplication : DefaultApplication
 			Instance.SetSaveFile(PathJoin(savePath, saveName, .. scope String()));
 		}
 
-		// The game script launches FIRST: its launch() may load the first level itself, and
-		// a startup scene, when the manifest names one, loads behind it. The player's one run
-		// plays one session, from here to OnExit.
+		// The game launches FIRST, the native game when the build has one, else the manifest's
+		// startup script: its launch may load the first level itself, and a startup scene, when
+		// the manifest names one, loads behind it, which the game hears of as it becomes current
+		// (SetPrimaryScene). The player's one run plays one session, from here to OnExit.
 		Instance.Start();
-		LoadAndStartGameScript();
+		LaunchGame(mSettings.StartupScriptId != Guid(), scope () => ResolveStartupScript());
 
 		if (instance != null)
 			BeginBootScene(host, instance);
-		else if (GameScriptRunning)
-			GlobalLog(.Information, "Player: no startup scene; the game script owns boot");
+		else if (GameRunning)
+			GlobalLog(.Information, "Player: no startup scene; the game owns boot");
 		else
 			GlobalLog(.Information,
-				"Player: no startup scene resolved, and no game script to own boot, so nothing is running");
+				"Player: no startup scene resolved, and no game to own boot, so nothing is running");
 	}
 
 	/// The manifest's startup script is a cooked ScriptClass, bound from the content
-	/// database by id. None is fine; one that does not resolve is an error the run survives.
-	private void LoadAndStartGameScript()
+	/// database by id. Null without one; one that does not resolve is an error the run survives.
+	private ScriptClass ResolveStartupScript()
 	{
 		let scriptId = mSettings.StartupScriptId;
 		if ((scriptId == Guid()) || (Resources == null))
-			return;
+			return null;
 		let scriptClass = Resources.Bind<ScriptClass>(scriptId).Get;
 		if (scriptClass == null)
-		{
 			GlobalLog(.Error, "Player: the startup script asset did not resolve");
-			return;
-		}
-		StartGameScript(scriptClass);
+		return scriptClass;
 	}
 
 	/// A script loaded level gets the player's full activation: a camera, then the base's

@@ -102,11 +102,11 @@ through the MCP tools, **PaperKid**, rebuilt the same way (its authoring scripts
 **Shader Gallery**, Raptor's custom shaders sample ported the same way (its scripts in `Tools/`),
 **Masquerade**, Raptor's networked masked ball ported the same way (its scripts in `Tools/`), and
 **NativeSample**, a game's own native code: its `Code/` workspace, the game library and its
-other three parts (also projects of the engine workspace, linked by Integration.Plugins) and a scene its Spin component turns, its Bob behaviour moves and its Arena level times, built through the
+other three parts (also projects of the engine workspace, linked by Integration.Plugins) and a scene its Spin component turns, its Bob behaviour moves and its Arena level times (its Game hearing the round end), built through the
 project's own editor by its scripts in `Tools/`.
 Their `Cooked/`, `.cache/`, `Editor/` and `Dist/` are generated and ignored. Integration.Mcp
 checks that PaperKid, the Shader Gallery and Masquerade read at the current data versions and cook;
-Integration.Plugins checks that NativeSample reads with its package loaded and cooks. Each one's `CREDITS.md` and
+Integration.Plugins checks that NativeSample reads with its package loaded and cooks, and that its game launches in a run. Each one's `CREDITS.md` and
 `Licenses/` must stay in step with its assets.
 
 The editor's Samples tab downloads the games `Data/SampleProjects/Samples.json` lists from the
