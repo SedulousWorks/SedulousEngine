@@ -23,7 +23,8 @@ class GamePackageTests
 	}
 
 	/// The package is Code/ with its manifest and the Engine part Code/<Game> (the project <Game>),
-	/// the workspace lists the part, a .gitignore keeps what builds write out, the project enables
+	/// which depends on the game tiers' libraries, finds the engine's service in its Load and
+	/// registers its starter behaviour there, written beside it; the workspace lists the part, a .gitignore keeps what builds write out, the project enables
 	/// it (path Code) and saves, and the project's build finds it.
 	[Test]
 	public static void TheGamesPackageIsScaffoldedEnabledAndSaved()
@@ -57,6 +58,15 @@ class GamePackageTests
 		Test.Assert(source.Contains("public override StringView PluginId => \"nativegame\";"), source);
 		Test.Assert(source.Contains("PluginRegistry.Register(new NativeGameEnginePart());") && !source.Contains("@T@"), source);
 		Test.Assert(source.Contains("Compiler.ReadText(\"../Plugin.xml\")"), "the part's project is beside Code/Plugin.xml");
+		for (let library in StringView[3]("Sedulous.Scene", "Sedulous.Engine.Composition", "Sedulous.Engine.Gameplay"))
+			Test.Assert(partProject.Contains(scope $"\"{library}\" = \"*\""), partProject);
+		Test.Assert(source.Contains("using Sedulous.Engine.Composition;") && source.Contains("using Sedulous.Engine.Gameplay;"), source);
+		Test.Assert(source.Contains("let engine = context.Find<EnginePluginServices>();\n\t\tif (engine == null)\n\t\t\treturn;"), source);
+		Test.Assert(source.Contains("\t\tGameplayServices.AddBehaviour<Rotator>(engine);\n"), source);
+		let starter = Read(PathJoin(package, "NativeGame/src/Rotator.bf", .. scope .()), .. scope .());
+		Test.Assert(starter.Contains("namespace NativeGame;") && starter.Contains("[Behaviour(\"nativegame.Rotator\")]"), starter);
+		Test.Assert(starter.Contains("class Rotator : Behaviour") && starter.Contains("protected override void OnUpdate(float dt)"), starter);
+		Test.Assert(starter.Contains("using Sedulous.Engine.Gameplay;") && !starter.Contains("@"), starter);
 
 		let space = Read(PathJoin(package, "BeefSpace.toml", .. scope .()), .. scope .());
 		Test.Assert(space.Contains("StartupProject = \"NativeGameEditor\"") && space.Contains("\"NativeGame\" = {Path = \"NativeGame\"}"), space);
@@ -182,6 +192,9 @@ class GamePackageTests
 		let pipelineSource = Read(PathJoin(dir, "Code/Game.Pipeline/src/GamePipeline.bf", .. scope .()), .. scope .());
 		Test.Assert(pipelineSource.Contains("using Sedulous.Pipeline.Importer;") && pipelineSource.Contains("context.Find<PipelinePluginServices>()"), pipelineSource);
 		Test.Assert(pipelineSource.Contains("public override PluginPartKind Kind => .Pipeline;") && pipelineSource.Contains("class GamePipelinePart"), pipelineSource);
+		// The tiers and the starter behaviour are the Engine part's alone.
+		Test.Assert(!pipelineProject.Contains("Sedulous.Engine.Gameplay") && !pipelineSource.Contains("EnginePluginServices"), pipelineSource);
+		Test.Assert(!FileExists(PathJoin(dir, "Code/Game.Pipeline/src/Rotator.bf", .. scope .())) && FileExists(PathJoin(dir, "Code/Game/src/Rotator.bf", .. scope .())));
 		let editorSource = Read(PathJoin(dir, "Code/Game.Editor/src/GameEditor.bf", .. scope .()), .. scope .());
 		Test.Assert(editorSource.Contains("context.Find<EditorContext>()") && !editorSource.Contains("@"), editorSource);
 		Test.Assert(Read(PathJoin(dir, "Code/Game.Editor/BeefProj.toml", .. scope .()), .. scope .()).Contains("\"Sedulous.Editor.Core\" = \"*\""));

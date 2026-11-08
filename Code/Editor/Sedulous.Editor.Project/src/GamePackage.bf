@@ -22,7 +22,9 @@ class GamePackageInfo
 /// workspace, with its Plugin.xml and the parts asked for (each a part's project and a source
 /// whose Load is the one registration point, finding the service its host hands that kind), the
 /// workspace's BeefSpace.toml and .gitignore, and the project's entry for it. The Engine part is
-/// Code/<Game> (the project <Game>), any other Code/<Game>.<Kind>.
+/// Code/<Game> (the project <Game>), any other Code/<Game>.<Kind>. The Engine part depends on the
+/// game tiers' libraries and comes with a starter behaviour its Load registers, so a new game
+/// builds a tier of its own before a line of it is written.
 ///
 /// A project whose game package is still a plugin package under Plugins/ keeps building through
 /// its entry's path; Find does not report it, and Scaffold refuses, since the entry is taken.
@@ -155,13 +157,17 @@ static class GamePackage
 		if ((WriteText(PathJoin(partDir, "BeefProj.toml", .. scope .()), PartProject(name, kind, .. scope .())) case .Err)
 			|| (WriteText(PathJoin(partDir, scope $"src/{name}{kind}.bf", .. scope .()), PartSource(name, id, kind, .. scope .())) case .Err))
 			return .Err(.Internal);
+		if ((kind == .Engine)
+			&& (WriteText(PathJoin(partDir, scope $"src/{cStarterBehaviour}.bf", .. scope .()), StarterBehaviourSource(name, id, .. scope .())) case .Err))
+			return .Err(.Internal);
 		return .Ok;
 	}
 
 	/// A part's project: a library over the runtime and the library of the service its host hands
 	/// its kind, named as the project's build expects the game's part to be (ProjectBuild.PartName:
 	/// <Game> for the Engine part, <Game>.<Kind> for another). Beef's registry finds the engine's
-	/// libraries it depends on.
+	/// libraries it depends on. The Engine part's are the scene, the engine's plugin service and
+	/// the game tiers (Behaviour, Level and Game), which its starter behaviour already uses.
 	public static void PartProject(StringView name, PluginPartKind kind, String outText)
 	{
 		outText.AppendF("""
@@ -177,7 +183,17 @@ static class GamePackage
 			"Sedulous.Runtime" = "*"
 
 			""", ProjectBuild.PartName(name, true, kind, .. scope .()));
-		if (kind == .Pipeline)
+		if (kind == .Engine)
+		{
+			outText.Append("""
+				"Sedulous.Scene" = "*"
+				"Sedulous.Engine.Composition" = "*"
+				# The game tiers: its behaviours, levels and game, and their registration.
+				"Sedulous.Engine.Gameplay" = "*"
+
+				""");
+		}
+		else if (kind == .Pipeline)
 			outText.Append("\"Sedulous.Pipeline.Importer\" = \"*\"\n");
 		else if (kind == .Tooling)
 			outText.Append("\"Sedulous.Editor.Mcp\" = \"*\"\n");
@@ -196,7 +212,22 @@ static class GamePackage
 					GlobalLog(.Information, "@T@ loaded");
 
 			""";
-		if (kind == .Pipeline)
+		if (kind == .Engine)
+		{
+			usings = "using Sedulous.Engine.Composition;\nusing Sedulous.Engine.Gameplay;\n";
+			load = """
+						// The engine's service: the game's behaviours, levels and game (GameplayServices'
+						// AddBehaviour, AddLevel and SetGame) and its scene managers. A host without one,
+						// such as the cook, offers none.
+						let engine = context.Find<EnginePluginServices>();
+						if (engine == null)
+							return;
+						GameplayServices.AddBehaviour<@B@>(engine);
+						GlobalLog(.Information, "@T@ loaded");
+
+				""";
+		}
+		else if (kind == .Pipeline)
 		{
 			hosts = "the editor and the CLI tools";
 			usings = "using Sedulous.Pipeline.Importer;\n";
@@ -275,9 +306,55 @@ static class GamePackage
 			""");
 		outText.Replace("@U@", usings);
 		outText.Replace("@L@", load);
+		outText.Replace("@B@", cStarterBehaviour);
 		outText.Replace("@H@", hosts);
 		outText.Replace("@T@", name);
 		outText.Replace("@K@", kind.ToString(.. scope .()));
+		outText.Replace("@ID@", id);
+	}
+
+	/// The Engine part's starter behaviour: its class and its source's name in the part's src/.
+	public const String cStarterBehaviour = "Rotator";
+
+	/// The Engine part's starter behaviour, which its Load registers: a class on an entity that
+	/// turns it while the scene simulates, its one public field saved with the scene and shown in
+	/// the inspector. Its id is the package's, so another game's Rotator is another type.
+	public static void StarterBehaviourSource(StringView name, StringView id, String outText)
+	{
+		outText.Append("""
+			using System;
+			using Sedulous.Core;
+			using Sedulous.Engine.Gameplay;
+
+			namespace @T@;
+
+			/// Turns its entity about its own up axis while the scene simulates: the game's starter
+			/// behaviour, a class on its entity whose public fields are saved with the scene, shown in
+			/// the inspector and set by the tools. The Engine part's Load registers it, and Add
+			/// Component puts it on an entity.
+			[Behaviour("@ID@.@B@")]
+			[DisplayName("@B@")]
+			[Category("@T@")]
+			[Description("Turns the entity about its own up axis while the scene simulates.")]
+			class @B@ : Behaviour
+			{
+				[DisplayName("Turns Per Second"), Description("How many whole turns it makes a second.")]
+				public float TurnsPerSecond = 0.25f;
+
+				protected override void OnUpdate(float dt)
+				{
+					let turn = Quaternion.FromAxisAngle(.(0.0f, 1.0f, 0.0f), TurnsPerSecond * TwoPi * dt);
+					// The turn applies in the entity's own frame; normalizing keeps the rotation a unit
+					// one over many frames of accumulated products.
+					var local = Scene.GetLocalTransform(Entity);
+					local.Rotation = Normalized(local.Rotation * turn);
+					Scene.SetLocalTransform(Entity, local);
+				}
+			}
+
+			""");
+		outText.Replace("@B@", cStarterBehaviour);
+		outText.Replace("@T@", name);
 		outText.Replace("@ID@", id);
 	}
 
