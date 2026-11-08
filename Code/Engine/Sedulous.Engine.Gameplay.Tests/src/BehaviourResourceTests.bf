@@ -105,6 +105,13 @@ class Courier : Behaviour
 	public List<CourierGait> Gaits = new .() ~ delete _;
 }
 
+/// A level holding an asset reference.
+[Level("test.depot")]
+class Depot : Level
+{
+	public Ref<Parcel> Stock = .(Guid());
+}
+
 /// A behaviour's Ref<T> fields bound as a component's are: by the resolve pass after a load,
 /// and at once for what is read into a scene already resolved. An id that names nothing stays
 /// unresolved, and is kept.
@@ -212,5 +219,33 @@ class BehaviourResourceTests
 			names.AppendF("{}={} ", name, caseValue);
 		Test.Assert(names == "Walk=0 Trot=4 Gallop=9 ", names);
 		Test.Assert(EnumCases.NameOf(typeof(CourierGait), 5, .. scope String()) == "5", "a value no case has is its number");
+	}
+
+	/// A level's Ref<T> fields are bound as a behaviour's are: by the resolve pass, and at once
+	/// for a block read into a scene already resolved.
+	[Test]
+	public static void ALevelsReferenceIsBoundByTheResolveAndAfterARead()
+	{
+		let fixture = scope ParcelFixture("scratch_level_refs");
+		let parcelId = fixture.Author("parcel", 7);
+		let otherId = fixture.Author("other", 11);
+
+		let source = scope Scene();
+		source.AddSystem<Depot>().Stock.SetId(parcelId);
+		let target = scope Scene();
+		let depot = target.AddSystem<Depot>();
+		RoundTrip(source, target);
+		Test.Assert(depot.Stock.Id == parcelId, "the id was saved with the block");
+		Test.Assert(!depot.Stock.IsBound, "a read before any resolve leaves it unbound");
+
+		SceneResolve.ResolveSceneResources(target, fixture.Manager);
+		Test.Assert(depot.Stock.HasValue && (depot.Stock.Get.Weight == 7), "the resolve bound it");
+
+		// The block read again into the resolved scene (an undo, an edit): bound as it is read.
+		let changed = scope Scene();
+		changed.AddSystem<Depot>().Stock.SetId(otherId);
+		RoundTrip(changed, target);
+		Test.Assert(depot.Stock.Id == otherId);
+		Test.Assert(depot.Stock.HasValue && (depot.Stock.Get.Weight == 11), "a read into a resolved scene binds what it read");
 	}
 }
