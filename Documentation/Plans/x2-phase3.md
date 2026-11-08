@@ -127,13 +127,13 @@ class SkyHopperGame : Game
 }
 ```
 
-- **Registering:** `GameplayServices.SetGame<SkyHopperGame>(engine)`, recorded by a new `EnginePluginServices.AddRunListener(IRunListener)` that is reversed on unload by unsubscribing and deleting. The listener is the engine's `GameRunner`.
-- **Launching:** `GameInstance.LaunchGame()` runs the factory and holds the game as a session service (`AddForSession`). The hosts call it where they call `StartScript` today (player before the boot scene; PIE before the scene load), so both keep their current order (Q4).
+- **Registering:** `GameplayServices.SetGame<SkyHopperGame>(engine)`, recorded by a new `EnginePluginServices.AddRunListener(IRunListener)` that is reversed on unload by unsubscribing and deleting. The listener is the engine's `GameRunner`, which registers itself on every run as its `IGameFactory` (and takes itself off as it is deleted). A second `SetGame` is refused.
+- **Launching:** `GameInstance.LaunchGame()` asks the run's `IGameFactory`, holds the game as a session service (`AddForSession`, under `IGameHooks`) and calls its launch; false with no factory, or with a game running. The hosts call it where they call `StartScript` today (player before the boot scene; PIE before the scene load), so both keep their current order (Q4). `StopGame()` ends one launched outside a session.
 - **What the game receives:**
-  - `GameInstance` gets an `IGameHooks` interface (OnUpdate, OnSceneActivated) for that service;
+  - `GameInstance` gets an `IGameHooks` interface (Launch, Update, SceneActivated, Exit), which `Game` implements explicitly so its own `OnLaunch`/`OnUpdate`/`OnSceneActivated`/`OnExit` stay protected;
   - `TickScript` ticks the hooks with the same delta rule (unscaled by `Run.TimeScale`);
-  - `SetScene` and `PumpLoads` report scene switches;
-  - `OnRunStopping` reaches `OnExit` through `IRunService`, before `RunSave` writes.
+  - `SetScene` and `PumpLoads` report scene switches (a load after the app's policy, the replaced scene gone);
+  - `GameInstance`'s own `IRunService.OnRunStopping` (the last service hook, as it registers first) runs the game's exit, then writes `RunSave`, then closes the networking.
 - **What it can reach:** `Instance` is the run (LoadScene, LoadSceneAsync, RequestExit, InstanceTimeScale, RealDeltaTime, Saves), with the services through `Run.Get<T>()`.
 - **While both exist (phase 4):** a project with a native game and a `StartupScriptId` runs the native game and logs a warning. `GameScriptRunning` becomes "a game is running", of either kind.
 

@@ -43,8 +43,11 @@ namespace Sedulous.Engine.GameInstance;
 ///
 /// It IS its run, through RunBase: its id, name, sessions, event
 /// bus, and what it owns registered on it, so others reach those through the run.
+///
+/// Its own stop hook (IRunService) ends a session in order: the native game's OnExit, then the
+/// save written, then the networking the game used closed.
 [Scriptable, ScriptService, DisplayName("Run")]
-class GameInstance : RunBase
+class GameInstance : RunBase, IRunService
 {
 	/// What the APP does to a scene the moment one of its tracked loads completes: find a
 	/// camera, start it, enable simulation. Pairing it as the current scene is the instance's
@@ -137,6 +140,10 @@ class GameInstance : RunBase
 	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
 	private List<delegate void(Variant)> mGameCallbacks = new .() ~ DeleteContainerAndItems!(_);
 	private List<String> mGameHandlerNames = new .() ~ DeleteContainerAndItems!(_);
+	/// BORROWED: the native game LaunchGame made, which the run holds as a session service
+	/// (under IGameHooks) and deletes as the session ends. Null when none runs, and from its
+	/// OnExit on, so nothing reaches it between its exit and its deletion.
+	private IGameHooks mNativeGame = null;
 
 	public this() : base("Game")
 	{
@@ -186,6 +193,10 @@ class GameInstance : RunBase
 
 	public ~this()
 	{
+		// A native game launched outside a session has no stop to end it: it ends here, while
+		// what it reaches still exists. In a session the stop below ends it.
+		if (State == .Idle)
+			StopGame();
 		// Disposed first, while the fields registered on it still exist: their stop hooks run,
 		// and the run's manager hears it go.
 		Dispose();
@@ -201,8 +212,19 @@ class GameInstance : RunBase
 		mRunHost.Teardown();
 	}
 
-	/// Pairs a scene in as the current one.
+	/// Pairs a scene in as the current one. The native game hears of a scene that was not
+	/// current already.
 	public void SetScene(Scene scene)
+	{
+		let previous = mScene;
+		PairScene(scene);
+		if ((scene != null) && (scene !== previous))
+			ReportSceneActivated(scene);
+	}
+
+	/// The current scene, and what follows it, without telling the game: a tracked load tells it
+	/// once the app's policy has run.
+	private void PairScene(Scene scene)
 	{
 		mScene = scene;
 		// Replication follows the current scene across loads.
@@ -448,7 +470,7 @@ class GameInstance : RunBase
 
 			// The instance's own bookkeeping first, then the app's policy.
 			let previous = mScene;
-			SetScene(activated);
+			PairScene(activated);
 			mSceneManager.CurrentScene = activated;
 			if (mActivationPolicy != null)
 				mActivationPolicy(activated);
@@ -461,6 +483,11 @@ class GameInstance : RunBase
 
 			// Retired: the ticket now reads terminal safe through the fallback.
 			mLoads.RemoveAt(i);
+
+			// The game hears last, of a started scene with the old one gone; retired first, so a
+			// load it starts from here is a fresh entry.
+			if (activated !== previous)
+				ReportSceneActivated(activated);
 		}
 	}
 
@@ -747,6 +774,9 @@ class GameInstance : RunBase
 			var args = ScriptValue[1](.FromFloat(orchestrator));
 			InvokeGame("update", .(&args[0], 1));
 		}
+		// The native game's update takes the orchestrator's delta too.
+		if (mNativeGame != null)
+			mNativeGame.Update(orchestrator);
 		mRunHost.Advance(gameplay);
 	}
 
@@ -810,6 +840,93 @@ class GameInstance : RunBase
 		mGameSubscriptions = new .();
 		ClearAndDeleteItems!(mGameCallbacks);
 		ClearAndDeleteItems!(mGameHandlerNames);
+	}
+
+	// ==================== The native game ====================
+
+	/// Whether a native game is running: launched, and not yet at its OnExit.
+	public bool HasNativeGame => mNativeGame != null;
+	/// The running native game, or null. BORROWED: the run deletes it as the session ends.
+	public IGameHooks NativeGame => mNativeGame;
+	/// Whether a game of either kind runs: the native game, or a game script.
+	public bool GameRunning => HasNativeGame || ScriptRunning;
+
+	/// Launches the native game: the factory among the run's services (IGameFactory; the
+	/// engine's game runner, when the build registered a game) makes it, the run holds it for
+	/// this session (AddForSession, deleted as the session stops), and its OnLaunch runs. From
+	/// then on TickScript updates it, SetScene and the tracked loads tell it of each scene that
+	/// becomes current, and the session's stop ends it (OnRunStopping).
+	///
+	/// The hosts call it where they start a game script: the player before its boot scene,
+	/// a Game tab before its scene loads, so a scene current before the launch is not reported.
+	/// False, with nothing launched, when no factory is registered (a build without a game),
+	/// when a game runs already (logged), when the run is stopping or gone, or when the factory
+	/// made none (logged).
+	public bool LaunchGame()
+	{
+		if (mNativeGame != null)
+		{
+			GlobalLog(.Warning, "Run: a game is running already; the second launch is refused");
+			return false;
+		}
+		if ((State == .Stopping) || (State == .Disposed))
+			return false;
+		let factory = Get<IGameFactory>();
+		if (factory == null)
+			return false;
+		let game = factory.CreateGame(this);
+		if (game == null)
+		{
+			GlobalLog(.Error, "Run: the game's factory made no game");
+			return false;
+		}
+		AddForSession<IGameHooks>(game);
+		mNativeGame = game;
+		game.Launch();
+		GlobalLog(.Information, "Run: game launched");
+		return true;
+	}
+
+	/// Ends the native game outside a session's stop, which is what a host does when it
+	/// abandons a launch before starting the session (a Game tab whose scene failed to load):
+	/// OnExit, the save written, its networking closed, and the game deleted. Nothing when none
+	/// runs.
+	public void StopGame()
+	{
+		if (mNativeGame == null)
+			return;
+		EndNativeGame();
+		Remove<IGameHooks>();
+	}
+
+	/// The session ends (RunBase.Stop): the native game's OnExit, then the save written, so
+	/// what the game saved as it exited is in the file, then the networking it hosted or
+	/// joined closed after its exit had the chance to say goodbye. A game script's exit() ran
+	/// earlier, in StopScript, so what it saved is written here too. The run deletes the game
+	/// after the hooks, with the session's other services.
+	void IRunService.OnRunStopping(IRun run)
+	{
+		if (mNativeGame != null)
+			EndNativeGame();
+		else
+			mSave.Flush();
+	}
+
+	/// OnExit, the save, the networking, in that order; the game is no longer reached after.
+	private void EndNativeGame()
+	{
+		let game = mNativeGame;
+		mNativeGame = null;
+		game.Exit();
+		mSave.Flush();
+		mNetwork.StopNetworking();
+	}
+
+	/// The native game hears that `scene` became current.
+	private void ReportSceneActivated(Scene scene)
+	{
+		if (mNativeGame != null)
+			mNativeGame.SceneActivated(scene);
 	}
 
 	// ==================== Save ====================

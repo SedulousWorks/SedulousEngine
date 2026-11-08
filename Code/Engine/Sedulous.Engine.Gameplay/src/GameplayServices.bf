@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
 using Sedulous.Engine.Composition;
@@ -10,8 +11,9 @@ namespace Sedulous.Engine.Gameplay;
 /// service (PluginContext.Find<EnginePluginServices>; a host without one, such as the cook,
 /// offers none, and nothing is added).
 ///
-/// Each registration is a scene contribution, so it reaches every live scene and every scene
-/// made after, and the plugin host's unload takes it out again in reverse.
+/// Each behaviour and level is a scene contribution, so it reaches every live scene and every
+/// scene made after; the game is a run listener, so it reaches every run. The plugin host's
+/// unload takes each out again in reverse.
 static class GameplayServices
 {
 	/// The contribution ids, labels only: contributions are keyed by their system type.
@@ -61,6 +63,27 @@ static class GameplayServices
 		level.Install = => InstallLevel<T>;
 		level.SystemType = SystemTypeOf<T>();
 		engine.AddSceneManager(level);
+	}
+
+	/// Makes `T` the build's game: a GameRunner on the engine's runs, so each run's LaunchGame
+	/// makes a `T`, held for that session. One game per engine: a second registration is
+	/// refused, logged. False, with nothing added, then, without the engine's service, or in a
+	/// host without runs (a cook, a tool).
+	public static bool SetGame<T>(EnginePluginServices engine) where T : Game, new, delete
+	{
+		if (engine == null)
+			return false;
+		if (engine.FindRunListener<GameRunner>() != null)
+		{
+			GlobalLog(.Error, "Gameplay: the engine has a game already; '{}' is not registered", typeof(T).GetFullName(.. scope .()));
+			return false;
+		}
+		return engine.AddRunListener(new GameRunner(=> CreateGame<T>));
+	}
+
+	private static Game CreateGame<T>() where T : Game, new, delete
+	{
+		return new T();
 	}
 
 	/// The key a scene files system `S` under, which is how a contribution's removal finds it

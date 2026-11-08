@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Resource;
+using Sedulous.Run;
 using Sedulous.Engine.Domain;
 using Sedulous.Engine.Composition;
 
@@ -61,6 +62,58 @@ class ServicesProbePart : PluginPart
 		contribution.Install = => InstallProbeManager;
 		contribution.SystemType = ManagerType;
 		services.AddSceneManager(contribution);
+	}
+}
+
+/// A run listener a plugin adds: it counts what it hears and its deletion.
+class ProbeRunListener : IRunListener
+{
+	public static int Created = 0;
+	public static int Started = 0;
+	public static int Stopping = 0;
+	public static int Deleted = 0;
+
+	public static void Reset()
+	{
+		Created = 0;
+		Started = 0;
+		Stopping = 0;
+		Deleted = 0;
+	}
+
+	public ~this()
+	{
+		Deleted++;
+	}
+
+	public void OnRunCreated(IRun run)
+	{
+		Created++;
+	}
+
+	public void OnRunStarted(IRun run)
+	{
+		Started++;
+	}
+
+	public void OnRunStopping(IRun run)
+	{
+		Stopping++;
+	}
+}
+
+/// The probe plugin's Engine part adding a run listener through EnginePluginServices.
+class RunListenerProbePart : PluginPart
+{
+	public static bool Added = false;
+
+	public override StringView PluginId => "run_listener_probe";
+	public override PluginPartKind Kind => .Engine;
+
+	public override void Load(PluginContext context)
+	{
+		let services = context.Find<EnginePluginServices>();
+		Added = (services != null) && services.AddRunListener(new ProbeRunListener());
 	}
 }
 
@@ -151,5 +204,106 @@ static class EnginePluginServicesTests
 		Test.Assert(!ServicesProbePart.FoundServices);
 		Test.Assert(!HasModule("services_probe"));
 		host.Unload();
+	}
+
+	private static String RunListenerManifest()
+	{
+		let manifest = scope PluginManifest();
+		manifest.Id.Set("run_listener_probe");
+		manifest.Version.Set("0.1.0");
+		manifest.EngineVersion.Set("0.1");
+		let part = new PluginManifestPart();
+		part.Kind.Set("Engine");
+		manifest.Parts.Add(part);
+		let platform = new PluginPlatform();
+		platform.Platform.Set(PluginHost.HostPlatform);
+		manifest.Platforms.Add(platform);
+		return manifest.Write(.. new .());
+	}
+
+	/// A run listener a part adds hears the runs made before it (caught up: created, and started
+	/// when a session is under way) and the transitions after; the unload unsubscribes and
+	/// deletes it, so the runs' later transitions reach nothing.
+	[Test]
+	public static void APartsRunListenerHearsTheRunsUntilTheUnload()
+	{
+		ProbeRunListener.Reset();
+		let playing = scope RunBase("playing");
+		let idle = scope RunBase("idle");
+		let runs = scope RunRegistry();
+		runs.Add(playing);
+		runs.Add(idle);
+		playing.Start();
+
+		let subsystems = scope SubsystemManager();
+		subsystems.SetRunManager(runs);
+		let services = scope EnginePluginServices();
+		let xml = RunListenerManifest();
+		defer delete xml;
+		let probe = scope RunListenerProbePart();
+		{
+			let host = scope PluginHost(subsystems, .Player, "0.1.0");
+			Test.Assert(services.Attach(host));
+			PluginPart[1] parts = .(probe);
+			Test.Assert(host.AddLinked(xml, parts) case .Ok);
+			let report = scope PluginLoadReport();
+			host.Load(scope StringView[]("run_listener_probe"), report);
+			Test.Assert(report.Loaded.Count == 1);
+
+			Test.Assert(RunListenerProbePart.Added);
+			Test.Assert(ProbeRunListener.Created == 2, "caught up on both runs");
+			Test.Assert(ProbeRunListener.Started == 1, "and on the one playing");
+			Test.Assert(services.FindRunListener<ProbeRunListener>() != null);
+
+			idle.Start();
+			playing.Stop();
+			Test.Assert(ProbeRunListener.Started == 2);
+			Test.Assert(ProbeRunListener.Stopping == 1);
+
+			host.Unload();
+			Test.Assert(ProbeRunListener.Deleted == 1, "the unload deletes it");
+			Test.Assert(services.FindRunListener<ProbeRunListener>() == null);
+			idle.Stop();
+			let later = scope RunBase("later");
+			runs.Add(later);
+			Test.Assert((ProbeRunListener.Stopping == 1) && (ProbeRunListener.Created == 2), "unsubscribed: it hears nothing more");
+		}
+	}
+
+	/// In a host without runs (no run manager on its subsystems), a run listener is refused and
+	/// deleted.
+	[Test]
+	public static void ARunListenerWithoutRunsIsRefused()
+	{
+		ProbeRunListener.Reset();
+		let subsystems = scope SubsystemManager();
+		let services = scope EnginePluginServices();
+		let host = scope PluginHost(subsystems, .Cook, "0.1.0");
+		Test.Assert(services.Attach(host));
+		Test.Assert(!services.AddRunListener(new ProbeRunListener()));
+		Test.Assert(ProbeRunListener.Deleted == 1);
+		Test.Assert(services.FindRunListener<ProbeRunListener>() == null);
+	}
+
+	/// A listener no unload took out goes with the service: unsubscribed and deleted.
+	[Test]
+	public static void ARunListenerLeftOverGoesWithTheService()
+	{
+		ProbeRunListener.Reset();
+		let run = scope RunBase("run");
+		let runs = scope RunRegistry();
+		runs.Add(run);
+		let subsystems = scope SubsystemManager();
+		subsystems.SetRunManager(runs);
+		{
+			let services = scope EnginePluginServices();
+			let host = scope PluginHost(subsystems, .Player, "0.1.0");
+			Test.Assert(services.Attach(host));
+			Test.Assert(services.AddRunListener(new ProbeRunListener()));
+			Test.Assert(ProbeRunListener.Created == 1);
+		}
+		Test.Assert(ProbeRunListener.Deleted == 1);
+		run.Start();
+		Test.Assert(ProbeRunListener.Started == 0, "unsubscribed as it went");
 	}
 }
