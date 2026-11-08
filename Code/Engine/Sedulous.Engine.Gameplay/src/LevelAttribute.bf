@@ -60,7 +60,18 @@ struct LevelAttribute : Attribute, IComptimeTypeApply
 		body.Append(";\n");
 		body.Append("public override void SerializeSettings(Sedulous.Core.Serialization.ISerializer ar)\n{\n");
 		Sedulous.Core.Serialization.SerializableAttribute.AppendFieldMoves(type, body, true);
+		// Its asset references, bound by the resolve and again after a read into a resolved scene.
+		let binds = scope String();
+		ResourceRefFields.AppendBinds(type, typeof(Level), "this", binds);
+		if (!binds.IsEmpty)
+			body.Append("if (ar.Mode == .Read)\n\tRebindAfterRead();\n");
 		body.Append("}\n");
+		if (!binds.IsEmpty)
+		{
+			body.Append("protected override void BindReferences(Sedulous.Resource.ResourceManager manager)\n{\n");
+			body.Append(binds);
+			body.Append("}\n");
+		}
 		Sedulous.Core.EnumCases.AppendRegistration(type, body);
 		Compiler.EmitTypeBody(type, body);
 	}

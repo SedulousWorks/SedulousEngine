@@ -595,41 +595,10 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 	[Comptime]
 	private static void EmitBindReferences(Type type)
 	{
-		if (!(type is TypeInstance))
-			return;
-		let chain = scope List<Type>();
-		for (var walk = type; (walk != null) && (walk != typeof(Behaviour)); walk = walk.BaseType)
-			chain.Add(walk);
 		let code = scope String();
-		for (int i = chain.Count - 1; i >= 0; i--)
-		{
-			let declaring = chain[i];
-			for (let field in declaring.GetFields())
-			{
-				if (!field.IsInstanceField || !field.IsPublic || (field.DeclaringType != declaring))
-					continue;
-				if (field.GetCustomAttribute<NotSerializedAttribute>() case .Ok)
-					continue;
-				if (!IsResourceRef(field.FieldType))
-					continue;
-				code.Append("instance.");
-				code.Append(field.Name);
-				code.Append(".Bind(manager);\n");
-			}
-		}
+		ResourceRefFields.AppendBinds(type, typeof(Behaviour), "instance", code);
 		if (!code.IsEmpty)
 			Compiler.MixinRoot(code);
-	}
-
-	/// Whether `type` is a Ref<T>. Matched by name, as the serializer matches a List.
-	[Comptime]
-	private static bool IsResourceRef(Type type)
-	{
-		if (type == null)
-			return false;
-		let name = scope String();
-		type.GetFullName(name);
-		return name.StartsWith("Sedulous.Resource.Ref<");
 	}
 
 	/// The dense index of a live, generation matching instance, or cInvalid.
