@@ -495,6 +495,39 @@ static class EngineSurfaceScriptTests
 		Test.Assert(sets.Get(e).PoseAssignment == .Unison);
 	}
 
+	/// A struct-valued property written through a handle reaches the component: a whole value
+	/// assigned goes through the property's setter. (A field of it assigned in place still lands in
+	/// the copy the getter returns: Documentation/Backlog.md.)
+	[Test]
+	public static void AStructPropertyWrittenThroughAHandleReachesTheComponent()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		let ok = vm.Compile("game", "game.as", """
+			void tint(const Entity &in self)
+			{
+				LightComponent@ light = LightComponent::of(self);
+				light.Color = Color(0.25f, 0.5f, 0.75f, 1.0f);
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("lit");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let lights = scene.AddSystem<Sedulous.Engine.Render.LightComponentManager>();
+		let e = scene.CreateEntity("lamp");
+		lights.Add(e);
+		var args = ScriptValue[1](.FromEntity(e, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "void tint(const Entity &in)", args, ref r), "ran");
+		let color = lights.Get(e).Color;
+		Test.Assert((color.R == 0.25f) && (color.G == 0.5f) && (color.B == 0.75f), "the whole value reached the component");
+	}
+
 	/// `X::of(entity)` is a handle, null when the entity has no such component, so `is null`
 	/// is the test; a handle kept after its component has gone answers IsValid false and fails
 	/// any other use with the one gone-object error, never a write through nothing.

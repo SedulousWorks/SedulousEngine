@@ -5,6 +5,14 @@ what is known; remove an item in the commit that resolves it.
 
 ## Decisions pending
 
+### A script's write to a field of a struct property is lost
+`LightComponent::of(e).Color.R = 0.9f` compiles and runs, and changes nothing: reflected structs
+are AngelScript value types and properties `get_X`/`set_X`, so the field lands in the copy
+`get_Color` returns. A whole value (`light.Color = Color(...)`) goes through the setter and works
+(`EngineSurfaceScriptTests.AStructPropertyWrittenThroughAHandleReachesTheComponent`). The fix
+(refuse it at compile time, or write it back through the setter) waits on the same ruling as
+Raptor's fix for its handle writes, so the two engines stay alike.
+
 ### Input action sets for UI and gameplay
 `ActionRuntime` has named sets with priorities, `EnableSet` / `DisableSet`, and a modal
 `PushExclusiveSet` / `PopExclusiveSet` stack that latches held input across the boundary.
