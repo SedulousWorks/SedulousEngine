@@ -34,6 +34,7 @@ class SceneManager
 	/// Non owning.
 	private List<Scene> mActive = new .() ~ delete _;
 	private List<Scene> mPendingRemove = new .() ~ delete _;
+	/// True while BeginFrame steps the scenes and while Update ticks them.
 	private bool mUpdating = false;
 	/// Scene destroys waiting in the run's mutations.
 	private int32 mRunDestroysQueued = 0;
@@ -136,6 +137,10 @@ class SceneManager
 
 	public bool IsActive(Scene scene) => mActive.Contains(scene);
 
+	/// Whether a scene of the group is being ticked: BeginFrame's fixed steps or Update. An
+	/// owner holds back what would replace or free a scene (a level load) until it is false.
+	public bool IsUpdating => mUpdating;
+
 	/// Destroys a scene, DEFERRED to the end of the tick (either lane) when called during one, and
 	/// to the run's flush while the run defers (a script asked from a handler or the fixed step:
 	/// the scene may be the one it runs in). Asked twice, it is destroyed once.
@@ -145,7 +150,9 @@ class SceneManager
 			return;
 		if (mUpdating)
 		{
-			mPendingRemove.Add(scene);
+			// Once: a second ask before the flush would free it twice.
+			if (!mPendingRemove.Contains(scene))
+				mPendingRemove.Add(scene);
 			return;
 		}
 		if ((mSceneRun != null) && mSceneRun.Mutations.IsDeferring)
@@ -191,6 +198,9 @@ class SceneManager
 	/// `time` carries host by context, built by the driver; this manager contributes the
 	/// group term and each scene its own. THE one place the chain is composed, which is why
 	/// the terms cannot drift apart.
+	///
+	/// A scene destroyed during the steps waits for the end of Update, which the drive runs
+	/// after this every frame, as an entity destroyed during them does.
 	public void BeginFrame(FrameTime time)
 	{
 		// Scripts run in the fixed step: what they destroy waits for the end of the lane, and

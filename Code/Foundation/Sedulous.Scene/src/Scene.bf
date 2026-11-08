@@ -1116,14 +1116,23 @@ class Scene : IScriptWeaklyHeld
 		ProcessPendingDestroys();
 	}
 
+	/// One fixed step. A destroy asked for during it waits, as one during Update does, for
+	/// the cleanup at the end of the frame's Update, which the drive runs after the frame's
+	/// fixed steps: a step's systems (physics and its contacts, a behaviour's fixed tick,
+	/// replication's apply) never have an entity go from under them, and the remaining steps
+	/// of the frame still see it. A caller stepping by hand without an Update leaves it queued
+	/// until its next Update.
 	public void FixedUpdate(float fixedDeltaTime)
 	{
+		let wasUpdating = mIsUpdating;
+		mIsUpdating = true;
 		for (let system in mSortedSystems)
 		{
 			if (system.IsSimulationOnly && !mSimulationEnabled)
 				continue;
 			system.OnFixedUpdate(fixedDeltaTime);
 		}
+		mIsUpdating = wasUpdating;
 	}
 
 	/// Initialises components added since the last call, across every manager.

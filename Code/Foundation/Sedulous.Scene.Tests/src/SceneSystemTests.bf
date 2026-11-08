@@ -87,6 +87,39 @@ class SceneSystemTests
 		Test.Assert(!scene.IsValid(target), "and gone by the end of it");
 	}
 
+	/// A destroy asked for during a fixed step waits for the same cleanup: the entity stays
+	/// valid through the rest of the step, the frame's other steps and its Update, and is gone
+	/// once the Update ends. The Update's own queue still flushes after a step without one.
+	[Test]
+	public static void ADestroyDuringTheFixedStepWaitsForTheEndOfTheFrame()
+	{
+		let scene = scope Scene();
+		let manager = scene.AddSystem<HealthManager>();
+		let target = scene.CreateEntity();
+		manager.Add(target);
+		let destroyer = scene.AddSystem<FixedDestroyerSystem>();
+		destroyer.Target = target;
+
+		scene.FixedUpdate(0.02f);
+		Test.Assert(destroyer.TargetValidAfterDestroy, "still valid after the call");
+		Test.Assert(scene.IsValid(target) && manager.Has(target), "and after the step");
+		Test.Assert(manager.Destroyed == 0);
+
+		scene.FixedUpdate(0.02f); // a second step of the same frame: asked again, still queued
+		Test.Assert(scene.IsValid(target));
+
+		scene.Update(0.016f);
+		Test.Assert(destroyer.TargetValidInUpdate, "the frame's Update still sees it");
+		Test.Assert(!scene.IsValid(target), "gone at the end of the frame");
+		Test.Assert(!manager.Has(target));
+		Test.Assert(manager.Destroyed == 1, "destroyed once");
+
+		// Outside a step and an update, a destroy is immediate again: the step put the flag back.
+		let other = scene.CreateEntity();
+		scene.DestroyEntity(other);
+		Test.Assert(!scene.IsValid(other));
+	}
+
 	[Test]
 	public static void ActiveChangesAndStartStopNotifySystemsAndFixedUpdateTicks()
 	{

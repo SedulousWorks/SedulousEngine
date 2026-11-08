@@ -355,11 +355,12 @@ class BehaviourLifecycleTests
 		Test.Assert(walker.FixedCount == 3);
 	}
 
-	/// An entity destroyed during the fixed step goes at once (the scene defers only during
-	/// Update): its behaviour is disabled and destroyed there, outlives its own callback, and
-	/// the rest of the step still runs.
+	/// An entity destroyed during the fixed step waits for the end of the frame, as one
+	/// destroyed during Update does: it stays valid with its behaviour attached for the rest of
+	/// the step, its behaviour still hears the frame's update and late tick, and it goes as the
+	/// frame's Update ends.
 	[Test]
-	public static void ADestroyDuringTheFixedStepIsSafe()
+	public static void ADestroyDuringTheFixedStepWaitsForTheEndOfTheFrame()
 	{
 		LifecycleLog.Text.Clear();
 		let scene = scope Scene();
@@ -371,22 +372,30 @@ class BehaviourLifecycleTests
 		scene.Update(cDt);
 
 		bool fired = false;
-		int countAfter = 0;
+		bool validAfter = false;
+		bool attachedAfter = false;
 		delegate void(Walker walker) hook = scope [&] (walker) =>
 		{
 			if (fired || (walker.Entity != a))
 				return;
 			fired = true;
 			scene.DestroyEntity(a);
-			countAfter = walker.FixedCount;
+			validAfter = scene.IsValid(a);
+			attachedAfter = walker.Scene == scene;
 		};
 		Walker.FixedHook = hook;
 		defer { Walker.FixedHook = null; }
 
 		LifecycleLog.Text.Clear();
 		scene.FixedUpdate(cFixedDt);
-		Test.Assert(LifecycleLog.Text == "W:a.Fixed W:a.Disable W:a.Destroy W:b.Fixed ", LifecycleLog.Text);
-		Test.Assert(countAfter == 1);
+		Test.Assert(LifecycleLog.Text == "W:a.Fixed W:b.Fixed ", LifecycleLog.Text);
+		Test.Assert(validAfter && attachedAfter, "deferred: still valid and attached in its own callback");
+		Test.Assert(scene.IsValid(a) && (walkers.Count == 2), "and after the step");
+
+		LifecycleLog.Text.Clear();
+		scene.Update(cDt);
+		Test.Assert(LifecycleLog.Text == "W:a.Update W:b.Update W:a.Late W:b.Late W:a.Disable W:a.Destroy ", LifecycleLog.Text);
+		Test.Assert(!scene.IsValid(a));
 		Test.Assert(walkers.Count == 1);
 
 		LifecycleLog.Text.Clear();

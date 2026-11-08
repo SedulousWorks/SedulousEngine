@@ -15,6 +15,7 @@ class Gauntlet : Level
 	/// test clears before it goes.
 	public static delegate void(Gauntlet level) StartHook = null;
 	public static delegate void(Gauntlet level) UpdateHook = null;
+	public static delegate void(Gauntlet level) FixedHook = null;
 
 	public float TimeLimit = 30.0f;
 	public int32 Rounds = 3;
@@ -57,6 +58,8 @@ class Gauntlet : Level
 	{
 		LifecycleLog.Text.Append("G.Fixed ");
 		mFixedCount++;
+		if (FixedHook != null)
+			FixedHook(this);
 	}
 
 	protected override void OnStop()

@@ -3,7 +3,9 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Run;
 using Sedulous.Scene;
+using Sedulous.Engine.GameInstance;
 using internal Sedulous.Engine.Gameplay;
+using internal Sedulous.Engine.GameInstance;
 
 namespace Sedulous.Engine.Gameplay;
 
@@ -101,10 +103,17 @@ abstract class Behaviour
 					return;
 				// Held, as a pass holds: a handler that removes this behaviour, or destroys its
 				// entity, outside a pass (an event drained at the run's frame end) still returns
-				// into a live instance, deleted once the handler is done.
+				// into a live instance, deleted once the handler is done. And marked as scene code
+				// for its run, so a LoadScene from it defers rather than destroying this scene
+				// under it.
 				let manager = mManager;
+				let game = RunServices.Get<GameInstance>(Run);
 				manager.Hold();
+				if (game != null)
+					game.EnterSceneCode();
 				handler(evt);
+				if (game != null)
+					game.LeaveSceneCode();
 				manager.Unhold();
 			} ~ delete handler;
 		let subscription = GameEvents.Listen<T>(run, gated);
