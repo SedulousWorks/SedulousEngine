@@ -346,7 +346,7 @@ class GuiSubsystemTests
 	}
 
 	[Test]
-	public static void WithRunScreensOnEachRunHasItsOwnScreenTierDrawnForItsTabAndGoneWithItsRun()
+	public static void WithRunScreensOnEachRunHasItsOwnScreenTierDrawnForItsTabAndGoneWithItsRunAScriptWithNoRunGetsOneNoTabDraws()
 	{
 		let device = scope NullDevice();
 		let engine = scope GuiTestEngine();
@@ -366,7 +366,14 @@ class GuiSubsystemTests
 		Test.Assert(a !== b);
 		Test.Assert(a !== engine.Gui.Screens);
 		Test.Assert(engine.Gui.ScreensFor(runA) === a, "made once");
-		Test.Assert(engine.Gui.ScreensFor(null) === engine.Gui.Screens);
+		// A script with no run (a scene page's Simulate) gets a tier of its own, not the shared tier,
+		// which every tab draws above its run's screens: what it pushes never shows over a Game tab.
+		let unbound = engine.Gui.ScreensFor(null);
+		Test.Assert(unbound != null);
+		Test.Assert(unbound !== engine.Gui.Screens);
+		Test.Assert(unbound !== a);
+		Test.Assert(engine.Gui.ScreensFor(null) === unbound, "made once");
+		Test.Assert(unbound.Id == "screens");
 		Test.Assert(engine.Gui.RunScreenCount == 2);
 		Test.Assert(a.Id == "screens", "what its scripts find under their root");
 
@@ -387,12 +394,28 @@ class GuiSubsystemTests
 		engine.Gui.SetRenderRun(runA);
 		engine.Gui.PrepareOverlay(encoder, view);
 		Test.Assert(Near(engine.Gui.ScreenRootFor(runA).Size.X, 320.0f));
-		let pass = encoder.BeginRenderPass(.());
+		var pass = encoder.BeginRenderPass(.());
 		Test.Assert(pass != null);
 		let draws = device.Counters().Draws;
 		engine.Gui.Render(pass, view);
-		Test.Assert(device.Counters().Draws > draws);
+		let drawn = device.Counters().Draws - draws;
+		Test.Assert(drawn > 0);
 		pass.End();
+
+		// A screen on the unbound tier draws in no tab: A's frame draws as much as before.
+		let simulated = GuiTestEngine.MakeMenu("talk");
+		Test.Assert(unbound.Push(simulated) != null);
+		simulated.ReleaseRef(); // its screen holds it
+		engine.Gui.PrepareOverlay(encoder, view);
+		pass = encoder.BeginRenderPass(.());
+		Test.Assert(pass != null);
+		let before = device.Counters().Draws;
+		engine.Gui.Render(pass, view);
+		Test.Assert(device.Counters().Draws - before == drawn);
+		pass.End();
+		// Its host's stop takes it down.
+		engine.Gui.EndUnboundScreens();
+		Test.Assert(unbound.Count == 0);
 		engine.Gui.SetRenderRun(null);
 
 		// Its run's session ends (the tab's Stop): its tier goes, with no call to the GUI. A run gone
@@ -404,6 +427,7 @@ class GuiSubsystemTests
 		// A's next session starts with a new tier, which its stop ends in turn.
 		runA.Start();
 		Test.Assert(engine.Gui.ScreensFor(runA) != null);
+		Test.Assert(engine.Gui.RunScreenCount == 1);
 		runA.Stop();
 		Test.Assert(engine.Gui.RunScreenCount == 0);
 	}

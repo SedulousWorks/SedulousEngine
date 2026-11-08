@@ -29,6 +29,8 @@ extension GuiSubsystem
 			mScreen.Bridge.SetTextInputTarget(window);
 		for (let tier in mRunTiers)
 			tier.Bridge.SetTextInputTarget(window);
+		if (mUnbound != null)
+			mUnbound.Bridge.SetTextInputTarget(window);
 		for (let tier in mSceneTiers)
 			tier.Bridge.SetTextInputTarget(window);
 	}
