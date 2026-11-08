@@ -250,7 +250,9 @@ plugins when it opens the project, so either takes effect there. `plugin_scaffol
 Engine, Pipeline, Tooling, Editor; default Engine) makes the game's own native code, a package in
 the project's Beef workspace `Code/` enabled in the project (path `Code`), or adds to it the parts it
 lacks, as the editor's Add Native Code does: the Engine part is `Code/<Game>`, any other
-`Code/<Game>.<Kind>`, and `Code/BeefSpace.toml` lists them (the user's own lines stay). It never
+`Code/<Game>.<Kind>`, and `Code/BeefSpace.toml` lists them (the user's own lines stay). The Engine
+part depends on the game tiers' libraries, and its `Load` registers a starter behaviour, `Rotator`
+(`Code/<Game>/src/Rotator.bf`). It never
 overwrites code, and the editor's Project > Build Project builds it into the project's own editor
 and player, finding the engine SDK through `SEDULOUS_SDK` or the checkout the editor runs from. A loaded plugin reports its
 `settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`

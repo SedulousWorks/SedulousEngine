@@ -381,6 +381,7 @@ static class PluginToolsTests
 		}
 		Test.Assert(changed == 1);
 		Test.Assert(session.Project.Settings.FindPlugin("spingame") != null);
+		Test.Assert(FileExists(PathJoin(dir, "Code/SpinGame/src/Rotator.bf", .. scope .())), "the Engine part's starter behaviour");
 		{
 			let parts = JsonValue.MakeArray();
 			parts.Add(JsonValue.MakeString("Editor"));
