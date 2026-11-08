@@ -44,6 +44,59 @@ map is [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
 
+### The sky light re-bakes for its first 20 frames, on every platform
+Raptor's finding (2026-11-08, profiling its flagship's slow first seconds of play), the same
+here: `IblContext.BakeWarmup = 20` makes `IBLSystem.ProcessContext` re-run the whole bake (the
+environment cube, its mips, the prefilter: 30 passes of 1024 samples a texel, and the SH) for
+each context's first 20 frames, so a dropped web start-up submit cannot lose the one-shot bake.
+Every platform pays it: Raptor's profile (Debug, Vulkan) had frames of 360 to 430 ms, nearly all
+of it the CPU waiting at the frame fence on `ibl.prefilter`, about 8 seconds at 2 to 3 fps on
+each play start, and on each scene page's view (a context per scene). The reflection probes copy
+it (`ReflectionProbeSystem.mCaptureWarmup = 20`). Fix: the backends say whether a start-up
+submit can be dropped (a flag in `DeviceFeatures`, true on WebGPU only), and the IBL and the
+probes warm up only where it is set, the rest baking once; on WebGPU, space the repeats (a few
+bakes over the first frames, not one a frame). A test that a context bakes once where the flag
+is off.
+
+### A sequencer for cutscenes
+Raptor's item (2026-11-08, from its flagship's act 1): timelines that drive several entities at
+once (transforms and any reflected property, skeletal clips, camera cuts, sounds, events, fades,
+nested sequences), authored on a timeline page and played from script. Cutscenes run as script
+for now; what they need is the sequencer's requirements list. Camera shake stays out of the
+engine (games shake differently; a script does it on the camera it already moves). A draft from a
+survey of the reference engines (none of ezEngine, Lumix or Zero has one; Traktor's Theater,
+Flax's Scene Animations, Godot's AnimationPlayer, LunarSong's timeline and doriax's action
+timeline do):
+
+- **The layers**, as property animation is split (`Sedulous.PropertyAnimation`, `.Resource`,
+  `Sedulous.PropertyAnimation.Pipeline`, `PropertyAnimatorComponent` in Engine.Animation):
+  `Sedulous.Sequence` (the model and its evaluation: acts of tracks of keys, a time to the values
+  and the events in `(previous, now]`; Core only, headless tests), `Sedulous.Sequence.Resource`
+  (the cooked sequence and its factory), `Sedulous.Sequence.Pipeline` (the authored asset
+  cooked, editor-only data stripped), `Sedulous.Engine.Sequence` (the player component and its
+  scene system, the bindings, the script facade), `Sedulous.Editor.Sequence` (the timeline page
+  on GUI.Toolkit's `ITimelineSource` and `Dopesheet`).
+- **Domains contribute their track kinds**, so the sequencer depends on none of them: the track
+  interface lives in `Sedulous.Sequence`, a domain's module lists the kinds it adds (animation:
+  a clip track handed to the animation component, blending with what it plays; audio: a sound
+  track kept in time with the timeline, as Flax corrects drift; render: camera cuts, by making a
+  camera primary, never a global camera, and fades), and a plugin or a game adds its own.
+  Property tracks are reflection-driven, as property animation's are; no type list anywhere.
+- **Dependencies**: `Sedulous.Engine.Sequence` on Scene, Engine.Scene, Resource,
+  PropertyAnimation (its property binding and curves, reused, not copied), Script.Facades and
+  Engine.Domain; never Render, Audio, Animation or Physics. The editor page on Editor.Scene and
+  GUI.Toolkit.
+- **Bindings**: by entity id, remappable per player (Flax's `MapObject`), and by named slot
+  filled at play from script (what a game spawns at runtime), relative to the player for a
+  sequence inside a prefab (ezEngine's and Traktor's owner-relative form).
+- **The player**: play, stop, seek, speed, loop, an update mode the editor drives by hand,
+  events on the scene's bus, a finished event that hands control back, and restoring what it
+  moved on stop when asked. Preview on a scene page runs it in the page's simulation with events
+  held back.
+- **Open**: whether a sequence can blend into gameplay animation (Godot's one mixer does; the
+  others hard-cut), and whether skeletal clips and property tracks share one clip format. Spec
+  it once script cutscenes have run long enough to say what the tracks must be.
+
 ### A page save re-records a scene's prefab instances
 Saving the Snowline Meadow page after painting its vegetation mask re-recorded the scene's
 prefab instances (40 to 77, with member lists) though its entities (47) and components (55)
