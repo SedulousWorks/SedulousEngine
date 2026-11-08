@@ -837,7 +837,8 @@ class FieldPropertySource : IPropertySource
 			info.Kind = .String;
 		case .Enum:
 			info.Kind = .Enum;
-			for (var (name, value) in Enum.GetEnumerator(type))
+			// EnumCases: an enum a game registered without reflecting it lists its cases too.
+			for (var (name, value) in EnumCases.Of(type))
 				info.AddChoice(ReadablePropertyName(name, .. scope String()), value);
 		case .Float2:
 			info.Kind = .Group;

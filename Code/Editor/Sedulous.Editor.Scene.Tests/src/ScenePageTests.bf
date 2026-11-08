@@ -1388,6 +1388,15 @@ class ScenePageTests
 		}
 		Test.Assert(names.Contains("Height ") && names.Contains("Mode ") && names.Contains("Target ") && names.Contains("Label ") && names.Contains("Enabled "), names);
 		Test.Assert(!names.Contains("Air"), names);
+		// TestMode is not reflected: the dropdown lists the cases [Behaviour] registered.
+		PropertyInfo mode = null;
+		for (let row in rows)
+		{
+			if ((row.Category == "Hopper") && (row.DisplayName == "Mode"))
+				mode = row;
+		}
+		Test.Assert((mode != null) && (mode.Kind == .Enum) && (mode.Choices.Count == 3), "the dropdown lists Off, Slow and Fast");
+		Test.Assert((mode.Choices[2].Name == "Fast") && (mode.Choices[2].Value == 2), "by name and value");
 
 		let height = inspector.PathOf("Hopper", "Height", .. scope String());
 		Commit(page, bed, height, 4.0);

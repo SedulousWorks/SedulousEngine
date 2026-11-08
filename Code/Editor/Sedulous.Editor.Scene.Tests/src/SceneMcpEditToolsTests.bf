@@ -361,4 +361,41 @@ class SceneMcpEditToolsTests
 		Test.Assert((Live().Height == 2.5f) && (Live().Mode == .Fast) && (Live().Target.Id == padId));
 		Test.Assert((Live().Label == "leapy") && !Live().Enabled);
 	}
+
+	/// A behaviour's asset reference is its guid to the tools, as a component's is: null while
+	/// unset, and the guid component_set wrote, which is the identity the instance holds.
+	[Test]
+	public static void ABehavioursAssetReferenceIsItsGuidToTheTools()
+	{
+		let context = scope EditorContext();
+		let page = (EditablePage)context.AdoptPage(new EditablePage(Guid.Create()));
+		context.SetActivePage(page);
+		let edit = page.EditContext;
+		let hoppers = edit.Scene.AddSystem<BehaviourManager<Hopper>>();
+		let frogId = edit.CreateEntity("Frog");
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+
+		{
+			let added = Call(server, "component_add", "{\"entity\":\"Frog\",\"component\":\"test.hopper\"}");
+			defer delete added;
+			Test.Assert(added.Ok, added.Error);
+			Test.Assert(ComponentOf(added.Payload.Get("entity"), "test.hopper").Get("properties").Get("Prize").IsNull, "an unset reference");
+		}
+		let prizeId = Guid.Create();
+		let prizeText = prizeId.ToString(.. scope String());
+		{
+			let got = Call(server, "component_set", scope $"{{\"entity\":\"Frog\",\"component\":\"test.hopper\",\"property\":\"Prize\",\"value\":\"{prizeText}\"}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+		}
+		Test.Assert(hoppers.Get(edit.Resolve(frogId)).Prize.Id == prizeId, "the instance holds the identity");
+		{
+			let inspected = Call(server, "entity_inspect", "{\"entity\":\"Frog\"}");
+			defer delete inspected;
+			Test.Assert(inspected.Ok, inspected.Error);
+			let properties = ComponentOf(inspected.Payload.Get("entity"), "test.hopper").Get("properties");
+			Test.Assert(properties.Get("Prize").AsString() == prizeText, "shown as its guid");
+		}
+	}
 }

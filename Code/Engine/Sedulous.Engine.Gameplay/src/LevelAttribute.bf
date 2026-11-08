@@ -17,7 +17,9 @@ namespace Sedulous.Engine.Gameplay;
 ///
 /// It also asks for what the tools need: the type and its instance fields reflected (the
 /// inspector and the MCP tools read them), its default constructor reflected (the inspector's
-/// defaults), and the type always included, so a class nothing else names still links.
+/// defaults), and the type always included, so a class nothing else names still links. The
+/// enums its fields hold are registered with EnumCases, so the tools name their cases without
+/// the enum being reflected.
 ///
 /// DisplayName, Category and Description go beside it: the DisplayName titles its section in
 /// the scene's settings.
@@ -59,6 +61,7 @@ struct LevelAttribute : Attribute, IComptimeTypeApply
 		body.Append("public override void SerializeSettings(Sedulous.Core.Serialization.ISerializer ar)\n{\n");
 		Sedulous.Core.Serialization.SerializableAttribute.AppendFieldMoves(type, body, true);
 		body.Append("}\n");
+		Sedulous.Core.EnumCases.AppendRegistration(type, body);
 		Compiler.EmitTypeBody(type, body);
 	}
 

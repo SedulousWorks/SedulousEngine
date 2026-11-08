@@ -30,9 +30,12 @@ public override void Load(PluginContext context)
 }
 ```
 
-The scaffolded part depends on `Sedulous.Core` and `Sedulous.Runtime` alone; add what the code
-uses to its `BeefProj.toml`, at least `Sedulous.Scene`, `Sedulous.Engine.Composition` and
-`Sedulous.Engine.Gameplay` for the tiers below.
+The scaffolded part depends on `Sedulous.Core`, `Sedulous.Runtime`, `Sedulous.Scene`,
+`Sedulous.Engine.Composition` and `Sedulous.Engine.Gameplay`, enough for the tiers below; add
+what else the code uses to its `BeefProj.toml`. Its `Load` finds the engine's service as above,
+and registers a starter behaviour, `Rotator` (`src/Rotator.bf`, which turns its entity while the
+scene simulates), so a new game builds a tier of its own at once: rename it, change it, or take
+it and its `AddBehaviour` line out.
 
 The loop: edit, Project > Build Project, then Project > Open With This Build, which starts the
 project's own editor (the stock editor does not run a game's code) and closes this one. An agent
@@ -79,7 +82,8 @@ class Bob : Behaviour
   base's own field, leads it.
 - Field types: `float`, `int32`, `bool`, `String` (owned: `new .() ~ delete _`), `Float3`,
   `Color`, enums, `EntityRef` (an entity of the scene; `Scene.FindEntity(ref.Id)`) and `Ref<T>`
-  (an asset; its `Id` is the guid the facades take).
+  (an asset; its `Id` is the guid the facades take; `Get` is the loaded resource once the scene
+  is resolved, null for an id that names nothing).
 - `GameplayServices.AddBehaviour<T>(engine)` puts `T`'s manager in every scene (and in Add
   Component); one instance per class per entity. The base has `Scene`, `Entity`, `Run`,
   `Random`, `Enabled` and `IsActive`.
@@ -207,8 +211,14 @@ managers:
 | `Audio.PlayOneShot(clip)` | `AudioFacade.PlayOneShot(clip)` |
 | `Run.LoadScene(id)`, `Run.TimeScale` | `GameInstance.LoadScene(id)`, `InstanceTimeScale` |
 
-`LoadScene` destroys the current scene, so leave scene changes to the game: a behaviour posts an
-event, and the game loads.
+`LoadScene` replaces and destroys the current scene. Asked for from a scene's own code (a
+behaviour's or a level's `OnUpdate`, `OnFixedUpdate`/`OnFixedStep`, a queued call or contact at the
+end of the behaviours' tick, or a behaviour's or a level's `Listen` handler, wherever the event is
+delivered from) it starts the load and returns true, and the swap happens at the host's next
+`PumpLoads`, after the frame's scene update, where finished loads activate: the scene that asked
+is not destroyed under its own code, and the game hears `OnSceneActivated` then. Until then
+`CurrentScene` is still the old scene. From the game's own code (its hooks and its `Listen`
+handlers) the load is immediate, and the new scene is current when the call returns.
 
 ## Events and queued calls
 
@@ -273,9 +283,12 @@ body, StringView error)`, deleted after the answer, on `Cancel`, or as the sessi
 - **A read replaces the instance.** Loading a record into an existing behaviour (Simulate's
   restore, a prefab override, a re-read) deletes the old instance and makes a fresh one, so
   runtime state never survives it. Do not keep a behaviour across one.
-- **Enums need `[Reflect]`** for the tools to name their values (`entity_inspect`,
-  `component_set` by name); the engine's own enums are reflected already.
-- **Destroying during the fixed step is immediate.** `Scene.DestroyEntity` from `OnUpdate` waits
-  for the end of the frame; from `OnFixedUpdate` it happens at once (the behaviours released
-  then, deleted as the pass ends).
+- **Enums need no `[Reflect]`.** `[Behaviour]`, `[Level]`, `[Game]` and `[SerializableComponent]`
+  register the cases of the enums their fields hold, so the tools name them (`entity_inspect`,
+  `component_set` by name, the inspector's dropdown, pie_run's probes). An enum held only by
+  something else (a private field of a base class, a plain `[Component]`) still needs it.
+- **A destroy waits for the end of the frame.** `Scene.DestroyEntity` from `OnUpdate` or
+  `OnFixedUpdate` takes effect as the frame's update ends: until then the entity is valid and its
+  behaviours still get the rest of the frame (the remaining fixed steps, `OnUpdate`,
+  `OnLateUpdate`). Check a flag of your own, not `IsValid`, to stop acting on it.
 - **Turning an entity off and on** runs `OnDisable` and `OnEnable`, not `OnStart` again.

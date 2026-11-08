@@ -6,6 +6,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Physics;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using internal Sedulous.Engine.Gameplay;
 
@@ -27,8 +28,8 @@ namespace Sedulous.Engine.Gameplay;
 /// instance a callback removes, its own included, stays alive until no callback can be running
 /// on it.
 ///
-/// The identity on disk, the tick lists it joins and the fields it replicates are the class's
-/// own, read at compile time.
+/// The identity on disk, the tick lists it joins, the fields it replicates and the resource
+/// references it binds are the class's own, read at compile time.
 class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T : Behaviour, new, delete
 {
 	private const uint32 cInvalid = 0xFFFFFFFF;
@@ -61,6 +62,10 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 	private bool mInPass = false;
 	/// The holds open (Hold), each deferring deletes as a pass does.
 	private int32 mHolds = 0;
+
+	/// BORROWED, from the last resolve: what binds the references of an instance added or read
+	/// after it. Null until then, when an instance's references wait for the resolve.
+	private ResourceManager mResources = null;
 
 	public this()
 	{
@@ -168,8 +173,18 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 		return false;
 	}
 
-	/// A new `T` on `entity`, one per entity. Nothing runs on it until the scene simulates.
+	/// A new `T` on `entity`, one per entity, its references bound when the scene has been
+	/// resolved. Nothing runs on it until the scene simulates.
 	public T Add(EntityHandle entity)
+	{
+		let instance = AddUnbound(entity);
+		if (mResources != null)
+			BindReferences(instance, mResources);
+		return instance;
+	}
+
+	/// A new `T` on `entity`, its references left as they are: a read binds what it read.
+	private T AddUnbound(EntityHandle entity)
 	{
 		Debug.Assert(!HasComponent(entity), "one behaviour of a type per entity");
 
@@ -260,7 +275,8 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 	/// scene, a prefab override applied, a duplicate record) is replaced, and deleted
 	/// (OnDestroy first when it had started) once the read is done, so no runtime state
 	/// outlives the read. A refused payload is not read, and leaves the fresh instance at its
-	/// defaults.
+	/// defaults. Its references are bound when the scene has been resolved; before that, the
+	/// resolve binds them.
 	public override void ReadComponent(ISerializer ar, EntityHandle entity)
 	{
 		T instance;
@@ -268,7 +284,7 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 		let index = DenseIndex(entity);
 		if (index == cInvalid)
 		{
-			instance = Add(entity);
+			instance = AddUnbound(entity);
 		}
 		else
 		{
@@ -283,10 +299,43 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 		if (ar.IsPayloadOk)
 			instance.Serialize(ar);
 		EndVersionedPayload(ar);
+		if (mResources != null)
+			BindReferences(instance, mResources);
 
 		// Last, so whatever its OnDestroy does to the pool happens after the read.
 		if (replaced != null)
 			Retire(replaced);
+	}
+
+	// ---- resources ----
+
+	/// Binds every instance's references against `manager`, which is kept for those added or
+	/// read after: the post load resolve pass, as a component's manager binds its pool.
+	public override void ResolveResources(ResourceManager manager)
+	{
+		mResources = manager;
+		if (manager == null)
+			return;
+		for (let instance in mDense)
+			BindReferences(instance, manager);
+	}
+
+	/// The same for `entity`'s instance alone: a subtree spawned into a resolved scene.
+	public override void ResolveEntityResources(EntityHandle entity, ResourceManager manager)
+	{
+		mResources = manager;
+		let instance = Get(entity);
+		if ((instance != null) && (manager != null))
+			BindReferences(instance, manager);
+	}
+
+	/// Binds `instance`'s resource references, the Ref<T> fields `T` saves, found at compile
+	/// time: a behaviour class writes no resolve of its own, where a component implements
+	/// IComponentResources by hand. Idempotent, as Bind is: a reference bound again is a cache
+	/// hit.
+	private static void BindReferences(T instance, ResourceManager manager)
+	{
+		EmitBindReferences(typeof(T));
 	}
 
 	/// Ends an instance already out of the pool: its closing edges (Release), then detached,
@@ -535,6 +584,52 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 		}
 		if (!code.IsEmpty)
 			Compiler.MixinRoot(code);
+	}
+
+	/// One Bind per Ref<T> field `type` saves (public, instance, not [NotSerialized], base
+	/// first). A private field is runtime state the class binds itself, as it set it. (A
+	/// List<Ref<T>> is no field a behaviour saves: the list serializer's element dispatcher has
+	/// no case for a reference.)
+	///
+	/// The unspecialized generic has no fields to look at, and binds nothing.
+	[Comptime]
+	private static void EmitBindReferences(Type type)
+	{
+		if (!(type is TypeInstance))
+			return;
+		let chain = scope List<Type>();
+		for (var walk = type; (walk != null) && (walk != typeof(Behaviour)); walk = walk.BaseType)
+			chain.Add(walk);
+		let code = scope String();
+		for (int i = chain.Count - 1; i >= 0; i--)
+		{
+			let declaring = chain[i];
+			for (let field in declaring.GetFields())
+			{
+				if (!field.IsInstanceField || !field.IsPublic || (field.DeclaringType != declaring))
+					continue;
+				if (field.GetCustomAttribute<NotSerializedAttribute>() case .Ok)
+					continue;
+				if (!IsResourceRef(field.FieldType))
+					continue;
+				code.Append("instance.");
+				code.Append(field.Name);
+				code.Append(".Bind(manager);\n");
+			}
+		}
+		if (!code.IsEmpty)
+			Compiler.MixinRoot(code);
+	}
+
+	/// Whether `type` is a Ref<T>. Matched by name, as the serializer matches a List.
+	[Comptime]
+	private static bool IsResourceRef(Type type)
+	{
+		if (type == null)
+			return false;
+		let name = scope String();
+		type.GetFullName(name);
+		return name.StartsWith("Sedulous.Resource.Ref<");
 	}
 
 	/// The dense index of a live, generation matching instance, or cInvalid.

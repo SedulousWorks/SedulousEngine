@@ -475,7 +475,7 @@ class SceneReference
 			if (type.IsEnum && IsIntegerScalar(node))
 			{
 				let names = JsonValue.MakeArray();
-				for (let (name, value) in Enum.GetEnumerator(type))
+				for (let (name, value) in EnumCases.Of(type))
 				{
 					let entry = JsonValue.MakeObject();
 					entry.Set("name", Text(name));
