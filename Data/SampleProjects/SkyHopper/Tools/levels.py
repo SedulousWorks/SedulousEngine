@@ -6,9 +6,11 @@
 
 A level is built from pieces: grass islands (the kit's corner, side and centre tiles turned to face
 out), single cubes, crates and bricks, rock platforms, bridges, and what lives on them (coins,
-enemies, hazards, pickups, the flag). The sun, the player and the camera, with their components
-and the player's model, and the scene settings (the shared environment profile, physics, post),
-are taken from Level3, so every level looks and plays alike. Rewriting a level keeps its asset
+enemies, hazards, pickups, the flag), each carrying the game's own behaviour for it (skyhopper.coin,
+skyhopper.enemy, ...: Code/SkyHopper), so the editor this talks to is the project's own
+(Tools/README.md). The sun, the player and the camera, with their components (the player's and the
+camera's behaviours among them) and the player's model, and the scene settings (the shared
+environment profile, physics, post), are taken from Level3, so every level looks and plays alike. Rewriting a level keeps its asset
 (the same guid); the first write creates it in Scenes/.
 
 Measures: a jump rises about 2.3 m and carries about 6.5 m at full speed (gravity 20, launch
@@ -25,14 +27,12 @@ LEVEL3 = "e8094435-4425-034d-b972-6bca7668b14d"
 
 
 def assets():
-    """Prefabs by model name, scripts by name, clips by model/clip, scenes by name."""
-    found = {"prefab": {}, "script": {}, "clip": {}, "scene": {}}
+    """Prefabs by model name, clips by model/clip, scenes by name."""
+    found = {"prefab": {}, "clip": {}, "scene": {}}
     for a in listed():
         group = a.get("group", "")
         if a["type"] == "PrefabDocument" and group.startswith("Models/"):
             found["prefab"][group.split("/")[-1]] = a["guid"]
-        elif a["type"] == "ScriptClassAsset":
-            found["script"][a["name"]] = a["guid"]
         elif a["type"] == "AnimationClipAsset":
             found["clip"][group.split("/")[-1] + "/" + a["name"]] = a["guid"]
         elif a["type"] == "SceneDocument":
@@ -41,7 +41,7 @@ def assets():
 
 
 A = assets()
-P, S, C = A["prefab"], A["script"], A["clip"]
+P, C = A["prefab"], A["clip"]
 
 
 class Level(Doc):
@@ -122,7 +122,7 @@ class Level(Doc):
     # ---- what lives on it ----
     def coin(self, x, top, z, lift=1.3):
         e = self.entity(self.named("Coin"), (x, top + lift, z))
-        self.script(e, (S["Coin"], {}))
+        self.add(e, "skyhopper.coin")
         self.instance(P["Coin"], parent=e, scale=(0.45, 0.45, 0.45))
 
     def coins(self, points, top):
@@ -131,10 +131,9 @@ class Level(Doc):
 
     def enemy(self, kind, x, top, z, patrol, speed=2.0, **extra):
         e = self.entity(self.named(kind), (x, top, z))
-        # walkClip is the clip's id as text (the Enemy script takes a string).
         props = {"patrolDistance": patrol, "speed": speed, "walkClip": C[kind + "/Walk"]}
         props.update(extra)
-        self.script(e, (S["Enemy"], props))
+        self.add(e, "skyhopper.enemy", **props)
         self.instance(P[kind], parent=e, scale=(0.7, 0.7, 0.7))
 
     def bee(self, x, top, z, patrol, along_z=False, speed=2.2, height=0.45):
@@ -145,42 +144,42 @@ class Level(Doc):
                  "hoverHeight": height, "hoverSpeed": 2.5}
         if along_z:
             props["patrolAlongZ"] = True
-        self.script(e, (S["Enemy"], props))
+        self.add(e, "skyhopper.enemy", **props)
         self.instance(P["Bee"], parent=e, scale=(0.6, 0.6, 0.6))
 
     def spikes(self, x, top, z):
         e = self.entity(self.named("Spikes"), (x, top, z))
-        self.script(e, (S["Hazard"], {"radius": 1.1}))
+        self.add(e, "skyhopper.hazard", radius=1.1)
         self.instance(P["Spikes"], parent=e, scale=(0.45, 0.45, 0.45))
 
     def saw(self, x, top, z, swing, rate=0.35, phase=0.0):
         """A saw standing half sunk in the ground, swinging `swing` either side across the path and
         spinning."""
         e = self.entity(self.named("Saw"), (x, top + 0.55, z))
-        self.script(e, (S["Mover"], {"distance": swing, "rate": rate, "phase": phase, "spinSpeed": 7.0}),
-                    (S["Hazard"], {"radius": 1.15, "touchHeight": 1.5}))
+        self.add(e, "skyhopper.mover", distance=swing, rate=rate, phase=phase, spinSpeed=7.0)
+        self.add(e, "skyhopper.hazard", radius=1.15, touchHeight=1.5)
         self.instance(P["Hazard_Saw"], parent=e, scale=(0.7, 0.7, 0.7))
 
     def ball(self, x, top, z, swing, rate=0.5, phase=0.0, lift=1.0):
         """A spiky ball swinging across the path at the player's height."""
         e = self.entity(self.named("SpikyBall"), (x, top + lift, z))
-        self.script(e, (S["Mover"], {"distance": swing, "rate": rate, "phase": phase, "spinSpeed": 3.0}),
-                    (S["Hazard"], {"radius": 1.0, "touchHeight": 1.2}))
+        self.add(e, "skyhopper.mover", distance=swing, rate=rate, phase=phase, spinSpeed=3.0)
+        self.add(e, "skyhopper.hazard", radius=1.0, touchHeight=1.2)
         self.instance(P["SpikyBall"], parent=e, scale=(0.8, 0.8, 0.8))
 
     def heart(self, x, top, z):
         e = self.entity(self.named("Heart"), (x, top + 1.3, z))
-        self.script(e, (S["Pickup"], {"chimePitch": 1.2}))
+        self.add(e, "skyhopper.pickup", chimePitch=1.2)
         self.instance(P["Heart"], parent=e, scale=(0.5, 0.5, 0.5))
 
     def gem(self, x, top, z, lift=3.0):
         e = self.entity(self.named("Gem"), (x, top + lift, z))
-        self.script(e, (S["Pickup"], {"takenEvent": "GemCollected", "chimePitch": 1.5}))
+        self.add(e, "skyhopper.pickup", takenEvent="GemCollected", chimePitch=1.5)
         self.instance(P["Gem_Blue"], parent=e, scale=(0.5, 0.5, 0.5))
 
     def goal(self, x, top, z):
         e = self.entity("Goal", (x, top, z))
-        self.script(e, (S["Goal"], {}))
+        self.add(e, "skyhopper.goal")
         self.instance(P["Goal_Flag"], parent=e)
 
     def cloud(self, x, y, z, kind="Cloud_1", scale=1.0):

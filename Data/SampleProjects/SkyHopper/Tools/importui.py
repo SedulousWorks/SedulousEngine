@@ -2,8 +2,9 @@
 """importui.py [name ...]: the game's screens on the engine GUI (ui/*.xml and its sheet
 ui/SkyHopperSheet.css, group UI, each checked with gui_validate first) imported through the
 editor's MCP, the sheet made the project's GUI sheet, then cooked. With names, only those (Hud,
-Title, ...). A re-run re-imports over the same assets, keeping their ids; PlatformerGame.as names
-the screens by id. An asset is named by its file, so a sheet and a document may not share a name.
+Title, ...). A re-run re-imports over the same assets, keeping their ids: the game's code pushes the
+screens by those ids (Code/SkyHopper/src/Assets.bf; SkyHopperGame pushes every one of them, on the
+run GUI's screen stack). An asset is named by its file, so a sheet and a document may not share a name.
 """
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

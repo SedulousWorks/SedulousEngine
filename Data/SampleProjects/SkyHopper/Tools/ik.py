@@ -5,9 +5,10 @@ The Player entity (the gameplay root; the Character model is its child, the impo
 gets two components, which drive the model's animator below it:
 - Foot IK: the feet stand on the ground under them. The Character rig's feet are IK target bones
   off the root (detached), met by the shins; the pelvis is Body (it carries the legs).
-  PlayerController turns it off in the air.
-- Aim IK: the head (Neck 0.4, Head 1.0) looks at the nearest coin within reach; Coin.as picks the
-  coin and sets the target, and turns it off when none is near. A coin counts only in front of the
+  The game's PlayerController behaviour turns it off in the air.
+- Aim IK: the head (Neck 0.4, Head 1.0) looks at the nearest coin within reach; the game's Coin
+  behaviours pick the coin and set the target, and the PlayerController turns it off when none is
+  near (Code/SkyHopper/src). A coin counts only in front of the
   hero (within 55 degrees of its facing, 35 above or below); the head's own limits sit just past
   those, and a target beyond them releases the look.
 

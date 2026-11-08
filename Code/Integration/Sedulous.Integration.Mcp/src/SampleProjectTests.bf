@@ -24,15 +24,16 @@ using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
 
-/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery) must stay
+/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery, Sky Hopper, Masquerade) must stay
 /// readable at the CURRENT data versions: a wire version bump or a key rename that forgets to
 /// upgrade their sources leaves them refused by the strict readers. This registers the whole pipeline the way
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
 /// are comptime here), so it holds when run alone. A sample with game code of its own (the
-/// Shader Gallery's Code/) has its package linked here, as its own editor links it, and reads
-/// with the package loaded, so its behaviours' records resolve rather than stay unknown.
+/// Shader Gallery's and Sky Hopper's Code/) has its package linked here, as its own editor links
+/// it, and reads with the package loaded, so its behaviours' records resolve rather than stay
+/// unknown.
 static class SampleProjectTests
 {
 	/// Every instance under a group, recursively, reads back. A scene or prefab is its STREAM,
@@ -221,6 +222,71 @@ static class SampleProjectTests
 		let gallery = galleries.Instances[0];
 		Test.Assert((gallery.StartYaw == -20.0f) && (gallery.StartPitch == -8.0f), "the hall's values, not the defaults");
 		Test.Assert(gallery.LessonList.Id == list.Id, "the lesson list's document");
+	}
+
+	[Test]
+	public static void TheSkyHopperSourcesReadAtTheCurrentDataVersionsAndCook()
+	{
+		// 262 instances: 5 levels and 35 prefabs (the kit's 30 models and the 5 effects), 30 model
+		// manifests, 65 materials, 42 clips, 26 static and 7 skinned meshes, 4 skeletons, 10 collision
+		// shapes, 12 audio clips, 9 UI documents and their sheet, 6 icons, 5 particle effects, 2
+		// fonts, the toon shader, the environment profile and the input map. 222 cook: all but the
+		// levels and the prefabs, which stage rather than cook. No script overrides: the behaviours
+		// are the game's code, its package loaded to read the levels. Raise the floors when the
+		// sample grows.
+		CheckSampleProject("SkyHopper", "scratch_skyhopper_versions", 262, 222, 0, "skyhopper", => CheckSkyHopper);
+	}
+
+	/// Level1's entities carry the game's behaviours, resolved into their managers with the values
+	/// the level gives them, not the defaults (the player's jump, the camera's target, the gem's
+	/// event, each enemy's walk clip), every coin among them and no script left; and each effect's
+	/// prefab carries its timed life.
+	private static void CheckSkyHopper(EditorProject project)
+	{
+		let level = FindInstance(project.SourceDb.RootGroup, "Level1", McpDocumentNames.cSceneDocument);
+		Test.Assert(level != null, "Level1");
+		if (level == null)
+			return;
+		let scene = scope Scene(level.Name);
+		EngineSceneComposition.AddAllSceneManagers(scene); // the package's behaviour managers among them
+		Test.Assert(SceneStorage.LoadScene(level, scene) case .Ok, "Level1's stream");
+		let players = scene.GetSystem<BehaviourManager<SkyHopper.PlayerController>>();
+		Test.Assert((players != null) && (players.Count == 1), "one PlayerController, resolved");
+		if ((players == null) || (players.Count != 1))
+			return;
+		let player = players.OwnerHandles[0];
+		Test.Assert(scene.GetEntityName(player) == "Player");
+		Test.Assert(players.Instances[0].JumpSpeed == 10.0f, "the level's jump, not the default");
+		let cameras = scene.GetSystem<BehaviourManager<SkyHopper.FollowCamera>>();
+		Test.Assert((cameras != null) && (cameras.Count == 1) && (cameras.Instances[0].Target.Id == scene.GetEntityId(player)),
+			"the camera follows the player");
+		let pickups = scene.GetSystem<BehaviourManager<SkyHopper.Pickup>>();
+		Test.Assert((pickups != null) && (pickups.Count == 1) && (pickups.Instances[0].TakenEvent == .GemCollected)
+			&& (pickups.Instances[0].ChimePitch == 1.5f), "the level's gem");
+		let coins = scene.GetSystem<BehaviourManager<SkyHopper.Coin>>();
+		Test.Assert((coins != null) && (coins.Count == 9), "Level1's nine coins");
+		let enemies = scene.GetSystem<BehaviourManager<SkyHopper.Enemy>>();
+		Test.Assert((enemies != null) && (enemies.Count == 2), "Level1's two enemies");
+		if (enemies != null)
+		{
+			for (let enemy in enemies.Instances)
+				Test.Assert(enemy.WalkClip.Id != Guid.Empty, "an enemy's walk clip");
+		}
+		let scripts = scene.GetSystem<ScriptComponentManager>();
+		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+
+		for (let name in StringView[5]("FxCoinSparkle", "FxConfetti", "FxDust", "FxPoof", "FxStompStars"))
+		{
+			let prefab = FindInstance(project.SourceDb.RootGroup, name, McpDocumentNames.cPrefabDocument);
+			Test.Assert(prefab != null, scope $"the {name} prefab");
+			if (prefab == null)
+				continue;
+			let effect = scope Scene(prefab.Name);
+			EngineSceneComposition.AddAllSceneManagers(effect);
+			Test.Assert(SceneStorage.LoadScene(prefab, effect) case .Ok, scope $"{name}'s stream");
+			let lives = effect.GetSystem<BehaviourManager<SkyHopper.TimedLife>>();
+			Test.Assert((lives != null) && (lives.Count == 1), scope $"{name} removes itself");
+		}
 	}
 
 	/// The first instance under `group` named `name` whose type name ends with `typeName`, or null.

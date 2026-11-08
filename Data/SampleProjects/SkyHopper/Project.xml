@@ -8,10 +8,10 @@
 		<string name="engineVersion">0.1.0</string>
 		<string name="defaultSceneId">d54b3804-21ff-724a-a076-4e971ef6b238</string>
 		<string name="defaultScene">Scenes/Level1</string>
-		<string name="startupScript">Scripts/PlatformerGame</string>
+		<string name="startupScript"/>
 		<string name="defaultInputMapId">ddc8a18e-d7bf-2849-a2b7-540ed7ddc674</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="startupScriptId">cdc1ed58-4cc2-184f-9021-aca36cc0f5f8</string>
+		<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
 		<string name="defaultUiFontId">8be6cf88-845d-6847-b584-8df8343df0f4</string>
 		<array name="uiFontIds" count="1">
 			<string>038822bb-8eab-b648-a0cd-d78421a6353d</string>
@@ -28,7 +28,14 @@
 			<string>c14ce60f-33a1-f64a-8217-4ad5400986bf</string>
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
-		<array name="plugins" count="0"/>
+		<array name="plugins" count="1">
+			<object>
+				<string name="id">skyhopper</string>
+				<string name="path">Code</string>
+				<array name="platforms" count="0"/>
+				<object name="settings"/>
+			</object>
+		</array>
 		<array name="qualityLevelIds" count="3">
 			<string>f292a722-4ff2-d040-ba7a-b4e449b53137</string>
 			<string>b9665091-aec1-b34e-bb2e-24ed660ce673</string>

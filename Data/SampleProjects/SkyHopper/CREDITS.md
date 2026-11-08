@@ -23,6 +23,11 @@ Made with the Sedulous engine. Third-party assets, with thanks:
 - **Ultimate Platformer Pack** by **Quaternius** ([patreon.com/quaternius](https://www.patreon.com/quaternius)),
   [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
 
+## Made for this game
+
+- The game's code (`Code/`), the levels and the screens are written for Sky Hopper (Raptor's Sky
+  Hopper, ported), under the project's own licence.
+
 ## Icons
 
 - The HUD and clear card icons (heart, coin, star, clock, gem) are vector images drawn for this

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Sky Hopper's scene/prefab XML, built from the RUNNING editor's schema (component_schema): every
 record starts from the schema's defaults and takes only the fields given, so nothing here is
-hand-kept against an engine build."""
+hand-kept against an engine build. The game's own behaviours (skyhopper.coin, skyhopper.enemy, ...)
+are components like the engine's, there while the project's own editor runs (Tools/README.md); an
+enum field takes its case by name."""
 import json, os, subprocess, sys, uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -69,6 +71,11 @@ def field_xml(field, value):
         v = value if value is not None else (field.get("default") == "true")
         return '<bool name="%s">%s</bool>' % (key, num(bool(v)))
     v = value if value is not None else field.get("default", "0")
+    if isinstance(v, str) and "enum" in field and not v.lstrip("-").isdigit():
+        cases = {c["name"]: c["value"] for c in field["enum"]}
+        if v not in cases:
+            raise SystemExit("%s has no case %r (%s)" % (key, v, sorted(cases)))
+        v = int(cases[v])
     return '<%s name="%s">%s</%s>' % (kind, key, num(v), kind)
 
 
@@ -86,30 +93,6 @@ def record(owner, wire, **values):
 
 def vec(name, xyz, keys="xyz"):
     return '<object name="%s">%s</object>' % (name, "".join('<f32 name="%s">%s</f32>' % (k, num(float(v))) for k, v in zip(keys, xyz)))
-
-
-def fnv(name):
-    """ScriptPropertyNameHash: FNV-1a 64 over the property's name."""
-    h = 14695981039346656037
-    for b in name.encode():
-        h ^= b
-        h = (h * 1099511628211) & 0xFFFFFFFFFFFFFFFF
-    return h
-
-
-def override(name, value):
-    """A script property override: a float, an int, a bool, a string, or ('entity'|'asset', guid)."""
-    h = fnv(name)
-    if isinstance(value, bool):
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">3</u8><bool name="boolean">%s</bool>' % (h, num(value))
-    if isinstance(value, str):
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">4</u8><string name="text">%s</string>' % (h, value)
-    if isinstance(value, tuple):
-        kind = {"entity": 7, "asset": 8}[value[0]]
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">%d</u8><string name="id">%s</string>' % (h, kind, value[1])
-    if isinstance(value, int) and not isinstance(value, bool):
-        return '<u64 name="nameHash">%d</u64><u8 name="kind">2</u8><f64 name="number">%s</f64>' % (h, float(value))
-    return '<u64 name="nameHash">%d</u64><u8 name="kind">1</u8><f64 name="number">%s</f64>' % (h, float(value))
 
 
 def settings(block, **values):
@@ -146,18 +129,6 @@ class Doc:
 
     def add(self, owner, wire, **values):
         self.components.append(record(owner, wire, **values))
-
-    def script(self, owner, *behaviors):
-        """behaviors: (script guid, {property: value}) pairs."""
-        items = ['<string name="script">%s</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32>'
-                 '<array name="overrides" count="%d">%s</array>' % (g, len(o), "".join(override(k, v) for k, v in o.items()))
-                 for g, o in behaviors]
-        self.components.append(record(owner, "script", behaviors=items))
-
-    def level_script(self, guid, **overrides):
-        # The level script's block shares its system id (script) with the Script component.
-        self.settings.append(settings("SceneScriptSettings", script=guid,
-                                      overrides=[override(k, v) for k, v in overrides.items()]))
 
     def instance(self, prefab, pos=(0, 0, 0), rot=(0, 0, 0, 1), scale=(1, 1, 1), parent=None):
         self.instances.append(

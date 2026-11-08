@@ -98,7 +98,9 @@ the previous engine, on the `v0` branch.
 ## Sample projects
 
 `Data/SampleProjects/` holds game projects: **Sky Hopper** (`SkyHopper`), built entirely
-through the MCP tools, **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`),
+through the MCP tools (its scripts in `Tools/`, run against the project's own editor: its game and
+behaviours are its `Code/`, the engine part also a project of the engine workspace, linked by
+Integration.Mcp), **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`),
 **Snowline**, Raptor's snowboard demo ported through the same tools (its scripts in `Tools/`),
 **Lamplight**, Raptor's stealth heist ported the same way (its scripts in `Tools/`), the
 **Shader Gallery**, Raptor's custom shaders sample ported the same way (its scripts in `Tools/`, run
@@ -109,7 +111,7 @@ project of the engine workspace, linked by Integration.Mcp),
 other three parts (also projects of the engine workspace, linked by Integration.Plugins) and a scene its Spin component turns, its Bob behaviour moves and its Arena level times (its Game hearing the round end), built through the
 project's own editor by its scripts in `Tools/`.
 Their `Cooked/`, `.cache/`, `Editor/` and `Dist/` are generated and ignored. Integration.Mcp
-checks that PaperKid, the Shader Gallery (with its package loaded) and Masquerade read at the current data versions and cook;
+checks that PaperKid, the Shader Gallery and Sky Hopper (each with its package loaded) and Masquerade read at the current data versions and cook;
 Integration.Plugins checks that NativeSample reads with its package loaded and cooks, and that its game launches in a run. Each one's `CREDITS.md` and
 `Licenses/` must stay in step with its assets.
 
