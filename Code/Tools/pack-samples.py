@@ -7,8 +7,9 @@ Packs the games Data/SampleProjects/Samples.json lists: for each, a zip of what 
 folder less Tools/ (the authoring scripts), its Project.xml at the zip's root (the editor
 extracts it into the folder the user chooses), as sample-<folder>.zip; its picture as
 sample-<folder>.png; and samples.json naming them, with each zip's size and SHA-256 and the bytes
-it unpacks to. The version is the engine's own with its pre-release label, 0.1.0-beta
-(Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf: String and Label). The editor of that version reads
+it unpacks to. The version is the engine's own with its label, the release's (0.1.0-beta)
+(Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf: String and Label): pack from the release
+commit, not from master between releases, whose label is dev. The editor of that version reads
 samples.json from its release (EngineVersion.ReleaseDownloadUrl) for its Samples tab.
 
 Run by hand, in a checkout (only tracked files go in), and attach everything it writes to the

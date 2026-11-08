@@ -21,11 +21,13 @@ static class EngineVersion
 	public const uint32 Minor = 1;
 	public const uint32 Patch = 0;
 	public const String String = "0.1.0";
-	/// The release's pre-release label ("beta"; empty for a final release).
-	public const String Label = "beta";
-	/// String with Label ("0.1.0-beta"; String alone with no label). Set beside them: a test
-	/// holds the three in step.
-	public const String Display = "0.1.0-beta";
+	/// The version's label: "dev" on master between releases (0.1.0-dev, the version being worked
+	/// toward); a release commit sets the release's ("beta" for a pre-release, empty for a final
+	/// release) and master goes back to "dev" after it (AGENTS.md, Releases).
+	public const String Label = "dev";
+	/// String with Label ("0.1.0-dev", "0.1.0-beta"; String alone with no label). Set beside them: a
+	/// test holds the three in step.
+	public const String Display = "0.1.0-dev";
 	/// The build number of a build handed out, set here by hand before building it; 0 is a local
 	/// build.
 	public const uint32 BuildNumber = 0;
@@ -38,7 +40,8 @@ static class EngineVersion
 
 	/// Where `file` attached to this engine's own release is downloaded from: release v<version>
 	/// of ReleaseRepository, the version with its label (the release's tag, v0.1.0-beta). A build
-	/// between releases names a release that may not exist yet.
+	/// between releases (0.1.0-dev) names a release that does not exist, and what asks says so (the
+	/// Samples tab: not published).
 	public static void ReleaseDownloadUrl(StringView file, String outUrl)
 	{
 		outUrl.AppendF("https://github.com/{}/releases/download/v{}/{}", ReleaseRepository, Display, file);

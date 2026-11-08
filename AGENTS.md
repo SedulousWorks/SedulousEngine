@@ -54,7 +54,10 @@ nothing else links them, and enabling them builds the sandbox.
   voice (`///` on what is not obvious, saying why).
 - **Keep the documents honest in the same commit.** A change to the MCP tools updates
   `Documentation/Shipping/McpGuide.md`; the engine tool count (`EngineTools.cEngineToolCount`)
-  is a deliberate tripwire, bumped when a tool is added.
+  is a deliberate tripwire, bumped when a tool is added. A change a user would notice adds its
+  line to `CHANGELOG.md` under Unreleased.
+- **Versions:** master is labelled `dev` between releases; cutting a release and the bump after
+  it are under Releases below.
 - **Commits**: one per piece of work, the subject `Area: what it does` with a body saying why,
   and no `Co-Authored-By` or session trailer lines. Push only when asked.
 - **Third-party content**: check its licence before adding it. Nothing goes in that may not be
@@ -99,14 +102,30 @@ Integration.Plugins checks that NativeSample reads with its package loaded and c
 The editor's Samples tab downloads the games `Data/SampleProjects/Samples.json` lists from the
 GitHub release of its own version. `python3 Code/Tools/pack-samples.py <out-dir>` packs them
 (each one's tracked files less `Tools/`, a zip with its `Project.xml` at the root, its picture, and a
-`samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf` with its label,
-0.1.0-beta). It runs by hand: there is no workflow, so whoever makes the release attaches what it
-writes to release `v<version>` (v0.1.0-beta). Compatibility checks compare the numbers alone
+`samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf` with its label: the
+release's, so it runs on the release commit). It runs by hand: there is no workflow, so whoever makes the release attaches what it
+writes to release `v<version>` (v0.1.0-beta for the first). Compatibility checks compare the numbers alone
 (`EngineVersion.String`); what people read carries the label (`EngineVersion.Display`), and a build
 handed out gets its `EngineVersion.BuildNumber`, set by hand (0 is a local build). A game joins the tab by an entry in `Samples.json` (its folder, its name, one line,
 its picture from `Documentation/Images`). To try the tab before a release carries them, pack into
 a folder and run the editor with `--release-files <folder>`: it serves the folder on loopback and
 opens the manager on Samples.
+
+## Releases
+
+- **The changelog:** `CHANGELOG.md` at the root. A change someone using the engine, the editor or a
+  game would notice adds its line under `## Unreleased` (Added, Changed, Fixed, Removed) in the
+  same commit; internal work (a refactor, a test, a plan) adds none. Lines say what changed for
+  that person, in public terms: no internal names, no other engines.
+- **The version:** `Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf` (String, Label and
+  Display, which a test holds in step). On master between releases the label is `dev` and the
+  version is the one being worked toward (0.1.0-dev before 0.1.0-beta; 0.2.0-dev after 0.1.0).
+- **Cutting a release:** on master, one commit `Release: <version>`: the label set to the
+  release's (`beta` for a pre-release, empty for a final) and `## Unreleased` renamed to
+  `## <version> - <date>`. Tag it `v<version>`, make the GitHub release from the tag, and attach
+  what `pack-samples.py` writes from that commit.
+- **After a release:** the next commit on master puts the label back to `dev`, bumps the version
+  when the release was final, and opens a new `## Unreleased`.
 
 ## Steam Deck
 
