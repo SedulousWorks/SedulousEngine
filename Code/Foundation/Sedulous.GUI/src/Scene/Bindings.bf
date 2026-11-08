@@ -83,6 +83,36 @@ extension Node
 		return true;
 	}
 
+	/// BindProperty for text: `text` appends the value to the string it is given (cleared before
+	/// each run). The binding keeps that string and hands it on unowned, so a run makes no text of
+	/// its own beyond what the property's conversion makes. False when no such writable property.
+	/// OWNERSHIP of `text` transfers (deleted at once when nothing binds).
+	public bool BindText(StringView property, delegate void(String outText) text)
+	{
+		let buffer = new String();
+		return BindProperty(property, new [=text, =buffer] () =>
+			{
+				buffer.Clear();
+				text(buffer);
+				return System.Variant.Create(buffer);
+			} ~ { delete text; delete buffer; });
+	}
+
+	/// BindProperty for a number, converted to the property's type (a slider's value, a progress
+	/// bar's, a label's text). False when no such writable property. OWNERSHIP of `number`
+	/// transfers (deleted at once when nothing binds).
+	public bool BindNumber(StringView property, delegate double() number)
+	{
+		return BindProperty(property, new [=number] () => { return System.Variant.Create(number()); } ~ delete number);
+	}
+
+	/// BindProperty for a boolean (a node's Visible, a menu item's checked). False when no
+	/// such writable property. OWNERSHIP of `value` transfers (deleted at once when nothing binds).
+	public bool BindBool(StringView property, delegate bool() value)
+	{
+		return BindProperty(property, new [=value] () => { return System.Variant.Create(value()); } ~ delete value);
+	}
+
 	/// Binds reflected property `property` (one marked Translatable) to the text of `key` in the
 	/// GUI's Localization: resolved now and again when the language changes, the node joins a GUI,
 	/// or a named argument changes. With a count, the key's plural form for it, `{0}` the count and

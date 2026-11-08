@@ -3097,6 +3097,38 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 			});
 	}
 
+	/// Calls `handler` on each event named `eventName`: a core event by the name markup and scripts
+	/// give it ("click", "keydown"; EventTypeNamed), any other name one a library sends
+	/// (SendNamedEvent: a screen's `screenenter`). The handler takes the event by returning true:
+	/// it goes no further on its route. A token for Off; 0, the handler deleted, for an empty name.
+	/// OWNERSHIP of `handler` transfers: the listener holds it, deleted at Off or with the node.
+	/// The script On resolves its names here too.
+	public int32 On(StringView eventName, delegate bool(Event e) handler)
+	{
+		if (handler == null)
+			return 0;
+		if (eventName.IsEmpty)
+		{
+			delete handler;
+			return 0;
+		}
+		EventType type;
+		if (EventTypeNamed(eventName, out type))
+		{
+			return (int32)AddEventListener(type, new [=handler] (e) =>
+				{
+					if (handler(e))
+						e.Handled = true;
+				} ~ delete handler);
+		}
+		let name = new String(eventName);
+		return (int32)AddEventListener(.Named, new [=handler, =name] (e) =>
+			{
+				if ((((NamedEvent)e).Name == name) && handler(e))
+					e.Handled = true;
+			} ~ { delete handler; delete name; });
+	}
+
 	/// Tells this node's listeners of an event about it (not routed: geometry, focus, change).
 	public void SendEvent(Event e)
 	{

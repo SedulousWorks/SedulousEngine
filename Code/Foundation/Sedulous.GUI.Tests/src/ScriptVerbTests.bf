@@ -113,7 +113,7 @@ class ScriptVerbTests
 		// No handler, or no name: nothing listens, and what it was handed is let go.
 		let live = FakeScriptDelegate.Live;
 		Test.Assert(pad.On("", new FakeScriptDelegate()) == 0);
-		Test.Assert(pad.On("click", null) == 0);
+		Test.Assert(pad.On("click", (ScriptDelegate)null) == 0);
 		Test.Assert(FakeScriptDelegate.Live == live);
 	}
 

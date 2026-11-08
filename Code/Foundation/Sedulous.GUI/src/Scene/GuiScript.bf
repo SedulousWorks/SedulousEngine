@@ -275,23 +275,18 @@ extension Node
 			delete handler;
 			return 0;
 		}
-		// A name the core does not know is one a library sends (a gamekit screen's `screenenter`).
-		EventType type;
-		let named = !EventTypeNamed(eventName, out type);
-		if (named)
-			type = .Named;
+		// Over native code's On, so a name resolves one way for both; the script's event carries
+		// the name it was listened for.
 		let name = new String(eventName);
-		return (int32)AddEventListener(type, new [=handler, =named, =name] (e) =>
+		delegate bool(Event e) listener = new [=handler, =name] (e) =>
 			{
-				if (named && (((NamedEvent)e).Name != name))
-					return;
 				let scriptEvent = GuiScriptDetail.EventOf(e, name);
 				defer scriptEvent.ReleaseRef();
 				var args = ScriptValue[1](.FromCounted(scriptEvent));
 				var result = ScriptValue.Nil;
-				if (GuiScriptDetail.Call(handler, args, ref result) && (result.Kind == .Bool) && result.AsBool)
-					e.Handled = true;
-			} ~ { delete handler; delete name; });
+				return GuiScriptDetail.Call(handler, args, ref result) && (result.Kind == .Bool) && result.AsBool;
+			} ~ { delete handler; delete name; };
+		return On(eventName, listener);
 	}
 
 	/// Opens `content` (a node) as a popup below this node: closed by a press outside it or Escape,
