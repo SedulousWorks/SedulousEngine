@@ -1,3 +1,5 @@
+using System;
+
 namespace Sedulous.Core.Serialization;
 
 /// A type that describes its own data.
@@ -15,4 +17,12 @@ interface ISerializable
 	/// its own fields, and a non mut member would make every value component a class.
 	/// A class implementer is unaffected, mut being a no op for one.
 	void Serialize(ISerializer ar) mut;
+
+	/// The file this object was made from, when it names one (an asset's copy under the
+	/// project's sources): a content database keeps it on the object's record, so finding what
+	/// was made from a file reads no payload. Empty for everything else.
+	StringView SourceName()
+	{
+		return default;
+	}
 }

@@ -633,4 +633,93 @@ class ContentDatabaseTests
 		Test.Assert(database.MoveInstance(other.Id, metals) case .Err(.AlreadyExists));
 		Test.Assert(other.OwningGroup == materials);
 	}
+
+	/// The text of an envelope as it stands on the mount.
+	private static void EnvelopeText(ContentFixture fixture, StringView path, String outText)
+	{
+		let stream = fixture.Mount.Open(path, .Read);
+		Test.Assert(stream != null);
+		defer delete stream;
+		let bytes = scope List<uint8>();
+		bytes.Count = (int)stream.Size();
+		Test.Assert(stream.Read(.(bytes.Ptr, bytes.Count)) == bytes.Count);
+		outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
+	}
+
+	/// A record knows the file its object was made from: a self-describing envelope's header
+	/// carries it, so the scan learns it with the type and asking reads no payload; an envelope
+	/// written before the header carried it is read once on asking; a binary envelope keeps its
+	/// layout and reads on asking.
+	[Test]
+	public static void ARecordsSourceFileComesFromItsHeaderWithoutReadingThePayload()
+	{
+		TestSerializables.RegisterAll();
+		let typeName = "Sedulous.Content.Tests.SourcedRecord";
+		let record = scope SourcedRecord();
+		record.File.Set("Art/stone.png");
+
+		// XML: written, then a fresh database's scan.
+		{
+			let fixture = scope ContentFixture("scratch_content_source_xml", true);
+			{
+				let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+				let art = database.RootGroup.CreateGroup("records").CreateInstance("art", typeName);
+				Test.Assert(art.WriteObject(record) case .Ok);
+				SourcedRecord.Reads = 0;
+				Test.Assert(art.SourceName == "Art/stone.png", "the write keeps it");
+				Test.Assert(SourcedRecord.Reads == 0);
+			}
+			let path = "records/art.asset";
+			let text = EnvelopeText(fixture, path, .. scope String());
+			let header = "<string name=\"source\">Art/stone.png</string>";
+			Test.Assert(text.Contains(header), text);
+			{
+				SourcedRecord.Reads = 0;
+				let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+				let art = database.GetInstanceByPath("records/art");
+				Test.Assert(art != null);
+				Test.Assert(art.SourceName == "Art/stone.png");
+				Test.Assert(SourcedRecord.Reads == 0, "the scan knew it");
+				let read = art.ReadObject() as SourcedRecord;
+				Test.Assert(read != null, "the header's field does not upset the payload");
+				defer delete read;
+				Test.Assert(read.File == "Art/stone.png");
+				Test.Assert(SourcedRecord.Reads == 1);
+			}
+
+			// An envelope from before the header named its source: read once on asking, then kept.
+			let old = scope String(text);
+			old.Replace(header, "");
+			Test.Assert(old != text);
+			Test.Assert(fixture.Mount.Save(path, .((uint8*)old.Ptr, old.Length)) case .Ok);
+			{
+				SourcedRecord.Reads = 0;
+				let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+				let art = database.GetInstanceByPath("records/art");
+				Test.Assert(art != null);
+				Test.Assert(art.SourceName == "Art/stone.png");
+				Test.Assert(SourcedRecord.Reads == 1);
+				Test.Assert(art.SourceName == "Art/stone.png");
+				Test.Assert(SourcedRecord.Reads == 1, "kept");
+			}
+		}
+
+		// Binary: no header field (its layout is positional); asking reads the payload once.
+		{
+			let fixture = scope ContentFixture("scratch_content_source_bin", false);
+			{
+				let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+				let art = database.RootGroup.CreateGroup("records").CreateInstance("art", typeName);
+				Test.Assert(art.WriteObject(record) case .Ok);
+			}
+			SourcedRecord.Reads = 0;
+			let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+			let art = database.GetInstanceByPath("records/art");
+			Test.Assert(art != null);
+			Test.Assert(art.SourceName == "Art/stone.png");
+			Test.Assert(SourcedRecord.Reads == 1);
+			Test.Assert(art.SourceName == "Art/stone.png");
+			Test.Assert(SourcedRecord.Reads == 1, "kept");
+		}
+	}
 }

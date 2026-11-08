@@ -25,6 +25,9 @@ class Instance
 	/// One qualified name rather than a namespace and a name apart: Beef gives one, and
 	/// splitting it at the last dot would be inventing a boundary the language does not draw.
 	private String mTypeName = new .() ~ delete _;
+	/// SourceName, once known: from the scan's header, a write, or a read of the object.
+	private String mSource = new .() ~ delete _;
+	private bool mSourceKnown;
 
 	public this(ContentDatabase database, Group group, Guid id, StringView name, StringView typeName)
 	{
@@ -39,6 +42,26 @@ class Instance
 	public StringView Name => mName;
 	public StringView TypeName => mTypeName;
 	public Group OwningGroup => mGroup;
+
+	/// The file this instance's object was made from, when it names one
+	/// (ISerializable.SourceName: an asset's copy under the sources), so finding the assets made
+	/// from a file reads no payload. A self-describing envelope carries it in its header from the
+	/// write that put it there, and the scan reads it with the type; for an envelope written
+	/// before that, or a binary one, the object is read once, here, and the name kept until a
+	/// write or a read changes it.
+	public StringView SourceName
+	{
+		get
+		{
+			if (!mSourceKnown)
+			{
+				// Records the name when it reads; an unreadable object names none.
+				delete ReadObject();
+				mSourceKnown = true;
+			}
+			return mSource;
+		}
+	}
 
 	/// "group/path/name", mount relative and without the extension.
 	public void GetPath(String outPath)
@@ -65,7 +88,11 @@ class Instance
 		// Buffered: a binary envelope reads field by field, and a mount's stream need not
 		// buffer at all (a native file's buffers 4 KB at a time).
 		let buffered = scope BufferedStream(stream, 64 * 1024);
-		return ReadEnvelope(buffered, false, scope .());
+		let object = ReadEnvelope(buffered, false, scope .());
+		// The object names its source as it stands on disk: keep that, whatever the header said.
+		if (object != null)
+			SetSourceName(object.SourceName());
+		return object;
 	}
 
 	/// Reads an envelope an AUTHOR supplied (an agent's edit of the stored text) the way
@@ -102,6 +129,9 @@ class Instance
 			outError.AppendF("the envelope's typeName '{}' is not this asset's ('{}')", storedType, mTypeName);
 			return null;
 		}
+		// The header's source file, when it names one: the object names it again once read, so
+		// it is passed over here.
+		ReadSource(archive, scope .());
 
 		let object = mDatabase.Serializables.Create(TypeIdOf(mTypeName));
 		if (object == null)
@@ -171,6 +201,14 @@ class Instance
 		archive.GuidValue(ref mId);
 		archive.Key("typeName");
 		archive.Text(mTypeName);
+		// The source file the object names, in a self-describing header only: a positional one
+		// keeps its layout, and cooked data names no sources. The scan reads it with the type.
+		let source = scope String(object.SourceName());
+		if (archive.IsSelfDescribing)
+		{
+			archive.Key("source");
+			archive.Text(source);
+		}
 
 		BeginVersionedPayload(archive, TypeIdOf(mTypeName), 0);
 		archive.Key("payload");
@@ -185,7 +223,10 @@ class Instance
 		// A text backend has built a document and only now has bytes.
 		context.Flush(buffer);
 
-		return writable.Save(EnvelopePath(.. scope String()), buffer.Bytes);
+		let saved = writable.Save(EnvelopePath(.. scope String()), buffer.Bytes);
+		if (saved case .Ok)
+			SetSourceName(source);
+		return saved;
 	}
 
 	/// Writes a named data stream, and removes the sibling under the other suffix so a
@@ -249,6 +290,13 @@ class Instance
 	internal void SetName(StringView name) => mName.Set(name);
 	internal void SetGroup(Group group) => mGroup = group;
 
+	/// What the scan or a write knows the source file to be.
+	internal void SetSourceName(StringView name)
+	{
+		mSource.Set(name);
+		mSourceKnown = true;
+	}
+
 	/// Reads the three header fields every envelope starts with.
 	internal static bool ReadHeader(Serializer archive, out Guid id, String outTypeName)
 	{
@@ -257,6 +305,18 @@ class Instance
 		archive.GuidValue(ref id);
 		archive.Key("typeName");
 		archive.Text(outTypeName);
+		return archive.IsOk;
+	}
+
+	/// Reads the header's source file into `outSource` when the header names one (a
+	/// self-describing envelope written since it carried one), after the type. False for one
+	/// that does not, a binary envelope among them.
+	internal static bool ReadSource(Serializer archive, String outSource)
+	{
+		if (!archive.IsSelfDescribing || !archive.HasKey("source"))
+			return false;
+		archive.Key("source");
+		archive.Text(outSource);
 		return archive.IsOk;
 	}
 }

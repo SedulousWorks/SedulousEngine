@@ -25,4 +25,9 @@ class Asset
 	/// the mount for everybody else.
 	[DisplayName("Source File")]
 	public SourcePath FileName = new .() ~ delete _;
+
+	/// Its source file, which the source database keeps on the asset's record, so an import
+	/// asks which assets share a copy without reading them. This answers
+	/// ISerializable.SourceName for every concrete asset, the interface [Serializable] adds.
+	public StringView SourceName() => FileName.Value;
 }

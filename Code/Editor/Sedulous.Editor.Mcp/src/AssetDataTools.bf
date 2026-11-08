@@ -21,7 +21,7 @@ static class AssetDataTools
 		let readSchema = scope SchemaBuilder();
 		readSchema.Str("guid", "the asset's guid (asset_list)", true);
 		server.RegisterTool("asset_data_read",
-			"An asset's stored object as its envelope's XML: its guid, its typeName, the dataVersions and the `payload` holding every field. Edit the payload and hand the whole text to asset_data_write. Enum fields are stored as numbers: type_info on the field's type names the cases. A scene's or prefab's content is not here (scene_read and prefab_read have it), nor is an imported asset's bulk data.",
+			"An asset's stored object as its envelope's XML: its guid, its typeName, its source (the file an imported asset was made from; the object's own field is what counts), the dataVersions and the `payload` holding every field. Edit the payload and hand the whole text to asset_data_write. Enum fields are stored as numbers: type_info on the field's type names the cases. A scene's or prefab's content is not here (scene_read and prefab_read have it), nor is an imported asset's bulk data.",
 			readSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{

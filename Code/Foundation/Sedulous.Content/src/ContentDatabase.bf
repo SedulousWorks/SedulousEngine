@@ -426,8 +426,8 @@ class ContentDatabase : IContentDatabase
 		}
 	}
 
-	/// Reads only the header of an envelope: identity and type. The object itself is left
-	/// on disk until someone asks for it.
+	/// Reads only the header of an envelope: identity, type, and the source file when the
+	/// header names one. The object itself is left on disk until someone asks for it.
 	private void ScanInstance(Group group, StringView folder, StringView fileName, int suffixLength)
 	{
 		let instanceName = StringView(fileName, 0, fileName.Length - suffixLength);
@@ -450,8 +450,14 @@ class ContentDatabase : IContentDatabase
 		let typeName = scope String();
 		if (!Instance.[Friend]ReadHeader(context.Serializer, var id, typeName))
 			return;
+		// An envelope written before its header named the source does not: its record learns
+		// it on first asking (Instance.SourceName).
+		let source = scope String();
+		let named = Instance.[Friend]ReadSource(context.Serializer, source);
 
-		RegisterInstance(group, id, instanceName, typeName);
+		let instance = RegisterInstance(group, id, instanceName, typeName);
+		if (named)
+			instance.[Friend]SetSourceName(source);
 	}
 
 	// ---- sidecars ----

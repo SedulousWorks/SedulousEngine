@@ -305,7 +305,6 @@ static class ImportPaths
 			root = root.Parent;
 		let pending = scope List<Group>();
 		pending.Add(root);
-		let held = scope String();
 		while (!pending.IsEmpty)
 		{
 			let at = pending.PopBack();
@@ -313,9 +312,8 @@ static class ImportPaths
 			{
 				if (instance === except)
 					continue;
-				held.Clear();
-				AssetFileOf(instance, held);
-				if (held == sourcesName)
+				// The record's source name (Asset.FileName), kept by the database: no envelope read.
+				if (instance.SourceName == sourcesName)
 					return true;
 			}
 			for (let child in at.Groups)
