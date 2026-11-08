@@ -33,10 +33,10 @@ namespace Sedulous.Engine.Gameplay;
 ///
 /// An instance added during a pass is not visited by it: it starts with the next frame's
 /// edges. One removed during a pass is not visited after its removal, the rest are visited
-/// once each, and it is deleted only as the pass ends. An entity destroyed during Update is
-/// destroyed by the scene at the end of the frame; one destroyed during the fixed step goes at
-/// once (the scene defers only during Update), its behaviours released then and deleted as
-/// the pass ends.
+/// once each, and it is deleted only as the pass ends. An entity destroyed during Update or
+/// during the fixed step is destroyed by the scene at the end of the frame's Update, so its
+/// behaviours still hear the rest of the frame (the remaining fixed steps, the update and the
+/// late tick) and are released there.
 ///
 /// A queued call is a direct call deferred: it runs at the drain with an update's footing,
 /// whatever queued it. One bound to a behaviour (Behaviour.Post) is dropped when the

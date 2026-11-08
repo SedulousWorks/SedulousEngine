@@ -70,6 +70,7 @@ class Scene
 	private List<UnresolvedSettings> mUnresolvedSettings = new .() ~ DeleteContainerAndItems!(_);
 	private List<EntityHandle> mPendingDestroys = new .() ~ delete _;
 
+	/// True during Update and during a fixed step: a destroy then is queued for the cleanup.
 	private bool mIsUpdating = false;
 	private bool mStarted = false;
 	private bool mSimulationEnabled = true;
@@ -146,8 +147,9 @@ class Scene
 
 	/// Destroys an entity and its whole subtree. A no op for a stale handle.
 	///
-	/// Called DURING an update, by a system destroying entities, it is deferred to the
-	/// frame's cleanup so whatever is iterating stays on solid ground.
+	/// Called DURING an update or a fixed step, by a system destroying entities, it is
+	/// deferred to the cleanup at the end of the frame's Update, so whatever is iterating
+	/// stays on solid ground; the entity stays valid until then.
 	[Scriptable]
 	public void DestroyEntity(EntityHandle entity)
 	{
@@ -1012,14 +1014,23 @@ class Scene
 		ProcessPendingDestroys();
 	}
 
+	/// One fixed step. A destroy asked for during it waits, as one during Update does, for
+	/// the cleanup at the end of the frame's Update, which the drive runs after the frame's
+	/// fixed steps: a step's systems (physics and its contacts, a behaviour's fixed tick,
+	/// replication's apply) never have an entity go from under them, and the remaining steps
+	/// of the frame still see it. A caller stepping by hand without an Update leaves it queued
+	/// until its next Update.
 	public void FixedUpdate(float fixedDeltaTime)
 	{
+		let wasUpdating = mIsUpdating;
+		mIsUpdating = true;
 		for (let system in mSortedSystems)
 		{
 			if (system.IsSimulationOnly && !mSimulationEnabled)
 				continue;
 			system.OnFixedUpdate(fixedDeltaTime);
 		}
+		mIsUpdating = wasUpdating;
 	}
 
 	/// Initialises components added since the last call, across every manager.
@@ -1285,7 +1296,7 @@ class Scene
 		}
 	}
 
-	/// Destroys what was queued during the update.
+	/// Destroys what was queued during the update and the fixed steps before it.
 	///
 	/// SNAPSHOT first, because destroying a subtree can queue more, and the stale entries a
 	/// nested destroy leaves behind are skipped by the validity check.

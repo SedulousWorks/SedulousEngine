@@ -91,6 +91,14 @@ class GameInstance : RunBase, IRunService
 	private List<TrackedLoad> mLoads = new .() ~ delete _;
 	/// Only ever grows, so a ticket never aliases a retired one.
 	private int32 mNextTicket = 0;
+	/// The tickets of LoadScene calls made while a scene of the run was being ticked: started
+	/// at the call, and finished (resources pumped out, then activated) by the next PumpLoads,
+	/// once the scenes' frame is over.
+	private List<int32> mFinishAtPump = new .() ~ delete _;
+	/// How deep calls into a scene's own code run outside the scenes' tick: a behaviour's or a
+	/// level's event handler, delivered by the run's drain or by an Emit from the game. Its scene
+	/// must not be replaced under it, so a LoadScene then defers as one inside the tick does.
+	private int32 mSceneCodeDepth = 0;
 
 	private SceneActivationPolicy mActivationPolicy = null ~ delete _;
 
@@ -275,6 +283,16 @@ class GameInstance : RunBase, IRunService
 	/// This run's scene group.
 	public SceneManager Scenes => mSceneManager;
 
+	/// Whether a scene's own code is running: the scenes' tick (fixed steps or Update), or a
+	/// behaviour's or a level's handler called from outside it. What would replace the current
+	/// scene (LoadScene's activation) waits until it is false.
+	public bool SceneCodeRunning => mSceneManager.IsUpdating || (mSceneCodeDepth > 0);
+
+	/// Brackets a call into a scene's own code made outside the scenes' tick (the gameplay
+	/// tier's handler wrappers): each Enter is matched by one Leave.
+	internal void EnterSceneCode() => mSceneCodeDepth++;
+	internal void LeaveSceneCode() => mSceneCodeDepth--;
+
 	/// Delivers this frame's queued events. Cascade bounded like a scene's, and safe with
 	/// nothing subscribed.
 	/// Held while debug paused, so what was published during the pause is delivered after
@@ -329,6 +347,7 @@ class GameInstance : RunBase, IRunService
 	public void ClearScenes()
 	{
 		mLoads.Clear();
+		mFinishAtPump.Clear();
 		SetScene(null);
 		mSceneManager.Clear();
 
@@ -450,8 +469,23 @@ class GameInstance : RunBase, IRunService
 
 	/// Drives the tracked loads: any whose resources finished is activated, paired in, and
 	/// handed to the app's policy, EXACTLY ONCE. Cheap with nothing in flight.
+	///
+	/// The hosts call it after the scenes' frame (fixed steps and Update); asked while a scene's
+	/// own code runs (SceneCodeRunning) it does nothing, since an activation replaces and
+	/// destroys the current scene, and the host's next call does the work. The LoadScene calls
+	/// deferred out of scene code finish here first.
 	public void PumpLoads()
 	{
+		if (SceneCodeRunning)
+			return;
+
+		if (!mFinishAtPump.IsEmpty)
+		{
+			for (let ticket in mFinishAtPump)
+				FinishLoad(ticket);
+			mFinishAtPump.Clear();
+		}
+
 		// An index walk rather than a range one: a successful activation retires its entry in
 		// place, so the list shrinks under the loop. A failed or still streaming entry stays
 		// and the walk steps past it.
@@ -580,14 +614,35 @@ class GameInstance : RunBase, IRunService
 
 	/// Loads a level and activates it now, the app's policy applied, in place of the current
 	/// one, which is destroyed. False when it could not, and the current one stays.
+	///
+	/// Asked from a scene's own code (SceneCodeRunning: a behaviour's or a level's update or
+	/// fixed step, what a behaviour's queued calls and contacts run at the end of its tick, or a
+	/// behaviour's or a level's event handler wherever it is delivered), the load starts now and
+	/// finishes at the host's next PumpLoads, after the frame's scene update: the scene whose
+	/// code asked is not destroyed under it. True then means the load started; the current scene
+	/// is still the old one until then. A game's own code (its hooks, its handlers, a game
+	/// script) loads at once, and reads the new scene when the call returns.
 	[Scriptable]
 	public bool LoadScene(Guid sceneId)
 	{
 		let ticket = LoadSceneAsync(sceneId);
 		if (ticket == 0)
 			return false;
-		// The load's resources bind on workers; pumping them out here makes the call the
-		// synchronous convenience it claims to be.
+		if (SceneCodeRunning)
+		{
+			mFinishAtPump.Add(ticket);
+			return true;
+		}
+		FinishLoad(ticket);
+		PumpLoads();
+		return !LoadFailed(ticket);
+	}
+
+	/// Pumps a tracked load's resources until it completes. The binds run on workers; pumping
+	/// them out here is what makes LoadScene the synchronous convenience it claims to be. A
+	/// ticket no longer tracked (its scene destroyed, the scenes cleared) is passed over.
+	private void FinishLoad(int32 ticket)
+	{
 		for (let load in mLoads)
 		{
 			if (load.Ticket != ticket)
@@ -596,8 +651,6 @@ class GameInstance : RunBase, IRunService
 			while (!handle.IsComplete)
 				handle.Resources.Pump(0.010);
 		}
-		PumpLoads();
-		return !LoadFailed(ticket);
 	}
 
 	/// LoadSceneAsync for the scene a field names (a level's exit): its ticket, or nought.

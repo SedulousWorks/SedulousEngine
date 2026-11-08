@@ -34,6 +34,7 @@ class SceneManager
 	/// Non owning.
 	private List<Scene> mActive = new .() ~ delete _;
 	private List<Scene> mPendingRemove = new .() ~ delete _;
+	/// True while BeginFrame steps the scenes and while Update ticks them.
 	private bool mUpdating = false;
 
 	/// Sets the assembler. While one is set it is the ONLY assembly path: there is no
@@ -118,14 +119,21 @@ class SceneManager
 
 	public bool IsActive(Scene scene) => mActive.Contains(scene);
 
-	/// Destroys a scene, DEFERRED to the end of the update when called during one.
+	/// Whether a scene of the group is being ticked: BeginFrame's fixed steps or Update. An
+	/// owner holds back what would replace or free a scene (a level load) until it is false.
+	public bool IsUpdating => mUpdating;
+
+	/// Destroys a scene, DEFERRED to the end of Update when called during it or during the
+	/// fixed steps of BeginFrame: the scene being ticked is never freed under its own code.
 	public void DestroyScene(Scene scene)
 	{
 		if (scene == null)
 			return;
 		if (mUpdating)
 		{
-			mPendingRemove.Add(scene);
+			// Once: a second ask before the flush would free it twice.
+			if (!mPendingRemove.Contains(scene))
+				mPendingRemove.Add(scene);
 			return;
 		}
 		DestroyImmediate(scene);
@@ -160,14 +168,19 @@ class SceneManager
 	/// `time` carries host by context, built by the driver; this manager contributes the
 	/// group term and each scene its own. THE one place the chain is composed, which is why
 	/// the terms cannot drift apart.
+	///
+	/// A scene destroyed during the steps waits for the end of Update, which the drive runs
+	/// after this every frame, as an entity destroyed during them does.
 	public void BeginFrame(FrameTime time)
 	{
+		mUpdating = true;
 		for (let scene in mActive)
 		{
 			if ((time.FixedStep > 0.0f) && (scene.FixedTimeStep != time.FixedStep))
 				scene.SetFixedTiming(time.FixedStep, 4);
 			scene.AdvanceTime(time.ContextDelta * mTimeScale * scene.TimeScale);
 		}
+		mUpdating = false;
 	}
 
 	/// The variable lane: the same chain, composed the same one place.

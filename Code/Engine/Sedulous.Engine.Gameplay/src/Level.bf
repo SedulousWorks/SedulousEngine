@@ -4,7 +4,9 @@ using System.Reflection;
 using Sedulous.Core.Serialization;
 using Sedulous.Run;
 using Sedulous.Scene;
+using Sedulous.Engine.GameInstance;
 using internal Sedulous.Engine.Gameplay;
+using internal Sedulous.Engine.GameInstance;
 
 namespace Sedulous.Engine.Gameplay;
 
@@ -97,8 +99,16 @@ abstract class Level : SceneSystem
 		}
 		delegate void(T) gated = new [=this, =handler] (evt) =>
 			{
-				if (mStarted && Active)
-					handler(evt);
+				if (!mStarted || !Active)
+					return;
+				// Marked as scene code for its run, so a LoadScene from it defers rather than
+				// destroying this level's scene, and this level, under it.
+				let game = RunServices.Get<GameInstance>(Run);
+				if (game != null)
+					game.EnterSceneCode();
+				handler(evt);
+				if (game != null)
+					game.LeaveSceneCode();
 			} ~ delete handler;
 		let subscription = GameEvents.Listen<T>(run, gated);
 		if (!subscription.IsSubscribed)
