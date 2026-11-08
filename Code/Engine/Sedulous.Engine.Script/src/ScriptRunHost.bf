@@ -27,7 +27,8 @@ class ScriptRunHost
 	public delegate void(ScriptRuntime runtime) Configure = null ~ delete _;
 
 	private ScriptRuntime mRuntime = null ~ delete _;
-	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner.
+	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner, and
+	/// pointed at its run's RunRandom by the run that owns the host.
 	private ScriptRandom mRandom = new .() ~ delete _;
 	/// BORROWED: the services the owner installed on this host, by exact type, which its scripts
 	/// find first (FindService).
@@ -291,8 +292,9 @@ class ScriptRunHost
 		mModuleName.Clear();
 		mWarnedLanguage = false;
 		// The next run starts from the default seed, as a fresh run does: a second play in
-		// the same tab must not continue the first one's sequence.
-		delete mRandom;
-		mRandom = new .();
+		// the same tab must not continue the first one's sequence. A run's generator is the
+		// run's to restart, as its session stops, since its native code draws from it too.
+		if (mRandom.OwnsSource)
+			mRandom.Source.Reset();
 	}
 }

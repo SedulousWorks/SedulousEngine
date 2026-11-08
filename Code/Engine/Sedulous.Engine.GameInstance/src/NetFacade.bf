@@ -22,9 +22,25 @@ namespace Sedulous.Engine.GameInstance;
 ///
 /// Its entities are the replicated scene's (IScriptEntityScene): a spawn answers one a script
 /// can use, and IsMine takes one from there.
+///
+/// Native code receives through the delegate overloads of On, OnNumber, OnText, OnJoin and
+/// OnLeave, which share the script handlers' table: a name has one handler, of either kind, the
+/// later registration replacing it. The facade OWNS the delegates and deletes them on Off (by
+/// the same name; OffJoin and OffLeave for those), on a replacement, and as the run's session
+/// ends (DropNativeHandlers), when the game, its levels and its behaviours they call into go.
+/// Something that goes mid-session (a level's scene unloaded, a behaviour's entity destroyed)
+/// calls Off for what it registered.
 [Scriptable, ServiceFacade("Net")]
 class NetFacade : IScriptEntityScene
 {
+	/// Native code's handler of a bare message, and of a player joining or leaving: the player
+	/// that sent it, or that came or went.
+	public typealias PlayerHandler = delegate void(int32 player);
+	/// Native code's handler of a message carrying a number.
+	public typealias NumberHandler = delegate void(int32 player, double value);
+	/// Native code's handler of a message carrying a text, valid for the call alone.
+	public typealias TextHandler = delegate void(int32 player, StringView text);
+
 	/// What a script message carries after its id: the sending call writes the kind first, so
 	/// the receiving handler knows what follows (nothing, a number, or a text).
 	public enum MessageKind : uint8
@@ -37,12 +53,21 @@ class NetFacade : IScriptEntityScene
 	/// The longest text a message may carry; a longer length on the wire is a broken message.
 	public const int MaxTextBytes = 1 << 20;
 
-	/// A script's handler for a message name, and the kind it takes.
+	/// The handler for a message name, a script's or native code's, and the kind it takes. Its
+	/// endpoints' RPCs hold it, so it lives as long as the facade: Off empties it.
 	private class Handler
 	{
 		public String Name = new .() ~ delete _;
 		public MessageKind Kind;
+		/// OWNED: a script's handler; null when native code's is set, or none.
 		public ScriptDelegate Callback ~ delete _;
+		/// OWNED: native code's, the one of its kind; null for a script's, or none.
+		public PlayerHandler Plain ~ delete _;
+		public NumberHandler Number ~ delete _;
+		public TextHandler Text ~ delete _;
+
+		public bool IsNative => (Plain != null) || (Number != null) || (Text != null);
+		public bool IsSet => (Callback != null) || IsNative;
 	}
 
 	/// BORROWED: the instance's controller, which outlives this.
@@ -51,9 +76,16 @@ class NetFacade : IScriptEntityScene
 	/// the controller opens gets them (registered before hosting or joining too), and a
 	/// handler survives a disconnect.
 	private List<Handler> mHandlers = new .() ~ DeleteContainerAndItems!(_);
-	/// OnJoin and OnLeave's handlers, OWNED, kept beside the message handlers for the same reason.
+	/// OnJoin and OnLeave's handlers, OWNED, kept beside the message handlers for the same reason:
+	/// a script's or native code's, one of each slot set at a time.
 	private ScriptDelegate mJoinHandler ~ delete _;
 	private ScriptDelegate mLeaveHandler ~ delete _;
+	private PlayerHandler mNativeJoin ~ delete _;
+	private PlayerHandler mNativeLeave ~ delete _;
+	/// Handlers replaced or taken off while a message or a player event is being delivered,
+	/// deleted once it is: the handler running may be one of them, or a caller's own. OWNED.
+	private List<Object> mRetired = new .() ~ DeleteContainerAndItems!(_);
+	private int32 mDelivering = 0;
 
 	public this(NetworkController controller)
 	{
@@ -250,27 +282,173 @@ class NetFacade : IScriptEntityScene
 		return entity;
 	}
 
+	/// Receives the message `name` with `handler(player)`, as On does for a script: the sender
+	/// is player nought on a client, the client that called on the host. Register any time; a
+	/// later registration of the name, of either kind, replaces it. TAKES OWNERSHIP of the
+	/// handler; null does nothing.
+	public void On(StringView name, PlayerHandler handler)
+	{
+		if (handler != null)
+			RegisterNative(name, .None, handler, null, null);
+	}
+
+	/// Receives the message `name` with `handler(player, value)`, its number. As On.
+	public void OnNumber(StringView name, NumberHandler handler)
+	{
+		if (handler != null)
+			RegisterNative(name, .Number, null, handler, null);
+	}
+
+	/// Receives the message `name` with `handler(player, text)`, its text, a view valid for the
+	/// call alone. As On.
+	public void OnText(StringView name, TextHandler handler)
+	{
+		if (handler != null)
+			RegisterNative(name, .Text, null, null, handler);
+	}
+
+	/// Calls `handler(player)` when a player joins, as OnJoin does for a script; it replaces
+	/// whichever was set. TAKES OWNERSHIP; null does nothing.
+	public void OnJoin(PlayerHandler handler)
+	{
+		if (handler != null)
+			SetNativePlayerHandler(handler, true);
+	}
+
+	/// Calls `handler(player)` when a player leaves, as OnLeave does for a script. As OnJoin.
+	public void OnLeave(PlayerHandler handler)
+	{
+		if (handler != null)
+			SetNativePlayerHandler(handler, false);
+	}
+
+	/// Takes the handler of the message `name` off, of either kind, and deletes it (once the
+	/// message being delivered, if any, is done). Nothing for a name without one.
+	public void Off(StringView name)
+	{
+		for (let handler in mHandlers)
+		{
+			if (handler.Name == name)
+				Empty(handler);
+		}
+	}
+
+	/// Takes the join handler off, of either kind, and deletes it.
+	public void OffJoin()
+	{
+		Retire(mJoinHandler);
+		mJoinHandler = null;
+		Retire(mNativeJoin);
+		mNativeJoin = null;
+	}
+
+	/// Takes the leave handler off, of either kind, and deletes it.
+	public void OffLeave()
+	{
+		Retire(mLeaveHandler);
+		mLeaveHandler = null;
+		Retire(mNativeLeave);
+		mNativeLeave = null;
+	}
+
+	/// Every handler native code registered, taken off and deleted; a script's stay. The run
+	/// calls it as its session ends, when what they call into goes.
+	public void DropNativeHandlers()
+	{
+		for (let handler in mHandlers)
+		{
+			if (handler.IsNative)
+				Empty(handler);
+		}
+		Retire(mNativeJoin);
+		mNativeJoin = null;
+		Retire(mNativeLeave);
+		mNativeLeave = null;
+	}
+
 	/// How many message names have a handler.
-	public int HandlerCount => mHandlers.Count;
+	public int HandlerCount
+	{
+		get
+		{
+			int count = 0;
+			for (let handler in mHandlers)
+			{
+				if (handler.IsSet)
+					count++;
+			}
+			return count;
+		}
+	}
 
 	private void Register(StringView name, MessageKind kind, ScriptDelegate callback)
 	{
 		if (callback == null)
 			return;
-		Handler handler = null;
+		let handler = HandlerFor(name);
+		Empty(handler);
+		handler.Callback = callback;
+		handler.Kind = kind;
+		if (let endpoint = Endpoint)
+			Install(endpoint, handler);
+	}
+
+	/// The handler of `name`, made (empty) when there is none yet.
+	private Handler HandlerFor(StringView name)
+	{
 		for (let existing in mHandlers)
 		{
 			if (existing.Name == name)
-				handler = existing;
+				return existing;
 		}
-		if (handler == null)
-		{
-			handler = new Handler();
-			handler.Name.Set(name);
-			mHandlers.Add(handler);
-		}
-		delete handler.Callback;
-		handler.Callback = callback;
+		let handler = new Handler();
+		handler.Name.Set(name);
+		mHandlers.Add(handler);
+		return handler;
+	}
+
+	/// Takes every callback off `handler`, retired.
+	private void Empty(Handler handler)
+	{
+		Retire(handler.Callback);
+		handler.Callback = null;
+		Retire(handler.Plain);
+		handler.Plain = null;
+		Retire(handler.Number);
+		handler.Number = null;
+		Retire(handler.Text);
+		handler.Text = null;
+	}
+
+	/// Deletes `callback`, or, while something is being delivered, once it is.
+	private void Retire(Object callback)
+	{
+		if (callback == null)
+			return;
+		if (mDelivering > 0)
+			mRetired.Add(callback);
+		else
+			delete callback;
+	}
+
+	private void BeginDelivery() => mDelivering++;
+
+	private void EndDelivery()
+	{
+		mDelivering--;
+		if (mDelivering == 0)
+			ClearAndDeleteItems!(mRetired);
+	}
+
+	/// Native code's handler for `name`, installed now if an endpoint is open, and on each the
+	/// controller opens later.
+	private void RegisterNative(StringView name, MessageKind kind, PlayerHandler plain, NumberHandler number, TextHandler text)
+	{
+		let handler = HandlerFor(name);
+		Empty(handler);
+		handler.Plain = plain;
+		handler.Number = number;
+		handler.Text = text;
 		handler.Kind = kind;
 		if (let endpoint = Endpoint)
 			Install(endpoint, handler);
@@ -286,23 +464,22 @@ class NetFacade : IScriptEntityScene
 	/// Points the message's RPC on `endpoint` at the handler: the kind read first, then what
 	/// it says follows. A message of another kind than the handler takes, or one cut short,
 	/// reaches nothing half read.
-	private static void Install(NetworkManager endpoint, Handler handler)
+	private void Install(NetworkManager endpoint, Handler handler)
 	{
-		endpoint.Rpc.On(handler.Name, new [=handler, =endpoint](sender, args) =>
+		endpoint.Rpc.On(handler.Name, new [=this, =handler, =endpoint](sender, args) =>
 			{
 				// A client hears only from the host: player nought (its own id for the host
 				// connection means nothing to a script).
 				let from = endpoint.Session.IsClient ? 0 : sender;
 				let kind = (MessageKind)args.ReadU8();
-				if (!args.Ok || (kind != handler.Kind) || (handler.Callback == null))
+				if (!args.Ok || (kind != handler.Kind) || !handler.IsSet)
 					return;
-				var values = ScriptValue[2](.FromInt((int32)from), .Nil);
-				int count = 1;
+				double number = 0;
 				let text = scope String();
 				switch (kind)
 				{
 				case .Number:
-					values[count++] = .FromFloat(args.ReadDouble());
+					number = args.ReadDouble();
 				case .Text:
 					let size = args.ReadVarU32();
 					if (!args.Ok || (size > (uint32)MaxTextBytes))
@@ -310,13 +487,33 @@ class NetFacade : IScriptEntityScene
 					let bytes = scope uint8[size];
 					args.ReadBytes(bytes);
 					text.Append((char8*)bytes.Ptr, (int)size);
-					values[count++] = .FromString(text);
 				case .None:
 				}
 				if (!args.Ok)
-					return; // truncated: nothing half read reaches the script
-				var result = ScriptValue.Nil;
-				handler.Callback.Invoke(.(&values[0], count), ref result);
+					return; // truncated: nothing half read reaches the handler
+				// Locals from here on: a handler that registers its own name again replaces this
+				// closure on the endpoint, which deletes it under the call.
+				let facade = this;
+				let entry = handler;
+				facade.BeginDelivery();
+				if (entry.Callback != null)
+				{
+					var values = ScriptValue[2](.FromInt((int32)from), .Nil);
+					int count = 1;
+					if (kind == .Number)
+						values[count++] = .FromFloat(number);
+					else if (kind == .Text)
+						values[count++] = .FromString(text);
+					var result = ScriptValue.Nil;
+					entry.Callback.Invoke(.(&values[0], count), ref result);
+				}
+				else if (entry.Plain != null)
+					entry.Plain((int32)from);
+				else if (entry.Number != null)
+					entry.Number((int32)from, number);
+				else if (entry.Text != null)
+					entry.Text((int32)from, text);
+				facade.EndDelivery();
 			});
 	}
 
@@ -345,30 +542,57 @@ class NetFacade : IScriptEntityScene
 	{
 		if (join)
 		{
-			delete mJoinHandler;
+			OffJoin();
 			mJoinHandler = handler;
 		}
 		else
 		{
-			delete mLeaveHandler;
+			OffLeave();
 			mLeaveHandler = handler;
 		}
 		if (let endpoint = Endpoint)
 			InstallPlayerEvents(endpoint);
 	}
 
-	/// Points the endpoint's join and leave reporting at the script's handlers, read when an
-	/// event comes, so a later OnJoin needs no reinstall.
+	private void SetNativePlayerHandler(PlayerHandler handler, bool join)
+	{
+		if (join)
+		{
+			OffJoin();
+			mNativeJoin = handler;
+		}
+		else
+		{
+			OffLeave();
+			mNativeLeave = handler;
+		}
+		if (let endpoint = Endpoint)
+			InstallPlayerEvents(endpoint);
+	}
+
+	/// Points the endpoint's join and leave reporting at the handlers, read when an event comes,
+	/// so a later OnJoin needs no reinstall.
 	private void InstallPlayerEvents(NetworkManager endpoint)
 	{
 		endpoint.SetPlayerEvents(new [=this](joined, player) =>
 			{
 				let handler = joined ? mJoinHandler : mLeaveHandler;
-				if (handler == null)
+				let native = joined ? mNativeJoin : mNativeLeave;
+				if ((handler == null) && (native == null))
 					return;
-				var args = ScriptValue[1](.FromInt((int32)player));
-				var result = ScriptValue.Nil;
-				handler.Invoke(args, ref result);
+				// A local: a handler that sets another OnJoin replaces this closure on the
+				// endpoint, which deletes it under the call.
+				let facade = this;
+				facade.BeginDelivery();
+				if (handler != null)
+				{
+					var args = ScriptValue[1](.FromInt((int32)player));
+					var result = ScriptValue.Nil;
+					handler.Invoke(args, ref result);
+				}
+				else
+					native((int32)player);
+				facade.EndDelivery();
 			});
 	}
 

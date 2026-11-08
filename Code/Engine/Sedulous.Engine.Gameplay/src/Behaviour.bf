@@ -55,6 +55,10 @@ abstract class Behaviour
 	/// The run its scene belongs to; null outside every run.
 	public IRun Run => (mScene != null) ? mScene.Run : null;
 
+	/// Its run's random numbers, the ones its scripts draw as `Random`; null outside a run
+	/// that has them. BORROWED.
+	public RunRandom Random => RunServices.Get<RunRandom>(Run);
+
 	/// Enabled, and its entity active with all its ancestors.
 	public bool IsActive => Enabled && (mScene != null) && mScene.IsEffectivelyActive(mEntity);
 

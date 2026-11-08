@@ -147,12 +147,12 @@ class SkyHopperGame : Game
 | Audio (65) | `Run.Get<AudioFacade>()` | exists |
 | Save (46) | `Run.Get<SaveFacade>()` / `RunSave` | exists |
 | Run (51) | `GameInstance` verbs | exists |
-| Random (44) | `RunRandom` run service on `Sedulous.Core.Random`, moved out of `ScriptRandom` (`Sedulous.Script`) | **move** |
+| Random (44) | `RunRandom` (in `Sedulous.Core`, over `Random`, so neither scripting nor runs depend on the other): a service of every `GameInstance` (`RunServices.Get<RunRandom>(run)`, `Random` on Behaviour, Level and Game), back to the default seed as each session stops; `ScriptRandom` a facade over it (`Use`), a host outside every run keeping its own | **move** |
 | GUI find, casts, ScreenStack | `GuiFacade.Root()`, `Node.FindElement`, `as Label`, `ScreenStack.Push/Pop` | exists |
 | GUI events (78) | `Node.On(StringView name, delegate bool(Event))`: the name resolution (core or `.Named`) shared with the script `On`; over `AddEventListener` | **new**, thin |
 | GUI Bind/OnCommand | `BindProperty(name, delegate Variant())`, `BindData`, `OnCommand(id, delegate)` already native; typed `BindText/BindNumber/BindBool` sugar; `Tween.OnFinished(delegate)` beside `OnFinishedScript` | sugar **new** (0 sample uses) |
-| Net (35) | `NetFacade` overloads taking `delegate void(int32 player)`, `...(int32, double)`, `...(int32, StringView)` beside the `ScriptDelegate` ones | **new** |
-| Http (0) | `HttpFacade.Get/Post/Request` with `delegate void(int32 status, StringView body, StringView error)` | **new** |
+| Net (35) | `NetFacade` overloads taking `delegate void(int32 player)`, `...(int32, double)`, `...(int32, StringView)` beside the `ScriptDelegate` ones, one handler a name of either kind; the facade owns them, deleted by `Off(name)`/`OffJoin`/`OffLeave`, a replacement, or the session's stop (`DropNativeHandlers`); what goes mid-session calls `Off` | **new** |
+| Http (0) | `HttpFacade.Get/Post/Request` with `delegate void(int32 status, StringView body, StringView error)`, owned: deleted after its answer, on `Cancel`, and by the session's stop, which drops what is under way uncalled | **new** |
 | Profiler overlay | `GameInstance.SetProfilerOverlay` | exists |
 
 ## Events and coroutines
@@ -208,7 +208,7 @@ Elsewhere:
 8. **Gameplay:** the `Level` tier and `AddLevel<T>`; NativeSample gains a Level. Tests.
 9. **Run/GameInstance/Composition:** `IGameHooks`, `LaunchGame`, `EnginePluginServices.AddRunListener`, `GameRunner`, `SetGame<T>`. Tests.
 10. **Player and Editor.Play:** launch the native game at the `StartScript` sites, with the both-present warning; NativeSample gains a Game. Tests in DefaultApp.Tests, Editor.Play.Tests and Integration.Plugins.
-11. **Run:** `RunRandom` service. **Net/Http:** delegate overloads. Tests.
+11. **Run:** `RunRandom` service. **Net/Http:** delegate overloads. Tests in Core.Tests, Engine.Script.Tests, GameInstance.Tests, GameScript.Tests, Http.Script.Tests and Gameplay.Tests.
 12. **GUI:** `Node.On` with a delegate, typed Bind sugar, `Tween.OnFinished`. Tests in GUI.Tests.
 13. **Editor MCP:** `pie_run` `game`/`level` probes and private behaviour fields. Tests, McpGuide.
 14. **Docs:** `Documentation/Shipping/GameCode.md` (the tiers, the facade-to-manager table, the build loop), and the phase 3 boxes in `x2.md`.

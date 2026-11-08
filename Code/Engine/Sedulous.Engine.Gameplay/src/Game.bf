@@ -38,6 +38,10 @@ abstract class Game : IGameHooks
 	/// The run, as the typed events take it.
 	public IRun Run => mInstance;
 
+	/// The run's random numbers, the ones its scripts draw as `Random`, back to the default
+	/// seed as each session stops; null before the launch. BORROWED.
+	public Sedulous.Core.RunRandom Random => RunServices.Get<Sedulous.Core.RunRandom>(Run);
+
 	/// The run's current scene; null until one is.
 	public Scene CurrentScene => (mInstance != null) ? mInstance.CurrentScene : null;
 

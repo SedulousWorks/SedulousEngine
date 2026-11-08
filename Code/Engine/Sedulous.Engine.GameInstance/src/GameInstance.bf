@@ -45,7 +45,8 @@ namespace Sedulous.Engine.GameInstance;
 /// bus, and what it owns registered on it, so others reach those through the run.
 ///
 /// Its own stop hook (IRunService) ends a session in order: the native game's OnExit, then the
-/// save written, then the networking the game used closed.
+/// save written, then the networking the game used closed, then the handlers native code gave
+/// Net and Http dropped and the run's random numbers restarted.
 [Scriptable, ScriptService, DisplayName("Run")]
 class GameInstance : RunBase, IRunService
 {
@@ -73,8 +74,8 @@ class GameInstance : RunBase, IRunService
 	private ITlsBackend mTls = null ~ delete _;
 	/// OWNED: this run's networking.
 	private NetworkController mNetwork = new .() ~ delete _;
-	/// OWNED: `Http` to this run's scripts. Its client is made on the scripts' first request,
-	/// pumped by TickScript and reset by StopScript.
+	/// OWNED: `Http` to this run's scripts and its native code. Its client is made on the first
+	/// request, pumped by TickScript and reset by StopScript and as each session stops.
 	private HttpFacade mHttpFacade = new .() ~ delete _;
 
 	/// OWNED: this run's action state, so one instance's input never reaches another's.
@@ -118,6 +119,9 @@ class GameInstance : RunBase, IRunService
 	private SaveFacade mSaveFacade = null ~ delete _;
 	/// OWNED: `Net` to this run's scripts, over the networking controller.
 	private NetFacade mNetFacade = null ~ delete _;
+	/// OWNED: this run's random numbers, its native code's and (through the host's
+	/// ScriptRandom) its scripts' alike; back to the default seed as each session stops.
+	private RunRandom mRandom = new .() ~ delete _;
 	/// The orchestrator: an instance of the game script's class. Null when no script runs.
 	private ScriptObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
@@ -157,6 +161,8 @@ class GameInstance : RunBase, IRunService
 		// Every context of this run finds this run's services through the run (Run, its input, its
 		// save, its HTTP, its networking), a behaviour's as much as a game script's.
 		mRunHost.OwningRun = this;
+		// Its scripts' `Random` draws from the run's generator, the one its native code reaches.
+		mRunHost.Random.Use(mRandom);
 		// The run's HTTP client is made on its scripts' first request, and https and a wss join
 		// use the run's TLS backend, made when first needed.
 		mHttpFacade.SetFactory(new () => HttpClients.Create(TlsBackend));
@@ -173,6 +179,7 @@ class GameInstance : RunBase, IRunService
 		Register<RunSave>(mSave);
 		Register<ScriptRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
+		Register<RunRandom>(mRandom);
 	}
 
 	/// The platform's TLS backend for this run, made on first use; null in a browser.
@@ -896,6 +903,7 @@ class GameInstance : RunBase, IRunService
 		if (mNativeGame == null)
 			return;
 		EndNativeGame();
+		DropNativeCallbacks();
 		Remove<IGameHooks>();
 	}
 
@@ -904,12 +912,27 @@ class GameInstance : RunBase, IRunService
 	/// joined closed after its exit had the chance to say goodbye. A game script's exit() ran
 	/// earlier, in StopScript, so what it saved is written here too. The run deletes the game
 	/// after the hooks, with the session's other services.
+	///
+	/// Then what native code handed the run's facades goes, its Net handlers and its HTTP
+	/// requests under way, since the game, its levels and its behaviours they call into go with
+	/// the session; and the run's random numbers go back to the default seed, so the next
+	/// session draws what this one did.
 	void IRunService.OnRunStopping(IRun run)
 	{
 		if (mNativeGame != null)
 			EndNativeGame();
 		else
 			mSave.Flush();
+		DropNativeCallbacks();
+		mRandom.Reset();
+	}
+
+	/// The Net handlers native code registered, deleted, and every HTTP request under way
+	/// dropped, its handler never called: nothing reaches a game that has ended.
+	private void DropNativeCallbacks()
+	{
+		mNetFacade.DropNativeHandlers();
+		mHttpFacade.Reset();
 	}
 
 	/// OnExit, the save, the networking, in that order; the game is no longer reached after.
