@@ -18,7 +18,7 @@ namespace Sedulous.Engine.Audio;
 /// The tick runs after the transforms are final: it plays what activation armed, syncs each
 /// live voice's position and velocity, reaps the finished one shots, works out the listener
 /// pose, and settles the reverb.
-class AudioSceneSystem : SceneSystem
+class AudioSceneSystem : SceneSystem, IAudioReleaser
 {
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
@@ -59,6 +59,13 @@ class AudioSceneSystem : SceneSystem
 	}
 
 	public AudioEngine Engine => mEngine;
+
+	/// IAudioReleaser: a removed source's voice stops now.
+	public void ReleaseVoice(VoiceHandle voice)
+	{
+		if ((mEngine != null) && mEngine.IsValidHandle(voice))
+			mEngine.Stop(voice);
+	}
 	public uint64 SceneGroup => mSceneGroup;
 	public Scene OwningScene => mScene;
 	public bool Started => mStarted;
@@ -68,6 +75,9 @@ class AudioSceneSystem : SceneSystem
 	public override void OnSceneStarted()
 	{
 		mStarted = true;
+		// A source removed while the scene plays stops its voice.
+		if (let sources = mScene.GetSystem<AudioSourceComponentManager>())
+			sources.SetReleaser(this);
 		mWasSimulating = true;
 		if (mEngine == null)
 			return;
@@ -101,6 +111,8 @@ class AudioSceneSystem : SceneSystem
 
 		if (let sources = mScene.GetSystem<AudioSourceComponentManager>())
 		{
+			// The scene group's voices stop with it below.
+			sources.SetReleaser(null);
 			sources.ForEach(scope (component, entity) =>
 				{
 					component.Voice = .();

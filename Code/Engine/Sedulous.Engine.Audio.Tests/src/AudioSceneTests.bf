@@ -42,6 +42,37 @@ class AudioSceneTests
 		Test.Assert(play.Audio.SceneGroup == 0);
 	}
 
+	/// A source that goes while the scene plays (its entity destroyed, or the component taken
+	/// off, as a script's removeFrom does) stops its voice then, not at the scene's end.
+	[Test]
+	public static void ADestroyedEntitysOrARemovedComponentsVoiceStopsAtOnce()
+	{
+		let play = scope AudioPlayScene();
+		let clip = play.AddClip(1.0f);
+		let doomed = play.AddSource(clip, .(1.0f, 0.0f, 0.0f));
+		let stripped = play.AddSource(clip, .(-1.0f, 0.0f, 0.0f));
+		play.Start();
+		play.Frame();
+
+		let a = play.Sources.Get(doomed).Voice;
+		let b = play.Sources.Get(stripped).Voice;
+		Test.Assert(play.Engine.IsPlaying(a));
+		Test.Assert(play.Engine.IsPlaying(b));
+
+		play.Scene.DestroyEntity(doomed);
+		play.Frame();
+		Test.Assert(!play.Engine.IsPlaying(a));
+		Test.Assert(play.Engine.IsPlaying(b));
+
+		play.Sources.RemoveComponent(stripped);
+		play.Frame();
+		Test.Assert(!play.Engine.IsPlaying(b));
+
+		// Past the stop fade, both slots are free.
+		play.Frame(0.1f);
+		Test.Assert(play.Engine.ActiveVoiceCount == 0);
+	}
+
 	[Test]
 	public static void ThePerFrameSyncPushesPositionAndVelocity()
 	{
