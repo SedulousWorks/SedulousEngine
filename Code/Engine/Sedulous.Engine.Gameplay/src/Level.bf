@@ -70,6 +70,10 @@ abstract class Level : SceneSystem
 	/// The run its scene belongs to; null outside every run.
 	public IRun Run => (Scene != null) ? Scene.Run : null;
 
+	/// Its run's random numbers, the ones its scripts draw as `Random`; null outside a run
+	/// that has them. BORROWED.
+	public Sedulous.Core.RunRandom Random => RunServices.Get<Sedulous.Core.RunRandom>(Run);
+
 	/// Lets go of the run without OnStop, which would run on a subclass already torn down:
 	/// nothing it subscribed or queued outlives it.
 	public ~this()

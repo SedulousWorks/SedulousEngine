@@ -194,4 +194,91 @@ class HttpFacadeTests
 		bed.Http.Get("https://example.com/again", bed.Handler());
 		Test.Assert(bed.Made == 2, "a new client for the next request");
 	}
+
+	// ---- native code's handlers ----
+
+	/// What native handlers heard, as "status [body] [error]" lines, and how many the facade
+	/// deleted (each handler counts its own deletion through the closure's destructor).
+	private class NativeLog
+	{
+		public List<String> Heard = new .() ~ DeleteContainerAndItems!(_);
+		public int Deleted = 0;
+
+		public HttpFacade.ResponseHandler Handler() => new [=this] (status, body, error) =>
+			{
+				Heard.Add(new String()..AppendF("{} [{}] [{}]", status, body, error));
+			} ~ { Deleted++; };
+	}
+
+	/// The native overloads send what the script ones send, the client made once.
+	[Test]
+	public static void NativeGetPostAndRequestReachTheClientAsAsked()
+	{
+		let log = scope NativeLog();
+		let bed = scope Bed();
+		let a = bed.Http.Get("https://example.com/scores", log.Handler());
+		let b = bed.Http.Post("https://example.com/score", "application/json", "{\"s\":5}", log.Handler());
+		let c = bed.Http.Request("PUT", "https://example.com/name", "X-Token: abc\r\nnot a header", "Rae", log.Handler());
+		Test.Assert(bed.Made == 1);
+		Test.Assert((a == 1) && (b == 2) && (c == 3));
+		let sent = bed.Fake.Log;
+		Test.Assert((sent[0].Request.Method == "GET") && (sent[0].Request.Url == "https://example.com/scores"));
+		Test.Assert(sent[1].Request.Method == "POST");
+		Test.Assert(sent[1].Request.Headers[0].Value == "application/json");
+		Test.Assert(StringView((char8*)sent[1].Request.Body.Ptr, sent[1].Request.Body.Count) == "{\"s\":5}");
+		Test.Assert(sent[2].Request.Method == "PUT");
+		Test.Assert(sent[2].Request.Headers.Count == 1, "a line without a colon is skipped");
+		Test.Assert((sent[2].Request.Headers[0].Name == "X-Token") && (sent[2].Request.Headers[0].Value == "abc"));
+		Test.Assert(StringView((char8*)sent[2].Request.Body.Ptr, sent[2].Request.Body.Count) == "Rae");
+	}
+
+	/// A native handler hears (status, body, error) on the pump and is deleted after; a
+	/// cancelled one is deleted at the cancel and never called; one mixed with a script's
+	/// request each hears its own.
+	[Test]
+	public static void NativeHandlersHearTheAnswerAndAreDeletedAfterACancelledOneNever()
+	{
+		let log = scope NativeLog();
+		let bed = scope Bed();
+		bed.Http.Get("https://example.com/a", log.Handler());
+		let cancelled = bed.Http.Get("https://example.com/b", log.Handler());
+		bed.Http.Get("https://example.com/c", log.Handler());
+		bed.Http.Get("https://example.com/d", bed.Handler());
+		bed.Fake.Answer(0, 200, "hello");
+		bed.Fake.Answer(2, 0, "", "timed out after 30 s");
+		bed.Fake.Answer(3, 404, "missing");
+		bed.Http.Cancel(cancelled);
+		Test.Assert(log.Deleted == 1, "the cancelled one, at the cancel");
+		Test.Assert(log.Heard.IsEmpty, "nothing before the pump");
+		bed.Http.Pump();
+		Test.Assert(log.Heard.Count == 2);
+		Test.Assert(log.Heard[0] == "200 [hello] []", log.Heard[0]);
+		Test.Assert(log.Heard[1] == "0 [] [timed out after 30 s]", log.Heard[1]);
+		Test.Assert(log.Deleted == 3, "each answered one after its answer");
+		Test.Assert(bed.Heard.Count == 1);
+		Test.Assert(bed.Heard[0] == "404 [missing] []", "the script's request, its own handler");
+		Test.Assert(bed.Http.Pending == 0);
+	}
+
+	/// No factory: nought back and the handler deleted, never called. Reset drops a request
+	/// under way, its handler deleted, never called, though its answer had come.
+	[Test]
+	public static void NativeWithNoClientOrAfterResetIsDeletedUncalled()
+	{
+		let log = scope NativeLog();
+		let none = scope HttpFacade();
+		Test.Assert(none.Get("https://example.com/", log.Handler()) == 0);
+		Test.Assert(log.Deleted == 1, "no HTTP: deleted at once");
+
+		let bed = scope Bed();
+		bed.Http.Get("https://example.com/", log.Handler());
+		bed.Http.Post("https://example.com/", "text/plain", "x", log.Handler());
+		bed.Fake.Answer(0, 200, "late");
+		Test.Assert(bed.Http.Pending == 2);
+		bed.Http.Reset();
+		Test.Assert(log.Deleted == 3, "both dropped and deleted");
+		Test.Assert(bed.Http.Pending == 0);
+		bed.Http.Pump();
+		Test.Assert(log.Heard.IsEmpty, "never called");
+	}
 }

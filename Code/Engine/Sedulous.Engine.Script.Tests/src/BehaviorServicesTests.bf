@@ -47,6 +47,70 @@ static class BehaviorServicesTests
 		Test.Assert(play.Host.Random != null);
 	}
 
+	/// A host pointed at a run's RunRandom (as a game instance points its own): the script's
+	/// Random draws from it, so the run's native code continues the same sequence.
+	[Test]
+	public static void RandomDrawsFromTheRunsGeneratorWhenGivenOne()
+	{
+		// Declared first, so it outlives the host that borrows it.
+		let shared = scope RunRandom();
+		let play = scope ScriptPlayScene();
+		play.Host.Random.Use(shared);
+		Test.Assert(play.Host.Random.Source === shared);
+		Test.Assert(!play.Host.Random.OwnsSource);
+		let roller = play.Class("Roller", """
+			class Roller
+			{
+				float first = -1;
+				int die = 0;
+				void onStart()
+				{
+					Random.Seed(11);
+					first = Random.Value();
+					die = Random.IntRange(1, 6);
+				}
+			}
+			""");
+		let e = play.AddBehavior(roller, "roller");
+		play.Start();
+		play.Step();
+		Test.Assert(!play.BehaviorOf(e).Faulted);
+
+		let expected = scope RunRandom();
+		expected.Seed(11);
+		Test.Assert(play.PropFloat(e, "first") == expected.Value(), "the script seeded and drew the run's");
+		Test.Assert(play.PropInt(e, "die") == expected.IntRange(1, 6));
+		Test.Assert(shared.NextU32() == expected.NextU32(), "native code continues the script's sequence");
+	}
+
+	/// A host's teardown starts its own generator over, never a run's, which the run restarts
+	/// as its session stops; Use(null) goes back to its own.
+	[Test]
+	public static void TeardownRestartsTheHostsOwnGeneratorOnly()
+	{
+		let shared = scope RunRandom();
+		let seeded = scope RunRandom();
+		let fresh = scope RunRandom();
+		let first = fresh.NextU32();
+		let host = scope ScriptRunHost();
+
+		host.Random.Seed(5);
+		host.Random.Value();
+		host.Teardown();
+		Test.Assert(host.Random.OwnsSource);
+		Test.Assert(host.Random.Source.NextU32() == first, "its own: the default sequence again");
+
+		host.Random.Use(shared);
+		shared.Seed(5);
+		seeded.Seed(5);
+		Test.Assert(shared.NextU32() == seeded.NextU32());
+		host.Teardown();
+		Test.Assert(shared.NextU32() == seeded.NextU32(), "a run's: left where it was");
+
+		host.Random.Use(null);
+		Test.Assert(host.Random.OwnsSource, "back to its own");
+	}
+
 	private class Plain { }
 	private class Other { }
 	private class Lone { }

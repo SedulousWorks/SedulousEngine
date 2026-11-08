@@ -20,10 +20,17 @@ namespace Sedulous.Http.Script;
 /// the first request, so a game that never asks starts no thread and opens nothing; the run pumps
 /// it each frame, and Reset drops it with its requests when the scripts that sent them stop. A
 /// game in the editor's play mode is a game like any other.
+///
+/// Native code sends through the overloads taking a ResponseHandler, which the facade OWNS: it
+/// is deleted after its answer, on Cancel, and by Reset, which drops a request under way
+/// unanswered (the run resets as its session ends, so no answer reaches a game that has gone).
 [Scriptable, ServiceFacade("Http")]
 class HttpFacade
 {
 	public typealias Factory = delegate IHttpClient();
+	/// Native code's handler: the status and body of the response, or status 0 and why in
+	/// `error`; the views are valid for the call alone.
+	public typealias ResponseHandler = delegate void(int32 status, StringView body, StringView error);
 
 	/// OWNED: what makes the client.
 	private Factory mFactory ~ delete _;
@@ -33,8 +40,10 @@ class HttpFacade
 	private class Waiting
 	{
 		public uint64 Id;
-		/// OWNED; null when the script passed none.
+		/// OWNED; null when the script passed none, or native code sent it.
 		public ScriptDelegate Handler ~ delete _;
+		/// OWNED: native code's handler; null for a script's request.
+		public ResponseHandler Native ~ delete _;
 	}
 
 	/// The requests under way by id, OWNED until their answer is delivered or they go. The
@@ -94,7 +103,24 @@ class HttpFacade
 	/// Any method; `headers` is "Name: value" lines (empty for none; a line without a colon is
 	/// skipped), as Get does.
 	[Scriptable, ScriptCallback("void HttpHandler(int status, const string &in body, const string &in error)")]
-	public int32 Request(StringView method, StringView url, StringView headers, StringView body, ScriptDelegate handler)
+	public int32 Request(StringView method, StringView url, StringView headers, StringView body, ScriptDelegate handler) =>
+		Send(BuildRequest(method, url, headers, body), handler);
+
+	/// GETs `url`; `handler(status, body, error)` hears the answer on the pump. The request's id
+	/// (for Cancel), or nought when this run has no HTTP (the handler is then deleted, never
+	/// called). TAKES OWNERSHIP of the handler, which may be null.
+	public int32 Get(StringView url, ResponseHandler handler) => SendNative(HttpClientRequest.Get(url), handler);
+
+	/// POSTs `body` as `contentType` to `url`, as the native Get does.
+	public int32 Post(StringView url, StringView contentType, StringView body, ResponseHandler handler) =>
+		SendNative(HttpClientRequest.Post(url, contentType, body), handler);
+
+	/// Any method, `headers` as the script Request takes them, as the native Get does.
+	public int32 Request(StringView method, StringView url, StringView headers, StringView body, ResponseHandler handler) =>
+		SendNative(BuildRequest(method, url, headers, body), handler);
+
+	/// A request of `method` to `url`, with `headers` ("Name: value" lines) and `body`.
+	private static HttpClientRequest BuildRequest(StringView method, StringView url, StringView headers, StringView body)
 	{
 		let request = new HttpClientRequest(url);
 		request.Method.Set(method);
@@ -111,7 +137,7 @@ class HttpFacade
 				value = value.Substring(1);
 			request.Headers.Add(new .(line.Substring(0, colon), value));
 		}
-		return Send(request, handler);
+		return request;
 	}
 
 	/// Its handler is never called; a request under way is dropped.
@@ -128,15 +154,30 @@ class HttpFacade
 	/// Sends `request` (taken) with `handler` (taken) waiting for its answer.
 	private int32 Send(HttpClientRequest request, ScriptDelegate handler)
 	{
+		let waiting = new Waiting();
+		waiting.Handler = handler;
+		return SendWaiting(request, waiting);
+	}
+
+	/// Sends `request` (taken) with native code's `handler` (taken) waiting for its answer.
+	private int32 SendNative(HttpClientRequest request, ResponseHandler handler)
+	{
+		let waiting = new Waiting();
+		waiting.Native = handler;
+		return SendWaiting(request, waiting);
+	}
+
+	/// Sends `request` (taken) with `waiting` (taken, and deleted with its handler when there is
+	/// no client).
+	private int32 SendWaiting(HttpClientRequest request, Waiting waiting)
+	{
 		let client = Client;
 		if (client == null)
 		{
 			delete request;
-			delete handler;
+			delete waiting;
 			return 0;
 		}
-		let waiting = new Waiting();
-		waiting.Handler = handler;
 		waiting.Id = client.Send(request, new [=this, =waiting](response) => Answer(waiting, response));
 		mWaiting[waiting.Id] = waiting;
 		return (int32)waiting.Id;
@@ -147,6 +188,11 @@ class HttpFacade
 	{
 		mWaiting.Remove(waiting.Id);
 		defer delete waiting;
+		if (waiting.Native != null)
+		{
+			waiting.Native(response.Status, response.BodyText, response.Error);
+			return;
+		}
 		if ((waiting.Handler == null) || !waiting.Handler.IsAlive)
 			return;
 		var args = ScriptValue[3](.FromInt(response.Status), .FromString(response.BodyText), .FromString(response.Error));
