@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """graph.py: the rider's animation graph (Models/Rider/RiderGraph), written through the editor's MCP.
 
-Board.as drives it by parameters (scene.Animation SetFloat / SetBool), never by naming clips:
+The Board drives it by parameters (the graph manager's SetFloat / SetBool), never by naming clips:
 - Lean (float, -1..1): the carve, heel edge to toe edge; Ride's state blends CarveHeel, Ride and
   CarveToe by it, and Tuck's TuckHeel, Tuck and TuckToe (a tucked rider leans into its turn too).
 - Tuck, Airborne, Grab, Crashed (bools): the rider's situation, each its own state.

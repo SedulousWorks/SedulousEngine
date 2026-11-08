@@ -46,22 +46,6 @@
 	</array>
 	<array name="components" count="2">
 		<object>
-			<string name="owner">aa97e96a-acd7-5aa8-b1ab-58b8d2443811</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">427c1c7a-f10e-5c4d-bc4c-b0e2778d2735</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
 			<string name="owner">2db38f25-90ae-5c85-8aac-3a2a13e0c710</string>
 			<string name="type">decal</string>
 			<object name="data">
@@ -84,6 +68,19 @@
 				<f32 name="fadeStart">0</f32>
 				<f32 name="fadeEnd">1.3</f32>
 				<bool name="visible">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">aa97e96a-acd7-5aa8-b1ab-58b8d2443811</string>
+			<string name="type">snowline.track_mark</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">13812179304481815723</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="life">6</f32>
+				<f32 name="fade">2</f32>
 			</object>
 		</object>
 	</array>

@@ -27,26 +27,6 @@
 	<array name="components" count="2">
 		<object>
 			<string name="owner">8da88aa7-4815-58f3-97f6-e53b5c0e20a7</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">148654c9-bb40-4644-8530-d977a02243c7</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">13776640647781433279</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1.2</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">8da88aa7-4815-58f3-97f6-e53b5c0e20a7</string>
 			<string name="type">particle_effect</string>
 			<object name="data">
 				<array name="dataVersions" count="1">
@@ -60,6 +40,18 @@
 				<f32 name="lightIntensity">4</f32>
 				<f32 name="lightRange">4</f32>
 				<bool name="visible">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">8da88aa7-4815-58f3-97f6-e53b5c0e20a7</string>
+			<string name="type">snowline.expire</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">17455310985357617341</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="life">1.2</f32>
 			</object>
 		</object>
 	</array>

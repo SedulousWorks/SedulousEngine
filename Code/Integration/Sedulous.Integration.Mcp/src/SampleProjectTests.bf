@@ -24,14 +24,14 @@ using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
 
-/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery, Sky Hopper, Lamplight, Masquerade) must stay
+/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery, Sky Hopper, Lamplight, Snowline, Masquerade) must stay
 /// readable at the CURRENT data versions: a wire version bump or a key rename that forgets to
 /// upgrade their sources leaves them refused by the strict readers. This registers the whole pipeline the way
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
 /// are comptime here), so it holds when run alone. A sample with game code of its own (the
-/// Shader Gallery's, Sky Hopper's, PaperKid's and Lamplight's Code/) has its package linked here, as its own
+/// Shader Gallery's, Sky Hopper's, PaperKid's, Lamplight's and Snowline's Code/) has its package linked here, as its own
 /// editor links it, and reads with the package loaded, so its behaviours' records and its levels'
 /// blocks resolve rather than stay unknown.
 static class SampleProjectTests
@@ -483,6 +483,103 @@ static class SampleProjectTests
 		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
 
 		CheckKitPiece<Lamplight.Pebble>(project, "Pebble", scope (stone) => stone.Lifetime == 6.0f);
+	}
+
+	[Test]
+	public static void TheSnowlineSourcesReadAtTheCurrentDataVersionsAndCook()
+	{
+		// 142 instances: 3 courses and 17 prefabs (the gates', the finish's, the gem's burst and the
+		// track mark's, and the 10 models'), 10 model manifests, 36 materials, 12 static meshes and
+		// a skinned one, the rider's skeleton, 10 clips and its animation graph, a collision shape,
+		// 15 sounds, 5 UI documents and their sheet, 9 textures, 3 terrains with their heightfields,
+		// splatmaps and vegetation masks, 4 particle effects, the font, the input map and the
+		// environment and post profiles. 122 cook: all but the courses and the prefabs, which stage
+		// rather than cook. No script overrides: the behaviours and the game are the game's code,
+		// its package loaded to read the courses. Raise the floors when the sample grows.
+		CheckSampleProject("Snowline", "scratch_snowline_versions", 142, 122, 0, "snowline", => CheckSnowline);
+	}
+
+	/// Ridge's entities carry the game's behaviours, resolved into their managers with the values
+	/// the course gives them, not the defaults (the board's course line and track mark, the
+	/// camera's target and seat, each gate's index and width, the finish's medal times, the
+	/// kickers' lip, the gap, each medal's ghost, the avalanche's course and release), every gem
+	/// among them and no script left; and the track mark's and the gem's burst's prefabs carry
+	/// their behaviours.
+	private static void CheckSnowline(EditorProject project)
+	{
+		let ridge = FindInstance(project.SourceDb.RootGroup, "Ridge", McpDocumentNames.cSceneDocument);
+		Test.Assert(ridge != null, "Ridge");
+		let trackMark = FindInstance(project.SourceDb.RootGroup, "TrackMark", McpDocumentNames.cPrefabDocument);
+		Test.Assert(trackMark != null, "the TrackMark prefab");
+		if ((ridge == null) || (trackMark == null))
+			return;
+		let scene = scope Scene(ridge.Name);
+		EngineSceneComposition.AddAllSceneManagers(scene); // the package's behaviour managers among them
+		Test.Assert(SceneStorage.LoadScene(ridge, scene) case .Ok, "Ridge's stream");
+		let course = scene.FindEntityByName("Course");
+		Test.Assert(scene.IsValid(course), "the course line");
+		let courseId = scene.GetEntityId(course);
+		let boards = scene.GetSystem<BehaviourManager<Snowline.Board>>();
+		Test.Assert((boards != null) && (boards.Count == 1), "one Board, resolved");
+		if ((boards == null) || (boards.Count != 1))
+			return;
+		let rider = boards.OwnerHandles[0];
+		Test.Assert(scene.GetEntityName(rider) == "Rider");
+		let board = boards.Instances[0];
+		Test.Assert((board.Course.Id == courseId) && (board.TrackMark.Id == trackMark.Id) && !board.Autopilot,
+			"the board rides the course line and leaves the TrackMark prefab");
+		let cameras = scene.GetSystem<BehaviourManager<Snowline.FollowCamera>>();
+		Test.Assert((cameras != null) && (cameras.Count == 1) && (cameras.Instances[0].Target.Id == scene.GetEntityId(rider))
+			&& (cameras.Instances[0].Distance == 5.5f) && (cameras.Instances[0].LookHeight == 0.9f), "the camera follows the rider, close");
+		let gates = scene.GetSystem<BehaviourManager<Snowline.Gate>>();
+		Test.Assert((gates != null) && (gates.Count == 9), "Ridge's nine gates");
+		if (gates != null)
+		{
+			int32 indices = 0;
+			for (let gate in gates.Instances)
+			{
+				Test.Assert((gate.HalfWidth == 4.0f) && (gate.Index >= 0) && (gate.Index < 9), "a gate's width and place");
+				indices |= (int32)1 << gate.Index;
+			}
+			Test.Assert(indices == 0x1FF, "each gate its own place down the course");
+		}
+		let finishes = scene.GetSystem<BehaviourManager<Snowline.Finish>>();
+		Test.Assert((finishes != null) && (finishes.Count == 1) && (finishes.Instances[0].Gold == 29.0f)
+			&& (finishes.Instances[0].Silver == 33.0f) && (finishes.Instances[0].Bronze == 40.0f), "Ridge's medal times");
+		let gems = scene.GetSystem<BehaviourManager<Snowline.Gem>>();
+		Test.Assert((gems != null) && (gems.Count == 25), "Ridge's gems");
+		let kickers = scene.GetSystem<BehaviourManager<Snowline.Kicker>>();
+		Test.Assert((kickers != null) && (kickers.Count == 4), "three kickers and the gap's");
+		if (kickers != null)
+		{
+			for (let kicker in kickers.Instances)
+				Test.Assert(Math.Abs(kicker.RampRun - 3.8827f) < 0.001f, "a kicker's lip, the course's, not the default");
+		}
+		let gaps = scene.GetSystem<BehaviourManager<Snowline.Gap>>();
+		Test.Assert((gaps != null) && (gaps.Count == 1) && (gaps.Instances[0].Short == 13.5f) && (gaps.Instances[0].Reach == 30.0f),
+			"the crevasse");
+		let ghosts = scene.GetSystem<BehaviourManager<Snowline.Ghost>>();
+		Test.Assert((ghosts != null) && (ghosts.Count == 3), "a ghost per medal");
+		if (ghosts != null)
+		{
+			int32 medals = 0;
+			for (let ghost in ghosts.Instances)
+			{
+				Test.Assert(ghost.FinishDistance > 0.0f, "a ghost's run to the finish");
+				medals |= (int32)1 << (int32)ghost.Medal;
+			}
+			Test.Assert(medals == 0x7, "gold, silver and bronze");
+		}
+		let avalanches = scene.GetSystem<BehaviourManager<Snowline.Avalanche>>();
+		Test.Assert((avalanches != null) && (avalanches.Count == 1) && (avalanches.Instances[0].Course.Id == courseId)
+			&& (avalanches.Instances[0].ReleaseAt == 270.0f), "the avalanche on the course line, released where Ridge says");
+		let playerGhosts = scene.GetSystem<BehaviourManager<Snowline.PlayerGhost>>();
+		Test.Assert((playerGhosts != null) && (playerGhosts.Count == 1), "the player's ghost");
+		let scripts = scene.GetSystem<ScriptComponentManager>();
+		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+
+		CheckKitPiece<Snowline.TrackMark>(project, "TrackMark", scope (mark) => mark.Life == 6.0f);
+		CheckKitPiece<Snowline.Expire>(project, "GemSparkle", scope (burst) => burst.Life == 1.2f);
 	}
 
 	/// The first instance under `group` named `name` whose type name ends with `typeName`, or null.
