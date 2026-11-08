@@ -525,11 +525,14 @@ static class NativeSampleTests
 		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_nativesample_versions", .. scope .());
 		RemoveDirectoryRecursive(dir);
 		defer RemoveDirectoryRecursive(dir);
-		// Its sources and package alone: a local Build Project's .cache stays behind.
+		// Its sources and package alone: a local build's output stays behind.
 		Test.Assert(CreateDirectory(dir));
 		Test.Assert(ExportTemplates.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
 		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
-		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.PluginsDir, .. scope .()), PathJoin(dir, ProjectLayout.PluginsDir, .. scope .())));
+		// The package is its Code/ folder; its manifest alone, as a build's output stays behind.
+		let codeFrom = PathJoin(source, ProjectLayout.CodeDir, .. scope .());
+		let codeTo = PathJoin(dir, ProjectLayout.CodeDir, .. scope .());
+		Test.Assert(CreateDirectory(codeTo) && ExportTemplates.CopyFile(codeFrom, "Plugin.xml", codeTo, "Plugin.xml"));
 
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);

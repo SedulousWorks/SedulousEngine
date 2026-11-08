@@ -7,7 +7,7 @@ behaviour, the Arena level nor the note asset type. Open the project in the stoc
 then start the editor it built with the MCP server on:
 
 ```
-Data/SampleProjects/NativeSample/.cache/build/build/Debug_Linux64/NativeSampleEditor/NativeSampleEditor \
+Data/SampleProjects/NativeSample/Code/build/Debug_Linux64/NativeSampleEditor/NativeSampleEditor \
     --project Data/SampleProjects/NativeSample --data-root Data --mcp-port 7420
 ```
 
