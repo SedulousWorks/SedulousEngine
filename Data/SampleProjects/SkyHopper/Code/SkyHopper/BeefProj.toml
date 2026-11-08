@@ -1,0 +1,28 @@
+FileVersion = 1
+
+[Project]
+Name = "SkyHopper"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"
+# The game and its behaviours: the run (its scene loads, time scale, save), its input, audio and
+# GUI screens; the player's character, the enemies' clips and the hero's IK; prefab spawns.
+"Sedulous.Run" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"

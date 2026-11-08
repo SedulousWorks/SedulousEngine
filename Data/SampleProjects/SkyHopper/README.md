@@ -32,10 +32,12 @@ tap on the menus; they show once the screen is touched (`Tools/touch.py` binds t
 
 ## Project layout
 
-- `Project.xml`: the manifest: the start scene, the Game script, the input map, the GUI's
-  sheet and fonts, and the render resolution (1280x720, letterboxed).
-- `Sources/`: the raw sources: the AngelScript scripts, the screens (`.xml`) and their
-  sheet, the fonts, the audio, and the kit's glTF models.
+- `Project.xml`: the manifest: the start scene, the input map, the GUI's sheet and fonts, the
+  render resolution (1280x720, letterboxed), and the game's own package (`Code`).
+- `Code/`: the game's own code, a Beef package the project builds into its own editor and player
+  (below).
+- `Sources/`: the raw sources: the screens (`.xml`) and their sheet, the fonts, the audio, and the
+  kit's glTF models.
 - `Content/`: the asset envelopes (`*.xasset`) and their sidecars.
 - `Tools/`: the authoring scripts that drive the editor's MCP tools (levels 4 and 5 among them);
   not game content.
@@ -45,3 +47,14 @@ tap on the menus; they show once the screen is touched (`Tools/touch.py` binds t
 - `Cooked/`, `.cache/`, `Editor/`, `Dist/`: generated, and gitignored; the tools rebuild them.
 
 Open the project from the editor's project manager.
+
+## Its code
+
+The game is Beef, the project's own code in `Code/SkyHopper/src`: `SkyHopperGame` is the run (the
+title, the levels in order, the HUD, the lives and the score, the pause and clear cards, the saves
+and the settings), and the behaviours on the levels' entities are the player
+(`PlayerController`), the camera (`FollowCamera`), coins, pickups, enemies, hazards, movers, the
+flag (`Goal`) and the effects' `TimedLife`, which report to the game through the run's events
+(`Events.bf`). The project builds it into its own editor and player (Project > Build Project); the
+stock editor does not run it, so open the project in the editor its build makes (Project > Open
+With This Build).

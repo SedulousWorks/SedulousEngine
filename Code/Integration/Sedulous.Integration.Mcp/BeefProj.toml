@@ -37,6 +37,7 @@ corlib = "*"
 "Sedulous.Runtime" = "*"
 "Sedulous.Engine.Gameplay" = "*"
 "ShaderGallery" = "*"
+"SkyHopper" = "*"
 
 # A Web export's WGSL cook needs naga and tint beside the executable.
 [Configs.Test.Linux64]

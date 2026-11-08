@@ -206,10 +206,13 @@ managers:
 | `scene.Physics.MoveCharacter(e, vx, vz)`, `JumpCharacter` | `Scene.GetComponent<CharacterComponent>(e).Move(vx, vz)`, `.Jump(speed)` |
 | `scene.Animation.Play(e)`, `Stop`, `SetClip` | the same on `SkeletalAnimationComponentManager` |
 | `scene.Animation.SetFloat(e, name, v)`, `SetBool`, `SetTrigger` | the same on `AnimationGraphComponentManager` |
+| `scene.Animation.SetIkTarget(e, at)` | `IkScene.SetTarget(Scene, e, at)` |
 | `scene.Audio.Play(e)`, `Stop` | the same on `AudioSceneSystem` |
 | `scene.Particles.Play(e)`, `Stop`, `Restart` | the same on `ParticleEffectComponentManager` |
 | `Audio.PlayOneShot(clip)` | `AudioFacade.PlayOneShot(clip)` |
 | `Run.LoadScene(id)`, `Run.TimeScale` | `GameInstance.LoadScene(id)`, `InstanceTimeScale` |
+| `scene.Scripts.Emit("CoinCollected", 1)` | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |
+| `other.Send("Hurt")` | a call on the other entity's behaviour, made now (Events and queued calls) |
 
 `LoadScene` replaces and destroys the current scene. Asked for from a scene's own code (a
 behaviour's or a level's `OnUpdate`, `OnFixedUpdate`/`OnFixedStep`, a queued call or contact at the
