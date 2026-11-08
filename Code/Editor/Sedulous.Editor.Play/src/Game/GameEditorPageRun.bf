@@ -51,9 +51,10 @@ extension GameEditorPage
 
 		if (instance != null)
 		{
-			// Through the INSTANCE when there is one: its CreateScene points the scene's
-			// behaviours at the run's script host, where Input and Run live. The bare group
-			// leaves them on the subsystem's default host, and a behaviour reading Input faults.
+			// Through the INSTANCE when there is one: its scenes belong to its run, so their
+			// behaviours run on the run's script host, where Input and Run live. The bare group's
+			// scenes have no run and use the subsystem's default host, where a behaviour reading
+			// Input faults.
 			let startScene = (mGameInstance != null) ? mGameInstance.CreateScene(instance.Name) : mFallbackScenes.CreateScene(instance.Name);
 			if ((startScene == null) || !(SceneStorage.LoadScene(instance, startScene) case .Ok))
 			{

@@ -264,27 +264,17 @@ class GameInstance : RunBase
 
 	// ==================== Scenes ====================
 
-	/// Creates a scene in this instance's group.
+	/// Creates a scene in this instance's group: it belongs to this run, so its behaviours run
+	/// on this run's host, one gameplay context per run.
 	///
 	/// `activate` false leaves it out of the ticking and drawing sets, which is what an async
 	/// load wants: a scene being streamed must not be seen until it is whole.
 	public Scene CreateScene(StringView name, bool activate = true)
 	{
-		// The run bus is already injected by the group before assembly, so the scene's events
-		// and the run's are one object by the time anything binds to either.
-		let scene = mSceneManager.CreateScene(name, activate);
-		AdoptScripting(scene);
-		return scene;
-	}
-
-	/// Points a scene's behaviours at THIS run's host, after the subsystem pointed them at
-	/// its default one during assembly: one gameplay context per run.
-	private void AdoptScripting(Scene scene)
-	{
-		if (scene == null)
-			return;
-		if (let scripts = scene.GetSystem<ScriptSceneSystem>())
-			scripts.SetRunHost(mRunHost);
+		// The group gives the scene this run and its bus before it assembles, so the script
+		// subsystem binds its behaviours to this run's host (the one registered on it), and the
+		// scene's events and the run's are one object by the time anything binds to either.
+		return mSceneManager.CreateScene(name, activate);
 	}
 
 	/// Destroys a scene in this instance's group.

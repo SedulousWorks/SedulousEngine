@@ -1,9 +1,13 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Run;
+using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Script.Resource;
+using Sedulous.Engine.Scene;
 using Sedulous.Engine.Script;
+using Sedulous.Engine.Composition;
 
 namespace Sedulous.Engine.Script.Tests;
 
@@ -438,6 +442,87 @@ static class BehaviorLifecycleTests
 		play.Host.Advance(0.25f);
 		Test.Assert(play.PropInt(entity, "fired") == 1, "the host's clock reached the wait's end");
 		Test.Assert(play.Runtime.CoroutineCount == 0);
+	}
+
+	/// A run that holds a script host, as a game's run does.
+	private class HostRun : RunBase
+	{
+		public ScriptRunHost Host = new .() ~ delete _;
+
+		public this() : base("Host run")
+		{
+			Register<ScriptRunHost>(Host);
+			Host.OwningRun = this;
+		}
+
+		public ~this()
+		{
+			// Disposed while the host it registered is there; the host's runtime after.
+			Dispose();
+			DeleteAndNullify!(Host.TeardownCheck);
+			Host.Teardown();
+		}
+	}
+
+	/// The script subsystem binds a scene's behaviours to the host its run holds, and a scene
+	/// outside every run to its own default host: a behaviour in the run's scene makes the run's
+	/// runtime, not the default host's, which then goes with its scene.
+	[Test]
+	public static void ASceneInARunScriptsOnItsRunsHostOneOutsideEveryRunOnTheDefault()
+	{
+		let run = scope HostRun(); // outlives the scenes: destroying one may tear its host down
+		let classes = scope ScriptPlayScene(); // compiles the class, as the cook would
+		let surface = scope ScriptSurface();
+		EngineScriptSurface.Populate(surface);
+		let context = scope SubsystemManager();
+		let scenes = context.AddSubsystem<SceneSubsystem>();
+		var scriptModule = SceneModule("script", => ScriptScene.AddScriptSceneManagers, null);
+		var modules = SceneModule*[1](&scriptModule);
+		scenes.SetComposition(SceneComposition.Build(modules));
+		let scripts = context.AddSubsystem<ScriptSubsystem>();
+		scripts.Configure = new (runtime) =>
+			{
+				runtime.Bind(surface);
+				ClearAndDeleteItems!(runtime.Problems);
+			};
+		context.Startup();
+		scripts.ConfigureHost(run.Host);
+
+		let inRun = scope SceneManager();
+		inRun.SetSceneRun(run);
+		let loose = scope SceneManager();
+		scenes.RegisterManager(inRun);
+		scenes.RegisterManager(loose);
+		let owned = inRun.CreateScene("in-run");
+		let outside = loose.CreateScene("loose");
+		Test.Assert(scripts.RunHostFor(owned) === run.Host);
+		Test.Assert(scripts.RunHostFor(outside) === scripts.Host);
+		Test.Assert(owned.GetSystem<ScriptSceneSystem>().Host === run.Host);
+		Test.Assert(outside.GetSystem<ScriptSceneSystem>().Host === scripts.Host);
+
+		let counter = classes.Class("Counter", cCounter);
+		let entity = owned.CreateEntity("counted");
+		classes.Attach(entity, counter, owned);
+		owned.Start();
+		owned.SetSimulationEnabled(true);
+		context.BeginFrame(1.0f / 60.0f);
+		context.Update(1.0f / 60.0f);
+		context.PostUpdate(1.0f / 60.0f);
+		Test.Assert(run.Host.IsActive, "the run's runtime made");
+		Test.Assert(!scripts.Host.IsActive, "the default host's not");
+		let behavior = classes.BehaviorOf(entity, 0, owned);
+		Test.Assert(behavior.Instance != null);
+		var updates = ScriptValue.Nil;
+		Test.Assert(run.Host.Runtime.GetProperty(behavior.Instance, "updates", ref updates));
+		Test.Assert(updates.AsInt == 1);
+
+		owned.Stop();
+		inRun.DestroyScene(owned);
+		loose.DestroyScene(outside);
+		Test.Assert(!run.Host.IsActive, "nothing pins it once its scene is gone");
+		scenes.UnregisterManager(inRun);
+		scenes.UnregisterManager(loose);
+		context.Shutdown();
 	}
 
 	/// A behaviour with no class names nothing to run: AddBehavior refuses it, and an entity

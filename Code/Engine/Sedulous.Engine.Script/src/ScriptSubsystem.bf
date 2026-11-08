@@ -10,7 +10,8 @@ using Sedulous.Script;
 namespace Sedulous.Engine.Script;
 
 /// Scripting at runtime: the run's host, wired into every scene's script system when the
-/// scene composes.
+/// scene composes: the host its run holds, or the subsystem's own default one for a scene
+/// outside every run.
 ///
 /// The application supplies the surface the run may reach and the services a script may
 /// find, through Configure. A host is torn down whenever nothing pins it (no game script
@@ -138,14 +139,25 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 			system.DeliverContact(a, b, kind, point, normal, speed);
 	}
 
+	/// The host `scene`'s scripts run on: the one its run holds (a run registers its
+	/// ScriptRunHost among its services), else the default host.
+	public ScriptRunHost RunHostFor(Scene scene)
+	{
+		if (let host = RunServices.Get<ScriptRunHost>(scene?.Run))
+			return host;
+		return mHost;
+	}
+
 	public void OnSystemsReady(Scene scene)
 	{
 		let system = scene.GetSystem<ScriptSceneSystem>();
 		if (system == null)
 			return;
-		system.SetRunHost(mHost);
-		// Each stop asks whether the system's CURRENT host can go: a game instance re-binds
-		// its scenes to its own host after this.
+		// The scene's run's host, so its behaviours and its Level share that run's context (a
+		// game's); a scene outside every run uses the default host. A scene's run is set before
+		// its systems assemble.
+		system.SetRunHost(RunHostFor(scene));
+		// Each stop asks whether the system's CURRENT host can go.
 		delete system.OnRunStopped;
 		system.OnRunStopped = new [=this, =system]() => { MaybeTeardownRunHost(system.Host); };
 		mSystems.Add(system);

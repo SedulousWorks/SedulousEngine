@@ -14,6 +14,7 @@ using Sedulous.VFS;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Composition;
+using Sedulous.Run;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -70,6 +71,9 @@ class GameRun
 		mInstaller = new (scene) =>
 			{
 				ScriptScene.AddScriptSceneManagers(scene);
+				// What the script subsystem does as a scene composes: its behaviours on its run's
+				// host (the scene has its run by now).
+				scene.GetSystem<ScriptSceneSystem>().SetRunHost(RunServices.Get<ScriptRunHost>(scene.Run));
 				if (MoreSystems != null)
 					MoreSystems(scene);
 			};
