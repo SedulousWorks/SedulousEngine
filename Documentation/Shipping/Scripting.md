@@ -268,6 +268,11 @@ property with its description as the tooltip and saves per instance values over 
 - `script_create` seeds the tier's starter; `script_validate` is the loop; scripts are
   project assets, imported and cooked like any other (see Assets.md).
 - Coroutines: a handler may `yield()` and continue on a later tick.
+- A scene page's Simulate (`simulate_start`) runs that scene's behaviors and Level script as a
+  run of its own, one per page: their own runtime, coroutine clock and `Gui` root. What they push
+  on screen draws over the page's viewport (and so in `viewport_screenshot`), and goes when the
+  Simulate stops. It runs no Game script and has no save of its own; test those with play in
+  editor.
 
 ## Gotchas
 

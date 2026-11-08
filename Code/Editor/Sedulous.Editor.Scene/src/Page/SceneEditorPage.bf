@@ -735,10 +735,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mCameraPreview.Render(ref frame);
 	}
 
-	/// A requested capture, recorded once the renderer composed the frame.
+	/// A Simulate's screens over its view, as a Game tab shows its run's, and a requested capture,
+	/// once the renderer composed the frame.
 	public override void OnAfterSceneRender(IApplicationHost host, ref FrameContext frame)
 	{
-		mViewport.AfterRender(host, ref frame);
+		mViewport.AfterRender(host, ref frame, mSimulation.IsRunning ? mSimulation.Run : null);
 	}
 
 	/// Opens the entity picker over the page's GUI for `request` (made the first time); false with

@@ -5,6 +5,7 @@ using Sedulous.Shell;
 using Sedulous.Input; // ScriptedInputSource (a playtest of the view)
 using Sedulous.Graphics;
 using Sedulous.RHI;
+using Sedulous.Run; // IRun: whose screens a simulating view draws
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Render;
@@ -300,16 +301,38 @@ class SceneViewport
 		mCaptureHeight = h;
 	}
 
-	/// A capture asked for, recorded once the renderer composed the frame (RenderScene only adds
-	/// the view; EndRendering, before this, writes the image).
-	public void AfterRender(IApplicationHost host, ref FrameContext frame)
+	/// Once the renderer has composed the frame (RenderScene only adds the view; EndRendering,
+	/// before this, writes the image): draws the screens of `screensOf` over it (a simulating
+	/// page's run, as a Game tab draws its run's; null: none), then records a capture asked for.
+	public void AfterRender(IApplicationHost host, ref FrameContext frame, IRun screensOf = null)
 	{
 		let rendered = mRenderedThisFrame;
 		mRenderedThisFrame = false;
+		if (rendered && (screensOf != null))
+			DrawScreens(ref frame, screensOf);
 		if (!rendered || !mCapture.Armed || (host.Graphics == null))
 			return;
 		mCapture.Record(host.Graphics.Raw, frame.Encoder, mView.ColorTexture, mView.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead);
 		mCleanCapture = false;
+	}
+
+	/// The run's screen tier over the composed view, laid out at the view's own pixels; the shared
+	/// tier's overlays draw above it, as in a Game tab. Through the renderer's overlays, which the
+	/// GUI is one source of. They take no input: the view's pointer stays the editor's.
+	private void DrawScreens(ref FrameContext frame, IRun run)
+	{
+		let render = mServices.Render;
+		let gui = mServices.GameGui;
+		if ((render == null) || (gui == null) || !render.IsReady || (mCaptureWidth == 0) || (mCaptureHeight == 0))
+			return;
+		frame.Encoder.TransitionTexture(mView.ColorTexture, mView.ColorState, .RenderTarget);
+		gui.SetRenderRun(run);
+		// Through the view's UNORM view: the screen UI blends encoded values, as in the player.
+		render.RenderOverlays(frame.Encoder, mView.ColorView, mView.ColorFormat, mCaptureWidth, mCaptureHeight,
+			frame.FrameIndex, mView.ColorAlternateView);
+		gui.SetRenderRun(null);
+		frame.Encoder.TransitionTexture(mView.ColorTexture, .RenderTarget, .ShaderRead);
+		mView.ColorState = .ShaderRead;
 	}
 
 	/// A capture recorded last frame, written once the GPU finished the copy.
