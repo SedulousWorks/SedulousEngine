@@ -272,32 +272,39 @@ class DefaultApplication : IApplication, ISceneObserver
 		mBorrowedResources = borrowed;
 		if (mGui != null)
 			mGui.SetResourceManager(Resources); // the GUI's documents, sheets and images by guid
-		PointSpawnersAtContent();
+		PointSpawnersAtScenes();
 	}
 
 	public void SetContentDatabase(ContentDatabase database)
 	{
 		mContentDatabase = database;
-		PointSpawnersAtContent();
+		PointSpawnersAtScenes();
 	}
 
-	/// Every composed scene's spawn system pointed at the app's content and resources. When
-	/// either changes, the scenes that already exist follow (an editor's, across a project
-	/// close or switch), not only those composed after: one left pointing at a closed
-	/// project's database would spawn from freed memory.
-	private void PointSpawnersAtContent()
+	/// Every composed scene's spawn system pointed at the database the scenes load from, where
+	/// the prefabs are (SceneDatabase), and at the app's resources. When either changes, the
+	/// scenes that already exist follow (an editor's, across a project close or switch), not
+	/// only those composed after: one left pointing at a closed project's database would spawn
+	/// from freed memory.
+	private void PointSpawnersAtScenes()
 	{
 		if (mScenes == null)
 			return;
 		mScenes.ForEachScene(scope (scene) =>
 			{
 				if (let spawner = scene.GetSystem<PrefabSpawnSystem>())
-					spawner.SetSource(mContentDatabase, Resources);
+					spawner.SetSource(SceneDatabase, Resources);
 			});
 	}
-	/// The database scene ids resolve in for script driven loads; the content database when
-	/// none is named.
-	public void SetSceneDatabase(ContentDatabase database) => mSceneDatabase = database;
+	/// The database scene ids resolve in for script driven loads, and the prefabs a spawn
+	/// reads; the content database when none is named. A game run from its project folder
+	/// names its sources here while its content database is the cooked one, which holds no
+	/// scene or prefab.
+	public void SetSceneDatabase(ContentDatabase database)
+	{
+		mSceneDatabase = database;
+		PointSpawnersAtScenes();
+	}
 	public ContentDatabase SceneDatabase => (mSceneDatabase != null) ? mSceneDatabase : mContentDatabase;
 
 	/// Attaches a borrowed manager AFTER startup, registering the standard factories on it.
@@ -308,7 +315,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			RegisterStandardFactories(borrowed, host);
 		if (mGui != null)
 			mGui.SetResourceManager(Resources);
-		PointSpawnersAtContent();
+		PointSpawnersAtScenes();
 	}
 
 	public void SetPrimaryScene(Scene scene) => mInstance.SetScene(scene);
@@ -588,7 +595,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			// without holding the frame's workers; with none, loads are synchronous.
 			mOwnedResources = new ResourceManager(mContentDatabase, host.Tasks);
 		}
-		PointSpawnersAtContent();
+		PointSpawnersAtScenes();
 
 		let resources = Resources;
 		if ((mGui != null) && mProfilerOverlayAtStart)
@@ -974,16 +981,17 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	// ==================== networking ====================
 
-	/// Every composed scene's spawn system gets the app's content and resources.
+	/// Every composed scene's spawn system gets the database the scenes load from and the
+	/// app's resources.
 	public void OnSystemsReady(Scene scene)
 	{
 		if (let spawner = scene.GetSystem<PrefabSpawnSystem>())
-			spawner.SetSource(mContentDatabase, Resources);
+			spawner.SetSource(SceneDatabase, Resources);
 	}
 
 	/// Resolves a prefab a replicated spawn named, into the scene the endpoint replicates.
 	///
-	/// The APP owns this because it is the only thing that knows the content database; the
+	/// The APP owns this because it is the only thing that knows the scene database; the
 	/// NetworkController applies it to each endpoint, so a reconnect keeps it and the app
 	/// hands it over once at wiring rather than rewiring per endpoint.
 	///
@@ -992,10 +1000,10 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// produce the entity, not position it.
 	private StateReplication.SpawnHandler MakeSpawnResolver()
 	{
-		// Reads the database and the manager WHEN INVOKED, not when wired: the content
-		// database is handed over after construction, and the controller asks for this once.
+		// Reads the database and the manager WHEN INVOKED, not when wired: the databases are
+		// handed over after construction, and the controller asks for this once.
 		return new (scene, prefab, id) =>
-			ResolveNetworkPrefab(mContentDatabase, Resources, scene, prefab);
+			ResolveNetworkPrefab(SceneDatabase, Resources, scene, prefab);
 	}
 
 	/// The resolver's body: the one spawn recipe, PrefabSpawnSystem's, with the app's

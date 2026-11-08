@@ -19,6 +19,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Play: a game run from its project folder spawns prefabs (a script's Spawn, a networked spawn);
+  only the prefabs placed in its scenes came through.
 - Physics: a destroyed entity, or a removed rigid body, character or joint, no longer leaves its
   body in the physics world (an invisible collider) until the scene ends.
 - Audio: a destroyed entity's sound, or a removed audio source's, stops at once instead of playing
