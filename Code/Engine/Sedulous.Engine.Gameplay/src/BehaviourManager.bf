@@ -115,13 +115,14 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 			return;
 		}
 
-		// Emitted rather than asserted: the unspecialized generic is comptimed too, carries no
-		// attribute and is never constructed. A concrete manager of a class without one fatals
-		// the moment it is built.
-		code.Append("Runtime.FatalError(\"");
-		type.GetFullName(code);
-		code.Append(" is stored by a BehaviourManager but carries no [Behaviour] attribute\");");
-		Compiler.MixinRoot(code);
+		// A compile error naming the class, as [Level] and [Game] give theirs. The unspecialized
+		// generic is comptimed too, carries no attribute and is never built: passed over.
+		if (!(type is TypeInstance) || type.IsGenericParam)
+			return;
+		let message = scope String();
+		type.GetFullName(message);
+		message.Append(" is stored by a BehaviourManager but carries no [Behaviour] attribute");
+		Runtime.FatalError(message);
 	}
 
 	/// Finds, at compile time, which ticks and contact callbacks `T` overrides, so a class
