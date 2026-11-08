@@ -110,8 +110,7 @@ class GuiScriptTests
 	}
 
 	/// With run screens on, a run's facade answers its own tier, made on first use, and the
-	/// shared facade (a script with no run: a scene page's Simulate) the unbound tier, which no tab
-	/// draws, not the shared one; both find no root once the subsystem has shut down.
+	/// shared facade the shared tier; both find no root once the subsystem has shut down.
 	[Test]
 	public static void ARunsGuiIsItsOwnScreenTierAndNoneAfterShutdown()
 	{
@@ -122,8 +121,7 @@ class GuiScriptTests
 		run.Start();
 		let shared = engine.Gui.ScriptFacadeFor(null);
 		let mine = engine.Gui.ScriptFacadeFor(run);
-		Test.Assert(shared.Root() === engine.Gui.ScreenRootFor(null));
-		Test.Assert(shared.Root() !== engine.Gui.ScreenRoot, "not the tier every tab draws");
+		Test.Assert(shared.Root() === engine.Gui.ScreenRoot);
 		Test.Assert(engine.Gui.ScriptFacadeFor(run) === mine, "made once");
 		Test.Assert(engine.Gui.RunScriptFacadeCount == 1);
 		Test.Assert(mine.Root() === engine.Gui.ScreenRootFor(run));
@@ -158,7 +156,7 @@ class GuiScriptTests
 		engine.Gui.EndRunScripts(run.Id);
 		Test.Assert(engine.Gui.RunScriptFacadeCount == 0);
 		engine.Context.Shutdown();
-		Test.Assert(shared.Root() == null, "the tiers are gone, so no root");
+		Test.Assert(shared.Root() == null, "the shared tier is gone, so no root");
 	}
 
 	/// The subsystem offers its own `Gui`: the shared tier's on the application's services, and

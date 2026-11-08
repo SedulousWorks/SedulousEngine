@@ -40,9 +40,9 @@ namespace Sedulous.Engine.GUI;
 /// target's own, into the rectangle that size is fitted into, turned when the game's orientation is
 /// not the target's, as the game's image is. With run screens on (the editor), each run (a Game
 /// tab's game) has a screen tier of its own, drawn for its tab (SetRenderRun); the overlay layer
-/// stays on the shared tier above it. A script with no run (a scene page's Simulate) then gets a
-/// tier of its own that no tab draws, so its screens never show over a Game tab; its host takes
-/// them down when it stops (EndUnboundScreens).
+/// stays on the shared tier above it. A script with no run (a headless tool's, a test's) uses the
+/// shared tier, as every script does in the player; in the editor every scene that runs scripts
+/// has a run (a Game tab's, a scene page's).
 ///
 /// The components live (GuiComponentSync.bf, GuiRenderTextures.bf): a canvas's document in its
 /// scene's root or a texture of its own, a billboard over its entity, a world panel on its
@@ -82,9 +82,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private GuiScreenTier mScreen = new .() ~ delete _;
 	/// A tier per run, with run screens on.
 	private List<GuiScreenTier> mRunTiers = new .() ~ DeleteContainerAndItems!(_);
-	/// With run screens on, the tier of scripts with no run (a Simulate's): never drawn. OWNED;
-	/// null until one asks.
-	private GuiScreenTier mUnbound = null ~ delete _;
 	private bool mRunScreens = false;
 	/// The run whose tier the next screen overlay draws under the shared one's, by id; nought for
 	/// none.
@@ -147,10 +144,9 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		mDataFileSystem = dataFileSystem;
 		mContext.ResourceProvider = mResources;
 		mStyles.ResourceProvider = mResources; // the sheets' @import, url() and fonts
-		// A script's root is its run's screen tier; with no run, the shared one (the player's) or,
-		// with run screens on, the unbound one. Asked at each call: none before OnInit makes it,
-		// nor after shutdown drops it, so a script still running then finds no root rather than a
-		// freed one.
+		// A script's root is its run's screen tier, the shared one with no run (the player's),
+		// asked at each call: none before OnInit makes it, nor after shutdown drops it, so a
+		// script still running then finds no root rather than a freed one.
 		mScriptFacade = new .(new [=this] () => ScreenRootFor(null));
 	}
 
@@ -222,8 +218,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			Restyle(mScreen.Root);
 		for (let tier in mRunTiers)
 			Restyle(tier.Root);
-		if (mUnbound != null)
-			Restyle(mUnbound.Root);
 		for (let tier in mSceneTiers)
 			Restyle(tier.Root);
 		for (let root in mTextureRoots)
@@ -358,10 +352,9 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		set => mRunScreens = value;
 	}
 
-	/// `run`'s screen stack and root, made on first use; the shared tier's with run screens off;
-	/// with them on and no run, the unbound tier's, which no tab draws. The subsystem's. A run's
-	/// tier goes with its session (the run's stop, or the run gone without one), every screen on
-	/// it too: the run manager says so.
+	/// `run`'s screen stack and root, made on first use; the shared tier's with run screens off
+	/// or no run. The subsystem's. A run's tier goes with its session (the run's stop, or the run
+	/// gone without one), every screen on it too: the run manager says so.
 	public ScreenStack ScreensFor(IRun run)
 	{
 		let tier = TierOfRoot(ScreenRootFor(run));
@@ -372,19 +365,8 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	private SceneRoot ScreenRootFor(RunId run)
 	{
-		if (!mRunScreens || (mScreen.Root == null))
+		if (!mRunScreens || (run == 0) || (mScreen.Root == null))
 			return mScreen.Root;
-		if (run == 0)
-		{
-			// A script with no run (a scene page's Simulate): a tier of its own that no tab draws,
-			// not the shared tier, which every Game tab draws above its run's screens.
-			if (mUnbound == null)
-			{
-				mUnbound = new GuiScreenTier();
-				MakeScreenTier(mUnbound);
-			}
-			return mUnbound.Root;
-		}
 		if (let found = FindRunTier(run))
 			return found.Root;
 		let tier = new GuiScreenTier();
@@ -435,16 +417,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	public void OnRunDestroyed(IRun run) => EndRunScreens(run.Id);
 
 	public int RunScreenCount => mRunTiers.Count;
-
-	/// With run screens on, takes down what scripts with no run pushed on their tier (a scene
-	/// page's Simulate, when it stops). That tier is never drawn, so this is cleanup only.
-	public void EndUnboundScreens()
-	{
-		if (mUnbound == null)
-			return;
-		ForgetInputRoot(mUnbound.Root);
-		mUnbound.Screens.Clear();
-	}
 
 	/// The overlay layer above every screen. The subsystem's.
 	public UIWidget OverlayLayer => mOverlay;
@@ -708,12 +680,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		for (let tier in mRunTiers)
 			tier.Screens.Clear();
 		ClearAndDeleteItems!(mRunTiers);
-		if (mUnbound != null)
-		{
-			mUnbound.Screens.Clear();
-			delete mUnbound;
-			mUnbound = null;
-		}
 		mRenderRun = 0;
 		// The shared tier's bridge borrows its root's dispatcher: it goes before the root.
 		delete mScreen.Bridge;
@@ -762,8 +728,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 					mScreen.Root.RequestLayoutTree();
 				for (let tier in mRunTiers)
 					tier.Root.RequestLayoutTree();
-				if (mUnbound != null)
-					mUnbound.Root.RequestLayoutTree();
 				for (let tier in mSceneTiers)
 					tier.Root.RequestLayoutTree();
 				for (let root in mTextureRoots)
@@ -778,8 +742,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 				StyleAndLayOut(mScreen.Root, mScreen.Root.ViewportSize);
 			for (let tier in mRunTiers)
 				StyleAndLayOut(tier.Root, tier.Root.ViewportSize);
-			if (mUnbound != null)
-				StyleAndLayOut(mUnbound.Root, mUnbound.Root.ViewportSize);
 		}
 	}
 
@@ -889,8 +851,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			if (tier.Root === root)
 				return tier;
 		}
-		if ((mUnbound != null) && (mUnbound.Root === root))
-			return mUnbound;
 		return null;
 	}
 

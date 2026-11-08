@@ -10,7 +10,7 @@ namespace Sedulous.Engine.GUI;
 /// editor Game tab's game) has one of its own.
 class GuiScreenTier
 {
-	/// The run it belongs to, by id; nought for the shared tier, or the unbound one.
+	/// The run it belongs to, by id; nought for the shared tier.
 	public RunId Run = 0;
 	/// A HELD reference each; the stack is the root's child (its id "screens", what a script
 	/// finds). Released in reverse, the stack before the root.
