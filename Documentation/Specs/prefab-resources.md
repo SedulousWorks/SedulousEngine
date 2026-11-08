@@ -164,10 +164,13 @@ First, the fixes that stand alone:
 A. `Player: a game run from its project folder spawns prefabs`: its spawners read the database its
    scenes load from; fixes (c) (DefaultApp.Tests or Player tests; CHANGELOG Fixed). Commit 4 then
    gives it the layered view for everything.
-B1. `Content: a database refreshes a changed, added or removed record`, settling a half-written
-   file (Content.Tests: add, change, delete, a file not read until settled).
+B1. `Content: a database refreshes a changed, added or removed record` (Content.Tests: add, change
+   keeping the record, a data stream, delete, an envelope cut off in its header reported unreadable
+   and its record kept). The index reads headers alone, so waiting out a file still being written
+   is the watcher's (B2).
 B2. `Editor: Content/ is watched, so an open scene or prefab follows its file`: OS notification or
-   a slow sweep plus focus-in, batched, the editor's own writes skipped, the deleted-asset
+   a slow sweep plus focus-in, a file read only once settled, batched, the editor's own writes
+   skipped, unreadable paths retried, the deleted-asset
    notification (Editor.Project.Tests, Editor.Scene.Tests; CHANGELOG Fixed).
 C. `Export: a script's asset properties are references`: fixes (e) (Integration.Mcp or
    Editor.Project.Tests: a prefab named only by a script property is in a pruned export).

@@ -297,6 +297,13 @@ class Instance
 		mSourceKnown = true;
 	}
 
+	/// The header no longer names a source: the name is read from the object on next asking.
+	internal void ForgetSourceName()
+	{
+		mSource.Clear();
+		mSourceKnown = false;
+	}
+
 	/// Reads the three header fields every envelope starts with.
 	internal static bool ReadHeader(Serializer archive, out Guid id, String outTypeName)
 	{

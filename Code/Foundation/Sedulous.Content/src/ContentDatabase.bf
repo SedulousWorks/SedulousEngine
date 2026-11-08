@@ -460,6 +460,158 @@ class ContentDatabase : IContentDatabase
 			instance.[Friend]SetSourceName(source);
 	}
 
+	// ---- refresh ----
+
+	/// Brings the index in line with files that changed on disk after the scan, as a watcher
+	/// reports them: mount relative paths of envelopes and of their data streams. Nothing on
+	/// disk is touched.
+	///
+	/// - An envelope that appeared is registered, the groups of its folder made as needed.
+	/// - One that changed is read again. The same identity and type keep their record, its
+	///   source name refreshed, so code holding the record keeps a live one; another identity or
+	///   type replaces it.
+	/// - One that went is dropped from the index and freed; whoever was told of it by id finds
+	///   nothing.
+	/// - A data stream that changed reports its record changed; the index holds nothing of it.
+	/// - An envelope present but unreadable (still being written, or broken) keeps its old
+	///   record and is reported, for a later refresh of the path to try again.
+	public void Refresh(Span<StringView> paths, ContentChanges outChanges)
+	{
+		let suffix = scope String(".");
+		suffix.Append(mExtension);
+		for (let path in paths)
+		{
+			if (path.EndsWith(suffix))
+				RefreshEnvelope(path, StringView(path, 0, path.Length - suffix.Length), outChanges);
+			else
+				RefreshDataStream(path, outChanges);
+		}
+	}
+
+	private void RefreshEnvelope(StringView path, StringView recordPath, ContentChanges outChanges)
+	{
+		let existing = GetInstanceByPath(recordPath);
+		let stream = mMount.Open(path, .Read);
+		if (stream == null)
+		{
+			if (existing != null)
+			{
+				let gone = existing.Id;
+				ForgetInstance(existing);
+				Note(outChanges.Removed, gone);
+			}
+			return;
+		}
+		defer delete stream;
+
+		Guid id = default;
+		let typeName = scope String();
+		let source = scope String();
+		bool named = false;
+		bool readable = false;
+		let context = mFactory(stream, .Read);
+		if (context != null)
+		{
+			defer delete context;
+			if (Instance.[Friend]ReadHeader(context.Serializer, out id, typeName) && (id != Guid.Empty))
+			{
+				readable = true;
+				named = Instance.[Friend]ReadSource(context.Serializer, source);
+			}
+		}
+		if (!readable)
+		{
+			outChanges.Unreadable.Add(new String(path));
+			return;
+		}
+
+		if ((existing != null) && (existing.Id == id) && (existing.TypeName == typeName))
+		{
+			if (named)
+				existing.[Friend]SetSourceName(source);
+			else
+				existing.[Friend]ForgetSourceName();
+			Touch();
+			Note(outChanges.Changed, id);
+			return;
+		}
+
+		// A new record, or one whose identity or type changed under the same path.
+		bool sameId = false;
+		if (existing != null)
+		{
+			let previous = existing.Id;
+			sameId = previous == id;
+			ForgetInstance(existing);
+			if (!sameId)
+				Note(outChanges.Removed, previous);
+		}
+		var group = mRoot;
+		var name = recordPath;
+		let slash = recordPath.LastIndexOf('/');
+		if (slash >= 0)
+		{
+			for (let part in StringView(recordPath, 0, slash).Split('/'))
+			{
+				if (!part.IsEmpty)
+					group = group.[Friend]AddChildGroup(part);
+			}
+			name = StringView(recordPath, slash + 1);
+		}
+		let instance = RegisterInstance(group, id, name, typeName);
+		if (named)
+			instance.[Friend]SetSourceName(source);
+		Note(sameId ? outChanges.Changed : outChanges.Added, id);
+	}
+
+	/// A data stream's sidecar is "<record path>.<stream>.data" (text) or ".bin" (binary).
+	private void RefreshDataStream(StringView path, ContentChanges outChanges)
+	{
+		StringView rest;
+		if (path.EndsWith(".data"))
+			rest = StringView(path, 0, path.Length - 5);
+		else if (path.EndsWith(".bin"))
+			rest = StringView(path, 0, path.Length - 4);
+		else
+			return;
+		let dot = rest.LastIndexOf('.');
+		if (dot <= 0)
+			return;
+		if (let instance = GetInstanceByPath(StringView(rest, 0, dot)))
+		{
+			if (!outChanges.Added.Contains(instance.Id))
+				Note(outChanges.Changed, instance.Id);
+		}
+	}
+
+	/// Drops a record from the index and frees it, without touching its files. Another record
+	/// claiming the same identity (two envelopes with one guid) takes the index over.
+	private void ForgetInstance(Instance instance)
+	{
+		let id = instance.Id;
+		instance.OwningGroup.[Friend]RemoveInstance(instance);
+		mAllInstances.Remove(instance);
+		if (mByGuid.TryGetValue(id, let indexed) && (indexed == instance))
+		{
+			mByGuid.Remove(id);
+			for (let other in mAllInstances)
+			{
+				if (other.Id == id)
+				{
+					mByGuid[id] = other;
+					break;
+				}
+			}
+		}
+		delete instance;
+	}
+
+	private static void Note(List<Guid> list, Guid id)
+	{
+		if (!list.Contains(id))
+			list.Add(id);
+	}
+
 	// ---- sidecars ----
 
 	/// Every sidecar belonging to an instance, found by enumerating its folder rather than

@@ -722,4 +722,100 @@ class ContentDatabaseTests
 			Test.Assert(SourcedRecord.Reads == 1, "kept");
 		}
 	}
+
+	/// A database brings its index in line with files changed on disk after its scan, as a
+	/// watcher reports them. A second database over the same folder stands for the outside writer
+	/// (a git pull, another tool).
+	[Test]
+	public static void ARefreshTakesInWhatChangedOnDisk()
+	{
+		TestSerializables.RegisterAll();
+		let typeName = "Sedulous.Content.Tests.SourcedRecord";
+		let fixture = scope ContentFixture("scratch_content_refresh", true);
+		let record = scope SourcedRecord();
+		record.File.Set("Art/stone.png");
+
+		let outside = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		let first = outside.RootGroup.CreateGroup("records").CreateInstance("art", typeName);
+		Test.Assert(first.WriteObject(record) case .Ok);
+		let artId = first.Id;
+
+		let editor = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		let art = editor.GetInstance(artId);
+		Test.Assert(art != null, "the scan found it");
+		let changes = scope ContentChanges();
+
+		// Added, under a folder the index has never seen.
+		let added = outside.RootGroup.CreateGroup("more").CreateGroup("deep").CreateInstance("rock", typeName);
+		Test.Assert(added.WriteObject(record) case .Ok);
+		Test.Assert(editor.GetInstance(added.Id) == null, "not seen before a refresh");
+		editor.Refresh(scope StringView[]("more/deep/rock.asset"), changes);
+		Test.Assert((changes.Added.Count == 1) && (changes.Added[0] == added.Id));
+		let rock = editor.GetInstanceByPath("more/deep/rock");
+		Test.Assert((rock != null) && (rock.Id == added.Id) && (rock.TypeName == typeName));
+		Test.Assert(rock.SourceName == "Art/stone.png", "its header's source");
+
+		// Changed: the same record, kept, its source refreshed.
+		changes.Clear();
+		record.File.Set("Art/marble.png");
+		Test.Assert(first.WriteObject(record) case .Ok);
+		editor.Refresh(scope StringView[]("records/art.asset"), changes);
+		Test.Assert((changes.Changed.Count == 1) && (changes.Changed[0] == artId) && changes.Added.IsEmpty);
+		Test.Assert(editor.GetInstance(artId) == art, "the record held stays the live one");
+		Test.Assert(art.SourceName == "Art/marble.png");
+
+		// A data stream changed: its record reported, the index unchanged.
+		changes.Clear();
+		let words = "hello";
+		Test.Assert(first.WriteData("scene", .((uint8*)words.Ptr, words.Length), .Text) case .Ok);
+		editor.Refresh(scope StringView[]("records/art.scene.data"), changes);
+		Test.Assert((changes.Changed.Count == 1) && (changes.Changed[0] == artId));
+
+		// Cut off inside its header (being written, or broken): unreadable, the old record kept,
+		// the path reported for a later try. (One cut after the header reads as changed: the
+		// index reads headers alone, and a payload still being written is the watcher's to wait
+		// out before anything reads it.)
+		changes.Clear();
+		let whole = EnvelopeText(fixture, "records/art.asset", .. scope String());
+		let typeAt = whole.IndexOf("typeName");
+		Test.Assert(typeAt > 0, whole);
+		let half = StringView(whole, 0, typeAt);
+		Test.Assert(fixture.Mount.Save("records/art.asset", .((uint8*)half.Ptr, half.Length)) case .Ok);
+		editor.Refresh(scope StringView[]("records/art.asset"), changes);
+		Test.Assert((changes.Unreadable.Count == 1) && (changes.Unreadable[0] == "records/art.asset"));
+		Test.Assert(changes.Changed.IsEmpty && changes.Removed.IsEmpty);
+		Test.Assert(editor.GetInstance(artId) == art, "kept as it was");
+		// Written whole again: read.
+		changes.Clear();
+		Test.Assert(fixture.Mount.Save("records/art.asset", .((uint8*)whole.Ptr, whole.Length)) case .Ok);
+		editor.Refresh(scope StringView[]("records/art.asset"), changes);
+		Test.Assert(changes.Unreadable.IsEmpty && (changes.Changed.Count == 1));
+
+		// Another identity under the same path: the old record goes, a new one comes.
+		changes.Clear();
+		let otherId = Guid.Create();
+		let swapped = scope String(whole);
+		swapped.Replace(artId.ToString(.. scope String()), otherId.ToString(.. scope String()));
+		Test.Assert(swapped != whole, "the guid is in the envelope's text");
+		Test.Assert(fixture.Mount.Save("records/art.asset", .((uint8*)swapped.Ptr, swapped.Length)) case .Ok);
+		editor.Refresh(scope StringView[]("records/art.asset"), changes);
+		Test.Assert((changes.Removed.Count == 1) && (changes.Removed[0] == artId));
+		Test.Assert((changes.Added.Count == 1) && (changes.Added[0] == otherId));
+		Test.Assert(editor.GetInstance(artId) == null);
+		Test.Assert(editor.GetInstanceByPath("records/art").Id == otherId);
+
+		// Removed: out of the index, nothing else touched.
+		changes.Clear();
+		let rockId = added.Id; // the delete frees the outside's record
+		Test.Assert(outside.DeleteInstance(rockId) case .Ok);
+		editor.Refresh(scope StringView[]("more/deep/rock.asset"), changes);
+		Test.Assert((changes.Removed.Count == 1) && (changes.Removed[0] == rockId));
+		Test.Assert(editor.GetInstance(rockId) == null);
+		Test.Assert(editor.GetInstanceByPath("more/deep/rock") == null);
+
+		// A path naming nothing it knows changes nothing.
+		changes.Clear();
+		editor.Refresh(scope StringView[]("nowhere/ghost.asset", "nowhere/ghost.scene.data", "notes.txt"), changes);
+		Test.Assert(changes.IsEmpty);
+	}
 }
