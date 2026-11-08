@@ -100,7 +100,9 @@ the previous engine, on the `v0` branch.
 `Data/SampleProjects/` holds game projects: **Sky Hopper** (`SkyHopper`), built entirely
 through the MCP tools (its scripts in `Tools/`, run against the project's own editor: its game and
 behaviours are its `Code/`, the engine part also a project of the engine workspace, linked by
-Integration.Mcp), **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`),
+Integration.Mcp), **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`, run
+against the project's own editor: its game, its blocks' level and its behaviours are its `Code/`, the
+engine part also a project of the engine workspace, linked by Integration.Mcp),
 **Snowline**, Raptor's snowboard demo ported through the same tools (its scripts in `Tools/`),
 **Lamplight**, Raptor's stealth heist ported the same way (its scripts in `Tools/`), the
 **Shader Gallery**, Raptor's custom shaders sample ported the same way (its scripts in `Tools/`, run

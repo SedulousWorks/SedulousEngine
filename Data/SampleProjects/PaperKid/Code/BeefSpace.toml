@@ -1,0 +1,40 @@
+FileVersion = 1
+
+[Workspace]
+StartupProject = "PaperKidEditor"
+
+[Projects]
+"PaperKid" = {Path = "PaperKid"}
+"PaperKidEditor" = {Path = ".generated/PaperKidEditor"}
+"PaperKidPlayer" = {Path = ".generated/PaperKidPlayer"}
+"PaperKidTools" = {Path = ".generated/PaperKidTools"}
+
+[Configs.Debug.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Debug.Linux64]
+
+[Configs.Debug.Win64]
+
+[Configs.Release.wasm32]
+EmitDebugInfo = "No"
+
+[Configs.Release.Linux64]
+
+[Configs.Release.Win64]
+
+[Configs.Test.Linux64]
+
+[Configs.Test.Win64]
+
+[Configs.ShippingRelease.wasm32]
+PreprocessorMacros = ["SHIPPING"]
+EmitDebugInfo = "No"
+
+[Configs.ShippingRelease.Linux64]
+PreprocessorMacros = ["SHIPPING"]
+
+[Configs.ShippingRelease.Win64]
+PreprocessorMacros = ["SHIPPING"]

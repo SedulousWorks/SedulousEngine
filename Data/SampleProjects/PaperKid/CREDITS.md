@@ -4,6 +4,8 @@ Made with the Sedulous engine. Third-party assets, with thanks:
 
 ## Made for this game
 
+- The game's code (`Code/`), the blocks and the screens are written for PaperKid (Raptor's
+  PaperKid, ported), under the project's own licence.
 - The kid on his bike (model, rig and animations), the houses, the cars and the street furniture,
   the pedestrians and the dog and cat are built for PaperKid from Blender scripts
   (`Tools/blender/`), under the project's own licence.

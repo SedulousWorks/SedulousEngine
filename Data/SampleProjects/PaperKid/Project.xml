@@ -8,10 +8,10 @@
 		<string name="engineVersion">0.1.0</string>
 		<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
 		<string name="defaultScene">Scenes/Start</string>
-		<string name="startupScript">Scripts/PaperKidGame</string>
+		<string name="startupScript"/>
 		<string name="defaultInputMapId">edd0a22c-5ef7-0646-9fca-43f85d40012f</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="startupScriptId">ba2bb78e-5e43-c64d-85bd-8101fe5d230c</string>
+		<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
 		<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
 		<u32 name="renderMsaaSamples">1</u32>
 		<array name="uiFontIds" count="3">
@@ -31,5 +31,13 @@
 			<string>1d925b0a-0c26-8644-a9d5-5cb1f0d858be</string>
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<array name="plugins" count="1">
+			<object>
+				<string name="id">paperkid</string>
+				<string name="path">Code</string>
+				<array name="platforms" count="0"/>
+				<object name="settings"/>
+			</object>
+		</array>
 	</object>
 </root>

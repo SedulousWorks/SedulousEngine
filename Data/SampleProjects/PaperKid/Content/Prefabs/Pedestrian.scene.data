@@ -24,42 +24,14 @@
 			<f32 name="z">1</f32>
 		</object>
 	</array>
-	<array name="components" count="2">
-		<object>
-			<string name="owner">b98a8c10-658b-584b-a2cc-21868674a3f2</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="2">
-					<string name="script">9d34372f-a305-0a40-98fb-1578a4d48d24</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">2142831777187639446</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">dc829861-918f-7a44-8cf2-7765a517ea85</string>
-					</array>
-					<string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">11714910769601064179</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.8</f64>
-					</array>
-				</array>
-			</object>
-		</object>
+	<array name="components" count="3">
 		<object>
 			<string name="owner">b98a8c10-658b-584b-a2cc-21868674a3f2</string>
 			<string name="type">navigation.Agent</string>
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">17631806423189705212</u64>
-					<u32 name="version">2</u32>
+					<u32 name="version">3</u32>
 				</array>
 				<f32 name="radius">0.4</f32>
 				<f32 name="height">1.6</f32>
@@ -67,6 +39,36 @@
 				<f32 name="maxAcceleration">6</f32>
 				<bool name="moveEntity">true</bool>
 				<f32 name="stopDistance">0</f32>
+				<bool name="avoidOthers">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">b98a8c10-658b-584b-a2cc-21868674a3f2</string>
+			<string name="type">paperkid.pedestrian</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">8420675248906518226</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="speed">1.6</f32>
+				<f32 name="inner">18</f32>
+				<f32 name="outer">31</f32>
+				<string name="walkClip">dc829861-918f-7a44-8cf2-7765a517ea85</string>
+				<f32 name="walkMetres">1.3</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">b98a8c10-658b-584b-a2cc-21868674a3f2</string>
+			<string name="type">paperkid.obstacle</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">329763887199202798</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="radius">0.8</f32>
+				<f32 name="cooldown">2</f32>
 			</object>
 		</object>
 	</array>

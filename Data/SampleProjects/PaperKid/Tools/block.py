@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Block1 (the first level's town block) and Start (the title backdrop)."""
+"""The five town blocks and Start (the title backdrop). The game's own behaviours and its level
+(paperkid.*: Code/PaperKid) are written as components and a settings block like the engine's, so
+the editor this talks to is the project's own (Tools/README.md)."""
 import json, os, sys
 import xml.etree.ElementTree as ET
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -102,10 +104,10 @@ KID_BIKE = next(a["guid"] for a in ASSETS
 
 def bike(d, pos, facing):
     """The player: a character capsule (its centre is the entity; the feet are 0.9 below) with the
-    Bike behavior, and the kid on his bike, standing on the ground under it."""
+    Bike behaviour, and the kid on his bike, standing on the ground under it."""
     b = d.entity("Bike", pos, yaw(facing), eid=BIKE_ID)
     d.add(b, "physics.Character", radius=0.4, halfHeight=0.5)
-    d.script(b, (ids["Bike"], {}))
+    d.add(b, "paperkid.bike")
     d.instance(KID_BIKE, (0, -0.9, 0), parent=b)
 
 
@@ -191,7 +193,7 @@ def town(name, R, subscribers, inner_cars, outer_cars, walkers, level, nav):
     for i in range(walkers):
         verge = R - 6 if i % 2 == 0 else R + 6
         d.instance(kit["Pedestrian"], lane_point(verge, (i + 0.5) * 8 * verge / walkers))
-    d.level_script(ids["Level"], ring=float(R), crashPenalty=5.0, **level)
+    d.level("paperkid.level", ring=float(R), crashPenalty=5.0, **level)
     # Street junk on the verges (the obstacles that do not move).
     for pos in ((-6, 0, -(R - 5.4)), (6, 0, R - 5.4), (R - 5.4, 0, -6), (-(R - 5.4), 0, 6), (-14, 0, R + 5.6),
                 (14, 0, -(R + 5.6))):
@@ -209,7 +211,7 @@ def town(name, R, subscribers, inner_cars, outer_cars, walkers, level, nav):
     # The chase camera, behind the bike.
     cam = d.entity("Camera", (-R, 4.4, R), pitch(-12))
     d.add(cam, "camera", farZ=400.0)
-    d.script(cam, (ids["FollowCamera"], {"target": ("entity", BIKE_ID)}))
+    d.add(cam, "paperkid.follow_camera", target=BIKE_ID)
     # The minimap: straight down over the middle, framing the walls, into the Minimap texture at
     # half the frame rate. Map up is -Z, map right is +X; MapMarkers places the HUD's markers by
     # the same span.
@@ -217,7 +219,7 @@ def town(name, R, subscribers, inner_cars, outer_cars, walkers, level, nav):
     d.add(mini, "camera", primary=False, projection=1, orthoHeight=span, nearZ=1.0, farZ=120.0,
           target=ids["Minimap"], targetInterval=2,
           clearColor={"r": 0.16, "g": 0.2, "b": 0.16, "a": 1.0})
-    d.script(mini, (ids["MapMarkers"], {"bike": ("entity", BIKE_ID), "span": span}))
+    d.add(mini, "paperkid.map_markers", bike=BIKE_ID, span=span)
     return d
 
 
@@ -255,8 +257,8 @@ def town_clip(name, clip):
 
 def start():
     """The title backdrop: a street with life on it behind the menu. Cars cross both lanes, people
-    the near pavement (Stroller.as), and a dog and a cat potter about the lawn either side of the
-    menu (Pet.as)."""
+    the near pavement (the Stroller behaviour), and a dog and a cat potter about the lawn either
+    side of the menu (Pet)."""
     d = Doc("Start")
     world(d, 80)
     for x in range(-24, 25, 8):
@@ -274,8 +276,8 @@ def start():
         e = d.entity(name, (0, 0, z))
         props = {"xFrom": -reach * way, "xTo": reach * way, "speed": speed, "pause": pause}
         if walk:
-            props["walkClip"] = ("asset", town_clip(model, "Walk"))
-        d.script(e, (ids["Stroller"], props))
+            props["walkClip"] = town_clip(model, "Walk")
+        d.add(e, "paperkid.stroller", **props)
         d.instance(town_model(model), parent=e)
 
     # Traffic keeps to the right: toward +X in the near lane, back in the far one.
@@ -288,12 +290,12 @@ def start():
 
     def pet(name, model, lawn, speed, metres, own):
         e = d.entity(name, ((lawn[0] + lawn[1]) / 2, 0, (lawn[2] + lawn[3]) / 2))
-        clips = {slot: ("asset", town_clip(model, clip)) for slot, clip in (
+        clips = {slot: town_clip(model, clip) for slot, clip in (
             ("walkClip", "Walk"), ("idleClip", "Idle"), ("sitClip", "Sit"), ("lieClip", "LieDown"), ("ownClip", own))}
-        d.script(e, (ids["Pet"], dict(xMin=lawn[0], xMax=lawn[1], zMin=lawn[2], zMax=lawn[3], speed=speed,
-                                      walkMetres=metres, **clips)))
+        d.add(e, "paperkid.pet", xMin=lawn[0], xMax=lawn[1], zMin=lawn[2], zMax=lawn[3], speed=speed,
+              walkMetres=metres, **clips)
         # The Walk clip carries the pet (its root motion): the model's animator moves the pet's
-        # entity, which Pet.as only steers.
+        # entity, which the Pet behaviour only steers.
         d.instance(town_model(model), parent=e, ops=[root_motion_entity(town_model(model), e)])
 
     pet("Dog", "Dog", (-7.5, -4.0, 12.5, 15.0), 0.8, 0.55, "Sniff")

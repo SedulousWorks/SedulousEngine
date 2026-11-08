@@ -202,7 +202,7 @@ managers:
 | Script | Native |
 |---|---|
 | `scene.Prefabs.Spawn(prefab, at)` | `Scene.GetSystem<PrefabSpawnSystem>().Spawn(prefab, position, rotation, parent)` |
-| `scene.Physics.RayCast`, `ApplyImpulse`, `SetVelocity`, `SetForce` | the same on `Scene.GetSystem<PhysicsSceneSystem>()` |
+| `scene.Physics.RayCast`, `OverlapSphere`, `Gravity`, `ApplyImpulse`, `SetVelocity`, `SetForce` | the same on `Scene.GetSystem<PhysicsSceneSystem>()` |
 | `scene.Physics.MoveCharacter(e, vx, vz)`, `JumpCharacter` | `Scene.GetComponent<CharacterComponent>(e).Move(vx, vz)`, `.Jump(speed)` |
 | `scene.Animation.Play(e)`, `Stop`, `SetClip` | the same on `SkeletalAnimationComponentManager` |
 | `scene.Animation.SetFloat(e, name, v)`, `SetBool`, `SetTrigger` | the same on `AnimationGraphComponentManager` |
@@ -210,6 +210,12 @@ managers:
 | `scene.Audio.Play(e)`, `Stop` | the same on `AudioSceneSystem` |
 | `scene.Particles.Play(e)`, `Stop`, `Restart` | the same on `ParticleEffectComponentManager` |
 | `Audio.PlayOneShot(clip)` | `AudioFacade.PlayOneShot(clip)` |
+| `Audio.PlayMusic`, `StopMusic`, `SetVoicePitch(Audio.MusicVoice(), ...)`, `BusVolume` | the same on `AudioFacade` |
+| `Input.WasPressed("Throw")`, `Value2D`, `Rumble` | the same on `InputFacade` |
+| `NavAgentComponent::of(e).Navigate(at)`, `SkeletalAnimationComponent::of(e).Speed` | `Scene.GetComponent<NavAgentComponent>(e)` (a `T*`, null without one), then the same |
+| `self.FindChildByName(n)`, `GetFirstChild()`, `SetActive(b)`, `Destroy()` | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
+| `node.Tween(property, to, seconds, easing).From(v)` | `node.Animate(property, to, seconds, easing).From(v)`, then `ReleaseRef()` (GUI) |
+| `Label::Of(node).Text = t` | `(node as Label).Text = t` |
 | `Run.LoadScene(id)`, `Run.TimeScale` | `GameInstance.LoadScene(id)`, `InstanceTimeScale` |
 | `scene.Scripts.Emit("CoinCollected", 1)` | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |
 | `other.Send("Hurt")` | a call on the other entity's behaviour, made now (Events and queued calls) |
