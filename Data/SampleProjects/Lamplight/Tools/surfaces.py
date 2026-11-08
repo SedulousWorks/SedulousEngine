@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """surfaces.py: what the manor is made of, as physical materials (Surfaces/), written through the
 editor's MCP. A floor's collider names one (room.py), which sets how it grips and how a step on it
-sounds: Footsteps.as reads the material under the foot (RayCastHit.material) and plays that
+sounds: the Footsteps behaviour reads the material under the foot (PhysicsHit.Material) and plays that
 surface's steps (sounds.py's Audio/Step<Surface><take>), louder on gravel, softer on grass.
 """
 import os, sys

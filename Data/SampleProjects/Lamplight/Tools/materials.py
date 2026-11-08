@@ -4,7 +4,7 @@ Each starts from the engine's own new PBR material (asset_create, then asset_dat
 fields this does not set keep the engine's defaults; its uniforms are written by the offsets the
 material lists. Colours are sRGB, as entered anywhere.
 
-- Materials/FlameOut, Materials/ChimneyOut: an oil lamp put out (Lamp.as), its wick and glass no
+- Materials/FlameOut, Materials/ChimneyOut: an oil lamp put out (the Lamp), its wick and glass no
   longer glowing.
 - Materials/Pebble: the thrown stone's grey.
 
@@ -17,7 +17,7 @@ from scenegen import mcp, assets
 
 MATERIALS = {
     # name: (base colour, roughness, metallic, emissive colour or None)
-    # A lamp put out (Lamp.as swaps them in for the kit's glowing Flame and Chimney): a charred
+    # A lamp put out (the Lamp swaps them in for the kit's glowing Flame and Chimney): a charred
     # wick, and the chimney's glass dark and glossy.
     "FlameOut": ((0.10, 0.08, 0.07), 0.8, 0.0, None),
     "ChimneyOut": ((0.42, 0.40, 0.37), 0.15, 0.0, None),

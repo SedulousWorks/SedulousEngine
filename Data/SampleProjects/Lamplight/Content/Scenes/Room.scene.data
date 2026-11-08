@@ -3344,7 +3344,7 @@
 			<f32 name="z">1</f32>
 		</object>
 	</array>
-	<array name="components" count="193">
+	<array name="components" count="195">
 		<object>
 			<string name="owner">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
 			<string name="type">two_bone_ik</string>
@@ -3369,986 +3369,6 @@
 				<bool name="active">true</bool>
 				<i32 name="order">0</i32>
 				<bool name="debugDraw">false</bool>
-			</object>
-		</object>
-		<object>
-			<string name="owner">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="3">
-					<string name="script">6f56966c-c870-774b-a6a6-b0f7a51cce79</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="2">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">5148193353796561789</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">261b3807-6bf7-5d45-bd1e-7bcc42aacb21</string>
-					</array>
-					<string name="script">7f3b2da3-a7b0-dc4f-8964-0fdf9c7973d1</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-					<string name="script">cdf68e5a-7c03-4b4e-ad8e-12682afc4a75</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="4">
-						<u64 name="nameHash">8105941626046089128</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">4e5d8940-a2b6-b346-876c-cc3142818290</string>
-						<u64 name="nameHash">4986140841453718106</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">ea267f4c-49a7-a442-8e8b-95a72b40b52a</string>
-						<u64 name="nameHash">5992216835756424154</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">1645ccc6-54c9-1740-a195-84aa60d79c0d</string>
-						<u64 name="nameHash">3666652653925298717</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">0b80da54-ce45-fc48-9e02-4f2fc63f13da</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">3468d725-08c9-5d4e-8990-cdacc96fe7ad</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">1653916590517707752</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">93cf2aae-9950-57ea-866c-290b17bcac22</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">ac3e40c8-ddfd-314c-acf9-5259e4115b6b</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">3542075912685743070</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">e372a27b-2612-5fc5-9155-7aa14760cd53</string>
-						<u64 name="nameHash">11568612318942288207</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">9a4e2a5b-7dd9-568e-bccf-16b05a5a889a</string>
-						<u64 name="nameHash">4586707072889581954</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">87108576-d731-59a0-9672-458bc565f0f1</string>
-						<u64 name="nameHash">15877409877253349516</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">2</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">84360606-3315-5f93-a592-e08efd756e0c</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">21f57a62-af12-5e4f-8b2a-034c5f46455c</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">8999596768310594794</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">10</f64>
-						<u64 name="nameHash">1653916590517707752</u64>
-						<u8 name="kind">3</u8>
-						<bool name="boolean">false</bool>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">a936c6af-08d6-5e6d-b874-9a60680fdf25</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">21f57a62-af12-5e4f-8b2a-034c5f46455c</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">8999596768310594794</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">100</f64>
-						<u64 name="nameHash">1653916590517707752</u64>
-						<u8 name="kind">3</u8>
-						<bool name="boolean">true</bool>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">f74b28f2-088b-5de1-b826-1d88182ae9fd</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">3118d28c-64df-ec45-9d20-fa8a575473c4</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">bb93fc29-35a7-5e29-b2dc-f3df5deac6be</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">2dd35d36-cca8-cf4d-8440-9f8995e21aed</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="8">
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">2265827012839742223</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">2e2fbd14-8b4e-59b7-94cb-2ff770ce7683</string>
-						<u64 name="nameHash">13252707771722133292</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">4450359368775081704</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">2</f64>
-						<u64 name="nameHash">17560951106140367993</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">a9add939-0187-af4f-8696-935b38301b16</string>
-						<u64 name="nameHash">958014365173372740</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">a8d7e54c-e33a-cf4b-b4f4-1b27856227cc</string>
-						<u64 name="nameHash">13488051452344341240</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">60d14e57-c8cd-5348-b954-40fadd2084b6</string>
-						<u64 name="nameHash">11651843943974465509</u64>
-						<u8 name="kind">8</u8>
-						<string name="id">a826e43d-ec19-a34f-88c9-fe2ddba1a138</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">3ba953b2-3d7e-58dc-83b0-a828bcebe17f</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">743ca669-a275-4c4a-ba66-f7bede162f2a</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="6">
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">12277212668541332659</u64>
-						<u8 name="kind">3</u8>
-						<bool name="boolean">true</bool>
-						<u64 name="nameHash">15659848397218030330</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">17058943882386768983</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.94</f64>
-						<u64 name="nameHash">15912740436197969649</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">11793007960982004773</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">3</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">fbb6ff1b-c155-5c25-903d-c3311df90e65</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">62202c73-c62c-5de4-9c5d-e2cfee1285f4</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">e4f9d6fb-081a-593e-8a4a-c7b0aa8961e5</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">3a4e3b13-3d0a-536a-83e9-416f4defb0dc</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">d35bb8ef-6887-5ec6-af76-8fa722e17361</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">3525f249-41c2-5df9-be9e-366f501d53aa</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">c036d4c6-ee81-5c24-85ad-7261d6b452e1</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">85871771-2099-5c09-9a52-9c4ab31a6175</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">f5d93044-10e7-5a68-acfd-af546fc6a7ed</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">4ad0823a-09a0-5238-9f6d-36e03a57a956</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">90992f82-83a9-5e21-a862-2103f5511426</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.52</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">ceb60194-7bb1-535d-83b4-ac8254571717</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">5ce71eab-0fef-5786-bb50-463bdbdaaa80</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">4908d36a-174d-57a3-a96d-6c6367db5795</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">c6d13629-29fe-5ee1-99d7-c84d632b7dfe</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0.1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">70158dd0-0acb-5635-a856-4f91006be577</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">5ef4c7a0-ece0-580e-9678-27d658a27166</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">bb78b99b-932f-58ec-a7ce-a6a8d6daf08e</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">2a7bff68-a69a-5c67-9636-eb537bb88a27</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">0dddde0b-f032-570c-9f74-bfe3eef74165</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">5394313e-2324-563d-a59a-a5c3633ee06b</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">ad16d378-3dc0-5a89-9f74-eba550806ed1</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">7cb588eb-fecc-550d-a404-54ec85a1be65</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">6e6fe7e1-458b-cd40-830b-72a5a01c34f5</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="5">
-						<u64 name="nameHash">8056904078410733902</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
-						<u64 name="nameHash">1057872514463661283</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
-						<u64 name="nameHash">10933701082675027294</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-						<u64 name="nameHash">10933698883651770872</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">0</f64>
-						<u64 name="nameHash">9184356747197692168</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">1</f64>
-					</array>
-				</array>
 			</object>
 		</object>
 		<object>
@@ -8880,6 +7900,630 @@
 				<f32 name="minScale">0.3</f32>
 				<f32 name="maxScale">2</f32>
 				<bool name="visible">false</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+			<string name="type">lamplight.thief</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12208319581351247391</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<f32 name="sneakSpeed">1</f32>
+				<f32 name="walkSpeed">1.6</f32>
+				<f32 name="runSpeed">4.5</f32>
+				<f32 name="turnRate">10</f32>
+				<string name="pebble">261b3807-6bf7-5d45-bd1e-7bcc42aacb21</string>
+				<f32 name="throwSpeed">7</f32>
+				<f32 name="throwEvery">0.8</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+			<string name="type">lamplight.footsteps</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">4600218314619407700</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="wood">4e5d8940-a2b6-b346-876c-cc3142818290</string>
+				<string name="stone">ea267f4c-49a7-a442-8e8b-95a72b40b52a</string>
+				<string name="gravel">1645ccc6-54c9-1740-a195-84aa60d79c0d</string>
+				<string name="grass">0b80da54-ce45-fc48-9e02-4f2fc63f13da</string>
+				<f32 name="sneakStride">0.6</f32>
+				<f32 name="walkStride">0.8</f32>
+				<f32 name="runStride">1.35</f32>
+				<f32 name="runSpeed">3</f32>
+				<f32 name="walkNoise">0.4</f32>
+				<f32 name="runNoise">1</f32>
+				<f32 name="footDrop">0.9</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+			<string name="type">lamplight.light_meter</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9520944086153807637</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="chestHeight">0.4</f32>
+				<f32 name="halfLight">0.15</f32>
+				<f32 name="follow">6</f32>
+				<f32 name="glowBelow">0.3</f32>
+				<f32 name="glowStrength">0.03</f32>
+				<i32 name="slots">7</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">93cf2aae-9950-57ea-866c-290b17bcac22</string>
+			<string name="type">lamplight.guard</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6372880161724202538</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<string name="route">e372a27b-2612-5fc5-9155-7aa14760cd53</string>
+				<string name="lantern">9a4e2a5b-7dd9-568e-bccf-16b05a5a889a</string>
+				<string name="meter">87108576-d731-59a0-9672-458bc565f0f1</string>
+				<f32 name="walkSpeed">1.2</f32>
+				<f32 name="runSpeed">4</f32>
+				<f32 name="eyeHeight">1.6</f32>
+				<f32 name="noticeSeconds">1.2</f32>
+				<f32 name="halfLight">0.15</f32>
+				<f32 name="forget">0.4</f32>
+				<f32 name="catchDistance">1</f32>
+				<f32 name="hearing">14</f32>
+				<f32 name="searchSeconds">4</f32>
+				<f32 name="touch">1.2</f32>
+				<f32 name="grace">3</f32>
+				<i32 name="group">2</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">3ba953b2-3d7e-58dc-83b0-a828bcebe17f</string>
+			<string name="type">lamplight.door</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">15917837331060324797</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<bool name="locked">true</bool>
+				<f32 name="pickSeconds">3</f32>
+				<f32 name="reach">0.8</f32>
+				<f32 name="shutYaw">0</f32>
+				<f32 name="lockAlong">0.94</f32>
+				<f32 name="lockHeight">1</f32>
+				<f32 name="openAngle">100</f32>
+				<f32 name="swingSpeed">160</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">bb93fc29-35a7-5e29-b2dc-f3df5deac6be</string>
+			<string name="type">lamplight.lamp</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">3019998871556487431</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<string name="light">2e2fbd14-8b4e-59b7-94cb-2ff770ce7683</string>
+				<f32 name="reach">1.6</f32>
+				<bool name="lit">true</bool>
+				<i32 name="flameSlot">1</i32>
+				<i32 name="chimneySlot">2</i32>
+				<string name="flameLit">a9add939-0187-af4f-8696-935b38301b16</string>
+				<string name="flameOut">a8d7e54c-e33a-cf4b-b4f4-1b27856227cc</string>
+				<string name="chimneyLit">a826e43d-ec19-a34f-88c9-fe2ddba1a138</string>
+				<string name="chimneyOut">60d14e57-c8cd-5348-b954-40fadd2084b6</string>
+			</object>
+		</object>
+		<object>
+			<string name="owner">84360606-3315-5f93-a592-e08efd756e0c</string>
+			<string name="type">lamplight.loot</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">4315977834227285427</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<i32 name="value">10</i32>
+				<bool name="target">false</bool>
+				<f32 name="reach">0.9</f32>
+				<f32 name="spin">0.6</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">a936c6af-08d6-5e6d-b874-9a60680fdf25</string>
+			<string name="type">lamplight.loot</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">4315977834227285427</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<i32 name="value">100</i32>
+				<bool name="target">true</bool>
+				<f32 name="reach">0.9</f32>
+				<f32 name="spin">0.6</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f74b28f2-088b-5de1-b826-1d88182ae9fd</string>
+			<string name="type">lamplight.exit</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">11092150018896880625</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+			</object>
+		</object>
+		<object>
+			<string name="owner">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+			<string name="type">lamplight.camera_rig</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">5267131914750727719</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="target">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="distance">6.5</f32>
+				<f32 name="height">7</f32>
+				<f32 name="lookHeight">0.8</f32>
+				<f32 name="follow">6</f32>
+				<f32 name="swing">7</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">fbb6ff1b-c155-5c25-903d-c3311df90e65</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">62202c73-c62c-5de4-9c5d-e2cfee1285f4</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">e4f9d6fb-081a-593e-8a4a-c7b0aa8961e5</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">3a4e3b13-3d0a-536a-83e9-416f4defb0dc</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">d35bb8ef-6887-5ec6-af76-8fa722e17361</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">3525f249-41c2-5df9-be9e-366f501d53aa</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">0.1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">c036d4c6-ee81-5c24-85ad-7261d6b452e1</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">0.1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">85871771-2099-5c09-9a52-9c4ab31a6175</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f5d93044-10e7-5a68-acfd-af546fc6a7ed</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">4ad0823a-09a0-5238-9f6d-36e03a57a956</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">90992f82-83a9-5e21-a862-2103f5511426</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">0.52</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">ceb60194-7bb1-535d-83b4-ac8254571717</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">5ce71eab-0fef-5786-bb50-463bdbdaaa80</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">4908d36a-174d-57a3-a96d-6c6367db5795</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">0.1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">c6d13629-29fe-5ee1-99d7-c84d632b7dfe</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">0</f32>
+				<f32 name="normalZ">1</f32>
+				<f32 name="halfLength">0.1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">70158dd0-0acb-5635-a856-4f91006be577</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">5ef4c7a0-ece0-580e-9678-27d658a27166</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">bb78b99b-932f-58ec-a7ce-a6a8d6daf08e</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2a7bff68-a69a-5c67-9636-eb537bb88a27</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">0dddde0b-f032-570c-9f74-bfe3eef74165</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">5394313e-2324-563d-a59a-a5c3633ee06b</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">ad16d378-3dc0-5a89-9f74-eba550806ed1</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">7cb588eb-fecc-550d-a404-54ec85a1be65</string>
+			<string name="type">lamplight.cutaway_wall</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1115303222826616698</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">c8b08cf8-0dde-5490-a32b-00d13b2d7862</string>
+				<string name="thief">dee5a548-b24d-5e2c-a759-c9f0b9bc2849</string>
+				<f32 name="normalX">1</f32>
+				<f32 name="normalZ">0</f32>
+				<f32 name="halfLength">1</f32>
+				<f32 name="margin">1</f32>
+				<f32 name="cutaway">0.85</f32>
+				<f32 name="speed">4</f32>
 			</object>
 		</object>
 	</array>

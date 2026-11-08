@@ -1,0 +1,34 @@
+FileVersion = 1
+
+[Project]
+Name = "Lamplight"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"
+# The game and its behaviours: the run (its scene loads, time scale, save), its input, audio and
+# GUI screens; the thief's character, the guards' navigation agents and lanterns, the figures'
+# graphs and the hand's IK, the lamps' materials and lights, the walls' fade, the light at a point,
+# the guards' meters, the surfaces underfoot; the pebble's spawn and its body.
+"Sedulous.Run" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Physics.Resource" = "*"
+"Sedulous.Engine.Navigation" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Engine.GUI" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"

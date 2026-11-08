@@ -23,7 +23,7 @@ and the thief starts facing it with the camera south of him.
 - stairs: (x, z) of the foot of stairs rising north out of the level (put the exit there).
 - start: the thief's (x, z, yaw degrees); bounds: the navigation zone's (x0, z0, x1, z1).
 - moon: its intensity and direction (0: none); rain: true for rain round the thief and its sound;
-  alarm: true for a bell a guard's chase rings, bringing every guard (Alarm.as);
+  alarm: true for a bell a guard's chase rings, bringing every guard (the Alarm);
   environment: Night (the default) or Cellars (look.py).
 """
 

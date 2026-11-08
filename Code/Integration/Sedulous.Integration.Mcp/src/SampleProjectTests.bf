@@ -24,14 +24,14 @@ using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
 
-/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery, Sky Hopper, Masquerade) must stay
+/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery, Sky Hopper, Lamplight, Masquerade) must stay
 /// readable at the CURRENT data versions: a wire version bump or a key rename that forgets to
 /// upgrade their sources leaves them refused by the strict readers. This registers the whole pipeline the way
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
 /// are comptime here), so it holds when run alone. A sample with game code of its own (the
-/// Shader Gallery's, Sky Hopper's and PaperKid's Code/) has its package linked here, as its own
+/// Shader Gallery's, Sky Hopper's, PaperKid's and Lamplight's Code/) has its package linked here, as its own
 /// editor links it, and reads with the package loaded, so its behaviours' records and its levels'
 /// blocks resolve rather than stay unknown.
 static class SampleProjectTests
@@ -379,6 +379,110 @@ static class SampleProjectTests
 			let lives = effect.GetSystem<BehaviourManager<SkyHopper.TimedLife>>();
 			Test.Assert((lives != null) && (lives.Count == 1), scope $"{name} removes itself");
 		}
+	}
+
+	[Test]
+	public static void TheLamplightSourcesReadAtTheCurrentDataVersionsAndCook()
+	{
+		// 250 instances: 6 scenes (the five levels and the test room) and 36 prefabs (the kits'
+		// and the loot's 33 models, the thief, the guard and the pebble), 35 model manifests, 86
+		// materials, 34 static and 2 skinned meshes, 2 skeletons, 9 clips and 2 animation graphs,
+		// 16 sounds, 5 UI documents and their sheet, 6 navigation zones, 4 physical materials, the
+		// rain, the font, the input map and the environment and post profiles. 208 cook: all but
+		// the scenes and the prefabs, which stage rather than cook. No script overrides: the
+		// behaviours and the game are the game's code, its package loaded to read the levels. Raise
+		// the floors when the sample grows.
+		CheckSampleProject("Lamplight", "scratch_lamplight_versions", 250, 208, 0, "lamplight", => CheckLamplight);
+	}
+
+	/// The Gardens' entities carry the game's behaviours, resolved into their managers with the
+	/// values the level gives them, not the defaults (the thief's camera and pebble, the rig's
+	/// target, the guard's thief and collision group, the gate's lock, the lamps' slots and
+	/// materials, the loot's values and the one target, the surfaces underfoot), a cutaway on
+	/// every wall piece and no script left; and the pebble's prefab carries its behaviour.
+	private static void CheckLamplight(EditorProject project)
+	{
+		let gardens = FindInstance(project.SourceDb.RootGroup, "Gardens", McpDocumentNames.cSceneDocument);
+		Test.Assert(gardens != null, "Gardens");
+		let pebble = FindInstance(project.SourceDb.RootGroup, "Pebble", McpDocumentNames.cPrefabDocument);
+		Test.Assert(pebble != null, "the Pebble prefab");
+		if ((gardens == null) || (pebble == null))
+			return;
+		let scene = scope Scene(gardens.Name);
+		EngineSceneComposition.AddAllSceneManagers(scene); // the package's behaviour managers among them
+		Test.Assert(SceneStorage.LoadScene(gardens, scene) case .Ok, "the Gardens' stream");
+		let thieves = scene.GetSystem<BehaviourManager<Lamplight.Thief>>();
+		Test.Assert((thieves != null) && (thieves.Count == 1), "one Thief, resolved");
+		if ((thieves == null) || (thieves.Count != 1))
+			return;
+		let player = thieves.OwnerHandles[0];
+		let playerId = scene.GetEntityId(player);
+		Test.Assert(scene.GetEntityName(player) == "Player");
+		let thief = thieves.Instances[0];
+		Test.Assert(thief.Pebble.Id == pebble.Id, "the thief throws the Pebble prefab");
+		let rigs = scene.GetSystem<BehaviourManager<Lamplight.CameraRig>>();
+		Test.Assert((rigs != null) && (rigs.Count == 1) && (rigs.Instances[0].Target.Id == playerId), "the camera follows the thief");
+		if ((rigs != null) && (rigs.Count == 1))
+			Test.Assert(thief.Camera.Id == scene.GetEntityId(rigs.OwnerHandles[0]), "the thief moves by the rig's camera");
+		let meters = scene.GetSystem<BehaviourManager<Lamplight.LightMeter>>();
+		Test.Assert((meters != null) && (meters.Count == 1) && (meters.OwnerHandles[0] == player), "the thief's light meter");
+		let steps = scene.GetSystem<BehaviourManager<Lamplight.Footsteps>>();
+		Test.Assert((steps != null) && (steps.Count == 1) && (steps.OwnerHandles[0] == player), "the thief's footsteps");
+		if ((steps != null) && (steps.Count == 1))
+		{
+			let feet = steps.Instances[0];
+			Test.Assert((feet.Wood.Id != Guid.Empty) && (feet.Stone.Id != Guid.Empty) && (feet.Gravel.Id != Guid.Empty)
+				&& (feet.Grass.Id != Guid.Empty), "the surfaces underfoot");
+		}
+		let guards = scene.GetSystem<BehaviourManager<Lamplight.Guard>>();
+		Test.Assert((guards != null) && (guards.Count == 1), "the Gardens' guard");
+		if ((guards != null) && (guards.Count == 1))
+		{
+			let guard = guards.Instances[0];
+			Test.Assert((guard.Thief.Id == playerId) && (guard.Group == 2) && !guard.Route.IsNil && !guard.Lantern.IsNil
+				&& !guard.Meter.IsNil, "the guard's thief, round, lantern, meter and group");
+		}
+		let doors = scene.GetSystem<BehaviourManager<Lamplight.Door>>();
+		Test.Assert((doors != null) && (doors.Count == 1), "the north gate");
+		if ((doors != null) && (doors.Count == 1))
+		{
+			let gate = doors.Instances[0];
+			Test.Assert(gate.Locked && (gate.LockAlong == 1.08f) && (gate.Thief.Id == playerId), "the gate's lock, not the defaults");
+		}
+		let lamps = scene.GetSystem<BehaviourManager<Lamplight.Lamp>>();
+		Test.Assert((lamps != null) && (lamps.Count == 4), "the four lantern posts");
+		if (lamps != null)
+		{
+			for (let lamp in lamps.Instances)
+			{
+				Test.Assert((lamp.ChimneySlot == -1) && !lamp.Light.IsNil && (lamp.FlameLit.Id != Guid.Empty)
+					&& (lamp.FlameOut.Id != Guid.Empty), "a lantern's light, its glass's slot and its materials");
+			}
+		}
+		let loot = scene.GetSystem<BehaviourManager<Lamplight.Loot>>();
+		Test.Assert((loot != null) && (loot.Count == 5), "three purses, a candlestick and the key");
+		if (loot != null)
+		{
+			int targets = 0;
+			int worth = 0;
+			for (let piece in loot.Instances)
+			{
+				if (piece.Target)
+					targets++;
+				worth += piece.Value;
+			}
+			Test.Assert((targets == 1) && (worth == 155), "one target, and each piece's value");
+		}
+		let exits = scene.GetSystem<BehaviourManager<Lamplight.Exit>>();
+		Test.Assert((exits != null) && (exits.Count == 1), "the way out");
+		let checkpoints = scene.GetSystem<BehaviourManager<Lamplight.Checkpoint>>();
+		Test.Assert((checkpoints != null) && (checkpoints.Count == 1), "the crossing's checkpoint");
+		let walls = scene.GetSystem<BehaviourManager<Lamplight.CutawayWall>>();
+		Test.Assert((walls != null) && (walls.Count == 102), "a cutaway on every wall piece");
+		let scripts = scene.GetSystem<ScriptComponentManager>();
+		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+
+		CheckKitPiece<Lamplight.Pebble>(project, "Pebble", scope (stone) => stone.Lifetime == 6.0f);
 	}
 
 	/// The first instance under `group` named `name` whose type name ends with `typeName`, or null.

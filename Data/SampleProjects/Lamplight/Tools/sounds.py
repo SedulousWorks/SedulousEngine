@@ -2,14 +2,14 @@
 """sounds.py: Lamplight's sounds, generated here (no third-party content) and imported through the
 editor's MCP into Audio/.
 
-Footsteps, three takes of each surface so a walk does not repeat (Footsteps.as picks one by the
+Footsteps, three takes of each surface so a walk does not repeat (the Footsteps behaviour picks one by the
 physical material under the foot):
 - Audio/StepWood1..3: a heel on boards, a hollow knock (a low ring and a short click).
 - Audio/StepStone1..3: a hard tap on flags, a sharp click with a little ring.
 - Audio/StepGravel1..3: a crunch, a scatter of tiny clicks under noise.
 - Audio/StepGrass1..3: a soft brush of noise.
 
-Taking things (Loot.as):
+Taking things (the Loot behaviour):
 - Audio/Coins: a purse's jingle, a few bright pings close together.
 - Audio/Taken: the target in hand, a low two-note chime.
 

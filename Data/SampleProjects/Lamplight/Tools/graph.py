@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """graph.py: the characters' animation graphs (Models/<Name>/<Name>Graph), written through the
-editor's MCP. The scripts drive them by parameters (scene.Animation SetFloat / SetBool), never by
-naming clips:
+editor's MCP. The game's code drives them by parameters (AnimationGraphComponentManager's SetFloat /
+SetBool), never by naming clips:
 
-- ThiefGraph (Thief.as): Speed (float, m/s) and Crouched (bool, the Sneak control held). Stand
+- ThiefGraph (the Thief): Speed (float, m/s) and Crouched (bool, the Sneak control held). Stand
   blends Idle, Walk and Run at the speeds their strides match (0, 1.6 and 4.5 m/s,
   blender/thief.py); Crouched blends Crouch and Sneak (0 and 1.0 m/s); the two cross-fade on
   Crouched.
-- GuardGraph (Guard.as): Speed and Searching (bool, standing and looking round). Move blends Idle,
+- GuardGraph (the Guard): Speed and Searching (bool, standing and looking round). Move blends Idle,
   Walk and Run (0, 1.2 and 4.0 m/s, blender/guard.py); Look plays while Searching.
 
 Snowline's graph.py is the same writer for the rider's graph.

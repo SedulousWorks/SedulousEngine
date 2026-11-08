@@ -46,22 +46,6 @@
 	</array>
 	<array name="components" count="3">
 		<object>
-			<string name="owner">ba0a9791-5000-5142-988e-76b56bd27325</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">8ba281c9-5ceb-484a-8649-fd15eece79e9</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
-			</object>
-		</object>
-		<object>
 			<string name="owner">b0df9ade-526f-5efd-9e85-5ae880083bb2</string>
 			<string name="type">mesh</string>
 			<object name="data">
@@ -115,6 +99,20 @@
 				<string name="heightfield">00000000-0000-0000-0000-000000000000</string>
 				<bool name="continuousCollision">true</bool>
 				<f32 name="mass">0.1</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">ba0a9791-5000-5142-988e-76b56bd27325</string>
+			<string name="type">lamplight.pebble</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">10632369946074333473</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<bool name="enabled">true</bool>
+				<f32 name="loudness">1</f32>
+				<f32 name="hardLanding">1.5</f32>
+				<f32 name="lifetime">6</f32>
 			</object>
 		</object>
 	</array>
