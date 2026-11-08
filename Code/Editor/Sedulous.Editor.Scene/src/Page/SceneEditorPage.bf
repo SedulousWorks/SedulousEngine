@@ -754,6 +754,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			SaveViewState();
 		DeleteAndNullify!(mTools); // a tool's panel goes before the scene it shows
 		mViewport.Close(mServices.Host);
+		if (mSimulation.IsRunning)
+		{
+			mSimulation.Abandon(); // the scene goes with the page; its screens with the last run
+			EndSimulationScreens();
+		}
 		if (mScene != null)
 		{
 			mSceneManager.DestroyScene(mScene); // aware subsystems are told OnSceneDestroyed
@@ -868,6 +873,18 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		if (mScene != null)
 			mSimulation.Stop(mScene, Commands, mContext.Resources);
+		EndSimulationScreens();
+	}
+
+	/// Takes the simulations' screens off the GUI's unbound tier once none runs: what their
+	/// scripts pushed is there, shared by every page's simulation, so it goes when the last of them
+	/// stops.
+	private void EndSimulationScreens()
+	{
+		if ((SceneSimulation.RunningCount != 0) || (mServices.Host == null))
+			return;
+		if (let gui = mServices.Host.Subsystems.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>())
+			gui.EndUnboundScreens();
 	}
 
 	public void SetMarkersShown(bool shown)

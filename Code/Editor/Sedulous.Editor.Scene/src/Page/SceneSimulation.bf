@@ -14,15 +14,21 @@ namespace Sedulous.Editor.Scene;
 /// the scene stops and the snapshot is restored into the same scene, so borrowed scene pointers
 /// stay valid and the guid keyed selection resolves again (what the run spawned drops out). The
 /// game's UI stays not interactive meanwhile: Simulate's pointer serves selection and the camera,
-/// the Game tab is the interactive run. Out of the page's class (Raptor's editor-gui spec, 5.3,
-/// layer 2).
+/// the Game tab is the interactive run. A simulated scene has no run, so the screens its scripts
+/// push go on the GUI's unbound tier, which no tab draws; the page takes them down when the last
+/// simulation stops (RunningCount). Out of the page's class, so the page stays the view and
+/// this the run.
 class SceneSimulation
 {
 	private SceneSnapshot mSnapshot = null ~ delete _;
 	private bool mRunning = false;
 	private bool mPaused = false;
+	/// The simulations running across every page.
+	private static int sRunning = 0;
 
 	public bool IsRunning => mRunning;
+	/// How many simulations run across every page: the GUI's unbound tier is theirs together.
+	public static int RunningCount => sRunning;
 	public bool IsPaused => mPaused;
 
 	/// Snapshots `scene` and runs it, `commands` locked; false when it runs already or the
@@ -43,6 +49,7 @@ class SceneSimulation
 		commands.IsLocked = true;
 		mRunning = true;
 		mPaused = false;
+		sRunning++;
 		return true;
 	}
 
@@ -73,5 +80,17 @@ class SceneSimulation
 		commands.IsLocked = false;
 		mRunning = false;
 		mPaused = false;
+		sRunning--;
+	}
+
+	/// A page closing with its scene running: no restore (the scene is going), only the count.
+	public void Abandon()
+	{
+		if (!mRunning)
+			return;
+		DeleteAndNullify!(mSnapshot);
+		mRunning = false;
+		mPaused = false;
+		sRunning--;
 	}
 }

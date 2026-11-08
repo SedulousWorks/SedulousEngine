@@ -1178,6 +1178,7 @@ class ScenePageTests
 		// Simulating: read only, and said.
 		page.StartSimulation();
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(SceneSimulation.RunningCount == 1, "the GUI's unbound tier is the simulations' together");
 		Test.Assert(inspector.Sections.ReadOnly);
 		Test.Assert(FindId<Node>(page.Content, "inspector-note").Displayed);
 		let addComponent = FindId<Sedulous.GUI.Button>(page.Content, "inspector-add");
@@ -1189,9 +1190,14 @@ class ScenePageTests
 		Test.Assert(LightOf(page, lamp).Intensity == 3.0f);
 		page.StopSimulation();
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(SceneSimulation.RunningCount == 0);
 		Test.Assert(!inspector.Sections.ReadOnly);
 		Test.Assert(addComponent.Enabled);
+		// A page closed while it simulates leaves no simulation counted (its screens go with the last).
+		page.StartSimulation();
+		Test.Assert(SceneSimulation.RunningCount == 1);
 		page.OnClose();
+		Test.Assert(SceneSimulation.RunningCount == 0);
 	}
 
 	[Test]
