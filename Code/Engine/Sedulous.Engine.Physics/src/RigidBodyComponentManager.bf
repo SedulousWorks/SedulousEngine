@@ -16,6 +16,29 @@ class RigidBodyComponentManager : ResourceBindingComponentManager<RigidBodyCompo
 	public override IStaticGeometrySource AsStaticGeometrySource => this;
 	public override ISceneEntityBounds AsEntityBounds => this;
 
+	/// BORROWED: the scene's physics system while its world runs, else null.
+	private IPhysicsReleaser mReleaser = null;
+
+	/// The base's destructor sweeps the components through OnComponentDestroyed; mid teardown the
+	/// physics system may be gone, so nothing is handed over then.
+	public ~this()
+	{
+		mReleaser = null;
+	}
+
+	public void SetReleaser(IPhysicsReleaser releaser)
+	{
+		mReleaser = releaser;
+	}
+
+	/// A removed component's body leaves the world with it.
+	protected override void OnComponentDestroyed(RigidBodyComponent* component, EntityHandle entity)
+	{
+		if ((mReleaser != null) && component.Body.IsValid)
+			mReleaser.ReleaseBody(component.Body);
+		component.Body = .();
+	}
+
 	public bool EntityBounds(Scene scene, EntityHandle entity, out AABB outBounds)
 	{
 		outBounds = AABB.Empty();

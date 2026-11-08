@@ -1337,6 +1337,16 @@ class PhysicsWorld
 		mJoints[(int)id.Value] = .();
 	}
 
+	/// Whether the joint holds `body`, at either end. False for a joint or body that is not there.
+	public bool JointHolds(JointId id, BodyId body)
+	{
+		if (!id.IsValid || !body.IsValid || ((int)id.Value >= mJoints.Count))
+			return false;
+
+		let slot = mJoints[(int)id.Value];
+		return (slot.Joint != null) && ((slot.BodyA == body.Value) || (slot.BodyB == body.Value));
+	}
+
 	/// Drives the velocity motor on a hinge or a slider, and does nothing on any other kind.
 	/// The target is radians per second for a hinge and metres per second for a slider.
 	public void SetJointMotor(JointId id, bool enabled, float targetVelocity)

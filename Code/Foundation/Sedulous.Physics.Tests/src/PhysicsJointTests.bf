@@ -144,6 +144,35 @@ class PhysicsJointTests
 		Simulate(world, 5);
 	}
 
+	/// A joint says which bodies it holds, at either end, and holds none once it is gone.
+	[Test]
+	public static void AJointSaysWhichBodiesItHolds()
+	{
+		let world = scope PhysicsWorld();
+		let anchorDesc = BoxAt!(0.0f, MotionKind.Static);
+		let anchor = world.CreateBody(anchorDesc);
+		let armDesc = BoxAt!(2.0f);
+		let arm = world.CreateBody(armDesc);
+		let bystanderDesc = BoxAt!(5.0f);
+		let bystander = world.CreateBody(bystanderDesc);
+
+		var desc = JointDesc();
+		desc.Kind = .Fixed;
+		desc.BodyA = arm;
+		desc.BodyB = anchor;
+		let joint = world.CreateJoint(desc);
+		Test.Assert(joint.IsValid);
+
+		Test.Assert(world.JointHolds(joint, arm));
+		Test.Assert(world.JointHolds(joint, anchor));
+		Test.Assert(!world.JointHolds(joint, bystander));
+		Test.Assert(!world.JointHolds(joint, BodyId()));
+		Test.Assert(!world.JointHolds(JointId(), arm));
+
+		world.DestroyJoint(joint);
+		Test.Assert(!world.JointHolds(joint, arm));
+	}
+
 	/// A slider LOCKS everything but its own axis, and its limits stop the travel along it.
 	[Test]
 	public static void ASliderConstrainsTravelToItsAxisAndLimits()

@@ -18,7 +18,7 @@ namespace Sedulous.Engine.Physics;
 /// steps on the FIXED clock, and hands the render frame interpolated poses.
 ///
 /// SIMULATION ONLY: an editor's edit mode runs nothing.
-class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
+class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 {
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
@@ -40,7 +40,19 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 	private float mCapsuleWait = 0.0f;
 	private bool mWarnedCapsules = false;
 
+	/// What removed components held (their entities destroyed, or the components taken off),
+	/// dropped at the next reconcile.
+	private List<BodyId> mReleasedBodies = new .() ~ delete _;
+	private List<CharacterId> mReleasedCharacters = new .() ~ delete _;
+	private List<JointId> mReleasedJoints = new .() ~ delete _;
+
 	public override bool IsSimulationOnly => true;
+
+	// IPhysicsReleaser: what a removed component held, queued for the next reconcile rather than
+	// dropped now, because a joint still holding a released body has to go first.
+	public void ReleaseBody(BodyId body) => mReleasedBodies.Add(body);
+	public void ReleaseCharacter(CharacterId character) => mReleasedCharacters.Add(character);
+	public void ReleaseJoint(JointId joint) => mReleasedJoints.Add(joint);
 
 	public override void OnSceneCreate(Scene scene)
 	{
@@ -288,6 +300,8 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 			settings.GroupCollides[i] = mSettings.GroupCollides[i];
 
 		mWorld = new PhysicsWorld(settings);
+		// A component removed while the world runs gives back what it held.
+		SetReleasers(this);
 
 		BuildBodies();
 		BuildStaticCapsules();
@@ -297,6 +311,12 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 
 	public override void OnSceneStopped()
 	{
+		// What the world held goes with it.
+		SetReleasers(null);
+		mReleasedBodies.Clear();
+		mReleasedCharacters.Clear();
+		mReleasedJoints.Clear();
+
 		if (mScene != null)
 		{
 			if (let bodies = mScene.GetSystem<RigidBodyComponentManager>())
@@ -853,6 +873,43 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 				mScene.GetEntityName(entity));
 	}
 
+	/// Whether the joint's own body is there and live: its rigid body may have been taken off.
+	private bool JointBodyReady(EntityHandle entity)
+	{
+		let bodies = mScene.GetSystem<RigidBodyComponentManager>();
+		let own = (bodies != null) ? bodies.Get(entity) : null;
+		return (own != null) && own.Body.IsValid;
+	}
+
+	/// Whether the joint holds a body released this reconcile. An explicit target or the joint's
+	/// own body is caught by the readiness checks, its component being gone; an ANCESTOR the
+	/// joint resolved to is not, so it is asked of the world.
+	private bool JointHoldsReleasedBody(JointId joint)
+	{
+		if (!joint.IsValid)
+			return false;
+		for (let body in mReleasedBodies)
+		{
+			if (mWorld.JointHolds(joint, body))
+				return true;
+		}
+		return false;
+	}
+
+	/// The managers hand back what removed components held to `releaser`: this while the world
+	/// runs, null when there is none.
+	private void SetReleasers(IPhysicsReleaser releaser)
+	{
+		if (mScene == null)
+			return;
+		if (let bodies = mScene.GetSystem<RigidBodyComponentManager>())
+			bodies.SetReleaser(releaser);
+		if (let characters = mScene.GetSystem<CharacterComponentManager>())
+			characters.SetReleaser(releaser);
+		if (let joints = mScene.GetSystem<JointComponentManager>())
+			joints.SetReleaser(releaser);
+	}
+
 	/// Whether an explicitly named target is ready.
 	///
 	/// The EFFECTIVE ACTIVE term matters because joints reconcile BEFORE bodies: on the tick a
@@ -884,6 +941,12 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 	/// simulating invisibly. Activation rebuilds from the current pose with no momentum.
 	private void ReconcileActiveState()
 	{
+		// What removed components held: the joints now, the bodies and characters after the
+		// joint pass below has let go of any joint still holding one.
+		for (let joint in mReleasedJoints)
+			mWorld.DestroyJoint(joint);
+		mReleasedJoints.Clear();
+
 		// JOINTS FIRST, which is the reverse of the start's build order: a joint whose
 		// referenced body dies THIS reconcile must go while both bodies are still alive, so
 		// the surviving side gets its wake.
@@ -897,7 +960,8 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 					let effective = mScene.IsEffectivelyActive(entity);
 					component.SimActive = effective;
 
-					let want = effective && JointTargetReady(component);
+					let want = effective && JointBodyReady(entity) && JointTargetReady(component)
+						&& !JointHoldsReleasedBody(component.Joint);
 					let have = component.Joint.IsValid;
 					if (want == have)
 						return;
@@ -913,6 +977,13 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 					}
 				});
 		}
+
+		for (let body in mReleasedBodies)
+			mWorld.DestroyBody(body);
+		mReleasedBodies.Clear();
+		for (let character in mReleasedCharacters)
+			mWorld.DestroyCharacter(character);
+		mReleasedCharacters.Clear();
 
 		if (let bodies = mScene.GetSystem<RigidBodyComponentManager>())
 		{

@@ -14,6 +14,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Physics: a destroyed entity, or a removed rigid body, character or joint, no longer leaves its
+  body in the physics world (an invisible collider) until the scene ends.
 - Editor: importing an asset no longer freezes the editor for seconds in a large project: each
   import read every asset in the project to check one file name.
 - Scripts: assigning a field of a struct-valued field, such as a light's colour
