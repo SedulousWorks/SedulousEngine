@@ -248,3 +248,13 @@ Q1-Q5 and Q7-Q9 as recommended. Q6: `Send` goes, but a call or an event can be d
 - **Loading a scene from a behaviour or level destroys its own scene.** `GameInstance.LoadScene` replaces and destroys the current scene at once; GameCode.md advises an event the Game answers, but nothing guards it.
 - **Phase 6 must keep `GuiFacade` and `HttpFacade`.** Native code reaches the GUI root and HTTP through them, so they move out of the script libraries rather than going with them.
 - **Untested:** a `Ref<T>` field on a behaviour saves its id, but nothing binds it on resolve and no test covers it.
+
+### Rulings on the list (2026-11-07)
+
+- Fixed-step destroys wait for the end of the frame, as Update's do.
+- Active toggles stay: OnDisable and OnEnable on the edges, OnStart once.
+- Enums are named without hand-written `[Reflect]`: the attributes that generate a type's serialization also register the names of the enums its fields use.
+- The scaffold writes the Gameplay dependencies, and its `Load` finds `EnginePluginServices`.
+- A scene load asked for while a scene updates is deferred to the end of the frame.
+- Phase 6 keeps `GuiFacade` and `HttpFacade`, moved out of the script libraries.
+- A behaviour's `Ref<T>` fields are bound on resolve, as a component's are, with a test.
