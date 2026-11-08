@@ -539,7 +539,7 @@ static class ScriptSurfaceWalker
 			ctx.Role = .Component;
 			ctx.Code.AppendF("\t\tt.As(.Component, {}, {});\n", Quote(ctx.Manager, .. scope .()), Quote(typeId, .. scope .()));
 			if (!ctx.Manager.IsEmpty)
-				EmitPresence(ctx);
+				EmitComponentReach(ctx);
 			return;
 		}
 
@@ -1434,14 +1434,28 @@ static class ScriptSurfaceWalker
 			outCode.AppendF("\tlet self = scene.GetSystem<{}>();\n\tif (self == null) {{ frame.Fail(\"no {} in the entity's scene\"); return; }}\n", ctx.FullName, ctx.Name);
 	}
 
-	/// A component's presence test: the entity in Self, its scene's manager, and whether that
-	/// pools one for it. No scene or no manager is simply no.
+	/// A component's reach from its entity, emitted together so a component has all three or
+	/// none: the presence test (`of`), the add (`addTo`) and the removal (`removeFrom`). Each
+	/// takes the entity in Self and its scene's manager; no scene or no manager is simply no.
+	///
+	/// The add goes through the manager as one in code does, so the component initializes at
+	/// the next frame's start and its systems take it up; a gone entity gets none.
 	[Comptime]
-	private static void EmitPresence(TypeCtx ctx)
+	private static void EmitComponentReach(TypeCtx ctx)
 	{
-		let name = ctx.NextThunk(.. scope .());
-		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tif (frame.Self.Kind != .Entity) {{ frame.Fail(\"self is not an entity\"); return; }}\n\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tframe.Result = .FromBool((manager != null) && (manager.Get(frame.Self.AsEntity) != null));\n}}\n\n", name, ctx.Manager);
-		ctx.Code.AppendF("\t\tt.PresentBy(=> {});\n", name);
+		let prologue = scope String()..AppendF("\tframe.Begin();\n\tif (frame.Self.Kind != .Entity) {{ frame.Fail(\"self is not an entity\"); return; }}\n\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet entity = frame.Self.AsEntity;\n", ctx.Manager);
+
+		let isOn = ctx.NextThunk(.. scope .());
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n{}\tframe.Result = .FromBool((manager != null) && (manager.Get(entity) != null));\n}}\n\n", isOn, prologue);
+		ctx.Code.AppendF("\t\tt.PresentBy(=> {});\n", isOn);
+
+		let addTo = ctx.NextThunk(.. scope .());
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n{}\tif ((manager != null) && scene.IsValid(entity))\n\t\tmanager.AddDefaultComponent(entity);\n\tframe.Result = .FromBool((manager != null) && (manager.Get(entity) != null));\n}}\n\n", addTo, prologue);
+		ctx.Code.AppendF("\t\tt.AddedBy(=> {});\n", addTo);
+
+		let removeFrom = ctx.NextThunk(.. scope .());
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n{}\tlet had = (manager != null) && manager.HasComponent(entity);\n\tif (had)\n\t\tmanager.RemoveComponent(entity);\n\tframe.Result = .FromBool(had);\n}}\n\n", removeFrom, prologue);
+		ctx.Code.AppendF("\t\tt.RemovedBy(=> {});\n", removeFrom);
 	}
 
 	/// A weakly held type's cast: Self again when the handle names one of this type, else Nil,

@@ -594,6 +594,105 @@ static class EngineSurfaceScriptTests
 		// A handle still held when the module goes is released with it (ASan checks).
 	}
 
+	/// `X::addTo(entity)` gives the entity the component when it has none and hands it back
+	/// either way; `X::removeFrom(entity)` takes it off and says whether there was one.
+	[Test]
+	public static void AddToGivesTheComponentAndRemoveFromTakesItOff()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		let ok = vm.Compile("game", "game.as", """
+			int add(const Entity &in e)
+			{
+				if (InstanceMemberComponent::of(e) !is null) return -1;
+				InstanceMemberComponent::addTo(e).Clip = 7;
+				// The one it has now: the same component, not a second.
+				InstanceMemberComponent@ again = InstanceMemberComponent::addTo(e);
+				return int(again.Clip);
+			}
+			bool remove(const Entity &in e) { return InstanceMemberComponent::removeFrom(e); }
+			bool missing(const Entity &in e) { return InstanceMemberComponent::of(e) is null; }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("addTo");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let members = scene.AddSystem<Sedulous.Engine.Render.InstanceMemberComponentManager>();
+		let e = scene.CreateEntity("member");
+		var args = ScriptValue[1](.FromEntity(e, scene));
+		var r = ScriptValue.Nil;
+
+		Test.Assert(vm.Call("game", "int add(const Entity &in)", args, ref r) && (r.AsInt == 7), scope $"read {r.AsInt}");
+		Test.Assert(members.Has(e) && (members.Count == 1) && (members.Get(e).Clip == 7), "added once, and written");
+		Test.Assert(vm.Call("game", "bool remove(const Entity &in)", args, ref r) && r.AsBool, "there, and taken off");
+		Test.Assert(!members.Has(e));
+		Test.Assert(vm.Call("game", "bool remove(const Entity &in)", args, ref r) && !r.AsBool, "not there the second time");
+		Test.Assert(vm.Call("game", "bool missing(const Entity &in)", args, ref r) && r.AsBool);
+	}
+
+	/// A rigid body added from a script becomes a body in the physics world, taken up as one
+	/// added in code is, and taken off, its body leaves the world.
+	[Test]
+	public static void ARigidBodyAddedFromAScriptBuildsABodyAndLeavesTheWorldWhenRemoved()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		let ok = vm.Compile("game", "game.as", """
+			void build(const Entity &in e)
+			{
+				RigidBodyComponent@ b = RigidBodyComponent::addTo(e);
+				b.Motion = MotionKind::Kinematic;
+				b.Layer = PhysicsLayer::Kinematic;
+				b.Shape = ShapeKind::Capsule;
+				b.Radius = 0.4f;
+				b.HalfHeight = 0.5f;
+			}
+			bool strip(const Entity &in e) { return RigidBodyComponent::removeFrom(e); }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("bodies");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		Sedulous.Engine.Physics.PhysicsScene.AddPhysicsSceneManagers(scene);
+		let bodies = scene.GetSystem<Sedulous.Engine.Physics.RigidBodyComponentManager>();
+		let physics = scene.GetSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		let floor = scene.CreateEntity("floor");
+		scene.SetLocalPosition(floor, .(0.0f, -0.5f, 0.0f));
+		{
+			let slab = bodies.Add(floor);
+			slab.Motion = .Static;
+			slab.Layer = .Static;
+			slab.HalfExtents = .(50.0f, 0.5f, 50.0f);
+		}
+		let post = scene.CreateEntity("post");
+		scene.SetLocalPosition(post, .(3.0f, 1.0f, 0.0f));
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		scene.FixedUpdate(1.0f / 60.0f);
+		Test.Assert(physics.BodyCount == 1, "the floor");
+
+		var args = ScriptValue[1](.FromEntity(post, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "void build(const Entity &in)", args, ref r), "ran");
+		scene.FixedUpdate(1.0f / 60.0f);
+		Test.Assert(physics.BodyCount == 2, "the floor and the post's capsule");
+		Test.Assert((bodies.Get(post) != null) && (bodies.Get(post).Shape == .Capsule) && bodies.Get(post).Body.IsValid);
+
+		Test.Assert(vm.Call("game", "bool strip(const Entity &in)", args, ref r) && r.AsBool, "ran");
+		scene.FixedUpdate(1.0f / 60.0f);
+		Test.Assert(bodies.Get(post) == null);
+		Test.Assert(physics.BodyCount == 1, "the floor only");
+	}
+
 	/// A board's surface: the motion and the ground under the character read, never written
 	/// (the tick measures them; here they are seeded), and the whole velocity driven, by
 	/// components or by a Float3.

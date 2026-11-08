@@ -23,6 +23,12 @@ class AngelScriptBinding
 		/// `X::of(entity)`: a handle to the entity's component, null without one. Owner.IsOn
 		/// answers; the handle is the backend's own.
 		case ComponentOf;
+		/// `X::addTo(entity)`: gives the entity the component when it has none, then a handle as
+		/// `of` gives. Owner.AddTo answers.
+		case ComponentAddTo;
+		/// `X::removeFrom(entity)`: takes the component off, whether there was one. Owner.RemoveFrom
+		/// answers.
+		case ComponentRemoveFrom;
 		/// A component handle's reference count, up and down: the backend's own.
 		case ComponentAddRef;
 		case ComponentRelease;

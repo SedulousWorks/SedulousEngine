@@ -41,6 +41,13 @@ class ScriptTypeInfo
 	/// A component's: whether the entity in Self carries one, a Bool result. What a backend's
 	/// `X.of(entity)` asks before it hands out a handle, so a missing component is null.
 	public ScriptThunk IsOn = null;
+	/// A component's: gives the entity in Self a default-made one when it has none, then
+	/// answers, a Bool result, whether it has one. What a backend's `X.addTo(entity)` asks
+	/// before it hands out a handle as `of` does; a gone entity or no manager is simply no.
+	public ScriptThunk AddTo = null;
+	/// A component's: takes the entity in Self's off, a Bool result saying whether it had one.
+	/// What a backend's `X.removeFrom(entity)` answers.
+	public ScriptThunk RemoveFrom = null;
 	/// For a Weak type: the topmost weakly held base on the surface (the type itself when it
 	/// has none), which a backend's `X::Of(node)` takes.
 	public String WeakRootTypeName = new .() ~ delete _;
@@ -144,6 +151,18 @@ class ScriptTypeInfo
 	public ScriptTypeInfo PresentBy(ScriptThunk isOn)
 	{
 		IsOn = isOn;
+		return this;
+	}
+
+	public ScriptTypeInfo AddedBy(ScriptThunk addTo)
+	{
+		AddTo = addTo;
+		return this;
+	}
+
+	public ScriptTypeInfo RemovedBy(ScriptThunk removeFrom)
+	{
+		RemoveFrom = removeFrom;
 		return this;
 	}
 

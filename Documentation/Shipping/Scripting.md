@@ -135,22 +135,39 @@ scene.Render.SetEnvironment(env);`. While the scene uses a profile the edit chan
 so every scene using it changes too, as an edit in the editor does. A script sets values, not
 assets: the profile and the sky texture keep theirs. Runtime only, not saved with the scene.
 
-Components are script types too, as data with a few verbs: a script takes a handle to one
-from an entity, `CharacterComponent@ character = CharacterComponent::of(self);`, then reads
-and sets its fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`).
-`of` is null when the entity has no such component, so `if (character !is null)` is the test.
+The facades are the stable verbs and the first place to look; a component is the direct route
+to its data (see Components). `script_api` lists both.
+
+## Components
+
+Components are script types too, as data with a few verbs. Every component a script reaches
+has three static methods on its type:
+
+- `of(entity)` - the entity's component, a handle: `CharacterComponent@ character =
+  CharacterComponent::of(self);`, then read and set its fields and call its verbs
+  (`character.Move(vx, vz)`, `character.Jump(speed)`). It is null when the entity has none, so
+  `if (character !is null)` is the test where it may not.
+- `addTo(entity)` - gives the entity the component, default-made, when it has none, and returns
+  it either way, ready to set up: `RigidBodyComponent@ b = RigidBodyComponent::addTo(self);
+  b.Shape = ShapeKind::Capsule;`. Its systems take it up as they take up one placed in the
+  editor: it initializes at the next frame's start, and physics builds its body at its next
+  step. Null when the entity is gone.
+- `removeFrom(entity)` - takes it off and says whether there was one. What it held goes with
+  it: a body leaves the physics world, a voice stops.
+
 The handle holds the entity, so it reaches the component the entity has now. A handle kept
 after its component has gone answers `IsValid` false; any other use fails the handler with
 "the object is gone". An asset field takes the asset's guid (`sprite.TextureAsset`).
+
+A prefab is still the way to make something with many parts at once (`scene.Prefabs.Spawn`);
+`addTo` is for one component on an entity that is already there.
+
 Components with nothing for gameplay code are not script types: the script component itself
 (use `scene.Scripts`), the networked transform (replication drives it), and a navigation
 zone's bake settings. A network identity is one, read only. A navigation agent reports why it
 is or is not moving, read only: `CrowdState` (walking, off the mesh, or not in a crowd),
 `CrowdTargetState` (where its move request has got to: requesting, valid, failed),
 `CrowdDesiredSpeed`, and `PathCorners`, the corners left on its path.
-
-The facades are the stable verbs and the first place to look; a component is the direct route
-to its data. `script_api` lists both.
 
 ## Networking
 

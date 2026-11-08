@@ -7,6 +7,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ## Unreleased
 
+### Added
+
+- Scripts: `Component::addTo(entity)` and `Component::removeFrom(entity)` beside
+  `Component::of`, on every component a script reaches.
+
 ### Changed
 
 - Editor: a scene's Simulate runs on its own, apart from every other page: its scripts' screens

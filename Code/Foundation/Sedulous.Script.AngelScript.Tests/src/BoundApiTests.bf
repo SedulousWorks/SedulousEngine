@@ -92,6 +92,10 @@ static class BoundApiTests
 		// A component reached from its entity, a handle: no constructor.
 		let widget = Find(api, "WidgetComponent");
 		Test.Assert((widget != null) && HasSignature(widget, "WidgetComponent@ WidgetComponent::of(const Entity &in entity)"));
+		// And beside of, the add and the removal.
+		Test.Assert(HasSignature(widget, "WidgetComponent@ WidgetComponent::addTo(const Entity &in entity)"));
+		Test.Assert(HasSignature(widget, "bool WidgetComponent::removeFrom(const Entity &in entity)"));
+		Test.Assert(widget.Find("addTo").IsStatic && widget.Find("removeFrom").IsStatic);
 		Test.Assert(widget.Find("WidgetComponent") == null, "no constructor");
 
 		// A weakly held class: narrowed from its family's root, valid while its object lives,

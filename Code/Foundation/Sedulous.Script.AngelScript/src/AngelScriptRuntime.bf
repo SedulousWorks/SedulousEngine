@@ -23,7 +23,9 @@ namespace Sedulous.Script.AngelScript;
 ///  - an entity is a value carrying its handle AND its scene, so a call on it resolves in
 ///    that scene however many scenes there are; a component is a counted handle holding the
 ///    entity, null when the entity has none: `MeshComponent::of(entity).Visible`, and a use
-///    through a handle whose component has gone since is the script's error;
+///    through a handle whose component has gone since is the script's error; beside `of`,
+///    `X::addTo(entity)` adds one when there is none and hands it back as `of` does, and
+///    `X::removeFrom(entity)` takes it off, whether there was one;
 ///  - a weakly held class (IScriptWeaklyHeld) is a counted handle holding a ScriptWeakRef
 ///    (WeakHandle), resolved on every use: IsValid answers whether its object is still there,
 ///    any other use of a gone one is the script's error, `==` compares handles without
@@ -430,7 +432,7 @@ class AngelScriptRuntime : ScriptRuntime
 			DeclareSceneProperty(t);
 
 		// A component is reached from the entity it lives on: `X::of(entity)`, a counted
-		// handle, null when the entity has none.
+		// handle, null when the entity has none; `X::addTo` and `X::removeFrom` beside it.
 		if (t.Role == .Component)
 			BindComponentHandle(t);
 		// A weakly held class is a handle that resolves on every use: its count, IsValid,
@@ -521,7 +523,8 @@ class AngelScriptRuntime : ScriptRuntime
 		return null;
 	}
 
-	/// A component's handle: its reference count and `X::of(entity)`.
+	/// A component's handle: its reference count, `X::of(entity)`, and beside it
+	/// `X::addTo(entity)` and `X::removeFrom(entity)`.
 	private void BindComponentHandle(ScriptTypeInfo t)
 	{
 		let typeName = scope String(AsName(t));
@@ -550,15 +553,29 @@ class AngelScriptRuntime : ScriptRuntime
 			if (Check(AS.asc_engine_register_object_method(mEngine, typeName.CStr(), "bool get_IsValid() property", Internal.UnsafeCastToPtr(valid)), t.FullName))
 				Record(ApiType(typeName, t.FullName, false), "IsValid", scope $"bool {typeName}.IsValid", false, .Property, true);
 		}
+		// The statics in the namespace named for the type: of, and addTo and removeFrom when the
+		// surface gave them.
+		AS.asc_engine_set_default_namespace(mEngine, typeName.CStr());
+		BindComponentStatic(t, .ComponentOf, "of", scope $"{typeName}@", typeName);
+		if (t.AddTo != null)
+			BindComponentStatic(t, .ComponentAddTo, "addTo", scope $"{typeName}@", typeName);
+		if (t.RemoveFrom != null)
+			BindComponentStatic(t, .ComponentRemoveFrom, "removeFrom", "bool", typeName);
+		AS.asc_engine_set_default_namespace(mEngine, "");
+	}
+
+	/// One of a component's statics, `{returns} {name}(const Entity &in entity)`, registered in
+	/// the namespace already set and recorded as `{returns} {typeName}::{name}(...)`.
+	private void BindComponentStatic(ScriptTypeInfo t, AngelScriptBinding.Role kind, StringView name, StringView returns,
+		StringView typeName)
+	{
 		let b = new AngelScriptBinding();
-		b.Kind = .ComponentOf;
+		b.Kind = kind;
 		b.Owner = t;
 		mBindings.Add(b);
-		AS.asc_engine_set_default_namespace(mEngine, typeName.CStr());
-		let rc = AS.asc_engine_register_global_function(mEngine, scope $"{typeName}@ of(const Entity &in entity)", Internal.UnsafeCastToPtr(b));
-		AS.asc_engine_set_default_namespace(mEngine, "");
-		if (Check(rc, scope $"{t.FullName}::of"))
-			Record(ApiType(typeName, t.FullName, false), "of", scope $"{typeName}@ {typeName}::of(const Entity &in entity)", true, .Method);
+		let rc = AS.asc_engine_register_global_function(mEngine, scope $"{returns} {name}(const Entity &in entity)", Internal.UnsafeCastToPtr(b));
+		if (Check(rc, scope $"{t.FullName}::{name}"))
+			Record(ApiType(typeName, t.FullName, false), name, scope $"{returns} {typeName}::{name}(const Entity &in entity)", true, .Method);
 	}
 
 	/// A weak handle's count, `IsValid`, `==`, a conversion to each weakly held base and
@@ -1253,12 +1270,16 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 		switch (b.Kind)
 		{
-		case .ComponentOf:
+		case .ComponentOf, .ComponentAddTo:
 		{
+			// addTo gives the entity the component first; then both answer whether it has one.
 			let entity = AS.asc_generic_get_arg_address(gen, 0);
 			var frame = ScriptCallFrame(context, default);
 			frame.Self = ReadValue(entity, .Entity, "");
-			b.Owner.IsOn(ref frame);
+			if (b.Kind == .ComponentAddTo)
+				b.Owner.AddTo(ref frame);
+			else
+				b.Owner.IsOn(ref frame);
 			if (frame.Failed)
 			{
 				AS.asc_set_active_exception(scope String(frame.Error).CStr());
@@ -1273,6 +1294,20 @@ class AngelScriptRuntime : ScriptRuntime
 				handle.References = 1;
 			}
 			AS.asc_generic_set_return_address(gen, handle);
+			return;
+		}
+		case .ComponentRemoveFrom:
+		{
+			let entity = AS.asc_generic_get_arg_address(gen, 0);
+			var frame = ScriptCallFrame(context, default);
+			frame.Self = ReadValue(entity, .Entity, "");
+			b.Owner.RemoveFrom(ref frame);
+			if (frame.Failed)
+			{
+				AS.asc_set_active_exception(scope String(frame.Error).CStr());
+				return;
+			}
+			AS.asc_generic_set_return_byte(gen, frame.Result.AsBool ? 1 : 0);
 			return;
 		}
 		case .ComponentAddRef:

@@ -249,6 +249,58 @@ static class ScriptThunkTests
 		Test.Assert(!frame.Failed);
 	}
 
+	/// A component's reach from its entity: present or not, added when it is not there (the one
+	/// there kept), and taken off, saying whether it was there. A gone entity gets nothing, and a
+	/// scene without the manager answers no.
+	[Test]
+	public static void AComponentIsFoundAddedAndRemovedThroughItsEntity()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let widget = s.Find(scope $"{cFixture}.WidgetComponent");
+		Test.Assert((widget.IsOn != null) && (widget.AddTo != null) && (widget.RemoveFrom != null), "all three, together");
+
+		let scene = scope Scene();
+		ctx.Scene = scene;
+		let entity = scene.CreateEntity("widget");
+		var frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromEntity(entity);
+
+		// No manager in the scene: nothing to add to, nothing to take off.
+		widget.AddTo(ref frame);
+		Test.Assert(!frame.Failed && !frame.Result.AsBool);
+		widget.RemoveFrom(ref frame);
+		Test.Assert(!frame.Failed && !frame.Result.AsBool);
+
+		let widgets = scene.AddSystem<WidgetComponentManager>();
+		widget.IsOn(ref frame);
+		Test.Assert(!frame.Result.AsBool);
+		widget.AddTo(ref frame);
+		Test.Assert(!frame.Failed && frame.Result.AsBool && widgets.Has(entity), "added");
+		Test.Assert(Near(widgets.Get(entity).Size, 1.0f), "default-made");
+		widgets.Get(entity).Size = 4.0f;
+		widget.AddTo(ref frame);
+		Test.Assert(frame.Result.AsBool && (widgets.Count == 1) && Near(widgets.Get(entity).Size, 4.0f), "the one there is kept");
+		widget.IsOn(ref frame);
+		Test.Assert(frame.Result.AsBool);
+
+		widget.RemoveFrom(ref frame);
+		Test.Assert(!frame.Failed && frame.Result.AsBool && !widgets.Has(entity), "taken off, and it was there");
+		widget.RemoveFrom(ref frame);
+		Test.Assert(!frame.Failed && !frame.Result.AsBool, "nothing there the second time");
+
+		// A gone entity: no component is added to a handle whose slot may be reused.
+		scene.DestroyEntity(entity);
+		widget.AddTo(ref frame);
+		Test.Assert(!frame.Failed && !frame.Result.AsBool && (widgets.Count == 0));
+
+		// Self must be an entity.
+		frame.Self = .FromInt(3);
+		widget.AddTo(ref frame);
+		Test.Assert(frame.Failed);
+	}
+
 	/// A thunk trusts nothing in the frame: too few arguments, the wrong kind, the wrong
 	/// struct or a null one all fail with a message, before anything is read.
 	[Test]
