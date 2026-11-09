@@ -16,6 +16,7 @@ static class SceneResources
 	/// the engine composition creates from, built on first use so no static
 	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
-	public static ResourceModule Module => sModule ?? (sModule = new .("scene", () => RegisterAll(), null));
+	public static ResourceModule Module => sModule ?? (sModule = new .("scene", () => RegisterAll(), new .(
+		.ByDefault<PrefabResource, PrefabDocument, PrefabFactory>())));
 	private static ResourceModule sModule ~ delete _;
 }
