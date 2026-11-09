@@ -989,7 +989,7 @@ class EditorApplication : IApplication
 		mNativeCodeDialog = NativeCodeDialog.Open(root, mWindow.LoadMarkup(NativeCodeDialog.cMarkupPath), request);
 	}
 
-	/// Project > Build Project: the project's own editor and player (a BuildJob of BuildTarget.All)
+	/// Project > Build Project: the project's own editor, in Debug (a BuildJob of BuildTarget.Editor)
 	/// on the build lane through the build service, BeefBuild's output to the Console as it comes.
 	private void BuildProject()
 	{
@@ -1002,7 +1002,7 @@ class EditorApplication : IApplication
 			return;
 		}
 		let error = scope String();
-		let job = EditorBuildTools.StartBuild(mContext, mBuildService, project, mConfig.DataRoot, .All, error);
+		let job = EditorBuildTools.StartBuild(mContext, mBuildService, project, mConfig.DataRoot, .Editor, "", "", error);
 		if (job == null)
 		{
 			mContext.Notify(.Error, scope $"Build Project: {error}.");
@@ -1022,7 +1022,7 @@ class EditorApplication : IApplication
 		let seams = new BuildToolSeams();
 		seams.Service = mBuildService;
 		seams.DataRoot.Set(mConfig.DataRoot);
-		seams.Start = new (target, outError) =>
+		seams.Start = new (target, config, platform, outError) =>
 			{
 				let project = mSession.Project;
 				if (project == null)
@@ -1030,7 +1030,7 @@ class EditorApplication : IApplication
 					outError.Append("no project is open");
 					return null;
 				}
-				return EditorBuildTools.StartBuild(mContext, mBuildService, project, mConfig.DataRoot, target, outError);
+				return EditorBuildTools.StartBuild(mContext, mBuildService, project, mConfig.DataRoot, target, config, platform, outError);
 			};
 		seams.Project = new () => mSession.Project;
 		seams.UnsavedWork = new (outLines) => { mPages.UnsavedWork(outLines); };

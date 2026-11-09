@@ -19,9 +19,10 @@ class BuildToolSeams
 	public ProjectBuildService Service = null;
 	/// The engine data root this editor runs from, which the relaunched editor is given.
 	public String DataRoot = new .() ~ delete _;
-	/// Starts a build of the open project on the build lane (EditorBuildTools.StartBuild): the
-	/// job with a reference for the caller, or null with why in `outError`. Owned.
-	public delegate BuildJob(BuildTarget target, String outError) Start ~ delete _;
+	/// Starts a build of the open project on the build lane (EditorBuildTools.StartBuild), a
+	/// player in the build config `config` for `platform` (both unused for the editor): the job
+	/// with a reference for the caller, or null with why in `outError`. Owned.
+	public delegate BuildJob(BuildTarget target, StringView config, StringView platform, String outError) Start ~ delete _;
 	/// The open project; null with none. Owned.
 	public delegate EditorProject() Project ~ delete _;
 	/// What has unsaved changes, a line each as the exit prompt names it (the caller's). Owned.
@@ -36,10 +37,11 @@ class BuildToolSeams
 
 /// The MCP tools over the project's own build, what only the editor host can serve: building
 /// and relaunching need the editor. project_build runs a build on the build lane through the
-/// editor's build service (the same path as Build Project) and, waiting, answers once it ends
-/// with what BeefBuild said as diagnostics; build_status reads the latest build while it runs
-/// or after; build_cancel stops it; editor_relaunch opens the project in its own built editor on
-/// this host's port and quits this one, as Open With This Build does.
+/// editor's build service (the same path as Build Project, or a player as an export builds it)
+/// and, waiting, answers once it ends with what BeefBuild said as diagnostics; build_status
+/// reads the latest build while it runs or after; build_cancel stops it; editor_relaunch opens
+/// the project in its own built editor on this host's port and quits this one, as Open With This
+/// Build does.
 ///
 /// A waiting project_build keeps its call open by answering NotFinished: the host re-enters it
 /// each frame on the main thread, so the editor draws and answers other calls while BeefBuild
@@ -67,13 +69,14 @@ static class EditorBuildTools
 	}
 
 	/// Starts a build of `project` for `target` on the context's build lane through `service`:
-	/// Build Project's path and project_build's. The job is tracked as the service's latest and
-	/// returned with a reference for the caller (ReleaseRef it); null, with why in `outError`,
-	/// when the build lane is busy or the project's settings did not copy. Its end is said as
-	/// Build Project's always was: a failure notified with its error, a success on the status
-	/// line.
+	/// Build Project's path and project_build's. A Player build is made in the build config
+	/// `config` for `platform` (this host's, or wasm32), as BuildJob takes them. The job is
+	/// tracked as the service's latest and returned with a reference for the caller (ReleaseRef
+	/// it); null, with why in `outError`, when the build lane is busy or the project's settings
+	/// did not copy. Its end is said as Build Project's always was: a failure notified with its
+	/// error, a success on the status line.
 	public static BuildJob StartBuild(EditorContext context, ProjectBuildService service, EditorProject project, StringView dataRoot,
-		BuildTarget target, String outError)
+		BuildTarget target, StringView config, StringView platform, String outError)
 	{
 		if (context.Tasks.IsLaneBusy(context.BuildLane))
 		{
@@ -89,18 +92,10 @@ static class EditorBuildTools
 			outError.Append("the project's settings did not copy");
 			return null;
 		}
-		// The presets are read now, for the configs All builds the player in; the editor alone
-		// needs none.
-		let presets = scope ExportPresetSet();
-		if (target == .All)
-		{
-			let projectFs = scope Sedulous.VFS.NativeFileSystem(project.Directory);
-			if (ExportPresetsFile.Load(projectFs, presets) case .Err)
-				ExportPresetsFile.Defaults(presets);
-		}
-		let job = new BuildJob(target, project.Directory, dataRoot, settings, presets);
+		let job = new BuildJob(target, project.Directory, dataRoot, settings, config, platform);
 		service.Track(job);
-		let label = (target == .All) ? "Build Project" : "Build Editor";
+		let editor = target == .Editor;
+		let label = editor ? "Build Project" : "Build Player";
 		// The work and the completion each hold a reference: the completion reads the job's error
 		// after the work has gone. Work dropped unrun (the project closed first) ends the job.
 		job.AddRef();
@@ -111,7 +106,7 @@ static class EditorBuildTools
 				task.SetStep("BeefBuild");
 				return service.Run(job, task.Token);
 			} ~ { job.Dropped(); job.ReleaseRef(); },
-			new [=job, =context, =label](result) => // main thread
+			new [=job, =context, =label, =editor](result) => // main thread
 			{
 				if (result case .Err)
 				{
@@ -120,7 +115,10 @@ static class EditorBuildTools
 					context.Notify(.Error, scope $"{label} failed: {error}");
 					return;
 				}
-				context.SetStatus(scope $"{label} done: Project > Open With This Build runs it.");
+				if (editor)
+					context.SetStatus(scope $"{label} done: Project > Open With This Build runs it.");
+				else
+					context.SetStatus(scope $"{label} done.");
 			} ~ job.ReleaseRef(), context.BuildLane);
 		return job;
 	}
@@ -188,12 +186,15 @@ static class EditorBuildTools
 	public static void Register(McpServer server, BuildToolSeams seams)
 	{
 		let buildSchema = scope SchemaBuilder();
-		buildSchema.Enum("target", scope StringView[]("editor", "all"),
-			"editor (default): the project's own editor alone, in Debug, all a change to the game's code needs before editor_relaunch; all: Build Project, the editor and then the player in each config the export presets name");
+		buildSchema.Enum("target", scope StringView[]("editor", "player"),
+			"editor (default): Build Project, the project's own editor alone, in Debug, all a change to the game's code needs before editor_relaunch; player: the game's player as an export builds it, for `platform` in `config`, to check it compiles without exporting");
+		buildSchema.Str("platform", "with target player: this host's platform (the default: Linux64 or Win64) or Web; another host's is refused");
+		buildSchema.Enum("config", scope StringView[]("Release", "Profile", "Debug"),
+			"with target player: a preset's config (default Debug, the cheapest check that it compiles): Release is the shipping build (ShippingRelease), Profile a Release build with the profiler, Debug itself");
 		buildSchema.Boolean("wait", "hold the call until the build ends (default true); false answers at once with the build's id and state");
 		buildSchema.Number("timeoutSeconds", "with wait, how long to hold the call (default 900, at most 3600); past it the call answers with the running state and the build goes on");
 		server.RegisterTool("project_build",
-			"Build the project's own code with BeefBuild on the editor's build lane, the same path as Project > Build Project. REFUSED while a build runs (build_status follows it, build_cancel stops it) or the build lane is busy. Waiting (the default), it answers when the build ends: {id, target, state (succeeded / failed / cancelled), steps (each BeefBuild run: project, config), step (the run last on), error, durationMs, errorCount, warningCount, diagnostics (errors first, at most 50: severity, file (relative to the project when inside it), line, column, code, message, notes), diagnosticsOmitted, executables}. A failed build is still an answer, not a tool error: read `state` and the diagnostics, fix the code, build again. On the timeout it answers with the running state and `timedOut`, and the build goes on. The first build compiles the engine too and takes minutes.",
+			"Build the project's own code with BeefBuild on the editor's build lane: its editor, the same path as Project > Build Project, or its player for a platform and config as an export builds it (a web player needs Emscripten named in BeefBuild's settings). REFUSED while a build runs (build_status follows it, build_cancel stops it) or the build lane is busy. Waiting (the default), it answers when the build ends: {id, target, state (succeeded / failed / cancelled), steps (each BeefBuild run: project, config), step (the run last on), error, durationMs, errorCount, warningCount, diagnostics (errors first, at most 50: severity, file (relative to the project when inside it), line, column, code, message, notes), diagnosticsOmitted, executables}. A failed build is still an answer, not a tool error: read `state` and the diagnostics, fix the code, build again. On the timeout it answers with the running state and `timedOut`, and the build goes on. The first build compiles the engine too and takes minutes.",
 			buildSchema.Build(), .Rebuilds,
 			new (call, arguments, outResult, outError) => Build(seams, call, arguments, outResult, outError), seams);
 
@@ -279,16 +280,22 @@ static class EditorBuildTools
 			}
 			let targetName = McpTools.ArgString(arguments, "target", .. scope .());
 			BuildTarget target = .Editor;
-			if (targetName == "all")
-				target = .All;
+			let config = scope String();
+			let platform = scope String();
+			if (targetName == "player")
+			{
+				target = .Player;
+				if (!PlayerStep(arguments, config, platform, outError))
+					return .Failed;
+			}
 			else if (!targetName.IsEmpty && (targetName != "editor"))
 			{
-				outError.AppendF("no target '{}' (editor or all)", targetName);
+				outError.AppendF("no target '{}' (editor or player)", targetName);
 				return .Failed;
 			}
 			if (Running(seams.Service, outError))
 				return .Failed;
-			let job = seams.Start(target, outError);
+			let job = seams.Start(target, config, platform, outError);
 			if (job == null)
 				return .Failed;
 			if (!McpTools.ArgBool(arguments, "wait", true))
@@ -317,6 +324,27 @@ static class EditorBuildTools
 			outResult.Set("note", JsonValue.MakeString("the build goes on: build_status follows it, build_cancel stops it"));
 		}
 		return .Answered;
+	}
+
+	/// The build config and the Beef platform project_build's player of `platform` and `config` is
+	/// made in, as an export of a preset of them builds it (ProjectPlayerBuilder.Target): this
+	/// host's platform and Debug when not given: a check that it compiles, the cheapest build
+	/// that tells (a preset's own default is Release, the shipping build). False, with why in
+	/// `outError`, for what Target refuses.
+	public static bool PlayerStep(JsonValue arguments, String outConfig, String outPlatform, String outError)
+	{
+		let preset = scope ExportPreset();
+		McpTools.ArgString(arguments, "platform", preset.Platform);
+		if (preset.Platform.IsEmpty)
+			preset.Platform.Set(BuildLayout.HostPlatformName);
+		McpTools.ArgString(arguments, "config", preset.Config);
+		if (preset.Config.IsEmpty)
+			preset.Config.Set("Debug");
+		BuildEntry entry;
+		if (ProjectPlayerBuilder.Target(preset, out entry, outConfig, outError) case .Err)
+			return false;
+		outPlatform.Set(ProjectBuild.EntryPlatform(entry));
+		return true;
 	}
 
 	private static bool Relaunch(BuildToolSeams seams, JsonValue arguments, JsonValue outResult, String outError)

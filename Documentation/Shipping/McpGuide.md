@@ -254,7 +254,7 @@ lacks, as the editor's Add Native Code does: the Engine part is `Code/<Game>`, a
 part depends on the game tiers' libraries, and its `Load` registers a starter behaviour, `Rotator`
 (`Code/<Game>/src/Rotator.bf`). It never
 overwrites code, and the editor's Project > Build Project builds it into the project's own editor
-and player, finding the engine SDK through `SEDULOUS_SDK` or the checkout the editor runs from. A loaded plugin reports its
+(an export builds it into the game's player), finding the engine SDK through `SEDULOUS_SDK` or the checkout the editor runs from. A loaded plugin reports its
 `settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`
 takes its kind) changes them, checked in full first, then saved. An entry whose plugin is not
 loaded keeps its settings as written: no tool reads or changes them. A loaded plugin may serve
@@ -554,7 +554,11 @@ Game tiers, struct components, reaching the engine, events) is `docs://GameCode.
 and relaunching need the editor host; the loop:
 
 1. Edit `Code/<Game>/src/*.bf` with your own file tools.
-2. `project_build` (`target` `editor`, the default; `all` is Build Project, the players too). The
+2. `project_build` (`target` `editor`, the default, is Build Project: the project's editor in
+   Debug). `target` `player` builds the game's player as an export would, without exporting, to
+   check that a shipping or web build compiles: `platform` this host's (the default) or `Web`,
+   `config` a preset's (`Debug`, the default, the cheapest check that it compiles; `Release`, the shipping build; `Profile`); another
+   host's platform is refused, and a web player needs Emscripten set in BeefBuild's settings. The
    call holds until the build ends (`timeoutSeconds`, 900 by default; the first build compiles the
    engine and takes minutes) and answers `state` (`succeeded`, `failed`, `cancelled`), the
    `steps` it ran, `error`, `durationMs`, `executables` and the `diagnostics`: errors first, at most

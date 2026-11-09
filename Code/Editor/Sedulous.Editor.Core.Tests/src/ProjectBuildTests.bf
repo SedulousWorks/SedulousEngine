@@ -615,34 +615,15 @@ class ProjectBuildTests
 		Test.Assert(!DirectoryExists(PathJoin(bed.ProjectDir, "Code/.generated", .. scope .())), "nothing written");
 	}
 
-	/// A preset's template config names the build it is made from: Release a ShippingRelease build,
-	/// Profile a Release one; the player is built in Debug and in each config a preset for this
-	/// host exports with, once each; a preset for another platform takes a template, not this
-	/// build.
+	/// A preset's config names the build its player is made in: Release (or none) a
+	/// ShippingRelease build, Profile a Release one, Debug itself.
 	[Test]
-	public static void ThePlayerIsBuiltInDebugAndEachHostPresetsConfig()
+	public static void APresetsConfigNamesItsBuildConfig()
 	{
 		Test.Assert(ProjectBuild.BuildConfigFor("", .. scope String()) == "ShippingRelease");
 		Test.Assert(ProjectBuild.BuildConfigFor("Release", .. scope String()) == "ShippingRelease");
 		Test.Assert(ProjectBuild.BuildConfigFor("Profile", .. scope String()) == "Release");
 		Test.Assert(ProjectBuild.BuildConfigFor("Debug", .. scope String()) == "Debug");
-
-		let presets = scope ExportPresetSet();
-		for (let config in StringView[4]("", "Profile", "Release", "Debug"))
-		{
-			let preset = new ExportPreset();
-			preset.Platform.Set(BuildLayout.HostPlatformName);
-			preset.Config.Set(config);
-			presets.Presets.Add(preset);
-		}
-		let web = new ExportPreset();
-		web.Platform.Set("Web");
-		web.Config.Set("Test");
-		presets.Presets.Add(web);
-		let configs = scope List<String>();
-		defer { ClearAndDeleteItems!(configs); }
-		ProjectBuild.PlayerConfigs(presets, configs);
-		Test.Assert((configs.Count == 3) && (configs[0] == "Debug") && (configs[1] == "ShippingRelease") && (configs[2] == "Release"));
 	}
 
 	/// BeefBuild is looked for on PATH alone: the first directory holding it, none for a path
@@ -826,55 +807,43 @@ class ProjectBuildTests
 	}
 #endif
 
-	/// The executables are BeefBuild's output in Code/build. A build is finished when they are
-	/// there: the editor in Debug first, then the player in each config, the first missing one
-	/// named.
+	/// The executables are BeefBuild's output in Code/build: <Game>Editor and <Game>Player, each
+	/// in its config's folder.
 	[Test]
-	public static void ABuildIsFinishedWhenItsExecutablesAreThere()
+	public static void TheExecutablesAreBeefBuildsOutputInCodeBuild()
 	{
 		let bed = scope Bed();
-		let configs = scope List<String>() { "Debug", "Release" };
-		let unbuilt = scope String();
 		let editor = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .());
-		let debugPlayer = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", false, "Debug", .. scope .());
-		let releasePlayer = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", false, "Release", .. scope .());
+		let player = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", false, "ShippingRelease", .. scope .());
 		Test.Assert(editor.StartsWith(scope $"{bed.ProjectDir}/Code/build/Debug_{BuildLayout.HostPlatformName}/NativeGameEditor/NativeGameEditor"), editor);
-		Test.Assert(debugPlayer.StartsWith(scope $"{bed.ProjectDir}/Code/build/Debug_{BuildLayout.HostPlatformName}/NativeGamePlayer/NativeGamePlayer"), debugPlayer);
-		Test.Assert(ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && (unbuilt == editor), unbuilt);
-		Bed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
-		Test.Assert(ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && (unbuilt == debugPlayer), unbuilt);
-		Bed.Write(bed.ProjectDir, debugPlayer.Substring(bed.ProjectDir.Length + 1), "#!player\n");
-		Test.Assert(ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && (unbuilt == releasePlayer), unbuilt);
-		Bed.Write(bed.ProjectDir, releasePlayer.Substring(bed.ProjectDir.Length + 1), "#!player\n");
-		Test.Assert(!ProjectBuild.FindUnbuilt(bed.ProjectDir, "NativeGame", configs, unbuilt) && unbuilt.IsEmpty, unbuilt);
+		Test.Assert(player.StartsWith(scope $"{bed.ProjectDir}/Code/build/ShippingRelease_{BuildLayout.HostPlatformName}/NativeGamePlayer/NativeGamePlayer"), player);
 	}
 
-	/// The project's player is fresh when built and newer than every file of its packages. What
+	/// The project's editor is fresh when built and newer than every file of its packages. What
 	/// builds write in Code/ (their output, the entries, the registry file) does not count; a
 	/// change to the game's source, or to a Plugins/ package's, does.
 	[Test]
-	public static void ThePlayerIsFreshWhenNewerThanEveryPackageFile()
+	public static void TheEditorIsFreshWhenNewerThanEveryPackageFile()
 	{
 		let bed = scope Bed();
-		let player = scope String();
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Err(.NotFound));
+		Test.Assert(ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"), "not built");
 		System.Threading.Thread.Sleep(50);
-		let relative = player.Substring(bed.ProjectDir.Length + 1);
-		Bed.Write(bed.ProjectDir, relative, "#!player\n");
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Ok);
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Release", player) case .Err(.NotFound), "another config's is not built");
+		let editor = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .());
+		Bed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
+		Test.Assert(!ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"));
+		Test.Assert(ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Release"), "another config's is not built");
 
 		System.Threading.Thread.Sleep(50);
 		bed.WriteCode("build/Debug_Linux64/NativeGame/NativeGame.o", "object\n");
-		bed.WriteCode(".generated/NativeGamePlayer/src/Program.bf", "// generated\n");
+		bed.WriteCode(".generated/NativeGameEditor/src/Program.bf", "// generated\n");
 		bed.WriteCode("BeefConfig.toml", "Version = 1\n");
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Ok, "what builds write is not the game's");
+		Test.Assert(!ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"), "what builds write is not the game's");
 
 		bed.WriteCode("NativeGame/src/Part.bf", "// changed\n");
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Err(.InvalidArgument));
+		Test.Assert(ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"));
 		DeleteFile(PathJoin(bed.ProjectDir, "Code/NativeGame/src/Part.bf", .. scope .()));
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Ok);
+		Test.Assert(!ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"));
 		Bed.Write(bed.ProjectDir, "Plugins/Lantern/Lantern.Engine/src/Part.bf", "// changed\n");
-		Test.Assert(ProjectBuild.FreshPlayer(bed.ProjectDir, bed.Settings, "Debug", player) case .Err(.InvalidArgument));
+		Test.Assert(ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"));
 	}
 }

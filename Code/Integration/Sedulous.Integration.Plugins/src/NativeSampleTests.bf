@@ -485,8 +485,7 @@ static class NativeSampleTests
 		pluginTools.DetachServer(server);
 	}
 
-	/// The sample's export presets: its desktop preset, which ships the project's own player, so
-	/// Build Project makes that player in the preset's config (ShippingRelease) beside Debug, and
+	/// The sample's export presets: its desktop preset, which ships the project's own player, and
 	/// its export builds that player: <Game>Player in ShippingRelease, on Linux.
 	[Test]
 	public static void TheSamplesDesktopPresetShipsTheProjectsOwnPlayer()
@@ -500,10 +499,6 @@ static class NativeSampleTests
 		let desktop = presets.Presets[0];
 		Test.Assert((desktop.Platform == "Linux64") && (desktop.EffectiveConfig == "Release"));
 #if BF_PLATFORM_LINUX
-		let configs = scope List<String>();
-		defer { ClearAndDeleteItems!(configs); }
-		ProjectBuild.PlayerConfigs(presets, configs);
-		Test.Assert((configs.Count == 2) && (configs[0] == "Debug") && (configs[1] == "ShippingRelease"));
 		let config = scope String();
 		let refusal = scope String();
 		BuildEntry entry;

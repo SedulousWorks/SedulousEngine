@@ -981,24 +981,6 @@ static class ProjectBuild
 			outConfig.Set(presetConfig);
 	}
 
-	/// The configs Build Project makes the player in: Debug, then each one a preset for this host
-	/// exports with, once each in the order the presets name them. The editor is built in Debug.
-	public static void PlayerConfigs(ExportPresetSet presets, List<String> outConfigs)
-	{
-		outConfigs.Add(new .("Debug"));
-		for (let preset in presets.Presets)
-		{
-			if (preset.Platform != BuildLayout.HostPlatformName)
-				continue;
-			let config = BuildConfigFor(preset.Config, .. scope .());
-			bool listed = false;
-			for (let existing in outConfigs)
-				listed |= existing == config;
-			if (!listed)
-				outConfigs.Add(new .(config));
-		}
-	}
-
 	/// Whether the project enables a package of its own (an entry with a path).
 	public static bool HasPackages(ProjectSettings settings)
 	{
@@ -1328,28 +1310,15 @@ static class ProjectBuild
 
 	/// Whether the project's editor for `config` is missing or older than a file of the project's
 	/// packages: a change to the game's code the editor running it has not been built with.
+	/// In the game's package (Code/) what builds write is not counted, or the editor would never be
+	/// fresh.
 	public static bool IsStale(StringView projectDir, ProjectSettings settings, StringView config)
 	{
-		return FreshExecutable(projectDir, settings, true, config, scope .()) case .Err;
-	}
-
-	/// The project's player for `config`, when it is built and newer than every file of the
-	/// project's packages: what an export of a project with packages ships. In the game's package
-	/// (Code/) what builds write is not counted, or the player would never be fresh. NotFound for
-	/// a player never built, InvalidArgument for one older than a file of a package.
-	public static Result<void, ErrorCode> FreshPlayer(StringView projectDir, ProjectSettings settings, StringView config, String outPath)
-		=> FreshExecutable(projectDir, settings, false, config, outPath);
-
-	/// FreshPlayer for the editor or the player.
-	private static Result<void, ErrorCode> FreshExecutable(StringView projectDir, ProjectSettings settings, bool editor, StringView config, String outPath)
-	{
 		let game = GameName(settings.Name, .. scope .());
-		ExecutablePath(projectDir, game, editor, config, outPath);
-		if (!FileStat(outPath, let size, let built))
-			return .Err(.NotFound);
-		if (NewestSource(projectDir, settings) > built)
-			return .Err(.InvalidArgument);
-		return .Ok;
+		let editor = ExecutablePath(projectDir, game, true, config, .. scope .());
+		if (!FileStat(editor, let size, let built))
+			return true;
+		return NewestSource(projectDir, settings) > built;
 	}
 
 	/// The newest modification time (FileStat's ticks) of a file of the project's packages, nought
@@ -1444,23 +1413,6 @@ static class ProjectBuild
 		for (let sub in directories)
 			newest = Math.Max(newest, NewestFile(PathJoin(dir, sub, .. scope .())));
 		return newest;
-	}
-
-	/// The first executable a build of `game` should have made and has not, in `outPath`: the
-	/// editor in Debug, then the player in each of `playerConfigs`. False when all are there.
-	public static bool FindUnbuilt(StringView projectDir, StringView game, List<String> playerConfigs, String outPath)
-	{
-		ExecutablePath(projectDir, game, true, "Debug", outPath..Clear());
-		if (!FileExists(outPath))
-			return true;
-		for (let config in playerConfigs)
-		{
-			ExecutablePath(projectDir, game, false, config, outPath..Clear());
-			if (!FileExists(outPath))
-				return true;
-		}
-		outPath.Clear();
-		return false;
 	}
 
 	/// Whether `name`, at the top of the game's package, is something builds write.

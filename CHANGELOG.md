@@ -65,6 +65,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Export: the Export dialog names the player each preset builds ("SkyHopperPlayer,
   ShippingRelease, Linux64"), or says why it cannot be built on this machine, and Export All says
   which presets it skipped for another machine's platform.
+- Editor: Project > Build Project builds the project's own editor alone; the players a game ships
+  are built by its export.
+- MCP: `project_build` builds the editor, or with `target` `player` the game's player for a
+  platform (this machine's or Web) and config, to check it compiles without exporting.
 - MCP: `project_export` reports the player's build (its state, time and first diagnostics),
   waits up to `timeoutSeconds` (default 1800) in the editor, and with `build: false` repackages
   over the last build instead of building; `export_presets` says for each preset whether this

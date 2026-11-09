@@ -134,7 +134,8 @@ class EditorBuildToolsTests
 			let seams = new BuildToolSeams();
 			seams.Service = Service;
 			seams.DataRoot.Set(DataRoot);
-			seams.Start = new [=bench](target, outError) => EditorBuildTools.StartBuild(bench.Context, bench.Service, bench.Project, bench.DataRoot, target, outError);
+			seams.Start = new [=bench](target, config, platform, outError) =>
+				EditorBuildTools.StartBuild(bench.Context, bench.Service, bench.Project, bench.DataRoot, target, config, platform, outError);
 			seams.Project = new [=bench]() => bench.Project;
 			seams.UnsavedWork = new [=bench](outLines) =>
 				{
@@ -339,6 +340,50 @@ class EditorBuildToolsTests
 		Test.Assert(!status.Payload.Get("stale").AsBool(), "just built");
 	}
 
+	/// The player target builds the game's player as an export of a preset would: this host's
+	/// platform and Release (the shipping build) by default, a Profile config as a Release build,
+	/// one BeefBuild run each answered with the player it made. Another host's platform is refused
+	/// before anything runs; the web is wasm32, and a Test config is no player.
+	[Test]
+	public static void ThePlayerTargetBuildsAPresetsPlayer()
+	{
+		let bench = scope Bench("player");
+		let player = scope $"{bench.Game}Player";
+		for (int round < 2)
+		{
+			let answer = Call(bench, "project_build", (round == 0) ? "{\"target\":\"player\"}" : "{\"target\":\"player\",\"config\":\"Profile\"}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			let payload = answer.Payload;
+			StringView built = (round == 0) ? "Debug" : "Release"; // none given: Debug
+			Test.Assert(bench.FakeBuild.Runs == round + 1);
+			Test.Assert(payload.Get("state").AsString() == "succeeded");
+			Test.Assert(payload.Get("target").AsString() == "player");
+			let steps = payload.Get("steps");
+			Test.Assert((steps.Count == 1) && (steps.At(0).Get("project").AsString() == player) && (steps.At(0).Get("config").AsString() == built),
+				scope String(steps.At(0).Get("config").AsString()));
+			let executables = payload.Get("executables");
+			Test.Assert((executables.Count == 1) && (executables.At(0).AsString() == ProjectBuild.ExecutablePath(bench.ProjectDir, bench.Game, false, built, .. scope .())));
+		}
+
+		StringView otherHost = (BuildLayout.HostPlatformName == "Win64") ? "Linux64" : "Win64";
+		let refused = Call(bench, "project_build", scope $"{{\"target\":\"player\",\"platform\":\"{otherHost}\"}}");
+		defer delete refused;
+		Test.Assert(!refused.Ok && refused.Error.Contains(scope $"a {otherHost} player builds on"), refused.Error);
+		Test.Assert(bench.FakeBuild.Runs == 2, "nothing more ran");
+
+		let config = scope String();
+		let platform = scope String();
+		let error = scope String();
+		let web = JsonValue.Parse("{\"platform\":\"Web\",\"config\":\"Debug\"}");
+		defer delete web;
+		Test.Assert(EditorBuildTools.PlayerStep(web, config, platform, error), error);
+		Test.Assert((platform == "wasm32") && (config == "Debug"), platform);
+		let testConfig = JsonValue.Parse("{\"config\":\"Test\"}");
+		defer delete testConfig;
+		Test.Assert(!EditorBuildTools.PlayerStep(testConfig, config, platform, error) && error.Contains("links the test runner"), error);
+	}
+
 	/// A failed build is an answer, not a tool error: state failed, the counts, the diagnostics
 	/// with errors first, a file in the project relative to it and one outside absolute, a
 	/// warning's code and a note's place. Past the cap the errors fill it and the rest are counted.
@@ -413,7 +458,7 @@ class EditorBuildToolsTests
 			Thread.Sleep(1);
 		Test.Assert(bench.FakeBuild.Started);
 		{
-			let refused = Call(bench, "project_build", "{\"target\":\"all\"}");
+			let refused = Call(bench, "project_build", "{\"target\":\"player\"}");
 			defer delete refused;
 			Test.Assert(!refused.Ok);
 			Test.Assert(refused.Error.Contains("build 1 (editor) is running"), refused.Error);

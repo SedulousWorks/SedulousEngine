@@ -63,7 +63,7 @@ class ProjectPlayerBuilder : IPlayerBuilder
 			return .Err(.Internal);
 		}
 		let platform = ProjectBuild.EntryPlatform(entry);
-		let job = new BuildJob(.Player, project.Directory, mDataRoot, settings, null, config, platform);
+		let job = new BuildJob(.Player, project.Directory, mDataRoot, settings, config, platform);
 		defer job.ReleaseRef();
 
 		let game = ProjectBuild.GameName(project.Name, .. scope .());

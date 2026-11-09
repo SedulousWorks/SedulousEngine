@@ -146,7 +146,6 @@ static class BuildJobJson
 		switch (target)
 		{
 		case .Editor: return "editor";
-		case .All: return "all";
 		default: return "player";
 		}
 	}
