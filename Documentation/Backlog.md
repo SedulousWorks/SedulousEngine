@@ -146,11 +146,6 @@ passed, and it did not recur. Cause unknown.
 A player without DXC (the Steam Deck build, any export) logs it twice while using its shader
 pack, which is expected but reads like an error. Quieten it when a pack is in use.
 
-### The Linux desktop preset picks the Steam Deck template
-A preset that names no template resolves by platform and config, and the installed
-`sedulous-steamdeck-release-*` template ranks first for Linux64 Release. Works (the Deck player
-is a portable Linux player) but is surprising; consider ranking or naming.
-
 ### Samples.WebScene.Web ships a dead shader pack
 `Code/Samples/Samples.WebScene.Web/webdata/Data/Shaders/shaders.dpak` is committed and preloaded
 into the sample's web build (`--preload-file webdata/Data@Data` in its BeefProj.toml). It is a
@@ -270,8 +265,8 @@ with no model of its own names the skeleton it animates.
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by
-  doc, every type, path and behaviour checked against this engine; export, templates and the
-  Steam Deck first.
+  doc, every type, path and behaviour checked against this engine; export and the Steam Deck
+  first.
 - Write a `CONTRIBUTING.md`; v0's describes the old engine.
 
 ## Housekeeping

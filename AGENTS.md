@@ -35,8 +35,8 @@ nothing else links them, and enabling them builds the sandbox.
 
 - Outputs land in `Code/build/<Config>_<Platform>/<Project>/`.
 - Configs: Debug, Test, Release (optimised, the profiler compiled in) and ShippingRelease
-  (Release without the profiler: `SHIPPING` is defined). The export templates a game ships on
-  are ShippingRelease builds; a Release build packages as the `profile` template.
+  (Release without the profiler: `SHIPPING` is defined). An export builds the game's own player:
+  a preset's Release is a ShippingRelease build, its Profile a Release one.
 - Build ONE project at a time, and never beside another heavy build (a second BeefBuild, the
   Steam Deck container, another engine's build). Two at once has run the machine out of memory.
 - A tool built before a change does not have it: rebuild the editor, the player or
@@ -153,6 +153,6 @@ opens the manager on Samples.
 
 ## Steam Deck
 
-`Code/Tools/SteamDeck/build-steamdeck.sh` builds a player in an Ubuntu 22.04 container (glibc
-2.35, below SteamOS), Beef included, and installs it as the `sedulous-steamdeck-release-<ver>`
-export template. It needs podman or docker, and nothing else building beside it.
+`Code/Tools/SteamDeck/build-steamdeck.sh` builds a game's player from its project workspace in
+an Ubuntu 22.04 container (glibc 2.35, below SteamOS), Beef included: what an export of a preset
+whose builder is SteamDeck runs. It needs podman or docker, and nothing else building beside it.
