@@ -19,6 +19,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 - Prefabs: spawning a prefab no longer reads it from disk each time, and a prefab saved in the
   editor reaches the next spawn of a running game.
+- Scenes: a level a game loads reads each prefab it places once, however many times it places
+  it, and places the prefab as the game has it loaded (a save in the editor during Play included).
 - MCP: `scene_write` and `prefab_write` given a `name` already taken in its group say what holds
   it and its guid: another type's asset (pick another name), or one of the tool's own type (pass
   its `guid` to overwrite it).

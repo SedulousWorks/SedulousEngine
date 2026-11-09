@@ -67,13 +67,12 @@ extension GameEditorPage
 			}
 			if (mContext.Resources != null)
 				SceneResolve.ResolveSceneResources(startScene, mContext.Resources);
-			if (startScene.PendingPrefabInstanceCount > 0)
+			// The prefabs it places come from the run's resources, as a level the game loads
+			// later does, so the run places a prefab as it spawns one.
+			if ((startScene.PendingPrefabInstanceCount > 0) && (mContext.Resources != null))
 			{
-				let resolver = SceneLoading.ProjectPrefabResolver(mContext);
-				defer delete resolver;
-				ScenePrefabs.ResolveScenePrefabs(startScene, resolver);
-				if (mContext.Resources != null)
-					SceneResolve.ResolveSceneResources(startScene, mContext.Resources);
+				ScenePrefabs.ResolveScenePrefabs(startScene, mContext.Resources);
+				SceneResolve.ResolveSceneResources(startScene, mContext.Resources);
 			}
 			EnsureCamera(startScene);
 			startScene.Start();

@@ -311,9 +311,9 @@ class GameInstance : RunBase
 	/// Loads a cooked scene into this group and resolves its resources SYNCHRONOUSLY.
 	///
 	/// The scene comes back active and fully resolved but NOT started: what happens to it
-	/// next is the app's policy. Null if the load itself failed.
-	public Scene LoadScene(Instance sceneInstance, ResourceManager resources,
-		ScenePrefabs.PayloadResolver prefabProvider)
+	/// next is the app's policy. Null if the load itself failed. The prefabs it places come
+	/// from `resources`, each read once however many times it is placed.
+	public Scene LoadScene(Instance sceneInstance, ResourceManager resources)
 	{
 		let scene = CreateScene(sceneInstance.Name);
 		if ((scene == null) || (SceneStorage.LoadScene(sceneInstance, scene) case .Err))
@@ -327,7 +327,7 @@ class GameInstance : RunBase
 
 		if (scene.PendingPrefabInstanceCount > 0)
 		{
-			ScenePrefabs.ResolveScenePrefabs(scene, prefabProvider);
+			ScenePrefabs.ResolveScenePrefabs(scene, resources);
 			// And bind what the prefabs brought with them.
 			SceneResolve.ResolveSceneResources(scene, resources);
 		}
@@ -338,9 +338,9 @@ class GameInstance : RunBase
 	/// Loads a cooked scene INACTIVE and puts its resource binds on the workers.
 	///
 	/// The handle is polled for progress, which is what a loading screen reads, and the scene
-	/// is activated once it completes. It never ticks or draws while it loads.
-	public SceneLoadHandle LoadSceneAsync(Instance sceneInstance, ResourceManager resources,
-		ScenePrefabs.PayloadResolver prefabProvider)
+	/// is activated once it completes. It never ticks or draws while it loads. The prefabs it
+	/// places bind at once, as a spawn's do, since placing one needs its payload now.
+	public SceneLoadHandle LoadSceneAsync(Instance sceneInstance, ResourceManager resources)
 	{
 		var handle = SceneLoadHandle();
 		handle.Resources = resources;
@@ -367,7 +367,7 @@ class GameInstance : RunBase
 		{
 			// The spawn itself binds nothing, so it runs outside the scope and what it brought
 			// binds inside a second one.
-			ScenePrefabs.ResolveScenePrefabs(scene, prefabProvider);
+			ScenePrefabs.ResolveScenePrefabs(scene, resources);
 
 			let scope_ = AsyncBindScope(resources);
 			defer scope_.Dispose();

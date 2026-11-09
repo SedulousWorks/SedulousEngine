@@ -423,12 +423,7 @@ class PlayerApplication : DefaultApplication
 
 		PushSplash();
 
-		let sceneDb = mSceneDb;
-		mBootLoad = Instance.LoadSceneAsync(instance, Resources, scope (prefabId) =>
-			{
-				let prefab = (sceneDb != null) ? sceneDb.GetInstance(prefabId) : null;
-				return (prefab != null) ? prefab.ReadData("scene") : null;
-			});
+		mBootLoad = Instance.LoadSceneAsync(instance, Resources);
 
 		if (mBootLoad.Failed)
 		{

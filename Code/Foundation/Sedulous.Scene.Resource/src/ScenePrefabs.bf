@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.Resource;
 using Sedulous.Scene;
 
 namespace Sedulous.Scene.Resource;
@@ -18,6 +19,16 @@ static class ScenePrefabs
 	/// Hands back the payload for a prefab, or null when it cannot be reached. The CALLER
 	/// owns what comes back; this pass deletes each stream once it has spawned from it.
 	public typealias PayloadResolver = delegate IStream(Guid prefabId);
+
+	/// Respawns every parked descriptor from the prefabs `resources` has loaded, binding each
+	/// one the first time it is placed: a level placing one prefab fifty times reads it once,
+	/// and a prefab edited and reloaded places as it now is. What a running game's scene loads
+	/// use; the editor's authoring reads its sources instead.
+	public static void ResolveScenePrefabs(Scene scene, ResourceManager resources)
+	{
+		let payloads = scope PrefabPayloads(resources);
+		ResolveScenePrefabs(scene, payloads.Resolver);
+	}
 
 	/// Respawns every parked descriptor, applying its deltas.
 	public static void ResolveScenePrefabs(Scene scene, PayloadResolver resolver)

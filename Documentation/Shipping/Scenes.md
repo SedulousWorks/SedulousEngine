@@ -71,8 +71,11 @@ the kind table and each kind's payload key; the example scene shows all of them 
 ## Spawning at run time
 
 A spawn while the game runs (a script's `Spawn`, `Net.Spawn`, a replicated spawn on a client)
-reads the LOADED prefab, not its file: the prefab is read once, the first time it is spawned
-or a reference to it binds, and the prefabs it nests are each loaded the same way. A first
+reads the LOADED prefab, not its file: the prefab is read once, the first time it is spawned,
+a reference to it binds or a level placing it loads, and the prefabs it nests are each loaded
+the same way. A level the game loads (its first, a script's `Run.LoadScene`) places its prefabs
+from the loaded ones too, so one placed fifty times is read once. The editor's scene pages
+read the files, since what they show is what you are editing. A first
 spawn loads the prefab at once, so its entity exists in the same frame.
 
 Saving a prefab in the editor (its page's Save, `prefab_write`, an apply to prefab), or a

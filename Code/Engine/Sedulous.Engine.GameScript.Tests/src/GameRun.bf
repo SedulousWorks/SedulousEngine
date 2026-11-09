@@ -90,7 +90,7 @@ class GameRun
 					failed.Failed = true;
 					return failed;
 				}
-				return Instance.LoadSceneAsync(sceneInstance, Resources, null);
+				return Instance.LoadSceneAsync(sceneInstance, Resources);
 			});
 		Instance.SetExitRequest(new (code) => { ExitCode = code; Exits++; });
 		Instance.SetSceneActivationPolicy(new (scene) =>

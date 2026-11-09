@@ -485,11 +485,7 @@ class DefaultApplication : IApplication, ISceneObserver
 					failed.Failed = true;
 					return failed;
 				}
-				return instance.LoadSceneAsync(sceneInstance, Resources, scope (prefabId) =>
-					{
-						let prefab = db.GetInstance(prefabId);
-						return (prefab != null) ? prefab.ReadData("scene") : null;
-					});
+				return instance.LoadSceneAsync(sceneInstance, Resources);
 			});
 		instance.SetExitRequest(new (code) => host.RequestExit(code));
 		// Run.SetProfilerOverlay / Run.ProfilerAvailable: this app's overlay, the one F3
