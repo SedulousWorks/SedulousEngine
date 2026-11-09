@@ -14,10 +14,10 @@ namespace Sedulous.Editor.App.Tests;
 /// once; Save into the store, marked changed and persisted; Cancel, Escape, its close button, or
 /// the dialog going while open, putting the look back as it was with the store unchanged; the
 /// Shortcuts tab's edits staged, applied on Save (a chord another action holds refused, named),
-/// forgotten on Cancel, Reset going back to the declaration's; the orthographic check, the
-/// templates' folder (empty: the default shown), the MCP host's fields (a port out of range kept,
-/// said; the host told on Save), the preview resolutions (added, removed) and the contributed
-/// categories' tabs (shared by a category, their checks applied as they change).
+/// forgotten on Cancel, Reset going back to the declaration's; the orthographic check, the MCP
+/// host's fields (a port out of range kept, said; the host told on Save), the preview resolutions
+/// (added, removed) and the contributed categories' tabs (shared by a category, their checks
+/// applied as they change).
 static class PreferencesDialogTests
 {
 	/// A GUI scene for the dialog to open over, the user's store (violet), two actions (Save on
@@ -37,8 +37,6 @@ static class PreferencesDialogTests
 		public bool Muted = false;
 		public bool BakeBounds = false;
 		public int McpChanged = 0;
-		/// Where the folder dialog was asked to start; null until it is asked.
-		public String FolderFrom = null ~ delete _;
 		public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
 		public List<EditorLook> Shown = new .() ~ DeleteContainerAndItems!(_);
 		public int Persisted = 0;
@@ -69,12 +67,6 @@ static class PreferencesDialogTests
 			}
 			services.Contributions = Contributions;
 			services.McpChanged = new () => { McpChanged++; };
-			services.PickFolder = new (from, chosen) =>
-				{
-					String.NewOrSet!(FolderFrom, from);
-					chosen("/picked/folder");
-					delete chosen;
-				};
 			services.ShowLook = new (look) => { Shown.Add(new EditorLook()..Set(look)); };
 			services.Persist = new () =>
 				{
@@ -301,15 +293,15 @@ static class PreferencesDialogTests
 		// Each look shown is the whole look, not the one input.
 		Test.Assert(!bed.Last.Dark && (bed.Last.Accent == "#0f8a7e") && (bed.Last.Density == "comfortable") && bed.Last.ReduceMotion);
 
-		// Save: into the store, marked changed (the look's section, then the templates', the MCP
-		// host's and the preview sizes'), persisted, closed; nothing put back.
+		// Save: into the store, marked changed (the look's section, then the MCP host's and the
+		// preview sizes'), persisted, closed; nothing put back.
 		int changes = 0;
 		bed.Store.OnChanged.Add(new [&] (name) => { changes++; });
 		let shownAtSave = bed.Shown.Count;
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(!bed.Dialog.IsOpen);
 		Test.Assert(bed.Persisted == 1);
-		Test.Assert(changes == 4);
+		Test.Assert(changes == 3);
 		let ui = bed.Ui;
 		Test.Assert(ui.Scheme == "light");
 		Test.Assert(ui.Accent == "#0f8a7e");
@@ -563,7 +555,7 @@ static class PreferencesDialogTests
 	}
 
 	[Test]
-	public static void TheOtherTabsAxisViewsTemplatesTheMcpHostABadPortKeptPreviewSizesAContributedCategory()
+	public static void TheOtherTabsAxisViewsTheMcpHostABadPortKeptPreviewSizesAContributedCategory()
 	{
 		let bed = scope Bed();
 		bed.Store.Section<EditorMcpSettings>().Port = 7500;
@@ -571,12 +563,12 @@ static class PreferencesDialogTests
 		let window = bed.Window;
 		let tabs = Find<TabView>(window, "pref-tabs");
 		Test.Assert(tabs != null);
-		Test.Assert(tabs.PageCount == 6); // Appearance, Export, Agent access, Game preview, Shortcuts, Navigation
+		Test.Assert(tabs.PageCount == 5); // Appearance, Agent access, Game preview, Shortcuts, Navigation
 		let ortho = Find<Sedulous.GUI.CheckBox>(window, "pref-auto-ortho");
-		let root = Find<Sedulous.GUI.TextField>(window, "pref-templates-root");
 		let enabled = Find<Sedulous.GUI.CheckBox>(window, "pref-mcp-enabled");
 		let port = Find<Sedulous.GUI.TextField>(window, "pref-mcp-port");
-		Test.Assert((ortho != null) && (root != null) && (enabled != null) && (port != null));
+		Test.Assert((ortho != null) && (enabled != null) && (port != null));
+		Test.Assert(Find<Sedulous.GUI.TextField>(window, "pref-templates-root") == null, "no templates' folder");
 		Test.Assert(ortho.Checked);
 		Test.Assert(port.Text == "7500");
 		Test.Assert(!enabled.Checked);
@@ -599,12 +591,10 @@ static class PreferencesDialogTests
 		Test.Assert(!bed.Snapping);
 
 		Test.Assert(ortho.HandleActivate());
-		root.Text = "/opt/templates";
 		Test.Assert(enabled.HandleActivate());
 		port.Text = "80"; // below the range
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(!bed.Store.Find<EditorUiSettings>().AutoOrthographic);
-		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot == "/opt/templates");
 		let mcp = bed.Store.Find<EditorMcpSettings>();
 		Test.Assert(mcp.Enabled);
 		Test.Assert(mcp.Port == 7500, "kept");
@@ -638,53 +628,6 @@ static class PreferencesDialogTests
 		Test.Assert(bed.Ui.AutoOrthographic);
 		Test.Assert(bed.Dialog.Open(bed.Root));
 		Test.Assert(ortho.Checked);
-	}
-
-	/// The templates' folder: what the store has; empty, the default shown in its place, and an
-	/// emptied field stored empty (the default then taken, not written down).
-	[Test]
-	public static void AnEmptyTemplatesFieldShowsTheDefaultAndIsStoredEmpty()
-	{
-		let bed = scope Bed();
-		let defaultRoot = Sedulous.Editor.Project.ExportTemplates.DefaultRoot(.. scope .());
-		Test.Assert(!defaultRoot.IsEmpty);
-		Test.Assert(bed.Dialog.Open(bed.Root));
-		let root = Find<Sedulous.GUI.TextField>(bed.Window, "pref-templates-root");
-		Test.Assert(root != null);
-		Test.Assert(root.Text.IsEmpty, "no section: empty");
-		Test.Assert(root.Placeholder == defaultRoot);
-		bed.Dialog.Cancel();
-
-		bed.Store.Section<EditorExportSettings>().TemplatesRoot.Set("/srv/templates");
-		Test.Assert(bed.Dialog.Open(bed.Root));
-		Test.Assert(root.Text == "/srv/templates");
-		Test.Assert(root.Placeholder == defaultRoot);
-		root.Text = "";
-		Test.Assert(bed.Dialog.Save());
-		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot.IsEmpty);
-	}
-
-	/// Browse beside the templates' folder: the system's folder dialog fills the field, starting
-	/// at the folder it names, else the default its placeholder shows.
-	[Test]
-	public static void BrowseFillsTheTemplatesFolderStartingAtTheFolderItNames()
-	{
-		let bed = scope Bed();
-		Test.Assert(bed.Dialog.Open(bed.Root));
-		let root = Find<Sedulous.GUI.TextField>(bed.Window, "pref-templates-root");
-		let browse = Find<Sedulous.GUI.Button>(bed.Window, "pref-templates-root-browse");
-		Test.Assert((root != null) && (browse != null));
-
-		Test.Assert(browse.HandleActivate());
-		Test.Assert(bed.FolderFrom == root.Placeholder, "empty: from the default");
-		Test.Assert(root.Text == "/picked/folder");
-
-		root.Text = "/srv/templates";
-		Test.Assert(browse.HandleActivate());
-		Test.Assert(bed.FolderFrom == "/srv/templates");
-		Test.Assert(root.Text == "/picked/folder");
-		Test.Assert(bed.Dialog.Save());
-		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot == "/picked/folder", "Save keeps it");
 	}
 
 	/// The MCP host's fields: what the store has (the default port with no section); a port in
@@ -810,23 +753,23 @@ static class PreferencesDialogTests
 		Test.Assert(bed.Dialog.Open(bed.Root));
 		let tabs = Find<TabView>(bed.Window, "pref-tabs");
 		Test.Assert(tabs != null);
-		Test.Assert(tabs.PageCount == 7);
+		Test.Assert(tabs.PageCount == 6);
 		Test.Assert(PageTitled(tabs, "Appearance") == 0);
-		Test.Assert(PageTitled(tabs, "Export") == 1);
-		Test.Assert(PageTitled(tabs, "Agent access") == 2);
-		Test.Assert(PageTitled(tabs, "Game preview") == 3);
-		Test.Assert(PageTitled(tabs, "Shortcuts") == 4);
-		Test.Assert(PageTitled(tabs, "Navigation") == 5);
-		Test.Assert(PageTitled(tabs, "Audio") == 6);
+		Test.Assert(PageTitled(tabs, "Export") == -1, "no Export tab");
+		Test.Assert(PageTitled(tabs, "Agent access") == 1);
+		Test.Assert(PageTitled(tabs, "Game preview") == 2);
+		Test.Assert(PageTitled(tabs, "Shortcuts") == 3);
+		Test.Assert(PageTitled(tabs, "Navigation") == 4);
+		Test.Assert(PageTitled(tabs, "Audio") == 5);
 
 		// Both Navigation fields on its tab, in their order; Audio's on its own.
 		let navigation = scope List<Sedulous.GUI.CheckBox>();
-		Checks(tabs.GetPage(5), navigation);
+		Checks(tabs.GetPage(4), navigation);
 		Test.Assert(navigation.Count == 2);
 		Test.Assert(navigation[0].Text == "Snap agents to the mesh");
 		Test.Assert(navigation[1].Text == "Show the bake bounds");
 		let audio = scope List<Sedulous.GUI.CheckBox>();
-		Checks(tabs.GetPage(6), audio);
+		Checks(tabs.GetPage(5), audio);
 		Test.Assert((audio.Count == 1) && (audio[0].Text == "Mute in the background"));
 
 		// As the fields have them.
@@ -844,7 +787,7 @@ static class PreferencesDialogTests
 		// Changed elsewhere: opened again, shown as the field has it; the tabs made once.
 		bed.Muted = false;
 		Test.Assert(bed.Dialog.Open(bed.Root));
-		Test.Assert(tabs.PageCount == 7);
+		Test.Assert(tabs.PageCount == 6);
 		Test.Assert(!audio[0].Checked);
 		Test.Assert(navigation[1].Checked);
 	}

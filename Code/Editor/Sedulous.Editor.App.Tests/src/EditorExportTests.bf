@@ -26,10 +26,10 @@ class ExportBrokenBuilder : IAssetBuilder
 }
 
 /// EditorExport: an export asks for a project and runs one at a time; it cooks first, then
-/// hands the job to the job service, whose failure is a notice; the templates' folder is the
-/// user's override when there is one; the presets save to the project and are read back when it
-/// opens again; a resource report with no project is a line in the log, not a crash. A cook that
-/// fails an asset stops the export.
+/// hands the job to the job service, whose failure is a notice; Export All's notice names the
+/// presets it skipped; the presets save to the project and are read back when it opens again; a
+/// resource report with no project is a line in the log, not a crash. A cook that fails an asset
+/// stops the export.
 class EditorExportTests
 {
 
@@ -42,7 +42,6 @@ class EditorExportTests
 		public EditorCookService Cook = new .() ~ delete _;
 		public TaskPool Tasks = new .(2) ~ delete _;
 		public TaskLane Lane = Tasks.CreateLane("Build");
-		public Settings User = new .() ~ delete _;
 		public List<String> Said = new .() ~ DeleteContainerAndItems!(_);
 		public EditorProject Project = null ~ delete _;
 		public String Dir = new .() ~ delete _;
@@ -87,7 +86,6 @@ class EditorExportTests
 			services.Tasks = Tasks;
 			services.Lane = Lane;
 			services.Builders = Builders;
-			services.UserSettings = User;
 			return services;
 		}
 
@@ -95,7 +93,7 @@ class EditorExportTests
 	}
 
 	[Test]
-	public static void AnExportWithNoProjectSaysToOpenOneAndTheTemplatesFollowTheOverride()
+	public static void AnExportWithNoProjectSaysToOpenOne()
 	{
 		let bench = scope Bench();
 		let exporter = scope EditorExport(bench.Services());
@@ -104,26 +102,7 @@ class EditorExportTests
 		Test.Assert(bench.Last == "Open a project first.");
 		Test.Assert(!exporter.IsPending);
 
-		bench.User.Section<EditorExportSettings>().TemplatesRoot.Set("/shared/templates");
-		Test.Assert(exporter.TemplatesRoot(.. scope .()) == "/shared/templates");
-
 		EditorExport.ReportResourceMemory(null); // no project: said in the log
-	}
-
-	/// No user settings at all reads as no override: the root is the CLI's own resolution.
-	[Test]
-	public static void NoUserSettingsResolveTheTemplatesAsTheCliDoes()
-	{
-		let bench = scope Bench();
-		let services = bench.Services();
-		services.UserSettings = null;
-		let exporter = scope EditorExport(services);
-		let expected = ExportTemplates.ResolveRoot("", .. scope .());
-		Test.Assert(exporter.TemplatesRoot(.. scope .()) == expected);
-		// The main thread's registry always carries the host template, found or not.
-		let registry = scope TemplateRegistry();
-		exporter.BuildTemplateRegistry(registry);
-		Test.Assert(registry.Count >= 1);
 	}
 
 	/// The flow the menu takes: a cook first, a second export refused while one is pending,

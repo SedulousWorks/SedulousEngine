@@ -196,7 +196,6 @@ class EditorAppActionsTests
 
 		let edit = new EditActions();
 		edit.Preferences = bench.Record("preferences");
-		edit.ExportTemplates = bench.Record("exportTemplates");
 		EditorAppActions.RegisterEditActions(bench.Actions, edit);
 
 		let project = new ProjectActions();
@@ -317,7 +316,7 @@ class EditorAppActionsTests
 	{
 		let bench = scope Bench();
 		RegisterAll(bench);
-		Row[29] expected = .(
+		Row[28] expected = .(
 			.("file.save", "Save", "File/Save", 100, "ctrl-s"),
 			.("file.saveAs", "Save As...", "File/Save As...", 101),
 			.("file.saveLayout", "Save Layout", "File/Save Layout", 200),
@@ -330,7 +329,6 @@ class EditorAppActionsTests
 			.("playback.stop", "Stop", "", 0),
 			.("playback.restart", "Restart", "", 0),
 			.("edit.preferences", "Preferences...", "Edit/Preferences...", 200),
-			.("edit.exportTemplates", "Export Templates...", "Edit/Export Templates...", 201),
 			.("project.settings", "Project Settings...", "Project/Project Settings...", 100),
 			.("project.export", "Export...", "Project/Export...", 300),
 			.("project.reportResourceMemory", "Report Resource Memory", "Project/Report Resource Memory", 400, "", "", true),
@@ -457,8 +455,6 @@ class EditorAppActionsTests
 
 		Test.Assert(actions.Execute("edit.preferences", null) case .Ok);
 		Test.Assert(bench.Said("preferences"));
-		Test.Assert(actions.Execute("edit.exportTemplates", null) case .Ok);
-		Test.Assert(bench.Said("exportTemplates"));
 		Test.Assert(bench.Events.IsEmpty, "undo, redo and discard run no hook");
 	}
 

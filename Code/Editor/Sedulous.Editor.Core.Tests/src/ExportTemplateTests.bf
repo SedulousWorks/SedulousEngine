@@ -419,14 +419,14 @@ static class ExportTemplateTests
 		{
 			let manifest = scope ExportTemplate();
 			Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(outFolder), manifest) case .Ok);
-			Test.Assert(manifest.Icon == TemplateIcons.cIconFile);
+			Test.Assert(manifest.Icon == ExportTemplates.cIconFile);
 			manifest.Directory.Set(outFolder);
-			TemplateIcons.SvgFor(manifest, outSvg);
+			ExportTemplates.IconSvg(manifest, outSvg);
 		}
 
 		// No icon named: the platform's built-in one, in the bundle and named by the manifest.
 		Test.Assert(ExportTemplates.Create(buildDir, outFolder, .ExportFolder) case .Ok);
-		let platformIcon = TemplateIcons.BuiltInSvg(TemplateIcons.DefaultName(BuildLayout.HostPlatformName));
+		let platformIcon = PlatformIcons.BuiltInSvg(PlatformIcons.DefaultName(BuildLayout.HostPlatformName));
 		Test.Assert(!platformIcon.IsEmpty);
 		Test.Assert(BundledIcon(.. scope .()) == platformIcon);
 
@@ -434,7 +434,7 @@ static class ExportTemplateTests
 		var identity = TemplateIdentity();
 		identity.Icon = "handheld";
 		Test.Assert(ExportTemplates.Create(buildDir, outFolder, .ExportFolder, null, null, identity) case .Ok);
-		Test.Assert(BundledIcon(.. scope .()) == TemplateIcons.BuiltInSvg("handheld"));
+		Test.Assert(BundledIcon(.. scope .()) == PlatformIcons.BuiltInSvg("handheld"));
 
 		// An .svg of the maker's own, copied in.
 		let own = "<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"/></svg>";
@@ -453,16 +453,16 @@ static class ExportTemplateTests
 		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, null, null, identity) case .Err(.InvalidArgument));
 		identity.Icon = "/nowhere/at/all.svg";
 		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, null, null, identity) case .Err(.NotFound));
-		Test.Assert(FileExists(PathJoin(installedDir, TemplateIcons.cIconFile, .. scope .())), "the installed bundle stays whole");
+		Test.Assert(FileExists(PathJoin(installedDir, ExportTemplates.cIconFile, .. scope .())), "the installed bundle stays whole");
 
 		// The host template (no bundle icon) and an unreadable icon show the platform's built-in one.
 		let host = scope ExportTemplate();
 		host.Platform.Set("Web");
 		host.IsHost = true;
-		Test.Assert(TemplateIcons.SvgFor(host, .. scope .()) == TemplateIcons.BuiltInSvg("web"));
+		Test.Assert(ExportTemplates.IconSvg(host, .. scope .()) == PlatformIcons.BuiltInSvg("web"));
 		host.Icon.Set("gone.svg");
 		host.Directory.Set(outFolder);
-		Test.Assert(TemplateIcons.SvgFor(host, .. scope .()) == TemplateIcons.BuiltInSvg("web"));
+		Test.Assert(ExportTemplates.IconSvg(host, .. scope .()) == PlatformIcons.BuiltInSvg("web"));
 	}
 
 	/// Installing an id replaces its bundle whole: a sidecar the new build no longer has does
@@ -668,21 +668,6 @@ static class ExportTemplateTests
 		let foreign = scope ExportTemplate();
 		foreign.EngineVersion.Set("9.9.9");
 		Test.Assert(!ExportTemplates.EngineMatches(foreign));
-	}
-
-	[Test]
-	public static void EditorExportSettingsRoundTripsThroughTheStore()
-	{
-		EditorSerializables.RegisterAll();
-		let dir = Scratch("scratch_export_settings", .. scope .());
-		defer RemoveDirectoryRecursive(dir);
-		let fs = scope NativeFileSystem(dir);
-		let store = scope Sedulous.Settings.Settings();
-		store.Section<EditorExportSettings>().TemplatesRoot.Set("/shared/templates");
-		Test.Assert(EditorSettingsStore.Save(fs, store) case .Ok);
-		let loaded = scope Sedulous.Settings.Settings();
-		Test.Assert(EditorSettingsStore.Load(fs, loaded) case .Ok);
-		Test.Assert(loaded.Find<EditorExportSettings>().TemplatesRoot == "/shared/templates");
 	}
 
 	[Test]

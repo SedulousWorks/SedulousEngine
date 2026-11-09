@@ -12,9 +12,9 @@ namespace Sedulous.Editor.App;
 // A modal window of the editor's markup
 // (Data/Editor/Preferences.xml), a tab per category. Appearance holds the look's inputs: the
 // scheme, the accent (one of the editor's or any #rrggbb), the density, less motion and the UI
-// scale, and whether axis views are orthographic; each change of the look shows at once. Export
-// holds the templates' folder, Agent access the MCP host (on, its port, its token), Game preview
-// the sizes the Game tab offers. Shortcuts lists every action with its chord: a click captures the
+// scale, and whether axis views are orthographic; each change of the look shows at once. Agent
+// access holds the MCP host (on, its port, its token), Game preview the sizes the Game tab
+// offers. Shortcuts lists every action with its chord: a click captures the
 // next keys, Reset goes back to the declaration's. Then a tab per category other parts of the
 // editor contribute, its checks applied as they change. Save writes everything into the store (a
 // chord another action holds refused, a port out of range kept as it was, each said in a warning)
@@ -38,9 +38,6 @@ class EditorPreferencesServices
 	/// The MCP section was saved: the host follows it over the open project; unset: nothing
 	/// follows. Owned.
 	public delegate void() McpChanged ~ delete _;
-	/// Asks for a folder with the system's dialog, starting at `from`. TAKES OWNERSHIP of `chosen`,
-	/// called with the folder, or not at all when the user cancels; unset: no Browse. Owned.
-	public delegate void(StringView from, delegate void(StringView folder) chosen) PickFolder ~ delete _;
 	/// Shows a look (the window's SetLook); unset: shown nowhere. Owned.
 	public delegate void(EditorLook look) ShowLook ~ delete _;
 	/// Persists the user's store, false when it could not be written; unset: nothing to write.
@@ -227,15 +224,6 @@ class EditorPreferencesDialog
 		}
 		if (let add = Find<Sedulous.GUI.Button>("pref-preview-add"))
 			add.SetOnClick(new () => { AddPreview("Custom", 1920, 1080); });
-		// The Export tab's folders: Browse fills its field with the folder picked.
-		for (let field in StringView[1]("pref-templates-root"))
-		{
-			if (let browse = Find<Sedulous.GUI.Button>(scope $"{field}-browse"))
-			{
-				let id = new String(field);
-				browse.SetOnClick(new [=id, =this] () => { BrowseFolder(id); } ~ delete id);
-			}
-		}
 		AddContributions();
 		if (let save = Find<Sedulous.GUI.Button>("pref-save"))
 			save.SetOnClick(new () => { Save(); });
@@ -246,22 +234,6 @@ class EditorPreferencesDialog
 			{
 				if (!mSaved && (mServices.ShowLook != null))
 					mServices.ShowLook(mOriginal);
-			});
-	}
-
-	/// Browse beside a folder field: the system's folder dialog, from the folder the field names
-	/// (else what its placeholder says it stands for, unless that is a variable), into the field.
-	/// Save keeps it.
-	public void BrowseFolder(StringView fieldId)
-	{
-		let field = Find<Sedulous.GUI.TextField>(fieldId);
-		if ((field == null) || (mServices.PickFolder == null))
-			return;
-		let from = !field.Text.IsEmpty ? field.Text : field.Placeholder;
-		mServices.PickFolder(from.StartsWith("$") ? default : from, new [=field] (chosen) =>
-			{
-				if (!chosen.IsEmpty)
-					field.Text = chosen;
 			});
 	}
 
@@ -279,13 +251,6 @@ class EditorPreferencesDialog
 		let user = mServices.User;
 		if (let ortho = Find<Sedulous.GUI.CheckBox>("pref-auto-ortho"))
 			ortho.Checked = EditorUiSettings.AutoOrthographicViews(user);
-		if (let root = Find<Sedulous.GUI.TextField>("pref-templates-root"))
-		{
-			let exportSettings = (user != null) ? user.Find<EditorExportSettings>() : null;
-			root.Text = (exportSettings != null) ? exportSettings.TemplatesRoot : "";
-			// Empty, the default is what it takes, so the default is what it shows.
-			root.Placeholder = Sedulous.Editor.Project.ExportTemplates.DefaultRoot(.. scope .());
-		}
 		let mcp = (user != null) ? user.Find<EditorMcpSettings>() : null;
 		if (let enabled = Find<Sedulous.GUI.CheckBox>("pref-mcp-enabled"))
 			enabled.Checked = (mcp != null) && mcp.Enabled;
@@ -301,16 +266,11 @@ class EditorPreferencesDialog
 			check.Box.Checked = (check.Field.Get != null) && check.Field.Get();
 	}
 
-	// Into the store: the templates' folder, the MCP host (the host then follows it), the preview
-	// resolutions. The axis views' check goes with the look.
+	// Into the store: the MCP host (the host then follows it), the preview resolutions. The axis
+	// views' check goes with the look.
 	private void SaveSettings()
 	{
 		let user = mServices.User;
-		if (let root = Find<Sedulous.GUI.TextField>("pref-templates-root"))
-		{
-			user.Section<EditorExportSettings>().TemplatesRoot.Set(root.Text);
-			user.MarkChanged<EditorExportSettings>();
-		}
 		let enabled = Find<Sedulous.GUI.CheckBox>("pref-mcp-enabled");
 		let port = Find<Sedulous.GUI.TextField>("pref-mcp-port");
 		let token = Find<Sedulous.GUI.TextField>("pref-mcp-token");

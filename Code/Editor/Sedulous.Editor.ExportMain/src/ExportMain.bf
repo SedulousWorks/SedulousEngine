@@ -285,7 +285,7 @@ static class ExportMain
 			else if ((args[i] == "--icon") && (i + 1 < args.Count))
 			{
 				identity.Icon = args[++i];
-				if (!identity.Icon.EndsWith(".svg") && TemplateIcons.BuiltInSvg(identity.Icon).IsEmpty)
+				if (!identity.Icon.EndsWith(".svg") && PlatformIcons.BuiltInSvg(identity.Icon).IsEmpty)
 				{
 					Console.Error.WriteLine("unknown icon: {} (desktop, windows, linux, handheld, web, phone, or an .svg file)", args[i]);
 					return Usage();

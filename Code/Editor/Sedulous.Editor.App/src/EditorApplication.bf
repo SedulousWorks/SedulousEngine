@@ -151,9 +151,6 @@ class EditorApplication : IApplication
 	private ExportDialog mExportDialog = null ~ delete _;
 	/// The project mExportDialog edits. Borrowed: compared, never reached.
 	private EditorProject mExportProject = null;
-	/// Edit > Export Templates, made the first time it opens; after the Export dialog its close
-	/// tells, so it goes first.
-	private TemplatesDialog mTemplates = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	/// The MCP tools the project's plugins add through their Tooling parts: attached to each
 	/// project's plugin host by the session, and serving the MCP host's server while it runs.
@@ -625,7 +622,6 @@ class EditorApplication : IApplication
 		exportServices.Lane = mContext.BuildLane;
 		exportServices.Builders = mBuilders;
 		exportServices.BuildService = mBuildService;
-		exportServices.UserSettings = mEditorSettings;
 		exportServices.DataRoot.Set(mConfig.DataRoot);
 		// It stays, its button showing the build in the system's file manager (the old editor's).
 		exportServices.OnExported = new (folder) =>
@@ -928,21 +924,6 @@ class EditorApplication : IApplication
 						return;
 					mMcp.Restart(mSession.Project);
 				};
-			services.PickFolder = new (from, chosen) =>
-				{
-					let dialogs = ShellDialogs();
-					if (dialogs == null)
-					{
-						delete chosen;
-						return;
-					}
-					// The service consumes the callback once it answers.
-					dialogs.ShowOpenFolder(new [=chosen] (paths) =>
-						{
-							if (!paths.IsEmpty)
-								chosen(paths[0]);
-						} ~ delete chosen, from, false, 0);
-				};
 			services.ShowLook = new (look) => { mWindow.SetLook(look); };
 			// Said on the status line, or as an error, as the Sedulous.UI dialog said it.
 			services.Persist = new () =>
@@ -974,47 +955,6 @@ class EditorApplication : IApplication
 
 	/// The shell's native dialogs; null with no shell.
 	private IDialogService ShellDialogs() => ((mHost != null) && (mHost.Shell != null)) ? mHost.Shell.Dialogs : null;
-
-	/// Export Templates over the main window (made the first time), the templates read again;
-	/// `closed` hears when it closes. Nothing with no interface. TAKES OWNERSHIP of `closed`.
-	private void OpenTemplates(delegate void() closed = null)
-	{
-		let root = mWindow.Root;
-		if ((root == null) || (mExport == null))
-		{
-			delete closed;
-			return;
-		}
-		if (mTemplates == null)
-		{
-			let seams = new TemplatesDialogSeams();
-			seams.TemplatesRoot = new (outRoot) => { mExport.TemplatesRoot(outRoot); };
-			seams.Refresh = new (registry) => { mExport.BuildTemplateRegistry(registry); };
-			seams.PickFolder = new (chosen) =>
-				{
-					let dialogs = ShellDialogs();
-					if (dialogs == null)
-					{
-						mContext.Notify(.Error, "File dialogs are unavailable.");
-						chosen(default);
-						delete chosen;
-						return;
-					}
-					// The service consumes the callback once it answers.
-					dialogs.ShowOpenFolder(new [=chosen] (paths) =>
-						{
-							chosen((paths.Length > 0) ? StringView(paths[0]) : default);
-						} ~ delete chosen, "", false, 0);
-				};
-			seams.RevealFolder = new (folder) =>
-				{
-					if (let dialogs = ShellDialogs())
-						dialogs.OpenPath(folder);
-				};
-			mTemplates = new TemplatesDialog(mContext, seams, mWindow.LoadMarkup(TemplatesDialog.cMarkupPath));
-		}
-		mTemplates.Open(root, closed);
-	}
 
 	/// Project > Add Native Code: asks which parts of the game's package to scaffold (those it has
 	/// show checked), then scaffolds them (GamePackage.Scaffold) and says what it did.
@@ -1183,10 +1123,8 @@ class EditorApplication : IApplication
 			DeleteAndNullify!(mExportDialog);
 			mExportProject = project;
 			let seams = new ExportDialogSeams();
-			seams.Refresh = new (registry) => { mExport.BuildTemplateRegistry(registry); };
 			seams.Save = new () => { mExport.SavePresets(); };
 			seams.RunExport = new (preset, all) => { mExport.Run(preset, all); };
-			seams.OpenTemplates = new (closed) => { OpenTemplates(closed); };
 			seams.PickFiles = new (chosen) =>
 				{
 					let dialogs = ShellDialogs();
@@ -1479,7 +1417,6 @@ class EditorApplication : IApplication
 		let edit = new EditActions();
 		edit.Context = mContext;
 		edit.Preferences = new () => { OpenPreferences(); };
-		edit.ExportTemplates = new () => { OpenTemplates(); };
 		EditorAppActions.RegisterEditActions(actions, edit);
 
 		let project = new ProjectActions();
@@ -1833,8 +1770,6 @@ class EditorApplication : IApplication
 		}
 		DeleteAndNullify!(mPreferences); // closed (the look back, unsaved), while the window is there
 		DeleteAndNullify!(mProjectSettings); // closed (the manifest unchanged), while the window is there
-		// Export Templates first: closing it tells the Export dialog under it.
-		DeleteAndNullify!(mTemplates); // closed, while the window is there
 		DeleteAndNullify!(mExportDialog); // closed, while the window and the export are there
 		DeleteAndNullify!(mImportWindow); // closed (its session let go), while the window and the picker are there
 		DeleteAndNullify!(mCreateAsset); // closed (its picking too), while the picker and the window are there

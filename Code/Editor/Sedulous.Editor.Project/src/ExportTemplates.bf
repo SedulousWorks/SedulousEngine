@@ -18,7 +18,7 @@ struct TemplateIdentity
 	public StringView Id;
 	public StringView Name;
 	public StringView Notes;
-	/// A built-in icon's name (TemplateIcons.BuiltInNames: `handheld` for the Steam Deck build)
+	/// A built-in icon's name (PlatformIcons.BuiltInNames: `handheld` for the Steam Deck build)
 	/// or the path of an .svg to carry; empty gives the platform's built-in icon.
 	public StringView Icon;
 	/// Where the packages of the plugins the player links are (an engine checkout's Code/Plugins),
@@ -32,6 +32,24 @@ static class ExportTemplates
 {
 	public const String cManifestFile = "template.xml";
 	public const String cRootEnvironmentVariable = "SEDULOUS_TEMPLATES_DIR";
+	/// The icon's file in a template bundle, the one creating a template writes.
+	public const String cIconFile = "icon.svg";
+
+	/// The SVG a template is shown by: the icon file in its bundle, or (the host template, a
+	/// bundle from before icons, an unreadable file) its platform's built-in icon.
+	public static void IconSvg(ExportTemplate template, String outSvg)
+	{
+		if (!template.Icon.IsEmpty && !template.Directory.IsEmpty)
+		{
+			let bytes = scope List<uint8>();
+			if ((ReadFile(PathJoin(template.Directory, template.Icon, .. scope .()), bytes) case .Ok) && !bytes.IsEmpty)
+			{
+				outSvg.Append((char8*)bytes.Ptr, bytes.Count);
+				return;
+			}
+		}
+		outSvg.Append(PlatformIcons.SvgFor(template.Platform));
+	}
 
 	public static Result<void, ErrorCode> LoadManifest(IFileSystem root, ExportTemplate outTemplate, StringView fileName = cManifestFile)
 	{
@@ -159,7 +177,7 @@ static class ExportTemplates
 		// its maker asked for.
 		let customIcon = identity.Icon.EndsWith(".svg");
 		let builtInIcon = customIcon ? StringView() :
-			TemplateIcons.BuiltInSvg(identity.Icon.IsEmpty ? TemplateIcons.DefaultName(template.Platform) : identity.Icon);
+			PlatformIcons.BuiltInSvg(identity.Icon.IsEmpty ? PlatformIcons.DefaultName(template.Platform) : identity.Icon);
 		if (customIcon && !FileExists(identity.Icon))
 			return .Err(.NotFound);
 		if (!customIcon && builtInIcon.IsEmpty)
@@ -196,9 +214,9 @@ static class ExportTemplates
 		}
 		else
 			iconBytes.AddRange(.((uint8*)builtInIcon.Ptr, builtInIcon.Length));
-		if (WriteFile(PathJoin(bundleDir, TemplateIcons.cIconFile, .. scope .()), iconBytes) case .Err)
+		if (WriteFile(PathJoin(bundleDir, cIconFile, .. scope .()), iconBytes) case .Err)
 			return .Err(.Internal);
-		template.Icon.Set(TemplateIcons.cIconFile);
+		template.Icon.Set(cIconFile);
 		template.Directory.Set(bundleDir);
 		let bundleFs = scope NativeFileSystem(bundleDir);
 		if (SaveManifest(bundleFs, template) case .Err(let error))
