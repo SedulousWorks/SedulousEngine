@@ -18,7 +18,7 @@ namespace Sedulous.Editor.App.Tests;
 /// requested through the cook service and answered not finished until its revision lands; an
 /// import runs the two phase path (worker prepare, main thread placement, the deferred flush
 /// on the job service) and lands its stream; an export cooks first and then runs the export
-/// job, whose failure (no template here) reaches the re-entered call as the tool's error.
+/// job, whose failure (no player built here) reaches the re-entered call as the tool's error.
 /// Every step is pumped the way the editor pumps: the services' Update, then the operation
 /// again.
 class EditorProjectOperationsTests

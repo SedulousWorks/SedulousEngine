@@ -21,10 +21,9 @@ static class EditorSerializables
 		let target = (registry != null) ? registry : GlobalSerializableRegistry;
 		target.Register(ShortcutOverrideEntry.TypeId, () => new ShortcutOverrideEntry());
 		// These moved from Editor.Core to the headless project half (961f2b37); what was
-		// saved before the move (the recent projects, the export presets and roots, the
-		// template manifests) still loads.
+		// saved before the move (the recent projects, the export presets and roots) still loads.
 		for (let name in StringView[?]("RecentProjectsSettings", "RecentProjectEntry", "ExportPresetSet",
-			"ExportPreset", "ExportRootsSet", "ExportTemplate"))
+			"ExportPreset", "ExportRootsSet"))
 		{
 			SerializableRenames.Register(scope $"Sedulous.Editor.Core.{name}", scope $"Sedulous.Editor.Project.{name}");
 		}

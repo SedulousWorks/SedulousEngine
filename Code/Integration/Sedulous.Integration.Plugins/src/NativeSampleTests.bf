@@ -498,7 +498,7 @@ static class NativeSampleTests
 		Test.Assert(ExportPresetsFile.Load(scope NativeFileSystem(source), presets) case .Ok);
 		Test.Assert(presets.Presets.Count == 1);
 		let desktop = presets.Presets[0];
-		Test.Assert((desktop.Platform == "Linux64") && desktop.TemplateId.IsEmpty && (desktop.EffectiveConfig == "Release"));
+		Test.Assert((desktop.Platform == "Linux64") && (desktop.EffectiveConfig == "Release"));
 #if BF_PLATFORM_LINUX
 		let configs = scope List<String>();
 		defer { ClearAndDeleteItems!(configs); }

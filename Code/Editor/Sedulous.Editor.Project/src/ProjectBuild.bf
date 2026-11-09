@@ -968,9 +968,9 @@ static class ProjectBuild
 
 	// ---- builds ----------------------------------------------------------------------------
 
-	/// The build config a preset's template config names: a Release template is a ShippingRelease
-	/// build and a Profile one a Release build (BuildLayout.TemplateConfigFor, inverted); Debug and
-	/// Test are themselves.
+	/// The build config a preset's config names: Release (or none) is the shipping build,
+	/// ShippingRelease, without the profiler; Profile is a Release build, which carries it; Debug
+	/// and Test are themselves.
 	public static void BuildConfigFor(StringView presetConfig, String outConfig)
 	{
 		if (presetConfig.IsEmpty || (presetConfig == "Release"))

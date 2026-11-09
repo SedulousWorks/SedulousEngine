@@ -8,8 +8,8 @@ using Sedulous.Xml.Serialization;
 namespace Sedulous.Editor.Project;
 
 /// One versioned [Serializable] root as an XML file on a mount: the manifest's shape, for
-/// the export presets, the templates and the export roots. A file written under another
-/// data version is refused by the payload envelope rather than guessed at.
+/// the export presets and the export roots. A file written under another data version is
+/// refused by the payload envelope rather than guessed at.
 static class XmlDocumentFile
 {
 	/// NotFound when the file is absent.
