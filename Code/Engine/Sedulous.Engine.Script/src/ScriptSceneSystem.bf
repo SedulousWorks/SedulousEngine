@@ -206,14 +206,15 @@ class ScriptSceneSystem : SceneSystem
 			return;
 		var args = ScriptValue[4](.FromEntity(other, mScene), .FromFloat3(point), .FromFloat3(normal),
 			.FromFloat(speed));
-		EnqueueContact(self, handler, .(&args[0], trigger ? 1 : 4));
+		EnqueueHandler(self, handler, .(&args[0], trigger ? 1 : 4));
 	}
 
-	/// Physics contacts: queues a contact handler call, the name already the final
-	/// `on<Event>` such as "onContactBegin", with its arguments marshalled. The SAME deferred
-	/// queue as Send, so it drains at the tick's top level: the physics tick pushes contacts,
-	/// never nested in a script call, and delivery is gated by HasHandler like a message.
-	public void EnqueueContact(EntityHandle target, StringView handler, Span<ScriptValue> args)
+	/// An engine event's handler call (a physics contact, an animation's one-shot ending): the
+	/// name already the final `on<Event>` such as "onContactBegin", with its arguments
+	/// marshalled. The SAME deferred queue as Send, so it drains at the tick's top level: the
+	/// subsystems push their events from their own ticks, never nested in a script call, and
+	/// delivery is gated by HasHandler like a message.
+	public void EnqueueHandler(EntityHandle target, StringView handler, Span<ScriptValue> args)
 	{
 		if (handler.IsEmpty)
 			return;
@@ -246,7 +247,7 @@ class ScriptSceneSystem : SceneSystem
 		switch (handler)
 		{
 		case cOnStart, cOnUpdate, cOnFixedUpdate, cOnEnable, cOnDisable, cOnDestroy, cOnStop,
-			"onContactBegin", "onContactEnd", "onTriggerEnter", "onTriggerExit":
+			"onContactBegin", "onContactEnd", "onTriggerEnter", "onTriggerExit", "onAnimationFinished":
 			return;
 		default:
 			outEvent.Append(handler.Substring(2));

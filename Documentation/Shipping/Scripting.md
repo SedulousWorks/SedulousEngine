@@ -39,7 +39,8 @@ Handlers dispatch **by presence**: implement only what you need.
   the speed the system reports, a navigation agent's `DesiredVelocity` say. A scene's Level
   script updates before its entities' behaviors.
 - The game: `launch()`, `update(float dt)`, `exit()`.
-- `on<Event>(...)`: named events. Physics contacts arrive as events; any script can send one:
+- `on<Event>(...)`: named events. Physics contacts and an animation's one-shot ending
+  (`onAnimationFinished`) arrive as events; any script can send one:
   `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
   `scene.Scripts.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. A scene's
   event bus IS its run's bus (a game's, or a scene page's Simulate): one bus per run, heard by
@@ -114,6 +115,24 @@ to read it, and `SetForce(entity, force)` for a steady push in newtons: thrust, 
 held, added before every physics step until set again (zero lets go), so it acts the same at any
 frame rate; a push repeated each frame would not. An impulse or a velocity given to a body
 spawned this frame waits for its body to be built.
+
+`scene.Animation` drives what an entity's animator plays, whether a single clip
+(`SkeletalAnimationComponent`) or a state-machine graph (`AnimationGraphComponent`):
+
+- `PlayOneShot(entity, clip)` plays `clip` once over whatever the entity is animating, blending in
+  and out over 0.2 s, whatever the clip's own looping; the entity then carries on with its own
+  animation, by then wherever it has got to (its idle, its graph's state), so there is no clip to
+  return to. `PlayOneShot(entity, clip, speed, blendIn, blendOut, loops)` sets the speed, the
+  blend times and how many more times it plays (`-1`: until stopped). One already playing gives
+  way to a new one without a snap. A one-shot drives the whole body and moves no root: a look laid
+  over the character, not its locomotion; inverse kinematics still applies after it.
+- `StopOneShot(entity)` (or with a blend-out time) blends it out; `IsPlayingOneShot(entity)` is
+  true from the call until it has blended out.
+- When a one-shot ends (played out or stopped), the entity's behaviours get
+  `void onAnimationFinished(Guid clip)` at a later scene tick, as physics contacts arrive.
+- `ClipLength(clip)` is a clip's length in seconds (0 for no clip).
+- `SetClip(entity, clip, blendSeconds)` swaps an animator's clip easing from the pose shown now
+  into the new clip, instead of the snap of `SetClip(entity, clip)`.
 
 `scene.Render.LightAt(position)` answers how much light reaches a place, linear RGB: every
 enabled light by the renderer's own range falloff and spot cone, plus the environment's

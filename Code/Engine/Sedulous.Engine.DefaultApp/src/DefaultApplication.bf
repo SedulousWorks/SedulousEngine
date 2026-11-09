@@ -68,6 +68,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	private AudioSubsystem mAudio = null ~ delete _;
 	private InputSubsystem mInput = null ~ delete _;
 	private PhysicsSubsystem mPhysics = null;
+	/// None without graphics.
+	private AnimationSubsystem mAnimation = null;
 	/// OWNED, like the other REGISTERED subsystems: the context drives one it did not create
 	/// and never frees it.
 	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
@@ -116,6 +118,8 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
 	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
+	/// OWNED: the animation's events (a one-shot ended) to script handlers, likewise.
+	private ScriptAnimationBridge mAnimationBridge = new .() ~ delete _;
 	/// `Save` to scripts outside every run (the editor's Simulate): every fallback read, nothing
 	/// written, rather than a fault on a missing service. On the application's services, since no
 	/// subsystem sits beside RunSave's owner (GameInstance, a run); a run's own comes first.
@@ -373,7 +377,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			host.Subsystems.RegisterSubsystem<RenderSubsystem>(mRender);
 
 			// Drives skeletal animation off the scene tick, and needs the render managers.
-			host.Subsystems.AddSubsystem<AnimationSubsystem>();
+			mAnimation = host.Subsystems.AddSubsystem<AnimationSubsystem>();
 			host.Subsystems.AddSubsystem<ParticleSubsystem>();
 			// The terrain renderer registers itself on the opaque category and wires the
 			// manager scene composition already injected.
@@ -405,6 +409,9 @@ class DefaultApplication : IApplication, ISceneObserver
 		// Physics contacts reach behaviours through the composition root's bridge: neither
 		// subsystem names the other.
 		mContactBridge.Install(mPhysics, scripts);
+		// The same for the animation's events: a one-shot ended reaches onAnimationFinished.
+		if (mAnimation != null)
+			mAnimationBridge.Install(mAnimation, scripts);
 		WireInstanceScripting(mInstance, host);
 
 		// The net subsystem injects the replication managers into every scene so authored
@@ -948,6 +955,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			mInstalledProfiler = false;
 		}
 		mContactBridge.Uninstall();
+		mAnimationBridge.Uninstall();
 		// Every game script's exit() before its scenes go.
 		ForEachInstance(scope (instance) => instance.StopScript());
 		DebugFacade.Renderer = null;

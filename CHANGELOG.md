@@ -9,6 +9,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Scripts: `scene.Animation.PlayOneShot(entity, clip)` plays a clip once over whatever an entity
+  is animating (its clip or its graph), blending in and out, after which it carries on with its
+  own animation; `StopOneShot` and `IsPlayingOneShot`, and `onAnimationFinished(clip)` on the
+  entity's behaviours when it ends. `ClipLength(clip)` gives a clip's length, and
+  `SetClip(entity, clip, blendSeconds)` crossfades instead of snapping.
 - Scripts: `Input.Describe(action)` names the control an action takes on the device in hand
   ("Space", or "Pad South" once a pad is picked up), as a GUI prompt shows it, for a sentence that
   tells the player what to press.
