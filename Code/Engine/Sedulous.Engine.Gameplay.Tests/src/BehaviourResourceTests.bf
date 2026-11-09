@@ -112,6 +112,21 @@ class Depot : Level
 	public Ref<Parcel> Stock = .(Guid());
 }
 
+/// A behaviour naming the scene it leads to.
+[Behaviour("test.exit")]
+class ExitDoor : Behaviour
+{
+	public Sedulous.Scene.Resource.SceneRef Next = .();
+	public Ref<Parcel> Package = .(Guid());
+}
+
+/// A level naming the level after it.
+[Level("test.junction")]
+class Junction : Level
+{
+	public Sedulous.Scene.Resource.SceneRef Onward = .();
+}
+
 /// A behaviour's Ref<T> fields bound as a component's are: by the resolve pass after a load,
 /// and at once for what is read into a scene already resolved. An id that names nothing stays
 /// unresolved, and is kept.
@@ -219,6 +234,42 @@ class BehaviourResourceTests
 			names.AppendF("{}={} ", name, caseValue);
 		Test.Assert(names == "Walk=0 Trot=4 Gallop=9 ", names);
 		Test.Assert(EnumCases.NameOf(typeof(CourierGait), 5, .. scope String()) == "5", "a value no case has is its number");
+	}
+
+	/// A scene a behaviour or a level names (a SceneRef) is saved with it, never bound, and
+	/// reported to a pruned export, which keeps the scene; a Ref<T> beside it is not reported, its
+	/// resolve's to find.
+	[Test]
+	public static void ASceneNamedByABehaviourOrALevelIsKeptAndReportedNotBound()
+	{
+		let fixture = scope ParcelFixture("scratch_behaviour_scene_refs");
+		let parcelId = fixture.Author("parcel", 7);
+		let next = Guid.Create();
+		let onward = Guid.Create();
+
+		let source = scope Scene();
+		let doors = source.AddSystem<BehaviourManager<ExitDoor>>();
+		let door = doors.Add(source.CreateEntity("Door"));
+		door.Next = .(next);
+		door.Package.SetId(parcelId);
+		doors.Add(source.CreateEntity("Wall")); // names no scene
+		source.AddSystem<Junction>().Onward = .(onward);
+
+		let target = scope Scene();
+		let loadedDoors = target.AddSystem<BehaviourManager<ExitDoor>>();
+		let junction = target.AddSystem<Junction>();
+		RoundTrip(source, target);
+		SceneResolve.ResolveSceneResources(target, fixture.Manager);
+		Test.Assert(loadedDoors.Get(target.FindEntityByName("Door")).Next.Id == next, "saved with the behaviour");
+		Test.Assert(junction.Onward.Id == onward, "and with the level");
+		Test.Assert(fixture.Manager.FindHandle(next) == null, "never bound");
+
+		let unbound = scope List<Guid>();
+		loadedDoors.CollectUnboundReferences(unbound);
+		Test.Assert((unbound.Count == 1) && (unbound[0] == next), "the scene alone: no nil, no Ref<T>");
+		unbound.Clear();
+		junction.CollectUnboundReferences(unbound);
+		Test.Assert((unbound.Count == 1) && (unbound[0] == onward));
 	}
 
 	/// A level's Ref<T> fields are bound as a behaviour's are: by the resolve pass, and at once
