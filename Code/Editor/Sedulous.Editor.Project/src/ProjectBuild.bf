@@ -67,7 +67,8 @@ enum BuildEntry
 /// <Game>PlayerWeb and <Game>Tools) in its own workspace, Code/ (the web player in one of its
 /// own, Code/.generated/Web, which nothing desktop-only reaches). Each is a one-line Main over the
 /// stock startup (EditorMain, DesktopPlayerMain, WebPlayerMain; the tools dispatch to McpMain,
-/// CookMain and ExportMain) with the parts its roles load as dependencies, generated under
+/// CookMain and ExportMain) with the parts its roles load as dependencies (the players also the
+/// Engine part of each engine plugin the project enables on their platform), generated under
 /// Code/.generated. They are named without a dot, so no part (<Game> or <Name>.<Kind>) can take
 /// the name.
 ///
@@ -139,10 +140,12 @@ static class ProjectBuild
 	/// emcc under Emscripten's folder (with the host's executable suffix), which BeefBuild links
 	/// wasm32 with.
 	public const String cEmccPath = "upstream/emscripten/emcc";
+	/// The SDK's engine plugins, a package folder each, relative to the SDK root.
+	public const String cSdkPluginsDir = "Code/Plugins";
 	/// The SDK's folders Beef's registry walks for projects, relative to the SDK root. Not the
 	/// whole of Code/: the registry walks every directory under each, and Code/build is huge; and
 	/// not Code/Tools, Integration, Samples or Deprecated, which no game links.
-	public const String[6] cSdkLibraryDirs = .("Code/Foundation", "Code/Engine", "Code/Pipeline", "Code/Editor", "Code/Plugins", "Dependencies");
+	public const String[6] cSdkLibraryDirs = .("Code/Foundation", "Code/Engine", "Code/Pipeline", "Code/Editor", cSdkPluginsDir, "Dependencies");
 
 	/// The engine workspace's workspace-level settings per config and platform (Code/BeefSpace.toml
 	/// less every ConfigSelections line, which name the engine's own projects): the wasm32 heap and
@@ -456,6 +459,42 @@ static class ProjectBuild
 		}
 	}
 
+	/// The Engine parts of the engine plugins the project enables on `platform` (an export
+	/// platform's tag: Linux64, Win64, Web), each <Folder>.Engine once, into `outParts` (the
+	/// caller's): every entry without a path whose package is in the SDK's Code/Plugins (found by
+	/// its manifest's id), enabled there (EnabledPlugin.EnablementOn: not left out of the entry's
+	/// platforms, and supported by the manifest), whose manifest lists an Engine part. An entry in
+	/// no package of the SDK links nothing: the export refuses it before any build.
+	public static void EnginePluginParts(ProjectSettings settings, StringView sdk, StringView platform, List<String> outParts)
+	{
+		let packagesRoot = PathJoin(sdk, cSdkPluginsDir, .. scope .());
+		for (let entry in settings.Plugins)
+		{
+			if (!entry.Path.IsEmpty)
+				continue;
+			let dir = scope String();
+			if (!PluginPackages.FindPackage(packagesRoot, entry.Id, dir))
+				continue;
+			let manifest = scope PluginManifest();
+			if ((PluginManifest.Load(dir, manifest) case .Err) || (entry.EnablementOn(manifest, platform) != .Enabled))
+				continue;
+			bool hasEngine = false;
+			for (let part in manifest.Parts)
+			{
+				if (PluginPartKind.Parse(part.Kind) case .Ok(let kind))
+					hasEngine |= kind == .Engine;
+			}
+			if (!hasEngine)
+				continue;
+			let name = PartName(PathFilename(dir, .. scope .()), false, .Engine, .. scope .());
+			bool listed = false;
+			for (let existing in outParts)
+				listed |= existing == name;
+			if (!listed)
+				outParts.Add(new .(name));
+		}
+	}
+
 	// ---- generation ------------------------------------------------------------------------
 
 	/// Writes what a build of the project needs in Code/: BeefConfig.toml (the registry pointed
@@ -464,8 +503,8 @@ static class ProjectBuild
 	/// (.generated/Web: WebWorkspaceText and its registry file). A file whose content is unchanged
 	/// is left alone, so a build after a generate that changed nothing rebuilds nothing. A project
 	/// with no package of its own gets the same Code/, its entries linking no part: its player is
-	/// the stock one under the game's name. Refused, with why in `outError`, for a problem with a
-	/// package or an SDK it cannot read.
+	/// the stock one under the game's name, with the engine plugins it enables. Refused, with why
+	/// in `outError`, for a problem with a package or an SDK it cannot read.
 	public static Result<void, ErrorCode> Generate(StringView projectDir, ProjectSettings settings, StringView sdk, String outError)
 	{
 		let packages = scope List<ProjectPackage>();
@@ -492,15 +531,26 @@ static class ProjectBuild
 			|| (ReadStockConfigs(sdk, cStockToolsProject, "$(WorkspaceDir)/..", sdk, "", toolsConfigs, outError) case .Err))
 			return .Err(.NotFound);
 
+		// The players link the Engine part of each engine plugin the project enables on their
+		// platform: what an export ships is what is enabled. The editor and the tools link what
+		// their startup libraries do.
+		let none = scope List<String>();
+		let hostPlugins = scope List<String>();
+		defer { ClearAndDeleteItems!(hostPlugins); }
+		let webPlugins = scope List<String>();
+		defer { ClearAndDeleteItems!(webPlugins); }
+		EnginePluginParts(settings, sdk, BuildLayout.HostPlatformName, hostPlugins);
+		EnginePluginParts(settings, sdk, BuildLayout.cWebPlatform, webPlugins);
+
 		let workspace = Directory(projectDir, .. scope .());
 		let generated = PathJoin(workspace, cGeneratedDir, .. scope .());
 		if ((WriteWorkspace(projectDir, game, packages) case .Err)
 			|| (WriteIfChanged(PathJoin(workspace, cConfigFile, .. scope .()), ConfigText(sdk, .. scope .())) case .Err)
 			|| (WriteIgnore(workspace) case .Err)
-			|| (WriteEntry(generated, game, .Editor, packages, editorConfigs) case .Err)
-			|| (WriteEntry(generated, game, .Player, packages, "") case .Err)
-			|| (WriteEntry(generated, game, .PlayerWeb, packages, webConfigs) case .Err)
-			|| (WriteEntry(generated, game, .Tools, packages, toolsConfigs) case .Err)
+			|| (WriteEntry(generated, game, .Editor, packages, none, editorConfigs) case .Err)
+			|| (WriteEntry(generated, game, .Player, packages, hostPlugins, "") case .Err)
+			|| (WriteEntry(generated, game, .PlayerWeb, packages, webPlugins, webConfigs) case .Err)
+			|| (WriteEntry(generated, game, .Tools, packages, none, toolsConfigs) case .Err)
 			|| (WriteWebWorkspace(projectDir, game, packages, sdk) case .Err))
 		{
 			outError.Set(scope $"could not write the project's workspace in '{workspace}'");
@@ -536,10 +586,12 @@ static class ProjectBuild
 	}
 
 	/// An entry's project and Main in .generated/<Game><Suffix>, each written when it changed.
-	private static Result<void> WriteEntry(StringView generated, StringView game, BuildEntry entry, List<ProjectPackage> packages, StringView configs)
+	private static Result<void> WriteEntry(StringView generated, StringView game, BuildEntry entry, List<ProjectPackage> packages,
+		List<String> enginePlugins, StringView configs)
 	{
 		let dir = PathJoin(generated, EntryName(game, entry, .. scope .()), .. scope .());
-		if ((WriteIfChanged(PathJoin(dir, "BeefProj.toml", .. scope .()), ExecutableProject(game, entry, packages, configs, .. scope .())) case .Err)
+		let project = ExecutableProject(game, entry, packages, enginePlugins, configs, .. scope .());
+		if ((WriteIfChanged(PathJoin(dir, "BeefProj.toml", .. scope .()), project) case .Err)
 			|| (WriteIfChanged(PathJoin(dir, "src/Program.bf", .. scope .()), ProgramText(game, entry, .. scope .())) case .Err))
 			return .Err;
 		return .Ok;
@@ -779,9 +831,11 @@ static class ProjectBuild
 		outText.AppendF("\"{}\" = {{Path = \"{}\"}}\n", name, path);
 	}
 
-	/// An executable's project: the stock startup (the tools' three) and every part its roles load.
-	/// The tools are a console application, as the stock ones are.
-	public static void ExecutableProject(StringView game, BuildEntry entry, List<ProjectPackage> packages, StringView configs, String outText)
+	/// An executable's project: the stock startup (the tools' three), every part its roles load,
+	/// and `enginePlugins`, the engine plugins' parts it links (EnginePluginParts). The tools are a
+	/// console application, as the stock ones are.
+	public static void ExecutableProject(StringView game, BuildEntry entry, List<ProjectPackage> packages, List<String> enginePlugins, StringView configs,
+		String outText)
 	{
 		let name = EntryName(game, entry, .. scope .());
 		let targetType = (entry == .Tools) ? "BeefConsoleApplication" : "BeefGUIApplication";
@@ -802,6 +856,8 @@ static class ProjectBuild
 					outText.AppendF("\"{}\" = \"*\"\n", package.PartName(kind, .. scope .()));
 			}
 		}
+		for (let part in enginePlugins)
+			outText.AppendF("\"{}\" = \"*\"\n", part);
 		if (!configs.IsEmpty)
 			outText.AppendF("\n{}", configs);
 	}
