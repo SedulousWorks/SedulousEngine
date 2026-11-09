@@ -24,9 +24,18 @@ static class FileCopy
 		// The bytes alone make a file nothing can run: a player copied into a dist would not
 		// start. What was executable stays so.
 		if (access(src.CStr(), cExecutable) == 0)
-			chmod(dst.CStr(), 493); // 0755
+			MakeExecutable(dst);
 #endif
 		return true;
+	}
+
+	/// Marks the file at `path` executable (0755), as a build marks what it links; nothing on
+	/// Windows, where the name says it.
+	public static void MakeExecutable(StringView path)
+	{
+#if !BF_PLATFORM_WINDOWS
+		chmod(scope String(path).CStr(), 493); // 0755
+#endif
 	}
 
 #if !BF_PLATFORM_WINDOWS
