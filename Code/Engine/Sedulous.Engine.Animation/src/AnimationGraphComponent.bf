@@ -52,6 +52,9 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 	/// The last tick's root motion, runtime only.
 	[Hidden]
 	public RootMotionRuntime RootMotionState = .();
+	/// A one-shot over the graph's pose, runtime only.
+	[Hidden]
+	public OneShotRuntime OneShot = .();
 
 	public this() {}
 

@@ -7,6 +7,9 @@ namespace Sedulous.Animation;
 /// Single clip playback for ONE skeleton instance: the clock, the looping, the events, and
 /// the skinning matrices it all turns into.
 ///
+/// Its PoseOverlay lays one-shots and crossfades over the clip's pose, before the pose
+/// modifiers.
+///
 /// The skeleton and the clip are BORROWED. A skeleton is shared by every instance wearing
 /// it, and a clip by every instance playing it.
 class AnimationPlayer
@@ -28,6 +31,12 @@ class AnimationPlayer
 	/// modifier never compounds on its own last result.
 	private List<BoneTransform> mFinalPoses = new .() ~ delete _;
 	private PoseModifierStack mModifiers = new .() ~ delete _;
+	/// One-shots and crossfades over the clip.
+	private PoseOverlay mOverlay = new .() ~ delete _;
+	/// The palette came from mFinalPoses (an overlay or modifiers).
+	private bool mUsingFinal = false;
+	/// Since the last ConsumeOneShotEnded.
+	private bool mOneShotEnded = false;
 	/// Since the last ConsumeRootMotion.
 	private RootMotionDelta mRootMotion = .();
 	private List<Float4x4> mSkinningMatrices = new .() ~ delete _;
@@ -86,6 +95,26 @@ class AnimationPlayer
 		mMatricesDirty = true;
 	}
 
+	/// Plays `clip` (BORROWED), easing from the pose shown now into it over `seconds` instead
+	/// of snapping (0: Play).
+	public void CrossFadeTo(AnimationClip clip, float seconds)
+	{
+		if ((seconds > 0.0f) && (mCurrentClip != null))
+			mOverlay.FadeFrom(GetFinalPoses(), seconds);
+		Play(clip);
+	}
+
+	/// What plays over the clip: one-shots and crossfades.
+	public PoseOverlay Overlay => mOverlay;
+
+	/// Whether a one-shot ended since the last call. Reading it resets it.
+	public bool ConsumeOneShotEnded()
+	{
+		let ended = mOneShotEnded;
+		mOneShotEnded = false;
+		return ended;
+	}
+
 	public void Stop()
 	{
 		mState = .Stopped;
@@ -128,13 +157,23 @@ class AnimationPlayer
 	/// Advances the clock, fires whatever was crossed, then wraps or stops.
 	public void Update(float deltaTime)
 	{
-		if ((mState != .Playing) || (mCurrentClip == null))
+		let playing = (mState == .Playing) && (mCurrentClip != null);
+		let overlaid = mOverlay.Active;
+		if (!playing && !overlaid)
 			return;
 
 		// This frame's matrices become last frame's BEFORE the clock moves, which is what
 		// makes a motion vector the difference between two drawn frames.
 		for (int i < mSkinningMatrices.Count)
 			mPrevSkinningMatrices[i] = mSkinningMatrices[i];
+
+		if (overlaid)
+		{
+			mOneShotEnded = mOverlay.Update(deltaTime) || mOneShotEnded;
+			mMatricesDirty = true;
+		}
+		if (!playing)
+			return;
 
 		let prevTime = mPrevTime;
 		let startTime = mCurrentTime;
@@ -172,23 +211,27 @@ class AnimationPlayer
 		mMatricesDirty = true;
 	}
 
-	/// Samples the clip when its time moved, runs the pose modifiers over a copy of it, and
-	/// computes the skinning matrices. With modifiers it runs every call: their targets move
-	/// whether or not the clip does. The sampled pose stays as sampled (GetLocalPoses); the
-	/// modified one is GetFinalPoses.
+	/// Samples the clip when its time moved, lays the overlay over a copy of it, runs the pose
+	/// modifiers over that, and computes the skinning matrices. With modifiers or an overlay it
+	/// runs every call: their targets and blends move whether or not the clip does. The sampled
+	/// pose stays as sampled (GetLocalPoses); the shown one is GetFinalPoses.
 	public void Evaluate()
 	{
 		let modifying = !mModifiers.IsEmpty;
-		if (!mMatricesDirty && !modifying)
+		let overlaid = mOverlay.Active;
+		if (!mMatricesDirty && !modifying && !overlaid)
 			return;
 
 		if (mMatricesDirty && (mCurrentClip != null))
 			AnimationSampler.SampleClip(mCurrentClip, mSkeleton, mCurrentTime, mLocalPoses);
 
-		if (modifying)
+		mUsingFinal = modifying || overlaid;
+		if (mUsingFinal)
 		{
 			for (int i < mLocalPoses.Count)
 				mFinalPoses[i] = mLocalPoses[i];
+			// One-shots and crossfades, before the modifiers.
+			mOverlay.Apply(mSkeleton, mFinalPoses);
 			mModifiers.Apply(mSkeleton, mFinalPoses);
 			mSkeleton.ComputeSkinningMatrices(mFinalPoses, mSkinningMatrices);
 		}
@@ -209,9 +252,9 @@ class AnimationPlayer
 	/// The modifiers run between the sample and the palette (inverse kinematics), BORROWED.
 	public PoseModifierStack Modifiers => mModifiers;
 
-	/// The pose the palette was last built from: the sampled pose changed by the modifiers, or
-	/// the sampled pose itself when there are none.
-	public Span<BoneTransform> GetFinalPoses() => mModifiers.IsEmpty ? mLocalPoses : mFinalPoses;
+	/// The pose the palette was last built from: the sampled pose with the overlay laid over it
+	/// and changed by the modifiers, or the sampled pose itself when there are neither.
+	public Span<BoneTransform> GetFinalPoses() => mUsingFinal ? mFinalPoses : mLocalPoses;
 
 	/// The matrices to upload, evaluated first if anything moved.
 	public Span<Float4x4> GetSkinningMatrices()

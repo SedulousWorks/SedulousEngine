@@ -22,6 +22,8 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 {
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
+	/// The one-shots that ended since the last DrainEnded.
+	private List<OneShotEnded> mEnded = new .() ~ delete _;
 
 	public override void OnSceneCreate(Scene scene)
 	{
@@ -109,15 +111,51 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	}
 
 	/// Swaps the clip to the resource with this id, bound through the manager the scene was
-	/// resolved with. The next tick picks it up, and AutoPlay plays it.
-	public void SetClip(EntityHandle entity, Guid id)
+	/// resolved with. The next tick picks it up, and AutoPlay plays it, easing from the pose
+	/// shown now into the new clip over `blendSeconds` (0: at once).
+	public void SetClip(EntityHandle entity, Guid id, float blendSeconds = 0.0f)
 	{
 		let component = Get(entity);
 		if (component == null)
 			return;
 
+		component.ClipFade = Max(0.0f, blendSeconds);
 		component.Clip.SetId(id);
 		component.Clip.Rebind(Resources);
+	}
+
+	// ---- one-shots: a clip once over the entity's clip, blended in and out ----
+
+	/// Asks for `clip` to play over the entity's clip once its clip has loaded. One already
+	/// playing gives way.
+	public void PlayOneShot(EntityHandle entity, Guid clip, OneShotSettings settings)
+	{
+		let component = Get(entity);
+		if (component != null)
+			OneShots.Request(ref component.OneShot, Resources, clip, settings);
+	}
+
+	/// Blends the entity's one-shot out over `blendOut` seconds; it then reports its end.
+	public void StopOneShot(EntityHandle entity, float blendOut)
+	{
+		let component = Get(entity);
+		if (component != null)
+			OneShots.Stop(ref component.OneShot, component.Player?.Overlay, blendOut);
+	}
+
+	/// From the request until the one-shot has blended out.
+	public bool IsPlayingOneShot(EntityHandle entity)
+	{
+		let component = Get(entity);
+		return (component != null) && OneShots.IsPlaying(component.OneShot, component.Player?.Overlay);
+	}
+
+	/// The one-shots that ended since the last call, added to `outEnded` (the animation
+	/// subsystem tells its listeners).
+	public void DrainEnded(List<OneShotEnded> outEnded)
+	{
+		outEnded.AddRange(mEnded);
+		mEnded.Clear();
 	}
 
 	private AnimationPlayer Player(EntityHandle entity)
@@ -186,16 +224,21 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 			component.PlayerClip = clip;
 			if (component.AutoPlay && (clip != null))
 			{
-				component.Player.Play(clip);
-				if (component.StartTime != 0.0f)
+				// A clip changed mid play eases in when asked (SetClip's blend); the first clip,
+				// and the start time, start at once.
+				component.Player.CrossFadeTo(clip, component.ClipFade);
+				if ((component.StartTime != 0.0f) && (component.ClipFade <= 0.0f))
 					component.Player.SetCurrentTime(component.StartTime);
 			}
+			component.ClipFade = 0.0f;
 		}
 
 		component.Player.Speed = component.Speed;
 		if (mScene.SimulationEnabled)
 		{
+			OneShots.Start(ref component.OneShot, component.Player.Overlay);
 			component.Player.Update(deltaTime);
+			OneShots.Ended(ref component.OneShot, component.Player.ConsumeOneShotEnded(), owner, mEnded);
 			RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
 				ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
 		}

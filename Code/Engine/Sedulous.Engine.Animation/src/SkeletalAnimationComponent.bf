@@ -65,6 +65,13 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	/// The last tick's root motion, runtime only.
 	[Hidden]
 	public RootMotionRuntime RootMotionState = .();
+	/// A one-shot over the clip, runtime only.
+	[Hidden]
+	public OneShotRuntime OneShot = .();
+	/// The next clip change eases over this many seconds (the facade's SetClip with a blend),
+	/// runtime only.
+	[Hidden]
+	public float ClipFade = 0.0f;
 
 	public this() {}
 

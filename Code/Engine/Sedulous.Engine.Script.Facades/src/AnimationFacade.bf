@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Animation;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Script;
@@ -27,9 +28,59 @@ class AnimationFacade : SceneFacade
 	public float Time(EntityHandle entity) => Skeletal?.Time(entity) ?? 0.0f;
 	[Scriptable]
 	public void SetTime(EntityHandle entity, float seconds) => Skeletal?.SetTime(entity, seconds);
-	/// The clip by asset id.
+	/// The clip by asset id, easing from the pose shown now into it over `blendSeconds` (0: at
+	/// once).
 	[Scriptable]
-	public void SetClip(EntityHandle entity, Guid clip) => Skeletal?.SetClip(entity, clip);
+	public void SetClip(EntityHandle entity, Guid clip, float blendSeconds = 0.0f) => Skeletal?.SetClip(entity, clip, blendSeconds);
+
+	// ---- one-shots: a clip once over whatever the entity animates (its clip or its graph),
+	// blended in and out, after which it carries on with its own animation; its end reaches the
+	// entity's behaviours as onAnimationFinished(clip) ----
+
+	/// A clip's length in seconds, by asset id: 0 when it is no clip or cannot load.
+	[Scriptable]
+	public float ClipLength(Guid clip)
+	{
+		let resources = Skeletal?.Resources ?? Graphs?.Resources;
+		if ((resources == null) || (clip == Guid.Empty))
+			return 0.0f;
+		// By `as`, not the proxy's cast: an id naming some other asset answers 0.
+		let loaded = resources.Bind<AnimationClip>(clip).Handle?.Product as AnimationClip;
+		return (loaded != null) ? loaded.Duration : 0.0f;
+	}
+
+	/// Plays `clip` once over the entity's animation at `speed`, blending in over `blendIn` and
+	/// out over `blendOut` seconds, and `loops` more times after the first (-1: until stopped).
+	/// One already playing gives way.
+	[Scriptable]
+	public void PlayOneShot(EntityHandle entity, Guid clip, float speed = 1.0f, float blendIn = 0.2f,
+		float blendOut = 0.2f, int32 loops = 0)
+	{
+		let settings = OneShotSettings(speed, blendIn, blendOut, loops);
+		if (Graphs?.Get(entity) != null)
+			Graphs.PlayOneShot(entity, clip, settings);
+		else
+			Skeletal?.PlayOneShot(entity, clip, settings);
+	}
+
+	/// Blends the entity's one-shot out over `blendOut` seconds; it then reports its end.
+	[Scriptable]
+	public void StopOneShot(EntityHandle entity, float blendOut = 0.2f)
+	{
+		if (Graphs?.Get(entity) != null)
+			Graphs.StopOneShot(entity, blendOut);
+		else
+			Skeletal?.StopOneShot(entity, blendOut);
+	}
+
+	/// From the call until the one-shot has blended out.
+	[Scriptable]
+	public bool IsPlayingOneShot(EntityHandle entity)
+	{
+		if (Graphs?.Get(entity) != null)
+			return Graphs.IsPlayingOneShot(entity);
+		return Skeletal?.IsPlayingOneShot(entity) ?? false;
+	}
 
 	/// A graph parameter on the entity's animation graph.
 	[Scriptable]

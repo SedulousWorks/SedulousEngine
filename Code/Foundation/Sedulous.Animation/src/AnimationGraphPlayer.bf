@@ -34,6 +34,10 @@ class AnimationGraphPlayer
 
 	private List<BoneTransform> mFinalPoses = new .() ~ delete _;
 	private PoseModifierStack mModifiers = new .() ~ delete _;
+	/// One-shots over the combined pose.
+	private PoseOverlay mOverlay = new .() ~ delete _;
+	/// Since the last ConsumeOneShotEnded.
+	private bool mOneShotEnded = false;
 	/// The base layer's, since the last ConsumeRootMotion.
 	private RootMotionDelta mRootMotion = .();
 	private List<Float4x4> mSkinningMatrices = new .() ~ delete _;
@@ -181,9 +185,26 @@ class AnimationGraphPlayer
 			parameter.ConsumeTrigger();
 
 		CombineLayers();
-		// The pose modifiers (inverse kinematics) over the combined pose, before the palette.
+		// One-shots and crossfades over the combined pose, then the pose modifiers (inverse
+		// kinematics), before the palette.
+		if (mOverlay.Active)
+		{
+			mOneShotEnded = mOverlay.Update(deltaTime) || mOneShotEnded;
+			mOverlay.Apply(mSkeleton, mFinalPoses);
+		}
 		mModifiers.Apply(mSkeleton, mFinalPoses);
 		mMatricesDirty = true;
+	}
+
+	/// What plays over the graph's pose: one-shots (a wave over whatever state it is in).
+	public PoseOverlay Overlay => mOverlay;
+
+	/// Whether a one-shot ended since the last call. Reading it resets it.
+	public bool ConsumeOneShotEnded()
+	{
+		let ended = mOneShotEnded;
+		mOneShotEnded = false;
+		return ended;
 	}
 
 	/// The modifiers run after the layers combine and before the palette, BORROWED.
@@ -434,7 +455,12 @@ class AnimationGraphPlayer
 	private void CombineLayers()
 	{
 		if (mLayerRuntimes.IsEmpty)
+		{
+			// No layers: the bind pose, each update (an overlay lays over it, and must not
+			// leave its last pose behind).
+			ResetToBind();
 			return;
+		}
 
 		// The base layer WRITES rather than blends: there is nothing underneath it.
 		let baseLayer = mLayerRuntimes[0];

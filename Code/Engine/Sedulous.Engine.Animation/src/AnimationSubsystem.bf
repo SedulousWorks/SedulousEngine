@@ -11,12 +11,30 @@ namespace Sedulous.Engine.Animation;
 /// The application level animation subsystem.
 ///
 /// The managers are scene systems, and the scene's own tick drives them. What this does per
-/// frame is draw the IK components that ask for it (DebugDraw) into each running scene's debug
-/// list, which follows the navigation and physics precedent.
+/// frame is tell its listeners of the one-shots that ended in each running scene, and draw the
+/// IK components that ask for it (DebugDraw) into each running scene's debug list, which
+/// follows the navigation and physics precedent.
 class AnimationSubsystem : Subsystem, ISceneObserver
 {
 	/// The watched scenes, BORROWED.
 	private List<Scene> mScenes = new .() ~ delete _;
+	/// BORROWED: a listener unregisters before it goes.
+	private List<IAnimationListener> mListeners = new .() ~ delete _;
+	/// Scratch: one scene's ended one-shots, drained from its managers.
+	private List<OneShotEnded> mEnded = new .() ~ delete _;
+
+	/// Registering twice is once.
+	public void RegisterListener(IAnimationListener listener)
+	{
+		if ((listener == null) || mListeners.Contains(listener))
+			return;
+		mListeners.Add(listener);
+	}
+
+	public void UnregisterListener(IAnimationListener listener)
+	{
+		mListeners.Remove(listener);
+	}
 
 	public void OnSystemsReady(Scene scene)
 	{
@@ -37,6 +55,8 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 
 	public override void Update(float deltaTime)
 	{
+		// Headless too: before the debug drawing, which needs a renderer.
+		TellOneShotsEnded();
 		if (Manager == null)
 			return;
 		let render = Manager.GetSubsystem<RenderSubsystem>();
@@ -60,6 +80,23 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 				feet?.DrawDebug(draw);
 			}
 		}
+	}
+
+	private void TellOneShotsEnded()
+	{
+		for (let scene in mScenes)
+		{
+			mEnded.Clear();
+			scene.GetSystem<AnimationGraphComponentManager>()?.DrainEnded(mEnded);
+			scene.GetSystem<SkeletalAnimationComponentManager>()?.DrainEnded(mEnded);
+			for (let ended in mEnded)
+			{
+				let event = AnimationOneShotEnded(scene, ended.Entity, ended.Clip);
+				for (let listener in mListeners)
+					listener.OnOneShotEnded(event);
+			}
+		}
+		mEnded.Clear();
 	}
 
 	protected override void OnReady()
