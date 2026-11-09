@@ -163,4 +163,51 @@ class InputKindTests
 		bed.PressPad(.South);
 		Test.Assert(bed.Frame() == .Pointer);
 	}
+
+	/// What `binding` reads as, for the asserts.
+	private static void Describe(Binding? binding, String outName)
+	{
+		if (binding.HasValue)
+			BindingNames.DescribeBinding(binding.Value, outName);
+	}
+
+	[Test]
+	public static void AnActionShowsItsBindingForTheDeviceInHandElseItsFirst()
+	{
+		let runtime = scope ActionRuntime();
+		let map = InputTestMaps.Gameplay(); // Jump: Space, then the pad's south button
+		defer delete map;
+		runtime.SetMap(map);
+		runtime.DisableSet("Menu");
+
+		Test.Assert(ShownBinding.For(runtime, "Jump", "", .Keyboard).HasValue);
+		Test.Assert(Describe(ShownBinding.For(runtime, "Jump", "", .Keyboard), .. scope .()) == "Space");
+		Test.Assert(Describe(ShownBinding.For(runtime, "Jump", "", .Pad), .. scope .()) == "Pad South");
+		// The pointer has no keys of its own: it shows the keyboard's.
+		Test.Assert(Describe(ShownBinding.For(runtime, "Jump", "", .Pointer), .. scope .()) == "Space");
+
+		// An action with no binding of the kind in hand shows its first; an unknown one shows none.
+		runtime.EnableSet("Menu");
+		let confirm = ShownBinding.For(runtime, "Confirm", "", .Pad);
+		Test.Assert(confirm.HasValue);
+		Test.Assert(Describe(confirm, .. scope .()) == "Space");
+		Test.Assert(!ShownBinding.For(runtime, "Fly", "", .Keyboard).HasValue);
+		Test.Assert(!ShownBinding.For(runtime, "", "", .Keyboard).HasValue);
+		Test.Assert(!ShownBinding.For(null, "Jump", "", .Keyboard).HasValue);
+
+		// Named, a set is read whether enabled or not; unnamed, only an enabled set is.
+		runtime.DisableSet("Menu");
+		Test.Assert(!ShownBinding.For(runtime, "Confirm", "", .Keyboard).HasValue);
+		Test.Assert(ShownBinding.For(runtime, "Confirm", "Menu", .Keyboard).HasValue);
+
+		var stick = Binding();
+		stick.Source = .GamepadStick;
+		Test.Assert(ShownBinding.KindOf(stick) == .Pad);
+		var touch = Binding();
+		touch.Source = .TouchButton;
+		Test.Assert(ShownBinding.KindOf(touch) == .Pointer);
+		var mouse = Binding();
+		mouse.Source = .MouseButton;
+		Test.Assert(ShownBinding.KindOf(mouse) == .Keyboard);
+	}
 }

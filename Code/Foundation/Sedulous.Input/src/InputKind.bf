@@ -8,7 +8,8 @@ namespace Sedulous.Input;
 ///
 /// A game shows a button prompt for the device in hand, hides the cursor on a pad and the
 /// focus ring under a mouse. None of that needs a GUI (a prompt in the 3D world), so the
-/// tracker lives here, beside the actions, and a GUI's host passes its kind on.
+/// tracker lives here, beside the actions, and a GUI's host passes its kind on. What to show for
+/// an action on that kind (ShownBinding) lives here too.
 enum InputKind : uint8
 {
 	/// The mouse, or a finger.
@@ -28,6 +29,60 @@ enum InputKind : uint8
 			case .Pointer: return "pointer";
 			}
 		}
+	}
+}
+
+/// The binding to show for an action: what the player presses for it on the device in hand. One
+/// answer for a GUI's prompts and a script's `Input.Describe`, so a sentence names the control a
+/// prompt beside it shows.
+static class ShownBinding
+{
+	/// The kind of input a binding is for: a pad's sources are for the pad, touch is for the
+	/// pointer, and the rest (keys, the mouse) are for the keyboard and the pointer alike.
+	public static InputKind KindOf(Binding binding)
+	{
+		switch (binding.Source)
+		{
+		case .GamepadButton, .GamepadAxis, .GamepadStick: return .Pad;
+		case .TouchButton, .TouchStick: return .Pointer;
+		default: return .Keyboard;
+		}
+	}
+
+	/// The binding to show for `action` in `set` (empty: the highest-priority enabled set that has
+	/// the action), for input of `kind`: the action's first binding of that kind (the keyboard's
+	/// for the pointer, which has no keys of its own), else its first binding, else none.
+	public static Binding? For(ActionRuntime runtime, StringView action, StringView set, InputKind kind)
+	{
+		if ((runtime == null) || action.IsEmpty)
+			return null;
+		InputAction found = null;
+		int32 priority = 0;
+		for (let candidate in runtime.Map.Sets)
+		{
+			if ((set.Length != 0) ? (candidate.Name != set) : !runtime.IsSetEnabled(candidate.Name))
+				continue;
+			if ((found != null) && (candidate.Priority <= priority))
+				continue;
+			for (let a in candidate.Actions)
+			{
+				if (a.Name == action)
+				{
+					found = a;
+					priority = candidate.Priority;
+					break;
+				}
+			}
+		}
+		if ((found == null) || found.Bindings.IsEmpty)
+			return null;
+		let wanted = (kind == .Pad) ? InputKind.Pad : InputKind.Keyboard;
+		for (let binding in found.Bindings)
+		{
+			if (KindOf(binding) == wanted)
+				return binding;
+		}
+		return found.Bindings[0];
 	}
 }
 

@@ -13,10 +13,23 @@ class InputFacade
 {
 	/// BORROWED: the run's runtime.
 	private ActionRuntime mRuntime;
+	/// BORROWED: the input subsystem's input kind, which Describe names the control for; null
+	/// names the keyboard's.
+	private InputKindTracker mInputKinds = null;
+	/// What Describe hands back, until its next call.
+	private String mDescribed = new .() ~ delete _;
 
 	public this(ActionRuntime runtime)
 	{
 		mRuntime = runtime;
+	}
+
+	/// The input kind Describe follows: the input subsystem points its own and each run's at its
+	/// tracker, and clears them as it goes. BORROWED.
+	public InputKindTracker InputKinds
+	{
+		get => mInputKinds;
+		set => mInputKinds = value;
 	}
 
 	/// Held this frame.
@@ -45,6 +58,24 @@ class InputFacade
 	/// Stops every pad's rumble (a run's end stops it too).
 	[Scriptable]
 	public void StopRumble() => mRuntime?.StopRumble();
+
+	/// What the player presses for `action` on the device in hand ("Space", "Pad South"): the
+	/// control a GUI prompt for it shows, for a sentence that names it. Read from the
+	/// highest-priority enabled set with the action, after the player's rebinding; "" when it has
+	/// no binding (or there is no runtime).
+	[Scriptable]
+	public StringView Describe(StringView action) => Describe(action, "");
+	/// The same, for the action in `set`, enabled or not.
+	[Scriptable]
+	public StringView Describe(StringView action, StringView set)
+	{
+		mDescribed.Clear();
+		let kind = (mInputKinds != null) ? mInputKinds.Kind : InputKind.Pointer;
+		let binding = ShownBinding.For(mRuntime, action, set, kind);
+		if (binding.HasValue)
+			BindingNames.DescribeBinding(binding.Value, mDescribed);
+		return mDescribed;
+	}
 
 	// ---- action sets: a menu over gameplay ----
 

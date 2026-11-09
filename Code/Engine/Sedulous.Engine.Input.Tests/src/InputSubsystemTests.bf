@@ -115,4 +115,118 @@ class InputSubsystemTests
 		input.ForEachActionRuntime(scope [&] (runtime) => { order.Add(runtime); });
 		Test.Assert((order.Count == 3) && (order[0] === input.Runtime) && (order[1] === first) && (order[2] === second));
 	}
+
+	/// A map with Jump on Space then the pad's south button, in Gameplay, and Confirm on Space in
+	/// Menu. The CALLER owns it.
+	private static InputMap JumpAndConfirm()
+	{
+		let map = new InputMap();
+		let gameplay = new ActionSet();
+		gameplay.Name.Set("Gameplay");
+		map.Sets.Add(gameplay);
+		let jump = new InputAction();
+		jump.Name.Set("Jump");
+		var space = Binding();
+		space.Source = .Key;
+		space.Code = (uint32)Sedulous.Shell.KeyCode.Space;
+		jump.Bindings.Add(space);
+		var south = Binding();
+		south.Source = .GamepadButton;
+		south.Code = (uint32)Sedulous.Shell.GamepadButton.South;
+		jump.Bindings.Add(south);
+		gameplay.Actions.Add(jump);
+		let menu = new ActionSet();
+		menu.Name.Set("Menu");
+		map.Sets.Add(menu);
+		let confirm = new InputAction();
+		confirm.Name.Set("Confirm");
+		confirm.Bindings.Add(space);
+		menu.Actions.Add(confirm);
+		return map;
+	}
+
+	/// The subsystem tracks the input kind from its active source, before its actions read, and
+	/// offers the tracker on the application's services while it is registered.
+	[Test]
+	public static void TheSubsystemTracksTheInputKindFromItsActiveSource()
+	{
+		let devices = scope PadSource();
+		let input = scope InputSubsystem(null);
+		input.SetSourceProvider(devices);
+		input.Update(1.0f / 60.0f);
+		Test.Assert(input.InputKinds.Kind == .Pointer, "nothing deliberate yet");
+		devices.Gamepad.Pressed = .South;
+		input.Update(1.0f / 60.0f);
+		Test.Assert(input.InputKinds.Kind == .Pad);
+
+		let context = scope SubsystemManager();
+		context.RegisterSubsystem(input);
+		Test.Assert(context.FindService(typeof(InputKindTracker)) === input.InputKinds);
+		context.RemoveSubsystem<InputSubsystem>();
+		Test.Assert(context.FindService(typeof(InputKindTracker)) == null, "gone as it leaves");
+	}
+
+	/// `Input.Describe` names the control for the device in hand, as a prompt shows it: the
+	/// keyboard's under the pointer, the pad's once a pad is picked up, a named set's enabled or
+	/// not, and nothing for an action with no binding or with no runtime.
+	[Test]
+	public static void DescribeNamesTheControlForTheDeviceInHandAsAPromptShowsIt()
+	{
+		let runtime = scope ActionRuntime();
+		let map = JumpAndConfirm();
+		defer delete map;
+		runtime.SetMap(map);
+		runtime.DisableSet("Menu");
+		let kinds = scope InputKindTracker();
+		let facade = scope InputFacade(runtime);
+		Test.Assert(facade.Describe("Jump") == "Space", "no tracker: the keyboard's");
+		facade.InputKinds = kinds;
+		Test.Assert(facade.Describe("Jump") == "Space", "the pointer: the keyboard's");
+		Test.Assert(facade.Describe("Confirm", "Menu") == "Space", "a named set, enabled or not");
+		Test.Assert(facade.Describe("Confirm").IsEmpty, "unnamed, only an enabled set");
+		Test.Assert(facade.Describe("Fly").IsEmpty);
+
+		// A pad picked up: the pad's button.
+		let devices = scope PadSource();
+		devices.Gamepad.Pressed = .South;
+		kinds.Update(devices);
+		Test.Assert(kinds.Kind == .Pad);
+		Test.Assert(facade.Describe("Jump") == "Pad South");
+		// No binding of the pad's: its first.
+		Test.Assert(facade.Describe("Confirm", "Menu") == "Space");
+
+		// The idle one, over no runtime: nothing to name, never a fault.
+		let idle = scope InputFacade(null);
+		idle.InputKinds = kinds;
+		Test.Assert(idle.Describe("Jump").IsEmpty);
+	}
+
+	/// The subsystem points its idle `Input` and every run's (made before it was ready or after)
+	/// at its tracker, and lets them go as it shuts down.
+	[Test]
+	public static void EveryRunsInputFollowsTheSubsystemsInputKind()
+	{
+		// The facades outlive the runs that borrow them, and the runs their registry.
+		let earlyInput = scope InputFacade(null);
+		let lateInput = scope InputFacade(null);
+		let runs = scope RunRegistry();
+		let early = scope TestRun();
+		early.Register<InputFacade>(earlyInput);
+		runs.Add(early);
+		let input = scope InputSubsystem(null);
+		Test.Assert(input.ScriptFacade.InputKinds === input.InputKinds, "its idle one, from the start");
+		let context = scope SubsystemManager();
+		context.RegisterSubsystem(input);
+		context.SetRunManager(runs);
+		context.Startup();
+		Test.Assert(earlyInput.InputKinds === input.InputKinds, "a run made before it was ready");
+
+		let late = scope TestRun();
+		late.Register<InputFacade>(lateInput);
+		runs.Add(late);
+		Test.Assert(lateInput.InputKinds === input.InputKinds, "a run made after");
+
+		context.Shutdown();
+		Test.Assert((earlyInput.InputKinds == null) && (lateInput.InputKinds == null), "let go as it shuts down");
+	}
 }

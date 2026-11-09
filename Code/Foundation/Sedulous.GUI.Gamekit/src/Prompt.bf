@@ -23,18 +23,6 @@ static
 	/// The key a GUI's InputPrompts is found under (GUIContext.GetService).
 	public const String cInputPromptsService = "gamekit.input-prompts";
 
-	/// The kind of input a binding is for: a pad's sources the pad, touch the pointer, the rest
-	/// (keys, the mouse) the keyboard and the pointer alike.
-	public static Sedulous.GUI.InputKind BindingInputKind(Sedulous.Input.Binding binding)
-	{
-		switch (binding.Source)
-		{
-		case .GamepadButton, .GamepadAxis, .GamepadStick: return .Pad;
-		case .TouchButton, .TouchStick: return .Pointer;
-		default: return .Keyboard;
-		}
-	}
-
 	/// A binding as a sheet names it: its label's words, lower case, joined by dashes ("Pad South":
 	/// `pad-south`), appended to `outText`.
 	public static void BindingToken(Sedulous.Input.Binding binding, String outText)
@@ -77,41 +65,27 @@ class InputPrompts
 		gui.SetService(cInputPromptsService, null);
 	}
 
-	/// The binding to show for `action`, in `set` (empty: the highest-priority enabled set that has
-	/// it), for input of `kind`: its first of that kind, else its first, else none. A read a binding
-	/// follows.
+	/// The binding to show for `action`, in `set`, for input of `kind`: Sedulous.Input's
+	/// ShownBinding.For, the one a script's `Input.Describe` names too. A read a binding follows.
 	public Sedulous.Input.Binding? Find(StringView action, StringView set, Sedulous.GUI.InputKind kind)
 	{
 		mChanged.Track();
-		if ((mRuntime == null) || action.IsEmpty)
+		if (mRuntime == null)
 			return null;
-		Sedulous.Input.InputAction found = null;
-		int32 priority = 0;
-		for (let candidate in mRuntime.Map.Sets)
+		return Sedulous.Input.ShownBinding.For(mRuntime, action, set, ToInputKind(kind));
+	}
+
+	/// The GUI's input kind as Sedulous.Input names it (the reverse of GUI.Shell's bridge, which
+	/// passes the tracker's kind to the GUI).
+	public static Sedulous.Input.InputKind ToInputKind(Sedulous.GUI.InputKind kind)
+	{
+		switch (kind)
 		{
-			if ((set.Length != 0) ? (candidate.Name != set) : !mRuntime.IsSetEnabled(candidate.Name))
-				continue;
-			if ((found != null) && (candidate.Priority <= priority))
-				continue;
-			for (let a in candidate.Actions)
-			{
-				if (a.Name == action)
-				{
-					found = a;
-					priority = candidate.Priority;
-					break;
-				}
-			}
+		case .Keyboard: return .Keyboard;
+		case .Pad: return .Pad;
+		case .Pointer: break;
 		}
-		if ((found == null) || found.Bindings.IsEmpty)
-			return null;
-		let wanted = (kind == .Pad) ? Sedulous.GUI.InputKind.Pad : Sedulous.GUI.InputKind.Keyboard;
-		for (let binding in found.Bindings)
-		{
-			if (BindingInputKind(binding) == wanted)
-				return binding;
-		}
-		return found.Bindings[0];
+		return .Pointer;
 	}
 }
 
@@ -194,7 +168,7 @@ class Prompt : Label
 				if (binding.HasValue)
 				{
 					BindingToken(binding.Value, token);
-					kindName.Append(InputKindName(BindingInputKind(binding.Value)));
+					kindName.Append(Sedulous.Input.ShownBinding.KindOf(binding.Value).Name);
 					Sedulous.Input.BindingNames.DescribeBinding(binding.Value, label);
 				}
 				Text = label;

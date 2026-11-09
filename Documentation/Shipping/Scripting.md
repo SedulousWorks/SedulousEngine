@@ -77,6 +77,15 @@ again. What is held across either needs a fresh press, so a held Jump neither co
 that opened nor fires as it closes. `Input.EnableSet(name, enabled)` turns a set on or off
 outside that stack.
 
+Text that tells the player what to press names the control, never the action: an action's name
+("Interact") is the game's word, the control ("F", or "Pad South" once a pad is picked up) is the
+player's, and it changes with their rebinding. On a screen, put a `Prompt` beside the words
+(`<Prompt action="Interact"/><Label text="open the door"/>`): it follows the device in hand by
+itself, and a sheet can draw it as a glyph (`prompt[binding="pad-south"]`). In a sentence a script
+builds, `Input.Describe(action)` (or `Input.Describe(action, set)`) gives the same control's name
+for the device in hand, "" when the action has no binding: `"Hold " + Input.Describe("Interact") +
+": pick the lock"`. Build such a sentence when it is shown, not once, so it follows a pad picked up.
+
 `Audio` plays a clip or a cue by its asset id (`Audio.PlayOneShot(id)`, `PlayCue`, `PlayMusic`),
 or by its content path as the project names it: `Audio.PlayOneShotPath("Audio/Jump")`,
 `PlayOneShot3DPath(path, position)`, `PlayCuePath(path)`, `PlayMusicPath(path, fadeSeconds)`. A

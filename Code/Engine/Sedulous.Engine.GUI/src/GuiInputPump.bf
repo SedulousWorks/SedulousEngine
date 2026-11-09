@@ -14,7 +14,8 @@ namespace Sedulous.Engine.GUI;
 /// camera); else the screen tier while it holds a screen; else the first scene root with content.
 /// A press stays with its root until every button is up. Which scenes input may reach follows the
 /// input subsystem's binding. The action layer is told what the GUI took, added to what an
-/// earlier pump in the lane claims; the input kind is tracked from the same source.
+/// earlier pump in the lane claims. The input kind is the input subsystem's, tracked from the same
+/// source.
 ///
 /// It reads the SAME device facades the action layer evaluates, so the player's window
 /// coordinates and an editor viewport's content coordinates both arrive in the right space.
@@ -37,16 +38,31 @@ extension GuiSubsystem
 	public SceneRoot ActiveInputRoot => mActiveRoot;
 	/// Whether the GUI took the pointer this frame (what the action layer was told).
 	public bool PointerOverGui => mPointerTaken;
-	/// The input kind, from the active source each frame (the pointer, the keys, a pad). The
-	/// subsystem's.
-	public Sedulous.Input.InputKindTracker InputKindTracker => mInputKind;
+	/// The kind of input in use (the pointer, the keys, a pad), as the input subsystem tracks it;
+	/// null before it is found, or with none.
+	private Sedulous.Input.InputKindTracker InputKinds => (mInput != null) ? mInput.InputKinds : null;
+
+	/// Points every bridge at InputKinds: the ones made before the input subsystem was found (the
+	/// shared tier's, at init), and none once it is gone.
+	private void PointBridgesAtInputKinds()
+	{
+		let kinds = InputKinds;
+		if (mScreen.Bridge != null)
+			mScreen.Bridge.SetInputKindTracker(kinds);
+		for (let tier in mRunTiers)
+			tier.Bridge?.SetInputKindTracker(kinds);
+		for (let tier in mSceneTiers)
+			tier.Bridge?.SetInputKindTracker(kinds);
+		for (let texture in mTextureRoots)
+			texture.Bridge?.SetInputKindTracker(kinds);
+	}
 
 	/// A bridge into `root`'s dispatcher, passing the tracker's kind on and the platform's text
 	/// input following its focus. The CALLER owns it.
 	private GuiInputBridge MakeBridge(SceneRoot root)
 	{
 		let bridge = new GuiInputBridge(root.EventDispatcher);
-		bridge.SetInputKindTracker(mInputKind); // the pointer, the keys or a pad (K2b)
+		bridge.SetInputKindTracker(InputKinds); // the pointer, the keys or a pad
 		bridge.SetTextInputTarget(mTextInputTarget);
 		return bridge;
 	}
@@ -200,7 +216,6 @@ extension GuiSubsystem
 		if ((mInput == null) || (mScreen.Root == null))
 			return;
 		let devices = mInput.ActiveSource;
-		mInputKind.Update(devices);
 		let mouse = devices.Mouse;
 		let touch = devices.Touch;
 		let fingers = (touch != null) && (touch.TouchCount > 0);

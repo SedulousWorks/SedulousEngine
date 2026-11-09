@@ -212,14 +212,14 @@ class PromptTests
 		let token = scope String();
 		BindingToken(mouse, token);
 		Test.Assert(token == "mouse-left");
-		Test.Assert(BindingInputKind(mouse) == .Keyboard);
+		Test.Assert(Sedulous.Input.ShownBinding.KindOf(mouse) == .Keyboard);
 
 		Sedulous.Input.Binding touch = .();
 		touch.Source = .TouchButton;
-		Test.Assert(BindingInputKind(touch) == .Pointer);
+		Test.Assert(Sedulous.Input.ShownBinding.KindOf(touch) == .Pointer);
 		Sedulous.Input.Binding stick = .();
 		stick.Source = .GamepadStick;
-		Test.Assert(BindingInputKind(stick) == .Pad);
+		Test.Assert(Sedulous.Input.ShownBinding.KindOf(stick) == .Pad);
 		token.Clear();
 		BindingToken(stick, token);
 		Test.Assert(token == "left-stick");

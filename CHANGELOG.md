@@ -9,6 +9,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Scripts: `Input.Describe(action)` names the control an action takes on the device in hand
+  ("Space", or "Pad South" once a pad is picked up), as a GUI prompt shows it, for a sentence that
+  tells the player what to press.
 - Scripts: `Component::addTo(entity)` and `Component::removeFrom(entity)` beside
   `Component::of`, on every component a script reaches.
 

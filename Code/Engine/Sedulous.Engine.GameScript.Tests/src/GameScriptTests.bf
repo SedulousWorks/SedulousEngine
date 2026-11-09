@@ -601,6 +601,67 @@ static class GameScriptTests
 		Test.Assert(input.IsSetEnabled("Gameplay"));
 	}
 
+	/// A script names the control an action takes on the device in hand, as a prompt shows it:
+	/// the keyboard's until a pad is picked up, then the pad's; a named set's; nothing for an
+	/// action with no binding.
+	[Test]
+	public static void AScriptNamesTheControlAnActionTakesForTheDeviceInHand()
+	{
+		const String cHint = """
+			class Game
+			{
+				string shown;
+				string inMenu;
+				string unbound;
+				void launch() {}
+				void update(float dt)
+				{
+					shown = "Hold " + Input.Describe("Jump") + ": talk";
+					inMenu = Input.Describe("Confirm", "Menu");
+					unbound = Input.Describe("Fly");
+				}
+			}
+			""";
+		let run = scope GameRun("scratch_game_describe");
+		let map = scope Sedulous.Input.InputMap();
+		Sedulous.Input.Binding space = .();
+		space.Source = .Key;
+		space.Code = (uint32)Sedulous.Shell.KeyCode.Space;
+		Sedulous.Input.Binding south = .();
+		south.Source = .GamepadButton;
+		south.Code = (uint32)Sedulous.Shell.GamepadButton.South;
+		for (let name in StringView[?]("Gameplay", "Menu"))
+		{
+			let set = new Sedulous.Input.ActionSet();
+			set.Name.Set(name);
+			let action = new Sedulous.Input.InputAction();
+			action.Name.Set((name == "Gameplay") ? "Jump" : "Confirm");
+			action.Bindings.Add(space);
+			if (name == "Gameplay")
+				action.Bindings.Add(south);
+			set.Actions.Add(action);
+			map.Sets.Add(set);
+		}
+		run.Instance.SetInputMap(map);
+		run.Instance.InputRuntime.DisableSet("Menu");
+		// What the input subsystem does for a run it hears of: its `Input` follows its tracker.
+		let kinds = scope Sedulous.Input.InputKindTracker();
+		run.Instance.[Friend]mInputFacade.InputKinds = kinds;
+		defer { run.Instance.[Friend]mInputFacade.InputKinds = null; }
+		Test.Assert(run.Instance.StartScript(run.Class("Game", cHint)));
+
+		run.Step();
+		Test.Assert(run.Prop("shown").AsString == "Hold Space: talk", scope $"{run.Prop("shown").AsString}");
+		Test.Assert(run.Prop("inMenu").AsString == "Space", "a named set, enabled or not");
+		Test.Assert(run.Prop("unbound").AsString.IsEmpty);
+
+		// A pad picked up: the sentence, built as it is shown, names the pad's button.
+		kinds.SetKind(.Pad);
+		run.Step();
+		Test.Assert(run.Prop("shown").AsString == "Hold Pad South: talk", scope $"{run.Prop("shown").AsString}");
+		run.Instance.StopScript();
+	}
+
 	/// Each run counts itself and keeps a best time; the second sees the first's values. The
 	/// first never flushes: the run writes what changed as it stops.
 	[Test]

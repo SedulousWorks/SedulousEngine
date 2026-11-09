@@ -12,7 +12,7 @@ namespace Sedulous.Engine.Input;
 /// The provider seam is the play in editor story. The player hands over the shell's devices;
 /// an editor's game tab hands over its viewport's gated facades, so an unfocused viewport
 /// forwards nothing and the same map evaluates either way.
-class InputSubsystem : Subsystem
+class InputSubsystem : Subsystem, IRunListener
 {
 	private ShellInputSource mShellSource ~ delete _;
 	/// BORROWED: whoever installed it owns it, and clears it before it goes.
@@ -21,6 +21,12 @@ class InputSubsystem : Subsystem
 	private void* mBoundSceneKey = null;
 	private UnboundInputScenePolicy mUnboundScenePolicy = .AllScenes;
 	private ActionRuntime mRuntime = new .() ~ delete _;
+	/// The kind of input in use (the pointer, the keyboard or a pad), from the active source each
+	/// frame: the one the GUI's prompts and a script's `Input.Describe` follow.
+	private InputKindTracker mInputKinds = new .() ~ delete _;
+	/// BORROWED: the runs whose `Input` names controls by this subsystem's input kind, from OnReady
+	/// to OnShutdown.
+	private IRunManager mRunManager = null;
 	/// `Input` to scripts outside every run (the editor's Simulate), on the application's services:
 	/// every action released and at rest rather than a fault on a missing service. A run's own (a
 	/// GameInstance's, over its action runtime) comes first for its scripts. OWNED.
@@ -33,9 +39,12 @@ class InputSubsystem : Subsystem
 	public this(IInputManager input)
 	{
 		mShellSource = new ShellInputSource(input);
+		mScriptFacade.InputKinds = mInputKinds;
 	}
 
 	public ActionRuntime Runtime => mRuntime;
+	/// The kind of input in use, from the active source's devices each frame.
+	public InputKindTracker InputKinds => mInputKinds;
 	/// The idle `Input` offered on the application's services.
 	public InputFacade ScriptFacade => mScriptFacade;
 
@@ -43,13 +52,51 @@ class InputSubsystem : Subsystem
 	{
 		base.OnRegister(manager);
 		manager.RegisterService(mScriptFacade);
+		manager.RegisterService(mInputKinds);
 	}
 
 	public override void OnUnregister()
 	{
 		if (Manager != null)
+		{
 			Manager.UnregisterService<InputFacade>();
+			Manager.UnregisterService<InputKindTracker>();
+		}
 		base.OnUnregister();
+	}
+
+	protected override void OnReady()
+	{
+		if (Manager == null)
+			return;
+		mRunManager = Manager.RunManager;
+		if (mRunManager != null)
+		{
+			mRunManager.Subscribe(this);
+			// The runs made before this was ready name their controls by it too.
+			mRunManager.ForEachRun(scope (run) => { PointRunInput(run, mInputKinds); });
+		}
+	}
+
+	protected override void OnShutdown()
+	{
+		if (mRunManager != null)
+		{
+			// The runs still alive let go of the tracker, which goes with this subsystem.
+			mRunManager.ForEachRun(scope (run) => { PointRunInput(run, null); });
+			mRunManager.Unsubscribe(this);
+			mRunManager = null;
+		}
+	}
+
+	// IRunListener: a run's `Input` names its controls by the input kind tracked here.
+	public void OnRunCreated(IRun run) => PointRunInput(run, mInputKinds);
+
+	/// Points `run`'s own `Input` (a game instance's) at `kinds`; null: none.
+	private static void PointRunInput(IRun run, InputKindTracker kinds)
+	{
+		if (let facade = RunServices.Get<InputFacade>(run))
+			facade.InputKinds = kinds;
 	}
 
 	/// This subsystem's runtime, then each run's (the player's, the editor's Game tabs': the
@@ -126,6 +173,8 @@ class InputSubsystem : Subsystem
 		if (Manager != null)
 			mRuntime.SetTimeScale(Manager.TimeScale);
 
-		mRuntime.Update(ActiveSource, deltaTime);
+		let devices = ActiveSource;
+		mInputKinds.Update(devices);
+		mRuntime.Update(devices, deltaTime);
 	}
 }

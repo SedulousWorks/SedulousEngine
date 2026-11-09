@@ -122,8 +122,6 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	/// The runtime the prompts read now, and its bindings' version they last saw.
 	private ActionRuntime mPromptsRead = null;
 	private uint64 mPromptsVersion = 0;
-	/// The input kind, from the active source each frame; every bridge borrows it.
-	private Sedulous.Input.InputKindTracker mInputKind = new .() ~ delete _;
 	/// BORROWED: the window whose platform text input follows the GUI's focus; null leaves it alone.
 	private Sedulous.Shell.IWindow mTextInputTarget = null;
 	/// The root input went to last, and the root a held press began in: BORROWED, each forgotten
@@ -615,6 +613,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		if (Manager == null)
 			return;
 		mInput = Manager.GetSubsystem<InputSubsystem>();
+		PointBridgesAtInputKinds(); // the shared tier's was made before the input was found
 		mPrompts.Install(mContext); // every prompt in the game's GUI names its bindings through it
 		SyncPrompts();
 		if (let scenes = Manager.GetSubsystem<SceneSubsystem>())
@@ -664,6 +663,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		mPrompts.SetRuntime(null);
 		mPromptsRead = null;
 		mInput = null;
+		PointBridgesAtInputKinds(); // none: the tracker goes with the input subsystem
 		DropTiers();
 		mResources.SetTextureSink(null);
 		mContext.PictureBaker = null;

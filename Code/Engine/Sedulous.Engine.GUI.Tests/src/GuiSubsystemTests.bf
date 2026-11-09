@@ -604,6 +604,39 @@ class GuiSubsystemTests
 		engine.Frame();
 	}
 
+	/// The prompts follow the input subsystem's input kind, the one a script's `Input.Describe`
+	/// reads: the GUI keeps no tracker of its own, and its shared tier's bridge, made before the
+	/// input subsystem was found, reads it too.
+	[Test]
+	public static void APromptFollowsTheInputSubsystemsKindOfInputTheOneAScriptsDescribeReads()
+	{
+		let engine = scope GuiTestEngine();
+		let map = MapWith(.E);
+		defer delete map;
+		Sedulous.Input.Binding pad = .();
+		pad.Source = .GamepadButton;
+		pad.Code = (uint32)Sedulous.Shell.GamepadButton.South;
+		map.Sets[0].Actions[0].Bindings.Add(pad);
+		engine.Input.SetMap(map);
+		let prompt = new Sedulous.GUI.Prompt();
+		defer prompt.ReleaseRef();
+		prompt.ActionName = "Deliver";
+		engine.Gui.ScreenRoot.AddChild(prompt);
+		engine.Frame();
+		engine.Gui.ScreenRoot.UpdateLayout();
+		Test.Assert(prompt.Text == "E", scope $"{prompt.Text}"); // the pointer: the keyboard's control
+
+		// A pad picked up, as the input subsystem tracks it.
+		engine.Input.InputKinds.SetKind(.Pad);
+		engine.Frame();
+		engine.Gui.ScreenRoot.UpdateLayout();
+		Test.Assert(prompt.Text == "Pad South", scope $"{prompt.Text}");
+		engine.Input.InputKinds.SetKind(.Keyboard);
+		engine.Frame();
+		engine.Gui.ScreenRoot.UpdateLayout();
+		Test.Assert(prompt.Text == "E", scope $"{prompt.Text}");
+	}
+
 	[Test]
 	public static void TheDefaultLoadingScreenIsTheLogoOverABarAndLoadingOnTheOverlayLayerItsBarThePlayersToDrive()
 	{
