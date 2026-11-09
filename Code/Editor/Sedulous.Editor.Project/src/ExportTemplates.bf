@@ -180,10 +180,10 @@ static class ExportTemplates
 		}
 		if (!CreateDirectory(bundleDir))
 			return .Err(.NotSupported);
-		if (!CopyFile(playerDir, template.PlayerBinary, bundleDir, template.PlayerBinary))
+		if (!FileCopy.CopyFile(playerDir, template.PlayerBinary, bundleDir, template.PlayerBinary))
 			return .Err(.Internal);
 		for (let sidecar in template.Sidecars)
-			if (!CopyFile(playerDir, sidecar, bundleDir, sidecar))
+			if (!FileCopy.CopyFile(playerDir, sidecar, bundleDir, sidecar))
 				return .Err(.Internal);
 		if (CarryPluginFiles(template, identity.PluginsRoot.IsEmpty ? StringView(template.PackagesRoot) : identity.PluginsRoot, bundleDir) case .Err(let carried))
 			return .Err(carried);
@@ -290,31 +290,6 @@ static class ExportTemplates
 			outRoot.Set(root);
 	}
 
-	/// The package folder under `packagesRoot` whose Plugin.xml is plugin `id`'s.
-	public static bool FindPackage(StringView packagesRoot, StringView id, String outDir)
-	{
-		if (packagesRoot.IsEmpty)
-			return false;
-		let names = scope List<String>();
-		defer { ClearAndDeleteItems!(names); }
-		ListDirectory(packagesRoot, scope [&](name, isDirectory) =>
-			{
-				if (isDirectory)
-					names.Add(new .(name));
-			});
-		for (let name in names)
-		{
-			let dir = PathJoin(packagesRoot, name, .. scope .());
-			let manifest = scope PluginManifest();
-			if ((PluginManifest.Load(dir, manifest) case .Ok) && (manifest.Id == id))
-			{
-				outDir.Set(dir);
-				return true;
-			}
-		}
-		return false;
-	}
-
 	/// Copies each of `template`'s plugins' Plugin.xml and its deploy files for the template's
 	/// platform from its package under `packagesRoot` into `bundleDir`/plugins/<id>/, so an export
 	/// has them with no engine checkout. A plugin with no package there is warned about and carries
@@ -324,7 +299,7 @@ static class ExportTemplates
 		for (let plugin in template.Plugins)
 		{
 			let package = scope String();
-			if (!FindPackage(packagesRoot, plugin.Id, package))
+			if (!PluginPackages.FindPackage(packagesRoot, plugin.Id, package))
 			{
 				GlobalLog(.Warning, "Template: the player links plugin '{}', whose package is not under '{}': its files are not carried", plugin.Id, packagesRoot);
 				continue;
@@ -332,7 +307,7 @@ static class ExportTemplates
 			let into = PathJoin(PathJoin(bundleDir, cPluginsDir, .. scope .()), plugin.Id, .. scope .());
 			CreateDirectory(PathJoin(bundleDir, cPluginsDir, .. scope .()));
 			CreateDirectory(into);
-			if (!CopyFile(package, PluginManifest.cFileName, into, PluginManifest.cFileName))
+			if (!FileCopy.CopyFile(package, PluginManifest.cFileName, into, PluginManifest.cFileName))
 				return .Err(.Internal);
 			let manifest = scope PluginManifest();
 			if (PluginManifest.Load(package, manifest) case .Err)
@@ -341,7 +316,7 @@ static class ExportTemplates
 			{
 				for (let file in platform.Deploy)
 				{
-					if (!CopyFile(package, file, into, file))
+					if (!FileCopy.CopyFile(package, file, into, file))
 					{
 						GlobalLog(.Error, "Template: plugin '{}' deploys '{}' on {}, which its package lacks", plugin.Id, file, template.Platform);
 						return .Err(.NotFound);
@@ -365,7 +340,7 @@ static class ExportTemplates
 		// re-imported from where it is installed.
 		if (DirectoryExists(dst) && !SameDirectory(srcDir, dst))
 			RemoveDirectoryRecursive(dst);
-		if (!CopyTree(srcDir, dst))
+		if (!FileCopy.CopyTree(srcDir, dst))
 			return .Err(.Internal);
 		if (outId != null)
 			outId.Set(manifest.Id);
@@ -392,54 +367,5 @@ static class ExportTemplates
 		if (!DirectoryExists(dir))
 			return .Err(.NotFound);
 		return RemoveDirectoryRecursive(dir) ? .Ok : .Err(.Internal);
-	}
-
-	/// A file copied between directories; the caller's names.
-	public static bool CopyFile(StringView srcDir, StringView srcName, StringView dstDir, StringView dstName)
-	{
-		let src = PathJoin(srcDir, srcName, .. scope .());
-		let bytes = scope List<uint8>();
-		if (ReadFile(src, bytes) case .Err)
-			return false;
-		let dst = PathJoin(dstDir, dstName, .. scope .());
-		CreateDirectory(PathParent(dst, .. scope .()));
-		if (WriteFile(dst, bytes) case .Err)
-			return false;
-#if !BF_PLATFORM_WINDOWS
-		// The bytes alone make a file nothing can run: a player copied into a template, and
-		// from there into a dist, would not start. What was executable stays so.
-		if (access(src.CStr(), cExecutable) == 0)
-			chmod(dst.CStr(), 493); // 0755
-#endif
-		return true;
-	}
-
-#if !BF_PLATFORM_WINDOWS
-	private const int32 cExecutable = 1; // X_OK
-
-	[CLink]
-	private static extern int32 access(char8* path, int32 mode);
-
-	[CLink]
-	private static extern int32 chmod(char8* path, uint32 mode);
-#endif
-
-	/// A directory tree copied, files overwritten.
-	public static bool CopyTree(StringView src, StringView dst)
-	{
-		if (!CreateDirectory(dst))
-			return false;
-		bool ok = true;
-		let names = scope List<(String name, bool isDirectory)>();
-		ListDirectory(src, scope [&](name, isDirectory) => { names.Add((new String(name), isDirectory)); });
-		for (let entry in names)
-		{
-			if (entry.isDirectory)
-				ok = CopyTree(PathJoin(src, entry.name, .. scope .()), PathJoin(dst, entry.name, .. scope .())) && ok;
-			else
-				ok = CopyFile(src, entry.name, dst, entry.name) && ok;
-			delete entry.name;
-		}
-		return ok;
 	}
 }

@@ -625,13 +625,13 @@ static class ExportDriver
 		let outName = ExportStaging.PlayerOutputName(preset.Platform, preset.PlayerName, template.PlayerBinary, .. scope .());
 		if (!ownPlayer.IsEmpty)
 		{
-			if (!ExportTemplates.CopyFile(PathParent(ownPlayer, .. scope .()), PathFilename(ownPlayer, .. scope .()), result.OutputDir, outName))
+			if (!FileCopy.CopyFile(PathParent(ownPlayer, .. scope .()), PathFilename(ownPlayer, .. scope .()), result.OutputDir, outName))
 			{
 				GlobalLog(.Error, "Export: failed to stage the project's own player '{}'", ownPlayer);
 				return .Err(.Internal);
 			}
 		}
-		else if (!ExportTemplates.CopyFile(template.Directory, template.PlayerBinary, result.OutputDir, outName))
+		else if (!FileCopy.CopyFile(template.Directory, template.PlayerBinary, result.OutputDir, outName))
 		{
 			GlobalLog(.Error, "Export: failed to stage player '{}' from {}", template.PlayerBinary, template.Id);
 			return .Err(.Internal);
@@ -657,7 +657,7 @@ static class ExportDriver
 				GlobalLog(.Information, "Export: omitting DXC sidecar '{}' (dist renders from the cooked shader pack)", sidecar);
 				continue;
 			}
-			if (ExportTemplates.CopyFile(template.Directory, sidecar, result.OutputDir, sidecar))
+			if (FileCopy.CopyFile(template.Directory, sidecar, result.OutputDir, sidecar))
 				result.FilesStaged++;
 			else
 				GlobalLog(.Warning, "Export: sidecar '{}' not found in template '{}'", sidecar, template.Id);
@@ -666,7 +666,7 @@ static class ExportDriver
 		{
 			for (let symbol in template.Symbols)
 			{
-				if (ExportTemplates.CopyFile(template.Directory, symbol, result.OutputDir, symbol))
+				if (FileCopy.CopyFile(template.Directory, symbol, result.OutputDir, symbol))
 					result.FilesStaged++;
 				else
 					GlobalLog(.Warning, "Export: symbol file '{}' not found in template '{}'", symbol, template.Id);
@@ -674,7 +674,7 @@ static class ExportDriver
 		}
 		for (let extra in preset.AdditionalFiles)
 		{
-			if (ExportTemplates.CopyFile(project.Directory, extra, result.OutputDir, PathFilename(extra, .. scope .())))
+			if (FileCopy.CopyFile(project.Directory, extra, result.OutputDir, PathFilename(extra, .. scope .())))
 				result.FilesStaged++;
 			else
 				GlobalLog(.Warning, "Export: additional file '{}' not found", extra);

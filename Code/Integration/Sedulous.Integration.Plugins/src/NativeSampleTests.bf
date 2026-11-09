@@ -527,12 +527,12 @@ static class NativeSampleTests
 		defer RemoveDirectoryRecursive(dir);
 		// Its sources and package alone: a local build's output stays behind.
 		Test.Assert(CreateDirectory(dir));
-		Test.Assert(ExportTemplates.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
-		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
+		Test.Assert(FileCopy.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
+		Test.Assert(FileCopy.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
 		// The package is its Code/ folder; its manifest alone, as a build's output stays behind.
 		let codeFrom = PathJoin(source, ProjectLayout.CodeDir, .. scope .());
 		let codeTo = PathJoin(dir, ProjectLayout.CodeDir, .. scope .());
-		Test.Assert(CreateDirectory(codeTo) && ExportTemplates.CopyFile(codeFrom, "Plugin.xml", codeTo, "Plugin.xml"));
+		Test.Assert(CreateDirectory(codeTo) && FileCopy.CopyFile(codeFrom, "Plugin.xml", codeTo, "Plugin.xml"));
 
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
@@ -610,8 +610,8 @@ static class NativeSampleTests
 		defer RemoveDirectoryRecursive(dir);
 		// Its manifest and content alone, so nothing writes into the tracked tree.
 		Test.Assert(CreateDirectory(dir));
-		Test.Assert(ExportTemplates.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
-		Test.Assert(ExportTemplates.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
+		Test.Assert(FileCopy.CopyFile(source, ProjectLayout.ManifestFile, dir, ProjectLayout.ManifestFile));
+		Test.Assert(FileCopy.CopyTree(PathJoin(source, ProjectLayout.ContentDir, .. scope .()), PathJoin(dir, ProjectLayout.ContentDir, .. scope .())));
 		let project = EditorProject.Open(dir);
 		Test.Assert(project != null);
 		defer delete project;

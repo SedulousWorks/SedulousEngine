@@ -50,7 +50,7 @@ static class ExportPlugins
 		}
 		if (template.IsHost)
 		{
-			ExportTemplates.FindPackage(template.PackagesRoot, entry.Id, outDir);
+			PluginPackages.FindPackage(template.PackagesRoot, entry.Id, outDir);
 			return;
 		}
 		let carried = PathJoin(PathJoin(template.Directory, ExportTemplates.cPluginsDir, .. scope .()), entry.Id, .. scope .());
@@ -209,7 +209,7 @@ static class ExportPlugins
 				continue;
 			for (let file in target.Deploy)
 			{
-				if (!ExportTemplates.CopyFile(dir, file, outDir, PathFilename(file, .. scope .())))
+				if (!FileCopy.CopyFile(dir, file, outDir, PathFilename(file, .. scope .())))
 				{
 					GlobalLog(.Error, "Export: plugin '{}': its deploy file '{}' for {} is missing", entry.Id, file, platform);
 					return false;
