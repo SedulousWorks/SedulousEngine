@@ -368,8 +368,8 @@ class ProjectBuildServiceTests
 		Test.Assert(ran.State == .Failed);
 	}
 
-	/// A build is refused without an SDK and for a project with no package of its own, before
-	/// anything runs or is written.
+	/// A build is refused without an SDK, and an editor's or Build Project's for a project with no
+	/// package of its own, before anything runs or is written.
 	[Test]
 	public static void ABuildNeedsAnSdkAndAPackage()
 	{
@@ -392,12 +392,42 @@ class ProjectBuildServiceTests
 		}
 		ClearAndDeleteItems!(bed.Settings.Plugins);
 		Test.Assert(!ProjectBuild.HasPackages(bed.Settings));
-		let job = MakeJob(bed, .All);
-		defer job.ReleaseRef();
-		Test.Assert(service.Run(job) case .Err(.NotFound));
-		Test.Assert(job.GetError(.. scope .()).Contains("no package of its own"));
-		Test.Assert(job.State == .Failed);
+		for (let target in BuildTarget[2](.All, .Editor))
+		{
+			let job = MakeJob(bed, target);
+			defer job.ReleaseRef();
+			Test.Assert(service.Run(job) case .Err(.NotFound));
+			Test.Assert(job.GetError(.. scope .()).Contains("no package of its own"));
+			Test.Assert(job.State == .Failed);
+		}
 		Test.Assert(!FileExists(PathJoin(bed.ProjectDir, "Code/BeefSpace.toml", .. scope .())), "nothing generated");
+	}
+
+	/// A project with no package of its own builds its player: the workspace is generated, and
+	/// <Game>Player runs over it like any project's.
+	[Test]
+	public static void APlayerBuildsWithoutAPackage()
+	{
+		let bed = scope ProjectBuildTests.Bed();
+		ClearAndDeleteItems!(bed.Settings.Plugins);
+		let runs = scope List<String>();
+		defer { ClearAndDeleteItems!(runs); }
+		let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
+			{
+				runs.Add(new $"{Argument(arguments, "project")} {Argument(arguments, "config")}");
+				Make(bed, arguments);
+				return .Ok(0);
+			}, cFakeBeefBuild);
+		let job = MakeJob(bed, .Player, null, "ShippingRelease");
+		defer job.ReleaseRef();
+		Test.Assert(service.Run(job) case .Ok, job.GetError(.. scope .()));
+		Test.Assert((runs.Count == 1) && (runs[0] == "NativeGamePlayer ShippingRelease"), "one run of the player");
+		let player = bed.Read(".generated/NativeGamePlayer/BeefProj.toml", .. scope .());
+		Test.Assert(!player.Contains("\"NativeGame\" = \"*\"") && !player.Contains("Lantern"), player);
+		let made = scope List<String>();
+		defer { ClearAndDeleteItems!(made); }
+		job.GetExecutables(made);
+		Test.Assert((made.Count == 1) && (made[0] == ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", false, "ShippingRelease", .. scope .())));
 	}
 
 	/// The editor is stale when it is not built, or older than a file of the project's packages;

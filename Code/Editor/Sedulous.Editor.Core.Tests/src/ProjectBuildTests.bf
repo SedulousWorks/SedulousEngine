@@ -308,6 +308,54 @@ class ProjectBuildTests
 		Test.Assert(program.Contains("usage: NativeGameTools mcp|cook|export [arguments]") && program.Contains("return 2;"), program);
 	}
 
+	/// A project with no package of its own and no Code/ gets one: the workspace listing the three
+	/// desktop entries and no part, the registry file, a .gitignore, and every entry linking its
+	/// startup and nothing of the project's, the web player in its own workspace as ever.
+	[Test]
+	public static void AProjectWithoutAPackageGetsEntriesLinkingNoPart()
+	{
+		let bed = scope Bed();
+		let projectDir = PathJoin(bed.Root, "Pure Data", .. scope .());
+		Test.Assert(CreateDirectory(projectDir));
+		let settings = scope ProjectSettings();
+		settings.Name.Set("Pure Data");
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(projectDir, settings, bed.Sdk, error) case .Ok, error);
+
+		let workspace = ProjectBuild.Directory(projectDir, .. scope .());
+		let space = ReadText(PathJoin(workspace, "BeefSpace.toml", .. scope .()), .. scope .());
+		Test.Assert(space.StartsWith("FileVersion = 1\n\n[Workspace]\nStartupProject = \"PureDataEditor\"\n\n[Projects]\n\"PureDataEditor\" = {Path = \".generated/PureDataEditor\"}\n"), space);
+		Test.Assert(space.Contains("\"PureDataPlayer\" = {Path = \".generated/PureDataPlayer\"}\n\"PureDataTools\" = {Path = \".generated/PureDataTools\"}\n\n"), space);
+		Test.Assert(space.EndsWith(ProjectBuild.cWorkspaceConfigs), space);
+		for (let file in StringView[3](".gitignore", "BeefConfig.toml", ".generated/Web/BeefSpace.toml"))
+			Test.Assert(FileExists(PathJoin(workspace, file, .. scope .())), scope String(file));
+
+		for (let entry in StringView[4]("PureDataEditor", "PureDataPlayer", "PureDataPlayerWeb", "PureDataTools"))
+		{
+			let project = ReadText(PathJoin(workspace, scope $".generated/{entry}/BeefProj.toml", .. scope .()), .. scope .());
+			// Every dependency is corlib or a startup library of the engine's.
+			let dependencies = project.Substring(project.IndexOf("[Dependencies]\n"));
+			int linked = 0;
+			for (let line in dependencies.Split('\n'))
+			{
+				if (!line.EndsWith(" = \"*\""))
+					continue;
+				Test.Assert(line.StartsWith("corlib") || line.StartsWith("\"Sedulous.Editor.") || line.StartsWith("\"Sedulous.Engine.Player."), project);
+				linked++;
+			}
+			Test.Assert(linked >= 2, project);
+			Test.Assert(FileExists(PathJoin(workspace, scope $".generated/{entry}/src/Program.bf", .. scope .())), scope String(entry));
+		}
+	}
+
+	/// A file's text.
+	private static void ReadText(StringView path, String outText)
+	{
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(path, bytes) case .Ok, scope String(path));
+		outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
+	}
+
 	/// An SDK without a stock project an entry takes its configs from refuses the generate,
 	/// naming it.
 	[Test]

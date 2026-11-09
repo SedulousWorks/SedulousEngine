@@ -462,8 +462,10 @@ static class ProjectBuild
 	/// at `sdk`), BeefSpace.toml (merged, WorkspaceText), a .gitignore when there is none, and
 	/// every entry (BuildEntry) under .generated, with the web player's own workspace
 	/// (.generated/Web: WebWorkspaceText and its registry file). A file whose content is unchanged
-	/// is left alone, so a build after a generate that changed nothing rebuilds nothing. Refused,
-	/// with why in `outError`, for a problem with a package or an SDK it cannot read.
+	/// is left alone, so a build after a generate that changed nothing rebuilds nothing. A project
+	/// with no package of its own gets the same Code/, its entries linking no part: its player is
+	/// the stock one under the game's name. Refused, with why in `outError`, for a problem with a
+	/// package or an SDK it cannot read.
 	public static Result<void, ErrorCode> Generate(StringView projectDir, ProjectSettings settings, StringView sdk, String outError)
 	{
 		let packages = scope List<ProjectPackage>();
