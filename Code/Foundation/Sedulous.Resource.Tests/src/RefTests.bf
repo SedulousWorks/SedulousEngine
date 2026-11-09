@@ -6,9 +6,49 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Resource.Tests;
 
+/// An asset nothing loads, named by an id alone.
+class TestDocument
+{
+}
+
+/// A field naming a TestDocument by its id: an id reference.
+[IdReference(typeof(TestDocument)), Reflect(.NonStaticFields)]
+struct TestDocumentRef
+{
+	public Guid Id;
+}
+
 /// What a component stores, and what of it reaches the file.
 class RefTests
 {
+	/// An id reference reads and writes as a reference does, its target the type it declares;
+	/// assigning it with a manager at hand binds nothing.
+	[Test]
+	public static void AnIdReferenceIsAReferenceThatNothingBinds()
+	{
+		let fixture = scope ResourceFixture("scratch_ref_id_shape");
+		let factory = scope TestProductFactory();
+		fixture.Manager.AddFactory(factory);
+		let named = fixture.Author("a", 2, 2);
+
+		let type = typeof(TestDocumentRef);
+		Test.Assert(ReferenceShape.Is(type));
+		Test.Assert(ReferenceShape.IsIdReference(type));
+		Test.Assert(!ReferenceShape.IsBound(type));
+		Test.Assert(ReferenceShape.Target(type) == typeof(TestDocument));
+		Test.Assert(ReferenceShape.IsBound(typeof(Ref<TestProduct>)));
+		Test.Assert(!ReferenceShape.IsIdReference(typeof(Ref<TestProduct>)));
+		Test.Assert(!ReferenceShape.IsIdReference(typeof(Guid)));
+
+		var reference = TestDocumentRef();
+		Test.Assert(ReferenceShape.Assign(type, &reference, named, fixture.Manager) case .Ok);
+		Test.Assert(reference.Id == named);
+		Test.Assert(ReferenceShape.Id(type, &reference) case .Ok(named));
+		Test.Assert(fixture.Manager.FindHandle(named) == null, "nothing bound, though a factory could");
+		Test.Assert(ReferenceShape.Assign(type, &reference, Guid(), null) case .Ok);
+		Test.Assert(reference.Id == Guid());
+	}
+
 	/// ONLY the identity is serialized. The binding and the direct override are runtime
 	/// state, so a component read from a file arrives unbound and is bound afterwards.
 	[Test]

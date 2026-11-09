@@ -305,7 +305,7 @@ class SceneReference
 			// is more than one.
 			let assets = scope List<Type>();
 			if (mBuilders != null)
-				SourceAssetTypesFor(mBuilders, target, assets, mDescriptions);
+				AssetTypesForReference(mBuilders, type, assets, mDescriptions);
 			if (assets.IsEmpty)
 			{
 				resolved = false;
@@ -321,6 +321,24 @@ class SceneReference
 			}
 			return json;
 		}
+	}
+
+	/// The asset types a reference field of `referenceType` takes: a Ref<T>'s are T's
+	/// (SourceAssetTypesFor), an id reference's its declared target itself, the asset type it
+	/// names (a scene reference's scene documents), which nothing loads or builds. Nothing is added
+	/// for a type that is no reference.
+	public static void AssetTypesForReference(BuilderRegistry builders, Type referenceType, List<Type> outAssets,
+		List<ResourceFactoryDesc*> descriptions = null)
+	{
+		let target = ReferenceShape.Target(referenceType);
+		if (target == null)
+			return;
+		if (ReferenceShape.IsIdReference(referenceType))
+		{
+			outAssets.Add(target);
+			return;
+		}
+		SourceAssetTypesFor(builders, target, outAssets, descriptions);
 	}
 
 	/// The source asset types a resource reference to `product` takes: the runtime type's

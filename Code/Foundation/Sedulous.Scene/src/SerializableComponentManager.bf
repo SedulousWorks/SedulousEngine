@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using Sedulous.Core.Serialization;
+using Sedulous.Resource;
 
 namespace Sedulous.Scene;
 
@@ -74,6 +76,25 @@ class SerializableComponentManager<T> : ComponentManager<T>
 		code.Append(" is stored by a SerializableComponentManager but carries no ");
 		code.Append("[SerializableComponent] attribute\");");
 		Compiler.MixinRoot(code);
+	}
+
+	/// The ids its components name by an id reference (a field naming a scene): nothing binds
+	/// them, so a pruned export learns of them here and keeps what they name. A component's own
+	/// fields, read through its reflection; one nested in a struct or a list is not looked into.
+	public override void CollectUnboundReferences(List<Guid> outIds)
+	{
+		for (let field in typeof(T).GetFields())
+		{
+			if (!field.IsInstanceField || !ReferenceShape.IsIdReference(field.FieldType))
+				continue;
+			let fieldType = field.FieldType;
+			let offset = field.MemberOffset;
+			ForEach(scope (component, owner) =>
+			{
+				if ((ReferenceShape.Id(fieldType, (uint8*)component + offset) case .Ok(let id)) && (id != Guid.Empty))
+					outIds.Add(id);
+			});
+		}
 	}
 
 	public override bool IsSerializable => true;

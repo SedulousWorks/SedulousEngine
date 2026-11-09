@@ -85,6 +85,15 @@ therefore differ across a save during Play. A prefab deleted from disk is unload
 spawn of it is refused with a warning, as an unknown prefab's is. A game run outside the
 editor reads its prefabs once, at start.
 
+## A field naming a scene
+
+A component field that names a scene (a level's exit, the next course) is a `SceneRef`: the
+scene's id, which `GameInstance.LoadScene` and `LoadSceneAsync` take. It is not a `Ref<T>`: a
+scene is read whole when a level loads, so nothing binds or caches it, and naming one never
+loads it. The inspector offers scenes for it and `component_set` sets it by guid, as for any
+reference; a pruned export keeps the scene a reflected component's `SceneRef` names, and the
+scene's own references after it. Scripts name a scene by its guid (`Run.LoadScene`).
+
 ## Scene level behaviour
 
 - The project's startup scene is `defaultScene` in the project settings; `asset_uses` on a

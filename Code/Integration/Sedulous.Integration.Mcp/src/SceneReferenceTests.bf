@@ -99,6 +99,17 @@ static class SceneReferenceTests
 		// prefab reference picks prefab documents.
 		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Scene.Resource.PrefabResource), assets);
 		Test.Assert((assets.Count == 1) && (assets[0] == typeof(Sedulous.Scene.Resource.PrefabDocument)));
+		assets.Clear();
+		// By the reference field's type: a Ref<T> as its T, a scene reference its scenes, which
+		// nothing builds or loads; a type that is no reference takes nothing.
+		SceneReference.AssetTypesForReference(builders, typeof(Sedulous.Resource.Ref<Sedulous.Scene.Resource.PrefabResource>), assets);
+		Test.Assert((assets.Count == 1) && (assets[0] == typeof(Sedulous.Scene.Resource.PrefabDocument)));
+		assets.Clear();
+		SceneReference.AssetTypesForReference(builders, typeof(Sedulous.Scene.Resource.SceneRef), assets);
+		Test.Assert((assets.Count == 1) && (assets[0] == typeof(Sedulous.Scene.Resource.SceneDocument)));
+		assets.Clear();
+		SceneReference.AssetTypesForReference(builders, typeof(Guid), assets);
+		Test.Assert(assets.IsEmpty);
 	}
 
 	/// Every enum field names its cases, a settings block's as well as a component's: an agent

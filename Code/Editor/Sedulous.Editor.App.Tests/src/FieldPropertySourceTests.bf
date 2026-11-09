@@ -51,6 +51,13 @@ class FieldSourceTints
 	public Float4 Plain = .(1.0f, 2.0f, 3.0f, 4.0f);
 }
 
+/// A level's exit, naming the scene it leads to.
+[Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
+class FieldSourceExit
+{
+	public Sedulous.Scene.Resource.SceneRef Next = .();
+}
+
 /// A private list an inspector is given, beside a public value.
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 class FieldSourceSteps
@@ -362,6 +369,30 @@ class FieldPropertySourceTests
 		Test.Assert(elements.Count == 1);
 		Test.Assert(elements[0].Kind == .Reference);
 		Test.Assert(elements[0].ReferenceType == typeof(FieldSourceTarget));
+	}
+
+	[Test]
+	public static void ASceneFieldIsAReferenceToAScenePickedByItsId()
+	{
+		let exit = scope FieldSourceExit();
+		let address = Internal.UnsafeCastToPtr(exit);
+		let source = scope FieldPropertySource(typeof(FieldSourceExit), 1, new (object) => address,
+			new (apply) => { apply(0, address); });
+
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(rows.Count == 1);
+		Test.Assert(rows[0].Kind == .Reference);
+		Test.Assert(rows[0].ReferenceType == typeof(Sedulous.Scene.Resource.SceneDocument), "the picker offers scenes");
+
+		let level = Guid.Create();
+		source.BeginEdit("Next");
+		source.CommitEdit("Next", PropertyWrite(Sedulous.GUI.Variant(level.ToString(.. scope String()))));
+		Test.Assert(exit.Next.Id == level);
+		var shown = source.GetValue("Next", 0);
+		Test.Assert(shown.AsString == level.ToString(.. scope String()));
+		shown.Dispose();
 	}
 
 	private static PropertyInfo Row(List<PropertyInfo> rows, StringView name)

@@ -566,6 +566,13 @@ class GameInstance : RunBase
 		return !LoadFailed(ticket);
 	}
 
+	/// LoadSceneAsync for the scene a field names (a level's exit): its ticket, or nought.
+	public int32 LoadSceneAsync(SceneRef scene) => LoadSceneAsync(scene.Id);
+
+	/// LoadScene for the scene a field names: false, the current one kept, when it names none
+	/// or the load fails.
+	public bool LoadScene(SceneRef scene) => LoadScene(scene.Id);
+
 	/// Ends the run with an exit code: the standalone host stops its loop, an editor stops
 	/// the Game tab's session. Nothing wired is a no-op.
 	[Scriptable]

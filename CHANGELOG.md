@@ -14,6 +14,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   tells the player what to press.
 - Scripts: `Component::addTo(entity)` and `Component::removeFrom(entity)` beside
   `Component::of`, on every component a script reaches.
+- Scenes: a `SceneRef` field names a scene (a level's exit): the inspector picks a scene for it,
+  a level loads by it, and a pruned export keeps the scene it names. Naming a scene never loads
+  it.
 
 ### Changed
 

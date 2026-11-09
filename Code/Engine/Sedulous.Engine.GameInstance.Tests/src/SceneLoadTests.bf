@@ -110,6 +110,31 @@ class SceneLoadTests
 	}
 
 	[Test]
+	public static void ALevelLoadsByTheSceneAFieldNames()
+	{
+		let fixture = scope SceneContentFixture("scratch_gi_load_scene_ref");
+		let level = AuthorLevel(fixture, "level");
+		let resources = scope ResourceManager(fixture.Database);
+		let instance = scope GameInstance();
+		instance.SetSceneLoader(new [=fixture, =resources, =instance] (sceneId) =>
+			{
+				let sceneInstance = fixture.Database.GetInstance(sceneId);
+				if (sceneInstance == null)
+				{
+					var failed = SceneLoadHandle();
+					failed.Failed = true;
+					return failed;
+				}
+				return instance.LoadSceneAsync(sceneInstance, resources);
+			});
+
+		Test.Assert(!instance.LoadScene(SceneRef()), "a field naming none loads nothing");
+		Test.Assert(instance.LoadSceneAsync(SceneRef()) == 0);
+		Test.Assert(instance.LoadScene(SceneRef(level.Id)));
+		Test.Assert((instance.GetScene() != null) && (instance.GetScene().EntityCount == 2));
+	}
+
+	[Test]
 	public static void TheSyncPathReturnsAnActiveResolvedScene()
 	{
 		let fixture = scope SceneContentFixture("scratch_gi_load_sync");
