@@ -82,12 +82,12 @@ static class SampleProjectTests
 			let from = PathJoin(source, entry.name, .. scope .());
 			let to = PathJoin(dir, entry.name, .. scope .());
 			if (!entry.isDirectory)
-				ok = ExportTemplates.CopyFile(source, entry.name, dir, entry.name) && ok;
+				ok = FileCopy.CopyFile(source, entry.name, dir, entry.name) && ok;
 			else if (entry.name == ProjectLayout.CodeDir)
-				ok = CreateDirectory(to) && ExportTemplates.CopyFile(from, "Plugin.xml", to, "Plugin.xml") && ok;
+				ok = CreateDirectory(to) && FileCopy.CopyFile(from, "Plugin.xml", to, "Plugin.xml") && ok;
 			else if ((entry.name != ProjectLayout.CacheDir) && (entry.name != ProjectLayout.EditorDir) && (entry.name != "Dist")
 				&& !entry.name.StartsWith(ProjectLayout.CookedDir))
-				ok = ExportTemplates.CopyTree(from, to) && ok;
+				ok = FileCopy.CopyTree(from, to) && ok;
 		}
 		return ok;
 	}
