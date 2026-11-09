@@ -40,6 +40,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- GUI: a tween of a property code set on a node (`node.Opacity = 0`, then a tween of `opacity`)
+  moves it; it did nothing before, as the property was code's and the style the tween went through
+  left it alone. A game's fade of a panel it made did not show.
 - Export: a pruned export (a preset's `pruneToReachable`) keeps the assets a script property
   names: a behaviour's or a Level's asset value (a prefab it spawns, a clip it plays). Before, an
   asset named only there was left out and the exported game could not find it. The same for an

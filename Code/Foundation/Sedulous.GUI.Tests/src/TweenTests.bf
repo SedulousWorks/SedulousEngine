@@ -9,8 +9,9 @@ namespace Sedulous.GUI.Tests;
 // underneath or a given start, through the same typed values a transition moves (a number, a
 // length, a colour, box shadows, a transform), and holds its end until stopped, a sheet's later
 // change leaving it be; a tween of the same property replaces the running one from where it shows;
-// delays, repeats, ping-pong and the callback at the end; a paused GUI's tweens stand still, a
-// destroyed node takes its tweens with it, and a tween kept past its GUI finds no target.
+// delays, repeats, ping-pong and the callback at the end; a property code set moving as code's; a
+// paused GUI's tweens stand still, a destroyed node takes its tweens with it, and a tween kept past
+// its GUI finds no target.
 
 /// A widget in a GUI styled by a sheet; a frame runs the clock, then the style pass, as a host does.
 /// The root, the widget and the manager go with it.
@@ -116,6 +117,45 @@ class TweenTests
 		Test.Assert(Near(bed.Red, 0.0f));
 		Test.Assert(Near(bed.Widget.Box.BackgroundColor.G, 1.0f));
 		Test.Assert(!bed.Widget.StopAnimation("background-color")); // nothing moves it now
+	}
+
+	[Test]
+	public static void APropertyCodeSetMovesFromCodesValueAsCodesAndCodeCanSetItAgainAfter()
+	{
+		// Code's opacity is the node's own (pinned, as an inline style): the sheet's under it does
+		// not show, and a tween of it moves code's value, not the cascade's.
+		let bed = scope TweenBed("box { opacity: 1; }");
+		bed.Widget.Alpha = 0.0f;
+		bed.Frame(0.0);
+		Test.Assert(Near(bed.Widget.Alpha, 0.0f));
+		let up = bed.Widget.Animate("opacity", "1", 1.0f, "linear");
+		defer up.ReleaseRef();
+		bed.Frame(0.5);
+		Test.Assert(!up.MovesStyle);
+		Test.Assert(Near(bed.Widget.Alpha, 0.5f));
+		bed.Frame(0.5);
+		Test.Assert(Near(bed.Widget.Alpha, 1.0f));
+		Test.Assert(up.IsDone);
+
+		// Down again from code's value, and code sets it after with nothing in the way.
+		bed.Widget.Alpha = 0.8f;
+		let down = bed.Widget.Animate("opacity", "0", 1.0f, "linear");
+		defer down.ReleaseRef();
+		bed.Frame(0.5);
+		Test.Assert(Near(bed.Widget.Alpha, 0.4f));
+		bed.Frame(0.5);
+		Test.Assert(Near(bed.Widget.Alpha, 0.0f));
+		bed.Widget.Alpha = 0.25f;
+		bed.Frame(0.1);
+		Test.Assert(Near(bed.Widget.Alpha, 0.25f));
+
+		// A node code never set still moves over the cascade.
+		let sheet = scope TweenBed("box { opacity: 1; }");
+		let styled = sheet.Widget.Animate("opacity", "0", 1.0f, "linear");
+		defer styled.ReleaseRef();
+		sheet.Frame(0.5);
+		Test.Assert(styled.MovesStyle);
+		Test.Assert(Near(sheet.Widget.Alpha, 0.5f));
 	}
 
 	[Test]

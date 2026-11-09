@@ -473,13 +473,27 @@ class Tween : Sedulous.GUI.Action
 		mSpringX = 0.0f;
 	}
 
+	// Whether code set `name` on the node (its slot pinned, as an inline style): the sheet leaves it
+	// alone then, and so would the style's motion layer.
+	private static bool PinnedByCode(Node node, StringView name)
+	{
+		for (uint32 slot = 0; slot < (uint32)StyleSlot.SlotCount; slot++)
+		{
+			if (StyleSlotProperty((StyleSlot)slot) == name)
+				return node.IsStylePinned((StyleSlot)slot);
+		}
+		return false;
+	}
+
 	// Its first frame: which way it writes, and its values parsed.
 	private bool Bind(Node target)
 	{
 		// A sheet's property on a node a sheet styles; on any other node, its reflected one (a plain
-		// node's opacity, x, y).
+		// node's opacity, x, y), and so where code set the property itself: code's value is the
+		// node's own, which the style pass leaves alone, so the tween moves it as code would, from
+		// where it is.
 		let node = target as UINode;
-		if ((node != null) && (FindStyleProperty(mProperty) != null))
+		if ((node != null) && (FindStyleProperty(mProperty) != null) && !PinnedByCode(node, mProperty))
 		{
 			let motion = scope MotionValue();
 			motion.Property.Set(mProperty);
