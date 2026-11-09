@@ -13,6 +13,16 @@ struct Random
 
 	public this() : this(0x853c49e6748fea9bUL, 0xda3e39cb94b95bdbUL) {}
 
+	/// A generator no other shares: its seed and its stream drawn from the system's entropy (a
+	/// freshly created GUID's 128 bits). For ids that must not collide with ones minted
+	/// elsewhere (another session, another branch), never for a sequence that has to repeat.
+	public static Random FromSystemEntropy()
+	{
+		var entropy = System.Guid.Create();
+		let words = (uint64*)&entropy; // a GUID is 16 bytes: two words
+		return .(words[0], words[1]);
+	}
+
 	/// The sequence selects one of PCG's independent streams, so two generators seeded the
 	/// same but sequenced differently do not walk in step.
 	public this(uint64 seed, uint64 sequence = 0xda3e39cb94b95bdbUL)

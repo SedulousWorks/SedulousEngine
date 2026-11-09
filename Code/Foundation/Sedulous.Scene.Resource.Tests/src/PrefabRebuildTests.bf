@@ -16,6 +16,8 @@ namespace Sedulous.Scene.Resource.Tests;
 class PrefabRebuildTests
 {
 	private static Guid PrefabId => .(0xABCD, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+	/// The seed every version of the template is authored with.
+	private const uint64 cTemplateAuthoring = 0x7E3D;
 
 	/// The template: a turret with a barrel and health on the root. `health` sets what the
 	/// template says, so a test can capture a SECOND, edited version of it.
@@ -23,6 +25,8 @@ class PrefabRebuildTests
 		StringView rootName = "Turret")
 	{
 		let template = scope Scene();
+		// Every version authored alike, as an edit of a template keeps its entities' ids.
+		template.SeedIds(cTemplateAuthoring);
 		let manager = template.AddSystem<HealthManager>();
 		let root = template.CreateEntity(rootName);
 		let barrel = template.CreateEntity("Barrel");

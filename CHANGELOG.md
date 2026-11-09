@@ -28,6 +28,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scenes: each scene mints its entities' ids from a generator of its own, so two people adding
+  entities to one scene on two branches no longer get the same id, which a merge would duplicate.
 - Editor: New Splat Weights never writes over an asset holding its name: made again after an
   undo, it no longer zeroes the weights the undo left, and another asset of that name is kept.
 - Editor: a scene, prefab or asset changed, added or deleted in the project's `Content/` outside

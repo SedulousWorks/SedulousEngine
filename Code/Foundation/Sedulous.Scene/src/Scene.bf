@@ -45,7 +45,9 @@ class Scene
 	private EntityHandle mLastRoot = .Invalid;
 
 	/// Per scene and DETERMINISTIC, so the same seed reproduces the same ids.
-	private Sedulous.Core.Random mRng = .();
+	/// Where new entity ids come from: a generator no other scene shares, so two people adding
+	/// entities to one scene on two branches do not mint the same id. SeedIds makes it repeat.
+	private Sedulous.Core.Random mRng = .FromSystemEntropy();
 
 	private List<PrefabInstanceState> mPrefabInstances = new .() ~ DeleteContainerAndItems!(_);
 	private List<PendingPrefabInstance> mPendingPrefabs = new .() ~ DeleteContainerAndItems!(_);
@@ -95,13 +97,20 @@ class Scene
 	[Scriptable]
 	public EntityHandle CreateEntity(StringView name = default)
 	{
-		// The generator is deterministic and LOADING does not advance it past the entities
-		// it loaded, so a fresh id can land on one already in the scene. Re-roll until it
-		// is free: two entities sharing an id corrupts a save.
+		// LOADING does not advance the generator past the entities it loaded, so a fresh id
+		// can land on one already in the scene (a generator seeded alike, by SeedIds). Re-roll
+		// until it is free: two entities sharing an id corrupts a save.
 		var id = Guid.Generate(ref mRng);
 		while (FindEntity(id).IsAssigned)
 			id = Guid.Generate(ref mRng);
 		return CreateEntityInternal(id, name);
+	}
+
+	/// Makes the ids CreateEntity mints from here on repeat for a given seed: for a test that
+	/// pins ids, or a replay or a seeded procedural level. A scene not seeded draws its own.
+	public void SeedIds(uint64 seed)
+	{
+		mRng = .(seed);
 	}
 
 	/// A new entity with a SPECIFIC id, which is what loading a scene from disk needs.

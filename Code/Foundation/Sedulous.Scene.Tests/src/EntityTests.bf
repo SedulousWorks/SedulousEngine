@@ -297,4 +297,21 @@ class EntityTests
 		defer value.Dispose();
 		Test.Assert(value.Get<Guid>() == reference.Id);
 	}
+
+	/// Each scene mints ids from a generator of its own, so two scenes (two people adding to one
+	/// scene on two branches) do not mint the same id; seeded alike, they do.
+	[Test]
+	public static void TwoScenesMintDifferentIdsUnlessSeededAlike()
+	{
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		Test.Assert(a.GetEntityId(a.CreateEntity()) != b.GetEntityId(b.CreateEntity()), "fresh scenes differ");
+
+		let c = scope Scene("c");
+		let d = scope Scene("d");
+		c.SeedIds(42);
+		d.SeedIds(42);
+		Test.Assert(c.GetEntityId(c.CreateEntity()) == d.GetEntityId(d.CreateEntity()), "seeded alike, alike");
+		Test.Assert(c.GetEntityId(c.CreateEntity()) == d.GetEntityId(d.CreateEntity()), "and on");
+	}
 }

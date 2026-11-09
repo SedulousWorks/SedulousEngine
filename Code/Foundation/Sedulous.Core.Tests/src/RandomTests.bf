@@ -99,4 +99,13 @@ class RandomTests
 		for (int i < 32)
 			Test.Assert(rng.NextInt(5, 5) == 5);
 	}
+
+	/// Two generators from the system's entropy do not walk the same sequence.
+	[Test]
+	public static void TwoGeneratorsFromSystemEntropyDiffer()
+	{
+		var a = Sedulous.Core.Random.FromSystemEntropy();
+		var b = Sedulous.Core.Random.FromSystemEntropy();
+		Test.Assert(a.NextU64() != b.NextU64());
+	}
 }
