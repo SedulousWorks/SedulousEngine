@@ -3,7 +3,7 @@
 in Roboto (Data/Engine/Fonts, Apache 2.0) and imported through the editor's MCP as textures in
 UI/Glyphs, one per button the controls bind. MasqueradeSheet.css draws a prompt's glyph by its
 binding (`prompt[binding="pad-south"]`, the token foundation.input names the button by), filled by
-importscripts.py from `{{Texture:PadSouth}}`; a key stays a keycap of its own name in text. Also
+importui.py from `{{Texture:PadSouth}}`; a key stays a keycap of its own name in text. Also
 the ring a decal draws on the floor under your own guest (YouRing, maps.py).
 
   Tools/glyphs.py          draws them into Tools/generated/glyphs and imports them

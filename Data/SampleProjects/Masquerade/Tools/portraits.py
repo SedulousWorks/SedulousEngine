@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """portraits.py: each costume's head and shoulders as a picture (the HUD's mark shows the costume
 to find), rendered by Blender from the costumes' own models (`blender/guest.py ... portraits`) and
-imported through the editor's MCP as textures in UI/Portraits. Before importscripts.py, whose game
-script names them (`{{Texture:PortraitGownRose}}`).
+imported through the editor's MCP as textures in UI/Portraits. The game's code names them by id
+(Code/Masquerade/src/Assets.bf), so a fresh import's new ids go there.
 
   Tools/portraits.py       renders into Tools/generated/portraits and imports
   Env: BLENDER (default ~/Applications/blender-5.2.2-linux-x64/blender)

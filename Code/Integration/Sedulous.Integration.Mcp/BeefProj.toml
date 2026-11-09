@@ -41,6 +41,7 @@ corlib = "*"
 "PaperKid" = "*"
 "Lamplight" = "*"
 "Snowline" = "*"
+"Masquerade" = "*"
 
 # A Web export's WGSL cook needs naga and tint beside the executable.
 [Configs.Test.Linux64]

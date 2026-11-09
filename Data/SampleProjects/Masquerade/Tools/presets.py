@@ -5,7 +5,7 @@ current distributions as well as on the Deck); the Steam Deck (its container-bui
 1280x800 frame, fullscreen); the Windows desktop (the release Win64 template, windowed); and the
 Web (the page is index.html, so the export serves at its root; held to landscape on a phone).
 Each ships the credits. A browser cannot host, so the web build's title offers no Host
-(Masquerade.as asks Net.CanHost).
+(the game asks NetFacade.CanHost).
 """
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

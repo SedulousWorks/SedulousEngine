@@ -31,7 +31,7 @@ namespace Sedulous.Integration.Mcp;
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
 /// are comptime here), so it holds when run alone. A sample with game code of its own (the
-/// Shader Gallery's, Sky Hopper's, PaperKid's, Lamplight's and Snowline's Code/) has its package linked here, as its own
+/// Shader Gallery's, Sky Hopper's, PaperKid's, Lamplight's, Snowline's and Masquerade's Code/) has its package linked here, as its own
 /// editor links it, and reads with the package loaded, so its behaviours' records and its levels'
 /// blocks resolve rather than stay unknown.
 static class SampleProjectTests
@@ -601,14 +601,76 @@ static class SampleProjectTests
 	[Test]
 	public static void TheMasqueradeSourcesReadAtTheCurrentDataVersionsAndCook()
 	{
-		// 338 instances: 3 maps and 3 hunter prefabs, 6 rigged costumes with their clips and
+		// 332 instances: 3 maps and 3 hunter prefabs, 6 rigged costumes with their clips and
 		// materials (the masks and fabrics on 2 custom shaders), the palace, canal and garden kits,
-		// 3 navigation zones, 6 scripts, 4 UI documents, 10 generated sounds and music, the
-		// profiles, the input map, the font, the sky and the primitives. 293 cook: all but the
-		// maps, the prefabs and the model manifests. The 957 overrides are the guests', bots',
-		// player's, camera's and Ball's settings and references. Raise the floors when the sample
-		// grows.
-		CheckSampleProject("Masquerade", "scratch_masquerade_versions", 338, 293, 957);
+		// 3 navigation zones, 7 UI documents and their sheet, 10 generated sounds and music, the
+		// profiles, the input map, the font, the sky and the primitives. 287 cook: all but the
+		// maps, the prefabs and the model manifests. No script overrides: the behaviours and the
+		// game are the game's code, its package loaded to read the maps. Raise the floors when the
+		// sample grows.
+		CheckSampleProject("Masquerade", "scratch_masquerade_versions", 332, 287, 0, "masquerade", => CheckMasquerade);
+	}
+
+	/// The Palace's entities carry the game's behaviours, resolved into their managers with the
+	/// values the map gives them, not the defaults (the ball's seats, crowd, places, players and
+	/// hunter prefab, the player's camera and crowd, the camera's target and seat, every guest's
+	/// places and players), the orchestra on the dais, the round's replicated fields at their
+	/// starting values, and no script left; and the hunter prefab carries its Player.
+	private static void CheckMasquerade(EditorProject project)
+	{
+		let palace = FindInstance(project.SourceDb.RootGroup, "Palace", McpDocumentNames.cSceneDocument);
+		Test.Assert(palace != null, "the Palace");
+		let hunter = FindInstance(project.SourceDb.RootGroup, "HunterPalace", McpDocumentNames.cPrefabDocument);
+		Test.Assert(hunter != null, "the HunterPalace prefab");
+		if ((palace == null) || (hunter == null))
+			return;
+		let scene = scope Scene(palace.Name);
+		EngineSceneComposition.AddAllSceneManagers(scene); // the package's behaviour managers among them
+		Test.Assert(SceneStorage.LoadScene(palace, scene) case .Ok, "the Palace's stream");
+		let player = scene.FindEntityByName("Player");
+		let camera = scene.FindEntityByName("Camera");
+		let crowd = scene.FindEntityByName("Crowd");
+		Test.Assert(scene.IsValid(player) && scene.IsValid(camera) && scene.IsValid(crowd), "the player, the camera and the crowd");
+		let playerId = scene.GetEntityId(player);
+		let crowdId = scene.GetEntityId(crowd);
+		let balls = scene.GetSystem<BehaviourManager<Masquerade.Ball>>();
+		Test.Assert((balls != null) && (balls.Count == 1), "one Ball, resolved");
+		if ((balls == null) || (balls.Count != 1))
+			return;
+		Test.Assert(scene.GetEntityName(balls.OwnerHandles[0]) == "Ball");
+		let ball = balls.Instances[0];
+		Test.Assert((ball.Player.Id == playerId) && (ball.Crowd.Id == crowdId) && (ball.HunterPrefab.Id == hunter.Id),
+			"the ball's player, crowd and the Palace's hunter prefab");
+		Test.Assert(scene.IsValid(scene.FindEntity(ball.Bot1.Id)) && scene.IsValid(scene.FindEntity(ball.Bot2.Id))
+			&& scene.IsValid(scene.FindEntity(ball.Bot3.Id)) && (ball.Spots.Id != Guid.Empty) && (ball.Players.Id != Guid.Empty),
+			"the three bots, the places and the players");
+		Test.Assert((ball.RoundSeconds == 240.0f) && (ball.TargetPoints == 100) && (ball.MissPoints == 25)
+			&& (ball.Owner0 == 0) && (ball.Owner1 == -1) && (ball.Owner3 == -1) && (ball.Target0 == 1) && (ball.Target3 == 0),
+			"the round's settings and its seats at their start");
+		let players = scene.GetSystem<BehaviourManager<Masquerade.Player>>();
+		Test.Assert((players != null) && (players.Count == 1) && (players.OwnerHandles[0] == player), "the player's hunter");
+		if ((players != null) && (players.Count == 1))
+		{
+			Test.Assert((players.Instances[0].Camera.Id == scene.GetEntityId(camera)) && (players.Instances[0].Crowd.Id == crowdId),
+				"the player moves by the camera and shoulders through the crowd");
+		}
+		let rigs = scene.GetSystem<BehaviourManager<Masquerade.CameraRig>>();
+		Test.Assert((rigs != null) && (rigs.Count == 1) && (rigs.Instances[0].Target.Id == playerId)
+			&& (rigs.Instances[0].Distance == 7.0f) && (rigs.Instances[0].Height == 9.0f), "the camera follows the player, high");
+		let guests = scene.GetSystem<BehaviourManager<Masquerade.Guest>>();
+		Test.Assert((guests != null) && (guests.Count == 153), "150 guests and the three bots");
+		if (guests != null)
+		{
+			for (let guest in guests.Instances)
+				Test.Assert((guest.Spots.Id == ball.Spots.Id) && (guest.Players.Id == ball.Players.Id), "a guest's places and players");
+		}
+		let orchestras = scene.GetSystem<BehaviourManager<Masquerade.Orchestra>>();
+		Test.Assert((orchestras != null) && (orchestras.Count == 1) && (scene.GetEntityName(orchestras.OwnerHandles[0]) == "Dais"),
+			"the orchestra on the dais");
+		let scripts = scene.GetSystem<ScriptComponentManager>();
+		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+
+		CheckKitPiece<Masquerade.Player>(project, "HunterPalace", scope (joiner) => (joiner.Camera.Id == Guid.Empty) && (joiner.SprintSpeed == 3.0f));
 	}
 
 	/// The number of script overrides checked under `group`: a behaviour's against its cooked

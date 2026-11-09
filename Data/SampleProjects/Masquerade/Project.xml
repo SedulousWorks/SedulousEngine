@@ -8,10 +8,10 @@
 		<string name="engineVersion">0.1.0</string>
 		<string name="defaultSceneId">9f75a606-4c88-6646-8c10-0f79b1ec6760</string>
 		<string name="defaultScene">Scenes/Palace</string>
-		<string name="startupScript">Scripts/Masquerade</string>
+		<string name="startupScript"/>
 		<string name="defaultInputMapId">ebd9f292-e4f5-f449-a6d6-c04c9318c60f</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="startupScriptId">221ba031-6dff-bb4b-843d-2ae8d95bd855</string>
+		<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
 		<string name="defaultUiFontId">e613c971-1cbe-c54a-9ffd-5220e8f69837</string>
 		<u32 name="renderMsaaSamples">1</u32>
 		<array name="uiFontIds" count="0"/>
@@ -27,5 +27,13 @@
 			<string>a85a9fd4-b9a2-d044-85b1-09980b76e1b2</string>
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<array name="plugins" count="1">
+			<object>
+				<string name="id">masquerade</string>
+				<string name="path">Code</string>
+				<array name="platforms" count="0"/>
+				<object name="settings"/>
+			</object>
+		</array>
 	</object>
 </root>

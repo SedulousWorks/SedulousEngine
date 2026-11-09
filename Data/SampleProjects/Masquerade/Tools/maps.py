@@ -7,18 +7,22 @@ the places guests wander to; the orchestra; some 150 guests; the player and the
 camera; the navigation zone over it all, baked after writing.
 
 The guests are drawn by costume: a Guests entity carries the instanced skinning (the guests' rig
-and their clips: Idle, Walk, Talk, Dance, in that order, which Guest.as and Player.as count on)
+and their clips: Idle, Walk, Talk, Dance, in that order, which the Guest and the Player count on)
 and a child per costume carries that costume's instanced mesh, with no instances of its own. Each
 guest is an entity of its own under its costume's parent in the Crowd, a navigation agent with an
 Instance Member of its costume's mesh, so every guest in a costume is one draw wherever the crowd
 takes them. The four hunters (the player and three bots) wear six looks each, one shown, so the
-round (Ball.as) can change a hunter's costume.
+round (the Ball) can change a hunter's costume.
 
 Metres throughout; the map's origin is its north-west corner, north being -Z. Cells (2 m: cell
 (i, j) spans x 2i..2i+2, z 2j..2j+2) for the ground.
 
+Each entity's game code is the game's own behaviour (masquerade.guest, masquerade.player,
+masquerade.camera_rig, masquerade.ball, masquerade.orchestra: Code/Masquerade), so the editor this
+talks to is the project's own (README.md).
+
 Run with the editor open on the project and its MCP server on, after the models are imported and
-importscripts.py has run:
+importui.py has run:
     python3 maps.py Palace
 """
 import math, os, random, sys
@@ -29,14 +33,14 @@ from look import look
 
 GRID = 2.0
 COSTUMES = ("GownRose", "GownTeal", "GownGold", "CoatBlack", "CoatPlum", "CoatIvory")
-CLIPS = ("Idle", "Walk", "Talk", "Dance")  # the clip list's order: the scripts' activity numbers
+CLIPS = ("Idle", "Walk", "Talk", "Dance")  # the clip list's order: the behaviours' activity numbers
 POSES_PER_CLIP = 12  # phases of each clip in the pose pool: guests on a clip spread over them
 
 ASSETS = assets()
 
 
 def ring(doc, hunter):
-    """The gold ring on the floor under a hunter, hidden: Player.as shows it under your own (a decal
+    """The gold ring on the floor under a hunter, hidden: the Player shows it under your own (a decal
     projecting down, its +Z turned to the floor; the picture glyphs.py draws)."""
     r = doc.stable_id("entity")
     doc.entity("Ring", (0.0, 0.6, 0.0), rot=(0.70710678, 0.0, 0.0, 0.70710678), parent=hunter, eid=r)
@@ -48,7 +52,7 @@ def asset(asset_type, name, group=None):
     found = [a["guid"] for a in ASSETS
              if a["type"] == asset_type and a["name"] == name and (group is None or a.get("group") == group)]
     if not found:
-        raise SystemExit("no %s %s (run importmodels.py / importscripts.py first)" % (asset_type, name))
+        raise SystemExit("no %s %s (run importmodels.py / importui.py first)" % (asset_type, name))
     return found[0]
 
 
@@ -197,8 +201,8 @@ class Builder:
     # ---- the guests, the hunters, the ball ----
     def crowd(self, count, spots, player_at):
         """The Guests entity (instanced skinning over a costume mesh each); the crowd, a parent per
-        costume with its guests under it (Ball.as tells a guest's costume by its parent); the four
-        hunters, the player and three bots, each wearing one of six looks (Ball.as picks); the
+        costume with its guests under it (the Ball tells a guest's costume by its parent); the four
+        hunters, the player and three bots, each wearing one of six looks (the Ball picks); the
         camera; the Ball, which runs the round."""
         d = self.d
         first = model("Models/Guests/Guest" + COSTUMES[0])
@@ -217,7 +221,6 @@ class Builder:
               poseCount=POSES_PER_CLIP, targets=strings(meshes[c] for c in COSTUMES))
 
         # The crowd and the players: parents at the origin (agents write their position as local).
-        guest_script = asset("ScriptClassAsset", "Guest")
         players = d.stable_id("entity")
         d.entity("Players", eid=players)
         crowd = d.stable_id("entity")
@@ -239,7 +242,7 @@ class Builder:
             self.agent(e)
             self.networked(e)
             d.add(e, "instance_member", instancedMesh=meshes[costume], clip=0)
-            d.script(e, (guest_script, {"spots": ("entity", self.spots), "players": ("entity", players)}))
+            d.add(e, "masquerade.guest", spots=self.spots, players=players)
 
         # The hunters: the player at the gate (under Players, whom guests make way for), the bots
         # among the guests.
@@ -248,27 +251,24 @@ class Builder:
         cam = d.stable_id("entity")
         d.entity("Camera", (x, 9.0, z + 7.0), pitch(-48.0), eid=cam)
         d.add(cam, "camera", fovYRadians=0.9)
-        d.script(player, (asset("ScriptClassAsset", "Player"), {"camera": ("entity", cam), "crowd": ("entity", crowd)}))
-        d.script(cam, (asset("ScriptClassAsset", "CameraRig"), {"target": ("entity", player), "distance": 7.0,
-                                                                 "height": 9.0}))
+        d.add(player, "masquerade.player", camera=cam, crowd=crowd)
+        d.add(cam, "masquerade.camera_rig", target=player, distance=7.0, height=9.0)
         bots = []
         for k in range(3):
             bx, bz = self.rng.choice(ground)
             bot = self.hunter("Bot%d" % (k + 1), (bx + 1.0, 0.0, bz), meshes)
-            d.script(bot, (guest_script, {"spots": ("entity", self.spots), "players": ("entity", players)}))
+            d.add(bot, "masquerade.guest", spots=self.spots, players=players)
             bots.append(bot)
 
         ball = d.stable_id("entity")
         d.entity("Ball", eid=ball)
         self.networked(ball)
-        d.script(ball, (asset("ScriptClassAsset", "Ball"), {
-            "player": ("entity", player), "bot1": ("entity", bots[0]), "bot2": ("entity", bots[1]),
-            "bot3": ("entity", bots[2]), "crowd": ("entity", crowd), "spots": ("entity", self.spots),
-            "players": ("entity", players), "hunterPrefab": ("asset", self.hunter_prefab(meshes))}))
+        d.add(ball, "masquerade.ball", player=player, bot1=bots[0], bot2=bots[1], bot3=bots[2], crowd=crowd,
+              spots=self.spots, players=players, hunterPrefab=self.hunter_prefab(meshes))
 
     def hunter(self, name, pos, meshes, avoid=True, parent=None):
         """A hunter: an agent like any guest, wearing one of six looks (a child per costume, each an
-        Instance Member of its costume's mesh; only the first shown until Ball.as dresses it), and
+        Instance Member of its costume's mesh; only the first shown until the Ball dresses it), and
         a Flare light over its head for when its mask flares (off until then)."""
         d = self.d
         e = d.stable_id("entity")
@@ -293,7 +293,7 @@ class Builder:
         self.d.add(e, "net.Transform")
 
     def hunter_prefab(self, meshes):
-        """The prefab the host spawns for a joining player (Ball.as, Net.spawnFor): a hunter as
+        """The prefab the host spawns for a joining player (the Ball, NetFacade.SpawnFor): a hunter as
         hunter() makes one, its looks naming this map's costume meshes (so a prefab per map), its
         Player behaviour finding the camera and the crowd by name. Written over the last one."""
         doc = Doc("Hunter" + self.name)
@@ -311,7 +311,7 @@ class Builder:
         doc.add(flare, "light", type=1, color={"r": 1.0, "g": 0.78, "b": 0.30, "a": 1.0}, intensity=0.0, range=6.0,
                 castsShadows=False)
         ring(doc, e)
-        doc.script(e, (asset("ScriptClassAsset", "Player"), {}))
+        doc.add(e, "masquerade.player")
         found = [a["guid"] for a in ASSETS if a["type"] == "PrefabDocument" and a["name"] == doc.name]
         return doc.write(found[0] if found else None, prefab=True, group="Prefabs")
 
@@ -390,7 +390,7 @@ def palace():
         b.chandelier(x, 9.5, 5.2)
     dais = b.prop("Dais", (22.0, 0.0, 3.8), (6.0, 0.4, 3.0), name="Dais")
     b.networked(dais)  # the cue replicates
-    d.script(dais, (asset("ScriptClassAsset", "Orchestra"), {}))
+    d.add(dais, "masquerade.orchestra")
 
     # The places guests go: groups across the courtyard, along the ballroom's walls and under the
     # colonnade, some 40 for 150 guests (a few to a group).
@@ -527,7 +527,7 @@ def canal():
         b.lantern(x, z)
     dais = b.prop("Dais", (24.0, 0.0, 6.0), (6.0, 1.2, 3.0), name="Dais")  # its collider too tall to climb
     b.networked(dais)  # the cue replicates
-    d.script(dais, (asset("ScriptClassAsset", "Orchestra"), {}))
+    d.add(dais, "masquerade.orchestra")
 
     # Where guests go: groups about the campo, along both quays, and on the bridges' tops.
     spots = [(12, 13), (18, 11), (30, 11), (36, 13), (16, 18), (32, 18), (12, 22), (24, 22), (36, 22),
@@ -591,7 +591,7 @@ def gardens():
         b.chandelier(x, 7.0, 4.8)
     dais = b.prop("Dais", (22.0, 0.0, 3.8), (6.0, 1.2, 3.0), name="Dais")  # its collider too tall to climb
     b.networked(dais)  # the cue replicates
-    d.script(dais, (asset("ScriptClassAsset", "Orchestra"), {}))
+    d.add(dais, "masquerade.orchestra")
 
     # The garden's edge: a balustrade round the lawn and the terrace's ends.
     b.run("Balustrade", (2, 12), (2, 42), 1.0, 0.3)
