@@ -807,8 +807,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	}
 
 	/// Saves the scene, or the prefab once it has one root and does not hold itself; a saved
-	/// prefab rebuilds its instances in every other open scene. A scene that did not load is never
-	/// saved over.
+	/// prefab rebuilds its instances in every other open scene, and its loaded resource reloads.
+	/// A scene that did not load is never saved over.
 	public override Result<void, ErrorCode> Save()
 	{
 		if ((mScene == null) || (mContext.Project == null))
@@ -848,6 +848,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		// The template changed: its instances in every other open scene rebuild, their overrides kept.
 		if (isPrefab && (mPrefabs != null))
 			mPrefabs.RebuildOtherInstances(instance);
+		// And the loaded prefab reads it again, so the next spawn of a running game is the saved
+		// one. A page's own save is not an outside change (the watcher skips it), so nothing else
+		// would tell it.
+		if (isPrefab)
+			mContext.ReloadAuthoredResource(InstanceId);
 		return saved;
 	}
 

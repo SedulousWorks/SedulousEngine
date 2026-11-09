@@ -80,10 +80,10 @@ struct EditorSessionOpenOptions
 /// The project the editor has open, out of the application (Raptor's editor-gui spec, 5.1,
 /// layer 3). Opening one (or, from the command line, scaffolding a bare folder into one) sets up
 /// what lives as long as it does: the context's project, the per-project editor store (dock
-/// layout, favourites, open pages), the resources over its cooked database attached to the
-/// embedded runtime, the cook service and the hooks the context runs it through, the
-/// thumbnails, and the game UI's defaults; it records the open in the user's project registry
-/// and seeds a new project's starter content. Closing takes them down in the reverse order and
+/// layout, favourites, open pages), the resources over its cooked database and its prefabs
+/// attached to the embedded runtime, the cook service and the hooks the context runs it
+/// through, the thumbnails, and the game UI's defaults; it records the open in the user's
+/// project registry and seeds a new project's starter content. Closing takes them down in the reverse order and
 /// saves the store. What the views do at those moments (the pages, the layout, the MCP host)
 /// goes through the hooks the application gives it, and their state goes into the store each
 /// time it is written.
@@ -292,6 +292,8 @@ class EditorSession
 			app.SetContentDatabase(null); // the sources go with the project
 		}
 		context.Resources = null;
+		// The view's predicate asks the manager, which goes next.
+		mProject.ResourceDb.SetFallthrough(null);
 		DeleteAndNullify!(mResources);
 		// The project's plugins after what may hold their types (the resources), before the project.
 		context.Plugins = null;
@@ -318,7 +320,8 @@ class EditorSession
 	public EditorProject Project => mProject;
 	/// The per-project editor store (dock layout, favourites, open pages); null with no project.
 	public Settings Store => mStore;
-	/// The resources over the project's cooked database; null with no project.
+	/// The resources over the project's cooked database and its authored records
+	/// (EditorProject.ResourceDb); null with no project.
 	public ResourceManager Resources => mResources;
 	/// The thumbnails' GPU stage while a project is open over an embedded runtime: the
 	/// application stages a job each frame and renders it in the scene renderer's bracket.
@@ -441,11 +444,17 @@ class EditorSession
 			};
 	}
 
-	/// The project's resources over its cooked database, attached to the embedded runtime (which
-	/// registers the engine's factories into it), decoding on the editor's task pool.
+	/// The project's resources, attached to the embedded runtime (which registers the engine's
+	/// factories into it), decoding on the editor's task pool. They read the project's cooked
+	/// products and, beneath them, the authored records a factory here declares (a prefab),
+	/// which only the sources hold: the manager answers which, from its factories at each
+	/// lookup, and Close takes that answer back before the manager goes.
 	private void AttachResources()
 	{
-		mResources = new ResourceManager(mProject.CookedDb, mServices.Context.Tasks);
+		let view = mProject.ResourceDb;
+		mResources = new ResourceManager(view, mServices.Context.Tasks);
+		let resources = mResources;
+		view.SetFallthrough(new [=resources] (storedTypeName) => resources.ReadsAuthoredRecord(storedTypeName));
 		mServices.Context.Resources = mResources;
 		if (mServices.EmbeddedApp != null)
 			mServices.EmbeddedApp.AttachResourceManager(mResources, mServices.EmbeddedHost);

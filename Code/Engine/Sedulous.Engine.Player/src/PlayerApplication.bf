@@ -52,7 +52,11 @@ class PlayerApplication : DefaultApplication
 	private ContentDatabase mSourceDb = null ~ delete _;
 	/// The products, and a distribution's scenes too.
 	private ContentDatabase mContentDb = null ~ delete _;
-	/// BORROWED: whichever of the two above scenes come from.
+	/// Project mode: what the resources read, the products over the sources, so the authored
+	/// records a factory reads (a prefab, never cooked) come from the sources. A distribution's
+	/// pak holds everything, so it has none.
+	private LayeredContentDatabase mResourceDb = null ~ delete _;
+	/// BORROWED: whichever of the source and content databases scenes come from.
 	private ContentDatabase mSceneDb = null;
 
 	/// BORROWED: the scene subsystem owns it.
@@ -96,7 +100,7 @@ class PlayerApplication : DefaultApplication
 
 		// The base builds the resource manager and the standard factories over this
 		// database, and registers the product types with them.
-		SetContentDatabase(mContentDb);
+		SetContentDatabase((mResourceDb != null) ? (IContentDatabase)mResourceDb : mContentDb);
 		base.OnStartup(host);
 
 		// The game GUI's text input: the player owns its window, so the GUI drives the platform's
@@ -179,7 +183,10 @@ class PlayerApplication : DefaultApplication
 			ProjectLayout.SourceAssetExtension);
 		mContentDb = new ContentDatabase(mCookedMount, MakeBinaryFactory(),
 			ProjectLayout.CookedAssetExtension);
-		// The authored scenes, with the products coming from the cooked database.
+		// Read once, at start: the player is not an editor, and nothing here changes them.
+		mResourceDb = new LayeredContentDatabase(mContentDb, mSourceDb);
+		// The authored scenes, with the products (and the prefabs) coming through the resources.
+		// A scene is never loaded through a reference, so scenes are read from the sources.
 		mSceneDb = mSourceDb;
 		SetSceneDatabase(mSceneDb);
 		return true;

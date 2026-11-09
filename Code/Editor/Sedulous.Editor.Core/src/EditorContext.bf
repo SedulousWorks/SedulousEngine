@@ -178,8 +178,9 @@ class EditorContext : IAssetEditSink
 		set => mThumbnails = value;
 	}
 
-	/// The runtime products over the project's cooked database, owned by the application
-	/// and made at project open; pages resolve scene refs and the pickers bind through it.
+	/// The runtime products over the project's cooked database and its authored records
+	/// (EditorProject.ResourceDb), owned by the application and made at project open; pages
+	/// resolve scene refs and the pickers bind through it.
 	public ResourceManager Resources
 	{
 		get => mResources;
@@ -567,11 +568,13 @@ class EditorContext : IAssetEditSink
 	public List<EditorPage> OpenPages => mPages;
 
 	/// The source asset changed OUTSIDE its page (an apply to prefab, a regenerated model
-	/// prefab or scene, an agent's write over MCP): every open page editing it is told
+	/// prefab or scene, an agent's write over MCP): its loaded resource, an authored record's
+	/// (ReloadAuthoredResource), reads it again, and every open page editing it is told
 	/// (EditorPage.OnAssetExternallyModified) and refreshes by its own rule. Returns how many
 	/// pages were told.
 	public int NotifyAssetExternallyModified(Guid assetId)
 	{
+		ReloadAuthoredResource(assetId);
 		int told = 0;
 		for (let page in mPages)
 		{
@@ -591,9 +594,13 @@ class EditorContext : IAssetEditSink
 	/// back where it was (SavePage); the asset's thumbnail goes, and the asset selection lets the
 	/// record go. `recordPath` ("group/name") and `typeName` are where it lived and what it was;
 	/// `former` is the record the database dropped, FREED, compared and never read (null: none
-	/// held). Returns how many pages were told.
+	/// held). The loaded resource of an authored record (a prefab) is evicted, so a spawn of it
+	/// is refused rather than served from memory, and a held reference reads unbound until the
+	/// record comes back. Returns how many pages were told.
 	public int NotifyAssetDeleted(Guid assetId, StringView recordPath, StringView typeName, Instance former = null)
 	{
+		if ((mResources != null) && mResources.ReadsAuthoredRecord(typeName))
+			mResources.Evict(assetId);
 		if (mThumbnails != null)
 			mThumbnails.Invalidate(assetId);
 		if (former != null)
@@ -610,6 +617,21 @@ class EditorContext : IAssetEditSink
 			told++;
 		}
 		return told;
+	}
+
+	/// The loaded resource of an authored record (a prefab) reads its record again, after a
+	/// write to it: a page's own save, or a change from outside. Its handle is rebuilt in place,
+	/// so what holds it sees the new content, and one that was evicted comes back. Only an
+	/// authored record's: a cooked product is reloaded when its cook finishes, and until then
+	/// its product has not changed. Nothing without a resource manager or a loaded handle.
+	public void ReloadAuthoredResource(Guid assetId)
+	{
+		if ((mResources == null) || (mResources.FindHandle(assetId) == null))
+			return;
+		let database = mResources.Database;
+		let record = (database != null) ? database.GetInstance(assetId) : null;
+		if ((record != null) && mResources.ReadsAuthoredRecord(record.TypeName))
+			mResources.Reload(assetId);
 	}
 
 	/// What the Content/ watcher found changed outside the editor, the source database brought in

@@ -53,7 +53,7 @@ namespace Sedulous.Editor.Scene.Tests;
 /// by category, the active one's panel under the chips, moved, kept and put back. A reference set
 /// in the inspector binds at once. Its scene's file changed outside the editor reloads a clean page
 /// and warns a dirty one; deleted, the page stays and its save writes the file back; its own save
-/// is never taken for an outside change.
+/// is never taken for an outside change, and a prefab's reloads its loaded prefab.
 class ScenePageTests
 {
 	/// A host whose subsystem manager has the scene and script subsystems and nothing else: no
@@ -760,6 +760,54 @@ class ScenePageTests
 		Test.Assert(page.Commands.CanUndo, "not reloaded: its history stays");
 		page.OnClose();
 		bed.Context.ClosePage(page);
+	}
+
+	/// The name of the root a loaded prefab spawns, read from its payload alone.
+	static void SpawnedRootName(PrefabResource prefab, String outName)
+	{
+		Test.Assert(prefab != null);
+		let scene = scope Sedulous.Scene.Scene("spawned");
+		let payload = prefab.OpenPayload();
+		defer delete payload;
+		let root = PrefabSpawn.Spawn(scene, payload, prefab.Id);
+		Test.Assert(root.IsAssigned);
+		outName.Set(scene.GetEntityName(root));
+	}
+
+	/// A prefab page's own save is not an outside change, so nothing else tells the loaded prefab:
+	/// the save reloads it, and the next spawn of a running game is what was saved.
+	[Test]
+	public static void APrefabPagesSaveReloadsTheLoadedPrefab()
+	{
+		let bed = scope Bed();
+		// The editor's resources: the cooked database over the sources, a prefab falling through.
+		let prefabs = scope PrefabFactory();
+		let resources = scope Sedulous.Resource.ResourceManager(bed.Project.ResourceDb);
+		resources.AddFactory(prefabs);
+		bed.Project.ResourceDb.SetFallthrough(new [=resources] (storedTypeName) => resources.ReadsAuthoredRecord(storedTypeName));
+		bed.Context.Resources = resources;
+		defer
+		{
+			bed.Context.Resources = null;
+			bed.Project.ResourceDb.SetFallthrough(null);
+		}
+		Test.Assert(bed.Project.ResourceDb.GetInstance(bed.Barrel.Id) == bed.Barrel, "the sources answer for a prefab");
+		Test.Assert(bed.Project.ResourceDb.GetInstance(bed.Level.Id) == null, "and not for a scene");
+
+		let page = bed.Open(bed.Barrel);
+		defer delete page;
+		page.EditContext.CreateEntity("Hoop");
+		Test.Assert(page.Save() case .Ok);
+		let proxy = resources.Bind<PrefabResource>(bed.Barrel.Id);
+		Test.Assert(SpawnedRootName(proxy.Get, .. scope .()) == "Hoop");
+
+		let hoop = page.ScenePtr.FindEntityByName("Hoop");
+		Test.Assert(hoop.IsAssigned);
+		page.ScenePtr.SetEntityName(hoop, "Ring");
+		Test.Assert(page.Save() case .Ok);
+		Test.Assert(proxy.State == .Ready);
+		Test.Assert(SpawnedRootName(proxy.Get, .. scope .()) == "Ring", "the saved prefab, not the one loaded before");
+		page.OnClose();
 	}
 
 	/// The page laid out in a GUI of its own under the editor's sheet, for its hierarchy's rows to

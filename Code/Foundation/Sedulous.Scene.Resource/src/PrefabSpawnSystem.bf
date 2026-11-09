@@ -21,7 +21,7 @@ class PrefabSpawnSystem : SceneSystem
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
 	/// BORROWED from the host.
-	private ContentDatabase mDatabase = null;
+	private IContentDatabase mDatabase = null;
 	private ResourceManager mResources = null;
 
 	public override void OnSceneCreate(Scene scene)
@@ -32,7 +32,7 @@ class PrefabSpawnSystem : SceneSystem
 	/// The database the prefabs come from and the manager their resources bind through.
 	/// Either may be null: no database spawns nothing, no manager leaves the subtree
 	/// unbound until a resolve.
-	public void SetSource(ContentDatabase database, ResourceManager resources)
+	public void SetSource(IContentDatabase database, ResourceManager resources)
 	{
 		mDatabase = database;
 		mResources = resources;
@@ -59,7 +59,7 @@ class PrefabSpawnSystem : SceneSystem
 
 	/// The recipe, as a function of what it needs, so a host without a scene system (the
 	/// replicated spawn resolver) runs the same one.
-	public static EntityHandle SpawnInto(Scene scene, ContentDatabase database, ResourceManager resources,
+	public static EntityHandle SpawnInto(Scene scene, IContentDatabase database, ResourceManager resources,
 		Guid prefab, EntityHandle parent = .Invalid)
 	{
 		if ((scene == null) || (database == null) || (prefab == Guid.Empty))

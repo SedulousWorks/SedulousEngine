@@ -99,10 +99,14 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// and then the host pumps it.
 	private ResourceManager mOwnedResources = null ~ delete _;
 	private ResourceManager mBorrowedResources = null;
-	private ContentDatabase mContentDatabase = null;
+	/// BORROWED: what the resources this application makes read. A LayeredContentDatabase (a
+	/// game run from its project folder: its cooked products over its sources) is given the
+	/// manager's predicate while the manager lives, so the authored records its factories read
+	/// (a prefab) come from beneath.
+	private IContentDatabase mContentDatabase = null;
 	/// BORROWED: where a scene id resolves for a script's Run.LoadSceneAsync. The content
 	/// database unless the host names another, the player's authored source database say.
-	private ContentDatabase mSceneDatabase = null;
+	private IContentDatabase mSceneDatabase = null;
 	/// The runtime script surface, populated once from the root; every run binds it.
 	/// Registered with ScriptSurfaces once populated, so the plugins' Engine parts put their own
 	/// types on it.
@@ -275,7 +279,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		PointSpawnersAtScenes();
 	}
 
-	public void SetContentDatabase(ContentDatabase database)
+	public void SetContentDatabase(IContentDatabase database)
 	{
 		mContentDatabase = database;
 		PointSpawnersAtScenes();
@@ -300,12 +304,12 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// reads; the content database when none is named. A game run from its project folder
 	/// names its sources here while its content database is the cooked one, which holds no
 	/// scene or prefab.
-	public void SetSceneDatabase(ContentDatabase database)
+	public void SetSceneDatabase(IContentDatabase database)
 	{
 		mSceneDatabase = database;
 		PointSpawnersAtScenes();
 	}
-	public ContentDatabase SceneDatabase => (mSceneDatabase != null) ? mSceneDatabase : mContentDatabase;
+	public IContentDatabase SceneDatabase => (mSceneDatabase != null) ? mSceneDatabase : mContentDatabase;
 
 	/// Attaches a borrowed manager AFTER startup, registering the standard factories on it.
 	public void AttachResourceManager(ResourceManager borrowed, IApplicationHost host)
@@ -594,6 +598,11 @@ class DefaultApplication : IApplication, ISceneObserver
 			// The host's task pool, so a factory that supports it decodes off the main thread
 			// without holding the frame's workers; with none, loads are synchronous.
 			mOwnedResources = new ResourceManager(mContentDatabase, host.Tasks);
+			if (let layered = mContentDatabase as LayeredContentDatabase)
+			{
+				let resources = mOwnedResources;
+				layered.SetFallthrough(new [=resources] (storedTypeName) => resources.ReadsAuthoredRecord(storedTypeName));
+			}
 		}
 		PointSpawnersAtScenes();
 
@@ -973,6 +982,9 @@ class DefaultApplication : IApplication, ISceneObserver
 		// forgets them first.
 		if (mGui != null)
 			mGui.SetResourceManager(null);
+		// The view's predicate asks the manager this application made, which goes next.
+		if ((mOwnedResources != null) && (let layered = mContentDatabase as LayeredContentDatabase))
+			layered.SetFallthrough(null);
 		DeleteAndNullify!(mOwnedResources);
 		if (mBorrowedResources != null)
 			mFactories.Unregister(mBorrowedResources);
@@ -1012,7 +1024,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Answers an unassigned handle for every failure, and does so deliberately: a replicated
 	/// spawn that cannot be resolved should produce NO entity rather than half of one, and the
 	/// replication that follows applies transform and fields on top of whatever this returns.
-	public static EntityHandle ResolveNetworkPrefab(ContentDatabase database,
+	public static EntityHandle ResolveNetworkPrefab(IContentDatabase database,
 		ResourceManager resources, Scene scene, Guid prefab)
 		=> PrefabSpawnSystem.SpawnInto(scene, database, resources, prefab);
 

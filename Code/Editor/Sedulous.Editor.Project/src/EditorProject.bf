@@ -36,6 +36,8 @@ class EditorProject
 	private SerializerFactory mCookedFactory ~ delete _;
 	private ContentDatabase mSourceDb ~ delete _;
 	private ContentDatabase mCookedDb ~ delete _;
+	/// The cooked database over the sources, for the resources (ResourceDb).
+	private LayeredContentDatabase mResourceDb ~ delete _;
 	/// The paths written through the Content/ mount while a watcher listens (RecordContentWrites),
 	/// from whichever thread wrote, until it takes them (TakeContentWrites). The project holds
 	/// them, not the watcher: a write on a worker can land while the watcher goes, and the
@@ -119,6 +121,7 @@ class EditorProject
 		mCookedFactory = new (stream, mode) => new BinarySerializerContext(stream, mode);
 		mSourceDb = new ContentDatabase(mContentMount, mSourceFactory, ProjectLayout.SourceAssetExtension);
 		mCookedDb = new ContentDatabase(mCookedMount, mCookedFactory, ProjectLayout.CookedAssetExtension);
+		mResourceDb = new LayeredContentDatabase(mCookedDb, mSourceDb);
 
 		let root = scope NativeFileSystem(directory);
 		ExportRootsFile.Load(root, mExportRoots).IgnoreError();
@@ -143,6 +146,12 @@ class EditorProject
 	public ContentDatabase SourceDb => mSourceDb;
 	/// The cooked output database, binary envelopes: what the runtime loads.
 	public ContentDatabase CookedDb => mCookedDb;
+	/// What the editor's resources read: the cooked products first, and beneath them the
+	/// sources, for the authored records the cook never builds (a prefab). It lives with the two
+	/// databases it borrows. Nothing falls through until a resource manager gives it its
+	/// predicate (LayeredContentDatabase.SetFallthrough), and whoever gives it clears it before
+	/// that manager goes.
+	public LayeredContentDatabase ResourceDb => mResourceDb;
 
 	/// The Content/ mount the source database reads and writes through: what the Content/
 	/// watcher sweeps.
