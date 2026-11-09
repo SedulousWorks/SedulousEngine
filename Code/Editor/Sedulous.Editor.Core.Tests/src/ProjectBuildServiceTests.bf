@@ -17,12 +17,11 @@ class ProjectBuildServiceTests
 
 	/// A job of `target` over the bed's project, its settings a copy (the job takes them), the
 	/// SDK found through the bed's data root; a Player job in `config` for `platform`.
-	private static BuildJob MakeJob(ProjectBuildTests.Bed bed, BuildTarget target, ExportPresetSet presets = null, StringView config = default,
-		StringView platform = default)
+	private static BuildJob MakeJob(ProjectBuildTests.Bed bed, BuildTarget target, StringView config = default, StringView platform = default)
 	{
 		let settings = new ProjectSettings();
 		Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);
-		return new BuildJob(target, bed.ProjectDir, PathJoin(bed.Sdk, "Data", .. scope .()), settings, presets, config, platform);
+		return new BuildJob(target, bed.ProjectDir, PathJoin(bed.Sdk, "Data", .. scope .()), settings, config, platform);
 	}
 
 	/// The entry a BeefBuild run's -project= names.
@@ -109,36 +108,6 @@ class ProjectBuildServiceTests
 		latest.ReleaseRef();
 	}
 
-	/// Build Project's target: the editor in Debug, then the player in each config the presets
-	/// name for this host after Debug, in order.
-	[Test]
-	public static void AllBuildsTheEditorThenEachPlayerConfig()
-	{
-		let bed = scope ProjectBuildTests.Bed();
-		let presets = scope ExportPresetSet();
-		let preset = new ExportPreset();
-		preset.Platform.Set(BuildLayout.HostPlatformName);
-		preset.Config.Set("Release");
-		presets.Presets.Add(preset);
-		let runs = scope List<String>();
-		defer { ClearAndDeleteItems!(runs); }
-		let job = MakeJob(bed, .All, presets);
-		defer job.ReleaseRef();
-		let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
-			{
-				runs.Add(new $"{Argument(arguments, "project")} {Argument(arguments, "config")}");
-				Make(bed, arguments);
-				return .Ok(0);
-			}, cFakeBeefBuild);
-		Test.Assert(service.Run(job) case .Ok);
-		Test.Assert(runs.Count == 3, scope String()..AppendF("{} runs", runs.Count));
-		Test.Assert((runs[0] == "NativeGameEditor Debug") && (runs[1] == "NativeGamePlayer Debug") && (runs[2] == "NativeGamePlayer ShippingRelease"), runs[2]);
-		let made = scope List<String>();
-		defer { ClearAndDeleteItems!(made); }
-		job.GetExecutables(made);
-		Test.Assert(made.Count == 3);
-	}
-
 	/// A fake Beef install in the bed whose BeefSettings.toml names `emsdk` (under the bed's
 	/// root) as Emscripten; its BeefBuild's path.
 	private static void FakeBeefWithEmscripten(ProjectBuildTests.Bed bed, StringView emsdk, String outBeefBuild)
@@ -168,7 +137,7 @@ class ProjectBuildServiceTests
 				return .Ok(0);
 			}, beefBuild, home);
 
-		let job = MakeJob(bed, .Player, null, "ShippingRelease", "wasm32");
+		let job = MakeJob(bed, .Player, "ShippingRelease", "wasm32");
 		defer job.ReleaseRef();
 		Test.Assert((job.StepCount == 1) && (job.StepEntry(0) == .PlayerWeb) && (job.StepConfig(0) == "ShippingRelease") && (job.StepPlatform(0) == "wasm32"));
 		Test.Assert(service.Run(job) case .Ok, job.GetError(.. scope .()));
@@ -181,11 +150,11 @@ class ProjectBuildServiceTests
 		let page = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "ShippingRelease", .. scope .());
 		Test.Assert((made.Count == 1) && (made[0] == page), "the page");
 
-		let byTag = MakeJob(bed, .Player, null, "Debug", BuildLayout.cWebPlatform);
+		let byTag = MakeJob(bed, .Player, "Debug", BuildLayout.cWebPlatform);
 		defer byTag.ReleaseRef();
 		Test.Assert((byTag.StepEntry(0) == .PlayerWeb) && (byTag.StepPlatform(0) == "wasm32"), "the presets' Web is wasm32");
 
-		let host = MakeJob(bed, .Player, null, "Release");
+		let host = MakeJob(bed, .Player, "Release");
 		defer host.ReleaseRef();
 		Test.Assert((host.StepEntry(0) == .Player) && (host.StepPlatform(0) == BuildLayout.HostPlatformName));
 		Test.Assert(service.Run(host) case .Ok, host.GetError(.. scope .()));
@@ -209,7 +178,7 @@ class ProjectBuildServiceTests
 				return .Ok(0);
 			}, beefBuild, home);
 		{
-			let job = MakeJob(bed, .Player, null, "ShippingRelease", "wasm32");
+			let job = MakeJob(bed, .Player, "ShippingRelease", "wasm32");
 			defer job.ReleaseRef();
 			Test.Assert(service.Run(job) case .Err(.NotFound));
 			let error = job.GetError(.. scope .());
@@ -217,7 +186,7 @@ class ProjectBuildServiceTests
 		}
 		DeleteFile(PathJoin(bed.Root, "beef/IDE/dist/BeefSettings.toml", .. scope .()));
 		{
-			let job = MakeJob(bed, .Player, null, "Debug", "wasm32");
+			let job = MakeJob(bed, .Player, "Debug", "wasm32");
 			defer job.ReleaseRef();
 			Test.Assert(service.Run(job) case .Err(.NotFound));
 			let error = job.GetError(.. scope .());
@@ -225,7 +194,7 @@ class ProjectBuildServiceTests
 		}
 		{
 			StringView otherHost = (BuildLayout.HostPlatformName == "Win64") ? "Linux64" : "Win64";
-			let job = MakeJob(bed, .Player, null, "Debug", otherHost);
+			let job = MakeJob(bed, .Player, "Debug", otherHost);
 			defer job.ReleaseRef();
 			Test.Assert(service.Run(job) case .Err(.NotSupported));
 			let error = job.GetError(.. scope .());
@@ -235,13 +204,13 @@ class ProjectBuildServiceTests
 	}
 
 	/// A failed build's lines give its diagnostics, read as they came; the job fails, its error
-	/// naming the run, the exit and the count of errors, and no later run starts.
+	/// naming the run, the exit and the count of errors.
 	[Test]
 	public static void AFailedRunGivesItsDiagnostics()
 	{
 		let bed = scope ProjectBuildTests.Bed();
 		int runs = 0;
-		let job = MakeJob(bed, .All);
+		let job = MakeJob(bed, .Editor);
 		defer job.ReleaseRef();
 		let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
 			{
@@ -251,7 +220,7 @@ class ProjectBuildServiceTests
 				return .Ok(1);
 			}, cFakeBeefBuild);
 		Test.Assert(service.Run(job) case .Err(.Internal));
-		Test.Assert(runs == 1, "the player is not built after the editor failed");
+		Test.Assert(runs == 1);
 		Test.Assert(job.State == .Failed);
 		Test.Assert((job.ErrorCount == 4) && (job.WarningCount == 6), scope String()..AppendF("{} errors, {} warnings", job.ErrorCount, job.WarningCount));
 		let error = job.GetError(.. scope .());
@@ -296,8 +265,7 @@ class ProjectBuildServiceTests
 		}
 	}
 
-	/// A cancel while BeefBuild runs reaches the runner's check; the job ends Cancelled, and no
-	/// later run starts. So does a cancel of the task's token, and one before the job runs, which
+	/// A cancel while BeefBuild runs reaches the runner's check; the job ends Cancelled. So does a cancel of the task's token, and one before the job runs, which
 	/// never starts BeefBuild.
 	[Test]
 	public static void ACancelEndsTheJobCancelled()
@@ -305,7 +273,7 @@ class ProjectBuildServiceTests
 		let bed = scope ProjectBuildTests.Bed();
 		{
 			int runs = 0;
-			let job = MakeJob(bed, .All);
+			let job = MakeJob(bed, .Editor);
 			defer job.ReleaseRef();
 			let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
 				{
@@ -322,7 +290,7 @@ class ProjectBuildServiceTests
 		{
 			int runs = 0;
 			let outer = scope CancelSource();
-			let job = MakeJob(bed, .All);
+			let job = MakeJob(bed, .Editor);
 			defer job.ReleaseRef();
 			let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
 				{
@@ -368,7 +336,7 @@ class ProjectBuildServiceTests
 		Test.Assert(ran.State == .Failed);
 	}
 
-	/// A build is refused without an SDK, and an editor's or Build Project's for a project with no
+	/// A build is refused without an SDK, and Build Project's (the editor's) for a project with no
 	/// package of its own, before anything runs or is written.
 	[Test]
 	public static void ABuildNeedsAnSdkAndAPackage()
@@ -385,16 +353,15 @@ class ProjectBuildServiceTests
 		{
 			let settings = new ProjectSettings();
 			Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);
-			let job = new BuildJob(.All, bed.ProjectDir, bed.ProjectDir, settings);
+			let job = new BuildJob(.Editor, bed.ProjectDir, bed.ProjectDir, settings);
 			defer job.ReleaseRef();
 			Test.Assert(service.Run(job) case .Err(.NotSupported));
 			Test.Assert(job.GetError(.. scope .()).Contains("needs the engine SDK: set SEDULOUS_SDK, or run from an engine checkout"));
 		}
 		ClearAndDeleteItems!(bed.Settings.Plugins);
 		Test.Assert(!ProjectBuild.HasPackages(bed.Settings));
-		for (let target in BuildTarget[2](.All, .Editor))
 		{
-			let job = MakeJob(bed, target);
+			let job = MakeJob(bed, .Editor);
 			defer job.ReleaseRef();
 			Test.Assert(service.Run(job) case .Err(.NotFound));
 			Test.Assert(job.GetError(.. scope .()).Contains("no package of its own"));
@@ -418,7 +385,7 @@ class ProjectBuildServiceTests
 				Make(bed, arguments);
 				return .Ok(0);
 			}, cFakeBeefBuild);
-		let job = MakeJob(bed, .Player, null, "ShippingRelease");
+		let job = MakeJob(bed, .Player, "ShippingRelease");
 		defer job.ReleaseRef();
 		Test.Assert(service.Run(job) case .Ok, job.GetError(.. scope .()));
 		Test.Assert((runs.Count == 1) && (runs[0] == "NativeGamePlayer ShippingRelease"), "one run of the player");

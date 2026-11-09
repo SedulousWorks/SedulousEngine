@@ -11,11 +11,9 @@ namespace Sedulous.Editor.Project;
 /// What a build makes.
 enum BuildTarget
 {
-	/// The project's editor alone, in Debug: all a change to the game's code needs before the
-	/// editor opens on it again.
+	/// Build Project: the project's editor alone, in Debug, all a change to the game's code needs
+	/// before the editor opens on it again. The players an export ships are built by the export.
 	case Editor;
-	/// Build Project: the editor in Debug, then the player in each config PlayerConfigs names.
-	case All;
 	/// The player alone, in the job's config, for the job's platform: this host's (<Game>Player)
 	/// or wasm32 (<Game>PlayerWeb). The one target a project with no package of its own builds.
 	case Player;
@@ -80,13 +78,12 @@ class BuildJob : RefCounted
 
 	/// A job of `target` for the project in `projectDir`, the editor's data root `dataRoot` (to
 	/// find the SDK). It TAKES OWNERSHIP of `settings`, which is its own copy: the project's
-	/// change on the main thread while it runs. `presets` is read here for the configs All
-	/// builds the player in (none: Debug alone); `config` is the one Player builds it in, and
+	/// change on the main thread while it runs. `config` is the one Player builds it in, and
 	/// `platform` the one it builds for: this host's (empty, or its name) builds <Game>Player,
 	/// wasm32 (or the presets' Web) <Game>PlayerWeb, and any other is kept and refused when the
 	/// job runs.
-	public this(BuildTarget target, StringView projectDir, StringView dataRoot, ProjectSettings settings, ExportPresetSet presets = null,
-		StringView config = default, StringView platform = default)
+	public this(BuildTarget target, StringView projectDir, StringView dataRoot, ProjectSettings settings, StringView config = default,
+		StringView platform = default)
 	{
 		mTarget = target;
 		mProjectDir.Set(projectDir);
@@ -96,14 +93,6 @@ class BuildJob : RefCounted
 		{
 		case .Editor:
 			AddStep(.Editor, "Debug");
-		case .All:
-			AddStep(.Editor, "Debug");
-			let configs = scope List<String>();
-			defer { ClearAndDeleteItems!(configs); }
-			let none = scope ExportPresetSet();
-			ProjectBuild.PlayerConfigs(presets ?? none, configs);
-			for (let playerConfig in configs)
-				AddStep(.Player, playerConfig);
 		case .Player:
 			StringView stepConfig = config.IsEmpty ? "Debug" : config;
 			if ((platform == ProjectBuild.cWasmPlatform) || (platform == BuildLayout.cWebPlatform))
