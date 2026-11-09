@@ -56,12 +56,31 @@ static class SceneExportSupport
 	/// factory less ResourceManager whose every bind lands unresolved, and the ids its systems
 	/// name without binding (a script property's asset), into `outResources`; the parked
 	/// prefab instance ids into `outPrefabs`. False when the stored stream does not load.
+	///
+	/// The placed prefab instances are spawned from `db` before the scan, with the scene's
+	/// overrides applied, so what an instance's override names (a mesh swapped, a script
+	/// property set on one placement) is a reference of the scene's. What the prefab itself
+	/// names comes along too, which its own scan also finds. A prefab missing from `db` is
+	/// skipped with the warning a scene load gives.
 	public static bool ScanSceneReferences(Instance instance, ContentDatabase db, List<Guid> outResources, List<Guid> outPrefabs)
 	{
 		let scratch = scope Scene("__export_scan");
 		EngineSceneComposition.AddAllSceneManagers(scratch);
 		if (SceneStorage.LoadScene(instance, scratch) case .Err)
 			return false;
+		// The placed ids first: the spawn below takes the parked records.
+		scratch.ForEachPendingPrefabInstance(scope [&](pending) => { outPrefabs.Add(pending.PrefabId); });
+		if (scratch.PendingPrefabInstanceCount > 0)
+		{
+			// The spawn owns each stream it is handed; a nested prefab resolves through the
+			// same reader, one level at a time.
+			ScenePrefabs.PayloadResolver resolver = scope (prefabId) =>
+			{
+				let prefab = db.GetInstance(prefabId);
+				return (prefab != null) ? prefab.ReadData(cSceneStream) : null;
+			};
+			ScenePrefabs.ResolveScenePrefabs(scratch, resolver);
+		}
 		let collector = scope ResourceManager(db);
 		// Unresolved is the answer here: each bind would otherwise log a missing factory.
 		collector.ReportsMissingFactories = false;
@@ -75,7 +94,6 @@ static class SceneExportSupport
 			if (!outResources.Contains(id))
 				outResources.Add(id);
 		}
-		scratch.ForEachPendingPrefabInstance(scope [&](pending) => { outPrefabs.Add(pending.PrefabId); });
 		return true;
 	}
 }
