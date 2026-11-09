@@ -1,18 +1,17 @@
 using System;
 using Sedulous.Core;
-using Sedulous.Script;
 
 namespace Sedulous.GUI;
 
-// The `Gui` facade: a script's way into the GUI its host gave it, a service a host sets on the
-// run's runtime (ScriptRuntime.SetService) and a script reaches by the global handle `Gui`. It
-// finds the root it reads at each call, so a host whose scripts' roots differ by
-// what is running them (an editor's game per tab) gives it a function in place of a root.
+// The `Gui` facade: game code's way into the GUI its host gave it, a service the run offers
+// (RunServices.Get<GuiFacade>) and, while scripts remain, the global handle `Gui` to a script. It
+// finds the root it reads at each call, so a host whose games' roots differ by what is running
+// them (an editor's game per tab) gives it a function in place of a root.
 //
-// There is no one setter taking a variant: a script's call here is typed, so a value is set by its
-// kind: SetNumber, SetText, SetBool and SetNode, beside GetNumber, GetText and GetBool.
+// A value is set by its kind: SetNumber, SetText, SetBool and SetNode, beside GetNumber, GetText
+// and GetBool. The script-only verbs (CaptureKey with a script's function) are in GuiScript.bf.
 
-/// `Gui`: the calling script's GUI, its data, its commands and keys, its localized text.
+/// `Gui`: the game's GUI, its data, its commands and keys, its localized text.
 [Scriptable, ServiceFacade("Gui")]
 class GuiFacade
 {
@@ -22,7 +21,7 @@ class GuiFacade
 	// What the text getters give, valid until the next one (the boundary copies it).
 	private String mText = new .() ~ delete _;
 
-	/// Scripts build under `root` (borrowed: the host keeps it, and clears it here before it goes).
+	/// The game builds under `root` (borrowed: the host keeps it, and clears it here before it goes).
 	public this(SceneRoot root = null)
 	{
 		mRoot = root;
@@ -224,9 +223,9 @@ class GuiFacade
 
 	/// The next key or pad button, before anything else sees it (a rebinding screen): `handler`
 	/// is called with its binding name ("ctrl-s", "pad-north"), or empty when Escape cancelled.
-	/// OWNERSHIP of `handler` transfers: the capture holds it until it answers.
-	[Scriptable, ScriptCallback("void KeyHandler(const string &in keys)")]
-	public void CaptureKey(ScriptDelegate handler)
+	/// OWNERSHIP of `handler` transfers: the capture holds it until it answers, and deletes it
+	/// uncalled when there is no GUI.
+	public void CaptureKey(delegate void(StringView keys) handler)
 	{
 		let dispatcher = RootNode?.EventDispatcher;
 		if ((dispatcher == null) || (handler == null))
@@ -263,9 +262,9 @@ static class GuiFacadeDetail
 	/// reference, and the handler goes with the last.
 	public class KeyCapture : RefCounted
 	{
-		private ScriptDelegate mHandler ~ delete _;
+		private delegate void(StringView keys) mHandler ~ delete _;
 
-		public this(ScriptDelegate handler)
+		public this(delegate void(StringView keys) handler)
 		{
 			mHandler = handler;
 			AddRef(); // one for each answer
@@ -273,11 +272,7 @@ static class GuiFacadeDetail
 
 		public void Deliver(StringView keys)
 		{
-			if (!mHandler.IsAlive)
-				return;
-			var args = ScriptValue[1](.FromString(keys));
-			var result = ScriptValue.Nil;
-			mHandler.Invoke(args, ref result);
+			mHandler(keys);
 		}
 	}
 }

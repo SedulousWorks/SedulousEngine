@@ -162,6 +162,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Removed
 
+- Scripts: the `Http` service; a game's own code sends web requests through `HttpFacade`.
 - Editor: Edit > Export Templates, the Export dialog's template choice and its Export Templates
   button, and the templates folder in Preferences: an export builds its player, so there is no
   template to pick or install. A preset is shown by its platform's icon.

@@ -221,7 +221,7 @@ class GameInstanceTests
 		Test.Assert(RunServices.Get<ActionRuntime>(run) === instance.InputRuntime);
 		Test.Assert(RunServices.Get<RunSave>(run) === instance.Saves);
 		Test.Assert(RunServices.Get<Sedulous.Engine.Script.ScriptRunHost>(run) === instance.RunHost);
-		Test.Assert(RunServices.Get<Sedulous.Http.Script.HttpFacade>(run) === instance.Http);
+		Test.Assert(RunServices.Get<Sedulous.Http.Client.HttpFacade>(run) === instance.Http);
 
 		instance.Start();
 		instance.SetPaused(true);

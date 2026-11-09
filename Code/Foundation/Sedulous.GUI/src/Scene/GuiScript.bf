@@ -375,3 +375,23 @@ extension Node
 			} ~ { delete expression; });
 	}
 }
+
+// The facade's verb that takes a script's function.
+extension GuiFacade
+{
+	/// The next key or pad button, before anything else sees it (a rebinding screen): `handler`
+	/// is called with its binding name ("ctrl-s", "pad-north"), or empty when Escape cancelled.
+	/// OWNERSHIP of `handler` transfers: the capture holds it until it answers.
+	[Scriptable, ScriptCallback("void KeyHandler(const string &in keys)")]
+	public void CaptureKey(ScriptDelegate handler)
+	{
+		if (handler == null)
+			return;
+		CaptureKey(new [=handler] (keys) =>
+			{
+				var args = ScriptValue[1](.FromString(keys));
+				var result = ScriptValue.Nil;
+				GuiScriptDetail.Call(handler, args, ref result);
+			} ~ delete handler);
+	}
+}

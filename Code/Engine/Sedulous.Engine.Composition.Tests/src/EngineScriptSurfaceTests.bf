@@ -46,8 +46,9 @@ static class EngineScriptSurfaceTests
 		// already here), the gamekit's Screen, ScreenStack and Prompt, and Engine.GUI's three
 		// components (GuiCanvasComponent, GuiBillboardComponent, GuiWorldPanelComponent) and the
 		// four enums their fields name (GuiScalerMode, GuiCanvasRenderMode,
-		// GuiBillboardOrientation, GuiBillboardScale). 162 = + `Http` (HttpFacade), the run's HTTP.
-		Test.Assert(EngineScriptSurface.TypeCount == 164, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// GuiBillboardOrientation, GuiBillboardScale). 162 = + `Http` (HttpFacade), the run's HTTP,
+		// which left the scripts' surface for native code alone (163).
+		Test.Assert(EngineScriptSurface.TypeCount == 163, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]

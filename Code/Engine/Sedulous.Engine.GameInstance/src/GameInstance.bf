@@ -11,7 +11,6 @@ using Sedulous.Net.Tls;
 #if !BF_PLATFORM_WASM
 using Sedulous.Net.Tls.MbedTLS;
 #endif
-using Sedulous.Http.Script;
 using Sedulous.Http.Client;
 using Sedulous.Resource;
 using Sedulous.Run;

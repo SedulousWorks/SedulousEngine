@@ -257,28 +257,6 @@ int best = Save.GetInt("best.level2", 0);   // the fallback when there is none y
 - The audio bus volumes a settings screen sets are saved by the player on its own; a game
   does not need to save them.
 
-## Web requests
-
-The `Http` service reaches web services: a leaderboard, a news feed, the game's own server. A
-request answers by calling its handler on the game's thread a frame or more later, with the
-status, the body text, and an error (empty when a response came):
-
-```
-void onScores(int status, const string &in body, const string &in error) { ... }
-Http.Get("https://example.com/scores", HttpHandler(this.onScores));
-Http.Post("https://example.com/scores", "application/json", "{\"score\":9}", HttpHandler(this.onSaved));
-```
-
-- `Http.Request(method, url, headers, body, handler)` takes any method; `headers` is
-  `"Name: value"` lines. Each call returns an id for `Http.Cancel(id)`, whose handler is then
-  never called.
-- A 404 or a 500 is a response (status set, `error` empty). Status 0 means none came, and
-  `error` says why: no network, a timeout (30 s), a certificate not trusted.
-- `https` checks the server's certificate against the system's trusted roots. Bodies are text.
-- In a browser build the browser makes the request: a server on another origin must send CORS
-  headers, or the request fails without a reason the game can see.
-- Requests stop with the run: a handler is never called after its script has stopped.
-
 ## Editor properties
 
 A property is a field with an annotation, `[default, "description"]` in front of its
