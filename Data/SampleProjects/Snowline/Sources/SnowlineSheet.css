@@ -30,13 +30,13 @@ button.slate:disabled { background-color: #0E1424; border: 2px solid #3A4A6A; co
 .medal-silver { background-color: #AEB8C6; border-color: #E4EAF2; }
 .medal-gold { background-color: #E2A81E; border-color: #FFE07A; }
 
-/* The controls: a row per action, with its key and its pad button. */
+/* The controls: a row per action, with the control it takes on the device in hand. */
 .controls { flex-direction: column; align-items: center; gap: 4px; }
 .controls-row { flex-direction: row; align-items: center; width: 480px; }
 .controls-action { width: 240px; font-size: 15px; color: #B8C8E8; }
-.controls-key { width: 120px; font-size: 16px; color: #FFFFFF; }
-.controls-pad { width: 120px; font-size: 16px; color: #FFE38A; }
-.controls-head { font-size: 13px; color: #8FA3C8; }
+/* The control an action takes on the device in hand (a prompt: it follows a rebind and a pad picked up). */
+prompt.controls-key { min-width: 56px; font-size: 16px; color: #FFFFFF; }
+.controls-or { font-size: 16px; color: #FFFFFF; padding: 0px 4px; }
 
 /* The title: a card per course, with its picture over its name and its best. */
 .title-card { padding: 24px; gap: 6px; }
@@ -111,3 +111,6 @@ button.wide { width: 300px; height: 44px; font-size: 22px; }
 
 /* The lines Snowline.as spaces out ("6 / 9    +6 s", "Bronze   best 0:36.78") keep their spaces. */
 .course-best, .hud-trick, .tally-value, .ending-best, .ending-value { white-space: pre; }
+
+/* A line naming a control: the prompt (the control the action takes on the device in hand) and its words. */
+.prompt-row { flex-direction: row; align-items: center; justify-content: center; gap: 6px; }

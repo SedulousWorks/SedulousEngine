@@ -25,14 +25,13 @@
       </Panel>
       <Panel class="hud-row">
         <Panel id="hud-controls" class="controls hud-controls">
-          <Panel class="controls-row"><Label class="controls-action" text=""/><Label class="controls-key controls-head" text="Keyboard"/><Label class="controls-pad controls-head" text="Gamepad"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Move"/><Label class="controls-key" text="W A S D"/><Label class="controls-pad" text="Left stick"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Sneak: slow and silent"/><Label class="controls-key" text="C"/><Label class="controls-pad" text="B"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Run: fast and loud"/><Label class="controls-key" text="Left Shift"/><Label class="controls-pad" text="Left stick press"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Use: open, put out, hold to pick a lock"/><Label class="controls-key" text="F"/><Label class="controls-pad" text="A"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Throw a pebble"/><Label class="controls-key" text="G"/><Label class="controls-pad" text="X"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Turn the view"/><Label class="controls-key" text="Q / E"/><Label class="controls-pad" text="LB / RB"/></Panel>
-          <Panel class="controls-row"><Label class="controls-action" text="Pause"/><Label class="controls-key" text="Escape"/><Label class="controls-pad" text="Start"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Move"/><Prompt class="controls-key" action="Move" set="Gameplay"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Sneak: slow and silent"/><Prompt class="controls-key" action="Sneak" set="Gameplay"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Run: fast and loud"/><Prompt class="controls-key" action="Run" set="Gameplay"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Use: open, put out, hold to pick a lock"/><Prompt class="controls-key" action="Interact" set="Gameplay"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Throw a pebble"/><Prompt class="controls-key" action="Throw" set="Gameplay"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Turn the view"/><Prompt class="controls-key" action="TurnLeft" set="Gameplay"/><Label class="controls-or" text="/"/><Prompt class="controls-key" action="TurnRight" set="Gameplay"/></Panel>
+          <Panel class="controls-row"><Label class="controls-action" text="Pause"/><Prompt class="controls-key" action="Pause" set="Gameplay"/></Panel>
         </Panel>
       </Panel>
       <Panel class="hud-meter-row">

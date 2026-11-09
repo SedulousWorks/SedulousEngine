@@ -160,3 +160,6 @@ button.back { width: 220px; height: 44px; margin-top: 26px; }
 /* ---- the black between scenes ---- */
 
 .fade { flex-grow: 1; background-color: #000000; opacity: 0; pointer-events: none; }
+
+/* A line naming a control: the prompt (the control the action takes on the device in hand) and its words. */
+.prompt-row { flex-direction: row; align-items: center; justify-content: center; gap: 6px; }

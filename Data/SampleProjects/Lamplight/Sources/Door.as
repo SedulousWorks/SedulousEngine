@@ -115,9 +115,11 @@ class Door
 			{
 				return; // the HUD is not up
 			}
+			// The control Interact takes on the device in hand ("F", "Pad South"), not the action's name.
+			const string use = Input.Describe("Interact");
 			Label::Of(Gui.Root().Find("hud-prompt")).Text =
-				locked ? (m_picking ? "Picking the lock..." : "Hold Interact: pick the lock")
-				       : (m_target != 0.0f ? "Interact: close the door" : "Interact: open the door");
+				locked ? (m_picking ? "Picking the lock..." : "Hold " + use + ": pick the lock")
+				       : (m_target != 0.0f ? use + ": close the door" : use + ": open the door");
 			panel.Visible = true;
 			Node@ bar = Gui.Root().Find("hud-pick");
 			bar.Visible = m_picking;

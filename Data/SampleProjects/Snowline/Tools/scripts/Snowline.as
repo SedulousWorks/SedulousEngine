@@ -790,7 +790,7 @@ class Game
 			best = "Best " + clock(m_previousBest);
 		}
 		setText("final-best", best);
-		setText("final-prompt", "Jump to ride again");
+		setText("final-prompt", "to ride again"); // after the prompt beside it: the control Jump takes
 	}
 
 	// "gold", "silver", "bronze", or "" for none.

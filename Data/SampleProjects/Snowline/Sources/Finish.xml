@@ -22,7 +22,7 @@
       </Panel>
       <Panel id="row-score" class="tally-row"><Label class="score-name" text="Score"/><Label id="final-score" class="final-score" text=""/></Panel>
       <Label id="final-best" class="final-best" text=""/>
-      <Label id="final-prompt" class="final-prompt" text="Jump to skip"/>
+      <Panel class="prompt-row"><Prompt class="final-prompt" action="Jump" set="Gameplay"/><Label id="final-prompt" class="final-prompt" text="to skip"/></Panel>
     </Panel>
   </Panel>
 </Screen>

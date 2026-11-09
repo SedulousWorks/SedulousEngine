@@ -17,6 +17,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Samples: Lamplight's, Snowline's and Sky Hopper's hints and controls lists name the control on
+  the device in hand (and follow a rebinding) instead of an action's name or a fixed key and pad
+  button.
 - Editor: a scene's Simulate runs on its own, apart from every other page: its scripts' screens
   draw over the page's viewport while it simulates and go when it stops.
 

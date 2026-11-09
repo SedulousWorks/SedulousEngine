@@ -62,7 +62,9 @@ class Lamp
 			Node@ panel = Gui.Root().Find("hud-prompt-panel");
 			if (panel is null)
 				return; // the HUD is not up
-			Label::Of(Gui.Root().Find("hud-prompt")).Text = lit ? "Interact: put out the lamp" : "Interact: light the lamp";
+			// The control Interact takes on the device in hand ("F", "Pad South"), not the action's name.
+			const string use = Input.Describe("Interact");
+			Label::Of(Gui.Root().Find("hud-prompt")).Text = use + (lit ? ": put out the lamp" : ": light the lamp");
 			panel.Visible = true;
 			Gui.Root().Find("hud-pick").Visible = false; // a door's
 			m_prompting = true;

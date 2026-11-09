@@ -23,7 +23,7 @@
       <Panel class="ending-row"><Label class="ending-label" text="All three"/><Label id="end-total" class="ending-value" text=""/></Panel>
       <Panel class="ending-row"><Label class="ending-label" text="Medals"/><Label id="end-medals" class="ending-value" text=""/></Panel>
       <Label id="end-closing" class="ending-closing" text="Thanks for riding."/>
-      <Label class="ending-hint" text="Jump for the courses"/>
+      <Panel class="prompt-row"><Prompt class="ending-hint" action="Jump" set="Gameplay"/><Label class="ending-hint" text="for the courses"/></Panel>
     </Panel>
   </Panel>
 </Screen>

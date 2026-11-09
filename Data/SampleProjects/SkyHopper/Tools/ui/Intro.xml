@@ -7,7 +7,7 @@
     <Panel id="intro-card" class="cloud intro-card">
       <Label id="intro-number" class="note intro-number" text="Level 1"/>
       <Label id="intro-name" class="headline lilita intro-name" text="Grassy Hills"/>
-      <Label id="intro-prompt" class="body intro-prompt" text="Press Space or A to start"/>
+      <Panel class="prompt-row"><Label class="body intro-prompt" text="Press"/><Prompt class="body intro-prompt" action="Jump" set="Gameplay"/><Label class="body intro-prompt" text="to start"/></Panel>
     </Panel>
   </Panel>
 </Screen>

@@ -15,13 +15,13 @@ button.amber:active { background-color: #3A2A1A; border: 4px solid #F0C070; }
 button.amber:focus-visible { border: 4px solid #F0C070; }
 button.amber:disabled { background-color: #100C08; border: 2px solid #3A2C1E; color: #6A5A48; }
 
-/* The controls: a row per action, with its key and its pad button. */
+/* The controls: a row per action, with the control it takes on the device in hand. */
 .controls { flex-direction: column; align-items: center; gap: 4px; }
 .controls-row { flex-direction: row; align-items: center; width: 560px; }
 .controls-action { width: 300px; font-size: 15px; color: #D8C8A8; }
-.controls-key { width: 120px; font-size: 16px; color: #FFFFFF; }
-.controls-pad { width: 140px; font-size: 16px; color: #F0C070; }
-.controls-head { font-size: 13px; color: #A89878; }
+/* The control an action takes on the device in hand (a prompt: it follows a rebind and a pad picked up). */
+prompt.controls-key { min-width: 56px; font-size: 16px; color: #FFFFFF; }
+.controls-or { font-size: 16px; color: #FFFFFF; padding: 0px 4px; }
 
 /* The title: a button per level, with the best run on it underneath. */
 .title-card { padding: 28px; align-items: center; gap: 5px; width: 460px; }
