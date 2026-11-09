@@ -8,7 +8,7 @@ project's default.
 - Dance: Space, or the east button (B), held: dance, as the guests do when the orchestra plays.
 - Turn the camera a quarter left or right: Q / E, or the left and right shoulders.
 - Pause: Escape, or Start. It is also the whole of the Menu set, the one in effect while a menu
-  is up (Masquerade.as pushes it), so under a menu no other action reads pressed.
+  is up (the game pushes it), so under a menu no other action reads pressed.
 - On a touch screen: a floating stick on the left half moves; compact buttons on the right, Tag
   largest in the bottom-right corner, Dance beside it, Sprint above Dance, the two turns above
   those; Pause small under the HUD's top-left. The engine draws them (each zone is its button)
@@ -81,7 +81,7 @@ def main():
     old = body.find("array[@name='sets']")
     index = list(body).index(old)
     body.remove(old)
-    # Gameplay, and Menu: Pause alone, the one set in effect while a menu is up (Masquerade.as
+    # Gameplay, and Menu: Pause alone, the one set in effect while a menu is up (the game
     # pushes it), so the player's actions read released under every menu.
     menu = [a for a in ACTIONS if a[0] == "Pause"]
     sets = ET.Element("array", name="sets", count="2")

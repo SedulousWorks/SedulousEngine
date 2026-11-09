@@ -13,7 +13,7 @@ imported models never share a material by accident; the skin and the eyes are sh
 
 The clips, each a loop:
 - Idle (2 s): standing, breathing.
-- Walk (28 frames): two steps of 0.58 m, a guest's stroll at 1.0 m/s (Guest.as moves at it).
+- Walk (28 frames): two steps of 0.58 m, a guest's stroll at 1.0 m/s (the Guest moves at it).
 - Talk (3 s): standing, the right arm moving with the words, the head turning a little.
 - Dance (2 s): arms lifted, the hips swaying, stepping from foot to foot.
 """

@@ -4,6 +4,8 @@ Made with SedulousEngine. Third-party assets, with thanks:
 
 ## Made for this game
 
+- The game's code (`Code/`), the maps and the screens are written for Masquerade (Raptor's
+  Masquerade, ported).
 - Every model: the guests in their six costumes and masks, and the palace's pieces (walls,
   windows, columns, the balustrade, the fountain, lanterns, orange trees, benches, chandeliers and
   the orchestra's dais), built for Masquerade from Blender scripts (`Tools/blender/`).
@@ -31,4 +33,4 @@ All under the project's own licence.
 - **Roboto** by Google, the UI font (cooked as a distance-field font, `Content/Fonts`), [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
   (`Licenses/Roboto-NOTICE.txt`).
 
-Everything else (the scenes, the scripts and the profiles) is the project's own.
+Everything else (the scenes, the game's code and the profiles) is the project's own.

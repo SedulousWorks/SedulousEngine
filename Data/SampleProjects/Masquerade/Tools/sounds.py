@@ -2,7 +2,7 @@
 """sounds.py: Masquerade's music and sounds, generated here (no third-party content) and imported
 through the editor's MCP into Audio/.
 
-The orchestra's three pieces, one for each cue (Orchestra.as plays the cue's piece on every peer,
+The orchestra's three pieces, one for each cue (the Orchestra plays the cue's piece on every peer,
 so the music is the cue a player must follow), each a seamless loop (its tail folded into its head):
 - Audio/Waltz: the stroll, a waltz in D, oom-pah-pah under a flute.
 - Audio/Air: gathering to talk, a slow air in G, held strings under a harp and a soft flute.

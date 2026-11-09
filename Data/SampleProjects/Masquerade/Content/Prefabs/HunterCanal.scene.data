@@ -187,18 +187,21 @@
 	<array name="components" count="12">
 		<object>
 			<string name="owner">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
-			<string name="type">script</string>
+			<string name="type">masquerade.player</string>
 			<object name="data">
 				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
+					<u64 name="type">763517611260692114</u64>
 					<u32 name="version">1</u32>
 				</array>
-				<array name="behaviors" count="1">
-					<string name="script">df3731eb-4d37-d147-95b4-af116d3c467a</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0"/>
-				</array>
+				<bool name="enabled">true</bool>
+				<string name="camera">00000000-0000-0000-0000-000000000000</string>
+				<string name="crowd">00000000-0000-0000-0000-000000000000</string>
+				<f32 name="pressDistance">0.55</f32>
+				<f32 name="pressPace">0.5</f32>
+				<f32 name="walkSpeed">1</f32>
+				<f32 name="sprintSpeed">3</f32>
+				<i32 name="activity">0</i32>
+				<bool name="sprinting">false</bool>
 			</object>
 		</object>
 		<object>

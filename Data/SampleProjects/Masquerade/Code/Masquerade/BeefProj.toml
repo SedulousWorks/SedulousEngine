@@ -1,0 +1,30 @@
+FileVersion = 1
+
+[Project]
+Name = "Masquerade"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"
+# The game and its behaviours: the run (its scene loads, time scale, save and network), its input,
+# audio and GUI screens; the guests' navigation agents, the costumes' instance members, the masks'
+# flare lights and the player's ring; the round's replicated fields and the hunters' owners; the
+# joining player's hunter prefab.
+"Sedulous.Run" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Net.Replication" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.Navigation" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"
