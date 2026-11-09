@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Sedulous.Editor.Project;
 
@@ -6,16 +7,17 @@ namespace Sedulous.Editor.Project;
 class ExportResult
 {
 	public ExportStats Content = new .() ~ delete _;
-	/// The player, the template's sidecars and the preset's additional files copied.
+	/// The player, the files its build left beside it, the shader pack and the preset's additional
+	/// files copied.
 	public int FilesStaged = 0;
 	public String OutputDir = new .() ~ delete _;
 	/// Set when the resolved template was built against another engine version.
 	public String EngineVersionWarning = new .() ~ delete _;
 	public PruningReport Pruning = new .() ~ delete _;
-	/// Which player the dist runs (the template's or the project's own) and why.
+	/// Which player the dist runs: what was built ("SkyHopperPlayer, ShippingRelease, Linux64").
 	public String PlayerReason = new .() ~ delete _;
-	/// Why the export stopped short (the project's plugins, a failing export hook); empty when it
-	/// did not.
+	/// Why the export stopped short (the project's plugins, another host's platform, the player's
+	/// build, a failing export hook); empty when it did not.
 	public String Refusal = new .() ~ delete _;
 
 	public void CopyTo(ExportResult other)
@@ -27,5 +29,23 @@ class ExportResult
 		other.OutputDir.Set(OutputDir);
 		other.EngineVersionWarning.Set(EngineVersionWarning);
 		Pruning.CopyTo(other.Pruning);
+	}
+}
+
+/// What ExportAll did with the presets: how many exported and failed, and the names of those
+/// skipped for another host's platform.
+class ExportAllSummary
+{
+	public int Exported = 0;
+	public int Failed = 0;
+	public List<String> Skipped = new .() ~ DeleteContainerAndItems!(_);
+
+	public void CopyTo(ExportAllSummary other)
+	{
+		other.Exported = Exported;
+		other.Failed = Failed;
+		ClearAndDeleteItems!(other.Skipped);
+		for (let name in Skipped)
+			other.Skipped.Add(new .(name));
 	}
 }

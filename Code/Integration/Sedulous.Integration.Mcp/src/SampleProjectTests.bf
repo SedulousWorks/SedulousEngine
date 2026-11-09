@@ -145,7 +145,7 @@ static class SampleProjectTests
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
 		let force = Obj();

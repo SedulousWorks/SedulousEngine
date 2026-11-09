@@ -510,12 +510,14 @@ the preset's `includeShaderSource` is set. A script cooks once and ships to ever
 an export cooks, every script is checked against what the preset's platform has of the project's
 plugins: one using a type of a plugin the project does not enable there refuses the export,
 naming the script, the plugin and the problem; `script_validate` with `platform` makes the same
-check for an agent (its `absentPlugins` says what was left out). The project's plugins choose the player: its own build's
-(Project > Build Project) when a package of its own is enabled on the host platform, else the
-template's when it carries every plugin enabled on the preset's platform at a version at least
-the plugin's; otherwise the export is refused, the response naming why (a plugin the template
-lacks or carries older, one enabled where it is not supported, the project's own player not
-built). The response's `player` says which ran and why. Each enabled plugin's deploy files ship
+check for an agent (its `absentPlugins` says what was left out). The export builds the project's own player for the preset's platform and config (BeefBuild over
+the project's `Code/` workspace, against the engine SDK; incremental, but a project's first
+shipping or web build compiles the engine and takes minutes), linking the project's packages and
+the engine plugins it enables there, and ships it named after the game (or the preset's
+`playerName`). A preset for another host's platform (Win64 on Linux) is refused, and skipped by
+an export of every preset; a web preset needs Emscripten set in BeefBuild's settings. A plugin
+enabled where it is not supported, or found in no package, refuses the export, the response
+naming why. The response's `player` says what was built. Each enabled plugin's deploy files ship
 beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
 export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
 project's default scene, startup script and manifest assets, and what is flagged Always Export),

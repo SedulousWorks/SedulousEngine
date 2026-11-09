@@ -16,8 +16,8 @@ using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
 
-/// project_export: a REAL dist from an authored project, the player staged from a stand in
-/// host build, plus the refusals: no project, an unknown preset.
+/// project_export: a REAL dist from an authored project, its player from a stand in build
+/// (StagedPlayerBuilder: no compiler runs), plus the refusals: no project, an unknown preset.
 static class ExportFlowTests
 {
 	[Test]
@@ -25,24 +25,11 @@ static class ExportFlowTests
 	{
 		let dir = Scratch("mcp_export_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
-		// A stand in player directory beside the "host tool", as the build lays them out.
+		// Where the stand in builds go: the export's player without a compile.
 		let playerDir = Scratch("mcp_export_player", .. scope .());
 		defer RemoveDirectoryRecursive(playerDir);
-		// An empty templates root, so the export takes the host template (this build's player and
-		// its sidecars) and never a template installed on the machine running the test.
-		let templatesRoot = Scratch("mcp_export_templates", .. scope .());
-		CreateDirectory(templatesRoot);
-		Environment.SetEnvironmentVariable(ExportTemplates.cRootEnvironmentVariable, templatesRoot).IgnoreError();
-		defer
-		{
-			Environment.SetEnvironmentVariable(ExportTemplates.cRootEnvironmentVariable, "").IgnoreError();
-			RemoveDirectoryRecursive(templatesRoot);
-		}
 		CreateDirectory(playerDir);
-		let player = "#!player\n";
-		WriteFile(PathJoin(playerDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .()), .((uint8*)player.Ptr, player.Length)).IgnoreError();
-		let notices = "notices\n";
-		WriteFile(PathJoin(playerDir, BuildLayout.cThirdPartyNotices, .. scope .()), .((uint8*)notices.Ptr, notices.Length)).IgnoreError();
+		let players = scope StagedPlayerBuilder(playerDir);
 		let dataRoot = scope String();
 		FindDataRoot(dataRoot);
 		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");
@@ -56,7 +43,8 @@ static class ExportFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, playerDir, dataRoot);
+		let operations = scope InlineProjectOperations(session, builders, dataRoot);
+		operations.Players = players;
 		ProjectExportTool.Register(server, session, operations);
 
 		let noProject = scope String();
@@ -85,8 +73,12 @@ static class ExportFlowTests
 		Test.Assert(FileExists(PathJoin(outputDir, "Content.pak", .. scope .())) && FileExists(PathJoin(outputDir, "player.xml", .. scope .())));
 		Test.Assert(FileExists(PathJoin(outputDir, "Data/Engine/Shaders/shaders.dpak", .. scope .())), "the shader pack cooked from the data root");
 		Test.Assert(exported.Get("filesStaged").AsInt() >= 1, "the player staged");
-		Test.Assert(FileExists(PathJoin(outputDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .())));
-		// The licences the player's binary carries go with it: a sidecar the build lists.
+		Test.Assert(players.Builds == 1, "the export built its player");
+		// Named by the game, the project's name made an identifier.
+		Test.Assert(FileExists(PathJoin(outputDir, BuildLayout.ExecutableName("Exportable", .. scope .()), .. scope .())), "the game's player");
+		Test.Assert(FileExists(PathJoin(outputDir, StagedPlayerBuilder.cLibrary, .. scope .())), "the libraries its build left beside it");
+		Test.Assert(!FileExists(PathJoin(outputDir, StagedPlayerBuilder.cDxcLibrary, .. scope .())), "and not the shader compiler's");
+		// The licences the player's binary carries go with it: a file the build leaves beside it.
 		Test.Assert(FileExists(PathJoin(outputDir, BuildLayout.cThirdPartyNotices, .. scope .())), "the third-party notices arrive with the player");
 	}
 }

@@ -44,7 +44,7 @@ static class FullFlowTests
 		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
 		ProjectOpenTools.Register(server, session, owner);
 
@@ -105,7 +105,7 @@ static class FullFlowTests
 		let session = scope ProjectSession();
 
 		let server = scope McpServer();
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
 		Test.Assert(server.ToolCount == EngineTools.cEngineToolCount, scope $"{server.ToolCount} tools");
 
@@ -469,7 +469,7 @@ static class FullFlowTests
 		let session = scope ProjectSession();
 		session.Project = project;
 		let builders = scope BuilderRegistry();
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		let importer = scope TwoPhaseImporter();
 		ImportRequest request = .();
 		request.Source = "anything.two";

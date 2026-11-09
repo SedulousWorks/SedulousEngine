@@ -19,28 +19,34 @@ namespace Sedulous.Editor.Mcp;
 /// .cache/ with its own job system (so its timings mean what the editor's would); the import
 /// is the editor's two phase path run inline (the worker prepare, the main thread placement,
 /// the deferred flush), timed apart so the tool reports what the editor's interface thread
-/// would have paid; the export is RunExport. The player directory and the data
-/// root are the export's.
+/// would have paid; the export is RunExport, its player built inline through a build service of
+/// its own (or the builder a test sets). The data root is the export's.
 class InlineProjectOperations : IProjectOperations
 {
 	private ProjectSession mSession;
 	private BuilderRegistry mBuilders;
-	private String mPlayerDir = new .() ~ delete _;
 	private String mDataRoot = new .() ~ delete _;
+	/// What builds an export's player: BeefBuild, on the calling thread.
+	private ProjectBuildService mBuildService = new .() ~ delete _;
+	private ProjectPlayerBuilder mOwnPlayers ~ delete _;
+
+	/// What builds the player an export ships: unset, the project's own build through this
+	/// host's build service (ProjectPlayerBuilder); a test sets a StagedPlayerBuilder. Borrowed.
+	public IPlayerBuilder Players = null;
 
 	/// After an import has landed: what the host's pipeline makes of it, a model's prefab
 	/// among them (ModelPrefab.GenerateForImport), as the editor's import does. Owned; unset,
 	/// an import creates only what its importer makes.
 	public delegate void(Instance primary, ImportOptions options) OnImported ~ delete _;
 
-	/// playerDir is where the player beside the host lives, the export's host template;
-	/// dataRoot the engine data root whose Shaders the export cooks.
-	public this(ProjectSession session, BuilderRegistry builders, StringView playerDir, StringView dataRoot)
+	/// dataRoot is the engine data root whose Shaders the export cooks, and the SDK a player's
+	/// build compiles against is found from.
+	public this(ProjectSession session, BuilderRegistry builders, StringView dataRoot)
 	{
 		mSession = session;
 		mBuilders = builders;
-		mPlayerDir.Set(playerDir);
 		mDataRoot.Set(dataRoot);
+		mOwnPlayers = new ProjectPlayerBuilder(mBuildService, mDataRoot);
 	}
 
 	public OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError)
@@ -135,19 +141,17 @@ class InlineProjectOperations : IProjectOperations
 
 	public OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError)
 	{
-		return RunExport(mSession, mBuilders, mPlayerDir, mDataRoot, request, outResult, outError);
+		return RunExport(mSession, mBuilders, (Players != null) ? Players : (IPlayerBuilder)mOwnPlayers, mDataRoot, request, outResult, outError);
 	}
 
 	/// The INLINE export: what the stdio host runs on the calling thread and what the export
-	/// CLI does. Templates from the shared root plus the player beside the host, scene streams
-	/// pre-transcoded over the full composition, the reachability scanner over the same scan
-	/// asset_uses runs, then ExportOne with the cook folded in.
+	/// CLI does. The player built by `players`, scene streams pre-transcoded over the full
+	/// composition, the reachability scanner over the same scan asset_uses runs, then ExportOne
+	/// with the cook folded in.
 	public static OperationStep RunExport(ProjectSession session, BuilderRegistry builders,
-		StringView playerDir, StringView dataRoot, ExportRequest request, ExportResult outResult, String outError)
+		IPlayerBuilder players, StringView dataRoot, ExportRequest request, ExportResult outResult, String outError)
 	{
 		let project = session.Project;
-		let templates = scope TemplateRegistry();
-		templates.Refresh(ExportTemplates.ResolveRoot("", .. scope .()), playerDir);
 		let sceneStreams = scope Dictionary<Guid, List<uint8>>();
 		defer { for (let entry in sceneStreams) delete entry.value; }
 		SceneExportSupport.CollectSceneStreams(project.SourceDb.RootGroup, sceneStreams);
@@ -155,7 +159,7 @@ class InlineProjectOperations : IProjectOperations
 			{
 				SceneExportSupport.ScanSceneReferences(instance, db, outReferences.Resources, outReferences.Prefabs);
 			};
-		if (ExportDriver.ExportOne(project, request.Preset, templates, builders, request.OutRoot, dataRoot,
+		if (ExportDriver.ExportOne(project, request.Preset, players, builders, request.OutRoot, dataRoot,
 			request.Rebuild, outResult, null, true, sceneStreams, scanner, null, session.ExportHooks, session.Plugins) case .Err)
 		{
 			if (!outResult.Refusal.IsEmpty)

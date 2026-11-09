@@ -192,7 +192,7 @@ static class ProjectFlowTests
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
 		AssetTools.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Write"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
@@ -264,7 +264,7 @@ static class ProjectFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Hint"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
@@ -406,7 +406,7 @@ static class ProjectFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		AssetTools.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		AssetCreateTools.Register(server, session, creators, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Create"));
@@ -472,7 +472,7 @@ static class ProjectFlowTests
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetCreateTools.Register(server, session, creators, operations);
 		AssetDataTools.Register(server, session);
 		int announced = 0;
@@ -587,7 +587,7 @@ static class ProjectFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetCreateTools.Register(server, session, creators, operations);
 		int changed = 0;
 		session.OnSettingsChanged = new [&changed]() => { changed++; };
@@ -746,7 +746,7 @@ static class ProjectFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		AssetTools.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		operations.OnImported = new (primary, options) => { PipelineRegistration.AfterImport(primary, options); };
 		AssetWriteTools.Register(server, session, importers, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Models"));

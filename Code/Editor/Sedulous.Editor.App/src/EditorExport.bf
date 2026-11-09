@@ -26,6 +26,10 @@ class EditorExportServices
 	public TaskPool Tasks = null;
 	public TaskLane Lane = .Shared;
 	public BuilderRegistry Builders = null;
+	/// The application's project build service, which builds the player an export ships (its
+	/// job the service's latest, so the build tools follow it). Borrowed; unset, an export is
+	/// refused.
+	public ProjectBuildService BuildService = null;
 	/// The per-user editor settings: the templates root override. Null reads as no override.
 	public Settings UserSettings = null;
 	/// The engine data root; the shader cook reads <DataRoot>/Shaders.
@@ -39,7 +43,9 @@ class EditorExportServices
 /// export asked for waits for a background cook through the cook service; once it is done the
 /// scenes' text sources are transcoded to the wire and, when a preset prunes to what is
 /// reachable, the reachable closure found, both on the main thread (they load scenes), then
-/// the cook-free pack, stage and player copy run as a job, reader-only. It also keeps the
+/// the player's build and the cook-free pack and stage run as a job on the build lane,
+/// reader-only (ExportDriver builds the player through a ProjectPlayerBuilder over the
+/// application's build service). It also keeps the
 /// presets the Export dialog edits, finds the templates (the user's override, else the
 /// environment's, else the user data's) and reports the resource manager's live products to
 /// the log.
@@ -214,8 +220,9 @@ class EditorExport
 		return (p != null) && p.PruneToReachable;
 	}
 
-	/// Phase two: pack, stage and player as a background job, the cook having already run.
-	/// File I/O only, no database mutation, so it is safe alongside the main thread's reads.
+	/// Phase two: the player's build, pack and stage as a background job on the build lane, the
+	/// cook having already run. File I/O and BeefBuild only, no database mutation, so it is safe
+	/// alongside the main thread's reads.
 	private void SubmitJob(StringView presetName, bool all)
 	{
 		let project = mProject;
@@ -261,13 +268,9 @@ class EditorExport
 		let hooks = context.ExportHooks;
 		let plugins = context.Plugins;
 
-		// Resolved here, on the main thread (the templates root reads settings); the work
-		// delegate owns its copies and the completion its own, so a job dropped at shutdown,
-		// its completion never run, leaks nothing.
-		let toolDir = new String();
-		GetExecutableDirectory(toolDir);
-		let templatesRoot = new String();
-		TemplatesRoot(templatesRoot);
+		// The work delegate owns its copies and the completion its own, so a job dropped at
+		// shutdown, its completion never run, leaks nothing.
+		let buildService = mServices.BuildService;
 		let dataRoot = new String(mServices.DataRoot);
 		let outRoot = new String();
 		Absolutize(PathJoin(project.Directory, ProjectLayout.DistDir, .. scope .()), outRoot);
@@ -275,10 +278,15 @@ class EditorExport
 		let revealRoot = new String(outRoot);
 
 		mServices.Tasks.Submit(all ? "Export All" : "Export",
-			new [=project, =builders, =toolDir, =templatesRoot, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks, =plugins](task) =>
+			new [=project, =builders, =buildService, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks, =plugins](task) =>
 			{
-				let registry = scope TemplateRegistry();
-				registry.Refresh(templatesRoot, BuildLayout.PlayerDirectoryBeside(toolDir, .. scope .()));
+				if (buildService == null)
+				{
+					GlobalLog(.Error, "Export: no project build service to build the player with");
+					return .Err(.NotSupported);
+				}
+				// The player builds here, on the build lane, cancelled with the lane's task.
+				let players = scope ProjectPlayerBuilder(buildService, dataRoot, task.Token);
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
 						task.SetStep(step);
@@ -286,15 +294,15 @@ class EditorExport
 					};
 				if (all)
 				{
-					return ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot,
+					return ExportDriver.ExportAll(project, presets.Presets, players, builders, outRoot, dataRoot,
 						false, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
 				}
 				let preset = presets.Find(name);
 				if (preset == null)
 					return .Err(.NotFound);
-				return ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot,
+				return ExportDriver.ExportOne(project, preset, players, builders, outRoot, dataRoot,
 					false, null, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
-			} ~ { delete toolDir; delete templatesRoot; delete dataRoot; delete name; delete outRoot; },
+			} ~ { delete dataRoot; delete name; delete outRoot; },
 			new [=revealRoot, =this](result) => // main thread
 			{
 				if (result case .Err)

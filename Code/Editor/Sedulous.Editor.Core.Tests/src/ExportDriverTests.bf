@@ -33,10 +33,37 @@ class HookingPart : PluginPart
 	}
 }
 
+/// A player builder over the staged one whose build leaves a symbol file beside its player, as a
+/// Windows build leaves its .pdb.
+class SymbolsPlayerBuilder : IPlayerBuilder
+{
+	public const String cSymbols = "Export.dbg";
+
+	/// Borrowed.
+	private StagedPlayerBuilder mInner;
+
+	public this(StagedPlayerBuilder inner)
+	{
+		mInner = inner;
+	}
+
+	public Result<void, ErrorCode> Build(EditorProject project, ExportPreset preset, PlayerBuild outBuild, ExportProgress onProgress,
+		String outRefusal)
+	{
+		if (mInner.Build(project, preset, outBuild, onProgress, outRefusal) case .Err(let err))
+			return .Err(err);
+		let text = "symbols\n";
+		Test.Assert(WriteFile(PathJoin(outBuild.Directory, cSymbols, .. scope .()), .((uint8*)text.Ptr, text.Length)) case .Ok);
+		outBuild.Symbols.Add(new .(cSymbols));
+		return .Ok;
+	}
+}
+
 /// The export driver: a project into a dist the player loads back, the closure pruned and
-/// reported or not, the roots seeded, the variants per platform, the player and sidecars
-/// staged from the resolved template with the shader pack, symbols when opted in, a foreign
-/// engine version warning but exporting, and the names.
+/// reported or not, the roots seeded, the variants per platform, the player built for the preset
+/// (a stand in: StagedPlayerBuilder) and staged with the files its build left beside it and the
+/// shader pack, symbols when opted in, another host's platform refused or skipped, the plugins
+/// refused without templates, each player built once by Export All, and the names.
 static class ExportDriverTests
 {
 	private static ContentDatabase OpenDistPak(StringView outputDir, PakFileSystem pak, SerializerFactory factory)
@@ -136,8 +163,11 @@ static class ExportDriverTests
 		Test.Assert(Math.Abs(mesh.Bounds.Max.X - 1.0f) < 1e-4f, "the 2.0 cube");
 	}
 
+	/// The export builds the game's player first, then cooks: the player staged under the game's
+	/// name, the files its build left beside it (the shader compiler's left out), the shader pack,
+	/// the preset's extra file and the content, the build's band of the progress before the cook's.
 	[Test]
-	public static void ExportOneStagesThePlayerSidecarsAndShaderPackBesideTheContent()
+	public static void ExportOneBuildsThePlayerAndStagesItsFilesAndShaderPackBesideTheContent()
 	{
 		let fx = scope ExportProjectFixture("scratch_export_one");
 		let preset = ExportProjectFixture.HostPreset("Host", "host");
@@ -146,36 +176,52 @@ static class ExportDriverTests
 		let result = scope ExportResult();
 		let steps = scope List<String>();
 		defer { ClearAndDeleteItems(steps); }
+		let fractions = scope List<float>();
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result,
-			scope [&](step, fraction) => { steps.Add(new String(step)); }) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result,
+			scope [&](step, fraction) => { steps.Add(new String(step)); fractions.Add(fraction); }) case .Ok, result.Refusal);
+		Test.Assert(fx.Players.Builds == 1, "the player built");
 		Test.Assert(result.OutputDir == PathJoin(fx.OutRoot, "host", .. scope .()));
 		let dist = scope NativeFileSystem(result.OutputDir);
-		Test.Assert(dist.Exists(BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .())), "the player staged");
-		Test.Assert(dist.Exists("libfoo.so"), "the sidecar staged");
+		Test.Assert(dist.Exists(ExportStaging.PlayerOutputName(BuildLayout.HostPlatformName, "Export", "", .. scope .())), "the player, named by the game");
+		Test.Assert(!dist.Exists(BuildLayout.ExecutableName("ExportPlayer", .. scope .())), "not by its build");
+		Test.Assert(dist.Exists(StagedPlayerBuilder.cLibrary), "the library its build left beside it");
+		Test.Assert(!dist.Exists(StagedPlayerBuilder.cDxcLibrary), "but not the shader compiler's");
+		Test.Assert(dist.Exists(BuildLayout.cThirdPartyNotices), "the notices the build carries");
 		Test.Assert(dist.Exists(ProjectLayout.DistContentPak) && dist.Exists(ProjectLayout.DistManifestFile));
 		Test.Assert(dist.Exists("Project.xml"), "the additional file staged by its base name");
 		Test.Assert(dist.Exists("Data/Engine/Shaders/shaders.dpak") && dist.Exists("Data/.dataroot"), "the shader pack and the data root marker");
 		Test.Assert(!dist.Exists(".stage-scenes"), "the staging directory removed");
-		Test.Assert(result.FilesStaged == 5, scope $"{result.FilesStaged} staged");
+		// The player, the shader pack and its marker, the library, the notices and Project.xml.
+		Test.Assert(result.FilesStaged == 6, scope $"{result.FilesStaged} staged");
+		Test.Assert(result.PlayerReason.StartsWith(scope $"ExportPlayer, ShippingRelease, {BuildLayout.HostPlatformName}"), result.PlayerReason);
 		Test.Assert(result.Content.Cooked == 2);
-		Test.Assert(result.EngineVersionWarning.IsEmpty);
 		Test.Assert(!result.Pruning.Pruned);
-		Test.Assert((steps.Count > 0) && (steps[steps.Count - 1] == "Done"));
+		Test.Assert(steps[0].StartsWith("Building ExportPlayer"), steps[0]);
+		Test.Assert(fractions[0] == PlayerBuild.cProgressStart);
+		int cooking = -1;
+		for (int i < steps.Count)
+		{
+			if (steps[i].StartsWith("Cooking") && (cooking < 0))
+				cooking = i;
+		}
+		Test.Assert(cooking > 0, "the cook after the build");
+		Test.Assert(fractions[cooking] >= PlayerBuild.cProgressEnd, "and its progress after the build's band");
+		Test.Assert(steps[steps.Count - 1] == "Done");
 	}
 
 	[Test]
-	public static void ExportOneWithContentOnlyStagesTheContentAndTheShaderPackNeedingNoTemplate()
+	public static void ExportOneWithContentOnlyStagesTheContentAndTheShaderPackBuildingNoPlayer()
 	{
 		let fx = scope ExportProjectFixture("scratch_export_content_only");
 		let preset = ExportProjectFixture.HostPreset("Android", "android");
 		defer delete preset;
 		preset.Platform.Set("Android64");
-		let noTemplates = scope TemplateRegistry(); // a content export needs none
 		let result = scope ExportResult();
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, noTemplates, fx.Builders, fx.OutRoot, dataRoot, false, result,
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result,
 			null, true, null, null, null, null, null, true) case .Ok);
+		Test.Assert(fx.Players.Builds == 0, "no player built");
 
 		// What the game reads, and no player: the platform's one pak, the settings and the shader pack.
 		let dist = scope NativeFileSystem(result.OutputDir);
@@ -186,8 +232,9 @@ static class ExportDriverTests
 		// Its content is cooked for the platform's target, beside the host's Cooked/.
 		Test.Assert(DirectoryExists(PathJoin(fx.ProjectDir, "Cooked-android", .. scope .())));
 
-		// Without contentOnly the same preset needs a template, and there is none.
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, noTemplates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err);
+		// Without contentOnly the same preset needs a player for Android, which is not built here.
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false) case .Err);
+		Test.Assert(fx.Players.Builds == 0);
 	}
 
 	[Test]
@@ -199,7 +246,7 @@ static class ExportDriverTests
 		defer delete pruned;
 		pruned.PruneToReachable = true;
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, pruned, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result, null, true, null, fx.Scanner) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, pruned, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result, null, true, null, fx.Scanner) case .Ok);
 		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
 		{
 			let pak = scope PakFileSystem(PathJoin(result.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
@@ -222,7 +269,7 @@ static class ExportDriverTests
 		let full = ExportProjectFixture.HostPreset("Full", "full");
 		defer delete full;
 		let fullResult = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, full, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, fullResult, null, true, null, fx.Scanner) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, full, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, fullResult, null, true, null, fx.Scanner) case .Ok);
 		{
 			let pak = scope PakFileSystem(PathJoin(fullResult.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
 			let db = OpenDistPak(fullResult.OutputDir, pak, binary);
@@ -238,7 +285,7 @@ static class ExportDriverTests
 		defer delete blind;
 		blind.PruneToReachable = true;
 		let blindResult = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, blind, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, blindResult) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, blind, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, blindResult) case .Ok);
 		Test.Assert(!blindResult.Pruning.Pruned);
 	}
 
@@ -318,207 +365,139 @@ static class ExportDriverTests
 		Test.Assert(CookTarget.For("android").Astc && !CookTarget.For("android").Bc);
 	}
 
-	[Test]
-	public static void AForeignEngineVersionWarnsButExportsAndSymbolsStageOnlyWhenOptedIn()
-	{
-		let fx = scope ExportProjectFixture("scratch_export_foreign");
-		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
-		// An imported template for the host platform, another engine, with a symbol file.
-		let templatesRoot = PathJoin(fx.OutRoot, "templates", .. scope .());
-		let bundle = PathJoin(templatesRoot, "sedulous-old", .. scope .());
-		CreateDirectory(bundle);
-		let template = scope ExportTemplate();
-		template.Id.Set("sedulous-old");
-		template.Platform.Set(BuildLayout.HostPlatformName);
-		template.Config.Set(BuildLayout.BuildConfigName);
-		template.EngineVersion.Set("0.0.1");
-		template.PlayerBinary.Set("OldPlayer");
-		template.Sidecars.Add(new String("libold.so"));
-		template.Symbols.Add(new String("OldPlayer.dbg"));
-		Test.Assert(ExportTemplates.SaveManifest(scope NativeFileSystem(bundle), template) case .Ok);
-		for (let name in scope String[]("OldPlayer", "libold.so", "OldPlayer.dbg"))
-		{
-			let text = "x\n";
-			WriteFile(PathJoin(bundle, name, .. scope .()), .((uint8*)text.Ptr, text.Length)).IgnoreError();
-		}
-		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
+	/// A desktop platform this host does not build for: Win64 on Linux, Linux64 on Windows.
+	private static StringView OtherHost => (BuildLayout.HostPlatformName == "Win64") ? "Linux64" : "Win64";
 
-		let stripped = ExportProjectFixture.HostPreset("Stripped", "stripped");
-		defer delete stripped;
-		stripped.TemplateId.Set("sedulous-old");
-		stripped.PlayerName.Set("MyGame");
+	/// The player is named by the preset when it names one, else by the game; its symbols ship
+	/// only when the preset asks for them.
+	[Test]
+	public static void ThePresetNamesThePlayerAndItsSymbolsStageOnlyWhenOptedIn()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_symbols");
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		let players = scope SymbolsPlayerBuilder(fx.Players);
+
+		let named = ExportProjectFixture.HostPreset("Named", "named");
+		defer delete named;
+		named.PlayerName.Set("MyGame");
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, stripped, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
-		Test.Assert(result.EngineVersionWarning.Contains("0.0.1") && result.EngineVersionWarning.Contains(EngineVersion.String));
+		Test.Assert(ExportDriver.ExportOne(fx.Project, named, players, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok, result.Refusal);
 		let dist = scope NativeFileSystem(result.OutputDir);
-		Test.Assert(dist.Exists("MyGame"), "the preset's player name");
-		Test.Assert(dist.Exists("libold.so") && !dist.Exists("OldPlayer.dbg"), "sidecars yes, symbols no");
+		Test.Assert(dist.Exists(ExportStaging.PlayerOutputName(BuildLayout.HostPlatformName, "MyGame", "", .. scope .())), "the preset's player name");
+		Test.Assert(!dist.Exists(ExportStaging.PlayerOutputName(BuildLayout.HostPlatformName, "Export", "", .. scope .())), "not the game's");
+		Test.Assert(!dist.Exists(SymbolsPlayerBuilder.cSymbols), "no symbols unless asked");
 
 		let withSymbols = ExportProjectFixture.HostPreset("Symbols", "symbols");
 		defer delete withSymbols;
-		withSymbols.TemplateId.Set("sedulous-old");
 		withSymbols.StageSymbols = true;
 		let symbolResult = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, withSymbols, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, symbolResult) case .Ok);
-		Test.Assert(FileExists(PathJoin(symbolResult.OutputDir, "OldPlayer.dbg", .. scope .())));
-
-		// No template for the platform: refused before anything is written.
-		let nowhere = ExportProjectFixture.HostPreset("Nowhere", "nowhere");
-		defer delete nowhere;
-		nowhere.Platform.Set("Nonexistent64");
-		Test.Assert(ExportDriver.ExportOne(fx.Project, nowhere, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotFound));
+		Test.Assert(ExportDriver.ExportOne(fx.Project, withSymbols, players, fx.Builders, fx.OutRoot, dataRoot, false, symbolResult) case .Ok, symbolResult.Refusal);
+		Test.Assert(FileExists(PathJoin(symbolResult.OutputDir, SymbolsPlayerBuilder.cSymbols, .. scope .())), "the symbols, asked for");
+		Test.Assert(FileExists(PathJoin(symbolResult.OutputDir, ExportStaging.PlayerOutputName(BuildLayout.HostPlatformName, "Export", "", .. scope .()), .. scope .())), "the game's name");
 	}
 
-	/// A project with a package of its own ships its own player: the project's build for the
-	/// preset's config, newer than every file of its packages, the template giving the rest.
-	/// Never built, or older than a package's file, the export is refused before anything is
-	/// written: Build Project first.
+	/// A desktop platform's player builds on its own host: another host's preset is refused before
+	/// anything builds or is written, saying where to export it. So is a config no player is built
+	/// in.
 	[Test]
-	public static void AProjectWithAPackageShipsItsOwnBuildsPlayerOrIsRefused()
+	public static void AnotherHostsPlatformIsRefusedBeforeAnythingBuilds()
 	{
-		let fx = scope ExportProjectFixture("scratch_export_own_player");
-		let preset = ExportProjectFixture.HostPreset("Host", "host");
-		defer delete preset;
+		let fx = scope ExportProjectFixture("scratch_export_elsewhere");
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
-		let entry = new EnabledPlugin();
-		entry.Id.Set("export");
-		entry.Path.Set("Plugins/Export");
-		fx.Project.Settings.Plugins.Add(entry);
-		let source = PathJoin(fx.ProjectDir, "Plugins/Export/Plugin.xml", .. scope .());
-		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins", .. scope .()));
-		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins/Export", .. scope .()));
-		let manifest = scope String();
-		{
-			let package = scope PluginManifest();
-			package.Id.Set("export");
-			package.Version.Set("0.1.0");
-			package.EngineVersion.Set("0.1");
-			let platform = new PluginPlatform();
-			platform.Platform.Set(BuildLayout.HostPlatformName);
-			package.Platforms.Add(platform);
-			Test.Assert(package.Write(manifest) case .Ok);
-		}
-		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
-
-		let never = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, never) case .Err(.NotFound), "never built");
-		Test.Assert(never.Refusal.Contains("Build Project first"), never.Refusal);
-		Test.Assert(!DirectoryExists(PathJoin(fx.OutRoot, "host", .. scope .())), "refused before anything is written");
-
-		// Past the file system's timestamp step, so the player is newer than the package.
-		System.Threading.Thread.Sleep(50);
-		let player = ProjectBuild.ExecutablePath(fx.ProjectDir, "Export", false, "ShippingRelease", .. scope .());
-		let built = "#!own\n";
-		let buildDir = PathParent(player, .. scope .());
-		CreateDirectory(PathJoin(fx.ProjectDir, "Code", .. scope .()));
-		CreateDirectory(PathJoin(fx.ProjectDir, "Code/build", .. scope .()));
-		CreateDirectory(PathParent(buildDir, .. scope .()));
-		CreateDirectory(buildDir);
-		Test.Assert(WriteFile(player, .((uint8*)built.Ptr, built.Length)) case .Ok);
+		let elsewhere = ExportProjectFixture.HostPreset("Elsewhere", "elsewhere");
+		defer delete elsewhere;
+		elsewhere.Platform.Set(OtherHost);
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
-		let staged = scope List<uint8>();
-		Test.Assert(ReadFile(PathJoin(result.OutputDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .()), staged) case .Ok);
-		Test.Assert(StringView((char8*)staged.Ptr, staged.Count) == built, "the project's player, not the template's");
-		Test.Assert(FileExists(PathJoin(result.OutputDir, "libfoo.so", .. scope .())), "the template's sidecars still");
-		Test.Assert(result.PlayerReason.Contains("own package 'export'"), result.PlayerReason);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, elsewhere, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Err(.NotSupported));
+		Test.Assert(result.Refusal.Contains(scope $"a {OtherHost} player builds on") && result.Refusal.Contains("export this preset there"), result.Refusal);
+		Test.Assert(fx.Players.Builds == 0, "nothing built");
+		Test.Assert(!DirectoryExists(PathJoin(fx.OutRoot, "elsewhere", .. scope .())), "nothing written");
+		Test.Assert(ExportDriver.BuildsOnAnotherHost(OtherHost) && !ExportDriver.BuildsOnAnotherHost(BuildLayout.HostPlatformName)
+			&& !ExportDriver.BuildsOnAnotherHost("Web"));
 
-		System.Threading.Thread.Sleep(50);
-		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.InvalidArgument), "a package changed since");
+		let testConfig = ExportProjectFixture.HostPreset("Tests", "tests");
+		defer delete testConfig;
+		testConfig.Config.Set("Test");
+		let refused = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, testConfig, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, refused) case .Err(.InvalidArgument));
+		Test.Assert(refused.Refusal.Contains("test runner"), refused.Refusal);
+		Test.Assert((fx.Players.Builds == 0) && !DirectoryExists(PathJoin(fx.OutRoot, "tests", .. scope .())));
 	}
 
-	/// A template of the host's platform carrying the meter plugin at `listed`, its files under
-	/// plugins/meter/ at `carried` (the manifest's version), its deploy file beside it; installed
-	/// under `templatesRoot` as "meter-template".
-	private static void MeterTemplate(StringView templatesRoot, StringView listed, StringView carried, bool supportsHost = true)
+	/// A plugin package's manifest, plugin `id` supporting `platform`, into `dir` (made), with the
+	/// deploy file `deploy` listed and written beside it (none for empty).
+	private static void WritePackage(StringView dir, StringView id, StringView platform, StringView deploy)
 	{
-		let dir = PathJoin(templatesRoot, "meter-template", .. scope .());
-		RemoveDirectoryRecursive(dir);
-		CreateDirectory(templatesRoot);
 		CreateDirectory(dir);
-		let template = scope ExportTemplate();
-		template.Id.Set("meter-template");
-		template.Platform.Set(BuildLayout.HostPlatformName);
-		template.Config.Set("Release");
-		template.EngineVersion.Set(EngineVersion.String);
-		BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, template.PlayerBinary);
-		let plugin = new TemplatePlugin();
-		plugin.Id.Set("meter");
-		plugin.Version.Set(listed);
-		template.Plugins.Add(plugin);
-		Test.Assert(ExportTemplates.SaveManifest(scope NativeFileSystem(dir), template) case .Ok);
-		let player = "#!meter player\n";
-		Test.Assert(WriteFile(PathJoin(dir, template.PlayerBinary, .. scope .()), .((uint8*)player.Ptr, player.Length)) case .Ok);
 		let manifest = scope PluginManifest();
-		manifest.Id.Set("meter");
-		manifest.Version.Set(carried);
+		manifest.Id.Set(id);
+		manifest.Version.Set("1.0.0");
 		manifest.EngineVersion.Set("0.1");
-		let platform = new PluginPlatform();
-		platform.Platform.Set(supportsHost ? BuildLayout.HostPlatformName : "Web");
-		platform.Deploy.Add(new .("libmeter.so"));
-		manifest.Platforms.Add(platform);
-		let files = PathJoin(dir, "plugins/meter", .. scope .());
-		CreateDirectory(PathJoin(dir, "plugins", .. scope .()));
-		CreateDirectory(files);
+		let target = new PluginPlatform();
+		target.Platform.Set(platform);
+		if (!deploy.IsEmpty)
+			target.Deploy.Add(new .(deploy));
+		manifest.Platforms.Add(target);
 		let xml = manifest.Write(.. scope .());
-		Test.Assert(WriteFile(PathJoin(files, "Plugin.xml", .. scope .()), .((uint8*)xml.Ptr, xml.Length)) case .Ok);
-		let lib = "so\n";
-		Test.Assert(WriteFile(PathJoin(files, "libmeter.so", .. scope .()), .((uint8*)lib.Ptr, lib.Length)) case .Ok);
+		Test.Assert(WriteFile(PathJoin(dir, "Plugin.xml", .. scope .()), .((uint8*)xml.Ptr, xml.Length)) case .Ok);
+		if (!deploy.IsEmpty)
+		{
+			let lib = "so\n";
+			Test.Assert(WriteFile(PathJoin(dir, deploy, .. scope .()), .((uint8*)lib.Ptr, lib.Length)) case .Ok);
+		}
 	}
 
-	/// The template's player runs a dist when the template carries every plugin the project enables
-	/// on the preset's platform at a version at least its manifest's, their deploy files beside it;
-	/// otherwise the export is refused before anything is written, naming why: a plugin the
-	/// template lacks or carries older, one enabled where it is not supported. A plugin not enabled
-	/// on the platform asks nothing.
+	/// The project's plugins, with no template to carry them: a package of the project's own
+	/// ships, its deploy file beside the player; a package with no manifest, a plugin enabled on a
+	/// platform it does not support and an engine plugin in no package of the SDK are refused
+	/// before anything builds or is written, each named. A plugin not enabled on the platform asks
+	/// nothing.
 	[Test]
-	public static void ATemplateCarryingTheProjectsPluginsRunsItsDistAndOneLackingThemIsRefused()
+	public static void ThePluginsShipFromTheirPackagesOrRefuseBeforeTheBuild()
 	{
 		let fx = scope ExportProjectFixture("scratch_export_plugins");
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
-		let templatesRoot = PathJoin(fx.ToolDir, "templates", .. scope .());
 		let preset = ExportProjectFixture.HostPreset("Host", "host");
 		defer delete preset;
-		preset.TemplateId.Set("meter-template");
 		let entry = new EnabledPlugin();
 		entry.Id.Set("meter");
+		entry.Path.Set("Plugins/Meter");
 		fx.Project.Settings.Plugins.Add(entry);
+		let package = PathJoin(fx.ProjectDir, "Plugins/Meter", .. scope .());
+		CreateDirectory(PathJoin(fx.ProjectDir, "Plugins", .. scope .()));
 
-		MeterTemplate(templatesRoot, "1.2.0", "1.0.0");
-		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
+		// Its package has no manifest.
+		let missing = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, missing) case .Err(.InvalidArgument));
+		Test.Assert(missing.Refusal.Contains("plugin 'meter'"), missing.Refusal);
+		Test.Assert((fx.Players.Builds == 0) && !DirectoryExists(PathJoin(fx.OutRoot, "host", .. scope .())), "refused before anything builds or is written");
+
+		WritePackage(package, "meter", BuildLayout.HostPlatformName, "libmeter.so");
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok, result.Refusal);
-		Test.Assert(result.PlayerReason.Contains("carries every plugin"), result.PlayerReason);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok, result.Refusal);
 		Test.Assert(FileExists(PathJoin(result.OutputDir, "libmeter.so", .. scope .())), "its deploy file beside the player");
 
-		// Older than the plugin's manifest.
-		MeterTemplate(templatesRoot, "0.9.0", "1.0.0");
-		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
-		let older = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, older) case .Err(.InvalidArgument));
-		Test.Assert(older.Refusal.Contains("carries plugin 'meter' 0.9.0, older than 1.0.0"), older.Refusal);
-
 		// Enabled here, which the plugin does not support.
-		MeterTemplate(templatesRoot, "1.0.0", "1.0.0", false);
-		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
+		WritePackage(package, "meter", "Web", "");
 		entry.Platforms.Add(new .(BuildLayout.HostPlatformName));
 		let unsupported = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, unsupported) case .Err(.InvalidArgument));
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, unsupported) case .Err(.InvalidArgument));
 		Test.Assert(unsupported.Refusal.Contains("which it does not support"), unsupported.Refusal);
+		Test.Assert(fx.Players.Builds == 1, "refused before the build");
 		// Not enabled on this platform: nothing asked, nothing deployed.
 		ClearAndDeleteItems!(entry.Platforms);
 		entry.Platforms.Add(new .("Web"));
 		let elsewhere = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, elsewhere) case .Ok, elsewhere.Refusal);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, elsewhere) case .Ok, elsewhere.Refusal);
 
-		// A template that does not carry it.
+		// An engine plugin (no path) that no package of the SDK's Code/Plugins is.
 		ClearAndDeleteItems!(entry.Platforms);
-		preset.TemplateId.Clear();
-		fx.Templates.Refresh("", fx.ToolDir);
+		entry.Path.Clear();
+		entry.Id.Set("no-such-plugin");
 		let lacking = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, lacking) case .Err(.InvalidArgument));
-		Test.Assert(lacking.Refusal.Contains("plugin 'meter'"), lacking.Refusal);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, lacking) case .Err(.InvalidArgument));
+		Test.Assert(lacking.Refusal.Contains("plugin 'no-such-plugin'") && lacking.Refusal.Contains(ProjectBuild.cSdkPluginsDir), lacking.Refusal);
+		Test.Assert(fx.Players.Builds == 2, "refused before the build");
 	}
 
 	/// A plugin's export hooks run over the staged dist, in order, the dist there to read; one that
@@ -538,13 +517,13 @@ static class ExportDriverTests
 				return FileExists(PathJoin(context.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
 			}));
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result,
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result,
 			null, true, null, null, null, hooks) case .Ok, result.Refusal);
 		Test.Assert(seen == result.OutputDir, "run over the staged dist");
 		Test.Assert(!hooks.AddHook("none", null));
 		Test.Assert(hooks.AddHook("refuser", new (context, outWhy) => { outWhy.Set("no signing key"); return false; }));
 		let failed = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, failed,
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, failed,
 			null, true, null, null, null, hooks) case .Err(.Internal));
 		Test.Assert(failed.Refusal == "export hook refuser: no signing key", failed.Refusal);
 	}
@@ -576,8 +555,11 @@ static class ExportDriverTests
 		Test.Assert(hooks.Count == 0);
 	}
 
+	/// Every preset in turn, the progress scoped to each; the presets sharing a (platform, config)
+	/// build their player once; another host's preset is skipped and counted, and fails nothing;
+	/// one that fails fails the whole.
 	[Test]
-	public static void ExportAllRunsEveryPresetAndFailsWhenOneDoes()
+	public static void ExportAllBuildsEachPlayerOnceSkipsAnotherHostsAndFailsWhenOneFails()
 	{
 		let fx = scope ExportProjectFixture("scratch_export_all");
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
@@ -587,14 +569,39 @@ static class ExportDriverTests
 		presets.Add(ExportProjectFixture.HostPreset("B", "b"));
 		let steps = scope List<String>();
 		defer { ClearAndDeleteItems(steps); }
-		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false,
-			scope [&](step, fraction) => { steps.Add(new String(step)); }) case .Ok);
-		Test.Assert(DirectoryExists(PathJoin(fx.OutRoot, "a", .. scope .())) && DirectoryExists(PathJoin(fx.OutRoot, "b", .. scope .())));
+		let summary = scope ExportAllSummary();
+		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false,
+			scope [&](step, fraction) => { steps.Add(new String(step)); }, true, null, null, null, null, null, summary) case .Ok);
+		Test.Assert(fx.Players.Builds == 1, "one build for the two presets that share it");
+		let player = ExportStaging.PlayerOutputName(BuildLayout.HostPlatformName, "Export", "", .. scope .());
+		Test.Assert(FileExists(PathJoin(PathJoin(fx.OutRoot, "a", .. scope .()), player, .. scope .()))
+			&& FileExists(PathJoin(PathJoin(fx.OutRoot, "b", .. scope .()), player, .. scope .())), "each dist has it");
 		Test.Assert(steps[0].StartsWith("A: "), "the progress scoped to the preset");
+		Test.Assert((summary.Exported == 2) && (summary.Failed == 0) && summary.Skipped.IsEmpty);
+
+		// Another config builds its own; another host's preset is skipped, counted, written nowhere.
+		let debug = ExportProjectFixture.HostPreset("D", "d");
+		debug.Config.Set("Debug");
+		presets.Add(debug);
+		let elsewhere = ExportProjectFixture.HostPreset("E", "e");
+		elsewhere.Platform.Set(OtherHost);
+		presets.Add(elsewhere);
+		let again = scope ExportAllSummary();
+		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false,
+			null, true, null, null, null, null, null, again) case .Ok);
+		Test.Assert(fx.Players.Builds == 3, scope $"{fx.Players.Builds} builds: Release again for this run, and Debug");
+		Test.Assert((again.Exported == 3) && (again.Failed == 0), scope $"{again.Exported} exported, {again.Failed} failed");
+		Test.Assert((again.Skipped.Count == 1) && (again.Skipped[0] == "E"));
+		Test.Assert(!DirectoryExists(PathJoin(fx.OutRoot, "e", .. scope .())));
+
+		// One that fails fails the whole, the rest exported.
 		let broken = ExportProjectFixture.HostPreset("C", "c");
-		broken.Platform.Set("Nonexistent64");
+		broken.Config.Set("Test");
 		presets.Add(broken);
-		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err);
+		let failed = scope ExportAllSummary();
+		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false,
+			null, true, null, null, null, null, null, failed) case .Err);
+		Test.Assert((failed.Failed == 1) && (failed.Exported == 3) && (failed.Skipped.Count == 1));
 	}
 
 	[Test]
@@ -638,7 +645,7 @@ static class ExportDriverTests
 		defer delete preset;
 		preset.PruneToReachable = true;
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result, null, true, null, null, reachable) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result, null, true, null, null, reachable) case .Ok);
 		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
 		let pak = scope PakFileSystem(PathJoin(result.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
 		let db = OpenDistPak(result.OutputDir, pak, binary);
@@ -684,7 +691,7 @@ static class ExportDriverTests
 		defer delete preset;
 		preset.PruneToReachable = true;
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result, null, true, null, fx.Scanner) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result, null, true, null, fx.Scanner) case .Ok);
 		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
 		let pak = scope PakFileSystem(PathJoin(result.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
 		let db = OpenDistPak(result.OutputDir, pak, binary);
@@ -801,33 +808,25 @@ static class ExportDriverTests
 	[Test]
 	public static void AWebPresetStagesTheBrowserPlayerAndAWgslShaderPack()
 	{
-		// The whole web path: a Web preset, the imported Web template, the BC and ASTC
+		// The whole web path: a Web preset, its player's page built (a stand in), the BC and ASTC
 		// variant cooks, the two paks, and a WGSL only shader pack under Data.
 		let fx = scope ExportProjectFixture("scratch_export_web");
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
-		let distSrc = PathJoin(fx.OutRoot, "webdist", .. scope .());
-		CreateDirectory(distSrc);
-		let page = scope $"{BuildLayout.cWebPlayerBaseName}.html";
-		for (let name in scope String[](page, scope $"{BuildLayout.cWebPlayerBaseName}.js", scope $"{BuildLayout.cWebPlayerBaseName}.wasm"))
-		{
-			let text = "web\n";
-			WriteFile(PathJoin(distSrc, name, .. scope .()), .((uint8*)text.Ptr, text.Length)).IgnoreError();
-		}
-		let templatesRoot = PathJoin(fx.OutRoot, "templates", .. scope .());
-		Test.Assert(ExportTemplates.Create(distSrc, templatesRoot, .Install) case .Ok);
-		fx.Templates.Refresh(templatesRoot, fx.ToolDir);
 
 		let preset = scope ExportPreset();
 		preset.Name.Set("Web Build");
 		preset.Platform.Set("Web");
 		preset.OutputSubdir.Set("web");
 		let result = scope ExportResult();
-		let exported = ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result);
-		Test.Assert(exported case .Ok, scope $"the web export: {exported}; the WGSL cook needs naga and tint beside the test executable");
+		let exported = ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result);
+		Test.Assert(exported case .Ok, scope $"the web export: {exported} ({result.Refusal}); the WGSL cook needs naga and tint beside the test executable");
 		if (exported case .Err)
 			return; // nothing below exists to read
+		Test.Assert(result.PlayerReason.StartsWith("ExportPlayerWeb, ShippingRelease, wasm32"), result.PlayerReason);
 		let dist = scope NativeFileSystem(result.OutputDir);
-		Test.Assert(dist.Exists(page) && dist.Exists(scope $"{BuildLayout.cWebPlayerBaseName}.js") && dist.Exists(scope $"{BuildLayout.cWebPlayerBaseName}.wasm"), "the browser player trio");
+		// The page renamed for the game; the .js and .wasm it refers to keep their names.
+		Test.Assert(dist.Exists("Export.html") && dist.Exists("ExportPlayerWeb.js") && dist.Exists("ExportPlayerWeb.wasm"), "the browser player trio");
+		Test.Assert(dist.Exists("serve.py") && dist.Exists(BuildLayout.cThirdPartyNotices), "and what its build left beside the page");
 		Test.Assert(dist.Exists("Content-bc.pak") && dist.Exists("Content-astc.pak") && !dist.Exists("Content.pak"), "the two web paks, no desktop one");
 		Test.Assert(dist.Exists(ProjectLayout.DistManifestFile) && dist.Exists("Data/.dataroot") && dist.Exists("Data/Engine/Shaders/shaders.dpak"));
 		let packStream = dist.Open("Data/Engine/Shaders/shaders.dpak", .Read);
@@ -878,7 +877,7 @@ static class ExportDriverTests
 		let preset = ExportProjectFixture.HostPreset("dist", "dist");
 		defer delete preset;
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
 		Test.Assert(result.Content.CookFailed == 0);
 
 		let packStream = scope NativeFileSystem(result.OutputDir).Open("Data/Engine/Shaders/shaders.dpak", .Read);
@@ -952,7 +951,7 @@ static class ExportDriverTests
 			defer delete preset;
 			preset.IncludeShaderSource = includeSource;
 			let result = scope ExportResult();
-			Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
+			Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
 			Test.Assert(result.Content.CookFailed == 0);
 			Test.Assert(result.Content.Shaders.Count == 1);
 			return new String(result.OutputDir);

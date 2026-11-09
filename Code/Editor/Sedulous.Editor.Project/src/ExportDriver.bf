@@ -14,18 +14,17 @@ using Sedulous.Runtime;
 
 namespace Sedulous.Editor.Project;
 
-/// The export: a project into a shippable dist. Cook everything, or the reachable closure
-/// of the entry points when the preset prunes; stage the scenes as binary products; pack
-/// the cooked content, one pak on the desktop and the BC and ASTC siblings on the web; write
-/// the dist manifest; cook the shader pack into the dist's Data; stage the resolved
-/// template's player and sidecars and the preset's extra files. The project's plugins choose the
-/// player (ExportPlugins.ChoosePlayer): its own build's when a package of its own is enabled,
-/// refused until Build Project made it for the preset's config, else the template's when it
-/// carries every plugin enabled there, else none, and the export is refused saying why. The
-/// plugins' deploy files ship beside the player, and their export hooks run over the staged
-/// dist. The ONE entry point the
-/// editor's Export menu, the CLI and the MCP host share, so a preset produces the same dist
-/// whichever surface triggers it.
+/// The export: a project into a shippable dist. Build the game's player for the preset (an
+/// IPlayerBuilder: the project's own, its packages and the engine plugins it enables linked
+/// in); cook everything, or the reachable closure of the entry points when the preset prunes;
+/// stage the scenes as binary products; pack the cooked content, one pak on the desktop and the
+/// BC and ASTC siblings on the web; write the dist manifest; cook the shader pack into the
+/// dist's Data; stage the player, the files its build left beside it and the preset's extra
+/// files. The project's plugins refuse an export they cannot ship (ExportPlugins.Check), and
+/// another host's desktop platform is refused, both before anything builds. The plugins'
+/// deploy files ship beside the player, and their export hooks run over the staged dist. The
+/// ONE entry point the editor's Export menu, the CLI and the MCP host share, so a preset
+/// produces the same dist whichever surface triggers it.
 static class ExportDriver
 {
 	// ---- the scene streams ----
@@ -157,12 +156,17 @@ static class ExportDriver
 		return .Ok;
 	}
 
-	/// The cook occupies 0.05..0.60 of the export.
+	/// The cook's share of an export's progress: after the player's build
+	/// (PlayerBuild.cProgressStart..cProgressEnd), up to the variants at 0.6.
+	public const float cCookStart = 0.42f;
+	public const float cCookEnd = 0.6f;
+
+	/// The cook occupies cCookStart..cCookEnd of the export.
 	private static void ReportCookStep(ExportProgress onProgress, int done, int total, StringView path)
 	{
 		if (onProgress == null)
 			return;
-		let fraction = (total > 0) ? 0.05f + ((float)done / (float)total) * 0.55f : 0.6f;
+		let fraction = (total > 0) ? cCookStart + ((float)done / (float)total) * (cCookEnd - cCookStart) : cCookEnd;
 		onProgress(scope $"Cooking {path}", fraction);
 	}
 
@@ -410,7 +414,7 @@ static class ExportDriver
 		let stats = scope ExportStats();
 		defer { if (outStats != null) stats.CopyTo(outStats); }
 		if (onProgress != null)
-			onProgress("Cooking content...", 0.05f);
+			onProgress("Cooking content...", cCookStart);
 		{
 			let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
 			let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
@@ -444,10 +448,6 @@ static class ExportDriver
 
 	// ---- one preset ----
 
-	/// Exports one preset into <outRoot>/<subdir>: the template resolved, the content cooked
-	/// and packed, whole or pruned to the closure when the preset asks and a scanner or a
-	/// precomputed root set is at hand, the shader pack cooked from `dataRoot`, the player,
-	/// the sidecars, the symbols when opted in, and the extra files staged.
 	/// A preset's own render resolution, window or orientation, over what the project's dist
 	/// manifest says: the platform's values ship in its player.xml. Nothing to do when it
 	/// overrides none.
@@ -485,21 +485,32 @@ static class ExportDriver
 		return .Ok;
 	}
 
-	/// `contentOnly` stages what the game reads and no player: the content pak(s), player.xml and
-	/// the shader pack, with no template needed (an Android app's assets, which its own build
-	/// packs beside the player library).
-	public static Result<void, ErrorCode> ExportOne(EditorProject project, ExportPreset preset, TemplateRegistry templates,
+	/// Whether `platform` is a desktop platform whose player builds on another host than this one:
+	/// BeefBuild builds a desktop player for its own host alone (the web builds on any).
+	public static bool BuildsOnAnotherHost(StringView platform)
+	{
+		return ((platform == "Linux64") || (platform == "Win64") || (platform == "macOS")) && (platform != BuildLayout.HostPlatformName);
+	}
+
+	/// Exports one preset into <outRoot>/<subdir>. Refused before anything is built or written:
+	/// a plugin the export cannot ship (ExportPlugins.Check, its packages found in the project
+	/// or the engine SDK `dataRoot` is in), another host's desktop platform or a config no player
+	/// is built in (ProjectPlayerBuilder.Target), and a script that cannot run on the platform.
+	/// Then the player is built by `players` for the preset's platform and config, so a compile
+	/// error refuses before the cook; the content is cooked and packed, whole or pruned to the
+	/// closure when the preset asks and a scanner or a precomputed root set is at hand; the
+	/// shader pack is cooked from `dataRoot`; and the player (named by the preset, else by the
+	/// game), the files its build left beside it, its symbols when opted in, the extra files and
+	/// the plugins' deploy files are staged before the plugins' export hooks run. `contentOnly`
+	/// stages what the game reads and no player: the content pak(s), player.xml and the shader
+	/// pack, with no player built (an Android app's assets, which its own build packs beside the
+	/// player library).
+	public static Result<void, ErrorCode> ExportOne(EditorProject project, ExportPreset preset, IPlayerBuilder players,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportResult outResult = null,
 		ExportProgress onProgress = null, bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null,
 		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null,
 		PluginHost plugins = null, bool contentOnly = false)
 	{
-		let template = contentOnly ? null : templates.Resolve(preset);
-		if ((template == null) && !contentOnly)
-		{
-			GlobalLog(.Error, "Export: no export template for preset '{}' (platform '{}') - import one", preset.Name, preset.Platform);
-			return .Err(.NotFound);
-		}
 		let result = scope ExportResult();
 		defer
 		{
@@ -514,49 +525,52 @@ static class ExportDriver
 				outResult.Refusal.Set(result.Refusal);
 			}
 		}
-		if ((template != null) && !template.EngineVersion.IsEmpty && (template.EngineVersion != EngineVersion.String))
+		// The project's plugins: each found in the project's package or the SDK's, and supported
+		// where it is enabled. An SDK not found leaves the engine's plugins in no package.
+		let sdk = scope String();
+		ProjectBuild.FindSdk(dataRoot, sdk);
+		let enabled = scope List<String>();
+		defer { ClearAndDeleteItems!(enabled); }
+		if (!ExportPlugins.Check(project, sdk, preset.Platform, enabled, result.Refusal))
 		{
-			GlobalLog(.Warning, "Export: template '{}' was built against engine {} but this build is {} - exporting anyway", template.Id, template.EngineVersion, EngineVersion.String);
-			result.EngineVersionWarning.AppendF("Template '{}' targets engine {} (this build is {}).", template.Id, template.EngineVersion, EngineVersion.String);
-		}
-		// The player this dist runs, and whether the project's plugins let the export go ahead.
-		let choice = scope PlayerChoice();
-		if (template != null)
-			ExportPlugins.ChoosePlayer(project, template, preset.Platform, choice);
-		if (!choice.Refusal.IsEmpty)
-		{
-			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, choice.Refusal);
-			result.Refusal.Set(choice.Refusal);
+			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
 			return .Err(.InvalidArgument);
 		}
-		// A package of the project's is compiled into the project's own player, so that player
-		// ships, built for the preset's config and newer than every file of the packages; the
-		// template still gives the sidecars.
-		let ownPlayer = scope String();
-		if (choice.OwnPlayer)
+		// The platform against this host, and the config: what the build would refuse, said
+		// before the scripts are checked. A content-only export builds no player.
+		if (!contentOnly)
 		{
-			let config = ProjectBuild.BuildConfigFor(preset.Config, .. scope .());
-			if (ProjectBuild.FreshPlayer(project.Directory, project.Settings, config, ownPlayer) case .Err(let err))
+			let config = scope String();
+			BuildEntry entry;
+			if (ProjectPlayerBuilder.Target(preset, out entry, config, result.Refusal) case .Err(let refused))
 			{
-				result.Refusal.AppendF("the project's own player for {} is {}: Build Project first", config,
-					(err == .NotFound) ? "not built" : "older than the project's packages");
 				GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
-				return .Err(err);
+				return .Err(refused);
 			}
 		}
-		if (template != null)
-		{
-			result.PlayerReason.Set(choice.Reason);
-			GlobalLog(.Information, "Export: preset '{}': {} player ({})", preset.Name, choice.OwnPlayer ? "the project's own" : "the template's", choice.Reason);
-		}
 		// The project's scripts against what the platform has of its plugins (as `plugins` loaded
-		// them), before anything cooks: a script cooks once and ships to every platform.
+		// them), before anything builds or cooks: a script cooks once and ships to every platform.
 		ExportPlugins.CheckScriptsOn(project, plugins, preset.Platform, result.Refusal);
 		if (!result.Refusal.IsEmpty)
 		{
 			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
 			return .Err(.InvalidArgument);
 		}
+		// The player, built before the cook: a compile error refuses before minutes of cooking.
+		let build = scope PlayerBuild();
+		if (!contentOnly)
+		{
+			if (players.Build(project, preset, build, onProgress, result.Refusal) case .Err(let failed))
+			{
+				if (result.Refusal.IsEmpty)
+					result.Refusal.Set("the player did not build");
+				GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
+				return .Err(failed);
+			}
+			result.PlayerReason.Set(build.Description);
+			GlobalLog(.Information, "Export: preset '{}': player {}", preset.Name, build.Description);
+		}
+
 		let subdir = preset.OutputSubdir.IsEmpty ? ExportStaging.SanitizeName(preset.Name, .. scope :: .()) : StringView(preset.OutputSubdir);
 		PathJoin(outRoot, subdir, result.OutputDir);
 		CreateDirectory(result.OutputDir);
@@ -622,18 +636,14 @@ static class ExportDriver
 
 		if (onProgress != null)
 			onProgress("Staging player...", 0.93f);
-		let outName = ExportStaging.PlayerOutputName(preset.Platform, preset.PlayerName, template.PlayerBinary, .. scope .());
-		if (!ownPlayer.IsEmpty)
+		// Named by the preset, else by the game ("SkyHopper", not the build's SkyHopperPlayer).
+		let playerName = scope String(preset.PlayerName);
+		if (playerName.IsEmpty)
+			ProjectBuild.GameName(project.Name, playerName);
+		let outName = ExportStaging.PlayerOutputName(preset.Platform, playerName, build.Binary, .. scope .());
+		if (!FileCopy.CopyFile(build.Directory, build.Binary, result.OutputDir, outName))
 		{
-			if (!FileCopy.CopyFile(PathParent(ownPlayer, .. scope .()), PathFilename(ownPlayer, .. scope .()), result.OutputDir, outName))
-			{
-				GlobalLog(.Error, "Export: failed to stage the project's own player '{}'", ownPlayer);
-				return .Err(.Internal);
-			}
-		}
-		else if (!FileCopy.CopyFile(template.Directory, template.PlayerBinary, result.OutputDir, outName))
-		{
-			GlobalLog(.Error, "Export: failed to stage player '{}' from {}", template.PlayerBinary, template.Id);
+			GlobalLog(.Error, "Export: failed to stage player '{}' from {}", build.Binary, build.Directory);
 			return .Err(.Internal);
 		}
 		result.FilesStaged++;
@@ -648,28 +658,25 @@ static class ExportDriver
 			GlobalLog(.Information, "Export: staged Data/{} ({} variants)", Sedulous.Shaders.ShaderSystemHost.cShaderPackPath, shaderVariants);
 		}
 
-		if ((onProgress != null) && !template.Sidecars.IsEmpty)
+		// What the build left beside the player: its runtime libraries and the notices, or the web
+		// page's parts.
+		if ((onProgress != null) && !build.Files.IsEmpty)
 			onProgress("Staging runtime libs...", 0.96f);
-		for (let sidecar in template.Sidecars)
+		for (let file in build.Files)
 		{
-			if (ExportStaging.IsDxcRuntimeLib(sidecar))
-			{
-				GlobalLog(.Information, "Export: omitting DXC sidecar '{}' (dist renders from the cooked shader pack)", sidecar);
-				continue;
-			}
-			if (FileCopy.CopyFile(template.Directory, sidecar, result.OutputDir, sidecar))
+			if (FileCopy.CopyFile(build.Directory, file, result.OutputDir, file))
 				result.FilesStaged++;
 			else
-				GlobalLog(.Warning, "Export: sidecar '{}' not found in template '{}'", sidecar, template.Id);
+				GlobalLog(.Warning, "Export: '{}' not found beside the player in {}", file, build.Directory);
 		}
 		if (preset.StageSymbols)
 		{
-			for (let symbol in template.Symbols)
+			for (let symbol in build.Symbols)
 			{
-				if (FileCopy.CopyFile(template.Directory, symbol, result.OutputDir, symbol))
+				if (FileCopy.CopyFile(build.Directory, symbol, result.OutputDir, symbol))
 					result.FilesStaged++;
 				else
-					GlobalLog(.Warning, "Export: symbol file '{}' not found in template '{}'", symbol, template.Id);
+					GlobalLog(.Warning, "Export: symbol file '{}' not found in {}", symbol, build.Directory);
 			}
 		}
 		for (let extra in preset.AdditionalFiles)
@@ -680,7 +687,7 @@ static class ExportDriver
 				GlobalLog(.Warning, "Export: additional file '{}' not found", extra);
 		}
 		// The deploy files of the plugins the project enables on this platform, beside the player.
-		if (!ExportPlugins.StageDeployFiles(project, template, choice, preset.Platform, result.OutputDir, ref result.FilesStaged))
+		if (!ExportPlugins.StageDeployFiles(project, sdk, enabled, preset.Platform, result.OutputDir, ref result.FilesStaged))
 		{
 			result.Refusal.Set("a plugin's deploy file is missing (see the log)");
 			return .Err(.NotFound);
@@ -707,17 +714,33 @@ static class ExportDriver
 		return .Ok;
 	}
 
-	/// Every preset in turn; Ok only when all succeeded.
-	public static Result<void, ErrorCode> ExportAll(EditorProject project, List<ExportPreset> presets, TemplateRegistry templates,
+	/// Every preset in turn, each (platform, config) built once by `players` for all the presets
+	/// that share it. A preset for another host's desktop platform (BuildsOnAnotherHost) is
+	/// skipped with a notice, not failed: a project's Windows preset is exported on Windows. Ok
+	/// when every preset not skipped exported; the counts in `outSummary` when given.
+	public static Result<void, ErrorCode> ExportAll(EditorProject project, List<ExportPreset> presets, IPlayerBuilder players,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportProgress onProgress = null,
 		bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null, SceneReferenceScanner scanner = null,
-		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null, PluginHost plugins = null)
+		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null, PluginHost plugins = null,
+		ExportAllSummary outSummary = null)
 	{
-		int ok = 0;
+		let once = scope OncePerTarget(players);
+		let summary = scope ExportAllSummary();
+		defer { if (outSummary != null) summary.CopyTo(outSummary); }
 		let n = presets.Count;
 		for (int i < n)
 		{
 			let preset = presets[i];
+			if (BuildsOnAnotherHost(preset.Platform))
+			{
+				let why = scope String();
+				BuildEntry entry;
+				// Refused, as another host's platform always is: its refusal says why.
+				ProjectPlayerBuilder.Target(preset, out entry, scope .(), why).IgnoreError();
+				GlobalLog(.Information, "Export: preset '{}' skipped: {}", preset.Name, why);
+				summary.Skipped.Add(new .(preset.Name));
+				continue;
+			}
 			let index = i;
 			ExportProgress scoped = scope [&](step, fraction) =>
 				{
@@ -725,16 +748,73 @@ static class ExportDriver
 						onProgress(scope $"{preset.Name}: {step}", ((float)index + fraction) / (float)n);
 				};
 			let result = scope ExportResult();
-			if (ExportOne(project, preset, templates, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks, plugins) case .Ok)
+			if (ExportOne(project, preset, once, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks, plugins) case .Ok)
 			{
-				ok++;
+				summary.Exported++;
 				GlobalLog(.Information, "Export: exported '{}' -> {} ({} files staged)", preset.Name, result.OutputDir, result.FilesStaged);
 			}
 			else
 			{
+				summary.Failed++;
 				GlobalLog(.Error, "Export: preset '{}' failed{}", preset.Name, result.Refusal.IsEmpty ? "" : scope $": {result.Refusal}");
 			}
 		}
-		return (ok == n) ? .Ok : .Err(.Internal);
+		if (!summary.Skipped.IsEmpty)
+			GlobalLog(.Information, "Export: {} preset(s) skipped, for another host's platform: export them there", summary.Skipped.Count);
+		return (summary.Failed == 0) ? .Ok : .Err(.Internal);
+	}
+
+	/// A player builder over another that builds each (entry, build config) once and gives the
+	/// same build to every later preset of it, so ExportAll's presets that differ only in their
+	/// content (a pruned and a full dist, two names) pay for one compile. A refusal is kept too:
+	/// a compile that failed is not run again for the next preset.
+	private class OncePerTarget : IPlayerBuilder
+	{
+		private class Made
+		{
+			public PlayerBuild Build = new .() ~ delete _;
+			public bool Failed;
+			public ErrorCode Error;
+			public String Refusal = new .() ~ delete _;
+		}
+
+		/// Borrowed.
+		private IPlayerBuilder mInner;
+		/// By "<entry>|<config>"; the keys and the builds are its own.
+		private Dictionary<String, Made> mMade = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
+
+		public this(IPlayerBuilder inner)
+		{
+			mInner = inner;
+		}
+
+		public Result<void, ErrorCode> Build(EditorProject project, ExportPreset preset, PlayerBuild outBuild, ExportProgress onProgress,
+			String outRefusal)
+		{
+			let config = scope String();
+			BuildEntry entry;
+			if (ProjectPlayerBuilder.Target(preset, out entry, config, scope .()) case .Err)
+				return mInner.Build(project, preset, outBuild, onProgress, outRefusal); // its refusal, as it says it
+			let key = scope $"{entry}|{config}";
+			Made made;
+			if (!mMade.TryGetValue(key, out made))
+			{
+				made = new Made();
+				if (mInner.Build(project, preset, made.Build, onProgress, made.Refusal) case .Err(let error))
+				{
+					made.Failed = true;
+					made.Error = error;
+				}
+				mMade[new String(key)] = made;
+			}
+			outBuild.Clear();
+			if (made.Failed)
+			{
+				outRefusal.Set(made.Refusal);
+				return .Err(made.Error);
+			}
+			made.Build.CopyTo(outBuild);
+			return .Ok;
+		}
 	}
 }

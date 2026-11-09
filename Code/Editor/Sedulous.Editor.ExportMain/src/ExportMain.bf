@@ -26,10 +26,12 @@ namespace Sedulous.Editor.ExportMain;
 ///                                           [--id <id>] [--name <name>] [--notes <text>] [--plugins-root <dir>]
 ///                                           [--icon <desktop|windows|linux|handheld|web|phone | file.svg>]
 ///
-/// The host template is the player built beside this tool, build/<Config>_<Platform>/
-/// Sedulous.Engine.Player.Desktop; the templates root is $SEDULOUS_TEMPLATES_DIR, else
-/// <user-data>/templates. The engine data root, whose Shaders the export cooks, is found by
-/// the Data/.dataroot walk from this tool, or --data-root. A created template carries an icon:
+/// An export builds the project's own player for each preset with BeefBuild, inline, against
+/// the engine SDK ($SEDULOUS_SDK, else the checkout the data root is in); BeefBuild's lines go
+/// to the console as the build's log lines. The templates root the template subcommands use is
+/// $SEDULOUS_TEMPLATES_DIR, else <user-data>/templates. The engine data root, whose Shaders the
+/// export cooks, is found by the Data/.dataroot walk from this tool, or --data-root. A created
+/// template carries an icon:
 /// the one --icon names (a built-in one, `handheld` for the Steam Deck build, or an .svg), else
 /// its platform's. --content-only stages what the game reads and no player (the content pak,
 /// player.xml and the shader pack) for a platform named with --platform, Android64 for an Android
@@ -150,8 +152,9 @@ static class ExportMain
 			if (ExportPresetsFile.Load(projectFs, presets) case .Err)
 				ExportPresetsFile.Defaults(presets);
 		}
-		let registry = scope TemplateRegistry();
-		BuildRegistry(registry);
+		// The player each preset ships, built on this thread.
+		let buildService = scope ProjectBuildService();
+		let players = scope ProjectPlayerBuilder(buildService, dataRoot);
 		let outRoot = scope String();
 		if (!outArg.IsEmpty)
 			outRoot.Set(outArg);
@@ -160,12 +163,15 @@ static class ExportMain
 
 		if (all)
 		{
-			if (ExportDriver.ExportAll(project, presets.Presets, registry, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host) case .Err)
+			let summary = scope ExportAllSummary();
+			if (ExportDriver.ExportAll(project, presets.Presets, players, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host, summary) case .Err)
 			{
 				Console.Error.WriteLine("Sedulous.Tools.Export: one or more presets failed (see log)");
 				return 1;
 			}
-			Console.WriteLine("export done: {} preset(s) -> {}", presets.Presets.Count, outRoot);
+			Console.WriteLine("export done: {} preset(s) -> {}", summary.Exported, outRoot);
+			for (let skipped in summary.Skipped)
+				Console.WriteLine("  skipped '{}': its player builds on another host", skipped);
 			return 0;
 		}
 		let preset = presetName.IsEmpty ? (presets.Presets.IsEmpty ? null : presets.Presets[0]) : presets.Find(presetName);
@@ -179,7 +185,7 @@ static class ExportMain
 		if (!platformArg.IsEmpty)
 			preset.Platform.Set(platformArg);
 		let result = scope ExportResult();
-		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host, contentOnly) case .Err)
+		if (ExportDriver.ExportOne(project, preset, players, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host, contentOnly) case .Err)
 		{
 			if (!result.Refusal.IsEmpty)
 				Console.Error.WriteLine("Sedulous.Tools.Export: export refused: {}", result.Refusal);

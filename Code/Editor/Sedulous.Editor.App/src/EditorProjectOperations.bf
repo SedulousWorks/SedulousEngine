@@ -26,10 +26,9 @@ class EditorProjectOperationsSeams
 	public TaskPool Tasks = null;
 	public TaskLane Lane = .Shared;
 	public BuilderRegistry Builders = null;
-	/// The player and its sidecars beside the executable: the host template.
-	public String PlayerDir = new .() ~ delete _;
-	/// The resolved templates root (reading it reads settings: main thread).
-	public String TemplatesRoot = new .() ~ delete _;
+	/// The application's project build service, which builds the player an export ships.
+	/// Unset, an export is refused.
+	public ProjectBuildService BuildService = null;
 	/// The engine data root; the shader cook reads <DataRoot>/Shaders.
 	public String DataRoot = new .() ~ delete _;
 	/// After a creation: the editor's effects (a first scene as the default, the browser, the
@@ -351,16 +350,20 @@ class EditorProjectOperations : IProjectOperations
 		shared.AddRef();
 		let project = mSeams.Project;
 		let builders = mSeams.Builders;
-		let playerDir = new String(mSeams.PlayerDir);
-		let templatesRoot = new String(mSeams.TemplatesRoot);
+		let buildService = mSeams.BuildService;
 		let dataRoot = new String(mSeams.DataRoot);
 		let hooks = (mSeams.Context != null) ? mSeams.Context.ExportHooks : null;
 		let plugins = (mSeams.Context != null) ? mSeams.Context.Plugins : null;
 		mSeams.Tasks.Submit(scope $"Export {shared.Preset.Name}",
-			new [=shared, =project, =builders, =playerDir, =templatesRoot, =dataRoot, =hooks, =plugins](task) =>
+			new [=shared, =project, =builders, =buildService, =dataRoot, =hooks, =plugins](task) =>
 			{
-				let templates = scope TemplateRegistry();
-				templates.Refresh(templatesRoot, playerDir);
+				if (buildService == null)
+				{
+					shared.Result.Refusal.Set("this host has no project build service to build the player with");
+					return .Err(.NotSupported);
+				}
+				// The player builds here, on the build lane, cancelled with the lane's task.
+				let players = scope ProjectPlayerBuilder(buildService, dataRoot, task.Token);
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
 						task.SetStep(step);
@@ -368,10 +371,10 @@ class EditorProjectOperations : IProjectOperations
 					};
 				// The cook already ran through the cook service (cook false); the scene streams
 				// and the reachable set were computed on the main thread.
-				return ExportDriver.ExportOne(project, shared.Preset, templates, builders, shared.OutRoot, dataRoot,
+				return ExportDriver.ExportOne(project, shared.Preset, players, builders, shared.OutRoot, dataRoot,
 					false, shared.Result, onProgress, false, shared.SceneStreams, null,
 					shared.ReachableValid ? shared.ReachableRoots : null, hooks, plugins);
-			} ~ { shared.ReleaseRef(); delete playerDir; delete templatesRoot; delete dataRoot; },
+			} ~ { shared.ReleaseRef(); delete dataRoot; },
 			new [=shared](result) =>
 			{
 				shared.JobOk = (result case .Ok);

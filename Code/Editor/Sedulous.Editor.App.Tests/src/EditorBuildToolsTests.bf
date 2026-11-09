@@ -592,7 +592,7 @@ class EditorBuildToolsTests
 		let importers = scope ImporterRegistry();
 		let session = scope ProjectSession();
 		session.Project = bench.Project;
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		let host = scope EditorMcpHost(bench.Context, session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "stamp");
 		let line = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"host_info\",\"arguments\":{}}}";
 

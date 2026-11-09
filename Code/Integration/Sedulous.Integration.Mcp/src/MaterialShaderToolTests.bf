@@ -38,7 +38,7 @@ static class MaterialShaderToolTests
 		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		// The engine's shader library: where the effects' tables (wind.hlsli's Wind) are read from.
 		let paths = scope EngineToolPaths();
 		DataPath(FindDataRoot(.. scope .()), "Engine/Shaders", paths.ShaderLibrary);

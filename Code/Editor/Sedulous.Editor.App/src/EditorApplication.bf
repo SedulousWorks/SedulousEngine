@@ -622,6 +622,7 @@ class EditorApplication : IApplication
 		exportServices.Tasks = mContext.Tasks;
 		exportServices.Lane = mContext.BuildLane;
 		exportServices.Builders = mBuilders;
+		exportServices.BuildService = mBuildService;
 		exportServices.UserSettings = mEditorSettings;
 		exportServices.DataRoot.Set(mConfig.DataRoot);
 		// It stays, its button showing the build in the system's file manager (the old editor's).
@@ -646,7 +647,7 @@ class EditorApplication : IApplication
 		mcpServices.DataRoot.Set(mConfig.DataRoot);
 		mcpServices.ForceEnabled = mConfig.McpEnabled;
 		mcpServices.Port = mConfig.McpPort;
-		mcpServices.TemplatesRoot = new (outPath) => { mExport.TemplatesRoot(outPath); };
+		mcpServices.BuildService = mBuildService;
 		mcpServices.OnCreated = new (creator, instance) => { mCreation.AfterCreate(creator, instance); };
 		// What follows an import, as the Import dialog's: the editor told (a model's prefab made).
 		mcpServices.OnImported = new (primary, options) => { mContext.NotifyImported(primary, options); };

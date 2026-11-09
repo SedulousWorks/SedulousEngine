@@ -83,7 +83,7 @@ class EditorMcpHostTests
 
 		let session = scope ProjectSession();
 		session.Project = project;
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		let context = scope EditorContext();
 		// A domain's contribution (registered at boot) reaches the served surface.
 		context.RegisterMcpToolContribution(new (server) =>
@@ -208,7 +208,7 @@ class EditorMcpHostTests
 		let importers = scope ImporterRegistry();
 		let session = scope ProjectSession();
 		session.Project = project;
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		let context = scope EditorContext();
 		let host = scope EditorMcpHost(context, session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
 		EditorMcpHostConfig config = .(); // no token
