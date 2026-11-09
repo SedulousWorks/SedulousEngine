@@ -276,6 +276,90 @@ class ProjectBuildTests
 		Test.Assert(program.Contains("=> Sedulous.Engine.Player.WebMain.WebPlayerMain.Run(args);"), program);
 	}
 
+	/// A plugin manifest of `id` in `dir`, listing parts of `kinds` and supporting `platforms`.
+	private static void WriteManifest(StringView dir, StringView id, Span<StringView> kinds, Span<StringView> platforms)
+	{
+		let manifest = scope PluginManifest();
+		manifest.Id.Set(id);
+		manifest.Name.Set(id);
+		manifest.Version.Set("0.1.0");
+		manifest.EngineVersion.Set("0.1");
+		for (let kind in kinds)
+		{
+			let part = new PluginManifestPart();
+			part.Kind.Set(kind);
+			manifest.Parts.Add(part);
+		}
+		for (let platform in platforms)
+		{
+			let entry = new PluginPlatform();
+			entry.Platform.Set(platform);
+			manifest.Platforms.Add(entry);
+		}
+		let xml = scope String();
+		Test.Assert(manifest.Write(xml) case .Ok);
+		Bed.Write(dir, "Plugin.xml", xml);
+	}
+
+	/// The project's entry enabling engine plugin `id` (no path) on `platforms` (none: every one
+	/// its manifest supports).
+	private static void EnableEnginePlugin(Bed bed, StringView id, Span<StringView> platforms)
+	{
+		let entry = new EnabledPlugin();
+		entry.Id.Set(id);
+		for (let platform in platforms)
+			entry.Platforms.Add(new .(platform));
+		bed.Settings.Plugins.Add(entry);
+	}
+
+	/// The players link the Engine part of each engine plugin the project enables on their
+	/// platform, found in the SDK's Code/Plugins by its id. One its entry leaves off a platform,
+	/// or whose manifest does not support it, is not linked there; one not enabled, one with no
+	/// Engine part and one in no package of the SDK are linked nowhere. The editor and the tools
+	/// link none of them.
+	[Test]
+	public static void ThePlayersLinkTheEnginePluginsEnabledOnTheirPlatform()
+	{
+		let bed = scope Bed();
+		let host = BuildLayout.HostPlatformName;
+		let plugins = PathJoin(bed.Sdk, ProjectBuild.cSdkPluginsDir, .. scope .());
+		WriteManifest(PathJoin(plugins, "Imgui", .. scope .()), "imgui", scope StringView[]("Engine"), scope StringView[](host, "Web"));
+		WriteManifest(PathJoin(plugins, "Weather", .. scope .()), "weather", scope StringView[]("Engine"), scope StringView[](host));
+		WriteManifest(PathJoin(plugins, "Fog", .. scope .()), "fog", scope StringView[]("Engine"), scope StringView[](host, "Web"));
+		WriteManifest(PathJoin(plugins, "Haze", .. scope .()), "haze", scope StringView[]("Engine"), scope StringView[](host, "Web"));
+		WriteManifest(PathJoin(plugins, "Atlas", .. scope .()), "atlas", scope StringView[]("Pipeline"), scope StringView[](host, "Web"));
+		EnableEnginePlugin(bed, "imgui", default);
+		// Web is not Weather's, so it links on the host alone.
+		EnableEnginePlugin(bed, "weather", default);
+		EnableEnginePlugin(bed, "fog", scope StringView[]("Web"));
+		EnableEnginePlugin(bed, "atlas", default);
+		EnableEnginePlugin(bed, "ghost", default);
+
+		let hostParts = scope List<String>();
+		defer { ClearAndDeleteItems!(hostParts); }
+		ProjectBuild.EnginePluginParts(bed.Settings, bed.Sdk, host, hostParts);
+		Test.Assert((hostParts.Count == 2) && (hostParts[0] == "Imgui.Engine") && (hostParts[1] == "Weather.Engine"), "imgui and weather on the host");
+		let webParts = scope List<String>();
+		defer { ClearAndDeleteItems!(webParts); }
+		ProjectBuild.EnginePluginParts(bed.Settings, bed.Sdk, "Web", webParts);
+		Test.Assert((webParts.Count == 2) && (webParts[0] == "Imgui.Engine") && (webParts[1] == "Fog.Engine"), "imgui and fog on the web");
+
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+		let player = bed.Read(".generated/NativeGamePlayer/BeefProj.toml", .. scope .());
+		Test.Assert(player.Contains("\"Lantern.Engine\" = \"*\"\n\"Imgui.Engine\" = \"*\"\n\"Weather.Engine\" = \"*\"\n"), player);
+		let web = bed.Read(".generated/NativeGamePlayerWeb/BeefProj.toml", .. scope .());
+		Test.Assert(web.Contains("\"Lantern.Engine\" = \"*\"\n\"Imgui.Engine\" = \"*\"\n\"Fog.Engine\" = \"*\"\n"), web);
+		Test.Assert(!player.Contains("\"Fog.Engine\"") && !web.Contains("\"Weather.Engine\""), "each player links what is enabled on its platform");
+		for (let text in StringView[2](player, web))
+			Test.Assert(!text.Contains("\"Haze.") && !text.Contains("\"Atlas.") && !text.Contains("\"Ghost."), scope String(text));
+		for (let entry in StringView[2]("NativeGameEditor", "NativeGameTools"))
+		{
+			let project = bed.Read(scope $".generated/{entry}/BeefProj.toml", .. scope .());
+			Test.Assert(!project.Contains("\"Imgui.Engine\"") && !project.Contains("\"Weather.Engine\"") && !project.Contains("\"Fog.Engine\""), project);
+		}
+	}
+
 	/// The tools are one console executable over the MCP host's, the cook's and the export's
 	/// startup, linking the parts any of those roles loads (no Editor part); its Main runs the
 	/// subcommand its first argument names with the rest, and anything else is a usage line and
