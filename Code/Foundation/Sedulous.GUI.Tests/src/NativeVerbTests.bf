@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -222,5 +223,43 @@ class NativeVerbTests
 			tween.ReleaseRef();
 		}
 		Test.Assert(sDeleted == 2, "with the tween");
+	}
+
+	/// GuiFacade.CaptureKey: the next key's binding name reaches the handler before the keymap
+	/// sees it, Escape answers empty, and the handler is deleted after its one answer; with no GUI
+	/// it is deleted uncalled.
+	[Test]
+	public static void TheFacadeCapturesTheNextKeyAndEscapeCancels()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let gui = scope GuiFacade(root);
+		let d = root.EventDispatcher;
+		let heard = scope String();
+		int calls = 0;
+		int deleted = 0;
+		int jumps = 0;
+		gui.DefineCommand("jump", "");
+		root.OnCommand("jump", new [&] (command) => { jumps++; });
+		Test.Assert(gui.BindKey("ctrl-q", "jump", ""));
+
+		gui.CaptureKey(new [&] (keys) => { heard.Set(keys); calls++; } ~ { deleted++; });
+		Test.Assert(d.IsCapturingKey);
+		d.InjectKeyDown((uint32)KeyCode.Q, KeyModCtrl);
+		Test.Assert(heard == "ctrl-q", heard);
+		Test.Assert(jumps == 0, "taken before the keymap");
+		Test.Assert((calls == 1) && (deleted == 1));
+		Test.Assert(!d.IsCapturingKey);
+		d.InjectKeyDown((uint32)KeyCode.Q, KeyModCtrl);
+		Test.Assert(jumps == 1, "the keymap has keys again");
+
+		gui.CaptureKey(new [&] (keys) => { heard.Set(keys); calls++; } ~ { deleted++; });
+		d.InjectKeyDown((uint32)KeyCode.Escape, 0);
+		Test.Assert(heard.IsEmpty, "cancelled: empty");
+		Test.Assert((calls == 2) && (deleted == 2));
+
+		let none = scope GuiFacade();
+		none.CaptureKey(new [&] (keys) => { calls++; } ~ { deleted++; });
+		Test.Assert((calls == 2) && (deleted == 3), "no GUI: deleted uncalled");
 	}
 }

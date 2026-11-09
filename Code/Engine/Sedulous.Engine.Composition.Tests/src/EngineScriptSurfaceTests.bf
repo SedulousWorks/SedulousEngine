@@ -48,8 +48,9 @@ static class EngineScriptSurfaceTests
 		// four enums their fields name (GuiScalerMode, GuiCanvasRenderMode,
 		// GuiBillboardOrientation, GuiBillboardScale). 162 = + `Http` (HttpFacade), the run's HTTP.
 		// 163: less `AaMode`, which the post settings no longer name (the quality level's). 164 =
-		// + `RenderQuality` (RenderQualityFacade), the levels a run offers.
-		Test.Assert(EngineScriptSurface.TypeCount == 164, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// + `RenderQuality` (RenderQualityFacade), the levels a run offers. 163: `Http` left the
+		// scripts' surface for native code alone.
+		Test.Assert(EngineScriptSurface.TypeCount == 163, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]

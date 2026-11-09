@@ -273,8 +273,17 @@ void(int32 player, double value))`, `OnText(name, delegate void(int32 player, St
 text))`, `OnJoin`, `OnLeave`. The facade owns them; `Off(name)`, `OffJoin` and `OffLeave` delete
 them, a later registration of the name replaces them, and the session's stop drops them all.
 What goes mid-session (a level's scene unloaded, a behaviour destroyed) calls `Off` for what it
-registered. `HttpFacade.Get`, `Post` and `Request` take `delegate void(int32 status, StringView
-body, StringView error)`, deleted after the answer, on `Cancel`, or as the session stops.
+registered.
+
+`HttpFacade` reaches web services: a leaderboard, a news feed, the game's own server. `Get`,
+`Post` and `Request` (any method, with `"Name: value"` header lines) take `delegate void(int32
+status, StringView body, StringView error)`, called on the game's thread a frame or more later
+and deleted after the answer, on `Cancel(id)`, or as the session stops (never called then).
+- A 404 or a 500 is a response (status set, `error` empty). Status 0 means none came, and
+  `error` says why: no network, a timeout (30 s), a certificate not trusted.
+- `https` checks the server's certificate against the system's trusted roots. Bodies are text.
+- In a browser build the browser makes the request: a server on another origin must send CORS
+  headers, or the request fails without a reason the game can see.
 
 ## GUI
 
