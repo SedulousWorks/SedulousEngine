@@ -17,6 +17,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- MCP: `scene_write` and `prefab_write` given a `name` already taken in its group say what holds
+  it and its guid: another type's asset (pick another name), or one of the tool's own type (pass
+  its `guid` to overwrite it).
 - Samples: Lamplight's, Snowline's and Sky Hopper's hints and controls lists name the control on
   the device in hand (and follow a rebinding) instead of an action's name or a fixed key and pad
   button.

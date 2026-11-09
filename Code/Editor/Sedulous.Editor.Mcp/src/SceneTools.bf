@@ -237,10 +237,17 @@ static class SceneTools
 			let group = McpTools.ResolveGroupPath(session.Project.SourceDb.RootGroup,
 				McpTools.ArgString(arguments, "group", .. scope .()));
 			// CreateInstance hands back an existing same named instance, which a NEW asset
-			// must never silently overwrite: overwriting is what `guid` is for.
-			if (group.GetInstance(name) != null)
+			// must never silently overwrite: overwriting is what `guid` is for. The refusal names
+			// what holds the name, as writing into another type's asset would make it this one.
+			if (let taken = group.GetInstance(name))
 			{
-				outError.AppendF("'{}' already exists in that group - pass its guid to overwrite it, or another name", name);
+				let takenGuid = taken.Id.ToString(.. scope .());
+				if (taken.TypeName == document.WantedType)
+					outError.AppendF("refused - '{}' is already a {} in that group ({}): pass `guid` to overwrite it, or another `name`. Nothing was written.",
+						name, document.Kind, takenGuid);
+				else
+					outError.AppendF("refused - '{}' is taken in that group by a {} ({}); pass another `name`. Nothing was written.",
+						name, taken.TypeName, takenGuid);
 				return false;
 			}
 			instance = group.CreateInstance(name, document.WantedType);

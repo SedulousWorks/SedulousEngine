@@ -177,7 +177,10 @@ behaviour's properties under `live` beside what is authored.
   full report; a refusal is the tool working, never something to bypass. What they store is the
   scene exactly as the editor saves it (its layout and number formatting), however the XML was
   passed, so a generated file reads like a saved one and a later save in the editor changes
-  only what changed.
+  only what changed. `name` (with `group`) makes a NEW asset: a name already taken in that group
+  is refused and nothing is written, naming what holds it (another type's asset: pick another
+  name; one of the tool's own type: pass its `guid` to overwrite it). A generator that runs again
+  looks its asset up by name first and passes the guid it finds.
 - **Read before destructive changes.** `asset_uses` before deleting anything;
   `project_health` after: dangling references surface later, not at delete time.
 - **Arguments are checked by name.** An argument a tool does not declare is refused as a

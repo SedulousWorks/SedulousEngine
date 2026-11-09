@@ -123,7 +123,8 @@ static class SceneFlowTests
 		Test.Assert(redirect.Contains("scene_read"), "a scene through the prefab tool redirects");
 		let taken = scope String();
 		CallErr(server, "scene_write", With(With(Obj(), "xml", seedXml), "name", "seed"), taken);
-		Test.Assert(taken.Contains("already exists"), "a new asset never overwrites a same named one");
+		Test.Assert(taken.Contains("is already a scene") && taken.Contains(seedGuid) && taken.Contains("`guid`"),
+			"a new asset never overwrites a same named one; the refusal names it and its guid");
 		let neither = scope String();
 		CallErr(server, "scene_validate", Obj(), neither);
 		let both = scope String();
@@ -136,6 +137,21 @@ static class SceneFlowTests
 		defer delete okPrefab;
 		Test.Assert(okPrefab.Get("written").AsBool());
 		Test.Assert(announced.Count == 3, "the prefab write announced too");
+		// `name` makes a new asset: a name already taken in the group is refused, and what holds it
+		// is left as it was. Another type's name (the scene "authored" in levels) is refused naming
+		// the type; the tool's own type's name points at `guid` to overwrite it.
+		{
+			let otherType = scope String();
+			CallErr(server, "prefab_write", With(With(With(Obj(), "xml", seedXml), "name", "authored"), "group", "levels"), otherType);
+			Test.Assert(otherType.Contains("SceneDocument") && otherType.Contains(newGuid), otherType);
+			let untouched = CallOk(server, "scene_read", With(Obj(), "guid", newGuid));
+			defer delete untouched;
+			Test.Assert(untouched.Get("xml").AsString() == seedXml, "the scene holding the name is as it was");
+			let sameType = scope String();
+			CallErr(server, "prefab_write", With(With(Obj(), "xml", seedXml), "name", "goodprefab"), sameType);
+			Test.Assert(sameType.Contains("is already a prefab") && sameType.Contains("`guid`"), sameType);
+			Test.Assert(announced.Count == 3, "neither wrote, neither announced");
+		}
 		{
 			let twoRoots = scope Scene("pair");
 			EngineSceneComposition.AddAllSceneManagers(twoRoots);
