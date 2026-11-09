@@ -193,8 +193,8 @@ static class NativeSampleTests
 	}
 
 	/// A script using the package's own type cannot run where the project does not enable the
-	/// package: an export for that platform is refused naming the script and the plugin, and
-	/// script_validate with that platform says so; where it is enabled, both pass.
+	/// package: an export for that platform is refused naming the script and the plugin; where it
+	/// is enabled, it passes.
 	[Test]
 	public static void AScriptUsingThePackagesTypeIsRefusedWhereThePackageIsNotEnabled()
 	{
@@ -236,26 +236,6 @@ static class NativeSampleTests
 		ExportPlugins.CheckScriptsOn(project, host, "Linux64", linux);
 		Test.Assert(linux.IsEmpty, linux);
 
-		// script_validate with a platform: the same check, for an agent.
-		let server = scope McpServer();
-		let session = scope ProjectSession();
-		session.Project = project;
-		session.Plugins = host;
-		ScriptValidateTool.Register(server, session);
-		let arguments = JsonValue.MakeObject();
-		arguments.Set("source", JsonValue.MakeString(source));
-		arguments.Set("language", JsonValue.MakeString("angelscript"));
-		arguments.Set("platform", JsonValue.MakeString("Web"));
-		let validated = scope String();
-		Test.Assert(Call(server, "script_validate", arguments, validated), validated);
-		{
-			let result = JsonValue.Parse(validated);
-			defer delete result;
-			Test.Assert(!result.Get("valid").AsBool(), validated);
-			Test.Assert(result.Get("absentPlugins").AsString() == "'nativesample'", validated);
-		}
-		session.Project = null;
-		session.Plugins = null;
 		host.Unload();
 	}
 

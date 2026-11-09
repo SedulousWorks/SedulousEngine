@@ -70,7 +70,7 @@ static class ScriptClasses
 				names.Append(", ");
 			names.Append(name);
 		}
-		outProblem.AppendF("it declares the classes {} and none is '{}': set the script asset's Class Name to the one it plays (script_validate: className)", names, preferred);
+		outProblem.AppendF("it declares the classes {} and none is '{}': set the script asset's Class Name to the one it plays", names, preferred);
 		return false;
 	}
 
