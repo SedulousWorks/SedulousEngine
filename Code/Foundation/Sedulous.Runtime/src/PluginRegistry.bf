@@ -28,32 +28,4 @@ static class PluginRegistry
 
 	/// The parts registered, in no meaningful order. BORROWED.
 	public static Span<PluginPart> Parts => (sParts != null) ? (Span<PluginPart>)sParts : .();
-
-	/// The plugins this binary links, one `id|version` line each (the version its compiled-in
-	/// manifest names, empty for one that does not read), sorted by id, appended: what a player's
-	/// --plugins prints and an export template records.
-	public static void Linked(String outLines)
-	{
-		let ids = scope List<StringView>();
-		for (let part in Parts)
-		{
-			if (!ids.Contains(part.PluginId))
-				ids.Add(part.PluginId);
-		}
-		ids.Sort(scope (a, b) => a <=> b);
-		for (let id in ids)
-		{
-			let version = scope String();
-			for (let part in Parts)
-			{
-				if (part.PluginId != id)
-					continue;
-				let manifest = scope PluginManifest();
-				if (PluginManifest.Read(part.ManifestXml, manifest) case .Ok)
-					version.Set(manifest.Version);
-				break;
-			}
-			outLines.AppendF("{}|{}\n", id, version);
-		}
-	}
 }
