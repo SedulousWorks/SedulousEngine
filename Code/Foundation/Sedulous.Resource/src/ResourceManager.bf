@@ -366,6 +366,26 @@ class ResourceManager
 		ReloadRecursive(id, visited);
 	}
 
+	/// Takes a resource out of service because what it was built from is gone (its record
+	/// deleted): the handle is marked Failed and KEPT registered, so a held proxy reads null
+	/// rather than dangling, and the product is parked for the frames in flight as a reload's
+	/// replaced product is. A record that comes back under the same identity revives this same
+	/// handle through Reload (or a later bind, which rebuilds a handle with no product). What
+	/// was built from it keeps its edge, so it rebuilds with that reload. An identity with no
+	/// handle is left alone.
+	public void Evict(Guid id)
+	{
+		if (!mHandles.TryGetValue(id, let handle))
+			return;
+		// A load in flight would land its product after this and undo it, so it is finished
+		// first, as a synchronous bind of it would be.
+		if (handle.State == .Pending)
+			CompletePending(id);
+		ClearForwardDependencies(id);
+		Bury(handle.Detach(null));
+		handle.SetState(.Failed);
+	}
+
 	/// Drops a product without dropping its handle, so proxies stay valid and the next
 	/// bind rebuilds in place.
 	public void Flush(Guid id)
