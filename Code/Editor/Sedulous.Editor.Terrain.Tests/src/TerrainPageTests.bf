@@ -258,5 +258,39 @@ class TerrainPageTests
 		page.Commands.Undo(); // the terrain lets them go; the asset made stays
 		Test.Assert(page.Asset.WeightsId.IsNil);
 		Test.Assert(page.SplatButton.Enabled);
+
+		// Made again, they take a free name: the weights the undo left are not written over.
+		let first = made.Id;
+		Test.Assert(page.CreateSplatWeights(256));
+		Test.Assert(!page.Asset.WeightsId.IsNil && (page.Asset.WeightsId != first));
+		let again = bed.Project.SourceDb.GetInstance(page.Asset.WeightsId);
+		Test.Assert((again != null) && (again.Name == "Hills_splat.2"));
+		let kept = bed.Project.SourceDb.GetInstance(first).ReadObject();
+		defer delete kept;
+		Test.Assert(((kept as SplatmapAsset) != null) && ((kept as SplatmapAsset).Width == 512));
+	}
+
+	[Test]
+	public static void NewSplatWeightsNeverWritesOverAnotherAssetHoldingTheirName()
+	{
+		let bed = scope Bed();
+		// A terrain named as the splat weights would be: the weights must not land in it.
+		let holder = bed.Bare.OwningGroup.CreateInstance("Bare_splat", typeof(TerrainAsset).GetFullName(.. scope .()));
+		Test.Assert(holder != null);
+		let holderAsset = scope TerrainAsset();
+		holderAsset.HeightfieldId = bed.Heights;
+		Test.Assert(holder.WriteObject(holderAsset) case .Ok);
+
+		let page = bed.Open(bed.Bare);
+		defer delete page;
+		Test.Assert(page.CreateSplatWeights(128));
+		let made = bed.Project.SourceDb.GetInstance(page.Asset.WeightsId);
+		Test.Assert((made != null) && (made != holder));
+		Test.Assert(made.Name == "Bare_splat.2");
+		let object = holder.ReadObject();
+		defer delete object;
+		let still = object as TerrainAsset;
+		Test.Assert(still != null, "still a terrain");
+		Test.Assert(still.HeightfieldId == bed.Heights, "its heightfield kept");
 	}
 }

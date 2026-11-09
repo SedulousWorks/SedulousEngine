@@ -644,6 +644,14 @@ class EditorPages
 		if ((index < 0) || (original == null))
 			return; // closed meanwhile
 		let target = mOpen[index].Page;
+		// CreateInstance hands back whatever holds a taken name, and the save below would write over
+		// it: the dialog refuses one, and this holds the same rule for any caller.
+		let refused = AssetNames.Refusal(group, newName, .. scope .());
+		if (!refused.IsEmpty)
+		{
+			context.Notify(.Error, scope String()..AppendF("Not saved: {}", refused));
+			return;
+		}
 		let fresh = group.CreateInstance(newName, original.TypeName);
 		if (fresh == null)
 		{

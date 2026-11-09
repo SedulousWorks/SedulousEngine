@@ -183,11 +183,13 @@ class TerrainEditorPage : AssetObjectPage
 		let group = (self != null) ? self.OwningGroup : Context.Project.SourceDb.RootGroup;
 		if (group == null)
 			return false;
-		let name = scope String()..AppendF("{}_splat", Title);
+		// A free name: CreateInstance hands back whatever holds a taken one, and the starter written
+		// below would overwrite it (weights an undo left, or another asset of that name).
+		let name = group.UniqueInstanceName(scope String()..AppendF("{}_splat", Title), .. scope String());
 		let made = group.CreateInstance(name, typeof(SplatmapAsset).GetFullName(.. scope .()));
 		if (made == null)
 		{
-			Context.Notify(.Error, scope String()..AppendF("No splat weights made: '{}' is taken.", name));
+			Context.Notify(.Error, scope String()..AppendF("No splat weights made: '{}' could not be created.", name));
 			return false;
 		}
 		let splat = scope SplatmapAsset();

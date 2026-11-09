@@ -28,6 +28,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: New Splat Weights never writes over an asset holding its name: made again after an
+  undo, it no longer zeroes the weights the undo left, and another asset of that name is kept.
 - Editor: a scene, prefab or asset changed, added or deleted in the project's `Content/` outside
   the editor (a git pull, a text editor, another tool) is picked up: an open page reloads, or
   warns when it has unsaved edits, and a page whose file was deleted stays open and writes it
