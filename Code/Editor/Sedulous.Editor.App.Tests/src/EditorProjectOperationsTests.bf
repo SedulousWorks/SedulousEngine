@@ -292,7 +292,8 @@ class EditorProjectOperationsTests
 		let result = scope ExportResult();
 		let error = scope String();
 		int waited;
-		// No template is installed here, so the job fails: after the cook landed and the job ran.
+		// No build service is wired here to build the player, so the job fails: after the cook
+		// landed and the job ran.
 		Test.Assert(Drive(bench, scope [&](call) => ops.Export(call, request, result, error), out waited) == .Failed);
 		Test.Assert(error.StartsWith("export of preset '"), error);
 		Test.Assert(waited >= 2);

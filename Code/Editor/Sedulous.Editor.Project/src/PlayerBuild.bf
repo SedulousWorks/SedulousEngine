@@ -33,6 +33,19 @@ class PlayerBuild
 		ClearAndDeleteItems!(Symbols);
 		Description.Clear();
 	}
+
+	/// `other` made the same as this.
+	public void CopyTo(PlayerBuild other)
+	{
+		other.Clear();
+		other.Directory.Set(Directory);
+		other.Binary.Set(Binary);
+		for (let file in Files)
+			other.Files.Add(new .(file));
+		for (let symbol in Symbols)
+			other.Symbols.Add(new .(symbol));
+		other.Description.Set(Description);
+	}
 }
 
 /// Makes the player an export ships for a preset.

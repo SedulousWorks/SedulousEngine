@@ -19,8 +19,9 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.Core.Tests;
 
 /// A project with a cube mesh a scene references, an unreferenced one beside it, the scene
-/// as the default, a mesh builder, a host template made of a stand in player, and the
-/// scanner the pruning needs. The scratch directories are removed with the fixture.
+/// as the default, a mesh builder, a player builder that stages a stand in player under the
+/// tool directory instead of compiling one, and the scanner the pruning needs. The scratch
+/// directories are removed with the fixture.
 class ExportProjectFixture
 {
 	public String ProjectDir = new .() ~ delete _;
@@ -28,7 +29,8 @@ class ExportProjectFixture
 	public String OutRoot = new .() ~ delete _;
 	public EditorProject Project ~ delete _;
 	public BuilderRegistry Builders = new .() ~ delete _;
-	public TemplateRegistry Templates = new .() ~ delete _;
+	/// What builds the export's player: a stand in, written under ToolDir.
+	public StagedPlayerBuilder Players ~ delete _;
 	public Guid ReferencedMeshId;
 	public Guid UnreferencedMeshId;
 	public Guid SceneId;
@@ -69,13 +71,8 @@ class ExportProjectFixture
 		Test.Assert(Project.SaveSettings() case .Ok);
 		Builders.Register(new StaticMeshAssetBuilder());
 
-		// The host template: a stand in player in the tool directory, with a sidecar.
 		CreateDirectory(ToolDir);
-		let player = "#!player\n";
-		WriteFile(PathJoin(ToolDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), .. scope .()), .((uint8*)player.Ptr, player.Length)).IgnoreError();
-		let lib = "so\n";
-		WriteFile(PathJoin(ToolDir, "libfoo.so", .. scope .()), .((uint8*)lib.Ptr, lib.Length)).IgnoreError();
-		Templates.Refresh("", ToolDir);
+		Players = new StagedPlayerBuilder(ToolDir);
 	}
 
 	public ~this()

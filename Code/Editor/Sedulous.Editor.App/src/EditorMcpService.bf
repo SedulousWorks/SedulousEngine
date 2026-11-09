@@ -44,9 +44,9 @@ class EditorMcpServiceServices
 	/// captures go. Empty: the user data directory, as the editor runs; a test points it at a
 	/// scratch folder so a run leaves the user's own token alone.
 	public String UserDataDirectory = new .() ~ delete _;
-	/// The templates folder the export operations use (it reads settings: main thread). Unset:
-	/// none. Owned.
-	public delegate void(String outPath) TemplatesRoot ~ delete _;
+	/// The application's project build service, which builds the player an agent's export
+	/// ships. Borrowed; unset, an export is refused.
+	public ProjectBuildService BuildService = null;
 	/// What an agent's create, delete and import do beside the store (the assets list, the
 	/// default scene, the cook). An unset delete falls back to the database's own. Owned, all.
 	public delegate void(AssetCreator creator, Instance instance) OnCreated ~ delete _;
@@ -240,9 +240,7 @@ class EditorMcpService
 		operations.Tasks = mServices.Context.Tasks; // each step on the build lane
 		operations.Lane = mServices.Context.BuildLane;
 		operations.Builders = mServices.Builders;
-		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), operations.PlayerDir);
-		if (mServices.TemplatesRoot != null)
-			mServices.TemplatesRoot(operations.TemplatesRoot);
+		operations.BuildService = mServices.BuildService;
 		operations.DataRoot.Set(mServices.DataRoot);
 		operations.OnCreated = new (creator, instance) =>
 			{

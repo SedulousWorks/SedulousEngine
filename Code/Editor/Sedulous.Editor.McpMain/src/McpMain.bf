@@ -95,10 +95,9 @@ static class McpMain
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
 		// shader_validate compiles against the engine's shader library under the data root.
 		DataPath(dataRoot, "Engine/Shaders", paths.ShaderLibrary);
-		// This host runs the cook, import and export INLINE: the export stages the player from
-		// beside this executable and cooks shaders from the data root.
-		let operations = scope InlineProjectOperations(session, builders,
-			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()), dataRoot);
+		// This host runs the cook, import and export INLINE: the export builds the project's
+		// player with BeefBuild on this thread and cooks shaders from the data root.
+		let operations = scope InlineProjectOperations(session, builders, dataRoot);
 		// What the pipeline makes after an import (a model's prefab), as the editor's import has.
 		operations.OnImported = new (primary, options) => { PipelineRegistration.AfterImport(primary, options); };
 		EngineTools.Register(server, session, builders, importers, creators, logBuffer, paths, operations);

@@ -357,7 +357,7 @@ static class NativeSampleTests
 		let owner = scope ProjectOwner();
 		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
 		owner.PluginTools = pluginTools;
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		AssetCreateTools.Register(server, session, creators, operations);
 		SceneTools.Register(server, session);
@@ -486,7 +486,8 @@ static class NativeSampleTests
 	}
 
 	/// The sample's export presets: its desktop preset, which ships the project's own player, so
-	/// Build Project makes that player in the preset's config (ShippingRelease) beside Debug.
+	/// Build Project makes that player in the preset's config (ShippingRelease) beside Debug, and
+	/// its export builds that player: <Game>Player in ShippingRelease, on Linux.
 	[Test]
 	public static void TheSamplesDesktopPresetShipsTheProjectsOwnPlayer()
 	{
@@ -503,6 +504,14 @@ static class NativeSampleTests
 		defer { ClearAndDeleteItems!(configs); }
 		ProjectBuild.PlayerConfigs(presets, configs);
 		Test.Assert((configs.Count == 2) && (configs[0] == "Debug") && (configs[1] == "ShippingRelease"));
+		let config = scope String();
+		let refusal = scope String();
+		BuildEntry entry;
+		Test.Assert(ProjectPlayerBuilder.Target(desktop, out entry, config, refusal) case .Ok, refusal);
+		Test.Assert((entry == .Player) && (config == "ShippingRelease"));
+#else
+		// Another host's: refused here, and Export All skips it.
+		Test.Assert(ExportDriver.BuildsOnAnotherHost(desktop.Platform));
 #endif
 	}
 
@@ -570,7 +579,7 @@ static class NativeSampleTests
 		let owner = scope ProjectOwner();
 		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
 		ProjectOpenTools.Register(server, session, owner);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
 		let opened = scope String();
 		Test.Assert(Call(server, "project_open", Arguments("directory", dir), opened), opened);
