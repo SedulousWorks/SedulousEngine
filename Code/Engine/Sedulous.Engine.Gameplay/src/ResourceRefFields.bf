@@ -39,6 +39,42 @@ static class ResourceRefFields
 		}
 	}
 
+	/// Appends `if (<target>.<field>.Id != Guid()) outIds.Add(<target>.<field>.Id);` for each
+	/// public, saved id reference field of `type` (a SceneRef: [IdReference]) and its bases below
+	/// `stopAt`, base first: the ids nothing binds, which a pruned export follows. Nothing for the
+	/// unspecialized generic.
+	[Comptime]
+	public static void AppendIdReferences(Type type, Type stopAt, StringView target, String outCode)
+	{
+		if (!(type is TypeInstance))
+			return;
+		let chain = scope List<Type>();
+		for (var walk = type; (walk != null) && (walk != stopAt); walk = walk.BaseType)
+			chain.Add(walk);
+		for (int i = chain.Count - 1; i >= 0; i--)
+		{
+			let declaring = chain[i];
+			for (let field in declaring.GetFields())
+			{
+				if (!field.IsInstanceField || !field.IsPublic || (field.DeclaringType != declaring))
+					continue;
+				if (field.GetCustomAttribute<NotSerializedAttribute>() case .Ok)
+					continue;
+				if (!field.FieldType.IsStruct || !(field.FieldType.GetCustomAttribute<Sedulous.Resource.IdReferenceAttribute>() case .Ok))
+					continue;
+				outCode.Append("if (");
+				outCode.Append(target);
+				outCode.Append('.');
+				outCode.Append(field.Name);
+				outCode.Append(".Id != System.Guid()) outIds.Add(");
+				outCode.Append(target);
+				outCode.Append('.');
+				outCode.Append(field.Name);
+				outCode.Append(".Id);\n");
+			}
+		}
+	}
+
 	/// Whether `type` is a Ref<T>. Matched by name, as the serializer matches a List.
 	[Comptime]
 	public static bool IsResourceRef(Type type)

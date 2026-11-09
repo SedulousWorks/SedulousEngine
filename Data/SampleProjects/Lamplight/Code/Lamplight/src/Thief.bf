@@ -30,7 +30,7 @@ class Thief : Behaviour
 	[Description("How fast the body turns toward where it goes")]
 	public float TurnRate = 10.0f;
 	[Description("The pebble thrown (Prefabs/Pebble)")]
-	public Ref<PrefabDocument> Pebble = .(Guid());
+	public Ref<PrefabResource> Pebble = .(Guid());
 	[Description("How fast a pebble leaves the hand (m/s)")]
 	public float ThrowSpeed = 7.0f;
 	[Description("Seconds between throws")]
@@ -133,7 +133,7 @@ class Thief : Behaviour
 			return;
 		let p = Scene.GetWorldPosition(Entity);
 		let ahead = Float3(Sin(mYaw), 0.0f, Cos(mYaw)); // the model faces +Z
-		let stone = spawner.Spawn(Pebble.Id, .(p.X + ahead.X * 0.4f, p.Y + 0.5f, p.Z + ahead.Z * 0.4f));
+		let stone = spawner.Spawn(Pebble, .(p.X + ahead.X * 0.4f, p.Y + 0.5f, p.Z + ahead.Z * 0.4f));
 		if (!Scene.IsValid(stone))
 			return;
 		// An impulse is the mass times the change in speed: up at about 35 degrees. The pebble's

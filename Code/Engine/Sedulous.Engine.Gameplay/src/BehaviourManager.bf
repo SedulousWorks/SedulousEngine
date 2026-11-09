@@ -330,6 +330,29 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 			BindReferences(instance, manager);
 	}
 
+	/// The ids its instances name by an id reference (a SceneRef field): nothing binds them, so a
+	/// pruned export learns of them here and keeps what they name.
+	public override void CollectUnboundReferences(List<Guid> outIds)
+	{
+		for (let instance in mDense)
+			CollectIdReferences(instance, outIds);
+	}
+
+	private static void CollectIdReferences(T instance, List<Guid> outIds)
+	{
+		EmitCollectIdReferences(typeof(T));
+	}
+
+	/// One check per id reference field `type` saves, as EmitBindReferences finds its Ref<T>s.
+	[Comptime]
+	private static void EmitCollectIdReferences(Type type)
+	{
+		let code = scope String();
+		ResourceRefFields.AppendIdReferences(type, typeof(Behaviour), "instance", code);
+		if (!code.IsEmpty)
+			Compiler.MixinRoot(code);
+	}
+
 	/// Binds `instance`'s resource references, the Ref<T> fields `T` saves, found at compile
 	/// time: a behaviour class writes no resolve of its own, where a component implements
 	/// IComponentResources by hand. Idempotent, as Bind is: a reference bound again is a cache

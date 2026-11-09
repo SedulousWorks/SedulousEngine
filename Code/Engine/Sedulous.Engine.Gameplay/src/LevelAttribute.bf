@@ -72,6 +72,16 @@ struct LevelAttribute : Attribute, IComptimeTypeApply
 			body.Append(binds);
 			body.Append("}\n");
 		}
+		// The ids its id reference fields name (a SceneRef: the next level), which nothing binds:
+		// reported for a pruned export.
+		let ids = scope String();
+		ResourceRefFields.AppendIdReferences(type, typeof(Level), "this", ids);
+		if (!ids.IsEmpty)
+		{
+			body.Append("public override void CollectUnboundReferences(System.Collections.List<System.Guid> outIds)\n{\n");
+			body.Append(ids);
+			body.Append("}\n");
+		}
 		Sedulous.Core.EnumCases.AppendRegistration(type, body);
 		Compiler.EmitTypeBody(type, body);
 	}

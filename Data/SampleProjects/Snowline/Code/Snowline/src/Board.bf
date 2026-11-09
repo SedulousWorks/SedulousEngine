@@ -104,7 +104,7 @@ class Board : Behaviour
 	[Description("Slowest speed a near miss counts at (m/s)")]
 	public float NearMissSpeed = 9.0f;
 	[Description("The board's mark in the snow (Prefabs/TrackMark)")]
-	public Ref<PrefabDocument> TrackMark = .(Guid());
+	public Ref<PrefabResource> TrackMark = .(Guid());
 	[Description("Distance between the track's marks (m)")]
 	public float TrackSpacing = 1.5f;
 	[Description("Slowest speed that leaves a track (m/s)")]
