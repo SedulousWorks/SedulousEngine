@@ -28,8 +28,6 @@ class EditActions
 {
 	/// Opens the per-user preferences dialog. Owned.
 	public delegate void() Preferences ~ delete _;
-	/// Opens the export templates manager. Owned.
-	public delegate void() ExportTemplates ~ delete _;
 }
 
 /// What Project's actions run; most need a project open in Context. Owned hooks, as
@@ -200,8 +198,6 @@ static class EditorAppActions
 		PlaybackActions.Register(actions);
 		// Per-user, not per-document: the conventional Edit home.
 		Add(actions, new EditorActionDeclaration("edit.preferences", "Preferences...", "Open the per-user editor preferences", "Edit/Preferences...", 200), ref run.Preferences);
-		// The templates are the editor's, shared by every project: beside Preferences.
-		Add(actions, new EditorActionDeclaration("edit.exportTemplates", "Export Templates...", "Manage the export templates this editor exports with", "Edit/Export Templates...", 201), ref run.ExportTemplates);
 	}
 
 	/// Project's actions. Report Resource Memory is always there: it reads the context's

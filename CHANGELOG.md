@@ -13,8 +13,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   away from its natural orientation), so the display has nothing to turn (pre-rotation); its scene,
   its screens and a screenshot follow the turn, and the pointer is unchanged. A window asks for it
   (`RenderWindowDesc.PreRotate`); the samples and the editor do not.
-- Editor: Preferences' templates folder has a Browse button, which picks the folder with the
-  system's folder dialog.
 - Scripts: `scene.Animation.PlayOneShot(entity, clip)` plays a clip once over whatever an entity
   is animating (its clip or its graph), blending in and out, after which it carries on with its
   own animation; `StopOneShot` and `IsPlayingOneShot`, and `onAnimationFinished(clip)` on the
@@ -154,3 +152,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Editor: the UI scale preference shows its percentage while its slider is dragged.
 - Editor: Add Component is disabled while a scene simulates, as the rest of the inspector is.
 - Cook: GUI documents and style sheets no longer lose elements, or leak, when several cook at once.
+
+### Removed
+
+- Editor: Edit > Export Templates, the Export dialog's template choice and its Export Templates
+  button, and the templates folder in Preferences: an export builds its player, so there is no
+  template to pick or install. A preset is shown by its platform's icon.

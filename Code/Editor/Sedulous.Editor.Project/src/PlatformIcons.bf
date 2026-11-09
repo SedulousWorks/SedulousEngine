@@ -5,16 +5,11 @@ using Sedulous.Core.IO;
 
 namespace Sedulous.Editor.Project;
 
-/// An export template carries its own icon: an SVG file in its bundle (cIconFile, named by the
-/// manifest's Icon), which the editor reads wherever it shows the template. Creating a template
-/// writes one in: the built-in icon its platform gets, one named (`handheld` for the Steam Deck
-/// build), or any .svg given, so a template made elsewhere shows what its maker chose. The
-/// built-in set is drawn for the engine, no third-party marks.
-static class TemplateIcons
+/// The built-in platform icons the editor shows an export preset by: a desktop, Windows and Linux
+/// desktops, a handheld, the web and a phone, each by name. Drawn for the engine, no third-party
+/// marks.
+static class PlatformIcons
 {
-	/// The icon's file in a template bundle, the one creating a template writes.
-	public const String cIconFile = "icon.svg";
-
 	/// A desktop of no named OS: a monitor on a stand.
 	private const String cDesktop = """
 		<svg viewBox="0 0 24 24">
@@ -73,7 +68,7 @@ static class TemplateIcons
 		</svg>
 		""";
 
-	/// The built-in icons' names, as `Sedulous.Tools.Export --template create --icon` takes them.
+	/// The built-in icons' names.
 	public static StringView[6] BuiltInNames = .("desktop", "windows", "linux", "handheld", "web", "phone");
 
 	/// A built-in icon's SVG by name; empty when there is no such icon.
@@ -91,7 +86,8 @@ static class TemplateIcons
 		}
 	}
 
-	/// The built-in icon a template for `platform` gets when its maker names none.
+	/// The built-in icon's name for `platform`: Win64's windows, Linux64's linux, Web's web, any
+	/// other the plain desktop.
 	public static StringView DefaultName(StringView platform)
 	{
 		if (platform == "Win64")
@@ -103,19 +99,6 @@ static class TemplateIcons
 		return "desktop";
 	}
 
-	/// The SVG a template is shown by: the icon file in its bundle, or (the host template, a
-	/// bundle from before icons, an unreadable file) its platform's built-in icon.
-	public static void SvgFor(ExportTemplate template, String outSvg)
-	{
-		if (!template.Icon.IsEmpty && !template.Directory.IsEmpty)
-		{
-			let bytes = scope List<uint8>();
-			if ((ReadFile(PathJoin(template.Directory, template.Icon, .. scope .()), bytes) case .Ok) && !bytes.IsEmpty)
-			{
-				outSvg.Append((char8*)bytes.Ptr, bytes.Count);
-				return;
-			}
-		}
-		outSvg.Append(BuiltInSvg(DefaultName(template.Platform)));
-	}
+	/// The SVG `platform` is shown by: its built-in icon (DefaultName).
+	public static StringView SvgFor(StringView platform) => BuiltInSvg(DefaultName(platform));
 }

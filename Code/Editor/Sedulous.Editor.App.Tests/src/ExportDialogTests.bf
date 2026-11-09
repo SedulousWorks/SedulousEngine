@@ -11,18 +11,33 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The export dialog over its markup (Data/Editor/Export.xml), a presets controller and a scratch
-/// templates root: the presets listed and the selected one's settings on the grid in their sections
-/// under the card naming the player its export builds (or why none builds here), a template picked
-/// by name deciding the platform and config, edits applied as made and saved when the selection
-/// moves, an override's rows shown only while it overrides, add, duplicate and remove (after
-/// asking), and Export running the selected preset after saving, never one whose player cannot be
-/// built here. Then: the card saying why for another host's platform and a Test config; the
-/// platform and config read only under a template and editable again under Any; the extra files a
-/// list, edited, shortened and an empty row dropped; the render and window overrides' rows; a save
-/// as it closes; Export Templates opened over it, the template row following what it installed.
+/// The export dialog over its markup (Data/Editor/Export.xml) and a presets controller: the
+/// presets listed, each by its platform's icon, and the selected one's settings on the grid in
+/// their sections under the card naming the player its export builds (or why none builds here),
+/// edits applied as made and saved when the selection moves, an override's rows shown only while it
+/// overrides, add, duplicate and remove (after asking), and Export running the selected preset
+/// after saving, never one whose player cannot be built here. Then: the card saying why for another
+/// host's platform and a Test config; the platform and config offered by name, no template among
+/// the settings and no Export Templates; the extra files a list, edited, shortened and an empty row
+/// dropped; the render and window overrides' rows; a save as it closes.
 class ExportDialogTests
 {
+	/// A dialog's markup read from the repository's Data with the elements the editor's window
+	/// registers (Export's grid is the toolkit's); its one reference is the caller's.
+	public static Node LoadDialog(StringView path)
+	{
+		let data = scope String();
+		Test.Assert(EditorSplashTests.DataRoot(data));
+		let text = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(data, path, .. scope .()), text) case .Ok);
+		RegisterGuiElements();
+		RegisterToolkitElements();
+		let elements = ElementSet.All();
+		defer delete elements;
+		let loader = scope MarkupLoader(elements);
+		return loader.LoadFromString(text);
+	}
+
 	/// Why the fixture's web preset builds no player: what the dialog is told for want of
 	/// Emscripten, which no test machine is assumed to have.
 	private const String cNoEmscripten = "a web build needs Emscripten (the fixture has none)";
@@ -32,17 +47,11 @@ class ExportDialogTests
 
 	private class Fixture
 	{
-		public String Root = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_export_dialog_root", .. new .()) ~ delete _;
-		/// An empty directory: no player there, so the host build resolves nothing a test asks for.
-		public String HostDir = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_export_dialog_host", .. new .()) ~ delete _;
 		public SceneRoot Ui;
 		public ExportPresetsController Presets = new .() ~ delete _;
 		public int Saves = 0;
 		public List<String> Exported = new .() ~ DeleteContainerAndItems!(_);
 		public bool ExportedAll = false;
-		/// What Export Templates was told to tell as it closes; null until it opens. Owned.
-		public delegate void() TemplatesClosed = null ~ delete _;
-		public int TemplatesOpened = 0;
 		public ExportDialog Dialog = null;
 		public String Project = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_export_dialog_project", .. new .()) ~ delete _;
 		/// The pickers the dialog opened, owned.
@@ -53,18 +62,11 @@ class ExportDialogTests
 
 		public this()
 		{
-			RemoveDirectoryRecursive(Root);
-			RemoveDirectoryRecursive(HostDir);
-			Test.Assert(CreateDirectory(Root));
-			Test.Assert(CreateDirectory(HostDir));
-			WriteTemplate("t-linux", "Linux Release", "Linux64");
-
 			let linuxPreset = scope ExportPreset();
 			linuxPreset.Name.Set("Linux");
 			linuxPreset.Platform.Set("Linux64");
 			Presets.Add(linuxPreset);
-			// A platform no machine running the tests hosts (the registry always adds the running
-			// build as a template, so a Win64 preset finds one on a Windows runner).
+			// A preset no machine running the tests builds (the fixture has no Emscripten).
 			let web = scope ExportPreset();
 			web.Name.Set("Web");
 			web.Platform.Set("Web");
@@ -80,41 +82,17 @@ class ExportDialogTests
 		{
 			delete Dialog; // closed while the root is there
 			Ui.ReleaseRef();
-			RemoveDirectoryRecursive(Root);
-			RemoveDirectoryRecursive(HostDir);
 			RemoveDirectoryRecursive(Project);
-		}
-
-		/// An installed template's bundle (its manifest) under the root.
-		public void WriteTemplate(StringView id, StringView name, StringView platform)
-		{
-			let dir = PathJoin(Root, id, .. scope .());
-			Test.Assert(CreateDirectory(dir));
-			let template = scope ExportTemplate();
-			template.Id.Set(id);
-			template.Name.Set(name);
-			template.Platform.Set(platform);
-			template.Config.Set("Release");
-			template.EngineVersion.Set(EngineVersion.String);
-			template.PlayerBinary.Set("Sedulous.Engine.Player.Desktop");
-			Test.Assert(ExportTemplates.SaveManifest(scope NativeFileSystem(dir), template) case .Ok);
 		}
 
 		public ExportDialogSeams Seams()
 		{
 			let seams = new ExportDialogSeams();
-			seams.Refresh = new [=this](registry) => { registry.Refresh(Root, HostDir); };
 			seams.Save = new [=this]() => { Saves++; };
 			seams.RunExport = new [=this](preset, all) =>
 				{
 					Exported.Add(new .(preset));
 					ExportedAll = all;
-				};
-			seams.OpenTemplates = new [=this](closed) =>
-				{
-					TemplatesOpened++;
-					delete TemplatesClosed;
-					TemplatesClosed = closed;
 				};
 			seams.Pick = new [=this](request) => { Picks.Add(request); };
 			seams.Notify = new [=this](message) => { Notices.Add(new .(message)); };
@@ -144,7 +122,7 @@ class ExportDialogTests
 		/// The dialog open over the root, laid out.
 		public ExportDialog Open()
 		{
-			Dialog = new ExportDialog(Presets, Seams(), TemplatesDialogTests.LoadDialog(ExportDialog.cMarkupPath));
+			Dialog = new ExportDialog(Presets, Seams(), LoadDialog(ExportDialog.cMarkupPath));
 			Test.Assert(Dialog.Open(Ui));
 			Ui.UpdateLayout();
 			return Dialog;
@@ -186,8 +164,7 @@ class ExportDialogTests
 	}
 
 	/// The presets, their settings in their sections, and the player each one's export builds, or
-	/// why none builds here; a template picked by name decides the platform and config, which are
-	/// then read only.
+	/// why none builds here.
 	[Test]
 	public static void ThePresetsTheirSettingsInSectionsAndThePlayerEachBuilds()
 	{
@@ -212,27 +189,6 @@ class ExportDialogTests
 		Test.Assert(dialog.ResolveText == "SkyPlayerWeb, ShippingRelease, wasm32", scope String(dialog.ResolveText));
 		Test.Assert(dialog.ResolveDetail == cNoEmscripten, scope String(dialog.ResolveDetail));
 		Test.Assert(!dialog.ExportButton.Enabled);
-
-		// A template picked by name decides the platform and config, which then are read only.
-		let template = dialog.Rows.FindInfo("template");
-		Test.Assert(template != null);
-		Test.Assert(template.Choices.Count >= 2, "Any, then each template");
-		Test.Assert(f.IntAt("template") == 0);
-		int64 installed = -1;
-		for (let choice in template.Choices)
-		{
-			if (choice.Name == "Linux Release")
-				installed = choice.Value;
-		}
-		Test.Assert(installed > 0);
-		f.Edit("template", Sedulous.GUI.Variant(installed));
-		Test.Assert(f.Presets.At(1).TemplateId == "t-linux");
-		Test.Assert(f.Presets.At(1).Platform == "Linux64");
-		Test.Assert(dialog.Rows.FindInfo("platform").ReadOnly);
-		Test.Assert(dialog.Resolved != null);
-		// Now a Linux preset, its card and its Export follow.
-		Test.Assert(dialog.ResolveText == "SkyPlayer, ShippingRelease, Linux64", scope String(dialog.ResolveText));
-		Test.Assert(dialog.ExportButton.Enabled);
 	}
 
 	/// Edits apply as made and are saved when the selection moves; export saves first.
@@ -378,23 +334,41 @@ class ExportDialogTests
 		return -1;
 	}
 
-	/// Under a template picked by name the platform and config are read only; back on Any they may
-	/// be chosen again, and the preset names no template.
+	/// The platform and config are chosen by name, the preset's own first, then the host's and
+	/// Release, then the rest the engine exports and builds. No template is among the settings, and
+	/// there is no Export Templates.
 	[Test]
-	public static void ThePlatformAndConfigAreReadOnlyOnlyUnderATemplate()
+	public static void ThePlatformAndConfigAreChosenByNameAndNoTemplateIsOffered()
 	{
 		let f = scope Fixture();
 		let dialog = f.Open();
-		Test.Assert(!dialog.Rows.FindInfo("platform").ReadOnly);
-		Test.Assert(!dialog.Rows.FindInfo("config").ReadOnly);
-		f.Edit("template", Sedulous.GUI.Variant((int64)1));
-		Test.Assert(!f.Presets.At(0).TemplateId.IsEmpty);
-		Test.Assert(dialog.Rows.FindInfo("platform").ReadOnly);
-		Test.Assert(dialog.Rows.FindInfo("config").ReadOnly);
-		f.Edit("template", Sedulous.GUI.Variant((int64)0));
-		Test.Assert(f.Presets.At(0).TemplateId.IsEmpty);
-		Test.Assert(!dialog.Rows.FindInfo("platform").ReadOnly);
-		Test.Assert(!dialog.Rows.FindInfo("config").ReadOnly);
+		Test.Assert(dialog.Rows.FindInfo("template") == null, "no template row");
+		Test.Assert(f.FindButton("export-templates") == null, "no Export Templates");
+		let platform = dialog.Rows.FindInfo("platform");
+		let config = dialog.Rows.FindInfo("config");
+		Test.Assert(!platform.ReadOnly && !config.ReadOnly);
+		let platforms = ChoiceNames(platform, .. scope .());
+		Test.Assert(platforms == "Linux64,Win64,Web", platforms);
+		let configs = ChoiceNames(config, .. scope .());
+		Test.Assert(configs == "Release,Profile,Debug", configs);
+
+		// To the web, in Profile: Release ships ShippingRelease, Profile builds Release.
+		f.Edit("platform", Sedulous.GUI.Variant(IndexOfChoice(dialog, "platform", "Web")));
+		f.Edit("config", Sedulous.GUI.Variant(IndexOfChoice(dialog, "config", "Profile")));
+		Test.Assert(f.Presets.At(0).Platform == "Web");
+		Test.Assert(f.Presets.At(0).Config == "Profile");
+		Test.Assert(dialog.ResolveText == "SkyPlayerWeb, Release, wasm32", scope String(dialog.ResolveText));
+	}
+
+	/// The names a choice row offers, in order, joined by commas.
+	private static void ChoiceNames(PropertyInfo row, String outNames)
+	{
+		for (let choice in row.Choices)
+		{
+			if (!outNames.IsEmpty)
+				outNames.Append(',');
+			outNames.Append(choice.Name);
+		}
 	}
 
 	/// The extra files are a list: an element each, an edit to one applying, one removed going, and
@@ -467,36 +441,6 @@ class ExportDialogTests
 		Test.Assert(!dialog.IsOpen);
 		Test.Assert(f.Saves == 1);
 		Test.Assert(f.Presets.At(0).StageSymbols);
-	}
-
-	/// Export Templates opens over it from its button, and once it closes the template row follows
-	/// what it installed; the card still names the player the export builds, which no template
-	/// decides.
-	[Test]
-	public static void ExportTemplatesOpensOverItAndTheTemplateRowFollowsWhatChanged()
-	{
-		let f = scope Fixture();
-		let dialog = f.Open();
-		dialog.Select(1);
-		Test.Assert(dialog.Resolved == null);
-
-		Test.Assert(f.FindButton("export-templates").HandleActivate());
-		Test.Assert(f.TemplatesOpened == 1);
-		Test.Assert(f.TemplatesClosed != null);
-
-		f.WriteTemplate("t-web", "Web Release", "Web");
-		f.TemplatesClosed();
-		Test.Assert(dialog.SelectedIndex == 1, "the selection kept");
-		Test.Assert((dialog.Resolved != null) && (dialog.Resolved.Id == "t-web"));
-		Test.Assert(dialog.ResolveText == "SkyPlayerWeb, ShippingRelease, wasm32", scope String(dialog.ResolveText));
-		Test.Assert(!dialog.ExportButton.Enabled, "a template does not build the web player");
-		bool listed = false;
-		for (let choice in dialog.Rows.FindInfo("template").Choices)
-		{
-			if (choice.Name == "Web Release")
-				listed = true;
-		}
-		Test.Assert(listed, "the template row offers it");
 	}
 
 	/// Extra files are the project's: Add Files lists its own files (not the folders the editor, a

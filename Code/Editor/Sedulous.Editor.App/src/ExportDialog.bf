@@ -8,31 +8,25 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.App;
 
-// Export: Project > Export, a window over its markup
-// (Data/Editor/Export.xml). The project's export presets on the left (add, duplicate, remove after
-// asking), each by the icon of the template it resolves to here, warned of when its player cannot
-// be built here; the selected one on the right under a card naming the player its export builds
-// ("SkyHopperPlayer, ShippingRelease, Linux64"), or saying why none can be built here (another
-// host's platform, no Emscripten for the web), its settings on the property grid as Project Settings' are (ruling 20): a section per
-// category (General: its name, template, platform, config, player and output folder; Content: the
-// extra files as a list, symbols, pruning, shader source; Display: its own render size, window and
-// orientation, each shown only when the preset overrides it). A template picked by name decides
-// the platform and config. Edits apply as they are made and are saved when the selection moves, an
-// export starts or it closes. Export runs the selected preset, Export All every one; Export
-// Templates opens that window over this one, and the card follows what it changed. What it needs
-// from outside comes through ExportDialogSeams, so a test drives it without a window system.
+// Export: Project > Export, a window over its markup (Data/Editor/Export.xml). The project's export
+// presets on the left (add, duplicate, remove after asking), each by its platform's icon, warned of
+// when its player cannot be built here; the selected one on the right under a card naming the
+// player its export builds ("SkyHopperPlayer, ShippingRelease, Linux64"), or saying why none can be
+// built here (another host's platform, no Emscripten for the web), its settings on the property
+// grid as Project Settings' are: a section per category (General: its name, platform, config,
+// player and output folder; Content: the extra files as a list, symbols, pruning, shader source;
+// Display: its own render size, window and orientation, each shown only when the preset overrides
+// it). Edits apply as they are made and are saved when the selection moves, an export starts or it
+// closes. Export runs the selected preset, Export All every one. What it needs from outside comes
+// through ExportDialogSeams, so a test drives it without a window system.
 
 /// What the export dialog asks of the application. Every delegate is owned.
 class ExportDialogSeams
 {
-	/// Fills the registry with the templates this host sees.
-	public delegate void(TemplateRegistry registry) Refresh ~ delete _;
 	/// Persists the presets (the controller the dialog edits) to the project.
 	public delegate void() Save ~ delete _;
 	/// Runs the export of one preset by name, or of every preset (`all`).
 	public delegate void(StringView preset, bool all) RunExport ~ delete _;
-	/// Opens Export Templates over this one. TAKES OWNERSHIP of `closed`, told when it closes.
-	public delegate void(delegate void() closed) OpenTemplates ~ delete _;
 	/// Asks for files anywhere on the machine (the system's dialog). TAKES OWNERSHIP of `chosen`
 	/// and calls it exactly once: with the files, or none when the user cancels.
 	public delegate void(delegate void(Span<String> files) chosen) PickFiles ~ delete _;
@@ -54,6 +48,54 @@ class ExportDialogSeams
 	public String OutputRoot = new .() ~ delete _;
 }
 
+/// A preset's row: its platform's icon, its name over its summary, and a warning saying why its
+/// player cannot be built here when it cannot.
+class PresetRow : UIWidget
+{
+	// Owned by the tree: the row holds its parts and never lets one go.
+	private Sedulous.GUI.Image mIcon;
+	private Sedulous.GUI.Label mName;
+	private Sedulous.GUI.Label mSummary;
+	private Sedulous.GUI.Image mWarning;
+
+	public this()
+	{
+		AddClass("preset-row");
+		mIcon = Part<Sedulous.GUI.Image>(this, "preset-row-icon");
+		let text = Part<Panel>(this, "preset-row-text");
+		mName = Part<Sedulous.GUI.Label>(text, "row-name");
+		mSummary = Part<Sedulous.GUI.Label>(text, "preset-summary");
+		mWarning = Part<Sedulous.GUI.Image>(this, "badge-icon");
+		mWarning.AddClass("warning");
+		mWarning.Source = "Editor/Icons/warning.svg";
+	}
+
+	/// `icon` borrowed (the image takes its own reference; null shows none); `warning` empty:
+	/// none.
+	public void Show(Sedulous.GUI.Drawable icon, StringView name, StringView summary, StringView warning)
+	{
+		mIcon.SetDrawable(icon);
+		mName.Text = name;
+		mSummary.Text = summary;
+		mWarning.Tooltip = warning;
+		mWarning.Visible = !warning.IsEmpty;
+	}
+
+	public bool ShowsWarning => mWarning.Visible;
+	public StringView ShownName => mName.Text;
+	public StringView ShownSummary => mSummary.Text;
+
+	/// A part of class `cls` in `into`: the tree takes the pointer, not its parts.
+	private static T Part<T>(Node into, StringView cls) where T : UIWidget, new
+	{
+		let part = new T();
+		part.AddClass(cls);
+		into.AddChild(part);
+		part.ReleaseRef(); // the tree's reference keeps it
+		return part;
+	}
+}
+
 class ExportDialog
 {
 	/// Its markup, under the data root.
@@ -64,6 +106,10 @@ class ExportDialog
 	private const String cGeneral = "General";
 	private const String cContent = "Content";
 	private const String cDisplay = "Display";
+	/// The platforms a preset exports to, and the configs a player is built in, offered after the
+	/// preset's own and the defaults.
+	private static StringView[3] cPlatforms = .("Linux64", "Win64", "Web");
+	private static StringView[3] cConfigs = .("Release", "Profile", "Debug");
 
 	/// The presets as the list's model.
 	private class Model : IModel
@@ -96,8 +142,7 @@ class ExportDialog
 	private Sedulous.GUI.Window mWindow = null ~ _?.ReleaseRef();
 	/// BORROWED: what it opened over (its confirms open there too).
 	private Node mRoot = null;
-	private TemplateRegistry mRegistry = new .() ~ delete _;
-	/// One reference each, by template id and folder.
+	/// One reference each, by platform.
 	private Dictionary<String, Sedulous.GUI.Drawable> mIcons = new .() ~ { ClearIcons(_); delete _; };
 	/// The selected preset's rows, the grid's source; null with none.
 	private Sedulous.GUI.PropertyBag mBag = null ~ delete _;
@@ -136,7 +181,7 @@ class ExportDialog
 		if (mList != null)
 		{
 			let rows = new RowFactory();
-			rows.Create = new (type) => new TemplateRow();
+			rows.Create = new (type) => new PresetRow();
 			rows.Bind = new (row, index) => { BindRow(row, index.Row); };
 			mList.SetRowFactory(rows);
 			mList.Model = mModel;
@@ -158,11 +203,6 @@ class ExportDialog
 		OnClick("export-close", new () => { Close(); });
 		OnClick("export-add-files", new () => { AddFiles(); });
 		OnClick("export-add-disk", new () => { AddFilesFromDisk(); });
-		OnClick("export-templates", new () =>
-			{
-				if (mSeams.OpenTemplates != null)
-					mSeams.OpenTemplates(new () => { RefreshTemplates(); });
-			});
 		if (let outputNote = Find<Sedulous.GUI.Label>("export-where"))
 			outputNote.Text = scope $"Exports go to {mSeams.OutputRoot}";
 		// However it closes, what was edited is kept.
@@ -185,16 +225,12 @@ class ExportDialog
 		}
 	}
 
-	/// Opens it over `root`, the templates read again and the first preset selected; false with no
-	/// markup or one open.
+	/// Opens it over `root`, the first preset selected; false with no markup or one open.
 	public bool Open(Node root)
 	{
 		if ((mWindow == null) || mWindow.IsOpen)
 			return false;
 		mRoot = root;
-		if (mSeams.Refresh != null)
-			mSeams.Refresh(mRegistry);
-		ClearIcons(mIcons);
 		mModel.Reset();
 		Select(0);
 		mWindow.OpenModal(root);
@@ -232,16 +268,6 @@ class ExportDialog
 				mList.ClearSelection();
 		}
 		Load();
-	}
-
-	/// The template the selected preset resolves to here, or null. Borrowed.
-	public ExportTemplate Resolved
-	{
-		get
-		{
-			let index = SelectedIndex;
-			return (index >= 0) ? mRegistry.Resolve(mPresets.At(index)) : null;
-		}
 	}
 
 	/// Whether the selected preset's player can be built here (false with none selected).
@@ -364,16 +390,6 @@ class ExportDialog
 		mSeams.RunExport(default, true);
 	}
 
-	/// Re-reads the templates (after Export Templates changed them).
-	public void RefreshTemplates()
-	{
-		if (mSeams.Refresh != null)
-			mSeams.Refresh(mRegistry);
-		ClearIcons(mIcons);
-		mModel.Reset();
-		Load();
-	}
-
 	/// Add Files: the editor's picker over the project's own files (not the folders the editor, a
 	/// cook or an export writes); the one picked joins the extra files, named relative to the
 	/// project, so the preset travels with it.
@@ -479,40 +495,37 @@ class ExportDialog
 		icons.Clear();
 	}
 
-	/// The icon a template is shown by, made once per template and folder. Borrowed: the cache
-	/// holds its reference.
-	private Sedulous.GUI.Drawable IconFor(ExportTemplate template)
+	/// The icon a platform is shown by (PlatformIcons), made once per platform. Borrowed: the
+	/// cache holds its reference.
+	private Sedulous.GUI.Drawable IconFor(StringView platform)
 	{
-		let key = scope String();
-		key.AppendF("{}|{}", template.Id, template.Directory);
+		let key = scope String(platform);
 		if (mIcons.TryGetValue(key, let known))
 			return known;
-		let svg = TemplateIcons.SvgFor(template, .. scope .());
-		Sedulous.GUI.Drawable icon = SvgDrawable.FromText(svg);
+		Sedulous.GUI.Drawable icon = SvgDrawable.FromText(PlatformIcons.SvgFor(platform));
 		mIcons[new String(key)] = icon;
 		return icon;
 	}
 
 	private void BindRow(Node node, int32 row)
 	{
-		let shown = node as TemplateRow;
+		let shown = node as PresetRow;
 		if ((shown == null) || (row < 0) || (row >= mPresets.Count))
 			return;
 		let preset = mPresets.At(row);
-		let template = mRegistry.Resolve(preset);
 		let summary = scope String();
 		summary.Append(preset.Platform.IsEmpty ? "?" : StringView(preset.Platform));
 		summary.Append(cDot);
 		summary.Append(preset.EffectiveConfig);
 		// Warned of, saying why, when its player cannot be built here.
 		let why = scope String();
-		shown.Show((template != null) ? IconFor(template) : null, preset.Name, summary,
+		shown.Show(IconFor(preset.Platform), preset.Name, summary,
 			Buildable(preset, why) ? StringView() : StringView(why));
 	}
 
 	// The values a choice offers: the preset's own, the fallback (the host's platform, Release),
-	// then the templates' here; a platform with no template stays choosable.
-	private void FillChoices(PropertyInfo row, List<String> values, StringView current, StringView fallback, bool platforms)
+	// then the rest of `offered`, each once.
+	private static void FillChoices(PropertyInfo row, List<String> values, StringView current, StringView fallback, Span<StringView> offered)
 	{
 		ClearAndDeleteItems!(values);
 		void Add(StringView value)
@@ -528,8 +541,8 @@ class ExportDialog
 		}
 		Add(current);
 		Add(fallback);
-		for (int i < mRegistry.Count)
-			Add(platforms ? StringView(mRegistry.At(i).Platform) : mRegistry.At(i).EffectiveConfig);
+		for (let value in offered)
+			Add(value);
 		for (int i < values.Count)
 			row.AddChoice(values[i], i);
 	}
@@ -592,29 +605,13 @@ class ExportDialog
 		let preset = mPresets.At(index);
 		mBag = new .();
 		Row("name", .String, Sedulous.GUI.Variant(preset.Name), "Name", cGeneral);
-		int64 chosen = 0;
-		for (int i < mRegistry.Count)
-		{
-			if (!preset.TemplateId.IsEmpty && (mRegistry.At(i).Id == preset.TemplateId))
-				chosen = i + 1;
-		}
-		let template = Row("template", .Enum, Sedulous.GUI.Variant(chosen), "Template", cGeneral,
-			"A template picked by name decides the platform and config; Any takes the best installed for them.");
-		template.AddChoice("Any for its platform and config", 0);
-		let choiceName = scope String();
-		for (int i < mRegistry.Count)
-		{
-			let t = mRegistry.At(i);
-			choiceName.Set(t.Name);
-			if (t.IsHost)
-				choiceName.Append(" (this editor's own)");
-			template.AddChoice(choiceName, i + 1);
-		}
-		Row("platform", .Enum, Sedulous.GUI.Variant((int64)0), "Platform", cGeneral);
-		Row("config", .Enum, Sedulous.GUI.Variant((int64)0), "Config", cGeneral);
-		ShowChoices(preset, chosen != 0);
+		Row("platform", .Enum, Sedulous.GUI.Variant((int64)0), "Platform", cGeneral,
+			"A desktop player builds on its own system (Win64 on Windows); the web builds on any with Emscripten.");
+		Row("config", .Enum, Sedulous.GUI.Variant((int64)0), "Config", cGeneral,
+			"Release ships an optimised build without the profiler; Profile keeps the profiler; Debug is unoptimised.");
+		ShowChoices(preset);
 		Row("playerName", .String, Sedulous.GUI.Variant(preset.PlayerName), "Player name", cGeneral,
-			"Empty: the template's (Sedulous.Engine.Player.Desktop).");
+			"Empty: the game's name.");
 		Row("outputSubdir", .String, Sedulous.GUI.Variant(preset.OutputSubdir), "Output folder", cGeneral,
 			"Empty: the preset's name.");
 
@@ -626,7 +623,7 @@ class ExportDialog
 		for (int i < preset.AdditionalFiles.Count)
 			mBag.SetValue(path..Clear()..AppendF("additionalFiles.{}", i), 0, Sedulous.GUI.Variant(preset.AdditionalFiles[i]));
 		Row("stageSymbols", .Bool, Sedulous.GUI.Variant(preset.StageSymbols), "Ship debug symbols", cContent,
-			"Stage the template's debug symbols into the export.");
+			"Stage the player's debug symbols into the export (the .pdb on Windows).");
 		Row("pruneToReachable", .Bool, Sedulous.GUI.Variant(preset.PruneToReachable), "Only what is reached", cContent,
 			"Pack the closure of the default scene, the startup script and the other settings' assets, not every cooked asset.");
 		Row("includeShaderSource", .Bool, Sedulous.GUI.Variant(preset.IncludeShaderSource), "Shader source", cContent,
@@ -655,10 +652,9 @@ class ExportDialog
 			mGrid.Source = mBag;
 	}
 
-	// The platform and config rows as the preset has them: their choices, the preset's, and read
-	// only while a template picked by name decides them. In place: this runs inside the rows' own
-	// commit.
-	private void ShowChoices(ExportPreset preset, bool byTemplate)
+	// The platform and config rows as the preset has them: their choices and the preset's. In
+	// place: this runs inside the rows' own commit.
+	private void ShowChoices(ExportPreset preset)
 	{
 		let platform = mBag.FindInfo("platform");
 		let config = mBag.FindInfo("config");
@@ -666,10 +662,8 @@ class ExportDialog
 			return;
 		ClearAndDeleteItems!(platform.Choices);
 		ClearAndDeleteItems!(config.Choices);
-		FillChoices(platform, mPlatforms, preset.Platform, mSeams.HostPlatform, true);
-		FillChoices(config, mConfigs, preset.Config, "Release", false);
-		platform.ReadOnly = byTemplate;
-		config.ReadOnly = byTemplate;
+		FillChoices(platform, mPlatforms, preset.Platform, mSeams.HostPlatform, cPlatforms);
+		FillChoices(config, mConfigs, preset.Config, "Release", cConfigs);
 		mBag.SetValue("platform", 0, Sedulous.GUI.Variant(IndexOf(mPlatforms, preset.Platform.IsEmpty ? StringView(mSeams.HostPlatform) : StringView(preset.Platform))));
 		mBag.SetValue("config", 0, Sedulous.GUI.Variant(IndexOf(mConfigs, preset.EffectiveConfig)));
 		mBag.PropertiesChanged();
@@ -727,23 +721,10 @@ class ExportDialog
 		let preset = scope ExportPreset();
 		mPresets.At(index).CopyTo(preset);
 		TextAt("name", preset.Name);
-		let chosen = ChoiceAt("template");
-		let template = ((chosen > 0) && (chosen <= mRegistry.Count)) ? mRegistry.At((int)chosen - 1) : null;
-		if (template != null)
-		{
-			// A template by name: its platform and config.
-			preset.TemplateId.Set(template.Id);
-			preset.Platform.Set(template.Platform);
-			preset.Config.Set(template.EffectiveConfig);
-		}
-		else
-		{
-			preset.TemplateId.Clear();
-			let platform = ChoiceAt("platform");
-			let config = ChoiceAt("config");
-			preset.Platform.Set(((platform >= 0) && (platform < mPlatforms.Count)) ? StringView(mPlatforms[(int)platform]) : default);
-			preset.Config.Set(((config >= 0) && (config < mConfigs.Count)) ? StringView(mConfigs[(int)config]) : default);
-		}
+		let platform = ChoiceAt("platform");
+		let config = ChoiceAt("config");
+		preset.Platform.Set(((platform >= 0) && (platform < mPlatforms.Count)) ? StringView(mPlatforms[(int)platform]) : default);
+		preset.Config.Set(((config >= 0) && (config < mConfigs.Count)) ? StringView(mConfigs[(int)config]) : default);
 		TextAt("playerName", preset.PlayerName);
 		TextAt("outputSubdir", preset.OutputSubdir);
 		ClearAndDeleteItems(preset.AdditionalFiles);
@@ -778,7 +759,7 @@ class ExportDialog
 		mDirty = true;
 		mModel.Changed((int32)index);
 		let stored = mPresets.At(index);
-		ShowChoices(stored, template != null); // the platform and config follow a template picked by name
+		ShowChoices(stored);
 		ShowOverrides(stored);
 		ShowCard();
 		if (mExport != null)
@@ -816,8 +797,7 @@ class ExportDialog
 			detail.AddClass("warning");
 			return;
 		}
-		let template = mRegistry.Resolve(preset);
-		icon.SetDrawable((template != null) ? IconFor(template) : null);
+		icon.SetDrawable(IconFor(preset.Platform));
 		title.Text = description;
 		detail.Text = "Built as it exports: a first build of a config compiles the engine and takes minutes.";
 	}

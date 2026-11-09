@@ -1010,34 +1010,21 @@ button.group-field { justify-content: flex-start; }
 .project-settings { flex-grow: 1; padding-bottom: 0; }
 .settings-grid { flex-grow: 1; min-height: 0; }
 .project-settings > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
-/* Export Templates and Export: a list on the left, the selected one on the right. */
-.templates, .export { flex-grow: 1; padding-bottom: 0; }
-.templates-split, .export-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
-.templates-list { width: 290px; flex-shrink: 0; }
-/* A template's and a preset's row is two lines with room above and below (.template-row's height).
-   This is the lists' own row height; the views' default single line had squeezed the rows together.
+/* Export: the presets on the left, the selected one on the right. */
+.export { flex-grow: 1; padding-bottom: 0; }
+.export-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
+/* A preset's row is two lines with room above and below (.preset-row's height). This is the list's
+   own row height; the views' default single line had squeezed the rows together. */
+.export-list { row-height: 52px; }
+.export-card-detail.warning { color: var(--warning); }
+/* A preset is a two-line card: room above and below its name and summary, and a gap between them.
    */
-.templates-list, .export-list { row-height: 52px; }
-.templates-side { flex-grow: 1; min-width: 0; }
-.templates-detail { flex-direction: column; row-gap: var(--space-m); }
-.templates-head { flex-direction: row; align-items: center; column-gap: var(--space-m); }
-.templates-icon { width: 44px; height: 44px; image-color: var(--icon); }
-.templates-title { flex-direction: column; min-width: 0; }
-.templates-name { font-size: var(--font-title); color: var(--text-strong); }
-.templates-id { color: var(--text-dim); }
-.templates-fields { flex-grow: 1; }
-/* A path has no spaces to wrap at: it breaks anywhere rather than running past the window. */
-.template-value { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
-.template-value.warning, .export-card-detail.warning { color: var(--warning); }
-.templates-verbs { flex-direction: row; column-gap: var(--space-s); }
-/* A template is a two-line card: room above and below its name and summary, and a gap between them.
-   */
-.template-row { flex-direction: row; align-items: center; column-gap: var(--space-l); min-height: 52px; padding: var(--space-m) var(--space-l); }
-.template-row-icon { width: 28px; height: 28px; image-color: var(--icon); flex-shrink: 0; }
-.template-row-text { flex-direction: column; flex-grow: 1; min-width: 0; row-gap: var(--space-xs); }
-.template-summary { color: var(--text-dim); font-size: var(--font-small); }
+.preset-row { flex-direction: row; align-items: center; column-gap: var(--space-l); min-height: 52px; padding: var(--space-m) var(--space-l); }
+.preset-row-icon { width: 28px; height: 28px; image-color: var(--icon); flex-shrink: 0; }
+.preset-row-text { flex-direction: column; flex-grow: 1; min-width: 0; row-gap: var(--space-xs); }
+.preset-summary { color: var(--text-dim); font-size: var(--font-small); }
 .badge-icon.warning { image-color: var(--warning); }
-.templates > .dialog-buttons, .export > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
+.export > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
 .export-presets { width: 250px; flex-shrink: 0; flex-direction: column; row-gap: var(--space-s); }
 .export-presets-head { flex-direction: row; align-items: center; }
 .export-heading { font-weight: 600; color: var(--text-strong); }
@@ -1054,8 +1041,6 @@ button.group-field { justify-content: flex-start; }
 .export-files { flex-direction: row; justify-content: flex-start; column-gap: var(--space-s); }
 .pref-tabs { flex-grow: 1; }
 .pref-accent { width: 120px; }
-.pref-folder { flex-direction: row; align-items: center; column-gap: var(--space-s); }
-.pref-folder > textfield { flex-grow: 1; min-width: 0; }
 .pref-scale { flex-direction: row; align-items: center; column-gap: var(--space-m); }
 .pref-scale > slider { width: 200px; }
 .pref-scale-value { color: var(--text-dim); font-size: var(--font-small); }

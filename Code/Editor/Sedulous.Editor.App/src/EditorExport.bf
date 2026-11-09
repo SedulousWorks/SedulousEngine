@@ -6,7 +6,6 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Resource;
-using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -30,8 +29,6 @@ class EditorExportServices
 	/// job the service's latest, so the build tools follow it). Borrowed; unset, an export is
 	/// refused.
 	public ProjectBuildService BuildService = null;
-	/// The per-user editor settings: the templates root override. Null reads as no override.
-	public Settings UserSettings = null;
 	/// The engine data root; the shader cook reads <DataRoot>/Shaders.
 	public String DataRoot = new .() ~ delete _;
 	/// The export was written to `folder` (the application offers to open it). Owned.
@@ -45,10 +42,8 @@ class EditorExportServices
 /// reachable, the reachable closure found, both on the main thread (they load scenes), then
 /// the player's build and the cook-free pack and stage run as a job on the build lane,
 /// reader-only (ExportDriver builds the player through a ProjectPlayerBuilder over the
-/// application's build service). It also keeps the
-/// presets the Export dialog edits, finds the templates (the user's override, else the
-/// environment's, else the user data's) and reports the resource manager's live products to
-/// the log.
+/// application's build service). It also keeps the presets the Export dialog edits and reports
+/// the resource manager's live products to the log.
 ///
 /// The running job reads this object's scene streams and presets, so the owner shuts the job
 /// service down, or stops pumping it, before this goes.
@@ -133,27 +128,6 @@ class EditorExport
 			SubmitJob(mPending.PresetName, mPending.All);
 			mPending.Active = false; // the job owns it now
 		}
-	}
-
-	/// The export templates root: the EditorExportSettings override when set, else the
-	/// environment, else the user-data default, the same order as the CLI.
-	public void TemplatesRoot(String outPath)
-	{
-		StringView overrideRoot = "";
-		if (mServices.UserSettings != null)
-		{
-			if (let s = mServices.UserSettings.Find<EditorExportSettings>())
-				overrideRoot = s.TemplatesRoot;
-		}
-		ExportTemplates.ResolveRoot(overrideRoot, outPath);
-	}
-
-	/// The templates as the main thread sees them (the Export dialog's list): the host
-	/// template beside this editor plus the bundles under the templates root.
-	public void BuildTemplateRegistry(TemplateRegistry outRegistry)
-	{
-		let toolDir = GetExecutableDirectory(.. scope .());
-		outRegistry.Refresh(TemplatesRoot(.. scope .()), BuildLayout.PlayerDirectoryBeside(toolDir, .. scope .()));
 	}
 
 	/// The presets the Export dialog edits; SavePresets writes them to the project.
