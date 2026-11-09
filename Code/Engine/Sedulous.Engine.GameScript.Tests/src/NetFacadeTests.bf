@@ -221,11 +221,11 @@ class NetFacadeTests
 		let run = scope GameRun("scratch_net_spawn_entity");
 		let hunter = run.AuthorPrefab("Hunter");
 		let level = run.AuthorLevel("Palace");
-		let database = run.Database;
+		let resources = run.Resources;
 		run.MoreSystems = new (scene) =>
 			{
 				NetworkScene.AddNetworkSceneManagers(scene);
-				scene.AddSystem<PrefabSpawnSystem>().SetSource(database, null);
+				scene.AddSystem<PrefabSpawnSystem>().SetSource(resources);
 			};
 		let game = run.Class("Game", scope $$"""
 			class Game

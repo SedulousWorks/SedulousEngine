@@ -3,18 +3,23 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.VFS;
 
 namespace Sedulous.Scene.Resource.Tests;
 
-/// A scratch content database holding prefabs, for spawning by id.
+/// A scratch content database holding prefabs, and a resource manager over it that loads
+/// them, for spawning by id.
 class PrefabDatabaseFixture
 {
 	public NativeFileSystem Mount ~ delete _;
 	public SerializerFactory Factory ~ delete _;
 	public SerializableRegistry Serializables = new .() ~ delete _;
 	public ContentDatabase Database ~ delete _;
+	public PrefabFactory Prefabs = new .() ~ delete _;
+	/// Over Database, with Prefabs: what a spawn loads its prefabs through.
+	public ResourceManager Resources;
 
 	private String mRoot = new .() ~ delete _;
 
@@ -31,10 +36,14 @@ class PrefabDatabaseFixture
 		Mount = new NativeFileSystem(mRoot);
 		Factory = new (stream, mode) => new BinarySerializerContext(stream, mode);
 		Database = new ContentDatabase(Mount, Factory, "asset", Serializables);
+		Resources = new ResourceManager(Database);
+		Resources.AddFactory(Prefabs);
 	}
 
 	public ~this()
 	{
+		// The manager first: its products before the database they were read from.
+		delete Resources;
 		RemoveDirectoryRecursive(mRoot);
 	}
 

@@ -2,23 +2,26 @@ using System;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Engine.DefaultApp;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.DefaultApp.Integration.Tests;
 
-/// The client side net spawn resolver, against a REAL content database.
+/// The client side net spawn resolver, against a REAL content database and the resource
+/// manager that loads its prefabs.
 ///
 /// This is the body a replicated spawn runs: a prefab guid arrives over the wire, and the
-/// resolver has to turn it into a live entity in the scene the endpoint replicates. The
+/// resolver has to turn it into a live entity in the scene the endpoint replicates, in the
+/// frame the message arrives, so a prefab nothing has loaded yet is loaded then and there. The
 /// WIRING (that the factory reaches each endpoint and survives a reconnect) and the
 /// handler CONTRACT (with a stand in lambda) are covered elsewhere; this is the body
 /// itself, which was once a stub answering no entity, so a replicated spawn was silently
 /// inert.
 ///
 /// Every failure path matters as much as the success one, because each answers the same
-/// unassigned handle and none of them logs: a spawn that quietly produces nothing is the
-/// exact symptom this suite exists to attribute.
+/// unassigned handle: a spawn that produces nothing is the exact symptom this suite exists
+/// to attribute.
 static class SpawnResolverTests
 {
 	/// Builds a two entity prefab and stores it, answering its guid.
@@ -42,7 +45,7 @@ static class SpawnResolverTests
 		let prefabId = StoreTurretPrefab(fixture);
 
 		let level = scope Scene("level");
-		let root = DefaultApplication.ResolveNetworkPrefab(fixture.Database, null, level,
+		let root = DefaultApplication.ResolveNetworkPrefab(fixture.Resources, level,
 			prefabId);
 
 		Test.Assert(root.IsAssigned, "the resolver produced an entity");
@@ -64,9 +67,9 @@ static class SpawnResolverTests
 		let prefabId = StoreTurretPrefab(fixture);
 
 		let level = scope Scene("level");
-		let first = DefaultApplication.ResolveNetworkPrefab(fixture.Database, null, level,
+		let first = DefaultApplication.ResolveNetworkPrefab(fixture.Resources, level,
 			prefabId);
-		let second = DefaultApplication.ResolveNetworkPrefab(fixture.Database, null, level,
+		let second = DefaultApplication.ResolveNetworkPrefab(fixture.Resources, level,
 			prefabId);
 
 		Test.Assert(first.IsAssigned && second.IsAssigned, "both spawned");
@@ -75,13 +78,33 @@ static class SpawnResolverTests
 	}
 
 	[Test]
-	public static void WithoutAContentDatabaseNothingSpawns()
+	public static void AFirstSpawnOfAnUnloadedPrefabArrivesInItsFrame()
+	{
+		// The replication that follows the spawn message names the entity at once: a resolver
+		// that waited on an asynchronous load would leave it naming nothing.
+		let fixture = scope SpawnContentFixture("scratch_spawn_resolver_first");
+		let prefabId = StoreTurretPrefab(fixture);
+		let tasks = scope TaskPool(2);
+		let resources = scope ResourceManager(fixture.Database, tasks);
+		resources.AddFactory(fixture.Prefabs);
+		resources.SetAsyncBinds(true); // as a scene load leaves it while it binds
+
+		let level = scope Scene("level");
+		Test.Assert(resources.FindHandle(prefabId) == null, "nothing has loaded it");
+		let root = DefaultApplication.ResolveNetworkPrefab(resources, level, prefabId);
+		Test.Assert(root.IsAssigned && level.IsValid(root), "the entity exists on return");
+		Test.Assert(level.GetChildCount(root) == 1);
+		Test.Assert(resources.FindHandle(prefabId).State == .Ready, "loaded by the spawn, not left pending");
+	}
+
+	[Test]
+	public static void WithoutAManagerNothingSpawns()
 	{
 		// The app may never have been handed one. No entity, rather than half of one.
 		let level = scope Scene("level");
-		let root = DefaultApplication.ResolveNetworkPrefab(null, null, level, Guid());
+		let root = DefaultApplication.ResolveNetworkPrefab(null, level, Guid());
 
-		Test.Assert(!root.IsAssigned, "a null database resolved to nothing");
+		Test.Assert(!root.IsAssigned, "no manager resolved to nothing");
 		Test.Assert(level.EntityCount == 0, "and left the scene untouched");
 	}
 
@@ -93,7 +116,7 @@ static class SpawnResolverTests
 		let fixture = scope SpawnContentFixture("scratch_spawn_resolver_unknown");
 		let level = scope Scene("level");
 
-		let root = DefaultApplication.ResolveNetworkPrefab(fixture.Database, null, level,
+		let root = DefaultApplication.ResolveNetworkPrefab(fixture.Resources, level,
 			Guid());
 
 		Test.Assert(!root.IsAssigned, "an unknown id resolved to nothing");
@@ -111,7 +134,7 @@ static class SpawnResolverTests
 			SpawnContentFixture.PrefabTypeName);
 
 		let level = scope Scene("level");
-		let root = DefaultApplication.ResolveNetworkPrefab(fixture.Database, null, level,
+		let root = DefaultApplication.ResolveNetworkPrefab(fixture.Resources, level,
 			instance.Id);
 
 		Test.Assert(!root.IsAssigned, "an instance with no scene stream resolved to nothing");

@@ -6,6 +6,7 @@ using Sedulous.Content;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.Net;
 using Sedulous.Net.Replication;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.VFS;
@@ -35,10 +36,14 @@ class NetFacadeSpawnTests
 		let instance = database.RootGroup.CreateInstance("Guest", "Sedulous.Scene.Resource.PrefabDocument");
 		Test.Assert(SceneStorage.SavePrefab(template, instance) case .Ok);
 		let guest = instance.Id;
+		// What the scenes' spawns load their prefabs through.
+		let resources = scope ResourceManager(database);
+		let prefabs = scope PrefabFactory();
+		resources.AddFactory(prefabs);
 
 		let scene = scope Scene("Palace");
 		NetworkScene.AddNetworkSceneManagers(scene);
-		scene.AddSystem<PrefabSpawnSystem>().SetSource(database, null);
+		scene.AddSystem<PrefabSpawnSystem>().SetSource(resources);
 		let controller = scope NetworkController();
 		controller.SetReplicatedScene(scene);
 		let net = scope NetFacade(controller);
@@ -65,7 +70,7 @@ class NetFacadeSpawnTests
 
 		let clientScene = scope Scene("Palace");
 		NetworkScene.AddNetworkSceneManagers(clientScene);
-		clientScene.AddSystem<PrefabSpawnSystem>().SetSource(database, null);
+		clientScene.AddSystem<PrefabSpawnSystem>().SetSource(resources);
 		let clientController = scope NetworkController();
 		clientController.SetReplicatedScene(clientScene);
 		let clientNet = scope NetFacade(clientController);

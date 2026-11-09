@@ -3,13 +3,14 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Resource;
 using Sedulous.Scene.Resource;
 using Sedulous.VFS;
 
 namespace Sedulous.Engine.DefaultApp.Integration.Tests;
 
-/// A scratch directory, a content database that writes into it, and the scene document
-/// types registered.
+/// A scratch directory, a content database that writes into it, the scene document types
+/// registered, and a resource manager over the database that loads its prefabs.
 ///
 /// The REAL stack on purpose. The resolver's whole job is to cross from a content database
 /// to a live entity, so a fake database would test the half that was never in doubt.
@@ -19,6 +20,9 @@ class SpawnContentFixture
 	public SerializerFactory Factory ~ delete _;
 	public SerializableRegistry Serializables = new .() ~ delete _;
 	public ContentDatabase Database ~ delete _;
+	public PrefabFactory Prefabs = new .() ~ delete _;
+	/// Over Database, with Prefabs: what a spawn loads its prefabs through.
+	public ResourceManager Resources;
 
 	private String mRoot = new .() ~ delete _;
 
@@ -39,10 +43,14 @@ class SpawnContentFixture
 		Mount = new NativeFileSystem(mRoot);
 		Factory = new (stream, mode) => new BinarySerializerContext(stream, mode);
 		Database = new ContentDatabase(Mount, Factory, "asset", Serializables);
+		Resources = new ResourceManager(Database);
+		Resources.AddFactory(Prefabs);
 	}
 
 	public ~this()
 	{
+		// The manager first: its products before the database they were read from.
+		delete Resources;
 		RemoveDirectoryRecursive(mRoot);
 	}
 }

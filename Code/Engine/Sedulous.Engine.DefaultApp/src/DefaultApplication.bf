@@ -282,14 +282,12 @@ class DefaultApplication : IApplication, ISceneObserver
 	public void SetContentDatabase(IContentDatabase database)
 	{
 		mContentDatabase = database;
-		PointSpawnersAtScenes();
 	}
 
-	/// Every composed scene's spawn system pointed at the database the scenes load from, where
-	/// the prefabs are (SceneDatabase), and at the app's resources. When either changes, the
-	/// scenes that already exist follow (an editor's, across a project close or switch), not
-	/// only those composed after: one left pointing at a closed project's database would spawn
-	/// from freed memory.
+	/// Every composed scene's spawn system pointed at the app's resources, which its prefabs
+	/// load through. When they change, the scenes that already exist follow (an editor's,
+	/// across a project close or switch), not only those composed after: one left pointing at a
+	/// closed project's manager would spawn from freed memory.
 	private void PointSpawnersAtScenes()
 	{
 		if (mScenes == null)
@@ -297,17 +295,15 @@ class DefaultApplication : IApplication, ISceneObserver
 		mScenes.ForEachScene(scope (scene) =>
 			{
 				if (let spawner = scene.GetSystem<PrefabSpawnSystem>())
-					spawner.SetSource(SceneDatabase, Resources);
+					spawner.SetSource(Resources);
 			});
 	}
-	/// The database scene ids resolve in for script driven loads, and the prefabs a spawn
-	/// reads; the content database when none is named. A game run from its project folder
-	/// names its sources here while its content database is the cooked one, which holds no
-	/// scene or prefab.
+	/// The database scene ids resolve in for script driven loads; the content database when
+	/// none is named. A game run from its project folder names its sources here while its
+	/// content database is its cooked one over them, which lets no scene through.
 	public void SetSceneDatabase(IContentDatabase database)
 	{
 		mSceneDatabase = database;
-		PointSpawnersAtScenes();
 	}
 	public IContentDatabase SceneDatabase => (mSceneDatabase != null) ? mSceneDatabase : mContentDatabase;
 
@@ -993,17 +989,16 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	// ==================== networking ====================
 
-	/// Every composed scene's spawn system gets the database the scenes load from and the
-	/// app's resources.
+	/// Every composed scene's spawn system gets the app's resources.
 	public void OnSystemsReady(Scene scene)
 	{
 		if (let spawner = scene.GetSystem<PrefabSpawnSystem>())
-			spawner.SetSource(SceneDatabase, Resources);
+			spawner.SetSource(Resources);
 	}
 
 	/// Resolves a prefab a replicated spawn named, into the scene the endpoint replicates.
 	///
-	/// The APP owns this because it is the only thing that knows the scene database; the
+	/// The APP owns this because it is the only thing that knows the resource manager; the
 	/// NetworkController applies it to each endpoint, so a reconnect keeps it and the app
 	/// hands it over once at wiring rather than rewiring per endpoint.
 	///
@@ -1012,21 +1007,21 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// produce the entity, not position it.
 	private StateReplication.SpawnHandler MakeSpawnResolver()
 	{
-		// Reads the database and the manager WHEN INVOKED, not when wired: the databases are
-		// handed over after construction, and the controller asks for this once.
+		// Reads the manager WHEN INVOKED, not when wired: it is made or handed over after
+		// construction, and the controller asks for this once.
 		return new (scene, prefab, id) =>
-			ResolveNetworkPrefab(SceneDatabase, Resources, scene, prefab);
+			ResolveNetworkPrefab(Resources, scene, prefab);
 	}
 
-	/// The resolver's body: the one spawn recipe, PrefabSpawnSystem's, with the app's
-	/// database and manager supplied. A script's Spawn runs the same one through the scene.
+	/// The resolver's body: the one spawn recipe, PrefabSpawnSystem's, with the app's manager
+	/// supplied. A script's Spawn runs the same one through the scene. A prefab not loaded yet
+	/// is loaded at once, so the entity exists in the frame the message arrives.
 	///
 	/// Answers an unassigned handle for every failure, and does so deliberately: a replicated
 	/// spawn that cannot be resolved should produce NO entity rather than half of one, and the
 	/// replication that follows applies transform and fields on top of whatever this returns.
-	public static EntityHandle ResolveNetworkPrefab(IContentDatabase database,
-		ResourceManager resources, Scene scene, Guid prefab)
-		=> PrefabSpawnSystem.SpawnInto(scene, database, resources, prefab);
+	public static EntityHandle ResolveNetworkPrefab(ResourceManager resources, Scene scene, Guid prefab)
+		=> PrefabSpawnSystem.SpawnInto(scene, resources, prefab);
 
 	/// Enters a preset role at startup. None leaves it offline.
 	private void ApplyNetworkStartup(GameInstance instance)

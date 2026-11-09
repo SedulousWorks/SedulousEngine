@@ -25,7 +25,9 @@ so a rename or a move never breaks one. Deleting is the dangerous operation: que
    them against cooked products.
 
 Scenes and prefabs are NOT cooked: they are XML text sources staged directly (see
-Scenes.md).
+Scenes.md). A prefab is still a resource: the editor, and a game run from its project
+folder, load prefabs from the sources beneath the cooked products, so a spawn reads a
+loaded prefab rather than its file, and a reference to a prefab binds like any other.
 
 Game GUI sources link like scripts: `.xml` documents, `.css` sheets and `.svg` vector images
 import as assets whose text stays in `Sources/`. A document or sheet names images, vector

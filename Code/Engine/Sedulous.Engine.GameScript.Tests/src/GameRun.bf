@@ -35,6 +35,8 @@ class GameRun
 	private NativeFileSystem mMount ~ delete _;
 	private SerializerFactory mFactory ~ delete _;
 	private ContentDatabase mDatabase ~ delete _;
+	/// Loads the prefabs a spawn names, through Resources.
+	private PrefabFactory mPrefabs = new .() ~ delete _;
 	private String mRoot = new .() ~ delete _;
 	private List<ScriptClass> mClasses = new .();
 	private delegate void(Scene) mInstaller ~ delete _;
@@ -61,6 +63,7 @@ class GameRun
 		mFactory = new (stream, mode) => new BinarySerializerContext(stream, mode);
 		mDatabase = new ContentDatabase(mMount, mFactory, "asset");
 		Resources = new ResourceManager(mDatabase);
+		Resources.AddFactory(mPrefabs);
 
 		// What the application does: the host wired to the surface, the run's verbs backed.
 		Instance.RunHost.Configure = new (runtime) =>

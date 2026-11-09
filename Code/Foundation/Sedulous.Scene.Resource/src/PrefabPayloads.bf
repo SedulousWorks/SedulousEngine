@@ -56,24 +56,44 @@ class PrefabPayloads
 	/// chain is cMaxDepth deep.
 	public IStream Open(Guid prefabId)
 	{
+		if (!MayOpen(prefabId))
+			return null;
+		let prefab = Load(prefabId);
+		if (prefab == null)
+			return null;
+		return OpenLoaded(prefab);
+	}
+
+	/// The payload of a prefab already loaded (a bound reference's), opened as Open does, so
+	/// what it nests resolves through Resolver with it counted open. Null as Open's is.
+	public IStream Open(PrefabResource prefab)
+	{
+		if ((prefab == null) || !MayOpen(prefab.Id))
+			return null;
+		return OpenLoaded(prefab);
+	}
+
+	/// False, with a warning, when the prefab is open already or the open chain is full.
+	private bool MayOpen(Guid prefabId)
+	{
 		if (mOpen.Contains(prefabId))
 		{
 			GlobalLog(.Warning, "PrefabPayloads: prefab {} nests itself, its nested instance was refused", prefabId);
-			return null;
+			return false;
 		}
 		if (mOpen.Count >= cMaxDepth)
 		{
 			GlobalLog(.Warning, "PrefabPayloads: prefab {} is nested deeper than {}, refused", prefabId, cMaxDepth);
-			return null;
+			return false;
 		}
+		return true;
+	}
 
-		let prefab = Load(prefabId);
-		if (prefab == null)
-			return null;
-
+	private IStream OpenLoaded(PrefabResource prefab)
+	{
 		let stream = (PrefabPayloadStream)prefab.OpenPayload();
-		stream.[Friend]OpenedIn(this, prefabId);
-		mOpen.Add(prefabId);
+		stream.[Friend]OpenedIn(this, prefab.Id);
+		mOpen.Add(prefab.Id);
 		return stream;
 	}
 

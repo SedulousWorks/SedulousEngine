@@ -68,6 +68,20 @@ the class is detectable), then a tagged value: the kind, then the one payload fi
 uses. The schema's `scriptOverrides` section gives the hash algorithm with a worked example,
 the kind table and each kind's payload key; the example scene shows all of them written.
 
+## Spawning at run time
+
+A spawn while the game runs (a script's `Spawn`, `Net.Spawn`, a replicated spawn on a client)
+reads the LOADED prefab, not its file: the prefab is read once, the first time it is spawned
+or a reference to it binds, and the prefabs it nests are each loaded the same way. A first
+spawn loads the prefab at once, so its entity exists in the same frame.
+
+Saving a prefab in the editor (its page's Save, `prefab_write`, an apply to prefab), or a
+change to its file on disk, reloads it, so the next spawn of a running game is the saved one;
+the entities already spawned keep what they were spawned from. Two spawns of one prefab can
+therefore differ across a save during Play. A prefab deleted from disk is unloaded, and a
+spawn of it is refused with a warning, as an unknown prefab's is. A game run outside the
+editor reads its prefabs once, at start.
+
 ## Scene level behaviour
 
 - The project's startup scene is `defaultScene` in the project settings; `asset_uses` on a
