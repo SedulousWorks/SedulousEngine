@@ -187,7 +187,9 @@ static class ScriptHarvest
 			if (ParseNumberList(token, ref n) >= 3)
 				outValue.Vector = .(n[0], n[1], n[2]);
 		default:
-			// Entity and asset defaults are only null; an override carries the guid.
+			// Entity and asset defaults are only null; an override carries the guid. A pruned
+			// export follows a script's assets through the overrides for that reason: a
+			// default naming an asset would need following from the script itself.
 		}
 	}
 

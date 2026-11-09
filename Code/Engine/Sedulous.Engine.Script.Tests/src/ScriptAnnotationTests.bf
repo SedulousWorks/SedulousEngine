@@ -37,6 +37,9 @@ static class ScriptAnnotationTests
 		Test.Assert(scale.Description == "Scale, as a fraction [0..1]", "commas and brackets inside the string stay in it");
 		let sound = tuned.FindProperty("hitSound");
 		Test.Assert((sound.Type == .Asset) && (sound.AssetType == "AudioClip") && (sound.Description == "Played on a hit"));
+		// The first token is the tag, so an asset's default is nil: only an override names an
+		// asset, which is all a pruned export follows of a script's properties.
+		Test.Assert((sound.Default.Kind == .Asset) && !sound.Default.Id.IsSet, "an asset property's default names nothing");
 		Test.Assert(tuned.FindProperty("hidden").Default.Number == 4, "the annotation, not the access, makes a property");
 		Test.Assert((tuned.FindProperty("values") == null) && (tuned.FindProperty("seenScale") == null));
 

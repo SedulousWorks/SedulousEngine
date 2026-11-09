@@ -35,6 +35,17 @@ class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>,
 		component.Behaviors = null;
 	}
 
+	/// Every behaviour's asset-valued overrides: a script property holds an id the script
+	/// binds itself, so the post load pass leaves it unbound.
+	public override void CollectUnboundReferences(List<Guid> outIds)
+	{
+		ForEach(scope (component, owner) =>
+		{
+			for (let behavior in component.Behaviors)
+				ScriptPropertyOverride.CollectAssetIds(behavior.Overrides, outIds);
+		});
+	}
+
 	/// Adds a behaviour to the entity's component, adding the component when it has none.
 	/// The behaviour's class is bound through the manager the scene was resolved with.
 	public bool AddBehavior(EntityHandle entity, Guid scriptClass)

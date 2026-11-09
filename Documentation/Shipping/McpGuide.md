@@ -486,7 +486,11 @@ the plugin's; otherwise the export is refused, the response naming why (a plugin
 lacks or carries older, one enabled where it is not supported, the project's own player not
 built). The response's `player` says which ran and why. Each enabled plugin's deploy files ship
 beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
-export with its reason.
+export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
+project's default scene, startup script and manifest assets, and what is flagged Always Export),
+following each scene and prefab to what its components and settings name, the prefabs it places and
+the assets its scripts' properties hold, and each asset to what it needs (a material's textures);
+the response's `pruning` counts what was kept and dropped.
 
 `export_presets` lists the project's presets, each its fields by the names
 `export_preset_set` takes, and the templates this machine can export them with;

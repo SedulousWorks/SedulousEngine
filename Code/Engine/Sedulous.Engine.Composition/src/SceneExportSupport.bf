@@ -53,8 +53,9 @@ static class SceneExportSupport
 	}
 
 	/// A scene's or prefab's DIRECT references: the component resource Refs, through a
-	/// factory less ResourceManager whose every bind lands unresolved, plus the parked prefab
-	/// instance ids. False when the stored stream does not load.
+	/// factory less ResourceManager whose every bind lands unresolved, and the ids its systems
+	/// name without binding (a script property's asset), into `outResources`; the parked
+	/// prefab instance ids into `outPrefabs`. False when the stored stream does not load.
 	public static bool ScanSceneReferences(Instance instance, ContentDatabase db, List<Guid> outResources, List<Guid> outPrefabs)
 	{
 		let scratch = scope Scene("__export_scan");
@@ -66,6 +67,14 @@ static class SceneExportSupport
 		collector.ReportsMissingFactories = false;
 		SceneResolve.ResolveSceneResources(scratch, collector);
 		collector.CollectUnresolved(outResources);
+		let unbound = scope List<Guid>();
+		for (let system in scratch.Systems)
+			system.CollectUnboundReferences(unbound);
+		for (let id in unbound)
+		{
+			if (!outResources.Contains(id))
+				outResources.Add(id);
+		}
 		scratch.ForEachPendingPrefabInstance(scope [&](pending) => { outPrefabs.Add(pending.PrefabId); });
 		return true;
 	}

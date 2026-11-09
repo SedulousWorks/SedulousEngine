@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 
@@ -118,6 +119,13 @@ abstract class SceneSystem
 	/// that arrived after the scene was resolved. A system with no per entity data does
 	/// nothing.
 	public virtual void ResolveEntityResources(EntityHandle entity, ResourceManager manager) {}
+
+	/// The asset ids this system's data names WITHOUT binding them, appended to `outIds`: a
+	/// script property holding an asset, which the script binds only if and when it uses it.
+	/// Binding those in ResolveResources would load every one with the scene, so they are
+	/// reported here instead, for what follows references without loading them (a pruned
+	/// export's reach). A system that names nothing it does not bind adds nothing.
+	public virtual void CollectUnboundReferences(List<Guid> outIds) {}
 
 	/// Lower runs EARLIER within a phase.
 	public virtual int32 UpdateOrder => 0;

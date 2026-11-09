@@ -118,6 +118,12 @@ class ScriptSceneSystem : SceneSystem
 		mSettings.Script.Bind(manager);
 	}
 
+	/// The Level's asset-valued overrides, which the script binds itself.
+	public override void CollectUnboundReferences(List<Guid> outIds)
+	{
+		ScriptPropertyOverride.CollectAssetIds(mSettings.Overrides, outIds);
+	}
+
 	// ---- the script surface ----
 
 	/// The last delivered frame time.

@@ -28,6 +28,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Export: a pruned export (a preset's `pruneToReachable`) keeps the assets a script property
+  names: a behaviour's or a Level's asset value (a prefab it spawns, a clip it plays). Before, an
+  asset named only there was left out and the exported game could not find it.
 - Scenes: each scene mints its entities' ids from a generator of its own, so two people adding
   entities to one scene on two branches no longer get the same id, which a merge would duplicate.
 - Editor: New Splat Weights never writes over an asset holding its name: made again after an
