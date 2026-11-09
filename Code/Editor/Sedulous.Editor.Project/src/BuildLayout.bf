@@ -6,22 +6,16 @@ using Sedulous.Core.IO;
 namespace Sedulous.Editor.Project;
 
 /// Where the Beef build puts things, for the tools that ship them. A workspace builds into
-/// Code/build/<Config>_<Platform>/<Project>/, every executable in its own directory with the
-/// shared libraries CopyToDependents placed beside it; the web player lands in its project's
-/// dist/ as an .html with its .js and .wasm. The player directory is a sibling of the tool's,
-/// and the sidecars are the shared libraries found beside the player.
+/// <build>/<Config>_<Platform>/<Project>/, every executable in its own directory with the
+/// shared libraries CopyToDependents placed beside it; the web player is an .html with its .js
+/// and .wasm. What ships beside a player is the shared libraries found beside it.
 static class BuildLayout
 {
-	public const String cPlayerBaseName = "Sedulous.Engine.Player.Desktop";
-	public const String cWebPlayerBaseName = "Sedulous.Engine.Player.Web";
-	/// The template id prefix.
-	public const String cTemplateIdPrefix = "sedulous";
-	public const String cCompilerName = "Beef";
 	/// The engine's logo the web page's loading card shows, staged beside the page.
 	public const String cWebLogoName = "sedulous-logo.svg";
 	/// The licences of the third-party components a binary carries, which their notices must go
 	/// with: beside every player and editor as they build (Dependencies/THIRD-PARTY-NOTICES.txt),
-	/// and so a sidecar of every template made from one.
+	/// and so shipped beside every exported player.
 	public const String cThirdPartyNotices = "THIRD-PARTY-NOTICES.txt";
 	/// The platform tag of the web build; the Beef directory says wasm32.
 	public const String cWebPlatform = "Web";
@@ -40,35 +34,6 @@ static class BuildLayout
 		}
 	}
 
-	private static String sBuildConfigName = null ~ delete _;
-
-	/// The build config this binary was made with: read off its own build directory,
-	/// build/<Config>_<Platform>/<Project>, falling back to the defines for a relocated
-	/// binary.
-	public static StringView BuildConfigName
-	{
-		get
-		{
-			if (sBuildConfigName == null)
-			{
-				sBuildConfigName = new String();
-				let platform = scope String();
-				ParseBuildDirectory(GetExecutableDirectory(.. scope .()), sBuildConfigName, platform);
-				if (sBuildConfigName.IsEmpty)
-				{
-#if TEST
-					sBuildConfigName.Set("Test");
-#elif DEBUG
-					sBuildConfigName.Set("Debug");
-#else
-					sBuildConfigName.Set("Release");
-#endif
-				}
-			}
-			return sBuildConfigName;
-		}
-	}
-
 	/// The executable's file name for a base name on the host.
 	public static void ExecutableName(StringView baseName, String outName)
 	{
@@ -76,12 +41,6 @@ static class BuildLayout
 #if BF_PLATFORM_WINDOWS
 		outName.Append(".exe");
 #endif
-	}
-
-	/// The desktop player's directory beside a tool's: <build>/<Config>_<Platform>/<Player>.
-	public static void PlayerDirectoryBeside(StringView toolDir, String outDir)
-	{
-		PathJoin(PathParent(toolDir, .. scope .()), cPlayerBaseName, outDir);
 	}
 
 	/// "<Config>_<Platform>" read off a build directory, <build>/<Config>_<Platform>/<Project>:
@@ -110,22 +69,6 @@ static class BuildLayout
 		outConfig.Set(config);
 		outPlatform.Set((platform == "wasm32") ? cWebPlatform : platform);
 	}
-
-	/// The config a template made from a `buildConfig` build is named by. The shipping build
-	/// (ShippingRelease, no profiler) is what a game ships, so it is the Release template the
-	/// presets name; a plain Release build carries the profiler, its overlay and its capture,
-	/// and is the Profile template, to profile a game where it runs.
-	public static StringView TemplateConfigFor(StringView buildConfig)
-	{
-		if (buildConfig == "ShippingRelease")
-			return "Release";
-		if (buildConfig == "Release")
-			return "Profile";
-		return buildConfig;
-	}
-
-	/// The web player's profiling build writes here, beside the shipping build's dist/.
-	public const String cWebProfileDist = "dist-profile";
 
 	/// The shared libraries beside a player: its runtime sidecars.
 	public static void CollectSharedLibraries(StringView directory, List<String> outNames)

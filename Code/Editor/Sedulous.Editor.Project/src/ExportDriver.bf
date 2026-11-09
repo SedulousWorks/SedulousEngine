@@ -519,7 +519,6 @@ static class ExportDriver
 				result.Content.CopyTo(outResult.Content);
 				outResult.FilesStaged = result.FilesStaged;
 				outResult.OutputDir.Set(result.OutputDir);
-				outResult.EngineVersionWarning.Set(result.EngineVersionWarning);
 				result.Pruning.CopyTo(outResult.Pruning);
 				outResult.PlayerReason.Set(result.PlayerReason);
 				outResult.Refusal.Set(result.Refusal);

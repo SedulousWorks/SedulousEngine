@@ -158,3 +158,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Editor: Edit > Export Templates, the Export dialog's template choice and its Export Templates
   button, and the templates folder in Preferences: an export builds its player, so there is no
   template to pick or install. A preset is shown by its platform's icon.
+- Export: export templates and `Sedulous.Tools.Export --template list|import|create`, with the
+  `SEDULOUS_TEMPLATES_DIR` variable: an export builds its player. A preset's template id is
+  ignored and dropped the next time the presets are saved, and `export_preset_set` no longer takes
+  `templateId`.

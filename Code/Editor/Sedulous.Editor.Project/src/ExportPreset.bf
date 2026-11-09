@@ -6,15 +6,14 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
 
-/// One export target: which template, the player and its runtime sidecars, plus the game
-/// specific extras and the output naming. References a template by id or platform, never
-/// an absolute path, so a preset is portable and committable. The CLI and the editor's
-/// Export menu both drive the export from these, so a preset produces the SAME dist
-/// whichever surface triggers it.
+/// One export target: the platform and config its player is built for, the player's name, the
+/// game specific extras and the output naming. Nothing in it is an absolute path, so a preset
+/// is portable and committable. The CLI and the editor's Export menu both drive the export from
+/// these, so a preset produces the SAME dist whichever surface triggers it.
 ///
 /// Each field a preset editor sets is a [Setting]: the MCP preset tools read and set them
 /// through its reflection.
-[Serializable(1)]
+[Serializable(1, true)] // afterRead: the legacy template id dropped
 class ExportPreset
 {
 	/// "Linux64 Desktop"
@@ -23,22 +22,25 @@ class ExportPreset
 	/// "Win64" / "Linux64" / "Web": the build platform tag.
 	[Setting("Platform")]
 	public String Platform = new .() ~ delete _;
-	/// Which template; empty resolves by platform and config.
-	[Setting("Template")]
+	/// Legacy: the export template a preset named before an export built its player. Kept only
+	/// as the slot a stored preset has here (the binary form is positional), read and dropped
+	/// (AfterRead), so it is always written empty; no [Setting], so no tool shows or sets it.
 	public String TemplateId = new .() ~ delete _;
-	/// The output executable name; empty is the template's player basename.
+	/// The output executable name; empty is the game's name.
 	[Setting("Player name")]
 	public String PlayerName = new .() ~ delete _;
 	/// The export root relative output directory; empty is the sanitised Name.
 	[Setting("Output subdir")]
 	public String OutputSubdir = new .() ~ delete _;
-	/// Game specific extra files, beyond the template's sidecars, project relative.
+	/// Game specific extra files, beyond what the player's build leaves beside it, project
+	/// relative.
 	[Setting("Extra files")]
 	public List<String> AdditionalFiles = new .() ~ DeleteContainerAndItems!(_);
 	/// "Debug" / "Release" / "Test"; empty is Release.
 	[Setting("Config")]
 	public String Config = new .() ~ delete _;
-	/// Stage the template's symbol files into the dist; the default ships stripped.
+	/// Stage the player's symbol files into the dist (its .pdb on Windows); the default ships
+	/// none.
 	[Setting("Stage debug symbols")]
 	public bool StageSymbols = false;
 	/// Ship only the closure of the entry points; the default packs everything, the escape
@@ -87,7 +89,6 @@ class ExportPreset
 	{
 		other.Name.Set(Name);
 		other.Platform.Set(Platform);
-		other.TemplateId.Set(TemplateId);
 		other.PlayerName.Set(PlayerName);
 		other.OutputSubdir.Set(OutputSubdir);
 		ClearAndDeleteItems(other.AdditionalFiles);
@@ -108,6 +109,13 @@ class ExportPreset
 		other.OverridesOrientation = OverridesOrientation;
 		other.Orientation = Orientation;
 		other.IncludeShaderSource = IncludeShaderSource;
+	}
+
+	/// Once read (the [Serializable] hook): a template id stored before an export built its
+	/// player is dropped, so the next save writes the slot empty.
+	public void AfterRead()
+	{
+		TemplateId.Clear();
 	}
 
 	/// The config for resolution: empty reads as Release.

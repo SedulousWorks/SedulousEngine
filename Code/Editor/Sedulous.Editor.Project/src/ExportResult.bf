@@ -11,8 +11,6 @@ class ExportResult
 	/// files copied.
 	public int FilesStaged = 0;
 	public String OutputDir = new .() ~ delete _;
-	/// Set when the resolved template was built against another engine version.
-	public String EngineVersionWarning = new .() ~ delete _;
 	public PruningReport Pruning = new .() ~ delete _;
 	/// Which player the dist runs: what was built ("SkyHopperPlayer, ShippingRelease, Linux64").
 	public String PlayerReason = new .() ~ delete _;
@@ -41,7 +39,6 @@ class ExportResult
 		Content.CopyTo(other.Content);
 		other.FilesStaged = FilesStaged;
 		other.OutputDir.Set(OutputDir);
-		other.EngineVersionWarning.Set(EngineVersionWarning);
 		Pruning.CopyTo(other.Pruning);
 		other.SetPlayerJob(mPlayerJob);
 	}

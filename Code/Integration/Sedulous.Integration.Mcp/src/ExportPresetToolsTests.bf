@@ -10,8 +10,8 @@ using static Sedulous.Integration.Mcp.McpCalls;
 namespace Sedulous.Integration.Mcp;
 
 /// export_presets and export_preset_set: a project starts with the synthesized host preset,
-/// a new preset is written beside it with only what was given changed, a template this
-/// machine lacks is kept and reported as unresolved, and a refusal changes nothing.
+/// a new preset is written beside it with only what was given changed, each says whether its
+/// player builds here, a template id is no field any more, and a refusal changes nothing.
 static class ExportPresetToolsTests
 {
 	private static JsonValue WithBool(JsonValue arguments, StringView key, bool value)
@@ -58,6 +58,9 @@ static class ExportPresetToolsTests
 		Test.Assert(refusal.Contains("16384"));
 		CallRefusedArgument(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "renderSize", 99), refusal..Clear());
 		Test.Assert(refusal.StartsWith("export_preset_set: no argument 'renderSize' (it takes: name, platform,"), refusal);
+		// An export builds its player: there is no template for a preset to name.
+		CallRefusedArgument(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "templateId", "sedulous-nosuch-release-0.0.0"), refusal..Clear());
+		Test.Assert(refusal.StartsWith("export_preset_set: no argument 'templateId'"), refusal);
 		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "config", "Shipping"), refusal..Clear());
 		Test.Assert(refusal.Contains("Debug, Release, Test"), refusal);
 		CallErr(server, "export_preset_set", With(Obj(), "platform", "Linux64"), refusal..Clear());
@@ -66,10 +69,9 @@ static class ExportPresetToolsTests
 		Test.Assert(refusal.Contains("no preset"));
 		Test.Assert(!FileExists(PathJoin(dir, ExportPresetsFile.cFileName, .. scope .())), "a refusal writes nothing");
 
-		// A new preset: kept beside the synthesized one, its overrides as given, and the legacy
-		// template id kept as it was given.
+		// A new preset: kept beside the synthesized one, its overrides as given.
 		{
-			var args = With(With(With(Obj(), "name", "Deck"), "platform", "Linux64"), "templateId", "sedulous-nosuch-release-0.0.0");
+			var args = With(With(Obj(), "name", "Deck"), "platform", "Linux64");
 			args = WithBool(args, "overridesRender", true);
 			args = With(With(With(args, "renderWidth", 1280), "renderHeight", 800), "renderFit", "Letterbox");
 			args = With(WithBool(args, "overridesWindow", true), "windowMode", "Fullscreen");
@@ -80,8 +82,7 @@ static class ExportPresetToolsTests
 			Test.Assert(presets.Count == 2, scope $"{presets.Count} presets");
 			let deck = Named(presets, "name", "Deck");
 			Test.Assert(deck != null);
-			Test.Assert(deck.Get("templateId").AsString() == "sedulous-nosuch-release-0.0.0");
-			Test.Assert(deck.Get("template") == null, "no template is resolved");
+			Test.Assert((deck.Get("templateId") == null) && (deck.Get("template") == null), "no template is named or resolved");
 			Test.Assert(deck.Get("buildable") != null, "whether it builds here is said");
 			Test.Assert(deck.Get("config").AsString() == "", "unset: Release");
 			Test.Assert(deck.Get("overridesRender").AsBool() && (deck.Get("renderWidth").AsInt() == 1280) && (deck.Get("renderHeight").AsInt() == 800));

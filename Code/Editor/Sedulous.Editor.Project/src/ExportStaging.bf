@@ -158,15 +158,15 @@ static class ExportStaging
 			outName.Set("export");
 	}
 
-	/// The preset's player name or the template's binary, with .exe on a Windows target and
+	/// The preset's player name, else the built player's binary, with .exe on a Windows target and
 	/// .html on the web.
-	public static void PlayerOutputName(StringView platform, StringView playerName, StringView templateBinary, String outName)
+	public static void PlayerOutputName(StringView platform, StringView playerName, StringView binary, String outName)
 	{
-		outName.Set(playerName.IsEmpty ? templateBinary : playerName);
+		outName.Set(playerName.IsEmpty ? binary : playerName);
 		if (platform.StartsWith("Win") && !outName.EndsWith(".exe"))
 			outName.Append(".exe");
 		// The web player is its page: renamed, it stays a page, or the browser downloads it.
-		if (templateBinary.EndsWith(".html") && !outName.EndsWith(".html"))
+		if (binary.EndsWith(".html") && !outName.EndsWith(".html"))
 			outName.Append(".html");
 	}
 

@@ -158,9 +158,9 @@ mcp("project_settings_set", {
 # root). Each ships the credits.
 mcp("export_preset_set", {"name": "Linux64 Desktop", "platform": "Linux64", "playerName": "Sedulous PaperKid",
                           "outputSubdir": "Linux64", "additionalFiles": ["CREDITS.md"]})
-mcp("export_preset_set", {"name": "Steam Deck", "platform": "Linux64", "templateId": "sedulous-steamdeck-release-0.1.0",
+mcp("export_preset_set", {"name": "Steam Deck", "platform": "Linux64",
                           "playerName": "Sedulous PaperKid", "outputSubdir": "SteamDeck",
                           "additionalFiles": ["CREDITS.md"], "overridesRender": True, "renderWidth": 1280,
                           "renderHeight": 800, "overridesWindow": True, "windowMode": "Fullscreen", "windowResizable": False})
-mcp("export_preset_set", {"name": "Web", "platform": "Web", "templateId": "sedulous-web-release-0.1.0",
+mcp("export_preset_set", {"name": "Web", "platform": "Web",
                           "playerName": "index", "outputSubdir": "Web", "additionalFiles": ["CREDITS.md"]})
