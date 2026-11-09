@@ -916,7 +916,7 @@ class AngelScriptRuntime : ScriptRuntime
 			AS.asc_engine_set_default_namespace(mEngine, "");
 
 		// Listed as bound: when the getter registered, and writable only when the setter did too,
-		// so script_api never offers an assignment the compiler then refuses.
+		// so the listing never offers an assignment the compiler then refuses.
 		if (bound)
 		{
 			// Spelled as a script reads it: `Type::Field` for a static, `Type.Field` on an

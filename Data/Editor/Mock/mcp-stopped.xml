@@ -38,8 +38,8 @@
             <Panel class="mcp-call">
                 <Label class="mcp-time mono" text="12:04:15"/>
                 <Panel class="mcp-mark error"/>
-                <Label class="mcp-tool mono" text="script_validate"/>
-                <Label class="mcp-summary" text="Scripts/Player.as: 'speed' is not a member of Player"/>
+                <Label class="mcp-tool mono" text="shader_validate"/>
+                <Label class="mcp-summary" text="Shaders/Water.hlsl: undeclared identifier 'speed'"/>
                 <Label class="mcp-took mono" text="38 ms"/>
             </Panel>
         </Panel>

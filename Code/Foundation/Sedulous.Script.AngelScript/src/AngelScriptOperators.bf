@@ -51,7 +51,7 @@ enum AngelScriptOperator
 /// order). Declared with the value types, so every surface has them.
 extension AngelScriptRuntime
 {
-	/// What script_api lists for the operators, replayed after Bind clears the listing.
+	/// The operators as the bound API lists them, replayed after Bind clears the listing.
 	private class OperatorApi
 	{
 		public String TypeName = new .() ~ delete _;

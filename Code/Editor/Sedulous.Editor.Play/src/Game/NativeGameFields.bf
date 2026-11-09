@@ -44,7 +44,7 @@ static class NativeGameFields
 	/// "<Level>.<field>", the level named by its class name or its level id (which may hold
 	/// dots), then keys and indices inside. OWNED; null with the reason in `outError`, and null
 	/// with `outError` left EMPTY when the scene has no native level active (no scene, or none
-	/// turned on), which is the caller's cue to read the scene's level script instead.
+	/// turned on), for the caller to say so in its own words.
 	public static JsonValue LevelField(Sedulous.Scene.Scene scene, StringView path, String outError)
 	{
 		if (scene == null)

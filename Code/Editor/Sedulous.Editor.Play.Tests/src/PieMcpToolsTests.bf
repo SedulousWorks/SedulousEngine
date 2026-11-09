@@ -5,7 +5,6 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.Core;
 using Sedulous.Input;
-using Sedulous.Script;
 using Sedulous.Shell;
 using Sedulous.Editor.Scene;
 using Sedulous.Engine.GameInstance;
@@ -70,26 +69,9 @@ class PieMcpToolsTests
 		}
 		public ViewportCapture LastViewportCapture => Capture;
 
-		/// The run's scene, and a game script with one property, `score`.
+		/// The run's scene.
 		public Sedulous.Scene.Scene Level = new .("Level1") ~ delete _;
-		public double Score = 0;
 		public Sedulous.Scene.Scene RunningScene => Running ? Level : null;
-		public bool GetScriptProperty(StringView name, ref ScriptValue value)
-		{
-			if (!Running || (name != "score"))
-				return false;
-			value = .FromFloat(Score);
-			return true;
-		}
-		/// The scene's level script, with one property, `wave`.
-		public double Wave = 0;
-		public bool GetLevelProperty(StringView name, ref ScriptValue value)
-		{
-			if (!Running || (name != "wave"))
-				return false;
-			value = .FromFloat(Wave);
-			return true;
-		}
 
 		/// The run's native game, read as the Game tab reads its run's: BORROWED, a test's.
 		public IGameHooks NativeGame = null;
@@ -627,25 +609,28 @@ class PieMcpToolsTests
 			// The nested shapes are checked by name: `field` for `fields` read worldPosition.
 			let probeField = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Player\",\"field\":\"position.x\"}]}");
 			defer delete probeField;
-			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level, game)", probeField.Error);
+			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, level, game)", probeField.Error);
 			let inputTypo = Call(server, "pie_run", "{\"duration\":1,\"input\":[{\"at\":0,\"key\":\"D\",\"donw\":false}]}");
 			defer delete inputTypo;
 			Test.Assert(inputTypo.Error.StartsWith("pie_run: no field 'input[0].donw' (it takes: at, "), inputTypo.Error);
-			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\">\",\"valeu\":1}}");
+			// A game's code is native: there is no script property to read.
+			let scriptProbe = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"script\":\"score\"}]}");
+			defer delete scriptProbe;
+			Test.Assert(scriptProbe.Error.StartsWith("pie_run: no field 'probes[0].script'"), scriptProbe.Error);
+			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"game\":\"Lives\",\"op\":\">\",\"valeu\":1}}");
 			defer delete untilTypo;
-			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, level, game, op, value)", untilTypo.Error);
+			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, level, game, op, value)", untilTypo.Error);
 			let noDuration = Call(server, "pie_run", "{\"duration\":0}");
 			defer delete noDuration;
 			Test.Assert(noDuration.Error.StartsWith("`duration` takes run seconds"), noDuration.Error);
 			Test.Assert(host.ScriptsBegun == 0);
 		}
 
-		// Hold D for a second of a two second run, sampling the player and the score every half
-		// second, with a screenshot at one second.
-		let args = "{\"duration\":2,\"input\":[{\"at\":0,\"key\":\"D\"},{\"at\":1,\"key\":\"D\",\"down\":false}],\"probes\":[{\"entity\":\"Player\",\"fields\":[\"position.x\"]},{\"script\":\"score\"}],\"every\":0.5,\"screenshots\":[1],\"screenshotDir\":\"/tmp\"}";
+		// Hold D for a second of a two second run, sampling the player every half second, with a
+		// screenshot at one second.
+		let args = "{\"duration\":2,\"input\":[{\"at\":0,\"key\":\"D\"},{\"at\":1,\"key\":\"D\",\"down\":false}],\"probes\":[{\"entity\":\"Player\",\"fields\":[\"position.x\"]}],\"every\":0.5,\"screenshots\":[1],\"screenshotDir\":\"/tmp\"}";
 		Test.Assert(Pump(server, "pie_run", args, out answer) == .NotFinished);
 		Test.Assert(host.IsScripted && (host.ScriptsBegun == 1));
-		host.Score = 7;
 		int pumps = 0;
 		while (Pump(server, "pie_run", args, out answer) == .NotFinished)
 		{
@@ -673,7 +658,6 @@ class PieMcpToolsTests
 			// Walked while D was held (a second, give or take a frame), then stood.
 			let x = samples.At(samples.Count - 1).Get("values").Get("Player.position.x").AsNumber();
 			Test.Assert(Math.Abs(x - 1.0) <= 0.1, scope $"x {x}");
-			Test.Assert(samples.At(4).Get("values").Get("script.score").AsNumber() == 7);
 			let shots = result.Get("screenshots");
 			Test.Assert(shots.Count == 1);
 			Test.Assert(shots.At(0).Get("at").AsNumber() == 1);
@@ -711,7 +695,7 @@ class PieMcpToolsTests
 			Test.Assert(answer.Payload.Get("samples").Count == 0, "no probes, no rows");
 		}
 		{
-			let badOp = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\"~\",\"value\":1}}");
+			let badOp = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"entity\":\"Player\",\"field\":\"position.x\",\"op\":\"~\",\"value\":1}}");
 			defer delete badOp;
 			Test.Assert(badOp.Error.StartsWith("`until.op` takes"), badOp.Error);
 		}
@@ -729,51 +713,6 @@ class PieMcpToolsTests
 		Test.Assert(answer.Payload.Get("endedBy").AsString() == "stopped");
 		Test.Assert(answer.Payload.Get("samples").Count == 1);
 		Test.Assert(!answer.Payload.Get("state").Get("running").AsBool());
-	}
-
-	/// A run reads the scene's level script as `level.<name>`, and ends on it; a property it
-	/// does not have is refused before the run starts.
-	[Test]
-	public static void ARunReadsTheScenesLevelScriptAndEndsOnIt()
-	{
-		let context = scope EditorContext();
-		let host = RunningPie(context, "game-page");
-		let server = scope McpServer();
-		PieMcpTools.Register(server, context);
-		Answer answer;
-
-		{
-			let missing = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"lives\"}]}");
-			defer delete missing;
-			Test.Assert(!missing.Ok);
-			Test.Assert(missing.Error.StartsWith("the level script of PIE instance 'game-page' has no property 'lives'"), missing.Error);
-			Test.Assert(host.ScriptsBegun == 0);
-		}
-
-		host.Wave = 2;
-		let sample = "{\"duration\":1,\"probes\":[{\"level\":\"wave\"}],\"every\":0.5}";
-		while (Pump(server, "pie_run", sample, out answer) == .NotFinished)
-			PlayFrame(host, 0.05);
-		{
-			defer delete answer;
-			Test.Assert(answer.Ok, answer.Error);
-			let samples = answer.Payload.Get("samples");
-			Test.Assert(samples.Count > 0);
-			Test.Assert(samples.At(samples.Count - 1).Get("values").Get("level.wave").AsNumber() == 2);
-		}
-
-		PlayFrame(host, 0.1); // the ended script goes
-		let until = "{\"duration\":10,\"until\":{\"level\":\"wave\",\"op\":\">=\",\"value\":3}}";
-		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished);
-		PlayFrame(host, 0.1);
-		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished, "below 3, it plays on");
-		host.Wave = 3;
-		while (Pump(server, "pie_run", until, out answer) == .NotFinished)
-			PlayFrame(host, 0.05);
-		defer delete answer;
-		Test.Assert(answer.Ok, answer.Error);
-		Test.Assert(answer.Payload.Get("endedBy").AsString() == "until");
-		Test.Assert(answer.Payload.Get("until").Get("probe").AsString() == "level.wave");
 	}
 
 	/// A run through to its answer, the instance playing a frame per pump. OWNED.
@@ -885,7 +824,7 @@ class PieMcpToolsTests
 	/// `level` reads the scene's active native Level, public and private fields, by itself while
 	/// it is the only one active, or named by its class or its level id (which holds a dot); with
 	/// two active an unnamed field is refused naming them, a named inactive one is refused, and a
-	/// scene with none active reads its level script as before.
+	/// scene with none active is refused saying so. It ends a run on a level's field too.
 	[Test]
 	public static void ALevelProbeReadsTheActiveNativeLevelAloneOrByName()
 	{
@@ -893,17 +832,15 @@ class PieMcpToolsTests
 		let host = RunningPie(context, "game-page");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
-		host.Wave = 2;
 		let arena = host.Level.AddSystem<PieArena>();
 		let vault = host.Level.AddSystem<PieVault>();
 
-		// None active: the level script answers.
+		// None active: refused before the run, saying so.
 		{
-			let answer = RunToEnd(server, host, "{\"duration\":0.5,\"probes\":[{\"level\":\"wave\"}]}");
-			defer delete answer;
-			Test.Assert(answer.Ok, answer.Error);
-			Test.Assert(LastValues(answer).Get("level.wave").AsNumber() == 2);
-			PlayFrame(host, 0.1); // the ended script goes
+			let none = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"TimeLimit\"}]}");
+			defer delete none;
+			Test.Assert(none.Error == "PIE instance 'game-page' has no native level active in its scene", none.Error);
+			Test.Assert(host.ScriptsBegun == 0);
 		}
 
 		arena.Active = true;
@@ -914,7 +851,7 @@ class PieMcpToolsTests
 			let asleep = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"PieVault.Quota\"}]}");
 			defer delete asleep;
 			Test.Assert(asleep.Error == "PIE instance 'game-page': level 'PieVault' is not active in scene 'Level1'", asleep.Error);
-			Test.Assert(host.ScriptsBegun == 1, "refused before the run");
+			Test.Assert(host.ScriptsBegun == 0, "refused before the run");
 
 			let answer = RunToEnd(server, host, "{\"duration\":0.5,\"probes\":[{\"level\":\"TimeLimit\"},{\"level\":\"mRemaining\"},{\"level\":\"PieArena.TimeLimit\"},{\"level\":\"pietest.arena.mRemaining\"}]}");
 			defer delete answer;
@@ -943,6 +880,22 @@ class PieMcpToolsTests
 			Test.Assert(values.Get("level.PieVault.mLooted").AsNumber() == 1);
 			Test.Assert(values.Get("level.pietest.vault.Quota").AsNumber() == 4);
 		}
+
+		// Ends on a level's private field crossing.
+		PlayFrame(host, 0.1); // the ended script goes
+		let until = "{\"duration\":10,\"until\":{\"level\":\"PieVault.mLooted\",\"op\":\">=\",\"value\":2}}";
+		Answer ended;
+		Test.Assert(Pump(server, "pie_run", until, out ended) == .NotFinished);
+		PlayFrame(host, 0.1);
+		Test.Assert(Pump(server, "pie_run", until, out ended) == .NotFinished, "one looted, it plays on");
+		vault.Loot();
+		while (Pump(server, "pie_run", until, out ended) == .NotFinished)
+			PlayFrame(host, 0.05);
+		defer delete ended;
+		Test.Assert(ended.Ok, ended.Error);
+		Test.Assert(ended.Payload.Get("endedBy").AsString() == "until");
+		Test.Assert(ended.Payload.Get("until").Get("probe").AsString() == "level.PieVault.mLooted");
+		Test.Assert(ended.Payload.Get("until").Get("value").AsNumber() == 2);
 	}
 
 	/// A native behaviour's fields are read as `<Class>.<field>` (or its type id), its private

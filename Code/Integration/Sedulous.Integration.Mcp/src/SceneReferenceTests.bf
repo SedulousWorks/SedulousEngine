@@ -13,7 +13,6 @@ using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Script.Resource;
 using Sedulous.Xml.Serialization;
 using static Sedulous.Integration.Mcp.McpCalls;
 using Sedulous.VFS;
@@ -210,38 +209,16 @@ static class SceneReferenceTests
 		Test.Assert(!HasString(light.Get("unreflected"), "r"));
 	}
 
+	/// The schema documents components and settings blocks: a game's code is native, so there
+	/// is no script override encoding beside them.
 	[Test]
-	public static void TheOverrideSectionsWorkedHashIsTheRealOneAndEveryKindNamesItsPayloadKey()
+	public static void TheSchemaHasNoScriptOverrideSection()
 	{
 		let reference = Generate();
 		defer delete reference;
-		let overrides = reference.Schema.Get("scriptOverrides");
-		let example = overrides.Get("hash").Get("example");
-		let name = example.Get("name").AsString();
-		Test.Assert(!name.IsEmpty);
-		Test.Assert(example.Get("nameHash").AsString() == ScriptPropertyNames.HashOf(name).ToString(.. scope .()));
-
-		let kinds = overrides.Get("kinds");
-		Test.Assert(kinds.Count == ScriptPropertyNames.TypeNames.Count);
-		StringView PayloadKey(StringView kindName)
-		{
-			let kind = Named(kinds, "name", kindName);
-			return (kind != null) ? kind.Get("payload").At(0).Get("key").AsString() : "";
-		}
-		Test.Assert(PayloadKey("float") == "number");
-		Test.Assert(PayloadKey("bool") == "boolean");
-		Test.Assert(PayloadKey("string") == "text");
-		Test.Assert(PayloadKey("vec3") == "vector");
-		Test.Assert(PayloadKey("entity") == "id");
-		Test.Assert(PayloadKey("asset") == "id");
-		// The record framing as the wire has it: the hash, then the value's tag inline, then the
-		// payload key the tag selects.
-		let record = overrides.Get("record");
-		Test.Assert(record.Count == 2);
-		Test.Assert((record.At(0).Get("key").AsString() == "nameHash") && (record.At(0).Get("kind").AsString() == "u64"));
-		Test.Assert((record.At(1).Get("key").AsString() == "kind") && (record.At(1).Get("kind").AsString() == "u8"));
-		// The example's behaviour carries one override per kind, hashed from "<kind>Value".
-		Test.Assert(reference.ExampleXml.Contains(ScriptPropertyNames.HashOf("floatValue").ToString(.. scope .())));
+		Test.Assert(reference.Schema.Get("scriptOverrides") == null);
+		Test.Assert(reference.Schema.Get("components") != null);
+		Test.Assert(reference.Schema.Get("settings") != null);
 	}
 
 	/// The type id text names the constants the type id function uses: an empty name hashes to

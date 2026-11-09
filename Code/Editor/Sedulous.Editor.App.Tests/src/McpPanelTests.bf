@@ -177,13 +177,13 @@ class McpPanelTests
 		bed.Activity.RecordEvent("Listening on 127.0.0.1:7405", 100);
 		bed.Call(1, "scene_read", "{\"path\":\"Content/Scenes/Level1.scene\"}", .ReadOnly, false, "{}", 101);
 		bed.Call(2, "component_set", "{\"entity\":\"Lamp 3\",\"value\":4.5}", .Overwrites, false, "{\"after\":4.5}", 102);
-		bed.Call(3, "script_validate", "{\"path\":\"Scripts/Player.as\"}", .ReadOnly, true, "'speed' is not a member", 103);
+		bed.Call(3, "shader_validate", "{\"path\":\"Shaders/Water.hlsl\"}", .ReadOnly, true, "undeclared identifier 'speed'", 103);
 		bed.Call(4, "scene_write", "{}", .Overwrites, true, "scene_write: missing required field 'source'", 104, 0.0, .Refused);
 		bed.Panel.Update();
 
 		Test.Assert(bed.Panel.ShownCount == 5);
 		Test.Assert(bed.Panel.ShownEntry(0).Tool == "scene_write", "newest first");
-		Test.Assert(bed.Panel.ShownEntry(1).Tool == "script_validate");
+		Test.Assert(bed.Panel.ShownEntry(1).Tool == "shader_validate");
 		Test.Assert(bed.Panel.ShownEntry(4).Tool == "Listening on 127.0.0.1:7405");
 		Test.Assert(bed.Panel.ShownEntry(5) == null);
 		Test.Assert(!bed.Find<Sedulous.GUI.Label>("mcp-empty").Displayed);
@@ -202,7 +202,7 @@ class McpPanelTests
 		Test.Assert(bed.Panel.CurrentFilter == .Failed);
 		Test.Assert(bed.Panel.ShownCount == 2);
 		Test.Assert(bed.Panel.ShownEntry(0).Tool == "scene_write");
-		Test.Assert(bed.Panel.ShownEntry(1).Tool == "script_validate");
+		Test.Assert(bed.Panel.ShownEntry(1).Tool == "shader_validate");
 		bed.Panel.Select(0); // the refusal: its reason under Error, no duration
 		Test.Assert(bed.Text("mcp-detail-outcome") == "Refused");
 		Test.Assert(bed.Find<UIWidget>("mcp-detail-outcome").HasClass("refused"));
@@ -260,7 +260,7 @@ class McpPanelTests
 	{
 		let bed = scope Bed();
 		bed.Call(1, "component_set", "{\"entity\":\"Lamp 3\",\"value\":4.5}", .Overwrites, false, "{\"after\":4.5}", 3600 * 12 + 4 * 60 + 27, 0.002);
-		bed.Call(2, "script_validate", "{}", .ReadOnly, true, "'speed' is not a member", 3600 * 12 + 5 * 60, 1.25);
+		bed.Call(2, "shader_validate", "{}", .ReadOnly, true, "undeclared identifier 'speed'", 3600 * 12 + 5 * 60, 1.25);
 		bed.Panel.Update();
 		Test.Assert(!bed.Find<UIWidget>("mcp-detail").Displayed);
 		Test.Assert(bed.Find<UIWidget>("mcp-no-detail").Displayed);
@@ -305,11 +305,11 @@ class McpPanelTests
 		Test.Assert(!bed.Find<UIWidget>("mcp-detail-outcome").HasClass("done"));
 		Test.Assert(bed.Text("mcp-detail-when") == "12:04:59, 1.3 s", "it answered at 12:05:00 after 1.25 s");
 		Test.Assert(bed.Text("mcp-result-title") == "Error");
-		Test.Assert(bed.Find<TextArea>("mcp-result").Text == "'speed' is not a member");
+		Test.Assert(bed.Find<TextArea>("mcp-result").Text == "undeclared identifier 'speed'");
 		bed.Panel.CopySelectedCall();
 		let failed = JsonValue.Parse(bed.Copied);
 		defer delete failed;
-		Test.Assert(failed.Get("error").AsString() == "'speed' is not a member");
+		Test.Assert(failed.Get("error").AsString() == "undeclared identifier 'speed'");
 		Test.Assert(failed.Get("result") == null);
 		Test.Assert(failed.Get("outcome").AsString() == "failed");
 
@@ -347,7 +347,7 @@ class McpPanelTests
 		let bed = scope Bed();
 		bed.Activity.RecordEvent("Listening on 127.0.0.1:7405", 3600 * 9);
 		bed.Call(1, "component_set", "{\"entity\":\"Lamp 3\"}", .Overwrites, false, "{}", 3600 * 9 + 3 * 60 + 7, 0.038);
-		bed.Call(2, "script_validate", "{}", .ReadOnly, true, "'speed' is not a member\nat line 3", 3600 * 9 + 4 * 60, 2.34);
+		bed.Call(2, "shader_validate", "{}", .ReadOnly, true, "undeclared identifier 'speed'\nat line 3", 3600 * 9 + 4 * 60, 2.34);
 		bed.Call(3, "scene_write", "{}", .Overwrites, true, "scene_write: missing required field 'source'", 3600 * 9 + 5 * 60, 0.0, .Refused);
 		bed.Panel.Update();
 		let list = bed.Panel.List;
@@ -384,8 +384,8 @@ class McpPanelTests
 		Test.Assert(failure.HasClass("failed"));
 		Test.Assert((failure.GetChildAt(1) as UIWidget).HasClass("failed"));
 		Test.Assert(Part(failure, 0).Text == "09:03:58", "it answered at 09:04:00 after 2.34 s");
-		Test.Assert(Part(failure, 2).Text == "script_validate");
-		Test.Assert(Part(failure, 3).Text == "'speed' is not a member");
+		Test.Assert(Part(failure, 2).Text == "shader_validate");
+		Test.Assert(Part(failure, 3).Text == "undeclared identifier 'speed'");
 		Test.Assert(!Part(failure, 4).Displayed, "a read: no Edit badge");
 		Test.Assert(Part(failure, 5).Text == "2.3 s");
 		// The edit: its badge, its arguments as the summary.

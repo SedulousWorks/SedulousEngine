@@ -21,14 +21,13 @@ registrations, so it can never describe a different build:
 
 - `docs://generated/SceneExample.scene.xml`: a complete scene the engine wrote itself, every
   component at its defaults on an entity of its own, every settings block, a parent and
-  child, a script behaviour with one override of each property kind. Copy from it.
+  child. Copy from it.
 - `docs://generated/SceneSchema.json`: the schema behind it: the stream framing (`format`),
   every component (`components`, by wire name) and settings block (`settings`, by system id)
-  with its fields in wire order, and the script override encoding (`scriptOverrides`). A key
-  with no reflected field of its own is listed under `unreflected`; a reference field's `ref`
-  says what its guid names (`entity`, or a resource and the asset type to author; when more
-  than one asset type makes that resource, a texture's or a render texture's, `assets` lists
-  them all and `asset` is the first).
+  with its fields in wire order. A key with no reflected field of its own is listed under
+  `unreflected`; a reference field's `ref` says what its guid names (`entity`, or a resource and
+  the asset type to author; when more than one asset type makes that resource, a texture's or a
+  render texture's, `assets` lists them all and `asset` is the first).
 - `component_schema`: one entry of that schema by wire name, type name or system id, for
   when you need one component and not the whole file.
 
@@ -65,8 +64,7 @@ what the engine writes.
 A script behaviour on an entity binds a script class by guid and can override that class's
 declared properties. Each override is keyed by the hash of the property NAME (so a rename in
 the class is detectable), then a tagged value: the kind, then the one payload field that kind
-uses. The schema's `scriptOverrides` section gives the hash algorithm with a worked example,
-the kind table and each kind's payload key; the example scene shows all of them written.
+uses.
 
 ## Spawning at run time
 

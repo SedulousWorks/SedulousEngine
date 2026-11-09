@@ -6,8 +6,6 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Resource;
-using Sedulous.Script.Resource;
-using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
@@ -16,13 +14,13 @@ namespace Sedulous.Editor.Scene;
 /// The scene editor's live EDITING tools: what an agent builds a level with on an open scene
 /// or prefab page, each call one undo step through the page's command stack, the page dirty
 /// after and nothing saved (as component_set). entity_create, entity_update, entity_delete,
-/// component_add, component_remove, prefab_spawn, behavior_add and behavior_set. An entity is
-/// named by guid, by name, or by slash path; every result carries the entity as entity_inspect
-/// shows it. Refused while the page simulates, since Simulate's stop would discard the edit.
+/// component_add, component_remove and prefab_spawn. An entity is named by guid, by name,
+/// or by slash path; every result carries the entity as entity_inspect shows it. Refused
+/// while the page simulates, since Simulate's stop would discard the edit.
 static class SceneMcpEditTools
 {
 	/// How many tools Register registers; SceneMcpTools counts them in its own tripwire.
-	public const int cEditToolCount = 8;
+	public const int cEditToolCount = 6;
 
 	private const String cPage = "the scene or prefab page's asset guid (default: the active page)";
 	private const String cEntity = "the entity: its guid, its name, or a slash path";
@@ -36,7 +34,7 @@ static class SceneMcpEditTools
 			schema.Str("parent", "the entity to create it under (default: a scene root)");
 			TransformArgs(schema);
 			server.RegisterTool("entity_create",
-				"Create an empty entity on a scene page, under `parent` or at the root, placed by `position`, `rotation` ([x, y, z, w]) or `yawDegrees`, and `scale`: one undo step. Add components with component_add and behaviours with behavior_add; place a prefab with prefab_spawn instead. Returns the entity as entity_inspect shows it.",
+				"Create an empty entity on a scene page, under `parent` or at the root, placed by `position`, `rotation` ([x, y, z, w]) or `yawDegrees`, and `scale`: one undo step. Add components (a native behaviour among them) with component_add; place a prefab with prefab_spawn instead. Returns the entity as entity_inspect shows it.",
 				schema.Build(), .Creates,
 				new (arguments, outResult, outError) => Create(context, arguments, outResult, outError));
 		}
@@ -93,29 +91,6 @@ static class SceneMcpEditTools
 				schema.Build(), .Creates,
 				new (arguments, outResult, outError) => SpawnPrefab(context, arguments, outResult, outError));
 		}
-		{
-			let schema = scope SchemaBuilder();
-			schema.Str("page", cPage);
-			schema.Str("entity", cEntity, true);
-			schema.Str("script", "the script class asset's guid (asset_list: type ScriptClassAsset); it must be cooked", true);
-			PropertiesArg(schema);
-			server.RegisterTool("behavior_add",
-				"Attach a script behaviour to an entity on a scene page, adding its Script component when it has none, with `properties` set over the class's defaults: one undo step. The class must be cooked (asset_cook): its properties and their types come from the cooked class. Returns the entity as entity_inspect shows it and the behaviour's index.",
-				schema.Build(), .Creates,
-				new (arguments, outResult, outError) => AddBehavior(context, arguments, outResult, outError));
-		}
-		{
-			let schema = scope SchemaBuilder();
-			schema.Str("page", cPage);
-			schema.Str("entity", cEntity, true);
-			schema.Integer("index", "which of the entity's behaviours (default 0, the first)");
-			PropertiesArg(schema);
-			schema.Boolean("enabled", "switch the behaviour on or off");
-			server.RegisterTool("behavior_set",
-				"Set properties of a script behaviour on an entity of a scene page (its `index`, default the first), and its enabled flag: one undo step. `properties` as behavior_add takes them. Returns the entity as entity_inspect shows it.",
-				schema.Build(), .Adjusts,
-				new (arguments, outResult, outError) => SetBehavior(context, arguments, outResult, outError));
-		}
 	}
 
 	private static void TransformArgs(SchemaBuilder schema)
@@ -124,11 +99,6 @@ static class SceneMcpEditTools
 		schema.Arr("rotation", "number", "the local rotation as a quaternion [x, y, z, w]");
 		schema.Number("yawDegrees", "or the local rotation as a turn about +Y, in degrees");
 		schema.Arr("scale", "number", "the local scale [x, y, z]");
-	}
-
-	private static void PropertiesArg(SchemaBuilder schema)
-	{
-		schema.Map("properties", "the behaviour's properties by name: a number for a float or int, true/false, a string, [x, y, z] for a vector, [r, g, b, a] for a colour, an entity (guid, name or path) or null for an entity reference, an asset guid or null for an asset reference");
 	}
 
 	// ---- the tools ----
@@ -292,99 +262,6 @@ static class SceneMcpEditTools
 		return Answer(context, page, edit, root, outResult);
 	}
 
-	private static bool AddBehavior(EditorContext context, JsonValue arguments, JsonValue outResult, String outError)
-	{
-		let edit = EditablePage(context, arguments, outError, let page);
-		if (edit == null)
-			return false;
-		if (!RequiredEntity(edit, arguments, "entity", outError, let id))
-			return false;
-		if (!McpGuid(arguments, "script", outError, let script))
-			return false;
-		let scriptClass = CookedClass(context, script, outError);
-		if (scriptClass == null)
-			return false;
-		// Every property checked before anything changes.
-		let values = scope List<(uint64 hash, ScriptPropertyValue value)>();
-		defer { for (let v in values) if (v.value.Text != null) delete v.value.Text; }
-		if (!ReadProperties(edit, scriptClass, arguments.Get("properties"), values, outError))
-			return false;
-
-		let handle = edit.Resolve(id);
-		let scripts = edit.FindManager(typeof(ScriptComponent));
-		if (scripts == null)
-		{
-			outError.Append("this scene has no script components");
-			return false;
-		}
-		BeginStep(edit);
-		if (!scripts.HasComponent(handle))
-			edit.AddComponent(id, typeof(ScriptComponent));
-		int index = -1;
-		let target = scope ComponentTarget(edit, id, typeof(ScriptComponent));
-		target.Mutate(scope [&index, &script, &values](p) =>
-			{
-				let c = (ScriptComponent*)p;
-				if (c.Behaviors == null)
-					return;
-				let behavior = new ScriptBehavior();
-				behavior.Script = Ref<ScriptClass>(script);
-				for (let v in values)
-					behavior.SetOverride(v.hash, Owned(v.value));
-				c.Behaviors.Add(behavior);
-				index = c.Behaviors.Count - 1;
-			}, "");
-		EndStep(edit);
-		if (index < 0)
-		{
-			outError.Append("the behaviour was not added (the Script component would not take it)");
-			return false;
-		}
-		Answer(context, page, edit, id, outResult);
-		outResult.Set("index", JsonValue.MakeNumber(index));
-		return true;
-	}
-
-	private static bool SetBehavior(EditorContext context, JsonValue arguments, JsonValue outResult, String outError)
-	{
-		let edit = EditablePage(context, arguments, outError, let page);
-		if (edit == null)
-			return false;
-		if (!RequiredEntity(edit, arguments, "entity", outError, let id))
-			return false;
-		let handle = edit.Resolve(id);
-		let scripts = edit.FindManager(typeof(ScriptComponent));
-		let component = ((scripts != null) && scripts.HasComponent(handle)) ? (ScriptComponent*)scripts.GetComponentAddress(handle) : null;
-		let index = (int)(arguments.Get("index")?.AsInt() ?? 0);
-		if ((component == null) || (component.Behaviors == null) || (index < 0) || (index >= component.Behaviors.Count))
-		{
-			outError.AppendF("'{}' has no behaviour {} (entity_inspect lists its Script component's)", edit.Scene.GetEntityName(handle), index);
-			return false;
-		}
-		let scriptClass = CookedClass(context, component.Behaviors[index].Script.Id, outError);
-		if (scriptClass == null)
-			return false;
-		let values = scope List<(uint64 hash, ScriptPropertyValue value)>();
-		defer { for (let v in values) if (v.value.Text != null) delete v.value.Text; }
-		if (!ReadProperties(edit, scriptClass, arguments.Get("properties"), values, outError))
-			return false;
-		let enabledArg = arguments.Get("enabled");
-		BeginStep(edit);
-		let target = scope ComponentTarget(edit, id, typeof(ScriptComponent));
-		target.Mutate(scope [&index, &values, &enabledArg](p) =>
-			{
-				let c = (ScriptComponent*)p;
-				if ((c.Behaviors == null) || (index >= c.Behaviors.Count))
-					return;
-				for (let v in values)
-					c.Behaviors[index].SetOverride(v.hash, Owned(v.value));
-				if (enabledArg != null)
-					c.Behaviors[index].Enabled = enabledArg.AsBool();
-			}, "");
-		EndStep(edit);
-		return Answer(context, page, edit, id, outResult);
-	}
-
 	// ---- helpers ----
 
 	/// One call is one undo step: its commands in a group, the group locked when it closes so
@@ -531,108 +408,5 @@ static class SceneMcpEditTools
 					found = manager;
 			});
 		return found;
-	}
-
-	/// The cooked class, its properties the source of truth for a behaviour's.
-	private static ScriptClass CookedClass(EditorContext context, Guid script, String outError)
-	{
-		let scriptClass = (context.Resources != null) ? context.Resources.Bind<ScriptClass>(script).Get : null;
-		if ((scriptClass == null) || scriptClass.ClassName.IsEmpty)
-			outError.AppendF("script {} is not a cooked script class (script_create, then asset_cook)", script);
-		return scriptClass;
-	}
-
-	/// A value's owned copy for SetOverride, which takes the text.
-	private static ScriptPropertyValue Owned(ScriptPropertyValue value)
-	{
-		var copy = value;
-		if (value.Text != null)
-			copy.Text = new String(value.Text);
-		return copy;
-	}
-
-	/// Each named property's value, typed by the class's description of it.
-	private static bool ReadProperties(SceneEditContext edit, ScriptClass scriptClass, JsonValue properties,
-		List<(uint64 hash, ScriptPropertyValue value)> outValues, String outError)
-	{
-		if (properties == null)
-			return true;
-		if (!properties.IsObject)
-		{
-			outError.Append("`properties` takes an object: {\"speed\": 4}");
-			return false;
-		}
-		for (int i < properties.Count)
-		{
-			let name = properties.KeyAt(i);
-			let value = properties.Get(name);
-			let desc = scriptClass.FindProperty(name);
-			if (desc == null)
-			{
-				outError.AppendF("{} has no property '{}'; its properties are: ", scriptClass.ClassName, name);
-				for (int p < scriptClass.Properties.Count)
-					outError.AppendF("{}{}", (p > 0) ? ", " : "", scriptClass.Properties[p].Name);
-				return false;
-			}
-			ScriptPropertyValue parsed = .();
-			bool ok = false;
-			switch (desc.Type)
-			{
-			case .Float:
-				ok = value.IsNumber;
-				parsed = .Float(value.AsNumber());
-			case .Int:
-				ok = value.IsNumber;
-				parsed = .Int(value.AsInt());
-			case .Bool:
-				ok = value.IsBool;
-				parsed = .Bool(value.AsBool());
-			case .String:
-				ok = value.IsString;
-				if (ok)
-					parsed = .Str(new String(value.AsString()));
-			case .Vec3:
-				ok = SceneMcpTools.ReadFloat3(value, let v);
-				parsed = .Vec3(v);
-			case .Color:
-				ok = value.IsArray && (value.Count == 4);
-				if (ok)
-					parsed = .Colour(.((float)value.At(0).AsNumber(), (float)value.At(1).AsNumber(), (float)value.At(2).AsNumber(), (float)value.At(3).AsNumber()));
-			case .Entity:
-				if (value.IsNull)
-				{
-					ok = true;
-					parsed = .Entity(.());
-				}
-				else if (value.IsString)
-				{
-					ok = FindEntity(edit, value.AsString(), outError, let target);
-					if (!ok)
-						return false;
-					parsed = .Entity(target);
-				}
-			case .Asset:
-				if (value.IsNull)
-				{
-					ok = true;
-					parsed = .Asset(.());
-				}
-				else if (value.IsString && (Guid.Parse(value.AsString()) case .Ok(let asset)))
-				{
-					ok = true;
-					parsed = .Asset(asset);
-				}
-			case .None:
-			}
-			if (!ok)
-			{
-				if (parsed.Text != null)
-					delete parsed.Text;
-				outError.AppendF("{}.{} is of type {}: the value does not fit (a number, true/false, a string, [x, y, z], [r, g, b, a], an entity or null, an asset guid or null)", scriptClass.ClassName, name, desc.Type);
-				return false;
-			}
-			outValues.Add((desc.Hash, parsed));
-		}
-		return true;
 	}
 }

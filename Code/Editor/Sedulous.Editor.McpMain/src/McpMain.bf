@@ -7,7 +7,6 @@ using Sedulous.VFS;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Mcp.Reflection;
-using Sedulous.Mcp.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
@@ -20,10 +19,9 @@ namespace Sedulous.Editor.McpMain;
 /// Claude Code on one command line, gets the engine's authoring surface with the editor
 /// CLOSED. STDOUT IS THE WIRE; every engine log goes to stderr.
 ///
-/// The surface: host_info, the reflection tools, script_api over the pipeline surface, the
-/// project tools (create/open/info, asset list/info/import/cook, asset_uses,
-/// project_health), the scene tools (read/write/validate, prefabs), script_validate and
-/// script_create, project_export, the log tools with the curated known issues, and the read only resources:
+/// The surface: host_info, the reflection tools, the project tools (create/open/info, asset
+/// list/info/import/cook, asset_uses, project_health), the scene tools (read/write/validate,
+/// prefabs), project_export, the log tools with the curated known issues, and the read only resources:
 /// the shipping docs as docs://<name> and the open project's scenes as project://.
 ///
 /// Usage: Sedulous.Tools.Mcp [--data-root <dir>]   (run it from inside the engine checkout so

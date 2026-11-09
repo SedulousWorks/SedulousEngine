@@ -7,7 +7,6 @@ using Sedulous.Json;
 using Sedulous.Engine.Project;
 using Sedulous.Mcp;
 using Sedulous.Mcp.Reflection;
-using Sedulous.Mcp.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
@@ -18,8 +17,7 @@ using static Sedulous.Integration.Mcp.McpCalls;
 namespace Sedulous.Integration.Mcp;
 
 /// The agent shaped project flow, headless, through the tools in the order the guide
-/// teaches: create, open, inspect, import, cook, and the whole engine surface in script_api
-/// with no device anywhere.
+/// teaches: create, open, inspect, import and cook, with no device anywhere.
 static class ProjectFlowTests
 {
 	[Test]
@@ -67,6 +65,8 @@ static class ProjectFlowTests
 		}
 		Test.Assert(grouped == info.Get("settings").Count);
 		Test.Assert(msaaOnDisplay);
+		// The startup script is a script's, and a game's native code has replaced it: not named.
+		Test.Assert(info.Get("settings").Get("startupScriptId") == null);
 		Test.Assert(FileExists(PathJoin(dir, "Project.xml", .. scope .())));
 
 		// A second create at the same place is a tool error with real text, not a fault.
@@ -294,94 +294,6 @@ static class ProjectFlowTests
 		let bad = scope String();
 		CallErr(server, "asset_import", With(With(Obj(), "source", sourcePath), "importer", "Nonsense"), bad);
 		Test.Assert(bad.Contains("claimants are") && bad.Contains(chosen));
-	}
-
-	/// script_api reports the COMPLETE engine surface, headless, no device: the pipeline
-	/// surface the cooks compile against contains the runtime's facades and components.
-	[Test]
-	public static void ScriptApiReportsTheCompleteEngineSurfaceHeadless()
-	{
-		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
-		let server = scope McpServer();
-		ScriptTools.Register(server, PipelineRegistration.Surface);
-		let api = CallOk(server, "script_api", With(Obj(), "language", "angelscript"));
-		defer delete api;
-		let reported = api.Get("languages").At(0);
-		Test.Assert(reported.Get("language").AsString() == "angelscript");
-		let types = reported.Get("types");
-		for (let name in scope String[]("Scene", "PhysicsFacade", "AudioFacade", "InputFacade", "GameInstance", "GuiFacade", "Float3", "FontBakeMode"))
-			Test.Assert(TypeEndingIn(types, name) != null, name);
-		Test.Assert(Named(types, "scriptName", "Entity") != null, "the entity, as a script spells it");
-		// The runtime surface and the pipeline's own types: the facades, and the components a
-		// script takes from an entity.
-		Test.Assert(reported.Get("typeCount").AsInt() > 40);
-		Test.Assert(TypeEndingIn(types, "RigidBodyComponent") != null, "components are script types");
-		Test.Assert(TypeEndingIn(types, "CharacterComponent") != null);
-		// The domain rides along: a pipeline type exists for tools, the facade for the player.
-		let bakeMode = TypeEndingIn(types, "FontBakeMode");
-		Test.Assert(!bakeMode.Get("inPlayer").AsBool() && (bakeMode.Get("domain").AsString() == "Pipeline"));
-		let physics = TypeEndingIn(types, "PhysicsFacade");
-		Test.Assert(physics.Get("inPlayer").AsBool() && (physics.Get("scriptName").AsString() == "PhysicsFacade"));
-		let run = TypeEndingIn(types, "GameInstance");
-		Test.Assert(run.Get("scriptName").AsString() == "GameInstance", "the class; its members spell Run");
-	}
-
-	/// What script_api lists is what a script can use: a type's own properties and its bases',
-	/// each writable only when its setter is bound. A skeletal animation's clip is a Ref, which
-	/// crosses as the Guid it holds, so it is listed and writable; a Button's text is its base's
-	/// property, bound on the Button too.
-	[Test]
-	public static void ScriptApiListsThePropertiesAScriptCanUseInheritedOnesToo()
-	{
-		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
-		let server = scope McpServer();
-		ScriptTools.Register(server, PipelineRegistration.Surface);
-		let api = CallOk(server, "script_api", With(Obj(), "language", "angelscript"));
-		defer delete api;
-		let types = api.Get("languages").At(0).Get("types");
-
-		let animation = TypeEndingIn(types, "SkeletalAnimationComponent");
-		Test.Assert(animation != null);
-		let clip = PropertyNamed(animation, "Clip");
-		Test.Assert(clip != null, "a Ref crosses as its Guid");
-		Test.Assert(!clip.Get("readOnly").AsBool());
-		Test.Assert(clip.Get("signature").AsString().StartsWith("Guid "), scope String(clip.Get("signature").AsString()));
-		let speed = PropertyNamed(animation, "Speed");
-		Test.Assert((speed != null) && !speed.Get("readOnly").AsBool());
-
-		let button = TypeEndingIn(types, "Button");
-		Test.Assert(button != null);
-		let text = PropertyNamed(button, "Text");
-		Test.Assert(text != null, "its base's property, bound on it");
-		Test.Assert(!text.Get("readOnly").AsBool());
-	}
-
-	/// The property `name` of a listed type, or null.
-	private static JsonValue PropertyNamed(JsonValue type, StringView name)
-	{
-		let members = type.Get("members");
-		for (int i < members.Count)
-		{
-			let member = members.At(i);
-			if ((member.Get("name").AsString() == name) && (member.Get("kind").AsString() == "property"))
-				return member;
-		}
-		return null;
-	}
-
-	/// The bound type whose surface type name ends in `.name`, or null.
-	private static JsonValue TypeEndingIn(JsonValue types, StringView name)
-	{
-		let suffix = scope $".{name}";
-		for (int i < types.Count)
-		{
-			let full = types.At(i).Get("typeFullName");
-			if ((full != null) && full.AsString().EndsWith(suffix))
-				return types.At(i);
-		}
-		return null;
 	}
 
 	/// An agent makes the assets File > New makes: listed, created by label or by type, in a

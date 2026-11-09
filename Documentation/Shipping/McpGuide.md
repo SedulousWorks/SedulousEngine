@@ -1,8 +1,8 @@
 # Working through the MCP server
 
 The engine's MCP server (`engine-mcp`, the `Sedulous.Tools.Mcp` binary) is the headless
-authoring surface: newline delimited JSON-RPC over stdio, the full project, asset, scene
-and script workflow with the editor closed. This is the operating manual for any agent
+authoring surface: newline delimited JSON-RPC over stdio, the full project, asset and scene
+workflow with the editor closed. This is the operating manual for any agent
 connected to it. It is itself served as `docs://McpGuide.md`, so you can re-read it over
 the wire.
 
@@ -141,18 +141,15 @@ when it reports one) and gamepads (`{"at": 0, "gamepad": 0, "axis":
 runs, that tab ignores the real mouse and keys, the other instances keep theirs, and whatever
 it holds is let go at the end. `probes` read entities (by guid, name or slash path) at field
 paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
-as `entity_inspect` names them, a native behaviour's private fields too (`Bob.mPhase`), or
-`<BehaviorClass>.<field>` for a script behaviour running on the entity, private fields too, then
+as `entity_inspect` names them, a native behaviour's private fields too (`Bob.mPhase`), then
 `.x`/`.y`/`.z` or a key or an index), the native game's fields, public or private
-(`{"game": "mRoundsUp"}`), the scene's active native level's (`{"level": "TimeLimit"}`, or
+(`{"game": "mRoundsUp"}`), and the scene's active native level's (`{"level": "TimeLimit"}`, or
 `{"level": "Arena.TimeLimit"}`, by class name or level id, when several are active; a scene with
-none active reads its level script's property, `{"level": "m_round"}`), and game script
-fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), sampled `every` N seconds (0.5 by default) or at
-`sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
+none active is refused), sampled `every` N seconds (0.5 by default) or at `sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
 gone by then reads null. `screenshots` writes the tab at those run times. `until` ends the
 run early, on a death or a win: `{"entity": "Player", "field": "worldPosition.y", "op": "<",
-"value": -10}`, or on a game's or a script's value (`{"game": "mRoundsUp", "op": ">=", "value": 1}`,
-`{"level": "m_over", "op": "==", "value": true}`). A native field reads as `entity_inspect`
+"value": -10}`, or on a game's or a level's value (`{"game": "mRoundsUp", "op": ">=", "value": 1}`,
+`{"level": "mOver", "op": "==", "value": true}`). A native field reads as `entity_inspect`
 writes one: an enum by its name, an entity reference or an asset as its guid. A native game's
 class carries `[Game]`, which reflects its fields for these probes (as `[Behaviour]` and
 `[Level]` do theirs); `GameplayServices.SetGame` refuses one without it at compile time.
@@ -203,9 +200,9 @@ behaviour's properties under `live` beside what is authored.
   protocol error, -32602, naming the tool, the argument and the ones it takes
   (`pie_run: no argument 'timeline' (it takes: ...)`): a misspelt argument never silently
   does nothing. The same holds at every depth, the field named by its path
-  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level, game)`); only a map of
-  names the tool resolves itself (asset_import's `options`, a behaviour's `properties`) takes
-  any key, and the tool refuses one it does not know. `tools/list` gives each tool's schema.
+  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, level, game)`); only a map of
+  names the tool resolves itself (asset_import's `options`) takes any key, and the tool refuses
+  one it does not know. `tools/list` gives each tool's schema.
 - **Check `known_issues` before re-diagnosing** an odd symptom; if it matches a recorded
   issue, report the match and use its workaround.
 
@@ -216,7 +213,7 @@ Project does: Roboto as a distance-field font set as the default UI font (what a
 game's text draws with: the engine's built-in font is not in a dist), the default sky, and a
 cube, sphere and plane. Then `project_open` then `project_info`, which also reports the
 settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
-`startupScriptId`, `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiFontId`, each
+`defaultInputMapId`, `defaultBusLayoutId`, `defaultUiFontId`, each
 {guid, path} or null), `uiFontIds`, the other fonts
 the game UI loads beside the default, each a family a label picks with
 `font-family="<family>"`, a title face say; `guiStyleSheetIds`, the engine GUI's `.css` sheets in
@@ -330,17 +327,15 @@ one whose prefab is not in the project.
 
 To build ON AN OPEN PAGE instead, live and undoable (the editor host): `entity_create`,
 `entity_update` (name, parent, active, transform), `entity_delete`, `component_add`,
-`component_remove`, `prefab_spawn`, `behavior_add` and `behavior_set` (a script behaviour's
-properties by name, typed by its cooked class), with `component_set` for a component's fields.
+`component_remove` and `prefab_spawn`, with `component_set` for a component's fields.
 Each call is one undo step, the page dirty after and nothing saved; an entity is named by guid,
-name or slash path; each answers the entity as `entity_inspect` shows it, a Script component's
-`behaviors` included. The user watches the level take shape and can undo any step; `file.save`
+name or slash path; each answers the entity as `entity_inspect` shows it. The user watches the level take shape and can undo any step; `file.save`
 (action_execute) keeps it. XML suits a whole level written at once, these tools an edit.
 A native behaviour (a class of the game's own code marked `[Behaviour("<id>")]`, there while its
 plugin is loaded) is one more component to all of these and to `component_schema`: its type is the
 id its `[Behaviour]` states, and its public fields, with `Enabled` (whether it runs), read and set
 as a component's, enums by name and entity references by guid. Its private fields are runtime
-state, neither saved nor shown. `behavior_add` and `behavior_set` are for script behaviours alone.
+state, neither saved nor shown.
 A native level (a class of the game's own code marked `[Level("<id>")]`, there while its plugin is
 loaded) is a scene settings block instead: `component_schema` with its id gives its fields,
 `active` first (whether the scene runs it), then its public fields. A scene runs the levels whose
@@ -369,17 +364,9 @@ pre-convert. Brightness above white is an intensity, not a component above 1: a 
 values (Wind's Strength, Speed and Height) are floats in the group's own `values`, never in
 `uniformDefaults`.
 
-**Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
-signatures. A property is listed only when a script can use it: a type's own and its bases',
-writable only where its setter is bound (an asset reference, a skeletal animation's `Clip`, reads
-and writes as the Guid it holds). A member with `readOnly: true` (a network identity's
-`Authority`, for one) reads and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
-edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
-class attachable. A script file may declare several classes (data, helpers); the one it plays is
-its asset's Class Name (`ClassName`: the name its file was imported under, or a new script's
-starter class), else the one named like its file, else its only one. Several and none so named
-fails the cook, naming them: set the asset's Class Name, or pass `script_validate` the file's
-`name` (or `className`).
+**Game code**: a game's code is native Beef in its project's `Code/`, its behaviours, levels
+and game classes reaching the engine directly; there are no script tools. Writing it is
+`docs://GameCode.md`, and building and running it is Writing game code below.
 
 **Shaders**: a custom shader is one `.hlsl` with a `properties` block declaring its materials'
 parameters, in one of two kinds. A SURFACE shader (a `// surface: lit` or `// surface: unlit`
@@ -454,8 +441,8 @@ read the file before trusting it, and leave the judgement of how it looks to the
   `renderWidth`/`renderHeight`, 1280 x 720 for a README) and put it back after (0 / 0 when it
   was unset); the PNG is scaled to the tab when the tab is smaller (the answer's `scale`).
   Reach a screen by playing to it: a menu by a timeline (`Right`, `Return`), a level by a scene
-  override (`project_settings_set` `defaultSceneId` to the level and `startupScriptId` to
-  `""`, restored after, in a `finally`), a late moment by a scripted route, and a results
+  override (`project_settings_set` `defaultSceneId` to the level, restored after, in a
+  `finally`), a late moment by a scripted route, and a results
   screen by finishing a run. Take a few times around the moment (`[23.9, 24.3, 24.7, 25.1]`)
   and pick one. A run that finishes writes the game's save: copy the project's
   `Editor/<Game>.save.xml` aside right before, run with a test save that unlocks what the shot
@@ -509,8 +496,7 @@ A project's custom shaders ship as bytecode in the dist's shader pack, their HLS
 the preset's `includeShaderSource` is set. A script cooks once and ships to every platform, so before
 an export cooks, every script is checked against what the preset's platform has of the project's
 plugins: one using a type of a plugin the project does not enable there refuses the export,
-naming the script, the plugin and the problem; `script_validate` with `platform` makes the same
-check for an agent (its `absentPlugins` says what was left out). The export builds the project's own player for the preset's platform and config (BeefBuild over
+naming the script, the plugin and the problem. The export builds the project's own player for the preset's platform and config (BeefBuild over
 the project's `Code/` workspace, against the engine SDK; incremental, but a project's first
 shipping or web build compiles the engine and takes minutes), linking the project's packages and
 the engine plugins it enables there, and ships it named after the game (or the preset's
@@ -596,9 +582,6 @@ and relaunching need the editor host; the loop:
 
 ## Per tool gotchas
 
-- `script_validate` is a COMPILE check (`checkLevel: "compile"`): a call the language cannot
-  see through, a misspelled member on a handle say, compiles and fails at runtime. Cross
-  check against `script_api`.
 - `shader_validate` compiles every variant, the cook's check; an error under one flag says so
   (`(under ALPHA_TEST)`). An error in an engine include names that file, not yours.
 - `scene_validate` warnings mean component records of a type the engine does not know; they

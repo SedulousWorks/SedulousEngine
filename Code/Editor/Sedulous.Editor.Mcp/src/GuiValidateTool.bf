@@ -11,7 +11,7 @@ namespace Sedulous.Editor.Mcp;
 /// gui_validate: checks the engine GUI's markup (a `.xml` document) or a sheet (`.css`) WITHOUT
 /// saving it, through the check its cook runs (the markup loader's or the CSS parser's diagnostics:
 /// what was dropped a warning, markup that does not build an error), so an agent writing a game's
-/// screens loops on it as on script_validate and shader_validate. Returns each diagnostic with its
+/// screens loops on it as on shader_validate. Returns each diagnostic with its
 /// line, and the asset guids the text names (`{guid}`), each a dependency of its cook. Project
 /// independent.
 static class GuiValidateTool

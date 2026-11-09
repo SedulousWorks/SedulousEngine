@@ -1,7 +1,6 @@
 using System;
 using Sedulous.Mcp;
 using Sedulous.Mcp.Reflection;
-using Sedulous.Mcp.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
@@ -12,9 +11,9 @@ namespace Sedulous.Editor.Mcp;
 /// The engine tool surface EVERY MCP host serves, listed ONCE, so the stdio host and the
 /// editor host compose through it and cannot drift.
 ///
-/// Reflection (type_list, type_info), script_api, project_info, the asset tools (list, info,
+/// Reflection (type_list, type_info), project_info, the asset tools (list, info,
 /// import, cook, uses, creators, create, delete, data read and write), project_health, the log tools (log_read, log_write, known_issues), the
-/// scene and prefab tools, script_validate and script_create, shader_validate, gui_validate, material_set_shader, the plugin
+/// scene and prefab tools, shader_validate, gui_validate, material_set_shader, the plugin
 /// tools (list, enable, disable, settings), export_presets and
 /// export_preset_set, project_export, the docs://
 /// and project:// resources, and the generated scene format reference (docs://generated/*
@@ -25,17 +24,16 @@ static class EngineTools
 	/// How many tools Register registers. A new engine tool bumps this DELIBERATELY, and a
 	/// lost registration fails its test loudly. host_info and the stdio host's project_create
 	/// and project_open are not in it: each host registers its own.
-	public const int cEngineToolCount = 38;
+	public const int cEngineToolCount = 35;
 
-	/// The pipeline's types, builders and script surface must already be registered: the
-	/// script tools read that surface, the asset tools the two registries. The operations are
+	/// The pipeline's types and builders must already be registered: the asset tools read the
+	/// two registries. The operations are
 	/// how THIS host runs the cook, import and export behind their tools (IProjectOperations).
 	public static void Register(McpServer server, ProjectSession session, BuilderRegistry builders,
 		ImporterRegistry importers, AssetCreatorRegistry creators, EditorLogBuffer logBuffer, EngineToolPaths paths,
 		IProjectOperations operations)
 	{
 		ReflectionTools.Register(server);
-		ScriptTools.Register(server, PipelineRegistration.Surface);
 		ProjectInfoTool.Register(server, session);
 		PluginTools.Register(server, session);
 		AssetTools.Register(server, session);
@@ -50,11 +48,9 @@ static class EngineTools
 		if (!paths.ShippingDocsDir.IsEmpty)
 			ShippingDocResources.Register(server, paths.ShippingDocsDir);
 		ProjectResources.Register(server, session);
-		ScriptValidateTool.Register(server, session);
 		ShaderValidateTool.Register(server, paths.ShaderLibrary);
 		GuiValidateTool.Register(server);
 		MaterialShaderTool.Register(server, session, paths.ShaderLibrary);
-		ScriptCreateTool.Register(server, session);
 		ExportPresetTools.Register(server, session);
 		ProjectExportTool.Register(server, session, operations);
 

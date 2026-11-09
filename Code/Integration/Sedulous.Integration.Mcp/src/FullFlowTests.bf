@@ -121,7 +121,6 @@ static class FullFlowTests
 		}
 		// Spot checks across the families the root gathers ...
 		Test.Assert(Has("type_list"));
-		Test.Assert(Has("script_api"));
 		Test.Assert(Has("project_info"));
 		Test.Assert(Has("asset_cook"));
 		Test.Assert(Has("scene_write"));
@@ -129,6 +128,8 @@ static class FullFlowTests
 		Test.Assert(Has("export_presets") && Has("export_preset_set"));
 		Test.Assert(Has("asset_delete"));
 		Test.Assert(Has("known_issues"));
+		// ... no script tools, a game's code being native ...
+		Test.Assert(!Has("script_api") && !Has("script_validate") && !Has("script_create"));
 		// ... and what a HOST adds itself: never part of the shared surface.
 		Test.Assert(!Has("project_open"));
 		Test.Assert(!Has("project_create"));

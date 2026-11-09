@@ -162,6 +162,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Removed
 
+- MCP: `script_api`, `script_validate`, `script_create`, `behavior_add` and `behavior_set`,
+  play-in-editor's script probes (`pie_run`'s `script`, a level script's properties and a script
+  behaviour's fields), `startupScriptId` in `project_info` and the script override section of the
+  generated scene schema: a game's code is native.
 - Scripts: the `Http` service; a game's own code sends web requests through `HttpFacade`.
 - Editor: Edit > Export Templates, the Export dialog's template choice and its Export Templates
   button, and the templates folder in Preferences: an export builds its player, so there is no

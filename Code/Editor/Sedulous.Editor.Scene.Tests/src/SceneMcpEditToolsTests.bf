@@ -232,9 +232,6 @@ class SceneMcpEditToolsTests
 			Test.Assert((behaviors != null) && (behaviors.Count == 1));
 			Test.Assert(behaviors.At(0).Get("script").AsString() == script.ToString(.. scope .()));
 			Test.Assert(behaviors.At(0).Get("enabled").AsBool());
-			let refused = Call(server, "behavior_add", scope $"{{\"entity\":\"Platform\",\"script\":\"{script}\"}}");
-			defer delete refused;
-			Test.Assert(refused.Error.Contains("is not a cooked script class"), refused.Error);
 		}
 
 		// A deletion takes the subtree; while simulating, every edit is refused.

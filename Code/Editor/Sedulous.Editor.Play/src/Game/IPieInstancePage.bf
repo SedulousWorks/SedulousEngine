@@ -3,7 +3,6 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Json;
 using Sedulous.Input;
-using Sedulous.Script;
 using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Play;
@@ -52,12 +51,6 @@ interface IPieInstancePage : IGameScenePage
 	/// The latest request's state, as it advances frame by frame. BORROWED.
 	ViewportCapture LastViewportCapture { get; }
 
-	/// Reads a property of the running game script into `value`; false without one.
-	bool GetScriptProperty(StringView name, ref ScriptValue value);
-	/// Reads a property of the running scene's level script into `value`; false without one or
-	/// with no such property.
-	bool GetLevelProperty(StringView name, ref ScriptValue value);
-
 	/// The class name of the run's native game (the build's Game, launched by the run),
 	/// appended to `outTypeName`; false when none runs: a build without one, a game script in
 	/// its place, or the run stopped.
@@ -70,7 +63,7 @@ interface IPieInstancePage : IGameScenePage
 	/// A field of the running scene's active native Level, read as GetGameField reads the
 	/// game's: "<field>" while one level is active, "<Level>.<field>" (its class name or level
 	/// id) to name one. OWNED; null with the reason in `outError`, or null with `outError` left
-	/// empty when the scene has no native level active, where a probe reads its level script.
+	/// empty when the scene has no native level active.
 	JsonValue GetLevelField(StringView path, String outError);
 
 	/// Plays `source` into this instance in place of the viewport's input, its time zero now:
