@@ -340,6 +340,10 @@ class EditorSessionTests
 		Test.Assert(bench.EventsAre("opened"));
 		Test.Assert(bench.OpenedSawServicesUp);
 		Test.Assert(bench.Context.SourceAssetTypesOf != null);
+		// A prefab reference's picker offers prefab documents.
+		let accepted = scope List<Type>();
+		bench.Context.SourceAssetTypesOf(typeof(Sedulous.Scene.Resource.PrefabResource), accepted);
+		Test.Assert((accepted.Count == 1) && (accepted[0] == typeof(Sedulous.Scene.Resource.PrefabDocument)));
 
 		// The thumbnails are configured: a miss on an unknown id caches a negative.
 		Test.Assert(bench.Thumbnails.Get(Guid.Create()) == null);

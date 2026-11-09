@@ -327,8 +327,9 @@ class SceneReference
 	/// factory description in the engine composition gives its cooked forms, and the builder
 	/// producing each gives its asset type (a texture's and a render texture's for a Texture). A
 	/// cooked form itself (what nothing makes at run time) takes every asset whose product is one
-	/// or derives from one (a StaticMeshSource: the static and the skinned mesh). Declarations
-	/// only, nothing constructed. Nothing is added when nothing in this
+	/// or derives from one (a StaticMeshSource: the static and the skinned mesh). An authored
+	/// record nothing cooks (a prefab's document) is itself the asset type, its records what a
+	/// reference to the product names. Declarations only, nothing constructed. Nothing is added when nothing in this
 	/// composition makes the product. Shared by the schema and the editor's pickers.
 	public static void SourceAssetTypesFor(BuilderRegistry builders, Type product, List<Type> outAssets,
 		List<ResourceFactoryDesc*> descriptions = null)
@@ -340,11 +341,13 @@ class SceneReference
 			EngineComposition.FactoryDescriptions(described);
 		}
 		let cookedForms = scope List<Type>();
+		var authored = false;
 		for (let desc in described)
 		{
 			if (desc.Product == product)
 			{
 				desc.ForEachCooked(scope (cooked) => cookedForms.Add(cooked));
+				authored = desc.AuthoredRecord;
 				break;
 			}
 		}
@@ -373,6 +376,8 @@ class SceneReference
 				});
 			if (asset != null)
 				outAssets.Add(asset);
+			else if (authored)
+				outAssets.Add(cooked);
 		}
 	}
 

@@ -60,13 +60,19 @@ struct ResourceFactoryDesc
 	public Type Service;
 	/// Makes the factory; null when the service it needs is absent. OWNERSHIP goes to the caller.
 	public function IResourceFactory(IResourceServices services) Create;
+	/// Whether Cooked is an authored record nothing cooks (a prefab's document), the factory
+	/// reading it as stored (IResourceFactory.ReadsAuthoredRecord): its records are the assets a
+	/// reference to the product names, where a cooked form's are the assets that build it.
+	public bool AuthoredRecord = false;
 
-	public this(Type product, Type cooked, Type service, function IResourceFactory(IResourceServices services) create)
+	public this(Type product, Type cooked, Type service, function IResourceFactory(IResourceServices services) create,
+		bool authoredRecord = false)
 	{
 		Product = product;
 		Cooked = cooked;
 		Service = service;
 		Create = create;
+		AuthoredRecord = authoredRecord;
 	}
 
 	/// Cooked, then every AlsoCooked form.

@@ -68,7 +68,8 @@ static class SceneReferenceTests
 	}
 
 	/// The join the schema makes, shared with the editor's pickers: a product's asset types, a
-	/// cooked form's the assets that cook to it, none for a type nothing makes.
+	/// cooked form's the assets that cook to it, an authored record's product that record, none
+	/// for a type nothing makes.
 	[Test]
 	public static void SourceAssetTypesForJoinsAProductToWhatMakesIt()
 	{
@@ -94,6 +95,10 @@ static class SceneReferenceTests
 		assets.Clear();
 		SceneReference.SourceAssetTypesFor(builders, typeof(String), assets);
 		Test.Assert(assets.IsEmpty);
+		// A product read from an authored record nothing cooks takes that record's assets: a
+		// prefab reference picks prefab documents.
+		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Scene.Resource.PrefabResource), assets);
+		Test.Assert((assets.Count == 1) && (assets[0] == typeof(Sedulous.Scene.Resource.PrefabDocument)));
 	}
 
 	/// Every enum field names its cases, a settings block's as well as a component's: an agent

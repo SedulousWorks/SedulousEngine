@@ -17,6 +17,6 @@ static class SceneResources
 	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
 	public static ResourceModule Module => sModule ?? (sModule = new .("scene", () => RegisterAll(), new .(
-		.(typeof(PrefabResource), typeof(PrefabDocument), null, (services) => PrefabFactory.FromServices(services)))));
+		.(typeof(PrefabResource), typeof(PrefabDocument), null, (services) => PrefabFactory.FromServices(services), true))));
 	private static ResourceModule sModule ~ delete _;
 }
