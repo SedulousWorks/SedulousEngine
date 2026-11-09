@@ -24,7 +24,8 @@ static class PrefabResourceTests
 			return -1;
 		Test.Assert(scene.GetEntityName(root) == "Turret");
 		Test.Assert(scene.GetChildCount(root) == 1, "the child came with it");
-		return ammo.Get(root).Rounds;
+		let rounds = ammo.Get(root);
+		return (rounds != null) ? rounds.Rounds : -2;
 	}
 
 	/// The turret captured in the binary wire, under a prefab record of its own.
@@ -139,6 +140,103 @@ static class PrefabResourceTests
 		Test.Assert(proxy.State == .Ready);
 		Test.Assert(SpawnedRounds(proxy.Get) == 9);
 		Test.Assert(manager.PendingCount == 0);
+	}
+
+	/// A composer that gives a scratch scene the turret's manager, as the application's gives every
+	/// manager it has.
+	private static SceneComposer TurretComposer() => new .(new (scene) => { scene.AddSystem<AmmoManager>(); });
+
+	[Test]
+	public static void ATextPrefabLoadsInTheBinaryFormatGivenAComposer()
+	{
+		let fixture = scope PrefabDatabaseFixture("scratch_prefab_resource_transcode");
+		let turret = fixture.StoreTurret("turret", 30);
+		let composer = TurretComposer();
+		defer delete composer;
+		let manager = scope ResourceManager(fixture.Database);
+		let factory = scope PrefabFactory(composer);
+		manager.AddFactory(factory);
+
+		let loaded = manager.Bind<PrefabResource>(turret);
+		Test.Assert(loaded.State == .Ready);
+		Test.Assert(loaded.Get.Encoding == .Binary, "transcoded as it loaded");
+		Test.Assert(loaded.Get.Name == "turret");
+		Test.Assert(SpawnedRounds(loaded.Get) == 30, "nothing lost on the way");
+
+		// The stored record is untouched: the source stays text.
+		let stored = fixture.Database.GetInstance(turret).ReadData(SceneStorage.cStreamName);
+		defer delete stored;
+		Test.Assert(SceneStreamFormat.DetectEncoding(stored) == .Text);
+	}
+
+	[Test]
+	public static void AnAsyncLoadTranscodesOnPump()
+	{
+		let fixture = scope PrefabDatabaseFixture("scratch_prefab_resource_transcode_async");
+		let turret = fixture.StoreTurret("turret", 7);
+		let composer = TurretComposer();
+		defer delete composer;
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
+		let factory = scope PrefabFactory(composer);
+		manager.AddFactory(factory);
+
+		let proxy = manager.BindAsync<PrefabResource>(turret);
+		for (int attempt < 2000)
+		{
+			manager.Pump();
+			if (proxy.State != .Pending)
+				break;
+			Thread.Sleep(1);
+		}
+		Test.Assert(proxy.State == .Ready);
+		Test.Assert(proxy.Get.Encoding == .Binary);
+		Test.Assert(SpawnedRounds(proxy.Get) == 7);
+	}
+
+	[Test]
+	public static void APrefabWithAComponentNoManagerReadsStaysText()
+	{
+		// The composer knows no ammo: the binary would be written without it, so the text is
+		// kept, and a scene that has the manager spawns the prefab whole.
+		let fixture = scope PrefabDatabaseFixture("scratch_prefab_resource_transcode_absent");
+		let turret = fixture.StoreTurret("turret", 30);
+		let composer = scope SceneComposer(new (scene) => {});
+		let manager = scope ResourceManager(fixture.Database);
+		let factory = scope PrefabFactory(composer);
+		manager.AddFactory(factory);
+
+		let loaded = manager.Bind<PrefabResource>(turret);
+		Test.Assert(loaded.State == .Ready);
+		Test.Assert(loaded.Get.Encoding == .Text, "kept as stored");
+		Test.Assert(SpawnedRounds(loaded.Get) == 30, "its ammo kept");
+	}
+
+	[Test]
+	public static void TheSceneModulesFactoryTakesTheHostsComposer()
+	{
+		let fixture = scope PrefabDatabaseFixture("scratch_prefab_resource_transcode_module");
+		let turret = fixture.StoreTurret("turret", 4);
+		let composer = TurretComposer();
+		defer delete composer;
+		let services = scope ResourceServiceTable();
+		services.Add(typeof(SceneComposer), composer);
+
+		let modules = scope ResourceModule[](SceneResources.Module);
+		let factories = scope ResourceFactorySet();
+		factories.Create(modules, services);
+		Test.Assert(factories.Count == 1);
+		let manager = scope ResourceManager(fixture.Database);
+		factories.Register(manager);
+		Test.Assert(manager.Bind<PrefabResource>(turret).Get.Encoding == .Binary);
+
+		// A host offering none still loads prefabs, as stored.
+		let headless = scope ResourceFactorySet();
+		headless.Create(modules, scope NoResourceServices());
+		Test.Assert(headless.Count == 1);
+		let plain = scope ResourceManager(fixture.Database);
+		headless.Register(plain);
+		Test.Assert(plain.Bind<PrefabResource>(turret).Get.Encoding == .Text);
 	}
 
 	[Test]

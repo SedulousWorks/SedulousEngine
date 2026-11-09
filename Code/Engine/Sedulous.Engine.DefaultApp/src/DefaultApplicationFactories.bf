@@ -4,6 +4,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Resource;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
+using Sedulous.Scene.Resource;
 using Sedulous.Shaders;
 
 namespace Sedulous.Engine.DefaultApp;
@@ -12,6 +13,11 @@ namespace Sedulous.Engine.DefaultApp;
 /// composed from the engine composition root rather than listed here.
 extension DefaultApplication
 {
+	/// Every scene manager of the composition, plugins' included, for a factory that reads scene
+	/// data it does not own: the prefab factory turns a text prefab into the binary wire with it.
+	/// The factories borrow it, so it is declared BEFORE them and goes after them.
+	private SceneComposer mSceneComposer = new .(new (scene) => EngineSceneComposition.AddAllSceneManagers(scene)) ~ delete _;
+
 	/// The factories this application owns, destroyed at shutdown while the device they hold
 	/// is alive. They are handed to a manager which only BORROWS them, so their lifetime is this
 	/// application's rather than any manager's, and a manager attached later gets the same set.
@@ -39,6 +45,7 @@ extension DefaultApplication
 			services.Add(typeof(IDevice), graphics.Raw);
 		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
 			services.Add(typeof(ShaderSystem), render.Shaders);
+		services.Add(typeof(SceneComposer), mSceneComposer);
 		EngineComposition.CreateFactories(mFactories, services);
 		mFactories.Register(resources);
 	}

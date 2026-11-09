@@ -80,6 +80,7 @@ class ProjectFolderResourcesTests
 		let loaded = resources.Bind<PrefabResource>(prefab);
 		Test.Assert(loaded.State == .Ready, "the prefab from the sources");
 		Test.Assert(loaded.Get.Name == "crate");
+		Test.Assert(loaded.Get.Encoding == .Binary, "its text read into the binary wire with the app's managers");
 
 		let ice = resources.Bind<PhysicalMaterial>(material);
 		Test.Assert(ice.State == .Ready, "the product from the cooked database");
