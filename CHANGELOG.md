@@ -162,3 +162,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   `SEDULOUS_TEMPLATES_DIR` variable: an export builds its player. A preset's template id is
   ignored and dropped the next time the presets are saved, and `export_preset_set` no longer takes
   `templateId`.
+- Player: `--plugins`, which listed the plugins a player links for a template to record; with
+  no templates nothing reads it.

@@ -49,13 +49,6 @@ static class DesktopPlayerMain
 				Console.WriteLine(scope $"Player {EngineVersion.BuildIdentity(.. scope .())}");
 				return 0;
 			}
-			// The plugins this player links, one `id|version` line each: what an export template
-			// made from it records it carries.
-			if (arg == "--plugins")
-			{
-				Console.Write(Sedulous.Runtime.PluginRegistry.Linked(.. scope .()));
-				return 0;
-			}
 		}
 
 		InitGlobalLogger(new ConsoleLogger(.Information, "Player"), true);
