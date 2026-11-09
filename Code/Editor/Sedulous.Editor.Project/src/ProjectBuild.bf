@@ -118,14 +118,27 @@ static class ProjectBuild
 	/// The stock MCP host's project, whose post-build steps (naga and tint, which the export's
 	/// WGSL cook runs from beside the executable) the project's tools take over.
 	public const String cStockToolsProject = "Code/Tools/Sedulous.Tools.Mcp/BeefProj.toml";
-	/// The stock web player's setting each config keeps as the generated project's own: its
-	/// output stays beside the generated project, not in the SDK.
-	public const String cWebOwnKey = "TargetDirectory";
+	/// The stock web player's setting each config replaces with the generated project's own
+	/// (StockConfigs): its output goes in the web workspace's build folder, not in the SDK.
+	public const String cTargetDirectoryKey = "TargetDirectory";
+	/// Beef's platform name for the web player's build.
+	public const String cWasmPlatform = "wasm32";
 
 	/// Names an SDK root ahead of any other.
 	public const String cSdkVariable = "SEDULOUS_SDK";
 	/// Names the BeefBuild executable ahead of any other (FindBeefBuild).
 	public const String cBeefBuildVariable = "BEEFBUILD";
+	/// The settings file BeefBuild reads Emscripten's folder from (FindEmscripten): the [Wasm]
+	/// table's EmscriptenPath.
+	public const String cBeefSettingsFile = "BeefSettings.toml";
+	public const String cEmscriptenTable = "Wasm";
+	public const String cEmscriptenKey = "EmscriptenPath";
+	/// Where a packaged Beef on Linux keeps its user data, its BeefSettings.toml among it, under
+	/// HOME; a source build keeps it beside its executables.
+	public const String cPackagedBeefDataDir = ".config/beeflang";
+	/// emcc under Emscripten's folder (with the host's executable suffix), which BeefBuild links
+	/// wasm32 with.
+	public const String cEmccPath = "upstream/emscripten/emcc";
 	/// The SDK's folders Beef's registry walks for projects, relative to the SDK root. Not the
 	/// whole of Code/: the registry walks every directory under each, and Code/build is huge; and
 	/// not Code/Tools, Integration, Samples or Deprecated, which no game links.
@@ -298,11 +311,40 @@ static class ProjectBuild
 	/// Code/build/<Config>_<Platform>/<Game>Editor/<Game>Editor.
 	public static void ExecutablePath(StringView projectDir, StringView gameName, bool editor, StringView config, String outPath)
 	{
-		let project = EntryName(gameName, editor ? BuildEntry.Editor : BuildEntry.Player, .. scope .());
+		EntryPath(projectDir, gameName, editor ? BuildEntry.Editor : BuildEntry.Player, config, outPath);
+	}
+
+	/// What a build of `entry` in `config` makes: a desktop entry's executable for this host, in
+	/// Code/build/<Config>_<Platform>/<Entry>/, or the web player's page (WebPagePath).
+	public static void EntryPath(StringView projectDir, StringView gameName, BuildEntry entry, StringView config, String outPath)
+	{
+		if (entry == .PlayerWeb)
+		{
+			WebPagePath(projectDir, gameName, config, outPath);
+			return;
+		}
+		let project = EntryName(gameName, entry, .. scope .());
 		let workspace = Directory(projectDir, .. scope .());
 		let build = scope $"{cBuildDir}/{config}_{BuildLayout.HostPlatformName}/{project}";
 		let file = BuildLayout.ExecutableName(project, .. scope .());
 		PathJoin(PathJoin(workspace, build, .. scope .()), file, outPath);
+	}
+
+	/// The workspace BeefBuild builds an entry in: the web player's own (WebWorkspaceDirectory),
+	/// every other entry's Code/.
+	public static void EntryWorkspace(StringView projectDir, BuildEntry entry, String outDir)
+	{
+		if (entry == .PlayerWeb)
+			WebWorkspaceDirectory(projectDir, outDir);
+		else
+			Directory(projectDir, outDir);
+	}
+
+	/// The platform BeefBuild builds an entry for: wasm32 for the web player, this host's for
+	/// every other.
+	public static StringView EntryPlatform(BuildEntry entry)
+	{
+		return (entry == .PlayerWeb) ? cWasmPlatform : BuildLayout.HostPlatformName;
 	}
 
 	/// The web player's workspace: <project>/Code/.generated/Web, with its own BeefSpace.toml and
@@ -312,15 +354,24 @@ static class ProjectBuild
 		PathJoin(Directory(projectDir, .. scope .()), scope $"{cGeneratedDir}/{cWebWorkspaceDir}", outDir);
 	}
 
-	/// Where BeefBuild puts the project's web player page for `config`: the stock web player's
-	/// TargetDirectory, which the entry keeps as its own (Code/.generated/<Game>PlayerWeb/dist,
-	/// dist-profile for Release), and its TargetName, <Game>PlayerWeb.html.
+	/// Where BeefBuild puts the project's web player page for `config`: the entry's own
+	/// TargetDirectory (WebTargetDirectory) under the web workspace,
+	/// Code/.generated/Web/build/<Config>_wasm32/<Game>PlayerWeb, and the stock TargetName,
+	/// <Game>PlayerWeb.html. Each config has its own, so a Debug build leaves a shipping one be.
 	public static void WebPagePath(StringView projectDir, StringView gameName, StringView config, String outPath)
 	{
 		let project = EntryName(gameName, .PlayerWeb, .. scope .());
-		StringView output = (config == "Release") ? "dist-profile" : "dist";
-		let dir = scope $"{cGeneratedDir}/{project}/{output}";
-		PathJoin(PathJoin(Directory(projectDir, .. scope .()), dir, .. scope .()), scope $"{project}.html", outPath);
+		let dir = scope $"{cBuildDir}/{config}_{cWasmPlatform}/{project}";
+		PathJoin(PathJoin(WebWorkspaceDirectory(projectDir, .. scope .()), dir, .. scope .()), scope $"{project}.html", outPath);
+	}
+
+	/// The web player's TargetDirectory in `config`, as its project sets it:
+	/// $(WorkspaceDir)/build/<Config>_wasm32/<Game>PlayerWeb, the workspace being the web one.
+	/// Every other build's layout, so its folder reads as a build folder (BuildLayout).
+	public static void WebTargetDirectory(StringView gameName, StringView config, String outDir)
+	{
+		let project = EntryName(gameName, .PlayerWeb, .. scope .());
+		outDir.AppendF("$(WorkspaceDir)/{}/{}_{}/{}", cBuildDir, config, cWasmPlatform, project);
 	}
 
 	/// The suffix of an entry's name.
@@ -427,18 +478,18 @@ static class ProjectBuild
 		}
 
 		// The configs the entries take over from the stock executables, made to reach the SDK: the
-		// editor's and the tools' post-build steps, the web player's link and what it stages (all
-		// but its output folder). The desktop player has none.
+		// editor's and the tools' post-build steps, the web player's link and what it stages (its
+		// output folder its own, per config). The desktop player has none.
+		let game = GameName(settings.Name, .. scope .());
 		let editorConfigs = scope String();
 		let webConfigs = scope String();
 		let toolsConfigs = scope String();
 		let webDir = PathJoin(sdk, cStockWebDir, .. scope .());
 		if ((ReadStockConfigs(sdk, cStockEditorProject, "$(WorkspaceDir)/..", sdk, "", editorConfigs, outError) case .Err)
-			|| (ReadStockConfigs(sdk, cStockWebProject, "$(ProjectDir)", webDir, cWebOwnKey, webConfigs, outError) case .Err)
+			|| (ReadStockConfigs(sdk, cStockWebProject, "$(ProjectDir)", webDir, game, webConfigs, outError) case .Err)
 			|| (ReadStockConfigs(sdk, cStockToolsProject, "$(WorkspaceDir)/..", sdk, "", toolsConfigs, outError) case .Err))
 			return .Err(.NotFound);
 
-		let game = GameName(settings.Name, .. scope .());
 		let workspace = Directory(projectDir, .. scope .());
 		let generated = PathJoin(workspace, cGeneratedDir, .. scope .());
 		if ((WriteWorkspace(projectDir, game, packages) case .Err)
@@ -458,7 +509,7 @@ static class ProjectBuild
 
 	/// The stock project at `relative` in the SDK, its configs made to reach the SDK (StockConfigs)
 	/// into `outText`. Refused, with why in `outError`, when the SDK has no such project.
-	private static Result<void> ReadStockConfigs(StringView sdk, StringView relative, StringView macro, StringView path, StringView ownKey,
+	private static Result<void> ReadStockConfigs(StringView sdk, StringView relative, StringView macro, StringView path, StringView webGame,
 		String outText, String outError)
 	{
 		let stock = scope String();
@@ -467,7 +518,7 @@ static class ProjectBuild
 			outError.Set(scope $"the engine SDK at '{sdk}' has no stock project {relative}");
 			return .Err;
 		}
-		StockConfigs(stock, macro, path, ownKey, outText);
+		StockConfigs(stock, macro, path, webGame, outText);
 		return .Ok;
 	}
 
@@ -775,29 +826,47 @@ static class ProjectBuild
 
 	/// A stock project's [Configs.*] sections, its post-build steps and link settings among them,
 	/// with `macro` made `path`, absolute (the entry is generated per machine), so what the stock
-	/// reaches relative to itself the entry reaches in the SDK. A line setting `ownKey` keeps the
-	/// macro: that setting stays the generated project's own.
-	public static void StockConfigs(StringView stockProject, StringView macro, StringView path, StringView ownKey, String outText)
+	/// reaches relative to itself the entry reaches in the SDK. Given `webGame` (the web player's
+	/// game), a line setting TargetDirectory is the generated project's own folder for its
+	/// section's config instead (WebTargetDirectory): the stock's is in the SDK, and one folder for
+	/// two configs has each build overwrite the other's.
+	public static void StockConfigs(StringView stockProject, StringView macro, StringView path, StringView webGame, String outText)
 	{
 		let index = stockProject.IndexOf("\n[Configs.");
 		if (index < 0)
 			return;
 		let slashed = Slashed(path, .. scope .());
+		let config = scope String();
 		bool first = true;
 		for (let line in stockProject.Substring(index + 1).Split('\n'))
 		{
 			if (!first)
 				outText.Append('\n');
 			first = false;
-			if (!ownKey.IsEmpty && SetsKey(line, ownKey))
+			SectionConfig(line, config);
+			if (!webGame.IsEmpty && SetsKey(line, cTargetDirectoryKey))
 			{
-				outText.Append(line);
+				outText.AppendF("{} = \"{}\"", cTargetDirectoryKey, WebTargetDirectory(webGame, config, .. scope .()));
 				continue;
 			}
 			let made = scope String(line);
 			made.Replace(macro, slashed);
 			outText.Append(made);
 		}
+	}
+
+	/// The config a `[Configs.<Config>.<Platform>]` header names, into `outConfig`; any other line
+	/// leaves it as it was, its section's.
+	private static void SectionConfig(StringView line, String outConfig)
+	{
+		var trimmed = line;
+		trimmed.Trim();
+		let prefix = "[Configs.";
+		if (!trimmed.StartsWith(prefix) || !trimmed.EndsWith(']'))
+			return;
+		let name = trimmed.Substring(prefix.Length, trimmed.Length - prefix.Length - 1);
+		let dot = name.IndexOf('.');
+		outConfig.Set((dot < 0) ? name : name.Substring(0, dot));
 	}
 
 	/// Whether a TOML line sets `key` (`key = ...`).
@@ -1017,6 +1086,102 @@ static class ProjectBuild
 				return true;
 		}
 		outWhy.Set(scope $"no corlib under the library folders its {cConfigFile} names");
+		return false;
+	}
+
+	/// Emscripten's folder, as the BeefBuild at `beefBuild` reads it to link wasm32, into
+	/// `outPath` (FindEmscriptenFrom under HOME). Refused, with where it looked and what to set in
+	/// `outError`, when its settings name none or the folder has no emcc.
+	public static bool FindEmscripten(StringView beefBuild, String outPath, String outError)
+	{
+		let home = scope String();
+		if (Environment.GetEnvironmentVariable("HOME", home) case .Err)
+			home.Clear();
+		return FindEmscriptenFrom(beefBuild, home, outPath, outError);
+	}
+
+	/// FindEmscripten over a given HOME (empty for unset). BeefBuild reads no environment for it:
+	/// it reads the [Wasm] table's EmscriptenPath from the BeefSettings.toml in its user data
+	/// folder, which for a source build is its own folder (links followed, as it reads its own
+	/// path) and for one packaged for Linux is ~/.config/beeflang. Which of the two a BeefBuild
+	/// is cannot be seen from outside it, so the file beside it is read when there is one, else
+	/// (on Linux) the packaged one. The folder must hold upstream/emscripten/emcc, which BeefBuild
+	/// runs, or the wasm32 link fails only after the whole compile.
+	public static bool FindEmscriptenFrom(StringView beefBuild, StringView home, String outPath, String outError)
+	{
+		outPath.Clear();
+		let real = ResolveLinks(beefBuild, .. scope .());
+		let settingsPath = PathJoin(PathParent(real, .. scope .()), cBeefSettingsFile, .. scope .());
+		let looked = scope String(settingsPath);
+#if BF_PLATFORM_LINUX
+		if (!FileExists(settingsPath) && !home.IsEmpty)
+		{
+			let packaged = PathJoin(PathJoin(home, cPackagedBeefDataDir, .. scope .()), cBeefSettingsFile, .. scope .());
+			looked.AppendF("' or '{}", packaged);
+			if (FileExists(packaged))
+				settingsPath.Set(packaged);
+		}
+#endif
+		let settings = scope String();
+		if (ReadText(settingsPath, settings) case .Err)
+		{
+			outError.Set(scope $"a web build needs Emscripten, and BeefBuild '{beefBuild}' has no {cBeefSettingsFile} to name it (looked for '{looked}'): write one with {cEmscriptenKey} = \"<emsdk folder>\" under [{cEmscriptenTable}]");
+			return false;
+		}
+		let configured = scope String();
+		if (!TomlValue(settings, cEmscriptenTable, cEmscriptenKey, configured) || configured.IsWhiteSpace)
+		{
+			outError.Set(scope $"a web build needs Emscripten, and '{settingsPath}' names none: set {cEmscriptenKey} = \"<emsdk folder>\" under [{cEmscriptenTable}]");
+			return false;
+		}
+		let emcc = PathJoin(configured, BuildLayout.ExecutableName(cEmccPath, .. scope .()), .. scope .());
+		if (!FileExists(emcc))
+		{
+			outError.Set(scope $"Emscripten at '{configured}' ({cEmscriptenKey} in '{settingsPath}') has no {cEmccPath}: install it there (emsdk install latest), or point {cEmscriptenKey} at an emsdk folder that has");
+			return false;
+		}
+		outPath.Set(configured);
+		return true;
+	}
+
+	/// The string value of `key` in TOML `table` of `text` into `outValue`: "basic" (an escaped
+	/// character read as itself, a Windows path's backslash) or 'literal'. False when the table
+	/// does not set it to a string.
+	public static bool TomlValue(StringView text, StringView table, StringView key, String outValue)
+	{
+		outValue.Clear();
+		let header = scope $"[{table}]";
+		bool inTable = false;
+		for (let rawLine in text.Split('\n'))
+		{
+			var line = rawLine;
+			line.Trim();
+			if (line.StartsWith('['))
+			{
+				inTable = line == header;
+				continue;
+			}
+			if (!inTable || !SetsKey(line, key))
+				continue;
+			var value = line.Substring(line.IndexOf('=') + 1);
+			value.Trim();
+			if (value.IsEmpty)
+				return false;
+			let quote = value[0];
+			if ((quote != '"') && (quote != '\''))
+				return false;
+			for (int i = 1; i < value.Length; i++)
+			{
+				let c = value[i];
+				if (c == quote)
+					return true;
+				if ((quote == '"') && (c == '\\') && (i + 1 < value.Length))
+					i++;
+				outValue.Append(value[i]);
+			}
+			outValue.Clear();
+			return false;
+		}
 		return false;
 	}
 

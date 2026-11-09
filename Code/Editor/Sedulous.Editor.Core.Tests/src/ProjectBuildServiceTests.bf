@@ -16,12 +16,25 @@ class ProjectBuildServiceTests
 	private const String cFakeBeefBuild = "/fake/BeefBuild";
 
 	/// A job of `target` over the bed's project, its settings a copy (the job takes them), the
-	/// SDK found through the bed's data root.
-	private static BuildJob MakeJob(ProjectBuildTests.Bed bed, BuildTarget target, ExportPresetSet presets = null)
+	/// SDK found through the bed's data root; a Player job in `config` for `platform`.
+	private static BuildJob MakeJob(ProjectBuildTests.Bed bed, BuildTarget target, ExportPresetSet presets = null, StringView config = default,
+		StringView platform = default)
 	{
 		let settings = new ProjectSettings();
 		Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);
-		return new BuildJob(target, bed.ProjectDir, PathJoin(bed.Sdk, "Data", .. scope .()), settings, presets);
+		return new BuildJob(target, bed.ProjectDir, PathJoin(bed.Sdk, "Data", .. scope .()), settings, presets, config, platform);
+	}
+
+	/// The entry a BeefBuild run's -project= names.
+	private static BuildEntry EntryOf(StringView project)
+	{
+		if (project.EndsWith(ProjectBuild.cEditorSuffix))
+			return .Editor;
+		if (project.EndsWith(ProjectBuild.cPlayerWebSuffix))
+			return .PlayerWeb;
+		if (project.EndsWith(ProjectBuild.cToolsSuffix))
+			return .Tools;
+		return .Player;
 	}
 
 	/// The value of `-name=` among `arguments`.
@@ -36,12 +49,12 @@ class ProjectBuildServiceTests
 		return default;
 	}
 
-	/// Writes the executable a BeefBuild run of `arguments` would make, as a build that worked.
+	/// Writes what a BeefBuild run of `arguments` would make (an executable, or the web player's
+	/// page), as a build that worked.
 	private static void Make(ProjectBuildTests.Bed bed, Span<StringView> arguments)
 	{
-		let project = Argument(arguments, "project");
-		let editor = project.EndsWith(ProjectBuild.cEditorSuffix);
-		let path = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", editor, Argument(arguments, "config"), .. scope .());
+		let entry = EntryOf(Argument(arguments, "project"));
+		let path = ProjectBuild.EntryPath(bed.ProjectDir, "NativeGame", entry, Argument(arguments, "config"), .. scope .());
 		ProjectBuildTests.Bed.Write(bed.ProjectDir, path.Substring(bed.ProjectDir.Length + 1), "#!built\n");
 	}
 
@@ -124,6 +137,101 @@ class ProjectBuildServiceTests
 		defer { ClearAndDeleteItems!(made); }
 		job.GetExecutables(made);
 		Test.Assert(made.Count == 3);
+	}
+
+	/// A fake Beef install in the bed whose BeefSettings.toml names `emsdk` (under the bed's
+	/// root) as Emscripten; its BeefBuild's path.
+	private static void FakeBeefWithEmscripten(ProjectBuildTests.Bed bed, StringView emsdk, String outBeefBuild)
+	{
+		ProjectBuildTests.FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", outBeefBuild);
+		let path = PathJoin(bed.Root, emsdk, .. scope .());
+		ProjectBuildTests.Bed.Write(bed.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Wasm]\nEmscriptenPath = '{path}'\n");
+	}
+
+	/// A Player job for wasm32 (or the presets' Web) is one run of <Game>PlayerWeb over the web
+	/// player's own workspace for wasm32, Emscripten found in BeefBuild's settings first; what it
+	/// made is its page. A Player job for this host is <Game>Player over Code/.
+	[Test]
+	public static void AWebPlayerBuildsInItsOwnWorkspaceForWasm()
+	{
+		let bed = scope ProjectBuildTests.Bed();
+		let beefBuild = FakeBeefWithEmscripten(bed, "emsdk", .. scope .());
+		ProjectBuildTests.FakeEmscripten(bed, "emsdk", .. scope .());
+		let home = PathJoin(bed.Root, "home", .. scope .());
+		let runs = scope List<String>();
+		defer { ClearAndDeleteItems!(runs); }
+		let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
+			{
+				Test.Assert(executable == beefBuild);
+				runs.Add(new $"{Argument(arguments, "workspace")} {Argument(arguments, "project")} {Argument(arguments, "config")} {Argument(arguments, "platform")}");
+				Make(bed, arguments);
+				return .Ok(0);
+			}, beefBuild, home);
+
+		let job = MakeJob(bed, .Player, null, "ShippingRelease", "wasm32");
+		defer job.ReleaseRef();
+		Test.Assert((job.StepCount == 1) && (job.StepEntry(0) == .PlayerWeb) && (job.StepConfig(0) == "ShippingRelease") && (job.StepPlatform(0) == "wasm32"));
+		Test.Assert(service.Run(job) case .Ok, job.GetError(.. scope .()));
+		Test.Assert(runs.Count == 1, scope String()..AppendF("{} runs", runs.Count));
+		let webWorkspace = ProjectBuild.WebWorkspaceDirectory(bed.ProjectDir, .. scope .());
+		Test.Assert(runs[0] == scope $"{webWorkspace} NativeGamePlayerWeb ShippingRelease wasm32", runs[0]);
+		let made = scope List<String>();
+		defer { ClearAndDeleteItems!(made); }
+		job.GetExecutables(made);
+		let page = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "ShippingRelease", .. scope .());
+		Test.Assert((made.Count == 1) && (made[0] == page), "the page");
+
+		let byTag = MakeJob(bed, .Player, null, "Debug", BuildLayout.cWebPlatform);
+		defer byTag.ReleaseRef();
+		Test.Assert((byTag.StepEntry(0) == .PlayerWeb) && (byTag.StepPlatform(0) == "wasm32"), "the presets' Web is wasm32");
+
+		let host = MakeJob(bed, .Player, null, "Release");
+		defer host.ReleaseRef();
+		Test.Assert((host.StepEntry(0) == .Player) && (host.StepPlatform(0) == BuildLayout.HostPlatformName));
+		Test.Assert(service.Run(host) case .Ok, host.GetError(.. scope .()));
+		Test.Assert(runs.Count == 2, scope String()..AppendF("{} runs", runs.Count));
+		let workspace = ProjectBuild.Directory(bed.ProjectDir, .. scope .());
+		Test.Assert(runs[1] == scope $"{workspace} NativeGamePlayer Release {BuildLayout.HostPlatformName}", runs[1]);
+	}
+
+	/// A web job is refused before BeefBuild runs or anything is written when BeefBuild's settings
+	/// name no Emscripten, or one without emcc, saying what to set; a job for another host's
+	/// platform is refused too.
+	[Test]
+	public static void AWebBuildNeedsEmscriptenFirst()
+	{
+		let bed = scope ProjectBuildTests.Bed();
+		let beefBuild = FakeBeefWithEmscripten(bed, "emsdk", .. scope .());
+		let home = PathJoin(bed.Root, "home", .. scope .());
+		let service = scope ProjectBuildService(new (executable, arguments, onLine, cancelled) =>
+			{
+				Test.FatalError("nothing runs");
+				return .Ok(0);
+			}, beefBuild, home);
+		{
+			let job = MakeJob(bed, .Player, null, "ShippingRelease", "wasm32");
+			defer job.ReleaseRef();
+			Test.Assert(service.Run(job) case .Err(.NotFound));
+			let error = job.GetError(.. scope .());
+			Test.Assert(error.Contains("has no upstream/emscripten/emcc") && (job.State == .Failed), error);
+		}
+		DeleteFile(PathJoin(bed.Root, "beef/IDE/dist/BeefSettings.toml", .. scope .()));
+		{
+			let job = MakeJob(bed, .Player, null, "Debug", "wasm32");
+			defer job.ReleaseRef();
+			Test.Assert(service.Run(job) case .Err(.NotFound));
+			let error = job.GetError(.. scope .());
+			Test.Assert(error.StartsWith("a web build needs Emscripten") && error.Contains("EmscriptenPath"), error);
+		}
+		{
+			StringView otherHost = (BuildLayout.HostPlatformName == "Win64") ? "Linux64" : "Win64";
+			let job = MakeJob(bed, .Player, null, "Debug", otherHost);
+			defer job.ReleaseRef();
+			Test.Assert(service.Run(job) case .Err(.NotSupported));
+			let error = job.GetError(.. scope .());
+			Test.Assert(error.Contains(scope $"this host is {BuildLayout.HostPlatformName}"), error);
+		}
+		Test.Assert(!FileExists(PathJoin(bed.ProjectDir, "Code/BeefSpace.toml", .. scope .())), "nothing generated");
 	}
 
 	/// A failed build's lines give its diagnostics, read as they came; the job fails, its error
