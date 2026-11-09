@@ -17,6 +17,15 @@ namespace Sedulous.Editor.Mcp;
 /// export_presets.xml, else the synthesized host preset.
 static class ProjectExportTool
 {
+	/// How long the editor host lets an export run by default, and at most, in seconds: past the
+	/// host's own 600 s step, since a project's first shipping or web build compiles the engine
+	/// before the cook.
+	public const double cDefaultTimeoutSeconds = 1800;
+	public const double cMaxTimeoutSeconds = 7200;
+	/// How many of the player's build diagnostics the answer lists, errors first; build_status
+	/// has the whole build.
+	public const int cBuildDiagnostics = 10;
+
 	private class Context
 	{
 		public ProjectSession Session;
@@ -33,9 +42,11 @@ static class ProjectExportTool
 		schema.Str("preset", "preset name (default: the project's first preset)");
 		schema.Str("out", "output root directory (default: <project>/Dist)");
 		schema.Boolean("rebuild", "force a full re-cook first (default incremental)");
+		schema.Boolean("build", "build the player with BeefBuild (default true); false ships the player the last build of the preset's platform and config left, refused when there is none");
+		schema.Number("timeoutSeconds", "in the editor, how long the export may run before the call answers with an error (default 1800, at most 7200); the export goes on");
 		server.RegisterTool("project_export",
 			"""
-			Export the open project into a shippable dist: cook everything, stage the scenes, pack the content, cook the shader pack, and stage the preset's player template - the same single entry point the editor's Export menu and the export CLI use, so the result is identical. Long-running (a full cook may run). Presets come from the project's export_presets.xml (default: the first; no file = a synthesized host-platform preset). Returns the output directory and the cook/stage/pack counts; run project_health first to catch breakage before a long export.
+			Export the open project into a shippable dist: build the game's own player for the preset's platform and config with BeefBuild (incremental; a project's first shipping or web build compiles the engine and takes minutes), cook everything, stage the scenes, pack the content and cook the shader pack - the same single entry point the editor's Export menu and the export CLI use, so the result is identical. Long-running. Presets come from the project's export_presets.xml (default: the first; no file = a synthesized host-platform preset); export_presets says which build here. REFUSED for another host's platform (a Win64 player builds on Windows), a web preset without Emscripten, a plugin that cannot ship, and a player that does not compile (the refusal quotes its first errors; build_status has the whole build). Returns the output directory, the cook/stage/pack counts, `player` (what was built) and `build` (built: false when nothing compiled; else the build as project_build answers it, at most 10 diagnostics); run project_health first to catch breakage before a long export.
 			""",
 			schema.Build(), .Rebuilds,
 			new (call, arguments, outResult, outError) => Export(context, call, arguments, outResult, outError),
@@ -78,6 +89,8 @@ static class ProjectExportTool
 		request.Preset = preset;
 		request.OutRoot = outRoot;
 		request.Rebuild = McpTools.ArgBool(arguments, "rebuild");
+		request.Build = McpTools.ArgBool(arguments, "build", true);
+		request.TimeoutSeconds = Math.Clamp(McpTools.ArgNumber(arguments, "timeoutSeconds", cDefaultTimeoutSeconds), 1.0, cMaxTimeoutSeconds);
 		let result = scope ExportResult();
 		switch (context.Operations.Export(call, request, result, outError))
 		{
@@ -94,8 +107,13 @@ static class ProjectExportTool
 		outResult.Set("filesPacked", JsonValue.MakeNumber((double)result.Content.FilesPacked));
 		outResult.Set("filesStaged", JsonValue.MakeNumber((double)result.FilesStaged));
 		outResult.Set("player", JsonValue.MakeString(result.PlayerReason));
-		if (!result.EngineVersionWarning.IsEmpty)
-			outResult.Set("warning", JsonValue.MakeString(result.EngineVersionWarning));
+		// The player's build as project_build answers one, or built: false when nothing compiled
+		// it (the last build reused).
+		let build = JsonValue.MakeObject();
+		build.Set("built", JsonValue.MakeBool(result.PlayerJob != null));
+		if (result.PlayerJob != null)
+			BuildJobJson.Write(result.PlayerJob, build, cBuildDiagnostics);
+		outResult.Set("build", build);
 		if (result.Pruning.Pruned)
 		{
 			let pruning = JsonValue.MakeObject();

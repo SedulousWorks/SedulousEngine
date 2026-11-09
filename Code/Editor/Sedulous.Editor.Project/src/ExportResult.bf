@@ -19,6 +19,20 @@ class ExportResult
 	/// Why the export stopped short (the project's plugins, another host's platform, the player's
 	/// build, a failing export hook); empty when it did not.
 	public String Refusal = new .() ~ delete _;
+	/// The build job that compiled the player (PlayerBuild.Job), one reference of its own; null
+	/// when nothing compiled it (the last build reused, a stand-in staged) or the export stopped
+	/// before its player was built.
+	public BuildJob PlayerJob => mPlayerJob;
+	private BuildJob mPlayerJob ~ _?.ReleaseRef();
+
+	/// `job` as the one that compiled the player (a reference taken; null: none), the last let go.
+	public void SetPlayerJob(BuildJob job)
+	{
+		if (job != null)
+			job.AddRef();
+		mPlayerJob?.ReleaseRef();
+		mPlayerJob = job;
+	}
 
 	public void CopyTo(ExportResult other)
 	{
@@ -29,6 +43,7 @@ class ExportResult
 		other.OutputDir.Set(OutputDir);
 		other.EngineVersionWarning.Set(EngineVersionWarning);
 		Pruning.CopyTo(other.Pruning);
+		other.SetPlayerJob(mPlayerJob);
 	}
 }
 

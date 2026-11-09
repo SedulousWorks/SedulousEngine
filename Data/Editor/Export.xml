@@ -1,6 +1,6 @@
 <!--
   Export: the project's export presets on the left, and the selected one on the right, under a card
-  naming the template it exports with, with its settings on the property grid. Code fills the list,
+  naming the player its export builds, with its settings on the property grid. Code fills the list,
   the card and the grid.
 -->
 <Panel class="dialog-body export">

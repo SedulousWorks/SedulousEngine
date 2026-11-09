@@ -52,8 +52,6 @@ static class EditorBuildTools
 	/// first build compiles the engine too.
 	public const double cDefaultTimeoutSeconds = 900;
 	public const double cMaxTimeoutSeconds = 3600;
-	/// How many diagnostics a result lists, errors first; the counts say how many there are.
-	public const int cMaxDiagnostics = 50;
 	/// How many of BeefBuild's last lines build_status gives by default, and at most.
 	public const int cDefaultTail = 40;
 	public const int cMaxTail = 400;
@@ -218,7 +216,7 @@ static class EditorBuildTools
 				{
 					defer latest.ReleaseRef();
 					let last = JsonValue.MakeObject();
-					JobJson(latest, last);
+					BuildJobJson.Write(latest, last);
 					let lines = scope List<String>();
 					defer { ClearAndDeleteItems!(lines); }
 					latest.GetOutput(lines, tail);
@@ -251,7 +249,7 @@ static class EditorBuildTools
 				defer latest.ReleaseRef();
 				if (latest.IsEnded)
 				{
-					outError.AppendF("no build is running (build {} has ended {})", latest.Id, StateName(latest.State));
+					outError.AppendF("no build is running (build {} has ended {})", latest.Id, BuildJobJson.StateName(latest.State));
 					return false;
 				}
 				latest.Cancel();
@@ -297,8 +295,8 @@ static class EditorBuildTools
 			{
 				defer job.ReleaseRef();
 				outResult.Set("id", JsonValue.MakeNumber(job.Id));
-				outResult.Set("target", JsonValue.MakeString(TargetName(job.Target)));
-				outResult.Set("state", JsonValue.MakeString(StateName(job.State)));
+				outResult.Set("target", JsonValue.MakeString(BuildJobJson.TargetName(job.Target)));
+				outResult.Set("state", JsonValue.MakeString(BuildJobJson.StateName(job.State)));
 				outResult.Set("note", JsonValue.MakeString("build_status follows it; build_cancel stops it"));
 				return .Answered;
 			}
@@ -312,7 +310,7 @@ static class EditorBuildTools
 		let waited = (double)(System.Diagnostics.Stopwatch.GetTimestamp() - wait.StartedMicros) / 1000000.0;
 		if (!ended && (waited < wait.TimeoutSeconds))
 			return .NotFinished;
-		JobJson(wait.Job, outResult);
+		BuildJobJson.Write(wait.Job, outResult);
 		if (!ended)
 		{
 			outResult.Set("timedOut", JsonValue.MakeBool(true));
@@ -400,7 +398,7 @@ static class EditorBuildTools
 		defer latest.ReleaseRef();
 		if (latest.IsEnded)
 			return false;
-		outError.AppendF("build {} ({}) is running", latest.Id, TargetName(latest.Target));
+		outError.AppendF("build {} ({}) is running", latest.Id, BuildJobJson.TargetName(latest.Target));
 		let project = scope String();
 		let config = scope String();
 		latest.GetStep(project, config);
@@ -408,152 +406,5 @@ static class EditorBuildTools
 			outError.AppendF(", on {} ({})", project, config);
 		outError.Append(": build_status follows it, build_cancel stops it");
 		return true;
-	}
-
-	/// `job` as the tools answer it, into `outResult`.
-	private static void JobJson(BuildJob job, JsonValue outResult)
-	{
-		let state = job.State;
-		outResult.Set("id", JsonValue.MakeNumber(job.Id));
-		outResult.Set("target", JsonValue.MakeString(TargetName(job.Target)));
-		outResult.Set("state", JsonValue.MakeString(StateName(state)));
-		let game = ProjectBuild.GameName(job.Settings.Name, .. scope .());
-		let steps = JsonValue.MakeArray();
-		for (int i < job.StepCount)
-			steps.Add(StepJson(ProjectBuild.EntryName(game, job.StepEntry(i), .. scope .()), job.StepConfig(i)));
-		outResult.Set("steps", steps);
-		let project = scope String();
-		let config = scope String();
-		job.GetStep(project, config);
-		outResult.Set("step", project.IsEmpty ? JsonValue.MakeNull() : StepJson(project, config));
-		let error = job.GetError(.. scope .());
-		if (!error.IsEmpty)
-			outResult.Set("error", JsonValue.MakeString(error));
-		outResult.Set("durationMs", JsonValue.MakeNumber((double)job.DurationMs));
-		DiagnosticsJson(job, outResult);
-		let made = scope List<String>();
-		defer { ClearAndDeleteItems!(made); }
-		job.GetExecutables(made);
-		let executables = JsonValue.MakeArray();
-		for (let path in made)
-			executables.Add(JsonValue.MakeString(path));
-		outResult.Set("executables", executables);
-	}
-
-	private static JsonValue StepJson(StringView project, StringView config)
-	{
-		let step = JsonValue.MakeObject();
-		step.Set("project", JsonValue.MakeString(project));
-		step.Set("config", JsonValue.MakeString(config));
-		return step;
-	}
-
-	/// The job's counts and its diagnostics, errors first, at most cMaxDiagnostics, each file
-	/// relative to the project when inside it.
-	private static void DiagnosticsJson(BuildJob job, JsonValue outResult)
-	{
-		let diagnostics = scope List<BuildDiagnostic>();
-		defer { ClearAndDeleteItems!(diagnostics); }
-		job.GetDiagnostics(diagnostics);
-		let projectDir = Absolute(job.ProjectDirectory, .. scope .());
-		int errors = 0;
-		for (let diagnostic in diagnostics)
-		{
-			if (diagnostic.Severity == .Error)
-				errors++;
-		}
-		let list = JsonValue.MakeArray();
-		for (let severity in BuildSeverity[2](.Error, .Warning))
-		{
-			for (let diagnostic in diagnostics)
-			{
-				if (list.Count >= cMaxDiagnostics)
-					break;
-				if (diagnostic.Severity == severity)
-					list.Add(DiagnosticJson(diagnostic, projectDir));
-			}
-		}
-		outResult.Set("errorCount", JsonValue.MakeNumber(errors));
-		outResult.Set("warningCount", JsonValue.MakeNumber(diagnostics.Count - errors));
-		outResult.Set("diagnostics", list);
-		outResult.Set("diagnosticsOmitted", JsonValue.MakeNumber(diagnostics.Count - list.Count));
-	}
-
-	private static JsonValue DiagnosticJson(BuildDiagnostic diagnostic, StringView projectDir)
-	{
-		let json = JsonValue.MakeObject();
-		json.Set("severity", JsonValue.MakeString((diagnostic.Severity == .Error) ? "error" : "warning"));
-		if (diagnostic.HasPlace)
-		{
-			json.Set("file", JsonValue.MakeString(RelativeFile(diagnostic.File, projectDir, .. scope .())));
-			json.Set("line", JsonValue.MakeNumber(diagnostic.Line));
-			json.Set("column", JsonValue.MakeNumber(diagnostic.Column));
-		}
-		if (!diagnostic.Code.IsEmpty)
-			json.Set("code", JsonValue.MakeString(diagnostic.Code));
-		json.Set("message", JsonValue.MakeString(diagnostic.Message));
-		if (!diagnostic.Notes.IsEmpty)
-		{
-			let notes = JsonValue.MakeArray();
-			for (let note in diagnostic.Notes)
-			{
-				let noteJson = JsonValue.MakeObject();
-				noteJson.Set("message", JsonValue.MakeString(note.Message));
-				if (!note.File.IsEmpty)
-				{
-					noteJson.Set("file", JsonValue.MakeString(RelativeFile(note.File, projectDir, .. scope .())));
-					noteJson.Set("line", JsonValue.MakeNumber(note.Line));
-					noteJson.Set("column", JsonValue.MakeNumber(note.Column));
-				}
-				notes.Add(noteJson);
-			}
-			json.Set("notes", notes);
-		}
-		return json;
-	}
-
-	/// `file` relative to `projectDir` when it lies inside it, as it is otherwise (an engine
-	/// file BeefBuild compiled beside the game's).
-	public static void RelativeFile(StringView file, StringView projectDir, String outPath)
-	{
-		if (!projectDir.IsEmpty && (file.Length > projectDir.Length + 1) && file.StartsWith(projectDir) && PathIsSeparator(file[projectDir.Length]))
-			outPath.Set(file.Substring(projectDir.Length + 1));
-		else
-			outPath.Set(file);
-	}
-
-	/// `path` against the current directory when relative, less its trailing separators: the
-	/// form BeefBuild names files in.
-	private static void Absolute(StringView path, String outPath)
-	{
-		if (path.IsEmpty || PathIsAbsolute(path))
-			outPath.Set(path);
-		else
-			PathJoin(GetCurrentDirectory(.. scope .()), path, outPath);
-		while ((outPath.Length > 1) && PathIsSeparator(outPath[outPath.Length - 1]))
-			outPath.RemoveFromEnd(1);
-	}
-
-	public static StringView TargetName(BuildTarget target)
-	{
-		switch (target)
-		{
-		case .Editor: return "editor";
-		case .All: return "all";
-		default: return "player";
-		}
-	}
-
-	public static StringView StateName(BuildJobState state)
-	{
-		switch (state)
-		{
-		case .Queued: return "queued";
-		case .Generating: return "generating";
-		case .Building: return "building";
-		case .Succeeded: return "succeeded";
-		case .Failed: return "failed";
-		default: return "cancelled";
-		}
 	}
 }

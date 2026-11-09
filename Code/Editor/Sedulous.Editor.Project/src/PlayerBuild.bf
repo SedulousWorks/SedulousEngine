@@ -23,6 +23,11 @@ class PlayerBuild
 	public List<String> Symbols = new .() ~ DeleteContainerAndItems!(_);
 	/// What was built, for people: "SkyHopperPlayer, ShippingRelease, Linux64".
 	public String Description = new .() ~ delete _;
+	/// The build job that compiled it, one reference of its own, for what reports the build (its
+	/// state, time and diagnostics); null when nothing compiled it (the last build reused, or a
+	/// stand-in staged).
+	public BuildJob Job => mJob;
+	private BuildJob mJob ~ _?.ReleaseRef();
 
 	/// Back to nothing built.
 	public void Clear()
@@ -32,6 +37,16 @@ class PlayerBuild
 		ClearAndDeleteItems!(Files);
 		ClearAndDeleteItems!(Symbols);
 		Description.Clear();
+		SetJob(null);
+	}
+
+	/// `job` as the one that compiled it (a reference taken; null: none), the last let go.
+	public void SetJob(BuildJob job)
+	{
+		if (job != null)
+			job.AddRef();
+		mJob?.ReleaseRef();
+		mJob = job;
 	}
 
 	/// `other` made the same as this.
@@ -45,6 +60,7 @@ class PlayerBuild
 		for (let symbol in Symbols)
 			other.Symbols.Add(new .(symbol));
 		other.Description.Set(Description);
+		other.SetJob(mJob);
 	}
 }
 
