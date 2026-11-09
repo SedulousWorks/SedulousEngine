@@ -7,7 +7,7 @@
 		<array name="presets" count="1">
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
-				<u32 name="version">1</u32>
+				<u32 name="version">2</u32>
 			</array>
 			<object>
 				<string name="name">Linux64 Desktop</string>
@@ -31,6 +31,7 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<u8 name="builder">0</u8>
 			</object>
 		</array>
 	</object>

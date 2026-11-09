@@ -7,12 +7,12 @@
 		<array name="presets" count="4">
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
-				<u32 name="version">1</u32>
+				<u32 name="version">2</u32>
 			</array>
 			<object>
 				<string name="name">Linux64 Desktop</string>
 				<string name="platform">Linux64</string>
-				<string name="templateId">sedulous-steamdeck-release-0.1.0</string>
+				<string name="templateId"/>
 				<string name="playerName">SkyHopper</string>
 				<string name="outputSubdir">Linux64</string>
 				<array name="additionalFiles" count="1">
@@ -33,15 +33,16 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<u8 name="builder">0</u8>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
-				<u32 name="version">1</u32>
+				<u32 name="version">2</u32>
 			</array>
 			<object>
 				<string name="name">Steam Deck</string>
 				<string name="platform">Linux64</string>
-				<string name="templateId">sedulous-steamdeck-release-0.1.0</string>
+				<string name="templateId"/>
 				<string name="playerName">SkyHopper</string>
 				<string name="outputSubdir">SteamDeck</string>
 				<array name="additionalFiles" count="1">
@@ -62,15 +63,16 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<u8 name="builder">1</u8>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
-				<u32 name="version">1</u32>
+				<u32 name="version">2</u32>
 			</array>
 			<object>
 				<string name="name">Web</string>
 				<string name="platform">Web</string>
-				<string name="templateId">sedulous-web-release-0.1.0</string>
+				<string name="templateId"/>
 				<string name="playerName">index</string>
 				<string name="outputSubdir">Web</string>
 				<array name="additionalFiles" count="1">
@@ -91,15 +93,16 @@
 				<bool name="overridesOrientation">true</bool>
 				<u8 name="orientation">1</u8>
 				<bool name="includeShaderSource">false</bool>
+				<u8 name="builder">0</u8>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
-				<u32 name="version">1</u32>
+				<u32 name="version">2</u32>
 			</array>
 			<object>
 				<string name="name">Windows Desktop</string>
 				<string name="platform">Win64</string>
-				<string name="templateId">sedulous-win64-release-0.1.0</string>
+				<string name="templateId"/>
 				<string name="playerName">SkyHopper</string>
 				<string name="outputSubdir">Windows64</string>
 				<array name="additionalFiles" count="1">
@@ -120,6 +123,7 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<u8 name="builder">0</u8>
 			</object>
 		</array>
 	</object>
