@@ -1,27 +1,25 @@
 # The web
 
-A game exports for the browser like any other target: a preset with `platform` `Web` on a web
-template. The player is a page that needs WebGPU (a recent Chrome or Edge on a computer).
+A game exports for the browser like any other target: a preset with `platform` `Web`. The export
+builds the game's own web player (its `<Game>PlayerWeb`, in the project's generated web workspace
+`Code/.generated/Web`) for the preset's config, with the game's code and the plugins it enables on
+the web, and packages it. The player is a page that needs WebGPU (a recent Chrome or Edge on a
+computer).
 
-## The web template
+## What a web build needs
 
-A web template is the browser player's build, packaged. From a checkout's `Code/`, with
-emscripten's environment set (`source <emsdk>/emsdk_env.sh`):
+BeefBuild builds for wasm32 through Emscripten, which it finds by `EmscriptenPath` under `[Wasm]`
+in its own `BeefSettings.toml`: beside BeefBuild for a build from source, under
+`~/.config/beeflang/` for a packaged one. The path is the emsdk folder, holding
+`upstream/emscripten/emcc`; Beef's wasm runtime must have been built with it once. An export whose
+Emscripten is not found is refused before anything builds, saying what to set (`export_presets`
+says so per preset, as `buildable` and `why`).
 
-```
-BeefBuild -proddir=. -config=ShippingRelease -platform=wasm32 -project=Sedulous.Engine.Player.Web
-Sedulous.Tools.Export --template create Engine/Sedulous.Engine.Player.Web/dist --install
-```
-
-The build writes the page, its script, its module and `serve.py` to the project's `dist/`; the
-second line installs them as `sedulous-web-release-<engine version>`, the template a game ships
-on: ShippingRelease is Release without the profiler. A player rebuilt after an engine change
-reaches a game only once its template is created and installed again.
-
-To profile a game in the browser, build the player with `-config=Release` instead: it carries
-the profiler, its overlay and its capture, writes to `dist-profile/`, and installs from there as
-`sedulous-web-profile-<engine version>`, for a preset to name in place of the release one.
-On a page from the profile template, `?profile-overlay` in the address (for example
+The build lands in `Code/.generated/Web/build/<Config>_wasm32/<Game>PlayerWeb/`, a folder per
+config; a project's first web build compiles the engine for wasm32 and takes minutes, the rest are
+incremental. A preset's `Release` is the shipping build (ShippingRelease, Release without the
+profiler); `Profile` builds Release itself, with the profiler, its overlay and its capture. On a
+page of a Profile build, `?profile-overlay` in the address (for example
 `http://localhost:8000/?profile-overlay`) shows the profiler overlay from the start, as the
 desktop player's `--profile-overlay` does; F3 toggles it either way.
 

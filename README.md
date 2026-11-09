@@ -58,9 +58,9 @@ This is the second iteration of the engine. The previous one continues on the `v
   profiler, and a page per asset type.
 - **Asset pipeline:** importers for glTF, FBX, OBJ, images, audio and fonts; cooks per asset
   type; BC7 and ASTC texture compression.
-- **Export** to the desktop player, the web (WebAssembly with WebGPU) and the Steam Deck, from
-  per-target presets and player templates. Headless tools can run all of it from the command
-  line.
+- **Export** to the desktop, the web (WebAssembly with WebGPU) and the Steam Deck, from
+  per-target presets: an export builds the game's own player with its code for the preset's
+  platform and config. Headless tools can run all of it from the command line.
 - **Agent tooling:** an MCP host (`Sedulous.Tools.Mcp`) exposes the engine's reflection, the
   script API and project operations (import, cook, scene validation, export, health checks). The
   editor serves the same tools over HTTP for its open project, plus its pages and play in editor,
@@ -181,8 +181,8 @@ flows that cross collections.
 - **Linux and Windows:** the development platforms, on Vulkan and D3D12; the editor and the
   player run on both. WebGPU also runs on the desktop through wgpu-native.
 - **Web:** games export to the browser as WebAssembly with WebGPU.
-- **Steam Deck:** games export through a Deck player template, built in a container by
-  `Code/Tools/SteamDeck/build-steamdeck.sh`.
+- **Steam Deck:** a Steam Deck preset builds the game's player in a container
+  (`Code/Tools/SteamDeck/build-steamdeck.sh`, glibc below SteamOS's), the portable Linux build.
 - **macOS:** no backend yet.
 
 ## Dependencies
