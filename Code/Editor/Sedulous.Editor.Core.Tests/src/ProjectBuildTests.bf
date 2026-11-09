@@ -276,6 +276,37 @@ class ProjectBuildTests
 		Test.Assert(program.Contains("=> Sedulous.Engine.Player.WebMain.WebPlayerMain.Run(args);"), program);
 	}
 
+	/// A workspace generated for a build elsewhere names the SDK as that build sees it (a
+	/// container's mount) wherever it is written, in both registry files and the entries' configs,
+	/// while the SDK is read here: a written root that is no folder on this machine generates.
+	[Test]
+	public static void AWrittenSdkRootIsNamedWhileTheSdkIsReadHere()
+	{
+		let bed = scope Bed();
+		let written = "/container/sdk";
+		Test.Assert(!DirectoryExists(written));
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error, written) case .Ok, error);
+
+		let config = bed.Read(ProjectBuild.cConfigFile, .. scope .());
+		Test.Assert(config == ProjectBuild.ConfigText(written, .. scope .()), config);
+		Test.Assert(config.Contains("\"/container/sdk/Code/Foundation\"") && !config.Contains(bed.Sdk), config);
+		let webConfig = bed.Read(scope $"{ProjectBuild.cGeneratedDir}/{ProjectBuild.cWebWorkspaceDir}/{ProjectBuild.cConfigFile}", .. scope .());
+		Test.Assert(webConfig == config, webConfig);
+
+		let editor = bed.Read(".generated/NativeGameEditor/BeefProj.toml", .. scope .());
+		Test.Assert(editor.Contains("CopyToTarget(\\\"/container/sdk/Bin/Naga/bin/linux-x86_64/naga\\\")"), editor);
+		let web = bed.Read(".generated/NativeGamePlayerWeb/BeefProj.toml", .. scope .());
+		Test.Assert(web.Contains(scope $"CopyToTarget(\\\"/container/sdk/{ProjectBuild.cStockWebDir}/serve.py\\\")"), web);
+		let tools = bed.Read(".generated/NativeGameTools/BeefProj.toml", .. scope .());
+		for (let text in StringView[3](editor, web, tools))
+			Test.Assert(!text.Contains(bed.Sdk), "nothing names the SDK read here");
+
+		// None written: the SDK read is the one named, as before.
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+		Test.Assert(bed.Read(ProjectBuild.cConfigFile, .. scope .()) == ProjectBuild.ConfigText(bed.Sdk, .. scope .()));
+	}
+
 	/// A plugin manifest of `id` in `dir`, listing parts of `kinds` and supporting `platforms`.
 	private static void WriteManifest(StringView dir, StringView id, Span<StringView> kinds, Span<StringView> platforms)
 	{

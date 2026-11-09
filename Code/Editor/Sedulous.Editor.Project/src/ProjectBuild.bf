@@ -505,8 +505,15 @@ static class ProjectBuild
 	/// with no package of its own gets the same Code/, its entries linking no part: its player is
 	/// the stock one under the game's name, with the engine plugins it enables. Refused, with why
 	/// in `outError`, for a problem with a package or an SDK it cannot read.
-	public static Result<void, ErrorCode> Generate(StringView projectDir, ProjectSettings settings, StringView sdk, String outError)
+	///
+	/// `writtenSdk` (none: `sdk`) is the SDK's path as the build will see it, which the registry
+	/// file and the entries' configs name, while what is read of the SDK (its stock projects, its
+	/// plugins' manifests) is read from `sdk`: a workspace generated here for a build elsewhere
+	/// (a container that mounts a copy of the SDK at another path) reaches the SDK there.
+	public static Result<void, ErrorCode> Generate(StringView projectDir, ProjectSettings settings, StringView sdk, String outError,
+		StringView writtenSdk = default)
 	{
+		let written = writtenSdk.IsEmpty ? sdk : writtenSdk;
 		let packages = scope List<ProjectPackage>();
 		defer { ClearAndDeleteItems!(packages); }
 		let problems = scope List<String>();
@@ -525,10 +532,10 @@ static class ProjectBuild
 		let editorConfigs = scope String();
 		let webConfigs = scope String();
 		let toolsConfigs = scope String();
-		let webDir = PathJoin(sdk, cStockWebDir, .. scope .());
-		if ((ReadStockConfigs(sdk, cStockEditorProject, "$(WorkspaceDir)/..", sdk, "", editorConfigs, outError) case .Err)
+		let webDir = PathJoin(written, cStockWebDir, .. scope .());
+		if ((ReadStockConfigs(sdk, cStockEditorProject, "$(WorkspaceDir)/..", written, "", editorConfigs, outError) case .Err)
 			|| (ReadStockConfigs(sdk, cStockWebProject, "$(ProjectDir)", webDir, game, webConfigs, outError) case .Err)
-			|| (ReadStockConfigs(sdk, cStockToolsProject, "$(WorkspaceDir)/..", sdk, "", toolsConfigs, outError) case .Err))
+			|| (ReadStockConfigs(sdk, cStockToolsProject, "$(WorkspaceDir)/..", written, "", toolsConfigs, outError) case .Err))
 			return .Err(.NotFound);
 
 		// The players link the Engine part of each engine plugin the project enables on their
@@ -545,13 +552,13 @@ static class ProjectBuild
 		let workspace = Directory(projectDir, .. scope .());
 		let generated = PathJoin(workspace, cGeneratedDir, .. scope .());
 		if ((WriteWorkspace(projectDir, game, packages) case .Err)
-			|| (WriteIfChanged(PathJoin(workspace, cConfigFile, .. scope .()), ConfigText(sdk, .. scope .())) case .Err)
+			|| (WriteIfChanged(PathJoin(workspace, cConfigFile, .. scope .()), ConfigText(written, .. scope .())) case .Err)
 			|| (WriteIgnore(workspace) case .Err)
 			|| (WriteEntry(generated, game, .Editor, packages, none, editorConfigs) case .Err)
 			|| (WriteEntry(generated, game, .Player, packages, hostPlugins, "") case .Err)
 			|| (WriteEntry(generated, game, .PlayerWeb, packages, webPlugins, webConfigs) case .Err)
 			|| (WriteEntry(generated, game, .Tools, packages, none, toolsConfigs) case .Err)
-			|| (WriteWebWorkspace(projectDir, game, packages, sdk) case .Err))
+			|| (WriteWebWorkspace(projectDir, game, packages, written) case .Err))
 		{
 			outError.Set(scope $"could not write the project's workspace in '{workspace}'");
 			return .Err(.Internal);

@@ -180,8 +180,8 @@ class ProjectPlayerBuilder : IPlayerBuilder
 	}
 
 	/// The job's error, and the first of its errors (cRefusalErrors) each as
-	/// "file:line:column: message", into `outRefusal`.
-	private static void Refusal(BuildJob job, String outRefusal)
+	/// "file:line:column: message", into `outRefusal`: a failed build's refusal, whatever ran it.
+	public static void Refusal(BuildJob job, String outRefusal)
 	{
 		outRefusal.Set(job.GetError(.. scope .()));
 		let diagnostics = scope List<BuildDiagnostic>();

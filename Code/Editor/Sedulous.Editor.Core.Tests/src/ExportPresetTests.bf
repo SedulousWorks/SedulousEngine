@@ -171,7 +171,7 @@ static class ExportPresetTests
 				Test.Assert((least == 1) && (most == 16384));
 			}
 		}
-		Test.Assert(keys == "name,platform,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource", keys);
+		Test.Assert(keys == "name,platform,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,builder", keys);
 	}
 
 	[Test]
