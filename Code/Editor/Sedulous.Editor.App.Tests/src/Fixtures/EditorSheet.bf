@@ -25,7 +25,7 @@ class EditorSheet
 		let data = scope String();
 		Test.Assert(EditorSplashTests.DataRoot(data));
 		mDataRoot.Set(data);
-		Resources = new .(data);
+		Resources = new .(data, EditorWindow.cEditorFolder); // the editor's folder alone, as the window watches
 		let look = scope EditorLook();
 		look.Density.Set("default");
 		let text = EditorWindow.SheetFor(Resources, look, .. scope String());

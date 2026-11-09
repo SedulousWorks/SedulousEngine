@@ -130,6 +130,9 @@ class EditorWindow
 
 	/// The frame's markup and the editor's sheet, under the data root.
 	public const String cFramePath = "Editor/Shell.xml";
+	/// The editor's own folder under the data root, the one its resources watch for changes: the
+	/// data root also holds the sample projects, whose files a sweep of the whole would walk.
+	public const String cEditorFolder = "Editor";
 	public const String cSheetPath = "Editor/editor.css";
 	/// The user's theme overrides: the folder under their data folder, and the file in it.
 	public const String cThemeFolder = "theme";
@@ -205,7 +208,7 @@ class EditorWindow
 		HarfBuzzShaping.Install();
 		BidiAlgorithm.Install();
 		mFonts = new TrueTypeFontService();
-		mResources = new EditorResources(dataRoot, "Editor");
+		mResources = new EditorResources(dataRoot, cEditorFolder);
 		if (!themeFolder.IsEmpty)
 		{
 			// A place for the file the user writes (the data folder first, should it be new).

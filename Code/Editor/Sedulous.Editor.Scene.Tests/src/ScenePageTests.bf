@@ -823,7 +823,7 @@ class ScenePageTests
 		{
 			let data = scope String();
 			Test.Assert(DataRoot(data));
-			mResources = new .(data);
+			mResources = new .(data, EditorWindow.cEditorFolder); // the editor's folder alone, as the window watches
 			let look = scope EditorLook();
 			look.Density.Set("default");
 			let text = EditorWindow.SheetFor(mResources, look, .. scope String());
