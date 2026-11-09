@@ -6,6 +6,20 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
 
+/// Where a preset's player is built. Its cases are reflected: a settings editor offers them by
+/// name.
+[Reflect(.StaticFields)]
+enum ExportBuilder
+{
+	/// On this machine, with its BeefBuild: the player needs this system's libraries (its glibc
+	/// on Linux).
+	case Host;
+	/// In the Steam Deck container (an Ubuntu 22.04 image, glibc 2.35, SDL3 carried in the
+	/// dist): a Linux64 player that runs on SteamOS and on older Linux systems. Needs podman or
+	/// docker.
+	case SteamDeck;
+}
+
 /// One export target: the platform and config its player is built for, the player's name, the
 /// game specific extras and the output naming. Nothing in it is an absolute path, so a preset
 /// is portable and committable. The CLI and the editor's Export menu both drive the export from
@@ -13,7 +27,10 @@ namespace Sedulous.Editor.Project;
 ///
 /// Each field a preset editor sets is a [Setting]: the MCP preset tools read and set them
 /// through its reflection.
-[Serializable(1, true)] // afterRead: the legacy template id dropped
+///
+/// Version 2 appended Builder. Its legacy reader still decodes version 1, so a preset stored
+/// before it reads as Host, in a binary payload as in a keyed one.
+[Serializable(2, true, 1)] // afterRead: the legacy template id dropped
 class ExportPreset
 {
 	/// "Linux64 Desktop"
@@ -85,6 +102,11 @@ class ExportPreset
 	[Appended, Setting("Include shader source")]
 	public bool IncludeShaderSource = false;
 
+	/// Where the player is built: on this machine, or in the Steam Deck container for a Linux64
+	/// player that runs on older systems.
+	[Appended(2), Setting("Builder")]
+	public ExportBuilder Builder = .Host;
+
 	public void CopyTo(ExportPreset other)
 	{
 		other.Name.Set(Name);
@@ -109,6 +131,7 @@ class ExportPreset
 		other.OverridesOrientation = OverridesOrientation;
 		other.Orientation = Orientation;
 		other.IncludeShaderSource = IncludeShaderSource;
+		other.Builder = Builder;
 	}
 
 	/// Once read (the [Serializable] hook): a template id stored before an export built its

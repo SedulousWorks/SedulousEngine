@@ -374,7 +374,7 @@ class EditorProjectOperations : IProjectOperations
 				}
 				// The player builds here, on the build lane, cancelled with the lane's task; or, with
 				// no build asked for, the last build ships.
-				let players = scope ProjectPlayerBuilder(buildService, dataRoot, task.Token, !shared.Build);
+				let players = scope PresetPlayerBuilder(buildService, dataRoot, task.Token, !shared.Build);
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
 						task.SetStep(step);

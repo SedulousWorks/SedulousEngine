@@ -131,7 +131,7 @@ static class ExportMain
 		}
 		// The player each preset ships, built on this thread.
 		let buildService = scope ProjectBuildService();
-		let players = scope ProjectPlayerBuilder(buildService, dataRoot);
+		let players = scope PresetPlayerBuilder(buildService, dataRoot);
 		let outRoot = scope String();
 		if (!outArg.IsEmpty)
 			outRoot.Set(outArg);

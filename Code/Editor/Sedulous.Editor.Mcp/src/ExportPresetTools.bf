@@ -24,7 +24,7 @@ static class ExportPresetTools
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("export_presets",
-			"The open project's export presets, and whether this machine can build each one's player. Each preset: its fields as export_preset_set takes them (name, platform, playerName (the shipped player's name; \"\" is the game's), outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, includeShaderSource (ship custom shaders' HLSL too; off by default), and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable, overridesOrientation with orientation), `buildable`, and `why` (null when buildable): another host's platform (a Win64 player builds on Windows), a web preset with no BeefBuild or no Emscripten set in BeefBuild's settings, or a config no player is built in (Test). A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). export_preset_set changes them; project_export runs one.",
+			"The open project's export presets, and whether this machine can build each one's player. Each preset: its fields as export_preset_set takes them (name, platform, playerName (the shipped player's name; \"\" is the game's), outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, includeShaderSource (ship custom shaders' HLSL too; off by default), builder (Host, this machine; or SteamDeck, a Linux64 player built in the Steam Deck container, which runs on SteamOS and older Linux, needing podman or docker), and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable, overridesOrientation with orientation), `buildable`, and `why` (null when buildable): another host's platform (a Win64 player builds on Windows), a web preset with no BeefBuild or no Emscripten set in BeefBuild's settings, a config no player is built in (Test), or a Steam Deck preset on another platform than Linux64 or with no podman or docker. A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). export_preset_set changes them; project_export runs one.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => List(session, outResult, outError));
 
@@ -63,7 +63,7 @@ static class ExportPresetTools
 	}
 
 	/// The presets, each with its fields and whether its player can be built on this host
-	/// (ProjectPlayerBuilder.CanBuild), and why not when it cannot.
+	/// (PresetPlayerBuilder.CanBuild), and why not when it cannot.
 	private static void Describe(ExportPresetSet presets, bool fromFile, JsonValue outResult)
 	{
 		let list = JsonValue.MakeArray();
@@ -73,7 +73,7 @@ static class ExportPresetTools
 		for (let preset in presets.Presets)
 		{
 			let json = ReflectedFields.ToJson(preset, fields, null);
-			let buildable = ProjectPlayerBuilder.CanBuild(preset, why..Clear());
+			let buildable = PresetPlayerBuilder.CanBuild(preset, why..Clear());
 			json.Set("buildable", JsonValue.MakeBool(buildable));
 			json.Set("why", buildable ? JsonValue.MakeNull() : JsonValue.MakeString(why));
 			list.Add(json);

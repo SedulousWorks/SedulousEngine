@@ -62,6 +62,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   the game's code and the plugins it enables, instead of copying a prebuilt player; a project's
   first shipping or web export compiles the engine and takes minutes. A Windows preset exports
   on Windows.
+- Export: a preset's Builder can be Steam Deck: its export builds the game's own Linux64 player
+  in the Steam Deck container (podman or docker), so it runs on SteamOS and older Linux, instead
+  of shipping a prebuilt Deck player.
 - Export: the Export dialog names the player each preset builds ("SkyHopperPlayer,
   ShippingRelease, Linux64"), or says why it cannot be built on this machine, and Export All says
   which presets it skipped for another machine's platform.

@@ -542,7 +542,13 @@ override the project's render resolution and
 window for it (`overridesRender` with `renderWidth`, `renderHeight` and `renderFit`;
 `overridesWindow` with `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`;
 `overridesOrientation` with `orientation`, a phone-facing Web preset's `Landscape` say; a
-choice by its value's name, `Fullscreen`). A preset this machine cannot build is kept, since
+choice by its value's name, `Fullscreen`). A preset's `builder` says where its player is built:
+`Host` (the default), this machine; or `SteamDeck`, a Linux64 preset whose player is built in the
+Steam Deck container (Ubuntu 22.04, so it runs on SteamOS and older Linux, SDL3 carried in the
+dist; podman or docker needed). Its export copies the project's packages under the engine's
+`build/steamdeck/projects/<Game>` and runs `Code/Tools/SteamDeck/build-steamdeck.sh` over them,
+the run followed by `build_status` like any build; the first one builds Beef and every native
+dependency in the container and takes long. A preset this machine cannot build is kept, since
 presets travel with the project: export it on a host that builds it.
 
 ## Writing game code

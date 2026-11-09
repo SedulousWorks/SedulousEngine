@@ -28,10 +28,10 @@ class InlineProjectOperations : IProjectOperations
 	private String mDataRoot = new .() ~ delete _;
 	/// What builds an export's player: BeefBuild, on the calling thread.
 	private ProjectBuildService mBuildService = new .() ~ delete _;
-	private ProjectPlayerBuilder mOwnPlayers ~ delete _;
+	private PresetPlayerBuilder mOwnPlayers ~ delete _;
 
 	/// What builds the player an export ships: unset, the project's own build through this
-	/// host's build service (ProjectPlayerBuilder); a test sets a StagedPlayerBuilder. Borrowed.
+	/// host's build service (PresetPlayerBuilder); a test sets a StagedPlayerBuilder. Borrowed.
 	public IPlayerBuilder Players = null;
 
 	/// After an import has landed: what the host's pipeline makes of it, a model's prefab
@@ -46,7 +46,7 @@ class InlineProjectOperations : IProjectOperations
 		mSession = session;
 		mBuilders = builders;
 		mDataRoot.Set(dataRoot);
-		mOwnPlayers = new ProjectPlayerBuilder(mBuildService, mDataRoot);
+		mOwnPlayers = new PresetPlayerBuilder(mBuildService, mDataRoot);
 	}
 
 	public OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError)
@@ -144,7 +144,7 @@ class InlineProjectOperations : IProjectOperations
 		// Without a build, the last build ships whatever builds them otherwise: nothing compiles.
 		if (!request.Build)
 		{
-			let lastBuild = scope ProjectPlayerBuilder(mBuildService, mDataRoot, null, true);
+			let lastBuild = scope PresetPlayerBuilder(mBuildService, mDataRoot, null, true);
 			return RunExport(mSession, mBuilders, lastBuild, mDataRoot, request, outResult, outError);
 		}
 		return RunExport(mSession, mBuilders, (Players != null) ? Players : (IPlayerBuilder)mOwnPlayers, mDataRoot, request, outResult, outError);

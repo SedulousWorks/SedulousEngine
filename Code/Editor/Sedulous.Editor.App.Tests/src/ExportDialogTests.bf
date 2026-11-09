@@ -111,7 +111,7 @@ class ExportDialogTests
 						outWhy.Set(cNoEmscripten);
 						return false;
 					}
-					return ProjectPlayerBuilder.CanBuild(preset, outWhy);
+					return PresetPlayerBuilder.CanBuild(preset, outWhy);
 				};
 			seams.ProjectName.Set("Sky");
 			seams.HostPlatform.Set("Linux64");
@@ -243,6 +243,30 @@ class ExportDialogTests
 		dialog.Select(0);
 		Test.Assert(f.FlagAt("overridesOrientation"));
 		Test.Assert(f.IntAt("orientation") == (int64)ScreenOrientation.Landscape);
+	}
+
+	/// A preset's builder is offered by name in General, Host by default; set to SteamDeck it is
+	/// stored on the preset and the card names the player the container builds.
+	[Test]
+	public static void APresetsBuilderIsChosenAndTheCardNamesTheContainersPlayer()
+	{
+		let f = scope Fixture();
+		let dialog = f.Open();
+		Test.Assert(dialog.SelectedIndex == 0);
+		let row = dialog.Rows.FindInfo("builder");
+		Test.Assert((row != null) && (row.Category == "General"));
+		Test.Assert(f.IntAt("builder") == (int64)ExportBuilder.Host);
+
+		f.Edit("builder", Sedulous.GUI.Variant((int64)ExportBuilder.SteamDeck));
+		Test.Assert(f.Presets.At(0).Builder == .SteamDeck);
+		Test.Assert(f.Presets.At(1).Builder == .Host, "the other preset's own");
+#if BF_PLATFORM_LINUX
+		Test.Assert(dialog.ResolveText == "SkyPlayer, ShippingRelease, Linux64, Steam Deck", scope String(dialog.ResolveText));
+#endif
+		dialog.Select(1);
+		Test.Assert(f.IntAt("builder") == (int64)ExportBuilder.Host);
+		dialog.Select(0);
+		Test.Assert(f.IntAt("builder") == (int64)ExportBuilder.SteamDeck, "shown again when selected");
 	}
 
 	/// Add takes the host's platform, Duplicate names the copy, Remove asks first and keeps a

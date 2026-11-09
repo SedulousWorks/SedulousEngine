@@ -1,25 +1,32 @@
 #!/usr/bin/env bash
-# Builds a Steam Deck player and packages it as an export template.
+# Builds a game's player for the Steam Deck: an export of a preset whose builder is SteamDeck
+# runs this, and ships the bundle it stages.
 #
 # A player built on this machine asks for the host's glibc (2.43), which SteamOS does not have.
 # This builds it in an Ubuntu 22.04 container instead (glibc 2.35), with Beef itself built there
 # from the fork's working branch, since that is the Beef the engine needs. Needs podman (or
 # docker, as RT=docker).
 #
-#   Code/Tools/SteamDeck/build-steamdeck.sh
+#   Code/Tools/SteamDeck/build-steamdeck.sh --workspace <dir> --project <Game>Player
+#       [--config ShippingRelease] [--out <bundle dir>]
 #
-# Everything lives under build/steamdeck/ at the repository root:
+# --workspace is a project's Beef workspace (its Code/), generated for the SDK as the container
+# mounts it, at /work: the export copies the project under build/steamdeck/projects/<Game> and
+# generates it there. The workspace's project folder is mounted at the same path inside the
+# container, so what it names of itself holds there too. --project is the executable to build
+# in it, and --out the folder the bundle is staged in (default:
+# build/steamdeck/out/<Config>_Linux64/<project>).
+#
+# Everything else lives under build/steamdeck/ at the repository root:
 #   beef/      the Beef clone, built in the container once per commit
-#   src/       the copy of this repository the container builds, its dependency builds kept
-#   out/       the player bundle, ShippingRelease_Linux64/Sedulous.Engine.Player.Desktop
-#   template/  that bundle as an export template, installed for this user
-#
-# Then export with a preset whose template is the Steam Deck one (its id is printed at the end).
+#   src/       the copy of this repository the container builds against (/work), its
+#              dependency builds kept
+#   projects/  the projects' copies an export generates
+#   out/       the bundles
 #
 #   Env: BEEF_REPO    the Beef to build (default: the fork on GitHub)
 #        BEEF_BRANCH  its branch (default: working)
 #        RT           podman or docker (default: the first found)
-#        EXPORT_TOOL  the host's Sedulous.Tools.Export, which writes the template
 #        JOBS         parallel C/C++ compiles for the dependencies (default: 6)
 #        BEEF_THREADS BeefBuild's worker threads (default: 4; a Release build runs LLVM's
 #                     optimiser on each, and one per core ran this machine out of memory)
@@ -33,17 +40,39 @@ STATE="$ROOT/build/steamdeck"
 IMAGE="sedulous-steamdeck:22.04"
 BEEF_REPO="${BEEF_REPO:-https://github.com/jayrulez/Beef.git}"
 BEEF_BRANCH="${BEEF_BRANCH:-working}"
-EXPORT_TOOL="${EXPORT_TOOL:-$ROOT/Code/build/Debug_Linux64/Sedulous.Tools.Export/Sedulous.Tools.Export}"
 JOBS="${JOBS:-6}"
 BEEF_THREADS="${BEEF_THREADS:-4}"
 MEMORY="${MEMORY:-12g}"
+
+usage() { echo "usage: $0 --workspace <dir> --project <name> [--config <config>] [--out <dir>]" >&2; exit 2; }
+WORKSPACE=""
+PROJECT=""
+CONFIG="ShippingRelease"
+OUT=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--workspace) [ $# -ge 2 ] || usage; WORKSPACE="$2"; shift 2 ;;
+		--project) [ $# -ge 2 ] || usage; PROJECT="$2"; shift 2 ;;
+		--config) [ $# -ge 2 ] || usage; CONFIG="$2"; shift 2 ;;
+		--out) [ $# -ge 2 ] || usage; OUT="$2"; shift 2 ;;
+		*) usage ;;
+	esac
+done
+[ -n "$WORKSPACE" ] && [ -n "$PROJECT" ] || usage
+[ -f "$WORKSPACE/BeefSpace.toml" ] || { echo "!! no Beef workspace at $WORKSPACE" >&2; exit 1; }
+WORKSPACE="$(cd "$WORKSPACE" && pwd)"
+# The project the workspace is in: its packages outside Code/ (Plugins/) are reached from it.
+PROJECT_DIR="$(dirname "$WORKSPACE")"
+OUT="${OUT:-$STATE/out/${CONFIG}_Linux64/$PROJECT}"
+mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
+OUT_PARENT="$(dirname "$OUT")"
 
 RT="${RT:-}"
 if [ -z "$RT" ]; then
 	for c in podman docker; do command -v "$c" >/dev/null 2>&1 && { RT="$c"; break; }; done
 fi
 [ -n "$RT" ] || { echo "!! needs podman or docker" >&2; exit 1; }
-mkdir -p "$STATE/out"
 
 echo "== image $IMAGE ($RT) =="
 "$RT" build -t "$IMAGE" -f "$HERE/Dockerfile" "$HERE"
@@ -69,29 +98,16 @@ mkdir -p "$STATE/src"
 # state directory fills with root owned files.
 USER_ARGS=()
 [ "$RT" = "docker" ] && USER_ARGS=(--user "$(id -u):$(id -g)")
+echo "== $PROJECT ($CONFIG) from $WORKSPACE =="
 "$RT" run --rm "${USER_ARGS[@]}" \
 	--memory "$MEMORY" --memory-swap "$MEMORY" \
 	-e JOBS="$JOBS" -e BEEF_THREADS="$BEEF_THREADS" \
+	-e WORKSPACE="$WORKSPACE" -e PROJECT="$PROJECT" -e CONFIG="$CONFIG" -e BUNDLE="$OUT" \
 	-v "$STATE/beef":/beef:Z \
 	-v "$STATE/src":/work:Z \
-	-v "$STATE/out":/out:Z \
+	-v "$PROJECT_DIR":"$PROJECT_DIR":Z \
+	-v "$OUT_PARENT":"$OUT_PARENT":Z \
 	"$IMAGE" bash /work/Code/Tools/SteamDeck/in-container-build.sh
 
-# The template, written by the host's export tool so it is the format this engine reads, under
-# the Steam Deck's own identity, so it sits beside a desktop Linux template instead of
-# replacing it.
-BUNDLE="$STATE/out/ShippingRelease_Linux64/Sedulous.Engine.Player.Desktop"
-TEMPLATE="$STATE/template"
-[ -x "$EXPORT_TOOL" ] || { echo "!! no export tool at $EXPORT_TOOL; build Sedulous.Tools.Export" >&2; exit 1; }
-VERSION="$(sed -n 's/.*const String String = "\([0-9][0-9.]*\)".*/\1/p' "$ROOT/Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf" | head -1)"
-[ -n "$VERSION" ] || { echo "!! could not read the engine version" >&2; exit 1; }
-rm -rf "$TEMPLATE"
-"$EXPORT_TOOL" --template create "$BUNDLE" --out "$TEMPLATE" \
-	--id "sedulous-steamdeck-release-$VERSION" \
-	--name "Steam Deck $VERSION" \
-	--notes "Linux64 shipping build (ShippingRelease) for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3." \
-	--icon handheld
-"$EXPORT_TOOL" --template import "$TEMPLATE"
 echo
-echo "== done =="
-grep -oE "sedulous-steamdeck-release-[^<\"]*" "$TEMPLATE/template.xml" | head -1 | sed 's/^/template id: /'
+echo "== done: $OUT =="

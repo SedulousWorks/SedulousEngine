@@ -38,7 +38,7 @@ class ExportDialogSeams
 	/// The project's folder, absolute: the files a preset ships are under it, named relative to it.
 	public String ProjectRoot = new .() ~ delete _;
 	/// Whether a preset's player can be built on this host, and why not in `outWhy` when it
-	/// cannot. Unset: ProjectPlayerBuilder.CanBuild.
+	/// cannot. Unset: PresetPlayerBuilder.CanBuild.
 	public delegate bool(ExportPreset preset, String outWhy) CanBuild ~ delete _;
 	/// The project's name, which names the player a preset builds (<Game>Player).
 	public String ProjectName = new .() ~ delete _;
@@ -285,7 +285,7 @@ class ExportDialog
 	{
 		if (mSeams.CanBuild != null)
 			return mSeams.CanBuild(preset, outWhy);
-		return ProjectPlayerBuilder.CanBuild(preset, outWhy);
+		return PresetPlayerBuilder.CanBuild(preset, outWhy);
 	}
 
 	/// The card's title: the player the selected preset builds, or that none builds for it.
@@ -610,6 +610,8 @@ class ExportDialog
 		Row("config", .Enum, Sedulous.GUI.Variant((int64)0), "Config", cGeneral,
 			"Release ships an optimised build without the profiler; Profile keeps the profiler; Debug is unoptimised.");
 		ShowChoices(preset);
+		EnumRow("builder", typeof(ExportBuilder), (int64)preset.Builder, "Builder", cGeneral).Description.Set(
+			"Host builds on this machine; SteamDeck builds a Linux64 player in a container (podman or docker) that runs on SteamOS and older Linux.");
 		Row("playerName", .String, Sedulous.GUI.Variant(preset.PlayerName), "Player name", cGeneral,
 			"Empty: the game's name.");
 		Row("outputSubdir", .String, Sedulous.GUI.Variant(preset.OutputSubdir), "Output folder", cGeneral,
@@ -725,6 +727,7 @@ class ExportDialog
 		let config = ChoiceAt("config");
 		preset.Platform.Set(((platform >= 0) && (platform < mPlatforms.Count)) ? StringView(mPlatforms[(int)platform]) : default);
 		preset.Config.Set(((config >= 0) && (config < mConfigs.Count)) ? StringView(mConfigs[(int)config]) : default);
+		preset.Builder = (ExportBuilder)ChoiceAt("builder");
 		TextAt("playerName", preset.PlayerName);
 		TextAt("outputSubdir", preset.OutputSubdir);
 		ClearAndDeleteItems(preset.AdditionalFiles);
@@ -787,7 +790,7 @@ class ExportDialog
 		// for it here (another host's platform, no Emscripten for the web, a config no player is).
 		let description = scope String();
 		let why = scope String();
-		let described = ProjectPlayerBuilder.Describe(mSeams.ProjectName, preset, description, why);
+		let described = PresetPlayerBuilder.Describe(mSeams.ProjectName, preset, description, why);
 		if (!described || !Buildable(preset, why..Clear()))
 		{
 			icon.SetDrawable(null);

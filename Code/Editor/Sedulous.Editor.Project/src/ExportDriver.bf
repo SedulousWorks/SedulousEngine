@@ -715,7 +715,7 @@ static class ExportDriver
 		return .Ok;
 	}
 
-	/// Every preset in turn, each (platform, config) built once by `players` for all the presets
+	/// Every preset in turn, each (platform, config, builder) built once by `players` for all the presets
 	/// that share it. A preset for another host's desktop platform (BuildsOnAnotherHost) is
 	/// skipped with a notice, not failed: a project's Windows preset is exported on Windows. Ok
 	/// when every preset not skipped exported; the counts in `outSummary` when given.
@@ -765,10 +765,11 @@ static class ExportDriver
 		return (summary.Failed == 0) ? .Ok : .Err(.Internal);
 	}
 
-	/// A player builder over another that builds each (entry, build config) once and gives the
-	/// same build to every later preset of it, so ExportAll's presets that differ only in their
-	/// content (a pruned and a full dist, two names) pay for one compile. A refusal is kept too:
-	/// a compile that failed is not run again for the next preset.
+	/// A player builder over another that builds each (entry, build config, builder) once and
+	/// gives the same build to every later preset of it, so ExportAll's presets that differ only
+	/// in their content (a pruned and a full dist, two names) pay for one compile; a Steam Deck
+	/// preset and a host one of the same platform and config are two builds. A refusal is kept
+	/// too: a compile that failed is not run again for the next preset.
 	private class OncePerTarget : IPlayerBuilder
 	{
 		private class Made
@@ -781,7 +782,7 @@ static class ExportDriver
 
 		/// Borrowed.
 		private IPlayerBuilder mInner;
-		/// By "<entry>|<config>"; the keys and the builds are its own.
+		/// By "<entry>|<config>|<builder>"; the keys and the builds are its own.
 		private Dictionary<String, Made> mMade = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
 
 		public this(IPlayerBuilder inner)
@@ -796,7 +797,7 @@ static class ExportDriver
 			BuildEntry entry;
 			if (ProjectPlayerBuilder.Target(preset, out entry, config, scope .()) case .Err)
 				return mInner.Build(project, preset, outBuild, onProgress, outRefusal); // its refusal, as it says it
-			let key = scope $"{entry}|{config}";
+			let key = scope $"{entry}|{config}|{preset.Builder}";
 			Made made;
 			if (!mMade.TryGetValue(key, out made))
 			{

@@ -41,7 +41,7 @@ class EditorExportServices
 /// scenes' text sources are transcoded to the wire and, when a preset prunes to what is
 /// reachable, the reachable closure found, both on the main thread (they load scenes), then
 /// the player's build and the cook-free pack and stage run as a job on the build lane,
-/// reader-only (ExportDriver builds the player through a ProjectPlayerBuilder over the
+/// reader-only (ExportDriver builds the player through a PresetPlayerBuilder over the
 /// application's build service). It also keeps the presets the Export dialog edits and reports
 /// the resource manager's live products to the log.
 ///
@@ -265,7 +265,7 @@ class EditorExport
 					return .Err(.NotSupported);
 				}
 				// The player builds here, on the build lane, cancelled with the lane's task.
-				let players = scope ProjectPlayerBuilder(buildService, dataRoot, task.Token);
+				let players = scope PresetPlayerBuilder(buildService, dataRoot, task.Token);
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
 						task.SetStep(step);

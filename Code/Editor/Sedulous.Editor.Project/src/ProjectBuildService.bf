@@ -538,19 +538,69 @@ class ProjectBuildService
 		return .Ok;
 	}
 
+	/// Runs `job` to its end on this thread as one run of `executable` with `arguments` in place
+	/// of BeefBuild's, through the service's runner: a build another tool makes over a workspace
+	/// it was given (the Steam Deck container's), its job tracked, its lines streamed into the job
+	/// and the log, and its cancel honoured as a BeefBuild run's are. Its step is `project` in
+	/// `config`. Failed, with why in the job's error, when the run fails or exits well without
+	/// leaving `made`, which is then the job's executable.
+	public Result<void, ErrorCode> RunExternal(BuildJob job, StringView executable, Span<StringView> arguments, StringView project,
+		StringView config, StringView made, CancelToken outer = null)
+	{
+		bool latest;
+		using (mLock.Enter())
+			latest = mLatest === job;
+		if (!latest)
+			Track(job);
+		job.[Friend]Begin();
+		let error = scope String();
+		let tool = PathFilename(executable, .. scope .());
+		Result<void, ErrorCode> result = .Err(.Cancelled);
+		if (!Cancelled(job, outer))
+			result = RunProcess(job, outer, executable, arguments, tool, project, config, error);
+		if ((result case .Ok) && !FileExists(made))
+		{
+			error.Set(scope $"'{executable}' ended without building '{made}'");
+			result = .Err(.NotFound);
+		}
+		switch (result)
+		{
+		case .Ok:
+			job.[Friend]AddExecutable(made);
+			job.[Friend]End(.Succeeded, "");
+			GlobalLog(.Information, "Build Project: built {} ({})", project, config);
+		case .Err(.Cancelled):
+			job.[Friend]End(.Cancelled, "cancelled");
+			GlobalLog(.Information, "Build Project: cancelled");
+		case .Err:
+			job.[Friend]End(.Failed, error);
+		}
+		return result;
+	}
+
 	/// One BeefBuild run over `workspace` for `platform`, each line into the job and the log as it
 	/// comes.
 	private Result<void, ErrorCode> RunStep(BuildJob job, CancelToken outer, StringView beefBuild, StringView workspace, StringView project,
 		StringView config, StringView platform, String outError)
 	{
-		job.[Friend]BeginStep(project, config);
 		GlobalLog(.Information, "Build Project: {} ({}, {})", project, config, platform);
 		let workspaceArg = scope $"-workspace={workspace}";
 		let configArg = scope $"-config={config}";
 		let platformArg = scope $"-platform={platform}";
 		let projectArg = scope $"-project={project}";
+		return RunProcess(job, outer, beefBuild, scope StringView[](workspaceArg, configArg, platformArg, projectArg), "BeefBuild", project,
+			config, outError);
+	}
+
+	/// One run of `executable` with `arguments` as the job's step `project` in `config`, each
+	/// line into the job and the log as it comes; its failure said as `tool`'s ("BeefBuild failed
+	/// building ...").
+	private Result<void, ErrorCode> RunProcess(BuildJob job, CancelToken outer, StringView executable, Span<StringView> arguments,
+		StringView tool, StringView project, StringView config, String outError)
+	{
+		job.[Friend]BeginStep(project, config);
 		let firstDiagnostic = job.[Friend]DiagnosticCount;
-		let result = mRunner(beefBuild, scope StringView[](workspaceArg, configArg, platformArg, projectArg),
+		let result = mRunner(executable, arguments,
 			scope (line) =>
 			{
 				job.[Friend]AddLine(line);
@@ -569,7 +619,7 @@ class ProjectBuildService
 		case .Err(let err):
 			if (err == .Cancelled)
 				return .Err(.Cancelled);
-			outError.Set(scope $"BeefBuild could not be started from '{beefBuild}'");
+			outError.Set(scope $"{tool} could not be started from '{executable}'");
 			return .Err(.Internal);
 		}
 		if (exitCode == 0)
@@ -580,7 +630,7 @@ class ProjectBuildService
 		job.[Friend]DescribeErrors(firstDiagnostic, errors);
 		for (let line in errors)
 			GlobalLog(.Error, "{}", line);
-		outError.Set(scope $"BeefBuild failed building {project} ({config}), exit {exitCode}");
+		outError.Set(scope $"{tool} failed building {project} ({config}), exit {exitCode}");
 		if (!errors.IsEmpty)
 		{
 			outError.AppendF(", {} error{}", errors.Count, (errors.Count == 1) ? "" : "s");
