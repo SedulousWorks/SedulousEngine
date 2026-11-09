@@ -141,6 +141,12 @@ class InlineProjectOperations : IProjectOperations
 
 	public OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError)
 	{
+		// Without a build, the last build ships whatever builds them otherwise: nothing compiles.
+		if (!request.Build)
+		{
+			let lastBuild = scope ProjectPlayerBuilder(mBuildService, mDataRoot, null, true);
+			return RunExport(mSession, mBuilders, lastBuild, mDataRoot, request, outResult, outError);
+		}
 		return RunExport(mSession, mBuilders, (Players != null) ? Players : (IPlayerBuilder)mOwnPlayers, mDataRoot, request, outResult, outError);
 	}
 

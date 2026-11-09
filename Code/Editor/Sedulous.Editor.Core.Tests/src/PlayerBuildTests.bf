@@ -134,6 +134,7 @@ class PlayerBuildTests
 		let latest = service.GetLatest();
 		Test.Assert((latest != null) && (latest.Target == .Player) && (latest.StepConfig(0) == "ShippingRelease") && (latest.State == .Succeeded),
 			"the build is the service's latest");
+		Test.Assert(build.Job === latest, "the build carries the job that compiled it");
 		latest?.ReleaseRef();
 
 		// A build again starts over: what the last one gave is not kept.
@@ -286,6 +287,76 @@ class PlayerBuildTests
 		Test.Assert(!FileExists(PathJoin(bed.Build.ProjectDir, "Code/BeefSpace.toml", .. scope .())), "nothing generated");
 	}
 
+	/// A builder made to reuse the last build runs no BeefBuild: refused while the preset's entry
+	/// has no build in its config, it then gives what that build left, collected as a build's is,
+	/// with no job and a description saying it is the last build.
+	[Test]
+	public static void ReusingTheLastBuildRunsNothingAndRefusesWithoutOne()
+	{
+		let bed = scope Bed();
+		let service = scope ProjectBuildService(new (executable, arguments, onLine, cancelled) =>
+			{
+				Test.FatalError("nothing runs");
+				return .Ok(0);
+			}, cFakeBeefBuild);
+		let builder = scope ProjectPlayerBuilder(service, bed.DataRoot(.. scope .()), null, true);
+		Test.Assert(builder.ReusesLastBuild);
+		let preset = scope ExportPreset();
+		SetPreset(preset, BuildLayout.HostPlatformName, "Release");
+		let build = scope PlayerBuild();
+		let refusal = scope String();
+
+		Test.Assert(builder.Build(bed.Project, preset, build, null, refusal) case .Err(.NotFound));
+		Test.Assert(refusal.StartsWith("NativeGamePlayer has not been built in ShippingRelease"), refusal);
+
+		// What a build of the player in ShippingRelease leaves.
+		let made = scope StringView[]("-project=NativeGamePlayer", "-config=ShippingRelease");
+		Make(bed.Build, made);
+		let steps = scope List<float>();
+		Test.Assert(builder.Build(bed.Project, preset, build, scope [&](step, fraction) => { steps.Add(fraction); }, refusal..Clear()) case .Ok, refusal);
+		let executable = ProjectBuild.ExecutablePath(bed.Build.ProjectDir, "NativeGame", false, "ShippingRelease", .. scope .());
+		Test.Assert(build.Directory == PathParent(executable, .. scope .()), build.Directory);
+		Test.Assert(build.Binary == BuildLayout.ExecutableName("NativeGamePlayer", .. scope .()), build.Binary);
+		Test.Assert((build.Files.Count == 2) && Has(build.Files, cLibrary) && Has(build.Files, BuildLayout.cThirdPartyNotices), "collected as a build's");
+		Test.Assert(build.Job == null, "no job compiled it");
+		Test.Assert(build.Description == scope $"NativeGamePlayer, ShippingRelease, {BuildLayout.HostPlatformName} (the last build)", build.Description);
+		Test.Assert((steps.Count == 1) && (steps[0] == PlayerBuild.cProgressEnd), "its progress at the build's end");
+		Test.Assert(service.GetLatest() == null, "no job tracked");
+
+		// A config with no build is refused, whatever another config has.
+		SetPreset(preset, BuildLayout.HostPlatformName, "Debug");
+		Test.Assert(builder.Build(bed.Project, preset, build, null, refusal..Clear()) case .Err(.NotFound));
+		Test.Assert(refusal.StartsWith("NativeGamePlayer has not been built in Debug"), refusal);
+	}
+
+	/// What a preset builds is named for people as a build names it, and whether this host can
+	/// build it says why not: another host's platform and a Test config, as Target refuses them.
+	[Test]
+	public static void APresetsPlayerIsDescribedAndItsBuildabilitySaid()
+	{
+		let preset = scope ExportPreset();
+		let description = scope String();
+		let why = scope String();
+		SetPreset(preset, BuildLayout.HostPlatformName, "Profile");
+		Test.Assert(ProjectPlayerBuilder.Describe("Sky Hopper", preset, description, why), why);
+		let game = ProjectBuild.GameName("Sky Hopper", .. scope .());
+		Test.Assert(description == scope $"{game}Player, Release, {BuildLayout.HostPlatformName}", description);
+		Test.Assert(ProjectPlayerBuilder.CanBuild(preset, why), why);
+
+		SetPreset(preset, BuildLayout.cWebPlatform, "Release");
+		Test.Assert(ProjectPlayerBuilder.Describe("Sky Hopper", preset, description, why), why);
+		Test.Assert(description == scope $"{game}PlayerWeb, ShippingRelease, wasm32", description);
+
+		SetPreset(preset, OtherHost, "Release");
+		Test.Assert(!ProjectPlayerBuilder.Describe("Sky Hopper", preset, description, why..Clear()));
+		Test.Assert(!ProjectPlayerBuilder.CanBuild(preset, why..Clear()));
+		Test.Assert(why.StartsWith(scope $"a {OtherHost} player builds on"), why);
+
+		SetPreset(preset, BuildLayout.HostPlatformName, "Test");
+		Test.Assert(!ProjectPlayerBuilder.CanBuild(preset, why..Clear()));
+		Test.Assert(why.StartsWith("a Test build links the test runner"), why);
+	}
+
 #if !BF_PLATFORM_WINDOWS
 	private const int32 cExecutable = 1; // X_OK
 
@@ -319,6 +390,7 @@ class PlayerBuildTests
 		Test.Assert((build.Files.Count == 2) && Has(build.Files, StagedPlayerBuilder.cLibrary) && Has(build.Files, BuildLayout.cThirdPartyNotices),
 			"the library and the notices, the shader compiler's left out");
 		Test.Assert(build.Description == scope $"NativeGamePlayer, ShippingRelease, {BuildLayout.HostPlatformName} (staged)", build.Description);
+		Test.Assert(build.Job == null, "no job compiled a stand-in");
 
 		SetPreset(preset, BuildLayout.cWebPlatform, "Release");
 		Test.Assert(builder.Build(bed.Project, preset, build, null, refusal) case .Ok, refusal);

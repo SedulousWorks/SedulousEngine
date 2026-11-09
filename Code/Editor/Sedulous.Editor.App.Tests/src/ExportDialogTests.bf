@@ -13,16 +13,23 @@ namespace Sedulous.Editor.App.Tests;
 
 /// The export dialog over its markup (Data/Editor/Export.xml), a presets controller and a scratch
 /// templates root: the presets listed and the selected one's settings on the grid in their sections
-/// under the card naming the template it exports with (or why none), a template picked by name
-/// deciding the platform and config, edits applied as made and saved when the selection moves, an
-/// override's rows shown only while it overrides, add, duplicate and remove (after asking), and
-/// Export running the selected preset after saving. Then what Sedulous adds so each behaviour has a
-/// test: the card naming a template the preset picks that is not installed, and what to do; the
+/// under the card naming the player its export builds (or why none builds here), a template picked
+/// by name deciding the platform and config, edits applied as made and saved when the selection
+/// moves, an override's rows shown only while it overrides, add, duplicate and remove (after
+/// asking), and Export running the selected preset after saving, never one whose player cannot be
+/// built here. Then: the card saying why for another host's platform and a Test config; the
 /// platform and config read only under a template and editable again under Any; the extra files a
 /// list, edited, shortened and an empty row dropped; the render and window overrides' rows; a save
-/// as it closes; Export Templates opened over it, the card following what it installed.
+/// as it closes; Export Templates opened over it, the template row following what it installed.
 class ExportDialogTests
 {
+	/// Why the fixture's web preset builds no player: what the dialog is told for want of
+	/// Emscripten, which no test machine is assumed to have.
+	private const String cNoEmscripten = "a web build needs Emscripten (the fixture has none)";
+
+	/// Another host's desktop platform: Win64 on Linux, Linux64 on Windows.
+	private static StringView OtherHost => (BuildLayout.HostPlatformName == "Win64") ? "Linux64" : "Win64";
+
 	private class Fixture
 	{
 		public String Root = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_export_dialog_root", .. new .()) ~ delete _;
@@ -117,6 +124,18 @@ class ExportDialogTests
 					delete chosen;
 				};
 			seams.ProjectRoot.Set(Project);
+			// The web wants Emscripten, which the fixture says is not here; the rest is the
+			// dialog's own check (another host's platform, a Test config).
+			seams.CanBuild = new (preset, outWhy) =>
+				{
+					if (preset.Platform == "Web")
+					{
+						outWhy.Set(cNoEmscripten);
+						return false;
+					}
+					return ProjectPlayerBuilder.CanBuild(preset, outWhy);
+				};
+			seams.ProjectName.Set("Sky");
 			seams.HostPlatform.Set("Linux64");
 			seams.OutputRoot.Set("/tmp/project/Dist");
 			return seams;
@@ -166,10 +185,11 @@ class ExportDialogTests
 		public Sedulous.GUI.Button FindButton(StringView id) => Dialog.Window.Content.FindElement(id) as Sedulous.GUI.Button;
 	}
 
-	/// The presets, their settings in their sections, and the template each exports with, or why
-	/// none; a template picked by name decides the platform and config, which are then read only.
+	/// The presets, their settings in their sections, and the player each one's export builds, or
+	/// why none builds here; a template picked by name decides the platform and config, which are
+	/// then read only.
 	[Test]
-	public static void ThePresetsTheirSettingsInSectionsAndTheTemplateEachExportsWith()
+	public static void ThePresetsTheirSettingsInSectionsAndThePlayerEachBuilds()
 	{
 		let f = scope Fixture();
 		let dialog = f.Open();
@@ -181,13 +201,16 @@ class ExportDialogTests
 		Test.Assert(rows.FindInfo("stageSymbols").Category == "Content");
 		Test.Assert(rows.FindInfo("orientation").Category == "Display");
 
-		// Linux resolves to the installed template; Web has none here, and says so.
-		Test.Assert((dialog.Resolved != null) && (dialog.Resolved.Id == "t-linux"));
-		Test.Assert(dialog.ResolveText == "Exports with Linux Release", scope String(dialog.ResolveText));
+		// Linux builds the game's player in the shipping config; Web cannot be built here, and
+		// the card says why under the player it would build.
+		Test.Assert(dialog.ResolveText == "SkyPlayer, ShippingRelease, Linux64", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ResolveDetail.StartsWith("Built as it exports"), scope String(dialog.ResolveDetail));
+		Test.Assert(dialog.SelectedBuildable);
 		Test.Assert(dialog.ExportButton.Enabled);
 		dialog.Select(1);
-		Test.Assert(dialog.Resolved == null);
-		Test.Assert(dialog.ResolveText == "No template for Web Release here", scope String(dialog.ResolveText));
+		Test.Assert(!dialog.SelectedBuildable);
+		Test.Assert(dialog.ResolveText == "SkyPlayerWeb, ShippingRelease, wasm32", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ResolveDetail == cNoEmscripten, scope String(dialog.ResolveDetail));
 		Test.Assert(!dialog.ExportButton.Enabled);
 
 		// A template picked by name decides the platform and config, which then are read only.
@@ -207,6 +230,9 @@ class ExportDialogTests
 		Test.Assert(f.Presets.At(1).Platform == "Linux64");
 		Test.Assert(dialog.Rows.FindInfo("platform").ReadOnly);
 		Test.Assert(dialog.Resolved != null);
+		// Now a Linux preset, its card and its Export follow.
+		Test.Assert(dialog.ResolveText == "SkyPlayer, ShippingRelease, Linux64", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ExportButton.Enabled);
 	}
 
 	/// Edits apply as made and are saved when the selection moves; export saves first.
@@ -303,19 +329,53 @@ class ExportDialogTests
 		Test.Assert(f.ExportedAll);
 	}
 
-	/// A preset picking a template by an id not installed here says so on the card, and what to do.
+	/// A preset for another host's platform, or in a config no player is built in, says on the
+	/// card that no player builds for it here and why; it does not export, and the card names the
+	/// player again once the preset is one this host builds.
 	[Test]
-	public static void TheCardSaysWhyThereIsNoTemplate()
+	public static void TheCardSaysWhyNoPlayerBuildsHere()
 	{
 		let f = scope Fixture();
-		f.Presets.At(1).TemplateId.Set("t-gone");
+		let other = scope ExportPreset();
+		other.Name.Set("Elsewhere");
+		other.Platform.Set(OtherHost);
+		f.Presets.Add(other);
+		let tested = scope ExportPreset();
+		tested.Name.Set("Tested");
+		tested.Platform.Set("Linux64");
+		tested.Config.Set("Test");
+		f.Presets.Add(tested);
 		let dialog = f.Open();
-		dialog.Select(1);
-		Test.Assert(dialog.Resolved == null);
-		Test.Assert(dialog.ResolveText == "Template 't-gone' is not installed here", scope String(dialog.ResolveText));
-		Test.Assert(dialog.ResolveDetail == "Install or create one in Export Templates, or pick another platform.");
-		dialog.Select(0);
-		Test.Assert(dialog.ResolveDetail.StartsWith("Linux64 · Release"));
+
+		dialog.Select(2);
+		Test.Assert(!dialog.SelectedBuildable);
+		Test.Assert(dialog.ResolveText == "No player builds for it here", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ResolveDetail.StartsWith(scope $"a {OtherHost} player builds on"), scope String(dialog.ResolveDetail));
+		Test.Assert(!dialog.ExportButton.Enabled);
+		dialog.ExportSelected();
+		Test.Assert(f.Exported.IsEmpty, "a preset whose player cannot be built here does not export");
+		Test.Assert(dialog.IsOpen);
+
+		dialog.Select(3);
+		Test.Assert(dialog.ResolveText == "No player builds for it here", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ResolveDetail.StartsWith("a Test build links the test runner"), scope String(dialog.ResolveDetail));
+
+		// Release again: the card names the player.
+		f.Edit("config", Sedulous.GUI.Variant((int64)IndexOfChoice(dialog, "config", "Release")));
+		Test.Assert(f.Presets.At(3).EffectiveConfig == "Release");
+		Test.Assert(dialog.ResolveText == "SkyPlayer, ShippingRelease, Linux64", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ExportButton.Enabled);
+	}
+
+	/// The value of the choice named `name` on the row `path`; -1 when it offers none.
+	private static int64 IndexOfChoice(ExportDialog dialog, StringView path, StringView name)
+	{
+		for (let choice in dialog.Rows.FindInfo(path).Choices)
+		{
+			if (choice.Name == name)
+				return choice.Value;
+		}
+		return -1;
 	}
 
 	/// Under a template picked by name the platform and config are read only; back on Any they may
@@ -409,28 +469,27 @@ class ExportDialogTests
 		Test.Assert(f.Presets.At(0).StageSymbols);
 	}
 
-	/// Export Templates opens over it from its button, and once it closes the card follows what it
-	/// installed: a preset that had no template here exports with the new one.
+	/// Export Templates opens over it from its button, and once it closes the template row follows
+	/// what it installed; the card still names the player the export builds, which no template
+	/// decides.
 	[Test]
-	public static void ExportTemplatesOpensOverItAndTheCardFollowsWhatChanged()
+	public static void ExportTemplatesOpensOverItAndTheTemplateRowFollowsWhatChanged()
 	{
 		let f = scope Fixture();
 		let dialog = f.Open();
 		dialog.Select(1);
-		Test.Assert(dialog.ResolveText == "No template for Web Release here");
-		Test.Assert(!dialog.ExportButton.Enabled);
+		Test.Assert(dialog.Resolved == null);
 
 		Test.Assert(f.FindButton("export-templates").HandleActivate());
 		Test.Assert(f.TemplatesOpened == 1);
 		Test.Assert(f.TemplatesClosed != null);
-		Test.Assert(dialog.ResolveText == "No template for Web Release here", "nothing read until it closes");
 
 		f.WriteTemplate("t-web", "Web Release", "Web");
 		f.TemplatesClosed();
 		Test.Assert(dialog.SelectedIndex == 1, "the selection kept");
 		Test.Assert((dialog.Resolved != null) && (dialog.Resolved.Id == "t-web"));
-		Test.Assert(dialog.ResolveText == "Exports with Web Release", scope String(dialog.ResolveText));
-		Test.Assert(dialog.ExportButton.Enabled);
+		Test.Assert(dialog.ResolveText == "SkyPlayerWeb, ShippingRelease, wasm32", scope String(dialog.ResolveText));
+		Test.Assert(!dialog.ExportButton.Enabled, "a template does not build the web player");
 		bool listed = false;
 		for (let choice in dialog.Rows.FindInfo("template").Choices)
 		{

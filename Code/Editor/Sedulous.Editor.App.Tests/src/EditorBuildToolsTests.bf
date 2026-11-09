@@ -384,8 +384,8 @@ class EditorBuildToolsTests
 			Test.Assert(payload.Get("id").AsNumber() == 2);
 			Test.Assert((payload.Get("errorCount").AsNumber() == 59) && (payload.Get("warningCount").AsNumber() == 6));
 			let diagnostics = payload.Get("diagnostics");
-			Test.Assert(diagnostics.Count == EditorBuildTools.cMaxDiagnostics);
-			Test.Assert(payload.Get("diagnosticsOmitted").AsNumber() == 65 - EditorBuildTools.cMaxDiagnostics);
+			Test.Assert(diagnostics.Count == BuildJobJson.cMaxDiagnostics);
+			Test.Assert(payload.Get("diagnosticsOmitted").AsNumber() == 65 - BuildJobJson.cMaxDiagnostics);
 			for (int i < diagnostics.Count)
 				Test.Assert(diagnostics.At(i).Get("severity").AsString() == "error", "the errors fill the cap");
 			let many = diagnostics.At(4);
@@ -573,10 +573,10 @@ class EditorBuildToolsTests
 	[Test]
 	public static void AFileIsRelativeOnlyInsideTheProject()
 	{
-		Test.Assert(EditorBuildTools.RelativeFile("/games/Built/Code/Built/src/Game.bf", "/games/Built", .. scope .()) == "Code/Built/src/Game.bf");
-		Test.Assert(EditorBuildTools.RelativeFile("/games/BuiltOther/src/Game.bf", "/games/Built", .. scope .()) == "/games/BuiltOther/src/Game.bf");
-		Test.Assert(EditorBuildTools.RelativeFile("/engine/Code/Core.bf", "/games/Built", .. scope .()) == "/engine/Code/Core.bf");
-		Test.Assert(EditorBuildTools.RelativeFile("/games/Built/", "/games/Built", .. scope .()) == "/games/Built/");
+		Test.Assert(BuildJobJson.RelativeFile("/games/Built/Code/Built/src/Game.bf", "/games/Built", .. scope .()) == "Code/Built/src/Game.bf");
+		Test.Assert(BuildJobJson.RelativeFile("/games/BuiltOther/src/Game.bf", "/games/Built", .. scope .()) == "/games/BuiltOther/src/Game.bf");
+		Test.Assert(BuildJobJson.RelativeFile("/engine/Code/Core.bf", "/games/Built", .. scope .()) == "/engine/Code/Core.bf");
+		Test.Assert(BuildJobJson.RelativeFile("/games/Built/", "/games/Built", .. scope .()) == "/games/Built/");
 	}
 
 	/// host_info says whether the project's own editor is stale, for a project with a package of

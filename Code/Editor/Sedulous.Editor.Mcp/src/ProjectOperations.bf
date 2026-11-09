@@ -108,12 +108,19 @@ class CreateOutcome
 }
 
 /// project_export's resolved request: the preset the tool resolved by name, the output root,
-/// and whether to re-cook everything first. Borrowed, valid for the call.
+/// whether to re-cook everything first, whether to build the player or ship its last build, and
+/// how long a host that waits on its jobs waits. Borrowed, valid for the call.
 struct ExportRequest
 {
 	public ExportPreset Preset = null;
 	public StringView OutRoot = default;
 	public bool Rebuild = false;
+	/// False: no BeefBuild runs; the player the last build of the preset's platform and config
+	/// left ships, and the export is refused when there is none.
+	public bool Build = true;
+	/// How long the editor host lets the export run before it answers with an error; 0 is the
+	/// host's own step timeout. The stdio host runs it inline, and never times out.
+	public double TimeoutSeconds = 0;
 }
 
 /// How a HOST runs the work behind asset_cook, asset_import and project_export.

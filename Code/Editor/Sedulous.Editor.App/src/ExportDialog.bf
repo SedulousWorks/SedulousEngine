@@ -10,9 +10,10 @@ namespace Sedulous.Editor.App;
 
 // Export: Project > Export, a window over its markup
 // (Data/Editor/Export.xml). The project's export presets on the left (add, duplicate, remove after
-// asking), each by the icon of the template it resolves to here, warned of when none does; the
-// selected one on the right under a card naming the template it exports with, or saying why there
-// is none, its settings on the property grid as Project Settings' are: a section per
+// asking), each by the icon of the template it resolves to here, warned of when its player cannot
+// be built here; the selected one on the right under a card naming the player its export builds
+// ("SkyHopperPlayer, ShippingRelease, Linux64"), or saying why none can be built here (another
+// host's platform, no Emscripten for the web), its settings on the property grid as Project Settings' are (ruling 20): a section per
 // category (General: its name, template, platform, config, player and output folder; Content: the
 // extra files as a list, symbols, pruning, shader source; Display: its own render size, window and
 // orientation, each shown only when the preset overrides it). A template picked by name decides
@@ -42,6 +43,11 @@ class ExportDialogSeams
 	public delegate void(StringView message) Notify ~ delete _;
 	/// The project's folder, absolute: the files a preset ships are under it, named relative to it.
 	public String ProjectRoot = new .() ~ delete _;
+	/// Whether a preset's player can be built on this host, and why not in `outWhy` when it
+	/// cannot. Unset: ProjectPlayerBuilder.CanBuild.
+	public delegate bool(ExportPreset preset, String outWhy) CanBuild ~ delete _;
+	/// The project's name, which names the player a preset builds (<Game>Player).
+	public String ProjectName = new .() ~ delete _;
 	/// The host's platform, a new preset's.
 	public String HostPlatform = new .() ~ delete _;
 	/// Where exports are written, said under the presets.
@@ -238,7 +244,25 @@ class ExportDialog
 		}
 	}
 
-	/// The card's title: the template it exports with, or why there is none.
+	/// Whether the selected preset's player can be built here (false with none selected).
+	public bool SelectedBuildable
+	{
+		get
+		{
+			let index = SelectedIndex;
+			return (index >= 0) && Buildable(mPresets.At(index), scope .());
+		}
+	}
+
+	/// Whether `preset`'s player can be built on this host, with why not in `outWhy`.
+	private bool Buildable(ExportPreset preset, String outWhy)
+	{
+		if (mSeams.CanBuild != null)
+			return mSeams.CanBuild(preset, outWhy);
+		return ProjectPlayerBuilder.CanBuild(preset, outWhy);
+	}
+
+	/// The card's title: the player the selected preset builds, or that none builds for it.
 	public StringView ResolveText
 	{
 		get
@@ -248,7 +272,7 @@ class ExportDialog
 		}
 	}
 
-	/// The card's detail line under it.
+	/// The card's detail line under it: why its player cannot be built here, when it cannot.
 	public StringView ResolveDetail
 	{
 		get
@@ -318,12 +342,12 @@ class ExportDialog
 		Select((mPresets.Count > 0) ? Math.Min(index, mPresets.Count - 1) : mPresets.Count);
 	}
 
-	/// Saves what is pending, closes and runs the selected preset's export; nothing when it
-	/// resolves to no template here.
+	/// Saves what is pending, closes and runs the selected preset's export; nothing when its
+	/// player cannot be built here.
 	public void ExportSelected()
 	{
 		let index = SelectedIndex;
-		if ((index < 0) || (mSeams.RunExport == null) || (Resolved == null))
+		if ((index < 0) || (mSeams.RunExport == null) || !SelectedBuildable)
 			return;
 		Save();
 		let name = scope String(mPresets.At(index).Name);
@@ -480,8 +504,10 @@ class ExportDialog
 		summary.Append(preset.Platform.IsEmpty ? "?" : StringView(preset.Platform));
 		summary.Append(cDot);
 		summary.Append(preset.EffectiveConfig);
+		// Warned of, saying why, when its player cannot be built here.
+		let why = scope String();
 		shown.Show((template != null) ? IconFor(template) : null, preset.Name, summary,
-			(template != null) ? StringView() : "No template for it here");
+			Buildable(preset, why) ? StringView() : StringView(why));
 	}
 
 	// The values a choice offers: the preset's own, the fallback (the host's platform, Release),
@@ -555,7 +581,7 @@ class ExportDialog
 		DeleteAndNullify!(mBag);
 		let index = SelectedIndex;
 		if (mExport != null)
-			mExport.Enabled = (index >= 0) && (Resolved != null);
+			mExport.Enabled = SelectedBuildable;
 		if (mDuplicate != null)
 			mDuplicate.Enabled = index >= 0;
 		if (mRemove != null)
@@ -756,7 +782,7 @@ class ExportDialog
 		ShowOverrides(stored);
 		ShowCard();
 		if (mExport != null)
-			mExport.Enabled = Resolved != null;
+			mExport.Enabled = SelectedBuildable;
 	}
 
 	private void ShowCard()
@@ -776,38 +802,24 @@ class ExportDialog
 			return;
 		}
 		let preset = mPresets.At(index);
-		let template = mRegistry.Resolve(preset);
-		if (template == null)
+		// The player it builds ("SkyHopperPlayer, ShippingRelease, Linux64"), or why none builds
+		// for it here (another host's platform, no Emscripten for the web, a config no player is).
+		let description = scope String();
+		let why = scope String();
+		let described = ProjectPlayerBuilder.Describe(mSeams.ProjectName, preset, description, why);
+		if (!described || !Buildable(preset, why..Clear()))
 		{
 			icon.SetDrawable(null);
 			icon.Source = "Editor/Icons/warning.svg";
-			if (!preset.TemplateId.IsEmpty && (mRegistry.FindById(preset.TemplateId) == null))
-				title.Text = scope $"Template '{preset.TemplateId}' is not installed here";
-			else
-				title.Text = scope $"No template for {preset.Platform.IsEmpty ? "?" : StringView(preset.Platform)} {preset.EffectiveConfig} here";
-			detail.Text = "Install or create one in Export Templates, or pick another platform.";
+			title.Text = described ? StringView(description) : "No player builds for it here";
+			detail.Text = why;
 			detail.AddClass("warning");
 			return;
 		}
-		icon.SetDrawable(IconFor(template));
-		title.Text = scope $"Exports with {template.Name}";
-		let text = scope String();
-		text.Append(template.Platform);
-		text.Append(cDot);
-		text.Append(template.EffectiveConfig);
-		if (!template.EngineVersion.IsEmpty)
-		{
-			text.Append(cDot);
-			text.Append(template.EngineVersion);
-		}
-		text.Append(cDot);
-		text.Append(template.IsHost ? "this editor's own player" : "installed");
-		if (!ExportTemplates.EngineMatches(template))
-		{
-			text.Append(". Built for another engine version; the export still runs.");
-			detail.AddClass("warning");
-		}
-		detail.Text = text;
+		let template = mRegistry.Resolve(preset);
+		icon.SetDrawable((template != null) ? IconFor(template) : null);
+		title.Text = description;
+		detail.Text = "Built as it exports: a first build of a config compiles the engine and takes minutes.";
 	}
 
 	private void Save()

@@ -517,7 +517,14 @@ the engine plugins it enables there, and ships it named after the game (or the p
 `playerName`). A preset for another host's platform (Win64 on Linux) is refused, and skipped by
 an export of every preset; a web preset needs Emscripten set in BeefBuild's settings. A plugin
 enabled where it is not supported, or found in no package, refuses the export, the response
-naming why. The response's `player` says what was built. Each enabled plugin's deploy files ship
+naming why. A player that does not compile refuses the export before anything cooks, the refusal
+quoting its first errors (`build_status` has the whole build). The response's `player` says what
+was built, and `build` the build itself as `project_build` answers one (its state, `durationMs`,
+`errorCount` and at most 10 diagnostics), or `built: false` when nothing compiled. `build: false`
+runs no BeefBuild and repackages the content over the player the last build of the preset's
+platform and config left, refused when there is none. In the editor the call waits up to
+`timeoutSeconds` (default 1800, at most 7200) and then answers with an error while the export
+goes on. Each enabled plugin's deploy files ship
 beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
 export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
 project's default scene, startup script and manifest assets, and what is flagged Always Export),
@@ -526,15 +533,17 @@ following each scene and prefab to what its components and settings name, the pr
 the response's `pruning` counts what was kept and dropped.
 
 `export_presets` lists the project's presets, each its fields by the names
-`export_preset_set` takes, and the templates this machine can export them with;
+`export_preset_set` takes, with `buildable` and `why`: whether this machine can build the
+preset's player, and why not when it cannot (another host's platform, a web preset with no
+BeefBuild or no Emscripten set in BeefBuild's settings, a Test config, which is no player);
 `export_preset_set` creates, changes or removes one by `name` (only what is given changes; a
-name that is no preset field is refused with the list). A preset for another device names
-that device's template by `templateId`, and can override the project's render resolution and
+name that is no preset field is refused with the list). A preset for another device can
+override the project's render resolution and
 window for it (`overridesRender` with `renderWidth`, `renderHeight` and `renderFit`;
 `overridesWindow` with `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`;
 `overridesOrientation` with `orientation`, a phone-facing Web preset's `Landscape` say; a
-choice by its value's name, `Fullscreen`). A template the machine lacks is kept, since presets travel with the
-project and templates do not; the preset's `template` comes back null until one is installed.
+choice by its value's name, `Fullscreen`). A preset this machine cannot build is kept, since
+presets travel with the project: export it on a host that builds it.
 
 ## Writing game code
 
@@ -597,8 +606,9 @@ and relaunching need the editor host; the loop:
 - `profiler_capture` keeps the call open for the capture plus a few frames for the GPU's
   last passes; the editor must be drawing (not minimised), or it gives up. One capture runs
   at a time, a game's F9 included.
-- `project_export` failures say little in the response by design, a refusal by the project's
-  plugins aside; the detail is in `log_read` (the Cook and Export categories).
+- `project_export` failures say little in the response by design, a refusal (the project's
+  plugins, the platform, the player's compile errors) aside; the detail is in `log_read` (the
+  Cook and Export categories), and a compile's in `build_status`.
 
 ## When something looks wrong
 

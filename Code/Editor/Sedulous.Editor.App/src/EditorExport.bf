@@ -276,9 +276,14 @@ class EditorExport
 		Absolutize(PathJoin(project.Directory, ProjectLayout.DistDir, .. scope .()), outRoot);
 		let name = new String(presetName);
 		let revealRoot = new String(outRoot);
+		// What the job found, for the completion to say: one reference for each delegate, so a
+		// job dropped at shutdown, its completion never run, still lets it go.
+		let outcome = new ExportOutcome();
+		outcome.AddRef();
 
 		mServices.Tasks.Submit(all ? "Export All" : "Export",
-			new [=project, =builders, =buildService, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks, =plugins](task) =>
+			new [=project, =builders, =buildService, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks, =plugins,
+				=outcome](task) =>
 			{
 				if (buildService == null)
 				{
@@ -295,24 +300,57 @@ class EditorExport
 				if (all)
 				{
 					return ExportDriver.ExportAll(project, presets.Presets, players, builders, outRoot, dataRoot,
-						false, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
+						false, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins, outcome.Summary);
 				}
 				let preset = presets.Find(name);
 				if (preset == null)
 					return .Err(.NotFound);
 				return ExportDriver.ExportOne(project, preset, players, builders, outRoot, dataRoot,
-					false, null, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
-			} ~ { delete dataRoot; delete name; delete outRoot; },
-			new [=revealRoot, =this](result) => // main thread
+					false, outcome.Result, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
+			} ~ { delete dataRoot; delete name; delete outRoot; outcome.ReleaseRef(); },
+			new [=revealRoot, =all, =outcome, =this](result) => // main thread
 			{
+				let context = mServices.Context;
+				let skipped = SkippedNote(outcome.Summary.Skipped, .. scope .());
 				if (result case .Err)
 				{
-					mServices.Context.Notify(.Error, "Export failed (see Console).");
+					if (all)
+						context.Notify(.Error, scope $"Export All: {outcome.Summary.Failed} preset(s) failed (see Console).{skipped}");
+					else if (!outcome.Result.Refusal.IsEmpty)
+						context.Notify(.Error, scope $"Export failed: {outcome.Result.Refusal}");
+					else
+						context.Notify(.Error, "Export failed (see Console).");
 					return;
 				}
-				mServices.Context.SetStatus("Export complete.");
+				if (all && !skipped.IsEmpty)
+					context.Notify(.Info, scope $"Export All: {outcome.Summary.Exported} preset(s) exported.{skipped}");
+				context.SetStatus("Export complete.");
 				if (mServices.OnExported != null)
 					mServices.OnExported(revealRoot);
-			} ~ delete revealRoot);
+			} ~ { delete revealRoot; outcome.ReleaseRef(); });
+	}
+
+	/// What an export job leaves for its completion: Export All's counts, or the one preset's
+	/// result.
+	private class ExportOutcome : RefCounted
+	{
+		public ExportAllSummary Summary = new .() ~ delete _;
+		public ExportResult Result = new .() ~ delete _;
+	}
+
+	/// " Skipped, their players building on another host: <names>." for presets Export All
+	/// skipped, into `outNote`; nothing for none.
+	public static void SkippedNote(List<String> skipped, String outNote)
+	{
+		if (skipped.IsEmpty)
+			return;
+		outNote.Append(" Skipped, their players building on another host: ");
+		for (int i < skipped.Count)
+		{
+			if (i > 0)
+				outNote.Append(", ");
+			outNote.Append(skipped[i]);
+		}
+		outNote.Append('.');
 	}
 }

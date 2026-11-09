@@ -105,6 +105,8 @@ class EditorProjectOperations : IProjectOperations
 		public List<Guid> ReachableRoots = new .() ~ delete _;
 		public bool ReachableValid = false;
 		public ExportResult Result = new .() ~ delete _;
+		/// False: the player the last build left ships, and no BeefBuild runs.
+		public bool Build = true;
 		public bool JobDone = false;
 		public bool JobOk = true;
 	}
@@ -120,6 +122,8 @@ class EditorProjectOperations : IProjectOperations
 	{
 		public ExportPhase Phase = .Cooking;
 		public int64 Started = Stopwatch.GetTimestamp();
+		/// How long it may run, cook and job together; 0 is the seams' step timeout.
+		public double TimeoutSeconds = 0;
 		public CookWait Cook = new .() ~ delete _;
 		public ExportShared Shared = new .() ~ _.ReleaseRef();
 	}
@@ -138,10 +142,15 @@ class EditorProjectOperations : IProjectOperations
 		mSeams = seams;
 	}
 
-	private bool TimedOut(int64 startedMicros)
+	/// Whether what started at `startedMicros` has run past `timeoutSeconds` (0: the seams' step
+	/// timeout).
+	private bool TimedOut(int64 startedMicros, double timeoutSeconds = 0)
 	{
-		return (double)(Stopwatch.GetTimestamp() - startedMicros) / 1000000.0 > mSeams.TimeoutSeconds;
+		return (double)(Stopwatch.GetTimestamp() - startedMicros) / 1000000.0 > Limit(timeoutSeconds);
 	}
+
+	/// `timeoutSeconds`, or the seams' step timeout for 0.
+	private double Limit(double timeoutSeconds) => (timeoutSeconds > 0) ? timeoutSeconds : mSeams.TimeoutSeconds;
 
 	private void BeginCook(CookWait wait, bool force)
 	{
@@ -150,14 +159,15 @@ class EditorProjectOperations : IProjectOperations
 		mSeams.Cook.RequestCook(force); // remembered by the service if one is in flight
 	}
 
-	/// Finished, still cooking (NotYet), or Failed once the wait outlives the timeout.
-	private OperationStep PollCook(CookWait wait, String outError)
+	/// Finished, still cooking (NotYet), or Failed once the wait outlives `timeoutSeconds` (0:
+	/// the seams' step timeout).
+	private OperationStep PollCook(CookWait wait, String outError, double timeoutSeconds = 0)
 	{
 		if ((mSeams.Cook.Revision > wait.SinceRevision) && mSeams.Cook.IsIdle)
 			return .Finished;
-		if (TimedOut(wait.StartedMicros))
+		if (TimedOut(wait.StartedMicros, timeoutSeconds))
 		{
-			outError.AppendF("the cook did not finish within {} s - read log_read (category Cook) for where it stands", (int64)mSeams.TimeoutSeconds);
+			outError.AppendF("the cook did not finish within {} s - read log_read (category Cook) for where it stands", (int64)Limit(timeoutSeconds));
 			return .Failed;
 		}
 		return .NotYet;
@@ -357,13 +367,14 @@ class EditorProjectOperations : IProjectOperations
 		mSeams.Tasks.Submit(scope $"Export {shared.Preset.Name}",
 			new [=shared, =project, =builders, =buildService, =dataRoot, =hooks, =plugins](task) =>
 			{
-				if (buildService == null)
+				if ((buildService == null) && shared.Build)
 				{
 					shared.Result.Refusal.Set("this host has no project build service to build the player with");
 					return .Err(.NotSupported);
 				}
-				// The player builds here, on the build lane, cancelled with the lane's task.
-				let players = scope ProjectPlayerBuilder(buildService, dataRoot, task.Token);
+				// The player builds here, on the build lane, cancelled with the lane's task; or, with
+				// no build asked for, the last build ships.
+				let players = scope ProjectPlayerBuilder(buildService, dataRoot, task.Token, !shared.Build);
 				ExportProgress onProgress = scope (step, fraction) =>
 					{
 						task.SetStep(step);
@@ -442,14 +453,16 @@ class EditorProjectOperations : IProjectOperations
 			}
 			export = new ExportState();
 			call.State = export;
+			export.TimeoutSeconds = request.TimeoutSeconds;
 			request.Preset.CopyTo(export.Shared.Preset);
 			export.Shared.OutRoot.Set(request.OutRoot);
+			export.Shared.Build = request.Build;
 			// Cook first, through the cook service: what the Export menu does before its job.
 			BeginCook(export.Cook, request.Rebuild);
 		}
 		if (export.Phase == .Cooking)
 		{
-			let polled = PollCook(export.Cook, outError);
+			let polled = PollCook(export.Cook, outError, export.TimeoutSeconds);
 			if (polled == .Failed)
 				return .Failed;
 			if (polled == .NotYet)
@@ -477,12 +490,20 @@ class EditorProjectOperations : IProjectOperations
 		// Running.
 		if (!export.Shared.JobDone)
 		{
-			if (TimedOut(export.Started))
-				return FailExport(outError, scope $"export of preset '{request.Preset.Name}' did not finish within {(int64)mSeams.TimeoutSeconds} s");
+			if (TimedOut(export.Started, export.TimeoutSeconds))
+			{
+				return FailExport(outError, scope $"export of preset '{request.Preset.Name}' did not finish within {(int64)Limit(export.TimeoutSeconds)} s; it goes on (build_status follows its player's build)");
+			}
 			return .NotYet;
 		}
 		if (!export.Shared.JobOk)
+		{
+			// Why it was refused, when it was (a plugin, the platform, the player's compile errors).
+			let refusal = export.Shared.Result.Refusal;
+			if (!refusal.IsEmpty)
+				return FailExport(outError, scope $"export of preset '{request.Preset.Name}' refused: {refusal}");
 			return FailExport(outError, scope $"export of preset '{request.Preset.Name}' failed - read log_read (category Export/Cook) for the failing step");
+		}
 		export.Shared.Result.CopyTo(outResult);
 		return .Finished;
 	}

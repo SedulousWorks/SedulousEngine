@@ -64,6 +64,13 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   the game's code and the plugins it enables, instead of copying a prebuilt player; a project's
   first shipping or web export compiles the engine and takes minutes. A Windows preset exports
   on Windows.
+- Export: the Export dialog names the player each preset builds ("SkyHopperPlayer,
+  ShippingRelease, Linux64"), or says why it cannot be built on this machine, and Export All says
+  which presets it skipped for another machine's platform.
+- MCP: `project_export` reports the player's build (its state, time and first diagnostics),
+  waits up to `timeoutSeconds` (default 1800) in the editor, and with `build: false` repackages
+  over the last build instead of building; `export_presets` says for each preset whether this
+  machine can build it, and why not, instead of listing templates.
 - Prefabs: spawning a prefab no longer reads it from disk each time, and a prefab saved in the
   editor reaches the next spawn of a running game.
 - Scenes: a level a game loads reads each prefab it places once, however many times it places

@@ -1206,6 +1206,7 @@ class EditorApplication : IApplication
 			else
 				PathJoin(GetCurrentDirectory(.. scope .()), project.Directory, seams.ProjectRoot);
 			seams.HostPlatform.Set(BuildLayout.HostPlatformName);
+			seams.ProjectName.Set(project.Name);
 			// Absolute, as the export writes it: the project directory can be relative.
 			let dist = PathJoin(project.Directory, ProjectLayout.DistDir, .. scope .());
 			if (PathIsAbsolute(dist))

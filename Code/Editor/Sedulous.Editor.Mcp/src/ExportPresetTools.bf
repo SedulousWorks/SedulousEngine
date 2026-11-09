@@ -12,8 +12,8 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.Mcp;
 
 /// export_presets and export_preset_set: the project's export targets (export_presets.xml),
-/// what the editor's Export Presets dialog edits, and the templates this machine can export
-/// them with. project_export runs one. A preset's fields are ExportPreset's reflection (its
+/// what the editor's Export Presets dialog edits, and whether this machine can build each one's
+/// player. project_export runs one. A preset's fields are ExportPreset's reflection (its
 /// [Setting] fields), through ReflectedFields; the tools' own rules are the preset's name (its
 /// identity), removal, and a platform the engine targets and a config it builds.
 static class ExportPresetTools
@@ -24,7 +24,7 @@ static class ExportPresetTools
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("export_presets",
-			"The open project's export presets and the export templates this machine has. Each preset: its fields as export_preset_set takes them (name, platform, templateId - \"\" resolves by platform and config - playerName, outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, includeShaderSource (ship custom shaders' HLSL too; off by default), and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable, overridesOrientation with orientation), and `template`: the id it resolves to here, or null when this machine has no template for it. A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). Each template: id, name, platform, config, engineVersion, notes, host (the player beside this tool, not an installed bundle). export_preset_set changes them; project_export runs one.",
+			"The open project's export presets, and whether this machine can build each one's player. Each preset: its fields as export_preset_set takes them (name, platform, templateId - unused: an export builds its player - playerName (the shipped player's name; \"\" is the game's), outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, includeShaderSource (ship custom shaders' HLSL too; off by default), and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable, overridesOrientation with orientation), `buildable`, and `why` (null when buildable): another host's platform (a Win64 player builds on Windows), a web preset with no BeefBuild or no Emscripten set in BeefBuild's settings, or a config no player is built in (Test). A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). export_preset_set changes them; project_export runs one.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => List(session, outResult, outError));
 
@@ -34,7 +34,7 @@ static class ExportPresetTools
 		ReflectedFields.AddToSchema(schema, fields);
 		schema.Boolean("remove", "delete the preset instead; nothing but `name` may be given");
 		server.RegisterTool("export_preset_set",
-			"Create, change or remove one export preset of the open project, by `name` (required): only what is given changes, a field name that is no preset field is refused with the list, and a new preset starts as the host's platform, Release. `platform` takes Linux64, Win64 or Web and `config` Debug, Release, Test or \"\" (Release); a choice takes one of its values by name (renderFit, windowMode, orientation). Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A templateId need not exist on this machine - presets travel with the project and templates do not - so the result's `template` says whether it resolves here. Returns the presets as export_presets does.",
+			"Create, change or remove one export preset of the open project, by `name` (required): only what is given changes, a field name that is no preset field is refused with the list, and a new preset starts as the host's platform, Release. `platform` takes Linux64, Win64 or Web and `config` Debug, Release, Test or \"\" (Release); a choice takes one of its values by name (renderFit, windowMode, orientation). Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A preset this machine cannot build for is kept - presets travel with the project - and the result's `buildable` and `why` say so. Returns the presets as export_presets does.",
 			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
 	}
@@ -49,14 +49,6 @@ static class ExportPresetTools
 		return false;
 	}
 
-	/// The templates an export from this host would see: the shared root, then the player
-	/// beside this tool, as the inline export builds them.
-	private static void RefreshTemplates(TemplateRegistry registry)
-	{
-		registry.Refresh(ExportTemplates.ResolveRoot("", .. scope .()),
-			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()));
-	}
-
 	private static bool List(ProjectSession session, JsonValue outResult, String outError)
 	{
 		if (!session.IsOpen)
@@ -66,42 +58,28 @@ static class ExportPresetTools
 		}
 		let presets = scope ExportPresetSet();
 		let fromFile = LoadPresets(session.Project, presets);
-		let templates = scope TemplateRegistry();
-		RefreshTemplates(templates);
-		Describe(presets, fromFile, templates, outResult);
+		Describe(presets, fromFile, outResult);
 		return true;
 	}
 
-	private static void Describe(ExportPresetSet presets, bool fromFile, TemplateRegistry templates, JsonValue outResult)
+	/// The presets, each with its fields and whether its player can be built on this host
+	/// (ProjectPlayerBuilder.CanBuild), and why not when it cannot.
+	private static void Describe(ExportPresetSet presets, bool fromFile, JsonValue outResult)
 	{
 		let list = JsonValue.MakeArray();
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ExportPreset), fields);
+		let why = scope String();
 		for (let preset in presets.Presets)
 		{
 			let json = ReflectedFields.ToJson(preset, fields, null);
-			let resolved = templates.Resolve(preset);
-			json.Set("template", (resolved != null) ? JsonValue.MakeString(resolved.Id) : JsonValue.MakeNull());
+			let buildable = ProjectPlayerBuilder.CanBuild(preset, why..Clear());
+			json.Set("buildable", JsonValue.MakeBool(buildable));
+			json.Set("why", buildable ? JsonValue.MakeNull() : JsonValue.MakeString(why));
 			list.Add(json);
 		}
 		outResult.Set("presets", list);
 		outResult.Set("synthesized", JsonValue.MakeBool(!fromFile));
-
-		let templateList = JsonValue.MakeArray();
-		for (int i < templates.Count)
-		{
-			let template = templates.At(i);
-			let json = JsonValue.MakeObject();
-			json.Set("id", JsonValue.MakeString(template.Id));
-			json.Set("name", JsonValue.MakeString(template.Name));
-			json.Set("platform", JsonValue.MakeString(template.Platform));
-			json.Set("config", JsonValue.MakeString(template.EffectiveConfig));
-			json.Set("engineVersion", JsonValue.MakeString(template.EngineVersion));
-			json.Set("notes", JsonValue.MakeString(template.Notes));
-			json.Set("host", JsonValue.MakeBool(template.IsHost));
-			templateList.Add(json);
-		}
-		outResult.Set("templates", templateList);
 	}
 
 	private static bool Set(ProjectSession session, JsonValue arguments, JsonValue outResult, String outError)
@@ -151,8 +129,8 @@ static class ExportPresetTools
 		defer ClearAndDeleteItems(changes);
 		if (!ReflectedFields.Check(arguments, fields, null, changes, outError))
 			return false;
-		// The platform the engine targets and a config it builds. A template need not exist
-		// here: presets travel with the project and templates do not.
+		// The platform the engine targets and a config it builds. This machine need not build
+		// it: presets travel with the project, and another host exports its own platform.
 		if (let arg = arguments.Get("platform"))
 		{
 			if (!Contains(cPlatforms, arg.AsString()))
@@ -190,9 +168,7 @@ static class ExportPresetTools
 			outError.AppendF("{} did not save", ExportPresetsFile.cFileName);
 			return false;
 		}
-		let templates = scope TemplateRegistry();
-		RefreshTemplates(templates);
-		Describe(presets, true, templates, outResult);
+		Describe(presets, true, outResult);
 		return true;
 	}
 

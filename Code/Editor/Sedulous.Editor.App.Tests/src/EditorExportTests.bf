@@ -150,6 +150,20 @@ class EditorExportTests
 		Test.Assert(exported == 0);
 	}
 
+	/// Export All's notice names the presets it skipped, their players building on another host;
+	/// with none skipped it adds nothing.
+	[Test]
+	public static void ExportAllSaysWhichPresetsItSkipped()
+	{
+		let skipped = scope List<String>();
+		defer { ClearAndDeleteItems!(skipped); }
+		Test.Assert(EditorExport.SkippedNote(skipped, .. scope .()).IsEmpty, "nothing skipped, nothing said");
+		skipped.Add(new .("Windows Desktop"));
+		skipped.Add(new .("Windows Debug"));
+		let note = EditorExport.SkippedNote(skipped, .. scope .());
+		Test.Assert(note == " Skipped, their players building on another host: Windows Desktop, Windows Debug.", note);
+	}
+
 	/// The dialog's presets save to the project's export_presets.xml and read back; with no
 	/// project the save does nothing.
 	[Test]

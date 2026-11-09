@@ -37,18 +37,17 @@ static class ExportPresetToolsTests
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Presets"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
 
-		// No file: the synthesized host preset, and the host template beside it.
+		// No file: the synthesized host preset, whose player this host builds; no templates.
 		{
 			let listed = CallOk(server, "export_presets", Obj());
 			defer delete listed;
 			Test.Assert(listed.Get("synthesized").AsBool());
 			Test.Assert(listed.Get("presets").Count == 1);
-			Test.Assert(listed.Get("presets").At(0).Get("platform").AsString() == BuildLayout.HostPlatformName);
-			bool host = false;
-			let templates = listed.Get("templates");
-			for (int i < templates.Count)
-				host |= templates.At(i).Get("host").AsBool();
-			Test.Assert(host, "the host template is always there");
+			let host = listed.Get("presets").At(0);
+			Test.Assert(host.Get("platform").AsString() == BuildLayout.HostPlatformName);
+			Test.Assert(host.Get("buildable").AsBool(), "the host's preset builds here");
+			Test.Assert(host.Get("why").IsNull, "nothing to say for a preset that builds");
+			Test.Assert(listed.Get("templates") == null, "no templates are listed");
 		}
 
 		// Refusals leave nothing written.
@@ -67,8 +66,8 @@ static class ExportPresetToolsTests
 		Test.Assert(refusal.Contains("no preset"));
 		Test.Assert(!FileExists(PathJoin(dir, ExportPresetsFile.cFileName, .. scope .())), "a refusal writes nothing");
 
-		// A new preset: kept beside the synthesized one, its overrides as given, and a
-		// template this machine does not have kept but reported unresolved.
+		// A new preset: kept beside the synthesized one, its overrides as given, and the legacy
+		// template id kept as it was given.
 		{
 			var args = With(With(With(Obj(), "name", "Deck"), "platform", "Linux64"), "templateId", "sedulous-nosuch-release-0.0.0");
 			args = WithBool(args, "overridesRender", true);
@@ -82,7 +81,8 @@ static class ExportPresetToolsTests
 			let deck = Named(presets, "name", "Deck");
 			Test.Assert(deck != null);
 			Test.Assert(deck.Get("templateId").AsString() == "sedulous-nosuch-release-0.0.0");
-			Test.Assert(deck.Get("template").IsNull, "a template this machine lacks does not resolve");
+			Test.Assert(deck.Get("template") == null, "no template is resolved");
+			Test.Assert(deck.Get("buildable") != null, "whether it builds here is said");
 			Test.Assert(deck.Get("config").AsString() == "", "unset: Release");
 			Test.Assert(deck.Get("overridesRender").AsBool() && (deck.Get("renderWidth").AsInt() == 1280) && (deck.Get("renderHeight").AsInt() == 800));
 			Test.Assert((deck.Get("renderFit").AsString() == "Letterbox") && (deck.Get("windowMode").AsString() == "Fullscreen"));
@@ -109,5 +109,48 @@ static class ExportPresetToolsTests
 			Test.Assert(removed.Get("presets").Count == 1);
 			Test.Assert(Named(removed.Get("presets"), "name", "Deck") == null);
 		}
+	}
+
+	/// Another host's desktop platform: Win64 on Linux, Linux64 on Windows.
+	private static StringView OtherHost => (BuildLayout.HostPlatformName == "Win64") ? "Linux64" : "Win64";
+
+	/// Each preset says whether its player builds on this host and, when it does not, why: a
+	/// preset for another host's platform and one in the Test config are kept, and say so.
+	[Test]
+	public static void EachPresetSaysWhetherItsPlayerBuildsHere()
+	{
+		let dir = Scratch("mcp_export_presets_buildable", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ExportPresetTools.Register(server, session);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Buildable"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		delete CallOk(server, "export_preset_set", With(With(Obj(), "name", "Elsewhere"), "platform", OtherHost));
+		let listed = CallOk(server, "export_preset_set", With(With(With(Obj(), "name", "Tested"), "platform", BuildLayout.HostPlatformName), "config", "Test"));
+		defer delete listed;
+		let presets = listed.Get("presets");
+		Test.Assert(presets.Count == 3, scope $"{presets.Count} presets");
+
+		let elsewhere = Named(presets, "name", "Elsewhere");
+		Test.Assert((elsewhere != null) && !elsewhere.Get("buildable").AsBool(), "another host's platform builds there");
+		Test.Assert(elsewhere.Get("why").AsString().Contains(scope $"a {OtherHost} player builds on"), scope String(elsewhere.Get("why").AsString()));
+
+		let tested = Named(presets, "name", "Tested");
+		Test.Assert((tested != null) && !tested.Get("buildable").AsBool(), "no player is built in Test");
+		Test.Assert(tested.Get("why").AsString().Contains("test runner"), scope String(tested.Get("why").AsString()));
+
+		// The host's own, synthesized and kept beside them, still builds.
+		bool hostBuilds = false;
+		for (int i < presets.Count)
+		{
+			let preset = presets.At(i);
+			if ((preset.Get("platform").AsString() == BuildLayout.HostPlatformName) && (preset.Get("config").AsString() != "Test"))
+				hostBuilds |= preset.Get("buildable").AsBool() && preset.Get("why").IsNull;
+		}
+		Test.Assert(hostBuilds, "the host's preset builds here");
 	}
 }

@@ -523,6 +523,7 @@ static class ExportDriver
 				result.Pruning.CopyTo(outResult.Pruning);
 				outResult.PlayerReason.Set(result.PlayerReason);
 				outResult.Refusal.Set(result.Refusal);
+				outResult.SetPlayerJob(result.PlayerJob);
 			}
 		}
 		// The project's plugins: each found in the project's package or the SDK's, and supported
@@ -568,6 +569,7 @@ static class ExportDriver
 				return .Err(failed);
 			}
 			result.PlayerReason.Set(build.Description);
+			result.SetPlayerJob(build.Job);
 			GlobalLog(.Information, "Export: preset '{}': player {}", preset.Name, build.Description);
 		}
 
