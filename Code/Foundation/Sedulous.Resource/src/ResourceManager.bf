@@ -201,6 +201,23 @@ class ResourceManager
 		let instance = mDatabase.GetInstance(id);
 		if (instance == null)
 			return 0;
+		let factory = FactoryReading(instance.TypeName);
+		return (factory != null) ? factory.ProductTypeId : 0;
+	}
+
+	/// Whether the factory registered to read records stored as `storedTypeName` declares them
+	/// authored (IResourceFactory.ReadsAuthoredRecord); false when no factory reads them. What a
+	/// LayeredContentDatabase this manager reads through asks before letting its fallback answer:
+	/// it is asked at each lookup, so a factory added or removed later changes the answer.
+	public bool ReadsAuthoredRecord(StringView storedTypeName)
+	{
+		let factory = FactoryReading(storedTypeName);
+		return (factory != null) && factory.ReadsAuthoredRecord;
+	}
+
+	/// The registered factory whose cooked form is stored as `storedTypeName`, or null.
+	private IResourceFactory FactoryReading(StringView storedTypeName)
+	{
 		let cooked = scope String();
 		for (let entry in mFactories)
 		{
@@ -209,10 +226,10 @@ class ResourceManager
 				continue;
 			cooked.Clear();
 			type.GetFullName(cooked);
-			if (cooked == instance.TypeName)
-				return entry.key;
+			if (cooked == storedTypeName)
+				return entry.value;
 		}
-		return 0;
+		return null;
 	}
 
 	/// BindHandleAsync of `id` as whatever its cooked form makes (ProductTypeIdFor); null when

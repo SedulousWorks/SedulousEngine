@@ -16,6 +16,12 @@ interface IResourceFactory
 	/// product type itself returns that.
 	Type CookedType { get; }
 
+	/// Whether CookedType is an AUTHORED record the cook never builds (a prefab document): the
+	/// record is read as it was written, so a host layering its cooked database over its sources
+	/// lets the sources answer for it (LayeredContentDatabase). Default false: a factory reading
+	/// a cooked product must never be handed the source envelope beneath it.
+	bool ReadsAuthoredRecord => false;
+
 	/// Builds the product. THE HANDLE TAKES OWNERSHIP of what comes back; null is a
 	/// failure.
 	///
