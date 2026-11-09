@@ -236,7 +236,7 @@ class ProjectBuildTests
 	/// The web player boots through WebPlayerMain with the parts a player loads, and takes the stock
 	/// web player's wasm link: every path the stock reaches from its own folder (serve.py, the
 	/// shell, the logo, the notices) is the stock folder in the SDK, absolute, while the output
-	/// folder stays the generated project's own.
+	/// folder is the generated project's own, one per config in the web workspace's build folder.
 	[Test]
 	public static void TheWebPlayerTakesTheStockLinkWithItsOwnOutputFolder()
 	{
@@ -254,17 +254,22 @@ class ProjectBuildTests
 		Test.Assert(web.Contains("[Configs.Debug.wasm32]\n") && web.Contains("[Configs.ShippingRelease.wasm32]\n"), web);
 		Test.Assert(web.Contains(scope $"CopyToTarget(\\\"{stockDir}/serve.py\\\")"), web);
 		Test.Assert(web.Contains(scope $"--js-library {stockDir}/player.js --shell-file {stockDir}/shell.html"), web);
-		Test.Assert(web.Contains("TargetName = \"$(ProjectName).html\"\nTargetDirectory = \"$(ProjectDir)/dist\"\n"), web);
-		// $(ProjectDir) is left on the output folder's lines alone.
-		int ownLines = 0;
+		// Each config's output folder is its own, in the build folder of the web workspace, not the
+		// stock's in the SDK (whose Debug and ShippingRelease share dist/).
+		for (let config in StringView[3]("Debug", "Release", "ShippingRelease"))
+		{
+			let section = scope $"[Configs.{config}.wasm32]\nTargetName = \"$(ProjectName).html\"\nTargetDirectory = \"$(WorkspaceDir)/build/{config}_wasm32/NativeGamePlayerWeb\"\n";
+			Test.Assert(web.Contains(section), section);
+			Test.Assert(ProjectBuild.WebTargetDirectory("NativeGame", config, .. scope .()) == scope $"$(WorkspaceDir)/build/{config}_wasm32/NativeGamePlayerWeb");
+		}
+		int targetLines = 0;
 		for (let line in web.Split('\n'))
 		{
-			if (!line.Contains("$(ProjectDir)"))
-				continue;
-			Test.Assert(line.StartsWith("TargetDirectory = "), scope String(line));
-			ownLines++;
+			if (line.StartsWith("TargetDirectory = "))
+				targetLines++;
 		}
-		Test.Assert(ownLines == 3, "one output folder per wasm32 config");
+		Test.Assert(targetLines == 3, "one output folder per wasm32 config");
+		Test.Assert(!web.Contains("$(ProjectDir)"), web);
 
 		let program = bed.Read(".generated/NativeGamePlayerWeb/src/Program.bf", .. scope .());
 		Test.Assert(program.Contains("namespace NativeGamePlayerWeb;"), program);
@@ -432,11 +437,20 @@ class ProjectBuildTests
 		Test.Assert(space.EndsWith(ProjectBuild.cWorkspaceConfigs) && !space.Contains("ConfigSelections"), space);
 		Test.Assert(bed.Read(".generated/Web/BeefConfig.toml", .. scope .()) == ProjectBuild.ConfigText(bed.Sdk, .. scope .()));
 
-		// Its page lands in the entry's own output folder, as the stock web player's TargetDirectory has it.
+		// Its page lands in the entry's own output folder for the config, under the web workspace,
+		// in the layout of every other build; it is what a web build makes, built there for wasm32.
 		let page = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "Debug", .. scope .());
-		Test.Assert(page == scope $"{bed.ProjectDir}/Code/.generated/NativeGamePlayerWeb/dist/NativeGamePlayerWeb.html", page);
-		let profile = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "Release", .. scope .());
-		Test.Assert(profile.EndsWith("/NativeGamePlayerWeb/dist-profile/NativeGamePlayerWeb.html"), profile);
+		Test.Assert(page == scope $"{bed.ProjectDir}/Code/.generated/Web/build/Debug_wasm32/NativeGamePlayerWeb/NativeGamePlayerWeb.html", page);
+		let shipping = ProjectBuild.WebPagePath(bed.ProjectDir, "NativeGame", "ShippingRelease", .. scope .());
+		Test.Assert(shipping.EndsWith("/Code/.generated/Web/build/ShippingRelease_wasm32/NativeGamePlayerWeb/NativeGamePlayerWeb.html"), shipping);
+		Test.Assert(ProjectBuild.EntryPath(bed.ProjectDir, "NativeGame", .PlayerWeb, "Debug", .. scope .()) == page);
+		Test.Assert(ProjectBuild.EntryWorkspace(bed.ProjectDir, .PlayerWeb, .. scope .()) == webDir);
+		Test.Assert(ProjectBuild.EntryWorkspace(bed.ProjectDir, .Player, .. scope .()) == ProjectBuild.Directory(bed.ProjectDir, .. scope .()));
+		Test.Assert((ProjectBuild.EntryPlatform(.PlayerWeb) == "wasm32") && (ProjectBuild.EntryPlatform(.Player) == BuildLayout.HostPlatformName));
+		let config = scope String();
+		let platform = scope String();
+		BuildLayout.ParseBuildDirectory(PathParent(page, .. scope .()), config, platform);
+		Test.Assert((config == "Debug") && (platform == BuildLayout.cWebPlatform), "its folder reads as a build folder");
 	}
 
 	/// A package whose folder lacks a manifest of its id, or a part's project, refuses the build,
@@ -526,7 +540,7 @@ class ProjectBuildTests
 	/// A fake Beef install under the bed: BeefBuild at `exe` (relative to the bed's root), the
 	/// BeefConfig.toml beside it naming `libraries` (none: no config), and corlib at `corlib`
 	/// (relative to the root; empty: none). Its BeefBuild's path.
-	private static void FakeInstall(Bed bed, StringView exe, StringView libraries, StringView corlib, String outBeefBuild)
+	public static void FakeInstall(Bed bed, StringView exe, StringView libraries, StringView corlib, String outBeefBuild)
 	{
 		let file = BuildLayout.ExecutableName(exe, .. scope .());
 		Bed.Write(bed.Root, file, "#!beefbuild\n");
@@ -607,6 +621,78 @@ class ProjectBuildTests
 		ProjectBuild.LibraryDirs("Version = 1\n", dirs);
 		Test.Assert(dirs.Count == 3, "none without the key");
 	}
+
+	/// An Emscripten folder with emcc in it, for the fake installs; its path.
+	public static void FakeEmscripten(Bed bed, StringView name, String outPath)
+	{
+		PathJoin(bed.Root, name, outPath);
+		Bed.Write(outPath, BuildLayout.ExecutableName(ProjectBuild.cEmccPath, .. scope .()), "#!emcc\n");
+	}
+
+	/// Emscripten is the folder the [Wasm] table's EmscriptenPath names in the BeefSettings.toml
+	/// beside BeefBuild, once it holds emcc. No settings file, a file without the key in that
+	/// table, and a folder without emcc are each refused, saying what to set.
+	[Test]
+	public static void EmscriptenIsTheFolderBeefBuildsSettingsName()
+	{
+		let bed = scope Bed();
+		let beefBuild = FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
+		let home = PathJoin(bed.Root, "home", .. scope .());
+		let emsdk = PathJoin(bed.Root, "emsdk", .. scope .());
+		let found = scope String();
+		let error = scope String();
+		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error) && found.IsEmpty);
+		Test.Assert(error.Contains("has no BeefSettings.toml") && error.Contains("EmscriptenPath = \"<emsdk folder>\" under [Wasm]"), error);
+
+		// The key in another table is not Emscripten's.
+		Bed.Write(bed.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Wasm]\n\n[Options]\nEmscriptenPath = '{emsdk}'\n");
+		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error..Clear()), "the key under [Options]");
+		Test.Assert(error.Contains("BeefSettings.toml' names none: set EmscriptenPath"), error);
+		Bed.Write(bed.Root, "beef/IDE/dist/BeefSettings.toml", "FileVersion = 1\n\n[Wasm]\nEmscriptenPath = \"\"\n");
+		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error..Clear()) && error.Contains("names none"), "an empty path");
+
+		Bed.Write(bed.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Console]\nDebugConsole = \"Native\"\n\n[Wasm]\nEmscriptenPath = '{emsdk}'\n\n[RecentFiles]\n");
+		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error..Clear()) && found.IsEmpty);
+		Test.Assert(error.Contains(scope $"Emscripten at '{emsdk}'") && error.Contains("has no upstream/emscripten/emcc"), error);
+
+		FakeEmscripten(bed, "emsdk", .. scope .());
+		Test.Assert(ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error..Clear()) && (found == emsdk), error);
+	}
+
+	/// A TOML table's string value: a basic string's escapes read as the character escaped, a
+	/// literal string as written, the same key in another table not it.
+	[Test]
+	public static void ATomlValueIsReadFromItsTable()
+	{
+		let value = scope String();
+		Test.Assert(ProjectBuild.TomlValue("[Wasm]\r\nEmscriptenPath = \"C:\\\\Tools\\\\emsdk\"\r\n", "Wasm", "EmscriptenPath", value) && (value == "C:\\Tools\\emsdk"), value);
+		Test.Assert(ProjectBuild.TomlValue("[Wasm]\n  EmscriptenPath='/opt/emsdk'\n", "Wasm", "EmscriptenPath", value) && (value == "/opt/emsdk"), value);
+		Test.Assert(!ProjectBuild.TomlValue("[Options]\nEmscriptenPath = \"/opt\"\n", "Wasm", "EmscriptenPath", value) && value.IsEmpty);
+		Test.Assert(!ProjectBuild.TomlValue("[Wasm]\nEmscriptenPathX = \"/opt\"\n", "Wasm", "EmscriptenPath", value), "another key");
+		Test.Assert(!ProjectBuild.TomlValue("[Wasm]\nEmscriptenPath = \"/opt\n", "Wasm", "EmscriptenPath", value) && value.IsEmpty, "unterminated");
+	}
+
+#if BF_PLATFORM_LINUX
+	/// A BeefBuild with no settings beside it is one packaged for Linux, which reads them from
+	/// ~/.config/beeflang; a file beside it is the one it reads, whatever HOME holds.
+	[Test]
+	public static void APackagedBeefBuildsSettingsAreUnderHome()
+	{
+		let bed = scope Bed();
+		let beefBuild = FakeInstall(bed, "installed/bin/BeefBuild", "'../BeefLibs'", "installed/BeefLibs/corlib", .. scope .());
+		let home = PathJoin(bed.Root, "home", .. scope .());
+		let packaged = FakeEmscripten(bed, "packaged emsdk", .. scope .());
+		Bed.Write(home, ".config/beeflang/BeefSettings.toml", scope $"[Wasm]\nEmscriptenPath = \"{packaged}\"\n");
+		let found = scope String();
+		let error = scope String();
+		Test.Assert(ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error) && (found == packaged), error);
+		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, "", found, error) && error.Contains("has no BeefSettings.toml"), "no HOME, no packaged settings");
+
+		let beside = FakeEmscripten(bed, "beside emsdk", .. scope .());
+		Bed.Write(bed.Root, "installed/bin/BeefSettings.toml", scope $"[Wasm]\nEmscriptenPath = \"{beside}\"\n");
+		Test.Assert(ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error) && (found == beside), found);
+	}
+#endif
 
 	/// The executables are BeefBuild's output in Code/build. A build is finished when they are
 	/// there: the editor in Debug first, then the player in each config, the first missing one

@@ -16,7 +16,8 @@ enum BuildTarget
 	case Editor;
 	/// Build Project: the editor in Debug, then the player in each config PlayerConfigs names.
 	case All;
-	/// The player alone, in the job's config.
+	/// The player alone, in the job's config, for the job's platform: this host's (<Game>Player)
+	/// or wasm32 (<Game>PlayerWeb).
 	case Player;
 }
 
@@ -54,9 +55,10 @@ class BuildJob : RefCounted
 	private String mProjectDir = new .() ~ delete _;
 	private String mDataRoot = new .() ~ delete _;
 	private ProjectSettings mSettings ~ delete _;
-	/// Each BeefBuild run, in order: the editor's or the player's, in that config.
-	private List<bool> mStepEditors = new .() ~ delete _;
+	/// Each BeefBuild run, in order: the entry it builds, in that config, for that platform.
+	private List<BuildEntry> mStepEntries = new .() ~ delete _;
 	private List<String> mStepConfigs = new .() ~ DeleteContainerAndItems!(_);
+	private List<String> mStepPlatforms = new .() ~ DeleteContainerAndItems!(_);
 
 	// Written by the build lane under mLock.
 	private Monitor mLock = new .() ~ delete _;
@@ -79,9 +81,12 @@ class BuildJob : RefCounted
 	/// A job of `target` for the project in `projectDir`, the editor's data root `dataRoot` (to
 	/// find the SDK). It TAKES OWNERSHIP of `settings`, which is its own copy: the project's
 	/// change on the main thread while it runs. `presets` is read here for the configs All
-	/// builds the player in (none: Debug alone); `config` is the one Player builds it in.
+	/// builds the player in (none: Debug alone); `config` is the one Player builds it in, and
+	/// `platform` the one it builds for: this host's (empty, or its name) builds <Game>Player,
+	/// wasm32 (or the presets' Web) <Game>PlayerWeb, and any other is kept and refused when the
+	/// job runs.
 	public this(BuildTarget target, StringView projectDir, StringView dataRoot, ProjectSettings settings, ExportPresetSet presets = null,
-		StringView config = default)
+		StringView config = default, StringView platform = default)
 	{
 		mTarget = target;
 		mProjectDir.Set(projectDir);
@@ -90,24 +95,32 @@ class BuildJob : RefCounted
 		switch (target)
 		{
 		case .Editor:
-			AddStep(true, "Debug");
+			AddStep(.Editor, "Debug");
 		case .All:
-			AddStep(true, "Debug");
+			AddStep(.Editor, "Debug");
 			let configs = scope List<String>();
 			defer { ClearAndDeleteItems!(configs); }
 			let none = scope ExportPresetSet();
 			ProjectBuild.PlayerConfigs(presets ?? none, configs);
 			for (let playerConfig in configs)
-				AddStep(false, playerConfig);
+				AddStep(.Player, playerConfig);
 		case .Player:
-			AddStep(false, config.IsEmpty ? "Debug" : config);
+			StringView stepConfig = config.IsEmpty ? "Debug" : config;
+			if ((platform == ProjectBuild.cWasmPlatform) || (platform == BuildLayout.cWebPlatform))
+				AddStep(.PlayerWeb, stepConfig);
+			else if (platform.IsEmpty)
+				AddStep(.Player, stepConfig);
+			else
+				AddStep(.Player, stepConfig, platform);
 		}
 	}
 
-	private void AddStep(bool editor, StringView config)
+	/// A run of `entry` in `config`, for `platform` (default: the one the entry builds for).
+	private void AddStep(BuildEntry entry, StringView config, StringView platform = default)
 	{
-		mStepEditors.Add(editor);
+		mStepEntries.Add(entry);
 		mStepConfigs.Add(new .(config));
+		mStepPlatforms.Add(new .(platform.IsEmpty ? ProjectBuild.EntryPlatform(entry) : platform));
 	}
 
 	/// The service's number for it, from 1, given when it is first tracked (main thread, before
@@ -119,9 +132,11 @@ class BuildJob : RefCounted
 	public StringView ProjectDirectory => mProjectDir;
 	public StringView DataRoot => mDataRoot;
 	public ProjectSettings Settings => mSettings;
-	public int StepCount => mStepEditors.Count;
-	public bool StepIsEditor(int step) => mStepEditors[step];
+	public int StepCount => mStepEntries.Count;
+	public BuildEntry StepEntry(int step) => mStepEntries[step];
 	public StringView StepConfig(int step) => mStepConfigs[step];
+	/// Beef's name of the platform the step builds for: this host's, or wasm32.
+	public StringView StepPlatform(int step) => mStepPlatforms[step];
 
 	public BuildJobState State
 	{
@@ -373,6 +388,9 @@ class ProjectBuildService
 	private BuildRunner mRunner ~ delete _;
 	/// When set, the BeefBuild every job runs, found by nothing (tests).
 	private String mBeefBuild = new .() ~ delete _;
+	/// When set, the HOME a packaged Beef's settings are looked for under (FindEmscripten), in
+	/// place of the process's (tests).
+	private String mHome = new .() ~ delete _;
 	/// Guards mLatest, which the main thread sets and any thread reads.
 	private Monitor mLock = new .() ~ delete _;
 	/// The job last handed to Track or Run, one reference of ours.
@@ -381,13 +399,15 @@ class ProjectBuildService
 	private int mNextId = 1;
 
 	/// `runner` runs BeefBuild (TAKES OWNERSHIP; null: Process.RunStreaming); `beefBuild`, when
-	/// given, is the BeefBuild every job runs, without FindBeefBuild.
-	public this(BuildRunner runner = null, StringView beefBuild = default)
+	/// given, is the BeefBuild every job runs, without FindBeefBuild; `home`, when given, the HOME a
+	/// web build looks for a packaged Beef's settings under (ProjectBuild.FindEmscriptenFrom).
+	public this(BuildRunner runner = null, StringView beefBuild = default, StringView home = default)
 	{
 		mRunner = runner;
 		if (mRunner == null)
 			mRunner = new (executable, arguments, onLine, cancelled) => Process.RunStreaming(executable, arguments, onLine, cancelled);
 		mBeefBuild.Set(beefBuild);
+		mHome.Set(home);
 	}
 
 	public ~this()
@@ -425,9 +445,12 @@ class ProjectBuildService
 
 	/// Runs `job` to its end on this thread: blocking, for the build lane. Refused, with why in
 	/// the job's error, without an engine SDK (ProjectBuild.FindSdk), for a project with no
-	/// package of its own, without BeefBuild (FindBeefBuild), at the first run that fails, or
-	/// when a run said it built and an executable is not there. Cancelled once the job is, or
-	/// `outer` is (the build lane's task, which the editor cancels when it closes the project).
+	/// package of its own, for a step on another host's platform, without BeefBuild
+	/// (FindBeefBuild), for a web step without Emscripten (ProjectBuild.FindEmscripten), at the
+	/// first run that fails, or when a run said it built and what it makes is not there. Each step
+	/// runs in its entry's workspace (the web player's own for <Game>PlayerWeb) for its platform.
+	/// Cancelled once the job is, or `outer` is (the build lane's task, which the editor cancels
+	/// when it closes the project).
 	public Result<void, ErrorCode> Run(BuildJob job, CancelToken outer = null)
 	{
 		bool latest;
@@ -467,8 +490,27 @@ class ProjectBuildService
 			outError.Set("the project has no package of its own (Add Native Code makes one)");
 			return .Err(.NotFound);
 		}
+		// A desktop step builds for this host alone: BeefBuild cannot build another's.
+		for (int step < job.StepCount)
+		{
+			let platform = job.StepPlatform(step);
+			if (platform != ProjectBuild.EntryPlatform(job.StepEntry(step)))
+			{
+				outError.Set(scope $"a {platform} build is made on {platform}, and this host is {BuildLayout.HostPlatformName}");
+				return .Err(.NotSupported);
+			}
+		}
 		let beefBuild = scope String(mBeefBuild);
 		if (beefBuild.IsEmpty && !ProjectBuild.FindBeefBuild(beefBuild, outError))
+			return .Err(.NotFound);
+		// A web step needs Emscripten, which BeefBuild looks for only at the link, after the whole
+		// compile: it is checked before anything runs.
+		bool web = false;
+		for (int step < job.StepCount)
+			web |= job.StepEntry(step) == .PlayerWeb;
+		let emscripten = scope String();
+		if (web && !(mHome.IsEmpty ? ProjectBuild.FindEmscripten(beefBuild, emscripten, outError)
+			: ProjectBuild.FindEmscriptenFrom(beefBuild, mHome, emscripten, outError)))
 			return .Err(.NotFound);
 		if (Cancelled(job, outer))
 			return .Err(.Cancelled);
@@ -482,16 +524,18 @@ class ProjectBuildService
 		{
 			if (Cancelled(job, outer))
 				return .Err(.Cancelled);
-			let entry = job.StepIsEditor(step) ? BuildEntry.Editor : BuildEntry.Player;
+			let entry = job.StepEntry(step);
 			let project = ProjectBuild.EntryName(game, entry, .. scope .());
-			if (RunStep(job, outer, beefBuild, workspace, project, job.StepConfig(step), outError) case .Err(let stepErr))
+			let stepWorkspace = ProjectBuild.EntryWorkspace(projectDir, entry, .. scope .());
+			if (RunStep(job, outer, beefBuild, stepWorkspace, project, job.StepConfig(step), job.StepPlatform(step), outError) case .Err(let stepErr))
 				return .Err(stepErr);
 		}
 		// BeefBuild's exit alone is not the word on it: a run can end well with nothing built
-		// (a project it did not find), so the executables themselves are checked.
+		// (a project it did not find), so what each made is checked: an executable, or the web
+		// player's page.
 		for (int step < job.StepCount)
 		{
-			let path = ProjectBuild.ExecutablePath(projectDir, game, job.StepIsEditor(step), job.StepConfig(step), .. scope .());
+			let path = ProjectBuild.EntryPath(projectDir, game, job.StepEntry(step), job.StepConfig(step), .. scope .());
 			if (!FileExists(path))
 			{
 				outError.Set(scope $"BeefBuild ended without building '{path}'");
@@ -502,15 +546,16 @@ class ProjectBuildService
 		return .Ok;
 	}
 
-	/// One BeefBuild run over the workspace, each line into the job and the log as it comes.
+	/// One BeefBuild run over `workspace` for `platform`, each line into the job and the log as it
+	/// comes.
 	private Result<void, ErrorCode> RunStep(BuildJob job, CancelToken outer, StringView beefBuild, StringView workspace, StringView project,
-		StringView config, String outError)
+		StringView config, StringView platform, String outError)
 	{
 		job.[Friend]BeginStep(project, config);
-		GlobalLog(.Information, "Build Project: {} ({})", project, config);
+		GlobalLog(.Information, "Build Project: {} ({}, {})", project, config, platform);
 		let workspaceArg = scope $"-workspace={workspace}";
 		let configArg = scope $"-config={config}";
-		let platformArg = scope $"-platform={BuildLayout.HostPlatformName}";
+		let platformArg = scope $"-platform={platform}";
 		let projectArg = scope $"-project={project}";
 		let firstDiagnostic = job.[Friend]DiagnosticCount;
 		let result = mRunner(beefBuild, scope StringView[](workspaceArg, configArg, platformArg, projectArg),

@@ -420,10 +420,7 @@ static class EditorBuildTools
 		let game = ProjectBuild.GameName(job.Settings.Name, .. scope .());
 		let steps = JsonValue.MakeArray();
 		for (int i < job.StepCount)
-		{
-			let entry = job.StepIsEditor(i) ? BuildEntry.Editor : BuildEntry.Player;
-			steps.Add(StepJson(ProjectBuild.EntryName(game, entry, .. scope .()), job.StepConfig(i)));
-		}
+			steps.Add(StepJson(ProjectBuild.EntryName(game, job.StepEntry(i), .. scope .()), job.StepConfig(i)));
 		outResult.Set("steps", steps);
 		let project = scope String();
 		let config = scope String();
