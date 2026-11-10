@@ -9,6 +9,7 @@ using Sedulous.Http.Client;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Projects;
+using Sedulous.Editor.ProjectManager;
 
 namespace Sedulous.Editor.App;
 
@@ -111,6 +112,14 @@ class ProjectManagerView
 		Failed,
 	}
 
+	/// A sample's download, with the sample it is of.
+	private class SampleFetch
+	{
+		public SampleInfo Sample = new .() ~ delete _;
+		/// Deleted, it cancels itself and deletes what it wrote.
+		public ReleaseDownload Download ~ delete _;
+	}
+
 	/// A sample's card on the Samples tab, while it shows.
 	private class SampleCard
 	{
@@ -153,8 +162,8 @@ class ProjectManagerView
 	private String mCatalogError = new .() ~ delete _;
 	private uint64 mCatalogRequest = 0;
 	private List<uint64> mPictureRequests = new .() ~ delete _;
-	/// Under way, OWNED; each holds its callbacks, so it goes before the client.
-	private List<SampleDownload> mDownloads = new .() ~ DeleteContainerAndItems!(_);
+	/// Under way, OWNED; each download holds its callbacks, so it goes before the client.
+	private List<SampleFetch> mDownloads = new .() ~ DeleteContainerAndItems!(_);
 	private List<SampleCard> mSampleCards = new .() ~ DeleteContainerAndItems!(_);
 	/// The sample the download dialog is for, while it is open.
 	private SampleInfo mDialogSample = new .() ~ delete _;
@@ -351,12 +360,12 @@ class ProjectManagerView
 		bool ended = false;
 		for (int i = mDownloads.Count - 1; i >= 0; i--)
 		{
-			let d = mDownloads[i];
-			if (d.State == .Downloading)
+			let fetch = mDownloads[i];
+			if (fetch.Download.State == .Downloading)
 				continue;
-			Finished(d);
+			Finished(fetch);
 			mDownloads.RemoveAt(i);
-			delete d;
+			delete fetch;
 			ended = true;
 		}
 		if (ended)
@@ -369,12 +378,12 @@ class ProjectManagerView
 	public SampleCatalog Samples => mCatalog;
 
 	/// The download of the sample in `folder`, while one is under way (null else).
-	public SampleDownload DownloadOf(StringView folder)
+	public ReleaseDownload DownloadOf(StringView folder)
 	{
-		for (let d in mDownloads)
+		for (let fetch in mDownloads)
 		{
-			if (d.Sample.Folder == folder)
-				return d;
+			if (fetch.Sample.Folder == folder)
+				return fetch.Download;
 		}
 		return null;
 	}
@@ -543,9 +552,11 @@ class ProjectManagerView
 	{
 		if ((mServices.Http == null) || (DownloadOf(sample.Folder) != null))
 			return;
-		let download = new SampleDownload(mServices.Http, sample, ReleaseFile(sample.Archive, .. scope .()), target);
-		mDownloads.Add(download);
-		download.Start();
+		let fetch = new SampleFetch();
+		fetch.Sample.CopyFrom(sample);
+		fetch.Download = new ReleaseDownload(mServices.Http, ReleaseFile(sample.Archive, .. scope .()), sample.Sha256, sample.Size, target);
+		mDownloads.Add(fetch);
+		fetch.Download.Start();
 		SetNote(scope $"Downloading {sample.Name}...");
 		Later(false);
 	}
@@ -697,7 +708,7 @@ class ProjectManagerView
 		if (!missing)
 		{
 			outItems.Add("Choose Thumbnail Image...");
-			if (FileExists(EditorProject.ThumbnailPath(path, .. scope .())))
+			if (FileExists(ProjectThumbnail.PathOf(path, .. scope .())))
 				outItems.Add("Clear Thumbnail");
 		}
 		outItems.Add("Remove from List");
@@ -737,7 +748,7 @@ class ProjectManagerView
 		}
 		else if (item == "Clear Thumbnail")
 		{
-			DeleteFile(EditorProject.ThumbnailPath(path, .. scope .()));
+			DeleteFile(ProjectThumbnail.PathOf(path, .. scope .()));
 			Later(false);
 		}
 		else if (item == "Remove from List")
@@ -762,7 +773,7 @@ class ProjectManagerView
 			SetStatus("That image could not be read.");
 			return false;
 		}
-		let target = EditorProject.ThumbnailPath(projectPath, .. scope .());
+		let target = ProjectThumbnail.PathOf(projectPath, .. scope .());
 		CreateDirectory(PathParent(target, .. scope .()));
 		if (ImageIO.SaveImage(picture, target, .PNG) case .Err)
 		{
@@ -1018,11 +1029,12 @@ class ProjectManagerView
 	}
 
 	/// What a finished download leaves: a project in the list, or why it did not.
-	private void Finished(SampleDownload d)
+	private void Finished(SampleFetch fetch)
 	{
-		let name = scope String(d.Sample.Name);
+		let d = fetch.Download;
+		let name = scope String(fetch.Sample.Name);
 		// The dialog that started it, if it is still open, says how it ended too.
-		let told = (mDialog != null) && mDialog.IsOpen && (mDialogSample.Folder == d.Sample.Folder);
+		let told = (mDialog != null) && mDialog.IsOpen && (mDialogSample.Folder == fetch.Sample.Folder);
 		let words = scope String();
 		DialogStage stage = .Failed;
 		if (d.State == .Done)

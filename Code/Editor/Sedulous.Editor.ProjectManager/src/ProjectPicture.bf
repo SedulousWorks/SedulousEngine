@@ -8,7 +8,7 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.App;
 
 /// The picture a project is shown by: the thumbnail the editor keeps in the project's editor
-/// folder (EditorProject.ThumbnailPath), else the project's initial on a quiet tile. Its size and
+/// folder (ProjectThumbnail.PathOf), else the project's initial on a quiet tile. Its size and
 /// corners are the sheet's (`.project-picture`, and a class of the caller's: the home's header, a
 /// manager's row).
 static class ProjectPicture
@@ -20,7 +20,7 @@ static class ProjectPicture
 	public static Node Make(StringView projectDirectory, StringView name, StringView size, List<Sedulous.Image.Image> keep)
 	{
 		let image = new Sedulous.Image.Image();
-		if (!projectDirectory.IsEmpty && (ImageIO.LoadImage(EditorProject.ThumbnailPath(projectDirectory, .. scope .()), image) case .Ok))
+		if (!projectDirectory.IsEmpty && (ImageIO.LoadImage(ProjectThumbnail.PathOf(projectDirectory, .. scope .()), image) case .Ok))
 		{
 			keep.Add(image); // the picture borrows it
 			let picture = new Sedulous.GUI.Image();

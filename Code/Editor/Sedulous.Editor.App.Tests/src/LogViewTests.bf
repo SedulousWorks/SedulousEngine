@@ -6,6 +6,7 @@ using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Look.TestSupport;
+using Sedulous.Editor.ProjectManager.TestSupport;
 
 namespace Sedulous.Editor.App.Tests;
 

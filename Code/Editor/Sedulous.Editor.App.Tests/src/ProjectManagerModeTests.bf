@@ -9,6 +9,7 @@ using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
+using Sedulous.Editor.ProjectManager.TestSupport;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -138,7 +139,7 @@ class ProjectManagerModeTests
 		Test.Assert(bed.ShowsManager);
 		Test.Assert(bed.Shows == 1, "said once it shows");
 		Test.Assert(bed.Mode.View.ShownCount == 1);
-		let open = ProjectLauncherTests.ButtonText(bed.Mode.View.Content, "Open");
+		let open = LauncherKit.ButtonText(bed.Mode.View.Content, "Open");
 		Test.Assert(open != null);
 		Test.Assert(open.HandleActivate());
 		Test.Assert(bed.Session.Project == null, "not inside the click");
@@ -172,7 +173,7 @@ class ProjectManagerModeTests
 		bed.Mode.Enter();
 
 		// A newer engine's: Cancel stays, Open Anyway opens with its stamp kept.
-		ProjectLauncherTests.Stamp(dir, newer);
+		LauncherKit.Stamp(dir, newer);
 		bed.Mode.OpenFrom(dir);
 		var question = bed.Question();
 		Test.Assert(question.Title == "Project from a newer engine");
@@ -194,7 +195,7 @@ class ProjectManagerModeTests
 		bed.Mode.Enter();
 
 		// An older engine's: Open Without Backup opens and stamps it, no backup made.
-		ProjectLauncherTests.Stamp(dir, cOlder);
+		LauncherKit.Stamp(dir, cOlder);
 		bed.Mode.OpenFrom(dir);
 		question = bed.Question();
 		Test.Assert(question.Title == "Open with this engine version?");
@@ -209,7 +210,7 @@ class ProjectManagerModeTests
 		bed.Mode.Enter();
 
 		// A backup that cannot be written (a folder where it would go): not opened, and said.
-		ProjectLauncherTests.Stamp(dir, cOlder);
+		LauncherKit.Stamp(dir, cOlder);
 		Test.Assert(CreateDirectory(backup));
 		bed.Mode.OpenFrom(dir);
 		question = bed.Question();
