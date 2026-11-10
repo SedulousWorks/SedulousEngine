@@ -502,8 +502,11 @@ class ProjectBuildService
 				return .Err(.NotSupported);
 			}
 		}
+		// The managed toolchain asked for is the one the SDK was built with.
+		let sdkInfo = scope SdkInfo();
+		SdkInfo.Read(sdk, sdkInfo).IgnoreError();
 		let beefBuild = scope String(mBeefBuild);
-		if (beefBuild.IsEmpty && !ProjectBuild.FindBeefBuild(beefBuild, outError))
+		if (beefBuild.IsEmpty && !ProjectBuild.FindBeefBuild(beefBuild, outError, sdkInfo.Beef))
 			return .Err(.NotFound);
 		// A web step needs Emscripten, which BeefBuild looks for only at the link, after the whole
 		// compile: it is checked before anything runs.
