@@ -4,18 +4,18 @@ using Sedulous.Core;
 namespace Sedulous.GUI;
 
 // The `Gui` facade: game code's way into the GUI its host gave it, a service the run offers
-// (RunServices.Get<GuiFacade>) and, while scripts remain, the global handle `Gui` to a script. It
-// finds the root it reads at each call, so a host whose games' roots differ by what is running
-// them (an editor's game per tab) gives it a function in place of a root.
+// (RunServices.Get<GuiFacade>). It finds the root it reads at each call, so a host whose games'
+// roots differ by what is running them (an editor's game per tab) gives it a function in place of
+// a root.
 //
 // A value is set by its kind: SetNumber, SetText, SetBool and SetNode, beside GetNumber, GetText
-// and GetBool. The script-only verbs (CaptureKey with a script's function) are in GuiScript.bf.
+// and GetBool.
 
 /// `Gui`: the game's GUI, its data, its commands and keys, its localized text.
 [Scriptable, ServiceFacade("Gui")]
 class GuiFacade
 {
-	/// BORROWED: the root its scripts build under, when it does not resolve one per call.
+	/// BORROWED: the root the game builds under, when it does not resolve one per call.
 	private SceneRoot mRoot;
 	private delegate SceneRoot() mResolve ~ delete _;
 	// What the text getters give, valid until the next one (the boundary copies it).
@@ -34,7 +34,7 @@ class GuiFacade
 	}
 
 	/// The root it answers with: `resolve`'s when it has one, else the one set. A host clears it
-	/// (null) before its root goes, so a script's call then finds no GUI.
+	/// (null) before its root goes, so a call then finds no GUI.
 	public SceneRoot RootNode
 	{
 		get => (mResolve != null) ? mResolve() : mRoot;
@@ -43,7 +43,7 @@ class GuiFacade
 
 	private GUIContext Context => RootNode?.Context;
 
-	/// The calling script's root, or null when its host gave it none.
+	/// The game's root, or null when its host gave it none.
 	[Scriptable]
 	public Node Root() => RootNode;
 
@@ -110,8 +110,8 @@ class GuiFacade
 			data.Set(name, System.Variant.Create(value));
 	}
 
-	/// Sets `name` to a node, held weakly as a script holds one: the value reads as no node once
-	/// the node is gone. Null clears it.
+	/// Sets `name` to a node, held weakly: the value reads as no node once the node is gone. Null
+	/// clears it.
 	[Scriptable]
 	public void SetNode(StringView name, Node node)
 	{

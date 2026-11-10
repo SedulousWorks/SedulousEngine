@@ -196,8 +196,8 @@ class ElementTests
 		Test.Assert(added is Button);
 		Test.Assert(added.Parent == expander.Content); // where markup's children go
 		Test.Assert(added.RefCount == 1); // the tree's: the maker's was let go
-		let handle = added.TakeScriptWeak();
-		Test.Assert(handle.Resolve() === added);
+		let addedRef = added.TakeElementRef();
+		Test.Assert(addedRef.Table.Resolve(addedRef.Slot, addedRef.Generation) === added);
 
 		// Found by id from anywhere above it, the node itself included.
 		((Button)added).Id = "ok";
@@ -207,36 +207,37 @@ class ElementTests
 	}
 
 	[Test]
-	public static void AScriptsHandleResolvesToItsNodeAndReadsNullOnceItOrItsGUIIsGone()
+	public static void AWeakReferenceResolvesToItsNodeAndReadsNullOnceItOrItsGUIIsGone()
 	{
 		var gui = SceneFixtures.NewScene();
 		let detached = new Label();
 		defer detached.ReleaseRef();
-		Test.Assert(detached.TakeScriptWeak().IsEmpty); // in no GUI: no table to resolve through
+		Test.Assert(detached.TakeElementRef().Table == null); // in no GUI: no table to resolve through
 
 		let label = new Label();
 		gui.AddChild(label);
-		let handle = label.TakeScriptWeak();
-		Test.Assert(!handle.IsEmpty);
-		Test.Assert(handle.Resolve() === label);
-		Test.Assert(handle.SameAs(label.TakeScriptWeak())); // one slot, taken once
+		let labelRef = label.TakeElementRef();
+		Test.Assert(labelRef.Table != null);
+		Test.Assert(labelRef.Table.Resolve(labelRef.Slot, labelRef.Generation) === label);
+		let again = label.TakeElementRef(); // one slot, taken once
+		Test.Assert((again.Table === labelRef.Table) && (again.Slot == labelRef.Slot) && (again.Generation == labelRef.Generation));
 
 		// Destroyed: null, not freed memory.
 		gui.RemoveChild(label);
 		label.ReleaseRef();
-		Test.Assert(handle.Resolve() == null);
+		Test.Assert(labelRef.Table.Resolve(labelRef.Slot, labelRef.Generation) == null);
 
-		// A handle into a GUI that goes: the reference a script's handle keeps holds the table,
-		// closed, so the handle reads null though its node lives on elsewhere.
+		// A reference into a GUI that goes: a holder's own reference keeps the table, closed, so
+		// the reference reads null though its node lives on elsewhere.
 		let other = new Label();
 		defer other.ReleaseRef();
 		gui.AddChild(other);
-		let otherHandle = other.TakeScriptWeak();
-		otherHandle.Table.AddRef();
-		defer otherHandle.Table.ReleaseRef();
-		Test.Assert(otherHandle.Resolve() === other);
+		let otherRef = other.TakeElementRef();
+		otherRef.Table.AddRef();
+		defer otherRef.Table.ReleaseRef();
+		Test.Assert(otherRef.Table.Resolve(otherRef.Slot, otherRef.Generation) === other);
 		gui.ReleaseRef();
 		gui = null;
-		Test.Assert(otherHandle.Resolve() == null);
+		Test.Assert(otherRef.Table.Resolve(otherRef.Slot, otherRef.Generation) == null);
 	}
 }

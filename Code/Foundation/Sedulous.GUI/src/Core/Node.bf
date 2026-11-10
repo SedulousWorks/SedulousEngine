@@ -26,13 +26,13 @@ enum NavScope : uint8
 	Contain,
 }
 
-/// One GUI's element table: what a script's handle to a node resolves through, a slot and a
-/// generation, so the tree owns its nodes and a script only ever holds them weakly. Each GUI owns
-/// one, so two GUIs never share slots and a handle survives its node moving between roots. Handles
-/// hold a reference to the table: when its GUI goes, the table is closed and every handle into it
-/// reads as gone, never as freed memory. A slot does not hold its node: a node frees its slot as
-/// it is destroyed.
-class ElementTable : RefCounted, IScriptWeakTable
+/// One GUI's element table: what a weak reference to a node resolves through, a slot and a
+/// generation, so the tree owns its nodes and everything else only ever holds them weakly. Each GUI
+/// owns one, so two GUIs never share slots and a reference survives its node moving between roots.
+/// A holder that may outlive the GUI keeps a reference to the table: when its GUI goes, the table
+/// is closed and every reference into it reads as gone, never as freed memory. A slot does not hold
+/// its node: a node frees its slot as it is destroyed.
+class ElementTable : RefCounted
 {
 	private struct Slot
 	{
@@ -81,11 +81,9 @@ class ElementTable : RefCounted, IScriptWeakTable
 		return (entry.Generation == generation) ? entry.Node : null;
 	}
 
-	public Object ResolveWeak(uint32 slot, uint32 generation) => Resolve(slot, generation);
-
 	public uint32 Generation(uint32 slot) => ((slot != 0) && ((int)slot <= mSlots.Count)) ? mSlots[(int)slot - 1].Generation : 0;
 
-	/// The owning GUI is going: every handle into this table reads as gone from now on.
+	/// The owning GUI is going: every reference into this table reads as gone from now on.
 	public void Close()
 	{
 		mClosed = true;
@@ -102,10 +100,10 @@ class ElementTable : RefCounted, IScriptWeakTable
 /// or the parent goes, so a child held elsewhere outlives its parent and points at none. Anything
 /// else that must not keep a node alive holds it weakly, through its GUI's ElementTable (a slot
 /// and a generation, which the node frees as it is destroyed): Element<T>, an action's target, a
-/// scope's remembered focus, a script's handle. The node holds a reference to the table it took a
+/// scope's remembered focus, a data value set to a node. The node holds a reference to the table it took a
 /// slot in.
 [GuiReflect, Scriptable]
-class Node : Transformable, IRefCounted, IScriptWeaklyHeld
+class Node : Transformable, IRefCounted
 {
 	/// Not a child's place: what GetChildIndex gives for a node that is not one.
 	public const int cInvalidIndex = -1;
@@ -1705,8 +1703,8 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	// === Weak references ===
 	// The tree owns its nodes. Anything else holds one weakly: a slot and a generation in its GUI's
-	// element table, resolved on every use (Element<T> natively, a handle in a script), reading as
-	// gone once the node is destroyed.
+	// element table, resolved on every use (Element<T>, an action's target, a data value), reading
+	// as gone once the node is destroyed.
 
 	/// This node's place in its GUI's element table, taking a slot the first time; an empty ref
 	/// (null table) for a node in no GUI.
@@ -1722,13 +1720,6 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 			mElementSlot = table.Take(this);
 		}
 		return .(mElementTable, mElementSlot, mElementTable.Generation(mElementSlot));
-	}
-
-	/// A script's handle to this node: its element ref, empty (a null table) in no GUI.
-	public ScriptWeakRef TakeScriptWeak()
-	{
-		let elementRef = TakeElementRef();
-		return .(elementRef.Table, elementRef.Slot, elementRef.Generation);
 	}
 
 	// === The tree by name ===
@@ -1779,7 +1770,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	[Scriptable, ScriptName("ChildCount")]
 	public int32 ElementChildCount => (int32)mChildren.Count;
 
-	/// Stops what On or OnCommandScript started, from inside that handler too; false when the
+	/// Stops what On or OnCommand started, from inside that handler too; false when the
 	/// token is none of this node's.
 	[Scriptable]
 	public bool Off(int32 token)

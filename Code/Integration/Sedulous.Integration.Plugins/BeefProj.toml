@@ -19,7 +19,6 @@ corlib = "*"
 # The package's game, launched by a run.
 "Sedulous.Run" = "*"
 "Sedulous.Engine.GameInstance" = "*"
-"Sedulous.Script" = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Pipeline.Core" = "*"
 "Sedulous.Pipeline.Importer" = "*"

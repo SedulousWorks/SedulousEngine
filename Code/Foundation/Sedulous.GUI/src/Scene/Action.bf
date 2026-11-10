@@ -8,8 +8,8 @@ namespace Sedulous.GUI;
 // Reference counted: the manager holds a reference to each action it runs, and whoever made one
 // releases its own. The target is not owned: a node destroyed mid-animation takes its actions
 // with it through the weak hold Node.RunAction gives them. The action keeps a reference on that
-// hold's table, so one kept past its GUI (by a script, or native code) reads its target as gone
-// rather than reading a freed table.
+// hold's table, so one kept past its GUI reads its target as gone rather than reading a freed
+// table.
 
 enum ActionType
 {
@@ -19,7 +19,7 @@ enum ActionType
 	OnDone
 }
 
-abstract class Action : RefCounted, Sedulous.Core.IScriptCounted
+abstract class Action : RefCounted
 {
 	public typealias Callback = delegate void(Sedulous.GUI.Action action);
 

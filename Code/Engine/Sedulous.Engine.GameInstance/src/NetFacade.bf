@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Script;
 using Sedulous.Net;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
@@ -10,7 +9,7 @@ using Sedulous.Net.Manager;
 
 namespace Sedulous.Engine.GameInstance;
 
-/// A run's networking to a script, reached as `Net`: whether it is a host or a client, the
+/// A run's networking to game code, reached as `Net`: whether it is a host or a client, the
 /// role controls a game's menu calls (host, join, leave), and messages to the other side.
 ///
 /// It holds the run's CONTROLLER, which outlives every endpoint it opens, so the facade never
@@ -20,28 +19,28 @@ namespace Sedulous.Engine.GameInstance;
 /// id: nought the host, a client the id the host's welcome gave it. The game instance installs
 /// one on its run.
 ///
-/// Its entities are the replicated scene's (IScriptEntityScene): a spawn answers one a script
-/// can use, and IsMine takes one from there.
+/// Its entities are the replicated scene's (EntityScene): a spawn answers one there, and IsMine
+/// takes one from there.
 ///
-/// Native code receives through the delegate overloads of On, OnNumber, OnText, OnJoin and
-/// OnLeave, which share the script handlers' table: a name has one handler, of either kind, the
-/// later registration replacing it. The facade OWNS the delegates and deletes them on Off (by
-/// the same name; OffJoin and OffLeave for those), on a replacement, and as the run's session
-/// ends (DropNativeHandlers), when the game, its levels and its behaviours they call into go.
+/// Game code receives through the delegates of On, OnNumber, OnText, OnJoin and OnLeave: a name
+/// has one handler, of any kind, the later registration replacing it. The facade OWNS the
+/// delegates and deletes them on Off (by the same name; OffJoin and OffLeave for those), on a
+/// replacement, and as the run's session ends (DropHandlers), when the game, its levels and its
+/// behaviours they call into go.
 /// Something that goes mid-session (a level's scene unloaded, a behaviour's entity destroyed)
 /// calls Off for what it registered.
 [Scriptable, ServiceFacade("Net")]
-class NetFacade : IScriptEntityScene
+class NetFacade
 {
-	/// Native code's handler of a bare message, and of a player joining or leaving: the player
-	/// that sent it, or that came or went.
+	/// The handler of a bare message, and of a player joining or leaving: the player that sent
+	/// it, or that came or went.
 	public typealias PlayerHandler = delegate void(int32 player);
-	/// Native code's handler of a message carrying a number.
+	/// The handler of a message carrying a number.
 	public typealias NumberHandler = delegate void(int32 player, double value);
-	/// Native code's handler of a message carrying a text, valid for the call alone.
+	/// The handler of a message carrying a text, valid for the call alone.
 	public typealias TextHandler = delegate void(int32 player, StringView text);
 
-	/// What a script message carries after its id: the sending call writes the kind first, so
+	/// What a message carries after its id: the sending call writes the kind first, so
 	/// the receiving handler knows what follows (nothing, a number, or a text).
 	public enum MessageKind : uint8
 	{
@@ -53,21 +52,18 @@ class NetFacade : IScriptEntityScene
 	/// The longest text a message may carry; a longer length on the wire is a broken message.
 	public const int MaxTextBytes = 1 << 20;
 
-	/// The handler for a message name, a script's or native code's, and the kind it takes. Its
-	/// endpoints' RPCs hold it, so it lives as long as the facade: Off empties it.
+	/// The handler for a message name and the kind it takes. Its endpoints' RPCs hold it, so it
+	/// lives as long as the facade: Off empties it.
 	private class Handler
 	{
 		public String Name = new .() ~ delete _;
 		public MessageKind Kind;
-		/// OWNED: a script's handler; null when native code's is set, or none.
-		public ScriptDelegate Callback ~ delete _;
-		/// OWNED: native code's, the one of its kind; null for a script's, or none.
+		/// OWNED: the one of its kind; the others null, or all of them for none.
 		public PlayerHandler Plain ~ delete _;
 		public NumberHandler Number ~ delete _;
 		public TextHandler Text ~ delete _;
 
-		public bool IsNative => (Plain != null) || (Number != null) || (Text != null);
-		public bool IsSet => (Callback != null) || IsNative;
+		public bool IsSet => (Plain != null) || (Number != null) || (Text != null);
 	}
 
 	/// BORROWED: the instance's controller, which outlives this.
@@ -76,12 +72,9 @@ class NetFacade : IScriptEntityScene
 	/// the controller opens gets them (registered before hosting or joining too), and a
 	/// handler survives a disconnect.
 	private List<Handler> mHandlers = new .() ~ DeleteContainerAndItems!(_);
-	/// OnJoin and OnLeave's handlers, OWNED, kept beside the message handlers for the same reason:
-	/// a script's or native code's, one of each slot set at a time.
-	private ScriptDelegate mJoinHandler ~ delete _;
-	private ScriptDelegate mLeaveHandler ~ delete _;
-	private PlayerHandler mNativeJoin ~ delete _;
-	private PlayerHandler mNativeLeave ~ delete _;
+	/// OnJoin and OnLeave's handlers, OWNED, kept beside the message handlers for the same reason.
+	private PlayerHandler mJoinHandler ~ delete _;
+	private PlayerHandler mLeaveHandler ~ delete _;
 	/// Handlers replaced or taken off while a message or a player event is being delivered,
 	/// deleted once it is: the handler running may be one of them, or a caller's own. OWNED.
 	private List<Object> mRetired = new .() ~ DeleteContainerAndItems!(_);
@@ -231,31 +224,6 @@ class NetFacade : IScriptEntityScene
 		return (component != null) && (self >= 0) && (component.Owner == (uint32)self);
 	}
 
-	/// Calls `handler(player)` when a player joins: on the host a client, on a client itself
-	/// once the host has welcomed it. TAKES OWNERSHIP; a later one replaces it.
-	[Scriptable, ScriptCallback("void NetHandler(int sender)")]
-	public void OnJoin(ScriptDelegate handler) => SetPlayerHandler(handler, true);
-
-	/// Calls `handler(player)` when a player leaves: on the host a client, on a client the
-	/// host (nought). TAKES OWNERSHIP; a later one replaces it.
-	[Scriptable, ScriptCallback("void NetHandler(int sender)")]
-	public void OnLeave(ScriptDelegate handler) => SetPlayerHandler(handler, false);
-
-	/// Receives the message `name` with `handler(sender)`. The sender is the peer that sent it:
-	/// on the host the client that called, on a client the host. Register any time, before
-	/// hosting or joining too; a later registration of the name replaces it. TAKES OWNERSHIP of
-	/// the handler.
-	[Scriptable, ScriptCallback("void NetHandler(int sender)")]
-	public void On(StringView name, ScriptDelegate handler) => Register(name, .None, handler);
-
-	/// Receives the message `name` with `handler(sender, value)`, its number.
-	[Scriptable, ScriptCallback("void NetNumberHandler(int sender, double value)")]
-	public void OnNumber(StringView name, ScriptDelegate handler) => Register(name, .Number, handler);
-
-	/// Receives the message `name` with `handler(sender, text)`, its text.
-	[Scriptable, ScriptCallback("void NetTextHandler(int sender, const string &in text)")]
-	public void OnText(StringView name, ScriptDelegate handler) => Register(name, .Text, handler);
-
 	/// Host only: spawns `prefab` at `position` in the replicated scene, as
 	/// `scene.Prefabs.Spawn` does, and gives it a network id with the prefab, so every client
 	/// spawns its own copy and a player who joins later gets it in the snapshot. The prefab's
@@ -282,21 +250,21 @@ class NetFacade : IScriptEntityScene
 		return entity;
 	}
 
-	/// Receives the message `name` with `handler(player)`, as On does for a script: the sender
-	/// is player nought on a client, the client that called on the host. Register any time; a
-	/// later registration of the name, of either kind, replaces it. TAKES OWNERSHIP of the
-	/// handler; null does nothing.
+	/// Receives the message `name` with `handler(player)`. The sender is the peer that sent it:
+	/// player nought on a client (the host), the client that called on the host. Register any
+	/// time, before hosting or joining too; a later registration of the name, of any kind,
+	/// replaces it. TAKES OWNERSHIP of the handler; null does nothing.
 	public void On(StringView name, PlayerHandler handler)
 	{
 		if (handler != null)
-			RegisterNative(name, .None, handler, null, null);
+			Register(name, .None, handler, null, null);
 	}
 
 	/// Receives the message `name` with `handler(player, value)`, its number. As On.
 	public void OnNumber(StringView name, NumberHandler handler)
 	{
 		if (handler != null)
-			RegisterNative(name, .Number, null, handler, null);
+			Register(name, .Number, null, handler, null);
 	}
 
 	/// Receives the message `name` with `handler(player, text)`, its text, a view valid for the
@@ -304,25 +272,26 @@ class NetFacade : IScriptEntityScene
 	public void OnText(StringView name, TextHandler handler)
 	{
 		if (handler != null)
-			RegisterNative(name, .Text, null, null, handler);
+			Register(name, .Text, null, null, handler);
 	}
 
-	/// Calls `handler(player)` when a player joins, as OnJoin does for a script; it replaces
-	/// whichever was set. TAKES OWNERSHIP; null does nothing.
+	/// Calls `handler(player)` when a player joins: on the host a client, on a client itself
+	/// once the host has welcomed it. It replaces the one set. TAKES OWNERSHIP; null does nothing.
 	public void OnJoin(PlayerHandler handler)
 	{
 		if (handler != null)
-			SetNativePlayerHandler(handler, true);
+			SetPlayerHandler(handler, true);
 	}
 
-	/// Calls `handler(player)` when a player leaves, as OnLeave does for a script. As OnJoin.
+	/// Calls `handler(player)` when a player leaves: on the host a client, on a client the host
+	/// (nought). As OnJoin.
 	public void OnLeave(PlayerHandler handler)
 	{
 		if (handler != null)
-			SetNativePlayerHandler(handler, false);
+			SetPlayerHandler(handler, false);
 	}
 
-	/// Takes the handler of the message `name` off, of either kind, and deletes it (once the
+	/// Takes the handler of the message `name` off, of any kind, and deletes it (once the
 	/// message being delivered, if any, is done). Nothing for a name without one.
 	public void Off(StringView name)
 	{
@@ -333,37 +302,28 @@ class NetFacade : IScriptEntityScene
 		}
 	}
 
-	/// Takes the join handler off, of either kind, and deletes it.
+	/// Takes the join handler off and deletes it.
 	public void OffJoin()
 	{
 		Retire(mJoinHandler);
 		mJoinHandler = null;
-		Retire(mNativeJoin);
-		mNativeJoin = null;
 	}
 
-	/// Takes the leave handler off, of either kind, and deletes it.
+	/// Takes the leave handler off and deletes it.
 	public void OffLeave()
 	{
 		Retire(mLeaveHandler);
 		mLeaveHandler = null;
-		Retire(mNativeLeave);
-		mNativeLeave = null;
 	}
 
-	/// Every handler native code registered, taken off and deleted; a script's stay. The run
-	/// calls it as its session ends, when what they call into goes.
-	public void DropNativeHandlers()
+	/// Every handler, taken off and deleted. The run calls it as its session ends, when what
+	/// they call into goes.
+	public void DropHandlers()
 	{
 		for (let handler in mHandlers)
-		{
-			if (handler.IsNative)
-				Empty(handler);
-		}
-		Retire(mNativeJoin);
-		mNativeJoin = null;
-		Retire(mNativeLeave);
-		mNativeLeave = null;
+			Empty(handler);
+		OffJoin();
+		OffLeave();
 	}
 
 	/// How many message names have a handler.
@@ -379,18 +339,6 @@ class NetFacade : IScriptEntityScene
 			}
 			return count;
 		}
-	}
-
-	private void Register(StringView name, MessageKind kind, ScriptDelegate callback)
-	{
-		if (callback == null)
-			return;
-		let handler = HandlerFor(name);
-		Empty(handler);
-		handler.Callback = callback;
-		handler.Kind = kind;
-		if (let endpoint = Endpoint)
-			Install(endpoint, handler);
 	}
 
 	/// The handler of `name`, made (empty) when there is none yet.
@@ -410,8 +358,6 @@ class NetFacade : IScriptEntityScene
 	/// Takes every callback off `handler`, retired.
 	private void Empty(Handler handler)
 	{
-		Retire(handler.Callback);
-		handler.Callback = null;
 		Retire(handler.Plain);
 		handler.Plain = null;
 		Retire(handler.Number);
@@ -440,9 +386,9 @@ class NetFacade : IScriptEntityScene
 			ClearAndDeleteItems!(mRetired);
 	}
 
-	/// Native code's handler for `name`, installed now if an endpoint is open, and on each the
-	/// controller opens later.
-	private void RegisterNative(StringView name, MessageKind kind, PlayerHandler plain, NumberHandler number, TextHandler text)
+	/// The handler for `name`, installed now if an endpoint is open, and on each the controller
+	/// opens later.
+	private void Register(StringView name, MessageKind kind, PlayerHandler plain, NumberHandler number, TextHandler text)
 	{
 		let handler = HandlerFor(name);
 		Empty(handler);
@@ -469,7 +415,7 @@ class NetFacade : IScriptEntityScene
 		endpoint.Rpc.On(handler.Name, new [=this, =handler, =endpoint](sender, args) =>
 			{
 				// A client hears only from the host: player nought (its own id for the host
-				// connection means nothing to a script).
+				// connection means nothing to the game).
 				let from = endpoint.Session.IsClient ? 0 : sender;
 				let kind = (MessageKind)args.ReadU8();
 				if (!args.Ok || (kind != handler.Kind) || !handler.IsSet)
@@ -496,18 +442,7 @@ class NetFacade : IScriptEntityScene
 				let facade = this;
 				let entry = handler;
 				facade.BeginDelivery();
-				if (entry.Callback != null)
-				{
-					var values = ScriptValue[2](.FromInt((int32)from), .Nil);
-					int count = 1;
-					if (kind == .Number)
-						values[count++] = .FromFloat(number);
-					else if (kind == .Text)
-						values[count++] = .FromString(text);
-					var result = ScriptValue.Nil;
-					entry.Callback.Invoke(.(&values[0], count), ref result);
-				}
-				else if (entry.Plain != null)
+				if (entry.Plain != null)
 					entry.Plain((int32)from);
 				else if (entry.Number != null)
 					entry.Number((int32)from, number);
@@ -538,7 +473,7 @@ class NetFacade : IScriptEntityScene
 		}
 	}
 
-	private void SetPlayerHandler(ScriptDelegate handler, bool join)
+	private void SetPlayerHandler(PlayerHandler handler, bool join)
 	{
 		if (join)
 		{
@@ -554,22 +489,6 @@ class NetFacade : IScriptEntityScene
 			InstallPlayerEvents(endpoint);
 	}
 
-	private void SetNativePlayerHandler(PlayerHandler handler, bool join)
-	{
-		if (join)
-		{
-			OffJoin();
-			mNativeJoin = handler;
-		}
-		else
-		{
-			OffLeave();
-			mNativeLeave = handler;
-		}
-		if (let endpoint = Endpoint)
-			InstallPlayerEvents(endpoint);
-	}
-
 	/// Points the endpoint's join and leave reporting at the handlers, read when an event comes,
 	/// so a later OnJoin needs no reinstall.
 	private void InstallPlayerEvents(NetworkManager endpoint)
@@ -577,21 +496,13 @@ class NetFacade : IScriptEntityScene
 		endpoint.SetPlayerEvents(new [=this](joined, player) =>
 			{
 				let handler = joined ? mJoinHandler : mLeaveHandler;
-				let native = joined ? mNativeJoin : mNativeLeave;
-				if ((handler == null) && (native == null))
+				if (handler == null)
 					return;
 				// A local: a handler that sets another OnJoin replaces this closure on the
 				// endpoint, which deletes it under the call.
 				let facade = this;
 				facade.BeginDelivery();
-				if (handler != null)
-				{
-					var args = ScriptValue[1](.FromInt((int32)player));
-					var result = ScriptValue.Nil;
-					handler.Invoke(args, ref result);
-				}
-				else
-					native((int32)player);
+				handler((int32)player);
 				facade.EndDelivery();
 			});
 	}

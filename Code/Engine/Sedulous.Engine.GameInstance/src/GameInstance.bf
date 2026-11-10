@@ -741,7 +741,7 @@ class GameInstance : RunBase, IRunService
 			return;
 		StopRumble();
 		EndNativeGame();
-		DropNativeCallbacks();
+		DropCallbacks();
 		Remove<IGameHooks>();
 	}
 
@@ -762,15 +762,15 @@ class GameInstance : RunBase, IRunService
 			EndNativeGame();
 		else
 			mSave.Flush();
-		DropNativeCallbacks();
+		DropCallbacks();
 		mRandom.Reset();
 	}
 
-	/// The Net handlers native code registered, deleted, and every HTTP request under way
-	/// dropped, its handler never called: nothing reaches a game that has ended.
-	private void DropNativeCallbacks()
+	/// The Net handlers deleted, and every HTTP request under way dropped, its handler never
+	/// called: nothing reaches a game that has ended.
+	private void DropCallbacks()
 	{
-		mNetFacade.DropNativeHandlers();
+		mNetFacade.DropHandlers();
 		mHttpFacade.Reset();
 	}
 

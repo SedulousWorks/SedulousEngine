@@ -20,7 +20,6 @@ using Sedulous.Resource;
 using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
-using Sedulous.Script;
 using Sedulous.VFS;
 
 namespace Sedulous.Engine.GUI;
@@ -40,9 +39,9 @@ namespace Sedulous.Engine.GUI;
 /// target's own, into the rectangle that size is fitted into, turned when the game's orientation is
 /// not the target's, as the game's image is. With run screens on (the editor), each run (a Game
 /// tab's game) has a screen tier of its own, drawn for its tab (SetRenderRun); the overlay layer
-/// stays on the shared tier above it. A script with no run (a headless tool's, a test's) uses the
-/// shared tier, as every script does in the player; in the editor every scene that runs scripts
-/// has a run (a Game tab's, a scene page's).
+/// stays on the shared tier above it. Game code with no run (a headless tool's, a test's) uses the
+/// shared tier, as every game does in the player; in the editor every scene that runs a game has a
+/// run (a Game tab's, a scene page's).
 ///
 /// The components live (GuiComponentSync.bf, GuiRenderTextures.bf): a canvas's document in its
 /// scene's root or a texture of its own, a billboard over its entity, a world panel on its
@@ -51,9 +50,9 @@ namespace Sedulous.Engine.GUI;
 /// The input (GuiInputPump.bf): the engine's active input source into one root a frame through
 /// GUI.Shell's bridge, the action layer told what the GUI took.
 ///
-/// The scripts: `Gui` to a run's scripts is a GuiFacade whose root is that run's screen tier
-/// (ScriptFacadeFor), offered among the run's services, the shared tier's on the application's;
-/// the components reach their trees as nodes (`Root()`).
+/// The facades: `Gui` to a run's game code is a GuiFacade whose root is that run's screen tier
+/// (FacadeFor), offered among the run's services, the shared tier's on the application's;
+/// the components reach their trees as nodes (`RootNode()`).
 class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 {
 	/// Early in the frame, so a game's GUI sees the same frame; all work in BeginFrame.
@@ -98,11 +97,10 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private bool mBackUnhandled = false;
 	/// The GUI input reaches is editing text, as of the last input pump.
 	private bool mTextWanted = false;
-	/// `Gui` to scripts outside every run, its root the shared tier's, on the application's
-	/// services. OWNED: each
-	/// runtime it is set on borrows it, so it lives as long as the subsystem.
-	private GuiFacade mScriptFacade ~ delete _;
-	/// `Gui` to one run's scripts, its root that run's tier (ScriptFacadeFor), each OWNED, by the
+	/// `Gui` to game code outside every run, its root the shared tier's, on the application's
+	/// services. OWNED: whoever finds it borrows it, so it lives as long as the subsystem.
+	private GuiFacade mSharedFacade ~ delete _;
+	/// `Gui` to one run's game code, its root that run's tier (FacadeFor), each OWNED, by the
 	/// run's id.
 	private List<(RunId run, GuiFacade facade)> mRunFacades = new .() ~ { for (let entry in _) delete entry.facade; delete _; };
 	private List<GuiSceneTier> mSceneTiers = new .() ~ DeleteContainerAndItems!(_);
@@ -144,10 +142,10 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		mDataFileSystem = dataFileSystem;
 		mContext.ResourceProvider = mResources;
 		mStyles.ResourceProvider = mResources; // the sheets' @import, url() and fonts
-		// A script's root is its run's screen tier, the shared one with no run (the player's),
-		// asked at each call: none before OnInit makes it, nor after shutdown drops it, so a
-		// script still running then finds no root rather than a freed one.
-		mScriptFacade = new .(new [=this] () => ScreenRootFor(null));
+		// A facade's root is its run's screen tier, the shared one with no run (the player's),
+		// asked at each call: none before OnInit makes it, nor after shutdown drops it, so game
+		// code still running then finds no root rather than a freed one.
+		mSharedFacade = new .(new [=this] () => ScreenRootFor(null));
 	}
 
 	public ~this()
@@ -534,15 +532,15 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		return (tier != null) ? tier.Root : null;
 	}
 
-	// ==================== scripts ====================
+	// ==================== facades ====================
 
-	/// `Gui` to scripts outside every run is the shared tier's facade (`Gui.Root()`, its stack
-	/// `ScreenStack::Of(Gui.Root().Find("screens"))`), on the application's services; each run's
-	/// own is among the run's services, offered as the run is made, so its scripts find it first.
+	/// `Gui` to game code outside every run is the shared tier's facade (its Root(), its stack the
+	/// child "screens"), on the application's services; each run's own is among the run's
+	/// services, offered as the run is made, so its code finds it first.
 	public override void OnRegister(SubsystemManager manager)
 	{
 		base.OnRegister(manager);
-		manager.RegisterService(mScriptFacade);
+		manager.RegisterService(mSharedFacade);
 	}
 
 	public override void OnUnregister()
@@ -557,7 +555,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private void OfferRunFacade(IRun run)
 	{
 		if (let held = run as RunBase)
-			held.Register<GuiFacade>(ScriptFacadeFor(run));
+			held.Register<GuiFacade>(FacadeFor(run));
 	}
 
 	// The runs still alive let go of their `Gui` as this subsystem shuts down.
@@ -582,14 +580,14 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			});
 	}
 
-	/// The `Gui` a run's scripts are given, made on first use (as the run is made, among its
+	/// The `Gui` a run's game code is given, made on first use (as the run is made, among its
 	/// services). Its root is asked at each call, so a run whose screens ended (its stop) and plays
-	/// again gets its tier back. The shared one with no run. The subsystem's until EndRunScripts or
+	/// again gets its tier back. The shared one with no run. The subsystem's until EndRunFacade or
 	/// its own end; BORROWED by the run.
-	public GuiFacade ScriptFacadeFor(IRun run)
+	public GuiFacade FacadeFor(IRun run)
 	{
 		if (run == null)
-			return mScriptFacade;
+			return mSharedFacade;
 		let id = run.Id;
 		for (let entry in mRunFacades)
 		{
@@ -601,10 +599,10 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		return facade;
 	}
 
-	/// The run is gone for good: its `Gui` goes. After every runtime the run made, which borrow
+	/// The run is gone for good: its `Gui` goes. After everything the run made, which borrows
 	/// it, is gone, so its host says so (by the run's id, the run itself gone by then): the run's
 	/// destruction comes first.
-	public void EndRunScripts(RunId run)
+	public void EndRunFacade(RunId run)
 	{
 		for (int i < mRunFacades.Count)
 		{
@@ -616,7 +614,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		}
 	}
 
-	public int RunScriptFacadeCount => mRunFacades.Count;
+	public int RunFacadeCount => mRunFacades.Count;
 
 	// ==================== lifecycle ====================
 
@@ -651,7 +649,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		// The touch controls' guide, beneath the screens pushed on this tier and the overlays.
 		mTouchGuide = new GuiTouchGuide();
 		mScreen.Root.AddChildAt(mTouchGuide, 0);
-		// The scripts' facades resolve their roots from here (made with the subsystem: a host may
+		// The facades resolve their roots from here (made with the subsystem: a host may
 		// install them before it starts).
 	}
 
@@ -743,8 +741,8 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			mTouchGuide.ReleaseRef();
 			mTouchGuide = null;
 		}
-		// The script facades resolve through the shared root, gone below: a script still running
-		// finds no root, not a freed one.
+		// The facades resolve through the shared root, gone below: game code still running finds
+		// no root, not a freed one.
 		if (mScreen.Screens != null)
 		{
 			mScreen.Screens.ReleaseRef();
@@ -857,7 +855,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	// ==================== the tiers ====================
 
-	/// A screen tier's root, filled by its stack (its id what a script finds).
+	/// A screen tier's root, filled by its stack (its id what game code finds).
 	private void MakeScreenTier(GuiScreenTier tier)
 	{
 		tier.Root = new SceneRoot(mContext);
@@ -866,7 +864,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			tier.Root.EditLayoutStyle(scope (s) => { s.Kind = .Stack; });
 		}
 		tier.Screens = new ScreenStack();
-		tier.Screens.Id = "screens"; // a script's ScreenStack::of(gui::root().find("screens"))
+		tier.Screens.Id = "screens"; // what Gui.Root().FindElement("screens") finds
 		tier.Root.AddChild(tier.Screens);
 		tier.Bridge = MakeBridge(tier.Root);
 	}

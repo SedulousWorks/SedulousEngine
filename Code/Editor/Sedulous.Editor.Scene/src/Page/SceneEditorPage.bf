@@ -787,7 +787,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (mServices.Host != null)
 		{
 			if (let gui = mServices.Host.Subsystems.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>())
-				gui.EndRunScripts(run.Id);
+				gui.EndRunFacade(run.Id);
 		}
 	}
 

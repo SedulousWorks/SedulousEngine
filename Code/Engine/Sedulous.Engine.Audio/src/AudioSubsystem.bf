@@ -62,7 +62,7 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	private Sedulous.Core.Random mCueRandom = .();
 	private Dictionary<SoundCue, CueOneShotState> mCueOneShotState
 		= new .() ~ DeleteDictionaryAndValues!(_);
-	/// Warned once per content path, so a mistyped path in a script does not flood the log.
+	/// Warned once per content path, so a mistyped path in game code does not flood the log.
 	private HashSet<String> mWarnedPaths = new .() ~ DeleteContainerAndItems!(_);
 
 	private List<RunEntry> mRuns = new .() ~ delete _;
@@ -75,20 +75,20 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	private bool mHearAllRuns = false;
 	/// The scene systems' way back to the run registry. OWNED.
 	private delegate uint64(IRun run) mRunGroupResolver ~ delete _;
-	/// `Audio` to scripts outside every run, on the application's services; OWNED.
-	private AudioFacade mScriptFacade = null ~ delete _;
-	/// `Audio` to each run's scripts, among its services, carrying the run; OWNED, by the run's id,
+	/// `Audio` to game code outside every run, on the application's services; OWNED.
+	private AudioFacade mSharedFacade = null ~ delete _;
+	/// `Audio` to each run's game code, among its services, carrying the run; OWNED, by the run's id,
 	/// until the run goes (or this subsystem shuts down).
 	private List<(RunId run, AudioFacade facade)> mRunFacades = new .() ~ { for (let entry in _) delete entry.facade; delete _; };
 
-	/// Where a script's asset ids resolve: the application's resource manager, read per call, since
+	/// Where the facades' asset ids resolve: the application's resource manager, read per call, since
 	/// it may be handed over after this is made. Null resolves none. OWNED.
-	public delegate ResourceManager() ScriptResources = null ~ delete _;
+	public delegate ResourceManager() FacadeResources = null ~ delete _;
 
 	public this(AudioEngineSettings engineSettings = null)
 	{
 		mEngineSettings = engineSettings;
-		mScriptFacade = new AudioFacade(this, new [=this] () => ResolveScriptResources());
+		mSharedFacade = new AudioFacade(this, new [=this] () => ResolveFacadeResources());
 		mRunGroupResolver = new (run) => RunGroupFor(run);
 	}
 
@@ -334,17 +334,17 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 		}
 	}
 
-	// ==================== scripts ====================
+	// ==================== facades ====================
 
 	/// The facades offered: the shared one on the application's services, each run's among the
 	/// run's.
-	public AudioFacade ScriptFacade => mScriptFacade;
-	public int RunScriptFacadeCount => mRunFacades.Count;
+	public AudioFacade SharedFacade => mSharedFacade;
+	public int RunFacadeCount => mRunFacades.Count;
 
 	public override void OnRegister(SubsystemManager manager)
 	{
 		base.OnRegister(manager);
-		manager.RegisterService(mScriptFacade);
+		manager.RegisterService(mSharedFacade);
 	}
 
 	public override void OnUnregister()
@@ -354,9 +354,9 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 		base.OnUnregister();
 	}
 
-	private ResourceManager ResolveScriptResources() => (ScriptResources != null) ? ScriptResources() : null;
+	private ResourceManager ResolveFacadeResources() => (FacadeResources != null) ? FacadeResources() : null;
 
-	// `run`'s own `Audio` among its services, carrying the run, so what its scripts play goes into
+	// `run`'s own `Audio` among its services, carrying the run, so what its code plays goes into
 	// it and its bus volumes are its own. Once per run.
 	private void OfferRunFacade(IRun run)
 	{
@@ -368,7 +368,7 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 			if (entry.run == run.Id)
 				return;
 		}
-		let facade = new AudioFacade(this, new [=this] () => ResolveScriptResources(), run);
+		let facade = new AudioFacade(this, new [=this] () => ResolveFacadeResources(), run);
 		mRunFacades.Add((run.Id, facade));
 		held.Register<AudioFacade>(facade);
 	}
@@ -470,7 +470,7 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	// The path is the source database's, which is the string an editor shows. The cook
 	// mirrors both group paths and ids into the cooked database, so one string resolves
 	// against the runtime's. Missing, uncooked or mistyped content WARNS ONCE per path and
-	// does nothing: a script never faults over a content problem.
+	// does nothing: game code never faults over a content problem.
 	//
 	// A path resolves BY TYPE: a clip plays, and a cue resolves one weighted trigger.
 

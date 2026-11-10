@@ -1,7 +1,6 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Input;
-using Sedulous.Script;
 
 namespace Sedulous.Engine.Input;
 

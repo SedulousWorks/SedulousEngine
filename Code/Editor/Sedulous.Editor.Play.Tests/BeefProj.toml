@@ -14,7 +14,6 @@ corlib = "*"
 "Sedulous.Mcp" = "*"
 "Sedulous.Shell" = "*"
 "Sedulous.Input" = "*"
-"Sedulous.Script" = "*"
 "Sedulous.Scene" = "*"
 # A Game tab with a run of its own: its scene, the run, and a native game in it.
 "Sedulous.Content" = "*"

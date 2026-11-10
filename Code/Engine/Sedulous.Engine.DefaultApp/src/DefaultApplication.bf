@@ -105,7 +105,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	private NetworkStartup mNetStartup = .();
 
-	/// `Save` to scripts outside every run (the editor's Simulate): every fallback read, nothing
+	/// `Save` to game code outside every run (the editor's Simulate): every fallback read, nothing
 	/// written, rather than a fault on a missing service. On the application's services, since no
 	/// subsystem sits beside RunSave's owner (GameInstance, a run); a run's own comes first.
 	private SaveFacade mIdleSave = new .(null) ~ delete _;
@@ -155,7 +155,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	public InputSubsystem Input => mInput;
 	public PhysicsSubsystem Physics => mPhysics;
 	public AudioSubsystem Audio => mAudio;
-	/// The engine's GUI: its screen tier, its components, `Gui` in scripts.
+	/// The engine's GUI: its screen tier, its components, `Gui` to game code.
 	public GuiSubsystem Gui => mGui;
 	public NetworkManager Net => mInstance.NetEndpoint;
 
@@ -400,9 +400,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		mAudio = new AudioSubsystem(mAudioEngineSettings);
 		host.Subsystems.RegisterSubsystem<AudioSubsystem>(mAudio);
-		// What a script's audio ids resolve through: read per call, since the manager may be handed
+		// What the Audio facades' ids resolve through: read per call, since the manager may be handed
 		// over after this.
-		mAudio.ScriptResources = new () => Resources;
+		mAudio.FacadeResources = new () => Resources;
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Subsystems.RegisterSubsystem<InputSubsystem>(mInput);
@@ -411,8 +411,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// path; an editor tab overrides this to its own gated source.
 		mInstance.SetInputSource(mInput.ShellSource);
 
-		// The engine's GUI: every game has it (its screen tier, its components, `Gui` in its
-		// scripts).
+		// The engine's GUI: every game has it (its screen tier, its components, `Gui` to its code).
 		mGui = new GuiSubsystem(mDataMount);
 		host.Subsystems.RegisterSubsystem<GuiSubsystem>(mGui);
 		// Its prompts name the game's bindings: the primary instance's runtime, which the game runs on.
@@ -528,9 +527,9 @@ class DefaultApplication : IApplication, ISceneObserver
 		// Its sound, its screens and its Audio end with it: its run's end reaches every subsystem.
 		let runId = instance.Id;
 		delete instance;
-		// Its Gui after every runtime it made.
+		// Its Gui after everything it made.
 		if (mGui != null)
-			mGui.EndRunScripts(runId);
+			mGui.EndRunFacade(runId);
 	}
 
 	/// The primary first, then every extra.

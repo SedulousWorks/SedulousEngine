@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Script;
 using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
@@ -21,11 +20,6 @@ namespace Sedulous.GUI;
 // Tweens and groups are reference counted, as every action is: whoever makes one (or is handed
 // one by Animate, CreateTween and the rest) releases its reference; a manager or a group running
 // it holds one of its own.
-//
-// To a script they are counted handles: a handle is a reference
-// of the script's own, so a tween a script keeps outlives the manager's (a kept tween's IsDone
-// reads after it ended), and one kept past its GUI finds no target. The shaping verbs give back
-// the tween or group itself, lent, so a script chains them as native code does.
 
 [Scriptable]
 class Tween : Sedulous.GUI.Action
@@ -169,21 +163,6 @@ class Tween : Sedulous.GUI.Action
 		delete mOnFinished;
 		mOnFinished = callback;
 		return this;
-	}
-
-	/// OnFinished with a script function. OWNERSHIP of `handler` transfers: the callback holds it,
-	/// and it goes with the tween (or the next one set); none set leaves the one before. A dead
-	/// function is not called. `OnFinished` to a script.
-	[Scriptable, ScriptName("OnFinished")]
-	public Tween OnFinishedScript(ScriptDelegate handler)
-	{
-		if (handler == null)
-			return this;
-		return OnFinished(new [=handler] () =>
-			{
-				var result = ScriptValue.Nil;
-				GuiScriptDetail.Call(handler, default, ref result);
-			} ~ { delete handler; });
 	}
 
 	public StringView Property => mProperty;
@@ -778,21 +757,6 @@ abstract class TweenGroup : Sedulous.GUI.Action
 		return this;
 	}
 
-	/// A step that calls a script function. OWNERSHIP of `handler` transfers: the step holds it,
-	/// and it goes with the group; a dead function, or none, is a step that calls nothing. `Call`
-	/// to a script.
-	[Scriptable, ScriptName("Call")]
-	public TweenGroup CallScript(ScriptDelegate handler)
-	{
-		return Call(new [=handler] () =>
-			{
-				if (handler == null)
-					return;
-				var result = ScriptValue.Nil;
-				GuiScriptDetail.Call(handler, default, ref result);
-			} ~ { delete handler; });
-	}
-
 	/// How many times it runs (1 by default; a negative count runs until stopped). `Repeats` to a
 	/// script.
 	[Scriptable, ScriptName("Repeats")]
@@ -808,20 +772,6 @@ abstract class TweenGroup : Sedulous.GUI.Action
 		delete mOnFinished;
 		mOnFinished = callback;
 		return this;
-	}
-
-	/// OnFinished with a script function, as Tween.OnFinishedScript takes one. `OnFinished` to a
-	/// script.
-	[Scriptable, ScriptName("OnFinished")]
-	public TweenGroup OnFinishedScript(ScriptDelegate handler)
-	{
-		if (handler == null)
-			return this;
-		return OnFinished(new [=handler] () =>
-			{
-				var result = ScriptValue.Nil;
-				GuiScriptDetail.Call(handler, default, ref result);
-			} ~ { delete handler; });
 	}
 
 	public int StepCount => mSteps.Count;

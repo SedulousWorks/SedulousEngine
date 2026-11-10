@@ -88,6 +88,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   button.
 - Editor: a scene's Simulate runs on its own, apart from every other page: its scripts' screens
   draw over the page's viewport while it simulates and go when it stops.
+- Engine: the GUI, audio and input subsystems' facade members are named for game code, not
+  scripts: `FacadeFor`, `RunFacadeCount` and `EndRunFacade` on the GUI's, `SharedFacade` on all
+  three, `RunFacadeCount` and `FacadeResources` on the audio one.
+- Net: a run's session stopping drops every `Net` handler a game registered.
 
 ### Fixed
 
@@ -180,6 +184,16 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   breakpoints, New Asset's script classes, and the inspector's sections for a Script component's
   behaviours and a scene's level script properties: a game's code is native.
 - Scripts: the `Http` service; a game's own code sends web requests through `HttpFacade`.
+- Engine: the script libraries and their AngelScript backend, with the script surfaces the GUI
+  and the engine published for them.
+- GUI: the verbs that took a script's function (a node's script `On`, `OnCommand`, `Bind`,
+  `BindNumber` and `BindBool`, a tween's or a group's script `OnFinished` and `Call`, and
+  `Gui.CaptureKey`'s script form) and the event object scripts were handed: game code passes
+  delegates, as it did. A toast request is no longer reference counted: its maker owns it.
+- Net: the script forms of `On`, `OnNumber`, `OnText`, `OnJoin` and `OnLeave`; game code passes
+  delegates.
+- GUI sandbox: its pages' and game menu's scripts no longer run, its Code page no longer checks
+  the script it shows nor completes the script API, and `--menu-call` is gone.
 - Editor: Edit > Export Templates, the Export dialog's template choice and its Export Templates
   button, and the templates folder in Preferences: an export builds its player, so there is no
   template to pick or install. A preset is shown by its platform's icon.
