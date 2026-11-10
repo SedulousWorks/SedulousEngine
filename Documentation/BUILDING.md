@@ -2,10 +2,13 @@
 
 ## Requirements
 
-- A recent [Beef nightly](https://nightly.beeflang.org/index.html), for BeefBuild and the IDE.
-  Upstream is sufficient; the `working` branch of [our fork](https://github.com/jayrulez/Beef)
-  carries the compiler fixes we have contributed that are still in review, none of which the
-  engine depends on.
+- Beef, for BeefBuild and the IDE: the engine is built and tested with the Beef it pins,
+  `Beef` in `Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf` (Beef's version and the
+  commit of the `working` branch of [our fork](https://github.com/jayrulez/Beef) it is built
+  from), which each release also ships for Linux. A
+  [Beef nightly](https://nightly.beeflang.org/index.html) of the same version builds it too.
+- On Linux, the system's linker and archiver, which BeefBuild links with: `clang++` or `c++`,
+  and `ar`.
 - Linux x64 or Windows x64. Prebuilt native libraries for both are in the tree under
   `Dependencies/*/dist`, except SDL3 on Linux, which links the system's: install SDL 3.4
   (`libsdl3-dev` or your distribution's equivalent). The dependencies built from source carry a

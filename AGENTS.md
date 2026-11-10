@@ -5,8 +5,10 @@ engine is; this is how to work in it.
 
 ## Build
 
-Everything is one Beef workspace under `Code/`. BeefBuild comes from a recent Beef nightly, or
-the `working` branch of [the fork](https://github.com/jayrulez/Beef). Run it from `Code/`:
+Everything is one Beef workspace under `Code/`. BeefBuild is the Beef the engine pins,
+`EngineVersion.Beef` (Beef's version and the commit of the `working` branch of
+[the fork](https://github.com/jayrulez/Beef) it is built from), which a release ships as its
+toolchain; a nightly of the same Beef version builds it too. Run it from `Code/`:
 
 ```
 BeefBuild -proddir=. -config=Debug -platform=Linux64 -project=Sedulous.Tools.Editor
@@ -29,6 +31,12 @@ with packages of its own generates `<Game>Editor`, `<Game>Player`, `<Game>Player
 start exactly as the stock ones do: the desktop ones in its `Code/` workspace, the web player in
 a workspace of its own, `Code/.generated/Web` (BeefBuild compiles every enabled project of a
 workspace, and the editor's dependencies do not compile for wasm32).
+The editor opens one project (`--project <dir>`, or the folder alone); started with none, it
+starts the project manager and exits. The project manager, `Sedulous.Tools.ProjectManager` over
+`Sedulous.Editor.ProjectManager`, lists projects, makes them from the templates in
+`Data/Templates` and opens each in its own `<Game>Editor`, built over the project's engine SDK (a
+checkout is one) before it launches; `Documentation/Shipping/Sdk.md` says what an SDK holds and
+what a build needs.
 The old UI framework (Sedulous.UI and its toolkit, shell, runtime, application and VFS libraries)
 and its UISandbox live under `Code/Deprecated/UI`, in the workspace but disabled in every config:
 nothing else links them, and enabling them builds the sandbox.
@@ -145,12 +153,30 @@ loopback and opens on Samples.
 - **The version:** `Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf` (String, Label and
   Display, which a test holds in step). On master between releases the label is `dev` and the
   version is the one being worked toward (0.1.0-dev before 0.1.0-beta; 0.2.0-dev after 0.1.0).
+- **The toolchain pin:** `EngineVersion.Beef` in the same file, the Beef the engine is built and
+  tested with ("<Beef's version>-<commit>"). Moving the engine to another Beef moves the pin in
+  the same commit, with `Dependencies/Beef/`'s licence files copied from that commit and the
+  notices written again.
+- **What `v<version>` carries:** the engine SDK and its index per platform
+  (`sedulous-sdk-<version>-linux64.zip` and `sdk-linux64.json`; Win64 once a Windows host packs
+  one), the toolchain when its pin moved (`beef-<pin>-linux64.zip`; else the index names the
+  earlier release that carries it), and the samples (`samples.json` and each sample's zip and
+  picture). Every pack runs by hand: there is no workflow.
 - **Cutting a release:** on master, one commit `Release: <version>`: the label set to the
   release's (`beta` for a pre-release, empty for a final) and `## Unreleased` renamed to
-  `## <version> - <date>`. Tag it `v<version>`, make the GitHub release from the tag, and attach
-  what `pack-samples.py` writes from that commit, and what `pack-sdk.py` writes (the engine SDK
-  and its index, with the project manager's ShippingRelease build inside; `--check` first:
-  `Documentation/Shipping/Sdk.md`).
+  `## <version> - <date>`. Tag it `v<version>`. Then, from that commit and in this order
+  (`Documentation/Shipping/Sdk.md` has each one's details):
+  1. Build `Sedulous.Tools.ProjectManager` in ShippingRelease.
+  2. When the pin moved since the last release, `EMSDK=<emsdk> Code/Tools/pack-toolchain.sh <out>`
+     (a container build of Beef: nothing else building beside it). When it did not, download that
+     release's `beef-<pin>-linux64.zip` into `<out>` instead.
+  3. `python3 Code/Tools/pack-sdk.py --check`, then `python3 Code/Tools/pack-sdk.py <out> --manager
+     Code/build/ShippingRelease_Linux64/Sedulous.Tools.ProjectManager --toolchain
+     <out>/beef-<pin>-linux64.zip`, adding `--toolchain-release v<earlier>` when an earlier release
+     carries the toolchain.
+  4. `python3 Code/Tools/pack-samples.py <out>`.
+  5. Make the GitHub release from the tag and attach what `<out>` holds (not an earlier release's
+     toolchain zip).
 - **After a release:** the next commit on master puts the label back to `dev`, bumps the version
   when the release was final, and opens a new `## Unreleased`.
 
