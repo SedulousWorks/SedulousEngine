@@ -79,8 +79,8 @@ static
 			}
 		}
 		result.A = 1.0f;
-		if (GradientBracket(alphas, (stop) => stop.Time, time, var a, var b, var t))
-			result.A = (interpolation == .Constant) ? alphas[a].Alpha : Lerp(alphas[a].Alpha, alphas[b].Alpha, t);
+		if (GradientBracket(alphas, (stop) => stop.Time, time, var below, var above, var along))
+			result.A = (interpolation == .Constant) ? alphas[below].Alpha : Lerp(alphas[below].Alpha, alphas[above].Alpha, along);
 		return result;
 	}
 

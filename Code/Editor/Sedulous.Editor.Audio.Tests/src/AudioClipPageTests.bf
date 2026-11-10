@@ -135,7 +135,8 @@ class AudioClipPageTests
 		Test.Assert(page.State == "Stopped");
 		Test.Assert(!page.CanPlay, "no audio engine here");
 		Test.Assert(!page.IsPlaying);
-		Test.Assert((page as IPlaybackPage) != null, "what the playback actions run over");
+		IPlaybackPage playback = page;
+		Test.Assert(playback != null, "what the playback actions run over");
 		let play = page.Content.FindElement("audio-play") as ButtonBase;
 		Test.Assert((play != null) && (play.CheckedIcon == "Editor/Icons/pause.svg"), "Play shows Pause while it plays");
 

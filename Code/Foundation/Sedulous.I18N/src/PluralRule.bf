@@ -239,7 +239,8 @@ class PluralRule
 			SkipSpace();
 			if (Peek != c)
 			{
-				Fail(StringView(&c, 1), At);
+				var expected = c;
+				Fail(StringView(&expected, 1), At);
 				return;
 			}
 			At++;

@@ -56,14 +56,16 @@ class RenderTextureAssetTests
 		let stream = scope MemoryStream();
 		{
 			let writer = scope BinarySerializer(stream, .Write);
-			(asset as ISerializable).Serialize(writer);
+			ISerializable written = asset;
+			written.Serialize(writer);
 			Test.Assert(writer.IsOk);
 		}
 		stream.Seek(0, .Begin);
 		let read = scope RenderTextureAsset();
 		{
 			let reader = scope BinarySerializer(stream, .Read);
-			(read as ISerializable).Serialize(reader);
+			ISerializable reading = read;
+			reading.Serialize(reader);
 			Test.Assert(reader.IsOk);
 		}
 		Test.Assert((read.Width == 512) && (read.Height == 128) && (read.Format == .Hdr));

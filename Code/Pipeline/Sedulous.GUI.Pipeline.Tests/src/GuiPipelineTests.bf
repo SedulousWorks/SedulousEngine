@@ -303,8 +303,8 @@ static class GuiPipelineTests
 		importer.FindClash(group, doc, null, context.LedgerPath, reimport);
 		Test.Assert(reimport.Kind == .Reimport);
 		Instance again = null;
-		if (importer.Import(doc, context, group, null, null, null) case .Ok(let made))
-			again = made;
+		if (importer.Import(doc, context, group, null, null, null) case .Ok(let remade))
+			again = remade;
 		Test.Assert((again != null) && (again.Id == id));
 		Test.Assert(FileOf(again, .. scope .()) == "menu.xml");
 
@@ -317,8 +317,8 @@ static class GuiPipelineTests
 		// Kept beside: its own asset and its own copy; the first's untouched.
 		context.OnConflict = .KeepBoth;
 		Instance beside = null;
-		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
-			beside = made;
+		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let besideMade))
+			beside = besideMade;
 		Test.Assert((beside != null) && (beside.Name == "menu.2") && (beside.Id != id));
 		Test.Assert(FileOf(beside, .. scope .()) == "menu.2.xml");
 		Test.Assert(FileOf(group.GetInstance("menu"), .. scope .()) == "menu.xml");
@@ -326,8 +326,8 @@ static class GuiPipelineTests
 		// beside it, none orphaned); the kept-beside asset's copy is untouched.
 		context.OnConflict = .Replace;
 		Instance replaced = null;
-		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let made))
-			replaced = made;
+		if (importer.Import(otherDoc, context, group, null, null, null) case .Ok(let replacedMade))
+			replaced = replacedMade;
 		Test.Assert((replaced != null) && (replaced.Id == id));
 		Test.Assert(FileOf(replaced, .. scope .()) == "menu.xml");
 		Test.Assert(ReadText(PathJoin(sources, "menu.xml", .. scope .()), .. scope .()) == "<Label/>\n");
@@ -371,15 +371,15 @@ static class GuiPipelineTests
 		Test.Assert(importer.Import(first, context, group, null, null, null) case .Ok);
 		context.OnConflict = .KeepBoth;
 		Instance beside = null;
-		if (importer.Import(twin, context, group, null, null, null) case .Ok(let made))
-			beside = made;
+		if (importer.Import(twin, context, group, null, null, null) case .Ok(let besideMade))
+			beside = besideMade;
 		Test.Assert((beside != null) && (beside.Name == "menu.2"));
 		Test.Assert(FileOf(beside, .. scope .()) == "menu.xml", "shared: the very same bytes");
 
 		context.OnConflict = .Replace;
 		Instance replaced = null;
-		if (importer.Import(other, context, group, null, null, null) case .Ok(let made))
-			replaced = made;
+		if (importer.Import(other, context, group, null, null, null) case .Ok(let replacedMade))
+			replaced = replacedMade;
 		Test.Assert((replaced != null) && (replaced.Name == "menu"));
 		Test.Assert(FileOf(replaced, .. scope .()) != "menu.xml");
 		Test.Assert(ReadText(PathJoin(sources, "menu.xml", .. scope .()), .. scope .()) == "<Panel/>\n", "the other asset's, untouched");

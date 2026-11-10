@@ -578,7 +578,8 @@ static class ProjectRegistryTests
 			archive.BeginFramedRegion();
 			archive.Key("payload");
 			archive.BeginObject();
-			(ui as ISerializable).Serialize(archive);
+			ISerializable uiPayload = ui;
+			uiPayload.Serialize(archive);
 			archive.EndObject();
 			archive.EndFramedRegion();
 			archive.EndObject();

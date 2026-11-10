@@ -291,8 +291,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mContent = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cPath) : null;
 		if (mContent == null)
 			mContent = new Panel(); // no markup: still a page, with its viewport
-		let pane = Find<Node>("scene-viewport");
-		((pane != null) ? pane : mContent).AddChildAt(mViewport.View, 0);
+		let viewportPane = Find<Node>("scene-viewport");
+		((viewportPane != null) ? viewportPane : mContent).AddChildAt(mViewport.View, 0);
 		mViewport.HostIn(mServices.Gui);
 		if (mEditContext != null)
 		{
@@ -314,13 +314,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			hud.OverlaysChanged = new [=this] () => { SaveViewState(); };
 			mHud = new SceneHud(hud, scope [=this] (id) => Find<Node>(id));
 			// The camera preview at the HUD's bottom end: the selected or pinned camera's view.
-			if (pane != null)
+			if (viewportPane != null)
 			{
 				var preview = SceneCameraPreviewServices();
 				preview.Edit = mEditContext;
 				preview.Icons = mServices.Icons;
 				preview.Render = mViewport.Renderer;
-				mCameraPreview = new SceneCameraPreview(preview, pane);
+				mCameraPreview = new SceneCameraPreview(preview, viewportPane);
 				mCameraPreview.HostIn(mServices.Gui);
 			}
 			// The viewport tools on the bar, and the active one's panel over the view.

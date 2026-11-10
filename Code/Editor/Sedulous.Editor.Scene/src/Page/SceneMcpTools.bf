@@ -418,7 +418,7 @@ static class SceneMcpTools
 		}
 
 		let items = scope List<ListItem>();
-		defer { for (var item in ref items) item.Leaf.Dispose(); }
+		defer { for (var held in ref items) held.Leaf.Dispose(); }
 		for (int i < value.Count)
 		{
 			let json = value.At(i);

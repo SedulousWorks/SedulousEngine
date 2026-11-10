@@ -408,7 +408,7 @@ class ProjectLauncherTests
 		Test.Assert((first as UIWidget).HasClass("newer"));
 		Test.Assert(TextOf(first, "manager-name") == "First");
 		Test.Assert(TextOf(first, "badge") == "Made with a newer engine");
-		Test.Assert((WithClass(first, "manager-version") as UIWidget).HasClass("newer"));
+		Test.Assert(WithClass(first, "manager-version").HasClass("newer"));
 		Test.Assert(ButtonText(first, "Open") != null, "it still opens (the application asks first)");
 		let second = list.GetChildAt(1);
 		Test.Assert((second as UIWidget).HasClass("older"));
@@ -421,7 +421,7 @@ class ProjectLauncherTests
 		Test.Assert((stamp != null) && stamp.HasClass("newer"));
 		Test.Assert(stamp.Text == scope $"{EngineVersion.Major + 1}.0.0");
 		Test.Assert(stamp.Tooltip == "Made with a newer engine");
-		Test.Assert((WithClass(list.GetChildAt(1), "manager-tile-version") as UIWidget).HasClass("older"));
+		Test.Assert(WithClass(list.GetChildAt(1), "manager-tile-version").HasClass("older"));
 	}
 
 	[Test]

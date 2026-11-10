@@ -672,9 +672,9 @@ static class ProjectFlowTests
 			Test.Assert((settings.Get("renderWidth").AsInt() == 640) && (settings.Get("renderHeight").AsInt() == 360) && (settings.Get("renderFit").AsString() == "IntegerScale"));
 			Test.Assert((settings.Get("windowMode").AsString() == "Borderless") && (settings.Get("windowWidth").AsInt() == 1920) && (settings.Get("windowHeight").AsInt() == 720));
 			Test.Assert((session.Project.Settings.RenderFit == .IntegerScale) && (session.Project.Settings.WindowMode == .Borderless));
-			let refused = scope String();
-			CallErr(server, "project_settings_set", With(With(Obj(), "windowWidth", 0), "renderWidth", 100), refused);
-			Test.Assert(refused.Contains("`windowWidth` takes 1 to 16384"), refused);
+			let tooNarrow = scope String();
+			CallErr(server, "project_settings_set", With(With(Obj(), "windowWidth", 0), "renderWidth", 100), tooNarrow);
+			Test.Assert(tooNarrow.Contains("`windowWidth` takes 1 to 16384"), tooNarrow);
 			// A choice outside its cases is refused by the schema, which lists them.
 			{
 				let response = CallResponse(server, "project_settings_set", With(With(Obj(), "windowMode", "borderless"), "renderWidth", 100));

@@ -30,7 +30,8 @@ class ModelFilePreviewTests
 		let services = scope AssetPageServices(); // no host: no view
 		{
 			let preview = scope ModelFilePreview(fox, cache, tasks, services);
-			Test.Assert((preview as IImportPreviewFrames) != null, "the window drives its frames");
+			IImportPreviewFrames frames = preview;
+			Test.Assert(frames != null, "the window drives its frames");
 			int changed = 0;
 			preview.SetOnChanged(new [&changed] () => { changed++; });
 			Test.Assert(!preview.IsOpen, "still reading");

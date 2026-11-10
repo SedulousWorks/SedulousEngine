@@ -310,8 +310,8 @@ static class ScriptClassCookTests
 
 		context.OnConflict = .KeepBoth;
 		Instance beside = null;
-		if (importer.Import(second, context, group, null, null, null) case .Ok(let instance))
-			beside = instance;
+		if (importer.Import(second, context, group, null, null, null) case .Ok(let besideInstance))
+			beside = besideInstance;
 		Test.Assert(beside != null);
 		let kept = AssetOf(beside);
 		defer delete kept;
@@ -334,8 +334,8 @@ static class ScriptClassCookTests
 		Sedulous.Pipeline.Importer.ImportPaths.SingleAssetPlan(second, named.Selection);
 		named.Selection.Entries[0].TargetName.Set(beside.Name);
 		Instance again = null;
-		if (importer.Import(second, context, group, named, null, null) case .Ok(let instance))
-			again = instance;
+		if (importer.Import(second, context, group, named, null, null) case .Ok(let againInstance))
+			again = againInstance;
 		Test.Assert(again === beside);
 		let reimported = AssetOf(again);
 		defer delete reimported;

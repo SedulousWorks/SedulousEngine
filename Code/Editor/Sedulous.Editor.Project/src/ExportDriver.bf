@@ -464,10 +464,10 @@ static class ExportDriver
 		}
 		if (preset.OverridesOrientation)
 			dist.Orientation = preset.Orientation;
-		if (ProjectManifest.Save(mount, dist, ProjectLayout.DistManifestFile) case .Err(let error))
+		if (ProjectManifest.Save(mount, dist, ProjectLayout.DistManifestFile) case .Err(let saveError))
 		{
 			GlobalLog(.Error, "Export: failed to write the preset's display into the dist manifest");
-			return .Err(error);
+			return .Err(saveError);
 		}
 		return .Ok;
 	}

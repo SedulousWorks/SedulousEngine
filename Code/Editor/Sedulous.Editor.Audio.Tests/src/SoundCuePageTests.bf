@@ -169,7 +169,8 @@ class SoundCuePageTests
 		Test.Assert(page.CueRows.FindInfo("pitchMax").Hint == "slider");
 		Test.Assert(page.Notice("empty", .. scope .()).IsEmpty);
 		Test.Assert(!page.CanPlay, "no audio engine here");
-		Test.Assert((page as IPlaybackPage) != null);
+		IPlaybackPage playback = page;
+		Test.Assert(playback != null);
 		let play = page.Content.FindElement("cue-play") as ButtonBase;
 		Test.Assert((play != null) && (play.CheckedIcon == "Editor/Icons/pause.svg"), "Play shows Pause while it plays");
 

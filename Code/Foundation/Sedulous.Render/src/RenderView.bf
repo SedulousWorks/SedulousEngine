@@ -73,18 +73,18 @@ class RenderView
 		mOutputViewportWidth = mViewportWidth;
 		mOutputViewportHeight = mViewportHeight;
 		// A scene size of its own: the chain runs at it, the whole of it the view's.
-		let scene = settings.Scene;
-		let cropped = (scene.SourceX != 0.0f) || (scene.SourceY != 0.0f) || (scene.SourceWidth != 1.0f) || (scene.SourceHeight != 1.0f);
-		mScaled = scene.IsSet && ((scene.Width != mViewportWidth) || (scene.Height != mViewportHeight) || cropped
-			|| scene.IsTurned);
+		let sceneSize = settings.Scene;
+		let cropped = (sceneSize.SourceX != 0.0f) || (sceneSize.SourceY != 0.0f) || (sceneSize.SourceWidth != 1.0f) || (sceneSize.SourceHeight != 1.0f);
+		mScaled = sceneSize.IsSet && ((sceneSize.Width != mViewportWidth) || (sceneSize.Height != mViewportHeight) || cropped
+			|| sceneSize.IsTurned);
 		if (mScaled)
 		{
-			mWidth = scene.Width;
-			mHeight = scene.Height;
+			mWidth = sceneSize.Width;
+			mHeight = sceneSize.Height;
 			mViewportX = 0;
 			mViewportY = 0;
-			mViewportWidth = scene.Width;
-			mViewportHeight = scene.Height;
+			mViewportWidth = sceneSize.Width;
+			mViewportHeight = sceneSize.Height;
 		}
 
 		mDrawList.Clear();

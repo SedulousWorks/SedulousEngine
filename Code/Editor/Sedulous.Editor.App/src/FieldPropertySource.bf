@@ -995,10 +995,10 @@ class FieldPropertySource : IPropertySource
 			return 0;
 		var colors = 0;
 		var alphas = 0;
-		if (type.GetField(scope String(parts.Colors)) case .Ok(let field))
-			colors = (field.FieldType as SizedArrayType)?.ElementCount ?? 0;
-		if (type.GetField(scope String(parts.Alphas)) case .Ok(let field))
-			alphas = (field.FieldType as SizedArrayType)?.ElementCount ?? 0;
+		if (type.GetField(scope String(parts.Colors)) case .Ok(let colorField))
+			colors = (colorField.FieldType as SizedArrayType)?.ElementCount ?? 0;
+		if (type.GetField(scope String(parts.Alphas)) case .Ok(let alphaField))
+			alphas = (alphaField.FieldType as SizedArrayType)?.ElementCount ?? 0;
 		return Math.Min(colors, alphas);
 	}
 

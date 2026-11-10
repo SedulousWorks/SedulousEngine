@@ -42,10 +42,10 @@ static class SceneValidation
 		}
 		if (outSourceText != null)
 		{
-			if (SceneStorage.SourceText(scratch, includeSettings, outSourceText) case .Err(let error))
+			if (SceneStorage.SourceText(scratch, includeSettings, outSourceText) case .Err(let serializeError))
 			{
 				outReport.Valid = false;
-				outReport.Error.Set(scope $"the scene parsed but did not serialize ({error})");
+				outReport.Error.Set(scope $"the scene parsed but did not serialize ({serializeError})");
 				return;
 			}
 		}

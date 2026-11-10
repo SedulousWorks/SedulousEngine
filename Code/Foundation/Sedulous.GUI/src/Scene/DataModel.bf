@@ -175,9 +175,9 @@ static
 			return TextOf(a) == TextOf(b);
 		if ((a.VariantType == typeof(Node.ElementRef)) && (b.VariantType == typeof(Node.ElementRef)))
 		{
-			let x = a.Get<Node.ElementRef>();
-			let y = b.Get<Node.ElementRef>();
-			return (x.Table === y.Table) && (x.Slot == y.Slot) && (x.Generation == y.Generation);
+			let first = a.Get<Node.ElementRef>();
+			let second = b.Get<Node.ElementRef>();
+			return (first.Table === second.Table) && (first.Slot == second.Slot) && (first.Generation == second.Generation);
 		}
 		return false;
 	}
