@@ -26,33 +26,6 @@ struct ObjectData
 /// the pipeline.
 class DynamicOffsetSample : SampleApp
 {
-	private const String cShaderSource = """
-		cbuffer ObjectData : register(b0, space0)
-		{
-		    float4 TintColor;
-		    float4 OffsetScale; // xy=offset, zw=scale
-		};
-		struct VSInput
-		{
-		    float3 Position : TEXCOORD0;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    float2 pos = input.Position.xy * OffsetScale.zw + OffsetScale.xy;
-		    output.Position = float4(pos, input.Position.z, 1.0);
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return TintColor;
-		}
-		""";
-
 	private const int cObjectCount = 4;
 	private const uint32 cObjectStride = 256;
 
@@ -65,7 +38,6 @@ class DynamicOffsetSample : SampleApp
 		-0.5f,  0.5f, 0.5f);
 	private static uint16[6] sIndices = .(0, 1, 2, 0, 2, 3);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -83,15 +55,11 @@ class DynamicOffsetSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample026_DynamicOffsets/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample026_DynamicOffsets/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -317,8 +285,6 @@ class DynamicOffsetSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

@@ -23,31 +23,6 @@ struct InstanceData
 /// between a per vertex and a per instance attribute.
 class InstancingSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput
-		{
-		    float3 Position  : TEXCOORD0;
-		    float2 Offset    : TEXCOORD1;
-		    float4 InstColor : TEXCOORD2;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float4 Color    : COLOR0;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    output.Position = float4(input.Position.xy + input.Offset, input.Position.z, 1.0);
-		    output.Color = input.InstColor;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return input.Color;
-		}
-		""";
-
 	private const int cInstanceCount = 64;
 
 	/// A small unit quad, positions only. Everything that differs between instances lives
@@ -59,7 +34,6 @@ class InstancingSample : SampleApp
 		-0.04f,  0.04f, 0.0f);
 	private static uint16[6] sQuadIndices = .(0, 1, 2, 0, 2, 3);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -76,15 +50,11 @@ class InstancingSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample007_Instancing/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample007_Instancing/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -275,8 +245,6 @@ class InstancingSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

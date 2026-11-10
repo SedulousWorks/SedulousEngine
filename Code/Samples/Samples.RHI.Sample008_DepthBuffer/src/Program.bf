@@ -13,30 +13,6 @@ namespace Samples.RHI.Sample008_DepthBuffer;
 /// without it the last drawn would simply win everywhere it overlaps.
 class DepthBufferSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput
-		{
-		    float3 Position : TEXCOORD0;
-		    float4 Color    : TEXCOORD1;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float4 Color    : COLOR0;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.Color = input.Color;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return input.Color;
-		}
-		""";
-
 	/// Three quads, position then RGBA, one vertex per row. Depth INCREASES with each, so
 	/// each is nearer the camera than the one before: the engine's reverse-Z convention
 	/// (Depth: nearer is the larger value, the clear is the far plane at 0).
@@ -62,7 +38,6 @@ class DepthBufferSample : SampleApp
 		4, 5, 6, 4, 6, 7,
 		8, 9, 10, 8, 10, 11);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -108,15 +83,11 @@ class DepthBufferSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample008_DepthBuffer/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample008_DepthBuffer/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -271,8 +242,6 @@ class DepthBufferSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

@@ -12,23 +12,6 @@ namespace Samples.RHI.Sample013_BorderSampler;
 /// black and opaque white make the difference plain.
 class BorderSamplerSample : SampleApp
 {
-	private const String cShaderSource = """
-		Texture2D gTexture : register(t0, space0);
-		SamplerState gSampler : register(s0, space0);
-		cbuffer UBO : register(b0, space1) { float4 QuadOffset; };
-		struct VSInput { float3 Position : TEXCOORD0; float2 TexCoord : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; };
-		PSInput VSMain(VSInput input) {
-		    PSInput output;
-		    output.Position = float4(input.Position.xy + QuadOffset.xy, input.Position.z, 1.0);
-		    output.TexCoord = input.TexCoord;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET {
-		    return gTexture.Sample(gSampler, input.TexCoord);
-		}
-		""";
-
 	/// Texture coordinates from -0.5 to 1.5, so the texture occupies the middle half of
 	/// each quad and the border fills the rest.
 	private static float[20] sQuadVertices = .(
@@ -43,7 +26,6 @@ class BorderSamplerSample : SampleApp
 	/// DX12's constant buffer view alignment, which is the stride between the three slots.
 	private const uint32 cUniformStride = 256;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -85,15 +67,11 @@ class BorderSamplerSample : SampleApp
 			return .Err;
 		}
 
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample013_BorderSampler/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample013_BorderSampler/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -374,8 +352,6 @@ class BorderSamplerSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

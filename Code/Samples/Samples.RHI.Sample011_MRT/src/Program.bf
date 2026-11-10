@@ -12,30 +12,6 @@ namespace Samples.RHI.Sample011_MRT;
 /// does. The composite pass is what proves both targets really were written.
 class MRTSample : SampleApp
 {
-	private const String cGBufferShader = """
-		struct VSInput { float3 Position : TEXCOORD0; float4 Color : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float4 Color : COLOR0; };
-		struct PSOutput { float4 Color : SV_TARGET0; float4 Brightness : SV_TARGET1; };
-		PSInput VSMain(VSInput i) { PSInput o; o.Position = float4(i.Position,1); o.Color = i.Color; return o; }
-		PSOutput PSMain(PSInput i) { PSOutput o; o.Color = i.Color;
-		    float lum = dot(i.Color.rgb, float3(0.299,0.587,0.114));
-		    o.Brightness = float4(lum,lum,lum,1); return o; }
-		""";
-
-	private const String cCompositeShader = """
-		Texture2D gColorTex : register(t0, space0);
-		Texture2D gBrightTex : register(t1, space0);
-		SamplerState gSampler : register(s0, space0);
-		struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; };
-		PSInput VSMain(uint vid : SV_VertexID) { PSInput o;
-		    float2 uv = float2((vid << 1) & 2, vid & 2);
-		    o.Position = float4(uv * 2.0 - 1.0, 0, 1); o.TexCoord = float2(uv.x, 1.0 - uv.y); return o; }
-		float4 PSMain(PSInput i) : SV_TARGET {
-		    float2 uv = i.TexCoord;
-		    if (uv.x < 0.5) return gColorTex.Sample(gSampler, float2(uv.x*2, uv.y));
-		    else return gBrightTex.Sample(gSampler, float2((uv.x-0.5)*2, uv.y)); }
-		""";
-
 	/// Two triangles, position then RGBA, one vertex per row. The second is translucent in
 	/// its own right so the luminance target has something varied to show.
 	private static float[42] sVertices = .(
@@ -47,7 +23,6 @@ class MRTSample : SampleApp
 		 0.2f,  0.5f, 0.0f,   0.2f, 0.8f, 1.0f, 1.0f);
 	private static uint16[6] sIndices = .(0, 1, 2, 3, 4, 5);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mGBufferVertexShader = null;
 	private IShaderModule mGBufferPixelShader = null;
 	private IShaderModule mCompositeVertexShader = null;
@@ -125,23 +100,19 @@ class MRTSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cGBufferShader, .Vertex,
+		if (!(LoadShader("Sample011_MRT/GBufShader.hlsl", .Vertex,
 			"VSMain", "GBufVS") case .Ok(let gbufferVertex)))
 			return .Err;
 		mGBufferVertexShader = gbufferVertex;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cGBufferShader, .Fragment,
+		if (!(LoadShader("Sample011_MRT/GBufShader.hlsl", .Fragment,
 			"PSMain", "GBufPS") case .Ok(let gbufferPixel)))
 			return .Err;
 		mGBufferPixelShader = gbufferPixel;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cCompositeShader, .Vertex,
+		if (!(LoadShader("Sample011_MRT/CompShader.hlsl", .Vertex,
 			"VSMain", "CompVS") case .Ok(let compositeVertex)))
 			return .Err;
 		mCompositeVertexShader = compositeVertex;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cCompositeShader, .Fragment,
+		if (!(LoadShader("Sample011_MRT/CompShader.hlsl", .Fragment,
 			"PSMain", "CompPS") case .Ok(let compositePixel)))
 			return .Err;
 		mCompositePixelShader = compositePixel;
@@ -382,8 +353,6 @@ class MRTSample : SampleApp
 		if (mCompositeVertexShader != null) mDevice.DestroyShaderModule(ref mCompositeVertexShader);
 		if (mGBufferPixelShader != null) mDevice.DestroyShaderModule(ref mGBufferPixelShader);
 		if (mGBufferVertexShader != null) mDevice.DestroyShaderModule(ref mGBufferVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

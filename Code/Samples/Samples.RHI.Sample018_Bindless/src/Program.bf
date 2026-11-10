@@ -13,54 +13,11 @@ namespace Samples.RHI.Sample018_Bindless;
 /// differently textured objects without a descriptor set per object.
 class BindlessSample : SampleApp
 {
-	private const String cShaderSource = """
-		Texture2D gTextures[] : register(t0, space0);
-		SamplerState gSampler : register(s0, space1);
-		struct PushData
-		{
-		    uint TextureIndex;
-		    float OffsetX;
-		    float OffsetY;
-		    float Padding;
-		};
-		[[vk::push_constant]] ConstantBuffer<PushData> gPush : register(b0, space2);
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float2 TexCoord : TEXCOORD0;
-		};
-		PSInput VSMain(uint vertexID : SV_VertexID)
-		{
-		    float2 positions[4] = {
-		        float2(-0.4, 0.4),
-		        float2( 0.4, 0.4),
-		        float2(-0.4,-0.4),
-		        float2( 0.4,-0.4)
-		    };
-		    float2 uvs[4] = {
-		        float2(0, 0), float2(1, 0),
-		        float2(0, 1), float2(1, 1)
-		    };
-		    PSInput output;
-		    float2 pos = positions[vertexID];
-		    pos.x += gPush.OffsetX;
-		    pos.y += gPush.OffsetY;
-		    output.Position = float4(pos, 0.0, 1.0);
-		    output.TexCoord = uvs[vertexID];
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return gTextures[gPush.TextureIndex].Sample(gSampler, input.TexCoord);
-		}
-		""";
-
 	private const uint32 cTextureSize = 64;
 	private const uint32 cTextureCount = 4;
 	/// An unbounded array, which is what the backend turns into its bindless capacity.
 	private const uint32 cUnboundedCount = 0xFFFFFFFF;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private ITexture[cTextureCount] mTextures = .(null, null, null, null);
@@ -96,15 +53,11 @@ class BindlessSample : SampleApp
 			return .Err;
 		}
 
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample018_Bindless/Shader.hlsl", .Vertex,
 			"VSMain", "BindlessVS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample018_Bindless/Shader.hlsl", .Fragment,
 			"PSMain", "BindlessPS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -395,8 +348,6 @@ class BindlessSample : SampleApp
 		}
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

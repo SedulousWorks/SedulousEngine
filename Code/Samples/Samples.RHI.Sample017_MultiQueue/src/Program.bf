@@ -21,42 +21,12 @@ namespace Samples.RHI.Sample017_MultiQueue;
 /// the frame was drawn.
 class MultiQueueSample : SampleApp
 {
-	private const String cComputeSource = """
-		cbuffer Params : register(b0, space0) { float Time; uint NumPoints; float Spacing; float Padding; };
-		struct Vertex { float PosX, PosY, PosZ, ColR, ColG, ColB; };
-		RWStructuredBuffer<Vertex> gVertices : register(u0, space0);
-		[numthreads(64, 1, 1)]
-		void CSMain(uint3 dtid : SV_DispatchThreadID) {
-		    uint idx = dtid.x; if (idx >= NumPoints) return;
-		    uint gridSize = (uint)sqrt((float)NumPoints);
-		    uint row = idx / gridSize, col = idx % gridSize;
-		    float fx = ((float)col / (float)(gridSize-1))*2.0 - 1.0;
-		    float fz = ((float)row / (float)(gridSize-1))*2.0 - 1.0;
-		    float dist = sqrt(fx*fx + fz*fz);
-		    float fy = sin(dist*8.0 - Time*3.0) * 0.2;
-		    gVertices[idx].PosX = fx; gVertices[idx].PosY = fy; gVertices[idx].PosZ = fz;
-		    gVertices[idx].ColR = 0.5 + 0.5*sin(Time + fx*3.0);
-		    gVertices[idx].ColG = 0.5 + 0.5*cos(Time + fz*3.0);
-		    gVertices[idx].ColB = 0.5 + 0.5*sin(Time*0.7 + dist*4.0);
-		}
-		""";
-
-	private const String cRenderSource = """
-		cbuffer ViewProj : register(b0, space0) { row_major float4x4 VP; };
-		struct VSInput { float3 Position : TEXCOORD0; float3 Color : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float3 Color : COLOR0;
-		                 [[vk::builtin("PointSize")]] float PointSize : PSIZE; };
-		PSInput VSMain(VSInput i) { PSInput o; o.Position = mul(float4(i.Position,1), VP); o.Color = i.Color; o.PointSize = 1.0; return o; }
-		float4 PSMain(PSInput i) : SV_TARGET { return float4(i.Color, 1.0); }
-		""";
-
 	private const uint32 cGrid = 64;
 	private const uint32 cPointCount = cGrid * cGrid;
 	private const uint32 cVertexSize = 24;
 	private const uint64 cVertexBufferSize = cPointCount * cVertexSize;
 	private const uint32 cThreadsPerGroup = 64;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mComputeShader = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
@@ -100,19 +70,15 @@ class MultiQueueSample : SampleApp
 	{
 		SelectComputeQueue();
 
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cComputeSource, .Compute,
+		if (!(LoadShader("Sample017_MultiQueue/Compute.hlsl", .Compute,
 			"CSMain", "CS") case .Ok(let computeShader)))
 			return .Err;
 		mComputeShader = computeShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cRenderSource, .Vertex,
+		if (!(LoadShader("Sample017_MultiQueue/Render.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cRenderSource, .Fragment,
+		if (!(LoadShader("Sample017_MultiQueue/Render.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -427,8 +393,6 @@ class MultiQueueSample : SampleApp
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
 		if (mComputeShader != null) mDevice.DestroyShaderModule(ref mComputeShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

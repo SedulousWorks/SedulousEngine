@@ -22,43 +22,9 @@ struct PushData
 /// volume's interior is visible over time.
 class Texture3DSample : SampleApp
 {
-	private const String cShaderSource = """
-		Texture3D<float4> gVolume : register(t0, space0);
-		Texture1D<float4> gLUT    : register(t1, space0);
-		SamplerState gSampler     : register(s0, space0);
-		struct PushConstants
-		{
-		    float SliceZ;
-		    float Time;
-		    float2 _pad;
-		};
-		[[vk::push_constant]] ConstantBuffer<PushConstants> pc : register(b0, space1);
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float2 UV       : TEXCOORD0;
-		};
-		PSInput VSMain(uint vertexID : SV_VertexID)
-		{
-		    PSInput output;
-		    float2 uv = float2((vertexID << 1) & 2, vertexID & 2);
-		    output.Position = float4(uv * 2.0 - 1.0, 0.5, 1.0);
-		    output.UV = uv;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    float3 uvw = float3(input.UV, pc.SliceZ);
-		    float density = gVolume.Sample(gSampler, uvw).r;
-		    float4 color = gLUT.Sample(gSampler, density);
-		    return color;
-		}
-		""";
-
 	private const uint32 cVolumeSize = 32;
 	private const uint32 cLutSize = 64;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private ITexture mVolumeTexture = null;
@@ -78,15 +44,11 @@ class Texture3DSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample027_3DTexture/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample027_3DTexture/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -378,8 +340,6 @@ class Texture3DSample : SampleApp
 		if (mVolumeTexture != null) mDevice.DestroyTexture(ref mVolumeTexture);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

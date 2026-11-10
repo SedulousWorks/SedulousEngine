@@ -9,18 +9,6 @@ namespace Samples.RHI.Sample003_UniformBuffers;
 /// buffer so the far faces do not draw over the near ones.
 class UniformBufferSample : SampleApp
 {
-	private const String cShaderSource = """
-		cbuffer UBO : register(b0, space0) { row_major float4x4 MVP; };
-		struct PushData { float4 Tint; };
-		[[vk::push_constant]] ConstantBuffer<PushData> gPush : register(b0, space1);
-		struct VSInput { float3 Position : TEXCOORD0; float3 Color : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float3 Color : COLOR0; };
-		PSInput VSMain(VSInput input) {
-		    PSInput o; o.Position = mul(float4(input.Position, 1.0), MVP); o.Color = input.Color; return o;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET { return float4(input.Color * gPush.Tint.rgb, 1.0); }
-		""";
-
 	/// Eight corners, each with its own colour so the faces are distinguishable.
 	private static float[48] sCubeVertices = .(
 		-0.5f, -0.5f, -0.5f,  1, 0, 0,
@@ -43,7 +31,6 @@ class UniformBufferSample : SampleApp
 	/// One 4x4 of floats.
 	private const uint64 cUniformSize = 64;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IBuffer mVertexBuffer = null;
 	private IBuffer mIndexBuffer = null;
 	private IBuffer mUniformBuffer = null;
@@ -68,15 +55,11 @@ class UniformBufferSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample003_UniformBuffers/Shader.hlsl", .Vertex,
 			"VSMain", "CubeVS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample003_UniformBuffers/Shader.hlsl", .Fragment,
 			"PSMain", "CubePS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -301,8 +284,6 @@ class UniformBufferSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

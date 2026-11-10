@@ -23,80 +23,6 @@ struct PushData
 /// gets its filtering for free.
 class CubeMapSample : SampleApp
 {
-	private const String cSkyboxShader = """
-		TextureCube<float4> gCubeMap : register(t0, space0);
-		SamplerState gSampler : register(s0, space0);
-		struct PushConstants
-		{
-		    float Time;
-		    float AspectRatio;
-		    float2 _pad;
-		};
-		[[vk::push_constant]] ConstantBuffer<PushConstants> pc : register(b0, space1);
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float2 UV       : TEXCOORD0;
-		};
-		PSInput VSMain(uint vertexID : SV_VertexID)
-		{
-		    PSInput output;
-		    float2 uv = float2((vertexID << 1) & 2, vertexID & 2);
-		    output.Position = float4(uv * 2.0 - 1.0, 0.5, 1.0);
-		    output.UV = uv;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    float2 ndc = input.UV * 2.0 - 1.0;
-		    ndc.x *= pc.AspectRatio;
-		    ndc.y = -ndc.y;
-		    float c = cos(pc.Time * 0.3);
-		    float s = sin(pc.Time * 0.3);
-		    float3 dir = normalize(float3(ndc.x, ndc.y, 1.0));
-		    float3 rotDir = float3(dir.x * c + dir.z * s, dir.y, -dir.x * s + dir.z * c);
-		    return gCubeMap.Sample(gSampler, rotDir);
-		}
-		""";
-
-	private const String cShadowShader = """
-		Texture2D<float> gShadowMap : register(t0, space0);
-		SamplerComparisonState gShadowSampler : register(s0, space0);
-		struct PushConstants
-		{
-		    float Time;
-		    float AspectRatio;
-		    float2 _pad;
-		};
-		[[vk::push_constant]] ConstantBuffer<PushConstants> pc : register(b0, space1);
-		struct VSInput
-		{
-		    float3 Position : TEXCOORD0;
-		    float2 TexCoord : TEXCOORD1;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float2 TexCoord : TEXCOORD0;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.TexCoord = input.TexCoord;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    float compareValue = 0.5 + 0.4 * sin(pc.Time);
-		    float shadow = gShadowMap.SampleCmpLevelZero(gShadowSampler, input.TexCoord, compareValue);
-		    float3 litColor = float3(0.9, 0.85, 0.7);
-		    float3 shadowColor = float3(0.1, 0.1, 0.2);
-		    float3 color = lerp(shadowColor, litColor, shadow);
-		    return float4(color, 1.0);
-		}
-		""";
-
 	private const uint32 cFaceSize = 64;
 	private const uint32 cDepthSize = 64;
 	/// The value the depth texture is cleared to, which the comparison sweeps across.
@@ -111,7 +37,6 @@ class CubeMapSample : SampleApp
 		0.9f, -0.3f, 0.0f,   1.0f, 0.0f,
 		0.3f, -0.3f, 0.0f,   0.0f, 0.0f);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mSkyboxVertexShader = null;
 	private IShaderModule mSkyboxPixelShader = null;
 	private ITexture mCubeTexture = null;
@@ -141,23 +66,19 @@ class CubeMapSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cSkyboxShader, .Vertex,
+		if (!(LoadShader("Sample023_CubeMap/SkyboxShader.hlsl", .Vertex,
 			"VSMain", "SkyboxVS") case .Ok(let skyboxVertex)))
 			return .Err;
 		mSkyboxVertexShader = skyboxVertex;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cSkyboxShader, .Fragment,
+		if (!(LoadShader("Sample023_CubeMap/SkyboxShader.hlsl", .Fragment,
 			"PSMain", "SkyboxPS") case .Ok(let skyboxPixel)))
 			return .Err;
 		mSkyboxPixelShader = skyboxPixel;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShadowShader, .Vertex,
+		if (!(LoadShader("Sample023_CubeMap/ShadowShader.hlsl", .Vertex,
 			"VSMain", "ShadowVS") case .Ok(let shadowVertex)))
 			return .Err;
 		mShadowVertexShader = shadowVertex;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShadowShader, .Fragment,
+		if (!(LoadShader("Sample023_CubeMap/ShadowShader.hlsl", .Fragment,
 			"PSMain", "ShadowPS") case .Ok(let shadowPixel)))
 			return .Err;
 		mShadowPixelShader = shadowPixel;
@@ -549,8 +470,6 @@ class CubeMapSample : SampleApp
 		if (mShadowVertexShader != null) mDevice.DestroyShaderModule(ref mShadowVertexShader);
 		if (mSkyboxPixelShader != null) mDevice.DestroyShaderModule(ref mSkyboxPixelShader);
 		if (mSkyboxVertexShader != null) mDevice.DestroyShaderModule(ref mSkyboxVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

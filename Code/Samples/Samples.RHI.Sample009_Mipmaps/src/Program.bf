@@ -12,16 +12,6 @@ namespace Samples.RHI.Sample009_Mipmaps;
 /// exercised.
 class MipmapSample : SampleApp
 {
-	private const String cShaderSource = """
-		Texture2D gTexture : register(t0, space0);
-		SamplerState gSampler : register(s0, space0);
-		cbuffer UBO : register(b0, space1) { row_major float4x4 MVP; };
-		struct VSInput { float3 Position : TEXCOORD0; float2 TexCoord : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; };
-		PSInput VSMain(VSInput i) { PSInput o; o.Position = mul(float4(i.Position,1), MVP); o.TexCoord = i.TexCoord; return o; }
-		float4 PSMain(PSInput i) : SV_TARGET { return gTexture.Sample(gSampler, i.TexCoord); }
-		""";
-
 	/// A floor plane, position then texture coordinate. The far edge runs to z = -20 with
 	/// texture coordinates up to 10, so the checker crowds into a few pixels there.
 	private static float[20] sVertices = .(
@@ -36,7 +26,6 @@ class MipmapSample : SampleApp
 	/// 256 halves down to 1 in nine levels.
 	private const uint32 cMipCount = 9;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -66,15 +55,11 @@ class MipmapSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample009_Mipmaps/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample009_Mipmaps/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -391,8 +376,6 @@ class MipmapSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

@@ -25,43 +25,6 @@ struct PushData
 /// one push constant differ.
 class StencilOutlineSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct PushConstants
-		{
-		    float Scale;
-		    float AspectRatio;
-		    float Time;
-		    float _pad;
-		};
-		[[vk::push_constant]] ConstantBuffer<PushConstants> pc : register(b0, space0);
-		struct VSInput
-		{
-		    float3 Position : TEXCOORD0;
-		    float4 Color    : TEXCOORD1;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float4 Color    : COLOR0;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    float2 pos = input.Position.xy * pc.Scale;
-		    pos.x /= pc.AspectRatio;
-		    float c = cos(pc.Time * 0.5);
-		    float s = sin(pc.Time * 0.5);
-		    float2 rotated = float2(pos.x * c - pos.y * s, pos.x * s + pos.y * c);
-		    output.Position = float4(rotated, input.Position.z, 1.0);
-		    output.Color = input.Color;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return input.Color;
-		}
-		""";
-
 	/// A hexagon as a fan: the centre, then six corners. Position then RGBA.
 	private static float[49] sVertices = .(
 		 0.00f,  0.00f, 0.5f,   0.9f, 0.9f, 0.9f, 1.0f,
@@ -80,7 +43,6 @@ class StencilOutlineSample : SampleApp
 	/// second.
 	private const uint32 cStencilReference = 1;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IBuffer mVertexBuffer = null;
 	private IBuffer mIndexBuffer = null;
 	private IShaderModule mVertexShader = null;
@@ -127,15 +89,11 @@ class StencilOutlineSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample022_StencilOutline/Shader.hlsl", .Vertex,
 			"VSMain", "StencilVS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample022_StencilOutline/Shader.hlsl", .Fragment,
 			"PSMain", "StencilPS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -335,8 +293,6 @@ class StencilOutlineSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

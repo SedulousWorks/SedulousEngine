@@ -11,22 +11,6 @@ namespace Samples.RHI.Sample002_Textures;
 /// builds on.
 class TextureSample : SampleApp
 {
-	private const String cShaderSource = """
-		Texture2D gTexture : register(t0, space0);
-		SamplerState gSampler : register(s0, space0);
-		struct VSInput { float3 Position : TEXCOORD0; float2 TexCoord : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; };
-		PSInput VSMain(VSInput input) {
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.TexCoord = input.TexCoord;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET {
-		    return gTexture.Sample(gSampler, input.TexCoord);
-		}
-		""";
-
 	/// Position then texture coordinate, one vertex per row.
 	private static float[20] sVertexData = .(
 		-0.5f,  0.5f, 0.0f,   0.0f, 0.0f,
@@ -38,7 +22,6 @@ class TextureSample : SampleApp
 	private const uint32 cTextureWidth = 64;
 	private const uint32 cTextureHeight = 64;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IBuffer mVertexBuffer = null;
 	private IBuffer mIndexBuffer = null;
 	private IShaderModule mVertexShader = null;
@@ -58,15 +41,11 @@ class TextureSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample002_Textures/Shader.hlsl", .Vertex,
 			"VSMain", "QuadVS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample002_Textures/Shader.hlsl", .Fragment,
 			"PSMain", "QuadPS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -288,8 +267,6 @@ class TextureSample : SampleApp
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
 		if (mIndexBuffer != null) mDevice.DestroyBuffer(ref mIndexBuffer);
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

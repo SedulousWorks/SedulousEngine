@@ -26,30 +26,6 @@ struct DrawIndexedIndirectArgs
 /// they are uploaded once, which is enough to show the mechanism.
 class MultiDrawIndirectSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput
-		{
-		    float3 Position : TEXCOORD0;
-		    float4 Color    : TEXCOORD1;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float4 Color    : COLOR0;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.Color = input.Color;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return input.Color;
-		}
-		""";
-
 	private const uint32 cDrawCount = 4;
 	/// Four quads of four edges of two vertices.
 	private const uint32 cLineVertexCount = 32;
@@ -115,7 +91,6 @@ class MultiDrawIndirectSample : SampleApp
 		0.1f, -0.1f, 0.4f, 1.0f, 1.0f, 1.0f, 1.0f,
 		0.1f, -0.9f, 0.4f, 1.0f, 1.0f, 1.0f, 1.0f);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -145,15 +120,11 @@ class MultiDrawIndirectSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample025_MultiDrawIndirect/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample025_MultiDrawIndirect/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -334,8 +305,6 @@ class MultiDrawIndirectSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

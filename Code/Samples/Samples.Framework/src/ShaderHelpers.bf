@@ -6,9 +6,10 @@ namespace Samples.Framework;
 
 /// Compiling HLSL straight to a shader module.
 ///
-/// The samples have no shader system and no cooked pack: each carries its own HLSL inline
-/// and wants a module back. This is the one call that does it, and it is where the target
-/// and the binding shifts are decided so no sample has to remember them.
+/// The samples have no shader system: an RHI sample's shaders are files under
+/// Data/Samples/RHI (SampleShaders), and a sample wants a module back. This is the one call
+/// that compiles one, and it is where the target is decided so no sample has to remember it;
+/// the rest is CompileOptions.Direct, which a cooked pack of the same file takes too.
 static class ShaderHelpers
 {
 	/// Compiles HLSL and creates the module for it.
@@ -25,23 +26,10 @@ static class ShaderHelpers
 		let isDX12 = device.Type == .DX12;
 		let target = isDX12 ? ShaderTarget.DXIL : ShaderTarget.SPIRV;
 
-		var options = CompileOptions();
-		options.ShaderModel = shaderModel;
-		options.OptimizationLevel = 3;
-
-		// DX12 has register spaces natively, so only a SPIR-V target needs the shifts. One
-		// engine wide table serves Vulkan and WebGPU alike.
-		if (!isDX12)
-		{
-			options.BindingShifts = BindingShifts.Standard;
-			options.BindingShiftSets = 4;
-			if (device.Type == .WebGPU)
-			{
-				// naga rejects the SPIR-V 1.4 and later instructions a vulkan1.3 compile
-				// emits.
-				options.SpirvTargetEnvironment = "vulkan1.1";
-			}
-		}
+		// The options a cooked pack of the same file uses too (Sedulous.Tools.ShaderPack
+		// --entries): only a SPIR-V target takes the shifts, DX12 having register spaces natively.
+		var options = CompileOptions.Direct(target, shaderModel, device.Type == .WebGPU);
+		options.SourceName = label;
 
 		var compiled = compiler.Compile(.((uint8*)hlsl.Ptr, hlsl.Length), stage, entryPoint,
 			target, options);

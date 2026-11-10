@@ -14,26 +14,6 @@ namespace Samples.RHI.Sample029_ResolveTexture;
 /// else before it is flattened.
 class ResolveTextureSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput {
-		    float3 Position : TEXCOORD0;
-		    float4 Color    : TEXCOORD1;
-		};
-		struct PSInput {
-		    float4 Position : SV_POSITION;
-		    float4 Color    : COLOR0;
-		};
-		PSInput VSMain(VSInput input) {
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.Color = input.Color;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET {
-		    return input.Color;
-		}
-		""";
-
 	/// A star: a centre, five outer points and five inner ones. Every edge is a diagonal,
 	/// which is what makes the multisampling visible.
 	private static float[77] sVertices = .(
@@ -55,7 +35,6 @@ class ResolveTextureSample : SampleApp
 
 	private const uint32 cSampleCount = 4;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -105,15 +84,11 @@ class ResolveTextureSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample029_ResolveTexture/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample029_ResolveTexture/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -262,8 +237,6 @@ class ResolveTextureSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

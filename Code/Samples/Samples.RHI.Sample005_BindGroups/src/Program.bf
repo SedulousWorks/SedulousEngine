@@ -12,26 +12,6 @@ namespace Samples.RHI.Sample005_BindGroups;
 /// for per draw data.
 class BindGroupSample : SampleApp
 {
-	private const String cShaderSource = """
-		cbuffer GlobalUBO : register(b0, space0) { row_major float4x4 VP; };
-		cbuffer ObjectUBO : register(b0, space1) { row_major float4x4 Model; float4 ObjColor; };
-		struct VSInput { float3 Position : TEXCOORD0; float3 Normal : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float3 Normal : NORMAL; float4 Color : COLOR; };
-		PSInput VSMain(VSInput i) {
-		    PSInput o;
-		    float4 wp = mul(float4(i.Position, 1.0), Model);
-		    o.Position = mul(wp, VP);
-		    o.Normal = mul(i.Normal, (float3x3)Model);
-		    o.Color = ObjColor;
-		    return o;
-		}
-		float4 PSMain(PSInput i) : SV_TARGET {
-		    float3 ld = normalize(float3(0.5, 1.0, -0.7));
-		    float ndotl = max(dot(normalize(i.Normal), ld), 0.0);
-		    return float4(i.Color.rgb * (0.2 + 0.8 * ndotl), 1.0);
-		}
-		""";
-
 	private const int cGrid = 4;
 	private const int cObjectCount = cGrid * cGrid;
 	/// DX12's constant buffer view alignment, which is the larger of the two backends'
@@ -65,7 +45,6 @@ class BindGroupSample : SampleApp
 		0.2f, 0.8f, 0.6f, 1, 0.8f, 0.8f, 0.8f, 1, 0.5f, 0.3f, 0.1f, 1, 0.9f, 0.5f, 0.7f, 1,
 		0.4f, 0.7f, 0.2f, 1, 0.2f, 0.4f, 0.8f, 1, 0.8f, 0.4f, 0.4f, 1, 0.6f, 0.6f, 0.3f, 1);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -94,15 +73,11 @@ class BindGroupSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample005_BindGroups/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample005_BindGroups/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -374,8 +349,6 @@ class BindGroupSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

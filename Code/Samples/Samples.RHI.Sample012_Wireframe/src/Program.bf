@@ -12,18 +12,9 @@ namespace Samples.RHI.Sample012_Wireframe;
 /// shape is one with obvious internal edges.
 class WireframeSample : SampleApp
 {
-	private const String cShaderSource = """
-		cbuffer UBO : register(b0, space0) { row_major float4x4 MVP; };
-		struct VSInput { float3 Position : TEXCOORD0; float4 Color : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float4 Color : COLOR0; };
-		PSInput VSMain(VSInput i) { PSInput o; o.Position = mul(float4(i.Position,1), MVP); o.Color = i.Color; return o; }
-		float4 PSMain(PSInput i) : SV_TARGET { return i.Color; }
-		""";
-
 	/// Twelve triangles' worth of shared corners.
 	private const uint32 cIndexCount = 60;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -70,15 +61,11 @@ class WireframeSample : SampleApp
 			return .Err;
 		}
 
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample012_Wireframe/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample012_Wireframe/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -325,8 +312,6 @@ class WireframeSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

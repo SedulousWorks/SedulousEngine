@@ -12,13 +12,6 @@ namespace Samples.RHI.Sample006_Blending;
 /// them mid pass is what draws the opaque quad without blending and the rest with.
 class BlendingSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput { float3 Position : TEXCOORD0; float4 Color : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float4 Color : COLOR0; };
-		PSInput VSMain(VSInput i) { PSInput o; o.Position = float4(i.Position, 1.0); o.Color = i.Color; return o; }
-		float4 PSMain(PSInput i) : SV_TARGET { return i.Color; }
-		""";
-
 	/// Four quads: an opaque backdrop, then three translucent ones at decreasing depth so
 	/// they overlap. Position then RGBA, one vertex per row.
 	private static float[112] sVertices = .(
@@ -49,7 +42,6 @@ class BlendingSample : SampleApp
 		8, 9, 10, 8, 10, 11,
 		12, 13, 14, 12, 14, 15);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -65,15 +57,11 @@ class BlendingSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample006_Blending/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample006_Blending/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -227,8 +215,6 @@ class BlendingSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

@@ -12,49 +12,10 @@ namespace Samples.RHI.Sample019_BatchUpload;
 /// which is what a real loading path does instead of stalling at startup.
 class BatchUploadSample : SampleApp
 {
-	private const String cShaderSource = """
-		Texture2D gTexture : register(t0, space0);
-		SamplerState gSampler : register(s0, space0);
-		struct VSInput
-		{
-		    float3 Position : TEXCOORD0;
-		    float2 TexCoord : TEXCOORD1;
-		};
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float2 TexCoord : TEXCOORD0;
-		};
-		cbuffer Transform : register(b0, space0)
-		{
-		    float Time;
-		    float Pad0;
-		    float Pad1;
-		    float Pad2;
-		};
-		PSInput VSMain(VSInput input)
-		{
-		    PSInput output;
-		    float c = cos(Time * 0.5);
-		    float s = sin(Time * 0.5);
-		    float3 p = input.Position;
-		    float x = p.x * c - p.y * s;
-		    float y = p.x * s + p.y * c;
-		    output.Position = float4(x, y, p.z, 1.0);
-		    output.TexCoord = input.TexCoord;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return gTexture.Sample(gSampler, input.TexCoord);
-		}
-		""";
-
 	private const uint32 cTextureSize = 128;
 	/// How deep the escape test goes, which is also what the colour ramp is scaled by.
 	private const int cMaxIterations = 64;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
 	private IBuffer mVertexBuffer = null;
@@ -80,15 +41,11 @@ class BatchUploadSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample019_BatchUpload/Shader.hlsl", .Vertex,
 			"VSMain", "VS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample019_BatchUpload/Shader.hlsl", .Fragment,
 			"PSMain", "PS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -383,8 +340,6 @@ class BatchUploadSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

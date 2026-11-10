@@ -13,24 +13,11 @@ namespace Samples.RHI.Sample030_RenderBundles;
 /// buffers.
 class RenderBundlesSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput { float3 Position : TEXCOORD0; float3 Color : TEXCOORD1; };
-		struct PSInput { float4 Position : SV_POSITION; float3 Color : TEXCOORD0; };
-		PSInput VSMain(VSInput input) {
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.Color = input.Color;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET { return float4(input.Color, 1.0); }
-		""";
-
 	private static float[18] sVertexData = .(
 		 0.0f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
 		 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
 		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IBuffer mVertexBuffer = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
@@ -45,15 +32,11 @@ class RenderBundlesSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample030_RenderBundles/Shader.hlsl", .Vertex,
 			"VSMain", "BundleVS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample030_RenderBundles/Shader.hlsl", .Fragment,
 			"PSMain", "BundlePS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -205,8 +188,6 @@ class RenderBundlesSample : SampleApp
 		if (mVertexBuffer != null) mDevice.DestroyBuffer(ref mVertexBuffer);
 		if (mPixelShader != null) mDevice.DestroyShaderModule(ref mPixelShader);
 		if (mVertexShader != null) mDevice.DestroyShaderModule(ref mVertexShader);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

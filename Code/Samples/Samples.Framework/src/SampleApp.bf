@@ -103,6 +103,20 @@ abstract class SampleApp
 	private String mDataRoot = new .() ~ delete _;
 	private NativeFileSystem mDataMount = null ~ delete _;
 
+	/// The RHI samples' shaders (Data/Samples/RHI).
+	private SampleShaders mShaders = new .() ~ delete _;
+
+	/// One entry point of the sample's shader file (relative to Data/Samples/RHI, as
+	/// "Sample001_Triangle/Shader.hlsl"), compiled as the sample starts or, where there is no
+	/// shader compiler (Android), read from the pack cooked from the same files.
+	protected Result<IShaderModule> LoadShader(StringView file,
+		// QUALIFIED: Sedulous.RHI has its own ShaderStage, a set of stages.
+		Sedulous.Shaders.ShaderStage stage, StringView entryPoint, StringView label,
+		StringView shaderModel = "6_0")
+	{
+		return mShaders.Load(mDevice, file, stage, entryPoint, label, shaderModel);
+	}
+
 	// ---- screenshots ----
 	// A sample calls CaptureBackbuffer once a frame, after it has drawn and before the
 	// backbuffer goes to present; the framework arms it from F12 (to <user data>/screenshots)
@@ -195,6 +209,7 @@ abstract class SampleApp
 			return 1;
 		}
 		mDataMount = new NativeFileSystem(mDataRoot);
+		mShaders.Open(DataPath("Samples/RHI", .. scope String()));
 
 		if (Initialize() case .Err)
 		{
@@ -444,6 +459,7 @@ abstract class SampleApp
 			mDevice.WaitIdle();
 
 		OnShutdown();
+		mShaders.Close();
 		if (mDevice != null)
 			mScreenshot.Release(mDevice);
 

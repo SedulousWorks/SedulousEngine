@@ -11,33 +11,12 @@ namespace Samples.RHI.Sample001_Triangle;
 /// record a pass, submit, present.
 class TriangleSample : SampleApp
 {
-	private const String cShaderSource = """
-		struct VSInput {
-		    float3 Position : TEXCOORD0;
-		    float3 Color    : TEXCOORD1;
-		};
-		struct PSInput {
-		    float4 Position : SV_POSITION;
-		    float3 Color    : TEXCOORD0;
-		};
-		PSInput VSMain(VSInput input) {
-		    PSInput output;
-		    output.Position = float4(input.Position, 1.0);
-		    output.Color = input.Color;
-		    return output;
-		}
-		float4 PSMain(PSInput input) : SV_TARGET {
-		    return float4(input.Color, 1.0);
-		}
-		""";
-
 	/// Position then colour, interleaved, one vertex per row.
 	private static float[18] sVertexData = .(
 		 0.0f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
 		 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
 		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f);
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IBuffer mVertexBuffer = null;
 	private IShaderModule mVertexShader = null;
 	private IShaderModule mPixelShader = null;
@@ -52,16 +31,12 @@ class TriangleSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Vertex,
+		if (!(LoadShader("Sample001_Triangle/Shader.hlsl", .Vertex,
 			"VSMain", "TriangleVS") case .Ok(let vertexShader)))
 			return .Err;
 		mVertexShader = vertexShader;
 
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cShaderSource, .Fragment,
+		if (!(LoadShader("Sample001_Triangle/Shader.hlsl", .Fragment,
 			"PSMain", "TrianglePS") case .Ok(let pixelShader)))
 			return .Err;
 		mPixelShader = pixelShader;
@@ -216,8 +191,6 @@ class TriangleSample : SampleApp
 			mDevice.DestroyShaderModule(ref mVertexShader);
 		if (mVertexBuffer != null)
 			mDevice.DestroyBuffer(ref mVertexBuffer);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

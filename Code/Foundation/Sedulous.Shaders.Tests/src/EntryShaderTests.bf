@@ -1,5 +1,7 @@
 using System;
+using Sedulous.Core.IO;
 using Sedulous.Shaders;
+using Sedulous.VFS;
 
 namespace Sedulous.Shaders.Tests;
 
@@ -60,5 +62,44 @@ class EntryShaderTests
 		Test.Assert(dxil.BindingShiftSets == 1);
 		Test.Assert(dxil.BindingShifts.TextureShift == 0);
 		Test.Assert(dxil.SpirvTargetEnvironment == "vulkan1.3"); // WebGPU's environment is SPIR-V's alone
+	}
+
+	/// Every RHI sample's shader cooks, so the pack a device without a compiler carries
+	/// (Sedulous.Tools.ShaderPack --entries over Data/Samples/RHI) has each entry its sample loads.
+	[Test]
+	public static void EveryRhiSampleShaderCooksToSpirvUnderItsFileAndEntry()
+	{
+		let compiler = new ShaderCompiler();
+		defer delete compiler;
+		if (compiler.Initialize() case .Err)
+		{
+			Console.WriteLine("SKIP: no DXC runtime");
+			return;
+		}
+		let dataRoot = FindDataRoot(.. scope String());
+		Test.Assert(!dataRoot.IsEmpty);
+		let folder = DataPath(dataRoot, "Samples/RHI", .. scope String());
+
+		CookedShaderFormat[1] formats = .(.SpirV);
+		var options = ShaderEntryCookOptions();
+		options.ShaderDirectory = folder;
+		options.Formats = formats;
+		let pack = scope CookedShaderPack();
+		let report = scope ShaderCookReport();
+		ShaderPackCooker.CookEntryShaders(compiler, options, pack, report);
+		for (let error in report.Errors)
+			Console.WriteLine(error);
+
+		Test.Assert(report.Success);
+		// The 35 files of the 30 samples, and the 64 compiles they make.
+		Test.Assert(report.FilesCooked == 35);
+		Test.Assert(report.VariantsCooked == 64);
+		Test.Assert(report.VariantsCooked == pack.Count);
+		Test.Assert(pack.Find("Sample001_Triangle/Shader.hlsl:VSMain", .Vertex, .None, .SpirV) case .Ok);
+		Test.Assert(pack.Find("Sample001_Triangle/Shader.hlsl:PSMain", .Fragment, .None, .SpirV) case .Ok);
+		Test.Assert(pack.Find("Sample004_Compute/Compute.hlsl:CSMain", .Compute, .None, .SpirV) case .Ok);
+		// A ray tracing library's entry has no name.
+		Test.Assert(pack.Find("Sample021_RayTracing/RtShader.hlsl:", .RayGen, .None, .SpirV) case .Ok);
+		Test.Assert(pack.EntryPoint("Sample020_MeshShaders/MeshShader.hlsl:MSMain", .Mesh) == "MSMain");
 	}
 }

@@ -22,62 +22,6 @@ struct PushData
 /// why the pipeline is a mesh pipeline rather than a render pipeline.
 class MeshShaderSample : SampleApp
 {
-	private const String cMeshShaderSource = """
-		struct PushConstants
-		{
-		    float Time;
-		    float AspectRatio;
-		    float Pad0, Pad1;
-		};
-		[[vk::push_constant]] ConstantBuffer<PushConstants> pc : register(b0, space0);
-		struct MeshOutput
-		{
-		    float4 Position : SV_POSITION;
-		    float3 Color    : TEXCOORD0;
-		};
-		[outputtopology("triangle")]
-		[numthreads(1, 1, 1)]
-		void MSMain(out vertices MeshOutput verts[3], out indices uint3 tris[1])
-		{
-		    SetMeshOutputCounts(3, 1);
-		    float angle = pc.Time * 0.5;
-		    float c = cos(angle);
-		    float s = sin(angle);
-		    float2 positions[3] = {
-		        float2( 0.0,  0.5),
-		        float2(-0.5, -0.5),
-		        float2( 0.5, -0.5)
-		    };
-		    float3 colors[3] = {
-		        float3(1.0, 0.0, 0.0),
-		        float3(0.0, 1.0, 0.0),
-		        float3(0.0, 0.0, 1.0)
-		    };
-		    for (uint i = 0; i < 3; i++)
-		    {
-		        float2 p = positions[i];
-		        float2 rotated = float2(p.x * c - p.y * s, p.x * s + p.y * c);
-		        rotated.x /= pc.AspectRatio;
-		        verts[i].Position = float4(rotated, 0.0, 1.0);
-		        verts[i].Color = colors[i];
-		    }
-		    tris[0] = uint3(0, 1, 2);
-		}
-		""";
-
-	private const String cFragmentShaderSource = """
-		struct PSInput
-		{
-		    float4 Position : SV_POSITION;
-		    float3 Color    : TEXCOORD0;
-		};
-		float4 PSMain(PSInput input) : SV_TARGET
-		{
-		    return float4(input.Color, 1.0);
-		}
-		""";
-
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mMeshModule = null;
 	private IShaderModule mFragmentModule = null;
 	private IPipelineLayout mPipelineLayout = null;
@@ -106,19 +50,15 @@ class MeshShaderSample : SampleApp
 			return .Err;
 		}
 
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
 		// SHADER MODEL 6.5: the mesh stage does not exist below it, and the default 6.0
 		// would fail to compile rather than fail to link.
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cMeshShaderSource, .Mesh,
+		if (!(LoadShader("Sample020_MeshShaders/MeshShader.hlsl", .Mesh,
 			"MSMain", "MeshShader", "6_5") case .Ok(let meshModule)))
 			return .Err;
 		mMeshModule = meshModule;
 
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cFragmentShaderSource,
-			.Fragment, "PSMain", "FragmentShader") case .Ok(let fragmentModule)))
+		if (!(LoadShader("Sample020_MeshShaders/FragmentShader.hlsl", .Fragment,
+			"PSMain", "FragmentShader") case .Ok(let fragmentModule)))
 			return .Err;
 		mFragmentModule = fragmentModule;
 
@@ -231,8 +171,6 @@ class MeshShaderSample : SampleApp
 		if (mPipelineLayout != null) mDevice.DestroyPipelineLayout(ref mPipelineLayout);
 		if (mFragmentModule != null) mDevice.DestroyShaderModule(ref mFragmentModule);
 		if (mMeshModule != null) mDevice.DestroyShaderModule(ref mMeshModule);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 

@@ -13,50 +13,6 @@ namespace Samples.RHI.Sample021_RayTracing;
 /// which is then copied to the screen.
 class RayTracingSample : SampleApp
 {
-	/// ONE library, compiled once. Every ray tracing entry point lives in it and the
-	/// pipeline picks them out by name, which is why the profile is `lib` rather than a
-	/// per stage one.
-	private const String cRayTracingSource = """
-		[[vk::image_format("rgba8")]] RWTexture2D<float4> gOutput : register(u0, space0);
-		RaytracingAccelerationStructure gScene : register(t0, space0);
-		struct RayPayload
-		{
-		    float3 Color;
-		};
-		[shader("raygeneration")]
-		void RayGen()
-		{
-		    uint2 launchIndex = DispatchRaysIndex().xy;
-		    uint2 launchDim = DispatchRaysDimensions().xy;
-		    float2 uv = (float2(launchIndex) + 0.5) / float2(launchDim);
-		    float2 ndc = uv * 2.0 - 1.0;
-		    ndc.y = -ndc.y;
-		    RayDesc ray;
-		    ray.Origin = float3(ndc.x, ndc.y, -1.0);
-		    ray.Direction = float3(0.0, 0.0, 1.0);
-		    ray.TMin = 0.001;
-		    ray.TMax = 100.0;
-		    RayPayload payload;
-		    payload.Color = float3(0.0, 0.0, 0.0);
-		    TraceRay(gScene, RAY_FLAG_FORCE_OPAQUE, 0xFF, 0, 0, 0, ray, payload);
-		    gOutput[launchIndex] = float4(payload.Color, 1.0);
-		}
-		[shader("closesthit")]
-		void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes attribs)
-		{
-		    float3 bary = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y,
-		                         attribs.barycentrics.x,
-		                         attribs.barycentrics.y);
-		    payload.Color = float3(bary.x, bary.y, bary.z);
-		}
-		[shader("miss")]
-		void Miss(inout RayPayload payload)
-		{
-		    float2 uv = (float2(DispatchRaysIndex().xy) + 0.5) / float2(DispatchRaysDimensions().xy);
-		    payload.Color = float3(0.1, 0.1, 0.2) + float3(0.0, 0.0, 0.3) * uv.y;
-		}
-		""";
-
 	/// Positions only: an acceleration structure needs geometry, not shading data.
 	private static float[9] sTriangleVertices = .(
 		 0.0f,  0.5f, 0.0f,
@@ -68,7 +24,6 @@ class RayTracingSample : SampleApp
 	/// A VkAccelerationStructureInstanceKHR.
 	private const uint64 cInstanceSize = 64;
 
-	private Sedulous.Shaders.ShaderCompiler mCompiler = null;
 	private IShaderModule mShaderLibrary = null;
 	private IRayTracingPipeline mPipeline = null;
 	private IAccelStruct mBottomLevel = null;
@@ -115,13 +70,11 @@ class RayTracingSample : SampleApp
 		Console.WriteLine(scope $"  shaderGroupHandleAlignment: {mDevice.ShaderGroupHandleAlignment}");
 		Console.WriteLine(scope $"  shaderGroupBaseAlignment:   {mDevice.ShaderGroupBaseAlignment}");
 
-		mCompiler = new Sedulous.Shaders.ShaderCompiler();
-		if (mCompiler.Initialize() case .Err)
-			return .Err;
-
-		// An EMPTY entry point and shader model 6.3: a library has no single entry, and
-		// the ray tracing stages do not exist below 6.3.
-		if (!(ShaderHelpers.CompileToModule(mCompiler, mDevice, cRayTracingSource, .RayGen,
+		// ONE library, compiled once. Every ray tracing entry point lives in it and the
+		// pipeline picks them out by name, which is why the profile is `lib` rather than a
+		// per stage one. An EMPTY entry point and shader model 6.3: a library has no single
+		// entry, and the ray tracing stages do not exist below 6.3.
+		if (!(LoadShader("Sample021_RayTracing/RtShader.hlsl", .RayGen,
 			"", "RTShaderLib", "6_3") case .Ok(let library)))
 		{
 			Console.Error.WriteLine("Sample021: the ray tracing library did not compile");
@@ -531,8 +484,6 @@ class RayTracingSample : SampleApp
 		if (mShaderLibrary != null) mDevice.DestroyShaderModule(ref mShaderLibrary);
 		if (mFence != null) mDevice.DestroyFence(ref mFence);
 		if (mPool != null) mDevice.DestroyCommandPool(ref mPool);
-		delete mCompiler;
-		mCompiler = null;
 	}
 }
 
