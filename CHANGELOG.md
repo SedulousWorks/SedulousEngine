@@ -40,6 +40,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- MCP: scene_validate and scene_write no longer say a scene's records of components the host has
+  no code for are dropped: a write keeps them; the warning says a cook by that host leaves them out.
 - GUI: a tween of a property code set on a node (`node.Opacity = 0`, then a tween of `opacity`)
   moves it; it did nothing before, as the property was code's and the style the tween went through
   left it alone. A game's fade of a panel it made did not show.

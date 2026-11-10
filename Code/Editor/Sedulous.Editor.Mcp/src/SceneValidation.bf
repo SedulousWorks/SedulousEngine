@@ -33,7 +33,22 @@ static class SceneValidation
 		capture.Stop();
 
 		for (let line in capture.Lines)
+		{
+			// The transcode's binary half cannot carry a record of a type this host has no
+			// code for, so it says it drops them; the source a write stores keeps them as they
+			// are. The report says both, so an agent is not told its data went.
+			if (line.Contains("unresolved component record(s) captured in the other encoding"))
+			{
+				outReport.Warnings.Add(new $"{scratch.UnresolvedComponents.Length} component record(s) of types this host has no code for: a write keeps them in the source as they are, but a cook by this host leaves them out of the cooked scene (the project's own editor has their code)");
+				continue;
+			}
+			if (line.Contains("unresolved settings record(s) captured in the other encoding"))
+			{
+				outReport.Warnings.Add(new $"{scratch.UnresolvedSettingsRecords.Length} settings record(s) of systems this host has no code for: a write keeps them in the source as they are, but a cook by this host leaves them out of the cooked scene (the project's own editor has their code)");
+				continue;
+			}
 			outReport.Warnings.Add(new String(line));
+		}
 		if (transcoded case .Err(let error))
 		{
 			outReport.Valid = false;

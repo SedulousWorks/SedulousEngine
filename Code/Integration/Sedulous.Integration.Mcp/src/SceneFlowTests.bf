@@ -66,16 +66,27 @@ static class SceneFlowTests
 		Test.Assert(valid.Get("componentValidation").AsString() == "full");
 		Test.Assert(valid.Get("warnings").Count == 0, scope $"{valid.Get("warnings").Count} warnings");
 
-		// A record of a GENUINELY unknown component type is skipped with a captured
-		// warning: still valid, the reader's contract is skip and warn, and the agent is
-		// told what was skipped.
+		// A record of a GENUINELY unknown component type is kept unread with a captured
+		// warning: still valid, and the agent is told what this host has no code for. The
+		// check's binary pass cannot carry the record, but a write keeps it, so the report
+		// says that rather than that it was dropped.
 		{
 			let mangled = scope String(seedXml);
 			mangled.Replace("net.Network", "bogus.NoSuchComponent");
 			let report = CallOk(server, "scene_validate", With(Obj(), "xml", mangled));
 			defer delete report;
 			Test.Assert(report.Get("valid").AsBool());
-			Test.Assert(report.Get("warnings").Count >= 1, "the skipped record is reported");
+			let warnings = report.Get("warnings");
+			Test.Assert(warnings.Count >= 1, "the unread record is reported");
+			bool kept = false;
+			for (int i < warnings.Count)
+			{
+				let line = warnings.At(i).AsString();
+				Test.Assert(!line.Contains("dropping"), scope String(line));
+				if (line.StartsWith("1 component record(s) of types this host has no code for: a write keeps them"))
+					kept = true;
+			}
+			Test.Assert(kept, "what a write and a cook by this host do with it");
 		}
 
 		// Every successful write announces the asset to the host (the editor host tells the open
