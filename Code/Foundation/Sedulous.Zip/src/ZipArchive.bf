@@ -23,6 +23,10 @@ class ZipEntry
 	public uint64 LocalHeader = 0;
 	/// A folder (its name ends with '/').
 	public bool Directory = false;
+	/// Its Unix permission bits (0755 is 0x1ED) when a Unix host made the archive, which keeps the
+	/// file's mode in the high half of the entry's external attributes; 0 when it says none (a
+	/// DOS or Windows host's, or a Unix one's that left them out). Extracting sets them.
+	public uint32 Mode = 0;
 }
 
 static
@@ -83,6 +87,13 @@ class ZipArchive
 	private const int cDirectoryEntrySize = 46;
 	/// A local header without its name and extras.
 	private const int cLocalHeaderSize = 30;
+	/// The hosts, in the high byte of a directory entry's "version made by", whose external
+	/// attributes carry a Unix mode: Unix, and Darwin (OS X).
+	private const uint8 cHostUnix = 3;
+	private const uint8 cHostDarwin = 19;
+	/// The permission bits of a mode (0777): not its file type, nor setuid, setgid or sticky, which
+	/// an extracted download has no business setting.
+	private const uint32 cPermissionBits = 0x1FF;
 
 	/// BORROWED: the caller's, outliving the archive.
 	private IStream mStream = null;
@@ -195,6 +206,9 @@ class ZipArchive
 			entry.LocalHeader = U32(e + 42);
 			entry.Name.Set(StringView((char8*)(e + cDirectoryEntrySize), nameLength));
 			entry.Directory = entry.Name.EndsWith('/');
+			let host = (uint8)(U16(e + 4) >> 8);
+			if ((host == cHostUnix) || (host == cHostDarwin))
+				entry.Mode = (U32(e + 38) >> 16) & cPermissionBits;
 			if ((flags & 1) != 0)
 			{
 				outError.Set(scope $"{entry.Name} is encrypted, which is not read");
@@ -294,10 +308,24 @@ class ZipArchive
 		return true;
 	}
 
+	/// The file at `path` given the permission bits `mode`; nothing where files have no Unix mode.
+	private static void SetMode(StringView path, uint32 mode)
+	{
+#if BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+		chmod(scope String(path).CStr(), mode);
+#endif
+	}
+
+#if BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+	[CLink]
+	private static extern int32 chmod(char8* path, uint32 mode);
+#endif
+
 	/// Writes every entry under `directory` (made as needed), telling `progress` the bytes written
-	/// of the total after each file. Every name is checked first: one that would land outside
-	/// `directory` refuses the archive, and nothing is written. False with `outError` at the first
-	/// failure (the files before it stay).
+	/// of the total after each file, each file given the mode the archive keeps for it (ZipEntry.Mode:
+	/// an executable stays one), else the default a new file gets. Every name is checked first: one
+	/// that would land outside `directory` refuses the archive, and nothing is written. False with
+	/// `outError` at the first failure (the files before it stay).
 	public bool ExtractAll(StringView directory, String outError, delegate void(uint64 done, uint64 total) progress = null)
 	{
 		for (let entry in mEntries)
@@ -336,6 +364,8 @@ class ZipArchive
 				outError.Set(scope $"{path} could not be written");
 				return false;
 			}
+			if (entry.Mode != 0)
+				SetMode(path, entry.Mode);
 			done += entry.Size;
 			if (progress != null)
 				progress(done, total);
