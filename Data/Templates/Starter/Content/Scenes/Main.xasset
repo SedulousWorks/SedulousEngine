@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">8fe559c0-630a-d74b-bc83-4ce0da92bb76</string>
+	<string name="typeName">Sedulous.Scene.Resource.SceneDocument</string>
+	<string name="source"/>
+	<array name="dataVersions" count="1">
+		<u64 name="type">10229835977738824634</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">Main</string>
+		</object>
+	</object>
+</root>

@@ -1,0 +1,8 @@
+<root>
+	<object>
+		<string name="name">Empty</string>
+		<string name="description">The game's code alone: no assets and no scene.</string>
+		<string name="picture"/>
+		<i32 name="order">1</i32>
+	</object>
+</root>

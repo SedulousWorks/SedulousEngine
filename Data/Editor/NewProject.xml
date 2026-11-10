@@ -1,7 +1,8 @@
 <!--
-  New Project: a name, the folder it is made in, and whether it gets a folder of its name there (on
-  unless turned off). The check line under them is kept current as the fields change and is
-  coloured by what it says; Create waits while it is red.
+  New Project: a name, the folder it is made in, whether it gets a folder of its name there (on
+  unless turned off), the engine it is made with and the template it starts from (each shown only
+  when the host offers them; the template's line under its list). The check line under them is kept
+  current as the fields change and is coloured by what it says; Create waits while it is red.
 -->
 <Panel class="dialog-body new-project">
     <Panel class="form">
@@ -12,6 +13,13 @@
             <Panel class="new-project-folder"><TextField id="new-project-parent" placeholder="The folder it is made in"/><Button id="new-project-browse" text="Browse..."/></Panel>
             <CheckBox id="new-project-own-folder" text="Create a folder named after the project in it"/>
             <Label class="form-help" text="The location starts where your last project went."/>
+        </Panel>
+        <Label id="new-project-engine-label" class="form-label" text="Engine"/>
+        <Panel id="new-project-engine-field" class="form-field"><ComboBox id="new-project-engine" tooltip="The engine the project is made with and opens in"/></Panel>
+        <Label id="new-project-template-label" class="form-label" text="Template"/>
+        <Panel id="new-project-template-field" class="form-field">
+            <ComboBox id="new-project-template" tooltip="What the project starts with"/>
+            <Label id="new-project-template-about" class="form-help"/>
         </Panel>
     </Panel>
     <Panel id="new-project-check" class="new-project-check">

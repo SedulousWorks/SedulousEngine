@@ -1,0 +1,35 @@
+<root>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15697994609334965484</u64>
+		<u32 name="version">11</u32>
+	</array>
+	<object>
+		<string name="name">__PROJECT_NAME__</string>
+		<string name="engineVersion">0.1.0</string>
+		<string name="defaultSceneId">8fe559c0-630a-d74b-bc83-4ce0da92bb76</string>
+		<string name="defaultScene">Scenes/Main</string>
+		<string name="defaultInputMapId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultUiFontId">b5e2bf6d-badc-8a40-a0d0-81e52aa54997</string>
+		<u32 name="renderMsaaSamples">1</u32>
+		<array name="uiFontIds" count="0"/>
+		<u32 name="renderWidth">0</u32>
+		<u32 name="renderHeight">0</u32>
+		<u8 name="renderFit">1</u8>
+		<u32 name="windowWidth">1280</u32>
+		<u32 name="windowHeight">720</u32>
+		<u8 name="windowMode">0</u8>
+		<bool name="windowResizable">true</bool>
+		<u8 name="orientation">0</u8>
+		<array name="guiStyleSheetIds" count="0"/>
+		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<array name="plugins" count="1">
+			<object>
+				<string name="id">__GAME_ID__</string>
+				<string name="path">Code</string>
+				<array name="platforms" count="0"/>
+				<object name="settings"/>
+			</object>
+		</array>
+	</object>
+</root>

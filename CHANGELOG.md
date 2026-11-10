@@ -62,13 +62,17 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   choice, without keeping it.
 - MCP: `asset_rename` renames an asset within its group as the Assets browser does, keeping its
   guid; the default scene's path follows.
-- Scripting: the `RenderQuality` service, an options menu's graphics setting. `Count()` and
-  `Label(index)` list the project's quality levels by label, `Current()` reads the one the game
-  plays at, and `Set(label)` switches at once. The player keeps the choice in the user's settings
+- Gameplay: the run's `Quality` (`RenderQualityFacade`), an options menu's graphics setting.
+  `Count()` and `Label(index)` list the project's quality levels by label, `Current()` reads the
+  one the game plays at, and `Set(label)` switches at once. The player keeps the choice in the user's settings
   and starts the next run at it; in the Game tab it picks the level in the quality dropdown.
 - Project Settings: a Quality tab lists the game's quality levels and the one it starts at, and
   an export preset can start its platform at another of them (`qualityLevelId`), which its dist
   carries as the default.
+- MCP: `project_create` makes a project from one of the engine's project templates, named by
+  `template`: Starter (the default: the game's code with its starter behaviour, the starter
+  content and a default scene) or Empty (the game's code alone), under the project's own names;
+  `template` `"none"` makes the bare project. A folder that is not empty is refused.
 
 ### Changed
 

@@ -75,9 +75,9 @@ static class ProjectFlowTests
 		Test.Assert(again.Contains("could not create"));
 	}
 
-	/// project_create seeds the editor's starter content: Snowline, made over MCP, had no
-	/// default UI font, so its exported game showed no text (the engine's built-in font is not
-	/// in a dist).
+	/// project_create seeds the editor's starter content into the bare project when asked (what the
+	/// Starter template is made from): Snowline, made over MCP, had no default UI font, so its
+	/// exported game showed no text (the engine's built-in font is not in a dist).
 	[Test]
 	public static void ProjectCreateSeedsTheDefaultUiFontTheSkyAndThePrimitives()
 	{
@@ -92,9 +92,12 @@ static class ProjectFlowTests
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner, dataRoot);
-		let created = CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Seeded"));
+		let arguments = With(With(With(Obj(), "directory", dir), "name", "Seeded"), "template", ProjectOpenTools.cNoTemplate);
+		arguments.Set("seed", JsonValue.MakeBool(true));
+		let created = CallOk(server, "project_create", arguments);
 		defer delete created;
 		Test.Assert(created.Get("seeded").AsBool());
+		Test.Assert(created.Get("template").AsString() == ProjectOpenTools.cNoTemplate);
 
 		let project = Sedulous.Editor.Project.EditorProject.Open(dir);
 		Test.Assert(project != null);

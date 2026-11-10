@@ -16,6 +16,7 @@ using Sedulous.Editor.App;
 using Sedulous.Editor.Projects;
 using Sedulous.Editor.ProjectManager.TestSupport;
 using Sedulous.Editor.Look.TestSupport;
+using Sedulous.Editor.Projects.TestSupport;
 
 namespace Sedulous.Editor.ProjectManager.Tests;
 
@@ -86,7 +87,7 @@ class ProjectLauncherTests
 			services.Dialogs = Dialogs;
 			let launcher = this;
 			services.Open = new [=launcher] (path) => { launcher.Opened.Add(new String(path)); };
-			services.Create = new [=launcher] (directory, name) => { launcher.Created.Add(new String(directory)); };
+			services.Create = new [=launcher] (directory, name, template, sdk) => { launcher.Created.Add(new String(directory)); };
 			services.StoreChanged = new [=launcher] () => { launcher.Saves++; };
 			services.LoadMarkup = new (path) => EditorData.LoadMarkup(path);
 			if (configure != null)
@@ -401,6 +402,133 @@ class ProjectLauncherTests
 		Test.Assert((dialog.FindElement("new-project-cancel") as Sedulous.GUI.Button).HandleActivate());
 		Test.Assert(l.View.CreateDialog == null);
 		Test.Assert(l.Created.Count == 1, "Cancel makes nothing");
+	}
+
+	/// A template folder under `sdk`'s Data/Templates: its Template.xml alone, which is what the list
+	/// reads.
+	private static void WriteTemplate(StringView sdk, StringView id, StringView name, StringView line, int order)
+	{
+		let text = scope String();
+		text.AppendF("<root>\n\t<object>\n\t\t<string name=\"name\">{}</string>\n\t\t<string name=\"description\">{}</string>\n\t\t<string name=\"picture\"/>\n\t\t<i32 name=\"order\">{}</i32>\n\t</object>\n</root>\n", name, line, order);
+		ProjectBuildBed.Write(sdk, scope $"Data/{ProjectTemplates.cTemplatesDir}/{id}/{ProjectTemplates.cInfoFile}", text);
+	}
+
+	/// What New Project's Create asked for last.
+	private class Picked
+	{
+		public String Directory = new .() ~ delete _;
+		public String Template = new .() ~ delete _;
+		public String Sdk = new .() ~ delete _;
+		public int Count;
+	}
+
+	/// New Project's engine picker lists the engines the services offer, the first picked; its
+	/// template list is the picked engine's, by their order, Starter picked and its line shown; a
+	/// change of engine lists that engine's, and one with none keeps Create waiting. Create asks for
+	/// the folder with the picked template's folder and the picked engine. A host that offers
+	/// neither shows neither.
+	[Test]
+	public static void NewProjectListsThePickedEnginesTemplatesWithStarterPicked()
+	{
+		let root = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_launcher_templates", .. scope .());
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let newer = PathJoin(root, "newer", .. scope .());
+		let older = PathJoin(root, "older", .. scope .());
+		let bare = PathJoin(root, "bare", .. scope .());
+		WriteTemplate(newer, "Starter", "Starter", "A scene, the starter content and a behaviour.", 1);
+		WriteTemplate(newer, "Empty", "Empty", "The game's code alone.", 0);
+		WriteTemplate(newer, "Extra", "Extra", "One more.", 2);
+		WriteTemplate(older, "Empty", "Empty", "The older engine's.", 0);
+		ProjectBuildBed.MakeDirectories(bare);
+
+		let picked = scope Picked();
+		let l = scope Launcher(0, false, scope [&] (services) =>
+			{
+				services.Engines = new [=newer, =older, =bare] (outEngines) =>
+					{
+						for (let sdk in StringView[3](newer, older, bare))
+						{
+							let offered = new NewProjectEngine();
+							offered.Sdk.Set(sdk);
+							offered.Label.Set(PathFilename(sdk, .. scope .()));
+							outEngines.Add(offered);
+						}
+					};
+				services.Templates = new (sdk, outTemplates) => { ProjectManagerProgram.ListTemplates(sdk, outTemplates); };
+				delete services.Create;
+				services.Create = new [=picked] (directory, name, template, sdk) =>
+					{
+						picked.Directory.Set(directory);
+						picked.Template.Set(template);
+						picked.Sdk.Set(sdk);
+						picked.Count++;
+					};
+			});
+		l.Controller.SetLastLocation(l.Root);
+		l.View.ShowCreateDialog();
+		l.Scene.UpdateLayout();
+		let dialog = l.View.CreateDialog;
+		Test.Assert(dialog != null);
+		let engine = dialog.FindElement("new-project-engine") as Sedulous.GUI.ComboBox;
+		let templates = dialog.FindElement("new-project-template") as Sedulous.GUI.ComboBox;
+		let about = dialog.FindElement("new-project-template-about") as Sedulous.GUI.Label;
+		let create = dialog.FindElement("new-project-create") as Sedulous.GUI.Button;
+		let target = dialog.FindElement("new-project-where") as Sedulous.GUI.Label;
+		Test.Assert((engine != null) && (templates != null) && (about != null) && (create != null) && (target != null));
+		Test.Assert(dialog.FindElement("new-project-engine-field").Displayed && dialog.FindElement("new-project-template-field").Displayed);
+
+		Test.Assert(engine.ItemsText == "newer|older|bare", scope String(engine.ItemsText));
+		Test.Assert(engine.SelectedIndex == 0, "the first offered: the newest");
+		Test.Assert(templates.ItemsText == "Empty|Starter|Extra", scope String(templates.ItemsText));
+		Test.Assert(templates.SelectedIndex == 1, "Starter, not the first listed");
+		Test.Assert(about.Text == "A scene, the starter content and a behaviour.", scope String(about.Text));
+		Test.Assert(l.View.NewProjectTemplates.Count == 3);
+
+		(dialog.FindElement("new-project-name") as Sedulous.GUI.TextField).RequestFocus();
+		l.Scene.EventDispatcher.InjectText("Harbour");
+		Test.Assert(create.Enabled, scope String(target.Text));
+
+		// Another template's line; another engine's templates; an engine with none.
+		templates.SelectByUser(2);
+		Test.Assert(about.Text == "One more.", scope String(about.Text));
+		engine.SelectByUser(1);
+		Test.Assert(templates.ItemsText == "Empty", scope String(templates.ItemsText));
+		Test.Assert((templates.SelectedIndex == 0) && (about.Text == "The older engine's."), "no Starter: the first");
+		Test.Assert(create.Enabled);
+		engine.SelectByUser(2);
+		Test.Assert(templates.ItemCount == 0);
+		Test.Assert(about.Text.IsEmpty);
+		Test.Assert(!create.Enabled, "nothing to make the project from");
+		Test.Assert(target.Text == "The engine picked has no project templates.", scope String(target.Text));
+
+		engine.SelectByUser(0);
+		Test.Assert((templates.SelectedIndex == 1) && create.Enabled, "Starter again");
+		Test.Assert(create.HandleActivate());
+		Test.Assert(picked.Count == 1);
+		Test.Assert(picked.Directory == PathJoin(l.Root, "Harbour", .. scope .()), picked.Directory);
+		Test.Assert(picked.Template == PathJoin(newer, "Data/Templates/Starter", .. scope .()), picked.Template);
+		Test.Assert(picked.Sdk == newer, picked.Sdk);
+	}
+
+	/// A host that offers neither engines nor templates (the editor's own manager) shows neither,
+	/// and Create goes ahead on the folder alone.
+	[Test]
+	public static void NewProjectShowsNoEngineOrTemplateWhereTheHostOffersNone()
+	{
+		let l = scope Launcher();
+		l.Controller.SetLastLocation(l.Root);
+		l.View.ShowCreateDialog();
+		let dialog = l.View.CreateDialog;
+		Test.Assert(dialog != null);
+		for (let part in StringView[4]("new-project-engine-label", "new-project-engine-field", "new-project-template-label", "new-project-template-field"))
+			Test.Assert(!dialog.FindElement(part).Displayed, scope String(part));
+		(dialog.FindElement("new-project-name") as Sedulous.GUI.TextField).RequestFocus();
+		l.Scene.EventDispatcher.InjectText("Harbour");
+		let create = dialog.FindElement("new-project-create") as Sedulous.GUI.Button;
+		Test.Assert(create.Enabled);
+		Test.Assert(create.HandleActivate());
+		Test.Assert(l.Created.Count == 1);
 	}
 
 	/// Over the first card, held still, frames passing between the notches (a tooltip's time): each

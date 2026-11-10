@@ -30,6 +30,13 @@ namespace Sedulous.Editor.App;
 // A change to the list it shows is made again at the GUI's next drain, never inside the click that
 // asked (the clicked button is in what goes).
 
+/// An engine New Project can make a project with: its SDK's root and how the picker words it.
+class NewProjectEngine
+{
+	public String Sdk = new .() ~ delete _;
+	public String Label = new .() ~ delete _;
+}
+
 /// What a ProjectManagerView works over. The controller and the dialogs are borrowed; the
 /// delegates are its own.
 class ProjectManagerServices
@@ -40,8 +47,16 @@ class ProjectManagerServices
 	public IDialogService Dialogs = null;
 	/// Opens the project in this folder (the application checks its engine first). Owned.
 	public delegate void(StringView directory) Open ~ delete _;
-	/// Makes a project named `name` in `directory`, then opens it. Owned.
-	public delegate void(StringView directory, StringView name) Create ~ delete _;
+	/// Makes a project named `name` in `directory` from the template in the folder `template`, with
+	/// the engine (SDK) at `sdk`, then opens it; either is empty when New Project offers none to
+	/// pick. Owned.
+	public delegate void(StringView directory, StringView name, StringView template, StringView sdk) Create ~ delete _;
+	/// The engines New Project offers, the one picked at first leading (the newest installed): each
+	/// new, the caller's. Null: no engine picker. Owned.
+	public delegate void(List<NewProjectEngine> outEngines) Engines ~ delete _;
+	/// The project templates of the engine at `sdk` (empty with no engine picker), in their order:
+	/// each new, the caller's. Null: no template list. Owned.
+	public delegate void(StringView sdk, List<ProjectTemplate> outTemplates) Templates ~ delete _;
 	/// The recent list or its layout changed: the store is saved. Owned.
 	public delegate void() StoreChanged ~ delete _;
 	/// A dialog's markup by its path (New Project's): a node with one reference, the caller's.
@@ -169,6 +184,12 @@ class ProjectManagerView
 	private SampleInfo mDialogSample = new .() ~ delete _;
 	/// Where it goes, once Download is pressed.
 	private String mDialogTarget = new .() ~ delete _;
+	/// New Project's engines and the picked one's templates, and which of each is picked (-1:
+	/// none).
+	private List<NewProjectEngine> mNewEngines = new .() ~ DeleteContainerAndItems!(_);
+	private List<ProjectTemplate> mNewTemplates = new .() ~ DeleteContainerAndItems!(_);
+	private int32 mNewEngine = -1;
+	private int32 mNewTemplate = -1;
 
 	/// Where the download dialog is: choosing where, downloading, or how it ended.
 	private enum DialogStage : uint8
@@ -784,9 +805,12 @@ class ProjectManagerView
 		return true;
 	}
 
-	/// New Project: a name, the folder it is made in (starting where the last project went), and
-	/// whether it gets a folder of its name there. The check line under them says what Create would
-	/// do, and Create waits while it is red. Nothing with no GUI, no markup, or with it open already.
+	/// New Project: a name, the folder it is made in (starting where the last project went), whether
+	/// it gets a folder of its name there, the engine it is made with (the newest installed at
+	/// first) and the template it starts from (Starter at first, the template's line under it). The
+	/// engine and the template show only when the services offer them. The check line under them
+	/// says what Create would do, and Create waits while it is red. Nothing with no GUI, no markup,
+	/// or with it open already.
 	public void ShowCreateDialog()
 	{
 		let root = (mContent != null) ? (mContent.RootNode as SceneRoot) : null;
@@ -805,6 +829,9 @@ class ProjectManagerView
 		let create = body.FindElement("new-project-create") as Sedulous.GUI.Button;
 		let browse = body.FindElement("new-project-browse") as Sedulous.GUI.Button;
 		let cancel = body.FindElement("new-project-cancel") as Sedulous.GUI.Button;
+		let engine = body.FindElement("new-project-engine") as Sedulous.GUI.ComboBox;
+		let templateChoice = body.FindElement("new-project-template") as Sedulous.GUI.ComboBox;
+		let about = body.FindElement("new-project-template-about") as Sedulous.GUI.Label;
 		if ((name == null) || (parent == null) || (create == null))
 			return;
 
@@ -820,6 +847,42 @@ class ProjectManagerView
 			ownFolder.Checked = true;
 		StringView last = (mServices.Controller != null) ? mServices.Controller.LastLocation : default;
 		parent.Text = last.IsEmpty ? StringView(mHome) : last;
+		// The engine and its templates: a change of engine lists its own, and either changes the
+		// check (an engine with no templates makes nothing).
+		ShowPart(body, "new-project-engine-label", mServices.Engines != null);
+		ShowPart(body, "new-project-engine-field", mServices.Engines != null);
+		ShowPart(body, "new-project-template-label", mServices.Templates != null);
+		ShowPart(body, "new-project-template-field", mServices.Templates != null);
+		ClearAndDeleteItems!(mNewEngines);
+		mNewEngine = -1;
+		if (mServices.Engines != null)
+			mServices.Engines(mNewEngines);
+		if (templateChoice != null)
+		{
+			templateChoice.SetOnSelectionChanged(new [=this, =about, =name, =parent, =ownFolder, =line, =icon, =target, =create] (index) =>
+				{
+					mNewTemplate = index;
+					ShowTemplateLine(about);
+					RefreshCreate(name, parent, ownFolder, line, icon, target, create);
+				});
+		}
+		if (engine != null)
+		{
+			engine.ItemsText = "";
+			for (let offered in mNewEngines)
+				engine.AddItem(offered.Label);
+			engine.SetOnSelectionChanged(new [=this, =templateChoice, =about, =name, =parent, =ownFolder, =line, =icon, =target, =create] (index) =>
+				{
+					mNewEngine = index;
+					FillTemplates(templateChoice, about);
+					RefreshCreate(name, parent, ownFolder, line, icon, target, create);
+				});
+		}
+		mNewEngine = mNewEngines.IsEmpty ? -1 : 0;
+		if (engine != null)
+			engine.SelectedIndex = mNewEngine; // fills the templates
+		if ((engine == null) || (mNewEngine < 0))
+			FillTemplates(templateChoice, about);
 		// The check line, kept current: what Create would make, coloured by what it says.
 		name.SetOnTextChanging(new [=this, =name, =parent, =ownFolder, =line, =icon, =target, =create] (text) =>
 			{
@@ -848,9 +911,13 @@ class ProjectManagerView
 					if (mServices.StoreChanged != null)
 						mServices.StoreChanged();
 				}
+				let template = ((mNewTemplate >= 0) && (mNewTemplate < mNewTemplates.Count)) ? mNewTemplates[mNewTemplate].Directory : "";
+				let sdk = ((mNewEngine >= 0) && (mNewEngine < mNewEngines.Count)) ? mNewEngines[mNewEngine].Sdk : "";
+				let picked = scope String(template);
+				let pickedSdk = scope String(sdk);
 				dialog.Close();
 				if (mServices.Create != null)
-					mServices.Create(result.Target, result.Name);
+					mServices.Create(result.Target, result.Name, picked, pickedSdk);
 			});
 		if (browse != null)
 		{
@@ -877,11 +944,64 @@ class ProjectManagerView
 	/// New Project's window while it is open (a test's); null with none.
 	public Sedulous.GUI.Window CreateDialog => ((mDialog != null) && mDialog.IsOpen) ? mDialog : null;
 
-	/// What Create would make of the fields as they stand (ProjectManagerController.CheckNewProject).
+	/// The templates New Project lists, of the engine picked (a test's).
+	public List<ProjectTemplate> NewProjectTemplates => mNewTemplates;
+
+	/// The picked engine's templates listed (none with no engine to pick while the services offer
+	/// engines), the default picked (ProjectTemplates.cDefault, else the first) and its line shown.
+	private void FillTemplates(Sedulous.GUI.ComboBox templateChoice, Sedulous.GUI.Label about)
+	{
+		ClearAndDeleteItems!(mNewTemplates);
+		mNewTemplate = -1;
+		if ((mServices.Templates != null) && ((mServices.Engines == null) || (mNewEngine >= 0)))
+			mServices.Templates((mNewEngine >= 0) ? StringView(mNewEngines[mNewEngine].Sdk) : default, mNewTemplates);
+		int32 pick = mNewTemplates.IsEmpty ? -1 : 0;
+		for (let offered in mNewTemplates)
+		{
+			if (offered.Id == ProjectTemplates.cDefault)
+				pick = (int32)@offered.Index;
+		}
+		if (templateChoice != null)
+		{
+			templateChoice.ItemsText = "";
+			for (let offered in mNewTemplates)
+				templateChoice.AddItem(offered.Name);
+			templateChoice.SelectedIndex = pick;
+		}
+		mNewTemplate = pick;
+		ShowTemplateLine(about);
+	}
+
+	/// The picked template's line under the list; empty with none.
+	private void ShowTemplateLine(Sedulous.GUI.Label about)
+	{
+		if (about == null)
+			return;
+		if ((mNewTemplate >= 0) && (mNewTemplate < mNewTemplates.Count))
+			about.Text = mNewTemplates[mNewTemplate].Description;
+		else
+			about.Text = "";
+	}
+
+	/// What Create would make of the fields as they stand (ProjectManagerController.CheckNewProject),
+	/// then the engine and the template: with an engine picker, none to pick; with a template list,
+	/// none listed for the engine picked.
 	private void CheckCreate(Sedulous.GUI.TextField name, Sedulous.GUI.TextField parent, Sedulous.GUI.CheckBox ownFolder,
 		NewProjectCheck outCheck)
 	{
 		ProjectManagerController.CheckNewProject(name.Text, parent.Text, (ownFolder == null) || ownFolder.Checked, mHome, outCheck);
+		if (outCheck.Level == .Error)
+			return;
+		if ((mServices.Engines != null) && (mNewEngine < 0))
+		{
+			outCheck.Level = .Error;
+			outCheck.Message.Set("There is no engine to make the project with: install one first.");
+		}
+		else if ((mServices.Templates != null) && (mNewTemplate < 0))
+		{
+			outCheck.Level = .Error;
+			outCheck.Message.Set("The engine picked has no project templates.");
+		}
 	}
 
 	/// The check line again: its words, its colour and icon, and Create waiting while it is red.

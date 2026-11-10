@@ -1,0 +1,8 @@
+<root>
+	<object>
+		<string name="name">Starter</string>
+		<string name="description">A scene with a cube under the default sky, Roboto as the UI font, the cube, sphere and plane, and the game's code with its starter behaviour.</string>
+		<string name="picture"/>
+		<i32 name="order">0</i32>
+	</object>
+</root>
