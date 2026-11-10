@@ -515,4 +515,34 @@ Each step proves one thing, and each is run for leaks with ASan where it can be.
 ## Decided (2026-11-10)
 
 - The fast relaunch first; then the Beef IDE's hot compile on Linux, first on a small host, then on SkyHopperEditor, as the documented loop for method-body edits if it works. Tallow's route is held.
+- Unsaved pages on a relaunch: a person is asked as at an exit; an agent's are kept aside. `RelaunchPolicy.Unsaved` is the one place that says so.
 - A later study: the editor and the runtime as separate processes (the ezEngine way), with the game's code only in the runtime process, restarted on a change. It is much larger than either path here, is decided together with Raptor's engine, and leads toward remote play (Android among the devices), a later topic. Its questions are listed under Phase 8 in `x2.md`.
+
+## Done: the fast relaunch (2026-11-10)
+
+- **One action.** Project > Build and Relaunch (Ctrl+Shift+B, and the palette) builds
+  `<Game>Editor` when it needs it (missing, older than the code, or over an SDK that moved:
+  `ProjectBuild.IsStale` with the SDK), shows the build on the status line and in the Console, and
+  on a failure says the first errors and stays. On success it relaunches (`BuildAndRelaunch`,
+  `EditorRelaunch.bf`). For an agent, `editor_relaunch` takes `build: true` and waits for the build
+  the way `project_build` does.
+- **What is kept.** The open pages, the active page and the dock come from the per-project store,
+  which the relaunch writes before it starts the next editor and then freezes
+  (`EditorSession.FreezeStore`), so the closing editor does not write it again. Each scene page
+  writes its view (camera, selection, panes) on demand (`EditorPage.CaptureViewState`) rather than
+  only when it closes. The rest is in `<project>/Editor/relaunch/relaunch.json` (`RelaunchState`),
+  which the next editor is given by `--relaunch`: the Game tabs and whether each ran, the active
+  panel, the pages kept aside and the times so far.
+- **Unsaved pages.** `RelaunchPolicy.Unsaved` is the seam. A person is asked (Save All and
+  Relaunch, Relaunch Without Saving, Cancel). An agent's pages are kept aside: each page's content
+  goes to `Editor/relaunch/<guid>.bin` (`EditorPage.KeepAside`; scene pages write their scene's
+  text, asset pages their object snapshot), never over the asset. The next editor gives it back
+  (`EditorPage.TakeBack`), marked unsaved and with no history. A page that cannot be kept aside
+  (a source file's page, a generic asset page, a clip held by a scene's animation panel) refuses the
+  agent's relaunch and is named.
+- **The Game tab** (`IRelaunchRun`) reopens, and plays again from its start if it was running or
+  waiting on the cook.
+- **Timings.** The next editor logs `Editor: relaunched (...): build, save, start, restore, total
+  (ms)`. Start runs from the launch to the next editor's application being made; restore runs
+  from then until the pages and tabs are back. The run itself starts after the cook, outside that
+  time. These are still to be measured on SkyHopper (spike step 0).
