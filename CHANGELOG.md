@@ -22,6 +22,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Scenes: a `SceneRef` field names a scene (a level's exit): the inspector picks a scene for it,
   a level loads by it, and a pruned export keeps the scene it names. Naming a scene never loads
   it.
+- Tools: `ShaderPack --entries <dir> <output.dpak>` cooks every `.hlsl` under a folder whose
+  shaders name their entry points in their own comments (`// entry: vertex VSMain`,
+  `// model: 6_5`), each entry under `<file>:<entry>`, SPIR-V by default and DXIL on request.
 
 ### Changed
 

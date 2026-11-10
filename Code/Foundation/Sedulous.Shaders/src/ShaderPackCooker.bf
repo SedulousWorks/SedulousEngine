@@ -373,6 +373,183 @@ static class ShaderPackCooker
 		return true;
 	}
 
+	// ---- shaders that name their entry points (an RHI sample's) ----
+
+	/// The stage an `// entry:` line names: "vertex", "fragment", "compute", "mesh", "task",
+	/// "raygen", "closesthit", "anyhit", "miss", "intersection" or "callable". False for any
+	/// other.
+	public static bool ParseShaderStageName(StringView name, out ShaderStage outStage)
+	{
+		outStage = .Vertex;
+		switch (name)
+		{
+		case "vertex": outStage = .Vertex;
+		case "fragment": outStage = .Fragment;
+		case "compute": outStage = .Compute;
+		case "mesh": outStage = .Mesh;
+		case "task": outStage = .Task;
+		case "raygen": outStage = .RayGen;
+		case "closesthit": outStage = .ClosestHit;
+		case "anyhit": outStage = .AnyHit;
+		case "miss": outStage = .Miss;
+		case "intersection": outStage = .Intersection;
+		case "callable": outStage = .Callable;
+		default: return false;
+		}
+		return true;
+	}
+
+	/// The `// entry:` and `// model:` lines of `source` into `outDirectives`. False, with
+	/// `outError`, for a line it cannot read (an unknown stage). A source with no entry line
+	/// names none, and its Entries stay empty.
+	///
+	/// It compiles with CompileOptions.Direct, as it does when it is compiled as it runs, so a
+	/// cooked module is the one compiled.
+	public static bool ParseEntryDirectives(StringView source, ShaderEntryDirectives outDirectives, String outError)
+	{
+		const String cEntryTag = "// entry:";
+		const String cModelTag = "// model:";
+		for (var line in source.Split('\n'))
+		{
+			line.Trim();
+			if (line.StartsWith(cEntryTag))
+			{
+				var rest = line.Substring(cEntryTag.Length);
+				rest.Trim();
+				var space = rest.IndexOf(' ');
+				if (space < 0)
+					space = rest.Length;
+				if (!ParseShaderStageName(rest.Substring(0, space), let stage))
+				{
+					outError.Clear();
+					outError.AppendF("unknown stage in '{}'", line);
+					return false;
+				}
+				var entry = rest.Substring(space);
+				entry.Trim();
+				let directive = new ShaderEntryDirective();
+				directive.Stage = stage;
+				directive.Entry.Set(entry);
+				outDirectives.Entries.Add(directive);
+			}
+			else if (line.StartsWith(cModelTag))
+			{
+				var model = line.Substring(cModelTag.Length);
+				model.Trim();
+				outDirectives.ShaderModel.Set(model);
+			}
+		}
+		return true;
+	}
+
+	/// The pack's name for one entry: the file, relative to the folder cooked
+	/// ("Sample001_Triangle/Shader.hlsl"), and the entry ("VSMain"), as
+	/// "Sample001_Triangle/Shader.hlsl:VSMain".
+	public static void EntryShaderName(StringView file, StringView entry, String outName)
+	{
+		outName.AppendF("{}:{}", file, entry);
+	}
+
+	/// Every .hlsl under `shaderDirectory` and its subfolders, relative to it
+	/// ("Sample004_Compute/Compute.hlsl"), each folder's files then its folders, each sorted, so
+	/// the pack's order, and its bytes, are the same on every host.
+	public static void CollectEntryShaderFiles(StringView shaderDirectory, StringView relative, List<String> outFiles)
+	{
+		let folder = scope String(shaderDirectory);
+		if (!relative.IsEmpty)
+			folder.AppendF("/{}", relative);
+		let files = scope List<String>();
+		let folders = scope List<String>();
+		defer { ClearAndDeleteItems!(files); ClearAndDeleteItems!(folders); }
+		ListDirectory(folder, scope (name, isDirectory) =>
+			{
+				if (isDirectory)
+					folders.Add(new String(name));
+				else if (name.EndsWith(".hlsl"))
+					files.Add(new String(name));
+			});
+		files.Sort(scope (a, b) => String.Compare(a, b, false));
+		folders.Sort(scope (a, b) => String.Compare(a, b, false));
+		for (let file in files)
+		{
+			let path = new String(relative);
+			if (!relative.IsEmpty)
+				path.Append('/');
+			path.Append(file);
+			outFiles.Add(path);
+		}
+		for (let sub in folders)
+		{
+			let path = scope String(relative);
+			if (!relative.IsEmpty)
+				path.Append('/');
+			path.Append(sub);
+			CollectEntryShaderFiles(shaderDirectory, path, outFiles);
+		}
+	}
+
+	/// Fills `pack` with every entry the .hlsl files under the folder name, each under its
+	/// EntryShaderName, in every requested format. A file that names no entry is left out.
+	///
+	/// As with the corpus cook, an error leaves the pack partly filled and Success false.
+	public static void CookEntryShaders(ShaderCompiler compiler, ShaderEntryCookOptions options,
+		CookedShaderPack pack, ShaderCookReport report)
+	{
+		let files = scope List<String>();
+		defer { ClearAndDeleteItems!(files); }
+		CollectEntryShaderFiles(options.ShaderDirectory, "", files);
+
+		for (let file in files)
+		{
+			let source = scope String();
+			if (!ReadStageSource(options.ShaderDirectory, file, source))
+			{
+				report.AddError(file, "could not read the source");
+				continue;
+			}
+			let directives = scope ShaderEntryDirectives();
+			let error = scope String();
+			if (!ParseEntryDirectives(source, directives, error))
+			{
+				report.AddError(file, error);
+				continue;
+			}
+			if (directives.Entries.IsEmpty)
+				continue;
+
+			report.FilesCooked++;
+			for (let directive in directives.Entries)
+			{
+				let name = EntryShaderName(file, directive.Entry, .. scope String());
+				for (let format in options.Formats)
+				{
+					if (format == .Wgsl)
+					{
+						report.AddError(file, "WGSL is not cooked for entry shaders");
+						continue;
+					}
+					let target = (format == .Dxil) ? ShaderTarget.DXIL : ShaderTarget.SPIRV;
+					var compileOptions = CompileOptions.Direct(target, directives.ShaderModel);
+					compileOptions.SourceName = file;
+
+					var compiled = compiler.Compile(.((uint8*)source.Ptr, source.Length), directive.Stage,
+						directive.Entry, target, compileOptions);
+					defer compiled.Dispose();
+					if (!compiled.Success)
+					{
+						report.AddError(name, compiled.Messages.IsEmpty ? "the DXC compile failed" : compiled.Messages);
+						continue;
+					}
+					pack.Add(name, directive.Stage, .None, format, compiled.Bytecode);
+					pack.AddEntryPoint(name, directive.Stage, directive.Entry);
+					report.VariantsCooked++;
+				}
+			}
+		}
+
+		report.Success = report.Errors.IsEmpty;
+	}
+
 	/// "<stem>.<vs|ps|cs>.hlsl" to a stage and a stem; false for anything else.
 	///
 	/// Matches the file provider's naming, so a cooked name and a development name agree.

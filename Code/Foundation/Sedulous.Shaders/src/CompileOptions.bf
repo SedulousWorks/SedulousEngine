@@ -39,4 +39,23 @@ struct CompileOptions
 	public StringView SourceName = default;
 
 	public this() {}
+
+	/// The options a shader the RHI binds directly takes for `target` (an RHI sample's):
+	/// optimized, SPIR-V with the standard binding shifts over four sets, and, for native
+	/// WebGPU, SPIR-V at vulkan1.1, which naga reads. One definition, so a sample compiled as it
+	/// runs and the same sample's shader cooked into a pack are the same bytes.
+	public static CompileOptions Direct(ShaderTarget target, StringView shaderModel, bool forWebGpu = false)
+	{
+		var options = CompileOptions();
+		options.ShaderModel = shaderModel;
+		options.OptimizationLevel = 3;
+		if (target == .SPIRV)
+		{
+			options.BindingShifts = Sedulous.Shaders.BindingShifts.Standard;
+			options.BindingShiftSets = 4;
+			if (forWebGpu)
+				options.SpirvTargetEnvironment = "vulkan1.1"; // naga rejects SPIR-V 1.4 and later
+		}
+		return options;
+	}
 }
