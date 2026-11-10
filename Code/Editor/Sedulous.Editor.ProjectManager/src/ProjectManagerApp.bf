@@ -32,8 +32,9 @@ class ProjectManagerAppServices
 	/// Where `file` of the release of engine `version` (as a person reads it) is fetched from;
 	/// null: the release's own URL. Owned.
 	public delegate void(StringView version, StringView file, String outUrl) ReleaseFile ~ delete _;
-	/// The manager opens on its Samples tab (a run pointed at release files is there to try it).
-	public bool OpenOnSamples = false;
+	/// The tab the manager opens on (Samples for a run pointed at release files, which is there to
+	/// try them; any for a check or a screenshot of one page).
+	public ManagerPage StartPage = .Projects;
 	/// Told each time the manager shows. Owned.
 	public delegate void() Shown ~ delete _;
 	/// The engine version the project in the folder is to open with (the SDK picked for it) into
@@ -107,6 +108,9 @@ class ProjectManagerApp
 	/// The registry the manager lists.
 	public ProjectManagerController Projects => mServices.Projects;
 
+	/// The tab the manager opens on.
+	public ManagerPage StartPage => mServices.StartPage;
+
 	/// The manager over the whole window: made the first time, its projects probed again after,
 	/// its status line cleared. Nothing with no interface.
 	public void Enter()
@@ -162,8 +166,8 @@ class ProjectManagerApp
 			if (mServices.PinEngine != null)
 				services.PinEngine = new (directory, sdk, outWhy) => mServices.PinEngine(directory, sdk, outWhy);
 			mView = new ProjectManagerView(services, LoadMarkup(ProjectManagerView.cMarkupPath));
-			if (mServices.OpenOnSamples)
-				mView.ShowSamples(true);
+			if (mServices.StartPage != .Projects)
+				mView.ShowPage(mServices.StartPage);
 		}
 		else
 			mView.Rebuild(); // back from a project: probed again
