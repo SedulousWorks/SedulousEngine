@@ -8,7 +8,6 @@ namespace Sedulous.Texture.Pipeline;
 
 /// What a render texture holds: Ldr is what a tonemapped view writes and what UI shows; Hdr
 /// keeps the linear values, for a material that wants them.
-[Scriptable(.AllPublic), TypeDomain(ScriptDomains.Pipeline)]
 enum RenderTextureFormat : uint32
 {
 	case Ldr = 0;

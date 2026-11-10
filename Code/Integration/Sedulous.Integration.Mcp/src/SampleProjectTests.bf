@@ -27,8 +27,8 @@ namespace Sedulous.Integration.Mcp;
 /// upgrade their sources leaves them refused by the strict readers. This registers the whole pipeline the way
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
-/// what it needs itself (the pipeline types; the component reflection and the script surface
-/// are comptime here), so it holds when run alone. A sample with game code of its own (the
+/// what it needs itself (the pipeline types; the component reflection is
+/// comptime here), so it holds when run alone. A sample with game code of its own (the
 /// Shader Gallery's, Sky Hopper's, PaperKid's, Lamplight's, Snowline's and Masquerade's Code/) has its package linked here, as its own
 /// editor links it, and reads with the package loaded, so its behaviours' records and its levels'
 /// blocks resolve rather than stay unknown.

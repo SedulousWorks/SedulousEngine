@@ -16,31 +16,21 @@ namespace Sedulous.Engine.GUI;
 [SerializableComponent("gui.Billboard")]
 [DisplayName("GUI Billboard")]
 [Category("GUI")]
-[Scriptable]
 [Description("Shows a GUI document over the entity, such as a nameplate or a health bar.")]
 struct GuiBillboardComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
-	[Scriptable]
 	public Ref<GuiDocument> Document = .(Guid());
 	/// Over the game's sheets, for this billboard alone. Optional.
-	[Scriptable]
 	public Ref<GuiStyleSheet> Sheet = .(Guid());
-	[Scriptable]
 	public Float3 Offset = .(0.0f, 0.0f, 0.0f);
-	[Scriptable]
 	public GuiBillboardOrientation Orientation = .Cylindrical;
-	[Scriptable]
 	public GuiBillboardScale ScaleMode = .Fixed;
 	/// Distance mode: the scale is this over the distance, within MinScale and MaxScale.
-	[Scriptable]
 	public float ReferenceDistance = 10.0f;
-	[Scriptable]
 	public float MinScale = 0.3f;
-	[Scriptable]
 	public float MaxScale = 2.0f;
-	[Scriptable]
 	public bool Visible = true;
 
 	// ---- runtime, never serialized ----
@@ -56,13 +46,6 @@ struct GuiBillboardComponent : ISerializable, IComponentResources
 	public GuiStyleSheet SheetFrom = null;
 
 	public this() {}
-
-	/// The tree built from the document, `Root()` to a script: a node held weakly, as a script
-	/// holds every node, so the GUI's finders reach inside it, as in
-	/// `GuiBillboardComponent::of(guard).Root().Find("meter")`.
-	/// Null until the subsystem has built it. Named apart in Beef, where Root is the runtime field.
-	[Scriptable, ScriptName("Root")]
-	public Node RootNode() => Root;
 
 	public void ResolveResources(ResourceManager manager) mut
 	{

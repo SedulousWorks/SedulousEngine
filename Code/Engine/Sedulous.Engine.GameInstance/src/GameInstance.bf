@@ -41,7 +41,7 @@ namespace Sedulous.Engine.GameInstance;
 /// Its own stop hook (IRunService) ends a session in order: the native game's OnExit, then the
 /// save written, then the networking the game used closed, then the handlers native code gave
 /// Net and Http dropped and the run's random numbers restarted.
-[Scriptable, ScriptService, DisplayName("Run")]
+[DisplayName("Run")]
 class GameInstance : RunBase, IRunService
 {
 	/// What the APP does to a scene the moment one of its tracked loads completes: find a
@@ -218,12 +218,10 @@ class GameInstance : RunBase, IRunService
 
 	public Scene GetScene() => mScene;
 	/// The run's live scene, null until one is.
-	[Scriptable]
 	public Scene CurrentScene => mScene;
 
 	/// This instance has a live current scene, which is what a caller waits on rather than
 	/// assuming one exists at launch.
-	[Scriptable]
 	public bool SceneReady => mScene != null;
 
 	/// Simulated, but NOT rendered by the host: no camera and no swapchain
@@ -239,7 +237,6 @@ class GameInstance : RunBase, IRunService
 	/// instance collapses to the model without it. It is the scene GROUP's scale, so nought
 	/// pauses the run's scenes, behaviours, physics and timers, while the Game orchestrator,
 	/// whose update(dt) does not take this scale, keeps going and can resume.
-	[Scriptable, ScriptName("TimeScale")]
 	public float InstanceTimeScale
 	{
 		get => mSceneManager.TimeScale;
@@ -496,7 +493,6 @@ class GameInstance : RunBase, IRunService
 
 	/// An unknown or expired ticket reads complete rather than pending, so a caller polling
 	/// one in a loop can never hang on it.
-	[Scriptable]
 	public float LoadProgress(int32 ticket)
 	{
 		for (let load in mLoads)
@@ -509,7 +505,6 @@ class GameInstance : RunBase, IRunService
 
 	/// True once terminal, whether the load landed or failed. A retained entry is terminal
 	/// only when it FAILED, every successful one having been retired.
-	[Scriptable]
 	public bool LoadComplete(int32 ticket)
 	{
 		for (let load in mLoads)
@@ -520,7 +515,6 @@ class GameInstance : RunBase, IRunService
 		return true;
 	}
 
-	[Scriptable]
 	public bool LoadFailed(int32 ticket)
 	{
 		for (let load in mLoads)
@@ -559,7 +553,6 @@ class GameInstance : RunBase, IRunService
 	/// Starts a level load by id: the ticket a game polls, or nought when the load could
 	/// not start, a wrong id or no loader. The scene activates through the app's policy once
 	/// its resources land, on the pump, and replaces the current one then.
-	[Scriptable]
 	public int32 LoadSceneAsync(Guid sceneId)
 	{
 		if ((mSceneLoader == null) || (sceneId == Guid()))
@@ -580,7 +573,6 @@ class GameInstance : RunBase, IRunService
 	/// code asked is not destroyed under it. True then means the load started; the current scene
 	/// is still the old one until then. A game's own code (its hooks, its handlers) loads at once,
 	/// and reads the new scene when the call returns.
-	[Scriptable]
 	public bool LoadScene(Guid sceneId)
 	{
 		let ticket = LoadSceneAsync(sceneId);
@@ -620,7 +612,6 @@ class GameInstance : RunBase, IRunService
 
 	/// Ends the run with an exit code: the standalone host stops its loop, an editor stops
 	/// the Game tab's session. Nothing wired is a no-op.
-	[Scriptable]
 	public void RequestExit(int32 code = 0)
 	{
 		if (mExitRequest != null)
@@ -631,7 +622,6 @@ class GameInstance : RunBase, IRunService
 	/// passes, the counters), for a game's debug menu. The app decides what that means; in a
 	/// ShippingRelease build nothing shows. There in every build, so a game compiles the same in
 	/// the shipped one; unwired, a no-op.
-	[Scriptable]
 	public void SetProfilerOverlay(bool shown)
 	{
 		if (mProfilerOverlay != null)
@@ -640,7 +630,6 @@ class GameInstance : RunBase, IRunService
 
 	/// Whether SetProfilerOverlay can show anything here: false in a ShippingRelease build and
 	/// where the app has no overlay, so a debug menu can hide its entry; false unwired.
-	[Scriptable]
 	public bool ProfilerAvailable() => (mProfilerAvailable != null) && mProfilerAvailable();
 
 	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime).
@@ -655,10 +644,8 @@ class GameInstance : RunBase, IRunService
 
 	/// This frame's seconds before any time scale, the context's included. The game's update
 	/// already ignores Run.TimeScale.
-	[Scriptable, ScriptName("RealDeltaTime")]
 	public float RealDeltaTime => mRealDelta;
 	/// Seconds of frames since the run started, unscaled: RunTime as a float.
-	[Scriptable, ScriptName("RealTime")]
 	public float RealTime => (float)mRunTime;
 
 	/// Ticks the native game and moves the run's clock: once per frame, before the run bus

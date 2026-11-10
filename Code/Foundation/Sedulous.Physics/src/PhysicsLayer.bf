@@ -6,7 +6,6 @@ namespace Sedulous.Physics;
 ///
 /// The four ARE the topology and the addressing model. A designer collision group is
 /// additive on top rather than a replacement, and the semantic rules below always win.
-[Scriptable(.AllPublic)]
 enum PhysicsLayer : uint8
 {
 	/// Immovable level geometry. Two statics never pair.

@@ -3,7 +3,6 @@ using Sedulous.Core;
 namespace Sedulous.Materials;
 
 /// The depth test and write preset.
-[Scriptable(.AllPublic)]
 enum DepthMode : uint8
 {
 	case Disabled;

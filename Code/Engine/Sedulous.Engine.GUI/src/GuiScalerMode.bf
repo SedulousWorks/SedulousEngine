@@ -3,7 +3,6 @@ using Sedulous.Core;
 namespace Sedulous.Engine.GUI;
 
 /// How a canvas maps its document's pixels onto its view's.
-[Scriptable(.AllPublic)]
 enum GuiScalerMode : uint8
 {
 	/// One GUI pixel is one target pixel.

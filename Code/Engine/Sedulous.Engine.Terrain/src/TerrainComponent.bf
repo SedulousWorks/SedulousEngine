@@ -16,20 +16,15 @@ namespace Sedulous.Engine.Terrain;
 [SerializableComponent("terrain")]
 [DisplayName("Terrain")]
 [Category("Terrain")]
-[Scriptable]
 [Description("Draws a terrain asset, its heights and painted layers, as ground that navigation can walk.")]
 struct TerrainComponent : ISerializable, IComponentResources
 {
-	[Scriptable]
 	public Ref<TerrainResource> Terrain = .(Guid());
 	/// Terrain casts into the shadow cascades by default, being the thing most shadows land
 	/// on.
-	[Scriptable]
 	public bool CastShadows = true;
-	[Scriptable]
 	public bool Visible = true;
 	/// Positive drops to a coarser level sooner, negative holds detail further out.
-	[Scriptable]
 	public float LodBias = 0.0f;
 
 	public this() {}

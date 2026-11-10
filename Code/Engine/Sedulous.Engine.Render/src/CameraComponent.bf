@@ -14,44 +14,33 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("camera", 3, 1)]
 [DisplayName("Camera")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Views the scene from the entity, in perspective or orthographic, onto the screen or a render texture.")]
 struct CameraComponent : ISerializable, IComponentResources
 {
 	/// The mode first: the inspector shows only the fields of the chosen projection.
-	[Scriptable]
 	public CameraProjection Projection = .Perspective;
 	/// Sixty degrees.
-	[Scriptable]
 	[DisplayName("Field Of View")]
 	[VisibleWhen("Projection=0")]
 	[Description("Vertical field of view (radians)")]
 	[Range(0.1f, 3.04f, 0.01f)]
 	public float FovYRadians = 1.04719755f;
-	[Scriptable]
 	public float Aspect = 16.0f / 9.0f;
-	[Scriptable]
 	public float NearZ = 0.1f;
-	[Scriptable]
 	public float FarZ = 1000.0f;
 	/// The backdrop this view clears to, per camera. Cornflower is the sentinel.
-	[Scriptable]
 	public Color ClearColor = .(0.392f, 0.584f, 0.929f, 1.0f);
 	/// Marks the camera the renderer uses.
-	[Scriptable]
 	public bool Primary = true;
 	/// Orthographic: the world space height the view spans; the width follows the aspect.
-	[Scriptable]
 	[Description("Orthographic: the world-space height the view spans")]
 	[VisibleWhen("Projection=1")]
 	public float OrthoHeight = 10.0f;
 	/// A render texture to draw into instead of the screen, every TargetInterval frames; a
 	/// camera with one is never the screen camera, Primary or not. A texture made at run time
 	/// is assigned straight to the Ref and is never saved.
-	[Scriptable]
 	[Description("A render texture to draw into instead of the screen")]
 	public Ref<Texture> Target = .(Guid());
-	[Scriptable]
 	[Description("Render the target every Nth frame (1 = every frame)")]
 	[Range(1.0f, 60.0f, 1.0f)]
 	public uint32 TargetInterval = 1;

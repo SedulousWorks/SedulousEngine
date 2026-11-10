@@ -16,7 +16,6 @@ namespace Sedulous.Engine.Render;
 [Reflect(.Type | .NonStaticFields)]
 [DisplayName("Post Processing")]
 [Category("Rendering")]
-[Scriptable(.AllPublic)]
 struct PostProcessSettings
 {
 	/// Where the values come from: the scene's own below, or Profile's while the source is

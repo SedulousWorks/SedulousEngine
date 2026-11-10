@@ -301,7 +301,7 @@ class TemplateRowContent : UIWidget
 	}
 }
 
-[GuiReflect, Scriptable]
+[GuiReflect]
 abstract class ItemView : UIWidget, IModelClient
 {
 	private class Pool
@@ -433,7 +433,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// The column whose text picks a row's template (by its `type`).
-	[GuiProperty("row-type-column"), Scriptable]
+	[GuiProperty("row-type-column")]
 	public StringView RowTypeColumn
 	{
 		get => mRowTypeColumn;
@@ -445,9 +445,7 @@ abstract class ItemView : UIWidget, IModelClient
 		}
 	}
 
-	/// Shows a script's list model, keeping it alive while it does (a reference held). `SetModel`
-	/// to a script.
-	[Scriptable, ScriptName("SetModel")]
+	/// Shows a list model, keeping it alive while it does (a reference held).
 	public void SetListModel(ListModel model)
 	{
 		let was = mListModel;
@@ -460,7 +458,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// A model of its own from text, '|' between the items (markup's `items`).
-	[GuiProperty("items"), Scriptable]
+	[GuiProperty("items")]
 	public StringView ItemsText
 	{
 		get
@@ -491,7 +489,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// "single" or "multi" (markup's `selection-mode`).
-	[GuiProperty("selection-mode"), Scriptable]
+	[GuiProperty("selection-mode")]
 	public StringView SelectionModeName
 	{
 		get => (mSelectionMode == .Multi) ? "multi" : "single";
@@ -499,7 +497,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// Every row this tall (0: each measured, estimated until it is).
-	[GuiProperty("row-height"), Scriptable]
+	[GuiProperty("row-height")]
 	public float RowHeight
 	{
 		get => mRowHeight;
@@ -528,7 +526,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// What an unmeasured row is taken to be until it is realised.
-	[GuiProperty("estimated-row-height"), Scriptable]
+	[GuiProperty("estimated-row-height")]
 	public float EstimatedRowHeight
 	{
 		get => mEstimate;
@@ -606,7 +604,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// "list" or "grid" (markup's `layout`).
-	[GuiProperty("layout"), Scriptable]
+	[GuiProperty("layout")]
 	public StringView LayoutModeName
 	{
 		get => (mLayout == .Grid) ? "grid" : "list";
@@ -614,7 +612,7 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// A grid cell's least width (as many fit across as can, stretched to fill) and height.
-	[GuiProperty("cell-width"), Scriptable]
+	[GuiProperty("cell-width")]
 	public float CellWidth
 	{
 		get => mCellSize.X;
@@ -625,7 +623,7 @@ abstract class ItemView : UIWidget, IModelClient
 		}
 	}
 
-	[GuiProperty("cell-height"), Scriptable]
+	[GuiProperty("cell-height")]
 	public float CellHeight
 	{
 		get => mCellSize.Y;
@@ -741,7 +739,7 @@ abstract class ItemView : UIWidget, IModelClient
 	/// The current item (where the keyboard is) when it is selected, else -1; read, it is a read a
 	/// binding records. Set from code it selects that item alone (scrolled into view; no events);
 	/// -1 clears.
-	[GuiProperty("selected", .TwoWay), Scriptable]
+	[GuiProperty("selected", .TwoWay)]
 	public int32 SelectedItem
 	{
 		get
@@ -886,7 +884,6 @@ abstract class ItemView : UIWidget, IModelClient
 			ScrollToItem(item);
 	}
 
-	[Scriptable]
 	public void ClearSelection()
 	{
 		mSelected.Clear();
@@ -895,7 +892,6 @@ abstract class ItemView : UIWidget, IModelClient
 	}
 
 	/// Every item (multi-selection), as Ctrl+A does.
-	[Scriptable]
 	public void SelectAll()
 	{
 		if (mSelectionMode != .Multi)
@@ -916,7 +912,6 @@ abstract class ItemView : UIWidget, IModelClient
 
 	/// Edits `item` in place (`column` for a table), if its model cell is editable and the begin
 	/// hook allows; false otherwise.
-	[Scriptable]
 	public bool BeginEdit(int32 item, int32 column = 0)
 	{
 		if ((mModel == null) || (item < 0) || (item >= (int32)ItemCount()))

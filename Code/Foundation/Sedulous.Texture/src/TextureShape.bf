@@ -8,7 +8,6 @@ namespace Sedulous.Texture;
 /// view.
 ///
 /// Values are stored in cooked textures, so they are appended and never reordered.
-[Scriptable(.AllPublic)]
 enum TextureShape : uint8
 {
 	case Texture2D;

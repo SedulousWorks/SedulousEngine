@@ -19,34 +19,23 @@ namespace Sedulous.Engine.GUI;
 [SerializableComponent("gui.Canvas")]
 [DisplayName("GUI Canvas")]
 [Category("GUI")]
-[Scriptable]
 [Description("Shows a GUI document in its scene, as a menu or a HUD, or draws it into a texture.")]
 struct GuiCanvasComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
-	[Scriptable]
 	public Ref<GuiDocument> Document = .(Guid());
 	/// Over the game's sheets, for this canvas alone. Optional.
-	[Scriptable]
 	public Ref<GuiStyleSheet> Sheet = .(Guid());
 	/// Among the scene's canvases: higher on top.
-	[Scriptable]
 	public int32 Order = 0;
-	[Scriptable]
 	public bool Visible = true;
-	[Scriptable]
 	public bool Interactive = true;
-	[Scriptable]
 	public GuiScalerMode ScalerMode = .ConstantPixel;
-	[Scriptable]
 	public Float2 ReferenceResolution = .(1920.0f, 1080.0f);
-	[Scriptable]
 	public GuiCanvasRenderMode RenderMode = .ScreenOverlay;
 	/// Render texture mode: the texture's size, in pixels.
-	[Scriptable]
 	public uint32 RenderTextureWidth = 512;
-	[Scriptable]
 	public uint32 RenderTextureHeight = 512;
 
 	// ---- runtime, never serialized ----
@@ -75,13 +64,6 @@ struct GuiCanvasComponent : ISerializable, IComponentResources
 	public ITextureView RenderTextureView = null;
 
 	public this() {}
-
-	/// The tree built from the document, `Root()` to a script: a node held weakly, as a script
-	/// holds every node, so the GUI's finders reach inside it, as in
-	/// `GuiCanvasComponent::of(hud).Root().Find("score")`.
-	/// Null until the subsystem has built it. Named apart in Beef, where Root is the runtime field.
-	[Scriptable, ScriptName("Root")]
-	public Node RootNode() => Root;
 
 	public void ResolveResources(ResourceManager manager) mut
 	{

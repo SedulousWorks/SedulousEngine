@@ -8,7 +8,7 @@ namespace Sedulous.GUI;
 // or `auto`: the wheel, the keys while focused, its bars, a focused descendant brought into view.
 // Its children are its content.
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class ScrollView : UIWidget
 {
 	public this()

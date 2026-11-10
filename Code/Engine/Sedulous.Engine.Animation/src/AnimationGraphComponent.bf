@@ -19,13 +19,10 @@ namespace Sedulous.Engine.Animation;
 [SerializableComponent("animation_graph", 2, 1)]
 [DisplayName("Animation Graph")]
 [Category("Animation")]
-[Scriptable]
 [Description("Animates a skeleton through an animation graph's states and blends, posing its skinned meshes.")]
 struct AnimationGraphComponent : ISerializable, IComponentResources
 {
-	[Scriptable]
 	public Ref<Skeleton> Skeleton = .(Guid());
-	[Scriptable]
 	public Ref<AnimationGraph> Graph = .(Guid());
 
 	/// Created lazily by the manager.
@@ -35,19 +32,17 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 	public AnimationGraph PlayerGraph = null;
 
 	/// The feed targets, by stable id. Empty means the owner.
-	[Scriptable]
 	[DisplayName("Mesh Entities")]
 	public List<EntityRef> MeshEntities = null;
 
 	/// Whether to evaluate at all this frame.
-	[Scriptable]
 	public bool Active = true;
 
-	/// What the animator does with its clips' root motion: Ignore by default.
-	[Scriptable, DisplayName("Root Motion")]
+	/// What the animator does with its clips' root motion (root-motion.md P2): Ignore by default.
+	[DisplayName("Root Motion")]
 	public RootMotionMode RootMotion = .Ignore;
 	/// What Entity mode moves: a gameplay root holding the model; empty is this entity.
-	[Scriptable, DisplayName("Root Motion Target")]
+	[DisplayName("Root Motion Target")]
 	public EntityRef RootMotionTarget = .();
 	/// The last tick's root motion, runtime only.
 	[Hidden]

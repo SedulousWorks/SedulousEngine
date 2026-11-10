@@ -9,7 +9,7 @@ namespace Sedulous.GUI;
 // value committing as `change`). It may mask its text as a password: a bullet for each character,
 // copying and cutting taking nothing out, no IME composition.
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class TextField : TextEditBase
 {
 	private float mScrollX = 0.0f;
@@ -31,7 +31,7 @@ class TextField : TextEditBase
 
 	/// A password field draws a bullet for each character and lets nothing out by copy or cut. Its
 	/// value is not read out.
-	[GuiProperty("password", .None, "secret"), Scriptable]
+	[GuiProperty("password", .None, "secret")]
 	public bool IsPassword
 	{
 		get => mPassword;

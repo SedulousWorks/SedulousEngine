@@ -3,7 +3,6 @@ using Sedulous.Core;
 namespace Sedulous.Engine.GUI;
 
 /// Whether a billboard's size follows its distance from the camera.
-[Scriptable(.AllPublic)]
 enum GuiBillboardScale : uint8
 {
 	/// The same size at any distance.

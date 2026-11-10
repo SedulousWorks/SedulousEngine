@@ -26,11 +26,11 @@ class GuiFacadeTests
 		let document = GuiTestEngine.MakeDocument("<Panel id=\"hud-root\"/>");
 		defer delete document;
 		canvases.Add(hud);
-		Test.Assert(canvases.Get(hud).RootNode() == null, "not built yet");
+		Test.Assert(canvases.Get(hud).Root == null, "not built yet");
 
 		canvases.Get(hud).Document.SetDirect(document);
 		engine.Frame();
-		let tree = canvases.Get(hud).RootNode();
+		let tree = canvases.Get(hud).Root;
 		Test.Assert((tree != null) && (tree.FindElement("hud-root") != null), "the canvas's tree, as a node");
 		let root = engine.Gui.FacadeFor(null).Root();
 		Test.Assert((root != null) && (root.FindElement("screens") != null), "the shared Gui's root is the screen tier");

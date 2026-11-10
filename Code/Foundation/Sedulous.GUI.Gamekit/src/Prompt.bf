@@ -90,7 +90,7 @@ class InputPrompts
 }
 
 /// Shows the control that does an action, for the input kind in use.
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Prompt : Label
 {
 	private String mAction = new .() ~ delete _;
@@ -106,7 +106,7 @@ class Prompt : Label
 	}
 
 	/// The action it shows the binding of (markup's and a sheet's `action`).
-	[GuiProperty("action"), Scriptable]
+	[GuiProperty("action")]
 	public StringView ActionName
 	{
 		get => mAction;
@@ -118,7 +118,7 @@ class Prompt : Label
 	}
 
 	/// The set it reads the action in (empty: the highest-priority enabled set that has it).
-	[GuiProperty("set"), Scriptable]
+	[GuiProperty("set")]
 	public StringView Set
 	{
 		get => mSet;
@@ -131,7 +131,7 @@ class Prompt : Label
 
 	/// The binding shown, as a sheet names it (`pad-south`): empty when none is shown. What a
 	/// sheet's [binding=...] reads (glyphs are the sheet's).
-	[GuiProperty("binding"), Scriptable]
+	[GuiProperty("binding")]
 	public StringView BindingName
 	{
 		get => mBinding;
@@ -139,7 +139,7 @@ class Prompt : Label
 
 	/// The kind of the binding shown (`pad`, `keyboard`, `pointer`): empty when none is shown. What
 	/// a sheet's [kind=...] reads.
-	[GuiProperty("kind"), Scriptable]
+	[GuiProperty("kind")]
 	public StringView BindingKind
 	{
 		get => mKind;

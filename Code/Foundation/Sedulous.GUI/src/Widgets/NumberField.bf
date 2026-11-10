@@ -179,7 +179,7 @@ class SpinButton : ButtonBase
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class NumberField : TextField
 {
 	private const float cSpinWidth = 16.0f;
@@ -233,7 +233,7 @@ class NumberField : TextField
 
 	/// The value (a read a binding records). Set from code: constrained, shown, reported to
 	/// bindings, no events.
-	[GuiProperty("value", .TwoWay, "value"), Scriptable]
+	[GuiProperty("value", .TwoWay, "value")]
 	public double Value
 	{
 		get
@@ -251,7 +251,7 @@ class NumberField : TextField
 		}
 	}
 
-	[GuiProperty("min", .None, "min"), Scriptable]
+	[GuiProperty("min", .None, "min")]
 	public double Min
 	{
 		get => mRange.Min;
@@ -263,7 +263,7 @@ class NumberField : TextField
 		}
 	}
 
-	[GuiProperty("max", .None, "max"), Scriptable]
+	[GuiProperty("max", .None, "max")]
 	public double Max
 	{
 		get => mRange.Max;
@@ -275,7 +275,7 @@ class NumberField : TextField
 		}
 	}
 
-	[GuiProperty("step", .None, "step"), Scriptable]
+	[GuiProperty("step", .None, "step")]
 	public double Step
 	{
 		get => mRange.Step;
@@ -288,7 +288,7 @@ class NumberField : TextField
 	}
 
 	/// Page Up and Down's step (0: a tenth of the range).
-	[GuiProperty("page"), Scriptable]
+	[GuiProperty("page")]
 	public double Page
 	{
 		get => mRange.Page;
@@ -300,7 +300,7 @@ class NumberField : TextField
 		}
 	}
 
-	[GuiProperty("allow-greater"), Scriptable]
+	[GuiProperty("allow-greater")]
 	public bool AllowGreater
 	{
 		get => mRange.AllowGreater;
@@ -312,7 +312,7 @@ class NumberField : TextField
 		}
 	}
 
-	[GuiProperty("allow-lesser"), Scriptable]
+	[GuiProperty("allow-lesser")]
 	public bool AllowLesser
 	{
 		get => mRange.AllowLesser;
@@ -325,7 +325,7 @@ class NumberField : TextField
 	}
 
 	/// Whole numbers only: snapped to them and written without decimals.
-	[GuiProperty("integer"), Scriptable]
+	[GuiProperty("integer")]
 	public bool IsInteger
 	{
 		get => mInteger;
@@ -339,7 +339,7 @@ class NumberField : TextField
 	public RangeValue Range => mRange;
 
 	/// Text before and after the number ("$", " px").
-	[GuiProperty("prefix"), Scriptable]
+	[GuiProperty("prefix")]
 	public StringView Prefix
 	{
 		get => mPrefix;
@@ -350,7 +350,7 @@ class NumberField : TextField
 		}
 	}
 
-	[GuiProperty("suffix"), Scriptable]
+	[GuiProperty("suffix")]
 	public StringView Suffix
 	{
 		get => mSuffix;

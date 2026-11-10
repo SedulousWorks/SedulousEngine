@@ -14,7 +14,6 @@ namespace Sedulous.Engine.Audio;
 /// what its scripts play goes into the run (the run's stop, pause and mute reach it) and its
 /// bus volumes are the run's own (a game's options sliders never move the editor's buses or
 /// another run's). A facade with no run plays outside every run, on the engine's buses.
-[Scriptable, ServiceFacade("Audio")]
 class AudioFacade
 {
 	/// BORROWED: the subsystem. The resources come through a getter, read per call, since
@@ -39,13 +38,11 @@ class AudioFacade
 	private uint64 RunGroup => ((mAudio != null) && (mRun != null)) ? mAudio.RunGroupFor(mRun) : 0;
 
 	/// A clip once, on a bus; an invalid voice when the clip did not resolve.
-	[Scriptable]
 	public VoiceHandle PlayOneShot(Guid clip, AudioBus bus = .Effects, float volume = 1.0f, float pitch = 1.0f)
 	{
 		let resolved = Clip(clip);
 		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayOneShot(resolved, bus, volume, pitch, RunGroup) : .();
 	}
-	[Scriptable]
 	public VoiceHandle PlayOneShot3D(Guid clip, Float3 position)
 	{
 		let resolved = Clip(clip);
@@ -53,13 +50,11 @@ class AudioFacade
 		parameters.RunGroup = RunGroup;
 		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayOneShot3D(resolved, position, parameters) : .();
 	}
-	[Scriptable]
 	public VoiceHandle PlayCue(Guid cue, AudioBus bus = .Effects)
 	{
 		let resolved = Cue(cue);
 		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayCueOneShot(resolved, bus, RunGroup) : .();
 	}
-	[Scriptable]
 	public VoiceHandle PlayCue3D(Guid cue, Float3 position)
 	{
 		let resolved = Cue(cue);
@@ -68,56 +63,43 @@ class AudioFacade
 		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayCueOneShot3D(resolved, position, parameters) : .();
 	}
 	/// The music track, cross faded from the run's last.
-	[Scriptable]
 	public VoiceHandle PlayMusic(Guid clip, float crossFadeSeconds = 1.0f, float volume = 1.0f)
 	{
 		let resolved = Clip(clip);
 		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayMusic(resolved, crossFadeSeconds, volume, RunGroup) : .();
 	}
 	/// The run's music, faded out.
-	[Scriptable]
 	public void StopMusic(float fadeSeconds = 1.0f) => mAudio?.StopMusic(fadeSeconds, RunGroup);
 
 	// ---- by content path: the asset as the project names it ("Audio/Jump") ----
 	// A path resolves by type: a clip plays, a cue resolves one weighted variant. One that
 	// names nothing playable gives an invalid voice; a script never faults over content.
 
-	[Scriptable]
 	public VoiceHandle PlayOneShotPath(StringView path, AudioBus bus = .Effects) =>
 		((mAudio != null) && (Resources != null)) ? mAudio.PlayOneShotByPath(Resources, path, bus, RunGroup) : .();
-	[Scriptable]
 	public VoiceHandle PlayOneShot3DPath(StringView path, Float3 position) =>
 		((mAudio != null) && (Resources != null)) ? mAudio.PlayOneShot3DByPath(Resources, path, position, RunGroup) : .();
-	[Scriptable]
 	public VoiceHandle PlayCuePath(StringView path, AudioBus bus = .Effects) =>
 		((mAudio != null) && (Resources != null)) ? mAudio.PlayCueByPath(Resources, path, bus, RunGroup) : .();
 	/// The music track by path, cross faded from the run's last.
-	[Scriptable]
 	public VoiceHandle PlayMusicPath(StringView path, float crossFadeSeconds = 1.0f) =>
 		((mAudio != null) && (Resources != null)) ? mAudio.PlayMusicByPath(Resources, path, Math.Max(crossFadeSeconds, 0.0f), RunGroup) : .();
 
 	// ---- a playing voice: what a game changes while it plays (its music's speed) ----
 
 	/// The run's music voice, invalid when none is playing.
-	[Scriptable]
 	public VoiceHandle MusicVoice() => (Engine != null) ? Engine.MusicVoice(RunGroup) : .();
-	[Scriptable]
 	public bool IsVoicePlaying(VoiceHandle voice) => (Engine != null) && Engine.IsPlaying(voice);
 	/// Stops a voice, fading out over `fadeSeconds` (at least the click free window).
-	[Scriptable]
 	public void StopVoice(VoiceHandle voice, float fadeSeconds = 0.0f) => Engine?.Stop(voice, fadeSeconds);
-	[Scriptable]
 	public void SetVoicePaused(VoiceHandle voice, bool paused) => Engine?.SetPaused(voice, paused);
 	/// The volume at once, or eased there over `seconds`.
-	[Scriptable]
 	public void SetVoiceVolume(VoiceHandle voice, float volume, float seconds = 0.0f) => Engine?.SetVoiceVolume(voice, volume, seconds);
 	/// The pitch, the playback rate (tempo and pitch together: 1.2 plays twenty percent faster
 	/// and higher), at once or eased there over `seconds`.
-	[Scriptable]
 	public void SetVoicePitch(VoiceHandle voice, float pitch, float seconds = 0.0f) => Engine?.SetVoicePitch(voice, pitch, seconds);
 
 	/// A fixed bus's volume: the run's own in a run, the engine's outside one.
-	[Scriptable]
 	public void SetBusVolume(AudioBus bus, float volume)
 	{
 		let engine = Engine;
@@ -130,7 +112,6 @@ class AudioFacade
 		else
 			engine.SetBusVolume(bus, clamped);
 	}
-	[Scriptable]
 	public float BusVolume(AudioBus bus)
 	{
 		let engine = Engine;
@@ -139,7 +120,6 @@ class AudioFacade
 		let run = RunGroup;
 		return (run != 0) ? engine.RunBusVolume(run, bus) : engine.BusVolume(bus);
 	}
-	[Scriptable]
 	public void SetBusMuted(AudioBus bus, bool muted)
 	{
 		let engine = Engine;
@@ -151,7 +131,6 @@ class AudioFacade
 		else
 			engine.SetBusMuted(bus, muted);
 	}
-	[Scriptable]
 	public bool BusMuted(AudioBus bus)
 	{
 		let engine = Engine;
@@ -164,7 +143,6 @@ class AudioFacade
 	/// A bus's volume by name: the four fixed names (master, effects, music, ui, any case)
 	/// first, then the applied layout's named buses; the run's own in a run, the bus's
 	/// outside one. An unknown name changes nothing.
-	[Scriptable]
 	public void SetNamedBusVolume(StringView name, float volume)
 	{
 		let engine = Engine;
@@ -182,7 +160,6 @@ class AudioFacade
 		else
 			engine.SetNamedBusVolume(name, clamped);
 	}
-	[Scriptable]
 	public float NamedBusVolume(StringView name)
 	{
 		let engine = Engine;
@@ -196,7 +173,6 @@ class AudioFacade
 		// An unknown bus reads as untouched, full volume, not silent.
 		return engine.HasNamedBus(name) ? engine.NamedBusVolume(name) : 1.0f;
 	}
-	[Scriptable]
 	public void SetNamedBusMuted(StringView name, bool muted)
 	{
 		let engine = Engine;
@@ -213,7 +189,6 @@ class AudioFacade
 		else
 			engine.SetNamedBusMuted(name, muted);
 	}
-	[Scriptable]
 	public bool NamedBusMuted(StringView name)
 	{
 		let engine = Engine;

@@ -423,7 +423,6 @@ class GUIContext : RefCounted
 	}
 }
 
-[Scriptable]
 class SceneRoot : Node
 {
 	/// A root of `context`'s GUI, beside its other roots (a GUI of one root is a context with

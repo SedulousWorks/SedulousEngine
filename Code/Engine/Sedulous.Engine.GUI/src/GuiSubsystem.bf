@@ -52,7 +52,7 @@ namespace Sedulous.Engine.GUI;
 ///
 /// The facades: `Gui` to a run's game code is a GuiFacade whose root is that run's screen tier
 /// (FacadeFor), offered among the run's services, the shared tier's on the application's;
-/// the components reach their trees as nodes (`RootNode()`).
+/// the components reach their trees as nodes (their `Root`).
 class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 {
 	/// Early in the frame, so a game's GUI sees the same frame; all work in BeginFrame.

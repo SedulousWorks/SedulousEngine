@@ -620,8 +620,8 @@ class PhysicsWorld
 	/// against it, and frees it.
 	///
 	/// A cooked, plane or heightfield kind is not a query shape and answers false, so the
-	/// query no-ops rather than asserting. The dimensions come straight off a script surface,
-	/// so a non positive one is refused HERE instead of feeding the broad phase a NaN.
+	/// query no-ops rather than asserting. The dimensions come straight from game code, so a
+	/// non positive one is refused HERE instead of feeding the broad phase a NaN.
 	private bool WithQueryShape(QueryShape query, delegate void(JPH_Shape* shape) body)
 	{
 		JPH_Shape* shape = null;

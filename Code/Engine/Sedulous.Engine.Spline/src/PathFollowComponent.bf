@@ -13,25 +13,18 @@ namespace Sedulous.Engine.Spline;
 [SerializableComponent("path_follow")]
 [DisplayName("Path Follow")]
 [Category("Utility")]
-[Scriptable]
 [Description("Moves the entity along another entity's spline at a set speed, optionally facing its direction.")]
 struct PathFollowComponent : ISerializable
 {
 	/// The entity carrying the spline.
-	[Scriptable]
 	public EntityRef Spline = .();
 	/// World units per second along the curve.
-	[Scriptable]
 	public float Speed = 1.0f;
 	/// Where along the curve it currently is.
-	[Scriptable]
 	public float Distance = 0.0f;
-	[Scriptable]
 	public bool Playing = true;
-	[Scriptable]
 	public bool Loop = true;
 	/// Face -Z along the curve direction.
-	[Scriptable]
 	public bool AlignToTangent = true;
 
 	public this() {}

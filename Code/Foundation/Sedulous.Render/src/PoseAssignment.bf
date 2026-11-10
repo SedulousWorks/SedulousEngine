@@ -7,7 +7,6 @@ namespace Sedulous.Render;
 ///
 /// Its cases are reflected: the MCP scene schema and the inspector name them.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum PoseAssignment : uint8
 {
 	/// Scattered, and decorrelated from any spatial layout: the natural default for a crowd

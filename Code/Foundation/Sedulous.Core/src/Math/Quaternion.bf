@@ -4,7 +4,6 @@ namespace Sedulous.Core;
 
 /// Unit quaternion rotation, stored (X, Y, Z, W).
 [CRepr]
-[Scriptable(.AllPublic)]
 struct Quaternion
 {
 	public float X = 0.0f;
@@ -13,10 +12,8 @@ struct Quaternion
 	public float W = 1.0f;
 
 	[Inline]
-	[Scriptable]
 	public this() { }
 	[Inline]
-	[Scriptable]
 	public this(float x, float y, float z, float w)
 	{
 		this.X = x; this.Y = y; this.Z = z; this.W = w;
@@ -24,7 +21,6 @@ struct Quaternion
 
 	public const Quaternion Identity = .(0.0f, 0.0f, 0.0f, 1.0f);
 
-	[Scriptable]
 	public static Quaternion FromAxisAngle(Float3 axis, float radians)
 	{
 		let half = radians * 0.5f;
@@ -44,19 +40,14 @@ struct Quaternion
 
 static
 {
-	[Scriptable]
-	[Scriptable]
 	public static Quaternion Conjugate(Quaternion q) => .(-q.X, -q.Y, -q.Z, q.W);
 
-	[Scriptable]
 	[Inline]
 	public static float Dot(Quaternion a, Quaternion b) =>
 		a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
 	/// General inverse, conjugate over the squared length. Equals the conjugate for a
 	/// unit quaternion.
-	[Scriptable]
-	[Scriptable]
 	public static Quaternion Inverse(Quaternion q)
 	{
 		let lengthSq = Dot(q, q);
@@ -66,8 +57,6 @@ static
 		return .(-q.X * inv, -q.Y * inv, -q.Z * inv, q.W * inv);
 	}
 
-	[Scriptable]
-	[Scriptable]
 	public static Quaternion Normalized(Quaternion q)
 	{
 		let lengthSq = Dot(q, q);
@@ -77,8 +66,6 @@ static
 		return .(q.X * inv, q.Y * inv, q.Z * inv, q.W * inv);
 	}
 
-	[Scriptable]
-	[Scriptable]
 	public static Float3 RotateVector(Quaternion q, Float3 v)
 	{
 		let u = Float3(q.X, q.Y, q.Z);
@@ -86,13 +73,11 @@ static
 		return u * (2.0f * Dot(u, v)) + v * (s * s - Dot(u, u)) + Cross(u, v) * (2.0f * s);
 	}
 
-	[Scriptable]
 	public static bool NearlyEqual(Quaternion a, Quaternion b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) && NearlyEqual(a.Y, b.Y, epsilon) &&
 		NearlyEqual(a.Z, b.Z, epsilon) && NearlyEqual(a.W, b.W, epsilon);
 
 	/// Spherical linear interpolation along the shortest arc; the result is unit.
-	[Scriptable]
 	public static Quaternion Slerp(Quaternion a, Quaternion b, float t)
 	{
 		var b;
@@ -126,7 +111,6 @@ static
 	}
 
 	/// Rotation matrix for a unit quaternion, row-vector convention, XNA layout.
-	[Scriptable]
 	public static Float4x4 RotationMatrix(Quaternion q)
 	{
 		let xx = q.X * q.X; let yy = q.Y * q.Y; let zz = q.Z * q.Z;
@@ -140,7 +124,6 @@ static
 	}
 
 	/// Yaw (Y), pitch (X), roll (Z) in radians. XNA convention: q = qY * qX * qZ.
-	[Scriptable]
 	public static Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
 	{
 		let sr = Sin(roll * 0.5f);  let cr = Cos(roll * 0.5f);
@@ -155,7 +138,6 @@ static
 
 	/// FromYawPitchRoll's inverse, pitch clamped to +-90 degrees. At the gimbal poles
 	/// yaw and roll are not unique. This is the editor's rotation-as-euler seam.
-	[Scriptable]
 	public static void ToYawPitchRoll(Quaternion q, out float yaw, out float pitch, out float roll)
 	{
 		pitch = Asin(Clamp(2.0f * (q.W * q.X - q.Y * q.Z), -1.0f, 1.0f));
@@ -165,7 +147,6 @@ static
 
 	/// RotationMatrix's inverse: the unit quaternion of a pure rotation matrix, using
 	/// Shepperd's method over the trace and the dominant diagonal element.
-	[Scriptable]
 	public static Quaternion QuaternionFromRotationMatrix(Float4x4 m)
 	{
 		let trace = m.M[0][0] + m.M[1][1] + m.M[2][2];
@@ -213,7 +194,6 @@ static
 	/// scale from the basis row lengths, rotation from the normalized basis. Returns
 	/// false with identity outputs when a scale axis is zero, since the rotation is then
 	/// unrecoverable. A mirrored matrix lands the sign on an arbitrary axis.
-	[Scriptable]
 	public static bool Decompose(Float4x4 m, out Float3 translation, out Quaternion rotation,
 		out Float3 scale)
 	{

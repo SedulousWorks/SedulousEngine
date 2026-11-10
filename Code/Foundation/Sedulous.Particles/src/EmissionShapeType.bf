@@ -4,7 +4,6 @@ using Sedulous.Core;
 namespace Sedulous.Particles;
 
 [Reflect(.StaticFields)] // its cases, by name, for a row to offer
-[Scriptable(.AllPublic)]
 enum EmissionShapeType : uint8
 {
 	case Point;

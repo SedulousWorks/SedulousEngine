@@ -92,7 +92,6 @@ class RunSave
 /// `Save`: the calling run's save, as `Save.SetInt("best.level2", 4210)`,
 /// `Save.GetInt("best.level2", 0)`. The run writes what changed as it ends; `Flush` writes now.
 /// A script outside a run (an editor tool, Simulate) reads every fallback and writes nowhere.
-[Scriptable, ServiceFacade("Save")]
 class SaveFacade
 {
 	/// BORROWED: the run's save; null outside a run.
@@ -103,10 +102,8 @@ class SaveFacade
 		mSave = save;
 	}
 
-	[Scriptable]
 	public bool Has(StringView key) => (mSave != null) && mSave.Values.Has(key);
 
-	[Scriptable]
 	public void Remove(StringView key)
 	{
 		if ((mSave != null) && mSave.Values.Remove(key))
@@ -114,17 +111,14 @@ class SaveFacade
 	}
 
 	/// Forgets every saved value.
-	[Scriptable]
 	public void Clear()
 	{
 		if ((mSave != null) && mSave.Values.Clear())
 			mSave.MarkChanged();
 	}
 
-	[Scriptable]
 	public int32 GetInt(StringView key, int32 fallback) => (mSave != null) ? mSave.Values.GetInt(key, fallback) : fallback;
 
-	[Scriptable]
 	public void SetInt(StringView key, int32 value)
 	{
 		if ((mSave != null) && mSave.Values.SetInt(key, value))
@@ -132,30 +126,24 @@ class SaveFacade
 	}
 
 	/// A value saved as an int reads as a float too.
-	[Scriptable]
 	public float GetFloat(StringView key, float fallback) => (mSave != null) ? mSave.Values.GetFloat(key, fallback) : fallback;
 
-	[Scriptable]
 	public void SetFloat(StringView key, float value)
 	{
 		if ((mSave != null) && mSave.Values.SetFloat(key, value))
 			mSave.MarkChanged();
 	}
 
-	[Scriptable]
 	public bool GetBool(StringView key, bool fallback) => (mSave != null) ? mSave.Values.GetBool(key, fallback) : fallback;
 
-	[Scriptable]
 	public void SetBool(StringView key, bool value)
 	{
 		if ((mSave != null) && mSave.Values.SetBool(key, value))
 			mSave.MarkChanged();
 	}
 
-	[Scriptable]
 	public StringView GetString(StringView key, StringView fallback) => (mSave != null) ? mSave.Values.GetText(key, fallback) : fallback;
 
-	[Scriptable]
 	public void SetString(StringView key, StringView value)
 	{
 		if ((mSave != null) && mSave.Values.SetText(key, value))
@@ -163,7 +151,6 @@ class SaveFacade
 	}
 
 	/// A list of numbers, saved whole (a recorded run): `Save.SetFloats("ghost", samples)`.
-	[Scriptable]
 	public void SetFloats(StringView key, List<float> values)
 	{
 		if ((mSave != null) && (values != null) && mSave.Values.SetFloats(key, values))
@@ -172,7 +159,6 @@ class SaveFacade
 
 	/// Fills `outValues` with the saved list, answering whether there was one: false, the array
 	/// left empty, when the key is absent or holds another kind.
-	[Scriptable]
 	public bool GetFloats(StringView key, List<float> outValues)
 	{
 		if (outValues == null)
@@ -186,6 +172,5 @@ class SaveFacade
 	}
 
 	/// Writes now if anything changed; false if the write failed or the run has no save file.
-	[Scriptable]
 	public bool Flush() => (mSave != null) && mSave.Flush();
 }

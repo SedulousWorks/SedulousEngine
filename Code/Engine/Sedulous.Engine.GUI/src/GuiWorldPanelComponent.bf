@@ -17,26 +17,19 @@ namespace Sedulous.Engine.GUI;
 [SerializableComponent("gui.WorldPanel")]
 [DisplayName("GUI World Panel")]
 [Category("GUI")]
-[Scriptable]
 [Description("Shows a GUI document on a panel in the world, in the entity's plane, optionally taking the pointer.")]
 struct GuiWorldPanelComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
-	[Scriptable]
 	public Ref<GuiDocument> Document = .(Guid());
 	/// Over the game's sheets, for this panel alone. Optional.
-	[Scriptable]
 	public Ref<GuiStyleSheet> Sheet = .(Guid());
 	/// The quad's extent in the world.
-	[Scriptable]
 	public Float2 SizeMeters = .(1.6f, 0.9f);
 	/// The texture's density.
-	[Scriptable]
 	public float PixelsPerMeter = 200.0f;
-	[Scriptable]
 	public bool Interactive = true;
-	[Scriptable]
 	public bool Visible = true;
 
 	// ---- runtime, never serialized ----
@@ -60,13 +53,6 @@ struct GuiWorldPanelComponent : ISerializable, IComponentResources
 	public ITextureView RenderTextureView = null;
 
 	public this() {}
-
-	/// The tree built from the document, `Root()` to a script: a node held weakly, as a script
-	/// holds every node, so the GUI's finders reach inside it, as in
-	/// `GuiWorldPanelComponent::of(terminal).Root().Find("screen")`.
-	/// Null until the subsystem has built it. Named apart in Beef, where Root is the runtime field.
-	[Scriptable, ScriptName("Root")]
-	public Node RootNode() => Root;
 
 	public void ResolveResources(ResourceManager manager) mut
 	{

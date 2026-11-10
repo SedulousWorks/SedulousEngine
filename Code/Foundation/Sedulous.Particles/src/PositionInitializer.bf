@@ -6,7 +6,6 @@ namespace Sedulous.Particles;
 /// Places a particle by sampling the emission shape.
 [DisplayName("Position")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class PositionInitializer : ParticleInitializer
 {
 	public EmissionShape Shape = .Point();

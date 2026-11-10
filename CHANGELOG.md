@@ -194,6 +194,12 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   delegates.
 - GUI sandbox: its pages' and game menu's scripts no longer run, its Code page no longer checks
   the script it shows nor completes the script API, and `--menu-call` is gone.
+- Engine: `[Scriptable]` and the other marks that put a type on the script surface
+  (`ScriptName`, `ServiceFacade`, `TypeDomain` and the rest); game code that still carries them
+  drops them. `Guid.Nil` and `Guid.FromString` go with them (`IsNil` stays).
+- GUI: the script-shaped duplicates of native calls: a tween's `EaseScript`, a group's
+  `AddScript` and `AddGroupScript`, the toast host's `PostScript` and `PostContentScript`, a
+  node's `ElementChildCount`, and the GUI components' `RootNode()` (their `Root` is the tree).
 - Editor: Edit > Export Templates, the Export dialog's template choice and its Export Templates
   button, and the templates folder in Preferences: an export builds its player, so there is no
   template to pick or install. A preset is shown by its platform's icon.

@@ -4,7 +4,6 @@ namespace Sedulous.Navigation;
 
 /// What a live agent is doing, as OUR stable contract rather than the backend's internals,
 /// so a script or a tool may key on it.
-[Scriptable(.AllPublic)]
 enum NavAgentCrowdState : uint8
 {
 	case Invalid = 0;

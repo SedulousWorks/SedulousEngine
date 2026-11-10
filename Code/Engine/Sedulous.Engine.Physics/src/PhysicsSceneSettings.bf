@@ -18,14 +18,10 @@ namespace Sedulous.Engine.Physics;
 [Reflect(.Type | .NonStaticFields)]
 [DisplayName("Physics")]
 [Category("Physics")]
-[Scriptable]
 class PhysicsSceneSettings : ISerializable
 {
-	[Scriptable]
 	public Float3 Gravity = .(0.0f, -9.81f, 0.0f);
-	[Scriptable]
 	public int32 CollisionSteps = 1;
-	[Scriptable]
 	public bool DebugDraw = false;
 
 	[Hidden]

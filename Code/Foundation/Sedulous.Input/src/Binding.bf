@@ -10,7 +10,6 @@ namespace Sedulous.Input;
 /// whole thing as one grid row instead of a shape that changes per source.
 /// Reflected: the editor's input map page lists its fields as the grid's rows.
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
-[Scriptable(.AllPublic)]
 struct Binding
 {
 	public BindingSource Source = .Key;

@@ -12,7 +12,6 @@ namespace Sedulous.Engine.Physics;
 ///
 /// It holds the entity handle outright: there is no facade between the query and the
 /// caller to need a packed form unpacked on demand.
-[Scriptable(.AllPublic)]
 struct PhysicsHit
 {
 	public bool Hit = false;

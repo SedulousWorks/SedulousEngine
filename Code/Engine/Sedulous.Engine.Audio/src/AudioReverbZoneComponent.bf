@@ -12,22 +12,15 @@ namespace Sedulous.Engine.Audio;
 [SerializableComponent("audio.ReverbZone")]
 [DisplayName("Reverb Zone")]
 [Category("Audio")]
-[Scriptable]
 [Description("Adds reverb to the scene's sound while the listener is inside its sphere.")]
 struct AudioReverbZoneComponent : ISerializable
 {
-	[Scriptable]
 	public float Radius = 8.0f;
 	/// The fraction of the radius over which the wet signal fades from nothing to full.
-	[Scriptable]
 	public float EdgeFade = 0.25f;
-	[Scriptable]
 	public float RoomSize = 0.6f;
-	[Scriptable]
 	public float Damping = 0.4f;
-	[Scriptable]
 	public float WetLevel = 0.5f;
-	[Scriptable]
 	public bool Enabled = true;
 
 	public this() {}

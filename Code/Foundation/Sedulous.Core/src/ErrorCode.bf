@@ -6,7 +6,6 @@ namespace Sedulous.Core;
 ///
 /// Beef already has Result<T, TErr>, so a status is Result<void, ErrorCode> and success is
 /// the Ok case rather than an enum member: the enum names failures only.
-[Scriptable(.AllPublic)]
 enum ErrorCode
 {
 	Unknown,

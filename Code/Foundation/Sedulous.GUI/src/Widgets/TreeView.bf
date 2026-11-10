@@ -242,7 +242,7 @@ class TreeItem : UIWidget
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class TreeView : ItemView
 {
 	private struct FlatEntry
@@ -295,7 +295,7 @@ class TreeView : ItemView
 
 	/// A level's indent (`indent-width`) and the column a row keeps for its arrow (`arrow-size`),
 	/// the arrow drawn to fit it: a sheet sets them (an editor's density).
-	[GuiProperty("indent-width"), Scriptable]
+	[GuiProperty("indent-width")]
 	public float IndentWidth
 	{
 		get => mIndentWidth;
@@ -306,7 +306,7 @@ class TreeView : ItemView
 		}
 	}
 
-	[GuiProperty("arrow-size"), Scriptable]
+	[GuiProperty("arrow-size")]
 	public float ArrowSize
 	{
 		get => mArrowSize;
@@ -318,7 +318,7 @@ class TreeView : ItemView
 	}
 
 	/// A row's icon's square (`icon-size`), where the model gives one.
-	[GuiProperty("icon-size"), Scriptable]
+	[GuiProperty("icon-size")]
 	public float IconSize
 	{
 		get => mIconSize;
@@ -330,13 +330,11 @@ class TreeView : ItemView
 	}
 
 	// Expansion by item (a visible row).
-	[Scriptable]
 	public void ExpandItem(int32 item)
 	{
 		SetExpanded(item, true);
 	}
 
-	[Scriptable]
 	public void CollapseItem(int32 item)
 	{
 		SetExpanded(item, false);

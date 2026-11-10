@@ -14,19 +14,15 @@ namespace Sedulous.Engine.Navigation;
 [Reflect(.Type | .NonStaticFields)]
 [DisplayName("Navigation")]
 [Category("Navigation")]
-[Scriptable]
 struct NavigationSceneSettings : ISerializable
 {
 	/// Draws the LOADED navmesh surface, which is what agents actually path on.
-	[Scriptable]
 	public bool DebugDraw = false;
 	/// Adds each agent's target line and its crowd state.
-	[Scriptable]
 	public bool DebugDrawPaths = false;
 	/// The last bake's intermediate data, the walkable spans and the region contours: HOW the
 	/// bake arrived at the mesh. Cleared per bake; the live mesh above stays the ground truth
 	/// for what a query sees.
-	[Scriptable]
 	public bool DebugDrawBakeStages = false;
 
 	public this() {}

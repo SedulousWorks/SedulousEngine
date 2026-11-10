@@ -10,7 +10,6 @@ namespace Sedulous.Input;
 /// it as a grid rather than a tree of variants.
 /// Reflected: the editor's input map page offers its cases as a row's choices.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum BindingSource : uint8
 {
 	/// Code is a KeyCode, with an optional required modifier mask.

@@ -12,7 +12,6 @@ namespace Sedulous.Input;
 /// its own, without either knowing about the other.
 /// Reflected: the editor's input map page lists its fields as the grid's rows.
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
-[Scriptable(.AllPublic)]
 class ActionSet
 {
 	public String Name = new .() ~ delete _;

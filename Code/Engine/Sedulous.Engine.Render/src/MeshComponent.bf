@@ -26,11 +26,9 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("mesh", 5, 4)]
 [DisplayName("Mesh")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Draws a mesh with its materials at the entity's transform.")]
 struct MeshComponent : ISerializable, IComponentResources
 {
-	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
 	/// The serialized identities.
 	[Description("Material slots, indexed by the mesh's submesh material index. Slot 0 also covers single-material meshes and any submesh whose index has no slot.")]
@@ -42,15 +40,12 @@ struct MeshComponent : ISerializable, IComponentResources
 	public List<Material> MaterialCache = null;
 	/// A per instance tint, multiplied into the shaded colour. Distinct per entity even when
 	/// many share one mesh and material, so it rides the per instance path.
-	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
-	[Scriptable]
 	public bool Visible = true;
 	/// How far the mesh is faded out, nought (solid) to one (gone), drawn as a screen door
 	/// dither: a cutaway wall between the camera and the player. Only its camera pixels thin
 	/// out; it still casts its whole shadow, so the room behind a cut away wall stays as dark as
 	/// it was. Hiding it by Visible would pop it and drop its shadow with it.
-	[Scriptable]
 	[Range(0.0f, 1.0f, 0.01f)]
 	[Description("Fades the mesh out with a dither, 0 = solid, 1 = gone (a cutaway). Its shadow stays whole.")]
 	public float Fade = 0.0f;
@@ -77,13 +72,11 @@ struct MeshComponent : ISerializable, IComponentResources
 
 	/// Above zero switches to a coarser level sooner, each unit halving the effective screen
 	/// coverage; below zero holds detail longer.
-	[Scriptable]
 	[DisplayName("LOD Bias")]
 	[Description("Positive selects coarser LODs sooner (each unit halves the effective screen coverage); negative holds detail longer.")]
 	public float LodBias = 0.0f;
 	/// Pins one level for a debug view or a cinematic. Minus one is automatic, and anything
 	/// else is clamped to the chain.
-	[Scriptable]
 	[DisplayName("Force LOD")]
 	[Description("Pin one LOD level (0 = finest). -1 = automatic selection.")]
 	public int32 ForceLod = -1;

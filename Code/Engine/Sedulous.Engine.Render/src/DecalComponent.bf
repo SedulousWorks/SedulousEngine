@@ -16,7 +16,6 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("decal")]
 [DisplayName("Decal")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Projects a texture onto the surfaces inside the entity's box, along its local Z axis.")]
 struct DecalComponent : ISerializable, IComponentResources
 {
@@ -24,19 +23,13 @@ struct DecalComponent : ISerializable, IComponentResources
 	/// asset.
 	public ITextureView Texture = null;
 	/// The cooked texture: what an editor picks, what a script sets and what serializes.
-	[Scriptable]
 	public Ref<Texture> TextureAsset = .(Guid());
-	[Scriptable]
 	public Float3 Size = .(1.0f, 1.0f, 1.0f);
-	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	/// Angle fade start, in radians.
-	[Scriptable]
 	public float FadeStart = 0.0f;
 	/// Angle fade end, in radians. Roughly seventy five degrees.
-	[Scriptable]
 	public float FadeEnd = 1.30f;
-	[Scriptable]
 	public bool Visible = true;
 
 	public this() {}

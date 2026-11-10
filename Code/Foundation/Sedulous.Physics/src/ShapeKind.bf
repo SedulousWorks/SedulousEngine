@@ -6,7 +6,6 @@ namespace Sedulous.Physics;
 ///
 /// Heightfield is appended rather than inserted, which keeps every value already written
 /// into cooked data meaning what it did.
-[Scriptable(.AllPublic)]
 enum ShapeKind : uint8
 {
 	case Box;

@@ -18,30 +18,22 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("reflection_probe", 2, 1)]
 [DisplayName("Reflection Probe")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Captures the scene around the entity into a cubemap that gives reflections to surfaces in its box.")]
 struct ReflectionProbeComponent : ISerializable
 {
 	/// World units, axis aligned.
-	[Scriptable]
 	public Float3 HalfExtents = .(5.0f, 5.0f, 5.0f);
 	/// The soft falloff width, inward from the box edge.
-	[Scriptable]
 	[Range(0.0f, 10.0f, 0.1f)]
 	[Description("Fade width at the probe volume's edge")]
 	public float BlendDistance = 1.0f;
-	[Scriptable]
 	[Range(0.0f, 5.0f, 0.05f)]
 	public float Intensity = 1.0f;
 	/// The tie break when two volumes overlap. Higher wins.
-	[Scriptable]
 	public uint32 Priority = 0;
-	[Scriptable]
 	public ProbeUpdateMode Update = .Static;
 	/// Box projects the reflection ray, rather than treating it as infinitely far away.
-	[Scriptable]
 	public bool Parallax = true;
-	[Scriptable]
 	public bool Enabled = true;
 	/// Runtime: the capture requests made so far (never serialized). A Manual probe captures
 	/// only when asked; any probe recaptures once when asked (after its room changed).
@@ -52,7 +44,6 @@ struct ReflectionProbeComponent : ISerializable
 
 	/// Asks for one capture: a Manual probe's only way to capture again, and a Static one's
 	/// after what it reflects has changed.
-	[Scriptable]
 	public void Capture() mut => CaptureRequests++;
 
 	public void Serialize(ISerializer ar) mut

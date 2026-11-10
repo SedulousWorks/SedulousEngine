@@ -7,7 +7,6 @@ namespace Sedulous.Engine.Render;
 ///
 /// Its cases are reflected: the MCP scene schema names them for an agent.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum TonemapOperator : uint32
 {
 	/// Clipped outright, which is the honest zero cost option.

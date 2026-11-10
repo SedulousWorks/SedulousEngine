@@ -12,7 +12,6 @@ namespace Sedulous.GUI;
 // and GetBool.
 
 /// `Gui`: the game's GUI, its data, its commands and keys, its localized text.
-[Scriptable, ServiceFacade("Gui")]
 class GuiFacade
 {
 	/// BORROWED: the root the game builds under, when it does not resolve one per call.
@@ -44,14 +43,12 @@ class GuiFacade
 	private GUIContext Context => RootNode?.Context;
 
 	/// The game's root, or null when its host gave it none.
-	[Scriptable]
 	public Node Root() => RootNode;
 
 	// ---- Data ----
 
 	/// The GUI's data value `name` as a number (0 when unset or not a number). A read a binding
 	/// follows.
-	[Scriptable]
 	public double GetNumber(StringView name)
 	{
 		let data = Context?.Data;
@@ -63,7 +60,6 @@ class GuiFacade
 	}
 
 	/// The value as text (empty when unset). A read a binding follows.
-	[Scriptable]
 	public StringView GetText(StringView name)
 	{
 		mText.Clear();
@@ -73,7 +69,6 @@ class GuiFacade
 	}
 
 	/// The value as a boolean (false when unset or not one). A read a binding follows.
-	[Scriptable]
 	public bool GetBool(StringView name)
 	{
 		let data = Context?.Data;
@@ -85,14 +80,12 @@ class GuiFacade
 	}
 
 	/// Sets the GUI's data value `name` (whatever is bound to it follows).
-	[Scriptable]
 	public void SetNumber(StringView name, double value)
 	{
 		if (let data = Context?.Data)
 			data.Set(name, System.Variant.Create(value));
 	}
 
-	[Scriptable]
 	public void SetText(StringView name, StringView value)
 	{
 		if (let data = Context?.Data)
@@ -103,7 +96,6 @@ class GuiFacade
 		}
 	}
 
-	[Scriptable]
 	public void SetBool(StringView name, bool value)
 	{
 		if (let data = Context?.Data)
@@ -112,7 +104,6 @@ class GuiFacade
 
 	/// Sets `name` to a node, held weakly: the value reads as no node once the node is gone. Null
 	/// clears it.
-	[Scriptable]
 	public void SetNode(StringView name, Node node)
 	{
 		let data = Context?.Data;
@@ -130,7 +121,6 @@ class GuiFacade
 
 	/// What drives the GUI now: "pointer", "keyboard" or "pad" (the root hears `inputkind` when it
 	/// changes). A read a binding follows.
-	[Scriptable]
 	public StringView InputKind()
 	{
 		let dispatcher = RootNode?.EventDispatcher;
@@ -138,27 +128,22 @@ class GuiFacade
 	}
 
 	/// Moves data value `name` to `to` over `seconds` (GUIContext.AnimateData), running; null when
-	/// the host gave no GUI. `Tween` to a script.
-	[Scriptable, ScriptName("Tween"), ScriptReturnsReference]
+	/// the host gave no GUI.
 	public Tween TweenData(StringView name, double to, float seconds, StringView easing) => Context?.AnimateData(name, to, seconds, easing);
 
 	/// The same, not yet running: a step for a group.
-	[Scriptable, ScriptReturnsReference]
 	public Tween CreateTween(StringView name, double to, float seconds, StringView easing) => Context?.CreateDataTween(name, to, seconds, easing);
 
 	// ---- Localized text ----
 
 	/// The GUI's text for `key`: the key itself when no table has it, or with no localization.
-	/// `Tr` to a script.
-	[Scriptable, ScriptName("Tr")]
 	public StringView Translate(StringView key)
 	{
 		let localization = Context?.Localization;
 		return (localization != null) ? localization.Text(key) : key;
 	}
 
-	/// The key's plural form for `count`, its `{0}` the count. `TrCount` to a script.
-	[Scriptable, ScriptName("TrCount")]
+	/// The key's plural form for `count`, its `{0}` the count.
 	public StringView TranslateCount(StringView key, int32 count)
 	{
 		let localization = Context?.Localization;
@@ -170,7 +155,6 @@ class GuiFacade
 	}
 
 	/// The GUI's language ("en", "ar-EG"); empty with no localization.
-	[Scriptable]
 	public StringView Language()
 	{
 		let localization = Context?.Localization;
@@ -180,21 +164,18 @@ class GuiFacade
 	// ---- Commands and keys ----
 
 	/// Defines command `id` with its label (the id when empty).
-	[Scriptable]
 	public void DefineCommand(StringView id, StringView label)
 	{
 		if (let context = Context)
 			context.DefineCommand(id).Label = label.IsEmpty ? id : label;
 	}
 
-	[Scriptable]
 	public void SetCommandEnabled(StringView id, bool enabled)
 	{
 		if (let context = Context)
 			context.DefineCommand(id).Enabled = enabled;
 	}
 
-	[Scriptable]
 	public void SetCommandChecked(StringView id, bool @checked)
 	{
 		if (let context = Context)
@@ -202,23 +183,19 @@ class GuiFacade
 	}
 
 	/// Why it is disabled, which a control bound to it shows while it is (a tool bar's tooltip).
-	[Scriptable]
 	public void SetCommandDisabledReason(StringView id, StringView reason)
 	{
 		if (let context = Context)
 			context.DefineCommand(id).DisabledReason = reason;
 	}
 
-	[Scriptable]
 	public bool IsCommandChecked(StringView id) => Context?.Commands.Find(id)?.Checked ?? false;
 
 	/// Runs `id` along the focus path; true when a handler ran.
-	[Scriptable]
 	public bool RunCommand(StringView id) => RootNode?.RunCommand(id) ?? false;
 
 	/// Binds `keys` ("ctrl-s", "pad-east", a chord) to `command` where `context` holds (empty:
 	/// everywhere); false when they do not parse.
-	[Scriptable]
 	public bool BindKey(StringView keys, StringView command, StringView context) => Context?.Keymap.Bind(keys, command, context) ?? false;
 
 	/// The next key or pad button, before anything else sees it (a rebinding screen): `handler`
@@ -245,7 +222,6 @@ class GuiFacade
 	}
 
 	/// A binding's keys as a menu shows them ("ctrl-s": "Ctrl+S"); empty when they do not parse.
-	[Scriptable]
 	public StringView KeyText(StringView keys)
 	{
 		mText.Clear();

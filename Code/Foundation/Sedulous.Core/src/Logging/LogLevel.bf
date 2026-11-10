@@ -5,7 +5,6 @@ namespace Sedulous.Core.Logging;
 ///
 /// None is the sentinel that filters everything, and sits at the top of the range so the
 /// comparison needs no special case.
-[Scriptable(.AllPublic)]
 enum LogLevel : uint8
 {
 	Trace = 0,

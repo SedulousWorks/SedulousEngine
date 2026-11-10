@@ -13,7 +13,7 @@ namespace Sedulous.GUI;
 // tab go. Ctrl+Tab and Ctrl+Shift+Tab cycle the pages with the focus anywhere inside the view.
 
 /// One page of a TabView: its tab's title, icon and closable, and what it holds.
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class TabPage : Panel
 {
 	private String mTitle = new .() ~ delete _;
@@ -35,7 +35,7 @@ class TabPage : Panel
 	}
 
 	/// Its tab's text.
-	[GuiProperty("title", .None, "name"), Scriptable]
+	[GuiProperty("title", .None, "name")]
 	public StringView Title
 	{
 		get => mTitle;
@@ -49,7 +49,7 @@ class TabPage : Panel
 	}
 
 	/// Its tab's icon, by path (loaded through the GUI's resource provider).
-	[GuiProperty("icon"), Scriptable]
+	[GuiProperty("icon")]
 	public StringView Icon
 	{
 		get => mIcon;
@@ -63,7 +63,7 @@ class TabPage : Panel
 	}
 
 	/// Its tab can be closed.
-	[GuiProperty("closable"), Scriptable]
+	[GuiProperty("closable")]
 	public bool Closable
 	{
 		get => mClosable;
@@ -77,7 +77,7 @@ class TabPage : Panel
 
 	/// The classes its tab carries, space-separated (a document's unsaved mark, say): the tab's
 	/// own, replacing the ones set before.
-	[GuiProperty("tab-class"), Scriptable]
+	[GuiProperty("tab-class")]
 	public StringView TabClasses
 	{
 		get => mTabClasses;
@@ -156,7 +156,7 @@ class TabPageHost : Panel
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class TabView : UIWidget
 {
 	private TabBar mBar ~ _.ReleaseRef();
@@ -233,7 +233,6 @@ class TabView : UIWidget
 		mHost.AddChild(page);
 	}
 
-	[Scriptable]
 	public void RemovePage(int32 index)
 	{
 		let page = GetPage(index);
@@ -241,7 +240,6 @@ class TabView : UIWidget
 			mHost.RemoveChild(page);
 	}
 
-	[Scriptable]
 	public int32 PageCount => mBar.TabCount;
 
 	/// A page by its tab's index (the tabs' order, which a drag changes).
@@ -253,7 +251,7 @@ class TabView : UIWidget
 
 	// === Selection (the bar's) ===
 
-	[GuiProperty("selected", .TwoWay), Scriptable]
+	[GuiProperty("selected", .TwoWay)]
 	public int32 SelectedIndex
 	{
 		get => mBar.SelectedIndex;
@@ -279,35 +277,35 @@ class TabView : UIWidget
 
 	// === The bar's settings, from markup ===
 
-	[GuiProperty("close-display"), Scriptable]
+	[GuiProperty("close-display")]
 	public StringView CloseDisplayName
 	{
 		get => mBar.CloseDisplayName;
 		set => mBar.CloseDisplayName = value;
 	}
 
-	[GuiProperty("list-display"), Scriptable]
+	[GuiProperty("list-display")]
 	public StringView ListDisplayName
 	{
 		get => mBar.ListDisplayName;
 		set => mBar.ListDisplayName = value;
 	}
 
-	[GuiProperty("close-all"), Scriptable]
+	[GuiProperty("close-all")]
 	public bool ShowsCloseAll
 	{
 		get => mBar.ShowsCloseAll;
 		set => mBar.ShowsCloseAll = value;
 	}
 
-	[GuiProperty("reorderable"), Scriptable]
+	[GuiProperty("reorderable")]
 	public bool Reorderable
 	{
 		get => mBar.Reorderable;
 		set => mBar.Reorderable = value;
 	}
 
-	[GuiProperty("group"), Scriptable]
+	[GuiProperty("group")]
 	public StringView Group
 	{
 		get => mBar.Group;

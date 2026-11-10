@@ -129,7 +129,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	/// possible and a facade would only forward.
 	// ---- scene queries --------------------------------------------------------------------
 	//
-	// They live where the world does, and they are the script surface for asking the scene
+	// They live where the world does, and they are game code's way of asking the scene
 	// about space: what is at a point, what a ray meets, how heavy the world is. Every one
 	// answers something explicit rather than mutating state to read back.
 
