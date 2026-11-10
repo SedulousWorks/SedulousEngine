@@ -25,6 +25,23 @@ class RecentProjectsSettings
 	[Appended]
 	public String LastLocation = new .() ~ delete _;
 
+	/// Becomes a copy of `other`: its entries (copied) and its layout.
+	public void CopyFrom(RecentProjectsSettings other)
+	{
+		if (other === this)
+			return;
+		ClearAndDeleteItems!(Entries);
+		for (let entry in other.Entries)
+		{
+			let copy = new RecentProjectEntry();
+			copy.CopyFrom(entry);
+			Entries.Add(copy);
+		}
+		GridView = other.GridView;
+		SortByName = other.SortByName;
+		LastLocation.Set(other.LastLocation);
+	}
+
 	public RecentProjectEntry Find(StringView path)
 	{
 		for (let entry in Entries)

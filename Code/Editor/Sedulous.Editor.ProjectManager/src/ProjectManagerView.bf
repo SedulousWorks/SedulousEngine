@@ -218,7 +218,7 @@ class ProjectManagerView
 			sort.SetOnSelectionChanged(new (index) => { SetSortByName(index == 1); });
 		}
 		if (let engine = Find<Sedulous.GUI.Label>("manager-engine"))
-			engine.Text = scope $"Editor {EngineVersion.Display}";
+			engine.Text = scope $"Engine {EngineVersion.Display}";
 		// The scroller takes the focus when the page is clicked, so the keys reach the page.
 		if (let scroll = Find<Node>("manager-scroll"))
 			scroll.TabFocusable = true;

@@ -15,6 +15,10 @@ class SdkRegistrySettings
 	public List<RegisteredSdk> Sdks = new .() ~ DeleteContainerAndItems!(_);
 	/// Per project, the SDK the user picked for it.
 	public List<SdkPin> Pins = new .() ~ DeleteContainerAndItems!(_);
+	/// The executable of the project manager that ran last (absolute; empty: none yet), which an
+	/// editor started without one named starts on Close Project. Added 2026-11-10.
+	[Appended]
+	public String ManagerPath = new .() ~ delete _;
 
 	/// The SDK registered at `root`, compared verbatim; null when there is none.
 	public RegisteredSdk Find(StringView root)

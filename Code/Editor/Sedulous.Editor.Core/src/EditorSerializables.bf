@@ -25,21 +25,16 @@ static class EditorSerializables
 		// RegisterAll does not see it.
 		let target = (registry != null) ? registry : GlobalSerializableRegistry;
 		target.Register(ShortcutOverrideEntry.TypeId, () => new ShortcutOverrideEntry());
-		// What was saved before a section moved still loads under its current name. A rename is
-		// one step, so each former name maps to where the type is now. The export presets and
-		// roots moved from Editor.Core to the headless project half (961f2b37); the recent list
-		// went there too, then on to the project and build library; the UI section went to the
-		// look's library.
+		// What was saved before a section moved still loads under its current name. The export
+		// presets and roots moved from Editor.Core to the headless project half (961f2b37); the
+		// recent list and the UI section register their own former names, since the project
+		// manager loads them without this registration.
 		for (let name in StringView[?]("ExportPresetSet", "ExportPreset", "ExportRootsSet"))
 		{
 			SerializableRenames.Register(scope $"Sedulous.Editor.Core.{name}", scope $"Sedulous.Editor.Project.{name}");
 		}
-		for (let name in StringView[?]("RecentProjectsSettings", "RecentProjectEntry"))
-		{
-			SerializableRenames.Register(scope $"Sedulous.Editor.Core.{name}", scope $"Sedulous.Editor.Projects.{name}");
-			SerializableRenames.Register(scope $"Sedulous.Editor.Project.{name}", scope $"Sedulous.Editor.Projects.{name}");
-		}
-		SerializableRenames.Register("Sedulous.Editor.Core.EditorUiSettings", "Sedulous.Editor.Look.EditorUiSettings");
+		ProjectsStore.RegisterFormerNames();
+		EditorUiSettings.RegisterFormerName();
 	}
 }
 

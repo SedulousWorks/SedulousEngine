@@ -26,3 +26,5 @@ corlib = "*"
 # The editor's sheet as the window makes it, and markup read from the repository's Data.
 "Sedulous.Editor.Look.TestSupport" = "*"
 "Sedulous.Editor.ProjectManager.TestSupport" = "*"
+# A fixture SDK in the layout the build looks for.
+"Sedulous.Editor.Projects.TestSupport" = "*"

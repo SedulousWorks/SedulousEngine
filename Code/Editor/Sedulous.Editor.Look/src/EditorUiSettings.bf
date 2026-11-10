@@ -13,7 +13,7 @@ namespace Sedulous.Editor.Look;
 /// The store is XML, so a field added later is [Appended] by its key: a file saved before it
 /// reads with the field at its default, and the version stays (a bump would refuse those files).
 /// Saved as Sedulous.Editor.Core.EditorUiSettings before it moved here with the look, a name
-/// EditorSerializables renames, so a store written then still reads.
+/// RegisterFormerName renames, so a store written then still reads.
 [Serializable(1)]
 class EditorUiSettings
 {
@@ -42,6 +42,16 @@ class EditorUiSettings
 	/// What moves, still. Added 2026-10-27.
 	[Appended]
 	public bool ReduceMotion = false;
+
+	/// What it was called before it moved to the look's library.
+	public const String cFormerName = "Sedulous.Editor.Core.EditorUiSettings";
+
+	/// Its former name renamed, once at startup before a store holding it loads: the editor
+	/// through EditorSerializables, the project manager itself.
+	public static void RegisterFormerName()
+	{
+		SerializableRenames.Register(cFormerName, typeof(EditorUiSettings).GetFullName(.. scope .()));
+	}
 
 	/// The user's auto orthographic preference, on when there is no store or no section yet.
 	public static bool AutoOrthographicViews(Settings user)
