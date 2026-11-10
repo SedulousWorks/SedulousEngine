@@ -1,0 +1,24 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.ProjectManager"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.ProjectManager.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Editor.Projects" = "*"
+"Sedulous.Editor.Look" = "*"
+# The Samples tab: a release's list, its files streamed over the HTTP client and unzipped, and a
+# folder of release files served on loopback; https through Mbed TLS with the system's roots.
+"Sedulous.Json" = "*"
+"Sedulous.Http" = "*"
+"Sedulous.Http.Client" = "*"
+"Sedulous.Zip" = "*"
+"Sedulous.Net.Tls" = "*"
+"Sedulous.Net.Tls.MbedTLS" = "*"

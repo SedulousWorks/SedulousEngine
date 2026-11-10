@@ -1,0 +1,28 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.ProjectManager.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.ProjectManager.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Xml.Serialization" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Editor.Projects" = "*"
+"Sedulous.Editor.Look" = "*"
+"Sedulous.Editor.ProjectManager" = "*"
+# The Samples tab's downloads, against a loopback server.
+"Sedulous.Net" = "*"
+"Sedulous.Http" = "*"
+"Sedulous.Http.Client" = "*"
+# The editor's sheet as the window makes it, and markup read from the repository's Data.
+"Sedulous.Editor.Look.TestSupport" = "*"
+"Sedulous.Editor.ProjectManager.TestSupport" = "*"

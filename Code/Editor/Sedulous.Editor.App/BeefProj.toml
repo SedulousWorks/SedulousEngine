@@ -49,6 +49,8 @@ corlib = "*"
 "Sedulous.Engine.Render" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Look" = "*"
+# The project manager's view, samples and behaviour, under the editor's manager mode.
+"Sedulous.Editor.ProjectManager" = "*"
 "Sedulous.Editor.Preview" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 # The MCP host: the shared engine surface over HTTP.
@@ -59,10 +61,9 @@ corlib = "*"
 "Sedulous.Profiler.Capture" = "*"
 "Sedulous.Profiler.GUI" = "*"
 "Sedulous.Editor.Mcp" = "*"
-# The Samples tab's downloads: a release's list, streamed over the HTTP client, unzipped.
+# The Samples tab's client and its --release-files server.
 "Sedulous.Http" = "*"
 "Sedulous.Http.Client" = "*"
-"Sedulous.Zip" = "*"
 # The editor's client over https: Mbed TLS with the system's roots.
 "Sedulous.Net.Tls" = "*"
 "Sedulous.Net.Tls.MbedTLS" = "*"

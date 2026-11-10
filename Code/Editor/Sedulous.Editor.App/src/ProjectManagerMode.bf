@@ -6,6 +6,7 @@ using Sedulous.GUI;
 using Sedulous.Http.Client;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.ProjectManager;
 
 namespace Sedulous.Editor.App;
 
@@ -40,169 +41,76 @@ class ProjectManagerModeServices
 	public delegate void() Shown ~ delete _;
 }
 
-/// The project manager's part of the application: the
-/// manager over the window while no project is open (made the first time, its list probed again
-/// after), and what its actions start. Opening a project another engine saved asks first, as
-/// before: a newer engine's Open Anyway; an older engine's Back Up and Open, or Open Without Backup,
-/// either stamping the project with this engine at once. New Project makes the project in the
-/// folder chosen with the starter content, then opens it. Close Project asks about the unsaved
-/// pages, then closes the project and shows the manager again.
-///
-/// It is a part of its own, out of the application, as the session and the
-/// pages are, so a headless test drives it over a GUI of its own. What a click asks for runs at
-/// the GUI's next drain, never inside the click (the screen it swaps takes away the button that was
-/// clicked); at once with no GUI.
+/// The project manager's part of the application, over the manager's own behaviour
+/// (ProjectManagerApp): the manager over the window while no project is open, its Open opening the
+/// project in this editor's session and its New Project making the project there with the starter
+/// content. Close Project asks about the unsaved pages, then closes the project and shows the
+/// manager again.
 class ProjectManagerMode
 {
 	private ProjectManagerModeServices mServices ~ delete _;
-	private ProjectManagerView mView = null ~ delete _;
-	/// The other engine's question, a reference of ours while it is the last one asked.
-	private Sedulous.GUI.MessageBox mAsking = null ~ _?.ReleaseRef();
+	private ProjectManagerApp mApp = null;
 
 	/// TAKES OWNERSHIP of the services.
 	public this(ProjectManagerModeServices services)
 	{
 		mServices = services;
+		let app = new ProjectManagerAppServices();
+		app.Projects = services.Projects;
+		app.Root = new () => Root;
+		app.Dialogs = new () => (mServices.Dialogs != null) ? mServices.Dialogs() : null;
+		app.ShowScreen = new (screen) =>
+			{
+				if (mServices.ShowScreen != null)
+					mServices.ShowScreen(screen);
+			};
+		app.LoadMarkup = new (path) => (mServices.LoadMarkup != null) ? mServices.LoadMarkup(path) : null;
+		app.StoreChanged = new () =>
+			{
+				if (mServices.StoreChanged != null)
+					mServices.StoreChanged();
+			};
+		if (services.Http != null)
+			app.Http = new () => mServices.Http();
+		if (services.ReleaseFile != null)
+			app.ReleaseFile = new (file, outUrl) => { mServices.ReleaseFile(file, outUrl); };
+		app.OpenOnSamples = services.OpenOnSamples;
+		app.Shown = new () =>
+			{
+				if (mServices.Shown != null)
+					mServices.Shown();
+			};
+		app.OpenProject = new (directory, restamp) => OpenInSession(directory, restamp);
+		app.CreateProject = new (directory, name) => CreateInSession(directory, name);
+		mApp = new ProjectManagerApp(app);
 	}
 
 	public ~this()
 	{
-		// An open question would answer into a gone part: it goes unanswered.
-		if ((mAsking != null) && mAsking.IsOpen)
-			mAsking.Close();
+		// The manager first: it reaches the services.
+		DeleteAndNullify!(mApp);
 	}
 
 	/// The manager; null until it first shows.
-	public ProjectManagerView View => mView;
+	public ProjectManagerView View => mApp.View;
 
 	/// The manager over the whole window: made the first time, its projects probed again after,
 	/// its status line cleared. Nothing with no interface.
-	public void Enter()
-	{
-		if (Root == null)
-			return;
-		if (mView == null)
-		{
-			let services = new ProjectManagerServices();
-			services.Controller = mServices.Projects;
-			services.Dialogs = (mServices.Dialogs != null) ? mServices.Dialogs() : null;
-			services.Open = new (directory) =>
-				{
-					let path = new String(directory);
-					Later(new [=this, =path] () => { OpenFrom(path); } ~ delete path);
-				};
-			services.Create = new (directory, name) =>
-				{
-					let path = new String(directory);
-					let projectName = new String(name);
-					Later(new [=this, =path, =projectName] () => { CreateFrom(path, projectName); } ~ { delete path; delete projectName; });
-				};
-			services.StoreChanged = new () =>
-				{
-					if (mServices.StoreChanged != null)
-						mServices.StoreChanged();
-				};
-			services.LoadMarkup = new (path) => LoadMarkup(path);
-			services.Http = (mServices.Http != null) ? mServices.Http() : null;
-			if (mServices.ReleaseFile != null)
-				services.ReleaseFile = new (file, outUrl) => { mServices.ReleaseFile(file, outUrl); };
-			mView = new ProjectManagerView(services, LoadMarkup(ProjectManagerView.cMarkupPath));
-			if (mServices.OpenOnSamples)
-				mView.ShowSamples(true);
-		}
-		else
-			mView.Rebuild(); // back from a project: probed again
-		mView.SetStatus("");
-		ShowScreen(mView.Content);
-		mView.Shown();
-		if (mServices.Shown != null)
-			mServices.Shown();
-	}
+	public void Enter() => mApp.Enter();
 
 	/// Once a frame: the Samples tab's fetches and downloads, which go on while a project is open.
-	public void Tick()
-	{
-		if (mView != null)
-			mView.Tick();
-	}
+	public void Tick() => mApp.Tick();
 
 	/// Opens the project in `directory` from the manager: one saved by another engine version asks
-	/// first (the controller decides and words it; a backup of its manifest is offered for an older
-	/// one).
-	public void OpenFrom(StringView directory)
-	{
-		let decision = scope ProjectOpenDecision();
-		mServices.Projects.DecideOpen(directory, decision);
-		if (decision.Gate == .NotAProject)
-		{
-			SetStatus("Not a project (no Project.xml there).");
-			return;
-		}
-		if (decision.Gate == .OpenDirectly)
-		{
-			OpenProject(directory);
-			return;
-		}
-		let root = Root;
-		if ((root == null) || ((mAsking != null) && mAsking.IsOpen))
-			return;
-		if (mAsking != null)
-			mAsking.ReleaseRef();
-		let question = new Sedulous.GUI.MessageBox();
-		mAsking = question;
-		question.Configure(decision.PromptTitle, decision.PromptBody, .Ok);
-		question.ClearButtons();
-		question.AddButton("Cancel", "cancel", .Cancel);
-		if (decision.Gate == .PromptNewerEngine)
-			question.AddButton("Open Anyway", "open", .Normal);
-		else // an older engine's: its manifest backed up first, or not
-		{
-			question.AddButton("Open Without Backup", "open", .Normal);
-			// "and", not "&": a button's & marks its access key.
-			question.AddButton("Back Up and Open", "backup", .Primary);
-		}
-		let path = new String(directory);
-		let gate = decision.Gate;
-		question.AddEventListener(.Changed, new [=question, =path, =gate, =this] (e) => { Answered(gate, question.ResultName, path); } ~ delete path);
-		question.OpenModal(root);
-	}
+	/// first.
+	public void OpenFrom(StringView directory) => mApp.OpenFrom(directory);
 
 	/// New Project from the manager: a folder that holds a project already is refused; else the
-	/// project is made there (its location too, when that is new) with the starter content and
-	/// opened.
-	public void CreateFrom(StringView directory, StringView name)
-	{
-		let probed = scope ProjectSettings();
-		if (ProjectRegistry.ProbeProject(directory, probed) case .Ok)
-		{
-			SetStatus("That folder is a project already: Open Folder opens it.");
-			return;
-		}
-		// New Project's check said a location that does not exist yet is made: the project's own
-		// folder's parent first (CreateDirectory makes the folders on the way).
-		CreateDirectory(PathParent(directory, .. scope .()));
-		var options = EditorSessionOpenOptions();
-		options.Scaffold = true;
-		options.ScaffoldName = name;
-		options.Seed = true;
-		ShowScreen(null);
-		if (!mServices.Session.Open(directory, options))
-		{
-			Enter();
-			SetStatus("The project could not be made there (is the folder writable?).");
-		}
-	}
+	/// project is made there with the starter content and opened.
+	public void CreateFrom(StringView directory, StringView name) => mApp.CreateFrom(directory, name);
 
 	/// The frame back and the project open; on failure the manager again, saying so.
-	public bool OpenProject(StringView directory)
-	{
-		ShowScreen(null);
-		if (mServices.Session.Open(directory))
-			return true;
-		Enter();
-		SetStatus(scope $"The project in {directory} did not open (see the log).");
-		return false;
-	}
+	public bool OpenProject(StringView directory) => mApp.OpenProject(directory);
 
 	/// File > Close Project: the unsaved pages asked about, then the project closed and the
 	/// manager shown. Nothing with no project open.
@@ -212,7 +120,7 @@ class ProjectManagerMode
 			return;
 		mServices.Pages.ConfirmUnsavedThen("Save All and Close", "Close Without Saving", new () =>
 			{
-				Later(new () =>
+				mApp.Later(new () =>
 					{
 						mServices.Session.Close();
 						Enter();
@@ -222,53 +130,24 @@ class ProjectManagerMode
 
 	private SceneRoot Root => (mServices.Root != null) ? mServices.Root() : null;
 
-	private Node LoadMarkup(StringView path) => (mServices.LoadMarkup != null) ? mServices.LoadMarkup(path) : null;
-
-	private void ShowScreen(Node screen)
+	/// The session opens the project; an older engine's, opened with this one, is stamped with it
+	/// at once.
+	private bool OpenInSession(StringView directory, bool restamp)
 	{
-		if (mServices.ShowScreen != null)
-			mServices.ShowScreen(screen);
+		if (!mServices.Session.Open(directory))
+			return false;
+		if (restamp && (mServices.Session.Project != null))
+			mServices.Session.Project.SaveSettings().IgnoreError(); // stamped with this engine at once
+		return true;
 	}
 
-	private void SetStatus(StringView text)
+	/// The session scaffolds the project in `directory` with the starter content and opens it.
+	private bool CreateInSession(StringView directory, StringView name)
 	{
-		if (mView != null)
-			mView.SetStatus(text);
-	}
-
-	/// `work` at the GUI's next drain; at once with no GUI. TAKES OWNERSHIP of `work`.
-	private void Later(delegate void() work)
-	{
-		let root = Root;
-		let queue = (root != null) ? root.MutationQueue : null;
-		if (queue == null)
-		{
-			defer delete work;
-			work();
-			return;
-		}
-		queue.Enqueue(work);
-	}
-
-	/// The other engine's question answered: Cancel (or a close) stays; the others open at the next
-	/// drain, Back Up and Open backing the manifest up first (not opening when that fails). An
-	/// older engine's project is stamped with this engine at once; a newer engine's keeps its stamp.
-	private void Answered(ProjectOpenGate gate, StringView answer, StringView directory)
-	{
-		if ((answer != "open") && (answer != "backup"))
-			return;
-		let path = new String(directory);
-		let backup = answer == "backup";
-		let restamp = ProjectManagerController.RestampsOnOpen(gate);
-		Later(new [=this, =path, =backup, =restamp] () =>
-			{
-				if (backup && (mServices.Projects.BackupManifest(path, scope .()) case .Err))
-				{
-					SetStatus("The backup FAILED: not opening.");
-					return;
-				}
-				if (OpenProject(path) && restamp && (mServices.Session.Project != null))
-					mServices.Session.Project.SaveSettings().IgnoreError(); // stamped with this engine at once
-			} ~ delete path);
+		var options = EditorSessionOpenOptions();
+		options.Scaffold = true;
+		options.ScaffoldName = name;
+		options.Seed = true;
+		return mServices.Session.Open(directory, options);
 	}
 }

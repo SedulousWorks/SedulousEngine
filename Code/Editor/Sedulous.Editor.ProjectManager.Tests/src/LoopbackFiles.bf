@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Net;
 
-namespace Sedulous.Editor.App.Tests;
+namespace Sedulous.Editor.ProjectManager.Tests;
 
 /// A loopback HTTP server for the tests, pumped on the test's thread: it answers each connection
 /// once with the file its path names (200, the bytes) or a 404, then closes.

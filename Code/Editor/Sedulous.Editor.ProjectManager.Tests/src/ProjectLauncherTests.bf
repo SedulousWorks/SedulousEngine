@@ -14,65 +14,10 @@ using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Projects;
+using Sedulous.Editor.ProjectManager.TestSupport;
 using Sedulous.Editor.Look.TestSupport;
 
-namespace Sedulous.Editor.App.Tests;
-
-/// The shell's dialogs as a test drives them: what Show in Folder was asked to show, and the one
-/// path a file or folder dialog answers (none: cancelled), at once as the null shell does.
-class LauncherDialogs : IDialogService
-{
-	public List<String> Shown = new .() ~ DeleteContainerAndItems!(_);
-	/// What the next file or folder dialog answers; empty cancels.
-	public String Answer = new .() ~ delete _;
-	public int Asked = 0;
-
-	public void ShowOpenFile(delegate void(Span<String>) callback, Span<FileFilter> filters, StringView defaultPath, bool allowMultiple,
-		uint32 parentWindowId) => Reply(callback);
-
-	public void ShowSaveFile(delegate void(Span<String>) callback, Span<FileFilter> filters, StringView defaultPath,
-		uint32 parentWindowId) => Reply(callback);
-
-	public void ShowOpenFolder(delegate void(Span<String>) callback, StringView defaultPath, bool allowMultiple,
-		uint32 parentWindowId) => Reply(callback);
-
-	public void OpenPath(StringView path)
-	{
-		Shown.Add(new String(path));
-	}
-
-	/// CONSUMES the callback, as the services do.
-	private void Reply(delegate void(Span<String>) callback)
-	{
-		Asked++;
-		defer delete callback;
-		if (Answer.IsEmpty)
-		{
-			callback(.());
-			return;
-		}
-		var answer = Answer;
-		callback(.(&answer, 1));
-	}
-}
-
-/// A clipboard of a string.
-class LauncherClipboard : IClipboard
-{
-	public String Held = new .() ~ delete _;
-
-	public bool HasText => !Held.IsEmpty;
-
-	public void GetText(String outText)
-	{
-		outText.Append(Held);
-	}
-
-	public void SetText(StringView text)
-	{
-		Held.Set(text);
-	}
-}
+namespace Sedulous.Editor.ProjectManager.Tests;
 
 /// The project manager over its markup (Data/Editor/ProjectManager.xml): the recent projects as a
 /// list or a grid (remembered), each by its picture (the thumbnail in its editor folder, an image
@@ -116,14 +61,14 @@ class ProjectLauncherTests
 			PathJoin(Root, "Gone", Gone);
 			RemoveDirectoryRecursive(Root);
 			Test.Assert(CreateDirectory(Root));
-			Test.Assert(EditorProject.Create(First, "First") case .Ok);
-			Test.Assert(EditorProject.Create(Second, "Second") case .Ok);
+			Test.Assert(ProjectScaffold.Create(First, "First") case .Ok);
+			Test.Assert(ProjectScaffold.Create(Second, "Second") case .Ok);
 			for (int i < more) // older projects: enough to scroll, after the three
 			{
 				let name = scope $"More{i}";
 				let directory = PathJoin(Root, name, .. scope .());
 				if (real)
-					Test.Assert(EditorProject.Create(directory, name) case .Ok);
+					Test.Assert(ProjectScaffold.Create(directory, name) case .Ok);
 				ProjectRegistry.TouchRecentProject(Store, directory, name, "0.1.0");
 			}
 			ProjectRegistry.TouchRecentProject(Store, Gone, "Gone", "0.1.0"); // no project there
@@ -143,10 +88,10 @@ class ProjectLauncherTests
 			services.Open = new [=launcher] (path) => { launcher.Opened.Add(new String(path)); };
 			services.Create = new [=launcher] (directory, name) => { launcher.Created.Add(new String(directory)); };
 			services.StoreChanged = new [=launcher] () => { launcher.Saves++; };
-			services.LoadMarkup = new (path) => PagesBed.LoadMarkup(path);
+			services.LoadMarkup = new (path) => EditorData.LoadMarkup(path);
 			if (configure != null)
 				configure(services);
-			View = new .(services, PagesBed.LoadMarkup(ProjectManagerView.cMarkupPath));
+			View = new .(services, EditorData.LoadMarkup(ProjectManagerView.cMarkupPath));
 			Test.Assert(View.Content != null);
 			Scene.AddChild(View.Content);
 		}
@@ -186,22 +131,6 @@ class ProjectLauncherTests
 		}
 	}
 
-	/// The first button in `node`'s subtree showing `text`; null when none does.
-	public static Sedulous.GUI.Button ButtonText(Node node, StringView text)
-	{
-		if (let button = node as Sedulous.GUI.Button)
-		{
-			if (button.Text == text)
-				return button;
-		}
-		for (int i < node.ChildCount)
-		{
-			if (let found = ButtonText(node.GetChildAt(i), text))
-				return found;
-		}
-		return null;
-	}
-
 	/// The first widget in `node`'s subtree with the sheet's class `cls`; null when none has.
 	public static UIWidget WithClass(Node node, StringView cls)
 	{
@@ -226,21 +155,6 @@ class ProjectLauncherTests
 		return label.Text;
 	}
 
-	/// The project manifest in `directory` stamped as saved by engine `version`: by a raw text
-	/// edit, since a save stamps this engine.
-	public static void Stamp(StringView directory, StringView version)
-	{
-		let probed = scope ProjectSettings();
-		Test.Assert(ProjectRegistry.ProbeProject(directory, probed) case .Ok);
-		Test.Assert(!probed.EngineVersion.IsEmpty);
-		let manifest = PathJoin(directory, ProjectLayout.ManifestFile, .. scope .());
-		let bytes = scope List<uint8>();
-		Test.Assert(ReadFile(manifest, bytes) case .Ok);
-		let text = scope String(StringView((char8*)bytes.Ptr, bytes.Count));
-		text.Replace(probed.EngineVersion, version);
-		Test.Assert(WriteFile(manifest, .((uint8*)text.Ptr, text.Length)) case .Ok);
-	}
-
 	[Test]
 	public static void TheProjectsShowAsAListOrAGridTheChoiceRememberedAMissingOneInItsOwnSectionWithNoOpen()
 	{
@@ -258,16 +172,16 @@ class ProjectLauncherTests
 		Test.Assert(missing.ChildCount == 1);
 		Test.Assert(l.View.Content.FindElement("manager-missing").Displayed);
 		Test.Assert((l.View.Content.FindElement("manager-count") as Sedulous.GUI.Label).Text == "2 projects");
-		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null);
-		Test.Assert(ButtonText(missing.GetChildAt(0), "Open") == null);
-		Test.Assert(ButtonText(missing.GetChildAt(0), "Locate...") != null);
+		Test.Assert(LauncherKit.ButtonText(list.GetChildAt(0), "Open") != null);
+		Test.Assert(LauncherKit.ButtonText(missing.GetChildAt(0), "Open") == null);
+		Test.Assert(LauncherKit.ButtonText(missing.GetChildAt(0), "Locate...") != null);
 		// The heading reads right for one as for many.
 		Test.Assert((l.View.Content.FindElement("manager-missing-count") as Sedulous.GUI.Label).Text == "1 · not found at the last known location");
 		Test.Assert((missing.GetChildAt(0) as UIWidget).HasClass("missing"));
 		Test.Assert(!(list.GetChildAt(0) as UIWidget).HasClass("missing"));
 		Test.Assert(TextOf(missing.GetChildAt(0), "manager-name") == "Gone");
 		Test.Assert(TextOf(list.GetChildAt(0), "manager-name") == "First");
-		Test.Assert(ButtonText(list.GetChildAt(0), "Open").HandleActivate());
+		Test.Assert(LauncherKit.ButtonText(list.GetChildAt(0), "Open").HandleActivate());
 		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.First));
 
 		Test.Assert((l.View.Content.FindElement("manager-grid") as Sedulous.GUI.Button).HandleActivate());
@@ -309,7 +223,7 @@ class ProjectLauncherTests
 		let l = scope Launcher();
 		// A captured thumbnail in the project's editor folder shows.
 		let captured = l.WritePicture("captured.png", .. scope .());
-		let thumbnail = EditorProject.ThumbnailPath(l.First, .. scope .());
+		let thumbnail = ProjectThumbnail.PathOf(l.First, .. scope .());
 		CreateDirectory(PathParent(thumbnail, .. scope .()));
 		let picture = scope Sedulous.Image.Image();
 		Test.Assert(ImageIO.LoadImage(captured, picture) case .Ok);
@@ -321,7 +235,7 @@ class ProjectLauncherTests
 		let chosen = l.WritePicture("chosen.png", .. scope .());
 		Test.Assert(l.View.SetThumbnailFromImage(l.Second, chosen));
 		l.Drain();
-		Test.Assert(FileExists(EditorProject.ThumbnailPath(l.Second, .. scope .())));
+		Test.Assert(FileExists(ProjectThumbnail.PathOf(l.Second, .. scope .())));
 		Test.Assert(l.View.ThumbnailCount == 2);
 		Test.Assert(!l.View.SetThumbnailFromImage(l.Second, "/nowhere/at/all.png"));
 		Test.Assert(l.View.Status == "That image could not be read.");
@@ -385,14 +299,14 @@ class ProjectLauncherTests
 		// A thumbnail chosen in the file dialog; cancelled, none.
 		l.View.Run(l.First, "Choose Thumbnail Image...");
 		Test.Assert(l.Dialogs.Asked == 1);
-		Test.Assert(!FileExists(EditorProject.ThumbnailPath(l.First, .. scope .())), "cancelled");
+		Test.Assert(!FileExists(ProjectThumbnail.PathOf(l.First, .. scope .())), "cancelled");
 		l.WritePicture("chosen.png", l.Dialogs.Answer);
 		l.View.Run(l.Second, "Choose Thumbnail Image...");
-		Test.Assert(FileExists(EditorProject.ThumbnailPath(l.Second, .. scope .())));
+		Test.Assert(FileExists(ProjectThumbnail.PathOf(l.Second, .. scope .())));
 		l.Drain();
 		Test.Assert(l.View.ThumbnailCount == 1);
 		l.View.Run(l.Second, "Clear Thumbnail");
-		Test.Assert(!FileExists(EditorProject.ThumbnailPath(l.Second, .. scope .())));
+		Test.Assert(!FileExists(ProjectThumbnail.PathOf(l.Second, .. scope .())));
 		l.Drain();
 		Test.Assert(l.View.ThumbnailCount == 0);
 		Test.Assert(l.Saves == 0, "none of these changes the list");
@@ -402,8 +316,8 @@ class ProjectLauncherTests
 	public static void AProjectANewerEngineSavedIsBadgedSoInTheWarningColourAndAnOlderOnesUpgrade()
 	{
 		let l = scope Launcher();
-		Stamp(l.First, scope $"{EngineVersion.Major + 1}.0.0");
-		Stamp(l.Second, "0.0.1");
+		LauncherKit.Stamp(l.First, scope $"{EngineVersion.Major + 1}.0.0");
+		LauncherKit.Stamp(l.Second, "0.0.1");
 		l.View.Rebuild();
 		let list = l.Projects;
 		let first = list.GetChildAt(0);
@@ -411,7 +325,7 @@ class ProjectLauncherTests
 		Test.Assert(TextOf(first, "manager-name") == "First");
 		Test.Assert(TextOf(first, "badge") == "Made with a newer engine");
 		Test.Assert(WithClass(first, "manager-version").HasClass("newer"));
-		Test.Assert(ButtonText(first, "Open") != null, "it still opens (the application asks first)");
+		Test.Assert(LauncherKit.ButtonText(first, "Open") != null, "it still opens (the application asks first)");
 		let second = list.GetChildAt(1);
 		Test.Assert((second as UIWidget).HasClass("older"));
 		Test.Assert(TextOf(second, "badge") == "Upgrades when opened");
@@ -682,7 +596,7 @@ class ProjectLauncherTests
 		Test.Assert(l.View.ShownCount == 3);
 		// Gone was moved: its project is at Moved now.
 		let moved = PathJoin(l.Root, "Moved", .. scope .());
-		Test.Assert(EditorProject.Create(moved, "Gone") case .Ok);
+		Test.Assert(ProjectScaffold.Create(moved, "Gone") case .Ok);
 		Test.Assert(l.View.Locate(l.Gone, moved));
 		l.Drain();
 		Test.Assert(l.Saves == 1);
@@ -694,7 +608,7 @@ class ProjectLauncherTests
 		ProjectRegistry.TouchRecentProject(l.Store, PathJoin(l.Root, "Lost2", .. scope .()), "Lost2", "0.1.0");
 		l.View.Rebuild();
 		Test.Assert(l.View.Content.FindElement("manager-missing-list").ChildCount == 2);
-		Test.Assert(ButtonText(l.View.Content, "Remove missing from list").HandleActivate());
+		Test.Assert(LauncherKit.ButtonText(l.View.Content, "Remove missing from list").HandleActivate());
 		l.Drain();
 		Test.Assert(l.Saves == 2);
 		Test.Assert(l.View.ShownCount == 3);
@@ -713,8 +627,8 @@ class ProjectLauncherTests
 		defer scene.ReleaseRef();
 		let services = new ProjectManagerServices();
 		services.Controller = controller;
-		services.LoadMarkup = new (path) => PagesBed.LoadMarkup(path);
-		let view = new ProjectManagerView(services, PagesBed.LoadMarkup(ProjectManagerView.cMarkupPath));
+		services.LoadMarkup = new (path) => EditorData.LoadMarkup(path);
+		let view = new ProjectManagerView(services, EditorData.LoadMarkup(ProjectManagerView.cMarkupPath));
 		defer delete view; // before the scene
 		scene.AddChild(view.Content);
 		Test.Assert(view.IsWelcome);
@@ -796,7 +710,7 @@ class ProjectLauncherTests
 		let l = scope Launcher();
 		l.StyleAsTheEditor();
 		let row = l.Projects.GetChildAt(0);
-		let open = ButtonText(row, "Open").ScreenBounds;
+		let open = LauncherKit.ButtonText(row, "Open").ScreenBounds;
 		let more = WithClass(row, "slot-button").ScreenBounds;
 		Test.Assert(Math.Abs(open.Height - 30.0f) < 0.01f);
 		Test.Assert(Math.Abs(more.Height - open.Height) < 0.01f, "the menu button beside Open, not the slot button's 18px");
@@ -876,7 +790,7 @@ class ProjectLauncherTests
 		let grid = l.View.Content.FindElement("manager-samples");
 		Test.Assert(grid != null);
 		Test.Assert(grid.ChildCount == 1);
-		let download = ButtonText(grid, "Download...");
+		let download = LauncherKit.ButtonText(grid, "Download...");
 		Test.Assert(download != null);
 		Test.Assert(!l.View.InProjects(l.View.Samples.Samples[0]));
 

@@ -7,11 +7,12 @@ using Sedulous.VFS;
 using Sedulous.Http;
 using Sedulous.Http.Client;
 using Sedulous.Editor.App;
+using Sedulous.Editor.ProjectManager;
 
-namespace Sedulous.Editor.App.Tests;
+namespace Sedulous.Editor.ProjectManager.Tests;
 
-/// The Samples tab's catalog (a release's samples.json) and one sample's download against a
-/// loopback server: streamed to a file, checked against its SHA-256, extracted and the zip deleted;
+/// The Samples tab's catalog (a release's samples.json) and one sample's download (a
+/// ReleaseDownload that extracts) against a loopback server: streamed to a file, checked against its SHA-256, extracted and the zip deleted;
 /// a wrong digest, a missing sample and a cancel each leave nothing behind.
 class SampleDownloadsTests
 {
@@ -42,7 +43,7 @@ class SampleDownloadsTests
 		}
 
 		/// Runs `download` to its end, the server and the client pumped together.
-		public void Run(SampleDownload download, LoopbackFiles server)
+		public void Run(ReleaseDownload download, LoopbackFiles server)
 		{
 			for (int i < 10000)
 			{
@@ -91,7 +92,7 @@ class SampleDownloadsTests
 		let server = scope LoopbackFiles();
 		server.Serve("/sample-Game.zip", f.Zip);
 		let target = PathJoin(f.Root, "Game", .. scope .());
-		let download = scope SampleDownload(f.Client, f.Sample, server.Url("/sample-Game.zip", .. scope .()), target);
+		let download = scope ReleaseDownload(f.Client, server.Url("/sample-Game.zip", .. scope .()), f.Sample.Sha256, f.Sample.Size, target);
 		download.Start();
 		f.Run(download, server);
 		Test.Assert(download.State == .Done, scope String(download.Error));
@@ -112,7 +113,7 @@ class SampleDownloadsTests
 			let wrong = scope SampleInfo();
 			wrong.CopyFrom(f.Sample);
 			wrong.Sha256.Set("0000000000000000000000000000000000000000000000000000000000000000");
-			let download = scope SampleDownload(f.Client, wrong, server.Url("/x.zip", .. scope .()), target);
+			let download = scope ReleaseDownload(f.Client, server.Url("/x.zip", .. scope .()), wrong.Sha256, wrong.Size, target);
 			download.Start();
 			f.Run(download, server);
 			Test.Assert(download.State == .Failed);
@@ -121,7 +122,7 @@ class SampleDownloadsTests
 		}
 		{
 			let server = scope LoopbackFiles(); // serves nothing: a 404
-			let download = scope SampleDownload(f.Client, f.Sample, server.Url("/x.zip", .. scope .()), target);
+			let download = scope ReleaseDownload(f.Client, server.Url("/x.zip", .. scope .()), f.Sample.Sha256, f.Sample.Size, target);
 			download.Start();
 			f.Run(download, server);
 			Test.Assert(download.State == .Failed);
@@ -131,7 +132,7 @@ class SampleDownloadsTests
 		{
 			let server = scope LoopbackFiles();
 			server.Serve("/x.zip", f.Zip);
-			let download = scope SampleDownload(f.Client, f.Sample, server.Url("/x.zip", .. scope .()), target);
+			let download = scope ReleaseDownload(f.Client, server.Url("/x.zip", .. scope .()), f.Sample.Sha256, f.Sample.Size, target);
 			download.Start();
 			download.Cancel();
 			Test.Assert(download.State == .Cancelled);
