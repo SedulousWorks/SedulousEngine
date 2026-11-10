@@ -387,7 +387,7 @@ static class ProjectRegistryTests
 		defer RemoveDirectoryRecursive(dir);
 		Test.Assert(controller.Create(dir, "Gate Test") case .Ok);
 		controller.DecideOpen(dir, decision);
-		Test.Assert((decision.Gate == .OpenDirectly) && (decision.Probed.Name == "Gate Test"));
+		Test.Assert((decision.Gate == .OpenDirectly) && (decision.Header.Name == "Gate Test"));
 
 		// The manifest rewritten with a NEWER stamp by a raw text edit: Save re-stamps to
 		// the current engine by design, so it cannot write a foreign version.

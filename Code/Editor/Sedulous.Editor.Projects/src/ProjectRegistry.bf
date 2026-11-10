@@ -101,19 +101,42 @@ static class ProjectRegistry
 		return ProjectManifest.Load(fs, outSettings);
 	}
 
-	/// "major.minor.patch", all three numeric, against this engine's constants.
+	/// "major.minor.patch", all three numeric, against this engine's own version.
 	public static EngineVersionRelation CompareProjectEngineVersion(StringView projectVersion)
+		=> CompareEngineVersions(projectVersion, EngineVersion.String);
+
+	/// How a project stamped `projectVersion` relates to the engine at `against` (an SDK's
+	/// version, or this engine's), each "major.minor.patch", all three numeric. Unstamped when the
+	/// project's stamp is empty or does not read, and when `against` does not: nothing can be said
+	/// of either.
+	public static EngineVersionRelation CompareEngineVersions(StringView projectVersion, StringView against)
 	{
-		if (projectVersion.IsEmpty)
+		uint32[3] project = default;
+		uint32[3] engine = default;
+		if (!ParseEngineVersion(projectVersion, out project) || !ParseEngineVersion(against, out engine))
 			return .Unstamped;
-		uint32[3] parts = .(0, 0, 0);
+		for (int i < 3)
+		{
+			if (project[i] < engine[i])
+				return .ProjectOlder;
+			if (project[i] > engine[i])
+				return .ProjectNewer;
+		}
+		return .Same;
+	}
+
+	/// "major.minor.patch" into `outParts`; false, with noughts, for anything else: empty, a part
+	/// missing or empty, a fourth part, or a character that is neither a digit nor a dot.
+	public static bool ParseEngineVersion(StringView text, out uint32[3] outParts)
+	{
+		outParts = .(0, 0, 0);
 		int part = 0;
 		bool anyDigit = false;
-		for (let c in projectVersion)
+		for (let c in text)
 		{
 			if (c.IsDigit)
 			{
-				parts[part] = parts[part] * 10 + (uint32)(c - '0');
+				outParts[part] = outParts[part] * 10 + (uint32)(c - '0');
 				anyDigit = true;
 			}
 			else if ((c == '.') && (part < 2) && anyDigit)
@@ -123,40 +146,37 @@ static class ProjectRegistry
 			}
 			else
 			{
-				return .Unstamped;
+				outParts = .(0, 0, 0);
+				return false;
 			}
 		}
 		if ((part != 2) || !anyDigit)
-			return .Unstamped;
-		uint32[3] engine = .(EngineVersion.Major, EngineVersion.Minor, EngineVersion.Patch);
-		for (int i < 3)
 		{
-			if (parts[i] < engine[i])
-				return .ProjectOlder;
-			if (parts[i] > engine[i])
-				return .ProjectNewer;
+			outParts = .(0, 0, 0);
+			return false;
 		}
-		return .Same;
+		return true;
 	}
 
-	/// Backs the manifest up before an engine upgrade rewrites it: Project.xml copied to
-	/// "Project.xml.<stampedVersion>.bak" beside it, "unstamped" for a manifest predating
-	/// the stamp, overwriting an older backup for the SAME version. Content assets are not
-	/// copied: they migrate through their own versioned serializers, and whole tree safety
-	/// is version control's job.
+	/// Backs the manifest up before an engine upgrade rewrites it: Project.xml's bytes copied to
+	/// "Project.xml.<stampedVersion>.bak" beside it, "unstamped" for a manifest whose header names
+	/// no version or does not read, overwriting an older backup for the SAME version. The manifest
+	/// is never read as settings, so one an engine with newer settings wrote, or a damaged one, is
+	/// backed up as it is. NotFound when the folder holds no manifest. Content assets are not
+	/// copied: they migrate through their own versioned serializers, and whole tree safety is
+	/// version control's job.
 	public static Result<void, ErrorCode> BackupProjectManifest(StringView directory, String outBackupPath)
 	{
-		let probed = scope ProjectSettings();
-		if (ProbeProject(directory, probed) case .Err(let error))
-			return .Err(error);
 		let manifest = PathJoin(directory, ProjectLayout.ManifestFile, .. scope .());
+		let bytes = scope List<uint8>();
+		if (ReadFile(manifest, bytes) case .Err)
+			return .Err(.NotFound);
+		let header = scope ProjectHeader();
+		let stamped = (ProjectHeader.Read(directory, header) case .Ok) && !header.EngineVersion.IsEmpty;
 		outBackupPath.Set(manifest);
 		outBackupPath.Append('.');
-		outBackupPath.Append(probed.EngineVersion.IsEmpty ? "unstamped" : probed.EngineVersion);
+		outBackupPath.Append(stamped ? StringView(header.EngineVersion) : "unstamped");
 		outBackupPath.Append(".bak");
-		let bytes = scope List<uint8>();
-		if (ReadFile(manifest, bytes) case .Err(let readError))
-			return .Err(readError);
 		return WriteFile(outBackupPath, bytes);
 	}
 }

@@ -28,33 +28,38 @@ class ProjectManagerController
 	/// engine's needs nothing.
 	public static bool RestampsOnOpen(ProjectOpenGate gate) => gate == .PromptOlderBackup;
 
-	/// Probes, classifies and composes the prompt copy for `directory` into `decision`. A
-	/// pure decision: the caller shows the dialogs for the prompt gates and calls the open
-	/// path it owns.
-	public void DecideOpen(StringView directory, ProjectOpenDecision decision)
+	/// DecideOpen against this engine's own version.
+	public void DecideOpen(StringView directory, ProjectOpenDecision decision) => DecideOpen(directory, EngineVersion.String, decision);
+
+	/// Reads the header of `directory`, classifies its stamp against `engineVersion` (the engine
+	/// that is to open it: a picked SDK's version, or this engine's) and composes the prompt copy
+	/// into `decision`. The header, not the settings, so a project whose settings a newer engine
+	/// wrote is still told apart from a folder that is no project. A pure decision: the caller
+	/// shows the dialogs for the prompt gates and calls the open path it owns.
+	public void DecideOpen(StringView directory, StringView engineVersion, ProjectOpenDecision decision)
 	{
 		decision.Gate = .NotAProject;
 		decision.PromptTitle.Clear();
 		decision.PromptBody.Clear();
-		if (ProjectRegistry.ProbeProject(directory, decision.Probed) case .Err)
+		if (ProjectHeader.Read(directory, decision.Header) case .Err)
 			return;
-		let relation = ProjectRegistry.CompareProjectEngineVersion(decision.Probed.EngineVersion);
+		let relation = ProjectRegistry.CompareEngineVersions(decision.Header.EngineVersion, engineVersion);
 		if (relation == .Same)
 		{
 			decision.Gate = .OpenDirectly;
 			return;
 		}
-		let stamped = decision.Probed.EngineVersion.IsEmpty ? "an unknown version" : StringView(decision.Probed.EngineVersion);
+		let stamped = decision.Header.EngineVersion.IsEmpty ? "an unknown version" : StringView(decision.Header.EngineVersion);
 		if (relation == .ProjectNewer)
 		{
 			decision.Gate = .PromptNewerEngine;
 			decision.PromptTitle.Set("Project from a newer engine");
-			decision.PromptBody.AppendF("This project was last saved by engine {} - NEWER than this editor ({}). Opening may lose or misread data. Open it with the newer engine instead if you can.", stamped, EngineVersion.String);
+			decision.PromptBody.AppendF("This project was last saved by engine {} - NEWER than this editor ({}). Opening may lose or misread data. Open it with the newer engine instead if you can.", stamped, engineVersion);
 			return;
 		}
 		decision.Gate = .PromptOlderBackup;
 		decision.PromptTitle.Set("Open with this engine version?");
-		decision.PromptBody.AppendF("This project was last saved by engine {}; this editor is {}. Back up Project.xml before opening? (Content migrates as assets re-save; use version control for whole-project safety.)", stamped, EngineVersion.String);
+		decision.PromptBody.AppendF("This project was last saved by engine {}; this editor is {}. Back up Project.xml before opening? (Content migrates as assets re-save; use version control for whole-project safety.)", stamped, engineVersion);
 	}
 
 	/// Scaffolds a new project at `directory`; the caller opens on success. Later a template
@@ -75,27 +80,28 @@ class ProjectManagerController
 	/// Pins or unpins a project (pinned ones are listed first); false when it is not listed.
 	public bool SetFavourite(StringView directory, bool favourite) => ProjectRegistry.SetRecentProjectFavourite(mStore, directory, favourite);
 
-	/// Points a missing project's entry at the folder it is in now, refreshed from its manifest;
-	/// false when `to` holds no project, or is listed already.
+	/// Points a missing project's entry at the folder it is in now, refreshed from its manifest's
+	/// header; false when `to` holds no project, or is listed already.
 	public bool Relocate(StringView from, StringView to)
 	{
-		let probed = scope ProjectSettings();
-		if ((ProjectRegistry.ProbeProject(to, probed) case .Err) || !ProjectRegistry.RelocateRecentProject(mStore, from, to))
+		let header = scope ProjectHeader();
+		if ((ProjectHeader.Read(to, header) case .Err) || !ProjectRegistry.RelocateRecentProject(mStore, from, to))
 			return false;
-		TouchSnapshot(to, probed);
+		TouchSnapshot(to, header);
 		return true;
 	}
 
-	/// Removes every project whose folder no longer holds it; how many went. Files are never
+	/// Removes every project whose folder no longer holds one (no manifest whose header reads);
+	/// how many went. A project whose settings a newer engine wrote stays. Files are never
 	/// touched: only the list changes.
 	public int RemoveMissing()
 	{
 		let registry = mStore.Section<RecentProjectsSettings>();
 		int removed = 0;
+		let header = scope ProjectHeader();
 		for (int i = registry.Entries.Count - 1; i >= 0; i--)
 		{
-			let probed = scope ProjectSettings();
-			if (ProjectRegistry.ProbeProject(registry.Entries[i].Path, probed) case .Err)
+			if (ProjectHeader.Read(registry.Entries[i].Path, header) case .Err)
 			{
 				delete registry.Entries[i];
 				registry.Entries.RemoveAt(i);
@@ -138,14 +144,14 @@ class ProjectManagerController
 		mStore.MarkChanged<RecentProjectsSettings>();
 	}
 
-	// Refreshes an entry's name and version from its manifest, keeping its place and time.
-	private void TouchSnapshot(StringView directory, ProjectSettings probed)
+	// Refreshes an entry's name and version from its manifest's header, keeping its place and time.
+	private void TouchSnapshot(StringView directory, ProjectHeader header)
 	{
 		let entry = mStore.Section<RecentProjectsSettings>().Find(directory);
 		if (entry == null)
 			return;
-		entry.Name.Set(probed.Name);
-		entry.EngineVersion.Set(probed.EngineVersion);
+		entry.Name.Set(header.Name);
+		entry.EngineVersion.Set(header.EngineVersion);
 	}
 
 	/// The folder a project named `name` gets, appended to `outFolder`: spaces become '-'; letters,
