@@ -13,9 +13,11 @@ enum BuildTarget
 {
 	/// Build Project: the project's editor alone, in Debug, all a change to the game's code needs
 	/// before the editor opens on it again. The players an export ships are built by the export.
+	/// A project with no package of its own has one too, linking no part of its own: the project
+	/// manager opens every project in its own editor.
 	case Editor;
 	/// The player alone, in the job's config, for the job's platform: this host's (<Game>Player)
-	/// or wasm32 (<Game>PlayerWeb). The one target a project with no package of its own builds.
+	/// or wasm32 (<Game>PlayerWeb).
 	case Player;
 }
 
@@ -442,9 +444,8 @@ class ProjectBuildService
 	}
 
 	/// Runs `job` to its end on this thread: blocking, for the build lane. Refused, with why in
-	/// the job's error, without an engine SDK (ProjectBuild.FindSdk), for a project with no
-	/// package of its own (unless the job builds the player alone, which needs none), for a step
-	/// on another host's platform, without BeefBuild
+	/// the job's error, without an engine SDK (ProjectBuild.FindSdk), for a step on another host's
+	/// platform, without BeefBuild
 	/// (FindBeefBuild), for a web step without Emscripten (ProjectBuild.FindEmscripten), at the
 	/// first run that fails, or when a run said it built and what it makes is not there. Each step
 	/// runs in its entry's workspace (the web player's own for <Game>PlayerWeb) for its platform.
@@ -484,13 +485,6 @@ class ProjectBuildService
 		{
 			outError.Set(scope $"a project's build needs the engine SDK: set {ProjectBuild.cSdkVariable}, or run from an engine checkout");
 			return .Err(.NotSupported);
-		}
-		// A player needs no code of the project's: one without a package is the stock player under
-		// the game's name, which an export ships. The editor of such a project is the stock one.
-		if ((job.Target != .Player) && !ProjectBuild.HasPackages(settings))
-		{
-			outError.Set("the project has no package of its own (Add Native Code makes one)");
-			return .Err(.NotFound);
 		}
 		// A desktop step builds for this host alone: BeefBuild cannot build another's.
 		for (int step < job.StepCount)

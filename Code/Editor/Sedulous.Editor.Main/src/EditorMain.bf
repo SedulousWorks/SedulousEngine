@@ -32,6 +32,8 @@ namespace Sedulous.Editor.Main;
 ///   [--release-files <url or folder>] (where the project manager's Samples tab reads this version's
 ///   release files instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote)
 ///   [--seed] [--seed-primitives] [--version]
+///   [--restamp] (the project's manifest saved once as it opens, stamping it with this engine)
+///   [--manager <path>] (the project manager that launched it)
 ///   GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation]
 ///   (validation defaults on for a dev build, off for an optimized one).
 ///   With a project (positional or --project): opens it directly, scaffolding the manifest
@@ -78,7 +80,8 @@ static class EditorMain
 
 		let config = new EditorAppConfig(); // the app takes it
 		config.DataRoot.Set(dataRoot);
-		ReadCommandLine(args, config);
+		config.ReadCommandLine(args);
+		EditorSeed.SeedAllPrimitives = config.SeedAllPrimitives;
 		config.StartInProjectManager = config.ProjectDirectory.IsEmpty;
 		// The splash's face, from the data root, with the embedded twin as the last resort.
 		let splashFontPath = DataPath(dataRoot, "Engine/Fonts/roboto/Roboto-Regular.ttf", .. scope .());
@@ -142,46 +145,5 @@ static class EditorMain
 
 		let app = scope EditorApplication(config);
 		return DesktopRunner.RunApplication(app, shell, graphics);
-	}
-
-	/// The positional project directory, then the flags.
-	private static void ReadCommandLine(String[] args, EditorAppConfig config)
-	{
-		if ((args.Count > 0) && !args[0].StartsWith("-"))
-			config.ProjectDirectory.Set(args[0]);
-		for (int i = 0; i < args.Count - 1; i++)
-		{
-			if (args[i] == "--project")
-				config.ProjectDirectory.Set(args[i + 1]);
-			else if (args[i] == "--exit-after")
-				config.AutoExitSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
-			else if (args[i] == "--rebuild-after")
-				config.AutoRebuildSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
-			else if (args[i] == "--screenshot")
-				config.ScreenshotPath.Set(args[i + 1]);
-			else if (args[i] == "--screenshot-after")
-				config.ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
-			else if (args[i] == "--release-files")
-				config.ReleaseFiles.Set(args[i + 1]);
-			else if (args[i] == "--mcp-port")
-			{
-				config.McpPort = uint32.Parse(args[i + 1]).GetValueOrDefault();
-				config.McpEnabled = true; // naming a port means serving on it
-			}
-		}
-		for (let arg in args)
-		{
-			if (arg == "--seed")
-				config.SeedOnScaffold = true; // a scaffolded project also gets the starter content
-			else if (arg == "--screenshot-exit")
-				config.ScreenshotExit = true;
-			else if (arg == "--mcp")
-				config.McpEnabled = true; // the MCP host for this run, whatever the preference says
-			else if (arg == "--seed-primitives")
-			{
-				config.SeedOnScaffold = true;
-				EditorSeed.SeedAllPrimitives = true; // plus every primitive, not just the three
-			}
-		}
 	}
 }

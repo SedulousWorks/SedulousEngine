@@ -1,0 +1,20 @@
+<!--
+  A project's editor being built before the project opens in it: what BeefBuild is building, the
+  last lines it printed, the errors and warnings read from them (a click copies one's place), and
+  how the build ended. Cancel stops it; Close, once it has ended, goes back to the projects.
+-->
+<Panel class="dialog-body build-editor">
+    <Label id="build-editor-step" class="manager-meta"/>
+    <Panel id="build-editor-output" class="build-editor-output mono"/>
+    <Label id="build-editor-counts" class="manager-meta"/>
+    <ScrollView class="build-editor-diagnostics"><Panel id="build-editor-diagnostics" class="build-editor-diagnostics-body"/></ScrollView>
+    <Panel id="build-editor-result" class="new-project-check">
+        <Image id="build-editor-result-icon" class="message-icon"/>
+        <Label id="build-editor-result-text" class="new-project-check-text"/>
+    </Panel>
+    <Panel class="dialog-buttons">
+        <Spacer/>
+        <Button id="build-editor-cancel" text="Cancel"/>
+        <Button id="build-editor-close" class="primary" text="Close"/>
+    </Panel>
+</Panel>

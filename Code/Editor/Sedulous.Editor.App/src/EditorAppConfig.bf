@@ -30,6 +30,14 @@ class EditorAppConfig
 	/// CLI: when the project directory has no manifest and gets scaffolded, also seed the
 	/// starter content the manager's New Project flow seeds.
 	public bool SeedOnScaffold = false;
+	/// --seed-primitives: that seed with every primitive, not just the three.
+	public bool SeedAllPrimitives = false;
+	/// --restamp: the project's manifest is saved once as it opens, stamping it with this engine.
+	/// The project manager passes it for an older engine's project the user chose to upgrade.
+	public bool Restamp = false;
+	/// --manager <path>: the project manager that launched this editor (EditorApplication.ManagerPath);
+	/// empty when none said so.
+	public String ManagerPath = new .() ~ delete _;
 
 	/// A smoke-test aid: a clean shutdown after this many seconds (0 never), exercising the
 	/// real teardown path.
@@ -70,4 +78,50 @@ class EditorAppConfig
 	/// Called once at the end of OnStartup, the editor ready: main closes the splash and shows
 	/// the main window (created hidden while the splash is up). Null: nothing to do.
 	public delegate void() StartupFinished ~ delete _;
+
+	/// The command line's project and flags (EditorMain's usage) into this config: the positional
+	/// project directory, then the flags. The data root and the GPU's flags are read by main.
+	public void ReadCommandLine(Span<String> args)
+	{
+		if ((args.Length > 0) && !args[0].StartsWith("-"))
+			ProjectDirectory.Set(args[0]);
+		for (int i = 0; i < args.Length - 1; i++)
+		{
+			if (args[i] == "--project")
+				ProjectDirectory.Set(args[i + 1]);
+			else if (args[i] == "--exit-after")
+				AutoExitSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--rebuild-after")
+				AutoRebuildSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--screenshot")
+				ScreenshotPath.Set(args[i + 1]);
+			else if (args[i] == "--screenshot-after")
+				ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--release-files")
+				ReleaseFiles.Set(args[i + 1]);
+			else if (args[i] == "--manager")
+				ManagerPath.Set(args[i + 1]);
+			else if (args[i] == "--mcp-port")
+			{
+				McpPort = uint32.Parse(args[i + 1]).GetValueOrDefault();
+				McpEnabled = true; // naming a port means serving on it
+			}
+		}
+		for (let arg in args)
+		{
+			if (arg == "--seed")
+				SeedOnScaffold = true; // a scaffolded project also gets the starter content
+			else if (arg == "--screenshot-exit")
+				ScreenshotExit = true;
+			else if (arg == "--mcp")
+				McpEnabled = true; // the MCP host for this run, whatever the preference says
+			else if (arg == "--restamp")
+				Restamp = true;
+			else if (arg == "--seed-primitives")
+			{
+				SeedOnScaffold = true;
+				SeedAllPrimitives = true; // plus every primitive, not just the three
+			}
+		}
+	}
 }

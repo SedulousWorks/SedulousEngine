@@ -71,6 +71,9 @@ struct EditorSessionOpenOptions
 	public StringView ScaffoldName = "Untitled";
 	/// Seed the starter content into a project this open created.
 	public bool Seed = false;
+	/// Save the project's settings once it is open, which stamps it with this engine: an older
+	/// engine's project the user chose to open with this one (the project manager's --restamp).
+	public bool Restamp = false;
 
 	public this()
 	{
@@ -193,6 +196,9 @@ class EditorSession
 			return false;
 		}
 		let project = mProject;
+		// Before anything reads the stamp (the recent list records it below): once, at the open.
+		if (options.Restamp && (project.SaveSettings() case .Err))
+			GlobalLog(.Warning, "Editor: {} could not be stamped with this engine (its manifest was not written)", directory);
 		context.SetProject(project);
 		LoadPlugins(project, context);
 		ConfigureThumbnails();
