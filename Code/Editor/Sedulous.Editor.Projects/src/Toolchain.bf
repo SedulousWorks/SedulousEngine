@@ -133,7 +133,8 @@ class ToolchainProbe
 /// The check of what a project's build needs besides the SDK, looked for as BeefBuild looks for
 /// each, so what it reports missing is what would fail the build:
 /// - BeefBuild (ProjectBuild.FindBeefBuild: BEEFBUILD, PATH, then the managed toolchain of the
-///   SDK's pin), with its -version beside the pin (a mismatch warns; it does not refuse);
+///   SDK's pin), with its -version beside the pin's Beef version (PinVersion; a mismatch warns, it
+///   does not refuse);
 /// - on Linux, the linker (clang++, else c++, on PATH, else /usr/bin/c++) and the archiver
 ///   (llvm-ar, else ar, on PATH, else /usr/bin/ar); on Windows, LLVM's lld-link or Visual Studio's
 ///   link, which BeefBuild finds itself when they are not on PATH;
@@ -180,7 +181,7 @@ static class Toolchain
 			else
 			{
 				beefBuild.Found.AppendF(" ({})", version);
-				if (!sdk.Beef.IsEmpty && !version.Contains(sdk.Beef))
+				if (!sdk.Beef.IsEmpty && !version.Contains(PinVersion(sdk.Beef, .. scope .())))
 				{
 					beefBuild.State = .Warning;
 					beefBuild.Detail.AppendF("this engine was built with Beef {}, and this BeefBuild says '{}': a build may fail on the difference", sdk.Beef, version);
@@ -221,6 +222,16 @@ static class Toolchain
 			emscripten.Detail.Append(outReport.Managed ? ". Only a web export needs it: name its folder here and it is written into the toolchain's settings"
 				: ". Only a web export needs it");
 		}
+	}
+
+	/// The Beef version a toolchain pin starts with, into `outVersion`. A pin is Beef's version, a
+	/// dash and the commit it is built from ("0.43.6-071610ce"), and BeefBuild -version says the
+	/// version alone ("BeefBuild 0.43.6"), so that part is what a BeefBuild is compared with. A pin
+	/// with no dash is taken whole.
+	public static void PinVersion(StringView pin, String outVersion)
+	{
+		let dash = pin.IndexOf('-');
+		outVersion.Set((dash < 0) ? pin : pin.Substring(0, dash));
 	}
 
 	/// The first of `names` on `searchPath` (ProjectBuild.FindOnPath), else `fallback` when that is

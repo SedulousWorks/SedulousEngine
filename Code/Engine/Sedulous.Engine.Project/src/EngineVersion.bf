@@ -31,6 +31,12 @@ static class EngineVersion
 	/// The build number of a build handed out, set here by hand before building it; 0 is a local
 	/// build.
 	public const uint32 BuildNumber = 0;
+	/// The Beef toolchain the engine is built and tested with, its pin: Beef's own version (what
+	/// `BeefBuild -version` says) and the commit it is built from, "<version>-<commit>". A packed
+	/// SDK names it (sdk.json's beef), the project manager installs the toolchain of that name, and
+	/// Code/Tools/pack-toolchain.sh builds it at that commit. Moved by hand, in the commit that moves
+	/// the engine to another Beef.
+	public const String Beef = "0.43.6-071610ce";
 	/// The engine's name, as the About box says it.
 	public const String ProductName = "SedulousEngine";
 

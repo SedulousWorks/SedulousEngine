@@ -12,14 +12,46 @@ the SDK it sits in, makes projects from its templates and opens each project in 
 which it builds over that SDK the first time (a Debug build that compiles the engine with the
 game, the longest one); a later open builds again only when the project's code or its SDK changed. The manager's Engines page installs other SDKs
 from the releases into the user's data folder, side by side, and its Toolchain page checks what a
-build needs:
-
-- **BeefBuild.** The `BEEFBUILD` variable, else one on PATH with its corlib, else the toolchain the
-  Toolchain page installs: the one the SDK names in its `sdk.json` (`beef`).
-- **The linker.** On Linux, `clang++` or `c++`, and `ar` (or `llvm-ar`), on PATH.
-- **Emscripten**, for web exports only (see Web.md).
+build needs (below).
 
 Leave an SDK's folder where it is: the manager records projects pinned to it by its path.
+
+## What a build needs
+
+A project's build runs BeefBuild, which compiles and then links through the system's tools. The
+Toolchain page checks each, as the build looks for it, and says what to install for one missing.
+
+- **BeefBuild**, found in this order: the `BEEFBUILD` variable; else the first BeefBuild on PATH
+  whose install has corlib (a `BeefConfig.toml` beside it naming its libraries); else the managed
+  toolchain, the one the SDK pins (`sdk.json`'s `beef`), which the Toolchain page installs from
+  the releases. A BeefBuild that says another Beef version than the pin's is used, with a warning:
+  a build may fail on the difference.
+- **The linker and the archiver** (Linux): `clang++`, else `c++`, on PATH (else `/usr/bin/c++`),
+  and `llvm-ar`, else `ar` (else `/usr/bin/ar`). They are not shipped: install `clang` or `g++`
+  and `binutils` from the system's packages (on Ubuntu, `sudo apt install clang binutils`).
+- **Emscripten**, for web exports alone: an emsdk folder, which BeefBuild reads from its settings
+  (Web.md). The Toolchain page writes it into the managed toolchain's own settings; a Beef of your
+  own is told what to set. It is not shipped either: install it as Emscripten's own guide says.
+
+### The managed toolchain
+
+A release ships Beef as its own download, `beef-<pin>-linux64.zip`, shared by every SDK with
+that pin and installed on demand into `<user-data>/Sedulous/Toolchains/<pin>/` (on Linux,
+`~/.local/share/Sedulous/Toolchains/`). The pin is Beef's version and the commit it was built
+from (`0.43.6-071610ce`): the Beef the engine was built and tested with, set in
+`Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf` (`Beef`). It holds:
+
+- `bin/BeefBuild`, the library it loads, and the runtime libraries it links programs with;
+- `bin/BeefConfig.toml`, naming `../BeefLibs`;
+- the wasm runtimes a web build links (`bin/Beef*RT32_wasm*.a`);
+- `BeefLibs/`, corlib among them;
+- Beef's licence and those of what it includes (`LICENSE.TXT`, `LICENSES.TXT`).
+
+It is built on Ubuntu 22.04, so it runs on glibc 2.35 and later. It keeps its settings in
+`bin/BeefSettings.toml`, beside itself.
+
+To build with your own Beef instead, put its BeefBuild on PATH or set `BEEFBUILD`; one from a
+nightly or a source build works when its version matches the pin's.
 
 ## What an SDK holds
 
@@ -49,10 +81,11 @@ commit (the version and label come from `EngineVersion.bf`):
 ```
 python3 Code/Tools/pack-sdk.py --check
 python3 Code/Tools/pack-sdk.py <out-dir> --manager Code/build/ShippingRelease_Linux64/Sedulous.Tools.ProjectManager \
-    --beef <pin> [--toolchain beef-<pin>-linux64.zip [--toolchain-release <tag>]]
+    --toolchain beef-<pin>-linux64.zip [--toolchain-release <tag>]
 ```
 
-Build `Sedulous.Tools.ProjectManager` in ShippingRelease first. `--platform` (default `Linux64`)
+Build `Sedulous.Tools.ProjectManager` in ShippingRelease first. The pin is `EngineVersion.bf`'s
+`Beef` (`--beef` overrides it); `--toolchain` must be that pin's zip. `--platform` (default `Linux64`)
 picks the platform's prebuilt libraries and shader tools; no Win64 SDK packs yet, since some
 dependencies have no Win64 libraries in the tree, and `--check --platform Win64` lists them.
 
@@ -79,3 +112,24 @@ timestamps, so the same files pack to the same bytes) and the release's index fo
 `toolchain` is there when `--toolchain` names the toolchain's zip; its `release` is the release
 whose files carry that zip, left out when it is this one. Attach the zip and the index to the
 GitHub release `v<display>`, beside what `pack-samples.py` writes.
+
+## Packing the toolchain
+
+`Code/Tools/pack-toolchain.sh` packs the managed toolchain for Linux64, by hand, on the release
+commit when the pin moved (a release whose pin did not move names the earlier release that carries
+it, with `pack-sdk.py --toolchain-release`):
+
+```
+EMSDK=<emsdk folder> Code/Tools/pack-toolchain.sh <out-dir>
+```
+
+It clones Beef (the `working` branch of [the fork](https://github.com/jayrulez/Beef); `BEEF_REPO`
+and `BEEF_BRANCH` name another) under `build/toolchain/<pin>/`, checks out the pin's commit and
+refuses when that commit's Beef version is not the pin's. The wasm runtimes are built with the
+host's Emscripten (`EMSDK`); Beef itself is built in the Steam Deck's Ubuntu 22.04 container
+(podman or docker, `RT`), once per pin, and laid out by Beef's own install script less the debug
+BeefBuild. Before it zips, the staged toolchain must say the pin's version, ask for nothing newer
+than glibc 2.35 and build and run a small program in Debug and in Release. It writes
+`beef-<pin>-linux64.zip`, each file's Unix mode kept, its times the commit's. Building Beef
+compiles its C++ libraries and BeefBuild in Debug and in Release and runs its compiler tests:
+give it the machine, with nothing else building beside it.

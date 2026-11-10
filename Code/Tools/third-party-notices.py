@@ -23,6 +23,8 @@ OUTPUT = os.path.join(DEPENDENCIES, "THIRD-PARTY-NOTICES.txt")
 
 # (name, where it comes from, the licence it is used under, its licence files relative to Dependencies/)
 COMPONENTS = [
+    ("Beef (its runtime and corlib, linked into every program it builds)", "https://github.com/beefytech/Beef",
+     "MIT, with the notices of what it includes", ["Beef/LICENSE.TXT", "Beef/LICENSES.TXT"]),
     ("SDL", "https://libsdl.org", "Zlib", ["SDL3-Beef/dist/SDL3-3.4.0/LICENSE.txt"]),
     ("Jolt Physics", "https://github.com/jrouwe/JoltPhysics", "MIT", ["joltc-Beef/JoltPhysics.LICENSE"]),
     ("joltc", "https://github.com/amerkoleci/joltc", "MIT", ["joltc-Beef/joltc/LICENSE"]),
