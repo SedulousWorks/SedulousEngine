@@ -30,6 +30,7 @@ class ThumbnailService
 {
 	public typealias Resolve = delegate Instance(Guid id);
 	public typealias ContentHash = delegate uint64(Guid id);
+	public typealias CookBusy = delegate bool();
 
 	/// The thumbnail edge, square; the generators letterbox to it.
 	public const uint32 cThumbnailSize = 128;
@@ -72,6 +73,8 @@ class ThumbnailService
 	private NativeFileSystem mSources = null ~ delete _;
 	private Resolve mResolve = null ~ delete _;
 	private ContentHash mContentHash = null ~ delete _;
+	/// Whether a cook runs or waits to; null: never.
+	private CookBusy mCookBusy = null ~ delete _;
 	/// The pool and lane its loads and writes run on; borrowed; null: not configured.
 	private TaskPool mTasks = null;
 	private TaskLane mLane = .Shared;
@@ -127,6 +130,7 @@ class ThumbnailService
 		mCacheDirectory.Clear();
 		DeleteAndNullify!(mResolve);
 		DeleteAndNullify!(mContentHash);
+		DeleteAndNullify!(mCookBusy);
 		mTasks = null;
 		DeleteAndNullify!(mSources);
 	}
@@ -161,6 +165,16 @@ class ThumbnailService
 	}
 
 	public int CachedCount => mEntries.Count;
+
+	/// Whether a cook is running or waiting to: a document named by its generator's hash waits
+	/// then, as an asset with no recipe hash does, since its dependencies' recipe hashes read
+	/// nought until the cook finishes. TAKES OWNERSHIP; Configure and Reset drop it, so it is
+	/// set after Configure. Null (the default): never.
+	public void SetCookBusy(CookBusy busy)
+	{
+		delete mCookBusy;
+		mCookBusy = busy;
+	}
 
 	// ---- the GPU lane, driven by the stage one job at a time ----
 
@@ -217,6 +231,18 @@ class ThumbnailService
 		Store(id, drawable);
 		if (OnThumbnailReady != null)
 			OnThumbnailReady(id);
+	}
+
+	/// The active job waits for a cook (its generator returned WaitingForCook): nothing is
+	/// drawn or cached, and the entry left is a quiet wait the cook's InvalidateAll drops, so
+	/// the next Get after the cook queues it again.
+	public void DeferSceneJob(Guid id)
+	{
+		if (!mSceneJobActive || (mActiveSceneJob != id))
+			return;
+		mSceneJobActive = false;
+		mActiveSceneJob = .Empty;
+		Store(id, null);
 	}
 
 	public int QueuedSceneJobs => mSceneQueue.Count + (mSceneJobActive ? 1 : 0);
@@ -406,7 +432,8 @@ class ThumbnailService
 	}
 
 	/// What names an asset's cache file: the cook's recipe hash, else (a document no builder cooks:
-	/// a scene, a prefab) its GPU generator's ContentHash; nought when neither knows it yet.
+	/// a scene, a prefab) its GPU generator's ContentHash with the recipe hashes of the assets it
+	/// shows; nought when neither knows it yet, or while a cook runs for such a document.
 	private uint64 HashFor(Guid id)
 	{
 		let recipe = (mContentHash != null) ? mContentHash(id) : 0;
@@ -416,7 +443,26 @@ class ThumbnailService
 		if ((instance == null) || (GeneratorFor(instance.TypeName) != null))
 			return 0;
 		let generator = SceneGeneratorFor(instance.TypeName);
-		return (generator != null) ? generator.ContentHash(instance) : 0;
+		if (generator == null)
+			return 0;
+		var hash = generator.ContentHash(instance);
+		if (hash == 0)
+			return 0;
+		// What it shows goes into the name, so a cook that makes or remakes one names a new file:
+		// an image drawn before they were cooked is never served again. Those hashes read nought
+		// while a cook runs, so the document waits for it, as an asset with no recipe hash does.
+		if ((mCookBusy != null) && mCookBusy())
+			return 0;
+		let shown = scope List<Guid>();
+		generator.Dependencies(instance, shown);
+		for (let dependency in shown)
+		{
+			var key = dependency;
+			uint64 shownRecipe = (mContentHash != null) ? mContentHash(dependency) : 0;
+			hash = HashBytes(&key, sizeof(Guid), hash);
+			hash = HashBytes(&shownRecipe, sizeof(uint64), hash);
+		}
+		return (hash != 0) ? hash : 1; // nought means unknown
 	}
 
 	private ISceneThumbnailGenerator SceneGeneratorFor(StringView typeName)

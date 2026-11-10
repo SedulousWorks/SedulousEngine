@@ -340,6 +340,7 @@ class EditorSessionTests
 		Test.Assert(bench.EventsAre("opened"));
 		Test.Assert(bench.OpenedSawServicesUp);
 		Test.Assert(bench.Context.SourceAssetTypesOf != null);
+		Test.Assert((bench.Context.AwaitsCook != null) && (bench.Context.OnCookRequestedFor != null));
 		// A prefab reference's picker offers prefab documents.
 		let accepted = scope List<Type>();
 		bench.Context.SourceAssetTypesOf(typeof(Sedulous.Scene.Resource.PrefabResource), accepted);
@@ -373,6 +374,7 @@ class EditorSessionTests
 		Test.Assert(bench.Thumbnails.CachedCount == 0, "reset: nothing resolves");
 		Test.Assert(bench.Context.OnCookRequested == null);
 		Test.Assert(bench.Context.CookBusy == null);
+		Test.Assert((bench.Context.AwaitsCook == null) && (bench.Context.OnCookRequestedFor == null));
 		Test.Assert(bench.Context.OnProjectSettingsChanged == null);
 		bench.Context.NotifyProjectSettingsChanged();
 		Test.Assert(bench.Events.Count == 4);

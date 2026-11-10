@@ -30,4 +30,11 @@ interface ISceneThumbnailGenerator
 	{
 		return 0;
 	}
+
+	/// The assets the thumbnail shows (a scene's meshes and materials), for a type named by
+	/// ContentHash: their cooked state goes into the cache file's name, so a cook that makes or
+	/// remakes one draws the thumbnail again. None, the default.
+	void Dependencies(Instance instance, List<Guid> outIds)
+	{
+	}
 }

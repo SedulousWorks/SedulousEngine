@@ -149,6 +149,94 @@ class SceneThumbnailTests
 		Test.Assert(generator.ContentHash(level) != viewed, "turned: a new thumbnail");
 	}
 
+	/// An uncooked project's first open (a downloaded sample): a scene's thumbnail drawn now would
+	/// miss the meshes the cook has not made, and stay so. It asks the cook for them and waits
+	/// instead; once they are cooked it stages. The thumbnail's file name follows them too (the
+	/// service's tests).
+	[Test]
+	public static void WhatItShowsThatTheCookHasNotMadeIsAskedForAndTheThumbnailWaitsForIt()
+	{
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_scene_thumb_wait", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		SceneResources.RegisterAll();
+		SceneEditorSerializables.RegisterAll();
+
+		let level = project.SourceDb.RootGroup.CreateInstance("Level", typeof(SceneDocument).GetFullName(.. scope .()));
+		Test.Assert(level != null);
+		{
+			let authored = scope Sedulous.Scene.Scene("authored");
+			EngineSceneComposition.AddAllSceneManagers(authored);
+			authored.CreateEntity("Crate");
+			Test.Assert(SceneStorage.SaveScene(authored, level) case .Ok);
+		}
+
+		// What the scene shows (as the export's scan would find it) and the cook's state of it.
+		let mesh = Guid(0xABCD, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x34);
+		int scans = 0;
+		bool cooked = false;
+		let asked = scope List<Guid>();
+		let store = scope Settings();
+		let context = scope EditorContext();
+		context.SetProject(project);
+		context.ProjectEditorSettings = store;
+		defer
+		{
+			context.ProjectEditorSettings = null;
+			context.SetProject(null);
+		}
+		context.SceneRefScanner = new [=mesh, &scans](instance, db, outResources, outPrefabs) =>
+			{
+				scans++;
+				outResources.Add(mesh);
+				return true;
+			};
+		context.AwaitsCook = new [=mesh, &cooked](id) => (id == mesh) && !cooked;
+		context.OnCookRequestedFor = new [=asked](roots) => { asked.AddRange(roots); };
+
+		let service = scope ThumbnailService();
+		SceneThumbnailGenerators.Register(service, context);
+		service.Configure(PathJoin(dir, "thumbs", .. scope .()),
+			new [=level](id) => (id == level.Id) ? level : null,
+			context.Tasks, context.LightLane, new (id) => 0, project.SourcesRoot(.. scope .()));
+		Test.Assert(service.Get(level.Id) == null);
+		let job = service.TakeSceneJob();
+		Test.Assert(job.Id == level.Id);
+		Test.Assert(job.Generator != null);
+
+		let shown = scope List<Guid>();
+		job.Generator.Dependencies(level, shown);
+		Test.Assert((shown.Count == 1) && (shown[0] == mesh));
+
+		let resources = scope ResourceManager(project.SourceDb);
+		{
+			let stage = scope Sedulous.Scene.Scene("stage");
+			EngineSceneComposition.AddAllSceneManagers(stage);
+			var framing = ThumbnailFraming();
+			Test.Assert(job.Generator.Stage(job.Id, stage, resources, ref framing) == .WaitingForCook);
+			Test.Assert((asked.Count == 1) && (asked[0] == mesh), "the cook was asked for the mesh");
+			job.Generator.Unstage(stage);
+		}
+
+		cooked = true; // the cook made it
+		asked.Clear();
+		{
+			// It stages now (whether this scene's crate draws is not the point): no wait, no new ask.
+			let stage = scope Sedulous.Scene.Scene("stage");
+			EngineSceneComposition.AddAllSceneManagers(stage);
+			var framing = ThumbnailFraming();
+			Test.Assert(job.Generator.Stage(job.Id, stage, resources, ref framing) != .WaitingForCook);
+			Test.Assert(asked.IsEmpty);
+			job.Generator.Unstage(stage);
+		}
+		Test.Assert(scans == 1, "the document is scanned once per version");
+		service.Reset();
+	}
+
 	[Test]
 	public static void APrefabWithNoProjectFails()
 	{

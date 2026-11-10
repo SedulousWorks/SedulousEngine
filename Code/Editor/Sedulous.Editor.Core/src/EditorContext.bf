@@ -107,6 +107,13 @@ class EditorContext : IAssetEditSink
 	/// Whether a cook is running, wired by the app; a page that must not start against a
 	/// half written cooked database polls it and defers. Unwired is never busy.
 	public delegate bool() CookBusy ~ delete _;
+	/// Whether an asset waits for the cook to make its product: it has a source the cook builds
+	/// and no product, and no cook is running (one that failed is not waiting; it stays
+	/// missing). Wired by the app to the project and its cook; unwired, nothing waits.
+	public delegate bool(Guid id) AwaitsCook ~ delete _;
+	/// Cook these assets and what they need, wired by the app to its cook service, for a view
+	/// that shows them before the project was cooked (a scene's thumbnail).
+	public delegate void(Span<Guid> roots) OnCookRequestedFor ~ delete _;
 	/// The source asset types a resource reference to `product` takes, a picker's filter:
 	/// wired by the app from its builders and the engine composition. Unwired (headless hosts,
 	/// tests), a reference row keeps the list it was generated with.
@@ -227,6 +234,14 @@ class EditorContext : IAssetEditSink
 	}
 
 	public bool IsCookBusy => (CookBusy != null) ? CookBusy() : false;
+
+	public bool WaitsForCook(Guid id) => (AwaitsCook != null) ? AwaitsCook(id) : false;
+
+	public void RequestCookFor(Span<Guid> roots)
+	{
+		if ((OnCookRequestedFor != null) && !roots.IsEmpty)
+			OnCookRequestedFor(roots);
+	}
 
 	/// TAKES OWNERSHIP.
 	public void RegisterEditorSettingsContribution(EditorSettingsContribution contribution)

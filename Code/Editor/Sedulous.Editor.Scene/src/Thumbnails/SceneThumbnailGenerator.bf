@@ -18,6 +18,7 @@ class SceneThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private EditorContext mContext;
 	private bool mLoaded = false;
+	private ShownAssetScans mScans = new .() ~ delete _;
 
 	public this(EditorContext context)
 	{
@@ -34,6 +35,8 @@ class SceneThumbnailGenerator : ISceneThumbnailGenerator
 		if (!mLoaded)
 		{
 			let instance = ThumbnailStaging.SourceInstance(mContext, id);
+			if ((instance != null) && mScans.WaitForUncooked(mContext, instance))
+				return .WaitingForCook;
 			if ((instance == null) || !(SceneStorage.LoadScene(instance, stage) case .Ok))
 				return .Failed;
 			let resolver = ThumbnailStaging.PayloadResolver(mContext);
@@ -77,6 +80,8 @@ class SceneThumbnailGenerator : ISceneThumbnailGenerator
 		}
 		return (hash != 0) ? hash : 1;
 	}
+
+	public void Dependencies(Instance instance, List<Guid> outIds) => mScans.Collect(mContext, instance, outIds);
 
 	/// The view the scene's page saved when it last closed, BORROWED; null when none was.
 	private SceneViewPref SavedView(Guid id) => SceneViewPrefs.Find(mContext.ProjectEditorSettings, id);

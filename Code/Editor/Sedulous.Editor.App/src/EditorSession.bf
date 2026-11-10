@@ -282,6 +282,8 @@ class EditorSession
 		WriteStore();
 		DeleteAndNullify!(context.OnCookRequested);
 		DeleteAndNullify!(context.CookBusy);
+		DeleteAndNullify!(context.AwaitsCook);
+		DeleteAndNullify!(context.OnCookRequestedFor);
 		DeleteAndNullify!(context.OnFavoritesChanged);
 		DeleteAndNullify!(context.OnProjectSettingsChanged);
 		if (let app = mServices.EmbeddedApp)
@@ -413,6 +415,9 @@ class EditorSession
 			mServices.Context.Tasks, mServices.Context.LightLane,
 			new [=cook](id) => cook.RecipeHashFor(id),
 			mProject.SourcesRoot(.. scope .()));
+		// A scene's or a prefab's thumbnail is named by the recipe hashes of what it shows, which
+		// read nought while a cook runs: it waits for the cook rather than file under a passing name.
+		mServices.Thumbnails.SetCookBusy(new [=cook]() => cook.IsReady && !cook.IsIdle);
 	}
 
 	/// The per-project store: absent on a fresh project, its sections then read as defaults.
@@ -455,6 +460,11 @@ class EditorSession
 		mResources = new ResourceManager(view, mServices.Context.Tasks);
 		let resources = mResources;
 		view.SetFallthrough(new [=resources] (storedTypeName) => resources.ReadsAuthoredRecord(storedTypeName));
+		// An asset with a source and no product yet (an uncooked project's first open) waits for
+		// the cook: the page that binds it says so once (EditorPages.CookMissing) instead of a
+		// warning per reference. A reference to no source at all still warns.
+		let project = mProject;
+		mResources.SetAwaitsBuild(new [=project](id) => (project.CookedDb.GetInstance(id) == null) && (project.SourceDb.GetInstance(id) != null));
 		mServices.Context.Resources = mResources;
 		if (mServices.EmbeddedApp != null)
 			mServices.EmbeddedApp.AttachResourceManager(mResources, mServices.EmbeddedHost);
@@ -474,6 +484,19 @@ class EditorSession
 		// waiting to re-issue.
 		delete context.CookBusy;
 		context.CookBusy = new [=cook]() => cook.IsReady && !cook.IsIdle;
+		// A view drawn before the project was cooked (a scene's thumbnail) asks for what it shows,
+		// and waits while the cook has not made it. A cook that ran and failed is not waited on.
+		let project = mProject;
+		delete context.AwaitsCook;
+		context.AwaitsCook = new [=project, =cook](id) =>
+			{
+				if (!cook.IsReady || !cook.IsIdle)
+					return false;
+				let source = project.SourceDb.GetInstance(id);
+				return (source != null) && (cook.BadgeFor(source) == .Missing);
+			};
+		delete context.OnCookRequestedFor;
+		context.OnCookRequestedFor = new [=cook](roots) => { cook.RequestCookFor(roots, false); };
 		delete context.SourceAssetTypesOf;
 		context.SourceAssetTypesOf = new [=builders](product, outAssets) => SceneReference.SourceAssetTypesFor(builders, product, outAssets);
 		// The build lane's work (an export, an import's writes) reads the databases: mutations and

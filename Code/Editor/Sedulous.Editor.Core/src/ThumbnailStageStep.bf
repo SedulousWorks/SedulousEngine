@@ -8,5 +8,8 @@ enum ThumbnailStageStep : uint8
 	/// The scene is populated; the framing carries the view.
 	Ready,
 	/// Cannot stage, a missing product or an unbound resource: negative cached.
-	Failed
+	Failed,
+	/// What it shows has an asset the cook has not made yet (the generator asked for it):
+	/// nothing is drawn or cached, and the job runs again when the cook finishes.
+	WaitingForCook
 }

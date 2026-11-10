@@ -14,6 +14,7 @@ class PrefabThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private EditorContext mContext;
 	private bool mSpawned = false;
+	private ShownAssetScans mScans = new .() ~ delete _;
 
 	public this(EditorContext context)
 	{
@@ -30,6 +31,8 @@ class PrefabThumbnailGenerator : ISceneThumbnailGenerator
 		if (!mSpawned)
 		{
 			let instance = ThumbnailStaging.SourceInstance(mContext, id);
+			if ((instance != null) && mScans.WaitForUncooked(mContext, instance))
+				return .WaitingForCook;
 			let payload = (instance != null) ? instance.ReadData("scene") : null;
 			if (payload == null)
 				return .Failed;
@@ -54,4 +57,6 @@ class PrefabThumbnailGenerator : ISceneThumbnailGenerator
 
 	/// No builder cooks a prefab document: its envelope and scene stream name its thumbnail.
 	public uint64 ContentHash(Instance instance) => ThumbnailStaging.DocumentHash(instance);
+
+	public void Dependencies(Instance instance, List<Guid> outIds) => mScans.Collect(mContext, instance, outIds);
 }

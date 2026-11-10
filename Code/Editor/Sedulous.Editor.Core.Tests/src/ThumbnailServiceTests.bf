@@ -201,6 +201,83 @@ static class ThumbnailServiceTests
 		Test.Assert(FileExists(scope $"{fx.CacheDir}/{fx.Known}-85.png"), "saved under its own hash");
 	}
 
+	/// How many thumbnail files the cache folder holds.
+	private static int CachedFiles(StringView dir)
+	{
+		int files = 0;
+		ListDirectory(dir, scope [&](name, isDirectory) => { if (!isDirectory) files++; });
+		return files;
+	}
+
+	/// A document's thumbnail is named by what it shows as cooked: one drawn before its mesh was
+	/// cooked (or before a cook remade it) is never served again, the new name missing on disk;
+	/// and while a cook runs, when those recipe hashes read nought, it waits rather than file
+	/// under a passing name.
+	[Test]
+	public static void ADocumentsFileFollowsTheCookedStateOfWhatItShowsARunningCookWaits()
+	{
+		Scratch("thumbs_gpu_dependent", .. scope .());
+		bool cooking = false;
+		let fx = scope ThumbnailFixture("thumbs_gpu_dependent", 0, false, true, 85);
+		fx.Shown = Guid(0x8888, 0, 0, 0, 0, 0, 0, 0, 0, 0x99, 0x99);
+		fx.ShownHash = 0; // not cooked yet
+		fx.SceneGenerator.Shown.Add(fx.Shown);
+		fx.Service.SetCookBusy(new [&cooking]() => cooking);
+
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 1);
+		Test.Assert(fx.Service.TakeSceneJob().Id == fx.Known);
+		fx.Service.AcceptSceneResult(fx.Known, SolidTile(90), true);
+		fx.PumpLight();
+		Test.Assert(CachedFiles(fx.CacheDir) == 1);
+
+		// The cook runs: the thumbnail waits, nothing queued.
+		cooking = true;
+		fx.Service.InvalidateAll();
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 0, "a running cook: it waits");
+
+		// It made the mesh: a new name, missing on disk, so the thumbnail is drawn again.
+		cooking = false;
+		fx.ShownHash = 0x1234;
+		fx.Service.InvalidateAll();
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 1, "what it shows was cooked: drawn again");
+		Test.Assert(fx.Service.TakeSceneJob().Id == fx.Known);
+		fx.Service.AcceptSceneResult(fx.Known, SolidTile(120), true);
+		fx.PumpLight();
+		Test.Assert(CachedFiles(fx.CacheDir) == 2);
+
+		// Unchanged since: the same name, served from disk with no new drawing.
+		fx.Service.InvalidateAll();
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 0, "served from its file");
+		fx.PumpLight();
+		Test.Assert(fx.Service.Get(fx.Known) != null);
+		fx.Service.Reset();
+	}
+
+	/// A job whose assets wait for the cook (its generator asked for them) draws and caches
+	/// nothing; it does not come back each frame, and the cook's InvalidateAll lets it run again.
+	[Test]
+	public static void AJobWaitingForItsCookCachesNothingAndRunsAgainAfterTheCook()
+	{
+		Scratch("thumbs_gpu_deferred", .. scope .());
+		let fx = scope ThumbnailFixture("thumbs_gpu_deferred", 0x99, false, true);
+		fx.Service.Get(fx.Known);
+		Test.Assert(fx.Service.TakeSceneJob().Id == fx.Known);
+		fx.Service.DeferSceneJob(fx.Known);
+		Test.Assert(fx.Service.QueuedSceneJobs == 0);
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 0, "waits: no retry every frame");
+		fx.PumpLight();
+		Test.Assert(CachedFiles(fx.CacheDir) == 0, "nothing written");
+		fx.Service.InvalidateAll(); // the cook finished
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 1);
+		fx.Service.Reset();
+	}
+
 	[Test]
 	public static void AFailedStageResultCachesANegativeAndNeverRequeues()
 	{

@@ -758,6 +758,10 @@ class EditorPages
 				if ((sources != null) && (sources.GetInstance(id) != null))
 					roots.Add(id);
 			}
+			// The binds that found no product logged nothing each (the resource manager is told
+			// they wait for the cook): one line says it, for the page.
+			if (!roots.IsEmpty)
+				GlobalLog(.Information, "Editor: '{}': {} referenced assets wait for the cook", instance.Name, roots.Count);
 		}
 		let badge = cook.BadgeFor(instance);
 		if ((badge == .Missing) || (badge == .Failed))

@@ -148,6 +148,8 @@ class ThumbnailStage
 			case .Failed:
 				GlobalLog(.Warning, "Thumbnails: {} could not be staged for its thumbnail", mJob.Id);
 				FailJob();
+			case .WaitingForCook:
+				DeferJob();
 			case .Pending:
 				if (++mStagingFrames > cMaxStagingFrames)
 				{
@@ -350,6 +352,16 @@ class ThumbnailStage
 	{
 		ReleaseJobScene();
 		mService.AcceptSceneResult(mJob.Id, null, false);
+		mJob = .();
+		mState = .Idle;
+	}
+
+	/// What the job shows is not cooked yet (the generator asked for it): nothing is drawn or
+	/// cached, and the job comes back when the cook finishes.
+	private void DeferJob()
+	{
+		ReleaseJobScene();
+		mService.DeferSceneJob(mJob.Id);
 		mJob = .();
 		mState = .Idle;
 	}

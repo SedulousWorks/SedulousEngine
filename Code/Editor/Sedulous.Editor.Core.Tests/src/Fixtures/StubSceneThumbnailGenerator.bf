@@ -14,6 +14,8 @@ class StubSceneThumbnailGenerator : ISceneThumbnailGenerator
 	private bool mPrivate;
 	/// What it names a document's content by (nought: the cook's recipe hash does).
 	private uint64 mContentHash;
+	/// What its thumbnail shows (a scene's meshes), whose recipe hashes go into the file's name.
+	public List<Guid> Shown = new .() ~ delete _;
 
 	public this(StringView type, bool privateScene = false, uint64 contentHash = 0)
 	{
@@ -23,6 +25,7 @@ class StubSceneThumbnailGenerator : ISceneThumbnailGenerator
 	}
 
 	public uint64 ContentHash(Instance instance) => mContentHash;
+	public void Dependencies(Instance instance, List<Guid> outIds) => outIds.AddRange(Shown);
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add(mType);
 	public bool NeedsPrivateScene => mPrivate;

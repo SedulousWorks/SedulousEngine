@@ -28,6 +28,12 @@ class ThumbnailFixture
 	public int Generates = 0;
 	/// The content hash the service sees (0: not cooked yet).
 	public uint64 Hash;
+	/// An asset the GPU generator's document shows, and its recipe hash (0: not cooked yet);
+	/// unset, every id reads Hash.
+	public Guid Shown;
+	public uint64 ShownHash;
+	/// The GPU generator, borrowed from the service; null for a CPU fixture.
+	public StubSceneThumbnailGenerator SceneGenerator;
 
 	/// `generatorHash` is what a GPU generator names the asset's content by (a document no builder
 	/// cooks); nought leaves it to `hash`.
@@ -44,7 +50,8 @@ class ThumbnailFixture
 		Instance = new Instance(Db, Db.RootGroup, Known, gpu ? "StubGpu" : "Stub", gpu ? "StubGpuAsset" : "StubAsset");
 		if (gpu)
 		{
-			Service.RegisterSceneGenerator(new StubSceneThumbnailGenerator("StubGpuAsset", false, generatorHash));
+			SceneGenerator = new StubSceneThumbnailGenerator("StubGpuAsset", false, generatorHash);
+			Service.RegisterSceneGenerator(SceneGenerator);
 		}
 		else
 		{
@@ -54,7 +61,7 @@ class ThumbnailFixture
 			generator.FailGenerate = failGenerate;
 			Service.RegisterGenerator(generator);
 		}
-		Service.Configure(CacheDir, new (id) => (id == Known) ? Instance : null, Tasks, Light, new (id) => Hash, MountDir);
+		Service.Configure(CacheDir, new (id) => (id == Known) ? Instance : null, Tasks, Light, new (id) => (Shown.IsSet && (id == Shown)) ? ShownHash : Hash, MountDir);
 	}
 
 	/// Pumps the light lane to completion; bounded so a hang fails.

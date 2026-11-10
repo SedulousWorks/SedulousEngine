@@ -61,6 +61,20 @@ class ResourceManager
 	/// every bind landing unresolved is the answer it wants, not a fault to report).
 	public bool ReportsMissingFactories = true;
 
+	/// Which ids the database lacks only because they wait to be built (the editor: an asset
+	/// with a source and no cooked product yet); null: every id the database lacks is a broken
+	/// reference.
+	private delegate bool(Guid id) mAwaitsBuild ~ delete _;
+
+	/// Names the ids not in the database that only wait to be built. Their binds land unresolved
+	/// without a warning each, since the host reports the wait once; an id it does not name is a
+	/// broken reference and still warns. TAKES OWNERSHIP; null: every id the database lacks warns.
+	public void SetAwaitsBuild(delegate bool(Guid id) awaits)
+	{
+		delete mAwaitsBuild;
+		mAwaitsBuild = awaits;
+	}
+
 	/// The constructing thread is the main one: finalizing and pumping happen there.
 	public this(IContentDatabase database, TaskPool tasks = null)
 	{
@@ -601,8 +615,12 @@ class ResourceManager
 		{
 			// A broken reference rather than a wiring mistake: the identity names nothing
 			// in the database. Named, because a silently null handle is very hard to
-			// diagnose from the symptom.
-			GlobalLog(.Warning, "Resource: bind failed, no content instance for {}", id);
+			// diagnose from the symptom. One the host says only waits to be built (an
+			// editor's first cook) the host reports, once, rather than each bind.
+			if ((mAwaitsBuild != null) && mAwaitsBuild(id))
+				GlobalLog(.Debug, "Resource: bind waits, {} is not built yet", id);
+			else
+				GlobalLog(.Warning, "Resource: bind failed, no content instance for {}", id);
 			handle.SetState(.Failed);
 			return;
 		}

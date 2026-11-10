@@ -42,6 +42,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: a project opened before it was cooked (a downloaded sample) shows its scenes' and
+  prefabs' thumbnails whole: they wait for the cook to make what they show, where before they were
+  drawn with those meshes missing and kept so, even after the cook. A thumbnail is drawn again
+  when a cook remakes what it shows. Opening such a project no longer logs a warning for each
+  reference still waiting for the cook; the page says once how many it waits for.
 - MCP: scene_validate and scene_write no longer say a scene's records of components the host has
   no code for are dropped: a write keeps them; the warning says a cook by that host leaves them out.
 - GUI: a tween of a property code set on a node (`node.Opacity = 0`, then a tween of `opacity`)

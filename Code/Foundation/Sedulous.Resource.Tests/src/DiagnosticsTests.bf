@@ -93,6 +93,44 @@ class DiagnosticsTests
 		Test.Assert(log.Lines == 1, "a collector: nothing more logged");
 	}
 
+	private class MissingInstanceLog : BaseLogger
+	{
+		public int Lines = 0;
+		public this() : base(.Warning, "Test") {}
+		protected override void LogMessage(LogLevel level, StringView message)
+		{
+			if (message.Contains("bind failed, no content instance"))
+				Lines++;
+		}
+	}
+
+	/// An id the database lacks is a broken reference, named in a warning; one the host says only
+	/// waits to be built (an editor's first cook) binds unresolved without one, the host reporting
+	/// the wait once instead.
+	[Test]
+	public static void AnIdWaitingToBeBuiltBindsQuietlyABrokenReferenceStillWarns()
+	{
+		let log = new MissingInstanceLog();
+		InitGlobalLogger(log, true);
+		defer ShutdownGlobalLogger();
+
+		let fixture = scope ResourceFixture("scratch_resource_awaits_build");
+		let factory = scope TestProductFactory();
+		fixture.Manager.AddFactory(factory);
+		let waiting = Guid(3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3);
+		let broken = Guid(4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4);
+		fixture.Manager.SetAwaitsBuild(new [=waiting](id) => id == waiting);
+
+		Test.Assert(fixture.Manager.Bind<TestProduct>(waiting).Get == null);
+		Test.Assert(log.Lines == 0, "waiting for its build: no warning");
+		let unresolved = scope List<Guid>();
+		fixture.Manager.CollectUnresolved(unresolved);
+		Test.Assert((unresolved.Count == 1) && (unresolved[0] == waiting), "still unresolved, so the host can ask for its build");
+
+		Test.Assert(fixture.Manager.Bind<TestProduct>(broken).Get == null);
+		Test.Assert(log.Lines == 1, "not one the host named: a broken reference, warned");
+	}
+
 	/// Unreferenced is the column that matters: a product nothing outside the cache holds
 	/// is exactly what a purge would release, which is what an eviction policy has to be
 	/// designed against rather than guessed at.
