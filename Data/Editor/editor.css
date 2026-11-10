@@ -183,6 +183,14 @@ button.manager-small { height: 30px; font-size: var(--font-small); color: var(--
 /* The download dialog's middle stage: the bar across the dialog, with the words under it. */
 .download-sample-progress { flex-direction: column; row-gap: var(--space-s); padding: var(--space-l) 0; }
 .download-sample-progress > progressbar { height: 6px; align-self: stretch; }
+/* A project's editor being built before it opens: BeefBuild's last lines in a sunken box, and the
+   errors and warnings read from them in a list that scrolls. */
+.build-editor-output { flex-direction: column; min-height: 120px; padding: var(--space-s); border-radius: var(--radius);
+                       background-color: var(--surface-sunken); overflow: hidden; }
+.build-editor-output > label { white-space: nowrap; }
+.build-editor-diagnostics { max-height: 160px; }
+.build-editor-diagnostics-body { flex-direction: column; }
+.build-editor-diagnostics-body > button { justify-content: flex-start; }
 
 /* The first run: the logo, a welcome and two large cards in the middle of the window. */
 .manager-welcome { flex-grow: 1; flex-direction: column; align-items: center; justify-content: center; row-gap: 28px; padding-bottom: 60px; }

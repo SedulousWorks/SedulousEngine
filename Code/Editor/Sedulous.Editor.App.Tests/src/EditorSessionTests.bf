@@ -11,9 +11,11 @@ using Sedulous.Runtime.Client;
 using Sedulous.Shell;
 using Sedulous.GUI; // the dock's layout
 using Sedulous.Pipeline.Core;
+using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
+using Sedulous.Editor.ProjectManager.TestSupport;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -322,6 +324,55 @@ class EditorSessionTests
 		Test.Assert(bench.Last == scope $"Failed to open project: {refused}");
 		Test.Assert(bench.EventsAre("closing"), "the open project closed first");
 		Test.Assert(session.Project == null);
+	}
+
+	/// An open told to restamp (the project manager's --restamp, read from the command line) saves
+	/// the manifest once as the project opens, stamped with this engine, and the recent list
+	/// records that stamp; nothing saves it again while it is open or as it closes, and an open not
+	/// told to keeps the stamp it finds.
+	[Test]
+	public static void AnOpenToldToRestampStampsTheProjectOnceAsItOpens()
+	{
+		let config = scope EditorAppConfig();
+		config.ReadCommandLine(scope String[]("--project", "/games/Harbour", "--data-root", "/sdk/Data", "--manager", "/sdk/ProjectManager/manager",
+			"--restamp"));
+		Test.Assert(config.Restamp);
+		Test.Assert(config.ProjectDirectory == "/games/Harbour");
+		Test.Assert(config.ManagerPath == "/sdk/ProjectManager/manager");
+		let plain = scope EditorAppConfig();
+		plain.ReadCommandLine(scope String[]("/games/Harbour"));
+		Test.Assert(!plain.Restamp && plain.ManagerPath.IsEmpty);
+
+		let bench = scope Bench();
+		let session = scope EditorSession(bench.Services());
+		bench.Session = session;
+		let dir = bench.MadeProject("scratch_editor_session_restamp", "Harbour");
+		const String cOlder = "0.0.1";
+		LauncherKit.Stamp(dir, cOlder);
+
+		// Not told to: opened with the stamp it has.
+		Test.Assert(session.Open(dir));
+		Test.Assert(session.Project.Settings.EngineVersion == cOlder);
+		session.Close();
+		Test.Assert(StampOf(dir, .. scope .()) == cOlder, "an open alone writes no manifest");
+
+		var options = EditorSessionOpenOptions();
+		options.Restamp = config.Restamp;
+		Test.Assert(session.Open(dir, options));
+		Test.Assert(StampOf(dir, .. scope .()) == EngineVersion.String, "stamped as it opened");
+		Test.Assert(bench.Projects.Entries.Find(dir).EngineVersion == EngineVersion.String, "and recorded so");
+		// Stamped back by hand while it is open: no second save puts this engine's stamp back.
+		LauncherKit.Stamp(dir, cOlder);
+		session.Close();
+		Test.Assert(StampOf(dir, .. scope .()) == cOlder, "once, at the open");
+	}
+
+	/// The engine version a project's manifest is stamped with.
+	static void StampOf(StringView dir, String outVersion)
+	{
+		let probed = scope ProjectSettings();
+		Test.Assert(ProjectRegistry.ProbeProject(dir, probed) case .Ok);
+		outVersion.Set(probed.EngineVersion);
 	}
 
 	/// The hooks in their order: opened with the services up, a cook's finish after the

@@ -338,10 +338,9 @@ class ProjectBuildServiceTests
 		Test.Assert(ran.State == .Failed);
 	}
 
-	/// A build is refused without an SDK, and Build Project's (the editor's) for a project with no
-	/// package of its own, before anything runs or is written.
+	/// A build is refused without an SDK, before anything runs or is written.
 	[Test]
-	public static void ABuildNeedsAnSdkAndAPackage()
+	public static void ABuildNeedsAnSdk()
 	{
 		let bed = scope ProjectBuildBed();
 		// The SDK found from the data root alone: SEDULOUS_SDK, the user's registry and the checkout
@@ -351,24 +350,47 @@ class ProjectBuildServiceTests
 				Test.FatalError("nothing runs");
 				return .Ok(0);
 			}, cFakeBeefBuild, default, new (dataRoot, projectDir, outSdk) => ProjectBuild.FindSdkFrom("", null, dataRoot, "", outSdk));
-		{
-			let settings = new ProjectSettings();
-			Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);
-			let job = new BuildJob(.Editor, bed.ProjectDir, bed.ProjectDir, settings);
-			defer job.ReleaseRef();
-			Test.Assert(service.Run(job) case .Err(.NotSupported));
-			Test.Assert(job.GetError(.. scope .()).Contains("needs the engine SDK: set SEDULOUS_SDK, or run from an engine checkout"));
-		}
+		let settings = new ProjectSettings();
+		Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);
+		let job = new BuildJob(.Editor, bed.ProjectDir, bed.ProjectDir, settings);
+		defer job.ReleaseRef();
+		Test.Assert(service.Run(job) case .Err(.NotSupported));
+		Test.Assert(job.GetError(.. scope .()).Contains("needs the engine SDK: set SEDULOUS_SDK, or run from an engine checkout"));
+		Test.Assert(job.State == .Failed);
+		Test.Assert(!FileExists(PathJoin(bed.ProjectDir, "Code/BeefSpace.toml", .. scope .())), "nothing generated");
+	}
+
+	/// A project with no package of its own builds its editor, as the project manager opens every
+	/// project in its own: the workspace is generated with the editor linking no part of the
+	/// project's, and <Game>Editor runs over it in Debug.
+	[Test]
+	public static void AnEditorBuildsWithoutAPackage()
+	{
+		let bed = scope ProjectBuildBed();
 		ClearAndDeleteItems!(bed.Settings.Plugins);
 		Test.Assert(!ProjectBuild.HasPackages(bed.Settings));
-		{
-			let job = MakeJob(bed, .Editor);
-			defer job.ReleaseRef();
-			Test.Assert(service.Run(job) case .Err(.NotFound));
-			Test.Assert(job.GetError(.. scope .()).Contains("no package of its own"));
-			Test.Assert(job.State == .Failed);
-		}
-		Test.Assert(!FileExists(PathJoin(bed.ProjectDir, "Code/BeefSpace.toml", .. scope .())), "nothing generated");
+		let runs = scope List<String>();
+		defer { ClearAndDeleteItems!(runs); }
+		let service = scope ProjectBuildService(new [&](executable, arguments, onLine, cancelled) =>
+			{
+				runs.Add(new $"{Argument(arguments, "project")} {Argument(arguments, "config")}");
+				Make(bed, arguments);
+				return .Ok(0);
+			}, cFakeBeefBuild);
+		let job = MakeJob(bed, .Editor);
+		defer job.ReleaseRef();
+		Test.Assert(service.Run(job) case .Ok, job.GetError(.. scope .()));
+		Test.Assert((runs.Count == 1) && (runs[0] == "NativeGameEditor Debug"), "one run of the editor");
+		let editor = bed.Read(".generated/NativeGameEditor/BeefProj.toml", .. scope .());
+		Test.Assert(editor.Contains("\"Sedulous.Editor.Main\" = \"*\""), editor);
+		Test.Assert(!editor.Contains("\"NativeGame\" = \"*\"") && !editor.Contains("Lantern"), editor);
+		let space = bed.Read("BeefSpace.toml", .. scope .());
+		Test.Assert(space.Contains("StartupProject = \"NativeGameEditor\""), space);
+		let made = scope List<String>();
+		defer { ClearAndDeleteItems!(made); }
+		job.GetExecutables(made);
+		Test.Assert((made.Count == 1) && (made[0] == ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .())));
+		Test.Assert(job.State == .Succeeded);
 	}
 
 	/// A project with no package of its own builds its player: the workspace is generated, and

@@ -15,9 +15,8 @@ namespace Sedulous.Editor.ProjectManager.Tests;
 
 /// The project manager's program run headless over scratch files in place of the user's: the
 /// recent list taken from the editor's store into projects.xml the first time and never again;
-/// the SDK it sits in registered (one listed already keeping how it was listed) and its own
-/// executable recorded; and Open launching the SDK's built editor with the project and the SDK's
-/// data, recording the open and asking to exit, or launching nothing when no editor is built.
+/// and the SDK it sits in registered (one listed already keeping how it was listed) and its own
+/// executable recorded. How Open builds and launches a project's editor is OpenTests'.
 class ProjectManagerProgramTests
 {
 	private class Bed
@@ -162,63 +161,5 @@ class ProjectManagerProgramTests
 		ClearAndDeleteItems!(sdks);
 		ClearAndDeleteItems!(missing);
 		Test.Assert(registry.ReadSdks(sdks, missing) && (sdks.Count == 1));
-	}
-
-	[Test]
-	public static void OpenLaunchesTheSdksEditorWithTheProjectAndItsDataRecordsTheOpenAndAsksToExit()
-	{
-		let bed = scope Bed("scratch_manager_program_open");
-		let sdk = PathJoin(bed.Root, "sdk", .. scope .());
-		// A packed SDK: its sdk.json says what it is (a checkout would need its version file).
-		ProjectBuildBed.WriteSdk(sdk, "{\n  \"version\": \"0.1.0\",\n  \"label\": \"beta\",\n  \"display\": \"0.1.0-beta\",\n  \"buildNumber\": 1,\n  \"platform\": \"Linux64\",\n  \"beef\": \"nightly-2026-11-01\",\n  \"created\": \"2026-11-10T12:00:00Z\"\n}\n");
-		let data = PathJoin(sdk, "Data", .. scope .());
-		let project = PathJoin(bed.Root, "Harbour", .. scope .());
-		Test.Assert(ProjectScaffold.Create(project, "Harbour") case .Ok);
-		let launched = scope List<String>();
-		defer { ClearAndDeleteItems!(launched); }
-
-		// No editor built in the SDK: nothing launches, and it stays.
-		{
-			let unbuilt = bed.Config(data);
-			unbuilt.Launch = new [=launched] (executable, arguments) =>
-				{
-					launched.Add(new String(executable));
-					return true;
-				};
-			let stays = scope ProjectManagerProgram(unbuilt);
-			stays.Start();
-			Test.Assert(!ProjectManagerProgram.StockEditor(sdk, scope .()));
-			stays.App.OpenFrom(project);
-			Test.Assert(launched.IsEmpty);
-			Test.Assert(!stays.ExitRequested);
-		}
-
-		// The Debug editor built: launched with the project and the SDK's data.
-		let file = BuildLayout.ExecutableName(ProjectManagerProgram.cStockEditor, .. scope .());
-		let editor = PathJoin(sdk, scope $"Code/build/Debug_{BuildLayout.HostPlatformName}/{ProjectManagerProgram.cStockEditor}/{file}", .. scope .());
-		ProjectBuildBed.Write(sdk, scope $"Code/build/Debug_{BuildLayout.HostPlatformName}/{ProjectManagerProgram.cStockEditor}/{file}", "#!editor\n");
-		Test.Assert(ProjectManagerProgram.StockEditor(sdk, .. scope .()) == editor);
-		let config = bed.Config(data);
-		config.Launch = new [=launched] (executable, arguments) =>
-			{
-				launched.Add(new String(executable));
-				for (let argument in arguments)
-					launched.Add(new String(argument));
-				return true;
-			};
-		let program = scope ProjectManagerProgram(config);
-		program.Start();
-		program.App.OpenFrom(project);
-		Test.Assert(launched.Count == 5);
-		Test.Assert(launched[0] == editor);
-		Test.Assert((launched[1] == "--project") && (launched[2] == project));
-		Test.Assert((launched[3] == "--data-root") && (launched[4] == data));
-		Test.Assert(program.ExitRequested, "the editor has the project now");
-		let first = program.Projects.Entries.Entries[0];
-		Test.Assert((first.Path == project) && (first.Name == "Harbour"), "the open recorded");
-		let reread = scope Settings();
-		let saved = scope ProjectsStore(bed.Projects, "");
-		Test.Assert(saved.Load(reread) case .Ok);
-		Test.Assert(reread.Section<RecentProjectsSettings>().Find(project) != null, "and saved");
 	}
 }

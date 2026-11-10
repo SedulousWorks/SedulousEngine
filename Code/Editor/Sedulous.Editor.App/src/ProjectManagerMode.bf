@@ -80,8 +80,8 @@ class ProjectManagerMode
 				if (mServices.Shown != null)
 					mServices.Shown();
 			};
-		app.OpenProject = new (directory, restamp) => OpenInSession(directory, restamp);
-		app.CreateProject = new (directory, name) => CreateInSession(directory, name);
+		app.OpenProject = new (directory, restamp, outWhy) => OpenInSession(directory, restamp);
+		app.CreateProject = new (directory, name, outWhy) => CreateInSession(directory, name);
 		mApp = new ProjectManagerApp(app);
 	}
 
@@ -134,11 +134,9 @@ class ProjectManagerMode
 	/// at once.
 	private bool OpenInSession(StringView directory, bool restamp)
 	{
-		if (!mServices.Session.Open(directory))
-			return false;
-		if (restamp && (mServices.Session.Project != null))
-			mServices.Session.Project.SaveSettings().IgnoreError(); // stamped with this engine at once
-		return true;
+		var options = EditorSessionOpenOptions();
+		options.Restamp = restamp;
+		return mServices.Session.Open(directory, options);
 	}
 
 	/// The session scaffolds the project in `directory` with the starter content and opens it.

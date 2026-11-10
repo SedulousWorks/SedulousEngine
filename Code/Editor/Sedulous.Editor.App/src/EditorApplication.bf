@@ -220,6 +220,8 @@ class EditorApplication : IApplication
 	public BuilderRegistry Builders => mBuilders;
 	/// The engine data root this editor runs from (its config's, resolved at launch).
 	public StringView DataRoot => mConfig.DataRoot;
+	/// The project manager that launched this editor (--manager); empty when none said so.
+	public StringView ManagerPath => mConfig.ManagerPath;
 	public EditorCookService CookService => mCookService;
 
 	/// Cooks `page`'s asset and what it needs (`force`: again, changed or not), saving the page's
@@ -557,6 +559,7 @@ class EditorApplication : IApplication
 			options.Scaffold = true; // a command line's bare folder becomes a project
 			options.ScaffoldName = mConfig.ProjectName;
 			options.Seed = mConfig.SeedOnScaffold;
+			options.Restamp = mConfig.Restamp; // the manager's: an older engine's project, upgraded
 			mSession.Open(mConfig.ProjectDirectory, options);
 		}
 

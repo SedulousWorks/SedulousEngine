@@ -34,21 +34,33 @@ class ProjectManagerAppServices
 	public bool OpenOnSamples = false;
 	/// Told each time the manager shows. Owned.
 	public delegate void() Shown ~ delete _;
-	/// Opens the project in the folder, the gate passed: true when it opened. `restamp`: the
-	/// user chose to open an older engine's project with this one, which stamps it. Owned.
-	public delegate bool(StringView directory, bool restamp) OpenProject ~ delete _;
+	/// The engine version the project in the folder is to open with (the SDK picked for it) into
+	/// `outVersion`, which the gate compares its stamp with; false, with why for the status line in
+	/// `outWhy`, when there is none to open it with. Null: this engine's own. Owned.
+	public delegate bool(StringView directory, String outVersion, String outWhy) EngineFor ~ delete _;
+	/// Opens the project in the folder, the gate passed: true when it opened, or its opening has
+	/// started; else why for the status line in `outWhy` (empty: the log says). `restamp`: the user
+	/// chose to open an older engine's project with this one, which stamps it. Owned.
+	public delegate bool(StringView directory, bool restamp, String outWhy) OpenProject ~ delete _;
 	/// Makes the project named `name` in the folder (its parent made, the folder not a project)
-	/// and opens it: true when it did. Owned.
-	public delegate bool(StringView directory, StringView name) CreateProject ~ delete _;
+	/// and opens it: true when it did; else why in `outWhy` (empty: the folder could not be made
+	/// into a project). Owned.
+	public delegate bool(StringView directory, StringView name, String outWhy) CreateProject ~ delete _;
+	/// The manager stays shown while a project opens, and its status line says how an open that
+	/// failed failed: the manager's program, which builds the project's editor under it. False: it
+	/// goes before the open, as the editor's frame takes the window, and comes back when the open
+	/// fails.
+	public bool StaysWhileOpening = false;
 }
 
 /// The project manager's behaviour over a window: the manager shown (made the first time, its
-/// list probed again after), and what its actions start. Opening a project another engine saved
-/// asks first: a newer engine's Open Anyway; an older engine's Back Up and Open, or Open Without
+/// list probed again after), and what its actions start. Opening a project saved by an engine
+/// other than the one it is to open with (EngineFor; this engine when the host names none) asks
+/// first: a newer engine's Open Anyway; an older engine's Back Up and Open, or Open Without
 /// Backup, either stamping the project with the engine that opens it. New Project refuses a folder
 /// that holds a project already, then has the project made and opened. What opening and making
 /// are is the host's (OpenProject, CreateProject): the editor opens a session in its own window,
-/// the manager's program launches an editor.
+/// the manager's program builds the project's own editor and launches it.
 ///
 /// A headless test drives it over a GUI of its own. What a click asks for runs at the GUI's next
 /// drain, never inside the click (the screen it swaps takes away the button that was clicked); at
@@ -130,13 +142,24 @@ class ProjectManagerApp
 			mView.Tick();
 	}
 
-	/// Opens the project in `directory` from the manager: one saved by another engine version asks
-	/// first (the controller decides and words it; a backup of its manifest is offered for an older
-	/// one).
+	/// Opens the project in `directory` from the manager: the engine it opens with picked
+	/// (EngineFor), then one saved by another engine version asks first (the controller decides and
+	/// words it against that engine; a backup of its manifest is offered for an older one).
 	public void OpenFrom(StringView directory)
 	{
 		let decision = scope ProjectOpenDecision();
-		mServices.Projects.DecideOpen(directory, decision);
+		let engine = scope String(EngineVersion.String);
+		if ((mServices.EngineFor != null) && (ProjectHeader.Read(directory, decision.Header) case .Ok))
+		{
+			let why = scope String();
+			engine.Clear();
+			if (!mServices.EngineFor(directory, engine, why))
+			{
+				SetStatus(why);
+				return;
+			}
+		}
+		mServices.Projects.DecideOpen(directory, engine, decision);
 		if (decision.Gate == .NotAProject)
 		{
 			SetStatus("Not a project (no Project.xml there).");
@@ -184,22 +207,30 @@ class ProjectManagerApp
 		// New Project's check said a location that does not exist yet is made: the project's own
 		// folder's parent first (CreateDirectory makes the folders on the way).
 		CreateDirectory(PathParent(directory, .. scope .()));
-		ShowScreen(null);
-		if ((mServices.CreateProject == null) || !mServices.CreateProject(directory, name))
-		{
+		if (!mServices.StaysWhileOpening)
+			ShowScreen(null);
+		let why = scope String();
+		if ((mServices.CreateProject != null) && mServices.CreateProject(directory, name, why))
+			return;
+		if (!mServices.StaysWhileOpening)
 			Enter();
-			SetStatus("The project could not be made there (is the folder writable?).");
-		}
+		SetStatus(why.IsEmpty ? "The project could not be made there (is the folder writable?)." : why);
 	}
 
-	/// The manager's screen away and the project opened; on failure the manager again, saying so.
+	/// The project opened, the manager's screen away first unless it stays (StaysWhileOpening); on
+	/// failure the manager again, saying why.
 	public bool OpenProject(StringView directory, bool restamp = false)
 	{
-		ShowScreen(null);
-		if ((mServices.OpenProject != null) && mServices.OpenProject(directory, restamp))
+		if (!mServices.StaysWhileOpening)
+			ShowScreen(null);
+		let why = scope String();
+		if ((mServices.OpenProject != null) && mServices.OpenProject(directory, restamp, why))
 			return true;
-		Enter();
-		SetStatus(scope $"The project in {directory} did not open (see the log).");
+		if (!mServices.StaysWhileOpening)
+			Enter();
+		if (why.IsEmpty)
+			why.AppendF("The project in {} did not open (see the log).", directory);
+		SetStatus(why);
 		return false;
 	}
 
