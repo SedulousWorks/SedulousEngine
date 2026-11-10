@@ -511,7 +511,7 @@ class ProjectLauncherTests
 		Test.Assert(picked.Sdk == newer, picked.Sdk);
 	}
 
-	/// A host that offers neither engines nor templates (the editor's own manager) shows neither,
+	/// A host that offers neither engines nor templates shows neither,
 	/// and Create goes ahead on the folder alone.
 	[Test]
 	public static void NewProjectShowsNoEngineOrTemplateWhereTheHostOffersNone()

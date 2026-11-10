@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Graphics;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Shell;
 using Sedulous.GUI; // the dock's layout
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
@@ -15,14 +18,16 @@ namespace Sedulous.Editor.App.Tests;
 /// (export, the MCP host, the editor-wide actions), once however often asked: the actions
 /// registered are the ones this lifecycle can run, Exit reaching the host, Reset Layout the dock
 /// and the cooks, the Game tab and Save off with no project; they stop in the order shutdown needs, leaving no project and no MCP host.
-/// Close Project is offered only when the project manager launched the editor, and with no window
-/// the manager never shows. A thumbnail the thumbnail service says is ready is told to the
+/// Close Project is always offered: it starts the project manager (the one given, else the one
+/// that ran last, else the SDK's own) and the editor exits, or, with none found or one that does
+/// not start, says so and stays. A thumbnail the thumbnail service says is ready is told to the
 /// context's thumbnail listeners (the assets browser's).
 ///
 /// Not here: a project opened through the application, since the session then saves the user's
 /// editor.settings.xml (EditorSessionTests drive the session over services of their own); the
 /// MCP host started, which mints and saves the user's token; and everything with a window or a
-/// device: the GUI, the embedded runtime, the frames, the captures, About's message box.
+/// device: the GUI, the embedded runtime, the frames, the captures, About's message box. Close
+/// Project reads a scratch SDK registry, never the user's, and starts no process.
 static class EditorApplicationTests
 {
 	/// No shell, no graphics, no windows; it counts the exits asked of it.
@@ -41,13 +46,27 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[23] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+	private static StringView[24] sRegistered = .("file.save", "file.saveAs", "file.closeProject", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
 		"edit.preferences", "project.settings", "project.export", "project.reportResourceMemory", "build.cookAll",
 		"build.rebuildAll", "build.cookPage", "build.rebuildPage", "build.reimportPage", "game.play", "game.playNewInstance", "view.resetLayout",
 		"view.profiler", "profiler.record", "view.screenshot", "view.commandPalette", "help.about");
-	/// The ones a later layer brings: no hook yet, so not registered. Close Project is here because
-	/// a project given on the command line keeps its one project.
-	private static StringView[2] sLeftOut = .("file.saveLayout", "file.closeProject");
+	/// The ones a later layer brings: no hook yet, so not registered.
+	private static StringView[1] sLeftOut = .("file.saveLayout");
+
+	/// A scratch folder `name` beside the tests, emptied.
+	private static void Scratch(StringView name, String outPath)
+	{
+		PathJoin(System.IO.Directory.GetCurrentDirectory(.. scope .()), name, outPath);
+		RemoveDirectoryRecursive(outPath);
+		Test.Assert(CreateDirectory(outPath));
+	}
+
+	/// A file at `path`, its folders made: a project manager to find.
+	private static void Touch(StringView path)
+	{
+		Test.Assert(CreateDirectory(PathParent(path, .. scope .())));
+		Test.Assert(System.IO.File.WriteAllText(path, "manager") case .Ok);
+	}
 
 	/// The registry refused `id` as not enabled (over no subject).
 	private static bool Refused(EditorActionRegistry actions, StringView id)
@@ -133,26 +152,109 @@ static class EditorApplicationTests
 		app.OnShutdown(host);
 	}
 
+	/// Close Project, always offered, starts the project manager given on the command line
+	/// (--manager) with this editor's data root, and the editor exits: nothing unsaved to ask about.
 	[Test]
-	public static void CloseProjectIsOfferedOnlyWhenTheManagerLaunchedTheEditor()
+	public static void CloseProjectStartsTheGivenManagerThenTheEditorExits()
 	{
+		let scratch = Scratch("scratch_app_close_project", .. scope .());
+		defer RemoveDirectoryRecursive(scratch);
+		let manager = PathJoin(scratch, "sdk/ProjectManager/manager", .. scope .());
+		Touch(manager);
+		let data = PathJoin(scratch, "sdk/Data", .. scope .());
+		let launched = scope List<String>();
+		defer ClearAndDeleteItems(launched);
 		let host = scope HeadlessHost();
 		let config = new EditorAppConfig();
-		config.StartInProjectManager = true;
+		config.ManagerPath.Set(manager);
+		config.SdksPath.Set(PathJoin(scratch, "sdks.xml", .. scope .()));
+		config.DataRoot.Set(data);
+		config.LaunchManager = new [=launched] (executable, arguments) =>
+			{
+				launched.Add(new String(executable));
+				for (let argument in arguments)
+					launched.Add(new String(argument));
+				return true;
+			};
 		let app = scope EditorApplication(config);
-		app.OnStartup(host); // no window: the manager never shows
+		app.OnStartup(host); // no window: the host kept, nothing more
 		app.StartParts();
-		Test.Assert(app.ManagerMode != null);
-		Test.Assert(app.ManagerMode.View == null);
 		let actions = app.Context.Actions;
-		Test.Assert(actions.Find("file.closeProject") != null);
-		// With no project it closes nothing and asks nothing.
+		Test.Assert(actions.Find("file.closeProject") != null, "always offered");
 		Test.Assert(actions.Execute("file.closeProject") case .Ok);
-		Test.Assert(app.Project == null);
-		Test.Assert(app.ManagerMode.View == null);
+		Test.Assert(launched.Count == 3, "the manager started once, with the data root");
+		Test.Assert(launched[0] == manager, launched[0]);
+		Test.Assert((launched[1] == "--data-root") && (launched[2] == data), launched[2]);
+		Test.Assert(host.Exits == 1, "the editor exits for the manager");
 		app.OnShutdown(host);
-		Test.Assert(app.ManagerMode == null, "it goes with the window");
-		Test.Assert(actions.Execute("file.closeProject") case .Ok, "shut down: nothing to reach");
+	}
+
+	/// With no project manager to be found (the one given gone, none recorded in the registry,
+	/// none in the SDK), Close Project says so and the editor stays; one found that does not start
+	/// is said too, and the editor stays.
+	[Test]
+	public static void WithNoManagerToStartCloseProjectSaysSoAndTheEditorStays()
+	{
+		let scratch = Scratch("scratch_app_close_no_manager", .. scope .());
+		defer RemoveDirectoryRecursive(scratch);
+		let given = PathJoin(scratch, "gone/manager", .. scope .());
+		let notices = scope List<String>();
+		defer ClearAndDeleteItems(notices);
+		int launches = 0;
+		let host = scope HeadlessHost();
+		let config = new EditorAppConfig();
+		config.ManagerPath.Set(given);
+		config.SdksPath.Set(PathJoin(scratch, "sdks.xml", .. scope .()));
+		config.DataRoot.Set(PathJoin(scratch, "sdk/Data", .. scope .()));
+		config.LaunchManager = new [&launches] (executable, arguments) =>
+			{
+				launches++;
+				return false; // as a manager that cannot run
+			};
+		let app = scope EditorApplication(config);
+		app.Context.OnNotice = new [=notices] (kind, message) => { notices.Add(new String(message)); };
+		app.OnStartup(host);
+		app.StartParts();
+
+		Test.Assert(!app.CloseProject());
+		Test.Assert((launches == 0) && (host.Exits == 0), "nothing started; the editor stays");
+		Test.Assert(notices.Count == 1);
+		Test.Assert(notices[0].StartsWith("No project manager was found"), notices[0]);
+
+		Touch(given);
+		Test.Assert(app.Context.Actions.Execute("file.closeProject") case .Ok);
+		Test.Assert((launches == 1) && (host.Exits == 0), "it did not start: the editor stays");
+		Test.Assert(notices.Count == 2);
+		Test.Assert(notices[1].StartsWith("The project manager ") && notices[1].Contains("did not start"), notices[1]);
+		app.OnShutdown(host);
+	}
+
+	/// The project manager Close Project starts: the one given (--manager), else the one the SDK
+	/// registry recorded as the last to run, else ProjectManager/ in the SDK whose Data the editor
+	/// runs on; each only when its file is there.
+	[Test]
+	public static void TheManagerIsTheGivenOneElseTheOneThatRanLastElseTheSdksOwn()
+	{
+		let scratch = Scratch("scratch_app_find_manager", .. scope .());
+		defer RemoveDirectoryRecursive(scratch);
+		let sdks = PathJoin(scratch, "sdks.xml", .. scope .());
+		let data = PathJoin(scratch, "sdk/Data", .. scope .());
+		let folder = PathJoin(PathJoin(scratch, "sdk", .. scope .()), ManagerLauncher.cManagerFolder, .. scope .());
+		let own = PathJoin(folder, BuildLayout.ExecutableName(ManagerLauncher.cManagerName, .. scope .()), .. scope .());
+		let recorded = PathJoin(scratch, "other sdk/ProjectManager/manager", .. scope .());
+		let given = PathJoin(scratch, "given/manager", .. scope .());
+		let found = scope String();
+
+		Test.Assert(!ManagerLauncher.Find(given, sdks, data, found) && found.IsEmpty, "none there");
+		Touch(own);
+		Test.Assert(ManagerLauncher.Find(given, sdks, data, found) && (found == own), found);
+		Touch(recorded);
+		let registry = scope SdkRegistry(sdks);
+		Test.Assert(registry.RecordManager(recorded) case .Ok);
+		Test.Assert(ManagerLauncher.Find(given, sdks, data, found) && (found == recorded), "the one that ran last before the SDK's own");
+		Touch(given);
+		Test.Assert(ManagerLauncher.Find(given, sdks, data, found) && (found == given), "the one given first");
+		Test.Assert(ManagerLauncher.Find("", sdks, "", found) && (found == recorded), "none given: the one that ran last");
 	}
 
 	[Test]

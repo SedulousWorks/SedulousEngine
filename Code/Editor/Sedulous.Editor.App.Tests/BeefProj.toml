@@ -27,7 +27,6 @@ corlib = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.Pipeline.Importer" = "*"
 "Sedulous.Editor.App" = "*"
-"Sedulous.Editor.ProjectManager" = "*"
 "Sedulous.GUI" = "*"
 # The layout store: the GUI dock's controller and layout document.
 "Sedulous.GUI.Docking" = "*"
@@ -57,7 +56,7 @@ corlib = "*"
 "Sedulous.Profiler.GUI" = "*"
 # The editor-wide actions' resource report, over a scratch project's cooked database.
 "Sedulous.Resource" = "*"
-# The project manager: a manifest's engine stamp rewritten, and probed.
+# A manifest's engine stamp rewritten, and probed.
 "Sedulous.Engine.Project" = "*"
 # Project Settings: MSAA's levels, and the source asset types its settings name (a scene, a font).
 "Sedulous.Engine.Render" = "*"

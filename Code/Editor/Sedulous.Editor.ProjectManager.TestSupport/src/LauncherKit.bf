@@ -64,7 +64,7 @@ public class LauncherClipboard : IClipboard
 	}
 }
 
-/// What the project manager's tests and the editor's manager mode tests both reach for.
+/// What the project manager's tests and the editor's tests both reach for.
 public static class LauncherKit
 {
 	/// The first button in `node`'s subtree showing `text`; null when none does.

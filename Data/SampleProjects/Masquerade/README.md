@@ -77,4 +77,4 @@ to the game through the run's events (`Events.bf`). The project builds it into i
 player (Project > Build Project); the stock editor does not run it, so open the project in the
 editor its build makes (Project > Open With This Build).
 
-Open the project from the editor's project manager.
+Open the project from the project manager.

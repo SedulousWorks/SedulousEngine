@@ -32,8 +32,8 @@ project directory or the repository root alike.
 ## Running the editor
 
 ```
-Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor               # project manager
-Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor <projectDir>  # open a project
+Code/build/Debug_Linux64/Sedulous.Tools.ProjectManager/Sedulous.Tools.ProjectManager  # project manager
+Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor <projectDir>      # open a project
 ```
 
 Add `--mcp` to serve the project to an agent over MCP while you work in the editor.
@@ -41,7 +41,7 @@ Add `--mcp` to serve the project to an agent over MCP while you work in the edit
 
 ## The old editor and UI
 
-The editor is on the GUI: its shell (the dock, menus, project manager, assets browser and
+The editor is on the GUI: its shell (the dock, menus, assets browser and
 dialogs), the scene page, the Game tab, the asset pages and the Profiler page. The old editor on
 Sedulous.UI is gone; it last builds at commit e293ee1f. The old UI framework and its UISandbox stay
 under `Code/Deprecated/UI`, disabled in every build config.

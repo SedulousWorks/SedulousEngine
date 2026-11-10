@@ -24,20 +24,23 @@ class EditorAppConfig
 	/// so early startup logs reach the console. Borrowed; main owns it.
 	public EditorLogBuffer LogBuffer = null;
 
-	/// Start on the project manager screen instead of opening ProjectDirectory (main sets it
-	/// when no project was given).
-	public bool StartInProjectManager = false;
-	/// CLI: when the project directory has no manifest and gets scaffolded, also seed the
-	/// starter content the manager's New Project flow seeds.
+	/// --seed: when the project directory has no manifest and gets scaffolded, also seed the
+	/// starter content (SeedNewProject).
 	public bool SeedOnScaffold = false;
 	/// --seed-primitives: that seed with every primitive, not just the three.
 	public bool SeedAllPrimitives = false;
 	/// --restamp: the project's manifest is saved once as it opens, stamping it with this engine.
 	/// The project manager passes it for an older engine's project the user chose to upgrade.
 	public bool Restamp = false;
-	/// --manager <path>: the project manager that launched this editor (EditorApplication.ManagerPath);
-	/// empty when none said so.
+	/// --manager <path>: the project manager that launched this editor, which Close Project starts
+	/// again (ManagerLauncher.Find); empty when none said so.
 	public String ManagerPath = new .() ~ delete _;
+	/// The SDK registry Close Project reads the manager that ran last from; empty: the user's
+	/// sdks.xml (SdkRegistry.DefaultPath). A test's scratch file in its place.
+	public String SdksPath = new .() ~ delete _;
+	/// Starts the project manager for Close Project: its executable and arguments, true when it
+	/// started. Null: a process of its own (Process.Start). Owned.
+	public delegate bool(StringView executable, Span<StringView> arguments) LaunchManager ~ delete _;
 
 	/// A smoke-test aid: a clean shutdown after this many seconds (0 never), exercising the
 	/// real teardown path.
@@ -56,10 +59,6 @@ class EditorAppConfig
 	/// editor itself needs no UI. EditorMcpSettings is the persisted preference.
 	public bool McpEnabled = false;
 	public uint32 McpPort = 0;
-	/// --release-files <url or folder>: where the Samples tab reads this version's release files
-	/// instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote, served on
-	/// loopback (to try the tab before a release carries samples). Empty: the release itself.
-	public String ReleaseFiles = new .() ~ delete _;
 
 	/// From Configure: registers the engine subsystems. Owned.
 	public delegate void(IApplicationHost host) ConfigureEngine ~ delete _;
@@ -67,7 +66,7 @@ class EditorAppConfig
 	/// engine interfaces it drives (SetSceneRenderer). The host is the EMBEDDED one: every
 	/// page's scenes live there. Owned.
 	public delegate void(EditorApplication app, IApplicationHost embeddedHost) RegisterEditors ~ delete _;
-	/// Seeds starter content into a project the manager just created, once, right after the
+	/// Seeds starter content into a project this run scaffolded with --seed, once, right after the
 	/// fresh project opens; the exe composes it because only the exe links every asset type.
 	/// Null means new projects start empty. Owned.
 	public delegate void(EditorContext context, EditorProject project) SeedNewProject ~ delete _;
@@ -97,8 +96,6 @@ class EditorAppConfig
 				ScreenshotPath.Set(args[i + 1]);
 			else if (args[i] == "--screenshot-after")
 				ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
-			else if (args[i] == "--release-files")
-				ReleaseFiles.Set(args[i + 1]);
 			else if (args[i] == "--manager")
 				ManagerPath.Set(args[i + 1]);
 			else if (args[i] == "--mcp-port")

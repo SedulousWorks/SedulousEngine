@@ -65,8 +65,8 @@ class EditorSessionServices
 /// What an Open may do besides open.
 struct EditorSessionOpenOptions
 {
-	/// A folder with no project becomes one (the command line's fallback; the manager scaffolds
-	/// only through its New Project flow).
+	/// A folder with no project becomes one (a bare folder given on the command line; the project
+	/// manager makes projects from its templates).
 	public bool Scaffold = false;
 	public StringView ScaffoldName = "Untitled";
 	/// Seed the starter content into a project this open created.

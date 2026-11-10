@@ -72,4 +72,4 @@ on the board. The project builds it into its own editor and player (Project > Bu
 stock editor does not run it, so open the project in the editor its build makes (Project > Open
 With This Build).
 
-Open the project from the editor's project manager.
+Open the project from the project manager.

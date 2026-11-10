@@ -15,8 +15,7 @@ class FileActions
 	public delegate void(EditorPage page) SaveAs ~ delete _;
 	/// Captures the panel layout and the open pages and writes them. Owned.
 	public delegate void() SaveLayout ~ delete _;
-	/// Only when the manager launched the editor: one opened from the command line keeps its
-	/// single-project lifecycle, Exit being the way out. Owned.
+	/// Closes the project and returns to the project manager, which this editor exits for. Owned.
 	public delegate void() CloseProject ~ delete _;
 	/// Asks the user about unsaved pages, then exits. Owned.
 	public delegate void() Exit ~ delete _;

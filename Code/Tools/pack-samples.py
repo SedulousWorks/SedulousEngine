@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""The sample games for a release, for the editor's Samples tab.
+"""The sample games for a release, for the project manager's Samples tab.
 
   python3 Code/Tools/pack-samples.py <out-dir>
 
 Packs the games Data/SampleProjects/Samples.json lists: for each, a zip of what git tracks in its
-folder less Tools/ (the authoring scripts), its Project.xml at the zip's root (the editor
+folder less Tools/ (the authoring scripts), its Project.xml at the zip's root (the manager
 extracts it into the folder the user chooses), as sample-<folder>.zip; its picture as
 sample-<folder>.png; and samples.json naming them, with each zip's size and SHA-256 and the bytes
 it unpacks to. The version is the engine's own with its label, the release's (0.1.0-beta)
 (Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf: String and Label): pack from the release
-commit, not from master between releases, whose label is dev. The editor of that version reads
-samples.json from its release (EngineVersion.ReleaseDownloadUrl) for its Samples tab.
+commit, not from master between releases, whose label is dev. The project manager reads
+samples.json from the release of the engine picked on its Samples tab (tag v<version>).
 
 Run by hand, in a checkout (only tracked files go in), and attach everything it writes to the
 GitHub release v<version>: there is no workflow that does it. The same files pack to the same

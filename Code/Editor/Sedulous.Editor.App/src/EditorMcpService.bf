@@ -72,9 +72,6 @@ class EditorMcpServiceServices
 	/// The tools the project's plugins add; the host's server serves them while it runs.
 	/// BORROWED; null: none.
 	public McpPluginServices PluginTools = null;
-	/// What the editor shows, for host_info: "projectManager" or "editor"; null: from whether a
-	/// project is open. Owned.
-	public delegate void(String outScreen) Screen ~ delete _;
 }
 
 /// When a refused bind is tried again: every cIntervalMs from the first refusal until the window
@@ -182,23 +179,11 @@ class EditorMcpService
 	/// What the host's tools work through: the open project, its plugins and their export hooks.
 	public ProjectSession Session => mSession;
 
-	/// The host for the project manager, with no project: started when enabled and none runs,
-	/// so showing the manager again never restarts one. False when it is not enabled, or could
-	/// not listen.
-	public bool EnsureRunning()
-	{
-		if (IsRunning)
-			return true;
-		if (IsRetrying)
-			return false; // it listens once the port is let go
-		return Start(null);
-	}
-
 	/// Starts the host over `project` when the preference, the command line or the user's own
 	/// Start asks for it and the user's Stop does not hold, stopping a running one first: false
 	/// when none asks, or it could not listen (logged: another editor may hold the port). A port
 	/// the command line named is tried again from Pump while it is busy (IsRetrying), for
-	/// BindRetryMs, before that is logged. With no project (the project manager's), the editor's
+	/// BindRetryMs, before that is logged. With no project (one that did not open), the editor's
 	/// own tools serve and the project's refuse.
 	public bool Start(EditorProject project)
 	{
@@ -266,14 +251,6 @@ class EditorMcpService
 				if (report.Phase == .Finished)
 					context.SetStatus(scope $"MCP: {report.Tool} {report.IsError ? "failed" : "done"}");
 			};
-		if (mServices.Screen != null)
-		{
-			mHost.Screen = new (outScreen) =>
-				{
-					if (mServices.Screen != null)
-						mServices.Screen(outScreen);
-				};
-		}
 
 		// This host's live additions: the pages, over the same open and close paths the tabs take.
 		let pages = new PageToolSeams();
