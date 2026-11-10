@@ -6,7 +6,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation;
 
-/// What an animator does with the root motion its clips carry (root-motion.md P2).
+/// What an animator does with the root motion its clips carry.
 enum RootMotionMode : uint8
 {
 	/// Nothing: the character stays where its game puts it (the default).

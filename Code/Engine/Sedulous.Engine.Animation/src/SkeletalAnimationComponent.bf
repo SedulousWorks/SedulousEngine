@@ -49,7 +49,7 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	/// Play the bound clip on the first tick.
 	public bool AutoPlay = true;
 
-	/// What the animator does with its clips' root motion (root-motion.md P2): Ignore by default.
+	/// What the animator does with its clips' root motion: Ignore by default.
 	[DisplayName("Root Motion")]
 	public RootMotionMode RootMotion = .Ignore;
 	/// What Entity mode moves: a gameplay root holding the model; empty is this entity.
