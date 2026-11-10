@@ -197,35 +197,34 @@ logic with state and callbacks; a struct component for data many entities share 
   itself. `Random` on all three tiers is the run's `RunRandom` (`Range`, `IntRange`, `Bool`),
   back to its default seed as each session stops.
 
-The scripts' scene facades were one-line forwards to the managers; native code calls the
-managers:
+Where the engine's verbs live: a scene's own come from its systems and component managers, the
+run's from its services.
 
-| Script | Native |
+| To | Call |
 |---|---|
-| `scene.Prefabs.Spawn(prefab, at)` | `Scene.GetSystem<PrefabSpawnSystem>().Spawn(prefab, position, rotation, parent)` |
-| `scene.Physics.RayCast`, `OverlapSphere`, `NearestOverlap`, `Gravity`, `ApplyImpulse`, `SetVelocity`, `SetForce` | the same on `Scene.GetSystem<PhysicsSceneSystem>()` |
-| `scene.Physics.MoveCharacter(e, vx, vz)`, `JumpCharacter` | `Scene.GetComponent<CharacterComponent>(e).Move(vx, vz)`, `.Jump(speed)` |
-| `scene.Animation.Play(e)`, `Stop`, `SetClip` | the same on `SkeletalAnimationComponentManager` |
-| `scene.Animation.SetFloat(e, name, v)`, `SetBool`, `SetTrigger` | the same on `AnimationGraphComponentManager` |
-| `scene.Animation.SetIkTarget(e, at)` | `IkScene.SetTarget(Scene, e, at)` |
-| `scene.Audio.Play(e)`, `Stop`, `SetVolume(e, v, seconds)`, `SetPitch` | the same on `AudioSceneSystem` |
-| `scene.Splines.Length(e)`, `SampleAtDistance(e, d)`, `ClosestPoint(e, at)` | the same on `SplineComponentManager` (`Sedulous.Engine.Spline`) |
-| `scene.Particles.Play(e)`, `Stop`, `Restart` | the same on `ParticleEffectComponentManager` |
-| `Audio.PlayOneShot(clip)`, `PlayOneShot3D(clip, at)` | the same on `AudioFacade` |
-| `scene.Render.SetMaterial(e, material, slot)`, `SetMaterialFloat4(e, slot, name, v)` | `MeshComponentManager.SetMaterial(e, material, slot)`, `SetMaterialProperty(e, slot, name, v, sizeof(Float4))` |
-| `scene.Render.LightAt(at, groupMask)` | `RenderExtract.LightAt(Scene, at, groupMask)` |
-| `Audio.PlayMusic`, `StopMusic`, `SetVoicePitch(Audio.MusicVoice(), ...)`, `BusVolume` | the same on `AudioFacade` |
-| `Input.WasPressed("Throw")`, `Value2D`, `Rumble`, `PushSet("Menu")`, `PopSet()` | the same on `InputFacade` |
-| `Save.GetFloats(key, list)`, `SetFloats(key, list)` | the same on `SaveFacade`, with a `List<float>` |
-| `NavAgentComponent::of(e).Navigate(at)`, `SkeletalAnimationComponent::of(e).Speed`, `NetworkComponent::of(e).Owner` | `Scene.GetComponent<NavAgentComponent>(e)` (a `T*`, null without one), then the same |
-| `self.FindChildByName(n)`, `GetFirstChild()`, `GetNextSibling()`, `GetParent()`, `GetWorldPosition()`, `SetActive(b)`, `Destroy()` | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `GetNextSibling(Entity)`, `GetParent(Entity)`, `GetWorldPosition(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
-| `node.Tween(property, to, seconds, easing).From(v)`, `.Repeats(n)` | `node.Animate(property, to, seconds, easing).From(v)`, `.Repeat(n)`, then `ReleaseRef()` (GUI) |
-| `Label::Of(node).Text = t`, `ProgressBar::Of(node).Value = v`, `UIWidget::Of(node).AddClass(c)` | `(node as Label).Text = t`, `(node as ProgressBar).Value = v`, `(node as UIWidget).AddClass(c)` |
-| `GuiBillboardComponent::of(e).Root()` | `Scene.GetComponent<GuiBillboardComponent>(e).Root` (null until it is built) |
-| `Run.LoadScene(id)`, `Run.TimeScale`, `Run.SceneReady`, `Run.RequestExit(code)` | `GameInstance.LoadScene(id)`, `InstanceTimeScale`, `SceneReady`, `RequestExit(code)` |
-| `scene.Scripts.Emit("CoinCollected", 1)` | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |
-| `other.Send("Hurt")` | a call on the other entity's behaviour, made now (Events and queued calls) |
-| `Run.Emit("Restart", 0)` from the game to a scene's behaviours | a call on each: `CurrentScene.GetSystem<BehaviourManager<Ball>>()`, then each of its `Instances` |
+| spawn a prefab | `Scene.GetSystem<PrefabSpawnSystem>().Spawn(prefab, position, rotation, parent)` |
+| cast a ray, test an overlap, read gravity, push a body (`RayCast`, `OverlapSphere`, `NearestOverlap`, `Gravity`, `ApplyImpulse`, `SetVelocity`, `SetForce`) | `Scene.GetSystem<PhysicsSceneSystem>()` |
+| move or jump a character | `Scene.GetComponent<CharacterComponent>(e).Move(vx, vz)`, `.Jump(speed)` |
+| play, stop or swap a clip (`Play`, `Stop`, `SetClip`) | `SkeletalAnimationComponentManager` |
+| set an animation graph's parameters (`SetFloat`, `SetBool`, `SetTrigger`) | `AnimationGraphComponentManager` |
+| aim inverse kinematics | `IkScene.SetTarget(Scene, e, at)` |
+| play, stop or fade an entity's sound (`Play`, `Stop`, `SetVolume(e, v, seconds)`, `SetPitch`) | `AudioSceneSystem` |
+| measure and sample a spline (`Length`, `SampleAtDistance`, `ClosestPoint`) | `SplineComponentManager` (`Sedulous.Engine.Spline`) |
+| play, stop or restart particles (`Play`, `Stop`, `Restart`) | `ParticleEffectComponentManager` |
+| swap a mesh's material, or set one of its properties for that mesh alone | `MeshComponentManager.SetMaterial(e, material, slot)`, `SetMaterialProperty(e, slot, name, v, sizeof(Float4))` |
+| ask how much light reaches a place | `RenderExtract.LightAt(Scene, at, groupMask)` |
+| play a one-shot sound, music, a cue; set bus volumes | `AudioFacade` (`PlayOneShot`, `PlayOneShot3D`, `PlayMusic`, `StopMusic`, `SetVoicePitch(audio.MusicVoice(), ...)`, `BusVolume`) |
+| read input, rumble a pad, switch input sets | `InputFacade` (`WasPressed`, `Value2D`, `Rumble`, `PushSet`, `PopSet`) |
+| keep values between runs | `SaveFacade` (`GetFloats(key, list)`, `SetFloats(key, list)` with a `List<float>`, and the rest) |
+| reach a component's data and verbs (`NavAgentComponent.Navigate(at)`, `SkeletalAnimationComponent.Speed`, `NetworkComponent.Owner`) | `Scene.GetComponent<T>(e)` (a `T*`, null without one) |
+| walk and change the hierarchy | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `GetNextSibling(Entity)`, `GetParent(Entity)`, `GetWorldPosition(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
+| tween a GUI node | `node.Animate(property, to, seconds, easing).From(v)`, `.Repeat(n)`, then `ReleaseRef()` |
+| set a widget's state | `(node as Label).Text = t`, `(node as ProgressBar).Value = v`, `(node as UIWidget).AddClass(c)` |
+| reach a world-space GUI's tree | `Scene.GetComponent<GuiBillboardComponent>(e).Root` (null until it is built) |
+| load a scene, pause, leave | `GameInstance.LoadScene(id)`, `InstanceTimeScale`, `SceneReady`, `RequestExit(code)` |
+| tell the run something happened | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |
+| tell another entity's code | a call on the other entity's behaviour, made now (Events and queued calls) |
+| reach every behaviour of a kind from the game | `CurrentScene.GetSystem<BehaviourManager<Ball>>()`, then each of its `Instances` |
 
 `LoadScene` replaces and destroys the current scene. Asked for from a scene's own code (a
 behaviour's or a level's `OnUpdate`, `OnFixedUpdate`/`OnFixedStep`, a queued call or contact at the
@@ -235,6 +234,63 @@ delivered from) it starts the load and returns true, and the swap happens at the
 is not destroyed under its own code, and the game hears `OnSceneActivated` then. Until then
 `CurrentScene` is still the old scene. From the game's own code (its hooks and its `Listen`
 handlers) the load is immediate, and the new scene is current when the call returns.
+
+## The run's services and the scene's verbs
+
+- **Input** (`InputFacade`). `Rumble(low, high, seconds)` runs the first pad's two motors, `low`
+  the heavy one and `high` the light one, each 0 to 1 (a crash 0.8, 0.4, 0.25; a footstep 0, 0.2,
+  0.05); `Rumble(gamepad, low, high, seconds)` picks the pad and `StopRumble()` stops them all. It
+  reaches only the calling run's pad (a Game tab's, the player's), and the run's end stops it.
+  `PushSet("Menu")` makes that input set modal, so only its actions read while a menu is up, and
+  `PopSet()` takes it off; what is held across either needs a fresh press, so a held Jump neither
+  confirms the menu that opened nor fires as it closes. `EnableSet(name, enabled)` turns a set on
+  or off outside that stack.
+- **Naming a control.** Text that tells the player what to press names the control, never the
+  action: the action's name is the game's word, the control ("Space", or "Pad South" once a pad
+  is picked up) is the player's, and it follows their rebinding. On a screen, put a `Prompt`
+  beside the words (`<Prompt action="Interact"/>`), which follows the device in hand by itself.
+  In a sentence, `InputFacade.Describe(action)` (or `Describe(action, set)`) gives the same
+  control's name for the device in hand, "" when the action has no binding. Build the sentence
+  when it is shown, not once, so it follows a pad picked up.
+- **Audio** (`AudioFacade`). A clip, a cue or music plays by asset id (`PlayOneShot`, `PlayCue`,
+  `PlayMusic`) or by its content path as the project names it (`PlayOneShotPath("Audio/Jump")`,
+  `PlayOneShot3DPath`, `PlayCuePath`, `PlayMusicPath`): a path resolves by type, a cue to one of
+  its variants, and a path that names nothing plays nothing. A bus is named as a settings screen
+  names it: `SetNamedBusVolume("music", 0.5f)`, `SetNamedBusMuted`, `NamedBusVolume` and
+  `NamedBusMuted` take the four fixed buses (master, effects, music, ui, any case) and the bus
+  layout's own; an unknown bus reads full volume and unmuted.
+- **Saving** (`SaveFacade`). Values kept between runs (a best time, an unlocked level, the game's
+  own options), typed (int, float, bool, string, a list of floats) and keyed by any string:
+  `SetInt("best.level2", 4210)`, `GetInt("best.level2", 0)` (the fallback when there is none
+  yet). `Has`, `Remove` and `Clear` do what they say; a value read as another kind than it was
+  written answers the fallback, except that an int reads as a float. A list (a recorded run, a
+  ghost) is saved and read whole with `SetFloats` and `GetFloats`, which answers false, the list
+  left empty, when there is none. The run writes what changed when it ends; `Flush()` at the
+  moment that matters (a level clear, leaving a settings screen) so a crash loses nothing. The
+  player keeps the file, `<project>.save.xml`, in the user's data directory; a Game tab keeps its
+  own in the project's ignored `Editor/` folder, so testing never touches a player's save.
+- **Physics** (`PhysicsSceneSystem`). `RayCast(from, direction, maxDistance)` answers the closest
+  `PhysicsHit`: whether it hit, the entity, the distance, position and normal, the struck face's
+  `Surface` slot on a cooked mesh, and the `Material` of the struck body (its rigid body's
+  physical material, nil without one): what is underfoot, for a step's sound. `ApplyImpulse` is
+  a kick, `SetVelocity` sets a speed now (a launch, a stop) and `Velocity` reads it, and
+  `SetForce` holds a steady push in newtons (thrust, wind), applied every physics step until set
+  again (zero lets go), so it acts the same at any frame rate.
+- **One-shot animations.** `PlayOneShot(entity, clip, settings)` on `SkeletalAnimationComponentManager`
+  (a single clip) or `AnimationGraphComponentManager` (a graph) plays a clip once over whatever
+  the entity animates, blending in and out (`OneShotSettings`: speed, blend in and out, 0.2 s by
+  default, and how many more times it plays, -1 until stopped); the entity then carries on with
+  its own animation. `StopOneShot(entity, blendOut)` blends it out and `IsPlayingOneShot(entity)`
+  is true until it has. `SetClip(entity, clip, blendSeconds)` swaps a clip easing from the pose
+  shown now instead of snapping.
+- **Light and materials.** `RenderExtract.LightAt(Scene, position)` answers how much light
+  reaches a place, linear RGB: every enabled light by the renderer's own falloff and cone, plus
+  the ambient; a light that casts shadows is stopped by what stands between (a ray through the
+  scene's solid surfaces), one without shadows shines through walls, as on screen. It is a CPU
+  estimate for a light meter or a guard's eye, not a read of the frame; ask from a point off any
+  surface. `MeshComponentManager.SetMaterialProperty(entity, slot, name, value, size)` sets one
+  material property for that mesh alone (a glow, a flash), named as the material editor shows it;
+  `ClearMaterialProperty` puts it back. Runtime state, not saved with the scene.
 
 ## Events and queued calls
 

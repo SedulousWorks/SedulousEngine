@@ -40,8 +40,8 @@ nothing else links them, and enabling them builds the sandbox.
 - Build ONE project at a time, and never beside another heavy build (a second BeefBuild, the
   Steam Deck container, another engine's build). Two at once has run the machine out of memory.
 - A tool built before a change does not have it: rebuild the editor, the player or
-  `Sedulous.Tools.Mcp` after changing what they use. The script compiler lives in them too, so
-  a stale editor fails to compile a game script that uses new script API.
+  `Sedulous.Tools.Mcp` after changing what they use. A game's code is compiled into its project's
+  own editor and player, so those are rebuilt too after an engine change the game uses.
 
 ## Test
 
@@ -98,26 +98,26 @@ the previous engine, on the `v0` branch.
 ## Sample projects
 
 `Data/SampleProjects/` holds game projects: **Sky Hopper** (`SkyHopper`), built entirely
-through the MCP tools (its scripts in `Tools/`, run against the project's own editor: its game and
+through the MCP tools (its authoring scripts in `Tools/`, run against the project's own editor: its game and
 behaviours are its `Code/`, the engine part also a project of the engine workspace, linked by
 Integration.Mcp), **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`, run
 against the project's own editor: its game, its blocks' level and its behaviours are its `Code/`, the
 engine part also a project of the engine workspace, linked by Integration.Mcp),
-**Snowline**, Raptor's snowboard demo ported through the same tools (its scripts in `Tools/`, run
+**Snowline**, Raptor's snowboard demo ported through the same tools (its authoring scripts in `Tools/`, run
 against the project's own editor: its game and its behaviours are its `Code/`, the engine part also a
 project of the engine workspace, linked by Integration.Mcp),
-**Lamplight**, Raptor's stealth heist ported the same way (its scripts in `Tools/`, run against the
+**Lamplight**, Raptor's stealth heist ported the same way (its authoring scripts in `Tools/`, run against the
 project's own editor: its game and its behaviours are its `Code/`, the engine part also a project of
 the engine workspace, linked by Integration.Mcp), the
-**Shader Gallery**, Raptor's custom shaders sample ported the same way (its scripts in `Tools/`, run
+**Shader Gallery**, Raptor's custom shaders sample ported the same way (its authoring scripts in `Tools/`, run
 against the project's own editor: its camera's Gallery behaviour is its `Code/`, the engine part also a
 project of the engine workspace, linked by Integration.Mcp),
-**Masquerade**, Raptor's networked masked ball ported the same way (its scripts in `Tools/`, run
+**Masquerade**, Raptor's networked masked ball ported the same way (its authoring scripts in `Tools/`, run
 against the project's own editor: its game and its behaviours are its `Code/`, the engine part also a
 project of the engine workspace, linked by Integration.Mcp), and
 **NativeSample**, a game's own native code: its `Code/` workspace, the game library and its
 other three parts (also projects of the engine workspace, linked by Integration.Plugins) and a scene its Spin component turns, its Bob behaviour moves and its Arena level times (its Game hearing the round end), built through the
-project's own editor by its scripts in `Tools/`.
+project's own editor by its authoring scripts in `Tools/`.
 Their `Cooked/`, `.cache/`, `Editor/` and `Dist/` are generated and ignored. Integration.Mcp
 checks that PaperKid, the Shader Gallery, Sky Hopper, Lamplight, Snowline and Masquerade (each with its package loaded) read at the current data versions and cook;
 Integration.Plugins checks that NativeSample reads with its package loaded and cooks, and that its game launches in a run. Each one's `CREDITS.md` and

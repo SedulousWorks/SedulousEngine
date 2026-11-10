@@ -8,8 +8,8 @@ what is known; remove an item in the commit that resolves it.
 ### Input action sets for UI and gameplay
 `ActionRuntime` has named sets with priorities, `EnableSet` / `DisableSet`, and a modal
 `PushExclusiveSet` / `PopExclusiveSet` stack that latches held input across the boundary.
-Scripts reach it (`Input.PushSet`, `PopSet`, `EnableSet`, as Raptor's do); the UI still reads
-the pad directly (`UIInputPump.PumpGamepad`).
+Game code reaches it (`InputFacade.PushSet`, `PopSet`, `EnableSet`); the UI still reads
+the pad's events directly (`GuiInputPump` dispatches them to the GUI, outside the action sets).
 
 - B. A screen declares its set in markup (`<screen input-set="Menu">`) and the screen stack
   pushes and pops it; needs balanced notifications from `ScreenStack` and a decision on which
@@ -53,9 +53,9 @@ map is [RaptorSync.md](RaptorSync.md).
 ### A sequencer for cutscenes
 Raptor's item (2026-11-08, from its flagship's act 1): timelines that drive several entities at
 once (transforms and any reflected property, skeletal clips, camera cuts, sounds, events, fades,
-nested sequences), authored on a timeline page and played from script. Cutscenes run as script
-for now; what they need is the sequencer's requirements list. Camera shake stays out of the
-engine (games shake differently; a script does it on the camera it already moves). A draft from a
+nested sequences), authored on a timeline page and played from game code. Cutscenes run as game
+code for now; what they need is the sequencer's requirements list. Camera shake stays out of the
+engine (games shake differently; a game's code does it on the camera it already moves). A draft from a
 survey of the reference engines (none of ezEngine, Lumix or Zero has one; Traktor's Theater,
 Flax's Scene Animations, Godot's AnimationPlayer, LunarSong's timeline and doriax's action
 timeline do):
@@ -66,7 +66,7 @@ timeline do):
   and the events in `(previous, now]`; Core only, headless tests), `Sedulous.Sequence.Resource`
   (the cooked sequence and its factory), `Sedulous.Sequence.Pipeline` (the authored asset
   cooked, editor-only data stripped), `Sedulous.Engine.Sequence` (the player component and its
-  scene system, the bindings, the script facade), `Sedulous.Editor.Sequence` (the timeline page
+  scene system, the bindings, the calls game code makes), `Sedulous.Editor.Sequence` (the timeline page
   on GUI.Toolkit's `ITimelineSource` and `Dopesheet`).
 - **Domains contribute their track kinds**, so the sequencer depends on none of them: the track
   interface lives in `Sedulous.Sequence`, a domain's module lists the kinds it adds (animation:
@@ -75,11 +75,10 @@ timeline do):
   camera primary, never a global camera, and fades), and a plugin or a game adds its own.
   Property tracks are reflection-driven, as property animation's are; no type list anywhere.
 - **Dependencies**: `Sedulous.Engine.Sequence` on Scene, Engine.Scene, Resource,
-  PropertyAnimation (its property binding and curves, reused, not copied), Script.Facades and
-  Engine.Domain; never Render, Audio, Animation or Physics. The editor page on Editor.Scene and
+  PropertyAnimation (its property binding and curves, reused, not copied) and Engine.Domain; never Render, Audio, Animation or Physics. The editor page on Editor.Scene and
   GUI.Toolkit.
 - **Bindings**: by entity id, remappable per player (Flax's `MapObject`), and by named slot
-  filled at play from script (what a game spawns at runtime), relative to the player for a
+  filled at play by game code (what a game spawns at runtime), relative to the player for a
   sequence inside a prefab (ezEngine's and Traktor's owner-relative form).
 - **The player**: play, stop, seek, speed, loop, an update mode the editor drives by hand,
   events on the scene's bus, a finished event that hands control back, and restoring what it
@@ -87,7 +86,7 @@ timeline do):
   held back.
 - **Open**: whether a sequence can blend into gameplay animation (Godot's one mixer does; the
   others hard-cut), and whether skeletal clips and property tracks share one clip format. Spec
-  it once script cutscenes have run long enough to say what the tracks must be.
+  it once cutscenes in game code have run long enough to say what the tracks must be.
 
 ### A page save re-records a scene's prefab instances
 Saving the Snowline Meadow page after painting its vegetation mask re-recorded the scene's
@@ -150,9 +149,6 @@ weight in the repository and in the page's download. The web build should cook i
 (Sedulous.Tools.ShaderPack, as an export does) into `webdata/Data/Engine/Shaders/` rather than
 carry a committed one, which goes stale with every format change.
 
-### Game scripts do not hot reload in play in editor
-Game-tier scripts are not reloaded while a Game tab runs.
-
 ### The sample-project test covers PaperKid, the Shader Gallery and Masquerade only
 `Integration/Sedulous.Integration.Mcp/src/SampleProjectTests.bf` reads and cooks PaperKid, the
 Shader Gallery and Masquerade (CheckSampleProject) so a data-version change cannot leave them
@@ -165,17 +161,6 @@ guard: a case each, with their floors.
 `ref`: `component_schema` does not say the guid names a Texture (TextureAsset or
 RenderTextureAsset). The key and the field name need to agree, or the reference a way to map
 them.
-
-### A list of resource references does not cross to scripts
-The script surface carries a `Ref<T>` field as a `Guid` and a `List<EntityRef>` as an
-`array<EntityRef>@`, but not a `List<Ref<T>>`: the element has no surface kind, and writing one
-back would have to set each id and bind it. So `InstancedSkinningComponent.Clips` (and
-`MeshComponent.Materials`) are not `[Scriptable]`, where Raptor's script sees `clips`.
-
-### Scripts cannot compare two guids
-The script surface gives `Guid` `Nil`, `IsNil` and `FromString`, but no equality: AngelScript
-refuses `a == b` ("No matching operator that takes the types 'Guid' and 'Guid'"), so a script
-cannot check that an image's `Source` or an entity's asset is the one it expects.
 
 ### TAA still looks jittery
 Raptor's finding (2026-10-03), the same here: with the stale history fixed, the resolve itself

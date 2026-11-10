@@ -11,7 +11,7 @@
 
 A game engine and editor written in [Beef](https://www.beeflang.org/). It provides a
 complete game development ecosystem, combining an integrated editor, asset pipeline, runtime and
-toolchain with advanced rendering, gameplay scripting and a CSS styled UI framework. Games made in
+toolchain with advanced rendering, game code in Beef and a CSS styled UI framework. Games made in
 the editor export to a desktop player, to the browser (WebGPU through emscripten) and to the Steam
 Deck. Its agentic workflow, through an MCP host, enables AI agents to build entire games, from
 initial project setup to fully playable experiences.
@@ -47,8 +47,8 @@ This is the second iteration of the engine. The previous one continues on the `v
 - **UI:** a retained-mode GUI with flex, grid and stack layouts, `.xml` markup, CSS sheets
   (cascade, variables, transitions, animations, media queries), shaped bidirectional text,
   keyboard and gamepad navigation, data binding, world-space UI, a game kit for screens and
-  prompts, and an editor toolkit (docking, property grids, a code editor). Scripts can create and
-  control any widget.
+  prompts, and an editor toolkit (docking, property grids, a code editor). Game code can create
+  and control any widget.
 - **Vector graphics and fonts:** a vector graphics layer with SVG, and distance field and
   coverage fonts.
 - **Editor** (`Sedulous.Tools.Editor`): project manager, scene hierarchy, viewport with gizmos and
@@ -60,10 +60,10 @@ This is the second iteration of the engine. The previous one continues on the `v
 - **Export** to the desktop, the web (WebAssembly with WebGPU) and the Steam Deck, from
   per-target presets: an export builds the game's own player with its code for the preset's
   platform and config. Headless tools can run all of it from the command line.
-- **Agent tooling:** an MCP host (`Sedulous.Tools.Mcp`) exposes the engine's reflection, the
-  script API and project operations (import, cook, scene validation, export, health checks). The
+- **Agent tooling:** an MCP host (`Sedulous.Tools.Mcp`) exposes the engine's reflection and
+  project operations (import, cook, scene validation, export, health checks). The
   editor serves the same tools over HTTP for its open project, plus its pages and play in editor,
-  where an agent plays the game with scripted input and reads back probes and screenshots.
+  where an agent plays the game with timed input and reads back probes and screenshots.
   [AGENTS.md](AGENTS.md) describes how an agent works on the engine itself.
 - **Samples:** five sample games, a custom shaders gallery and a native plugin sample (below),
   and low-level Beef samples per engine area ([Code/Samples/README.md](Code/Samples/README.md)).
@@ -126,7 +126,7 @@ the gardens to the vault on the upper floor.
 
 **Masquerade** is social stealth at a masked ball, alone against bots or with up to four players
 over the network, chosen to show the network stack and crowds: an authoritative host that plays
-and players joining it (natively, or from a browser through its gateway), replicated script state,
+and players joining it (natively, or from a browser through its gateway), replicated game state,
 and some 150 guests on navigation drawn as instances of six costumes. Each hunter is given a mark, a guest in one of those costumes, and is
 someone else's mark; guests stroll, gather and dance to the orchestra's cues, and a hunter who
 sprints or stands still through a dance stands out. Three maps: the Palace, the Canal with its
@@ -159,7 +159,7 @@ the round clock of its Arena level, which its Game hears run out.
 ```
 Code/
   Foundation/     Core, RHI and backends, Shell, Resource, VFS, Scene, Render, GUI, VG,
-                  Fonts, Audio, Physics, Navigation, Net, Script, Shaders, ...
+                  Fonts, Audio, Physics, Navigation, Net, Shaders, ...
   Engine/         The subsystems over Foundation, the default application, the player
   Pipeline/       Importers and cooks per asset type, the export
   Editor/         Editor core and one module per domain
