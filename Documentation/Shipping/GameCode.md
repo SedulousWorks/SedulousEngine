@@ -211,17 +211,17 @@ run's from its services.
 | play, stop or fade an entity's sound (`Play`, `Stop`, `SetVolume(e, v, seconds)`, `SetPitch`) | `AudioSceneSystem` |
 | measure and sample a spline (`Length`, `SampleAtDistance`, `ClosestPoint`) | `SplineComponentManager` (`Sedulous.Engine.Spline`) |
 | play, stop or restart particles (`Play`, `Stop`, `Restart`) | `ParticleEffectComponentManager` |
-| swap a mesh's material, or set one of its properties for that mesh alone | `MeshComponentManager.SetMaterial(e, material, slot)`, `SetMaterialProperty(e, slot, name, v, sizeof(Float4))` |
+| swap a mesh's material, or set one of its properties for that mesh alone | `MeshComponentManager.SetMaterial(e, materialId, slot)` (the material's guid), `SetMaterialProperty(e, slot, name, value, size)` (a `Float4`, `size` 4 for a float and 16 for a Float4), `ClearMaterialProperty(e, slot, name)` |
 | ask how much light reaches a place | `RenderExtract.LightAt(Scene, at, groupMask)` |
-| play a one-shot sound, music, a cue; set bus volumes | `AudioFacade` (`PlayOneShot`, `PlayOneShot3D`, `PlayMusic`, `StopMusic`, `SetVoicePitch(audio.MusicVoice(), ...)`, `BusVolume`) |
+| play a one-shot sound, music, a cue; set bus volumes | `AudioFacade` (`PlayOneShot`, `PlayOneShot3D`, `PlayCue`, `PlayMusic`, `StopMusic`, `SetVoicePitch(audio.MusicVoice(), ...)`, `SetBusVolume`) |
 | read input, rumble a pad, switch input sets | `InputFacade` (`WasPressed`, `Value2D`, `Rumble`, `PushSet`, `PopSet`) |
 | keep values between runs | `SaveFacade` (`GetFloats(key, list)`, `SetFloats(key, list)` with a `List<float>`, and the rest) |
 | reach a component's data and verbs (`NavAgentComponent.Navigate(at)`, `SkeletalAnimationComponent.Speed`, `NetworkComponent.Owner`) | `Scene.GetComponent<T>(e)` (a `T*`, null without one) |
 | walk and change the hierarchy | `Scene.FindChildByName(Entity, n)`, `GetFirstChild(Entity)`, `GetNextSibling(Entity)`, `GetParent(Entity)`, `GetWorldPosition(Entity)`, `SetActive(Entity, b)`, `DestroyEntity(Entity)` |
-| tween a GUI node | `node.Animate(property, to, seconds, easing).From(v)`, `.Repeat(n)`, then `ReleaseRef()` |
+| tween a GUI node | `node.Animate(property, to, seconds, easing).From(start)` (`to` and `start` as text, as a sheet writes them), `.Repeat(n)`, then `ReleaseRef()` |
 | set a widget's state | `(node as Label).Text = t`, `(node as ProgressBar).Value = v`, `(node as UIWidget).AddClass(c)` |
 | reach a world-space GUI's tree | `Scene.GetComponent<GuiBillboardComponent>(e).Root` (null until it is built) |
-| load a scene, pause, leave | `GameInstance.LoadScene(id)`, `InstanceTimeScale`, `SceneReady`, `RequestExit(code)` |
+| load a scene, pause, leave | `GameInstance.LoadScene(id)` (a guid or a `SceneRef`), `InstanceTimeScale`, `SceneReady`, `RequestExit(code)` |
 | tell the run something happened | `Post(CoinCollected(1))`, a struct event (Events and queued calls) |
 | tell another entity's code | a call on the other entity's behaviour, made now (Events and queued calls) |
 | reach every behaviour of a kind from the game | `CurrentScene.GetSystem<BehaviourManager<Ball>>()`, then each of its `Instances` |
@@ -250,8 +250,9 @@ handlers) the load is immediate, and the new scene is current when the call retu
   is picked up) is the player's, and it follows their rebinding. On a screen, put a `Prompt`
   beside the words (`<Prompt action="Interact"/>`), which follows the device in hand by itself.
   In a sentence, `InputFacade.Describe(action)` (or `Describe(action, set)`) gives the same
-  control's name for the device in hand, "" when the action has no binding. Build the sentence
-  when it is shown, not once, so it follows a pad picked up.
+  control's name for the device in hand, "" when the action has no binding; the view is good
+  until the next `Describe`, so copy it to keep it. Build the sentence when it is shown, not
+  once, so it follows a pad picked up.
 - **Audio** (`AudioFacade`). A clip, a cue or music plays by asset id (`PlayOneShot`, `PlayCue`,
   `PlayMusic`) or by its content path as the project names it (`PlayOneShotPath("Audio/Jump")`,
   `PlayOneShot3DPath`, `PlayCuePath`, `PlayMusicPath`): a path resolves by type, a cue to one of
@@ -263,7 +264,8 @@ handlers) the load is immediate, and the new scene is current when the call retu
   own options), typed (int, float, bool, string, a list of floats) and keyed by any string:
   `SetInt("best.level2", 4210)`, `GetInt("best.level2", 0)` (the fallback when there is none
   yet). `Has`, `Remove` and `Clear` do what they say; a value read as another kind than it was
-  written answers the fallback, except that an int reads as a float. A list (a recorded run, a
+  written answers the fallback, except that an int reads as a float. `GetString` answers a view
+  good until that value next changes. A list (a recorded run, a
   ghost) is saved and read whole with `SetFloats` and `GetFloats`, which answers false, the list
   left empty, when there is none. The run writes what changed when it ends; `Flush()` at the
   moment that matters (a level clear, leaving a settings screen) so a crash loses nothing. The
@@ -278,8 +280,9 @@ handlers) the load is immediate, and the new scene is current when the call retu
   again (zero lets go), so it acts the same at any frame rate.
 - **One-shot animations.** `PlayOneShot(entity, clip, settings)` on `SkeletalAnimationComponentManager`
   (a single clip) or `AnimationGraphComponentManager` (a graph) plays a clip once over whatever
-  the entity animates, blending in and out (`OneShotSettings`: speed, blend in and out, 0.2 s by
-  default, and how many more times it plays, -1 until stopped); the entity then carries on with
+  the entity animates, blending in and out (`OneShotSettings`: `Speed`, `BlendIn` and `BlendOut`,
+  0.2 s by default, and `Loops`, how many more times it plays after the first, -1 until stopped;
+  `clip` is the clip's guid); the entity then carries on with
   its own animation. `StopOneShot(entity, blendOut)` blends it out and `IsPlayingOneShot(entity)`
   is true until it has. `SetClip(entity, clip, blendSeconds)` swaps a clip easing from the pose
   shown now instead of snapping.
@@ -289,8 +292,10 @@ handlers) the load is immediate, and the new scene is current when the call retu
   scene's solid surfaces), one without shadows shines through walls, as on screen. It is a CPU
   estimate for a light meter or a guard's eye, not a read of the frame; ask from a point off any
   surface. `MeshComponentManager.SetMaterialProperty(entity, slot, name, value, size)` sets one
-  material property for that mesh alone (a glow, a flash), named as the material editor shows it;
-  `ClearMaterialProperty` puts it back. Runtime state, not saved with the scene.
+  material property for that mesh alone (a glow, a flash), named as the material editor shows it:
+  `value` is a `Float4`, `size` 4 for a float property and 16 for a Float4 one, and it answers
+  false for an entity without a mesh. `ClearMaterialProperty(entity, slot, name)` puts it back.
+  Runtime state, not saved with the scene.
 
 ## Events and queued calls
 
@@ -306,7 +311,7 @@ An event is a struct type, its value the payload; a misspelt event fails to comp
 - `Post(call)` on a behaviour or level queues a call for the end of its scene's next tick
   (the scene's behaviour system runs it, so a game that registers no behaviour cannot), dropped
   if the behaviour is released, or the level stops, first. To call another entity's
-  code now, call it: `Scene.GetSystem<BehaviourManager<Door>>()?.Get(e)?.Knock()`.
+  code now, call it: `Scene.GetSystem<BehaviourManager<Door>>()?.Get(e)?.Knock(at)`.
 - What a drain's deliveries queue waits for the next drain. Delegates passed to `Listen` and
   `Post` are the engine's from then on.
 
@@ -332,10 +337,12 @@ them, a later registration of the name replaces them, and the session's stop dro
 What goes mid-session (a level's scene unloaded, a behaviour destroyed) calls `Off` for what it
 registered.
 
-`HttpFacade` reaches web services: a leaderboard, a news feed, the game's own server. `Get`,
-`Post` and `Request` (any method, with `"Name: value"` header lines) take `delegate void(int32
-status, StringView body, StringView error)`, called on the game's thread a frame or more later
-and deleted after the answer, on `Cancel(id)`, or as the session stops (never called then).
+`HttpFacade` reaches web services: a leaderboard, a news feed, the game's own server.
+`Get(url, handler)`, `Post(url, contentType, body, handler)` and `Request(method, url, headers,
+body, handler)` (any method, `headers` as `"Name: value"` lines) answer the request's id for
+`Cancel(id)`, nought when the run has no HTTP. The handler, `delegate void(int32 status,
+StringView body, StringView error)`, is the facade's: called on the game's thread a frame or more
+later and deleted after the answer, on `Cancel(id)`, or as the session stops (never called then).
 - A 404 or a 500 is a response (status set, `error` empty). Status 0 means none came, and
   `error` says why: no network, a timeout (30 s), a certificate not trusted.
 - `https` checks the server's certificate against the system's trusted roots. Bodies are text.
@@ -352,8 +359,8 @@ and deleted after the answer, on `Cancel(id)`, or as the session stops (never ca
 - `BindText(property, delegate void(String outText))`, `BindNumber(property, delegate
   double())` and `BindBool(property, delegate bool())` keep a property following a value;
   `BindProperty` binds any.
-- `node.Animate(property, to, seconds)` answers a tween; `.OnFinished(delegate void())` runs at
-  its end. Release the tween with `ReleaseRef()` when done shaping it.
+- `node.Animate(property, to, seconds)` (`to` as text, as a sheet writes the value) answers a
+  tween; `.OnFinished(delegate void())` runs at its end. Release the tween with `ReleaseRef()` when done shaping it.
 - Screens: the root's `"screens"` element is the run's `ScreenStack`. `PushDocument(guid)` takes
   a GUI document's asset id as a string (a `Ref<GuiDocument>` field's `Id.ToString()`) and
   answers its `Screen`; `Pop()` takes the top one off.
