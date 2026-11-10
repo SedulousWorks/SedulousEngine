@@ -26,7 +26,6 @@ COMPONENTS = [
     ("SDL", "https://libsdl.org", "Zlib", ["SDL3-Beef/dist/SDL3-3.4.0/LICENSE.txt"]),
     ("Jolt Physics", "https://github.com/jrouwe/JoltPhysics", "MIT", ["joltc-Beef/JoltPhysics.LICENSE"]),
     ("joltc", "https://github.com/amerkoleci/joltc", "MIT", ["joltc-Beef/joltc/LICENSE"]),
-    ("AngelScript", "https://www.angelcode.com/angelscript", "Zlib", ["AngelScript-Beef/angelscript/LICENSE.txt"]),
     ("HarfBuzz", "https://github.com/harfbuzz/harfbuzz", "Old MIT (HarfBuzz's own name for it)", ["harfbuzz-Beef/harfbuzz/COPYING"]),
     ("SheenBidi", "https://github.com/Tehreer/SheenBidi", "Apache-2.0", ["sheenbidi-Beef/sheenbidi/LICENSE"]),
     ("meshoptimizer", "https://github.com/zeux/meshoptimizer", "MIT", ["meshoptimizer-Beef/meshoptimizer/LICENSE.md"]),

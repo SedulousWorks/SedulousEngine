@@ -188,7 +188,7 @@ flows that cross collections.
 
 Beef bindings, vendored under `Dependencies/`: Bulkan (Vulkan), Win32-Beef (D3D12 and
 DXGI), wgpu-Beef, SDL3, Dxc-Beef, joltc-Beef, recastnavigation-Beef,
-miniaudio (with stb_vorbis for Ogg), AngelScript-Beef, cgltf and ufbx, meshoptimizer,
+miniaudio (with stb_vorbis for Ogg), cgltf and ufbx, meshoptimizer,
 msdfgen, stb_image and stb_truetype, HarfBuzz, SheenBidi, astcenc, bc7enc and bcdec, Mbed TLS,
 zlib, cimgui. Each keeps its licence beside it, and those that ship in a binary are gathered into
 `Dependencies/THIRD-PARTY-NOTICES.txt`, beside every player, editor and export.
