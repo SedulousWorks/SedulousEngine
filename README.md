@@ -51,7 +51,7 @@ This is the second iteration of the engine. The previous one continues on the `v
   and control any widget.
 - **Vector graphics and fonts:** a vector graphics layer with SVG, and distance field and
   coverage fonts.
-- **Editor** (`Sedulous.Tools.Editor`): project manager, scene hierarchy, viewport with gizmos and
+- **Editor** (`Sedulous.Tools.Editor`): scene hierarchy, viewport with gizmos and
   per-domain tools (terrain sculpting and painting, vegetation, splines), inspectors from
   reflection, an asset browser, undo and redo, play in editor (several instances side by side), a
   profiler, and a page per asset type.
@@ -81,7 +81,7 @@ commands and how to run the editor.
 
 ## Sample projects
 
-Game projects under `Data/SampleProjects/`, opened from the editor's project manager. Each was
+Game projects under `Data/SampleProjects/`, opened from the project manager. Each was
 built through the engine's MCP tools by an AI agent, its authoring scripts kept in its `Tools/`.
 [SedulousDemos](https://sedulousworks.github.io/SedulousDemos/) plays the games and the Shader
 Gallery in a browser, Masquerade not yet.

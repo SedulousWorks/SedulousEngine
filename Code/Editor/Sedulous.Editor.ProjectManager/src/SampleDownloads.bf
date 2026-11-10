@@ -83,7 +83,7 @@ class SampleCatalog
 			if (!PlainName(info.Folder) || !PlainName(info.Archive) || (info.Sha256.Length != 64)
 				|| (!info.Picture.IsEmpty && !PlainName(info.Picture)))
 			{
-				outError.Set("the samples list names a sample this editor cannot fetch");
+				outError.Set("the samples list names a sample this manager cannot fetch");
 				outCatalog.Version.Clear();
 				ClearAndDeleteItems!(outCatalog.Samples);
 				return false;

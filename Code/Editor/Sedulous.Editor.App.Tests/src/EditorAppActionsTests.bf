@@ -411,7 +411,7 @@ class EditorAppActionsTests
 		file.SaveLayout = bench.Record("saveLayout");
 		EditorAppActions.RegisterFileActions(actions, file);
 		Test.Assert(actions.Count == 1);
-		Test.Assert(actions.Find("file.closeProject") == null, "the manager did not launch it: no Close Project");
+		Test.Assert(actions.Find("file.closeProject") == null, "no hook given: no Close Project");
 		Test.Assert(actions.Execute("file.saveLayout", null) case .Ok);
 		Test.Assert(bench.Said("saveLayout"));
 	}

@@ -159,7 +159,7 @@ class EditorMcpHostTests
 		Test.Assert(infoPayload.Get("buildStamp").AsString() == "test-stamp");
 		Test.Assert(infoPayload.Get("host").Get("kind").AsString() == "editor");
 		Test.Assert(infoPayload.Get("host").Get("projectOpen").AsBool());
-		Test.Assert(infoPayload.Get("host").Get("screen").AsString() == "editor", "with a project and no screen said, the editor's");
+		Test.Assert(infoPayload.Get("host").Get("screen") == null, "no screen: the editor shows its project");
 		Test.Assert(infoPayload.Get("host").Get("projectName").AsString() == "Hosted");
 		// project_info answers for the SAME project object the editor holds.
 		Test.Assert(projectInfo != null);

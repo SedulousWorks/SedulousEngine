@@ -351,7 +351,6 @@ class ProjectManagerProgram : IApplication
 		services.PinEngine = new (directory, sdk, outWhy) => PinEngine(directory, sdk, outWhy);
 		services.EngineOf = new (directory, outSdk) => PickSdk(directory, outSdk);
 		services.EngineManager = mEngines;
-		services.StaysWhileOpening = true; // its build's panel shows over the projects
 		return services;
 	}
 

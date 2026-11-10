@@ -13,17 +13,17 @@ HTTP (`engine-editor-mcp`) for the project it has open (the live one, one conten
 one writer), so an agent can work on what the user is looking at. Tell them apart by
 `host_info.serverName` and `host_info.host.kind`.
 
-The editor serves the project manager too, when MCP is on (Preferences, or `--mcp`) and no project
-is open: `host_info.host` says `projectOpen: false` and `screen: "projectManager"` (`"editor"`
-once a project is open). There the project's tools refuse with "no project is open" (the asset,
-scene, page_open and PIE tools among them), the lists answer empty (`page_list`, `pie_list`), and
-the editor's own work as they do in a project: `log_read`, `editor_screenshot`, `editor_find`,
-`editor_click` and the other hands on the manager's screen and dialogs, `action_list`, the
-profiler. Opening a project restarts the host over it, and closing one restarts it over the
-manager, on the same port with the same token: reconnect after either. To look at the Samples tab
-before a release carries samples: `python3 Code/Tools/pack-samples.py <folder>`, then
-`Sedulous.Tools.Editor --mcp --release-files <folder>` (it opens on the Samples tab), then
-`editor_screenshot` and `editor_click`. What differs: the stdio host has
+The editor always has its project: it is started on one (`--project <dir>`), and File > Close
+Project hands the user to the project manager and exits. `host_info.host` says `projectOpen: true`;
+only an editor whose project failed to open says `false`, and there the project's tools refuse with
+"no project is open" (the asset, scene, page_open and PIE tools among them) while the editor's own
+(`log_read`, `editor_screenshot`, the GUI hands) still answer. The project manager
+(`Sedulous.Tools.ProjectManager`) serves no MCP: to make or open a project, use the stdio host's
+`project_create` and `project_open`, or start the project's editor with `--mcp` yourself. To look at
+one of the manager's pages, start it with `--page <projects|samples|engines|toolchain>` and
+`--screenshot <png> --screenshot-exit`; for the Samples tab before a release carries samples, pack
+them first (`python3 Code/Tools/pack-samples.py <folder>`) and add `--release-files <folder>`.
+What differs: the stdio host has
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools

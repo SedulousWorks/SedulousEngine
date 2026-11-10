@@ -13,7 +13,7 @@ namespace Sedulous.Editor.App;
 // EditorWindow: the editor's GUI on its main window. The GUI host, the fonts, the editor's own
 // files and the sheet are an EditorLookHost's, the look the project manager shares; the window
 // adds the frame read from Data/Editor/Shell.xml with the dock's host, its status bar
-// (EditorStatusBar), the toast host over its dock, and a screen shown in place of the frame.
+// (EditorStatusBar) and the toast host over its dock.
 
 class EditorWindow
 {
@@ -35,9 +35,6 @@ class EditorWindow
 	/// References of ours (the tree holds its own).
 	private Node mFrame = null ~ _?.ReleaseRef();
 	private ToastHost mToasts = null ~ _?.ReleaseRef();
-	/// Over the window in place of the frame while shown (the project manager): a reference of
-	/// ours, the tree holding its own.
-	private Node mScreen = null ~ _?.ReleaseRef();
 	/// Over the frame's items: it goes before the frame.
 	private EditorStatusBar mStatus = null ~ delete _;
 
@@ -173,28 +170,6 @@ class EditorWindow
 	/// window's.
 	public EditorStatusBar StatusBar => mStatus;
 
-	/// A screen over the whole window in place of the frame (the project manager); null puts the
-	/// frame back. The window takes a reference of its own. Nothing with no interface.
-	public void ShowScreen(Node screen)
-	{
-		if ((mGui.Root == null) || (mFrame == null))
-			return;
-		if (screen != null)
-			screen.AddRef(); // first: the screen shown again is not let go below
-		if (mScreen != null)
-		{
-			mScreen.RemoveFromParent();
-			mScreen.ReleaseRef();
-		}
-		mScreen = screen;
-		mFrame.Displayed = mScreen == null;
-		if (mScreen != null)
-			mGui.Root.AddChild(mScreen);
-	}
-
-	/// A screen shows in place of the frame.
-	public bool ShowsScreen => mScreen != null;
-
 	/// A frame's node by its id (the dock's host, the status bar's items); null when none is.
 	/// The tree's.
 	public Node FindById(StringView id) => (mFrame != null) ? mFrame.FindElement(id) : null;
@@ -210,11 +185,6 @@ class EditorWindow
 	public void Close()
 	{
 		mGui.Detach();
-		if (mScreen != null)
-		{
-			mScreen.ReleaseRef();
-			mScreen = null;
-		}
 		if (mToasts != null)
 		{
 			mToasts.ReleaseRef();

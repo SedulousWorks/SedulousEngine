@@ -14,7 +14,7 @@ BeefBuild -proddir=. -platform=Linux64 -test -project=Sedulous.Core.Tests
 ```
 
 The editor is on the GUI, as Raptor's editor-gui series moved it: `Sedulous.Tools.Editor` is
-the shell (its window, dock, menus, palette, project manager, the assets browser, Preferences,
+the shell (its window, dock, menus, palette, the assets browser, Preferences,
 Project Settings, export, the MCP host over `--mcp`), the scene page with its hierarchy and its
 inspector, the Game tab with the play-in-editor tools, every asset page and the Profiler page.
 The old editor's files are deleted (the swap); the last editor on Sedulous.UI builds at e293ee1f.
@@ -123,8 +123,9 @@ checks that PaperKid, the Shader Gallery, Sky Hopper, Lamplight, Snowline and Ma
 Integration.Plugins checks that NativeSample reads with its package loaded and cooks, and that its game launches in a run. Each one's `CREDITS.md` and
 `Licenses/` must stay in step with its assets.
 
-The editor's Samples tab downloads the games `Data/SampleProjects/Samples.json` lists from the
-GitHub release of its own version. `python3 Code/Tools/pack-samples.py <out-dir>` packs them
+The project manager's Samples tab (`Sedulous.Tools.ProjectManager`; the editor opens one project
+and has no manager screen) downloads the games `Data/SampleProjects/Samples.json` lists from the
+GitHub release of the engine picked there. `python3 Code/Tools/pack-samples.py <out-dir>` packs them
 (each one's tracked files less `Tools/`, a zip with its `Project.xml` at the root, its picture, and a
 `samples.json` with sizes and SHA-256s, at the version in `EngineVersion.bf` with its label: the
 release's, so it runs on the release commit). It runs by hand: there is no workflow, so whoever makes the release attaches what it
@@ -132,8 +133,8 @@ writes to release `v<version>` (v0.1.0-beta for the first). Compatibility checks
 (`EngineVersion.String`); what people read carries the label (`EngineVersion.Display`), and a build
 handed out gets its `EngineVersion.BuildNumber`, set by hand (0 is a local build). A game joins the tab by an entry in `Samples.json` (its folder, its name, one line,
 its picture from `Documentation/Images`). To try the tab before a release carries them, pack into
-a folder and run the editor with `--release-files <folder>`: it serves the folder on loopback and
-opens the manager on Samples.
+a folder and run the project manager with `--release-files <folder>`: it serves the folder on
+loopback and opens on Samples.
 
 ## Releases
 

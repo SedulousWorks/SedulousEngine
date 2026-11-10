@@ -35,8 +35,6 @@ class ProjectManagerAppServices
 	/// The tab the manager opens on (Samples for a run pointed at release files, which is there to
 	/// try them; any for a check or a screenshot of one page).
 	public ManagerPage StartPage = .Projects;
-	/// Told each time the manager shows. Owned.
-	public delegate void() Shown ~ delete _;
 	/// The engine version the project in the folder is to open with (the SDK picked for it) into
 	/// `outVersion`, which the gate compares its stamp with; false, with why for the status line in
 	/// `outWhy`, when there is none to open it with. Null: this engine's own. Owned.
@@ -63,11 +61,6 @@ class ProjectManagerAppServices
 	/// The engines and toolchains side by side, for the Engines and Toolchain pages, BORROWED; null:
 	/// no such pages.
 	public EngineManager EngineManager = null;
-	/// The manager stays shown while a project opens, and its status line says how an open that
-	/// failed failed: the manager's program, which builds the project's editor under it. False: it
-	/// goes before the open, as the editor's frame takes the window, and comes back when the open
-	/// fails.
-	public bool StaysWhileOpening = false;
 }
 
 /// The project manager's behaviour over a window: the manager shown (made the first time, its
@@ -76,8 +69,9 @@ class ProjectManagerAppServices
 /// first: a newer engine's Open Anyway; an older engine's Back Up and Open, or Open Without
 /// Backup, either stamping the project with the engine that opens it. New Project refuses a folder
 /// that holds a project already, then has the project made and opened. What opening and making
-/// are is the host's (OpenProject, CreateProject): the editor opens a session in its own window,
-/// the manager's program builds the project's own editor and launches it.
+/// are is the host's (OpenProject, CreateProject): the manager's program builds the project's own
+/// editor under the manager and launches it, the manager's status line saying how an open that
+/// failed failed.
 ///
 /// A headless test drives it over a GUI of its own. What a click asks for runs at the GUI's next
 /// drain, never inside the click (the screen it swaps takes away the button that was clicked); at
@@ -170,12 +164,10 @@ class ProjectManagerApp
 				mView.ShowPage(mServices.StartPage);
 		}
 		else
-			mView.Rebuild(); // back from a project: probed again
+			mView.Rebuild(); // shown again: probed again
 		mView.SetStatus("");
 		ShowScreen(mView.Content);
 		mView.Shown();
-		if (mServices.Shown != null)
-			mServices.Shown();
 	}
 
 	/// Once a frame: the Samples tab's fetches and downloads.
@@ -327,27 +319,19 @@ class ProjectManagerApp
 		// New Project's check said a location that does not exist yet is made: the project's own
 		// folder's parent first (CreateDirectory makes the folders on the way).
 		CreateDirectory(PathParent(directory, .. scope .()));
-		if (!mServices.StaysWhileOpening)
-			ShowScreen(null);
 		let why = scope String();
 		if ((mServices.CreateProject != null) && mServices.CreateProject(directory, name, template, sdk, why))
 			return;
-		if (!mServices.StaysWhileOpening)
-			Enter();
 		SetStatus(why.IsEmpty ? "The project could not be made there (is the folder writable?)." : why);
 	}
 
-	/// The project opened, the manager's screen away first unless it stays (StaysWhileOpening); on
-	/// failure the manager again, saying why.
+	/// The project opened (its opening started) under the manager; on failure the status line says
+	/// why.
 	public bool OpenProject(StringView directory, bool restamp = false)
 	{
-		if (!mServices.StaysWhileOpening)
-			ShowScreen(null);
 		let why = scope String();
 		if ((mServices.OpenProject != null) && mServices.OpenProject(directory, restamp, why))
 			return true;
-		if (!mServices.StaysWhileOpening)
-			Enter();
 		if (why.IsEmpty)
 			why.AppendF("The project in {} did not open (see the log).", directory);
 		SetStatus(why);

@@ -46,7 +46,7 @@ tap on the menus; they show once the screen is touched (`Tools/touch.py` binds t
   is CC-BY 3.0 and must stay credited; everything else is CC0, OFL or Apache 2.0.
 - `Cooked/`, `.cache/`, `Editor/`, `Dist/`: generated, and gitignored; the tools rebuild them.
 
-Open the project from the editor's project manager.
+Open the project from the project manager.
 
 ## Its code
 

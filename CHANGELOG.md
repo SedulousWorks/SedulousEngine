@@ -58,6 +58,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - GUI: a command every handler passes on (`Propagate`: not mine) is unhandled: `RunCommand`
   returns false for it, and its key goes on as an unbound key does, where before any handler on
   the path took the key. A screen stack passes on a Back it pops nothing with.
+- Editor: the editor opens one project and no longer shows a project picker. Started without a
+  project it starts the project manager instead (or prints its usage when there is none), and
+  File > Close Project, now always in the menu, opens the project manager and closes the editor.
+  The Samples tab and `--release-files` are the project manager's.
 - Animation: an animator's root motion mode `Script` is now `Manual` (held for game code to apply);
   scenes that use it read as before.
 - Export: an export builds the game's own player for its preset (its platform and config), with

@@ -13,12 +13,11 @@ using Sedulous.Editor.ProjectManager;
 
 namespace Sedulous.Editor.App;
 
-// ProjectManagerView: the project manager, the window's whole screen
-// at startup with no project given, and after File > Close Project. Its frame is markup
+// ProjectManagerView: the project manager, the manager program's whole window. Its frame is markup
 // (Data/Editor/ProjectManager.xml): a header with the Projects and Samples tabs; on Projects a
 // toolbar (New Project, Open Folder, a search, the sort, list or grid) over the projects as rows or
 // as tiles, and under them the missing ones, each with Locate... and Remove from list; on Samples
-// the sample games of this editor's release, each with its Download...; with an engine manager, the
+// the sample games of an engine's release, each with its Download...; with an engine manager, the
 // Engines and Toolchain tabs (EnginesPage, ToolchainPage); a footer with the status and the keys.
 // With no projects at all, a welcome stands in for the lists.
 //
@@ -528,7 +527,7 @@ class ProjectManagerView
 		if (mServices.Http == null)
 		{
 			mCatalogState = .Failed;
-			mCatalogError.Set("this editor has no network client");
+			mCatalogError.Set("this manager has no network client");
 			Populate();
 			return;
 		}
@@ -1905,7 +1904,7 @@ class ProjectManagerView
 		button.SetOnClick(new [=this, =projectPath] () => { Open(projectPath); } ~ delete projectPath);
 	}
 
-	/// The version's class: none when it is this editor's, else newer or older.
+	/// The version's class: none when it is this engine's, else newer or older.
 	private static StringView VersionClass(EngineVersionRelation relation)
 	{
 		switch (relation)

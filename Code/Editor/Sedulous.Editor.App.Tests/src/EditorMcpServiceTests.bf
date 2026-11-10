@@ -23,7 +23,7 @@ namespace Sedulous.Editor.App.Tests;
 /// calls, the status lines and the log while it runs, the token minted once and saved, a
 /// start refused when disabled or without a log capture, a second start and a second stop
 /// harmless, a port in use reported, and Preferences' Save starting and stopping it. With no
-/// project (the project manager's), the editor's own tools serve and the project's refuse. Ports come
+/// project (one that did not open), the editor's own tools serve and the project's refuse. Ports come
 /// from the OS (a listener on port 0, closed before the host takes it), so a running editor's
 /// 7405 is never touched; the user data directory is a scratch folder, so the user's own token
 /// is never touched either.
@@ -340,8 +340,8 @@ class EditorMcpServiceTests
 		Test.Assert(!service.IsRunning);
 		Test.Assert(bench.Preference.Token.IsEmpty);
 		Test.Assert(!bench.HasEvent("addTools"));
-		// Nor in the project manager.
-		Test.Assert(!service.EnsureRunning());
+		// Nor with no project.
+		Test.Assert(!service.Start(null));
 		Test.Assert(!service.IsRunning);
 		bench.Preference.Enabled = true;
 		// No log capture: log_read would have nothing to serve, so the host does not start.
@@ -561,29 +561,29 @@ class EditorMcpServiceTests
 		Test.Assert(PortIsFree(port));
 	}
 
-	/// The project manager's host: enabled, it serves with no project, once however often the
-	/// manager shows; host_info says so, the project's tools refuse, the editor's answer, and the
-	/// manager's GUI is reached as a user would.
+	/// The host with no project (an editor whose project did not open): enabled, it serves;
+	/// host_info says no project is open, the project's tools refuse, the editor's answer, and its
+	/// GUI is reached as a user would.
 	[Test]
-	public static void WithNoProjectItServesTheManagerAndTheProjectsToolsRefuse()
+	public static void WithNoProjectItServesAndTheProjectsToolsRefuse()
 	{
-		let bench = scope Bench("mcp_service_manager");
+		let bench = scope Bench("mcp_service_no_project");
 		bench.Preference.Enabled = false;
 		bench.Preference.Token.Set(cToken);
 		let port = FreePort();
-		// The manager over the window: a button to find.
+		// The window's GUI: a button to find.
 		let gui = new Sedulous.GUI.GUIContext();
 		let root = new Sedulous.GUI.SceneRoot(gui);
 		gui.ReleaseRef(); // the root's keeps it
 		defer root.ReleaseRef();
 		root.Size = .(400.0f, 300.0f);
-		let samples = new Sedulous.GUI.Button();
-		samples.Id = "manager-tab-samples";
-		samples.Text = "Samples";
-		samples.Position = .(10.0f, 10.0f);
-		samples.Size = .(80.0f, 30.0f);
-		root.AddChild(samples);
-		samples.ReleaseRef(); // the root holds it
+		let button = new Sedulous.GUI.Button();
+		button.Id = "status-probe";
+		button.Text = "Probe";
+		button.Position = .(10.0f, 10.0f);
+		button.Size = .(80.0f, 30.0f);
+		root.AddChild(button);
+		button.ReleaseRef(); // the root holds it
 		root.UpdateLayout();
 		let services = bench.Services();
 		services.Port = port;
@@ -591,11 +591,10 @@ class EditorMcpServiceTests
 		let service = scope EditorMcpService(services);
 
 		// Not enabled, no host: the user never asked for one.
-		Test.Assert(!service.EnsureRunning());
+		Test.Assert(!service.Start(null));
 		Test.Assert(!service.IsRunning);
 		// The user's Start (the MCP panel's) runs it whatever the preference says; their Stop
-		// holds, over the manager and every project, until they start it again or the preferences
-		// change.
+		// holds, over every project, until they start it again or the preferences change.
 		Test.Assert(service.StartByUser(null));
 		Test.Assert(service.Port == port);
 		Test.Assert(service.ConnectCommand(.. scope .()).Contains(scope $"http://127.0.0.1:{port}/mcp"));
@@ -604,7 +603,7 @@ class EditorMcpServiceTests
 		Test.Assert(service.IsStopHeld);
 		Test.Assert(service.Port == 0);
 		Test.Assert(service.ConnectCommand(.. scope .()).IsEmpty);
-		Test.Assert(!service.EnsureRunning());
+		Test.Assert(!service.Start(null));
 		service.Restart(null); // the preferences changed, and they say off
 		Test.Assert(!service.IsStopHeld);
 		Test.Assert(!service.IsRunning);
@@ -614,11 +613,8 @@ class EditorMcpServiceTests
 		Test.Assert(service.Activity[1].Tool == "Stopped");
 		service.Activity.Clear();
 		services.ForceEnabled = true;
-		Test.Assert(service.EnsureRunning());
+		Test.Assert(service.Start(null));
 		Test.Assert(service.Host.BoundPort == port);
-		let host = service.Host;
-		Test.Assert(service.EnsureRunning());
-		Test.Assert(service.Host == host, "the manager shown again keeps the host");
 
 		var rng = Sedulous.Core.Random(12);
 		let guidArgument = scope String()..AppendF("{{\"guid\":\"{}\"}}", Guid.Generate(ref rng));
@@ -634,7 +630,7 @@ class EditorMcpServiceTests
 				scene = Call(port, ToolCall(4, "scene_validate", guidArgument, .. scope .()));
 				pages = Call(port, ToolCall(5, "page_list", "{}", .. scope .()));
 				log = Call(port, ToolCall(6, "log_read", "{\"limit\":5}", .. scope .()));
-				found = Call(port, ToolCall(7, "editor_find", "{\"target\":\"#manager-tab-samples\"}", .. scope .()));
+				found = Call(port, ToolCall(7, "editor_find", "{\"target\":\"#status-probe\"}", .. scope .()));
 				done = true;
 			});
 		client.Start(false);
@@ -645,12 +641,12 @@ class EditorMcpServiceTests
 		}
 		client.Join();
 
-		// host_info: the manager, no project.
+		// host_info: no project, and no screen named (the editor shows only its frame).
 		Test.Assert((info != null) && !IsError(info));
 		let infoPayload = Payload(info);
 		defer delete infoPayload;
 		Test.Assert(infoPayload.Get("host").Get("projectOpen").AsBool() == false);
-		Test.Assert(infoPayload.Get("host").Get("screen").AsString() == "projectManager");
+		Test.Assert(infoPayload.Get("host").Get("screen") == null);
 		Test.Assert(infoPayload.Get("host").Get("projectName") == null);
 		// The project's tools refuse, naming the fix; nothing was asked to open.
 		for (let refused in JsonValue[?](assets, opened, scene))
@@ -660,7 +656,7 @@ class EditorMcpServiceTests
 		}
 		for (let recorded in bench.Events)
 			Test.Assert(!recorded.StartsWith("open "));
-		// The editor's own answer: no pages, the log, and the manager's GUI.
+		// The editor's own answer: no pages, the log, and its GUI.
 		Test.Assert((pages != null) && !IsError(pages));
 		let pagesPayload = Payload(pages);
 		defer delete pagesPayload;
@@ -670,7 +666,7 @@ class EditorMcpServiceTests
 		let foundPayload = Payload(found);
 		defer delete foundPayload;
 		Test.Assert(foundPayload.Get("count").AsInt() == 1);
-		Test.Assert(foundPayload.Get("nodes").At(0).Get("text").AsString() == "Samples");
+		Test.Assert(foundPayload.Get("nodes").At(0).Get("text").AsString() == "Probe");
 
 		// The activity: the host listening, the client, then each call in order with its outcome.
 		let activity = service.Activity;
@@ -695,7 +691,7 @@ class EditorMcpServiceTests
 
 		// The user's Stop holds even over --mcp.
 		service.StopByUser();
-		Test.Assert(!service.EnsureRunning());
+		Test.Assert(!service.Start(null));
 		Test.Assert(PortIsFree(port));
 	}
 }

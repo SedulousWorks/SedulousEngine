@@ -207,11 +207,6 @@ static class EditorWindowTests
 		window.SetStatus("nothing shows it");
 		window.ShowToast(.Error, "nothing shows it");
 		window.Update(2.0f);
-		// No frame to show a screen in place of.
-		let screen = new Sedulous.GUI.Panel();
-		window.ShowScreen(screen);
-		Test.Assert(!window.ShowsScreen);
-		screen.ReleaseRef();
 		// The look is kept for when it opens.
 		window.SetLook(look);
 		Test.Assert(window.Look.Density == "comfortable");

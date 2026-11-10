@@ -18,13 +18,8 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Look;
 using Sedulous.Editor.Project;
-using Sedulous.Editor.ProjectManager;
 using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;
-using Sedulous.Net.Tls;
-using Sedulous.Net.Tls.MbedTLS;
-using Sedulous.Http;
-using Sedulous.Http.Client;
 using Sedulous.Engine.Project; // ProjectLayout.DistDir: where exports go
 
 namespace Sedulous.Editor.App;
@@ -34,8 +29,7 @@ namespace Sedulous.Editor.App;
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
 /// dock (EditorDock), the Assets panel and the Console in it (AssetsView, LogView), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
 /// (EditorExport), asset creation (EditorAssetCreation), files imported (AssetImport, reviewed in
-/// ImportWindow), the MCP host (EditorMcpService), the
-/// project manager over the window while no project is open (ProjectManagerMode) and the
+/// ImportWindow), the MCP host (EditorMcpService) and the
 /// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
 /// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
 /// same DefaultApplication the player runs.
@@ -160,13 +154,6 @@ class EditorApplication : IApplication
 	private EditorMcpService mMcp = null ~ delete _;
 	/// The open project: after the parts its hooks reach, so it closes first.
 	private EditorSession mSession ~ delete _;
-	/// The project manager while no project is open: after the session and the pages it reaches,
-	/// so it goes first.
-	/// The Samples tab's network (the client made when the manager first shows) and where the
-	/// release's files come from (--release-files); deleted after the manager, which cancels its
-	/// requests as it goes.
-	private ReleaseAccess mRelease ~ delete _;
-	private ProjectManagerMode mManagerMode ~ delete _;
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
 	private EditorWindowCapture mWindowCapture = new .() ~ delete _;
@@ -208,8 +195,6 @@ class EditorApplication : IApplication
 		}
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
-		mRelease = new ReleaseAccess(mConfig.ReleaseFiles);
-		mManagerMode = new ProjectManagerMode(ManagerModeServices());
 	}
 
 	public EditorContext Context => mContext;
@@ -220,7 +205,8 @@ class EditorApplication : IApplication
 	public BuilderRegistry Builders => mBuilders;
 	/// The engine data root this editor runs from (its config's, resolved at launch).
 	public StringView DataRoot => mConfig.DataRoot;
-	/// The project manager that launched this editor (--manager); empty when none said so.
+	/// The project manager that launched this editor (--manager), which Close Project starts again;
+	/// empty when none said so.
 	public StringView ManagerPath => mConfig.ManagerPath;
 	public EditorCookService CookService => mCookService;
 
@@ -242,8 +228,6 @@ class EditorApplication : IApplication
 	public EditorPages Pages => mPages;
 	public EditorAssetCreation AssetCreation => mCreation;
 	public EditorSession Session => mSession;
-	/// The project manager's part; null once shut down.
-	public ProjectManagerMode ManagerMode => mManagerMode;
 	/// Null until StartParts.
 	public EditorExport Export => mExport;
 	/// Null until StartParts.
@@ -421,35 +405,6 @@ class EditorApplication : IApplication
 		return services;
 	}
 
-	/// The project manager over the main window: its dialogs the shell's, the user's settings saved
-	/// as its list changes.
-	private ProjectManagerModeServices ManagerModeServices()
-	{
-		let services = new ProjectManagerModeServices();
-		services.Projects = mProjectManager;
-		services.Session = mSession;
-		services.Pages = mPages;
-		services.Root = new () => mWindow.Root;
-		services.Dialogs = new () => ((mHost != null) && (mHost.Shell != null)) ? mHost.Shell.Dialogs : null;
-		services.ShowScreen = new (screen) => { mWindow.ShowScreen(screen); };
-		services.LoadMarkup = new (path) => mWindow.LoadMarkup(path);
-		services.StoreChanged = new () => { EditorSettingsStore.SaveToUserData(mEditorSettings).IgnoreError(); };
-		// The Samples tab downloads from GitHub over https, with the system's roots.
-		services.Http = new () => mRelease.Client();
-		// The editor's MCP host serves the manager too (its project tools refusing), when enabled.
-		services.Shown = new () =>
-			{
-				if ((mMcp != null) && (mSession.Project == null))
-					mMcp.EnsureRunning();
-			};
-		if (mRelease.Overridden)
-		{
-			services.ReleaseFile = new (file, outUrl) => { mRelease.FileUrl(file, outUrl); };
-			services.OpenOnSamples = true;
-		}
-		return services;
-	}
-
 	/// The main window presents as every editor window does (EditorWindow.EditorRenderWindowDesc).
 	public RenderWindowDesc MainRenderWindow => EditorWindow.EditorRenderWindowDesc();
 
@@ -547,21 +502,15 @@ class EditorApplication : IApplication
 			shortcuts.ApplyTo(mContext.Actions);
 		BuildMenus();
 
-		if (mConfig.StartInProjectManager)
-		{
-			ReportStartup("Opening the project manager", 0.80f);
-			mManagerMode.Enter();
-		}
-		else
-		{
-			ReportStartup(scope $"Opening {PathFilename(mConfig.ProjectDirectory, .. scope .())}", 0.70f);
-			var options = EditorSessionOpenOptions();
-			options.Scaffold = true; // a command line's bare folder becomes a project
-			options.ScaffoldName = mConfig.ProjectName;
-			options.Seed = mConfig.SeedOnScaffold;
-			options.Restamp = mConfig.Restamp; // the manager's: an older engine's project, upgraded
-			mSession.Open(mConfig.ProjectDirectory, options);
-		}
+		// The editor has one project, given on its command line (main starts the project manager
+		// instead when none is).
+		ReportStartup(scope $"Opening {PathFilename(mConfig.ProjectDirectory, .. scope .())}", 0.70f);
+		var options = EditorSessionOpenOptions();
+		options.Scaffold = true; // a command line's bare folder becomes a project
+		options.ScaffoldName = mConfig.ProjectName;
+		options.Seed = mConfig.SeedOnScaffold;
+		options.Restamp = mConfig.Restamp; // the manager's: an older engine's project, upgraded
+		mSession.Open(mConfig.ProjectDirectory, options);
 
 		// Ready: the splash goes and the main window (created hidden) comes up.
 		ReportStartup("Ready", 1.0f);
@@ -626,8 +575,6 @@ class EditorApplication : IApplication
 		mcpServices.GuiRoot = new () => mWindow.Root;
 		// What a file dropped on it does, which editor_drop does too.
 		mcpServices.DropFiles = new (paths, error) => DropFiles(paths, error);
-		// host_info's screen: the manager over the window, or the editor's frame.
-		mcpServices.Screen = new (outScreen) => { outScreen.Append(mWindow.ShowsScreen ? "projectManager" : "editor"); };
 		// The dock's layout tools, over its controller, the action bridge, its unattended
 		// calls refusing the window root's modal windows (both outlive the host, which stops
 		// first; a headless run has no root, so nothing to refuse), and the build tools.
@@ -880,7 +827,7 @@ class EditorApplication : IApplication
 			services.Contributions = mContext.EditorSettingsContributions;
 			services.McpChanged = new () =>
 				{
-					// The host follows the saved section, over the open project or the manager:
+					// The host follows the saved section, over the open project:
 					// started, moved to its new port, or stopped (Start stops a running one first);
 					// the user's own Start or Stop no longer holds.
 					if (mMcp == null)
@@ -1265,14 +1212,11 @@ class EditorApplication : IApplication
 	}
 
 	/// Files dropped on the main window (from the operating system, or editor_drop): imported into
-	/// the group the Assets panel shows (else the top). On the project manager, a folder opens its
-	/// project (or the status says it holds none). False with `outError` when no project is open and
-	/// the manager is not shown.
+	/// the group the Assets panel shows (else the top). False with `outError` when no project is
+	/// open.
 	public bool DropFiles(Span<StringView> paths, String outError)
 	{
 		let project = mSession.Project;
-		if ((project == null) && (mManagerMode != null) && (mManagerMode.View != null) && mWindow.ShowsScreen)
-			return mManagerMode.View.OpenDropped(paths); // a folder dropped on the manager opens its project
 		if (project == null)
 		{
 			outError.Append("no project is open");
@@ -1350,6 +1294,33 @@ class EditorApplication : IApplication
 			});
 	}
 
+	/// File > Close Project. The editor has one project, so closing it hands the user to the project
+	/// manager (ManagerLauncher.Find: the one that launched this editor, else the one that ran last,
+	/// else the SDK's own): once the unsaved pages are saved or let go, the manager starts and the
+	/// editor exits. With no manager found, or one that does not start, it says so and stays, the
+	/// project open. True when it went on at once (nothing unsaved to ask about).
+	public bool CloseProject()
+	{
+		let manager = scope String();
+		if (!ManagerLauncher.Find(mConfig.ManagerPath, mConfig.SdksPath, mConfig.DataRoot, manager))
+		{
+			mContext.Notify(.Warning, "No project manager was found to return to, so the project stays open (start the manager from the ProjectManager folder of your engine).");
+			return false;
+		}
+		let path = new String(manager);
+		return mPages.ConfirmUnsavedThen("Save All and Close", "Close Without Saving", new [=this, =path] () =>
+			{
+				if (!ManagerLauncher.Start(path, mConfig.DataRoot, mConfig.LaunchManager))
+				{
+					mContext.Notify(.Error, scope $"The project manager {path} did not start, so the project stays open.");
+					return;
+				}
+				GlobalLog(.Information, "Editor: the project manager {} started; closing", path);
+				if (mHost != null)
+					mHost.RequestExit();
+			} ~ delete path);
+	}
+
 	/// The editor-wide actions this lifecycle can run. What a later layer brings (saving the
 	/// layout, the dialogs, the profiler) is given no hook here, so its action stays out until it
 	/// can run.
@@ -1361,16 +1332,7 @@ class EditorApplication : IApplication
 		file.Save = new (page) => { mPages.Save(page); };
 		file.SaveAs = new (page) => { mPages.SaveAs(page); };
 		file.Exit = new () => { ConfirmExit(); };
-		// Back to the project manager: only when it launched the editor (a project given on the
-		// command line keeps its one project; Exit is the way out).
-		if (mConfig.StartInProjectManager)
-		{
-			file.CloseProject = new () =>
-				{
-					if (mManagerMode != null)
-						mManagerMode.CloseProject();
-				};
-		}
+		file.CloseProject = new () => { CloseProject(); };
 		EditorAppActions.RegisterFileActions(actions, file);
 		let edit = new EditActions();
 		edit.Preferences = new () => { OpenPreferences(); };
@@ -1451,9 +1413,6 @@ class EditorApplication : IApplication
 		{
 			if (mMcp != null)
 				mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
-			mRelease.Pump(); // --release-files <folder>: before the client asks again
-			if (mManagerMode != null)
-				mManagerMode.Tick(); // the Samples tab's fetches and downloads, which go on while a project is open
 		}
 		// The embedded runtime's frame first (per-scene fixed steps in BeginFrame, physics
 		// interpolation in Update), so pages read fresh state; EndFrame closes in OnRenderWindow
@@ -1731,8 +1690,6 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mCreateAsset); // closed (its picking too), while the picker and the window are there
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mAssetPicker); // closed, while the window's root and the context are there
-		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
-		mRelease.Close(); // after the manager: the client cancels its requests as it goes
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
