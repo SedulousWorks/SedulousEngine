@@ -45,6 +45,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Vulkan: reading back what the GPU drew (a screenshot, a thumbnail, a pick, the profiler's GPU
+  times) no longer comes back stale or as zeros now and then on GPUs whose readback memory is not
+  coherent (Mali's among them): that memory is now made current before it is read.
 - Editor: a project opened before it was cooked (a downloaded sample) shows its scenes' and
   prefabs' thumbnails whole: they wait for the cook to make what they show, where before they were
   drawn with those meshes missing and kept so, even after the cook. A thumbnail is drawn again

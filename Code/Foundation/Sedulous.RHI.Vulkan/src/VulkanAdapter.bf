@@ -232,6 +232,10 @@ class VulkanAdapter : IAdapter
 		return -1;
 	}
 
+	/// The properties of one of the device's memory types (an index FindMemoryType returned).
+	public VkMemoryPropertyFlags GetMemoryTypeFlags(int32 memoryType) =>
+		mMemoryProperties.memoryTypes[memoryType].propertyFlags;
+
 	/// The memory properties a location asks for.
 	public static VkMemoryPropertyFlags GetMemoryFlags(MemoryLocation location)
 	{
