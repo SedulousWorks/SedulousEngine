@@ -318,10 +318,50 @@ static class ProjectBuild
 			outPath.Clear();
 			return;
 		}
+		let joined = scope String();
 		if (PathIsAbsolute(trimmed))
-			outPath.Set(trimmed);
+			joined.Set(trimmed);
 		else
-			PathJoin(GetCurrentDirectory(.. scope .()), trimmed, outPath);
+			PathJoin(GetCurrentDirectory(.. scope .()), trimmed, joined);
+		Collapse(joined, outPath);
+	}
+
+	/// `path` with its `.` segments dropped and each `..` taking the segment before it, so one
+	/// folder reached two ways (a data root's `Code/..`) is one path. Lexical: links are not
+	/// followed. A `..` at the root stays at the root.
+	internal static void Collapse(StringView path, String outPath)
+	{
+		let segments = scope List<StringView>();
+		int start = 0;
+		for (int i <= path.Length)
+		{
+			if ((i < path.Length) && !PathIsSeparator(path[i]))
+				continue;
+			let segment = path.Substring(start, i - start);
+			start = i + 1;
+			if (segment.IsEmpty || (segment == "."))
+				continue;
+			if (segment == "..")
+			{
+				if (!segments.IsEmpty && (segments.Back != ".."))
+					segments.PopBack();
+				continue;
+			}
+			segments.Add(segment);
+		}
+		// The root: a leading separator, or a drive (C:) as the first segment.
+		let rooted = !path.IsEmpty && PathIsSeparator(path[0]);
+		outPath.Clear();
+		if (rooted)
+			outPath.Append(path[0]);
+		for (int i < segments.Count)
+		{
+			if (i > 0)
+				outPath.Append('/');
+			outPath.Append(segments[i]);
+		}
+		if (outPath.IsEmpty && rooted)
+			outPath.Append('/');
 	}
 
 	/// Code/BeefConfig.toml: Beef's registry pointed at the SDK's library folders, by absolute

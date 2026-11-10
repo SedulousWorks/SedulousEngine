@@ -7,6 +7,7 @@ using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Projects;
 using Sedulous.Editor.Projects.TestSupport;
+using internal Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Projects.Tests;
 
@@ -316,5 +317,27 @@ class SdkTests
 		Test.Assert(bed.Read(".generated/sdk.txt", .. scope .()) == scope $"{bed.Sdk}\n\n", "a checkout whose version does not read");
 		Test.Assert(ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug", bed.Sdk));
 		Test.Assert(!ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"));
+	}
+
+	/// One SDK reached two ways (a data root's `Code/..`, a path with `.` in it) is one entry:
+	/// a path is made absolute and its `.` and `..` segments collapsed before it is listed.
+	[Test]
+	public static void AnSdkReachedThroughDotDotIsListedOnce()
+	{
+		Test.Assert(ProjectBuild.Collapse("/a/b/../c/./d/", .. scope .()) == "/a/c/d");
+		Test.Assert(ProjectBuild.Collapse("/a/..", .. scope .()) == "/");
+		Test.Assert(ProjectBuild.Collapse("/..", .. scope .()) == "/", "a .. at the root stays there");
+
+		let root = Scratch("scratch_sdk_dotdot", .. scope .());
+		defer RemoveDirectoryRecursive(root);
+		let sdk = PathJoin(root, "sdk", .. scope .());
+		Bed.WriteSdk(sdk, Info("0.1.0", "", 1, .. scope .()));
+		let registry = scope SdkRegistry(PathJoin(root, "Sedulous/sdks.xml", .. scope .()));
+		Test.Assert(registry.Register(sdk) case .Ok);
+		Test.Assert(registry.Adopt(scope $"{sdk}/Code/../.") case .Ok);
+		let store = scope Settings();
+		Test.Assert(registry.Load(store) case .Ok);
+		let sdks = store.Section<SdkRegistrySettings>().Sdks;
+		Test.Assert((sdks.Count == 1) && (sdks[0].Root == sdk), scope $"{sdks.Count} entries");
 	}
 }
