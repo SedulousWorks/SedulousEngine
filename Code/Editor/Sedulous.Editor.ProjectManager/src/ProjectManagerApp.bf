@@ -29,8 +29,9 @@ class ProjectManagerAppServices
 	public delegate void() StoreChanged ~ delete _;
 	/// The Samples tab's client, made on first use and outliving the manager; null: none. Owned.
 	public delegate IHttpClient() Http ~ delete _;
-	/// Where a file of the release is fetched from; null: the release's own URL. Owned.
-	public delegate void(StringView file, String outUrl) ReleaseFile ~ delete _;
+	/// Where `file` of the release of engine `version` (as a person reads it) is fetched from;
+	/// null: the release's own URL. Owned.
+	public delegate void(StringView version, StringView file, String outUrl) ReleaseFile ~ delete _;
 	/// The manager opens on its Samples tab (a run pointed at release files is there to try it).
 	public bool OpenOnSamples = false;
 	/// Told each time the manager shows. Owned.
@@ -157,7 +158,9 @@ class ProjectManagerApp
 			services.LoadMarkup = new (path) => LoadMarkup(path);
 			services.Http = (mServices.Http != null) ? mServices.Http() : null;
 			if (mServices.ReleaseFile != null)
-				services.ReleaseFile = new (file, outUrl) => { mServices.ReleaseFile(file, outUrl); };
+				services.ReleaseFile = new (version, file, outUrl) => { mServices.ReleaseFile(version, file, outUrl); };
+			if (mServices.PinEngine != null)
+				services.PinEngine = new (directory, sdk, outWhy) => mServices.PinEngine(directory, sdk, outWhy);
 			mView = new ProjectManagerView(services, LoadMarkup(ProjectManagerView.cMarkupPath));
 			if (mServices.OpenOnSamples)
 				mView.ShowSamples(true);

@@ -10,10 +10,10 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.ProjectManager;
 
 /// How a release is reached: an HTTP client over Mbed TLS with the system's roots, made on first
-/// use, and where a release's files are read from. That is GitHub's release of the version, or
-/// what --release-files names: a base URL, or a folder (one Code/Tools/pack-samples.py wrote)
-/// served on loopback, started on first use. Deleting it cancels the client's requests, so what
-/// made requests through it goes first.
+/// use, and where a release's files are read from. That is GitHub's release of a version, or what
+/// --release-files names, standing in for every version's: a base URL, or a folder (one
+/// Code/Tools/pack-samples.py wrote) served on loopback, started on first use. Deleting it cancels
+/// the client's requests, so what made requests through it goes first.
 class ReleaseAccess
 {
 	private String mReleaseFiles = new .() ~ delete _;
@@ -46,13 +46,17 @@ class ReleaseAccess
 		return mClient;
 	}
 
-	/// Where `file` of this version's release is read from: what --release-files names, else the
+	/// Where `file` of this engine's own release is read from (FileUrl of its version).
+	public void FileUrl(StringView file, String outUrl) => FileUrl(EngineVersion.Display, file, outUrl);
+
+	/// Where `file` of the release of engine `version` (as a person reads it: the release's tag is
+	/// v<version>) is read from: what --release-files names, whatever the version, else the
 	/// release's own download URL. A folder that cannot be served falls back to the release.
-	public void FileUrl(StringView file, String outUrl)
+	public void FileUrl(StringView version, StringView file, String outUrl)
 	{
 		if (!Overridden)
 		{
-			EngineVersion.ReleaseDownloadUrl(file, outUrl);
+			EngineReleases.DownloadUrl(scope $"v{version}", file, outUrl);
 			return;
 		}
 		StringView from = mReleaseFiles;
@@ -72,7 +76,7 @@ class ReleaseAccess
 			{
 				delete server;
 				GlobalLog(.Error, "Projects: --release-files: the folder {} could not be served", from);
-				EngineVersion.ReleaseDownloadUrl(file, outUrl);
+				EngineReleases.DownloadUrl(scope $"v{version}", file, outUrl);
 				return;
 			}
 			mServer = server;

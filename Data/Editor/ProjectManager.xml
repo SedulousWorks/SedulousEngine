@@ -2,7 +2,8 @@
   The project manager: the window's whole screen while no project is open. A header holds the
   Projects and Samples tabs. On Projects a toolbar (New Project, Open Folder, a search, the sort,
   list or grid) sits over the projects, with the missing ones in a section of their own; on Samples
-  are the sample games of this editor's release, each with its Download... button; on Engines (with
+  are the sample games of an engine's release (the engine picked beside them, where the host offers
+  engines), each with its Download... button; on Engines (with
   an engine manager alone) the engines listed and the ones the releases offer; on Toolchain what a
   project's build needs besides the engine; and a footer shows the status and the keys. With no
   projects at all, a welcome takes their place. Code fills the lists, the counts and the status
@@ -60,6 +61,11 @@
     <Panel id="manager-samples-page" class="manager-page">
         <Panel class="manager-toolbar">
             <Label id="manager-samples-intro" class="manager-meta"/>
+            <Spacer/>
+            <Panel id="manager-samples-engine-field" class="manager-samples-engine-field">
+                <Label class="manager-meta" text="Engine"/>
+                <ComboBox id="manager-samples-engine" class="manager-samples-engine" tooltip="The engine whose release's samples are listed: a sample you download opens with it"/>
+            </Panel>
         </Panel>
         <Panel id="manager-samples-scroll" class="manager-scroll">
             <Panel id="manager-samples" class="manager-samples"/>
