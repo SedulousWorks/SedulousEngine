@@ -302,7 +302,7 @@ shader's values in `uniformDefaults` and each effect group (Wind; see **Shaders*
 `effects`: the effect's `name`, its `flag`, its parameters' `propertyNames`, types, offsets and
 sizes, and their `values` bytes. The editor host holds the call while a cook is running and
 requests the cook itself afterwards; the headless host does not, so `asset_cook` next.
-The engine GUI's assets are linked text, as scripts are:
+The engine GUI's assets are linked text:
 `asset_create` with `GUI Document` (`.xml` markup) or `GUI Style Sheet` (`.css`), or
 `asset_import` of such a file, each validated by its cook (what the loader or parser dropped is a
 warning, markup that does not build an error; `gui_validate` runs that check on text before it is
@@ -491,10 +491,7 @@ when the project has no `export_presets.xml`). The dist lands under `<project>/D
 `out` says otherwise: the player, its runtime libraries, `Content.pak`, `player.xml` and
 `Data/Engine/Shaders/shaders.dpak`. A web export, what its build needs and serving it: `docs://Web.md`.
 A project's custom shaders ship as bytecode in the dist's shader pack, their HLSL left out unless
-the preset's `includeShaderSource` is set. A script cooks once and ships to every platform, so before
-an export cooks, every script is checked against what the preset's platform has of the project's
-plugins: one using a type of a plugin the project does not enable there refuses the export,
-naming the script, the plugin and the problem. The export builds the project's own player for the preset's platform and config (BeefBuild over
+the preset's `includeShaderSource` is set. The export builds the project's own player for the preset's platform and config (BeefBuild over
 the project's `Code/` workspace, against the engine SDK; incremental, but a project's first
 shipping or web build compiles the engine and takes minutes), linking the project's packages and
 the engine plugins it enables there, and ships it named after the game (or the preset's

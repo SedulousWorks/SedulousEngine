@@ -87,7 +87,6 @@ static class ProjectFlowTests
 		FindDataRoot(dataRoot);
 		Test.Assert(!dataRoot.IsEmpty);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 
 		let server = scope McpServer();
 		let session = scope ProjectSession();
@@ -173,14 +172,36 @@ static class ProjectFlowTests
 		Test.Assert(malformed.Contains("invalid guid"));
 	}
 
+	/// A script asset as an old project holds it, written before scripting went: its type is
+	/// one this build has no code for.
+	private const String cOldScriptEnvelope = """
+		<root>
+			<string name="guid">1f0594d1-deb5-f144-a8d2-85ca05815b87</string>
+			<string name="typeName">Sedulous.Script.Pipeline.ScriptClassAsset</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">6162296549784860781</u64>
+				<u32 name="version">0</u32>
+			</array>
+			<object name="payload">
+				<object>
+					<string name="fileName">Ball.as</string>
+					<string name="language">angelscript</string>
+					<string name="className"/>
+				</object>
+			</object>
+		</root>
+		""";
+
+	/// An import and two cooks, in a project an old build left a script asset in: the script is
+	/// listed under the type it was written with, passed by as unbuildable by every cook, and
+	/// leaves the project sound.
 	[Test]
-	public static void AnAgentImportsAndCooksAScriptSource()
+	public static void AnAgentImportsAndCooksASourceBesideAnOldScriptAsset()
 	{
 		let dir = Scratch("mcp_write_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		// The host assembles the registries once, from the composition root.
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
@@ -194,56 +215,80 @@ static class ProjectFlowTests
 		AssetTools.Register(server, session);
 		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetWriteTools.Register(server, session, importers, operations);
+		ProjectHealthTool.Register(server, session, builders);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Write"));
+
+		// The old script asset and its source, there before the project opens.
+		let scripts = PathJoin(dir, "Content/scripts", .. scope .());
+		CreateDirectory(PathJoin(dir, "Content", .. scope .()));
+		CreateDirectory(scripts);
+		File.WriteAllText(PathJoin(scripts, "Ball.xasset", .. scope .()), cOldScriptEnvelope).IgnoreError();
+		CreateDirectory(PathJoin(dir, "Sources", .. scope .()));
+		File.WriteAllText(PathJoin(dir, "Sources/Ball.as", .. scope .()), "class Ball {}\n").IgnoreError();
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
 
-		// A real source file on disk: a trivial class that cooks clean.
-		let sourcePath = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "mcp_write_as_src.as", .. scope .());
+		// A real source file on disk: a vector image that cooks clean.
+		let sourcePath = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "mcp_write_svg_src.svg", .. scope .());
 		defer DeleteFile(sourcePath);
 		File.WriteAllText(sourcePath, """
-			class Mover
-			{
-				Entity self;
-				Scene@ scene;
-				float speed = 2.0f;
-				void onUpdate(float dt) { }
-			}
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21 L3 12 A5 5 0 0 1 12 5 A5 5 0 0 1 21 12 Z" fill="#E53935"/></svg>
 			""").IgnoreError();
 
-		let imported = CallOk(server, "asset_import", With(With(Obj(), "source", sourcePath), "group", "scripts"));
+		let imported = CallOk(server, "asset_import", With(With(Obj(), "source", sourcePath), "group", "images"));
 		defer delete imported;
-		Test.Assert(imported.Get("type").AsString() == "Sedulous.Script.Pipeline.ScriptClassAsset");
-		Test.Assert(imported.Get("name").AsString() == "mcp_write_as_src");
-		Test.Assert(imported.Get("importer").AsString() == "Script");
-		Test.Assert(imported.Get("typeNamespace").AsString() == "Sedulous.Script.Pipeline");
+		Test.Assert(imported.Get("type").AsString() == "Sedulous.VG.Pipeline.VectorImageAsset");
+		Test.Assert(imported.Get("name").AsString() == "mcp_write_svg_src");
+		Test.Assert(imported.Get("importer").AsString() == "Vector image");
+		Test.Assert(imported.Get("typeNamespace").AsString() == "Sedulous.VG.Pipeline");
 		for (let timing in StringView[?]("deferredWrites", "prepareMs", "mainMs", "flushMs"))
 			Test.Assert(imported.Get(timing) != null, scope $"the result reports {timing}");
 		Test.Assert(imported.Get("alsoClaimableBy") == null, "one claimant, nothing to choose");
 		let guid = scope String(imported.Get("guid").AsString());
+		Test.Assert(FileExists(PathJoin(dir, "Sources/mcp_write_svg_src.svg", .. scope .())), "copied under Sources/");
+		Test.Assert(FileExists(PathJoin(dir, "Content/images/mcp_write_svg_src.xasset", .. scope .())), "the source envelope");
+
+		// Both listed: the image, and the script under the type it was written with.
 		let list = CallOk(server, "asset_list", Obj());
 		defer delete list;
-		Test.Assert(list.Get("count").AsInt() == 1);
-		Test.Assert(list.Get("assets").At(0).Get("group").AsString() == "scripts");
-		Test.Assert(FileExists(PathJoin(dir, "Sources/mcp_write_as_src.as", .. scope .())), "copied under Sources/");
-		Test.Assert(FileExists(PathJoin(dir, "Content/scripts/mcp_write_as_src.xasset", .. scope .())), "the source envelope");
+		Test.Assert(list.Get("count").AsInt() == 2, scope $"{list.Get("count").AsInt()} listed");
+		bool imageListed = false;
+		bool scriptListed = false;
+		for (int i < 2)
+		{
+			let entry = list.Get("assets").At(i);
+			if (entry.Get("guid").AsString() == guid)
+				imageListed = entry.Get("group").AsString() == "images";
+			else if (entry.Get("type").AsString() == "Sedulous.Script.Pipeline.ScriptClassAsset")
+				scriptListed = entry.Get("group").AsString() == "scripts";
+		}
+		Test.Assert(imageListed && scriptListed);
 
+		// The cook makes the image's product and passes the script by: unbuildable, not failed.
 		let cooked = CallOk(server, "asset_cook", Obj());
 		defer delete cooked;
 		Test.Assert(cooked.Get("planned").AsInt() == 1, scope $"planned {cooked.Get("planned").AsInt()}");
 		Test.Assert(cooked.Get("cooked").AsInt() == 1);
 		Test.Assert(cooked.Get("failed").AsInt() == 0);
-		Test.Assert(FileExists(PathJoin(dir, "Cooked/scripts/mcp_write_as_src.rasset", .. scope .())), "the product");
+		Test.Assert(cooked.Get("unbuildable").AsInt() == 1, scope $"{cooked.Get("unbuildable").AsInt()} unbuildable");
+		Test.Assert(FileExists(PathJoin(dir, "Cooked/images/mcp_write_svg_src.rasset", .. scope .())), "the product");
+		Test.Assert(!FileExists(PathJoin(dir, "Cooked/scripts/Ball.rasset", .. scope .())), "none for the script");
 
 		// The product answers in the cooked database by the source's guid.
 		let product = CallOk(server, "asset_info", With(With(Obj(), "guid", guid), "database", "cooked"));
 		defer delete product;
 		Test.Assert(product.Get("guid").AsString() == guid);
 
-		// A second cook finds nothing to do.
+		// A second cook finds nothing to do, and the project reads as sound with the script in it.
 		let again = CallOk(server, "asset_cook", Obj());
 		defer delete again;
 		Test.Assert(again.Get("planned").AsInt() == 0);
 		Test.Assert(again.Get("upToDate").AsInt() == 1);
+		Test.Assert(again.Get("unbuildable").AsInt() == 1);
+		let health = CallOk(server, "project_health", Obj());
+		defer delete health;
+		Test.Assert(health.Get("sound").AsBool());
+		Test.Assert(health.Get("unbuildable").AsInt() == 1);
+		Test.Assert(FileExists(PathJoin(scripts, "Ball.xasset", .. scope .())), "the script's envelope kept");
 	}
 
 	/// The importer disambiguation ruling: .png is claimed by three importers; the first is
@@ -254,7 +299,6 @@ static class ProjectFlowTests
 		let dir = Scratch("mcp_import_hint_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
@@ -305,7 +349,6 @@ static class ProjectFlowTests
 		let dir = Scratch("mcp_create_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		let creators = scope AssetCreatorRegistry();
@@ -374,7 +417,6 @@ static class ProjectFlowTests
 		let dir = Scratch("mcp_asset_data", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let creators = scope AssetCreatorRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
@@ -488,7 +530,6 @@ static class ProjectFlowTests
 		let dir = Scratch("mcp_settings", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let creators = scope AssetCreatorRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
@@ -647,7 +688,6 @@ static class ProjectFlowTests
 		Test.Assert(!dataRoot.IsEmpty);
 		let duck = PathJoin(dataRoot, "Samples/Models/Duck/glTF/Duck.gltf", .. scope .());
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));

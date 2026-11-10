@@ -33,7 +33,6 @@ static class AssetUsesTests
 		let dir = Scratch("mcp_uses_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();
@@ -117,7 +116,6 @@ static class AssetUsesTests
 		let dir = Scratch("mcp_health_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();

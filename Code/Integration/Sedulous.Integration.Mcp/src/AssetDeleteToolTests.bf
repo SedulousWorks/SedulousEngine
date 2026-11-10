@@ -36,7 +36,6 @@ static class AssetDeleteToolTests
 		defer RemoveDirectoryRecursive(dir);
 
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();

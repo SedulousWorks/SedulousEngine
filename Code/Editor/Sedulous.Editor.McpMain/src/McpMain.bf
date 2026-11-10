@@ -53,11 +53,10 @@ static class McpMain
 			return 1;
 		}
 
-		// The pipeline's composition root: every type, backend and cook, the pipeline script
-		// surface, then the host's builder and importer sets. They outlive the server and
-		// back asset_cook, asset_import, asset_uses and project_health.
+		// The pipeline's composition root: every type, then the host's builder and importer
+		// sets. They outlive the server and back asset_cook, asset_import, asset_uses and
+		// project_health.
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);

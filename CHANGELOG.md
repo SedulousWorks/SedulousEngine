@@ -169,6 +169,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   that names one still opens, and the next save of its settings drops it.
 - Scenes: a scene saved while scripts ran still opens, its Script components and level script
   dropped as it loads with a warning, and it saves without them.
+- Assets: script files (`.as`) no longer import or cook, and an export no longer checks scripts
+  against the plugins a platform enables. A project's existing script assets are kept as they
+  are, listed under their old type, and no longer cooked.
 - MCP: `script_api`, `script_validate`, `script_create`, `behavior_add` and `behavior_set`,
   play-in-editor's script probes (`pie_run`'s `script`, a level script's properties and a script
   behaviour's fields), `startupScriptId` in `project_info` and the script override section of the

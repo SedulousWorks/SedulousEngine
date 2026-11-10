@@ -13,7 +13,6 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.ModelImporter;
 using Sedulous.Pipeline.Registration;
-using Sedulous.Script.Pipeline;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
@@ -22,7 +21,7 @@ using Sedulous.VFS;
 namespace Sedulous.Integration.Mcp;
 
 /// ONE sequence through the tools in the order the guide teaches: create, open, import a
-/// real source (the starter), cook it clean, write a scene from a real save, validate it
+/// real source (a vector image), cook it clean, write a scene from a real save, validate it
 /// by guid, and read the project as sound with nothing dirty and nothing failed.
 static class FullFlowTests
 {
@@ -32,7 +31,6 @@ static class FullFlowTests
 		let dir = Scratch("mcp_full_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
@@ -51,15 +49,13 @@ static class FullFlowTests
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Full"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
 
-		// A real source: the backend's own behavior starter, on disk.
-		let starter = scope String();
-		ScriptLanguageCooks.Find("angelscript").NewAssetTemplate(.Behavior, "", starter);
-		let sourcePath = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "mcp_full_starter.as", .. scope .());
+		// A real source on disk: a vector image.
+		let sourcePath = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "mcp_full_icon.svg", .. scope .());
 		defer DeleteFile(sourcePath);
-		File.WriteAllText(sourcePath, starter).IgnoreError();
-		let imported = CallOk(server, "asset_import", With(With(Obj(), "source", sourcePath), "group", "scripts"));
+		File.WriteAllText(sourcePath, "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M12 21 L3 12 A5 5 0 0 1 12 5 A5 5 0 0 1 21 12 Z\" fill=\"#E53935\"/></svg>").IgnoreError();
+		let imported = CallOk(server, "asset_import", With(With(Obj(), "source", sourcePath), "group", "images"));
 		defer delete imported;
-		Test.Assert(imported.Get("type").AsString() == typeof(ScriptClassAsset).GetFullName(.. scope .()));
+		Test.Assert(imported.Get("type").AsString() == "Sedulous.VG.Pipeline.VectorImageAsset");
 
 		let cooked = CallOk(server, "asset_cook", Obj());
 		defer delete cooked;
@@ -98,7 +94,6 @@ static class FullFlowTests
 	public static void EngineToolsRegistersExactlyTheSharedSurface()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		let logBuffer = scope EditorLogBuffer();
@@ -277,7 +272,6 @@ static class FullFlowTests
 		let dir = Scratch("mcp_slow_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllImporters(importers);
 
@@ -315,7 +309,7 @@ static class FullFlowTests
 			Test.Assert(result.Get("isError").AsBool());
 		}
 		Test.Assert(slow.ImportEntries == 0);
-		let import = ToolCallLine("asset_import", "{\"source\":\"Mover.as\"}", .. scope .());
+		let import = ToolCallLine("asset_import", "{\"source\":\"Mover.svg\"}", .. scope .());
 		Test.Assert(server.HandleLine(import, ignored) == .NotFinished);
 		Test.Assert(server.HandleLine(import, ignored) == .NotFinished);
 		{
@@ -326,7 +320,7 @@ static class FullFlowTests
 			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
 			defer delete payload;
 			Test.Assert(payload.Get("name").AsString() == "Mover");
-			Test.Assert(!payload.Has("options"), "a script importer has no options");
+			Test.Assert(!payload.Has("options"), "the vector image importer has no options");
 		}
 		Test.Assert(!slow.SawModelOptions);
 
@@ -348,7 +342,7 @@ static class FullFlowTests
 			defer delete response;
 			let text = response.Get("result").Get("content").At(0).Get("text").AsString();
 			Test.Assert(text.StartsWith("the Model importer has no option 'wings'; its options are: Scale, Up axis, Textures, Materials"), scope String(text));
-			let none = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Mover.as\",\"options\":{\"x\":true}}", .. scope .()));
+			let none = Answered(server, ToolCallLine("asset_import", "{\"source\":\"Mover.svg\",\"options\":{\"x\":true}}", .. scope .()));
 			defer delete none;
 			Test.Assert(none.Get("result").Get("content").At(0).Get("text").AsString().EndsWith("its options are: none"));
 		}

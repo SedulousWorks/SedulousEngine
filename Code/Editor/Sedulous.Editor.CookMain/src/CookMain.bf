@@ -79,10 +79,8 @@ static class CookMain
 		}
 		defer delete project;
 
-		// The composition root: every type, backend and cook, then every builder. The
-		// script cooks compile against the pipeline surface, which contains the runtime's.
+		// The composition root: every type, then every builder.
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		// The engine data root: a custom shader's cook compiles against its shader library.
 		let dataRoot = scope String();

@@ -1,8 +1,6 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
-using Sedulous.Script;
-using Sedulous.Script.AngelScript;
 using Sedulous.Animation.Resource;
 using Sedulous.Audio.Resource;
 using Sedulous.Fonts.Resource;
@@ -18,7 +16,6 @@ using Sedulous.Physics.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.PropertyAnimation.Resource;
 using Sedulous.Scene.Resource;
-using Sedulous.Script.Resource;
 using Sedulous.Shaders.Resource;
 using Sedulous.Terrain.Resource;
 using Sedulous.Texture.Resource;
@@ -39,10 +36,7 @@ using Sedulous.Physics.Pipeline;
 using Sedulous.Render.Pipeline;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
-using Sedulous.Pipeline.ScriptSurface;
 using Sedulous.PropertyAnimation.Pipeline;
-using Sedulous.Script.AngelScript.Pipeline;
-using Sedulous.Script.Pipeline;
 using Sedulous.Scene.Pipeline;
 using Sedulous.Shaders.Pipeline;
 using Sedulous.Terrain.Pipeline;
@@ -70,23 +64,19 @@ static class PipelineRegistration
 {
 	/// The GUI's asset kinds: a document and a style sheet (Sedulous.GUI.Pipeline).
 	public const int cGuiAssetKinds = 2;
-	/// 29 and 12: the old UI's document and theme builders and its importer gone with it.
-	public const int cBuilderCount = 29 + cGuiAssetKinds;
-	public const int cImporterCount = 12;
+	/// 28 and 11: the old UI's document and theme builders and its importer gone with it, and
+	/// the script class's builder and importer with scripting.
+	public const int cBuilderCount = 28 + cGuiAssetKinds;
+	public const int cImporterCount = 11;
 	/// The creators every build has. A script has none: a game's code is native.
 	public const int cCreatorCount = 30 + cGuiAssetKinds; // 30: the old UI's document and theme gone
 
-	/// The pipeline surface the script cooks compile against, made by the type registration
-	/// and released by Teardown.
-	private static ScriptSurface sSurface = null;
-
-	public static ScriptSurface Surface => sSurface;
-
-	/// Registers every asset, product and resource type, the script backend and the per
-	/// language cooks, into the global serializable and cook registries. A headless cook
-	/// needs these because reading constructs a cooked product BY TYPE NAME. Once at
-	/// startup, before a cook is planned. Touches no BuilderRegistry, which is
-	/// RegisterAllBuilders, and registers nothing editor only, which stays host side.
+	/// Registers every asset, product and resource type into the global serializable and cook
+	/// registries. A headless cook needs these because reading constructs a cooked product BY
+	/// TYPE NAME; a stored type none registers (an old project's script class) reads as unknown,
+	/// kept as it is and never cooked. Once at startup, before a cook is planned; again is
+	/// harmless. Touches no BuilderRegistry, which is RegisterAllBuilders, and registers nothing
+	/// editor only, which stays host side.
 	public static void RegisterPipelineTypes()
 	{
 		// The resource tier: every product a cooked file names.
@@ -105,7 +95,6 @@ static class PipelineRegistration
 		PropertyAnimationResources.RegisterAll();
 		RenderProfileResources.RegisterAll();
 		SceneResources.RegisterAll();
-		ScriptResources.RegisterAll();
 		ShaderResources.RegisterAll();
 		TerrainResources.RegisterAll();
 		VegetationResources.RegisterAll();
@@ -128,33 +117,12 @@ static class PipelineRegistration
 		PhysicsPipeline.RegisterAll();
 		PropertyAnimationPipeline.RegisterAll();
 		RenderPipeline.RegisterAll();
-		ScriptPipeline.RegisterAll();
 		ShadersPipeline.RegisterAll();
 		TerrainPipeline.RegisterAll();
 		TexturePipeline.RegisterAll();
 		VegetationPipeline.RegisterAll();
 		VGPipeline.RegisterAll();
 		GuiPipeline.RegisterAll();
-
-		// The script languages and their cooks, against the pipeline surface.
-		AngelScriptBackend.Register();
-		if (sSurface == null)
-		{
-			sSurface = new ScriptSurface();
-			PipelineScriptSurface.Populate(sSurface);
-			ScriptSurfaces.Register(sSurface); // the plugins' own types join it while they are enabled
-		}
-		if (ScriptLanguageCooks.Find(AngelScriptBackend.cLanguage) == null)
-			AngelScriptCook.Register(sSurface);
-	}
-
-	/// Releases what RegisterPipelineTypes made: the cooks and the surface they borrow.
-	public static void Teardown()
-	{
-		ScriptLanguageCooks.Clear();
-		ScriptSurfaces.Unregister(sSurface);
-		delete sSurface;
-		sSurface = null;
 	}
 
 	/// Fills `registry` with every asset builder the engine ships. Independent of
@@ -192,7 +160,6 @@ static class PipelineRegistration
 		registry.Register(new AudioClipAssetBuilder());
 		registry.Register(new AudioBusLayoutAssetBuilder());
 		registry.Register(new SoundCueAssetBuilder());
-		registry.Register(new ScriptClassAssetBuilder());
 	}
 
 	/// What the pipeline makes once an import has landed, beyond what the importer itself
@@ -239,7 +206,6 @@ static class PipelineRegistration
 		registry.Register(new GuiFileImporter());
 		registry.Register(new ShaderFileImporter());
 		registry.Register(new AudioFileImporter());
-		registry.Register(new ScriptFileImporter());
 		registry.Register(new FontAssetImporter());
 		registry.Register(new ImageFileImporter());
 		registry.Register(new HeightfieldFileImporter());

@@ -363,9 +363,8 @@ class EditorProjectOperations : IProjectOperations
 		let buildService = mSeams.BuildService;
 		let dataRoot = new String(mSeams.DataRoot);
 		let hooks = (mSeams.Context != null) ? mSeams.Context.ExportHooks : null;
-		let plugins = (mSeams.Context != null) ? mSeams.Context.Plugins : null;
 		mSeams.Tasks.Submit(scope $"Export {shared.Preset.Name}",
-			new [=shared, =project, =builders, =buildService, =dataRoot, =hooks, =plugins](task) =>
+			new [=shared, =project, =builders, =buildService, =dataRoot, =hooks](task) =>
 			{
 				if ((buildService == null) && shared.Build)
 				{
@@ -384,7 +383,7 @@ class EditorProjectOperations : IProjectOperations
 				// and the reachable set were computed on the main thread.
 				return ExportDriver.ExportOne(project, shared.Preset, players, builders, shared.OutRoot, dataRoot,
 					false, shared.Result, onProgress, false, shared.SceneStreams, null,
-					shared.ReachableValid ? shared.ReachableRoots : null, hooks, plugins);
+					shared.ReachableValid ? shared.ReachableRoots : null, hooks);
 			} ~ { shared.ReleaseRef(); delete dataRoot; },
 			new [=shared](result) =>
 			{

@@ -166,7 +166,7 @@ class InlineProjectOperations : IProjectOperations
 				SceneExportSupport.ScanSceneReferences(instance, db, outReferences.Resources, outReferences.Prefabs);
 			};
 		if (ExportDriver.ExportOne(project, request.Preset, players, builders, request.OutRoot, dataRoot,
-			request.Rebuild, outResult, null, true, sceneStreams, scanner, null, session.ExportHooks, session.Plugins) case .Err)
+			request.Rebuild, outResult, null, true, sceneStreams, scanner, null, session.ExportHooks) case .Err)
 		{
 			if (!outResult.Refusal.IsEmpty)
 				outError.AppendF("export of preset '{}' refused: {}", request.Preset.Name, outResult.Refusal);

@@ -25,7 +25,6 @@ class CompositionPipelineTests
 	{
 		EngineComposition.RegisterResourceTypes();
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		Test.Assert(builders.Count == PipelineRegistration.cBuilderCount);

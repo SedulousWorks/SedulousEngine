@@ -41,7 +41,7 @@ static class AssetCreateTools
 		schema.Str("group", "source-DB group path, slash joined, created when missing (default: the creator's defaultGroup)");
 		server.RegisterTool("asset_create",
 			"""
-			Create a new asset the way the editor's File > New does: a fresh instance seeded with its defaults (an input map with the default sets, a PBR material from the preset, a scene with a sun, a script class from its tier's starter). Name the creator by `creator` label or by `type`. Returns {guid, name, type, path}; read the asset with asset_info, edit it with the scene tools or its page, and call asset_cook before a runtime needs it (the editor host requests the cook itself).
+			Create a new asset the way the editor's File > New does: a fresh instance seeded with its defaults (an input map with the default sets, a PBR material from the preset, a scene with a sun). Name the creator by `creator` label or by `type`. Returns {guid, name, type, path}; read the asset with asset_info, edit it with the scene tools or its page, and call asset_cook before a runtime needs it (the editor host requests the cook itself).
 			""",
 			schema.Build(), .Creates,
 			new (call, arguments, outResult, outError) => Create(context, call, arguments, outResult, outError));

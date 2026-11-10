@@ -240,7 +240,6 @@ class EditorExport
 		let presets = mPresets;
 		let sceneStreams = mSceneStreams;
 		let hooks = context.ExportHooks;
-		let plugins = context.Plugins;
 
 		// The work delegate owns its copies and the completion its own, so a job dropped at
 		// shutdown, its completion never run, leaks nothing.
@@ -256,7 +255,7 @@ class EditorExport
 		outcome.AddRef();
 
 		mServices.Tasks.Submit(all ? "Export All" : "Export",
-			new [=project, =builders, =buildService, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks, =plugins,
+			new [=project, =builders, =buildService, =dataRoot, =name, =all, =outRoot, =sceneStreams, =reachableRoots, =presets, =hooks,
 				=outcome](task) =>
 			{
 				if (buildService == null)
@@ -274,13 +273,13 @@ class EditorExport
 				if (all)
 				{
 					return ExportDriver.ExportAll(project, presets.Presets, players, builders, outRoot, dataRoot,
-						false, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins, outcome.Summary);
+						false, onProgress, false, sceneStreams, null, reachableRoots, hooks, outcome.Summary);
 				}
 				let preset = presets.Find(name);
 				if (preset == null)
 					return .Err(.NotFound);
 				return ExportDriver.ExportOne(project, preset, players, builders, outRoot, dataRoot,
-					false, outcome.Result, onProgress, false, sceneStreams, null, reachableRoots, hooks, plugins);
+					false, outcome.Result, onProgress, false, sceneStreams, null, reachableRoots, hooks);
 			} ~ { delete dataRoot; delete name; delete outRoot; outcome.ReleaseRef(); },
 			new [=revealRoot, =all, =outcome, =this](result) => // main thread
 			{

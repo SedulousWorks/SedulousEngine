@@ -44,8 +44,8 @@ static class EditorCookServiceTests
 	/// Pumps until the cook is idle; bounded so a hang fails.
 	private static void PumpUntilIdle(EditorCookService cook, List<String> lines)
 	{
-		// By time, not by a count of spins: a script's cook compiles it against the whole script
-		// surface, which took 0.86 s on a machine where four million spins took less.
+		// By time, not by a count of spins: how long a cook takes depends on the machine, and a
+		// count of spins that is enough on one is too few on a faster one.
 		let watch = scope System.Diagnostics.Stopwatch(true);
 		while (!cook.IsIdle && (watch.ElapsedMilliseconds < 60000))
 			cook.Update(scope [&](line) => { lines.Add(new String(line)); });
@@ -63,17 +63,16 @@ static class EditorCookServiceTests
 		Test.Assert(project != null);
 		defer delete project;
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllImporters(importers);
 
-		// A script dropped in through its importer: buildable, so it has a badge.
-		let dropped = PathJoin(dir, "Mover.as", .. scope .());
-		File.WriteAllText(dropped, "class Mover\n{\n\tEntity self;\n\tScene@ scene;\n\tvoid onUpdate(float dt) {}\n}\n").IgnoreError();
+		// A vector image dropped in through its importer: buildable, so it has a badge.
+		let dropped = PathJoin(dir, "Mover.svg", .. scope .());
+		File.WriteAllText(dropped, "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M12 21 L3 12 A5 5 0 0 1 12 5 A5 5 0 0 1 21 12 Z\" fill=\"#E53935\"/></svg>").IgnoreError();
 		let context = scope ImportContext(project.SourcesRoot(.. scope .()));
-		let imported = importers.FindFor("as").Import(dropped, context, project.SourceDb.RootGroup, null, null, null);
+		let imported = importers.FindFor("svg").Import(dropped, context, project.SourceDb.RootGroup, null, null, null);
 		Test.Assert(imported case .Ok);
 		let instance = imported.Value;
 		let scene = project.SourceDb.RootGroup.CreateInstance("level", "Sedulous.Scene.Resource.SceneDocument");

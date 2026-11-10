@@ -494,7 +494,7 @@ static class ExportDriver
 	/// Exports one preset into <outRoot>/<subdir>. Refused before anything is built or written:
 	/// a plugin the export cannot ship (ExportPlugins.Check, its packages found in the project
 	/// or the engine SDK `dataRoot` is in), another host's desktop platform or a config no player
-	/// is built in (ProjectPlayerBuilder.Target), and a script that cannot run on the platform.
+	/// is built in (ProjectPlayerBuilder.Target).
 	/// Then the player is built by `players` for the preset's platform and config, so a compile
 	/// error refuses before the cook; the content is cooked and packed, whole or pruned to the
 	/// closure when the preset asks and a scanner or a precomputed root set is at hand; the
@@ -508,7 +508,7 @@ static class ExportDriver
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportResult outResult = null,
 		ExportProgress onProgress = null, bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null,
 		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null,
-		PluginHost plugins = null, bool contentOnly = false)
+		bool contentOnly = false)
 	{
 		let result = scope ExportResult();
 		defer
@@ -536,7 +536,7 @@ static class ExportDriver
 			return .Err(.InvalidArgument);
 		}
 		// The platform against this host, and the config: what the build would refuse, said
-		// before the scripts are checked. A content-only export builds no player.
+		// before it starts. A content-only export builds no player.
 		if (!contentOnly)
 		{
 			let config = scope String();
@@ -546,14 +546,6 @@ static class ExportDriver
 				GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
 				return .Err(refused);
 			}
-		}
-		// The project's scripts against what the platform has of its plugins (as `plugins` loaded
-		// them), before anything builds or cooks: a script cooks once and ships to every platform.
-		ExportPlugins.CheckScriptsOn(project, plugins, preset.Platform, result.Refusal);
-		if (!result.Refusal.IsEmpty)
-		{
-			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
-			return .Err(.InvalidArgument);
 		}
 		// The player, built before the cook: a compile error refuses before minutes of cooking.
 		let build = scope PlayerBuild();
@@ -721,7 +713,7 @@ static class ExportDriver
 	public static Result<void, ErrorCode> ExportAll(EditorProject project, List<ExportPreset> presets, IPlayerBuilder players,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportProgress onProgress = null,
 		bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null, SceneReferenceScanner scanner = null,
-		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null, PluginHost plugins = null,
+		List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null,
 		ExportAllSummary outSummary = null)
 	{
 		let once = scope OncePerTarget(players);
@@ -748,7 +740,7 @@ static class ExportDriver
 						onProgress(scope $"{preset.Name}: {step}", ((float)index + fraction) / (float)n);
 				};
 			let result = scope ExportResult();
-			if (ExportOne(project, preset, once, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks, plugins) case .Ok)
+			if (ExportOne(project, preset, once, builders, outRoot, dataRoot, rebuild, result, scoped, cook, sceneStreams, scanner, precomputedReachableRoots, hooks) case .Ok)
 			{
 				summary.Exported++;
 				GlobalLog(.Information, "Export: exported '{}' -> {} ({} files staged)", preset.Name, result.OutputDir, result.FilesStaged);

@@ -218,7 +218,7 @@ static class ExportDriverTests
 		let result = scope ExportResult();
 		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
 		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false, result,
-			null, true, null, null, null, null, null, true) case .Ok);
+			null, true, null, null, null, null, true) case .Ok);
 		Test.Assert(fx.Players.Builds == 0, "no player built");
 
 		// What the game reads, and no player: the platform's one pak, the settings and the shader pack.
@@ -569,7 +569,7 @@ static class ExportDriverTests
 		defer { ClearAndDeleteItems(steps); }
 		let summary = scope ExportAllSummary();
 		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false,
-			scope [&](step, fraction) => { steps.Add(new String(step)); }, true, null, null, null, null, null, summary) case .Ok);
+			scope [&](step, fraction) => { steps.Add(new String(step)); }, true, null, null, null, null, summary) case .Ok);
 		Test.Assert(fx.Players.Builds == 1, "one build for the two presets that share it");
 		let player = ExportStaging.PlayerOutputName(BuildLayout.HostPlatformName, "Export", "", .. scope .());
 		Test.Assert(FileExists(PathJoin(PathJoin(fx.OutRoot, "a", .. scope .()), player, .. scope .()))
@@ -586,7 +586,7 @@ static class ExportDriverTests
 		presets.Add(elsewhere);
 		let again = scope ExportAllSummary();
 		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false,
-			null, true, null, null, null, null, null, again) case .Ok);
+			null, true, null, null, null, null, again) case .Ok);
 		Test.Assert(fx.Players.Builds == 3, scope $"{fx.Players.Builds} builds: Release again for this run, and Debug");
 		Test.Assert((again.Exported == 3) && (again.Failed == 0), scope $"{again.Exported} exported, {again.Failed} failed");
 		Test.Assert((again.Skipped.Count == 1) && (again.Skipped[0] == "E"));
@@ -598,7 +598,7 @@ static class ExportDriverTests
 		presets.Add(broken);
 		let failed = scope ExportAllSummary();
 		Test.Assert(ExportDriver.ExportAll(fx.Project, presets, fx.Players, fx.Builders, fx.OutRoot, dataRoot, false,
-			null, true, null, null, null, null, null, failed) case .Err);
+			null, true, null, null, null, null, failed) case .Err);
 		Test.Assert((failed.Failed == 1) && (failed.Exported == 3) && (failed.Skipped.Count == 1));
 	}
 
@@ -720,6 +720,68 @@ static class ExportDriverTests
 		Test.Assert(ReadFile(PathJoin(distB, ProjectLayout.DistContentPak, .. scope .()), b) case .Ok);
 		Test.Assert((a.Count == b.Count) && (a.Count > 0));
 		Test.Assert(Internal.MemCmp(a.Ptr, b.Ptr, a.Count) == 0, "byte identical");
+	}
+
+	/// A script asset as an old project holds it, written before scripting went: its type is
+	/// one this build has no code for.
+	private const String cOldScriptEnvelope = """
+		<root>
+			<string name="guid">1f0594d1-deb5-f144-a8d2-85ca05815b87</string>
+			<string name="typeName">Sedulous.Script.Pipeline.ScriptClassAsset</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">6162296549784860781</u64>
+				<u32 name="version">0</u32>
+			</array>
+			<object name="payload">
+				<object>
+					<string name="fileName">Ball.as</string>
+					<string name="language">angelscript</string>
+					<string name="className"/>
+				</object>
+			</object>
+		</root>
+		""";
+
+	/// An old project's script asset does not stop its export: with every builder the engine
+	/// ships, none claims it, so the cook passes it by, the dist ships without it, and the project
+	/// keeps it as it was.
+	[Test]
+	public static void AnOldScriptAssetIsKeptUncookedAndTheExportGoesAhead()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_old_script");
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		Sedulous.Pipeline.Registration.PipelineRegistration.RegisterPipelineTypes();
+		let builders = scope Sedulous.Pipeline.Core.BuilderRegistry();
+		Sedulous.Pipeline.Registration.PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
+
+		let scripts = PathJoin(PathJoin(fx.ProjectDir, ProjectLayout.ContentDir, .. scope .()), "Scripts", .. scope .());
+		CreateDirectory(scripts);
+		let envelopePath = PathJoin(scripts, "Ball.xasset", .. scope .());
+		Test.Assert(WriteFile(envelopePath, .((uint8*)cOldScriptEnvelope.Ptr, cOldScriptEnvelope.Length)) case .Ok);
+		let changes = scope ContentChanges();
+		fx.Project.SourceDb.Refresh(scope StringView[]("Scripts/Ball.xasset"), changes);
+		Test.Assert(changes.Added.Count == 1, "the script asset joins the project's index");
+		let scriptId = Guid.Parse("1f0594d1-deb5-f144-a8d2-85ca05815b87").Get();
+		let script = fx.Project.SourceDb.GetInstance(scriptId);
+		Test.Assert((script != null) && (script.TypeName == "Sedulous.Script.Pipeline.ScriptClassAsset"));
+		Test.Assert(builders.FindByTypeName(script.TypeName) == null, "no builder claims it");
+
+		let distDir = PathJoin(fx.OutRoot, "dist", .. scope .());
+		let stats = scope ExportStats();
+		Test.Assert(ExportDriver.ExportProject(fx.Project, distDir, builders, false, stats) case .Ok);
+		Test.Assert((stats.Cooked == 2) && (stats.CookFailed == 0), scope $"{stats.Cooked} cooked, {stats.CookFailed} failed");
+		{
+			let pak = scope PakFileSystem(PathJoin(distDir, ProjectLayout.DistContentPak, .. scope .()));
+			SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+			let db = OpenDistPak(distDir, pak, binary);
+			defer delete db;
+			Test.Assert(db.GetInstance(fx.ReferencedMeshId) != null, "the content ships");
+			Test.Assert(db.GetInstance(scriptId) == null, "the script does not");
+		}
+		Test.Assert(fx.Project.SourceDb.GetInstance(scriptId) == script, "the project keeps it");
+		let kept = scope List<uint8>();
+		Test.Assert(ReadFile(envelopePath, kept) case .Ok);
+		Test.Assert((kept.Count == cOldScriptEnvelope.Length) && (Internal.MemCmp(kept.Ptr, cOldScriptEnvelope.Ptr, kept.Count) == 0), "its file untouched");
 	}
 
 	/// A preset's own render resolution replaces the project's in its dist, and leaves the
