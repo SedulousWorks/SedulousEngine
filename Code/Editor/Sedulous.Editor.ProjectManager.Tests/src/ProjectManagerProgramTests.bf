@@ -3,12 +3,15 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Settings;
+using Sedulous.GUI;
 using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Projects;
 using Sedulous.Editor.Look;
 using Sedulous.Editor.ProjectManager;
+using Sedulous.Editor.App;
+using Sedulous.Editor.Look.TestSupport;
 using Sedulous.Editor.Projects.TestSupport;
 
 namespace Sedulous.Editor.ProjectManager.Tests;
@@ -16,7 +19,8 @@ namespace Sedulous.Editor.ProjectManager.Tests;
 /// The project manager's program run headless over scratch files in place of the user's: the
 /// recent list taken from the editor's store into projects.xml the first time and never again;
 /// and the SDK it sits in registered (one listed already keeping how it was listed) and its own
-/// executable recorded. How Open builds and launches a project's editor is OpenTests'.
+/// executable recorded; and --page, the tab it starts on. How Open builds and launches a project's
+/// editor is OpenTests'.
 class ProjectManagerProgramTests
 {
 	private class Bed
@@ -161,5 +165,58 @@ class ProjectManagerProgramTests
 		ClearAndDeleteItems!(sdks);
 		ClearAndDeleteItems!(missing);
 		Test.Assert(registry.ReadSdks(sdks, missing) && (sdks.Count == 1));
+	}
+
+	/// --page names the tab the manager starts on, for a check or a screenshot of one page: the
+	/// config reads it (any case; a name that is no tab is left out), the program hands it to the
+	/// manager, and the manager shows that tab the first time it shows.
+	[Test]
+	public static void PageNamesTheTabTheManagerStartsOn()
+	{
+		ManagerPage page;
+		Test.Assert(ProjectManagerConfig.ParsePage("projects", out page) && (page == .Projects));
+		Test.Assert(ProjectManagerConfig.ParsePage("Samples", out page) && (page == .Samples));
+		Test.Assert(ProjectManagerConfig.ParsePage("engines", out page) && (page == .Engines));
+		Test.Assert(ProjectManagerConfig.ParsePage("TOOLCHAIN", out page) && (page == .Toolchain));
+		Test.Assert(!ProjectManagerConfig.ParsePage("settings", out page));
+
+		let unknown = scope ProjectManagerConfig();
+		unknown.ReadCommandLine(scope String[]("--page", "settings"));
+		Test.Assert(!unknown.StartPage.HasValue, "no tab: left out");
+
+		let bed = scope Bed("scratch_manager_program_page");
+		let config = bed.Config();
+		config.ReadCommandLine(scope String[]("--exit-after", "2", "--page", "samples"));
+		Test.Assert(config.StartPage.HasValue && (config.StartPage.Value == .Samples));
+		Test.Assert(config.ExitAfterSeconds == 2.0f, "the flags beside it still read");
+		let program = scope ProjectManagerProgram(config);
+		program.Start();
+		Test.Assert(program.App.StartPage == .Samples);
+		let plain = scope ProjectManagerProgram(bed.Config());
+		plain.Start();
+		Test.Assert(plain.App.StartPage == .Projects, "no --page: Projects");
+
+		// The manager over a GUI of its own, started on the page the program was given.
+		let context = new GUIContext();
+		let scene = new SceneRoot(context);
+		context.ReleaseRef(); // the root's keeps it
+		defer scene.ReleaseRef();
+		scene.Size = .(1280.0f, 800.0f);
+		let services = new ProjectManagerAppServices();
+		services.Projects = program.Projects;
+		services.Root = new [=scene] () => scene;
+		services.LoadMarkup = new (path) => EditorData.LoadMarkup(path);
+		services.ShowScreen = new [=scene] (screen) =>
+			{
+				if (screen != null)
+					scene.AddChild(screen);
+			};
+		services.StartPage = program.App.StartPage;
+		let app = scope ProjectManagerApp(services);
+		app.Enter();
+		Test.Assert(app.View.Page == .Samples);
+		let content = app.View.Content;
+		Test.Assert(content.FindElement("manager-samples-page").Displayed);
+		Test.Assert(!content.FindElement("manager-projects-page").Displayed);
 	}
 }

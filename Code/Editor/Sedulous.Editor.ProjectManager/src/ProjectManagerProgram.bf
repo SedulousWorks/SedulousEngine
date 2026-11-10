@@ -61,6 +61,9 @@ class ProjectManagerConfig
 	/// --open: a project folder opened as though picked, once the window is up; empty: none.
 	/// What a check (or a script) uses to open a project without clicking.
 	public String OpenPath = new .() ~ delete _;
+	/// --page: the tab the manager starts on; null: Projects (Samples with --release-files, which a
+	/// run is pointed at to try them). What a check or a screenshot of one page uses.
+	public ManagerPage? StartPage = null;
 	/// Starts an editor: its executable and arguments, true when it started. Null: a process of its
 	/// own (Process.Start). Owned.
 	public delegate bool(StringView executable, Span<StringView> arguments) Launch ~ delete _;
@@ -73,6 +76,53 @@ class ProjectManagerConfig
 	/// Runs BeefBuild for a project's editor, on the build's own thread. Null: Process.RunStreaming.
 	/// Owned.
 	public BuildRunner Runner ~ delete _;
+
+	/// The command line's flags (ProjectManagerMain's usage) into this config. A --page that names no
+	/// tab is said in the log and left out.
+	public void ReadCommandLine(Span<String> args)
+	{
+		for (int i = 0; i < args.Length - 1; i++)
+		{
+			if (args[i] == "--release-files")
+				ReleaseFiles.Set(args[i + 1]);
+			else if (args[i] == "--screenshot")
+				ScreenshotPath.Set(args[i + 1]);
+			else if (args[i] == "--open")
+				OpenPath.Set(args[i + 1]);
+			else if (args[i] == "--exit-after")
+				ExitAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--page")
+			{
+				ManagerPage page;
+				if (ParsePage(args[i + 1], out page))
+					StartPage = page;
+				else
+					GlobalLog(.Warning, "Projects: --page {} is no tab (projects, samples, engines or toolchain)", args[i + 1]);
+			}
+		}
+		for (let arg in args)
+		{
+			if (arg == "--screenshot-exit")
+				ScreenshotExit = true;
+		}
+	}
+
+	/// The tab `name` names (projects, samples, engines, toolchain; any case); false for none.
+	public static bool ParsePage(StringView name, out ManagerPage outPage)
+	{
+		outPage = .Projects;
+		if (name.Equals("projects", true))
+			outPage = .Projects;
+		else if (name.Equals("samples", true))
+			outPage = .Samples;
+		else if (name.Equals("engines", true))
+			outPage = .Engines;
+		else if (name.Equals("toolchain", true))
+			outPage = .Toolchain;
+		else
+			return false;
+		return true;
+	}
 
 	/// Each path left empty set to the user's own.
 	public void ResolveUserPaths()
@@ -289,8 +339,10 @@ class ProjectManagerProgram : IApplication
 		if (mRelease.Overridden)
 		{
 			services.ReleaseFile = new (version, file, outUrl) => { mRelease.FileUrl(version, file, outUrl); };
-			services.OpenOnSamples = true;
+			services.StartPage = .Samples;
 		}
+		if (mConfig.StartPage.HasValue)
+			services.StartPage = mConfig.StartPage.Value;
 		services.EngineFor = new (directory, outVersion, outWhy) => EngineFor(directory, outVersion, outWhy);
 		services.OpenProject = new (directory, restamp, outWhy) => OpenInEditor(directory, restamp, outWhy);
 		services.CreateProject = new (directory, name, template, sdk, outWhy) => CreateFromTemplate(directory, name, template, sdk, outWhy);

@@ -22,7 +22,8 @@ namespace Sedulous.Tools.ProjectManager;
 ///   reads this version's release files instead of GitHub: a base URL, or a folder
 ///   Code/Tools/pack-samples.py wrote) [--screenshot <png> [--screenshot-exit]] (the window as a
 ///   PNG once it has drawn; --screenshot-exit quits once it is written) [--exit-after <s>]
-///   [--open <project folder>] (opened as though picked, once the window is up) [--version]
+///   [--open <project folder>] (opened as though picked, once the window is up)
+///   [--page <projects|samples|engines|toolchain>] (the tab it starts on) [--version]
 ///   GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation].
 ///   The data root is found beside the executable or above it (an SDK's Data, the manager sitting
 ///   in its ProjectManager/), unless given.
@@ -53,7 +54,7 @@ static class ProjectManagerMain
 			delete config;
 			return 1;
 		}
-		ReadCommandLine(args, config);
+		config.ReadCommandLine(args);
 		System.Environment.GetExecutableFilePath(config.ExecutablePath);
 
 		WindowSettings windowSettings = .();
@@ -77,26 +78,5 @@ static class ProjectManagerMain
 
 		let program = scope ProjectManagerProgram(config);
 		return DesktopRunner.RunApplication(program, shell, graphics);
-	}
-
-	/// The flags into `config`.
-	public static void ReadCommandLine(Span<String> args, ProjectManagerConfig config)
-	{
-		for (int i = 0; i < args.Length - 1; i++)
-		{
-			if (args[i] == "--release-files")
-				config.ReleaseFiles.Set(args[i + 1]);
-			else if (args[i] == "--screenshot")
-				config.ScreenshotPath.Set(args[i + 1]);
-			else if (args[i] == "--open")
-				config.OpenPath.Set(args[i + 1]);
-			else if (args[i] == "--exit-after")
-				config.ExitAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
-		}
-		for (let arg in args)
-		{
-			if (arg == "--screenshot-exit")
-				config.ScreenshotExit = true;
-		}
 	}
 }
