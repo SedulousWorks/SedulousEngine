@@ -546,3 +546,5 @@ Each step proves one thing, and each is run for leaks with ASan where it can be.
   (ms)`. Start runs from the launch to the next editor's application being made; restore runs
   from then until the pages and tabs are back. The run itself starts after the cook, outside that
   time. These are still to be measured on SkyHopper (spike step 0).
+
+Measured by hand (2026-11-10, SkyHopper on x2, `editor_relaunch {"build": true}` with Level1 unsaved and the Game tab playing): the relaunched editor came back with Level1 unsaved (the new entity in it, the scene file on disk untouched) and the Game tab active and playing again. Its log: `Editor: relaunched (1 page(s) kept aside, 1 Game tab(s)): build 24255, save 27, start 510, restore 1340, total 26132 (ms)`. The relaunch itself costs under 2 s beyond the build (save 27 ms, start 0.5 s, restore 1.3 s); the build of `<Game>Editor` is the rest.
