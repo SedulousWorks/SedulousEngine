@@ -13,6 +13,7 @@ using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Projects;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -107,7 +108,7 @@ class ProjectLauncherTests
 		/// to the view's services (the Samples tab's client).
 		public this(int more = 0, bool real = false, delegate void(ProjectManagerServices services) configure = null)
 		{
-			EditorProjectSerializables.RegisterAll();
+			EditorProjectsSerializables.RegisterAll();
 			PathJoin(GetCurrentDirectory(.. scope .()), "scratch_launcher", Root);
 			PathJoin(Root, "First", First);
 			PathJoin(Root, "Second", Second);
@@ -702,7 +703,7 @@ class ProjectLauncherTests
 	[Test]
 	public static void WithNoProjectsAWelcomeWithNewProjectAndOpenFolderStandsInForTheLists()
 	{
-		EditorProjectSerializables.RegisterAll();
+		EditorProjectsSerializables.RegisterAll();
 		let store = scope Settings();
 		let controller = scope ProjectManagerController(store);
 		let context = new GUIContext();

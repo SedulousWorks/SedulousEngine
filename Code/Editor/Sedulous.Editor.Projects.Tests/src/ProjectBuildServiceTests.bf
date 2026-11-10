@@ -5,7 +5,9 @@ using Sedulous.Core.IO;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 
-namespace Sedulous.Editor.Core.Tests;
+using Sedulous.Editor.Projects.TestSupport;
+
+namespace Sedulous.Editor.Projects.Tests;
 
 /// The build service's jobs, run over the project build's bed by a fake BeefBuild: the lines it
 /// prints go into the job as they come, its exit and what it built decide how the job ends.
@@ -17,7 +19,7 @@ class ProjectBuildServiceTests
 
 	/// A job of `target` over the bed's project, its settings a copy (the job takes them), the
 	/// SDK found through the bed's data root; a Player job in `config` for `platform`.
-	private static BuildJob MakeJob(ProjectBuildTests.Bed bed, BuildTarget target, StringView config = default, StringView platform = default)
+	private static BuildJob MakeJob(ProjectBuildBed bed, BuildTarget target, StringView config = default, StringView platform = default)
 	{
 		let settings = new ProjectSettings();
 		Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);
@@ -50,11 +52,11 @@ class ProjectBuildServiceTests
 
 	/// Writes what a BeefBuild run of `arguments` would make (an executable, or the web player's
 	/// page), as a build that worked.
-	private static void Make(ProjectBuildTests.Bed bed, Span<StringView> arguments)
+	private static void Make(ProjectBuildBed bed, Span<StringView> arguments)
 	{
 		let entry = EntryOf(Argument(arguments, "project"));
 		let path = ProjectBuild.EntryPath(bed.ProjectDir, "NativeGame", entry, Argument(arguments, "config"), .. scope .());
-		ProjectBuildTests.Bed.Write(bed.ProjectDir, path.Substring(bed.ProjectDir.Length + 1), "#!built\n");
+		ProjectBuildBed.Write(bed.ProjectDir, path.Substring(bed.ProjectDir.Length + 1), "#!built\n");
 	}
 
 	/// The editor alone: one run, over the generated workspace, for <Game>Editor in Debug. A
@@ -63,7 +65,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void AnEditorBuildRunsOnceAndSucceeds()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		int runs = 0;
 		let seenProject = scope String();
 		let seenConfig = scope String();
@@ -110,11 +112,11 @@ class ProjectBuildServiceTests
 
 	/// A fake Beef install in the bed whose BeefSettings.toml names `emsdk` (under the bed's
 	/// root) as Emscripten; its BeefBuild's path.
-	private static void FakeBeefWithEmscripten(ProjectBuildTests.Bed bed, StringView emsdk, String outBeefBuild)
+	private static void FakeBeefWithEmscripten(ProjectBuildBed bed, StringView emsdk, String outBeefBuild)
 	{
-		ProjectBuildTests.FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", outBeefBuild);
+		ProjectBuildBed.FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", outBeefBuild);
 		let path = PathJoin(bed.Root, emsdk, .. scope .());
-		ProjectBuildTests.Bed.Write(bed.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Wasm]\nEmscriptenPath = '{path}'\n");
+		ProjectBuildBed.Write(bed.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Wasm]\nEmscriptenPath = '{path}'\n");
 	}
 
 	/// A Player job for wasm32 (or the presets' Web) is one run of <Game>PlayerWeb over the web
@@ -123,9 +125,9 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void AWebPlayerBuildsInItsOwnWorkspaceForWasm()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		let beefBuild = FakeBeefWithEmscripten(bed, "emsdk", .. scope .());
-		ProjectBuildTests.FakeEmscripten(bed, "emsdk", .. scope .());
+		ProjectBuildBed.FakeEmscripten(bed, "emsdk", .. scope .());
 		let home = PathJoin(bed.Root, "home", .. scope .());
 		let runs = scope List<String>();
 		defer { ClearAndDeleteItems!(runs); }
@@ -169,7 +171,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void AWebBuildNeedsEmscriptenFirst()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		let beefBuild = FakeBeefWithEmscripten(bed, "emsdk", .. scope .());
 		let home = PathJoin(bed.Root, "home", .. scope .());
 		let service = scope ProjectBuildService(new (executable, arguments, onLine, cancelled) =>
@@ -208,7 +210,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void AFailedRunGivesItsDiagnostics()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		int runs = 0;
 		let job = MakeJob(bed, .Editor);
 		defer job.ReleaseRef();
@@ -240,7 +242,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void AFailureWithNoErrorQuotesTheOutput()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		{
 			let job = MakeJob(bed, .Editor);
 			defer job.ReleaseRef();
@@ -270,7 +272,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void ACancelEndsTheJobCancelled()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		{
 			int runs = 0;
 			let job = MakeJob(bed, .Editor);
@@ -322,7 +324,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void ADroppedJobEndsCancelled()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		let queued = MakeJob(bed, .Editor);
 		defer queued.ReleaseRef();
 		queued.Dropped();
@@ -341,7 +343,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void ABuildNeedsAnSdkAndAPackage()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		let service = scope ProjectBuildService(new (executable, arguments, onLine, cancelled) =>
 			{
 				Test.FatalError("nothing runs");
@@ -375,7 +377,7 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void APlayerBuildsWithoutAPackage()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		ClearAndDeleteItems!(bed.Settings.Plugins);
 		let runs = scope List<String>();
 		defer { ClearAndDeleteItems!(runs); }
@@ -402,11 +404,11 @@ class ProjectBuildServiceTests
 	[Test]
 	public static void TheEditorIsStaleWhenOlderThanAPackageFile()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		Test.Assert(ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"), "not built");
 		System.Threading.Thread.Sleep(50);
 		let editor = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .());
-		ProjectBuildTests.Bed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
+		ProjectBuildBed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
 		Test.Assert(!ProjectBuild.IsStale(bed.ProjectDir, bed.Settings, "Debug"));
 		System.Threading.Thread.Sleep(50);
 		bed.WriteCode(".generated/NativeGameEditor/src/Program.bf", "// generated\n");

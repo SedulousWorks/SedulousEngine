@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Runtime;
+using Sedulous.VFS;
 using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
@@ -34,16 +35,16 @@ static class GamePackage
 	/// build names its executables (ProjectBuild.GameName), so "Sky Hopper" gives SkyHopper.
 	public static void NameFor(StringView projectName, String outName) => ProjectBuild.GameName(projectName, outName);
 
-	/// The game's package of `project` into `outInfo`: its id, name and path always, and its parts
-	/// when its Plugin.xml is there. False when it is not.
-	public static bool Find(EditorProject project, GamePackageInfo outInfo)
+	/// The game's package of the project at `directory` with `settings` into `outInfo`: its id, name
+	/// and path always, and its parts when its Plugin.xml is there. False when it is not.
+	public static bool Find(StringView directory, ProjectSettings settings, GamePackageInfo outInfo)
 	{
-		NameFor(project.Settings.Name, outInfo.Name);
+		NameFor(settings.Name, outInfo.Name);
 		ProjectLayout.PluginIdFromName(outInfo.Name, outInfo.Id);
 		outInfo.Path.Set(ProjectLayout.CodeDir);
 		outInfo.Parts.Clear();
 		let manifest = scope PluginManifest();
-		if (PluginManifest.Load(PathJoin(project.Directory, outInfo.Path, .. scope .()), manifest) case .Err)
+		if (PluginManifest.Load(PathJoin(directory, outInfo.Path, .. scope .()), manifest) case .Err)
 			return false;
 		for (int i < PluginPartKind.Count)
 		{
@@ -53,17 +54,17 @@ static class GamePackage
 		return true;
 	}
 
-	/// Add Native Code: writes the game's package into `project` with `parts`, or adds to the
-	/// package there the parts it lacks; its Plugin.xml lists them in load order, the workspace
-	/// lists them (ProjectBuild.UpdateWorkspace), and the project enables the package and saves.
-	/// Refused with AlreadyExists when every part asked for is there, or, for a new package, when
-	/// the project's entry of its id is taken or a part's folder is there already, so it never
-	/// overwrites the game's code.
-	public static Result<void, ErrorCode> Scaffold(EditorProject project, Span<PluginPartKind> parts)
+	/// Add Native Code: writes the game's package into the project at `directory` with `parts`, or
+	/// adds to the package there the parts it lacks; its Plugin.xml lists them in load order, the
+	/// workspace lists them (ProjectBuild.UpdateWorkspace), and `settings` enables the package and
+	/// is saved as the project's manifest. Refused with AlreadyExists when every part asked for is
+	/// there, or, for a new package, when the project's entry of its id is taken or a part's folder
+	/// is there already, so it never overwrites the game's code.
+	public static Result<void, ErrorCode> Scaffold(StringView directory, ProjectSettings settings, Span<PluginPartKind> parts)
 	{
 		let info = scope GamePackageInfo();
-		let exists = Find(project, info);
-		let packageDir = PathJoin(project.Directory, info.Path, .. scope .());
+		let exists = Find(directory, settings, info);
+		let packageDir = PathJoin(directory, info.Path, .. scope .());
 		let manifest = scope PluginManifest();
 		if (exists)
 		{
@@ -72,7 +73,7 @@ static class GamePackage
 		}
 		else
 		{
-			if (project.Settings.FindPlugin(info.Id) != null)
+			if (settings.FindPlugin(info.Id) != null)
 				return .Err(.AlreadyExists);
 			// Code/ itself may be there (a workspace of the user's); a part's folder is code.
 			for (let kind in parts)
@@ -82,7 +83,7 @@ static class GamePackage
 					return .Err(.AlreadyExists);
 			}
 			manifest.Id.Set(info.Id);
-			manifest.Name.Set(project.Settings.Name);
+			manifest.Name.Set(settings.Name);
 			manifest.Version.Set("0.1.0");
 			manifest.EngineVersion.AppendF("{}.{}", EngineVersion.Major, EngineVersion.Minor);
 			for (let platform in StringView[3]("Linux64", "Win64", "Web"))
@@ -113,16 +114,17 @@ static class GamePackage
 		if ((manifest.Write(manifestXml) case .Err)
 			|| (WriteText(PathJoin(packageDir, PluginManifest.cFileName, .. scope .()), manifestXml) case .Err))
 			return .Err(.Internal);
-		if (project.Settings.FindPlugin(info.Id) == null)
+		if (settings.FindPlugin(info.Id) == null)
 		{
 			let entry = new EnabledPlugin();
 			entry.Id.Set(info.Id);
 			entry.Path.Set(info.Path);
-			project.Settings.Plugins.Add(entry);
+			settings.Plugins.Add(entry);
 		}
-		if (ProjectBuild.UpdateWorkspace(project.Directory, project.Settings) case .Err)
+		if (ProjectBuild.UpdateWorkspace(directory, settings) case .Err)
 			return .Err(.Internal);
-		return project.SaveSettings();
+		let root = scope NativeFileSystem(directory);
+		return ProjectManifest.Save(root, settings);
 	}
 
 	/// The manifest's parts in load order (the kinds' order), any it does not know last.

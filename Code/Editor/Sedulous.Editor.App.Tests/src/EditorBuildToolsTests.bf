@@ -25,7 +25,7 @@ namespace Sedulous.Editor.App.Tests;
 /// whether the project's editor is stale.
 class EditorBuildToolsTests
 {
-	private const String cFixture = Compiler.ReadText("../Sedulous.Editor.Core.Tests/src/Fixtures/beefbuild-errors.txt");
+	private const String cFixture = Compiler.ReadText("../Sedulous.Editor.Projects.Tests/src/Fixtures/beefbuild-errors.txt");
 	/// Where the fixture's game lived; the bench's project stands in for it.
 	private const String cFixtureProject = "/home/user/Games/Spike";
 	/// What the fake runs; never started.

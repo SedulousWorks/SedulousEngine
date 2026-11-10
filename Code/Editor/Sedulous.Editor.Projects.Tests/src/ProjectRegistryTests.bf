@@ -8,26 +8,51 @@ using Sedulous.Settings;
 using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
-using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.Projects;
 
-namespace Sedulous.Editor.Core.Tests;
+namespace Sedulous.Editor.Projects.Tests;
 
 /// The project registry and the manager controller: recency ordering, removal, the store
-/// round trip, when each was opened and its pin, relocating, arranging and saying when, the probe, the version relation, the manifest backup, the open gates, and
-/// every settings section instantiable and surviving a round trip.
+/// round trip, when each was opened and its pin, relocating, arranging and saying when, the probe, the version relation, the manifest backup and the open gates.
 static class ProjectRegistryTests
 {
+	/// The file the recent list is saved to here; the editor's store names its own.
+	private const String cStoreFile = "projects.settings.xml";
+
 	private static void Scratch(StringView name, String outPath)
 	{
 		PathJoin(Directory.GetCurrentDirectory(.. scope .()), name, outPath);
 		RemoveDirectoryRecursive(outPath);
 	}
 
+	/// Writes `store` as XML to `fileName` under `root`, as a user store is written.
+	private static Result<void, ErrorCode> SaveStore(IWritableFileSystem root, Settings store, StringView fileName = cStoreFile)
+	{
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		if (store.Save(buffer, factory) case .Err(let error))
+			return .Err(error);
+		return root.Save(fileName, buffer.Bytes);
+	}
+
+	/// Reads `fileName` under `root` into `outStore`; NotFound when it is absent.
+	private static Result<void, ErrorCode> LoadStore(IFileSystem root, Settings outStore, StringView fileName = cStoreFile)
+	{
+		let stream = root.Open(fileName, .Read);
+		if (stream == null)
+			return .Err(.NotFound);
+		defer delete stream;
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		return outStore.Load(stream, factory);
+	}
+
 	[Test]
 	public static void TouchInsertsMostRecentFirstDedupesAndCaps()
 	{
-		EditorSerializables.RegisterAll();
+		EditorProjectsSerializables.RegisterAll();
 		let store = scope Settings();
 		ProjectRegistry.TouchRecentProject(store, "/projects/a", "A", "0.1.0");
 		ProjectRegistry.TouchRecentProject(store, "/projects/b", "B", "0.1.0");
@@ -49,7 +74,7 @@ static class ProjectRegistryTests
 	[Test]
 	public static void RemoveDeletesARowAndTheSectionRoundTripsTheStore()
 	{
-		EditorSerializables.RegisterAll();
+		EditorProjectsSerializables.RegisterAll();
 		let store = scope Settings();
 		ProjectRegistry.TouchRecentProject(store, "/projects/keep", "Keep", "0.1.0");
 		ProjectRegistry.TouchRecentProject(store, "/projects/drop", "Drop", "0.1.0");
@@ -61,19 +86,19 @@ static class ProjectRegistryTests
 		defer RemoveDirectoryRecursive(dir);
 		CreateDirectory(dir);
 		let fs = scope NativeFileSystem(dir);
-		Test.Assert(EditorSettingsStore.Save(fs, store) case .Ok);
+		Test.Assert(SaveStore(fs, store) case .Ok);
 		let loaded = scope Settings();
-		Test.Assert(EditorSettingsStore.Load(fs, loaded) case .Ok);
+		Test.Assert(LoadStore(fs, loaded) case .Ok);
 		let registry = loaded.Section<RecentProjectsSettings>();
 		Test.Assert((registry.Entries.Count == 1) && (registry.Entries[0].Path == "/projects/keep") && (registry.Entries[0].Name == "Keep"));
 		let missing = scope Settings();
-		Test.Assert(EditorSettingsStore.Load(fs, missing, "no.such.xml") case .Err(.NotFound), "a first run reads as defaults");
+		Test.Assert(LoadStore(fs, missing, "no.such.xml") case .Err(.NotFound), "a first run reads as defaults");
 	}
 
 	[Test]
 	public static void AnEntryKeepsWhenItWasOpenedAndItsPinAndTheListItsOrderAndLastLocation()
 	{
-		EditorSerializables.RegisterAll();
+		EditorProjectsSerializables.RegisterAll();
 		let store = scope Settings();
 		ProjectRegistry.TouchRecentProject(store, "/projects/a", "A", "0.1.0", 1000);
 		Test.Assert(ProjectRegistry.SetRecentProjectFavourite(store, "/projects/a", true));
@@ -96,9 +121,9 @@ static class ProjectRegistryTests
 		defer RemoveDirectoryRecursive(dir);
 		CreateDirectory(dir);
 		let fs = scope NativeFileSystem(dir);
-		Test.Assert(EditorSettingsStore.Save(fs, store) case .Ok);
+		Test.Assert(SaveStore(fs, store) case .Ok);
 		let loaded = scope Settings();
-		Test.Assert(EditorSettingsStore.Load(fs, loaded) case .Ok);
+		Test.Assert(LoadStore(fs, loaded) case .Ok);
 		let back = loaded.Section<RecentProjectsSettings>();
 		let a = back.Find("/projects/a");
 		Test.Assert((a != null) && (a.LastOpened == 2000) && a.Favourite);
@@ -107,7 +132,7 @@ static class ProjectRegistryTests
 		Test.Assert(back.LastLocation == "/home/me/Games");
 
 		// A store written before these fields existed still loads, each at its default.
-		let file = PathJoin(dir, EditorSettingsStore.cFileName, .. scope .());
+		let file = PathJoin(dir, cStoreFile, .. scope .());
 		let bytes = scope List<uint8>();
 		Test.Assert(ReadFile(file, bytes) case .Ok);
 		let text = scope String(StringView((char8*)bytes.Ptr, bytes.Count));
@@ -122,7 +147,7 @@ static class ProjectRegistryTests
 		Test.Assert(old.Length < text.Length, "the new fields were in it");
 		Test.Assert(WriteFile(file, .((uint8*)old.Ptr, old.Length)) case .Ok);
 		let older = scope Settings();
-		Test.Assert(EditorSettingsStore.Load(fs, older) case .Ok);
+		Test.Assert(LoadStore(fs, older) case .Ok);
 		let olderRegistry = older.Section<RecentProjectsSettings>();
 		Test.Assert(olderRegistry.Entries.Count == 2);
 		Test.Assert(olderRegistry.Find("/projects/a").LastOpened == 0);
@@ -149,7 +174,7 @@ static class ProjectRegistryTests
 	[Test]
 	public static void AMissingProjectIsRelocatedInPlaceAndArrangingPinsSortsAndSearches()
 	{
-		EditorSerializables.RegisterAll();
+		EditorProjectsSerializables.RegisterAll();
 		let store = scope Settings();
 		ProjectRegistry.TouchRecentProject(store, "/games/zeta", "Zeta", "0.1.0", 10);
 		ProjectRegistry.TouchRecentProject(store, "/old/Alpha", "alpha", "0.1.0", 20);
@@ -247,7 +272,7 @@ static class ProjectRegistryTests
 		Test.Assert(CreateDirectory(taken));
 		Test.Assert(WriteFile(PathJoin(taken, "notes.txt", .. scope .()), .()) case .Ok);
 		Test.Assert(CreateDirectory(PathJoin(root, "Empty", .. scope .())));
-		Test.Assert(EditorProject.Create(PathJoin(root, "Made", .. scope .()), "Made") case .Ok);
+		Test.Assert(ProjectScaffold.Create(PathJoin(root, "Made", .. scope .()), "Made") case .Ok);
 		let c = scope NewProjectCheck();
 
 		// Green: a new folder of its name in a folder that exists.
@@ -312,7 +337,7 @@ static class ProjectRegistryTests
 		defer RemoveDirectoryRecursive(dir);
 		let probed = scope ProjectSettings();
 		Test.Assert(ProjectRegistry.ProbeProject(dir, probed) case .Err(.NotFound), "no directory at all");
-		Test.Assert(EditorProject.Create(dir, "Probe Me") case .Ok);
+		Test.Assert(ProjectScaffold.Create(dir, "Probe Me") case .Ok);
 		Test.Assert(ProjectRegistry.ProbeProject(dir, probed) case .Ok);
 		Test.Assert((probed.Name == "Probe Me") && (probed.EngineVersion == EngineVersion.String));
 	}
@@ -338,7 +363,7 @@ static class ProjectRegistryTests
 	{
 		let dir = Scratch("scratch_registry_backup", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
-		Test.Assert(EditorProject.Create(dir, "Backup Me") case .Ok);
+		Test.Assert(ProjectScaffold.Create(dir, "Backup Me") case .Ok);
 		let backup = scope String();
 		Test.Assert(ProjectRegistry.BackupProjectManifest(dir, backup) case .Ok);
 		Test.Assert(FileExists(backup) && backup.EndsWith(scope $".{EngineVersion.String}.bak"));
@@ -350,7 +375,7 @@ static class ProjectRegistryTests
 	[Test]
 	public static void TheControllerGatesOpensComposesPromptsAndPassesThroughToTheRegistry()
 	{
-		EditorSerializables.RegisterAll();
+		EditorProjectsSerializables.RegisterAll();
 		let store = scope Settings();
 		let controller = scope ProjectManagerController(store);
 		let decision = scope ProjectOpenDecision();
@@ -413,305 +438,5 @@ static class ProjectRegistryTests
 		Test.Assert(controller.Entries.Entries.Count == 1);
 		Test.Assert(controller.Entries.Entries[0].Path == dir);
 		Test.Assert(DirectoryExists(dir));
-	}
-
-	[Test]
-	public static void EveryRegisteredSectionTypeIsInstantiable()
-	{
-		// A section the store cannot instantiate makes every later Load abort at it and
-		// drop the sections after: the empty project list incident.
-		// Every type the editor's registration puts in a table, asked of the table, not a list
-		// kept by hand here: a hand list is what let the shortcut section land uncovered.
-		let registry = scope SerializableRegistry();
-		EditorSerializables.RegisterAll(registry);
-		let ids = scope List<uint64>();
-		registry.CopyIds(ids);
-		for (let id in ids)
-		{
-			let made = registry.Create(id);
-			Test.Assert(made != null, scope $"type id {id}");
-			delete made;
-		}
-		// Export, ui, mcp, shortcuts (and its entry), recent projects (and its entry), at least.
-		Test.Assert(ids.Count >= 8);
-		for (let type in scope Type[](typeof(EditorShortcutSettings), typeof(ShortcutOverrideEntry), typeof(RecentProjectsSettings)))
-			Test.Assert(registry.IsRegistered(TypeIdOf(type.GetFullName(.. scope .()))));
-	}
-
-	[Test]
-	public static void TheMcpSectionRoundTripsAndAMintedTokenIsAFreshGuid()
-	{
-		EditorSerializables.RegisterAll();
-		// Defaults: off, the documented port, no token yet.
-		{
-			let store = scope Settings();
-			let mcp = store.Section<EditorMcpSettings>();
-			Test.Assert(!mcp.Enabled);
-			Test.Assert(mcp.Port == EditorMcpSettings.DefaultPort);
-			Test.Assert(mcp.Token.IsEmpty);
-		}
-		let store = scope Settings();
-		let mcp = store.Section<EditorMcpSettings>();
-		mcp.Enabled = true;
-		mcp.Port = 7500;
-		EditorMcpSettings.GenerateToken(mcp.Token);
-		Test.Assert(mcp.Token.Length == 36);
-		Test.Assert(EditorMcpSettings.GenerateToken(.. scope .()) != mcp.Token); // every mint is a new secret
-
-		let buffer = scope Sedulous.Core.IO.MemoryStream();
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		Test.Assert(store.Save(buffer, factory) case .Ok);
-		buffer.Seek(0, .Begin);
-		let loaded = scope Settings();
-		Test.Assert(loaded.Load(buffer, factory) case .Ok);
-		let back = loaded.Find<EditorMcpSettings>();
-		Test.Assert(back != null);
-		Test.Assert(back.Enabled);
-		Test.Assert(back.Port == 7500);
-		Test.Assert(back.Token == mcp.Token);
-	}
-
-	[Test]
-	public static void TheMcpSectionTakesThePreferencesFieldsRefusingABadPort()
-	{
-		let mcp = scope EditorMcpSettings();
-		mcp.Token.Set("old");
-		Test.Assert(mcp.ApplyFromPreferences(true, "7500", "new"));
-		Test.Assert(mcp.Enabled);
-		Test.Assert(mcp.Port == 7500);
-		Test.Assert(mcp.Token == "new");
-		// A port outside 1024..65535, or not a number, is refused and the port stands.
-		Test.Assert(!mcp.ApplyFromPreferences(true, "80", "new"));
-		Test.Assert(!mcp.ApplyFromPreferences(true, "70000", "new"));
-		Test.Assert(!mcp.ApplyFromPreferences(true, "lots", "new"));
-		Test.Assert(mcp.Port == 7500);
-		// Disabling with an empty token: off, and the next enable mints a fresh secret.
-		Test.Assert(mcp.ApplyFromPreferences(false, "7500", ""));
-		Test.Assert(!mcp.Enabled);
-		Test.Assert(mcp.Token.IsEmpty);
-	}
-
-	[Test]
-	public static void AStoreWithEverySectionRoundTrips()
-	{
-		EditorSerializables.RegisterAll();
-		let store = scope Settings();
-		store.Section<EditorUiSettings>().UiScale = 1.2f;
-		store.Section<EditorUiSettings>().Scheme.Set("light");
-		store.Section<EditorUiSettings>().Accent.Set("#0f8a7e");
-		store.Section<EditorUiSettings>().Density.Set("comfortable");
-		store.Section<EditorUiSettings>().ReduceMotion = true;
-		ProjectRegistry.TouchRecentProject(store, "/proj/a", "A", "0.1.0");
-		let buffer = scope Sedulous.Core.IO.MemoryStream();
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		Test.Assert(store.Save(buffer, factory) case .Ok);
-		buffer.Seek(0, .Begin);
-		let loaded = scope Settings();
-		Test.Assert(loaded.Load(buffer, factory) case .Ok);
-		let registry = loaded.Find<RecentProjectsSettings>();
-		Test.Assert((registry != null) && (registry.Entries.Count == 1) && (registry.Entries[0].Name == "A"));
-		let ui = loaded.Find<EditorUiSettings>();
-		Test.Assert((ui != null) && (Math.Abs(ui.UiScale - 1.2f) < 1e-5f));
-		Test.Assert(ui.Scheme == "light"); // the look's inputs (appended 2026-10-27)
-		Test.Assert(ui.Accent == "#0f8a7e");
-		Test.Assert(ui.Density == "comfortable");
-		Test.Assert(ui.ReduceMotion);
-	}
-
-	/// The font section the editor kept before its fonts became its sheet's (the type is gone):
-	/// its paths, under its old identity and version.
-	private class LegacyFontSection : ISerializable
-	{
-		public const String cTypeName = "Sedulous.Editor.Core.EditorFontSettings";
-		public String FontPath = new .() ~ delete _;
-		public String MonoFontPath = new .() ~ delete _;
-
-		public void Serialize(ISerializer ar)
-		{
-			BeginVersionedPayload(ar, TypeIdOf(cTypeName), 1);
-			ar.BeginObject();
-			Sedulous.Core.Serialization.Serialize(ar, "fontPath", FontPath);
-			Sedulous.Core.Serialization.Serialize(ar, "monoFontPath", MonoFontPath);
-			ar.EndObject();
-			EndVersionedPayload(ar);
-		}
-	}
-
-	/// A store still holding the font section loads: the section no type reads is kept aside (and
-	/// written back, so an older build keeps its paths), and the sections after it read as ever.
-	[Test]
-	public static void AStoreStillHoldingTheFontSectionLoadsTheSectionsAfterIt()
-	{
-		EditorSerializables.RegisterAll();
-		Test.Assert(GlobalSerializableRegistry.Create(TypeIdOf(LegacyFontSection.cTypeName)) == null, "no type reads it now");
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		let buffer = scope Sedulous.Core.IO.MemoryStream();
-		{
-			let fonts = scope LegacyFontSection();
-			fonts.FontPath.Set("/fonts/ui.ttf");
-			let ui = scope EditorUiSettings();
-			ui.UiScale = 1.25f;
-			ui.Scheme.Set("light");
-			let writing = factory(buffer, .Write);
-			defer delete writing;
-			let archive = writing.Serializer;
-			uint32 count = 2;
-			archive.Key("sections");
-			archive.BeginArray(ref count);
-			// The font section first, so a load that stopped at it would lose the UI's.
-			archive.BeginObject();
-			archive.Key("typeName");
-			archive.Text(LegacyFontSection.cTypeName);
-			archive.BeginFramedRegion();
-			archive.Key("payload");
-			archive.BeginObject();
-			fonts.Serialize(archive);
-			archive.EndObject();
-			archive.EndFramedRegion();
-			archive.EndObject();
-			archive.BeginObject();
-			archive.Key("typeName");
-			archive.Text(typeof(EditorUiSettings).GetFullName(.. scope .()));
-			archive.BeginFramedRegion();
-			archive.Key("payload");
-			archive.BeginObject();
-			ISerializable uiPayload = ui;
-			uiPayload.Serialize(archive);
-			archive.EndObject();
-			archive.EndFramedRegion();
-			archive.EndObject();
-			archive.EndArray();
-			Test.Assert(archive.IsOk);
-			writing.Flush(buffer);
-		}
-
-		buffer.Seek(0, .Begin);
-		let loaded = scope Settings();
-		Test.Assert(loaded.Load(buffer, factory) case .Ok);
-		Test.Assert(loaded.UnknownSectionCount == 1, "kept aside, not refused");
-		Test.Assert(loaded.SectionCount == 1);
-		let ui = loaded.Find<EditorUiSettings>();
-		Test.Assert(ui != null, "the section after it read");
-		Test.Assert(Math.Abs(ui.UiScale - 1.25f) < 1e-5f);
-		Test.Assert(ui.Scheme == "light");
-
-		// Saved again, the kept section goes back out with its paths.
-		let again = scope Sedulous.Core.IO.MemoryStream();
-		Test.Assert(loaded.Save(again, factory) case .Ok);
-		let text = scope String((char8*)again.Bytes.Ptr, again.Bytes.Length);
-		Test.Assert(text.Contains(LegacyFontSection.cTypeName) && text.Contains("/fonts/ui.ttf"));
-		again.Seek(0, .Begin);
-		let reloaded = scope Settings();
-		Test.Assert(reloaded.Load(again, factory) case .Ok);
-		Test.Assert((reloaded.UnknownSectionCount == 1) && (reloaded.Find<EditorUiSettings>() != null));
-	}
-
-	/// The UI section as the editor saved it before the look's inputs: the scale and axis views
-	/// only, under the section's identity and version.
-	private class LegacyUiSection : ISerializable
-	{
-		public float UiScale = 1.0f;
-		public bool AutoOrthographic = true;
-
-		public void Serialize(ISerializer ar)
-		{
-			BeginVersionedPayload(ar, EditorUiSettings.TypeId, EditorUiSettings.DataVersion);
-			ar.BeginObject();
-			SerializeValue(ar, "uiScale", ref UiScale);
-			SerializeValue(ar, "autoOrthographic", ref AutoOrthographic);
-			ar.EndObject();
-			EndVersionedPayload(ar);
-		}
-	}
-
-	/// A settings file from before the look's inputs reads through the store: what it has comes
-	/// back, the inputs it lacks are their defaults, and saved again it carries them.
-	[Test]
-	public static void AUiSectionSavedBeforeTheLooksInputsReadsWithThemAtTheirDefaults()
-	{
-		EditorSerializables.RegisterAll();
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		let buffer = scope Sedulous.Core.IO.MemoryStream();
-		{
-			let legacy = scope LegacyUiSection();
-			legacy.UiScale = 1.5f;
-			legacy.AutoOrthographic = false;
-			let writing = factory(buffer, .Write);
-			defer delete writing;
-			let archive = writing.Serializer;
-			Test.Assert(archive.IsSelfDescribing, "a self describing file has no format version to write");
-			uint32 count = 1;
-			archive.Key("sections");
-			archive.BeginArray(ref count);
-			archive.BeginObject();
-			archive.Key("typeName");
-			archive.Text(typeof(EditorUiSettings).GetFullName(.. scope .()));
-			archive.BeginFramedRegion();
-			archive.Key("payload");
-			archive.BeginObject();
-			legacy.Serialize(archive);
-			archive.EndObject();
-			archive.EndFramedRegion();
-			archive.EndObject();
-			archive.EndArray();
-			Test.Assert(archive.IsOk);
-			writing.Flush(buffer);
-		}
-		let text = scope String((char8*)buffer.Bytes.Ptr, buffer.Bytes.Length);
-		Test.Assert(!text.Contains("scheme") && !text.Contains("accent"), "written without the inputs");
-
-		buffer.Seek(0, .Begin);
-		let loaded = scope Settings();
-		Test.Assert(loaded.Load(buffer, factory) case .Ok);
-		Test.Assert(loaded.UnknownSectionCount == 0);
-		let ui = loaded.Find<EditorUiSettings>();
-		Test.Assert(ui != null, "read, not refused");
-		Test.Assert(Math.Abs(ui.UiScale - 1.5f) < 1e-5f);
-		Test.Assert(!ui.AutoOrthographic);
-		Test.Assert(ui.Scheme == "dark");
-		Test.Assert(ui.Accent == "#2f6fdf");
-		Test.Assert(ui.Density == "compact");
-		Test.Assert(!ui.ReduceMotion);
-
-		// Saved again, the inputs are in it and read back.
-		ui.Scheme.Set("light");
-		let again = scope Sedulous.Core.IO.MemoryStream();
-		Test.Assert(loaded.Save(again, factory) case .Ok);
-		again.Seek(0, .Begin);
-		let reloaded = scope Settings();
-		Test.Assert(reloaded.Load(again, factory) case .Ok);
-		let back = reloaded.Find<EditorUiSettings>();
-		Test.Assert((back != null) && (back.Scheme == "light") && (back.Accent == "#2f6fdf") && !back.AutoOrthographic);
-	}
-
-	/// The Game tab's preview resolutions: the common sizes seed once, a user's removal stays
-	/// removed, and the list round trips through the store.
-	[Test]
-	public static void ThePreviewResolutionsSeedOnceAndRoundTrip()
-	{
-		EditorSerializables.RegisterAll();
-		Test.Assert(GamePreviewSettings.From(null) == null, "no store, nothing");
-		let store = scope Settings();
-		let previews = GamePreviewSettings.From(store);
-		Test.Assert(previews.Seeded && (previews.Presets.Count == 6));
-		Test.Assert((previews.Presets[3].Name == "Steam Deck") && (previews.Presets[3].Width == 1280) && (previews.Presets[3].Height == 800));
-
-		ClearAndDeleteItems!(previews.Presets);
-		previews.Presets.Add(new .("Handheld", 960, 544));
-		Test.Assert(GamePreviewSettings.From(store).Presets.Count == 1, "not seeded again");
-
-		let buffer = scope Sedulous.Core.IO.MemoryStream();
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		Test.Assert(store.Save(buffer, factory) case .Ok);
-		buffer.Seek(0, .Begin);
-		let loaded = scope Settings();
-		Test.Assert(loaded.Load(buffer, factory) case .Ok);
-		let back = GamePreviewSettings.From(loaded);
-		Test.Assert((back.Presets.Count == 1) && (back.Presets[0].Name == "Handheld") && (back.Presets[0].Width == 960) && (back.Presets[0].Height == 544));
 	}
 }

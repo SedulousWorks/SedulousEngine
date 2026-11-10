@@ -7,6 +7,8 @@ using Sedulous.VFS;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 
+using Sedulous.Editor.Projects.TestSupport;
+
 namespace Sedulous.Editor.Core.Tests;
 
 /// The player an export ships, built for a preset: by the project's build through a fake
@@ -14,7 +16,8 @@ namespace Sedulous.Editor.Core.Tests;
 /// compiler (StagedPlayerBuilder); what is collected beside it, and what is refused.
 class PlayerBuildTests
 {
-	private const String cFailedBuild = Compiler.ReadText("src/Fixtures/beefbuild-errors.txt");
+	/// The BeefBuild output the build's own tests parse, read from beside them.
+	private const String cFailedBuild = Compiler.ReadText("../Sedulous.Editor.Projects.Tests/src/Fixtures/beefbuild-errors.txt");
 	/// What the fake runs; never started.
 	private const String cFakeBeefBuild = "/fake/BeefBuild";
 	/// The shared library a build leaves beside the player, which ships.
@@ -22,11 +25,11 @@ class PlayerBuildTests
 	/// The shader compiler's, which a build leaves beside it too and which never ships.
 	private const String cDxcLibrary = "libdxcompiler.so";
 
-	/// The project build's bed (ProjectBuildTests.Bed), its project saved and opened as an
+	/// The project build's bed (ProjectBuildBed), its project saved and opened as an
 	/// EditorProject.
 	private class Bed
 	{
-		public ProjectBuildTests.Bed Build = new .() ~ delete _;
+		public ProjectBuildBed Build = new .() ~ delete _;
 		public EditorProject Project ~ delete _;
 
 		public this()
@@ -63,24 +66,24 @@ class PlayerBuildTests
 	/// Writes what a BeefBuild run of `arguments` leaves, as a build that worked: for the desktop
 	/// player its executable, a shared library, the shader compiler's and the notices; for the
 	/// web player its page, its .js and .wasm, serve.py, the notices and an object file.
-	private static void Make(ProjectBuildTests.Bed bed, Span<StringView> arguments)
+	private static void Make(ProjectBuildBed bed, Span<StringView> arguments)
 	{
 		let project = Argument(arguments, "project");
 		let web = project.EndsWith(ProjectBuild.cPlayerWebSuffix);
 		let made = ProjectBuild.EntryPath(bed.ProjectDir, "NativeGame", web ? BuildEntry.PlayerWeb : BuildEntry.Player, Argument(arguments, "config"), .. scope .());
 		let dir = PathParent(made, .. scope .());
-		ProjectBuildTests.Bed.Write(dir, PathFilename(made, .. scope .()), "#!built\n");
-		ProjectBuildTests.Bed.Write(dir, BuildLayout.cThirdPartyNotices, "notices\n");
+		ProjectBuildBed.Write(dir, PathFilename(made, .. scope .()), "#!built\n");
+		ProjectBuildBed.Write(dir, BuildLayout.cThirdPartyNotices, "notices\n");
 		if (web)
 		{
 			for (let part in StringView[4](".js", ".wasm", ".o", ".log"))
-				ProjectBuildTests.Bed.Write(dir, scope $"{project}{part}", "part\n");
-			ProjectBuildTests.Bed.Write(dir, "serve.py", "# serve\n");
+				ProjectBuildBed.Write(dir, scope $"{project}{part}", "part\n");
+			ProjectBuildBed.Write(dir, "serve.py", "# serve\n");
 		}
 		else
 		{
-			ProjectBuildTests.Bed.Write(dir, cLibrary, "so\n");
-			ProjectBuildTests.Bed.Write(dir, cDxcLibrary, "so\n");
+			ProjectBuildBed.Write(dir, cLibrary, "so\n");
+			ProjectBuildBed.Write(dir, cDxcLibrary, "so\n");
 		}
 	}
 
@@ -171,9 +174,9 @@ class PlayerBuildTests
 	public static void AWebPresetShipsThePagesParts()
 	{
 		let bed = scope Bed();
-		let beefBuild = ProjectBuildTests.FakeInstall(bed.Build, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
-		let emsdk = ProjectBuildTests.FakeEmscripten(bed.Build, "emsdk", .. scope .());
-		ProjectBuildTests.Bed.Write(bed.Build.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Wasm]\nEmscriptenPath = '{emsdk}'\n");
+		let beefBuild = ProjectBuildBed.FakeInstall(bed.Build, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
+		let emsdk = ProjectBuildBed.FakeEmscripten(bed.Build, "emsdk", .. scope .());
+		ProjectBuildBed.Write(bed.Build.Root, "beef/IDE/dist/BeefSettings.toml", scope $"FileVersion = 1\n\n[Wasm]\nEmscriptenPath = '{emsdk}'\n");
 		let home = PathJoin(bed.Build.Root, "home", .. scope .());
 		let runs = scope List<String>();
 		defer { ClearAndDeleteItems!(runs); }
@@ -412,7 +415,7 @@ class PlayerBuildTests
 	/// the test's); its path.
 	private static void WriteSteamDeckScript(Bed bed, String outScript)
 	{
-		ProjectBuildTests.Bed.Write(bed.Build.Sdk, SteamDeckPlayerBuilder.cScript, "#!/usr/bin/env bash\n");
+		ProjectBuildBed.Write(bed.Build.Sdk, SteamDeckPlayerBuilder.cScript, "#!/usr/bin/env bash\n");
 		PathJoin(bed.Build.Sdk, SteamDeckPlayerBuilder.cScript, outScript);
 	}
 
@@ -434,11 +437,11 @@ class PlayerBuildTests
 	private static void MakeBundle(Span<StringView> arguments)
 	{
 		let bundle = Option(arguments, "out");
-		ProjectBuildTests.Bed.Write(bundle, Option(arguments, "project"), "#!built\n");
-		ProjectBuildTests.Bed.Write(bundle, cLibrary, "so\n");
-		ProjectBuildTests.Bed.Write(bundle, "libSDL3.so.0", "so\n");
-		ProjectBuildTests.Bed.Write(bundle, BuildLayout.cThirdPartyNotices, "notices\n");
-		ProjectBuildTests.Bed.Write(bundle, cDxcLibrary, "so\n");
+		ProjectBuildBed.Write(bundle, Option(arguments, "project"), "#!built\n");
+		ProjectBuildBed.Write(bundle, cLibrary, "so\n");
+		ProjectBuildBed.Write(bundle, "libSDL3.so.0", "so\n");
+		ProjectBuildBed.Write(bundle, BuildLayout.cThirdPartyNotices, "notices\n");
+		ProjectBuildBed.Write(bundle, cDxcLibrary, "so\n");
 	}
 
 #if BF_PLATFORM_LINUX
@@ -455,8 +458,8 @@ class PlayerBuildTests
 		let script = WriteSteamDeckScript(bed, .. scope .());
 		let copy = SteamDeckPlayerBuilder.ProjectCopyDirectory(bed.Build.Sdk, "NativeGame", .. scope .());
 		let workspace = ProjectBuild.Directory(copy, .. scope .());
-		ProjectBuildTests.Bed.Write(workspace, "NativeGame/src/Gone.bf", "// deleted from the project since\n");
-		ProjectBuildTests.Bed.Write(workspace, "build/ShippingRelease_Linux64/NativeGame/NativeGame.o", "object\n");
+		ProjectBuildBed.Write(workspace, "NativeGame/src/Gone.bf", "// deleted from the project since\n");
+		ProjectBuildBed.Write(workspace, "build/ShippingRelease_Linux64/NativeGame/NativeGame.o", "object\n");
 
 		let runs = scope List<String>();
 		defer { ClearAndDeleteItems!(runs); }
@@ -710,7 +713,7 @@ class PlayerBuildTests
 	public static void APresetFromBeforeTheBuilderReadsAsHost()
 	{
 		let bed = scope Bed();
-		ProjectBuildTests.Bed.Write(bed.Build.Root, ExportPresetsFile.cFileName, cPresetsBeforeTheBuilder);
+		ProjectBuildBed.Write(bed.Build.Root, ExportPresetsFile.cFileName, cPresetsBeforeTheBuilder);
 		let loaded = scope ExportPresetSet();
 		Test.Assert(ExportPresetsFile.Load(scope NativeFileSystem(bed.Build.Root), loaded) case .Ok);
 		let deck = loaded.Find("Steam Deck");

@@ -6,7 +6,9 @@ using Sedulous.Runtime;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 
-namespace Sedulous.Editor.Core.Tests;
+using Sedulous.Editor.Projects.TestSupport;
+
+namespace Sedulous.Editor.Projects.Tests;
 
 /// The watch over a project's own code: the packages' newest file (what builds and the IDE write in
 /// Code/ left out, a Plugins/ package's files counted), where the code stands against the built
@@ -18,7 +20,7 @@ class CodeWatchTests
 	[Test]
 	public static void TheNewestSourceLeavesOutWhatBuildsWriteAndCountsAPluginsFiles()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		let first = ProjectBuild.NewestSource(bed.ProjectDir, bed.Settings);
 		Test.Assert(first > 0);
 
@@ -35,7 +37,7 @@ class CodeWatchTests
 		Test.Assert(afterGame > first, "the game's own file counts");
 
 		Thread.Sleep(50);
-		ProjectBuildTests.Bed.Write(bed.ProjectDir, "Plugins/Lantern/Lantern.Engine/src/Part.bf", "// changed\n");
+		ProjectBuildBed.Write(bed.ProjectDir, "Plugins/Lantern/Lantern.Engine/src/Part.bf", "// changed\n");
 		Test.Assert(ProjectBuild.NewestSource(bed.ProjectDir, bed.Settings) > afterGame, "a Plugins/ package's file counts");
 	}
 
@@ -68,7 +70,7 @@ class CodeWatchTests
 	[Test]
 	public static void AnEditorNotLinkingTheProjectsPackageIsStale()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		let subsystems = scope SubsystemManager();
 		let host = scope PluginHost(subsystems, .Editor, EngineVersion.String);
 		Test.Assert(!ProjectBuild.LinksPackages(bed.Settings, host), "the test binary's host has the game's package missing");
@@ -80,7 +82,7 @@ class CodeWatchTests
 		// Built, and this editor newer than the build and the code: fresh only when it links them.
 		Thread.Sleep(50);
 		let editor = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .());
-		ProjectBuildTests.Bed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
+		ProjectBuildBed.Write(bed.ProjectDir, editor.Substring(bed.ProjectDir.Length + 1), "#!editor\n");
 		let later = ProjectBuild.FileTime(editor) + 1;
 		var state = ProjectBuild.Staleness(bed.ProjectDir, bed.Settings, "Debug", later, true);
 		Test.Assert(!state.BuildStale && !state.RunningStale);
@@ -100,10 +102,10 @@ class CodeWatchTests
 	[Test]
 	public static void AChangeAfterTheRunningBuildLeavesItStale()
 	{
-		let bed = scope ProjectBuildTests.Bed();
+		let bed = scope ProjectBuildBed();
 		Thread.Sleep(50);
 		let runningPath = PathJoin(bed.Root, "running/Editor", .. scope .());
-		ProjectBuildTests.Bed.Write(bed.Root, "running/Editor", "#!editor\n");
+		ProjectBuildBed.Write(bed.Root, "running/Editor", "#!editor\n");
 		let running = ProjectBuild.FileTime(runningPath);
 		Test.Assert(running > 0);
 		Test.Assert(ProjectBuild.FileTime(PathJoin(bed.Root, "running/none", .. scope .())) == 0);
@@ -114,7 +116,7 @@ class CodeWatchTests
 		Thread.Sleep(50);
 		let editor = ProjectBuild.ExecutablePath(bed.ProjectDir, "NativeGame", true, "Debug", .. scope .());
 		let relative = editor.Substring(bed.ProjectDir.Length + 1);
-		ProjectBuildTests.Bed.Write(bed.ProjectDir, relative, "#!editor\n");
+		ProjectBuildBed.Write(bed.ProjectDir, relative, "#!editor\n");
 		state = ProjectBuild.Staleness(bed.ProjectDir, bed.Settings, "Debug", running);
 		Test.Assert(!state.BuildStale && state.RunningStale, "the built editor is newer than this one");
 
@@ -129,7 +131,7 @@ class CodeWatchTests
 		Test.Assert(state.BuildStale && state.RunningStale, "a change after the running build");
 
 		Thread.Sleep(50);
-		ProjectBuildTests.Bed.Write(bed.ProjectDir, relative, "#!editor again\n");
+		ProjectBuildBed.Write(bed.ProjectDir, relative, "#!editor again\n");
 		state = ProjectBuild.Staleness(bed.ProjectDir, bed.Settings, "Debug", built);
 		Test.Assert(!state.BuildStale && state.RunningStale, "built again: this editor still runs the old code");
 	}

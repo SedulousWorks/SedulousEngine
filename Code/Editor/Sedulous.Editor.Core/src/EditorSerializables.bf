@@ -1,11 +1,13 @@
 using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.Projects;
 
 namespace Sedulous.Editor.Core;
 
-/// The one registration of every editor settings section type: the editor facing half's
-/// and the headless project half's, both generated from the declarations. A section type
+/// The one registration of every editor settings section type: the editor facing half's,
+/// the headless project half's and the project and build library's, each generated from the
+/// declarations. A section type
 /// lives where its domain lives, but they are all registered here, because a section a store
 /// cannot instantiate makes Load abort at that section and silently drop everything after it:
 /// the empty project list incident. Once at startup, before the settings load.
@@ -14,6 +16,7 @@ static class EditorSerializables
 	/// Into the global registry unless another is given.
 	public static void RegisterAll(SerializableRegistry registry = null)
 	{
+		EditorProjectsSerializables.RegisterAll(registry);
 		EditorProjectSerializables.RegisterAll(registry);
 		EditorCoreSerializables.RegisterAll(registry);
 		// Hand written (it reads the version before its chord was text), so the generated

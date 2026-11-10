@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Settings;
 using Sedulous.Engine.Project;
+using Sedulous.Editor.Projects;
 
 namespace Sedulous.Editor.Project;
 
@@ -58,7 +59,7 @@ class ProjectManagerController
 
 	/// Scaffolds a new project at `directory`; the caller opens on success. Later a template
 	/// selects the scaffold instead of the bare layout.
-	public Result<void, ErrorCode> Create(StringView directory, StringView name) => EditorProject.Create(directory, name);
+	public Result<void, ErrorCode> Create(StringView directory, StringView name) => ProjectScaffold.Create(directory, name);
 
 	/// The pre-upgrade manifest backup.
 	public Result<void, ErrorCode> BackupManifest(StringView directory, String outBackupPath)
