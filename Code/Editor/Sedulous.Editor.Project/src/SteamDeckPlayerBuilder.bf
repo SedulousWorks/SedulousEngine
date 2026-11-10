@@ -65,7 +65,7 @@ class SteamDeckPlayerBuilder : IPlayerBuilder
 		if (Target(preset, config, outRefusal) case .Err(let refused))
 			return .Err(refused);
 		let sdk = scope String();
-		if (!ProjectBuild.FindSdk(mDataRoot, sdk))
+		if (!ProjectBuild.FindSdk(mDataRoot, project.Directory, sdk))
 		{
 			outRefusal.Set(scope $"a Steam Deck build needs the engine SDK: set {ProjectBuild.cSdkVariable}, or run from an engine checkout");
 			return .Err(.NotSupported);

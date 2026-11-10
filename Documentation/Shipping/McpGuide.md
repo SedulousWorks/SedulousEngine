@@ -249,7 +249,7 @@ lacks, as the editor's Add Native Code does: the Engine part is `Code/<Game>`, a
 part depends on the game tiers' libraries, and its `Load` registers a starter behaviour, `Rotator`
 (`Code/<Game>/src/Rotator.bf`). It never
 overwrites code, and the editor's Project > Build Project builds it into the project's own editor
-(an export builds it into the game's player), finding the engine SDK through `SEDULOUS_SDK` or the checkout the editor runs from. A loaded plugin reports its
+(an export builds it into the game's player), finding the engine SDK through `SEDULOUS_SDK`, else the user's SDK registry (`sdks.xml`: the project's pinned SDK, else one of the version its manifest is stamped with), else the SDK or checkout the editor runs from, else a checkout the project sits in. A loaded plugin reports its
 `settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`
 takes its kind) changes them, checked in full first, then saved. An entry whose plugin is not
 loaded keeps its settings as written: no tool reads or changes them. A loaded plugin may serve

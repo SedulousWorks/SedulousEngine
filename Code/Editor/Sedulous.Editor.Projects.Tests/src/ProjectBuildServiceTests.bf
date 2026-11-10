@@ -344,14 +344,13 @@ class ProjectBuildServiceTests
 	public static void ABuildNeedsAnSdkAndAPackage()
 	{
 		let bed = scope ProjectBuildBed();
+		// The SDK found from the data root alone: SEDULOUS_SDK, the user's registry and the checkout
+		// the scratch folder sits in would each find one.
 		let service = scope ProjectBuildService(new (executable, arguments, onLine, cancelled) =>
 			{
 				Test.FatalError("nothing runs");
 				return .Ok(0);
-			}, cFakeBeefBuild);
-		// SEDULOUS_SDK set where the tests run would find that SDK: the refusal is checked without.
-		let variable = scope String();
-		if ((Environment.GetEnvironmentVariable(ProjectBuild.cSdkVariable, variable) case .Err) || !ProjectBuild.IsSdk(variable))
+			}, cFakeBeefBuild, default, new (dataRoot, projectDir, outSdk) => ProjectBuild.FindSdkFrom("", null, dataRoot, "", outSdk));
 		{
 			let settings = new ProjectSettings();
 			Test.Assert(ProjectManifest.Copy(bed.Settings, settings) case .Ok);

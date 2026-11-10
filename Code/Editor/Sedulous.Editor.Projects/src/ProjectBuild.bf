@@ -75,7 +75,7 @@ enum BuildEntry
 /// The workspace lists only the project's own projects. Everything else (the engine's libraries
 /// and their dependencies) Beef finds through its library registry: Code/BeefConfig.toml, written
 /// per machine, points it at the folders of the engine SDK. So a build needs an SDK: a source
-/// tree of the engine, found through SEDULOUS_SDK or as the checkout an editor runs from.
+/// tree of the engine, packed or a checkout, found by FindSdk.
 static class ProjectBuild
 {
 	/// Under Code/: the generated entries, and BeefBuild's output.
@@ -86,6 +86,9 @@ static class ProjectBuild
 	public const String cSpaceFile = "BeefSpace.toml";
 	/// The per-machine registry file that points Beef at the SDK.
 	public const String cConfigFile = "BeefConfig.toml";
+	/// Under .generated: the SDK the workspace was last generated over (SdkRecordText), which
+	/// IsStale compares with the SDK found now.
+	public const String cSdkRecordFile = "sdk.txt";
 	public const String cIgnoreFile = ".gitignore";
 	/// What builds and the Beef IDE write in Code/, so neither version control nor a player's
 	/// freshness counts it: BeefBuild's output, the generated entries and registry file, and the
@@ -241,29 +244,53 @@ static class ProjectBuild
 		return FileExists(PathJoin(root, scope $"{folder}/{name}/BeefProj.toml", .. scope .()));
 	}
 
-	/// The engine SDK a project's build compiles against, absolute: the one SEDULOUS_SDK names,
-	/// else the checkout an editor's data root is in (<sdk>/Data). False when neither is one.
-	public static bool FindSdk(StringView dataRoot, String outSdk)
+	/// The engine SDK the build of the project in `projectDir` compiles against, absolute, into
+	/// `outSdk` (FindSdkFrom over SEDULOUS_SDK and the user's SDK registry). False when none is
+	/// found.
+	public static bool FindSdk(StringView dataRoot, StringView projectDir, String outSdk)
 	{
 		let variable = scope String();
 		if (Environment.GetEnvironmentVariable(cSdkVariable, variable) case .Err)
 			variable.Clear();
-		return FindSdkFrom(variable, dataRoot, outSdk);
+		let registry = scope SdkRegistry(SdkRegistry.DefaultPath(.. scope .()));
+		return FindSdkFrom(variable, registry, dataRoot, projectDir, outSdk);
 	}
 
-	/// FindSdk over a given value of SEDULOUS_SDK (empty for unset): the variable when it names an
-	/// SDK, else the data root's parent when that is one.
-	public static bool FindSdkFrom(StringView variable, StringView dataRoot, String outSdk)
+	/// FindSdk over a given value of SEDULOUS_SDK (empty for unset) and `registry` (null: none),
+	/// asking in this order, the first that names an SDK winning:
+	/// 1. the variable;
+	/// 2. the registry (SdkRegistry.Pick): the project's pin, else the preferred SDK of the version
+	///    its manifest is stamped with;
+	/// 3. the parent of the data root an editor runs on, an editor launched from an SDK or a
+	///    checkout (<sdk>/Data);
+	/// 4. the folders above the project, a checkout the project sits in.
+	public static bool FindSdkFrom(StringView variable, SdkRegistry registry, StringView dataRoot, StringView projectDir, String outSdk)
 	{
 		outSdk.Clear();
 		if (SdkAt(variable, outSdk))
 			return true;
-		// The project manager's registry of installed SDKs is asked here, between the variable and
-		// the checkout, once there is one.
+		let project = Absolute(projectDir, .. scope .());
+		if ((registry != null) && !project.IsEmpty)
+		{
+			// A header that does not read leaves the stamp empty: only a pin can pick then.
+			let header = scope ProjectHeader();
+			ProjectHeader.Read(project, header).IgnoreError();
+			if (registry.Pick(project, header.EngineVersion, outSdk))
+				return true;
+		}
 		let data = Absolute(dataRoot, .. scope .());
-		if (data.IsEmpty)
-			return false;
-		return SdkAt(PathParent(data, .. scope .()), outSdk);
+		if (!data.IsEmpty && SdkAt(PathParent(data, .. scope .()), outSdk))
+			return true;
+		let above = scope String(project);
+		let parent = scope String();
+		while (!above.IsEmpty)
+		{
+			if (SdkAt(above, outSdk))
+				return true;
+			PathParent(above, parent);
+			above.Set(parent);
+		}
+		return false;
 	}
 
 	/// `candidate` made absolute into `outSdk` when it is an SDK.
@@ -278,7 +305,7 @@ static class ProjectBuild
 
 	/// `path` less its trailing slashes, against the current directory when relative; empty stays
 	/// empty.
-	private static void Absolute(StringView path, String outPath)
+	internal static void Absolute(StringView path, String outPath)
 	{
 		var trimmed = path;
 		trimmed.Trim();
@@ -500,7 +527,8 @@ static class ProjectBuild
 	/// Writes what a build of the project needs in Code/: BeefConfig.toml (the registry pointed
 	/// at `sdk`), BeefSpace.toml (merged, WorkspaceText), a .gitignore when there is none, and
 	/// every entry (BuildEntry) under .generated, with the web player's own workspace
-	/// (.generated/Web: WebWorkspaceText and its registry file). A file whose content is unchanged
+	/// (.generated/Web: WebWorkspaceText and its registry file) and the record of the SDK
+	/// (.generated/sdk.txt, SdkRecordText, which IsStale reads). A file whose content is unchanged
 	/// is left alone, so a build after a generate that changed nothing rebuilds nothing. A project
 	/// with no package of its own gets the same Code/, its entries linking no part: its player is
 	/// the stock one under the game's name, with the engine plugins it enables. Refused, with why
@@ -558,7 +586,8 @@ static class ProjectBuild
 			|| (WriteEntry(generated, game, .Player, packages, hostPlugins, "") case .Err)
 			|| (WriteEntry(generated, game, .PlayerWeb, packages, webPlugins, webConfigs) case .Err)
 			|| (WriteEntry(generated, game, .Tools, packages, none, toolsConfigs) case .Err)
-			|| (WriteWebWorkspace(projectDir, game, packages, written) case .Err))
+			|| (WriteWebWorkspace(projectDir, game, packages, written) case .Err)
+			|| (WriteIfChanged(PathJoin(generated, cSdkRecordFile, .. scope .()), SdkRecordText(sdk, .. scope .())) case .Err))
 		{
 			outError.Set(scope $"could not write the project's workspace in '{workspace}'");
 			return .Err(.Internal);
@@ -1318,7 +1347,7 @@ static class ProjectBuild
 	/// Whether the project's editor for `config` is missing or older than a file of the project's
 	/// packages: a change to the game's code the editor running it has not been built with.
 	/// In the game's package (Code/) what builds write is not counted, or the editor would never be
-	/// fresh.
+	/// fresh. The SDK is not looked at: the overload taking one is.
 	public static bool IsStale(StringView projectDir, ProjectSettings settings, StringView config)
 	{
 		let game = GameName(settings.Name, .. scope .());
@@ -1326,6 +1355,31 @@ static class ProjectBuild
 		if (!FileStat(editor, let size, let built))
 			return true;
 		return NewestSource(projectDir, settings) > built;
+	}
+
+	/// IsStale for the project's own build against the SDK at `sdk`, the one it would build over now
+	/// (FindSdk): also stale when its workspace was last generated over another SDK, or another
+	/// version of it (its record, cSdkRecordFile, differs or is missing), and always over a
+	/// checkout, whose sources change on every pull where NewestSource cannot see them. A build then
+	/// runs BeefBuild, which rebuilds only what changed.
+	public static bool IsStale(StringView projectDir, ProjectSettings settings, StringView config, StringView sdk)
+	{
+		if (IsStale(projectDir, settings, config) || SdkInfo.IsCheckoutAt(sdk))
+			return true;
+		let record = PathJoin(PathJoin(Directory(projectDir, .. scope .()), cGeneratedDir, .. scope .()), cSdkRecordFile, .. scope .());
+		let recorded = scope String();
+		if (ReadText(record, recorded) case .Err)
+			return true;
+		return recorded != SdkRecordText(sdk, .. scope .());
+	}
+
+	/// What Generate records of the SDK at `sdk`: its root, absolute, and its display version
+	/// (SdkInfo; empty when it does not read), a line each.
+	public static void SdkRecordText(StringView sdk, String outText)
+	{
+		let info = scope SdkInfo();
+		SdkInfo.Read(sdk, info).IgnoreError();
+		outText.AppendF("{}\n{}\n", Absolute(sdk, .. scope .()), info.Display);
 	}
 
 	/// The newest modification time (FileStat's ticks) of a file of the project's packages, nought
@@ -1480,7 +1534,8 @@ static class ProjectBuild
 		return .Ok;
 	}
 
-	private static bool MakeDirectories(StringView dir)
+	/// Makes `dir` and the folders above it that are missing; false when one cannot be made.
+	internal static bool MakeDirectories(StringView dir)
 	{
 		if (dir.IsEmpty || DirectoryExists(dir))
 			return true;

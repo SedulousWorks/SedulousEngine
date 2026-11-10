@@ -527,7 +527,7 @@ static class ExportDriver
 		// The project's plugins: each found in the project's package or the SDK's, and supported
 		// where it is enabled. An SDK not found leaves the engine's plugins in no package.
 		let sdk = scope String();
-		ProjectBuild.FindSdk(dataRoot, sdk);
+		ProjectBuild.FindSdk(dataRoot, project.Directory, sdk);
 		let enabled = scope List<String>();
 		defer { ClearAndDeleteItems!(enabled); }
 		if (!ExportPlugins.Check(project, sdk, preset.Platform, enabled, result.Refusal))

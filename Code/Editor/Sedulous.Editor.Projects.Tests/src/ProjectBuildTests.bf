@@ -45,13 +45,13 @@ class ProjectBuildTests
 		let bed = scope Bed();
 		let dataRoot = PathJoin(bed.Sdk, "Data", .. scope .());
 		let found = scope String();
-		Test.Assert(ProjectBuild.FindSdkFrom("", dataRoot, found) && (found == bed.Sdk), found);
-		Test.Assert(ProjectBuild.FindSdkFrom("", scope $"{dataRoot}/", found) && (found == bed.Sdk), "a trailing slash too");
-		Test.Assert(ProjectBuild.FindSdkFrom(bed.OtherSdk, dataRoot, found) && (found == bed.OtherSdk), "the variable wins");
-		Test.Assert(ProjectBuild.FindSdkFrom(scope $"{bed.OtherSdk}/", "", found) && (found == bed.OtherSdk), "with no data root");
-		Test.Assert(ProjectBuild.FindSdkFrom(bed.ProjectDir, dataRoot, found) && (found == bed.Sdk), "a variable naming no SDK falls back");
-		Test.Assert(!ProjectBuild.FindSdkFrom("", PathJoin(bed.ProjectDir, "Data", .. scope .()), found) && found.IsEmpty);
-		Test.Assert(!ProjectBuild.FindSdkFrom("", "", found));
+		Test.Assert(ProjectBuild.FindSdkFrom("", null, dataRoot, "", found) && (found == bed.Sdk), found);
+		Test.Assert(ProjectBuild.FindSdkFrom("", null, scope $"{dataRoot}/", "", found) && (found == bed.Sdk), "a trailing slash too");
+		Test.Assert(ProjectBuild.FindSdkFrom(bed.OtherSdk, null, dataRoot, "", found) && (found == bed.OtherSdk), "the variable wins");
+		Test.Assert(ProjectBuild.FindSdkFrom(scope $"{bed.OtherSdk}/", null, "", "", found) && (found == bed.OtherSdk), "with no data root");
+		Test.Assert(ProjectBuild.FindSdkFrom(bed.ProjectDir, null, dataRoot, "", found) && (found == bed.Sdk), "a variable naming no SDK falls back");
+		Test.Assert(!ProjectBuild.FindSdkFrom("", null, PathJoin(bed.ProjectDir, "Data", .. scope .()), "", found) && found.IsEmpty);
+		Test.Assert(!ProjectBuild.FindSdkFrom("", null, "", "", found));
 		Test.Assert(ProjectBuild.IsSdk(bed.Sdk) && !ProjectBuild.IsSdk(bed.ProjectDir));
 		// Every startup library an entry calls is part of an SDK: one without the tools' is not.
 		DeleteFile(PathJoin(bed.OtherSdk, "Code/Editor/Sedulous.Editor.CookMain/BeefProj.toml", .. scope .()));
