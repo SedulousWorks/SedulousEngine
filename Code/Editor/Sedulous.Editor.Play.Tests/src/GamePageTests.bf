@@ -345,6 +345,37 @@ class GamePageTests
 		Test.Assert(factory.Deleted == 2);
 	}
 
+	/// What a relaunch reads of the tab and does to it: it runs while a Play waits on the cook and
+	/// while a run goes, not once stopped; set running again, it plays from its start, a fresh game.
+	[Test]
+	public static void ARelaunchReadsWhetherTheTabRunsAndPlaysItAgainFromItsStart()
+	{
+		let factory = scope PieProbeFactory();
+		let bed = scope Bed(true);
+		bed.TabRun.Register<IGameFactory>(factory);
+		bed.AddDefaultScene("Level", false);
+		Test.Assert(!bed.Page.RelaunchRuns);
+
+		bool busy = true;
+		bed.Context.CookBusy = new [&busy] () => busy;
+		bed.Page.RunAgain();
+		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(bed.Page.IsStarting && bed.Page.RelaunchRuns, "a Play waiting on the cook");
+		busy = false;
+		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(bed.Page.IsRunning && bed.Page.RelaunchRuns);
+		Test.Assert(factory.Made == 1);
+
+		bed.Page.Stop();
+		Test.Assert(!bed.Page.RelaunchRuns);
+		bed.Page.RunAgain();
+		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(bed.Page.IsRunning);
+		Test.Assert(factory.Made == 2, "from its start: a fresh game");
+		bed.Page.Stop();
+		DeleteAndNullify!(bed.Context.CookBusy); // it reads a local of this test
+	}
+
 	/// A default scene that does not load abandons the play: the native game it launched first
 	/// ends, its exit run, and no session starts.
 	[Test]

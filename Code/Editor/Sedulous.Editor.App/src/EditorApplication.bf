@@ -154,6 +154,12 @@ class EditorApplication : IApplication
 	private EditorMcpService mMcp = null ~ delete _;
 	/// The open project: after the parts its hooks reach, so it closes first.
 	private EditorSession mSession ~ delete _;
+	/// Project > Build and Relaunch: its build waited on, then the relaunch. Made with the
+	/// application; after the session its seams reach, so it goes first.
+	private BuildAndRelaunch mBuildAndRelaunch ~ delete _;
+	/// When this application was made (DateTime ticks, UTC): a relaunch's start is timed to it and
+	/// its restore from it.
+	private int64 mCreatedTicks = DateTime.UtcNow.Ticks;
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
 	private EditorWindowCapture mWindowCapture = new .() ~ delete _;
@@ -195,6 +201,7 @@ class EditorApplication : IApplication
 		}
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
+		mBuildAndRelaunch = new BuildAndRelaunch(RelaunchServices());
 	}
 
 	public EditorContext Context => mContext;
@@ -336,6 +343,9 @@ class EditorApplication : IApplication
 					};
 				if ((store == null) || !mPages.Restore(store, progress))
 					OpenDefaultScene(project);
+				// After a relaunch: the pages kept aside, the Game tabs and the active page, before
+				// the panels nothing provides are let go (a Game tab is provided again here).
+				RestoreRelaunch();
 				// What the layout names and nothing reopened (a Game tab, a page whose asset is
 				// gone) goes, rather than staying a placeholder.
 				ProjectEditorSettings.ForgetUnprovidedPanels(mDock.Controller);
@@ -948,13 +958,61 @@ class EditorApplication : IApplication
 		seams.UnsavedWork = new (outLines) => { mPages.UnsavedWork(outLines); };
 		seams.McpPort = new () => (mMcp != null) ? mMcp.Port : 0;
 		seams.Launch = new (executable, arguments) => Sedulous.Core.Process.Start(executable, arguments);
-		// The agent chose to drop what is unsaved, or nothing is: no prompt.
+		seams.Context = mContext;
+		seams.ManagerPath.Set(mConfig.ManagerPath);
+		seams.NeedsBuild = new (project) => EditorRelaunch.NeedsBuildOverSdk(project, mConfig.DataRoot);
+		seams.KeepAside = new (folder, state, outRefused) => mPages.KeepAside(folder, state, outRefused);
+		seams.AskUnsaved = new (proceed) => { mPages.ConfirmUnsavedThen("Save All and Relaunch", "Relaunch Without Saving", proceed); };
+		seams.SaveState = new (state) =>
+			{
+				mPages.CaptureRelaunch(state); // each page's view, the Game tabs, the active page
+				mSession.SaveStore(); // the open pages and the dock, written for the next editor
+			};
+		// The relaunch kept or dropped what is unsaved, or nothing is: no prompt. The store stays as
+		// the relaunch wrote it while this editor closes.
 		seams.Exit = new () =>
 			{
+				mSession.FreezeStore();
 				if (mHost != null)
 					mHost.RequestExit();
 			};
 		return seams;
+	}
+
+	/// The seams Build and Relaunch works through: the build tools', the next editor serving MCP
+	/// as Open With This Build passes it on (on this host's port while it listens, else as the
+	/// command line asked).
+	private BuildToolSeams RelaunchServices()
+	{
+		let seams = BuildToolServices();
+		seams.McpServes = new () => ((mMcp != null) && mMcp.IsRunning) || mConfig.McpEnabled;
+		delete seams.McpPort;
+		seams.McpPort = new () => ((mMcp != null) && mMcp.IsRunning) ? mMcp.Port : (uint16)mConfig.McpPort;
+		return seams;
+	}
+
+	/// What the editor this one replaced kept (--relaunch): the pages kept aside given their content
+	/// back unsaved, the Game tabs opened and played again, the active page brought forward, and the
+	/// relaunch's phases logged. The folder goes once everything came back; a page that did not
+	/// leaves it, said. Once: the next project open restores nothing.
+	private void RestoreRelaunch()
+	{
+		if (mConfig.RelaunchFolder.IsEmpty)
+			return;
+		let folder = scope String(mConfig.RelaunchFolder);
+		mConfig.RelaunchFolder.Clear();
+		let state = RelaunchState.Load(folder);
+		if (state == null)
+		{
+			GlobalLog(.Warning, "Editor: --relaunch named '{}', which holds no relaunch state: nothing restored beyond the project's pages", folder);
+			return;
+		}
+		defer delete state;
+		if (mPages.RestoreRelaunch(folder, state))
+			RemoveDirectoryRecursive(folder);
+		let timings = state.DescribeTimings(mCreatedTicks, DateTime.UtcNow.Ticks, .. scope .());
+		GlobalLog(.Information, "Editor: relaunched ({} page(s) kept aside, {} Game tab(s)): {}", state.Kept.Count, state.Games.Count, timings);
+		mContext.SetStatus(scope $"Relaunched: {timings}");
 	}
 
 	/// The watch over the open project's own code, swept every CodeWatch.cPollSeconds on this
@@ -1345,6 +1403,7 @@ class EditorApplication : IApplication
 		project.AddNativeCode = new () => { AddNativeCode(); };
 		project.BuildProject = new () => { BuildProject(); };
 		project.OpenWithThisBuild = new () => { OpenWithThisBuild(); };
+		project.BuildAndRelaunch = new () => { mBuildAndRelaunch.Run(); };
 		EditorAppActions.RegisterProjectActions(actions, project);
 
 		// One page's asset: its changes saved first, so what cooks is what it shows.
@@ -1444,6 +1503,7 @@ class EditorApplication : IApplication
 			if (mExport != null)
 				mExport.Pump();
 			WatchCode();
+			mBuildAndRelaunch.Update(); // a Build and Relaunch whose build ended goes on
 		}
 		// The editor's long work: the import previews' reads, done off this thread; their completions
 		// run here, their lines go to the status bar.

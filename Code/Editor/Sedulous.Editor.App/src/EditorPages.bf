@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Resource;
@@ -198,21 +199,22 @@ class EditorPages
 	}
 
 	/// The Game tab (`newInstance`: another one beside it, with a game instance of its own),
-	/// made through the context's GamePageFactory, the seam the play library registers.
-	public void OpenGame(bool newInstance)
+	/// made through the context's GamePageFactory, the seam the play library registers. The tab;
+	/// null when none could be made.
+	public UIEditorPage OpenGame(bool newInstance)
 	{
 		let context = mServices.Context;
 		if (!newInstance && (mGamePage != null))
 		{
 			Reveal(mGamePage);
-			return;
+			return mGamePage;
 		}
 		if (context.GamePageFactory == null)
 		{
 			context.Notify(.Info, "No game page registered in this build.");
-			return;
+			return null;
 		}
-		let id = new String("game-page");
+		let id = new String(RelaunchState.cPrimaryGame);
 		if (newInstance)
 			id.AppendF("-{}", mGamePages + 1);
 		let made = context.GamePageFactory(newInstance, id);
@@ -221,7 +223,7 @@ class EditorPages
 		{
 			delete made; // none, or one with nowhere to show
 			delete id;
-			return;
+			return null;
 		}
 		context.AdoptPage(page);
 		if (newInstance)
@@ -229,6 +231,7 @@ class EditorPages
 		else
 			mGamePage = page;
 		Dock(page, id);
+		return page;
 	}
 
 	/// Closes a page as its tab does: one with unsaved changes asks first.
@@ -473,6 +476,118 @@ class EditorPages
 		if (toActivate != null)
 			Reveal(toActivate);
 		return true;
+	}
+
+	// ---- a relaunch -------------------------------------------------------------------------
+
+	/// Each page with unsaved changes kept aside in `folder` (RelaunchState.KeptFile: its content
+	/// as EditorPage.KeepAside writes it, never over its asset) and named in `state`. False when
+	/// one could not be, each such named in `outRefused` (the caller's, and so are the lines):
+	/// a page that cannot keep its content, one with no asset, or one holding unsaved work besides
+	/// it (a clip its panel edits). The files written stay; the caller removes the folder.
+	public bool KeepAside(StringView folder, RelaunchState state, List<String> outRefused)
+	{
+		let bytes = scope List<uint8>();
+		let path = scope String();
+		for (let open in mOpen)
+		{
+			let page = open.Page;
+			if (page.HasUnsavedBesides)
+			{
+				let besides = scope List<String>();
+				defer { ClearAndDeleteItems!(besides); }
+				page.ListUnsavedBesides(besides);
+				for (let work in besides)
+					outRefused.Add(new String()..AppendF("{}, in {}", work, page.Title));
+			}
+			if (!page.IsDirty)
+				continue;
+			bytes.Clear();
+			if (!page.InstanceId.IsSet || page.IsAssetDeleted || (page.KeepAside(bytes) case .Err))
+			{
+				outRefused.Add(new String(page.Title));
+				continue;
+			}
+			path.Clear();
+			RelaunchState.KeptFile(folder, page.InstanceId, path);
+			if (WriteFile(path, bytes) case .Err)
+			{
+				outRefused.Add(new String(page.Title));
+				continue;
+			}
+			let kept = new RelaunchState.KeptPage();
+			kept.Id = page.InstanceId;
+			kept.Title.Set(page.Title);
+			state.Kept.Add(kept);
+		}
+		return outRefused.IsEmpty;
+	}
+
+	/// What the next editor takes from the pages beside the store: each page's view written into
+	/// the project's editor settings now (EditorPage.CaptureViewState), the Game tabs in order
+	/// and whether each ran (IRelaunchRun), and the active page's panel, into `state`.
+	public void CaptureRelaunch(RelaunchState state)
+	{
+		for (let open in mOpen)
+		{
+			open.Page.CaptureViewState();
+			if (let run = open.Page as IRelaunchRun)
+			{
+				let game = new RelaunchState.GameTab();
+				game.PieId.Set(open.Panel);
+				game.Playing = run.RelaunchRuns;
+				state.Games.Add(game);
+			}
+			if (mServices.Context.ActivePage === open.Page)
+				state.ActivePanel.Set(open.Panel);
+		}
+	}
+
+	/// What a relaunch kept, back over the pages the store reopened (Restore): each page kept
+	/// aside opened (if it was not) and given its content back unsaved (EditorPage.TakeBack), the
+	/// Game tabs opened again, a tab that ran set running from its start, and the active page
+	/// brought forward. True when every kept page came back; one that did not shows its asset as
+	/// saved, said, its kept file left in `folder`.
+	public bool RestoreRelaunch(StringView folder, RelaunchState state)
+	{
+		bool all = true;
+		let bytes = scope List<uint8>();
+		let path = scope String();
+		UIEditorPage toActivate = null;
+		for (let kept in state.Kept)
+		{
+			let page = Open(kept.Id);
+			bytes.Clear();
+			path.Clear();
+			RelaunchState.KeptFile(folder, kept.Id, path);
+			if ((page == null) || (ReadFile(path, bytes) case .Err) || (page.TakeBack(bytes) case .Err))
+			{
+				all = false;
+				GlobalLog(.Warning, "Editor: the unsaved '{}' kept for the relaunch did not come back; its copy is at {}", kept.Title, path);
+				mServices.Context.Notify(.Warning, scope $"The unsaved '{kept.Title}' did not come back: it shows as saved, and its kept copy is at {path}.");
+			}
+		}
+		for (let game in state.Games)
+		{
+			let page = OpenGame(game.PieId != RelaunchState.cPrimaryGame);
+			if (page == null)
+				continue;
+			if (game.Playing)
+			{
+				if (let run = page as IRelaunchRun)
+					run.RunAgain();
+			}
+			if (game.PieId == state.ActivePanel)
+				toActivate = page;
+		}
+		for (let open in mOpen)
+		{
+			if ((toActivate == null) && (open.Panel == state.ActivePanel))
+				toActivate = open.Page;
+		}
+		if (toActivate != null)
+			Reveal(toActivate);
+		return all;
 	}
 
 	/// Brings a page's tab to front (a background tab's viewport never renders) and makes it the

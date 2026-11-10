@@ -69,6 +69,25 @@ class PagesTestPage : UIEditorPage
 	/// Work it holds besides its asset (a scene page's clip); empty: none.
 	public String Besides = new .() ~ delete _;
 	public int BesidesSaves = 0;
+	/// What it shows: what it keeps aside for a relaunch and takes back.
+	public String Text = new .() ~ delete _;
+	/// It cannot keep its content aside, as a page of a kind that has no KeepAside.
+	public bool CannotKeep = false;
+
+	public override Result<void, ErrorCode> KeepAside(List<uint8> outBytes)
+	{
+		if (CannotKeep)
+			return .Err(.NotSupported);
+		outBytes.AddRange(Span<uint8>((uint8*)Text.Ptr, Text.Length));
+		return .Ok;
+	}
+
+	public override Result<void, ErrorCode> TakeBack(Span<uint8> bytes)
+	{
+		Text.Set(StringView((char8*)bytes.Ptr, bytes.Length));
+		MarkDirty();
+		return .Ok;
+	}
 
 	public override void ListUnsavedBesides(List<String> outNames)
 	{
@@ -135,6 +154,25 @@ class PagesTestPage : UIEditorPage
 	{
 		if (mCounts != null)
 			mCounts.Overlays++;
+	}
+}
+
+/// A Game tab as a relaunch sees it: whether it runs, and how often it was set running again.
+class PagesTestGamePage : PagesTestPage, IRelaunchRun
+{
+	public bool Running = false;
+	public int RunsAgain = 0;
+
+	public this() : base("Game", null)
+	{
+	}
+
+	public bool RelaunchRuns => Running;
+
+	public void RunAgain()
+	{
+		RunsAgain++;
+		Running = true;
 	}
 }
 

@@ -13,6 +13,13 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   away from its natural orientation), so the display has nothing to turn (pre-rotation); its scene,
   its screens and a screenshot follow the turn, and the pointer is unchanged. A window asks for it
   (`RenderWindowDesc.PreRotate`); the samples and the editor do not.
+- Editor: Project > Build and Relaunch (Ctrl+Shift+B) builds the project's own editor when the
+  game's code changed and reopens the project in it as you left it: the open pages and the active
+  one, each scene's camera, selection and panes, and the Game tab, playing again from the start if
+  it was playing. Unsaved pages are asked about first; a build that fails says why and nothing
+  changes. The log gives how long each part took. For agents, `editor_relaunch` takes `build: true`
+  to do the same, and keeps unsaved pages aside (never over the documents) to reopen them unsaved
+  in the next editor rather than refusing.
 - Animation: `PlayOneShot(entity, clip, settings)` on the skeletal animation and animation graph
   managers plays a clip once over whatever an entity is animating (its clip or its graph),
   blending in and out, after which it carries on with its own animation; `StopOneShot` and

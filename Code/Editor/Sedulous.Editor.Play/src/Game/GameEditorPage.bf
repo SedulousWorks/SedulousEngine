@@ -43,7 +43,7 @@ class GameEditorPageServices
 ///
 /// The context, host and embedded application are borrowed. The game instance is borrowed from
 /// the application and released back to it on close.
-class GameEditorPage : UIEditorPage, IPieInstancePage
+class GameEditorPage : UIEditorPage, IPieInstancePage, IRelaunchRun
 {
 	/// The per view settings the Game tab draws its game with: the project's scene pass MSAA,
 	/// as the player sets it for every view (the editor's render subsystem serves every page, so
@@ -228,6 +228,13 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mContext.SetStatus("Game: waiting for cook...");
 		RefreshToolbar();
 	}
+
+	/// A run going, or a Play waiting on the cook: what a relaunch plays again.
+	public bool RelaunchRuns => mRunning || mPendingPlay;
+
+	/// Plays again from the start, as Play does (a relaunch: the run before it ended with its
+	/// editor).
+	public void RunAgain() => Play();
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{

@@ -41,6 +41,7 @@ static class EditorMain
 		  [--seed] [--seed-primitives] [--version]
 		  [--restamp] (the project's manifest saved once as it opens, stamping it with this engine)
 		  [--manager <path>] (the project manager that launched it, which Close Project starts again)
+		  [--relaunch <folder>] (the state an editor it replaces kept: Build and Relaunch passes it)
 		  GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation]
 		  (validation defaults on for a dev build, off for an optimized one).
 		An editor opens one project. Projects are listed, made and opened by the project manager

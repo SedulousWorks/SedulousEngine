@@ -47,6 +47,9 @@ class ProjectActions
 	public delegate void() BuildProject ~ delete _;
 	/// Opens the project in its own build's editor, and this editor exits. Owned.
 	public delegate void() OpenWithThisBuild ~ delete _;
+	/// Builds the project's own editor when it needs it, then relaunches into it keeping what this
+	/// editor shows. Owned.
+	public delegate void() BuildAndRelaunch ~ delete _;
 }
 
 /// What Game's actions run; they need a project open in Context. Owned hooks, as FileActions'.
@@ -209,6 +212,13 @@ static class EditorAppActions
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.addNativeCode", "Add Native Code...", "Scaffold the game's native code, a plugin package under Plugins/", "Project/Add Native Code...", 200)), ref run.AddNativeCode);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.build", "Build Project", "Build the project's own editor, its packages linked in (an export builds the player it ships). It starts the build and returns; the build takes minutes and logs 'Build Project: built' when it finishes. Open With This Build then runs it", "Project/Build Project", 201)), ref run.BuildProject);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.openWithBuild", "Open With This Build", "Open the project in its own build's editor, closing this one", "Project/Open With This Build", 202)), ref run.OpenWithThisBuild);
+		{
+			let d = NeedsProject(context, new EditorActionDeclaration("project.buildAndRelaunch", "Build and Relaunch",
+				"Build the project's own editor when the game's code changed, then reopen the project in it keeping the open pages, each scene's view, the unsaved pages (asked about first) and the Game tab, playing again if it was. A failed build says why and changes nothing",
+				"Project/Build and Relaunch", 203));
+			d.Shortcut = EditorShortcut.Of("ctrl-shift-b");
+			Add(actions, d, ref run.BuildAndRelaunch);
+		}
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.export", "Export...", "Open the export presets panel", "Project/Export...", 300)), ref run.ExportPresets);
 		{
 			// What is resident, from the log: counts by product type, unreferenced being the

@@ -11,14 +11,19 @@ using Sedulous.Editor.Mcp;
 
 namespace Sedulous.Editor.App;
 
-/// What the build tools work through: the editor's build service and the application's paths
-/// to start a build, to see what is unsaved, to start another editor and to exit this one.
+/// What the build tools and a relaunch work through: the editor's build service and the
+/// application's paths to start a build, to see what is unsaved and keep it aside or ask about
+/// it, to save what the next editor restores, to start another editor and to exit this one.
 class BuildToolSeams
 {
 	/// BORROWED: the editor's build service, whose latest job the tools read.
 	public ProjectBuildService Service = null;
+	/// BORROWED: where a person hears how a relaunch went; null says nothing.
+	public EditorContext Context = null;
 	/// The engine data root this editor runs from, which the relaunched editor is given.
 	public String DataRoot = new .() ~ delete _;
+	/// The project manager that launched this editor (--manager), passed on; empty for none.
+	public String ManagerPath = new .() ~ delete _;
 	/// Starts a build of the open project on the build lane (EditorBuildTools.StartBuild), a
 	/// player in the build config `config` for `platform` (both unused for the editor): the job
 	/// with a reference for the caller, or null with why in `outError`. Owned.
@@ -29,9 +34,25 @@ class BuildToolSeams
 	public delegate void(List<String> outLines) UnsavedWork ~ delete _;
 	/// The port this editor's MCP host listens on, which the relaunched editor serves. Owned.
 	public delegate uint16() McpPort ~ delete _;
+	/// Whether the relaunched editor serves MCP; unset: it does. Owned.
+	public delegate bool() McpServes ~ delete _;
+	/// Whether the project's own editor must be built before a relaunch; unset: missing or older
+	/// than the game's code (EditorRelaunch.NeedsBuild). Owned.
+	public delegate bool(EditorProject project) NeedsBuild ~ delete _;
+	/// Keeps each unsaved page aside in `folder` (its content a file there, never over its asset)
+	/// and names it in `state`: false, with what could not be kept a line each in `outRefused`
+	/// (the caller's), when any could not. Unset: none can. Owned.
+	public delegate bool(StringView folder, RelaunchState state, List<String> outRefused) KeepAside ~ delete _;
+	/// Asks a person about the unsaved pages, as an exit does, and runs `proceed` (which it takes)
+	/// once they go on. Unset: a relaunch that would ask is refused. Owned.
+	public delegate void(delegate void() proceed) AskUnsaved ~ delete _;
+	/// Saves what the next editor reads: each page's view and the per-project store (the open
+	/// pages, the dock), and into `state` the Game tabs and the active page. Unset: nothing. Owned.
+	public delegate void(RelaunchState state) SaveState ~ delete _;
 	/// Starts an executable without waiting; false when it could not be started. Owned.
 	public delegate bool(StringView executable, Span<StringView> arguments) Launch ~ delete _;
-	/// Exits this editor without asking about unsaved work. Owned.
+	/// Exits this editor without asking about unsaved work, leaving the per-project store as the
+	/// relaunch wrote it. Owned.
 	public delegate void() Exit ~ delete _;
 }
 
@@ -40,8 +61,8 @@ class BuildToolSeams
 /// editor's build service (the same path as Build Project, or a player as an export builds it)
 /// and, waiting, answers once it ends with what BeefBuild said as diagnostics; build_status
 /// reads the latest build while it runs or after; build_cancel stops it; editor_relaunch opens
-/// the project in its own built editor on this host's port and quits this one, as Open With This
-/// Build does.
+/// the project in its own built editor on this host's port and quits this one, keeping what this
+/// one shows (EditorRelaunch), the build first when asked for.
 ///
 /// A waiting project_build keeps its call open by answering NotFinished: the host re-enters it
 /// each frame on the main thread, so the editor draws and answers other calls while BeefBuild
@@ -260,11 +281,13 @@ static class EditorBuildTools
 			});
 
 		let relaunchSchema = scope SchemaBuilder();
-		relaunchSchema.Boolean("discardUnsaved", "exit even when pages have unsaved changes, dropping them (default false: refused, naming them)");
+		relaunchSchema.Boolean("build", "build the project's own editor first when it needs it (missing, older than the game's code, or its SDK moved), waiting for the build; a failed build answers with its diagnostics and relaunches nothing (default false: an editor not built or older than the code is refused)");
+		relaunchSchema.Boolean("discardUnsaved", "drop the unsaved pages instead of keeping them aside (default false: each is kept aside and reopens unsaved in the next editor)");
+		relaunchSchema.Number("timeoutSeconds", "with build, how long to wait for it (default 900, at most 3600); past it the call answers timedOut, the build goes on and nothing relaunches");
 		server.RegisterTool("editor_relaunch",
-			"Open the project in its own built editor (Project > Open With This Build) and quit this one: the editor that runs the game's code. REFUSED for a project with no package of its own, while a build runs, when the project's editor is not built or is older than the game's code (project_build first), and while pages have unsaved changes (they are named; save each with page_open then action_execute file.save, or pass discardUnsaved). The new editor serves MCP on this host's port with the same token; it takes a few seconds to listen. Reconnect then, and host_info: a new pid and buildStamp, `host.buildStale` and `host.runningStale` false. Returns {relaunched, executable, port}.",
+			"Open the project in its own built editor and quit this one, keeping what it shows: the open pages and the active one, each scene's camera, selection and panes, the Game tabs (a tab that was playing plays again from its start), and the unsaved pages, kept aside under the project's Editor/relaunch (never written over their assets) and reopened unsaved. With build: true it builds the editor first when it needs it (Build and Relaunch). REFUSED for a project with no package of its own, while a build runs, when the project's editor is not built or is older than the game's code and build is not passed, and when an unsaved page cannot be kept aside (they are named: save each with page_open then action_execute file.save, or pass discardUnsaved). The new editor serves MCP on this host's port with the same token; it takes a few seconds to listen. Reconnect then, and host_info: a new pid and buildStamp, `host.buildStale` and `host.runningStale` false. Returns {relaunched, executable, port, keptAside, discardedUnsaved, buildMs, saveMs, build (the build's answer, as project_build gives it, when one ran)}; a failed or timed-out build returns {relaunched: false, build, timedOut}. The next editor logs the relaunch's phases (build, save, start, restore) in milliseconds.",
 			relaunchSchema.Build(), .(false, true, false, false),
-			new (arguments, outResult, outError) => Relaunch(seams, arguments, outResult, outError));
+			new (call, arguments, outResult, outError) => Relaunch(seams, call, arguments, outResult, outError));
 	}
 
 	private static ToolOutcome Build(BuildToolSeams seams, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
@@ -347,74 +370,58 @@ static class EditorBuildTools
 		return true;
 	}
 
-	private static bool Relaunch(BuildToolSeams seams, JsonValue arguments, JsonValue outResult, String outError)
+	/// editor_relaunch: the build first when asked for and needed (waited for as project_build
+	/// waits), then EditorRelaunch.Relaunch, unsaved pages kept aside unless discardUnsaved.
+	private static ToolOutcome Relaunch(BuildToolSeams seams, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		let project = (seams.Project != null) ? seams.Project() : null;
-		if (project == null)
+		var wait = call.State as BuildWait;
+		if (wait == null)
 		{
-			outError.Append(McpTools.cNoProject);
-			return false;
+			let project = (seams.Project != null) ? seams.Project() : null;
+			if (!EditorRelaunch.CanRelaunch(seams, project, outError))
+				return .Failed;
+			if (!McpTools.ArgBool(arguments, "build") || !EditorRelaunch.NeedsBuild(seams, project))
+				return Relaunched(seams, arguments, -1, outResult, outError);
+			let job = seams.Start(.Editor, "", "", outError);
+			if (job == null)
+				return .Failed;
+			wait = new BuildWait();
+			wait.Job = job; // the reference Start gave
+			wait.TimeoutSeconds = Math.Clamp(McpTools.ArgNumber(arguments, "timeoutSeconds", cDefaultTimeoutSeconds), 1.0, cMaxTimeoutSeconds);
+			call.State = wait;
+			return .NotFinished;
 		}
-		if (!ProjectBuild.HasPackages(project.Settings))
+		let ended = wait.Job.IsEnded;
+		let waited = (double)(System.Diagnostics.Stopwatch.GetTimestamp() - wait.StartedMicros) / 1000000.0;
+		if (!ended && (waited < wait.TimeoutSeconds))
+			return .NotFinished;
+		let build = JsonValue.MakeObject();
+		BuildJobJson.Write(wait.Job, build);
+		outResult.Set("build", build);
+		if (!ended || (wait.Job.State != .Succeeded))
 		{
-			outError.Append("the project has no package of its own, so the stock editor runs it and there is no editor of its own to open (Add Native Code makes one)");
-			return false;
+			outResult.Set("relaunched", JsonValue.MakeBool(false));
+			if (!ended)
+			{
+				outResult.Set("timedOut", JsonValue.MakeBool(true));
+				outResult.Set("note", JsonValue.MakeString("the build goes on and nothing relaunched: build_status follows it; editor_relaunch once it succeeded"));
+			}
+			else
+				outResult.Set("note", JsonValue.MakeString(EditorRelaunch.DescribeFailure(wait.Job, .. scope .())));
+			return .Answered;
 		}
-		if (Running(seams.Service, outError))
-			return false;
-		let game = ProjectBuild.GameName(project.Settings.Name, .. scope .());
-		let editor = ProjectBuild.ExecutablePath(project.Directory, game, true, cEditorConfig, .. scope .());
-		if (!FileExists(editor))
-		{
-			outError.AppendF("the project's own editor is not built ('{}'): project_build first", editor);
-			return false;
-		}
-		if (ProjectBuild.IsStale(project.Directory, project.Settings, cEditorConfig))
-		{
-			outError.AppendF("the project's own editor ('{}') is older than the game's code: project_build first", editor);
-			return false;
-		}
-		let unsaved = scope List<String>();
-		defer { ClearAndDeleteItems!(unsaved); }
-		if (seams.UnsavedWork != null)
-			seams.UnsavedWork(unsaved);
-		let discard = McpTools.ArgBool(arguments, "discardUnsaved");
-		if (!unsaved.IsEmpty && !discard)
-		{
-			outError.Append("these have unsaved changes:");
-			for (int i < unsaved.Count)
-				outError.AppendF("{} {}", (i == 0) ? "" : ";", unsaved[i]);
-			outError.Append(" - save each (page_open it, then action_execute file.save), or pass discardUnsaved: true to drop them");
-			return false;
-		}
+		return Relaunched(seams, arguments, wait.Job.DurationMs, outResult, outError);
+	}
 
+	/// The relaunch itself, an agent's: unsaved pages kept aside unless discardUnsaved.
+	private static ToolOutcome Relaunched(BuildToolSeams seams, JsonValue arguments, double buildMs, JsonValue outResult, String outError)
+	{
+		let unsaved = McpTools.ArgBool(arguments, "discardUnsaved") ? UnsavedOnRelaunch.Discard : RelaunchPolicy.Unsaved(.Agent);
+		if (EditorRelaunch.Relaunch(seams, unsaved, buildMs, outResult, outError) != .Relaunched)
+			return .Failed;
 		let port = (seams.McpPort != null) ? seams.McpPort() : 0;
-		let commandLine = scope List<String>();
-		defer { ClearAndDeleteItems!(commandLine); }
-		RelaunchArguments(project.Directory, seams.DataRoot, true, port, commandLine);
-		let views = scope StringView[commandLine.Count];
-		for (int i < commandLine.Count)
-			views[i] = commandLine[i];
-		if (!seams.Launch(editor, views))
-		{
-			outError.AppendF("could not start '{}'", editor);
-			return false;
-		}
-		GlobalLog(.Information, "Editor: the project opened in its own build ({}) for an agent; this editor exits", editor);
-		outResult.Set("relaunched", JsonValue.MakeBool(true));
-		outResult.Set("executable", JsonValue.MakeString(editor));
-		outResult.Set("port", JsonValue.MakeNumber(port));
-		if (!unsaved.IsEmpty)
-		{
-			let dropped = JsonValue.MakeArray();
-			for (let line in unsaved)
-				dropped.Add(JsonValue.MakeString(line));
-			outResult.Set("discardedUnsaved", dropped);
-		}
 		outResult.Set("note", JsonValue.MakeString(scope $"this editor exits now; the new one takes a few seconds to listen on 127.0.0.1:{port}: reconnect, then host_info"));
-		// The answer is written in this pump; the exit is the frame's end.
-		seams.Exit();
-		return true;
+		return .Answered;
 	}
 
 	/// Whether a build runs, said in `outError` with what it is on and the way to follow or stop it.

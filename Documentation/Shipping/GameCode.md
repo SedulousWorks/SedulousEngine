@@ -37,9 +37,12 @@ and registers a starter behaviour, `Rotator` (`src/Rotator.bf`, which turns its 
 scene simulates), so a new game builds a tier of its own at once: rename it, change it, or take
 it and its `AddBehaviour` line out.
 
-The loop: edit, Project > Build Project, then Project > Open With This Build, which starts the
-project's own editor (the stock editor does not run a game's code) and closes this one. An agent
-uses `project_build` and `editor_relaunch`: McpGuide.md, "Writing game code".
+The loop: edit, then Project > Build and Relaunch (Ctrl+Shift+B), which builds the project's own
+editor (the stock editor does not run a game's code) and reopens the project in it as you left
+it: the open pages, each scene's view, and the Game tab, playing again from its start if it was.
+Build Project and Open With This Build are the two halves on their own. An agent uses
+`project_build` and `editor_relaunch` (with `build: true`, both at once): McpGuide.md, "Writing
+game code".
 
 ## Behaviour: code on an entity
 

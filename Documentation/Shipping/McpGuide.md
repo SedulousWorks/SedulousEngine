@@ -574,9 +574,21 @@ and relaunching need the editor host; the loop:
    or older than the code), for one started with `wait: false` or past its timeout; `build_cancel`
    stops it. A build is refused while another runs, naming it.
 4. `editor_relaunch`: the project's own editor starts on the same project, data root and MCP port,
-   and this editor quits. It is refused until that editor is built and not stale, and while pages
-   have unsaved changes, which it names: save each (`page_open` it, then `action_execute`
-   `file.save`) or pass `discardUnsaved: true` to drop them.
+   and this editor quits. The new editor comes back as this one was: the open pages and the active
+   one, each scene's camera, selection and panes, and the Game tabs, a tab that was playing set
+   playing again from its start (a run is never resumed mid-way). `build: true` builds the editor
+   first when it needs it (missing, older than the code, or over an SDK that moved) and waits for
+   it (`timeoutSeconds`, 900 by default): a failed build answers `relaunched: false` with the
+   build's answer as `project_build` gives it under `build` and its first errors in `note`, and
+   nothing else happens. Without `build` it is refused until that editor is built and not stale.
+   Unsaved pages are kept aside, not asked about and not dropped: each page's content is written
+   under the project's `Editor/relaunch/` (never over its asset), named in `keptAside`, and the new
+   editor reopens it unsaved, its history gone; save it there as usual. A page that cannot be kept
+   (a source file's page, a clip a scene's animation panel holds, a generic asset page) refuses the
+   relaunch, named: save each (`page_open` it, then `action_execute` `file.save`) or pass
+   `discardUnsaved: true` to drop every unsaved page (`discardedUnsaved` names them). The answer
+   also gives `saveMs` and, after a build, `buildMs`; the new editor logs the whole relaunch,
+   `Editor: relaunched (...): build, save, start, restore, total (ms)`, which `log_read` finds.
 5. Reconnect a few seconds later (the new editor tries the port for up to 10 s while the old one
    lets it go), then `host_info`: a new `pid` and `buildStamp`, and `host.buildStale` and
    `host.runningStale` false. `host.buildStale` says the project's editor is missing or older than
