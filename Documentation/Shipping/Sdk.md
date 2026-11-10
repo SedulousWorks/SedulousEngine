@@ -1,0 +1,81 @@
+# The engine SDK
+
+A game project builds its own editor, player and tools (`<Game>Editor`, `<Game>Player`,
+`<Game>PlayerWeb`, `<Game>Tools`) against an engine SDK: the engine's library projects as source,
+the native libraries they link, and the engine's data. A checkout of the engine is one; a release
+carries one packed, `sedulous-sdk-<version>-<platform>.zip`, with the project manager inside.
+
+## Using a packed SDK
+
+Unpack the zip anywhere and run `ProjectManager/Sedulous.Tools.ProjectManager`. The manager lists
+the SDK it sits in, makes projects from its templates and opens each project in its own editor,
+which it builds over that SDK the first time (a Debug build that compiles the engine with the
+game, the longest one); a later open builds again only when the project's code or its SDK changed. The manager's Engines page installs other SDKs
+from the releases into the user's data folder, side by side, and its Toolchain page checks what a
+build needs:
+
+- **BeefBuild.** The `BEEFBUILD` variable, else one on PATH with its corlib, else the toolchain the
+  Toolchain page installs: the one the SDK names in its `sdk.json` (`beef`).
+- **The linker.** On Linux, `clang++` or `c++`, and `ar` (or `llvm-ar`), on PATH.
+- **Emscripten**, for web exports only (see Web.md).
+
+Leave an SDK's folder where it is: the manager records projects pinned to it by its path.
+
+## What an SDK holds
+
+- `Code/Foundation`, `Code/Engine`, `Code/Pipeline`, `Code/Editor` and `Code/Plugins`: every library
+  project, less the engine's tests.
+- `Dependencies/`: each third-party library's Beef project, its prebuilt libraries for the platform
+  and for wasm32, its licence, and `THIRD-PARTY-NOTICES.txt`, which every build copies beside its
+  executables.
+- `Code/Tools/Sedulous.Tools.Editor` and `Sedulous.Tools.Mcp`: only their `BeefProj.toml`, whose
+  post-build steps a project's editor and tools take over.
+- `Bin/Naga` and `Bin/Tint`, the shader tools for the platform.
+- `Data/`: the engine's and the editor's data, the branding and the project templates.
+- `Documentation/Shipping`: these guides.
+- `ProjectManager/`: the manager, its libraries and the notices.
+- `sdk.json`: the SDK's `version` (what a project's stamp is compared with), `label`, `display`
+  (the version with its label), `buildNumber`, `platform`, `beef` (the toolchain it was built
+  with) and `created`. A checkout has none: its version is read from `EngineVersion.bf`.
+
+The Steam Deck build, the samples, the engine's tests and its own workspace are not in it: a
+Steam Deck export needs an engine checkout.
+
+## Packing one
+
+`Code/Tools/pack-sdk.py` packs an SDK from a checkout's tracked files, by hand, on the release
+commit (the version and label come from `EngineVersion.bf`):
+
+```
+python3 Code/Tools/pack-sdk.py --check
+python3 Code/Tools/pack-sdk.py <out-dir> --manager Code/build/ShippingRelease_Linux64/Sedulous.Tools.ProjectManager \
+    --beef <pin> [--toolchain beef-<pin>-linux64.zip [--toolchain-release <tag>]]
+```
+
+Build `Sedulous.Tools.ProjectManager` in ShippingRelease first. `--platform` (default `Linux64`)
+picks the platform's prebuilt libraries and shader tools; no Win64 SDK packs yet, since some
+dependencies have no Win64 libraries in the tree, and `--check --platform Win64` lists them.
+
+`--check` packs nothing. It fails when a packed project depends on one that is not packed (the
+templates' game projects too), when a packed project's config for the platform or wasm32 names a
+`$(ProjectDir)` or `$(WorkspaceDir)/..` path that is not packed, when a packed source's
+`Compiler.ReadText` or `ReadBinary` path is not packed, or when what a project's workspace
+generation reads of an SDK is missing: the stock projects, the startup libraries, the shader
+tools, a plugin's `Plugin.xml`, `Data/.dataroot`. A pack runs it first, and Integration.Mcp runs
+it on every test run.
+
+A pack writes `sedulous-sdk-<display>-<platform>.zip` (each file's Unix mode kept, fixed
+timestamps, so the same files pack to the same bytes) and the release's index for the platform,
+`sdk-<platform>.json`, which the manager's Engines page reads to list and verify the download:
+
+```
+{"version": "0.2.0", "label": "beta", "display": "0.2.0-beta", "platform": "Linux64",
+ "archive": "sedulous-sdk-0.2.0-beta-linux64.zip", "sha256": "<64 hex digits>",
+ "size": 47000000, "unpackedSize": 132000000, "beef": "<pin>",
+ "toolchain": {"archive": "beef-<pin>-linux64.zip", "sha256": "<64 hex digits>",
+               "size": 1234, "release": "v0.1.0"}}
+```
+
+`toolchain` is there when `--toolchain` names the toolchain's zip; its `release` is the release
+whose files carry that zip, left out when it is this one. Attach the zip and the index to the
+GitHub release `v<display>`, beside what `pack-samples.py` writes.
