@@ -548,3 +548,11 @@ Each step proves one thing, and each is run for leaks with ASan where it can be.
   time. These are still to be measured on SkyHopper (spike step 0).
 
 Measured by hand (2026-11-10, SkyHopper on x2, `editor_relaunch {"build": true}` with Level1 unsaved and the Game tab playing): the relaunched editor came back with Level1 unsaved (the new entity in it, the scene file on disk untouched) and the Game tab active and playing again. Its log: `Editor: relaunched (1 page(s) kept aside, 1 Game tab(s)): build 24255, save 27, start 510, restore 1340, total 26132 (ms)`. The relaunch itself costs under 2 s beyond the build (save 27 ms, start 0.5 s, restore 1.3 s); the build of `<Game>Editor` is the rest.
+
+## The Beef IDE's hot compile on Linux, tried (2026-11-10)
+
+- The IDE needs LLDB: built without `liblldb-22-dev` it debugs through GDB, which cannot hot swap. Built with it (`bin/build.sh ide`, the fork's master aef00047), the IDE's own test suite ran headless under weston and all 21 Test1 hot-swap scripts passed (method bodies, data changes refused, virtuals, lambdas, interfaces, base changes). The suite stopped later at BugW003, a link failure of that test's program, unrelated to hot swap.
+- A workspace must turn hot swapping on itself on Linux: `AllowHotSwapping = true` under `[Configs.Debug.Linux64]` (the IDE's default is on only for Windows Debug).
+- SkyHopper, driven over the IDE's MCP server (`BeefIDE -workspace=<project>/Code -mcp=<port>`, headless weston): the IDE built SkyHopperEditor with hot swapping on in 36 s (peak about 3 GB) and ran it under LLDB (`DebugCommandArguments` `--project … --data-root … --null-gpu`). A probe method returned 1; after `edit_document` and `build` the IDE reported "hot swap: replaced 1 method" in 1.0 s and the running editor's probe returned 2; the editor ran on normally after. The same change through Build and Relaunch costs about 26 s.
+- A field added to a live behaviour (`Coin`) did not come back: the IDE sat at about 93% CPU and stopped answering MCP for over 10 minutes, and was killed. Whether it was stuck on the refusal, a dialog a headless session cannot answer, or a hang is not known; it needs a run on a real display.
+- So for method bodies the IDE loop works today on Linux, about 25 times faster than a relaunch; a layout change needs the relaunch, and the IDE must not hang on one.
