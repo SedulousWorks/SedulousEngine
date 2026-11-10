@@ -21,6 +21,6 @@
             <TextField class="bind-field" text="{{name}}"/>
             <Label class="text" width="220" height="30" vertical-align="middle" text="Hello, {{name}}!"/>
         </Panel>
-        <Label class="caption" text="The percentage is a script binding: a function of the volume, run again when it changes."/>
+        <Label class="caption" text="The percentage is a native binding: a function of the volume, run again when it changes."/>
     </Panel>
 </Panel>

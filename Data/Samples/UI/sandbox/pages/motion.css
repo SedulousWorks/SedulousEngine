@@ -38,7 +38,7 @@
 @keyframes slide-out-back { from { transform: translate(2px, 2px); } to { transform: translate(340px, 2px); } }
 @keyframes slide-out-elastic { from { transform: translate(2px, 2px); } to { transform: translate(273px, 2px); } }
 
-/* A level's end screen: motion.as plays it with tweens; at rest it shows its final state. */
+/* A level's end screen: the page's code plays it with tweens; at rest it shows its final state. */
 .reward-card { width: 300px; padding: 16px; border-radius: 14; background: linear-gradient(160deg, #2c3f63, #3c2c5c);
                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); transform-origin: 50% 50%; }
 .reward-title { font-family: Roboto; font-size: 20px; color: #ffffff; text-align: center; }

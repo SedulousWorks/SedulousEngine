@@ -6,7 +6,7 @@ using static Sedulous.GUI.Code.Tests.CodeFixtures;
 
 namespace Sedulous.GUI.Code.Tests;
 
-/// The language service, with a service of the test's own over the sandbox's AngelScript: the fuzzy
+/// The language service, with a service of the test's own over the editor's Beef: the fuzzy
 /// match and its order; a name typed opens the list, more letters filter it, Up and Down go round
 /// it, Return and Tab put the pick in place of the word at each caret as one undo step, Escape or
 /// the caret leaving the word closes it; a trigger opens it on no word; not by typing in a comment,

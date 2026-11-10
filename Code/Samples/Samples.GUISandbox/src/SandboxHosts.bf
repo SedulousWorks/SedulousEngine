@@ -83,14 +83,14 @@ extension GUISandboxApp
 		// Toolkit: a dataflow graph and a lamp's state machine, after the clip.
 		if (let section = FindById(mShellNode, "graph-section"))
 			FillGraphs(section);
-		// Code: a script and a shader, in the shared languages.
-		if (let editor = FindById(mShellNode, "code-script") as CodeEditor)
+		// Code: a game's Beef code and a shader, in the shared languages.
+		if (let editor = FindById(mShellNode, "code-source") as CodeEditor)
 		{
 			let dir = scope $"{cSandboxDir}code/"; // the sandbox's samples
 			let languages = "Editor/Code/"; // the languages, the editor's too
 			mCode = new CodePage();
-			mCode.AttachScript(editor, ReadText(scope $"{languages}angelscript.xml", .. scope String()),
-				ReadText(scope $"{dir}sample.as", .. scope String()));
+			mCode.AttachSource(editor, ReadText(scope $"{languages}beef.xml", .. scope String()),
+				ReadText(scope $"{dir}sample.bf", .. scope String()));
 			if (let shader = FindById(mShellNode, "code-shader") as CodeEditor)
 				mCode.AttachShader(shader, ReadText(scope $"{languages}hlsl.xml", .. scope String()), ReadText(scope $"{dir}sample.hlsl", .. scope String()));
 		}
@@ -331,7 +331,7 @@ extension GUISandboxApp
 			mTreeModel.AddNode(experimental, "GUI.Sandbox");
 			let foundation = mTreeModel.AddNode(code, "Foundation");
 			mTreeModel.AddNode(foundation, "VG");
-			mTreeModel.AddNode(foundation, "Script");
+			mTreeModel.AddNode(foundation, "Physics");
 			let data = mTreeModel.AddNode(TreeModel.Root, "Data");
 			mTreeModel.AddNode(data, "Assets");
 			let tree = new TreeView();

@@ -1,13 +1,13 @@
 <!-- The Code page: GUI.Code's editor as a host uses it. The host (GUISandbox's CodePage) fills
-     both editors and serves completion. -->
+     both editors and serves completion. The Beef sample is shown, never compiled. -->
 <Panel id="page-code" class="page" gap="18">
     <Label class="page-title" text="Code"/>
     <Label class="page-lead" white-space="normal"
-           text="The code editor from GUI.Code. Click in the gutter for a breakpoint; Ctrl+Space for completion from the language's words and the document's."/>
+           text="The code editor from GUI.Code, showing a game's Beef code in the editor's highlighting. Click in the gutter for a breakpoint; Ctrl+Space for completion from the language's words and the document's."/>
 
     <Panel class="section" gap="10">
-        <Label class="section-title" text="A script"/>
-        <CodeEditor id="code-script" class="code-editor script"/>
+        <Label class="section-title" text="Beef code"/>
+        <CodeEditor id="code-source" class="code-editor source"/>
         <Label class="code-note" white-space="normal"
                text="Folds: Ctrl+Shift+[ and ], or the gutter's chevrons. Soft wrap: Alt+Z. Find: Ctrl+F; go to a line: Ctrl+G."/>
     </Panel>

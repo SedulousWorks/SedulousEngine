@@ -26,7 +26,7 @@
             </TreeItem>
             <TreeItem text="Barrel" icon="Editor/Icons/Types/RigidBodyComponent.svg" icon-class="cat-physics"/>
             <TreeItem text="Lamp" icon="Editor/Icons/Types/LightComponent.svg" icon-class="cat-rendering"/>
-            <TreeItem text="Trigger" icon="Editor/Icons/Types/ScriptComponent.svg" icon-class="cat-scripting"/>
+            <TreeItem text="Trigger" icon="Editor/Icons/Types/ColliderComponent.svg" icon-class="cat-physics"/>
         </TreeItem>
     </TreeView>
     <Panel class="picker-foot"><Label class="picker-hint" text="Enter picks, Esc keeps Camera"/><Spacer/><Button class="ghost" text="None"/></Panel>

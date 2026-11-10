@@ -90,6 +90,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   scripts: `FacadeFor`, `RunFacadeCount` and `EndRunFacade` on the GUI's, `SharedFacade` on all
   three, `RunFacadeCount` and `FacadeResources` on the audio one.
 - Net: a run's session stopping drops every `Net` handler a game registered.
+- GUI sandbox: its pages and its game menu do what they did as native code instead of scripts,
+  and its Code page shows a game's Beef code instead of a script. The editor's code languages no
+  longer include AngelScript.
 
 ### Fixed
 
@@ -186,8 +189,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   delegates, as it did. A toast request is no longer reference counted: its maker owns it.
 - Net: the script forms of `On`, `OnNumber`, `OnText`, `OnJoin` and `OnLeave`; game code passes
   delegates.
-- GUI sandbox: its pages' and game menu's scripts no longer run, its Code page no longer checks
-  the script it shows nor completes the script API, and `--menu-call` is gone.
+- GUI sandbox: its Code page no longer checks the code it shows nor completes a script API, and
+  `--menu-call` is gone.
 - Engine: `[Scriptable]` and the other marks that put a type on the script surface
   (`ScriptName`, `ServiceFacade`, `TypeDomain` and the rest); game code that still carries them
   drops them. `Guid.Nil` and `Guid.FromString` go with them (`IsNil` stays).

@@ -19,7 +19,7 @@
             <Spacer/>
             <Label class="caption" width="90" height="36" vertical-align="middle" text="(a spacer)"/>
         </Panel>
-        <Label class="caption" text="Clicks: {{clicks}}  (a label bound to the GUI's data; the script only counts)"/>
+        <Label class="caption" text="Clicks: {{clicks}}  (a label bound to the GUI's data; the page's code only counts)"/>
     </Panel>
 
     <Panel class="section" gap="12">
@@ -91,7 +91,7 @@
             <Label id="controls-slider-value" class="text" width="60" height="26" vertical-align="middle"/>
         </Panel>
         <ProgressBar id="controls-progress" class="progress"/>
-        <Label class="caption" text="The bar and the number follow the slider through script bindings."/>
+        <Label class="caption" text="The bar and the number follow the slider through native bindings."/>
         <Panel class="row" flex-direction="row" align-items="center" gap="12">
             <NumberField class="number" min="0" max="100" value="42" suffix=" %" tooltip="Type an expression, drag across to scrub, or use the arrows"/>
             <NumberField class="number" min="0" max="10" step="0.25" value="1.5" prefix="$"/>

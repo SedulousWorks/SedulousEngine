@@ -15,7 +15,7 @@ namespace Sedulous.GUI.Code.Tests;
 /// map, so Down, the pointer and folds go by them. Whitespace drawn by VS Code's choices.
 class CodeFoldingTests
 {
-	private const String cScript = "void f()\n{\n    if (x)\n    {\n        y();\n    }\n    string s = \"{\";\n}\nint z;";
+	private const String cSource = "void f()\n{\n    if (x)\n    {\n        y();\n    }\n    String s = \"{\";\n}\nint z;";
 
 	private static bool HasRange(CodeEditor editor, uint32 first, uint32 last)
 	{
@@ -36,7 +36,7 @@ class CodeFoldingTests
 	[Test]
 	public static void RangesFromBracketsACloseFirstOnItsLineLeftOutPastStrings()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		Test.Assert(bed.Editor.FoldRanges.Length == 2);
 		Test.Assert(HasRange(bed.Editor, 1, 6)); // the body, its close's line shown
 		Test.Assert(HasRange(bed.Editor, 3, 4));
@@ -57,7 +57,7 @@ class CodeFoldingTests
 	[Test]
 	public static void AFoldedRangesLinesHideTheRowsCloseUpUnderItDownStepsOverIt()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		Test.Assert(bed.Editor.RowCount == 9);
 		Test.Assert(bed.Editor.Fold(1));
 		Test.Assert(bed.Editor.IsFolded(1));
@@ -81,7 +81,7 @@ class CodeFoldingTests
 	[Test]
 	public static void CtrlShiftBracketFoldsTheInnermostRangeOpenAtTheCaretMovingItOutUnfoldsACaretGoingInUnfolds()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		bed.Editor.SetCaret(At(4, 3));
 		bed.Key(.LeftBracket, KeyModCtrl | KeyModShift);
 		Test.Assert(bed.Editor.IsFolded(3));
@@ -100,7 +100,7 @@ class CodeFoldingTests
 	[Test]
 	public static void FoldsGoWithTheirLinesThroughEditsAndGoWhenTheirBracketDoes()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		Test.Assert(bed.Editor.Fold(3));
 		bed.Editor.SetCaret(At(0, 0));
 		bed.Type("\n");
@@ -117,7 +117,7 @@ class CodeFoldingTests
 	[Test]
 	public static void TheGuttersChevronFoldsAndUnfoldsThePlaceholderUnfolds()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		let lh = bed.Editor.LineHeight;
 		let chevron = bed.Editor.TextLeft - 15.0f; // the fold column, before the text's gap
 		ClickAt(bed, .(chevron, bed.Editor.CaretRect(At(1, 0)).Y + lh * 0.5f));
@@ -135,7 +135,7 @@ class CodeFoldingTests
 	[Test]
 	public static void CtrlKCtrl0FoldsEverythingCtrlKCtrlJUnfoldsEverything()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		bed.Editor.SetCaret(At(4, 0));
 		bed.Key(.K, KeyModCtrl);
 		bed.Key(.Num0, KeyModCtrl);
@@ -153,7 +153,7 @@ class CodeFoldingTests
 	[Test]
 	public static void TheHostsRangesInPlaceOfTheLanguagesCarriedThroughEdits()
 	{
-		let bed = scope CodeBed("angelscript", cScript);
+		let bed = scope CodeBed("beef", cSource);
 		var mine = CodeFoldRange(0, 2);
 		bed.Editor.FoldRanges = .(&mine, 1);
 		Test.Assert(bed.Editor.FoldRanges.Length == 1);
@@ -172,7 +172,7 @@ class CodeFoldingTests
 		for (int i = 0; i < 30; ++i)
 			words.Append("abcd ");
 		words.Append("\nend");
-		let bed = scope CodeBed("angelscript", default);
+		let bed = scope CodeBed("beef", default);
 		bed.Editor.SetText(words);
 		bed.Frame();
 		Test.Assert(bed.Editor.RowCount == 2);
@@ -212,7 +212,7 @@ class CodeFoldingTests
 		for (int i = 0; i < 100; ++i)
 			text.Append("x");
 		text.Append("\n}");
-		let bed = scope CodeBed("angelscript", default);
+		let bed = scope CodeBed("beef", default);
 		bed.Editor.SetText(text);
 		bed.Editor.SoftWrap = true;
 		bed.Frame();
@@ -229,7 +229,7 @@ class CodeFoldingTests
 	[Test]
 	public static void WhitespaceDrawnByTheChoiceAllALinesEndAllButASingleSpaceBetweenWordsTheSelections()
 	{
-		let bed = scope CodeBed("angelscript", "  a b  c\t\nx y  ");
+		let bed = scope CodeBed("beef", "  a b  c\t\nx y  ");
 		bool Shows(uint32 line, uint32 column) => bed.Editor.ShowsWhitespaceAt(At(line, column));
 		Test.Assert(!Shows(0, 0)); // none by default
 		bed.Editor.ShowWhitespace = .All;
@@ -265,7 +265,7 @@ class CodeFoldingTests
 		for (int i = 0; i < 40; ++i)
 			text.Append("word ");
 		text.Append("\n}\n");
-		let bed = scope CodeBed("angelscript", default);
+		let bed = scope CodeBed("beef", default);
 		bed.Editor.SetText(text);
 		bed.Editor.SoftWrap = true;
 		bed.Editor.ShowWhitespace = .All;

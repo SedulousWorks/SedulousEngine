@@ -7,7 +7,7 @@ using internal Sedulous.GUI;
 namespace Sedulous.GUI;
 
 // A language's definition: a value its owners supply, built in code or read from a file through
-// the engine's serialization (a script module's for its language, the sandbox's for its pages); the
+// the engine's serialization (the editor's and the sandbox's, Data/Editor/Code); the
 // library ships none. A definition is contexts, each a list of rules tried in turn at each place of
 // a line: a literal, an identifier (looked up in the language's words: keywords, types, constants),
 // a number, one of some characters or a run of them, the rest of the line, and a long bracket's
@@ -291,11 +291,11 @@ struct CodeSpan
 /// when the other was).
 class CodeLanguage : ISerializable
 {
-	/// What its owners register it by ("angelscript").
+	/// What its owners register it by ("beef").
 	public String Id = new .() ~ delete _;
-	/// What it is called ("AngelScript").
+	/// What it is called ("Beef").
 	public String Name = new .() ~ delete _;
-	/// File name endings it is for ("as").
+	/// File name endings it is for ("bf").
 	public List<String> Extensions = new .() ~ DeleteContainerAndItems!(_);
 	/// Names may hold '-' and begin with it (CSS's).
 	public bool IdentifierDashes = false;

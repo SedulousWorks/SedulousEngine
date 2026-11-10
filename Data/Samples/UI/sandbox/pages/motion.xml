@@ -1,10 +1,10 @@
 <Panel id="page-motion" class="page" gap="18">
     <Label class="page-title" text="Motion"/>
     <Label class="page-lead" white-space="normal"
-           text="Every property transitions and animates, with real easings: transitions on hover, keyframes of opacity, colour and transforms, the easing functions side by side, and a level's end a script plays with tweens and springs."/>
+           text="Every property transitions and animates, with real easings: transitions on hover, keyframes of opacity, colour and transforms, the easing functions side by side, and a level's end the page's code plays with tweens and springs."/>
 
     <Panel class="section" gap="12">
-        <Label class="section-title" text="A level's end, from a script: tweens, a spring, a sequence"/>
+        <Label class="section-title" text="A level's end, from code: tweens, a spring, a sequence"/>
         <Panel class="card-row" flex-direction="row" align-items="start" gap="16">
             <Panel id="motion-card" class="reward-card" gap="10" align-items="center">
                 <Label class="reward-title" text="Level complete"/>
@@ -21,7 +21,7 @@
             </Panel>
         </Panel>
         <Label class="caption" white-space="normal"
-               text="motion.as: the card fades in and springs from small to its size; a sequence waits, pops each gem (a fade beside an ease-out-back scale), fills the score bar while a bound label counts, then slides a toast in, waits and slides it out."/>
+               text="The page's code: the card fades in and springs from small to its size; a sequence waits, pops each gem (a fade beside an ease-out-back scale), fills the score bar while a bound label counts, then slides a toast in, waits and slides it out."/>
     </Panel>
 
     <Panel class="section" gap="12">

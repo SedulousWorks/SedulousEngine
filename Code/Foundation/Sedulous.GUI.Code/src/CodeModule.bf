@@ -20,7 +20,7 @@ static
 	private static bool sCodeElementsRegistered = false;
 
 	/// Registers the code editor's element types (ElementTypes.Register), once: a host calls it at
-	/// start-up beside RegisterGuiElements, so markup and scripts can make them.
+	/// start-up beside RegisterGuiElements, so markup and code can make them by tag.
 	public static void RegisterCodeElements()
 	{
 		if (sCodeElementsRegistered)

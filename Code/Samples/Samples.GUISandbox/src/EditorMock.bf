@@ -319,7 +319,7 @@ class EditorMock
 		(ToastSeverity severity, StringView title, StringView message, StringView action)[4] samples = .(
 			(.Success, "Exported Sky Hopper", "Linux, 48 MB, in 12 s", "Open Folder"),
 			(.Warning, "3 textures have no mipmaps", "They were generated for this cook.", default),
-			(.Error, "Player.as failed to compile", "'speed' is not a member of Player", "Show in Console"),
+			(.Error, "Player.bf failed to compile", "'speed' is not a member of Player", "Show in Console"),
 			(.Info, "Agent connected", "On 127.0.0.1:7405", default));
 		let sample = samples[mToastsShown++ % samples.Count];
 		let request = scope ToastRequest();

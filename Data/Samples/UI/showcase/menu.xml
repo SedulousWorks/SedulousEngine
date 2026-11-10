@@ -1,10 +1,11 @@
 <!--
   The GUI showcase, built on the gamekit: a game's main menu, its HUD and its pause menu, played
   by mouse, keyboard or gamepad. This is its frame: the backdrop, the title over the menu's pages,
-  and the gamekit's screen stack, where menu.as pushes each screen as a fresh document from
-  screens/ (title, settings, controls, loading, hud, pause, quit). menu.css styles them, with their
-  entrances and exits on the stack's :entering and :leaving. The host sizes the frame's layers to
-  the window, binds {{name}} values to the GUI's data, and runs the script.
+  and the gamekit's screen stack, where the sandbox's GameMenu pushes each screen as a fresh
+  document from screens/ (title, settings, controls, loading, hud, pause, quit). menu.css styles
+  them, with their entrances and exits on the stack's :entering and :leaving. The host sizes the
+  frame's layers to the window, binds {{name}} values to the GUI's data, and runs the menu's
+  behaviour.
 -->
 <Panel id="showcase" class="showcase" display="stack" justify-items="start" align-items="start">
     <!-- The backdrop: soft orbs drifting behind everything (placed by percentages of the backdrop,
