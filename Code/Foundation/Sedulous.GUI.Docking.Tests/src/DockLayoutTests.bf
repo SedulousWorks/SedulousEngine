@@ -6,11 +6,11 @@ using static Sedulous.GUI.Docking.Tests.DockingFixtures;
 
 namespace Sedulous.GUI.Docking.Tests;
 
-/// The dock layout as data (D1 of Specs/gui-lab-evolution-3.md): panels tabbed, docked beside a
+/// The dock layout as data: panels tabbed, docked beside a
 /// stack and at a surface's edge; moved, floated, closed and shown where they were; shares that
 /// survive a child going; splits of one axis merged; refusals that change nothing; and a long run
 /// of random operations after each of which the layout still holds together; a floating surface
-/// docked whole (D5); a stack moved whole (its strip's grip).
+/// docked whole; a stack moved whole (its strip's grip).
 class DockLayoutTests
 {
 	// A small generator of its own (a linear congruential one), the same runs every time.

@@ -5,7 +5,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// What assets carry when they are dragged (Raptor's editor-gui spec, 5.2, layers 2 and 7): a GUI
+// What assets carry when they are dragged: a GUI
 // drag payload of type `asset/instance` holding, for each asset, its guid, its type's name (what a
 // target takes it by) and its name (for the preview, and for a refusal's reason). A slot, a
 // hierarchy or a page asks whether it takes one before the drop (Takes), naming why not when it
@@ -50,7 +50,7 @@ class AssetDrag
 	/// Fills `outPayload` with what dragging `assets` carries (a browser's selection), in order,
 	/// labelled by the one or by how many.
 	///
-	/// The value is one text, where Raptor carries a list of strings, three to an asset: a
+	/// The value is one text rather than a list of strings (three to an asset): a
 	/// payload's Variant frees only the object it owns (a list, not the texts in it) and
 	/// DragPayload.Set shares any object but text, so a list would leak its texts or be freed
 	/// twice. The text is the count on a line of its own, then a block per asset: its guid (fixed

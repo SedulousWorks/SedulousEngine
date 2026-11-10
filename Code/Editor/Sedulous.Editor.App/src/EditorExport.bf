@@ -33,7 +33,7 @@ class EditorExportServices
 	public delegate void(StringView folder) OnExported ~ delete _;
 }
 
-/// Project > Export, out of the application (Raptor's editor-gui spec, 5.1, layer 3): the same
+/// Project > Export, out of the application: the same
 /// ExportOne and ExportAll the export CLI calls, in two phases so the UI never freezes. An
 /// export asked for waits for a background cook through the cook service; once it is done the
 /// scenes' text sources are transcoded to the wire and, when a preset prunes to what is

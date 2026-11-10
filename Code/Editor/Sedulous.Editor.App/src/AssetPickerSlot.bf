@@ -5,7 +5,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// The asset slot (Raptor's editor-gui spec, 5.2, layer 3), as the kit draws it: the referenced
+// The asset slot, as the kit draws it: the referenced
 // asset's thumbnail, or its type glyph (its category's tint) until it has one, its name, and its verbs: pick (the target; a click on
 // the name picks too), open, reveal (in the assets browser), clear. An empty slot says "Not set" and
 // keeps only pick. A verb shows only when its owner wired it; open, reveal and clear need something

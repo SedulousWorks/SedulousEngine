@@ -303,7 +303,7 @@ class DopesheetTests
 		Test.Assert(bed.Sheet.IsFolded("Lamp.color"));
 	}
 
-	// What no Raptor test covers: a fold set from code, kept when the channels are read again.
+	// Further cases: a fold set from code, kept when the channels are read again.
 	[Test]
 	public static void AFoldSetFromCodeHoldsWhenTheChannelsChange()
 	{

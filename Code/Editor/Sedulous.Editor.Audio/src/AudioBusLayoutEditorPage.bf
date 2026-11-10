@@ -9,8 +9,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The mixer's buses, on the GUI from its markup (Data/Editor/BusLayoutPage.xml; Raptor's editor-gui
-/// spec, 5.4, layer 5). The buses' tree (the four fixed ones, Master and Effects, Music and UI under
+/// The mixer's buses, on the GUI from its markup (Data/Editor/BusLayoutPage.xml). The buses' tree
+/// (the four fixed ones, Master and Effects, Music and UI under
 /// it, and the custom ones under their parents) on the GUI's tree beside the grid, which shows the
 /// chosen bus: a custom one's name and parent (only the parents that make no cycle offered), then its
 /// mix (volume, mute), its filters, its delay and its reverb (each off at 0). The tree's bar and a

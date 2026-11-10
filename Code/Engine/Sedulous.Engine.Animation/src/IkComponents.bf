@@ -25,8 +25,8 @@ enum IkKind : uint8
 	Foot,
 }
 
-/// One component's solve, run by the animator's player as a pose modifier
-/// (inverse-kinematics.md P2). The manager fills it each frame (it holds its own copy: a
+/// One component's solve, run by the animator's player as a pose modifier.
+/// The manager fills it each frame (it holds its own copy: a
 /// component moves in its manager's pool, this does not); the player runs it after the pose
 /// and writes back the result and, for debug drawing, the chain in world space.
 class IkModifier : IPoseModifier

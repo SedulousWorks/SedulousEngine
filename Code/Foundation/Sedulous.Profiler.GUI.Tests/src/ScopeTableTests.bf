@@ -8,7 +8,7 @@ using Sedulous.Profiler.Tests; // KnownSource
 
 namespace Sedulous.Profiler.GUI.Tests;
 
-/// The scope table and the scope's detail (X7 of Raptor's editor-gui spec): the call tree of the
+/// The scope table and the scope's detail: the call tree of the
 /// frames chosen (each thread a group, the GPU's passes one, a scope's runs in one place one row,
 /// self time its children's taken out); sorted by another heading a flat list of names; a filter
 /// showing the names holding its text and the rows they hang from; a span cutting the scopes to it;

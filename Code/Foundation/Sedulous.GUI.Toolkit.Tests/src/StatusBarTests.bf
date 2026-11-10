@@ -169,7 +169,7 @@ class StatusBarTests
 		Test.Assert(start.Count == 1);
 	}
 
-	// What no Raptor test covers: the zone and the order read back, a message cleared by an empty one.
+	// Further cases: the zone and the order read back, a message cleared by an empty one.
 	[Test]
 	public static void AnItemsZoneNameAndOrderReadBackAndAnEmptyMessageHidesThePart()
 	{

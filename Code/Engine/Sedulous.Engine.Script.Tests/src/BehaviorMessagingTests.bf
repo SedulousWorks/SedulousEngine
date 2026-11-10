@@ -218,11 +218,10 @@ static class BehaviorMessagingTests
 	}
 
 	/// A Float3 emitted on the bus reaches a handler that takes it by value: a lock's place, a
-	/// noise's origin. Emit once took no Float3 at all, and Raptor's binder once handed such a
-	/// value to a handle parameter only, so `onSpotted(Float3 at)` got nothing and faulted
-	/// (Raptor 4a7f2ccd).
+	/// noise's origin. Emit once took no Float3 at all, and a binder once handed such a value to
+	/// a handle parameter only, so `onSpotted(Float3 at)` got nothing and faulted.
 	/// A Float4 too: a noise's origin and its loudness in one event, as Lamplight's guards hear
-	/// them (Raptor's `emit("Noise", Float4(x, y, z, loudness))`). Emit once took no Float4, so
+	/// them (`emit("Noise", Float4(x, y, z, loudness))`). Emit once took no Float4, so
 	/// the noise had to go as two events, and its delivery turned one into Nil.
 	[Test]
 	public static void AFloat4EventReachesAHandlerTakingItByValue()

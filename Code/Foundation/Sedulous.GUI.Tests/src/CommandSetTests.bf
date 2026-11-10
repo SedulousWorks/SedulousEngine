@@ -3,8 +3,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// A GUI's commands by id, each observable. Raptor's command tests need the dispatcher and
-/// markup (CommandTests), so these check the set itself until those land.
+/// A GUI's commands by id, each observable: the set itself, apart from the dispatcher and
+/// markup.
 class CommandSetTests
 {
 	[Test]

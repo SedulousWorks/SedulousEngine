@@ -5,7 +5,7 @@ using Sedulous.GUI;
 
 namespace Samples.GUISandbox;
 
-// The editor mock (X0 of Raptor's Specs/editor-gui.md): the editor's frame and scene page, static,
+// The editor mock: the editor's frame and scene page, static,
 // in the editor's sheet (Data/Editor/editor.css over its tokens), for judging the design before any
 // editor code moves. `GUISandbox --editor-mock` shows it instead of the sandbox. The markup is
 // Data/Editor/Mock's; what is here is what markup cannot say: the dock, the commands with their
@@ -29,7 +29,7 @@ class EditorMock
 		public delegate void(StringView path, String outText) Read ~ delete _;
 	}
 
-	// The candidates for the editor's new accent (ruling 7), each a fill white text reads on.
+	// The candidates for the editor's new accent, each a fill white text reads on.
 	private static (String Command, String Label, String Fill)[4] sAccents = .(
 		("look.azure", "Azure", "#2f6fdf"),
 		("look.violet", "Violet", "#6d5bd8"),
@@ -65,7 +65,7 @@ class EditorMock
 	private List<Object> mShown = new .();
 	private List<ReflectedPropertySource> mSources = new .();
 	private bool mDark = true;
-	/// Compact, the editor's default (ruling).
+	/// Compact, the editor's default.
 	private int mDensity = 0;
 	private int mAccent = 0;
 	private bool mReduceMotion = false;
@@ -226,7 +226,7 @@ class EditorMock
 		Define("mock.stop", "Stop", "shift-f5", "Editor/Icons/stop.svg");
 		Define("mock.frame", "Frame Selection", "f", "Editor/Icons/frame-selection.svg");
 		Define("mock.grid", "Grid", default, "Editor/Icons/grid.svg");
-		// The bar's editing controls (layer 5, part 1), each with its key.
+		// The bar's editing controls, each with its key.
 		Define("mock.tool-select", "Select", "q", "Editor/Icons/select.svg");
 		Define("mock.tool-move", "Move", "w", "Editor/Icons/move.svg");
 		Define("mock.tool-rotate", "Rotate", "e", "Editor/Icons/rotate.svg");
@@ -331,8 +331,8 @@ class EditorMock
 		mToasts.Post(request); // copied
 	}
 
-	// A picker as the editor's opens: modal, under the window's top (the render textures picker of
-	// ruling 21; the asset picker with its groups beside it).
+	// A picker as the editor's opens: modal, under the window's top (the render textures picker;
+	// the asset picker with its groups beside it).
 	private void ShowPicker(ref Node picker, StringView path)
 	{
 		if (picker == null)
@@ -451,7 +451,7 @@ class EditorMock
 		Register("input-split", "Input B: Tree and Grid", "Editor/Mock/input-split.xml");
 		Register("input-split-set", "Input B: Set Chosen", "Editor/Mock/input-split-set.xml");
 		Register("input-split-set-open", "Input B: Set, Actions Open", "Editor/Mock/input-split-set-open.xml");
-		// The profiler page (X7), a tab in the page area (the user, 2026-10-27).
+		// The profiler page, a tab in the page area (the user, 2026-10-27).
 		Register("profiler", "Profiler", "Editor/Mock/profiler.xml");
 		Register("assets", "Assets", "Editor/Mock/assets.xml");
 		Register("console", "Console", "Editor/Mock/console.xml");

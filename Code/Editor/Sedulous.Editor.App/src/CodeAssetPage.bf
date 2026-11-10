@@ -10,8 +10,8 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// What a page over an asset written as code does whatever its code is (Raptor's editor-gui spec,
-// 5.4, layer 6): a script, a shader, a GUI document or sheet. The asset names its source file (under
+// What a page over an asset written as code does whatever its code is: a script, a shader, a GUI
+// document or sheet. The asset names its source file (under
 // the project's Sources); the page reads it into the code editor of its markup (`page-code`),
 // coloured by the language the page names (CodeLanguages), and checks it a moment after each edit,
 // the problems (its own the page's to find) shown in the problems list of its markup

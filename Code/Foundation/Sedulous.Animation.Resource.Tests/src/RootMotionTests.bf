@@ -9,7 +9,7 @@ using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Animation.Resource.Tests;
 
-/// The root motion cook (root-motion.md P0): a root's travel bakes into the clip's curve (at its
+/// The root motion cook: a root's travel bakes into the clip's curve (at its
 /// keys and a fixed rate) and leaves the pose in place, keeping what was not extracted; yaw is
 /// unwrapped; the armature's own channels (model tracks, bone minus one) bake through the
 /// armature's rest and never reach the pose; a text clip from before root motion reads with it

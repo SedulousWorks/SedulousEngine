@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Profiler.GUI;
 
-// The frames chosen on one time axis (X7 of Raptor's editor-gui spec): a lane per thread with its
+// The frames chosen on one time axis: a lane per thread with its
 // scopes stacked by depth, the GPU's passes in a lane of their own drawn as the scopes are; the ruler
 // (the time from the first frame's start) and the frames' row pinned on top; the lanes' names in a
 // column at the start, as wide as the frame strip's gutter. A scope keeps its name's colour in every

@@ -8,8 +8,8 @@ using Sedulous.GUI;
 namespace Sedulous.GUI.Gamekit.ScriptSurface.Tests;
 
 /// The gamekit on the script surface: its screens, its stack and its prompts, every property the
-/// GUI reflects on them, nothing blocked; and Raptor's gamekit story in its AngelScript half
-/// (GamekitScriptTests): a script pushes, reads and pops screens, and hears one leave.
+/// GUI reflects on them, nothing blocked; and the gamekit story in AngelScript: a script pushes,
+/// reads and pops screens, and hears one leave.
 static class GamekitScriptSurfaceTests
 {
 	/// The one document a script pushes: a covering, pausing screen.
@@ -86,7 +86,7 @@ static class GamekitScriptSurfaceTests
 		Test.Assert(text.Contains("class ScreenStack [Weak]"), "the stack, held weakly");
 	}
 
-	// Raptor's gamekit story: the script makes a stack under the root and pushes a node and
+	// The gamekit story: the script makes a stack under the root and pushes a node and
 	// pause.xml, listening for the pause screen's `screenleave`; it offers count(), paused(),
 	// covers(), popIt() and left().
 	private const String cStack = """

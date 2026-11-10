@@ -184,8 +184,8 @@ class ProjectManagerController
 	}
 
 	/// New Project's check for a project named `name` made in `location`, in a folder named after it
-	/// there (FolderNameFor) when `ownFolder` is set, else in `location` itself (Raptor's
-	/// project-manager spec), into `outCheck`. Red, Create waiting: no name, a name with nothing a
+	/// there (FolderNameFor) when `ownFolder` is set, else in `location` itself, into `outCheck`.
+	/// Red, Create waiting: no name, a name with nothing a
 	/// folder can be named by, no location, a location that is a file, a target that is a project
 	/// already or holds files. Amber: the location does not exist yet (it is made). Else green.
 	/// Folders in the message show under `home` as ~. A sample's download dialog asks the same with

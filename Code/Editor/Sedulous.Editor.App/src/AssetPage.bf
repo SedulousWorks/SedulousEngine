@@ -9,14 +9,14 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// What every asset page shares (Raptor's editor-gui spec, 5.4, layer 1), so each of the twenty
+// What every asset page shares, so each of the twenty
 // libraries does not write its own: the services a page asks of the editor when it is made (its
 // markup, the asset slots' table, the type icons, what a preview renders through), filled by the
 // application. A page finds its
 // markup's parts by id with Node.FindElement; an object's whole state is a snapshot (its own
 // Serialize, which writes its versioned envelope itself), and an edit of it made by code that moves
-// many values at once (a preset) one undo step. Raptor's XML text format and reflected undo step
-// have no counterpart here: the editor's grids read components, settings and assets through the
+// many values at once (a preset) one undo step. The editor's grids read components, settings and
+// assets through the
 // editor-side FieldPropertySource (the user's rulings, 2026-10-29), each edit a snapshot step.
 
 /// What an asset page asks of the editor when it is made. The page that is given it owns it.

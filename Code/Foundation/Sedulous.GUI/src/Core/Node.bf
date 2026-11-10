@@ -2156,7 +2156,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// In `:entering`, its entrance's first half.
 	public bool IsEntering => mEnterPhase == 1;
 	/// Entering, or moving to its own style after: `entered` is still to come. `IsEntering` to a
-	/// script, as Raptor names it.
+	/// script.
 	[Scriptable, ScriptName("IsEntering")]
 	public bool IsArriving => mEnterPhase != 0;
 	/// Whether the style pass tells it when what moves it settles (MotionSettled): leaving or

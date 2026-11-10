@@ -185,7 +185,7 @@ f 1 2 3
 		Test.Assert(Near(model.Materials[0].BaseColorFactor.X, 0.5f, 0.002f), scope $"{model.Materials[0].BaseColorFactor.X}");
 	}
 
-	// Imported as authored (Raptor's phong-material spec): an FBX Phong material keeps its highlight
+	// Imported as authored: an FBX Phong material keeps its highlight
 	// (its specular colour times its factor, as sRGB, and its exponent), a Lambert one has none; both
 	// are told apart from PBR by the shading model the file names.
 	[Test]

@@ -36,7 +36,7 @@ namespace Sedulous.Editor.Main;
 ///   (validation defaults on for a dev build, off for an optimized one).
 ///   With a project (positional or --project): opens it directly, scaffolding the manifest
 ///   and the content tree on first run; the single project lifecycle.
-///   With NO project: the PROJECT MANAGER, which is not on the GUI yet (layer 13): the status
+///   With NO project: the PROJECT MANAGER, which is not on the GUI yet: the status
 ///   line says to pass a project.
 static class EditorMain
 {

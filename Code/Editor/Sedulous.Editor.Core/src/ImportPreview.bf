@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Core;
 
-// What the import window shows of a file before it is imported (Raptor's import-window spec). A
+// What the import window shows of a file before it is imported. A
 // domain registers a preview factory for the asset types it imports, as it registers pages; the
 // window asks for the one nearest the type the file's importer lists it by
 // (IFileImporter.ListedTypeName), and shows its view with its facts under it. A type with no

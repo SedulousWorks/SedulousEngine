@@ -3,7 +3,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Profiler.GUI;
 
-// Profiler.GUI: the profiler's views on the GUI (X7 of Raptor's editor-gui spec): the frame strip, the
+// Profiler.GUI: the profiler's views on the GUI: the frame strip, the
 // counters, the timeline, the scope table and a scope's detail, each reading an IProfileSource through
 // one focus, so they work on the live store and on a capture alike; and the in-game overlay.
 //

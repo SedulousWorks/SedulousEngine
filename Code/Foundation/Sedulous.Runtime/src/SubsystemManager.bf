@@ -32,7 +32,7 @@ class SubsystemManager
 	public bool IsRunning => mRunning;
 	public int SubsystemCount => mSorted.Count;
 
-	/// The live runs (Raptor's run-context spec): whoever owns them (DefaultApplication) sets
+	/// The live runs: whoever owns them (DefaultApplication) sets
 	/// their manager here, so every subsystem, an engine one or a game plugin's, registered
 	/// whenever, finds them through Manager.RunManager. Null: no game here (a tool, a test, the
 	/// editor's outer runtime), so no runs. Borrowed.

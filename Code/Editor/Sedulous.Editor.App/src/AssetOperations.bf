@@ -9,7 +9,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-// What can be done to the project's assets and groups (Raptor's editor-gui spec, 5.2, layer 7):
+// What can be done to the project's assets and groups:
 // rename, duplicate, a move into another group, delete, a new group, the export flag, cook. One
 // place for each, so the assets browser's menus, keys and drops and an agent's delete over MCP do
 // the same thing: an asset's pages close before it goes, the default scene is let go when it does,

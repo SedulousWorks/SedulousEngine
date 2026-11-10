@@ -27,7 +27,7 @@ class SceneEditorPageFactory : IEditorPageFactory
 	public EditorPage CreatePage(EditorContext context, Instance instance) => new SceneEditorPage(context, mServices(), instance);
 }
 
-/// Wires the scene editor into the editor (Raptor's editor-gui spec, 5.3, layer 2): its services
+/// Wires the scene editor into the editor: its services
 /// (the document types, the export's scene seams, a model import's prefab and scene), the
 /// thumbnail generators, the scene and prefab pages, the inspector's extras for the engine's own
 /// components, the scene actions and the MCP live tools.

@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-/// The Console panel (Raptor's editor-gui spec, 5.2, layer 1). Its frame is markup
+/// The Console panel. Its frame is markup
 /// (Data/Editor/Console.xml): a chip per level (Debug, holding the trace lines too, Info,
 /// Warnings, Errors, holding the critical ones) with how many lines it holds, on showing them; a
 /// search matching anywhere in a line ignoring case, cleared by its x; Clear; then the lines on a

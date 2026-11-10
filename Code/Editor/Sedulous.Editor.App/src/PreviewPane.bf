@@ -6,8 +6,8 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.App;
 
-// The preview half of a preview page's markup (Data/Editor/PreviewPage.xml; Raptor's editor-gui
-// spec, 5.4, layer 3), bound: the preview in `preview-stage`, Frame (`preview-frame`, and F over
+// The preview half of a preview page's markup (Data/Editor/PreviewPage.xml), bound: the preview
+// in `preview-stage`, Frame (`preview-frame`, and F over
 // the preview), the preview's own choices after `preview-own`, and what shows when there is nothing
 // to preview (`preview-empty`, its words `preview-empty-title` and `preview-empty-text`). The
 // page fills the preview's scene and frames what it shows.

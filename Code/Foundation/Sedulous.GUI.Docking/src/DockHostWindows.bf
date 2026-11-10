@@ -4,7 +4,7 @@ using Sedulous.Core;
 
 namespace Sedulous.GUI;
 
-// DockHostWindows: a DockArea's floats as OS windows (D6 of Specs/gui-lab-evolution-3.md), on the
+// DockHostWindows: a DockArea's floats as OS windows, on the
 // GUI's host. Each floating surface's content goes in a root of the host's GUI, in a window the host
 // opens for it (through the application's opener), with the platform's own frame (the user's
 // ruling): the system moves, sizes and snaps it. Where the shell's windows hold the places given

@@ -14,7 +14,7 @@ using Sedulous.Editor.Camera;
 namespace Sedulous.Editor.Preview;
 
 /// The shared 3D-preview substrate for the asset pages (mesh, clip, skeleton, material, particle,
-/// animgraph, collision; Raptor's editor-gui spec, 5.4, layer 3): a GUI.Viewport the GUI host
+/// animgraph, collision): a GUI.Viewport the GUI host
 /// binds, places and routes, a private preview Scene with simulation off in its own SceneManager,
 /// and an EditorCamera flown as the scene view's is (the mouse while it is hovered or holds a
 /// press, the keyboard only with the focus), F framing. A page holds one instead of hand-rolling

@@ -7,8 +7,7 @@ using Sedulous.VG.Renderer;
 namespace Sedulous.GUI;
 
 // GUI.Viewport: Viewport, a widget that shows content drawn into a colour target (and depth) of its
-// own: a 3D scene, a game in an editor's panel. foundation.ui's counterpart: UI.Viewport
-// (Specs/gui-lab-evolution-3.md in Raptor, V1 and V2).
+// own: a 3D scene, a game in an editor's panel. foundation.ui's counterpart: UI.Viewport.
 //
 // The application fills OnRender, which records into the targets on the frame's encoder (the
 // barriers around it are the widget's). The widget is hosted content (GUI.Hosting's IHostedContent):

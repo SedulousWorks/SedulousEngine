@@ -26,14 +26,14 @@ using Sedulous.Engine.Animation; // PropertyAnimatorComponent (a new clip given 
 namespace Sedulous.Editor.Scene;
 
 // SceneEditorPage: the scene (and prefab) document editor, on the GUI from markup
-// (Data/Editor/Scene.xml; Raptor's editor-gui spec, 5.3, layer 2). Each page owns its own live
+// (Data/Editor/Scene.xml). Each page owns its own live
 // scene, in its own scene manager (several pages are open at once; everything scene scoped is per
 // page), and is made of parts: its viewport (the renderer drawing the scene into it, the camera,
 // picking, the capture), its overlays, Simulate, the prefab flows and the view state kept per scene,
 // each a class of its own. The page holds them together: it loads the scene, edits it through its
 // edit context and its tools, saves it, follows a change made elsewhere, and says on the page when
 // the scene did not load (and then refuses to save over it). Its bar (SceneBar: Save, Undo, Redo
-// and the editing controls, layer 5) acts on this page; its hierarchy (layer 3) is the scene's tree in its left pane, its inspector (layer 4)
+// and the editing controls) acts on this page; its hierarchy is the scene's tree in its left pane, its inspector
 // the selection's components in its right.
 
 /// What a page asks of the editor. Borrowed but the markup loader, the services' own.
@@ -168,7 +168,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public GizmoController Gizmos => (mSelectTool != null) ? mSelectTool.Gizmos : null;
 	public bool CameraOwnsInput => mViewport.CameraOwnsInput;
 	public bool MarkersShown => mOverlays.Settings.ShowMarkers;
-	/// The property animation panel under the viewport (X6 layer 9): a clip of its own, never the
+	/// The property animation panel under the viewport: a clip of its own, never the
 	/// scene's history or its unsaved mark.
 	public bool AnimationPanelShown => mAnimationShown;
 	public PropertyAnimationPanel AnimationPanel => mAnimation;

@@ -14,7 +14,7 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Animation;
 
-// What the animation pages' previews share (Raptor's editor-gui spec, 5.4, layer 10): a skeleton
+// What the animation pages' previews share: a skeleton
 // drawn as its bones (a line from each to its parent, a cross at each joint, one bone drawn apart from
 // the rest when chosen), the path a clip's root motion travels drawn on the ground, and the rig a pose
 // is shown on (AnimationPreviewRig): the skeleton and the skinned mesh the preview plays on, picked on

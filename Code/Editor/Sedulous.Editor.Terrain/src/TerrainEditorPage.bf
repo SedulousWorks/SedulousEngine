@@ -19,8 +19,8 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Terrain;
 
-/// A terrain on the GUI from the preview pages' markup (Data/Editor/PreviewPage.xml; Raptor's
-/// editor-gui spec, 5.4, layer 7). The cooked terrain on a preview lit by a sun (its self-shadowing
+/// A terrain on the GUI from the preview pages' markup (Data/Editor/PreviewPage.xml). The cooked
+/// terrain on a preview lit by a sun (its self-shadowing
 /// shown), beside its rows. The asset keeps its layers in parallel lists, so the rows are the page's
 /// own, not its reflection's: under Terrain the heightfield and the splat weights it is painted with,
 /// whether it casts shadows, how soft the height blend is and the size every layer's textures are

@@ -157,7 +157,7 @@ class LightShadowControlTests
 		}
 	}
 
-	/// The local shadow tiles go to the lights nearest the view (Raptor a085aad1). They went
+	/// The local shadow tiles go to the lights nearest the view. They went
 	/// first come, first served in component order, so a lamp across the map could take them
 	/// while the one beside the camera went without.
 	[Test]

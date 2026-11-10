@@ -85,7 +85,7 @@ extension Node
 	/// reflected property (`value`, `x`, `opacity` on a plain node). A tween of the same property
 	/// replaces the running one, from the value showing. The tween, to shape further (a start
 	/// value, a delay, repeats), whose reference the caller releases; inert on a node in no GUI. The
-	/// manager holds a reference of its own while it runs. `Tween` to a script, as Raptor names it
+	/// manager holds a reference of its own while it runs. `Tween` to a script
 	/// (an expander's `animate` is a property); a method may share a type's name in AngelScript.
 	[Scriptable, ScriptName("Tween"), ScriptReturnsReference]
 	public Tween Animate(StringView property, StringView to, float seconds) => Animate(property, to, seconds, "ease");

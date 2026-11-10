@@ -5,8 +5,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Audio;
 
-/// A clip's peak waveform, a widget of the editor's on the GUI (Raptor's editor-gui spec, 5.4,
-/// layer 5): symmetric bars per bucket about the middle line, and a playhead at a fraction of the
+/// A clip's peak waveform, a widget of the editor's on the GUI: symmetric bars per bucket about the
+/// middle line, and a playhead at a fraction of the
 /// clip while it plays. It can draw the clip as an edit would make it: its bars scaled by a gain
 /// (clamped to full scale), and the part from a fraction on shaded as cut. Its colours are the
 /// sheet's (`waveform` the tag, its background its own box, its parts `wave`, `playhead` and `cut`),

@@ -214,7 +214,7 @@ class SurfaceContent : IHostedContent
 /// its own renderer; a root is drawn when it needs a frame and its last batch encoded again when
 /// not; the baker serves every window's renderer and a detached window's forgets its bakes; a
 /// window opened for a root through the application's opener, its events told by root, the root
-/// under a screen point, and closed again (D6). (The null shell injects no input: routing is
+/// under a screen point, and closed again. (The null shell injects no input: routing is
 /// checked by the sandbox on the host, and by the driven shell below.)
 class GuiHostTests
 {

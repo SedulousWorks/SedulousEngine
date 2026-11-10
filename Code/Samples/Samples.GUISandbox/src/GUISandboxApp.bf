@@ -30,7 +30,7 @@ using Samples.Common;
 
 namespace Samples.GUISandbox;
 
-// The GUI's demo (Raptor's GUISandbox, Documentation/Specs/vg-and-gui-lab.md there), built from the
+// The GUI's demo, built from the
 // GUI itself. A shell (Data/Samples/UI/sandbox/shell.xml: a header, a sidebar of pages, the page on
 // show) whose sidebar buttons run page.<id> commands; each page is pages/<id>.xml with an optional
 // pages/<id>.css and pages/<id>.as, so a new page is a button and its files. This host only sizes
@@ -45,7 +45,7 @@ namespace Samples.GUISandbox;
 // on frames that need it, and bakes the SVG skins. The image tests and the bench draw offscreen
 // instead (SandboxChecks.bf), as do the sweep, the soak and the mirror audit's checks.
 //
-// The file is split as Raptor's Main.cpp reads: this one builds and runs the sandbox; the native
+// The file is split: this one builds and runs the sandbox; the native
 // hosts and the dock space are SandboxHosts.bf, the Toolkit page SandboxToolkit.bf, the checks
 // (--keys, --sweep, --soak, --mirror-audit, --image-tests, --bench) SandboxChecks.bf. With
 // --editor-mock it shows the editor's mock (EditorMock.bf, over MockTypes.bf) instead.
@@ -196,7 +196,7 @@ class GUISandboxApp : IApplication
 	private GuiFacade mGuiFacade = new .() ~ delete _;
 	private bool mMenuScript = false;
 	private bool mMenuWantsUpdate = false;
-	// The game menu's actions, which its prompts read (K7): a stand-in for a game's input map.
+	// The game menu's actions, which its prompts read: a stand-in for a game's input map.
 	private Sedulous.Input.ActionRuntime mMenuInput = new .() ~ delete _;
 	private InputPrompts mMenuPrompts = new .() ~ delete _;
 

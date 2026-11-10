@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Image;
 
-/// The image page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
+/// The image page, on the image pages' markup
 /// (Data/Editor/ImagePage.xml): the decoded source in the picture, which zooms, pans, shows a
 /// channel and reads the pixel under the pointer, beside the asset's fields (its colour space) and
 /// what it says of its source (its size, its format), read only. What every asset page does is

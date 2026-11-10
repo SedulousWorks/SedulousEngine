@@ -11,15 +11,15 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// What a page over one asset does whatever its asset is (Raptor's editor-gui spec, 5.4), so a page
+// What a page over one asset does whatever its asset is, so a page
 // adds only what is its own (a picture, a preview). It reads the asset when it opens; its markup
 // (the page's) has the kit's bar, whose `page-save`, `page-undo`, `page-redo`, `page-discard`,
 // `page-cook` and `page-rebuild` it binds to the actions over the page, a grid (`page-grid`) and
 // the state a page shows when its asset did not read (`page-state`, in place of the grid), and
 // names its asset's kind in `page-kind`. The grid holds the asset's fields under its type's name
 // (through FieldPropertySource, the user's ruling) and, under "Source", what the page says of it as
-// read-only rows (a file, a size), never as fields that do nothing when typed into (the catalog's
-// inconsistency 8). A page that lays out its own rows (a material's, by its shader) hides the
+// read-only rows (a file, a size), never as fields that do nothing when typed into. A page that
+// lays out its own rows (a material's, by its shader) hides the
 // asset's (HideAssetRows) and clears its own sections to lay them again (ClearSections). Every edit
 // is one undo step on the page's stack, the asset's whole state before and after, after which, and
 // after its undo and redo, the page is told (OnObjectChanged) so its preview follows; an edit made

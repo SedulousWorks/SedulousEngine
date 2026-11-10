@@ -11,7 +11,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.PropertyAnimation.Tests;
 
-/// The property animation panel's UI-free half (Raptor's editor-gui spec, 5.4, layer 9, part 1): the
+/// The property animation panel's UI-free half: the
 /// track seeds; the clip document over a scratch project (its own history, its unsaved mark following
 /// the history to where it was saved, a gesture one step or nothing); the clip as the dopesheet's and
 /// the curve view's source (its channels and paths, keys moved, deleted and inserted, each one step);

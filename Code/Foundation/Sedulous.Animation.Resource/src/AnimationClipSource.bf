@@ -13,7 +13,7 @@ namespace Sedulous.Animation.Resource;
 /// wasted float is cheaper than a second set of parallel arrays to keep in step.
 ///
 /// A track whose bone is minus one is a MODEL track: the armature node's own channels, kept by the
-/// importer for root motion; the pose never plays it. Appended last (root-motion.md P0): the root
+/// importer for root motion; the pose never plays it. Appended last: the root
 /// motion settings authored on the clip and the curve the cook baked, each its own key, so a text
 /// clip from before them reads with root motion off. Cooked clips are positional and re-cook: the
 /// clip builder's version moved.

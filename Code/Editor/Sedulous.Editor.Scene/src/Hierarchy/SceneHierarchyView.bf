@@ -10,10 +10,10 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Scene;
 
 // The entity tree inside a scene page, one per page (everything scene-scoped is the page's), on
-// the GUI's TreeView (Raptor's editor-gui spec, 5.3, layer 3). Its model is built again from the
+// the GUI's TreeView. Its model is built again from the
 // live scene when the scene's revision moves, so every edit, undo and redo shows; a row's id is
 // its entity's guid, so the selection and what is open survive each build.
-//   - The scene is the top row (ruling 12: its settings are the scene selected); each entity by
+//   - The scene is the top row (its settings are the scene selected); each entity by
 //     its first component's type icon, a prefab's members and inactive entities marked as such.
 //   - The selection is the page's, shared with the viewport both ways, several at once.
 //   - A double-click frames the entity; F2 renames in place; dragging a row onto another
@@ -26,9 +26,8 @@ namespace Sedulous.Editor.Scene;
 
 /// What a drag of entities carries (a hierarchy's rows), for an entity slot to take.
 ///
-/// The value is one text, the guids one to a line, where Raptor carries a list of strings: a
-/// payload's Variant frees only the object it owns, so a list would leak its texts (AssetDrag's
-/// reason).
+/// The value is one text, the guids one to a line, rather than a list of strings: a payload's
+/// Variant frees only the object it owns, so a list would leak its texts (AssetDrag's reason).
 static class EntityDrag
 {
 	public const String cType = "scene/entity";
@@ -340,7 +339,7 @@ class SceneHierarchyView
 		}
 	}
 
-	/// Whether the scene's own row is selected (ruling 12: the scene's settings are the scene
+	/// Whether the scene's own row is selected (the scene's settings are the scene
 	/// selected; the inspector shows them).
 	public bool SceneSelected => (mTree != null) && mTree.IsIdSelected(cSceneRowId);
 

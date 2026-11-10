@@ -9,7 +9,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Fuzz.Tests;
 
-/// The fuzz targets as tests (E10 of Specs/gui-lab-evolution-2.md): each target takes every seed,
+/// The fuzz targets as tests: each target takes every seed,
 /// then a seeded run of mutations of each, and must neither crash nor hang. A crash a long fuzzer
 /// run finds goes in as a seed (Data/Tests/GUI/Fuzz/<kind>/), so every run takes it from then on.
 /// The count of mutations per seed is GUI_FUZZ_RUNS (default 40), so a long local run is one
@@ -23,7 +23,7 @@ class FuzzTests
 		{
 			if (int.Parse(value) case .Ok(let runs))
 				return Math.Max(1, runs);
-			return 1; // a value that is no number: at least one run, as Raptor's strtol read it
+			return 1; // a value that is no number: at least one run, as strtol reads it
 		}
 		return 40;
 	}
@@ -131,8 +131,8 @@ class FuzzTests
 
 	// === What the runs rest on ===
 
-	/// Bindings in the syntax the keymap reads: Raptor's seeds write "Ctrl+S", which binds nothing,
-	/// so its mutations never reached a binding.
+	/// Bindings in the syntax the keymap reads: a seed written "Ctrl+S" binds nothing, so its
+	/// mutations would never reach a binding.
 	private const String cBindingSeed = "ctrl-s|file.save|\nctrl-k ctrl-c|edit.comment|editing && !readonly\npad-south|ui.activate|menu";
 
 	private static void SandboxStringsPath(String outPath)
@@ -146,7 +146,7 @@ class FuzzTests
 	[Test]
 	public static void AMutationIsFoundAgainFromItsSeed()
 	{
-		// Raptor's xorshift64* exactly, so a seed names the same mutation in both engines.
+		// xorshift64* exactly, so a seed always names the same mutation.
 		var known = FuzzRandom(0x5eed0000);
 		Test.Assert(known.Next() == 0xa590073e3c770093UL);
 		Test.Assert(known.Next() == 0x81d6b2d7da67749cUL);
@@ -184,7 +184,7 @@ class FuzzTests
 	}
 
 	/// The CSS target's tree loads, one of each kind of element: a tree that did not would leave
-	/// the sheet styling an empty root (as Raptor's lower case tags did).
+	/// the sheet styling an empty root (as lower case tags would).
 	[Test]
 	public static void TheCssTargetsTreeHasOneOfEachKindOfElement()
 	{

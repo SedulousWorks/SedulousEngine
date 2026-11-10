@@ -16,7 +16,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Texture;
 
-/// The texture page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
+/// The texture page, on the image pages' markup
 /// (Data/Editor/ImagePage.xml): the source, or the embedded pixels, in the picture, beside the
 /// asset's import settings; its presets in a menu on the bar, each one undo step however many
 /// settings it moves; a usage edit sets the colour space with it, as one step, and a colour space

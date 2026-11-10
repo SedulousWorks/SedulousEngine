@@ -6,9 +6,9 @@ using Sedulous.GUI; // GUI.Docking's controller and layout
 
 namespace Sedulous.Editor.App;
 
-/// The MCP tools over the editor's dock layout (GUI.Docking's; Raptor's editor-gui spec, 5.1,
-/// layer 14), what only the editor host can serve: layout_get (the tree of splits, each with any
-/// number of children and their weights (ruling 16), and stacks of tabs, every panel by its id
+/// The MCP tools over the editor's dock layout (GUI.Docking's), what only the editor host can
+/// serve: layout_get (the tree of splits, each with any number of children and their weights,
+/// and stacks of tabs, every panel by its id
 /// and title, the floating and hidden ones) and panel_dock (a panel moved beside another, into
 /// its tabs, along the window's edge, or floating), so an agent can put two Game tabs side by
 /// side for a networked playtest as a drag would. A panel is named by its id: a page's asset

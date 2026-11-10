@@ -87,7 +87,7 @@ class NavigationSceneTests
 	/// under a playing scene): the crowd was built over the old navmesh, which the reload parks
 	/// and then frees. The zone rebuilds its crowd over the new one and its agent carries on to
 	/// where it was going. It used to keep stepping the old crowd over the freed navmesh (an
-	/// editor crash in Raptor; ASan reports the use after free here without the rebuild).
+	/// editor crash; ASan reports the use after free here without the rebuild).
 	[Test]
 	public static void AZonesNavmeshReloadedMidRunCarriesItsAgentOnOverTheNewOne()
 	{

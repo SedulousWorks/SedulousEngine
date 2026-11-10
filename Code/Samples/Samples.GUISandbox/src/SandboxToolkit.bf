@@ -23,7 +23,7 @@ class CameraStep
 	public int Selection = 0;
 }
 
-// The Toolkit page (T0 to T7 of Raptor's gui-lab-evolution-3.md): its tool bars' commands and the
+// The Toolkit page: its tool bars' commands and the
 // status bar, a property grid over three lamps (LampSource), a reflected camera rig's grid, a clip
 // of the lamps' values in a dopesheet and a curve view, a dataflow graph and a lamp's state
 // machine, breadcrumb bars, and toasts. The undo of each is the page's (an application's), never
@@ -38,25 +38,25 @@ extension GUISandboxApp
 	/// BORROWED: the tool bars' frame, in the page.
 	private Node mToolkitFrame = null;
 
-	// The property grid's lamps (T1).
+	// The property grid's lamps.
 	private LampSource mLamps = null;
-	// The clip (T5): tracks of the lamps' values, its axis (a reference: the views hold theirs), and
+	// The clip: tracks of the lamps' values, its axis (a reference: the views hold theirs), and
 	// the page's history of its changes.
 	private CurveSet mClip = null;
 	private TimeAxis mClipAxis = null;
 	private List<CurveChange> mClipUndo = null;
 	private List<CurveChange> mClipRedo = null;
-	// The node graphs (T6): a dataflow graph and a lamp's state machine, the format their copies are
+	// The node graphs: a dataflow graph and a lamp's state machine, the format their copies are
 	// written in, and the state machine's active state.
 	private GraphHistory mFlow = null;
 	private GraphHistory mStates = null;
 	private XmlTextFormat mGraphFormat = null;
 	private GraphId mLampState = 0;
-	// The toasts (T7): the Progress toast's percentage, and what was posted and closed.
+	// The toasts: the Progress toast's percentage, and what was posted and closed.
 	private int32 mCookPercent = 0;
 	private uint32 mToastsPosted = 0;
 	private uint32 mToastsClosed = 0;
-	// The reflected cameras (T3), their source and its format, and the page's history of the
+	// The reflected cameras, their source and its format, and the page's history of the
 	// source's changes (each with the cameras it was made on).
 	private CameraRig[2] mCameras = .(null, null);
 	private XmlTextFormat mCameraFormat = null;
@@ -107,7 +107,7 @@ extension GUISandboxApp
 		list = null;
 	}
 
-	// === Tool bars and the status bar (T0) ===
+	// === Tool bars and the status bar ===
 
 	// The commands: Save, Undo and Redo disabled until there is something to do, with the reason a
 	// tooltip shows; Grid and Snap checked; Play and Add saying what they did on the status bar;
@@ -226,7 +226,7 @@ extension GUISandboxApp
 			bar.ShowMessage(text, 3.0f);
 	}
 
-	// === The property grid (T1, T2) ===
+	// === The property grid ===
 
 	// Three lamps behind a selection, a search, and the page's undo.
 	private void FillProperties(PropertyGrid grid)
@@ -276,7 +276,7 @@ extension GUISandboxApp
 			redo.Enabled = mLamps.CanRedo;
 	}
 
-	// === The reflected grid (T3) ===
+	// === The reflected grid ===
 
 	// Two camera rigs, one or both edited, the source's changes kept here for Undo and Redo.
 	private void FillReflected(PropertyGrid grid)
@@ -299,7 +299,7 @@ extension GUISandboxApp
 		mCameraRedo = new .();
 		mReflected = new ReflectedPropertySource();
 		mReflected.TextFormat = mCameraFormat;
-		// The sky is a gradient: its stops and blend, as the application says (T5).
+		// The sky is a gradient: its stops and blend, as the application says.
 		mReflected.RegisterGradientType("SkyGradient", .("Colors", "Alphas", "Interpolation"));
 		SelectCameras(0);
 		grid.Source = mReflected;
@@ -381,7 +381,7 @@ extension GUISandboxApp
 		to.Add(step);
 	}
 
-	// === The clip (T5) ===
+	// === The clip ===
 
 	// Eight tracks of the lamps' values ("Lamp A.intensity", "Lamp A.position.y" and the rest, the
 	// dopesheet folding them by lamp and property, more rows than it shows at once), a ruler, a
@@ -534,7 +534,7 @@ extension GUISandboxApp
 		}
 	}
 
-	// === The node graphs (T6) ===
+	// === The node graphs ===
 
 	// A graph of the page and its controls ("<prefix>-graph", "-undo", "-redo", "-frame", "-said"):
 	// each change the graph tells goes on its Undo, and `changed` (owned; null: none) hears it and
@@ -761,7 +761,7 @@ extension GUISandboxApp
 		graph.AddLink(made);
 	}
 
-	// === Breadcrumbs (T7) ===
+	// === Breadcrumbs ===
 
 	private static StringView[18] sCrumbFolders = .(
 		"Content",
@@ -874,7 +874,7 @@ extension GUISandboxApp
 		return false;
 	}
 
-	// === Toasts (T7) ===
+	// === Toasts ===
 
 	// Buttons posting each kind of toast to the shell's host (the core's, over the whole window).
 	private void FillToasts(Node section)

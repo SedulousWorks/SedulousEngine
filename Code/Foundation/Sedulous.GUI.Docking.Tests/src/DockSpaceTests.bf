@@ -59,7 +59,7 @@ class SpaceBed
 	public void Lay() { Root.UpdateLayout(); }
 }
 
-/// The DockSpace and its controller (D3 of Specs/gui-lab-evolution-3.md): splits as Splitters and
+/// The DockSpace and its controller: splits as Splitters and
 /// stacks as TabViews, kept by node id as the layout changes; a panel's content made when its tab
 /// is first shown and kept by the controller; closing by the panel's policy; a placeholder for a
 /// panel not registered, filled when it is; a maximized stack alone; and what the user does in the

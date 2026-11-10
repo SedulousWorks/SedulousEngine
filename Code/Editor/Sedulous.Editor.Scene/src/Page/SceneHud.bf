@@ -12,13 +12,13 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Scene;
 
-// The scene view's HUD (Raptor's editor-gui spec, 5.3, layer 5, part 2): GUI over the viewport in
+// The scene view's HUD: GUI over the viewport in
 // fixed zones, so nothing meets in a corner, in the editor's fonts rather than the debug draw's
 // bitmap one.
-//   - top start, the chips (ruling 22), each saying what is on and in the accent while it is off
+//   - top start, the chips, each saying what is on and in the accent while it is off
 //     its default: the projection (perspective or orthographic, the six axis views), the shading
 //     (Lit, Unlit, the debug terms, the graph's textures through the picker, the effects as what is
-//     on, MSAA; ruling 21), the overlays (the grid and its plane, markers, colliders, the LOD tint,
+//     on, MSAA), the overlays (the grid and its plane, markers, colliders, the LOD tint,
 //     the stats);
 //   - top end, the stats (frames a second and their time) and the view gizmo, which turns with the
 //     camera: a knob looks along its axis, the centre switches the projection (which one is on, the
@@ -717,7 +717,7 @@ class SceneHud
 			}
 		}
 		else if (active != null)
-			parts[0] = active.StatusText; // a tool's own words, until each says it in parts (part 3)
+			parts[0] = active.StatusText; // a tool's own words, until each says it in parts
 		if (mStatusIcon != null)
 		{
 			mStatusIcon.Displayed = !icon.IsEmpty;

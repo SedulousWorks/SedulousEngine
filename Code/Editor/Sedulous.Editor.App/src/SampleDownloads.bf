@@ -42,8 +42,8 @@ class SampleInfo
 	}
 }
 
-/// A release's samples.json (Raptor's project-manager spec, P5): the sample games the project
-/// manager's Samples tab offers, as Raptor's pack-samples.py writes them.
+/// A release's samples.json: the sample games the project manager's Samples tab offers, as
+/// pack-samples.py writes them.
 class SampleCatalog
 {
 	public String Version = new .() ~ delete _;

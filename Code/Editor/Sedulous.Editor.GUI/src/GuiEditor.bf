@@ -3,7 +3,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.GUI;
 
-/// The engine GUI editor's composition (Raptor's RegisterGuiEditor): the document and sheet pages,
+/// The engine GUI editor's composition: the document and sheet pages,
 /// and the section a sheet's preview markup is kept in (registered before the app loads the
 /// per-project store). The asset types themselves come with the pipeline's registration.
 static class GuiEditor

@@ -8,7 +8,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
-// The inspector's bone name (Raptor's editor-gui spec, 5.6, gap 1): a string with the BoneName
+// The inspector's bone name: a string with the BoneName
 // attribute (an IK chain's bones, an aim's) picked from the bones of the animator at or above the
 // entity shown, so a chain is chosen, not typed. "(none)" first, then the bones in the skeleton's
 // order; a name the skeleton does not have stays listed and says so (the component turns itself off

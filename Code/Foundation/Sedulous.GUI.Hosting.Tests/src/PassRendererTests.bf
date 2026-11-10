@@ -9,7 +9,7 @@ using Sedulous.VG.SVG;
 
 namespace Sedulous.GUI.Hosting.Tests;
 
-/// GuiPassRenderer on the Null RHI backend (E4 of Specs/gui-lab-evolution-3.md, in Raptor): a root
+/// GuiPassRenderer on the Null RHI backend: a root
 /// drawn into a pass its caller opened, at a region of the target; a renderer per kind of pass,
 /// rewound once a frame so a frame's roots keep their slices; the bakes recorded once a frame and
 /// learned by renderers made later, as the images registered by key are.

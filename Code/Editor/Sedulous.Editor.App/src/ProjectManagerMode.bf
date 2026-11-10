@@ -40,7 +40,7 @@ class ProjectManagerModeServices
 	public delegate void() Shown ~ delete _;
 }
 
-/// The project manager's part of the application (Raptor's editor-gui spec, 5.1, layer 13): the
+/// The project manager's part of the application: the
 /// manager over the window while no project is open (made the first time, its list probed again
 /// after), and what its actions start. Opening a project another engine saved asks first, as
 /// before: a newer engine's Open Anyway; an older engine's Back Up and Open, or Open Without Backup,
@@ -48,7 +48,7 @@ class ProjectManagerModeServices
 /// folder chosen with the starter content, then opens it. Close Project asks about the unsaved
 /// pages, then closes the project and shows the manager again.
 ///
-/// Raptor keeps this in the application; here it is a part of its own, as the session and the
+/// It is a part of its own, out of the application, as the session and the
 /// pages are, so a headless test drives it over a GUI of its own. What a click asks for runs at
 /// the GUI's next drain, never inside the click (the screen it swaps takes away the button that was
 /// clicked); at once with no GUI.

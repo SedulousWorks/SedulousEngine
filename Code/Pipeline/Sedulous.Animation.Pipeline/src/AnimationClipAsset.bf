@@ -8,7 +8,7 @@ namespace Sedulous.Animation.Pipeline;
 
 /// The authored clip, whose source is the cooked wire, baked for root motion when the clip asks.
 ///
-/// Appended (root-motion.md P0), for the root motion cook: the skeleton the clip's bone indices
+/// Appended, for the root motion cook: the skeleton the clip's bone indices
 /// address (a named root resolves against it), and the armature's rest transform (its own
 /// channels, the clip's model tracks, are turned into model space by its inverse). The importer
 /// sets both.

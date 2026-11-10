@@ -11,7 +11,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-/// The Project panel with a project open (Raptor's editor-gui spec, 5.1, layer 13), in two columns
+/// The Project panel with a project open, in two columns
 /// over its markup (Data/Editor/ProjectHome.xml). On the left the project: its picture, name,
 /// location (under ~) and engine version, the settings that sum it up (those carrying a
 /// [SettingSummary], by that label, each asset a link that opens it, a missing one in the warning

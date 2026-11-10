@@ -8,7 +8,7 @@ using Sedulous.Input;
 namespace Sedulous.Engine.GUI;
 
 /// The guide to a game's touch controls, drawn over the game once a finger has touched the screen
-/// (a desktop player never sees it), on the GUI (Raptor's engine-ui-removal spec, layer 3): every
+/// (a desktop player never sees it), on the GUI: every
 /// touch binding of the sets in effect (ActionRuntime.ForEachTouchControl), a button as a circle
 /// filling its zone with its action's name (what is seen is what is tapped; stronger while held), an
 /// idle stick as a small ring low in its zone, in a dark wash with a light edge that reads on snow

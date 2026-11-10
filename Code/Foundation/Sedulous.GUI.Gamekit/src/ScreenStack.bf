@@ -150,7 +150,7 @@ class ScreenStack : UIWidget
 	/// Pushes `content`: a Screen as it is, anything else in a new screen; it shows on top, takes
 	/// the focus (its remembered, its `nav-default`, else its first focusable) and hears
 	/// `screenenter`. The screen, or null when `content` is a screen already on a stack.
-	/// `PushNode` to a script (its `Push` takes a document's path, as Raptor's does).
+	/// `PushNode` to a script (its `Push` takes a document's path).
 	[Scriptable, ScriptName("PushNode")]
 	public Screen Push(Node content)
 	{

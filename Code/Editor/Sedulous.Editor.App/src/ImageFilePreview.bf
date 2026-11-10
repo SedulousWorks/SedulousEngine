@@ -8,7 +8,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// The import window's preview of a picture file (Raptor's import-window spec, W2): the image pages'
+// The import window's preview of a picture file: the image pages'
 // ImagePreview over a bar of its own (Fit, 1:1, the zoom, the channels, the pixel under the
 // pointer), with the facts the file's header gives: its size, its channels and depth as stored, and
 // whether its alpha is used. It decodes the file as a task on the editor's pool, saying it is

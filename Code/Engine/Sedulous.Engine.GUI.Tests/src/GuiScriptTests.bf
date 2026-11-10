@@ -25,8 +25,8 @@ class GuiScriptTests
 		return null;
 	}
 
-	/// Raptor's case: its facade name list is the surface here, each type on it once with its
-	/// role; its `rootNode()` a script's `Root()`.
+	/// The script surface names the `Gui` facade and the GUI components, each type on it once with
+	/// its role; a component's tree is reached by a script's `Root()`.
 	[Test]
 	public static void TheScriptSurfaceNamesGuiAndTheComponentsAndAComponentReachesItsTreeAsANode()
 	{
@@ -87,8 +87,8 @@ class GuiScriptTests
 		engine.Scenes.DestroyScene(level);
 	}
 
-	/// Raptor's case (its fix, a typed Variant return, has no counterpart here: Beef's Root() returns
-	/// a Node): AngelScript reaches a canvas's, a billboard's and a world panel's tree by Root().
+	/// AngelScript reaches a canvas's, a billboard's and a world panel's tree by Root(), which
+	/// returns a Node.
 	[Test]
 	public static void AngelScriptReachesACanvassABillboardsAndAWorldPanelsTreeByRoot()
 	{

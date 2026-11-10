@@ -342,7 +342,7 @@ class SsgiTemporalProbeTests
 			Test.Assert(on.Specks <= off.Specks + 5.0f, scope $"{kind}: {on.Specks} specks against {off.Specks}");
 			Test.Assert(on.Wobble <= 1.5f, scope $"{kind}: wobble {on.Wobble}");
 			// No clouds: the tight clip alone held the history to a noisy neighbourhood and left
-			// the glow mottled (3.6 in Raptor, the blotchy walls in Lamplight); the a-trous
+			// the glow mottled (the blotchy walls in Lamplight); the a-trous
 			// denoise after the accumulate smooths it.
 			Test.Assert(on.Blotch <= 2.8f, scope $"{kind}: mottling {on.Blotch}");
 			// No flicker: with the history that close to the frame, two rays a pixel left the

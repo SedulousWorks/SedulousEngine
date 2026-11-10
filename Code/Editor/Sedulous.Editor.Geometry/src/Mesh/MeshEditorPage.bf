@@ -16,7 +16,7 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Geometry;
 
-/// The mesh viewer (Raptor's editor-gui spec, 5.4, layer 3), on the preview pages' markup
+/// The mesh viewer, on the preview pages' markup
 /// (Data/Editor/PreviewPage.xml): the cooked product on a preview entity, following reloads by
 /// product identity, beside the asset's fields and its stats, read only. The material the preview
 /// shows it in (kept for this mesh) and, for a LOD chain, the level it draws are the preview's own

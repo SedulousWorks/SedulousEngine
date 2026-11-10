@@ -11,7 +11,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// The import window (Raptor's editor-gui spec, 5.2, layer 7; its import-window spec), over its
+// The import window, over its
 // markup (Data/Editor/Import.xml): one window for one file or many, where the old editor had a
 // single-file and a batch dialog, in three panes. The files, grouped by the importer each resolves
 // to and headed by that importer's Label, each kept or not, with its asset type's icon, its size,

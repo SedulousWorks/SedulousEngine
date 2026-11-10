@@ -5,8 +5,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Terrain;
 
-/// The terrain editor's composition on the GUI (Raptor's editor-gui spec, 5.3, layer 5, part 3, and
-/// 5.4, layer 7): the scene view's brushes (sculpt, paint layers, cut holes), their panels, the
+/// The terrain editor's composition on the GUI: the scene view's brushes (sculpt, paint layers,
+/// cut holes), their panels, the
 /// splatmap thumbnails and the Terrain asset page.
 static class TerrainEditor
 {

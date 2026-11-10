@@ -8,7 +8,7 @@ using static Sedulous.GUI.Docking.Tests.DockingFixtures;
 
 namespace Sedulous.GUI.Docking.Tests;
 
-/// A dock layout saved and restored (D2 of Specs/gui-lab-evolution-3.md): through the engine's
+/// A dock layout saved and restored: through the engine's
 /// text serializer and back whole; another version refused; a broken layout refused and the
 /// current one left as it was; panels not registered kept as placeholders, registered ones not
 /// named put at their default place; a floating window off every screen brought back onto one.

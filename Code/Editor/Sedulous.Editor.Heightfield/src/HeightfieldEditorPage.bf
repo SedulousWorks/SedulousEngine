@@ -12,7 +12,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Heightfield;
 
-/// The heightfield page (Raptor's editor-gui spec, 5.4, layer 2), on the image pages' markup
+/// The heightfield page, on the image pages' markup
 /// (Data/Editor/ImagePage.xml): the source heightmap in the picture, from its own lowest sample
 /// (black) to its highest (white), so a low relief shows where the high byte alone was one flat
 /// grey; the readout says the height under the pointer in metres. Beside it the asset's fields

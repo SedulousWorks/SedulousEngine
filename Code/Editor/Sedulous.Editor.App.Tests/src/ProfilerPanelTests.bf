@@ -10,7 +10,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The editor's Profiler page (X7 of Raptor's editor-gui spec) over its markup
+/// The editor's Profiler page over its markup
 /// (Data/Editor/Profiler.xml), on a test's own store: Record arms it and copies settled frames into
 /// the page's recording, following the newest until a frame is chosen, Live following again; Stop
 /// lets the store go and keeps the frames; another viewer's arm and the store's history are left

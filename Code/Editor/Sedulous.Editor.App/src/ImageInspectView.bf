@@ -5,9 +5,9 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-// The picture the image pages show (Texture, Image, Heightfield, Fonts; Raptor's editor-gui spec,
-// 5.4, layer 2), where they had a fitted image and nothing more (the catalog's pages.md, 23: no
-// zoom, pan, channels, checkerboard or pixel readout). The picture sits on a checkerboard so alpha
+// The picture the image pages show (Texture, Image, Heightfield, Fonts), where they had a fitted
+// image and nothing more (no zoom, pan, channels, checkerboard or pixel readout). The picture sits
+// on a checkerboard so alpha
 // shows; the wheel zooms about the pointer, a drag (left or middle) pans, a double click fits it
 // again. It fits the view until the user zooms or pans, and again whenever the picture's size
 // changes. A channel (red, green, blue or alpha) shows on its own as grey, and the colour channels

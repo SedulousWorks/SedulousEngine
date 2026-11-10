@@ -8,17 +8,16 @@ using Sedulous.Xml.Serialization;
 
 namespace Samples.GUISandbox;
 
-// The Toolkit page's reflected object (T3 of Raptor's gui-lab-evolution-3.md): a camera rig
+// The Toolkit page's reflected object: a camera rig
 // declared with the GUI's reflection and nothing else, which the toolkit's ReflectedPropertySource
 // shows: values with ranges and names, an enum, flags by their flag, a Float3, a Quaternion as Euler
 // degrees, a Color, an HDR glow (a colour and an intensity in stops), a nested lens, a list of
 // stops, a list of effects added by type, a read-only serial, a field shown only for one
-// projection, and a sky over the day (T5): Core's gradient stops in bounded lists, which the page
+// projection, and a sky over the day: Core's gradient stops in bounded lists, which the page
 // registers with the source as a gradient. Its text format is the engine's XmlSerializer.
 //
-// Raptor registers its types with Core's reflection (RegisterCameraTypes) and gives the effects
-// list a factory; a [GuiReflect] table is built on first use, and an effect is made by its table's
-// creator, so nothing registers here.
+// Nothing registers here: a [GuiReflect] table is built on first use, and an effect is made by its
+// table's creator.
 
 enum CameraProjection : uint8
 {

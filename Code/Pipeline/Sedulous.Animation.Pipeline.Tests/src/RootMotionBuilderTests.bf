@@ -12,7 +12,7 @@ using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Animation.Pipeline.Tests;
 
-/// The clip builder's root motion cook (root-motion.md P0): the clip names its root bone, the
+/// The clip builder's root motion cook: the clip names its root bone, the
 /// builder resolves it against the skeleton the clip addresses (read from the SOURCE database,
 /// and declared as a read so a changed skeleton re-cooks the clip), bakes the travel and strips
 /// it from the cooked pose; the authored clip is untouched.

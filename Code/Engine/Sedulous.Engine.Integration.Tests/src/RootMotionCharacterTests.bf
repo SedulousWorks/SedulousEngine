@@ -9,7 +9,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Integration.Tests;
 
-/// Root motion through a real character (root-motion.md P2): an animator in Character mode walks
+/// Root motion through a real character: an animator in Character mode walks
 /// the character above it by the clip, through the scene's character capability, so it still
 /// collides; it stops at a wall, stands when the clip stops, and is let go on Ignore.
 class RootMotionCharacterTests

@@ -7,7 +7,7 @@ namespace Sedulous.Editor.Core;
 /// The editor level UI preferences, a settings section. UiScale multiplies the window's OS
 /// content scale for the whole editor UI, layout, fonts and baked icons: an accessibility
 /// knob, and the way to exercise the DPI path without a scaled monitor. The look's inputs
-/// (Raptor's editor-gui spec, 3.1; rulings 6, 7, 13) sit beside it: the scheme, the accent, the
+/// sit beside it: the scheme, the accent, the
 /// density and less motion.
 ///
 /// The store is XML, so a field added later is [Appended] by its key: a file saved before it

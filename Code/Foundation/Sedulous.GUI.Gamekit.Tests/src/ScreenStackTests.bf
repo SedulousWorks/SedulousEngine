@@ -366,7 +366,7 @@ class ScreenStackTests
 		Test.Assert(log.Heard.IsEmpty);
 	}
 
-	// === Behaviour no Raptor test covers ===
+	// === Further behaviour ===
 
 	[Test]
 	public static void AReplaceOnAnEmptyStackPushesAndAScreenOnAStackIsNotReplacedIn()

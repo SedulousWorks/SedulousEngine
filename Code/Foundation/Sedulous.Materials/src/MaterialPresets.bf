@@ -63,7 +63,7 @@ static class MaterialPresets
 			.Build();
 	}
 
-	/// The standard PHONG material (the "phong" builtin shader, Raptor's phong-material spec): what a
+	/// The standard PHONG material (the "phong" builtin shader): what a
 	/// model authored with Phong or Lambert is made of. Each light shaded Blinn-Phong: the diffuse
 	/// (BaseColor x AlbedoMap) by N.L, the specular (SpecularColor x SpecularMap, black: none) as a
 	/// highlight as tight as Shininess, its exponent; the scene's diffuse ambient; the emission added.

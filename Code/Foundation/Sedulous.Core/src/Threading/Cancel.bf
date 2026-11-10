@@ -2,7 +2,7 @@ using System;
 
 namespace Sedulous.Core;
 
-// Cooperative cancelling (Raptor's task-layer spec, D1). Whoever may cancel holds a CancelSource;
+// Cooperative cancelling. Whoever may cancel holds a CancelSource;
 // the work it started holds its CancelToken, which it asks at its checks (CancelToken.Requested)
 // and returns ErrorCode.Cancelled when told. Work that runs where its canceller cannot reach (a cook
 // in the pipeline, started by an editor window) takes a token, so the canceller needs no knowledge

@@ -393,7 +393,7 @@ class BreadcrumbBarTests
 		Test.Assert(made.GetChildAt(0) is BreadcrumbBar);
 	}
 
-	// What no Raptor test covers: a path edit ended from code, submitted or not, and the overflow
+	// Further cases: a path edit ended from code, submitted or not, and the overflow
 	// opened from code.
 	[Test]
 	public static void APathEditEndedFromCodeGivesItsTextOnlyWhenSubmitted()

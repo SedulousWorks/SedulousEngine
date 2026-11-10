@@ -9,7 +9,7 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.Scene;
 
 // A scene system's settings block as a property source, for the inspector while the scene is
-// selected (ruling 12; Raptor's editor-gui spec, 5.3, layer 4, part 4). A block's values are its
+// selected. A block's values are its
 // own, or a profile's while it uses one (shared by every scene that does): each property shows and
 // edits where the edit context says it lands (SettingsEditProfile: the profile's values, or the
 // block's own for its scene-only fields, its source and profile reference). Two field sources of

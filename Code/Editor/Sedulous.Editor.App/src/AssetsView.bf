@@ -9,7 +9,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-// The Assets panel (Raptor's editor-gui spec, 5.2, layer 7), over its markup
+// The Assets panel, over its markup
 // (Data/Editor/Assets.xml) as the mock draws it: the project's source content, the content database
 // the truth. The group tree on the left (folders, Content at the top); the toolbar's breadcrumb
 // where it is; the group's subgroups then its assets on the right, as tiles or a list (kept per
@@ -1243,8 +1243,8 @@ class AssetsView
 	private void ShowGroupMenu(Node owner, Float2 at, Group group, bool shown, ItemId rowId = NoItem)
 	{
 		let ops = mServices.Operations;
-		// A browser with no verbs opens no menu, however it is asked for (a crash once, in Raptor,
-		// where one way in did not ask first).
+		// A browser with no verbs opens no menu, however it is asked for (a crash once, where one
+		// way in did not ask first).
 		if (ops == null)
 			return;
 		let menu = NewMenu();

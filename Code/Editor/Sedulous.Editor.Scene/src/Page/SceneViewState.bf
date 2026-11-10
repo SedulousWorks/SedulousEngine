@@ -13,7 +13,7 @@ namespace Sedulous.Editor.Scene;
 // shows it. The panes are one splitter of three on the GUI (hierarchy, viewport,
 // inspector) where the prefs keep the old page's nested ratios (hierarchy | the rest, then viewport
 // | inspector), so the weights convert both ways and the prefs' format stands; the bottom dock's
-// ratio is kept as it was. Out of the page's class (Raptor's editor-gui spec, 5.3, layer 2).
+// ratio is kept as it was. Out of the page's class.
 
 /// The page's three panes' shares of its width.
 struct ScenePaneWeights

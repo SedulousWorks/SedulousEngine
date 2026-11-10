@@ -8,12 +8,12 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Scene;
 
-// A scene page's overlays (Raptor's editor-gui spec, 5.3, layer 2): what the editor draws into the
+// A scene page's overlays: what the editor draws into the
 // scene in its viewport's own debug list each frame (the lists clear every frame). The grid under the
 // camera with the world's axes, the entity markers and the selection's boxes, the tools' gizmos, the
 // component gizmos, and the entity the animation panel's preview poses. Out of the page's class; the toggles are kept per scene (SceneViewPref). What is
 // written rather than drawn in the scene (the stats, the tool's status, the zoom readout, the view
-// gizmo) is the HUD's, on the GUI (layer 5).
+// gizmo) is the HUD's, on the GUI.
 
 /// One frame of what the overlays read. The page's, borrowed for the frame.
 struct SceneOverlayFrame

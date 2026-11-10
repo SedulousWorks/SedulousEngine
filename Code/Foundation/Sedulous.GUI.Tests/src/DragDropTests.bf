@@ -534,7 +534,7 @@ class DragDropTests
 	}
 
 	/// A drop listener that ends the drag (as a dock moving the dragged tab does) leaves the
-	/// payload the later listeners read alive, emptied, as Raptor's moved-from payload is.
+	/// payload the later listeners read alive, emptied, as a moved-from payload is.
 	[Test]
 	public static void ADragEndedByOneDropListenerLeavesThePayloadTheNextReadsAlive()
 	{

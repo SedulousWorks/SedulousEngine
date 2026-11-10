@@ -7,7 +7,7 @@ using Sedulous.GUI;
 
 namespace Samples.GUISandbox;
 
-/// The Code page (C8 of Raptor's gui-lab-evolution-3.md): GUI.Code's editor as a host uses it. A
+/// The Code page: GUI.Code's editor as a host uses it. A
 /// script in the sandbox's own AngelScript, checked by the engine's compiler a moment after each
 /// edit without running it (ScriptRuntime.Check), its errors the editor's diagnostics; a click in
 /// the gutter sets a breakpoint; completion and hover from the surface the script backend bound
@@ -367,7 +367,7 @@ class CodePage : ICodeLanguageService
 	{
 		for (let member in type.Members)
 		{
-			// Sedulous's API listing has no operator kind (Raptor's skipped them here): none to skip.
+			// The API listing has no operator kind: none to skip.
 			if (!type.IsNamespace && (member.IsStatic != statics))
 				continue;
 			bool seen = false; // an overload shows once, with its first signature

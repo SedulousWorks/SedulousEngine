@@ -8,7 +8,7 @@ using Sedulous.Profiler.Tests; // KnownSource
 
 namespace Sedulous.Profiler.GUI.Tests;
 
-/// The frame strip and the counters' plots on one frame axis (X7 of Raptor's editor-gui spec): the
+/// The frame strip and the counters' plots on one frame axis: the
 /// axis fitting the source and following it until a zoom or a pan; a column a frame, or the frames
 /// sharing a pixel as one showing the longest; the budget's scale; a click choosing a frame, a drag a
 /// range, a double click fitting again; the name chosen drawn as its share of each frame; a counter's

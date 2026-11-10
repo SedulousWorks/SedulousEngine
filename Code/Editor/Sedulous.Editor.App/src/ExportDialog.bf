@@ -8,11 +8,11 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.App;
 
-// Export (Raptor's editor-gui spec, 5.2, layer 6): Project > Export, a window over its markup
+// Export: Project > Export, a window over its markup
 // (Data/Editor/Export.xml). The project's export presets on the left (add, duplicate, remove after
 // asking), each by the icon of the template it resolves to here, warned of when none does; the
 // selected one on the right under a card naming the template it exports with, or saying why there
-// is none, its settings on the property grid as Project Settings' are (ruling 20): a section per
+// is none, its settings on the property grid as Project Settings' are: a section per
 // category (General: its name, template, platform, config, player and output folder; Content: the
 // extra files as a list, symbols, pruning, shader source; Display: its own render size, window and
 // orientation, each shown only when the preset overrides it). A template picked by name decides

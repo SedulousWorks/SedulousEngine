@@ -75,8 +75,8 @@ class ParticleTreeModel : TreeModel
 	}
 }
 
-/// A particle effect on the GUI from its markup (Data/Editor/ParticleEffectPage.xml; Raptor's
-/// editor-gui spec, 5.4, layer 8). The effect's systems a tree (each its emitter, its initializers
+/// A particle effect on the GUI from its markup (Data/Editor/ParticleEffectPage.xml). The effect's
+/// systems a tree (each its emitter, its initializers
 /// and its behaviors), the live preview beside it, and the grid showing the chosen system by its
 /// fields (FieldPropertySource, the user's ruling): its options, each shown where its render mode
 /// uses it, its emitter, and its modules as the grid's lists, an add choosing the module's type among

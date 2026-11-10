@@ -8,7 +8,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
-// The inspector's entity reference (Raptor's editor-gui spec, 5.3, layer 4, part 2): a component's
+// The inspector's entity reference: a component's
 // EntityRef as a slot, the grid's row for it (the field source takes EntityRef as a reference by its
 // id, hinted "EntityRef", so this editor is chosen before the asset slot). It shows the entity
 // referenced by its type icon and its name, "Not set", or "(missing)" when no entity of the scene has

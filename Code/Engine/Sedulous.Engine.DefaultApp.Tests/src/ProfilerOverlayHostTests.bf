@@ -7,7 +7,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.DefaultApp.Tests;
 
-/// The application's profiler overlay (on the GUI, Raptor's engine-ui-removal spec, layer 1): off
+/// The application's profiler overlay (on the GUI): off
 /// until shown, then on the GUI's overlay layer taking no pointer (so the layer stays passive), the
 /// profiler armed while it shows and its views reading the frames that end; hidden, it leaves the
 /// layer and lets the profiler go.

@@ -340,7 +340,7 @@ class TimeAxisTests
 		bed.Ruler.MarkerSource = null;
 	}
 
-	// What no Raptor test covers: a value to the decimals of its step, rounded half away from zero
+	// Further cases: a value to the decimals of its step, rounded half away from zero
 	// (a step of 0.25 is one decimal: its tenfold, 2.5, ends the count).
 	[Test]
 	public static void AValueIsFormattedToTheDecimalsOfItsStep()

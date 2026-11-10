@@ -202,7 +202,7 @@ class GameInstanceTests
 		Test.Assert(held.Events.Length == 1 && (held.Events[0].Kind == .KeyUp));
 	}
 
-	/// A GameInstance is its IRun (Raptor's run-context spec): its scenes are on the run's own bus,
+	/// A GameInstance is its IRun: its scenes are on the run's own bus,
 	/// and what it owns is reached through the run.
 	[Test]
 	public static void TheInstanceIsAnIRunItsScenesOnTheRunsBusItsServicesThroughTheRun()

@@ -8,8 +8,8 @@ namespace Sedulous.GUI;
 // style applier (a sheet sets any property it names), the markup loader (an element built by its
 // tag, its attributes set by name), bindings (a property found by either name) and accessibility.
 //
-// Raptor builds these records at run time (REFLECT_MEMBERS blocks). Here they are generated at
-// compile time: a property carries [GuiProperty], its type [GuiReflect], and the type's table,
+// These records are generated at compile time: a property carries [GuiProperty], its type
+// [GuiReflect], and the type's table,
 // with a typed get and set thunk per property, is emitted from the declaration, so the two cannot
 // drift and nothing is reflected at run time.
 //

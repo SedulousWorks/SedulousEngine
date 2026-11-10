@@ -13,7 +13,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.Scene;
 
 // Rows of a scene settings block that reflection does not show, each a source under its block's
-// section while the scene is selected (Raptor's editor-gui spec, 5.3, layer 4, part 4), registered
+// section while the scene is selected, registered
 // by the block's type as inspector extras:
 //   - the physics block's collision groups: a list of groups, each its name, and beside it a
 //     grid of which pairs collide (`matrix`, the CollisionMatrixEditor's, read and written through

@@ -135,8 +135,8 @@ class ProfileValuesSource : IPropertySource
 }
 
 /// Edits a profile asset (an Environment Profile, a Post Process Profile; any
-/// SettingsProfileAsset), on the preview pages' markup (Data/Editor/PreviewPage.xml; Raptor's
-/// editor-gui spec, 5.4, layer 4): a preview rendered with the profile applied, beside the
+/// SettingsProfileAsset), on the preview pages' markup (Data/Editor/PreviewPage.xml): a preview
+/// rendered with the profile applied, beside the
 /// profile's values, the rows a scene's settings show (the block's own fields, its source and its
 /// profile, left out, as they are a scene's). The preview is a built-in scene (a ground, spheres of
 /// a few materials, a cube and a sun) or one of the project's scenes, picked on the preview's bar,

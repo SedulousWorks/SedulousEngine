@@ -77,8 +77,8 @@ struct EditorSessionOpenOptions
 	}
 }
 
-/// The project the editor has open, out of the application (Raptor's editor-gui spec, 5.1,
-/// layer 3). Opening one (or, from the command line, scaffolding a bare folder into one) sets up
+/// The project the editor has open, out of the application. Opening one (or, from the command
+/// line, scaffolding a bare folder into one) sets up
 /// what lives as long as it does: the context's project, the per-project editor store (dock
 /// layout, favourites, open pages), the resources over its cooked database and its prefabs
 /// attached to the embedded runtime, the cook service and the hooks the context runs it

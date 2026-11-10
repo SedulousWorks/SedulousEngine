@@ -5,7 +5,7 @@ using Sedulous.GUI;
 namespace Sedulous.Engine.GUI;
 
 /// The loading screen a game shows while its first scene loads when it authors none (its
-/// GuiLoadingDocumentId is unset), on the GUI (Raptor's engine-ui-removal spec, layer 2): the
+/// GuiLoadingDocumentId is unset), on the GUI: the
 /// SedulousEngine logo (the SVG text; left out when empty or unreadable) over a progress bar and
 /// "Loading", centred on a dark screen. Root holds a reference of the caller's; Progress is the bar
 /// the player drives (0 to 1), in Root.

@@ -338,7 +338,7 @@ class AnimationGraphPlayer
 		return state.Node.RootMotion(normalizedTime, to, state.Loop);
 	}
 
-	/// The root motion the base layer carried since the last call (root-motion.md P1): its
+	/// The root motion the base layer carried since the last call: its
 	/// state's, or during a crossfade both states' blended by the fade, composed over every
 	/// Update between. Reading it resets it.
 	public RootMotionDelta ConsumeRootMotion()

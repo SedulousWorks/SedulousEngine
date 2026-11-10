@@ -22,7 +22,7 @@ namespace Sedulous.GUI;
 // one by Animate, CreateTween and the rest) releases its reference; a manager or a group running
 // it holds one of its own.
 //
-// To a script they are counted handles (Raptor's names, in PascalCase): a handle is a reference
+// To a script they are counted handles: a handle is a reference
 // of the script's own, so a tween a script keeps outlives the manager's (a kept tween's IsDone
 // reads after it ended), and one kept past its GUI finds no target. The shaping verbs give back
 // the tween or group itself, lent, so a script chains them as native code does.
@@ -111,7 +111,7 @@ class Tween : Sedulous.GUI.Action
 	}
 
 	/// How many times it runs (1 by default; a negative count runs until stopped). `Repeats` to a
-	/// script, as Raptor names it (`repeat` is a word of Luau's).
+	/// script (`repeat` is a word of Luau's).
 	[Scriptable, ScriptName("Repeats")]
 	public Tween Repeat(int32 count)
 	{
@@ -794,7 +794,7 @@ abstract class TweenGroup : Sedulous.GUI.Action
 	}
 
 	/// How many times it runs (1 by default; a negative count runs until stopped). `Repeats` to a
-	/// script, as Raptor names it.
+	/// script.
 	[Scriptable, ScriptName("Repeats")]
 	public TweenGroup Repeat(int32 count)
 	{

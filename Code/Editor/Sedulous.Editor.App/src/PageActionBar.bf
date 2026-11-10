@@ -5,8 +5,8 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// PageActionBar: a page's bar bound to the editor's actions over THAT page (Raptor's editor-gui
-// spec, 5.3, layer 2). The GUI's commands keep one state each for the whole window, but a page's
+// PageActionBar: a page's bar bound to the editor's actions over THAT page. The GUI's commands
+// keep one state each for the whole window, but a page's
 // Save, Undo or Simulate acts on and shows its own page: two pages side by side each have theirs.
 // So each button is bound to an action id; a click executes the action with the page as its
 // subject, and Sync, once a frame, gives the button the action's label and keys (its tooltip),

@@ -5,7 +5,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation.Tests;
 
-/// The inverse kinematics solvers (inverse-kinematics.md P1, the tests the spec lists): a two bone
+/// The inverse kinematics solvers: a two bone
 /// chain reaches a reachable target exactly from every side, keeps its bone lengths and bends in
 /// the pole's plane; an unreachable target is clamped short of straight with no NaN; a straight
 /// chain bends the same way every frame; weight 0 is byte for byte and 0.5 between; an aim reaches

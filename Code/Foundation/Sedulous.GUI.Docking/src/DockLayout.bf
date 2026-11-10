@@ -4,7 +4,7 @@ using Sedulous.Core;
 
 namespace Sedulous.GUI;
 
-// DockLayout: a dock layout as plain data (D1 of Specs/gui-lab-evolution-3.md).
+// DockLayout: a dock layout as plain data.
 //
 // The layout is data, not widgets: what the dock widgets show is reconciled from it, a drop's
 // preview is an operation run on a copy of it, and it is tested without a GUI. Surfaces are the
@@ -494,7 +494,7 @@ class DockLayout
 		return .();
 	}
 
-	// === A floating surface docked whole (D5) ===
+	// === A floating surface docked whole ===
 
 	/// Every panel of floating `surface` as tabs of `stack`, in its stacks' order (the float's
 	/// active panel active there); the surface goes.

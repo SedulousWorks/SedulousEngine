@@ -7,7 +7,7 @@ using Sedulous.GUI.Inspector;
 
 namespace Sedulous.GUI.Testing;
 
-// Helpers for tests of GUIs built with the GUI (E8f of Specs/gui-lab-evolution.md).
+// Helpers for tests of GUIs built with the GUI.
 //
 // A Finder names nodes: by CSS selector (the GUI's own engine, eepp's querySelector) or by their
 // text (a widget's reflected `Text`, the outermost of a widget and its parts), within another
@@ -17,7 +17,7 @@ namespace Sedulous.GUI.Testing;
 // held direction, a pad button, files dropped. Each aims at the middle of what it found, and fails
 // when something else lies there. A finder that expects one node and finds none or several fails,
 // listing what it found and the tree around where it looked; failures go to a handler (a test's
-// assertion) and are kept. CompareImages is the image tests' match (E8g): every channel within a
+// assertion) and are kept. CompareImages is the image tests' match: every channel within a
 // tolerance on all but a small share of the pixels, with a picture of where they differ.
 
 static
@@ -408,7 +408,7 @@ class Tester
 	}
 
 	/// Two fingers on `target`'s middle, `span` apart across, pinched to `toSpan` apart in steps,
-	/// lifted there (E17c: a gesture where the target's touch-action takes one).
+	/// lifted there (a gesture where the target's touch-action takes one).
 	public bool Pinch(Finder target, float span, float toSpan) => TwoFingers(target, span, toSpan, 0.0f, .(0.0f, 0.0f));
 
 	/// Two fingers on `target`'s middle turned `radians` about it, clockwise, in steps.
@@ -614,7 +614,7 @@ class Tester
 	}
 }
 
-/// How a picture compares with its reference (E8g).
+/// How a picture compares with its reference.
 struct ImageComparison
 {
 	public bool SameSize = false;

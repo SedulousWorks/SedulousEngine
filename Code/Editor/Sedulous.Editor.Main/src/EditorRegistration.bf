@@ -62,14 +62,14 @@ static class EditorRegistration
 		// document types, the export's scene seams, a model import's prefab and scene).
 		SceneEditor.Register(context, host, app);
 		// Play in editor: the Game tabs (Play, Play New Instance), the game-audio preference, the
-		// PIE tools (layer 7, part 3).
+		// PIE tools.
 		PlayInEditor.Register(context, host, app);
-		// The scene view's tools by domain; the bar shows them in this order (layer 5, part 3).
+		// The scene view's tools by domain; the bar shows them in this order.
 		TerrainEditor.RegisterSceneTools(context); // sculpt, paint layers, cut holes; their panels; splatmap thumbnails
 		VegetationEditor.RegisterViewportTools(); // paint vegetation, paint props
 		VegetationEditor.RegisterToolPanels();
 		SplineEditor.RegisterViewportTools(); // the spline control-point editor
-		// The asset pages (X6), each asking the application's one source for its services when it is
+		// The asset pages, each asking the application's one source for its services when it is
 		// made; the fallback catches an asset with no page of its own, the bespoke ones win by type.
 		let pageServices = app.PageServicesSource;
 		ImageEditor.Register(context, pageServices);

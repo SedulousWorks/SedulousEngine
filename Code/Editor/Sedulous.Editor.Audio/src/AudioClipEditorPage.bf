@@ -13,8 +13,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The audition page of an AudioClipAsset, on the GUI from its markup (Data/Editor/AudioClipPage.xml;
-/// Raptor's editor-gui spec, 5.4, layer 5). The clip's peak waveform (decoded from its source file,
+/// The audition page of an AudioClipAsset, on the GUI from its markup (Data/Editor/AudioClipPage.xml).
+/// The clip's peak waveform (decoded from its source file,
 /// the bytes the cook writes through) with the kit's transport over it: Play, Stop and Restart are
 /// the playback actions over the page, auditioned through the RUNTIME context's AudioSubsystem (the
 /// game's engine, buses and voices, so what is heard is what the game plays), honouring the clip's

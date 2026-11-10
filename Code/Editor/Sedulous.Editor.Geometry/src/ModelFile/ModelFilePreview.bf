@@ -24,7 +24,7 @@ using Sedulous.Editor.Animation; // DrawSkeletonBones, FillBoneTree: the skeleto
 
 namespace Sedulous.Editor.Geometry;
 
-// The import window's preview of a model file (Raptor's import-window spec, W4): the model live in
+// The import window's preview of a model file: the model live in
 // a PreviewViewport (orbit, zoom, Frame), with its clips (a picker, play and pause) and its skeleton
 // drawn over it on request; and the facts the file gives (meshes, triangles, materials, textures,
 // bones, clips). It opens through Editor.ModelPreview's OpenModel into a cache folder under the

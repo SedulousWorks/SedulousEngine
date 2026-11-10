@@ -1038,7 +1038,7 @@ class PropertyGridTests
 		CheckNear(FloatOf(bed.Bag, "speed", 0), 7.5);
 	}
 
-	// What no Raptor test covers: a category's row is a header with no editor, the folded state reads
+	// Further cases: a category's row is a header with no editor, the folded state reads
 	// back as toggled, and the indent widens with depth.
 	[Test]
 	public static void ACategoryRowIsAHeaderAndTheIndentWidensANestedRow()

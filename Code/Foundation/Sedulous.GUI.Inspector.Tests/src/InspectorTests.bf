@@ -197,7 +197,7 @@ class InspectorTests
 		Test.Assert(bed.DetailsHave("audit: nothing in this GUI a screen reader trips on"));
 	}
 
-	// --- Behaviour no Raptor test covers ---
+	// --- Further behaviour ---
 
 	[Test]
 	public static void AReflectedPropertyEditedInItsFieldSetsItAsMarkupDoes()

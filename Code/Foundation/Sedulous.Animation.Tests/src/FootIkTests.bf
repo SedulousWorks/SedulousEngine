@@ -5,7 +5,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation.Tests;
 
-/// Feet that stand on the ground under them (inverse-kinematics.md P3), on grounds given rather
+/// Feet that stand on the ground under them, on grounds given rather
 /// than probed: flat ground leaves the pose, a step up raises a foot, a step down lowers the
 /// pelvis (clamped), a lifted foot is the animation's, a foot turns to its slope up to MaxTilt,
 /// and the corrections ease at their rates while a zero step holds them.

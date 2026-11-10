@@ -7,8 +7,8 @@ using Sedulous.Shaders;
 namespace Samples.GUISandbox;
 
 /// A cube drawn through RAW RHI into a viewport's offscreen targets (the Viewport page's; a copy
-/// of UISandbox's, as Raptor's samples share Samples/Common/SpinningCube.h: Samples.Common has
-/// no RHI, and a web sample builds it).
+/// of UISandbox's rather than a shared one: Samples.Common has no RHI, and a web sample builds
+/// it).
 ///
 /// It is here to exercise one contract and nothing else: a UI panel hands out a colour and a
 /// depth target and an encoder, and something outside the UI draws into them. A real renderer

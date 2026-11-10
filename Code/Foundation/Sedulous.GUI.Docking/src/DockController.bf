@@ -4,7 +4,7 @@ using Sedulous.Core;
 
 namespace Sedulous.GUI;
 
-// DockController: a layout and the panels it places (D3 of Specs/gui-lab-evolution-3.md).
+// DockController: a layout and the panels it places.
 //
 // Panels are registered by id with a description: the title and icon their tab shows, a factory
 // for their content, what closing them does, whether they can be closed, and where they go when a
@@ -62,7 +62,7 @@ interface IDockView
 	String PanelOf(Node page);
 }
 
-/// Where a dragged panel goes when dropped (D4): into a stack's strip at a tab's place, into a
+/// Where a dragged panel goes when dropped: into a stack's strip at a tab's place, into a
 /// stack (its middle), beside a stack (its edge band) or along a whole surface's edge.
 enum DockDropKind : uint8
 {
@@ -97,7 +97,7 @@ struct DockDrop
 }
 
 /// What a dock drag carries: a docked panel (a tab torn out), a whole floating surface (a float
-/// dragged by its title, D5) or a whole stack (its strip's grip).
+/// dragged by its title) or a whole stack (its strip's grip).
 class DockDragged
 {
 	public String Panel = new .() ~ delete _;

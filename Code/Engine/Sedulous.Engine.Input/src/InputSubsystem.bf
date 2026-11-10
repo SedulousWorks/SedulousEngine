@@ -100,7 +100,7 @@ class InputSubsystem : Subsystem, IRunListener
 	}
 
 	/// This subsystem's runtime, then each run's (the player's, the editor's Game tabs': the
-	/// ActionRuntime a run holds as a service, Raptor's run-context spec): the UI marks what it
+	/// ActionRuntime a run holds as a service): the UI marks what it
 	/// takes on every one (else a tap on a menu also reached the game's actions) and shows their
 	/// touch controls. No runs here: this subsystem's runtime alone.
 	public void ForEachActionRuntime(ActionRuntimeVisitor visit)

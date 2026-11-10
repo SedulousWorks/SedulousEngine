@@ -4,8 +4,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// The small types of the first slice whose Raptor tests need later slices: what each one sets
-/// out to do, checked here until those land.
+/// The small types: what each one sets out to do, checked on its own.
 class PrimitivesTests
 {
 	/// An op enqueued while the queue drains waits for the next drain, so a drain always ends.

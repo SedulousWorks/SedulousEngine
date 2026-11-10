@@ -31,7 +31,7 @@ interface IApplicationHost
 
 	void RequestExit(int code = 0);
 
-	/// Long work off the frame (Raptor's task-layer spec): resource decodes and whatever else must
+	/// Long work off the frame: resource decodes and whatever else must
 	/// not hold the frame's workers. The host pumps it once a frame. Null: none, as for a test's
 	/// host, and decodes are then synchronous.
 	TaskPool Tasks => null;

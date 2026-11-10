@@ -11,8 +11,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Input;
 
-/// An input map on the GUI from its markup (Data/Editor/InputMapPage.xml; Raptor's editor-gui spec,
-/// 5.4, layer 5, part 4; the user's choice among the designs mocked in the editor mock). The sets
+/// An input map on the GUI from its markup (Data/Editor/InputMapPage.xml; the user's choice among
+/// the designs mocked in the editor mock). The sets
 /// and their actions a tree beside the grid; the tree's bar adds a set and removes the chosen row,
 /// its search keeping the actions whose name or input matches. The grid shows the chosen set by its
 /// fields (FieldPropertySource, the user's ruling): its name and priority, then its actions as the

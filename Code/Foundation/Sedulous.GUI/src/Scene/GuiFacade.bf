@@ -4,16 +4,13 @@ using Sedulous.Script;
 
 namespace Sedulous.GUI;
 
-// The `Gui` facade: a script's way into the GUI its host gave it, as Raptor's `gui` statics are
-// (Scene/GuiScript.cppm's Gui and GuiScriptBinding). Raptor installs a binding per script context
-// and its statics find it through the calling context; here the facade is that binding, a service
-// a host sets on the run's runtime (ScriptRuntime.SetService) and a script reaches by the global
-// handle `Gui`. It finds the root it reads at each call, so a host whose scripts' roots differ by
+// The `Gui` facade: a script's way into the GUI its host gave it, a service a host sets on the
+// run's runtime (ScriptRuntime.SetService) and a script reaches by the global handle `Gui`. It
+// finds the root it reads at each call, so a host whose scripts' roots differ by
 // what is running them (an editor's game per tab) gives it a function in place of a root.
 //
-// Raptor's names, in PascalCase. Its one `set` takes a variant; a script's call here is typed, so
-// a value is set by its kind: SetNumber, SetText, SetBool and SetNode, beside GetNumber, GetText
-// and GetBool.
+// There is no one setter taking a variant: a script's call here is typed, so a value is set by its
+// kind: SetNumber, SetText, SetBool and SetNode, beside GetNumber, GetText and GetBool.
 
 /// `Gui`: the calling script's GUI, its data, its commands and keys, its localized text.
 [Scriptable, ServiceFacade("Gui")]

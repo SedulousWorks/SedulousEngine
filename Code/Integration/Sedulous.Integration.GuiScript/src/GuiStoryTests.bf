@@ -4,8 +4,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.Integration.GuiScript;
 
-/// Raptor's GUI script stories (Integration.GuiScript's GuiScriptTests, their AngelScript halves)
-/// that the script surface's own tests do not tell: a sheet styles what a script classed and the
+/// The GUI script stories, in AngelScript, that the script surface's own tests do not tell: a
+/// sheet styles what a script classed and the
 /// script reads the styled value; the weak-handle rule's middle (a destroy inside a click handler
 /// completes after it, a gone handle refuses writes and calls as it refuses reads, and a reused slot
 /// does not answer to the old handle); a handler reads a press and takes it; a handler takes a
@@ -22,7 +22,7 @@ static class GuiStoryTests
 		styles.StyleSheet = sheet;
 	}
 
-	// Raptor's building story, the parts AScriptBuildsListensNarrowsAndIsToldAGoneNodeIsGone leaves:
+	// The building story, the parts AScriptBuildsListensNarrowsAndIsToldAGoneNodeIsGone leaves:
 	// under the root a Panel holding a Label "title" (text "Hunt"), a Button "go" (80 x 30 at the
 	// origin, class "primary"), and a Button "bye" at (100, 0) whose click handler destroys it and
 	// records whether it was still valid inside the handler.
@@ -103,7 +103,7 @@ static class GuiStoryTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's event story: a Button at (20, 10), 80 x 30, whose mousedown handler reads the event
+	// The event story: a Button at (20, 10), 80 x 30, whose mousedown handler reads the event
 	// and takes it, so the root's handler never hears it.
 	private const String cEvents = """
 		float x = -1;
@@ -147,7 +147,7 @@ static class GuiStoryTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's gesture story (E17c): a pad whose touch-action leaves pinches and turns to its
+	// The gesture story: a pad whose touch-action leaves pinches and turns to its
 	// handlers, which take them.
 	private const String cGestures = """
 		float scale = 0;
@@ -196,7 +196,7 @@ static class GuiStoryTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's drag and drop story: a swatch that drags "red" as a "color", a canvas that takes the
+	// The drag and drop story: a swatch that drags "red" as a "color", a canvas that takes the
 	// type by its drop-types, and an easel whose dragquery handler takes it.
 	private const String cDrag = """
 		int dropped = 0;
@@ -253,7 +253,7 @@ static class GuiStoryTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's leaving story (K0): a Button of class "card" under the root, listening for
+	// The leaving story: a Button of class "card" under the root, listening for
 	// `transitionend`; goAway() makes it leave, leaving() reads whether it is.
 	private const String cLeaving = """
 		bool heard = false;
@@ -300,7 +300,7 @@ static class GuiStoryTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's listener tokens (E16): a Button 80 x 30 at the origin listening for clicks twice:
+	// The listener tokens: a Button 80 x 30 at the origin listening for clicks twice:
 	// `once` stops itself from inside, `always` stays until stopAlways() turns it off.
 	private const String cOff = """
 		int onces = 0;

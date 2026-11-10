@@ -3,7 +3,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// Thickness: a box's padding, margins and borders, per side. (Raptor's CompositorTests.cpp.)
+/// Thickness: a box's padding, margins and borders, per side.
 class ThicknessTests
 {
 	[Test]

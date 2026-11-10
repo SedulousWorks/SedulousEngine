@@ -75,8 +75,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
 	private GuiSubsystem mGui = null ~ delete _;
 
-	/// The live runs (every GameInstance), handed to the subsystem manager for every subsystem
-	/// (Raptor's run-context spec). Made in Configure; declared before the instances so it
+	/// The live runs (every GameInstance), handed to the subsystem manager for every subsystem.
+	/// Made in Configure; declared before the instances so it
 	/// outlives them and hears each one go.
 	private RunRegistry mRuns = null ~ delete _;
 	/// Names the extra instances' runs ("Game 2", ...).

@@ -23,7 +23,7 @@ namespace Sedulous.Editor.Scene;
 // holds a press, the keyboard only while it has the focus (a click focuses it), so keys typed in a
 // field elsewhere never fly it; GPU picking keyed by the viewport; the capture of what it shows (an
 // agent's screenshot, the project's picture); and framing entities. A hidden viewport (a tab not in
-// front) renders nothing. Out of the page's class (Raptor's editor-gui spec, 5.3, layer 2), on the
+// front) renders nothing. Out of the page's class, on the
 // GUI where it was on Sedulous.UI's ViewportView.
 
 /// What a viewport draws with: the context's subsystems, borrowed; null renders nothing (a test).

@@ -9,8 +9,8 @@ using Sedulous.Engine.Animation; // PropertyAnimatorComponent (its Edit Clip)
 
 namespace Sedulous.Editor.Scene;
 
-// The inspector's extras for the engine's own components and settings blocks (Raptor's editor-gui
-// spec, 5.3, layer 4, parts 3 and 4), registered by type into the inspector's registry by
+// The inspector's extras for the engine's own components and settings blocks, registered by type
+// into the inspector's registry by
 // SceneEditor.Register:
 //   - a rigid body whose shape is Cooked with no collision shape set has no collider: said under
 //     its header while it is so (it follows an edit, not only a rebuild);
@@ -20,8 +20,7 @@ namespace Sedulous.Editor.Scene;
 //     call; a bake as a job waits for that call to be split (collect here, bake on a worker);
 //   - the physics block's collision groups and the scene script block's level properties, sources
 //     of their own (SettingsExtraSources);
-//   - a property animator's Edit Clip: its clip in the page's animation panel, animating its entity
-//     (layer 9, part 3).
+//   - a property animator's Edit Clip: its clip in the page's animation panel, animating its entity.
 static class BuiltinInspectorExtras
 {
 	public const String cNoColliderText = "Shape is Cooked but no collision shape is set - this body has no collider. Assign one (import a mesh with Generate collision, or create a Collision Shape asset).";

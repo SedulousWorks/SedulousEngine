@@ -43,7 +43,7 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public bool Active = true;
 
-	/// What the animator does with its clips' root motion (root-motion.md P2): Ignore by default.
+	/// What the animator does with its clips' root motion: Ignore by default.
 	[Scriptable, DisplayName("Root Motion")]
 	public RootMotionMode RootMotion = .Ignore;
 	/// What Entity mode moves: a gameplay root holding the model; empty is this entity.

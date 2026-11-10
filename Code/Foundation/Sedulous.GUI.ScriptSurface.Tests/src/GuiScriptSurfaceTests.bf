@@ -9,7 +9,7 @@ namespace Sedulous.GUI.ScriptSurface.Tests;
 
 /// The GUI's script surface: the node, the widget base, the simple widgets and the buttons, what a
 /// handler is given and the tweens, every property the GUI reflects on them, nothing blocked, bound
-/// by AngelScript without a word; and Raptor's script stories, in their AngelScript halves, over a
+/// by AngelScript without a word; and the script stories, in AngelScript, over a
 /// root handed in as an argument: a script builds and styles a widget, listens and is called,
 /// narrows a handle, and is told a gone node is gone, a handle outliving its GUI included; a script
 /// narrows to each widget and sets its properties, and calls their verbs; a script opens windows,
@@ -111,7 +111,7 @@ static class GuiScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.GUI.ListModel").Role == .Counted);
 		Test.Assert(s.Find("Sedulous.GUI.ToastRequest").Role == .Counted);
 		Test.Assert(s.Find("Sedulous.GUI.ToastSeverity") != null);
-		// Raptor's parts with no script members of their own stay off, and the rest of the
+		// Parts with no script members of their own stay off, and the rest of the
 		// widget families come later.
 		Test.Assert(s.Find("Sedulous.GUI.ButtonIndicator") == null);
 		Test.Assert(s.Find("Sedulous.GUI.ExpanderHeader") == null);
@@ -362,7 +362,7 @@ static class GuiScriptSurfaceTests
 		root.Context.Update(TimeSpan((int64)(seconds * (double)TimeSpan.TicksPerSecond)));
 	}
 
-	// Raptor's motion story (E14): a Label "box" first under the root, its x tweened to 100 over
+	// The motion story: a Label "box" first under the root, its x tweened to 100 over
 	// a second (a callback at the end) and kept; a sequence that moves its y to 50 over a second,
 	// waits half a second and calls back; and a Slider second, its value springing to 0.4.
 	private const String cMotion = """
@@ -630,7 +630,7 @@ static class GuiScriptSurfaceTests
 		vm.DiscardModule("widgets");
 	}
 
-	// Raptor's widget verbs: a splitter's shares given back, an expander toggled.
+	// The widget verbs: a splitter's shares given back, an expander toggled.
 	private const String cVerbs = """
 		Splitter@ splitter;
 		Expander@ expander;
@@ -692,7 +692,7 @@ static class GuiScriptSurfaceTests
 		vm.DiscardModule("verbs");
 	}
 
-	// Raptor's windows, menus and popups of a script's own (E16): under the root, a Window opened
+	// Windows, menus and popups of a script's own: under the root, a Window opened
 	// in place (listened to for `close`), a Menu with one item "open" (its `activate` listened
 	// to), a Button and a Panel; `openMenu` opens the menu at (20, 20), `openPanel` the panel as
 	// the button's popup.
@@ -810,7 +810,7 @@ static class GuiScriptSurfaceTests
 		vm.DiscardModule("overlays");
 	}
 
-	// Raptor's toasts from a script: the script finds the host the test placed, fills in a request
+	// Toasts from a script: the script finds the host the test placed, fills in a request
 	// (a title, a message, success, staying, the class `pop`, an action "reveal") and posts it,
 	// posts a widget's toast, and listens for `activate` on the host, keeping the pressed action's
 	// id.
@@ -952,7 +952,7 @@ static class GuiScriptSurfaceTests
 		vm.DiscardModule("tabs");
 	}
 
-	// Raptor's list model from a script (E16): the script makes a ListModel of three rows, shown by
+	// A list model from a script: the script makes a ListModel of three rows, shown by
 	// a ListView it puts first under the root, and keeps it to change it.
 	private const String cModel = """
 		ListModel@ model;

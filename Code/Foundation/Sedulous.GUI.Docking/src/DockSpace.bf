@@ -5,11 +5,10 @@ using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
 
-// DockSpace: the widget that shows one surface of a controller's layout (D3 of
-// Specs/gui-lab-evolution-3.md).
+// DockSpace: the widget that shows one surface of a controller's layout.
 //
 // Its widgets are made from the layout, each kept by the id of the node it shows, so showing the
-// layout again changes only what changed: a split is the core's Splitter (round three's ruling 6),
+// layout again changes only what changed: a split is the core's Splitter,
 // a stack a TabView whose strip's group is `dock`, each panel a page whose content the controller
 // makes the first time its tab is shown. A panel the layout names that is not registered shows a
 // placeholder, filled when it is. A maximized stack is shown alone. What the user does in the
@@ -17,7 +16,7 @@ namespace Sedulous.GUI;
 // a tab's close (through the controller, which closes it as its description says).
 //
 // Docking's default sheet (DockingSheetCSS) styles them through the theme's tokens: a theme or an
-// application restyles docking by setting `--dock-*` (round three's ruling 4).
+// application restyles docking by setting `--dock-*`.
 
 static
 {
@@ -303,7 +302,7 @@ class DockSpace : UIWidget, IDockView
 		return null;
 	}
 
-	// === The keyboard's moves (D4) ===
+	// === The keyboard's moves ===
 
 	/// The stack the focus is in, among those this widget shows; cNoDock when it is in none.
 	public DockNodeId FocusedStack
@@ -481,7 +480,7 @@ class DockSpace : UIWidget, IDockView
 		return mController.Close(panel);
 	}
 
-	// === Floating (D5) ===
+	// === Floating ===
 
 	/// A drag asks for a float rather than a dock: Shift held (the pointer's; the keyboard drops
 	/// where the focus is).
@@ -491,7 +490,7 @@ class DockSpace : UIWidget, IDockView
 	}
 
 	/// Told of a panel or a stack dragged from here and let go outside every window (a DockArea
-	/// floats it there, in OS windows, D6). OWNERSHIP of `handler` transfers.
+	/// floats it there, in OS windows). OWNERSHIP of `handler` transfers.
 	public void SetOnDraggedOutside(delegate void(DockDragged dragged, DragResult result) handler)
 	{
 		delete mOnDraggedOutside;
@@ -528,7 +527,7 @@ class DockSpace : UIWidget, IDockView
 		return FloatPanel(panel);
 	}
 
-	// === The "Move to" menu (D4) ===
+	// === The "Move to" menu ===
 
 	/// Opens the menu of the places `panel` may go, at `at` (root space) for `owner`: into each
 	/// other stack, beside one (on each side), its own and then the surroundings', along the
@@ -633,7 +632,7 @@ class DockSpace : UIWidget, IDockView
 	/// The menu last opened (open or not); null before one is.
 	public Menu MoveMenu => mMoveMenu;
 
-	// === Drops (D4) ===
+	// === Drops ===
 
 	/// How far into a stack its edge band reaches (a third of it at most); the sheet's
 	/// `edge-band`, the theme's `--dock-edge`.
@@ -1165,7 +1164,7 @@ class DockSpace : UIWidget, IDockView
 					}
 				});
 			bar.SetOnTabTorn(new (tab, torn) => { NoteTorn(id, tab, torn); });
-			// A tab let go outside every window: its panel, to whoever floats it there (D6).
+			// A tab let go outside every window: its panel, to whoever floats it there.
 			bar.SetOnTabDragEnded(new (tab, result) =>
 				{
 					if (!result.Outside || (mOnDraggedOutside == null))

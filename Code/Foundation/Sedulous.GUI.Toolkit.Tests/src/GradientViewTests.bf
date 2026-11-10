@@ -256,7 +256,7 @@ class GradientViewTests
 		Test.Assert(bed.Changed.Count == 1);
 	}
 
-	// What no Raptor test covers: AddStop from code, a selection past the end cleared, and the value
+	// Further cases: AddStop from code, a selection past the end cleared, and the value
 	// set from code reporting nothing.
 	[Test]
 	public static void AStopAddedFromCodeIsOneChangeAndAValueSetFromCodeReportsNothing()

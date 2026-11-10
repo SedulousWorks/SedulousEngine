@@ -5,14 +5,14 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.ScriptSurface.Tests;
 
-/// The `Gui` facade, and Raptor's script stories that reach the GUI through it (its
-/// Integration.GuiScript tests, their AngelScript halves): a script defines, handles and runs
+/// The `Gui` facade, and the script stories that reach the GUI through it, in AngelScript: a
+/// script defines, handles and runs
 /// commands; captures the next key, names it and binds it; binds widgets to the GUI's data and to
 /// each other, and keeps a node as a data value; tweens a data value; reads the input kind and
 /// hears it change; reads localized texts; and finds no GUI once its host takes its root away.
 static class GuiFacadeTests
 {
-	/// A GUI for one script, as Raptor's GuiBed is: its root, 400 by 300, installed as the
+	/// A GUI for one script: its root, 400 by 300, installed as the
 	/// script's `Gui.Root()`.
 	private class Bed
 	{
@@ -104,7 +104,7 @@ static class GuiFacadeTests
 		second.ReleaseRef();
 	}
 
-	// Raptor's command story (G7): the script defines "music" (label "Music"), handles it on the
+	// The command story: the script defines "music" (label "Music"), handles it on the
 	// root by toggling its checked state, binds a CheckBox and F5 to it, and offers switchOff()
 	// (disables it) and runIt() (runs it: whether a handler ran).
 	private const String cCommands = """
@@ -147,7 +147,7 @@ static class GuiFacadeTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's key capture (E12): the next key's name lands in the data as `captured`, a key bound
+	// The key capture: the next key's name lands in the data as `captured`, a key bound
 	// from it runs its command, and `shown` is the key as a menu shows it.
 	private const String cCapture = """
 		double count = 0;
@@ -188,7 +188,7 @@ static class GuiFacadeTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's binding story (G5). Before the script runs, the data holds score 3 and volume 0.5.
+	// The binding story. Before the script runs, the data holds score 3 and volume 0.5.
 	// The script builds a Label bound to "Score: " and the score text, a Slider bound both ways to
 	// volume, and a Label bound to the slider's value; keeps the slider, narrowed, as the data's
 	// `picked`; and offers setNine(), which writes the score.
@@ -279,7 +279,7 @@ static class GuiFacadeTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's data tween (K3): the script tweens `score` (0 at first) to 10 over a second and
+	// The data tween: the script tweens `score` (0 at first) to 10 over a second and
 	// offers done(), whether its tween ended.
 	private const String cDataTween = """
 		Tween@ counting;
@@ -304,7 +304,7 @@ static class GuiFacadeTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's input kind (K2b): the script offers isPad() from Gui.InputKind(), and counts the
+	// The input kind: the script offers isPad() from Gui.InputKind(), and counts the
 	// root's `inputkind` events in changes().
 	private const String cInputKind = """
 		double heard = 0;
@@ -326,7 +326,7 @@ static class GuiFacadeTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's localized texts (E16): the GUI's localization has `title` and the plural `lives`.
+	// The localized texts: the GUI's localization has `title` and the plural `lives`.
 	private const String cTexts = """
 		bool textsRight()
 		{
@@ -355,7 +355,7 @@ static class GuiFacadeTests
 		Test.Assert(bed.Vm.Problems.IsEmpty);
 	}
 
-	// Raptor's handle rule at its end: a host taking its root away leaves the script no GUI, a
+	// The handle rule at its end: a host taking its root away leaves the script no GUI, a
 	// handle it kept reads as gone, and the facade's verbs do nothing.
 	private const String cGone = """
 		Node@ kept;

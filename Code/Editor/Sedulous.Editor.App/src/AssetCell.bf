@@ -3,7 +3,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-/// One asset or group as the Assets panel draws it (Raptor's editor-gui spec, 5.2, layer 7): a
+/// One asset or group as the Assets panel draws it: a
 /// tile's picture (its thumbnail once there is one, its type's glyph till then, the star in a
 /// corner, a stale or failed badge in another) over its name, or a list row's glyph, its name and
 /// what it is on one baseline (what it is at the end), then its badge, its Always Export icon and

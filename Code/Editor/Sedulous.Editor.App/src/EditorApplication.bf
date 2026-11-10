@@ -26,8 +26,8 @@ using Sedulous.Http.Client;
 
 namespace Sedulous.Editor.App;
 
-/// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
-/// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
+/// The editor as a runtime IApplication. It keeps the lifecycle alone: it configures the engine,
+/// starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
 /// dock (EditorDock), the Assets panel and the Console in it (AssetsView, LogView), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
 /// (EditorExport), asset creation (EditorAssetCreation), files imported (AssetImport, reviewed in

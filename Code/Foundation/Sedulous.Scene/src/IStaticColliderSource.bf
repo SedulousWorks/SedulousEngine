@@ -19,7 +19,7 @@ struct StaticCapsule
 
 /// A system whose static content should be solid without an entity per piece (vegetation: a
 /// forest's trunks): physics asks it for capsules when it builds its bodies, so neither domain
-/// links the other (Raptor's Specs/vegetation-colliders.md).
+/// links the other.
 interface IStaticColliderSource
 {
 	/// Appends the capsules this system's static content stands on the world as. False when its

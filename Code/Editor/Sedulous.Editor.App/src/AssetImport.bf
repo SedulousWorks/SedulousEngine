@@ -11,7 +11,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-// Importing files into the project (Raptor's editor-gui spec, 5.2, layer 7): one import of one file
+// Importing files into the project: one import of one file
 // or many (a drop, Import...), into one group. Each file gets the importers that take its extension
 // (one no importer takes is said and left out), the first chosen; its options; and its review plan,
 // what the import would create, each resource kept or not and named (described at once by a light

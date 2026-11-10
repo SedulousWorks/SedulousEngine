@@ -7,7 +7,7 @@ using Sedulous.GUI.Gamekit.ScriptSurface;
 
 namespace Sedulous.Integration.GuiScript;
 
-/// A GUI for one script, as Raptor's GuiBed is: its root, 400 by 300, installed as the script's
+/// A GUI for one script: its root, 400 by 300, installed as the script's
 /// `Gui.Root()`, the script compiled against the gamekit's surface (the GUI's, and the screens').
 class GuiBed
 {
@@ -62,7 +62,7 @@ class GuiBed
 		return r;
 	}
 
-	/// `decl` must fail with the gone-object error (Raptor's "the object is gone"); the error is
+	/// `decl` must fail with the gone-object error; the error is
 	/// cleared, so a later check of the problems sees only what came after.
 	public void Refused(StringView decl)
 	{

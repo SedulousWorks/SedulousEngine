@@ -8,7 +8,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Animation;
 
-// An animation graph as a graph view reads it (Raptor's editor-gui spec, 5.4, layer 10, part 4), no
+// An animation graph as a graph view reads it, no
 // widget of its own. AnimationGraphStates is a graph source over one layer of an AnimationGraphAsset:
 // its states are the nodes, and Any State a node of its own that only begins a transition; its
 // transitions are node links (a state machine's, which the view draws as arrows between borders);

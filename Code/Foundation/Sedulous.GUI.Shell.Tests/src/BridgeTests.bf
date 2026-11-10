@@ -646,7 +646,7 @@ class BridgeTests
 		Test.Assert(sizes.Count == 3);
 	}
 
-	// === Behaviour no Raptor test covers ===
+	// === Further behaviour ===
 
 	[Test]
 	public static void EitherSideOfAModifierPairMapsToItsModifier()

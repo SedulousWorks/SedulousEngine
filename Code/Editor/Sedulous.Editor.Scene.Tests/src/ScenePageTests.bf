@@ -33,22 +33,22 @@ using Sedulous.Engine.Animation; // PropertyAnimatorComponent (New Clip gives it
 
 namespace Sedulous.Editor.Scene.Tests;
 
-/// The scene page on the GUI (Raptor's editor-gui spec, 5.3, layer 2), headless: a scratch project,
+/// The scene page on the GUI, headless: a scratch project,
 /// a runtime context with a scene subsystem and no renderer, the page's own markup. It opens its
 /// scene into a scene of its own with the viewport in its pane; its bar's Save follows its own
 /// page; a scene that did not load says so on the page and is not saved over; a prefab is marked
 /// and refused a second root; Simulate locks the edits and gives the scene back; where the scene
 /// was left (the camera, the selection, the panes, the overlays) comes back when it opens again.
 /// And the parts: the panes' weights against the prefs' nested ratios, and a prefab's own instance
-/// refused. And its hierarchy (layer 3): the scene its top row, its entities nesting, what opens; the
+/// refused. And its hierarchy: the scene its top row, its entities nesting, what opens; the
 /// selection both ways; the search; a rename; drops; the menus and the add button as the scene's
-/// actions. And its inspector (layer 4): nothing selected says so; an entity's head and sections;
+/// actions. And its inspector: nothing selected says so; an entity's head and sections;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
 /// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
 /// behaviours; the scene's settings with the scene selected, the physics block's collision groups
-/// and the level script's properties. And its bar's editing controls (layer 5): the page's actions,
-/// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
+/// and the level script's properties. And its bar's editing controls: the page's actions,
+/// Select, the space's icon, Snap and its increments. Its HUD: the chips, the stats, the
 /// view gizmo, the zoom readout and the tool's status. Its viewport tools: each an action, on the bar
 /// by category, the active one's panel under the chips, moved, kept and put back. A reference set
 /// in the inspector binds at once. Its scene's file changed outside the editor reloads a clean page
@@ -240,7 +240,7 @@ class ScenePageTests
 		page.OnClose();
 	}
 
-	/// The animation panel under the viewport (layer 9, part 3): shown and hidden, an animator's clip
+	/// The animation panel under the viewport: shown and hidden, an animator's clip
 	/// opened in it, its clip asked about apart from the scene, the scene saved as it is and not as
 	/// the panel posed it.
 	[Test]

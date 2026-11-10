@@ -608,7 +608,7 @@ class EditorSessionTests
 	/// A project closed with a page open writes that page, and the page's own save as it closes
 	/// keeps it: a save asked for while the views close captures nothing again (a page saving its
 	/// state as it goes would write the open pages as they close, the last leaving none to reopen:
-	/// Raptor's user report, a project closed with a scene open opening with none).
+	/// a project closed with a scene open would open with none).
 	[Test]
 	public static void AProjectClosedWithAPageOpenWritesThatPageItsOwnSaveAsItClosesKeepsIt()
 	{

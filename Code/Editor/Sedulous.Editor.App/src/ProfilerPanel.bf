@@ -11,7 +11,7 @@ using Sedulous.Editor.Core; // NoticeKind
 
 namespace Sedulous.Editor.App;
 
-// ProfilerPanel: the editor's Profiler (X7 of Raptor's editor-gui spec), a tab in the page area that
+// ProfilerPanel: the editor's Profiler, a tab in the page area that
 // floats as any page does. It records the editor process, every page, viewport preview and
 // Play-in-editor run in one frame, and says so: a game's own numbers come from its player (the
 // overlay, or a capture from it opened here). Its frame is markup (Data/Editor/Profiler.xml); its

@@ -202,8 +202,8 @@ class VegetationMaskPageTests
 		Test.Assert(page.Fact("Painted", .. scope .()) == "Not yet");
 	}
 
-	/// Sedulous's cook keeps an imported mask's first PlaneCount channels (at most four), so its plane
-	/// count stays editable where Raptor's is read only.
+	/// The cook keeps an imported mask's first PlaneCount channels (at most four), so its plane
+	/// count stays editable.
 	[Test]
 	public static void AnImportedMasksPlanesAreItsImagesChannelsItsSizeReadOnly()
 	{

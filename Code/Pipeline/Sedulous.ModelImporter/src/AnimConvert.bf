@@ -167,7 +167,7 @@ static class AnimConvert
 	/// A clip from a model animation: each channel becomes a dense track keyed by JOINT index. A
 	/// channel on `modelNode` (the node the skeleton hangs from: Blender's armature object)
 	/// becomes a MODEL track, bone minus one: the pose never plays it, and root motion may take
-	/// the armature's travel from it (root-motion.md P0). Other channels on bones outside the
+	/// the armature's travel from it. Other channels on bones outside the
 	/// skin, and morph weight channels, are skipped.
 	public static void ClipFromModel(ModelAnimation animation, Dictionary<int32, int32> boneToJoint,
 		StringView name, AnimationClipSource outSource, int32 modelNode = -2)

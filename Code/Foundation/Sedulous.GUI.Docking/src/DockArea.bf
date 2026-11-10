@@ -5,7 +5,7 @@ using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
 
-// DockArea: floating surfaces within one window (D5 of Specs/gui-lab-evolution-3.md), the virtual
+// DockArea: floating surfaces within one window, the virtual
 // surface host for the web and one-window platforms. The main surface's DockSpace fills it; each
 // floating surface of the layout is a DockFloat over it, a Window holding a DockSpace of its own, so
 // a float is a whole dock tree that is docked into like the main one. The area keeps the floats
@@ -19,14 +19,14 @@ namespace Sedulous.GUI;
 // float's edge goes on to the stack beyond it, `dock.next-surface` and `dock.previous-surface` take
 // the focus from one surface to the next, and the Move to menu lists every surface's stacks.
 //
-// Floats as OS windows (D6): given an IDockWindows (a host's), each floating surface is a dock space
+// Floats as OS windows: given an IDockWindows (a host's), each floating surface is a dock space
 // in a window of its own instead, its bounds in screen units; the window's moves, resizes and close
 // come back through NoteWindowBounds and CloseFloat. A tab or stack let go outside every window
 // floats there; with Shift, at the pointer; Move to's Float, over its stack. No window follows the
 // pointer: the system moves a window by its own frame. Going from one to the other converts the
 // floats' bounds between the area's units and the screen's.
 
-/// Floats as windows of their own (D6): what a DockArea asks of the host that opens them (a
+/// Floats as windows of their own: what a DockArea asks of the host that opens them (a
 /// GuiHost's, DockHostWindows). Bounds are in screen units. The host tells the area what the user
 /// does to a window: DockArea.NoteWindowBounds, DockArea.CloseFloat.
 interface IDockWindows
@@ -94,7 +94,7 @@ class DockFloat : Window
 		mArea.CloseFloat(mSurface);
 	}
 
-	/// Being dragged by its title bar (D5): it follows the pointer, out of hit tests with all it
+	/// Being dragged by its title bar: it follows the pointer, out of hit tests with all it
 	/// holds so the targets under it answer (`.dock-dragging`).
 	public bool IsBeingDragged => mDragging;
 
@@ -193,7 +193,7 @@ class DockArea : UIWidget, IDockView, IDockSurroundings
 	private DockController mController = null;
 	private DockSpace mMain ~ _.ReleaseRef();
 	private List<DockFloat> mFloats = new .() ~ { for (let window in _) window.ReleaseRef(); delete _; };
-	// Floats as windows of their own (D6); not owned.
+	// Floats as windows of their own; not owned.
 	private IDockWindows mWindows = null;
 	private List<OsFloat> mOsFloats = new .() ~ DeleteContainerAndItems!(_);
 	// Where a float asked for would stand.
@@ -261,7 +261,7 @@ class DockArea : UIWidget, IDockView, IDockSurroundings
 		return null;
 	}
 
-	/// Floats as windows of their own (D6) through `windows` (a host's, outliving the area or
+	/// Floats as windows of their own through `windows` (a host's, outliving the area or
 	/// taken back first; borrowed), or in the area (null). The floats' bounds are converted between
 	/// the area's units and the screen's.
 	public void SetWindows(IDockWindows windows)

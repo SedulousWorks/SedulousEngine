@@ -14,8 +14,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Animation;
 
-/// An animation clip on the GUI from its markup (Data/Editor/AnimationClipPage.xml; Raptor's
-/// editor-gui spec, 5.4, layer 10, part 2). The preview plays the cooked clip on a skeleton (the
+/// An animation clip on the GUI from its markup (Data/Editor/AnimationClipPage.xml). The preview
+/// plays the cooked clip on a skeleton (the
 /// bones, and a skinned mesh over them when one is picked), both chosen on the preview's bar and kept
 /// per clip with the project; the skeleton the importer named is the one it starts on. Travel, the
 /// preview's own choice (it had been among the clip's rows), walks it by the clip's root motion; off,

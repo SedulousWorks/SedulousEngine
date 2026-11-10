@@ -14,7 +14,7 @@ using Sedulous.GUI.Gamekit.ScriptSurface;
 namespace Sedulous.Integration.GuiScript;
 
 /// A project holding one cooked document (a pausing screen with a Label "status"), and the
-/// engine's GUI over it, headless: a context with the GUI's subsystem alone, as Raptor's bed has.
+/// engine's GUI over it, headless: a context with the GUI's subsystem alone.
 class CookedMenuBed
 {
 	private const String cFolder = "scratch_engine_gui_script";
@@ -88,8 +88,7 @@ class CookedMenuBed
 	}
 }
 
-/// The engine's GUI from a script (E8 of Raptor's gui-lab-evolution-3.md), Raptor's
-/// EngineGuiScriptTests in its AngelScript half: through the subsystem's facade, `Gui.Root()` is the
+/// The engine's GUI from a script, in AngelScript: through the subsystem's facade, `Gui.Root()` is the
 /// screen tier's root, its `screens` the gamekit's stack, which pushes a cooked document by its
 /// asset guid through the engine's resource provider. That a run's `Gui.Root()` finds the screens
 /// is Sedulous.Engine.GUI.Tests' (GuiScriptTests); this is the push.

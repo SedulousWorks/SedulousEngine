@@ -9,7 +9,7 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Vegetation;
 
-// The vegetation brushes' panels (Raptor's editor-gui spec, 5.3, layer 5, part 3), made of the
+// The vegetation brushes' panels, made of the
 // editor's tool panel kit, as the terrain's are, so the footprint brushes read the same: Paint
 // Vegetation's plane (numbered from 1 as its keys are, each naming in its tooltip what grows on it;
 // the chosen plane's growth said under the row, where one long "Grows:" line ran on) and its mode

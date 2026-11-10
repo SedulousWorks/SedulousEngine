@@ -207,8 +207,8 @@ class Showcase
 	}
 }
 
-/// The GUI's game menu (the sandbox's showcase, K7 of Raptor's gui-lab-evolution-3.md) played end
-/// to end from its real files, Raptor's ShowcaseScriptTests: Data/Samples/UI/showcase's frame,
+/// The GUI's game menu (the sandbox's showcase) played end to end from its real files:
+/// Data/Samples/UI/showcase's frame,
 /// sheet, screen documents and AngelScript, on the gamekit's stack. A player's keys and pad drive
 /// it: pages and Back, the quit question, loading into the game, the HUD's prompt following the
 /// device, the score counting up in whole numbers, pause from Escape and Start stopping the game,

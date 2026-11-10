@@ -1539,7 +1539,7 @@ static class AssetsViewTests
 	}
 
 	/// A right click on a group in the tree opens its menu; a browser with no verbs opens none
-	/// (Raptor's crash at the desk, 2026-10-25).
+	/// (once a crash).
 	[Test]
 	public static void ARightClickOnATreeGroupOpensItsMenuABrowserWithNoVerbsOpensNone()
 	{

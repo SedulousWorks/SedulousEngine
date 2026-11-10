@@ -625,8 +625,8 @@ class ItemViewTests
 		m.Layout();
 		Test.Assert(ShownRows(m.List) == 6);
 		kind = 1; // the other kind of row, for every item
-		// The same items, told to bind again (Raptor sets them again; here that gives them new ids,
-		// and rows of items no longer there go back on their own): each live row is kept for its
+		// The same items, told to bind again (that gives them new ids, and rows of items no
+		// longer there go back on their own): each live row is kept for its
 		// item and then not taken, its item wanting the other kind.
 		m.List.OnModelReset();
 		m.Layout();

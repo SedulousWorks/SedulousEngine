@@ -7,8 +7,8 @@ using Sedulous.ModelImporter;
 
 namespace Sedulous.ModelImporter.Tests;
 
-/// The node a skeleton hangs from, which the prefab puts skinned meshes under at identity
-/// (inverse-kinematics.md P0a): it must be the node the joints hang from, Blender's armature
+/// The node a skeleton hangs from, which the prefab puts skinned meshes under at identity:
+/// it must be the node the joints hang from, Blender's armature
 /// object, not a joint.
 class SkeletonParentNodeTests
 {

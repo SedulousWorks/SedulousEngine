@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Profiler.GUI;
 
-// The name chosen, apart (X7 of Raptor's editor-gui spec): its calls, total, mean and longest over
+// The name chosen, apart: its calls, total, mean and longest over
 // the frames chosen (the span's, when one is marked) and the lanes it ran in; what it was called
 // from; its children by name with their share of it, its own time last; and how long its calls take
 // over every frame the source holds, as a histogram whose bars holding the frames chosen's calls are

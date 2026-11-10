@@ -55,7 +55,7 @@ class ModelImportOptions : ImportOptions
 	[DisplayName("Generate LODs"), Description("Simplified LOD chains for large static meshes; meshes with authored _LOD1/_LOD2 levels keep those instead")]
 	public bool GenerateLods = true;
 	/// The default for each new clip: it moves the character by its root's travel and turn, and
-	/// plays in place (root-motion.md); each clip sets its own (ClipImportSettings), and a re-import
+	/// plays in place; each clip sets its own (ClipImportSettings), and a re-import
 	/// keeps what each clip says.
 	[DisplayName("Root motion"), Description("The default for each new clip: it moves the character by its root's travel and turn, and plays in place (each clip sets its own in the import window and on its page; a re-import keeps what the clip says)")]
 	public bool RootMotion = false;

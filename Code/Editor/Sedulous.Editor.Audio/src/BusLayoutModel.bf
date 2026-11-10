@@ -5,8 +5,8 @@ using Sedulous.Audio.Pipeline;
 
 namespace Sedulous.Editor.Audio;
 
-// The rules a bus layout's page edits by, apart from the page (Raptor's editor-gui spec, 5.4, layer
-// 5): the four fixed buses (Master, and Effects, Music and UI under it), a custom bus a named slot
+// The rules a bus layout's page edits by, apart from the page: the four fixed buses (Master, and
+// Effects, Music and UI under it), a custom bus a named slot
 // under a fixed bus or another custom one, the tree they make, and the edits that keep it one: a bus
 // added in the first empty slot, one taken out (its children moving to Master), one renamed (its
 // children following the name), one moved under another (never under itself or its own children: a

@@ -6,8 +6,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Input;
 
-// What the input map page's grid says of a set's rows beyond what its fields say (Raptor's
-// editor-gui spec, 5.4, layer 5, part 4): an action by its name and, closed, its kind and its
+// What the input map page's grid says of a set's rows beyond what its fields say:
+// an action by its name and, closed, its kind and its
 // bindings in a line; a binding by its source and, closed, its input; a binding's settings shown
 // only for the sources that have them (a dead zone for what is analog, the screen area for touch,
 // the four keys for a four-key binding), as the old page laid them out; the kinds and the sources by

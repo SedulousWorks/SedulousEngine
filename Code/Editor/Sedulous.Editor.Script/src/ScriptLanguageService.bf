@@ -5,8 +5,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.Script;
 
-/// A script page's completion and hover for its code editor (Raptor's editor-gui spec, 5.4, layer 6,
-/// part 3), over the page's API surface (what the runtime binds for its language) and its language's
+/// A script page's completion and hover for its code editor, over the page's API surface (what the
+/// runtime binds for its language) and its language's
 /// words. After `x.` or `x::` it offers the members of what x is (a type or namespace by name, or the
 /// type a variable named x is declared with in the script); elsewhere the language's words, the bound
 /// types and namespaces (an editor-only one marked) and the script's own names. Hover says what a
@@ -185,7 +185,7 @@ class ScriptLanguageService : ICodeLanguageService
 	{
 		for (let member in type.Members)
 		{
-			// Sedulous's API listing has no operator kind (Raptor's skips them here): none to skip.
+			// The API listing has no operator kind: none to skip.
 			if (!type.IsNamespace && (member.IsStatic != statics))
 				continue;
 			bool seen = false; // an overload shows once, with its first signature

@@ -5,7 +5,7 @@ using Sedulous.Engine.DefaultApp;
 
 namespace Sedulous.Engine.DefaultApp.Tests;
 
-/// The runs (Raptor's run-context spec, P2): the app's instances are its runs, listed by its run
+/// The runs: the app's instances are its runs, listed by its run
 /// manager, which every subsystem finds on the subsystem manager; an instance released is announced
 /// gone and leaves; the focused one, when it goes, takes the focus with it.
 class RunRegistryWiringTests

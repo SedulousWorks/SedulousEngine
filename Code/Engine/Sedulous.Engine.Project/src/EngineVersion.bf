@@ -23,7 +23,7 @@ static class EngineVersion
 	public const String String = "0.1.0";
 	/// The version's label: "dev" on master between releases (0.1.0-dev, the version being worked
 	/// toward); a release commit sets the release's ("beta" for a pre-release, empty for a final
-	/// release) and master goes back to "dev" after it (AGENTS.md, Releases).
+	/// release) and master goes back to "dev" after it.
 	public const String Label = "dev";
 	/// String with Label ("0.1.0-dev", "0.1.0-beta"; String alone with no label). Set beside them: a
 	/// test holds the three in step.

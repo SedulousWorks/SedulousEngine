@@ -19,8 +19,8 @@ namespace Sedulous.Editor.Scene;
 // instance's overrides discarded (asked first too: entities parented under it that are not the
 // prefab's go); an instance spawned through the asset picker. And the prefab half of a save: what
 // refuses it (a prefab has one root and never holds itself), and the other open scenes' instances
-// rebuilt once it is saved. Out of the page's class as it was (Raptor's editor-gui spec, 5.3,
-// layer 2); the page's dialogs, its deferral and its picker come in as services.
+// rebuilt once it is saved. Out of the page's class as it was; the page's dialogs, its deferral
+// and its picker come in as services.
 
 /// What the flows ask of their page. The flows own the hooks; the rest is borrowed.
 class PrefabFlowServices

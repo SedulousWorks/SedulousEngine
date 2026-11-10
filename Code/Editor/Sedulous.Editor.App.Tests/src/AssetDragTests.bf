@@ -187,7 +187,7 @@ class AssetDragTests
 		Test.Assert(why == "Not an asset");
 	}
 
-	/// Raptor's: several assets travel in order, labelled by their count; a target of one refuses
+	/// Several assets travel in order, labelled by their count; a target of one refuses
 	/// them, saying why, with the first still read (an asset: a slot refuses rather than ignores it).
 	[Test]
 	public static void SeveralAssetsTravelInOrderLabelledByTheirCountATargetOfOneRefusesThem()

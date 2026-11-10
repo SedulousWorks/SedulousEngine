@@ -403,8 +403,7 @@ class PagesBed
 /// opened again), its tab's name, unsaved mark and active mark; a close run at the next frame, a
 /// page with unsaved changes asking first (Save, Discard, Cancel); the active page following the
 /// dock; the Game tabs; the open pages through the store and back; the unsaved-pages gate before an
-/// exit; Save As. Then what Sedulous adds to
-/// Raptor's suite so each behaviour has a test: an asset no page edits, the save and its asset
+/// exit; Save As. Then, so each behaviour has a test: an asset no page edits, the save and its asset
 /// edits, the frame hooks, closing everything, a dirty page with nowhere to ask, a failed save in
 /// the question, the restore's progress and a restored place, the cook of what a page lacks, and
 /// the hooks and the question let go with the pages; the gate's message, its one question at a

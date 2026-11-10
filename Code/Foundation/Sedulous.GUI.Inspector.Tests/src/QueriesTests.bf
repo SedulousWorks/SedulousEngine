@@ -177,7 +177,7 @@ class QueriesTests
 		Test.Assert(issues[1].Message == "a focusable button with no name");
 	}
 
-	// --- Behaviour no Raptor test covers ---
+	// --- Further behaviour ---
 
 	[Test]
 	public static void AHiddenNodesDescendantsDoNotShowInTheTreeThoughTheyAreVisibleThemselves()

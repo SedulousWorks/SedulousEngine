@@ -261,7 +261,7 @@ class PropertySourceTests
 		Test.Assert(bag.GetRevertText("offset", .. scope String()) == "Revert to default");
 	}
 
-	// What no Raptor test covers: copying a value as its text, pasting a number in, a paste refused
+	// Further cases: copying a value as its text, pasting a number in, a paste refused
 	// with its reason, and a flags write applied to an old value.
 	[Test]
 	public static void ABagCopiesAValueAsTextPastesOneBackAndRefusesTextOfAnotherKind()

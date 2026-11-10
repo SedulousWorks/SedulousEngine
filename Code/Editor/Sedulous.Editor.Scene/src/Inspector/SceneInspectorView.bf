@@ -10,8 +10,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
-// The inspector inside a scene page, one per page, on the GUI's property grid (Raptor's editor-gui
-// spec, 5.3, layer 4). It shows the page's selection: its head (the type icon, the name, the kind;
+// The inspector inside a scene page, one per page, on the GUI's property grid.
+// It shows the page's selection: its head (the type icon, the name, the kind;
 // several selected say how many), and one grid of sections (the editor's PropertySections): the
 // entity's Active, its Transform (a copy of each entity's, its rotation in Euler degrees), then
 // each component every selected entity has, its reflected rows with the editors by hint (an asset
@@ -55,7 +55,7 @@ class SceneInspectorServices
 	public delegate void(EntityPickRequest request) PickEntity ~ delete _;
 	/// Whether the page simulates (the grid read only meanwhile).
 	public delegate bool() Simulating ~ delete _;
-	/// Whether the scene's own row is selected (ruling 12: then the scene's settings show).
+	/// Whether the scene's own row is selected (then the scene's settings show).
 	public delegate bool() SceneSelected ~ delete _;
 	/// The scene's icon (a prefab's or a scene's document) and name, for its head.
 	public String SceneIcon = new .() ~ delete _;

@@ -20,6 +20,6 @@ interface IAnimationStateNode
 		AnimationEventHandler handler);
 
 	/// The root motion the node carries from `from` to `to`, normalized and UNWRAPPED (past one is
-	/// a later loop), blended as the node blends its poses (root-motion.md P1). None by default.
+	/// a later loop), blended as the node blends its poses. None by default.
 	RootMotionDelta RootMotion(float from, float to, bool looping) => .();
 }

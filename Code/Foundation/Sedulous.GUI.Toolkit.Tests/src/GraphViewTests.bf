@@ -1165,7 +1165,7 @@ class GraphViewTests
 		bed.Root.UpdateLayout();
 	}
 
-	// What no Raptor test covers: the zoom's limits set from code, and a pin's widget told its state
+	// Further cases: the zoom's limits set from code, and a pin's widget told its state
 	// only while a link is dragged.
 	[Test]
 	public static void TheZoomLimitsHoldTheZoomAndAPinsStateEndsWithTheDrag()

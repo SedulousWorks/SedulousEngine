@@ -11,7 +11,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Audio;
 
-// What the audio pages audition with (Raptor's editor-gui spec, 5.4, layer 5): a clip read from its
+// What the audio pages audition with: a clip read from its
 // asset's source file, as the cook reads it, and one voice played through the RUNTIME context's
 // AudioSubsystem (the game's engine, buses and voice pool, so what is heard is what the game plays).
 // A clip page plays its clip; a cue page plays the variant the runtime's resolver picks. Either way

@@ -294,8 +294,7 @@ class ShadowMathTests
 	}
 
 	/// A cached tile redraws while a moving caster is in it, and once after it leaves: last
-	/// frame's sphere still reaches it, so the figure's shadow leaves the cache too (Raptor
-	/// 0d619aa0).
+	/// frame's sphere still reaches it, so the figure's shadow leaves the cache too.
 	[Test]
 	public static void ACachedTileRedrawsWhileAMovingCasterIsInItAndOnceAfterItLeaves()
 	{

@@ -1128,7 +1128,7 @@ class ReflectedSourceTests
 		grid.Source = null;
 	}
 
-	// What no Raptor test covers: a node a property holds is a group of its own table's rows,
+	// Further cases: a node a property holds is a group of its own table's rows,
 	// written in place and serialized apart from its holder.
 	[Test]
 	public static void ANodeAPropertyHoldsIsAGroupOfItsOwnTablesRows()
@@ -1532,7 +1532,7 @@ class ReflectedSourceTests
 		Test.Assert(links.Target.Id.IsNil);
 	}
 
-	// What no Raptor test covers: a name as a row says it, and a source without objects.
+	// Further cases: a name as a row says it, and a source without objects.
 	[Test]
 	public static void ANameAsARowSaysItAndASourceWithoutObjectsHasNoRows()
 	{

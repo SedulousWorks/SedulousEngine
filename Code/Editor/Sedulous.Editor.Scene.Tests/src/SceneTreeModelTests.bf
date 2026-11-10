@@ -7,8 +7,8 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
 
-/// The scene's tree as the hierarchy and the entity picker share it (Sedulous adds these: Raptor's
-/// move of it out of the hierarchy has none of its own): the scene's row on top, the roots in list
+/// The scene's tree as the hierarchy and the entity picker share it: the scene's row on top, the
+/// roots in list
 /// order and each one's children under it; an inactive entity marked, an unnamed one so called, a
 /// plain one by the generic icon; ids from the guids, found back; and a search keeping a match with
 /// what holds it.

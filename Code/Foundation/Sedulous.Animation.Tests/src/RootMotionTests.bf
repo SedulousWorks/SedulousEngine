@@ -5,7 +5,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation.Tests;
 
-/// Root motion deltas from the players (root-motion.md P1): a looping clip's frames sum to its
+/// Root motion deltas from the players: a looping clip's frames sum to its
 /// travel with nothing lost at the wrap, whole loops in one step and backward steps included; a
 /// turn accumulates and the travel after it goes the new way; a blend tree blends motion by the
 /// pose's weights; a crossfade changes speed without a step; only the base layer moves.

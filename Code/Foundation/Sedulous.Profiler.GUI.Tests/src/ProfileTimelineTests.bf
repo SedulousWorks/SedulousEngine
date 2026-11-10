@@ -8,7 +8,7 @@ using Sedulous.Profiler.Tests; // KnownSource
 
 namespace Sedulous.Profiler.GUI.Tests;
 
-/// The timeline (X7 of Raptor's editor-gui spec): the frames chosen as lanes (each thread, then the
+/// The timeline: the frames chosen as lanes (each thread, then the
 /// GPU) with their scopes by depth, fitted when the frames change; scopes too narrow to draw gathered
 /// into one block with their count; a click choosing a scope's name (on nothing, none), the hover
 /// naming it; a double click zooming to a scope or fitting again; the wheel zooming about the pointer,

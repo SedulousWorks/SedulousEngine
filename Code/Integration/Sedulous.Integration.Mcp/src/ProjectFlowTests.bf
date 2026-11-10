@@ -614,7 +614,7 @@ static class ProjectFlowTests
 		}
 		// The engine GUI's sheets take the whole list, in order.
 		{
-			// The GUI's creators name no default group (as Raptor's), so the sheets land at the root.
+			// The GUI's creators name no default group, so the sheets land at the root.
 			let shared = CallOk(server, "asset_create", With(With(Obj(), "creator", "GUI Style Sheet"), "name", "Shared"));
 			defer delete shared;
 			let game = CallOk(server, "asset_create", With(With(Obj(), "creator", "GUI Style Sheet"), "name", "Game"));

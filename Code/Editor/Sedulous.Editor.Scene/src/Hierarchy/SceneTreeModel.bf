@@ -9,7 +9,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.Scene;
 
 // The scene as its hierarchy shows it, a GUI tree model built from the live scene, for the
-// hierarchy and the entity picker alike (Raptor's editor-gui spec, ruling 25: the picker is the
+// hierarchy and the entity picker alike (the picker is the
 // hierarchy's tree in a picker's frame). The scene is the top row (node 0); under it the roots in
 // list order, each one's children depth first; each entity by its first component's type icon (a
 // plain entity the generic one), a prefab's members and inactive entities marked as such. With a

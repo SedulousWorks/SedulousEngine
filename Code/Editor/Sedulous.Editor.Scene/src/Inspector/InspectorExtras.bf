@@ -6,7 +6,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.Scene;
 
 // What a section in the inspector shows besides its reflected rows, a component's or, while the
-// scene is selected, a settings block's (Raptor's editor-gui spec, 5.3, layer 4, parts 3 and 4):
+// scene is selected, a settings block's:
 // notices that hold while something is so (a rigid body with no collider), actions (a zone's Bake)
 // and sections of their own (a script component's behaviours, the physics block's collision
 // groups). The inspector asks the section's type for them, so it names no type: a domain registers

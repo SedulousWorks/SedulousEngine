@@ -361,8 +361,8 @@ class MsaaProbeTests
 			let lit = MeanLuma(image, 32, 32, 96, 96);
 			// Within two percent of the unoccluded surface: a plane never occludes itself.
 			// Measured here at 521 against 524 fixed, and 506 with the kernel left as a full
-			// sphere, so the band separates those with room on both sides. Raptor's own five
-			// percent band does not, this scene darkening less than theirs did. The per
+			// sphere, so the band separates those with room on both sides. A five percent
+			// band would not, this scene darkening little. The per
 			// sample comparison moves it by one unit, which no band could separate: the
 			// hemisphere half is what this probe guards. GTAO sits at 523 throughout.
 			Test.Assert(lit * 100 >= unoccluded * 98,

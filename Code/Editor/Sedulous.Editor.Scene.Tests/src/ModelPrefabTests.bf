@@ -302,7 +302,7 @@ class ModelPrefabTests
 
 	/// A skin draws in its skeleton's parent's space and glTF ignores a skinned mesh node's own
 	/// transform: the prefab puts the mesh entity under that parent at identity, so its world is
-	/// the skeleton's model space (inverse-kinematics.md P0a). Nodes: Root; Armature (moved and
+	/// the skeleton's model space. Nodes: Root; Armature (moved and
 	/// turned, the skeleton's parent); Hips (a joint); Skin (the skinned mesh, a sibling of the
 	/// armature carrying an offset the file says to ignore); Rig (a node under the mesh).
 	[Test]

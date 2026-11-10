@@ -36,7 +36,7 @@ class GameEditorPageServices
 /// by default), and the script debugger beside the game (hidden until its toggle, or a breakpoint,
 /// shows it).
 ///
-/// On the GUI (Raptor's editor-gui spec, 5.3, layer 7, part 3), from its markup (Data/Editor/
+/// On the GUI, from its markup (Data/Editor/
 /// Game.xml): the kit's transport (Restart, Play, Pause, Stop, the state named beside them and the
 /// scene it runs, a Play waiting for the cook said so), the resolution and the phone, the debugger's
 /// toggle; the game on GUI.Viewport, which the GUI host binds, places and routes, and which keeps

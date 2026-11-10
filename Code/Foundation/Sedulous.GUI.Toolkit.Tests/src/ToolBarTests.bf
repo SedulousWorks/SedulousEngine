@@ -432,7 +432,7 @@ class ToolBarTests
 		CheckNear(line.Size.Y, content);
 	}
 
-	// What no Raptor test covers: the orientation's name either way, and a disabled reason's line with
+	// Further cases: the orientation's name either way, and a disabled reason's line with
 	// no keys.
 	[Test]
 	public static void TheOrientationReadsBackAndATooltipWithNoKeysHasOnlyTheReason()

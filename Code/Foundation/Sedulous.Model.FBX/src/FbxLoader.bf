@@ -282,8 +282,8 @@ class FbxLoader : IModelLoader
 			material.EmissiveTextureIndex = TextureIndex(source.pbr.emission_color.texture, model);
 	}
 
-	/// A Lambert or Phong material from before PBR, and a classic OBJ .mtl: imported as authored
-	/// (Raptor's phong-material spec). Phong and the .mtl's Kd/Ks/Ns keep their highlight, Lambert has
+	/// A Lambert or Phong material from before PBR, and a classic OBJ .mtl: imported as authored.
+	/// Phong and the .mtl's Kd/Ks/Ns keep their highlight, Lambert has
 	/// none; a legacy material of another kind (a shader the engine has no built-in for) stays the
 	/// PBR approximation. Blender's exports are their own kind (it labels every material Phong) and
 	/// take the PBR branch.

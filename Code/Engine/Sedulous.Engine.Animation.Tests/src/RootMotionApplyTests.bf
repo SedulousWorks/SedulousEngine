@@ -10,7 +10,7 @@ using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Engine.Animation.Tests;
 
-/// Applying root motion (root-motion.md P2): Entity mode walks and turns the entity through a
+/// Applying root motion: Entity mode walks and turns the entity through a
 /// moved and turned parent, or a named gameplay root; Ignore leaves it; Manual holds the world
 /// delta; Character mode walks the character above it and lets it go with one zero move; a
 /// version 1 animator record reads with root motion off.

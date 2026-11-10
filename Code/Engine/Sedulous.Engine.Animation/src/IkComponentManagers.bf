@@ -56,7 +56,7 @@ struct IkCommon
 	public bool HeldOff;
 }
 
-/// Inverse kinematics on scene entities (inverse-kinematics.md P2): finding the animator, taking
+/// Inverse kinematics on scene entities: finding the animator, taking
 /// a modifier off it, drawing a solve, and the script's view of an entity's components.
 static class IkScene
 {

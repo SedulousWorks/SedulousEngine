@@ -11,7 +11,7 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-// The import window's preview of a sound file (Raptor's import-window spec, W3, W6): its waveform,
+// The import window's preview of a sound file: its waveform,
 // with Play and Stop over it and a playhead while it plays, and the facts the decoder gives: its
 // length, its channels and rate, and its peak. The file's settings show on the waveform as the cook
 // will apply them (the trimmed tail shaded, the bars normalized), and with "As imported" on, Play

@@ -9,7 +9,7 @@ namespace Sedulous.Profiler;
 /// platform, build, tick frequency), then chunks, each a tag, a byte length and its payload, so
 /// a reader skips a chunk it does not know. The tables a frame's ids point into travel beside it
 /// as deltas: names, threads and counters are sent when new, each once. Little-endian, as every
-/// target is; the same bytes Raptor writes, so either engine reads the other's captures.
+/// target is. The layout is fixed byte for byte, so another writer's captures read the same.
 static class ProfileStream
 {
 	public const uint32 Magic = 0x46504541; // "AEPF"

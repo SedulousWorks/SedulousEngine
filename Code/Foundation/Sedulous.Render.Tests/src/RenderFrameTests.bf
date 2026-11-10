@@ -527,7 +527,7 @@ class RenderFrameTests
 
 	/// A caster that moves, appears or goes counts as moving while the scene has cached
 	/// shadows, so the cached tiles it touches redraw where it is and where it was: a door
-	/// swinging by a torch drops its shut shadow (Raptor 01aa9281). Only skinned casters
+	/// swinging by a torch drops its shut shadow. Only skinned casters
 	/// counted before.
 	[Test]
 	public static void ACasterThatMovesAppearsOrGoesCountsAsMovingForCachedShadows()

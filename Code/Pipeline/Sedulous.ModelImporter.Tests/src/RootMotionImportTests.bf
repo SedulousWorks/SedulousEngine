@@ -9,7 +9,7 @@ using Sedulous.ModelImporter;
 
 namespace Sedulous.ModelImporter.Tests;
 
-/// The import side of root motion (root-motion.md P0): the armature node (the skeleton's
+/// The import side of root motion: the armature node (the skeleton's
 /// parent) animated in the file keeps its channels as model tracks (bone minus one), the clip
 /// names its skeleton and the armature's rest for the root motion cook, and root motion settings
 /// authored on a clip survive a re-import while a clip new to it takes the import's option.

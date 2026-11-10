@@ -13,7 +13,7 @@ using Sedulous.GUI.Testing;
 namespace Sedulous.GUI.Fuzz.Tests;
 
 /// A deterministic source of numbers (xorshift64*), so a failing mutation is found again from its seed.
-/// Raptor's `Random`, named for the fuzzer: Sedulous.Core has a Random (PCG32) of its own.
+/// Named for the fuzzer: Sedulous.Core has a Random (PCG32) of its own.
 struct FuzzRandom
 {
 	public uint64 State;
@@ -36,12 +36,12 @@ struct FuzzRandom
 	public float Unit() mut => (float)(Next() >> 40) / (float)((uint32)1 << 24);
 }
 
-/// The fuzz targets (E10 of Specs/gui-lab-evolution-2.md) and what feeds them: seeds from the
+/// The fuzz targets and what feeds them: seeds from the
 /// sandbox's own pages and string table, and a deterministic mutator. A target takes any bytes and
 /// must neither crash nor hang; what it builds is thrown away.
 static class FuzzTargets
 {
-	/// Which target a run of bytes goes to: what Raptor's libFuzzer entry chose by GUI_FUZZ_TARGET.
+	/// Which target a run of bytes goes to.
 	public enum Target
 	{
 		Css,
@@ -57,14 +57,14 @@ static class FuzzTargets
 		"#id", ".cls", "[attr=v]", "!important", "url(", "rgba(1,2,3", "#ff00ff", "1e999", "-0.5px", "100%",
 		"transition: all 1s;", "animation: x 1s infinite;", "--a: ", "\\", "\n", "\t", "\xF0\x9F", "\xC3");
 	/// The element tags are the GUI's own (tags are case sensitive), and one lowercase `<button`
-	/// that names no element, as Raptor's list keeps it.
+	/// that names no element.
 	public static String[?] cMarkupTokens = .(
 		"<", ">", "</", "/>", "=\"", "\"", "'", "&amp;", "&#x1F600;", "&bogus;", "<!--", "-->", "<![CDATA[",
 		"]]>", "<?xml ?>", "<Button", "<Panel>", "</Panel>", "<Label text=\"", "<ScrollView>", "</ScrollView>",
 		"<TextField", "<button", "style=\"", "class=\"", "id=\"",
 		"{{name}}", "{{", "}}", "data-x=\"", "-count=\"", "-args=\"", "\xEF\xBB\xBF", "\0", "\xE2\x80\xAE");
-	/// Raptor's tokens, then the keystroke syntax the parser reads ("ctrl-shift-s", "pad-south"):
-	/// Raptor's are written "Ctrl+S", which parses as no keystroke.
+	/// Tokens written "Ctrl+S", which parses as no keystroke, then the keystroke syntax the parser
+	/// reads ("ctrl-shift-s", "pad-south").
 	public static String[?] cKeymapTokens = .(
 		"Ctrl+", "Shift+", "Alt+", "Super+", "+", " ", "K", "F12", "Escape", "Pad.South", "Pad.", "&&", "||", "!",
 		"(", ")", "editing", "menu && !popup", "\xC3\xA9", "Ctrl+K Ctrl+", "++", "  ",
@@ -131,8 +131,8 @@ static class FuzzTargets
 	}
 
 	/// Each file directly in `directory` with this extension (empty: every file), read into
-	/// `outSeeds` in name order. Raptor took them in the directory's order, which a platform
-	/// leaves open; by name, a mutation's seed index names the same input everywhere.
+	/// `outSeeds` in name order. A directory's order is left open by the platform; by name, a
+	/// mutation's seed index names the same input everywhere.
 	private static void ReadDirectory(StringView directory, StringView @extension, List<String> outSeeds)
 	{
 		let wanted = @extension; // the lambda captures this alias, not the escaped name
@@ -368,7 +368,7 @@ static class FuzzTargets
 		root.Draw(dc);
 	}
 
-	/// `bytes` through `target`: what Raptor's libFuzzer entry (LLVMFuzzerTestOneInput) did with
+	/// `bytes` through `target`: what a libFuzzer entry (LLVMFuzzerTestOneInput) does with
 	/// one input. The input target puts it on one of `pages` (with one of `sheets`), chosen by its
 	/// length; with no pages it does nothing.
 	public static void FuzzOne(Target target, StringView bytes, Span<String> pages, Span<String> sheets)

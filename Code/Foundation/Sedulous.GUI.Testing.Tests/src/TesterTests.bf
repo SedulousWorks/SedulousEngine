@@ -53,7 +53,7 @@ static class TesterFixtures
 	}
 }
 
-/// The tester (E8f of Specs/gui-lab-evolution.md): finders by selector and text, within a scope,
+/// The tester: finders by selector and text, within a scope,
 /// hidden ones only when asked; a finder expecting one that finds none or several fails with what
 /// it found and the tree; the user's actions reach what they aim at, or fail when something covers
 /// it; the clock steps a frame after each.
@@ -384,7 +384,7 @@ class TesterTests
 		Test.Assert(tester.Failures.Count == 2);
 	}
 
-	// Added in the port: what Raptor's tests leave uncovered.
+	// Further behaviour.
 
 	[Test]
 	public static void ParseReadsTextTildeEqualsAsContainingAHiddenStepIsNamedAndTextOfReadsTheReflectedText()

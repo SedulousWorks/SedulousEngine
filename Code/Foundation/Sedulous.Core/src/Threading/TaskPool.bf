@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace Sedulous.Core;
 
-// Long work off the frame, handed back on the main thread (Raptor's task-layer spec). The JobSystem
+// Long work off the frame, handed back on the main thread. The JobSystem
 // is for the frame's fan-out; a cook, an import read, a decode or an export runs here instead, on
 // workers of the pool's own, so it never holds a worker the frame's ParallelFor needs.
 //

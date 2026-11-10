@@ -15,13 +15,13 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// EditorWindow: the editor's GUI on its main window (Raptor's editor-gui spec, 5.1, layer 3). It
+// EditorWindow: the editor's GUI on its main window. It
 // owns the GUI host (the window's input, frames, renderer and picture baker), the fonts the
 // editor's sheet names, the editor's own files (EditorResources) and the frame read from
 // Data/Editor/Shell.xml, with its status bar (EditorStatusBar) and the toast host over its dock.
 // Its look is the editor's sheet (Editor/editor.css over its tokens), the chosen density's sheet
 // after it and a `:root` block of the user's inputs (the accent), then the user's theme overrides
-// (5.7, layer 1: a file in their data folder, so any token or rule is theirs to set), the scheme
+// (a file in their data folder, so any token or rule is theirs to set), the scheme
 // and less motion through the GUI's media; a change to those files on disk (the editor's
 // development loop, or the user's overrides) applies at once.
 
@@ -39,14 +39,14 @@ struct EditorAccent
 }
 
 /// The user's appearance inputs (Preferences): the scheme, the accent, the density, less motion
-/// and the UI scale. The defaults are the editor's (rulings 6, 7, 13). A class: it owns its text;
+/// and the UI scale. The defaults are the editor's. A class: it owns its text;
 /// Set copies another.
 class EditorLook
 {
 	/// The densities the editor's sheets give (Editor/density-<name>.css), in their order.
 	public static readonly StringView[3] Densities = .("compact", "default", "comfortable");
-	/// The accents Preferences offers, each a fill white text reads on (ruling 7; azure is the
-	/// editor's, ruling 13). Any other #rrggbb is taken too.
+	/// The accents Preferences offers, each a fill white text reads on (azure is the editor's).
+	/// Any other #rrggbb is taken too.
 	public static readonly EditorAccent[4] Accents = .(
 		.("Azure", "#2f6fdf"),
 		.("Violet", "#6d5bd8"),

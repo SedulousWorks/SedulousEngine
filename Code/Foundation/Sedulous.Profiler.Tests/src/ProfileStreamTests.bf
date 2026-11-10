@@ -178,7 +178,7 @@ class ProfileStreamTests
 		Test.Assert(!scope ProfileCapture().Read(other));
 	}
 
-	/// The bytes are the format's, field for field (Raptor reads them): a header of magic,
+	/// The bytes are the format's, field for field (other readers depend on them): a header of magic,
 	/// version, a u64 frequency and three strings, then a names chunk of a tag, a u32 length,
 	/// a u32 first id and a u32 count. A count once went out eight bytes wide, which a round
 	/// trip through this reader alone could miss.

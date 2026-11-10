@@ -5,7 +5,7 @@ using Sedulous.VFS;
 
 namespace Sedulous.Editor.App;
 
-// The path picker (Raptor's editor-gui spec, 5.2, layer 5): the picker over the files under a
+// The path picker: the picker over the files under a
 // folder whose extension is one of those asked (ignoring case; none asked: every file), so a field
 // that names a file can only name one that is there (a font's source, a profiler capture), and a
 // cooked reference never dangles. Each file is a row by its name, under its folder (root-relative),

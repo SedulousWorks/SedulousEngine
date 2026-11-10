@@ -5,7 +5,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Profiler.GUI;
 
-// The in-game overlay on the GUI (Raptor's engine-ui-removal spec, layer 1; its profiler spec, P4):
+// The in-game overlay on the GUI:
 // the frame time graph (the newest frames' CPU and GPU times against the 60 and 30 fps budgets), the
 // frame statistics, the top CPU scopes by their own time and the top GPU passes, and the counters,
 // stacked on one translucent panel in a corner of whatever it fills. It never takes the pointer, so

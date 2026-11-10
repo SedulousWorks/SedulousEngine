@@ -9,7 +9,7 @@ using Sedulous.Profiler.Tests; // KnownSource
 
 namespace Sedulous.Profiler.GUI.Tests;
 
-/// The in-game overlay (Raptor's engine-ui-removal spec, layer 1): the frame time graph plots the
+/// The in-game overlay: the frame time graph plots the
 /// newest frames on its scale, the statistics, top lists and counters show the source's numbers, the
 /// panel sits in its corner, and it never takes the pointer from the game under it.
 class ProfilerOverlayTests

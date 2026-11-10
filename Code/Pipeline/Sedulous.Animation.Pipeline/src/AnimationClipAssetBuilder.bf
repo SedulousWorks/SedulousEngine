@@ -7,8 +7,8 @@ using Sedulous.Pipeline.Core;
 namespace Sedulous.Animation.Pipeline;
 
 /// Cooks the authored clip into its product: written verbatim, or, when the clip extracts root
-/// motion, a working copy with the root's travel baked into its curve and stripped from its pose
-/// (root-motion.md P0). The runtime factory rebuilds what it needs from the same wire.
+/// motion, a working copy with the root's travel baked into its curve and stripped from its pose.
+/// The runtime factory rebuilds what it needs from the same wire.
 class AnimationClipAssetBuilder : IAssetBuilder
 {
 	public Type AssetType => typeof(AnimationClipAsset);

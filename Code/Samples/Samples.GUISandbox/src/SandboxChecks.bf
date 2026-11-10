@@ -523,7 +523,7 @@ extension GUISandboxApp
 	/// Data/Tests/GUI/Images: its own backend's when there is one, else the one the backends
 	/// share. A miss writes a diff beside the picture. --approve-images writes the shared reference
 	/// (or, with "backend", this backend's own), which is for after the user has looked at the
-	/// pictures: Sedulous's references are pictures Sedulous drew (Documentation/Specs/gui-port.md).
+	/// pictures: the references are pictures this engine drew.
 	private void RunImageTests()
 	{
 		if (mImagePages.IsEmpty && (mImagePage == 0))

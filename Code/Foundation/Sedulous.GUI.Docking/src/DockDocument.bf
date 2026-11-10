@@ -6,8 +6,7 @@ using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
 
-// DockLayoutDocument: a dock layout as the engine's serializer reads and writes it (D2 of
-// Specs/gui-lab-evolution-3.md).
+// DockLayoutDocument: a dock layout as the engine's serializer reads and writes it.
 //
 // The layout itself stays a value (a drop's preview runs an operation on a copy); the document
 // holds one and is what an application saves and restores. Docking reads and writes no files:

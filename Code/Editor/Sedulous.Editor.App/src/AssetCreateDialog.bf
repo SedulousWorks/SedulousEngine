@@ -5,7 +5,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-// Create Asset (Raptor's editor-gui spec, 5.2, layer 5): a window over its markup
+// Create Asset: a window over its markup
 // (Data/Editor/AssetCreate.xml) that names a new asset and the group it goes in, for any type: it
 // creates nothing itself, its owner does with what Create answers. The groups are a tree in it,
 // every one open, the group it starts in chosen and a click choosing another (the old dialog's); the

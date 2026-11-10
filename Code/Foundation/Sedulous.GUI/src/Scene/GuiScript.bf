@@ -10,8 +10,8 @@ namespace Sedulous.GUI;
 // it reaches the engine, and markup creates the same element types by tag (ElementTypes). A script
 // holds a node weakly, through its GUI's element table (Node.TakeScriptWeak): a handle kept past
 // its node reads as gone. What lives here is what a handler is given (GuiEvent) and the node verbs
-// that take a script's functions (Raptor's GUIReflectionImpl.cpp bodies). The `Gui` facade, the
-// script service a host installs, is Scene/GuiFacade.bf.
+// that take a script's functions. The `Gui` facade, the script service a host installs, is
+// Scene/GuiFacade.bf.
 
 /// What a script handler (`node.On(name, fn)`) is given: the event's data, positions in the GUI's
 /// own units (`X`, `Y` from the root, `LocalX`, `LocalY` from the node the handler is on). A handler
@@ -96,7 +96,7 @@ class GuiEvent : RefCounted, IScriptCounted
 	[Scriptable]
 	public float Elapsed = 0.0f;
 
-	/// Constructible, as Raptor's is: a type a script can make is one it can be handed.
+	/// Constructible: a type a script can make is one it can be handed.
 	[Scriptable]
 	public this()
 	{
@@ -248,8 +248,8 @@ internal static class GuiScriptDetail
 	}
 }
 
-// The node verbs that take a script's functions, the popup verbs and the tree as handles: Raptor
-// declares them on Node and defines them beside the reflection (GUIReflectionImpl.cpp).
+// The node verbs that take a script's functions, the popup verbs and the tree as handles, on Node
+// beside the reflection.
 extension Node
 {
 	/// The parent, or null for a root or a detached node: `Parent` to a script.

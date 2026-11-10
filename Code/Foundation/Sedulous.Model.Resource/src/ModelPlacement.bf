@@ -14,7 +14,7 @@ static class ModelPlacement
 	/// skeleton's parent's space (the joints' palette is relative to it), and glTF ignores a
 	/// skinned mesh node's own transform: so the mesh's node goes under the skeleton's parent node
 	/// at identity (minus one: the model's root, when the skeleton has no parent), and its world IS
-	/// the skeleton's model space wherever the file put the mesh node (inverse-kinematics.md P0a).
+	/// the skeleton's model space wherever the file put the mesh node.
 	/// cSkinnedMeshKeepsPlace when it stays: the parent is not known (data before version 3) or is
 	/// the mesh node or below it. The walk up is bounded by the node count (a malformed cycle).
 	public static int32 SkinnedMeshParent(Span<ModelNode> nodes, int32 skeletonParentNode, int meshNode)

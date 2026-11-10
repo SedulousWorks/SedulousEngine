@@ -56,7 +56,7 @@ class EditorContext : IAssetEditSink
 	private ImporterRegistry mImporters = new .() ~ delete _;
 	private EditorPageRegistry mPageRegistry = new .() ~ delete _;
 	private ImportPreviewRegistry mImportPreviews = new .() ~ delete _;
-	/// The editor's long work off the frame (Raptor's task-layer spec): the workers start with the
+	/// The editor's long work off the frame: the workers start with the
 	/// first task.
 	private TaskPool mTasks = new .(TaskPool.DefaultWorkerCount()) ~ delete _;
 	/// The lane that changes the project, one task at a time so nothing races the content databases:

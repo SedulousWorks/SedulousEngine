@@ -11,8 +11,8 @@ namespace Sedulous.Editor.App;
 
 /// A property source over values that live at an address, read through their RUN TIME field
 /// reflection: a component inside its manager's pool, a copy of an entity's transform, a scene's
-/// settings block, or the asset an asset page holds (AssetObjectPage). Raptor shows these with the
-/// toolkit's reflected source, over its one reflection; here the toolkit's reflects the GUI's own
+/// settings block, or the asset an asset page holds (AssetObjectPage). The toolkit's reflected
+/// source reflects the GUI's own
 /// [GuiReflect] objects, and a component is a struct a pool holds and an asset an object that only
 /// Beef's reflection describes ([Component], [SerializableComponent] and [Serializable] ask for
 /// their fields), so the editor reads them through FieldJson, as the MCP tools do (the user's
@@ -159,7 +159,7 @@ class FieldPropertySource : IPropertySource
 
 	/// Hints a field carrying the attribute `T` with `hint` (a literal: it lives as long as the
 	/// process), for the application's editor of what that attribute says (a string naming a bone
-	/// of a skeleton). Raptor's RegisterHintAttribute: Beef reads an attribute by its type.
+	/// of a skeleton). Keyed by the attribute's type, as Beef reads an attribute by its type.
 	public static void RegisterHintAttribute<T>(String hint) where T : Attribute
 	{
 		delegate bool(FieldInfo field) carries = new (field) => field.HasCustomAttribute<T>();

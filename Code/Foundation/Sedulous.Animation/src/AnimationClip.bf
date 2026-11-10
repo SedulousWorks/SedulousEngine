@@ -4,7 +4,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation;
 
-/// The travel a clip carries for root motion (root-motion.md), baked at cook: the root's
+/// The travel a clip carries for root motion, baked at cook: the root's
 /// position and its turn about +Y at each time, in the space the motion is applied in (model
 /// space for a skeleton root or the armature's own channels). Empty when the clip extracts none.
 class RootMotionCurve

@@ -23,7 +23,7 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Materials;
 
-/// The material page (Raptor's editor-gui spec, 5.4, layer 4), on the preview pages' markup
+/// The material page, on the preview pages' markup
 /// (Data/Editor/PreviewPage.xml): the material on a preview shape lit by a sun and the default sky
 /// (its clock running, so a shader that moves with Time moves), beside its rows. The authored form
 /// IS the runtime source (MaterialSource), so Save writes it back and asks for a cook; every live

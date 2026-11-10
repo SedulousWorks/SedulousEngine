@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation;
 
-/// A step of root motion (root-motion.md P1): how far the character moves, in the frame it faces
+/// A step of root motion: how far the character moves, in the frame it faces
 /// at the step's start (model space when the clip does not extract its turn), and how far it
 /// turns about +Y.
 struct RootMotionDelta

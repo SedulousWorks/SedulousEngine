@@ -123,7 +123,7 @@ class ChromeTraceTests
 		Test.Assert(fromCapture == fromLive);
 	}
 
-	/// A capture on another clock (Raptor's nanoseconds) exports in microseconds all the same.
+	/// A capture on another clock (nanoseconds, say) exports in microseconds all the same.
 	[Test]
 	public static void ACaptureOnAnotherClockExportsInMicroseconds()
 	{

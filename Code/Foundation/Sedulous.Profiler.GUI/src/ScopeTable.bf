@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Profiler.GUI;
 
-// The frames chosen's scopes as a table (X7 of Raptor's editor-gui spec): by default the call tree,
+// The frames chosen's scopes as a table: by default the call tree,
 // each thread a group and the GPU's passes one, a scope under the one it ran in (the frames merged:
 // a scope's every run in the same place is one row); sorted by any other heading, a flat list of
 // names, the longest first (again: the other way). Columns: calls, total and self time (its

@@ -5,7 +5,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation.Resource;
 
-/// The root motion cook (root-motion.md P0): bakes a clip's root travel into its curve and, for
+/// The root motion cook: bakes a clip's root travel into its curve and, for
 /// a root BONE, strips what was extracted from its own tracks so the pose plays in place.
 static class RootMotionBake
 {

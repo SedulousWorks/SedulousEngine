@@ -25,7 +25,7 @@ class NetworkSubsystem : Subsystem
 	/// What arrives is buffered here and applied by the next frame's fixed lane, where
 	/// interpolation absorbs the lag.
 	///
-	/// The endpoints are the runs' (Raptor's run-context spec): each run's network controller
+	/// The endpoints are the runs': each run's network controller
 	/// (its INetworkController service) holds its live endpoint, re-read every frame, so no
 	/// endpoint is held across frames.
 	public override void PostUpdate(float deltaTime)

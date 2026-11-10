@@ -4,9 +4,9 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-// What every viewport tool's panel is made of (Raptor's editor-gui spec, 5.3, layer 5, part 3), so
-// every panel reads the same (the catalog's 17: three mode-picker styles, two ways to build a check
-// row): a segmented row of exclusive choices (a mode, a layer, by word or by picture), a named
+// What every viewport tool's panel is made of, so every panel reads the same (not three
+// mode-picker styles, nor two ways to build a check row): a segmented row of exclusive choices
+// (a mode, a layer, by word or by picture), a named
 // slider with its number, a named check and a line of help. The body asks each control's value of
 // the tool again when Sync runs (the host runs it each frame), since a tool's keys change it too
 // (1 to 4 its mode, Shift + wheel its radius).

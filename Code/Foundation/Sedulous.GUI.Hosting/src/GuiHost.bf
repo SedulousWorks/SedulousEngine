@@ -28,10 +28,10 @@ namespace Sedulous.GUI;
 // focused window's pane that was clicked last, else its first; a file dropped goes to the window it
 // landed on. An application may take a pane's pointer for itself first (a tool picking what is
 // under it) and draw over a window after its panes (a tool's highlights). A root draws when it
-// needs a frame (E8a's NeedsFrame: something changed, an animation runs, a bake landed); otherwise
+// needs a frame (NeedsFrame: something changed, an animation runs, a bake landed); otherwise
 // its window re-encodes the batch it drew last, since the runtime host presents every frame.
 //
-// Windows of its own (D6): given an opener (the application's), the host opens an OS window for a
+// Windows of its own: given an opener (the application's), the host opens an OS window for a
 // root and closes it, tells its owner what happens to each window by its root (moved, resized,
 // focus, a close asked for), and says which root is under a screen point and where a root's point
 // is on the screen, where the window system lets it place windows (not Wayland).
@@ -182,7 +182,7 @@ class GuiHost
 	private StyleManager mStyles = new .() ~ delete _;
 	private ShellClipboard mClipboard = null ~ delete _;
 	private Sedulous.Shell.InputRouter mRouter = null ~ delete _;
-	private Sedulous.Input.InputKindTracker mInputKind = new .() ~ delete _; // the host's, from the shell's devices (K2b)
+	private Sedulous.Input.InputKindTracker mInputKind = new .() ~ delete _; // the host's, from the shell's devices
 	private Sedulous.Shell.InputRouter mContentRouter = null ~ delete _; // the hosted contents' surfaces
 	internal GpuPictureBaker mBaker = null ~ delete _;
 	private PictureBakerSetup mBakerSetup = .();
@@ -287,8 +287,8 @@ class GuiHost
 		delete mPointerFilter;
 		mPointerFilter = filter;
 	}
-	/// The input kind the host tracks from the shell's devices each frame and gives every pane
-	/// (K2b): the pointer, the keyboard or a pad. An application reads it, or sets a starting kind.
+	/// The input kind the host tracks from the shell's devices each frame and gives every pane:
+	/// the pointer, the keyboard or a pad. An application reads it, or sets a starting kind.
 	public Sedulous.Input.InputKindTracker InputKindTracker => mInputKind;
 	/// Every pane's cursor follows its GUI again (after the application set one of its own, a
 	/// boundary's resize cursor).
@@ -413,7 +413,7 @@ class GuiHost
 		pane.Bridge.SetTextInputTarget(window.Window);
 		if (mShell.Input != null)
 			pane.Bridge.SetCursorTarget(mShell.Input.Mouse);
-		pane.Bridge.SetInputKindTracker(mInputKind); // the pointer, the keys or a pad (K2b)
+		pane.Bridge.SetInputKindTracker(mInputKind); // the pointer, the keys or a pad
 		root.EventDispatcher.Clipboard = mClipboard;
 		root.DisplayScale = window.Window.ContentScale * mUiScale;
 		root.ViewportSize = .(area.Width, area.Height);
@@ -453,7 +453,7 @@ class GuiHost
 		}
 	}
 
-	// === Windows of its own (D6) ===
+	// === Windows of its own ===
 
 	/// How the host opens a window for a root; without one it opens none. Takes ownership of
 	/// `opener`, replacing the last.
@@ -643,7 +643,7 @@ class GuiHost
 	public void Update(float deltaTime)
 	{
 		// What the player uses now, from this frame's devices, before the panes' bridges pass it
-		// on with their input (K2b).
+		// on with their input.
 		using (ProfileScope("GUI.Input"))
 		{
 			using (ProfileScope("GUI.Input.Kind"))

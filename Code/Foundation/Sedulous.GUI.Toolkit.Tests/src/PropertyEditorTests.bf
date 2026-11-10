@@ -441,7 +441,7 @@ class PropertyEditorTests
 			Test.Assert(picker.GetChannelField(i).ScreenBounds.Width >= 44.0f); // "255" beside its arrows
 	}
 
-	// What no Raptor test covers: a list's row says its count and adds at its end; the kinds' names.
+	// Further cases: a list's row says its count and adds at its end; the kinds' names.
 	[Test]
 	public static void AListsRowSaysItsCountAndAddsAtItsEndAndTheKindsHaveNames()
 	{

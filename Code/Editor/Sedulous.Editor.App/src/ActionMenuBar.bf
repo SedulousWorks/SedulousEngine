@@ -5,7 +5,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The menu bar GENERATED from the action registry (Raptor's editor-gui spec, 5.1, layer 7).
+/// The menu bar GENERATED from the action registry.
 /// Every action with a MenuPath ("File/Save", "Scene/Simulate/Play") lands in the menu its first
 /// segment names, the rest as nested submenus. The application declares its menus' order
 /// (SetMenuOrder: names, and "*" where every other menu goes), so a domain's menu (Scene), or an

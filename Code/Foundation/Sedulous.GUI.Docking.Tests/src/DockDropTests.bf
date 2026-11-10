@@ -6,7 +6,7 @@ using static Sedulous.GUI.Docking.Tests.DockingFixtures;
 
 namespace Sedulous.GUI.Docking.Tests;
 
-/// Drag to dock within one window (D4 of Specs/gui-lab-evolution-3.md): a tab torn from a stack's
+/// Drag to dock within one window: a tab torn from a stack's
 /// strip carries its panel; over a strip it goes in at a tab's place, over a stack's middle into it,
 /// over its edge band beside it, over the surface's band along the whole edge. Each drop is the
 /// layout's move, tried on a copy first: the preview is where the panel would be, and a move the

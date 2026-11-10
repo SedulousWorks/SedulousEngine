@@ -24,8 +24,8 @@ class EditorAssetCreationServices
 	public delegate void(Instance instance) OnCreated ~ delete _;
 }
 
-/// File > New's create-and-open, out of the application (Raptor's editor-gui spec, 5.1, layer
-/// 3). A creator writes the new asset into a group (its default group, else the root, when
+/// File > New's create-and-open, out of the application. A creator writes the new asset into a
+/// group (its default group, else the root, when
 /// none is picked); a scene becomes the project's default when the settings name none; the
 /// assets view shows the new row and an asset a builder cooks is cooked at once, so it can be
 /// picked; then its page opens. While a cook reads the databases (their structure frozen) the

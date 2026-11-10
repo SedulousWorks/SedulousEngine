@@ -17,8 +17,7 @@ enum ShadingModel : uint8
 }
 
 /// A model's material as its file authored it: metal-rough PBR, or the lighting model a legacy
-/// format names (Phong, Lambert, unlit), which the import makes the matching built-in material of
-/// (Raptor's phong-material spec).
+/// format names (Phong, Lambert, unlit), which the import makes the matching built-in material of.
 ///
 /// Texture references are INDICES into the model's texture list, not pointers, because
 /// that is how the source formats express them and it survives the model being moved or

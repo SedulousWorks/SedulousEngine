@@ -3,7 +3,7 @@ using Sedulous.Content;
 
 namespace Sedulous.Editor.App;
 
-// The group picker (Raptor's editor-gui spec, 5.2, layer 5): the picker over the project's groups,
+// The group picker: the picker over the project's groups,
 // where an import or a new asset goes. The groups are a tree: each a row by its name, indented under
 // what holds it, in the tree's order (a group, then what is under it, by name), the top one
 // "Content"; the current group is checked and lit, and the search finds a group by its name,

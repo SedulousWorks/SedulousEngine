@@ -9,7 +9,7 @@ namespace Sedulous.Profiler.Capture;
 /// events (they nest by time), a "GPU" lane with the passes (their pipeline statistics as
 /// arguments), and each counter as a counter track. Times are microseconds from the first
 /// frame's start, converted by the source's tick frequency, so a capture recorded on another
-/// clock (Raptor's nanoseconds) exports the same.
+/// clock (nanoseconds, say) exports the same.
 static class ChromeTrace
 {
 	private const double cFramesLane = 0;

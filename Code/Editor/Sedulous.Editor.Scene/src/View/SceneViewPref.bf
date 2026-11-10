@@ -29,7 +29,7 @@ struct SceneViewSplits
 /// left rather than at the default framing with nothing picked; version 3 adds the entity
 /// marker toggle, version 4 the frame rate readout and, appended to it, the page's split
 /// positions (a version 4 file saved before them reads none), then the grid's plane, the
-/// camera's projection and where the tool panel was moved (ruling 23) the same way. An older file is read by the gates below
+/// camera's projection and where the tool panel was moved the same way. An older file is read by the gates below
 /// and re-saved at the current version.
 /// HAND WRITTEN rather than generated: the body has to branch on the stored version, which a
 /// field walk cannot.

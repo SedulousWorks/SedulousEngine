@@ -8,8 +8,8 @@ using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.GUI.Tests;
 
-/// The GUI's components through the scene format: what is authored comes back, under the keys
-/// Raptor writes.
+/// The GUI's components through the scene format: what is authored comes back, under its fixed
+/// keys.
 class GuiComponentTests
 {
 	/// `authored` written as a scene and read back into `loaded`, which has the same managers.

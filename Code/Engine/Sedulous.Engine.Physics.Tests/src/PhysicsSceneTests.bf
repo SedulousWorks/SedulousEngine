@@ -307,7 +307,7 @@ class PhysicsSceneTests
 		Test.Assert(raised == 20, scope $"{raised}"); // two boxes' tops and sides
 	}
 
-	/// What foot IK asks (inverse-kinematics.md P3): the ground under a foot. A checkpoint
+	/// What foot IK asks: the ground under a foot. A checkpoint
 	/// trigger standing on the floor is not a floor.
 	[Test]
 	public static void TheSceneRayQueryFindsSolidGroundAndPassesThroughATrigger()

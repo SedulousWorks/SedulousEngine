@@ -5,7 +5,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation.Tests;
 
-/// Detached ends, the asset pack shape (inverse-kinematics.md P4): a foot or a hand exported as
+/// Detached ends, the asset pack shape: a foot or a hand exported as
 /// an IK target bone off the root, the shin or forearm with no child. The end moves itself and
 /// the chain bends to meet it with the tip it had in the animated pose; a foot solve does the
 /// same for each detached foot.

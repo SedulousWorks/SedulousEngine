@@ -128,7 +128,7 @@ static class ScriptClassResourceTests
 	}
 
 	/// A record cooked before each property carried its replicated flag is in another layout.
-	/// Read as this one it misread its counts (in Raptor it held the editor for minutes opening
+	/// Read as this one it misread its counts (it could hold the editor for minutes opening
 	/// a scene); the data version refuses it, and the script recooks.
 	[Test]
 	public static void ARecordCookedBeforeTheReplicatedFlagIsRefused()

@@ -505,7 +505,7 @@ static class PickerTests
 	}
 
 	/// Under the editor's sheet the list fits its frame (a list wider than the dialog ran its rows
-	/// past the edge: Raptor's user's screenshot of the render textures).
+	/// past the edge, as a list of render textures once did).
 	[Test]
 	public static void UnderTheEditorsSheetItsListFitsItsFrame()
 	{

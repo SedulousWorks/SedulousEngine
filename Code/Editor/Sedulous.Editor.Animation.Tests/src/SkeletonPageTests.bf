@@ -233,7 +233,7 @@ class SkeletonPageTests
 		return skeleton;
 	}
 
-	// What no Raptor test covers (Sedulous's old wireframe test, on the previews' shared drawing).
+	// Further cases (the old wireframe test, on the previews' shared drawing).
 	[Test]
 	public static void TheBonesDrawOneLinePerChildBoneAtWorldJoints()
 	{

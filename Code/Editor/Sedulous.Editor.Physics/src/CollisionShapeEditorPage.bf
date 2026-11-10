@@ -14,7 +14,7 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Physics;
 
-/// The collision shape page (Raptor's editor-gui spec, 5.4, layer 3), on the preview pages' markup
+/// The collision shape page, on the preview pages' markup
 /// (Data/Editor/PreviewPage.xml): the cooked collider's outline drawn in the preview, beside the
 /// asset's fields, its source mesh a slot for what a mesh cooks to ([References]), each edit one
 /// undo step. A shape with no mesh says so in a notice, and shows no collider (one cooked before

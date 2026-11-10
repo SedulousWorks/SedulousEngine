@@ -240,7 +240,7 @@ class AnimationPlayer
 		mMatricesDirty = false;
 	}
 
-	/// The root motion the clip carried since the last call (root-motion.md P1), composed over
+	/// The root motion the clip carried since the last call, composed over
 	/// every Update between: zero when the clip extracts none. Reading it resets it.
 	public RootMotionDelta ConsumeRootMotion()
 	{

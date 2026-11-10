@@ -490,7 +490,7 @@ class CurveViewTests
 		Test.Assert(bed.Keys().Length == 2); // nothing added
 	}
 
-	// What no Raptor test covers: a curve set as a timeline: its curves the channels by their names,
+	// Further cases: a curve set as a timeline: its curves the channels by their names,
 	// a key inserted on the curve and keys moved past each other, the moved ones followed.
 	[Test]
 	public static void ACurveSetIsATimelineItsCurvesTheChannelsAKeyInsertedAndKeysMoved()

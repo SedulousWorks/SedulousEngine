@@ -252,14 +252,14 @@ class FakeWindows : IDockWindows, IRootPlaces
 	}
 }
 
-/// Floating surfaces in one window (D5 of Specs/gui-lab-evolution-3.md): a DockArea shows the main
+/// Floating surfaces in one window: a DockArea shows the main
 /// surface and each floating one as a window over it, holding a dock space of its own; the windows
 /// follow the layout (made, placed, titled, ended) and the layout follows what the user does to them
 /// (moved or resized, closed); a float is docked into like the main surface; a tab dragged with
 /// Shift, Move to's Float and dock.float float a panel; a float dragged by its title docks whole
 /// over a target, is only moved with Shift, and goes back on Escape; the dock keys reach across the
 /// surfaces (past a float's edge, the surface cycle) and so does the Move to menu; a stack's grip
-/// dragged with Shift floats the whole stack. Floats as windows of their own (D6): each floating
+/// dragged with Shift floats the whole stack. Floats as windows of their own: each floating
 /// surface a dock space in its window, titled and placed on the screen, its moves and close heard
 /// back; a tab let go outside every window floats there; a window that cannot open takes the area
 /// back to floats in it.

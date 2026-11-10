@@ -18,7 +18,7 @@ class KeyBed : DockBed
 	public DockNodeId Focused => Space.FocusedStack;
 }
 
-/// Docking from the keyboard (D4 of Specs/gui-lab-evolution-3.md): a docked panel's tab picked up
+/// Docking from the keyboard: a docked panel's tab picked up
 /// (`drag.pick`) and dropped on another stack's tab; `dock.focus-*` and `dock.move-*` by direction
 /// (into the stack that way, else along the surface's edge, the focus going with the panel);
 /// `dock.maximize` and back; `dock.close`; none bound to a key, the keyboard's way in a tab's

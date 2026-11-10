@@ -5,7 +5,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The editor's keys GENERATED from the action registry (Raptor's editor-gui spec, 5.1, layer 8).
+/// The editor's keys GENERATED from the action registry.
 /// Every action's effective chord (the user's override or the declaration's default) and every
 /// alternate chord is bound in the GUI's keymap to a command named by the action's id, and the
 /// window's root handles each such command by the registry's Execute: the one funnel, so a chord

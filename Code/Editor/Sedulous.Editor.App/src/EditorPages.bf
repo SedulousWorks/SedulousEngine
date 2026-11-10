@@ -33,7 +33,7 @@ class EditorPagesServices
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
 }
 
-/// The open pages in the dock (Raptor's editor-gui spec, 5.1, layer 6). A page is a panel of
+/// The open pages in the dock. A page is a panel of
 /// its own, by its asset's guid (a Game tab by its play id: `game-page`, `game-page-1`, ...),
 /// the ids a saved layout and the MCP layout tools name; it opens in the central stack, or where
 /// a restored layout kept its place. Its tab says its asset's name, a ` *` and the `dirty` class
@@ -41,8 +41,8 @@ class EditorPagesServices
 /// the inspector): the chosen tab of the stack the focus was last in. Closing a page with unsaved
 /// changes asks first (Save, Discard, Cancel); a close always runs at the next frame, never
 /// inside the event that asked for it, and takes the page's panel with it. The open pages and
-/// the active one are saved with the project and reopen with it. Before an exit (layer 11; a
-/// project's close in layer 13) the unsaved pages are asked about as one: save them all, cancel,
+/// the active one are saved with the project and reopen with it. Before an exit (or a
+/// project's close) the unsaved pages are asked about as one: save them all, cancel,
 /// or go on without saving. Save As writes a page into a new asset beside its own, named in a
 /// dialog of its own markup (Data/Editor/SaveAs.xml); the page edits the new asset after.
 class EditorPages
@@ -254,7 +254,7 @@ class EditorPages
 		}
 	}
 
-	/// The unsaved pages, before `proceed` (an exit; a project's close, layer 13): with none it
+	/// The unsaved pages, before `proceed` (an exit; a project's close): with none it
 	/// runs now; else the user is asked to save them all, keep working, or go on without saving,
 	/// the verbs the caller's (`saveVerb` "Save All and Exit", `discardVerb` "Exit Without
 	/// Saving"), and it runs only when they chose to go on and every page saved. With nowhere to

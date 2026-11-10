@@ -175,7 +175,7 @@ struct FootIkResult
 	public this() {}
 }
 
-/// Inverse kinematics solvers (inverse-kinematics.md P1): pure functions over a skeleton, a LOCAL
+/// Inverse kinematics solvers: pure functions over a skeleton, a LOCAL
 /// pose and its model space matrices (ModelPoseCache), with no physics and no scene. A solve
 /// writes local rotations and keeps the cache current by rebuilding from the highest bone it
 /// changed down, so bones above the chain never move. Targets are in the skeleton's model space;
@@ -565,7 +565,7 @@ static class InverseKinematics
 			outFeet[i] = Position(model.At(legs[i].Chain.End));
 	}
 
-	/// Feet that stand on the ground under them (inverse-kinematics.md P3): each planted foot
+	/// Feet that stand on the ground under them: each planted foot
 	/// rises or falls by the ground's height under it (measured from the animation's ground,
 	/// GroundHeight along up) and turns to the slope within MaxTilt; the pelvis lowers by the
 	/// deepest correction, clamped, so the lower foot can reach; a foot the animation lifts above

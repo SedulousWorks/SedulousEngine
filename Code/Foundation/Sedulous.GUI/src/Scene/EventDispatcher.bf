@@ -2617,7 +2617,7 @@ class EventDispatcher
 			if (source != null)
 				source.ReleaseRef();
 		}
-		// The drag's, told to the source, then gone. Moved out as Raptor's is, the dispatcher's own
+		// The drag's, told to the source, then gone. Moved out, the dispatcher's own
 		// left empty and alive: a drag ended by one of a drop's listeners leaves the rest reading it.
 		let payload = scope DragPayload();
 		payload.Set(mDragPayload);

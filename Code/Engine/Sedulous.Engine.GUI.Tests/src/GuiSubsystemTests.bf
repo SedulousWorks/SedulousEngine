@@ -77,7 +77,7 @@ class GuiSubsystemTests
 		Test.Assert(Near(@box.Size.X, 150.0f));
 	}
 
-	/// Raptor's case draws both tiers: this is its screen half, the scene half the case after.
+	/// Both tiers drawn, the screen half: the scene half is the case after.
 	[Test]
 	public static void TheScreenTierDrawsIntoTheEnginesOverlayPassItsLayersBeforeItsPass()
 	{
@@ -133,7 +133,7 @@ class GuiSubsystemTests
 		pass.End();
 	}
 
-	/// Raptor's case's scene half: the view's scene root, laid out at its viewport, drawn while a
+	/// Both tiers drawn, the scene half: the view's scene root, laid out at its viewport, drawn while a
 	/// canvas shows something; another scene's view draws nothing of it.
 	[Test]
 	public static void TheSceneTierDrawsIntoTheEnginesOverlayPassForItsOwnScenesViewAlone()

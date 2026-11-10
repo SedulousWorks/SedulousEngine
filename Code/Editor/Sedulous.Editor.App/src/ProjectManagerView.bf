@@ -11,7 +11,7 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-// ProjectManagerView: the project manager (Raptor's project-manager spec), the window's whole screen
+// ProjectManagerView: the project manager, the window's whole screen
 // at startup with no project given, and after File > Close Project. Its frame is markup
 // (Data/Editor/ProjectManager.xml): a header with the Projects and Samples tabs; on Projects a
 // toolbar (New Project, Open Folder, a search, the sort, list or grid) over the projects as rows or

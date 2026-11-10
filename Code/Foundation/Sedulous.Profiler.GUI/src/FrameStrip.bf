@@ -5,7 +5,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Profiler.GUI;
 
-// The frames, side by side (X7 of Raptor's editor-gui spec): the frame strip and the counters' plots
+// The frames, side by side: the frame strip and the counters' plots
 // under it, on one FrameAxis so they show the same frames at the same places. The strip's bars are
 // each frame's CPU time against a budget (within it, over it, over twice it), on a scale with its
 // values printed (twice the budget; the frames shown's longest without one), a bar past the scale

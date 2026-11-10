@@ -7,7 +7,7 @@ using Sedulous.Profiler.Tests; // KnownSource
 
 namespace Sedulous.Profiler.GUI.Tests;
 
-/// The focus every view on a page reads (X7 of Raptor's editor-gui spec): the frames, the name and
+/// The focus every view on a page reads: the frames, the name and
 /// the span chosen, each change told to the views; a new source letting the choices go; a name's time
 /// in a frame (a recursive scope counted once), the longest and the median frame.
 class ProfileFocusTests

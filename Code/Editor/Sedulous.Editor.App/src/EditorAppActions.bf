@@ -97,7 +97,7 @@ class HelpActions
 }
 
 /// The editor-wide actions (File, Edit, Project, Build, Game, View, Help), out of the
-/// application (Raptor's editor-gui spec, 5.1, layer 3): one registration per menu, each
+/// application: one registration per menu, each
 /// declaration as the menu bar, the shortcuts, the palette and the MCP bridge read it. Called in
 /// menu order, before the domains register theirs: the bar lists menus in the order their names
 /// first appear. An action runs what the application gives it; one it gives nothing for (a

@@ -3,7 +3,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-// Rows an editor's grid shows besides values (Raptor's editor-gui spec, 5.3, layer 4, part 3), each
+// Rows an editor's grid shows besides values, each
 // a property of a source the editor fills (a PropertyBag), chosen by its hint:
 //   - a notice (`notice`): its value is what it says, wrapped, styled as a warning (a rigid body
 //     with a cooked shape and no collision shape: it has no collider);

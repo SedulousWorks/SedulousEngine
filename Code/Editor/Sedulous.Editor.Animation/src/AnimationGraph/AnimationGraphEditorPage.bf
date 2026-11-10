@@ -40,8 +40,8 @@ struct GraphChoice : IEquatable<GraphChoice>
 	public bool Equals(GraphChoice other) => (Kind == other.Kind) && (Index == other.Index);
 }
 
-/// An animation graph on the GUI from its markup (Data/Editor/AnimationGraphPage.xml; Raptor's
-/// editor-gui spec, 5.4, layer 10, part 5). The graph's layers and parameters are lists, each with its
+/// An animation graph on the GUI from its markup (Data/Editor/AnimationGraphPage.xml). The graph's
+/// layers and parameters are lists, each with its
 /// bar (a parameter added by its type); the chosen layer is on the graph view (AnimationGraphStates:
 /// its states the nodes, Any State one more, its transitions arrows; a state added from the view's
 /// menu, a transition dragged from a state's edge); under it the preview plays the graph on the rig

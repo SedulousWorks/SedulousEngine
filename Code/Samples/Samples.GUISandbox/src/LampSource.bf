@@ -8,7 +8,7 @@ using Sedulous.Xml.Serialization;
 
 namespace Samples.GUISandbox;
 
-// The Toolkit page's property source (T1 and T2 of Raptor's gui-lab-evolution-3.md): three lamps,
+// The Toolkit page's property source: three lamps,
 // an application's own objects, behind a selection of one or all of them, with the undo an
 // application keeps (every lamp as it was before and after each change, one entry whatever the
 // gesture previewed). Its paths:
@@ -18,7 +18,7 @@ namespace Samples.GUISandbox;
 //     the type tells the grid its properties changed);
 //   - tags, a list of text of at most four; effects, a list of two types (Flicker, Pulse), each a
 //     group of its own values;
-//   - flicker, a curve of Core's keys (T5): its row a preview, its editor the toolkit's curve view;
+//   - flicker, a curve of Core's keys: its row a preview, its editor the toolkit's curve view;
 //   - falloff, hinted "falloff", which no editor takes.
 // Each lamp's defaults are how it started; a revert puts them back. Copying writes a path and what
 // is under it with the engine's XmlSerializer, a shape first, so a paste refuses another shape.

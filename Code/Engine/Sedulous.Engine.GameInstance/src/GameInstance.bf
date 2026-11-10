@@ -41,7 +41,7 @@ namespace Sedulous.Engine.GameInstance;
 /// bus, which is what a `Game` orchestrator drives boot and level flow with:
 /// `let t = Run.LoadSceneAsync(id); while (!Run.LoadComplete(t)) yield();`.
 ///
-/// It IS its run (Raptor's run-context spec), through RunBase: its id, name, sessions, event
+/// It IS its run, through RunBase: its id, name, sessions, event
 /// bus, and what it owns registered on it, so others reach those through the run.
 [Scriptable, ScriptService, DisplayName("Run")]
 class GameInstance : RunBase

@@ -12,7 +12,7 @@ using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.Animation.Tests;
 
-/// Instanced skinning with several clips (masquerade.md P2): the pose pool holds a block of
+/// Instanced skinning with several clips: the pose pool holds a block of
 /// phases per clip, each clip on its own clock, and the sets it feeds learn how many poses a
 /// clip has, so an instance's clip picks its block. The skeleton and clips are resource
 /// references and the targets entity references, saved with the scene.

@@ -5,7 +5,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation.Tests;
 
-/// The pose modifier stage (inverse-kinematics.md P0b): a modifier changes the pose between the
+/// The pose modifier stage: a modifier changes the pose between the
 /// sample and the palette, every evaluation, so its change survives the next sample and the
 /// sampled pose stays as sampled; modifiers run in their order over one model space build; a
 /// partial rebuild matches a full one; and no modifier changes nothing.

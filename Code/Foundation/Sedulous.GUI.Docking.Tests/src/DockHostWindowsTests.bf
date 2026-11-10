@@ -114,7 +114,7 @@ class HostWindowsBed
 	}
 }
 
-/// A DockArea's floats in OS windows on the GUI's host (D6 of Specs/gui-lab-evolution-3.md), on
+/// A DockArea's floats in OS windows on the GUI's host, on
 /// the Null RHI backend and the null shell: a float opens a window of its own at its bounds, titled,
 /// its content a root of the host's GUI; retitled and placed as the layout has it; the user's moves
 /// come back to the layout and the window's close closes its panels; where the shell's windows hold

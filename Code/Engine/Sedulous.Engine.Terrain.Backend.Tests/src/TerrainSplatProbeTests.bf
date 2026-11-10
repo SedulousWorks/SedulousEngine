@@ -118,7 +118,7 @@ class TerrainSplatProbeTests
 		Test.Assert(forward || mirrored,
 			scope $"all six layers appear in palette order (got {BandClass(probe, 0)}, {BandClass(probe, 1)}, {BandClass(probe, 2)}, {BandClass(probe, 3)}, {BandClass(probe, 4)}, {BandClass(probe, 5)})");
 
-		// And every band matches per channel on WebGPU. This is the R5 pixel parity
+		// And every band matches per channel on WebGPU. This is the pixel parity
 		// requirement: six layers through the array sampler have to survive the other cook.
 		let webgpu = scope TerrainProbeFixture(.WebGpu);
 		if (!webgpu.Ready)

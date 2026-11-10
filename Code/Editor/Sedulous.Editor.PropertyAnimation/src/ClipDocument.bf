@@ -8,7 +8,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.PropertyAnimation;
 
-/// A property animation clip open for editing (Raptor's editor-gui spec, 5.4, layer 9, part 1): the
+/// A property animation clip open for editing: the
 /// clip asset read into a clip, its own history and unsaved mark. A clip is an asset of its own, not
 /// the scene it animates in, so its edits are not the scene page's steps (the user's ruling: the old
 /// panel's edits on the scene page's stack read as the scene's); the mark follows the history, so

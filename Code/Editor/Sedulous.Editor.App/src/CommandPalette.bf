@@ -6,7 +6,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// CommandPalette: every action by name (Raptor's editor-gui spec, 5.1, layer 10). Its frame is
+// CommandPalette: every action by name. Its frame is
 // markup (Data/Editor/CommandPalette.xml: the kit's picker, a search field over a list and a hint),
 // its rows the registry's declarations filtered by what is typed (case folded): labels that start
 // with it first, then labels that hold it, then a description or id that does. A row shows the

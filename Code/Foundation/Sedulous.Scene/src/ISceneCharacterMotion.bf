@@ -4,8 +4,7 @@ using Sedulous.Core;
 namespace Sedulous.Scene;
 
 /// A system that moves characters (physics: its character controllers), for a system that does
-/// not depend on it: an animator walking its character by the clip's root motion
-/// (root-motion.md P2).
+/// not depend on it: an animator walking its character by the clip's root motion.
 interface ISceneCharacterMotion
 {
 	/// Whether `entity` has a character this system moves.

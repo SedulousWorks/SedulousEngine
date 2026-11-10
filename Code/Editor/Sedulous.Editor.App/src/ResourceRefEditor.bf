@@ -6,9 +6,9 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// The inspector's asset reference (Raptor's editor-gui spec, 5.2, layer 4): the property grid's
+// The inspector's asset reference: the property grid's
 // editor for GUI.Toolkit's Reference kind, an asset slot. What may fill it is asked of the builders,
-// never listed here (ruling 19): the source asset types whose builder makes the type the reference
+// never listed here: the source asset types whose builder makes the type the reference
 // points at (EditorContext.SourceAssetTypesOf). Pick, drop and clear are one write, the grid's, so
 // one undo step; a pick opens the asset picker (AssetPickerWindow). Open and reveal show the asset. What
 // it asks of the editor is a table of its own (ResourceRefServices), so a test gives its own and the
@@ -75,7 +75,7 @@ class ResourceRefServices
 				} ~ { delete open; };
 		}
 		// What the builders make it from; none: the type itself, a reference naming a source asset
-		// type (Project Settings', ruling 20).
+		// type (as Project Settings' does).
 		services.AcceptedTypes = new [=context] (target, outTypes) =>
 			{
 				let start = outTypes.Count;

@@ -12,8 +12,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// A sound cue on the GUI from its markup (Data/Editor/SoundCuePage.xml; Raptor's editor-gui spec,
-/// 5.4, layer 5). The cue on the grid: how it picks (at random never the same twice running, at
+/// A sound cue on the GUI from its markup (Data/Editor/SoundCuePage.xml). The cue on the grid: how
+/// it picks (at random never the same twice running, at
 /// random, or in order), its pitch and volume ranges, then its variants, a list as every page's (the
 /// count with Add, each element under it, removed and moved from its menu; eight at most), each a
 /// clip (an asset slot) and its weight. A variant added has no clip until one is picked, then joins

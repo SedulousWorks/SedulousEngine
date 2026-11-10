@@ -14,7 +14,7 @@ namespace Sedulous.GUI;
 //
 // These are corlib's Variants (System.Variant; Sedulous.GUI.Variant is a model's cell value). One
 // is a bitwise value: a copy shares an object or an owned buffer with the one it came from. So
-// text is COPIED where Raptor copies a String (the data model keeps its own), a read hands out a
+// text is COPIED (the data model keeps its own), a read hands out a
 // borrowed view, and a conversion returns a Variant the caller disposes. A value wider than a
 // pointer (a StringView) is a buffer the Variant allocates: whoever creates one disposes it.
 //
@@ -73,7 +73,7 @@ static
 	public static System.Variant TextVariant(StringView value) => System.Variant.Create(new String(value), true);
 
 	/// A copy of `value` that owns what it holds: text copied, a value type copied, an object
-	/// (other than text) shared, as Raptor shares a reference.
+	/// (other than text) shared by reference.
 	public static System.Variant CopyVariant(System.Variant value)
 	{
 		if (IsText(value))

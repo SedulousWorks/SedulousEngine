@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Samples.GUISandbox;
 
-/// The Stress page (E8a of Raptor's gui-lab-evolution.md): the worst case the GUI's performance
+/// The Stress page: the worst case the GUI's performance
 /// work is measured on. Its markup (pages/stress.xml) holds the controls; this builds the sections
 /// into #stress-root at a load from 1 to 20: a long column of rows, text in several faces and
 /// sizes, every box effect at once, running animations, a list and a table of 100,000 rows, deep

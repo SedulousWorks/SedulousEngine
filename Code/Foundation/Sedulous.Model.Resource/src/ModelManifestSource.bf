@@ -64,7 +64,7 @@ class ModelManifestSource
 	/// The node the skeleton hangs from (the skin's root joint's parent: Blender's armature
 	/// object), minus one for the scene root, minus two unknown (no skin, or data before version
 	/// 3). A skin draws in this node's space, so the prefab puts each skinned mesh here at
-	/// identity (glTF ignores a skinned mesh node's own transform; inverse-kinematics.md P0a).
+	/// identity (glTF ignores a skinned mesh node's own transform).
 	[Appended(3)]
 	public int32 SkeletonParentNode = -2;
 

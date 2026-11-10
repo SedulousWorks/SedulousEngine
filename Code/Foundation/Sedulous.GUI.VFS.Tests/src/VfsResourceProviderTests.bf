@@ -107,7 +107,7 @@ class VfsResourceProviderTests
 		Test.Assert(again.Width == 3);
 	}
 
-	// === Behaviour no Raptor test covers ===
+	// === Further behaviour ===
 
 	[Test]
 	public static void LoadTextAppendsTheWholeFileAndAnEmptyOneSucceedsEmpty()

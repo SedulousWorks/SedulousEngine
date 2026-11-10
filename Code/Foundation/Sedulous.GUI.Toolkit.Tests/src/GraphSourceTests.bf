@@ -290,7 +290,7 @@ class GraphSourceTests
 		Test.Assert(bed.Changes.Count == told);
 	}
 
-	// What no Raptor test covers: a link from an output to its own node refused, and a node that may
+	// Further cases: a link from an output to its own node refused, and a node that may
 	// not be deleted staying while its neighbours go.
 	[Test]
 	public static void ANodeDoesNotFeedItselfAndAnUndeletableNodeStays()

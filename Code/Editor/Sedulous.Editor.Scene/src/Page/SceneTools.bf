@@ -8,11 +8,11 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Scene;
 
-// The scene page's viewport tools (Raptor's editor-gui spec, 5.3, layer 5, part 3): each an action,
+// The scene page's viewport tools: each an action,
 // `scene.tool.<id>`, toggling it over the page (so the menu bar, the palette, a chord the user binds
 // and MCP reach it; it had only the bar), disabled where it has nothing to work on and saying why. On
 // the bar from the tool registry: a category of several tools one menu by its first tool's icon, a
-// lone tool a toggle. The active tool's panel in one place (ruling 23): the HUD's top start under the
+// lone tool a toggle. The active tool's panel in one place: the HUD's top start under the
 // chips, in a chrome of the tool's name, a fold and a close (back to Select); dragged by its head
 // anywhere in the viewport (kept inside it as it shrinks), its place kept per scene, a double click
 // on its head putting it back under the chips.

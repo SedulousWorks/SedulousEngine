@@ -13,8 +13,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
-// A script component's behaviours as a property source, under its header in the inspector
-// (Raptor's editor-gui spec, 5.3, layer 4, part 3): reflection does not show them (a behaviour's
+// A script component's behaviours as a property source, under its header in the inspector:
+// reflection does not show them (a behaviour's
 // properties are its script's, from the cooked class), so this source does. A list of behaviours,
 // each its script (an asset slot taking script classes), Enabled, its update interval and its
 // script's properties by their kinds (a vector its three parts, an entity a slot over the scene, an

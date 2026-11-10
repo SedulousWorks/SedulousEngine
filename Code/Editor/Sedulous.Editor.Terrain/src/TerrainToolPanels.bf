@@ -8,7 +8,7 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Terrain;
 
-// The terrain brushes' panels (Raptor's editor-gui spec, 5.3, layer 5, part 3), made of the
+// The terrain brushes' panels, made of the
 // editor's tool panel kit so they read as one: Sculpt's mode (Raise, Lower, Smooth, Flatten), Paint
 // Layers' layer (each its albedo's picture, numbered from 1 as the keys are) and its mode (Paint,
 // Erase, Smooth; they were letters on the layer row), Cut Holes' mode (Cut, Fill), each with its

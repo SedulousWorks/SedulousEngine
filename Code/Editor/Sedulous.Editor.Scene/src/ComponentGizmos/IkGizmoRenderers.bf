@@ -6,7 +6,7 @@ using Sedulous.Engine.Animation;
 
 namespace Sedulous.Editor.Scene;
 
-/// Inverse kinematics on the selected entity (inverse-kinematics.md P4): the solve itself while
+/// Inverse kinematics on the selected entity: the solve itself while
 /// the scene runs, else the chain where the bind pose puts it, its target and its pole (or up), so
 /// a chain is seen before it is run. A bone name the skeleton lacks breaks the line there and
 /// marks the entity orange.

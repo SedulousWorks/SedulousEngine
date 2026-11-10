@@ -15,7 +15,7 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.GUI;
 
 /// The engine GUI's asset page: a `.xml` document or a `.css` sheet on the GUI from its markup
-/// (Data/Editor/GuiPage.xml; Raptor's editor-gui spec, 5.4, layer 6, part 5), on the code pages'
+/// (Data/Editor/GuiPage.xml), on the code pages'
 /// base (the source file, the shared XML or CSS colours, one history, the problems list). Its check
 /// is what the cook would report (the loader's and the parser's diagnostics), and beside the code a
 /// live preview the RUNTIME context's GuiSubsystem draws into a viewport of the page (CreatePreview /

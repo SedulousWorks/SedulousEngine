@@ -201,7 +201,7 @@ class PromptTests
 		Test.Assert(prompt.BindingName.IsEmpty);
 	}
 
-	// === Behaviour no Raptor test covers ===
+	// === Further behaviour ===
 
 	[Test]
 	public static void ABindingsTokenIsItsLabelLowerCaseDashedAndItsKindFollowsItsSource()

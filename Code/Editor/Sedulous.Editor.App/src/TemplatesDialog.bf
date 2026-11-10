@@ -8,7 +8,7 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.App;
 
-// Export Templates (Raptor's editor-gui spec, 5.2, layer 6): the player builds this editor exports
+// Export Templates: the player builds this editor exports
 // with, Edit > Export Templates (and Export's own button, over it), a window over its markup
 // (Data/Editor/Templates.xml). They are the editor's, not a project's: every project shares them.
 // The templates on the left, each by the icon its bundle carries, its name, platform, config and

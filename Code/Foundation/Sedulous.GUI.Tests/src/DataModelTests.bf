@@ -4,8 +4,8 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// A GUI's named values and the conversions bindings use. Raptor's tests of them need markup and
-/// bindings (BindingTests), so these check the model itself until those land.
+/// A GUI's named values and the conversions bindings use: the model itself, apart from markup
+/// and bindings.
 class DataModelTests
 {
 	[Test]

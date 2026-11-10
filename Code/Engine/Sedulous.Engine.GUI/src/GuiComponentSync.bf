@@ -15,7 +15,7 @@ namespace Sedulous.Engine.GUI;
 /// A component's tree is built from its document and built again when the document's product
 /// changes (a re-cook, another document); its own sheet styles it alone, over the game's. A
 /// component is a struct in a packed pool and a Beef generic cannot reach a struct's fields by
-/// name, so what Raptor's templates do for each kind is written over the fields they touch.
+/// name, so what a template would do for each kind is written out over the fields it touches.
 extension GuiSubsystem
 {
 	/// `field` holding a reference of its own to `value`, the old one let go.

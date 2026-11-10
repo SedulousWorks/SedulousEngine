@@ -4,8 +4,8 @@ using Sedulous.Core;
 
 namespace Sedulous.Profiler.GUI;
 
-// What a profiler page looks at, held once and read by every view on it (X7 of Raptor's editor-gui
-// spec): the source, the frames chosen (one or a range, from the frame strip), the name chosen (a
+// What a profiler page looks at, held once and read by every view on it: the source, the frames
+// chosen (one or a range, from the frame strip), the name chosen (a
 // scope or a GPU pass, from the timeline or the table) and a span marked on the timeline. A view sets
 // them through the focus and draws what it says; none keeps a copy, so the strip, the counters, the
 // timeline, the table and the detail stay in step, as TimeAxis keeps a ruler and its views. Nothing

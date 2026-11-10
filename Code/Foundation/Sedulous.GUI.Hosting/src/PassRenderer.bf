@@ -9,8 +9,7 @@ using Sedulous.VG.Renderer;
 
 namespace Sedulous.GUI;
 
-// GuiPassRenderer: a root drawn into a render pass its caller owns (E4 of
-// Specs/gui-lab-evolution-3.md, in Raptor).
+// GuiPassRenderer: a root drawn into a render pass its caller owns.
 //
 // The window host owns its windows' backbuffers and opens its own passes; an engine owns its frame
 // and hands its overlays a pass that is already open, on a target of its own format, maybe with a

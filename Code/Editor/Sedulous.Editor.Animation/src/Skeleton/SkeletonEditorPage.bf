@@ -46,8 +46,8 @@ struct SkeletonFacts
 	}
 }
 
-/// A skeleton on the GUI from its markup (Data/Editor/SkeletonPage.xml; Raptor's editor-gui spec,
-/// 5.4, layer 10, part 3). A viewer: a skeleton comes from its model's import and nothing here edits
+/// A skeleton on the GUI from its markup (Data/Editor/SkeletonPage.xml). A viewer: a skeleton comes
+/// from its model's import and nothing here edits
 /// it. Its bones are a tree (each under its parent), with a search that keeps a bone whose name holds
 /// it and the bones above it, so where it hangs still shows; a bone the user folds stays folded.
 /// Beside it the bind pose, drawn from the asset itself (it shows before a cook), the chosen bone

@@ -38,7 +38,7 @@ class GuiComponentSyncTests
 		return m;
 	}
 
-	/// Raptor's case names input too: what a canvas takes is its tree's inertness, checked here;
+	/// Input too: what a canvas takes is its tree's inertness, checked here;
 	/// the pointer reaching it is the input pump's, with its own cases (GuiInputTests.bf).
 	[Test]
 	public static void ACanvasShowsItsDocumentInItsScenesGuiOrderedShownAndTakingInputAsItSaysRebuiltWhenItsDocumentChangesGoneWhenDespawned()

@@ -11,7 +11,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation.Tests;
 
-/// Inverse kinematics on scene entities (inverse-kinematics.md P2): the end bone follows a
+/// Inverse kinematics on scene entities: the end bone follows a
 /// moving target entity in the world, through a model space that is the mesh entity's (moved
 /// and turned apart from the animator); the weight eases over FadeSeconds and the modifier
 /// leaves the player at nought; components run in their order; an unknown bone disables with

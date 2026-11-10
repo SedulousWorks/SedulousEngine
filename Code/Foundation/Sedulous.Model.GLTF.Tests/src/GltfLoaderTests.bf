@@ -412,7 +412,7 @@ class GltfLoaderTests
 		Test.Assert(Near(material.EmissiveIntensity, 4.0f));
 	}
 
-	// KHR_materials_unlit: the material comes in on the built-in Unlit (Raptor's phong-material spec),
+	// KHR_materials_unlit: the material comes in on the built-in Unlit,
 	// its colour read from the metallic-roughness block as the extension says; a material without it
 	// is PBR.
 	[Test]

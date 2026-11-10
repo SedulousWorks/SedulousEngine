@@ -7,7 +7,7 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-// An asset slot's pick, shaped as the assets browser (Raptor's editor-gui spec, ruling 24; the
+// An asset slot's pick, shaped as the assets browser (the
 // mock's asset-picker.xml): the project's groups a tree at its side (Favourites and All first),
 // what the chosen group holds of the slot's types beside it as tiles or a list (the last one chosen
 // kept with the project), the current value lit, the search over every group while it has text (by

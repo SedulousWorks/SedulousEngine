@@ -249,7 +249,7 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	// ---- runs: what one running game plays, keyed by its run's id (Scene.Run) ----
 	//
-	// A run's group follows its lifecycle (Raptor's run-context spec): its session's stop (or its
+	// A run's group follows its lifecycle: its session's stop (or its
 	// destruction) fades the group out, the host's pause pauses it, the run manager's focus decides
 	// who is heard. No host relays any of it.
 

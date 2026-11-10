@@ -161,7 +161,7 @@ static class ProjectRegistry
 }
 
 /// The manager's view of the recent list: its order, and its words for when and where. A class of
-/// its own, as Raptor's RecentProjects struct is.
+/// its own.
 static class RecentProjects
 {
 	private static StringView[12] cMonths = .("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");

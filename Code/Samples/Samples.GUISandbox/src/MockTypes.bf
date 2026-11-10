@@ -4,12 +4,11 @@ using Sedulous.GUI;
 
 namespace Samples.GUISandbox;
 
-// What the editor mock's inspectors show (X0 of Raptor's Specs/editor-gui.md): an entity with
+// What the editor mock's inspectors show: an entity with
 // three components and a scene's settings, reflected as the engine's are, standing in for them.
 // Plain data: nothing here runs.
 //
-// Raptor registers these with Core's reflection (RegisterMockTypes, called before the first
-// inspector fills); a [GuiReflect] table is built on first use, so nothing registers here. The
+// A [GuiReflect] table is built on first use, so nothing registers here. The
 // components are value structs, their [GuiProperty] fields a group each, as CameraRig's lens is.
 
 enum MockMotion : uint8

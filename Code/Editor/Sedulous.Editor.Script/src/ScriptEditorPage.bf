@@ -11,8 +11,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Script;
 
-/// A behaviour script's code on the GUI from its markup (Data/Editor/ScriptPage.xml; Raptor's
-/// editor-gui spec, 5.4, layer 6, part 3), on the code pages' base (the source file, its language's
+/// A behaviour script's code on the GUI from its markup (Data/Editor/ScriptPage.xml), on the code
+/// pages' base (the source file, its language's
 /// colours, a check a moment after each edit into the problems list, one history, Save then a cook).
 /// Its check compiles the code as the cook does, running none of it (a failing one leaves the last
 /// good class running); completion and hover come from what the runtime binds for its language

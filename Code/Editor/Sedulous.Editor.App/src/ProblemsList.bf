@@ -5,7 +5,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-// What a code page's check found, under its code (Raptor's editor-gui spec, 5.4, layer 6, part 2): a
+// What a code page's check found, under its code: a
 // line saying how many errors and warnings there are ("No problems" when none), then a row each, its
 // severity's icon, its place ("12:4", the file before it when the problem is in another, a shader's
 // include) and its message, errors first. Choosing a row, by a click or the arrow keys, tells the
