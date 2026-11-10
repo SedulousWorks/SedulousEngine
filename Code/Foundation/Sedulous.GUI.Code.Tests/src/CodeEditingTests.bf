@@ -6,7 +6,7 @@ using static Sedulous.GUI.Code.Tests.CodeFixtures;
 
 namespace Sedulous.GUI.Code.Tests;
 
-/// Editing, with the sandbox's AngelScript, Luau and XML definitions: brackets and quotes closed as
+/// Editing, with the editor's Beef, Luau and XML definitions: brackets and quotes closed as
 /// typed and typed over, a selection surrounded, an empty pair or an indent's spaces deleted back;
 /// Return indenting after what opens a block and a closing word outdenting; comments toggled by line
 /// or by block; lines indented, moved, copied and deleted; the next occurrence added and all of
@@ -17,7 +17,7 @@ class CodeEditingTests
 	[Test]
 	public static void BracketsAndQuotesCloseAsTypedTheCloseTypedOverNotInAStringNotAQuoteAfterAName()
 	{
-		let bed = scope CodeBed("angelscript", default);
+		let bed = scope CodeBed("beef", default);
 		bed.Type("f(");
 		bed.CheckText("f()");
 		Test.Assert(bed.Caret == At(0, 2));
@@ -43,7 +43,7 @@ class CodeEditingTests
 	[Test]
 	public static void BackspaceTakesAnEmptyPairAndAnIndentsSpacesBackToTheStopBefore()
 	{
-		let bed = scope CodeBed("angelscript", default);
+		let bed = scope CodeBed("beef", default);
 		bed.Type("(");
 		bed.Key(.Backspace);
 		bed.CheckText("");
@@ -58,7 +58,7 @@ class CodeEditingTests
 	[Test]
 	public static void ReturnIndentsAfterWhatOpensABlockTheCloseBelowAClosingWordOrMarkOutdentsItsLine()
 	{
-		let bed = scope CodeBed("angelscript", "void f()");
+		let bed = scope CodeBed("beef", "void f()");
 		bed.Editor.SetCaret(At(0, 8));
 		bed.Type(" {");
 		bed.CheckText("void f() {}");
@@ -86,7 +86,7 @@ class CodeEditingTests
 	[Test]
 	public static void CtrlSlashCommentsLinesAtTheirLeastIndentAndBackMarkupByABlock()
 	{
-		let bed = scope CodeBed("angelscript", "    a;\n        b;\n\n    c;");
+		let bed = scope CodeBed("beef", "    a;\n        b;\n\n    c;");
 		var all = CodeSelection(At(0, 0), At(3, 6));
 		bed.Editor.SetSelections(.(&all, 1));
 		bed.Key(.Slash, KeyModCtrl);
@@ -105,7 +105,7 @@ class CodeEditingTests
 	[Test]
 	public static void TabAndShiftTabIndentASelectionsLinesAltUpAndDownMoveThemShiftAltDownCopiesCtrlShiftKDeletes()
 	{
-		let bed = scope CodeBed("angelscript", "a\nb\nc\nd");
+		let bed = scope CodeBed("beef", "a\nb\nc\nd");
 		var two = CodeSelection(At(1, 0), At(2, 1));
 		bed.Editor.SetSelections(.(&two, 1));
 		bed.Key(.Tab);
@@ -130,7 +130,7 @@ class CodeEditingTests
 	[Test]
 	public static void CtrlDSelectsTheWordThenAddsTheNextMatchRoundToTheStartCtrlShiftLAllCtrlAltDownACaretBelow()
 	{
-		let bed = scope CodeBed("angelscript", "int x = x + 1;\nx++;");
+		let bed = scope CodeBed("beef", "int x = x + 1;\nx++;");
 		bed.Editor.SetCaret(At(0, 4));
 		bed.Key(.D, KeyModCtrl);
 		Test.Assert(bed.Editor.Primary.Range == CodeRange(At(0, 4), At(0, 5)));
@@ -154,7 +154,7 @@ class CodeEditingTests
 	[Test]
 	public static void AltDragAcrossLinesSelectsAColumn()
 	{
-		let bed = scope CodeBed("angelscript", "alpha\nbeta\ngamma\ndelta");
+		let bed = scope CodeBed("beef", "alpha\nbeta\ngamma\ndelta");
 		let from = bed.Over(At(0, 1));
 		let to = bed.Over(At(2, 3));
 		bed.D.InjectMouseMove(from, KeyModAlt);
@@ -170,7 +170,7 @@ class CodeEditingTests
 	[Test]
 	public static void ABracketsMatchAcrossLinesPastBracketsInStringsAndComments()
 	{
-		let bed = scope CodeBed("angelscript", "void f() {\n    s = \"}\"; // }\n    if (a) { b(); }\n}");
+		let bed = scope CodeBed("beef", "void f() {\n    s = \"}\"; // }\n    if (a) { b(); }\n}");
 		CodeRange bracket;
 		CodeRange match;
 		Test.Assert(bed.Editor.FindMatchingBracket(At(0, 9), out bracket, out match));
@@ -206,7 +206,7 @@ class CodeEditingTests
 	[Test]
 	public static void CtrlFOpensTheBarWithTheSelectionsTextF3AndShiftF3GoRoundTheMatchesCounted()
 	{
-		let bed = scope CodeBed("angelscript", "int count = 0;\ncount += 1; // Count\nreturn count;");
+		let bed = scope CodeBed("beef", "int count = 0;\ncount += 1; // Count\nreturn count;");
 		var word = CodeSelection(At(0, 4), At(0, 9));
 		bed.Editor.SetSelections(.(&word, 1));
 		bed.Key(.F, KeyModCtrl);
@@ -244,7 +244,7 @@ class CodeEditingTests
 	[Test]
 	public static void CtrlHReplacesThisMatchAndGoesOnAllReplacesEveryOneAsOneUndoStep()
 	{
-		let bed = scope CodeBed("angelscript", "a = old; b = old; c = old;");
+		let bed = scope CodeBed("beef", "a = old; b = old; c = old;");
 		bed.Editor.SetCaret(At(0, 0));
 		bed.Key(.H, KeyModCtrl);
 		let bar = bed.Editor.FindBar;
@@ -269,7 +269,7 @@ class CodeEditingTests
 		let text = scope String();
 		for (int i = 0; i < 80; ++i)
 			text.AppendF("line {}\n", i);
-		let bed = scope CodeBed("angelscript", text);
+		let bed = scope CodeBed("beef", text);
 		bed.Key(.G, KeyModCtrl);
 		let bar = bed.Editor.FindBar;
 		Test.Assert(bar.GetMode() == .GoToLine);
@@ -294,7 +294,7 @@ class CodeEditingTests
 		let text = scope String();
 		for (int i = 0; i < 20; ++i)
 			text.Append("abcdefghijklmnopqrstuvwxyz\n");
-		let bed = scope CodeBed("angelscript", text);
+		let bed = scope CodeBed("beef", text);
 		bed.Editor.GoToLine("12:15");
 		Test.Assert(bed.Caret == At(11, 14));
 		bed.Editor.GoToLine("3");

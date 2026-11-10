@@ -1,7 +1,8 @@
 <!--
   The GUI sandbox's shell: a header, a sidebar of pages and the page on show. Each sidebar button
   runs the command page.<id>; the host finds the pages from those buttons and loads pages/<id>.xml
-  (with pages/<id>.css and pages/<id>.as when they exist), so a new page is a button and its files.
+  (with pages/<id>.css when it exists), so a new page is a button and its files; what a page does
+  is the host's native code.
   The game menu is a second root of the same GUI.
 -->
 <Panel id="shell" class="shell">

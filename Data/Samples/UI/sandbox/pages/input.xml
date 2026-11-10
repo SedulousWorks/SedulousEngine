@@ -1,7 +1,7 @@
 <Panel id="page-input" class="page" gap="18">
     <Label class="page-title" text="Input"/>
     <Label class="page-lead" white-space="normal"
-           text="An event goes down from the root and back up to it: a container hears what its children leave, :hover and :active hold for every node under the pointer, and a script handler is given the event."/>
+           text="An event goes down from the root and back up to it: a container hears what its children leave, :hover and :active hold for every node under the pointer, and a native handler is given the event."/>
 
     <Panel class="section" gap="12">
         <Label class="section-title" text="Hover and press reach the containers"/>
@@ -22,7 +22,7 @@
     </Panel>
 
     <Panel class="section" gap="12">
-        <Label class="section-title" text="Events reach scripts"/>
+        <Label class="section-title" text="Events reach native handlers"/>
         <Panel id="input-pad" class="input-pad"/>
         <Label class="caption" text="Pressed at {{padX}}, {{padY}} in the pad, press {{padClicks}} of a run (double, triple)."/>
     </Panel>
@@ -72,7 +72,7 @@
     </Panel>
 
     <Panel class="section" gap="12">
-        <Label class="section-title" text="Drag and drop in markup and script"/>
+        <Label class="section-title" text="Drag and drop in markup and code"/>
         <Panel class="dnd-row" flex-direction="row" align-items="start" gap="12">
             <Panel gap="6">
                 <Label class="swatch swatch-red" text="Red" drag-type="color" drag-value="red"/>
@@ -83,10 +83,10 @@
                 <Label class="dnd-bin-title" text="Painted: {{paint}}"/>
             </Panel>
         </Panel>
-        <Label class="caption" white-space="normal" height="40" text="The swatches are sources in markup (drag-type, drag-value), the canvas a target (drop-types, drop-reason); its script hears the drop."/>
+        <Label class="caption" white-space="normal" height="40" text="The swatches are sources in markup (drag-type, drag-value), the canvas a target (drop-types, drop-reason); its handler hears the drop."/>
     </Panel>
 
-    <!-- Multi-touch: the frame's touch-action is none, so it handles its own fingers; its script
+    <!-- Multi-touch: the frame's touch-action is none, so it handles its own fingers; its handler
          turns each gesture into the picture's transform. -->
     <Panel class="section" gap="12">
         <Label class="section-title" text="Pinch, turn and pan"/>

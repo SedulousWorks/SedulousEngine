@@ -8,7 +8,7 @@ namespace Sedulous.GUI;
 
 // The language service: what the editor asks its host for, so the widget stays language-neutral
 // (Godot's and Zero's): completions at a place, and what to say about the word under the pointer.
-// The host answers from its compiler (a script module's API, the markup registry); the library
+// The host answers from what it knows (a language's declarations, the markup registry); the library
 // ships none, as it ships no language.
 //
 // The completion list: a core popup that never takes the focus (the editor keeps the keys, its

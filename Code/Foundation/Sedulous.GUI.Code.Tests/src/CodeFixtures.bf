@@ -212,7 +212,7 @@ class Service : ICodeLanguageService
 			items.Add(item);
 		}
 		Add("position", .Property, "Float3");
-		Add("print", .Function, "void print(const string &in)");
+		Add("print", .Function, "void print(StringView text)");
 		Add("pow", .Function, "float pow(float, float)");
 		Add("Player", .Type, "class");
 	}
@@ -228,12 +228,12 @@ class Service : ICodeLanguageService
 	}
 }
 
-/// A bed in the sandbox's AngelScript with the test's service.
+/// A bed in the editor's Beef with the test's service.
 class CompletionBed : CodeBed
 {
 	public Service Service = new .() ~ delete _;
 
-	public this(StringView text = default) : base("angelscript", text)
+	public this(StringView text = default) : base("beef", text)
 	{
 		Editor.LanguageService = Service;
 	}

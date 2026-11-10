@@ -50,7 +50,7 @@
 .btn:focus-visible { box-shadow: 0 0 0 2px var(--shell-accent); }
 .btn:disabled { opacity: 0.4; }
 tooltip { font-family: Roboto; font-size: 13px; color: var(--ink); }
-window, messagebox { font-family: Roboto; font-size: 16px; } /* Script windows too (native code sets Roboto 16 on its own windows). */
+window, messagebox { font-family: Roboto; font-size: 16px; } /* A window built by tag too (the floating window sets Roboto 16 itself). */
 
 /* The page's scroll bars, styled as parts: a quiet thumb that highlights under the pointer and
    while held. */

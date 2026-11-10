@@ -30,12 +30,12 @@ namespace Samples.GUISandbox;
 // The GUI's demo, built from the
 // GUI itself. A shell (Data/Samples/UI/sandbox/shell.xml: a header, a sidebar of pages, the page on
 // show) whose sidebar buttons run page.<id> commands; each page is pages/<id>.xml with an optional
-// pages/<id>.css and pages/<id>.as, so a new page is a button and its files. This host only sizes
-// the shell, fills the few hosts that need native models or widgets (the data views, the menu bar,
-// the context menu, the floating window, the message box, an image, the toolkit's sources, the
-// dock space, the viewport's cube), and switches the theme. The game menu
-// (Data/Samples/UI/showcase) is a second layer of the same root: it shares the data, and its Leave
-// brings the player back here.
+// pages/<id>.css, so a new page is a button and its files. This host sizes the shell, wires what
+// the pages do (SandboxPages.bf: their handlers, bindings and tweens), fills the few hosts that
+// need native models or widgets (the data views, the menu bar, the context menu, the floating
+// window, the message box, an image, the toolkit's sources, the dock space, the viewport's cube),
+// and switches the theme. The game menu (Data/Samples/UI/showcase, its behaviour GameMenu.bf) is a
+// second layer of the same root: it shares the data, and its Leave brings the player back here.
 //
 // It runs on the runtime host through GUI.Hosting's GuiHost, which takes the window's input, draws
 // through VG with everything it has (analytic boxes, layers and blurs, the MSAA and stencil pass)
@@ -198,6 +198,11 @@ class GUISandboxApp : IApplication
 	private CodePage mCode = null ~ delete _;
 	/// The editor mock, likewise: its dock controller and inspectors' sources go after the root.
 	private EditorMock mEditorMock = null ~ delete _;
+	/// The game menu's behaviour, likewise: the handlers it gave the screens capture it.
+	private GameMenu mGameMenu = null ~ delete _;
+	/// What the pages and the game menu reach the GUI's data, commands and keys through, over the
+	/// root (cleared before the root goes).
+	private GuiFacade mGuiFacade = null ~ delete _;
 
 	// === The Viewport page ===
 
@@ -530,6 +535,7 @@ class GUISandboxApp : IApplication
 			return;
 		}
 		mRoot.AddChild(mShellNode);
+		mGuiFacade = new GuiFacade(mRoot);
 		mToasts = new ToastHost();
 		mShellNode.AddChild(mToasts);
 		mHeader = FindById(mShellNode, "header");
@@ -539,6 +545,7 @@ class GUISandboxApp : IApplication
 		mThemeToggle = FindById(mShellNode, "theme-toggle") as Sedulous.GUI.Button;
 
 		LoadPages();
+		WirePages(); // once every page is in the tree: a page may reach another's widgets
 		FillNativeHosts();
 		for (let page in mPages)
 		{
@@ -764,6 +771,11 @@ class GUISandboxApp : IApplication
 		mMenuInput.SetMap(actions);
 		mMenuPrompts.SetRuntime(mMenuInput);
 		mMenuPrompts.Install(mGui);
+		if (mGuiFacade != null)
+		{
+			mGameMenu = new GameMenu(mGuiFacade, menu);
+			mGameMenu.Start();
+		}
 	}
 
 	// === Running ===
@@ -875,6 +887,8 @@ class GUISandboxApp : IApplication
 		options.TakesFocus = true;
 		options.ReturnHome = true; // back in its place when it closes, to open again
 		mRoot.EventDispatcher.OpenPopup(mRoot, mMenu, options);
+		if (mGameMenu != null)
+			mGameMenu.Enter(); // the title alone, nothing left from the last visit
 	}
 
 	private void CloseMenu()
@@ -1028,6 +1042,8 @@ class GUISandboxApp : IApplication
 
 	private void UpdateMenu()
 	{
+		if (mGameMenu != null)
+			mGameMenu.Update(mDeltaTime);
 		if ((mMenuLeaveAt >= 0.0f) && (mTotalTime >= mMenuLeaveAt))
 			CloseMenu();
 	}
@@ -1232,6 +1248,8 @@ class GUISandboxApp : IApplication
 		mViewport = null; // its targets go with the tree, while the host and the device are here
 		if (mEditorMock != null)
 			mEditorMock.ReleaseTree(); // its frame and dock space, the tree's
+		if (mGuiFacade != null)
+			mGuiFacade.RootNode = null; // a call from here on finds no GUI
 		// The widgets go with the tree, before the models and sources they read.
 		mRoot.ReleaseRef();
 		mRoot = null;
@@ -1240,6 +1258,8 @@ class GUISandboxApp : IApplication
 		DeleteAndNullify!(mStress);
 		DeleteAndNullify!(mCode);
 		DeleteAndNullify!(mEditorMock); // its dock controller, then its sources, then what they show
+		DeleteAndNullify!(mGameMenu); // before the facade it borrows
+		DeleteAndNullify!(mGuiFacade);
 		// The GUI lets go of what it borrows from us before the host takes it away.
 		mGui.Localization = null;
 		mGui.AccessibilityBridge = null;

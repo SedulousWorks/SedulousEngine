@@ -71,7 +71,7 @@
             <Button id="toast-bare" class="btn" text="Achievement"/>
             <Button id="toast-thread" class="btn" text="Thread"/>
             <Button id="toast-clear" class="btn" text="Clear"/>
-            <Button id="toast-script" class="btn" text="From the script"/>
+            <Button id="toast-code" class="btn" text="From the page"/>
         </Panel>
         <Label id="toast-said" class="caption" text="No toasts yet."/>
         <Label class="caption toast-note" white-space="normal" text="ToastHost (the core GUI: one host for a game and an editor) over the whole window, in the shell."/>
@@ -89,13 +89,13 @@
     </Panel>
 
     <Panel class="section" gap="12">
-        <Label class="section-title" text="Built by the page's script"/>
+        <Label class="section-title" text="Built by the page's code"/>
         <Label class="caption tall" white-space="normal"
-               text="menus.as builds a menu of sixty items, longer than the window, which scrolls between its arrows (rest on one, turn the wheel, or walk it with the keys), and a window of its own. Tab to a button and its tooltip shows below it; the last button's tooltip holds while you move into it."/>
+               text="The page's code builds a menu of sixty items, longer than the window, which scrolls between its arrows (rest on one, turn the wheel, or walk it with the keys), and a window of its own. Tab to a button and its tooltip shows below it; the last button's tooltip holds while you move into it."/>
         <Panel class="row" flex-direction="row" align-items="start" gap="12">
             <Button id="menus-long" class="btn wide" text="A long menu" tooltip="Sixty items: more than the window holds"/>
-            <Button id="menus-script-window" class="btn wide" text="A window from the script"
-                    tooltip="Built, titled and filled by menus.as"/>
+            <Button id="menus-code-window" class="btn wide" text="A window from code"
+                    tooltip="Built, titled and filled by the page's code"/>
             <Button class="btn wide" text="A tooltip to enter" tooltip-interactive="true"
                     tooltip="This one waits for you: move the pointer into it, or press inside it"/>
         </Panel>

@@ -251,25 +251,25 @@ class CodeLanguageTests
 	[Test]
 	public static void TheSandboxsDefinitionsReadEachTokenizingItsLanguage()
 	{
-		let @as = scope CodeLanguage();
+		let beef = scope CodeLanguage();
 		let luau = scope CodeLanguage();
 		let hlsl = scope CodeLanguage();
 		let markup = scope CodeLanguage();
 		let css = scope CodeLanguage();
-		Test.Assert(LoadSandboxLanguage("angelscript", @as));
+		Test.Assert(LoadSandboxLanguage("beef", beef));
 		Test.Assert(LoadSandboxLanguage("luau", luau));
 		Test.Assert(LoadSandboxLanguage("hlsl", hlsl));
 		Test.Assert(LoadSandboxLanguage("xml", markup));
 		Test.Assert(LoadSandboxLanguage("css", css));
-		Test.Assert(@as.Name == "AngelScript");
+		Test.Assert(beef.Name == "Beef");
 		Test.Assert(luau.Extensions.Count == 2);
 
 		var state = CodeLexState();
-		CheckRuns(@as, "int x = 3; // set", ref state, "type:int text:x operator:= number:3 punctuation:; comment:// set");
-		CheckRuns(@as, "string s = \"a\\\"b\";", ref state, "type:string text:s operator:= string:\"a escape:\\\" string:b\" punctuation:;");
-		CheckRuns(@as, "x = \"\"\"long", ref state, "text:x operator:= string:\"\"\"long");
+		CheckRuns(beef, "int x = 3; // set", ref state, "type:int text:x operator:= number:3 punctuation:; comment:// set");
+		CheckRuns(beef, "let s = \"a\\\"b\";", ref state, "keyword:let text:s operator:= string:\"a escape:\\\" string:b\" punctuation:;");
+		CheckRuns(beef, "x = \"\"\"long", ref state, "text:x operator:= string:\"\"\"long");
 		Test.Assert(state.Depth == 1); // a triple-quoted string goes on
-		CheckRuns(@as, "text\"\"\" + y", ref state, "string:text\"\"\" operator:+ text:y");
+		CheckRuns(beef, "text\"\"\" + y", ref state, "string:text\"\"\" operator:+ text:y");
 
 		state = CodeLexState();
 		CheckRuns(luau, "local t = {} -- note", ref state, "keyword:local text:t operator:= punctuation:{} comment:-- note");

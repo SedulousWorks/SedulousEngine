@@ -23,17 +23,17 @@ class CodeLanguagesTests
 				reads++;
 				return System.IO.File.ReadAllText(PathJoin(data, path, .. scope .()), outText) case .Ok;
 			});
-		for (let id in StringView[?]("angelscript", "luau", "hlsl", "xml", "css", "beef"))
+		for (let id in StringView[?]("beef", "luau", "hlsl", "xml", "css"))
 		{
 			let language = languages.Find(id);
 			Test.Assert(language != null);
 			Test.Assert(!language.Contexts.IsEmpty);
 			Test.Assert(languages.Find(id) === language, "kept: the same, not read again");
 		}
-		Test.Assert(reads == 6);
+		Test.Assert(reads == 5);
 		Test.Assert(languages.Find("cobol") == null);
 		Test.Assert(languages.Find("cobol") == null);
-		Test.Assert(reads == 7, "a miss is kept too");
+		Test.Assert(reads == 6, "a miss is kept too");
 		Test.Assert(languages.Find("") == null);
 	}
 

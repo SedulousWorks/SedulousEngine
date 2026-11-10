@@ -213,9 +213,6 @@
                     <Panel class="type-cell" tooltip="AudioBusLayoutAsset"><Image class="row-icon cat-audio" src="Editor/Icons/Types/AudioBusLayoutAsset.svg"/><Label class="type-name" text="Audio Bus Layout"/></Panel>
                     <Panel class="type-cell" tooltip="SoundCueAsset"><Image class="row-icon cat-audio" src="Editor/Icons/Types/SoundCueAsset.svg"/><Label class="type-name" text="Sound Cue"/></Panel>
                 </Panel>
-                <Panel class="type-group"><Label class="type-group-name" text="Scripting"/>
-                    <Panel class="type-cell" tooltip="ScriptClassAsset"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/ScriptClassAsset.svg"/><Label class="type-name" text="Script Class"/></Panel>
-                </Panel>
                 <Panel class="type-group"><Label class="type-group-name" text="GUI"/>
                     <Panel class="type-cell" tooltip="FontAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/FontAsset.svg"/><Label class="type-name" text="Font"/></Panel>
                     <Panel class="type-cell" tooltip="GuiDocumentAsset"><Image class="row-icon cat-gui" src="Editor/Icons/Types/GuiDocumentAsset.svg"/><Label class="type-name" text="Gui Document"/></Panel>
@@ -262,10 +259,6 @@
                     <Panel class="type-cell" tooltip="AudioSourceComponent"><Image class="row-icon cat-audio" src="Editor/Icons/Types/AudioSourceComponent.svg"/><Label class="type-name" text="Audio Source"/></Panel>
                     <Panel class="type-cell" tooltip="AudioListenerComponent"><Image class="row-icon cat-audio" src="Editor/Icons/Types/AudioListenerComponent.svg"/><Label class="type-name" text="Audio Listener"/></Panel>
                     <Panel class="type-cell" tooltip="AudioReverbZoneComponent"><Image class="row-icon cat-audio" src="Editor/Icons/Types/AudioReverbZoneComponent.svg"/><Label class="type-name" text="Audio Reverb Zone"/></Panel>
-                </Panel>
-                <Panel class="type-group"><Label class="type-group-name" text="Scripting"/>
-                    <Panel class="type-cell" tooltip="ScriptComponent"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/ScriptComponent.svg"/><Label class="type-name" text="Script"/></Panel>
-                    <Panel class="type-cell" tooltip="SceneScriptSettings"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/SceneScriptSettings.svg"/><Label class="type-name" text="Scene Script Settings"/></Panel>
                 </Panel>
                 <Panel class="type-group"><Label class="type-group-name" text="Animation"/>
                     <Panel class="type-cell" tooltip="SkeletalAnimationComponent"><Image class="row-icon cat-animation" src="Editor/Icons/Types/SkeletalAnimationComponent.svg"/><Label class="type-name" text="Skeletal Animation"/></Panel>
@@ -402,7 +395,7 @@
                 <Panel class="kit-cell kit-wide">
                     <Panel class="problems">
                         <Panel class="problems-head"><Label class="problems-title" text="Problems"/><Label class="badge danger" text="1"/><Label class="badge warning" text="2"/></Panel>
-                        <Panel class="problem-row"><Image class="message-icon danger" src="Editor/Icons/error.svg"/><Label class="problem-text" text="'speed' is not a member of Player"/><Label class="problem-source" text="Player.as:42"/></Panel>
+                        <Panel class="problem-row"><Image class="message-icon danger" src="Editor/Icons/error.svg"/><Label class="problem-text" text="'speed' is not a member of Player"/><Label class="problem-source" text="Player.bf:42"/></Panel>
                         <Panel class="problem-row kit-hover"><Image class="message-icon warning" src="Editor/Icons/warning.svg"/><Label class="problem-text" text="Brick_Albedo has no mipmaps"/><Label class="problem-source" text="Textures/Brick_Albedo"/></Panel>
                         <Panel class="problem-row"><Image class="message-icon warning" src="Editor/Icons/warning.svg"/><Label class="problem-text" text="Two lights share the shadow atlas past its size"/><Label class="problem-source" text="Level 1 / Lamp"/></Panel>
                     </Panel>
@@ -446,7 +439,7 @@
                     <Panel class="kit-toasts">
                         <Panel class="kit-toast success"><Image class="message-icon" src="Editor/Icons/check.svg"/><Panel class="toast-text"><Label class="toast-title" text="Exported Sky Hopper"/><Label class="toast-message" text="Linux, 48 MB, in 12 s"/></Panel><Button class="ghost toast-action" text="Open Folder"/><Button class="slot-button" icon="Editor/Icons/close.svg"/></Panel>
                         <Panel class="kit-toast warning"><Image class="message-icon" src="Editor/Icons/warning.svg"/><Panel class="toast-text"><Label class="toast-title" text="3 textures have no mipmaps"/><Label class="toast-message" text="They were generated for this cook."/></Panel><Label class="toast-count" text="x3"/><Button class="slot-button" icon="Editor/Icons/close.svg"/></Panel>
-                        <Panel class="kit-toast error"><Image class="message-icon" src="Editor/Icons/error.svg"/><Panel class="toast-text"><Label class="toast-title" text="Player.as failed to compile"/><Label class="toast-message" text="'speed' is not a member of Player"/></Panel><Button class="ghost toast-action" text="Show in Console"/><Button class="slot-button" icon="Editor/Icons/close.svg"/></Panel>
+                        <Panel class="kit-toast error"><Image class="message-icon" src="Editor/Icons/error.svg"/><Panel class="toast-text"><Label class="toast-title" text="Player.bf failed to compile"/><Label class="toast-message" text="'speed' is not a member of Player"/></Panel><Button class="ghost toast-action" text="Show in Console"/><Button class="slot-button" icon="Editor/Icons/close.svg"/></Panel>
                     </Panel>
                     <Label class="kit-caption" text="toasts: success with an action, warning grouped, error"/>
                 </Panel>

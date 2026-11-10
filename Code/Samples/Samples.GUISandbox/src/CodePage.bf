@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Samples.GUISandbox;
 
-/// The Code page: GUI.Code's editor as a host uses it. A script's text in its language's
+/// The Code page: GUI.Code's editor as a host uses it. A game's Beef code in its language's
 /// highlighting, a click in the gutter setting a breakpoint, completion from the language's words
 /// and the document's own; and a shader beside it. The languages are the editor's too
 /// (Data/Editor/Code), read through the XML serialization.
@@ -16,10 +16,10 @@ namespace Samples.GUISandbox;
 class CodePage : ICodeLanguageService
 {
 	/// The editors borrow them: they go before the page does.
-	private CodeLanguage mScriptLanguage = new .() ~ delete _;
+	private CodeLanguage mSourceLanguage = new .() ~ delete _;
 	private CodeLanguage mShaderLanguage = new .() ~ delete _;
 	/// Borrowed: the page's tree holds it.
-	private CodeEditor mScript = null;
+	private CodeEditor mSource = null;
 	private List<uint32> mBreakpoints = new .() ~ delete _;
 
 	/// Reads a language definition (the XML of one of Data/Editor/Code's files) into
@@ -34,12 +34,12 @@ class CodePage : ICodeLanguageService
 		return reader.IsOk && !outLanguage.Contexts.IsEmpty;
 	}
 
-	/// The script's editor, with its language's definition and text.
-	public void AttachScript(CodeEditor editor, StringView languageXml, StringView source)
+	/// The code's editor, with its language's definition and text.
+	public void AttachSource(CodeEditor editor, StringView languageXml, StringView source)
 	{
-		mScript = editor;
-		if (ReadLanguage(languageXml, mScriptLanguage))
-			editor.SetLanguage(mScriptLanguage);
+		mSource = editor;
+		if (ReadLanguage(languageXml, mSourceLanguage))
+			editor.SetLanguage(mSourceLanguage);
 		editor.SetText(source);
 		editor.LanguageService = this;
 		editor.SetOnGutterClick(new (line) => { ToggleBreakpoint(line); });
@@ -56,18 +56,18 @@ class CodePage : ICodeLanguageService
 	/// Sets a breakpoint on `line`, or takes away the one there.
 	public void ToggleBreakpoint(uint32 line)
 	{
-		if (mScript == null)
+		if (mSource == null)
 			return;
 		for (int i < mBreakpoints.Count)
 		{
-			if (mScript.MarkerLine(mBreakpoints[i]) == line)
+			if (mSource.MarkerLine(mBreakpoints[i]) == line)
 			{
-				mScript.RemoveMarker(mBreakpoints[i]);
+				mSource.RemoveMarker(mBreakpoints[i]);
 				mBreakpoints.RemoveAt(i);
 				return;
 			}
 		}
-		mBreakpoints.Add(mScript.AddMarker(line, "breakpoint"));
+		mBreakpoints.Add(mSource.AddMarker(line, "breakpoint"));
 	}
 
 	// === ICodeLanguageService ===
@@ -106,7 +106,7 @@ class CodePage : ICodeLanguageService
 
 	private void AddLanguageWords(List<CodeCompletionItem> @out)
 	{
-		for (let words in mScriptLanguage.Words)
+		for (let words in mSourceLanguage.Words)
 		{
 			CodeCompletionKind kind = .Keyword;
 			if (words.Token == .Type)
@@ -127,7 +127,7 @@ class CodePage : ICodeLanguageService
 		}
 	}
 
-	/// The script's own names (its functions, variables), as an editor offers the words of the file:
+	/// The code's own names (its methods, fields, locals), as an editor offers the words of the file:
 	/// each once, not the word being typed, not what the list holds already.
 	private static void AddDocumentWords(CodeDocument document, CodeCompletionRequest request, List<CodeCompletionItem> @out)
 	{
