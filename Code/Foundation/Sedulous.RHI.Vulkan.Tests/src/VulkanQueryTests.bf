@@ -61,7 +61,11 @@ class VulkanQueryTests
 				Test.Assert((cpu0 >= before) && (cpu0 <= after), scope $"{cpu0} outside [{before}, {after}]");
 #endif
 
-				let until = Stopwatch.GetTimestamp() + 30000;
+				// Over a while, the GPU's ticks times its period track the CPU's time. Each
+				// calibration reads the two clocks within the driver's deviation, a few tenths of a
+				// millisecond on a phone's Mali (where 30 ms between them missed by 1.2%), so the
+				// while is long enough for that to stay well inside the 1%.
+				let until = Stopwatch.GetTimestamp() + 200000;
 				while (Stopwatch.GetTimestamp() < until)
 				{
 				}
@@ -69,7 +73,7 @@ class VulkanQueryTests
 				let cpuMs = (cpu1 - cpu0) / 1000.0;
 				let gpuMs = (double)(gpu1 - gpu0) * queue.TimestampPeriod() / 1.0e6;
 				Console.WriteLine(scope $"calibration: CPU {cpuMs} ms, GPU {gpuMs} ms");
-				Test.Assert(cpuMs >= 29.0);
+				Test.Assert(cpuMs >= 199.0);
 				Test.Assert(Math.Abs(gpuMs - cpuMs) <= 0.01 * cpuMs, scope $"GPU {gpuMs} ms against CPU {cpuMs} ms");
 			});
 	}
