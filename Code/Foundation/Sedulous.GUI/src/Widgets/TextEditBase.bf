@@ -24,7 +24,7 @@ namespace Sedulous.GUI;
 // A widget built on it gives the geometry: the layout it edits in (one line, or wrapped), where
 // that layout sits (scrolled), and how it scrolls to keep the caret in view.
 
-[GuiReflect, Scriptable]
+[GuiReflect]
 abstract class TextEditBase : UIWidget
 {
 	protected const float cCaretWidth = 1.5f;
@@ -102,7 +102,7 @@ abstract class TextEditBase : UIWidget
 
 	/// The text (a read a binding records). Set from code: the caret goes to its end and the
 	/// history goes; it is the committed value now, and reports no edit (as the web's value does).
-	[GuiProperty("text", .TwoWay, "value"), Scriptable]
+	[GuiProperty("text", .TwoWay, "value")]
 	public StringView Text
 	{
 		get
@@ -181,7 +181,7 @@ abstract class TextEditBase : UIWidget
 	// === Placeholder, limits, rules ===
 
 	/// Hint text shown (dimmed) while the value is empty.
-	[GuiProperty("placeholder", .Translatable, "description"), Scriptable]
+	[GuiProperty("placeholder", .Translatable, "description")]
 	public StringView Placeholder
 	{
 		get => mPlaceholder;
@@ -207,7 +207,7 @@ abstract class TextEditBase : UIWidget
 
 	/// A read-only one shows, selects and copies its value but takes no edits (CSS's :read-only;
 	/// an editable one is :read-write).
-	[GuiProperty("read-only"), Scriptable]
+	[GuiProperty("read-only")]
 	public bool IsReadOnly
 	{
 		get => mModel.ReadOnly;
@@ -225,7 +225,7 @@ abstract class TextEditBase : UIWidget
 		(IsReadOnly ? WidgetStateNone : WidgetStateEditable) | (mPlaceholderShown ? WidgetStatePlaceholderShown : WidgetStateNone);
 
 	/// The most graphemes it holds (0: no limit); what does not fit is cut.
-	[GuiProperty("max-length"), Scriptable]
+	[GuiProperty("max-length")]
 	public int MaxLength
 	{
 		get => mModel.MaxLength;
@@ -239,7 +239,7 @@ abstract class TextEditBase : UIWidget
 	}
 
 	/// The filter by name, as markup and sheets give it: "none", "digits" or "hex-digits".
-	[GuiProperty("input-filter"), Scriptable]
+	[GuiProperty("input-filter")]
 	public StringView InputFilterName
 	{
 		get

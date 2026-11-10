@@ -10,7 +10,6 @@ namespace Sedulous.Core;
 ///
 /// The packed byte counterpart is Color32; conversions between them live there.
 [CRepr]
-[Scriptable(.AllPublic)]
 struct Color
 {
 	public float R = 0.0f;
@@ -19,10 +18,8 @@ struct Color
 	public float A = 1.0f;
 
 	[Inline]
-	[Scriptable]
 	public this() { }
 	[Inline]
-	[Scriptable]
 	public this(float r, float g, float b, float a = 1.0f)
 	{
 		this.R = r; this.G = g; this.B = b; this.A = a;
@@ -39,11 +36,9 @@ struct Color
 	private static uint32 ByteOf(float c) => (uint32)(Clamp(c, 0.0f, 1.0f) * 255.0f + 0.5f);
 
 	/// Packs to 0xRRGGBBAA, with components clamped to 0..1.
-	[Scriptable]
 	public uint32 ToRGBA8() =>
 		(ByteOf(R) << 24) | (ByteOf(G) << 16) | (ByteOf(B) << 8) | ByteOf(A);
 
-	[Scriptable]
 	public static Color FromRGBA8(uint32 packed) => .(
 		(float)((packed >> 24) & 0xFF) / 255.0f,
 		(float)((packed >> 16) & 0xFF) / 255.0f,
@@ -69,11 +64,9 @@ struct Color
 
 static
 {
-	[Scriptable]
 	public static Color Lerp(Color a, Color b, float t) => .(
 		Lerp(a.R, b.R, t), Lerp(a.G, b.G, t), Lerp(a.B, b.B, t), Lerp(a.A, b.A, t));
 
-	[Scriptable]
 	public static bool NearlyEqual(Color a, Color b, float epsilon = Epsilon) =>
 		NearlyEqual(a.R, b.R, epsilon) && NearlyEqual(a.G, b.G, epsilon) &&
 		NearlyEqual(a.B, b.B, epsilon) && NearlyEqual(a.A, b.A, epsilon);

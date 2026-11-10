@@ -15,23 +15,18 @@ static
 	/// Matches Sedulous's MathUtil tolerance for float comparisons.
 	public const float BoundsApprox = 1.0e-7f;
 
-	[Scriptable]
 	public static bool ApproxZero(float v) => Abs(v) < BoundsApprox;
-	[Scriptable]
 	public static bool ApproxNonZero(float v) => Abs(v) >= BoundsApprox;
 
 	/// Sedulous's IsApproximatelyGreaterThan: exact equality counts as true, otherwise
 	/// it needs both a real gap and the ordering.
-	[Scriptable]
 	public static bool ApproxGreater(float a, float b) =>
 		(a == b) || ((Abs(a - b) >= BoundsApprox) && (a > b));
 
-	[Scriptable]
 	public static Float3 ClampVec(Float3 v, Float3 lo, Float3 hi) => Max(Min(v, hi), lo);
 
 	// ---- frustum against sphere ----
 
-	[Scriptable]
 	public static ContainmentType Contains(BoundingFrustum f, BoundingSphere s)
 	{
 		var intersects = false;
@@ -47,13 +42,11 @@ static
 		return intersects ? .Intersects : .Contains;
 	}
 
-	[Scriptable]
 	public static bool Intersects(BoundingFrustum f, BoundingSphere s) =>
 		Contains(f, s) != .Disjoint;
 
 	// ---- AABB helpers ----
 
-	[Scriptable]
 	public static AABB BoundingBoxFromSphere(BoundingSphere s)
 	{
 		let c = Float3(s.Radius, s.Radius, s.Radius);
@@ -61,7 +54,7 @@ static
 	}
 
 	/// Sedulous's corner order: index 0 is (min.X, max.Y, max.Z) through to 7 being
-	/// (min.X, min.Y, min.Z). Not for a script: a fixed array does not cross.
+	/// (min.X, min.Y, min.Z).
 	public static void GetCorners(AABB b, ref Float3[8] corners)
 	{
 		corners[0] = .(b.Min.X, b.Max.Y, b.Max.Z);
@@ -76,11 +69,9 @@ static
 
 	/// AABB.Contains already answers this as a bool; this is the ContainmentType form,
 	/// which cannot be an overload because only the return type differs.
-	[Scriptable]
 	public static ContainmentType ContainsCT(AABB b, Float3 p) =>
 		b.Contains(p) ? .Contains : .Disjoint;
 
-	[Scriptable]
 	public static PlaneIntersectionType Intersects(AABB b, Plane plane)
 	{
 		let pos = Float3(
@@ -99,7 +90,6 @@ static
 		return .Intersecting;
 	}
 
-	[Scriptable]
 	public static bool Intersects(AABB b, BoundingSphere s)
 	{
 		let clamped = ClampVec(s.Center, b.Min, b.Max);
@@ -108,7 +98,6 @@ static
 
 	/// The transformed bounds that encloses the transformed original: the centre moves and
 	/// the extents pick up the absolute row sums.
-	[Scriptable]
 	public static AABB TransformAABB(AABB b, Float4x4 m)
 	{
 		let c = b.Center();
@@ -126,7 +115,6 @@ static
 
 	// ---- frustum against bounds ----
 
-	[Scriptable]
 	public static ContainmentType Contains(BoundingFrustum f, AABB b)
 	{
 		var intersects = false;
@@ -142,10 +130,8 @@ static
 		return intersects ? .Intersects : .Contains;
 	}
 
-	[Scriptable]
 	public static bool Intersects(BoundingFrustum f, AABB b) => Contains(f, b) != .Disjoint;
 
-	[Scriptable]
 	public static ContainmentType ContainsCT(AABB b, BoundingSphere s)
 	{
 		let clamped = ClampVec(s.Center, b.Min, b.Max);
@@ -164,19 +150,15 @@ static
 
 	// ---- sphere cross-type ----
 
-	[Scriptable]
 	public static bool Intersects(BoundingSphere a, BoundingSphere b)
 	{
 		let combined = a.Radius + b.Radius;
 		return LengthSquared(a.Center - b.Center) <= combined * combined;
 	}
 
-	[Scriptable]
 	public static bool Intersects(BoundingSphere s, AABB b) => Intersects(b, s);
-	[Scriptable]
 	public static bool Intersects(BoundingSphere s, BoundingFrustum f) => Intersects(f, s);
 
-	[Scriptable]
 	public static ContainmentType Contains(BoundingSphere s, BoundingFrustum f)
 	{
 		if (!Intersects(f, s))
@@ -189,7 +171,6 @@ static
 		return .Contains;
 	}
 
-	[Scriptable]
 	public static BoundingSphere BoundingSphereFromFrustum(BoundingFrustum f)
 	{
 		var corners = f.Corners;
@@ -198,7 +179,6 @@ static
 
 	// ---- ray intersections; false means no hit, and outT is only set on a hit ----
 
-	[Scriptable]
 	public static bool Intersects(Ray ray, Plane plane, out float outT)
 	{
 		outT = 0.0f;
@@ -219,7 +199,6 @@ static
 		return true;
 	}
 
-	[Scriptable]
 	public static bool Intersects(Ray ray, BoundingSphere sphere, out float outT)
 	{
 		outT = 0.0f;
@@ -244,7 +223,6 @@ static
 		return true;
 	}
 
-	[Scriptable]
 	public static bool Intersects(Ray ray, AABB bounds, out float outT)
 	{
 		outT = 0.0f;
@@ -316,7 +294,6 @@ static
 		return true;
 	}
 
-	[Scriptable]
 	public static bool Intersects(BoundingFrustum f, Ray ray, out float outT)
 	{
 		outT = 0.0f;
@@ -366,13 +343,11 @@ static
 		return true;
 	}
 
-	[Scriptable]
 	public static bool Intersects(Ray ray, BoundingFrustum f, out float outT) =>
 		Intersects(f, ray, out outT);
 
 	// ---- the remaining Contains and Intersects overloads ----
 
-	[Scriptable]
 	public static ContainmentType Contains(BoundingSphere a, BoundingSphere b)
 	{
 		let d2 = LengthSquared(a.Center - b.Center);
@@ -385,7 +360,6 @@ static
 	}
 
 	/// Corner test first, then the closest-point distance.
-	[Scriptable]
 	public static ContainmentType Contains(BoundingSphere s, AABB bounds)
 	{
 		Float3[8] c = ?;
@@ -422,7 +396,6 @@ static
 		return (dist <= s.Radius * s.Radius) ? .Intersects : .Disjoint;
 	}
 
-	[Scriptable]
 	public static ContainmentType ContainsCT(AABB b, AABB o)
 	{
 		if ((o.Max.X < b.Min.X) || (o.Min.X > b.Max.X) ||
@@ -438,7 +411,6 @@ static
 		return .Intersects;
 	}
 
-	[Scriptable]
 	public static ContainmentType ContainsCT(AABB b, BoundingFrustum f)
 	{
 		if (!Intersects(f, b))
@@ -451,10 +423,8 @@ static
 		return .Contains;
 	}
 
-	[Scriptable]
 	public static bool Intersects(AABB b, BoundingFrustum f) => Intersects(f, b);
 
-	[Scriptable]
 	public static ContainmentType Contains(BoundingFrustum f, BoundingFrustum g)
 	{
 		var intersection = false;
@@ -470,7 +440,6 @@ static
 		return intersection ? .Intersects : .Contains;
 	}
 
-	[Scriptable]
 	public static bool Intersects(BoundingFrustum f, BoundingFrustum g) =>
 		Contains(f, g) != .Disjoint;
 }

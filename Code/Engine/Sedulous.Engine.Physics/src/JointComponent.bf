@@ -15,49 +15,37 @@ namespace Sedulous.Engine.Physics;
 [SerializableComponent("physics.Joint")]
 [DisplayName("Joint")]
 [Category("Physics")]
-[Scriptable]
 [Description("Connects the entity's rigid body to another body or the world: fixed, point, hinge, slider or distance.")]
 struct JointComponent : ISerializable
 {
-	[Scriptable]
 	public JointKind Kind = .Fixed;
 	/// Empty means the nearest ancestor body, or the world.
-	[Scriptable]
 	public EntityRef TargetEntity = .();
 
 	/// The pivot, in THIS entity's space.
-	[Scriptable]
 	public Float3 LocalAnchor = .(0.0f, 0.0f, 0.0f);
 	/// The hinge or slider axis, in THIS entity's space.
-	[Scriptable]
 	[VisibleWhen("Kind=2,3")]
 	public Float3 LocalAxis = .(0.0f, 1.0f, 0.0f);
 
 	/// A minimum above the maximum means UNLIMITED, which is why the defaults look inverted.
-	[Scriptable]
 	[VisibleWhen("Kind=2,3")]
 	public float LimitMin = 1.0f;
-	[Scriptable]
 	[VisibleWhen("Kind=2,3")]
 	public float LimitMax = -1.0f;
 
 	/// Negative means the distance the bodies started at.
-	[Scriptable]
 	[VisibleWhen("Kind=4")]
 	public float MinDistance = -1.0f;
-	[Scriptable]
 	[VisibleWhen("Kind=4")]
 	public float MaxDistance = -1.0f;
 
-	[Scriptable]
 	[VisibleWhen("Kind=2,3")]
 	public bool MotorEnabled = false;
 	/// Radians a second for a hinge, metres a second for a slider.
-	[Scriptable]
 	[VisibleWhen("MotorEnabled")]
 	public float MotorTargetVelocity = 0.0f;
 	/// The torque or force cap.
-	[Scriptable]
 	[VisibleWhen("MotorEnabled")]
 	public float MotorLimit = 1.0e6f;
 

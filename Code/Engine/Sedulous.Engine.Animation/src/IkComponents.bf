@@ -187,35 +187,33 @@ class IkRuntime
 [SerializableComponent("two_bone_ik")]
 [DisplayName("Two Bone IK")]
 [Category("Animation")]
-[Scriptable]
 [Description("Bends a two-bone chain so its end reaches a target, such as a foot on a step or a hand on a handle.")]
 struct TwoBoneIkComponent : ISerializable
 {
 	/// The chain by bone names. OWNED, created and freed by the manager.
-	[Scriptable, BoneName, DisplayName("Start Bone"), Description("The chain's first bone (a thigh, an upper arm).")]
+	[BoneName, DisplayName("Start Bone"), Description("The chain's first bone (a thigh, an upper arm).")]
 	public String StartBone = null;
-	[Scriptable, BoneName, DisplayName("Mid Bone"), Description("The joint that bends (a knee, an elbow).")]
+	[BoneName, DisplayName("Mid Bone"), Description("The joint that bends (a knee, an elbow).")]
 	public String MidBone = null;
-	[Scriptable, BoneName, DisplayName("End Bone"), Description("The bone that reaches the target (a foot, a hand).")]
+	[BoneName, DisplayName("End Bone"), Description("The bone that reaches the target (a foot, a hand).")]
 	public String EndBone = null;
-	[Scriptable, Description("The entity to reach. Empty: the point a script sets, else this entity.")]
+	[Description("The entity to reach. Empty: the point a script sets, else this entity.")]
 	public EntityRef Target = .();
-	[Scriptable, DisplayName("Match Rotation"), Description("The end bone takes the target's rotation as well.")]
+	[DisplayName("Match Rotation"), Description("The end bone takes the target's rotation as well.")]
 	public bool MatchRotation = false;
-	[Scriptable, Description("Optional: the joint bends toward this entity.")]
+	[Description("Optional: the joint bends toward this entity.")]
 	public EntityRef Pole = .();
-	[Scriptable, DisplayName("Hinge Axis"), Description("The joint's axis in the first bone's space, for a chain that is straight with no pole and a straight bind pose.")]
+	[DisplayName("Hinge Axis"), Description("The joint's axis in the first bone's space, for a chain that is straight with no pole and a straight bind pose.")]
 	public Float3 HingeAxis = .(0, 0, 0);
-	[Scriptable, Range(0.0f, 1.0f, 0.01f)]
+	[Range(0.0f, 1.0f, 0.01f)]
 	public float Weight = 1.0f;
 	/// The weight eases on and off over this.
-	[Scriptable, DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
+	[DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
 	public float FadeSeconds = 0.2f;
-	[Scriptable]
 	public bool Active = true;
-	[Scriptable, Description("Lower runs first, across the animator's IK components.")]
+	[Description("Lower runs first, across the animator's IK components.")]
 	public int32 Order = 0;
-	[Scriptable, DisplayName("Debug Draw"), Description("Draw the chain and its target while the scene runs.")]
+	[DisplayName("Debug Draw"), Description("Draw the chain and its target while the scene runs.")]
 	public bool DebugDraw = false;
 
 	[Hidden]
@@ -242,12 +240,12 @@ struct TwoBoneIkComponent : ISerializable
 
 /// One bone of an aim and its share of the swing still to go.
 /// Its default constructor is reflected: an agent's component_set makes the elements.
-[Scriptable, Reflect(.DefaultConstructor)]
+[Reflect(.DefaultConstructor)]
 class AimIkBone : ISerializable
 {
-	[Scriptable, BoneName]
+	[BoneName]
 	public String Bone = new .() ~ delete _;
-	[Scriptable, Range(0.0f, 1.0f, 0.01f), Description("This bone's part of the turn still to go (the last: 1).")]
+	[Range(0.0f, 1.0f, 0.01f), Description("This bone's part of the turn still to go (the last: 1).")]
 	public float Share = 1.0f;
 
 	public this() {}
@@ -266,7 +264,6 @@ class AimIkBone : ISerializable
 }
 
 /// What an aim does with a target past its turn or tilt limits.
-[Scriptable]
 enum AimBeyondLimits : uint8
 {
 	/// Aim as far as the limits go, turned toward the target's side.
@@ -283,37 +280,34 @@ enum AimBeyondLimits : uint8
 [SerializableComponent("aim_ik", 2, 1)]
 [DisplayName("Aim IK")]
 [Category("Animation")]
-[Scriptable]
 [Description("Turns a chain of bones so the last one points at a target, such as a head that follows.")]
 struct AimIkComponent : ISerializable
 {
 	/// Root first; the last one aims. OWNED, created and freed by the manager.
-	[Scriptable, Description("Root first; the last bone aims (a spine: 0.3, 0.5, 1).")]
+	[Description("Root first; the last bone aims (a spine: 0.3, 0.5, 1).")]
 	public List<AimIkBone> Bones = null;
-	[Scriptable, Description("The entity to aim at. Empty: the point a script sets, else this entity.")]
+	[Description("The entity to aim at. Empty: the point a script sets, else this entity.")]
 	public EntityRef Target = .();
-	[Scriptable, Description("Optional: the up axis leans toward this entity (else the animated up).")]
+	[Description("Optional: the up axis leans toward this entity (else the animated up).")]
 	public EntityRef Up = .();
 	/// In the last bone's space.
-	[Scriptable, DisplayName("Aim Axis")]
+	[DisplayName("Aim Axis")]
 	public Float3 AimAxis = .(0, 0, 1);
-	[Scriptable, DisplayName("Up Axis")]
+	[DisplayName("Up Axis")]
 	public Float3 UpAxis = .(0, 1, 0);
-	[Scriptable, DisplayName("Max Turn"), Range(0.0f, 180.0f, 1.0f), Description("Degrees to either side of the animated direction.")]
+	[DisplayName("Max Turn"), Range(0.0f, 180.0f, 1.0f), Description("Degrees to either side of the animated direction.")]
 	public float MaxTurn = 60.0f;
-	[Scriptable, DisplayName("Max Tilt"), Range(0.0f, 90.0f, 1.0f), Description("Degrees above or below the animated direction.")]
+	[DisplayName("Max Tilt"), Range(0.0f, 90.0f, 1.0f), Description("Degrees above or below the animated direction.")]
 	public float MaxTilt = 45.0f;
-	[Scriptable, DisplayName("Beyond Limits"), Description("A target past the limits: Hold aims as far as they go, toward its side; Release eases off until it comes back.")]
+	[DisplayName("Beyond Limits"), Description("A target past the limits: Hold aims as far as they go, toward its side; Release eases off until it comes back.")]
 	public AimBeyondLimits BeyondLimits = .Hold;
-	[Scriptable, Range(0.0f, 1.0f, 0.01f)]
+	[Range(0.0f, 1.0f, 0.01f)]
 	public float Weight = 1.0f;
-	[Scriptable, DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
+	[DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
 	public float FadeSeconds = 0.2f;
-	[Scriptable]
 	public bool Active = true;
-	[Scriptable]
 	public int32 Order = 0;
-	[Scriptable, DisplayName("Debug Draw")]
+	[DisplayName("Debug Draw")]
 	public bool DebugDraw = false;
 
 	[Hidden]
@@ -356,16 +350,16 @@ struct AimIkComponent : ISerializable
 
 /// One leg of a FootIkComponent: its chain by bone names (the end bone is the foot).
 /// Its default constructor is reflected: an agent's component_set makes the elements.
-[Scriptable, Reflect(.DefaultConstructor)]
+[Reflect(.DefaultConstructor)]
 class FootIkLegBones : ISerializable
 {
-	[Scriptable, BoneName, DisplayName("Start Bone"), Description("The thigh.")]
+	[BoneName, DisplayName("Start Bone"), Description("The thigh.")]
 	public String StartBone = new .() ~ delete _;
-	[Scriptable, BoneName, DisplayName("Mid Bone"), Description("The shin (the knee bends).")]
+	[BoneName, DisplayName("Mid Bone"), Description("The shin (the knee bends).")]
 	public String MidBone = new .() ~ delete _;
-	[Scriptable, BoneName, DisplayName("End Bone"), Description("The foot.")]
+	[BoneName, DisplayName("End Bone"), Description("The foot.")]
 	public String EndBone = new .() ~ delete _;
-	[Scriptable, DisplayName("Hinge Axis"), Description("The knee's axis in the thigh's space, for a straight leg with a straight bind pose.")]
+	[DisplayName("Hinge Axis"), Description("The knee's axis in the thigh's space, for a straight leg with a straight bind pose.")]
 	public Float3 HingeAxis = .(0, 0, 0);
 
 	public this() {}
@@ -393,43 +387,40 @@ class FootIkLegBones : ISerializable
 [SerializableComponent("foot_ik")]
 [DisplayName("Foot IK")]
 [Category("Animation")]
-[Scriptable]
 [Description("Plants the character's feet on the ground under them, angled to its slope, and lowers the pelvis so they reach.")]
 struct FootIkComponent : ISerializable
 {
 	/// Up to four. OWNED, created and freed by the manager.
-	[Scriptable, Description("Up to four legs, each thigh, shin, foot.")]
+	[Description("Up to four legs, each thigh, shin, foot.")]
 	public List<FootIkLegBones> Legs = null;
 	/// OWNED, created and freed by the manager.
-	[Scriptable, BoneName, DisplayName("Pelvis Bone"), Description("Lowers so the lower foot can reach (empty: it stays).")]
+	[BoneName, DisplayName("Pelvis Bone"), Description("Lowers so the lower foot can reach (empty: it stays).")]
 	public String PelvisBone = null;
-	[Scriptable, DisplayName("Ray Up"), Description("The ground probe starts this far above the foot.")]
+	[DisplayName("Ray Up"), Description("The ground probe starts this far above the foot.")]
 	public float RayUp = 0.5f;
-	[Scriptable, DisplayName("Ray Down"), Description("And looks this far below it.")]
+	[DisplayName("Ray Down"), Description("And looks this far below it.")]
 	public float RayDown = 0.75f;
-	[Scriptable, DisplayName("Group Mask"), Description("The collision groups that count as ground.")]
+	[DisplayName("Group Mask"), Description("The collision groups that count as ground.")]
 	public uint32 GroupMask = 0xFFFFFFFF;
-	[Scriptable, DisplayName("Pelvis Drop Max")]
+	[DisplayName("Pelvis Drop Max")]
 	public float PelvisDropMax = 0.3f;
-	[Scriptable, DisplayName("Max Tilt"), Range(0.0f, 90.0f, 1.0f), Description("Degrees a foot turns to its ground's slope.")]
+	[DisplayName("Max Tilt"), Range(0.0f, 90.0f, 1.0f), Description("Degrees a foot turns to its ground's slope.")]
 	public float MaxTilt = 30.0f;
-	[Scriptable, DisplayName("Lift Height"), Description("A foot animated higher than this is swinging and left alone.")]
+	[DisplayName("Lift Height"), Description("A foot animated higher than this is swinging and left alone.")]
 	public float LiftHeight = 0.15f;
-	[Scriptable, DisplayName("Ground Height"), Description("The animation's ground along up: 0 when the model's origin is at its feet.")]
+	[DisplayName("Ground Height"), Description("The animation's ground along up: 0 when the model's origin is at its feet.")]
 	public float GroundHeight = 0.0f;
-	[Scriptable, DisplayName("Raise Rate")]
+	[DisplayName("Raise Rate")]
 	public float RaiseRate = 20.0f;
-	[Scriptable, DisplayName("Lower Rate")]
+	[DisplayName("Lower Rate")]
 	public float LowerRate = 8.0f;
-	[Scriptable, Range(0.0f, 1.0f, 0.01f)]
+	[Range(0.0f, 1.0f, 0.01f)]
 	public float Weight = 1.0f;
-	[Scriptable, DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
+	[DisplayName("Fade Seconds"), Range(0.0f, 4.0f, 0.05f)]
 	public float FadeSeconds = 0.2f;
-	[Scriptable]
 	public bool Active = true;
-	[Scriptable]
 	public int32 Order = 0;
-	[Scriptable, DisplayName("Debug Draw")]
+	[DisplayName("Debug Draw")]
 	public bool DebugDraw = false;
 
 	[Hidden]

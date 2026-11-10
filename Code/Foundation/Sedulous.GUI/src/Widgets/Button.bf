@@ -7,7 +7,7 @@ namespace Sedulous.GUI;
 // whatever markup puts inside it. What were separate kinds elsewhere are its attributes: an icon
 // button has an icon, a toggle button `toggle`, a repeat button `repeat`.
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Button : ButtonBase
 {
 	public this()

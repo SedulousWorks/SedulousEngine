@@ -61,7 +61,7 @@ class ExpanderHeader : ButtonBase
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Expander : UIWidget
 {
 	/// How long the height takes to ease open or closed.
@@ -99,7 +99,7 @@ class Expander : UIWidget
 	}
 
 	/// Its header's text.
-	[GuiProperty("title", .None, "name"), Scriptable]
+	[GuiProperty("title", .None, "name")]
 	public StringView Title
 	{
 		get => mHeader.Text;
@@ -108,7 +108,7 @@ class Expander : UIWidget
 
 	/// Open, its content shown; each change, the user's or code's, reports `toggle`, as <details>
 	/// does. Read, it is a read a binding records.
-	[GuiProperty("open", .TwoWay, "expanded"), Scriptable]
+	[GuiProperty("open", .TwoWay, "expanded")]
 	public bool Open
 	{
 		get
@@ -119,14 +119,13 @@ class Expander : UIWidget
 		set => SetOpen(value);
 	}
 
-	[Scriptable]
 	public void Toggle()
 	{
 		SetOpen(!mOpen);
 	}
 
 	/// Its group's name: expanders of one name in one GUI open one at a time.
-	[GuiProperty("name"), Scriptable]
+	[GuiProperty("name")]
 	public StringView Name
 	{
 		get => mName;
@@ -134,7 +133,7 @@ class Expander : UIWidget
 	}
 
 	/// Opens and closes by easing its height (instead of at once).
-	[GuiProperty("animate"), Scriptable]
+	[GuiProperty("animate")]
 	public bool Animated
 	{
 		get => mAnimated;

@@ -9,19 +9,15 @@ namespace Sedulous.Particles;
 /// One factor rather than one per component, so the pair is a diagonal of the range rather
 /// than a box: a spawn between two colours passes through the colours between them, not
 /// through every mixture of their channels.
-[Scriptable]
 struct RangeFloat
 {
-	[Scriptable]
 	public float Min = 0.0f;
-	[Scriptable]
 	public float Max = 0.0f;
 
 	public this() {}
 	public this(float value) { Min = value; Max = value; }
 	public this(float min, float max) { Min = min; Max = max; }
 
-	[Scriptable]
 	public bool IsConstant => Min == Max;
 
 	public float Evaluate(float t) => Min + (Max - Min) * t;

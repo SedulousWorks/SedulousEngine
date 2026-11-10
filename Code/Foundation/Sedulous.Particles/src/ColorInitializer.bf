@@ -6,7 +6,6 @@ namespace Sedulous.Particles;
 /// Gives a particle its starting colour.
 [DisplayName("Color")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class ColorInitializer : ParticleInitializer
 {
 	public RangeColor Color = .Constant(.(1, 1, 1, 1));

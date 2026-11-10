@@ -10,7 +10,6 @@ namespace Sedulous.Particles;
 /// with itself frame over frame the way scaling the live speed would.
 [DisplayName("Speed over Lifetime")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class SpeedOverLifetimeBehavior : ParticleBehavior
 {
 	public ParticleCurveFloat Curve = .();

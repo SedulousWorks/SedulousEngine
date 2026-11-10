@@ -29,7 +29,6 @@ namespace Sedulous.Engine.GameInstance;
 /// behaviours they call into go.
 /// Something that goes mid-session (a level's scene unloaded, a behaviour's entity destroyed)
 /// calls Off for what it registered.
-[Scriptable, ServiceFacade("Net")]
 class NetFacade
 {
 	/// The handler of a bare message, and of a player joining or leaving: the player that sent
@@ -97,40 +96,30 @@ class NetFacade
 	public Scene EntityScene => (Endpoint != null) ? Endpoint.ReplicatedScene : null;
 
 	/// Hosting: this run is the server (a listen or a dedicated one).
-	[Scriptable]
 	public bool IsServer => (Endpoint != null) && Endpoint.Session.IsServer;
 	/// Joined: this run is a client of a host.
-	[Scriptable]
 	public bool IsClient => (Endpoint != null) && Endpoint.Session.IsClient;
 	/// The peers connected: a host's clients, or a client's host. Nought offline.
-	[Scriptable]
 	public int32 PeerCount => (Endpoint != null) ? (int32)Endpoint.Session.PeerCount : 0;
 	/// The network's fixed step count, shared by every peer once a client has synced.
-	[Scriptable]
 	public double NetworkTick => (Endpoint != null) ? (double)Endpoint.Session.NetworkTick : 0.0;
 	/// The network's clock in milliseconds, the host's on every peer once synced.
-	[Scriptable]
 	public double NetworkTimeMs => (Endpoint != null) ? Endpoint.Session.NetworkTimeMs : 0.0;
 
 	/// Whether this build can host at all (a browser cannot listen): a title offers Host only when
 	/// it can, rather than failing once it is chosen.
-	[Scriptable]
 	public bool CanHost => NetworkManager.CanHost;
 
 	/// Hosts on `port`, a listen server (this run plays too). False when the socket does not
 	/// open; the game shows an error.
-	[Scriptable]
 	public bool StartServer(int32 port) => (mController != null) && mController.StartServer((uint16)port, false);
 	/// Hosts on `port` without playing: a dedicated server.
-	[Scriptable]
 	public bool StartDedicatedServer(int32 port) => (mController != null) && mController.StartServer((uint16)port, true);
 	/// Joins the host at `host`:`port`. False when the socket does not open; the handshake
 	/// itself completes later.
-	[Scriptable]
 	public bool Connect(StringView host, int32 port) => (mController != null) && mController.Connect(host, (uint16)port);
 	/// Host: joiners wait for Ready before they hear any state (NetworkManager.SetWaitForReady):
 	/// a game whose joiner loads the host's map after connecting. Called once hosting.
-	[Scriptable]
 	public void WaitForReady(bool wait)
 	{
 		if (Endpoint != null)
@@ -138,7 +127,6 @@ class NetFacade
 	}
 
 	/// Client: its scene is the host's, loaded; the host's state starts, from a full snapshot.
-	[Scriptable]
 	public void Ready()
 	{
 		if (Endpoint != null)
@@ -146,7 +134,6 @@ class NetFacade
 	}
 
 	/// Leaves: the session and its socket close.
-	[Scriptable]
 	public void Disconnect()
 	{
 		if (mController != null)
@@ -154,11 +141,9 @@ class NetFacade
 	}
 
 	/// Sends the message `name`: a client's goes to the host, a host's to every client.
-	[Scriptable]
 	public void Rpc(StringView name) => CallRpc(name, scope (w) => w.WriteU8((uint8)MessageKind.None));
 
 	/// Sends the message `name` carrying a number.
-	[Scriptable]
 	public void RpcNumber(StringView name, double value) => CallRpc(name, scope (w) =>
 		{
 			w.WriteU8((uint8)MessageKind.Number);
@@ -166,7 +151,6 @@ class NetFacade
 		});
 
 	/// Sends the message `name` carrying a text.
-	[Scriptable]
 	public void RpcText(StringView name, StringView text) => CallRpc(name, scope (w) =>
 		{
 			w.WriteU8((uint8)MessageKind.Text);
@@ -175,11 +159,9 @@ class NetFacade
 
 	/// Host only: sends the message `name` to one player (a client's id), as Rpc sends it to
 	/// all. Nothing for the host itself (nought), an unknown player, or on a client.
-	[Scriptable]
 	public void RpcTo(int32 player, StringView name) => CallRpcTo(player, name, scope (w) => w.WriteU8((uint8)MessageKind.None));
 
 	/// Host only: sends the message `name` carrying a number to one player.
-	[Scriptable]
 	public void RpcNumberTo(int32 player, StringView name, double value) => CallRpcTo(player, name, scope (w) =>
 		{
 			w.WriteU8((uint8)MessageKind.Number);
@@ -187,7 +169,6 @@ class NetFacade
 		});
 
 	/// Host only: sends the message `name` carrying a text to one player.
-	[Scriptable]
 	public void RpcTextTo(int32 player, StringView name, StringView text) => CallRpcTo(player, name, scope (w) =>
 		{
 			w.WriteU8((uint8)MessageKind.Text);
@@ -196,7 +177,6 @@ class NetFacade
 
 	/// This game's own player id: nought on the host, on a client the id the host gave it (its
 	/// welcome), -1 offline or before the welcome.
-	[Scriptable]
 	public int32 LocalPlayer
 	{
 		get
@@ -213,7 +193,6 @@ class NetFacade
 
 	/// Whether `entity` is this player's: its owner is LocalPlayer. False for an entity that is
 	/// not networked, and offline.
-	[Scriptable]
 	public bool IsMine(EntityHandle entity)
 	{
 		let endpoint = Endpoint;
@@ -229,12 +208,10 @@ class NetFacade
 	/// spawns its own copy and a player who joins later gets it in the snapshot. The prefab's
 	/// root needs a networked transform for its movement to follow. Unassigned on a client,
 	/// offline, or for a prefab the scene cannot spawn.
-	[Scriptable]
 	public EntityHandle Spawn(Guid prefab, Float3 position) => SpawnFor(0, prefab, position);
 
 	/// Host only: spawns as Spawn does, owned by `player` (nought the host), so that player's
 	/// IsMine says yes for it and its owner shows on every peer.
-	[Scriptable]
 	public EntityHandle SpawnFor(int32 player, Guid prefab, Float3 position)
 	{
 		let endpoint = Endpoint;

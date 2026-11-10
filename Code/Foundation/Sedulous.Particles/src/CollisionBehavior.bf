@@ -18,7 +18,6 @@ namespace Sedulous.Particles;
 /// and a fixed array of shape structs is not something the value dispatcher can write. The
 /// hand written body is count bound instead, which is the shape the record wants anyway.
 [DisplayName("Collision")]
-[Scriptable]
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
 class CollisionBehavior : ParticleBehavior, ISerializable
 {
@@ -26,32 +25,26 @@ class CollisionBehavior : ParticleBehavior, ISerializable
 	public const int32 MaxSpheres = 4;
 	public const int32 MaxBoxes = 4;
 
-	[Scriptable]
 	public CollisionPlane[MaxPlanes] Planes = .(.(), .(), .(), .());
-	[Scriptable]
 	public CollisionSphere[MaxSpheres] Spheres = .(.(), .(), .(), .());
-	[Scriptable]
 	public CollisionBox[MaxBoxes] Boxes = .(.(), .(), .(), .());
 
 	/// One by default: the ground at y = 0.
-	[Scriptable]
 	public int32 PlaneCount = 1;
-	[Scriptable]
 	public int32 SphereCount = 0;
-	[Scriptable]
 	public int32 BoxCount = 0;
 
 	/// The particle's own radius, which offsets every surface outward.
-	[Scriptable, Description("A particle's, as it meets them")]
+	[Description("A particle's, as it meets them")]
 	public float Radius = 0.0f;
 	/// Normal restitution: nought sticks, one bounces perfectly.
-	[Scriptable, Range(0, 1, 0.01f)]
+	[Range(0, 1, 0.01f)]
 	public float Bounce = 0.5f;
 	/// Tangential damping on contact, nought to one.
-	[Scriptable, Range(0, 1, 0.01f)]
+	[Range(0, 1, 0.01f)]
 	public float Friction = 0.1f;
 	/// The fraction of its REMAINING life a particle loses per hit, nought to one.
-	[Scriptable, Description("The fraction of its life a hit takes"), Range(0, 1, 0.01f)]
+	[Description("The fraction of its life a hit takes"), Range(0, 1, 0.01f)]
 	public float LifetimeLoss = 0.0f;
 
 	public override BehaviorSupport Support => .Both;

@@ -12,7 +12,6 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("sprite")]
 [DisplayName("Sprite")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Draws a textured billboard at the entity, facing the camera or fixed in the world.")]
 struct SpriteComponent : ISerializable, IComponentResources
 {
@@ -22,25 +21,18 @@ struct SpriteComponent : ISerializable, IComponentResources
 	public ITextureView Texture = null;
 	/// The cooked texture, which is what an editor picks, what a script sets and what
 	/// serializes.
-	[Scriptable]
 	public Ref<Texture> TextureAsset = .(Guid());
 	/// Width and height in world units.
-	[Scriptable]
 	public Float2 Size = .(1.0f, 1.0f);
 	/// The atlas sub rect, as u, v, w, h. The whole texture by default.
-	[Scriptable]
 	public Float4 UvRect = .(0.0f, 0.0f, 1.0f, 1.0f);
-	[Scriptable]
 	public Color Tint = .(1.0f, 1.0f, 1.0f, 1.0f);
-	[Scriptable]
 	public SpriteOrientation Orientation = .CameraFacing;
 	/// False is alpha over, true is additive, which is what a glow wants.
-	[Scriptable]
 	public bool Additive = false;
 	/// Drawn AFTER tonemap, so world UI keeps the colours it was authored in.
 	[Hidden]
 	public bool PostTonemap = false;
-	[Scriptable]
 	public bool Visible = true;
 
 	public this() {}

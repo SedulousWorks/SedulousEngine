@@ -26,7 +26,6 @@ namespace Sedulous.GUI;
 // it; an action's button sends `activate` with the action's id, as a menu item does, beside the
 // callback code may pass with the post.
 
-[Scriptable]
 enum ToastSeverity : uint8
 {
 	Info,
@@ -81,7 +80,6 @@ typealias ToastId = uint64;
 
 /// What a toast shows and how long. A class: it owns its text and its actions; Set copies another
 /// deeply. Its maker owns it plainly (`scope`, or `new` and `delete`).
-[Scriptable]
 class ToastRequest
 {
 	private String mTitle = new .() ~ delete _;
@@ -90,32 +88,23 @@ class ToastRequest
 	private String mKey = new .() ~ delete _;
 	private String mClasses = new .() ~ delete _;
 
-	[Scriptable]
 	public StringView Title { get => mTitle; set => mTitle.Set(value); }
-	[Scriptable]
 	public StringView Message { get => mMessage; set => mMessage.Set(value); }
 	/// The message is the core's rich text.
-	[Scriptable]
 	public bool Rich = false;
 	/// No card: the content alone, its lifetime and place still the host's (a game's banner).
-	[Scriptable]
 	public bool Bare = false;
 	/// Said to a screen reader; empty: the title and message, else the content's name.
-	[Scriptable]
 	public StringView Announcement { get => mAnnouncement; set => mAnnouncement.Set(value); }
-	[Scriptable]
 	public ToastSeverity Severity = .Info;
 	/// Two at most (the rest are not shown).
 	public List<ToastAction> Actions = new .() ~ DeleteContainerAndItems!(_);
 	/// Seconds it stays; below 0: its severity's default; 0: until closed.
-	[Scriptable]
 	public float Duration = -1.0f;
 	/// A post with the key of one shown or waiting replaces it and counts it; empty: none.
-	[Scriptable]
 	public StringView Key { get => mKey; set => mKey.Set(value); }
 	/// Classes on its card (space-separated): how it comes and goes, as the sheet says (the
 	/// theme's `pop` and `still`, a game's own), or any look the sheet gives them.
-	[Scriptable]
 	public StringView Classes { get => mClasses; set => mClasses.Set(value); }
 
 	private UIWidget mContent = null ~ _?.ReleaseRef();
@@ -136,14 +125,12 @@ class ToastRequest
 		}
 	}
 
-	[Scriptable]
 	public this()
 	{
 	}
 
 	/// Adds an action (a script's way: a list's element added there is a copy). An empty
 	/// command: none.
-	[Scriptable]
 	public void AddAction(StringView id, StringView text, StringView command)
 	{
 		Actions.Add(new ToastAction(id, text, command));
@@ -239,7 +226,7 @@ class ToastCard : UIWidget
 	public StringView Announcement => mAnnouncement;
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class ToastHost : UIWidget
 {
 	public const int cMaxActions = 2;
@@ -330,27 +317,7 @@ class ToastHost : UIWidget
 		}
 	}
 
-	/// Shows a toast a script filled in (`Post` to a script): the host copies it, and an action's
-	/// button sends `activate` with the action's id, for the script to listen to.
-	[Scriptable, ScriptName("Post")]
-	public ToastId PostScript(ToastRequest request) => (request != null) ? Post(request) : 0;
-
-	/// Shows `content` (a widget a script made) in a toast's card, the rest of `request` as Post
-	/// takes it; 0 for no request. `PostContent` to a script.
-	[Scriptable, ScriptName("PostContent")]
-	public ToastId PostContentScript(ToastRequest request, Node content)
-	{
-		if (request == null)
-			return 0;
-		let post = scope ToastRequest();
-		post.Set(request);
-		post.Content = content as UIWidget;
-		return Post(post);
-	}
-
-	/// The toast host in `node`'s GUI (its root's subtree), else null: `Nearest` to a script (not
-	/// `Find`, a node's own name for finding by id).
-	[Scriptable]
+	/// The toast host in `node`'s GUI (its root's subtree), else null.
 	public static ToastHost Nearest(Node node)
 	{
 		let root = node?.RootNode;
@@ -370,11 +337,9 @@ class ToastHost : UIWidget
 	}
 
 	/// Takes a toast away (shown or waiting); false when it is not there.
-	[Scriptable]
 	public bool Dismiss(ToastId id) => Remove(id, false);
 
 	/// Takes every toast away.
-	[Scriptable]
 	public void DismissAll()
 	{
 		while (!mWaiting.IsEmpty)
@@ -387,7 +352,7 @@ class ToastHost : UIWidget
 	}
 
 	/// The toasts shown now, oldest first (one leaving not among them).
-	[GuiProperty, Scriptable]
+	[GuiProperty]
 	public int ShownCount
 	{
 		get
@@ -400,7 +365,7 @@ class ToastHost : UIWidget
 	}
 
 	/// The toasts waiting.
-	[GuiProperty, Scriptable]
+	[GuiProperty]
 	public int WaitingCount
 	{
 		get => mWaiting.Count;
@@ -444,7 +409,7 @@ class ToastHost : UIWidget
 	}
 
 	/// How many it shows at once (4); the rest wait.
-	[GuiProperty, Scriptable]
+	[GuiProperty]
 	public int MaxShown
 	{
 		get => mMaxShown;

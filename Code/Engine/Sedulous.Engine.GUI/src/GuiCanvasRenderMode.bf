@@ -3,7 +3,6 @@ using Sedulous.Core;
 namespace Sedulous.Engine.GUI;
 
 /// Where a canvas is drawn.
-[Scriptable(.AllPublic)]
 enum GuiCanvasRenderMode : uint8
 {
 	/// In its scene's GUI, over the view.

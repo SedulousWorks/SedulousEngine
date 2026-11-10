@@ -6,7 +6,6 @@ namespace Sedulous.Engine.Render;
 ///
 /// Directional reads the entity's forward, which is -Z; point and spot read its world
 /// position, and a range with it.
-[Scriptable(.AllPublic)]
 enum LightType : uint32
 {
 	case Directional = 0;

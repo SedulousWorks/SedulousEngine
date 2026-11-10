@@ -5,7 +5,6 @@ namespace Sedulous.Core.IO;
 ///
 /// Four modes. Corlib spreads the same ground over FileMode, FileAccess and FileShare,
 /// which is more than a stream needs to be told; FileStream maps these onto that triple.
-[Scriptable(.AllPublic)]
 enum FileMode
 {
 	/// An existing file, read only.

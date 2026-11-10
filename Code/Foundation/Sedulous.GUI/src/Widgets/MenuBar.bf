@@ -18,7 +18,7 @@ namespace Sedulous.GUI;
 //
 // In markup its children are its menus, each `<Menu text="File">` a button.
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class MenuBar : UIWidget
 {
 	private struct BarEntry
@@ -73,7 +73,7 @@ class MenuBar : UIWidget
 	}
 
 	/// Its height: a sheet sets it as `bar-height` (an editor's compact bar, a game's large one).
-	[GuiProperty("bar-height"), Scriptable]
+	[GuiProperty("bar-height")]
 	public float BarHeight
 	{
 		get => mBarHeight;
@@ -85,7 +85,7 @@ class MenuBar : UIWidget
 	}
 
 	/// Each button's padding either side of its text: a sheet sets it as `item-padding`.
-	[GuiProperty("item-padding"), Scriptable]
+	[GuiProperty("item-padding")]
 	public float ItemPadding
 	{
 		get => mHPad;

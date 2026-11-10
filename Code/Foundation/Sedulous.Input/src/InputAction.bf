@@ -11,7 +11,6 @@ namespace Sedulous.Input;
 /// this namespace. The engine's own concept keeps the qualified name.
 /// Reflected: the editor's input map page lists its fields as the grid's rows.
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
-[Scriptable(.AllPublic)]
 class InputAction
 {
 	public String Name = new .() ~ delete _;

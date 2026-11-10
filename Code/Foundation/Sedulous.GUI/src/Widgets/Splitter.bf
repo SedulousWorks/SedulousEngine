@@ -31,7 +31,7 @@ enum SplitterAxis : uint8
 }
 
 /// The handle between two of a Splitter's panes.
-[GuiReflect, Scriptable]
+[GuiReflect]
 class SplitterHandle : UIWidget
 {
 	/// How far an arrow key moves it, and with Shift.
@@ -56,7 +56,7 @@ class SplitterHandle : UIWidget
 
 	/// Where it stands, as a screen reader reads a separator: the share of the panes' room before
 	/// it, 0 to 100.
-	[GuiProperty("", .None, "value"), Scriptable]
+	[GuiProperty("", .None, "value")]
 	public double Value
 	{
 		get
@@ -93,14 +93,14 @@ class SplitterHandle : UIWidget
 		}
 	}
 
-	[GuiProperty("", .None, "min"), Scriptable]
+	[GuiProperty("", .None, "min")]
 	public double Min => 0.0;
 
-	[GuiProperty("", .None, "max"), Scriptable]
+	[GuiProperty("", .None, "max")]
 	public double Max => 100.0;
 
 	/// How thick it is along its splitter's axis, when its sheet does not size it.
-	[GuiProperty("thickness"), Scriptable]
+	[GuiProperty("thickness")]
 	public float Thickness
 	{
 		get => mThickness;
@@ -211,7 +211,7 @@ class SplitterHandle : UIWidget
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Splitter : UIWidget
 {
 	private struct PaneState
@@ -276,7 +276,7 @@ class Splitter : UIWidget
 	}
 
 	/// Markup's and a sheet's `axis`: horizontal or vertical.
-	[GuiProperty("axis"), Scriptable]
+	[GuiProperty("axis")]
 	public StringView AxisName
 	{
 		get => (mAxis == .Vertical) ? "vertical" : "horizontal";
@@ -298,7 +298,7 @@ class Splitter : UIWidget
 	}
 
 	/// Markup's and a sheet's `weights`: the shares, separated by spaces (or commas).
-	[GuiProperty("weights"), Scriptable]
+	[GuiProperty("weights")]
 	public StringView WeightsText
 	{
 		get
@@ -341,7 +341,6 @@ class Splitter : UIWidget
 	}
 
 	/// The given shares back (an even share where none was given).
-	[Scriptable]
 	public void ResetWeights()
 	{
 		for (int i = 0; i < mPanes.Count; ++i)

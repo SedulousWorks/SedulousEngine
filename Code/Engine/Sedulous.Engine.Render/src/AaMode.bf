@@ -8,7 +8,6 @@ namespace Sedulous.Engine.Render;
 ///
 /// Its cases are reflected: the MCP scene schema names them for an agent.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum AaMode : uint32
 {
 	case Off = 0;

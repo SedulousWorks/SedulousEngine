@@ -7,7 +7,6 @@ namespace Sedulous.Materials;
 /// A preset rather than the state itself, because the state is a dozen fields that almost
 /// always take one of these handful of shapes, and naming the shape is what an artist
 /// actually chooses.
-[Scriptable(.AllPublic)]
 enum BlendMode : uint8
 {
 	case Opaque;

@@ -12,20 +12,17 @@ namespace Sedulous.Core;
 ///
 /// Element access is a two-argument indexer, M[row, col]. Large matrices are taken by `in`.
 [CRepr]
-[Scriptable(.AllPublic)]
 struct Float4x4
 {
-	/// Hidden from a script: a fixed array does not cross.
+	/// Hidden from reflected views: the elements have accessors.
 	[Hidden]
 	public float[4][4] M;
 
 	[Inline]
-	[Scriptable]
 	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
 	[Inline]
-	[Scriptable]
 	public this(
 		float m00, float m01, float m02, float m03,
 		float m10, float m11, float m12, float m13,
@@ -80,28 +77,24 @@ struct Float4x4
 		}
 	}
 
-	[Scriptable]
 	public static Float4x4 Identity() => .(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
 
-	[Scriptable]
 	public static Float4x4 Translation(Float3 t) => .(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		t.X,  t.Y,  t.Z,  1.0f);
 
-	[Scriptable]
 	public static Float4x4 Scale(Float3 s) => .(
 		s.X,  0.0f, 0.0f, 0.0f,
 		0.0f, s.Y,  0.0f, 0.0f,
 		0.0f, 0.0f, s.Z,  0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
 
-	[Scriptable]
 	public static Float4x4 RotationX(float radians)
 	{
 		let c = Cos(radians);
@@ -113,7 +106,6 @@ struct Float4x4
 			0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
-	[Scriptable]
 	public static Float4x4 RotationY(float radians)
 	{
 		let c = Cos(radians);
@@ -125,7 +117,6 @@ struct Float4x4
 			0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
-	[Scriptable]
 	public static Float4x4 RotationZ(float radians)
 	{
 		let c = Cos(radians);
@@ -143,7 +134,6 @@ struct Float4x4
 	/// away: the resolvable depth step grows linearly with distance instead of quadratically.
 	/// Derivation, row vector, view z negative forward (ze = -d):
 	///   ndc = n (f - d) / ((f - n) d)  ->  z' = ze * n/(f-n) + n f/(f-n),  w' = -ze.
-	[Scriptable]
 	public static Float4x4 PerspectiveFovRH(float fovYRadians, float aspect, float zNear, float zFar)
 	{
 		let yScale = 1.0f / Tan(fovYRadians * 0.5f);
@@ -159,7 +149,6 @@ struct Float4x4
 	/// Right-handed orthographic, REVERSE-Z (near to 1, far to 0), the same convention as the
 	/// perspective builder so shadow cascades, thumbnails and the camera share one depth
 	/// reading: ndc = (f - d) / (f - n)  ->  z' = ze / (f - n) + f / (f - n).
-	[Scriptable]
 	public static Float4x4 OrthographicRH(float width, float height, float zNear, float zFar)
 	{
 		let zRange = 1.0f / (zFar - zNear);
@@ -170,7 +159,6 @@ struct Float4x4
 			0.0f,         0.0f,          zFar * zRange,  1.0f);
 	}
 
-	[Scriptable]
 	public static Float4x4 LookAtRH(Float3 eye, Float3 target, Float3 up)
 	{
 		let zAxis = Normalized(eye - target);   // the camera looks down -z
@@ -225,8 +213,6 @@ struct Float4x4
 
 static
 {
-	[Scriptable]
-	[Scriptable]
 	public static Float4x4 Transpose(Float4x4 a)
 	{
 		Float4x4 result = .();
@@ -237,14 +223,12 @@ static
 	}
 
 	/// Transforms a position: implicit w = 1, so translation applies.
-	[Scriptable]
 	public static Float3 TransformPoint(Float3 p, Float4x4 m) => .(
 		p.X * m.M[0][0] + p.Y * m.M[1][0] + p.Z * m.M[2][0] + m.M[3][0],
 		p.X * m.M[0][1] + p.Y * m.M[1][1] + p.Z * m.M[2][1] + m.M[3][1],
 		p.X * m.M[0][2] + p.Y * m.M[1][2] + p.Z * m.M[2][2] + m.M[3][2]);
 
 	/// Transforms a direction: implicit w = 0, so translation is ignored.
-	[Scriptable]
 	public static Float3 TransformDirection(Float3 d, Float4x4 m) => .(
 		d.X * m.M[0][0] + d.Y * m.M[1][0] + d.Z * m.M[2][0],
 		d.X * m.M[0][1] + d.Y * m.M[1][1] + d.Z * m.M[2][1],
@@ -252,12 +236,10 @@ static
 
 	/// Transforms a 2D position held in a 4x4 affine transform: implicit z = 0, w = 1,
 	/// translation applies, and the result projects back to 2D.
-	[Scriptable]
 	public static Float2 TransformPoint2D(Float2 p, Float4x4 m) => .(
 		p.X * m.M[0][0] + p.Y * m.M[1][0] + m.M[3][0],
 		p.X * m.M[0][1] + p.Y * m.M[1][1] + m.M[3][1]);
 
-	[Scriptable]
 	public static bool NearlyEqual(Float4x4 a, Float4x4 b, float epsilon = Epsilon)
 	{
 		for (int row < 4)
@@ -267,8 +249,6 @@ static
 		return true;
 	}
 
-	[Scriptable]
-	[Scriptable]
 	public static float Determinant(Float4x4 mat)
 	{
 		var mat;
@@ -290,8 +270,6 @@ static
 
 	/// Full inverse by adjugate over determinant. Returns Identity for a singular matrix
 	/// rather than producing infinities.
-	[Scriptable]
-	[Scriptable]
 	public static Float4x4 Inverse(Float4x4 mat)
 	{
 		var mat;

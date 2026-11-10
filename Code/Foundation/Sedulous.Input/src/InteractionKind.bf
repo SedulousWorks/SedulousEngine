@@ -9,7 +9,6 @@ namespace Sedulous.Input;
 /// for every ability it has.
 /// Reflected: the editor's input map page offers its cases as a row's choices.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum InteractionKind : uint8
 {
 	/// Plain press and release edges.

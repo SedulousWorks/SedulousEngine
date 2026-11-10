@@ -10,10 +10,7 @@ namespace Sedulous.GUI;
 // (GUIContext.AnimateData).
 //
 // Each call that makes a tween hands back a reference of the caller's, which it releases; a
-// running tween is held by its GUI's action manager as well. To a script, those calls are
-// [ScriptReturnsReference]: the reference handed back is released once the script's handle holds
-// its own, so a script's handle is the one hold beside the manager's (or a group's), and the
-// manager's goes when the tween ends.
+// running tween is held by its GUI's action manager as well, until the tween ends.
 
 static
 {
@@ -68,10 +65,8 @@ extension Node
 {
 	/// A tween of this node as Animate makes one, not yet running: a step for a group. The caller
 	/// releases the reference it is handed (its only one, until a group or a manager runs it).
-	[Scriptable, ScriptReturnsReference]
 	public Tween CreateTween(StringView property, StringView to, float seconds) => CreateTween(property, to, seconds, "ease");
 
-	[Scriptable, ScriptReturnsReference]
 	public Tween CreateTween(StringView property, StringView to, float seconds, StringView easing)
 	{
 		let tween = new Tween(property, to, seconds, ParseEasing(easing).GetValueOrDefault(Easing.Ease()));
@@ -85,12 +80,9 @@ extension Node
 	/// reflected property (`value`, `x`, `opacity` on a plain node). A tween of the same property
 	/// replaces the running one, from the value showing. The tween, to shape further (a start
 	/// value, a delay, repeats), whose reference the caller releases; inert on a node in no GUI. The
-	/// manager holds a reference of its own while it runs. `Tween` to a script
-	/// (an expander's `animate` is a property); a method may share a type's name in AngelScript.
-	[Scriptable, ScriptName("Tween"), ScriptReturnsReference]
+	/// manager holds a reference of its own while it runs.
 	public Tween Animate(StringView property, StringView to, float seconds) => Animate(property, to, seconds, "ease");
 
-	[Scriptable, ScriptName("Tween"), ScriptReturnsReference]
 	public Tween Animate(StringView property, StringView to, float seconds, StringView easing)
 	{
 		let tween = CreateTween(property, to, seconds, easing);
@@ -102,7 +94,6 @@ extension Node
 	/// turns toward the new end from where it is, at the speed it has, rather than starting again.
 	/// The spring, running; the caller releases the reference it is handed (a spring already moving
 	/// takes one more for it, beside its first caller's and the manager's).
-	[Scriptable, ScriptReturnsReference]
 	public Tween SpringTo(StringView property, StringView to, float stiffness = 170.0f, float damping = 26.0f, float mass = 1.0f)
 	{
 		Tween running = null;
@@ -126,7 +117,6 @@ extension Node
 
 	/// Runs `group` on this node's GUI clock (the caller keeps its reference; the manager takes
 	/// one of its own).
-	[Scriptable]
 	public void Play(TweenGroup group)
 	{
 		if (group != null)
@@ -135,7 +125,6 @@ extension Node
 
 	/// Stops what moves `property` and gives it back to the sheet (a tween that ended holds its end
 	/// until this); false when nothing moved it.
-	[Scriptable]
 	public bool StopAnimation(StringView property)
 	{
 		bool stopped = false;

@@ -15,20 +15,8 @@ namespace Sedulous.Scene;
 /// BEHAVIOUR LIVES HERE, not on the components. That is what lets a component be plain
 /// value data in a contiguous pool.
 ///
-/// Scripts hold a system weakly (`scene.Physics` kept in a member): it goes with its scene, and
-/// a handle kept past it does nothing.
-abstract class SceneSystem : IScriptWeaklyHeld
+abstract class SceneSystem
 {
-	/// Where scripts' handles to this system resolve: taken the first time one names it.
-	private ScriptWeakSlot mScriptSlot;
-
-	public ~this()
-	{
-		mScriptSlot.Free();
-	}
-
-	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
-
 	/// The capability query. A system that IS a component manager returns itself, so the
 	/// scene can drive component initialisation and lookup without asking what type it is.
 	/// A plain system returns null.

@@ -9,17 +9,13 @@ namespace Sedulous.Particles;
 ///
 /// Its colours are authored sRGB, decoded to linear only when the particle is drawn. The
 /// default blend is the sRGB values straight, which is what the curve always did.
-[Scriptable]
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)] // an editor shows it as one curve or gradient value
 struct ParticleCurveColor
 {
 	public GradientColorStop[ParticleCurve.MaxKeys] Colors = .();
-	[Scriptable]
 	public int32 ColorCount = 0;
 	public GradientAlphaStop[ParticleCurve.MaxKeys] Alphas = .();
-	[Scriptable]
 	public int32 AlphaCount = 0;
-	[Scriptable]
 	public GradientInterpolation Interpolation = .Srgb;
 
 	public this() {}

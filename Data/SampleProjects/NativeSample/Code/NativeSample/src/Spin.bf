@@ -11,12 +11,11 @@ namespace NativeSample;
 [DisplayName("Spin")]
 [Category("Native Sample")]
 [Description("Turns the entity about an axis of its own while the scene simulates.")]
-[Scriptable]
 struct SpinComponent : ISerializable
 {
-	[DisplayName("Turns Per Second"), Scriptable]
+	[DisplayName("Turns Per Second")]
 	public float TurnsPerSecond = 0.25f;
-	[DisplayName("Axis"), Scriptable]
+	[DisplayName("Axis")]
 	public Float3 Axis = .(0.0f, 1.0f, 0.0f);
 
 	public this() {}

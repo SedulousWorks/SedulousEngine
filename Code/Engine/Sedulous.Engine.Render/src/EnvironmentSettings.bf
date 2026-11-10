@@ -14,7 +14,6 @@ namespace Sedulous.Engine.Render;
 [Reflect(.Type | .NonStaticFields)]
 [DisplayName("Environment")]
 [Category("Rendering")]
-[Scriptable(.AllPublic)]
 struct EnvironmentSettings
 {
 	/// Where the values come from: the scene's own below, or Profile's while the source is

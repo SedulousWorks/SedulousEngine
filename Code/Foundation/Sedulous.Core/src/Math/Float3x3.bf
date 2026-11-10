@@ -7,20 +7,17 @@ namespace Sedulous.Core;
 ///
 /// Element access is a two-argument indexer, M[row, col].
 [CRepr]
-[Scriptable(.AllPublic)]
 struct Float3x3
 {
-	/// Hidden from a script: a fixed array does not cross, and the elements have accessors.
+	/// Hidden from reflected views: the elements have accessors.
 	[Hidden]
 	public float[3][3] M;
 
 	[Inline]
-	[Scriptable]
 	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
 	[Inline]
-	[Scriptable]
 	public this(
 		float m00, float m01, float m02,
 		float m10, float m11, float m12,
@@ -45,7 +42,6 @@ struct Float3x3
 		}
 	}
 
-	[Scriptable]
 	public static Float3x3 Identity() => .(
 		1.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f,
@@ -85,8 +81,6 @@ struct Float3x3
 
 static
 {
-	[Scriptable]
-	[Scriptable]
 	public static Float3x3 Transpose(Float3x3 a)
 	{
 		Float3x3 result = .();
@@ -96,16 +90,12 @@ static
 		return result;
 	}
 
-	[Scriptable]
-	[Scriptable]
 	public static float Determinant(Float3x3 m) =>
 		m.M[0][0] * (m.M[1][1] * m.M[2][2] - m.M[1][2] * m.M[2][1]) -
 		m.M[0][1] * (m.M[1][0] * m.M[2][2] - m.M[1][2] * m.M[2][0]) +
 		m.M[0][2] * (m.M[1][0] * m.M[2][1] - m.M[1][1] * m.M[2][0]);
 
 	/// Adjugate over determinant. Returns Identity when singular.
-	[Scriptable]
-	[Scriptable]
 	public static Float3x3 Inverse(Float3x3 m)
 	{
 		let det = Determinant(m);
@@ -126,7 +116,6 @@ static
 		return result;
 	}
 
-	[Scriptable]
 	public static bool NearlyEqual(Float3x3 a, Float3x3 b, float epsilon = Epsilon)
 	{
 		for (int row < 3)

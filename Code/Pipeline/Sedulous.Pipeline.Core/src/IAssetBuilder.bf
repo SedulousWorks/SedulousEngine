@@ -20,9 +20,8 @@ interface IAssetBuilder
 	/// everything is the only hammer left once it happens.
 	int32 Version => 1;
 
-	/// A hash of what a build compiles against beyond its sources and the instances it reads (a
-	/// script cook: the script surface its products were checked against), folded into the recipe
-	/// so a change recooks. Nought, the default, folds nothing.
+	/// A hash of what a build compiles against beyond its sources and the instances it reads,
+	/// folded into the recipe so a change recooks. Nought, the default, folds nothing.
 	uint64 EnvironmentHash => 0;
 
 	/// Whether this builder's product varies per export target. Invariant by default.

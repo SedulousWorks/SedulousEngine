@@ -7,7 +7,6 @@ namespace Sedulous.Image;
 /// This is not decoration: a GPU converts sRGB to linear when sampling, and getting it
 /// wrong on a normal map or a mask corrupts the values rather than merely shifting the
 /// look.
-[Scriptable(.AllPublic)]
 [System.Reflect(.StaticFields)] // its cases by name: an import setting is offered and set by them
 enum ImageColorSpace : uint32
 {

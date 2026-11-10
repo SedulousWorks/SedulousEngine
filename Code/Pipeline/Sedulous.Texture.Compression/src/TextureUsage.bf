@@ -6,7 +6,6 @@ namespace Sedulous.Texture.Compression;
 ///
 /// Authored on the asset and never on the runtime struct: a model import sets it from the
 /// material slot it arrived in, and a standalone import defaults to colour.
-[Scriptable(.AllPublic)]
 [System.Reflect(.StaticFields)] // its cases by name: an import setting is offered and set by them
 enum TextureUsage : uint8
 {

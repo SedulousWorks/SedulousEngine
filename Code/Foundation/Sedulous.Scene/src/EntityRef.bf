@@ -17,7 +17,7 @@ namespace Sedulous.Scene;
 ///
 /// Reflected by its id, so tooling finds what it names by name (an inspector takes it as a
 /// reference by that id). Its serialization is unchanged: the id alone.
-[Scriptable(.AllPublic), Reflect(.NonStaticFields)]
+[Reflect(.NonStaticFields)]
 struct EntityRef : IHashable
 {
 	public Guid Id = .();

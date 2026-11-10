@@ -7,7 +7,6 @@ namespace Sedulous.Particles;
 /// a large step slows a particle to a stop rather than reversing it.
 [DisplayName("Drag")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class DragBehavior : ParticleBehavior
 {
 	public float Drag = 1.0f;

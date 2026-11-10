@@ -6,7 +6,6 @@ namespace Sedulous.Particles;
 /// Picks the axis a mesh particle spins about.
 [DisplayName("Mesh Orientation")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class MeshOrientationInitializer : ParticleInitializer
 {
 	public bool RandomAxis = true;

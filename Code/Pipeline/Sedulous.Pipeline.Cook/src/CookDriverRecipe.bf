@@ -68,7 +68,7 @@ extension CookDriver
 		// The builder's own version, which is how a cook logic change forces a re-cook.
 		h = RecipeHash.Fold(h, (uint64)'V', (uint64)builder.Version);
 
-		// What the build compiles against (the script surface), when the builder has one.
+		// What the build compiles against, when the builder has one.
 		let environment = builder.EnvironmentHash;
 		if (environment != 0)
 			h = RecipeHash.Fold(h, (uint64)'X', environment);

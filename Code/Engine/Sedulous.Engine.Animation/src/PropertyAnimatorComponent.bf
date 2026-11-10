@@ -22,29 +22,22 @@ namespace Sedulous.Engine.Animation;
 [SerializableComponent("property_animator")]
 [DisplayName("Property Animator")]
 [Category("Animation")]
-[Scriptable]
 [Description("Plays a property animation clip on the entity, animating its transform and component values.")]
 struct PropertyAnimatorComponent : ISerializable, IComponentResources
 {
-	[Scriptable]
 	[DisplayName("Clip")]
 	public Ref<PropertyAnimationClip> Clip = .(Guid());
-	[Scriptable]
 	[DisplayName("Autoplay")]
 	public bool AutoPlay = true;
-	[Scriptable]
 	[DisplayName("Speed")]
 	public float Speed = 1.0f;
-	[Scriptable]
 	[DisplayName("Loop Mode")]
 	public PropertyLoopMode LoopMode = .Loop;
 
 	// ---- runtime state ----
 
-	[Scriptable]
 	[Hidden]
 	public bool Playing = false;
-	[Scriptable]
 	[Hidden]
 	public float Time = 0.0f;
 	[Hidden]
@@ -59,7 +52,6 @@ struct PropertyAnimatorComponent : ISerializable, IComponentResources
 	public this() {}
 
 	/// Playback, which mutates only the clock and the state: the manager's tick applies it.
-	[Scriptable]
 	public void Play() mut
 	{
 		Playing = true;
@@ -67,17 +59,14 @@ struct PropertyAnimatorComponent : ISerializable, IComponentResources
 		PingPongDirection = 1;
 	}
 
-	[Scriptable]
 	public void Stop() mut
 	{
 		Playing = false;
 		Time = 0.0f;
 	}
 
-	[Scriptable]
 	public void Pause() mut => Playing = false;
 
-	[Scriptable]
 	public void Resume() mut => Playing = true;
 
 	public void ResolveResources(ResourceManager manager) mut

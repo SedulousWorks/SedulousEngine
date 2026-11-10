@@ -9,7 +9,6 @@ namespace Sedulous.Scene;
 /// detectable in O(1) with no lookup table at all. Never keep a raw pointer to entity or
 /// component data: the pools move, handles do not. Hold a handle and resolve it through
 /// the scene.
-[Scriptable]
 struct EntityHandle : IHashable
 {
 	public const uint32 cInvalidIndex = 0xFFFFFFFF;
@@ -25,12 +24,10 @@ struct EntityHandle : IHashable
 		Generation = generation;
 	}
 
-	[Scriptable]
 	public static EntityHandle Invalid => .();
 
 	/// Whether this handle was ever assigned. NOT whether it is still valid in a scene,
 	/// which is Scene.IsValid's question.
-	[Scriptable]
 	public bool IsAssigned => Index != cInvalidIndex;
 
 	[Commutable]

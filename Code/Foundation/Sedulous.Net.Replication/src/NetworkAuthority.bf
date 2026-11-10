@@ -7,7 +7,6 @@ namespace Sedulous.Net.Replication;
 /// Server authoritative is the DEFAULT, because it is the anti cheat position: a client that
 /// can assert its own state can assert anything. Per entity Client authority is the escape
 /// hatch for host migration and client owned avatars.
-[Scriptable(.AllPublic)]
 enum NetworkAuthority : uint8
 {
 	Server,

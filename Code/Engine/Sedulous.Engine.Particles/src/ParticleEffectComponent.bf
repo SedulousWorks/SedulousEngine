@@ -25,7 +25,6 @@ namespace Sedulous.Engine.Particles;
 [SerializableComponent("particle_effect")]
 [DisplayName("Particle Effect")]
 [Category("Effects")]
-[Scriptable]
 [Description("Plays a particle effect at the entity: billboards, trails, meshes or lights.")]
 struct ParticleEffectComponent : ISerializable, IComponentResources
 {
@@ -41,27 +40,20 @@ struct ParticleEffectComponent : ISerializable, IComponentResources
 	/// A mesh mode system draws this per particle through the instanced mesh path. The
 	/// COMPONENT's mesh wins over the effect's, which is what makes it a per placement
 	/// override.
-	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
-	[Scriptable]
 	public Ref<Material> Material = .(Guid());
-	[Scriptable]
 	public float MeshScale = 1.0f;
 
 	/// A light mode system adds a point light per particle, capped, so particles illuminate
 	/// what is around them. The intensity scales with the particle's alpha, so a light fades
 	/// out with the particle rather than snapping off; the range is per emitter.
-	[Scriptable]
 	public float LightIntensity = 4.0f;
-	[Scriptable]
 	public float LightRange = 4.0f;
 
-	[Scriptable]
 	public bool Visible = true;
 
 	// ---- the cooked path ----
 
-	[Scriptable]
 	public Ref<ParticleEffectResource> EffectAsset = .(Guid());
 	/// This component's OWN clone, which the instance simulates.
 	public ParticleEffect OwnedEffect = null;

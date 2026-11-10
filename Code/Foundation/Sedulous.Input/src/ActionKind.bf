@@ -11,7 +11,6 @@ namespace Sedulous.Input;
 /// same and nothing could tell you which you had meant.
 /// Reflected: the editor's input map page offers its cases as a row's choices.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum ActionKind : uint8
 {
 	Button,

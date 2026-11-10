@@ -38,12 +38,11 @@ class BoneAttachmentRuntime
 [SerializableComponent("bone_attachment")]
 [DisplayName("Bone Attachment")]
 [Category("Animation")]
-[Scriptable]
 [Description("Follows one bone of the animator above it while the scene runs, such as a weapon in a hand or a hat on a head; its children ride along.")]
 struct BoneAttachmentComponent : ISerializable
 {
 	/// The bone by name. OWNED, created and freed by the manager.
-	[Scriptable, BoneName, Description("The bone this entity follows.")]
+	[BoneName, Description("The bone this entity follows.")]
 	public String Bone = null;
 
 	[Hidden]

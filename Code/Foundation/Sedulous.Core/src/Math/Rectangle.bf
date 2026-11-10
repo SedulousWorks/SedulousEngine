@@ -4,7 +4,6 @@ namespace Sedulous.Core;
 
 /// A 2D rectangle whose X and Y are the min corner.
 [CRepr]
-[Scriptable(.AllPublic)]
 struct Rectangle
 {
 	public float X;
@@ -13,10 +12,8 @@ struct Rectangle
 	public float Height;
 
 	[Inline]
-	[Scriptable]
 	public this() { X = 0; Y = 0; Width = 0; Height = 0; }
 	[Inline]
-	[Scriptable]
 	public this(float x, float y, float width, float height)
 	{
 		this.X = x; this.Y = y; this.Width = width; this.Height = height;

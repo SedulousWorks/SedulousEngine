@@ -6,7 +6,6 @@ namespace Sedulous.Input;
 /// Conditioning applied to an action's folded value each frame.
 /// Reflected: the editor's input map page lists its fields as the grid's rows.
 [Reflect(.Type | .NonStaticFields | .DefaultConstructor)]
-[Scriptable(.AllPublic)]
 struct ActionProcessors
 {
 	/// Above zero, a key driven axis RAMPS toward its target at this much per second

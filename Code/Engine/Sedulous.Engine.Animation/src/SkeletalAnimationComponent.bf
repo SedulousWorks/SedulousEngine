@@ -26,13 +26,10 @@ namespace Sedulous.Engine.Animation;
 [SerializableComponent("skeletal_animation", 2, 1)]
 [DisplayName("Skeletal Animation")]
 [Category("Animation")]
-[Scriptable]
 [Description("Plays one animation clip on a skeleton and poses the entity's skinned meshes with it.")]
 struct SkeletalAnimationComponent : ISerializable, IComponentResources
 {
-	[Scriptable]
 	public Ref<Skeleton> Skeleton = .(Guid());
-	[Scriptable]
 	public Ref<AnimationClip> Clip = .(Guid());
 
 	/// Created lazily by the manager, on the first tick that has a skeleton.
@@ -43,24 +40,20 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	public AnimationClip PlayerClip = null;
 
 	/// The entities whose mesh receives the matrices. Empty means the owner.
-	[Scriptable]
 	[DisplayName("Mesh Entities")]
 	public List<EntityRef> MeshEntities = null;
 
-	[Scriptable]
 	public float Speed = 1.0f;
 	/// The initial clock, which is what desynchronises a herd. Applied on the first tick.
-	[Scriptable]
 	public float StartTime = 0.0f;
 	/// Play the bound clip on the first tick.
-	[Scriptable]
 	public bool AutoPlay = true;
 
-	/// What the animator does with its clips' root motion: Ignore by default.
-	[Scriptable, DisplayName("Root Motion")]
+	/// What the animator does with its clips' root motion (root-motion.md P2): Ignore by default.
+	[DisplayName("Root Motion")]
 	public RootMotionMode RootMotion = .Ignore;
 	/// What Entity mode moves: a gameplay root holding the model; empty is this entity.
-	[Scriptable, DisplayName("Root Motion Target")]
+	[DisplayName("Root Motion Target")]
 	public EntityRef RootMotionTarget = .();
 	/// The last tick's root motion, runtime only.
 	[Hidden]

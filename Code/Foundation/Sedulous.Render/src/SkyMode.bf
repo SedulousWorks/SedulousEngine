@@ -8,7 +8,6 @@ namespace Sedulous.Render;
 ///
 /// Its cases are reflected: the MCP scene schema names them for an agent.
 [Reflect(.StaticFields)]
-[Scriptable(.AllPublic)]
 enum SkyMode : uint32
 {
 	/// A gradient between horizon, zenith and ground.

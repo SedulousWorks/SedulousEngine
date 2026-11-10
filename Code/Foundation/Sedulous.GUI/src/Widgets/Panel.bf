@@ -8,7 +8,7 @@ namespace Sedulous.GUI;
 // `display`, `flex-direction`, `grid-template-columns`, ...); everything it does is the base
 // node's.
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Panel : UIWidget
 {
 	public this()

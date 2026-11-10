@@ -10,7 +10,6 @@ namespace Sedulous.Core;
 /// explicitly at the texture and format edge, so the transfer functions below are opt-in
 /// rather than folded into the cast.
 [CRepr]
-[Scriptable(.AllPublic)]
 struct Color32
 {
 	public uint8 R = 0;
@@ -19,10 +18,8 @@ struct Color32
 	public uint8 A = 255;
 
 	[Inline]
-	[Scriptable]
 	public this() { }
 	[Inline]
-	[Scriptable]
 	public this(uint8 r, uint8 g, uint8 b, uint8 a = 255)
 	{
 		this.R = r; this.G = g; this.B = b; this.A = a;
@@ -59,37 +56,30 @@ static
 	private static uint8 ByteOf(float v) => (uint8)(Clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
 
 	/// Float colour to packed bytes, clamped to 0..1 and rounded.
-	[Scriptable]
 	public static Color32 ToColor32(Color c) => .(ByteOf(c.R), ByteOf(c.G), ByteOf(c.B), ByteOf(c.A));
 
 	/// Packed bytes to float colour: exact 0..255 to 0..1, and round-trips ToColor32.
-	[Scriptable]
 	public static Color ToColor(Color32 c) => .(
 		(float)c.R / 255.0f, (float)c.G / 255.0f, (float)c.B / 255.0f, (float)c.A / 255.0f);
 
 	/// The standard IEC 61966-2-1 EOTF, for decoding sRGB-authored colours to linear
 	/// before blending or shading in linear space.
-	[Scriptable]
 	public static float SrgbToLinear(float c) =>
 		(c <= 0.04045f) ? (c / 12.92f) : Pow((c + 0.055f) / 1.055f, 2.4f);
 
-	[Scriptable]
 	public static float LinearToSrgb(float c) =>
 		(c <= 0.0031308f) ? (c * 12.92f) : (1.055f * Pow(c, 1.0f / 2.4f) - 0.055f);
 
 	/// An authored (sRGB) Color to linear, for render data; alpha is coverage and stays as it
 	/// is. Components above 1 decode along the same curve, so an over-bright value stays
 	/// over-bright.
-	[Scriptable]
 	public static Color ToLinear(Color c) => .(SrgbToLinear(c.R), SrgbToLinear(c.G), SrgbToLinear(c.B), c.A);
 
 	/// Linear to sRGB, the inverse: for colour values that arrive linear (a glTF factor).
-	[Scriptable]
 	public static Color ToSrgb(Color c) => .(LinearToSrgb(c.R), LinearToSrgb(c.G), LinearToSrgb(c.B), c.A);
 
 	/// An sRGB-authored Color32 to a linear float Color: RGB through the EOTF, alpha
 	/// left linear. For uploading UI and SVG colours to a linear pipeline.
-	[Scriptable]
 	public static Color ToLinear(Color32 c) => .(
 		SrgbToLinear((float)c.R / 255.0f),
 		SrgbToLinear((float)c.G / 255.0f),

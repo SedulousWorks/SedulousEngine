@@ -4,7 +4,6 @@ using Sedulous.Core;
 namespace Sedulous.Audio;
 
 /// What one play asks for.
-[Scriptable(.AllPublic)]
 struct AudioPlayParams
 {
 	public AudioBus Bus = .Effects;

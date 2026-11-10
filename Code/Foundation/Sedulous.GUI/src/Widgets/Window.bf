@@ -178,7 +178,7 @@ class WindowGrip : DragHandle
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Window : UIWidget
 {
 	private DragHandle mTitleBar ~ _.ReleaseRef();
@@ -258,7 +258,7 @@ class Window : UIWidget
 	// Markup's children are its content.
 	public override Node ChildHost => mContentHost;
 
-	[GuiProperty("title", .None, "name"), Scriptable]
+	[GuiProperty("title", .None, "name")]
 	public StringView Title
 	{
 		get => mTitle.Text;
@@ -285,7 +285,7 @@ class Window : UIWidget
 	}
 
 	/// Its close button shows (a click on it, like Escape on a dialog, closes it).
-	[GuiProperty("closable"), Scriptable]
+	[GuiProperty("closable")]
 	public bool Closable
 	{
 		get => mClosable;
@@ -297,7 +297,7 @@ class Window : UIWidget
 	}
 
 	/// Its grip shows and resizes it.
-	[GuiProperty("resizable"), Scriptable]
+	[GuiProperty("resizable")]
 	public bool Resizable
 	{
 		get => mResizable;
@@ -380,7 +380,6 @@ class Window : UIWidget
 	/// Removes the window (a modal one through the popup stack, which gives focus back), and calls
 	/// the close callback. A window placed in a tree as a child, never opened, closes the same
 	/// way: its close button works however it came to be shown.
-	[Scriptable]
 	public new void Close()
 	{
 		if (!mOpen && (Parent == null))
@@ -398,12 +397,9 @@ class Window : UIWidget
 		ReleaseRef();
 	}
 
-	[Scriptable]
 	public bool IsOpen => mOpen;
 
-	/// Opens it where it is, over what holds it (a window a script added to a page); false in none.
-	/// `Open` to a script.
-	[Scriptable, ScriptName("Open")]
+	/// Opens it where it is, over what holds it (a window game code added to a page); false in none.
 	public bool OpenInPlace()
 	{
 		let parent = Parent;
@@ -414,8 +410,7 @@ class Window : UIWidget
 		return true;
 	}
 
-	/// Opens it as a modal window over the GUI it is in; false in none. `OpenModal` to a script.
-	[Scriptable, ScriptName("OpenModal")]
+	/// Opens it as a modal window over the GUI it is in; false in none.
 	public bool OpenModalOver()
 	{
 		let root = RootNode;

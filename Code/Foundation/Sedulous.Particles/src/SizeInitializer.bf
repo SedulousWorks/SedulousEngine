@@ -6,7 +6,6 @@ namespace Sedulous.Particles;
 /// Gives a particle its starting size, in world units across.
 [DisplayName("Size")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class SizeInitializer : ParticleInitializer
 {
 	public RangeFloat2 Size = .Constant(.(0.1f, 0.1f));

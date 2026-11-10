@@ -7,7 +7,6 @@ namespace Sedulous.Particles;
 /// SeparateAxes, X while SizeY sets Y. An absolute size, not a multiplier.
 [DisplayName("Size over Lifetime")]
 [Serializable]
-[Scriptable(.AllPublic)]
 class SizeOverLifetimeBehavior : ParticleBehavior
 {
 	public ParticleCurveFloat Size = .();

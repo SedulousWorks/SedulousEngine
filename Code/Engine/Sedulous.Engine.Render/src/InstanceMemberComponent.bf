@@ -17,20 +17,19 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("instance_member", 2, 1)]
 [DisplayName("Instance Member")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Draws this entity as one instance of another entity's instanced mesh, wherever it moves, on one of that mesh's animation clips.")]
 struct InstanceMemberComponent : ISerializable
 {
 	/// The entity whose instanced mesh draws this one.
-	[Scriptable, Description("The entity whose instanced mesh draws this one")]
+	[Description("The entity whose instanced mesh draws this one")]
 	public EntityRef InstancedMesh = .();
 	/// Its clip: the index in the instanced skinning's clip list.
-	[Scriptable, Description("Its clip: the index in the instanced skinning's clip list")]
+	[Description("Its clip: the index in the instanced skinning's clip list")]
 	public uint32 Clip = 0;
 	/// Its own tint (sRGB, as entered), times the set's colour when the set authors no tints:
 	/// the instance's colour, which a custom shader reads as its input colour (a glow, a mark),
 	/// so one guest can look different from the rest.
-	[Scriptable, Description("Its own tint, times the set's colour: the colour a custom shader reads")]
+	[Description("Its own tint, times the set's colour: the colour a custom shader reads")]
 	public Color Tint = .(1.0f, 1.0f, 1.0f, 1.0f);
 
 	public this() {}

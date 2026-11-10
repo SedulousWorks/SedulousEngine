@@ -91,7 +91,7 @@ class TabCloseButton : ButtonBase
 }
 
 /// One tab: the button core's text and icon, and a close part.
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Tab : ButtonBase
 {
 	/// Points a press moves before it reorders.
@@ -138,7 +138,7 @@ class Tab : ButtonBase
 	}
 
 	/// It can be closed (its close part shown as the bar's policy says, a middle click).
-	[GuiProperty("closable"), Scriptable]
+	[GuiProperty("closable")]
 	public bool Closable
 	{
 		get => mClosable;
@@ -456,7 +456,7 @@ class TabCloseAllButton : ButtonBase
 	}
 }
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class TabBar : UIWidget
 {
 	private TabStrip mStrip ~ _.ReleaseRef();
@@ -529,7 +529,6 @@ class TabBar : UIWidget
 	public Tab AddTab(StringView text) => InsertTab(-1, text);
 
 	/// Removes a tab; were it selected, the one after it is (else the one before).
-	[Scriptable]
 	public void RemoveTab(int32 index)
 	{
 		let tab = GetTab(index);
@@ -537,7 +536,6 @@ class TabBar : UIWidget
 			mStrip.RemoveChild(tab);
 	}
 
-	[Scriptable]
 	public int32 TabCount => (int32)mStrip.ChildCount;
 
 	public Tab GetTab(int32 index) => ((index >= 0) && (index < TabCount)) ? (mStrip.GetChildAt(index) as Tab) : null;
@@ -549,7 +547,6 @@ class TabBar : UIWidget
 	}
 
 	/// Moves a tab to `to` (code's: reports only to the moved callback).
-	[Scriptable]
 	public void MoveTab(int32 from, int32 to)
 	{
 		let tab = GetTab(from);
@@ -566,7 +563,7 @@ class TabBar : UIWidget
 	/// The selected tab's index (-1: none), a read a binding records. Set from code: no events.
 	/// An index past the tabs waits for them (markup's `selected` is read before its tabs are
 	/// made).
-	[GuiProperty("selected", .TwoWay), Scriptable]
+	[GuiProperty("selected", .TwoWay)]
 	public int32 SelectedIndex
 	{
 		get
@@ -617,7 +614,7 @@ class TabBar : UIWidget
 	}
 
 	/// "never", "selected", "hover" or "always" (markup's and a sheet's `close-display`).
-	[GuiProperty("close-display"), Scriptable]
+	[GuiProperty("close-display")]
 	public StringView CloseDisplayName
 	{
 		get => TabBarDetail.sCloseDisplayNames[(int)mCloseDisplay];
@@ -649,7 +646,7 @@ class TabBar : UIWidget
 
 	/// A part past the list button closes every closable tab (markup's and a sheet's
 	/// `close-all`), shown while one is closable.
-	[GuiProperty("close-all"), Scriptable]
+	[GuiProperty("close-all")]
 	public bool ShowsCloseAll
 	{
 		get => mCloseAll;
@@ -684,7 +681,7 @@ class TabBar : UIWidget
 
 	/// A tab dragged across a neighbour's midpoint changes places with it (in a group's strip,
 	/// dropped back into the strip at a new place).
-	[GuiProperty("reorderable"), Scriptable]
+	[GuiProperty("reorderable")]
 	public bool Reorderable
 	{
 		get => mReorderable;
@@ -694,7 +691,7 @@ class TabBar : UIWidget
 	// === Between strips ===
 
 	/// Strips of one group take each other's tabs (torn out and dropped); empty: none.
-	[GuiProperty("group"), Scriptable]
+	[GuiProperty("group")]
 	public StringView Group
 	{
 		get => mGroup;
@@ -877,7 +874,7 @@ class TabBar : UIWidget
 	}
 
 	/// "overflow" or "always" (markup's and a sheet's `list-display`).
-	[GuiProperty("list-display"), Scriptable]
+	[GuiProperty("list-display")]
 	public StringView ListDisplayName
 	{
 		get => (mListDisplay == .Always) ? "always" : "overflow";

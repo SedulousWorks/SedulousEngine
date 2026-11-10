@@ -11,7 +11,7 @@ namespace Sedulous.GUI;
 // wheel scrolls it too). It declares "textinput multiline", the context the multiline keys are
 // bound in; Ctrl+Return submits it.
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class TextArea : TextEditBase
 {
 	private ShownLines mLines ~ delete _;
@@ -32,7 +32,7 @@ class TextArea : TextEditBase
 	}
 
 	/// How many lines tall it is when nothing sizes it.
-	[GuiProperty("rows"), Scriptable]
+	[GuiProperty("rows")]
 	public int32 Rows
 	{
 		get => mRows;

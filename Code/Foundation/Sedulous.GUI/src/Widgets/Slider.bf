@@ -15,7 +15,7 @@ namespace Sedulous.GUI;
 // puts the value back as it was before it, and reports the drag cancelled. Ticks, when asked for,
 // mark the track at even steps. Modeled on eepp's UISlider (role only).
 
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Slider : RangeWidget
 {
 	private Sedulous.GUI.Orientation mOrientation = .Horizontal;
@@ -55,7 +55,7 @@ class Slider : RangeWidget
 	public bool IsDragging => mDragging;
 
 	/// A page key's step (0: a tenth of the range).
-	[GuiProperty("page"), Scriptable]
+	[GuiProperty("page")]
 	public double Page
 	{
 		get => PageSize;
@@ -76,7 +76,7 @@ class Slider : RangeWidget
 	}
 
 	/// "horizontal" or "vertical" (markup's and a sheet's `orientation`).
-	[GuiProperty("orientation"), Scriptable]
+	[GuiProperty("orientation")]
 	public StringView OrientationName
 	{
 		get => (mOrientation == .Vertical) ? "vertical" : "horizontal";
@@ -84,7 +84,7 @@ class Slider : RangeWidget
 	}
 
 	/// How many marks along the track (its ends included; 0 or 1: none).
-	[GuiProperty("ticks"), Scriptable]
+	[GuiProperty("ticks")]
 	public int32 Ticks
 	{
 		get => mTicks;

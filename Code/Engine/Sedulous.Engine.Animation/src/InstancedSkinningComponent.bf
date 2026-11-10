@@ -23,12 +23,10 @@ namespace Sedulous.Engine.Animation;
 [SerializableComponent("instanced_skinning", 1, 1)]
 [DisplayName("Instanced Skinning")]
 [Category("Animation")]
-[Scriptable]
 [Description("Animates an instanced mesh crowd from a small shared pool of poses, each instance on one of its clips.")]
 struct InstancedSkinningComponent : ISerializable, IComponentResources
 {
 	/// Shared across the crowd.
-	[Scriptable]
 	public Ref<Skeleton> Skeleton = .(Guid());
 	/// The clips the instances play; an instance's clip is its index here. Not on the script
 	/// surface: a list of references does not cross yet (Backlog).
@@ -36,15 +34,12 @@ struct InstancedSkinningComponent : ISerializable, IComponentResources
 	public List<Ref<AnimationClip>> Clips = null;
 
 	/// Phases sampled per clip. More is a smoother spread and more compute.
-	[Scriptable]
 	[Description("Phases sampled per clip: more is a smoother spread, and costs more")]
 	public uint32 PoseCount = 32;
-	[Scriptable]
 	public float Speed = 1.0f;
 
 	/// The instanced meshes to feed, which is one set per skinned mesh of a multi part
 	/// character. Empty means the owner.
-	[Scriptable]
 	[Description("The instanced meshes it animates (none: its own)")]
 	public List<EntityRef> Targets = null;
 

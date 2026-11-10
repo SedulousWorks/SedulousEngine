@@ -23,7 +23,7 @@ namespace Sedulous.GUI;
 // `screenhidden` (covered) and `screenrevealed`; the stack tells `pausechange`.
 
 /// One of a game's screens: its content, and how it sits over the screens under it.
-[GuiReflect(true), Scriptable]
+[GuiReflect(true)]
 class Screen : UIWidget
 {
 	/// The stack it is on, not held (the stack holds it).
@@ -48,7 +48,7 @@ class Screen : UIWidget
 	}
 
 	/// It hides the screens under it (a full-screen menu over the game).
-	[GuiProperty("covers"), Scriptable]
+	[GuiProperty("covers")]
 	public bool Covers
 	{
 		get => mCovers;
@@ -61,7 +61,7 @@ class Screen : UIWidget
 	}
 
 	/// The screens under it take no input (a pause menu); off, they do (a HUD over the game).
-	[GuiProperty("blocks"), Scriptable]
+	[GuiProperty("blocks")]
 	public bool Blocks
 	{
 		get => mBlocks;
@@ -74,7 +74,7 @@ class Screen : UIWidget
 	}
 
 	/// The game pauses while it is on the stack (the stack reports it).
-	[GuiProperty("pauses"), Scriptable]
+	[GuiProperty("pauses")]
 	public bool Pauses
 	{
 		get => mPauses;
@@ -87,7 +87,7 @@ class Screen : UIWidget
 	}
 
 	/// What `back` does on it: "pop" (the default) or "none" (it keeps its back: a title screen).
-	[GuiProperty("back"), Scriptable]
+	[GuiProperty("back")]
 	public StringView Back
 	{
 		get => mPopsOnBack ? "pop" : "none";
@@ -97,16 +97,14 @@ class Screen : UIWidget
 	public bool PopsOnBack => mPopsOnBack;
 
 	/// The stack it is on, or null (not pushed, or popped and leaving).
-	[Scriptable]
 	public ScreenStack Stack => mStack;
 
 	/// Hidden by a covering screen above it.
-	[Scriptable]
 	public bool IsCovered => mCovered;
 }
 
 /// A stack of screens: the top one shows, takes the input and hears `back` first.
-[GuiReflect(true, "Screens"), Scriptable]
+[GuiReflect(true, "Screens")]
 class ScreenStack : UIWidget
 {
 	/// Bottom first, a reference held to each.
@@ -153,8 +151,6 @@ class ScreenStack : UIWidget
 	/// Pushes `content`: a Screen as it is, anything else in a new screen; it shows on top, takes
 	/// the focus (its remembered, its `nav-default`, else its first focusable) and hears
 	/// `screenenter`. The screen, or null when `content` is a screen already on a stack.
-	/// `PushNode` to a script (its `Push` takes a document's path).
-	[Scriptable, ScriptName("PushNode")]
 	public Screen Push(Node content)
 	{
 		var screen = content as Screen;
@@ -194,9 +190,7 @@ class ScreenStack : UIWidget
 	}
 
 	/// Pushes the document at `path` (its markup, loaded fresh through the GUI's resources, its
-	/// `{{values}}` bound to the GUI's data). Null when it cannot be read or made. `Push` to a
-	/// script.
-	[Scriptable, ScriptName("Push")]
+	/// `{{values}}` bound to the GUI's data). Null when it cannot be read or made.
 	public Screen PushDocument(StringView path)
 	{
 		let content = LoadDocument(path);
@@ -209,7 +203,6 @@ class ScreenStack : UIWidget
 	/// Takes the top screen off: it leaves (its exit plays, out of input at once), the screens
 	/// under it show and take input as the new top says, and the new top takes the focus it had.
 	/// False when the stack is empty.
-	[Scriptable]
 	public bool Pop()
 	{
 		if (mScreens.IsEmpty)
@@ -222,8 +215,6 @@ class ScreenStack : UIWidget
 	}
 
 	/// Swaps the top screen for `content` (pushed as Push does); with none, pushes it.
-	/// `ReplaceNode` to a script.
-	[Scriptable, ScriptName("ReplaceNode")]
 	public Screen Replace(Node content)
 	{
 		if ((content is Screen) && ((content as Screen).[Friend]mStack != null))
@@ -233,8 +224,7 @@ class ScreenStack : UIWidget
 		return Push(content);
 	}
 
-	/// `Replace` to a script.
-	[Scriptable, ScriptName("Replace")]
+	/// Swaps the top screen for the document at `path` (loaded as PushDocument loads it).
 	public Screen ReplaceDocument(StringView path)
 	{
 		let content = LoadDocument(path);
@@ -245,7 +235,6 @@ class ScreenStack : UIWidget
 	}
 
 	/// Takes every screen off, the top first.
-	[Scriptable]
 	public void Clear()
 	{
 		while (!mScreens.IsEmpty)
@@ -255,7 +244,6 @@ class ScreenStack : UIWidget
 
 	/// What `back` does when the top screen did not take it: pops it, unless it keeps its back, it
 	/// is the last, or it was pushed this frame (the Back that pushed it). Whether it popped.
-	[Scriptable]
 	public bool Back()
 	{
 		let top = Top;
@@ -264,16 +252,13 @@ class ScreenStack : UIWidget
 		return Pop();
 	}
 
-	[Scriptable]
 	public Screen Top => mScreens.IsEmpty ? null : mScreens[mScreens.Count - 1];
 
-	[Scriptable]
 	public int Count => mScreens.Count;
 
 	public Screen At(int index) => ((index >= 0) && (index < mScreens.Count)) ? mScreens[index] : null;
 
 	/// Whether a screen on the stack pauses the game.
-	[Scriptable]
 	public bool IsPaused => mPaused;
 
 	/// Whether the game should take the input: no screen on top that blocks it, and the pointer at

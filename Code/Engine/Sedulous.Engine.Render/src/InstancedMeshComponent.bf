@@ -28,11 +28,9 @@ namespace Sedulous.Engine.Render;
 [SerializableComponent("instanced_mesh", 2, 1)]
 [DisplayName("Instanced Mesh")]
 [Category("Rendering")]
-[Scriptable]
 [Description("Draws one mesh with its materials at many instance transforms in a single draw, for scatter and crowds.")]
 struct InstancedMeshComponent : ISerializable, IComponentResources
 {
-	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
 	/// The material list, indexed by the submesh's material index, as a mesh's: slot 0 doubles
 	/// as the whole mesh's material, so a single material mesh holds one entry and a mesh of
@@ -47,11 +45,9 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// moving the entity moves the whole set.
 	public List<Float4x4> Instances = null;
 	/// The shared tint, used when the per instance list is empty.
-	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	/// Optional, parallel to the instances. Read at UPLOAD, so set it before the instances.
 	public List<Color> Tints = null;
-	[Scriptable]
 	public bool Visible = true;
 
 	/// A shared pose pool for a skinned crowd, set per frame by the animation side: instance
@@ -75,7 +71,7 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// mismatched list; Unison puts every instance on a clip in step.
 	///
 	/// NOT a mutator: it is read each frame while filling the offsets rather than uploaded.
-	[Scriptable, Description("How an animated instance picks its phase: Hashed (scattered), Sequential (by its order), Explicit (its pose index), Unison (all in step)")]
+	[Description("How an animated instance picks its phase: Hashed (scattered), Sequential (by its order), Explicit (its pose index), Unison (all in step)")]
 	public PoseAssignment PoseAssignment = .Hashed;
 	[Hidden]
 	public List<uint32> PoseIndices = null;

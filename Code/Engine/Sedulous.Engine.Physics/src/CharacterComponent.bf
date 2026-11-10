@@ -17,27 +17,19 @@ namespace Sedulous.Engine.Physics;
 [SerializableComponent("physics.Character")]
 [DisplayName("Character")]
 [Category("Physics")]
-[Scriptable]
 [Description("Moves the entity as a capsule character that walks slopes and steps, jumps and pushes bodies.")]
 struct CharacterComponent : ISerializable
 {
 	// ---- authored ----
 
-	[Scriptable]
 	public float Radius = 0.35f;
 	/// The cylinder's half length, so the whole capsule is twice this plus two radii.
-	[Scriptable]
 	public float HalfHeight = 0.55f;
-	[Scriptable]
 	public float MaxSlopeDegrees = 50.0f;
-	[Scriptable]
 	public float Mass = 70.0f;
 	/// The push force cap. The backend's own default barely nudges a prop.
-	[Scriptable]
 	public float MaxStrength = 500.0f;
-	[Scriptable]
 	public float StepUp = 0.4f;
-	[Scriptable]
 	public float StepDown = 0.5f;
 
 	// ---- the input gameplay writes ----
@@ -82,12 +74,10 @@ struct CharacterComponent : ISerializable
 	/// How fast it moved over the last step (m/s): the motion the sweep allowed, not the
 	/// velocity asked for, since a wall or a slope bends it and a script integrating momentum
 	/// needs what happened.
-	[Scriptable]
 	[Hidden]
 	[ReadOnly]
 	public Float3 Velocity = .(0, 0, 0);
 	/// The ground under it after the last step; straight up in the air.
-	[Scriptable]
 	[Hidden]
 	[ReadOnly]
 	public Float3 GroundNormal = .(0, 1, 0);
@@ -95,7 +85,6 @@ struct CharacterComponent : ISerializable
 	public this() {}
 
 	/// Steers along the ground. The vertical is left to gravity and to the jump.
-	[Scriptable]
 	public void Move(float velocityX, float velocityZ) mut
 	{
 		MoveVelocity = .(velocityX, 0.0f, velocityZ);
@@ -105,17 +94,14 @@ struct CharacterComponent : ISerializable
 	/// The whole velocity for the coming steps, gravity included, replacing the standard recipe
 	/// (Move, Jump, Launch) until the next Move. Read Velocity and GroundNormal to integrate it:
 	/// gravity along a slope is gravity less its part along the ground normal.
-	[Scriptable]
 	public void Drive(float x, float y, float z) mut
 	{
 		DriveVelocity = .(x, y, z);
 		Driving = true;
 	}
 
-	[Scriptable]
 	public void Drive(Float3 velocity) mut => Drive(velocity.X, velocity.Y, velocity.Z);
 
-	[Scriptable]
 	public void Jump(float speed) mut
 	{
 		JumpSpeed = speed;
@@ -124,7 +110,6 @@ struct CharacterComponent : ISerializable
 	/// Sets the vertical speed at the next step, on the ground OR in the air, replacing what
 	/// gravity had built up: a bounce off an enemy, a spring pad, a double jump. Negative
 	/// slams down. A pending Jump is dropped.
-	[Scriptable]
 	public void Launch(float speed) mut
 	{
 		LaunchSpeed = speed;
@@ -136,14 +121,12 @@ struct CharacterComponent : ISerializable
 	/// The TICK moves the character rather than the caller setting a position: a live
 	/// character owns its transform, so a plain move would be overwritten on the next step.
 	/// Momentum drops with it, and the request clears once applied.
-	[Scriptable]
 	public void SetPosition(Float3 position) mut
 	{
 		TeleportTo = position;
 		TeleportPending = true;
 	}
 
-	[Scriptable]
 	public bool Grounded => Ground == .OnGround;
 
 	public void Serialize(ISerializer ar) mut

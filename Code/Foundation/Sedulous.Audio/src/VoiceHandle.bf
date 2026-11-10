@@ -7,7 +7,6 @@ namespace Sedulous.Audio;
 ///
 /// A slot is reused the moment its voice ends, so a bare index would silently address
 /// whatever took its place. The generation is what makes a stale handle answer "no" instead.
-[Scriptable(.AllPublic)]
 struct VoiceHandle
 {
 	public const uint32 InvalidSlot = 0xFFFFFFFF;
