@@ -45,6 +45,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Vulkan: validation asked for where its layer is not installed (a machine without the Vulkan SDK,
+  a phone) runs without it, with a warning, instead of failing to start.
 - Vulkan: reading back what the GPU drew (a screenshot, a thumbnail, a pick, the profiler's GPU
   times) no longer comes back stale or as zeros now and then on GPUs whose readback memory is not
   coherent (Mali's among them): that memory is now made current before it is read.

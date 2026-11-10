@@ -36,10 +36,30 @@ class VulkanBackend : IBackend
 		}
 		VulkanNative.LoadPreInstanceFunctions();
 
-		mValidationEnabled = enableValidation;
+		// Validation asked for where its layer is not installed (a phone, a machine without the
+		// SDK): run without it rather than fail to make an instance at all.
+		var validation = enableValidation;
+		if (validation)
+		{
+			uint32 layerCount = 0;
+			VulkanNative.vkEnumerateInstanceLayerProperties(&layerCount, null);
+			let available = scope VkLayerProperties[(int)layerCount];
+			if (layerCount > 0)
+				VulkanNative.vkEnumerateInstanceLayerProperties(&layerCount, &available[0]);
+			bool installed = false;
+			for (var layer in ref available)
+				installed = installed || (StringView(&layer.layerName[0]) == "VK_LAYER_KHRONOS_validation");
+			if (!installed)
+			{
+				Log("[Vulkan] validation was asked for, but VK_LAYER_KHRONOS_validation is not installed: running without it");
+				validation = false;
+			}
+		}
+
+		mValidationEnabled = validation;
 		// Announced so a perf run can confirm the layers are off: the layer validates every
 		// command, and a profile taken with it on measures the layer rather than the engine.
-		if (enableValidation)
+		if (validation)
 		{
 			Log("[Vulkan] validation layers: ENABLED - this build has device validation enabled, which is known to be slow. For real numbers use a build with device validation disabled (Release, or --no-gpu-validation).");
 		}
@@ -78,7 +98,7 @@ class VulkanBackend : IBackend
 			extensions.Add("VK_EXT_debug_utils");
 
 		let layers = scope List<char8*>();
-		if (enableValidation)
+		if (validation)
 			layers.Add("VK_LAYER_KHRONOS_validation");
 
 		VkInstanceCreateInfo createInfo = .();
@@ -105,7 +125,7 @@ class VulkanBackend : IBackend
 		VulkanNative.LoadInstanceFunctions(mInstance, .Agnostic | platformFunctions).IgnoreError();
 		VulkanNative.LoadPostInstanceFunctions(mInstance);
 
-		if (enableValidation)
+		if (validation)
 			SetupDebugMessenger();
 
 		EnumeratePhysicalDevices();
