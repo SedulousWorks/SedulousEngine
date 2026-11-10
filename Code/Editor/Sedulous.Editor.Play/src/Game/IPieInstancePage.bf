@@ -7,17 +7,6 @@ using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Play;
 
-/// Where a PIE instance's startup script stands.
-enum PieScriptState
-{
-	/// The project has no startup script, or the run has not started one.
-	None,
-	Running,
-	/// It stopped on its own: a fault in one of its calls, or it did not instantiate.
-	/// IPieInstancePage.ScriptFault says which.
-	Faulted
-}
-
 /// What one play-in-editor instance, a Game tab, lets the PIE tools act through: beyond what
 /// the scene tools read (IGameScenePage: its id, whether it runs and its scene), its run's start
 /// and stop, the state of the run, a capture of what it renders, scripted input in place of the
@@ -32,7 +21,7 @@ interface IPieInstancePage : IGameScenePage
 
 	/// Play was asked for and the run waits on the cook.
 	bool IsStarting { get; }
-	/// The scene the run is in, empty when it has none (a script that owns boot, between
+	/// The scene the run is in, empty when it has none (a game that owns boot, between
 	/// levels).
 	StringView SceneName { get; }
 	/// Seconds of frames since the run started, unscaled: it keeps going while the game has
@@ -41,9 +30,6 @@ interface IPieInstancePage : IGameScenePage
 	double RunTime { get; }
 	/// Frames rendered since the run started.
 	uint64 FrameCount { get; }
-	/// The startup script's state, and the reason a faulted one stopped.
-	PieScriptState ScriptState { get; }
-	StringView ScriptFault { get; }
 
 	/// Asks for the viewport's next rendered frame, after the game's own UI and overlays,
 	/// as a PNG at `path` (its directory must exist), replacing a pending request.
@@ -52,8 +38,8 @@ interface IPieInstancePage : IGameScenePage
 	ViewportCapture LastViewportCapture { get; }
 
 	/// The class name of the run's native game (the build's Game, launched by the run),
-	/// appended to `outTypeName`; false when none runs: a build without one, a game script in
-	/// its place, or the run stopped.
+	/// appended to `outTypeName`; false when none runs: a build without one, or the run
+	/// stopped.
 	bool GetNativeGame(String outTypeName);
 	/// A field of the running native game, read by reflection: `path` names a field of its
 	/// class, public or private ([Game] reflects them all), then keys and indices inside it

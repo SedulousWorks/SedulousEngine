@@ -11,7 +11,6 @@ using Sedulous.Engine.Audio;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.GUI;
 using Sedulous.Engine.Input;
-using Sedulous.Engine.Integration;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Net;
 using Sedulous.Engine.Particles;
@@ -19,11 +18,6 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
-using Sedulous.Engine.Script.Facades;
-using Sedulous.Script;
-using Sedulous.Script.AngelScript;
-using Sedulous.Script.Resource;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Vegetation;
 using Sedulous.Graphics;
@@ -56,8 +50,8 @@ namespace Sedulous.Engine.DefaultApp;
 /// in, and it registers ALL of them, so subsystem registration has one home rather than one
 /// per entry point.
 ///
-/// It also owns the GAME SCRIPT lifecycle: the run host wiring, the facade surface, the
-/// backends, the per context configurator, the load facade and the script tick.
+/// It also owns each run's game wiring: the scene loads its game asks for, its exit, its
+/// profiler overlay, and the game's tick.
 class DefaultApplication : IApplication, ISceneObserver
 {
 	/// BORROWED: stable for the application's lifetime.
@@ -68,8 +62,6 @@ class DefaultApplication : IApplication, ISceneObserver
 	private AudioSubsystem mAudio = null ~ delete _;
 	private InputSubsystem mInput = null ~ delete _;
 	private PhysicsSubsystem mPhysics = null;
-	/// None without graphics.
-	private AnimationSubsystem mAnimation = null;
 	/// OWNED, like the other REGISTERED subsystems: the context drives one it did not create
 	/// and never frees it.
 	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
@@ -107,20 +99,12 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// manager's predicate while the manager lives, so the authored records its factories read
 	/// (a prefab) come from beneath.
 	private IContentDatabase mContentDatabase = null;
-	/// BORROWED: where a scene id resolves for a script's Run.LoadSceneAsync. The content
+	/// BORROWED: where a scene id resolves for a game's Run.LoadSceneAsync. The content
 	/// database unless the host names another, the player's authored source database say.
 	private IContentDatabase mSceneDatabase = null;
-	/// The runtime script surface, populated once from the root; every run binds it.
-	/// Registered with ScriptSurfaces once populated, so the plugins' Engine parts put their own
-	/// types on it.
-	private ScriptSurface mScriptSurface = new .() ~ { ScriptSurfaces.Unregister(_); delete _; };
 
 	private NetworkStartup mNetStartup = .();
 
-	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
-	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
-	/// OWNED: the animation's events (a one-shot ended) to script handlers, likewise.
-	private ScriptAnimationBridge mAnimationBridge = new .() ~ delete _;
 	/// `Save` to scripts outside every run (the editor's Simulate): every fallback read, nothing
 	/// written, rather than a fault on a missing service. On the application's services, since no
 	/// subsystem sits beside RunSave's owner (GameInstance, a run); a run's own comes first.
@@ -240,10 +224,6 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// Where engine data was found, empty when it was not.
 	public StringView DataRoot => mDataRoot;
-	/// The engine facade surface every script in this app binds against; the editor's
-	/// script page browses and completes over it. Borrowed.
-	public ScriptSurface ScriptSurface => mScriptSurface;
-
 	/// The mount over that root, which is what every consumer of engine data is handed.
 	public IFileSystem DataFileSystem => mDataMount;
 
@@ -316,7 +296,7 @@ class DefaultApplication : IApplication, ISceneObserver
 					spawner.SetSource(Resources);
 			});
 	}
-	/// The database scene ids resolve in for script driven loads; the content database when
+	/// The database scene ids resolve in for game driven loads; the content database when
 	/// none is named. A game run from its project folder names its sources here while its
 	/// content database is its cooked one over them, which lets no scene through.
 	public void SetSceneDatabase(IContentDatabase database)
@@ -378,8 +358,6 @@ class DefaultApplication : IApplication, ISceneObserver
 			mDataMount = new NativeFileSystem(mDataRoot);
 		}
 
-		EngineScriptSurface.Populate(mScriptSurface);
-		ScriptSurfaces.Register(mScriptSurface);
 		mScenes = host.Subsystems.AddSubsystem<SceneSubsystem>();
 		// The assembly blueprint: every registered manager's scene is built from the FULL
 		// composition, which is the single source of truth.
@@ -388,7 +366,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// The run's scene group lives on the instance, so it is registered here to tick on
 		// the context's lane.
 		mScenes.RegisterManager(mInstance.Scenes);
-		// A script's Spawn reaches the content through the scene's spawn system, which only
+		// A game's spawn by id reaches the content through the scene's spawn system, which only
 		// the app can point at the database and the manager.
 		mScenes.RegisterObserver(this, .SystemsReady);
 
@@ -399,7 +377,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			host.Subsystems.RegisterSubsystem<RenderSubsystem>(mRender);
 
 			// Drives skeletal animation off the scene tick, and needs the render managers.
-			mAnimation = host.Subsystems.AddSubsystem<AnimationSubsystem>();
+			host.Subsystems.AddSubsystem<AnimationSubsystem>();
 			host.Subsystems.AddSubsystem<ParticleSubsystem>();
 			// The terrain renderer registers itself on the opaque category and wires the
 			// manager scene composition already injected.
@@ -412,29 +390,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		mPhysics = host.Subsystems.AddSubsystem<PhysicsSubsystem>();
 		host.Subsystems.AddSubsystem<NavigationSubsystem>();
 
-		// Scripting: the backend, and the run's surface. The COMPLETE runtime surface, from
-		// the composition root, never a hand picked subset: a list kept here would drift.
-		AngelScriptBackend.Register();
-		let scripts = host.Subsystems.AddSubsystem<ScriptSubsystem>();
-		scripts.Configure = new (runtime) =>
-			{
-				runtime.Bind(mScriptSurface);
-				for (let p in runtime.Problems)
-					GlobalLog(.Warning, scope $"Script: {p}");
-				ClearAndDeleteItems!(runtime.Problems);
-				// The services a script reaches by handle are found by type as it calls: its run
-				// host's, its run's, then the application's, which each subsystem offers itself.
-			};
 		host.Subsystems.RegisterService(mIdleSave);
-		// The scene facades' drawer.
-		DebugFacade.Renderer = mRender;
-		// Physics contacts reach behaviours through the composition root's bridge: neither
-		// subsystem names the other.
-		mContactBridge.Install(mPhysics, scripts);
-		// The same for the animation's events: a one-shot ended reaches onAnimationFinished.
-		if (mAnimation != null)
-			mAnimationBridge.Install(mAnimation, scripts);
-		WireInstanceScripting(mInstance, host);
+		WireInstance(mInstance, host);
 
 		// The net subsystem injects the replication managers into every scene so authored
 		// network components work, and OWNS the per frame transport pump, over the runs'
@@ -489,21 +446,18 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		if (mInput != null)
 			instance.SetInputSource(GameInputSource);
-		WireInstanceScripting(instance, mHost);
+		WireInstance(instance, mHost);
 
 		mExtraInstances.Add(instance);
 		return instance;
 	}
 
-	// ==================== the game script ====================
+	// ==================== the game ====================
 
-	/// An instance's run host wired like the subsystem's own, and the instance's `Run`
-	/// verbs backed by this app: scene ids resolve in the scene database, a load's scene
-	/// gets the app's activation, and an exit reaches the host.
-	private void WireInstanceScripting(GameInstance instance, IApplicationHost host)
+	/// The instance's `Run` verbs backed by this app: scene ids resolve in the scene database, a
+	/// load's scene gets the app's activation, and an exit reaches the host.
+	private void WireInstance(GameInstance instance, IApplicationHost host)
 	{
-		if (let scripts = host.Subsystems.GetSubsystem<ScriptSubsystem>())
-			scripts.ConfigureHost(instance.RunHost);
 		instance.SetSceneLoader(new (sceneId) =>
 			{
 				let db = SceneDatabase;
@@ -538,8 +492,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
 	}
 
-	/// What a scene gets the moment a script driven load lands: started and simulating.
-	/// A player seeds a camera first, so a script loaded level renders.
+	/// What a scene gets the moment a game driven load lands: started and simulating.
+	/// A player seeds a camera first, so a level the game loaded renders.
 	protected virtual void ApplyLoadedSceneActivation(Scene scene)
 	{
 		if (scene == null)
@@ -548,33 +502,13 @@ class DefaultApplication : IApplication, ISceneObserver
 		scene.SetSimulationEnabled(true);
 	}
 
-	/// Launches the game script on the primary instance: a class with `launch()`,
-	/// `update(dt)`, `exit()` and `on<Event>` handlers, all optional. The CALLER resolves
-	/// where the class comes from, the manifest's startup script for the player. A fault
-	/// stops the script, not the game.
-	public bool StartGameScript(ScriptClass scriptClass) => mInstance.StartScript(scriptClass);
-	public void StopGameScript() => mInstance.StopScript();
-	/// A game of either kind runs on the primary instance: the native game, or a game script.
+	/// The native game runs on the primary instance.
 	public bool GameRunning => mInstance.GameRunning;
 
 	/// Launches the primary instance's game, as the player does before its boot scene: the
-	/// native game when the build registered one (GameInstance.LaunchGame), otherwise the game
-	/// script `startupScript` resolves (null for none; it says why). `scriptNamed` is whether
-	/// the project names a startup script: with a native game as well, the native game runs, the
-	/// script is never resolved, and a warning says so. True when a game of either kind runs.
-	public bool LaunchGame(bool scriptNamed, delegate ScriptClass() startupScript)
-	{
-		if (mInstance.LaunchGame())
-		{
-			if (scriptNamed)
-				GlobalLog(.Warning, "Game: the build has a native game, which runs; the project's startup script is not started");
-			return true;
-		}
-		if (!scriptNamed || (startupScript == null))
-			return false;
-		let scriptClass = startupScript();
-		return (scriptClass != null) && StartGameScript(scriptClass);
-	}
+	/// native game when the build registered one (GameInstance.LaunchGame). False, with nothing
+	/// running, in a build without one.
+	public bool LaunchGame() => mInstance.LaunchGame();
 
 	public void ReleaseInstance(GameInstance instance)
 	{
@@ -710,9 +644,9 @@ class DefaultApplication : IApplication, ISceneObserver
 				// Activate any load that finished, which is why this follows the pump.
 				instance.PumpLoads();
 				instance.DriveInput(deltaTime, contextScale);
-				// The game script sees this frame's input, and the bus drains after it with
-				// no script call active.
-				instance.TickScript(deltaTime, contextScale);
+				// The game sees this frame's input, and the bus drains after it with no game
+				// call active.
+				instance.TickGame(deltaTime, contextScale);
 				instance.DrainRunEvents();
 			});
 
@@ -1036,11 +970,6 @@ class DefaultApplication : IApplication, ISceneObserver
 			ShutdownGlobalProfiler();
 			mInstalledProfiler = false;
 		}
-		mContactBridge.Uninstall();
-		mAnimationBridge.Uninstall();
-		// Every game script's exit() before its scenes go.
-		ForEachInstance(scope (instance) => instance.StopScript());
-		DebugFacade.Renderer = null;
 
 		// Each manager's scenes go before it is unregistered, so the aware subsystems hear of them.
 		for (let instance in mExtraInstances)
@@ -1100,7 +1029,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	}
 
 	/// The resolver's body: the one spawn recipe, PrefabSpawnSystem's, with the app's manager
-	/// supplied. A script's Spawn runs the same one through the scene. A prefab not loaded yet
+	/// supplied. A game's spawn by id runs the same one through the scene. A prefab not loaded yet
 	/// is loaded at once, so the entity exists in the frame the message arrives.
 	///
 	/// Answers an unassigned handle for every failure, and does so deliberately: a replicated

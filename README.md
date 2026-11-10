@@ -42,9 +42,8 @@ This is the second iteration of the engine. The previous one continues on the `v
   vegetation.
 - **Animation:** skeletal clips, animation graphs, IK, root motion and property animation.
 - **Networking** with state replication.
-- **Scripting** in AngelScript over a generated binding of the engine's `[Scriptable]` surface:
-  behaviours per entity, a level script per scene and a game script per run, with coroutines and
-  events.
+- **Game code** in Beef: behaviours per entity, a level per scene and a game per run, compiled
+  into the game's own editor and player.
 - **UI:** a retained-mode GUI with flex, grid and stack layouts, `.xml` markup, CSS sheets
   (cascade, variables, transitions, animations, media queries), shaped bidirectional text,
   keyboard and gamepad navigation, data binding, world-space UI, a game kit for screens and

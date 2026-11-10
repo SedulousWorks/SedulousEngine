@@ -40,15 +40,15 @@ class GameInstanceTests
 		return map;
 	}
 
-	/// The run clock counts frames whether or not a game script runs: a project with only
-	/// scene behaviours is still a run, and a playtest times its input by this clock.
+	/// The run clock counts frames whether or not a game runs: a project with only scene
+	/// behaviours is still a run, and a playtest times its input by this clock.
 	[Test]
-	public static void TheRunClockCountsFramesWithoutAGameScript()
+	public static void TheRunClockCountsFramesWithoutAGame()
 	{
 		let instance = scope GameInstance();
-		Test.Assert(!instance.ScriptRunning);
+		Test.Assert(!instance.GameRunning);
 		for (int i < 5)
-			instance.TickScript(1.0f / 60.0f, 1.0f);
+			instance.TickGame(1.0f / 60.0f, 1.0f);
 		Test.Assert(Math.Abs(instance.RunTime - 5.0 / 60.0) < 1e-6, scope $"{instance.RunTime}");
 		instance.ResetRunClock();
 		Test.Assert(instance.RunTime == 0);
@@ -220,7 +220,6 @@ class GameInstanceTests
 		Test.Assert(RunServices.Get<NetworkController>(run) === instance.Network);
 		Test.Assert(RunServices.Get<ActionRuntime>(run) === instance.InputRuntime);
 		Test.Assert(RunServices.Get<RunSave>(run) === instance.Saves);
-		Test.Assert(RunServices.Get<Sedulous.Engine.Script.ScriptRunHost>(run) === instance.RunHost);
 		Test.Assert(RunServices.Get<Sedulous.Http.Client.HttpFacade>(run) === instance.Http);
 
 		instance.Start();
@@ -228,6 +227,28 @@ class GameInstanceTests
 		Test.Assert(run.State == .Paused);
 		instance.Stop();
 		Test.Assert(run.State == .Idle);
+	}
+
+	/// A session's end stops every pad of the run's source rumbling, so no pad is left buzzing
+	/// after a run, whether or not a game ran; a session ended with no source asks nothing.
+	[Test]
+	public static void ASessionsEndStopsItsSourcesPadsRumbling()
+	{
+		let source = scope OnePadSource();
+		let instance = scope GameInstance();
+		instance.SetInputSource(source);
+		instance.Start();
+		source.Gamepad.RumbleLow = 0.5f;
+		source.Gamepad.RumbleHigh = 0.25f;
+		source.Gamepad.RumbleMs = 1000;
+		instance.Stop();
+		Test.Assert(source.Gamepad.RumbleCalls == 1);
+		Test.Assert((source.Gamepad.RumbleLow == 0.0f) && (source.Gamepad.RumbleHigh == 0.0f) && (source.Gamepad.RumbleMs == 0));
+
+		instance.SetInputSource(null);
+		instance.Start();
+		instance.Stop();
+		Test.Assert(source.Gamepad.RumbleCalls == 1, "no source, nothing asked");
 	}
 
 	[Test]

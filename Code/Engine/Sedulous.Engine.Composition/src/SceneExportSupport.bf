@@ -54,12 +54,12 @@ static class SceneExportSupport
 
 	/// A scene's or prefab's DIRECT references: the component resource Refs, through a
 	/// factory less ResourceManager whose every bind lands unresolved, and the ids its systems
-	/// name without binding (a script property's asset), into `outResources`; the parked
+	/// name without binding (a behaviour's scene field), into `outResources`; the parked
 	/// prefab instance ids into `outPrefabs`. False when the stored stream does not load.
 	///
 	/// The placed prefab instances are spawned from `db` before the scan, with the scene's
-	/// overrides applied, so what an instance's override names (a mesh swapped, a script
-	/// property set on one placement) is a reference of the scene's. What the prefab itself
+	/// overrides applied, so what an instance's override names (a mesh swapped on one
+	/// placement) is a reference of the scene's. What the prefab itself
 	/// names comes along too, which its own scan also finds. A prefab missing from `db` is
 	/// skipped with the warning a scene load gives.
 	public static bool ScanSceneReferences(Instance instance, ContentDatabase db, List<Guid> outResources, List<Guid> outPrefabs)

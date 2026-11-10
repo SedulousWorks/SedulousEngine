@@ -2,7 +2,7 @@ using System;
 using Sedulous.Input;
 using Sedulous.Shell;
 
-namespace Sedulous.Engine.GameScript.Tests;
+namespace Sedulous.Engine.GameInstance.Tests;
 
 /// One pad and no other device, recording the last rumble asked of it.
 class OnePadSource : IInputSourceProvider

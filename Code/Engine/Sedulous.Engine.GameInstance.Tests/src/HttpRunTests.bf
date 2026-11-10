@@ -40,7 +40,7 @@ class HttpRunTests
 			if (!got.IsEmpty)
 				break;
 			server.Pump();
-			instance.TickScript(0.016f, 1.0f);
+			instance.TickGame(0.016f, 1.0f);
 			Thread.Sleep(1);
 		}
 		Test.Assert(got == "200 best: 12.5", got);
@@ -53,7 +53,7 @@ class HttpRunTests
 		for (int i < 50)
 		{
 			server.Pump();
-			instance.TickScript(0.016f, 1.0f);
+			instance.TickGame(0.016f, 1.0f);
 			Thread.Sleep(1);
 		}
 		Test.Assert(late == 0, "never called");
