@@ -174,9 +174,9 @@ class IkRuntime
 	public float Weight = 0.0f;
 	/// The order it was added to the stack at.
 	public int32 Order = 0;
-	public bool HasScriptTarget = false;
+	public bool HasTargetPoint = false;
 	/// World space (IkScene.SetTarget).
-	public Float3 ScriptTarget = .(0, 0, 0);
+	public Float3 TargetPoint = .(0, 0, 0);
 	public Float3 TargetWorld = .(0, 0, 0);
 	public bool HasPoleWorld = false;
 	public Float3 PoleWorld = .(0, 0, 0);
