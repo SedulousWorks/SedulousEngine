@@ -54,8 +54,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - GUI: a command every handler passes on (`Propagate`: not mine) is unhandled: `RunCommand`
   returns false for it, and its key goes on as an unbound key does, where before any handler on
   the path took the key. A screen stack passes on a Back it pops nothing with.
-- Animation: an animator's root motion mode `Script` is now `Manual` (held for game code or a
-  script to apply, as `RootMotionMode::Manual` in a script); scenes that use it read as before.
+- Animation: an animator's root motion mode `Script` is now `Manual` (held for game code to apply);
+  scenes that use it read as before.
 - Export: an export builds the game's own player for its preset (its platform and config), with
   the game's code and the plugins it enables, instead of copying a prebuilt player; a project's
   first shipping or web export compiles the engine and takes minutes. A Windows preset exports
