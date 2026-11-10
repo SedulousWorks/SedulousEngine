@@ -366,8 +366,8 @@ class GamePageTests
 
 	/// A Game tab reads its native game's fields, public and private, and its scene's active
 	/// native level's, for the PIE probes, and names the game for pie_state. A scene with no
-	/// level active gives no value and no reason (a probe then reads the level script); a stopped
-	/// tab has no game.
+	/// level active gives no value and no reason (a probe then says no native level is active); a
+	/// stopped tab has no game.
 	[Test]
 	public static void TheTabReadsItsNativeGameAndActiveLevelFieldsAndNamesTheGame()
 	{

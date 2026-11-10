@@ -85,8 +85,8 @@ class BehaviourEventTests
 		Test.Assert(run.Events.PendingCount == 1, "the next one waits");
 	}
 
-	/// Two event types do not cross, and a payload of another type under the same key (a
-	/// script event sharing the name) is not misread.
+	/// Two event types do not cross, and a payload of another type under the same key is not
+	/// misread.
 	[Test]
 	public static void TwoEventTypesDoNotCross()
 	{

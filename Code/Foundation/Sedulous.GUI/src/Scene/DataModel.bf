@@ -3,13 +3,13 @@ using System.Collections;
 
 namespace Sedulous.GUI;
 
-// A GUI's named values, which markup and scripts bind to (after RmlUi's data models). Each name
+// A GUI's named values, which markup and code bind to (after RmlUi's data models). Each name
 // is an observable value, so a binding that reads `score` follows it with no subscription; a name
 // read before it is set is still followed, and takes its first value when one arrives. Values
-// are Variants: whatever the game, a script or a widget writes.
+// are Variants: whatever the game or a widget writes.
 //
 // The conversions bindings need live here too: a value meets a property of another type (a
-// script's number for a slider's float, a count for a label's text), and two values compare
+// double for a slider's float, a count for a label's text), and two values compare
 // across numeric types, so writing back what was just read is no change.
 //
 // These are corlib's Variants (System.Variant; Sedulous.GUI.Variant is a model's cell value). One
@@ -18,7 +18,7 @@ namespace Sedulous.GUI;
 // borrowed view, and a conversion returns a Variant the caller disposes. A value wider than a
 // pointer (a StringView) is a buffer the Variant allocates: whoever creates one disposes it.
 //
-// A node is a value too (a script's Gui.SetNode): held weakly, as a script holds one, by its
+// A node is a value too (the Gui facade's SetNode): held weakly, by its
 // Node.ElementRef, so the value reads as no node once the node is gone. The model keeps a reference
 // on the element table while it holds one, as a node does, since the model can outlive its GUI
 // (a binding or a tween holds it).

@@ -544,7 +544,7 @@ class MenuTests
 		let root = SceneFixtures.NewScene(400.0f, 300.0f);
 		defer root.ReleaseRef();
 		let d = root.EventDispatcher;
-		// A page that scrolls, a button half way down it, the button's menu inside it (a script's).
+		// A page that scrolls, a button half way down it, the button's menu inside it (made in code).
 		let page = new UIWidget();
 		defer page.ReleaseRef();
 		page.Size = .(400.0f, 200.0f); // shorter than the window, as a page under a header is
@@ -727,7 +727,7 @@ class MenuTests
 		root.UpdateLayout();
 		let menu = page.GetChildAt(1) as Menu;
 		Test.Assert(menu != null);
-		// As the sandbox's script does: a listener up the page takes the bubbling activate.
+		// As a page's handler does: a listener up the page takes the bubbling activate.
 		page.AddEventListener(.ItemActivate, new (e) => { e.Handled = true; });
 		let d = root.EventDispatcher;
 		void RightClick(Float2 at)

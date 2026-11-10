@@ -71,7 +71,7 @@ class NetworkController : INetworkController
 	/// Opens a listening socket and takes the server role.
 	///
 	/// A fixed port host ALSO opens the browser gateway one port up by convention, so a web
-	/// client joins without the game script knowing which platform it is on. A host on an
+	/// client joins without the game's code knowing which platform it is on. A host on an
 	/// operating system assigned port, which a test is, stays plain.
 	public bool StartServer(uint16 port, bool dedicated)
 	{
@@ -111,7 +111,7 @@ class NetworkController : INetworkController
 	public bool Connect(StringView host, uint16 port)
 	{
 		var port;
-		// The SAME game script joins with the UDP port on every platform. A browser cannot
+		// The SAME game code joins with the UDP port on every platform. A browser cannot
 		// speak UDP, so it always joins the host's websocket gateway, and so does a ws:// or
 		// wss:// address anywhere: StartServer opens the gateway one above the UDP port by the
 		// convention above, unless the address names a port of its own. Nought and 0xFFFF are

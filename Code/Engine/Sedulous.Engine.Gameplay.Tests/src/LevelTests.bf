@@ -48,7 +48,7 @@ class LevelTests
 	// ---- the block is the level ----
 
 	/// Its settings block is the system itself, under its [Level] id, and it runs before the
-	/// behaviours and scripts, in simulation alone.
+	/// behaviours, in simulation alone.
 	[Test]
 	public static void ItsSettingsBlockIsItself()
 	{

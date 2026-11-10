@@ -122,7 +122,7 @@ extension GuiSubsystem
 	}
 
 	/// A render-texture canvas's entity's own sprite and decal shown its texture (the same
-	/// override a script would set); one that showed the old one lets it go.
+	/// override game code would set); one that showed the old one lets it go.
 	private static void ShowTexture(SpriteComponentManager sprites, DecalComponentManager decals, EntityHandle entity,
 		ITextureView was, ITextureView now)
 	{

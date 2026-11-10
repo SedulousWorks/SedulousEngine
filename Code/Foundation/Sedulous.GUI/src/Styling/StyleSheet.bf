@@ -1109,8 +1109,8 @@ class StyleSheet
 
 	/// The cascade of `matches` (from any sheets), into `outStyle` (emptied first): ordered by
 	/// origin, then specificity, then source order, applied low to high so the later wins
-	/// (!important resists a later normal value); then `inlineStyle` (markup's attributes, a
-	/// script's style), the highest origin. Custom properties first (this element's, then those
+	/// (!important resists a later normal value); then `inlineStyle` (markup's attributes,
+	/// SetInlineStyle's), the highest origin. Custom properties first (this element's, then those
 	/// it inherits from `inherited`), so a var() anywhere resolves against the whole cascade; then
 	/// each declaration as its longhands, parsed: once per declaration when it has no var() (its
 	/// value cannot change), else each time.

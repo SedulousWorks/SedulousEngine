@@ -65,7 +65,7 @@ class SplineComponentTests
 			&& Near(sampled.Z, expected.Z));
 	}
 
-	/// Add Component in the editor, or a script: no points until the Initialize phase runs,
+	/// Add Component in the editor, or game code: no points until the Initialize phase runs,
 	/// which seeds a segment; a component that already has its points is left alone.
 	[Test]
 	public static void AddedBareItIsSeededAtItsFirstInitializeAndLoadedPointsAreKept()

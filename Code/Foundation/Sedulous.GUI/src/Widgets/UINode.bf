@@ -11,8 +11,8 @@ namespace Sedulous.GUI;
 // What it keeps that C++ keeps by value (a text style, an inline declaration, a motion value, a
 // styled property) owns text or lists, so each is a class with a deep Set.
 
-/// One declaration of a node's inline style: markup's attributes the node does not claim, a
-/// script's style. The cascade's highest origin.
+/// One declaration of a node's inline style: markup's attributes the node does not claim,
+/// SetInlineStyle's. The cascade's highest origin.
 class InlineStyleDeclaration
 {
 	public String Name = new .() ~ delete _;

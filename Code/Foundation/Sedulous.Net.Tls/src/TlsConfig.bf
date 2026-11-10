@@ -10,7 +10,7 @@ enum TlsTrust : uint8
 	System,
 	/// The configuration's own roots alone (a game's own CA).
 	Roots,
-	/// No check at all: tests only, never the default, never reachable from a script.
+	/// No check at all: tests only, never the default.
 	InsecureForTests,
 }
 

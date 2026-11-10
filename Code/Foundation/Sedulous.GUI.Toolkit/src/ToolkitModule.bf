@@ -25,7 +25,7 @@ static
 	private static bool sToolkitElementsRegistered = false;
 
 	/// Registers the toolkit's element types (ElementTypes.Register), once: a host calls it at
-	/// start-up beside RegisterGuiElements, so markup and scripts can make them.
+	/// start-up beside RegisterGuiElements, so markup and code can make them.
 	public static void RegisterToolkitElements()
 	{
 		if (sToolkitElementsRegistered)

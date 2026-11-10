@@ -528,7 +528,7 @@ class TweenTests
 	{
 		let bed = scope TweenDataBed();
 		let gui = bed.Root.Context;
-		gui.Data.Set("points", System.Variant.Create(0.0)); // as a script's numbers arrive
+		gui.Data.Set("points", System.Variant.Create(0.0)); // as game code's doubles arrive
 		let counting = gui.AnimateData("points", 100.0, 1.0f, "linear");
 		defer counting.ReleaseRef();
 		counting.Whole();
@@ -640,7 +640,7 @@ class TweenTests
 		Test.Assert(Near(widget.Alpha, 0.75f));
 		Test.Assert(tween.ResolveTarget() == widget);
 
-		// The GUI goes, its widget and its manager with it; the tween is held here, as a script
+		// The GUI goes, its widget and its manager with it; the tween is held here, as game code
 		// holds one. Its weak target's table is kept by it, closed: no target, no freed memory.
 		styles.Forget(widget);
 		root.ReleaseRef();

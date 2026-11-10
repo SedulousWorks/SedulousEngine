@@ -26,7 +26,7 @@ struct ToolAnnotations
 	/// Reads and reports; changes nothing of the project. A file of its own outside it (a
 	/// screenshot, a profiler capture) does not count.
 	public static Self ReadOnly => .(true, false, true, false);
-	/// Adds something new to the project (an asset, a script, an entity) without touching what
+	/// Adds something new to the project (an asset, an entity) without touching what
 	/// exists.
 	public static Self Creates => .(false, false, false, false);
 	/// Replaces existing data (a scene's source); the same call again lands the same state.

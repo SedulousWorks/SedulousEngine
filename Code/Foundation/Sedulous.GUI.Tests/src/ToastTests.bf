@@ -260,7 +260,7 @@ class ToastTests
 		withActions.Actions.Add(new ToastAction("open", "Open", ""));
 		withActions.Actions.Add(new ToastAction("third", "Third", ""));
 		let acted = bed.Host.Post(withActions, new [&] (action) => { pressed.Add(new String(action.Id)); });
-		// A script's `activate`, bubbling from the action's button with its id.
+		// The `activate` event, bubbling from the action's button with its id.
 		let activated = scope List<String>();
 		defer { ClearAndDeleteItems!(activated); }
 		bed.Host.AddEventListener(.ItemActivate, new [&] (e) =>

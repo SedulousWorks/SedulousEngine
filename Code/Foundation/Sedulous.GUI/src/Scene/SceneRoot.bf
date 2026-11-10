@@ -113,7 +113,7 @@ class GUIContext : RefCounted
 	public Sedulous.GUI.ActionManager ActionManager => mActionManager;
 	public Sedulous.GUI.MutationQueue MutationQueue => mMutationQueue;
 	public Sedulous.GUI.EffectScheduler EffectScheduler => mEffects;
-	/// The GUI's named values, which markup and scripts bind to.
+	/// The GUI's named values, which markup and code bind to.
 	public DataModel Data => mData;
 	public CommandSet Commands => mCommands;
 	public Command DefineCommand(StringView id) => mCommands.Define(id);
@@ -255,7 +255,7 @@ class GUIContext : RefCounted
 
 	public Sedulous.GUI.ElementTable ElementTable => mElements;
 
-	/// What this GUI's markup and scripts may create (every registered element by default). Set,
+	/// What this GUI's markup and code may create (every registered element by default). Set,
 	/// it takes a copy (the caller keeps its own).
 	public Sedulous.GUI.ElementSet ElementSet
 	{
@@ -269,7 +269,7 @@ class GUIContext : RefCounted
 	public SceneRoot GetRootAt(int index) => ((index >= 0) && (index < mRoots.Count)) ? mRoots[index] : null;
 
 	/// The root last given input (keys, the gamepad, a press), or the first: where keystrokes, the
-	/// gamepad and command availability go. A host or a script may set it.
+	/// gamepad and command availability go. A host or game code may set it.
 	public SceneRoot ActiveRoot
 	{
 		get => (mActive != null) ? mActive : (mRoots.IsEmpty ? null : mRoots[0]);

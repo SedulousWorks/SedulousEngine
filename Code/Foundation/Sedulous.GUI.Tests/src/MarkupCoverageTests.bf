@@ -6,7 +6,7 @@ namespace Sedulous.GUI.Tests;
 
 /// Markup coverage: every control is a markup element. The data views take their data from markup
 /// (a tree's nested items, a table's columns and rows), a scroll bar is a range like the slider,
-/// and a message box waits in its page until a script shows it.
+/// and a message box waits in its page until code shows it.
 class MarkupCoverageTests
 {
 	private static bool Near(double a, double b) => Math.Abs(a - b) < 1e-5;

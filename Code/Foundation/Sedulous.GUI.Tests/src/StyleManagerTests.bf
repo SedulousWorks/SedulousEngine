@@ -652,7 +652,7 @@ class StyleManagerTests
 		styles.ApplyTree(root);
 		Test.Assert(Near(chip.Alpha, 0.4f));
 		Test.Assert(Near(hard.Alpha, 0.8f));
-		// A script or code may set inline style too.
+		// Code may set inline style too.
 		chip.SetInlineStyle("opacity", "0.6");
 		styles.ApplyTree(root);
 		Test.Assert(Near(chip.Alpha, 0.6f));

@@ -129,7 +129,7 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>, ISc
 	/// Points the entity's mesh at a resource ID and binds it through the manager the scene
 	/// was resolved with, so the swap takes effect live.
 	///
-	/// It belongs here, where the components already are, rather than on a script facade.
+	/// It belongs here, where the components already are, rather than on a facade.
 	/// Before any resolve there is no manager: the id is set and nothing binds, which is what
 	/// a bare tool gets.
 	public bool SetMesh(EntityHandle entity, Guid id)

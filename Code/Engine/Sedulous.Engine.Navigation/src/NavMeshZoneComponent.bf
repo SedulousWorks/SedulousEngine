@@ -13,7 +13,7 @@ namespace Sedulous.Engine.Navigation;
 /// The bake profile is AUTHORING only. An editor's bake action reads it; the runtime reads the
 /// cooked product and nothing else.
 ///
-/// Not a script type: its fields are bake settings, read only when the zone is baked.
+/// Its fields are bake settings, read only when the zone is baked.
 [SerializableComponent("navigation.Zone", 2, 1)]
 [DisplayName("Nav Mesh Zone")]
 [Category("Navigation")]

@@ -50,7 +50,7 @@ struct CharacterComponent : ISerializable
 	/// Consumed as a snap at the next step, then cleared.
 	[Hidden]
 	public bool TeleportPending = false;
-	/// Driven (Drive): the script owns the whole velocity, gravity included, until the next
+	/// Driven (Drive): game code owns the whole velocity, gravity included, until the next
 	/// Move. What a board or a sled needs: momentum along a slope, which the standard recipe (a
 	/// grounded character moves only by its input) cannot keep.
 	[Hidden]
@@ -72,7 +72,7 @@ struct CharacterComponent : ISerializable
 	[Hidden]
 	public Float3 CurrPosition = .(0, 0, 0);
 	/// How fast it moved over the last step (m/s): the motion the sweep allowed, not the
-	/// velocity asked for, since a wall or a slope bends it and a script integrating momentum
+	/// velocity asked for, since a wall or a slope bends it and game code integrating momentum
 	/// needs what happened.
 	[Hidden]
 	[ReadOnly]

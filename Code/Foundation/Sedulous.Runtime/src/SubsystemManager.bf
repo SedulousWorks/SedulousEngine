@@ -40,9 +40,9 @@ class SubsystemManager
 	public IRunManager RunManager => mRuns;
 
 	/// The application's services, by exact type: what its subsystems offer beyond themselves (the
-	/// facades a script reaches, through its run host's lookup). A subsystem registers its own when
-	/// it is registered and removes them when it leaves; a run's own services come first for that
-	/// run's scripts. BORROWED: the owner keeps each alive while registered. One per type; a second
+	/// facades game code reaches). A subsystem registers its own when it is registered and removes
+	/// them when it leaves; a run's own services come first for that run's game code. BORROWED:
+	/// the owner keeps each alive while registered. One per type; a second
 	/// replaces.
 	public void RegisterService<T>(T service) where T : class
 	{

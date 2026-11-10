@@ -6,8 +6,8 @@ using Sedulous.Scene;
 
 namespace Sedulous.Net.Replication.Tests;
 
-/// State a manager keeps itself, as a script behaviour's properties are: no field is marked
-/// replicated; the manager writes and reads its own bytes (IReplicatedStateSource).
+/// State a manager keeps itself: no field is marked replicated; the manager writes and reads
+/// its own bytes (IReplicatedStateSource).
 [SerializableComponent("test.Mood")]
 struct Mood : ISerializable
 {

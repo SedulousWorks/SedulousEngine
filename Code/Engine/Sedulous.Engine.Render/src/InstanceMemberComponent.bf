@@ -8,7 +8,7 @@ namespace Sedulous.Engine.Render;
 /// An entity drawn as one instance of another entity's instanced mesh, at its own world
 /// transform and on its clip (an index into the pose pool's clips: an instanced skinning's
 /// list), instead of a mesh of its own. Whatever moves the entity moves the instance:
-/// navigation, physics, replication, a script, the editor's gizmo. Many entities, one draw:
+/// navigation, physics, replication, game code, the editor's gizmo. Many entities, one draw:
 /// pickups, props, units, the guests of a crowd. Extraction adds the members after the
 /// instanced mesh's own authored instances each frame; nothing of theirs is saved into it.
 ///

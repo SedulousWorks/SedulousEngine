@@ -152,7 +152,7 @@ class Node : Transformable, IRefCounted
 
 	// Overrides where the geometry is wrong (`nav-up`, `nav-down`, `nav-left`, `nav-right`,
 	// `nav-next`, `nav-prev`): a widget's id to go to, `none` to stop, or `auto` (or empty) for the
-	// picker or the tab order. Reflected with their CSS names, so sheets, markup and scripts set
+	// picker or the tab order. Reflected with their CSS names, so sheets, markup and code set
 	// them alike; a scope's kind (`nav-scope`: pass, wrap, contain, none) and default focus
 	// (`nav-default`) likewise.
 	public enum NavOverride : uint8
@@ -619,7 +619,7 @@ class Node : Transformable, IRefCounted
 		}
 	}
 
-	/// Alpha, as markup, bindings and scripts name it.
+	/// Alpha, as markup, bindings and code name it.
 	[GuiProperty]
 	public float Opacity
 	{
@@ -1643,7 +1643,7 @@ class Node : Transformable, IRefCounted
 	// the base returns the parent's, a SceneRoot its own. Null when the node is not attached under
 	// a SceneRoot.
 
-	/// Where children given to this node by markup or a script go: the node itself, or, for a
+	/// Where children given to this node by markup or code go: the node itself, or, for a
 	/// widget built of parts (a scroller, a window), the part that holds its content.
 	public virtual Node ChildHost => this;
 
@@ -2014,7 +2014,7 @@ class Node : Transformable, IRefCounted
 	public void HandleDragQuery(DropQuery query)
 	{
 		OnDragQuery(query);
-		// A listener (a script's `dragquery`) that takes the event takes the drop.
+		// A listener (On("dragquery", ...)) that takes the event takes the drop.
 		if ((query.Effect == .None) && !query.Refused && HasListener(.DragQuery))
 		{
 			let asked = scope DragEvent(.DragQuery, this, query.Payload);
@@ -3076,12 +3076,11 @@ class Node : Transformable, IRefCounted
 			});
 	}
 
-	/// Calls `handler` on each event named `eventName`: a core event by the name markup and scripts
-	/// give it ("click", "keydown"; EventTypeNamed), any other name one a library sends
+	/// Calls `handler` on each event named `eventName`: a core event by the name markup gives
+	/// it ("click", "keydown"; EventTypeNamed), any other name one a library sends
 	/// (SendNamedEvent: a screen's `screenenter`). The handler takes the event by returning true:
 	/// it goes no further on its route. A token for Off; 0, the handler deleted, for an empty name.
 	/// OWNERSHIP of `handler` transfers: the listener holds it, deleted at Off or with the node.
-	/// The script On resolves its names here too.
 	public int32 On(StringView eventName, delegate bool(Event e) handler)
 	{
 		if (handler == null)
@@ -3285,7 +3284,7 @@ class Node : Transformable, IRefCounted
 	}
 
 	// While its listeners or handlers run, the lists hold still: one removed is marked, one added
-	// waits; both settle when the outermost run returns (a script's `off` from inside its own
+	// waits; both settle when the outermost run returns (an Off from inside its own
 	// handler would otherwise free the function running).
 	protected void SettleHandlers()
 	{

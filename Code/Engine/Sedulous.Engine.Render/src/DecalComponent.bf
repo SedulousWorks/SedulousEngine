@@ -19,10 +19,10 @@ namespace Sedulous.Engine.Render;
 [Description("Projects a texture onto the surfaces inside the entity's box, along its local Z axis.")]
 struct DecalComponent : ISerializable, IComponentResources
 {
-	/// A runtime override, which WINS over the asset. BORROWED. Code only; a script sets the
-	/// asset.
+	/// A runtime override, which WINS over the asset. BORROWED. Code only; game code may set the
+	/// asset instead.
 	public ITextureView Texture = null;
-	/// The cooked texture: what an editor picks, what a script sets and what serializes.
+	/// The cooked texture: what an editor picks, what game code sets and what serializes.
 	public Ref<Texture> TextureAsset = .(Guid());
 	public Float3 Size = .(1.0f, 1.0f, 1.0f);
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);

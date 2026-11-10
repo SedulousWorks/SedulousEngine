@@ -468,7 +468,7 @@ class PopupWidgetsTests
 		root.AddChild(host);
 		root.Context.Update(TimeSpan(0));
 		root.UpdateLayout();
-		// One at a time, set as a script sets it.
+		// One at a time, set as code sets it.
 		var one = System.Variant.Create((int)1);
 		defer one.Dispose();
 		Test.Assert(ToastHost.StaticGuiType.Find("maxShown").Set(host, one));

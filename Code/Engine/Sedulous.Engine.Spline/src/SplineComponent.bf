@@ -42,7 +42,7 @@ struct SplineComponent : ISerializable
 
 	/// What a spline added with no points starts as: a short segment along the entity's
 	/// local X, so the viewport tool has points to grab and the gizmo shows a curve at once.
-	/// Also the runtime's answer for a script that adds the component bare.
+	/// Also the runtime's answer for game code that adds the component bare.
 	public static void SeedDefault(SplineCurve curve)
 	{
 		curve.Points.Add(SplinePoint(.(-1.0f, 0.0f, 0.0f)));

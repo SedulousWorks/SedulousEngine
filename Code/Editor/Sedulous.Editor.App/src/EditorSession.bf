@@ -212,7 +212,7 @@ class EditorSession
 			mThumbnailStage = new ThumbnailStage(mServices.EmbeddedHost, mServices.Thumbnails, mResources);
 		let app = mServices.EmbeddedApp;
 		if (app != null)
-			app.SetContentDatabase(project.SourceDb); // scripted scene loads read the sources
+			app.SetContentDatabase(project.SourceDb); // a game's own scene loads read the sources
 		ReportPluginsNotLoaded(project, context);
 		ApplyGameUiDefaults();
 		if ((app != null) && (app.Gui != null) && !project.Settings.DefaultUiFontId.IsSet && HasFontAssets(project.SourceDb.RootGroup))

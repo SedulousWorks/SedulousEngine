@@ -487,7 +487,7 @@ class NavigationTests
 		Test.Assert(bed.Focused == "second");
 	}
 
-	/// A game script shows a box by taking its `hidden` class off and focuses a button in it in
+	/// Game code shows a box by taking its `hidden` class off and focuses a button in it in
 	/// the same call: until the sheet applies, the box is hidden and nothing in it can take focus.
 	/// The focus waits for the pass; one given meanwhile outranks it; a node the sheet still hides
 	/// after the pass drops it; a node removed takes it with it.

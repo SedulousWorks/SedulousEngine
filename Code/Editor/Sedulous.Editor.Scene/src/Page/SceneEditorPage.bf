@@ -69,8 +69,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// The context's (registry and tick).
 	private SceneSubsystem mScenes = null;
 	/// The page's run and its Simulate. Declared before the scene group so it is destroyed after
-	/// it (fields go in reverse order): the run outlives the scenes, whose destruction may tear its
-	/// script host down.
+	/// it (fields go in reverse order): the run outlives the scenes that carry it.
 	private SceneSimulation mSimulation = new .("Scene") ~ delete _;
 	/// This page's own scene group, in the page's run.
 	private SceneManager mSceneManager = new .() ~ delete _;
@@ -773,7 +772,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (mScene != null)
 		{
 			// A Simulate under way ends here: the scene stops and the run's session with it, so
-			// what its scripts showed and played goes now, not when the page is destroyed.
+			// what its behaviours showed and played goes now, not when the page is destroyed.
 			mSimulation.Abandon(mScene);
 			mSceneManager.DestroyScene(mScene); // aware subsystems are told OnSceneDestroyed
 			mScene = null;

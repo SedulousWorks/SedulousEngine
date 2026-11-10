@@ -8,8 +8,8 @@ using Sedulous.Net.Replication;
 
 namespace Sedulous.Engine.Gameplay;
 
-/// What a [Replicated] behaviour field may hold: the kinds a script's replicated property
-/// travels as, each at a fixed width so every platform reads what another wrote.
+/// What a [Replicated] behaviour field may hold: the kinds a replicated value travels as, each
+/// at a fixed width so every platform reads what another wrote.
 enum ReplicatedKind : uint8
 {
 	None,

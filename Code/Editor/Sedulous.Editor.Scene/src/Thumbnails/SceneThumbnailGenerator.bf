@@ -12,7 +12,7 @@ namespace Sedulous.Editor.Scene;
 
 /// A scene loaded into a private stage, viewed as its page last showed it (the editor camera
 /// the page saved when it closed), else in perspective from above, far enough back to hold its
-/// bounds. A scene's own camera is often placed by a script at play time, so in the editor it
+/// bounds. A scene's own camera is often placed by game code at play time, so in the editor it
 /// can look at nothing.
 class SceneThumbnailGenerator : ISceneThumbnailGenerator
 {

@@ -239,7 +239,7 @@ class WindowTests
 			root.AddChild(made);
 			made.Open(root);
 			made.ReleaseRef();
-		} // the tree holds it alone now, as a script's window
+		} // the tree holds it alone now, as a window code opened and let go of
 		Test.Assert(root.ChildCount == 1);
 		let win = root.GetChildAt(0) as Window;
 		Test.Assert(win != null);

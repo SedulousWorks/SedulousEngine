@@ -195,7 +195,7 @@ class TabView : UIWidget
 			});
 		mBar.SetOnTabMoved(new (from, to) =>
 			{
-				// The pages keep the tabs' order (a script's children read as the strip does).
+				// The pages keep the tabs' order (the children read as the strip does).
 				let page = mBar.GetTab(to).Page;
 				if (page != null)
 					mHost.SetChildIndex(page, to);

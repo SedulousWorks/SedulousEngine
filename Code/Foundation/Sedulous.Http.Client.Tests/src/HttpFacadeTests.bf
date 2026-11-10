@@ -90,7 +90,6 @@ class HttpFacadeTests
 		}
 	}
 
-	/// A script handler that records the arguments it was called with.
 	/// A facade whose factory makes `fake` (counting the calls), counting the clients it made.
 	private class Bed
 	{

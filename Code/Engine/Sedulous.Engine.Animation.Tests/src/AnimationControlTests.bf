@@ -9,7 +9,7 @@ using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.Animation.Tests;
 
-/// The runtime control surface on the managers: the verbs a script drives a player with,
+/// The runtime control surface on the managers: the verbs game code drives a player with,
 /// which the component data cannot reach because the player is the manager's.
 static class AnimationControlTests
 {

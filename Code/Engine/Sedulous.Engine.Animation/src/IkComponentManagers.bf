@@ -56,8 +56,8 @@ struct IkCommon
 	public bool HeldOff;
 }
 
-/// Inverse kinematics on scene entities: finding the animator, taking
-/// a modifier off it, drawing a solve, and the script's view of an entity's components.
+/// Inverse kinematics on scene entities: finding the animator, taking a modifier off it, drawing
+/// a solve, and game code's view of an entity's components (SetTarget, Reached, Error).
 static class IkScene
 {
 	/// The animator on `entity` itself, if any (a graph before a single clip, as they tick).
@@ -214,7 +214,7 @@ static class IkScene
 			link.Stack.Remove(runtime.Modifier);
 	}
 
-	/// The world point a component reaches for: its target entity, else the script's point,
+	/// The world point a component reaches for: its target entity, else SetTarget's point,
 	/// else its own entity. False when a named target entity is gone.
 	public static bool TargetWorld(Scene scene, EntityRef target, IkRuntime runtime, EntityHandle owner,
 		out Float4x4 outWorld)
@@ -276,7 +276,7 @@ static class IkScene
 			draw.DrawLine(m.ChainWorld[1], runtime.PoleWorld, Color(0.8f, 0.4f, 1.0f, 1.0f), true);
 	}
 
-	/// The IK components on an entity, as the script calls see them.
+	/// The IK components on an entity, as SetTarget, Reached and Error see them.
 	private static void ForEachRuntime(Scene scene, EntityHandle entity, delegate void(IkRuntime) visit)
 	{
 		if (scene == null)

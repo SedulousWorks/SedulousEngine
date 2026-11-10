@@ -13,7 +13,7 @@ namespace Sedulous.Engine.GameInstance;
 /// options), the file they live in, and whether they changed since the last write.
 ///
 /// The host names the file (the player in the user data directory, a Game tab in the project's
-/// Editor/ folder); the run's scripts reach it through the `Save` service. The file is an
+/// Editor/ folder); the run's game code reaches it through the `Save` service. The file is an
 /// ordinary settings file holding one SaveValues section, written whole and atomically.
 class RunSave
 {
@@ -91,7 +91,7 @@ class RunSave
 
 /// `Save`: the calling run's save, as `Save.SetInt("best.level2", 4210)`,
 /// `Save.GetInt("best.level2", 0)`. The run writes what changed as it ends; `Flush` writes now.
-/// A script outside a run (an editor tool, Simulate) reads every fallback and writes nowhere.
+/// Code outside a run (an editor tool, Simulate) reads every fallback and writes nowhere.
 class SaveFacade
 {
 	/// BORROWED: the run's save; null outside a run.

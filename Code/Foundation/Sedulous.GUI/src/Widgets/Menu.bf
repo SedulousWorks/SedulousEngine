@@ -398,7 +398,7 @@ class MenuItem : MenuRow
 			Checked = !mChecked;
 		if (mOnPicked != null)
 			mOnPicked();
-		// A script's `activate`: it bubbles (through the menu to what opened it), so one
+		// The `activate` event: it bubbles (through the menu to what opened it), so one
 		// listener hears a whole menu's items, the event's id saying which.
 		let activated = scope ItemEvent(.ItemActivate, this, -1, ModelIndex());
 		RouteEvent(activated);
@@ -829,7 +829,7 @@ class Menu : UIWidget
 		ShareTextStyle(sub, false);
 		sub.SetItemHeight(mItemHeight);
 		item.SubMenu = sub;
-		sub.mRow = item; // its title, set later (a script's `add` then `title`), names the row
+		sub.mRow = item; // its title, set later (after the item is added), names the row
 		item.SetOnOpenSubMenu(new (fromKeys) => { OpenSubMenuFor(item, fromKeys); });
 		AddItemNode(item, item);
 		item.ReleaseRef(); // the tree's reference keeps it
@@ -989,7 +989,7 @@ class Menu : UIWidget
 		options.AnchorRect = .(x, y, 0.0f, 0.0f);
 		options.HasAnchorRect = true;
 		options.TakesFocus = true;
-		options.ReturnHome = true; // a script's menu: back where it waits, to open again
+		options.ReturnHome = true; // back where it waits, to open again
 		OpenAs(owner, options);
 		return IsOpen;
 	}

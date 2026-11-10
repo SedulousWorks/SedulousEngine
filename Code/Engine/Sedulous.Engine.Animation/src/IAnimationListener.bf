@@ -3,8 +3,8 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation;
 
-/// A one-shot that ended on an entity (the Animation facade's PlayOneShot): the scene, the
-/// entity and the clip.
+/// A one-shot that ended on an entity (a manager's PlayOneShot): the scene, the entity and the
+/// clip.
 struct AnimationOneShotEnded
 {
 	/// BORROWED.
@@ -20,8 +20,8 @@ struct AnimationOneShotEnded
 	}
 }
 
-/// A consumer of the animation's events. The host bridges them to scripts, so the animation
-/// stays script agnostic, as physics contacts do.
+/// A consumer of the animation's events, registered with the AnimationSubsystem, so the
+/// animation knows nothing of who listens, as physics contacts do.
 interface IAnimationListener
 {
 	void OnOneShotEnded(AnimationOneShotEnded ended);

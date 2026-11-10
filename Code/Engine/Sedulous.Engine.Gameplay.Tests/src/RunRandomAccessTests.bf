@@ -33,7 +33,7 @@ class RunRandomAccessTests
 		scene.SetRun(null);
 	}
 
-	/// A game's is the GameInstance's own, which its scripts' Random draws from too.
+	/// A game's is the GameInstance's own, which its behaviours' and levels' Random is too.
 	[Test]
 	public static void AGamesIsItsInstances()
 	{

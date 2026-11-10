@@ -159,8 +159,8 @@ class SceneManagerTests
 		public override void OnSceneStopped() { (*Stops)++; }
 	}
 
-	/// A scene system unhooks itself from what outlives the scene in its stop hook (a script
-	/// system's handlers on a run's event bus). A running scene destroyed without a stop (a run
+	/// A scene system unhooks itself from what outlives the scene in its stop hook (its
+	/// handlers on a run's event bus). A running scene destroyed without a stop (a run
 	/// loading the scene it is already in) left those handlers pointing at freed memory.
 	[Test]
 	public static void ARunningSceneIsStoppedBeforeItIsDestroyed()

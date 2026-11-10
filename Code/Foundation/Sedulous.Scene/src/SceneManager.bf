@@ -220,8 +220,8 @@ class SceneManager
 	private void DestroyImmediate(Scene scene)
 	{
 		// A running scene stops before it goes: its systems' stop hooks are what unhook them from
-		// whatever outlives the scene (a script system's handlers on a run's event bus, a Level's
-		// onStop). A run loading the scene it is already in destroyed it unstopped, and the next
+		// whatever outlives the scene (a system's handlers on a run's event bus, a Level's
+		// OnStop). A run loading the scene it is already in destroyed it unstopped, and the next
 		// event drained into the freed system. A no-op for a scene that is not running.
 		scene.Stop();
 		NotifyDestroyed(scene);

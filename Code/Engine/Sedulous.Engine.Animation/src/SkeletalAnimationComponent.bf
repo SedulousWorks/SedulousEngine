@@ -61,7 +61,7 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	/// A one-shot over the clip, runtime only.
 	[Hidden]
 	public OneShotRuntime OneShot = .();
-	/// The next clip change eases over this many seconds (the facade's SetClip with a blend),
+	/// The next clip change eases over this many seconds (the manager's SetClip with a blend),
 	/// runtime only.
 	[Hidden]
 	public float ClipFade = 0.0f;

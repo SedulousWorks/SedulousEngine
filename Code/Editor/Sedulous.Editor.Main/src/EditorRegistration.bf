@@ -51,8 +51,8 @@ static class EditorRegistration
 		let context = app.Context;
 		app.SetSceneRenderer(host.Subsystems.GetSubsystem<RenderSubsystem>());
 
-		// The pipeline's composition root first: every asset and product type, the script
-		// backend and its cook, which the creators below enumerate.
+		// The pipeline's composition root first: every asset and product type, before the
+		// creators below.
 		PipelineRegistration.RegisterPipelineTypes();
 
 		// The domains' Preferences contributions that live outside the parked pages.

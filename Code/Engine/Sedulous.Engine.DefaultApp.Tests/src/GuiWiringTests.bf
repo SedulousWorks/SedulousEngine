@@ -7,7 +7,7 @@ using Sedulous.Resource;
 namespace Sedulous.Engine.DefaultApp.Tests;
 
 /// Every game has the engine's GUI beside the UI: registered on the host's context, resolving
-/// guids through the game's resource manager, and each run's scripts given a `Gui` of their own
+/// guids through the game's resource manager, and each run's game code given a `Gui` of its own
 /// that goes, with the run's screen tier, when the run does.
 class GuiWiringTests
 {

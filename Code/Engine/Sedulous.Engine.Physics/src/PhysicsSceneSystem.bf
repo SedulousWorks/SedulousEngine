@@ -125,7 +125,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	/// missing body would drop it silently and leave the thing to fall. The queue is flushed
 	/// once, where the body is created.
 	///
-	/// It lives here rather than on a script facade, because it is the world that makes it
+	/// It lives here rather than on a facade, because it is the world that makes it
 	/// possible and a facade would only forward.
 	// ---- scene queries --------------------------------------------------------------------
 	//
@@ -192,7 +192,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	/// The body NEAREST `center` whose shape overlaps a sphere of `radius` there, or Hit false.
 	///
 	/// One handle rather than a list, because "act on the closest thing in range" is what a
-	/// script asks far more often than "act on all of them", and the group mask does the
+	/// game asks far more often than "act on all of them", and the group mask does the
 	/// category filtering. Nearest is by body ORIGIN, and Position is that origin; an overlap
 	/// has no contact surface, so Normal is zero.
 	public PhysicsHit NearestOverlap(Float3 center, float radius, uint32 groupMask = 0xFFFFFFFF)
@@ -432,7 +432,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 				});
 
 			// Held forces (SetForce): the world clears a force after each step, so a force a
-			// script holds is added again before every step it should act in.
+			// game holds is added again before every step it should act in.
 			bodies.ForEach(scope (component, entity) =>
 				{
 					if (component.Body.IsValid && (component.Motion == .Dynamic)
@@ -516,7 +516,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 
 				if (component.Driving)
 				{
-					// The script's velocity as it is: it integrates gravity itself.
+					// The game's velocity as it is: it integrates gravity itself.
 					velocity = component.DriveVelocity;
 					component.LaunchPending = false;
 					component.JumpSpeed = 0.0f;
@@ -1033,7 +1033,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 					{
 						// A queued impulse lives only until the assembly right after it was
 						// queued. If the body is STILL not valid here, the build failed or the
-						// entity is inactive, so the queue drops: a script calling this every
+						// entity is inactive, so the queue drops: game code calling this every
 						// frame would otherwise accumulate an unbounded launch that fires
 						// whenever the body finally appears.
 						if (!component.Body.IsValid)

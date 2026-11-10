@@ -13,10 +13,10 @@ namespace Sedulous.Net.Replication;
 /// own fields are IDENTITY, not replicated state: none carries [Replicated], so the field
 /// codec never touches them.
 ///
-/// A script READS the identity and writes nothing: Authority is the gate a behaviour needs
+/// Game code READS the identity and writes nothing: Authority is the gate a behaviour needs
 /// (the owning side drives, the rest interpolate) and Id is for logging. Replication owns
-/// both, and neither is itself replicated, so a script assigning Authority would desync the
-/// two sides silently. Prefab is replication's bookkeeping, off the surface.
+/// both, and neither is itself replicated, so game code assigning Authority would desync the
+/// two sides silently. Prefab is replication's bookkeeping.
 [SerializableComponent("net.Network")]
 [Description("Marks the entity as networked, giving it a network id and an owner, server or client.")]
 struct NetworkComponent : ISerializable

@@ -8,7 +8,7 @@ namespace Sedulous.Mcp.Reflection;
 /// The reflection tool contribution: type_list and type_info, registered against an McpServer.
 ///
 /// These let an agent discover the authored surface (types, fields, methods, enum values) so it
-/// can write correct scripts and scene edits. Pure queries over Beef's own type table, with no
+/// can write correct game code and scene edits. Pure queries over Beef's own type table, with no
 /// project or pipeline dependency. A module contributes its own tools, and this is the
 /// reflection module's contribution.
 ///

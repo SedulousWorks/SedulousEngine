@@ -43,7 +43,7 @@ namespace Sedulous.Editor.Scene.Tests;
 /// actions. And its inspector: nothing selected says so; an entity's head and sections;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
-/// slot; a component's extras (a rigid body's notice, a zone's Bake), a script component's none;
+/// slot; a component's extras (a rigid body's notice, a zone's Bake);
 /// the scene's settings with the scene selected and the physics block's collision groups. And its bar's editing controls (layer 5): the page's actions,
 /// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
 /// view gizmo, the zoom readout and the tool's status. Its viewport tools: each an action, on the bar
@@ -406,10 +406,9 @@ class ScenePageTests
 		public void OnRunDestroyed(IRun run) { Destroyed++; }
 	}
 
-	/// The page is a run, which joins the live runs: its scene carries it, its behaviours bind to
-	/// its own script host, and each Simulate is one session of it, paused with it and ended at Stop
-	/// or at a close mid run. Another page is another run, with a host of its own; the run leaves
-	/// with its page.
+	/// The page is a run, which joins the live runs: its scene carries it, and each Simulate is
+	/// one session of it, paused with it and ended at Stop or at a close mid run. Another page is
+	/// another run; the run leaves with its page.
 	[Test]
 	public static void ThePageIsARunItsSceneCarriesItAndEachSimulateIsOneSession()
 	{

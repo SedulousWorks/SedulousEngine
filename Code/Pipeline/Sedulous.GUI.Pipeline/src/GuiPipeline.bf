@@ -13,7 +13,7 @@ namespace Sedulous.GUI.Pipeline;
 // Sedulous.UI's counterpart: Sedulous.UI.Pipeline.
 //
 // * GuiDocumentAsset (`.xml` markup) and GuiStyleSheetAsset (`.css`): a LINKED source file in the
-//   project's sources tree (Asset.FileName), as a script's; an asset with no linked file fails the
+//   project's sources tree (Asset.FileName), as a shader's; an asset with no linked file fails the
 //   cook.
 // * The builders VALIDATE: a document through the GUI's markup loader with every element type the
 //   tools register (the core's, the gamekit's, the toolkit's, the code editor's), a sheet through

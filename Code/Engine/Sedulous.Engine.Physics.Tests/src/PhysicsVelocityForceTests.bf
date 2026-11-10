@@ -6,7 +6,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Physics.Tests;
 
-/// A script's velocity and held force on a body: SetVelocity moves it now (or once a body
+/// Game code's velocity and held force on a body: SetVelocity moves it now (or once a body
 /// spawned this frame is built), and SetForce holds a force across every fixed step until let go.
 class PhysicsVelocityForceTests
 {

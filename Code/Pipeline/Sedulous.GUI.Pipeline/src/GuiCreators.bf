@@ -7,7 +7,7 @@ using Sedulous.Pipeline.Core;
 namespace Sedulous.GUI.Pipeline;
 
 /// The GUI's New Asset creators: a document and a style sheet, each a linked source file written
-/// from starter text, as a script's is.
+/// from starter text, as a shader's is.
 static class GuiCreators
 {
 	public static void Register(AssetCreatorRegistry registry)

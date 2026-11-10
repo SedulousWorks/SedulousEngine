@@ -424,7 +424,7 @@ class Scene
 
 	/// The world matrix, this frame's even when read mid-update: an entity moved since the last
 	/// UpdateTransforms (or under a moved ancestor, the dirt reaching down to it) is composed
-	/// fresh up its parent chain, and the rest answer from the cache. A script in onUpdate after
+	/// fresh up its parent chain, and the rest answer from the cache. Game code in OnUpdate after
 	/// physics wrote this frame's pose read last frame's from the cache. The cache itself and
 	/// the previous matrix move only in UpdateTransforms.
 	public Float4x4 GetWorldMatrix(EntityHandle entity)

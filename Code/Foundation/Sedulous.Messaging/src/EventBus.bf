@@ -7,13 +7,11 @@ namespace Sedulous.Messaging;
 
 /// A name keyed event bus, and nothing else.
 ///
-/// A RUN SCOPE facility: a scene's, or a whole run's. It knows nothing of scenes and
-/// nothing of scripting. Native systems publish and subscribe directly, so a game written
-/// entirely in native code is a first class participant; a script layer reaches it through
-/// a bridge, never the other way round.
+/// A RUN SCOPE facility: a scene's, or a whole run's. It knows nothing of scenes. Systems and
+/// game code publish and subscribe directly.
 ///
 /// Delivery is DEFERRED by default. Publish enqueues, and Drain, called at the top level of a
-/// scope's tick with no script call in flight, delivers everything queued to its subscribers
+/// scope's tick with no handler in flight, delivers everything queued to its subscribers
 /// in SUBSCRIPTION ORDER. A handler may publish again and those cascade in the same drain,
 /// bounded so a runaway emit cannot spin forever. Post queues without the cascade: what it
 /// queues during a drain waits for the next one. Send delivers at once, inside the caller.

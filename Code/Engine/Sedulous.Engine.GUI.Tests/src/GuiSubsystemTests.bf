@@ -662,7 +662,7 @@ class GuiSubsystemTests
 		engine.Frame();
 	}
 
-	/// The prompts follow the input subsystem's input kind, the one a script's `Input.Describe`
+	/// The prompts follow the input subsystem's input kind, the one the `Input` facade's Describe
 	/// reads: the GUI keeps no tracker of its own, and its shared tier's bridge, made before the
 	/// input subsystem was found, reads it too.
 	[Test]

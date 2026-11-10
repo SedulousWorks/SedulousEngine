@@ -68,7 +68,7 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	[Hidden]
 	public BodyId Body = .();
 
-	/// An impulse applied BEFORE the body existed, which is what a script that spawns a thing
+	/// An impulse applied BEFORE the body existed, which is what game code that spawns a thing
 	/// and launches it in the same frame produces. Accumulated while the handle is invalid,
 	/// then flushed once the body is created.
 	[Hidden]
@@ -79,7 +79,7 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	public Float3 PendingVelocity = .(0, 0, 0);
 	[Hidden]
 	public bool HasPendingVelocity = false;
-	/// A steady force a script holds on the body (SetForce), in newtons, applied every fixed
+	/// A steady force game code holds on the body (SetForce), in newtons, applied every fixed
 	/// step until set back to zero: the physics world clears a force after each step, and a
 	/// behavior runs per frame, not per step. Run scoped (a stop clears it), never serialized.
 	[Hidden]

@@ -10,7 +10,7 @@ namespace Sedulous.GUI;
 // its widgets (the GUI's own, a toolkit, a game kit, a viewport) by registering their reflected
 // types once at start-up; an element type is a reflected Node type with a creator
 // ([GuiReflect(true)]), under its tag (the attribute's, else its type name) that markup names and
-// a script's `add` takes. A tag another type already holds is refused, loudly.
+// ElementSet.Create takes. A tag another type already holds is refused, loudly.
 //
 // ElementSet is what one GUI may create from those: every registered type by default (including
 // ones registered later), or only the tags it allows, with aliases of its own. A GUI holds one, so
@@ -46,7 +46,7 @@ static class ElementTypes
 		return true;
 	}
 
-	/// Takes `type` out (a library unloading): markup and scripts can no longer create it.
+	/// Takes `type` out (a library unloading): markup and code can no longer create it.
 	public static void Unregister(GuiTypeInfo type)
 	{
 		sElements.Remove(type);
@@ -79,7 +79,7 @@ static
 	private static bool sGuiElementsRegistered = false;
 
 	/// Registers the GUI's own widgets as element types, once (again: nothing), so markup and
-	/// scripts can make them. A library registers its own beside this, at start-up.
+	/// code can make them. A library registers its own beside this, at start-up.
 	public static void RegisterGuiElements()
 	{
 		if (sGuiElementsRegistered)
@@ -196,9 +196,9 @@ class ElementSet
 }
 
 /// A native weak reference to an element of type T: resolves to the element while it lives in its
-/// GUI, and to null once it is destroyed (or its GUI is), through the element table the script
-/// handles use too. For callbacks, tools and bindings that must not keep a widget alive nor outlive
-/// it. Empty for an element in no GUI. It holds a reference to the table (not to the element).
+/// GUI, and to null once it is destroyed (or its GUI is), through the element table. For
+/// callbacks, tools and bindings that must not keep a widget alive nor outlive it. Empty for
+/// an element in no GUI. It holds a reference to the table (not to the element).
 class Element<T> where T : Node
 {
 	private ElementTable mTable ~ _?.ReleaseRef();
