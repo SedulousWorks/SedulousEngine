@@ -19,4 +19,13 @@ class RecentProjectEntry
 	/// Pinned: listed before the rest, whatever the order.
 	[Appended]
 	public bool Favourite = false;
+
+	public void CopyFrom(RecentProjectEntry other)
+	{
+		Path.Set(other.Path);
+		Name.Set(other.Name);
+		EngineVersion.Set(other.EngineVersion);
+		LastOpened = other.LastOpened;
+		Favourite = other.Favourite;
+	}
 }

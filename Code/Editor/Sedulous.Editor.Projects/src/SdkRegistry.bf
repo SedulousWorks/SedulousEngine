@@ -104,6 +104,43 @@ class SdkRegistry
 			});
 	}
 
+	/// Lists the SDK at `root` (made absolute) unless it is listed already, which keeps how it was
+	/// listed: a project manager registering the SDK it sits in, which may be one it installed.
+	/// InvalidArgument when `root` is no SDK.
+	public Result<void, ErrorCode> Adopt(StringView root)
+	{
+		let absolute = ProjectBuild.Absolute(root, .. scope .());
+		if (!ProjectBuild.IsSdk(absolute))
+			return .Err(.InvalidArgument);
+		return Change(scope [&](registry) =>
+			{
+				if (registry.Find(absolute) != null)
+					return;
+				let sdk = new RegisteredSdk();
+				sdk.Root.Set(absolute);
+				registry.Sdks.Add(sdk);
+			});
+	}
+
+	/// Records `executable` (made absolute) as the project manager that ran last.
+	public Result<void, ErrorCode> RecordManager(StringView executable)
+	{
+		let absolute = ProjectBuild.Absolute(executable, .. scope .());
+		return Change(scope [&](registry) => { registry.ManagerPath.Set(absolute); });
+	}
+
+	/// The project manager that ran last into `outPath`, whether or not it is still there; false
+	/// when none is recorded or the file does not read.
+	public bool ManagerPath(String outPath)
+	{
+		outPath.Clear();
+		let store = scope Settings();
+		if (Load(store) case .Err)
+			return false;
+		outPath.Set(store.Section<SdkRegistrySettings>().ManagerPath);
+		return !outPath.IsEmpty;
+	}
+
 	/// Takes the SDK at `root` off the list; its folder is not touched, and pins to it stay (an SDK
 	/// pinned and gone is missing, as an unlisted one is not looked for). True when it was listed.
 	public Result<bool, ErrorCode> Unregister(StringView root)

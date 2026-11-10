@@ -1,0 +1,20 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Tools.ProjectManager"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Tools.ProjectManager.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Editor.ProjectManager" = "*"
+# The OS shell, the graphics device and the runner over them: here, not in the manager's library,
+# which the editor links for its project pictures.
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"

@@ -18,6 +18,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Look;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.ProjectManager;
 using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;
 using Sedulous.Net.Tls;
@@ -161,12 +162,10 @@ class EditorApplication : IApplication
 	private EditorSession mSession ~ delete _;
 	/// The project manager while no project is open: after the session and the pages it reaches,
 	/// so it goes first.
-	/// The Samples tab's network: Mbed TLS for https, the system's roots, the platform's client.
-	/// Made when the manager first shows; deleted after it, which cancels its requests as it goes.
-	private ITlsBackend mTls ~ delete _;
-	private IHttpClient mHttp ~ delete _;
-	/// --release-files <folder>, served on loopback.
-	private HttpServer mReleaseFiles ~ delete _;
+	/// The Samples tab's network (the client made when the manager first shows) and where the
+	/// release's files come from (--release-files); deleted after the manager, which cancels its
+	/// requests as it goes.
+	private ReleaseAccess mRelease ~ delete _;
 	private ProjectManagerMode mManagerMode ~ delete _;
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
@@ -209,6 +208,7 @@ class EditorApplication : IApplication
 		}
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
+		mRelease = new ReleaseAccess(mConfig.ReleaseFiles);
 		mManagerMode = new ProjectManagerMode(ManagerModeServices());
 	}
 
@@ -433,58 +433,19 @@ class EditorApplication : IApplication
 		services.LoadMarkup = new (path) => mWindow.LoadMarkup(path);
 		services.StoreChanged = new () => { EditorSettingsStore.SaveToUserData(mEditorSettings).IgnoreError(); };
 		// The Samples tab downloads from GitHub over https, with the system's roots.
-		services.Http = new () =>
-			{
-				if (mHttp == null)
-				{
-					mTls = new MbedTlsBackend();
-					mHttp = HttpClients.Create(mTls);
-				}
-				return mHttp;
-			};
+		services.Http = new () => mRelease.Client();
 		// The editor's MCP host serves the manager too (its project tools refusing), when enabled.
 		services.Shown = new () =>
 			{
 				if ((mMcp != null) && (mSession.Project == null))
 					mMcp.EnsureRunning();
 			};
-		if (!mConfig.ReleaseFiles.IsEmpty)
+		if (mRelease.Overridden)
 		{
-			services.ReleaseFile = new (file, outUrl) => { ReleaseFileUrl(file, outUrl); };
+			services.ReleaseFile = new (file, outUrl) => { mRelease.FileUrl(file, outUrl); };
 			services.OpenOnSamples = true;
 		}
 		return services;
-	}
-
-	/// Where the Samples tab reads `file` of the release: what --release-files names, a base URL
-	/// or a folder served on loopback (started on first use); GitHub's release when that folder
-	/// cannot be served.
-	private void ReleaseFileUrl(StringView file, String outUrl)
-	{
-		StringView from = mConfig.ReleaseFiles;
-		if (from.StartsWith("http://") || from.StartsWith("https://"))
-		{
-			while (from.EndsWith('/'))
-				from = StringView(from, 0, from.Length - 1);
-			outUrl.AppendF("{}/{}", from, file);
-			return;
-		}
-		if (mReleaseFiles == null)
-		{
-			let server = new HttpServer();
-			let folder = new String(from);
-			server.SetHandler(new [=folder] (request) => ReleaseFolder.Serve(folder, request) ~ delete folder);
-			if (!server.Start(.()))
-			{
-				delete server;
-				GlobalLog(.Error, "Editor: --release-files: the folder {} could not be served", from);
-				Sedulous.Engine.Project.EngineVersion.ReleaseDownloadUrl(file, outUrl);
-				return;
-			}
-			mReleaseFiles = server;
-			GlobalLog(.Information, "Editor: --release-files: serving {} on 127.0.0.1:{}", from, server.BoundPort);
-		}
-		outUrl.AppendF("http://127.0.0.1:{}/{}", mReleaseFiles.BoundPort, file);
 	}
 
 	/// The main window presents as every editor window does (EditorWindow.EditorRenderWindowDesc).
@@ -1487,8 +1448,7 @@ class EditorApplication : IApplication
 		{
 			if (mMcp != null)
 				mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
-			if (mReleaseFiles != null)
-				mReleaseFiles.Pump(); // --release-files <folder>: before the client asks again
+			mRelease.Pump(); // --release-files <folder>: before the client asks again
 			if (mManagerMode != null)
 				mManagerMode.Tick(); // the Samples tab's fetches and downloads, which go on while a project is open
 		}
@@ -1769,9 +1729,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mAssetPicker); // closed, while the window's root and the context are there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
-		DeleteAndNullify!(mHttp); // after the manager, which cancels its requests as it goes
-		DeleteAndNullify!(mReleaseFiles);
-		DeleteAndNullify!(mTls);
+		mRelease.Close(); // after the manager: the client cancels its requests as it goes
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
