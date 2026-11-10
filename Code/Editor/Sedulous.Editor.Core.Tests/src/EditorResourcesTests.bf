@@ -95,7 +95,7 @@ static class EditorResourcesTests
 		Test.Assert(!resources.Exists("Editor/Icons/none.svg"));
 
 		int runs = 0;
-		let reload = scope Effect(new [&]() => { resources.TrackChanges(); runs++; });
+		scope Effect(new [&]() => { resources.TrackChanges(); runs++; }); // lives until the test ends
 		Test.Assert(runs == 1);
 		Test.Assert(!resources.Poll(), "nothing changed yet");
 

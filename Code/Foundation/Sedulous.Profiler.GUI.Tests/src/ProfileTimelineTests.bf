@@ -192,7 +192,7 @@ class ProfileTimelineTests
 		Test.Assert(!bed.Focus.Name.Any);
 
 		bed.D.InjectMouseMove(.(Bed.X(1015.0), 51.0f));
-		let hovered = bed.Timeline.Hovered;
+		let hovered = bed.Timeline.HoveredBar;
 		Test.Assert(hovered >= 0);
 		Test.Assert(bed.Timeline.Bars[hovered].Name == bed.Update);
 		Test.Assert(bed.Timeline.TooltipText == "Update  8.000 ms", scope String(bed.Timeline.TooltipText));

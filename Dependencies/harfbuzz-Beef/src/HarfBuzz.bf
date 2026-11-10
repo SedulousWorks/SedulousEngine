@@ -57,6 +57,7 @@ enum hb_memory_mode_t : int32
 	HB_MEMORY_MODE_READONLY_MAY_MAKE_WRITABLE
 }
 
+[AllowDuplicates]
 enum hb_buffer_cluster_level_t : int32
 {
 	HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES = 0,

@@ -1035,7 +1035,7 @@ class ScenePageTests
 
 		// A row's menu: its actions over the page.
 		{
-			let shown = scope Shown(page);
+			scope Shown(page); // the page under the editor's sheet until the test ends
 			tree.ShowMenu(tree.ItemOf(bed.Crate), .(10.0f, 10.0f));
 			let menu = tree.OpenMenu;
 			Test.Assert(menu != null);
@@ -1432,7 +1432,7 @@ class ScenePageTests
 		Test.Assert(LightOf(page, bed.Crate).Intensity == 3.0f);
 
 		// The header's verbs: Remove Component takes it from both, one undo brings it back.
-		let shown = scope Shown(page);
+		scope Shown(page); // the page under the editor's sheet until the test ends
 		Test.Assert(inspector.OpenHeaderMenu("#Light"));
 		let menu = inspector.Grid.RowMenu;
 		Test.Assert(menu != null);
@@ -1658,7 +1658,7 @@ class ScenePageTests
 		Test.Assert(!page.IsOnScreen);
 		Test.Assert(!bed.Context.TryInterceptOpenAsset(clip));
 
-		let shown = scope Shown(page);
+		scope Shown(page); // the page under the editor's sheet until the test ends
 		Test.Assert(page.IsOnScreen);
 		page.EditContext.EntitySelection.Set(bed.Crate);
 		Test.Assert(bed.Context.TryInterceptOpenAsset(clip));
@@ -1693,7 +1693,7 @@ class ScenePageTests
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(inspector.AddComponent("InstanceMemberComponent"));
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
-		let shown = scope Shown(page);
+		scope Shown(page); // the page under the editor's sheet until the test ends
 		Test.Assert(!inspector.CanPasteComponent); // nothing copied
 		let blob = scope List<uint8>();
 		edit.CopyComponent(bed.Crate, typeof(InstanceMemberComponent), blob);
@@ -2424,14 +2424,12 @@ class ScenePageTests
 	// The first `T` in `node`'s tree, itself first.
 	static T FirstOf<T>(Node node) where T : Node
 	{
-		if (let found = node as T)
-			return found;
-		for (int i < node.ChildCount)
-		{
-			if (let found = FirstOf<T>(node.GetChildAt(i)))
-				return found;
-		}
-		return null;
+		// One return: with T as Node itself the node always matches, and an early return would
+		// leave the loop unreachable in that instance.
+		T found = node as T;
+		for (int i = 0; (found == null) && (i < node.ChildCount); i++)
+			found = FirstOf<T>(node.GetChildAt(i));
+		return found;
 	}
 
 	[Test]

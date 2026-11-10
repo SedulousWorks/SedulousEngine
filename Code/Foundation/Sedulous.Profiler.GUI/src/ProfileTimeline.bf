@@ -329,7 +329,7 @@ class ProfileTimeline : ProfilerWidget
 	}
 
 	/// The scope under the pointer (-1: none): its index in Bars.
-	public int32 Hovered
+	public int32 HoveredBar
 	{
 		get
 		{
@@ -348,7 +348,7 @@ class ProfileTimeline : ProfilerWidget
 		{
 			mTip.Clear();
 			let source = Source;
-			let hovered = Hovered;
+			let hovered = HoveredBar;
 			if ((hovered >= 0) && (source != null))
 			{
 				let bar = mBars[hovered];
@@ -515,7 +515,7 @@ class ProfileTimeline : ProfilerWidget
 		let hatch = PartColor("hatch", .(0.55f, 0.57f, 0.62f, 0.35f));
 		let activity = PartColor("activity", .(0.44f, 0.53f, 0.72f, 0.4f));
 		let choosing = (mFocus != null) && mFocus.Name.Any;
-		let hoveredIndex = Hovered;
+		let hoveredIndex = HoveredBar;
 		let label = scope String();
 
 		// The lanes: their separators, then their scopes.
