@@ -83,9 +83,13 @@ class ProjectManagerServices
 	/// The Samples tab's client, BORROWED (null: the tab says the samples could not be fetched). It must
 	/// outlive the view, which pumps it in Tick.
 	public IHttpClient Http = null;
-	/// Where a file of this editor's release is fetched from (null: the release's own URL,
-	/// EngineVersion.ReleaseDownloadUrl); tests point it at a loopback server. Owned.
-	public delegate void(StringView file, String outUrl) ReleaseFile ~ delete _;
+	/// Where `file` of the release of the engine version `version` (as a person reads it; the
+	/// release's tag is v<version>) is fetched from (null: the release's own URL,
+	/// EngineReleases.DownloadUrl); tests point it at a loopback server. Owned.
+	public delegate void(StringView version, StringView file, String outUrl) ReleaseFile ~ delete _;
+	/// Pins the project a sample's download made to the engine whose release it came from: true
+	/// when it is; else why in `outWhy`. Null: a download is not pinned. Owned.
+	public delegate bool(StringView directory, StringView sdk, String outWhy) PinEngine ~ delete _;
 	/// The project in `directory` to open with the engine at `sdk`, of `version`, picked from its
 	/// menu (the application asks first when the versions differ). Null: no engine in the menu.
 	/// Owned.
@@ -158,6 +162,9 @@ class ProjectManagerView
 	private class SampleFetch
 	{
 		public SampleInfo Sample = new .() ~ delete _;
+		/// The engine whose release it comes from (its SDK's root), which the project is pinned to;
+		/// empty: this engine's own.
+		public String Sdk = new .() ~ delete _;
 		/// Deleted, it cancels itself and deletes what it wrote.
 		public ReleaseDownload Download ~ delete _;
 	}
@@ -216,6 +223,10 @@ class ProjectManagerView
 	private SampleInfo mDialogSample = new .() ~ delete _;
 	/// Where it goes, once Download is pressed.
 	private String mDialogTarget = new .() ~ delete _;
+	/// The Samples tab's engines (the services' Engines), newest first, and the one whose release
+	/// it lists (-1: none, this engine's own).
+	private List<NewProjectEngine> mSampleEngines = new .() ~ DeleteContainerAndItems!(_);
+	private int32 mSampleEngine = -1;
 	/// New Project's engines and the picked one's templates, and which of each is picked (-1:
 	/// none).
 	private List<NewProjectEngine> mNewEngines = new .() ~ DeleteContainerAndItems!(_);
@@ -276,8 +287,10 @@ class ProjectManagerView
 			removeMissing.SetOnClick(new () => { RemoveMissing(); });
 		if (let retry = Find<Sedulous.GUI.Button>("manager-samples-retry"))
 			retry.SetOnClick(new () => { FetchCatalog(); });
-		if (let intro = Find<Sedulous.GUI.Label>("manager-samples-intro"))
-			intro.Text = scope $"Sample games made with this engine, for engine {EngineVersion.Display}. A sample you download becomes one of your projects.";
+		if (let field = Find<Node>("manager-samples-engine-field"))
+			field.Displayed = mServices.Engines != null;
+		if (let picker = Find<Sedulous.GUI.ComboBox>("manager-samples-engine"))
+			picker.SetOnSelectionChanged(new (index) => { PickSamplesEngine(index); });
 		if (let search = Find<Sedulous.GUI.TextField>("manager-search"))
 			search.SetOnTextChanging(new (text) => { SetQuery(text); });
 		if (let sort = Find<Sedulous.GUI.ComboBox>("manager-sort"))
@@ -359,12 +372,14 @@ class ProjectManagerView
 			{
 				let probe = new Probe();
 				probe.Path.Set(entry.Path);
-				let probed = scope ProjectSettings();
-				if (ProjectRegistry.ProbeProject(entry.Path, probed) case .Ok)
+				// Its header, not its settings: a project another engine's data versions wrote is
+				// listed, not missing.
+				let header = scope ProjectHeader();
+				if (ProjectHeader.Read(entry.Path, header) case .Ok)
 				{
 					probe.Found = true;
-					probe.Name.Set(probed.Name);
-					probe.EngineVersion.Set(probed.EngineVersion);
+					probe.Name.Set(header.Name);
+					probe.EngineVersion.Set(header.EngineVersion);
 				}
 				mProbes.Add(probe);
 			}
@@ -425,8 +440,15 @@ class ProjectManagerView
 		mPage = page;
 		if (((page == .Engines) || (page == .Toolchain)) && (mEnginesPage == null))
 			mPage = .Projects;
-		if ((mPage == .Samples) && (mCatalogState == .NotFetched))
-			FetchCatalog();
+		if (mPage == .Samples)
+		{
+			// The engines listed again: one installed since shows, and a gone one's release is
+			// listed no more.
+			let before = scope String(SamplesEngine);
+			FillSampleEngines();
+			if ((mCatalogState == .NotFetched) || (before != SamplesEngine))
+				FetchCatalog();
+		}
 		if (mPage == .Engines)
 			mEnginesPage.Shown();
 		else if (mPage == .Toolchain)
@@ -512,6 +534,10 @@ class ProjectManagerView
 		}
 		if (mCatalogRequest != 0)
 			mServices.Http.Cancel(mCatalogRequest);
+		// Another release's pictures would land on this one's cards.
+		for (let id in mPictureRequests)
+			mServices.Http.Cancel(id);
+		mPictureRequests.Clear();
 		mCatalogState = .Fetching;
 		let request = HttpClientRequest.Get(ReleaseFile("samples.json", .. scope .()));
 		request.MaxResponseBytes = 1024 * 1024;
@@ -655,6 +681,7 @@ class ProjectManagerView
 			return;
 		let fetch = new SampleFetch();
 		fetch.Sample.CopyFrom(sample);
+		fetch.Sdk.Set(SamplesEngine);
 		fetch.Download = new ReleaseDownload(mServices.Http, ReleaseFile(sample.Archive, .. scope .()), sample.Sha256, sample.Size, target);
 		mDownloads.Add(fetch);
 		fetch.Download.Start();
@@ -750,8 +777,8 @@ class ProjectManagerView
 	{
 		if (paths.Length == 0)
 			return false;
-		let probed = scope ProjectSettings();
-		if (ProjectRegistry.ProbeProject(paths[0], probed) case .Err)
+		let header = scope ProjectHeader();
+		if (ProjectHeader.Read(paths[0], header) case .Err)
 		{
 			let folder = PathFilename(paths[0], .. scope .());
 			SetStatus(scope $"{folder} holds no Project.xml, so it is not a project. New Project makes one.");
@@ -1162,13 +1189,62 @@ class ProjectManagerView
 			icon.Source = (result.Level == .Ok) ? "Editor/Icons/check.svg" : ((result.Level == .Warning) ? "Editor/Icons/warning.svg" : "Editor/Icons/error.svg");
 	}
 
-	/// Where `file` of this editor's release is fetched from.
+	/// Where `file` of the release the Samples tab lists (SamplesVersion's) is fetched from.
 	private void ReleaseFile(StringView file, String outUrl)
 	{
+		let version = SamplesVersion;
 		if (mServices.ReleaseFile != null)
-			mServices.ReleaseFile(file, outUrl);
+			mServices.ReleaseFile(version, file, outUrl);
 		else
-			EngineVersion.ReleaseDownloadUrl(file, outUrl);
+			EngineReleases.DownloadUrl(scope $"v{version}", file, outUrl);
+	}
+
+	/// The version whose release the Samples tab lists, as a person reads it: the picked engine's,
+	/// else this engine's own.
+	public StringView SamplesVersion
+	{
+		get
+		{
+			if ((mSampleEngine >= 0) && (mSampleEngine < mSampleEngines.Count) && !mSampleEngines[mSampleEngine].Display.IsEmpty)
+				return mSampleEngines[mSampleEngine].Display;
+			return EngineVersion.Display;
+		}
+	}
+
+	/// The engine whose release the Samples tab lists (its SDK's root); empty: this engine's own.
+	public StringView SamplesEngine => ((mSampleEngine >= 0) && (mSampleEngine < mSampleEngines.Count)) ? StringView(mSampleEngines[mSampleEngine].Sdk) : default;
+
+	/// The Samples tab's engine picked, by its place in the picker: its release's samples fetched.
+	public void PickSamplesEngine(int32 index)
+	{
+		if (index == mSampleEngine)
+			return;
+		mSampleEngine = index;
+		FetchCatalog();
+	}
+
+	/// The Samples tab's engines listed again (the services' Engines, newest first), the one picked
+	/// kept while it is listed, else the first; the picker filled. Nothing without an engine list.
+	private void FillSampleEngines()
+	{
+		if (mServices.Engines == null)
+			return;
+		let kept = scope String(SamplesEngine);
+		ClearAndDeleteItems!(mSampleEngines);
+		mServices.Engines(mSampleEngines);
+		mSampleEngine = mSampleEngines.IsEmpty ? -1 : 0;
+		for (let engine in mSampleEngines)
+		{
+			if (engine.Sdk == kept)
+				mSampleEngine = (int32)@engine.Index;
+		}
+		if (let picker = Find<Sedulous.GUI.ComboBox>("manager-samples-engine"))
+		{
+			picker.ItemsText = "";
+			for (let engine in mSampleEngines)
+				picker.AddItem(engine.Label);
+			picker.SelectedIndex = mSampleEngine; // already picked: nothing fetched by it
+		}
 	}
 
 	private void OnCatalog(HttpClientResponse response)
@@ -1239,15 +1315,24 @@ class ProjectManagerView
 		DialogStage stage = .Failed;
 		if (d.State == .Done)
 		{
-			let probed = scope ProjectSettings();
-			if ((mServices.Controller != null) && (ProjectRegistry.ProbeProject(d.Target, probed) case .Ok))
+			// Its header, not its settings: a sample of another engine's release may be at data
+			// versions this one does not read.
+			let header = scope ProjectHeader();
+			if ((mServices.Controller != null) && (ProjectHeader.Read(d.Target, header) case .Ok))
 			{
-				mServices.Controller.NoteOpened(d.Target, probed.Name, probed.EngineVersion);
+				mServices.Controller.NoteOpened(d.Target, header.Name, header.EngineVersion);
 				if (mServices.StoreChanged != null)
 					mServices.StoreChanged();
 				words.AppendF("{} is in your projects, in {}.", name, RecentProjects.ShortenHomePath(d.Target, mHome, .. scope .()));
 				stage = .Done;
-				SetNote(words);
+				let why = scope String();
+				if (!fetch.Sdk.IsEmpty && (mServices.PinEngine != null) && !mServices.PinEngine(d.Target, fetch.Sdk, why))
+				{
+					words.AppendF(" It is not pinned to its engine: {}", why);
+					SetStatus(words);
+				}
+				else
+					SetNote(words);
 			}
 			else
 			{
@@ -1305,6 +1390,13 @@ class ProjectManagerView
 		Clear(grid);
 		ClearAndDeleteItems(mSampleCards);
 		let loaded = (mCatalogState == .Loaded) && !mCatalog.Samples.IsEmpty;
+		if (let intro = Find<Sedulous.GUI.Label>("manager-samples-intro"))
+		{
+			if (mServices.Engines != null)
+				intro.Text = scope $"Sample games of engine {SamplesVersion}. One you download becomes one of your projects, and opens with that engine.";
+			else
+				intro.Text = scope $"Sample games made with this engine, for engine {SamplesVersion}. A sample you download becomes one of your projects.";
+		}
 		if (let scroll = Find<Node>("manager-samples-scroll"))
 			scroll.Displayed = loaded;
 		if (let state = Find<Node>("manager-samples-state"))
@@ -1321,7 +1413,7 @@ class ProjectManagerView
 			else if ((mCatalogState == .NotPublished) || (mCatalogState == .Loaded))
 			{
 				title = "No samples for this version yet";
-				text.AppendF("Release {} has no samples published: they come with each release of the editor.", EngineVersion.Display);
+				text.AppendF("Release {} has no samples published: they come with each release of the engine.", SamplesVersion);
 			}
 			if (let label = Find<Sedulous.GUI.Label>("manager-samples-state-title"))
 				label.Text = title;
@@ -1687,8 +1779,8 @@ class ProjectManagerView
 			{
 				if (paths.Length == 0)
 					return; // cancelled
-				let probed = scope ProjectSettings();
-				if (ProjectRegistry.ProbeProject(paths[0], probed) case .Err)
+				let header = scope ProjectHeader();
+				if (ProjectHeader.Read(paths[0], header) case .Err)
 				{
 					SetStatus("Not a project (no Project.xml there). New Project makes one.");
 					return;

@@ -180,6 +180,9 @@ button.manager-small { height: 30px; font-size: var(--font-small); color: var(--
 .manager-sample-stage > label { flex-grow: 1; font-size: var(--font-small); color: var(--text); }
 .manager-sample-stage > button { height: 26px; }
 .manager-samples-state { flex-grow: 1; }
+/* The engine whose release the Samples tab lists, at the toolbar's end. */
+.manager-samples-engine-field { flex-direction: row; align-items: center; column-gap: var(--space-s); flex-shrink: 0; }
+.manager-samples-engine { width: 320px; height: 30px; }
 /* The Engines tab: a row per engine listed or offered, as the projects' rows are; while one
    installs, its bar and words stand in its row before Cancel. */
 .manager-engines { flex-direction: column; row-gap: 2px; flex-shrink: 0; }

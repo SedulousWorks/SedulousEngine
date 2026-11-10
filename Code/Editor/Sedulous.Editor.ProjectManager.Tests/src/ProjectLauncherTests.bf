@@ -887,17 +887,80 @@ class ProjectLauncherTests
 		return false;
 	}
 
+	/// Two engines the Samples tab offers, each an SDK with its sdk.json, newest first: 0.2.0-beta
+	/// and 0.1.0; each release's files on loopback at /v<version>/<file>, and the pins a download
+	/// asks for, each "<project> <engine>".
+	private class SampleEngines
+	{
+		public String Root = new .() ~ delete _;
+		public String Newer = new .() ~ delete _;
+		public String Older = new .() ~ delete _;
+		public List<String> Pinned = new .() ~ DeleteContainerAndItems!(_);
+
+		public this(StringView leaf)
+		{
+			PathJoin(GetCurrentDirectory(.. scope .()), leaf, Root);
+			RemoveDirectoryRecursive(Root);
+			PathJoin(Root, "newer sdk", Newer);
+			PathJoin(Root, "older sdk", Older);
+			ProjectBuildBed.WriteSdk(Newer, "{\"version\": \"0.2.0\", \"label\": \"beta\", \"display\": \"0.2.0-beta\", \"buildNumber\": 1}\n");
+			ProjectBuildBed.WriteSdk(Older, "{\"version\": \"0.1.0\", \"label\": \"\", \"display\": \"0.1.0\", \"buildNumber\": 1}\n");
+		}
+
+		public ~this()
+		{
+			RemoveDirectoryRecursive(Root);
+		}
+
+		/// The view's services offer both engines, read from their sdk.json, fetch each release's
+		/// files from `server`, and record each pin.
+		public void Offer(ProjectManagerServices services, LoopbackFiles server)
+		{
+			let engines = this;
+			services.Engines = new [=engines] (outEngines) =>
+				{
+					for (let root in StringView[2](engines.Newer, engines.Older))
+					{
+						let info = scope SdkInfo();
+						Test.Assert(SdkInfo.Read(root, info) case .Ok);
+						let offered = new NewProjectEngine();
+						offered.Sdk.Set(info.Root);
+						offered.Label.AppendF("{} at {}", info.Display, info.Root);
+						offered.Version.Set(info.Version);
+						offered.Display.Set(info.Display);
+						offered.Kind.Set("folder");
+						outEngines.Add(offered);
+					}
+				};
+			services.ReleaseFile = new [=server] (version, file, outUrl) => { server.Url(scope $"/v{version}/{file}", outUrl); };
+			services.PinEngine = new [=engines] (directory, sdk, outWhy) =>
+				{
+					engines.Pinned.Add(new $"{directory} {sdk}");
+					return true;
+				};
+		}
+	}
+
+	/// The Samples tab over two engines: the newest picked, its release's samples listed; another
+	/// picked lists its own release's; a sample downloaded from it joins the projects, pinned to
+	/// that engine.
 	[Test]
 	public static void TheSamplesTabListsTheReleasesSamplesAndOneDownloadedJoinsTheProjects()
 	{
+		let engines = scope SampleEngines("scratch_launcher_sample_engines");
 		let client = scope NativeHttpClient(null);
 		let server = scope LoopbackFiles();
 		let l = scope Launcher(0, false, scope [&] (services) =>
 			{
 				services.Http = client;
-				services.ReleaseFile = new [=server] (file, outUrl) => { server.Url(scope $"/{file}", outUrl); };
+				engines.Offer(services, server);
 			});
-		// The release: its samples.json, one sample's zip (a project's manifest at its root) and picture.
+		// The newer release: a sample of its own. The older: its samples.json, one sample's zip (a
+		// project's manifest at its root) and picture.
+		server.Serve("/v0.2.0-beta/samples.json", """
+			{"version": "0.2.0", "samples": [{"folder": "Hopper", "name": "Sky Hopper", "description": "A platformer.",
+			 "archive": "sample-Hopper.zip", "size": 10, "sha256": "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0"}]}
+			""");
 		let zip = scope List<uint8>();
 		Test.Assert(ReadFile(PathJoin(FindDataRoot(.. scope .()), "Tests/Zip/sample.zip", .. scope .()), zip) case .Ok);
 		let picture = scope List<uint8>();
@@ -907,14 +970,28 @@ class ProjectLauncherTests
 			{{"version": "0.1.0", "samples": [{{"folder": "Gallery", "name": "Shader Gallery", "description": "A hall of shaders.",
 			 "archive": "sample-Gallery.zip", "size": {}, "sha256": "{}", "picture": "sample-Gallery.png"}}]}}
 			""", zip.Count, Sha256.Of(zip).ToHex(.. scope .()));
-		server.Serve("/samples.json", catalog);
-		server.Serve("/sample-Gallery.zip", zip);
-		server.Serve("/sample-Gallery.png", picture);
+		server.Serve("/v0.1.0/samples.json", catalog);
+		server.Serve("/v0.1.0/sample-Gallery.zip", zip);
+		server.Serve("/v0.1.0/sample-Gallery.png", picture);
 
 		l.View.ShowSamples(true);
+		let picker = l.View.Content.FindElement("manager-samples-engine") as Sedulous.GUI.ComboBox;
+		Test.Assert(l.View.Content.FindElement("manager-samples-engine-field").Displayed);
+		Test.Assert((picker.ItemCount == 2) && (picker.SelectedIndex == 0), "the newest picked");
+		RunUntil(l, server, scope () => l.View.SampleCatalogState == .Loaded);
+		Test.Assert((l.View.Samples.Samples.Count == 1) && (l.View.Samples.Samples[0].Name == "Sky Hopper"), "the newer release's");
+		Test.Assert(l.View.SamplesVersion == "0.2.0-beta");
+		let intro = l.View.Content.FindElement("manager-samples-intro") as Sedulous.GUI.Label;
+		Test.Assert(intro.Text.Contains("engine 0.2.0-beta"), scope String(intro.Text));
+
+		picker.SelectByUser(1);
+		Test.Assert(l.View.SampleCatalogState == .Fetching);
 		RunUntil(l, server, scope () => l.View.SampleCatalogState == .Loaded);
 		Test.Assert(l.View.SampleCatalogState == .Loaded);
+		Test.Assert((l.View.SamplesVersion == "0.1.0") && (l.View.SamplesEngine == engines.Older));
+		Test.Assert(intro.Text.Contains("engine 0.1.0."), scope String(intro.Text));
 		Test.Assert(l.View.Samples.Samples.Count == 1);
+		Test.Assert(l.View.Samples.Samples[0].Name == "Shader Gallery", "the older release's");
 		let grid = l.View.Content.FindElement("manager-samples");
 		Test.Assert(grid != null);
 		Test.Assert(grid.ChildCount == 1);
@@ -969,34 +1046,50 @@ class ProjectLauncherTests
 		Test.Assert(l.View.InProjects(l.View.Samples.Samples[0]));
 		Test.Assert(HasLabel(l.View.Content.FindElement("manager-samples").GetChildAt(0), "In your projects"));
 		Test.Assert(l.View.Status.Contains("in your projects", true), scope String(l.View.Status));
+		// Pinned to the engine whose release it came from.
+		Test.Assert((engines.Pinned.Count == 1) && (engines.Pinned[0] == scope $"{target} {engines.Older}"),
+			(engines.Pinned.Count == 1) ? engines.Pinned[0] : "not one pin");
 	}
 
+	/// The Samples tab over two engines whose releases have no samples says so of each, naming its
+	/// release; with no client at all it says the release was not reached and offers Retry; a host
+	/// that offers no engines shows no picker and lists this engine's own release.
 	[Test]
 	public static void TheSamplesTabSaysWhenTheReleaseHasNoSamplesAndWhenGitHubIsNotReached()
 	{
+		let engines = scope SampleEngines("scratch_launcher_sample_engines_none");
 		let client = scope NativeHttpClient(null);
-		let server = scope LoopbackFiles(); // serves nothing: samples.json is a 404
+		let server = scope LoopbackFiles(); // serves nothing: each samples.json is a 404
 		let l = scope Launcher(0, false, scope [&] (services) =>
 			{
 				services.Http = client;
-				services.ReleaseFile = new [=server] (file, outUrl) => { server.Url(scope $"/{file}", outUrl); };
+				engines.Offer(services, server);
 			});
 		l.View.ShowSamples(true);
 		RunUntil(l, server, scope () => l.View.SampleCatalogState != .Fetching);
 		Test.Assert(l.View.SampleCatalogState == .NotPublished);
 		Test.Assert(l.View.Content.FindElement("manager-samples-state").Displayed);
 		Test.Assert((l.View.Content.FindElement("manager-samples-state-title") as Sedulous.GUI.Label).Text == "No samples for this version yet");
+		let stateText = l.View.Content.FindElement("manager-samples-state-text") as Sedulous.GUI.Label;
+		Test.Assert(stateText.Text.StartsWith("Release 0.2.0-beta has no samples"), scope String(stateText.Text));
 		Test.Assert(!l.View.Content.FindElement("manager-samples-retry").Displayed);
+		(l.View.Content.FindElement("manager-samples-engine") as Sedulous.GUI.ComboBox).SelectByUser(1);
+		RunUntil(l, server, scope () => l.View.SampleCatalogState != .Fetching);
+		Test.Assert(l.View.SampleCatalogState == .NotPublished);
+		Test.Assert(stateText.Text.StartsWith("Release 0.1.0 has no samples"), scope String(stateText.Text));
 		// Nothing to say, the footer says nothing; back on Projects, how to open one.
 		let footer = l.View.Content.FindElement("manager-status") as Sedulous.GUI.Label;
 		Test.Assert(footer.Text.IsEmpty, scope String(footer.Text));
 		l.View.ShowSamples(false);
 		Test.Assert(footer.Text == "Double-click a project or press Enter to open it.", scope String(footer.Text));
 
-		// With no client at all, it cannot be reached, and Retry is offered.
+		// With no client at all, it cannot be reached, and Retry is offered; with no engines
+		// offered, no picker, and this engine's own release.
 		let offline = scope Launcher();
 		offline.View.ShowSamples(true);
 		Test.Assert(offline.View.SampleCatalogState == .Failed);
 		Test.Assert(offline.View.Content.FindElement("manager-samples-retry").Displayed);
+		Test.Assert(!offline.View.Content.FindElement("manager-samples-engine-field").Displayed);
+		Test.Assert((offline.View.SamplesVersion == EngineVersion.Display) && offline.View.SamplesEngine.IsEmpty);
 	}
 }

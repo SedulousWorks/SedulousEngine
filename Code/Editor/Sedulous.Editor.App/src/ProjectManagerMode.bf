@@ -73,7 +73,7 @@ class ProjectManagerMode
 		if (services.Http != null)
 			app.Http = new () => mServices.Http();
 		if (services.ReleaseFile != null)
-			app.ReleaseFile = new (file, outUrl) => { mServices.ReleaseFile(file, outUrl); };
+			app.ReleaseFile = new (version, file, outUrl) => { mServices.ReleaseFile(file, outUrl); }; // the editor lists its own version alone
 		app.OpenOnSamples = services.OpenOnSamples;
 		app.Shown = new () =>
 			{

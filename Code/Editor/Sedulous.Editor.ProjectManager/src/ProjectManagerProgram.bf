@@ -288,7 +288,7 @@ class ProjectManagerProgram : IApplication
 		services.Http = new () => Client();
 		if (mRelease.Overridden)
 		{
-			services.ReleaseFile = new (file, outUrl) => { mRelease.FileUrl(file, outUrl); };
+			services.ReleaseFile = new (version, file, outUrl) => { mRelease.FileUrl(version, file, outUrl); };
 			services.OpenOnSamples = true;
 		}
 		services.EngineFor = new (directory, outVersion, outWhy) => EngineFor(directory, outVersion, outWhy);
