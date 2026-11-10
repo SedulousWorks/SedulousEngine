@@ -31,6 +31,11 @@ enum BuildJobState
 	Cancelled
 }
 
+/// Finds the SDK a job builds over, as ProjectBuild.FindSdk does: from the editor's data root and
+/// the project's folder, into `outSdk`; false when there is none. Tests give their own, since a
+/// project in a test's scratch folder sits inside the engine's checkout, which FindSdk finds.
+typealias SdkFinder = delegate bool(StringView dataRoot, StringView projectDir, String outSdk);
+
 /// Runs BeefBuild once: `onLine` with each line of its output as it comes, `cancelled` asked
 /// while it runs. Its exit code, Cancelled once `cancelled` said so, or another error when it
 /// could not be started. Process.RunStreaming is the one the editor uses; tests give their own.
@@ -380,6 +385,8 @@ class ProjectBuildService
 	/// When set, the HOME a packaged Beef's settings are looked for under (FindEmscripten), in
 	/// place of the process's (tests).
 	private String mHome = new .() ~ delete _;
+	/// When set, what finds each job's SDK in place of ProjectBuild.FindSdk (tests).
+	private SdkFinder mSdkFinder ~ delete _;
 	/// Guards mLatest, which the main thread sets and any thread reads.
 	private Monitor mLock = new .() ~ delete _;
 	/// The job last handed to Track or Run, one reference of ours.
@@ -389,14 +396,16 @@ class ProjectBuildService
 
 	/// `runner` runs BeefBuild (TAKES OWNERSHIP; null: Process.RunStreaming); `beefBuild`, when
 	/// given, is the BeefBuild every job runs, without FindBeefBuild; `home`, when given, the HOME a
-	/// web build looks for a packaged Beef's settings under (ProjectBuild.FindEmscriptenFrom).
-	public this(BuildRunner runner = null, StringView beefBuild = default, StringView home = default)
+	/// web build looks for a packaged Beef's settings under (ProjectBuild.FindEmscriptenFrom);
+	/// `findSdk`, when given, finds each job's SDK (TAKES OWNERSHIP; null: ProjectBuild.FindSdk).
+	public this(BuildRunner runner = null, StringView beefBuild = default, StringView home = default, SdkFinder findSdk = null)
 	{
 		mRunner = runner;
 		if (mRunner == null)
 			mRunner = new (executable, arguments, onLine, cancelled) => Process.RunStreaming(executable, arguments, onLine, cancelled);
 		mBeefBuild.Set(beefBuild);
 		mHome.Set(home);
+		mSdkFinder = findSdk;
 	}
 
 	public ~this()
@@ -470,7 +479,8 @@ class ProjectBuildService
 		let projectDir = job.ProjectDirectory;
 		let settings = job.Settings;
 		let sdk = scope String();
-		if (!ProjectBuild.FindSdk(job.DataRoot, sdk))
+		let found = (mSdkFinder != null) ? mSdkFinder(job.DataRoot, projectDir, sdk) : ProjectBuild.FindSdk(job.DataRoot, projectDir, sdk);
+		if (!found)
 		{
 			outError.Set(scope $"a project's build needs the engine SDK: set {ProjectBuild.cSdkVariable}, or run from an engine checkout");
 			return .Err(.NotSupported);

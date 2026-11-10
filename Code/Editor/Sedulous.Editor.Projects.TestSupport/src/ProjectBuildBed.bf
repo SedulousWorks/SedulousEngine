@@ -35,18 +35,8 @@ public class ProjectBuildBed
 		PathJoin(Root, "sdk", Sdk);
 		PathJoin(Root, "other sdk", OtherSdk);
 		PathJoin(Root, "Native Game", ProjectDir);
-		for (let sdk in StringView[2](Sdk, OtherSdk))
-		{
-			Write(sdk, "Code/Tools/Sedulous.Tools.Editor/BeefProj.toml",
-				"FileVersion = 1\n\n[Project]\nName = \"Sedulous.Tools.Editor\"\n\n[Configs.Debug.Linux64]\nPostBuildCmds = [\"CopyToTarget(\\\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\\\")\"]\n");
-			Write(sdk, ProjectBuild.cStockWebProject, cStockWeb);
-			Write(sdk, ProjectBuild.cStockToolsProject, cStockTools);
-			for (let library in StringView[6]("Code/Editor/Sedulous.Editor.Main", "Code/Engine/Sedulous.Engine.Player.DesktopMain",
-				"Code/Engine/Sedulous.Engine.Player.WebMain", "Code/Editor/Sedulous.Editor.McpMain", "Code/Editor/Sedulous.Editor.CookMain",
-				"Code/Editor/Sedulous.Editor.ExportMain"))
-				Write(sdk, scope $"{library}/BeefProj.toml", "");
-			Test.Assert(CreateDirectory(PathJoin(sdk, "Data", .. scope .())));
-		}
+		WriteSdk(Sdk);
+		WriteSdk(OtherSdk);
 
 		Settings.Name.Set("Native Game");
 		AddPackage("nativegame", "Code", scope StringView[]("Engine", "Editor"));
@@ -84,6 +74,24 @@ public class ProjectBuildBed
 		let xml = scope String();
 		Test.Assert(manifest.Write(xml) case .Ok);
 		Write(ProjectDir, scope $"{path}/Plugin.xml", xml);
+	}
+
+	/// An SDK at `sdk` with the files the build reads (ProjectBuild.IsSdk's startup libraries, the
+	/// stock projects Generate reads) and a data root, and `info` as its sdk.json when given (none:
+	/// a checkout's layout).
+	public static void WriteSdk(StringView sdk, StringView info = default)
+	{
+		Write(sdk, "Code/Tools/Sedulous.Tools.Editor/BeefProj.toml",
+			"FileVersion = 1\n\n[Project]\nName = \"Sedulous.Tools.Editor\"\n\n[Configs.Debug.Linux64]\nPostBuildCmds = [\"CopyToTarget(\\\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\\\")\"]\n");
+		Write(sdk, ProjectBuild.cStockWebProject, cStockWeb);
+		Write(sdk, ProjectBuild.cStockToolsProject, cStockTools);
+		for (let library in StringView[6]("Code/Editor/Sedulous.Editor.Main", "Code/Engine/Sedulous.Engine.Player.DesktopMain",
+			"Code/Engine/Sedulous.Engine.Player.WebMain", "Code/Editor/Sedulous.Editor.McpMain", "Code/Editor/Sedulous.Editor.CookMain",
+			"Code/Editor/Sedulous.Editor.ExportMain"))
+			Write(sdk, scope $"{library}/BeefProj.toml", "");
+		MakeDirectories(PathJoin(sdk, "Data", .. scope .()));
+		if (!info.IsEmpty)
+			Write(sdk, SdkInfo.cInfoFile, info);
 	}
 
 	public static void Write(StringView dir, StringView relative, StringView text)
