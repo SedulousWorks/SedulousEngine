@@ -208,7 +208,10 @@ class EditorMcpService
 				GlobalLog(.Warning, "MCP: the minted token could not be saved to the editor settings; it changes on the next run");
 		}
 		let paths = scope EngineToolPaths();
-		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
+		// The executable's folder and the working one first (a checkout), then the data root's
+		// parent: an SDK's root, for a project's own editor built outside it.
+		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .()),
+			PathParent(mServices.DataRoot, .. scope .())));
 		// shader_validate compiles against the engine's shader library under the data root.
 		DataPath(mServices.DataRoot, "Engine/Shaders", paths.ShaderLibrary);
 		mSession.Project = project;
