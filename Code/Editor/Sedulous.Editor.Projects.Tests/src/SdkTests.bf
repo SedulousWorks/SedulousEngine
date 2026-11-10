@@ -340,4 +340,50 @@ class SdkTests
 		let sdks = store.Section<SdkRegistrySettings>().Sdks;
 		Test.Assert((sdks.Count == 1) && (sdks[0].Root == sdk), scope $"{sdks.Count} entries");
 	}
+
+	/// What the project manager's Engines page reads of the registry: every listed SDK in its order
+	/// with how it was listed, a gone one with nothing read; the projects pinned to one; and every pin
+	/// to one taken away at once, the pins to others kept.
+	[Test]
+	public static void TheListReadWithHowEachWasListedAndThePinsToAnSdkFoundAndTakenAway()
+	{
+		let root = Scratch("scratch_sdk_listed", .. scope .());
+		defer RemoveDirectoryRecursive(root);
+		let registry = scope SdkRegistry(PathJoin(root, "sdks.xml", .. scope .()));
+		let installed = PathJoin(root, "installed", .. scope .());
+		Bed.WriteSdk(installed, Info("0.2.0", "beta", 3, .. scope .()));
+		let checkout = PathJoin(root, "checkout", .. scope .());
+		Checkout(checkout, "0.1.0");
+		let gone = PathJoin(root, "gone", .. scope .());
+		Bed.WriteSdk(gone, Info("0.1.0", "", 1, .. scope .()));
+		Test.Assert(registry.Register(installed, true) case .Ok);
+		Test.Assert(registry.Register(checkout) case .Ok);
+		Test.Assert(registry.Register(gone) case .Ok);
+		RemoveDirectoryRecursive(gone);
+
+		let listed = scope List<ListedSdk>();
+		defer { ClearAndDeleteItems!(listed); }
+		Test.Assert(registry.ReadListed(listed));
+		Test.Assert(listed.Count == 3);
+		Test.Assert((listed[0].Root == installed) && listed[0].Managed && (listed[0].Info != null) && (listed[0].Info.Display == "0.2.0-beta"));
+		Test.Assert((listed[1].Root == checkout) && !listed[1].Managed && (listed[1].Info != null) && listed[1].Info.IsCheckout);
+		Test.Assert((listed[2].Root == gone) && (listed[2].Info == null), "missing: nothing read");
+
+		let first = PathJoin(root, "First", .. scope .());
+		let second = PathJoin(root, "Second", .. scope .());
+		let other = PathJoin(root, "Other", .. scope .());
+		Test.Assert(registry.Pin(first, installed) case .Ok);
+		Test.Assert(registry.Pin(other, checkout) case .Ok);
+		Test.Assert(registry.Pin(scope $"{second}/", installed) case .Ok);
+		let pinned = scope List<String>();
+		defer { ClearAndDeleteItems!(pinned); }
+		Test.Assert(registry.PinnedTo(scope $"{installed}/", pinned));
+		Test.Assert((pinned.Count == 2) && (pinned[0] == first) && (pinned[1] == second));
+
+		Test.Assert(registry.UnpinAll(installed) case .Ok(2));
+		Test.Assert(registry.UnpinAll(installed) case .Ok(0));
+		let picked = scope String();
+		Test.Assert(!registry.PinOf(first, picked) && !registry.PinOf(second, picked));
+		Test.Assert(registry.PinOf(other, picked) && (picked == checkout), "a pin to another SDK stays");
+	}
 }

@@ -180,6 +180,28 @@ button.manager-small { height: 30px; font-size: var(--font-small); color: var(--
 .manager-sample-stage > label { flex-grow: 1; font-size: var(--font-small); color: var(--text); }
 .manager-sample-stage > button { height: 26px; }
 .manager-samples-state { flex-grow: 1; }
+/* The Engines tab: a row per engine listed or offered, as the projects' rows are; while one
+   installs, its bar and words stand in its row before Cancel. */
+.manager-engines { flex-direction: column; row-gap: 2px; flex-shrink: 0; }
+.manager-engines-available-head { margin-top: 18px; }
+.manager-engine-progress { flex-direction: column; row-gap: var(--space-xs); width: 220px; flex-shrink: 0; }
+.manager-engine-progress > progressbar { height: 6px; align-self: stretch; }
+/* The Toolchain tab: a line per need, its state's icon beside what was found and the fix; the
+   toolchain's install under them; Emscripten's folder last. */
+.manager-toolchain-engine { width: 420px; height: 30px; }
+.manager-toolchain-lines { flex-direction: column; row-gap: var(--space-s); margin-top: var(--space-s); flex-shrink: 0; }
+.manager-toolchain-line { flex-direction: row; align-items: start; column-gap: var(--space-m); padding: var(--space-s) 10px;
+                          border-radius: var(--radius); background-color: var(--element); }
+.manager-toolchain-line > .message-icon { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; image-color: var(--success); }
+.manager-toolchain-line.warning > .message-icon { image-color: var(--warning); }
+.manager-toolchain-line.error > .message-icon { image-color: var(--danger); }
+.manager-toolchain-line.error .manager-toolchain-detail { color: var(--warning); }
+.manager-toolchain-detail { color: var(--text-dim); font-size: var(--font-small); white-space: normal; }
+.manager-toolchain-progress { flex-direction: column; row-gap: 6px; margin-top: var(--space-s); flex-shrink: 0; }
+.manager-toolchain-progress > progressbar { height: 6px; align-self: stretch; }
+.manager-toolchain-emscripten-head { margin-top: 18px; }
+.manager-toolchain-emscripten { flex-direction: row; column-gap: var(--space-s); margin-top: var(--space-s); flex-shrink: 0; }
+.manager-toolchain-emscripten > textfield { flex-grow: 1; min-width: 0; }
 /* The download dialog's middle stage: the bar across the dialog, with the words under it. */
 .download-sample-progress { flex-direction: column; row-gap: var(--space-s); padding: var(--space-l) 0; }
 .download-sample-progress > progressbar { height: 6px; align-self: stretch; }

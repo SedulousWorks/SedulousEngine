@@ -3,8 +3,9 @@
 # system's tools: Info-ZIP's zip for a project-shaped archive (deflated, stored and empty files,
 # folders), one stored outright and a sample as a release packs it (sample.zip), and
 # Python's zipfile for what zip refuses to make: a name outside the folder, a damaged entry, an
-# archive with a comment, and entries with chosen Unix modes from a Unix and a DOS host. Run from
-# the repository root; the zips are committed.
+# archive with a comment, and entries with chosen Unix modes from a Unix and a DOS host; and for the
+# project manager's tests, an engine SDK (sdk.zip) and a toolchain (toolchain.zip) as a release
+# carries them. Run from the repository root; the zips are committed.
 set -euo pipefail
 out="$PWD/Data/Tests/Zip"
 work="$(mktemp -d)"
@@ -46,4 +47,26 @@ with zipfile.ZipFile(os.path.join(out, "modes.zip"), "w", zipfile.ZIP_DEFLATED) 
         info.create_system = system
         info.external_attr = mode << 16
         z.writestr(info, data)
+# An engine SDK as a release carries one: sdk.json at its root, the startup libraries' projects the
+# manager checks for, and its manager, an executable.
+def entry(z, name, data, mode=0o100644):
+    info = zipfile.ZipInfo(name, date_time=(2026, 11, 10, 12, 0, 0))
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.create_system = 3
+    info.external_attr = mode << 16
+    z.writestr(info, data)
+with zipfile.ZipFile(os.path.join(out, "sdk.zip"), "w", zipfile.ZIP_DEFLATED) as z:
+    entry(z, "sdk.json", '{"version": "0.2.0", "label": "beta", "display": "0.2.0-beta", "buildNumber": 3, '
+                         '"platform": "Linux64", "beef": "fixture-pin", "created": "2026-11-10T12:00:00Z"}\n')
+    for library in ("Code/Editor/Sedulous.Editor.Main", "Code/Engine/Sedulous.Engine.Player.DesktopMain",
+                    "Code/Engine/Sedulous.Engine.Player.WebMain", "Code/Editor/Sedulous.Editor.McpMain",
+                    "Code/Editor/Sedulous.Editor.CookMain", "Code/Editor/Sedulous.Editor.ExportMain"):
+        entry(z, library + "/BeefProj.toml", "FileVersion = 1\n")
+    entry(z, "ProjectManager/Sedulous.Tools.ProjectManager", "#!/bin/sh\n", 0o100755)
+# A toolchain as a release carries one: BeefBuild (an executable) with the BeefConfig.toml that names
+# its libraries, and corlib among them.
+with zipfile.ZipFile(os.path.join(out, "toolchain.zip"), "w", zipfile.ZIP_DEFLATED) as z:
+    entry(z, "bin/BeefBuild", "#!/bin/sh\necho BeefBuild 0.43.6\n", 0o100755)
+    entry(z, "bin/BeefConfig.toml", 'Version = 1\nUnversionedLibDirs = ["../BeefLibs"]\n')
+    entry(z, "BeefLibs/corlib/BeefProj.toml", "FileVersion = 1\n")
 PY

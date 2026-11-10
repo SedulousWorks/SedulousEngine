@@ -10,6 +10,17 @@ using internal Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Project;
 
+/// One SDK the registry lists, as SdkRegistry.ReadListed read it.
+class ListedSdk
+{
+	/// Its root, absolute.
+	public String Root = new .() ~ delete _;
+	/// The manager installed it into its own folder, which it may delete.
+	public bool Managed;
+	/// What it says of itself; null when its folder is gone or no longer an SDK.
+	public SdkInfo Info ~ delete _;
+}
+
 /// The SDKs this user has, and the one each project is pinned to: <user-data>/Sedulous/sdks.xml, a
 /// settings store holding SdkRegistrySettings, in a file of its own so that a project manager and
 /// the editors it starts, of any version, share it.
@@ -234,6 +245,68 @@ class SdkRegistry
 			}
 		}
 		return true;
+	}
+
+	/// Each listed SDK in the list's order into `outListed` (each new, the caller's): its root, how it
+	/// was listed, and what it says of itself read again (null when it is gone or no longer an SDK).
+	/// False when the file does not read.
+	public bool ReadListed(List<ListedSdk> outListed)
+	{
+		let store = scope Settings();
+		if (Load(store) case .Err)
+			return false;
+		for (let sdk in store.Section<SdkRegistrySettings>().Sdks)
+		{
+			let listed = new ListedSdk();
+			listed.Root.Set(sdk.Root);
+			listed.Managed = sdk.Managed;
+			let info = new SdkInfo();
+			if (SdkInfo.Read(sdk.Root, info) case .Ok)
+				listed.Info = info;
+			else
+				delete info;
+			outListed.Add(listed);
+		}
+		return true;
+	}
+
+	/// The folders of the projects pinned to the SDK at `sdkRoot` (made absolute), in the order they
+	/// were pinned, into `outProjects` (each new, the caller's). False when the file does not read.
+	public bool PinnedTo(StringView sdkRoot, List<String> outProjects)
+	{
+		let store = scope Settings();
+		if (Load(store) case .Err)
+			return false;
+		let sdk = ProjectBuild.Absolute(sdkRoot, .. scope .());
+		for (let pin in store.Section<SdkRegistrySettings>().Pins)
+		{
+			if (pin.Sdk == sdk)
+				outProjects.Add(new .(pin.Project));
+		}
+		return true;
+	}
+
+	/// Takes away every pin to the SDK at `sdkRoot` (made absolute): the projects then open with an
+	/// SDK of their version, or ask for one. How many there were.
+	public Result<int, ErrorCode> UnpinAll(StringView sdkRoot)
+	{
+		let sdk = ProjectBuild.Absolute(sdkRoot, .. scope .());
+		int removed = 0;
+		let changed = Change(scope [&](registry) =>
+			{
+				for (int i = registry.Pins.Count - 1; i >= 0; i--)
+				{
+					let pin = registry.Pins[i];
+					if (pin.Sdk != sdk)
+						continue;
+					registry.Pins.RemoveAt(i);
+					delete pin;
+					removed++;
+				}
+			});
+		if (changed case .Err(let error))
+			return .Err(error);
+		return .Ok(removed);
 	}
 
 	/// The SDK the registry gives the project at `projectDir`, stamped `stamp`, into `outSdk`: its

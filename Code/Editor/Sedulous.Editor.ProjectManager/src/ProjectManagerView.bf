@@ -18,8 +18,9 @@ namespace Sedulous.Editor.App;
 // (Data/Editor/ProjectManager.xml): a header with the Projects and Samples tabs; on Projects a
 // toolbar (New Project, Open Folder, a search, the sort, list or grid) over the projects as rows or
 // as tiles, and under them the missing ones, each with Locate... and Remove from list; on Samples
-// the sample games of this editor's release, each with its Download...; a footer with the status
-// and the keys. With no projects at all, a welcome stands in for the lists.
+// the sample games of this editor's release, each with its Download...; with an engine manager, the
+// Engines and Toolchain tabs (EnginesPage, ToolchainPage); a footer with the status and the keys.
+// With no projects at all, a welcome stands in for the lists.
 //
 // There is no selection: an action is one click on the project it is for. A focus ring that Up and
 // Down move marks the project Enter opens and Del takes off the list. Each project is probed when the
@@ -35,6 +36,23 @@ class NewProjectEngine
 {
 	public String Sdk = new .() ~ delete _;
 	public String Label = new .() ~ delete _;
+	/// Its version ("major.minor.patch"), which a project's stamp is compared with; and as a person
+	/// reads it.
+	public String Version = new .() ~ delete _;
+	public String Display = new .() ~ delete _;
+	/// How it is listed: "installed", "folder" or "checkout".
+	public String Kind = new .() ~ delete _;
+}
+
+/// The manager's pages, one to each tab.
+enum ManagerPage
+{
+	Projects,
+	Samples,
+	/// The engines listed and offered: with an engine manager alone.
+	Engines,
+	/// What a project's build needs besides the engine: with an engine manager alone.
+	Toolchain
 }
 
 /// What a ProjectManagerView works over. The controller and the dialogs are borrowed; the
@@ -68,6 +86,15 @@ class ProjectManagerServices
 	/// Where a file of this editor's release is fetched from (null: the release's own URL,
 	/// EngineVersion.ReleaseDownloadUrl); tests point it at a loopback server. Owned.
 	public delegate void(StringView file, String outUrl) ReleaseFile ~ delete _;
+	/// The project in `directory` to open with the engine at `sdk`, of `version`, picked from its
+	/// menu (the application asks first when the versions differ). Null: no engine in the menu.
+	/// Owned.
+	public delegate void(StringView directory, StringView sdk, StringView version) PickEngine ~ delete _;
+	/// The engine the project in the folder opens with into `outSdk`; false for none. Owned.
+	public delegate bool(StringView directory, String outSdk) EngineOf ~ delete _;
+	/// The engines and toolchains side by side, BORROWED: the Engines and Toolchain tabs show with
+	/// one alone.
+	public EngineManager EngineManager = null;
 }
 
 class ProjectManagerView
@@ -168,7 +195,12 @@ class ProjectManagerView
 	private String mFocusPath = new .() ~ delete _;
 	private int mFocus = 0;
 	private bool mProblem = false;
-	private bool mSamples = false;
+	private ManagerPage mPage = .Projects;
+	/// The Engines and Toolchain tabs' pages, with an engine manager; null without.
+	private EnginesPage mEnginesPage = null;
+	private ToolchainPage mToolchainPage = null;
+	/// The engine manager's message last put on the status line.
+	private int mEngineMessageSeen = 0;
 	/// The page's keys, on the content.
 	private uint32 mKeyListener = 0;
 	// The Samples tab.
@@ -224,6 +256,22 @@ class ProjectManagerView
 			projects.SetOnClick(new () => { ShowSamples(false); });
 		if (let samples = Find<Sedulous.GUI.Button>("manager-tab-samples"))
 			samples.SetOnClick(new () => { ShowSamples(true); });
+		if (let engines = Find<Sedulous.GUI.Button>("manager-tab-engines"))
+		{
+			engines.SetOnClick(new () => { ShowPage(.Engines); });
+			engines.Displayed = mServices.EngineManager != null;
+		}
+		if (let toolchain = Find<Sedulous.GUI.Button>("manager-tab-toolchain"))
+		{
+			toolchain.SetOnClick(new () => { ShowPage(.Toolchain); });
+			toolchain.Displayed = mServices.EngineManager != null;
+		}
+		if (mServices.EngineManager != null)
+		{
+			mEnginesPage = new EnginesPage(mContent, mServices.EngineManager, this, mServices.Dialogs);
+			mToolchainPage = new ToolchainPage(mContent, mServices.EngineManager, this, mServices.Dialogs);
+			mEngineMessageSeen = mServices.EngineManager.MessageSerial;
+		}
 		if (let removeMissing = Find<Sedulous.GUI.Button>("manager-remove-missing"))
 			removeMissing.SetOnClick(new () => { RemoveMissing(); });
 		if (let retry = Find<Sedulous.GUI.Button>("manager-samples-retry"))
@@ -257,6 +305,9 @@ class ProjectManagerView
 	/// The content may outlive this: what of it calls back here goes first.
 	public ~this()
 	{
+		// The pages' rows and questions call back into them: they go while the frame is there.
+		DeleteAndNullify!(mEnginesPage);
+		DeleteAndNullify!(mToolchainPage);
 		// Open as it goes, New Project would make into nothing and the menu run on nothing.
 		if ((mDialog != null) && mDialog.IsOpen)
 			mDialog.Close();
@@ -364,13 +415,30 @@ class ProjectManagerView
 	}
 
 	/// The Samples tab, else the Projects tab. The first visit fetches the release's samples.
-	public void ShowSamples(bool samples)
+	public void ShowSamples(bool samples) => ShowPage(samples ? ManagerPage.Samples : ManagerPage.Projects);
+
+	/// The tab of `page`: Samples' first visit fetches the release's samples; Engines reads the
+	/// engines again (its first visit asks the releases), Toolchain checks the toolchain again. The
+	/// Engines and Toolchain tabs show with an engine manager alone; without, Projects stands in.
+	public void ShowPage(ManagerPage page)
 	{
-		mSamples = samples;
-		if (samples && (mCatalogState == .NotFetched))
+		mPage = page;
+		if (((page == .Engines) || (page == .Toolchain)) && (mEnginesPage == null))
+			mPage = .Projects;
+		if ((mPage == .Samples) && (mCatalogState == .NotFetched))
 			FetchCatalog();
+		if (mPage == .Engines)
+			mEnginesPage.Shown();
+		else if (mPage == .Toolchain)
+			mToolchainPage.Shown();
 		Populate();
 	}
+
+	/// The tab showing.
+	public ManagerPage Page => mPage;
+	/// The Engines and Toolchain tabs' pages (a test's); null without an engine manager.
+	public EnginesPage EnginesTab => mEnginesPage;
+	public ToolchainPage ToolchainTab => mToolchainPage;
 
 	/// Once a frame: the HTTP client's answers, then the downloads under way (their bars, and what
 	/// each that ended leaves: a project in the list, or a word in the status line).
@@ -378,6 +446,18 @@ class ProjectManagerView
 	{
 		if (mServices.Http != null)
 			mServices.Http.Pump();
+		// What the engine manager said, on the status line whichever tab shows; its pages follow it
+		// while they show.
+		let engines = mServices.EngineManager;
+		if ((engines != null) && (engines.MessageSerial != mEngineMessageSeen))
+		{
+			mEngineMessageSeen = engines.MessageSerial;
+			ShowStatus(engines.Message, engines.MessageIsProblem);
+		}
+		if ((mPage == .Engines) && (mEnginesPage != null))
+			mEnginesPage.Tick();
+		else if ((mPage == .Toolchain) && (mToolchainPage != null))
+			mToolchainPage.Tick();
 		bool ended = false;
 		for (int i = mDownloads.Count - 1; i >= 0; i--)
 		{
@@ -582,10 +662,10 @@ class ProjectManagerView
 		Later(false);
 	}
 
-	public bool IsShowingSamples => mSamples;
+	public bool IsShowingSamples => mPage == .Samples;
 
 	/// Whether the first run's welcome stands in for the lists (no projects at all).
-	public bool IsWelcome => !mSamples && mProbes.IsEmpty;
+	public bool IsWelcome => (mPage == .Projects) && mProbes.IsEmpty;
 
 	/// The projects shown (missing ones too), and how many show their thumbnail (a test's).
 	public int ShownCount => mShown.Count;
@@ -605,7 +685,7 @@ class ProjectManagerView
 		let code = (Sedulous.GUI.KeyCode)keyCode;
 		if (modifiers == KeyModCtrl)
 		{
-			if ((code == .F) && !mSamples)
+			if ((code == .F) && (mPage == .Projects))
 			{
 				let search = Find<Sedulous.GUI.TextField>("manager-search");
 				if ((search != null) && search.IsTreeVisible)
@@ -624,7 +704,7 @@ class ProjectManagerView
 			}
 			return false;
 		}
-		if ((modifiers != 0) || mSamples || mShown.IsEmpty)
+		if ((modifiers != 0) || (mPage != .Projects) || mShown.IsEmpty)
 			return false;
 		let dispatcher = (mContent != null) ? mContent.EventDispatcher : null;
 		let focus = (dispatcher != null) ? dispatcher.FocusNode : null;
@@ -1418,7 +1498,7 @@ class ProjectManagerView
 		let idle = text.IsEmpty;
 		if (!idle)
 			status.Text = text;
-		else if (!mSamples && !mShown.IsEmpty)
+		else if ((mPage == .Projects) && !mShown.IsEmpty)
 			status.Text = "Double-click a project or press Enter to open it.";
 		else
 			status.Text = "";
@@ -1454,15 +1534,23 @@ class ProjectManagerView
 		if ((mContent == null) || (mServices.Controller == null))
 			return;
 		if (let projects = Find<Sedulous.GUI.Button>("manager-tab-projects"))
-			projects.Checked = !mSamples;
+			projects.Checked = mPage == .Projects;
 		if (let samples = Find<Sedulous.GUI.Button>("manager-tab-samples"))
-			samples.Checked = mSamples;
+			samples.Checked = mPage == .Samples;
+		if (let engines = Find<Sedulous.GUI.Button>("manager-tab-engines"))
+			engines.Checked = mPage == .Engines;
+		if (let toolchain = Find<Sedulous.GUI.Button>("manager-tab-toolchain"))
+			toolchain.Checked = mPage == .Toolchain;
 		let welcome = IsWelcome;
 		if (let page = Find<Node>("manager-projects-page"))
-			page.Displayed = !mSamples && !welcome;
+			page.Displayed = (mPage == .Projects) && !welcome;
 		if (let page = Find<Node>("manager-samples-page"))
-			page.Displayed = mSamples;
-		if (mSamples)
+			page.Displayed = mPage == .Samples;
+		if (let page = Find<Node>("manager-engines-page"))
+			page.Displayed = mPage == .Engines;
+		if (let page = Find<Node>("manager-toolchain-page"))
+			page.Displayed = mPage == .Toolchain;
+		if (mPage == .Samples)
 			PopulateSamples();
 		if (let page = Find<Node>("manager-welcome"))
 			page.Displayed = welcome;
@@ -1537,7 +1625,7 @@ class ProjectManagerView
 		if (let missingCount = Find<Sedulous.GUI.Label>("manager-missing-count"))
 			missingCount.Text = scope $"{missing.Count} · not found at the last known location"; // right for any count
 		if (let keys = Find<Node>("manager-keys"))
-			keys.Displayed = !mSamples && !welcome;
+			keys.Displayed = (mPage == .Projects) && !welcome;
 
 		// The ring stays on its project when that is still shown, else on the same place.
 		var focus = Math.Min(mFocus, mShown.IsEmpty ? 0 : (mShown.Count - 1));
@@ -1638,12 +1726,57 @@ class ProjectManagerView
 		for (let item in items)
 		{
 			if (item == "Remove from List")
+			{
+				AddEngineMenu(path);
 				mMenu.AddSeparator();
+			}
 			let projectPath = new String(path);
 			let which = new String(item);
 			mMenu.AddItem(item, new [=this, =projectPath, =which] () => { Run(projectPath, which); } ~ { delete projectPath; delete which; });
 		}
 		mMenu.OpenBelow(anchor, anchor);
+	}
+
+	/// The project's engine in its menu, when the services pick one per project and the project is
+	/// there: "Engine: <the one it opens with> (<how it is listed>)", over the engines listed, the
+	/// one it opens with checked; a pick asks the application (PickEngine).
+	private void AddEngineMenu(StringView path)
+	{
+		if ((mServices.Engines == null) || (mServices.PickEngine == null) || !FileExists(PathJoin(path, ProjectLayout.ManifestFile, .. scope .())))
+			return;
+		let engines = scope List<NewProjectEngine>();
+		defer { ClearAndDeleteItems!(engines); }
+		mServices.Engines(engines);
+		let current = scope String();
+		if ((mServices.EngineOf == null) || !mServices.EngineOf(path, current))
+			current.Clear();
+		let sub = mMenu.AddSubMenu(EngineMenuTitle(engines, current, .. scope .()));
+		for (let engine in engines)
+		{
+			let projectPath = new String(path);
+			let sdk = new String(engine.Sdk);
+			let version = new String(engine.Version);
+			sub.AddCheckItem(engine.Label, engine.Sdk == current, new [=this, =projectPath, =sdk, =version] (on) =>
+				{
+					if (mServices.PickEngine != null)
+						mServices.PickEngine(projectPath, sdk, version);
+				} ~ { delete projectPath; delete sdk; delete version; });
+		}
+	}
+
+	/// The title of a project's engine menu: the engine at `current` among `engines`, as "Engine:
+	/// 0.2.0-beta (installed)"; "Engine: none" when it opens with none listed.
+	public static void EngineMenuTitle(List<NewProjectEngine> engines, StringView current, String outTitle)
+	{
+		for (let engine in engines)
+		{
+			if (engine.Sdk == current)
+			{
+				outTitle.AppendF("Engine: {} ({})", engine.Display, engine.Kind);
+				return;
+			}
+		}
+		outTitle.Append("Engine: none");
 	}
 
 	/// The "more" button: the project's menu. A node with one reference, the caller's.
