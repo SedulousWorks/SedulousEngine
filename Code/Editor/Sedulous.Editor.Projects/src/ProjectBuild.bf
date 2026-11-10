@@ -140,6 +140,9 @@ static class ProjectBuild
 	/// Where a packaged Beef on Linux keeps its user data, its BeefSettings.toml among it, under
 	/// HOME; a source build keeps it beside its executables.
 	public const String cPackagedBeefDataDir = ".config/beeflang";
+	/// Under the user data folder: the toolchains the project manager installs, one folder per pin,
+	/// shared by every SDK built with that toolchain (ManagedBeefBuild).
+	public const String cToolchainsDir = "Toolchains";
 	/// emcc under Emscripten's folder (with the host's executable suffix), which BeefBuild links
 	/// wasm32 with.
 	public const String cEmccPath = "upstream/emscripten/emcc";
@@ -1062,9 +1065,10 @@ static class ProjectBuild
 	}
 
 	/// BeefBuild: the one BEEFBUILD names, else the first on PATH whose install has corlib, else
-	/// the managed install (ManagedBeefBuild). Refused, with every candidate tried and why each
-	/// was passed over in `outError`, when none will build.
-	public static bool FindBeefBuild(String outPath, String outError)
+	/// the managed install of the toolchain `pin` names (ManagedBeefBuild; none for an empty pin).
+	/// Refused, with every candidate tried and why each was passed over in `outError`, when none
+	/// will build.
+	public static bool FindBeefBuild(String outPath, String outError, StringView pin = default)
 	{
 		let variable = scope String();
 		if (Environment.GetEnvironmentVariable(cBeefBuildVariable, variable) case .Err)
@@ -1072,11 +1076,14 @@ static class ProjectBuild
 		let searchPath = scope String();
 		if (Environment.GetEnvironmentVariable("PATH", searchPath) case .Err)
 			searchPath.Clear();
-		return FindBeefBuildFrom(variable, searchPath, outPath, outError);
+		let managed = scope String();
+		ManagedBeefBuild(pin, managed);
+		return FindBeefBuildFrom(variable, searchPath, outPath, outError, managed);
 	}
 
-	/// FindBeefBuild over given values of BEEFBUILD and PATH (empty for unset).
-	public static bool FindBeefBuildFrom(StringView variable, StringView searchPath, String outPath, String outError)
+	/// FindBeefBuild over given values of BEEFBUILD and PATH (empty for unset), and `managed`, the
+	/// managed install's BeefBuild, asked last (empty: none).
+	public static bool FindBeefBuildFrom(StringView variable, StringView searchPath, String outPath, String outError, StringView managed = default)
 	{
 		let tried = scope String();
 		if (!variable.IsEmpty && AcceptBeefBuild(variable, cBeefBuildVariable, tried, outPath))
@@ -1093,21 +1100,32 @@ static class ProjectBuild
 		if (onPath.IsEmpty)
 			AppendTried(tried, "PATH: no BeefBuild there");
 
-		let managed = scope String();
-		if (ManagedBeefBuild(managed) && AcceptBeefBuild(managed, "the managed install", tried, outPath))
+		if (!managed.IsEmpty && AcceptBeefBuild(managed, "the managed install", tried, outPath))
 			return true;
 
 		outError.Set(scope $"BeefBuild not found: set {cBeefBuildVariable}, or put BeefBuild on PATH (tried: {tried})");
 		return false;
 	}
 
-	/// The BeefBuild of a toolchain the editor installs and keeps up to date itself. None yet:
-	/// that install is to come, and until it does this finds nothing, so BEEFBUILD and PATH are
-	/// the only places looked.
-	public static bool ManagedBeefBuild(String outPath)
+	/// The BeefBuild of the managed toolchain `pin` names, <user-data>/Sedulous/Toolchains/<pin>/
+	/// bin/BeefBuild (ManagedBeefBuildIn).
+	public static bool ManagedBeefBuild(StringView pin, String outPath)
+	{
+		return ManagedBeefBuildIn(PathJoin(GetUserDataDirectory(.. scope .()), cToolchainsDir, .. scope .()), pin, outPath);
+	}
+
+	/// Where the toolchain `pin` names keeps its BeefBuild under `toolchains`: <pin>/bin/BeefBuild
+	/// (with the host's executable suffix), the layout a packed toolchain unpacks to, into
+	/// `outPath`; true when it is there. Nothing for an empty pin, or one that is not a single
+	/// folder name.
+	public static bool ManagedBeefBuildIn(StringView toolchains, StringView pin, String outPath)
 	{
 		outPath.Clear();
-		return false;
+		if (pin.IsEmpty || (pin == ".") || (pin == "..") || pin.Contains('/') || pin.Contains('\\') || toolchains.IsEmpty)
+			return false;
+		let bin = PathJoin(PathJoin(toolchains, pin, .. scope .()), "bin", .. scope .());
+		PathJoin(bin, BuildLayout.ExecutableName("BeefBuild", .. scope .()), outPath);
+		return FileExists(outPath);
 	}
 
 	/// `candidate` into `outPath` when it is a file and its install has corlib (HasCorlib); else
@@ -1259,6 +1277,81 @@ static class ProjectBuild
 			return false;
 		}
 		return false;
+	}
+
+	/// Points the BeefBuild at `beefBuild` at Emscripten in `emsdk`: [Wasm] EmscriptenPath in the
+	/// BeefSettings.toml beside it (links followed, as FindEmscriptenFrom reads it), the file made
+	/// when there is none and every other line of one that is there kept. For the managed
+	/// toolchain, built to keep its settings beside itself; a user's own Beef is only told what to
+	/// set, since a packaged one reads another file.
+	public static Result<void> WriteEmscriptenPath(StringView beefBuild, StringView emsdk)
+	{
+		let real = ResolveLinks(beefBuild, .. scope .());
+		let settingsPath = PathJoin(PathParent(real, .. scope .()), cBeefSettingsFile, .. scope .());
+		let existing = scope String();
+		if (ReadText(settingsPath, existing) case .Err)
+			existing.Clear();
+		return WriteIfChanged(settingsPath, SetTomlString(existing, cEmscriptenTable, cEmscriptenKey, emsdk, .. scope .()));
+	}
+
+	/// `text` (a TOML file; empty for none) with `key` in `table` set to the basic string `value`
+	/// (its backslashes and quotes escaped), into `outText`: the line that sets it replaced, else
+	/// one added under the table's header, else the table added at the end. Every other line stays.
+	public static void SetTomlString(StringView text, StringView table, StringView key, StringView value, String outText)
+	{
+		let line = scope String();
+		line.AppendF("{} = \"", key);
+		for (let c in value.RawChars)
+		{
+			if ((c == '\\') || (c == '"'))
+				line.Append('\\');
+			line.Append(c);
+		}
+		line.Append('"');
+
+		let header = scope $"[{table}]";
+		let lines = scope List<StringView>();
+		for (let each in text.Split('\n'))
+			lines.Add(each);
+		// The empty piece after a final newline is not a line.
+		if (!lines.IsEmpty && lines.Back.IsEmpty)
+			lines.PopBack();
+		int headerAt = -1;
+		int setAt = -1;
+		for (int i < lines.Count)
+		{
+			var trimmed = lines[i];
+			trimmed.Trim();
+			if (trimmed.StartsWith('['))
+			{
+				if (headerAt >= 0)
+					break;
+				if (trimmed == header)
+					headerAt = i;
+				continue;
+			}
+			if ((headerAt >= 0) && SetsKey(trimmed, key))
+			{
+				setAt = i;
+				break;
+			}
+		}
+		for (int i < lines.Count)
+		{
+			if (i == setAt)
+				outText.Append(line);
+			else
+				outText.Append(lines[i]);
+			outText.Append('\n');
+			if ((i == headerAt) && (setAt < 0))
+				outText.AppendF("{}\n", line);
+		}
+		if (headerAt < 0)
+		{
+			if (!outText.IsEmpty && !outText.EndsWith("\n\n"))
+				outText.Append('\n');
+			outText.AppendF("{}\n{}\n", header, line);
+		}
 	}
 
 	/// The UnversionedLibDirs of a BeefConfig.toml, each string of the array as written (one
