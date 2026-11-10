@@ -82,9 +82,6 @@ class EditorContext : IAssetEditSink
 	private uint64 mNextInterceptorId = 0;
 	private List<ThumbnailEntry> mThumbnailListeners = new .() ~ DeleteContainerAndItems!(_);
 	private List<PendingAssetEdit> mPendingAssetEdits = new .() ~ DeleteContainerAndItems!(_);
-	private List<ScriptBreakpoint> mBreakpoints = new .() ~ DeleteContainerAndItems!(_);
-	private ScriptExecutionPoint mExecutionPoint = new .() ~ delete _;
-	private uint64 mExecutionPointVersion = 0;
 
 	public this()
 	{
@@ -132,8 +129,6 @@ class EditorContext : IAssetEditSink
 	public delegate void() OnFavoritesChanged ~ delete _;
 	/// The app's persist hook for the project editor settings.
 	public delegate void() OnProjectEditorSettingsSaveRequested ~ delete _;
-	/// Fired on every breakpoint toggle: the gutter repaints, a live run re-applies.
-	public delegate void() OnBreakpointsChanged ~ delete _;
 	/// The play in editor seam: makes the Game page. `newInstance` false reuses the app's
 	/// primary game instance; true spins up an additional one. `pieId` names the tab, the same
 	/// id its dock panel persists under and the PIE tools address it by (`game-page`, then
@@ -150,9 +145,6 @@ class EditorContext : IAssetEditSink
 	/// `outPrefabs`. Registered by the scene editor plugin. MAIN THREAD only, which is why
 	/// the editor pre-scans on the main thread and hands the set to the background job.
 	public delegate bool(Instance instance, ContentDatabase db, List<Guid> outResources, List<Guid> outPrefabs) SceneRefScanner ~ delete _;
-	/// The debugger's value lookup for hover inspection: an identifier's display text,
-	/// "value : Type", or empty when unavailable. Installed by the Game page for the run.
-	public delegate void(StringView identifier, String outText) ScriptValueProbe ~ delete _;
 
 	// ---- project and services ----
 
@@ -768,56 +760,6 @@ class EditorContext : IAssetEditSink
 		for (let listener in mImportListeners)
 			listener(instance, options);
 	}
-
-	// ---- script breakpoints and the execution point ----
-
-	public void ToggleBreakpoint(StringView file, int32 line)
-	{
-		for (int i < mBreakpoints.Count)
-		{
-			if ((mBreakpoints[i].Line == line) && (mBreakpoints[i].File == file))
-			{
-				delete mBreakpoints[i];
-				mBreakpoints.RemoveAt(i);
-				if (OnBreakpointsChanged != null)
-					OnBreakpointsChanged();
-				return;
-			}
-		}
-		mBreakpoints.Add(new ScriptBreakpoint(file, line));
-		if (OnBreakpointsChanged != null)
-			OnBreakpointsChanged();
-	}
-
-	public bool HasBreakpoint(StringView file, int32 line)
-	{
-		for (let breakpoint in mBreakpoints)
-			if ((breakpoint.Line == line) && (breakpoint.File == file))
-				return true;
-		return false;
-	}
-
-	public List<ScriptBreakpoint> Breakpoints => mBreakpoints;
-
-	public void SetScriptExecutionPoint(StringView file, int32 line)
-	{
-		mExecutionPoint.File.Set(file);
-		mExecutionPoint.Line = line;
-		mExecutionPoint.Active = true;
-		mExecutionPointVersion++;
-	}
-
-	public void ClearScriptExecutionPoint()
-	{
-		if (!mExecutionPoint.Active)
-			return;
-		mExecutionPoint.Active = false;
-		mExecutionPointVersion++;
-	}
-
-	public ScriptExecutionPoint ScriptExecution => mExecutionPoint;
-	/// Stamped on every set and clear so a consumer polls cheaply per frame.
-	public uint64 ScriptExecutionVersion => mExecutionPointVersion;
 
 	private void NotifyPagesChanged()
 	{

@@ -260,8 +260,9 @@ int best = Save.GetInt("best.level2", 0);   // the fallback when there is none y
 ## Editor properties
 
 A property is a field with an annotation, `[default, "description"]` in front of its
-declaration; a field without one is plain state, whatever its access. The editor shows each
-property with its description as the tooltip and saves per instance values over the default.
+declaration; a field without one is plain state, whatever its access. A scene keeps per
+instance values over the default. The editor no longer shows or edits them: a game's code is
+native (GameCode.md).
 
 ```
 [4.0, "Units per second"]            float speed;
@@ -304,8 +305,8 @@ property with its description as the tooltip and saves per instance values over 
   behavior.
 - `script_validate` compiles; it does not run. A global variable's initialiser does run
   whenever the module builds, cook time included, so keep it to plain values.
-- A plain field is not a property: if the inspector does not show a field, it has no
-  annotation.
+- A plain field is not a property: without an annotation, a field has no default and no
+  per instance value.
 - Some engine fields are read only on purpose (a network identity's `Authority` and `Id`):
   a script reads them, and an assignment fails to compile, since no setter exists.
 - A struct-valued field (a light's `Color`, a `Float3`) is written where it lives:

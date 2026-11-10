@@ -13,7 +13,7 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.Core.Tests;
 
 /// The context: page dispatch and lifetime, the seams the app wires, interception,
-/// selection, notices, the debugger state and the pending asset edits.
+/// selection, notices and the pending asset edits.
 static class EditorContextTests
 {
 	private class Db
@@ -347,42 +347,6 @@ static class EditorContextTests
 		context.Notify(.Error, "cook failed");
 		Test.Assert((gotKind == .Error) && (gotMessage == "cook failed"));
 		Test.Assert(statuses.Count == 1, "a wired notice does not double post the status");
-	}
-
-	[Test]
-	public static void TheScriptExecutionPointSetsClearsAndStampsVersions()
-	{
-		let context = scope EditorContext();
-		Test.Assert(!context.ScriptExecution.Active);
-		let v0 = context.ScriptExecutionVersion;
-		context.SetScriptExecutionPoint("game.script", 12);
-		Test.Assert(context.ScriptExecution.Active && (context.ScriptExecution.File == "game.script") && (context.ScriptExecution.Line == 12));
-		Test.Assert(context.ScriptExecutionVersion != v0);
-		let v1 = context.ScriptExecutionVersion;
-		context.SetScriptExecutionPoint("game.script", 13);
-		Test.Assert(context.ScriptExecutionVersion != v1);
-		let v2 = context.ScriptExecutionVersion;
-		context.ClearScriptExecutionPoint();
-		Test.Assert(!context.ScriptExecution.Active && (context.ScriptExecutionVersion != v2));
-		let v3 = context.ScriptExecutionVersion;
-		context.ClearScriptExecutionPoint();
-		Test.Assert(context.ScriptExecutionVersion == v3, "clearing while clear is version quiet");
-	}
-
-	[Test]
-	public static void TheScriptValueProbeSlot()
-	{
-		let context = scope EditorContext();
-		Test.Assert(context.ScriptValueProbe == null, "absent by default");
-		context.ScriptValueProbe = new (identifier, outText) => { if (identifier == "speed") outText.Set("4.5 : float"); };
-		let text = scope String();
-		context.ScriptValueProbe("speed", text);
-		Test.Assert(text == "4.5 : float");
-		text.Clear();
-		context.ScriptValueProbe("unknown", text);
-		Test.Assert(text.IsEmpty);
-		delete context.ScriptValueProbe;
-		context.ScriptValueProbe = null;
 	}
 
 	[Test]

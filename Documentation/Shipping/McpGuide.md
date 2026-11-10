@@ -291,8 +291,8 @@ two folders) is overwritten for neither, so a `replace` over one of them copies 
 OS file each came from is kept in the project's ignored `.cache/imports.txt`.
 `asset_list` and `asset_info` inspect either database.
 Assets that are authored rather than imported (input maps, materials, scenes, prefabs,
-particle effects, animation graphs, physics, audio and UI assets, primitive meshes, script
-classes) come from `asset_create`: `asset_creators` lists every creator with the `type` it
+particle effects, animation graphs, physics, audio and UI assets, primitive meshes) come from
+`asset_create`: `asset_creators` lists every creator with the `type` it
 makes and the `defaultGroup` it lands in; pass `creator` by label (or `type` when one
 creator makes it), optionally `name` and `group`. A name already taken in the target group
 is refused rather than renamed. A data asset's content (an input map's actions and bindings,

@@ -8,8 +8,7 @@ namespace Sedulous.Editor.Scene;
 // What a section in the inspector shows besides its reflected rows, a component's or, while the
 // scene is selected, a settings block's:
 // notices that hold while something is so (a rigid body with no collider), actions (a zone's Bake)
-// and sections of their own (a script component's behaviours, the physics block's collision
-// groups). The inspector asks the section's type for them, so it names no type: a domain registers
+// and sections of their own (the physics block's collision groups). The inspector asks the section's type for them, so it names no type: a domain registers
 // its type's extras (SceneEditor.Register registers the built-in ones), and the inspector adds
 // what a provider gives under the section's header, a notice shown only while its message is not
 // empty.
@@ -27,7 +26,7 @@ abstract class InspectorExtras
 	public abstract void AddNotice(StringView name, delegate void(String outMessage) message);
 	/// An action under the header: a button `label` that runs `run` (taken).
 	public abstract void AddAction(StringView name, StringView label, StringView description, delegate void() run);
-	/// Rows of a source of its own under the header (a script component's behaviours, which
+	/// Rows of a source of its own under the header (the physics block's collision groups, which
 	/// reflection does not show), both taken; `refresh` (may be null) runs as the inspector shows
 	/// its values.
 	public abstract void AddSection(IPropertySource source, delegate void() refresh);

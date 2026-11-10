@@ -32,14 +32,13 @@ class GameEditorPageServices
 }
 
 /// The Game tab: plays the project's default scene through its OWN game instance, with the
-/// startup script, the default input map and bus layout, the resolution it draws at (the project's
-/// by default), and the script debugger beside the game (hidden until its toggle, or a breakpoint,
-/// shows it).
+/// startup script, the default input map and bus layout, and the resolution it draws at (the
+/// project's by default).
 ///
 /// On the GUI, from its markup (Data/Editor/
 /// Game.xml): the kit's transport (Restart, Play, Pause, Stop, the state named beside them and the
-/// scene it runs, a Play waiting for the cook said so), the resolution and the phone, the debugger's
-/// toggle; the game on GUI.Viewport, which the GUI host binds, places and routes, and which keeps
+/// scene it runs, a Play waiting for the cook said so), the resolution and the phone; the game on
+/// GUI.Viewport, which the GUI host binds, places and routes, and which keeps
 /// every key while it runs and has the focus (Shift+F1 gives them back).
 ///
 /// The context, host and embedded application are borrowed. The game instance is borrowed from
@@ -89,22 +88,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private Sedulous.GUI.Label mSceneLabel = null;
 	/// Shown while a Play waits for the cook.
 	private Sedulous.GUI.Label mCookBadge = null;
-	/// Shows the script debugger beside the game. Off by default: it takes room the game wants,
-	/// and is opened when needed (and by a breakpoint that pauses the run).
-	private ButtonBase mDebuggerToggle = null;
-	/// Held while it is out of the split.
-	private Node mDebuggerPane = null ~ _?.ReleaseRef();
-	/// The game beside the debugger (the markup's).
-	private Splitter mStage = null;
-	/// The debugger's share of the split, kept while it is off.
-	private float mDebuggerShare = 0.22f;
-	/// After the content: the trees it binds let go of its models first.
-	private DebuggerPanel mDebuggerPanel = new .() ~ delete _;
-	private GameDebugListener mDebugListener = new .() ~ delete _;
-	/// The simulation was frozen for a breakpoint.
-	private bool mSimPausedByDebugger = false;
-	/// The breakpoints mirrored onto the debugger.
-	private List<ScriptBreakpoint> mAppliedBreakpoints = new .() ~ DeleteContainerAndItems!(_);
 	/// One reference, the page's: its pane holds its own.
 	private Sedulous.GUI.Viewport mViewport ~ _.ReleaseRef();
 	/// The placeholder scene group when there is no game instance.
@@ -183,7 +166,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 					mExitRequested = true;
 				});
 
-		// The tab from its markup: the bar over the stage, the game beside the debugger.
+		// The tab from its markup: the bar over the stage the game fills.
 		mContent = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cMarkupPath) : null;
 		if (mContent == null)
 			mContent = new Panel(); // no markup: still a tab, with its viewport
@@ -191,14 +174,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		((stage != null) ? stage : mContent).AddChildAt(mViewport, 0);
 		if (mServices.Gui != null)
 			mViewport.HostIn(mServices.Gui);
-		mStage = Find<Splitter>("game-stage");
-		mDebuggerPane = Find<Node>("game-debugger");
-		if (mDebuggerPane != null)
-		{
-			mDebuggerPane.AddRef();
-			mDebuggerPanel.Bind(mDebuggerPane);
-			ShowDebugger(false); // it takes room the game wants: opened by its toggle or a break
-		}
 		BindBar();
 		RefreshToolbar();
 	}
@@ -309,7 +284,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		// The window's text input follows the game GUI's focus: the viewport (the editor GUI's focused
 		// node while playing) says the game's GUI wants text, and the editor GUI's bridge starts it.
 		mViewport.SetHostedTextInputWanted((mApp != null) && (mApp.Gui != null) && mApp.Gui.WantsTextInput);
-		DrainDebuggerState();
 		SyncRunAudio();
 	}
 
@@ -422,7 +396,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
 	}
 
-	/// The bar from the markup: the transport, the resolutions and the phone, the debugger.
+	/// The bar from the markup: the transport, the resolutions and the phone.
 	private void BindBar()
 	{
 		mRestartButton = Find<ButtonBase>("game-restart");
@@ -432,7 +406,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mStateLabel = Find<Sedulous.GUI.Label>("game-state");
 		mSceneLabel = Find<Sedulous.GUI.Label>("game-scene");
 		mCookBadge = Find<Sedulous.GUI.Label>("game-cook");
-		mDebuggerToggle = Find<ButtonBase>("game-debugger-toggle");
 		if (mRestartButton != null)
 			mRestartButton.SetOnClick(new [=this] () =>
 				{
@@ -450,48 +423,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 				});
 		if (mStopButton != null)
 			mStopButton.SetOnClick(new [=this] () => { Stop(); });
-		if (mDebuggerToggle != null)
-			mDebuggerToggle.SetOnToggled(new [=this] (shown) => { ShowDebugger(shown); });
 		BindResolution();
-	}
-
-	private void ShowDebugger(bool shown)
-	{
-		if (mDebuggerPane == null)
-			return;
-		if (mStage == null)
-		{
-			mDebuggerPane.Displayed = shown; // no split: the stage gives the game the room back
-			return;
-		}
-		// In the split while it is on, at the share it was last given; out of it while it is off,
-		// the game taking the whole stage (a hidden pane would keep its share empty).
-		let inSplit = mDebuggerPane.Parent == mStage;
-		if (shown && !inSplit)
-		{
-			mStage.AddChild(mDebuggerPane);
-			float[2] weights = .(1.0f - mDebuggerShare, mDebuggerShare);
-			mStage.SetWeights(Span<float>(&weights[0], 2));
-		}
-		else if (!shown && inSplit)
-		{
-			let weights = scope List<float>();
-			mStage.GetWeights(weights);
-			if ((weights.Count == 2) && (weights[1] > 0.0f))
-				mDebuggerShare = weights[1];
-			mStage.RemoveChild(mDebuggerPane);
-		}
-	}
-
-	/// Whether the script debugger is beside the game now.
-	public bool DebuggerShown
-	{
-		get
-		{
-			if (mDebuggerPane == null)
-				return false;
-			return (mStage != null) ? (mDebuggerPane.Parent == mStage) : mDebuggerPane.Displayed;
-		}
 	}
 
 	/// The kit's transport as the run is now: Play while stopped, Pause and Stop while it runs (or
@@ -500,7 +432,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private void RefreshToolbar()
 	{
 		let faulted = mRunning && (ScriptState == .Faulted);
-		let paused = mRunning && (mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked));
+		let paused = mRunning && (mPauseToggle != null) && mPauseToggle.Checked;
 		if (mPlayButton != null)
 			mPlayButton.Enabled = !mRunning && !mPendingPlay;
 		if (mPauseToggle != null)

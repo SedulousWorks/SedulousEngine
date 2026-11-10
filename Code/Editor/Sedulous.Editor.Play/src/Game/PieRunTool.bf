@@ -354,7 +354,7 @@ static class PieRunTool
 
 		if ((t >= run.Duration) && !run.ShotInFlight && (run.NextShot >= run.ShotTimes.Count))
 			return Finish(run, "duration", t, outResult);
-		// The game clock stood still: the debugger holds the run, or the editor is not ticking.
+		// The game clock stood still: the editor is not ticking.
 		if (run.Clock.Elapsed.TotalSeconds > (run.Duration * 4) + 30)
 			return Finish(run, "timeout", t, outResult);
 		return .NotFinished;

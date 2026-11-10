@@ -17,7 +17,6 @@ using Sedulous.Engine.Composition; // the full scene composition
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Script;
-using Sedulous.Script.Resource;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -45,10 +44,9 @@ namespace Sedulous.Editor.Scene.Tests;
 /// actions. And its inspector: nothing selected says so; an entity's head and sections;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
-/// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
-/// behaviours; the scene's settings with the scene selected, the physics block's collision groups
-/// and the level script's properties. And its bar's editing controls: the page's actions,
-/// Select, the space's icon, Snap and its increments. Its HUD: the chips, the stats, the
+/// slot; a component's extras (a rigid body's notice, a zone's Bake), a script component's none;
+/// the scene's settings with the scene selected and the physics block's collision groups. And its bar's editing controls (layer 5): the page's actions,
+/// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
 /// view gizmo, the zoom readout and the tool's status. Its viewport tools: each an action, on the bar
 /// by category, the active one's panel under the chips, moved, kept and put back. A reference set
 /// in the inspector binds at once. Its scene's file changed outside the editor reloads a clean page
@@ -1837,60 +1835,29 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	/// A script component and the scene's script block show as reflection gives them, with no
+	/// sections of their own: a game's code is native, so the editor authors no script.
 	[Test]
-	public static void ScriptBehaviorsAListOfBehavioursEachItsScriptEnabledAndIntervalEveryEditOneUndoStepARevertItsDefault()
+	public static void InspectorAScriptComponentAndTheScenesScriptBlockArePlainSectionsWithNoExtras()
 	{
+		BuiltinInspectorExtras.Register();
 		let bed = scope Bed();
 		let page = bed.Open(bed.Level);
 		defer delete page;
-		let edit = page.EditContext;
-		edit.AddComponent(bed.Crate, typeof(ScriptComponent));
-		Guid[1] crate = .(bed.Crate);
-		let source = scope ScriptBehaviorsSource(edit, bed.Context, crate);
-		let manager = page.ScenePtr.GetSystem<ScriptComponentManager>();
-		Test.Assert(manager != null);
-		ScriptComponent* Component() => manager.Get(page.ScenePtr.FindEntity(bed.Crate));
+		let inspector = page.Inspector;
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.AddComponent("ScriptComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.SectionTitles(.. scope .()).Contains(" | Script"), "a section of its own");
+		Test.Assert(inspector.ExtraSource("Script", 0) == null);
 
-		let top = scope List<PropertyInfo>();
-		defer { ClearAndDeleteItems!(top); }
-		source.GetProperties(default, top);
-		Test.Assert(top.Count == 1);
-		Test.Assert(top[0].Kind == .List);
-		Test.Assert(source.GetValue("behaviors", 0).AsInt == 0);
-
-		let insert = scope ListEdit();
-		insert.Kind = .Insert;
-		insert.Index = 0;
-		Test.Assert(source.EditList("behaviors", insert));
-		Test.Assert(Component().Behaviors.Count == 1);
-		let elements = scope List<PropertyInfo>();
-		defer { ClearAndDeleteItems!(elements); }
-		source.GetProperties("behaviors", elements);
-		Test.Assert(elements.Count == 1);
-		Test.Assert(elements[0].DisplayName == "Behavior 1");
-		let rows = scope List<PropertyInfo>();
-		defer { ClearAndDeleteItems!(rows); }
-		source.GetProperties("behaviors.0", rows);
-		Test.Assert(rows.Count == 3); // no script yet: its own rows only
-		Test.Assert(rows[0].Kind == .Reference);
-		Test.Assert(rows[0].ReferenceType == typeof(ScriptClass));
-		// By its name, what the asset picker asks the builders for.
-		Test.Assert(rows[0].ReferenceType.GetName(.. scope .()) == "ScriptClass");
-
-		source.CommitEdit("behaviors.0.enabled", PropertyWrite(Sedulous.GUI.Variant(false)));
-		Test.Assert(!Component().Behaviors[0].Enabled);
-		source.CommitEdit("behaviors.0.interval", PropertyWrite(Sedulous.GUI.Variant(0.5)));
-		Test.Assert(Component().Behaviors[0].UpdateInterval == 0.5f);
-		page.Commands.Undo(); // the interval alone
-		Test.Assert(Component().Behaviors[0].UpdateInterval == 0.0f);
-		Test.Assert(!Component().Behaviors[0].Enabled);
-		Test.Assert(source.Revert("behaviors.0.enabled"));
-		Test.Assert(Component().Behaviors[0].Enabled);
-		page.Commands.Undo(); // the revert
-		page.Commands.Undo(); // the edit
-		Test.Assert(Component().Behaviors[0].Enabled);
-		page.Commands.Undo(); // the insert
-		Test.Assert(Component().Behaviors.IsEmpty);
+		let shown = scope Shown(page);
+		shown.Click(page.Hierarchy.Tree, 0); // the scene's row
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Kind == "Scene");
+		Test.Assert(inspector.SettingsOf("Scene Script") != null);
+		Test.Assert(inspector.ExtraSource("Scene Script", 0) == null);
 		page.OnClose();
 	}
 
@@ -2102,68 +2069,6 @@ class ScenePageTests
 			Test.Assert(groups.EditList("groups", add));
 		Test.Assert(!groups.EditList("groups", add));
 		Test.Assert(IntOf("groups") == Sedulous.Physics.PhysicsWorldSettings.CollisionGroupCount);
-		page.OnClose();
-	}
-
-	[Test]
-	public static void LevelScriptTheLevelClasssPropertiesAsRowsAnEditAnOverrideOnTheScenesBlockOneUndoStepARevertDropsIt()
-	{
-		let bed = scope Bed();
-		let page = bed.Open(bed.Level);
-		defer delete page;
-		let edit = page.EditContext;
-		SceneScriptSettings Settings() => (SceneScriptSettings)Internal.UnsafeCastToObject(edit.FindSystemBySettingsType(typeof(SceneScriptSettings)).SettingsInstance);
-		let source = scope LevelScriptSource(edit, bed.Context);
-		let none = scope List<PropertyInfo>();
-		defer { ClearAndDeleteItems!(none); }
-		source.GetProperties(default, none);
-		Test.Assert(none.IsEmpty); // no Level class: nothing to author
-
-		let level = scope ScriptClass();
-		level.ClassName.Set("Level");
-		let speed = new ScriptPropertyDesc();
-		speed.Name.Set("speed");
-		speed.Hash = 41;
-		speed.Type = .Float;
-		speed.Default = ScriptPropertyValue.Float(2.0);
-		level.Properties.Add(speed);
-		let spawn = new ScriptPropertyDesc();
-		spawn.Name.Set("spawn");
-		spawn.Hash = 42;
-		spawn.Type = .Vec3;
-		spawn.Default = ScriptPropertyValue.Vec3(.(0, 0, 0));
-		level.Properties.Add(spawn);
-		Settings().Script.SetDirect(level);
-		source.Refresh();
-
-		let rows = scope List<PropertyInfo>();
-		defer { ClearAndDeleteItems!(rows); }
-		source.GetProperties(default, rows);
-		Test.Assert(rows.Count == 2);
-		Test.Assert(rows[0].DisplayName == "speed");
-		Test.Assert(rows[0].Kind == .Float);
-		Test.Assert(rows[1].Kind == .Group);
-		let parts = scope List<PropertyInfo>();
-		defer { ClearAndDeleteItems!(parts); }
-		source.GetProperties(rows[1].Name, parts);
-		Test.Assert(parts.Count == 3);
-		Test.Assert(source.GetValue("p41", 0).AsFloat == 2.0);
-
-		source.CommitEdit("p41", PropertyWrite(Sedulous.GUI.Variant(5.0)));
-		Test.Assert(Settings().FindOverride(41) != null);
-		Test.Assert(source.GetValue("p41", 0).AsFloat == 5.0);
-		source.CommitEdit("p42.y", PropertyWrite(Sedulous.GUI.Variant(3.0)));
-		Test.Assert(Settings().FindOverride(42) != null);
-		Test.Assert(Settings().FindOverride(42).Value.Vector.Y == 3.0f);
-		page.Commands.Undo(); // the part alone
-		Test.Assert(Settings().FindOverride(42) == null);
-		Test.Assert(Settings().FindOverride(41) != null);
-		Test.Assert(source.Revert("p41"));
-		Test.Assert(Settings().FindOverride(41) == null);
-		Test.Assert(source.GetValue("p41", 0).AsFloat == 2.0);
-		page.Commands.Undo(); // the revert
-		Test.Assert(Settings().FindOverride(41) != null);
-		Settings().Script.SetDirect(null); // the test's class goes before the scene
 		page.OnClose();
 	}
 

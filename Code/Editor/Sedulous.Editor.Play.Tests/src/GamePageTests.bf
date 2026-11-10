@@ -69,7 +69,7 @@ class PieProbeFactory : IGameFactory
 /// The Game tab from its markup (Data/Editor/Game.xml) on a headless host, no game running: the
 /// kit's transport (Play while stopped; Pause and Stop while it runs or waits; the state named; a
 /// Play waiting for the cook said so and cancelled by Stop), the resolutions in the dropdown, the
-/// phone kept with the project, and the debugger beside the game in a split by its toggle, its share kept.
+/// phone kept with the project, and the game alone on the stage.
 /// With a run of its own: a native game launched by Play before the default scene, and ended by Stop
 /// or by a scene that did not load.
 class GamePageTests
@@ -226,7 +226,7 @@ class GamePageTests
 	}
 
 	[Test]
-	public static void TheResolutionsInTheDropdownAPickAndThePhoneKeptWithTheProjectTheDebuggerBesideTheGameByItsToggleItsShareKept()
+	public static void TheResolutionsInTheDropdownAPickAndThePhoneKeptWithTheProjectTheGameAloneOnTheStage()
 	{
 		let bed = scope Bed();
 		let resolution = bed.Find<ComboBox>("game-resolution");
@@ -253,31 +253,11 @@ class GamePageTests
 		Test.Assert(bed.Page.PhonePreview);
 		Test.Assert(bed.Store.Find<GamePageSettings>().PhonePreview);
 
-		// The debugger is out of the split until its toggle puts it beside the game; it comes back at
-		// the share it was given.
-		let stage = bed.Find<Splitter>("game-stage");
-		let toggle = bed.Find<ButtonBase>("game-debugger-toggle");
-		Test.Assert((stage != null) && (toggle != null));
-		Test.Assert(!bed.Page.DebuggerShown, "it takes room the game wants");
-		Test.Assert(stage.PaneCount == 1, "the game alone");
-		Test.Assert(bed.Find<Node>("game-debugger") == null);
-		Test.Assert(toggle.HandleActivate());
-		Test.Assert(toggle.Checked);
-		Test.Assert(bed.Page.DebuggerShown);
-		Test.Assert(stage.PaneCount == 2);
-		let debuggerState = bed.Find<Sedulous.GUI.Label>("game-debugger-state");
-		Test.Assert(debuggerState != null);
-		Test.Assert(debuggerState.Text == "Not running");
-		float[2] given = .(0.6f, 0.4f);
-		stage.SetWeights(Span<float>(&given[0], 2));
-		Test.Assert(toggle.HandleActivate());
-		Test.Assert(!bed.Page.DebuggerShown, "closed again: the game has the room back");
-		Test.Assert(stage.PaneCount == 1);
-		Test.Assert(toggle.HandleActivate());
-		let weights = scope List<float>();
-		stage.GetWeights(weights);
-		Test.Assert(weights.Count == 2);
-		Test.Assert(Math.Abs(weights[1] - 0.4f) < 0.001f, "back at the share it was given");
+		// The game has the stage to itself: its view in the pane under the bar, nothing beside it.
+		let pane = bed.Find<Node>("game-view-pane");
+		Test.Assert(pane != null);
+		Test.Assert(bed.Page.View.Parent === pane);
+		Test.Assert(pane.ChildCount == 1);
 	}
 
 	/// Tabs side by side are told apart: Game, then Game 2, Game 3.

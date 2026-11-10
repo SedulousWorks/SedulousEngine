@@ -585,8 +585,7 @@ class SceneInspectorView
 		return (extras != null) && extras.Run(name);
 	}
 
-	/// A section's extras' source `index` (a script component's behaviours, a block's collision
-	/// groups); null: none.
+	/// A section's extras' source `index` (the physics block's collision groups); null: none.
 	public IPropertySource ExtraSource(StringView title, int index)
 	{
 		let extras = ExtrasOf(title);
