@@ -93,6 +93,37 @@ class ZipTests
 		Test.Assert(Text(bytes) == "<Project name=\"Game\"/>\n");
 	}
 
+	/// A stored entry's bytes lie in the archive where DataOffset says, past its local header.
+	[Test]
+	public static void AStoredEntrysDataLiesWhereItsOffsetSays()
+	{
+		let path = Fixture("project.zip", .. scope .());
+		let file = scope FileStream(path, .Read);
+		let zip = scope ZipArchive();
+		let error = scope String();
+		Test.Assert(zip.Open(file, error), error);
+		let noise = Named(zip, "Game/Audio/noise.bin");
+		Test.Assert(noise.Method == 0);
+		Test.Assert(zip.DataOffset(noise, let offset, error), error);
+		Test.Assert(offset > noise.LocalHeader + 30);
+
+		let extracted = scope List<uint8>();
+		Test.Assert(zip.Read(noise, extracted, error), error);
+		let inPlace = scope List<uint8>();
+		inPlace.Count = 3000;
+		Test.Assert(file.Seek((int64)offset, .Begin) == (int64)offset);
+		Test.Assert(file.Read(.(inPlace.Ptr, 3000)) == 3000);
+		Test.Assert(extracted.Count == 3000);
+		for (int i < 3000)
+			Test.Assert(inPlace[i] == extracted[i]);
+
+		// No archive open: no offset.
+		let closed = scope ZipArchive();
+		Test.Assert(!closed.DataOffset(noise, let none, error));
+		Test.Assert(none == 0);
+		Test.Assert(error.Contains("local header", true), error);
+	}
+
 	[Test]
 	public static void ExtractingWritesEveryFileUnderTheFolderAndReportsItsProgress()
 	{

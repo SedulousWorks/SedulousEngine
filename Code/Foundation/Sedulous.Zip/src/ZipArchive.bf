@@ -213,6 +213,23 @@ class ZipArchive
 		return true;
 	}
 
+	/// Where an entry's data starts in the archive, past its local header: a stored entry is its
+	/// bytes there, to read in place. False with `outError` when the local header is missing or
+	/// damaged.
+	public bool DataOffset(ZipEntry entry, out uint64 outOffset, String outError)
+	{
+		outOffset = 0;
+		// The data follows the local header, whose name and extras may differ from the directory's.
+		let header = scope List<uint8>();
+		if ((mStream == null) || !ReadAt(mStream, entry.LocalHeader, cLocalHeaderSize, header) || (U32(header.Ptr) != cLocalHeader))
+		{
+			outError.Set(scope $"{entry.Name}: its local header is missing or damaged");
+			return false;
+		}
+		outOffset = entry.LocalHeader + cLocalHeaderSize + U16(header.Ptr + 26) + U16(header.Ptr + 28);
+		return true;
+	}
+
 	/// An entry's bytes, inflated and checked against its CRC, replacing what `outBytes` held.
 	/// False with `outError` when they cannot be read, do not inflate, or do not match.
 	public bool Read(ZipEntry entry, List<uint8> outBytes, String outError)
@@ -228,14 +245,8 @@ class ZipArchive
 			outError.Set(scope $"{entry.Name} is compressed by method {entry.Method}, which is not read (only stored and deflate)");
 			return false;
 		}
-		// The data follows the local header, whose name and extras may differ from the directory's.
-		let header = scope List<uint8>();
-		if (!ReadAt(mStream, entry.LocalHeader, cLocalHeaderSize, header) || (U32(header.Ptr) != cLocalHeader))
-		{
-			outError.Set(scope $"{entry.Name}: its local header is missing or damaged");
+		if (!DataOffset(entry, let dataAt, outError))
 			return false;
-		}
-		let dataAt = entry.LocalHeader + cLocalHeaderSize + U16(header.Ptr + 26) + U16(header.Ptr + 28);
 		let packed = scope List<uint8>();
 		if (!ReadAt(mStream, dataAt, (int)entry.CompressedSize, packed))
 		{

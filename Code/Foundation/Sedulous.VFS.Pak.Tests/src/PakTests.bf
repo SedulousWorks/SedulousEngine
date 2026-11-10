@@ -252,6 +252,58 @@ class PakTests
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
 
+	/// A pak stored inside a larger file (a game's Content.pak in an Android APK) reads where it
+	/// lies: a pak over a region of that file, its offsets its own.
+	[Test]
+	public static void APakInsideALargerFileReadsInPlaceFromItsRegion()
+	{
+		FreshScratch();
+		let pakPath = PakPath(.. scope String());
+		{
+			let builder = scope PakBuilder();
+			Add(builder, "hello.txt", "hello world");
+			Add(builder, "data/leaf.txt", "leaf");
+			Test.Assert(builder.Write(pakPath) case .Ok);
+		}
+		let pak = scope List<uint8>();
+		Test.Assert(ReadFile(pakPath, pak) case .Ok);
+		let outer = scope List<uint8>();
+		for (int i < 37)
+			outer.Add(0xAB); // what lies before it in the file
+		outer.AddRange(pak);
+		for (int i < 11)
+			outer.Add(0xCD); // and after
+		let outerPath = PathJoin(kScratch, "outer.bin", .. scope String());
+		Test.Assert(WriteFile(outerPath, outer) case .Ok);
+
+		let fs = scope PakFileSystem(outerPath, 37, (uint64)pak.Count);
+		Test.Assert(fs.IsValid);
+		Test.Assert(fs.EntryCount == 2);
+		let text = scope String();
+		{
+			let stream = fs.Open("hello.txt", .Read);
+			Test.Assert(stream != null);
+			defer delete stream;
+			ReadAll(stream, text);
+		}
+		Test.Assert(text == "hello world");
+		Test.Assert(fs.Exists("data/leaf.txt"));
+		{
+			let stream = fs.Open("data/leaf.txt", .Read);
+			Test.Assert(stream != null);
+			defer delete stream;
+			ReadAll(stream, text);
+		}
+		Test.Assert(text == "leaf");
+
+		let misplaced = scope PakFileSystem(outerPath, 36, (uint64)pak.Count); // one byte off
+		Test.Assert(!misplaced.IsValid);
+		let pastEnd = scope PakFileSystem(outerPath, 37, (uint64)outer.Count); // runs past the file
+		Test.Assert(!pastEnd.IsValid);
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
 	/// Writes a header by hand, so a corrupt one can be built on purpose.
 	private static void WriteHeader(StringView path, uint32 magic, uint32 version, uint64 entryCount,
 		uint64 tocOffset, uint64 tocSize, int trailingBytes)

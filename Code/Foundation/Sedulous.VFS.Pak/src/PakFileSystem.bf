@@ -27,11 +27,29 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 	/// Locator to index. Scanning the entry list for every lookup is fine for a handful of
 	/// files and quadratic for an archive that ships a whole game.
 	private Dictionary<String, int> mByLocator = new .() ~ delete _;
+	/// Where the pak starts in its file (0: the file is the pak), and its bytes.
+	private uint64 mBase;
+	private uint64 mLength;
 	private bool mIsValid;
 
 	public this(StringView pakPath)
 	{
 		mPath.Set(pakPath);
+		{
+			let file = scope FileStream(mPath, .Read);
+			let size = file.IsValid ? file.Size() : 0;
+			mLength = (size > 0) ? (uint64)size : 0;
+		}
+		Load();
+	}
+
+	/// A pak inside another file: `length` bytes from `offset` of the file at `path` (a pak
+	/// stored in an Android APK, read in place). Its offsets are the pak's own, from its start.
+	public this(StringView path, uint64 offset, uint64 length)
+	{
+		mPath.Set(path);
+		mBase = offset;
+		mLength = length;
 		Load();
 	}
 
@@ -64,7 +82,7 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 		if (entry.Compression != cCompressionNone)
 			return null;
 
-		let file = scope FileStream(mPath, .Read);
+		let file = scope FileRegionStream(mPath, mBase, mLength);
 		if (!file.IsValid)
 			return null;
 		if (file.Seek((int64)entry.Offset, .Begin) < 0)
@@ -125,7 +143,7 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 
 	private void Load()
 	{
-		let file = scope FileStream(mPath, .Read);
+		let file = scope FileRegionStream(mPath, mBase, mLength);
 		if (!file.IsValid)
 			return;
 

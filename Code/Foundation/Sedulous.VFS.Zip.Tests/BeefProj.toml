@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.VFS.Zip.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.VFS.Zip.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Zip" = "*"
+"Sedulous.Zip" = "*"
