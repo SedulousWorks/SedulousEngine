@@ -42,19 +42,18 @@ Two things the pipeline does that v0 could not: build LOD chains for meshes, and
 textures (BC7 and ASTC, chosen by what the target can decode).
 
 The MCP host (`Sedulous.Tools.Mcp`) is new. It lets an AI agent work on a project headlessly:
-query the engine's reflection and the script API, import and cook assets, read, write and
+query the engine's reflection, import and cook assets, read, write and
 validate scenes, run health checks, and read the shipping docs. The `.claude/` skill in the
 repo is the recipe for launching it.
 
-## Scripting
+## Game code
 
-v0 had no scripting; gameplay was written in Beef against the engine. This version adds
-AngelScript, with bindings generated at compile time from everything marked `[Scriptable]`,
-so the script API cannot drift from the engine API. Scripts attach to entities as
-behaviours with start, enable and destroy hooks, can run as coroutines that `wait` on the
-game clock, and can hand callbacks to native code. Each domain exposes a facade. Script
-assets go through the pipeline like everything else, the editor has a script page with
-breakpoints, and the MCP `script_api` tool describes the surface to an agent.
+As in v0, a game's code is Beef written against the engine. It now lives in the project's own
+`Code/` workspace, as a plugin package: behaviours on entities, a level per
+scene and a game per run, registered in the package's `Load`. It is compiled with the engine
+into the project's own editor and player, so the compiler checks every call, and the editor's
+inspector and the MCP tools read and set a behaviour's fields through reflection. Struct
+components with a manager are the fast path for many entities of a kind.
 
 ## Rendering
 
@@ -160,8 +159,8 @@ over. New:
 - The asset browser sits on top of the cook: cook status badges, favourites, and import
   through the pipeline.
 - Pages for audio bus layouts, input maps, collision shapes, heightfields, terrain,
-  scripts, UI documents and UI themes, and a generic page for any asset without one.
-- Export presets and templates, and the editor's own MCP tools.
+  UI documents and UI themes, and a generic page for any asset without one.
+- Export presets, each building the game's own player, and the editor's own MCP tools.
 
 ## Testing and platforms
 

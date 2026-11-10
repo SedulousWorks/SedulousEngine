@@ -13,16 +13,14 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   away from its natural orientation), so the display has nothing to turn (pre-rotation); its scene,
   its screens and a screenshot follow the turn, and the pointer is unchanged. A window asks for it
   (`RenderWindowDesc.PreRotate`); the samples and the editor do not.
-- Scripts: `scene.Animation.PlayOneShot(entity, clip)` plays a clip once over whatever an entity
-  is animating (its clip or its graph), blending in and out, after which it carries on with its
-  own animation; `StopOneShot` and `IsPlayingOneShot`, and `onAnimationFinished(clip)` on the
-  entity's behaviours when it ends. `ClipLength(clip)` gives a clip's length, and
-  `SetClip(entity, clip, blendSeconds)` crossfades instead of snapping.
-- Scripts: `Input.Describe(action)` names the control an action takes on the device in hand
+- Animation: `PlayOneShot(entity, clip, settings)` on the skeletal animation and animation graph
+  managers plays a clip once over whatever an entity is animating (its clip or its graph),
+  blending in and out, after which it carries on with its own animation; `StopOneShot` and
+  `IsPlayingOneShot` beside it, and `SetClip(entity, clip, blendSeconds)` crossfades instead of
+  snapping.
+- Input: `InputFacade.Describe(action)` names the control an action takes on the device in hand
   ("Space", or "Pad South" once a pad is picked up), as a GUI prompt shows it, for a sentence that
   tells the player what to press.
-- Scripts: `Component::addTo(entity)` and `Component::removeFrom(entity)` beside
-  `Component::of`, on every component a script reaches.
 - Scenes: a `SceneRef` field names a scene (a level's exit): the inspector picks a scene for it,
   a level loads by it, and a pruned export keeps the scene it names. Naming a scene never loads
   it.
@@ -86,8 +84,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Samples: Lamplight's, Snowline's and Sky Hopper's hints and controls lists name the control on
   the device in hand (and follow a rebinding) instead of an action's name or a fixed key and pad
   button.
-- Editor: a scene's Simulate runs on its own, apart from every other page: its scripts' screens
-  draw over the page's viewport while it simulates and go when it stops.
+- Editor: a scene's Simulate runs on its own, apart from every other page: the screens its
+  behaviours show draw over the page's viewport while it simulates and go when it stops.
 - Engine: the GUI, audio and input subsystems' facade members are named for game code, not
   scripts: `FacadeFor`, `RunFacadeCount` and `EndRunFacade` on the GUI's, `SharedFacade` on all
   three, `RunFacadeCount` and `FacadeResources` on the audio one.
@@ -135,11 +133,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - GUI: a tween of a property code set on a node (`node.Opacity = 0`, then a tween of `opacity`)
   moves it; it did nothing before, as the property was code's and the style the tween went through
   left it alone. A game's fade of a panel it made did not show.
-- Export: a pruned export (a preset's `pruneToReachable`) keeps the assets a script property
-  names: a behaviour's or a Level's asset value (a prefab it spawns, a clip it plays). Before, an
-  asset named only there was left out and the exported game could not find it. The same for an
-  asset named only by one placed prefab's override (a mesh swapped, a script property set on that
-  placement).
+- Export: a pruned export (a preset's `pruneToReachable`) keeps an asset named only by one placed
+  prefab's override (a mesh swapped on that placement). Before, it was left out and the exported
+  game could not find it.
 - Scenes: each scene mints its entities' ids from a generator of its own, so two people adding
   entities to one scene on two branches no longer get the same id, which a merge would duplicate.
 - Editor: New Splat Weights never writes over an asset holding its name: made again after an
@@ -148,7 +144,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   the editor (a git pull, a text editor, another tool) is picked up: an open page reloads, or
   warns when it has unsaved edits, and a page whose file was deleted stays open and writes it
   back when saved; before, the editor kept the old copy and a later save overwrote the change.
-- Play: a game run from its project folder spawns prefabs (a script's Spawn, a networked spawn);
+- Play: a game run from its project folder spawns prefabs (the game's own spawn, a networked spawn);
   only the prefabs placed in its scenes came through.
 - Physics: a destroyed entity, or a removed rigid body, character or joint, no longer leaves its
   body in the physics world (an invisible collider) until the scene ends.
@@ -156,8 +152,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   on.
 - Editor: importing an asset no longer freezes the editor for seconds in a large project: each
   import read every asset in the project to check one file name.
-- Scripts: assigning a field of a struct-valued field, such as a light's colour
-  (`light.Color.R = 0.5f`), now writes it; it landed in a copy and was lost.
 - Editor: context menus open at the pointer under a UI scale other than 100%, and a tab's Move to
   opens below its tab.
 - Editor: the UI scale preference shows its percentage while its slider is dragged.

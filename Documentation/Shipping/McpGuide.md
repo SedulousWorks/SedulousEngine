@@ -173,8 +173,8 @@ behaviour's properties under `live` beside what is authored.
    `idempotentHint`.
 2. `host_info`: the pid (kill a hung host by it) and the `buildStamp`. After rebuilding the
    engine, compare stamps: a stale host serves yesterday's engine.
-3. `resources/list`: the curated `docs://` shipping docs (Scripting, GameCode, Assets, Scenes,
-   KnownIssues), the scene format reference this host generates from what it has
+3. `resources/list`: the curated `docs://` shipping docs (this guide, GameCode, Assets, Scenes,
+   Web, KnownIssues), the scene format reference this host generates from what it has
    registered when you read it, its build and the open project's enabled plugins
    (`docs://generated/SceneSchema.json` and `docs://generated/SceneExample.scene.xml`) and,
    once a project is open, every scene and prefab as `project://scene|prefab/<guid>`.
@@ -402,8 +402,8 @@ own ("Wind"). A shader on the engine's vertex stage (a surface shader, a low-lev
 `forward_vs.hlsli`) writes nothing for wind: that stage applies the sway. One that needs the
 values reads them as `Wind.Strength`, `Wind.Speed` and `Wind.Height` in vertex code under
 `#ifdef WIND` once `wind.hlsli` is included (`forward_vs.hlsli` includes it; a surface shader's
-`Vertex()` and a pixel stage cannot), and they need no line in its `properties` block. Scripts
-(`SetMaterialFloat`) and a per-entity material override address them the same way
+`Vertex()` and a pixel stage cannot), and they need no line in its `properties` block. Game code
+(`MeshComponentManager.SetMaterialProperty`) and a per-entity material override address them the same way
 (`Wind.Strength`; the old `WindStrength` property is gone). An override changes how an already
 swaying material sways; whether it sways at all is the shared material's Strength.
 
@@ -440,7 +440,7 @@ read the file before trusting it, and leave the judgement of how it looks to the
   was unset); the PNG is scaled to the tab when the tab is smaller (the answer's `scale`).
   Reach a screen by playing to it: a menu by a timeline (`Right`, `Return`), a level by a scene
   override (`project_settings_set` `defaultSceneId` to the level, restored after, in a
-  `finally`), a late moment by a scripted route, and a results
+  `finally`), a late moment by a timeline that plays the route, and a results
   screen by finishing a run. Take a few times around the moment (`[23.9, 24.3, 24.7, 25.1]`)
   and pick one. A run that finishes writes the game's save: copy the project's
   `Editor/<Game>.save.xml` aside right before, run with a test save that unlocks what the shot

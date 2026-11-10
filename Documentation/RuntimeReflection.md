@@ -22,13 +22,13 @@ Beef reflection is opt in. Run time type data exists only for what one of these 
 | `[SerializableComponent]` | `Foundation/Sedulous.Scene/src/SerializableComponentAttribute.bf:16` | the same, on every serializable component |
 | `[Replicated]` | `Foundation/Sedulous.Net.Replication/src/ReplicatedAttribute.bf:15` | the same, on the type owning a replicated field |
 | `[Reflect(.NonStaticFields \| .Methods)]` | `Foundation/Sedulous.Resource/src/Ref.bf:25` | `Ref<T>`, every T: the `Id` field and the binding methods |
-| `[Reflect(.Type \| .NonStaticFields)]` | `EnvironmentSettings.bf:14`, `PostProcessSettings.bf:16` (Engine.Render), `PhysicsSceneSettings.bf:18`, `NavigationSceneSettings.bf:14`, `SceneScriptSettings.bf:15` | the scene settings blocks |
+| `[Reflect(.Type \| .NonStaticFields)]` | `EnvironmentSettings.bf:14`, `PostProcessSettings.bf:16` (Engine.Render), `PhysicsSceneSettings.bf:18`, `NavigationSceneSettings.bf:14` | the scene settings blocks |
 | `[Reflect(.All)]` | `VegetationLayerBase.bf:16`, `ProceduralVegetationLayer.bf:14`, `PropVegetationLayer.bf:14` (Engine.Vegetation) | the vegetation layer classes: fields, methods, constructors |
 
 Attribute DATA is reflected by the `.ReflectAttribute` flag on the attribute's own
 `AttributeUsage`. Only three attributes are read at run time: `[Hidden]` and `[ReadOnly]`
 (Sedulous.Core, by the MCP inspect and write tools) and `[Replicated]` (by replication).
-Every other attribute (`[Scriptable]`, `[Range]`, `[Description]`, `[VisibleWhen]` and so on)
+Every other attribute (`[Range]`, `[Description]`, `[VisibleWhen]` and so on)
 is read only at comptime.
 
 Enum case names and values are present at run time without any opt in. `Enum.EnumToString`
@@ -97,8 +97,6 @@ the run time targets.
 
 For contrast, and so nobody moves these twice:
 
-- The script surface walker (`Foundation/Sedulous.Script/src/ScriptSurfaceWalker.bf`): every
-  script binding thunk is generated at comptime.
 - The inspector row emitter (`Editor/Sedulous.Editor.Scene/src/Inspector/InspectorRows.bf`).
 - `[Serializable]` and `[SerializableRegistry]` (`Foundation/Sedulous.Core/src/Serialization/`).
 - `SerializableComponentManager.EmitIdentity` (`Foundation/Sedulous.Scene/src/SerializableComponentManager.bf`):
@@ -118,8 +116,8 @@ Comptime is not free of the flags. Checked against the compiler (`IDEHelper/Comp
 - **A MEMBER's attributes: the attribute must be `.ReflectAttribute`.** Field (and method)
   attributes travel in the type data, and `_HandleCustomAttrs` (`BfModule.cpp:7643-7675`) keeps
   one only when its attribute type's `AttributeUsage` carries `.ReflectAttribute`. That is why
-  `[Scriptable]`, `[Hidden]`, `[Range]`, `[Description]` and the rest declare it: without it the
-  script surface walker and the inspector emitter could not see them on a field.
+  `[Hidden]`, `[Range]`, `[Description]` and the rest declare it: without it a comptime reader
+  could not see them on a field.
 
 So a move to comptime can drop the `ReflectUser` field reflection and the `[Reflect]`s below,
 but NOT the `.ReflectAttribute` flag on our attribute types. The flag only decides which
@@ -154,7 +152,7 @@ reach the binary.
   attributes) would serve it, the recording of the wire itself staying at run time.
 - **MCP type tools.** By nature a view of the run time type table. Either they stay
   reflection-based (and report only what the build reflects) or they read a comptime-emitted
-  catalogue of the authored surface, as `script_api` does for scripts.
+  catalogue of the authored surface.
 
 Once none of these remain, the `ReflectUser` on `[Component]`, `[SerializableComponent]` and
 `[Replicated]`, and the `[Reflect]` on `Ref<T>`, the settings blocks and the vegetation layers
