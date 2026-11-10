@@ -8,8 +8,8 @@ namespace Sedulous.Zip.Tests;
 
 /// Zip archives made by the system's tools (Data/Tests/Zip, from make-fixtures.sh): Info-ZIP's zip
 /// with deflated, stored and empty files and folders; one stored outright; Python's zipfile for a
-/// name outside the folder, a damaged entry and a comment. Read, checked and extracted; also the
-/// CRC-32 against its known values and which entry names are safe.
+/// name outside the folder, a damaged entry, a comment and Unix modes. Read, checked and extracted,
+/// modes kept; also the CRC-32 against its known values and which entry names are safe.
 class ZipTests
 {
 	private static void Fixture(StringView name, String outPath)
@@ -163,6 +163,57 @@ class ZipTests
 		Test.Assert(Text(bytes) == Scene(.. scope .()));
 		RemoveDirectoryRecursive(into);
 	}
+
+	/// Python's zipfile keeps each file's Unix mode in its entry: an executable (0755) and a plain
+	/// file (0644) from a Unix host, read as such, and the executable extracted runnable; an entry
+	/// from a DOS host carries 0755 in its attributes too, which says nothing there, and extracts
+	/// with a new file's default.
+	[Test]
+	public static void AnEntrysUnixModeIsKeptOnExtract()
+	{
+		let file = scope FileStream(Fixture("modes.zip", .. scope .()), .Read);
+		let zip = scope ZipArchive();
+		let error = scope String();
+		Test.Assert(zip.Open(file, error), error);
+		Test.Assert(zip.Entries.Count == 3);
+		let tool = Named(zip, "bin/tool");
+		let readme = Named(zip, "readme.txt");
+		let dos = Named(zip, "dos.txt");
+		Test.Assert((tool != null) && (readme != null) && (dos != null));
+		Test.Assert(tool.Mode == 0x1ED, "0755");
+		Test.Assert(readme.Mode == 0x1A4, "0644");
+		Test.Assert(dos.Mode == 0, "a DOS host's attributes hold no mode");
+
+		let into = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_zip_modes", .. scope .());
+		RemoveDirectoryRecursive(into);
+		defer RemoveDirectoryRecursive(into);
+		Test.Assert(zip.ExtractAll(into, error), error);
+		let toolPath = PathJoin(into, "bin/tool", .. scope .());
+		let readmePath = PathJoin(into, "readme.txt", .. scope .());
+		let dosPath = PathJoin(into, "dos.txt", .. scope .());
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(toolPath, bytes) case .Ok);
+		Test.Assert(Text(bytes) == "#!/bin/sh\necho tool\n");
+		Test.Assert(ReadFile(readmePath, bytes..Clear()) case .Ok);
+		Test.Assert(Text(bytes) == "read me\n");
+		Test.Assert(ReadFile(dosPath, bytes..Clear()) case .Ok);
+		Test.Assert(Text(bytes) == "from DOS\n");
+#if BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+		Test.Assert(access(toolPath.CStr(), cExecutable) == 0, "the executable runs");
+		Test.Assert(access(readmePath.CStr(), cExecutable) != 0, "a plain file does not");
+		Test.Assert(access(readmePath.CStr(), cReadable | cWritable) == 0, "and is its owner's to read and write");
+		Test.Assert(access(dosPath.CStr(), cExecutable) != 0, "the DOS entry's 0755 was not taken");
+#endif
+	}
+
+#if BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+	private const int32 cExecutable = 1; // X_OK
+	private const int32 cWritable = 2; // W_OK
+	private const int32 cReadable = 4; // R_OK
+
+	[CLink]
+	private static extern int32 access(char8* path, int32 mode);
+#endif
 
 	[Test]
 	public static void ANameOutsideTheFolderRefusesTheArchiveBeforeAnythingIsWritten()

@@ -2,8 +2,9 @@
 # Makes the zips Sedulous.Zip.Tests and the editor's sample tests read, in Data/Tests/Zip, with the
 # system's tools: Info-ZIP's zip for a project-shaped archive (deflated, stored and empty files,
 # folders), one stored outright and a sample as a release packs it (sample.zip), and
-# Python's zipfile for what zip refuses to make: a name outside the folder, a damaged entry, and an
-# archive with a comment. Run from the repository root; the zips are committed.
+# Python's zipfile for what zip refuses to make: a name outside the folder, a damaged entry, an
+# archive with a comment, and entries with chosen Unix modes from a Unix and a DOS host. Run from
+# the repository root; the zips are committed.
 set -euo pipefail
 out="$PWD/Data/Tests/Zip"
 work="$(mktemp -d)"
@@ -34,4 +35,15 @@ with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
 raw = bytearray(open(path, "rb").read())
 raw[30 + len("data.txt") + 5] ^= 0xFF
 open(path, "wb").write(bytes(raw))
+# Unix modes in the entries' external attributes: an executable (0755) and a plain file (0644) from
+# a Unix host, and one from a DOS host whose attributes carry 0755 too, which a reader must ignore.
+with zipfile.ZipFile(os.path.join(out, "modes.zip"), "w", zipfile.ZIP_DEFLATED) as z:
+    for name, mode, system, data in (("bin/tool", 0o100755, 3, "#!/bin/sh\necho tool\n"),
+                                     ("readme.txt", 0o100644, 3, "read me\n"),
+                                     ("dos.txt", 0o100755, 0, "from DOS\n")):
+        info = zipfile.ZipInfo(name, date_time=(2026, 11, 10, 12, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info.create_system = system
+        info.external_attr = mode << 16
+        z.writestr(info, data)
 PY
