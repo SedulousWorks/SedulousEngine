@@ -47,10 +47,9 @@ extension GameEditorPage
 			// never touches a player's save.
 			let saveName = ProjectLayout.SaveFileName(project.Settings.Name, .. scope String());
 			mGameInstance.SetSaveFile(PathJoin(project.EditorStateRoot(.. scope String()), saveName, .. scope String()));
-			// The project's levels as they are at this start, for the run's scripts.
+			// The project's levels as they are at this start, for the run's game.
 			QualityLevels.Offer(mGameInstance.Quality, project.Settings, mContext.Resources, .());
 			SyncQualityChoice();
-			EnableDebugging();
 			// The game launches before the default scene loads, as in the player, so it hears of
 			// that scene as it becomes current (SetScene below).
 			StartGameFromProject();
@@ -127,16 +126,6 @@ extension GameEditorPage
 			mInput.SetMap(scope InputMap()); // an empty map: the run's actions die with it
 			mInput.SetSourceProvider(mViewportSource, null);
 		}
-		if (let debugger = mDebuggerPanel.Debugger)
-			debugger.SetListener(null);
-		mDebuggerPanel.SetIdle();
-		mSimPausedByDebugger = false;
-		mContext.ClearScriptExecutionPoint(); // no run, no paused location
-		delete mContext.ScriptValueProbe; // hover values die with the run
-		mContext.ScriptValueProbe = null;
-		delete mContext.OnBreakpointsChanged; // the live sync dies with the run
-		mContext.OnBreakpointsChanged = null;
-		ClearAndDeleteItems(mAppliedBreakpoints);
 		if (mRunning && (mGameInstance != null))
 			mStoppedRunTime = mGameInstance.RunTime;
 		if (mGameInstance != null)
@@ -189,7 +178,7 @@ extension GameEditorPage
 		if (mScene != null)
 		{
 			EnsureCamera(mScene);
-			let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
+			let paused = (mPauseToggle != null) && mPauseToggle.Checked;
 			if (paused)
 				mScene.SetSimulationEnabled(false);
 			mSceneTitle.Set(mScene.Name);
@@ -257,9 +246,9 @@ extension GameEditorPage
 			audio.SetHearAllRuns(hearAll);
 		if (!mRunning)
 			return;
-		// The toolbar's pause and a debugger break freeze the run's sound with the game (a
-		// game's own pause menu is time scale nought, the game's business: its music plays on).
-		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
+		// The toolbar's pause freezes the run's sound with the game (a game's own pause menu is
+		// time scale nought, the game's business: its music plays on).
+		let paused = (mPauseToggle != null) && mPauseToggle.Checked;
 		mGameInstance.SetPaused(paused); // the host's pause: the run (its sound with it) hears it once per change
 		// Clicking into this tab's viewport makes its run the one played, and the one heard.
 		let runs = (mApp != null) ? mApp.Runs : null;

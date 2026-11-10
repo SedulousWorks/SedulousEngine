@@ -21,7 +21,6 @@ using Sedulous.Editor.Materials;
 using Sedulous.Editor.Render;
 using Sedulous.Editor.Audio;
 using Sedulous.Editor.Input;
-using Sedulous.Editor.Script;
 using Sedulous.Editor.Shaders;
 using Sedulous.Editor.GUI;
 using Sedulous.Editor.Spline;
@@ -84,9 +83,6 @@ static class EditorRegistration
 		SettingsProfileEditor.Register(context, pageServices); // every profile asset
 		AudioEditor.Register(context, pageServices); // the clip and the cue, and the clip's thumbnails
 		InputEditor.Register(context, pageServices);
-		// The script page browses the engine facade surface the embedded runtime binds; its check
-		// compiles through the script cooks the pipeline registered above.
-		ScriptEditor.Register(context, pageServices, app.EmbeddedApplication.ScriptSurface);
 		ShaderEditor.Register(context, pageServices, DataPath(app.DataRoot, "Engine/Shaders", .. scope .())); // a check's include path
 		GuiEditor.Register(context, pageServices); // the GUI's documents and sheets
 		ParticleEditor.Register(context, pageServices); // the particle effect
@@ -100,7 +96,7 @@ static class EditorRegistration
 		Debug.Assert((context.Thumbnails != null) && (context.Thumbnails.GeneratorCount == cThumbnailGenerators));
 		Debug.Assert(context.Thumbnails.SceneGeneratorCount == cSceneThumbnailGenerators);
 
-		// File > New: every pipeline domain's creators, the scripts' among them.
+		// File > New: every pipeline domain's creators.
 		PipelineRegistration.RegisterAllCreators(context.Creators);
 
 		// The cook service routes through the same builder and importer sets the cook CLI has;

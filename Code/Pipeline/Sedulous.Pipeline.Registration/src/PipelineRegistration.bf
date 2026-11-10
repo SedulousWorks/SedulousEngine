@@ -74,8 +74,7 @@ static class PipelineRegistration
 	/// Render Quality's builder added.
 	public const int cBuilderCount = 30 + cGuiAssetKinds;
 	public const int cImporterCount = 12;
-	/// The creators every build has; the scripts add three per language with a cook on top
-	/// (ScriptCreators.CountFor).
+	/// The creators every build has. A script has none: a game's code is native.
 	public const int cCreatorCount = 31 + cGuiAssetKinds; // 31: the old UI's document and theme gone, a Render Quality added
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
@@ -208,7 +207,7 @@ static class PipelineRegistration
 	}
 
 	/// Fills `registry` with every New Asset creator the engine ships, each pipeline domain its
-	/// own. After RegisterPipelineTypes: the script creators enumerate the registered cooks.
+	/// own. After RegisterPipelineTypes.
 	/// Registration order is the menus' order: the uncategorised items first, then each
 	/// category's in turn.
 	public static void RegisterAllCreators(AssetCreatorRegistry registry)
@@ -230,7 +229,6 @@ static class PipelineRegistration
 		TerrainCreators.Register(registry);
 		VegetationCreators.Register(registry);
 		TextureCreators.Register(registry);
-		ScriptCreators.Register(registry);
 	}
 
 	/// Fills `registry` with every OS file importer the engine ships, the drag and drop

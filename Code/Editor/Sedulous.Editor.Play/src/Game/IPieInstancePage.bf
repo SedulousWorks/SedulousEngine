@@ -36,8 +36,8 @@ interface IPieInstancePage : IGameScenePage
 	/// levels).
 	StringView SceneName { get; }
 	/// Seconds of frames since the run started, unscaled: it keeps going while the game has
-	/// its scene paused at time scale 0 (behind a menu, which still works); it stands still
-	/// while the debugger holds the run. Scripted input is timed by it.
+	/// its scene paused at time scale 0 (behind a menu, which still works). Scripted input is
+	/// timed by it.
 	double RunTime { get; }
 	/// Frames rendered since the run started.
 	uint64 FrameCount { get; }

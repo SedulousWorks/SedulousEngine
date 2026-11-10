@@ -397,8 +397,7 @@ waveform::cut { background-color: rgba(0, 0, 0, 0.45); }
 .input-tree-pane { flex-direction: column; }
 .input-tree-pane > .search-row { flex-direction: row; padding: var(--space-s); }
 .input-tree { flex-grow: 1; min-height: 0; }
-/* A code page: its code over its problems, beside what is the page's own (such as a script's API
-   browser). */
+/* A code page: its code over its problems, beside what is the page's own. */
 .code-page { flex-direction: column; }
 .code-pane { flex-grow: 1; min-width: 0; }
 .page-code { font-family: var(--mono-font); font-size: var(--font-code); min-height: 0; }
@@ -406,9 +405,6 @@ waveform::cut { background-color: rgba(0, 0, 0, 0.45); }
 .preview-stale { color: var(--warning); font-size: var(--font-small); }
 .gui-markup-pane { flex-direction: column; }
 .gui-markup-pane > .page-code { flex-grow: 1; }
-.api-pane { flex-direction: column; }
-.api-pane > .search-row { flex-direction: row; padding: var(--space-s); }
-.api-tree { flex-grow: 1; min-height: 0; }
 /* A code page's problems: a count over one row each, with its severity's icon, its place and its
    message. */
 .problems { flex-direction: column; }
@@ -836,17 +832,11 @@ button.add-component { align-self: stretch; justify-content: center; margin: var
 .graph-playing { width: 168px; flex-shrink: 0; } /* nor does the state a graph plays */
 .particle-count { width: 128px; flex-shrink: 0; } /* nor does a running count of the particles alive */
 .scene-simulate-state { width: 84px; flex-shrink: 0; text-align: center; } /* Paused and Simulating take one width, so the centred Simulate buttons stay put */
-/* The Game tab: the game beside the script debugger, with the bar's resolution at a fixed width. */
+/* The Game tab: the game under its bar, with the bar's resolution at a fixed width. */
 .game-view-pane { flex-grow: 1; flex-basis: 0; min-width: 0; min-height: 0; background-color: var(--surface-sunken); }
 .game-view { flex-grow: 1; }
 .game-scene { font-size: var(--font-small); color: var(--text-dim); margin-left: var(--space-s); }
 .game-resolution { width: 200px; flex-shrink: 0; }
-.game-debugger { min-width: 200px; flex-direction: column; } /* its share of the split, with its handle at the edge */
-.game-debugger-bar { flex-direction: row; column-gap: var(--space-xs); }
-.game-debugger-state { font-size: var(--font-small); color: var(--text-dim); padding: var(--space-xs) var(--space-m); }
-.game-debugger-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-m) var(--space-xs); }
-.game-debugger-stack { height: 160px; background-color: transparent; }
-.game-debugger-locals { flex-grow: 1; min-height: 0; background-color: transparent; }
 
 /* === Problems === */
 .problems { flex-direction: column; background-color: var(--surface); border: 1px solid var(--separator); border-radius: var(--radius); }

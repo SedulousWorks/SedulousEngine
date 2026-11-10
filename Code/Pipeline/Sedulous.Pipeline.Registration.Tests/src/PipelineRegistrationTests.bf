@@ -138,9 +138,9 @@ static class PipelineRegistrationTests
 			scope $"type {type.GetFullName(.. scope .())} declares no display name");
 	}
 
-	/// Every creator the engine ships registers, three per script language on top of the
-	/// fixed set, and each makes an instance of its own type in a plain source database, with
-	/// no editor: the headless host's creation and the editor's are the same code.
+	/// Every creator the engine ships registers, none of them a script's, and each makes an
+	/// instance of its own type in a plain source database, with no editor: the headless host's
+	/// creation and the editor's are the same code.
 	[Test]
 	public static void EveryCreatorRegistersAndCreatesItsTypeWithNoEditor()
 	{
@@ -148,11 +148,9 @@ static class PipelineRegistrationTests
 		defer PipelineRegistration.Teardown();
 		let creators = scope AssetCreatorRegistry();
 		PipelineRegistration.RegisterAllCreators(creators);
-		let languages = scope List<String>();
-		defer { ClearAndDeleteItems!(languages); }
-		ScriptLanguageCooks.CollectLanguages(languages);
-		Test.Assert(creators.Count == PipelineRegistration.cCreatorCount + ScriptCreators.CountFor(languages.Count),
-			scope $"{creators.Count} creators");
+		Test.Assert(creators.Count == PipelineRegistration.cCreatorCount, scope $"{creators.Count} creators");
+		for (let creator in creators)
+			Test.Assert(creator.TypeName != typeof(ScriptClassAsset).GetFullName(.. scope .()), scope $"'{creator.Label}' makes a script");
 
 		let root = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_registration_creators", .. scope .());
 		RemoveDirectoryRecursive(root);
