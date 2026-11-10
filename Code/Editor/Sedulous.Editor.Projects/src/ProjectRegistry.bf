@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Settings;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
+using Sedulous.Editor.Projects;
 
 namespace Sedulous.Editor.Project;
 

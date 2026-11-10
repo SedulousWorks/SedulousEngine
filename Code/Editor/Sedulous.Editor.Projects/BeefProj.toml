@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Projects"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Projects.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Xml.Serialization" = "*"
+"Sedulous.Engine.Project" = "*"

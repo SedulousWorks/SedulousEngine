@@ -5,121 +5,15 @@ using Sedulous.Core.IO;
 using Sedulous.Runtime;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.Projects.TestSupport;
 
-namespace Sedulous.Editor.Core.Tests;
+namespace Sedulous.Editor.Projects.Tests;
 
 /// A project's own build: the SDK it finds, the workspace it keeps in Code/, the entries it
 /// generates, and its refusals.
 class ProjectBuildTests
 {
-	private const String cRoot = "scratch_project_build";
-	/// The engine's own stock web player and MCP host projects, whose configs the web player and
-	/// the tools take over: a change to them shows here.
-	private const String cStockWeb = Compiler.ReadText("../../Engine/Sedulous.Engine.Player.Web/BeefProj.toml");
-	private const String cStockTools = Compiler.ReadText("../../Tools/Sedulous.Tools.Mcp/BeefProj.toml");
-
-	/// An SDK with the files the build reads (the startup libraries, the stock editor's, web
-	/// player's and MCP host's projects) and a data root, a second SDK, and a project with the
-	/// game's package in Code/ (an Engine and an Editor part) and a project-local package in
-	/// Plugins/Lantern (an Engine, a Pipeline and a Tooling part). The build service's tests
-	/// (ProjectBuildServiceTests) build over it too.
-	public class Bed
-	{
-		public String Root = new .() ~ delete _;
-		public String Sdk = new .() ~ delete _;
-		public String OtherSdk = new .() ~ delete _;
-		public String ProjectDir = new .() ~ delete _;
-		public ProjectSettings Settings = new .() ~ delete _;
-
-		public this()
-		{
-			RemoveDirectoryRecursive(cRoot);
-			let cwd = GetCurrentDirectory(.. scope .());
-			PathJoin(cwd, cRoot, Root);
-			PathJoin(Root, "sdk", Sdk);
-			PathJoin(Root, "other sdk", OtherSdk);
-			PathJoin(Root, "Native Game", ProjectDir);
-			for (let sdk in StringView[2](Sdk, OtherSdk))
-			{
-				Write(sdk, "Code/Tools/Sedulous.Tools.Editor/BeefProj.toml",
-					"FileVersion = 1\n\n[Project]\nName = \"Sedulous.Tools.Editor\"\n\n[Configs.Debug.Linux64]\nPostBuildCmds = [\"CopyToTarget(\\\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\\\")\"]\n");
-				Write(sdk, ProjectBuild.cStockWebProject, cStockWeb);
-				Write(sdk, ProjectBuild.cStockToolsProject, cStockTools);
-				for (let library in StringView[6]("Code/Editor/Sedulous.Editor.Main", "Code/Engine/Sedulous.Engine.Player.DesktopMain",
-					"Code/Engine/Sedulous.Engine.Player.WebMain", "Code/Editor/Sedulous.Editor.McpMain", "Code/Editor/Sedulous.Editor.CookMain",
-					"Code/Editor/Sedulous.Editor.ExportMain"))
-					Write(sdk, scope $"{library}/BeefProj.toml", "");
-				Test.Assert(CreateDirectory(PathJoin(sdk, "Data", .. scope .())));
-			}
-
-			Settings.Name.Set("Native Game");
-			AddPackage("nativegame", "Code", scope StringView[]("Engine", "Editor"));
-			Write(ProjectDir, "Code/NativeGame/BeefProj.toml", "");
-			Write(ProjectDir, "Code/NativeGame.Editor/BeefProj.toml", "");
-			AddPackage("lantern", "Plugins/Lantern", scope StringView[]("Engine", "Pipeline", "Tooling"));
-			Write(ProjectDir, "Plugins/Lantern/Lantern.Engine/BeefProj.toml", "");
-			Write(ProjectDir, "Plugins/Lantern/Lantern.Pipeline/BeefProj.toml", "");
-			Write(ProjectDir, "Plugins/Lantern/Lantern.Tooling/BeefProj.toml", "");
-		}
-
-		public ~this()
-		{
-			RemoveDirectoryRecursive(cRoot);
-		}
-
-		/// A package's manifest of `kinds` at `path` in the project, and the project's entry for it.
-		private void AddPackage(StringView id, StringView path, Span<StringView> kinds)
-		{
-			let entry = new EnabledPlugin();
-			entry.Id.Set(id);
-			entry.Path.Set(path);
-			Settings.Plugins.Add(entry);
-			let manifest = scope PluginManifest();
-			manifest.Id.Set(id);
-			manifest.Name.Set(id);
-			manifest.Version.Set("0.1.0");
-			manifest.EngineVersion.Set("0.1");
-			for (let kind in kinds)
-			{
-				let part = new PluginManifestPart();
-				part.Kind.Set(kind);
-				manifest.Parts.Add(part);
-			}
-			let xml = scope String();
-			Test.Assert(manifest.Write(xml) case .Ok);
-			Write(ProjectDir, scope $"{path}/Plugin.xml", xml);
-		}
-
-		public static void Write(StringView dir, StringView relative, StringView text)
-		{
-			let path = PathJoin(dir, relative, .. scope .());
-			MakeDirectories(PathParent(path, .. scope .()));
-			Test.Assert(WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Ok);
-		}
-
-		public static void MakeDirectories(StringView dir)
-		{
-			if (DirectoryExists(dir))
-				return;
-			MakeDirectories(PathParent(dir, .. scope .()));
-			CreateDirectory(dir);
-		}
-
-		/// A file of the project's workspace (Code/).
-		public void Read(StringView relative, String outText)
-		{
-			let bytes = scope List<uint8>();
-			let path = PathJoin(ProjectBuild.Directory(ProjectDir, .. scope .()), relative, .. scope .());
-			Test.Assert(ReadFile(path, bytes) case .Ok, path);
-			outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
-		}
-
-		/// Writes a file of the project's workspace (Code/).
-		public void WriteCode(StringView relative, StringView text)
-		{
-			Write(ProjectBuild.Directory(ProjectDir, .. scope .()), relative, text);
-		}
-	}
+	typealias Bed = ProjectBuildBed;
 
 	/// A project's name gives the executables' name: only its letters and digits, and a name that
 	/// would not start with a letter gets "Game" in front.
@@ -681,23 +575,6 @@ class ProjectBuildTests
 		Test.Assert(!ProjectBuild.FindOnPath(first, "Nothing", found));
 	}
 
-	/// A fake Beef install under the bed: BeefBuild at `exe` (relative to the bed's root), the
-	/// BeefConfig.toml beside it naming `libraries` (none: no config), and corlib at `corlib`
-	/// (relative to the root; empty: none). Its BeefBuild's path.
-	public static void FakeInstall(Bed bed, StringView exe, StringView libraries, StringView corlib, String outBeefBuild)
-	{
-		let file = BuildLayout.ExecutableName(exe, .. scope .());
-		Bed.Write(bed.Root, file, "#!beefbuild\n");
-		if (!libraries.IsEmpty)
-		{
-			let dir = PathParent(file, .. scope .());
-			Bed.Write(bed.Root, scope $"{dir}/BeefConfig.toml", scope $"Version = 1\nUnversionedLibDirs = [{libraries}]\n");
-		}
-		if (!corlib.IsEmpty)
-			Bed.Write(bed.Root, scope $"{corlib}/BeefProj.toml", "FileVersion = 1\n");
-		PathJoin(bed.Root, file, outBeefBuild);
-	}
-
 	/// BeefBuild is taken where its install has corlib, laid out as BeefBuild finds it: a source
 	/// build's IDE/dist reaching ../../BeefLibs, an installed one's bin reaching ../BeefLibs.
 	/// BEEFBUILD wins over PATH.
@@ -705,8 +582,8 @@ class ProjectBuildTests
 	public static void BeefBuildIsTakenWhereItsInstallHasCorlib()
 	{
 		let bed = scope Bed();
-		let source = FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
-		let installed = FakeInstall(bed, "installed/bin/BeefBuild", "'../BeefLibs'", "installed/BeefLibs/corlib", .. scope .());
+		let source = ProjectBuildBed.FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
+		let installed = ProjectBuildBed.FakeInstall(bed, "installed/bin/BeefBuild", "'../BeefLibs'", "installed/BeefLibs/corlib", .. scope .());
 		Test.Assert(ProjectBuild.HasCorlib(source, scope .()));
 		Test.Assert(ProjectBuild.HasCorlib(installed, scope .()));
 
@@ -723,9 +600,9 @@ class ProjectBuildTests
 	public static void ABeefBuildWithoutCorlibIsPassedOver()
 	{
 		let bed = scope Bed();
-		let bare = FakeInstall(bed, "bare/bin/BeefBuild", "\"../BeefLibs\"", "bare/BeefLibs/minlib", .. scope .());
-		let unconfigured = FakeInstall(bed, "unconfigured/BeefBuild", "", "", .. scope .());
-		let good = FakeInstall(bed, "good/bin/BeefBuild", "\"../Libraries/Extra\", \"../BeefLibs\"", "good/BeefLibs/Core/corlib", .. scope .());
+		let bare = ProjectBuildBed.FakeInstall(bed, "bare/bin/BeefBuild", "\"../BeefLibs\"", "bare/BeefLibs/minlib", .. scope .());
+		let unconfigured = ProjectBuildBed.FakeInstall(bed, "unconfigured/BeefBuild", "", "", .. scope .());
+		let good = ProjectBuildBed.FakeInstall(bed, "good/bin/BeefBuild", "\"../Libraries/Extra\", \"../BeefLibs\"", "good/BeefLibs/Core/corlib", .. scope .());
 		let why = scope String();
 		Test.Assert(!ProjectBuild.HasCorlib(bare, why) && why.Contains("no corlib"), why);
 		Test.Assert(!ProjectBuild.HasCorlib(unconfigured, why..Clear()) && why.Contains("no BeefConfig.toml"), why);
@@ -766,13 +643,6 @@ class ProjectBuildTests
 		Test.Assert(dirs.Count == 3, "none without the key");
 	}
 
-	/// An Emscripten folder with emcc in it, for the fake installs; its path.
-	public static void FakeEmscripten(Bed bed, StringView name, String outPath)
-	{
-		PathJoin(bed.Root, name, outPath);
-		Bed.Write(outPath, BuildLayout.ExecutableName(ProjectBuild.cEmccPath, .. scope .()), "#!emcc\n");
-	}
-
 	/// Emscripten is the folder the [Wasm] table's EmscriptenPath names in the BeefSettings.toml
 	/// beside BeefBuild, once it holds emcc. No settings file, a file without the key in that
 	/// table, and a folder without emcc are each refused, saying what to set.
@@ -780,7 +650,7 @@ class ProjectBuildTests
 	public static void EmscriptenIsTheFolderBeefBuildsSettingsName()
 	{
 		let bed = scope Bed();
-		let beefBuild = FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
+		let beefBuild = ProjectBuildBed.FakeInstall(bed, "beef/IDE/dist/BeefBuild", "\"../../BeefLibs\"", "beef/BeefLibs/corlib", .. scope .());
 		let home = PathJoin(bed.Root, "home", .. scope .());
 		let emsdk = PathJoin(bed.Root, "emsdk", .. scope .());
 		let found = scope String();
@@ -799,7 +669,7 @@ class ProjectBuildTests
 		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error..Clear()) && found.IsEmpty);
 		Test.Assert(error.Contains(scope $"Emscripten at '{emsdk}'") && error.Contains("has no upstream/emscripten/emcc"), error);
 
-		FakeEmscripten(bed, "emsdk", .. scope .());
+		ProjectBuildBed.FakeEmscripten(bed, "emsdk", .. scope .());
 		Test.Assert(ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error..Clear()) && (found == emsdk), error);
 	}
 
@@ -823,16 +693,16 @@ class ProjectBuildTests
 	public static void APackagedBeefBuildsSettingsAreUnderHome()
 	{
 		let bed = scope Bed();
-		let beefBuild = FakeInstall(bed, "installed/bin/BeefBuild", "'../BeefLibs'", "installed/BeefLibs/corlib", .. scope .());
+		let beefBuild = ProjectBuildBed.FakeInstall(bed, "installed/bin/BeefBuild", "'../BeefLibs'", "installed/BeefLibs/corlib", .. scope .());
 		let home = PathJoin(bed.Root, "home", .. scope .());
-		let packaged = FakeEmscripten(bed, "packaged emsdk", .. scope .());
+		let packaged = ProjectBuildBed.FakeEmscripten(bed, "packaged emsdk", .. scope .());
 		Bed.Write(home, ".config/beeflang/BeefSettings.toml", scope $"[Wasm]\nEmscriptenPath = \"{packaged}\"\n");
 		let found = scope String();
 		let error = scope String();
 		Test.Assert(ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error) && (found == packaged), error);
 		Test.Assert(!ProjectBuild.FindEmscriptenFrom(beefBuild, "", found, error) && error.Contains("has no BeefSettings.toml"), "no HOME, no packaged settings");
 
-		let beside = FakeEmscripten(bed, "beside emsdk", .. scope .());
+		let beside = ProjectBuildBed.FakeEmscripten(bed, "beside emsdk", .. scope .());
 		Bed.Write(bed.Root, "installed/bin/BeefSettings.toml", scope $"[Wasm]\nEmscriptenPath = \"{beside}\"\n");
 		Test.Assert(ProjectBuild.FindEmscriptenFrom(beefBuild, home, found, error) && (found == beside), found);
 	}

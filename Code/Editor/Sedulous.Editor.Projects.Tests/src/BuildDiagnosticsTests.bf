@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Editor.Project;
 
-namespace Sedulous.Editor.Core.Tests;
+namespace Sedulous.Editor.Projects.Tests;
 
 /// BeefBuild's output read into diagnostics: real output of a failing build (a game's two files
 /// and the engine's warnings), and the forms it did not show.

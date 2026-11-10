@@ -8,6 +8,7 @@ using Sedulous.GUI;
 using Sedulous.Http.Client;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.Projects;
 
 namespace Sedulous.Editor.App;
 

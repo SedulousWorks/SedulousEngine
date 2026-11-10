@@ -46,24 +46,10 @@ class EditorProject
 	private List<String> mContentWrites = new .() ~ DeleteContainerAndItems!(_);
 	private bool mRecordContentWrites = false;
 
-	private static String[5] sDirectories = .(ProjectLayout.ContentDir, ProjectLayout.SourcesDir,
-		ProjectLayout.CookedDir, ProjectLayout.EditorDir, ProjectLayout.CacheDir);
-
 	/// Scaffolds a new project at `directory`, created when absent, its PARENT existing:
-	/// the manifest and the fixed subdirectories. AlreadyExists when a manifest is there.
-	public static Result<void, ErrorCode> Create(StringView directory, StringView name)
-	{
-		if (!DirectoryExists(directory) && !CreateDirectory(directory))
-			return .Err(.NotFound);
-		let root = scope NativeFileSystem(directory);
-		if (root.Exists(ProjectLayout.ManifestFile))
-			return .Err(.AlreadyExists);
-		if (!EnsureDirectories(directory))
-			return .Err(.Internal);
-		let settings = scope ProjectSettings();
-		settings.Name.Set(name);
-		return ProjectManifest.Save(root, settings);
-	}
+	/// the manifest and the fixed subdirectories (ProjectScaffold.Create). AlreadyExists when a
+	/// manifest is there.
+	public static Result<void, ErrorCode> Create(StringView directory, StringView name) => ProjectScaffold.Create(directory, name);
 
 	/// Opens an existing project: reads the manifest, ensures the fixed subdirectories exist
 	/// and mounts and scans both databases. Null when there is no readable manifest; a
@@ -83,7 +69,7 @@ class EditorProject
 		// The generated directories may be missing on a fresh checkout, Cooked, Editor and
 		// .cache being ignored by version control: recreated so mounts and state saves
 		// always have a target.
-		if (!EnsureDirectories(directory))
+		if (!ProjectScaffold.EnsureDirectories(directory))
 		{
 			delete settings;
 			return null;
@@ -95,17 +81,6 @@ class EditorProject
 			GlobalLog(.Warning, scope $"Project: last saved by engine {settings.EngineVersion}, this is {EngineVersion.String}");
 		}
 		return new EditorProject(directory, settings);
-	}
-
-	private static bool EnsureDirectories(StringView directory)
-	{
-		for (let dir in sDirectories)
-		{
-			let path = PathJoin(directory, dir, .. scope .());
-			if (!DirectoryExists(path) && !CreateDirectory(path))
-				return false;
-		}
-		return true;
 	}
 
 	/// Use Create and Open. Takes the settings the manifest read produced.
