@@ -43,6 +43,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   `template`: Starter (the default: the game's code with its starter behaviour, the starter
   content and a default scene) or Empty (the game's code alone), under the project's own names;
   `template` `"none"` makes the bare project. A folder that is not empty is refused.
+- The engine SDK: a release carries the engine for Linux as a download of its own,
+  `sedulous-sdk-<version>-linux64.zip`, with the project manager inside. Unpack it anywhere and run
+  `ProjectManager/Sedulous.Tools.ProjectManager` to make projects and open them; each project's
+  editor is built over the SDK. What it holds and needs is in `Documentation/Shipping/Sdk.md`.
 
 ### Changed
 

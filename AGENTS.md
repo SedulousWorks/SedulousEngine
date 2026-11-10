@@ -148,7 +148,9 @@ loopback and opens on Samples.
 - **Cutting a release:** on master, one commit `Release: <version>`: the label set to the
   release's (`beta` for a pre-release, empty for a final) and `## Unreleased` renamed to
   `## <version> - <date>`. Tag it `v<version>`, make the GitHub release from the tag, and attach
-  what `pack-samples.py` writes from that commit.
+  what `pack-samples.py` writes from that commit, and what `pack-sdk.py` writes (the engine SDK
+  and its index, with the project manager's ShippingRelease build inside; `--check` first:
+  `Documentation/Shipping/Sdk.md`).
 - **After a release:** the next commit on master puts the label back to `dev`, bumps the version
   when the release was final, and opens a new `## Unreleased`.
 
