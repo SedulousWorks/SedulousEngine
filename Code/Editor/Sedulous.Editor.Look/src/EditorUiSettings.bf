@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Settings;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Look;
 
 /// The editor level UI preferences, a settings section. UiScale multiplies the window's OS
 /// content scale for the whole editor UI, layout, fonts and baked icons: an accessibility
@@ -12,6 +12,8 @@ namespace Sedulous.Editor.Core;
 ///
 /// The store is XML, so a field added later is [Appended] by its key: a file saved before it
 /// reads with the field at its default, and the version stays (a bump would refuse those files).
+/// Saved as Sedulous.Editor.Core.EditorUiSettings before it moved here with the look, a name
+/// EditorSerializables renames, so a store written then still reads.
 [Serializable(1)]
 class EditorUiSettings
 {

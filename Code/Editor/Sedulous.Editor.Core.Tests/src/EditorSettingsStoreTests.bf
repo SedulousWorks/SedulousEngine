@@ -6,6 +6,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Settings;
 using Sedulous.Xml.Serialization;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Look;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Projects;
 
@@ -210,15 +211,16 @@ static class EditorSettingsStoreTests
 	}
 
 	/// The UI section as the editor saved it before the look's inputs: the scale and axis views
-	/// only, under the section's identity and version.
+	/// only, under the section's identity (or the one it had before it moved) and version.
 	private class LegacyUiSection : ISerializable
 	{
 		public float UiScale = 1.0f;
 		public bool AutoOrthographic = true;
+		public uint64 TypeId = EditorUiSettings.TypeId;
 
 		public void Serialize(ISerializer ar)
 		{
-			BeginVersionedPayload(ar, EditorUiSettings.TypeId, EditorUiSettings.DataVersion);
+			BeginVersionedPayload(ar, TypeId, EditorUiSettings.DataVersion);
 			ar.BeginObject();
 			SerializeValue(ar, "uiScale", ref UiScale);
 			SerializeValue(ar, "autoOrthographic", ref AutoOrthographic);
@@ -286,6 +288,68 @@ static class EditorSettingsStoreTests
 		Test.Assert(reloaded.Load(again, factory) case .Ok);
 		let back = reloaded.Find<EditorUiSettings>();
 		Test.Assert((back != null) && (back.Scheme == "light") && (back.Accent == "#2f6fdf") && !back.AutoOrthographic);
+	}
+
+	/// The UI section moved from Editor.Core to the look's library, and the recent list from
+	/// Editor.Core to the headless project half, then on to the project and build library: a
+	/// store saved under a former name still reads, as the current type.
+	[Test]
+	public static void SectionsSavedUnderTheNamesTheyHadBeforeTheyMovedRead()
+	{
+		EditorSerializables.RegisterAll();
+		const String cFormerUi = "Sedulous.Editor.Core.EditorUiSettings";
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		{
+			let legacy = scope LegacyUiSection();
+			legacy.UiScale = 1.75f;
+			legacy.AutoOrthographic = false;
+			legacy.TypeId = TypeIdOf(cFormerUi);
+			let writing = factory(buffer, .Write);
+			defer delete writing;
+			let archive = writing.Serializer;
+			uint32 count = 1;
+			archive.Key("sections");
+			archive.BeginArray(ref count);
+			archive.BeginObject();
+			archive.Key("typeName");
+			archive.Text(cFormerUi);
+			archive.BeginFramedRegion();
+			archive.Key("payload");
+			archive.BeginObject();
+			legacy.Serialize(archive);
+			archive.EndObject();
+			archive.EndFramedRegion();
+			archive.EndObject();
+			archive.EndArray();
+			Test.Assert(archive.IsOk);
+			writing.Flush(buffer);
+		}
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		Test.Assert(loaded.UnknownSectionCount == 0, "known by its former name");
+		let ui = loaded.Find<EditorUiSettings>();
+		Test.Assert(ui != null, "read as the current type");
+		Test.Assert(Math.Abs(ui.UiScale - 1.75f) < 1e-5f);
+		Test.Assert(!ui.AutoOrthographic);
+		Test.Assert(typeof(EditorUiSettings).GetFullName(.. scope .()) == "Sedulous.Editor.Look.EditorUiSettings");
+
+		// The recent list's two types, from either name they were saved under: a rename is one
+		// step, so each former name leads to the current one.
+		for (let type in scope Type[](typeof(RecentProjectsSettings), typeof(RecentProjectEntry)))
+		{
+			let current = type.GetFullName(.. scope .());
+			let leaf = type.GetName(.. scope .());
+			for (let former in scope String[](scope $"Sedulous.Editor.Core.{leaf}", scope $"Sedulous.Editor.Project.{leaf}"))
+			{
+				let named = scope String();
+				Test.Assert(SerializableRenames.TryCurrentName(former, named), former);
+				Test.Assert(named == current, scope $"{former} reads as {named}");
+				Test.Assert(SerializableRenames.IsFormerId(TypeIdOf(former), TypeIdOf(current)), former);
+			}
+		}
 	}
 
 	/// The Game tab's preview resolutions: the common sizes seed once, a user's removal stays

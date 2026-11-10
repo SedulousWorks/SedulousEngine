@@ -7,6 +7,7 @@ using Sedulous.GUI;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.Look;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Camera;
 using Sedulous.Editor.ViewportTools;

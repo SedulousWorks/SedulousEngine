@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Look.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Look.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.Editor.Look" = "*"
+"Sedulous.Editor.Look.TestSupport" = "*"

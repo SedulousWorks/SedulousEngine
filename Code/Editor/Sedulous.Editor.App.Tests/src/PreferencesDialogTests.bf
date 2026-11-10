@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Settings;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Look;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
