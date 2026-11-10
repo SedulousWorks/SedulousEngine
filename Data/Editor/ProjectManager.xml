@@ -2,9 +2,11 @@
   The project manager: the window's whole screen while no project is open. A header holds the
   Projects and Samples tabs. On Projects a toolbar (New Project, Open Folder, a search, the sort,
   list or grid) sits over the projects, with the missing ones in a section of their own; on Samples
-  are the sample games of this editor's release, each with its Download... button; and a footer
-  shows the status and the keys. With no projects at all, a welcome takes their place. Code fills
-  the lists, the counts and the status line by id.
+  are the sample games of this editor's release, each with its Download... button; on Engines (with
+  an engine manager alone) the engines listed and the ones the releases offer; on Toolchain what a
+  project's build needs besides the engine; and a footer shows the status and the keys. With no
+  projects at all, a welcome takes their place. Code fills the lists, the counts and the status
+  line by id.
 -->
 <Panel class="manager">
     <Panel class="manager-header">
@@ -12,6 +14,8 @@
         <Panel class="manager-tabs">
             <Button id="manager-tab-projects" class="manager-tab" name="manager-tab" toggle="true" text="Projects"/>
             <Button id="manager-tab-samples" class="manager-tab" name="manager-tab" toggle="true" text="Samples"/>
+            <Button id="manager-tab-engines" class="manager-tab" name="manager-tab" toggle="true" text="Engines"/>
+            <Button id="manager-tab-toolchain" class="manager-tab" name="manager-tab" toggle="true" text="Toolchain"/>
         </Panel>
         <Spacer/>
         <Label id="manager-engine" class="manager-meta"/>
@@ -65,6 +69,59 @@
             <Label id="manager-samples-state-title" class="state-title"/>
             <Label id="manager-samples-state-text" class="state-text"/>
             <Button id="manager-samples-retry" text="Retry"/>
+        </Panel>
+    </Panel>
+
+    <Panel id="manager-engines-page" class="manager-page">
+        <Panel class="manager-toolbar">
+            <Button id="manager-engines-add" class="with-icon" icon="Editor/Icons/folder-open.svg" text="Add Folder..."/>
+            <Button id="manager-engines-refresh" text="Check for Engines"/>
+            <Spacer/>
+            <Label class="manager-meta" text="Each project opens with an engine of its version; its menu picks another."/>
+        </Panel>
+        <Panel class="manager-scroll">
+            <Panel class="manager-section-head">
+                <Label class="manager-section" text="INSTALLED"/>
+                <Label id="manager-engines-count" class="manager-count"/>
+            </Panel>
+            <Label id="manager-engines-none" class="manager-no-match" text="No engine is listed: install one below, or add an engine's folder."/>
+            <Panel id="manager-engines-installed" class="manager-engines"/>
+            <Panel class="manager-section-head manager-engines-available-head">
+                <Label class="manager-section" text="AVAILABLE"/>
+                <Label id="manager-engines-available-state" class="manager-count"/>
+            </Panel>
+            <Panel id="manager-engines-available" class="manager-engines"/>
+        </Panel>
+    </Panel>
+
+    <Panel id="manager-toolchain-page" class="manager-page">
+        <Panel class="manager-toolbar">
+            <Label class="manager-meta" text="For engine"/>
+            <ComboBox id="manager-toolchain-engine" class="manager-toolchain-engine" tooltip="The engine whose projects are built"/>
+            <Button id="manager-toolchain-recheck" text="Check Again"/>
+            <Spacer/>
+            <Button id="manager-toolchain-install" class="primary" text="Install Toolchain"/>
+        </Panel>
+        <Panel class="manager-scroll">
+            <Label id="manager-toolchain-none" class="manager-no-match" text="No engine is listed to build with: list one on the Engines tab."/>
+            <Label id="manager-toolchain-pin" class="manager-meta"/>
+            <Panel id="manager-toolchain-progress" class="manager-toolchain-progress">
+                <ProgressBar id="manager-toolchain-bar"/>
+                <Panel class="manager-sample-stage">
+                    <Label id="manager-toolchain-stage"/>
+                    <Button id="manager-toolchain-cancel" class="ghost" text="Cancel"/>
+                </Panel>
+            </Panel>
+            <Panel id="manager-toolchain-lines" class="manager-toolchain-lines"/>
+            <Panel class="manager-section-head manager-toolchain-emscripten-head">
+                <Label class="manager-section" text="EMSCRIPTEN"/>
+            </Panel>
+            <Label class="manager-toolchain-detail" text="Only a web export needs it. Name the emsdk folder it was installed into, and the installed toolchain is told where it is."/>
+            <Panel class="manager-toolchain-emscripten">
+                <TextField id="manager-toolchain-emsdk" placeholder="The emsdk folder"/>
+                <Button id="manager-toolchain-emsdk-browse" text="Browse..."/>
+                <Button id="manager-toolchain-emsdk-set" class="primary" text="Set"/>
+            </Panel>
         </Panel>
     </Panel>
 

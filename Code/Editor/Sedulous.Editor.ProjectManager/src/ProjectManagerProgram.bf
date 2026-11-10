@@ -10,6 +10,7 @@ using Sedulous.Graphics;
 using Sedulous.RHI.Capture;
 using Sedulous.Runtime.Client;
 using Sedulous.GUI;
+using Sedulous.Http.Client;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Projects;
@@ -32,6 +33,18 @@ class ProjectManagerConfig
 	public String EditorSettingsPath = new .() ~ delete _;
 	/// The SDK registry (SdkRegistry.DefaultPath).
 	public String SdksPath = new .() ~ delete _;
+	/// Where the Engines page installs engines (SdkRegistry.ManagedDirectory).
+	public String SdksDirectory = new .() ~ delete _;
+	/// Where the Toolchain page installs toolchains (<user-data>/Sedulous/Toolchains).
+	public String ToolchainsDirectory = new .() ~ delete _;
+	/// Where the Engines page reads the list of releases; empty: GitHub's (or, with --release-files,
+	/// its releases.json).
+	public String ReleasesUrl = new .() ~ delete _;
+	/// Where a file of a release is fetched from, given its tag, its name and the URL the releases
+	/// list published (empty: none); null: that URL, else the release's (or --release-files'). Owned.
+	public delegate void(StringView tag, StringView file, StringView published, String outUrl) AssetUrl ~ delete _;
+	/// The HTTP client the releases are fetched with, BORROWED; null: one over TLS made on first use.
+	public IHttpClient Http = null;
 	/// The user's theme overrides' folder (<user-data>/theme).
 	public String ThemeFolder = new .() ~ delete _;
 	/// This program's executable, recorded in the SDK registry for an editor to start the manager
@@ -70,6 +83,10 @@ class ProjectManagerConfig
 			ProjectsStore.DefaultEditorSettingsPath(EditorSettingsPath);
 		if (SdksPath.IsEmpty)
 			SdkRegistry.DefaultPath(SdksPath);
+		if (SdksDirectory.IsEmpty)
+			SdkRegistry.ManagedDirectory(SdksDirectory);
+		if (ToolchainsDirectory.IsEmpty)
+			PathJoin(GetUserDataDirectory(.. scope .()), ProjectBuild.cToolchainsDir, ToolchainsDirectory);
 		if (ThemeFolder.IsEmpty)
 			PathJoin(GetUserDataDirectory(.. scope .()), EditorLookHost.cThemeFolder, ThemeFolder);
 	}
@@ -97,6 +114,12 @@ class ProjectManagerConfig
 /// New Project makes the project from a template of the engine picked (the newest installed at
 /// first), pins it to that engine, then opens it the same way. One build runs at a time.
 ///
+/// The engines side by side (EngineManager) are the Engines and Toolchain tabs: the engines listed
+/// and offered by the releases, installed, added and removed, and the toolchain each needs. A
+/// project's menu picks the engine it opens with: one of its version only pins it, another
+/// upgrades it (its manifest backed up when asked, the editor built over that engine and told to
+/// stamp it) or opens it with an older engine after the warning.
+///
 /// Start is the headless half (the stores, the registry, the manager), which a test drives with
 /// no window, calling Pump for what a frame does; OnStartup adds the window.
 class ProjectManagerProgram : IApplication
@@ -115,6 +138,9 @@ class ProjectManagerProgram : IApplication
 	private String mSdk = new .() ~ delete _;
 	private EditorLookHost mGui = new .() ~ delete _;
 	private ReleaseAccess mRelease ~ delete _;
+	/// The engines and toolchains for the Engines and Toolchain tabs; made by Start, and let go
+	/// after the manager (its pages read it) and before the client its downloads run on.
+	private EngineManager mEngines = null;
 	/// The editor being built for an open, or the last one built, until another open or its
 	/// panel's close; null for none.
 	private EditorBuildRun mBuild = null;
@@ -157,6 +183,7 @@ class ProjectManagerProgram : IApplication
 		DeleteAndNullify!(mPanel);
 		DeleteAndNullify!(mBuild);
 		DeleteAndNullify!(mApp);
+		DeleteAndNullify!(mEngines);
 		ShowScreen(null);
 	}
 
@@ -171,6 +198,8 @@ class ProjectManagerProgram : IApplication
 	public ProjectManagerController Projects => mController;
 	/// The SDK this program sits in; empty when its data root's parent is no SDK.
 	public StringView Sdk => mSdk;
+	/// The engines and toolchains side by side; null until Start.
+	public EngineManager Engines => mEngines;
 	/// The last Start took the recent list from the editor's store.
 	public bool Migrated => mProjects.Migrated;
 	/// It has asked to exit (a project launched, or the command line's time is up).
@@ -195,8 +224,36 @@ class ProjectManagerProgram : IApplication
 		else if (mProjects.Migrated)
 			GlobalLog(.Information, "Projects: the recent projects were taken from {} into {}", mConfig.EditorSettingsPath, mConfig.ProjectsPath);
 		RegisterSdk();
+		mEngines = new EngineManager(EnginesConfig(), mSdks, mController);
 		mApp = new ProjectManagerApp(AppServices());
 	}
+
+	/// What the engine manager works over: this program's client and release files, the folders
+	/// engines and toolchains are installed in, the SDK it sits in and the toolchain probe.
+	private EngineManagerConfig EnginesConfig()
+	{
+		let config = new EngineManagerConfig();
+		config.Http = new () => Client();
+		if (!mConfig.ReleasesUrl.IsEmpty)
+		{
+			let url = new String(mConfig.ReleasesUrl);
+			config.ReleasesUrl = new [=url] (outUrl) => { outUrl.Set(url); } ~ delete url;
+		}
+		else if (mRelease.Overridden)
+			config.ReleasesUrl = new (outUrl) => { mRelease.FileUrl("releases.json", outUrl); };
+		if (mConfig.AssetUrl != null)
+			config.AssetUrl = new (tag, file, published, outUrl) => { mConfig.AssetUrl(tag, file, published, outUrl); };
+		else if (mRelease.Overridden)
+			config.AssetUrl = new (tag, file, published, outUrl) => { mRelease.FileUrl(file, outUrl); };
+		config.SdksDirectory.Set(mConfig.SdksDirectory);
+		config.ToolchainsDirectory.Set(mConfig.ToolchainsDirectory);
+		config.OwnSdk.Set(mSdk);
+		config.Probe = mConfig.Probe;
+		return config;
+	}
+
+	/// The client releases are fetched with: the config's, else one over TLS made on first use.
+	private IHttpClient Client() => (mConfig.Http != null) ? mConfig.Http : mRelease.Client();
 
 	/// The SDK this program sits in, listed unless it is (a checkout, an unpacked SDK, or one the
 	/// manager installed), and this executable recorded as the manager that ran last.
@@ -228,7 +285,7 @@ class ProjectManagerProgram : IApplication
 		services.ShowScreen = new (screen) => { ShowScreen(screen); };
 		services.LoadMarkup = new (path) => mGui.LoadMarkup(path);
 		services.StoreChanged = new () => { SaveStore(); };
-		services.Http = new () => mRelease.Client();
+		services.Http = new () => Client();
 		if (mRelease.Overridden)
 		{
 			services.ReleaseFile = new (file, outUrl) => { mRelease.FileUrl(file, outUrl); };
@@ -239,35 +296,67 @@ class ProjectManagerProgram : IApplication
 		services.CreateProject = new (directory, name, template, sdk, outWhy) => CreateFromTemplate(directory, name, template, sdk, outWhy);
 		services.Engines = new (outEngines) => { ListEngines(outEngines); };
 		services.Templates = new (sdk, outTemplates) => { ListTemplates(sdk, outTemplates); };
+		services.PinEngine = new (directory, sdk, outWhy) => PinEngine(directory, sdk, outWhy);
+		services.EngineOf = new (directory, outSdk) => PickSdk(directory, outSdk);
+		services.EngineManager = mEngines;
 		services.StaysWhileOpening = true; // its build's panel shows over the projects
 		return services;
 	}
 
-	/// The engines New Project offers, into `outEngines` (each new, the caller's): the registered
-	/// SDKs that read, the newest version first (NewerSdk), else the SDK this program sits in.
+	/// The engines New Project and a project's menu offer, into `outEngines` (each new, the
+	/// caller's): the registered SDKs that read, the newest version first (NewerSdk), else the SDK
+	/// this program sits in; each with its version and how it is listed.
 	public void ListEngines(List<NewProjectEngine> outEngines)
 	{
-		let sdks = scope List<SdkInfo>();
-		defer { ClearAndDeleteItems!(sdks); }
-		let missing = scope List<String>();
-		defer { ClearAndDeleteItems!(missing); }
-		mSdks.ReadSdks(sdks, missing);
-		if (sdks.IsEmpty && !mSdk.IsEmpty)
+		let listed = scope List<ListedSdk>();
+		defer { ClearAndDeleteItems!(listed); }
+		mSdks.ReadListed(listed);
+		for (int i = listed.Count - 1; i >= 0; i--)
 		{
-			let own = new SdkInfo();
-			if (SdkInfo.Read(mSdk, own) case .Ok)
-				sdks.Add(own);
+			let candidate = listed[i];
+			if (candidate.Info != null)
+				continue;
+			listed.RemoveAt(i); // missing: nothing to make or open a project with
+			delete candidate;
+		}
+		if (listed.IsEmpty && !mSdk.IsEmpty)
+		{
+			let own = new ListedSdk();
+			own.Root.Set(mSdk);
+			own.Info = new SdkInfo();
+			if (SdkInfo.Read(mSdk, own.Info) case .Ok)
+				listed.Add(own);
 			else
 				delete own;
 		}
-		sdks.Sort(scope (a, b) => NewerSdk(a, b) ? -1 : (NewerSdk(b, a) ? 1 : 0));
-		for (let sdk in sdks)
+		listed.Sort(scope (a, b) => NewerSdk(a.Info, b.Info) ? -1 : (NewerSdk(b.Info, a.Info) ? 1 : 0));
+		for (let entry in listed)
 		{
+			let sdk = entry.Info;
 			let engine = new NewProjectEngine();
 			engine.Sdk.Set(sdk.Root);
 			engine.Label.AppendF("{}{} at {}", sdk.Display, sdk.IsCheckout ? " (checkout)" : "", sdk.Root);
+			engine.Version.Set(sdk.Version);
+			engine.Display.Set(sdk.Display);
+			if (sdk.IsCheckout)
+				engine.Kind.Set(InstalledEngine.KindName(.Checkout));
+			else
+				engine.Kind.Set(InstalledEngine.KindName(entry.Managed ? EngineKind.Installed : EngineKind.Folder));
 			outEngines.Add(engine);
 		}
+	}
+
+	/// The project in `directory` pinned to the SDK at `sdk`: the engine it opens with from now on.
+	/// False, with why in `outWhy`, when the registry cannot be written.
+	private bool PinEngine(StringView directory, StringView sdk, String outWhy)
+	{
+		if (mSdks.Pin(directory, sdk) case .Err(let error))
+		{
+			outWhy.AppendF("The project could not be pinned to the engine at {} in {} ({}).", sdk, mConfig.SdksPath, error);
+			GlobalLog(.Error, "Projects: {}", outWhy);
+			return false;
+		}
+		return true;
 	}
 
 	/// Whether `a` is listed before `b` among the engines New Project offers: a version that reads
@@ -517,6 +606,8 @@ class ProjectManagerProgram : IApplication
 	/// let go. OnUpdate calls it; a headless test calls it in its place.
 	public void Pump()
 	{
+		if (mEngines != null)
+			mEngines.Tick();
 		if (mBuild != null)
 		{
 			let ended = mBuild.Ended;
@@ -709,6 +800,7 @@ class ProjectManagerProgram : IApplication
 		DeleteAndNullify!(mPanel); // its window, while the GUI is there
 		DeleteAndNullify!(mBuild); // a build running is cancelled, its thread waited for
 		DeleteAndNullify!(mApp); // its dialogs closed and its downloads cancelled, while the window is there
+		DeleteAndNullify!(mEngines); // its installs cancelled, while their client is there
 		ShowScreen(null);
 		mRelease.Close();
 		mGui.Close();

@@ -106,7 +106,7 @@ class SampleCatalog
 	}
 
 	/// A file or folder name alone: nothing that walks out of where it is put.
-	private static bool PlainName(StringView name)
+	public static bool PlainName(StringView name)
 	{
 		if (name.IsEmpty || (name == ".") || (name == ".."))
 			return false;

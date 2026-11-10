@@ -53,6 +53,14 @@ class ProjectManagerAppServices
 	public delegate void(List<NewProjectEngine> outEngines) Engines ~ delete _;
 	/// The project templates of the engine at `sdk`, in their order; null: no template list. Owned.
 	public delegate void(StringView sdk, List<ProjectTemplate> outTemplates) Templates ~ delete _;
+	/// Pins the project in the folder to the engine at `sdk`: true when it is; else why in `outWhy`.
+	/// Null: a project's engine is not picked here. Owned.
+	public delegate bool(StringView directory, StringView sdk, String outWhy) PinEngine ~ delete _;
+	/// The engine the project in the folder opens with into `outSdk`; false for none. Owned.
+	public delegate bool(StringView directory, String outSdk) EngineOf ~ delete _;
+	/// The engines and toolchains side by side, for the Engines and Toolchain pages, BORROWED; null:
+	/// no such pages.
+	public EngineManager EngineManager = null;
 	/// The manager stays shown while a project opens, and its status line says how an open that
 	/// failed failed: the manager's program, which builds the project's editor under it. False: it
 	/// goes before the open, as the editor's frame takes the window, and comes back when the open
@@ -127,6 +135,20 @@ class ProjectManagerApp
 				services.Engines = new (outEngines) => { mServices.Engines(outEngines); };
 			if (mServices.Templates != null)
 				services.Templates = new (sdk, outTemplates) => { mServices.Templates(sdk, outTemplates); };
+			if (mServices.PinEngine != null)
+			{
+				services.PickEngine = new (directory, sdk, version) =>
+					{
+						let path = new String(directory);
+						let engine = new String(sdk);
+						let engineVersion = new String(version);
+						Later(new [=this, =path, =engine, =engineVersion] () => { PickEngine(path, engine, engineVersion); }
+							~ { delete path; delete engine; delete engineVersion; });
+					};
+			}
+			if (mServices.EngineOf != null)
+				services.EngineOf = new (directory, outSdk) => mServices.EngineOf(directory, outSdk);
+			services.EngineManager = mServices.EngineManager;
 			services.StoreChanged = new () =>
 				{
 					if (mServices.StoreChanged != null)
@@ -184,6 +206,80 @@ class ProjectManagerApp
 			OpenProject(directory);
 			return;
 		}
+		Ask(decision, directory, "");
+	}
+
+	/// The project in `directory` to open with the engine at `sdk`, of `version`, from its menu: of
+	/// the version it was saved by, it is only pinned to it; an older engine's project asks as Open
+	/// does (a backup of its manifest offered), and is upgraded by it; a newer one's asks with the
+	/// hard warning, and is opened by an older engine. What the question asks (or what it did, for
+	/// OpenDirectly) is the gate it returns; with no window, it is left unasked (EngineChosen is its
+	/// answer).
+	public ProjectOpenGate PickEngine(StringView directory, StringView sdk, StringView version)
+	{
+		let decision = scope ProjectOpenDecision();
+		mServices.Projects.DecideOpen(directory, version, decision);
+		if (decision.Gate == .NotAProject)
+		{
+			SetStatus("Not a project (no Project.xml there).");
+			return .NotAProject;
+		}
+		if (decision.Gate == .OpenDirectly)
+		{
+			let why = scope String();
+			if (PinEngine(directory, sdk, why))
+				SetNote(scope $"{decision.Header.Name} opens with the engine at {sdk} now.");
+			else
+				SetStatus(why);
+			return .OpenDirectly;
+		}
+		Ask(decision, directory, sdk);
+		return decision.Gate;
+	}
+
+	/// The answer to PickEngine's question for the project in `directory` and the engine at `sdk`:
+	/// "backup" backs its manifest up first (nothing more when that fails), then, as with "open",
+	/// the project is pinned to the engine and opened with it, stamped by it when the engine is
+	/// newer than the project. Anything else ("cancel") changes nothing. True when the open started.
+	public bool EngineChosen(ProjectOpenGate gate, StringView answer, StringView directory, StringView sdk)
+	{
+		if ((answer != "open") && (answer != "backup"))
+			return false;
+		if ((answer == "backup") && (mServices.Projects.BackupManifest(directory, scope .()) case .Err))
+		{
+			SetStatus("The backup FAILED: not opening.");
+			return false;
+		}
+		let why = scope String();
+		if (!PinEngine(directory, sdk, why))
+		{
+			SetStatus(why);
+			return false;
+		}
+		return OpenProject(directory, ProjectManagerController.RestampsOnOpen(gate));
+	}
+
+	/// The project in `directory` pinned to the engine at `sdk` (the host's PinEngine); false, with
+	/// why in `outWhy`, when it is not.
+	private bool PinEngine(StringView directory, StringView sdk, String outWhy)
+	{
+		if (mServices.PinEngine == null)
+		{
+			outWhy.Set("This manager does not keep an engine per project.");
+			return false;
+		}
+		if (mServices.PinEngine(directory, sdk, outWhy))
+			return true;
+		if (outWhy.IsEmpty)
+			outWhy.Set("The project could not be pinned to that engine.");
+		return false;
+	}
+
+	/// The other engine's question over the window (none with no window, or with one open already):
+	/// the gate's words and buttons; its answer opens the project in `directory`, with the engine at
+	/// `sdk` when one was picked from its menu (empty: Open's own).
+	private void Ask(ProjectOpenDecision decision, StringView directory, StringView sdk)
+	{
 		let root = Root;
 		if ((root == null) || ((mAsking != null) && mAsking.IsOpen))
 			return;
@@ -203,8 +299,10 @@ class ProjectManagerApp
 			question.AddButton("Back Up and Open", "backup", .Primary);
 		}
 		let path = new String(directory);
+		let engine = new String(sdk);
 		let gate = decision.Gate;
-		question.AddEventListener(.Changed, new [=question, =path, =gate, =this] (e) => { Answered(gate, question.ResultName, path); } ~ delete path);
+		question.AddEventListener(.Changed, new [=question, =path, =engine, =gate, =this] (e) => { Answered(gate, question.ResultName, path, engine); }
+			~ { delete path; delete engine; });
 		question.OpenModal(root);
 	}
 
@@ -249,11 +347,18 @@ class ProjectManagerApp
 		return false;
 	}
 
-	/// The status line under the manager.
+	/// The status line under the manager, saying a problem.
 	public void SetStatus(StringView text)
 	{
 		if (mView != null)
 			mView.SetStatus(text);
+	}
+
+	/// The status line under the manager, saying what was done.
+	public void SetNote(StringView text)
+	{
+		if (mView != null)
+			mView.SetNote(text);
 	}
 
 	/// `work` at the GUI's next drain; at once with no GUI. TAKES OWNERSHIP of `work`.
@@ -282,22 +387,29 @@ class ProjectManagerApp
 
 	/// The other engine's question answered: Cancel (or a close) stays; the others open at the next
 	/// drain, Back Up and Open backing the manifest up first (not opening when that fails). An
-	/// older engine's project is stamped by what opens it; a newer engine's keeps its stamp.
-	private void Answered(ProjectOpenGate gate, StringView answer, StringView directory)
+	/// older engine's project is stamped by what opens it; a newer engine's keeps its stamp. With an
+	/// engine picked from the project's menu (`sdk`), EngineChosen pins the project to it first.
+	private void Answered(ProjectOpenGate gate, StringView answer, StringView directory, StringView sdk)
 	{
 		if ((answer != "open") && (answer != "backup"))
 			return;
 		let path = new String(directory);
+		let engine = new String(sdk);
 		let backup = answer == "backup";
 		let restamp = ProjectManagerController.RestampsOnOpen(gate);
-		Later(new [=this, =path, =backup, =restamp] () =>
+		Later(new [=this, =path, =engine, =gate, =backup, =restamp] () =>
 			{
+				if (!engine.IsEmpty)
+				{
+					EngineChosen(gate, backup ? "backup" : "open", path, engine);
+					return;
+				}
 				if (backup && (mServices.Projects.BackupManifest(path, scope .()) case .Err))
 				{
 					SetStatus("The backup FAILED: not opening.");
 					return;
 				}
 				OpenProject(path, restamp);
-			} ~ delete path);
+			} ~ { delete path; delete engine; });
 	}
 }
