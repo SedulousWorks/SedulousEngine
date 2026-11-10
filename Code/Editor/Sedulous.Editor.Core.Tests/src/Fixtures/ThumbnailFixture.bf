@@ -42,7 +42,7 @@ class ThumbnailFixture
 		Hash = hash;
 		PathJoin(Directory.GetCurrentDirectory(.. scope .()), cacheDir, CacheDir);
 		CreateDirectory(CacheDir);
-		PathJoin(Directory.GetCurrentDirectory(.. scope .()), "thumbs_empty_mount", MountDir);
+		PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_thumbs_empty_mount", MountDir);
 		CreateDirectory(MountDir);
 		Mount = new NativeFileSystem(MountDir);
 		Db = new ContentDatabase(Mount, null, "asset");

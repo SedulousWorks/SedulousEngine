@@ -22,8 +22,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void IconFirstThenTheDrawableAndOneReadySignal()
 	{
-		Scratch("thumbs_happy", .. scope .());
-		let f = scope ThumbnailFixture("thumbs_happy");
+		Scratch("scratch_thumbs_happy", .. scope .());
+		let f = scope ThumbnailFixture("scratch_thumbs_happy");
 		int ready = 0;
 		f.Service.OnThumbnailReady = new [&ready](id) => { ready++; };
 		Test.Assert(f.Service.Get(f.Known) == null, "a miss schedules; the caller keeps its icon");
@@ -37,15 +37,15 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void NegativesNeverReschedule()
 	{
-		Scratch("thumbs_negative", .. scope .());
-		Scratch("thumbs_fail", .. scope .());
-		let f = scope ThumbnailFixture("thumbs_negative");
+		Scratch("scratch_thumbs_negative", .. scope .());
+		Scratch("scratch_thumbs_fail", .. scope .());
+		let f = scope ThumbnailFixture("scratch_thumbs_negative");
 		let unknown = Guid.Parse("00000009-0000-0000-0000-000000000009").Get();
 		Test.Assert(f.Service.Get(unknown) == null);
 		Test.Assert(f.Service.Get(unknown) == null);
 		Test.Assert((f.Service.CachedCount == 1) && (f.Prepares == 0), "an unknown id: a negative, no job");
 
-		let g = scope ThumbnailFixture("thumbs_fail", 0x77, true);
+		let g = scope ThumbnailFixture("scratch_thumbs_fail", 0x77, true);
 		Test.Assert(g.Service.Get(g.Known) == null);
 		g.PumpLight();
 		Test.Assert(g.Service.Get(g.Known) == null);
@@ -61,23 +61,23 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void TheContentHashDiskCacheRoundTripsWithoutRegenerating()
 	{
-		Scratch("thumbs_disk", .. scope .());
+		Scratch("scratch_thumbs_disk", .. scope .());
 		{
-			let f = scope ThumbnailFixture("thumbs_disk", 0xabc);
+			let f = scope ThumbnailFixture("scratch_thumbs_disk", 0xabc);
 			f.Service.Get(f.Known);
 			f.PumpLight();
 			Test.Assert((f.Service.Get(f.Known) != null) && (f.Generates == 1));
 		}
 		{
 			// A fresh service, a new session: the file serves; neither Generate nor Prepare.
-			let f = scope ThumbnailFixture("thumbs_disk", 0xabc);
+			let f = scope ThumbnailFixture("scratch_thumbs_disk", 0xabc);
 			f.Service.Get(f.Known);
 			f.PumpLight();
 			Test.Assert((f.Service.Get(f.Known) != null) && (f.Generates == 0) && (f.Prepares == 0));
 		}
 		{
 			// A DIFFERENT hash, the content changed: the old file mismatches; regenerate.
-			let f = scope ThumbnailFixture("thumbs_disk", 0xdef);
+			let f = scope ThumbnailFixture("scratch_thumbs_disk", 0xdef);
 			f.Service.Get(f.Known);
 			f.PumpLight();
 			Test.Assert((f.Service.Get(f.Known) != null) && (f.Generates == 1));
@@ -87,15 +87,15 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void AnUnknownContentHashIsRamOnly()
 	{
-		Scratch("thumbs_ram", .. scope .());
+		Scratch("scratch_thumbs_ram", .. scope .());
 		{
-			let f = scope ThumbnailFixture("thumbs_ram", 0);
+			let f = scope ThumbnailFixture("scratch_thumbs_ram", 0);
 			f.Service.Get(f.Known);
 			f.PumpLight();
 			Test.Assert((f.Service.Get(f.Known) != null) && (f.Generates == 1));
 		}
 		{
-			let f = scope ThumbnailFixture("thumbs_ram", 0);
+			let f = scope ThumbnailFixture("scratch_thumbs_ram", 0);
 			f.Service.Get(f.Known);
 			f.PumpLight();
 			Test.Assert(f.Generates == 1, "nothing persisted: a fresh session regenerates");
@@ -105,10 +105,10 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void ACorruptCacheFileSelfHeals()
 	{
-		Scratch("thumbs_corrupt", .. scope .());
+		Scratch("scratch_thumbs_corrupt", .. scope .());
 		let path = scope String();
 		{
-			let f = scope ThumbnailFixture("thumbs_corrupt", 0x55);
+			let f = scope ThumbnailFixture("scratch_thumbs_corrupt", 0x55);
 			f.Service.Get(f.Known);
 			f.PumpLight();
 			Test.Assert(f.Service.Get(f.Known) != null);
@@ -120,7 +120,7 @@ static class ThumbnailServiceTests
 		let junk = "junk";
 		Test.Assert(WriteFile(path, .((uint8*)junk.Ptr, junk.Length)) case .Ok);
 		{
-			let f = scope ThumbnailFixture("thumbs_corrupt", 0x55);
+			let f = scope ThumbnailFixture("scratch_thumbs_corrupt", 0x55);
 			Test.Assert(f.Service.Get(f.Known) == null);
 			f.PumpLight();
 			Test.Assert(!FileExists(path), "the stale file was deleted");
@@ -142,8 +142,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void ASceneGeneratedTypeQueuesOneGpuJobOnMiss()
 	{
-		Scratch("thumbs_gpu_queue", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_queue", 0x99, false, true);
+		Scratch("scratch_thumbs_gpu_queue", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_queue", 0x99, false, true);
 		Test.Assert(fx.Service.SceneGeneratorCount == 1);
 		Test.Assert(fx.Service.Get(fx.Known) == null, "a miss: queued for the stage");
 		Test.Assert(fx.Service.QueuedSceneJobs == 1);
@@ -172,8 +172,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void ASceneGeneratedTypeWaitsForItsCookRatherThanFailing()
 	{
-		Scratch("thumbs_gpu_uncooked", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_uncooked", 0, false, true);
+		Scratch("scratch_thumbs_gpu_uncooked", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_uncooked", 0, false, true);
 		Test.Assert(fx.Service.Get(fx.Known) == null);
 		Test.Assert(fx.Service.QueuedSceneJobs == 0, "nothing to stage yet");
 		Test.Assert(fx.Service.Get(fx.Known) == null);
@@ -189,8 +189,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void ADocumentTheCookKeepsNoRecordOfIsNamedByItsGeneratorsHash()
 	{
-		Scratch("thumbs_gpu_document", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_document", 0, false, true, 85);
+		Scratch("scratch_thumbs_gpu_document", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_document", 0, false, true, 85);
 		Test.Assert(fx.Service.Get(fx.Known) == null);
 		Test.Assert(fx.Service.QueuedSceneJobs == 1, "queued, not left waiting for a cook");
 		let job = fx.Service.TakeSceneJob();
@@ -216,9 +216,9 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void ADocumentsFileFollowsTheCookedStateOfWhatItShowsARunningCookWaits()
 	{
-		Scratch("thumbs_gpu_dependent", .. scope .());
+		Scratch("scratch_thumbs_gpu_dependent", .. scope .());
 		bool cooking = false;
-		let fx = scope ThumbnailFixture("thumbs_gpu_dependent", 0, false, true, 85);
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_dependent", 0, false, true, 85);
 		fx.Shown = Guid(0x8888, 0, 0, 0, 0, 0, 0, 0, 0, 0x99, 0x99);
 		fx.ShownHash = 0; // not cooked yet
 		fx.SceneGenerator.Shown.Add(fx.Shown);
@@ -262,8 +262,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void AJobWaitingForItsCookCachesNothingAndRunsAgainAfterTheCook()
 	{
-		Scratch("thumbs_gpu_deferred", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_deferred", 0x99, false, true);
+		Scratch("scratch_thumbs_gpu_deferred", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_deferred", 0x99, false, true);
 		fx.Service.Get(fx.Known);
 		Test.Assert(fx.Service.TakeSceneJob().Id == fx.Known);
 		fx.Service.DeferSceneJob(fx.Known);
@@ -281,8 +281,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void AFailedStageResultCachesANegativeAndNeverRequeues()
 	{
-		Scratch("thumbs_gpu_fail", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_fail", 0x99, false, true);
+		Scratch("scratch_thumbs_gpu_fail", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_fail", 0x99, false, true);
 		fx.Service.Get(fx.Known);
 		let job = fx.Service.TakeSceneJob();
 		Test.Assert(job.Id == fx.Known);
@@ -294,9 +294,9 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void TheSceneGeneratedDiskCacheRoundTripsThroughTheLightLane()
 	{
-		Scratch("thumbs_gpu_disk", .. scope .());
+		Scratch("scratch_thumbs_gpu_disk", .. scope .());
 		{
-			let fx = scope ThumbnailFixture("thumbs_gpu_disk", 0x99, false, true);
+			let fx = scope ThumbnailFixture("scratch_thumbs_gpu_disk", 0x99, false, true);
 			fx.Service.Get(fx.Known);
 			fx.Service.TakeSceneJob();
 			fx.Service.AcceptSceneResult(fx.Known, SolidTile(90), true);
@@ -304,7 +304,7 @@ static class ThumbnailServiceTests
 		}
 		// A fresh service, the same cache and hash: the file serves on the LIGHT lane and
 		// the GPU queue is never touched.
-		let fx = scope ThumbnailFixture("thumbs_gpu_disk", 0x99, false, true);
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_disk", 0x99, false, true);
 		Test.Assert(fx.Service.Get(fx.Known) == null, "scheduled, not yet loaded");
 		Test.Assert(fx.Service.QueuedSceneJobs == 0);
 		fx.PumpLight();
@@ -315,8 +315,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void ResetClearsTheGpuQueueAndDropsATakenJobsResult()
 	{
-		Scratch("thumbs_gpu_reset", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_reset", 0x99, false, true);
+		Scratch("scratch_thumbs_gpu_reset", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_reset", 0x99, false, true);
 		fx.Service.Get(fx.Known);
 		let job = fx.Service.TakeSceneJob();
 		Test.Assert(job.Id == fx.Known);
@@ -329,8 +329,8 @@ static class ThumbnailServiceTests
 	[Test]
 	public static void JobsRouteToTheGeneratorCoveringTheAssetsType()
 	{
-		Scratch("thumbs_gpu_route", .. scope .());
-		let fx = scope ThumbnailFixture("thumbs_gpu_route", 0x99, false, true);
+		Scratch("scratch_thumbs_gpu_route", .. scope .());
+		let fx = scope ThumbnailFixture("scratch_thumbs_gpu_route", 0x99, false, true);
 		fx.Service.RegisterSceneGenerator(new StubSceneThumbnailGenerator("OtherGpuAsset", true));
 		Test.Assert(fx.Service.SceneGeneratorCount == 2);
 		Test.Assert(fx.Service.Get(fx.Known) == null);
