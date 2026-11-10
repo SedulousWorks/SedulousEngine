@@ -89,8 +89,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	private AudioEngineSettings mAudioEngineSettings = null;
 	private String mDataRootOverride = new .() ~ delete _;
 	private String mDataRoot = new .() ~ delete _;
-	/// OWNED: resolved once in Configure and handed to every consumer of engine data.
-	private NativeFileSystem mDataMount = null ~ delete _;
+	/// OWNED: resolved once in Configure, or given by the host (SetDataFileSystem), and handed
+	/// to every consumer of engine data.
+	private IFileSystem mDataMount = null ~ delete _;
 	/// What CreatePluginHost hands the process's plugin host, which goes before them.
 	private ClientServices mClientServices = new .() ~ delete _;
 	private EnginePluginServices mEnginePluginServices = null ~ delete _;
@@ -224,6 +225,16 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// --data-root; set it before Configure or it is too late to matter.
 	public void SetDataRoot(StringView path) => mDataRootOverride.Set(path);
 
+	/// The data mount itself, made by the host, for engine data that is not a folder (an
+	/// Android app's, under its APK's assets/Data, read in place). Set it before Configure; the
+	/// application TAKES OWNERSHIP. No data root is resolved then, and DataRoot stays empty.
+	public void SetDataFileSystem(IFileSystem mount)
+	{
+		if (mDataMount != mount)
+			delete mDataMount;
+		mDataMount = mount;
+	}
+
 	/// Where engine data was found, empty when it was not.
 	public StringView DataRoot => mDataRoot;
 	/// The engine facade surface every script in this app binds against; the editor's
@@ -342,19 +353,27 @@ class DefaultApplication : IApplication, ISceneObserver
 		host.Subsystems.SetRunManager(mRuns);
 
 		// The data root is resolved ONCE, here, and mounted. Nothing below the application
-		// knows where it is, only what it reads relative to it.
-		ResolveDataRoot(mDataRootOverride, mDataRoot);
-		if (mDataRoot.IsEmpty)
+		// knows where it is, only what it reads relative to it. A mount the host gave is used
+		// as it is, with no root to resolve.
+		if (mDataMount != null)
 		{
-			// The mount still points at where a dist would keep it, so every miss on the way
-			// out names the place rather than reading as an unexplained absence.
-			GlobalLog(.Error,
-				"DefaultApplication: no data root, so there are no engine shaders and no built in font. Put Data beside the executable, or pass {} <dir>.",
-				cDataRootArgument);
-			PathJoin(GetExecutableDirectory(.. scope String()), "Data", mDataRoot);
-			host.RequestExit(1);
+			GlobalLog(.Information, "DefaultApplication: data root: the mount the host gave");
 		}
-		mDataMount = new NativeFileSystem(mDataRoot);
+		else
+		{
+			ResolveDataRoot(mDataRootOverride, mDataRoot);
+			if (mDataRoot.IsEmpty)
+			{
+				// The mount still points at where a dist would keep it, so every miss on the way
+				// out names the place rather than reading as an unexplained absence.
+				GlobalLog(.Error,
+					"DefaultApplication: no data root, so there are no engine shaders and no built in font. Put Data beside the executable, or pass {} <dir>.",
+					cDataRootArgument);
+				PathJoin(GetExecutableDirectory(.. scope String()), "Data", mDataRoot);
+				host.RequestExit(1);
+			}
+			mDataMount = new NativeFileSystem(mDataRoot);
+		}
 
 		EngineScriptSurface.Populate(mScriptSurface);
 		ScriptSurfaces.Register(mScriptSurface);

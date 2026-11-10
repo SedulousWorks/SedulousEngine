@@ -34,7 +34,11 @@ static class DesktopPlayerMain
 {
 	private const String cDevProjectFallback = "EditorProject";
 
-	public static int Run(String[] args)
+	public static int Run(String[] args) => Run(args, scope PlayerMounts());
+
+	/// Runs the player over the mounts the host made (BORROWED: the run takes the ones it uses,
+	/// and leaves the rest to the caller). Each one given replaces finding it by path.
+	public static int Run(String[] args, PlayerMounts mounts)
 	{
 		// Before ANY startup work, so --version answers on a machine that cannot bring up a
 		// window at all.
@@ -59,17 +63,25 @@ static class DesktopPlayerMain
 		GlobalLog(.Information, "Player {}", EngineVersion.BuildIdentity(.. scope .()));
 
 		let options = scope PlayerOptions();
-		ReadCommandLine(args, options);
+		ReadCommandLine(args, mounts.Game != null, options);
 
 		// The window the game asked for, read before the window exists: the dist's player.xml,
 		// or a dev tree's Project.xml. Neither, and the defaults stand.
 		let manifest = scope ProjectSettings();
 		{
-			let root = scope NativeFileSystem(options.ProjectDir);
+			let projectRoot = scope NativeFileSystem(options.ProjectDir);
+			IFileSystem root = projectRoot;
+			if (mounts.Game != null)
+				root = mounts.Game;
 			if ((ProjectManifest.Load(root, manifest, ProjectLayout.DistManifestFile) case .Err)
 				&& (ProjectManifest.Load(root, manifest, ProjectLayout.ManifestFile) case .Err))
 				GlobalLog(.Warning, "Player: no manifest in '{}', the default window", options.ProjectDir);
 		}
+		// The application takes the game's mounts from the options at startup.
+		options.GameRoot = mounts.Game;
+		mounts.Game = null;
+		options.ContentPak = mounts.Content;
+		mounts.Content = null;
 		WindowSettings windowSettings = .();
 		windowSettings.Title = manifest.Name.IsEmpty ? "Player" : StringView(manifest.Name);
 		windowSettings.Width = Math.Max(manifest.WindowWidth, 1);
@@ -114,8 +126,17 @@ static class DesktopPlayerMain
 		// [--screenshot-exit]: a capture with no hand on F11, which is how a run proves what it
 		// drew; with a count, that many consecutive frames as <png stem>-<i>.png.
 		app.SetScreenshotOptions(ScreenshotOptions.FromArguments(args));
-		// The engine data root: --data-root when given, else the discovery walk.
-		app.SetDataRoot(DataRootFromArguments(args, .. scope .()));
+		// The engine data: the host's mount when it gave one, else --data-root when given, else
+		// the discovery walk.
+		if (mounts.Data != null)
+		{
+			app.SetDataFileSystem(mounts.Data);
+			mounts.Data = null;
+		}
+		else
+		{
+			app.SetDataRoot(DataRootFromArguments(args, .. scope .()));
+		}
 		return DesktopRunner.RunApplication(app, shell, graphics);
 	}
 
@@ -140,10 +161,13 @@ static class DesktopPlayerMain
 		return 0.0;
 	}
 
-	/// The positional project directory, then the flags.
-	private static void ReadCommandLine(String[] args, PlayerOptions options)
+	/// The positional project directory, then the flags. With a game mount from the host there
+	/// is no directory to find, and the one named is for the log alone.
+	private static void ReadCommandLine(String[] args, bool hostGame, PlayerOptions options)
 	{
-		if ((args.Count > 0) && !args[0].StartsWith("-"))
+		if (hostGame)
+			options.ProjectDir.Set("(the host's mount)");
+		else if ((args.Count > 0) && !args[0].StartsWith("-"))
 			options.ProjectDir.Set(args[0]);
 		else
 			ResolveProjectDir(options.ProjectDir);

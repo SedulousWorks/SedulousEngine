@@ -41,7 +41,8 @@ class PlayerApplication : DefaultApplication
 
 	private ProjectSettings mSettings = new .() ~ delete _;
 
-	private NativeFileSystem mRoot = null ~ delete _;
+	/// The game's root: the project directory, or the mount the host gave.
+	private IFileSystem mRoot = null ~ delete _;
 	/// Distribution only.
 	private PakFileSystem mPak = null ~ delete _;
 	// Project mode only.
@@ -120,10 +121,18 @@ class PlayerApplication : DefaultApplication
 	/// continue, and it has already asked to exit.
 	private bool OpenProject(IApplicationHost host)
 	{
-		mRoot = new NativeFileSystem(mOptions.ProjectDir);
+		if (mOptions.GameRoot != null)
+		{
+			mRoot = mOptions.GameRoot;
+			mOptions.GameRoot = null;
+		}
+		else
+		{
+			mRoot = new NativeFileSystem(mOptions.ProjectDir);
+		}
 
 		// A distribution WINS when present: a staged one can sit inside a project tree.
-		if (mRoot.Exists(ProjectLayout.DistContentPak))
+		if ((mOptions.ContentPak != null) || mRoot.Exists(ProjectLayout.DistContentPak))
 			return OpenDistribution(host);
 
 		if (mRoot.Exists(ProjectLayout.ManifestFile))
@@ -138,10 +147,17 @@ class PlayerApplication : DefaultApplication
 
 	private bool OpenDistribution(IApplicationHost host)
 	{
-		let pakPath = scope String();
-		PathJoin(mOptions.ProjectDir, ProjectLayout.DistContentPak, pakPath);
-
-		mPak = new PakFileSystem(pakPath);
+		if (mOptions.ContentPak != null)
+		{
+			mPak = mOptions.ContentPak;
+			mOptions.ContentPak = null;
+		}
+		else
+		{
+			let pakPath = scope String();
+			PathJoin(mOptions.ProjectDir, ProjectLayout.DistContentPak, pakPath);
+			mPak = new PakFileSystem(pakPath);
+		}
 		if (!mPak.IsValid
 			|| (ProjectManifest.Load(mRoot, mSettings, ProjectLayout.DistManifestFile) case .Err))
 		{
