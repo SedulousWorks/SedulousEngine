@@ -77,8 +77,6 @@ static class ExportDriverTests
 	{
 		let fx = scope ExportProjectFixture("scratch_export_e2e");
 		let distDir = PathJoin(fx.OutRoot, "dist", .. scope .());
-		let scriptId = Guid.Parse("abcd1234-0000-0000-0000-5678ef900000").Get();
-		fx.Project.Settings.StartupScriptId = scriptId;
 		let titleFontId = Guid.Create();
 		fx.Project.Settings.RenderMsaaSamples = 4;
 		fx.Project.Settings.UiFontIds.Add(titleFontId);
@@ -119,7 +117,7 @@ static class ExportDriverTests
 		let distRoot = scope NativeFileSystem(distDir);
 		let manifest = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
-		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId) && (manifest.StartupScriptId == scriptId));
+		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId));
 		// And everything else the player reads: the MSAA, the other fonts, the GUI's sheets and loading
 		// screen.
 		Test.Assert(manifest.RenderMsaaSamples == 4, "the MSAA");
@@ -722,43 +720,6 @@ static class ExportDriverTests
 		Test.Assert(ReadFile(PathJoin(distB, ProjectLayout.DistContentPak, .. scope .()), b) case .Ok);
 		Test.Assert((a.Count == b.Count) && (a.Count > 0));
 		Test.Assert(Internal.MemCmp(a.Ptr, b.Ptr, a.Count) == 0, "byte identical");
-	}
-
-	[Test]
-	public static void AStartupScriptAssetCooksIntoTheDistPakAndBindsLikeThePlayer()
-	{
-		let fx = scope ExportProjectFixture("scratch_export_script");
-		Sedulous.Pipeline.Registration.PipelineRegistration.RegisterPipelineTypes();
-		defer Sedulous.Pipeline.Registration.PipelineRegistration.Teardown();
-		let source = "class Game\n{\n\tvoid launch() {}\n\tvoid update(float dt) {}\n}\n";
-		Test.Assert(WriteFile(PathJoin(fx.Project.SourcesRoot(.. scope .()), "Game.as", .. scope .()), .((uint8*)source.Ptr, source.Length)) case .Ok);
-		let scriptInstance = fx.Project.SourceDb.RootGroup.CreateInstance("Game", typeof(Sedulous.Script.Pipeline.ScriptClassAsset).GetFullName(.. scope .()));
-		let asset = scope Sedulous.Script.Pipeline.ScriptClassAsset();
-		asset.FileName.Set("Game.as");
-		asset.Language.Set("angelscript");
-		Test.Assert(scriptInstance.WriteObject(asset) case .Ok);
-		fx.Project.Settings.StartupScriptId = scriptInstance.Id;
-		Test.Assert(fx.Project.SaveSettings() case .Ok);
-		fx.Builders.Register(new Sedulous.Script.Pipeline.ScriptClassAssetBuilder());
-
-		let distDir = PathJoin(fx.OutRoot, "dist", .. scope .());
-		let stats = scope ExportStats();
-		Test.Assert(ExportDriver.ExportProject(fx.Project, distDir, fx.Builders, false, stats) case .Ok);
-		Test.Assert((stats.Cooked == 3) && (stats.CookFailed == 0), scope $"{stats.Cooked} cooked, {stats.CookFailed} failed");
-		// The player's path: the manifest names the script by guid, the pak holds its class.
-		let distRoot = scope NativeFileSystem(distDir);
-		let manifest = scope ProjectSettings();
-		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
-		Test.Assert(manifest.StartupScriptId == scriptInstance.Id);
-		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
-		let pak = scope PakFileSystem(PathJoin(distDir, ProjectLayout.DistContentPak, .. scope .()));
-		let db = OpenDistPak(distDir, pak, binary);
-		defer delete db;
-		let product = db.ReadObject(manifest.StartupScriptId);
-		Test.Assert(product != null, "the script class is in the pak by the source's guid");
-		defer delete product;
-		let record = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(product)) as Sedulous.Script.Resource.ScriptClassSource;
-		Test.Assert((record != null) && (record.ClassName == "Game") && (record.Language == "angelscript"));
 	}
 
 	/// A preset's own render resolution replaces the project's in its dist, and leaves the

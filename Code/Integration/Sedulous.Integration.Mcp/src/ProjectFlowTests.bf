@@ -65,7 +65,7 @@ static class ProjectFlowTests
 		}
 		Test.Assert(grouped == info.Get("settings").Count);
 		Test.Assert(msaaOnDisplay);
-		// The startup script is a script's, and a game's native code has replaced it: not named.
+		// No startup script: a game's code is native.
 		Test.Assert(info.Get("settings").Get("startupScriptId") == null);
 		Test.Assert(FileExists(PathJoin(dir, "Project.xml", .. scope .())));
 

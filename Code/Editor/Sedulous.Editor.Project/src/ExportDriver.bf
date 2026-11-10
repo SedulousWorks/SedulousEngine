@@ -75,7 +75,6 @@ static class ExportDriver
 		}
 		let settings = project.Settings;
 		Add(settings.DefaultSceneId, .DefaultScene);
-		Add(settings.StartupScriptId, .StartupScript);
 		Add(settings.DefaultInputMapId, .ManifestDefault);
 		Add(settings.DefaultBusLayoutId, .ManifestDefault);
 		Add(settings.DefaultUiFontId, .ManifestDefault);

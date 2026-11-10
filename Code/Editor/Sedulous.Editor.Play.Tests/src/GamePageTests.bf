@@ -300,11 +300,10 @@ class GamePageTests
 	}
 
 	/// A native game in a Game tab: Play launches it before the default scene loads, so it hears of
-	/// that scene as it becomes current, once a play; Stop ends it, its exit run; a startup script
-	/// the project's settings still name is ignored, with no warning; the next Play makes a fresh
-	/// one.
+	/// that scene as it becomes current, once a play, with no warning; Stop ends it, its exit run;
+	/// the next Play makes a fresh one.
 	[Test]
-	public static void PlayLaunchesTheNativeGameBeforeItsSceneStopEndsItAStartupScriptIsIgnored()
+	public static void PlayLaunchesTheNativeGameBeforeItsSceneStopEndsIt()
 	{
 		// Before the bed: they outlive the page and the run.
 		let factory = scope PieProbeFactory();
@@ -312,7 +311,6 @@ class GamePageTests
 		let bed = scope Bed(true);
 		bed.TabRun.Register<IGameFactory>(factory);
 		bed.AddDefaultScene("Level", false);
-		bed.Project.Settings.StartupScriptId = Guid.Create();
 		bed.Context.OnNotice = new [=warnings] (kind, message) =>
 			{
 				if (kind == .Warning)
@@ -325,7 +323,7 @@ class GamePageTests
 		Test.Assert(factory.Log == "launch scene:Level ", factory.Log);
 		Test.Assert(factory.Made == 1);
 		Test.Assert(bed.TabRun.HasNativeGame && bed.TabRun.GameRunning);
-		Test.Assert(warnings.IsEmpty, "a startup script named is not a game: no warning");
+		Test.Assert(warnings.IsEmpty, warnings);
 		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(factory.Made == 1, "launched once a play");
 		Test.Assert(factory.Log == "launch scene:Level ", factory.Log);
@@ -335,8 +333,7 @@ class GamePageTests
 		Test.Assert(factory.Log == "launch scene:Level exit ", factory.Log);
 		Test.Assert((factory.Deleted == 1) && !bed.TabRun.HasNativeGame, "the stop ends it");
 
-		// No startup script: the same; a fresh game.
-		bed.Project.Settings.StartupScriptId = .Empty;
+		// Again: a fresh game.
 		warnings.Clear();
 		bed.Page.Play();
 		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);

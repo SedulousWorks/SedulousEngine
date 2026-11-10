@@ -170,8 +170,9 @@ class NativeSampleGame : Game
 - `Instance` is the run (`GameInstance`): `LoadScene(guid)`, `LoadSceneAsync(guid)`,
   `RequestExit()`, `InstanceTimeScale` (nought pauses the scenes), `RealDeltaTime`, and its
   services through `Instance.Get<T>()`.
-- A startup script the project's settings still name is ignored: the engine runs no scripts.
-  The scene page's Simulate launches no game.
+- A project has no startup script: the engine runs no scripts. An older Project.xml that names
+  one still reads, the script passed by, and the next save drops it. The scene page's Simulate
+  launches no game.
 
 ## Struct components: the fast path
 

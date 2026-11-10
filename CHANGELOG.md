@@ -164,8 +164,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 - Engine: game scripts no longer run: the Script component, a scene's level script and a project's
   startup script (the player and a Game tab start the native game alone), the scenes' script
-  services, and `pie_state`'s `script` state. A scene that still holds script records keeps them
-  unread. A game's code is native.
+  services, and `pie_state`'s `script` state. A game's code is native.
+- Projects: the Startup script setting (Project Settings and the project's home page). A project
+  that names one still opens, and the next save of its settings drops it.
+- Scenes: a scene saved while scripts ran still opens, its Script components and level script
+  dropped as it loads with a warning, and it saves without them.
 - MCP: `script_api`, `script_validate`, `script_create`, `behavior_add` and `behavior_set`,
   play-in-editor's script probes (`pie_run`'s `script`, a level script's properties and a script
   behaviour's fields), `startupScriptId` in `project_info` and the script override section of the

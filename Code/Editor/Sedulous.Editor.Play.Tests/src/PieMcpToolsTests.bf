@@ -14,8 +14,8 @@ namespace Sedulous.Editor.Play.Tests;
 /// The PIE tools over a real EditorContext whose Game tabs are headless IPieInstancePage
 /// pages, opened by stand-ins for the editor's game.play and game.playNewInstance actions:
 /// starting (the wait for the cook and the first frame), addressing by id, a second instance
-/// beside the primary, stopping one while the other runs, the list, a faulted startup script
-/// in the state, and the capture's frame-by-frame wait.
+/// beside the primary, stopping one while the other runs, the list, the state (with no script
+/// in it), and the capture's frame-by-frame wait.
 class PieMcpToolsTests
 {
 	/// A Game tab to the rest of the editor: the run as flags a test advances.

@@ -25,25 +25,13 @@ static class ProjectInfoTool
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 
 		let fields = scope List<FieldInfo>();
-		ToolSettingFields(fields);
+		SettingFields.Of(typeof(ProjectSettings), fields);
 		let schema = scope SchemaBuilder();
 		ReflectedFields.AddToSchema(schema, fields);
 		server.RegisterTool("project_settings_set",
 			"Change the open project's settings, what the editor's Project Settings dialog edits, by the names project_info reports: only what is given changes, and a name that is no setting is refused with the list. Every asset setting must name an asset of its type (the refusal says which), \"\" clears it; a list setting (uiFontIds, the fonts the game UI loads beside the default, each a family a label picks with font-family; guiStyleSheetIds, the engine GUI's sheets, each over those before it) takes the whole list, [] for none; a count takes its range (the display's sizes), a choice one of its values by name (renderFit, windowMode), a flag true or false; renderMsaaSamples takes the render levels (1, 2 or 4). Checked in full before anything changes, then saved to the manifest; the editor re-applies what depends on them (the game UI's font and theme). Returns the settings and their categories as project_info does.",
 			schema.Build(), .Adjusts,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
-	}
-
-	/// The settings these tools name: every [Setting] field but the startup script, which a
-	/// game's native code (its [Game]) has replaced.
-	private static void ToolSettingFields(List<FieldInfo> outFields)
-	{
-		SettingFields.Of(typeof(ProjectSettings), outFields);
-		for (int i = outFields.Count - 1; i >= 0; i--)
-		{
-			if (outFields[i].Name == "StartupScriptId")
-				outFields.RemoveAt(i);
-		}
 	}
 
 	private static bool Info(ProjectSession session, JsonValue outResult, String outError)
@@ -58,7 +46,7 @@ static class ProjectInfoTool
 		outResult.Set("directory", JsonValue.MakeString(project.Directory));
 		outResult.Set("sourcesRoot", JsonValue.MakeString(project.SourcesRoot(.. scope .())));
 		let fields = scope List<FieldInfo>();
-		ToolSettingFields(fields);
+		SettingFields.Of(typeof(ProjectSettings), fields);
 		outResult.Set("settings", ReflectedFields.ToJson(project.Settings, fields, project.SourceDb));
 		outResult.Set("settingCategories", CategoriesJson(fields));
 		return true;
@@ -93,7 +81,7 @@ static class ProjectInfoTool
 		let project = session.Project;
 		let settings = project.Settings;
 		let fields = scope List<FieldInfo>();
-		ToolSettingFields(fields);
+		SettingFields.Of(typeof(ProjectSettings), fields);
 
 		// A misspelled setting never gets here: the server refuses an argument the schema does
 		// not declare, naming the ones it does.

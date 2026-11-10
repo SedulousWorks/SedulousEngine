@@ -60,10 +60,11 @@ what the engine writes.
 
 ## Script records
 
-A scene written while the engine ran scripts may carry `script` components (an entity's
-behaviours) and a `script` settings block (the Level script). The engine has neither now, so a
-scene keeps them unread and writes them back as they were, as it does any record of a
-component or system the build lacks.
+A scene written while the engine ran scripts (scene stream version 3) may carry `script`
+components (an entity's behaviours) and a `script` settings block (the Level script). The engine
+has neither now. Such a scene still reads: its script records are dropped as it loads, with a
+warning that says so, and it saves at version 4 without them. Any other record of a component or system the build lacks is
+kept unread and written back as it was.
 
 ## Spawning at run time
 

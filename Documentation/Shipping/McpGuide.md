@@ -511,7 +511,7 @@ platform and config left, refused when there is none. In the editor the call wai
 goes on. Each enabled plugin's deploy files ship
 beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
 export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
-project's default scene, startup script and manifest assets, and what is flagged Always Export),
+project's default scene and manifest assets, and what is flagged Always Export),
 following each scene and prefab to what its components and settings name, the prefabs it places
 (with what each placement's overrides name), and each asset to what it needs (a material's textures);
 the response's `pruning` counts what was kept and dropped.

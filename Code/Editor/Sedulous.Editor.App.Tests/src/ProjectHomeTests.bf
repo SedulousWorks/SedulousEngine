@@ -108,8 +108,9 @@ class ProjectHomeTests
 		let docks = project.SourceDb.RootGroup.GetInstance("Docks");
 		let arrival = project.SourceDb.RootGroup.GetInstance("Arrival");
 		Test.Assert((docks != null) && (arrival != null));
-		// An input map no asset is: missing.
+		// An input map no asset is: missing; no UI font: unset.
 		project.Settings.DefaultInputMapId = Guid.Create();
+		project.Settings.DefaultUiFontId = .Empty;
 
 		let context = scope EditorContext();
 		context.SetProject(project);
@@ -131,14 +132,13 @@ class ProjectHomeTests
 		// The summary: where it is, its engine, the settings marked for it (in declaration order),
 		// and the window; no others.
 		let rows = home.SummaryRows;
-		Test.Assert(rows.Count == 7, scope $"{rows.Count} rows");
+		Test.Assert(rows.Count == 6, scope $"{rows.Count} rows");
 		Test.Assert(rows[0].StartsWith("Location: "));
 		Test.Assert(rows[1] == scope $"Engine version: {project.Settings.EngineVersion}");
 		Test.Assert(rows[2] == "Default scene: Docks", rows[2]);
 		Test.Assert(rows[3] == "Input map: (missing)", rows[3]);
-		Test.Assert(rows[4] == "Startup script: (none)", rows[4]);
-		Test.Assert(rows[5].StartsWith("UI font: "), rows[5]);
-		Test.Assert(rows[6] == "Window: 1280 × 720, windowed", rows[6]);
+		Test.Assert(rows[4] == "UI font: (built-in)", rows[4]);
+		Test.Assert(rows[5] == "Window: 1280 × 720, windowed", rows[5]);
 		Test.Assert(!Has(rows, "Default bus layout: (built-in)"));
 		// An asset the project holds, a link to it; one it does not, in the warning colour; an unset
 		// one by its empty text.
@@ -146,7 +146,7 @@ class ProjectHomeTests
 		Test.Assert((defaultScene != null) && defaultScene.HasClass("link") && (defaultScene.Text == "Docks"));
 		let missing = ValueOf(content, "Input map") as Sedulous.GUI.Label;
 		Test.Assert((missing != null) && missing.HasClass("missing"));
-		let unset = ValueOf(content, "Startup script") as Sedulous.GUI.Label;
+		let unset = ValueOf(content, "UI font") as Sedulous.GUI.Label;
 		Test.Assert((unset != null) && unset.HasClass("dim") && !unset.HasClass("missing"));
 
 		// Its buttons.

@@ -120,18 +120,15 @@ static class EditorProjectTests
 		let loadingId = Guid.Parse("6ba7b811-9dad-11d1-80b4-00c04fd430c8").Get();
 		let mapId = Guid.Parse("6ba7b812-9dad-11d1-80b4-00c04fd430c8").Get();
 		let fontId = Guid.Parse("6ba7b813-9dad-11d1-80b4-00c04fd430c8").Get();
-		let scriptId = Guid.Parse("6ba7b814-9dad-11d1-80b4-00c04fd430c8").Get();
 		{
 			let project = EditorProject.Open(dir);
 			Test.Assert(project != null);
 			defer delete project;
-			Test.Assert(!project.Settings.StartupScriptId.IsSet);
 			project.Settings.DefaultScene.Set("scenes/main");
 			project.Settings.DefaultSceneId = sceneId;
 			project.Settings.GuiLoadingDocumentId = loadingId;
 			project.Settings.DefaultInputMapId = mapId;
 			project.Settings.DefaultUiFontId = fontId;
-			project.Settings.StartupScriptId = scriptId;
 			Test.Assert(project.SaveSettings() case .Ok);
 		}
 		{
@@ -145,7 +142,6 @@ static class EditorProjectTests
 			Test.Assert(project.Settings.GuiLoadingDocumentId == loadingId);
 			Test.Assert(project.Settings.DefaultInputMapId == mapId);
 			Test.Assert(project.Settings.DefaultUiFontId == fontId);
-			Test.Assert(project.Settings.StartupScriptId == scriptId);
 		}
 	}
 

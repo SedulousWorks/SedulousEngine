@@ -19,7 +19,8 @@ namespace Sedulous.Scene.Resource;
 ///
 /// Components are serialized BY THEIR OWNING MANAGER, which is the only thing that knows
 /// the concrete type, and routed back on load by a stable string id. A record whose
-/// manager is absent is kept verbatim rather than dropped.
+/// manager is absent is kept verbatim rather than dropped, unless it is a retired script
+/// record of an older stream (SceneStreamFormat.IsRetiredRecord).
 static class SceneSerializer
 {
 	/// Runs the whole stream.
@@ -34,9 +35,13 @@ static class SceneSerializer
 		let writing = ar.Mode == .Write;
 		let text = encoding == .Text;
 
+		// The version the stream was written at: what a reader drops depends on it.
+		uint32 version = SceneStreamFormat.cVersion;
 		if (writing)
 			SceneStreamFormat.WriteHeader(ar);
-		else if (SceneStreamFormat.ReadHeader(ar) case .Err)
+		else if (SceneStreamFormat.ReadHeader(ar) case .Ok(let read))
+			version = read;
+		else
 			return;
 
 		// Referenced excludes an instance's members from the plain arrays: they respawn
@@ -53,8 +58,8 @@ static class SceneSerializer
 
 		SerializeName(ar, scene, writing);
 		SerializeEntities(ar, scene, writing, prefabMembers);
-		SerializeComponents(ar, scene, writing, text, prefabMembers);
-		SerializeSettings(ar, scene, writing, text, includeSettings);
+		SerializeComponents(ar, scene, writing, text, prefabMembers, version);
+		SerializeSettings(ar, scene, writing, text, includeSettings, version);
 		SerializePrefabSection(ar, scene, writing, text, prefabMode);
 	}
 
@@ -202,7 +207,7 @@ static class SceneSerializer
 	/// length prefixes the payload, which is what lets a reader skip a type this build
 	/// does not know instead of aborting the whole section.
 	private static void SerializeComponents(ISerializer ar, Scene scene, bool writing, bool text,
-		HashSet<Guid> prefabMembers)
+		HashSet<Guid> prefabMembers, uint32 version)
 	{
 		let managers = scope List<ComponentManagerBase>();
 		let owners = scope List<EntityHandle>();
@@ -281,7 +286,7 @@ static class SceneSerializer
 			defer { ClearAndDeleteItems!(warned); }
 
 			for (uint32 i < componentCount)
-				ReadComponentRecord(ar, scene, text, warned);
+				ReadComponentRecord(ar, scene, text, warned, version);
 		}
 
 		ar.EndArray();
@@ -314,7 +319,7 @@ static class SceneSerializer
 	}
 
 	private static void ReadComponentRecord(ISerializer ar, Scene scene, bool text,
-		HashSet<String> warned)
+		HashSet<String> warned, uint32 version)
 	{
 		if (text)
 			ar.BeginObject();
@@ -326,6 +331,14 @@ static class SceneSerializer
 
 		let owner = scene.FindEntity(ownerId);
 		let manager = scene.FindManagerBySerializationId(typeId);
+		// A retired script record is stepped over unkept, so a save writes the scene without it.
+		let retired = (manager == null) && SceneStreamFormat.IsRetiredRecord(version, typeId);
+		let keep = (manager == null) && !retired;
+		if (retired && !warned.Contains(SceneStreamFormat.cRetiredScriptId))
+		{
+			warned.Add(new String(SceneStreamFormat.cRetiredScriptId));
+			GlobalLog(.Warning, SceneStreamFormat.cRetiredScriptWarning, "SceneSerializer", "component records");
+		}
 
 		if (text)
 		{
@@ -336,7 +349,7 @@ static class SceneSerializer
 				manager.ReadComponent(ar, owner);
 				ar.EndObject();
 			}
-			else if (manager == null)
+			else if (keep)
 			{
 				KeepUnresolvedComponent(ar, scene, ownerId, typeId, true, warned);
 			}
@@ -349,7 +362,7 @@ static class SceneSerializer
 
 		if ((manager != null) && owner.IsAssigned)
 			SceneStreamFormat.ComponentFromBlob(manager, owner, blob);
-		else if (manager == null)
+		else if (keep)
 			KeepUnresolvedComponentBlob(scene, ownerId, typeId, blob, warned);
 	}
 
@@ -419,7 +432,7 @@ static class SceneSerializer
 	/// scope with the payload inline; BINARY from a length prefixed blob, so a reader
 	/// steps over a system this build does not have instead of losing the section.
 	private static void SerializeSettings(ISerializer ar, Scene scene, bool writing, bool text,
-		bool includeSettings)
+		bool includeSettings, uint32 version)
 	{
 		let systems = scope List<SceneSystem>();
 		uint32 settingsCount = 0;
@@ -481,7 +494,7 @@ static class SceneSerializer
 		else
 		{
 			for (uint32 i < settingsCount)
-				ReadSettingsRecord(ar, scene, text);
+				ReadSettingsRecord(ar, scene, text, version);
 		}
 
 		ar.EndArray();
@@ -525,7 +538,7 @@ static class SceneSerializer
 		SerializeBlob(ar, "data", blob);
 	}
 
-	private static void ReadSettingsRecord(ISerializer ar, Scene scene, bool text)
+	private static void ReadSettingsRecord(ISerializer ar, Scene scene, bool text, uint32 version)
 	{
 		if (text)
 			ar.BeginObject();
@@ -543,6 +556,11 @@ static class SceneSerializer
 			}
 		}
 
+		// A retired script block is stepped over unkept, so a save writes the scene without it.
+		let retired = (target == null) && SceneStreamFormat.IsRetiredRecord(version, id);
+		if (retired)
+			GlobalLog(.Warning, SceneStreamFormat.cRetiredScriptWarning, "SceneSerializer", "settings");
+
 		if (text)
 		{
 			if (target != null)
@@ -554,7 +572,7 @@ static class SceneSerializer
 				ar.EndObject();
 				EndVersionedPayload(ar);
 			}
-			else
+			else if (!retired)
 			{
 				let record = new UnresolvedSettings();
 				record.SystemId.Set(id);
@@ -574,6 +592,8 @@ static class SceneSerializer
 		let blob = scope List<uint8>();
 		SerializeBlob(ar, "data", blob);
 
+		if (retired)
+			return;
 		if (target == null)
 		{
 			let record = new UnresolvedSettings();

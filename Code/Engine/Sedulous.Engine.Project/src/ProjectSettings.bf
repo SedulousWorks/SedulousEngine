@@ -26,7 +26,10 @@ namespace Sedulous.Engine.Project;
 /// dropped without a version bump is passed by the same way: nativeModule, the library path
 /// of a game's native module, went when a game's native code became a package of the
 /// project's (Plugins/<Name>), and a manifest that names one reads with the path dropped.
-[Serializable(10, false, 9)]
+/// Version 11 dropped the startup script (startupScript and startupScriptId) when a game's code
+/// became native and scripts stopped running; a version 9 or 10 manifest still reads, the
+/// keyed reader passing the two by.
+[Serializable(11, false, 9)]
 class ProjectSettings
 {
 	[Setting("Name", "General")]
@@ -39,8 +42,6 @@ class ProjectSettings
 	public Guid DefaultSceneId;
 	/// The default scene's source database path.
 	public String DefaultScene = new .() ~ delete _;
-	/// The startup script's source database path. Superseded by StartupScriptId.
-	public String StartupScript = new .() ~ delete _;
 
 	/// The input map bound at startup. Nil for none.
 	[Setting("Default input map", "InputMapAsset", "(none)", "Startup"), SettingSummary("Input map")]
@@ -48,9 +49,6 @@ class ProjectSettings
 	/// The mixer layout applied at startup. Nil for the built in one.
 	[Setting("Default bus layout", "AudioBusLayoutAsset", "(built-in)", "Audio")]
 	public Guid DefaultBusLayoutId;
-	/// The cooked script class the player launches. Nil for none.
-	[Setting("Startup script", "ScriptClassAsset", "(none)", "Startup"), SettingSummary("Startup script")]
-	public Guid StartupScriptId;
 	/// The cooked font the game UI defaults to. Nil for the development fallback.
 	[Setting("Default UI font", "FontAsset", "(built-in)", "UI"), SettingSummary("UI font")]
 	public Guid DefaultUiFontId;
@@ -134,16 +132,13 @@ class ProjectSettings
 			outText.AppendF("{} × {}, {}", WindowWidth, WindowHeight, (WindowMode == .Fullscreen) ? "fullscreen" : "windowed");
 	}
 
-	/// Rewrites the readable path mirrors from their guids (the default scene's, the startup
-	/// script's), after a settings editor changed the guids. `pathOf` appends an asset's path,
-	/// or nothing for a guid that names none.
+	/// Rewrites the readable path mirror (the default scene's) from its guid, after a settings
+	/// editor changed the guid. `pathOf` appends an asset's path, or nothing for a guid that
+	/// names none.
 	public void RefreshPathMirrors(delegate void(Guid id, String outPath) pathOf)
 	{
 		DefaultScene.Clear();
 		if (DefaultSceneId.IsSet)
 			pathOf(DefaultSceneId, DefaultScene);
-		StartupScript.Clear();
-		if (StartupScriptId.IsSet)
-			pathOf(StartupScriptId, StartupScript);
 	}
 }

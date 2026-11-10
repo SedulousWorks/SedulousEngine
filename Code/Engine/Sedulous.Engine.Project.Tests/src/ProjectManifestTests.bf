@@ -31,7 +31,8 @@ class ProjectManifestTests
 	}
 
 	/// A version 9 manifest, which carried the old UI's theme and loading document, still opens:
-	/// the two are passed by, every other setting reads, and it saves as version 10 without them.
+	/// the two are passed by, every other setting reads, and it saves at the current version
+	/// without them.
 	[Test]
 	public static void AVersion9ManifestStillReadsItsOldUiSettingsDropped()
 	{
@@ -72,8 +73,9 @@ class ProjectManifestTests
 		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
 		let saved = scope String();
 		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
-		Test.Assert(saved.Contains("<u32 name=\"version\">10</u32>"));
+		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
 		Test.Assert(!saved.Contains("defaultUiThemeId") && !saved.Contains("name=\"loadingDocumentId\""));
+		Test.Assert(!saved.Contains("startupScript"));
 	}
 
 	/// A version 10 manifest naming a native module (a library path, before a game's native code
@@ -116,8 +118,53 @@ class ProjectManifestTests
 		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
 		let saved = scope String();
 		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
-		Test.Assert(saved.Contains("<u32 name=\"version\">10</u32>"));
+		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
 		Test.Assert(!saved.Contains("nativeModule"));
+	}
+
+	/// A version 10 manifest naming a startup script (a script class the player launched, before
+	/// a game's code was native) still opens: the script's guid and its path are passed by and
+	/// lost, every setting after them reads, and it saves as version 11 without them.
+	[Test]
+	public static void AVersion10ManifestsStartupScriptIsPassedByAndDropped()
+	{
+		FreshScratch();
+		const String cVersion10 = """
+			<root>
+				<array name="dataVersions" count="1">
+					<u64 name="type">15697994609334965484</u64>
+					<u32 name="version">10</u32>
+				</array>
+				<object>
+					<string name="name">Scripted</string>
+					<string name="engineVersion">0.1.0</string>
+					<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
+					<string name="defaultScene">Scenes/Start</string>
+					<string name="startupScript">Scripts/Game</string>
+					<string name="defaultInputMapId">7c0d2a51-0f6e-4b8e-9a3d-5e2f1c4b6a70</string>
+					<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+					<string name="startupScriptId">5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d</string>
+					<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
+					<u32 name="renderMsaaSamples">4</u32>
+				</object>
+			</root>
+			""";
+		let fs = scope NativeFileSystem(kScratch);
+		Test.Assert(fs.Save("Project.xml", .((uint8*)cVersion10.Ptr, cVersion10.Length)) case .Ok);
+		let settings = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(fs, settings, "Project.xml") case .Ok);
+		Test.Assert(settings.Name == "Scripted");
+		Test.Assert(settings.DefaultScene == "Scenes/Start");
+		Test.Assert(settings.DefaultInputMapId == Guid.Parse("7c0d2a51-0f6e-4b8e-9a3d-5e2f1c4b6a70").Get(), "after the dropped path");
+		Test.Assert(settings.DefaultUiFontId == Guid.Parse("23da25e1-47fe-2044-a727-d7fbcde40a8f").Get(), "after the dropped guid");
+		Test.Assert(settings.RenderMsaaSamples == 4);
+
+		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
+		let saved = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
+		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
+		Test.Assert(!saved.Contains("startupScript") && !saved.Contains("Scripts/Game"));
+		Test.Assert(!saved.Contains("5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"));
 	}
 
 	/// A copy goes through the settings' own serialization, so it carries every field, the
@@ -165,7 +212,6 @@ class ProjectManifestTests
 		written.Name.Set("Demo");
 		written.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
 		written.DefaultScene.Set("Scenes/Main");
-		written.StartupScript.Set("Scripts/Game");
 		written.RenderMsaaSamples = 4;
 
 		{
@@ -180,7 +226,6 @@ class ProjectManifestTests
 		Test.Assert(read.Name == "Demo");
 		Test.Assert(read.DefaultSceneId == written.DefaultSceneId);
 		Test.Assert(read.DefaultScene == "Scenes/Main");
-		Test.Assert(read.StartupScript == "Scripts/Game");
 		Test.Assert(read.RenderMsaaSamples == 4);
 	}
 

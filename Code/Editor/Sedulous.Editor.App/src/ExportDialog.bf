@@ -627,7 +627,7 @@ class ExportDialog
 		Row("stageSymbols", .Bool, Sedulous.GUI.Variant(preset.StageSymbols), "Ship debug symbols", cContent,
 			"Stage the player's debug symbols into the export (the .pdb on Windows).");
 		Row("pruneToReachable", .Bool, Sedulous.GUI.Variant(preset.PruneToReachable), "Only what is reached", cContent,
-			"Pack the closure of the default scene, the startup script and the other settings' assets, not every cooked asset.");
+			"Pack the closure of the default scene and the other settings' assets, not every cooked asset.");
 		Row("includeShaderSource", .Bool, Sedulous.GUI.Variant(preset.IncludeShaderSource), "Shader source", cContent,
 			"Ship the project's shaders as HLSL too, beside the cooked bytecode (for modders to read).");
 

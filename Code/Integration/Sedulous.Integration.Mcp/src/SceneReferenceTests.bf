@@ -285,7 +285,7 @@ static class SceneReferenceTests
 		Test.Assert(!first.SchemaJson.IsEmpty);
 		// The format section names the stream as the writer lays it out.
 		let format = first.Schema.Get("format");
-		Test.Assert(format.Get("version").AsNumber() == 3);
+		Test.Assert(format.Get("version").AsNumber() == 4);
 		let sections = format.Get("sections");
 		Test.Assert(sections.Count >= 6);
 		Test.Assert(sections.At(0).Get("key").AsString() == "magic");
