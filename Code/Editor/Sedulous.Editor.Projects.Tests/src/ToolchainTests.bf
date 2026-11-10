@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Projects.TestSupport;
 
@@ -189,6 +190,50 @@ class ToolchainTests
 		sdk.Beef.Set("nightly-2026-12-01");
 		Toolchain.Check(sdk, report, probe);
 		Test.Assert((report.Get(.BeefBuild).State == .Missing) && report.Get(.BeefBuild).Detail.Contains("built with Beef nightly-2026-12-01"));
+	}
+
+	/// The toolchain the engine pins (EngineVersion.Beef), laid out as the release's toolchain zip
+	/// unpacks: <pin>/bin/BeefBuild beside the BeefConfig.toml Beef installs, naming ../BeefLibs, and
+	/// corlib under BeefLibs. The pin is Beef's version and a commit, and a folder name; its install
+	/// has corlib and is the managed one; the check takes it, and a BeefBuild saying the pin's
+	/// version, as Ok, and warns, naming the pin, at another version.
+	[Test]
+	public static void ThePinnedToolchainAsPackedIsTheManagedOneWithCorlib()
+	{
+		let pin = EngineVersion.Beef;
+		let pinVersion = Toolchain.PinVersion(pin, .. scope .());
+		Test.Assert(!pinVersion.IsEmpty && (pinVersion.Length + 1 < pin.Length), scope String(pin));
+		for (let c in pinVersion.RawChars)
+			Test.Assert(c.IsDigit || (c == '.'), "the pin starts with Beef's version, as BeefBuild -version says it");
+		Test.Assert(Toolchain.PinVersion("nightly", .. scope .()) == "nightly", "a pin with no dash is taken whole");
+
+		let bed = scope Bed();
+		let toolchains = PathJoin(bed.Root, "toolchains", .. scope .());
+		let packed = Bed.FakeInstall(bed, scope $"toolchains/{pin}/bin/BeefBuild", "\"../BeefLibs\"", scope $"toolchains/{pin}/BeefLibs/corlib", .. scope .());
+		let why = scope String();
+		Test.Assert(ProjectBuild.HasCorlib(packed, why), why);
+		let path = scope String();
+		Test.Assert(ProjectBuild.ManagedBeefBuildIn(toolchains, pin, path) && (path == packed), path);
+
+		let said = scope String()..AppendF("BeefBuild {}", pinVersion);
+		BuildRunner runner = scope [&](executable, arguments, onLine, cancelled) =>
+			{
+				onLine(said);
+				return .Ok(0);
+			};
+		let probe = scope ToolchainProbe();
+		probe.Toolchains.Set(toolchains);
+		probe.Runner = runner;
+		let sdk = scope SdkInfo();
+		sdk.Beef.Set(pin);
+		let report = scope ToolchainReport();
+		Toolchain.Check(sdk, report, probe);
+		Test.Assert((report.BeefBuild == packed) && report.Managed);
+		Test.Assert(report.Get(.BeefBuild).State == .Ok, report.Get(.BeefBuild).Detail);
+		said.Set("BeefBuild 0.0.1");
+		Toolchain.Check(sdk, report, probe);
+		Test.Assert(report.Get(.BeefBuild).State == .Warning);
+		Test.Assert(report.Get(.BeefBuild).Detail.Contains(scope $"built with Beef {pin}"), report.Get(.BeefBuild).Detail);
 	}
 
 	[Test]

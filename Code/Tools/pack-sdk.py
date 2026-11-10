@@ -23,7 +23,8 @@ and writes sdk.json and README-SDK.md at the root.
 It writes sedulous-sdk-<display>-<platform>.zip (the SDK's root at the zip's root, each entry's
 Unix mode in its external attributes, fixed timestamps) and the release's index for the platform,
 sdk-<platform>.json: version, label, display, platform, archive, sha256, size, unpackedSize, beef
-(the toolchain pin, --beef), and with --toolchain the toolchain's archive, sha256, size and the
+(the toolchain pin: EngineVersion.Beef, or --beef), and with --toolchain the toolchain's archive
+(beef-<pin>-<platform>.zip, as Code/Tools/pack-toolchain.sh names it), sha256, size and the
 release whose files carry it (--toolchain-release; absent when it is this release). The project
 manager lists a release's engine from that index and checks the download against its digest.
 sdk.json holds version, label, display, buildNumber, platform, beef and created (the packed
@@ -98,6 +99,14 @@ def engine_version():
     if not found or not label or not build:
         fail(f"no version, label or build number in {VERSION_FILE}")
     return found.group(1), label.group(1), int(build.group(1))
+
+
+def beef_pin():
+    """The toolchain pin of the engine's version file (Beef: "<Beef's version>-<commit>")."""
+    found = re.search(r'public const String Beef = "([^"/\\:]+)";', read_text(VERSION_FILE))
+    if not found:
+        fail(f"no toolchain pin (Beef) in {VERSION_FILE}")
+    return found.group(1)
 
 
 def string_constants(path):
@@ -640,7 +649,7 @@ def main():
     parser.add_argument("out", nargs="?", help="the folder the zip and the index are written into")
     parser.add_argument("--platform", default="Linux64", help="Beef's name of the platform the SDK is for (Linux64)")
     parser.add_argument("--manager", help="the project manager's ShippingRelease build folder")
-    parser.add_argument("--beef", default="", help="the toolchain the SDK was built and tested with (its pin)")
+    parser.add_argument("--beef", help="the toolchain the SDK was built and tested with (its pin; default: EngineVersion.Beef)")
     parser.add_argument("--toolchain", help="that toolchain's zip, named in the index")
     parser.add_argument("--toolchain-release", default="", help="the release (tag) whose files carry the toolchain's zip, when not this one")
     parser.add_argument("--check", action="store_true", help="check what would be packed; write nothing")
@@ -649,6 +658,11 @@ def main():
         parser.error("an output folder, or --check")
     if args.toolchain_release and not args.toolchain:
         parser.error("--toolchain-release names the release of a --toolchain")
+    if args.beef is None:
+        args.beef = beef_pin()
+    if args.toolchain and os.path.basename(args.toolchain) != f"beef-{args.beef}-{args.platform.lower()}.zip":
+        parser.error(f"--toolchain names {os.path.basename(args.toolchain)}, not the toolchain of pin {args.beef} for "
+                     f"{args.platform} (beef-{args.beef}-{args.platform.lower()}.zip)")
 
     sdk = Sdk(args.platform, args.manager)
     sdk.gather()
