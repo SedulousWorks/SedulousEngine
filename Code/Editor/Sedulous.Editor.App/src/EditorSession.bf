@@ -105,6 +105,8 @@ class EditorSession
 	private Settings mStore = null ~ delete _;
 	/// Close is closing the views: a save writes, captures nothing.
 	private bool mClosingViews = false;
+	/// A relaunch wrote the store for the next editor (FreezeStore): nothing writes it again.
+	private bool mStoreFrozen = false;
 	private ResourceManager mResources = null ~ delete _;
 	/// The thumbnails' GPU stage while a project is open over an embedded runtime.
 	private ThumbnailStage mThumbnailStage = null ~ delete _;
@@ -174,6 +176,7 @@ class EditorSession
 	public bool Open(StringView directory, EditorSessionOpenOptions options = .())
 	{
 		let context = mServices.Context;
+		mStoreFrozen = false;
 		if (directory.IsEmpty)
 		{
 			context.SetStatus("No project directory - pass one on the command line.");
@@ -346,10 +349,20 @@ class EditorSession
 		WriteStore();
 	}
 
-	/// Writes the per-project store as it is.
+	/// The store stays as it was last written: a relaunch wrote it for the next editor, which reads
+	/// it while this one closes, so what this one would write as its views close (the pages
+	/// leaving) never reaches it. Until a project opens again.
+	public void FreezeStore()
+	{
+		mStoreFrozen = true;
+	}
+
+	public bool IsStoreFrozen => mStoreFrozen;
+
+	/// Writes the per-project store as it is; nothing once it is frozen.
 	private void WriteStore()
 	{
-		if ((mProject != null) && (mStore != null))
+		if (!mStoreFrozen && (mProject != null) && (mStore != null))
 			ProjectEditorSettings.Save(mStore, mProject.EditorStateRoot(.. scope .())).IgnoreError();
 	}
 

@@ -20,9 +20,12 @@ namespace Sedulous.Editor.App.Tests;
 /// waited for answers succeeded with what it made, a failed one its diagnostics (errors first,
 /// files relative to the project, capped with the counts), one while another runs is refused,
 /// build_status shows a running build's step and output and build_cancel ends it. editor_relaunch
-/// refuses with nothing to open, an editor not built or older than the code, or unsaved pages,
-/// and otherwise starts the project's editor on this host's port and exits; host_info says
-/// whether the project's editor is stale.
+/// refuses with nothing to open, an editor not built or older than the code, or unsaved pages it
+/// cannot keep aside, and otherwise keeps them aside (or drops them), writes what the next editor
+/// restores and starts the project's editor on this host's port with it, and exits; with build it
+/// builds first, a failed build answered and nothing relaunched. Build and Relaunch, a person's,
+/// builds, then asks about unsaved pages, or says why the build failed. host_info says whether the
+/// project's editor is stale.
 class EditorBuildToolsTests
 {
 	private const String cFixture = Compiler.ReadText("../Sedulous.Editor.Projects.Tests/src/Fixtures/beefbuild-errors.txt");
@@ -72,6 +75,15 @@ class EditorBuildToolsTests
 		public List<String> Launched = new .() ~ DeleteContainerAndItems!(_);
 		public bool LaunchWorks = true;
 		public int Exits = 0;
+		/// The unsaved lines can be kept aside (each a kept page by its line); false refuses each.
+		public bool KeepWorks = true;
+		/// How often a person was asked about unsaved pages, and what goes on once they answer.
+		public int Asks = 0;
+		public delegate void() Proceed = null ~ delete _;
+		/// How often the state the next editor reads was saved.
+		public int StateSaves = 0;
+		/// The notices a person heard.
+		public List<String> Said = new .() ~ DeleteContainerAndItems!(_);
 
 		public this(StringView leaf)
 		{
@@ -130,10 +142,49 @@ class EditorBuildToolsTests
 					bench.Make(arguments);
 					return Result<int, ErrorCode>.Ok(0);
 				}, cFakeBeefBuild);
+			let said = Said;
+			Context.OnNotice = new [=said] (kind, message) => { said.Add(new String(message)); };
+			EditorBuildTools.Register(Server, MakeSeams());
+		}
 
+		/// The seams over the bench, as the editor makes them: the tools' and Build and
+		/// Relaunch's. The caller's.
+		public BuildToolSeams MakeSeams()
+		{
+			let bench = this;
 			let seams = new BuildToolSeams();
 			seams.Service = Service;
+			seams.Context = Context;
 			seams.DataRoot.Set(DataRoot);
+			seams.KeepAside = new [=bench](folder, state, outRefused) =>
+				{
+					for (let line in bench.Unsaved)
+					{
+						if (!bench.KeepWorks)
+						{
+							outRefused.Add(new .(line));
+							continue;
+						}
+						let kept = new RelaunchState.KeptPage();
+						kept.Title.Set(line);
+						state.Kept.Add(kept);
+					}
+					return outRefused.IsEmpty;
+				};
+			seams.AskUnsaved = new [=bench](proceed) =>
+				{
+					bench.Asks++;
+					delete bench.Proceed;
+					bench.Proceed = proceed;
+				};
+			seams.SaveState = new [=bench](state) =>
+				{
+					bench.StateSaves++;
+					let game = new RelaunchState.GameTab();
+					game.PieId.Set(RelaunchState.cPrimaryGame);
+					game.Playing = true;
+					state.Games.Add(game);
+				};
 			seams.Start = new [=bench](target, config, platform, outError) =>
 				EditorBuildTools.StartBuild(bench.Context, bench.Service, bench.Project, bench.DataRoot, target, config, platform, outError);
 			seams.Project = new [=bench]() => bench.Project;
@@ -151,7 +202,7 @@ class EditorBuildToolsTests
 					return bench.LaunchWorks;
 				};
 			seams.Exit = new [=bench]() => { bench.Exits++; };
-			EditorBuildTools.Register(Server, seams);
+			return seams;
 		}
 
 		public ~this()
@@ -529,11 +580,12 @@ class EditorBuildToolsTests
 	}
 
 	/// The relaunch's refusals, in the order an agent meets them: no package of its own, the editor
-	/// not built, older than the code, pages unsaved (named, with the way to save them); then, with
-	/// discardUnsaved, the project's editor started on the project, the data root and this host's
-	/// port, and this editor told to exit. A launch that fails is said and exits nothing.
+	/// not built, older than the code, unsaved pages that cannot be kept aside (named, with the way
+	/// to save them); then, with discardUnsaved, the project's editor started on the project, the
+	/// data root, this host's port and the relaunch folder, and this editor told to exit. A launch
+	/// that fails is said, exits nothing and leaves no relaunch folder.
 	[Test]
-	public static void RelaunchIsRefusedUntilTheEditorIsBuiltAndNothingIsUnsaved()
+	public static void RelaunchIsRefusedUntilTheEditorIsBuiltAndWhatIsUnsavedIsKeptOrDropped()
 	{
 		let bench = scope Bench("relaunch");
 		let editor = ProjectBuild.ExecutablePath(bench.ProjectDir, bench.Game, true, "Debug", .. scope .());
@@ -562,14 +614,18 @@ class EditorBuildToolsTests
 		bench.MakeEditor();
 		bench.Unsaved.Add(new .("Level1"));
 		bench.Unsaved.Add(new .("The clip 'Bounce', in Hero"));
+		let folder = RelaunchState.Folder(bench.ProjectDir, .. scope .());
+		bench.KeepWorks = false;
 		{
 			let refused = Call(bench, "editor_relaunch", "{}");
 			defer delete refused;
-			Test.Assert(!refused.Ok, "unsaved pages are never dropped unasked");
+			Test.Assert(!refused.Ok, "unsaved pages that cannot be kept are never dropped unasked");
+			Test.Assert(refused.Error.Contains("cannot be kept aside"), refused.Error);
 			Test.Assert(refused.Error.Contains("Level1; The clip 'Bounce', in Hero"), refused.Error);
 			Test.Assert(refused.Error.Contains("file.save") && refused.Error.Contains("discardUnsaved"), refused.Error);
 		}
 		Test.Assert(bench.Launched.IsEmpty && (bench.Exits == 0));
+		Test.Assert(!DirectoryExists(folder), "a refused relaunch leaves no folder");
 
 		bench.LaunchWorks = false;
 		{
@@ -577,6 +633,7 @@ class EditorBuildToolsTests
 			defer delete refused;
 			Test.Assert(!refused.Ok && refused.Error.Contains("could not start"), refused.Error);
 			Test.Assert(bench.Exits == 0);
+			Test.Assert(!DirectoryExists(folder), "nor one whose launch failed");
 		}
 		ClearAndDeleteItems!(bench.Launched);
 		bench.LaunchWorks = true;
@@ -588,10 +645,141 @@ class EditorBuildToolsTests
 		Test.Assert(answer.Payload.Get("executable").AsString() == editor);
 		Test.Assert(answer.Payload.Get("discardedUnsaved").Count == 2);
 		Test.Assert(bench.Exits == 1);
-		let expected = scope StringView[](editor, "--project", bench.ProjectDir, "--data-root", bench.DataRoot, "--mcp", "--mcp-port", "7419");
+		Test.Assert(!answer.Payload.Has("keptAside"), "dropped, not kept");
+		let expected = scope StringView[](editor, "--project", bench.ProjectDir, "--data-root", bench.DataRoot, "--mcp", "--mcp-port", "7419",
+			EditorRelaunch.cArgument, folder);
 		Test.Assert(bench.Launched.Count == expected.Count, scope String()..AppendF("{} launched", bench.Launched.Count));
 		for (int i < expected.Count)
 			Test.Assert(bench.Launched[i] == expected[i], bench.Launched[i]);
+		Test.Assert(FileExists(PathJoin(folder, RelaunchState.cFileName, .. scope .())), "the state the next editor reads");
+	}
+
+	/// An agent's relaunch keeps the unsaved pages aside rather than asking or dropping them: each
+	/// named in the answer, the state the next editor reads written into the relaunch folder (the
+	/// pages kept, the Game tabs, when it was launched, no build), with the save timed.
+	[Test]
+	public static void AnAgentsRelaunchKeepsTheUnsavedPagesAsideAndWritesWhatTheNextEditorRestores()
+	{
+		let bench = scope Bench("relaunch_keep");
+		Thread.Sleep(50); // the editor newer than the code the bench wrote
+		bench.MakeEditor();
+		bench.Unsaved.Add(new .("Level1"));
+		let answer = Call(bench, "editor_relaunch", "{}");
+		defer delete answer;
+		Test.Assert(answer.Ok, answer.Error);
+		Test.Assert(answer.Payload.Get("relaunched").AsBool());
+		let kept = answer.Payload.Get("keptAside");
+		Test.Assert((kept != null) && (kept.Count == 1) && (kept.At(0).AsString() == "Level1"));
+		Test.Assert(!answer.Payload.Has("discardedUnsaved"));
+		Test.Assert(answer.Payload.Get("saveMs").AsNumber() >= 0);
+		Test.Assert(!answer.Payload.Has("buildMs") && !answer.Payload.Has("build"), "nothing was built");
+		Test.Assert((bench.Exits == 1) && (bench.StateSaves == 1) && (bench.Asks == 0));
+
+		let folder = RelaunchState.Folder(bench.ProjectDir, .. scope .());
+		let state = RelaunchState.Load(folder);
+		defer delete state;
+		Test.Assert(state != null);
+		Test.Assert((state.Kept.Count == 1) && (state.Kept[0].Title == "Level1"));
+		Test.Assert((state.Games.Count == 1) && (state.Games[0].PieId == RelaunchState.cPrimaryGame) && state.Games[0].Playing);
+		Test.Assert(state.LaunchedTicks > 0);
+		Test.Assert(state.BuildMs < 0);
+	}
+
+	/// build: true builds the editor first when it needs it, waits, then relaunches with the build's
+	/// answer and its time; an editor that is fresh relaunches without building.
+	[Test]
+	public static void ARelaunchAskedToBuildBuildsFirstThenRelaunchesTimingTheBuild()
+	{
+		let bench = scope Bench("relaunch_build");
+		{
+			let answer = Call(bench, "editor_relaunch", "{\"build\":true}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(bench.FakeBuild.Runs == 1);
+			Test.Assert(answer.Payload.Get("relaunched").AsBool());
+			Test.Assert(answer.Payload.Get("build").Get("state").AsString() == "succeeded");
+			Test.Assert(answer.Payload.Get("buildMs").AsNumber() >= 0);
+			Test.Assert(bench.Exits == 1);
+			let state = RelaunchState.Load(RelaunchState.Folder(bench.ProjectDir, .. scope .()));
+			defer delete state;
+			Test.Assert((state != null) && (state.BuildMs >= 0), "the next editor logs the build's time");
+		}
+		let answer = Call(bench, "editor_relaunch", "{\"build\":true}");
+		defer delete answer;
+		Test.Assert(answer.Ok, answer.Error);
+		Test.Assert(bench.FakeBuild.Runs == 1, "fresh: nothing built");
+		Test.Assert(!answer.Payload.Has("build"));
+		Test.Assert(bench.Exits == 2);
+	}
+
+	/// A relaunch whose build fails answers the build's diagnostics with its first error in the
+	/// note, and relaunches nothing: no launch, no exit, no relaunch folder.
+	[Test]
+	public static void ARelaunchWhoseBuildFailsAnswersTheDiagnosticsAndStays()
+	{
+		let bench = scope Bench("relaunch_fails");
+		bench.FakeBuild.Mode = .FailFixture;
+		let answer = Call(bench, "editor_relaunch", "{\"build\":true}");
+		defer delete answer;
+		Test.Assert(answer.Ok, answer.Error);
+		Test.Assert(!answer.Payload.Get("relaunched").AsBool());
+		let build = answer.Payload.Get("build");
+		Test.Assert(build.Get("state").AsString() == "failed");
+		Test.Assert((build.Get("errorCount").AsNumber() == 4) && (build.Get("diagnostics").Count == 10));
+		let note = answer.Payload.Get("note").AsString();
+		Test.Assert(note.Contains("nothing relaunched") && note.Contains("Other.bf:7:17: Expression expected"), scope String(note));
+		Test.Assert(bench.Launched.IsEmpty && (bench.Exits == 0) && (bench.StateSaves == 0));
+		Test.Assert(!DirectoryExists(RelaunchState.Folder(bench.ProjectDir, .. scope .())));
+	}
+
+	/// Build and Relaunch, a person's: it builds the stale editor on the lane, and once the build
+	/// ends asks about the unsaved pages, relaunching only when they answer, with the relaunch
+	/// folder on the command line.
+	[Test]
+	public static void BuildAndRelaunchBuildsThenAsksAboutUnsavedPagesThenRelaunches()
+	{
+		let bench = scope Bench("person");
+		bench.Unsaved.Add(new .("Level1"));
+		let person = scope BuildAndRelaunch(bench.MakeSeams());
+		person.Run();
+		Test.Assert(person.IsBuilding);
+		let job = bench.Service.GetLatest();
+		defer job.ReleaseRef();
+		WaitEnded(bench, job);
+		Test.Assert(job.State == .Succeeded);
+		person.Update();
+		Test.Assert(!person.IsBuilding);
+		Test.Assert(bench.Asks == 1, "a person is asked");
+		Test.Assert(bench.Launched.IsEmpty && (bench.Exits == 0), "nothing until they answer");
+		bench.Proceed(); // Save All, or Relaunch Without Saving
+		Test.Assert(bench.Exits == 1);
+		let folder = RelaunchState.Folder(bench.ProjectDir, .. scope .());
+		Test.Assert(bench.Launched.Count >= 2);
+		Test.Assert((bench.Launched[bench.Launched.Count - 2] == EditorRelaunch.cArgument) && (bench.Launched.Back == folder), bench.Launched.Back);
+		let state = RelaunchState.Load(folder);
+		defer delete state;
+		Test.Assert((state != null) && state.Kept.IsEmpty, "a person's pages are saved or dropped, never kept");
+		Test.Assert(state.BuildMs >= 0);
+	}
+
+	/// A failed build stops Build and Relaunch there: said with its first error, nothing launched,
+	/// nothing asked.
+	[Test]
+	public static void BuildAndRelaunchStaysWhenTheBuildFailsSayingItsFirstError()
+	{
+		let bench = scope Bench("person_fails");
+		bench.FakeBuild.Mode = .FailFixture;
+		let person = scope BuildAndRelaunch(bench.MakeSeams());
+		person.Run();
+		let job = bench.Service.GetLatest();
+		defer job.ReleaseRef();
+		WaitEnded(bench, job);
+		person.Update();
+		Test.Assert(!person.IsBuilding);
+		Test.Assert(!bench.Said.IsEmpty);
+		let said = bench.Said.Back;
+		Test.Assert(said.Contains("the build failed (4 error(s))") && said.Contains("Expression expected"), said);
+		Test.Assert(bench.Launched.IsEmpty && (bench.Exits == 0) && (bench.Asks == 0));
 	}
 
 	/// The relaunch's command line: the project and the data root always; the MCP host's flags

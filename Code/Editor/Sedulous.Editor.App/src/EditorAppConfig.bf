@@ -35,6 +35,10 @@ class EditorAppConfig
 	/// --manager <path>: the project manager that launched this editor, which Close Project starts
 	/// again (ManagerLauncher.Find); empty when none said so.
 	public String ManagerPath = new .() ~ delete _;
+	/// --relaunch <folder>: the editor this one replaces kept its state there (RelaunchState): the
+	/// pages kept aside, the Game tabs, the active page and the relaunch's times, restored once the
+	/// project opens. Empty for an editor started any other way.
+	public String RelaunchFolder = new .() ~ delete _;
 	/// The SDK registry Close Project reads the manager that ran last from; empty: the user's
 	/// sdks.xml (SdkRegistry.DefaultPath). A test's scratch file in its place.
 	public String SdksPath = new .() ~ delete _;
@@ -98,6 +102,8 @@ class EditorAppConfig
 				ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
 			else if (args[i] == "--manager")
 				ManagerPath.Set(args[i + 1]);
+			else if (args[i] == EditorRelaunch.cArgument)
+				RelaunchFolder.Set(args[i + 1]);
 			else if (args[i] == "--mcp-port")
 			{
 				McpPort = uint32.Parse(args[i + 1]).GetValueOrDefault();

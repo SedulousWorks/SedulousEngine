@@ -255,6 +255,7 @@ class EditorAppActionsTests
 		project.AddNativeCode = bench.Record("add-native-code");
 		project.BuildProject = bench.Record("build");
 		project.OpenWithThisBuild = bench.Record("open-with-build");
+		project.BuildAndRelaunch = bench.Record("build-and-relaunch");
 		EditorAppActions.RegisterProjectActions(actions, project);
 		Test.Assert(!actions.IsEnabled("project.settings", null), "no project open");
 		Test.Assert(!actions.IsEnabled("project.build", null) && !actions.IsEnabled("project.openWithBuild", null), "no project open");
@@ -262,6 +263,11 @@ class EditorAppActionsTests
 		Test.Assert(!actions.IsEnabled("project.addNativeCode", null), "no project open");
 		Test.Assert(actions.Find("project.addNativeCode").MenuOrder < actions.Find("project.build").MenuOrder);
 		Test.Assert(actions.Find("project.openWithBuild").MenuOrder > actions.Find("project.build").MenuOrder);
+		// Build and Relaunch: in Project's menu after them, on Ctrl+Shift+B, a project needed.
+		Test.Assert(actions.Find("project.buildAndRelaunch").MenuPath == "Project/Build and Relaunch");
+		Test.Assert(actions.Find("project.buildAndRelaunch").MenuOrder > actions.Find("project.openWithBuild").MenuOrder);
+		Test.Assert(actions.Shortcut("project.buildAndRelaunch") == EditorShortcut.Of("ctrl-shift-b"));
+		Test.Assert(!actions.IsEnabled("project.buildAndRelaunch", null), "no project open");
 		Test.Assert(actions.Execute("project.settings", null) case .Err(.NotSupported));
 		Test.Assert(bench.Events.IsEmpty);
 		Test.Assert(actions.Find("project.reportResourceMemory").ReadOnly);
