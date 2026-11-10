@@ -35,7 +35,6 @@ static class ExportFlowTests
 		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");
 
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();
@@ -168,7 +167,6 @@ static class ExportFlowTests
 		let players = scope ProjectPlayerBuilder(service, dataRoot);
 
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 		let server = scope McpServer();
@@ -235,7 +233,6 @@ static class ExportFlowTests
 		let players = scope ProjectPlayerBuilder(service, dataRoot);
 
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 		let server = scope McpServer();

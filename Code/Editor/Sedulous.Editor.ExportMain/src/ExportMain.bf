@@ -104,7 +104,6 @@ static class ExportMain
 
 		// The pipeline's composition root, and the builders it fills.
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 		// The plugins the project enables that this tool links, their Engine, Pipeline and Tooling
@@ -141,7 +140,7 @@ static class ExportMain
 		if (all)
 		{
 			let summary = scope ExportAllSummary();
-			if (ExportDriver.ExportAll(project, presets.Presets, players, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host, summary) case .Err)
+			if (ExportDriver.ExportAll(project, presets.Presets, players, builders, outRoot, dataRoot, rebuild, null, true, sceneStreams, scanner, null, plugins.ExportHooks, summary) case .Err)
 			{
 				Console.Error.WriteLine("Sedulous.Tools.Export: one or more presets failed (see log)");
 				return 1;
@@ -162,7 +161,7 @@ static class ExportMain
 		if (!platformArg.IsEmpty)
 			preset.Platform.Set(platformArg);
 		let result = scope ExportResult();
-		if (ExportDriver.ExportOne(project, preset, players, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host, contentOnly) case .Err)
+		if (ExportDriver.ExportOne(project, preset, players, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, contentOnly) case .Err)
 		{
 			if (!result.Refusal.IsEmpty)
 				Console.Error.WriteLine("Sedulous.Tools.Export: export refused: {}", result.Refusal);

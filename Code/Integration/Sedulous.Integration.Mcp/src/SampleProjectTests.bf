@@ -102,7 +102,6 @@ static class SampleProjectTests
 		StringView packageId = default, function void(EditorProject project) checkGameCode = null)
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 
 		let dataRoot = scope String();
 		FindDataRoot(dataRoot);

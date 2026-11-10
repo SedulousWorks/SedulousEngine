@@ -131,12 +131,6 @@ before its first draw whenever the cover pipeline exists, and every Vulkan pipel
 reference dynamic, so which draws these are is not yet known. Seen at 1ae83008, before the
 layers came; Raptor reports its probes clean under the same layer.
 
-### Script references are invisible to `asset_uses` and `asset_delete`
-`ScriptClassAssetBuilder` reports no dependencies, so an asset a script names
-(`Guid::FromString("...")`, a sound, a scene, a document) has no edge to the script: `asset_uses`
-misses it and `asset_delete` deletes it without refusing. Fix: report the guids a script's
-source names as its dependencies.
-
 ### An unexplained segfault in the MCP integration tests
 One `Sedulous.Integration.Mcp` run printed `Segmentation fault` between
 `ExportFlowTests.ProjectExportMakesARealDistFromAnAuthoredProject` and the next test; every test

@@ -13,7 +13,7 @@ so a rename or a move never breaks one. Deleting is the dangerous operation: que
 
 ## The workflow
 
-1. **Import**: a source file (texture, model, audio, script, ...) is copied under the
+1. **Import**: a source file (texture, model, audio, vector image, ...) is copied under the
    project's `Sources/` directory and a typed asset envelope is created in the source
    database. MCP: `asset_import`, routed by file extension, with `importer` to choose when
    several claim it.
@@ -29,7 +29,7 @@ Scenes.md). A prefab is still a resource: the editor, and a game run from its pr
 folder, load prefabs from the sources beneath the cooked products, so a spawn reads a
 loaded prefab rather than its file, and a reference to a prefab binds like any other.
 
-Game GUI sources link like scripts: `.xml` documents, `.css` sheets and `.svg` vector images
+Game GUI sources are linked text: `.xml` documents, `.css` sheets and `.svg` vector images
 import as assets whose text stays in `Sources/`. A document or sheet names images, vector
 images, fonts, sheets and documents by asset guid (`{guid}`), each a dependency of its cook.
 
@@ -48,3 +48,7 @@ images, fonts, sheets and documents by asset guid (`{guid}`), each a dependency 
   failures are per asset and reported in the cook stats and by `project_health`.
 - References to a deleted asset do not fail at delete time; they surface later as dangling
   refs. Make `asset_uses` (before) and `project_health` (after) the habit.
+- An asset of a type this build has no code for (a script asset from before scripting was
+  removed) is kept as it is: `asset_list` shows it under the type it was written with, the cook
+  passes it by, counted `unbuildable` by `asset_cook` and `project_health` and never failed, and
+  makes no product for it.

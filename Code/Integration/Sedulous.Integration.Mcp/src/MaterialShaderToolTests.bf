@@ -26,7 +26,6 @@ static class MaterialShaderToolTests
 		let dir = Scratch("mcp_material_shader_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));

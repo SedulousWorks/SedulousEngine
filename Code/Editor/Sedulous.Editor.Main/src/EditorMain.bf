@@ -139,8 +139,6 @@ static class EditorMain
 			return 1;
 		}
 		defer delete graphics;
-		// After the app, whose cook service borrows the cooks, and before the device it drew with.
-		defer PipelineRegistration.Teardown();
 
 		let app = scope EditorApplication(config);
 		return DesktopRunner.RunApplication(app, shell, graphics);

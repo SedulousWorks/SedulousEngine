@@ -15,7 +15,6 @@ using Sedulous.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
-using Sedulous.Script.Pipeline;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.Gameplay;
@@ -407,7 +406,6 @@ static class NativeSampleTests
 	public static void TheSampleReadsWithItsPackageLoadedItsSpinsResolveAndItCooks()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let dataRoot = scope String();
 		FindDataRoot(dataRoot);
 		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");
@@ -490,7 +488,6 @@ static class NativeSampleTests
 	public static void ThePackagesGameLaunchesHearsTheSamplesSceneAndTheArenasRoundRunOut()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let dataRoot = scope String();
 		FindDataRoot(dataRoot);
 		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");

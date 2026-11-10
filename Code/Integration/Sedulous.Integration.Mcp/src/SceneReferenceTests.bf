@@ -28,7 +28,6 @@ static class SceneReferenceTests
 	private static SceneReference Generate()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		return SceneReference.Generate(builders);
@@ -73,7 +72,6 @@ static class SceneReferenceTests
 	public static void SourceAssetTypesForJoinsAProductToWhatMakesIt()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 
@@ -299,7 +297,6 @@ static class SceneReferenceTests
 	public static void EngineToolsServesBothGeneratedResourcesAndComponentSchema()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();
@@ -352,7 +349,6 @@ static class SceneReferenceTests
 	public static void AComponentContributedAfterTheToolsIsServedAndLeavesWithItsContribution()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();

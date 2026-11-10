@@ -3,7 +3,6 @@ using System.Collections;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
-using Sedulous.Script.Pipeline;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Content;
@@ -14,9 +13,12 @@ namespace Sedulous.Pipeline.Registration.Tests;
 
 /// The composition root is complete and consistent: the tripwire counts, the whole type
 /// set registering on a real process, every builder's product a registered serializable,
-/// and the script cook standing behind the surface.
+/// and an old project's script class an asset type none of it knows.
 static class PipelineRegistrationTests
 {
+	/// The type an old project's script assets name.
+	private const String cOldScriptAsset = "Sedulous.Script.Pipeline.ScriptClassAsset";
+
 	[Test]
 	public static void RegisterAllBuildersPopulatesExactlyTheBuilderCount()
 	{
@@ -41,26 +43,26 @@ static class PipelineRegistrationTests
 		Test.Assert(registry.Count == 0);
 		PipelineRegistration.RegisterAllImporters(registry);
 		Test.Assert(registry.Count == PipelineRegistration.cImporterCount, scope $"{registry.Count} importers");
+		Test.Assert(registry.FindFor("as") == null, "a script file is no asset: nothing imports it");
 	}
 
 	[Test]
-	public static void RegisterPipelineTypesRunsTheWholeSetAndStandsUpTheScriptCook()
+	public static void RegisterPipelineTypesRunsTheWholeSetAndKnowsNoScriptClass()
 	{
 		// Smoke: every registrar the headless cook needs fires on a real process, none
 		// faults, and calling it again is harmless.
 		PipelineRegistration.RegisterPipelineTypes();
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 
-		Test.Assert(PipelineRegistration.Surface != null);
-		Test.Assert(PipelineRegistration.Surface.Types.Count == Sedulous.Pipeline.ScriptSurface.PipelineScriptSurface.TypeCount, "the pipeline surface is populated, whole");
-		Test.Assert(ScriptLanguageCooks.Find("angelscript") != null, "the AngelScript cook is registered behind the surface");
-		Test.Assert(ScriptLanguageCooks.LanguageOf("as", .. scope .()) == "angelscript");
+		// An old project's script asset names a type nothing registers, so it reads as unknown
+		// (kept, never cooked), and no builder claims it.
+		Test.Assert(!GlobalSerializableRegistry.IsRegistered(TypeIdOf(cOldScriptAsset)), "the script class is no longer an asset type");
 
 		// Routing still works after registration.
 		let registry = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		Test.Assert(registry.Count == PipelineRegistration.cBuilderCount);
+		Test.Assert(registry.FindByTypeName(cOldScriptAsset) == null);
 	}
 
 	[Test]
@@ -71,7 +73,6 @@ static class PipelineRegistrationTests
 		// serializable: the cooked, serialized form, not a runtime type. Audits every
 		// builder, the next one included.
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let registry = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		registry.ForEach(scope (builder) =>
@@ -91,7 +92,6 @@ static class PipelineRegistrationTests
 	public static void EveryBuildersAssetTypeIsARegisteredSerializable()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let registry = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		registry.ForEach(scope (builder) =>
@@ -109,7 +109,6 @@ static class PipelineRegistrationTests
 	public static void EveryTypeAProjectHoldsDeclaresItsDisplayName()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let registry = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		registry.ForEach(scope (builder) => { AssertNamed(builder.AssetType); });
@@ -138,19 +137,16 @@ static class PipelineRegistrationTests
 			scope $"type {type.GetFullName(.. scope .())} declares no display name");
 	}
 
-	/// Every creator the engine ships registers, none of them a script's, and each makes an
-	/// instance of its own type in a plain source database, with no editor: the headless host's
-	/// creation and the editor's are the same code.
+	/// Every creator the engine ships registers, and each makes an instance of its own type in a
+	/// plain source database, with no editor: the headless host's creation and the editor's are the
+	/// same code.
 	[Test]
 	public static void EveryCreatorRegistersAndCreatesItsTypeWithNoEditor()
 	{
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let creators = scope AssetCreatorRegistry();
 		PipelineRegistration.RegisterAllCreators(creators);
 		Test.Assert(creators.Count == PipelineRegistration.cCreatorCount, scope $"{creators.Count} creators");
-		for (let creator in creators)
-			Test.Assert(creator.TypeName != typeof(ScriptClassAsset).GetFullName(.. scope .()), scope $"'{creator.Label}' makes a script");
 
 		let root = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_registration_creators", .. scope .());
 		RemoveDirectoryRecursive(root);
