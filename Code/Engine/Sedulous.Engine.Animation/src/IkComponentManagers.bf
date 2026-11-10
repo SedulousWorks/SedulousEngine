@@ -230,9 +230,9 @@ static class IkScene
 			outWorld = scene.ComposeWorldMatrix(e);
 			return true;
 		}
-		if (runtime.HasScriptTarget)
+		if (runtime.HasTargetPoint)
 		{
-			outWorld = Float4x4.Translation(runtime.ScriptTarget);
+			outWorld = Float4x4.Translation(runtime.TargetPoint);
 			return true;
 		}
 		outWorld = scene.ComposeWorldMatrix(owner);
@@ -303,8 +303,8 @@ static class IkScene
 	{
 		ForEachRuntime(scene, entity, scope (runtime) =>
 			{
-				runtime.HasScriptTarget = true;
-				runtime.ScriptTarget = worldPosition;
+				runtime.HasTargetPoint = true;
+				runtime.TargetPoint = worldPosition;
 			});
 	}
 

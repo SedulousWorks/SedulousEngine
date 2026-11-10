@@ -223,7 +223,7 @@ class IkComponentTests
 	}
 
 	[Test]
-	public static void TheScriptCallsSetAPointAndReadTheResultAndRemovalLeavesNothingBehind()
+	public static void SetTargetGivesAPointTheResultReadsAndRemovalLeavesNothingBehind()
 	{
 		let s = scope Stage();
 		s.Leg("LegIk", .Invalid); // no target entity: the script's point

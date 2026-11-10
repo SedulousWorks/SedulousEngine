@@ -11,7 +11,7 @@ using Sedulous.Xml.Serialization;
 namespace Sedulous.Engine.Animation.Tests;
 
 /// Applying root motion (root-motion.md P2): Entity mode walks and turns the entity through a
-/// moved and turned parent, or a named gameplay root; Ignore leaves it; Script holds the world
+/// moved and turned parent, or a named gameplay root; Ignore leaves it; Manual holds the world
 /// delta; Character mode walks the character above it and lets it go with one zero move; a
 /// version 1 animator record reads with root motion off.
 class RootMotionApplyTests
@@ -117,7 +117,7 @@ class RootMotionApplyTests
 	}
 
 	[Test]
-	public static void IgnoreLeavesTheEntityWhereItWasAndScriptHoldsTheWorldDelta()
+	public static void IgnoreLeavesTheEntityWhereItWasAndManualHoldsTheWorldDelta()
 	{
 		{
 			let ignore = scope Stage(2.0f, 0.0f, .Ignore);
@@ -125,14 +125,14 @@ class RootMotionApplyTests
 			ignore.Run(1.0f);
 			Test.Assert(Length(ignore.Level.GetWorldPosition(ignore.Walker) - before) < 1.0e-6f);
 		}
-		let script = scope Stage(3.0f, 0.0f, .Script);
-		let still = script.Level.GetWorldPosition(script.Walker);
-		script.Run(0.5f, 0.1f);
-		Test.Assert(Length(script.Level.GetWorldPosition(script.Walker) - still) < 1.0e-6f, "moved nothing");
-		let tick = script.Animator.RootMotionState.WorldTranslation;
+		let manual = scope Stage(3.0f, 0.0f, .Manual);
+		let still = manual.Level.GetWorldPosition(manual.Walker);
+		manual.Run(0.5f, 0.1f);
+		Test.Assert(Length(manual.Level.GetWorldPosition(manual.Walker) - still) < 1.0e-6f, "moved nothing");
+		let tick = manual.Animator.RootMotionState.WorldTranslation;
 		Test.Assert(Near(tick.X, 0.3f, 1e-3f), "3 m/s for 0.1 s, the parent turning +Z to +X");
 		Test.Assert(Math.Abs(tick.Z) < 1.0e-4f);
-		Test.Assert(script.Animator.RootMotionState.Yaw == 0.0f);
+		Test.Assert(manual.Animator.RootMotionState.Yaw == 0.0f);
 	}
 
 	/// PaperKid's pet: the Pet entity (a scene root) is turned by its script every frame; its model
@@ -228,12 +228,12 @@ class RootMotionApplyTests
 		s.Run(0.3f, 0.1f);
 		Test.Assert(characters.Moves == 6);
 
-		// Back on, then a script switches it to Script mode: one zero move again.
+		// Back on, then a script switches it to Manual mode: one zero move again.
 		s.Animator.RootMotion = .Character;
 		s.Run(0.1f, 0.1f);
 		let walking = characters.Moves;
 		Test.Assert(Length(characters.Last) > 1.0f);
-		s.Animator.RootMotion = .Script;
+		s.Animator.RootMotion = .Manual;
 		s.Run(0.2f, 0.1f);
 		Test.Assert(characters.Moves == walking + 1);
 		Test.Assert(Length(characters.Last) == 0.0f);

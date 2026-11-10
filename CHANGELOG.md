@@ -25,6 +25,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Animation: an animator's root motion mode `Script` is now `Manual` (held for game code or a
+  script to apply, as `RootMotionMode::Manual` in a script); scenes that use it read as before.
 - Prefabs: spawning a prefab no longer reads it from disk each time, and a prefab saved in the
   editor reaches the next spawn of a running game.
 - Scenes: a level a game loads reads each prefab it places once, however many times it places
