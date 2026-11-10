@@ -21,7 +21,6 @@ using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Settings;
-using Sedulous.Script.Resource;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 using Sedulous.Xml.Serialization;
@@ -34,8 +33,8 @@ namespace Sedulous.Engine.Player;
 /// understood, and a staged distribution WINS where both are present, because a distribution
 /// can sit inside the project tree it was built from.
 ///
-/// The project's game script is launched before the scene, so a script can own boot
-/// entirely: a project with no default scene and a running script has something to run.
+/// The build's native game is launched before the scene, so a game can own boot entirely: a
+/// project with no default scene and a running game has something to run.
 class PlayerApplication : DefaultApplication
 {
 	private PlayerOptions mOptions;
@@ -246,12 +245,12 @@ class PlayerApplication : DefaultApplication
 			Instance.SetSaveFile(PathJoin(savePath, saveName, .. scope String()));
 		}
 
-		// The game launches FIRST, the native game when the build has one, else the manifest's
-		// startup script: its launch may load the first level itself, and a startup scene, when
-		// the manifest names one, loads behind it, which the game hears of as it becomes current
-		// (SetPrimaryScene). The player's one run plays one session, from here to OnExit.
+		// The game launches FIRST, the native game when the build has one: its launch may load
+		// the first level itself, and a startup scene, when the manifest names one, loads behind
+		// it, which the game hears of as it becomes current (SetPrimaryScene). The player's one
+		// run plays one session, from here to OnExit.
 		Instance.Start();
-		LaunchGame(mSettings.StartupScriptId != Guid(), scope () => ResolveStartupScript());
+		LaunchGame();
 
 		if (instance != null)
 			BeginBootScene(host, instance);
@@ -262,20 +261,7 @@ class PlayerApplication : DefaultApplication
 				"Player: no startup scene resolved, and no game to own boot, so nothing is running");
 	}
 
-	/// The manifest's startup script is a cooked ScriptClass, bound from the content
-	/// database by id. Null without one; one that does not resolve is an error the run survives.
-	private ScriptClass ResolveStartupScript()
-	{
-		let scriptId = mSettings.StartupScriptId;
-		if ((scriptId == Guid()) || (Resources == null))
-			return null;
-		let scriptClass = Resources.Bind<ScriptClass>(scriptId).Get;
-		if (scriptClass == null)
-			GlobalLog(.Error, "Player: the startup script asset did not resolve");
-		return scriptClass;
-	}
-
-	/// A script loaded level gets the player's full activation: a camera, then the base's
+	/// A level the game loaded gets the player's full activation: a camera, then the base's
 	/// start and simulation. The load's scene is the run's current one from here.
 	protected override void ApplyLoadedSceneActivation(Scene scene)
 	{
@@ -505,7 +491,6 @@ class PlayerApplication : DefaultApplication
 
 	public override void OnExit(IApplicationHost host)
 	{
-		StopGameScript();
 		Instance.Stop(); // its session ends: whatever follows the run's lifecycle hears it
 		SetPrimaryScene(null);
 		if (mScene != null)

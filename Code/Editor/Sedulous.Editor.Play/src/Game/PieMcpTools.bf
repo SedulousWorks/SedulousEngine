@@ -58,7 +58,7 @@ static class PieMcpTools
 		let startSchema = scope SchemaBuilder();
 		startSchema.Boolean("newInstance", "open another Game tab with an instance of its own (Play New Instance) instead of the primary");
 		server.RegisterTool("pie_start",
-			"Start playing the project in the editor (PIE): the primary Game tab, or with `newInstance` another tab running an instance of its own - a host and a client, say. Cooks first, as Play does, loads the default scene and the startup script, and answers once the instance's first frame has rendered, with its state as pie_state gives it; `pie` is the id every other PIE tool takes. A primary already running is answered as it is, with `alreadyRunning`. A run that fails to start (a default scene that does not load) is an error; log_read says why.",
+			"Start playing the project in the editor (PIE): the primary Game tab, or with `newInstance` another tab running an instance of its own - a host and a client, say. Cooks first, as Play does, launches the build's native game and loads the default scene, and answers once the instance's first frame has rendered, with its state as pie_state gives it; `pie` is the id every other PIE tool takes. A primary already running is answered as it is, with `alreadyRunning`. A run that fails to start (a default scene that does not load) is an error; log_read says why.",
 			startSchema.Build(), .Adjusts,
 			new (call, arguments, outResult, outError) => Start(context, call, arguments, outResult, outError));
 
@@ -73,7 +73,7 @@ static class PieMcpTools
 		let stateSchema = scope SchemaBuilder();
 		stateSchema.Str("pie", cPieArgument);
 		server.RegisterTool("pie_state",
-			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: it keeps going while the game pauses its scene at time scale 0, as behind a menu), the frames rendered since, its startup script's state (`none`, `running`, or `faulted` with the reason), and `game`, the game that runs: {kind: \"native\", type: \"<its Game class>\", running: true} for the build's native game, {kind: \"script\", running: true} for a startup script, or {kind: \"none\", running: false}.",
+			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: it keeps going while the game pauses its scene at time scale 0, as behind a menu), the frames rendered since, and `game`, the game that runs: {kind: \"native\", type: \"<its Game class>\", running: true} for the build's native game, or {kind: \"none\", running: false}.",
 			stateSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -466,17 +466,7 @@ static class PieMcpTools
 		outResult.Set("scene", JsonValue.MakeString(pie.SceneName));
 		outResult.Set("runTime", JsonValue.MakeNumber(pie.RunTime));
 		outResult.Set("frames", JsonValue.MakeNumber((double)pie.FrameCount));
-		let script = JsonValue.MakeObject();
-		switch (pie.ScriptState)
-		{
-		case .None: script.Set("state", JsonValue.MakeString("none"));
-		case .Running: script.Set("state", JsonValue.MakeString("running"));
-		case .Faulted:
-			script.Set("state", JsonValue.MakeString("faulted"));
-			script.Set("fault", JsonValue.MakeString(pie.ScriptFault));
-		}
-		outResult.Set("script", script);
-		// The game of either kind: the native one by its class, else the startup script.
+		// The build's native game by its class, or none.
 		let game = JsonValue.MakeObject();
 		let typeName = scope String();
 		if (pie.GetNativeGame(typeName))
@@ -487,9 +477,8 @@ static class PieMcpTools
 		}
 		else
 		{
-			let scripted = pie.ScriptState == .Running;
-			game.Set("kind", JsonValue.MakeString(scripted ? "script" : "none"));
-			game.Set("running", JsonValue.MakeBool(scripted));
+			game.Set("kind", JsonValue.MakeString("none"));
+			game.Set("running", JsonValue.MakeBool(false));
 		}
 		outResult.Set("game", game);
 	}

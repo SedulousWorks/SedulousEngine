@@ -8,9 +8,8 @@ using Sedulous.Runtime.Client;
 using Sedulous.Shell;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Engine.Audio;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
-using Sedulous.Script.Resource;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Scene;
@@ -92,61 +91,9 @@ class SceneServicesTests
 		Test.Assert(project.SourceDb.RootGroup.GetInstance("Level") == level);
 	}
 
-	/// A script property holding an asset is a reference a pruned export follows, though the
-	/// scene never binds it: a behaviour's override and the Level's. An entity override's guid
-	/// is the scene's, not an asset, and an asset nothing names stays out.
-	[Test]
-	public static void APrunedExportReachesTheAssetsAScriptsPropertiesName()
-	{
-		let dir = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_scene_services_script_refs", .. scope .());
-		RemoveDirectoryRecursive(dir);
-		defer RemoveDirectoryRecursive(dir);
-		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
-		let project = EditorProject.Open(dir);
-		Test.Assert(project != null);
-		defer delete project;
-
-		let context = scope EditorContext();
-		let host = scope StubHost();
-		SceneServices.Register(context, host);
-
-		let root = project.SourceDb.RootGroup;
-		let dropper = root.CreateInstance("Dropper", "Sedulous.Script.Pipeline.ScriptClassAsset");
-		let pickup = root.CreateInstance("Pickup", typeof(PrefabDocument).GetFullName(.. scope .()));
-		let theme = root.CreateInstance("Theme", "Sedulous.Audio.Resource.AudioClipData");
-		let unused = root.CreateInstance("Unused", "Sedulous.Audio.Resource.AudioClipData");
-		let level = root.CreateInstance("Level", typeof(SceneDocument).GetFullName(.. scope .()));
-		Test.Assert((dropper != null) && (pickup != null) && (theme != null) && (unused != null) && (level != null));
-		{
-			let authored = scope Sedulous.Scene.Scene("authored");
-			EngineSceneComposition.AddAllSceneManagers(authored);
-			let spawner = authored.CreateEntity("Spawner");
-			let scripts = authored.GetSystem<ScriptComponentManager>();
-			Test.Assert(scripts.AddBehavior(spawner, dropper.Id));
-			let behavior = scripts.Get(spawner).Behaviors[0];
-			behavior.SetOverride(ScriptPropertyNames.HashOf("drop"), .Asset(pickup.Id));
-			behavior.SetOverride(ScriptPropertyNames.HashOf("target"), .Entity(unused.Id));
-			authored.GetSystem<ScriptSceneSystem>().Settings.SetOverride(ScriptPropertyNames.HashOf("music"), .Asset(theme.Id));
-			Test.Assert(SceneStorage.SaveScene(authored, level) case .Ok);
-		}
-
-		SceneReferenceScanner adapter = scope (instance, db, refs) => { context.SceneRefScanner(instance, db, refs.Resources, refs.Prefabs); };
-		let seeds = scope List<ExportRoot>();
-		defer { ClearAndDeleteItems(seeds); }
-		let seed = new ExportRoot();
-		seed.Id = level.Id;
-		seeds.Add(seed);
-		let reachable = scope List<Guid>();
-		ExportDriver.ExpandReachableRoots(project, seeds, adapter, reachable);
-		Test.Assert(reachable.Contains(level.Id) && reachable.Contains(dropper.Id), "the scene and the script it binds");
-		Test.Assert(reachable.Contains(pickup.Id), "the prefab a behaviour's override names");
-		Test.Assert(reachable.Contains(theme.Id), "the asset the Level's override names");
-		Test.Assert(!reachable.Contains(unused.Id), "an entity override names no asset, and nothing else names it");
-	}
-
 	/// A placed prefab instance's own override is the scene's reference: the scan spawns the
 	/// instances with their overrides before it collects, so an asset one placement names (here
-	/// a script property set on it alone) is reached, and the prefab's own content still is.
+	/// a sound's clip swapped on it alone) is reached, and the prefab's own content still is.
 	[Test]
 	public static void APrunedExportReachesTheAssetsAPlacedPrefabsOverridesName()
 	{
@@ -163,25 +110,22 @@ class SceneServicesTests
 		SceneServices.Register(context, host);
 
 		let root = project.SourceDb.RootGroup;
-		let dropper = root.CreateInstance("Dropper", "Sedulous.Script.Pipeline.ScriptClassAsset");
 		let crate = root.CreateInstance("Crate", typeof(PrefabDocument).GetFullName(.. scope .()));
 		let inPrefab = root.CreateInstance("InPrefab", "Sedulous.Audio.Resource.AudioClipData");
 		let onPlacement = root.CreateInstance("OnPlacement", "Sedulous.Audio.Resource.AudioClipData");
 		let unused = root.CreateInstance("Unused", "Sedulous.Audio.Resource.AudioClipData");
 		let level = root.CreateInstance("Level", typeof(SceneDocument).GetFullName(.. scope .()));
-		Test.Assert((dropper != null) && (crate != null) && (inPrefab != null) && (onPlacement != null) && (unused != null) && (level != null));
-		let drop = ScriptPropertyNames.HashOf("drop");
+		Test.Assert((crate != null) && (inPrefab != null) && (onPlacement != null) && (unused != null) && (level != null));
 		{
-			// The prefab: a body whose behaviour's own override names one asset.
+			// The prefab: a body whose sound names one asset.
 			let doc = scope PrefabDocument();
 			doc.Name.Set("Crate");
 			Test.Assert(crate.WriteObject(doc) case .Ok);
 			let author = scope Sedulous.Scene.Scene("Crate");
 			EngineSceneComposition.AddAllSceneManagers(author);
 			let body = author.CreateEntity("Body");
-			let scripts = author.GetSystem<ScriptComponentManager>();
-			Test.Assert(scripts.AddBehavior(body, dropper.Id));
-			scripts.Get(body).Behaviors[0].SetOverride(drop, .Asset(inPrefab.Id));
+			let sound = author.GetSystem<AudioSourceComponentManager>().Add(body);
+			sound.Clip.Id = inPrefab.Id;
 			let payload = scope MemoryStream();
 			Test.Assert(PrefabCapture.Capture(author, body, payload) case .Ok);
 			Test.Assert(crate.WriteData(SceneExportSupport.cSceneStream, payload.Bytes, .Text) case .Ok);
@@ -195,10 +139,9 @@ class SceneServicesTests
 			defer delete payload;
 			let placed = PrefabSpawn.Spawn(authored, payload, crate.Id);
 			Test.Assert(placed.IsAssigned && (authored.PrefabInstanceCount == 1));
-			let behavior = authored.GetSystem<ScriptComponentManager>().Get(placed).Behaviors[0];
-			let inherited = behavior.FindOverride(drop);
-			Test.Assert((inherited != null) && (inherited.Value.Id == inPrefab.Id), "the placement starts as the prefab");
-			behavior.SetOverride(drop, .Asset(onPlacement.Id));
+			let sound = authored.GetSystem<AudioSourceComponentManager>().Get(placed);
+			Test.Assert((sound != null) && (sound.Clip.Id == inPrefab.Id), "the placement starts as the prefab");
+			sound.Clip.Id = onPlacement.Id;
 			Test.Assert(SceneStorage.SaveScene(authored, level) case .Ok);
 		}
 
@@ -217,7 +160,7 @@ class SceneServicesTests
 		seeds.Add(seed);
 		let reachable = scope List<Guid>();
 		ExportDriver.ExpandReachableRoots(project, seeds, adapter, reachable);
-		Test.Assert(reachable.Contains(level.Id) && reachable.Contains(crate.Id) && reachable.Contains(dropper.Id));
+		Test.Assert(reachable.Contains(level.Id) && reachable.Contains(crate.Id));
 		Test.Assert(reachable.Contains(onPlacement.Id), "the placement's asset");
 		Test.Assert(reachable.Contains(inPrefab.Id), "the prefab's own asset, through the prefab");
 		Test.Assert(!reachable.Contains(unused.Id), "an asset nothing names stays out");

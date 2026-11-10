@@ -32,7 +32,7 @@ class GameEditorPageServices
 }
 
 /// The Game tab: plays the project's default scene through its OWN game instance, with the
-/// startup script, the default input map and bus layout, and the resolution it draws at (the
+/// build's native game, the default input map and bus layout, and the resolution it draws at (the
 /// project's by default).
 ///
 /// On the GUI, from its markup (Data/Editor/
@@ -82,7 +82,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private ButtonBase mPlayButton = null;
 	private ButtonBase mPauseToggle = null;
 	private ButtonBase mStopButton = null;
-	/// The transport's state: Stopped, Playing, Paused, Script error.
+	/// The transport's state: Stopped, Playing, Paused.
 	private Sedulous.GUI.Label mStateLabel = null;
 	/// The scene it runs.
 	private Sedulous.GUI.Label mSceneLabel = null;
@@ -156,9 +156,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if (mInput != null)
 			mInput.SetSourceProvider(ActiveSource, null);
 
-		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the script
+		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the game
 		// asking fires inside the embedded app's update, which runs before the pages, so the
-		// stop is deferred to this page's next OnUpdate, no script call on the stack.
+		// stop is deferred to this page's next OnUpdate, no game call on the stack.
 		if (mGameInstance != null)
 			mGameInstance.SetExitRequest(new [=this](code) =>
 				{
@@ -210,20 +210,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	public StringView SceneName => (mScene != null) ? mScene.Name : "";
 	public uint64 FrameCount => mFrameCount;
 	public double RunTime => (mRunning && (mGameInstance != null)) ? mGameInstance.RunTime : mStoppedRunTime;
-
-	public PieScriptState ScriptState
-	{
-		get
-		{
-			if (mGameInstance == null)
-				return .None;
-			if (mGameInstance.ScriptRunning)
-				return .Running;
-			return mGameInstance.ScriptFault.IsEmpty ? .None : .Faulted;
-		}
-	}
-
-	public StringView ScriptFault => (mGameInstance != null) ? mGameInstance.ScriptFault : "";
 
 	public void RequestViewportCapture(StringView path) => mCapture.Request(path);
 	public ViewportCapture LastViewportCapture => mCapture.State;
@@ -427,11 +413,10 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	}
 
 	/// The kit's transport as the run is now: Play while stopped, Pause and Stop while it runs (or
-	/// waits for the cook), Restart either way; its state named beside it (Playing, Paused, a
-	/// script's fault) and the scene it runs.
+	/// waits for the cook), Restart either way; its state named beside it (Playing, Paused) and the
+	/// scene it runs.
 	private void RefreshToolbar()
 	{
-		let faulted = mRunning && (ScriptState == .Faulted);
 		let paused = mRunning && (mPauseToggle != null) && mPauseToggle.Checked;
 		if (mPlayButton != null)
 			mPlayButton.Enabled = !mRunning && !mPendingPlay;
@@ -443,16 +428,15 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mCookBadge.Displayed = mPendingPlay;
 		if (mStateLabel != null)
 		{
-			let state = !mRunning ? "Stopped" : (faulted ? "Script error" : (paused ? "Paused" : "Playing"));
-			let kind = !mRunning ? "stopped" : (faulted ? "faulted" : (paused ? "paused" : "playing"));
+			let state = !mRunning ? "Stopped" : (paused ? "Paused" : "Playing");
+			let kind = !mRunning ? "stopped" : (paused ? "paused" : "playing");
 			if (mStateLabel.Text != state)
 			{
 				mStateLabel.Text = state;
-				StringView[4] kinds = .("stopped", "faulted", "paused", "playing");
+				StringView[3] kinds = .("stopped", "paused", "playing");
 				for (let old in kinds)
 					mStateLabel.RemoveClass(old);
 				mStateLabel.AddClass(kind);
-				mStateLabel.Tooltip = faulted ? ScriptFault : "";
 			}
 		}
 		if (mSceneLabel != null)

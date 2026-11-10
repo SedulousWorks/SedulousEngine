@@ -11,8 +11,7 @@ namespace Sedulous.Engine.Animation.Tests;
 /// One-shots and crossfades on the animated entities: a one-shot asked for on an animator
 /// starts over its clip, plays and ends, and its end reaches the animation subsystem's
 /// listeners with the entity and the clip; the manager says it plays and stops it; a clip
-/// changed with a fade time eases in; a graph's entity takes a one-shot too. (The script side,
-/// onAnimationFinished, is the bridge's: Engine.Integration.)
+/// changed with a fade time eases in; a graph's entity takes a one-shot too.
 static class OneShotTests
 {
 	private static bool Near(float a, float b, float epsilon = 1e-3f) => Math.Abs(a - b) <= epsilon;

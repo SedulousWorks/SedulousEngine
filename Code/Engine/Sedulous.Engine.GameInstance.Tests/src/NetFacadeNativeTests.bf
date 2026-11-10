@@ -3,7 +3,7 @@ using System.Threading;
 using Sedulous.Script;
 using Sedulous.Engine.GameInstance;
 
-namespace Sedulous.Engine.GameScript.Tests;
+namespace Sedulous.Engine.GameInstance.Tests;
 
 /// `Net` to native code: the delegate overloads of On, OnNumber, OnText, OnJoin and OnLeave on
 /// the run's NetFacade, a host and a client as real endpoints on loopback, pumped by hand. The

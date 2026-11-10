@@ -9,7 +9,6 @@ using Sedulous.Scene.Resource;
 using Sedulous.Input;
 using Sedulous.Input.Resource;
 using Sedulous.Audio.Resource;
-using Sedulous.Script.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Project;
@@ -18,7 +17,7 @@ using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Play;
 
-/// Starting and stopping a run: the game (the build's native game, or the startup script), the
+/// Starting and stopping a run: the game (the build's native game), the
 /// default scene into the instance, the input map and bus layout, and following the scene the
 /// game switches to.
 extension GameEditorPage
@@ -53,10 +52,8 @@ extension GameEditorPage
 
 		if (instance != null)
 		{
-			// Through the INSTANCE when there is one: its scenes belong to its run, so their
-			// behaviours run on the run's script host, where Input and Run live. The bare group's
-			// scenes have no run and use the subsystem's default host, where a behaviour reading
-			// Input faults.
+			// Through the INSTANCE when there is one: its scenes belong to its run, where Input and
+			// Run live. The bare group's scenes have no run.
 			let startScene = (mGameInstance != null) ? mGameInstance.CreateScene(instance.Name) : mFallbackScenes.CreateScene(instance.Name);
 			if ((startScene == null) || !(SceneStorage.LoadScene(instance, startScene) case .Ok))
 			{
@@ -64,11 +61,7 @@ extension GameEditorPage
 				if (startScene != null)
 					SceneGroup.DestroyScene(startScene);
 				if (mGameInstance != null)
-				{
-					// The game launched first; neither kind is left running.
-					mGameInstance.StopScript();
-					mGameInstance.StopGame();
-				}
+					mGameInstance.StopGame(); // the game launched first; it is not left running
 				return;
 			}
 			if (mContext.Resources != null)
@@ -119,8 +112,6 @@ extension GameEditorPage
 		}
 		if (mRunning && (mGameInstance != null))
 			mStoppedRunTime = mGameInstance.RunTime;
-		if (mGameInstance != null)
-			mGameInstance.StopScript();
 		// The run's session ends: the native game's exit, then its sound fades out and its screens
 		// go with it, as everything following the run's lifecycle hears (another tab's run and the
 		// editor's own play on).
@@ -142,7 +133,7 @@ extension GameEditorPage
 		RefreshToolbar();
 	}
 
-	/// The script may have switched scenes; follow it, and drop the ones it left.
+	/// The game may have switched scenes; follow it, and drop the ones it left.
 	private void FollowInstanceScene()
 	{
 		if (!mRunning || (mGameInstance == null))
@@ -150,7 +141,7 @@ extension GameEditorPage
 		let current = mGameInstance.GetScene();
 		if (current == mScene)
 			return;
-		mScene = current; // may be null: a script that unloaded without loading
+		mScene = current; // may be null: a game that unloaded without loading
 
 		let outgoing = scope List<Sedulous.Scene.Scene>();
 		for (let s in SceneGroup.ActiveScenes)
@@ -267,27 +258,11 @@ extension GameEditorPage
 		}
 	}
 
-	/// The run's game: the build's native game when it has one (GameInstance.LaunchGame),
-	/// otherwise the project's startup script. A project naming a startup script in a build with a
-	/// native game runs the native game, and a warning says the script is not started.
+	/// The run's game: the build's native game when it has one (GameInstance.LaunchGame); a build
+	/// without one plays its default scene alone.
 	private void StartGameFromProject()
 	{
-		let scriptId = mContext.Project.Settings.StartupScriptId;
-		if ((mGameInstance != null) && mGameInstance.LaunchGame())
-		{
-			if (!scriptId.IsNil)
-				mContext.Notify(.Warning, "Game: the build has a native game, which runs; the startup script is not started.");
-			return;
-		}
-		if (scriptId.IsNil || (mContext.Resources == null))
-			return;
-		let scriptClass = mContext.Resources.Bind<ScriptClass>(scriptId).Get;
-		if ((scriptClass == null) || scriptClass.Source.IsEmpty)
-		{
-			mContext.Notify(.Warning, "Game: startup script asset not found.");
-			return;
-		}
-		if ((mGameInstance == null) || !mGameInstance.StartScript(scriptClass))
-			mContext.Notify(.Error, "Game: startup script failed to start (see Console).");
+		if (mGameInstance != null)
+			mGameInstance.LaunchGame();
 	}
 }

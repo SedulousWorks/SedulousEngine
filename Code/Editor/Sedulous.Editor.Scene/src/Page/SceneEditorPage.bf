@@ -228,19 +228,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		run.SetName(mTitle);
 		if (mServices.Runs != null)
 			mServices.Runs.Add(run); // it leaves the registry as it is destroyed, with the page
-		if (host != null)
-		{
-			if (let scripts = host.Subsystems.GetSubsystem<Sedulous.Engine.Script.ScriptSubsystem>())
-				scripts.ConfigureHost(run.Scripts); // the surface and services, before its first runtime
-		}
 
 		// Its own live scene in its own scene manager, registered with the subsystem so it ticks.
 		if (mScenes != null)
 		{
 			mScenes.RegisterManager(mSceneManager);
 			// The run is set before the scene is made, so systems binding as it is assembled see
-			// it and its bus (its behaviours bind to the run's script host); OnUpdate drains the
-			// run's bus once a frame.
+			// it and its bus; OnUpdate drains the run's bus once a frame.
 			mSceneManager.SetSceneRun(run);
 			mScene = mSceneManager.CreateScene(instance.Name);
 			mScene.SetSimulationEnabled(false); // edit mode is frozen; Simulate unfreezes it
@@ -618,16 +612,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mHud.Zoomed();
 		if (mEditContext != null)
 			UpdateTools(active, dt);
-		// The page's run: its scripts' clock, and its bus drained once a frame (events a Simulate
-		// tick emitted last frame arrive now). The clock moves by the scene's time, as a game's
-		// moves by its gameplay time, and holds while the Simulate is paused, as a game's while
-		// the toolbar pauses it.
+		// The page's run: its bus drained once a frame (events a Simulate tick emitted last frame
+		// arrive now).
 		let run = mSimulation.Run;
-		if ((run.State == .Running) && (mScene != null))
-		{
-			let contextScale = (host != null) ? host.Subsystems.TimeScale : 1.0f;
-			run.Scripts.Advance(FrameTime(dt, contextScale, mSceneManager.TimeScale, mScene.TimeScale).SceneDelta);
-		}
 		run.Events.Drain();
 		// Clicking into a simulating viewport makes its run the one heard, as with a Game tab.
 		if (mSimulation.IsRunning && (mServices.Runs != null) && mViewport.IsFocused && ((Object)mServices.Runs.Focused !== run))
@@ -793,11 +780,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 		if (mScenes != null)
 			mScenes.UnregisterManager(mSceneManager);
-		// The run's `Gui` goes with the page, as a game's goes with its instance, after the run's
-		// runtime: that went with its scene (nothing else runs on the host), and goes here for
-		// certain. The run, which lives on with the page, lets go of it first.
+		// The run's `Gui` goes with the page, as a game's goes with its instance. The run, which
+		// lives on with the page, lets go of it first.
 		let run = mSimulation.Run;
-		run.Scripts.Teardown();
 		run.Remove<GuiFacade>();
 		if (mServices.Host != null)
 		{

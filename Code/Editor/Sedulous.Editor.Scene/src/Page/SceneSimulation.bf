@@ -5,36 +5,23 @@ using Sedulous.Resource;
 using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
-/// A scene page's run: its Simulate's scripts, screens and sounds. It holds a script host and
-/// nothing a game has besides (no input map, save, network or `Run` service), as Simulate has none
-/// of those.
+/// A scene page's run: its Simulate's screens and sounds. It holds nothing a game has (no input
+/// map, save, network or `Run` service), as Simulate has none of those.
 class SimulationRun : RunBase
 {
-	/// OWNED: the run's scripts, registered among its services so its scenes' behaviours bind to
-	/// it; its scripts find this run's services through it.
-	private ScriptRunHost mScripts = new .() ~ delete _;
-
 	public this(StringView name) : base(name)
 	{
-		Register<ScriptRunHost>(mScripts);
-		mScripts.OwningRun = this;
 	}
 
 	public ~this()
 	{
-		// Disposed while the host it registered still exists; the host's runtime after. The
-		// subsystem that installed the host's check may be gone by now: it is not asked again.
+		// Disposed here, so the run's manager hears it go while the run is whole.
 		Dispose();
-		DeleteAndNullify!(mScripts.TeardownCheck);
-		mScripts.Teardown();
 	}
-
-	public ScriptRunHost Scripts => mScripts;
 }
 
 /// Edit mode Simulate over a page's scene: a snapshot taken, the scene started and run, the page's
@@ -47,8 +34,8 @@ class SimulationRun : RunBase
 /// this the run.
 ///
 /// The page's scene belongs to a run of its own (SimulationRun), as a game's scenes belong to the
-/// game's: its behaviours run on the run's script host, and what they put on screen and play is
-/// the run's, ended when the run's session stops. Each Simulate is one session of the run; edit
+/// game's: what its behaviours put on screen and play is the run's, ended when the run's session
+/// stops. Each Simulate is one session of the run; edit
 /// mode is between sessions. The run lives as long as the page, so its scenes always carry it.
 class SceneSimulation
 {

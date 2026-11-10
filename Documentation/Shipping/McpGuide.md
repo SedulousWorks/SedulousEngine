@@ -96,20 +96,18 @@ from it. A Stop there holds until the user starts it again, so a host that went 
 stopped by the user: ask before anything else.
 
 Play in editor (PIE) is the editor's too, and it is how gameplay is tested: `simulate_start`
-previews ONE scene in its page (its scripts as the page's own run: their screens over the page's
+previews ONE scene in its page (its behaviours as the page's own run: their screens over the page's
 viewport, their sound heard while it has the focus), while PIE runs the project as the player does (its game, then
 the default scene and the input map; the game is the build's native game when the project's
-package registers one, otherwise the startup script, and with both the native game runs and a
-warning says the script is not started). PIE is not one game: every Game tab runs its own
+package registers one, and without one the default scene plays alone). PIE is not one game: every Game tab runs its own
 instance, addressed by its `pie` id (`game-page`, the primary; `game-page-1`, ... for each new
 instance), default the primary. `pie_start` cooks, opens and runs the primary (or with
 `newInstance` another tab, a host and a client say) and answers once the first frame has
 rendered; `pie_state` reports whether it runs, its scene, `runTime` (seconds of frames since
 the start, unscaled, so it keeps going while the game pauses its scene at time scale 0, as
-behind a menu), the frames rendered, the startup script (`running`, or `faulted` with the
-reason) and `game`, the game that runs
+behind a menu), the frames rendered and `game`, the game that runs
 (`{"kind": "native", "type": "NativeSampleGame", "running": true}` for the build's native game,
-`{"kind": "script", "running": true}` for a startup script, `{"kind": "none", "running": false}`);
+`{"kind": "none", "running": false}` without one);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
 instance's tab renders, the game through its own camera with its UI, as `viewport_screenshot`
@@ -515,7 +513,7 @@ beside the player, and a plugin's export hooks run over the staged dist; one tha
 export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
 project's default scene, startup script and manifest assets, and what is flagged Always Export),
 following each scene and prefab to what its components and settings name, the prefabs it places
-(with what each placement's overrides name) and the assets its scripts' properties hold, and each asset to what it needs (a material's textures);
+(with what each placement's overrides name), and each asset to what it needs (a material's textures);
 the response's `pruning` counts what was kept and dropped.
 
 `export_presets` lists the project's presets, each its fields by the names

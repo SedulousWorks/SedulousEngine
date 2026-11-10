@@ -47,8 +47,12 @@ static class EngineScriptSurfaceTests
 		// components (GuiCanvasComponent, GuiBillboardComponent, GuiWorldPanelComponent) and the
 		// four enums their fields name (GuiScalerMode, GuiCanvasRenderMode,
 		// GuiBillboardOrientation, GuiBillboardScale). 162 = + `Http` (HttpFacade), the run's HTTP,
-		// which left the scripts' surface for native code alone (163).
-		Test.Assert(EngineScriptSurface.TypeCount == 163, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// which left the scripts' surface for native code alone (163). 145 with the engine's script
+		// runtime gone: its nine scene facades (Animation, Audio, Particles, Render, Debug, Splines,
+		// Scripts, Prefabs, Physics) and the nine values only they named (PhysicsHit, SplineHit,
+		// EnvironmentSettings, PostProcessSettings, SettingsSource, AaMode, TonemapOperator, AoMode,
+		// SkyMode).
+		Test.Assert(EngineScriptSurface.TypeCount == 145, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -68,21 +72,9 @@ static class EngineScriptSurfaceTests
 		let s = scope ScriptSurface();
 		EngineScriptSurface.Populate(s);
 
-		// The facades, by role and name, with their verbs in script shape.
-		let physics = s.Find("Sedulous.Engine.Script.Facades.PhysicsFacade");
-		Test.Assert((physics != null) && (physics.Role == .SceneFacade) && (physics.DisplayName == "Physics"));
-		let rayCast = Method(physics, "RayCast");
-		Test.Assert((rayCast != null) && (rayCast.ReturnTypeName == "Sedulous.Engine.Physics.PhysicsHit"));
-		let applyImpulse = Method(physics, "ApplyImpulse");
-		Test.Assert((applyImpulse != null) && applyImpulse.OnEntity, "on the entity by request");
-		for (let name in scope String[]("Animation", "Audio", "Particles", "Render", "Debug", "Splines", "Scripts", "Prefabs"))
-		{
-			bool found = false;
-			for (let t in s.Types)
-				if ((t.Role == .SceneFacade) && (t.DisplayName == name))
-					found = true;
-			Test.Assert(found, name);
-		}
+		// No scene facade: they went with the engine's script runtime. The services stay.
+		for (let t in s.Types)
+			Test.Assert(t.Role != .SceneFacade, t.FullName);
 		let audio = s.Find("Sedulous.Engine.Audio.AudioFacade");
 		Test.Assert((audio != null) && (audio.Role == .Service) && (audio.DisplayName == "Audio"));
 		let input = s.Find("Sedulous.Engine.Input.InputFacade");
@@ -96,9 +88,8 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak, "what Gui.Root() gives");
 		Test.Assert(s.Find("Sedulous.GUI.ScreenStack").Role == .Weak, "the gamekit's stack");
 
-		// What the facades reach: the values they pass.
-		let hit = s.Find("Sedulous.Engine.Physics.PhysicsHit");
-		Test.Assert((hit != null) && hit.AllPublic && (hit.Fields.Count == 7));
+		// The values a service or a component passes.
+		Test.Assert(s.Find("Sedulous.Engine.Physics.PhysicsHit") == null, "only the physics facade's raycasts gave one");
 		let float3 = s.Find("Sedulous.Core.Float3");
 		Test.Assert((float3 != null) && (float3.Kind == .Struct) && float3.AllPublic);
 		let core = s.Find("Sedulous.Core");
@@ -153,8 +144,8 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponentManager") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Audio.AudioSubsystem") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Render.RenderSubsystem") == null);
-		for (let excluded in StringView[?]("Sedulous.Engine.Script.ScriptComponent",
-			"Sedulous.Net.Replication.NetworkedTransform", "Sedulous.Engine.Navigation.NavMeshZoneComponent"))
+		for (let excluded in StringView[?]("Sedulous.Net.Replication.NetworkedTransform",
+			"Sedulous.Engine.Navigation.NavMeshZoneComponent"))
 			Test.Assert(s.Find(excluded) == null, scope String(excluded));
 		for (let t in s.Types)
 			Test.Assert((t.Role != .SceneSystem) && (t.Role != .ComponentManager), t.FullName);

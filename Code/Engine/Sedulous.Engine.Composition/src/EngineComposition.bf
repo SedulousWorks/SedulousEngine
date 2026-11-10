@@ -10,7 +10,6 @@ using Sedulous.Engine.Net;
 using Sedulous.Engine.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.Script;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Vegetation;
@@ -60,7 +59,6 @@ static class EngineComposition
 				sModules = new .()
 					{
 						sPrefabs,
-						ScriptDomain.Module,
 						RenderDomain.Module,
 						AnimationDomain.Module,
 						ParticlesDomain.Module,

@@ -39,9 +39,6 @@ class NativeSampleEnginePart : PluginPart
 
 	private static void InstallSpin(Sedulous.Scene.Scene scene) => scene.AddSystem<SpinManager>();
 
-	/// The last load found a type of the plugin's on a script surface already, and published none.
-	public static bool ScriptTypesRefused = false;
-
 	public override void Load(PluginContext context)
 	{
 		let engine = context.Find<EnginePluginServices>();
@@ -58,8 +55,6 @@ class NativeSampleEnginePart : PluginPart
 		GameplayServices.AddLevel<Arena>(engine);
 		// Its game: each run's launch (the player's, a Game tab's Play) makes one.
 		GameplayServices.SetGame<NativeSampleGame>(engine);
-		// Its own script types (the Spin component) on the process's surfaces while it is enabled.
-		ScriptTypesRefused = !engine.AddScriptTypes(PluginId, => NativeSampleScriptSurface.Populate);
 		GlobalLog(.Information, "NativeSample loaded");
 	}
 }

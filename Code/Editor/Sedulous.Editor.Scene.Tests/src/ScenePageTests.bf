@@ -16,7 +16,6 @@ using Sedulous.Engine.Render; // LightComponent, InstanceMemberComponent
 using Sedulous.Engine.Composition; // the full scene composition
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
-using Sedulous.Engine.Script;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -54,8 +53,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// is never taken for an outside change, and a prefab's reloads its loaded prefab.
 class ScenePageTests
 {
-	/// A host whose subsystem manager has the scene and script subsystems and nothing else: no
-	/// renderer, no window.
+	/// A host whose subsystem manager has the scene subsystem and nothing else: no renderer, no
+	/// window.
 	class SceneHost : IApplicationHost
 	{
 		public SubsystemManager Subsystems { get; } = new .() ~ delete _;
@@ -64,7 +63,6 @@ class ScenePageTests
 		{
 			// The engine's full composition, so a scene's entities take its components.
 			Subsystems.AddSubsystem<SceneSubsystem>().SetComposition(EngineSceneComposition.Build());
-			Subsystems.AddSubsystem<ScriptSubsystem>(); // binds a scene's behaviours to its run's host
 			Subsystems.Startup();
 		}
 
@@ -413,7 +411,7 @@ class ScenePageTests
 	/// or at a close mid run. Another page is another run, with a host of its own; the run leaves
 	/// with its page.
 	[Test]
-	public static void ThePageIsARunItsSceneCarriesItAndItsScriptHostAndEachSimulateIsOneSession()
+	public static void ThePageIsARunItsSceneCarriesItAndEachSimulateIsOneSession()
 	{
 		let bed = scope Bed();
 		let heard = scope RunsHeard();
@@ -426,10 +424,6 @@ class ScenePageTests
 		Test.Assert((Object)runs.Find(run.Id) === (Object)run);
 		Test.Assert(run.Name == "Level");
 		Test.Assert(run.State == .Idle, "editing is between sessions");
-		let host = RunServices.Get<ScriptRunHost>(run);
-		Test.Assert(host != null);
-		Test.Assert((Object)host.OwningRun === (Object)run);
-		Test.Assert(page.ScenePtr.GetSystem<ScriptSceneSystem>().Host === host);
 		Test.Assert(page.ScenePtr.Events === run.Events, "the scene's bus is the run's");
 
 		page.StartSimulation();
@@ -443,12 +437,11 @@ class ScenePageTests
 		Test.Assert(heard.Paused == 2);
 		Test.Assert(heard.Stopping == 1);
 
-		// Another page is another run, with a host of its own.
+		// Another page is another run.
 		let other = bed.Open(bed.Barrel, runs);
 		let otherRun = other.ScenePtr.Run;
 		Test.Assert(otherRun != null);
 		Test.Assert((Object)otherRun !== (Object)run);
-		Test.Assert(RunServices.Get<ScriptRunHost>(otherRun) !== host);
 		Test.Assert(runs.Count == 2);
 
 		// Closed mid Simulate, the session ends with the close; the run leaves with the page.
@@ -1219,8 +1212,6 @@ class ScenePageTests
 		Test.Assert(inspector.SettingsOf("Physics") != null);
 		Test.Assert(edit.FindSystemBySettingsType(typeof(NavigationSceneSettings)) != null);
 		Test.Assert(inspector.SettingsOf("Navigation") != null);
-		Test.Assert(edit.FindSystemBySettingsType(typeof(SceneScriptSettings)) != null);
-		Test.Assert(inspector.SettingsOf("Scene Script") != null);
 		// No type name reads through.
 		let titles = inspector.SectionTitles(.. scope .());
 		Test.Assert(!titles.Contains("PostProcess", true));
@@ -1835,29 +1826,27 @@ class ScenePageTests
 		page.OnClose();
 	}
 
-	/// A script component and the scene's script block show as reflection gives them, with no
-	/// sections of their own: a game's code is native, so the editor authors no script.
+	/// The engine has no script component and a scene no script block: a game's code is native,
+	/// so Add Component offers no Script and the scene's settings show none.
 	[Test]
-	public static void InspectorAScriptComponentAndTheScenesScriptBlockArePlainSectionsWithNoExtras()
+	public static void InspectorOffersNoScriptComponentAndTheSceneNoScriptBlock()
 	{
-		BuiltinInspectorExtras.Register();
 		let bed = scope Bed();
 		let page = bed.Open(bed.Level);
 		defer delete page;
 		let inspector = page.Inspector;
 		page.EditContext.EntitySelection.Set(bed.Crate);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
-		Test.Assert(inspector.AddComponent("ScriptComponent"));
+		Test.Assert(!inspector.AddComponent("ScriptComponent"));
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
-		Test.Assert(inspector.SectionTitles(.. scope .()).Contains(" | Script"), "a section of its own");
-		Test.Assert(inspector.ExtraSource("Script", 0) == null);
+		Test.Assert(!inspector.SectionTitles(.. scope .()).Contains(" | Script"));
 
 		let shown = scope Shown(page);
 		shown.Click(page.Hierarchy.Tree, 0); // the scene's row
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(inspector.Kind == "Scene");
-		Test.Assert(inspector.SettingsOf("Scene Script") != null);
-		Test.Assert(inspector.ExtraSource("Scene Script", 0) == null);
+		Test.Assert(inspector.SettingsOf("Navigation") != null, "the scene's settings show");
+		Test.Assert(inspector.SettingsOf("Scene Script") == null);
 		page.OnClose();
 	}
 

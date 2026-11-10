@@ -292,7 +292,7 @@ static class SceneMcpEditTools
 	private static bool Answer(EditorContext context, EditorPage page, SceneEditContext edit, Guid id, JsonValue outResult)
 	{
 		outResult.Set("page", SceneMcpTools.PageJson(page));
-		outResult.Set("entity", SceneMcpTools.EntityJson(edit.Scene, edit.Resolve(id), context.Resources));
+		outResult.Set("entity", SceneMcpTools.EntityJson(edit.Scene, edit.Resolve(id)));
 		return true;
 	}
 

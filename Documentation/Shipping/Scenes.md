@@ -1,7 +1,7 @@
 # Scenes and prefabs
 
 A **scene** is entities in a hierarchy, each carrying components (the transform is
-intrinsic; mesh, light, camera, physics body, script, audio source, ... are components). A
+intrinsic; mesh, light, camera, physics body, audio source, ... are components). A
 **prefab** is a reusable single rooted entity subtree; scenes and prefabs instantiate
 prefabs by guid, and the instance re-expands from the prefab source when it loads: edit the
 prefab, every instance follows.
@@ -54,24 +54,23 @@ what the engine writes.
   fails the WHOLE scene load, not one record, so a scene written against an older build must
   be re-saved by the build that wrote it.
 - **Settings blocks**, one per scene system that has settings: `physics`, `environment`,
-  `postprocess`, `navigation` and `script` (the Level script and its overrides, see
-  Scripting.md).
+  `postprocess` and `navigation`, and a native Level's.
 - **Prefab instances**, after the settings: which prefab, where, and the deltas the instance
   applies over its source.
 
-## Script overrides
+## Script records
 
-A script behaviour on an entity binds a script class by guid and can override that class's
-declared properties. Each override is keyed by the hash of the property NAME (so a rename in
-the class is detectable), then a tagged value: the kind, then the one payload field that kind
-uses.
+A scene written while the engine ran scripts may carry `script` components (an entity's
+behaviours) and a `script` settings block (the Level script). The engine has neither now, so a
+scene keeps them unread and writes them back as they were, as it does any record of a
+component or system the build lacks.
 
 ## Spawning at run time
 
-A spawn while the game runs (a script's `Spawn`, `Net.Spawn`, a replicated spawn on a client)
+A spawn while the game runs (the spawn system's `Spawn`, `Net.Spawn`, a replicated spawn on a client)
 reads the LOADED prefab, not its file: the prefab is read once, the first time it is spawned,
 a reference to it binds or a level placing it loads, and the prefabs it nests are each loaded
-the same way. A level the game loads (its first, a script's `Run.LoadScene`) places its prefabs
+the same way. A level the game loads (its first, a `LoadScene` of the game's) places its prefabs
 from the loaded ones too, so one placed fifty times is read once. The editor's scene pages
 read the files, since what they show is what you are editing. A first
 spawn loads the prefab at once, so its entity exists in the same frame.
@@ -90,7 +89,7 @@ scene's id, which `GameInstance.LoadScene` and `LoadSceneAsync` take. It is not 
 scene is read whole when a level loads, so nothing binds or caches it, and naming one never
 loads it. The inspector offers scenes for it and `component_set` sets it by guid, as for any
 reference; a pruned export keeps the scene a reflected component's `SceneRef` names, and the
-scene's own references after it. Scripts name a scene by its guid (`Run.LoadScene`).
+scene's own references after it.
 
 ## Scene level behaviour
 

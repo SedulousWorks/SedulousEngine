@@ -13,8 +13,8 @@ interface IGameHooks
 {
 	/// Once, as LaunchGame takes the game.
 	void Launch();
-	/// Each frame TickScript runs, with the delta a game script's update(dt) gets: the host's
-	/// through the context's and the current scene's scales, not the run's own
+	/// Each frame TickGame runs, with the host's delta through the context's and the current
+	/// scene's scales, not the run's own
 	/// (InstanceTimeScale), so a game that pauses its scenes keeps its own timers going.
 	void Update(float dt);
 	/// A scene became the run's current one: SetScene with another scene, or a tracked load

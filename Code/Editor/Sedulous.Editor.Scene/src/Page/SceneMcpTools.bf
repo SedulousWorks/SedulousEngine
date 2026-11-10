@@ -9,8 +9,6 @@ using Sedulous.Mcp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Camera;
 using Sedulous.Core.IO;
-using Sedulous.Script.Resource;
-using Sedulous.Engine.Script;
 using Sedulous.Engine.Navigation;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.App;
@@ -219,7 +217,7 @@ static class SceneMcpTools
 				if (!ResolveEntity(page, edit, arguments, outError, out id))
 					return false;
 				outResult.Set("page", PageJson(page));
-				outResult.Set("entity", EntityJson(edit.Scene, edit.Resolve(id), context.Resources));
+				outResult.Set("entity", EntityJson(edit.Scene, edit.Resolve(id)));
 				return true;
 			});
 
@@ -1151,7 +1149,7 @@ static class SceneMcpTools
 		}
 		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 		outResult.Set("scene", JsonValue.MakeString(scene.Name));
-		outResult.Set("entity", EntityJson(scene, handle, context.Resources));
+		outResult.Set("entity", EntityJson(scene, handle));
 		return true;
 	}
 
@@ -1209,7 +1207,7 @@ static class SceneMcpTools
 
 	/// The entity as the agent sees it: identity, hierarchy, transform, and every component the
 	/// scene holds for it with its reflected fields.
-	public static JsonValue EntityJson(Sedulous.Scene.Scene scene, EntityHandle handle, ResourceManager resources = null)
+	public static JsonValue EntityJson(Sedulous.Scene.Scene scene, EntityHandle handle)
 	{
 		let json = JsonValue.MakeObject();
 		json.Set("guid", FieldJson.GuidJson(scene.GetEntityId(handle)));
@@ -1245,78 +1243,10 @@ static class SceneMcpTools
 				{
 					component.Set("properties", JsonValue.MakeNull()); // unreflected
 				}
-				// The behaviours are a hidden list the reflected fields leave out: what each one
-				// runs and what its properties are set to, named from its cooked class.
-				if (type == typeof(ScriptComponent))
-					component.Set("behaviors", BehaviorsJson((ScriptComponent*)address, scene, resources));
 				components.Add(component);
 			});
 		json.Set("components", components);
 		return json;
-	}
-
-	/// A Script component's behaviours: each one's script (its guid, and its class when the
-	/// class is cooked), whether it runs, and its property overrides by name (by hash, #n, when
-	/// the class is not at hand to name them).
-	private static JsonValue BehaviorsJson(ScriptComponent* component, Sedulous.Scene.Scene scene, ResourceManager resources)
-	{
-		let list = JsonValue.MakeArray();
-		if ((component == null) || (component.Behaviors == null))
-			return list;
-		for (let behavior in component.Behaviors)
-		{
-			let json = JsonValue.MakeObject();
-			let id = behavior.Script.Id;
-			json.Set("script", FieldJson.GuidJson(id));
-			let scriptClass = (behavior.Script.Get != null) ? behavior.Script.Get
-				: (((resources != null) && id.IsSet) ? resources.Bind<ScriptClass>(id).Get : null);
-			json.Set("class", (scriptClass != null) ? JsonValue.MakeString(scriptClass.ClassName) : JsonValue.MakeNull());
-			json.Set("enabled", JsonValue.MakeBool(behavior.Enabled));
-			let properties = JsonValue.MakeObject();
-			for (let o in behavior.Overrides)
-			{
-				let desc = (scriptClass != null) ? scriptClass.FindProperty(o.Hash) : null;
-				let name = (desc != null) ? scope String(desc.Name) : scope $"#{o.Hash}";
-				properties.Set(name, PropertyValueJson(o.Value, scene));
-			}
-			json.Set("properties", properties);
-			// Running (a PIE game, a Simulate): the instance's current values of the class's
-			// properties, where `properties` holds what is authored.
-			if ((behavior.Instance != null) && (scriptClass != null))
-			{
-				let system = scene.GetSystem<ScriptSceneSystem>();
-				let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
-				if (runtime != null)
-				{
-					let live = JsonValue.MakeObject();
-					for (let desc in scriptClass.Properties)
-					{
-						var value = Sedulous.Script.ScriptValue.Nil;
-						if (runtime.GetProperty(behavior.Instance, desc.Name, ref value))
-							live.Set(desc.Name, ComponentJson.ScriptJson(value, scene));
-					}
-					json.Set("live", live);
-				}
-			}
-			list.Add(json);
-		}
-		return list;
-	}
-
-	private static JsonValue PropertyValueJson(ScriptPropertyValue value, Sedulous.Scene.Scene scene)
-	{
-		var value;
-		switch (value.Kind)
-		{
-		case .Float: return JsonValue.MakeNumber(value.Number);
-		case .Int: return JsonValue.MakeNumber(value.Number);
-		case .Bool: return JsonValue.MakeBool(value.Boolean);
-		case .String: return JsonValue.MakeString((value.Text != null) ? StringView(value.Text) : "");
-		case .Vec3: return FieldJson.ValueJson(typeof(Float3), &value.Vector);
-		case .Color: return FieldJson.ValueJson(typeof(Color), &value.Color);
-		case .Entity, .Asset: return value.Id.IsSet ? FieldJson.GuidJson(value.Id) : JsonValue.MakeNull();
-		case .None: return JsonValue.MakeNull();
-		}
 	}
 
 	/// The scene page a call addresses: `page` (a guid) when given, else the active page; null

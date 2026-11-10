@@ -27,8 +27,6 @@ class PieMcpToolsTests
 		public String Scene = new .() ~ delete _;
 		public double Time = 0;
 		public uint64 Frames = 0;
-		public PieScriptState Script = .None;
-		public String Fault = new .() ~ delete _;
 		public ViewportCapture Capture = new .() ~ delete _;
 		public int CaptureRequests = 0;
 		/// Play fails the start at the cook's end instead of running.
@@ -59,8 +57,6 @@ class PieMcpToolsTests
 		public StringView SceneName => Scene;
 		public double RunTime => Time;
 		public uint64 FrameCount => Frames;
-		public PieScriptState ScriptState => Script;
-		public StringView ScriptFault => Fault;
 		public void RequestViewportCapture(StringView path)
 		{
 			Capture.State = .Pending;
@@ -156,7 +152,6 @@ class PieMcpToolsTests
 				return;
 			Running = true;
 			Scene.Set(scene);
-			Script = .Running;
 		}
 
 		/// One rendered frame of the run: the clock, then the page's advance of the script
@@ -306,7 +301,7 @@ class PieMcpToolsTests
 			Test.Assert(answer.Payload.Get("scene").AsString() == "Level1");
 			Test.Assert(answer.Payload.Get("running").AsBool());
 			Test.Assert(!answer.Payload.Get("alreadyRunning").AsBool());
-			Test.Assert(answer.Payload.Get("script").Get("state").AsString() == "running");
+			Test.Assert(answer.Payload.Get("script") == null, "no script state: a game is native");
 		}
 		// A second start of the running primary answers it as it is.
 		{
@@ -349,16 +344,6 @@ class PieMcpToolsTests
 			defer delete unknown;
 			Test.Assert(!unknown.Ok);
 			Test.Assert(unknown.Error.StartsWith("no PIE instance 'game-page-9'"), unknown.Error);
-		}
-
-		// A faulted startup script shows in its instance's state, with the reason.
-		client.Script = .Faulted;
-		client.Fault.Set("faulted in update: Lobby.sc:12 index out of range");
-		{
-			let state = Call(server, "pie_state", "{\"pie\":\"game-page-1\"}");
-			defer delete state;
-			Test.Assert(state.Payload.Get("script").Get("state").AsString() == "faulted");
-			Test.Assert(state.Payload.Get("script").Get("fault").AsString() == "faulted in update: Lobby.sc:12 index out of range");
 		}
 
 		// Stopping the client leaves the primary running; `all` stops the rest.
@@ -738,7 +723,7 @@ class PieMcpToolsTests
 	/// A run reads the native game's fields, public and private, as `game.<field>` (an enum by
 	/// its name, inside a vector by `.y`), and ends on one; with no native game, or a field it
 	/// lacks, the probe is refused before the run starts, saying which. pie_state names the
-	/// game that runs, native, script or none.
+	/// game that runs, native or none.
 	[Test]
 	public static void ARunReadsTheNativeGamesFieldsPublicAndPrivateAndEndsOnOne()
 	{
@@ -757,15 +742,6 @@ class PieMcpToolsTests
 			Test.Assert(state.Payload.Get("game").Get("kind").AsString() == "none");
 			Test.Assert(!state.Payload.Get("game").Get("running").AsBool());
 		}
-		host.Script = .Running;
-		{
-			let state = Call(server, "pie_state", "{}");
-			defer delete state;
-			Test.Assert(state.Payload.Get("game").Get("kind").AsString() == "script");
-			Test.Assert(state.Payload.Get("game").Get("running").AsBool());
-			Test.Assert(state.Payload.Get("script").Get("state").AsString() == "running", "the script's own state stays");
-		}
-
 		let game = scope PieArcadeGame();
 		host.NativeGame = game;
 		{

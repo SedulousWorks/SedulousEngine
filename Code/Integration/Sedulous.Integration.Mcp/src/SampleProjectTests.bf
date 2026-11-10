@@ -11,8 +11,6 @@ using Sedulous.Runtime;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.Gameplay;
 using Sedulous.Engine.Project;
-using Sedulous.Engine.Script;
-using Sedulous.Script.Resource;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
@@ -92,13 +90,12 @@ static class SampleProjectTests
 		return ok;
 	}
 
-	/// Reads every instance of the sample in Data/SampleProjects/`name` from a scratch copy,
-	/// cooks it through the tools an agent uses, and checks every script override it stores names
-	/// a property of its cooked class. The floors catch a group silently skipped or a cook that
-	/// built less than the sample has. With `packageId`, the sample's own package (linked here)
+	/// Reads every instance of the sample in Data/SampleProjects/`name` from a scratch copy and
+	/// cooks it through the tools an agent uses. The floors catch a group silently skipped or a
+	/// cook that built less than the sample has. With `packageId`, the sample's own package (linked here)
 	/// is loaded while it reads, as in the project's own editor, and `checkGameCode` sees the
 	/// project then.
-	private static void CheckSampleProject(StringView name, StringView scratch, int readFloor, int cookedFloor, int overrideFloor,
+	private static void CheckSampleProject(StringView name, StringView scratch, int readFloor, int cookedFloor,
 		StringView packageId = default, function void(EditorProject project) checkGameCode = null)
 	{
 		PipelineRegistration.RegisterPipelineTypes();
@@ -155,17 +152,6 @@ static class SampleProjectTests
 		Test.Assert(cooked.Get("cooked").AsInt() >= cookedFloor, scope $"{name}: cooked {cooked.Get("cooked").AsInt()}");
 		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{name}: {cooked.Get("failed").AsInt()} failed");
 
-		// Every script override a scene or prefab stores, a behaviour's or the Level's, names a
-		// property its cooked class declares: the key is the property name's hash, so a hash
-		// change that forgets to rehash the sources leaves overrides that silently apply to
-		// nothing.
-		{
-			let project = EditorProject.Open(dir);
-			Test.Assert(project != null);
-			defer delete project;
-			let overrides = CheckOverrides(project, project.SourceDb.RootGroup);
-			Test.Assert(overrides >= overrideFloor, scope $"{name}: {overrides} overrides checked");
-		}
 		// The MCP host's plugins (the sample's package, when it enables one this binary links) go
 		// before its project, and both before the session that names them.
 		session.Plugins = null;
@@ -182,10 +168,10 @@ static class SampleProjectTests
 		// their sprite and the minimap's render texture, 2 animation clips and a material, the two
 		// render profiles, the toon shader, the input map, and the 13 Blender models with their
 		// prefabs, meshes, materials, skeletons and clips (144). 184 cook: all but the scenes and
-		// the 32 prefabs, which stage rather than cook. No script overrides: the behaviours and the
+		// the 32 prefabs, which stage rather than cook. The behaviours and the
 		// blocks' level are the game's code, its package loaded to read the scenes. Raise the floors
 		// when the sample grows.
-		CheckSampleProject("PaperKid", "scratch_paperkid_versions", 222, 184, 0, "paperkid", => CheckPaperKid);
+		CheckSampleProject("PaperKid", "scratch_paperkid_versions", 222, 184, "paperkid", => CheckPaperKid);
 	}
 
 	/// Block1 runs the game's level with its own numbers and carries the bike, its camera and the
@@ -210,8 +196,6 @@ static class SampleProjectTests
 			Test.Assert((level.TimeLimit == 55.0f) && (level.Quota == 4) && (level.Papers == 8) && (level.TrafficSpeed == 7.5f)
 				&& (level.PedestrianSpeed == 1.4f) && (level.Ring == 24.0f) && (level.CrashPenalty == 5.0f), "Block1's numbers, not the defaults");
 		}
-		let levelScripts = scene.GetSystem<ScriptSceneSystem>();
-		Test.Assert((levelScripts == null) || (levelScripts.Settings.Script.Id == Guid.Empty), "no level script left");
 		let bikes = scene.GetSystem<BehaviourManager<PaperKid.Bike>>();
 		Test.Assert((bikes != null) && (bikes.Count == 1), "one Bike, resolved");
 		if ((bikes == null) || (bikes.Count != 1))
@@ -224,8 +208,7 @@ static class SampleProjectTests
 		let markers = scene.GetSystem<BehaviourManager<PaperKid.MapMarkers>>();
 		Test.Assert((markers != null) && (markers.Count == 1) && (markers.Instances[0].Bike.Id == scene.GetEntityId(bike))
 			&& (markers.Instances[0].Span == 84.0f), "the minimap marks the bike, over the block's span");
-		let scripts = scene.GetSystem<ScriptComponentManager>();
-		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+		Test.Assert(!HasScriptComponent(scene), "no script behaviour left");
 
 		let start = FindInstance(project.SourceDb.RootGroup, "Start", McpDocumentNames.cSceneDocument);
 		Test.Assert(start != null, "Start");
@@ -288,9 +271,9 @@ static class SampleProjectTests
 		// cook) and their materials, the hall's 3 materials, 4 textures and the sky, 4 Blender
 		// models with their meshes and prefabs, the 3 primitives, the hall, the list and its
 		// sheet, the font and the input map. At least 44 cook; the hall and the 4 prefabs stage
-		// rather than cook. No script overrides: the camera's behaviour is the game's code, its
+		// rather than cook. The camera's behaviour is the game's code, its
 		// package loaded to read the hall.
-		CheckSampleProject("ShaderGallery", "scratch_shadergallery_versions", 50, 44, 0, "shadergallery", => CheckGallery);
+		CheckSampleProject("ShaderGallery", "scratch_shadergallery_versions", 50, 44, "shadergallery", => CheckGallery);
 	}
 
 	/// The hall's camera carries the game's Gallery behaviour, resolved into its manager with the
@@ -323,10 +306,10 @@ static class SampleProjectTests
 		// manifests, 65 materials, 42 clips, 26 static and 7 skinned meshes, 4 skeletons, 10 collision
 		// shapes, 12 audio clips, 9 UI documents and their sheet, 6 icons, 5 particle effects, 2
 		// fonts, the toon shader, the environment profile and the input map. 222 cook: all but the
-		// levels and the prefabs, which stage rather than cook. No script overrides: the behaviours
+		// levels and the prefabs, which stage rather than cook. The behaviours
 		// are the game's code, its package loaded to read the levels. Raise the floors when the
 		// sample grows.
-		CheckSampleProject("SkyHopper", "scratch_skyhopper_versions", 262, 222, 0, "skyhopper", => CheckSkyHopper);
+		CheckSampleProject("SkyHopper", "scratch_skyhopper_versions", 262, 222, "skyhopper", => CheckSkyHopper);
 	}
 
 	/// Level1's entities carry the game's behaviours, resolved into their managers with the values
@@ -364,8 +347,7 @@ static class SampleProjectTests
 			for (let enemy in enemies.Instances)
 				Test.Assert(enemy.WalkClip.Id != Guid.Empty, "an enemy's walk clip");
 		}
-		let scripts = scene.GetSystem<ScriptComponentManager>();
-		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+		Test.Assert(!HasScriptComponent(scene), "no script behaviour left");
 
 		for (let name in StringView[5]("FxCoinSparkle", "FxConfetti", "FxDust", "FxPoof", "FxStompStars"))
 		{
@@ -389,10 +371,10 @@ static class SampleProjectTests
 		// materials, 34 static and 2 skinned meshes, 2 skeletons, 9 clips and 2 animation graphs,
 		// 16 sounds, 5 UI documents and their sheet, 6 navigation zones, 4 physical materials, the
 		// rain, the font, the input map and the environment and post profiles. 208 cook: all but
-		// the scenes and the prefabs, which stage rather than cook. No script overrides: the
+		// the scenes and the prefabs, which stage rather than cook. The
 		// behaviours and the game are the game's code, its package loaded to read the levels. Raise
 		// the floors when the sample grows.
-		CheckSampleProject("Lamplight", "scratch_lamplight_versions", 250, 208, 0, "lamplight", => CheckLamplight);
+		CheckSampleProject("Lamplight", "scratch_lamplight_versions", 250, 208, "lamplight", => CheckLamplight);
 	}
 
 	/// The Gardens' entities carry the game's behaviours, resolved into their managers with the
@@ -479,8 +461,7 @@ static class SampleProjectTests
 		Test.Assert((checkpoints != null) && (checkpoints.Count == 1), "the crossing's checkpoint");
 		let walls = scene.GetSystem<BehaviourManager<Lamplight.CutawayWall>>();
 		Test.Assert((walls != null) && (walls.Count == 102), "a cutaway on every wall piece");
-		let scripts = scene.GetSystem<ScriptComponentManager>();
-		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+		Test.Assert(!HasScriptComponent(scene), "no script behaviour left");
 
 		CheckKitPiece<Lamplight.Pebble>(project, "Pebble", scope (stone) => stone.Lifetime == 6.0f);
 	}
@@ -494,9 +475,9 @@ static class SampleProjectTests
 		// 15 sounds, 5 UI documents and their sheet, 9 textures, 3 terrains with their heightfields,
 		// splatmaps and vegetation masks, 4 particle effects, the font, the input map and the
 		// environment and post profiles. 122 cook: all but the courses and the prefabs, which stage
-		// rather than cook. No script overrides: the behaviours and the game are the game's code,
+		// rather than cook. The behaviours and the game are the game's code,
 		// its package loaded to read the courses. Raise the floors when the sample grows.
-		CheckSampleProject("Snowline", "scratch_snowline_versions", 142, 122, 0, "snowline", => CheckSnowline);
+		CheckSampleProject("Snowline", "scratch_snowline_versions", 142, 122, "snowline", => CheckSnowline);
 	}
 
 	/// Ridge's entities carry the game's behaviours, resolved into their managers with the values
@@ -575,8 +556,7 @@ static class SampleProjectTests
 			&& (avalanches.Instances[0].ReleaseAt == 270.0f), "the avalanche on the course line, released where Ridge says");
 		let playerGhosts = scene.GetSystem<BehaviourManager<Snowline.PlayerGhost>>();
 		Test.Assert((playerGhosts != null) && (playerGhosts.Count == 1), "the player's ghost");
-		let scripts = scene.GetSystem<ScriptComponentManager>();
-		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+		Test.Assert(!HasScriptComponent(scene), "no script behaviour left");
 
 		CheckKitPiece<Snowline.TrackMark>(project, "TrackMark", scope (mark) => mark.Life == 6.0f);
 		CheckKitPiece<Snowline.Expire>(project, "GemSparkle", scope (burst) => burst.Life == 1.2f);
@@ -605,10 +585,10 @@ static class SampleProjectTests
 		// materials (the masks and fabrics on 2 custom shaders), the palace, canal and garden kits,
 		// 3 navigation zones, 7 UI documents and their sheet, 10 generated sounds and music, the
 		// profiles, the input map, the font, the sky and the primitives. 287 cook: all but the
-		// maps, the prefabs and the model manifests. No script overrides: the behaviours and the
+		// maps, the prefabs and the model manifests. The behaviours and the
 		// game are the game's code, its package loaded to read the maps. Raise the floors when the
 		// sample grows.
-		CheckSampleProject("Masquerade", "scratch_masquerade_versions", 332, 287, 0, "masquerade", => CheckMasquerade);
+		CheckSampleProject("Masquerade", "scratch_masquerade_versions", 332, 287, "masquerade", => CheckMasquerade);
 	}
 
 	/// The Palace's entities carry the game's behaviours, resolved into their managers with the
@@ -667,61 +647,20 @@ static class SampleProjectTests
 		let orchestras = scene.GetSystem<BehaviourManager<Masquerade.Orchestra>>();
 		Test.Assert((orchestras != null) && (orchestras.Count == 1) && (scene.GetEntityName(orchestras.OwnerHandles[0]) == "Dais"),
 			"the orchestra on the dais");
-		let scripts = scene.GetSystem<ScriptComponentManager>();
-		Test.Assert((scripts == null) || (scripts.ComponentCount == 0), "no script behaviour left");
+		Test.Assert(!HasScriptComponent(scene), "no script behaviour left");
 
 		CheckKitPiece<Masquerade.Player>(project, "HunterPalace", scope (joiner) => (joiner.Camera.Id == Guid.Empty) && (joiner.SprintSpeed == 3.0f));
 	}
 
-	/// The number of script overrides checked under `group`: a behaviour's against its cooked
-	/// class, and a scene's Level script's against its own.
-	private static int CheckOverrides(EditorProject project, Group group)
+	/// Whether an entity of `scene` still carries a script component: the engine has none, so its
+	/// record reads as unresolved and is kept for the save.
+	private static bool HasScriptComponent(Scene scene)
 	{
-		int count = 0;
-		for (let instance in group.Instances)
+		for (let record in scene.UnresolvedComponents)
 		{
-			if ((instance.TypeName != McpDocumentNames.cSceneDocument) && (instance.TypeName != McpDocumentNames.cPrefabDocument))
-				continue;
-			let scene = scope Scene(instance.Name);
-			EngineSceneComposition.AddAllSceneManagers(scene);
-			if (!(SceneStorage.LoadScene(instance, scene) case .Ok))
-				continue;
-			let scripts = scene.GetSystem<ScriptComponentManager>();
-			for (let component in scripts.Dense)
-			{
-				for (let behavior in component.Behaviors)
-					count += CheckDeclared(project, instance.Name, behavior.Script.Id, behavior.Overrides);
-			}
-			for (let system in scene.Systems)
-			{
-				if (system.SettingsType != typeof(SceneScriptSettings))
-					continue;
-				let level = (SceneScriptSettings)Internal.UnsafeCastToObject(system.SettingsInstance);
-				if (level.Script.Id != Guid.Empty)
-					count += CheckDeclared(project, instance.Name, level.Script.Id, level.Overrides);
-			}
+			if (record.TypeId == "script")
+				return true;
 		}
-		for (let child in group.Groups)
-			count += CheckOverrides(project, child);
-		return count;
-	}
-
-	/// Each override names a property the script's cooked class declares; answers how many.
-	private static int CheckDeclared(EditorProject project, StringView owner, Guid script, List<ScriptPropertyOverride> overrides)
-	{
-		let stored = project.CookedDb.ReadObject(script);
-		defer delete stored;
-		let source = stored as ScriptClassSource;
-		Test.Assert(source != null, scope $"{owner}: the script is cooked");
-		if (source == null)
-			return 0;
-		for (let o in overrides)
-		{
-			bool declared = false;
-			for (let property in source.Properties)
-				declared |= property.Hash == o.Hash;
-			Test.Assert(declared, scope $"{owner}: override {o.Hash} names no property of {source.ClassName}");
-		}
-		return overrides.Count;
+		return false;
 	}
 }

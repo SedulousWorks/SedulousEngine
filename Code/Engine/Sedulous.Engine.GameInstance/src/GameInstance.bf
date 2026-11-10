@@ -16,11 +16,7 @@ using Sedulous.Resource;
 using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Script;
-using Sedulous.Script.Resource;
 using Sedulous.Engine.Input; // InputFacade
-using Sedulous.Engine.Script;
-using Sedulous.Engine.Script.Facades;
 
 namespace Sedulous.Engine.GameInstance;
 
@@ -34,11 +30,10 @@ namespace Sedulous.Engine.GameInstance;
 /// The scene is CREATED BY THE CALLER and paired in, and the app keeps its own policy: what
 /// to load, and what to do to a scene once it is live. What lives here is the orchestration
 /// both of those would otherwise hand roll identically.
-/// TO A SCRIPT it is `Run`: the run's tier above the scenes, reached as a per run service,
-/// so the instance a script's calls land on is the one whose runtime ran the script and
-/// never another's. Its verbs are the level loads, the exit, the time scale and the run
-/// bus, which is what a `Game` orchestrator drives boot and level flow with:
-/// `let t = Run.LoadSceneAsync(id); while (!Run.LoadComplete(t)) yield();`.
+/// TO THE GAME it is `Run`: the run's tier above the scenes, reached as a per run service, so
+/// the instance a game's calls land on is its own run and never another's. Its verbs are the
+/// level loads, the exit and the time scale, which is what a game drives boot and level flow
+/// with.
 ///
 /// It IS its run, through RunBase: its id, name, sessions, event
 /// bus, and what it owns registered on it, so others reach those through the run.
@@ -73,8 +68,8 @@ class GameInstance : RunBase, IRunService
 	private ITlsBackend mTls = null ~ delete _;
 	/// OWNED: this run's networking.
 	private NetworkController mNetwork = new .() ~ delete _;
-	/// OWNED: `Http` to this run's scripts and its native code. Its client is made on the first
-	/// request, pumped by TickScript and reset by StopScript and as each session stops.
+	/// OWNED: `Http` to this run's native code. Its client is made on the first request, pumped
+	/// by TickGame and reset as each session stops.
 	private HttpFacade mHttpFacade = new .() ~ delete _;
 
 	/// OWNED: this run's action state, so one instance's input never reaches another's.
@@ -95,7 +90,7 @@ class GameInstance : RunBase, IRunService
 	/// once the scenes' frame is over.
 	private List<int32> mFinishAtPump = new .() ~ delete _;
 	/// How deep calls into a scene's own code run outside the scenes' tick: a behaviour's or a
-	/// level's event handler, delivered by the run's drain or by an Emit from the game. Its scene
+	/// level's event handler, delivered by the run's drain or by an event the game sends. Its scene
 	/// must not be replaced under it, so a LoadScene then defers as one inside the tick does.
 	private int32 mSceneCodeDepth = 0;
 
@@ -114,43 +109,26 @@ class GameInstance : RunBase, IRunService
 	/// Whether the app can show a profiler overlay.
 	public typealias ProfilerAvailability = delegate bool();
 
-	/// OWNED: this run's script host, the gameplay context the game script AND this
-	/// instance's scenes' behaviours share. The subsystem wires it like its own; its scripts find
-	/// this run's services (`Run`, `Input`, `Save`, `Net`, `Http`) through it, before the
-	/// application's.
-	private ScriptRunHost mRunHost = new .() ~ delete _;
-	/// OWNED: `Input` to this run's scripts, over this run's action runtime alone.
+	/// OWNED: `Input` to this run's code, over this run's action runtime alone.
 	private InputFacade mInputFacade = null ~ delete _;
-	/// OWNED: this run's save, and `Save` to its scripts over it.
+	/// OWNED: this run's save, and `Save` over it.
 	private RunSave mSave = new .() ~ delete _;
 	private SaveFacade mSaveFacade = null ~ delete _;
-	/// OWNED: `Net` to this run's scripts, over the networking controller.
+	/// OWNED: `Net` to this run's code, over the networking controller.
 	private NetFacade mNetFacade = null ~ delete _;
-	/// OWNED: this run's random numbers, its native code's and (through the host's
-	/// ScriptRandom) its scripts' alike; back to the default seed as each session stops.
+	/// OWNED: this run's random numbers; back to the default seed as each session stops.
 	private RunRandom mRandom = new .() ~ delete _;
-	/// The orchestrator: an instance of the game script's class. Null when no script runs.
-	private ScriptObject mGame = null;
-	/// BORROWED: the resource manager owns the product.
-	private ScriptClass mGameClass = null;
-	/// Why the last game script stopped on its own: the handler it faulted in and the
-	/// runtime's problems, or that it did not instantiate. Empty while it runs or after a
-	/// clean stop; a start clears it.
-	private String mScriptFault = new .() ~ delete _;
-	/// Seconds of frames TickScript has run since ResetRunClock: the host's delta, NOT scaled
+	/// Seconds of frames TickGame has run since ResetRunClock: the host's delta, NOT scaled
 	/// by the context's, the run's or the scene's time scale, so it keeps going while the game
 	/// pauses its scene with Run.TimeScale = 0 (a menu over a paused scene still takes clicks).
 	/// A scripted playtest times its input by it.
 	private double mRunTime = 0;
-	/// The host's delta of the last TickScript, before any time scale.
+	/// The host's delta of the last TickGame, before any time scale.
 	private float mRealDelta = 0;
 	private SceneLoader mSceneLoader = null ~ delete _;
 	private ExitRequest mExitRequest = null ~ delete _;
 	private ProfilerOverlayRequest mProfilerOverlay = null ~ delete _;
 	private ProfilerAvailability mProfilerAvailable = null ~ delete _;
-	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
-	private List<delegate void(Variant)> mGameCallbacks = new .() ~ DeleteContainerAndItems!(_);
-	private List<String> mGameHandlerNames = new .() ~ DeleteContainerAndItems!(_);
 	/// BORROWED: the native game LaunchGame made, which the run holds as a session service
 	/// (under IGameHooks) and deletes as the session ends. Null when none runs, and from its
 	/// OnExit on, so nothing reaches it between its exit and its deletion.
@@ -165,17 +143,11 @@ class GameInstance : RunBase, IRunService
 		mInputFacade = new InputFacade(mInputRuntime);
 		mSaveFacade = new SaveFacade(mSave);
 		mNetFacade = new NetFacade(mNetwork);
-		// Every context of this run finds this run's services through the run (Run, its input, its
-		// save, its HTTP, its networking), a behaviour's as much as a game script's.
-		mRunHost.OwningRun = this;
-		// Its scripts' `Random` draws from the run's generator, the one its native code reaches.
-		mRunHost.Random.Use(mRandom);
-		// The run's HTTP client is made on its scripts' first request, and https and a wss join
-		// use the run's TLS backend, made when first needed.
+		// The run's HTTP client is made on its first request, and https and a wss join use the
+		// run's TLS backend, made when first needed.
 		mHttpFacade.SetFactory(new () => HttpClients.Create(TlsBackend));
 		mNetwork.TlsBackendSource = new () => TlsBackend;
-		// What the run owns and others reach through it (RunServices.Get, and its scripts by type):
-		// borrowed, fields all.
+		// What the run owns and others reach through it (RunServices.Get): borrowed, fields all.
 		Register<GameInstance>(this);
 		Register<InputFacade>(mInputFacade);
 		Register<SaveFacade>(mSaveFacade);
@@ -184,7 +156,6 @@ class GameInstance : RunBase, IRunService
 		Register<INetworkController>(mNetwork); // how the engine's network subsystem reaches it (below this library)
 		Register<ActionRuntime>(mInputRuntime);
 		Register<RunSave>(mSave);
-		Register<ScriptRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
 		Register<RunRandom>(mRandom);
 	}
@@ -202,28 +173,24 @@ class GameInstance : RunBase, IRunService
 		}
 	}
 
-	/// This run's HTTP for its scripts.
+	/// This run's HTTP.
 	public HttpFacade Http => mHttpFacade;
 
 	public ~this()
 	{
+		// The input source is borrowed and may be gone by now, so the game's end asks no pad of
+		// it to stop rumbling.
+		mInputSource = null;
 		// A native game launched outside a session has no stop to end it: it ends here, while
 		// what it reaches still exists. In a session the stop below ends it.
 		if (State == .Idle)
 			StopGame();
 		// Disposed first, while the fields registered on it still exist: their stop hooks run,
-		// and the run's manager hears it go.
+		// and the run's manager hears it go. What was saved outside a session is written too;
+		// then the scenes go, before the fields.
 		Dispose();
-		// The game script, then the scenes, whose behaviours live on the host, then the
-		// host itself with the fields. The input source is borrowed and may be gone by now, so
-		// the script's stop asks no pad of it to stop rumbling.
-		mInputSource = null;
-		// The host goes below whatever pins it, and the subsystem that installed its check may
-		// already be gone at shutdown: the check is not asked again.
-		DeleteAndNullify!(mRunHost.TeardownCheck);
-		StopScript();
+		mSave.Flush();
 		ClearScenes();
-		mRunHost.Teardown();
 	}
 
 	/// Pairs a scene in as the current one. The native game hears of a scene that was not
@@ -259,7 +226,7 @@ class GameInstance : RunBase, IRunService
 	[Scriptable]
 	public bool SceneReady => mScene != null;
 
-	/// Simulated and scripted, but NOT rendered by the host: no camera and no swapchain
+	/// Simulated, but NOT rendered by the host: no camera and no swapchain
 	/// needed, which is what an in editor dedicated server is.
 	public bool Headless
 	{
@@ -294,12 +261,9 @@ class GameInstance : RunBase, IRunService
 
 	/// Delivers this frame's queued events. Cascade bounded like a scene's, and safe with
 	/// nothing subscribed.
-	/// Held while debug paused, so what was published during the pause is delivered after
-	/// it rather than into a held run or dropped.
 	public void DrainRunEvents()
 	{
-		if (!mRunHost.IsDebugPaused)
-			Events.Drain();
+		Events.Drain();
 	}
 
 	// ==================== Scenes ====================
@@ -311,9 +275,8 @@ class GameInstance : RunBase, IRunService
 	/// load wants: a scene being streamed must not be seen until it is whole.
 	public Scene CreateScene(StringView name, bool activate = true)
 	{
-		// The group gives the scene this run before it assembles, so the script subsystem binds
-		// its behaviours to this run's host (the one registered on it), and the scene's events
-		// and the run's are one object by the time anything binds to either.
+		// The group gives the scene this run before it assembles, so the scene's events and the
+		// run's are one object by the time anything binds to either.
 		return mSceneManager.CreateScene(name, activate);
 	}
 
@@ -570,10 +533,6 @@ class GameInstance : RunBase, IRunService
 
 	// ==================== The Game tier ====================
 
-	/// This run's script host. The subsystem wires it; the instance's scenes' behaviours
-	/// and its game script run on it.
-	public ScriptRunHost RunHost => mRunHost;
-
 	public void SetSceneLoader(SceneLoader loader)
 	{
 		delete mSceneLoader;
@@ -597,7 +556,7 @@ class GameInstance : RunBase, IRunService
 		mProfilerAvailable = available;
 	}
 
-	/// Starts a level load by id: the ticket a script polls, or nought when the load could
+	/// Starts a level load by id: the ticket a game polls, or nought when the load could
 	/// not start, a wrong id or no loader. The scene activates through the app's policy once
 	/// its resources land, on the pump, and replaces the current one then.
 	[Scriptable]
@@ -619,8 +578,8 @@ class GameInstance : RunBase, IRunService
 	/// behaviour's or a level's event handler wherever it is delivered), the load starts now and
 	/// finishes at the host's next PumpLoads, after the frame's scene update: the scene whose
 	/// code asked is not destroyed under it. True then means the load started; the current scene
-	/// is still the old one until then. A game's own code (its hooks, its handlers, a game
-	/// script) loads at once, and reads the new scene when the call returns.
+	/// is still the old one until then. A game's own code (its hooks, its handlers) loads at once,
+	/// and reads the new scene when the call returns.
 	[Scriptable]
 	public bool LoadScene(Guid sceneId)
 	{
@@ -670,8 +629,8 @@ class GameInstance : RunBase, IRunService
 
 	/// Shows or hides the app's profiler overlay (frame times, the longest scopes and GPU
 	/// passes, the counters), for a game's debug menu. The app decides what that means; in a
-	/// ShippingRelease build nothing shows. Bound in every build, so a script compiles the
-	/// same in the shipped game; unwired, a no-op.
+	/// ShippingRelease build nothing shows. There in every build, so a game compiles the same in
+	/// the shipped one; unwired, a no-op.
 	[Scriptable]
 	public void SetProfilerOverlay(bool shown)
 	{
@@ -684,221 +643,47 @@ class GameInstance : RunBase, IRunService
 	[Scriptable]
 	public bool ProfilerAvailable() => (mProfilerAvailable != null) && mProfilerAvailable();
 
-	/// Publishes on the run bus, which every scene of this run shares: the Game orchestrator
-	/// and every behaviour declaring `on<Event>` hear it when the bus drains.
-	[Scriptable]
-	public void Emit(StringView eventName) => Events.Publish(StringHash(eventName), Variant());
-	[Scriptable]
-	public void Emit(StringView eventName, float payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-	[Scriptable]
-	public void Emit(StringView eventName, int32 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-	[Scriptable]
-	public void Emit(StringView eventName, bool payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-	[Scriptable]
-	public void Emit(StringView eventName, StringView payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-	[Scriptable]
-	public void Emit(StringView eventName, EntityHandle payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-	[Scriptable]
-	public void Emit(StringView eventName, Float3 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-	[Scriptable]
-	public void Emit(StringView eventName, Float4 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
-
-	/// Whether a game script is running: instantiated and not faulted.
-	public bool ScriptRunning => mGame != null;
-	/// Reads a property of the running game script (a score, a lives count) into `value`;
-	/// false with no script running or no such property.
-	public bool GetScriptProperty(StringView name, ref ScriptValue value)
-	{
-		if ((mGame == null) || (mRunHost.Runtime == null))
-			return false;
-		return mRunHost.Runtime.GetProperty(mGame, name, ref value);
-	}
-
-	/// Why the game script stopped on its own; empty when it did not (see mScriptFault).
-	public StringView ScriptFault => mScriptFault;
-	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime); standing still while
-	/// the debugger holds the run.
+	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime).
 	public double RunTime => mRunTime;
-	/// A run's clock from zero: its time, and its real delta, which `launch()` would otherwise
-	/// read as the previous run's last frame.
+	/// A run's clock from zero: its time, and its real delta, which the game's launch would
+	/// otherwise read as the previous run's last frame.
 	public void ResetRunClock()
 	{
 		mRunTime = 0;
 		mRealDelta = 0;
 	}
 
-	/// This frame's seconds before any time scale, the context's included. `update(dt)`
-	/// already ignores Run.TimeScale; coroutine waits stand still at TimeScale 0.
+	/// This frame's seconds before any time scale, the context's included. The game's update
+	/// already ignores Run.TimeScale.
 	[Scriptable, ScriptName("RealDeltaTime")]
 	public float RealDeltaTime => mRealDelta;
-	/// Seconds of frames since the run started, unscaled: RunTime to a script.
+	/// Seconds of frames since the run started, unscaled: RunTime as a float.
 	[Scriptable, ScriptName("RealTime")]
 	public float RealTime => (float)mRunTime;
 
-	/// A step debugger over this run: its behaviours and its game script. The configurator
-	/// applies the breakpoints and takes the pointer; TAKES OWNERSHIP of the delegate.
-	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mRunHost.RequestDebugger(configurator);
-	public IScriptDebugger Debugger => mRunHost.Debugger;
-	public bool IsDebugPaused => mRunHost.IsDebugPaused;
-
-	/// Compiles and launches the game script: the class's constructor, then `launch()` when
-	/// it has one; `update(dt)` each tick and `exit()` at the stop, all optional, its
-	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
-	/// instantiate, logged. A second start stops the first.
-	public bool StartScript(ScriptClass scriptClass)
-	{
-		StopScript();
-		mScriptFault.Clear();
-		if (scriptClass == null)
-			return false;
-		let game = mRunHost.Instantiate(scriptClass);
-		if (game == null)
-		{
-			GlobalLog(.Error, scope $"Run: the game script '{scriptClass.ClassName}' did not instantiate");
-			mScriptFault.AppendF("the game script '{}' did not instantiate (log_read, category Script, has why)", scriptClass.ClassName);
-			return false;
-		}
-		mGame = game;
-		mGameClass = scriptClass;
-		mRunHost.HasGameScriptHold = true;
-		SubscribeGameHandlers(scriptClass);
-		InvokeGame("launch", default);
-		GlobalLog(.Information, scope $"Run: game script '{scriptClass.ClassName}' launched");
-		return mGame != null;
-	}
-
-	/// `exit()`, then release. Idempotent; the fault path lands here too.
-	public void StopScript()
-	{
-		ClearGameSubscriptions();
-		// Any rumble the game started ends with it: no pad is left buzzing after its run.
-		if (mInputSource != null)
-			ActionRuntime.StopAllRumble(mInputSource);
-		// What the game saved and did not write yet is kept: the run writes it as it ends.
-		mSave.Flush();
-		if (mGame != null)
-		{
-			InvokeGame("exit", default);
-			if ((mGame != null) && (mRunHost.Runtime != null))
-			{
-				mRunHost.Runtime.CancelCoroutinesFor(mGame);
-				mRunHost.Runtime.Release(mGame);
-			}
-			mGame = null;
-			mGameClass = null;
-			// The game held the host; it may go now, when no scene of the run still pins it.
-			mRunHost.HasGameScriptHold = false;
-			mRunHost.CheckTeardown();
-			// Networking belongs to the game's run: what it hosted or joined closes with it,
-			// after its exit() had the chance to say goodbye. An editor's Game tab stopped and
-			// started again would otherwise come back still a server, its port still held.
-			// Only a game's stop: StartScript stops first, and an app's startup preset hosts
-			// or joins before the game launches.
-			mNetwork.StopNetworking();
-		}
-		// So do its HTTP requests: no answer reaches a script that has stopped.
-		mHttpFacade.Reset();
-	}
-
-	/// Ticks the game script and moves the run's clock: once per frame, before the run bus
-	/// drains. A faulting update stops THIS run's script, not the run.
+	/// Ticks the native game and moves the run's clock: once per frame, before the run bus
+	/// drains.
 	///
-	/// The orchestrator's `update(dt)` is the host's delta through the context's and the
-	/// current scene's scales, NOT the run's (Run.TimeScale): the Game sets that scale to pause
-	/// or slow its scenes, and the timers it keeps over them (a celebration, a countdown on a
-	/// frozen screen) go on in real time. The run's coroutines, behaviours' among them, advance
-	/// by gameplay time, the run's scale included, so a pause still holds them.
-	public void TickScript(float hostDeltaTime, float contextTimeScale)
+	/// The game's update takes the host's delta through the context's and the current scene's
+	/// scales, NOT the run's (Run.TimeScale): the game sets that scale to pause or slow its
+	/// scenes, and the timers it keeps over them (a celebration, a countdown on a frozen screen)
+	/// go on in real time.
+	public void TickGame(float hostDeltaTime, float contextTimeScale)
 	{
-		// Debug paused: the debugger holds a suspended call. A new update each frame would
-		// hit the breakpoint again per frame and orphan the held call; script time stands
-		// still, like the scene sim.
-		if (mRunHost.IsDebugPaused)
-			return;
 		// The host's pause (the editor's toolbar) holds the game still with its scene: no update
-		// for the Game class, the run's clock not counting, and its HTTP answers waiting. A game's
-		// own pause (time scale nought) is the game's business and still ticks it.
+		// for the game, the run's clock not counting, and its HTTP answers waiting. A game's own
+		// pause (time scale nought) is the game's business and still ticks it.
 		if (State == .Paused)
 			return;
 		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
-		let orchestrator = FrameTime(hostDeltaTime, contextTimeScale, 1.0f, sceneScale).SceneDelta;
-		let gameplay = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale).SceneDelta;
+		let delta = FrameTime(hostDeltaTime, contextTimeScale, 1.0f, sceneScale).SceneDelta;
 		mRunTime += hostDeltaTime;
 		mRealDelta = hostDeltaTime;
 		// Answers to the run's HTTP requests reach their handlers here, on the game's thread,
-		// whether a game script or behaviours sent them.
+		// whether the game or its behaviours sent them.
 		mHttpFacade.Pump();
-		if (mGame != null)
-		{
-			var args = ScriptValue[1](.FromFloat(orchestrator));
-			InvokeGame("update", .(&args[0], 1));
-		}
-		// The native game's update takes the orchestrator's delta too.
 		if (mNativeGame != null)
-			mNativeGame.Update(orchestrator);
-		mRunHost.Advance(gameplay);
-	}
-
-	/// A run bus event into the orchestrator's `on<Event>(payload)`. At drain time, no
-	/// script call active, so it dispatches directly; held while debug paused.
-	private void DispatchGameEvent(StringView handler, Variant payload)
-	{
-		if ((mGame == null) || mRunHost.IsDebugPaused)
-			return;
-		var value = ScriptPayloads.ValueOf(payload, mScene);
-		var args = ScriptValue[1](value);
-		InvokeGame(handler, value.IsNil ? default : .(&args[0], 1));
-	}
-
-	/// A call on the orchestrator, gated by the class declaring it: a script without an
-	/// `Update` is fine. A fault stops the script.
-	private void InvokeGame(StringView handler, Span<ScriptValue> args)
-	{
-		let runtime = mRunHost.Runtime;
-		if ((mGame == null) || (runtime == null) || !runtime.HasMethod(mGame, handler, args.Length))
-			return;
-		var result = ScriptValue.Nil;
-		if (runtime.Invoke(mGame, handler, args, ref result))
-			return;
-		if (mRunHost.IsDebugPaused)
-			return; // suspended at a breakpoint, not a fault; the debugger completes it
-		GlobalLog(.Error, scope $"Run: the game script faulted in {handler}; stopped");
-		mScriptFault.Set(scope $"faulted in {handler}");
-		let problems = scope String();
-		mRunHost.ReportProblems(problems);
-		if (!problems.IsEmpty)
-			mScriptFault.AppendF(": {}", problems);
-		let faulted = mGame;
-		mGame = null;
-		runtime.CancelCoroutinesFor(faulted);
-		runtime.Release(faulted);
-		ClearGameSubscriptions();
-	}
-
-	private void SubscribeGameHandlers(ScriptClass scriptClass)
-	{
-		for (let handler in scriptClass.Handlers)
-		{
-			let eventName = ScriptSceneSystem.EventNameOf(handler, .. scope .());
-			if (eventName.IsEmpty || mGameSubscriptions.ContainsKey(eventName))
-				continue;
-			let name = new String(eventName);
-			let handlerName = new String(handler);
-			delegate void(Variant) callback = new (payload) => { DispatchGameEvent(handlerName, payload); };
-			mGameCallbacks.Add(callback);
-			mGameHandlerNames.Add(handlerName);
-			mGameSubscriptions[name] = Events.Subscribe(StringHash(eventName), callback);
-		}
-	}
-
-	private void ClearGameSubscriptions()
-	{
-		for (let entry in mGameSubscriptions)
-			Events.Unsubscribe(entry.value);
-		DeleteDictionaryAndKeys!(mGameSubscriptions);
-		mGameSubscriptions = new .();
-		ClearAndDeleteItems!(mGameCallbacks);
-		ClearAndDeleteItems!(mGameHandlerNames);
+			mNativeGame.Update(delta);
 	}
 
 	// ==================== The native game ====================
@@ -907,17 +692,17 @@ class GameInstance : RunBase, IRunService
 	public bool HasNativeGame => mNativeGame != null;
 	/// The running native game, or null. BORROWED: the run deletes it as the session ends.
 	public IGameHooks NativeGame => mNativeGame;
-	/// Whether a game of either kind runs: the native game, or a game script.
-	public bool GameRunning => HasNativeGame || ScriptRunning;
+	/// Whether a game runs: the native game, launched and not yet at its OnExit.
+	public bool GameRunning => HasNativeGame;
 
 	/// Launches the native game: the factory among the run's services (IGameFactory; the
 	/// engine's game runner, when the build registered a game) makes it, the run holds it for
 	/// this session (AddForSession, deleted as the session stops), and its OnLaunch runs. From
-	/// then on TickScript updates it, SetScene and the tracked loads tell it of each scene that
+	/// then on TickGame updates it, SetScene and the tracked loads tell it of each scene that
 	/// becomes current, and the session's stop ends it (OnRunStopping).
 	///
-	/// The hosts call it where they start a game script: the player before its boot scene,
-	/// a Game tab before its scene loads, so a scene current before the launch is not reported.
+	/// The hosts call it before the first scene: the player before its boot scene, a Game tab
+	/// before its scene loads, so a scene current before the launch is not reported.
 	/// False, with nothing launched, when no factory is registered (a build without a game),
 	/// when a game runs already (logged), when the run is stopping or gone, or when the factory
 	/// made none (logged).
@@ -948,22 +733,23 @@ class GameInstance : RunBase, IRunService
 
 	/// Ends the native game outside a session's stop, which is what a host does when it
 	/// abandons a launch before starting the session (a Game tab whose scene failed to load):
-	/// OnExit, the save written, its networking closed, and the game deleted. Nothing when none
-	/// runs.
+	/// any rumble it started stopped, OnExit, the save written, its networking closed, and the
+	/// game deleted. Nothing when none runs.
 	public void StopGame()
 	{
 		if (mNativeGame == null)
 			return;
+		StopRumble();
 		EndNativeGame();
 		DropNativeCallbacks();
 		Remove<IGameHooks>();
 	}
 
-	/// The session ends (RunBase.Stop): the native game's OnExit, then the save written, so
-	/// what the game saved as it exited is in the file, then the networking it hosted or
-	/// joined closed after its exit had the chance to say goodbye. A game script's exit() ran
-	/// earlier, in StopScript, so what it saved is written here too. The run deletes the game
-	/// after the hooks, with the session's other services.
+	/// The session ends (RunBase.Stop): any rumble the game started stops, so no pad is left
+	/// buzzing after its run; then the native game's OnExit, then the save written, so what the
+	/// game saved as it exited is in the file, then the networking it hosted or joined closed
+	/// after its exit had the chance to say goodbye. The run deletes the game after the hooks,
+	/// with the session's other services.
 	///
 	/// Then what native code handed the run's facades goes, its Net handlers and its HTTP
 	/// requests under way, since the game, its levels and its behaviours they call into go with
@@ -971,6 +757,7 @@ class GameInstance : RunBase, IRunService
 	/// session draws what this one did.
 	void IRunService.OnRunStopping(IRun run)
 	{
+		StopRumble();
 		if (mNativeGame != null)
 			EndNativeGame();
 		else
@@ -985,6 +772,13 @@ class GameInstance : RunBase, IRunService
 	{
 		mNetFacade.DropNativeHandlers();
 		mHttpFacade.Reset();
+	}
+
+	/// Every pad of the run's input source stops rumbling; nothing without a source.
+	private void StopRumble()
+	{
+		if (mInputSource != null)
+			ActionRuntime.StopAllRumble(mInputSource);
 	}
 
 	/// OnExit, the save, the networking, in that order; the game is no longer reached after.
@@ -1007,8 +801,8 @@ class GameInstance : RunBase, IRunService
 	// ==================== Save ====================
 
 	/// Names this run's save file and reads it (the player's user data directory, a Game tab's
-	/// project Editor/ folder). The run's scripts reach it through the `Save` service, and the
-	/// run writes it when its script stops if anything changed. Empty: values kept for the run
+	/// project Editor/ folder). The run's code reaches it through the `Save` service, and the
+	/// run writes it as its session stops if anything changed. Empty: values kept for the run
 	/// only.
 	public void SetSaveFile(StringView path) => mSave.Open(path);
 

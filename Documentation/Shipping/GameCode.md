@@ -170,8 +170,8 @@ class NativeSampleGame : Game
 - `Instance` is the run (`GameInstance`): `LoadScene(guid)`, `LoadSceneAsync(guid)`,
   `RequestExit()`, `InstanceTimeScale` (nought pauses the scenes), `RealDeltaTime`, and its
   services through `Instance.Get<T>()`.
-- A project that also names a startup script runs the native game; a warning says the script is
-  not started. The scene page's Simulate launches no game.
+- A startup script the project's settings still name is ignored: the engine runs no scripts.
+  The scene page's Simulate launches no game.
 
 ## Struct components: the fast path
 
@@ -196,7 +196,7 @@ logic with state and callbacks; a struct component for data many entities share 
   itself. `Random` on all three tiers is the run's `RunRandom` (`Range`, `IntRange`, `Bool`),
   back to its default seed as each session stops.
 
-The scripts' scene facades are one-line forwards to the managers; native code calls the
+The scripts' scene facades were one-line forwards to the managers; native code calls the
 managers:
 
 | Script | Native |

@@ -115,37 +115,37 @@ class NativeGameTests
 		Test.Assert(factory.Made == 2);
 	}
 
-	/// The update gets the delta a game script's update gets: the host's through the context's
-	/// scale and the scene's, never the run's own; the host's pause holds it.
+	/// The update gets the host's delta through the context's scale and the scene's, never the
+	/// run's own; the host's pause holds it.
 	[Test]
 	public static void TheUpdateTakesTheDeltaTheRunsScaleDoesNotTouch()
 	{
 		let factory = scope ProbeGameFactory();
 		let instance = scope GameInstance();
 		instance.Register<IGameFactory>(factory);
-		instance.TickScript(0.25f, 1.0f);
+		instance.TickGame(0.25f, 1.0f);
 		Test.Assert(factory.Updates == 0, "nothing launched, nothing updated");
 
 		Test.Assert(instance.LaunchGame());
 		instance.InstanceTimeScale = 0.0f; // the game's own pause of its scenes
-		instance.TickScript(0.25f, 1.0f);
+		instance.TickGame(0.25f, 1.0f);
 		Test.Assert(factory.Updates == 1);
 		Test.Assert(factory.LastDelta == 0.25f, scope $"{factory.LastDelta}");
-		instance.TickScript(0.25f, 2.0f);
+		instance.TickGame(0.25f, 2.0f);
 		Test.Assert(factory.LastDelta == 0.5f, "the context's scale applies");
 
 		let scene = instance.CreateScene("slow");
 		scene.TimeScale = 0.5f;
 		instance.SetScene(scene);
-		instance.TickScript(0.25f, 1.0f);
+		instance.TickGame(0.25f, 1.0f);
 		Test.Assert(factory.LastDelta == 0.125f, "and the current scene's");
 
 		instance.Start();
 		instance.SetPaused(true);
-		instance.TickScript(0.25f, 1.0f);
+		instance.TickGame(0.25f, 1.0f);
 		Test.Assert(factory.Updates == 3, "the host's pause holds it");
 		instance.SetPaused(false);
-		instance.TickScript(0.25f, 1.0f);
+		instance.TickGame(0.25f, 1.0f);
 		Test.Assert(factory.Updates == 4);
 	}
 
@@ -252,7 +252,7 @@ class NativeGameTests
 			Test.Assert(factory.Log == "launch exit ", factory.Log);
 			Test.Assert(factory.Deleted == 1);
 			Test.Assert(!instance.HasNativeGame && (instance.Get<IGameHooks>() == null));
-			instance.TickScript(0.25f, 1.0f);
+			instance.TickGame(0.25f, 1.0f);
 			Test.Assert(factory.Updates == 0, "nothing updates a stopped game");
 
 			Test.Assert(instance.LaunchGame());

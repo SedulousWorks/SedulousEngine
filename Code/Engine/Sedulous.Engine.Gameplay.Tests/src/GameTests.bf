@@ -165,8 +165,8 @@ class GameTests
 			instance.Start();
 
 			instance.InstanceTimeScale = 0.0f; // the game pauses its scenes; its own clock goes on
-			instance.TickScript(0.5f, 1.0f);
-			instance.TickScript(0.25f, 1.0f);
+			instance.TickGame(0.5f, 1.0f);
+			instance.TickGame(0.25f, 1.0f);
 			Test.Assert(GameLog.Elapsed == 0.75f, scope $"{GameLog.Elapsed}");
 
 			let scene = instance.CreateScene("arena");

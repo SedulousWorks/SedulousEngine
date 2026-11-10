@@ -210,30 +210,6 @@ class SceneMcpEditToolsTests
 			Test.Assert(missing.Error.StartsWith("no prefab"), missing.Error);
 		}
 
-		// A script on an entity: entity_inspect lists the behaviour the component holds (its
-		// class is not cooked here, so its properties would be named by hash).
-		{
-			let script = Guid.Create();
-			let target = page.EditContext.Resolve(Guid.Parse(platformId));
-			let scripts = page.EditContext.FindManager(typeof(Sedulous.Engine.Script.ScriptComponent));
-			page.EditContext.AddComponent(Guid.Parse(platformId), typeof(Sedulous.Engine.Script.ScriptComponent));
-			let component = (Sedulous.Engine.Script.ScriptComponent*)scripts.GetComponentAddress(target);
-			let behavior = new Sedulous.Engine.Script.ScriptBehavior();
-			behavior.Script = .(script);
-			component.Behaviors.Add(behavior);
-			let inspected = Call(server, "entity_inspect", "{\"entity\":\"Platform\"}");
-			defer delete inspected;
-			Test.Assert(inspected.Ok, inspected.Error);
-			let components = inspected.Payload.Get("entity").Get("components");
-			JsonValue behaviors = null;
-			for (int i < components.Count)
-				if (components.At(i).Get("type").AsString() == "script")
-					behaviors = components.At(i).Get("behaviors");
-			Test.Assert((behaviors != null) && (behaviors.Count == 1));
-			Test.Assert(behaviors.At(0).Get("script").AsString() == script.ToString(.. scope .()));
-			Test.Assert(behaviors.At(0).Get("enabled").AsBool());
-		}
-
 		// A deletion takes the subtree; while simulating, every edit is refused.
 		{
 			let deleted = Call(server, "entity_delete", "{\"entity\":\"Platform\"}");

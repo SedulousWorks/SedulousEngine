@@ -6,7 +6,6 @@ using Sedulous.Render;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
-using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.GUI;
@@ -173,7 +172,7 @@ class InspectorHelperTests
 	public static void EverySettingsFieldIsReflectedAtRuntimeNotJustTheAnnotatedOnes()
 	{
 		for (let type in scope Type[](typeof(EnvironmentSettings), typeof(PostProcessSettings),
-			typeof(PhysicsSceneSettings), typeof(NavigationSceneSettings), typeof(SceneScriptSettings)))
+			typeof(PhysicsSceneSettings), typeof(NavigationSceneSettings)))
 		{
 			var reflected = 0;
 			for (let f in type.GetFields())
