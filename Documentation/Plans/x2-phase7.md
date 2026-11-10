@@ -255,8 +255,8 @@ What leaves the SDK out of it on purpose: the Steam Deck build (Q10), CullBench,
 The order, on the release commit (AGENTS.md, Releases):
 1. Cut the release commit and tag it.
 2. Build `Sedulous.Tools.ProjectManager` in ShippingRelease.
-3. `pack-sdk.py --check`, then `pack-sdk.py --manager <its build dir>`.
-4. `pack-toolchain.sh`, when the pin moved.
+3. `pack-toolchain.sh`, when the pin moved (before the SDK: its index carries the toolchain zip's digest).
+4. `pack-sdk.py --check`, then `pack-sdk.py --manager <its build dir> --toolchain <the zip>`.
 5. `pack-samples.py`.
 6. Make the GitHub release from the tag and attach everything.
 
@@ -349,6 +349,7 @@ Each commit lists its tests. ASan (`asan-test.py`) runs on every changed test pr
       - Changed: the editor opens one project, and Close Project returns to the manager;
       - Removed: the editor's project manager screen and `--release-files`.
     - `x2.md`: phase 7's boxes, and phase 1's "born with Code/" and templates.
+    - Done: AGENTS.md's Build names the pin as the Beef to build with and says the editor opens one project (`--project` or the folder) and starts the manager without one, the manager making projects from the templates and opening each in its own editor built over its SDK; its Releases section gains the pin (moved with Beef, `Dependencies/Beef/`'s licences and the notices with it), what `v<version>` carries, and the steps on the release commit: the manager's ShippingRelease build, `pack-toolchain.sh` when the pin moved (else the earlier release's zip downloaded for its digest), `pack-sdk.py --check` then the pack with `--manager` and `--toolchain` (`--toolchain-release` for an earlier release's), `pack-samples.py`, then the GitHub release. The toolchain is packed before the SDK, not after it as this design's release order had it, since the SDK's index carries the toolchain zip's digest; the order above is corrected. AGENTS.md's Sample projects already said the Samples tab is the manager's and the editor opens one project (commit 13). README: the Download section (the SDK zip, the manager and what it does, the linker and Emscripten, Sdk.md) and a Project manager feature line. BUILDING.md: the pinned Beef and the Linux linker in the requirements. `Sdk.md`: a release's assets and the order. `third-party-notices.py`'s docstring: a project's own builds, the export and the SDK carry the notices, no export template. CHANGELOG: Added, the project manager as its own program (templates, Open's build, engines side by side, the toolchain checks and its download, samples per engine); commit 14's line already covers the SDK download and commit 13's Changed line the editor opening one project, Close Project, and the Samples tab and `--release-files` moving to the manager, so no Changed or Removed line is added again. `x2.md`: D5's note, phase 1's two items and phase 7's six boxes ticked with what each became.
 
 Commits 2 to 5 follow 1, in any order. Commit 6 goes before 7, 7 before 8, and 8 before 9 to 12. Commit 13 needs 9 and 10. Commit 14 needs 8. Commit 15 is independent, but its pin goes into commit 14's `sdk.json`.
 

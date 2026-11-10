@@ -133,3 +133,22 @@ than glibc 2.35 and build and run a small program in Debug and in Release. It wr
 `beef-<pin>-linux64.zip`, each file's Unix mode kept, its times the commit's. Building Beef
 compiles its C++ libraries and BeefBuild in Debug and in Release and runs its compiler tests:
 give it the machine, with nothing else building beside it.
+
+## A release
+
+Release `v<display>` carries, for each platform packed (Linux64 alone until a Windows host packs
+Win64):
+
+- `sedulous-sdk-<display>-<platform>.zip` and its index, `sdk-<platform>.json`, which the
+  project manager's Engines page lists the release by;
+- `beef-<pin>-<platform>.zip`, the toolchain, when the release moved the pin; a release that
+  did not names the earlier release that carries it (the index's `toolchain.release`);
+- what `pack-samples.py` writes: `samples.json`, and each sample's `sample-<folder>.zip` and
+  `sample-<folder>.png`, which the Samples tab lists for that engine.
+
+They are packed by hand from the release commit: the project manager's ShippingRelease build,
+then the toolchain (when the pin moved), the SDK with `--manager` and `--toolchain`, and the
+samples. AGENTS.md (Releases) has the steps.
+
+A user's first download is the SDK zip: unpacked anywhere, its `ProjectManager/` lists the SDK it
+sits in and offers the toolchain on its Toolchain page.

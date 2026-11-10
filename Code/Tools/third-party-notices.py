@@ -4,8 +4,10 @@ assembled from the licence files kept beside each component in Dependencies/.
 
 Most of these licences (MIT, BSD, Apache, Zlib, the LLVM release licence) require their notice to
 go with every copy, a binary one included. The file is committed at Dependencies/; the player, the
-editor and the web player copy it beside their executables as they build, and an export template
-carries it as a sidecar, so every exported game and template has it with no step of its own.
+editor and the web player copy it beside their executables as they build (a project's own builds
+of them too), an export packages it beside the game's player, and the engine SDK carries
+it at Dependencies/ and beside the project manager, so every exported game, editor and SDK has it
+with no step of its own.
 
 Left out: what never ships in a binary (the test frameworks), and GPUI (adapted shader code,
 credited in its own source, with its licence in Dependencies/gpui/). A component added to

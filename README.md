@@ -55,6 +55,9 @@ This is the second iteration of the engine. The previous one continues on the `v
   per-domain tools (terrain sculpting and painting, vegetation, splines), inspectors from
   reflection, an asset browser, undo and redo, play in editor (several instances side by side), a
   profiler, and a page per asset type.
+- **Project manager** (`Sedulous.Tools.ProjectManager`): projects made from templates, each
+  opened in its own editor built over its engine version, engine versions installed side by side,
+  the toolchain checked and installed, and the sample games downloaded.
 - **Asset pipeline:** importers for glTF, FBX, OBJ, images, audio and fonts; cooks per asset
   type; BC7 and ASTC texture compression.
 - **Export** to the desktop, the web (WebAssembly with WebGPU) and the Steam Deck, from
@@ -70,9 +73,17 @@ This is the second iteration of the engine. The previous one continues on the `v
 
 ## Download
 
-Releases and the sample games are on the
-[releases page](https://github.com/SedulousWorks/SedulousEngine/releases). The editor's project
-manager downloads the samples from the release of its own version.
+Releases are on the
+[releases page](https://github.com/SedulousWorks/SedulousEngine/releases). Each carries the engine
+SDK for Linux, `sedulous-sdk-<version>-linux64.zip`: unpack it anywhere and run
+`ProjectManager/Sedulous.Tools.ProjectManager`. The project manager makes projects from the
+engine's templates and opens each in its own editor, which it builds over the SDK the first time
+(a build of the whole engine, the longest step). It installs other engine versions side by side
+and picks the one each project opens with, checks what a build needs and installs the Beef
+toolchain the engine was built with, and downloads the sample games from the release of the
+engine picked. A build also needs the system's linker (`clang++` or `c++`, and `ar`), and a web
+export Emscripten: [Documentation/Shipping/Sdk.md](Documentation/Shipping/Sdk.md) has the
+details.
 
 ## Building
 

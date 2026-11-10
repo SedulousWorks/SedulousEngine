@@ -47,6 +47,14 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   `sedulous-sdk-<version>-linux64.zip`, with the project manager inside. Unpack it anywhere and run
   `ProjectManager/Sedulous.Tools.ProjectManager` to make projects and open them; each project's
   editor is built over the SDK. What it holds and needs is in `Documentation/Shipping/Sdk.md`.
+- The project manager is a program of its own, `Sedulous.Tools.ProjectManager`: New Project
+  makes a project from an engine's templates (Starter or Empty), and Open builds the project's own
+  editor over its engine, with the build's progress and errors, before launching it. Its Engines
+  page installs engine versions from the releases side by side, lists the projects each opens, and
+  picks the engine a project opens with, upgrading or downgrading it. Its Toolchain page checks
+  what a build needs (BeefBuild, the linker, Emscripten for the web), installs the Beef the engine
+  was built with, which a release carries as `beef-<pin>-linux64.zip`, and points it at
+  Emscripten. Its Samples tab lists the samples of the engine picked there.
 
 ### Changed
 
