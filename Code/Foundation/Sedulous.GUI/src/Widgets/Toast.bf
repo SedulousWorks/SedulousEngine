@@ -80,18 +80,15 @@ class ToastAction
 typealias ToastId = uint64;
 
 /// What a toast shows and how long. A class: it owns its text and its actions; Set copies another
-/// deeply. Code owns one plainly (`scope`, or `new` and `delete`); a script's is counted, made by
-/// its constructor with the one reference the script holds, and freed by the last release, so the
-/// count is the script's alone and code never touches it.
+/// deeply. Its maker owns it plainly (`scope`, or `new` and `delete`).
 [Scriptable]
-class ToastRequest : IScriptCounted
+class ToastRequest
 {
 	private String mTitle = new .() ~ delete _;
 	private String mMessage = new .() ~ delete _;
 	private String mAnnouncement = new .() ~ delete _;
 	private String mKey = new .() ~ delete _;
 	private String mClasses = new .() ~ delete _;
-	private int32 mScriptRefs = 1;
 
 	[Scriptable]
 	public StringView Title { get => mTitle; set => mTitle.Set(value); }
@@ -142,17 +139,6 @@ class ToastRequest : IScriptCounted
 	[Scriptable]
 	public this()
 	{
-	}
-
-	public void AddRef()
-	{
-		Interlocked.Increment(ref mScriptRefs);
-	}
-
-	public void ReleaseRef()
-	{
-		if (Interlocked.Decrement(ref mScriptRefs) == 0)
-			delete this;
 	}
 
 	/// Adds an action (a script's way: a list's element added there is a copy). An empty

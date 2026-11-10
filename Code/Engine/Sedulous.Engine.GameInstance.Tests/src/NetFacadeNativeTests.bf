@@ -1,14 +1,13 @@
 using System;
 using System.Threading;
-using Sedulous.Script;
 using Sedulous.Engine.GameInstance;
 
 namespace Sedulous.Engine.GameInstance.Tests;
 
-/// `Net` to native code: the delegate overloads of On, OnNumber, OnText, OnJoin and OnLeave on
-/// the run's NetFacade, a host and a client as real endpoints on loopback, pumped by hand. The
-/// facade owns the delegates: Off takes one off (deleted after the delivery that called it, if
-/// any), and the run's session stop deletes every native one, a script's staying.
+/// `Net` to game code: the delegates of On, OnNumber, OnText, OnJoin and OnLeave on the run's
+/// NetFacade, a host and a client as real endpoints on loopback, pumped by hand. The facade owns
+/// the delegates: Off takes one off (deleted after the delivery that called it, if any), and the
+/// run's session stop deletes every one.
 class NetFacadeNativeTests
 {
 	/// Both endpoints a step at a time, as the application drives their transport.
@@ -25,18 +24,6 @@ class NetFacadeNativeTests
 	private class Tally
 	{
 		public int Calls = 0;
-	}
-
-	/// A script handler that counts its calls.
-	private class Counted : ScriptDelegate
-	{
-		public int Calls = 0;
-		public override bool IsAlive => true;
-		public override bool Invoke(Span<ScriptValue> args, ref ScriptValue result)
-		{
-			Calls++;
-			return true;
-		}
 	}
 
 	/// The host registers before it hosts; the client sends a number, a text and two bare
@@ -108,8 +95,8 @@ class NetFacadeNativeTests
 	/// Players by id through native handlers: the host hears the client join and sends it a
 	/// message alone; the client hears its own join and the message. Off takes a message's
 	/// handler off, a handler may take itself off or register its own name again from inside
-	/// its call, and the client's session stop deletes its native handlers, the host's leaving
-	/// then reaching none, while a script's handler stays.
+	/// its call, and the client's session stop deletes its handlers, the host's leaving then
+	/// reaching none.
 	[Test]
 	public static void JoinLeaveOffAndTheSessionsStop()
 	{
@@ -150,8 +137,8 @@ class NetFacadeNativeTests
 				again.Calls++;
 				clientNet.On("again", new [=again] (p) => { again.Calls += 10; });
 			});
-		let script = new Counted();
-		clientNet.On("bye", script); // owned by the facade from here
+		int byes = 0;
+		clientNet.On("bye", new [&] (player) => { byes++; });
 		Test.Assert(clientNet.Connect("127.0.0.1", port));
 		for (int i < 300)
 		{
@@ -183,12 +170,12 @@ class NetFacadeNativeTests
 		Test.Assert(welcome == (double)(clientId * 10), "taken off: the welcome reached nothing");
 		Test.Assert(onceCalls == 1, "it took itself off");
 		Test.Assert(again.Calls == 11, "the second call reached the handler the first registered");
-		Test.Assert(script.Calls == 1);
+		Test.Assert(byes == 1);
 
-		// The client's session ends: its native handlers go, the script's stays.
+		// The client's session ends: its handlers go.
 		client.Start();
 		client.Stop();
-		Test.Assert(clientNet.HandlerCount == 1, scope $"the script's alone: {clientNet.HandlerCount}");
+		Test.Assert(clientNet.HandlerCount == 0, scope $"every one gone: {clientNet.HandlerCount}");
 		Test.Assert(client.NetEndpoint != null, "a session with no game leaves the networking open");
 
 		hostNet.Disconnect();

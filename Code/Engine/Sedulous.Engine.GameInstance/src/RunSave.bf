@@ -5,7 +5,6 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Settings;
-using Sedulous.Script;
 using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Engine.GameInstance;

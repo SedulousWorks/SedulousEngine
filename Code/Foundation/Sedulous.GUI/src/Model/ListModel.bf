@@ -3,13 +3,13 @@ using Sedulous.Core;
 
 namespace Sedulous.GUI;
 
-// ListModel: a list of texts a script makes and fills, for a list, table or tree view to show
-// through setModel. A reference-counted object over a StringListModel, so a script holds it and
+// ListModel: a list of texts game code makes and fills, for a list, table or tree view to show
+// through setModel. A reference-counted object over a StringListModel, so its maker holds it and
 // a view keeps it alive while it shows it; its edits reach the views as the model's do (a row
 // inserted, removed or changed, not a reset).
 
 [GuiReflect(true), Scriptable]
-class ListModel : RefCounted, IScriptCounted
+class ListModel : RefCounted
 {
 	private StringListModel mModel = new .() ~ delete _;
 

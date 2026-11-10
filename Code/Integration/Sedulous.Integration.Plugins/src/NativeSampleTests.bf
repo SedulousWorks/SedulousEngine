@@ -11,7 +11,6 @@ using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;

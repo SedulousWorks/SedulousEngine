@@ -42,15 +42,15 @@ class GuiWiringTests
 		app.OnStartup(host);
 		app.Gui.RunScreens = true;
 		// The primary's Gui was installed with the subsystem.
-		Test.Assert(app.Gui.RunScriptFacadeCount == 1);
+		Test.Assert(app.Gui.RunFacadeCount == 1);
 
 		let instance = app.CreateInstance(true);
 		Test.Assert(instance != null);
-		Test.Assert(app.Gui.RunScriptFacadeCount == 2, "an extra run's own Gui");
+		Test.Assert(app.Gui.RunFacadeCount == 2, "an extra run's own Gui");
 		Test.Assert(app.Gui.ScreenRootFor(instance) !== app.Gui.ScreenRoot);
 		Test.Assert(app.Gui.RunScreenCount == 1);
 		app.ReleaseInstance(instance);
-		Test.Assert(app.Gui.RunScriptFacadeCount == 1, "its Gui gone with it");
+		Test.Assert(app.Gui.RunFacadeCount == 1, "its Gui gone with it");
 		Test.Assert(app.Gui.RunScreenCount == 0, "and its screen tier");
 
 		host.Subsystems.Shutdown();

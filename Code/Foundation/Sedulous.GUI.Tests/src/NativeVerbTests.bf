@@ -4,8 +4,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// What a game's own code uses where a script would: On with a delegate, by the names scripts use
-/// and a library's own, its handler deleted at Off or with its node; typed binds over the GUI's
+/// What a game's own code uses: On with a delegate, by the core's event names and a library's own, its handler deleted at Off or with its node; typed binds over the GUI's
 /// data, followed on the GUI's frame; a tween's end heard once, its delegate the tween's.
 class NativeVerbTests
 {
@@ -70,27 +69,6 @@ class NativeVerbTests
 		node.SendNamedEvent("screenenter", "title");
 		Test.Assert(heard == 1);
 		Test.Assert(detail == "title");
-	}
-
-	[Test]
-	public static void AScriptsOnAndNativeCodesResolveANameTheSameWay()
-	{
-		let node = new UIWidget();
-		defer node.ReleaseRef();
-		int native = 0;
-		node.On("screenenter", new [&] (e) => { native++; return false; });
-		let script = new FakeScriptDelegate();
-		Test.Assert(node.On("screenenter", script) > 0);
-		let clicked = new FakeScriptDelegate();
-		Test.Assert(node.On("click", clicked) > 0);
-
-		node.SendNamedEvent("screenenter", "title");
-		Test.Assert(native == 1);
-		Test.Assert(script.Calls == 1);
-		Test.Assert(clicked.Calls == 0);
-		node.SendEvent(scope MouseEvent(.MouseClick, node, .(0.0f, 0.0f)));
-		Test.Assert(clicked.Calls == 1);
-		Test.Assert(script.Calls == 1);
 	}
 
 	[Test]

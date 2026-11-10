@@ -17,8 +17,8 @@ class InputSubsystemTests
 		let context = scope SubsystemManager();
 		let input = scope InputSubsystem(null);
 		context.RegisterSubsystem(input);
-		Test.Assert(context.FindService(typeof(InputFacade)) === input.ScriptFacade);
-		Test.Assert(!input.ScriptFacade.IsDown("jump"), "idle: every action released");
+		Test.Assert(context.FindService(typeof(InputFacade)) === input.SharedFacade);
+		Test.Assert(!input.SharedFacade.IsDown("jump"), "idle: every action released");
 		context.RemoveSubsystem<InputSubsystem>();
 		Test.Assert(context.FindService(typeof(InputFacade)) == null, "gone as it leaves");
 	}
@@ -214,7 +214,7 @@ class InputSubsystemTests
 		early.Register<InputFacade>(earlyInput);
 		runs.Add(early);
 		let input = scope InputSubsystem(null);
-		Test.Assert(input.ScriptFacade.InputKinds === input.InputKinds, "its idle one, from the start");
+		Test.Assert(input.SharedFacade.InputKinds === input.InputKinds, "its idle one, from the start");
 		let context = scope SubsystemManager();
 		context.RegisterSubsystem(input);
 		context.SetRunManager(runs);

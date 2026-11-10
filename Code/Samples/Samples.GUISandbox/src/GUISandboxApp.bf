@@ -11,15 +11,12 @@ using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Graphics;
 using Sedulous.GUI;
-using Sedulous.GUI.Gamekit.ScriptSurface;
 using Sedulous.GUI.VFS;
 using Sedulous.I18N;
 using Sedulous.Image;
 using Sedulous.RHI;
 using Sedulous.RHI.Capture;
 using Sedulous.Runtime.Client;
-using Sedulous.Script;
-using Sedulous.Script.AngelScript;
 using Sedulous.Shaders;
 using Sedulous.Shell;
 using Sedulous.VFS;
@@ -84,8 +81,6 @@ class GUISandboxApp : IApplication
 	/// --mock-size <w>x<h>: its window; a full HD display's by default, the user's (2026-10-24).
 	private uint32 mMockWidth = 1920;
 	private uint32 mMockHeight = 1080;
-	/// A game-menu script function to call once it is up (a screenshot of a panel).
-	private String mMenuCall = new .() ~ delete _;
 	/// Keystrokes to type into the root, one every 15 frames.
 	private String mKeys = new .() ~ delete _;
 	/// F9: the debug overlay's layout half.
@@ -182,21 +177,12 @@ class GUISandboxApp : IApplication
 		public Node NavButton = null;
 		/// Its .css, which styles it alone.
 		public String Sheet = new .() ~ delete _;
-		/// Its script's module ("page.<id>"), empty when it has none.
-		public String Module = new .() ~ delete _;
 	}
 	private List<Page> mPages = new .() ~ DeleteContainerAndItems!(_);
 	private String mCurrent = new .() ~ delete _;
 	private bool mLight = false;
 
-	// Scripts: one runtime, a module per page that has a script and one for the game menu, all
-	// reaching the one root through the `Gui` facade.
-	private ScriptSurface mScriptSurface = null ~ delete _;
-	private AngelScriptRuntime mScripts = null ~ delete _;
-	private GuiFacade mGuiFacade = new .() ~ delete _;
-	private bool mMenuScript = false;
-	private bool mMenuWantsUpdate = false;
-	// The game menu's actions, which its prompts read: a stand-in for a game's input map.
+	// The game menu's actions, which its prompts read (K7): a stand-in for a game's input map.
 	private Sedulous.Input.ActionRuntime mMenuInput = new .() ~ delete _;
 	private InputPrompts mMenuPrompts = new .() ~ delete _;
 
@@ -247,7 +233,6 @@ class GUISandboxApp : IApplication
 	}
 	public uint32 MockWidth => mMockWidth;
 	public uint32 MockHeight => mMockHeight;
-	public void SetMenuCall(StringView name) => mMenuCall.Set(name);
 	public void SetKeys(StringView keys) => mKeys.Set(keys);
 	public void SetAlwaysRedraw(bool always) => mAlwaysRedraw = always;
 	public void SetFrameStats(bool stats) => mFrameStats = stats;
@@ -331,13 +316,6 @@ class GUISandboxApp : IApplication
 			opener.Close = new (window) => host.CloseWindow(window);
 			mGuiHost.SetWindowOpener(opener);
 		}
-
-		// The pages' and the game menu's scripts: the GUI's surface with the gamekit's on it.
-		mScriptSurface = new ScriptSurface();
-		GamekitScriptSurface.Populate(mScriptSurface);
-		mScripts = new AngelScriptRuntime();
-		mScripts.Bind(mScriptSurface);
-		mScripts.SetService(mGuiFacade);
 
 		mGui = mGuiHost.Context;
 		// The data the pages and the game menu share.
@@ -518,34 +496,6 @@ class GUISandboxApp : IApplication
 		return loader.LoadFromString(text);
 	}
 
-	/// What the script runtime said (a compile error, a call that failed), on the error stream;
-	/// said once, then let go of.
-	private void ReportScriptProblems()
-	{
-		for (let problem in mScripts.Problems)
-			Console.Error.WriteLine("GUISandbox script {}", problem);
-		ClearAndDeleteItems!(mScripts.Problems);
-	}
-
-	/// The script at `relative` compiled into `module` and its main() run; false when it is not
-	/// there or does not compile.
-	private bool RunScript(StringView relative, StringView module)
-	{
-		let source = ReadText(relative, .. scope String());
-		if (source.IsEmpty)
-			return false;
-		if (!mScripts.Compile(module, relative, source))
-		{
-			Console.Error.WriteLine("GUISandbox: {} did not load", relative);
-			ReportScriptProblems();
-			return false;
-		}
-		var result = ScriptValue.Nil;
-		mScripts.Call(module, "void main()", default, ref result);
-		ReportScriptProblems();
-		return true;
-	}
-
 	/// The first widget under `node` (itself included) whose id is `id`; null when none is.
 	private static Node FindById(Node node, StringView id)
 	{
@@ -567,7 +517,6 @@ class GUISandboxApp : IApplication
 		mRoot = new SceneRoot(mGui);
 		mRoot.DisplayScale = (mWindow != null) ? mWindow.ContentScale : 1.0f;
 		mRoot.ViewportSize = .((float)mWidth, (float)mHeight);
-		mGuiFacade.RootNode = mRoot;
 		if (mEditorMockMode)
 		{
 			BuildEditorMock();
@@ -727,16 +676,6 @@ class GUISandboxApp : IApplication
 			mRoot.OnCommand(command, new (e) => { ShowPage(page.Id); });
 			mPages.Add(page);
 		}
-		// Their scripts, once every page is in the tree (a script may reach another page's widgets).
-		for (let page in mPages)
-		{
-			let script = scope $"{cSandboxDir}pages/{page.Id}.as";
-			if (!File.Exists(DataFile(script, .. scope String())))
-				continue;
-			let module = scope $"page.{page.Id}";
-			if (RunScript(script, module))
-				page.Module.Set(module);
-		}
 	}
 
 	private void ApplySandboxSheet()
@@ -825,7 +764,6 @@ class GUISandboxApp : IApplication
 		mMenuInput.SetMap(actions);
 		mMenuPrompts.SetRuntime(mMenuInput);
 		mMenuPrompts.Install(mGui);
-		mMenuScript = RunScript(scope $"{cMenuDir}menu.as", "menu");
 	}
 
 	// === Running ===
@@ -937,13 +875,6 @@ class GUISandboxApp : IApplication
 		options.TakesFocus = true;
 		options.ReturnHome = true; // back in its place when it closes, to open again
 		mRoot.EventDispatcher.OpenPopup(mRoot, mMenu, options);
-		if (mMenuScript)
-		{
-			var result = ScriptValue.Nil;
-			mScripts.Call("menu", "void enter()", default, ref result);
-			ReportScriptProblems();
-		}
-		mMenuWantsUpdate = true;
 	}
 
 	private void CloseMenu()
@@ -1095,40 +1026,8 @@ class GUISandboxApp : IApplication
 		mRoot.Invalidate();
 	}
 
-	/// Calls `name` of the game menu's script as a click would (`void f()`, or a handler
-	/// `bool f(GuiEvent@)` given no event); false when it has neither.
-	private bool CallMenuFunction(StringView name)
-	{
-		var result = ScriptValue.Nil;
-		let before = mScripts.Problems.Count;
-		if (mScripts.Call("menu", scope $"void {name}()", default, ref result))
-			return true;
-		// Not a plain function: forget that, and try it as a handler.
-		while (mScripts.Problems.Count > before)
-			delete mScripts.Problems.PopBack();
-		return mScripts.Call("menu", scope $"bool {name}(GuiEvent@)", default, ref result);
-	}
-
 	private void UpdateMenu()
 	{
-		// --menu-call: once the menu has been up a few frames, as a click would come.
-		if (mMenuScript && !mMenuCall.IsEmpty && (mFrames == 10))
-		{
-			if (!CallMenuFunction(mMenuCall))
-				Console.Error.WriteLine("GUISandbox: the game menu's script has no {}()", mMenuCall);
-			ReportScriptProblems();
-			mMenuWantsUpdate = true;
-		}
-		// Its update runs while it asks, and on a frame with input; an idle menu calls no script.
-		let input = (mShell != null) && (mShell.Input != null) && !mShell.Input.Events.IsEmpty;
-		if (mMenuScript && (mMenuWantsUpdate || input))
-		{
-			var args = ScriptValue[1](.FromFloat((double)mDeltaTime));
-			var result = ScriptValue.Nil;
-			let called = mScripts.Call("menu", "bool update(double)", args, ref result);
-			ReportScriptProblems();
-			mMenuWantsUpdate = called && (result.Kind == .Bool) && result.Data.Bool;
-		}
 		if ((mMenuLeaveAt >= 0.0f) && (mTotalTime >= mMenuLeaveAt))
 			CloseMenu();
 	}
@@ -1202,9 +1101,6 @@ class GUISandboxApp : IApplication
 			Console.WriteLine("GUISandbox: last frame: {}", mRoot.LastFrameStats.Describe(.. scope String()));
 			mNextStatsTime = mTotalTime + 1.0f;
 		}
-		// The Code page checks its script a moment after an edit.
-		if (mCode != null)
-			mCode.Update(deltaTime);
 		// The Stress page shows the last frame's costs, each second.
 		if ((mStress != null) && (mCurrent == "stress") && (mTotalTime >= mNextStressStatsTime))
 		{
@@ -1297,17 +1193,6 @@ class GUISandboxApp : IApplication
 		Console.WriteLine("GUISandbox: drew {} of {} frames", mGuiHost.FramesDrawn, mFrames);
 		mDevice.WaitIdle();
 		InputPrompts.Uninstall(mGui); // the GUI may outlive the menu's actions
-		// Scripts first: their handles and handlers reach the tree.
-		for (let page in mPages)
-		{
-			if (!page.Module.IsEmpty)
-				mScripts.DiscardModule(page.Module);
-		}
-		if (mMenuScript)
-			mScripts.DiscardModule("menu");
-		mMenuScript = false;
-		DeleteAndNullify!(mScripts);
-		mGuiFacade.RootNode = null;
 		mScreenshot.Release(mDevice); // its readback buffer
 		mCube.Shutdown();
 		DeleteAndNullify!(mCubeCompiler);
@@ -1364,7 +1249,6 @@ class GUISandboxApp : IApplication
 		mStyles = null;
 		DeleteAndNullify!(mGuiHost); // the context, the baker
 		DeleteAndNullify!(mResources);
-		DeleteAndNullify!(mScriptSurface);
 		DeleteAndNullify!(mFontService);
 		DeleteAndNullify!(mShaders); // the shader modules are its, the host drew with them
 	}

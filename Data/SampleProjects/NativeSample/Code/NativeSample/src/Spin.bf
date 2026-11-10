@@ -2,7 +2,6 @@ using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
-using Sedulous.Script;
 
 namespace NativeSample;
 

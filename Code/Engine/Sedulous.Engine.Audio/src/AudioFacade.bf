@@ -3,7 +3,6 @@ using Sedulous.Core;
 using Sedulous.Audio;
 using Sedulous.Resource;
 using Sedulous.Run;
-using Sedulous.Script;
 
 namespace Sedulous.Engine.Audio;
 

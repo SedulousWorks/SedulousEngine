@@ -73,21 +73,21 @@ class RunAudioTests
 		let context = new SubsystemManager();
 		let audio = MakeAudio(context, runs);
 		defer { delete context; delete audio; }
-		Test.Assert(context.FindService(typeof(AudioFacade)) === audio.ScriptFacade, "the shared one");
+		Test.Assert(context.FindService(typeof(AudioFacade)) === audio.SharedFacade, "the shared one");
 		let firsts = first.FindService(typeof(AudioFacade));
-		Test.Assert((firsts != null) && (firsts !== audio.ScriptFacade), "caught up as it got ready");
+		Test.Assert((firsts != null) && (firsts !== audio.SharedFacade), "caught up as it got ready");
 		runs.Add(second);
 		let seconds = second.FindService(typeof(AudioFacade));
 		Test.Assert((seconds != null) && (seconds !== firsts), "each run its own");
-		Test.Assert(audio.RunScriptFacadeCount == 2);
+		Test.Assert(audio.RunFacadeCount == 2);
 
 		second.Dispose(); // the run's end reaches the subsystem
-		Test.Assert(audio.RunScriptFacadeCount == 1, "gone with its run");
+		Test.Assert(audio.RunFacadeCount == 1, "gone with its run");
 		Test.Assert(second.FindService(typeof(AudioFacade)) == null);
 
 		context.Shutdown();
 		Test.Assert(first.FindService(typeof(AudioFacade)) == null, "taken back as the subsystem goes");
-		Test.Assert(audio.RunScriptFacadeCount == 0);
+		Test.Assert(audio.RunFacadeCount == 0);
 	}
 
 	[Test]

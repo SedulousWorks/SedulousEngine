@@ -83,14 +83,14 @@ extension GUISandboxApp
 		// Toolkit: a dataflow graph and a lamp's state machine, after the clip.
 		if (let section = FindById(mShellNode, "graph-section"))
 			FillGraphs(section);
-		// Code: a script checked as it is typed and a shader, in the shared languages.
+		// Code: a script and a shader, in the shared languages.
 		if (let editor = FindById(mShellNode, "code-script") as CodeEditor)
 		{
 			let dir = scope $"{cSandboxDir}code/"; // the sandbox's samples
 			let languages = "Editor/Code/"; // the languages, the editor's too
-			mCode = new CodePage(mScripts);
+			mCode = new CodePage();
 			mCode.AttachScript(editor, ReadText(scope $"{languages}angelscript.xml", .. scope String()),
-				ReadText(scope $"{dir}sample.as", .. scope String()), FindById(mShellNode, "code-status") as Sedulous.GUI.Label);
+				ReadText(scope $"{dir}sample.as", .. scope String()));
 			if (let shader = FindById(mShellNode, "code-shader") as CodeEditor)
 				mCode.AttachShader(shader, ReadText(scope $"{languages}hlsl.xml", .. scope String()), ReadText(scope $"{dir}sample.hlsl", .. scope String()));
 		}

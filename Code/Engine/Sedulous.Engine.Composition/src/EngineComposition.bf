@@ -25,8 +25,7 @@ namespace Sedulous.Engine.Composition;
 ///
 /// - the scene content, EngineSceneComposition (the SceneComposition and AddAllSceneManagers);
 /// - the resource modules, deduplicated, their factory descriptions, the type registration
-///   and the factories a host's services allow (CreateFactories);
-/// - the runtime script surface, EngineScriptSurface, the generated closure of this root.
+///   and the factories a host's services allow (CreateFactories).
 ///
 /// Where a facet needs something a domain cannot know (a graphics device), the domain's
 /// description names the need and the consumer supplies it through IResourceServices.

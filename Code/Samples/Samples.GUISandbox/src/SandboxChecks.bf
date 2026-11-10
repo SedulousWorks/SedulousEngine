@@ -223,7 +223,6 @@ extension GUISandboxApp
 				d.InjectTouchUp(2, Finger(at, by, half, spread, turn, 1.0f, 1.0f));
 				d.InjectTouchUp(1, Finger(at, by, half, spread, turn, 1.0f, -1.0f));
 			}
-			mMenuWantsUpdate = true;
 			return;
 		}
 		let parsed = ParseKeystroke(step);
@@ -234,7 +233,6 @@ extension GUISandboxApp
 				root.EventDispatcher.InjectPadButton((PadButton)stroke.Code);
 			else
 				root.EventDispatcher.InjectKeyDown(stroke.Code, stroke.Modifiers);
-			mMenuWantsUpdate = true;
 		}
 	}
 

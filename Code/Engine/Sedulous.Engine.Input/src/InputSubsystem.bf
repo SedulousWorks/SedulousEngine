@@ -22,15 +22,15 @@ class InputSubsystem : Subsystem, IRunListener
 	private UnboundInputScenePolicy mUnboundScenePolicy = .AllScenes;
 	private ActionRuntime mRuntime = new .() ~ delete _;
 	/// The kind of input in use (the pointer, the keyboard or a pad), from the active source each
-	/// frame: the one the GUI's prompts and a script's `Input.Describe` follow.
+	/// frame: the one the GUI's prompts and game code's `Input.Describe` follow.
 	private InputKindTracker mInputKinds = new .() ~ delete _;
 	/// BORROWED: the runs whose `Input` names controls by this subsystem's input kind, from OnReady
 	/// to OnShutdown.
 	private IRunManager mRunManager = null;
-	/// `Input` to scripts outside every run (the editor's Simulate), on the application's services:
+	/// `Input` to game code outside every run (the editor's Simulate), on the application's services:
 	/// every action released and at rest rather than a fault on a missing service. A run's own (a
-	/// GameInstance's, over its action runtime) comes first for its scripts. OWNED.
-	private InputFacade mScriptFacade = new .(null) ~ delete _;
+	/// GameInstance's, over its action runtime) comes first for its code. OWNED.
+	private InputFacade mSharedFacade = new .(null) ~ delete _;
 	/// What ForEachActionRuntime calls with each runtime.
 	public typealias ActionRuntimeVisitor = delegate void(ActionRuntime runtime);
 
@@ -39,19 +39,19 @@ class InputSubsystem : Subsystem, IRunListener
 	public this(IInputManager input)
 	{
 		mShellSource = new ShellInputSource(input);
-		mScriptFacade.InputKinds = mInputKinds;
+		mSharedFacade.InputKinds = mInputKinds;
 	}
 
 	public ActionRuntime Runtime => mRuntime;
 	/// The kind of input in use, from the active source's devices each frame.
 	public InputKindTracker InputKinds => mInputKinds;
 	/// The idle `Input` offered on the application's services.
-	public InputFacade ScriptFacade => mScriptFacade;
+	public InputFacade SharedFacade => mSharedFacade;
 
 	public override void OnRegister(SubsystemManager manager)
 	{
 		base.OnRegister(manager);
-		manager.RegisterService(mScriptFacade);
+		manager.RegisterService(mSharedFacade);
 		manager.RegisterService(mInputKinds);
 	}
 

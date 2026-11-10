@@ -14,8 +14,7 @@ namespace Samples.GUISandbox;
 /// --page <id>: open on that page (controls, text, layout, data-views, menus, viewport, docking,
 /// toolkit, code, styling, effects, pictures, motion, themes, binding, input, navigation, language,
 /// stress, game-menu). --showcase: open the game menu at once. --light: the light scheme from the
-/// start. --menu-call <function>: call one of the game menu's script functions once it is up
-/// (onSettings, onPlay, onQuit). --keys "<keys>": type keystrokes into what is shown, one every 15
+/// start. --keys "<keys>": type keystrokes into what is shown, one every 15
 /// frames ("down down return", "pad-east"; pointer steps too, in logical units: click:x,y
 /// rclick:x,y move:x,y down:x,y up:x,y pinch:x,y turn:x,y pan2:x,y, or at what a selector or a text
 /// finds: click:#ok, click:text=Show, move:text~=Sett). --always-redraw: draw every frame.
@@ -71,8 +70,6 @@ class Program
 			}
 			else if (arg == "--light")
 				app.SetLightAtStart(true);
-			else if ((arg == "--menu-call") && hasNext)
-				app.SetMenuCall(args[++i]);
 			else if ((arg == "--keys") && hasNext)
 				app.SetKeys(args[++i]);
 			else if (arg == "--always-redraw")
