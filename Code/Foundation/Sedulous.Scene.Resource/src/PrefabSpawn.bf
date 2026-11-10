@@ -39,7 +39,10 @@ static class PrefabSpawn
 			return .Invalid;
 		let text = reader.Encoding == .Text;
 
-		if (SceneStreamFormat.ReadHeader(ar) case .Err)
+		uint32 version = 0;
+		if (SceneStreamFormat.ReadHeader(ar) case .Ok(let read))
+			version = read;
+		else
 			return .Invalid;
 
 		let name = scope String();
@@ -64,7 +67,7 @@ static class PrefabSpawn
 			return .Invalid;
 		}
 
-		ReadComponents(ar, scene, state, liveBySource, text);
+		ReadComponents(ar, scene, state, liveBySource, text, version);
 		if (!ar.IsPayloadOk)
 		{
 			delete state;
@@ -331,7 +334,7 @@ static class PrefabSpawn
 	}
 
 	private static void ReadComponents(ISerializer ar, Scene scene, PrefabInstanceState state,
-		Dictionary<Guid, Guid> liveBySource, bool text)
+		Dictionary<Guid, Guid> liveBySource, bool text, uint32 version)
 	{
 		uint32 componentCount = 0;
 		ar.Key("components");
@@ -351,6 +354,9 @@ static class PrefabSpawn
 			if (liveBySource.TryGetValue(sourceOwner, let liveId))
 				owner = scene.FindEntity(liveId);
 			let manager = scene.FindManagerBySerializationId(typeId);
+			// A retired script record of an older payload is skipped as every unread one is,
+			// with the warning that says why rather than the one for a missing manager.
+			let retired = (manager == null) && SceneStreamFormat.IsRetiredRecord(version, typeId);
 
 			if (text)
 			{
@@ -361,6 +367,10 @@ static class PrefabSpawn
 					manager.ReadComponent(ar, owner);
 					ar.EndObject();
 					CaptureBaseline(scene, state, manager, owner, sourceOwner, liveBySource);
+				}
+				else if (retired)
+				{
+					GlobalLog(.Warning, SceneStreamFormat.cRetiredScriptWarning, "PrefabSpawn", "component records");
 				}
 				else
 				{
@@ -377,9 +387,16 @@ static class PrefabSpawn
 
 			if (!owner.IsAssigned || (manager == null))
 			{
-				GlobalLog(.Warning,
-					"PrefabSpawn: a component record of type '{}' was skipped, having no owner or no manager",
-					typeId);
+				if (retired)
+				{
+					GlobalLog(.Warning, SceneStreamFormat.cRetiredScriptWarning, "PrefabSpawn", "component records");
+				}
+				else
+				{
+					GlobalLog(.Warning,
+						"PrefabSpawn: a component record of type '{}' was skipped, having no owner or no manager",
+						typeId);
+				}
 				continue;
 			}
 

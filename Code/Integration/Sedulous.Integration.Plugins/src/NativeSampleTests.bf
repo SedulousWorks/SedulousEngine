@@ -297,7 +297,7 @@ static class NativeSampleTests
 			let version = schema.Get("dataVersions").At(0);
 			let entity = "6d1c1a52-3a51-4f0e-9a1b-2a6c7d8e9f01";
 			let xml = scope String();
-			xml.AppendF("<root><u32 name=\"magic\">3586350318</u32><u32 name=\"version\">3</u32><string name=\"name\">Spin</string>");
+			xml.AppendF("<root><u32 name=\"magic\">3586350318</u32><u32 name=\"version\">4</u32><string name=\"name\">Spin</string>");
 			xml.AppendF("<array name=\"entities\" count=\"1\"><string name=\"id\">{}</string><string name=\"name\">Spinner</string><u8 name=\"active\">1</u8>", entity);
 			xml.Append("<string name=\"parent\">00000000-0000-0000-0000-000000000000</string>");
 			xml.Append("<object name=\"position\"><f32 name=\"x\">0</f32><f32 name=\"y\">0</f32><f32 name=\"z\">0</f32></object>");

@@ -52,6 +52,9 @@ static class SampleProjectTests
 				let scratch = scope Scene(instance.Name);
 				EngineSceneComposition.AddAllSceneManagers(scratch);
 				Test.Assert(SceneStorage.LoadScene(instance, scratch) case .Ok, scope $"sample project scene stream refused: {instance.Name}");
+				// A scene saved while scripts ran reads with its script block dropped, not kept.
+				for (let record in scratch.UnresolvedSettingsRecords)
+					Test.Assert(record.SystemId != "script", scope $"{instance.Name} keeps its script block");
 			}
 			read++;
 		}
@@ -652,8 +655,9 @@ static class SampleProjectTests
 		CheckKitPiece<Masquerade.Player>(project, "HunterPalace", scope (joiner) => (joiner.Camera.Id == Guid.Empty) && (joiner.SprintSpeed == 3.0f));
 	}
 
-	/// Whether an entity of `scene` still carries a script component: the engine has none, so its
-	/// record reads as unresolved and is kept for the save.
+	/// Whether an entity of `scene` still carries a script component: the engine has none, so a
+	/// record of one in a scene of the current stream version reads as unresolved and is kept for
+	/// the save (an older scene's is dropped as it reads).
 	private static bool HasScriptComponent(Scene scene)
 	{
 		for (let record in scene.UnresolvedComponents)
