@@ -16,6 +16,7 @@ using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Look;
 using Sedulous.Editor.Project;
 using Sedulous.Profiler;
 using Sedulous.Profiler.Capture;

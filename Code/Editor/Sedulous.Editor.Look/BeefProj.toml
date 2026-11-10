@@ -1,0 +1,26 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Look"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Look.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.VG.SVG" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Shell" = "*"
+# The fonts the sheet names, shaped by HarfBuzz and reordered by the bidirectional algorithm.
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TrueType" = "*"
+"Sedulous.Fonts.HarfBuzz" = "*"
+"Sedulous.Fonts.Bidi" = "*"
+"Sedulous.GUI" = "*"
+# The GUI host on a window: its frames, renderer and picture baker.
+"Sedulous.GUI.Hosting" = "*"

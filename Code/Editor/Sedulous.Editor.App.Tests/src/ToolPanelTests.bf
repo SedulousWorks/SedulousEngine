@@ -1,6 +1,7 @@
 using System;
 using Sedulous.GUI;
 using Sedulous.Editor.ViewportTools;
+using Sedulous.Editor.Look.TestSupport;
 
 namespace Sedulous.Editor.App.Tests;
 

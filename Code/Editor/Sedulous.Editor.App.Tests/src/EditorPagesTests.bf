@@ -12,6 +12,7 @@ using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Look.TestSupport;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -328,18 +329,7 @@ class PagesBed
 
 	/// A dialog's markup read from the repository's Data with the GUI's elements, as the editor's
 	/// window reads it; its one reference the caller's.
-	public static Node LoadMarkup(StringView path)
-	{
-		let data = scope String();
-		Test.Assert(EditorSplashTests.DataRoot(data));
-		let text = scope String();
-		Test.Assert(System.IO.File.ReadAllText(PathJoin(data, path, .. scope .()), text) case .Ok);
-		RegisterGuiElements();
-		let elements = ElementSet.All();
-		defer delete elements;
-		let loader = scope MarkupLoader(elements);
-		return loader.LoadFromString(text);
-	}
+	public static Node LoadMarkup(StringView path) => EditorData.LoadMarkup(path);
 
 	/// The open window in the tree that is not a message box (Save As's); null with none.
 	public static Sedulous.GUI.Window FindWindow(Node node)

@@ -35,6 +35,7 @@ corlib = "*"
 "Sedulous.VFS.Pak" = "*"
 "Sedulous.Engine.Composition" = "*"
 "Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Look" = "*"
 "Sedulous.Mcp" = "*"
 
 # The WGSL shader cook a Web export runs needs naga and tint BESIDE the executable, where

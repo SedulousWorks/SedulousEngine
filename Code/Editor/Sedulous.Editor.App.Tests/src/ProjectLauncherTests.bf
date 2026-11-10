@@ -14,6 +14,7 @@ using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Projects;
+using Sedulous.Editor.Look.TestSupport;
 
 namespace Sedulous.Editor.App.Tests;
 

@@ -1,164 +1,38 @@
 using System;
-using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
-using Sedulous.Fonts;
-using Sedulous.Fonts.TrueType;
-using Sedulous.Fonts.HarfBuzz; // the shaper the editor's fonts get
-using Sedulous.Fonts.Bidi; // mixed-direction lines in visual order
 using Sedulous.Graphics;
-using Sedulous.Profiler;
 using Sedulous.Runtime.Client; // IApplicationHost
-using Sedulous.VFS;
+using Sedulous.Fonts.TrueType;
 using Sedulous.GUI; // with GUI.Hosting's host, GUI.Docking's, GUI.Toolkit's and GUI.Code's sheets and elements
 using Sedulous.Profiler.GUI; // its sheet and elements
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Look;
 
 namespace Sedulous.Editor.App;
 
-// EditorWindow: the editor's GUI on its main window. It
-// owns the GUI host (the window's input, frames, renderer and picture baker), the fonts the
-// editor's sheet names, the editor's own files (EditorResources) and the frame read from
-// Data/Editor/Shell.xml, with its status bar (EditorStatusBar) and the toast host over its dock.
-// Its look is the editor's sheet (Editor/editor.css over its tokens), the chosen density's sheet
-// after it and a `:root` block of the user's inputs (the accent), then the user's theme overrides
-// (a file in their data folder, so any token or rule is theirs to set), the scheme
-// and less motion through the GUI's media; a change to those files on disk (the editor's
-// development loop, or the user's overrides) applies at once.
-
-/// An accent Preferences offers: its name and its fill.
-struct EditorAccent
-{
-	public StringView Name;
-	public StringView Fill;
-
-	public this(StringView name, StringView fill)
-	{
-		Name = name;
-		Fill = fill;
-	}
-}
-
-/// The user's appearance inputs (Preferences): the scheme, the accent, the density, less motion
-/// and the UI scale. The defaults are the editor's. A class: it owns its text;
-/// Set copies another.
-class EditorLook
-{
-	/// The densities the editor's sheets give (Editor/density-<name>.css), in their order.
-	public static readonly StringView[3] Densities = .("compact", "default", "comfortable");
-	/// The accents Preferences offers, each a fill white text reads on (azure is the editor's).
-	/// Any other #rrggbb is taken too.
-	public static readonly EditorAccent[4] Accents = .(
-		.("Azure", "#2f6fdf"),
-		.("Violet", "#6d5bd8"),
-		.("Teal", "#0f8a7e"),
-		.("Magenta", "#b03d93"));
-
-	public bool Dark = true;
-	public String Accent = new .("#2f6fdf") ~ delete _; // azure
-	/// compact, default or comfortable: Editor/density-<name>.css.
-	public String Density = new .("compact") ~ delete _;
-	public bool ReduceMotion = false;
-	public float UiScale = 1.0f;
-
-	public void Set(EditorLook other)
-	{
-		if (other === this)
-			return;
-		Dark = other.Dark;
-		Accent.Set(other.Accent);
-		Density.Set(other.Density);
-		ReduceMotion = other.ReduceMotion;
-		UiScale = other.UiScale;
-	}
-
-	/// The look the user's settings ask for (null: none, the defaults); what they leave unset or
-	/// name wrongly (a density with no sheet, an accent that is no colour) is the editor's default.
-	public void ReadFrom(EditorUiSettings ui)
-	{
-		Set(scope EditorLook()); // the defaults, then what the settings say over them
-		if (ui == null)
-			return;
-		Dark = ui.Scheme != "light";
-		if (IsHexColor(ui.Accent))
-			Accent.Set(ui.Accent);
-		for (let density in Densities)
-		{
-			if (density == (StringView)ui.Density)
-				Density.Set(density);
-		}
-		ReduceMotion = ui.ReduceMotion;
-		UiScale = Math.Clamp(ui.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
-	}
-
-	/// The look into the user's settings, the section's other fields kept.
-	public void StoreInto(EditorUiSettings ui)
-	{
-		ui.Scheme.Set(Dark ? "dark" : "light");
-		ui.Accent.Set(Accent);
-		ui.Density.Set(Density);
-		ui.ReduceMotion = ReduceMotion;
-		ui.UiScale = UiScale;
-	}
-
-	/// Whether `text` is a colour as #rrggbb.
-	public static bool IsHexColor(StringView text)
-	{
-		if ((text.Length != 7) || (text[0] != '#'))
-			return false;
-		for (int i = 1; i < 7; i++)
-		{
-			let c = text[i];
-			if (!(((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f')) || ((c >= 'A') && (c <= 'F'))))
-				return false;
-		}
-		return true;
-	}
-}
+// EditorWindow: the editor's GUI on its main window. The GUI host, the fonts, the editor's own
+// files and the sheet are an EditorLookHost's, the look the project manager shares; the window
+// adds the frame read from Data/Editor/Shell.xml with the dock's host, its status bar
+// (EditorStatusBar), the toast host over its dock, and a screen shown in place of the frame.
 
 class EditorWindow
 {
-	/// How every editor window presents: vsync, with a third swapchain image, so a compositor late
-	/// in giving one back (two images held the frame for whole refreshes, the user's spikes) costs
-	/// nothing; the frame of latency it adds is no matter in an editor. A game keeps the default.
-	public static RenderWindowDesc EditorRenderWindowDesc()
-	{
-		var desc = RenderWindowDesc();
-		desc.PresentMode = .Fifo;
-		desc.BufferCount = 3;
-		return desc;
-	}
+	/// How every editor window presents (EditorLookHost.WindowDesc).
+	public static RenderWindowDesc EditorRenderWindowDesc() => EditorLookHost.WindowDesc();
 
-	/// The frame's markup and the editor's sheet, under the data root.
+	/// The frame's markup, under the data root.
 	public const String cFramePath = "Editor/Shell.xml";
-	/// The editor's own folder under the data root, the one its resources watch for changes: the
-	/// data root also holds the sample projects, whose files a sweep of the whole would walk.
-	public const String cEditorFolder = "Editor";
-	public const String cSheetPath = "Editor/editor.css";
-	/// The user's theme overrides: the folder under their data folder, and the file in it.
-	public const String cThemeFolder = "theme";
-	public const String cThemeOverridesPath = "overrides.css";
+	/// The look's paths (EditorLookHost's), named here too for the editor's callers.
+	public const String cEditorFolder = EditorLookHost.cEditorFolder;
+	public const String cSheetPath = EditorLookHost.cSheetPath;
+	public const String cThemeFolder = EditorLookHost.cThemeFolder;
+	public const String cThemeOverridesPath = EditorLookHost.cThemeOverridesPath;
 
-	/// About once a second: a sweep is a walk of the editor's folder.
-	private const float cSweepSeconds = 1.0f;
-
-	// Close lets each go, in the order the GUI needs (the trees, the host, then what it
-	// borrowed); the field cleanups find them gone.
-	private String mDataRoot = new .() ~ delete _;
+	/// The GUI with the editor's look; the frame and what hangs on it are the window's.
+	private EditorLookHost mGui = new .() ~ delete _;
+	/// Kept while closed too, for when it opens (the host keeps its own while open).
 	private EditorLook mLook = new .() ~ delete _;
-	/// Borrowed (the runtime host's).
-	private GraphicsDevice mDevice = null;
-	/// Borrowed (the runtime host's).
-	private Sedulous.Graphics.RenderWindow mWindow = null;
-	/// The shaders' mount.
-	private NativeFileSystem mData = null ~ delete _;
-	private VgShaderLibrary mShaders = null ~ delete _;
-	private TrueTypeFontService mFonts = null ~ delete _;
-	private EditorResources mResources = null ~ delete _;
-	/// The user's overrides' folder; null: none.
-	private EditorResources mTheme = null ~ delete _;
-	private GuiHost mHost = null ~ delete _;
 	/// References of ours (the tree holds its own).
-	private SceneRoot mRoot = null ~ _?.ReleaseRef();
 	private Node mFrame = null ~ _?.ReleaseRef();
 	private ToastHost mToasts = null ~ _?.ReleaseRef();
 	/// Over the window in place of the frame while shown (the project manager): a reference of
@@ -166,9 +40,6 @@ class EditorWindow
 	private Node mScreen = null ~ _?.ReleaseRef();
 	/// Over the frame's items: it goes before the frame.
 	private EditorStatusBar mStatus = null ~ delete _;
-	/// The sheet again when the editor's files or the overrides change.
-	private Effect mReload = null ~ delete _;
-	private float mSinceSweep = 0.0f;
 
 	public ~this()
 	{
@@ -182,60 +53,25 @@ class EditorWindow
 	public bool Open(IApplicationHost host, StringView dataRoot, EditorLook look, StringView themeFolder = default)
 	{
 		Close(); // opened again: the last GUI goes first
+		mLook.Set(look);
 		let window = host.MainRenderWindow;
 		if ((window == null) || (host.Graphics == null) || (host.Graphics.Raw == null) || (host.Shell == null))
 		{
 			GlobalLog(.Error, "Editor: no window or device: the editor runs without its interface");
 			return false;
 		}
-		mWindow = window;
-		mDevice = host.Graphics;
-		mDataRoot.Set(dataRoot);
-		mData = new NativeFileSystem(dataRoot);
-		mShaders = new VgShaderLibrary();
-		if (!mShaders.Load(mDevice.Raw, mData))
-		{
-			GlobalLog(.Error, "Editor: the GUI's shaders did not load from '{}'", dataRoot);
-			Close();
-			return false;
-		}
-		RegisterGuiElements();
 		RegisterToolkitElements();
 		RegisterCodeElements();
 		RegisterProfilerElements();
-		// Shaped by HarfBuzz and reordered by the bidirectional algorithm, installed before a font
-		// loads so its atlas takes what shaping reaches.
-		HarfBuzzShaping.Install();
-		BidiAlgorithm.Install();
-		mFonts = new TrueTypeFontService();
-		mResources = new EditorResources(dataRoot, cEditorFolder);
-		if (!themeFolder.IsEmpty)
-		{
-			// A place for the file the user writes (the data folder first, should it be new).
-			CreateDirectory(PathParent(themeFolder, .. scope .()));
-			CreateDirectory(themeFolder);
-			mTheme = new EditorResources(themeFolder);
-		}
-
-		mHost = new GuiHost(mDevice, host.Shell, mFonts, mShaders.Set);
-		{
-			// A float in an OS window of its own: the runtime host's.
-			let opener = new GuiHost.WindowOpener();
-			opener.Open = new (settings) => host.OpenWindow(settings, EditorRenderWindowDesc());
-			opener.Close = new (opened) => host.CloseWindow(opened);
-			mHost.SetWindowOpener(opener);
-		}
-		let styles = mHost.Styles;
-		styles.ResourceProvider = mResources;
-		mHost.Context.ResourceProvider = mResources;
-		styles.SetFontFaceLoader(new (face, source) => LoadFontFace(face, source));
+		// A float in an OS window of its own: the runtime host's.
+		let opener = new GuiHost.WindowOpener();
+		opener.Open = new (settings) => host.OpenWindow(settings, EditorRenderWindowDesc());
+		opener.Close = new (opened) => host.CloseWindow(opened);
 		// The satellites' sheets over the widgets'.
-		let theme = scope $"{Sedulous.GUI.Theme.DefaultThemeCSS}\n{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}\n{ProfilerSheetCSS()}";
-		let userAgent = scope StyleSheet();
-		CSSParser.Parse(theme, "theme", userAgent);
-		styles.UserAgentSheet = userAgent; // copied
+		let satellites = scope $"{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}\n{ProfilerSheetCSS()}";
+		if (!mGui.Open(host.Graphics, host.Shell, dataRoot, mLook, themeFolder, satellites, opener))
+			return false;
 
-		mRoot = new SceneRoot(mHost.Context);
 		mFrame = LoadMarkup(cFramePath);
 		if (mFrame == null)
 		{
@@ -243,21 +79,11 @@ class EditorWindow
 			Close();
 			return false;
 		}
-		mRoot.AddChild(mFrame);
+		mGui.Root.AddChild(mFrame);
 		mStatus = new EditorStatusBar(mFrame);
 		mToasts = new ToastHost();
 		ToastsInto(mFrame).AddChild(mToasts);
-		SetLook(look);
-		// The editor's own files or the user's overrides changed on disk: the sheet applies again.
-		mReload = new Effect(new () =>
-			{
-				mResources.TrackChanges();
-				if (mTheme != null)
-					mTheme.TrackChanges();
-				if (mFrame != null)
-					ApplySheet();
-			});
-		mHost.AttachWindow(mWindow, mRoot);
+		mGui.Attach(window);
 		return true;
 	}
 
@@ -266,12 +92,7 @@ class EditorWindow
 	public void SetLook(EditorLook look)
 	{
 		mLook.Set(look);
-		if (mHost == null)
-			return;
-		mHost.UiScale = mLook.UiScale;
-		mHost.Context.DarkScheme = mLook.Dark;
-		mHost.Context.ReducedMotion = mLook.ReduceMotion;
-		ApplySheet();
+		mGui.SetLook(look);
 	}
 
 	/// The look in effect. The window's.
@@ -279,22 +100,11 @@ class EditorWindow
 
 	/// A file's text by its path under the data root (a code language's), appended; false when it
 	/// is not there.
-	public bool LoadText(StringView path, String outText) => (mResources != null) && mResources.LoadText(path, outText);
+	public bool LoadText(StringView path, String outText) => mGui.LoadText(path, outText);
 
 	/// A page's or a panel's markup by its path under the data root (Editor/...): a node with one
 	/// reference, the caller's, or null (logged) when it does not load.
-	public Node LoadMarkup(StringView path)
-	{
-		let text = scope String();
-		if ((mHost == null) || !mResources.LoadText(path, text))
-		{
-			GlobalLog(.Error, "Editor: markup '{}' is not there", path);
-			return null;
-		}
-		let loader = scope MarkupLoader(mHost.Context.ElementSet, null, mFonts);
-		loader.SetDataModel(mHost.Context.Data);
-		return loader.LoadFromString(text);
-	}
+	public Node LoadMarkup(StringView path) => mGui.LoadMarkup(path);
 
 	/// A toast over the dock, its severity the notice's; the same message again counts on the one
 	/// shown. An error stays until it is dismissed, and so does one with an action (Open Folder on
@@ -367,7 +177,7 @@ class EditorWindow
 	/// frame back. The window takes a reference of its own. Nothing with no interface.
 	public void ShowScreen(Node screen)
 	{
-		if ((mRoot == null) || (mFrame == null))
+		if ((mGui.Root == null) || (mFrame == null))
 			return;
 		if (screen != null)
 			screen.AddRef(); // first: the screen shown again is not let go below
@@ -379,7 +189,7 @@ class EditorWindow
 		mScreen = screen;
 		mFrame.Displayed = mScreen == null;
 		if (mScreen != null)
-			mRoot.AddChild(mScreen);
+			mGui.Root.AddChild(mScreen);
 	}
 
 	/// A screen shows in place of the frame.
@@ -390,40 +200,16 @@ class EditorWindow
 	public Node FindById(StringView id) => (mFrame != null) ? mFrame.FindElement(id) : null;
 
 	/// One frame: the editor's files swept for changes (about once a second), then the GUI.
-	public void Update(float deltaTime)
-	{
-		if (mHost == null)
-			return;
-		mSinceSweep += deltaTime;
-		if (mSinceSweep >= cSweepSeconds)
-		{
-			using (ProfileScope("Editor.Sweep"))
-			{
-				mSinceSweep = 0.0f;
-				mResources.Poll();
-				if ((mTheme != null) && mTheme.Poll())
-					GlobalLog(.Information, "Editor: the theme overrides applied again ({})", cThemeOverridesPath);
-			}
-		}
-		mHost.Update(deltaTime);
-	}
+	public void Update(float deltaTime) => mGui.Update(deltaTime);
 
 	/// Draws the GUI into `frame`'s window (the main window and any float's).
-	public void Render(ref FrameContext frame)
-	{
-		if (mHost != null)
-			mHost.RenderWindow(ref frame);
-	}
+	public void Render(ref FrameContext frame) => mGui.Render(ref frame);
 
-	/// Takes the GUI down, before the device goes: the frames in flight finish first, since the
-	/// host's renderer and the shaders it draws with go.
+	/// Takes the GUI down, before the device goes: the frames in flight finish first, the
+	/// window's nodes go while the tree is there, then the GUI.
 	public void Close()
 	{
-		if ((mHost != null) && (mDevice != null) && (mDevice.Raw != null))
-			mDevice.Raw.WaitIdle();
-		DeleteAndNullify!(mReload);
-		if ((mHost != null) && (mWindow != null))
-			mHost.DetachWindow(mWindow);
+		mGui.Detach();
 		if (mScreen != null)
 		{
 			mScreen.ReleaseRef();
@@ -440,75 +226,21 @@ class EditorWindow
 			mFrame.ReleaseRef();
 			mFrame = null;
 		}
-		if (mRoot != null)
-		{
-			mRoot.ReleaseRef();
-			mRoot = null;
-		}
-		if (mHost != null)
-		{
-			// The GUI lets go of what it borrows from the window before it goes.
-			mHost.Context.ResourceProvider = null;
-			mHost.Styles.ResourceProvider = null;
-		}
-		DeleteAndNullify!(mHost);
-		DeleteAndNullify!(mTheme);
-		DeleteAndNullify!(mResources);
-		DeleteAndNullify!(mFonts);
-		DeleteAndNullify!(mShaders);
-		DeleteAndNullify!(mData);
-		mWindow = null;
-		mDevice = null;
-		mSinceSweep = 0.0f;
+		mGui.Close();
 	}
 
-	public bool IsOpen => mHost != null;
+	public bool IsOpen => mGui.IsOpen;
 	/// The window's, as are the rest; null while closed.
-	public GuiHost Host => mHost;
-	public SceneRoot Root => mRoot;
-	public EditorResources Resources => mResources;
-	public TrueTypeFontService Fonts => mFonts;
+	public GuiHost Host => mGui.Host;
+	public SceneRoot Root => mGui.Root;
+	public EditorResources Resources => mGui.Resources;
+	public TrueTypeFontService Fonts => mGui.Fonts;
 
-	/// The sheet `look` makes from the editor's files, appended to `outSheet`: the editor's sheet,
-	/// the density's after it (its sizes win), then a `:root` block of the inputs (the accent).
-	public static void SheetFor(IResourceProvider resources, EditorLook look, String outSheet) => SheetFor(resources, look, null, outSheet);
+	/// The sheet `look` makes from the editor's files (EditorLookHost.SheetFor), appended to
+	/// `outSheet`.
+	public static void SheetFor(IResourceProvider resources, EditorLook look, String outSheet) => EditorLookHost.SheetFor(resources, look, outSheet);
 
 	/// The same, then the user's overrides from `theme` (null: none), last so what they set wins.
-	public static void SheetFor(IResourceProvider resources, EditorLook look, IResourceProvider theme, String outSheet)
-	{
-		resources.LoadText(cSheetPath, outSheet);
-		let density = scope String();
-		if (resources.LoadText(scope $"Editor/density-{look.Density}.css", density))
-		{
-			outSheet.Append('\n');
-			outSheet.Append(density);
-		}
-		outSheet.AppendF("\n:root {{ --accent-input: {}; }}\n", look.Accent);
-		let overrides = scope String();
-		if ((theme != null) && theme.LoadText(cThemeOverridesPath, overrides))
-		{
-			outSheet.Append(overrides);
-			outSheet.Append('\n');
-		}
-	}
-
-	private void ApplySheet()
-	{
-		let text = SheetFor(mResources, mLook, mTheme, .. scope String());
-		let sheet = scope StyleSheet();
-		CSSParser.Parse(text, cSheetPath, sheet);
-		mHost.Styles.StyleSheet = sheet; // copied
-	}
-
-	/// A face a sheet's @font-face names, from its file under the data root.
-	private bool LoadFontFace(StringView face, StringView source)
-	{
-		var options = FontLoadOptions.ExtendedLatin();
-		options.PixelHeight = 16.0f;
-		options.LastCodepoint = 0x17F;
-		if (mFonts.LoadFont(face, PathJoin(mDataRoot, source, .. scope String()), options) == .Success)
-			return true;
-		GlobalLog(.Error, "Editor: the @font-face {} ({}) did not load", face, source);
-		return false;
-	}
+	public static void SheetFor(IResourceProvider resources, EditorLook look, IResourceProvider theme, String outSheet) =>
+		EditorLookHost.SheetFor(resources, look, theme, outSheet);
 }
