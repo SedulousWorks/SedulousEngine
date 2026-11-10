@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "__GAME__"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Composition" = "*"
+# The game tiers: its behaviours, levels and game, and their registration.
+"Sedulous.Engine.Gameplay" = "*"

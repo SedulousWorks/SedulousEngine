@@ -206,10 +206,22 @@ behaviour's properties under `live` beside what is authored.
 
 ## Workflows
 
-**Project**: `project_create` makes the project with the editor's starter content, as New
-Project does: Roboto as a distance-field font set as the default UI font (what an exported
-game's text draws with: the engine's built-in font is not in a dist), the default sky, and a
-cube, sphere and plane. Then `project_open` then `project_info`, which also reports the
+**Project**: `project_create` makes the project from one of the engine's project templates, as
+the project manager's New Project does: `template` names one by its folder in the engine's
+`Data/Templates` (the result's `template` says which was used). `Starter`, the default, has the
+game's code (`Code/`, its Engine part with the starter behaviour `Rotator`), Roboto as a
+distance-field font set as the default UI font (what an exported game's text draws with: the
+engine's built-in font is not in a dist), the default sky, a cube, sphere and plane, and a default
+scene, `Scenes/Main`; `Empty` has the game's code alone. The template's names become the
+project's: its `name`, and the name its code goes by (its letters and digits, `Game` in front
+when it starts with none: "Sky Hopper" gives `Code/SkyHopper`, its package id `skyhopper`).
+Every project made from one template shares the template's asset guids. The folder must be new
+(its parent there) or empty; anything in it is refused. `template` `"none"` makes the bare
+manifest and folders, with `seed` true seeding the starter content into it (what the Starter
+template is made from), and a host run without the engine's data has no templates, so it makes
+the bare project. The game's code is built into the project's own editor (see Writing game
+code); the stdio host does not link it, so `Rotator` is not in its `component_schema`.
+Then `project_open` then `project_info`, which also reports the
 settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
 `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiFontId`, each
 {guid, path} or null), `uiFontIds`, the other fonts

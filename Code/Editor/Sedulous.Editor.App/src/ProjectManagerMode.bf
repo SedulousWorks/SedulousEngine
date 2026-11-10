@@ -81,7 +81,9 @@ class ProjectManagerMode
 					mServices.Shown();
 			};
 		app.OpenProject = new (directory, restamp, outWhy) => OpenInSession(directory, restamp);
-		app.CreateProject = new (directory, name, outWhy) => CreateInSession(directory, name);
+		// The editor's session makes its own projects, with the starter content: it offers neither an
+		// engine nor a template to pick.
+		app.CreateProject = new (directory, name, template, sdk, outWhy) => CreateInSession(directory, name);
 		mApp = new ProjectManagerApp(app);
 	}
 

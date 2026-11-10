@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Shell;
@@ -42,10 +43,16 @@ class ProjectManagerAppServices
 	/// started; else why for the status line in `outWhy` (empty: the log says). `restamp`: the user
 	/// chose to open an older engine's project with this one, which stamps it. Owned.
 	public delegate bool(StringView directory, bool restamp, String outWhy) OpenProject ~ delete _;
-	/// Makes the project named `name` in the folder (its parent made, the folder not a project)
-	/// and opens it: true when it did; else why in `outWhy` (empty: the folder could not be made
-	/// into a project). Owned.
-	public delegate bool(StringView directory, StringView name, String outWhy) CreateProject ~ delete _;
+	/// Makes the project named `name` in the folder (its parent made, the folder not a project) from
+	/// the template in the folder `template` with the engine at `sdk` (either empty when New
+	/// Project offered none), and opens it: true when it did; else why in `outWhy` (empty: the
+	/// folder could not be made into a project). Owned.
+	public delegate bool(StringView directory, StringView name, StringView template, StringView sdk, String outWhy) CreateProject ~ delete _;
+	/// The engines New Project offers, the one picked at first leading; null: no engine picker.
+	/// Owned.
+	public delegate void(List<NewProjectEngine> outEngines) Engines ~ delete _;
+	/// The project templates of the engine at `sdk`, in their order; null: no template list. Owned.
+	public delegate void(StringView sdk, List<ProjectTemplate> outTemplates) Templates ~ delete _;
 	/// The manager stays shown while a project opens, and its status line says how an open that
 	/// failed failed: the manager's program, which builds the project's editor under it. False: it
 	/// goes before the open, as the editor's frame takes the window, and comes back when the open
@@ -107,12 +114,19 @@ class ProjectManagerApp
 					let path = new String(directory);
 					Later(new [=this, =path] () => { OpenFrom(path); } ~ delete path);
 				};
-			services.Create = new (directory, name) =>
+			services.Create = new (directory, name, template, sdk) =>
 				{
 					let path = new String(directory);
 					let projectName = new String(name);
-					Later(new [=this, =path, =projectName] () => { CreateFrom(path, projectName); } ~ { delete path; delete projectName; });
+					let templateDir = new String(template);
+					let engine = new String(sdk);
+					Later(new [=this, =path, =projectName, =templateDir, =engine] () => { CreateFrom(path, projectName, templateDir, engine); }
+						~ { delete path; delete projectName; delete templateDir; delete engine; });
 				};
+			if (mServices.Engines != null)
+				services.Engines = new (outEngines) => { mServices.Engines(outEngines); };
+			if (mServices.Templates != null)
+				services.Templates = new (sdk, outTemplates) => { mServices.Templates(sdk, outTemplates); };
 			services.StoreChanged = new () =>
 				{
 					if (mServices.StoreChanged != null)
@@ -195,8 +209,9 @@ class ProjectManagerApp
 	}
 
 	/// New Project from the manager: a folder that holds a project already is refused; else the
-	/// project is made there (its location too, when that is new) and opened.
-	public void CreateFrom(StringView directory, StringView name)
+	/// project is made there (its location too, when that is new) from the template in the folder
+	/// `template` with the engine at `sdk` (either empty: the host's own choice), and opened.
+	public void CreateFrom(StringView directory, StringView name, StringView template = default, StringView sdk = default)
 	{
 		let probed = scope ProjectSettings();
 		if (ProjectRegistry.ProbeProject(directory, probed) case .Ok)
@@ -210,7 +225,7 @@ class ProjectManagerApp
 		if (!mServices.StaysWhileOpening)
 			ShowScreen(null);
 		let why = scope String();
-		if ((mServices.CreateProject != null) && mServices.CreateProject(directory, name, why))
+		if ((mServices.CreateProject != null) && mServices.CreateProject(directory, name, template, sdk, why))
 			return;
 		if (!mServices.StaysWhileOpening)
 			Enter();

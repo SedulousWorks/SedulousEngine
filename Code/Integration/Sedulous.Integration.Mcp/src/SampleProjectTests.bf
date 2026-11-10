@@ -38,7 +38,7 @@ static class SampleProjectTests
 	/// not its document: the entities, components and system settings carry their own data
 	/// versions, so the stream loads into a scratch scene of the full composition the way a
 	/// page opens it.
-	private static int ReadAllInstances(Group group)
+	public static int ReadAllInstances(Group group)
 	{
 		int read = 0;
 		for (let instance in group.Instances)
@@ -565,7 +565,7 @@ static class SampleProjectTests
 	}
 
 	/// The first instance under `group` named `name` whose type name ends with `typeName`, or null.
-	private static Instance FindInstance(Group group, StringView name, StringView typeName)
+	public static Instance FindInstance(Group group, StringView name, StringView typeName)
 	{
 		for (let instance in group.Instances)
 		{

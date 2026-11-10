@@ -39,6 +39,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   it, no menu or screen uses it) goes to the platform: a phone puts the app in the background.
 - Rendering: the game keeps inside the window's safe area, what a phone's status bar, navigation
   bar and camera cutout leave of it: its frame, its screens and its pointer are fitted there.
+- MCP: `project_create` makes a project from one of the engine's project templates, named by
+  `template`: Starter (the default: the game's code with its starter behaviour, the starter
+  content and a default scene) or Empty (the game's code alone), under the project's own names;
+  `template` `"none"` makes the bare project. A folder that is not empty is refused.
 
 ### Changed
 

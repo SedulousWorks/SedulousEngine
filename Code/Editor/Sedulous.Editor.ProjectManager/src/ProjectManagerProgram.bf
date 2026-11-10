@@ -94,8 +94,8 @@ class ProjectManagerConfig
 /// 6. the editor launched with --project, --data-root <sdk>/Data, --manager <this executable> and,
 ///    for an older engine's project, --restamp; the open recorded, and this program exits, as the
 ///    editor owns the project from there.
-/// New Project makes the project's folder and manifest, then opens it the same way. One build
-/// runs at a time.
+/// New Project makes the project from a template of the engine picked (the newest installed at
+/// first), pins it to that engine, then opens it the same way. One build runs at a time.
 ///
 /// Start is the headless half (the stores, the registry, the manager), which a test drives with
 /// no window, calling Pump for what a frame does; OnStartup adds the window.
@@ -236,10 +236,90 @@ class ProjectManagerProgram : IApplication
 		}
 		services.EngineFor = new (directory, outVersion, outWhy) => EngineFor(directory, outVersion, outWhy);
 		services.OpenProject = new (directory, restamp, outWhy) => OpenInEditor(directory, restamp, outWhy);
-		services.CreateProject = new (directory, name, outWhy) => (ProjectScaffold.Create(directory, name) case .Ok)
-			&& OpenInEditor(directory, false, outWhy);
+		services.CreateProject = new (directory, name, template, sdk, outWhy) => CreateFromTemplate(directory, name, template, sdk, outWhy);
+		services.Engines = new (outEngines) => { ListEngines(outEngines); };
+		services.Templates = new (sdk, outTemplates) => { ListTemplates(sdk, outTemplates); };
 		services.StaysWhileOpening = true; // its build's panel shows over the projects
 		return services;
+	}
+
+	/// The engines New Project offers, into `outEngines` (each new, the caller's): the registered
+	/// SDKs that read, the newest version first (NewerSdk), else the SDK this program sits in.
+	public void ListEngines(List<NewProjectEngine> outEngines)
+	{
+		let sdks = scope List<SdkInfo>();
+		defer { ClearAndDeleteItems!(sdks); }
+		let missing = scope List<String>();
+		defer { ClearAndDeleteItems!(missing); }
+		mSdks.ReadSdks(sdks, missing);
+		if (sdks.IsEmpty && !mSdk.IsEmpty)
+		{
+			let own = new SdkInfo();
+			if (SdkInfo.Read(mSdk, own) case .Ok)
+				sdks.Add(own);
+			else
+				delete own;
+		}
+		sdks.Sort(scope (a, b) => NewerSdk(a, b) ? -1 : (NewerSdk(b, a) ? 1 : 0));
+		for (let sdk in sdks)
+		{
+			let engine = new NewProjectEngine();
+			engine.Sdk.Set(sdk.Root);
+			engine.Label.AppendF("{}{} at {}", sdk.Display, sdk.IsCheckout ? " (checkout)" : "", sdk.Root);
+			outEngines.Add(engine);
+		}
+	}
+
+	/// Whether `a` is listed before `b` among the engines New Project offers: a version that reads
+	/// before one that does not, then the higher version, then, of one version, the SDK
+	/// SdkRegistry.Prefer prefers.
+	public static bool NewerSdk(SdkInfo a, SdkInfo b)
+	{
+		uint32[3] versionA;
+		uint32[3] versionB;
+		let readsA = ProjectRegistry.ParseEngineVersion(a.Version, out versionA);
+		let readsB = ProjectRegistry.ParseEngineVersion(b.Version, out versionB);
+		if (readsA != readsB)
+			return readsA;
+		for (int i < 3)
+		{
+			if (versionA[i] != versionB[i])
+				return versionA[i] > versionB[i];
+		}
+		return SdkRegistry.Prefer(a, b);
+	}
+
+	/// The project templates of the SDK at `sdk` (its Data/Templates), in their order, into
+	/// `outTemplates` (each new, the caller's).
+	public static void ListTemplates(StringView sdk, List<ProjectTemplate> outTemplates)
+	{
+		if (!sdk.IsEmpty)
+			ProjectTemplates.ListTemplates(PathJoin(sdk, "Data", .. scope .()), outTemplates);
+	}
+
+	/// New Project's project made at `directory` from the template in the folder `template` (none:
+	/// the bare manifest and folders), pinned to the SDK at `sdk` when one was picked, then opened
+	/// in its editor as any other. False, with why in `outWhy`, when it is not made or does not open.
+	private bool CreateFromTemplate(StringView directory, StringView name, StringView template, StringView sdk, String outWhy)
+	{
+		if (template.IsEmpty)
+		{
+			if (ProjectScaffold.Create(directory, name) case .Err)
+				return false;
+		}
+		else if (ProjectTemplates.Instantiate(template, directory, name) case .Err(let error))
+		{
+			if (error == .AlreadyExists)
+				outWhy.Set("That folder is not empty: a project is made in a new or empty folder.");
+			else
+				outWhy.AppendF("The project could not be made from the template in {} ({}).", template, error);
+			GlobalLog(.Error, "Projects: {}", outWhy);
+			mStatus.Set(outWhy);
+			return false;
+		}
+		if (!sdk.IsEmpty && (mSdks.Pin(directory, sdk) case .Err(let pinError)))
+			GlobalLog(.Warning, "Projects: {} could not be pinned to the SDK at {} in {} ({})", directory, sdk, mConfig.SdksPath, pinError);
+		return OpenInEditor(directory, false, outWhy);
 	}
 
 	/// The recent list written to projects.xml, unless that did not read.
