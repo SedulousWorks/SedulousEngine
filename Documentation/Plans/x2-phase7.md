@@ -1,6 +1,6 @@
 # x2 phase 7: the project manager and the SDK
 
-**Status:** design, 2026-11-10, awaiting rulings on the open questions (Q1 to Q15). It expands phase 7 of `x2.md` (lines 235-247), under D4 (SDK location), D5 (toolchain, decided) and D8 (the manager, decided). It also takes in two phase 1 items left open, a new project born with `Code/` and the project templates (`x2.md:103`, `x2.md:120`), since Create cannot be designed without them. Names follow phase 5: the project's editor is `<Game>Editor`, undotted (`ProjectBuild.bf:96-99`).
+**Status:** design, 2026-11-10; the user took every recommendation on the open questions (Q1 to Q15) the same day. It expands phase 7 of `x2.md` (lines 235-247), under D4 (SDK location), D5 (toolchain, decided) and D8 (the manager, decided). It also takes in two phase 1 items left open, a new project born with `Code/` and the project templates (`x2.md:103`, `x2.md:120`), since Create cannot be designed without them. Names follow phase 5: the project's editor is `<Game>Editor`, undotted (`ProjectBuild.bf:96-99`).
 
 ## What exists
 
@@ -348,7 +348,7 @@ Commits 2 to 5 follow 1, in any order. Commit 6 goes before 7, 7 before 8, and 8
 - **Downloads of executables.** SDKs and toolchains are checked against SHA-256 values from the release's index, fetched over TLS. The index itself is trusted as GitHub serves it, as the samples are now.
 - **Beef drift.** Without a pin (D5 today), a user's newer Beef can fail on an SDK built with an older one. The pin's warning names both.
 
-## Open questions (recommendation first)
+## Open questions (decided 2026-11-10: each recommendation, the first option, taken)
 
 - **Q1. The headless split.**
   - *Rec:* a new `Sedulous.Editor.Projects` taking the registry, gate, build, SDK and toolchain types out of `Editor.Project`, namespace kept.
