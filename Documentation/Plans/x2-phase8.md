@@ -511,3 +511,8 @@ Each step proves one thing, and each is run for leaks with ASan where it can be.
    the pinned toolchain (`EngineVersion.Beef`)?
 6. Unsaved pages on a relaunch: stash and restore them silently, or keep the prompt for a person
    and stash only for an agent's relaunch?
+
+## Decided (2026-11-10)
+
+- The fast relaunch first; then the Beef IDE's hot compile on Linux, first on a small host, then on SkyHopperEditor, as the documented loop for method-body edits if it works. Tallow's route is held.
+- A later study: the editor and the runtime as separate processes (the ezEngine way), with the game's code only in the runtime process, restarted on a change. It is much larger than either path here, is decided together with Raptor's engine, and leads toward remote play (Android among the devices), a later topic. Its questions are listed under Phase 8 in `x2.md`.
