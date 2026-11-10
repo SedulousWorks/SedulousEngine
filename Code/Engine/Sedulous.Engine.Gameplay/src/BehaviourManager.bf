@@ -508,10 +508,9 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 	}
 
 	/// Writes a peer's values into `entity`'s `T`, straight into its fields: nothing is called,
-	/// as a script's replicated property is set without a callback, so a behaviour that reacts
-	/// to a change compares with what it last saw. An entry whose name or kind matches no
-	/// replicated field of `T` is passed over; one cut short stops the read, and what came
-	/// before it stays applied.
+	/// so a behaviour that reacts to a change compares with what it last saw. An entry whose name
+	/// or kind matches no replicated field of `T` is passed over; one cut short stops the read,
+	/// and what came before it stays applied.
 	public void ReadReplicatedState(EntityHandle entity, Span<uint8> state)
 	{
 		let instance = Get(entity);

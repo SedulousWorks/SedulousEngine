@@ -66,7 +66,7 @@ class InputPrompts
 	}
 
 	/// The binding to show for `action`, in `set`, for input of `kind`: Sedulous.Input's
-	/// ShownBinding.For, the one a script's `Input.Describe` names too. A read a binding follows.
+	/// ShownBinding.For, the one the `Input` facade's Describe names too. A read a binding follows.
 	public Sedulous.Input.Binding? Find(StringView action, StringView set, Sedulous.GUI.InputKind kind)
 	{
 		mChanged.Track();

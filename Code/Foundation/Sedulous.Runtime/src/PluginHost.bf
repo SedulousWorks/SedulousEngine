@@ -245,7 +245,7 @@ class PluginHost
 	public Span<String> Loaded => (Span<String>)mLoaded;
 
 	/// The loaded plugin whose load registered serializable type `id`, or empty for a type none
-	/// did (the engine's). What a script's facade belongs to.
+	/// did (the engine's).
 	public StringView OwnerOf(uint64 id) => mLoader.OwnerOf(id);
 
 	/// Appends to `outIds` the serializable types a loaded plugin registered (none for one not

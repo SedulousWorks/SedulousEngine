@@ -57,7 +57,7 @@ abstract class Behaviour
 	/// The run its scene belongs to; null outside every run.
 	public IRun Run => (mScene != null) ? mScene.Run : null;
 
-	/// Its run's random numbers, the ones its scripts draw as `Random`; null outside a run
+	/// Its run's random numbers, the ones all of the run's game code draws; null outside a run
 	/// that has them. BORROWED.
 	public RunRandom Random => RunServices.Get<RunRandom>(Run);
 

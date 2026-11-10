@@ -401,7 +401,7 @@ static class ShaderProperties
 
 	/// The declaration an effect stands for: a struct of its parameters (`<Name>Effect`) and a
 	/// ConstantBuffer of it named for the effect, at the effect binding, so the effect's code reads
-	/// `Wind.Strength`, as a material and a script address the value. Not a plain cbuffer: its
+	/// `Wind.Strength`, as a material and game code address the value. Not a plain cbuffer: its
 	/// members would be global names, and a shader that declares the effect's variant would then
 	/// refuse a property of its own named `Speed` or `Height`. A ConstantBuffer<T> packs its struct
 	/// by the cbuffer rules, so the offsets are PackCbufferMember's. Nothing for an effect with no

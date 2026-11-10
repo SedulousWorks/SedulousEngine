@@ -1,13 +1,13 @@
 namespace Sedulous.Core;
 
 /// A run's random numbers: one seeded generator per run, which its game code draws from
-/// (`RunServices.Get<RunRandom>(run)`) and its scripts reach as `Random`, so a run replays from
+/// (`RunServices.Get<RunRandom>(run)`, or a behaviour's `Random`), so a run replays from
 /// a seed whatever else in the process is drawing numbers. A replay or a test seeds it; the
 /// run puts it back to the default seed as each session stops, so a second play starts the same
 /// sequence the first did.
 ///
-/// A plain class over Random, below scripting and runs both, so the script facade and the run
-/// that holds it share one without either depending on the other.
+/// A plain class over Random, below the runs, so game code and the run that holds it share
+/// one without either depending on the other.
 class RunRandom
 {
 	private Random mRandom = .();

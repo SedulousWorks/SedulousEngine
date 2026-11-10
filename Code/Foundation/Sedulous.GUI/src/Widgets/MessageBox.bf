@@ -230,7 +230,7 @@ class MessageBox : Window
 
 	// === Markup ===
 	// `<MessageBox id="confirm" title="Delete?" text="..." buttons="ok-cancel"/>` waits in its
-	// page, unseen, until shown (Show, a script's show()); answered, it goes back there, its
+	// page, unseen, until shown (Show); answered, it goes back there, its
 	// `result` the answer, reported as `change`. `buttons` is ok, ok-cancel or yes-no, or the
 	// caller's own verbs, each `Text:result:role` and separated by `|`
 	// (`buttons="Cancel:cancel:cancel|Delete:delete:destructive"`); a missing result is the text

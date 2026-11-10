@@ -33,7 +33,7 @@ struct NavAgentComponent : ISerializable
 	public float StopDistance = 0.0f;
 
 	/// Whether the agent writes the entity's transform from the crowd's output. When it does
-	/// not, the entity is NOT moved and a script or physics reads the desired velocity.
+	/// not, the entity is NOT moved and game code or physics reads the desired velocity.
 	public bool MoveEntity = true;
 
 	/// Steer round other agents (on, the default: a guest in a crowd). Off, it goes straight
@@ -78,7 +78,7 @@ struct NavAgentComponent : ISerializable
 	public bool WarpRequested = false;
 	[Hidden]
 	public Float3 WarpTo = .(0, 0, 0);
-	/// Whether the agent has arrived, or has nowhere to go: the tick's to set, a script's to
+	/// Whether the agent has arrived, or has nowhere to go: the tick's to set, game code's to
 	/// read.
 	[Hidden]
 	[ReadOnly]
@@ -87,13 +87,13 @@ struct NavAgentComponent : ISerializable
 	[ReadOnly]
 	public float RemainingDistance = 0.0f;
 	/// The crowd's steering output in WORLD space, which is what a reporting agent is read
-	/// for: a script faces its entity along it.
+	/// for: game code faces its entity along it.
 	[Hidden]
 	[ReadOnly]
 	public Float3 DesiredVelocity = .(0, 0, 0);
 
 	/// The steering profile last pushed into the crowd. The tick re-applies on ANY change, so
-	/// a script's call and an inspector's edit both take effect.
+	/// a call from game code and an inspector's edit both take effect.
 	[Hidden]
 	public float AppliedSpeed = -1.0f;
 	[Hidden]
@@ -102,7 +102,7 @@ struct NavAgentComponent : ISerializable
 	public bool AppliedAvoidOthers = true;
 
 	// ---- the introspection cache, filled from the crowd each tick ----
-	// A script's to read: why an agent is not moving (its request failed, it is off the
+	// Game code's to read: why an agent is not moving (its request failed, it is off the
 	// mesh, it has corners left), which only the debug overlay showed before.
 
 	[Hidden]
@@ -172,8 +172,8 @@ struct NavAgentComponent : ISerializable
 		Finished = (vx == 0.0f) && (vz == 0.0f);
 	}
 
-	/// A destination, a speed and an arrival radius in one call, which is the common scripted
-	/// move order.
+	/// A destination, a speed and an arrival radius in one call, which is the common move order
+	/// game code gives.
 	public void NavigateAt(Float3 destination, float moveSpeed, float arriveDistance) mut
 	{
 		MaxSpeed = moveSpeed;

@@ -28,7 +28,7 @@ struct AudioPlayParams
 	public uint8 Priority = 128;
 	/// The scene this belongs to, for pausing and teardown. Nought is global.
 	public uint64 SceneGroup = 0;
-	/// The run a scene less voice belongs to (a game script's one shot): it routes through the
+	/// The run a scene less voice belongs to (game code's one shot): it routes through the
 	/// run's groups, so the run's stop, pause, mute and bus gains reach it. Ignored when
 	/// SceneGroup is set, since the scene group knows its run. Nought is outside every run.
 	public uint64 RunGroup = 0;

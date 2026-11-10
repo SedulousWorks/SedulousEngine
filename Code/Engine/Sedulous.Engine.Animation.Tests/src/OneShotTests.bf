@@ -87,7 +87,7 @@ static class OneShotTests
 		stage.Run(0.05f); // the player is built and the clip plays
 
 		let hopId = Guid(0x51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7);
-		// What the facade's PlayOneShot asks for, with a clip made in code.
+		// What a manager's PlayOneShot asks for, with a clip made in code.
 		animator.OneShot.Clip.SetDirect(hop);
 		animator.OneShot.Clip.SetId(hopId);
 		animator.OneShot.Settings = .(1.0f, 0.1f, 0.1f, 0);

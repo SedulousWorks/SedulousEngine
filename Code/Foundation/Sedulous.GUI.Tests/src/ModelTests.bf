@@ -518,7 +518,7 @@ class ModelTests
 		Test.Assert(tree.HasChildren());
 	}
 
-	/// A script's list: its edits reach the model's views as ranges; a row past the end reads
+	/// A list made in code: its edits reach the model's views as ranges; a row past the end reads
 	/// empty; markup may build one by its tag.
 	[Test]
 	public static void AScriptsListEditsItsModelAndIsBuiltByItsTag()

@@ -12,7 +12,7 @@ class GuiScreenTier
 {
 	/// The run it belongs to, by id; nought for the shared tier.
 	public RunId Run = 0;
-	/// A HELD reference each; the stack is the root's child (its id "screens", what a script
+	/// A HELD reference each; the stack is the root's child (its id "screens", what game code
 	/// finds). Released in reverse, the stack before the root.
 	public SceneRoot Root = null ~ _?.ReleaseRef();
 	public ScreenStack Screens = null ~ _?.ReleaseRef();

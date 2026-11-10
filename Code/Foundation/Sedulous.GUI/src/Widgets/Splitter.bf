@@ -15,7 +15,7 @@ namespace Sedulous.GUI;
 // fit, it gives them and clips what passes its end.
 //
 // A SplitterHandle sits between each two panes, kept in step as panes come and go (a pane added in
-// markup or by a script gets its handle). A handle is a widget of its own: focusable, read as a
+// markup or by code gets its handle). A handle is a widget of its own: focusable, read as a
 // separator whose value is where it stands, dragged by the pointer, moved by the arrow keys along
 // the axis (Shift for longer steps; Home and End to its limits), and a double click gives the panes
 // back the shares they were given. A resize moves the two panes either side of the handle alone; a

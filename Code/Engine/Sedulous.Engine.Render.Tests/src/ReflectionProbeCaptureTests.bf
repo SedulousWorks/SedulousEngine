@@ -7,7 +7,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Render.Tests;
 
-/// A script asks a probe to capture with Capture(); the request count rides the extracted probe
+/// Game code asks a probe to capture with Capture(); the request count rides the extracted probe
 /// to the probe system, which recaptures on a count it has not seen.
 class ReflectionProbeCaptureTests
 {

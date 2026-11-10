@@ -572,7 +572,7 @@ class NavigationSceneTests
 		public float EndX = 0.0f;
 	}
 
-	/// `live`: avoidance set after the start, as an inspector edit or a script changes it while
+	/// `live`: avoidance set after the start, as an inspector edit or game code changes it while
 	/// the agent is in its crowd.
 	private static PassRun WalkPast(NavigationSceneFixture fixture, Guid zoneId, bool avoidOthers, bool live = false)
 	{

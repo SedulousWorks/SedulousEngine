@@ -8,9 +8,8 @@ namespace Sedulous.Engine.Gameplay;
 /// A run's typed events: a struct type is the event, and its value the payload.
 ///
 /// They ride the run's EventBus, keyed by the hash of the type's full name, which is the same
-/// in every build (a TypeId is not). A listener checks the payload's type as well, so a
-/// script event that happens to share the name, carrying another kind of value, is not
-/// misread.
+/// in every build (a TypeId is not). A listener checks the payload's type as well, so another
+/// event that happens to share the key, carrying another kind of value, is not misread.
 ///
 /// Two forms, as calls have: Emit delivers now, inside the caller, the payload a reference to
 /// the caller's copy, so nothing is allocated; Post queues for the run's drain (the host's

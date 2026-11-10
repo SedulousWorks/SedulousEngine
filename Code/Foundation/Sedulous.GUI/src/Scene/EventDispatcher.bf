@@ -49,7 +49,7 @@ class PopupOptions
 	/// The pointer passes through it to what is below (a drag's preview).
 	public bool PassesPointer = false;
 	/// Closed, it goes back where it stood before it opened, rather than leaving the tree (a
-	/// script's own popup or menu: nothing else keeps it, so leaving would free it).
+	/// popup or menu code made and let go of: nothing else keeps it, so leaving would free it).
 	public bool ReturnHome = false;
 	/// Told when it closes, and why (after the `toggle` event). Owned.
 	public delegate void(PopupCloseReason reason) OnClosed ~ delete _;

@@ -600,7 +600,7 @@ class GuiPropertyInfo : GuiMemberInfo
 	public bool CanWrite => mSet != null;
 
 	/// Whether `name` names it: its CSS name exactly, or its own name in any case (markup's
-	/// `maxLength` and a script's `MaxLength` alike).
+	/// `maxLength` and a binding's `MaxLength` alike).
 	public bool Matches(StringView name) =>
 		(!mCss.IsEmpty && (mCss == name)) || mName.Equals(name, .OrdinalIgnoreCase);
 

@@ -30,7 +30,7 @@ namespace Sedulous.Engine.Gameplay;
 /// OnStop: a subclass's own fields are gone by the time Level's destructor runs. Its
 /// subscriptions and queued calls end then all the same.
 ///
-/// It runs at UpdateOrder -111, before the scene's behaviours and scripts (-110), so what the
+/// It runs at UpdateOrder -111, before the scene's behaviours (-110), so what the
 /// level sets in a frame is there for them in the same frame.
 ///
 /// The scene's own hooks OnUpdate (with a phase), OnFixedUpdate and OnSceneStopped are the
@@ -44,7 +44,7 @@ namespace Sedulous.Engine.Gameplay;
 [Reflect(.NonStaticFields)]
 abstract class Level : SceneSystem
 {
-	/// Before the behaviours and scripts at -110, and so before what acts on what game code
+	/// Before the behaviours at -110, and so before what acts on what game code
 	/// writes (the navigation crowd at -100, animation at -2 and -1).
 	public const int32 cUpdateOrder = -111;
 
@@ -76,7 +76,7 @@ abstract class Level : SceneSystem
 	/// The run its scene belongs to; null outside every run.
 	public IRun Run => (Scene != null) ? Scene.Run : null;
 
-	/// Its run's random numbers, the ones its scripts draw as `Random`; null outside a run
+	/// Its run's random numbers, the ones all of the run's game code draws; null outside a run
 	/// that has them. BORROWED.
 	public Sedulous.Core.RunRandom Random => RunServices.Get<Sedulous.Core.RunRandom>(Run);
 

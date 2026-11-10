@@ -113,7 +113,7 @@ class PhysicsContactTests
 			// The body is destroyed, and the queue clears with it.
 			play.Step(1);
 
-			// A script spamming the call at a disabled entity.
+			// Game code spamming the call at a disabled entity.
 			for (int i < 60)
 			{
 				play.Physics.ApplyImpulse(@box, .(0.0f, 0.0f, 5000.0f));

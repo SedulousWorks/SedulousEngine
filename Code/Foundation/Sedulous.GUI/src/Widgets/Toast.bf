@@ -22,9 +22,9 @@ namespace Sedulous.GUI;
 // once its exit has ended; a request's classes choose how (the theme's slide, `pop`, `still`, a
 // game's own; reduced motion only fades). Each shown toast is announced, an error interrupting.
 // The host keeps no history: it tells the application each toast posted and gone, for a log or a
-// bell. A request is a value (no callbacks in it), so a script fills one in as code does and posts
-// it; an action's button sends `activate` with the action's id, as a menu item does, beside the
-// callback code may pass with the post.
+// bell. A request is a value (no callbacks in it), which code fills in and posts; an action's
+// button sends `activate` with the action's id, as a menu item does, beside the callback code
+// may pass with the post.
 
 enum ToastSeverity : uint8
 {
@@ -49,7 +49,7 @@ static
 }
 
 /// A button on a toast. Pressed, it closes the toast, runs its command (if it names one), calls
-/// the post's callback with it, and sends `activate` with its id from its button (a script's). A
+/// the post's callback with it, and sends `activate` with its id from its button. A
 /// class: it owns its text; Set copies another.
 class ToastAction
 {
@@ -129,8 +129,7 @@ class ToastRequest
 	{
 	}
 
-	/// Adds an action (a script's way: a list's element added there is a copy). An empty
-	/// command: none.
+	/// Adds an action, made here from its parts. An empty command: none.
 	public void AddAction(StringView id, StringView text, StringView command)
 	{
 		Actions.Add(new ToastAction(id, text, command));
@@ -706,7 +705,7 @@ class ToastHost : UIWidget
 						from.AddRef(); // its toast may let it go on the way
 						if (held.mOnAction != null)
 							held.mOnAction(pressed);
-						// A script's `activate`, as a menu item's: it bubbles, its id the action's.
+						// The `activate` event, as a menu item's: it bubbles, its id the action's.
 						let activated = scope ItemEvent(.ItemActivate, from, (int32)at, ModelIndex());
 						from.RouteEvent(activated);
 						Remove(toast, true);

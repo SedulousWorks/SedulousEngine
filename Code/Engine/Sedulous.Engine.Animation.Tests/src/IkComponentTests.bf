@@ -15,8 +15,8 @@ namespace Sedulous.Engine.Animation.Tests;
 /// moving target entity in the world, through a model space that is the mesh entity's (moved
 /// and turned apart from the animator); the weight eases over FadeSeconds and the modifier
 /// leaves the player at nought; components run in their order; an unknown bone disables with
-/// one log line; the script calls set a point and read the result; and a removed component
-/// leaves no modifier behind.
+/// one log line; SetTarget sets a point and Reached and Error read the result; and a removed
+/// component leaves no modifier behind.
 class IkComponentTests
 {
 	/// Counts the IK warnings that reach it.
@@ -226,7 +226,7 @@ class IkComponentTests
 	public static void SetTargetGivesAPointTheResultReadsAndRemovalLeavesNothingBehind()
 	{
 		let s = scope Stage();
-		s.Leg("LegIk", .Invalid); // no target entity: the script's point
+		s.Leg("LegIk", .Invalid); // no target entity: SetTarget's point
 		let owner = s.Level.FindEntityByName("LegIk");
 		IkScene.SetTarget(s.Level, owner, .(6, 4, 0));
 		s.Tick();

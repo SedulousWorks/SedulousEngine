@@ -104,7 +104,7 @@ class CookPlanTests
 			driver.Execute(plan, scope CookStats());
 		}
 
-		// So does a change of what the builder compiles against (a script cook's surface).
+		// So does a change of what the builder compiles against.
 		CookWidgetBuilder.CurrentEnvironment = 0x5EED;
 		defer { CookWidgetBuilder.CurrentEnvironment = 0; }
 		{

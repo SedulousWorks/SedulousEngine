@@ -15,8 +15,7 @@ class BehaviourContactTests
 {
 	private const float cDt = 1.0f / 60.0f;
 
-	/// What the physics step hands its listeners, driven directly as the script tier's
-	/// contact tests drive its ingress.
+	/// What the physics step hands its listeners, driven directly.
 	private static EntityContact Contact(Scene scene, ContactKind kind, EntityHandle a, EntityHandle b, float speed = 0.0f)
 	{
 		var contact = EntityContact();

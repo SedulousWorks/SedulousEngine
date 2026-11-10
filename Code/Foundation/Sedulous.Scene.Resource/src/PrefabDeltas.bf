@@ -10,7 +10,7 @@ namespace Sedulous.Scene.Resource;
 /// Overrides are DERIVED, never tracked. At save time the live state is compared against
 /// the baselines captured when the instance spawned, and the difference IS the override
 /// set. Nothing records an edit, so there is nothing to get out of step: undo, redo and a
-/// script writing a component all produce the right answer for free, because the answer is
+/// game writing a component all produce the right answer for free, because the answer is
 /// recomputed rather than remembered.
 static class PrefabDeltas
 {

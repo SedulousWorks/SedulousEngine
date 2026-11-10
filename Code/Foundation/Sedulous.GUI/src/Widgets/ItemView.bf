@@ -320,7 +320,7 @@ abstract class ItemView : UIWidget, IModelClient
 	private const int cAccessSelectedCap = 50;
 
 	private IModel mModel = null; // not owned (unless it is mOwnModel, or mListModel's)
-	private ListModel mListModel = null ~ _?.ReleaseRef(); // a script's model it shows
+	private ListModel mListModel = null ~ _?.ReleaseRef(); // a list model it was given
 	private StringListModel mOwnModel = null ~ delete _; // markup's `items`
 	private RowFactory mFactory = new .() ~ delete _;
 	private List<RowTemplate> mTemplates = new .() ~ DeleteContainerAndItems!(_);

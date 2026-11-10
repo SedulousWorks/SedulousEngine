@@ -164,7 +164,7 @@ enum EventType : uint32
 	// The input kind changed, told to the GUI's root, not routed: its input kind says which.
 	InputKindChanged,
 	// An event a library names for itself (a NamedEvent: a gamekit screen's `screenenter`),
-	// told to the node it is about, not routed; a script listens for it by its name.
+	// told to the node it is about, not routed; a handler listens for it by its name (Node.On).
 	Named,
 	// A node's entrance ended (Node.Enter), told to it, not routed.
 	Entered,
@@ -318,7 +318,7 @@ enum InputKind : uint8
 
 static
 {
-	/// "pointer", "keyboard" or "pad": what a sheet's `@media (input: ...)` and a script name it.
+	/// "pointer", "keyboard" or "pad": what a sheet's `@media (input: ...)` and code name it.
 	public static StringView InputKindName(InputKind kind)
 	{
 		switch (kind)
@@ -646,8 +646,8 @@ class MotionEndEvent : Event
 	}
 }
 
-/// An event a library names (EventType.Named): its name, which `on` listens by, and a detail
-/// it may carry as text (a script reads it as `text`).
+/// An event a library names (EventType.Named): its name, which Node.On listens by, and a detail
+/// it may carry as text.
 class NamedEvent : Event
 {
 	public StringView Name;
@@ -774,7 +774,7 @@ struct DragResult
 
 typealias EventCallback = delegate void(Event e);
 
-/// What Event.bf keeps out of the public surface: the names scripts use for events.
+/// What Event.bf keeps out of the public surface: the names Node.On and markup use for events.
 internal static class EventDetail
 {
 	public struct NamedEventType
@@ -789,7 +789,7 @@ internal static class EventDetail
 		}
 	}
 
-	/// The names scripts use for events (`on("click", ...)`) and the inspector shows.
+	/// The names Node.On takes for events (`On("click", ...)`) and the inspector shows.
 	public static NamedEventType[39] sEventTypeNames = .(
 		.("click", .MouseClick), .("mousedown", .MouseDown),
 		.("mouseup", .MouseUp), .("mouseenter", .MouseEnter),
@@ -818,7 +818,7 @@ internal static class EventDetail
 
 static
 {
-	/// The event type markup and scripts call `name` ("click", "keydown"); false for one they do
+	/// The event type markup and Node.On call `name` ("click", "keydown"); false for one they do
 	/// not (`outType` is then the first type, PositionChanged).
 	public static bool EventTypeNamed(StringView name, out EventType outType)
 	{
@@ -834,7 +834,7 @@ static
 		return false;
 	}
 
-	/// The name markup and scripts give `type` (empty for one they have no name for).
+	/// The name markup and Node.On give `type` (empty for one they have no name for).
 	public static StringView EventTypeName(EventType type)
 	{
 		for (int i = 0; i < EventDetail.sEventTypeNames.Count; i++)

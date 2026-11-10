@@ -61,8 +61,7 @@ static class McpMain
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 		PipelineRegistration.RegisterAllImporters(importers);
-		// File > New's creators, the same set the editor offers (after the types: the script
-		// creators enumerate the registered cooks).
+		// File > New's creators, the same set the editor offers (after the types).
 		let creators = scope AssetCreatorRegistry();
 		PipelineRegistration.RegisterAllCreators(creators);
 

@@ -277,7 +277,7 @@ class TableViewTests
 		table.ColumnsText = "Name|Score";
 		let item = new TableItem();
 		table.ChildHost.AddChild(item); // taken in at once, with no cells yet
-		item.ReleaseRef(); // the caller keeps only a weak handle, as a script does
+		item.ReleaseRef(); // the caller keeps only a weak handle, as game code may
 		item.Cells = "Ada|9";
 		let model = table.Model;
 		Test.Assert(model != null);

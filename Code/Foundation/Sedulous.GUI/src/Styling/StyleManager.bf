@@ -27,7 +27,7 @@ enum StyleOrigin : uint8
 {
 	/// A rule of a sheet.
 	Sheet,
-	/// The node's inline style (markup's attributes, a script's style).
+	/// The node's inline style (markup's attributes, SetInlineStyle's).
 	Inline,
 	/// An ancestor's (an inherited property no rule here set).
 	Inherited,

@@ -48,10 +48,8 @@ namespace Sedulous.Engine.Gameplay;
 /// entity is active again, when OnEnable follows (OnStart only if it never started).
 class BehaviourSystem : SceneSystem, IContactListener
 {
-	/// The script tier's slot: before what acts on what game code writes (the navigation crowd
-	/// at -100, animation at -2 and -1). The scene script system shares it; the two keep the
-	/// order they were added in, and the engine's modules are added before a plugin's
-	/// contributions, so scripts run first while both exist.
+	/// The behaviours' slot: before what acts on what game code writes (the navigation crowd
+	/// at -100, animation at -2 and -1).
 	public const int32 cUpdateOrder = -110;
 
 	/// BORROWED: every registered manager, in registration order, and the tick lists, those of

@@ -237,7 +237,7 @@ class AssetImport
 	}
 
 	/// Whether `session` needs no review: one file whose one importer has no options and plans
-	/// nothing (a script, a UI document), imported at once.
+	/// nothing (a UI document, a shader), imported at once.
 	public static bool NeedsNoReview(Session session)
 	{
 		if (session.Files.Count != 1)

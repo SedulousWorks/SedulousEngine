@@ -7,7 +7,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation;
 
-/// A one-shot a script asked for (the Animation facade's PlayOneShot), on either kind of
+/// A one-shot game code asked for (a manager's PlayOneShot), on either kind of
 /// animated entity: the manager starts it over the entity's pose once its clip has loaded, and
 /// reports its end. Runtime only.
 struct OneShotRuntime

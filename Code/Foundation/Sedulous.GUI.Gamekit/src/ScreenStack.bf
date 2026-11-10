@@ -12,7 +12,7 @@ namespace Sedulous.GUI;
 // remembers its focus, so a pop refocuses the screen now on top; on a push, its `nav-default` or its
 // first focusable, else the screen itself (a HUD: `back` still starts there). A press on a screen's
 // empty area leaves the focus where it is, so `back` (Escape, the pad's East) still reaches it: the
-// top screen hears `back` first (a script's handler may take it; `back="none"` keeps it), else the
+// top screen hears `back` first (a handler may take it; `back="none"` keeps it), else the
 // stack pops, never below its last screen and never in the frame that pushed. A screen popped
 // leaves through the core's Leave (its sheet's exit plays), out of the stack, its focus and its
 // input at once; one pushed enters through the core's Enter (`:entering` while its sheet's entrance

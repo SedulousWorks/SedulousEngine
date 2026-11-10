@@ -11,8 +11,8 @@ namespace Sedulous.Engine.Domain;
 /// facet, and never collects anything itself.
 ///
 /// Beef's reflection is the reflection table, so a domain declares no reflection registrar;
-/// and the script facades are the generated closure of the root, so no facade registrar
-/// either. A domain with no scene content (input) is a module without a scene facet.
+/// and a subsystem registers its own facades, so no facade registrar either. A domain with
+/// no scene content (input) is a module without a scene facet.
 class DomainModule
 {
 	public readonly String Id;

@@ -23,7 +23,7 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 	}
 
 	/// A component that reaches its first Initialize phase with NO points was added bare (the
-	/// editor's Add Component, a script): it is seeded. A loaded or spawned one has its
+	/// editor's Add Component, game code): it is seeded. A loaded or spawned one has its
 	/// points by then and is left alone.
 	protected override void OnComponentInitialized(SplineComponent* component, EntityHandle entity)
 	{
@@ -89,9 +89,6 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 	}
 
 	/// The point on the curve nearest a WORLD position.
-	///
-	/// Takes a Float3; a script signature might spell it as three floats, but that is the
-	/// binding's business, not the query's.
 	public SplineHit ClosestPoint(EntityHandle entity, Float3 world)
 	{
 		let component = Get(entity);

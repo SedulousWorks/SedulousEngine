@@ -10,7 +10,7 @@ static
 	private static bool sGamekitElementsRegistered = false;
 
 	/// Registers the gamekit's element types (Screens, Screen, Prompt), once: a host calls it at
-	/// start-up beside RegisterGuiElements, so markup and scripts can make them.
+	/// start-up beside RegisterGuiElements, so markup and code can make them.
 	public static void RegisterGamekitElements()
 	{
 		if (sGamekitElementsRegistered)

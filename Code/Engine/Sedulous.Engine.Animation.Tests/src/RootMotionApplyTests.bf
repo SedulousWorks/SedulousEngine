@@ -11,7 +11,7 @@ using Sedulous.Xml.Serialization;
 namespace Sedulous.Engine.Animation.Tests;
 
 /// Applying root motion: Entity mode walks and turns the entity through a
-/// moved and turned parent, or a named gameplay root; Ignore leaves it; Manual holds the world
+/// moved and turned parent, or a named gameplay root; Ignore leaves it; Script holds the world
 /// delta; Character mode walks the character above it and lets it go with one zero move; a
 /// version 1 animator record reads with root motion off.
 class RootMotionApplyTests
@@ -135,7 +135,7 @@ class RootMotionApplyTests
 		Test.Assert(manual.Animator.RootMotionState.Yaw == 0.0f);
 	}
 
-	/// PaperKid's pet: the Pet entity (a scene root) is turned by its script every frame; its model
+	/// PaperKid's pet: the Pet entity (a scene root) is turned by its behaviour every frame; its model
 	/// under it plays a Walk whose root travels 0.55 m over 1.0417 s, at speed 1.45, in Entity
 	/// mode aimed at the Pet. It must walk the way the Pet faces, at about 0.8 m/s.
 	[Test]
@@ -176,7 +176,7 @@ class RootMotionApplyTests
 		let start = level.GetWorldPosition(pet);
 		for (int frame < 120)
 		{
-			// The script turns it, every frame.
+			// Its behaviour turns it, every frame.
 			var t = level.GetLocalTransform(pet);
 			t.Rotation = Quaternion.FromAxisAngle(.(0, 1, 0), yaw);
 			level.SetLocalTransform(pet, t);
@@ -228,7 +228,7 @@ class RootMotionApplyTests
 		s.Run(0.3f, 0.1f);
 		Test.Assert(characters.Moves == 6);
 
-		// Back on, then a script switches it to Manual mode: one zero move again.
+		// Back on, then game code switches it to Script mode: one zero move again.
 		s.Animator.RootMotion = .Character;
 		s.Run(0.1f, 0.1f);
 		let walking = characters.Moves;

@@ -14,7 +14,7 @@ namespace Sedulous.Net.Replication;
 /// server copies the entity transform INTO this component before sending, and the client
 /// applies this component, interpolated, BACK onto the entity transform after receiving.
 ///
-/// Not a script type: replication owns it.
+/// Replication owns it.
 [SerializableComponent("net.Transform")]
 [Description("Sends the entity's position, rotation and scale over the network, smoothed on clients.")]
 struct NetworkedTransform : ISerializable

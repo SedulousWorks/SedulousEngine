@@ -18,7 +18,7 @@ namespace Sedulous.Net.Manager;
 /// networking state, so an endpoint lives with the instance that runs it: N instances hold N
 /// independent endpoints.
 ///
-/// Scripts reach it as `Net` (Engine.GameInstance's NetFacade), through the run's network
+/// Game code reaches it as `Net` (Engine.GameInstance's NetFacade), through the run's network
 /// controller, which outlives every endpoint it opens.
 class NetworkManager
 {
@@ -135,7 +135,7 @@ class NetworkManager
 	/// web build joins a bare host over a WEBSOCKET to the host's gateway, wss when the page is
 	/// https (a browser refuses ws:// from an https page), and `port` there is the gateway's
 	/// port rather than the UDP one. NetworkController does that translation, so the same game
-	/// script joins with the same number everywhere.
+	/// code joins with the same number everywhere.
 	///
 	/// Nothing waits for the handshake. The websocket queues sends until it upgrades, which is
 	/// what keeps the session's immediate connect packet from being dropped into it.

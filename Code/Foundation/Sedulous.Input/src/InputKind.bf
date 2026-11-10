@@ -17,7 +17,7 @@ enum InputKind : uint8
 	case Keyboard;
 	case Pad;
 
-	/// The name a sheet or a script uses for it: "pointer", "keyboard" or "pad".
+	/// The name a sheet or code uses for it: "pointer", "keyboard" or "pad".
 	public StringView Name
 	{
 		get
@@ -33,7 +33,7 @@ enum InputKind : uint8
 }
 
 /// The binding to show for an action: what the player presses for it on the device in hand. One
-/// answer for a GUI's prompts and a script's `Input.Describe`, so a sentence names the control a
+/// answer for a GUI's prompts and the `Input` facade's Describe, so a sentence names the control a
 /// prompt beside it shows.
 static class ShownBinding
 {

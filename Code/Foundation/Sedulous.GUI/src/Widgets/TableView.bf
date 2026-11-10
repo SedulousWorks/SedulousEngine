@@ -214,8 +214,8 @@ class TableItem : UIWidget
 		return true;
 	}
 
-	/// Its cells, '|' between them; set after the table took it in (a script's `add` then
-	/// `cells`), the table's row follows.
+	/// Its cells, '|' between them; set after the table took it in (an item added in code, then
+	/// its cells), the table's row follows.
 	[GuiProperty]
 	public StringView Cells
 	{
@@ -523,7 +523,7 @@ class TableView : ItemView
 			mHeader.ToFront(); // drawn, and pressed, over the rows
 	}
 
-	// Markup's rows taken in, each item kept: a script that added it sets its cells after,
+	// Markup's rows taken in, each item kept: code that added it sets its cells after,
 	// through the handle it holds, and the row follows.
 	private void AdoptRows(Node host)
 	{

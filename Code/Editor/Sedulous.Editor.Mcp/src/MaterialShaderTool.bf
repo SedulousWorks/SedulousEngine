@@ -132,7 +132,7 @@ static class MaterialShaderTool
 
 	/// A material's effect groups as a result lists them: each `{name, flag, properties: [{name,
 	/// type, value}]}`, the flag by its define's name (WIND), a float's value a number, a wider
-	/// value's an array; in a script or an override a parameter is `Name.Property`.
+	/// value's an array; in game code or an override a parameter is `Name.Property`.
 	private static JsonValue EffectsJson(MaterialSource source)
 	{
 		let effects = JsonValue.MakeArray();

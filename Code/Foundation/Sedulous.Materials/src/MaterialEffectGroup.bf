@@ -10,7 +10,7 @@ namespace Sedulous.Materials;
 /// carries the effect's group: its parameters' names, types and offsets in the effect's own
 /// buffer (the effect block's table), and their values. The effect is active while its gate is
 /// above zero, and an active effect turns its flag on; what the effect does is its shader code's,
-/// so nothing here knows wind. Scripts and overrides address a value as `Effect.Property`
+/// so nothing here knows wind. Game code and overrides address a value as `Effect.Property`
 /// (`Wind.Strength`).
 class MaterialEffectGroup
 {

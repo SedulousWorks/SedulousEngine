@@ -12,7 +12,7 @@ namespace Sedulous.Engine.DefaultApp.Integration.Tests;
 ///
 /// A game run from its project folder has two: its cooked products and its sources (the scenes
 /// and the prefabs, which are never cooked). Spawns once read a database of their own, which in
-/// that mode was the cooked one, so a script's Spawn and a replicated spawn found no prefab. Its
+/// that mode was the cooked one, so game code's Spawn and a replicated spawn found no prefab. Its
 /// resources now read the cooked database over the sources, a prefab falling through, and every
 /// spawn loads through them.
 static class SpawnDatabaseTests

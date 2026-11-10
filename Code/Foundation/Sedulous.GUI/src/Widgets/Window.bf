@@ -390,7 +390,7 @@ class Window : UIWidget
 			dispatcher.ClosePopup(this); // its OnClosed finishes
 			return;
 		}
-		AddRef(); // the tree may hold its only reference (a script's window)
+		AddRef(); // the tree may hold its only reference (a window code opened and let go of)
 		RemoveFromParent();
 		Closed();
 		OnWindowGone();
@@ -572,7 +572,7 @@ class Window : UIWidget
 		OnWindowClosed();
 		if (mOnClose != null)
 			mOnClose();
-		SendEvent(scope Event(.Close, this)); // a script's on("close")
+		SendEvent(scope Event(.Close, this)); // a listener's On("close", ...)
 	}
 
 	private void CenterIn(Node root)

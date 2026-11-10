@@ -150,7 +150,7 @@ class TargetCameraTests
 		Test.Assert(read.TargetInterval == 2);
 	}
 
-	/// A script points a camera at a render texture by id, as SetMesh points a mesh; a nil id
+	/// Game code points a camera at a render texture by id, as SetMesh points a mesh; a nil id
 	/// gives the camera back to the screen, a texture assigned at run time included.
 	[Test]
 	public static void SetTargetPointsACameraAtATextureAndANilIdClearsIt()

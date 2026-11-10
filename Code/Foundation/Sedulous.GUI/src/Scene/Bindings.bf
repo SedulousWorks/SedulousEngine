@@ -6,7 +6,7 @@ namespace Sedulous.GUI;
 
 // Node's bindings by name: any reflected property (its type's or a base's, found by its own name
 // or the CSS name markup writes it by) binds to an expression, converted to the property's type,
-// so native code, markup and scripts bind any widget's properties this way, a library's included;
+// so code and markup bind any widget's properties this way, a library's included;
 // the properties a user changes write back; a translatable property binds to a key of the GUI's
 // Localization. Each is one of the node's bindings (Node.BindFor): binding a property again
 // replaces its binding.
@@ -14,7 +14,7 @@ namespace Sedulous.GUI;
 extension Node
 {
 	/// Binds the reflected property named `name` (this node's type's or a base's) to `expression`'s
-	/// value, converted to the property's type: native code, markup and scripts bind any widget's
+	/// value, converted to the property's type: code and markup bind any widget's
 	/// properties this way, a library's included. False when the node has no such writable
 	/// property. OWNERSHIP of `expression` transfers (deleted at once when nothing binds); the
 	/// binding disposes each value it returns.

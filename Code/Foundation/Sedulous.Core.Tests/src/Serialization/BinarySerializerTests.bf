@@ -176,7 +176,7 @@ class BinarySerializerTests
 	}
 
 	/// A record read in another layout than it was written in hands the reader a garbage
-	/// count. It used to reserve it and read past the end once per element (a cooked script
+	/// count. It used to reserve it and read past the end once per element (a cooked product
 	/// from before a field was added held the editor for minutes).
 	[Test]
 	public static void ACountLongerThanTheDataLeftFailsAtOnce()

@@ -5,7 +5,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Scene.Resource;
 
-/// Spawns prefabs into its scene at runtime, by id or by reference: what a script's Spawn
+/// Spawns prefabs into its scene at runtime, by id or by reference: what game code's Spawn
 /// reaches.
 ///
 /// The scene knows nothing of content, so this is where the resource manager meets it. The

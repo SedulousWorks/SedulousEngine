@@ -4,7 +4,7 @@ using System.Collections;
 namespace Sedulous.Scene;
 
 /// Networked state a component manager supplies itself, for what its reflection does not
-/// describe (a script behaviour's properties, declared by the script). Replication sends the
+/// describe (a behaviour's [Replicated] fields, which its manager writes). Replication sends the
 /// bytes it writes for a networked entity, compares them with what each peer last had, and
 /// hands them back on every peer; the bytes are the manager's own format. Replication lives
 /// above the scene and the scene does not depend on it: a manager keeps its own networked

@@ -7,7 +7,7 @@ using internal Sedulous.GUI;
 namespace Sedulous.GUI;
 
 // Rich text as runs: styled spans of text and inline icons, and the small markup that writes them,
-// the same from markup and from script:
+// the same from markup and from code:
 //
 //   Your mark wears [color=#d04060][b]a rose gown[/b][/color] [icon=Icons/rose.png] [link=hint]?[/link]
 //

@@ -7,11 +7,12 @@ using Sedulous.Run;
 namespace Sedulous.Engine.Audio;
 
 /// `Audio`: the run's music and one shots, by asset id, and the buses. The subsystem's own
-/// (AudioSubsystem makes and offers them): one to scripts outside every run, on the application's
-/// services, and one per run, among the run's services, which its scripts find first.
+/// (AudioSubsystem makes and offers them): one to game code outside every run, on the
+/// application's services, and one per run, among the run's services, which its game code finds
+/// first.
 ///
 /// One per run: a run's own carries the run, so
-/// what its scripts play goes into the run (the run's stop, pause and mute reach it) and its
+/// what its game code plays goes into the run (the run's stop, pause and mute reach it) and its
 /// bus volumes are the run's own (a game's options sliders never move the editor's buses or
 /// another run's). A facade with no run plays outside every run, on the engine's buses.
 class AudioFacade
@@ -73,7 +74,7 @@ class AudioFacade
 
 	// ---- by content path: the asset as the project names it ("Audio/Jump") ----
 	// A path resolves by type: a clip plays, a cue resolves one weighted variant. One that
-	// names nothing playable gives an invalid voice; a script never faults over content.
+	// names nothing playable gives an invalid voice; game code never faults over content.
 
 	public VoiceHandle PlayOneShotPath(StringView path, AudioBus bus = .Effects) =>
 		((mAudio != null) && (Resources != null)) ? mAudio.PlayOneShotByPath(Resources, path, bus, RunGroup) : .();

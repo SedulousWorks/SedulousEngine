@@ -3,7 +3,7 @@ using System;
 namespace Sedulous.Engine.Render;
 
 /// A shared Environment Profile: the values a scene's environment takes while its source is
-/// Profile. The loaded asset, so a script's change to it is in memory and seen by every scene
+/// Profile. The loaded asset, so game code's change to it is in memory and seen by every scene
 /// of the run that shares it.
 class EnvironmentProfile
 {

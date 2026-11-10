@@ -8,8 +8,8 @@ using Sedulous.Pipeline.Importer;
 namespace Sedulous.Shaders.Pipeline;
 
 /// Imports a dropped .hlsl: the file is STAGED into the project's sources tree and a shader
-/// asset, named after its stem (the name materials find it by), LINKS it, as a script and a UI
-/// document do. The entry points stay VSMain and PSMain; the shader page edits them.
+/// asset, named after its stem (the name materials find it by), LINKS it, as a UI document
+/// does. The entry points stay VSMain and PSMain; the shader page edits them.
 class ShaderFileImporter : IFileImporter
 {
 	public StringView Label => "Shader";

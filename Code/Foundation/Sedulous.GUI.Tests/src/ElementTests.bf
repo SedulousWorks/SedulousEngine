@@ -25,7 +25,7 @@ class Impostor : UIWidget
 
 /// Elements: weak references through a GUI's own element table (one resolves while its element
 /// lives and not after, a freed slot taken again answers under a new generation only, and each GUI
-/// keeps a table of its own, its references gone with it), a script's handle through the same
+/// keeps a table of its own, its references gone with it), a native handle through the same
 /// table, the element registry any library adds to, and the element set one GUI may create from,
 /// a node adding children by tag through it.
 class ElementTests

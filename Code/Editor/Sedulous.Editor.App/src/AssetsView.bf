@@ -1204,8 +1204,8 @@ class AssetsView
 		menu.AddItem("Rename", new [=this, =rowId] () => { BeginRename(rowId); }).Shortcut = "F2";
 		menu.AddItem("Duplicate", new [=ops, =id] () => { ops.Duplicate(id); });
 		menu.AddSeparator();
-		// The OS clipboard: the guid as a script writes it (hyphened, no braces) and the content
-		// path, for pasting into scripts and docs.
+		// The OS clipboard: the guid as code writes it (hyphened, no braces) and the content
+		// path, for pasting into code, tools and docs.
 		menu.AddItem("Copy GUID", new [=this, =id] () => { CopyText(id.ToString(.. scope .(), 'D'), "GUID"); });
 		menu.AddItem("Copy Path", new [=this, =id] () =>
 			{

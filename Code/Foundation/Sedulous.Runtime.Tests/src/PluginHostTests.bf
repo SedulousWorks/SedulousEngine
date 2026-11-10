@@ -396,7 +396,7 @@ class PluginHostTests
 		ClearLog();
 	}
 
-	/// The host says which loaded plugin registered a type (what a script's facade belongs to), lists
+	/// The host says which loaded plugin registered a type, lists
 	/// a plugin's types, and knows none once it unloads; the engine's types belong to no plugin.
 	[Test]
 	public static void ATypesOwnerIsThePluginWhoseLoadRegisteredIt()

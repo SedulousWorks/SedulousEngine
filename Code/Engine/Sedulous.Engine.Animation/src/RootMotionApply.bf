@@ -15,11 +15,12 @@ enum RootMotionMode : uint8
 	Entity,
 	/// The nearest character at or above it walks by it (it still collides) and turns.
 	Character,
-	/// Held for scene.Animation.RootMotionTranslation and RootMotionYaw.
-	Manual,
+	/// Held in the animator's RootMotionState, for game code to apply.
+	Script,
 }
 
-/// An animator's root motion as of its last tick: Manual mode holds it to be read, the others use it.
+/// An animator's root motion as of its last tick: in Script mode game code reads it, the
+/// others use it.
 struct RootMotionRuntime
 {
 	/// The last tick's travel, in the world.

@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// A run's random numbers: a seed replays, the ranges are what the script verbs promise, and
+/// A run's random numbers: a seed replays, the ranges are what the methods promise, and
 /// Reset goes back to the default sequence a fresh run starts on.
 class RunRandomTests
 {

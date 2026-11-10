@@ -5,7 +5,7 @@ using Sedulous.Pipeline.Core;
 
 namespace Sedulous.VG.Pipeline;
 
-/// A vector image: a LINKED `.svg` in Sources/, like a UI document or a script. A UI theme
+/// A vector image: a LINKED `.svg` in Sources/, like a UI document or a shader. A UI theme
 /// names one with `@icon name "{guid}"` and draws it with `svg(name, tint=...)`.
 [DisplayName("Vector Image")]
 [Category("Vector Graphics")]

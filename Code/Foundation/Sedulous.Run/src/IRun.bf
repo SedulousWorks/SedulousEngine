@@ -51,7 +51,7 @@ interface IRun
 	RunId Id { get; }
 	StringView Name { get; }
 	RunState State { get; }
-	/// The run's event bus: its scenes' and its scripts'. BORROWED.
+	/// The run's event bus: its scenes' and its game code's. BORROWED.
 	EventBus Events { get; }
 	/// What waits while its scripts run (RunMutations). BORROWED.
 	RunMutations Mutations { get; }

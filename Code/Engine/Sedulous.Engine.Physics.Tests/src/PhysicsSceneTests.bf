@@ -334,7 +334,7 @@ class PhysicsSceneTests
 
 		Test.Assert(!rays.CastRay(.(0, 3, 0), .(0, -1, 0), 2.0f, 0xFFFFFFFF, out hit), "out of reach");
 
-		// The script ray still sees triggers: what a game may ask for on purpose.
+		// The world's own ray still sees triggers: what a game may ask for on purpose.
 		Test.Assert(play.Physics.World.RayCast(.(0, 3, 0), .(0, -1, 0), 10.0f, let raw));
 		Test.Assert(Math.Abs(raw.Position.Y - 1.0f) < 1e-3f);
 	}

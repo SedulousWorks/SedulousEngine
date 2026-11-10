@@ -43,7 +43,7 @@ class AudioSceneTests
 	}
 
 	/// A source that goes while the scene plays (its entity destroyed, or the component taken
-	/// off, as a script's removeFrom does) stops its voice then, not at the scene's end.
+	/// off, as RemoveComponent does) stops its voice then, not at the scene's end.
 	[Test]
 	public static void ADestroyedEntitysOrARemovedComponentsVoiceStopsAtOnce()
 	{

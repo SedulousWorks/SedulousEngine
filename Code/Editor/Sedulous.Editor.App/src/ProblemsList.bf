@@ -135,7 +135,7 @@ class ProblemsList
 	}
 
 	/// What the summary says with no problems (empty: "No problems"): what a page's check
-	/// found good (the class a script compiles). Said at the next Show.
+	/// found good. Said at the next Show.
 	public void SetClean(StringView text)
 	{
 		mClean.Set(text);

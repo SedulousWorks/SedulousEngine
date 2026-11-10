@@ -163,7 +163,7 @@ class NavigationSceneSystem : SceneSystem
 		if (zone.Crowd == null)
 			return;
 
-		// A live steering change, from a script or an inspector, pushes into the crowd. VALUE
+		// A live steering change, from game code or an inspector, pushes into the crowd. VALUE
 		// COMPARED, so an unchanged agent costs two float compares.
 		if ((agent.MaxSpeed != agent.AppliedSpeed)
 			|| (agent.MaxAcceleration != agent.AppliedAcceleration)

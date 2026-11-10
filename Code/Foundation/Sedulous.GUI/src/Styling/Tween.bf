@@ -687,8 +687,8 @@ class TweenCall : Sedulous.GUI.Action
 /// Steps run as one (Zero's action groups, Godot's chained and parallel tweens, foundation.ui's
 /// storyboards): tweens of any nodes, waits, calls and other groups, one after another
 /// (TweenSequence) or together (TweenParallel), repeated as a whole, calling back at the end. Run
-/// it on a node (RunAction): the node's GUI keeps its time; each step keeps its own target. A
-/// script makes a TweenSequence or TweenParallel, and plays it with Node.Play.
+/// it on a node (RunAction): the node's GUI keeps its time; each step keeps its own target.
+/// Code makes a TweenSequence or TweenParallel, and plays it with Node.Play.
 abstract class TweenGroup : Sedulous.GUI.Action
 {
 	/// Each holds a reference of the group's.
@@ -827,8 +827,7 @@ class TweenSequence : TweenGroup
 {
 	private int mIndex = 0;
 
-	/// A script makes one (`TweenSequence()`): counted, so the reference it is made with is handed
-	/// over to the script's handle.
+	/// Counted: the reference it is made with is its maker's.
 	public this()
 	{
 	}
@@ -863,7 +862,7 @@ class TweenSequence : TweenGroup
 /// Steps together: the run ends with the last of them.
 class TweenParallel : TweenGroup
 {
-	/// A script makes one (`TweenParallel()`), as it makes a sequence.
+	/// Counted, as a sequence is.
 	public this()
 	{
 	}

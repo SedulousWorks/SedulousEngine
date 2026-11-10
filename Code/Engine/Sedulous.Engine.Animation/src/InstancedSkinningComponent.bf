@@ -28,8 +28,7 @@ struct InstancedSkinningComponent : ISerializable, IComponentResources
 {
 	/// Shared across the crowd.
 	public Ref<Skeleton> Skeleton = .(Guid());
-	/// The clips the instances play; an instance's clip is its index here. Not on the script
-	/// surface: a list of references does not cross yet (Backlog).
+	/// The clips the instances play; an instance's clip is its index here.
 	[Description("The clips the instances play; an instance's clip is its index here")]
 	public List<Ref<AnimationClip>> Clips = null;
 

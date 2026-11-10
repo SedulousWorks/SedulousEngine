@@ -242,7 +242,7 @@ class TransformTests
 		}
 	}
 
-	/// Read mid-update (a script after physics moved the entity, before UpdateTransforms), the
+	/// Read mid-update (game code after physics moved the entity, before UpdateTransforms), the
 	/// world pose is this frame's: the cached matrix had answered last frame's. The previous
 	/// matrix keeps last frame's, and after UpdateTransforms the cache agrees.
 	[Test]

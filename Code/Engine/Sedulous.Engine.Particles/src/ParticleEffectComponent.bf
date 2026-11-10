@@ -28,8 +28,8 @@ namespace Sedulous.Engine.Particles;
 [Description("Plays a particle effect at the entity: billboards, trails, meshes or lights.")]
 struct ParticleEffectComponent : ISerializable, IComponentResources
 {
-	/// BORROWED on the code path, and the clone below on the authored one. Code only; a script
-	/// sets the asset.
+	/// BORROWED on the code path, and the clone below on the authored one. Code only; game code
+	/// may set the asset instead.
 	public ParticleEffect Effect = null;
 	/// The runtime simulation, created when an effect attaches.
 	public ParticleEffectInstance Instance = null;

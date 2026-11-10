@@ -134,7 +134,7 @@ class MathTests
 		Test.Assert(Lerp(0.0f, 10.0f, 2.0f) == 20.0f);
 	}
 
-	/// The float Min, Max and Clamp a script calls, by value.
+	/// The float Min, Max and Clamp game code calls, by value.
 	[Test]
 	public static void MinMaxAndClampForFloats()
 	{
