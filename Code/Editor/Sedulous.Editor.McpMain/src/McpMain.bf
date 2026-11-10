@@ -86,9 +86,11 @@ static class McpMain
 		defer pluginTools.DetachServer(server);
 		// The engine surface every host serves, one list in Editor.Mcp, with the paths only
 		// this host knows how to find: the curated docs and known issues by the walk up from
-		// the executable.
+		// the executable or the working folder, else from the data root's parent (an SDK's root,
+		// for a project's own tools built outside it).
 		let paths = scope EngineToolPaths();
-		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
+		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .()),
+			PathParent(dataRoot, .. scope .())));
 		// shader_validate compiles against the engine's shader library under the data root.
 		DataPath(dataRoot, "Engine/Shaders", paths.ShaderLibrary);
 		// This host runs the cook, import and export INLINE: the export builds the project's
