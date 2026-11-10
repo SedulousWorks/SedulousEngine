@@ -878,6 +878,85 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		ClearDirty(); // Commands.Clear told OnChanged, which marks it dirty
 	}
 
+	/// The scene as it stands, as its save would write its stream (a scene with its settings, a
+	/// prefab without), never into its asset. A Simulate under way ends first, since what it runs
+	/// is not the document; a scene that did not load has nothing to keep.
+	public override Result<void, ErrorCode> KeepAside(List<uint8> outBytes)
+	{
+		if ((mScene == null) || mLoadFailed)
+			return .Err(.NotSupported);
+		if (IsSimulating)
+			StopSimulation();
+		if (mAnimation != null)
+			mAnimation.StopPreview();
+		let text = scope String();
+		let written = SceneStorage.SourceText(mScene, !mIsPrefab, text);
+		if (mAnimation != null)
+			mAnimation.Repose();
+		if (written case .Err(let error))
+			return .Err(error);
+		outBytes.Clear();
+		outBytes.AddRange(Span<uint8>((uint8*)text.Ptr, text.Length));
+		return .Ok;
+	}
+
+	/// The scene KeepAside wrote, in place of what the page loaded: its history goes (it named the
+	/// loaded content), it is marked unsaved, and the selection the view state kept is taken again,
+	/// since it may name entities only the kept scene has. Refused, the page as it was, while it
+	/// simulates or for a scene that did not load; a kept scene that does not read is refused and
+	/// the page reads its asset again, as saved.
+	public override Result<void, ErrorCode> TakeBack(Span<uint8> bytes)
+	{
+		if ((mScene == null) || mLoadFailed || IsSimulating || (mContext.Project == null))
+			return .Err(.NotSupported);
+		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
+		if (instance == null)
+			return .Err(.NotFound);
+		let stream = scope MemoryStream();
+		stream.Write(bytes);
+		stream.Seek(0, .Begin);
+		let reader = scope SceneStreamReader();
+		let opened = reader.Open(stream);
+		if (opened case .Err)
+			return .Err(.InvalidArgument);
+		let archive = opened.Value;
+		ClearScene();
+		SceneSerializer.SerializeScene(archive, mScene, .Referenced, true, reader.Encoding);
+		if (archive.Status case .Err(let error))
+		{
+			GlobalLog(.Error, "Editor: the unsaved '{}' kept for a relaunch did not read; the saved scene shows", mTitle);
+			ClearScene();
+			SceneLoading.LoadEditorScene(mContext, instance, mScene).IgnoreError();
+			ClearDirty();
+			return .Err(error);
+		}
+		SceneLoading.ResolveAll(mContext, mScene);
+		let live = scope List<Guid>();
+		SceneViewState.LiveSelection(SceneViewPrefs.Find(mContext.ProjectEditorSettings, InstanceId), mScene, live);
+		if (!live.IsEmpty)
+			mEditContext.EntitySelection.Set(live);
+		MarkDirty();
+		return .Ok;
+	}
+
+	/// Where the scene is left (the camera, the selection, the panes), written now.
+	public override void CaptureViewState()
+	{
+		if (mScene != null)
+			SaveViewState();
+	}
+
+	/// The scene emptied for a read in its place: its entities, its prefab instances, the selection
+	/// and the history (which named them) gone.
+	private void ClearScene()
+	{
+		while (mScene.FirstRoot.IsAssigned)
+			mScene.DestroyEntity(mScene.FirstRoot);
+		mScene.ClearPrefabInstances();
+		mEditContext.EntitySelection.Clear();
+		Commands.Clear();
+	}
+
 	public void StartSimulation()
 	{
 		// The scene as it is, not as the animation panel posed it, is what the run starts from and

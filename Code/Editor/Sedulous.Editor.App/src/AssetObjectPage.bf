@@ -238,6 +238,36 @@ abstract class AssetObjectPage : UIEditorPage
 		return saved;
 	}
 
+	/// The asset as it stands, its whole state as an undo step takes it, never into its asset.
+	public override Result<void, ErrorCode> KeepAside(List<uint8> outBytes)
+	{
+		if (mObject == null)
+			return .Err(.NotSupported);
+		ObjectSnapshot.Take(mObject, outBytes);
+		return .Ok;
+	}
+
+	/// The asset KeepAside wrote, in place of what the page read: marked unsaved, its history let
+	/// go. State that does not read puts back what was there and is refused.
+	public override Result<void, ErrorCode> TakeBack(Span<uint8> bytes)
+	{
+		if (mObject == null)
+			return .Err(.NotSupported);
+		let before = scope List<uint8>();
+		ObjectSnapshot.Take(mObject, before);
+		if (!ObjectSnapshot.Restore(mObject, bytes))
+		{
+			ObjectSnapshot.Restore(mObject, before);
+			return .Err(.InvalidArgument);
+		}
+		mProperties.Refresh();
+		ObjectSnapshot.Take(mObject, mBaseline);
+		Commands.Clear();
+		MarkDirty();
+		OnObjectChanged();
+		return .Ok;
+	}
+
 	/// Once a frame: the bar as the actions are over the page.
 	public virtual void Refresh()
 	{

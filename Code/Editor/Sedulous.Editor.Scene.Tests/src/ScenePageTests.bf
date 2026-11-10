@@ -2627,4 +2627,61 @@ class ScenePageTests
 		Test.Assert(SceneViewport.ShiftHeldOver(null, device, true));
 		Test.Assert(!SceneViewport.ShiftHeldOver(null, null, true));
 	}
+
+	/// A relaunch: the page's view written while it is open (the camera, a selection naming an
+	/// entity only the unsaved scene has), its unsaved scene kept aside without touching the asset,
+	/// and a fresh page given it back: the new entity there, the selection taken again, marked
+	/// unsaved with no history; the asset on disk as it was. A scene that did not load keeps nothing.
+	[Test]
+	public static void AnUnsavedSceneKeptAsideComesBackUnsavedWithItsViewAndTheAssetUntouched()
+	{
+		let bed = scope Bed();
+		let bytes = scope List<uint8>();
+		Guid mine;
+		{
+			let page = bed.Open(bed.Level);
+			defer delete page;
+			mine = page.EditContext.CreateEntity("Mine");
+			Test.Assert(page.IsDirty);
+			page.EditContext.EntitySelection.Set(mine);
+			page.Viewport.Camera.Position = .(7.0f, 8.0f, 9.0f);
+			page.CaptureViewState();
+			let pref = SceneViewPrefs.Find(bed.Store, bed.Level.Id);
+			Test.Assert((pref != null) && pref.Selection.Contains(mine), "the view written while the page is open");
+			Test.Assert(page.KeepAside(bytes) case .Ok);
+			Test.Assert(!bytes.IsEmpty);
+			Test.Assert(page.IsDirty, "kept aside, not saved");
+			page.OnClose();
+		}
+		{
+			let stream = bed.Level.ReadData(SceneStorage.cStreamName);
+			Test.Assert(stream != null);
+			defer delete stream;
+			let stored = scope List<uint8>();
+			stored.Resize((int)stream.Size());
+			Test.Assert(stream.Read(stored) == stored.Count);
+			let text = scope String(StringView((char8*)stored.Ptr, stored.Count));
+			Test.Assert(text.Contains("Crate") && !text.Contains("Mine"), "the asset as it was saved");
+		}
+		let again = bed.Open(bed.Level);
+		defer delete again;
+		Test.Assert(!again.IsDirty);
+		Test.Assert(Math.Abs(again.Viewport.Camera.Position.X - 7.0f) < 0.001f, "the camera from the view");
+		// What does not read is refused, the page showing the scene as saved.
+		Test.Assert(again.TakeBack(Span<uint8>((uint8*)Bed.cJunk.Ptr, Bed.cJunk.Length)) case .Err);
+		Test.Assert(again.ScenePtr.FindEntity(bed.Crate).IsAssigned && !again.ScenePtr.FindEntityByName("Mine").IsAssigned);
+		Test.Assert(!again.IsDirty);
+		Test.Assert(again.TakeBack(bytes) case .Ok);
+		Test.Assert(again.ScenePtr.FindEntity(mine).IsAssigned && again.ScenePtr.FindEntity(bed.Crate).IsAssigned);
+		Test.Assert(again.IsDirty, "back unsaved");
+		Test.Assert(!again.Commands.CanUndo, "no history: it named the loaded scene");
+		Test.Assert(again.EditContext.EntitySelection.Contains(mine), "the selection taken again");
+		again.OnClose();
+
+		let broken = bed.Open(bed.Broken);
+		defer delete broken;
+		Test.Assert(broken.LoadFailed);
+		Test.Assert(broken.KeepAside(bytes) case .Err(.NotSupported));
+		broken.OnClose();
+	}
 }

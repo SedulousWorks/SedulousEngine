@@ -72,6 +72,20 @@ abstract class EditorPage
 		}
 	}
 
+	/// The page's content as it stands, unsaved edits and all, into `outBytes`, never into its
+	/// asset: what a relaunch keeps aside so the next editor reopens the page unsaved (TakeBack).
+	/// NotSupported (the default) for a page that cannot; its unsaved work is then asked about or
+	/// refused as any other.
+	public virtual Result<void, ErrorCode> KeepAside(List<uint8> outBytes) => .Err(.NotSupported);
+	/// What KeepAside wrote, shown as the page's content and marked unsaved, its history let go.
+	/// NotSupported (the default), or another error when it did not read: the page then shows its
+	/// asset as it is saved.
+	public virtual Result<void, ErrorCode> TakeBack(Span<uint8> bytes) => .Err(.NotSupported);
+	/// Writes what the page keeps of its view (a scene's camera, selection and panes) into the
+	/// project's editor settings now, as it does when it closes: a relaunch saves it before the
+	/// next editor reads it. Nothing by default.
+	public virtual void CaptureViewState() {}
+
 	/// The asset this page edits changed OUTSIDE the page: an apply to prefab, a re-import.
 	/// A page that caches loaded content overrides to refresh itself.
 	public virtual void OnAssetExternallyModified() {}
