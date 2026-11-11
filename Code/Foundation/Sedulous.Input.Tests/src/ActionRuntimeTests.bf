@@ -739,4 +739,47 @@ class ActionRuntimeTests
 		runtime.PopExclusiveSet(); // nothing to pop
 		Test.Assert(runtime.BindingsVersion == popped);
 	}
+
+	/// A key is bound while an action of a set in effect listens to it.
+	[Test]
+	public static void AKeyIsBoundWhileAnActionOfASetInEffectListensToIt()
+	{
+		let map = new InputMap();
+		defer delete map;
+		let gameplay = new ActionSet();
+		gameplay.Name.Set("Gameplay");
+		map.Sets.Add(gameplay);
+		let walk = new InputAction();
+		walk.Name.Set("Walk");
+		walk.Kind = .Axis2D;
+		var wasd = Binding();
+		wasd.Source = .Composite2D;
+		wasd.NegX = (uint32)KeyCode.A;
+		wasd.PosX = (uint32)KeyCode.D;
+		wasd.NegY = (uint32)KeyCode.S;
+		wasd.PosY = (uint32)KeyCode.W;
+		walk.Bindings.Add(wasd);
+		gameplay.Actions.Add(walk);
+		let menu = new ActionSet();
+		menu.Name.Set("Menu");
+		map.Sets.Add(menu);
+		let close = new InputAction();
+		close.Name.Set("Close");
+		close.Kind = .Button;
+		close.Bindings.Add(InputTestMaps.Key(.Back));
+		menu.Actions.Add(close);
+
+		let runtime = scope ActionRuntime();
+		runtime.SetMap(map);
+		Test.Assert(runtime.IsKeyBound(.Back), "the menu's Close");
+		Test.Assert(runtime.IsKeyBound(.W), "one of Walk's four keys");
+		Test.Assert(!runtime.IsKeyBound(.Escape));
+
+		runtime.EnableSet("Menu", false); // a disabled set listens to nothing
+		Test.Assert(!runtime.IsKeyBound(.Back));
+		runtime.EnableSet("Menu", true);
+		runtime.PushExclusiveSet("Menu"); // the exclusive top alone is in effect
+		Test.Assert(runtime.IsKeyBound(.Back));
+		Test.Assert(!runtime.IsKeyBound(.W));
+	}
 }

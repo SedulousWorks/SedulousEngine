@@ -258,6 +258,32 @@ class ActionRuntime
 		public Float2 Finger;
 	}
 
+	/// Whether an action of the sets in effect (the enabled ones, or the exclusive top alone while
+	/// one is pushed) listens to `key`: a Key binding of it, or a Composite2D naming it. A host asks
+	/// it of a key the platform takes when the game does not (a phone's back button): a game takes
+	/// such a key by binding it.
+	public bool IsKeyBound(Sedulous.Shell.KeyCode key)
+	{
+		let code = (uint32)key;
+		let exclusiveTop = ExclusiveTopSet();
+		for (int s = 0; s < mMap.Sets.Count; s++)
+		{
+			if (!mSetEnabled[s] || ((exclusiveTop >= 0) && (s != exclusiveTop)))
+				continue;
+			for (let action in mMap.Sets[s].Actions)
+			{
+				for (let binding in action.Bindings)
+				{
+					if (((binding.Source == .Key) && (binding.Code == code)) ||
+						((binding.Source == .Composite2D) &&
+						((binding.NegX == code) || (binding.PosX == code) || (binding.NegY == code) || (binding.PosY == code))))
+						return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/// Every touch binding (TouchButton, TouchStick) of the sets in effect: the enabled ones,
 	/// or the exclusive top alone while one is pushed. In map order.
 	public void ForEachTouchControl(delegate void(TouchControl control) visit)
