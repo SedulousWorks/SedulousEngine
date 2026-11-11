@@ -556,3 +556,33 @@ Measured by hand (2026-11-10, SkyHopper on x2, `editor_relaunch {"build": true}`
 - SkyHopper, driven over the IDE's MCP server (`BeefIDE -workspace=<project>/Code -mcp=<port>`, headless weston): the IDE built SkyHopperEditor with hot swapping on in 36 s (peak about 3 GB) and ran it under LLDB (`DebugCommandArguments` `--project … --data-root … --null-gpu`). A probe method returned 1; after `edit_document` and `build` the IDE reported "hot swap: replaced 1 method" in 1.0 s and the running editor's probe returned 2; the editor ran on normally after. The same change through Build and Relaunch costs about 26 s.
 - A field added to a live behaviour (`Coin`) did not come back: the IDE sat at about 93% CPU and stopped answering MCP for over 10 minutes, and was killed. Whether it was stuck on the refusal, a dialog a headless session cannot answer, or a hang is not known; it needs a run on a real display.
 - So for method bodies the IDE loop works today on Linux, about 25 times faster than a relaunch; a layout change needs the relaunch, and the IDE must not hang on one.
+
+## The field change, on a real display (2026-11-11)
+
+- **The hang was the demangler.** After a data change the IDE demangles every hot method's name for
+  its log, and Beef's demangler looped forever on the short names methods in a type's extensions
+  get (`<index>$`, unlengthed) and crashed on a tuple's vendor types (`u3int`). Both are fixed on
+  the fork (`fix/demangle-hang`, `fix/demangle-tuple`) and merged upstream; the IDE's own test
+  covers an extension method.
+- **The program showed as paused while it ran.** Interrupting it for the swap leaves LLDB a stop it
+  resumes from itself; the IDE took that stop as a pause, so the debugger said Paused while the
+  editor kept running. Fixed on the fork (`fix/lldb-restarted-stop`), a pull request to make.
+- **A field added to a live type is refused**, as Beef's hot swap means it to be: with Level1 open
+  and coins in it, adding a field to `Coin` gave "Hot type data changes cannot be applied ...
+  'SkyHopper.Coin' allocated on the heap". Method bodies swap (1335 methods replaced in one compile,
+  in about 70 s for the 161 modules a data change rebuilds). A layout change on a type in use needs
+  Build and Relaunch. One earlier run (Level1 open, null GPU) did apply the same change, for a
+  reason not traced.
+- **Found on the way:**
+  - The IDE's MCP `build` answered "succeeded" for a refused swap: the refusal never marked the
+    compile failed, and the wait ended before the swap was resolved. Fixed on the fork
+    (`fix/hot-refusal-fails`), with the IDE's live-types test asserting both outcomes.
+  - The IDE's compiler crashed (in `BfModule::GetModuleOptions`, running comptime code) building
+    over the folder several data-change hot compiles had left; a fresh build of the same code was
+    fine. The folder is kept locally to reproduce it; not yet looked into.
+  - `DebugCommandArguments` with `--null-gpu`, left from the headless runs, left the editor with
+    no window when a person started it from the IDE. A person's setup has no GPU flag.
+- **The setup, for a person:** the fork's IDE built with LLDB; in `Code/BeefSpace.toml`,
+  `AllowHotSwapping = true` under `[Configs.Debug.Linux64]`; in the generated editor project,
+  `DebugCommandArguments = "--project <project> --data-root <data>"`; then Debug > Start
+  Debugging, edit a method body, Build.
