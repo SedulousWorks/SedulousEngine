@@ -19,6 +19,7 @@ class NullWindow : IWindow
 	private int32 mY;
 	private bool mOpen = true;
 	private bool mMinimized;
+	private bool mSurfaceGone;
 	private bool mTextInput;
 	private TextInputKind mTextInputKind = .Text;
 	private (int32 x, int32 y, int32 width, int32 height, int32 caretX) mTextInputArea;
@@ -49,8 +50,20 @@ class NullWindow : IWindow
 	public void SetSize(uint32 width, uint32 height) { mWidth = width; mHeight = height; }
 
 	public float ContentScale => 1.0f;
-	/// No handles, since there is nothing for a graphics backend to draw into.
-	public NativeWindow Native => .();
+	/// No window system. The handle stands for the window's surface, which a test takes away as a
+	/// phone's platform does in the background (SetSurfaceGone).
+	public NativeWindow Native
+	{
+		get
+		{
+			var native = NativeWindow();
+			native.Window = mSurfaceGone ? null : Internal.UnsafeCastToPtr(this);
+			return native;
+		}
+	}
+
+	/// A test takes the window's surface away, and gives it back.
+	public void SetSurfaceGone(bool gone) => mSurfaceGone = gone;
 
 	public bool IsOpen => mOpen;
 	public bool IsMinimized => mMinimized;

@@ -90,6 +90,10 @@ class ApplicationHost : IApplicationHost
 			}
 		}
 
+		// A platform that takes the app out of view says so through the shell, as it happens.
+		if (mShell != null)
+			mShell.SetBackgroundHandlers(new => EnterBackground, new => EnterForeground);
+
 		mApp.OnStartup(this);
 		// A standalone host enters play at once; an editor would call this on Play.
 		mApp.OnLaunch(this);
@@ -108,6 +112,13 @@ class ApplicationHost : IApplicationHost
 	/// the whole frame deterministic.
 	public void Tick(float deltaTime)
 	{
+		// In the background nothing ticks or draws: the window may have no surface, and the
+		// platform expects the app to rest until it comes back.
+		if ((mShell != null) && mShell.InBackground)
+		{
+			mPresented = false;
+			return;
+		}
 		ProfileFrameBegin();
 		// Each phase scoped, so nothing in the frame goes unaccounted for in a capture.
 		using (ProfileScope("Update.Tasks"))
@@ -231,6 +242,25 @@ class ApplicationHost : IApplicationHost
 #endif
 	}
 
+	/// The app goes to the background: the app first (what it saves there reaches the
+	/// subsystems), then the subsystems (sound stops, saved data is written), then each window lets
+	/// go of its surface and swap chain, which the platform may take once this returns. Coming back,
+	/// the subsystems and then the app hear it; each window makes its surface again on its first
+	/// frame with a native handle.
+	public void EnterBackground()
+	{
+		mApp.OnEnterBackground(this);
+		mSubsystems.EnterBackground();
+		for (let window in mWindows)
+			window.Suspend();
+	}
+
+	public void EnterForeground()
+	{
+		mSubsystems.EnterForeground();
+		mApp.OnEnterForeground(this);
+	}
+
 	/// Tears the application down: leave play, stop the context, destroy the windows.
 	/// IDEMPOTENT.
 	public void Stop()
@@ -238,6 +268,8 @@ class ApplicationHost : IApplicationHost
 		if (!mStarted)
 			return;
 
+		if (mShell != null)
+			mShell.SetBackgroundHandlers(null, null);
 		mApp.OnExit(this);
 		mSubsystems.Shutdown();
 		mApp.OnShutdown(this);

@@ -204,8 +204,12 @@ class NullShellTests
 		Test.Assert(window.Width == 320 && window.Height == 240);
 
 		Test.Assert(window.ContentScale == 1.0f);
-		Test.Assert(window.Native.System == .Unknown, "nothing for a graphics backend to use");
+		Test.Assert(window.Native.System == .Unknown, "no window system");
+		// Its handle stands for its surface, which a test takes away as a phone's platform does.
+		Test.Assert(window.Native.Window != null);
+		((NullWindow)window).SetSurfaceGone(true);
 		Test.Assert(window.Native.Window == null);
+		((NullWindow)window).SetSurfaceGone(false);
 
 		Test.Assert(!window.IsTextInputActive, "off by default");
 		window.StartTextInput();

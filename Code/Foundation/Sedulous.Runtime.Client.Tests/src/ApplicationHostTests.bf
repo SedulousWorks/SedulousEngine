@@ -235,6 +235,62 @@ class ApplicationHostTests
 		Test.Assert(host.Windows.IsEmpty);
 	}
 
+	/// In the background nothing ticks or draws, and the window's surface is made again after.
+	[Test]
+	public static void InTheBackgroundNothingTicksOrDrawsAndTheSurfaceIsMadeAgainAfter()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let device));
+		defer delete device;
+
+		let app = scope BackgroundApp();
+		let host = scope ApplicationHost();
+		host.Start(app, shell, device);
+		Test.Assert(host.Windows.Length == 1);
+		app.Window = host.Windows[0];
+		host.Tick(0.016f);
+		Test.Assert(app.Renders == 1);
+		Test.Assert(app.Subsystem.Updates == 1);
+
+		// Going: the app, then the subsystems, then the windows let go of their surfaces (the app
+		// still has its window's surface while it saves).
+		shell.EnterBackground();
+		Test.Assert(app.Order.Count == 2);
+		Test.Assert((app.Order[0] == 1) && (app.Order[1] == 2));
+		Test.Assert(!app.SwapGoneWhenAppHeard);
+		Test.Assert(app.Window.IsSuspended);
+		Test.Assert(app.Window.Swap == null);
+
+		// In the background no frame runs, and the runner rests.
+		host.Tick(0.016f);
+		Test.Assert(app.Renders == 1);
+		Test.Assert(app.Subsystem.Updates == 1);
+		Test.Assert(host.IdleLastTick);
+
+		// Back, but the platform has not given the window its surface yet: the app ticks and the
+		// window waits; once the surface is there, its first frame makes the swap chain again and
+		// draws.
+		let window = (NullWindow)app.Window.Window;
+		window.SetSurfaceGone(true);
+		shell.EnterForeground();
+		Test.Assert(app.Order.Count == 4);
+		Test.Assert((app.Order[2] == 3) && (app.Order[3] == 4));
+		host.Tick(0.016f);
+		Test.Assert(app.Subsystem.Updates == 2);
+		Test.Assert(app.Renders == 1);
+		Test.Assert(app.Window.IsSuspended);
+		window.SetSurfaceGone(false);
+		host.Tick(0.016f);
+		Test.Assert(!app.Window.IsSuspended);
+		Test.Assert(app.Renders == 2);
+		Test.Assert(!host.IdleLastTick);
+
+		host.Stop();
+		// The host let go of the shell's callbacks: the shell going now reaches nothing.
+		shell.EnterBackground();
+		Test.Assert(app.Order.Count == 4);
+	}
+
 	/// Closing the same window twice queues it once. The second call names a window that
 	/// is already gone, and freeing it again would be a double free.
 	[Test]

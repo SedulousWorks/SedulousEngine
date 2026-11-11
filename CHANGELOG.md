@@ -28,6 +28,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Export: `Sedulous.Tools.Export --content-only` stages the game's content, settings and shader
   pack with no player and no template, and `--platform <name>` exports a preset for another
   platform; an Android export's content is cooked for ASTC, which phones read.
+- Runtime: an app the platform takes out of view (a phone's home button, another app in front)
+  stops updating and drawing, and lets go of its window's surface, which a phone takes away; it
+  comes back where it was. Applications and subsystems hear it through `OnEnterBackground` and
+  `OnEnterForeground`.
 
 ### Changed
 

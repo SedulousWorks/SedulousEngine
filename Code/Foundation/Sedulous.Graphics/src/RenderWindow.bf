@@ -18,6 +18,8 @@ class RenderWindow
 	private IWindow mWindow;
 	private ISurface mSurface;
 	private ISwapChain mSwapChain;
+	/// What the swap chain is made as, again after Suspend.
+	private RenderWindowDesc mDesc;
 
 	/// One per frame in flight, all owned.
 	private List<ICommandPool> mPools = new .() ~ delete _;
@@ -30,11 +32,12 @@ class RenderWindow
 
 	/// Takes ownership of the RHI objects handed in. Built only by
 	/// GraphicsDevice.CreateRenderWindow, which is what sizes the rings.
-	public this(GraphicsDevice device, IWindow window, ISurface surface, ISwapChain swapChain,
+	public this(GraphicsDevice device, IWindow window, RenderWindowDesc desc, ISurface surface, ISwapChain swapChain,
 		List<ICommandPool> pools, List<IFence> fences)
 	{
 		mDevice = device;
 		mWindow = window;
+		mDesc = desc;
 		mSurface = surface;
 		mSwapChain = swapChain;
 		mPools.AddRange(pools);
@@ -77,7 +80,25 @@ class RenderWindow
 	}
 
 	public IWindow Window => mWindow;
+	/// Null while suspended.
 	public ISwapChain Swap => mSwapChain;
+
+	/// Lets go of the surface and swap chain, once the GPU is done with them: the app is going to
+	/// the background, where a phone's platform takes the window's surface away. The next frame
+	/// makes them again from the window's native handle as it is then, or, while the window has
+	/// none, is skipped, and so on until it has one.
+	public void Suspend()
+	{
+		let device = mDevice.Raw;
+		if ((device == null) || (mSwapChain == null))
+			return;
+		device.WaitIdle();
+		device.DestroySwapChain(ref mSwapChain);
+		if (mSurface != null)
+			device.DestroySurface(ref mSurface);
+	}
+
+	public bool IsSuspended => mSwapChain == null;
 
 	/// The typed payload, OWNED: setting a second one deletes the first, and the window
 	/// deletes what it holds.
@@ -101,6 +122,9 @@ class RenderWindow
 	/// manager that resizes without telling anyone still works.
 	public bool SyncSize()
 	{
+		// Suspended: BeginFrame makes the swap chain at the window's size.
+		if (mSwapChain == null)
+			return false;
 		let width = mWindow.PixelWidth;
 		let height = mWindow.PixelHeight;
 		if ((width == 0) || (height == 0))
@@ -125,6 +149,19 @@ class RenderWindow
 	{
 		if (mWindow.IsMinimized || (mWindow.Width == 0) || (mWindow.Height == 0))
 			return .();
+
+		// Suspended: make the surface and swap chain again once the window has a native handle. A
+		// phone's window has none from when the platform takes its surface until it gives a new
+		// one, around when the app comes back.
+		if (mSwapChain == null)
+		{
+			let raw = mDevice.Raw;
+			if ((raw == null) || raw.IsLost() || (mWindow.Native.Window == null) ||
+				!mDevice.MakePresentation(mWindow, mDesc, out mSurface, out mSwapChain))
+				return .();
+			mWidth = mWindow.PixelWidth;
+			mHeight = mWindow.PixelHeight;
+		}
 
 		// After device loss, stop. Continuing spins through failing acquires and submits,
 		// floods the log and stalls the machine. Loss is STICKY, so the window stays dark

@@ -142,14 +142,17 @@ class GraphicsDevice
 	/// rendered. A consumer keys its per frame resources on CurrentFrame.
 	public void AdvanceFrame() => mCurrentFrame = (mCurrentFrame + 1) % mFramesInFlight;
 
-	/// A presentation target for a window: surface, swap chain, and the per frame pools
-	/// and fences. The window must outlive what comes back.
-	public Result<RenderWindow> CreateRenderWindow(IWindow window, RenderWindowDesc desc)
+	/// The window's surface and swap chain, made from its native handle as it is now (false when
+	/// the backend cannot). CreateRenderWindow makes them first, and RenderWindow again after a
+	/// suspension.
+	public bool MakePresentation(IWindow window, RenderWindowDesc desc, out ISurface outSurface, out ISwapChain outSwapChain)
 	{
+		outSurface = null;
+		outSwapChain = null;
 		let native = window.Native;
 		if (!(mBackend.CreateSurface(native.Window, native.Display, ToSurfacePlatform(native.System))
 			case .Ok(var surface)))
-			return .Err;
+			return false;
 
 		var swapDesc = SwapChainDesc();
 		swapDesc.Width = window.PixelWidth; // the drawable's pixels, not the OS's window units
@@ -161,11 +164,22 @@ class GraphicsDevice
 		// blend space); the swap chain says whether it could.
 		swapDesc.AlternateViewFormat = TextureFormats.SrgbTwin(desc.Format);
 		swapDesc.Label = "renderwindow";
-		if (!(mDevice.CreateSwapChain(surface, swapDesc) case .Ok(var swapChain)))
+		if (!(mDevice.CreateSwapChain(surface, swapDesc) case .Ok(let swapChain)))
 		{
 			mDevice.DestroySurface(ref surface);
-			return .Err;
+			return false;
 		}
+		outSurface = surface;
+		outSwapChain = swapChain;
+		return true;
+	}
+
+	/// A presentation target for a window: surface, swap chain, and the per frame pools
+	/// and fences. The window must outlive what comes back.
+	public Result<RenderWindow> CreateRenderWindow(IWindow window, RenderWindowDesc desc)
+	{
+		if (!MakePresentation(window, desc, var surface, var swapChain))
+			return .Err;
 
 		let pools = scope List<ICommandPool>();
 		let fences = scope List<IFence>();
@@ -186,7 +200,7 @@ class GraphicsDevice
 			fences.Add(fence);
 		}
 
-		return .Ok(new RenderWindow(this, window, surface, swapChain, pools, fences));
+		return .Ok(new RenderWindow(this, window, desc, surface, swapChain, pools, fences));
 	}
 
 	/// Frees a half built window. The lists are the caller's scratch, so what is in them

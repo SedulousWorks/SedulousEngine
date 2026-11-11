@@ -58,6 +58,12 @@ abstract class Subsystem
 	public virtual void PostUpdate(float deltaTime) {}
 	public virtual void EndFrame() {}
 
+	/// The app taken out of view and given back (a phone's home button, another app in front): no
+	/// frames come between the two, and the platform may end the app in between without asking,
+	/// so what must last is saved in OnEnterBackground.
+	public virtual void OnEnterBackground() {}
+	public virtual void OnEnterForeground() {}
+
 	protected virtual void OnInit() {}
 	protected virtual void OnReady() {}
 	protected virtual void OnPrepareShutdown() {}

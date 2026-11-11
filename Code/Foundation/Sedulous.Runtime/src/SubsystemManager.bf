@@ -154,6 +154,21 @@ class SubsystemManager
 			subsystem.EndFrame();
 	}
 
+	/// The app goes to the background, in reverse UpdateOrder (as shutdown runs: what depends on
+	/// others lets go first).
+	public void EnterBackground()
+	{
+		for (int i = mSorted.Count - 1; i >= 0; i--)
+			mSorted[i].OnEnterBackground();
+	}
+
+	/// And comes back, in UpdateOrder.
+	public void EnterForeground()
+	{
+		for (let subsystem in mSorted)
+			subsystem.OnEnterForeground();
+	}
+
 	/// PrepareShutdown then Shutdown, both in REVERSE UpdateOrder, so a subsystem is torn
 	/// down before whatever it was built on top of.
 	public void Shutdown()
