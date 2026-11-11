@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.RHI;
 
 namespace Sedulous.Render;
@@ -19,6 +20,7 @@ interface IScreenRenderer
 	///
 	/// `encodedTarget`, when given, is a UNORM view of the same sRGB texture: the pass draws
 	/// through it and the overlays blend encoded values (ScreenOverlayView.EncodedTarget).
+	/// `safeArea` is the window's safe area (ScreenOverlayView.SafeArea), empty for all of it.
 	void RenderOverlays(ICommandEncoder encoder, ITextureView target, TextureFormat targetFormat,
-		uint32 width, uint32 height, uint32 frameIndex, ITextureView encodedTarget = null);
+		uint32 width, uint32 height, uint32 frameIndex, ITextureView encodedTarget = null, Rectangle safeArea = .());
 }

@@ -26,6 +26,8 @@ class GuiScreenTier
 	/// The target it last drew into, and the turn it took there: what the pointer maps against.
 	public Float2 TargetSize = .Zero;
 	public ContentRotation Turn = .None;
+	/// The part of the target it was fitted into (empty: all of it).
+	public Rectangle Area = .();
 
 	public bool HasResolution => (Resolution.X > 0.0f) && (Resolution.Y > 0.0f);
 }

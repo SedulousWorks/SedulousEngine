@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Shell;
 
 namespace Sedulous.Shell.Null;
@@ -20,6 +21,8 @@ class NullWindow : IWindow
 	private bool mOpen = true;
 	private bool mMinimized;
 	private bool mSurfaceGone;
+	private bool mHasSafeArea;
+	private Rectangle mSafeArea;
 	private bool mTextInput;
 	private TextInputKind mTextInputKind = .Text;
 	private (int32 x, int32 y, int32 width, int32 height, int32 caretX) mTextInputArea;
@@ -64,6 +67,15 @@ class NullWindow : IWindow
 
 	/// A test takes the window's surface away, and gives it back.
 	public void SetSurfaceGone(bool gone) => mSurfaceGone = gone;
+
+	/// What a test says the system covers, as a phone's bars do: the safe area left, in pixels.
+	public void SetSafeArea(Rectangle area)
+	{
+		mSafeArea = area;
+		mHasSafeArea = true;
+	}
+
+	public Rectangle SafeArea => mHasSafeArea ? mSafeArea : .(0.0f, 0.0f, (float)PixelWidth, (float)PixelHeight);
 
 	public bool IsOpen => mOpen;
 	public bool IsMinimized => mMinimized;

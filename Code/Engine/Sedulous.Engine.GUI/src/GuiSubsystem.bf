@@ -284,20 +284,28 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	public void SetScreenOrientation(ScreenOrientation orientation) => mScreen.Orientation = orientation;
 
 	/// Where a tier at `resolution` (none: 0 x 0), fitted by `fit` and held to `orientation`,
-	/// draws on a `target`-sized target.
-	public static GuiScreenPlacement PlaceScreen(Float2 resolution, FitMode fit, ScreenOrientation orientation, Float2 target)
+	/// draws on a `target`-sized target, inside `area` of it (the window's safe area: what a
+	/// phone's bars and camera cutout leave; empty for the whole target). A tier with no
+	/// resolution lays out at the area's size there.
+	public static GuiScreenPlacement PlaceScreen(Float2 resolution, FitMode fit, ScreenOrientation orientation, Float2 target,
+		Rectangle area = .())
 	{
 		var place = GuiScreenPlacement();
 		if ((target.X <= 0.0f) || (target.Y <= 0.0f))
 			return place;
-		let turn = ContentFit.TurnFor(orientation, target.X, target.Y);
+		var area;
+		if ((area.Width <= 0.0f) || (area.Height <= 0.0f))
+			area = .(0.0f, 0.0f, target.X, target.Y);
+		let whole = (area.X == 0.0f) && (area.Y == 0.0f) && (area.Width == target.X) && (area.Height == target.Y);
+		let turn = ContentFit.TurnFor(orientation, area.Width, area.Height);
 		let hasResolution = (resolution.X > 0.0f) && (resolution.Y > 0.0f);
-		if (!hasResolution && (turn == .None))
+		if (!hasResolution && (turn == .None) && whole)
 			return place; // the plain draw
 		let swaps = (turn == .Quarter) || (turn == .ThreeQuarter);
-		// The game's frame: its resolution, else the target's own pixels at the game's shape.
-		let content = hasResolution ? resolution : (swaps ? Float2(target.Y, target.X) : target);
-		let placed = ContentFit(.(0, 0, target.X, target.Y), content, hasResolution ? fit : .Stretch, turn);
+		// The game's frame: its resolution, else the area's own pixels at the game's shape.
+		let size = Float2(area.Width, area.Height);
+		let content = hasResolution ? resolution : (swaps ? Float2(size.Y, size.X) : size);
+		let placed = ContentFit(area, content, hasResolution ? fit : .Stretch, turn);
 		place.Fitted = true;
 		place.Turn = turn;
 		place.Rect = placed.DstRect();
@@ -333,8 +341,10 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private static Float2 ScreenPointerPoint(GuiScreenTier tier, Float2 point)
 	{
 		if (!tier.HasResolution)
-			return point; // the target's own pixels (a turned game's pointer arrives in its frame)
-		let fit = ContentFit(.(0, 0, tier.TargetSize.X, tier.TargetSize.Y), tier.Resolution, tier.Fit, tier.Turn);
+			return point; // the root's own pixels (a turned or inset game's pointer arrives in its frame)
+		let area = ((tier.Area.Width > 0.0f) && (tier.Area.Height > 0.0f)) ? tier.Area
+			: Rectangle(0.0f, 0.0f, tier.TargetSize.X, tier.TargetSize.Y);
+		let fit = ContentFit(area, tier.Resolution, tier.Fit, tier.Turn);
 		let source = fit.SrcRect();
 		let scale = fit.Scale().Y;
 		let dpi = (scale > 0.0f) ? (1.0f / scale) : 1.0f;

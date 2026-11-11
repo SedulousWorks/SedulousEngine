@@ -294,6 +294,24 @@ class GuiSubsystemTests
 		Test.Assert(Near(place.DrawSize.X, 1280.0f), "the target's sides swapped");
 		Test.Assert(Near(place.DrawSize.Y, 720.0f));
 		Test.Assert(Near(place.Transform.M[0][0], 0.0f), "x runs down the target");
+
+		// Inside a safe area (a phone's status bar over the top 62 pixels of 2400 by 1080), a 16:9
+		// game is letterboxed into what is left, and a game with no resolution lays out at its size.
+		let safe = Rectangle(0.0f, 62.0f, 2400.0f, 1018.0f);
+		place = GuiSubsystem.PlaceScreen(.(1920.0f, 1080.0f), .Letterbox, .Any, .(2400.0f, 1080.0f), safe);
+		Test.Assert(place.Fitted);
+		Test.Assert(Near(place.Rect.Y, 62.0f));
+		Test.Assert(Near(place.Rect.Height, 1018.0f));
+		Test.Assert(Near(place.Rect.Width, 1018.0f * 16.0f / 9.0f));
+		Test.Assert(Near(place.Rect.X, (2400.0f - 1018.0f * 16.0f / 9.0f) * 0.5f));
+		place = GuiSubsystem.PlaceScreen(.Zero, .Letterbox, .Any, .(2400.0f, 1080.0f), safe);
+		Test.Assert(place.Fitted);
+		Test.Assert(Near(place.Rect.Y, 62.0f));
+		Test.Assert(Near(place.DrawSize.X, 2400.0f));
+		Test.Assert(Near(place.DrawSize.Y, 1018.0f));
+		Test.Assert(Near(place.DpiScale, 1.0f));
+		// A safe area that is the whole target changes nothing.
+		Test.Assert(!GuiSubsystem.PlaceScreen(.Zero, .Letterbox, .Any, .(2400.0f, 1080.0f), .(0.0f, 0.0f, 2400.0f, 1080.0f)).Fitted);
 	}
 
 	[Test]

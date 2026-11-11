@@ -1,5 +1,6 @@
 using System;
 using SDL3;
+using Sedulous.Core;
 using Sedulous.Shell;
 
 namespace Sedulous.Shell.SDL3;
@@ -64,6 +65,24 @@ class SDL3Window : IWindow
 			if ((mWindow == null) || !SDL3.SDL_GetWindowSizeInPixels(mWindow, &w, &h) || (h <= 0))
 				return mHeight;
 			return (uint32)h;
+		}
+	}
+
+	/// SDL's safe area (on Android, from the window's insets) is in window units; the window's
+	/// pixels per unit scale it.
+	public Rectangle SafeArea
+	{
+		get
+		{
+			let pixelsWide = (float)PixelWidth;
+			let pixelsHigh = (float)PixelHeight;
+			SDL_Rect area = .();
+			if ((mWindow == null) || !SDL3.SDL_GetWindowSafeArea(mWindow, &area) || (area.w <= 0) || (area.h <= 0) ||
+				(Width == 0) || (Height == 0))
+				return .(0.0f, 0.0f, pixelsWide, pixelsHigh);
+			let sx = pixelsWide / (float)Width;
+			let sy = pixelsHigh / (float)Height;
+			return .((float)area.x * sx, (float)area.y * sy, (float)area.w * sx, (float)area.h * sy);
 		}
 	}
 

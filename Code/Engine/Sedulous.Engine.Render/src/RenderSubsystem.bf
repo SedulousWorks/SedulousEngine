@@ -1145,7 +1145,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// this once per window target, after the scene composed.
 	public void RenderOverlays(ICommandEncoder encoder, ITextureView target,
 		TextureFormat targetFormat, uint32 width, uint32 height, uint32 frameIndex,
-		ITextureView encodedTarget = null)
+		ITextureView encodedTarget = null, Rectangle safeArea = .())
 	{
 		if ((target == null) || (width == 0) || (height == 0) || mScreenOverlays.IsEmpty)
 			return;
@@ -1226,6 +1226,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		view.EncodedTarget = encoded;
 		view.DepthStencilFormat = haveDs ? mOverlayDsFormat : .Undefined;
 		view.FrameIndex = frameIndex;
+		view.SafeArea = safeArea;
 		// Each overlay's work that needs passes of its own goes first, outside the shared one.
 		for (let overlay in mScreenOverlays.Items)
 			overlay.PrepareOverlay(encoder, view);

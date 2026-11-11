@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Shell;
 
@@ -15,6 +16,11 @@ interface IWindow
 	/// scaled by the ratio of the two. As many as its units unless the window says otherwise.
 	uint32 PixelWidth => Width;
 	uint32 PixelHeight => Height;
+
+	/// The part of the window nothing of the system covers (a phone's status and navigation bars,
+	/// its camera's cutout), in the window's pixels: the whole window where nothing does, as on a
+	/// desktop. A game keeps what must be seen and touched inside it.
+	Rectangle SafeArea => .(0.0f, 0.0f, (float)PixelWidth, (float)PixelHeight);
 
 	/// Screen space top left, in the same frame the OS uses. Multi window code reads and
 	/// writes this to place a floating window relative to another.

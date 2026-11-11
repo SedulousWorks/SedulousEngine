@@ -210,6 +210,11 @@ class NullShellTests
 		((NullWindow)window).SetSurfaceGone(true);
 		Test.Assert(window.Native.Window == null);
 		((NullWindow)window).SetSurfaceGone(false);
+		// Its safe area is all of it, until a test says what the system covers.
+		Test.Assert(window.SafeArea.Width == 320.0f);
+		((NullWindow)window).SetSafeArea(.(0.0f, 40.0f, 320.0f, 200.0f));
+		Test.Assert(window.SafeArea.Y == 40.0f);
+		Test.Assert(window.SafeArea.Height == 200.0f);
 
 		Test.Assert(!window.IsTextInputActive, "off by default");
 		window.StartTextInput();

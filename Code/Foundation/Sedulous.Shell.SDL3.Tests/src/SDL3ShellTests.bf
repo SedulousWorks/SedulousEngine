@@ -343,6 +343,20 @@ class SDL3ShellTests
 		Test.Assert(!fixture.Shell.IsRunning);
 	}
 
+	/// A window nothing covers is all safe area, in its pixels.
+	[Test]
+	public static void AWindowNothingCoversIsAllSafeAreaInItsPixels()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+		let window = fixture.Shell.MainWindow;
+		let safe = window.SafeArea;
+		Test.Assert((safe.X == 0.0f) && (safe.Y == 0.0f));
+		Test.Assert(safe.Width == (float)window.PixelWidth);
+		Test.Assert(safe.Height == (float)window.PixelHeight);
+	}
+
 	/// A phone takes the app out of view and gives it back: the shell answers as SDL raises the
 	/// events (its event watch), before the next pump, and says where the app is between them.
 	[Test]

@@ -146,7 +146,8 @@ extension GuiSubsystem : ISceneOverlay, IScreenOverlay
 	{
 		let target = Float2((float)view.Width, (float)view.Height);
 		tier.TargetSize = target;
-		let place = PlaceScreen(tier.Resolution, tier.Fit, tier.Orientation, target);
+		tier.Area = view.SafeArea;
+		let place = PlaceScreen(tier.Resolution, tier.Fit, tier.Orientation, target, view.SafeArea);
 		tier.Turn = place.Turn;
 		var pass = ScreenPass(view);
 		var size = target;

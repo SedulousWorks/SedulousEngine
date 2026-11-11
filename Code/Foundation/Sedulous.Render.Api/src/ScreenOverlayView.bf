@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.RHI;
 
 namespace Sedulous.Render;
@@ -18,6 +19,9 @@ struct ScreenOverlayView
 	/// overlays keep colours encoded and blend them so, as browsers composite UI (VG's Encoded
 	/// blend space). False: the target as it is, linear light.
 	public bool EncodedTarget = false;
+	/// The part of the target nothing of the system covers (a phone's bars, its camera's cutout),
+	/// in pixels, which a game's screens keep inside; empty (no width): the whole target.
+	public Rectangle SafeArea = .();
 
 	public this() {}
 }
