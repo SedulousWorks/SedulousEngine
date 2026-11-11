@@ -92,7 +92,9 @@ class ProjectBuildTests
 		Test.Assert(space.Contains("\"NativeGameTools\" = {Path = \".generated/NativeGameTools\"}\n"), space);
 		Test.Assert(!space.Contains("PlayerWeb"), "the web player has a workspace of its own");
 		Test.Assert(space.EndsWith(ProjectBuild.cWorkspaceConfigs), space);
-		Test.Assert(!space.Contains("Sedulous."), "the engine's projects come from the registry");
+		let folders = space.IndexOf("\n[WorkspaceFolders]\n");
+		Test.Assert(folders > 0, space);
+		Test.Assert(!space.Substring(0, folders).Contains("Sedulous."), "the engine's projects come from the registry");
 
 		Test.Assert(bed.Read("BeefConfig.toml", .. scope .()) == ProjectBuild.ConfigText(bed.Sdk, .. scope .()));
 		let ignore = bed.Read(".gitignore", .. scope .());
@@ -400,7 +402,7 @@ class ProjectBuildTests
 		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
 		let restored = bed.Read("BeefSpace.toml", .. scope .());
 		Test.Assert(restored.Contains("\"MyTool\" = {Path = \"../Tools/MyTool\"}") && restored.Contains("OptimizationLevel = \"O1\""), restored);
-		Test.Assert(restored.Contains(scope $"\"NativeGameTools\" = {{Path = \".generated/NativeGameTools\"}}\n{lantern}\n[Configs."), restored);
+		Test.Assert(restored.Contains(scope $"\"NativeGameTools\" = {{Path = \".generated/NativeGameTools\"}}\n{lantern}\n[WorkspaceFolders]\n"), restored);
 
 		// Every file a generate writes, each entry's project and Main among them.
 		let written = scope List<String>();
@@ -426,6 +428,63 @@ class ProjectBuildTests
 		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
 		for (int i < written.Count)
 			Test.Assert(FileStat(written[i], let sizeAgain, let ticksAgain) && (ticksAgain == ticks[i]), written[i]);
+	}
+
+	/// The workspace groups the SDK's projects it links as the engine's workspace does: under SDK/,
+	/// a folder for each library folder, the dependencies first, corlib among them. Only what the
+	/// workspace's projects reach through their dependencies is listed.
+	[Test]
+	public static void TheSdksProjectsAreInFoldersByTheirLibraryFolder()
+	{
+		let bed = scope Bed();
+		Bed.Write(bed.Sdk, "Code/Engine/Sedulous.Engine.Player.DesktopMain/BeefProj.toml",
+			"FileVersion = 1\n\n[Project]\nName = \"Sedulous.Engine.Player.DesktopMain\"\n\n[Dependencies]\ncorlib = \"*\"\n\"Sedulous.Core\" = \"*\"\n");
+		Bed.Write(bed.Sdk, "Code/Foundation/Sedulous.Core/BeefProj.toml", "FileVersion = 1\n\n[Dependencies]\ncorlib = \"*\"\nSDL3 = \"*\"\n");
+		// Its folder is not its name, as in the SDK: the registry, and the folders, go by the name.
+		Bed.Write(bed.Sdk, "Dependencies/SDL3-Beef/BeefProj.toml", "FileVersion = 1\n\n[Project]\nName = \"SDL3\"\n");
+		Bed.Write(bed.Sdk, "Code/Foundation/Sedulous.Unlinked/BeefProj.toml", "FileVersion = 1\n");
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+
+		let workspace = ProjectBuild.Directory(bed.ProjectDir, .. scope .());
+		let space = ReadText(PathJoin(workspace, "BeefSpace.toml", .. scope .()), .. scope .());
+		Test.Assert(space.Contains("\n[WorkspaceFolders]\n\"SDK/Dependencies\" = [\"SDL3\", \"corlib\"]\n\"SDK/Foundation\" = [\"Sedulous.Core\"]\n\"SDK/Engine\" = [\"Sedulous.Engine.Player.DesktopMain\"]\n"), space);
+		Test.Assert(space.Contains("\"SDK/Editor\" = [") && space.Contains("\"Sedulous.Editor.Main\""), space);
+		Test.Assert(!space.Contains("Sedulous.Unlinked"), "nothing links it");
+		Test.Assert(space.EndsWith(ProjectBuild.cWorkspaceConfigs), "the folders before the configs");
+	}
+
+	/// The SDK folders are the build's: made again over the ones the file has (the parent SDK key
+	/// too), after the user's own folders, which stay; without any given, the file's are kept.
+	[Test]
+	public static void TheSdkFoldersAreMadeAgainTheUsersStay()
+	{
+		let bed = scope Bed();
+		let packages = scope List<ProjectPackage>();
+		defer { ClearAndDeleteItems!(packages); }
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems!(problems); }
+		ProjectBuild.Packages(bed.ProjectDir, bed.Settings, packages, problems);
+		let folders = scope List<ProjectBuild.SdkFolder>();
+		defer { ClearAndDeleteItems!(folders); }
+		let folder = new ProjectBuild.SdkFolder();
+		folder.Name.Set("SDK/Foundation");
+		folder.Projects.Add(new .("Sedulous.Core"));
+		folders.Add(folder);
+
+		let existing = "FileVersion = 1\n\n[Projects]\n\"Mine\" = {Path = \"Mine\"}\n\n[WorkspaceFolders]\nSDK = []\n\"SDK/Old\" = [\"Gone\"]\nMine = [\"Mine\"]\n";
+		let text = scope String();
+		ProjectBuild.WorkspaceText(existing, "NativeGame", packages, text, folders);
+		Test.Assert(text.Contains("\n[WorkspaceFolders]\nMine = [\"Mine\"]\n\"SDK/Foundation\" = [\"Sedulous.Core\"]\n"), text);
+		Test.Assert(!text.Contains("SDK/Old") && !text.Contains("SDK = []"), text);
+		let again = scope String();
+		ProjectBuild.WorkspaceText(text, "NativeGame", packages, again, folders);
+		Test.Assert(again == text, again);
+		Test.Assert(ProjectBuild.WorkspaceText(text, "NativeGame", packages, .. scope .()) == text, "none given: the file's kept");
+
+		let fresh = scope String();
+		ProjectBuild.WorkspaceText("", "NativeGame", packages, fresh, folders);
+		Test.Assert(fresh.Contains(scope $"\n\n[WorkspaceFolders]\n\"SDK/Foundation\" = [\"Sedulous.Core\"]\n\n{ProjectBuild.cWorkspaceConfigs}"), fresh);
 	}
 
 	/// A workspace of the user's without [Workspace] or configs gains them, the [Workspace] before

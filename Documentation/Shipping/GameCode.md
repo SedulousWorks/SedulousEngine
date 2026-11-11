@@ -13,7 +13,10 @@ loaded by every host; `Code/<Game>.Editor`, `.Pipeline` and `.Tooling` are optio
 editor and the tools. Project > Add Native Code (`plugin_scaffold`) writes it. The build writes
 the rest, which git ignores: the entry points (`<Game>Editor`, `<Game>Player`, `<Game>PlayerWeb`,
 `<Game>Tools`) under `Code/.generated`, and `Code/BeefConfig.toml`, which points Beef at the
-engine SDK.
+engine SDK. In the workspace, the engine's projects the game links sit in folders under `SDK`
+(`SDK/Dependencies`, `SDK/Foundation`, `SDK/Engine`, `SDK/Pipeline`, `SDK/Editor`, `SDK/Plugins`),
+as the engine's own workspace groups them, and the game's projects at the top. The build makes
+those `SDK` folders again each time; folders of your own stay as they are.
 
 The Engine part's `Load` is the one registration point: everything the game adds is registered
 there, through the engine's service, and taken out again when the project closes.
