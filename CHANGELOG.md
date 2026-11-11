@@ -39,6 +39,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- GUI: a command every handler passes on (`Propagate`: not mine) is unhandled: `RunCommand`
+  returns false for it, and its key goes on as an unbound key does, where before any handler on
+  the path took the key. A screen stack passes on a Back it pops nothing with.
 - Animation: an animator's root motion mode `Script` is now `Manual` (held for game code or a
   script to apply, as `RootMotionMode::Manual` in a script); scenes that use it read as before.
 - Prefabs: spawning a prefab no longer reads it from disk each time, and a prefab saved in the

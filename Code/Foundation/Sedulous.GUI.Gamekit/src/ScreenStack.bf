@@ -131,7 +131,10 @@ class ScreenStack : UIWidget
 		{
 			EditLayoutStyle(scope (s) => { s.Kind = .Stack; }); // each screen fills it
 		}
-		OnCommand(cBackCommand, new (command) => { Back(); });
+		// A Back that pops nothing (the last screen, or one that keeps its back) is passed on, so what
+		// is above can handle it; when nothing does, the key is unhandled (a phone's platform takes
+		// it).
+		OnCommand(cBackCommand, new (command) => { command.Propagate = !Back(); });
 	}
 
 	/// A screen markup (or code) adds as a child is pushed, in order: `<Screens>` holding

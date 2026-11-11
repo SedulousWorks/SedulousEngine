@@ -103,6 +103,9 @@ class ScreenStackTests
 		bed.Frame();
 		bed.Escape();
 		Test.Assert(bed.Stack.Count == 1); // the last stays
+		// And nothing took the back it did not use: a key routed to it is not taken (a phone's
+		// platform takes it then).
+		Test.Assert(!bed.Root.RunCommand(cBackCommand));
 		bed.Stack.Push(options);
 		bed.Escape(); // the frame that pushed it
 		Test.Assert(bed.Stack.Count == 2);

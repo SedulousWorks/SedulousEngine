@@ -621,7 +621,8 @@ class SceneRoot : Node
 	/// Runs command `id` along this root's focus path (the root alone when nothing here is
 	/// focused): capture handlers from the root down, then bubble handlers from the focused widget
 	/// up, the first bubble handler stopping it unless it sets Propagate. False when it is disabled
-	/// or nothing handled it.
+	/// or nothing handled it: no capture handler stopped it, and every bubble handler that ran
+	/// passed it on (Propagate: not mine).
 	public bool RunCommand(StringView id)
 	{
 		let command = mContext.Commands.Find(id);
@@ -646,7 +647,6 @@ class SceneRoot : Node
 			if (n.RouteStop)
 				break;
 		}
-		bool ran = false;
 		var e = CommandEvent();
 		e.Id = id;
 		e.Phase = .Capture;
@@ -654,7 +654,7 @@ class SceneRoot : Node
 		e.Stop = false;
 		for (int i = path.Count - 1; i >= 0; i--)
 		{
-			ran |= path[i].RunCommandHandlers(ref e);
+			path[i].RunCommandHandlers(ref e);
 			if (e.Stop)
 				return true; // taken on the way down (a modal wrapper, a mode that owns the key)
 		}
@@ -662,14 +662,10 @@ class SceneRoot : Node
 		for (let n in path)
 		{
 			e.Propagate = false;
-			if (n.RunCommandHandlers(ref e))
-			{
-				ran = true;
-				if (!e.Propagate)
-					break;
-			}
+			if (n.RunCommandHandlers(ref e) && !e.Propagate)
+				return true; // this one took it
 		}
-		return ran;
+		return false; // every handler passed it on, or none ran
 	}
 
 	/// Whether command `id` is enabled and a handler for it is on this root's focus path: a read a
@@ -771,8 +767,12 @@ class SceneRoot : Node
 		}
 		if (!handled)
 			return false;
-		RunCommand(command);
-		return true;
+		// A disabled command that has a handler still takes the key. An enabled one takes it when a
+		// handler took the command; when every handler passed it on, the key goes on as an unbound
+		// one does.
+		let found = mContext.Commands.Find(command);
+		let disabled = (found != null) && !found.Enabled;
+		return RunCommand(command) || disabled;
 	}
 
 	/// Device pixels per logical unit: the window's content scale times a UI scale. The tree lays

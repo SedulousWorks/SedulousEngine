@@ -59,6 +59,11 @@ class CommandTests
 		Test.Assert(root.RunCommand("open"));
 		Test.Assert(reachedRoot);
 
+		// When every handler passes it on (each says: not mine), nothing took it.
+		field.OnCommand("undo", new (command) => { command.Propagate = true; });
+		root.OnCommand("undo", new (command) => { command.Propagate = true; });
+		Test.Assert(!root.RunCommand("undo"));
+
 		// Disabled, it does not run; unhandled, it reports so.
 		root.Context.DefineCommand("save").Enabled = false;
 		ClearAndDeleteItems!(order);
