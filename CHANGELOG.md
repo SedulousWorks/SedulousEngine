@@ -64,6 +64,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Networking: a reliable message in a connection's first packet is resent when that packet is lost
+  (it was dropped for good); a client can connect again from the same address, after a disconnect
+  or a restart; sequenced messages are dropped when stale, never delivered out of order. Finding
+  a connection no longer searches every connection, so a server's cost per player stays flat as
+  players join.
 - Editor: the Export dialog shows the selected preset's settings again; since the property grid
   measured its rows, the column beside the presets had shrunk to nothing.
 - Rendering (Vulkan): the screen UI waits for the scene's last pass before drawing over it, where on

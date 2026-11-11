@@ -40,6 +40,35 @@ class ReliableTests
 		}
 	}
 
+	/// A socket that loses the first Data packet sent through it, and passes everything else.
+	private class DropFirstDataSocket : IDatagramSocket
+	{
+		private IDatagramSocket mInner;
+		public int Dropped = 0;
+
+		public this(IDatagramSocket inner)
+		{
+			mInner = inner;
+		}
+
+		public void Send(DatagramEndpoint to, Span<uint8> data)
+		{
+			let reader = scope BitReader(data);
+			reader.ReadU16(); // protocol
+			let type = reader.ReadU8();
+			if ((Dropped == 0) && reader.Ok && (type == 2)) // Data
+			{
+				Dropped++;
+				return;
+			}
+			mInner.Send(to, data);
+		}
+
+		public bool Receive(out DatagramEndpoint outFrom, List<uint8> outData) => mInner.Receive(out outFrom, outData);
+
+		public DatagramEndpoint LocalEndpoint => mInner.LocalEndpoint;
+	}
+
 	/// The first byte of every Received payload, in arrival order.
 	private static void DrainReceived(INetTransport transport, List<uint8> outFirstBytes)
 	{
@@ -349,5 +378,127 @@ class ReliableTests
 		fixture.Client.Disconnect(serverPeer);
 		fixture.Pump(10);
 		Test.Assert(AnyKind(fixture.Server, .Disconnected));
+	}
+
+	/// A reliable message in a connection's very first Data packet is resent when that packet is
+	/// lost: the far end, having received nothing, acks nothing. The resend waits longer than the
+	/// far end's first keepalive, so an ack of a packet never received would retire it first.
+	[Test]
+	public static void AReliableMessageInTheFirstPacketIsResentWhenThatPacketIsLost()
+	{
+		var config = ReliableConfig();
+		config.KeepAliveMs = 50.0f;
+		config.MinResendMs = 500.0f;
+		let network = scope SimDatagramNetwork(Conditions(10.0f));
+		let serverSocket = network.CreateSocket();
+		let dropping = scope DropFirstDataSocket(network.CreateSocket());
+		let client = scope ReliableTransport(dropping, config);
+		let server = scope ReliableTransport(serverSocket, config);
+		server.SetAccepting(true);
+
+		let serverPeer = client.Connect(serverSocket.LocalEndpoint);
+		// Queued while connecting, so it goes in the first Data packet, which is lost.
+		client.Send(serverPeer, 0, scope uint8[](42), .ReliableOrdered);
+		let got = scope List<uint8>();
+		for (int step < 200)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+			DrainReceived(server, got);
+		}
+		Test.Assert(dropping.Dropped == 1);
+		Test.Assert((got.Count == 1) && (got[0] == 42), "resent, and delivered once");
+	}
+
+	/// A client that restarts and connects again from the same address starts a new session: the
+	/// server ends the old one and accepts the new, whose messages arrive though their ids start
+	/// over.
+	[Test]
+	public static void AClientRestartingAtTheSameAddressConnectsAgain()
+	{
+		let fixture = scope Fixture(Conditions(10.0f));
+		fixture.Server.SetAccepting(true);
+		let first = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		for (uint8 i = 0; i < 3; i++)
+			fixture.Client.Send(first, 0, scope uint8[](i), .ReliableOrdered);
+		fixture.Pump(20);
+		let before = scope List<uint8>();
+		DrainReceived(fixture.Server, before);
+		Test.Assert(before.Count == 3);
+
+		// The client process restarts on the same socket address.
+		delete fixture.Client;
+		fixture.Client = new .(fixture.ClientSocket);
+		let second = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		Test.Assert(AnyKind(fixture.Client, .Connected));
+		var disconnected = 0;
+		var connected = 0;
+		let event = scope NetEvent();
+		while (fixture.Server.Poll(event))
+		{
+			if (event.Kind == .Disconnected)
+				disconnected++;
+			else if (event.Kind == .Connected)
+				connected++;
+		}
+		Test.Assert((disconnected == 1) && (connected == 1), "the old session ends, the new one starts");
+
+		fixture.Client.Send(second, 0, scope uint8[](7), .ReliableOrdered);
+		fixture.Pump(20);
+		let after = scope List<uint8>();
+		DrainReceived(fixture.Server, after);
+		Test.Assert((after.Count == 1) && (after[0] == 7), "the new session's first message arrives");
+	}
+
+	/// A client that disconnects and connects again to the same server gets a working session.
+	[Test]
+	public static void AClientThatDisconnectedConnectsAgain()
+	{
+		let fixture = scope Fixture(Conditions(10.0f));
+		fixture.Server.SetAccepting(true);
+		let first = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		fixture.Client.Send(first, 0, scope uint8[](1), .ReliableOrdered);
+		fixture.Pump(20);
+		fixture.Client.Disconnect(first);
+		fixture.Pump(10);
+		Test.Assert(AnyKind(fixture.Server, .Disconnected));
+
+		let second = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		Test.Assert(AnyKind(fixture.Client, .Connected));
+		fixture.Client.Send(second, 0, scope uint8[](9), .ReliableOrdered);
+		fixture.Pump(20);
+		let got = scope List<uint8>();
+		DrainReceived(fixture.Server, got);
+		Test.Assert((got.Count == 1) && (got[0] == 9), "the new session's message arrives");
+	}
+
+	/// Sequenced messages never arrive out of order: over a link that reorders, a stale one is
+	/// dropped rather than delivered after a newer one.
+	[Test]
+	public static void SequencedMessagesNeverArriveOutOfOrder()
+	{
+		let fixture = scope Fixture(Conditions(20.0f, 0.0f, 0.1f, 0.5f, 11));
+		fixture.Server.SetAccepting(true);
+		let serverPeer = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		AnyKind(fixture.Server, .Connected);
+
+		let got = scope List<uint8>();
+		for (uint8 i = 0; i < 200; i++)
+		{
+			fixture.Client.Send(serverPeer, 3, scope uint8[](i), .UnreliableSequenced);
+			fixture.Step();
+			DrainReceived(fixture.Server, got);
+		}
+		fixture.Pump(20);
+		DrainReceived(fixture.Server, got);
+		Test.Assert(got.Count > 50, "most arrive");
+		for (int i = 1; i < got.Count; i++)
+			Test.Assert(got[i] > got[i - 1], "each newer than the one before");
 	}
 }

@@ -10,7 +10,9 @@ namespace Sedulous.Net;
 /// Per remote it layers on: a packet header (protocol, type, sequence, ack, ack bits),
 /// ack-driven round trip estimation, RELIABLE messages re-included in every packet until a
 /// packet carrying them is acked and then released IN ORDER by message id, unreliable pass
-/// through, a connect and accept handshake, and keepalive and timeout.
+/// through (SEQUENCED ones numbered per channel, a stale one dropped), a connect and accept
+/// handshake that tells a new session from the same address apart by its token, and keepalive
+/// and timeout.
 ///
 /// The model is include-every-unacked-reliable-per-packet, which suits a low message rate:
 /// there is no separate retransmit path to get wrong, and a lost packet costs one round trip
@@ -32,7 +34,10 @@ class ReliableTransport : INetTransport
 	{
 		public uint8 Channel = 0;
 		public bool Reliable = false;
+		/// Reliable: its message id. Sequenced: its number on its channel.
 		public uint16 Id = 0;
+		/// Unreliable, but a stale one is dropped at the far end (UnreliableSequenced).
+		public bool Sequenced = false;
 		// A large reliable message is split into pieces with CONSECUTIVE ids and a shared
 		// group, so ordered delivery hands them to the receiver in order and reassembly is a
 		// running append rather than a sparse buffer.
@@ -104,6 +109,10 @@ class ReliableTransport : INetTransport
 		public PeerId Peer = InvalidPeer;
 		public DatagramEndpoint Remote;
 		public ConnectionState State = .Connecting;
+		/// The session's token, which the client picks and the server echoes: a request with
+		/// another one from the same address is a new session (a client that restarted), not a
+		/// resend of this one's.
+		public uint32 Token = 0;
 
 		// Outgoing sequencing and ack tracking.
 		public uint16 LocalSeq = 0;
@@ -112,7 +121,9 @@ class ReliableTransport : INetTransport
 		/// Which of the thirty two packets before RemoteSeq arrived.
 		public uint32 ReceivedBits = 0;
 		public bool AnyReceived = false;
-		public List<SentPacket> SentWindow = new .() ~ DeleteContainerAndItems!(_);
+		/// The sent packets kept for acking, by sequence modulo the window: a slot holds the
+		/// newest packet with that remainder, so an ack finds its packet without a search.
+		public SentPacket[] SentWindow = new SentPacket[cSentWindowLimit] ~ DeleteContainerAndItems!(_);
 
 		// Reliable messages.
 		public uint16 NextOutReliableId = 0;
@@ -123,6 +134,11 @@ class ReliableTransport : INetTransport
 		public uint16 NextInReliableId = 0;
 		public List<BufferedIn> ReorderBuffer = new .() ~ DeleteContainerAndItems!(_);
 		public Reassembly Reassembly = new .() ~ delete _;
+
+		// Sequenced unreliable messages, per channel.
+		public Dictionary<uint8, uint16> NextOutSequenced = new .() ~ delete _;
+		/// The newest number delivered on each channel; one at or before it is stale.
+		public Dictionary<uint8, uint16> LastInSequenced = new .() ~ delete _;
 
 		// Timing.
 		public double RttMs = 0.0;
@@ -150,6 +166,11 @@ class ReliableTransport : INetTransport
 	private double mNowMs = 0.0;
 	private PeerId mNextPeer = 1;
 	private List<Connection> mConnections = new .() ~ DeleteContainerAndItems!(_);
+	/// The live connections by remote and by peer: a received packet and a send find theirs
+	/// without a search, so the cost per connection does not grow with their number.
+	private Dictionary<DatagramEndpoint, Connection> mByRemote = new .() ~ delete _;
+	private Dictionary<PeerId, Connection> mByPeer = new .() ~ delete _;
+	private Sedulous.Core.Random mRandom = .FromSystemEntropy();
 	private List<QueuedEvent> mEvents = new .() ~ DeleteContainerAndItems!(_);
 	private int mEventHead = 0;
 
@@ -171,6 +192,7 @@ class ReliableTransport : INetTransport
 	{
 		let connection = OpenConnection(remote);
 		connection.State = .Connecting;
+		connection.Token = NewToken();
 		SendConnectRequest(connection);
 		return connection.Peer;
 	}
@@ -210,6 +232,14 @@ class ReliableTransport : INetTransport
 			let message = new OutMessage();
 			message.Channel = channel;
 			message.Reliable = false;
+			if (reliability == .UnreliableSequenced)
+			{
+				message.Sequenced = true;
+				uint16 next = 0;
+				connection.NextOutSequenced.TryGetValue(channel, out next);
+				message.Id = next;
+				connection.NextOutSequenced[channel] = (uint16)(next + 1);
+			}
 			message.Data.AddRange(data);
 			connection.PendingUnreliable.Add(message);
 			return;
@@ -294,6 +324,7 @@ class ReliableTransport : INetTransport
 		ReceiveAll();
 		for (let connection in mConnections)
 			UpdateConnection(connection);
+		RemoveDisconnected();
 	}
 
 	public TransportStats Stats(PeerId peer)
@@ -316,10 +347,17 @@ class ReliableTransport : INetTransport
 		((seq1 > seq2) && ((uint32)(seq1 - seq2) <= 0x8000))
 		|| ((seq1 < seq2) && ((uint32)(seq2 - seq1) > 0x8000));
 
+	/// The live connection to `remote`, or a new one. One that has disconnected is let go
+	/// first, so connecting again starts a session from nothing rather than carrying the old
+	/// one's sequences and message ids.
 	private Connection OpenConnection(DatagramEndpoint remote)
 	{
 		if (let existing = FindByRemote(remote))
-			return existing;
+		{
+			if (existing.State != .Disconnected)
+				return existing;
+			Forget(existing);
+		}
 
 		let connection = new Connection();
 		connection.Peer = mNextPeer;
@@ -327,27 +365,58 @@ class ReliableTransport : INetTransport
 		connection.Remote = remote;
 		connection.LastRecvMs = mNowMs;
 		mConnections.Add(connection);
+		mByRemote[remote] = connection;
+		mByPeer[connection.Peer] = connection;
 		return connection;
+	}
+
+	/// Takes a connection out of the lookups, so its address is free for a new one. It stays in
+	/// the list (its peer finds nothing) until RemoveDisconnected deletes it.
+	private void Forget(Connection connection)
+	{
+		if (mByRemote.TryGetValue(connection.Remote, let byRemote) && (byRemote == connection))
+			mByRemote.Remove(connection.Remote);
+		if (mByPeer.TryGetValue(connection.Peer, let byPeer) && (byPeer == connection))
+			mByPeer.Remove(connection.Peer);
+	}
+
+	/// Deletes the connections that have disconnected. Their Disconnected events are queued
+	/// already, and nothing is said on the wire for them any more.
+	private void RemoveDisconnected()
+	{
+		for (int i = mConnections.Count - 1; i >= 0; i--)
+		{
+			let connection = mConnections[i];
+			if (connection.State != .Disconnected)
+				continue;
+			Forget(connection);
+			mConnections.RemoveAt(i);
+			delete connection;
+		}
 	}
 
 	private Connection FindByPeer(PeerId peer)
 	{
-		for (let connection in mConnections)
-		{
-			if (connection.Peer == peer)
-				return connection;
-		}
+		if (mByPeer.TryGetValue(peer, let connection))
+			return connection;
 		return null;
 	}
 
 	private Connection FindByRemote(DatagramEndpoint remote)
 	{
-		for (let connection in mConnections)
-		{
-			if (connection.Remote == remote)
-				return connection;
-		}
+		if (mByRemote.TryGetValue(remote, let connection))
+			return connection;
 		return null;
+	}
+
+	/// A session token: nonzero, and, drawn from the system's entropy, unlikely to repeat across a
+	/// client's restarts.
+	private uint32 NewToken()
+	{
+		var token = mRandom.NextU32();
+		if (token == 0)
+			token = 1;
+		return token;
 	}
 
 	private void PushEvent(NetEventKind kind, PeerId peer, uint8 channel, Span<uint8> payload)
@@ -372,18 +441,18 @@ class ReliableTransport : INetTransport
 
 	private void SendConnectRequest(Connection connection)
 	{
-		let writer = scope BitWriter();
-		writer.WriteU16(mConfig.ProtocolId);
-		writer.WriteU8((uint8)PacketType.ConnectRequest);
-		RawSend(connection, writer);
+		SendControl(connection, .ConnectRequest);
 		connection.LastConnectSendMs = mNowMs;
 	}
 
+	/// A control packet, carrying the session's token so the far end can tell this session
+	/// from an earlier one at the same address.
 	private void SendControl(Connection connection, PacketType type)
 	{
 		let writer = scope BitWriter();
 		writer.WriteU16(mConfig.ProtocolId);
 		writer.WriteU8((uint8)type);
+		writer.WriteU32(connection.Token);
 		RawSend(connection, writer);
 	}
 
@@ -425,8 +494,14 @@ class ReliableTransport : INetTransport
 		let seq = connection.LocalSeq;
 		connection.LocalSeq++;
 		writer.WriteU16(seq);
-		writer.WriteU16(connection.RemoteSeq);
-		writer.WriteU32(connection.ReceivedBits);
+		// Nothing received yet, nothing acked: an ack of the default sequence would retire the
+		// far end's first packet, lost or not, and with it the reliable messages it carried.
+		writer.WriteBool(connection.AnyReceived);
+		if (connection.AnyReceived)
+		{
+			writer.WriteU16(connection.RemoteSeq);
+			writer.WriteU32(connection.ReceivedBits);
+		}
 
 		let record = new SentPacket();
 		record.Seq = seq;
@@ -470,7 +545,13 @@ class ReliableTransport : INetTransport
 		{
 			writer.WriteU8(message.Channel);
 			writer.WriteBool(message.Reliable);
-			if (message.Reliable)
+			if (!message.Reliable)
+			{
+				writer.WriteBool(message.Sequenced);
+				if (message.Sequenced)
+					writer.WriteU16(message.Id);
+			}
+			else
 			{
 				writer.WriteU16(message.Id);
 				writer.WriteBool(message.Fragmented);
@@ -501,12 +582,9 @@ class ReliableTransport : INetTransport
 
 	private void RecordSent(Connection connection, SentPacket record)
 	{
-		connection.SentWindow.Add(record);
-		while (connection.SentWindow.Count > cSentWindowLimit)
-		{
-			delete connection.SentWindow[0];
-			connection.SentWindow.RemoveAt(0);
-		}
+		let slot = (int)record.Seq % cSentWindowLimit;
+		delete connection.SentWindow[slot];
+		connection.SentWindow[slot] = record;
 	}
 
 	private void UpdateConnection(Connection connection)
@@ -567,29 +645,44 @@ class ReliableTransport : INetTransport
 		let type = (PacketType)typeRaw;
 		var connection = FindByRemote(from);
 
+		uint32 token = 0;
+		if (type != .Data)
+		{
+			token = reader.ReadU32();
+			if (!reader.Ok)
+				return;
+		}
+
 		switch (type)
 		{
 		case .ConnectRequest:
 			if (!mAccepting)
 				return;
-			if (connection == null)
-			{
-				let opened = OpenConnection(from);
-				opened.State = .Connected;
-				opened.LastRecvMs = mNowMs;
-				SendControl(opened, .ConnectAccept);
-				PushEvent(.Connected, opened.Peer, 0, .());
-			}
-			else
+			if ((connection != null) && (connection.Token == token) && (connection.State != .Disconnected))
 			{
 				// Re-accept: our first accept was lost, and the client is still asking.
 				connection.LastRecvMs = mNowMs;
 				SendControl(connection, .ConnectAccept);
+				return;
 			}
+			if ((connection != null) && (connection.State != .Disconnected))
+			{
+				// Another session from the same address (the client restarted, or connected
+				// again): the old one is over, and its state must not carry into the new one.
+				connection.State = .Disconnected;
+				PushEvent(.Disconnected, connection.Peer, 0, .());
+			}
+			let opened = OpenConnection(from);
+			opened.State = .Connected;
+			opened.Token = token;
+			opened.LastRecvMs = mNowMs;
+			SendControl(opened, .ConnectAccept);
+			PushEvent(.Connected, opened.Peer, 0, .());
 			return;
 
 		case .ConnectAccept:
-			if (connection == null)
+			// An accept for an earlier session (a late one, or a resend) is not this one's.
+			if ((connection == null) || (connection.Token != token))
 				return;
 			connection.LastRecvMs = mNowMs;
 			if (connection.State == .Connecting)
@@ -600,7 +693,7 @@ class ReliableTransport : INetTransport
 			return;
 
 		case .Disconnect:
-			if ((connection != null) && (connection.State != .Disconnected))
+			if ((connection != null) && (connection.Token == token) && (connection.State != .Disconnected))
 			{
 				connection.State = .Disconnected;
 				PushEvent(.Disconnected, connection.Peer, 0, .());
@@ -619,12 +712,19 @@ class ReliableTransport : INetTransport
 		connection.AckPending = true;
 
 		let seq = reader.ReadU16();
-		let ack = reader.ReadU16();
-		let ackBits = reader.ReadU32();
+		let hasAck = reader.ReadBool();
+		uint16 ack = 0;
+		uint32 ackBits = 0;
+		if (hasAck)
+		{
+			ack = reader.ReadU16();
+			ackBits = reader.ReadU32();
+		}
 		if (!reader.Ok)
 			return;
 
-		ProcessAcks(connection, ack, ackBits);
+		if (hasAck)
+			ProcessAcks(connection, ack, ackBits);
 		UpdateReceivedHistory(connection, seq);
 
 		let count = reader.ReadVarU32();
@@ -633,11 +733,18 @@ class ReliableTransport : INetTransport
 			let channel = reader.ReadU8();
 			let reliable = reader.ReadBool();
 			uint16 id = 0;
+			var sequenced = false;
 			var fragmented = false;
 			uint32 fragGroup = 0;
 			uint32 fragIndex = 0;
 			uint32 fragCount = 1;
-			if (reliable)
+			if (!reliable)
+			{
+				sequenced = reader.ReadBool();
+				if (sequenced)
+					id = reader.ReadU16();
+			}
+			else
 			{
 				id = reader.ReadU16();
 				fragmented = reader.ReadBool();
@@ -665,7 +772,7 @@ class ReliableTransport : INetTransport
 			if (reliable)
 				DeliverReliable(connection, id, channel, fragmented, fragGroup, fragIndex,
 					fragCount, payload);
-			else
+			else if (!sequenced || TakeSequenced(connection, channel, id))
 				PushEvent(.Received, connection.Peer, channel, payload);
 		}
 	}
@@ -684,21 +791,29 @@ class ReliableTransport : INetTransport
 
 	private void AckOne(Connection connection, uint16 seq)
 	{
-		for (let packet in connection.SentWindow)
-		{
-			if ((packet.Seq != seq) || packet.Acked)
-				continue;
-
-			packet.Acked = true;
-			let sample = mNowMs - packet.SendTimeMs;
-			// A running average rather than the latest sample, so one delayed ack does not
-			// swing the resend timing.
-			connection.RttMs = (connection.RttMs <= 0.0)
-				? sample : (connection.RttMs * 0.9 + sample * 0.1);
-			for (let messageId in packet.ReliableIds)
-				AckReliableMessage(connection, messageId);
+		let packet = connection.SentWindow[(int)seq % cSentWindowLimit];
+		if ((packet == null) || (packet.Seq != seq) || packet.Acked)
 			return;
-		}
+
+		packet.Acked = true;
+		let sample = mNowMs - packet.SendTimeMs;
+		// A running average rather than the latest sample, so one delayed ack does not
+		// swing the resend timing.
+		connection.RttMs = (connection.RttMs <= 0.0)
+			? sample : (connection.RttMs * 0.9 + sample * 0.1);
+		for (let messageId in packet.ReliableIds)
+			AckReliableMessage(connection, messageId);
+	}
+
+	/// Whether a sequenced message numbered `id` is newer than the last delivered on its
+	/// channel, noting it if so. A stale one (reordered behind a newer one, or duplicated) is
+	/// dropped.
+	private bool TakeSequenced(Connection connection, uint8 channel, uint16 id)
+	{
+		if (connection.LastInSequenced.TryGetValue(channel, let last) && !SeqGreater(id, last))
+			return false;
+		connection.LastInSequenced[channel] = id;
+		return true;
 	}
 
 	private void AckReliableMessage(Connection connection, uint16 id)
