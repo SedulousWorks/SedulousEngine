@@ -38,6 +38,9 @@ class EditorPreferencesServices
 	/// The MCP section was saved: the host follows it over the open project; unset: nothing
 	/// follows. Owned.
 	public delegate void() McpChanged ~ delete _;
+	/// Asks for a folder with the system's dialog, starting at `from`. TAKES OWNERSHIP of `chosen`,
+	/// called with the folder, or not at all when the user cancels; unset: no Browse. Owned.
+	public delegate void(StringView from, delegate void(StringView folder) chosen) PickFolder ~ delete _;
 	/// Shows a look (the window's SetLook); unset: shown nowhere. Owned.
 	public delegate void(EditorLook look) ShowLook ~ delete _;
 	/// Persists the user's store, false when it could not be written; unset: nothing to write.
@@ -224,6 +227,15 @@ class EditorPreferencesDialog
 		}
 		if (let add = Find<Sedulous.GUI.Button>("pref-preview-add"))
 			add.SetOnClick(new () => { AddPreview("Custom", 1920, 1080); });
+		// The Export tab's folders: Browse fills its field with the folder picked.
+		for (let field in StringView[1]("pref-templates-root"))
+		{
+			if (let browse = Find<Sedulous.GUI.Button>(scope $"{field}-browse"))
+			{
+				let id = new String(field);
+				browse.SetOnClick(new [=id, =this] () => { BrowseFolder(id); } ~ delete id);
+			}
+		}
 		AddContributions();
 		if (let save = Find<Sedulous.GUI.Button>("pref-save"))
 			save.SetOnClick(new () => { Save(); });
@@ -234,6 +246,22 @@ class EditorPreferencesDialog
 			{
 				if (!mSaved && (mServices.ShowLook != null))
 					mServices.ShowLook(mOriginal);
+			});
+	}
+
+	/// Browse beside a folder field: the system's folder dialog, from the folder the field names
+	/// (else what its placeholder says it stands for, unless that is a variable), into the field.
+	/// Save keeps it.
+	public void BrowseFolder(StringView fieldId)
+	{
+		let field = Find<Sedulous.GUI.TextField>(fieldId);
+		if ((field == null) || (mServices.PickFolder == null))
+			return;
+		let from = !field.Text.IsEmpty ? field.Text : field.Placeholder;
+		mServices.PickFolder(from.StartsWith("$") ? default : from, new [=field] (chosen) =>
+			{
+				if (!chosen.IsEmpty)
+					field.Text = chosen;
 			});
 	}
 

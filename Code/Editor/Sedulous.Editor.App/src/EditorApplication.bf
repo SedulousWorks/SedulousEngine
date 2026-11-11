@@ -911,6 +911,21 @@ class EditorApplication : IApplication
 						return;
 					mMcp.Restart(mSession.Project);
 				};
+			services.PickFolder = new (from, chosen) =>
+				{
+					let dialogs = ShellDialogs();
+					if (dialogs == null)
+					{
+						delete chosen;
+						return;
+					}
+					// The service consumes the callback once it answers.
+					dialogs.ShowOpenFolder(new [=chosen] (paths) =>
+						{
+							if (!paths.IsEmpty)
+								chosen(paths[0]);
+						} ~ delete chosen, from, false, 0);
+				};
 			services.ShowLook = new (look) => { mWindow.SetLook(look); };
 			// Said on the status line, or as an error, as the Sedulous.UI dialog said it.
 			services.Persist = new () =>

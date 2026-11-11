@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Editor: Preferences' templates folder has a Browse button, which picks the folder with the
+  system's folder dialog.
 - Scripts: `scene.Animation.PlayOneShot(entity, clip)` plays a clip once over whatever an entity
   is animating (its clip or its graph), blending in and out, after which it carries on with its
   own animation; `StopOneShot` and `IsPlayingOneShot`, and `onAnimationFinished(clip)` on the

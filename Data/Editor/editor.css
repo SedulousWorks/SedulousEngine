@@ -1054,6 +1054,8 @@ button.group-field { justify-content: flex-start; }
 .export-files { flex-direction: row; justify-content: flex-start; column-gap: var(--space-s); }
 .pref-tabs { flex-grow: 1; }
 .pref-accent { width: 120px; }
+.pref-folder { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.pref-folder > textfield { flex-grow: 1; min-width: 0; }
 .pref-scale { flex-direction: row; align-items: center; column-gap: var(--space-m); }
 .pref-scale > slider { width: 200px; }
 .pref-scale-value { color: var(--text-dim); font-size: var(--font-small); }

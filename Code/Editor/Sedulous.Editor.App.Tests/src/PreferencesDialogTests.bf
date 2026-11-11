@@ -37,6 +37,8 @@ static class PreferencesDialogTests
 		public bool Muted = false;
 		public bool BakeBounds = false;
 		public int McpChanged = 0;
+		/// Where the folder dialog was asked to start; null until it is asked.
+		public String FolderFrom = null ~ delete _;
 		public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
 		public List<EditorLook> Shown = new .() ~ DeleteContainerAndItems!(_);
 		public int Persisted = 0;
@@ -67,6 +69,12 @@ static class PreferencesDialogTests
 			}
 			services.Contributions = Contributions;
 			services.McpChanged = new () => { McpChanged++; };
+			services.PickFolder = new (from, chosen) =>
+				{
+					String.NewOrSet!(FolderFrom, from);
+					chosen("/picked/folder");
+					delete chosen;
+				};
 			services.ShowLook = new (look) => { Shown.Add(new EditorLook()..Set(look)); };
 			services.Persist = new () =>
 				{
@@ -654,6 +662,29 @@ static class PreferencesDialogTests
 		root.Text = "";
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot.IsEmpty);
+	}
+
+	/// Browse beside the templates' folder: the system's folder dialog fills the field, starting
+	/// at the folder it names, else the default its placeholder shows.
+	[Test]
+	public static void BrowseFillsTheTemplatesFolderStartingAtTheFolderItNames()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let root = Find<Sedulous.GUI.TextField>(bed.Window, "pref-templates-root");
+		let browse = Find<Sedulous.GUI.Button>(bed.Window, "pref-templates-root-browse");
+		Test.Assert((root != null) && (browse != null));
+
+		Test.Assert(browse.HandleActivate());
+		Test.Assert(bed.FolderFrom == root.Placeholder, "empty: from the default");
+		Test.Assert(root.Text == "/picked/folder");
+
+		root.Text = "/srv/templates";
+		Test.Assert(browse.HandleActivate());
+		Test.Assert(bed.FolderFrom == "/srv/templates");
+		Test.Assert(root.Text == "/picked/folder");
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot == "/picked/folder", "Save keeps it");
 	}
 
 	/// The MCP host's fields: what the store has (the default port with no section); a port in

@@ -38,7 +38,7 @@
             <Panel class="dialog-body form">
                 <Label class="form-label" text="Templates"/>
                 <Panel class="form-field">
-                    <TextField id="pref-templates-root"/>
+                    <Panel class="pref-folder"><TextField id="pref-templates-root"/><Button id="pref-templates-root-browse" text="Browse..." tooltip="Pick the folder"/></Panel>
                     <Label class="form-help" text="Where export templates are installed. Empty: $SEDULOUS_TEMPLATES_DIR, else templates in your user data folder."/>
                 </Panel>
             </Panel>
