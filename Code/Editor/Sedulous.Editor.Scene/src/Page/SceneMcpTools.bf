@@ -526,11 +526,11 @@ static class SceneMcpTools
 		let elements = scope List<List<ObjectFieldWrite>>();
 		defer
 		{
-			for (let fields in elements)
+			for (let held in elements)
 			{
-				for (var w in ref fields)
-					w.Leaf.Dispose();
-				delete fields;
+				for (var pending in ref held)
+					pending.Leaf.Dispose();
+				delete held;
 			}
 		}
 		for (int i < value.Count)
