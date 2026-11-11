@@ -19,6 +19,7 @@ namespace Sedulous.Tools.Export;
 ///
 /// Usage:
 ///   Sedulous.Tools.Export <projectDir> [--out <dir>] [--preset <name> | --all] [--rebuild] [--data-root <dir>]
+///   Sedulous.Tools.Export <projectDir> --content-only --platform <name> [--out <dir>] [--preset <name>] [--rebuild]
 ///   Sedulous.Tools.Export --template list
 ///   Sedulous.Tools.Export --template import <templateDir>
 ///   Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
@@ -30,7 +31,9 @@ namespace Sedulous.Tools.Export;
 /// <user-data>/templates. The engine data root, whose Shaders the export cooks, is found by
 /// the Data/.dataroot walk from this tool, or --data-root. A created template carries an icon:
 /// the one --icon names (a built-in one, `handheld` for the Steam Deck build, or an .svg), else
-/// its platform's.
+/// its platform's. --content-only stages what the game reads and no player (the content pak,
+/// player.xml and the shader pack) for a platform named with --platform, Android64 for an Android
+/// app's assets, and needs no template.
 class Program
 {
 	public static int Main(String[] args)
@@ -61,6 +64,8 @@ class Program
 		let presetName = scope String();
 		bool all = false;
 		bool rebuild = false;
+		bool contentOnly = false;
+		let platformArg = scope String();
 		for (int i = 1; i < args.Count; i++)
 		{
 			if ((args[i] == "--out") && (i + 1 < args.Count))
@@ -71,6 +76,10 @@ class Program
 				all = true;
 			else if (args[i] == "--rebuild")
 				rebuild = true;
+			else if (args[i] == "--content-only")
+				contentOnly = true;
+			else if ((args[i] == "--platform") && (i + 1 < args.Count))
+				platformArg.Set(args[++i]);
 			else if (args[i].StartsWith("--data-root"))
 			{
 				if ((args[i] == "--data-root") && (i + 1 < args.Count))
@@ -85,6 +94,11 @@ class Program
 		if (all && !presetName.IsEmpty)
 		{
 			Console.Error.WriteLine("--all and --preset are mutually exclusive");
+			return 1;
+		}
+		if (contentOnly && (all || platformArg.IsEmpty))
+		{
+			Console.Error.WriteLine("--content-only takes --platform <name> and one preset, not --all");
 			return 1;
 		}
 
@@ -156,8 +170,12 @@ class Program
 			Console.Error.WriteLine("Sedulous.Tools.Export: no preset{}", presetName.IsEmpty ? " defined" : scope $" named {presetName}");
 			return 1;
 		}
+		// --platform names the platform the content is for, over the chosen preset's own (this run
+		// alone: the presets file is not saved).
+		if (!platformArg.IsEmpty)
+			preset.Platform.Set(platformArg);
 		let result = scope ExportResult();
-		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host) case .Err)
+		if (ExportDriver.ExportOne(project, preset, registry, builders, outRoot, dataRoot, rebuild, result, null, true, sceneStreams, scanner, null, plugins.ExportHooks, plugins.Host, contentOnly) case .Err)
 		{
 			if (!result.Refusal.IsEmpty)
 				Console.Error.WriteLine("Sedulous.Tools.Export: export refused: {}", result.Refusal);
@@ -182,6 +200,7 @@ class Program
 		Console.Error.WriteLine("""
 			usage:
 			  Sedulous.Tools.Export <projectDir> [--out <dir>] [--preset <name> | --all] [--rebuild] [--data-root <dir>]
+			  Sedulous.Tools.Export <projectDir> --content-only --platform <name> [--out <dir>] [--preset <name>] [--rebuild]
 			  Sedulous.Tools.Export --template list
 			  Sedulous.Tools.Export --template import <templateDir>
 			  Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]

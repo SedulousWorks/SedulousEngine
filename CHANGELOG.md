@@ -25,6 +25,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Tools: `ShaderPack --entries <dir> <output.dpak>` cooks every `.hlsl` under a folder whose
   shaders name their entry points in their own comments (`// entry: vertex VSMain`,
   `// model: 6_5`), each entry under `<file>:<entry>`, SPIR-V by default and DXIL on request.
+- Export: `Sedulous.Tools.Export --content-only` stages the game's content, settings and shader
+  pack with no player and no template, and `--platform <name>` exports a preset for another
+  platform; an Android export's content is cooked for ASTC, which phones read.
 
 ### Changed
 

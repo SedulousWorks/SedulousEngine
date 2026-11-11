@@ -485,14 +485,17 @@ static class ExportDriver
 		return .Ok;
 	}
 
+	/// `contentOnly` stages what the game reads and no player: the content pak(s), player.xml and
+	/// the shader pack, with no template needed (an Android app's assets, which its own build
+	/// packs beside the player library).
 	public static Result<void, ErrorCode> ExportOne(EditorProject project, ExportPreset preset, TemplateRegistry templates,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportResult outResult = null,
 		ExportProgress onProgress = null, bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null,
 		SceneReferenceScanner scanner = null, List<Guid> precomputedReachableRoots = null, ExportPluginServices hooks = null,
-		PluginHost plugins = null)
+		PluginHost plugins = null, bool contentOnly = false)
 	{
-		let template = templates.Resolve(preset);
-		if (template == null)
+		let template = contentOnly ? null : templates.Resolve(preset);
+		if ((template == null) && !contentOnly)
 		{
 			GlobalLog(.Error, "Export: no export template for preset '{}' (platform '{}') - import one", preset.Name, preset.Platform);
 			return .Err(.NotFound);
@@ -511,14 +514,15 @@ static class ExportDriver
 				outResult.Refusal.Set(result.Refusal);
 			}
 		}
-		if (!template.EngineVersion.IsEmpty && (template.EngineVersion != EngineVersion.String))
+		if ((template != null) && !template.EngineVersion.IsEmpty && (template.EngineVersion != EngineVersion.String))
 		{
 			GlobalLog(.Warning, "Export: template '{}' was built against engine {} but this build is {} - exporting anyway", template.Id, template.EngineVersion, EngineVersion.String);
 			result.EngineVersionWarning.AppendF("Template '{}' targets engine {} (this build is {}).", template.Id, template.EngineVersion, EngineVersion.String);
 		}
 		// The player this dist runs, and whether the project's plugins let the export go ahead.
 		let choice = scope PlayerChoice();
-		ExportPlugins.ChoosePlayer(project, template, preset.Platform, choice);
+		if (template != null)
+			ExportPlugins.ChoosePlayer(project, template, preset.Platform, choice);
 		if (!choice.Refusal.IsEmpty)
 		{
 			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, choice.Refusal);
@@ -540,8 +544,11 @@ static class ExportDriver
 				return .Err(err);
 			}
 		}
-		result.PlayerReason.Set(choice.Reason);
-		GlobalLog(.Information, "Export: preset '{}': {} player ({})", preset.Name, choice.OwnPlayer ? "the project's own" : "the template's", choice.Reason);
+		if (template != null)
+		{
+			result.PlayerReason.Set(choice.Reason);
+			GlobalLog(.Information, "Export: preset '{}': {} player ({})", preset.Name, choice.OwnPlayer ? "the project's own" : "the template's", choice.Reason);
+		}
 		// The project's scripts against what the platform has of its plugins (as `plugins` loaded
 		// them), before anything cooks: a script cooks once and ships to every platform.
 		ExportPlugins.CheckScriptsOn(project, plugins, preset.Platform, result.Refusal);
@@ -601,6 +608,17 @@ static class ExportDriver
 			return .Err(.Internal);
 		if (ApplyPresetDisplay(result.OutputDir, preset) case .Err)
 			return .Err(.Internal);
+
+		if (contentOnly)
+		{
+			// What the game reads and no player: the shader pack beside the content, and done.
+			if (ExportStaging.StageShaderPack(result.OutputDir, dataRoot, preset.Platform, project.CookedDb, result.Content.Shaders,
+				let shaderVariants) case .Err)
+				return .Err(.Internal);
+			result.FilesStaged += 2; // the pack and the marker
+			GlobalLog(.Information, "Export: preset '{}': content only, at '{}' ({} shader variants)", preset.Name, result.OutputDir, shaderVariants);
+			return .Ok;
+		}
 
 		if (onProgress != null)
 			onProgress("Staging player...", 0.93f);

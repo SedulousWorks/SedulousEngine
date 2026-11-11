@@ -165,6 +165,32 @@ static class ExportDriverTests
 	}
 
 	[Test]
+	public static void ExportOneWithContentOnlyStagesTheContentAndTheShaderPackNeedingNoTemplate()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_content_only");
+		let preset = ExportProjectFixture.HostPreset("Android", "android");
+		defer delete preset;
+		preset.Platform.Set("Android64");
+		let noTemplates = scope TemplateRegistry(); // a content export needs none
+		let result = scope ExportResult();
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, noTemplates, fx.Builders, fx.OutRoot, dataRoot, false, result,
+			null, true, null, null, null, null, null, true) case .Ok);
+
+		// What the game reads, and no player: the platform's one pak, the settings and the shader pack.
+		let dist = scope NativeFileSystem(result.OutputDir);
+		Test.Assert(dist.Exists(ProjectLayout.DistContentPak) && dist.Exists(ProjectLayout.DistManifestFile));
+		Test.Assert(dist.Exists("Data/Engine/Shaders/shaders.dpak"));
+		Test.Assert(!dist.Exists(BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .())), "no player");
+		Test.Assert(result.PlayerReason.IsEmpty);
+		// Its content is cooked for the platform's target, beside the host's Cooked/.
+		Test.Assert(DirectoryExists(PathJoin(fx.ProjectDir, "Cooked-android", .. scope .())));
+
+		// Without contentOnly the same preset needs a template, and there is none.
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, noTemplates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err);
+	}
+
+	[Test]
 	public static void APrunedDistKeepsTheClosureDropsTheRestAndReportsBoth()
 	{
 		let fx = scope ExportProjectFixture("scratch_export_prune");
