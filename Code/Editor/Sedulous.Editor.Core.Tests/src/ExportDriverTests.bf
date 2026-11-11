@@ -225,7 +225,8 @@ static class ExportDriverTests
 		let dist = scope NativeFileSystem(result.OutputDir);
 		Test.Assert(dist.Exists(ProjectLayout.DistContentPak) && dist.Exists(ProjectLayout.DistManifestFile));
 		Test.Assert(dist.Exists("Data/Engine/Shaders/shaders.dpak"));
-		Test.Assert(!dist.Exists(BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .())), "no player");
+		Test.Assert(!dist.Exists(ExportStaging.PlayerOutputName(preset.Platform, "Export", "", .. scope .())), "no player");
+		Test.Assert(!dist.Exists(StagedPlayerBuilder.cLibrary), "nor what its build leaves beside it");
 		Test.Assert(result.PlayerReason.IsEmpty);
 		// Its content is cooked for the platform's target, beside the host's Cooked/.
 		Test.Assert(DirectoryExists(PathJoin(fx.ProjectDir, "Cooked-android", .. scope .())));
