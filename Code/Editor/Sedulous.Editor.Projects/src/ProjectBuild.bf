@@ -622,13 +622,14 @@ static class ProjectBuild
 
 		let workspace = Directory(projectDir, .. scope .());
 		let generated = PathJoin(workspace, cGeneratedDir, .. scope .());
-		if ((WriteWorkspace(projectDir, game, packages) case .Err)
-			|| (WriteIfChanged(PathJoin(workspace, cConfigFile, .. scope .()), ConfigText(written, .. scope .())) case .Err)
+		// The workspace last of these: its SDK folders read what the entries link.
+		if ((WriteIfChanged(PathJoin(workspace, cConfigFile, .. scope .()), ConfigText(written, .. scope .())) case .Err)
 			|| (WriteIgnore(workspace) case .Err)
 			|| (WriteEntry(generated, game, .Editor, packages, none, editorConfigs) case .Err)
 			|| (WriteEntry(generated, game, .Player, packages, hostPlugins, "") case .Err)
 			|| (WriteEntry(generated, game, .PlayerWeb, packages, webPlugins, webConfigs) case .Err)
 			|| (WriteEntry(generated, game, .Tools, packages, none, toolsConfigs) case .Err)
+			|| (WriteWorkspace(projectDir, game, packages, sdk) case .Err)
 			|| (WriteWebWorkspace(projectDir, game, packages, written) case .Err)
 			|| (WriteIfChanged(PathJoin(generated, cSdkRecordFile, .. scope .()), SdkRecordText(sdk, .. scope .())) case .Err))
 		{
@@ -687,19 +688,30 @@ static class ProjectBuild
 		defer { ClearAndDeleteItems!(problems); }
 		Packages(projectDir, settings, packages, problems);
 		let game = GameName(settings.Name, .. scope .());
-		if ((WriteWorkspace(projectDir, game, packages) case .Err) || (WriteIgnore(Directory(projectDir, .. scope .())) case .Err))
+		if ((WriteWorkspace(projectDir, game, packages, "") case .Err) || (WriteIgnore(Directory(projectDir, .. scope .())) case .Err))
 			return .Err;
 		return .Ok;
 	}
 
 	/// The workspace merged over the one in Code/ (none is an empty one), written when it changed.
-	private static Result<void> WriteWorkspace(StringView projectDir, StringView game, List<ProjectPackage> packages)
+	/// With `sdk`, its SDK folders are made again (SdkFolders); without one they stay as they are.
+	private static Result<void> WriteWorkspace(StringView projectDir, StringView game, List<ProjectPackage> packages, StringView sdk)
 	{
-		let path = PathJoin(Directory(projectDir, .. scope .()), cSpaceFile, .. scope .());
+		let workspace = Directory(projectDir, .. scope .());
+		let path = PathJoin(workspace, cSpaceFile, .. scope .());
 		let existing = scope String();
 		if (ReadText(path, existing) case .Err)
 			existing.Clear();
-		return WriteIfChanged(path, WorkspaceText(existing, game, packages, .. scope .()));
+		List<SdkFolder> folders = null;
+		defer { DeleteContainerAndItems!(folders); }
+		if (!sdk.IsEmpty)
+		{
+			folders = new .();
+			SdkFolders(workspace, game, packages, sdk, folders);
+		}
+		let text = scope String();
+		WorkspaceText(existing, game, packages, text, folders);
+		return WriteIfChanged(path, text);
 	}
 
 	/// Code/.gitignore, what builds write (cWrittenDirs, cWrittenFiles), when Code/ has none: one
@@ -792,7 +804,299 @@ static class ProjectBuild
 	/// (by name; a user's line naming one wins, its path too); and the engine's configs
 	/// (cWorkspaceConfigs) when it has no [Configs.*]. A line added for a part that has since gone
 	/// stays, as a user's would: only the user removes lines.
-	public static void WorkspaceText(StringView existing, StringView game, List<ProjectPackage> packages, String outText)
+	///
+	/// With `sdkFolders`, the workspace's SDK folders are those: the [WorkspaceFolders] keys SDK and
+	/// SDK/... are the build's, made again each time, and the user's other folders stay. Without,
+	/// the file's are left as they are.
+	public static void WorkspaceText(StringView existing, StringView game, List<ProjectPackage> packages, String outText,
+		List<SdkFolder> sdkFolders = null)
+	{
+		if (sdkFolders == null)
+		{
+			MergeWorkspace(existing, game, packages, outText);
+			return;
+		}
+		let merged = MergeWorkspace(existing, game, packages, .. scope .());
+		WithSdkFolders(merged, sdkFolders, outText);
+	}
+
+	/// The engine's projects a game's workspace links, grouped as the engine's own workspace groups
+	/// them: a folder under SDK/ for each library folder, by its name.
+	public class SdkFolder
+	{
+		/// The [WorkspaceFolders] key: "SDK/Foundation".
+		public String Name = new .() ~ delete _;
+		/// Sorted by name.
+		public List<String> Projects = new .() ~ DeleteContainerAndItems!(_);
+	}
+
+	/// The project Beef's corlib, which comes with Beef rather than from a library folder; it goes
+	/// with the dependencies, as in the engine's workspace.
+	private const String cCorlib = "corlib";
+	/// The workspace folder every SDK folder is under.
+	private const String cSdkFolder = "SDK";
+
+	/// What the workspace's projects (the parts of the project's packages and the entries in
+	/// .generated) link from the SDK, followed through each project's [Dependencies], grouped by
+	/// the library folder (cSdkLibraryDirs) it is in. A folder with none is left out.
+	public static void SdkFolders(StringView workspace, StringView game, List<ProjectPackage> packages, StringView sdk,
+		List<SdkFolder> outFolders)
+	{
+		// Each SDK project by name: its folder and its library folder's index.
+		let found = scope Dictionary<String, (String path, int library)>();
+		defer
+		{
+			for (let kv in found)
+			{
+				delete kv.key;
+				delete kv.value.path;
+			}
+		}
+		for (int i < cSdkLibraryDirs.Count)
+			IndexLibrary(PathJoin(sdk, cSdkLibraryDirs[i], .. scope .()), i, cLibrarySearchDepth, found);
+
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		let paths = scope List<String>();
+		defer { ClearAndDeleteItems!(paths); }
+		WorkspaceProjects(game, packages, names, paths);
+
+		let members = scope List<String>[cSdkLibraryDirs.Count];
+		for (int i < members.Count)
+			members[i] = new .();
+		defer
+		{
+			for (let list in members)
+				DeleteContainerAndItems!(list);
+		}
+		let seen = scope HashSet<String>();
+		defer { ClearAndDeleteItems!(seen); }
+		let pending = scope List<String>();
+		defer { ClearAndDeleteItems!(pending); }
+		for (let path in paths)
+		{
+			let dir = PathIsAbsolute(path) ? scope String(path) : PathJoin(workspace, path, .. scope .());
+			DependencyNames(PathJoin(dir, "BeefProj.toml", .. scope .()), pending);
+		}
+		let dependencies = cSdkLibraryDirs.Count - 1;
+		while (!pending.IsEmpty)
+		{
+			let name = pending.PopBack();
+			if (seen.Contains(name))
+			{
+				delete name;
+				continue;
+			}
+			seen.Add(name);
+			if (found.TryGetValue(name, let entry))
+			{
+				members[entry.library].Add(new .(name));
+				DependencyNames(PathJoin(entry.path, "BeefProj.toml", .. scope .()), pending);
+			}
+			else if (name == cCorlib)
+				members[dependencies].Add(new .(name));
+		}
+
+		// The dependencies first, as the engine's workspace lists them; then the engine's folders.
+		for (int order < cSdkLibraryDirs.Count)
+		{
+			let i = (order == 0) ? dependencies : order - 1;
+			if (members[i].IsEmpty)
+				continue;
+			let folder = new SdkFolder();
+			let dir = StringView(cSdkLibraryDirs[i]);
+			folder.Name.AppendF("{}/{}", cSdkFolder, dir.Substring(dir.LastIndexOf('/') + 1));
+			members[i].Sort(scope (a, b) => a.CompareTo(b));
+			for (let member in members[i])
+				folder.Projects.Add(new .(member));
+			outFolders.Add(folder);
+		}
+	}
+
+	/// Every folder holding a BeefProj.toml under `dir`, `depth` levels down at most, by its project's
+	/// name (its [Project] Name, which Beef's registry finds it by: SDL3 is in SDL3-Beef; the folder's
+	/// when it names none), with library folder `library`. A project's own folders are not walked:
+	/// projects do not nest.
+	private static void IndexLibrary(StringView dir, int library, int depth, Dictionary<String, (String path, int library)> found)
+	{
+		if (depth <= 0)
+			return;
+		let subs = scope List<String>();
+		defer { ClearAndDeleteItems!(subs); }
+		ListDirectory(dir, scope [&](entry, isDirectory) =>
+			{
+				if (isDirectory)
+					subs.Add(new .(entry));
+			});
+		for (let sub in subs)
+		{
+			let path = PathJoin(dir, sub, .. scope .());
+			let projectFile = PathJoin(path, "BeefProj.toml", .. scope .());
+			if (FileExists(projectFile))
+			{
+				let name = ProjectName(projectFile, .. scope .());
+				if (name.IsEmpty)
+					name.Set(sub);
+				if (!found.ContainsKey(name))
+					found.Add(new .(name), (new .(path), library));
+			}
+			else
+				IndexLibrary(path, library, depth - 1, found);
+		}
+	}
+
+	/// A BeefProj.toml's [Project] Name, appended to `outName`; nothing when it names none or does
+	/// not read.
+	public static void ProjectName(StringView projectFile, String outName)
+	{
+		let text = scope String();
+		if (ReadText(projectFile, text) case .Err)
+			return;
+		bool inProject = false;
+		for (var line in text.Split('\n'))
+		{
+			line.Trim();
+			if (line.StartsWith("["))
+			{
+				inProject = line == "[Project]";
+				continue;
+			}
+			if (!inProject || !line.StartsWith("Name"))
+				continue;
+			let equals = line.IndexOf('=');
+			if (equals <= 0)
+				continue;
+			var key = line.Substring(0, equals);
+			key.Trim();
+			if (key != "Name")
+				continue;
+			var value = line.Substring(equals + 1);
+			value.Trim();
+			value.Trim('"');
+			outName.Append(value);
+			return;
+		}
+	}
+
+	/// The names in a BeefProj.toml's [Dependencies], added to `outNames` (nothing for a file that
+	/// does not read).
+	public static void DependencyNames(StringView projectFile, List<String> outNames)
+	{
+		let text = scope String();
+		if (ReadText(projectFile, text) case .Err)
+			return;
+		bool inDependencies = false;
+		for (var line in text.Split('\n'))
+		{
+			line.Trim();
+			if (line.StartsWith("["))
+			{
+				inDependencies = line == "[Dependencies]";
+				continue;
+			}
+			if (!inDependencies || line.IsEmpty || line.StartsWith("#"))
+				continue;
+			let equals = line.IndexOf('=');
+			if (equals <= 0)
+				continue;
+			var name = line.Substring(0, equals);
+			name.Trim();
+			name.Trim('"');
+			outNames.Add(new .(name));
+		}
+	}
+
+	/// Whether a [WorkspaceFolders] line is one of the build's: the key SDK or SDK/....
+	private static bool IsSdkFolderLine(StringView line)
+	{
+		var key = line;
+		let equals = key.IndexOf('=');
+		if (equals <= 0)
+			return false;
+		key = key.Substring(0, equals);
+		key.Trim();
+		key.Trim('"');
+		return (key == cSdkFolder) || key.StartsWith(scope $"{cSdkFolder}/");
+	}
+
+	/// `merged` with its SDK folders replaced by `folders`: in [WorkspaceFolders], after the user's
+	/// own; the table made, before the configs, when there is none.
+	private static void WithSdkFolders(StringView merged, List<SdkFolder> folders, String outText)
+	{
+		let block = scope String();
+		for (let folder in folders)
+		{
+			block.AppendF("\"{}\" = [", folder.Name);
+			for (int i < folder.Projects.Count)
+				block.AppendF("{}\"{}\"", (i == 0) ? "" : ", ", folder.Projects[i]);
+			block.Append("]\n");
+		}
+
+		let text = scope String(merged);
+		if (!text.EndsWith("\n"))
+			text.Append('\n');
+		let lines = scope List<StringView>();
+		for (let line in text.Split('\n'))
+			lines.Add(line);
+		let end = lines.Count - 1;
+
+		int foldersAt = -1;
+		int configsAt = -1;
+		bool inFolders = false;
+		bool hasFolders = false;
+		for (int i < end)
+		{
+			var line = lines[i];
+			line.Trim();
+			if (line.StartsWith("["))
+			{
+				inFolders = (line == "[WorkspaceFolders]") && !hasFolders;
+				if (inFolders)
+				{
+					hasFolders = true;
+					foldersAt = i + 1;
+				}
+				if ((configsAt < 0) && line.StartsWith("[Configs."))
+					configsAt = i;
+				continue;
+			}
+			if (inFolders && !line.IsEmpty && !IsSdkFolderLine(line))
+				foldersAt = i + 1;
+		}
+
+		let table = scope String();
+		if (!hasFolders && !block.IsEmpty)
+			table.AppendF("[WorkspaceFolders]\n{}\n", block);
+		let tableAt = (configsAt < 0) ? end : configsAt;
+
+		inFolders = false;
+		for (int i < end)
+		{
+			var line = lines[i];
+			line.Trim();
+			if (i == foldersAt)
+				outText.Append(block);
+			if (i == tableAt)
+				outText.Append(table);
+			if (line.StartsWith("["))
+				inFolders = line == "[WorkspaceFolders]";
+			else if (inFolders && IsSdkFolderLine(line))
+				continue;
+			outText.Append(lines[i]);
+			outText.Append('\n');
+		}
+		if (foldersAt == end)
+			outText.Append(block);
+		if (tableAt == end)
+		{
+			if (!table.IsEmpty)
+				BlankLine(outText);
+			outText.Append(table);
+		}
+	}
+
+	/// The merge WorkspaceText makes, without the SDK folders.
+	private static void MergeWorkspace(StringView existing, StringView game, List<ProjectPackage> packages, String outText)
 	{
 		let names = scope List<String>();
 		defer { ClearAndDeleteItems!(names); }

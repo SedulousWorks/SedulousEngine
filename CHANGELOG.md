@@ -74,6 +74,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   files (not what the editor, a cook or an export writes) and names each relative to the project, so
   the preset travels with it; From Disk takes a file of the project's through the system's dialog and
   refuses one outside it.
+- Native code: a game's code workspace shows the engine's projects in folders under `SDK`,
+  grouped as the engine's own workspace groups them, with the game's projects at the top.
 - GUI: a command every handler passes on (`Propagate`: not mine) is unhandled: `RunCommand`
   returns false for it, and its key goes on as an unbound key does, where before any handler on
   the path took the key. A screen stack passes on a Back it pops nothing with.
