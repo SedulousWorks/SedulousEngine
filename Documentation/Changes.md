@@ -170,6 +170,37 @@ Windows, with AddressSanitizer based leak checking and a live leak probe in the 
 Executables locate the engine's data by walking up to a `.dataroot` marker instead of
 using baked in paths.
 
+## From scripts to Beef
+
+Until this model, a game's logic was AngelScript: script files in its content, a Script
+component per entity, a level script per scene and a startup script per project, run by one
+stock editor and one stock player, and an export copied a prebuilt player (an export template)
+beside the game's cooked content. Now:
+
+- **Game code is Beef**, in the project's own `Code/` workspace: behaviours, levels and a game,
+  compiled with the engine. The script language, its components, its MCP tools, the editor's
+  script page and debugger, and the script surfaces the engine and the GUI published are gone. A
+  scene saved with scripts still opens, without them.
+- **Each project builds its own executables** over the engine SDK: `<Game>Editor`,
+  `<Game>Player`, `<Game>PlayerWeb` and `<Game>Tools` (the MCP host, the cook and the export),
+  each a one-line Main over the same startup libraries the stock ones use. The workspace groups
+  the engine's projects under `SDK` folders.
+- **The project manager ships**, with the engine as a source SDK: it makes projects from
+  templates (Empty, or Starter with a behaviour, content and a scene), installs engine versions
+  side by side and the Beef toolchain the engine pins, downloads the sample games, and opens each
+  project in its own editor, which it builds first. The editor opens one project and no longer
+  has a project picker.
+- **Export builds the game's player** for a preset's platform and config, with the game's code
+  and the plugins it enables; there are no export templates. A Steam Deck preset builds in a
+  container.
+- **Iterating on code:** Build and Relaunch rebuilds the editor and reopens the project as it
+  was, and on Linux the Beef IDE can hot compile a method's change into the running editor.
+- **Agents** write a game's code with their own file tools and build, relaunch and test through
+  the editor's MCP host (`project_build`, `editor_relaunch`), which answers a build's errors by
+  file and line.
+
+`CHANGELOG.md` lists each of these changes in full.
+
 ## Coming back
 
 Some things from v0, such as the manual and the sample projects, will return as this branch

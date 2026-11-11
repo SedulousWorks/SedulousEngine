@@ -89,13 +89,19 @@ nothing else links them, and enabling them builds the sandbox.
 
 Raptor (C++) is this engine's mirror in another language; the two move together. It is the
 reference for how a feature should behave. Syncs run from Raptor to Sedulous and carry code,
-not transliterated idiom: Beef's way wins. `Documentation/Changes.md` lists what changed from
-the previous engine, on the `v0` branch.
+not transliterated idiom: Beef's way wins. Sedulous has no scripting and no export templates, so a
+Raptor commit that only touches those has nothing to port. `Documentation/Changes.md` lists what
+changed from the previous engine, on the `v0` branch, and, in its last section, from the scripted
+model master had before.
 
 ## Agent tooling
 
-- `Sedulous.Tools.Mcp` is the headless MCP host; the editor serves the same tools over HTTP for
-  its open project (`--mcp` or `--mcp-port <port>`), plus page and play-in-editor tools.
+- `Sedulous.Tools.Mcp` is the headless MCP host for a project with no code of its own; a project
+  with code (every sample) needs its own, `<Game>Tools mcp`, which links its game. The editor (the
+  project's `<Game>Editor`) serves the same tools over HTTP for its open project (`--mcp` or
+  `--mcp-port <port>`), plus page and play-in-editor tools. An agent changing a game's code builds
+  and relaunches that editor (`project_build`, or `editor_relaunch` with `build: true`); a method
+  body's change can instead be hot compiled from the Beef IDE (GameCode.md).
   `.claude/skills/engine-mcp` is the recipe to build and wire it; once connected, read
   `docs://McpGuide.md` (`Documentation/Shipping/McpGuide.md`), the operating manual. A game's
   own Beef code (its Behaviour, Level and Game tiers) is `docs://GameCode.md`
