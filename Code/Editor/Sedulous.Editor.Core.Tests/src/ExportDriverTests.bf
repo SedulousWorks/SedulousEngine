@@ -16,6 +16,7 @@ using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Editor.Core.Tests;
 
@@ -280,6 +281,15 @@ static class ExportDriverTests
 		Test.Assert(web.Count == 2);
 		Test.Assert((web[0].Key == "bc") && (web[0].PakName == "Content-bc.pak") && web[0].CookedDir.EndsWith("Cooked-web-bc"));
 		Test.Assert((web[1].Key == "astc") && (web[1].PakName == "Content-astc.pak") && web[1].CookedDir.EndsWith("Cooked-web-astc"));
+		Test.Assert((web[0].TargetId == "web-bc") && (web[1].TargetId == "web-astc"));
+		// Android: one Content.pak, cooked for the "android" target (ASTC) into a sibling Cooked-android/.
+		let android = scope List<ContentVariant>();
+		defer { ClearAndDeleteItems(android); }
+		ExportDriver.VariantsForPlatform(fx.Project, "Android64", android);
+		Test.Assert(android.Count == 1);
+		Test.Assert((android[0].Key == "android") && (android[0].PakName == "Content.pak") && android[0].CookedDir.EndsWith("Cooked-android"));
+		Test.Assert(android[0].TargetId == "android");
+		Test.Assert(CookTarget.For("android").Astc && !CookTarget.For("android").Bc);
 	}
 
 	[Test]

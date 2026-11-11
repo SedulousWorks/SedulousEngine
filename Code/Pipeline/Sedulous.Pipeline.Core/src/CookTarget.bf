@@ -19,7 +19,7 @@ struct CookTarget
 
 	/// BC1 through BC7: desktops and desktop browsers.
 	public bool Bc = true;
-	/// ASTC: mobile browsers.
+	/// ASTC: mobile browsers, Android.
 	public bool Astc = false;
 	/// ETC2, which nothing encodes yet.
 	public bool Etc2 = false;
@@ -40,11 +40,12 @@ struct CookTarget
 	/// The capability profile for a target identifier.
 	///
 	/// A web export splits into two variants: desktop browsers, which have BC, and mobile
-	/// browsers, which have ASTC instead. Everything else, including unknown identifiers,
-	/// is BC capable desktop. New targets extend this, still keyed on capability.
+	/// browsers, which have ASTC instead; "android" is ASTC, as Android's GPUs read it and not
+	/// BC. Everything else, including unknown identifiers, is BC capable desktop. New targets
+	/// extend this, still keyed on capability.
 	public static CookTarget For(StringView id)
 	{
-		if (id == "web-astc")
+		if ((id == "web-astc") || (id == "android"))
 			return .(id, false, true, false);
 		return .(id, true, false, false);
 	}

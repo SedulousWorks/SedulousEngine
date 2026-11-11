@@ -169,7 +169,7 @@ static class ExportDriver
 	// ---- variants ----
 
 	/// The desktop's single pak from the host database; a web build's BC and ASTC siblings
-	/// from their own per target databases.
+	/// and an Android build's one ASTC pak from their own per target databases.
 	public static void VariantsForPlatform(EditorProject project, StringView platform, List<ContentVariant> outVariants)
 	{
 		if (ExportStaging.IsWebPlatform(platform))
@@ -180,8 +180,20 @@ static class ExportDriver
 				variant.Key.Set(key);
 				variant.PakName.Set(scope $"Content-{key}.pak");
 				variant.CookedDir.Set(scope $"{project.Directory}/Cooked-web-{key}");
+				variant.TargetId.Set(scope $"web-{key}");
 				outVariants.Add(variant);
 			}
+		}
+		else if (platform.StartsWith("Android"))
+		{
+			// One pak, its textures ASTC (Android's GPUs do not read BC), cooked into a sibling
+			// of the host Cooked/ as Sedulous.Tools.Cook --target android does.
+			let variant = new ContentVariant();
+			variant.Key.Set("android");
+			variant.PakName.Set(ProjectLayout.DistContentPak);
+			variant.CookedDir.Set(scope $"{project.Directory}/Cooked-android");
+			variant.TargetId.Set("android");
+			outVariants.Add(variant);
 		}
 		else
 		{
@@ -209,7 +221,8 @@ static class ExportDriver
 				continue;
 			if (onProgress != null)
 				onProgress(scope $"Cooking variant {variant.Key}", 0.6f);
-			let targetId = scope $"web-{variant.Key}";
+			// The variant's cook target resolves to its capability profile (ASTC or BC).
+			let targetId = variant.TargetId;
 			let cacheDir = PathJoin(project.CacheRoot(.. scope .()), targetId, .. scope .());
 			CreateDirectory(variant.CookedDir);
 			CreateDirectory(cacheDir);

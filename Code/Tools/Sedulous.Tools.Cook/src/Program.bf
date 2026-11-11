@@ -23,8 +23,9 @@ namespace Sedulous.Tools.Cook;
 ///   --target <id>  cooks a per target database beside the host's instead of the host's
 ///                  alone: the host first, then the platform invariant products carried
 ///                  forward and only the variant ones, the textures, cooked again for the
-///                  target. "web-astc" is the ASTC mobile web target; everything else is BC
-///                  desktop, and "host" is the default.
+///                  target. "web-astc" is the ASTC mobile web target and "android" the
+///                  Android one (ASTC); everything else is BC desktop, and "host" is the
+///                  default.
 /// The exit code is the number of failed cooks, so 0 is success.
 class Program
 {
