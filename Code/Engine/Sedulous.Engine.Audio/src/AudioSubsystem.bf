@@ -121,6 +121,20 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 		}
 	}
 
+	/// The app goes to the background: its sound stops, every voice kept where it is, and goes on
+	/// from there when the app comes back.
+	public override void OnEnterBackground()
+	{
+		if (mEngine != null)
+			mEngine.Suspend();
+	}
+
+	public override void OnEnterForeground()
+	{
+		if (mEngine != null)
+			mEngine.Resume();
+	}
+
 	/// The listeners and the engine's own tick.
 	///
 	/// EVERY active listener component across the started scenes fills a slot, in scene

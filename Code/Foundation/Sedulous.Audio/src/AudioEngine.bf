@@ -250,6 +250,8 @@ class AudioEngine
 	private AudioEngineSettings mSettings;
 	private bool mHeadless = false;
 	private bool mInitialized = false;
+	/// Suspend stopped the output.
+	private bool mSuspended = false;
 
 	private mab_engine* mEngine = null;
 	private mab_vfs* mVfs = null;
@@ -332,6 +334,30 @@ class AudioEngine
 
 	/// True when mixing without a device, whether that was asked for or fallen back to.
 	public bool IsHeadless => mHeadless;
+
+	/// Stops the output, the voices kept where they are: the app going to the background, where a
+	/// phone's platform wants it silent. A headless engine has no output to stop, so only the
+	/// state changes.
+	public void Suspend()
+	{
+		if (mSuspended)
+			return;
+		mSuspended = true;
+		if (mInitialized && !mHeadless)
+			mab_engine_stop(mEngine);
+	}
+
+	/// Starts the output again, the voices going on from where they were.
+	public void Resume()
+	{
+		if (!mSuspended)
+			return;
+		mSuspended = false;
+		if (mInitialized && !mHeadless)
+			mab_engine_start(mEngine);
+	}
+
+	public bool IsSuspended => mSuspended;
 
 	// ==================== the frame ====================
 

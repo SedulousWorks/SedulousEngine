@@ -37,6 +37,12 @@ Both sit at fa11f9ab, behind `master`, which is the default branch again. Bring 
 `dist/Debug-Win64` and `dist/Release-Win64`: run `build-native.ps1` on Windows and commit them,
 or a Windows build fails to link.
 
+### Rebuild the miniaudio Windows libraries
+`mab_engine_stop` and `mab_engine_start` (added to `Dependencies/miniaudio-Beef/miniaudio_beef.c`
+for `AudioEngine.Suspend` and `Resume`) are in the Linux and wasm archives, not yet in
+`dist/Debug-Win64` and `dist/Release-Win64`: run `build-native.ps1` on Windows and commit them,
+or a Windows build fails to link.
+
 ## The Raptor sync
 
 The sync from Raptor 0b60c738 to 8be4094d, and the PaperKid rebuild after it, are done; their

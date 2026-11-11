@@ -210,4 +210,21 @@ class RunAudioTests
 		context.Shutdown();
 		runs.SetFocused(null); // the audio stopped listening at its shutdown: nothing reaches it
 	}
+
+	/// The app in the background is silent, and its sound comes back with it.
+	[Test]
+	public static void TheAppInTheBackgroundIsSilentAndItsSoundComesBackWithIt()
+	{
+		let runs = scope RunRegistry();
+		let context = new SubsystemManager();
+		let audio = MakeAudio(context, runs);
+		defer { delete context; delete audio; }
+		let engine = audio.Engine;
+		Test.Assert(!engine.IsSuspended);
+		context.EnterBackground();
+		Test.Assert(engine.IsSuspended);
+		context.EnterForeground();
+		Test.Assert(!engine.IsSuspended);
+		context.Shutdown();
+	}
 }

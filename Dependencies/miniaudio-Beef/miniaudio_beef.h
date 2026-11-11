@@ -93,6 +93,11 @@ uint32_t mab_engine_get_channels(mab_engine* engine);
 uint32_t mab_engine_get_sample_rate(mab_engine* engine);
 uint32_t mab_engine_get_listener_count(mab_engine* engine);
 void     mab_engine_set_volume(mab_engine* engine, float volume);
+/* Stops the engine's device and starts it again, every sound kept where it is (an app sent to
+ * the background goes silent). A no-device engine has nothing to stop: miniaudio refuses
+ * (MA_INVALID_OPERATION), so callers leave a headless engine alone. */
+int32_t  mab_engine_stop(mab_engine* engine);
+int32_t  mab_engine_start(mab_engine* engine);
 int32_t  mab_engine_read_pcm_frames(mab_engine* engine, void* framesOut, uint64_t frameCount,
                                     uint64_t* framesRead);
 

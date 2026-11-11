@@ -220,6 +220,22 @@ void mab_engine_set_volume(mab_engine* engine, float volume)
     }
 }
 
+int32_t mab_engine_stop(mab_engine* engine)
+{
+    if (engine == NULL) {
+        return (int32_t)MA_INVALID_ARGS;
+    }
+    return (int32_t)ma_engine_stop((ma_engine*)engine);
+}
+
+int32_t mab_engine_start(mab_engine* engine)
+{
+    if (engine == NULL) {
+        return (int32_t)MA_INVALID_ARGS;
+    }
+    return (int32_t)ma_engine_start((ma_engine*)engine);
+}
+
 int32_t mab_engine_read_pcm_frames(mab_engine* engine, void* framesOut, uint64_t frameCount,
                                    uint64_t* framesRead)
 {

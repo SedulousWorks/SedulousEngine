@@ -355,4 +355,32 @@ class AudioEngineTests
 		Test.Assert(status.CursorSeconds >= 0.0f);
 		Test.Assert(status.CursorSeconds < 0.26f);
 	}
+
+	/// Suspended for the background, the voices stay where they are.
+	[Test]
+	public static void SuspendedForTheBackgroundTheVoicesStayWhereTheyAre()
+	{
+		let engine = scope AudioEngine(HeadlessSettings!());
+		let clip = MakeToneClip(0.3f);
+		defer delete clip;
+
+		var parameters = AudioPlayParams();
+		parameters.Loop = true;
+		let voice = engine.Play(clip, parameters);
+		Test.Assert(voice.IsValid);
+		Test.Assert(!engine.IsSuspended);
+
+		engine.Suspend();
+		Test.Assert(engine.IsSuspended);
+		engine.Suspend(); // once is enough; a second changes nothing
+		Test.Assert(engine.IsSuspended);
+		Test.Assert(engine.IsValidHandle(voice), "the output stops, not the voices");
+		Test.Assert(engine.IsPlaying(voice));
+
+		engine.Resume();
+		Test.Assert(!engine.IsSuspended);
+		Test.Assert(engine.IsPlaying(voice));
+		engine.Stop(voice);
+		engine.Update(0.1f);
+	}
 }

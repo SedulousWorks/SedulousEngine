@@ -117,6 +117,9 @@ static
 	[CLink] public static extern uint32 mab_engine_get_sample_rate(mab_engine* engine);
 	[CLink] public static extern uint32 mab_engine_get_listener_count(mab_engine* engine);
 	[CLink] public static extern void mab_engine_set_volume(mab_engine* engine, float volume);
+	/// Stops the engine's device and starts it again, every sound kept where it is.
+	[CLink] public static extern int32 mab_engine_stop(mab_engine* engine);
+	[CLink] public static extern int32 mab_engine_start(mab_engine* engine);
 	[CLink] public static extern int32 mab_engine_read_pcm_frames(mab_engine* engine,
 		void* framesOut, uint64 frameCount, uint64* framesRead);
 
