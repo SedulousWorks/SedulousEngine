@@ -47,6 +47,31 @@ Build Project and Open With This Build are the two halves on their own. An agent
 `project_build` and `editor_relaunch` (with `build: true`, both at once): McpGuide.md, "Writing
 game code".
 
+### A faster loop for method bodies: the Beef IDE's hot compile (Linux)
+
+A change to a method's body can go into the running editor in about a second, without a
+relaunch, by running the project's editor under the Beef IDE:
+
+1. A Beef IDE that debugs through LLDB (on Linux one built with LLDB; through GDB it cannot hot
+   swap).
+2. In `Code/BeefSpace.toml`, turn hot swapping on for the Debug build:
+   ```toml
+   [Configs.Debug.Linux64]
+   AllowHotSwapping = true
+   ```
+3. Build once (Project > Build Project, or let Build and Relaunch do it), which writes the
+   generated `<Game>Editor` project with its debug launch: the same project and engine data the
+   project manager starts it with.
+4. Open `Code/` as the workspace in the Beef IDE, and Debug > Start Debugging: the game's editor
+   opens on the project.
+5. Edit a method's body, then Build > Build Workspace (F7): the IDE compiles the change and
+   swaps it into the running editor.
+
+What it cannot do is change a type's layout while objects of it exist: a field added to a
+behaviour with live instances is refused ("Hot type data changes cannot be applied ... allocated
+on the heap"), and the editor keeps running the old code. For a new field, or anything the IDE
+refuses, use Build and Relaunch.
+
 ## Behaviour: code on an entity
 
 A behaviour is a class whose instance rides one entity. Its public fields are its data: saved

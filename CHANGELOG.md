@@ -13,6 +13,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   away from its natural orientation), so the display has nothing to turn (pre-rotation); its scene,
   its screens and a screenshot follow the turn, and the pointer is unchanged. A window asks for it
   (`RenderWindowDesc.PreRotate`); the samples and the editor do not.
+- Native code: the project's editor starts from the Beef IDE (Debug > Start Debugging on `Code/`)
+  on its project, as the project manager starts it, so a method body's change can be hot compiled
+  into the running editor; GameCode.md has the setup.
 - Editor: Project > Build and Relaunch (Ctrl+Shift+B) builds the project's own editor when the
   game's code changed and reopens the project in it as you left it: the open pages and the active
   one, each scene's camera, selection and panes, and the Game tab, playing again from the start if

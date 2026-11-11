@@ -502,7 +502,8 @@ Each step proves one thing, and each is run for leaks with ASan where it can be.
    acceptable? Only Tallow's route keeps a live session across a field change, and even then
    only the supported fields of scene components.
 3. Should running `<Game>Editor` under the Beef IDE with hot compile become a documented
-   workflow, if spike step 1 passes on Linux? It is a developer setup (the IDE, a workspace
+   workflow, if spike step 1 passes on Linux? (Decided 2026-11-11: yes. GameCode.md documents it,
+   and the build writes the editor entry's debug launch.) It is a developer setup (the IDE, a workspace
    setting) rather than something the project manager ships.
 4. The spike's step 0, step 1 on SkyHopperEditor, and step 6 need build windows for heavy
    builds. Run them, or stop at the small host?
