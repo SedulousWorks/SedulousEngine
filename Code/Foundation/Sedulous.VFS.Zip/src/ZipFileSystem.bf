@@ -165,8 +165,9 @@ class ZipFileSystem : IFileSystem, IEnumerableFileSystem
 			return;
 		for (let zipEntry in mArchive.Entries)
 		{
-			StringView below;
-			if (zipEntry.Directory || !RelativeUnder(zipEntry.Name, folder, out below))
+			if (zipEntry.Directory)
+				continue;
+			if (!RelativeUnder(zipEntry.Name, folder, let below))
 				continue;
 			if (!mArchive.DataOffset(zipEntry, let dataOffset, mError))
 				return;
