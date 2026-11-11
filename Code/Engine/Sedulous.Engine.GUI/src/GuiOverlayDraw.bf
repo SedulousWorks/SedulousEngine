@@ -137,7 +137,9 @@ extension GuiSubsystem : ISceneOverlay, IScreenOverlay
 	private static bool SameView(ScreenOverlayView a, ScreenOverlayView b)
 		=> (a.Width == b.Width) && (a.Height == b.Height) && (a.TargetFormat == b.TargetFormat)
 			&& (a.DepthStencilFormat == b.DepthStencilFormat) && (a.FrameIndex == b.FrameIndex)
-			&& (a.EncodedTarget == b.EncodedTarget);
+			&& (a.EncodedTarget == b.EncodedTarget)
+			&& (a.SafeArea.X == b.SafeArea.X) && (a.SafeArea.Y == b.SafeArea.Y)
+			&& (a.SafeArea.Width == b.SafeArea.Width) && (a.SafeArea.Height == b.SafeArea.Height);
 
 	/// A screen tier placed on `view`'s target and recorded (its layers on `encoder` when given,
 	/// else drawn in place): laid out at the game's resolution over its scale and drawn into the
