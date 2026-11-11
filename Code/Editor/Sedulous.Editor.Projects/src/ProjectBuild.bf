@@ -79,10 +79,10 @@ enum BuildEntry
 static class ProjectBuild
 {
 	/// Under Code/: the generated entries, and BeefBuild's output.
-	public const String cGeneratedDir = ".generated";
+	public const String cGeneratedDir = ProjectLayout.CodeGeneratedDir;
 	/// Under .generated: the web player's own workspace (WebWorkspaceText).
 	public const String cWebWorkspaceDir = "Web";
-	public const String cBuildDir = "build";
+	public const String cBuildDir = ProjectLayout.CodeBuildDir;
 	public const String cSpaceFile = "BeefSpace.toml";
 	/// The per-machine registry file that points Beef at the SDK.
 	public const String cConfigFile = "BeefConfig.toml";
@@ -93,7 +93,7 @@ static class ProjectBuild
 	/// What builds and the Beef IDE write in Code/, so neither version control nor a player's
 	/// freshness counts it: BeefBuild's output, the generated entries and registry file, and the
 	/// IDE's recovery folder and per-user workspace state.
-	public const String[3] cWrittenDirs = .(cBuildDir, cGeneratedDir, "recovery");
+	public const String[3] cWrittenDirs = ProjectLayout.CodeOutputDirs;
 	public const String[2] cWrittenFiles = .(cConfigFile, "BeefSpace_User.toml");
 
 	public const String cEditorSuffix = "Editor";

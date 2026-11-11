@@ -18,11 +18,30 @@ static class ProjectLayout
 	/// Where the editor's exports go.
 	public const String DistDir = "Dist";
 
-	/// Whether a project's top-level folder `name` is one the editor, a cook or an export writes
-	/// (Cooked and each target's Cooked-<target>, Editor, .cache, Dist): generated, never a file of
-	/// the project's own to pick.
-	public static bool IsOutputFolder(StringView name) => (name == CookedDir) || name.StartsWith("Cooked-") ||
-		(name == EditorDir) || (name == CacheDir) || (name == DistDir);
+	/// Under CodeDir: BeefBuild's output, and the entries the build generates.
+	public const String CodeBuildDir = "build";
+	public const String CodeGeneratedDir = ".generated";
+	/// What builds and the Beef IDE write in CodeDir: BeefBuild's output, the generated entries and
+	/// the IDE's recovery folder.
+	public const String[3] CodeOutputDirs = .(CodeBuildDir, CodeGeneratedDir, "recovery");
+
+	/// Whether a project's folder `name` (project-relative) is one the editor, a cook, an export or a
+	/// build writes (Cooked and each target's Cooked-<target>, Editor, .cache, Dist, and CodeDir's
+	/// CodeOutputDirs): generated, never a file of the project's own to pick.
+	public static bool IsOutputFolder(StringView name)
+	{
+		if ((name == CookedDir) || name.StartsWith("Cooked-") || (name == EditorDir) || (name == CacheDir) || (name == DistDir))
+			return true;
+		if (!name.StartsWith(CodeDir) || (name.Length <= CodeDir.Length) || (name[CodeDir.Length] != '/'))
+			return false;
+		let inCode = name.Substring(CodeDir.Length + 1);
+		for (let dir in CodeOutputDirs)
+		{
+			if (inCode == dir)
+				return true;
+		}
+		return false;
+	}
 	/// The project's reusable packages: Plugins/<Name>/, each a Plugin.xml and its parts,
 	/// <Name>.<Kind>/. The game's own package lives in CodeDir.
 	public const String PluginsDir = "Plugins";

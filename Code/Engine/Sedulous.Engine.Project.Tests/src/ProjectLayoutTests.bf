@@ -35,5 +35,10 @@ class ProjectLayoutTests
 			Test.Assert(ProjectLayout.IsOutputFolder(name), scope String(name));
 		for (let name in StringView[5]("Content", "Sources", "Plugins", "Branding", "Cookbook"))
 			Test.Assert(!ProjectLayout.IsOutputFolder(name), scope String(name));
+		// In Code/, what builds and the IDE write; the game's own code is the project's.
+		for (let name in StringView[3]("Code/build", "Code/.generated", "Code/recovery"))
+			Test.Assert(ProjectLayout.IsOutputFolder(name), scope String(name));
+		for (let name in StringView[4]("Code", "Code/SkyHopper", "Code/builds", "Codex/build"))
+			Test.Assert(!ProjectLayout.IsOutputFolder(name), scope String(name));
 	}
 }
