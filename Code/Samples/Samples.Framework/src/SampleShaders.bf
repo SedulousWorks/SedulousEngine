@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.Shaders;
+using Sedulous.VFS;
 
 namespace Samples.Framework;
 
@@ -18,6 +19,8 @@ class SampleShaders
 	/// The pack's name in the folder.
 	public const String cPackFileName = "shaders.dpak";
 
+	/// The data mount the files are in; not owned.
+	private IFileSystem mData = null;
 	private String mFolder = new .() ~ delete _;
 	private ShaderCompiler mCompiler = null;
 	private CookedShaderPack mPack = null;
@@ -30,23 +33,26 @@ class SampleShaders
 	public bool HasCompiler => mCompiler != null;
 	public bool HasPack => mPack != null;
 
-	/// `folder` holds the samples' shader files (Data/Samples/RHI). Its shaders.dpak, if there is
-	/// one, is read too, for when no compiler is: a cooked pack never wins over the files.
-	public void Open(StringView folder)
+	/// `folder` (in `data`, the data mount) holds the samples' shader files (Samples/RHI). Its
+	/// shaders.dpak, if there is one, is read too, for when no compiler is: a cooked pack never
+	/// wins over the files. `data` outlives this.
+	public void Open(IFileSystem data, StringView folder)
 	{
 		Close();
+		mData = data;
 		mFolder.Set(folder);
 
 		mCompiler = new ShaderCompiler();
 		if (mCompiler.Initialize() case .Err)
 			DeleteAndNullify!(mCompiler);
 
-		let packPath = PathJoin(folder, cPackFileName, .. scope String());
-		if (!FileExists(packPath))
+		let packPath = scope $"{folder}/{cPackFileName}";
+		let stream = data.Open(packPath, .Read);
+		if (stream == null)
 			return;
-		let stream = scope FileStream(packPath, .Read);
+		defer delete stream;
 		mPack = new CookedShaderPack();
-		if (!stream.IsValid || (mPack.Read(stream) case .Err))
+		if (mPack.Read(stream) case .Err)
 		{
 			Console.Error.WriteLine(scope $"SampleShaders: '{packPath}' could not be read");
 			DeleteAndNullify!(mPack);
@@ -66,9 +72,13 @@ class SampleShaders
 	{
 		if (mCompiler != null)
 		{
-			let path = PathJoin(mFolder, file, .. scope String());
+			let path = scope $"{mFolder}/{file}";
+			let stream = (mData != null) ? mData.Open(path, .Read) : null;
+			defer delete stream;
 			let bytes = scope List<uint8>();
-			if (ReadFile(path, bytes) case .Err)
+			if (stream != null)
+				bytes.Count = (int)stream.Size();
+			if ((stream == null) || (stream.Read(bytes) != bytes.Count))
 			{
 				Console.Error.WriteLine(scope $"SampleShaders: no shader file '{path}'");
 				return .Err;

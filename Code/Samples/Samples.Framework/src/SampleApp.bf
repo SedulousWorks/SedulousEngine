@@ -101,7 +101,7 @@ abstract class SampleApp
 		Sedulous.VFS.DataPath(mDataRoot, relative, outPath);
 
 	private String mDataRoot = new .() ~ delete _;
-	private NativeFileSystem mDataMount = null ~ delete _;
+	private IFileSystem mDataMount = null ~ delete _;
 
 	/// The RHI samples' shaders (Data/Samples/RHI).
 	private SampleShaders mShaders = new .() ~ delete _;
@@ -209,7 +209,7 @@ abstract class SampleApp
 			return 1;
 		}
 		mDataMount = new NativeFileSystem(mDataRoot);
-		mShaders.Open(DataPath("Samples/RHI", .. scope String()));
+		mShaders.Open(mDataMount, "Samples/RHI");
 
 		if (Initialize() case .Err)
 		{
