@@ -52,6 +52,16 @@ class WebShell : IShell
 
 	public void RequestExit() => mRunning = false;
 
+	/// A browser tab never puts the app in the background: a hidden tab stops its frames itself.
+	public bool InBackground => false;
+
+	/// Never called, so not kept.
+	public void SetBackgroundHandlers(delegate void() onEnterBackground, delegate void() onEnterForeground)
+	{
+		delete onEnterBackground;
+		delete onEnterForeground;
+	}
+
 	/// TAKES OWNERSHIP of the handler, replacing any previous one.
 	public void SetMainWindowCloseHandler(delegate bool() handler)
 	{

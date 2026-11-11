@@ -131,6 +131,8 @@ class DrivenShell : Sedulous.Shell.IShell
 	public void ProcessEvents() => Inner.ProcessEvents();
 	public bool IsRunning => Inner.IsRunning;
 	public void RequestExit() => Inner.RequestExit();
+	public bool InBackground => Inner.InBackground;
+	public void SetBackgroundHandlers(delegate void() onEnterBackground, delegate void() onEnterForeground) => Inner.SetBackgroundHandlers(onEnterBackground, onEnterForeground);
 	public void SetMainWindowCloseHandler(delegate bool() handler) => Inner.SetMainWindowCloseHandler(handler);
 	public void DrainDroppedFiles(List<Sedulous.Shell.DroppedFile> outFiles) => Inner.DrainDroppedFiles(outFiles);
 	public void SetClipboardText(StringView text) => Inner.SetClipboardText(text);

@@ -17,6 +17,9 @@ class NullShell : IShell
 	private bool mRunning = true;
 	private String mClipboard = new .() ~ delete _;
 	private delegate bool() mCloseHandler ~ delete _;
+	private bool mInBackground;
+	private delegate void() mOnEnterBackground ~ delete _;
+	private delegate void() mOnEnterForeground ~ delete _;
 
 	public this(WindowSettings settings = .())
 	{
@@ -46,6 +49,32 @@ class NullShell : IShell
 	}
 
 	public void RequestExit() => mRunning = false;
+
+	public bool InBackground => mInBackground;
+
+	public void SetBackgroundHandlers(delegate void() onEnterBackground, delegate void() onEnterForeground)
+	{
+		delete mOnEnterBackground;
+		mOnEnterBackground = onEnterBackground;
+		delete mOnEnterForeground;
+		mOnEnterForeground = onEnterForeground;
+	}
+
+	/// A test takes the app out of view, as a phone's platform does.
+	public void EnterBackground()
+	{
+		mInBackground = true;
+		if (mOnEnterBackground != null)
+			mOnEnterBackground();
+	}
+
+	/// And gives it back.
+	public void EnterForeground()
+	{
+		mInBackground = false;
+		if (mOnEnterForeground != null)
+			mOnEnterForeground();
+	}
 
 	/// TAKES OWNERSHIP of the handler, replacing any previous one.
 	public void SetMainWindowCloseHandler(delegate bool() handler)

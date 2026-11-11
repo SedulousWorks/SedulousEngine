@@ -21,6 +21,9 @@ class SDL3Shell : IShell
 	private bool mInitialized;
 	private bool mRunning = true;
 	private delegate bool() mCloseHandler ~ delete _;
+	private bool mInBackground;
+	private delegate void() mOnEnterBackground ~ delete _;
+	private delegate void() mOnEnterForeground ~ delete _;
 	/// Collected during the pump and drained per frame by the host.
 	private List<DroppedFile> mDropped = new .() ~ DeleteContainerAndItems!(_);
 
@@ -39,6 +42,7 @@ class SDL3Shell : IShell
 			return;
 		}
 		mInitialized = true;
+		SDL3.SDL_AddEventWatch(=> OnWatchedEvent, Internal.UnsafeCastToPtr(this));
 		mWindows.ReadScreens();
 
 		if (mWindows.CreateWindow(settings) case .Ok(let main))
@@ -59,7 +63,33 @@ class SDL3Shell : IShell
 		mInput.ReleaseDevices();
 		mWindows.DestroyAllNow();
 		if (mInitialized)
+		{
+			SDL3.SDL_RemoveEventWatch(=> OnWatchedEvent, Internal.UnsafeCastToPtr(this));
 			SDL3.SDL_Quit();
+		}
+	}
+
+	/// SDL's event watch: the app's going to the background and coming back are answered as SDL
+	/// raises them, not when the queue is next drained (the platform may take the window's surface
+	/// away once the background one returns). The earliest word of going, and the last of coming
+	/// back (the window's new surface is there by then). On Android SDL raises both on the thread
+	/// that pumps its events, the app's own.
+	private static bool OnWatchedEvent(void* userData, SDL_Event* event)
+	{
+		let shell = (SDL3Shell)Internal.UnsafeCastToObject(userData);
+		if (((SDL_EventType)event.type == .SDL_EVENT_WILL_ENTER_BACKGROUND) && !shell.mInBackground)
+		{
+			shell.mInBackground = true;
+			if (shell.mOnEnterBackground != null)
+				shell.mOnEnterBackground();
+		}
+		else if (((SDL_EventType)event.type == .SDL_EVENT_DID_ENTER_FOREGROUND) && shell.mInBackground)
+		{
+			shell.mInBackground = false;
+			if (shell.mOnEnterForeground != null)
+				shell.mOnEnterForeground();
+		}
+		return true;
 	}
 
 	public IWindowManager WindowManager => mWindows;
@@ -78,6 +108,16 @@ class SDL3Shell : IShell
 	}
 
 	public void RequestExit() => mRunning = false;
+
+	public bool InBackground => mInBackground;
+
+	public void SetBackgroundHandlers(delegate void() onEnterBackground, delegate void() onEnterForeground)
+	{
+		delete mOnEnterBackground;
+		mOnEnterBackground = onEnterBackground;
+		delete mOnEnterForeground;
+		mOnEnterForeground = onEnterForeground;
+	}
 
 	/// TAKES OWNERSHIP of the handler, replacing any previous one.
 	public void SetMainWindowCloseHandler(delegate bool() handler)

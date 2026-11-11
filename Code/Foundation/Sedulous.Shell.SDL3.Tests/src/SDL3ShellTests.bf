@@ -343,6 +343,43 @@ class SDL3ShellTests
 		Test.Assert(!fixture.Shell.IsRunning);
 	}
 
+	/// A phone takes the app out of view and gives it back: the shell answers as SDL raises the
+	/// events (its event watch), before the next pump, and says where the app is between them.
+	[Test]
+	public static void GoingToTheBackgroundAndBackIsAnsweredAsSdlRaisesIt()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+		int background = 0;
+		int foreground = 0;
+		fixture.Shell.SetBackgroundHandlers(new [&]() => { background++; }, new [&]() => { foreground++; });
+		Test.Assert(!fixture.Shell.InBackground);
+
+		SDL_Event event = .();
+		event.type = (uint32)SDL_EventType.SDL_EVENT_WILL_ENTER_BACKGROUND;
+		SDL3.SDL_PushEvent(&event);
+		Test.Assert(background == 1, "during the push, before any pump");
+		Test.Assert(fixture.Shell.InBackground);
+		event.type = (uint32)SDL_EventType.SDL_EVENT_DID_ENTER_BACKGROUND;
+		SDL3.SDL_PushEvent(&event);
+		fixture.Shell.ProcessEvents();
+		Test.Assert(background == 1, "once for the going, whichever of SDL's events say it");
+		Test.Assert(fixture.Shell.InBackground);
+
+		event.type = (uint32)SDL_EventType.SDL_EVENT_WILL_ENTER_FOREGROUND;
+		SDL3.SDL_PushEvent(&event);
+		Test.Assert(foreground == 0, "the window's new surface comes with the last word, not the first");
+		event.type = (uint32)SDL_EventType.SDL_EVENT_DID_ENTER_FOREGROUND;
+		SDL3.SDL_PushEvent(&event);
+		Test.Assert(foreground == 1);
+		Test.Assert(!fixture.Shell.InBackground);
+		fixture.Shell.ProcessEvents();
+		Test.Assert(fixture.Shell.IsRunning);
+		// The handlers capture this frame's counters: cleared before they go out of scope.
+		fixture.Shell.SetBackgroundHandlers(null, null);
+	}
+
 	[Test]
 	public static void WindowGeometryIsReadableAndSettable()
 	{

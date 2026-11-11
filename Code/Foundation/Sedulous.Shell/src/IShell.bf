@@ -36,6 +36,18 @@ interface IShell
 	/// Flips IsRunning.
 	void RequestExit();
 
+	/// Whether the app is in the background, where a platform that takes it out of view (a
+	/// phone's home button, another app in front) puts it: there it draws nothing (its window's
+	/// surface may be gone), its sound stops, and it may be ended without being asked. A desktop
+	/// never puts an app there.
+	bool InBackground { get; }
+
+	/// TAKES OWNERSHIP of both, replacing any previous ones; null leaves that one unset.
+	/// `onEnterBackground` is called as the app goes, before the shell gives control back to the
+	/// platform, so what must stop or be saved is done in it; `onEnterForeground` as it comes
+	/// back.
+	void SetBackgroundHandlers(delegate void() onEnterBackground, delegate void() onEnterForeground);
+
 	/// Consulted when the MAIN window's close is requested, by its button or by the OS.
 	///
 	/// Returning false KEEPS THE SHELL RUNNING, so an application can run its own confirm
