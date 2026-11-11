@@ -487,6 +487,55 @@ class PropertyGridTests
 		protected override void OnBind(PropertyInfo info, PropertyValue value) { }
 	}
 
+	/// A grid in a column that grows beside a fixed one, as a dialog lays one out: its rows, a
+	/// category's header among them, take the width they are given, so the column gets the rest of
+	/// the row, not a width a flex row has to shrink from unbounded (which left it none).
+	[Test]
+	public static void InAColumnThatGrowsBesideAFixedOneTheGridGetsTheRestOfTheRow()
+	{
+		let root = NewRoot(800.0f, 400.0f);
+		defer root.ReleaseRef();
+		let split = new Panel();
+		defer split.ReleaseRef();
+		split.EditLayoutStyle(scope (s) =>
+			{
+				s.Direction = .Row;
+				s.Grow = 1.0f;
+			});
+		let @fixed = new Panel();
+		defer @fixed.ReleaseRef();
+		@fixed.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(250.0f);
+				s.Shrink = 0.0f;
+			});
+		let column = new Panel();
+		defer column.ReleaseRef();
+		column.EditLayoutStyle(scope (s) =>
+			{
+				s.Grow = 1.0f;
+				s.MinWidth = LayoutLength.Px(0.0f);
+				s.Direction = .Column;
+			});
+		let grid = new PropertyGrid();
+		defer grid.ReleaseRef();
+		grid.EditLayoutStyle(scope (s) => { s.Grow = 1.0f; });
+		let bag = scope Sedulous.GUI.PropertyBag();
+		bag.Add("name", .String, Sedulous.GUI.Variant("Linux"));
+		bag.Add("stageSymbols", .Bool, Sedulous.GUI.Variant(false)).Category.Set("Build");
+		column.AddChild(grid);
+		split.AddChild(@fixed);
+		split.AddChild(column);
+		root.AddChild(split);
+		grid.Source = bag;
+		defer { grid.Source = null; }
+		root.UpdateLayout();
+		root.UpdateLayout();
+		CheckNear(@fixed.ScreenBounds.Width, 250.0f);
+		CheckNear(column.ScreenBounds.Width, 550.0f);
+		CheckNear(grid.ScreenBounds.Width, 550.0f);
+	}
+
 	/// A multi-line editor's row is as tall as the editor, its name in the first line; other rows
 	/// are a line, and the row after it starts below it. Read again, it keeps its height.
 	[Test]

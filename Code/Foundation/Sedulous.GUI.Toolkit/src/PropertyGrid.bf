@@ -263,7 +263,8 @@ class PropertyCategoryContent : UIWidget
 	public StringView Path => mPath;
 	public Sedulous.GUI.Label Label => mLabel;
 
-	public override Float2 MeasureContent(Float2 available) => .(available.X, PropertyRowContent.LineOf(this));
+	/// Takes the width it is given; asked with none to give, wants none (see PropertyRowContent).
+	public override Float2 MeasureContent(Float2 available) => .(IsUnbounded(available.X) ? 0.0f : available.X, PropertyRowContent.LineOf(this));
 
 	protected override void OnMouseClick(MouseEvent e)
 	{
@@ -449,7 +450,10 @@ class PropertyRowContent : UIWidget
 			let within = LayoutConstraints(.(room, 0.0f), .(room, cUnbounded), .(room, -1.0f), false, false);
 			height = Math.Max(height, mEditor.Measure(within).Y + 2.0f);
 		}
-		return .(available.X, height);
+		// A row takes the width it is given. Asked with none to give (a flex row finding its
+		// children's own widths), it wants none: the unbounded width would ask its column for all
+		// there is, and the column would be shrunk back to nothing.
+		return .(IsUnbounded(available.X) ? 0.0f : available.X, height);
 	}
 
 	public override void OnLayout()
