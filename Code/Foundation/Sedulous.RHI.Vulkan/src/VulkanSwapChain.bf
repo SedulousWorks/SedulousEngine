@@ -178,9 +178,12 @@ class VulkanSwapChain : ISwapChain
 		VulkanNative.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mPhysicalDevice, mSurface,
 			&capabilities);
 
-		// A currentExtent of ~0 means the surface defers to the swap chain; anything else is
-		// the size the surface INSISTS on, and asking for another is an error.
-		if (capabilities.currentExtent.width != uint32.MaxValue)
+		// The size asked (the window's pixels), within what the surface allows. Most surfaces
+		// allow only their current extent, so it decides; Android allows a range and scales the
+		// images to the window, and its current extent lags a turn of the phone: taken as
+		// reported, a window just turned upright gets landscape images, stretched.
+		let asked = (width != 0) && (height != 0);
+		if (!asked && (capabilities.currentExtent.width != uint32.MaxValue))
 		{
 			mWidth = capabilities.currentExtent.width;
 			mHeight = capabilities.currentExtent.height;
