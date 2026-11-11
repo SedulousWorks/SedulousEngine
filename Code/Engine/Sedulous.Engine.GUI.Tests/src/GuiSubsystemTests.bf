@@ -730,6 +730,45 @@ class GuiSubsystemTests
 	}
 
 	[Test]
+	public static void TheTouchGuideShowsAfterATapThatLandsAndLiftsWithinOneFrame()
+	{
+		let engine = scope GuiTestEngine();
+		engine.Devices.TouchPresent = true;
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		let map = scope Sedulous.Input.InputMap();
+		let set = new Sedulous.Input.ActionSet();
+		set.Name.Set("Gameplay");
+		let jump = new Sedulous.Input.InputAction();
+		jump.Name.Set("Jump");
+		var zone = Sedulous.Input.Binding();
+		zone.Source = .TouchButton;
+		zone.RegionW = 1.0f;
+		jump.Bindings.Add(zone);
+		set.Actions.Add(jump);
+		map.Sets.Add(set);
+		engine.Input.SetMap(map);
+
+		let guide = engine.Gui.TouchGuide;
+		Test.Assert(guide != null);
+		engine.Frame();
+		Test.Assert(guide.ControlCount == 0);
+		// A slow frame: the finger's down and up both arrive in it, so no finger is down when the
+		// GUI looks, and the touch shows only in the frame's events.
+		Sedulous.Shell.InputEvent down = .();
+		down.Kind = .TouchDown;
+		down.TouchId = 1;
+		down.X = 0.5f;
+		down.Y = 0.5f;
+		engine.Devices.Queue.Add(down);
+		var up = down;
+		up.Kind = .TouchUp;
+		engine.Devices.Queue.Add(up);
+		engine.Frame();
+		Test.Assert(guide.ControlCount == 1);
+		Test.Assert(guide.Visible);
+	}
+
+	[Test]
 	public static void TheGuiSaysItWantsTextInputWhileATextFieldInputReachesHasTheFocus()
 	{
 		let engine = scope GuiTestEngine();

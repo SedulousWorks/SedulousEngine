@@ -228,8 +228,15 @@ extension GuiSubsystem
 		else if (mouse != null)
 			point = .(mouse.X, mouse.Y);
 		let pointer = fingers || (mouse != null);
-		// The touch guide: from the first touch on, the controls of the sets in effect.
-		mTouchSeen = mTouchSeen || fingers;
+		// The touch guide: from the first touch on, the controls of the sets in effect. A tap can
+		// land and lift within one frame (a slow frame's events arrive together), which the count
+		// of fingers down now never sees, so a finger that went down this frame counts too.
+		if (!mTouchSeen)
+		{
+			mTouchSeen = fingers;
+			for (let event in devices.Events)
+				mTouchSeen = mTouchSeen || (event.Kind == .TouchDown);
+		}
 		if (mTouchGuide != null)
 			mTouchGuide.Update(mInput, mTouchSeen);
 		let held = fingers || ((mouse != null) && (mouse.IsButtonDown(.Left) || mouse.IsButtonDown(.Right) || mouse.IsButtonDown(.Middle)));

@@ -49,6 +49,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   a phone's GPU it could drop out of a frame and flicker. A render target reused every frame waits
   for the frame before it to finish with it, where before the two could overlap, which on a phone's
   GPU can lose the device (the picture froze while the game ran on).
+- Touch: the on-screen controls appear after the first tap however quick it is, where a tap that
+  landed and lifted within one slow frame went unseen.
 - Vulkan: validation asked for where its layer is not installed (a machine without the Vulkan SDK,
   a phone) runs without it, with a warning, instead of failing to start.
 - Vulkan: reading back what the GPU drew (a screenshot, a thumbnail, a pick, the profiler's GPU
