@@ -959,6 +959,13 @@ class DefaultApplication : IApplication, ISceneObserver
 			frame.Height, frame.FrameIndex, frame.BackbufferAlternateView);
 	}
 
+	/// Going to the background, each run writes what its game saved: the platform may end the app
+	/// there without asking, and a run's save is otherwise written as the run ends.
+	public virtual void OnEnterBackground(IApplicationHost host)
+	{
+		ForEachInstance(scope (instance) => { instance.Saves.Flush(); });
+	}
+
 	public virtual void OnShutdown(IApplicationHost host)
 	{
 		// The plugins first, after the subsystems have stopped and before anything they added to
