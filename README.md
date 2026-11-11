@@ -43,7 +43,9 @@ This is the second iteration of the engine. The previous one continues on the `v
 - **Animation:** skeletal clips, animation graphs, IK, root motion and property animation.
 - **Networking** with state replication.
 - **Game code** in Beef: behaviours per entity, a level per scene and a game per run, compiled
-  into the game's own editor and player.
+  into the game's own editor and player. Build and Relaunch rebuilds the game's editor and reopens
+  the project as it was (its pages, their views, the Game tab playing again); on Linux a method's
+  change can also be hot compiled into the running editor from the Beef IDE.
 - **UI:** a retained-mode GUI with flex, grid and stack layouts, `.xml` markup, CSS sheets
   (cascade, variables, transitions, animations, media queries), shaped bidirectional text,
   keyboard and gamepad navigation, data binding, world-space UI, a game kit for screens and
@@ -51,7 +53,8 @@ This is the second iteration of the engine. The previous one continues on the `v
   and control any widget.
 - **Vector graphics and fonts:** a vector graphics layer with SVG, and distance field and
   coverage fonts.
-- **Editor** (`Sedulous.Tools.Editor`): scene hierarchy, viewport with gizmos and
+- **Editor** (each project's own `<Game>Editor`, built over the engine with its game code):
+  scene hierarchy, viewport with gizmos and
   per-domain tools (terrain sculpting and painting, vegetation, splines), inspectors from
   reflection, an asset browser, undo and redo, play in editor (several instances side by side), a
   profiler, and a page per asset type.
@@ -63,7 +66,8 @@ This is the second iteration of the engine. The previous one continues on the `v
 - **Export** to the desktop, the web (WebAssembly with WebGPU) and the Steam Deck, from
   per-target presets: an export builds the game's own player with its code for the preset's
   platform and config. Headless tools can run all of it from the command line.
-- **Agent tooling:** an MCP host (`Sedulous.Tools.Mcp`) exposes the engine's reflection and
+- **Agent tooling:** an MCP host (a project's own `<Game>Tools mcp`, or `Sedulous.Tools.Mcp` for a
+  project without code) exposes the engine's reflection and
   project operations (import, cook, scene validation, export, health checks). The
   editor serves the same tools over HTTP for its open project, plus its pages and play in editor,
   where an agent plays the game with timed input and reads back probes and screenshots.
@@ -177,7 +181,8 @@ Code/
   Tools/          Editor, Cook, Export, ShaderPack and Mcp executables; the Steam Deck build
   Samples/        Engine, web, UI and RHI samples (see Code/Samples/README.md)
   Integration/    Cross collection flow tests
-Data/             Engine data (shaders, fonts, themes, environments) and the sample projects
+Data/             Engine data (shaders, fonts, themes, environments), the project templates and
+                  the sample projects
 Dependencies/     Beef bindings for the native libraries, with prebuilt binaries
 Bin/              Naga and Tint, the WGSL tools the shader cook drives
 Documentation/    Shipping documentation, served to agents through the MCP host

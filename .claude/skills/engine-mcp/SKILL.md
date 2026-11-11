@@ -22,6 +22,12 @@ connected agent: read `docs://McpGuide.md` via `resources/read` right after conn
   `known_issues` resolve `Documentation/Shipping/` by walking up from the executable, then
   the cwd.
 - STDOUT is the wire; engine logs go to stderr.
+- A project with game code of its own (every sample) needs its OWN host, which links its game:
+  the stock host does not know the game's components. Build Project (or `project_build` on the
+  editor host) generates the project's `Code/` workspace once; then `BeefBuild
+  -workspace=<project>/Code -config=Debug -platform=Linux64 -project=<Game>Tools` builds it, and
+  `<project>/Code/build/Debug_Linux64/<Game>Tools/<Game>Tools mcp [--data-root <dir>]` is the
+  host to wire.
 
 ## The editor host (the same surface, the LIVE project)
 
@@ -30,7 +36,8 @@ The editor serves the same engine tools over HTTP for the project it has open (s
 looking at: one content database, one writer. Enable it in Preferences (MCP: enabled, port,
 token), start it from the MCP panel (the status bar's MCP item opens it; its Copy Connect
 Command gives the wiring line with the token), or for one run:
-`Sedulous.Tools.Editor <project> --mcp [--mcp-port <n>]`. The default
+`<Game>Editor --project <project> --mcp [--mcp-port <n>]` (the project's own editor, which the
+project manager builds and opens; `Sedulous.Tools.Editor` for a project without code). The default
 port is 7405; the token is minted on first enable and written to `<user-data>/mcp-token`
 (`~/.local/share/Sedulous/mcp-token` on Linux).
 
