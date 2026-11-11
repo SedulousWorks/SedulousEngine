@@ -608,6 +608,7 @@ static class ProjectBuild
 			|| (ReadStockConfigs(sdk, cStockWebProject, "$(ProjectDir)", webDir, game, webConfigs, outError) case .Err)
 			|| (ReadStockConfigs(sdk, cStockToolsProject, "$(WorkspaceDir)/..", written, "", toolsConfigs, outError) case .Err))
 			return .Err(.NotFound);
+		EditorDebugConfig(projectDir, written, editorConfigs);
 
 		// The players link the Engine part of each engine plugin the project enables on their
 		// platform: what an export ships is what is enabled. The editor and the tools link what
@@ -637,6 +638,32 @@ static class ProjectBuild
 			return .Err(.Internal);
 		}
 		return .Ok;
+	}
+
+	/// The editor entry's debug launch: what the project manager starts it with (the project, and
+	/// the SDK's data), so Start Debugging in the Beef IDE opens the game's editor on its project
+	/// rather than the project manager. Added to the host's Debug section of `configs`, which is made
+	/// when the stock project has none.
+	public static void EditorDebugConfig(StringView projectDir, StringView sdk, String configs)
+	{
+		let project = Slashed(Absolute(projectDir, .. scope .()), .. scope .());
+		let data = Slashed(PathJoin(sdk, "Data", .. scope .()), .. scope .());
+		let lines = scope $"DebugCommandArguments = \"--project \\\"{project}\\\" --data-root \\\"{data}\\\"\"\nDebugWorkingDirectory = \"{project}\"\n";
+		let header = scope $"[Configs.Debug.{BuildLayout.HostPlatformName}]\n";
+		let at = configs.IndexOf(header);
+		if (at >= 0)
+		{
+			configs.Insert(at + header.Length, lines);
+			return;
+		}
+		if (!configs.IsEmpty)
+		{
+			if (!configs.EndsWith("\n"))
+				configs.Append('\n');
+			configs.Append('\n');
+		}
+		configs.Append(header);
+		configs.Append(lines);
 	}
 
 	/// The stock project at `relative` in the SDK, its configs made to reach the SDK (StockConfigs)

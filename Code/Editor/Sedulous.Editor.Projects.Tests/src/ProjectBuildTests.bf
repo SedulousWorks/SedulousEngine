@@ -430,6 +430,25 @@ class ProjectBuildTests
 			Test.Assert(FileStat(written[i], let sizeAgain, let ticksAgain) && (ticksAgain == ticks[i]), written[i]);
 	}
 
+	/// The editor entry starts as the project manager starts it, on the project with the SDK's
+	/// data, so the Beef IDE's Start Debugging opens the game's editor; its post-build steps stay.
+	[Test]
+	public static void TheEditorEntryIsDebuggedOnItsProject()
+	{
+		let bed = scope Bed();
+		let error = scope String();
+		Test.Assert(ProjectBuild.Generate(bed.ProjectDir, bed.Settings, bed.Sdk, error) case .Ok, error);
+		let project = bed.Read(".generated/NativeGameEditor/BeefProj.toml", .. scope .());
+		let header = scope $"[Configs.Debug.{BuildLayout.HostPlatformName}]\n";
+		let section = project.IndexOf(header);
+		Test.Assert(section >= 0, project);
+		let arguments = scope $"DebugCommandArguments = \"--project \\\"{bed.ProjectDir}\\\" --data-root \\\"{bed.Sdk}/Data\\\"\"\nDebugWorkingDirectory = \"{bed.ProjectDir}\"\n";
+		Test.Assert(project.Substring(section).StartsWith(scope $"{header}{arguments}"), project);
+		Test.Assert(project.Contains("PostBuildCmds"), "the stock steps kept");
+		let player = bed.Read(".generated/NativeGamePlayer/BeefProj.toml", .. scope .());
+		Test.Assert(!player.Contains("DebugCommandArguments"), "the editor's alone");
+	}
+
 	/// The workspace groups the SDK's projects it links as the engine's workspace does: under SDK/,
 	/// a folder for each library folder, the dependencies first, corlib among them. Only what the
 	/// workspace's projects reach through their dependencies is listed.
