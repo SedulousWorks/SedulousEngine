@@ -16,12 +16,15 @@ namespace Sedulous.Editor.App;
 static class PathPicker
 {
 	/// The picker's request over the files under `root` with one of `extensions` (".ttf");
-	/// `current` the root-relative path the field names now. The caller's (Picker.Open takes it).
-	public static PickerRequest Request(StringView root, Span<StringView> extensions, StringView current = default)
+	/// `current` the root-relative path the field names now. `skip`, when given, leaves out the
+	/// folders it says so of (root-relative: a project's generated ones). The caller's (Picker.Open
+	/// takes it).
+	public static PickerRequest Request(StringView root, Span<StringView> extensions, StringView current = default,
+		delegate bool(StringView folder) skip = null)
 	{
 		let files = scope List<String>();
 		defer { ClearAndDeleteItems!(files); }
-		Files(root, extensions, files);
+		Files(root, extensions, files, skip);
 		files.Sort(scope (a, b) => a.CompareTo(b));
 		let request = new PickerRequest();
 		request.Placeholder.Set("Search files");
@@ -51,8 +54,9 @@ static class PathPicker
 	}
 
 	/// Every file under `root` with one of `extensions`, root-relative, in the walk's order, added
-	/// to `outFiles` (the caller's).
-	public static void Files(StringView root, Span<StringView> extensions, List<String> outFiles)
+	/// to `outFiles` (the caller's), but in the folders `skip` leaves out.
+	public static void Files(StringView root, Span<StringView> extensions, List<String> outFiles,
+		delegate bool(StringView folder) skip = null)
 	{
 		let fs = scope NativeFileSystem(root);
 		let pending = scope List<String>();
@@ -74,7 +78,12 @@ static class PathPicker
 				else
 					PathJoin(folder, entry.Name, path);
 				if (entry.IsDirectory)
-					pending.Add(path);
+				{
+					if ((skip == null) || !skip(path))
+						pending.Add(path);
+					else
+						delete path;
+				}
 				else if (Takes(path, extensions))
 					outFiles.Add(path);
 				else

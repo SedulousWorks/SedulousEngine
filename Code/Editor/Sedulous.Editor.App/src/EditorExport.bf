@@ -10,6 +10,7 @@ using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Engine.Project; // ProjectLayout.DistDir: where exports go
 
 namespace Sedulous.Editor.App;
 
@@ -269,7 +270,7 @@ class EditorExport
 		TemplatesRoot(templatesRoot);
 		let dataRoot = new String(mServices.DataRoot);
 		let outRoot = new String();
-		Absolutize(PathJoin(project.Directory, "Dist", .. scope .()), outRoot);
+		Absolutize(PathJoin(project.Directory, ProjectLayout.DistDir, .. scope .()), outRoot);
 		let name = new String(presetName);
 		let revealRoot = new String(outRoot);
 

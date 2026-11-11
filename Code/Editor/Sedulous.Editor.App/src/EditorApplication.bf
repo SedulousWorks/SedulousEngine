@@ -23,6 +23,7 @@ using Sedulous.Net.Tls;
 using Sedulous.Net.Tls.MbedTLS;
 using Sedulous.Http;
 using Sedulous.Http.Client;
+using Sedulous.Engine.Project; // ProjectLayout.DistDir: where exports go
 
 namespace Sedulous.Editor.App;
 
@@ -1122,9 +1123,16 @@ class EditorApplication : IApplication
 					// The service consumes the callback once it answers.
 					dialogs.ShowOpenFile(new [=chosen] (paths) => { chosen(paths); } ~ delete chosen, .(), "", true, 0);
 				};
+			seams.Pick = new (request) => { ShowPicker(request); };
+			seams.Notify = new (message) => { mContext.Notify(.Warning, message); };
+			// Absolute, as the system's dialog answers.
+			if (PathIsAbsolute(project.Directory))
+				seams.ProjectRoot.Set(project.Directory);
+			else
+				PathJoin(GetCurrentDirectory(.. scope .()), project.Directory, seams.ProjectRoot);
 			seams.HostPlatform.Set(BuildLayout.HostPlatformName);
 			// Absolute, as the export writes it: the project directory can be relative.
-			let dist = PathJoin(project.Directory, "Dist", .. scope .());
+			let dist = PathJoin(project.Directory, ProjectLayout.DistDir, .. scope .());
 			if (PathIsAbsolute(dist))
 				seams.OutputRoot.Set(dist);
 			else

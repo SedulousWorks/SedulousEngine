@@ -1042,6 +1042,7 @@ button.group-field { justify-content: flex-start; }
 .export-presets-head { flex-direction: row; align-items: center; }
 .export-heading { font-weight: 600; color: var(--text-strong); }
 .export-list { flex-grow: 1; min-height: 0; }
+.export-where { overflow-wrap: anywhere; } /* a long folder path wraps inside its column */
 .export-preset { flex-grow: 1; min-width: 0; flex-direction: column; row-gap: var(--space-m); }
 .export-card { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-m); border-radius: var(--radius-small);
                background-color: var(--surface-sunken); border: 1px solid var(--border); }
@@ -1050,7 +1051,7 @@ button.group-field { justify-content: flex-start; }
 .export-card-title { color: var(--text-strong); font-weight: 500; }
 .export-card-detail { color: var(--text-dim); font-size: var(--font-small); white-space: normal; }
 .export-grid { flex-grow: 1; min-height: 0; }
-.export-files { flex-direction: row; justify-content: flex-start; }
+.export-files { flex-direction: row; justify-content: flex-start; column-gap: var(--space-s); }
 .pref-tabs { flex-grow: 1; }
 .pref-accent { width: 120px; }
 .pref-scale { flex-direction: row; align-items: center; column-gap: var(--space-m); }

@@ -13,7 +13,7 @@
                 <Button id="export-remove" class="icon-button" icon="Editor/Icons/trash.svg" tooltip="Remove the preset"/>
             </Panel>
             <ListView id="export-list" class="export-list"/>
-            <Label id="export-where" class="form-help"/>
+            <Label id="export-where" class="form-help export-where"/>
         </Panel>
         <Panel class="export-preset">
             <Panel class="export-card">
@@ -21,7 +21,7 @@
                 <Panel class="export-card-text"><Label id="export-card-title" class="export-card-title"/><Label id="export-card-detail" class="export-card-detail"/></Panel>
             </Panel>
             <PropertyGrid id="export-grid" class="export-grid"/>
-            <Panel class="export-files"><Button id="export-add-files" text="Add Files..." tooltip="Pick files to copy beside the player"/></Panel>
+            <Panel class="export-files"><Button id="export-add-files" text="Add Files..." tooltip="Pick files of the project's to copy beside the player"/><Button id="export-add-disk" text="From Disk..." tooltip="Pick a file of the project's with the system's dialog"/></Panel>
         </Panel>
     </Panel>
     <Panel class="dialog-buttons"><Button id="export-templates" text="Export Templates..."/><Spacer/><Button id="export-close" text="Close"/><Button id="export-all" text="Export All"/><Button id="export-run" class="primary" text="Export"/></Panel>

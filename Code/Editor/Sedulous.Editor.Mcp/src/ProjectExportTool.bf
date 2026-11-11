@@ -6,6 +6,7 @@ using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.VFS;
 using Sedulous.Editor.Project;
+using Sedulous.Engine.Project; // ProjectLayout.DistDir: where exports go
 
 namespace Sedulous.Editor.Mcp;
 
@@ -72,7 +73,7 @@ static class ProjectExportTool
 		if (!outArg.IsEmpty)
 			outRoot.Set(outArg);
 		else
-			PathJoin(project.Directory, "Dist", outRoot);
+			PathJoin(project.Directory, ProjectLayout.DistDir, outRoot);
 		ExportRequest request = .();
 		request.Preset = preset;
 		request.OutRoot = outRoot;

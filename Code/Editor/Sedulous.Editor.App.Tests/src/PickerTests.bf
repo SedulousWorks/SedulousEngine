@@ -303,6 +303,14 @@ static class PickerTests
 		defer delete empty;
 		Test.Assert(empty.Items.IsEmpty);
 		Test.Assert(empty.EmptyTitle == "No .aeprofile files here");
+
+		// The folders `skip` names are not walked (a project's generated ones); with no extensions,
+		// every other file is listed.
+		let skipped = PathPicker.Request(dir, .(), default, scope (folder) => folder == "Fonts/Bold");
+		defer delete skipped;
+		Test.Assert(skipped.Items.Count == 3);
+		for (let item in skipped.Items)
+			Test.Assert(!item.Key.StartsWith("Fonts/Bold"), item.Key);
 	}
 
 	/// What a row shows: a favourite's star (on it in both its sections, on no other), the check

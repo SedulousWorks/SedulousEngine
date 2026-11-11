@@ -26,4 +26,14 @@ class ProjectLayoutTests
 		Test.Assert(ProjectLayout.PluginIdFromName("", .. scope String()) == "game_");
 		Test.Assert(PluginManifest.IsValidId(ProjectLayout.PluginIdFromName("_x", .. scope String())));
 	}
+
+	/// The folders the editor, a cook and an export write are a project's outputs; its own are not.
+	[Test]
+	public static void TheFoldersTheEditorACookAndAnExportWriteAreItsOutputs()
+	{
+		for (let name in StringView[6]("Cooked", "Cooked-android", "Cooked-web-bc", "Editor", ".cache", "Dist"))
+			Test.Assert(ProjectLayout.IsOutputFolder(name), scope String(name));
+		for (let name in StringView[5]("Content", "Sources", "Plugins", "Branding", "Cookbook"))
+			Test.Assert(!ProjectLayout.IsOutputFolder(name), scope String(name));
+	}
 }

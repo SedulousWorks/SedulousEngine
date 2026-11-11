@@ -15,6 +15,14 @@ static class ProjectLayout
 	public const String CookedDir = "Cooked";
 	public const String EditorDir = "Editor";
 	public const String CacheDir = ".cache";
+	/// Where the editor's exports go.
+	public const String DistDir = "Dist";
+
+	/// Whether a project's top-level folder `name` is one the editor, a cook or an export writes
+	/// (Cooked and each target's Cooked-<target>, Editor, .cache, Dist): generated, never a file of
+	/// the project's own to pick.
+	public static bool IsOutputFolder(StringView name) => (name == CookedDir) || name.StartsWith("Cooked-") ||
+		(name == EditorDir) || (name == CacheDir) || (name == DistDir);
 	/// The project's own plugin packages (its game code, project-local plugins):
 	/// Plugins/<Name>/, each a Plugin.xml and its parts.
 	public const String PluginsDir = "Plugins";

@@ -152,7 +152,7 @@ class Program
 		if (!outArg.IsEmpty)
 			outRoot.Set(outArg);
 		else
-			PathJoin(project.Directory, "Dist", outRoot);
+			PathJoin(project.Directory, ProjectLayout.DistDir, outRoot);
 
 		if (all)
 		{

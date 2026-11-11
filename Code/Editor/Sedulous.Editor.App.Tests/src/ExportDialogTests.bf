@@ -37,6 +37,12 @@ class ExportDialogTests
 		public delegate void() TemplatesClosed = null ~ delete _;
 		public int TemplatesOpened = 0;
 		public ExportDialog Dialog = null;
+		public String Project = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_export_dialog_project", .. new .()) ~ delete _;
+		/// The pickers the dialog opened, owned.
+		public List<PickerRequest> Picks = new .() ~ DeleteContainerAndItems!(_);
+		public List<String> Notices = new .() ~ DeleteContainerAndItems!(_);
+		/// What the system's dialog answers.
+		public List<String> FromDisk = new .() ~ DeleteContainerAndItems!(_);
 
 		public this()
 		{
@@ -69,6 +75,7 @@ class ExportDialogTests
 			Ui.ReleaseRef();
 			RemoveDirectoryRecursive(Root);
 			RemoveDirectoryRecursive(HostDir);
+			RemoveDirectoryRecursive(Project);
 		}
 
 		/// An installed template's bundle (its manifest) under the root.
@@ -102,6 +109,14 @@ class ExportDialogTests
 					delete TemplatesClosed;
 					TemplatesClosed = closed;
 				};
+			seams.Pick = new [=this](request) => { Picks.Add(request); };
+			seams.Notify = new [=this](message) => { Notices.Add(new .(message)); };
+			seams.PickFiles = new [=this](chosen) =>
+				{
+					chosen(FromDisk);
+					delete chosen;
+				};
+			seams.ProjectRoot.Set(Project);
 			seams.HostPlatform.Set("Linux64");
 			seams.OutputRoot.Set("/tmp/project/Dist");
 			return seams;
@@ -423,5 +438,44 @@ class ExportDialogTests
 				listed = true;
 		}
 		Test.Assert(listed, "the template row offers it");
+	}
+
+	/// Extra files are the project's: Add Files lists its own files (not the folders the editor, a
+	/// cook or an export writes) and adds the one picked by its project-relative path; From Disk
+	/// takes a file inside the project the same way (once) and refuses one outside it.
+	[Test]
+	public static void ExtraFilesComeFromTheProjectNamedRelativeToIt()
+	{
+		let f = scope Fixture();
+		RemoveDirectoryRecursive(f.Project);
+		for (let file in StringView[6]("CREDITS.md", "Docs/manual.txt", "Cooked/a.bin", "Cooked-android/b.bin", ".cache/c.bin",
+			"Dist/Linux64/game"))
+		{
+			let full = PathJoin(f.Project, file, .. scope .());
+			Test.Assert(CreateDirectory(PathParent(full, .. scope .())));
+			Test.Assert(WriteFile(full, .()) case .Ok);
+		}
+		let dialog = f.Open();
+		Test.Assert(dialog.SelectedIndex == 0);
+
+		dialog.AddFiles();
+		Test.Assert(f.Picks.Count == 1);
+		let items = f.Picks[0].Items;
+		Test.Assert(items.Count == 2, "the generated folders' files are not offered");
+		Test.Assert(items[0].Key == "CREDITS.md");
+		Test.Assert(items[1].Key == "Docs/manual.txt");
+		f.Picks[0].OnPicked("Docs/manual.txt");
+		Test.Assert(f.Presets.At(0).AdditionalFiles.Count == 1);
+		Test.Assert(f.Presets.At(0).AdditionalFiles[0] == "Docs/manual.txt");
+
+		// From Disk: inside the project it joins by its relative path (once); outside, it is refused.
+		f.FromDisk.Add(PathJoin(f.Project, "CREDITS.md", .. new .()));
+		f.FromDisk.Add(PathJoin(f.Project, "Docs/manual.txt", .. new .()));
+		f.FromDisk.Add(new .("/elsewhere/licence.txt"));
+		dialog.AddFilesFromDisk();
+		Test.Assert(f.Presets.At(0).AdditionalFiles.Count == 2);
+		Test.Assert(f.Presets.At(0).AdditionalFiles[1] == "CREDITS.md");
+		Test.Assert(f.Notices.Count == 1);
+		Test.Assert(f.Notices[0].StartsWith("/elsewhere/licence.txt is outside the project"), f.Notices[0]);
 	}
 }

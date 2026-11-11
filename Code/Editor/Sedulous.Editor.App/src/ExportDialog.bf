@@ -32,9 +32,16 @@ class ExportDialogSeams
 	public delegate void(StringView preset, bool all) RunExport ~ delete _;
 	/// Opens Export Templates over this one. TAKES OWNERSHIP of `closed`, told when it closes.
 	public delegate void(delegate void() closed) OpenTemplates ~ delete _;
-	/// Asks for files. TAKES OWNERSHIP of `chosen` and calls it exactly once: with the files,
-	/// or none when the user cancels.
+	/// Asks for files anywhere on the machine (the system's dialog). TAKES OWNERSHIP of `chosen`
+	/// and calls it exactly once: with the files, or none when the user cancels.
 	public delegate void(delegate void(Span<String> files) chosen) PickFiles ~ delete _;
+	/// Opens the editor's picker for `request` (a project file, through PathPicker). OWNERSHIP of
+	/// `request` transfers.
+	public delegate void(PickerRequest request) Pick ~ delete _;
+	/// Tells the user something the dialog refused ("is outside the project").
+	public delegate void(StringView message) Notify ~ delete _;
+	/// The project's folder, absolute: the files a preset ships are under it, named relative to it.
+	public String ProjectRoot = new .() ~ delete _;
 	/// The host's platform, a new preset's.
 	public String HostPlatform = new .() ~ delete _;
 	/// Where exports are written, said under the presets.
@@ -144,6 +151,7 @@ class ExportDialog
 		OnClick("export-all", new () => { ExportAll(); });
 		OnClick("export-close", new () => { Close(); });
 		OnClick("export-add-files", new () => { AddFiles(); });
+		OnClick("export-add-disk", new () => { AddFilesFromDisk(); });
 		OnClick("export-templates", new () =>
 			{
 				if (mSeams.OpenTemplates != null)
@@ -342,24 +350,80 @@ class ExportDialog
 		Load();
 	}
 
-	/// Adds picked files to the selected preset's extra files.
+	/// Add Files: the editor's picker over the project's own files (not the folders the editor, a
+	/// cook or an export writes); the one picked joins the extra files, named relative to the
+	/// project, so the preset travels with it.
 	public void AddFiles()
+	{
+		let index = SelectedIndex;
+		if ((mSeams.Pick == null) || mSeams.ProjectRoot.IsEmpty || (index < 0))
+			return;
+		let request = PathPicker.Request(mSeams.ProjectRoot, .(), default, scope (folder) => ProjectLayout.IsOutputFolder(folder));
+		request.Placeholder.Set("Search the project's files");
+		request.OnPicked = new [=index, =this] (path) =>
+			{
+				var picked = scope String(path);
+				AddExtraFiles(index, Span<String>(&picked, 1));
+			};
+		mSeams.Pick(request);
+	}
+
+	/// From Disk: the system's dialog, for a file the editor's picker does not list. One inside the
+	/// project joins as Add Files' do; one outside it is refused, since a preset names what travels
+	/// with the project.
+	public void AddFilesFromDisk()
 	{
 		let index = SelectedIndex;
 		if ((mSeams.PickFiles == null) || (index < 0))
 			return;
 		mSeams.PickFiles(new [=index, =this] (paths) =>
 			{
-				if (paths.IsEmpty || (SelectedIndex != index))
-					return; // cancelled, or another preset by now
-				let preset = scope ExportPreset();
-				mPresets.At(index).CopyTo(preset);
+				let inside = scope List<String>();
+				defer { ClearAndDeleteItems!(inside); }
 				for (let path in paths)
-					preset.AdditionalFiles.Add(new String(path));
-				mPresets.Update(index, preset);
-				mDirty = true;
-				Load();
+				{
+					let relative = ProjectRelative(path, .. new String());
+					if (!relative.IsEmpty)
+						inside.Add(relative);
+					else
+					{
+						delete relative;
+						if (mSeams.Notify != null)
+							mSeams.Notify(scope $"{path} is outside the project: put it in the project to ship it with the game.");
+					}
+				}
+				AddExtraFiles(index, inside);
 			});
+	}
+
+	/// `path` relative to the project's folder, appended to `outRelative`; nothing when it is not
+	/// under it.
+	public void ProjectRelative(StringView path, String outRelative)
+	{
+		let root = StringView(mSeams.ProjectRoot);
+		if (root.IsEmpty || (path.Length <= root.Length + 1) || !path.StartsWith(root) || (path[root.Length] != '/'))
+			return;
+		outRelative.Append(path.Substring(root.Length + 1));
+	}
+
+	/// Adds `files` the selected preset's extra files do not list yet, if it is still preset `index`.
+	private void AddExtraFiles(int index, Span<String> files)
+	{
+		if ((SelectedIndex != index) || files.IsEmpty)
+			return; // cancelled, or another preset by now
+		let preset = scope ExportPreset();
+		mPresets.At(index).CopyTo(preset);
+		for (let file in files)
+		{
+			bool listed = false;
+			for (let known in preset.AdditionalFiles)
+				listed |= known == file;
+			if (!listed)
+				preset.AdditionalFiles.Add(new String(file));
+		}
+		mPresets.Update(index, preset);
+		mDirty = true;
+		Load();
 	}
 
 	/// The rows (the selected preset's, the grid's source; null with none), the grid, the window,
@@ -531,7 +595,7 @@ class ExportDialog
 		let files = mBag.AddList("additionalFiles", .String, Sedulous.GUI.Variant(StringView()), preset.AdditionalFiles.Count);
 		files.DisplayName.Set("Extra files");
 		files.Category.Set(cContent);
-		files.Description.Set("Copied beside the player, as they are (a licence, a readme).");
+		files.Description.Set("Files of the project's, copied beside the player as they are (a licence, a readme).");
 		let path = scope String();
 		for (int i < preset.AdditionalFiles.Count)
 			mBag.SetValue(path..Clear()..AppendF("additionalFiles.{}", i), 0, Sedulous.GUI.Variant(preset.AdditionalFiles[i]));
