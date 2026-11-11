@@ -255,13 +255,17 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			}
 
 			imageBarriers[i] = .();
-			// Coming from UNDEFINED there is nothing to wait on: the contents are being
-			// discarded, so naming a source access would order against writes that do not
-			// matter.
-			if (oldLayout == .VK_IMAGE_LAYOUT_UNDEFINED)
+			// Undefined discards the contents, not the earlier work on the image: a transient
+			// reused every frame is still being written by the previous frame in flight, and a
+			// swapchain image is still read by the presentation engine until the acquire
+			// semaphore's wait. The transition (itself a write) waits for all of it, or it races
+			// that work: on a tiled GPU, whose transition resets the image's compression state,
+			// that can lose the device.
+			if ((oldLayout == .VK_IMAGE_LAYOUT_UNDEFINED) || (barrier.OldState == .Undefined))
 			{
-				imageBarriers[i].srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-				imageBarriers[i].srcAccessMask = default;
+				imageBarriers[i].srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+				imageBarriers[i].srcAccessMask = (uint64)VulkanBarrierHelper.MaskAccessForQueue(
+					.VK_ACCESS_2_MEMORY_WRITE_BIT, mPool.QueueType);
 			}
 			else
 			{
