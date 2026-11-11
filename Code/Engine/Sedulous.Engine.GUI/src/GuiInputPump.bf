@@ -213,6 +213,7 @@ extension GuiSubsystem
 	private void PumpInput()
 	{
 		mPointerTaken = false;
+		mBackUnhandled = false;
 		if ((mInput == null) || (mScreen.Root == null))
 			return;
 		let devices = mInput.ActiveSource;
@@ -289,12 +290,22 @@ extension GuiSubsystem
 		else
 			bridge.PumpDevices(mouse, touch, devices.Keyboard);
 		// Keys, text and the pad through their events, in order; the pointer was polled above.
+		bool backPressed = false;
+		bool backUsed = false;
 		for (let event in devices.Events)
 		{
 			switch (event.Kind)
 			{
 			case .KeyDown, .KeyUp, .TextInput, .TextEditing, .GamepadButtonDown, .GamepadButtonUp, .GamepadAxis:
-				bridge.Dispatch(event);
+				// The back button: whether the GUI used it decides, with the game's bindings, whether
+				// it was handled (BackUnhandled).
+				if ((event.Kind == .KeyDown) && (event.Key == .Back))
+				{
+					backPressed = true;
+					backUsed = bridge.Dispatch(event) || backUsed;
+				}
+				else
+					bridge.Dispatch(event);
 			default:
 			}
 		}
@@ -312,12 +323,15 @@ extension GuiSubsystem
 			mPressTaken = false;
 		}
 		let pointerTaken = mPointerTaken;
+		bool backBound = false;
 		mInput.ForEachActionRuntime(scope [&] (runtime) =>
 			{
 				var mask = runtime.GetConsumptionMask();
 				mask.Pointer = mask.Pointer || pointerTaken;
 				mask.Keyboard = mask.Keyboard || keys;
 				runtime.SetConsumptionMask(mask);
+				backBound = backBound || runtime.IsKeyBound(.Back);
 			});
+		mBackUnhandled = backPressed && !backUsed && !backBound;
 	}
 }

@@ -94,6 +94,8 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private GuiTouchGuide mTouchGuide = null;
 	/// A finger has touched the screen: the guide shows.
 	private bool mTouchSeen = false;
+	/// The last pump's back button, handled by nothing.
+	private bool mBackUnhandled = false;
 	/// The GUI input reaches is editing text, as of the last input pump.
 	private bool mTextWanted = false;
 	/// `Gui` to scripts outside every run, its root the shared tier's, on the application's
@@ -279,6 +281,12 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	/// crisp at the target's resolution; nought on either axis: the target's own size.
 	public void SetScreenResolution(uint32 width, uint32 height, FitMode fit) => ApplyResolution(mScreen, width, height, fit);
 	public bool HasScreenResolution => mScreen.HasResolution;
+
+	/// Whether the back button (KeyCode.Back) was pressed in the last input pump and not handled:
+	/// the GUI did not use it (no popup or dialog closed, no screen's `back` handler took it) and
+	/// no action of the sets in effect binds it. A host on a platform with a back of its own hands
+	/// it to the platform then (IShell.PassBackToPlatform).
+	public bool BackUnhandled => mBackUnhandled;
 	/// The game's orientation: on a target of the other shape the screen tier lays out at the
 	/// game's shape and draws turned a quarter. Any: never turned.
 	public void SetScreenOrientation(ScreenOrientation orientation) => mScreen.Orientation = orientation;

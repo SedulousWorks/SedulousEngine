@@ -648,6 +648,10 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnUpdate(IApplicationHost host, float deltaTime)
 	{
+		// A back button nothing in the game handled (no GUI used it, no action binds it) is the
+		// platform's: a phone puts the app in the background.
+		if ((mGui != null) && mGui.BackUnhandled && (host.Shell != null))
+			host.Shell.PassBackToPlatform();
 		// A screenshot recorded last frame: the GPU has run that frame by now for any slot the
 		// host reuses, but not necessarily this one, and a screenshot is a one off, so wait
 		// for everything, then map, write, and honour --screenshot-exit.

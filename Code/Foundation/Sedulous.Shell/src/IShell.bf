@@ -48,6 +48,11 @@ interface IShell
 	/// back.
 	void SetBackgroundHandlers(delegate void() onEnterBackground, delegate void() onEnterForeground);
 
+	/// Hands the back button the app did not use to the platform, which does with it what it does
+	/// for an app that takes no back (a phone puts the app in the background). Nothing on a
+	/// platform without a back of its own.
+	void PassBackToPlatform() {}
+
 	/// Consulted when the MAIN window's close is requested, by its button or by the OS.
 	///
 	/// Returning false KEEPS THE SHELL RUNNING, so an application can run its own confirm

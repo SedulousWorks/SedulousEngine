@@ -104,6 +104,55 @@ class GuiInputTests
 		Test.Assert(engine.Gui.Screens.Count == 1);
 	}
 
+	/// A back press nothing handles is unhandled; a screen that pops or a binding handles it.
+	[Test]
+	public static void ABackPressNothingHandlesIsUnhandledAScreenThatPopsOrABindingHandlesIt()
+	{
+		let engine = scope GuiTestEngine();
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		engine.Frame();
+		Test.Assert(!engine.Gui.BackUnhandled);
+
+		// No screen, no binding: nothing handles it (a phone's platform takes it).
+		engine.Devices.Key(.Back);
+		engine.Frame();
+		Test.Assert(engine.Gui.BackUnhandled);
+		engine.Frame();
+		Test.Assert(!engine.Gui.BackUnhandled, "only the frame it was pressed in");
+
+		// A screen over another backs out with it, as with Escape.
+		let title = GuiTestEngine.MakeMenu("play");
+		Test.Assert(engine.Gui.Screens.Push(title) != null);
+		title.ReleaseRef(); // its screen holds it
+		let settings = GuiTestEngine.MakeMenu("back");
+		Test.Assert(engine.Gui.Screens.Push(settings) != null);
+		settings.ReleaseRef();
+		engine.Frame();
+		engine.Devices.Key(.Back);
+		engine.Frame();
+		Test.Assert(engine.Gui.Screens.Count == 1);
+		Test.Assert(!engine.Gui.BackUnhandled);
+		engine.Gui.Screens.Pop();
+		engine.Frame();
+
+		// An action the game binds to it handles it.
+		let map = scope Sedulous.Input.InputMap();
+		let set = new Sedulous.Input.ActionSet();
+		set.Name.Set("Gameplay");
+		let pause = new Sedulous.Input.InputAction();
+		pause.Name.Set("Pause");
+		var back = Sedulous.Input.Binding();
+		back.Source = .Key;
+		back.Code = (uint32)Sedulous.Shell.KeyCode.Back;
+		pause.Bindings.Add(back);
+		set.Actions.Add(pause);
+		map.Sets.Add(set);
+		engine.Input.SetMap(map);
+		engine.Devices.Key(.Back);
+		engine.Frame();
+		Test.Assert(!engine.Gui.BackUnhandled);
+	}
+
 	[Test]
 	public static void ASourceBoundToAnotherSceneNeverReachesThisScenesGui()
 	{

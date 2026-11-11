@@ -33,7 +33,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   window's surface, which a phone takes away; it comes back where it was. Applications and
   subsystems hear it through `OnEnterBackground` and `OnEnterForeground`.
 - Input: a Back key (a phone's back button, a keyboard's or a browser's Back) that a game can bind;
-  in a menu it backs out as Escape does.
+  in a menu it backs out as Escape does. A Back press nothing in the game handles (no action binds
+  it, no menu or screen uses it) goes to the platform: a phone puts the app in the background.
 - Rendering: the game keeps inside the window's safe area, what a phone's status bar, navigation
   bar and camera cutout leave of it: its frame, its screens and its pointer are fitted there.
 
