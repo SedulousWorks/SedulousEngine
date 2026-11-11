@@ -120,10 +120,10 @@ class BridgeTests
 		Test.Assert(seenKey == (uint32)KeyCode.F5);
 		// The rest of the keyboard too: punctuation, the keypad apart from the digits, F13 to F24,
 		// the lock keys and the modifier keys themselves.
-		Sedulous.Shell.KeyCode[13] fromKeys = .(.F13, .F24, .Minus, .Slash, .Grave, .Keypad5, .KeypadEnter,
-			.KeypadDecimal, .CapsLock, .Pause, .Menu, .LeftShift, .RightGui);
-		KeyCode[13] toKeys = .(.F13, .F24, .Minus, .Slash, .Grave, .Keypad5, .KeypadEnter,
-			.KeypadDecimal, .CapsLock, .Pause, .Menu, .LeftShift, .RightSuper);
+		Sedulous.Shell.KeyCode[14] fromKeys = .(.F13, .F24, .Minus, .Slash, .Grave, .Keypad5, .KeypadEnter,
+			.KeypadDecimal, .CapsLock, .Pause, .Menu, .LeftShift, .Back, .RightGui);
+		KeyCode[14] toKeys = .(.F13, .F24, .Minus, .Slash, .Grave, .Keypad5, .KeypadEnter,
+			.KeypadDecimal, .CapsLock, .Pause, .Menu, .LeftShift, .Back, .RightSuper); // Back: a phone's back button
 		for (int i = 0; i < fromKeys.Count; i++)
 		{
 			bridge.Dispatch(BridgeFixtures.Key(.KeyDown, fromKeys[i]));

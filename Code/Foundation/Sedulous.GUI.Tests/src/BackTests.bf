@@ -4,7 +4,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-// The `back` command: Escape and the pad's East run it through the keymap; the topmost auto popup
+// The `back` command: Escape, Back (a phone's back button) and the pad's East run it through the keymap; the topmost auto popup
 // answers it by closing, before anything under it; a modal dialog answers it as its close button
 // does; else what handles it on the focus path (a game's screen) does; a game rebinds or unbinds it
 // like any key.
@@ -45,18 +45,20 @@ class BackBed
 	}
 }
 
-/// Back: Escape and the pad's East, popups first, a modal dialog, then the focus path; rebound and
+/// Back: Escape, Back and the pad's East, popups first, a modal dialog, then the focus path; rebound and
 /// unbound.
 class BackTests
 {
 	[Test]
-	public static void EscapeAndThePadsEastRunItAndTheScreenOnTheFocusPathHearsIt()
+	public static void EscapeBackAndThePadsEastRunItAndTheScreenOnTheFocusPathHearsIt()
 	{
 		let bed = scope BackBed();
 		bed.Escape();
 		Test.Assert(bed.Backs == 1);
 		bed.D.InjectPadButton(.East);
 		Test.Assert(bed.Backs == 2);
+		bed.D.InjectKeyDown((uint32)KeyCode.Back); // a phone's back button
+		Test.Assert(bed.Backs == 3);
 		Test.Assert(bed.Root.IsCommandAvailable(cBackCommand));
 	}
 

@@ -40,6 +40,8 @@ class ScancodeMapTests
 		RoundTrip(fixture, .SDL_SCANCODE_F13, .F13);
 		RoundTrip(fixture, .SDL_SCANCODE_GRAVE, .Grave);
 		RoundTrip(fixture, .SDL_SCANCODE_PRINTSCREEN, .PrintScreen);
+		// What SDL reports for a phone's back button.
+		RoundTrip(fixture, .SDL_SCANCODE_AC_BACK, .Back);
 	}
 
 	/// The contiguous ranges, at both ends: an off by one shows at an edge and nowhere else.

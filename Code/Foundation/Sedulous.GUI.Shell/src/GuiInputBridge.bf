@@ -515,6 +515,8 @@ class GuiInputBridge
 				mapped = (KeyCode)((uint32)KeyCode.F1 + (k - (uint32)Sedulous.Shell.KeyCode.F1));
 			else if (key == .Menu)
 				mapped = .Menu;
+			else if (key == .Back)
+				mapped = .Back;
 			else
 				mapped = MapKeyRange(key);
 		}

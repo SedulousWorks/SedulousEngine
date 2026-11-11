@@ -55,6 +55,7 @@ class GUIContext : RefCounted
 		mKeymap.Bind("pad-north", "drag.pick");
 		// Back: one command for the keyboard and the pad, which a game rebinds like any.
 		mKeymap.Bind("escape", cBackCommand);
+		mKeymap.Bind("back", cBackCommand); // a phone's back button
 		mKeymap.Bind("pad-east", cBackCommand);
 	}
 

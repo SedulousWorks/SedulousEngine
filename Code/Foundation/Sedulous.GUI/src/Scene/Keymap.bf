@@ -45,7 +45,7 @@ static
 	public const String cMenuRightCommand = "menu.right";
 	/// Runs the focused item of an open menu (Return and Space by default).
 	public const String cMenuActivateCommand = "menu.activate";
-	/// Back out of where one is: Escape and the pad's East by default. The topmost auto popup
+	/// Back out of where one is: Escape, Back and the pad's East by default. The topmost auto popup
 	/// answers it by closing, a modal dialog as its close button does, then whatever handles it on
 	/// the focus path (a game's screen).
 	public const String cBackCommand = "back";
@@ -105,7 +105,7 @@ internal static class KeymapDetail
 		}
 	}
 
-	public static NamedKey[57] sKeyNames = .(
+	public static NamedKey[58] sKeyNames = .(
 		.(.Return, "enter", "Enter"),
 		.(.Return, "return", "Enter"),
 		.(.Escape, "escape", "Esc"),
@@ -139,6 +139,7 @@ internal static class KeymapDetail
 		.(.PrintScreen, "printscreen", "Print Screen"),
 		.(.Pause, "pause", "Pause"),
 		.(.Menu, "menu", "Menu"),
+		.(.Back, "back", "Back"),
 		.(.Keypad0, "numpad0", "Numpad 0"),
 		.(.Keypad1, "numpad1", "Numpad 1"),
 		.(.Keypad2, "numpad2", "Numpad 2"),

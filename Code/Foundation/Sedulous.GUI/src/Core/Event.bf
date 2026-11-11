@@ -389,6 +389,9 @@ enum KeyCode : uint32
 	Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,
 	KeypadDivide, KeypadMultiply, KeypadMinus, KeypadPlus, KeypadEnter, KeypadDecimal,
 	LeftCtrl, LeftShift, LeftAlt, LeftSuper, RightCtrl, RightShift, RightAlt, RightSuper,
+	// The back button: a phone's, or a keyboard's or a browser's Back key (the `back` command by
+	// default, as Escape is).
+	Back,
 }
 
 static

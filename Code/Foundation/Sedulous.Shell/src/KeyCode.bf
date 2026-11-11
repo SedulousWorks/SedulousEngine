@@ -126,5 +126,8 @@ enum KeyCode : uint32
 	case RightAlt;
 	case RightGui;
 	case Menu;
+	/// The back button: a phone's, or a keyboard's or a browser's Back key. A GUI backs out of the
+	/// current place with it, as with Escape.
+	case Back;
 	case Count;
 }

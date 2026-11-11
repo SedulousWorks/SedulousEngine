@@ -88,6 +88,7 @@ static class WebKeyMap
 		case "AltRight": return .RightAlt;
 		case "MetaRight": return .RightGui;
 		case "ContextMenu": return .Menu;
+		case "BrowserBack": return .Back;
 		case "NumpadEnter": return .KeypadEnter;
 		case "NumpadAdd": return .KeypadPlus;
 		case "NumpadSubtract": return .KeypadMinus;

@@ -32,6 +32,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   stops updating, drawing and sounding, writes what each run's game saved, and lets go of its
   window's surface, which a phone takes away; it comes back where it was. Applications and
   subsystems hear it through `OnEnterBackground` and `OnEnterForeground`.
+- Input: a Back key (a phone's back button, a keyboard's or a browser's Back) that a game can bind;
+  in a menu it backs out as Escape does.
 
 ### Changed
 

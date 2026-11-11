@@ -86,6 +86,7 @@ static class SDL3KeyMap
 		case .SDL_SCANCODE_PRINTSCREEN: return .PrintScreen;
 		case .SDL_SCANCODE_PAUSE: return .Pause;
 		case .SDL_SCANCODE_APPLICATION: return .Menu;
+		case .SDL_SCANCODE_AC_BACK: return .Back; // a phone's back button, a keyboard's Back key
 		default: return .Unknown;
 		}
 	}
