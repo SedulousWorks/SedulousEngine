@@ -46,6 +46,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Samples: Lamplight and Masquerade smooth their edges with FXAA in place of TAA.
 - Native code: the Dear ImGui plugin draws as a screen overlay of the render subsystem, over the
   game's screens, in the shared overlay pass (blending encoded colours as the screens do), and
   turned with a pre-rotated window. An application with a render subsystem no longer calls

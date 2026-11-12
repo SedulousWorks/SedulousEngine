@@ -1,6 +1,7 @@
 <root>
 	<string name="guid">2c8e73b2-8c9f-034c-bb20-c1ce9b8fef4b</string>
 	<string name="typeName">Sedulous.Render.Pipeline.PostProcessProfileAsset</string>
+	<string name="source"/>
 	<array name="dataVersions" count="1">
 		<u64 name="type">14889143079450396171</u64>
 		<u32 name="version">0</u32>
@@ -20,7 +21,7 @@
 			<f32 name="aoIntensity">1</f32>
 			<bool name="ssrEnabled">true</bool>
 			<f32 name="ssrIntensity">1</f32>
-			<u32 name="aaMode">2</u32>
+			<u32 name="aaMode">1</u32>
 			<f32 name="taaBlendFactor">0.97</f32>
 			<f32 name="taaVarianceGamma">1.25</f32>
 			<f32 name="fxaaSubpixel">0.75</f32>
