@@ -46,6 +46,42 @@ struct ContentFit
 		return .None;
 	}
 
+	/// The turn of `first` followed by `second`, both clockwise.
+	public static ContentRotation AddTurns(ContentRotation first, ContentRotation second) =>
+		(ContentRotation)(((int)first + (int)second) % 4);
+
+	/// The turn that undoes `turn`.
+	public static ContentRotation InverseTurn(ContentRotation turn) => (ContentRotation)((4 - (int)turn) % 4);
+
+	/// Whether `turn` swaps a space's sides (a quarter either way).
+	public static bool TurnSwapsSides(ContentRotation turn) => (turn == .Quarter) || (turn == .ThreeQuarter);
+
+	/// Where a point of a `size` space lands when the space is turned by `turn` (clockwise, as a
+	/// picture is): the turned space is `size` with its sides swapped on a quarter turn, and a
+	/// quarter takes the space's top-left corner to the turned space's top-right. How a window's
+	/// point lands on a swapchain image drawn turned for the display (pre-rotation).
+	public static Float2 TurnPoint(Float2 point, ContentRotation turn, Float2 size)
+	{
+		switch (turn)
+		{
+		case .Quarter: return .(size.Y - point.Y, point.X);
+		case .Half: return .(size.X - point.X, size.Y - point.Y);
+		case .ThreeQuarter: return .(point.Y, size.X - point.X);
+		case .None: return point;
+		}
+	}
+
+	/// Where a rectangle of a `size` space lands when the space is turned by `turn` (TurnPoint),
+	/// as an axis-aligned rectangle of the turned space.
+	public static Rectangle TurnRectangle(Rectangle rect, ContentRotation turn, Float2 size)
+	{
+		let a = TurnPoint(.(rect.X, rect.Y), turn, size);
+		let b = TurnPoint(.(rect.X + rect.Width, rect.Y + rect.Height), turn, size);
+		let x0 = Math.Min(a.X, b.X);
+		let y0 = Math.Min(a.Y, b.Y);
+		return .(x0, y0, Math.Max(a.X, b.X) - x0, Math.Max(a.Y, b.Y) - y0);
+	}
+
 	/// Where the content is drawn within the Region, in Region space. For Letterbox and
 	/// IntegerScale this is the centred, aspect-preserved sub-rect and the rest is bars;
 	/// for Stretch and Crop it is the whole Region.

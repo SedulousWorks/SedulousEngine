@@ -409,4 +409,70 @@ class ContentFitTests
 		Test.Assert(ContentFit.TurnFor(.Any, 1080, 1920) == .None);
 		Test.Assert(ContentFit.TurnFor(.Any, 1920, 1080) == .None);
 	}
+
+	/// A window drawn turned into a swapchain image held another way (pre-rotation): its points and
+	/// rectangles land in the turned space, and two turns add.
+	[Test]
+	public static void ASpacesPointsAndRectanglesTurnedAndTurnsAdded()
+	{
+		let window = Float2(2400, 1080); // a phone held landscape
+		// A quarter: the window's top-left lands at the turned space's top-right (it is 1080 wide).
+		Test.Assert(Near(ContentFit.TurnPoint(.(0, 0), .Quarter, window).X, 1080));
+		Test.Assert(Near(ContentFit.TurnPoint(.(0, 0), .Quarter, window).Y, 0));
+		Test.Assert(Near(ContentFit.TurnPoint(.(2400, 0), .Quarter, window).Y, 2400));
+		// Three quarters: the top-left lands at the bottom-left.
+		Test.Assert(Near(ContentFit.TurnPoint(.(0, 0), .ThreeQuarter, window).X, 0));
+		Test.Assert(Near(ContentFit.TurnPoint(.(0, 0), .ThreeQuarter, window).Y, 2400));
+		// A half: the opposite corner.
+		Test.Assert(Near(ContentFit.TurnPoint(.(0, 0), .Half, window).X, 2400));
+		Test.Assert(Near(ContentFit.TurnPoint(.(0, 0), .Half, window).Y, 1080));
+
+		// A safe area clear of a camera cutout on the window's left lands at the turned space's top.
+		let safe = Rectangle(100, 0, 2300, 1080);
+		Test.Assert(RectIs(ContentFit.TurnRectangle(safe, .Quarter, window), 0, 100, 1080, 2300));
+		Test.Assert(RectIs(ContentFit.TurnRectangle(safe, .None, window), 100, 0, 2300, 1080));
+
+		// A rectangle turned, then turned back by the inverse in the turned space, is where it was.
+		for (let turn in ContentRotation[4](.None, .Quarter, .Half, .ThreeQuarter))
+		{
+			let turnedSize = ContentFit.TurnSwapsSides(turn) ? Float2(window.Y, window.X) : window;
+			let back = ContentFit.TurnRectangle(ContentFit.TurnRectangle(safe, turn, window), ContentFit.InverseTurn(turn), turnedSize);
+			Test.Assert(RectIs(back, safe.X, safe.Y, safe.Width, safe.Height));
+		}
+
+		// Turns add, a whole turn is none, and each has its inverse.
+		Test.Assert(ContentFit.AddTurns(.Quarter, .ThreeQuarter) == .None);
+		Test.Assert(ContentFit.AddTurns(.ThreeQuarter, .Half) == .Quarter);
+		Test.Assert(ContentFit.AddTurns(.None, .Half) == .Half);
+		Test.Assert(ContentFit.InverseTurn(.Quarter) == .ThreeQuarter);
+		Test.Assert(ContentFit.InverseTurn(.None) == .None);
+		Test.Assert(ContentFit.TurnSwapsSides(.ThreeQuarter));
+		Test.Assert(!ContentFit.TurnSwapsSides(.Half));
+	}
+
+	/// A fit in the window, its region and its turn turned with the window into the image, covers the
+	/// window fit's rectangle turned: the scene drawn into the image lands where it shows in the window.
+	[Test]
+	public static void AFitTurnedWithItsWindowLandsOnTheWindowFitsRectangleTurned()
+	{
+		let window = Float2(2400, 1080);
+		let safe = Rectangle(100, 0, 2300, 1080);
+		for (let mode in FitMode[3](.Stretch, .Letterbox, .Crop))
+		{
+			for (let own in ContentRotation[2](.None, .ThreeQuarter))
+			{
+				for (let surface in ContentRotation[3](.Quarter, .Half, .ThreeQuarter))
+				{
+					let inWindow = ContentFit(safe, .(1920, 1080), mode, own);
+					let inImage = ContentFit(ContentFit.TurnRectangle(safe, surface, window), .(1920, 1080), mode, ContentFit.AddTurns(own, surface));
+					let expected = ContentFit.TurnRectangle(inWindow.DstRect(), surface, window);
+					Test.Assert(RectIs(inImage.DstRect(), expected.X, expected.Y, expected.Width, expected.Height));
+					// A content point lands where the window shows it, turned.
+					let shown = ContentFit.TurnPoint(inWindow.FromContent(.(400, 300)), surface, window);
+					let put = inImage.FromContent(.(400, 300));
+					Test.Assert(Near(put.X, shown.X) && Near(put.Y, shown.Y));
+				}
+			}
+		}
+	}
 }
