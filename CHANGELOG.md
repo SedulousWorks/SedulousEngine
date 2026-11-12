@@ -74,6 +74,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: play-in-editor draws the game at the project's MSAA, as the player does; it drew at 1x.
 - Rendering: a game with MSAA on keeps its scenes' post-processing in the player (auto exposure,
   AO, SSR and TAA, from the scene or its profile); the project's MSAA setting replaced them with the
   engine's defaults, so the player drew those games darker and plainer than the editor.

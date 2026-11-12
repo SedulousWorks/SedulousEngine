@@ -10,6 +10,8 @@ using Sedulous.Shell;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Engine.Project;
+using Sedulous.Render;
 
 namespace Sedulous.Editor.Play.Tests;
 
@@ -229,5 +231,29 @@ class GamePageTests
 		// The next frame does not arm it again while the view is not focused.
 		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!view.CapturesAllKeys);
+	}
+
+	/// The Game tab draws at the project's scene pass MSAA, its look untouched: the player sets
+	/// the project's MSAA for every view, and the tab drew at 1x, so a playtest did not show the
+	/// game the player shows.
+	[Test]
+	public static void TheGameTabDrawsAtTheProjectsMsaa()
+	{
+		let settings = scope ProjectSettings();
+		settings.RenderMsaaSamples = 4;
+		let post = GameEditorPage.GameViewPost(settings);
+		Test.Assert(post.MsaaOverride == 4);
+		// Nothing of the game's own post processing is stripped.
+		Test.Assert(!post.DisablePost);
+		Test.Assert(!post.DisableBloom);
+		Test.Assert(!post.DisableAo);
+		Test.Assert(!post.DisableSsr);
+		Test.Assert(!post.DisableAa);
+		Test.Assert(!post.DisableSsgi);
+		Test.Assert(!post.DisableCulling);
+
+		// Off, as the project asks.
+		settings.RenderMsaaSamples = 1;
+		Test.Assert(GameEditorPage.GameViewPost(settings).MsaaOverride == 1);
 	}
 }

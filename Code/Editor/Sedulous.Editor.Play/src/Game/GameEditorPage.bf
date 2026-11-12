@@ -46,6 +46,16 @@ class GameEditorPageServices
 /// the application and released back to it on close.
 class GameEditorPage : UIEditorPage, IPieInstancePage
 {
+	/// The per view settings the Game tab draws its game with: the project's scene pass MSAA,
+	/// as the player sets it for every view (the editor's render subsystem serves every page, so
+	/// the tab asks for the count on its own view), and nothing of the game's look stripped.
+	public static ViewPostOverride GameViewPost(Sedulous.Engine.Project.ProjectSettings settings)
+	{
+		var post = ViewPostOverride();
+		post.MsaaOverride = (uint8)Math.Max(settings.RenderMsaaSamples, 1);
+		return post;
+	}
+
 	/// Its markup, under the data root.
 	public const String cMarkupPath = "Editor/Game.xml";
 
@@ -325,6 +335,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mCaptureY = 0;
 		mCaptureWidth = w;
 		mCaptureHeight = h;
+		// The game's own scene pass MSAA, as the player draws it.
+		var post = (mContext?.Project != null) ? GameViewPost(mContext.Project.Settings) : ViewPostOverride();
 		let fit = GameFitIn(w, h);
 		if (GameFitted(fit))
 		{
@@ -333,7 +345,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			let dst = fit.DstRect();
 			let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f));
 			mRender.RenderScene(mScene, mViewport.ColorView, mViewport.ColorFormat, w, h, viewport,
-				null, targetState, null, null, null, SceneSize.FromFit(fit));
+				null, targetState, &post, null, null, SceneSize.FromFit(fit));
 			mCaptureX = (uint32)Math.Max(viewport.X, 0);
 			mCaptureY = (uint32)Math.Max(viewport.Y, 0);
 			mCaptureWidth = (uint32)Math.Min(viewport.Width, w - mCaptureX);
@@ -342,7 +354,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		else
 		{
 			mRender.RenderScene(mScene, mViewport.ColorView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
-				null, targetState);
+				null, targetState, &post);
 		}
 		mViewport.ColorState = .ShaderRead;
 		if (mRunning)
