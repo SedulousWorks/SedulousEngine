@@ -9,8 +9,10 @@ namespace Imgui;
 
 /// A Dear ImGui renderer on the engine's own RHI, rather than one of the stock backends.
 ///
-/// It owns the pipeline, the font atlas and the per frame geometry, and records one draw list
-/// into a render pass that LOADS what is already there: the interface is drawn over the scene,
+/// It owns the pipeline, the font atlas and the per frame geometry. Prepare readies a frame's
+/// draw data before a pass and Draw records it into one (the render subsystem's shared overlay
+/// pass, the window turned onto the target when the swapchain is pre-rotated); Render does both
+/// in a pass of its own that LOADS what is already there. The interface is drawn over the scene,
 /// never instead of it.
 class ImguiRenderer
 {
@@ -25,6 +27,7 @@ class ImguiRenderer
 	private IPipelineLayout mPipelineLayout = null;
 	private IRenderPipeline mPipeline = null;
 	private TextureFormat mPipelineFormat = .Undefined;
+	private TextureFormat mPipelineDepthStencil = .Undefined;
 
 	private ITexture mFontTexture = null;
 	private ITextureView mFontView = null;
@@ -48,6 +51,9 @@ class ImguiRenderer
 	/// instead, which means rebinding while the previous frame's command buffer is still
 	/// recorded against the old set.
 	private List<(IBindGroup Group, uint32 FramesLeft)> mRetired = new .() ~ delete _;
+
+	/// What Prepare readied for the next Draw, one of mFrames.
+	private ImguiFrameSlot mPrepared = null;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
@@ -111,65 +117,96 @@ class ImguiRenderer
 		return .Ok;
 	}
 
-	/// Records the built draw data onto the target.
-	///
-	/// The font upload and the buffer fills happen on the frame's own encoder BEFORE the pass
-	/// opens, because a copy cannot be recorded inside a render pass.
-	public void Render(ICommandEncoder encoder, ITextureView target, TextureFormat targetFormat,
-		uint32 width, uint32 height, ImDrawData* drawData, uint32 frameIndex)
+	/// The projection a vertex in window pixels takes to clip space on a target of `target`
+	/// pixels that the window is drawn into turned (`windowToTarget`: the overlay view's
+	/// WindowToTargetTransform, the identity when nothing is turned): the turn, then the
+	/// target's orthographic map (0..width, 0..height, Y down). Row vectors.
+	public static Float4x4 Projection(Float2 target, Float4x4 windowToTarget)
 	{
-		if ((target == null) || (drawData == null))
-			return;
+		Float4x4 ortho = .();
+		ortho.M[0][0] = 2.0f / target.X;
+		ortho.M[1][1] = -2.0f / target.Y;
+		ortho.M[2][2] = 1.0f;
+		ortho.M[3][3] = 1.0f;
+		ortho.M[3][0] = -1.0f;
+		ortho.M[3][1] = 1.0f;
+		return windowToTarget * ortho;
+	}
+
+	/// The scissor for a draw's clip rectangle, in window pixels, on the target: turned with the
+	/// window (`turn`, the window `window` pixels) and kept inside the target, since a scissor
+	/// outside the attachment drops the whole command buffer on a validating backend. False when
+	/// nothing of it is left.
+	public static bool Scissor(Rectangle clip, ContentRotation turn, Float2 window, uint32 targetWidth,
+		uint32 targetHeight, out uint32 x, out uint32 y, out uint32 width, out uint32 height)
+	{
+		x = 0;
+		y = 0;
+		width = 0;
+		height = 0;
+		let r = ContentFit.TurnRectangle(clip, turn, window);
+		let x0 = Math.Max(r.X, 0.0f);
+		let y0 = Math.Max(r.Y, 0.0f);
+		let x1 = Math.Min(r.X + r.Width, (float)targetWidth);
+		let y1 = Math.Min(r.Y + r.Height, (float)targetHeight);
+		if ((x1 <= x0) || (y1 <= y0))
+			return false;
+		x = (uint32)x0;
+		y = (uint32)y0;
+		width = (uint32)x1 - x;
+		height = (uint32)y1 - y;
+		return (width > 0) && (height > 0);
+	}
+
+	/// Readies `drawData` for a pass on a target of `targetFormat` (with `depthStencilFormat`'s
+	/// attachment, Undefined for none) and `target` pixels: the font, the geometry and the
+	/// projection, recorded on `encoder` BEFORE the pass opens, because a copy cannot be recorded
+	/// inside one. False when there is nothing to draw; Draw then draws nothing.
+	public bool Prepare(ICommandEncoder encoder, TextureFormat targetFormat, TextureFormat depthStencilFormat,
+		Float2 target, Float4x4 windowToTarget, ImDrawData* drawData, uint32 frameIndex)
+	{
+		mPrepared = null;
+		if (drawData == null)
+			return false;
 
 		TickRetired();
 		ServiceTextures(encoder, drawData);
-		let pipeline = EnsurePipeline(targetFormat);
+		let pipeline = EnsurePipeline(targetFormat, depthStencilFormat);
 		if (pipeline == null)
-			return;
+			return false;
 		if ((drawData.TotalVtxCount <= 0) || (drawData.CmdListsCount <= 0))
-			return;
+			return false;
 
 		let slot = mFrames[frameIndex % mFramesInFlight];
 		if (slot.Bindings == null)
-			return; // no atlas yet, so there is nothing the draws could sample
+			return false; // no atlas yet, so there is nothing the draws could sample
 		if (UploadGeometry(slot, drawData) case .Err)
-			return;
+			return false;
 
-		// Off centre orthographic with Y running DOWN, which is the space the interface is
-		// laid out in, written row major for the engine's row vectors.
-		let displayWidth = (drawData.DisplaySize.x > 0.0f) ? drawData.DisplaySize.x : (float)width;
-		let displayHeight = (drawData.DisplaySize.y > 0.0f) ? drawData.DisplaySize.y : (float)height;
-
-		Float4x4 projection = .();
-		projection.M[0][0] = 2.0f / displayWidth;
-		projection.M[1][1] = -2.0f / displayHeight;
-		projection.M[2][2] = 1.0f;
-		projection.M[3][3] = 1.0f;
-		projection.M[3][0] = -1.0f;
-		projection.M[3][1] = 1.0f;
-
+		let projection = Projection(target, windowToTarget);
 		let mappedProjection = slot.Projection.Map();
 		if (mappedProjection != null)
 		{
-			Internal.MemCpy(mappedProjection, &projection, sizeof(Float4x4));
+			var copy = projection;
+			Internal.MemCpy(mappedProjection, &copy, sizeof(Float4x4));
 			slot.Projection.Unmap();
 		}
+		mPrepared = slot;
+		return true;
+	}
 
-		ColorAttachment attachment = .();
-		attachment.View = target;
-		attachment.LoadOp = .Load; // OVER the scene, never instead of it
-		attachment.StoreOp = .Store;
-
-		RenderPassDesc passDesc = .();
-		passDesc.ColorAttachments.Add(attachment);
-		passDesc.Label = "imgui";
-
-		let pass = encoder.BeginRenderPass(passDesc);
-		if (pass == null)
+	/// Draws what Prepare readied into the open `pass` on a `targetWidth` x `targetHeight`
+	/// target, the window (`window` pixels) drawn into it turned by `turn`.
+	public void Draw(IRenderPassEncoder pass, ImDrawData* drawData, ContentRotation turn, Float2 window,
+		uint32 targetWidth, uint32 targetHeight)
+	{
+		let slot = mPrepared;
+		mPrepared = null;
+		if ((slot == null) || (drawData == null))
 			return;
 
-		pass.SetViewport(0.0f, 0.0f, (float)width, (float)height);
-		pass.SetPipeline(pipeline);
+		pass.SetViewport(0.0f, 0.0f, (float)targetWidth, (float)targetHeight);
+		pass.SetPipeline(mPipeline);
 		pass.SetVertexBuffer(0, slot.Vertices, 0);
 		pass.SetIndexBuffer(slot.Indices, .UInt16, 0);
 
@@ -185,21 +222,12 @@ class ImguiRenderer
 				if ((command.ElemCount == 0) || (command.UserCallback != null))
 					continue;
 
-				// CLAMPED to the real target: the display size is one frame stale across a
-				// resize, and a scissor outside the attachment drops the whole command buffer
-				// on a validating backend.
-				var x0 = (int32)(command.ClipRect.x - clipOffset.x);
-				var y0 = (int32)(command.ClipRect.y - clipOffset.y);
-				var x1 = (int32)(command.ClipRect.z - clipOffset.x);
-				var y1 = (int32)(command.ClipRect.w - clipOffset.y);
-				x0 = Math.Max(x0, 0);
-				y0 = Math.Max(y0, 0);
-				x1 = Math.Min(x1, (int32)width);
-				y1 = Math.Min(y1, (int32)height);
-				if ((x1 <= x0) || (y1 <= y0))
+				let clip = Rectangle(command.ClipRect.x - clipOffset.x, command.ClipRect.y - clipOffset.y,
+					command.ClipRect.z - command.ClipRect.x, command.ClipRect.w - command.ClipRect.y);
+				if (!Scissor(clip, turn, window, targetWidth, targetHeight, let x, let y, let w, let h))
 					continue;
 
-				pass.SetScissor(x0, y0, (uint32)(x1 - x0), (uint32)(y1 - y0));
+				pass.SetScissor((int32)x, (int32)y, w, h);
 				pass.SetBindGroup(0, slot.Bindings, .());
 				pass.DrawIndexed(command.ElemCount, 1, command.IdxOffset + globalIndex,
 					(int32)(command.VtxOffset + globalVertex), 0);
@@ -207,6 +235,42 @@ class ImguiRenderer
 			globalVertex += (uint32)commandList.VtxBuffer.Size;
 			globalIndex += (uint32)commandList.IdxBuffer.Size;
 		}
+	}
+
+	/// Records the built draw data in a render pass of its own on `target`, LOADED and drawn over
+	/// the scene, for an application with no render subsystem whose overlays would draw it.
+	public void Render(ICommandEncoder encoder, ITextureView target, TextureFormat targetFormat,
+		uint32 width, uint32 height, ImDrawData* drawData, uint32 frameIndex)
+	{
+		if ((target == null) || (width == 0) || (height == 0))
+			return;
+
+		// The projection spans the display size the interface laid out for, which trails the
+		// target by a frame across a resize (it is set at NewFrame); the scissors keep to the
+		// target.
+		let size = Float2((float)width, (float)height);
+		let display = ((drawData != null) && (drawData.DisplaySize.x > 0.0f) && (drawData.DisplaySize.y > 0.0f))
+			? Float2(drawData.DisplaySize.x, drawData.DisplaySize.y)
+			: size;
+		if (!Prepare(encoder, targetFormat, .Undefined, display, Float4x4.Identity(), drawData, frameIndex))
+			return;
+
+		ColorAttachment attachment = .();
+		attachment.View = target;
+		attachment.LoadOp = .Load; // OVER the scene, never instead of it
+		attachment.StoreOp = .Store;
+
+		RenderPassDesc passDesc = .();
+		passDesc.ColorAttachments.Add(attachment);
+		passDesc.Label = "imgui";
+
+		let pass = encoder.BeginRenderPass(passDesc);
+		if (pass == null)
+		{
+			mPrepared = null;
+			return;
+		}
+		Draw(pass, drawData, .None, display, width, height);
 		pass.End();
 	}
 
@@ -472,10 +536,12 @@ class ImguiRenderer
 	}
 
 	/// The pipeline follows the TARGET's format: a window whose swapchain came back in another
-	/// format after a device loss gets a pipeline that matches it.
-	private IRenderPipeline EnsurePipeline(TextureFormat format)
+	/// format after a device loss gets a pipeline that matches it. `depthStencilFormat` is the
+	/// pass's depth attachment (Undefined for none: a pass of its own), which the interface
+	/// neither tests nor writes.
+	private IRenderPipeline EnsurePipeline(TextureFormat format, TextureFormat depthStencilFormat)
 	{
-		if ((mPipeline != null) && (mPipelineFormat == format))
+		if ((mPipeline != null) && (mPipelineFormat == format) && (mPipelineDepthStencil == depthStencilFormat))
 			return mPipeline;
 
 		let vertexShader = mShaders.GetVariant("imgui", .Vertex, .None);
@@ -515,6 +581,15 @@ class ImguiRenderer
 		desc.Fragment = fragment;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .None;
+		if (depthStencilFormat != .Undefined)
+		{
+			DepthStencilState depthStencil = .();
+			depthStencil.Format = depthStencilFormat;
+			depthStencil.DepthTestEnabled = false;
+			depthStencil.DepthWriteEnabled = false;
+			depthStencil.DepthCompare = .Always;
+			desc.DepthStencil = depthStencil;
+		}
 		desc.Label = "imgui";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(out mPipeline)))
@@ -523,6 +598,7 @@ class ImguiRenderer
 			return null;
 		}
 		mPipelineFormat = format;
+		mPipelineDepthStencil = depthStencilFormat;
 		return mPipeline;
 	}
 

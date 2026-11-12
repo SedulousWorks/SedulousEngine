@@ -46,6 +46,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Native code: the Dear ImGui plugin draws as a screen overlay of the render subsystem, over the
+  game's screens, in the shared overlay pass (blending encoded colours as the screens do), and
+  turned with a pre-rotated window. An application with a render subsystem no longer calls
+  `ImguiSubsystem.Render`; one without (a plain `IApplication`) still does.
 - Editor: an export preset's extra files are the project's: Add Files picks from the project's own
   files (not what the editor, a cook or an export writes) and names each relative to the project, so
   the preset travels with it; From Disk takes a file of the project's through the system's dialog and

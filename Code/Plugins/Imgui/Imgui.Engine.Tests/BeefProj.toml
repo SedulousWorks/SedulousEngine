@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Imgui.Engine.Tests"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+"Imgui.Engine" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Render.Api" = "*"

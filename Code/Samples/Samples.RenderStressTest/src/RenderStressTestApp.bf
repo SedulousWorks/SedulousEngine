@@ -202,12 +202,8 @@ class RenderStressTestApp : DefaultApplication
 			}
 		}
 
+		// The scene and the window overlays, the panel among them, before the screenshot copy.
 		RenderFrame(host, ref frame);
-
-		if (mOverlay != null)
-			mOverlay.Render(ref frame);
-
-		// After the overlay, so a screenshot has it.
 		FinishFrame(host, ref frame);
 	}
 

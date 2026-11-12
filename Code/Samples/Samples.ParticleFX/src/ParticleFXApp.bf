@@ -164,17 +164,6 @@ class ParticleFXApp : DefaultApplication
 		LabelCells(host);
 	}
 
-	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
-	{
-		RenderFrame(host, ref frame);
-
-		if (mOverlay != null)
-			mOverlay.Render(ref frame);
-
-		// After the overlay, so a screenshot has it.
-		FinishFrame(host, ref frame);
-	}
-
 	/// The atlas goes back while the device is still up. A destructor would run too late, and
 	/// in no defined order against the graphics device.
 	public override void OnShutdown(IApplicationHost host)

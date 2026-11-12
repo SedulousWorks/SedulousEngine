@@ -213,9 +213,10 @@ class SandboxApp : DefaultApplication
 		frame.Encoder.Blit(target, frame.Backbuffer);
 		frame.Encoder.TransitionTexture(frame.Backbuffer, .CopyDst, .RenderTarget);
 
-		// The backbuffer is a render target again, so the panel loads and draws over it.
-		if (mOverlay != null)
-			mOverlay.Render(ref frame);
+		// The window overlays (the debug panel among them) over the scene: the backbuffer is a
+		// render target again, and they load and draw over it.
+		render.RenderOverlays(frame.Encoder, frame.BackbufferView, format, frame.Width, frame.Height,
+			frame.FrameIndex, frame.BackbufferAlternateView, .(), frame.PreRotation);
 
 		// The screenshot copy, off the finished backbuffer.
 		FinishFrame(host, ref frame);

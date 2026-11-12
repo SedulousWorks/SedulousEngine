@@ -228,18 +228,6 @@ class TerrainPlaygroundApp : DefaultApplication
 		ApplyCaster(); // re-applied every frame so the sliders track live
 	}
 
-	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
-	{
-		RenderFrame(host, ref frame);
-
-		// AFTER the scene, so the panel is drawn over it rather than under.
-		if (let overlay = host.Subsystems.GetSubsystem<ImguiSubsystem>())
-			overlay.Render(ref frame);
-
-		// After the panel, so a screenshot has it.
-		FinishFrame(host, ref frame);
-	}
-
 	/// The light's forward is its travel direction: yaw about up, then pitch DOWN by the
 	/// elevation, so a higher elevation is a higher sun.
 	/// Palette layer nought one hot on one half; the base owns the rest.
