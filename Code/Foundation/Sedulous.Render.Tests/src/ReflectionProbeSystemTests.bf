@@ -98,13 +98,11 @@ class ReflectionProbeSystemTests
 			Test.Assert(task.Scene == ((task.Slot == 0) ? sceneA : sceneB));
 	}
 
-	/// A static probe stops asking to be captured once the startup window has drained.
-	///
-	/// The first frames deliberately recapture, so a dropped submission during startup cannot
-	/// silently lose a one shot bake; it has to DRAIN, or a static probe would re-render its
-	/// six faces forever.
+	/// A static probe is captured once: from the next frame on it asks for no capture. A
+	/// capture run again in each startup frame made every game's first seconds crawl on a
+	/// phone.
 	[Test]
-	public static void TheStartupRecaptureWindowDrains()
+	public static void AStaticProbeIsCapturedOnce()
 	{
 		let fixture = scope RenderFrameFixture(64, 64);
 		if (!fixture.Ready)
@@ -122,23 +120,13 @@ class ReflectionProbeSystemTests
 		probes.Assign(sceneA, .(&listA[0], 1));
 		probes.Assign(sceneB, .(&listB[0], 2));
 
-		var frames = 0;
-		for (; frames < 64; frames++)
-		{
-			for (let task in probes.Captures)
-				probes.MarkCaptured(task.Slot);
+		Test.Assert(probes.Captures.Length == 3);
+		for (let task in probes.Captures)
+			probes.MarkCaptured(task.Slot);
 
-			probes.BeginFrame();
-			probes.Assign(sceneA, .(&listA[0], 1));
-			probes.Assign(sceneB, .(&listB[0], 2));
-
-			if (probes.Captures.IsEmpty)
-				break;
-		}
-
-		// It recaptured for a while, and then went quiet.
-		Test.Assert(frames > 0);
-		Test.Assert(frames < 64);
+		probes.BeginFrame();
+		probes.Assign(sceneA, .(&listA[0], 1));
+		probes.Assign(sceneB, .(&listB[0], 2));
 		Test.Assert(probes.Captures.IsEmpty);
 		// And the ranges came back identical, the layout being rebuilt the same way.
 		Test.Assert(probes.RangeFor(sceneB).Base == 1);

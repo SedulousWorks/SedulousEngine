@@ -96,10 +96,6 @@ class ReflectionProbeSystem
 	private GpuProbe[cMaxProbes] mCpuProbes = .();
 	private uint32 mActive = 0;
 
-	/// The startup recapture window, for the same reason the environment bake has one: a
-	/// dropped submission during startup would otherwise lose a one shot capture silently.
-	private uint32 mCaptureWarmup = 20;
-
 	public this(IDevice device, ShaderSystem shaders)
 	{
 		mDevice = device;
@@ -142,9 +138,6 @@ class ReflectionProbeSystem
 		mActive = 0;
 		mCaptures.Clear();
 		mSceneRanges.Clear();
-
-		if (mCaptureWarmup > 0)
-			mCaptureWarmup--;
 	}
 
 	/// Maps ONE SCENE's probes onto their persistent slots and appends their records to this
@@ -192,8 +185,7 @@ class ReflectionProbeSystem
 
 			let signature = TransformSignature(probe);
 			if (!mSlotStates[slot].Captured || (mSlotStates[slot].Signature != signature)
-				|| (probe.Update == .Realtime) || (mSlotStates[slot].CaptureRequest != probe.CaptureRequest)
-				|| (mCaptureWarmup > 0))
+				|| (probe.Update == .Realtime) || (mSlotStates[slot].CaptureRequest != probe.CaptureRequest))
 				mSlotStates[slot].Dirty = true;
 
 			mSlotStates[slot].Signature = signature;

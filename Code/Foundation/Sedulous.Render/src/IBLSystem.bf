@@ -482,18 +482,12 @@ class IBLSystem
 			ResourceState.ShaderRead, context.EnvState);
 		context.EnvState = .ShaderRead;
 
-		if (!context.Dirty && (context.BakeWarmup == 0))
+		// The products bake once, when their sky changed, and are read from then on.
+		if (!context.Dirty)
 			return;
 
-		if (context.BakeWarmup > 0)
-			context.BakeWarmup--;
-
-		// The generation tracks PRODUCT IDENTITY, which consumers key their caches on, so it
-		// only moves on a real change of content. A warmup rebake renders the same content
-		// into the same textures; bumping there would churn every downstream cache for the
-		// whole warmup window.
-		if (context.Dirty)
-			context.Generation = ++mNextGeneration;
+		// The generation tracks PRODUCT IDENTITY, which consumers key their caches on.
+		context.Generation = ++mNextGeneration;
 		context.Dirty = false;
 
 		// The source into the environment's six faces. The scene's OWN texture wins over the

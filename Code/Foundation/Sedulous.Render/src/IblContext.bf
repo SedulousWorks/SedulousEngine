@@ -58,12 +58,6 @@ class IblContext
 	public Float3 SunDir = .(0.0f, -1.0f, 0.0f);
 	public bool Dirty = true;
 
-	/// The startup rebake window. The cube is a one shot bake, but a frame's submission can be
-	/// dropped during startup, and the web's swapchain texture expiring before the browser
-	/// gets to it is the usual way. Rebaking for the first frames guarantees the cube lands on
-	/// a frame that survives, rather than being lost forever to one bad one.
-	public uint32 BakeWarmup = 20;
-
 	/// From ONE system wide counter, so a value never collides across contexts and a
 	/// downstream cache can key on it alone.
 	public uint64 Generation = 0;

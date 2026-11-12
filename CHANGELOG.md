@@ -74,6 +74,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: a scene's sky lighting (IBL) and its reflection probes bake once, not again in each of
+  the scene's first 20 frames; on a phone those frames ran at about 4 fps, the first seconds of
+  every game.
 - Rendering: the MSAA resolve and TAA keep a bind group they replace until the frames in flight
   that may use it have finished; they freed it at once, which Vulkan's validation reports as a
   descriptor set freed while in use, at the start of a scene with MSAA.

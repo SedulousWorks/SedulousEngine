@@ -133,6 +133,9 @@ class IblSystemTests
 		image.Texture = view;
 		image.TextureUid = 101;
 
+		// A context that bakes in a frame declares one prefilter pass per mip and face.
+		let bake = IBLSystem.cPrefilterMips * 6;
+
 		IblContext contextA = null;
 		IblContext contextB = null;
 		{
@@ -140,15 +143,17 @@ class IblSystemTests
 			ibl.BeginFrame(graph);
 			contextA = ibl.Prepare(sceneA, procedural, sun, graph);
 			contextB = ibl.Prepare(sceneB, image, sun, graph);
+			Test.Assert(PrefilterPasses(graph) == 2 * bake);
 		}
 
-		// Past the warmup, so what follows is a real change rather than a rebake.
-		for (int i < 32)
+		// The products bake once: the next frame bakes nothing (a rebake in each startup frame
+		// made every game's first seconds crawl on a phone).
 		{
-			let graph = scope:: RenderGraph(fixture.Device);
+			let graph = scope RenderGraph(fixture.Device);
 			ibl.BeginFrame(graph);
 			ibl.Prepare(sceneA, procedural, sun, graph);
 			ibl.Prepare(sceneB, image, sun, graph);
+			Test.Assert(PrefilterPasses(graph) == 0);
 		}
 
 		let generationA = contextA.Generation;
@@ -161,9 +166,22 @@ class IblSystemTests
 			ibl.BeginFrame(graph);
 			ibl.Prepare(sceneA, procedural, sun, graph);
 			ibl.Prepare(sceneB, image, sun, graph);
+			Test.Assert(PrefilterPasses(graph) == bake);
 		}
 
 		Test.Assert(contextA.Generation == generationA);
 		Test.Assert(contextB.Generation > generationB);
+	}
+
+	/// The prefilter passes a frame's graph declares.
+	private static int PrefilterPasses(RenderGraph graph)
+	{
+		var count = 0;
+		for (let pass in graph.Passes)
+		{
+			if (pass.Name == "ibl.prefilter")
+				count++;
+		}
+		return count;
 	}
 }
