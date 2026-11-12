@@ -21,15 +21,21 @@ class NullSwapChain : ISwapChain
 	private uint32 mHeight = 0;
 	private uint32 mBufferCount = 2;
 	private uint32 mImageIndex = 0;
+	/// The device's display turn, when asked to pre-rotate.
+	private ContentRotation mRotation = .None;
 
-	public void Initialize(SwapChainDesc desc)
+	/// `rotation`, the turn its images are drawn with: the device's display turn when the
+	/// descriptor asked to pre-rotate, else none.
+	public void Initialize(SwapChainDesc desc, ContentRotation rotation = .None)
 	{
+		mRotation = rotation;
 		mFormat = desc.Format;
 		// Nothing to refuse: a twin request is honoured, as a capable device would.
 		mAlternate = (desc.AlternateViewFormat == TextureFormats.SrgbTwin(desc.Format))
 			? desc.AlternateViewFormat : .Undefined;
-		mWidth = desc.Width;
-		mHeight = desc.Height;
+		let swaps = ContentFit.TurnSwapsSides(mRotation);
+		mWidth = swaps ? desc.Height : desc.Width;
+		mHeight = swaps ? desc.Width : desc.Height;
 		// At least one, so AcquireNextImage cannot divide by zero on a descriptor that
 		// asked for none.
 		mBufferCount = (desc.BufferCount > 0) ? desc.BufferCount : 1;
@@ -65,6 +71,7 @@ class NullSwapChain : ISwapChain
 	public ITexture CurrentTexture => mTexture;
 	public ITextureView CurrentTextureView => mView;
 	public TextureFormat AlternateViewFormat => mAlternate;
+	public ContentRotation PreRotation => mRotation;
 	public ITextureView CurrentAlternateTextureView => (mAlternate != .Undefined) ? mAlternateView : null;
 
 	/// The queue the last Present was given.
@@ -83,8 +90,9 @@ class NullSwapChain : ISwapChain
 
 	public Result<void> Resize(uint32 width, uint32 height)
 	{
-		mWidth = width;
-		mHeight = height;
+		let swaps = ContentFit.TurnSwapsSides(mRotation);
+		mWidth = swaps ? height : width;
+		mHeight = swaps ? width : height;
 		return .Ok;
 	}
 }

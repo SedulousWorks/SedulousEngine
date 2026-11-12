@@ -25,6 +25,11 @@ class NullDevice : IDevice
 		mTransferQueue.Initialize(.Transfer, mCounters);
 	}
 
+	/// The turn its display presents at, as a phone's surface reports one held away from its
+	/// natural orientation (a test sets it): a swap chain asked to pre-rotate takes it, its images
+	/// the window's size turned; one not asked is drawn as the window stands.
+	public ContentRotation DisplayTurn = .None;
+
 	public DeviceType Type => .Null;
 	public DeviceFeatures Features { get; set; } = .();
 
@@ -149,7 +154,7 @@ class NullDevice : IDevice
 	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc)
 	{
 		let swapChain = new NullSwapChain();
-		swapChain.Initialize(desc);
+		swapChain.Initialize(desc, desc.PreRotate ? DisplayTurn : .None);
 		return .Ok(swapChain);
 	}
 

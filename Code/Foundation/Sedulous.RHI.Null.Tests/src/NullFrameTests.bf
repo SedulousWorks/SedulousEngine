@@ -101,6 +101,35 @@ class NullFrameTests
 		device.DestroySwapChain(ref wrong);
 	}
 
+	/// A display that presents turned (a phone held away from its natural orientation): a swap
+	/// chain that asks to pre-rotate is made in the display's orientation, its images the window
+	/// turned, and says how to turn the picture; one that does not ask is drawn as the window stands.
+	[Test]
+	public static void ASwapChainAskedToPreRotateTakesTheDisplaysTurn()
+	{
+		let backend = NullRhi.CreateBackend();
+		defer delete backend;
+		let device = MakeDevice(backend);
+		(device as NullDevice).DisplayTurn = .Quarter;
+		Test.Assert(backend.CreateSurface(null) case .Ok(let surface));
+
+		var desc = SwapChainDesc();
+		desc.Width = 2400;
+		desc.Height = 1080;
+		Test.Assert(device.CreateSwapChain(surface, desc) case .Ok(var plain));
+		Test.Assert(plain.PreRotation == .None);
+		Test.Assert(plain.Width == 2400);
+		device.DestroySwapChain(ref plain);
+
+		desc.PreRotate = true;
+		Test.Assert(device.CreateSwapChain(surface, desc) case .Ok(var turned));
+		Test.Assert(turned.PreRotation == .Quarter);
+		Test.Assert((turned.Width == 1080) && (turned.Height == 2400));
+		Test.Assert(turned.Resize(1080, 2400) case .Ok); // the phone held upright: still the window turned
+		Test.Assert((turned.Width == 2400) && (turned.Height == 1080));
+		device.DestroySwapChain(ref turned);
+	}
+
 	/// The acquired index CYCLES. A caller keying per frame resources on it is exercised
 	/// properly, and one that assumed it never moved is caught here rather than on hardware.
 	[Test]

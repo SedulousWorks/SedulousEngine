@@ -47,6 +47,9 @@ sealed class WebGpuSwapChain : ISwapChain
 	public ITexture CurrentTexture => mHaveImage ? mCurrentTexture : null;
 	public ITextureView CurrentTextureView => mHaveImage ? mCurrentView : null;
 
+	/// A canvas is presented as it stands; the browser turns the page, not its pixels.
+	public ContentRotation PreRotation => .None;
+
 	/// On the web the canvas is configured in its UNORM base format with the sRGB format as a
 	/// view (Configure), so a UNORM view of it is always allowed: an asked-for twin is honoured.
 	/// Desktop wgpu-native would need surface view formats, which webgpu.h gives no way to ask

@@ -23,6 +23,7 @@ class ValidatedSwapChain : ISwapChain
 	public ITexture CurrentTexture => mInner.CurrentTexture;
 	public ITextureView CurrentTextureView => mInner.CurrentTextureView;
 	public TextureFormat AlternateViewFormat => mInner.AlternateViewFormat;
+	public ContentRotation PreRotation => mInner.PreRotation;
 	public ITextureView CurrentAlternateTextureView => mInner.CurrentAlternateTextureView;
 
 	/// Acquiring twice without presenting exhausts the chain and blocks, which reads as a

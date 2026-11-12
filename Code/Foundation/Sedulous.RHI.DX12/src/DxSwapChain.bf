@@ -55,6 +55,8 @@ class DxSwapChain : ISwapChain
 		((int)mCurrentIndex < mViews.Count) ? mViews[(int)mCurrentIndex] : null;
 
 	public TextureFormat AlternateViewFormat => mAlternate;
+	/// A desktop window is presented as it stands.
+	public Sedulous.Core.ContentRotation PreRotation => .None;
 
 	public ITextureView CurrentAlternateTextureView =>
 		((int)mCurrentIndex < mAlternateViews.Count) ? mAlternateViews[(int)mCurrentIndex] : null;

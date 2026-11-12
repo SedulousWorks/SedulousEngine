@@ -40,6 +40,15 @@ class VulkanSwapChain : ISwapChain
 	private TextureFormat mAlternate = .Undefined;
 	private List<VkSemaphore> mAcquireSemaphores = new List<VkSemaphore>() ~ delete _;
 	private List<VkSemaphore> mPresentSemaphores = new List<VkSemaphore>() ~ delete _;
+	// Pre-rotation (SwapChainDesc.PreRotate): the turn the images are drawn with, the surface
+	// transform the swap chain was made for, the window size it was asked for (to make it again
+	// when only the transform changes), and whether a present said the surface may have turned.
+	private bool mPreRotate = false;
+	private ContentRotation mRotation = .None;
+	private VkSurfaceTransformFlagsKHR mTransform = .VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	private uint32 mAskedWidth = 0;
+	private uint32 mAskedHeight = 0;
+	private bool mCheckTransform = false;
 
 	public TextureFormat Format => mFormat;
 	public uint32 Width => mWidth;
@@ -59,6 +68,7 @@ class VulkanSwapChain : ISwapChain
 		mPresentMode = desc.PresentMode;
 		mMutableFormat = mutableFormat;
 		mRequestedAlternate = desc.AlternateViewFormat;
+		mPreRotate = desc.PreRotate;
 		return Create(desc.Width, desc.Height, desc.Format, desc.BufferCount, .Null);
 	}
 
@@ -83,6 +93,7 @@ class VulkanSwapChain : ISwapChain
 	}
 
 	public TextureFormat AlternateViewFormat => mAlternate;
+	public ContentRotation PreRotation => mRotation;
 
 	public ITextureView CurrentAlternateTextureView
 	{
@@ -101,11 +112,35 @@ class VulkanSwapChain : ISwapChain
 		if (mSwapChain == .Null)
 			return .Err;
 
-		let acquireSemaphore = mAcquireSemaphores[(int)mFrameIndex];
+		// Pre-rotated: when a present said the surface may have turned (a phone turned from one
+		// landscape to the other keeps its size, so nothing else would say), make the swap chain
+		// again for the new transform. Only a changed transform does: a surface that keeps
+		// answering suboptimal must not be made again every frame.
+		if (mPreRotate && mCheckTransform)
+		{
+			mCheckTransform = false;
+			VkSurfaceCapabilitiesKHR capabilities = .();
+			if ((VulkanNative.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mPhysicalDevice, mSurface, &capabilities) == .VK_SUCCESS)
+				&& (capabilities.currentTransform != mTransform) && (Resize(mAskedWidth, mAskedHeight) case .Err))
+				return .Err;
+		}
+
+		var acquireSemaphore = mAcquireSemaphores[(int)mFrameIndex];
 		uint32 imageIndex = 0;
-		let result = VulkanNative.vkAcquireNextImageKHR(mDevice, mSwapChain, uint64.MaxValue,
+		var result = VulkanNative.vkAcquireNextImageKHR(mDevice, mSwapChain, uint64.MaxValue,
 			acquireSemaphore, .Null, &imageIndex);
 		mCurrentImageIndex = imageIndex;
+		if ((result == .VK_ERROR_OUT_OF_DATE_KHR) && mPreRotate)
+		{
+			// Turned past what the images can be presented as: made again for the surface as it
+			// is now, then acquired once more.
+			if (Resize(mAskedWidth, mAskedHeight) case .Err)
+				return .Err;
+			acquireSemaphore = mAcquireSemaphores[(int)mFrameIndex];
+			result = VulkanNative.vkAcquireNextImageKHR(mDevice, mSwapChain, uint64.MaxValue,
+				acquireSemaphore, .Null, &imageIndex);
+			mCurrentImageIndex = imageIndex;
+		}
 
 		// OUT_OF_DATE means the surface changed under us and the caller has to resize;
 		// SUBOPTIMAL still presents, so it is not worth failing an otherwise usable frame.
@@ -145,7 +180,10 @@ class VulkanSwapChain : ISwapChain
 		// SUBOPTIMAL is a failure HERE, unlike on acquire: the frame is on screen, and the
 		// caller is being told to rebuild the chain before the next one.
 		if ((result == .VK_ERROR_OUT_OF_DATE_KHR) || (result == .VK_SUBOPTIMAL_KHR))
+		{
+			mCheckTransform = mPreRotate; // the surface may have turned: the next acquire looks
 			return .Err;
+		}
 		return (result == .VK_SUCCESS) ? .Ok : .Err;
 	}
 
@@ -177,22 +215,46 @@ class VulkanSwapChain : ISwapChain
 		VkSurfaceCapabilitiesKHR capabilities = .();
 		VulkanNative.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mPhysicalDevice, mSurface,
 			&capabilities);
+		mAskedWidth = width;
+		mAskedHeight = height;
+		mCheckTransform = false;
+
+		// The picture is drawn as the window stands and the display turns it, unless pre-rotation
+		// was asked: then the images are made in the display's orientation, the surface's current
+		// transform their pre-transform, and the caller draws the window's picture turned into them
+		// (PreRotation), so the display has no turning to do.
+		mTransform = capabilities.supportedTransforms.HasFlag(.VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+			? .VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : capabilities.currentTransform;
+		mRotation = .None;
+		if (mPreRotate && (RotationOf(capabilities.currentTransform) != .None)
+			&& capabilities.supportedTransforms.HasFlag(capabilities.currentTransform))
+		{
+			mTransform = capabilities.currentTransform;
+			mRotation = RotationOf(capabilities.currentTransform);
+		}
 
 		// The size asked (the window's pixels), within what the surface allows. Most surfaces
 		// allow only their current extent, so it decides; Android allows a range and scales the
 		// images to the window, and its current extent lags a turn of the phone: taken as
-		// reported, a window just turned upright gets landscape images, stretched.
+		// reported, a window just turned upright gets landscape images, stretched. Both are the
+		// window's way round (Android reports its extent turned with the phone), so a quarter of
+		// pre-rotation swaps them for the images.
 		let asked = (width != 0) && (height != 0);
-		if (!asked && (capabilities.currentExtent.width != uint32.MaxValue))
+		let fromSurface = !asked && (capabilities.currentExtent.width != uint32.MaxValue);
+		var wantWidth = fromSurface ? capabilities.currentExtent.width : width;
+		var wantHeight = fromSurface ? capabilities.currentExtent.height : height;
+		if (ContentFit.TurnSwapsSides(mRotation))
+			Swap!(wantWidth, wantHeight);
+		if (fromSurface)
 		{
-			mWidth = capabilities.currentExtent.width;
-			mHeight = capabilities.currentExtent.height;
+			mWidth = wantWidth;
+			mHeight = wantHeight;
 		}
 		else
 		{
-			mWidth = Math.Clamp(width, capabilities.minImageExtent.width,
+			mWidth = Math.Clamp(wantWidth, capabilities.minImageExtent.width,
 				capabilities.maxImageExtent.width);
-			mHeight = Math.Clamp(height, capabilities.minImageExtent.height,
+			mHeight = Math.Clamp(wantHeight, capabilities.minImageExtent.height,
 				capabilities.maxImageExtent.height);
 		}
 		// A minimised window, which cannot have a swap chain at all.
@@ -212,6 +274,9 @@ class VulkanSwapChain : ISwapChain
 		// How the display paces frames: under FIFO the CPU waits in the acquire for an image the
 		// compositor gives back, and how many images there are bounds how far it can run ahead, so a
 		// long acquire in a capture is read against these.
+		if (mPreRotate)
+			Console.WriteLine("[RHI] swapchain pre-rotation: surface transform 0x{0:X}, drawn turned {1} quarter(s), images {2}x{3}",
+				(uint32)capabilities.currentTransform, (int)mRotation, mWidth, mHeight);
 		Console.WriteLine("[RHI] swapchain present mode: requested {}, chosen {}; {} images (the surface allows {} to {})",
 			PresentModeName(VulkanConversions.ToVkPresentMode(mPresentMode)), PresentModeName(presentMode), mBufferCount,
 			capabilities.minImageCount, capabilities.maxImageCount);
@@ -245,7 +310,9 @@ class VulkanSwapChain : ISwapChain
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = usage;
 		createInfo.imageSharingMode = .VK_SHARING_MODE_EXCLUSIVE;
-		createInfo.preTransform = capabilities.currentTransform;
+		// Identity, or with pre-rotation the surface's turn: claiming a turn the picture was not
+		// drawn with would show it turned twice.
+		createInfo.preTransform = mTransform;
 		createInfo.compositeAlpha = compositeAlpha;
 		createInfo.presentMode = presentMode;
 		createInfo.clipped = VulkanNative.VK_TRUE;
@@ -319,6 +386,19 @@ class VulkanSwapChain : ISwapChain
 	/// Immediate and Mailbox both mean "do not block on the refresh", so an unavailable one
 	/// falls to the other before settling for FIFO, which Wayland needs since it commonly
 	/// offers Mailbox but not Immediate. FIFO is the only mode the spec guarantees.
+	/// The clockwise turn a surface transform asks of the picture drawn for it; a mirrored one is
+	/// not drawn turned (the display turns it).
+	private static ContentRotation RotationOf(VkSurfaceTransformFlagsKHR transform)
+	{
+		switch (transform)
+		{
+		case .VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR: return .Quarter;
+		case .VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR: return .Half;
+		case .VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR: return .ThreeQuarter;
+		default: return .None;
+		}
+	}
+
 	private static StringView PresentModeName(VkPresentModeKHR mode)
 	{
 		switch (mode)

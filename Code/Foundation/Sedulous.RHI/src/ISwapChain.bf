@@ -28,6 +28,13 @@ interface ISwapChain
 	/// Undefined.
 	ITextureView CurrentAlternateTextureView { get; }
 
+	/// How the back buffers' content is turned from the window's picture, clockwise: None unless
+	/// SwapChainDesc.PreRotate was asked and the surface presents turned. On a quarter turn the back
+	/// buffers are the window's size with its sides swapped (Width and Height are theirs), and the
+	/// window's picture is drawn into them turned (ContentFit.TurnPoint), its top-left corner
+	/// landing at their top-right.
+	ContentRotation PreRotation { get; }
+
 	/// Hands the acquired buffer to the display.
 	Result<void> Present(IQueue queue);
 
