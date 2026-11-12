@@ -649,4 +649,22 @@ class SDL3ShellTests
 			seen.Add(scope:: String(name));
 		}
 	}
+
+	/// What windows can do by SDL's video driver: as many as wanted, placed by the application, on a
+	/// desktop's X11 or Windows; none placed on Wayland, where the compositor places them; one,
+	/// placed by the system, on Android, where an app has the activity's window alone.
+	[Test]
+	public static void WindowCapabilitiesByVideoDriver()
+	{
+		let x11 = SDL3WindowManager.CapabilitiesFor("x11");
+		Test.Assert(x11.MultipleWindows && x11.PlacesWindows);
+		let windows = SDL3WindowManager.CapabilitiesFor("windows");
+		Test.Assert(windows.MultipleWindows && windows.PlacesWindows);
+		let wayland = SDL3WindowManager.CapabilitiesFor("wayland");
+		Test.Assert(wayland.MultipleWindows && !wayland.PlacesWindows);
+		let android = SDL3WindowManager.CapabilitiesFor("android");
+		Test.Assert(!android.MultipleWindows && !android.PlacesWindows);
+		let none = SDL3WindowManager.CapabilitiesFor(default);
+		Test.Assert(none.MultipleWindows && none.PlacesWindows);
+	}
 }

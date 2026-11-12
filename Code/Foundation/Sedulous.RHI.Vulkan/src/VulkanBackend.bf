@@ -80,12 +80,14 @@ class VulkanBackend : IBackend
 
 #if BF_PLATFORM_WINDOWS
 		extensions.Add(VulkanNative.VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#else
+#elif BF_PLATFORM_LINUX
 		// Asked for rather than assumed: enabling an extension the loader does not have
 		// fails instance creation outright, and a machine may have only one of these.
 		if (!ProbeSurfaceExtensions(extensions))
 			return .Err;
 #endif
+		// Anywhere else (Android among them, which is not Linux's X11 or Wayland) there is no
+		// window surface yet: the instance is made without one, and CreateSurface refuses.
 
 		// ASKED FOR rather than tied to validation. The debug label calls are made
 		// UNCONDITIONALLY by the render graph, once per pass, and the loader only resolves
@@ -117,8 +119,10 @@ class VulkanBackend : IBackend
 
 #if BF_PLATFORM_WINDOWS
 		let platformFunctions = InstanceFunctionFlags.Win32;
-#else
+#elif BF_PLATFORM_LINUX
 		let platformFunctions = InstanceFunctionFlags.Xlib | InstanceFunctionFlags.Wayland;
+#else
+		InstanceFunctionFlags platformFunctions = default;
 #endif
 		// A failure to load an OPTIONAL extension function is not fatal: the instance may
 		// legitimately lack one, and the call site checks for null before using it.
@@ -221,7 +225,7 @@ class VulkanBackend : IBackend
 		createInfo.hinstance = (void*)0;
 		createInfo.hwnd = windowHandle;
 		result = VulkanNative.vkCreateWin32SurfaceKHR(mInstance, &createInfo, null, &surface);
-#else
+#elif BF_PLATFORM_LINUX
 		// The platform the SHELL reports is authoritative, because it is the video driver
 		// that actually made the window. Handing an X11 Display to the Wayland entry point
 		// dereferences a pointer that is not a wl_display and segfaults inside the driver,
@@ -251,6 +255,9 @@ class VulkanBackend : IBackend
 			createInfo.window = windowHandle;
 			result = VulkanNative.vkCreateXlibSurfaceKHR(mInstance, &createInfo, null, &surface);
 		}
+#else
+		// No window surface here yet (Android's is VK_KHR_android_surface): the failure below says so.
+		Log("VulkanBackend: window surfaces are not supported on this platform");
 #endif
 
 		if (result != .VK_SUCCESS)

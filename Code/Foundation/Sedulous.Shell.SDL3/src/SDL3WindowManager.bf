@@ -73,16 +73,18 @@ class SDL3WindowManager : IWindowManager
 
 	public Span<Screen> Screens => .(mScreens.Ptr, mScreens.Count);
 
-	/// Any number of windows; placed by the application, and the global pointer read, except
-	/// on Wayland, where a client does neither (the compositor places windows).
-	public WindowCapabilities Capabilities
+	/// What windows can do under the running video driver (CapabilitiesFor).
+	public WindowCapabilities Capabilities => CapabilitiesFor(StringView(SDL3.SDL_GetCurrentVideoDriver()));
+
+	/// What windows can do under SDL's video `driver` (its name, SDL_GetCurrentVideoDriver; empty
+	/// for none): any number, placed by the application and the global pointer read, except on
+	/// Wayland, where a client places nothing (the compositor does), and on Android, which gives an
+	/// app one window, the activity's, that the system sizes and places.
+	public static WindowCapabilities CapabilitiesFor(StringView driver)
 	{
-		get
-		{
-			let driver = StringView(SDL3.SDL_GetCurrentVideoDriver());
-			let wayland = (driver.Ptr != null) && (driver == "wayland");
-			return .(true, !wayland);
-		}
+		let wayland = (driver.Ptr != null) && (driver == "wayland");
+		let android = (driver.Ptr != null) && (driver == "android");
+		return .(!android, !wayland && !android);
 	}
 
 	/// Reads the screens again: at start, and when the pump sees a display event.
