@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Image;
@@ -273,5 +274,47 @@ class ScreenshotTests
 		if (WebGpuRhi.CreateBackend() case .Ok(let made))
 			webgpu = made;
 		ProbeOn(webgpu, "webgpu");
+	}
+
+	/// A pre-rotated backbuffer holds the window's picture turned; the screenshot turns it back. A
+	/// 3 by 2 picture, each pixel its own value, turned each way into the image and back is itself
+	/// again.
+	[Test]
+	public static void APreRotatedFramesPixelsAreTurnedBackToTheWindowsPicture()
+	{
+		const uint32 w = 3;
+		const uint32 h = 2;
+		let picture = scope List<uint8>();
+		picture.Resize((int)(w * h * 4));
+		for (uint32 i < w * h)
+		{
+			for (uint32 c < 4)
+				picture[(int)(i * 4 + c)] = (uint8)(i * 10 + c);
+		}
+		for (let turn in ContentRotation[3](.Quarter, .Half, .ThreeQuarter))
+		{
+			// Draw the picture turned into an image, as a pre-rotated frame is.
+			let swaps = ContentFit.TurnSwapsSides(turn);
+			let iw = swaps ? h : w;
+			let ih = swaps ? w : h;
+			let image = scope List<uint8>();
+			image.Resize((int)(iw * ih * 4));
+			for (uint32 y < h)
+			{
+				for (uint32 x < w)
+				{
+					let at = ContentFit.TurnPoint(.((float)x + 0.5f, (float)y + 0.5f), turn, .((float)w, (float)h));
+					let ix = (uint32)at.X;
+					let iy = (uint32)at.Y;
+					for (uint32 c < 4)
+						image[(int)((iy * iw + ix) * 4 + c)] = picture[(int)((y * w + x) * 4 + c)];
+				}
+			}
+			let back = scope List<uint8>();
+			ScreenshotCapture.TurnBack(.(image.Ptr, image.Count), iw, ih, turn, back);
+			Test.Assert(back.Count == picture.Count);
+			for (int i < back.Count)
+				Test.Assert(back[i] == picture[i], scope $"turn {turn}, byte {i}");
+		}
 	}
 }

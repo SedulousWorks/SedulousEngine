@@ -34,6 +34,8 @@ class ScreenshotCapture
 	private uint32 mHeight = 0;
 	private uint32 mBytesPerRow = 0;
 	private TextureFormat mFormat = .RGBA8Unorm;
+	/// The recorded frame's turn, undone on Complete.
+	private ContentRotation mPreRotation = .None;
 
 	/// A capture left recorded at destruction was never completed; the owning application
 	/// releases the buffer through Release(device) in its shutdown, since there is no device
@@ -84,10 +86,12 @@ class ScreenshotCapture
 	/// `originX` / `originY` capture a sub rectangle of that size from there: a letterboxed
 	/// game's image without its bars. The PNG is the captured pixels: a view drawn smaller than
 	/// its content's resolution is written at the size it was drawn (scaling it back up only
-	/// blurred it into something that looked like a font problem).
+	/// blurred it into something that looked like a font problem). `preRotation` is how the
+	/// backbuffer's content is turned from the window's picture (a pre-rotated swap chain's): the
+	/// PNG is turned back, the window as it shows.
 	public bool Record(IDevice device, ICommandEncoder encoder, ITexture backbuffer,
 		TextureFormat format, uint32 width, uint32 height, ResourceState state = .RenderTarget,
-		uint32 originX = 0, uint32 originY = 0)
+		uint32 originX = 0, uint32 originY = 0, ContentRotation preRotation = .None)
 	{
 		if (!mArmed)
 			return false;
@@ -137,6 +141,7 @@ class ScreenshotCapture
 		mHeight = height;
 		mBytesPerRow = bytesPerRow;
 		mFormat = format;
+		mPreRotation = preRotation;
 		mRecorded = true;
 		return true;
 	}
@@ -200,15 +205,45 @@ class ScreenshotCapture
 		UnpackRows(mapped, mBytesPerRow, mWidth, mHeight, mFormat, .(rgba.Ptr, rgba.Count));
 		mReadback.Unmap();
 
-		let width = mWidth;
-		let height = mHeight;
-		outImage.ReplaceData(width, height, .RGBA8, .(rgba.Ptr, rgba.Count));
+		var width = mWidth;
+		var height = mHeight;
+		var pixels = rgba;
+		if (mPreRotation != .None)
+		{
+			pixels = TurnBack(.(rgba.Ptr, rgba.Count), width, height, mPreRotation, .. scope:: List<uint8>());
+			if (ContentFit.TurnSwapsSides(mPreRotation))
+				Swap!(width, height);
+		}
+		outImage.ReplaceData(width, height, .RGBA8, .(pixels.Ptr, pixels.Count));
 		let saved = ImageIO.SaveImage(outImage, mPath, .PNG);
 		if (saved case .Err)
 			GlobalLog(.Error, scope $"Screenshot: could not write '{mPath}'");
 		else
 			GlobalLog(.Information, scope $"Screenshot: wrote '{mPath}' ({width}x{height})");
 		return saved;
+	}
+
+	/// RGBA8 pixels of a `width` x `height` image whose content is a picture turned by `turn`
+	/// (ContentFit.TurnPoint), turned back into `outPixels`: the picture as it was, its sides
+	/// swapped back on a quarter.
+	public static void TurnBack(Span<uint8> rgba, uint32 width, uint32 height, ContentRotation turn, List<uint8> outPixels)
+	{
+		let swaps = ContentFit.TurnSwapsSides(turn);
+		let outWidth = swaps ? height : width;
+		let outHeight = swaps ? width : height;
+		outPixels.Resize((int)outWidth * (int)outHeight * 4);
+		let picture = Float2((float)outWidth, (float)outHeight);
+		for (uint32 y < outHeight)
+		{
+			for (uint32 x < outWidth)
+			{
+				// The picture's pixel centre, where it was drawn in the turned image.
+				let at = ContentFit.TurnPoint(.((float)x + 0.5f, (float)y + 0.5f), turn, picture);
+				let sx = Math.Min((uint32)at.X, width - 1);
+				let sy = Math.Min((uint32)at.Y, height - 1);
+				Internal.MemCpy(&outPixels[((int)y * (int)outWidth + (int)x) * 4], &rgba[((int)sy * (int)width + (int)sx) * 4], 4);
+			}
+		}
 	}
 
 	/// Drops the readback buffer, for device teardown.
