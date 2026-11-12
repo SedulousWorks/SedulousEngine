@@ -74,6 +74,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: the MSAA resolve and TAA keep a bind group they replace until the frames in flight
+  that may use it have finished; they freed it at once, which Vulkan's validation reports as a
+  descriptor set freed while in use, at the start of a scene with MSAA.
 - Rendering: a Vulkan surface that offers RGBA formats and no BGRA ones (an Android phone's) gets an
   sRGB swapchain and its UNORM view; it got a UNORM one, which drew every game too dark.
 - Networking: a reliable message in a connection's first packet is resent when that packet is lost

@@ -19,6 +19,8 @@ class MsaaResolvePass
 {
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
+	/// BORROWED. Null: the GPU is idled before a replaced bind group is destroyed.
+	private GpuRetireQueue mRetire = null;
 
 	private IBindGroupLayout mLayout = null;
 	private IPipelineLayout mPipelineLayout = null;
@@ -41,6 +43,9 @@ class MsaaResolvePass
 	{
 		Shutdown();
 	}
+
+	/// The queue a replaced bind group is retired into, since a frame in flight may still use it.
+	public void SetRetireQueue(GpuRetireQueue retire) => mRetire = retire;
 
 	public Result<void> Initialize()
 	{
@@ -208,8 +213,7 @@ class MsaaResolvePass
 		let depth = inputs.Views[3];
 		if (let cached = mBindGroups.Find(depth, inputs, var stale))
 			return cached;
-		if (stale != null)
-			mDevice.DestroyBindGroup(ref stale);
+		BindGroups.Retire(mDevice, mRetire, ref stale); // a frame in flight may still use it
 
 		var entries = BindGroupEntry[5](
 			BindGroupEntry.TextureEntry(inputs.Views[0]),

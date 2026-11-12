@@ -44,6 +44,36 @@ class RenderResourceTests
 		Test.Assert(queue.PendingCount == 0);
 	}
 
+	/// A pass that replaces a cached bind group (its inputs changed) does not free it at once:
+	/// the previous frame's command buffer may still be executing with it.
+	[Test]
+	public static void AReplacedBindGroupOutlivesTheFramesInFlightThatMayUseIt()
+	{
+		let harness = scope Harness();
+		let queue = scope GpuRetireQueue();
+		queue.Initialize(harness.Device, 2);
+		var group = harness.Device.CreateBindGroup(.()).Value;
+
+		BindGroups.Retire(harness.Device, queue, ref group);
+		Test.Assert(group == null);
+		Test.Assert(queue.PendingCount == 1);
+		queue.Tick();
+		queue.Tick();
+		Test.Assert(queue.PendingCount == 1);
+		queue.Tick(); // the frames in flight, plus the margin frame
+		Test.Assert(queue.PendingCount == 0);
+	}
+
+	/// With no queue wired, the group goes once the GPU is idle.
+	[Test]
+	public static void WithNoQueueAReplacedBindGroupIsDestroyed()
+	{
+		let harness = scope Harness();
+		var group = harness.Device.CreateBindGroup(.()).Value;
+		BindGroups.Retire(harness.Device, null, ref group);
+		Test.Assert(group == null);
+	}
+
 	/// Nothing is not something to retire, which is what lets a caller retire an optional
 	/// resource without checking first.
 	[Test]

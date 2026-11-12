@@ -619,6 +619,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mTaaPass = new TaaPass(mDevice, mShaders);
 		if (mTaaPass.Initialize() case .Err)
 			DeleteAndNullify!(mTaaPass);
+		else
+			mTaaPass.SetRetireQueue(mRetireQueue);
 
 		mAoPass = new AoPass(mDevice, mShaders);
 		if (mAoPass.Initialize() case .Err)
@@ -637,6 +639,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mMsaaResolvePass = new MsaaResolvePass(mDevice, mShaders);
 		if (mMsaaResolvePass.Initialize() case .Err)
 			DeleteAndNullify!(mMsaaResolvePass);
+		else
+			mMsaaResolvePass.SetRetireQueue(mRetireQueue);
 
 		mMaxMsaaSamples = (mMsaaResolvePass != null) ? mDevice.MaxColorDepthSampleCount : 1;
 		GlobalLog(.Information, "RenderSubsystem: scene pass multisampling resolve={} ceiling={}x",

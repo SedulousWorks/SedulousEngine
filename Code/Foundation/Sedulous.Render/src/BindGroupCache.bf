@@ -69,6 +69,28 @@ struct BindGroupInputs<TCount> where TCount : const int
 	}
 }
 
+/// Disposing of a bind group its owner has replaced.
+static class BindGroups
+{
+	/// Disposes of `group`, which its owner has replaced (one a cache handed back as stale, say). A
+	/// frame still in flight may have recorded it, so it is retired into `retire` and freed once
+	/// every such frame has aged out; with no queue wired (a pass used on its own, as the backend
+	/// probes do), the GPU is idled first, as the queue's other consumers do.
+	public static void Retire(IDevice device, GpuRetireQueue retire, ref IBindGroup group)
+	{
+		if (group == null)
+			return;
+		if (retire != null)
+		{
+			retire.Retire(group);
+			group = null;
+			return;
+		}
+		device.WaitIdle();
+		device.DestroyBindGroup(ref group);
+	}
+}
+
 /// Bind groups keyed by the view that selects one (a history texture, an input stable per
 /// size), each remembering the inputs it was built from. A hit needs the key to be the same
 /// view (its unique id) and every input to match.
@@ -86,7 +108,8 @@ class BindGroupCache<TCount> where TCount : const int
 	private static int KeyOf(ITextureView key) => (int)(void*)Internal.UnsafeCastToPtr(key);
 
 	/// The group built for `key` from exactly `inputs`, or null. A group built for `key` from
-	/// anything else is forgotten and handed back in `stale` for the caller to destroy.
+	/// anything else is forgotten and handed back in `stale` for the caller to retire
+	/// (BindGroups.Retire: a frame in flight may still use it).
 	public IBindGroup Find(ITextureView key, BindGroupInputs<TCount> inputs, out IBindGroup stale)
 	{
 		stale = null;
