@@ -271,6 +271,46 @@ class GuiSubsystemTests
 		Test.Assert(engine.Gui.Fonts.GetDefaultFontFamily(.. scope String()) == "Heading", "the new service's");
 	}
 
+	/// A window drawn pre-rotated (a phone held landscape, its display presenting a quarter turn):
+	/// the screen is placed in the window's space, where the pointer is, and drawn onto the target
+	/// turned with the window, so it lands where the display shows it upright.
+	[Test]
+	public static void AScreenPlacedInTheWindowIsDrawnOntoAPreRotatedTargetTurnedWithIt()
+	{
+		let window = Float2(2400.0f, 1080.0f);
+		// A plain draw becomes the whole window, turned: the target is the window's sides swapped.
+		let plain = GuiSubsystem.PlaceScreen(.Zero, .Letterbox, .Any, window);
+		Test.Assert(!plain.Fitted);
+		let onTarget = GuiSubsystem.PlaceOnTarget(plain, window, .Quarter);
+		Test.Assert(onTarget.Fitted);
+		Test.Assert(onTarget.Turn == .Quarter);
+		Test.Assert(Near(onTarget.Rect.Width, 1080.0f) && Near(onTarget.Rect.Height, 2400.0f));
+		Test.Assert(Near(onTarget.DrawSize.X, 2400.0f) && Near(onTarget.DrawSize.Y, 1080.0f), "laid out as the window stands");
+		// The root's top-left lands at the target's top-right, its x running down the target.
+		Test.Assert(Near(onTarget.Transform.M[3][0], 1080.0f) && Near(onTarget.Transform.M[3][1], 0.0f));
+		Test.Assert(Near(onTarget.Transform.M[0][0], 0.0f) && Near(onTarget.Transform.M[0][1], 1.0f));
+
+		// A fitted screen inside a safe area keeps its place, turned with the window.
+		let safe = Rectangle(100.0f, 0.0f, 2300.0f, 1080.0f);
+		let fitted = GuiSubsystem.PlaceScreen(.(1920.0f, 1080.0f), .Letterbox, .Any, window, safe);
+		let turned = GuiSubsystem.PlaceOnTarget(fitted, window, .ThreeQuarter);
+		let expected = ContentFit.TurnRectangle(fitted.Rect, .ThreeQuarter, window);
+		Test.Assert(Near(turned.Rect.X, expected.X) && Near(turned.Rect.Y, expected.Y));
+		Test.Assert(Near(turned.Rect.Width, expected.Width) && Near(turned.Rect.Height, expected.Height));
+		Test.Assert(Near(turned.DpiScale, fitted.DpiScale));
+
+		// A landscape game turned for a window held upright, on a display turned the other way: the
+		// turns cancel, and nothing is turned on the target.
+		let upright = Float2(1080.0f, 2400.0f);
+		let own = GuiSubsystem.PlaceScreen(.Zero, .Letterbox, .Landscape, upright);
+		Test.Assert(own.Turn == .ThreeQuarter);
+		Test.Assert(GuiSubsystem.PlaceOnTarget(own, upright, .Quarter).Turn == .None);
+
+		// Nothing turned: the placement as it was.
+		let same = GuiSubsystem.PlaceOnTarget(fitted, window, .None);
+		Test.Assert(Near(same.Rect.X, fitted.Rect.X) && (same.Turn == fitted.Turn));
+	}
+
 	[Test]
 	public static void TheScreenIsPlacedAsTheGamesImageIsFittedAtItsResolutionTurnedForItsOrientation()
 	{

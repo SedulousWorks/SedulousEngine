@@ -21,6 +21,9 @@ interface IScreenRenderer
 	/// `encodedTarget`, when given, is a UNORM view of the same sRGB texture: the pass draws
 	/// through it and the overlays blend encoded values (ScreenOverlayView.EncodedTarget).
 	/// `safeArea` is the window's safe area (ScreenOverlayView.SafeArea), empty for all of it.
+	/// `preRotation` is how the target's content is turned from the window's picture
+	/// (ScreenOverlayView.PreRotation); `width` and `height` stay the target's.
 	void RenderOverlays(ICommandEncoder encoder, ITextureView target, TextureFormat targetFormat,
-		uint32 width, uint32 height, uint32 frameIndex, ITextureView encodedTarget = null, Rectangle safeArea = .());
+		uint32 width, uint32 height, uint32 frameIndex, ITextureView encodedTarget = null, Rectangle safeArea = .(),
+		ContentRotation preRotation = .None);
 }

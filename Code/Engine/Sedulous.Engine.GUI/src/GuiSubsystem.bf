@@ -320,21 +320,50 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		place.DrawSize = swaps ? Float2(place.Rect.Height, place.Rect.Width) : Float2(place.Rect.Width, place.Rect.Height);
 		let scale = placed.Scale().Y; // layout units per target pixel, down the game's height
 		place.DpiScale = (scale > 0.0f) ? (1.0f / scale) : 1.0f;
-		if (turn != .None)
-		{
-			// The root's pixels onto the rectangle's, turned as the game's image is: the image of
-			// the origin and of each axis through the same fit, as a row-vector affine.
-			let turned = ContentFit(.(0, 0, place.Rect.Width, place.Rect.Height), place.DrawSize, .Stretch, turn);
-			let origin = turned.FromContent(.(0, 0));
-			let xAxis = turned.FromContent(.(1, 0));
-			let yAxis = turned.FromContent(.(0, 1));
-			place.Transform = Float4x4(
-				xAxis.X - origin.X, xAxis.Y - origin.Y, 0, 0,
-				yAxis.X - origin.X, yAxis.Y - origin.Y, 0, 0,
-				0, 0, 1, 0,
-				origin.X, origin.Y, 0, 1);
-		}
+		// The root's pixels onto the rectangle's, turned as the game's image is.
+		place.Transform = TurnedRootTransform(.(place.Rect.Width, place.Rect.Height), place.DrawSize, turn);
 		return place;
+	}
+
+	/// The placement PlaceScreen made in a `window`'s space, onto a target the window draws
+	/// pre-rotated into (`preRotation`, ScreenOverlayView.PreRotation): its rectangle turned onto
+	/// the target and its turn added to, so the screens land where the display shows them upright;
+	/// a plain draw becomes the whole window turned. Unchanged when nothing is turned.
+	public static GuiScreenPlacement PlaceOnTarget(GuiScreenPlacement place, Float2 window, ContentRotation preRotation)
+	{
+		if ((preRotation == .None) || (window.X <= 0.0f) || (window.Y <= 0.0f))
+			return place;
+		var turned = place;
+		// A plain draw covers the whole window at its own size.
+		if (!turned.Fitted)
+		{
+			turned.Fitted = true;
+			turned.Rect = .(0, 0, window.X, window.Y);
+			turned.DrawSize = window;
+			turned.DpiScale = 1.0f;
+		}
+		turned.Rect = ContentFit.TurnRectangle(turned.Rect, preRotation, window);
+		turned.Turn = ContentFit.AddTurns(turned.Turn, preRotation);
+		turned.Transform = TurnedRootTransform(.(turned.Rect.Width, turned.Rect.Height), turned.DrawSize, turned.Turn);
+		return turned;
+	}
+
+	/// The affine (row-vector form) that maps a root of `drawSize` onto a rectangle of `rectSize`
+	/// turned by `turn`: the image of the origin and of each axis through a stretch fit with that
+	/// turn. The identity when nothing is turned.
+	private static Float4x4 TurnedRootTransform(Float2 rectSize, Float2 drawSize, ContentRotation turn)
+	{
+		if (turn == .None)
+			return .Identity();
+		let turned = ContentFit(.(0, 0, rectSize.X, rectSize.Y), drawSize, .Stretch, turn);
+		let origin = turned.FromContent(.(0, 0));
+		let xAxis = turned.FromContent(.(1, 0));
+		let yAxis = turned.FromContent(.(0, 1));
+		return Float4x4(
+			xAxis.X - origin.X, xAxis.Y - origin.Y, 0, 0,
+			yAxis.X - origin.X, yAxis.Y - origin.Y, 0, 0,
+			0, 0, 1, 0,
+			origin.X, origin.Y, 0, 1);
 	}
 
 	private static void ApplyResolution(GuiScreenTier tier, uint32 width, uint32 height, FitMode fit)

@@ -139,20 +139,24 @@ extension GuiSubsystem : ISceneOverlay, IScreenOverlay
 			&& (a.DepthStencilFormat == b.DepthStencilFormat) && (a.FrameIndex == b.FrameIndex)
 			&& (a.EncodedTarget == b.EncodedTarget)
 			&& (a.SafeArea.X == b.SafeArea.X) && (a.SafeArea.Y == b.SafeArea.Y)
-			&& (a.SafeArea.Width == b.SafeArea.Width) && (a.SafeArea.Height == b.SafeArea.Height);
+			&& (a.SafeArea.Width == b.SafeArea.Width) && (a.SafeArea.Height == b.SafeArea.Height)
+			&& (a.PreRotation == b.PreRotation);
 
 	/// A screen tier placed on `view`'s target and recorded (its layers on `encoder` when given,
 	/// else drawn in place): laid out at the game's resolution over its scale and drawn into the
 	/// fitted rectangle, turned with the game's image, or at the target's own size over all of it.
+	/// It is placed in the window's space, where the pointer is, then drawn onto the target turned
+	/// with it when the window draws pre-rotated.
 	private GuiPassRenderer.Prepared PrepareScreenTier(GuiScreenTier tier, ScreenOverlayView view, ICommandEncoder encoder)
 	{
-		let target = Float2((float)view.Width, (float)view.Height);
-		tier.TargetSize = target;
+		let window = view.WindowSize;
+		tier.TargetSize = window;
 		tier.Area = view.SafeArea;
-		let place = PlaceScreen(tier.Resolution, tier.Fit, tier.Orientation, target, view.SafeArea);
-		tier.Turn = place.Turn;
+		let inWindow = PlaceScreen(tier.Resolution, tier.Fit, tier.Orientation, window, view.SafeArea);
+		tier.Turn = inWindow.Turn;
+		let place = PlaceOnTarget(inWindow, window, view.PreRotation);
 		var pass = ScreenPass(view);
-		var size = target;
+		var size = window;
 		var scale = 1.0f;
 		if (place.Fitted)
 		{
