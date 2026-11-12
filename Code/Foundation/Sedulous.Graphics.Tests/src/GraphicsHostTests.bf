@@ -300,4 +300,51 @@ class GraphicsHostTests
 		Test.Assert(images == 3, "every frame takes an image");
 		Test.Assert((fences >= 1) && (fences <= 3), "a slot used before waits its fence");
 	}
+
+	/// A window that asks to pre-rotate, on a display that presents turned (a phone held
+	/// landscape): the frame is the backbuffer, the window's size turned, and says the turn and the
+	/// window's own size; the window is not made again for its backbuffer not matching its size.
+	/// One that does not ask draws as the window stands.
+	[Test]
+	public static void APreRotatedWindowsFrameSaysItsTurnAndTheWindowsSize()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let device));
+		defer delete device;
+		NullGraphics.SetDisplayTurn(device, .Quarter);
+		(shell.MainWindow as NullWindow).Resize(2400, 1080);
+
+		var desc = RenderWindowDesc();
+		desc.PreRotate = true;
+		Test.Assert(device.CreateRenderWindow(shell.MainWindow, desc) case .Ok(let window));
+		defer delete window;
+		Test.Assert(!window.SyncSize(), "the window's size is what it was made at, turned or not");
+
+		var frame = window.BeginFrame();
+		Test.Assert(frame.Valid);
+		Test.Assert(frame.PreRotation == .Quarter);
+		Test.Assert((frame.Width == 1080) && (frame.Height == 2400));
+		Test.Assert((frame.WindowWidth == 2400) && (frame.WindowHeight == 1080));
+		window.EndFrame(ref frame);
+		device.AdvanceFrame();
+
+		// Turned upright: made again at the window's new size, still turned for the display.
+		(shell.MainWindow as NullWindow).Resize(1080, 2400);
+		Test.Assert(window.SyncSize());
+		var upright = window.BeginFrame();
+		Test.Assert(upright.Valid);
+		Test.Assert((upright.Width == 2400) && (upright.WindowWidth == 1080));
+		window.EndFrame(ref upright);
+		device.AdvanceFrame();
+
+		// A window that does not ask: drawn as it stands.
+		Test.Assert(device.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let plainWindow));
+		defer delete plainWindow;
+		var plain = plainWindow.BeginFrame();
+		Test.Assert(plain.Valid);
+		Test.Assert(plain.PreRotation == .None);
+		Test.Assert(plain.Width == plain.WindowWidth);
+		plainWindow.EndFrame(ref plain);
+		device.AdvanceFrame();
+	}
 }

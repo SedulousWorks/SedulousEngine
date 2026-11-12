@@ -203,6 +203,10 @@ class RenderWindow
 		frame.FrameIndex = frameIndex;
 		frame.Width = mSwapChain.Width;
 		frame.Height = mSwapChain.Height;
+		frame.PreRotation = mSwapChain.PreRotation;
+		let swaps = ContentFit.TurnSwapsSides(frame.PreRotation);
+		frame.WindowWidth = swaps ? frame.Height : frame.Width;
+		frame.WindowHeight = swaps ? frame.Width : frame.Height;
 		frame.Encoder = encoder;
 		frame.Pool = mPools[(int)frameIndex];
 		frame.Backbuffer = mSwapChain.CurrentTexture;

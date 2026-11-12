@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.RHI;
 
 namespace Sedulous.Graphics;
@@ -27,6 +28,14 @@ struct FrameContext
 	/// whole command buffer rather than the one call.
 	public uint32 Width = 0;
 	public uint32 Height = 0;
+
+	/// How the backbuffer's content is turned from the window's picture, clockwise (the window's
+	/// RenderWindowDesc.PreRotate on a display that presents turned; else None), and the window's
+	/// own size: the backbuffer's with its sides swapped on a quarter turn. The window's picture
+	/// lands in the backbuffer at ContentFit.TurnPoint(point, PreRotation, window).
+	public ContentRotation PreRotation = .None;
+	public uint32 WindowWidth = 0;
+	public uint32 WindowHeight = 0;
 
 	/// The primary encoder, created by the host and already open.
 	public ICommandEncoder Encoder = null;

@@ -18,4 +18,12 @@ static class NullGraphics
 		// Nothing wraps it, so the backend and the inner backend are the same object.
 		return GraphicsDevice.FromBackend(backend, backend, framesInFlight);
 	}
+
+	/// For a test: the turn a null graphics device's display presents at, as a phone's surface
+	/// reports one held away from its natural orientation. A window that asks to pre-rotate
+	/// (RenderWindowDesc.PreRotate) and is made after this takes it.
+	public static void SetDisplayTurn(GraphicsDevice device, ContentRotation turn)
+	{
+		(device.Raw as NullDevice).DisplayTurn = turn;
+	}
 }
