@@ -37,6 +37,9 @@ class VulkanSwapChain : ISwapChain
 	/// VK_KHR_swapchain_mutable_format is enabled on the device.
 	private bool mMutableFormat = false;
 	private TextureFormat mRequestedAlternate = .Undefined;
+	/// The format first asked for: a rebuild asks it again, so it negotiates as the first did and
+	/// the alternate view asked as its twin follows (the format negotiated may be another).
+	private TextureFormat mRequestedFormat = .Undefined;
 	private TextureFormat mAlternate = .Undefined;
 	private List<VkSemaphore> mAcquireSemaphores = new List<VkSemaphore>() ~ delete _;
 	private List<VkSemaphore> mPresentSemaphores = new List<VkSemaphore>() ~ delete _;
@@ -68,6 +71,7 @@ class VulkanSwapChain : ISwapChain
 		mPresentMode = desc.PresentMode;
 		mMutableFormat = mutableFormat;
 		mRequestedAlternate = desc.AlternateViewFormat;
+		mRequestedFormat = desc.Format;
 		mPreRotate = desc.PreRotate;
 		return Create(desc.Width, desc.Height, desc.Format, desc.BufferCount, .Null);
 	}
@@ -194,7 +198,7 @@ class VulkanSwapChain : ISwapChain
 		DestroySyncObjects();
 		// The old chain is passed in rather than destroyed first, which lets the driver
 		// reuse its images, and Create destroys it once the new one exists.
-		return Create(width, height, mFormat, mBufferCount, mSwapChain);
+		return Create(width, height, mRequestedFormat, mBufferCount, mSwapChain);
 	}
 
 	public void Cleanup()
@@ -319,15 +323,15 @@ class VulkanSwapChain : ISwapChain
 		createInfo.oldSwapchain = old;
 
 		// The images viewable in their sRGB or UNORM twin too, when asked and the device can.
-		mAlternate = (mMutableFormat && (mRequestedAlternate != .Undefined)
-			&& (mRequestedAlternate == TextureFormats.SrgbTwin(mFormat))) ? mRequestedAlternate : .Undefined;
+		mAlternate = mMutableFormat ? AlternateViewFor(requestedFormat, mRequestedAlternate, mFormat) : .Undefined;
 		if (mRequestedAlternate != .Undefined)
 		{
-			Console.WriteLine("[RHI] swapchain alternate view format {}: {}",
+			Console.WriteLine("[RHI] swapchain alternate view format {}: {}{}",
 				VkFormatName(VulkanConversions.ToVkFormat(mRequestedAlternate)),
-				(mAlternate != .Undefined) ? "honoured"
+				(mAlternate != .Undefined) ? "honoured as "
 				: (mMutableFormat ? "not the swapchain format's sRGB or UNORM twin"
-				: "unavailable (no VK_KHR_swapchain_mutable_format)"));
+				: "unavailable (no VK_KHR_swapchain_mutable_format)"),
+				(mAlternate != .Undefined) ? VkFormatName(VulkanConversions.ToVkFormat(mAlternate)) : "");
 		}
 		VkFormat[2] viewFormats = .(surfaceFormat.format, VulkanConversions.ToVkFormat(mAlternate));
 		VkImageFormatListCreateInfo formatList = .();
@@ -352,8 +356,7 @@ class VulkanSwapChain : ISwapChain
 		return .Ok;
 	}
 
-	/// The exact format if the surface offers it, then sRGB BGRA, then plain BGRA, then
-	/// whatever came first.
+	/// What the surface offers, chosen from for `requested`.
 	private VkSurfaceFormatKHR ChooseSurfaceFormat(TextureFormat requested)
 	{
 		uint32 count = 0;
@@ -365,19 +368,54 @@ class VulkanSwapChain : ISwapChain
 		let formats = scope VkSurfaceFormatKHR[count];
 		VulkanNative.vkGetPhysicalDeviceSurfaceFormatsKHR(mPhysicalDevice, mSurface, &count,
 			&formats[0]);
+		return ChooseSurfaceFormat(.(&formats[0], (int)count), VulkanConversions.ToVkFormat(requested));
+	}
 
-		let desired = VulkanConversions.ToVkFormat(requested);
-		for (let format in formats)
+	/// The surface format a swapchain asked for `desired` takes from what the surface offers: the
+	/// format itself; else an 8-bit sRGB format in the sRGB colour space, in either channel order
+	/// (a desktop's surface offers BGRA, an Android phone's RGBA only); else an 8-bit UNORM one;
+	/// else the first offered.
+	public static VkSurfaceFormatKHR ChooseSurfaceFormat(Span<VkSurfaceFormatKHR> offered, VkFormat desired)
+	{
+		if (offered.IsEmpty)
+		{
+			VkSurfaceFormatKHR asked = .();
+			asked.format = desired;
+			asked.colorSpace = .VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+			return asked;
+		}
+		for (let format in offered)
 			if (format.format == desired)
 				return format;
-		for (let format in formats)
-			if ((format.format == .VK_FORMAT_B8G8R8A8_SRGB)
-				&& (format.colorSpace == .VK_COLOR_SPACE_SRGB_NONLINEAR_KHR))
-				return format;
-		for (let format in formats)
-			if (format.format == .VK_FORMAT_B8G8R8A8_UNORM)
-				return format;
-		return formats[0];
+		for (let wanted in VkFormat[2](.VK_FORMAT_B8G8R8A8_SRGB, .VK_FORMAT_R8G8B8A8_SRGB))
+		{
+			for (let format in offered)
+				if ((format.format == wanted) && (format.colorSpace == .VK_COLOR_SPACE_SRGB_NONLINEAR_KHR))
+					return format;
+		}
+		for (let wanted in VkFormat[2](.VK_FORMAT_B8G8R8A8_UNORM, .VK_FORMAT_R8G8B8A8_UNORM))
+		{
+			for (let format in offered)
+				if (format.format == wanted)
+					return format;
+		}
+		return offered[0];
+	}
+
+	/// The alternate view a swapchain of `negotiated` images honours, asked for
+	/// `requestedAlternate` with `requested` images: the one asked when it is the negotiated
+	/// format's sRGB or UNORM twin; asked as the twin of the format requested, the twin of the one
+	/// negotiated (the surface had RGBA where BGRA was asked); else none.
+	public static TextureFormat AlternateViewFor(TextureFormat requested, TextureFormat requestedAlternate,
+		TextureFormat negotiated)
+	{
+		if (requestedAlternate == .Undefined)
+			return .Undefined;
+		if (requestedAlternate == TextureFormats.SrgbTwin(negotiated))
+			return requestedAlternate;
+		if (requestedAlternate == TextureFormats.SrgbTwin(requested))
+			return TextureFormats.SrgbTwin(negotiated);
+		return .Undefined;
 	}
 
 	/// The requested mode where the surface has it, otherwise the closest mode with the same

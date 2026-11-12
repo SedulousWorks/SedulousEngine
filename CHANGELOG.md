@@ -74,6 +74,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: a Vulkan surface that offers RGBA formats and no BGRA ones (an Android phone's) gets an
+  sRGB swapchain and its UNORM view; it got a UNORM one, which drew every game too dark.
 - Networking: a reliable message in a connection's first packet is resent when that packet is lost
   (it was dropped for good); a client can connect again from the same address, after a disconnect
   or a restart; sequenced messages are dropped when stale, never delivered out of order. Finding
