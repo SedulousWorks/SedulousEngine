@@ -328,15 +328,48 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 	public SsrParams* SsrParams => &mSsrParams;
 
-	/// The scene pass sample count for the global path, clamped per view against the device.
+	/// The scene pass sample count for every view (a project's setting, a sample's toggle),
+	/// clamped per view against the device. It leaves the scene's authored post settings in
+	/// effect: a count is not a post look, so it does not take the global override with it.
 	public uint32 MsaaSamples
 	{
 		get => mGlobalMsaaSamples;
-		set
+		set => mGlobalMsaaSamples = (value < 1) ? 1 : value;
+	}
+
+	/// The post processing a view of `scene` gets: the global override once one of its setters
+	/// was called, else the scene's authored settings (or its profile's); either way with the
+	/// scene pass sample count MsaaSamples gave.
+	public ViewPostConfig ViewPost(Scene scene)
+	{
+		var post = ViewPostConfig();
+		if (mGlobalPostActive)
 		{
-			mGlobalMsaaSamples = (value < 1) ? 1 : value;
-			mGlobalPostActive = true;
+			post.Exposure = mExposure;
+			// The legacy global API has no operator toggle.
+			post.AgxTonemap = true;
+			post.BloomEnabled = mBloomEnabled;
+			post.BloomThreshold = mBloomThreshold;
+			post.BloomKnee = mBloomKnee;
+			post.BloomIntensity = mBloomIntensity;
+			post.AoMode = (uint32)mAoMode;
+			post.AoStrength = mAoStrength;
+			post.AoRadius = mAoRadius;
+			post.AoIntensity = mAoIntensity;
+			post.TaaEnabled = mTaaEnabled;
+			post.TaaBlend = mTaaBlend;
+			post.TaaGamma = mTaaGamma;
+			post.FxaaEnabled = mFxaaEnabled;
+			post.FxaaSubpixel = mFxaaSubpixel;
+			post.SsrEnabled = mSsrEnabled;
+			post.SsrIntensity = mSsrParams.Intensity;
 		}
+		else if (let system = scene.GetSystem<PostProcessSystem>())
+		{
+			post = ScenePost.Resolve(*system.Effective); // the scene's, or its profile's
+		}
+		post.MsaaSamples = (uint8)mGlobalMsaaSamples;
+		return post;
 	}
 
 	/// Whether this EXACT count is usable on the active device.
@@ -959,36 +992,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		settings.TargetCurrentState = targetState.CurrentState;
 		settings.TargetFinalState = targetState.FinalState;
 
-		// This view's post processing. The programmatic global override, which is a sample's
-		// debug panel, wins once touched; otherwise the scene's authored settings drive, with
-		// the exposure authored in stops resolved to the tonemap's linear multiplier. The
-		// antialiasing and reflection settings stay frame global.
-		if (mGlobalPostActive)
-		{
-			settings.Post.Exposure = mExposure;
-			// The legacy global API has no operator toggle.
-			settings.Post.AgxTonemap = true;
-			settings.Post.BloomEnabled = mBloomEnabled;
-			settings.Post.BloomThreshold = mBloomThreshold;
-			settings.Post.BloomKnee = mBloomKnee;
-			settings.Post.BloomIntensity = mBloomIntensity;
-			settings.Post.AoMode = (uint32)mAoMode;
-			settings.Post.AoStrength = mAoStrength;
-			settings.Post.AoRadius = mAoRadius;
-			settings.Post.AoIntensity = mAoIntensity;
-			settings.Post.TaaEnabled = mTaaEnabled;
-			settings.Post.TaaBlend = mTaaBlend;
-			settings.Post.TaaGamma = mTaaGamma;
-			settings.Post.FxaaEnabled = mFxaaEnabled;
-			settings.Post.FxaaSubpixel = mFxaaSubpixel;
-			settings.Post.SsrEnabled = mSsrEnabled;
-			settings.Post.SsrIntensity = mSsrParams.Intensity;
-			settings.Post.MsaaSamples = (uint8)mGlobalMsaaSamples;
-		}
-		else if (let post = scene.GetSystem<PostProcessSystem>())
-		{
-			settings.Post = ScenePost.Resolve(*post.Effective); // the scene's, or its profile's
-		}
+		// This view's post processing: a sample's debug panel override once touched, else the
+		// scene's authored settings (the exposure authored in stops resolved to the tonemap's
+		// linear multiplier), with the host's scene pass sample count either way.
+		settings.Post = ViewPost(scene);
 
 		// An editor viewport's show flags: ephemeral per view overrides that strip effects for
 		// editing clarity, layered ON TOP of the resolved settings and never written back.
