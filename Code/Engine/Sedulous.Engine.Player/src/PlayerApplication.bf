@@ -8,6 +8,7 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Engine.Audio;
+using Sedulous.Graphics; // RenderWindowDesc: the main window drawn pre-rotated
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.GUI;
@@ -93,6 +94,20 @@ class PlayerApplication : DefaultApplication
 	private SerializerFactory MakeXmlFactory() => mXmlFactory;
 
 	// ==================== startup ====================
+
+	/// The player draws everything through the frame's turn (the scene through its fit, its screens
+	/// through the overlay view), so on a display that presents turned (a phone held away from its
+	/// natural orientation) it draws pre-rotated and the display has no turning to do. A desktop's
+	/// display presents as the window stands, and nothing changes there.
+	public override RenderWindowDesc MainRenderWindow
+	{
+		get
+		{
+			var desc = RenderWindowDesc();
+			desc.PreRotate = true;
+			return desc;
+		}
+	}
 
 	public override void OnStartup(IApplicationHost host)
 	{

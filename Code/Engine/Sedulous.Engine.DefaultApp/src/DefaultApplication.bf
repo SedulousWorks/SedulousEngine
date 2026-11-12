@@ -781,7 +781,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 
 		let recorded = mScreenshot.Record(graphics.Raw, frame.Encoder, frame.Backbuffer,
-			frame.Window.Swap.Format, frame.Width, frame.Height);
+			frame.Window.Swap.Format, frame.Width, frame.Height, .RenderTarget, 0, 0, frame.PreRotation);
 		if (!recorded && mScreenshotExitPending)
 			host.RequestExit(1); // asked for a file that cannot be produced: the exit code says so
 	}
@@ -887,12 +887,14 @@ class DefaultApplication : IApplication, ISceneObserver
 		FinishFrame(host, ref frame);
 	}
 
-	/// One scene into the backbuffer's safe area: at its size, or at the render resolution
-	/// fitted into it, and turned a quarter when the game's orientation is not the area's
-	/// shape (a landscape game on a phone held upright draws at the area's pixels, turned).
-	/// The pointer's fit follows the window as it resizes and turns.
+	/// One scene into the window's safe area: at its size, or at the render resolution fitted
+	/// into it, and turned a quarter when the game's orientation is not the area's shape (a
+	/// landscape game on a phone held upright draws at the area's pixels, turned). The pointer's
+	/// fit follows the window as it resizes and turns. All of it is in the `window`'s space; a
+	/// frame drawn pre-rotated (`preRotation`) takes it turned onto the backbuffer, `width` x
+	/// `height`.
 	private void RenderInstanceScene(RenderSubsystem render, Scene scene, ITextureView target,
-		uint32 width, uint32 height, TextureFormat colorFormat, Rectangle safe)
+		uint32 width, uint32 height, TextureFormat colorFormat, Rectangle safe, Float2 window, ContentRotation preRotation)
 	{
 		let turn = ContentFit.TurnFor(mOrientation, safe.Width, safe.Height);
 		let turned = turn != .None;
@@ -901,16 +903,20 @@ class DefaultApplication : IApplication, ISceneObserver
 		let fit = ContentFit(safe, content, HasRenderResolution ? mRenderFit : .Stretch, turn);
 		if (mFittedInput != null)
 			mFittedInput.Fit = fit;
-		if (!HasRenderResolution && !turned && !mInset)
+		if (!HasRenderResolution && !turned && !mInset && (preRotation == .None))
 		{
 			render.RenderScene(scene, target, colorFormat, width, height);
 			return;
 		}
-		let dst = fit.DstRect();
+		// Drawn into the backbuffer: the window's fit, turned with the window when the frame is
+		// pre-rotated (its region turned onto the backbuffer, its turn added to).
+		let drawn = ContentFit(ContentFit.TurnRectangle(fit.Region, preRotation, window), fit.ContentSize, fit.Mode,
+			ContentFit.AddTurns(fit.Rotation, preRotation));
+		let dst = drawn.DstRect();
 		let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f),
 			(uint32)Math.Max(dst.Height, 1.0f));
 		render.RenderScene(scene, target, colorFormat, width, height, viewport, null, .(), null,
-			null, null, SceneSize.FromFit(fit));
+			null, null, SceneSize.FromFit(drawn));
 	}
 
 	/// Every non headless instance's scenes and the window space overlays, into the
@@ -935,10 +941,14 @@ class DefaultApplication : IApplication, ISceneObserver
 		if (mGui != null)
 			mGui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // its canvases' and panels' textures
 
-		// The part of the frame nothing of the system covers (a phone's status bar, its camera's
-		// cutout): the game's frame, its screens and its pointer keep inside it.
-		let frameW = (float)frame.Width;
-		let frameH = (float)frame.Height;
+		// The part of the window nothing of the system covers (a phone's status bar, its camera's
+		// cutout): the game's frame, its screens and its pointer keep inside it. All of it is in the
+		// window's space, where the pointer is; a frame drawn pre-rotated (a phone's display that
+		// presents turned) takes the window's picture turned into the backbuffer.
+		let preRotation = frame.PreRotation;
+		let frameW = (float)((frame.WindowWidth != 0) ? frame.WindowWidth : frame.Width);
+		let frameH = (float)((frame.WindowHeight != 0) ? frame.WindowHeight : frame.Height);
+		let window = Float2(frameW, frameH);
 		var safe = frame.Window.Window.SafeArea;
 		safe.X = Math.Clamp(safe.X, 0.0f, frameW);
 		safe.Y = Math.Clamp(safe.Y, 0.0f, frameH);
@@ -962,7 +972,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 				for (let scene in instance.Scenes.ActiveScenes)
 					RenderInstanceScene(render, scene, frame.BackbufferView, frame.Width, frame.Height,
-						colorFormat, safe);
+						colorFormat, safe, window, preRotation);
 			});
 
 		// The scene tier's overlays draw inside the compose.
@@ -977,7 +987,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// and the scene's write can land after the overlays', dropping the UI from a frame.
 		frame.Encoder.TransitionTexture(frame.Backbuffer, .RenderTarget, .RenderTarget);
 		render.RenderOverlays(frame.Encoder, frame.BackbufferView, colorFormat, frame.Width,
-			frame.Height, frame.FrameIndex, frame.BackbufferAlternateView, safe);
+			frame.Height, frame.FrameIndex, frame.BackbufferAlternateView, safe, preRotation);
 	}
 
 	/// Going to the background, each run writes what its game saved: the platform may end the app

@@ -9,6 +9,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Rendering: the player draws its frame turned for a display that presents turned (a phone held
+  away from its natural orientation), so the display has nothing to turn (pre-rotation); its scene,
+  its screens and a screenshot follow the turn, and the pointer is unchanged. A window asks for it
+  (`RenderWindowDesc.PreRotate`); the samples and the editor do not.
 - Editor: Preferences' templates folder has a Browse button, which picks the folder with the
   system's folder dialog.
 - Scripts: `scene.Animation.PlayOneShot(entity, clip)` plays a clip once over whatever an entity
