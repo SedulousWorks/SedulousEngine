@@ -67,8 +67,10 @@ class SettingFieldsTests
 				Test.Assert(category == "UI");
 			if (field.Name == "GuiLoadingDocumentId")
 				Test.Assert(category == "Startup");
+			if ((field.Name == "QualityLevelIds") || (field.Name == "DefaultQualityId"))
+				Test.Assert(category == "Quality");
 		}
-		Test.Assert(order == "General,Startup,Audio,UI,Display", order);
+		Test.Assert(order == "General,Startup,Audio,UI,Display,Quality", order);
 
 		Test.Assert(SettingFields.cDefaultCategory == "General");
 		var probed = false;
@@ -95,7 +97,7 @@ class SettingFieldsTests
 			SettingFields.Key(field, keys);
 		}
 		// The engine stamp and the path mirrors are not settings.
-		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,startupScriptId,defaultUiFontId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId", keys);
+		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,startupScriptId,defaultUiFontId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -115,6 +117,8 @@ class SettingFieldsTests
 		Test.Assert(Kind("UiFontIds") == .AssetList);
 		Test.Assert(Kind("GuiStyleSheetIds") == .AssetList);
 		Test.Assert(Kind("GuiLoadingDocumentId") == .Asset);
+		Test.Assert(Kind("QualityLevelIds") == .AssetList);
+		Test.Assert(Kind("DefaultQualityId") == .Asset);
 		Test.Assert(Kind("RenderMsaaSamples") == .Count);
 		Test.Assert(Kind("RenderFit") == .Choice);
 		Test.Assert(Kind("WindowResizable") == .Flag);

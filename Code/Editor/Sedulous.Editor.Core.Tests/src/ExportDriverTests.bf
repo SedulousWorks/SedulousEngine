@@ -292,6 +292,23 @@ static class ExportDriverTests
 		Test.Assert((roots[2].Id == fx.ReferencedMeshId) && (roots[2].Reason == .ManifestDefault), "the GUI's loading screen");
 	}
 
+	/// The quality levels are the manifest's: no scene names them, so a pruned export keeps them
+	/// as seeds, the default once.
+	[Test]
+	public static void CollectExportRootsSeedsTheQualityLevels()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_quality_roots");
+		fx.Project.Settings.QualityLevelIds.Add(fx.UnreferencedMeshId);
+		fx.Project.Settings.QualityLevelIds.Add(fx.ReferencedMeshId);
+		fx.Project.Settings.DefaultQualityId = fx.ReferencedMeshId;
+		let roots = scope List<ExportRoot>();
+		defer { ClearAndDeleteItems(roots); }
+		ExportDriver.CollectExportRoots(fx.Project, roots);
+		Test.Assert(roots.Count == 3, scope $"{roots.Count} roots");
+		Test.Assert((roots[1].Id == fx.UnreferencedMeshId) && (roots[1].Reason == .ManifestDefault), "the first level");
+		Test.Assert((roots[2].Id == fx.ReferencedMeshId) && (roots[2].Reason == .ManifestDefault), "the second, the default not again");
+	}
+
 	[Test]
 	public static void VariantsForPlatformDesktopSinglePakWebBcAndAstcSiblings()
 	{
@@ -774,13 +791,13 @@ static class ExportDriverTests
 		}
 
 		let preset = scope ExportPreset();
-		Test.Assert(ExportDriver.ApplyPresetDisplay(dir, preset) case .Ok, "overriding nothing changes nothing");
+		Test.Assert(ExportDriver.ApplyPresetOverrides(dir, preset) case .Ok, "overriding nothing changes nothing");
 		preset.OverridesRender = true;
 		preset.RenderWidth = 1280;
 		preset.RenderHeight = 800;
 		preset.RenderFit = .Crop;
 		preset.WindowMode = .Fullscreen; // not overridden, so not applied
-		Test.Assert(ExportDriver.ApplyPresetDisplay(dir, preset) case .Ok);
+		Test.Assert(ExportDriver.ApplyPresetOverrides(dir, preset) case .Ok);
 
 		let dist = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(scope NativeFileSystem(dir), dist, ProjectLayout.DistManifestFile) case .Ok);
@@ -792,11 +809,85 @@ static class ExportDriverTests
 		preset.OverridesRender = false;
 		preset.OverridesOrientation = true;
 		preset.Orientation = .Landscape;
-		Test.Assert(ExportDriver.ApplyPresetDisplay(dir, preset) case .Ok);
+		Test.Assert(ExportDriver.ApplyPresetOverrides(dir, preset) case .Ok);
 		let turned = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(scope NativeFileSystem(dir), turned, ProjectLayout.DistManifestFile) case .Ok);
 		Test.Assert(turned.Orientation == .Landscape, "the preset's orientation");
 		Test.Assert(turned.RenderHeight == 800, "the render size applied before stays");
+	}
+
+	/// A preset's quality level becomes the dist's default, the level its player starts at; it
+	/// must be one of the project's levels, or the export refuses it.
+	[Test]
+	public static void APresetsQualityLevelIsTheDistsDefaultWhenTheProjectListsIt()
+	{
+		let dir = "scratch_export_preset_quality";
+		RemoveDirectoryRecursive(dir);
+		Test.Assert(CreateDirectory(dir));
+		defer RemoveDirectoryRecursive(dir);
+		let root = scope NativeFileSystem(dir);
+		let low = Guid.Create();
+		let high = Guid.Create();
+		let project = scope ProjectSettings();
+		project.QualityLevelIds.Add(low);
+		project.QualityLevelIds.Add(high);
+		project.DefaultQualityId = high;
+		void WriteDist()
+		{
+			Test.Assert(ProjectManifest.Save(root, project, ProjectLayout.DistManifestFile) case .Ok);
+		}
+		void ReadDist(ProjectSettings dist)
+		{
+			Test.Assert(ProjectManifest.Load(root, dist, ProjectLayout.DistManifestFile) case .Ok);
+		}
+
+		// No level of its own: the project's default ships.
+		WriteDist();
+		let desktop = scope ExportPreset();
+		desktop.Name.Set("Desktop");
+		Test.Assert(ExportDriver.PresetQualityRefusal(project, desktop, .. scope .()).IsEmpty);
+		Test.Assert(ExportDriver.ApplyPresetOverrides(dir, desktop) case .Ok);
+		{
+			let dist = scope ProjectSettings();
+			ReadDist(dist);
+			Test.Assert(dist.DefaultQualityId == high);
+		}
+
+		// A phone's own level: the dist starts there, with the project's list unchanged.
+		let phone = scope ExportPreset();
+		phone.Name.Set("Phone");
+		phone.QualityLevelId = low;
+		Test.Assert(ExportDriver.PresetQualityRefusal(project, phone, .. scope .()).IsEmpty);
+		Test.Assert(ExportDriver.ApplyPresetOverrides(dir, phone) case .Ok);
+		{
+			let dist = scope ProjectSettings();
+			ReadDist(dist);
+			Test.Assert(dist.DefaultQualityId == low, "the preset's level");
+			Test.Assert(dist.QualityLevelIds.Count == 2, "the list unchanged");
+		}
+
+		// A level the project does not list is refused, and the dist is left as it was.
+		WriteDist();
+		let stray = scope ExportPreset();
+		stray.Name.Set("Stray");
+		stray.QualityLevelId = Guid.Create();
+		Test.Assert(ExportDriver.PresetQualityRefusal(project, stray, .. scope .()).Contains("Stray"));
+		Test.Assert(ExportDriver.ApplyPresetOverrides(dir, stray) case .Err(.InvalidArgument));
+		{
+			let dist = scope ProjectSettings();
+			ReadDist(dist);
+			Test.Assert(dist.DefaultQualityId == high, "the dist as it was");
+		}
+
+		// The level round-trips through export_presets.xml.
+		let written = scope ExportPresetSet();
+		let saved = new ExportPreset();
+		phone.CopyTo(saved);
+		written.Presets.Add(saved);
+		Test.Assert(ExportPresetsFile.Save(root, written) case .Ok);
+		let loaded = scope ExportPresetSet();
+		Test.Assert(ExportPresetsFile.Load(root, loaded) case .Ok);
+		Test.Assert((loaded.Presets.Count == 1) && (loaded.Presets[0].QualityLevelId == low));
 	}
 
 	[Test]

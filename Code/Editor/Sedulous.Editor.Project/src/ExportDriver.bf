@@ -85,6 +85,11 @@ static class ExportDriver
 		for (let id in settings.GuiStyleSheetIds)
 			Add(id, .ManifestDefault);
 		Add(settings.GuiLoadingDocumentId, .ManifestDefault);
+		// The quality levels: the project names them, no scene does, so a pruned export keeps
+		// them only as seeds.
+		for (let id in settings.QualityLevelIds)
+			Add(id, .ManifestDefault);
+		Add(settings.DefaultQualityId, .ManifestDefault);
 		for (let id in project.ExportRoots.Instances)
 			Add(id, .Flag);
 		for (let groupPath in project.ExportRoots.Groups)
@@ -366,8 +371,8 @@ static class ExportDriver
 		{
 			let outMount = scope NativeFileSystem(outDir);
 			// Every setting, through the settings' own serialization: a hand-kept copy missed the
-			// loading screen and the MSAA once already. A preset overriding the display rewrites
-			// it after (ApplyPresetDisplay).
+			// loading screen and the MSAA once already. A preset overriding the display or the
+			// quality level rewrites it after (ApplyPresetOverrides).
 			let dist = scope ProjectSettings();
 			if (ProjectManifest.Copy(project.Settings, dist) case .Err)
 			{
@@ -444,22 +449,29 @@ static class ExportDriver
 
 	// ---- one preset ----
 
-	/// Exports one preset into <outRoot>/<subdir>: the template resolved, the content cooked
-	/// and packed, whole or pruned to the closure when the preset asks and a scanner or a
-	/// precomputed root set is at hand, the shader pack cooked from `dataRoot`, the player,
-	/// the sidecars, the symbols when opted in, and the extra files staged.
-	/// A preset's own render resolution, window or orientation, over what the project's dist
-	/// manifest says: the platform's values ship in its player.xml. Nothing to do when it
-	/// overrides none.
-	public static Result<void, ErrorCode> ApplyPresetDisplay(StringView outDir, ExportPreset preset)
+	/// Why a preset may not export with the project's quality levels (its level is not one of
+	/// them), appended to `outRefusal`; nothing when it may.
+	public static void PresetQualityRefusal(ProjectSettings settings, ExportPreset preset, String outRefusal)
 	{
-		if (!preset.OverridesRender && !preset.OverridesWindow && !preset.OverridesOrientation)
+		if (!preset.QualityLevelId.IsSet || settings.IsQualityLevel(preset.QualityLevelId))
+			return;
+		outRefusal.AppendF("preset '{}' starts at a quality level the project does not list ({}): add it to the project's quality levels, or pick one of them",
+			preset.Name, preset.QualityLevelId);
+	}
+
+	/// A preset's own render resolution, window, orientation or quality level, over what the
+	/// project's dist manifest says: the platform's values ship in its player.xml, the preset's
+	/// level as the dist's default. Nothing to do when it overrides none; InvalidArgument when its
+	/// level is not one of the project's.
+	public static Result<void, ErrorCode> ApplyPresetOverrides(StringView outDir, ExportPreset preset)
+	{
+		if (!preset.OverridesRender && !preset.OverridesWindow && !preset.OverridesOrientation && !preset.QualityLevelId.IsSet)
 			return .Ok;
 		let mount = scope NativeFileSystem(outDir);
 		let dist = scope ProjectSettings();
 		if (ProjectManifest.Load(mount, dist, ProjectLayout.DistManifestFile) case .Err(let error))
 		{
-			GlobalLog(.Error, "Export: the dist manifest did not read back for the preset's display");
+			GlobalLog(.Error, "Export: the dist manifest did not read back for the preset's overrides");
 			return .Err(error);
 		}
 		if (preset.OverridesRender)
@@ -477,14 +489,28 @@ static class ExportDriver
 		}
 		if (preset.OverridesOrientation)
 			dist.Orientation = preset.Orientation;
+		if (preset.QualityLevelId.IsSet)
+		{
+			let refusal = PresetQualityRefusal(dist, preset, .. scope .());
+			if (!refusal.IsEmpty)
+			{
+				GlobalLog(.Error, "Export: {}", refusal);
+				return .Err(.InvalidArgument);
+			}
+			dist.DefaultQualityId = preset.QualityLevelId;
+		}
 		if (ProjectManifest.Save(mount, dist, ProjectLayout.DistManifestFile) case .Err(let saveError))
 		{
-			GlobalLog(.Error, "Export: failed to write the preset's display into the dist manifest");
+			GlobalLog(.Error, "Export: failed to write the preset's overrides into the dist manifest");
 			return .Err(saveError);
 		}
 		return .Ok;
 	}
 
+	/// Exports one preset into <outRoot>/<subdir>: the template resolved, the content cooked
+	/// and packed, whole or pruned to the closure when the preset asks and a scanner or a
+	/// precomputed root set is at hand, the shader pack cooked from `dataRoot`, the player,
+	/// the sidecars, the symbols when opted in, and the extra files staged.
 	/// `contentOnly` stages what the game reads and no player: the content pak(s), player.xml and
 	/// the shader pack, with no template needed (an Android app's assets, which its own build
 	/// packs beside the player library).
@@ -518,6 +544,14 @@ static class ExportDriver
 		{
 			GlobalLog(.Warning, "Export: template '{}' was built against engine {} but this build is {} - exporting anyway", template.Id, template.EngineVersion, EngineVersion.String);
 			result.EngineVersionWarning.AppendF("Template '{}' targets engine {} (this build is {}).", template.Id, template.EngineVersion, EngineVersion.String);
+		}
+		// A preset starts at one of the project's quality levels, or the export would ship a level
+		// the game's options menu does not know: refused before any cook.
+		PresetQualityRefusal(project.Settings, preset, result.Refusal);
+		if (!result.Refusal.IsEmpty)
+		{
+			GlobalLog(.Error, "Export: {}", result.Refusal);
+			return .Err(.InvalidArgument);
 		}
 		// The player this dist runs, and whether the project's plugins let the export go ahead.
 		let choice = scope PlayerChoice();
@@ -606,7 +640,7 @@ static class ExportDriver
 		}
 		if (contentStatus case .Err)
 			return .Err(.Internal);
-		if (ApplyPresetDisplay(result.OutputDir, preset) case .Err)
+		if (ApplyPresetOverrides(result.OutputDir, preset) case .Err)
 			return .Err(.Internal);
 
 		if (contentOnly)

@@ -3,6 +3,9 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
+using Sedulous.Pipeline.Core;
+using Sedulous.Pipeline.Registration;
+using Sedulous.VFS;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
@@ -109,5 +112,61 @@ static class ExportPresetToolsTests
 			Test.Assert(removed.Get("presets").Count == 1);
 			Test.Assert(Named(removed.Get("presets"), "name", "Deck") == null);
 		}
+	}
+
+	/// A preset's quality level: one of the project's levels, or refused (the export would ship
+	/// a level the game's options menu does not know); "" is the project's default.
+	[Test]
+	public static void APresetsQualityLevelIsOneOfTheProjects()
+	{
+		let dir = Scratch("mcp_export_preset_quality", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
+		PipelineRegistration.RegisterAllCreators(creators);
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
+		ExportPresetTools.Register(server, session);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetCreateTools.Register(server, session, creators, operations);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Levels"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		let lowMade = CallOk(server, "asset_create", With(With(Obj(), "creator", "Render Quality"), "name", "Low"));
+		defer delete lowMade;
+		let highMade = CallOk(server, "asset_create", With(With(Obj(), "creator", "Render Quality"), "name", "High"));
+		defer delete highMade;
+		let low = scope String(lowMade.Get("guid").AsString());
+		let high = scope String(highMade.Get("guid").AsString());
+		{
+			let listed = JsonValue.MakeArray();
+			listed.Add(JsonValue.MakeString(low));
+			let arguments = Obj();
+			arguments.Set("qualityLevelIds", listed);
+			delete CallOk(server, "project_settings_set", arguments);
+		}
+
+		let refusal = scope String();
+		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "qualityLevelId", high), refusal);
+		Test.Assert(refusal.StartsWith("preset 'Deck' starts at a quality level the project does not list"), refusal);
+		Test.Assert(!FileExists(PathJoin(dir, ExportPresetsFile.cFileName, .. scope .())), "a refusal writes nothing");
+
+		let set = CallOk(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "qualityLevelId", low));
+		defer delete set;
+		let deck = Named(set.Get("presets"), "name", "Deck");
+		Test.Assert(deck != null);
+		Test.Assert(deck.Get("qualityLevelId").Get("guid").AsString() == low);
+		Test.Assert(deck.Get("qualityLevelId").Get("path").AsString() == "Quality/Low");
+
+		// "" is the project's default again.
+		let cleared = CallOk(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "qualityLevelId", ""));
+		defer delete cleared;
+		Test.Assert(Named(cleared.Get("presets"), "name", "Deck").Get("qualityLevelId").IsNull);
 	}
 }

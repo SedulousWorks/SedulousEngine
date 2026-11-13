@@ -17,7 +17,8 @@ namespace Sedulous.Engine.Project;
 /// written before its guid existed.
 ///
 /// A field marked [Setting] is one the Project Settings dialog and the MCP tools offer, on the
-/// tab its category names (General, Startup, Audio, UI, Display, in the order first named).
+/// tab its category names (General, Startup, Audio, UI, Display, Quality, in the order first
+/// named).
 ///
 /// FIELD ORDER IS THE WIRE: the generator walks the declaration, so inserting a field in the
 /// middle changes what existing manifests mean. Append, and bump the version when the shape
@@ -110,6 +111,16 @@ class ProjectSettings
 	[Appended]
 	public List<EnabledPlugin> Plugins = new .() ~ DeleteContainerAndItems!(_);
 
+	/// The game's quality levels (Render Quality assets), in the order an options menu lists
+	/// them, and the one it starts at where no export preset picks another (play-in-editor, a
+	/// run from the project folder): nil is the list's last level, and a project with no list
+	/// runs at the engine's own highest. An export preset picks its own among these.
+	/// [Appended], so a manifest saved before them reads none.
+	[Appended, Setting("Quality levels", "RenderQualityAsset", "(none)", "Quality")]
+	public List<Guid> QualityLevelIds = new .() ~ delete _;
+	[Appended, Setting("Default quality", "RenderQualityAsset", "(the last level)", "Quality")]
+	public Guid DefaultQualityId;
+
 	/// The project's entry for plugin `id`, or null when it enables no such plugin. BORROWED.
 	public EnabledPlugin FindPlugin(StringView id)
 	{
@@ -120,6 +131,10 @@ class ProjectSettings
 		}
 		return null;
 	}
+
+	/// Whether `id` is one of the game's quality levels, the only ones a default or a preset may
+	/// start at (an options menu offers the list alone).
+	public bool IsQualityLevel(Guid id) => QualityLevelIds.Contains(id);
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);

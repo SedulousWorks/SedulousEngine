@@ -266,6 +266,57 @@ class ProjectManifestTests
 		}
 	}
 
+	/// The quality levels and the default among them are appended: a manifest saved before them
+	/// reads none (the engine's own level). Once set they keep their order, the dist copy carries
+	/// them, and only a listed level is one the game may start at.
+	[Test]
+	public static void TheQualityLevelsKeepTheirOrderWithTheDefaultAndAnOlderManifestStillLoads()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+
+		let written = scope ProjectSettings();
+		written.Name.Set("Quality");
+		let low = Guid.Create();
+		let high = Guid.Create();
+		written.QualityLevelIds.Add(low);
+		written.QualityLevelIds.Add(high);
+		written.DefaultQualityId = high;
+		Test.Assert(written.IsQualityLevel(low) && written.IsQualityLevel(high));
+		Test.Assert(!written.IsQualityLevel(Guid.Create()));
+		Test.Assert(ProjectManifest.Save(fs, written) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok);
+			Test.Assert((read.QualityLevelIds.Count == 2) && (read.QualityLevelIds[0] == low) && (read.QualityLevelIds[1] == high), "an options menu's order");
+			Test.Assert(read.DefaultQualityId == high);
+
+			let dist = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Copy(read, dist) case .Ok);
+			Test.Assert((dist.QualityLevelIds.Count == 2) && (dist.DefaultQualityId == high), "the dist copy carries them");
+		}
+
+		// The same manifest as an older engine wrote it: neither element.
+		let path = scope $"{kScratch}/{ProjectLayout.ManifestFile}";
+		let text = scope String();
+		Test.Assert(File.ReadAllText(path, text) case .Ok);
+		void Cut(StringView open, StringView close)
+		{
+			let start = text.IndexOf(open);
+			Test.Assert(start >= 0, text);
+			let end = text.IndexOf(close, start) + close.Length;
+			text.Remove(start, end - start);
+		}
+		Cut("<array name=\"qualityLevelIds\"", "</array>");
+		Cut("<string name=\"defaultQualityId\"", "</string>");
+		Test.Assert(File.WriteAllText(path, text) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok, "an older manifest loads");
+			Test.Assert((read.Name == "Quality") && read.QualityLevelIds.IsEmpty && !read.DefaultQualityId.IsSet);
+		}
+	}
+
 	/// The orientation is appended: a manifest an older engine wrote, without it, reads Any (the
 	/// game takes the window's shape, as before), and one that says Landscape keeps it.
 	[Test]

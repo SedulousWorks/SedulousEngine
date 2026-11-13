@@ -13,14 +13,15 @@ namespace Sedulous.Editor.Mcp;
 /// project_info and project_settings_set: the open project's identity and its settings, the
 /// ones the editor's Project Settings dialog edits, part of the surface every host serves. Both
 /// read the settings from ProjectSettings' reflection (its [Setting] fields), the description
-/// the dialog builds its rows from, through ReflectedFields. MSAA is the one setting with a rule
-/// of its own: a level of the render subsystem's table.
+/// the dialog builds its rows from, through ReflectedFields. Two settings have a rule of their
+/// own: MSAA takes a level of the render subsystem's table, and the default quality is one of the
+/// quality levels.
 static class ProjectInfoTool
 {
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("project_info",
-			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId, guiLoadingDocumentId, the engine GUI's loading screen) as {guid, path} or null when unset, uiFontIds (the other UI fonts) and guiStyleSheetIds (the engine GUI's sheets, in order over its theme) each a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable; orientation, Any, Landscape or Portrait, the shape the game is made for, presented turned on a window of the other shape), name and renderMsaaSamples; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
+			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId, guiLoadingDocumentId, the engine GUI's loading screen) as {guid, path} or null when unset, uiFontIds (the other UI fonts) and guiStyleSheetIds (the engine GUI's sheets, in order over its theme) each a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable; orientation, Any, Landscape or Portrait, the shape the game is made for, presented turned on a window of the other shape), name and renderMsaaSamples, and the quality: qualityLevelIds, the game's Render Quality levels in the order an options menu lists them, a list of {guid, path}, and defaultQualityId, the one it starts at where no export preset picks another, null for the list's last; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 
@@ -29,7 +30,7 @@ static class ProjectInfoTool
 		let schema = scope SchemaBuilder();
 		ReflectedFields.AddToSchema(schema, fields);
 		server.RegisterTool("project_settings_set",
-			"Change the open project's settings, what the editor's Project Settings dialog edits, by the names project_info reports: only what is given changes, and a name that is no setting is refused with the list. Every asset setting must name an asset of its type (the refusal says which), \"\" clears it; a list setting (uiFontIds, the fonts the game UI loads beside the default, each a family a label picks with font-family; guiStyleSheetIds, the engine GUI's sheets, each over those before it) takes the whole list, [] for none; a count takes its range (the display's sizes), a choice one of its values by name (renderFit, windowMode), a flag true or false; renderMsaaSamples takes the render levels (1, 2 or 4). Checked in full before anything changes, then saved to the manifest; the editor re-applies what depends on them (the game UI's font and theme). Returns the settings and their categories as project_info does.",
+			"Change the open project's settings, what the editor's Project Settings dialog edits, by the names project_info reports: only what is given changes, and a name that is no setting is refused with the list. Every asset setting must name an asset of its type (the refusal says which), \"\" clears it; a list setting (uiFontIds, the fonts the game UI loads beside the default, each a family a label picks with font-family; guiStyleSheetIds, the engine GUI's sheets, each over those before it) takes the whole list, [] for none; a count takes its range (the display's sizes), a choice one of its values by name (renderFit, windowMode), a flag true or false; renderMsaaSamples takes the render levels (1, 2 or 4); qualityLevelIds lists the game's Render Quality assets in an options menu's order and defaultQualityId, one of them as the call leaves the list, is the level it starts at where no export preset picks another (\"\": the list's last). Checked in full before anything changes, then saved to the manifest; the editor re-applies what depends on them (the game UI's font and theme). Returns the settings and their categories as project_info does.",
 			schema.Build(), .Adjusts,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
 	}
@@ -110,6 +111,21 @@ static class ProjectInfoTool
 				outError.AppendF("`renderMsaaSamples` takes {}", levels);
 				return false;
 			}
+		}
+		// The default quality must be one of the levels, as they stand after this call.
+		List<Guid> levels = settings.QualityLevelIds;
+		var startsAt = settings.DefaultQualityId;
+		for (let change in changes)
+		{
+			if (change.Field.Name == "QualityLevelIds")
+				levels = change.Ids;
+			else if (change.Field.Name == "DefaultQualityId")
+				startsAt = change.Id;
+		}
+		if (startsAt.IsSet && !levels.Contains(startsAt))
+		{
+			outError.Append("`defaultQualityId` must be one of `qualityLevelIds` (give both to add a level and start at it)");
+			return false;
 		}
 		ReflectedFields.Apply(settings, changes);
 		// The path mirrors the dialog keeps beside the guids.

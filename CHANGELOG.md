@@ -47,6 +47,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   offers: the MSAA count and antialiasing, and a tier from Off to High for shadows, ambient
   occlusion, reflections, global illumination and bloom, with a cap on the shadow reach and the
   environment's resolution. Nothing applies a level yet.
+- Project Settings: a Quality tab lists the game's quality levels and the one it starts at, and
+  an export preset can start its platform at another of them (`qualityLevelId`), which its dist
+  carries as the default.
 
 ### Changed
 

@@ -695,6 +695,57 @@ static class ProjectFlowTests
 			}
 			Test.Assert(session.Project.Settings.RenderWidth == 640, "nothing changed");
 		}
+
+		// The quality levels: Render Quality assets made by asset_create, listed in an options
+		// menu's order, and a default that must be one of them (as the list stands after the call).
+		{
+			changed = 0;
+			let lowMade = CallOk(server, "asset_create", With(With(Obj(), "creator", "Render Quality"), "name", "Low"));
+			defer delete lowMade;
+			let highMade = CallOk(server, "asset_create", With(With(Obj(), "creator", "Render Quality"), "name", "High"));
+			defer delete highMade;
+			let low = scope String(lowMade.Get("guid").AsString());
+			let high = scope String(highMade.Get("guid").AsString());
+			JsonValue Quality(Span<StringView> ids, StringView startsAt)
+			{
+				let list = JsonValue.MakeArray();
+				for (let id in ids)
+					list.Add(JsonValue.MakeString(id));
+				let arguments = Obj();
+				arguments.Set("qualityLevelIds", list);
+				arguments.Set("defaultQualityId", JsonValue.MakeString(startsAt));
+				return arguments;
+			}
+
+			let outside = scope String();
+			CallErr(server, "project_settings_set", Quality(scope StringView[](low), high), outside);
+			Test.Assert(outside.StartsWith("`defaultQualityId` must be one of `qualityLevelIds`"), outside);
+			let notALevel = scope String();
+			CallErr(server, "project_settings_set", Quality(scope StringView[](low, sceneId), ""), notALevel);
+			Test.Assert(notALevel.StartsWith("`qualityLevelIds[1]` takes an asset of type RenderQualityAsset"), notALevel);
+			Test.Assert(changed == 0);
+
+			let levels = CallOk(server, "project_settings_set", Quality(scope StringView[](low, high), high));
+			defer delete levels;
+			let listed = levels.Get("settings").Get("qualityLevelIds");
+			Test.Assert((listed.Count == 2) && (listed.At(0).Get("guid").AsString() == low));
+			Test.Assert(levels.Get("settings").Get("defaultQualityId").Get("guid").AsString() == high);
+			Test.Assert(changed == 1);
+
+			// Taking the default's level out of the list alone is refused; clearing both is not.
+			let lowOnly = JsonValue.MakeArray();
+			lowOnly.Add(JsonValue.MakeString(low));
+			let alone = Obj();
+			alone.Set("qualityLevelIds", lowOnly);
+			let stranded = scope String();
+			CallErr(server, "project_settings_set", alone, stranded);
+			Test.Assert(stranded.StartsWith("`defaultQualityId` must be one of"), stranded);
+			Test.Assert(session.Project.Settings.QualityLevelIds.Count == 2, "nothing changed");
+			let none = CallOk(server, "project_settings_set", Quality(.(), ""));
+			defer delete none;
+			Test.Assert(none.Get("settings").Get("qualityLevelIds").Count == 0);
+			Test.Assert(none.Get("settings").Get("defaultQualityId").IsNull);
+		}
 	}
 
 	/// Every enum an input map stores as a number is one type_info names the cases of: an agent

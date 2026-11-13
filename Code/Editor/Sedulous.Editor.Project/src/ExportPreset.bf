@@ -83,6 +83,11 @@ class ExportPreset
 	[Appended, Setting("Include shader source")]
 	public bool IncludeShaderSource = false;
 
+	/// The quality level this platform starts at, one of the project's levels (a phone's lower
+	/// than a desktop's); nil is the project's default.
+	[Appended, Setting("Quality level", "RenderQualityAsset", "(the project's default)")]
+	public Guid QualityLevelId;
+
 	public void CopyTo(ExportPreset other)
 	{
 		other.Name.Set(Name);
@@ -108,6 +113,7 @@ class ExportPreset
 		other.OverridesOrientation = OverridesOrientation;
 		other.Orientation = Orientation;
 		other.IncludeShaderSource = IncludeShaderSource;
+		other.QualityLevelId = QualityLevelId;
 	}
 
 	/// The config for resolution: empty reads as Release.
