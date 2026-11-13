@@ -53,3 +53,19 @@ class PostProcessProfileAssetBuilder : IAssetBuilder
 		return context.Output.WriteObject(cooked);
 	}
 }
+
+/// Cooks a Render Quality to its record by a copy; it references nothing.
+class RenderQualityAssetBuilder : IAssetBuilder
+{
+	public Type AssetType => typeof(RenderQualityAsset);
+	public Type ProductType => typeof(RenderQualitySource);
+
+	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
+	{
+		if (context.Output == null)
+			return .Err(.InvalidArgument);
+		let cooked = scope RenderQualitySource();
+		((RenderQualityAsset)asset).Values.CopyTo(cooked.Values);
+		return context.Output.WriteObject(cooked);
+	}
+}

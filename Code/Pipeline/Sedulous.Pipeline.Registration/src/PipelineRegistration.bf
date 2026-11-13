@@ -70,12 +70,13 @@ static class PipelineRegistration
 {
 	/// The GUI's asset kinds: a document and a style sheet (Sedulous.GUI.Pipeline).
 	public const int cGuiAssetKinds = 2;
-	/// 29 and 12: the old UI's document and theme builders and its importer gone with it.
-	public const int cBuilderCount = 29 + cGuiAssetKinds;
+	/// 30 and 12: the old UI's document and theme builders and its importer gone with it, a
+	/// Render Quality's builder added.
+	public const int cBuilderCount = 30 + cGuiAssetKinds;
 	public const int cImporterCount = 12;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 30 + cGuiAssetKinds; // 30: the old UI's document and theme gone
+	public const int cCreatorCount = 31 + cGuiAssetKinds; // 31: the old UI's document and theme gone, a Render Quality added
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -186,6 +187,7 @@ static class PipelineRegistration
 		registry.Register(new PhysicalMaterialAssetBuilder());
 		registry.Register(new EnvironmentProfileAssetBuilder());
 		registry.Register(new PostProcessProfileAssetBuilder());
+		registry.Register(new RenderQualityAssetBuilder());
 		registry.Register(new NavigationZoneAssetBuilder());
 		registry.Register(new VectorImageAssetBuilder());
 		registry.Register(new GuiDocumentAssetBuilder());

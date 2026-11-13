@@ -31,6 +31,17 @@ class PostProcessProfileSource : ISerializable
 	}
 }
 
+/// The cooked Render Quality: a quality level's values.
+class RenderQualitySource : ISerializable
+{
+	public RenderQualitySettings Values = new .() ~ delete _;
+
+	public void Serialize(ISerializer ar)
+	{
+		Values.SerializeValues(ar);
+	}
+}
+
 /// Loads an Environment Profile, binding its sky texture through the manager. The bind
 /// records the dependency, so a texture's reload reaches the profile; it is the manager's to
 /// write on the thread that owns it, hence synchronous.
@@ -79,13 +90,36 @@ class PostProcessProfileFactory : IResourceFactory
 	}
 }
 
-/// Registration for the render profiles: their cooked records and the factories that load
-/// them, a resource module of the render domain.
+/// Loads a quality level (it references nothing).
+class RenderQualityFactory : IResourceFactory
+{
+	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<RenderQuality>();
+	public Type CookedType => typeof(RenderQualitySource);
+
+	public Object Create(ResourceManager manager, Instance instance)
+	{
+		let stored = instance.ReadObject();
+		if (stored == null)
+			return null;
+		defer delete stored;
+		let source = stored as RenderQualitySource;
+		if (source == null)
+			return null;
+
+		let quality = new RenderQuality();
+		source.Values.CopyTo(quality.Values);
+		return quality;
+	}
+}
+
+/// Registration for the render profiles and the quality levels: their cooked records and the
+/// factories that load them, a resource module of the render domain.
 static class RenderProfileResources
 {
 	public static ResourceModule Module => sModule ?? (sModule = new .("render.profiles", () => RegisterAll(), new .(
 		.ByDefault<EnvironmentProfile, EnvironmentProfileSource, EnvironmentProfileFactory>(),
-		.ByDefault<PostProcessProfile, PostProcessProfileSource, PostProcessProfileFactory>())));
+		.ByDefault<PostProcessProfile, PostProcessProfileSource, PostProcessProfileFactory>(),
+		.ByDefault<RenderQuality, RenderQualitySource, RenderQualityFactory>())));
 	private static ResourceModule sModule ~ delete _;
 
 	/// Into the global registry unless another is given. The records describe themselves
@@ -97,5 +131,7 @@ static class RenderProfileResources
 			() => new EnvironmentProfileSource());
 		target.Register(TypeIdOf("Sedulous.Engine.Render.PostProcessProfileSource"),
 			() => new PostProcessProfileSource());
+		target.Register(TypeIdOf("Sedulous.Engine.Render.RenderQualitySource"),
+			() => new RenderQualitySource());
 	}
 }

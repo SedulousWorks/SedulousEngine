@@ -98,3 +98,21 @@ class PostProcessProfileAsset : SettingsProfileAsset
 		ar.EndObject();
 	}
 }
+
+/// An authored Render Quality: one quality level a project offers, what the scenes' look costs
+/// on it. Cooked to its record by a copy, as the profiles are.
+[Category("Rendering")]
+[DisplayName("Render Quality")]
+class RenderQualityAsset : Asset, ISerializable
+{
+	public RenderQualitySettings Values = new .() ~ delete _;
+
+	public void Serialize(ISerializer ar)
+	{
+		ar.BeginObject();
+		ar.Key("fileName");
+		FileName.Serialize(ar);
+		Values.SerializeValues(ar);
+		ar.EndObject();
+	}
+}

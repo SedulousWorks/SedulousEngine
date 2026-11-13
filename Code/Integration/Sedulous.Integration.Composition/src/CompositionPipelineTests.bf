@@ -32,7 +32,7 @@ class CompositionPipelineTests
 
 		let descriptions = scope List<ResourceFactoryDesc*>();
 		EngineComposition.FactoryDescriptions(descriptions);
-		Test.Assert(descriptions.Count == 31); // with the scene's prefabs and the GUI's documents and sheets
+		Test.Assert(descriptions.Count == 32); // with the scene's prefabs, the quality levels and the GUI's documents and sheets
 		let none = scope NoResourceServices();
 		int forms = 0;
 		int authored = 0;
@@ -67,7 +67,7 @@ class CompositionPipelineTests
 					Test.Assert(produced, scope $"no builder produces {name}");
 				});
 		}
-		Test.Assert(forms == 32, scope $"{forms} cooked forms");
+		Test.Assert(forms == 33, scope $"{forms} cooked forms");
 		Test.Assert(authored == 1, "the prefab factory alone reads an authored record");
 	}
 }

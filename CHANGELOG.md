@@ -43,6 +43,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   it, no menu or screen uses it) goes to the platform: a phone puts the app in the background.
 - Rendering: the game keeps inside the window's safe area, what a phone's status bar, navigation
   bar and camera cutout leave of it: its frame, its screens and its pointer are fitted there.
+- Rendering: a Render Quality asset (File > New, under Quality/) is one quality level a game
+  offers: the MSAA count and antialiasing, and a tier from Off to High for shadows, ambient
+  occlusion, reflections, global illumination and bloom, with a cap on the shadow reach and the
+  environment's resolution. Nothing applies a level yet.
 
 ### Changed
 

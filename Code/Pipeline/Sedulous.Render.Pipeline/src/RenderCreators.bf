@@ -5,7 +5,8 @@ using Sedulous.Pipeline.Core;
 namespace Sedulous.Render.Pipeline;
 
 /// The render domain's New Asset creators: the render profiles at the engine's defaults, under
-/// Profiles/ unless a group was picked.
+/// Profiles/, and a quality level at the engine's highest, under Quality/, unless a group was
+/// picked.
 static class RenderCreators
 {
 	public static void Register(AssetCreatorRegistry registry)
@@ -14,5 +15,7 @@ static class RenderCreators
 			AssetCreator.CreateWritten(context.Target, context.NameOr("EnvironmentProfile"), typeof(EnvironmentProfileAsset), scope EnvironmentProfileAsset())).Under("Profiles"));
 		registry.Register(new AssetCreator("Post Process Profile", "Rendering", typeof(PostProcessProfileAsset), new (context) =>
 			AssetCreator.CreateWritten(context.Target, context.NameOr("PostProcessProfile"), typeof(PostProcessProfileAsset), scope PostProcessProfileAsset())).Under("Profiles"));
+		registry.Register(new AssetCreator("Render Quality", "Rendering", typeof(RenderQualityAsset), new (context) =>
+			AssetCreator.CreateWritten(context.Target, context.NameOr("RenderQuality"), typeof(RenderQualityAsset), scope RenderQualityAsset())).Under("Quality"));
 	}
 }

@@ -14,5 +14,7 @@ static class RenderPipeline
 			() => new EnvironmentProfileAsset());
 		target.Register(TypeIdOf("Sedulous.Render.Pipeline.PostProcessProfileAsset"),
 			() => new PostProcessProfileAsset());
+		target.Register(TypeIdOf("Sedulous.Render.Pipeline.RenderQualityAsset"),
+			() => new RenderQualityAsset());
 	}
 }
