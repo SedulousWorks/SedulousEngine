@@ -101,8 +101,18 @@ class AngelScriptRuntime : ScriptRuntime
 		public AS.Function* Function;
 		public double Remaining;
 		public void* Owner;
+		/// Its context is executing: a script it runs may cancel it, which must not free the
+		/// context under it.
+		public bool Running;
+		/// Cancelled or finished: out of the schedule, never resumed again, freed once nothing
+		/// runs it.
+		public bool Dropped;
 	}
 	private List<Coroutine> mCoroutines = new .() ~ DeleteContainerAndItems!(_);
+	/// Coroutines dropped while one ran or the scheduler walked: freed once neither holds them.
+	private List<Coroutine> mRetired = new .() ~ DeleteContainerAndItems!(_);
+	/// AdvanceCoroutines is walking its snapshot, whose entries must outlive the walk.
+	private bool mAdvancing = false;
 	/// Objects handed out by Instantiate, released with the runtime if the host did not.
 	private List<AngelScriptObject> mObjects = new .() ~ DeleteContainerAndItems!(_);
 	private AngelScriptCallContext mCallContext = new .() ~ delete _;
@@ -326,6 +336,12 @@ class AngelScriptRuntime : ScriptRuntime
 		for (let d in mDelegates)
 			d.RuntimeGone();
 		for (let co in mCoroutines)
+		{
+			AS.asc_context_abort(co.Context);
+			AS.asc_context_release(co.Context);
+			AS.asc_function_release(co.Function);
+		}
+		for (let co in mRetired)
 		{
 			AS.asc_context_abort(co.Context);
 			AS.asc_context_release(co.Context);
@@ -2631,26 +2647,67 @@ class AngelScriptRuntime : ScriptRuntime
 	/// Resumes the coroutine: it runs until it waits again, finishes or faults.
 	private void Step(Coroutine co)
 	{
+		co.Running = true;
 		let state = AS.asc_context_execute(co.Context);
-		if (state == AS.asEXECUTION_SUSPENDED)
-			return;
-		if (state != AS.asEXECUTION_FINISHED)
+		co.Running = false;
+		if ((state != AS.asEXECUTION_SUSPENDED) && (state != AS.asEXECUTION_FINISHED))
 			ReportExecution(co.Context, state, "coroutine");
-		Drop(co);
+		if (co.Dropped)
+		{
+			// Cancelled by a script it ran (its owner destroyed): it is retired, and freed
+			// here unless the scheduler's walk still holds it.
+			if (!mAdvancing)
+				FreeRetired();
+			return;
+		}
+		if (state != AS.asEXECUTION_SUSPENDED)
+			Drop(co);
 	}
 
+	/// Takes the coroutine out of the schedule. One that is running, or that the
+	/// scheduler's snapshot holds, is only retired: freeing it would release a context still
+	/// executing, or let a coroutine started meanwhile reuse its address in the snapshot.
 	private void Drop(Coroutine co)
 	{
 		mCoroutines.Remove(co);
+		co.Dropped = true;
+		if (co.Running || mAdvancing)
+		{
+			mRetired.Add(co);
+			return;
+		}
+		Free(co);
+	}
+
+	private void Free(Coroutine co)
+	{
 		AS.asc_context_abort(co.Context);
 		AS.asc_context_release(co.Context);
 		AS.asc_function_release(co.Function);
 		delete co;
 	}
 
+	/// Frees the retired coroutines nothing runs any more.
+	private void FreeRetired()
+	{
+		for (int i = mRetired.Count - 1; i >= 0; i--)
+		{
+			let co = mRetired[i];
+			if (co.Running)
+				continue;
+			mRetired.RemoveAt(i);
+			Free(co);
+		}
+	}
+
 	public override void AdvanceCoroutines(double deltaSeconds)
 	{
-		// A snapshot: a step may start another coroutine, or end this one.
+		// A walk under way already covers every coroutine.
+		if (mAdvancing)
+			return;
+		// A snapshot: a step may start another coroutine, or end or cancel any of them. A
+		// dropped one stays allocated, retired, until the walk ends, so its flag is safe to read.
+		mAdvancing = true;
 		let due = scope List<Coroutine>();
 		for (let co in mCoroutines)
 		{
@@ -2660,9 +2717,11 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 		for (let co in due)
 		{
-			if (mCoroutines.Contains(co))
+			if (!co.Dropped)
 				Step(co);
 		}
+		mAdvancing = false;
+		FreeRetired();
 	}
 
 	public override void CancelCoroutinesFor(ScriptObject object)

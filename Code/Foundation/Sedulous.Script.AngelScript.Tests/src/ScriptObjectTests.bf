@@ -184,4 +184,84 @@ static class ScriptObjectTests
 		Test.Assert(!vm.Call("c", "void badWait()", default, ref r));
 		Test.Assert(vm.Problems.Back.Contains("coroutine"));
 	}
+
+	private static AngelScriptRuntime sChurnRuntime;
+	private static ScriptObject sChurnOwner;
+
+	/// `cancelOwner()`: what destroying a behaviour does to its coroutines, called from a
+	/// coroutine of that behaviour.
+	private static void CancelOwnerThunk(ref ScriptCallFrame frame)
+	{
+		frame.Begin();
+		if ((sChurnRuntime != null) && (sChurnOwner != null))
+			sChurnRuntime.CancelCoroutinesFor(sChurnOwner);
+	}
+
+	/// A coroutine that starts many coroutines and then cancels its own owner's, itself
+	/// included, both from the scheduler's walk and outside it. The running one is not freed
+	/// under itself: it carries on to its wait and is never resumed, and none it started runs
+	/// again.
+	[Test]
+	public static void ACoroutineThatStartsCoroutinesAndCancelsItsOwnerMidRun()
+	{
+		let s = new ScriptSurface();
+		FixtureSurface.Populate(s);
+		s.AddType("CoroutineChurnHost", .Global, ScriptDomains.Runtime)
+			.AddMethod("cancelOwner", "void", true).Returns(.Nil).Bind(=> CancelOwnerThunk);
+		let vm = new AngelScriptRuntime();
+		vm.Bind(s);
+		sSurfaces.Add(s);
+		defer delete vm;
+		Test.Assert(vm.Compile("churn", "churn.as", """
+			class Spawner
+			{
+				int started = 0;
+				int ran = 0;
+				int after = 0;
+				void go() { startCoroutine(ScriptCoroutine(this.churnLater)); }
+				void goNow() { startCoroutine(ScriptCoroutine(this.churn)); }
+				void churnLater() { wait(0.1); churn(); }
+				void churn()
+				{
+					for (int i = 0; i < 64; i++)
+					{
+						startCoroutine(ScriptCoroutine(this.child));
+						started++;
+					}
+					cancelOwner();
+					wait(0.1);
+					after = 1;
+				}
+				void child() { wait(0.05); ran++; }
+			}
+			"""), "compiled");
+		Dump(vm);
+
+		let spawner = vm.Instantiate("churn", "Spawner");
+		Test.Assert(spawner != null);
+		sChurnRuntime = vm;
+		sChurnOwner = spawner;
+		defer { sChurnRuntime = null; sChurnOwner = null; }
+
+		var r = ScriptValue.Nil;
+		var v = ScriptValue.Nil;
+		// Cancelled from the scheduler's walk.
+		Test.Assert(vm.Invoke(spawner, "go", default, ref r));
+		Test.Assert(vm.CoroutineCount == 1, "waiting for its first step");
+		for (int i < 5)
+			vm.AdvanceCoroutines(0.1);
+		Test.Assert(vm.GetProperty(spawner, "started", ref v) && (v.AsInt == 64), "it ran once, to its wait");
+		Test.Assert(vm.GetProperty(spawner, "ran", ref v) && (v.AsInt == 0), "cancelled with their owner");
+		Test.Assert(vm.GetProperty(spawner, "after", ref v) && (v.AsInt == 0), "the running one was cancelled too");
+		Test.Assert(vm.CoroutineCount == 0);
+
+		// Cancelled outside it, from a coroutine run at once by its start.
+		Test.Assert(vm.Invoke(spawner, "goNow", default, ref r));
+		Test.Assert(vm.CoroutineCount == 0, "all cancelled before the start returned");
+		for (int i < 3)
+			vm.AdvanceCoroutines(0.1);
+		Test.Assert(vm.GetProperty(spawner, "started", ref v) && (v.AsInt == 128));
+		Test.Assert(vm.GetProperty(spawner, "ran", ref v) && (v.AsInt == 0));
+		Test.Assert(vm.GetProperty(spawner, "after", ref v) && (v.AsInt == 0));
+	}
 }
