@@ -633,6 +633,90 @@ class GuiHostTests
 		delete device;
 	}
 
+	/// A floating window whose content closes it on a press, as a close button does: the window is
+	/// still there while the press is routed, and closed once it has been, in the same frame.
+	[Test]
+	public static void AWindowClosedByAPressInsideItClosesOnceThePressIsRouted()
+	{
+		let shell = scope DrivenShell();
+		let device = NullGraphics.CreateDevice(2).Value;
+		var vs = HostingFixtures.MakeModule(device.Raw);
+		var fs = HostingFixtures.MakeModule(device.Raw);
+		{
+			let windows = (NullWindowManager)shell.WindowManager;
+			var shaders = VgShaderSet();
+			shaders.Vertex = vs;
+			shaders.Fragment = fs;
+			let host = new GuiHost(device, shell, null, shaders);
+			let opened = scope List<RenderWindow>();
+			int closed = 0;
+			let opener = new GuiHost.WindowOpener();
+			opener.Open = new [&] (asked) =>
+				{
+					if (!(windows.CreateWindow(asked) case .Ok(let made)))
+						return null;
+					let rendered = device.CreateRenderWindow(made, .()).Value;
+					opened.Add(rendered);
+					return rendered;
+				};
+			opener.Close = new [&] (closing) =>
+				{
+					closed++;
+					windows.DestroyWindow(closing.Window);
+				};
+			host.SetWindowOpener(opener);
+
+			let floating = new SceneRoot(host.Context);
+			let button = new Panel();
+			button.EditLayoutStyle(scope (s) =>
+				{
+					s.Width = LayoutLength.Px(100.0f);
+					s.Height = LayoutLength.Px(100.0f);
+				});
+			floating.AddChild(button);
+			int presses = 0;
+			bool openWhilePressed = false;
+			button.AddEventListener(.MouseDown, new [&] (e) =>
+				{
+					presses++;
+					host.CloseWindow(floating);
+					openWhilePressed = host.WindowFor(floating) != null;
+				});
+			var settings = Sedulous.Shell.WindowSettings();
+			settings.Width = 200;
+			settings.Height = 150;
+			let window = host.OpenWindow(floating, settings);
+			Test.Assert(window != null);
+			let id = window.Window.Id;
+			let mouse = shell.DrivenDevices.Driven;
+			void Frame(float x, float y, bool down, bool edge)
+			{
+				shell.DrivenDevices.Hover = id;
+				mouse.PointerX = x;
+				mouse.PointerY = y;
+				mouse.Pressed = edge && down;
+				mouse.Released = edge && !down;
+				mouse.Down = down;
+				host.Update(1.0f / 60.0f);
+				device.AdvanceFrame();
+			}
+			Frame(50.0f, 50.0f, false, false); // laid out, the pointer over the button
+			Frame(50.0f, 50.0f, true, true); // pressed: the handler closes the window it is in
+			Test.Assert(presses == 1);
+			Test.Assert(openWhilePressed, "still there while the press was routed");
+			Test.Assert(closed == 1, "closed in the same frame, once routed");
+			Test.Assert(host.WindowFor(floating) == null);
+			Test.Assert(host.WindowCount == 0);
+			delete host;
+			button.ReleaseRef();
+			floating.ReleaseRef();
+			ClearAndDeleteItems!(opened);
+		}
+		device.Raw.DestroyShaderModule(ref fs);
+		device.Raw.DestroyShaderModule(ref vs);
+		delete device;
+	}
+
 	[Test]
 	public static void OnAScaledDisplayTheGuiFillsTheWindowsPixelsAndThePointerInWindowUnitsLandsWhereItShows()
 	{

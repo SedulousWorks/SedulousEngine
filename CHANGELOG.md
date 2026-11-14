@@ -106,6 +106,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor and games: a floating window closed by a click inside it (its close button, a docked
+  panel's) closes once the click has been handled, in the same frame; it was freed while the click
+  was still being delivered to it.
 - Networking: `Net.Disconnect`, `Net.StartServer` or `Net.Connect` from a `Net.On` handler no
   longer crashes the game. The handler freed the connection that was delivering its message; it is
   now closed at once and freed after the message delivery returns, and no further message from it

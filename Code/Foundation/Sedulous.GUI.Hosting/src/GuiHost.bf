@@ -194,6 +194,7 @@ class GuiHost
 	private Overlay mOverlay = null ~ delete _;
 	private delegate void(Sedulous.Shell.DroppedFile file) mDropObserver = null ~ delete _;
 	private uint32 mPressWindow = 0; // the window a held press began in
+	private bool mRouting = false; // RouteInput runs: window changes wait for the context's mutations
 	private WindowOpener mOpener = null ~ delete _;
 	private List<WindowListener> mWindowListeners = new .() ~ { for (let listener in _) delete listener.Listener; delete _; };
 	private bool mTellingListeners = false;
@@ -355,7 +356,21 @@ class GuiHost
 		if ((root == null) || (mDevice.Raw == null) || !mShaders.IsUsable)
 			return;
 		if (Find(window) != null)
+		{
+			if (mRouting)
+			{
+				// Its panes may be the ones routing: replaced once that is done. The root is held
+				// meanwhile, as the caller may let its own reference go.
+				root.AddRef();
+				mContext.MutationQueue.Enqueue(new () =>
+					{
+						AttachWindow(window, root);
+						root.ReleaseRef();
+					});
+				return;
+			}
 			DetachWindow(window);
+		}
 		let data = new GuiWindowData();
 		data.Canvas = new .(mFonts);
 		let swap = window.Swap;
@@ -487,12 +502,27 @@ class GuiHost
 		return window;
 	}
 
-	/// Closes the window OpenWindow opened for `root`: detached, then closed by its opener.
+	/// Closes the window OpenWindow opened for `root`: detached, then closed by its opener. Asked
+	/// from input the host is routing (a close button inside the window), it happens once the
+	/// routing is done, in the same frame.
 	public void CloseWindow(SceneRoot root)
 	{
 		let window = WindowFor(root);
 		if ((window == null) || (mOpener == null) || (mOpener.Close == null))
 			return;
+		if (mRouting)
+		{
+			mContext.MutationQueue.Enqueue(new () =>
+				{
+					// Closed meanwhile: nothing.
+					if ((Find(window) != null) && (mOpener != null) && (mOpener.Close != null))
+					{
+						DetachWindow(window);
+						mOpener.Close(window);
+					}
+				});
+			return;
+		}
 		DetachWindow(window);
 		mOpener.Close(window);
 	}
@@ -601,9 +631,15 @@ class GuiHost
 
 	/// Stops drawing and feeding the window's panes, and lets their roots go; its renderer forgets
 	/// the bakes. The rest of the payload stays on the RenderWindow, which deletes it when it goes
-	/// (after the GPU is idle).
+	/// (after the GPU is idle). Asked from input the host is routing, it happens once the routing
+	/// is done, in the same frame: the panes it lets go may be the ones routing.
 	public void DetachWindow(Sedulous.Graphics.RenderWindow window)
 	{
+		if (mRouting)
+		{
+			mContext.MutationQueue.Enqueue(new () => DetachWindow(window));
+			return;
+		}
 		for (int i < mAttached.Count)
 		{
 			if (mAttached[i].Window != window)
@@ -656,7 +692,13 @@ class GuiHost
 			using (ProfileScope("GUI.Input.WindowEvents"))
 				ReportWindowEvents();
 			using (ProfileScope("GUI.Input.Route"))
+			{
+				// A handler may close, detach or attach a window: that waits for the context's
+				// mutations, drained next, so nothing routing is freed under it.
+				mRouting = true;
 				RouteInput();
+				mRouting = false;
+			}
 		}
 		// By ticks: TimeSpan.FromSeconds would round to whole milliseconds.
 		using (ProfileScope("GUI.Context")) // actions, effects, mutations, accessibility
