@@ -844,6 +844,24 @@ class Menu : UIWidget
 		AddItemNode(item, item);
 	}
 
+	/// Removes every row (items, separators, and submenus with theirs), closing the menu first
+	/// when it is open. An owner whose list changes (the files or levels it offers) empties the
+	/// menu as it opens and adds what it knows now.
+	public void ClearItems()
+	{
+		Close();
+		for (let row in mRows)
+			RemoveChild(row);
+		mRows.Clear();
+		for (let sub in mOwnedSubMenus)
+			sub.ReleaseRef();
+		mOwnedSubMenus.Clear();
+		mDeferredRow = null; // was one of the rows
+		mDeferring = false;
+		mScroll = 0.0f;
+		Relayout();
+	}
+
 	/// Its title: a menu bar's button, or a submenu's item (markup's `text`).
 	public StringView Title
 	{

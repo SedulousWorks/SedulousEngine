@@ -286,6 +286,65 @@ class MenuTests
 		Test.Assert(Near(sub.Position.Y, 76.0f)); // menu.y(50) + item.y(26)
 	}
 
+	/// A submenu whose owner lists its rows as it opens (the files or levels it offers) drops the
+	/// rows it showed last time and shows the ones it adds then.
+	[Test]
+	public static void ASubmenuThatEmptiesItselfAsItOpensShowsTheRowsItAddsThen()
+	{
+		let root = SceneFixtures.NewScene(600.0f, 600.0f);
+		defer root.ReleaseRef();
+		let anchor = new UIWidget();
+		defer anchor.ReleaseRef();
+		root.AddChild(anchor);
+		let d = root.EventDispatcher;
+
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f);
+		menu.SetItemHeight(26.0f);
+		menu.AddItem("Top", new () => { });
+		let sub = menu.AddSubMenu("Levels");
+		sub.AddItem("Stale", new () => { });
+		let nested = sub.AddSubMenu("Nested");
+		nested.AddItem("Gone", new () => { });
+		int listed = 2;
+		// The row picked, held where an item's action (made in the opening callback) reaches it.
+		let picked = scope List<int>();
+		sub.SetOnOpening(new [&] (opening) =>
+			{
+				opening.ClearItems();
+				for (int i < listed)
+				{
+					let index = i;
+					opening.AddItem((i == 0) ? "Low" : "High", new () => { picked.Add(index); });
+				}
+			});
+		Test.Assert(sub.RowCount == 2); // before it opens: what it was built with
+
+		menu.Open(anchor, .(50.0f, 50.0f));
+		d.InjectMouseMove(.(60.0f, 88.0f)); // the "Levels" row opens the submenu
+		Test.Assert(sub.IsOpen);
+		Test.Assert(sub.RowCount == 2);
+		Test.Assert(sub.ItemCount == 2);
+		Test.Assert(!HasItemNamed(sub, "Stale") && HasItemNamed(sub, "High"));
+		Test.Assert(Near(sub.Size.Y, 52.0f)); // two rows, sized to them
+
+		// The submenu's second row (High) is at its y + 26.
+		let high = Float2(sub.Position.X + 10.0f, sub.Position.Y + 39.0f);
+		d.InjectMouseMove(high);
+		d.InjectMouseDown(high, .Left);
+		d.InjectMouseUp(high, .Left);
+		Test.Assert((picked.Count == 1) && (picked[0] == 1));
+		Test.Assert(!menu.IsOpen);
+
+		listed = 1; // the list shrank while the menu was closed
+		menu.Open(anchor, .(50.0f, 50.0f));
+		d.InjectMouseMove(.(60.0f, 88.0f));
+		Test.Assert(sub.IsOpen);
+		Test.Assert(sub.RowCount == 1);
+		Test.Assert(Near(sub.Size.Y, 26.0f));
+	}
+
 	[Test]
 	public static void HoveringADifferentRowClosesTheOpenSubmenu()
 	{
