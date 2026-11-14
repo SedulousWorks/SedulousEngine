@@ -242,3 +242,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   and the next hover, key or redraw reached it. A list's selection follows its row.
 - GUI: a field that moves the focus elsewhere when it loses it (a validation on blur) no longer
   leaves the container it was moving into styled as holding the focus.
+- Editor: a Play whose default scene does not load undoes its start as Stop does; the debugger,
+  breakpoint sync and hover values stayed wired to the Game tab, and reached it after it closed.

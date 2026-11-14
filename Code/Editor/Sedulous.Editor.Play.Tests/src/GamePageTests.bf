@@ -87,9 +87,12 @@ class GamePageTests
 		public BareHost Host = new .() ~ delete _;
 		public GameEditorPage Page;
 
-		/// `instance` (borrowed, outliving the bed) is the tab's run; none by default.
-		public this(GameInstance instance = null)
+		/// `instance` (borrowed, outliving the bed) is the tab's run; none by default. `withScenes`
+		/// gives the host a scene subsystem, which a start needs to run at all.
+		public this(GameInstance instance = null, bool withScenes = false)
 		{
+			if (withScenes)
+				Host.Subsystems.AddSubsystem<Sedulous.Engine.Scene.SceneSubsystem>();
 			RemoveDirectoryRecursive(Dir);
 			Test.Assert(EditorProject.Create(Dir, "P") case .Ok);
 			Project = EditorProject.Open(Dir);
@@ -368,5 +371,28 @@ class GamePageTests
 			GameEditorPage.GameQuality(settings, manager, quality);
 			Test.Assert(quality.MsaaSamples == 4);
 		}
+	}
+
+	/// A start whose default scene does not load undoes itself as Stop does: what it wired to
+	/// the tab for the run (the breakpoint sync, the hover values, the debugger's listener) goes
+	/// with it, so nothing reaches the tab once it closes. Stop returned at once for a tab that
+	/// was not running, and they stayed.
+	[Test]
+	public static void AStartWhoseDefaultSceneDoesNotLoadLeavesNothingWiredToTheTab()
+	{
+		// The tab's run, which outlives the tab.
+		let run = scope GameInstance();
+		let bed = scope Bed(run, true);
+		// A scene with no scene stream: it does not load.
+		let broken = bed.Project.SourceDb.RootGroup.CreateInstance("Broken", "Sedulous.Scene.Resource.SceneDocument");
+		Test.Assert(broken != null);
+		bed.Project.Settings.DefaultSceneId = broken.Id;
+
+		bed.Page.Play();
+		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f); // the start runs, and fails on the scene
+		Test.Assert(!bed.Page.IsRunning);
+		Test.Assert(bed.Context.OnBreakpointsChanged == null, "the breakpoint sync is undone with the start");
+		Test.Assert(bed.Context.ScriptValueProbe == null, "and the hover values");
+		Test.Assert(run.Scenes.ActiveScenes.Length == 0, "and its scene");
 	}
 }

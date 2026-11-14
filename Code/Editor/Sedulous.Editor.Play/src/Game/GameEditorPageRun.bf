@@ -63,10 +63,9 @@ extension GameEditorPage
 			if ((startScene == null) || !(SceneStorage.LoadScene(instance, startScene) case .Ok))
 			{
 				mContext.Notify(.Error, "Game: default scene failed to load.");
-				if (startScene != null)
-					SceneGroup.DestroyScene(startScene);
-				if (mGameInstance != null)
-					mGameInstance.StopScript(); // the script launched first; do not leave it running
+				// Undone as a Stop undoes a run: the script launched above, the debugger wired to
+				// this tab, the scenes. Left wired, the editor would call into this tab once closed.
+				TearDownRun();
 				return;
 			}
 			if (mContext.Resources != null)
@@ -109,6 +108,13 @@ extension GameEditorPage
 		mPendingPlay = false; // a Stop while waiting for the cook cancels the deferred start
 		if (!mRunning && (mScene == null))
 			return;
+		TearDownRun();
+	}
+
+	/// Undoes whatever a run set up, however far its start got: the debugger wired to this tab,
+	/// the script, the scenes, the input. Stop and every failed start end through it.
+	private void TearDownRun()
+	{
 		DropScriptedInput(); // a stopped run scripts nothing
 		if (mInput != null)
 		{
