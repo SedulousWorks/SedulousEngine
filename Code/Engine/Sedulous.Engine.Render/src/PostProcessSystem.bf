@@ -17,8 +17,9 @@ class PostProcessSystem : SceneSystem
 	public override Type SettingsType => typeof(PostProcessSettings);
 	public override void* SettingsInstance => &mPost;
 	public override StringView SettingsId => "postprocess";
-	/// Version 2 adds the source and its profile; a version 1 block reads the source Scene.
-	public override uint32 SettingsDataVersion => 2;
+	/// Version 3 drops the antialiasing mode (the quality level's now); version 2 adds the source
+	/// and its profile, and a version 1 block reads the source Scene.
+	public override uint32 SettingsDataVersion => 3;
 	public override uint32 SettingsMinReadDataVersion => 1;
 
 	/// The values in effect, as the environment's: the profile's while the source is Profile
@@ -70,7 +71,7 @@ class PostProcessSystem : SceneSystem
 
 	public override void SerializeSettings(ISerializer ar)
 	{
-		RenderSettingsValues.SerializePost(ar, ref mPost);
+		RenderSettingsValues.SerializePost(ar, ref mPost, (ar.Mode == .Read) && (ar.Version < 3));
 		if ((ar.Mode == .Read) && (ar.Version < 2))
 			return;
 		RenderSettingsValues.SerializeEnum(ar, "source", ref mPost.Source);

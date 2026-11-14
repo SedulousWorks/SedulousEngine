@@ -94,7 +94,13 @@ class EditorProject
 			// driving a migration is planned.
 			GlobalLog(.Warning, scope $"Project: last saved by engine {settings.EngineVersion}, this is {EngineVersion.String}");
 		}
-		return new EditorProject(directory, settings);
+		// Read from the manifest here: a copy of the settings carries no count (it is never
+		// written).
+		let msaaBeforeLevels = settings.MsaaSamplesBeforeLevels;
+		let project = new EditorProject(directory, settings);
+		if ((msaaBeforeLevels != 0) && settings.QualityLevelIds.IsEmpty)
+			ProjectSeed.UpgradeToQualityLevels(project, msaaBeforeLevels);
+		return project;
 	}
 
 	private static bool EnsureDirectories(StringView directory)

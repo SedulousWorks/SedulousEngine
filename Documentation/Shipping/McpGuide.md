@@ -213,7 +213,7 @@ display: `renderWidth`/`renderHeight`, the resolution the game draws at, 0 for i
 size, `renderFit`, and the player's
 `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`; `orientation` (`Any`,
 `Landscape` or `Portrait`: the shape the game is made for, presented turned a quarter on a
-window of the other shape, a landscape game on a phone held upright); `renderMsaaSamples`; and
+window of the other shape, a landscape game on a phone held upright); and
 the quality: `qualityLevelIds`, the game's `Render Quality` levels in the order an options menu
 lists them, and `defaultQualityId`, the one it starts at where no export preset picks another,
 null for the list's last. Beside them, `settingCategories` says how they group: the Project
@@ -343,9 +343,16 @@ game offers: its `label` (what an options menu shows), the scene pass's `msaaSam
 nothing) and `environmentResolution` (`Low` to `High`). The scene keeps deciding the look and
 which effects it wants; a level is what that look costs on a platform. List the levels in the
 project's `qualityLevelIds`, pick its `defaultQualityId`, and give a phone's or a handheld's
-export preset its own `qualityLevelId`; the export carries them into the dist. The player does
-not apply a level yet: it draws at the project's `renderMsaaSamples` with each scene's own
-effects and antialiasing.
+export preset its own `qualityLevelId`; the export carries them into the dist. The player starts
+at the preset's level (else the project's default, else the list's last; the engine's own
+highest, 4x MSAA and no antialiasing, when the game lists none), and the Game tab plays at the
+project's. A level's MSAA count and antialiasing are the scene pass's; an `Off` tier turns its
+effect off whatever the scene asks, `shadowDistanceMax` shortens the scene's shadow reach, and no
+tier turns an effect on. Which antialiasing runs is the level's alone: a scene's post settings
+keep only how TAA and FXAA look (`taaBlendFactor`, `taaVarianceGamma`, `fxaaSubpixel`). The `Low`
+to `High` tiers and the environment's resolution do not change an effect's cost yet: each runs
+as at `High`. A project saved before the levels opens with one, `Quality/Default`, at its old
+MSAA count.
 
 **Colours**: every colour is written as it is meant to look, in sRGB, the value a colour picker
 and a hex code show (0.5 is `#808080`): component colours, the environment's ambient and sky, a

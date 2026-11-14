@@ -46,13 +46,19 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: a Render Quality asset (File > New, under Quality/) is one quality level a game
   offers: the MSAA count and antialiasing, and a tier from Off to High for shadows, ambient
   occlusion, reflections, global illumination and bloom, with a cap on the shadow reach and the
-  environment's resolution. Nothing applies a level yet.
+  environment's resolution. The player starts at its export preset's level and play-in-editor at
+  the project's; an Off tier turns its effect off whatever a scene asks, and no tier turns one on.
 - Project Settings: a Quality tab lists the game's quality levels and the one it starts at, and
   an export preset can start its platform at another of them (`qualityLevelId`), which its dist
   carries as the default.
 
 ### Changed
 
+- Rendering: the MSAA count and the antialiasing are the quality level's. The project's MSAA
+  setting and a scene's or post profile's antialiasing mode are gone; a project saved before opens
+  with one level, Default, at its MSAA count. The antialiasing is not carried over: an older scene
+  or profile that ran TAA or FXAA says so in the log when it loads, and its level's `antialiasing`
+  takes it. A scene's post settings keep how TAA and FXAA look.
 - Samples: Lamplight and Masquerade smooth their edges with FXAA in place of TAA.
 - Native code: the Dear ImGui plugin draws as a screen overlay of the render subsystem, over the
   game's screens, in the shared overlay pass (blending encoded colours as the screens do), and

@@ -64,8 +64,14 @@ class CustomShaderApp : DefaultApplication
 			environment.Environment.AmbientColor = .(0.45f, 0.5f, 0.6f, 1.0f);
 			environment.Environment.AmbientIntensity = 0.6f;
 		}
-		if (let post = mScene.GetSystem<PostProcessSystem>())
-			post.Post.AaMode = .TAA; // the toon motion vectors in use
+		{
+			// TAA, so the toon shader's motion vectors are in use: the antialiasing is the quality
+			// level's, so the sample draws at a level that runs TAA.
+			let quality = scope RenderQualitySettings();
+			render.Quality.CopyTo(quality);
+			quality.Antialiasing = .TAA;
+			render.SetQuality(quality);
+		}
 
 		mCamera = mScene.CreateEntity("camera");
 		if (let cameras = mScene.GetSystem<CameraComponentManager>())

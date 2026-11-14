@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.Engine.Render;
@@ -38,7 +39,10 @@ static class RenderSettingsValues
 		SerializeValue(ar, "shadowFadeDistance", ref e.ShadowFadeDistance);
 	}
 
-	public static void SerializePost(ISerializer ar, ref PostProcessSettings p)
+	/// `storedAaMode`: the payload has the older layout, with the antialiasing mode the quality
+	/// levels now hold. It is read and dropped (a mode other than Off is logged, for its level to
+	/// take); written as Off, a payload at that layout, as a test writes one.
+	public static void SerializePost(ISerializer ar, ref PostProcessSettings p, bool storedAaMode)
 	{
 		SerializeValue(ar, "exposureEV", ref p.ExposureEV);
 		SerializeEnum(ar, "tonemapOperator", ref p.TonemapOperator);
@@ -52,7 +56,13 @@ static class RenderSettingsValues
 		SerializeValue(ar, "aoIntensity", ref p.AoIntensity);
 		SerializeValue(ar, "ssrEnabled", ref p.SsrEnabled);
 		SerializeValue(ar, "ssrIntensity", ref p.SsrIntensity);
-		SerializeEnum(ar, "aaMode", ref p.AaMode);
+		if (storedAaMode)
+		{
+			uint32 aaMode = 0;
+			SerializeValue(ar, "aaMode", ref aaMode);
+			if ((ar.Mode == .Read) && (aaMode != 0))
+				GlobalLog(.Warning, "Render: post settings saved with antialiasing {}: antialiasing is the quality level's now (a Render Quality's `antialiasing`); set it there", (aaMode == 2) ? "TAA" : "FXAA");
+		}
 		SerializeValue(ar, "taaBlendFactor", ref p.TaaBlendFactor);
 		SerializeValue(ar, "taaVarianceGamma", ref p.TaaVarianceGamma);
 		SerializeValue(ar, "fxaaSubpixel", ref p.FxaaSubpixel);

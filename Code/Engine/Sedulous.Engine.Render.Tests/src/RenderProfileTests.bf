@@ -110,14 +110,18 @@ class RenderProfileTests
 		Test.Assert(fromTwo.Environment.Source == .Scene);
 		Test.Assert(Near(fromTwo.Environment.AmbientIntensity, 0.4f));
 
-		// And a version 1 post block.
+		// And a version 1 post block, which also carries the antialiasing mode the quality levels
+		// now hold: read and dropped, with the fields after it where they belong.
+		Test.Assert(scope PostProcessSystem().SettingsDataVersion == 3);
 		var olderPost = PostProcessSettings();
 		olderPost.ExposureEV = -1.0f;
+		olderPost.TaaBlendFactor = 0.8f;
+		olderPost.SsgiIntensity = 2.0f;
 		let postOne = scope MemoryStream();
 		{
 			let writer = scope BinarySerializer(postOne, .Write);
 			BeginVersionedPayload(writer, postId, 1);
-			RenderSettingsValues.SerializePost(writer, ref olderPost);
+			RenderSettingsValues.SerializePost(writer, ref olderPost, true);
 			EndVersionedPayload(writer);
 			Test.Assert(writer.IsOk);
 		}
@@ -132,6 +136,34 @@ class RenderProfileTests
 		}
 		Test.Assert(fromOne.Post.Source == .Scene);
 		Test.Assert(Near(fromOne.Post.ExposureEV, -1.0f));
+		Test.Assert(Near(fromOne.Post.TaaBlendFactor, 0.8f));
+		Test.Assert(Near(fromOne.Post.SsgiIntensity, 2.0f));
+
+		// A version 2 block carries it too, before its source and profile.
+		let postTwo = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(postTwo, .Write);
+			BeginVersionedPayload(writer, postId, 2);
+			RenderSettingsValues.SerializePost(writer, ref olderPost, true);
+			var source = SettingsSource.Profile;
+			RenderSettingsValues.SerializeEnum(writer, "source", ref source);
+			var profile = profileId;
+			SerializeValue(writer, "profile", ref profile);
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+		postTwo.Seek(0, .Begin);
+		let fromTwoPost = scope PostProcessSystem();
+		{
+			let reader = scope BinarySerializer(postTwo, .Read);
+			BeginVersionedPayload(reader, postId, fromTwoPost.SettingsDataVersion, fromTwoPost.SettingsMinReadDataVersion);
+			fromTwoPost.SerializeSettings(reader);
+			EndVersionedPayload(reader);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(Near(fromTwoPost.Post.SsgiIntensity, 2.0f));
+		Test.Assert(fromTwoPost.Post.Source == .Profile);
+		Test.Assert(fromTwoPost.Post.Profile.Id == profileId);
 	}
 
 	[Test]
@@ -162,7 +194,7 @@ class RenderProfileTests
 		let envInstance = database.RootGroup.CreateInstance("dusk", "Sedulous.Engine.Render.EnvironmentProfileSource");
 		Test.Assert(envInstance.WriteObject(envSource) case .Ok);
 		let postSource = scope PostProcessProfileSource();
-		postSource.Values.AaMode = .FXAA;
+		postSource.Values.FxaaSubpixel = 0.5f;
 		postSource.Values.BloomIntensity = 0.2f;
 		let postInstance = database.RootGroup.CreateInstance("punchy", "Sedulous.Engine.Render.PostProcessProfileSource");
 		Test.Assert(postInstance.WriteObject(postSource) case .Ok);
@@ -173,7 +205,7 @@ class RenderProfileTests
 		Test.Assert(envProfile.Values.SkyMode == .Analytic);
 		Test.Assert(Near(envProfile.Values.Turbidity, 7.0f));
 		Test.Assert(Near(envProfile.Values.ShadowFadeDistance, 12.0f));
-		Test.Assert(postProfile.Values.AaMode == .FXAA);
+		Test.Assert(Near(postProfile.Values.FxaaSubpixel, 0.5f));
 		Test.Assert(Near(postProfile.Values.BloomIntensity, 0.2f));
 	}
 }

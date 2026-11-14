@@ -112,7 +112,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	private int32 mAoDebug = 0;
 	private bool mSsrEnabled = false;
 	private SsrParams mSsrParams = .();
-	private uint32 mGlobalMsaaSamples = 1;
+	/// The level every view draws at (QualityFor), and a viewport's own, each owned.
+	private RenderQualitySettings mQuality = new .() ~ delete _;
+	private Dictionary<void*, RenderQualitySettings> mViewportQuality = new .() ~ DeleteDictionaryAndValues!(_);
 	/// The ceiling the device reported, filled once the passes are built.
 	private uint32 mMaxMsaaSamples = 1;
 	/// Null means multisampling is unavailable, whatever the device reports.
@@ -328,19 +330,46 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 	public SsrParams* SsrParams => &mSsrParams;
 
-	/// The scene pass sample count for every view (a project's setting, a sample's toggle),
-	/// clamped per view against the device. It leaves the scene's authored post settings in
-	/// effect: a count is not a post look, so it does not take the global override with it.
-	public uint32 MsaaSamples
+	/// The quality level every view draws at (the player's, from its project and preset; the
+	/// engine's own highest until a host sets one): its MSAA count and antialiasing, and its tiers
+	/// over what each scene asks for. The count is clamped per view to the device. Not part of
+	/// the global override: the host's, applied over either. BORROWED; SetQuality copies.
+	public RenderQualitySettings Quality => mQuality;
+	public void SetQuality(RenderQualitySettings quality) => quality.CopyTo(mQuality);
+
+	/// A level for the views drawn with `viewportKey` alone (a Game tab plays at its game's level
+	/// while the editor's own views keep theirs), copied, until cleared.
+	public void SetViewportQuality(void* viewportKey, RenderQualitySettings quality)
 	{
-		get => mGlobalMsaaSamples;
-		set => mGlobalMsaaSamples = (value < 1) ? 1 : value;
+		if (mViewportQuality.TryGetValue(viewportKey, let existing))
+		{
+			quality.CopyTo(existing);
+			return;
+		}
+		let own = new RenderQualitySettings();
+		quality.CopyTo(own);
+		mViewportQuality[viewportKey] = own;
 	}
 
-	/// The post processing a view of `scene` gets: the global override once one of its setters
-	/// was called, else the scene's authored settings (or its profile's); either way with the
-	/// scene pass sample count MsaaSamples gave.
-	public ViewPostConfig ViewPost(Scene scene)
+	public void ClearViewportQuality(void* viewportKey)
+	{
+		if (mViewportQuality.GetAndRemove(viewportKey) case .Ok(let entry))
+			delete entry.value;
+	}
+
+	/// The level the views drawn with `viewportKey` take: its own, else the global one. BORROWED.
+	public RenderQualitySettings QualityFor(void* viewportKey)
+	{
+		if ((viewportKey != null) && mViewportQuality.TryGetValue(viewportKey, let own))
+			return own;
+		return mQuality;
+	}
+
+	/// The post processing a view of `scene` drawn with `viewportKey` gets: the global override
+	/// once one of its setters was called, else the scene's authored settings (or its
+	/// profile's); either way under that view's quality level, whose antialiasing the global
+	/// override's own replaces.
+	public ViewPostConfig ViewPost(Scene scene, void* viewportKey = null)
 	{
 		var post = ViewPostConfig();
 		if (mGlobalPostActive)
@@ -368,7 +397,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		{
 			post = ScenePost.Resolve(*system.Effective); // the scene's, or its profile's
 		}
-		post.MsaaSamples = (uint8)mGlobalMsaaSamples;
+		// The view's quality level over either: its MSAA count, its tiers over the effects and its
+		// antialiasing, unless a debug panel set its own.
+		QualityApply.Apply(ref post, QualityFor(viewportKey), !mGlobalPostActive);
 		return post;
 	}
 
@@ -942,6 +973,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 				RenderExtract.ExtractLightsInto(scene, snapshot);
 				RenderExtract.ExtractReflectionProbesInto(scene, snapshot);
 				RenderExtract.ExtractEnvironmentInto(scene, snapshot);
+				// The level's shadows over the scene's.
+				QualityApply.Apply(snapshot, QualityFor(viewportKey));
 				// A new scene restarts the views' history (the auto exposure snaps to it).
 				snapshot.SetSceneSerial(scene.Serial);
 
@@ -994,8 +1027,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 		// This view's post processing: a sample's debug panel override once touched, else the
 		// scene's authored settings (the exposure authored in stops resolved to the tonemap's
-		// linear multiplier), with the host's scene pass sample count either way.
-		settings.Post = ViewPost(scene);
+		// linear multiplier), under the view's quality level either way.
+		settings.Post = ViewPost(scene, viewportKey);
 
 		// An editor viewport's show flags: ephemeral per view overrides that strip effects for
 		// editing clarity, layered ON TOP of the resolved settings and never written back.

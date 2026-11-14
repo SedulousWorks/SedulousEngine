@@ -32,12 +32,11 @@ class SceneSettingsRoundTripTests
 		Test.Assert(defaults.AoMode == .Off);
 		Test.Assert(Near(defaults.AoStrength, 0.6f));
 		Test.Assert(!defaults.SsrEnabled);
-		Test.Assert(defaults.AaMode == .Off);
 		Test.Assert(Near(defaults.TaaBlendFactor, 0.97f));
 		Test.Assert(Near(defaults.TaaVarianceGamma, 1.25f));
 	}
 
-	/// Edit a field of each kind, a float, a boolean and all three enums, write the whole
+	/// Edit a field of each kind, a float, a boolean and both enums, write the whole
 	/// scene and read it back: the authored look survives.
 	[Test]
 	public static void TheAuthoredLookSurvivesASceneRoundTrip()
@@ -51,7 +50,6 @@ class SceneSettingsRoundTripTests
 		post.Post.SsrEnabled = true;
 		post.Post.SsgiEnabled = true;
 		post.Post.SsgiIntensity = 1.5f;
-		post.Post.AaMode = .TAA;
 		post.Post.TaaBlendFactor = 0.9f;
 		source.CreateEntity("e");
 
@@ -79,7 +77,6 @@ class SceneSettingsRoundTripTests
 		Test.Assert(settings.SsrEnabled);
 		Test.Assert(settings.SsgiEnabled);
 		Test.Assert(Near(settings.SsgiIntensity, 1.5f));
-		Test.Assert(settings.AaMode == .TAA);
 		Test.Assert(Near(settings.TaaBlendFactor, 0.9f));
 	}
 

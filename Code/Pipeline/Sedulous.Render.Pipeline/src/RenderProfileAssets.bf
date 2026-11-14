@@ -94,7 +94,9 @@ class PostProcessProfileAsset : SettingsProfileAsset
 		ar.BeginObject();
 		ar.Key("fileName");
 		FileName.Serialize(ar);
-		RenderSettingsValues.SerializePost(ar, ref Values);
+		// One saved before the antialiasing mode was the quality level's has the key: read and
+		// dropped.
+		RenderSettingsValues.SerializePost(ar, ref Values, (ar.Mode == .Read) && ((ar as Serializer)?.IsSelfDescribing ?? false) && ar.HasKey("aaMode"));
 		ar.EndObject();
 	}
 }

@@ -20,3 +20,15 @@ class GrownVersionedSample
 	[Appended(2)]
 	public int32 Added = -2;
 }
+
+/// A record whose layout lost a field: version 2 dropped `oldCount`, which version 1 stored
+/// between the other two. Its legacy reader still decodes version 1, the dropped value into
+/// `Carried`, which nothing writes.
+[Serializable(2, false, 1)]
+class ShrunkVersionedSample
+{
+	public int32 Before;
+	[Retired(2, "oldCount")]
+	public int32 Carried = 0;
+	public int32 After;
+}

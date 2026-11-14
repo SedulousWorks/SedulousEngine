@@ -102,7 +102,6 @@ class ProjectSettingsTests
 			let settings = Project.Settings;
 			settings.DefaultSceneId = Scene;
 			settings.UiFontIds.Add(sFont);
-			settings.RenderMsaaSamples = 4;
 			settings.EngineVersion.Set(cOldStamp);
 			Context.SetProject(Project);
 			Context.OnProjectSettingsChanged = new [=this] () => { Changed++; };
@@ -187,12 +186,15 @@ class ProjectSettingsTests
 		Test.Assert(bag.ElementCount("uiFontIds", 0) == 1);
 		Test.Assert(bed.TextIs("uiFontIds.0", Text(Bed.sFont, .. scope .())));
 
-		let msaa = bag.FindInfo(ProjectSettingsDialog.cMsaaSetting);
-		Test.Assert(msaa != null);
-		Test.Assert(msaa.Kind == .Enum);
-		Test.Assert(msaa.Choices.Count == 3);
-		Test.Assert(msaa.Choices[2].Name == "4x");
-		Test.Assert(bed.IntAt(ProjectSettingsDialog.cMsaaSetting) == 4);
+		// The quality levels, a list of Render Quality assets, and the default among them.
+		let levels = bag.FindInfo("qualityLevelIds");
+		Test.Assert(levels != null);
+		Test.Assert(levels.Kind == .List);
+		Test.Assert(bag.ElementCount("qualityLevelIds", 0) == 0);
+		let startsAt = bag.FindInfo("defaultQualityId");
+		Test.Assert(startsAt != null);
+		Test.Assert(startsAt.Kind == .Reference);
+		Test.Assert(bag.FindInfo("renderMsaaSamples") == null, "the count is a quality level's");
 
 		let mode = bag.FindInfo("windowMode");
 		Test.Assert(mode != null);
@@ -223,7 +225,7 @@ class ProjectSettingsTests
 		Test.Assert(bed.TextIs("name", "Settings"), "the rows again, from the manifest");
 		bed.Edit("name", Sedulous.GUI.Variant("Renamed"));
 		bed.Edit("defaultSceneId", Sedulous.GUI.Variant(StringView()));
-		bed.Edit(ProjectSettingsDialog.cMsaaSetting, Sedulous.GUI.Variant((int64)2));
+		bed.Edit("windowResizable", Sedulous.GUI.Variant(false));
 		bed.Bag.ResizeList("uiFontIds", 0, 3);
 		bed.Bag.SetValue("uiFontIds.1", 0, Sedulous.GUI.Variant(Text(Bed.sFont, .. scope .())));
 		Test.Assert(bed.Dialog.Save());
@@ -231,7 +233,7 @@ class ProjectSettingsTests
 		let saved = bed.Project.Settings;
 		Test.Assert(saved.Name == "Renamed");
 		Test.Assert(saved.DefaultSceneId.IsNil);
-		Test.Assert(saved.RenderMsaaSamples == 2);
+		Test.Assert(!saved.WindowResizable);
 		Test.Assert(saved.UiFontIds.Count == 1);
 		Test.Assert(saved.UiFontIds[0] == Bed.sFont);
 
@@ -240,7 +242,7 @@ class ProjectSettingsTests
 		Test.Assert(again != null);
 		defer delete again;
 		Test.Assert(again.Settings.Name == "Renamed");
-		Test.Assert(again.Settings.RenderMsaaSamples == 2);
+		Test.Assert(!again.Settings.WindowResizable);
 		Test.Assert((again.Settings.UiFontIds.Count == 1) && (again.Settings.UiFontIds[0] == Bed.sFont));
 	}
 
@@ -295,10 +297,10 @@ class ProjectSettingsTests
 	}
 
 	/// Each kind of row: a text, a number within its range, a check box, an enum by its cases'
-	/// names and values, MSAA by the render subsystem's levels and their samples, the engine version
-	/// as the project's own stamp, read only, refusing an edit.
+	/// names and values, the engine version as the project's own stamp, read only, refusing an
+	/// edit.
 	[Test]
-	public static void EachKindOfRowMsaaTheLevelsTheEngineVersionTheProjectsStampReadOnly()
+	public static void EachKindOfRowTheEngineVersionTheProjectsStampReadOnly()
 	{
 		let bed = scope Bed();
 		let bag = bed.Bag;
@@ -333,16 +335,6 @@ class ProjectSettingsTests
 			named = named || ((choice.Name == letterbox) && (choice.Value == (int64)FitMode.Letterbox));
 		Test.Assert(named, "a case by its name and value");
 		Test.Assert(bed.IntAt("renderFit") == (int64)FitMode.Letterbox);
-
-		// MSAA: the levels, each by its label and its samples, not the counts a number takes.
-		let msaa = bag.FindInfo(ProjectSettingsDialog.cMsaaSetting);
-		Test.Assert(msaa.Category == "Display");
-		Test.Assert(msaa.Choices.Count == Sedulous.Engine.Render.MsaaLevels.All.Count);
-		for (int i < msaa.Choices.Count)
-		{
-			Test.Assert(msaa.Choices[i].Name == Sedulous.Engine.Render.MsaaLevels.All[i].Label);
-			Test.Assert(msaa.Choices[i].Value == (int64)Sedulous.Engine.Render.MsaaLevels.All[i].Samples);
-		}
 
 		// The project's own stamp, not the running engine's; an edit of it is refused.
 		let version = bag.FindInfo(ProjectSettingsDialog.cEngineVersionRow);

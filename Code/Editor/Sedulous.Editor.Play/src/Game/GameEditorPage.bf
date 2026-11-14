@@ -46,14 +46,24 @@ class GameEditorPageServices
 /// the application and released back to it on close.
 class GameEditorPage : UIEditorPage, IPieInstancePage
 {
-	/// The per view settings the Game tab draws its game with: the project's scene pass MSAA,
-	/// as the player sets it for every view (the editor's render subsystem serves every page, so
-	/// the tab asks for the count on its own view), and nothing of the game's look stripped.
-	public static ViewPostOverride GameViewPost(Sedulous.Engine.Project.ProjectSettings settings)
+	/// The quality level the Game tab plays its game at, into `outQuality`: the project's
+	/// starting level, as a run from the project folder starts at, read through `resources`. The
+	/// engine's own highest when the project lists no levels, or its level does not resolve. The
+	/// editor's render subsystem serves every page, so the tab asks for the level on its own views
+	/// alone.
+	public static void GameQuality(Sedulous.Engine.Project.ProjectSettings settings, Sedulous.Resource.ResourceManager resources,
+		RenderQualitySettings outQuality)
 	{
-		var post = ViewPostOverride();
-		post.MsaaOverride = (uint8)Math.Max(settings.RenderMsaaSamples, 1);
-		return post;
+		let level = settings.StartupQuality(Guid());
+		if ((level != Guid()) && (resources != null))
+		{
+			if (let quality = resources.Bind<RenderQuality>(level).Get)
+			{
+				quality.Values.CopyTo(outQuality);
+				return;
+			}
+		}
+		scope RenderQualitySettings().CopyTo(outQuality);
 	}
 
 	/// Its markup, under the data root.
@@ -71,6 +81,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private GameInstance mGameInstance;
 	private SceneSubsystem mScenes = null;
 	private RenderSubsystem mRender = null;
+	/// The level this tab's views draw at, asked for every frame (GameQuality).
+	private RenderQualitySettings mQuality = new .() ~ delete _;
 	private Sedulous.Scene.Scene mScene = null;
 	private InputSubsystem mInput = null;
 	private IInputManager mShellInput = null;
@@ -335,8 +347,13 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mCaptureY = 0;
 		mCaptureWidth = w;
 		mCaptureHeight = h;
-		// The game's own scene pass MSAA, as the player draws it.
-		var post = (mContext?.Project != null) ? GameViewPost(mContext.Project.Settings) : ViewPostOverride();
+		// The game's own quality level, as the player draws it, on this tab's views alone (keyed
+		// by the page). Asked every frame, so a level's edit or a settings change shows at once.
+		if (mContext?.Project != null)
+			GameQuality(mContext.Project.Settings, mContext.Resources, mQuality);
+		else
+			scope RenderQualitySettings().CopyTo(mQuality);
+		mRender.SetViewportQuality(Internal.UnsafeCastToPtr(this), mQuality);
 		let fit = GameFitIn(w, h);
 		if (GameFitted(fit))
 		{
@@ -345,7 +362,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			let dst = fit.DstRect();
 			let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f));
 			mRender.RenderScene(mScene, mViewport.ColorView, mViewport.ColorFormat, w, h, viewport,
-				null, targetState, &post, null, null, SceneSize.FromFit(fit));
+				null, targetState, null, Internal.UnsafeCastToPtr(this), null, SceneSize.FromFit(fit));
 			mCaptureX = (uint32)Math.Max(viewport.X, 0);
 			mCaptureY = (uint32)Math.Max(viewport.Y, 0);
 			mCaptureWidth = (uint32)Math.Min(viewport.Width, w - mCaptureX);
@@ -354,7 +371,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		else
 		{
 			mRender.RenderScene(mScene, mViewport.ColorView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
-				null, targetState, &post);
+				null, targetState, null, Internal.UnsafeCastToPtr(this));
 		}
 		mViewport.ColorState = .ShaderRead;
 		if (mRunning)
@@ -398,6 +415,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	{
 		DropScriptedInput(); // before the sources it replaced are torn down
 		Stop();
+		if (mRender != null)
+			mRender.ClearViewportQuality(Internal.UnsafeCastToPtr(this)); // the key is this page, about to go
 		if (mInput != null)
 			mInput.ClearSourceProviderIf(mViewportSource);
 		if (mGameInstance != null)

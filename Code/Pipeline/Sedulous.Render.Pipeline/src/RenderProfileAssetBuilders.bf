@@ -35,6 +35,9 @@ class PostProcessProfileAssetBuilder : IAssetBuilder
 {
 	public Type AssetType => typeof(PostProcessProfileAsset);
 	public Type ProductType => typeof(PostProcessProfileSource);
+	/// 2: the record has no antialiasing mode (the quality level's), so one cooked before is
+	/// cooked again.
+	public int32 Version => 2;
 
 	/// The grading lookup texture is a runtime reference, as the environment's sky is.
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)

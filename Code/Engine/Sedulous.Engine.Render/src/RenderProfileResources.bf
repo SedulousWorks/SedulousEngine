@@ -20,14 +20,15 @@ class EnvironmentProfileSource : ISerializable
 	}
 }
 
-/// The cooked Post Process Profile.
+/// The cooked Post Process Profile. One cooked before the antialiasing mode left it is cooked
+/// again (its builder's version), never read.
 class PostProcessProfileSource : ISerializable
 {
 	public PostProcessSettings Values = .();
 
 	public void Serialize(ISerializer ar)
 	{
-		RenderSettingsValues.SerializePost(ar, ref Values);
+		RenderSettingsValues.SerializePost(ar, ref Values, false);
 	}
 }
 

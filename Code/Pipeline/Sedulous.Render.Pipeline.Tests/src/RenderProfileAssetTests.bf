@@ -9,6 +9,8 @@ using Sedulous.Render;
 using Sedulous.Render.Pipeline;
 using Sedulous.Resource;
 using Sedulous.VFS;
+using Sedulous.Xml;
+using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Render.Pipeline.Tests;
 
@@ -96,7 +98,7 @@ class RenderProfileAssetTests
 		let database = fixture.Database;
 		let asset = scope PostProcessProfileAsset();
 		asset.Values.ExposureEV = 1.0f;
-		asset.Values.AaMode = .FXAA;
+		asset.Values.FxaaSubpixel = 0.5f;
 		asset.Values.AoMode = .GTAO;
 		let cooked = database.RootGroup.CreateInstance("look", "Sedulous.Engine.Render.PostProcessProfileSource");
 		let builder = scope PostProcessProfileAssetBuilder();
@@ -110,8 +112,39 @@ class RenderProfileAssetTests
 		let profile = manager.Bind<PostProcessProfile>(cooked.Id).Get;
 		Test.Assert(profile != null);
 		Test.Assert(Near(profile.Values.ExposureEV, 1.0f));
-		Test.Assert(profile.Values.AaMode == .FXAA);
+		Test.Assert(Near(profile.Values.FxaaSubpixel, 0.5f));
 		Test.Assert(profile.Values.AoMode == .GTAO);
+	}
+
+	/// A profile saved before the antialiasing mode was the quality level's carries it: read and
+	/// dropped, with the fields after it where they belong. One saved since has none.
+	[Test]
+	public static void AnOlderPostProcessProfileReadsPastItsAntialiasingMode()
+	{
+		let asset = scope PostProcessProfileAsset();
+		asset.Values.TaaBlendFactor = 0.8f;
+		asset.Values.SsgiIntensity = 2.0f;
+		let text = scope String();
+		{
+			let writer = scope XmlSerializer();
+			((ISerializable)asset).Serialize(writer);
+			writer.GetOutput(text);
+		}
+		Test.Assert(!text.Contains("aaMode"), text);
+
+		// Saved before: the mode's key ahead of TAA's look, as every profile written until now.
+		let older = scope String(text);
+		let next = older.IndexOf("<f32 name=\"taaBlendFactor\">");
+		Test.Assert(next >= 0, text);
+		older.Insert(next, "<u32 name=\"aaMode\">2</u32>");
+		let document = scope XmlDocument();
+		Test.Assert(document.Parse(older) == .Ok, older);
+		let reader = scope XmlSerializer(document);
+		let back = scope PostProcessProfileAsset();
+		((ISerializable)back).Serialize(reader);
+		Test.Assert(reader.IsOk);
+		Test.Assert(Near(back.Values.TaaBlendFactor, 0.8f));
+		Test.Assert(Near(back.Values.SsgiIntensity, 2.0f));
 	}
 
 	[Test]

@@ -59,27 +59,20 @@ class ScenePostTests
 		Test.Assert(!config.BloomEnabled);
 	}
 
-	/// One authored antialiasing mode becomes two EXCLUSIVE flags, and only the temporal one
-	/// asks for motion vectors.
+	/// Which antialiasing runs is the quality level's, not the scene's: the scene's own resolves
+	/// to none, with its TAA look kept for a level that runs TAA.
 	[Test]
-	public static void TheAntialiasingModeBecomesExclusiveFlags()
+	public static void TheScenesOwnResolvesToNoAntialiasingKeepingItsLook()
 	{
 		var temporal = PostProcessSettings();
-		temporal.AaMode = .TAA;
 		temporal.TaaBlendFactor = 0.9f;
-		let taa = ScenePost.Resolve(temporal);
-		Test.Assert(taa.TaaEnabled);
-		Test.Assert(!taa.FxaaEnabled);
-		Test.Assert(Near(taa.TaaBlend, 0.9f));
-		Test.Assert(taa.NeedsMotion);
-
-		var spatial = PostProcessSettings();
-		spatial.AaMode = .FXAA;
-		let fxaa = ScenePost.Resolve(spatial);
-		Test.Assert(fxaa.FxaaEnabled);
-		Test.Assert(!fxaa.TaaEnabled);
-		// Post tonemap and spatial, so no motion.
-		Test.Assert(!fxaa.NeedsMotion);
+		temporal.FxaaSubpixel = 0.5f;
+		let config = ScenePost.Resolve(temporal);
+		Test.Assert(!config.TaaEnabled);
+		Test.Assert(!config.FxaaEnabled);
+		Test.Assert(Near(config.TaaBlend, 0.9f));
+		Test.Assert(Near(config.FxaaSubpixel, 0.5f));
+		Test.Assert(!config.NeedsMotion);
 	}
 
 	[Test]

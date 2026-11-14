@@ -149,6 +149,13 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 					move.AppendF("Sedulous.Core.Serialization.Serialize(ar, {});", field.Name);
 
 				let key = WireKey(field.Name, .. scope String());
+				// Retired: read from data stored before the version that dropped it, never written.
+				if (field.GetCustomAttribute<RetiredAttribute>() case .Ok(let retired))
+				{
+					let storedKey = (retired.Key != null) ? retired.Key : key;
+					body.AppendF("\tif ((ar.Mode == .Read) && (ar.Version < {}) && ar.HasKey(\"{}\"))\n\t{{\n\t\tar.Key(\"{}\");\n\t\t{}\n\t}}\n", retired.Until, storedKey, storedKey, move);
+					continue;
+				}
 				// Appended: a keyed payload from before the field has no key for it, and the
 				// field keeps its default rather than failing the read.
 				// Appended at a version: read only from data stored at it or later, which a

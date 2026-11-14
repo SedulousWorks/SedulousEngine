@@ -31,7 +31,8 @@ class ProjectManifestTests
 	}
 
 	/// A version 9 manifest, which carried the old UI's theme and loading document, still opens:
-	/// the two are passed by, every other setting reads, and it saves as version 10 without them.
+	/// the two are passed by, every other setting reads (its MSAA count into the count the
+	/// editor's upgrade takes), and it saves as the current version without them.
 	[Test]
 	public static void AVersion9ManifestStillReadsItsOldUiSettingsDropped()
 	{
@@ -66,14 +67,15 @@ class ProjectManifestTests
 		Test.Assert(settings.Name == "Old");
 		Test.Assert(settings.DefaultSceneId == Guid.Parse("abf41c6a-3a62-4a4f-830f-47fb88f610ff").Get());
 		Test.Assert(settings.DefaultUiFontId == Guid.Parse("23da25e1-47fe-2044-a727-d7fbcde40a8f").Get(), "after the dropped theme");
-		Test.Assert(settings.RenderMsaaSamples == 4, "after the dropped loading document");
+		Test.Assert(settings.MsaaSamplesBeforeLevels == 4, "after the dropped loading document");
 		Test.Assert(!settings.GuiLoadingDocumentId.IsSet, "the old UI's document is not the GUI's");
 
 		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
 		let saved = scope String();
 		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
-		Test.Assert(saved.Contains("<u32 name=\"version\">10</u32>"));
+		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
 		Test.Assert(!saved.Contains("defaultUiThemeId") && !saved.Contains("name=\"loadingDocumentId\""));
+		Test.Assert(!saved.Contains("renderMsaaSamples"), "the count is a quality level's now");
 	}
 
 	/// A version 10 manifest naming a native module (a library path, before a game's native code
@@ -110,18 +112,19 @@ class ProjectManifestTests
 		Test.Assert(ProjectManifest.Load(fs, settings, "Project.xml") case .Ok);
 		Test.Assert(settings.Name == "Old");
 		Test.Assert(settings.DefaultInputMapId == Guid.Parse("7c0d2a51-0f6e-4b8e-9a3d-5e2f1c4b6a70").Get(), "after the dropped path");
-		Test.Assert(settings.RenderMsaaSamples == 2);
+		Test.Assert(settings.MsaaSamplesBeforeLevels == 2);
 		Test.Assert(settings.Plugins.IsEmpty, "the path is lost, not migrated");
 
 		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
 		let saved = scope String();
 		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
-		Test.Assert(saved.Contains("<u32 name=\"version\">10</u32>"));
-		Test.Assert(!saved.Contains("nativeModule"));
+		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
+		Test.Assert(!saved.Contains("nativeModule") && !saved.Contains("renderMsaaSamples"));
 	}
 
 	/// A copy goes through the settings' own serialization, so it carries every field, the
-	/// ones added after it was written too: the two manifests are the same document.
+	/// ones added after it was written too: the two manifests are the same document. An older
+	/// manifest's MSAA count is never written, so a copy carries none.
 	[Test]
 	public static void ACopyCarriesEverySetting()
 	{
@@ -132,7 +135,7 @@ class ProjectManifestTests
 		from.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
 		from.DefaultScene.Set("Scenes/Main");
 		from.GuiLoadingDocumentId = .(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
-		from.RenderMsaaSamples = 4;
+		from.MsaaSamplesBeforeLevels = 4;
 		from.UiFontIds.Add(.(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9));
 		from.RenderWidth = 1280;
 		from.RenderHeight = 800;
@@ -143,7 +146,7 @@ class ProjectManifestTests
 
 		let to = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Copy(from, to) case .Ok);
-		Test.Assert((to.GuiLoadingDocumentId == from.GuiLoadingDocumentId) && (to.RenderMsaaSamples == 4));
+		Test.Assert((to.GuiLoadingDocumentId == from.GuiLoadingDocumentId) && (to.MsaaSamplesBeforeLevels == 0));
 		Test.Assert((to.UiFontIds.Count == 1) && (to.RenderFit == .Crop) && (to.WindowMode == .Fullscreen) && !to.WindowResizable);
 		Test.Assert(to.Orientation == .Landscape);
 
@@ -166,7 +169,7 @@ class ProjectManifestTests
 		written.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
 		written.DefaultScene.Set("Scenes/Main");
 		written.StartupScript.Set("Scripts/Game");
-		written.RenderMsaaSamples = 4;
+		written.RenderWidth = 640;
 
 		{
 			let fs = scope NativeFileSystem(kScratch);
@@ -181,7 +184,7 @@ class ProjectManifestTests
 		Test.Assert(read.DefaultSceneId == written.DefaultSceneId);
 		Test.Assert(read.DefaultScene == "Scenes/Main");
 		Test.Assert(read.StartupScript == "Scripts/Game");
-		Test.Assert(read.RenderMsaaSamples == 4);
+		Test.Assert(read.RenderWidth == 640);
 	}
 
 	/// The other UI fonts round trip, and a manifest saved before they existed (no
@@ -418,7 +421,7 @@ class ProjectManifestTests
 
 		let written = scope ProjectSettings();
 		written.Name.Set("Shipped");
-		written.RenderMsaaSamples = 2;
+		written.RenderHeight = 360;
 
 		let fs = scope NativeFileSystem(kScratch);
 		Test.Assert(ProjectManifest.Save(fs, written, ProjectLayout.DistManifestFile) case .Ok);
@@ -428,7 +431,7 @@ class ProjectManifestTests
 		let read = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(fs, read, ProjectLayout.DistManifestFile) case .Ok);
 		Test.Assert(read.Name == "Shipped");
-		Test.Assert(read.RenderMsaaSamples == 2);
+		Test.Assert(read.RenderHeight == 360);
 	}
 
 	/// An absent manifest is NotFound rather than a blank one, so a caller can tell the

@@ -27,7 +27,9 @@ namespace Sedulous.Engine.Project;
 /// dropped without a version bump is passed by the same way: nativeModule, the library path
 /// of a game's native module, went when a game's native code became a package of the
 /// project's (Plugins/<Name>), and a manifest that names one reads with the path dropped.
-[Serializable(10, false, 9)]
+/// Version 11 dropped the scene pass's MSAA count, a quality level's now: a manifest of 9 or
+/// 10 still reads, its count into MsaaSamplesBeforeLevels.
+[Serializable(11, false, 9)]
 class ProjectSettings
 {
 	[Setting("Name", "General")]
@@ -56,10 +58,12 @@ class ProjectSettings
 	[Setting("Default UI font", "FontAsset", "(built-in)", "UI"), SettingSummary("UI font")]
 	public Guid DefaultUiFontId;
 
-	/// The scene pass sample count: one is off. Clamped to what the device can do at
-	/// runtime, so a project asking for more than the hardware has still runs.
-	[Setting("MSAA", "Display")]
-	public uint32 RenderMsaaSamples = 1;
+	/// The scene pass's MSAA count a manifest of version 10 or before carried, before the count
+	/// was a quality level's: what the editor's upgrade gives the project's first level. Read
+	/// from such a manifest alone and never written, so a copy of the settings carries none;
+	/// nought when the manifest has none.
+	[Retired(11, "renderMsaaSamples")]
+	public uint32 MsaaSamplesBeforeLevels = 0;
 
 	/// Cooked fonts the game UI loads BESIDE the default one, each its own family, which a
 	/// label picks by `font-family` (a title face beside the body text). [Appended], so a
@@ -135,6 +139,19 @@ class ProjectSettings
 	/// Whether `id` is one of the game's quality levels, the only ones a default or a preset may
 	/// start at (an options menu offers the list alone).
 	public bool IsQualityLevel(Guid id) => QualityLevelIds.Contains(id);
+
+	/// The quality level the game starts at: the player's own choice (`saved`, a level the game
+	/// saved for it) while it is still one of the game's levels, else the manifest's default (a
+	/// dist's is its export preset's) while it is one, else the list's last. Nil when the game
+	/// lists none, which runs at the engine's own highest level.
+	public Guid StartupQuality(Guid saved)
+	{
+		if (saved.IsSet && IsQualityLevel(saved))
+			return saved;
+		if (DefaultQualityId.IsSet && IsQualityLevel(DefaultQualityId))
+			return DefaultQualityId;
+		return QualityLevelIds.IsEmpty ? Guid() : QualityLevelIds.Back;
+	}
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);

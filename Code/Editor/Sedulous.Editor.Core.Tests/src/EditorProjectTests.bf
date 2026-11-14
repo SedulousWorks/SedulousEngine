@@ -7,6 +7,7 @@ using Sedulous.Core.Logging;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
+using Sedulous.Render.Pipeline;
 
 namespace Sedulous.Editor.Core.Tests;
 
@@ -41,6 +42,9 @@ static class EditorProjectTests
 		Test.Assert(project.CookedDb.Extension == ProjectLayout.CookedAssetExtension);
 		Test.Assert(project.SourcesRoot(.. scope .()).EndsWith(ProjectLayout.SourcesDir));
 		Test.Assert(project.CacheRoot(.. scope .()).EndsWith(ProjectLayout.CacheDir));
+		// A new project lists no quality levels: it runs at the engine's own highest (4x MSAA).
+		Test.Assert(project.Settings.QualityLevelIds.IsEmpty);
+		Test.Assert(project.Settings.MsaaSamplesBeforeLevels == 0, "nothing to upgrade");
 
 		// A generated directory removed by a checkout comes back on open.
 		RemoveDirectoryRecursive(PathJoin(dir, ProjectLayout.CookedDir, .. scope .()));
@@ -213,6 +217,62 @@ static class EditorProjectTests
 		InitGlobalLogger(new CaptureLogger(), true);
 		defer ShutdownGlobalLogger();
 		Test.Assert(EditorProject.Open(dir) == null, "another version's layout is not guessed at");
+	}
+
+	/// A project saved before the quality levels (manifest version 10) carried its MSAA count: it
+	/// opens with its first quality level, Quality/Default at that count with every effect as
+	/// before, listed and the default, and the manifest saved without the count; once.
+	[Test]
+	public static void AnOlderProjectsMsaaCountBecomesItsFirstQualityLevel()
+	{
+		let dir = Scratch("scratch_editor_project_levels", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
+		let path = PathJoin(dir, ProjectLayout.ManifestFile, .. scope .());
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(path, bytes) case .Ok);
+		let text = scope String(StringView((char8*)bytes.Ptr, bytes.Count));
+		let current = "<u32 name=\"version\">11</u32>";
+		Test.Assert(text.Contains(current), text);
+		text.Replace(current, "<u32 name=\"version\">10</u32>");
+		// After the settings' fields, where a reader still to come finds it: their object closes
+		// last, before the root.
+		let end = text.IndexOf("</object>\n</root>");
+		Test.Assert(end >= 0, text);
+		text.Insert(end, "<u32 name=\"renderMsaaSamples\">2</u32>");
+		Test.Assert(WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Ok);
+
+		RenderPipeline.RegisterAll();
+		{
+			let project = EditorProject.Open(dir);
+			Test.Assert(project != null);
+			defer delete project;
+			let settings = project.Settings;
+			Test.Assert(settings.QualityLevelIds.Count == 1);
+			Test.Assert(settings.DefaultQualityId == settings.QualityLevelIds[0]);
+			let group = project.SourceDb.RootGroup.GetGroup("Quality");
+			Test.Assert(group != null);
+			let level = group.GetInstance("Default");
+			Test.Assert((level != null) && (level.Id == settings.DefaultQualityId));
+			Test.Assert(level.TypeName == "Sedulous.Render.Pipeline.RenderQualityAsset");
+			let asset = level.ReadObject() as RenderQualityAsset;
+			Test.Assert(asset != null);
+			defer delete asset;
+			Test.Assert(asset.Values.Label == "Default");
+			Test.Assert(asset.Values.MsaaSamples == 2, "the manifest's count");
+			Test.Assert(asset.Values.AmbientOcclusion == .High, "every effect as before");
+		}
+		bytes.Clear();
+		Test.Assert(ReadFile(path, bytes) case .Ok);
+		let saved = StringView((char8*)bytes.Ptr, bytes.Count);
+		Test.Assert(saved.Contains(current), "saved at the current version");
+		Test.Assert(!saved.Contains("renderMsaaSamples"), "the level holds it now");
+		{
+			let again = EditorProject.Open(dir);
+			Test.Assert(again != null);
+			defer delete again;
+			Test.Assert(again.Settings.QualityLevelIds.Count == 1, "upgraded once, not again");
+		}
 	}
 
 	[Test]

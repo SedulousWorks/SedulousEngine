@@ -53,7 +53,7 @@ static class ExportDriverTests
 		let scriptId = Guid.Parse("abcd1234-0000-0000-0000-5678ef900000").Get();
 		fx.Project.Settings.StartupScriptId = scriptId;
 		let titleFontId = Guid.Create();
-		fx.Project.Settings.RenderMsaaSamples = 4;
+		fx.Project.Settings.WindowResizable = false;
 		fx.Project.Settings.UiFontIds.Add(titleFontId);
 		let sheetId = Guid.Create();
 		let guiSplashId = Guid.Create();
@@ -93,9 +93,9 @@ static class ExportDriverTests
 		let manifest = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
 		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId) && (manifest.StartupScriptId == scriptId));
-		// And everything else the player reads: the MSAA, the other fonts, the GUI's sheets and loading
-		// screen.
-		Test.Assert(manifest.RenderMsaaSamples == 4, "the MSAA");
+		// And everything else the player reads: the window, the other fonts, the GUI's sheets and
+		// loading screen.
+		Test.Assert(!manifest.WindowResizable, "the window");
 		Test.Assert((manifest.UiFontIds.Count == 1) && (manifest.UiFontIds[0] == titleFontId), "the other UI fonts");
 		Test.Assert((manifest.GuiStyleSheetIds.Count == 1) && (manifest.GuiStyleSheetIds[0] == sheetId), "the GUI's sheets");
 		Test.Assert(manifest.GuiLoadingDocumentId == guiSplashId, "the GUI's loading screen");

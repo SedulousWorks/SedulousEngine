@@ -321,7 +321,7 @@ class PlayerApplication : DefaultApplication
 	private void ApplyProjectBindings(IApplicationHost host)
 	{
 		BindInputMap();
-		ApplyMsaa(host);
+		ApplyQuality(host);
 		BindAudio();
 		BindUserAudioSettings();
 		BindGuiFontsAndSheets();
@@ -348,20 +348,29 @@ class PlayerApplication : DefaultApplication
 		GlobalLog(.Information, "Player: input map bound, {} set(s)", map.Map.Sets.Count);
 	}
 
-	/// The scene pass's sample count. The subsystem clamps per view against what the device
-	/// can do, so the authored value goes straight through. Only above one, since one is off
-	/// and setting it would force the global post path on for nothing.
-	private void ApplyMsaa(IApplicationHost host)
+	/// The quality level the game starts at (its export preset's, else the project's), set
+	/// before the first scene: its MSAA count, antialiasing and tiers over what the scenes ask
+	/// for. The subsystem clamps the count per view to what the device can do (2x is 1x on
+	/// WebGPU). A game that lists no levels runs at the engine's own highest.
+	private void ApplyQuality(IApplicationHost host)
 	{
-		if (mSettings.RenderMsaaSamples <= 1)
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
+		if (render == null)
 			return;
-
-		if (let render = host.Subsystems.GetSubsystem<RenderSubsystem>())
+		let level = mSettings.StartupQuality(Guid());
+		if (level == Guid())
 		{
-			render.MsaaSamples = mSettings.RenderMsaaSamples;
-			GlobalLog(.Information, "Player: scene pass multisampling requested at {}x",
-				mSettings.RenderMsaaSamples);
+			GlobalLog(.Information, "Player: quality: the engine's own highest ({}x MSAA)", render.Quality.MsaaSamples);
+			return;
 		}
+		let quality = (Resources != null) ? Resources.Bind<RenderQuality>(level).Get : null;
+		if (quality == null)
+		{
+			GlobalLog(.Warning, "Player: the quality level did not resolve: the engine's own highest");
+			return;
+		}
+		render.SetQuality(quality.Values);
+		GlobalLog(.Information, "Player: quality level '{}' ({}x MSAA)", quality.Values.Label, quality.Values.MsaaSamples);
 	}
 
 	/// The project's mixer. Unset or unresolved leaves the built in neutral layout.

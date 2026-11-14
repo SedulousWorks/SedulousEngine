@@ -476,4 +476,53 @@ class VersionedPayloadTests
 			Test.Assert(!reader.IsOk);
 		}
 	}
+
+	/// A field [Retired(version)] reads from data stored before the version that dropped it, in
+	/// its old place, positional binary included, and is never written: a payload saved since,
+	/// and a copy made through the serializer, holds none.
+	[Test]
+	public static void ARetiredFieldReadsFromOlderDataAloneAndIsNeverWritten()
+	{
+		// Version 1, by hand: the chain, then the three fields it had.
+		{
+			let stream = scope MemoryStream();
+			{
+				let writer = scope BinaryWriter(stream);
+				Test.Assert(writer.Write((uint32)1));
+				Test.Assert(writer.Write(ShrunkVersionedSample.TypeId));
+				Test.Assert(writer.Write((uint32)1));
+				Test.Assert(writer.Write((int32)7));
+				Test.Assert(writer.Write((int32)4));
+				Test.Assert(writer.Write((int32)9));
+				Test.Assert(stream.Seek(0, .Begin) == 0);
+			}
+			let target = scope ShrunkVersionedSample();
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(reader.IsOk);
+			Test.Assert((target.Before == 7) && (target.Carried == 4) && (target.After == 9), "in its old place");
+		}
+
+		// The current version writes the two fields alone, under their keys.
+		{
+			let stream = scope MemoryStream();
+			{
+				let writer = scope KeyRecordingSerializer(stream, .Write);
+				let sample = scope ShrunkVersionedSample();
+				sample.Before = 1;
+				sample.Carried = 5;
+				sample.After = 2;
+				Serialize(writer, (ISerializable)sample);
+				Test.Assert(writer.IsOk);
+				for (let key in writer.Keys)
+					Test.Assert((key != "oldCount") && (key != "carried"), key);
+			}
+			Test.Assert(stream.Seek(0, .Begin) == 0);
+			let target = scope ShrunkVersionedSample();
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(reader.IsOk);
+			Test.Assert((target.Before == 1) && (target.Carried == 0) && (target.After == 2));
+		}
+	}
 }

@@ -10,11 +10,13 @@ namespace Sedulous.Engine.Project.Tests;
 /// with a [Setting] is offered by both, and one without is offered by neither.
 class SettingFieldsTests
 {
-	/// A setting that names no category.
+	/// A setting that names no category, and a count with no range.
 	private class Probe
 	{
 		[Setting("Unsorted")]
 		public String Unsorted = new .() ~ delete _;
+		[Setting("Any count")]
+		public uint32 AnyCount = 0;
 	}
 
 	/// The player's window in a few words, and the settings that sum a project up, by their short
@@ -59,7 +61,7 @@ class SettingFieldsTests
 					order.Append(",");
 				order.Append(category);
 			}
-			if (field.Name == "RenderMsaaSamples")
+			if (field.Name == "RenderWidth")
 				Test.Assert(category == "Display");
 			if (field.Name == "UiFontIds")
 				Test.Assert(category == "UI");
@@ -96,8 +98,8 @@ class SettingFieldsTests
 				keys.Append(",");
 			SettingFields.Key(field, keys);
 		}
-		// The engine stamp and the path mirrors are not settings.
-		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,startupScriptId,defaultUiFontId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId", keys);
+		// The engine stamp, the path mirrors and an older manifest's MSAA count are not settings.
+		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,startupScriptId,defaultUiFontId,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -119,7 +121,7 @@ class SettingFieldsTests
 		Test.Assert(Kind("GuiLoadingDocumentId") == .Asset);
 		Test.Assert(Kind("QualityLevelIds") == .AssetList);
 		Test.Assert(Kind("DefaultQualityId") == .Asset);
-		Test.Assert(Kind("RenderMsaaSamples") == .Count);
+		Test.Assert(Kind("RenderWidth") == .Count);
 		Test.Assert(Kind("RenderFit") == .Choice);
 		Test.Assert(Kind("WindowResizable") == .Flag);
 		Test.Assert(Kind("Orientation") == .Choice);
@@ -141,12 +143,23 @@ class SettingFieldsTests
 				SettingFields.CountRange(field, let least, let most);
 				Test.Assert((least == 1) && (most == 16384));
 			}
-			if (field.Name == "RenderMsaaSamples")
+			if (field.Name == "RenderWidth")
 			{
 				SettingFields.CountRange(field, let least, let most);
-				Test.Assert((least == 0) && (most == uint32.MaxValue), "unbounded: its levels are the render subsystem's");
+				Test.Assert((least == 0) && (most == 16384), "nought: the output's own size");
 			}
 		}
+		// A count with no range takes every uint32.
+		var unbounded = false;
+		for (let field in typeof(Probe).GetFields())
+		{
+			if (field.Name != "AnyCount")
+				continue;
+			SettingFields.CountRange(field, let least, let most);
+			Test.Assert((least == 0) && (most == uint32.MaxValue));
+			unbounded = true;
+		}
+		Test.Assert(unbounded);
 	}
 
 	[Test]

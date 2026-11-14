@@ -133,6 +133,16 @@ class ExtractedScene
 	public void SetShadowSettings(SceneShadowSettings settings) => mShadowSettings = settings;
 	public SceneShadowSettings ShadowSettings => mShadowSettings;
 
+	/// Draws no shadows this frame (a quality level whose shadows are off): no sun cascades, no
+	/// spot or point tiles, and no light reads a shadow. After the lights are extracted.
+	public void DisableShadows()
+	{
+		mShadow.Valid = false;
+		mLocalCasters.Clear();
+		for (var light in ref mLights)
+			light.ShadowIndex = -1.0f;
+	}
+
 	public Span<RenderData> Items => .(mItems.Ptr, mItems.Count);
 	public Span<GpuLight> Lights => .(mLights.Ptr, mLights.Count);
 	public Span<LocalShadowCaster> LocalShadowCasters => .(mLocalCasters.Ptr, mLocalCasters.Count);

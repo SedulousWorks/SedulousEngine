@@ -57,16 +57,16 @@ static class ProjectFlowTests
 		Test.Assert((categories != null) && (categories.Count > 1));
 		Test.Assert(categories.KeyAt(0) == "General");
 		var grouped = 0;
-		var msaaOnDisplay = false;
+		var levelsOnQuality = false;
 		for (int i < categories.Count)
 		{
 			let names = categories.Get(categories.KeyAt(i));
 			grouped += names.Count;
 			for (int n < names.Count)
-				msaaOnDisplay |= (categories.KeyAt(i) == "Display") && (names.At(n).AsString() == "renderMsaaSamples");
+				levelsOnQuality |= (categories.KeyAt(i) == "Quality") && (names.At(n).AsString() == "qualityLevelIds");
 		}
 		Test.Assert(grouped == info.Get("settings").Count);
-		Test.Assert(msaaOnDisplay);
+		Test.Assert(levelsOnQuality);
 		Test.Assert(FileExists(PathJoin(dir, "Project.xml", .. scope .())));
 
 		// A second create at the same place is a tool error with real text, not a fault.
@@ -637,18 +637,19 @@ static class ProjectFlowTests
 			let unknown = scope String();
 			CallRefusedArgument(server, "project_settings_set", With(With(Obj(), "defaultScene", sceneId), "defaultSceneId", sceneId), unknown);
 			Test.Assert(unknown.StartsWith("project_settings_set: no argument 'defaultScene' (it takes: name, defaultSceneId, defaultInputMapId,"), unknown);
+			// The MSAA count is a quality level's now: no setting of the project's.
 			let msaa = scope String();
-			CallErr(server, "project_settings_set", With(Obj(), "renderMsaaSamples", 3), msaa);
-			Test.Assert(msaa == "`renderMsaaSamples` takes 1, 2, 4", msaa);
+			CallRefusedArgument(server, "project_settings_set", With(Obj(), "renderMsaaSamples", 4), msaa);
+			Test.Assert(msaa.StartsWith("project_settings_set: no argument 'renderMsaaSamples'"), msaa);
 			Test.Assert(changed == 0);
 		}
 
-		let set = CallOk(server, "project_settings_set", With(With(With(Obj(), "defaultInputMapId", mapId), "defaultSceneId", sceneId), "renderMsaaSamples", 4));
+		let set = CallOk(server, "project_settings_set", With(With(Obj(), "defaultInputMapId", mapId), "defaultSceneId", sceneId));
 		defer delete set;
 		Test.Assert(changed == 1);
 		Test.Assert(set.Get("settings").Get("defaultInputMapId").Get("path").AsString() == "Controls");
 		Test.Assert(set.Get("settings").Get("defaultSceneId").Get("path").AsString() == "Scenes/Level1");
-		Test.Assert(set.Get("settings").Get("renderMsaaSamples").AsInt() == 4);
+		Test.Assert(set.Get("settings").Get("renderMsaaSamples") == null, "the quality levels hold the count");
 		Test.Assert(session.Project.Settings.DefaultScene == "Scenes/Level1", "the path mirror follows");
 
 		// Saved: a reopen reads it from the manifest; then "" clears one and leaves the rest.

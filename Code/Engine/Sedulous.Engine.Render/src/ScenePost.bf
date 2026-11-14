@@ -28,11 +28,11 @@ static class ScenePost
 		config.AoRadius = settings.AoRadius;
 		config.AoIntensity = settings.AoIntensity;
 
-		// One authored mode becomes two exclusive flags.
-		config.TaaEnabled = (settings.AaMode == .TAA);
+		// How each antialiasing looks; which one runs is the quality level's (QualityApply).
+		config.TaaEnabled = false;
 		config.TaaBlend = settings.TaaBlendFactor;
 		config.TaaGamma = settings.TaaVarianceGamma;
-		config.FxaaEnabled = (settings.AaMode == .FXAA);
+		config.FxaaEnabled = false;
 		config.FxaaSubpixel = settings.FxaaSubpixel;
 
 		config.SsrEnabled = settings.SsrEnabled;

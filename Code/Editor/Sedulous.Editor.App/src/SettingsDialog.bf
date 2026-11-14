@@ -17,20 +17,19 @@ namespace Sedulous.Editor.App;
 // reflection (SettingFields), a section per category the settings name, each by its label: text, a
 // number within its range, a check box, an enum's choices by name, and each asset setting an asset
 // reference to the source type it names (a list of them for a list setting), so the slot picks,
-// drops and clears as an inspector's does. MSAA's choices are the render subsystem's levels. The
-// engine version the project was last saved with shows, read only. The project's plugins follow in
-// their own section, a group per entry in its order under "In this project": an Enabled box, its
-// state in the process's plugin host, and for a loaded plugin its settings, rows made the same way
-// from its settings type; an entry whose plugin is not loaded keeps its settings as written. After
-// them, under "Available", what the project could enable (PluginDiscovery, read from its Plugins
-// folder each time the dialog opens): each package no entry names and each linked plugin no entry
-// enables, unchecked, or with why it cannot be enabled. Save writes the rows back (a list's empty
-// and repeated entries dropped), keeps the path mirrors beside the guids, writes each loaded
-// plugin's settings into its entry, removes the entries left unchecked (a package's folder stays)
-// and adds the plugins checked (on every platform their manifests support), persists the manifest
-// and tells the editor (the context's settings-changed hook, which the session's settings-derived
-// state follows); a changed plugin list takes effect when the project opens again. Cancel or
-// closing leaves the manifest as it was.
+// drops and clears as an inspector's does. The engine version the project was last saved with
+// shows, read only. The project's plugins follow in their own section, a group per entry in its
+// order under "In this project": an Enabled box, its state in the process's plugin host, and for a
+// loaded plugin its settings, rows made the same way from its settings type; an entry whose plugin
+// is not loaded keeps its settings as written. After them, under "Available", what the project
+// could enable (PluginDiscovery, read from its Plugins folder each time the dialog opens): each
+// package no entry names and each linked plugin no entry enables, unchecked, or with why it cannot
+// be enabled. Save writes the rows back (a list's empty and repeated entries dropped), keeps the
+// path mirrors beside the guids, writes each loaded plugin's settings into its entry, removes the
+// entries left unchecked (a package's folder stays) and adds the plugins checked (on every platform
+// their manifests support), persists the manifest and tells the editor (the context's
+// settings-changed hook, which the session's settings-derived state follows); a changed plugin list
+// takes effect when the project opens again. Cancel or closing leaves the manifest as it was.
 
 class ProjectSettingsDialog
 {
@@ -38,8 +37,6 @@ class ProjectSettingsDialog
 	public const String cMarkupPath = "Editor/ProjectSettings.xml";
 	/// The path of the read-only row showing the engine version the project was saved with.
 	public const String cEngineVersionRow = "engineVersion";
-	/// The MSAA setting's key, whose choices are the render subsystem's levels.
-	public const String cMsaaSetting = "renderMsaaSamples";
 	/// The section the project's plugins show in; plugin `id`'s group is `plugins.<id>`, its state
 	/// `plugins.<id>.state` and each setting `plugins.<id>.<name>`.
 	public const String cPluginsCategory = "Plugins";
@@ -456,16 +453,6 @@ class ProjectSettingsDialog
 			return row;
 		case .Count:
 			let value = *(uint32*)address;
-			if (name == cMsaaSetting)
-			{
-				// The level a stored count selects: a four the four times level, a three two times
-				// rather than nothing (MsaaLevels.IndexForSamples).
-				let level = MsaaLevels.All[MsaaLevels.IndexForSamples(value)];
-				let msaa = mBag.Add(name, .Enum, Sedulous.GUI.Variant((int64)level.Samples));
-				for (let choice in MsaaLevels.All)
-					msaa.AddChoice(choice.Label, (int64)choice.Samples);
-				return msaa;
-			}
 			let row = mBag.Add(name, .Integer, Sedulous.GUI.Variant((int64)value));
 			if (field.GetCustomAttribute<RangeAttribute>() case .Ok(let range))
 			{

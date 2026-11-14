@@ -6,8 +6,8 @@ using Sedulous.Texture.Resource;
 
 namespace Sedulous.Engine.Render;
 
-/// The authored LOOK of a scene: exposure, tonemap, bloom, occlusion, reflections and
-/// anti aliasing.
+/// The authored LOOK of a scene: exposure, tonemap, bloom, occlusion, reflections and how
+/// the antialiasing looks (which one runs is the quality level's).
 ///
 /// ONE per scene, like the environment. The defaults match what the subsystem used before
 /// any of this was authorable, so a scene looks the same until someone edits the block.
@@ -105,20 +105,21 @@ struct PostProcessSettings
 	[DisplayName("Grading Intensity")]
 	public float GradingIntensity = 1.0f;
 
-	[DisplayName("Anti-Aliasing")]
-	public AaMode AaMode = .Off;
-	/// The history weight, when temporal is selected.
+	/// How each antialiasing looks where it runs. Which one runs (TAA, FXAA or none) is the
+	/// quality level's (RenderQualitySettings.Antialiasing), not the scene's.
+	///
+	/// The history weight.
 	[Range(0.5f, 0.99f, 0.005f)]
-	[VisibleWhen("AaMode=2")]
-	[Description("TAA history weight (higher = steadier, more ghosting)")]
+	[DisplayName("TAA Blend")]
+	[Description("TAA history weight (higher = steadier, more ghosting), where the quality level runs TAA")]
 	public float TaaBlendFactor = 0.97f;
-	/// The variance clip box half width, when temporal is selected.
+	/// The variance clip box half width.
 	[Range(0.5f, 3.0f, 0.05f)]
-	[VisibleWhen("AaMode=2")]
+	[DisplayName("TAA Variance Gamma")]
 	public float TaaVarianceGamma = 1.25f;
-	/// Subpixel aliasing removal, when spatial is selected.
+	/// Subpixel aliasing removal.
 	[Range(0.0f, 1.0f, 0.05f)]
-	[VisibleWhen("AaMode=1")]
+	[DisplayName("FXAA Subpixel")]
 	public float FxaaSubpixel = 0.75f;
 
 	public this() {}

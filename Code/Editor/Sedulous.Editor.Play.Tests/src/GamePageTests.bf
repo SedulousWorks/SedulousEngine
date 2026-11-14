@@ -12,6 +12,11 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Engine.Project;
 using Sedulous.Render;
+using Sedulous.VFS;
+using Sedulous.Resource;
+using Sedulous.Engine.Render;
+using Sedulous.Core.Serialization;
+using Sedulous.Content;
 
 namespace Sedulous.Editor.Play.Tests;
 
@@ -233,27 +238,55 @@ class GamePageTests
 		Test.Assert(!view.CapturesAllKeys);
 	}
 
-	/// The Game tab draws at the project's scene pass MSAA, its look untouched: the player sets
-	/// the project's MSAA for every view, and the tab drew at 1x, so a playtest did not show the
-	/// game the player shows.
+	/// The Game tab plays at the project's starting quality level, as the player starts at it,
+	/// read through the editor's resources; the engine's own highest when the project lists none
+	/// or its level does not resolve.
 	[Test]
-	public static void TheGameTabDrawsAtTheProjectsMsaa()
+	public static void TheGameTabPlaysAtTheProjectsStartingQualityLevel()
 	{
-		let settings = scope ProjectSettings();
-		settings.RenderMsaaSamples = 4;
-		let post = GameEditorPage.GameViewPost(settings);
-		Test.Assert(post.MsaaOverride == 4);
-		// Nothing of the game's own post processing is stripped.
-		Test.Assert(!post.DisablePost);
-		Test.Assert(!post.DisableBloom);
-		Test.Assert(!post.DisableAo);
-		Test.Assert(!post.DisableSsr);
-		Test.Assert(!post.DisableAa);
-		Test.Assert(!post.DisableSsgi);
-		Test.Assert(!post.DisableCulling);
+		let root = "scratch_game_page_quality_db";
+		RemoveDirectoryRecursive(root);
+		CreateDirectory(root);
+		defer RemoveDirectoryRecursive(root);
+		{
+			let serializables = scope SerializableRegistry();
+			RenderProfileResources.RegisterAll(serializables);
+			let mount = scope NativeFileSystem(root);
+			SerializerFactory serializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
+			defer delete serializers;
+			let database = scope ContentDatabase(mount, serializers, "asset", serializables);
+			let low = scope RenderQualitySource();
+			low.Values.Label.Set("Low");
+			low.Values.MsaaSamples = 1;
+			low.Values.Antialiasing = .FXAA;
+			low.Values.AmbientOcclusion = .Off;
+			let lowInstance = database.RootGroup.CreateInstance("low", "Sedulous.Engine.Render.RenderQualitySource");
+			Test.Assert(lowInstance.WriteObject(low) case .Ok);
+			let factory = scope RenderQualityFactory();
+			// Declared after the factory and the database, so it goes first.
+			let manager = scope ResourceManager(database, null);
+			manager.AddFactory(factory);
 
-		// Off, as the project asks.
-		settings.RenderMsaaSamples = 1;
-		Test.Assert(GameEditorPage.GameViewPost(settings).MsaaOverride == 1);
+			let quality = scope RenderQualitySettings();
+			// No levels: the engine's own highest.
+			let settings = scope ProjectSettings();
+			quality.MsaaSamples = 2;
+			GameEditorPage.GameQuality(settings, manager, quality);
+			Test.Assert(quality.MsaaSamples == 4);
+			// The project's level, read through the editor's resources.
+			settings.QualityLevelIds.Add(lowInstance.Id);
+			GameEditorPage.GameQuality(settings, manager, quality);
+			Test.Assert(quality.Label == "Low");
+			Test.Assert(quality.MsaaSamples == 1);
+			Test.Assert(quality.Antialiasing == .FXAA);
+			Test.Assert(quality.AmbientOcclusion == .Off);
+			// Without the resources, or a level that does not resolve: the engine's own highest.
+			GameEditorPage.GameQuality(settings, null, quality);
+			Test.Assert((quality.MsaaSamples == 4) && (quality.Label == "High"));
+			GameEditorPage.GameQuality(settings, manager, quality);
+			settings.QualityLevelIds[0] = Guid(0x91, 0x92, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+			GameEditorPage.GameQuality(settings, manager, quality);
+			Test.Assert(quality.MsaaSamples == 4);
+		}
 	}
 }
