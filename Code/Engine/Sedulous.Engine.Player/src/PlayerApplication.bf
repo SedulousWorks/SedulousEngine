@@ -41,6 +41,9 @@ class PlayerApplication : DefaultApplication
 	private PlayerOptions mOptions;
 
 	private ProjectSettings mSettings = new .() ~ delete _;
+	/// The user's settings (the saved quality choice, the mixer's volumes): read once, every
+	/// section kept, and written whole, so one section never overwrites another.
+	private Settings mUserSettings = new .() ~ delete _;
 
 	/// The game's root: the project directory, or the mount the host gave.
 	private IFileSystem mRoot = null ~ delete _;
@@ -321,6 +324,7 @@ class PlayerApplication : DefaultApplication
 	private void ApplyProjectBindings(IApplicationHost host)
 	{
 		BindInputMap();
+		LoadUserSettings();
 		ApplyQuality(host);
 		BindAudio();
 		BindUserAudioSettings();
@@ -348,29 +352,73 @@ class PlayerApplication : DefaultApplication
 		GlobalLog(.Information, "Player: input map bound, {} set(s)", map.Map.Sets.Count);
 	}
 
-	/// The quality level the game starts at (its export preset's, else the project's), set
-	/// before the first scene: its MSAA count, antialiasing and tiers over what the scenes ask
-	/// for. The subsystem clamps the count per view to what the device can do (2x is 1x on
-	/// WebGPU). A game that lists no levels runs at the engine's own highest.
+	/// The quality level the game starts at (the player's saved choice, else its export
+	/// preset's, else the project's), set before the first scene: its MSAA count, antialiasing
+	/// and tiers over what the scenes ask for. The subsystem clamps the count per view to what the
+	/// device can do (2x is 1x on WebGPU). A game that lists no levels runs at the engine's own
+	/// highest. The run offers the levels to its scripts (RenderQuality): a choice plays at once
+	/// and is kept for the next run.
 	private void ApplyQuality(IApplicationHost host)
 	{
 		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
-		let level = mSettings.StartupQuality(Guid());
-		if (level == Guid())
+		let start = QualityLevels.Offer(Instance.Quality, mSettings, Resources, QualityLevels.Saved(mUserSettings));
+		let quality = (start != Guid()) ? Resources.Bind<RenderQualityLevel>(start).Get : null;
+		if (quality != null)
+		{
+			render.SetQuality(quality.Values);
+			GlobalLog(.Information, "Player: quality level '{}' ({}x MSAA)", quality.Values.Label, quality.Values.MsaaSamples);
+		}
+		else
 		{
 			GlobalLog(.Information, "Player: quality: the engine's own highest ({}x MSAA)", render.Quality.MsaaSamples);
-			return;
 		}
-		let quality = (Resources != null) ? Resources.Bind<RenderQualityLevel>(level).Get : null;
-		if (quality == null)
-		{
-			GlobalLog(.Warning, "Player: the quality level did not resolve: the engine's own highest");
+		Instance.Quality.SetOnChoose(new [=this, =render] (id) =>
+			{
+				let chosen = (Resources != null) ? Resources.Bind<RenderQualityLevel>(id).Get : null;
+				if (chosen == null)
+					return;
+				render.SetQuality(chosen.Values);
+				QualityLevels.Keep(mUserSettings, id);
+				SaveUserSettings();
+				GlobalLog(.Information, "Player: quality level '{}' chosen", chosen.Values.Label);
+			});
+	}
+
+	/// The user's settings file, read once: <userdata>/<project>.user.settings.xml. Absent on a
+	/// first run.
+	private void LoadUserSettings()
+	{
+		AudioSettings.RegisterAll();
+		QualityUserSettings.RegisterAll();
+		let dataDir = scope String();
+		GetUserDataDirectory(dataDir);
+		let userFs = scope NativeFileSystem(dataDir);
+		let fileName = scope String();
+		UserSettingsFileName(fileName);
+		let stream = userFs.Open(fileName, .Read);
+		if (stream == null)
 			return;
-		}
-		render.SetQuality(quality.Values);
-		GlobalLog(.Information, "Player: quality level '{}' ({}x MSAA)", quality.Values.Label, quality.Values.MsaaSamples);
+		defer delete stream;
+		if (mUserSettings.Load(stream, MakeXmlFactory()) case .Err)
+			GlobalLog(.Warning, "Player: the user settings did not read; the defaults stand");
+	}
+
+	/// Writes the user's settings whole, every section.
+	private void SaveUserSettings()
+	{
+		let dataDir = scope String();
+		GetUserDataDirectory(dataDir);
+		CreateDirectory(dataDir);
+		let userFs = scope NativeFileSystem(dataDir);
+		let buffer = scope MemoryStream();
+		if (mUserSettings.Save(buffer, MakeXmlFactory()) case .Err)
+			return;
+		let fileName = scope String();
+		UserSettingsFileName(fileName);
+		if (userFs.Save(fileName, buffer.Bytes) case .Ok)
+			PersistUserData();
 	}
 
 	/// The project's mixer. Unset or unresolved leaves the built in neutral layout.
@@ -391,33 +439,15 @@ class PlayerApplication : DefaultApplication
 		GlobalLog(.Information, "Player: audio bus layout applied");
 	}
 
-	/// The per user volumes, applied ON TOP of the layout: a user's slider is absolute.
-	/// Absent on a first run, and captured back at shutdown so a change made in game
-	/// persists without anything asking it to.
+	/// The per user volumes (a section of the user's settings), applied ON TOP of the layout: a
+	/// user's slider is absolute. Absent on a first run, and captured back at shutdown so a change
+	/// made in game persists without anything asking it to.
 	private void BindUserAudioSettings()
 	{
 		if ((Audio == null) || (Audio.Engine == null))
 			return;
 
-		AudioSettings.RegisterAll();
-
-		let dataDir = scope String();
-		GetUserDataDirectory(dataDir);
-		let userFs = scope NativeFileSystem(dataDir);
-
-		let fileName = scope String();
-		UserSettingsFileName(fileName);
-
-		let stream = userFs.Open(fileName, .Read);
-		if (stream == null)
-			return;
-		defer delete stream;
-
-		let store = scope Settings();
-		if (store.Load(stream, MakeXmlFactory()) case .Err)
-			return;
-
-		if (let audio = store.Find<AudioUserSettings>())
+		if (let audio = mUserSettings.Find<AudioUserSettings>())
 		{
 			audio.ApplyTo(Audio.Engine);
 			GlobalLog(.Information, "Player: user audio settings applied");
@@ -531,28 +561,16 @@ class PlayerApplication : DefaultApplication
 		base.OnShutdown(host);
 	}
 
-	/// Writes the volumes back, so a change made in game survives the run.
+	/// Writes the volumes back, with the rest of the user's settings, so a change made in game
+	/// survives the run.
 	private void CaptureUserAudioSettings()
 	{
 		if ((Audio == null) || (Audio.Engine == null))
 			return;
 
-		let store = scope Settings();
-		store.Section<AudioUserSettings>().CaptureFrom(Audio.Engine);
-
-		let dataDir = scope String();
-		GetUserDataDirectory(dataDir);
-		CreateDirectory(dataDir);
-
-		let userFs = scope NativeFileSystem(dataDir);
-		let buffer = scope MemoryStream();
-		if (store.Save(buffer, MakeXmlFactory()) case .Err)
-			return;
-
-		let fileName = scope String();
-		UserSettingsFileName(fileName);
-		if (userFs.Save(fileName, buffer.Bytes) case .Ok)
-			PersistUserData();
+		mUserSettings.Section<AudioUserSettings>().CaptureFrom(Audio.Engine);
+		mUserSettings.MarkChanged<AudioUserSettings>();
+		SaveUserSettings();
 	}
 
 	private void UserSettingsFileName(String outName)
