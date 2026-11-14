@@ -162,15 +162,15 @@ class SettingsProfileTests
 		let product = scope EnvironmentProfile();
 		product.Values = *env.Environment;
 		env.Environment.Profile.SetDirect(product);
-		edit.OnSettingsProfileEdited = new [=context, =edit](type, profile) =>
+		edit.OnSettingsProfileEdited = new [=context, =edit, =commands](type, profile) =>
 			{
 				if (let system = edit.FindSystemBySettingsType(type))
-					SettingsProfiles.QueueEdit(context, system, profile);
+					SettingsProfiles.QueueEdit(context, commands, system, profile);
 			};
 		edit.SetSceneSettingProperty<float>(typeof(EnvironmentSettings), "Turbidity", 8.0f);
 		Test.Assert(Near(product.Values.Turbidity, 8.0f));
-		Test.Assert(context.HasPendingAssetEdits);
-		Test.Assert(context.DrainAssetEdits(project.SourceDb) case .Ok);
+		Test.Assert(context.HasPendingAssetEdits(commands), "the edit is the page's whose history holds it");
+		Test.Assert(context.DrainAssetEdits(project.SourceDb, commands) case .Ok);
 		{
 			let object = project.SourceDb.GetInstance(id).ReadObject();
 			defer delete object;

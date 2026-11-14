@@ -106,6 +106,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: terrain and vegetation brush strokes, and a scene's edits to a settings profile, are saved
+  with the page they were made on, by Save, Save All and the save when closing or exiting; only
+  Save wrote them, and wrote every page's. Discard, or closing the page without saving, drops them
+  and shows the asset as last saved.
 - Editor: Discard Changes goes back to the page's last save. It undid every step since the page
   opened, past a save, and marked the page saved; during Simulate it froze the editor. It stops
   Simulate first now, and a page whose history no longer reaches the save reads its file again.

@@ -344,7 +344,7 @@ class VegetationPaintTool : IViewportTool
 					}));
 
 				if ((mAssetEdits != null) && mStrokeMask.Id.IsSet)
-					mAssetEdits.RegisterAssetEdit(mStrokeMask.Id,
+					mAssetEdits.RegisterAssetEdit(mCommands, mStrokeMask.Id,
 						VegetationPersist.ForMask(mask, mStrokeMask.Id));
 			}
 		}

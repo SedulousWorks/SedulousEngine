@@ -26,6 +26,9 @@ class FileActions
 /// hooks, as FileActions'.
 class EditActions
 {
+	/// Discard Changes goes through it (EditorContext.DiscardPage, which drops the page's live
+	/// asset edits too, and the user is told when it could not); null discards on the page alone.
+	public EditorContext Context = null;
 	/// Opens the per-user preferences dialog. Owned.
 	public delegate void() Preferences ~ delete _;
 	/// Opens the export templates manager. Owned.
@@ -194,7 +197,14 @@ static class EditorAppActions
 		{
 			let d = new EditorActionDeclaration("page.discardChanges", "Discard Changes", "Revert the page's unsaved edits");
 			d.Enabled = new (page) => (page != null) && page.IsDirty;
-			d.Execute = new (page) => { page.DiscardChanges(); };
+			let context = run.Context;
+			d.Execute = new [=context] (page) =>
+				{
+					if (context == null)
+						page.DiscardChanges();
+					else if (!context.DiscardPage(page))
+						context.Notify(.Error, scope $"'{page.Title}' could not go back to its last save: its file did not read (see Console). Its changes are kept.");
+				};
 			actions.Register(d);
 		}
 		PlaybackActions.Register(actions);

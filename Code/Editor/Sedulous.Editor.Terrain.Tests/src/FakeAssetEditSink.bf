@@ -10,13 +10,16 @@ class FakeAssetEditSink : IAssetEditSink
 {
 	public int32 Count = 0;
 	public Guid LastId = .();
+	/// The history the last edit was registered with: its page's save writes it.
+	public EditorCommandStack LastOwner = null;
 	public AssetEditPersist LastPersist = null ~ delete _;
 
 	public bool HasPersist => LastPersist != null;
 
-	public void RegisterAssetEdit(Guid assetId, AssetEditPersist persist)
+	public void RegisterAssetEdit(EditorCommandStack owner, Guid assetId, AssetEditPersist persist)
 	{
 		Count++;
+		LastOwner = owner;
 		LastId = assetId;
 		delete LastPersist;
 		LastPersist = persist;

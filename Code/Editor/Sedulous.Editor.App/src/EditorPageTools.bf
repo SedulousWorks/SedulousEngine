@@ -106,7 +106,7 @@ static class EditorPageTools
 					// The page's own discard, then the refresh a clean page takes: a page
 					// refreshes only when clean (an apply to prefab or a re-import leaves a
 					// dirty page alone with a warning), so the discard comes first.
-					if (!page.DiscardChanges())
+					if (!seams.Context.DiscardPage(page))
 					{
 						outError.Append("the page's unsaved changes could not be discarded: its file did not read (the Console says why), so they are kept");
 						return false;

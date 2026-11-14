@@ -1408,6 +1408,7 @@ class EditorApplication : IApplication
 		}
 		EditorAppActions.RegisterFileActions(actions, file);
 		let edit = new EditActions();
+		edit.Context = mContext;
 		edit.Preferences = new () => { OpenPreferences(); };
 		edit.ExportTemplates = new () => { OpenTemplates(); };
 		EditorAppActions.RegisterEditActions(actions, edit);

@@ -50,9 +50,9 @@ static class SettingsProfiles
 	}
 
 	/// An edit made live in `profile`, the values `system` has in effect: the asset's write is
-	/// queued for the save flow (EditorContext.RegisterAssetEdit), the values taken now since
-	/// the drain may come later.
-	public static void QueueEdit(EditorContext context, SceneSystem system, Guid profile)
+	/// queued for the save of the page whose history is `owner` (EditorContext.RegisterAssetEdit),
+	/// the values taken now since the drain may come later.
+	public static void QueueEdit(EditorContext context, EditorCommandStack owner, SceneSystem system, Guid profile)
 	{
 		let project = context.Project;
 		if ((project == null) || (profile == Guid.Empty) || (system.SettingsProfile != profile))
@@ -68,7 +68,7 @@ static class SettingsProfiles
 			return;
 		}
 		asset.SetValues(system.EffectiveSettingsInstance);
-		context.RegisterAssetEdit(profile, new [=object, =profile](db) =>
+		context.RegisterAssetEdit(owner, profile, new [=object, =profile](db) =>
 			{
 				let target = db.GetInstance(profile);
 				if (target == null)

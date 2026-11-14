@@ -225,7 +225,7 @@ class TerrainSculptTool : IViewportTool
 			SculptStrokeCommand.SliceRegion(grid.Samples, grid.Size, mRegion, after);
 			mCommands.Execute(new SculptStrokeCommand(mStrokeGrid, mRegion, before, after));
 			if ((mAssetEdits != null) && mStrokeGrid.Id.IsSet)
-				mAssetEdits.RegisterAssetEdit(mStrokeGrid.Id, TerrainPersist.ForHeightfield(grid, mStrokeGrid.Id));
+				mAssetEdits.RegisterAssetEdit(mCommands, mStrokeGrid.Id, TerrainPersist.ForHeightfield(grid, mStrokeGrid.Id));
 		}
 		mStroking = false;
 		mStrokeGrid = default;

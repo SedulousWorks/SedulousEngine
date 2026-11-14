@@ -364,7 +364,7 @@ class TerrainSplatTool : IViewportTool
 			SplatStrokeCommand.SliceRegion(weights.Indices, rasterW, mRegion, afterI);
 			mCommands.Execute(new SplatStrokeCommand(mStrokeWeights, mRegion, beforeW, afterW, beforeI, afterI));
 			if ((mAssetEdits != null) && mStrokeWeights.Id.IsSet)
-				mAssetEdits.RegisterAssetEdit(mStrokeWeights.Id, TerrainPersist.ForSplat(weights, mStrokeWeights.Id));
+				mAssetEdits.RegisterAssetEdit(mCommands, mStrokeWeights.Id, TerrainPersist.ForSplat(weights, mStrokeWeights.Id));
 		}
 		mStroking = false;
 		mStrokeWeights = default;

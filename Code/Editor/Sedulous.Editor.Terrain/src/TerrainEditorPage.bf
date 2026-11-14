@@ -512,7 +512,7 @@ class TerrainEditorPage : AssetObjectPage
 			return; // no live weights (not cooked yet): nothing names the layers by channel
 		let id = product.Weights.Id;
 		if (id.IsSet)
-			Context.RegisterAssetEdit(id, TerrainPersist.ForSplat(weights, id)); // written with the next save, as a brush's strokes are
+			Context.RegisterAssetEdit(Commands, id, TerrainPersist.ForSplat(weights, id)); // written with the next save, as a brush's strokes are
 	}
 
 	private static Guid LayerMapId(TerrainAsset asset, LayerMap map, int index)

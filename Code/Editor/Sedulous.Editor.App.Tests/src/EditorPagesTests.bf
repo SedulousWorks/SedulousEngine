@@ -208,6 +208,9 @@ class PagesBed
 		One = Project.SourceDb.RootGroup.CreateInstance("One", typeof(PagesTestAsset).GetFullName(.. scope .()));
 		Two = Project.SourceDb.RootGroup.CreateInstance("Two", typeof(PagesTestAsset).GetFullName(.. scope .()));
 		Test.Assert((One != null) && (Two != null));
+		// The context saves a page's live edits to other assets into the open project, as the
+		// editor's does.
+		Context.SetProject(Project);
 		Context.Pages.Register(new PagesTestFactory(Counts));
 		Context.Pages.Register(new PagesTestHeadlessFactory());
 		let said = Said;
@@ -262,6 +265,7 @@ class PagesBed
 		delete Builders;
 		delete Resources;
 		delete Dock;
+		Context.SetProject(null);
 		delete Context;
 		Into.ReleaseRef();
 		Root.ReleaseRef();
@@ -686,17 +690,17 @@ class EditorPagesTests
 		bed.Pages.Save(page);
 		Test.Assert(bed.LastSaid == "Save FAILED (see Console).");
 
-		// What a live tool edited goes with any save; a failed persist says so.
+		// What the page's tools edited live goes with its save; a failed persist fails the save.
 		int persisted = 0;
-		bed.Context.RegisterAssetEdit(bed.Two.Id, new [&] (db) => { persisted++; return .Ok; });
+		bed.Context.RegisterAssetEdit(page.Commands, bed.Two.Id, new [&] (db) => { persisted++; return .Ok; });
 		page.FailSave = false;
 		bed.Pages.Save(page);
 		Test.Assert(persisted == 1);
-		Test.Assert(!bed.Context.HasPendingAssetEdits);
-		Test.Assert(bed.LastSaid == "Persisted live asset edits.");
-		bed.Context.RegisterAssetEdit(bed.Two.Id, new (db) => Result<void, ErrorCode>.Err(.Unknown));
+		Test.Assert(!bed.Context.HasPendingAssetEdits(page.Commands));
+		Test.Assert(bed.LastSaid == "Saved 'One'.");
+		bed.Context.RegisterAssetEdit(page.Commands, bed.Two.Id, new (db) => Result<void, ErrorCode>.Err(.Unknown));
 		bed.Pages.Save(page);
-		Test.Assert(bed.LastSaid == "Asset-edit persist FAILED (see Console).");
+		Test.Assert(bed.LastSaid == "Save FAILED (see Console).");
 	}
 
 	[Test]

@@ -41,6 +41,9 @@ class EditorContext : IAssetEditSink
 
 	private class PendingAssetEdit
 	{
+		/// The history of the page the edit belongs to: compared by reference only, never read
+		/// (the page may be gone when its edits are dropped).
+		public EditorCommandStack Owner;
 		public Guid Id;
 		public AssetEditPersist Persist ~ delete _;
 	}
@@ -270,20 +273,22 @@ class EditorContext : IAssetEditSink
 	public int McpToolContributionCount => mMcpToolContributions.Count;
 
 	// ---- pending asset edits: a viewport tool edits a cooked product live and registers
-	// the closure persisting it back to its SOURCE; the save flow drains these ----
+	// the closure persisting it back to its SOURCE, for the page whose history holds the
+	// edit's undo; that page's save (SavePage) drains them, its Discard (DiscardPage) or its
+	// close without saving drops them ----
 
-	/// The last edit per asset wins. A nil id or null closure, an in memory asset with no
-	/// source, registers nothing.
-	public void RegisterAssetEdit(Guid assetId, AssetEditPersist persist)
+	/// The last edit per page and asset wins. A nil id, a null closure (an in memory asset with
+	/// no source) or no owner registers nothing.
+	public void RegisterAssetEdit(EditorCommandStack owner, Guid assetId, AssetEditPersist persist)
 	{
-		if (!assetId.IsSet || (persist == null))
+		if ((owner == null) || !assetId.IsSet || (persist == null))
 		{
 			delete persist;
 			return;
 		}
 		for (let edit in mPendingAssetEdits)
 		{
-			if (edit.Id == assetId)
+			if ((edit.Owner === owner) && (edit.Id == assetId))
 			{
 				delete edit.Persist;
 				edit.Persist = persist;
@@ -291,23 +296,53 @@ class EditorContext : IAssetEditSink
 			}
 		}
 		let edit = new PendingAssetEdit();
+		edit.Owner = owner;
 		edit.Id = assetId;
 		edit.Persist = persist;
 		mPendingAssetEdits.Add(edit);
 	}
 
-	public bool HasPendingAssetEdits => !mPendingAssetEdits.IsEmpty;
-
-	/// Runs and clears every pending edit, persisting through `db`; requests a recook when
-	/// any succeeded. The first failure is reported, every edit still attempted.
-	public Result<void, ErrorCode> DrainAssetEdits(ContentDatabase db)
+	/// Whether the page whose history is `owner` has edits waiting for its save.
+	public bool HasPendingAssetEdits(EditorCommandStack owner)
 	{
-		if (mPendingAssetEdits.IsEmpty)
-			return .Ok;
+		for (let edit in mPendingAssetEdits)
+		{
+			if (edit.Owner === owner)
+				return true;
+		}
+		return false;
+	}
+
+	/// The pending edits of the page whose history is `owner`, taken out of the list into
+	/// `outEdits` (the caller's to delete).
+	private void TakeAssetEdits(EditorCommandStack owner, List<PendingAssetEdit> outEdits)
+	{
+		for (int i = 0; i < mPendingAssetEdits.Count;)
+		{
+			if (mPendingAssetEdits[i].Owner === owner)
+			{
+				outEdits.Add(mPendingAssetEdits[i]);
+				mPendingAssetEdits.RemoveAt(i);
+			}
+			else
+			{
+				i++;
+			}
+		}
+	}
+
+	/// Runs and clears the pending edits of the page whose history is `owner`, persisting through
+	/// `db`; requests a recook when any succeeded. The first failure is reported, every edit
+	/// still attempted.
+	public Result<void, ErrorCode> DrainAssetEdits(ContentDatabase db, EditorCommandStack owner)
+	{
+		// Taken out first: a persist may register again (it should not, but the list must not
+		// move under the loop).
 		let pending = scope List<PendingAssetEdit>();
-		pending.AddRange(mPendingAssetEdits);
-		mPendingAssetEdits.Clear();
 		defer { ClearAndDeleteItems(pending); }
+		TakeAssetEdits(owner, pending);
+		if (pending.IsEmpty)
+			return .Ok;
 		Result<void, ErrorCode> result = .Ok;
 		bool anyOk = false;
 		for (let edit in pending)
@@ -321,6 +356,23 @@ class EditorContext : IAssetEditSink
 		if (anyOk)
 			RequestCook(false);
 		return result;
+	}
+
+	/// Drops the pending edits of the page whose history is `owner`, unwritten. The live products
+	/// they changed are built again from what was cooked, so no page shows an edit its file does
+	/// not hold.
+	public void DropAssetEdits(EditorCommandStack owner)
+	{
+		let dropped = scope List<PendingAssetEdit>();
+		defer { ClearAndDeleteItems(dropped); }
+		TakeAssetEdits(owner, dropped);
+		// The edit is in the live product, which every page showing it shares: build it again
+		// from what was cooked, which is what the file held at its last save.
+		if (mResources != null)
+		{
+			for (let edit in dropped)
+				mResources.Reload(edit.Id);
+		}
 	}
 
 	// ---- notices ----
@@ -570,6 +622,8 @@ class EditorContext : IAssetEditSink
 		{
 			if (mPages[i] == page)
 			{
+				// A page closed with edits unsaved: what its tools edited live goes with them.
+				DropAssetEdits(page.Commands);
 				if (mActivePage == page)
 					mActivePage = (mPages.Count > 1) ? mPages[(i + 1 < mPages.Count) ? i + 1 : i - 1] : null;
 				mPages.RemoveAt(i);
@@ -678,7 +732,31 @@ class EditorContext : IAssetEditSink
 	/// editor (EditorPage.IsAssetDeleted): at its old place, with its identity and type, so what
 	/// referred to it does again; the save writes its file. A save that fails takes the record out
 	/// again. Refused, said, when another asset has taken the place: Save As keeps the content.
+	/// What the page's tools edited live in other assets (a terrain's heights) is written after
+	/// its own file, whether or not that was.
 	public Result<void, ErrorCode> SavePage(EditorPage page)
+	{
+		let saved = SavePageItself(page);
+		if ((mProject == null) || !HasPendingAssetEdits(page.Commands))
+			return saved;
+		let persisted = DrainAssetEdits(mProject.SourceDb, page.Commands);
+		if (persisted case .Err)
+			GlobalLog(.Error, "Editor: '{}': writing what its tools edited in other assets failed", page.Title);
+		return (saved case .Ok) ? persisted : saved;
+	}
+
+	/// Puts `page` back to its last save (EditorPage.DiscardChanges) and drops the live asset
+	/// edits it made since. False, with everything kept, when the page could not.
+	public bool DiscardPage(EditorPage page)
+	{
+		if (!page.DiscardChanges())
+			return false;
+		DropAssetEdits(page.Commands);
+		return true;
+	}
+
+	/// SavePage's write of the page's own file.
+	private Result<void, ErrorCode> SavePageItself(EditorPage page)
 	{
 		if (!page.IsAssetDeleted || (mProject == null))
 			return page.Save();

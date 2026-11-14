@@ -44,6 +44,7 @@ class VegetationPaintToolTests
 		Test.Assert(commands.CanUndo);
 		Test.Assert(sink.Count == 1);
 		Test.Assert(sink.LastId == VegetationFixture.MaskId);
+		Test.Assert(sink.LastOwner === commands, "its page's save writes it");
 		Test.Assert(sink.HasPersist);
 	}
 

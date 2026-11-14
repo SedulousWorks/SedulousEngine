@@ -9,6 +9,7 @@ using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core.Tests;
 
@@ -386,7 +387,7 @@ static class EditorContextTests
 	}
 
 	[Test]
-	public static void ThePendingAssetEditRegistryReplacesIgnoresNilDrainsAndRecooks()
+	public static void PendingAssetEditsAreTheirPagesRegisteredReplacedDrainedByItsSave()
 	{
 		let db = scope Db("scratch_editor_ctx_assetedit");
 		let context = scope EditorContext();
@@ -394,21 +395,97 @@ static class EditorContextTests
 		context.OnCookRequested = new [&cooked](rebuild) => { cooked = true; };
 		let a = Guid.Parse("00000000-0000-0000-0000-000000000001").Get();
 		let b = Guid.Parse("00000000-0000-0000-0000-000000000002").Get();
+		let one = scope EditorCommandStack();
+		let two = scope EditorCommandStack();
 		int runsA = 0;
 		int runsB = 0;
-		Test.Assert(!context.HasPendingAssetEdits);
-		context.RegisterAssetEdit(a, new [&runsA](database) => { runsA++; return Result<void, ErrorCode>.Ok; });
-		context.RegisterAssetEdit(a, new [&runsA](database) => { runsA++; return Result<void, ErrorCode>.Ok; });
-		context.RegisterAssetEdit(b, new [&runsB](database) => { runsB++; return Result<void, ErrorCode>.Ok; });
-		context.RegisterAssetEdit(.Empty, new (database) => { return Result<void, ErrorCode>.Ok; });
-		Test.Assert(context.HasPendingAssetEdits);
-		Test.Assert(context.DrainAssetEdits(db.Database) case .Ok);
-		Test.Assert((runsA == 1) && (runsB == 1), "the same guid replaced, so ran once");
+		int runsTwo = 0;
+		Test.Assert(!context.HasPendingAssetEdits(one));
+		context.RegisterAssetEdit(one, a, new [&runsA](database) => { runsA++; return Result<void, ErrorCode>.Ok; });
+		context.RegisterAssetEdit(one, a, new [&runsA](database) => { runsA++; return Result<void, ErrorCode>.Ok; });
+		context.RegisterAssetEdit(one, b, new [&runsB](database) => { runsB++; return Result<void, ErrorCode>.Ok; });
+		context.RegisterAssetEdit(one, .Empty, new (database) => { return Result<void, ErrorCode>.Ok; });
+		// Another page's edit of the same asset.
+		context.RegisterAssetEdit(two, a, new [&runsTwo](database) => { runsTwo++; return Result<void, ErrorCode>.Ok; });
+		Test.Assert(context.HasPendingAssetEdits(one) && context.HasPendingAssetEdits(two));
+		Test.Assert(context.DrainAssetEdits(db.Database, one) case .Ok);
+		Test.Assert((runsA == 1) && (runsB == 1), "the same page and guid replaced, so ran once");
+		Test.Assert(runsTwo == 0, "the other page saves its own");
 		Test.Assert(cooked, "a successful drain requests a recook");
-		Test.Assert(!context.HasPendingAssetEdits);
+		Test.Assert(!context.HasPendingAssetEdits(one));
+		Test.Assert(context.HasPendingAssetEdits(two));
 		cooked = false;
-		Test.Assert(context.DrainAssetEdits(db.Database) case .Ok);
+		Test.Assert(context.DrainAssetEdits(db.Database, one) case .Ok);
 		Test.Assert(!cooked, "an empty drain is a no-op");
+
+		context.DropAssetEdits(two);
+		Test.Assert(!context.HasPendingAssetEdits(two));
+		Test.Assert(runsTwo == 0, "dropped unwritten");
+	}
+
+	/// What a page's tools edited live in other assets goes with its save, and its Discard drops
+	/// it; a Discard that cannot happen keeps it for the save.
+	[Test]
+	public static void APagesSaveWritesItsToolsEditsItsDiscardDropsThem()
+	{
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_editor_ctx_assetedit_pages", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let context = scope EditorContext();
+		context.SetProject(project);
+		defer context.SetProject(null);
+		let page = scope TestPage("Level");
+		let terrain = Guid.Parse("00000000-0000-0000-0000-000000000003").Get();
+		int writes = 0;
+
+		// Save: the page's file, then its tools' edits.
+		page.MarkDirty();
+		context.RegisterAssetEdit(page.Commands, terrain, new [&writes](database) => { writes++; return Result<void, ErrorCode>.Ok; });
+		Test.Assert(context.SavePage(page) case .Ok);
+		Test.Assert(writes == 1);
+		Test.Assert(!context.HasPendingAssetEdits(page.Commands));
+
+		// Discard: the edits go unwritten.
+		bool flag = false;
+		Test.Assert(page.Commands.Execute(new FlipCommand(&flag)));
+		context.RegisterAssetEdit(page.Commands, terrain, new [&writes](database) => { writes++; return Result<void, ErrorCode>.Ok; });
+		Test.Assert(context.DiscardPage(page));
+		Test.Assert(!flag);
+		Test.Assert(!context.HasPendingAssetEdits(page.Commands));
+		Test.Assert(writes == 1);
+
+		// A Discard that cannot happen keeps them for the save.
+		Test.Assert(page.Commands.Execute(new FlipCommand(&flag)));
+		context.RegisterAssetEdit(page.Commands, terrain, new [&writes](database) => { writes++; return Result<void, ErrorCode>.Ok; });
+		page.Commands.IsLocked = true;
+		Test.Assert(!context.DiscardPage(page));
+		Test.Assert(context.HasPendingAssetEdits(page.Commands));
+		page.Commands.IsLocked = false;
+		Test.Assert(context.SavePage(page) case .Ok);
+		Test.Assert(writes == 2);
+	}
+
+	[Test]
+	public static void ClosingAPageDropsItsToolsUnsavedEdits()
+	{
+		let db = scope Db("scratch_editor_ctx_assetedit_close");
+		let a = db.Database.RootGroup.CreateInstance("a", FullName(typeof(BaseAsset), .. scope .()));
+		let context = scope EditorContext();
+		context.Pages.Register(new TestPageFactory(typeof(BaseAsset), "base"));
+		let page = context.OpenPage(a);
+		Test.Assert(page != null);
+		int writes = 0;
+		let history = page.Commands; // compared by reference after the close, never read
+		context.RegisterAssetEdit(history, Guid.Parse("00000000-0000-0000-0000-000000000004").Get(),
+			new [&writes](database) => { writes++; return Result<void, ErrorCode>.Ok; });
+		Test.Assert(context.HasPendingAssetEdits(history));
+		context.ClosePage(page);
+		Test.Assert(!context.HasPendingAssetEdits(history));
+		Test.Assert(writes == 0);
 	}
 
 	[Test]

@@ -265,10 +265,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			// A settings edit that lands in a profile (the block's source is a profile) is written
 			// to the profile's asset by the save flow, like any live asset edit.
 			let profileEdit = mEditContext;
-			mEditContext.OnSettingsProfileEdited = new [=context, =profileEdit](type, profile) =>
+			let owner = Commands; // the profile's write goes with this page's save
+			mEditContext.OnSettingsProfileEdited = new [=context, =profileEdit, =owner](type, profile) =>
 				{
 					if (let system = profileEdit.FindSystemBySettingsType(type))
-						SettingsProfiles.QueueEdit(context, system, profile);
+						SettingsProfiles.QueueEdit(context, owner, system, profile);
 				};
 			mEditContext.SetPrefabResolver(SceneLoading.ProjectPrefabResolver(context));
 			BuildTools(context);

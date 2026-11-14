@@ -211,7 +211,7 @@ class TerrainHoleTool : IViewportTool
 				mCommands.Execute(new HoleStrokeCommand(mStrokeGrid, mRegion, before, after));
 				if ((mAssetEdits != null) && mStrokeGrid.Id.IsSet)
 				{
-					mAssetEdits.RegisterAssetEdit(mStrokeGrid.Id,
+					mAssetEdits.RegisterAssetEdit(mCommands, mStrokeGrid.Id,
 						TerrainPersist.ForHeightfield(grid, mStrokeGrid.Id));
 				}
 			}

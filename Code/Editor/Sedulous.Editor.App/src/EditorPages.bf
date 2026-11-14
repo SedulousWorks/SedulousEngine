@@ -236,22 +236,14 @@ class EditorPages
 			CloseNow(mOpen.Back.Page);
 	}
 
-	/// Saves a page, then what live tools edited in cooked products (any save flushes them).
+	/// Saves a page, with what its tools edited live in other assets (a terrain's heights).
 	public void Save(EditorPage page)
 	{
-		let sources = Sources;
 		let context = mServices.Context;
 		if (context.SavePage(page) case .Ok) // a page whose file went on disk writes it back
 			context.Notify(.Success, scope $"Saved '{page.Title}'.");
 		else
 			context.Notify(.Error, "Save FAILED (see Console).");
-		if ((sources != null) && context.HasPendingAssetEdits)
-		{
-			if (context.DrainAssetEdits(sources) case .Ok)
-				context.Notify(.Success, "Persisted live asset edits.");
-			else
-				context.Notify(.Error, "Asset-edit persist FAILED (see Console).");
-		}
 	}
 
 	/// The unsaved pages, before `proceed` (an exit; a project's close): with none it

@@ -53,6 +53,7 @@ class HoleToolTests
 		Test.Assert(commands.CanUndo);
 		Test.Assert(sink.Count == 1);
 		Test.Assert(sink.LastId == TerrainFixture.HeightfieldId);
+		Test.Assert(sink.LastOwner === commands, "its page's save writes it");
 
 		let cut = fx.Grid.HoleCount;
 		Test.Assert(cut > 0);

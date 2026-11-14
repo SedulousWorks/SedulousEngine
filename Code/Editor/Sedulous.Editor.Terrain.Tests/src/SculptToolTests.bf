@@ -47,6 +47,7 @@ class SculptToolTests
 		Test.Assert(commands.CanUndo);
 		Test.Assert(sink.Count == 1);
 		Test.Assert(sink.LastId == TerrainFixture.HeightfieldId);
+		Test.Assert(sink.LastOwner === commands, "its page's save writes it");
 		Test.Assert(sink.HasPersist);
 	}
 
