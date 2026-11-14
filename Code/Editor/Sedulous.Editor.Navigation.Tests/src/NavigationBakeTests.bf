@@ -108,6 +108,58 @@ static class NavigationBakeTests
 		Test.Assert(result.Baked, "without the rigid frame the geometry shrinks 20x and erodes away");
 	}
 
+	/// A bake that makes nothing (the floor gone from the zone) leaves the zone its last navmesh;
+	/// it wrote an empty one over it.
+	[Test]
+	public static void ABakeThatMakesNothingLeavesTheZoneItsLastNavmesh()
+	{
+		NavigationResources.RegisterAll();
+		NavigationPipeline.RegisterAll();
+		let dir = BakeFixtures.ScratchDir("scratch_navbake_keep_db", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+
+		let mount = scope NativeFileSystem(dir);
+		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let db = scope ContentDatabase(mount, serializers, "rasset");
+		let assetInstance = db.RootGroup.CreateInstance("zone", BakeFixtures.cZoneAssetType);
+		Test.Assert(assetInstance != null);
+
+		let scene = scope Scene("bake_keep");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		scene.AddSystem<RigidBodyComponentManager>();
+		let ground = BakeFixtures.AddBody(scene, "ground", .(0, -0.5f, 0), .(10, 0.5f, 10), .Static);
+		let zoneEntity = scene.CreateEntity("zone");
+		scene.GetSystem<NavMeshZoneComponentManager>().Add(zoneEntity).Extents = .(15, 10, 15);
+		scene.UpdateTransforms();
+		Test.Assert(NavigationBake.BakeNavigationZone(scene, zoneEntity, assetInstance).Baked);
+		int firstSize = 0;
+		{
+			let object = assetInstance.ReadObject();
+			defer delete object;
+			let asset = object as NavigationZoneAsset;
+			Test.Assert(asset != null);
+			Test.Assert(NavigationZoneStorage.EnsureNavMeshLoaded(assetInstance, asset) case .Ok);
+			firstSize = asset.NavMeshBlob.Count;
+		}
+		Test.Assert(firstSize > 0);
+
+		// The floor gone: nothing to bake against, and the asset keeps what it had.
+		scene.DestroyEntity(ground);
+		scene.UpdateTransforms();
+		let empty = NavigationBake.BakeNavigationZone(scene, zoneEntity, assetInstance);
+		Test.Assert(!empty.Baked);
+		Test.Assert(empty.TriangleCount == 0);
+		{
+			let object = assetInstance.ReadObject();
+			defer delete object;
+			let asset = object as NavigationZoneAsset;
+			Test.Assert(asset != null);
+			Test.Assert(NavigationZoneStorage.EnsureNavMeshLoaded(assetInstance, asset) case .Ok);
+			Test.Assert(asset.NavMeshBlob.Count == firstSize, "the zone keeps its last navmesh");
+		}
+		Test.Assert(NavigationBake.DescribeBake(empty, .. scope .()).Contains("keeps its last bake"));
+	}
+
 	/// A level's ground is often far wider than a zone (a static plane 2000 units across). Its triangles reach
 	/// past the zone, and the bake sized the navmesh grid from them: a grid of over a hundred
 	/// tiles a side, whose navmesh did not load at runtime. The zone's box bounds the bake.

@@ -106,6 +106,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: a navigation bake that finds no geometry, or no walkable surface, leaves the zone its
+  last navmesh and says so. It wrote an empty one over it.
 - Editor: Export stops, and says so, when the cook before it failed an asset or could not read
   one; it exported without them. It also waits for a cook asked for during the first one.
   Exports from MCP and the command line stop as well on an asset the game uses whose source does

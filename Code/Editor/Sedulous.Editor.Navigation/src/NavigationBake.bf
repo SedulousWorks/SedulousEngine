@@ -56,9 +56,9 @@ static class NavigationBake
 		if (result.Baked)
 			outText.Append("Navigation baked into the zone's asset; the scene is unchanged. Cook to apply.");
 		else if (result.TriangleCount == 0)
-			outText.Append("No static geometry inside the zone box. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
+			outText.Append("No static geometry inside the zone box, so the zone keeps its last bake. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
 		else
-			outText.AppendF("Collected {} triangle(s) but Recast produced no walkable surface. Try a larger Cell Size or a smaller Agent Radius/Height, and check the surface is within Agent Max Slope.", result.TriangleCount);
+			outText.AppendF("Collected {} triangle(s) but Recast produced no walkable surface, so the zone keeps its last bake. Try a larger Cell Size or a smaller Agent Radius/Height, and check the surface is within Agent Max Slope.", result.TriangleCount);
 	}
 
 	private static NavigationBakeParams ParamsFor(NavMeshZoneComponent* zone, bool parallelBake)
@@ -79,7 +79,8 @@ static class NavigationBake
 
 	/// Bakes the zone owned by the entity and writes the result into the zone's
 	/// NavigationZoneAsset instance. The bake params come from the zone component. An empty
-	/// collection or a degenerate bake writes an empty asset, a valid "no navmesh yet" state.
+	/// collection or a degenerate bake writes nothing: the zone keeps its last navmesh (a zone
+	/// moved off its floor, or parameters Recast could not fit, never wipe a good one).
 	public static BakeResult BakeNavigationZone(Scene scene, EntityHandle zoneEntity, Instance targetAsset, bool parallelBake = true)
 	{
 		var result = BakeResult();
@@ -113,7 +114,8 @@ static class NavigationBake
 			}
 		}
 
-		if (NavigationZoneStorage.Write(targetAsset, asset) case .Err)
+		// Only a bake is written: a bake that made nothing leaves the zone its last navmesh.
+		if (result.Baked && (NavigationZoneStorage.Write(targetAsset, asset) case .Err))
 		{
 			GlobalLog(.Error, "Editor: navigation bake: writing the zone asset failed");
 			result.Baked = false;
