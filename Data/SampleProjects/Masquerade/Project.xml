@@ -1,7 +1,7 @@
 <root>
 	<array name="dataVersions" count="1">
 		<u64 name="type">15697994609334965484</u64>
-		<u32 name="version">10</u32>
+		<u32 name="version">11</u32>
 	</array>
 	<object>
 		<string name="name">Masquerade</string>
@@ -13,7 +13,6 @@
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
 		<string name="startupScriptId">221ba031-6dff-bb4b-843d-2ae8d95bd855</string>
 		<string name="defaultUiFontId">e613c971-1cbe-c54a-9ffd-5220e8f69837</string>
-		<u32 name="renderMsaaSamples">1</u32>
 		<array name="uiFontIds" count="0"/>
 		<u32 name="renderWidth">0</u32>
 		<u32 name="renderHeight">0</u32>
@@ -27,5 +26,10 @@
 			<string>a85a9fd4-b9a2-d044-85b1-09980b76e1b2</string>
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<array name="plugins" count="0"/>
+		<array name="qualityLevelIds" count="1">
+			<string>48cf3123-c562-a64a-8d8c-31fdb1189a43</string>
+		</array>
+		<string name="defaultQualityId">48cf3123-c562-a64a-8d8c-31fdb1189a43</string>
 	</object>
 </root>

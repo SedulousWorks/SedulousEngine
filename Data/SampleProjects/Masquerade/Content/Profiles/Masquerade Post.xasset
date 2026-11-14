@@ -21,7 +21,6 @@
 			<f32 name="aoIntensity">1</f32>
 			<bool name="ssrEnabled">true</bool>
 			<f32 name="ssrIntensity">1</f32>
-			<u32 name="aaMode">1</u32>
 			<f32 name="taaBlendFactor">0.97</f32>
 			<f32 name="taaVarianceGamma">1.25</f32>
 			<f32 name="fxaaSubpixel">0.75</f32>

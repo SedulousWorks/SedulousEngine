@@ -703,7 +703,7 @@
 			<string name="system">postprocess</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">14076923587443904564</u64>
-				<u32 name="version">2</u32>
+				<u32 name="version">3</u32>
 			</array>
 			<object name="settings">
 				<f32 name="exposureEV">0</f32>
@@ -718,7 +718,6 @@
 				<f32 name="aoIntensity">1</f32>
 				<bool name="ssrEnabled">false</bool>
 				<f32 name="ssrIntensity">1</f32>
-				<u32 name="aaMode">0</u32>
 				<f32 name="taaBlendFactor">0.97</f32>
 				<f32 name="taaVarianceGamma">1.25</f32>
 				<f32 name="fxaaSubpixel">0.75</f32>
