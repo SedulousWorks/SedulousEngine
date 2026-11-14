@@ -76,4 +76,27 @@ class FixedStepperTests
 
 		Test.Assert(steps >= 29 && steps <= 30, scope $"got {steps}");
 	}
+
+	/// An infinite, NaN or huge delta runs at most MaxSteps and returns at once: the drain
+	/// added any positive delta and went a step at a time, which never ended once the
+	/// accumulator was infinite or a step fell below its precision.
+	[Test]
+	public static void AnInfiniteNaNOrHugeDeltaRunsAtMostTheClampAndReturns()
+	{
+		var stepper = FixedStepper(1.0f / 60.0f, 4);
+		Test.Assert(stepper.Advance(float.PositiveInfinity) == 0, "no time at all");
+		Test.Assert(stepper.Accumulator == 0.0f);
+		Test.Assert(stepper.Advance(float.NaN) == 0);
+		Test.Assert(stepper.Advance(1.0e9f) == 4, "a stall of decades: the step drains no more");
+		Test.Assert(stepper.Accumulator >= 0.0f);
+		Test.Assert(stepper.Accumulator < stepper.Step);
+
+		// Ordinary deltas step as before: two and a half steps run two and keep the half.
+		var plain = FixedStepper(0.1f, 4);
+		Test.Assert(plain.Advance(0.25f) == 2);
+		Test.Assert(Near(plain.Alpha, 0.5f));
+		// Five and a half steps due: four run, one is dropped, the half kept.
+		Test.Assert(plain.Advance(0.5f) == 4);
+		Test.Assert(Near(plain.Alpha, 0.5f, 0.01f));
+	}
 }

@@ -36,12 +36,26 @@ struct FixedStepper
 		}
 
 		// Negative time is not a thing, and adding it would wind the accumulator
-		// backwards.
-		if (deltaTime > 0.0f)
+		// backwards. A delta that is not a number of seconds (infinite, NaN) is no time at
+		// all: added, it would make the accumulator infinite and the drain below never end.
+		if ((deltaTime > 0.0f) && deltaTime.IsFinite)
 			Accumulator += deltaTime;
 
+		// More whole steps due than one call runs (a long stall, a huge delta): the excess is
+		// dropped at once, keeping the fraction, rather than drained a step at a time, which
+		// never ends once a step is below the accumulator's precision.
+		let due = Accumulator / Step;
+		if (due >= (float)MaxSteps + 1.0f)
+		{
+			Accumulator -= Floor(due) * Step;
+			// What is left of a huge value is no fraction worth keeping.
+			if (!((Accumulator >= 0.0f) && (Accumulator < Step)))
+				Accumulator = 0.0f;
+			return MaxSteps;
+		}
+
 		uint32 steps = 0;
-		while (Accumulator >= Step)
+		while (Accumulator >= Step) // at most MaxSteps + 1 times, from the guard above
 		{
 			Accumulator -= Step;
 			steps++;

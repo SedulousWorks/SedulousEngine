@@ -254,3 +254,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   every lookup (`of`, `removeFrom` again) and frees it, its body or voice with it, at the end of
   that step, so the systems walking those components never see it move. `addTo` before then gives
   it back as it was.
+- Core: a frame of infinite or enormous length (a clock gone wrong, a long debugger pause) runs at
+  most the fixed step's cap and goes on; the fixed-step loop never ended.
