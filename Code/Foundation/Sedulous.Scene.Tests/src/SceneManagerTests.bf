@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Run;
 using Sedulous.Scene;
 
@@ -215,5 +216,58 @@ class SceneManagerTests
 		manager.SetSceneRun(run);
 		let owned = manager.CreateScene("Owned");
 		Test.Assert((Object)owned.Run === run);
+	}
+
+	/// Destroys its own scene from the fixed step, as a level load from a fixed update does.
+	private class SelfDestroyer : SceneSystem
+	{
+		public static SceneManager sManager;
+		public static int sSteps;
+		public static bool sAliveAfterAsk;
+
+		public override void OnFixedUpdate(float fixedDeltaTime)
+		{
+			sSteps++;
+			if (sSteps == 1)
+			{
+				sManager.DestroyScene(Scene);
+				sAliveAfterAsk = Scene.Name == "self"; // still there for the rest of the lane
+			}
+		}
+	}
+
+	/// A scene destroyed from its own fixed step goes after the lane, which still steps it; one
+	/// destroyed from a run bus handler goes at the run's flush, once however often it is asked.
+	[Test]
+	public static void ASceneDestroyedFromItsFixedStepOrARunHandlerGoesAfterOnce()
+	{
+		let run = scope TestRun(); // outlives the manager
+		let manager = scope SceneManager();
+		manager.SetSceneRun(run);
+		let level = manager.CreateScene("self");
+		level.AddSystem<SelfDestroyer>();
+		SelfDestroyer.sManager = manager;
+		SelfDestroyer.sSteps = 0;
+		SelfDestroyer.sAliveAfterAsk = false;
+		// Two fixed steps of a quarter second each; the destroy waits for both.
+		manager.BeginFrame(FrameTime(0.5f, 1.0f, 1.0f, 1.0f, 0.25f));
+		Test.Assert(SelfDestroyer.sAliveAfterAsk, "the step still saw its scene");
+		Test.Assert(SelfDestroyer.sSteps == 2, "the lane stepped the scene to its end");
+		Test.Assert(manager.SceneCount == 0, "destroyed once the lane was done");
+		SelfDestroyer.sManager = null;
+
+		// From a run bus handler, asked twice: destroyed once, at the flush.
+		let other = manager.CreateScene("other");
+		int countInHandler = -1;
+		run.Events.Subscribe(StringHash("leave"), scope [&] (payload) =>
+			{
+				manager.DestroyScene(other);
+				manager.DestroyScene(other);
+				countInHandler = manager.SceneCount;
+			});
+		run.Events.Publish(StringHash("leave"), Variant());
+		run.DrainEvents();
+		Test.Assert(countInHandler == 1, "still there inside the handler");
+		Test.Assert(manager.SceneCount == 0);
 	}
 }

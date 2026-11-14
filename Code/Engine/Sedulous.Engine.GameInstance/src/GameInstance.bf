@@ -260,7 +260,7 @@ class GameInstance : RunBase
 	public void DrainRunEvents()
 	{
 		if (!mRunHost.IsDebugPaused)
-			Events.Drain();
+			DrainEvents();
 	}
 
 	// ==================== Scenes ====================
@@ -730,6 +730,16 @@ class GameInstance : RunBase
 	/// frozen screen) go on in real time. The run's coroutines, behaviours' among them, advance
 	/// by gameplay time, the run's scale included, so a pause still holds them.
 	public void TickScript(float hostDeltaTime, float contextTimeScale)
+	{
+		// What the game script asks to destroy or replace waits until its update returns.
+		Mutations.Enter();
+		TickScriptDeferred(hostDeltaTime, contextTimeScale);
+		Mutations.Leave();
+		Mutations.Flush();
+	}
+
+	/// TickScript's body, run with the run's mutations deferred.
+	private void TickScriptDeferred(float hostDeltaTime, float contextTimeScale)
 	{
 		// Debug paused: the debugger holds a suspended call. A new update each frame would
 		// hit the breakpoint again per frame and orphan the held call; script time stands

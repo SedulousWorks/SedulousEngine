@@ -219,4 +219,70 @@ class RunTests
 		a.Dispose();
 		Test.Assert(Logged());
 	}
+
+	/// Work waits while an Enter is open (they nest), runs in order at the flush, work queued by
+	/// work runs in the same flush, and an owner gone cancels its own, even during the flush.
+	[Test]
+	public static void MutationsWaitForTheFlushRunInOrderAndAnOwnerGoneCancelsItsOwn()
+	{
+		let queue = scope RunMutations();
+		let a = scope Object();
+		let b = scope Object();
+		let done = scope String();
+		Test.Assert(!queue.IsDeferring);
+		queue.Enter();
+		queue.Enter(); // they nest
+		queue.Enqueue(a, new [&] () => { done.Append("1"); });
+		queue.Leave();
+		Test.Assert(queue.IsDeferring);
+		queue.Flush(); // one is still open: nothing runs
+		Test.Assert(done.IsEmpty);
+		queue.Enqueue(b, new [&] () => { done.Append("2"); });
+		queue.Enqueue(a, new [&] () =>
+			{
+				done.Append("3");
+				queue.Enqueue(a, new [&] () => { done.Append("4"); }); // work queued by work
+			});
+		queue.Cancel(b); // b went away
+		queue.Leave();
+		Test.Assert(queue.PendingCount == 2);
+		queue.Flush();
+		Test.Assert(done == "134");
+		Test.Assert(queue.PendingCount == 0);
+
+		// An owner going away during the flush cancels its work still waiting.
+		queue.Enter();
+		queue.Enqueue(a, new [&] () => { queue.Cancel(b); });
+		queue.Enqueue(b, new [&] () => { done.Append("X"); });
+		queue.Leave();
+		queue.Flush();
+		Test.Assert(done == "134");
+
+		// What is still queued when the queue goes is deleted with it.
+		queue.Enter();
+		queue.Enqueue(a, new [&] () => { done.Append("Y"); });
+	}
+
+	/// The run bus is drained with the run's mutations deferred: a handler's work waits until it
+	/// has returned, and runs before DrainEvents does.
+	[Test]
+	public static void TheBusIsDrainedWithTheMutationsDeferredAndFlushedAfter()
+	{
+		let run = scope TestRun("drained");
+		bool ran = false;
+		bool ranInHandler = false;
+		bool deferring = false;
+		run.Events.Subscribe(StringHash("go"), scope [&] (payload) =>
+			{
+				run.Mutations.Enqueue(run, new [&] () => { ran = true; });
+				deferring = run.Mutations.IsDeferring;
+				ranInHandler = ran;
+			});
+		run.Events.Publish(StringHash("go"), Variant());
+		run.DrainEvents();
+		Test.Assert(deferring, "the handler ran with the mutations deferred");
+		Test.Assert(!ranInHandler, "not inside the handler");
+		Test.Assert(ran, "the work ran once the drain was done");
+		Test.Assert(!run.Mutations.IsDeferring);
+	}
 }

@@ -637,7 +637,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let contextScale = (host != null) ? host.Subsystems.TimeScale : 1.0f;
 			run.Scripts.Advance(FrameTime(dt, contextScale, mSceneManager.TimeScale, mScene.TimeScale).SceneDelta);
 		}
-		run.Events.Drain();
+		run.DrainEvents();
 		// Clicking into a simulating viewport makes its run the one heard, as with a Game tab.
 		if (mSimulation.IsRunning && (mServices.Runs != null) && mViewport.IsFocused && ((Object)mServices.Runs.Focused !== run))
 			mServices.Runs.SetFocused(run);

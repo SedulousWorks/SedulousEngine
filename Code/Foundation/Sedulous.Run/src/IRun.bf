@@ -53,6 +53,8 @@ interface IRun
 	RunState State { get; }
 	/// The run's event bus: its scenes' and its scripts'. BORROWED.
 	EventBus Events { get; }
+	/// What waits while its scripts run (RunMutations). BORROWED.
+	RunMutations Mutations { get; }
 	/// The service of exactly `type` the run holds, or null. BORROWED.
 	Object FindService(Type type);
 }

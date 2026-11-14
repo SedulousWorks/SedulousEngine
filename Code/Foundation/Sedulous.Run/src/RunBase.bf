@@ -28,6 +28,7 @@ class RunBase : IRun
 	private String mName = new .() ~ delete _;
 	private RunState mState = .Idle;
 	private EventBus mEvents = new .() ~ delete _;
+	private RunMutations mMutations = new .() ~ delete _;
 	/// In registration order.
 	private List<Entry> mServices = new .() ~ delete _;
 	/// BORROWED: who hears this run's transitions (its manager); null for none.
@@ -48,7 +49,18 @@ class RunBase : IRun
 	public StringView Name => mName;
 	public RunState State => mState;
 	public EventBus Events => mEvents;
+	public RunMutations Mutations => mMutations;
 	public void SetName(StringView name) => mName.Set(name);
+
+	/// Delivers the run bus's events with its mutations deferred, then flushes them: a handler's
+	/// destroy waits until no handler runs.
+	public void DrainEvents()
+	{
+		mMutations.Enter();
+		mEvents.Drain();
+		mMutations.Leave();
+		mMutations.Flush();
+	}
 
 	/// The service of type `T` this run holds, or null.
 	public T Get<T>() where T : class => (T)FindService(typeof(T));

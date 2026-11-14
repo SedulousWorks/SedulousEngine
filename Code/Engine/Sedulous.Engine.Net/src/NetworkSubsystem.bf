@@ -40,7 +40,14 @@ class NetworkSubsystem : Subsystem
 				if (let controller = RunServices.Get<INetworkController>(run))
 				{
 					if (let endpoint = controller.NetEndpoint)
+					{
+						// A message's handler may stop the networking or replace the scene: that
+						// waits until the pump has returned.
+						run.Mutations.Enter();
 						endpoint.UpdateTransport(deltaMs);
+						run.Mutations.Leave();
+						run.Mutations.Flush();
+					}
 				}
 			});
 	}

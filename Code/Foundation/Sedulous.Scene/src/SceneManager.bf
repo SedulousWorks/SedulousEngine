@@ -35,6 +35,16 @@ class SceneManager
 	private List<Scene> mActive = new .() ~ delete _;
 	private List<Scene> mPendingRemove = new .() ~ delete _;
 	private bool mUpdating = false;
+	/// Scene destroys waiting in the run's mutations.
+	private int32 mRunDestroysQueued = 0;
+
+	public ~this()
+	{
+		// A scene destroy it queued goes with it. Only then is the run asked: a manager may
+		// outlive the run it was given, and has nothing queued on it by then.
+		if ((mRunDestroysQueued > 0) && (mSceneRun != null))
+			mSceneRun.Mutations.Cancel(this);
+	}
 
 	/// Sets the assembler. While one is set it is the ONLY assembly path: there is no
 	/// fallback that quietly builds something else.
@@ -47,7 +57,15 @@ class SceneManager
 	/// The run every scene created here belongs to (Scene.SetRun), set by the owning run: its
 	/// bus is the scenes' bus. Applied BEFORE assembly, so a system binding at creation sees it.
 	/// Null leaves scenes outside every run, with no bus.
-	public void SetSceneRun(IRun run) => mSceneRun = run;
+	public void SetSceneRun(IRun run)
+	{
+		if ((mRunDestroysQueued > 0) && (mSceneRun != null) && ((Object)mSceneRun !== (Object)run))
+		{
+			mSceneRun.Mutations.Cancel(this);
+			mRunDestroysQueued = 0;
+		}
+		mSceneRun = run;
+	}
 
 	/// The GROUP term of host by context by GROUP by scene.
 	///
@@ -118,7 +136,9 @@ class SceneManager
 
 	public bool IsActive(Scene scene) => mActive.Contains(scene);
 
-	/// Destroys a scene, DEFERRED to the end of the update when called during one.
+	/// Destroys a scene, DEFERRED to the end of the tick (either lane) when called during one, and
+	/// to the run's flush while the run defers (a script asked from a handler or the fixed step:
+	/// the scene may be the one it runs in). Asked twice, it is destroyed once.
 	public void DestroyScene(Scene scene)
 	{
 		if (scene == null)
@@ -126,6 +146,17 @@ class SceneManager
 		if (mUpdating)
 		{
 			mPendingRemove.Add(scene);
+			return;
+		}
+		if ((mSceneRun != null) && mSceneRun.Mutations.IsDeferring)
+		{
+			mRunDestroysQueued++;
+			mSceneRun.Mutations.Enqueue(this, new () =>
+				{
+					mRunDestroysQueued--;
+					if (Owns(scene)) // destroyed meanwhile: nothing
+						DestroyImmediate(scene);
+				});
 			return;
 		}
 		DestroyImmediate(scene);
@@ -162,23 +193,42 @@ class SceneManager
 	/// the terms cannot drift apart.
 	public void BeginFrame(FrameTime time)
 	{
+		// Scripts run in the fixed step: what they destroy waits for the end of the lane, and
+		// what they ask of the run for its flush.
+		let run = mSceneRun;
+		run?.Mutations.Enter();
+		mUpdating = true;
 		for (let scene in mActive)
 		{
 			if ((time.FixedStep > 0.0f) && (scene.FixedTimeStep != time.FixedStep))
 				scene.SetFixedTiming(time.FixedStep, 4);
 			scene.AdvanceTime(time.ContextDelta * mTimeScale * scene.TimeScale);
 		}
+		mUpdating = false;
+		ProcessPendingRemoves();
+		if (run != null)
+		{
+			run.Mutations.Leave();
+			run.Mutations.Flush();
+		}
 	}
 
 	/// The variable lane: the same chain, composed the same one place.
 	public void Update(FrameTime time)
 	{
+		let run = mSceneRun;
+		run?.Mutations.Enter();
 		mUpdating = true;
 		for (let scene in mActive)
 			scene.Update(time.ContextDelta * mTimeScale * scene.TimeScale);
 		mUpdating = false;
 
 		ProcessPendingRemoves();
+		if (run != null)
+		{
+			run.Mutations.Leave();
+			run.Mutations.Flush();
+		}
 	}
 
 	/// Destroys every scene in the group, notifying for each: the group's teardown.
@@ -226,10 +276,16 @@ class SceneManager
 
 	private void ProcessPendingRemoves()
 	{
-		// A snapshot is not needed: DestroyImmediate touches the owned and active lists,
-		// never this one.
-		for (let scene in mPendingRemove)
-			DestroyImmediate(scene);
+		if (mPendingRemove.IsEmpty)
+			return;
+		// A snapshot: a destroy's stop hooks may ask again.
+		let batch = scope List<Scene>();
+		batch.AddRange(mPendingRemove);
 		mPendingRemove.Clear();
+		for (let scene in batch)
+		{
+			if (Owns(scene)) // asked twice: destroyed once
+				DestroyImmediate(scene);
+		}
 	}
 }

@@ -19,8 +19,9 @@ namespace Sedulous.Scene;
 ///                          dirty cascade and a two pass update that snapshots the previous
 ///                          world matrix and recomputes only dirty subtrees.
 ///
-/// Destruction is recursive, children first. A destroy asked for DURING an update is
-/// deferred to the frame's cleanup, so iteration stays stable.
+/// Destruction is recursive, children first. A destroy asked for while the scene steps, or
+/// while its run defers, waits for the end of that step or the run's flush, so iteration stays
+/// stable.
 [Scriptable]
 class Scene
 {
@@ -67,7 +68,10 @@ class Scene
 	private List<UnresolvedSettings> mUnresolvedSettings = new .() ~ DeleteContainerAndItems!(_);
 	private List<EntityHandle> mPendingDestroys = new .() ~ delete _;
 
+	/// Stepping: Update, the fixed steps, a destroy's hooks.
 	private bool mIsUpdating = false;
+	/// ProcessPendingDestroys waits in the run's mutations.
+	private bool mRunFlushQueued = false;
 	private bool mStarted = false;
 	private bool mSimulationEnabled = true;
 	private float mTimeScale = 1.0f;
@@ -77,6 +81,14 @@ class Scene
 	public this(StringView name = default)
 	{
 		mName.Set(name);
+	}
+
+	public ~this()
+	{
+		// Its queued destroys go with it. Only then is the run asked: a scene may outlive the run
+		// it was given (a test's, a tool's), and has nothing queued on it by then.
+		if (mRunFlushQueued && (mRun != null))
+			mRun.Mutations.Cancel(this);
 	}
 
 	[Scriptable]
@@ -119,8 +131,10 @@ class Scene
 
 	/// Destroys an entity and its whole subtree. A no op for a stale handle.
 	///
-	/// Called DURING an update, by a system destroying entities, it is deferred to the
-	/// frame's cleanup so whatever is iterating stays on solid ground.
+	/// Asked for while the scene steps (Update, the fixed step, a destroy hook) or while its run
+	/// defers (RunMutations: a script runs somewhere), it waits for the end of that step or the
+	/// run's flush, so whatever is walking the scene stays on solid ground; IsValid stays true
+	/// until then.
 	[Scriptable]
 	public void DestroyEntity(EntityHandle entity)
 	{
@@ -132,7 +146,23 @@ class Scene
 			mPendingDestroys.Add(entity);
 			return;
 		}
-		DestroyEntityImmediate(entity);
+		if ((mRun != null) && mRun.Mutations.IsDeferring)
+		{
+			mPendingDestroys.Add(entity);
+			if (!mRunFlushQueued)
+			{
+				mRunFlushQueued = true;
+				mRun.Mutations.Enqueue(this, new () =>
+					{
+						mRunFlushQueued = false;
+						ProcessPendingDestroys();
+					});
+			}
+			return;
+		}
+		// Now, through the queue, so the hooks of what goes destroy after it, not inside it.
+		mPendingDestroys.Add(entity);
+		ProcessPendingDestroys();
 	}
 
 	[Scriptable]
@@ -857,7 +887,17 @@ class Scene
 	/// scene by it (its audio nests under the run's, so the run's stop, pause and mute reach it).
 	/// Null is outside every run (a tool's scratch scene, a test's).
 	public IRun Run => mRun;
-	public void SetRun(IRun run) => mRun = run;
+	public void SetRun(IRun run)
+	{
+		if (mRunFlushQueued && (mRun != null) && ((Object)mRun !== (Object)run))
+		{
+			// The old run's flush would reach the scene through a run it left: the queued destroys
+			// wait for the next step instead.
+			mRun.Mutations.Cancel(this);
+			mRunFlushQueued = false;
+		}
+		mRun = run;
+	}
 
 	// ---- play and edit state ----
 
@@ -894,9 +934,17 @@ class Scene
 	public uint32 AdvanceTime(float scaledDelta)
 	{
 		let steps = mStepper.Advance(scaledDelta);
+		// The fixed step walks the scene as Update does: what it destroys waits for the end.
+		let outermost = !mIsUpdating;
+		mIsUpdating = true;
 		for (uint32 i < steps)
 			FixedUpdate(mStepper.Step);
 		mFixedAlpha = mStepper.Alpha;
+		if (outermost)
+		{
+			mIsUpdating = false;
+			ProcessPendingDestroys();
+		}
 		return steps;
 	}
 
@@ -1226,23 +1274,33 @@ class Scene
 		}
 	}
 
-	/// Destroys what was queued during the update.
+	/// Destroys what was queued meanwhile, and what their destroy hooks queue (a behaviour's
+	/// onDestroy may destroy more), until none is left: no hook destroys under the walk of the
+	/// subtree going.
 	///
-	/// SNAPSHOT first, because destroying a subtree can queue more, and the stale entries a
+	/// SNAPSHOT each round, because destroying a subtree can queue more, and the stale entries a
 	/// nested destroy leaves behind are skipped by the validity check.
 	private void ProcessPendingDestroys()
 	{
 		if (mPendingDestroys.IsEmpty)
 			return;
 
+		let outermost = !mIsUpdating;
+		mIsUpdating = true;
 		let batch = scope List<EntityHandle>();
-		batch.AddRange(mPendingDestroys);
-		mPendingDestroys.Clear();
-
-		for (let entity in batch)
+		while (!mPendingDestroys.IsEmpty)
 		{
-			if (IsValid(entity))
-				DestroyEntityImmediate(entity);
+			batch.Clear();
+			batch.AddRange(mPendingDestroys);
+			mPendingDestroys.Clear();
+
+			for (let entity in batch)
+			{
+				if (IsValid(entity))
+					DestroyEntityImmediate(entity);
+			}
 		}
+		if (outermost)
+			mIsUpdating = false;
 	}
 }

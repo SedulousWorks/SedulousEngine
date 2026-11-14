@@ -106,6 +106,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: destroying an entity or a scene from the fixed step, an event handler, a network
+  message or a destroy hook waits until that step or handler is done, as it did inside an update;
+  it was done at once, under the code still walking the scene, and could crash the game. The
+  entity stays valid until then.
 - Scripting: an event handler may subscribe and unsubscribe, itself included, and a scene may
   stop from inside one. Unsubscribing freed the handler while it ran and skipped the next one, and
   subscribing could move the handlers under the one running.

@@ -218,4 +218,111 @@ class SceneSystemTests
 		Test.Assert(sources == 1);
 		Test.Assert(triangles.Count == 6);
 	}
+
+	/// On its first fixed step, destroys `Target` and notes whether it was still valid after.
+	private class FixedDestroyer : SceneSystem
+	{
+		public EntityHandle Target = .Invalid;
+		public bool ValidAfterAsk = false;
+
+		public override void OnFixedUpdate(float fixedDeltaTime)
+		{
+			if (!Target.IsAssigned)
+				return;
+			Scene.DestroyEntity(Target);
+			ValidAfterAsk = Scene.IsValid(Target);
+			Target = .Invalid;
+		}
+	}
+
+	/// The fixed step walks the scene as Update does, so what it destroys waits for the end of
+	/// the steps.
+	[Test]
+	public static void ADestroyAskedInTheFixedStepWaitsForTheEndOfTheSteps()
+	{
+		let scene = scope Scene("fixed");
+		let destroyer = scene.AddSystem<FixedDestroyer>();
+		let entity = scene.CreateEntity("e");
+		destroyer.Target = entity;
+		scene.SetFixedTiming(0.25f, 4);
+		Test.Assert(scene.AdvanceTime(0.5f) == 2);
+		Test.Assert(destroyer.ValidAfterAsk, "the step still saw it");
+		Test.Assert(!scene.IsValid(entity), "gone once the steps ended");
+	}
+
+	/// Destroying `Trigger` destroys `Also` from its hook, as a behaviour's onDestroy might, and
+	/// notes whether `Trigger` was still alive when `Also`'s hooks ran.
+	private class ChainDestroyer : SceneSystem
+	{
+		public EntityHandle Trigger = .Invalid;
+		public EntityHandle Also = .Invalid;
+		public int Seen = 0;
+		public bool TriggerAliveAtAlso = false;
+
+		public override void OnEntityDestroyed(EntityHandle entity)
+		{
+			Seen++;
+			if (entity == Also)
+				TriggerAliveAtAlso = Scene.IsValid(Trigger);
+			if ((entity == Trigger) && Scene.IsValid(Also))
+				Scene.DestroyEntity(Also);
+		}
+	}
+
+	/// A destroy hook that destroys a sibling destroys it after the first is gone, never inside
+	/// the first's destroy, and in the same call.
+	[Test]
+	public static void ADestroyHookThatDestroysASiblingDestroysItAfterTheFirst()
+	{
+		let scene = scope Scene("hooks");
+		let chain = scene.AddSystem<ChainDestroyer>();
+		let parent = scene.CreateEntity("parent");
+		let first = scene.CreateEntity("first");
+		let second = scene.CreateEntity("second");
+		scene.SetParent(first, parent);
+		scene.SetParent(second, parent);
+		chain.Trigger = first;
+		chain.Also = second;
+		scene.DestroyEntity(first);
+		Test.Assert(!scene.IsValid(first));
+		Test.Assert(!scene.IsValid(second), "destroyed in the same call");
+		Test.Assert(!chain.TriggerAliveAtAlso, "after the first was gone, not inside it");
+		Test.Assert(scene.IsValid(parent));
+		Test.Assert(chain.Seen == 2);
+		let next = scene.CreateEntity("next"); // the free list is sound
+		Test.Assert(scene.IsValid(next));
+		Test.Assert(scene.EntityCount == 2);
+	}
+
+	/// While the scene's run defers its mutations, a destroy waits for the run's flush; a scene
+	/// gone before the flush takes its queued destroy with it.
+	[Test]
+	public static void WhileTheRunDefersADestroyWaitsForItsFlushAndASceneGoneCancelsIt()
+	{
+		let run = scope RunBase("run");
+		{
+			let scene = scope Scene("deferred");
+			scene.SetRun(run);
+			let entity = scene.CreateEntity("e");
+			run.Mutations.Enter();
+			scene.DestroyEntity(entity);
+			Test.Assert(scene.IsValid(entity), "waits while the run defers");
+			run.Mutations.Leave();
+			Test.Assert(scene.IsValid(entity), "and until the flush");
+			run.Mutations.Flush();
+			Test.Assert(!scene.IsValid(entity));
+		}
+		{
+			let scene = new Scene("gone");
+			scene.SetRun(run);
+			let entity = scene.CreateEntity("e");
+			run.Mutations.Enter();
+			scene.DestroyEntity(entity);
+			run.Mutations.Leave();
+			Test.Assert(run.Mutations.PendingCount == 1);
+			delete scene; // the scene goes before the flush
+			Test.Assert(run.Mutations.PendingCount == 0);
+			run.Mutations.Flush(); // nothing reaches the freed scene
+		}
+	}
 }
