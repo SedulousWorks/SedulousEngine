@@ -12,9 +12,10 @@ as part of the work. It has also shipped to a Steam Deck through the container b
 Five levels of floating islands (Grassy Hills, Crab Crossing, Sky Climb, Bee Meadow, Cloud
 Fortress): hop between platforms, collect coins, stomp crabs, skulls and bees from above, cross
 bridges, dodge spikes, swinging saws and spiky balls, and reach the flag.
-A title screen with settings (master, music and effect volumes), an intro banner per level, a
-pause menu, a HUD of icons (lives, coins, the gem, the clock and the score, with gains floating
-up from it), the clear card, a game over card and a victory screen with the run's totals.
+A title screen with settings (master, music and effect volumes, and the graphics level: Low,
+Medium or High), an intro banner per level, a pause menu, a HUD of icons (lives, coins, the gem,
+the clock and the score, with gains floating up from it), the clear card, a game over card and a
+victory screen with the run's totals.
 Falling respawns you on the last safe ground.
 
 A run has three lives: a fall or a hit costs one, a heart found in a level gives one back, and

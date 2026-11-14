@@ -1,6 +1,6 @@
-<!-- The settings (PlatformerGame.as): a volume per audio bus, and Back to the title. Styled by
-     SkyHopperSheet.css. The screen stack's back (Escape, East) is off here: the game's own Pause
-     action (PlatformerGame.as) takes its place. -->
+<!-- The settings (PlatformerGame.as): a volume per audio bus, the graphics quality level, and Back
+     to the title. Styled by SkyHopperSheet.css. The screen stack's back (Escape, East) is off here:
+     the game's own Pause action (PlatformerGame.as) takes its place. -->
 <Screen class="fades" nav-default="master-slider" back="none">
   <Panel class="veil heavy">
     <Panel class="cloud card">
@@ -20,6 +20,11 @@
           <Label class="body volume-name" text="Effects"/>
           <Slider id="effects-slider" class="volume" min="0" max="1" step="0.05"/>
           <Label id="effects-value" class="note volume-value" text="100%"/>
+        </Panel>
+        <Panel class="volume-row">
+          <Label class="body volume-name" text="Graphics"/>
+          <Slider id="quality-slider" class="volume" min="0" max="2" step="1"/>
+          <Label id="quality-value" class="note volume-value" text="High"/>
         </Panel>
       </Panel>
       <Button id="settings-back-btn" class="primary back" text="Back"/>

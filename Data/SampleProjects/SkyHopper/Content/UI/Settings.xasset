@@ -1,6 +1,7 @@
 <root>
 	<string name="guid">d9a81097-a913-b84d-8b2f-73d02e45cc44</string>
 	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
+	<string name="source">Settings.xml</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">13358085703002792026</u64>
 		<u32 name="version">0</u32>

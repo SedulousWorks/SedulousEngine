@@ -24,8 +24,8 @@ for every second left. The HUD shows the time, deliveries, papers, score and liv
 minimap: a top-down render texture of the block with the subscribers (dimmed once delivered) and
 the bike, turned to its heading. A title screen over a street going about its day (cars and
 people crossing, a dog and a cat pottering on the lawn) with settings (master, music and effect
-volumes), a pause menu, block cleared and failed screens, and a Game over or route complete
-summary.
+volumes, and the graphics level: Low, Medium or High), a pause menu, block cleared and failed
+screens, and a Game over or route complete summary.
 
 The feel: chiptune music on the menus and across the blocks, a sound for every throw, delivery
 and crash, and a ticking clock in the last ten seconds; at fifteen, "Hurry up!" and the block's

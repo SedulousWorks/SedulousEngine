@@ -433,8 +433,9 @@ class Game
 		return true;
 	}
 
-	/// The volumes, on the audio buses the player saves when it exits, so a change made
-	/// here is there next time without the game storing anything itself.
+	/// The volumes, on the audio buses the player saves when it exits, and the graphics quality
+	/// level, which the player keeps: a change made here is there next time without the game
+	/// storing anything itself.
 	bool onSettings(GuiEvent@ e)
 	{
 		click();
@@ -442,6 +443,7 @@ class Game
 		bindVolume("master", AudioBus::Master, EventHandler(this.onMasterChanged));
 		bindVolume("music", AudioBus::Music, EventHandler(this.onMusicChanged));
 		bindVolume("effects", AudioBus::Effects, EventHandler(this.onEffectsChanged));
+		bindQuality();
 		wire("settings-back-btn", "click", EventHandler(this.onSettingsBack));
 		enter(Phase::Settings);
 		return true;
@@ -562,6 +564,32 @@ class Game
 	private void showVolume(string row, float level)
 	{
 		setText(row + "-value", "" + int(level * 100.0f + 0.5f) + "%");
+	}
+
+	/// The graphics row: a step per quality level the game offers (RenderQuality), at the one it
+	/// plays at. A step switches at once, and the player keeps the choice for the next run.
+	private void bindQuality()
+	{
+		string current = RenderQuality.Current();
+		int at = 0;
+		for (int i = 0; i < RenderQuality.Count(); i++)
+		{
+			if (RenderQuality.Label(i) == current)
+				at = i;
+		}
+		Slider@ slider = Slider::Of(find("quality-slider"));
+		slider.Max = (RenderQuality.Count() > 0) ? double(RenderQuality.Count() - 1) : 0.0;
+		slider.Value = at;
+		setText("quality-value", current);
+		wire("quality-slider", "input", EventHandler(this.onQualityChanged));
+	}
+
+	bool onQualityChanged(GuiEvent@ e)
+	{
+		int index = int(Slider::Of(find("quality-slider")).Value + 0.5);
+		if ((index >= 0) && (index < RenderQuality.Count()) && RenderQuality.Set(RenderQuality.Label(index)))
+			setText("quality-value", RenderQuality.Label(index));
+		return true;
 	}
 
 	private void showTitle()
