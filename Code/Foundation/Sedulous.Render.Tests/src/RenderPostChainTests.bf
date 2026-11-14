@@ -367,7 +367,9 @@ class RenderPostChainTests
 	[Test]
 	public static void TheBloomPyramidTakesTheViewsLevelBudgetAtMostThePasssOwn()
 	{
-		let fixture = scope RenderFrameFixture(1024, 1024);
+		// Large enough that the pyramid's own depth (halved down to 8 pixels) passes the pass's cap,
+		// so only the cap holds a large budget to its levels.
+		let fixture = scope RenderFrameFixture(4096, 4096);
 		if (!fixture.Ready)
 			return;
 
@@ -390,7 +392,7 @@ class RenderPostChainTests
 			settings.Post.BloomMaxLevels = budget;
 			frame.Begin(fixture.Encoder, 0);
 			frame.AddView(scene, RenderFrameFixture.LookingAtTheOrigin(), settings, fixture.ColorView,
-				.BGRA8Unorm, 1024, 1024);
+				.BGRA8Unorm, 4096, 4096);
 			frame.End();
 			return DeclaredCount(frame, "bloom.down");
 		}
