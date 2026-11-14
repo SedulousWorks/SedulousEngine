@@ -12,12 +12,12 @@ namespace Sedulous.Terrain.Resource;
 class TerrainPaletteData
 {
 	/// The sidecar streams. The normal, occlusion, height and mask streams are ABSENT when no
-	/// palette layer uses that map.
+	/// palette layer uses that map. A stream name has no dot (Sidecars.IsStreamName).
 	public const String AlbedoStream = "palette";
-	public const String NormalStream = "palette.normal";
-	public const String OrmStream = "palette.orm";
-	public const String HeightStream = "palette.height";
-	public const String MaskStream = "palette.mask";
+	public const String NormalStream = "paletteNormal";
+	public const String OrmStream = "paletteOrm";
+	public const String HeightStream = "paletteHeight";
+	public const String MaskStream = "paletteMask";
 
 	/// Shares the splat weights' identity domain, and is a cache key rather than a reference.
 	public readonly uint64 Uid = SplatWeights.NextUid();

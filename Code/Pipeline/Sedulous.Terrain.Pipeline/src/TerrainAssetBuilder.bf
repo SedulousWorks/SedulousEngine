@@ -25,8 +25,10 @@ class TerrainAssetBuilder : IAssetBuilder
 	/// albedos through the SOURCE database rather than cooking every slice white, the normal
 	/// and occlusion arrays, averaging the albedo's mips in linear space, the height array and
 	/// its blend contrast, the coverage masks, and finally DELETING a sidecar whose map was
-	/// removed instead of leaving a stale one loading forever.
-	public int32 Version => 9;
+	/// removed instead of leaving a stale one loading forever. Ten: the normal, occlusion,
+	/// height and mask arrays are the streams paletteNormal, paletteOrm, paletteHeight and
+	/// paletteMask, since a stream name has no dot.
+	public int32 Version => 10;
 
 	/// The palette pack READS every layer's maps, so editing one re-cooks the arrays. The
 	/// base, heightfield and weights are runtime references only: they are separate products
