@@ -126,4 +126,78 @@ class EventBusTests
 		bus.Drain();
 		Test.Assert(calls == 0);
 	}
+
+	/// A handler that unsubscribes itself, handing its callback to the bus, stays alive for its
+	/// call, and the subscriber after it still hears the event.
+	[Test]
+	public static void AHandlerThatUnsubscribesItselfStaysAliveForItsCallAndTheNextStillHears()
+	{
+		let bus = scope EventBus();
+		let order = scope String();
+		uint32 self = 0;
+		let tag = new String("1");
+		delegate void(Variant) first = new [=bus, &self, =order, =tag] (payload) =>
+			{
+				bus.Unsubscribe(self, true); // deleted by the bus once it has returned
+				order.Append(tag); // its captures are still there after the unsubscribe
+			} ~ delete tag;
+		self = bus.Subscribe(StringHash("A"), first);
+		bus.Subscribe(StringHash("A"), scope [&] (payload) => { order.Append("2"); });
+		bus.Publish(StringHash("A"), Variant());
+		bus.Publish(StringHash("A"), Variant());
+		bus.Drain();
+		Test.Assert(order == "122", order); // the second event no longer reaches the first
+		Test.Assert(bus.SubscriberCount == 1);
+	}
+
+	/// A subscription made by a handler joins after that event; many at once move nothing that
+	/// runs.
+	[Test]
+	public static void ASubscriptionMadeByAHandlerJoinsAfterThatEvent()
+	{
+		let bus = scope EventBus();
+		int late = 0;
+		let order = scope String();
+		delegate void(Variant) lateHandler = scope [&] (payload) => { late++; };
+		bus.Subscribe(StringHash("A"), scope [&] (payload) =>
+			{
+				for (int i < 64) // enough to grow the list many times over
+					bus.Subscribe(StringHash("A"), lateHandler);
+				order.Append("a");
+			});
+		bus.Publish(StringHash("A"), Variant());
+		bus.Publish(StringHash("A"), Variant());
+		bus.Drain();
+		Test.Assert(order == "aa", order);
+		Test.Assert(late == 64, "the first event's 64 hear the second; none hears the event it was made in");
+		Test.Assert(bus.SubscriberCount == 129);
+	}
+
+	/// Clear from a handler stops every delivery; a Drain from a handler leaves the events to
+	/// the one running.
+	[Test]
+	public static void ClearFromAHandlerStopsEveryDeliveryANestedDrainDoesNothing()
+	{
+		let bus = scope EventBus();
+		let order = scope String();
+		bus.Subscribe(StringHash("A"), scope [&] (payload) =>
+			{
+				bus.Publish(StringHash("B"), Variant());
+				bus.Drain(); // nested: does nothing; B goes in the next pass
+				order.Append("A");
+			});
+		bus.Subscribe(StringHash("B"), scope [&] (payload) => { order.Append("B"); });
+		bus.Publish(StringHash("A"), Variant());
+		bus.Drain();
+		Test.Assert(order == "AB", order);
+
+		let closing = scope EventBus();
+		int after = 0;
+		closing.Subscribe(StringHash("A"), scope [&] (payload) => { closing.Clear(); });
+		closing.Subscribe(StringHash("A"), scope [&] (payload) => { after++; });
+		closing.Publish(StringHash("A"), Variant());
+		closing.Drain();
+		Test.Assert(after == 0);
+		Test.Assert(closing.SubscriberCount == 0);
+	}
 }

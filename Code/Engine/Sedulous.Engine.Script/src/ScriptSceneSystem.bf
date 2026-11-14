@@ -55,6 +55,8 @@ class ScriptSceneSystem : SceneSystem
 
 	/// The bus subscriptions, one per event name any loaded class handles.
 	private Dictionary<String, uint32> mSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
+	/// The callbacks subscribed, each owning its handler's name; handed to the bus as they
+	/// unsubscribe (a handler may stop the scene, and so unsubscribe them, while it runs).
 	private List<delegate void(Variant)> mSubscriptionCallbacks = new .() ~ DeleteContainerAndItems!(_);
 
 	// ---- the Level tier ----
@@ -608,28 +610,28 @@ class ScriptSceneSystem : SceneSystem
 			if (eventName.IsEmpty || mSubscriptions.ContainsKey(eventName))
 				continue;
 			let name = new String(eventName);
+			// The handler's name lives as long as the callback, which owns it.
 			let handlerName = new String(handler);
-			delegate void(Variant) callback = new (payload) => { BroadcastEvent(handlerName, payload); };
+			delegate void(Variant) callback = new (payload) => { BroadcastEvent(handlerName, payload); } ~ delete handlerName;
 			mSubscriptionCallbacks.Add(callback);
 			mSubscriptions[name] = bus.Subscribe(StringHash(eventName), callback);
-			// The handler name string lives as long as the callback; parked with it.
-			mOwnedHandlerNames.Add(handlerName);
 		}
 	}
-	private List<String> mOwnedHandlerNames = new .() ~ DeleteContainerAndItems!(_);
 
 	private void ClearSubscriptions()
 	{
 		let bus = (mScene != null) ? mScene.Events : null;
 		if (bus != null)
 		{
+			// The bus deletes each callback once it is not running: this may be a handler
+			// stopping its own scene.
 			for (let entry in mSubscriptions)
-				bus.Unsubscribe(entry.value);
+				bus.Unsubscribe(entry.value, true);
+			mSubscriptionCallbacks.Clear();
 		}
 		DeleteDictionaryAndKeys!(mSubscriptions);
 		mSubscriptions = new .();
 		ClearAndDeleteItems!(mSubscriptionCallbacks);
-		ClearAndDeleteItems!(mOwnedHandlerNames);
 	}
 
 	/// The bus drains at the scene tick's top level, so this dispatches directly: every

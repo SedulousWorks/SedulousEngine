@@ -106,6 +106,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: an event handler may subscribe and unsubscribe, itself included, and a scene may
+  stop from inside one. Unsubscribing freed the handler while it ran and skipped the next one, and
+  subscribing could move the handlers under the one running.
 - Editor: a navigation bake that finds no geometry, or no walkable surface, leaves the zone its
   last navmesh and says so. It wrote an empty one over it.
 - Editor: Export stops, and says so, when the cook before it failed an asset or could not read

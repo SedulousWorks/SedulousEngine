@@ -137,8 +137,10 @@ class GameInstance : RunBase
 	private ProfilerOverlayRequest mProfilerOverlay = null ~ delete _;
 	private ProfilerAvailability mProfilerAvailable = null ~ delete _;
 	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
+	/// The Game class's callbacks subscribed, each owning its handler's name; handed to the bus
+	/// as they unsubscribe (a handler may fault the Game class, and so unsubscribe them, while it
+	/// runs).
 	private List<delegate void(Variant)> mGameCallbacks = new .() ~ DeleteContainerAndItems!(_);
-	private List<String> mGameHandlerNames = new .() ~ DeleteContainerAndItems!(_);
 
 	public this() : base("Game")
 	{
@@ -799,22 +801,23 @@ class GameInstance : RunBase
 			if (eventName.IsEmpty || mGameSubscriptions.ContainsKey(eventName))
 				continue;
 			let name = new String(eventName);
+			// The handler's name lives as long as the callback, which owns it.
 			let handlerName = new String(handler);
-			delegate void(Variant) callback = new (payload) => { DispatchGameEvent(handlerName, payload); };
+			delegate void(Variant) callback = new (payload) => { DispatchGameEvent(handlerName, payload); } ~ delete handlerName;
 			mGameCallbacks.Add(callback);
-			mGameHandlerNames.Add(handlerName);
 			mGameSubscriptions[name] = Events.Subscribe(StringHash(eventName), callback);
 		}
 	}
 
 	private void ClearGameSubscriptions()
 	{
+		// The bus deletes each callback once it is not running: this may be a handler faulting
+		// the Game class.
 		for (let entry in mGameSubscriptions)
-			Events.Unsubscribe(entry.value);
+			Events.Unsubscribe(entry.value, true);
+		mGameCallbacks.Clear();
 		DeleteDictionaryAndKeys!(mGameSubscriptions);
 		mGameSubscriptions = new .();
-		ClearAndDeleteItems!(mGameCallbacks);
-		ClearAndDeleteItems!(mGameHandlerNames);
 	}
 
 	// ==================== Save ====================
