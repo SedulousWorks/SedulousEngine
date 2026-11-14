@@ -9,7 +9,8 @@ using Sedulous.Scene;
 namespace Sedulous.Engine.Animation;
 
 /// Ticks every skeletal animation in the animation phase, before extraction: advance each
-/// player, then write its current and previous skinning matrices into the target meshes.
+/// player and evaluate its pose, recording which meshes it poses; drawing asks for a mesh's
+/// palette (ISkinningPaletteSource) and reads it from the player as it is then.
 ///
 /// Time is SIMULATION GATED. Animation is gameplay side state and must not advance in a scene
 /// that is not simulating: watching things animate in an editor's edit mode is wrong. A consumer
@@ -18,10 +19,12 @@ namespace Sedulous.Engine.Animation;
 /// is not: in a scene standing still the manager still feeds its meshes the player's standing
 /// pose (the rig's rest pose before any clip), since a skinned mesh fed nothing draws its raw
 /// vertices, which an FBX file keeps lying in its authoring tool's axes.
-class SkeletalAnimationComponentManager : ResourceBindingComponentManager<SkeletalAnimationComponent>
+class SkeletalAnimationComponentManager : ResourceBindingComponentManager<SkeletalAnimationComponent>, ISkinningPaletteSource
 {
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
+	/// Which of its animators posed each mesh at the last update.
+	private PosedMeshes mPosed = new .() ~ delete _;
 	/// The one-shots that ended since the last DrainEnded.
 	private List<OneShotEnded> mEnded = new .() ~ delete _;
 
@@ -175,6 +178,8 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 		using (ProfileScope("Animation.Skeletal"))
 		{
+			// Recorded again below: an animator gone, or a mesh it stopped naming, drops out.
+			mPosed.Clear();
 			ForEach(scope (component, owner) =>
 				{
 					Tick(meshes, component, owner, deltaTime);
@@ -185,6 +190,8 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	private void Tick(MeshComponentManager meshes, SkeletalAnimationComponent* component,
 		EntityHandle owner, float deltaTime)
 	{
+		// Recorded first, so a frozen animator's meshes keep its last pose.
+		mPosed.RecordAll(mScene, meshes, owner, component.MeshEntities);
 		// Frozen: time does not advance.
 		if (!mScene.IsEffectivelyActive(owner))
 		{
@@ -243,7 +250,26 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 				ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
 		}
 
-		AnimationFeed.FeedAll(mScene, meshes, owner, component.MeshEntities,
-			component.Player.GetSkinningMatrices(), component.Player.GetPrevSkinningMatrices());
+		// The pose is evaluated here, once a frame, whether or not anything draws it: its
+		// modifiers (foot IK's ground probes) step with the frame, not with a reader.
+		component.Player.GetSkinningMatrices();
+	}
+
+	public override ISkinningPaletteSource AsSkinningPaletteSource => this;
+
+	/// The palette of the animator that posed `mesh` at its last update, read from its player
+	/// as it is now; false once the animator is gone (its player with it): the mesh draws static.
+	public bool SkinningPaletteOf(EntityHandle mesh, out SkinningPalette outPalette)
+	{
+		outPalette = .();
+		let animator = mPosed.AnimatorOf(mesh);
+		let component = animator.IsAssigned ? Get(animator) : null;
+		if ((component == null) || (component.Player == null))
+			return false;
+		let current = component.Player.EvaluatedSkinningMatrices;
+		outPalette.Current = current.Ptr;
+		outPalette.Previous = component.Player.GetPrevSkinningMatrices().Ptr;
+		outPalette.BoneCount = (uint32)current.Length;
+		return true;
 	}
 }

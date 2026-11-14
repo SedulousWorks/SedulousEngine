@@ -7,8 +7,7 @@ using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation;
 
-/// What the animation managers share: naming the meshes a player feeds, and handing them the
-/// frame's matrices.
+/// What the animation managers share: naming the meshes a player poses.
 ///
 /// Both the clip and the graph managers do exactly this, and the instanced one does its own
 /// version over the instanced pool, so the target list lives here rather than being written
@@ -45,33 +44,59 @@ static class AnimationFeed
 		}
 		ar.EndArray();
 	}
+}
 
-	/// Points one mesh at this frame's palettes. BORROWED for the frame: the player, owned by
-	/// the component, is what keeps the storage alive.
-	public static void Feed(MeshComponentManager meshes, EntityHandle entity,
-		Span<Float4x4> current, Span<Float4x4> previous)
+/// Which animator posed each mesh at its last update: what an animator manager answers
+/// ISkinningPaletteSource from, so a mesh holds no pointer into the animator's player.
+class PosedMeshes
+{
+	private struct Posed
 	{
-		let mesh = meshes.Get(entity);
-		if (mesh == null)
-			return;
+		public EntityHandle Mesh;
+		public EntityHandle Animator;
 
-		mesh.BoneMatrices = current.Ptr;
-		mesh.PrevBoneMatrices = previous.Ptr;
-		mesh.BoneCount = (uint32)current.Length;
+		public this(EntityHandle mesh, EntityHandle animator)
+		{
+			Mesh = mesh;
+			Animator = animator;
+		}
 	}
 
-	/// The owner when nothing was named, otherwise every named target resolved afresh: an id
-	/// becomes a live handle each frame, so a target destroyed and respawned is picked up.
-	public static void FeedAll(Scene scene, MeshComponentManager meshes, EntityHandle owner,
-		List<EntityRef> targets, Span<Float4x4> current, Span<Float4x4> previous)
+	/// By the mesh's entity index; the whole handle kept, so a reused slot reads as unposed.
+	private Dictionary<uint32, Posed> mByMesh = new .() ~ delete _;
+
+	public void Clear() => mByMesh.Clear();
+
+	public void Record(EntityHandle mesh, EntityHandle animator)
+	{
+		mByMesh[mesh.Index] = Posed(mesh, animator);
+	}
+
+	/// The animator that posed `mesh` at its last update, or Invalid.
+	public EntityHandle AnimatorOf(EntityHandle mesh)
+	{
+		if (mByMesh.TryGetValue(mesh.Index, let posed) && (posed.Mesh == mesh))
+			return posed.Animator;
+		return EntityHandle.Invalid;
+	}
+
+	/// Records the meshes the animator on `owner` poses: its own entity's when it names none,
+	/// otherwise every named target resolved afresh (an id becomes a live handle each frame, so
+	/// a target destroyed and respawned is picked up).
+	public void RecordAll(Scene scene, MeshComponentManager meshes, EntityHandle owner, List<EntityRef> targets)
 	{
 		if (targets.IsEmpty)
 		{
-			Feed(meshes, owner, current, previous);
+			RecordOne(meshes, owner, owner);
 			return;
 		}
-
 		for (let target in targets)
-			Feed(meshes, scene.FindEntity(target.Id), current, previous);
+			RecordOne(meshes, scene.FindEntity(target.Id), owner);
+	}
+
+	private void RecordOne(MeshComponentManager meshes, EntityHandle mesh, EntityHandle owner)
+	{
+		if (mesh.IsAssigned && meshes.Has(mesh))
+			Record(mesh, owner);
 	}
 }

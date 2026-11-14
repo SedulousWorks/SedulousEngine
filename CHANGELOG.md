@@ -244,3 +244,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   leaves the container it was moving into styled as holding the focus.
 - Editor: a Play whose default scene does not load undoes its start as Stop does; the debugger,
   breakpoint sync and hover values stayed wired to the Game tab, and reached it after it closed.
+- Animation: a skinned mesh whose animator is removed, or no longer names it, draws in its bind
+  pose; it drew from the animator's freed matrices.

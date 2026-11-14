@@ -3,6 +3,8 @@ using Sedulous.Animation;
 using Sedulous.Core;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Render;
+using Sedulous.Geometry;
+using Sedulous.Render;
 using Sedulous.Scene;
 
 namespace Sedulous.Engine.Animation.Tests;
@@ -31,6 +33,21 @@ class RestPoseTests
 
 	private static Float3 Moved(Float4x4 m) => TransformPoint(.(0, 0, 1), m);
 
+	/// Whether something poses `mesh`, as drawing asks.
+	private static bool IsPosed(Scene level, EntityHandle mesh) => level.FindSkinningPalette(mesh, ?);
+
+	/// The first bone's matrix `mesh` is posed with, as drawing asks for it (identity: none).
+	private static Float4x4 PosedBone(Scene level, EntityHandle mesh)
+	{
+		var palette = SkinningPalette();
+		if (!level.FindSkinningPalette(mesh, out palette))
+		{
+			Test.Assert(false, "posed");
+			return .Identity();
+		}
+		return palette.Current[0];
+	}
+
 	[Test]
 	public static void AStandingScenesAnimatorFeedsTheRestPoseAndHoldsItsClip()
 	{
@@ -54,11 +71,11 @@ class RestPoseTests
 
 		level.SetSimulationEnabled(false);
 		level.Update(0.5f);
-		let mesh = meshes.Get(body);
-		Test.Assert((mesh.BoneMatrices != null) && (mesh.BoneCount == 1));
+		var palette = SkinningPalette();
+		Test.Assert(level.FindSkinningPalette(body, out palette) && (palette.BoneCount == 1));
 		let rest = Moved(Float4x4.RotationX(-HalfPi));
-		Test.Assert(Near(Moved(mesh.BoneMatrices[0]).Y, rest.Y), "turned, not raw");
-		Test.Assert(Near(Moved(mesh.BoneMatrices[0]).Z, rest.Z));
+		Test.Assert(Near(Moved(palette.Current[0]).Y, rest.Y), "turned, not raw");
+		Test.Assert(Near(Moved(palette.Current[0]).Z, rest.Z));
 		let player = animators.Get(body).Player;
 		Test.Assert(player != null);
 		Test.Assert(player.CurrentClip == null, "the clip waits for the simulation");
@@ -68,7 +85,7 @@ class RestPoseTests
 		level.SetSimulationEnabled(true);
 		level.Update(0.25f);
 		Test.Assert(player.CurrentClip === clip);
-		Test.Assert(Near(Moved(meshes.Get(body).BoneMatrices[0]).Y, rest.Y + 2.0f));
+		Test.Assert(Near(Moved(PosedBone(level, body)).Y, rest.Y + 2.0f));
 	}
 
 	[Test]
@@ -84,9 +101,8 @@ class RestPoseTests
 		meshes.Add(body);
 		level.GetSystem<SkeletalAnimationComponentManager>().Add(body).Skeleton.SetDirect(skeleton);
 		level.Update(0.5f);
-		let mesh = meshes.Get(body);
-		Test.Assert(mesh.BoneMatrices != null);
-		Test.Assert(Near(Moved(mesh.BoneMatrices[0]).Y, Moved(Float4x4.RotationX(-HalfPi)).Y));
+		Test.Assert(IsPosed(level, body));
+		Test.Assert(Near(Moved(PosedBone(level, body)).Y, Moved(Float4x4.RotationX(-HalfPi)).Y));
 	}
 
 	[Test]
@@ -108,9 +124,44 @@ class RestPoseTests
 		component.Graph.SetDirect(graph);
 		level.SetSimulationEnabled(false);
 		level.Update(0.5f);
-		let mesh = meshes.Get(body);
-		Test.Assert(mesh.BoneMatrices != null);
+		Test.Assert(IsPosed(level, body));
 		// Its rest position (three up) under the turn, not the identity a default pose gives.
-		Test.Assert(Near(Moved(mesh.BoneMatrices[0]).Y, Moved(Float4x4.RotationX(-HalfPi)).Y + 3.0f));
+		Test.Assert(Near(Moved(PosedBone(level, body)).Y, Moved(Float4x4.RotationX(-HalfPi)).Y + 3.0f));
+	}
+
+	/// A mesh whose animator is removed draws static, never the animator's freed matrices: the
+	/// mesh held its player's pointers, and the player went with the animator.
+	[Test]
+	public static void AMeshWhoseAnimatorIsRemovedDrawsStatic()
+	{
+		let skeleton = TurnedRig();
+		defer delete skeleton;
+		let quad = Primitives.Quad();
+		defer delete quad;
+		let level = new Scene("removed");
+		defer delete level;
+		let meshes = level.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(level);
+		let body = level.CreateEntity("Body");
+		meshes.Add(body).Mesh.SetDirect(quad);
+		let animators = level.GetSystem<SkeletalAnimationComponentManager>();
+		animators.Add(body).Skeleton.SetDirect(skeleton);
+		level.Update(0.5f);
+		Test.Assert(IsPosed(level, body));
+		{
+			let posed = scope ExtractedScene();
+			RenderExtract.ExtractSceneInto(level, posed);
+			Test.Assert(posed.Size == 1);
+			Test.Assert(((MeshRenderData)posed.Items[0]).BoneMatrices != null);
+		}
+
+		animators.RemoveComponent(body); // its player, and the matrices, go with it
+		Test.Assert(!IsPosed(level, body));
+		let still = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(level, still);
+		Test.Assert(still.Size == 1);
+		let data = (MeshRenderData)still.Items[0];
+		Test.Assert(data.BoneMatrices == null);
+		Test.Assert(data.BoneCount == 0);
 	}
 }

@@ -12,13 +12,15 @@ namespace Sedulous.Engine.Animation;
 /// evaluating a graph player.
 ///
 /// It runs at a LOWER update order than the clip manager, so a graph backed entity is driven
-/// by its graph. An entity is expected to carry one or the other: both push to the same mesh,
-/// and the later writer would win. Time is simulation gated and the pose is not, as in the clip
-/// manager (see its comment).
-class AnimationGraphComponentManager : ResourceBindingComponentManager<AnimationGraphComponent>
+/// by its graph. An entity is expected to carry one or the other: both pose the same mesh, and
+/// drawing takes the palette of the first to answer, this one. Time is simulation gated and
+/// the pose is not, as in the clip manager (see its comment).
+class AnimationGraphComponentManager : ResourceBindingComponentManager<AnimationGraphComponent>, ISkinningPaletteSource
 {
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
+	/// Which of its animators posed each mesh at the last update.
+	private PosedMeshes mPosed = new .() ~ delete _;
 	/// The one-shots that ended since the last DrainEnded.
 	private List<OneShotEnded> mEnded = new .() ~ delete _;
 
@@ -136,6 +138,8 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 
 		using (ProfileScope("Animation.Graph"))
 		{
+			// Recorded again below: an animator gone, or a mesh it stopped naming, drops out.
+			mPosed.Clear();
 			ForEach(scope (component, owner) =>
 				{
 					Tick(meshes, component, owner, deltaTime);
@@ -146,6 +150,8 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 	private void Tick(MeshComponentManager meshes, AnimationGraphComponent* component,
 		EntityHandle owner, float deltaTime)
 	{
+		// Recorded first, so a frozen animator's meshes keep its last pose.
+		mPosed.RecordAll(mScene, meshes, owner, component.MeshEntities);
 		// Frozen.
 		if (!mScene.IsEffectivelyActive(owner))
 		{
@@ -190,7 +196,26 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 			RootMotionApply.Release(mScene, ref component.RootMotionState);
 		}
 
-		AnimationFeed.FeedAll(mScene, meshes, owner, component.MeshEntities,
-			component.Player.GetSkinningMatrices(), component.Player.GetPrevSkinningMatrices());
+		// The pose is evaluated here, once a frame, whether or not anything draws it: its
+		// modifiers (foot IK's ground probes) step with the frame, not with a reader.
+		component.Player.GetSkinningMatrices();
+	}
+
+	public override ISkinningPaletteSource AsSkinningPaletteSource => this;
+
+	/// The palette of the animator that posed `mesh` at its last update, read from its player
+	/// as it is now; false once the animator is gone (its player with it): the mesh draws static.
+	public bool SkinningPaletteOf(EntityHandle mesh, out SkinningPalette outPalette)
+	{
+		outPalette = .();
+		let animator = mPosed.AnimatorOf(mesh);
+		let component = animator.IsAssigned ? Get(animator) : null;
+		if ((component == null) || (component.Player == null))
+			return false;
+		let current = component.Player.EvaluatedSkinningMatrices;
+		outPalette.Current = current.Ptr;
+		outPalette.Previous = component.Player.GetPrevSkinningMatrices().Ptr;
+		outPalette.BoneCount = (uint32)current.Length;
+		return true;
 	}
 }

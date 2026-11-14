@@ -65,15 +65,8 @@ struct MeshComponent : ISerializable, IComponentResources
 	[Hidden]
 	public uint32 MaterialOverrideVersion = 0;
 
-	/// Per bone skinning matrices, supplied per frame by whoever owns the pose. BORROWED and
-	/// valid only for the frame it was set; null draws the bind pose.
-	[Hidden]
-	public Float4x4* BoneMatrices = null;
-	/// Last frame's, for motion vectors. Null reuses the current ones.
-	[Hidden]
-	public Float4x4* PrevBoneMatrices = null;
-	[Hidden]
-	public uint32 BoneCount = 0;
+	// GPU skinning is not held here: extraction asks the system that poses the mesh for its
+	// palette (Scene.FindSkinningPalette), so a mesh never points into an animator that went.
 
 	/// Above zero switches to a coarser level sooner, each unit halving the effective screen
 	/// coverage; below zero holds detail longer.

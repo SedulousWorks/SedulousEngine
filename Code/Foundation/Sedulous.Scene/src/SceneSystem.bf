@@ -49,6 +49,9 @@ abstract class SceneSystem : IScriptWeaklyHeld
 	/// And for one that measures entities (ISceneEntityBounds); null for the rest.
 	public virtual ISceneEntityBounds AsEntityBounds => null;
 
+	/// And for one that poses skinned meshes (ISkinningPaletteSource); null for the rest.
+	public virtual ISkinningPaletteSource AsSkinningPaletteSource => null;
+
 	/// And for one that answers rays against what it draws (ISceneSurfaceQuery); null for the
 	/// rest.
 	public virtual ISceneSurfaceQuery AsSurfaceQuery => null;

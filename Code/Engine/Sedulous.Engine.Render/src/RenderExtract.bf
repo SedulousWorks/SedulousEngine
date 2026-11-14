@@ -121,13 +121,16 @@ static class RenderExtract
 		// keeps its default, because the mesh renderer registers first.
 		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),
 			Internal.UnsafeCastToPtr(primary));
-		data.BoneMatrices = component.BoneMatrices;
+		// GPU skinning: the palette of whatever poses the mesh now, borrowed for the frame; none
+		// (an animator that went, or never was) draws the mesh static.
+		let skinned = scene.FindSkinningPalette(entity, let palette);
+		data.BoneMatrices = skinned ? palette.Current : null;
 		// Null reuses the current pose: no motion. A scene that is not simulating (the editor's
 		// pause, a debugger break) runs no animation, so the pose holds still, but the animator's
 		// last two poses stay a step apart: drawn as motion, TAA dropped its history on every
 		// skinned character every frame and they shimmered.
-		data.PreviousBoneMatrices = scene.SimulationEnabled ? component.PrevBoneMatrices : null;
-		data.BoneCount = component.BoneCount;
+		data.PreviousBoneMatrices = (skinned && scene.SimulationEnabled) ? palette.Previous : null;
+		data.BoneCount = skinned ? palette.BoneCount : 0;
 		// Per view level selection happens in the renderer: ONE snapshot, many views.
 		data.LodBias = component.LodBias;
 		data.ForceLod = component.ForceLod;

@@ -758,6 +758,22 @@ class Scene : IScriptWeaklyHeld
 		return any;
 	}
 
+	/// The palette `mesh` is skinned with this frame, from the system that poses it
+	/// (ISkinningPaletteSource). False when none does: the mesh draws in its bind pose.
+	public bool FindSkinningPalette(EntityHandle mesh, out SkinningPalette outPalette)
+	{
+		outPalette = .();
+		for (let system in mSortedSystems)
+		{
+			let source = system.AsSkinningPaletteSource;
+			if ((source != null) && source.SkinningPaletteOf(mesh, out outPalette) && (outPalette.Current != null)
+				&& (outPalette.BoneCount > 0))
+				return true;
+		}
+		outPalette = .();
+		return false;
+	}
+
 	/// The closest hit of a ray on the scene's drawn surfaces, as every system that answers
 	/// rays against what it draws (ISceneSurfaceQuery) finds it: along unit `direction` from
 	/// `origin` within `maxDistance`, on the entities `accept` takes (null takes all). False on

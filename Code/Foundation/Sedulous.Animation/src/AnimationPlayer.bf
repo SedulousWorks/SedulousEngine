@@ -265,6 +265,10 @@ class AnimationPlayer
 
 	public Span<Float4x4> GetPrevSkinningMatrices() => mPrevSkinningMatrices;
 
+	/// The matrices as last evaluated, without evaluating again: what drawing reads, so a reader
+	/// never steps the modifiers (foot IK's ground probes) or races another reader.
+	public Span<Float4x4> EvaluatedSkinningMatrices => mSkinningMatrices;
+
 	/// Pushes matrices computed elsewhere, which is how a graph drives a player's output
 	/// without the player sampling anything itself.
 	public void OverrideSkinningMatrices(Span<Float4x4> current, Span<Float4x4> prev)

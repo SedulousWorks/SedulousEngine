@@ -29,9 +29,9 @@ class ComponentFieldsTests
 	{
 		int count = 0;
 		int hidden = 0;
+		// A mesh reads its bone palette from its source when drawn: it holds no borrowed pointers.
 		PointerFields(typeof(MeshComponent), out count, out hidden);
-		Test.Assert(count == 2, "the bone matrices and last frame's");
-		Test.Assert(hidden == count);
+		Test.Assert(count == 0, "no borrowed pointers");
 
 		PointerFields(typeof(InstancedMeshComponent), out count, out hidden);
 		Test.Assert(count == 2, "the pose pool and last frame's");

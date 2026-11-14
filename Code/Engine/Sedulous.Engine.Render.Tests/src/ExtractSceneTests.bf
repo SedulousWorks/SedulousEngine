@@ -158,6 +158,27 @@ class ExtractSceneTests
 		Test.Assert(snapshot.Size == 1);
 	}
 
+	/// Poses one mesh with fixed palettes, as an animator would.
+	private class FixedPose : SceneSystem, ISkinningPaletteSource
+	{
+		public EntityHandle Mesh = .Invalid;
+		public Float4x4* Current = null;
+		public Float4x4* Previous = null;
+
+		public override ISkinningPaletteSource AsSkinningPaletteSource => this;
+
+		public bool SkinningPaletteOf(EntityHandle entity, out SkinningPalette outPalette)
+		{
+			outPalette = .();
+			if (entity != Mesh)
+				return false;
+			outPalette.Current = Current;
+			outPalette.Previous = Previous;
+			outPalette.BoneCount = 1;
+			return true;
+		}
+	}
+
 	/// A skinned mesh in a scene that is not simulating reports no motion. The animator's last
 	/// two poses stay a step apart while nothing advances them; drawn as motion, TAA kept
 	/// dropping its history on a paused character.
@@ -171,11 +192,13 @@ class ExtractSceneTests
 		var pose = Float4x4[1](Float4x4.Translation(.(0.1f, 0.0f, 0.0f)));
 		var lastPose = Float4x4[1](Float4x4.Identity());
 		{
-			let component = meshes.Add(scene.CreateEntity());
+			let entity = scene.CreateEntity();
+			let component = meshes.Add(entity);
 			component.Mesh.SetDirect(mesh);
-			component.BoneMatrices = &pose[0];
-			component.PrevBoneMatrices = &lastPose[0];
-			component.BoneCount = 1;
+			let posing = scene.AddSystem<FixedPose>();
+			posing.Mesh = entity;
+			posing.Current = &pose[0];
+			posing.Previous = &lastPose[0];
 		}
 		scene.UpdateTransforms();
 

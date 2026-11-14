@@ -175,16 +175,14 @@ class SkeletalAnimationRefTests
 
 		scene.Update(1.0f / 60.0f);
 
-		let fedA = meshes.Get(partA);
-		let fedB = meshes.Get(partB);
-		Test.Assert(fedA != null);
-		Test.Assert(fedB != null);
-		// Both parts received the ONE player's matrices.
-		Test.Assert(fedA.BoneMatrices != null);
-		Test.Assert(fedB.BoneMatrices != null);
+		// Both parts are posed by the ONE player.
+		var fedA = SkinningPalette();
+		var fedB = SkinningPalette();
+		Test.Assert(scene.FindSkinningPalette(partA, out fedA));
+		Test.Assert(scene.FindSkinningPalette(partB, out fedB));
 		Test.Assert(fedA.BoneCount == 2);
 		// The same evaluation, rather than a player each.
-		Test.Assert(fedA.BoneMatrices == fedB.BoneMatrices);
+		Test.Assert(fedA.Current == fedB.Current);
 
 		// The references are part of the persisted state, still naming the same entities.
 		let blob = scope MemoryStream();

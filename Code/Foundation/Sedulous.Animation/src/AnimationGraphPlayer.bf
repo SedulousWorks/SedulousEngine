@@ -222,6 +222,9 @@ class AnimationGraphPlayer
 
 	public Span<Float4x4> GetPrevSkinningMatrices() => mPrevSkinningMatrices;
 
+	/// The matrices as last computed, without computing them: what drawing reads.
+	public Span<Float4x4> EvaluatedSkinningMatrices => mSkinningMatrices;
+
 	public Span<BoneTransform> GetLocalPoses() => mFinalPoses;
 
 	// ==================== state ====================

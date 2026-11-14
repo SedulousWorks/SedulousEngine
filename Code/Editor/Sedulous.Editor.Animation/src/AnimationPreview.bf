@@ -21,6 +21,28 @@ namespace Sedulous.Editor.Animation;
 // the preview's bar, each optional (no mesh: the bones alone), the mesh skinned with the pose each
 // frame. Bones and Mesh on the bar hide either, the mesh's pick kept.
 
+/// Poses the preview's mesh with the rig's matrices, as an animator poses a game's: drawing asks
+/// it for the palette (ISkinningPaletteSource).
+class AnimationPreviewPose : SceneSystem, ISkinningPaletteSource
+{
+	public EntityHandle Mesh = .Invalid;
+	/// The rig's, for the frame; null: the bind pose. BORROWED.
+	public Float4x4* Matrices = null;
+	public uint32 Count = 0;
+
+	public override ISkinningPaletteSource AsSkinningPaletteSource => this;
+
+	public bool SkinningPaletteOf(EntityHandle entity, out SkinningPalette outPalette)
+	{
+		outPalette = .();
+		if ((entity != Mesh) || (Matrices == null) || (Count == 0))
+			return false;
+		outPalette.Current = Matrices;
+		outPalette.BoneCount = Count;
+		return true;
+	}
+}
+
 static class AnimationPreview
 {
 	/// `skeleton` in the pose `localPoses` as its bones, placed by `placement`; `chosen` (-1: none)
@@ -222,6 +244,7 @@ class AnimationPreviewRig
 		mMeshEntity = scene.CreateEntity("PreviewMesh");
 		if (let components = scene.GetSystem<MeshComponentManager>())
 			components.Add(mMeshEntity);
+		scene.AddSystem<AnimationPreviewPose>().Mesh = mMeshEntity;
 		pane.Viewport.Camera.Position = .(0.0f, 1.4f, 3.2f);
 		pane.Viewport.Camera.LookAt(.(0.0f, 0.9f, 0.0f));
 	}
@@ -331,8 +354,11 @@ class AnimationPreviewRig
 		// Skinned with the pose, placed where the bones are (borrowed for this frame's drawing).
 		mSkinning.Count = boneCount;
 		skeleton.ComputeSkinningMatrices(pose, .(mSkinning.Ptr, boneCount));
-		component.BoneMatrices = mSkinning.Ptr;
-		component.BoneCount = (uint32)boneCount;
+		if (let posing = PoseOf())
+		{
+			posing.Matrices = mSkinning.Ptr;
+			posing.Count = (uint32)boneCount;
+		}
 		var placed = Transform();
 		placed.Position = .(placement.M[3][0], placement.M[3][1], placement.M[3][2]);
 		placed.Rotation = QuaternionFromRotationMatrix(placement);
@@ -451,16 +477,25 @@ class AnimationPreviewRig
 		return ((components != null) && mMeshEntity.IsAssigned) ? components.Get(mMeshEntity) : null;
 	}
 
+	// What poses the preview's mesh, found through the scene (it owns it), or null.
+	private AnimationPreviewPose PoseOf()
+	{
+		let scene = (mPane.Viewport != null) ? mPane.Viewport.Scene : null;
+		return (scene != null) ? scene.GetSystem<AnimationPreviewPose>() : null;
+	}
+
 	private void PointMeshAt(StaticMesh mesh)
 	{
 		mShownMesh = mesh;
+		if (let posing = PoseOf())
+		{
+			posing.Matrices = null; // until the next pose is shown
+			posing.Count = 0;
+		}
 		let component = MeshComponentOf();
 		if (component == null)
 			return;
 		component.Mesh.SetId(.());
 		component.Mesh.SetDirect(mesh); // the product the proxy resolved: the proxy keeps it bound
-		component.BoneMatrices = null;
-		component.PrevBoneMatrices = null;
-		component.BoneCount = 0;
 	}
 }
