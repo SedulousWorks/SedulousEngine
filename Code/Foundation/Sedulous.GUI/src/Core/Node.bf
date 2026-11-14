@@ -329,6 +329,17 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	public bool HasChild(Node child) => GetChildIndex(child) != cInvalidIndex;
 
+	/// Whether this node is `node` or somewhere above it.
+	public bool IsAncestorOrSelf(Node node)
+	{
+		for (var n = node; n != null; n = n.mParent)
+		{
+			if (n == this)
+				return true;
+		}
+		return false;
+	}
+
 	public Node NextSibling
 	{
 		get
@@ -354,10 +365,12 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	// === Tree mutation === (owning: the tree holds a reference to each child)
 
 	/// Makes `child` its last child, taking it from its old parent. The tree takes a reference of
-	/// its own: the caller keeps (and releases) the one it holds.
+	/// its own: the caller keeps (and releases) the one it holds. Refused for this node or one
+	/// above it: that would make the tree a loop, which every walk up or down then follows for
+	/// ever.
 	public virtual Node AddChild(Node child)
 	{
-		if ((child == null) || (child == this) || (child.mParent == this))
+		if ((child == null) || (child.mParent == this) || child.IsAncestorOrSelf(this))
 			return this;
 		child.AddRef(); // the tree's, taken first: it survives leaving its old parent
 		if (child.mParent != null)

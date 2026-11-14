@@ -1253,7 +1253,8 @@ class EventDispatcher
 	/// `options` transfers (deleted at once when the popup is open already).
 	public void OpenPopup(Node owner, Node popup, PopupOptions options)
 	{
-		if (FindPopup(popup) >= 0)
+		// A popup above its owner (or the owner itself) would take the owner into itself.
+		if ((FindPopup(popup) >= 0) || popup.IsAncestorOrSelf(owner))
 		{
 			delete options;
 			return;

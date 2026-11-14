@@ -301,7 +301,8 @@ extension Node
 	public bool OpenPopupScript(Node content)
 	{
 		let dispatcher = EventDispatcher;
-		if ((content == null) || (content == this) || (dispatcher == null))
+		// Content above the anchor (or the anchor itself) would carry the anchor into its own popup.
+		if ((content == null) || content.IsAncestorOrSelf(this) || (dispatcher == null))
 			return false;
 		content.Displayed = true;
 		let options = new PopupOptions();

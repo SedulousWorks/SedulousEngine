@@ -306,4 +306,30 @@ class NodeTests
 		Test.Assert(root.GetChildIndex(kids[2]) == 2);
 		Test.Assert(root.GetChildIndex(null) == Node.cInvalidIndex);
 	}
+
+	/// A node added under itself or one below it is refused, so the tree never loops.
+	[Test]
+	public static void ANodeAddedUnderItselfOrOneBelowItIsRefused()
+	{
+		let top = new Node();
+		defer top.ReleaseRef();
+		let middle = new Node();
+		defer middle.ReleaseRef();
+		let leaf = new Node();
+		defer leaf.ReleaseRef();
+		top.AddChild(middle);
+		middle.AddChild(leaf);
+		leaf.AddChild(top); // the root under its own grandchild
+		leaf.AddChild(middle); // a parent under its child
+		middle.AddChild(middle);
+
+		Test.Assert(top.Parent == null);
+		Test.Assert(middle.Parent == top);
+		Test.Assert(leaf.Parent == middle);
+		Test.Assert(leaf.ChildCount == 0);
+		Test.Assert(middle.ChildCount == 1);
+		Test.Assert(top.IsAncestorOrSelf(leaf));
+		Test.Assert(leaf.IsAncestorOrSelf(leaf));
+		Test.Assert(!leaf.IsAncestorOrSelf(top));
+	}
 }

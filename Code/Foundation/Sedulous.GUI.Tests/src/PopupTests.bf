@@ -633,4 +633,32 @@ class PopupTests
 		d.ClosePopup(popup);
 		Test.Assert(!d.SetPopupAnchorRect(popup, .(0.0f, 0.0f, 0.0f, 0.0f))); // not open
 	}
+
+	/// Content above its owner, or the owner itself, is refused as its popup, from code and
+	/// from a script's `Popup`: the owner would be carried into its own popup, a loop every walk
+	/// then follows for ever.
+	[Test]
+	public static void ContentAboveItsOwnerIsRefusedSoTheOwnerIsNeverCarriedIntoItsOwnPopup()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let d = root.EventDispatcher;
+		let panel = SceneFixtures.NewProbe(root, "panel", .(0.0f, 0.0f), .(100.0f, 100.0f));
+		defer panel.ReleaseRef();
+		let button = NewButton(panel, .(10.0f, 10.0f));
+		defer button.ReleaseRef();
+
+		d.OpenPopup(button, panel, SceneFixtures.At(.(10.0f, 30.0f)));
+		Test.Assert(!d.IsPopupOpen(panel));
+		Test.Assert(panel.Parent == root);
+		Test.Assert(button.Parent == panel);
+		d.OpenPopup(button, button, SceneFixtures.At(.(10.0f, 30.0f)));
+		Test.Assert(!d.IsPopupOpen(button));
+
+		Test.Assert(!button.OpenPopupScript(panel), "a script's popup of content above it");
+		Test.Assert(!button.OpenPopupScript(button), "and of itself");
+		Test.Assert(panel.Parent == root);
+		Test.Assert(button.Parent == panel);
+		root.UpdateLayout(); // a loop would never return from this
+	}
 }
