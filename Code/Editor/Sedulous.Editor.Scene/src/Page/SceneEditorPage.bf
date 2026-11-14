@@ -743,7 +743,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let resources = mContext.Resources;
 			if (mQualityLevel.IsNil || (project == null) || (resources == null) || !project.Settings.IsQualityLevel(mQualityLevel))
 				return null;
-			if (let quality = resources.Bind<RenderQuality>(mQualityLevel).Get)
+			if (let quality = resources.Bind<RenderQualityLevel>(mQualityLevel).Get)
 				return quality.Values;
 			return null;
 		}

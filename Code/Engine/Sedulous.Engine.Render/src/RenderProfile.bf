@@ -19,7 +19,7 @@ class PostProcessProfile
 }
 
 /// A Render Quality: one quality level a project offers, what the scenes' look costs on it.
-class RenderQuality
+class RenderQualityLevel
 {
 	public RenderQualitySettings Values = new .() ~ delete _;
 }

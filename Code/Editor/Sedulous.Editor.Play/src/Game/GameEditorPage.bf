@@ -59,7 +59,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		let level = (!chosen.IsNil && settings.IsQualityLevel(chosen)) ? chosen : settings.StartupQuality(Guid());
 		if ((level != Guid()) && (resources != null))
 		{
-			if (let quality = resources.Bind<RenderQuality>(level).Get)
+			if (let quality = resources.Bind<RenderQualityLevel>(level).Get)
 			{
 				quality.Values.CopyTo(outQuality);
 				return;

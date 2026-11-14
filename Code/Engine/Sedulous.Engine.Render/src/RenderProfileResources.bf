@@ -94,7 +94,7 @@ class PostProcessProfileFactory : IResourceFactory
 /// Loads a quality level (it references nothing).
 class RenderQualityFactory : IResourceFactory
 {
-	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<RenderQuality>();
+	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<RenderQualityLevel>();
 	public Type CookedType => typeof(RenderQualitySource);
 
 	public Object Create(ResourceManager manager, Instance instance)
@@ -107,7 +107,7 @@ class RenderQualityFactory : IResourceFactory
 		if (source == null)
 			return null;
 
-		let quality = new RenderQuality();
+		let quality = new RenderQualityLevel();
 		source.Values.CopyTo(quality.Values);
 		return quality;
 	}
@@ -120,7 +120,7 @@ static class RenderProfileResources
 	public static ResourceModule Module => sModule ?? (sModule = new .("render.profiles", () => RegisterAll(), new .(
 		.ByDefault<EnvironmentProfile, EnvironmentProfileSource, EnvironmentProfileFactory>(),
 		.ByDefault<PostProcessProfile, PostProcessProfileSource, PostProcessProfileFactory>(),
-		.ByDefault<RenderQuality, RenderQualitySource, RenderQualityFactory>())));
+		.ByDefault<RenderQualityLevel, RenderQualitySource, RenderQualityFactory>())));
 	private static ResourceModule sModule ~ delete _;
 
 	/// Into the global registry unless another is given. The records describe themselves

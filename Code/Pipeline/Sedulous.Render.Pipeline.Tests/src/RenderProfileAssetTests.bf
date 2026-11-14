@@ -195,7 +195,7 @@ class RenderProfileAssetTests
 		let factory = scope RenderQualityFactory();
 		let manager = scope ResourceManager(database, null);
 		manager.AddFactory(factory);
-		let quality = manager.Bind<RenderQuality>(cooked.Id).Get;
+		let quality = manager.Bind<RenderQualityLevel>(cooked.Id).Get;
 		Test.Assert(quality != null);
 		Test.Assert(quality.Values.Label == "Low");
 		Test.Assert(quality.Values.MsaaSamples == 1);

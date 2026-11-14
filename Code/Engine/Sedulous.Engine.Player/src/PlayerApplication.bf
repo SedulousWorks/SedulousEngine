@@ -363,7 +363,7 @@ class PlayerApplication : DefaultApplication
 			GlobalLog(.Information, "Player: quality: the engine's own highest ({}x MSAA)", render.Quality.MsaaSamples);
 			return;
 		}
-		let quality = (Resources != null) ? Resources.Bind<RenderQuality>(level).Get : null;
+		let quality = (Resources != null) ? Resources.Bind<RenderQualityLevel>(level).Get : null;
 		if (quality == null)
 		{
 			GlobalLog(.Warning, "Player: the quality level did not resolve: the engine's own highest");
