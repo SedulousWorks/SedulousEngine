@@ -25,6 +25,7 @@ struct CookOutcome
 	public int OrphansSwept = 0;
 	public int UpToDate = 0;
 	public int Unbuildable = 0;
+	public int Unreadable = 0;
 }
 
 /// asset_import's resolved request: the importer is routed by the tool (by extension and

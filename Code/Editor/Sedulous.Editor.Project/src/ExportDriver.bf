@@ -144,6 +144,13 @@ static class ExportDriver
 		let plan = scope CookPlan();
 		driver.PlanFor(planRoots, plan, rebuild);
 		outReachable.AddRange(plan.Reachable);
+		// Whether it cooks or only plans (the editor's job, after its own cook): an asset the game
+		// uses that does not read would ship missing.
+		if (plan.Unreadable > 0)
+		{
+			GlobalLog(.Error, "Export: aborting - {} asset(s) the game uses did not read, so they cannot cook (the Cook lines above name them)", plan.Unreadable);
+			return .Err(.InvalidArgument);
+		}
 		if (cook)
 		{
 			let progress = scope CookProgress();

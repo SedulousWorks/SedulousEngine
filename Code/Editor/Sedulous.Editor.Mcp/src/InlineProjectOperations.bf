@@ -65,6 +65,7 @@ class InlineProjectOperations : IProjectOperations
 		outOutcome.OrphansSwept = stats.OrphansSwept;
 		outOutcome.UpToDate = plan.UpToDate;
 		outOutcome.Unbuildable = plan.Unbuildable;
+		outOutcome.Unreadable = plan.Unreadable;
 		return .Finished;
 	}
 

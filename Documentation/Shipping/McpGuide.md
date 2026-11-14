@@ -572,7 +572,9 @@ call and the export refuse it.
   last passes; the editor must be drawing (not minimised), or it gives up. One capture runs
   at a time, a game's F9 included.
 - `project_export` failures say little in the response by design, a refusal by the project's
-  plugins aside; the detail is in `log_read` (the Cook and Export categories).
+  plugins aside; the detail is in `log_read` (the Cook and Export categories). An export stops
+  when an asset the game uses failed to cook or did not read (`asset_cook`'s `unreadable`: a
+  source of another data version or a type the engine does not know); the Cook lines name it.
 
 ## When something looks wrong
 

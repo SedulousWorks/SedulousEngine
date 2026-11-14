@@ -210,7 +210,7 @@ class CookDriver
 			GlobalLog(.Warning,
 				"Cook: '{}' failed to deserialize. Its stored type is '{}' and its identity {}, which usually means an unknown type name or a stale record. Delete and re-import if re-cooking does not recover it",
 				item.Path, instance.TypeName, instance.Id);
-			plan.Unbuildable++;
+			plan.Unreadable++;
 			return;
 		}
 
@@ -218,7 +218,7 @@ class CookDriver
 		if (asset == null)
 		{
 			GlobalLog(.Warning, "Cook: '{}' has a builder but is not an asset", item.Path);
-			plan.Unbuildable++;
+			plan.Unreadable++;
 			return;
 		}
 

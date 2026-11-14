@@ -32,7 +32,7 @@ namespace Sedulous.Editor.Project;
 /// The v1 hazard Traktor shares: editing a source asset WHILE a cook runs races the
 /// driver's reads; the UI disables the cook triggers during a cook but does not lock edits.
 /// What the most recent cook did: the plan's split (Planned is the dirty items, UpToDate,
-/// Unbuildable) and the build's counts. Valid when OnCookFinished fires, until the next cook
+/// Unbuildable, Unreadable) and the build's counts. Valid when OnCookFinished fires, until the next cook
 /// finishes: the app's result toast and the MCP asset_cook read it.
 struct CookSummary
 {
@@ -42,6 +42,8 @@ struct CookSummary
 	public int OrphansSwept = 0;
 	public int UpToDate = 0;
 	public int Unbuildable = 0;
+	/// Sources with a builder that did not read: never cooked.
+	public int Unreadable = 0;
 }
 
 class EditorCookService
@@ -258,6 +260,7 @@ class EditorCookService
 			mLastSummary.Planned = total;
 			mLastSummary.UpToDate = mPlan.UpToDate;
 			mLastSummary.Unbuildable = mPlan.Unbuildable;
+			mLastSummary.Unreadable = mPlan.Unreadable;
 		}
 		// A zero work plan runs SILENTLY: a page open or an import is cheap to request and
 		// often finds everything cooked already.

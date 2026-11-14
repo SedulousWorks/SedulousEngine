@@ -16,8 +16,12 @@ class CookPlan
 	public int UpToDate = 0;
 
 	/// Instances with no registered builder, which is information rather than a problem: a
-	/// project holds plenty of things nothing cooks.
+	/// project holds plenty of things nothing cooks (scenes and prefabs are staged, not built).
 	public int Unbuildable = 0;
+
+	/// Instances with a builder whose source did not read (an unknown type, another data
+	/// version, not an asset): they cannot cook, and an export would ship without them.
+	public int Unreadable = 0;
 
 	/// A SCOPED plan only: the roots and their whole dependency closure, every visited
 	/// identity whether clean or dirty and whether buildable or not.

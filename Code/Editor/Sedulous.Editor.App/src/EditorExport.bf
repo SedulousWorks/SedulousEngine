@@ -56,6 +56,11 @@ class EditorExport
 		public bool All = false;
 		public bool WaitingCook = false;
 		public bool Active = false;
+		/// The cook service's Revision last counted.
+		public uint64 CookRevision = 0;
+		/// Items the cooks it waited on failed, and sources they could not read.
+		public int Failed = 0;
+		public int Unreadable = 0;
 	}
 
 	private EditorExportServices mServices ~ delete _;
@@ -110,6 +115,9 @@ class EditorExport
 		mPending.All = all;
 		mPending.WaitingCook = true;
 		mPending.Active = true;
+		mPending.CookRevision = mServices.Cook.Revision;
+		mPending.Failed = 0;
+		mPending.Unreadable = 0;
 		context.Notify(.Info, "Cooking before export...");
 		mServices.Cook.RequestCook(false); // the safe background cook; Pump submits the job after it
 	}
@@ -118,15 +126,34 @@ class EditorExport
 	public bool IsPending => mPending.Active;
 
 	/// Each frame, after the cook service's Update: an export waiting on its cook goes to the
-	/// jobs once the cook is done.
+	/// jobs once the cook is done, and the cook it remembered after it too (IsIdle). A cook that
+	/// left an asset failed or unread stops the export, with a notice: the game would ship
+	/// without it.
 	public void Pump()
 	{
-		if (mPending.Active && mPending.WaitingCook && !mServices.Cook.IsCooking)
+		if (!mPending.Active || !mPending.WaitingCook)
+			return;
+		let cook = mServices.Cook;
+		// Each cook that finishes while the export waits is counted (Revision moves once a cook),
+		// so a later, smaller cook does not hide what an earlier one failed.
+		if (cook.Revision != mPending.CookRevision)
 		{
-			mPending.WaitingCook = false;
-			SubmitJob(mPending.PresetName, mPending.All);
-			mPending.Active = false; // the job owns it now
+			mPending.CookRevision = cook.Revision;
+			mPending.Failed += cook.LastCookSummary.Failed;
+			mPending.Unreadable += cook.LastCookSummary.Unreadable;
 		}
+		if (!cook.IsIdle)
+			return;
+		if ((mPending.Failed > 0) || (mPending.Unreadable > 0))
+		{
+			mServices.Context.Notify(.Error, scope $"Export stopped: {mPending.Failed} asset(s) failed to cook and {mPending.Unreadable} did not read; the Console names them. Fix or remove them, then export again.");
+			mPending.WaitingCook = false;
+			mPending.Active = false;
+			return;
+		}
+		mPending.WaitingCook = false;
+		SubmitJob(mPending.PresetName, mPending.All);
+		mPending.Active = false; // the job owns it now
 	}
 
 	/// The export templates root: the EditorExportSettings override when set, else the

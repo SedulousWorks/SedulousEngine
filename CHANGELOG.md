@@ -106,6 +106,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: Export stops, and says so, when the cook before it failed an asset or could not read
+  one; it exported without them. It also waits for a cook asked for during the first one.
+  Exports from MCP and the command line stop as well on an asset the game uses whose source does
+  not read. MCP: `asset_cook` reports `unreadable` apart from `unbuildable` (types with no
+  builder, as scenes and prefabs).
 - Editor: terrain and vegetation brush strokes, and a scene's edits to a settings profile, are saved
   with the page they were made on, by Save, Save All and the save when closing or exiting; only
   Save wrote them, and wrote every page's. Discard, or closing the page without saving, drops them

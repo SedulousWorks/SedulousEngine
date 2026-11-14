@@ -163,4 +163,27 @@ class CookPlanTests
 		for (let item in after.Dirty)
 			Test.Assert(item.Source != scene);
 	}
+
+	/// A source no builder takes is unbuildable (scenes and prefabs are staged); one with a
+	/// builder that does not read is unreadable, and would never cook.
+	[Test]
+	public static void ASourceWithNoBuilderIsUnbuildableOneThatDoesNotReadIsUnreadable()
+	{
+		let fixture = scope CookFixture("scratch_cook_unreadable");
+		fixture.AddWidget("good", 1);
+		fixture.AddWidget("bad", 1);
+		let junk = "this is no widget";
+		Test.Assert(fixture.ContentFs.Save("bad.xasset", .((uint8*)junk.Ptr, junk.Length)) case .Ok);
+		let loose = fixture.SourceDb.RootGroup.CreateInstance("loose", typeof(CookWidgetProduct).GetFullName(.. scope .()));
+		Test.Assert(loose != null);
+		Test.Assert(loose.WriteObject(scope CookWidgetProduct()) case .Ok);
+
+		let driver = scope CookDriver(fixture.SourceDb, fixture.CookedDb, fixture.Builders,
+			fixture.SourcesFs, fixture.CacheFs);
+		let plan = scope CookPlan();
+		driver.Plan(plan);
+		Test.Assert(plan.Dirty.Count == 1, "good");
+		Test.Assert(plan.Unreadable == 1, "bad: it has a builder, and would never cook");
+		Test.Assert(plan.Unbuildable == 1, "loose: nothing builds its type");
+	}
 }

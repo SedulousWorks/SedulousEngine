@@ -56,7 +56,7 @@ static class AssetWriteTools
 		let cookSchema = scope SchemaBuilder();
 		cookSchema.Boolean("force", "re-cook every buildable asset regardless of cleanliness");
 		server.RegisterTool("asset_cook",
-			"Run the incremental cook over the open project: plan the dirty set and build it into the cooked database. Returns the cook stats (planned/cooked/failed/orphans).",
+			"Run the incremental cook over the open project: plan the dirty set and build it into the cooked database. Returns the cook stats (planned/cooked/failed/orphans; unbuildable, no builder, as scenes and prefabs; unreadable, a source that did not read and never cooks: the Console names it).",
 			cookSchema.Build(), .Rebuilds,
 			new (call, arguments, outResult, outError) => Cook(context, call, arguments, outResult, outError));
 	}
@@ -317,6 +317,7 @@ static class AssetWriteTools
 		outResult.Set("orphansSwept", JsonValue.MakeNumber((double)done.OrphansSwept));
 		outResult.Set("upToDate", JsonValue.MakeNumber((double)done.UpToDate));
 		outResult.Set("unbuildable", JsonValue.MakeNumber((double)done.Unbuildable));
+		outResult.Set("unreadable", JsonValue.MakeNumber((double)done.Unreadable));
 		return .Answered;
 	}
 }

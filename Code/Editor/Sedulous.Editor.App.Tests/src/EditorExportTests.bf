@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
 using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
@@ -11,12 +12,27 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
+/// An asset whose cook always fails.
+[Serializable]
+class ExportBrokenAsset : Asset
+{
+}
+
+class ExportBrokenBuilder : IAssetBuilder
+{
+	public Type AssetType => typeof(ExportBrokenAsset);
+	public Type ProductType => typeof(ExportBrokenAsset);
+	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context) => .Err(.Unknown);
+}
+
 /// EditorExport: an export asks for a project and runs one at a time; it cooks first, then
 /// hands the job to the job service, whose failure is a notice; the templates' folder is the
 /// user's override when there is one; the presets save to the project and are read back when it
-/// opens again; a resource report with no project is a line in the log, not a crash.
+/// opens again; a resource report with no project is a line in the log, not a crash. A cook that
+/// fails an asset stops the export.
 class EditorExportTests
 {
+
 	/// The services an exporter runs on, over the real cook and job services; the notices land
 	/// in Said, the last one in Last.
 	class Bench
@@ -199,5 +215,37 @@ class EditorExportTests
 		for (let preset in again.Presets.Set.Presets)
 			found = found || (preset.Name == "Steam Deck");
 		Test.Assert(found);
+	}
+
+	/// A cook that fails an asset stops the export, said, and no export job runs: the game would
+	/// ship without it.
+	[Test]
+	public static void ACookThatFailsAnAssetStopsTheExportAndNoJobRuns()
+	{
+		let typeName = typeof(ExportBrokenAsset).GetFullName(.. scope .());
+		GlobalSerializableRegistry.Register(TypeIdOf(typeName), () => (ISerializable)new ExportBrokenAsset());
+		let bench = scope Bench();
+		bench.Builders.Register(new ExportBrokenBuilder());
+		bench.OpenProject("scratch_editor_export_cook_failed");
+		let broken = bench.Project.SourceDb.RootGroup.CreateInstance("Broken", typeName);
+		Test.Assert(broken != null);
+		Test.Assert(broken.WriteObject(scope ExportBrokenAsset()) case .Ok);
+		let exporter = scope EditorExport(bench.Services());
+		exporter.SetProject(bench.Project);
+
+		exporter.Run("Linux", false);
+		Test.Assert(exporter.IsPending);
+		for (int i < 5000)
+		{
+			bench.Cook.Update();
+			bench.Tasks.Pump();
+			exporter.Pump();
+			if (!exporter.IsPending)
+				break;
+			Thread.Sleep(1);
+		}
+		Test.Assert(!exporter.IsPending);
+		Test.Assert(bench.Last.StartsWith("Export stopped: 1 asset(s) failed to cook"), scope String(bench.Last));
+		Test.Assert(bench.Tasks.InFlight == 0, "no export job was submitted");
 	}
 }

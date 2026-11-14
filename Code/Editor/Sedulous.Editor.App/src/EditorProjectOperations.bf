@@ -188,6 +188,7 @@ class EditorProjectOperations : IProjectOperations
 		outOutcome.OrphansSwept = summary.OrphansSwept;
 		outOutcome.UpToDate = summary.UpToDate;
 		outOutcome.Unbuildable = summary.Unbuildable;
+		outOutcome.Unreadable = summary.Unreadable;
 		return .Finished;
 	}
 

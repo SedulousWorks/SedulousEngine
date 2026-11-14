@@ -1164,4 +1164,24 @@ static class ExportDriverTests
 		Test.Assert(!ExportStaging.FileOwnerReachable("Models/RockBig.rasset", paths));
 		Test.Assert(!ExportStaging.FileOwnerReachable("Models/Rock.notes.txt", paths));
 	}
+
+	/// An asset the game uses whose source does not read stops the export, whether it cooks or
+	/// only plans (the editor cooks before its export job, which only plans).
+	[Test]
+	public static void AnAssetTheGameUsesWhoseSourceDoesNotReadStopsTheExport()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_unreadable");
+		let bad = ExportProjectFixture.AuthorMesh(fx.Project.SourceDb.RootGroup.GetGroup("Meshes"), "Bad");
+		let junk = "<this is not a mesh";
+		let envelope = fx.Project.SourceDb.GetInstance(bad).EnvelopePath(.. scope .());
+		Test.Assert((fx.Project.SourceDb.Mount as IWritableFileSystem).Save(envelope, .((uint8*)junk.Ptr, junk.Length)) case .Ok);
+
+		let stats = scope ExportStats();
+		let reachable = scope List<Guid>();
+		var good = fx.ReferencedMeshId;
+		Test.Assert(ExportDriver.CookReachable(fx.Project, fx.Builders, .(&good, 1), true, false, stats, reachable) case .Ok);
+		var badId = bad;
+		Test.Assert(ExportDriver.CookReachable(fx.Project, fx.Builders, .(&badId, 1), true, false, stats, reachable) case .Err);
+		Test.Assert(ExportDriver.CookReachable(fx.Project, fx.Builders, .(&badId, 1), false, false, stats, reachable) case .Err);
+	}
 }
