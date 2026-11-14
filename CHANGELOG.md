@@ -232,3 +232,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Scripts: an entity, a scene, a component or a scene's service (`scene.Physics` and the like)
   kept in a script past its scene (a Game class member across a level load) reads as gone, and
   its calls do nothing; they reached the freed scene.
+- Scripts: an `onDestroy` that moves entities between parents, or adds or removes components,
+  no longer corrupts the scene or crashes it.
