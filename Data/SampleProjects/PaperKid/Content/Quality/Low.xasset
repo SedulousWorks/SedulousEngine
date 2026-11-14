@@ -1,0 +1,24 @@
+<root>
+	<string name="guid">0a289154-1b46-2548-b8ce-3fed0c72c5eb</string>
+	<string name="typeName">Sedulous.Render.Pipeline.RenderQualityAsset</string>
+	<string name="source"/>
+	<array name="dataVersions" count="1">
+		<u64 name="type">2636522786099628982</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<string name="label">Low</string>
+			<u32 name="msaaSamples">1</u32>
+			<u32 name="antialiasing">1</u32>
+			<u32 name="shadows">1</u32>
+			<f32 name="shadowDistanceMax">0</f32>
+			<u32 name="ambientOcclusion">0</u32>
+			<u32 name="reflections">0</u32>
+			<u32 name="globalIllumination">0</u32>
+			<u32 name="bloom">1</u32>
+			<u32 name="environmentResolution">0</u32>
+		</object>
+	</object>
+</root>

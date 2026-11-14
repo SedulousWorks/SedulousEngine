@@ -29,7 +29,9 @@
 		</array>
 		<string name="guiLoadingDocumentId">00000000-0000-0000-0000-000000000000</string>
 		<array name="plugins" count="0"/>
-		<array name="qualityLevelIds" count="1">
+		<array name="qualityLevelIds" count="3">
+			<string>f292a722-4ff2-d040-ba7a-b4e449b53137</string>
+			<string>b9665091-aec1-b34e-bb2e-24ed660ce673</string>
 			<string>3a949fb2-9516-5e45-822b-063b45800cfd</string>
 		</array>
 		<string name="defaultQualityId">3a949fb2-9516-5e45-822b-063b45800cfd</string>

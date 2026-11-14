@@ -1,5 +1,5 @@
 <root>
-	<string name="guid">de201774-da50-b841-8fc8-e46251cd592f</string>
+	<string name="guid">c3a268b3-5405-0147-bb34-d69fb76c75b9</string>
 	<string name="typeName">Sedulous.Render.Pipeline.RenderQualityAsset</string>
 	<string name="source"/>
 	<array name="dataVersions" count="1">
@@ -9,7 +9,7 @@
 	<object name="payload">
 		<object>
 			<string name="fileName"/>
-			<string name="label">Default</string>
+			<string name="label">High</string>
 			<u32 name="msaaSamples">1</u32>
 			<u32 name="antialiasing">1</u32>
 			<u32 name="shadows">3</u32>
