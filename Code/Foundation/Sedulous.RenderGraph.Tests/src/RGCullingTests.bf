@@ -414,4 +414,44 @@ class RGCullingTests
 		Test.Assert(OrderOf(graph, "MakeInput") < OrderOf(graph, "FirstWrite"));
 		Test.Assert(OrderOf(graph, "FirstWrite") < OrderOf(graph, "SecondWrite"));
 	}
+
+	/// A reader of a range written in parts depends on every part's writer, not the nearest
+	/// alone: three cascades a layer each, read whole, leave the reader unordered against the
+	/// first two when only the nearest writer is taken.
+	[Test]
+	public static void AReaderOfARangeWrittenInPartsDependsOnEveryPartsWriter()
+	{
+		let graph = scope RenderGraph(null);
+		graph.BeginFrame(0);
+		var desc = RGTextureDesc(TextureFormat.Depth32Float, 1024, 1024);
+		desc.ArrayLayerCount = 4;
+		let atlas = graph.CreateTransient("ShadowAtlas", desc);
+		StringView[3] names = .("Cascade0", "Cascade1", "Cascade2");
+		for (uint32 layer < 3) // three cascades, a layer each; layer 3 never written
+		{
+			graph.AddRenderPass(names[layer], scope (builder) =>
+				{
+					builder.SetDepthTarget(atlas, .Clear, .Store, Depth.ClearValue, .(0, 1, layer, 1));
+					builder.NeverCull();
+				});
+		}
+		graph.AddRenderPass("Forward", scope (builder) =>
+			{
+				builder.SampleDepth(atlas);
+				builder.NeverCull();
+			});
+
+		Test.Assert(graph.Compile() case .Ok);
+		let forward = graph.Passes[3];
+		Test.Assert(forward.Name == "Forward");
+		bool[3] needs = .(false, false, false);
+		for (let dependency in forward.Dependencies)
+		{
+			if (dependency.Index < 3)
+				needs[(int)dependency.Index] = true;
+		}
+		Test.Assert(needs[0], "the first cascade's writer");
+		Test.Assert(needs[1], "the second's");
+		Test.Assert(needs[2], "and the nearest");
+	}
 }

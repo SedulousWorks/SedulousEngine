@@ -713,8 +713,8 @@ class RenderGraph
 	}
 
 	/// Turns the declared accesses into edges, so each pass waits for what it must follow on every
-	/// resource it touches: a read waits for the NEAREST earlier writer of what it reads (read
-	/// after write); a write waits for the nearest earlier writer (write after write) and for
+	/// resource it touches: a read waits for every earlier writer that last wrote some part of
+	/// what it reads, nearest first (read after write); a write waits for the nearest earlier writer (write after write) and for
 	/// every earlier reader since that writer (write after read). Edges only point back in
 	/// declaration order, so the declared order always satisfies them: the sort may move
 	/// independent passes, never one hazard past another.
@@ -725,6 +725,7 @@ class RenderGraph
 		let inputs = scope List<List<RGResourceAccess>>();
 		let outputs = scope List<List<RGResourceAccess>>();
 		defer { ClearAndDeleteItems!(inputs); ClearAndDeleteItems!(outputs); }
+		let coverage = scope ReadCoverage();
 		for (int i < passCount)
 		{
 			inputs.Add(new .());
@@ -746,14 +747,14 @@ class RenderGraph
 			{
 				if (!IsTrackedAccess(read))
 					continue;
-				// The NEAREST writer only: anything earlier is already ordered behind it.
-				for (int j = passIndex - 1; j >= 0; j--)
+				// Every writer it reads from, nearest first, until each subresource it reads has
+				// its last one: a range written in parts by several passes (a cascade per layer, a
+				// mip each) orders the reader after all of them, not after the nearest alone.
+				CoverageOf(read, coverage);
+				for (int j = passIndex - 1; (j >= 0) && (coverage.Left > 0); j--)
 				{
-					if (!mPasses[j].IsCulled && AnyOverlap(outputs[j], read))
-					{
+					if (!mPasses[j].IsCulled && Cover(coverage, outputs[j], read))
 						AddDependencyIfNew(pass, .((uint32)j));
-						break;
-					}
 				}
 			}
 
@@ -778,6 +779,76 @@ class RenderGraph
 
 	private bool IsTrackedAccess(RGResourceAccess access) =>
 		access.Handle.IsValid && (access.Handle.Index < (uint32)mResources.Count);
+
+	/// The (mip, layer) cells a read covers, and which of them have no writer found yet.
+	private class ReadCoverage
+	{
+		public uint32 BaseMip;
+		public uint32 Mips;
+		public uint32 BaseLayer;
+		public uint32 Layers;
+		/// One per cell, mip major: true while no writer covers it.
+		public List<bool> Open = new .() ~ delete _;
+		public int Left;
+	}
+
+	/// Sets `outCoverage` to the cells `read` covers, every one still open.
+	private void CoverageOf(RGResourceAccess read, ReadCoverage outCoverage)
+	{
+		let resource = mResources[(int)read.Handle.Index];
+		let totalMips = (resource != null) ? resource.TotalMipLevels : 1;
+		let totalLayers = (resource != null) ? resource.TotalArrayLayers : 1;
+		let range = read.Subresource;
+		outCoverage.BaseMip = range.BaseMipLevel;
+		outCoverage.Mips = (range.MipLevelCount != 0) ? range.MipLevelCount
+			: ((totalMips > range.BaseMipLevel) ? (uint32)(totalMips - range.BaseMipLevel) : 1);
+		outCoverage.BaseLayer = range.BaseArrayLayer;
+		outCoverage.Layers = (range.ArrayLayerCount != 0) ? range.ArrayLayerCount
+			: ((totalLayers > range.BaseArrayLayer) ? (uint32)(totalLayers - range.BaseArrayLayer) : 1);
+		outCoverage.Left = (int)outCoverage.Mips * (int)outCoverage.Layers;
+		outCoverage.Open.Clear();
+		for (int i < outCoverage.Left)
+			outCoverage.Open.Add(true);
+	}
+
+	/// Marks the cells of `coverage` that `outputs` write (the read's resource); true when it
+	/// found any still open, that is, this pass is the last writer of some of what is read.
+	private bool Cover(ReadCoverage coverage, List<RGResourceAccess> outputs, RGResourceAccess read)
+	{
+		let resource = mResources[(int)read.Handle.Index];
+		let totalMips = (resource != null) ? resource.TotalMipLevels : 1;
+		let totalLayers = (resource != null) ? resource.TotalArrayLayers : 1;
+		var any = false;
+		for (let written in outputs)
+		{
+			if (written.Handle != read.Handle)
+				continue;
+			let range = written.Subresource;
+			let mipEnd = (range.MipLevelCount == 0) ? totalMips : (range.BaseMipLevel + range.MipLevelCount);
+			let layerEnd = (range.ArrayLayerCount == 0) ? totalLayers : (range.BaseArrayLayer + range.ArrayLayerCount);
+			let all = range.IsAll;
+			for (uint32 m < coverage.Mips)
+			{
+				let mip = coverage.BaseMip + m;
+				if (!all && ((mip < range.BaseMipLevel) || (mip >= mipEnd)))
+					continue;
+				for (uint32 l < coverage.Layers)
+				{
+					let layer = coverage.BaseLayer + l;
+					if (!all && ((layer < range.BaseArrayLayer) || (layer >= layerEnd)))
+						continue;
+					let cell = (int)m * (int)coverage.Layers + (int)l;
+					if (coverage.Open[cell])
+					{
+						coverage.Open[cell] = false;
+						coverage.Left--;
+						any = true;
+					}
+				}
+			}
+		}
+		return any;
+	}
 
 	/// Whether any of `accesses` touches the resource and subresources `access` does.
 	private bool AnyOverlap(List<RGResourceAccess> accesses, RGResourceAccess access)
