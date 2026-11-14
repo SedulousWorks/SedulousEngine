@@ -197,7 +197,6 @@ class GenericAssetEditorPage : UIEditorPage
 		ClearAndDeleteItems(mFields);
 		mFields.AddRange(rescanned);
 		rescanned.Clear();
-		MarkDirty();
 	}
 
 	/// The content's part with this id, as a T; null when it has none.
@@ -340,7 +339,6 @@ class GenericAssetEditorPage : UIEditorPage
 		Commands.Execute(new EditGenericCommand(this, key, mUndoBaseline, after));
 		mUndoBaseline.Clear();
 		mUndoBaseline.AddRange(after);
-		MarkDirty();
 
 		// The re-scan: a conditional-branch shape change builds the rows again; a same-shape patch
 		// shows the values again (the replay may have narrowed one, a uint8 past 255).

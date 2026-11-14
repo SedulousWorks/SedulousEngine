@@ -396,6 +396,61 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	[Test]
+	public static void SaveDuringSimulateWritesTheSceneSimulateStartedFromNotWhatTheRunDid()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let barrel = page.EditContext.CreateEntity("Barrel");
+		Test.Assert(!barrel.IsNil);
+		Test.Assert(page.IsDirty);
+		page.StartSimulation();
+		Test.Assert(page.IsSimulating);
+		page.ScenePtr.CreateEntity("Spawned by the run");
+		page.ScenePtr.DestroyEntity(page.ScenePtr.FindEntity(bed.Crate));
+
+		Test.Assert(page.Save() case .Ok);
+		Test.Assert(!page.IsDirty, "the edits are saved; the run is not an edit");
+		{
+			let stored = scope Sedulous.Scene.Scene("stored");
+			Test.Assert(SceneStorage.LoadScene(bed.Level, stored) case .Ok);
+			Test.Assert(stored.FindEntity(barrel).IsAssigned);
+			Test.Assert(stored.FindEntity(bed.Crate).IsAssigned);
+			Test.Assert(!stored.FindEntityByName("Spawned by the run").IsAssigned);
+		}
+		// The run goes on as it was, and its stop puts the edited scene back, still saved.
+		Test.Assert(page.IsSimulating);
+		Test.Assert(page.ScenePtr.FindEntityByName("Spawned by the run").IsAssigned);
+		page.StopSimulation();
+		Test.Assert(page.ScenePtr.FindEntity(barrel).IsAssigned);
+		Test.Assert(page.ScenePtr.FindEntity(bed.Crate).IsAssigned);
+		Test.Assert(!page.IsDirty);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void DiscardDuringSimulateStopsItThenPutsTheSceneBackAsLastSaved()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let saved = page.EditContext.CreateEntity("Saved");
+		Test.Assert(page.Save() case .Ok);
+		let unsaved = page.EditContext.CreateEntity("Unsaved");
+		page.StartSimulation();
+		page.ScenePtr.CreateEntity("Spawned by the run");
+
+		Test.Assert(page.DiscardChanges());
+		Test.Assert(!page.IsSimulating);
+		Test.Assert(!page.IsDirty);
+		Test.Assert(page.ScenePtr.FindEntity(saved).IsAssigned);
+		Test.Assert(!page.ScenePtr.FindEntity(unsaved).IsAssigned);
+		Test.Assert(!page.ScenePtr.FindEntityByName("Spawned by the run").IsAssigned);
+		Test.Assert(page.ScenePtr.FindEntity(bed.Crate).IsAssigned);
+		page.OnClose();
+	}
+
 	/// What the runs announce, counted.
 	class RunsHeard : IRunListener
 	{

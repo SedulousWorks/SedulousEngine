@@ -221,6 +221,9 @@ abstract class AssetObjectPage : UIEditorPage
 		ReadAgain();
 	}
 
+	/// Discard's read of the file: the asset as stored now.
+	public override bool ReloadFromSource() => ReadAgain();
+
 	public override Result<void, ErrorCode> Save()
 	{
 		if ((mObject == null) || (mContext.Project == null))
@@ -498,8 +501,7 @@ abstract class AssetObjectPage : UIEditorPage
 		let path = scope String(mProperties.EditPath);
 		apply(0, Internal.UnsafeCastToPtr(mObject));
 		FollowEdit(path, mObject);
-		Step("asset_properties");
-		MarkDirty();
+		Step("asset_properties"); // the step is what makes the page unsaved
 	}
 
 	// The asset as it is now, after the baseline, as one undo step (its Execute puts back what is
@@ -530,7 +532,6 @@ abstract class AssetObjectPage : UIEditorPage
 	{
 		ObjectSnapshot.Take(mObject, mBaseline); // what the next step starts from
 		mProperties.Refresh(); // an undo or a preset wrote it behind the source
-		MarkDirty();
 		OnObjectChanged();
 	}
 }

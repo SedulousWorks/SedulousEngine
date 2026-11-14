@@ -90,6 +90,15 @@ class SceneSimulation
 		return true;
 	}
 
+	/// Builds the scene as it was when Simulate started into `into`, an empty scene (a save during
+	/// Simulate writes that, not what the run changed). NotFound when not running.
+	public Result<void, ErrorCode> RestoreStartInto(Sedulous.Scene.Scene into)
+	{
+		if (!mRunning || (mSnapshot == null))
+			return .Err(.NotFound);
+		return mSnapshot.Restore(into);
+	}
+
 	/// Holds or resumes a running simulation (the per frame freeze, not the start and stop
 	/// callbacks the systems get on the big transitions); the run pauses with it.
 	public void Pause(Sedulous.Scene.Scene scene, bool paused)

@@ -833,7 +833,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	/// Saves the scene, or the prefab once it has one root and does not hold itself; a saved
 	/// prefab rebuilds its instances in every other open scene, and its loaded resource reloads.
-	/// A scene that did not load is never saved over.
+	/// A scene that did not load is never saved over. During Simulate it writes the scene as it
+	/// was when Simulate started: what the run changed is not an edit.
 	public override Result<void, ErrorCode> Save()
 	{
 		if ((mScene == null) || (mContext.Project == null))
@@ -847,28 +848,32 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mContext.Notify(.Warning, scope $"'{mTitle}' did not load, so it is not saved over: the Console says why.");
 			return .Err(.NotSupported);
 		}
-		let isPrefab = AssetTypeNames.Matches(instance.TypeName, "PrefabDocument");
-		if (isPrefab)
+		// During Simulate the scene holds what the run did to it; the scene the edits made is the
+		// one Simulate started from, rebuilt aside from its snapshot.
+		let simulating = IsSimulating;
+		var source = mScene;
+		if (simulating)
 		{
-			let refused = scope String();
-			if (PrefabFlows.SaveRefusal(mScene, InstanceId, refused))
+			source = mSceneManager.CreateScene(mScene.Name, false);
+			source.SetSimulationEnabled(false);
+			if (mSimulation.RestoreStartInto(source) case .Err(let error))
 			{
-				mContext.Notify(.Warning, refused);
-				return .Err(.InvalidArgument);
+				mSceneManager.DestroyScene(source);
+				mContext.Notify(.Error, scope $"'{mTitle}' was not saved: the scene Simulate started from could not be rebuilt. Stop Simulate and save again.");
+				return .Err(error);
 			}
 		}
-		// What the animation panel posed is not the scene's: saved as it is, posed again after.
-		if (mAnimation != null)
-			mAnimation.StopPreview();
-		let saved = isPrefab ? SceneStorage.SavePrefab(mScene, instance) : SceneStorage.SaveScene(mScene, instance);
-		if (mAnimation != null)
-			mAnimation.Repose();
+		let saved = SaveSceneFrom(source, instance);
+		if (simulating)
+			mSceneManager.DestroyScene(source);
 		if (saved case .Err)
 			return saved;
 		ClearDirty();
+		let isPrefab = AssetTypeNames.Matches(instance.TypeName, "PrefabDocument");
 		GlobalLog(.Information, "Editor: saved {} '{}'", isPrefab ? "prefab" : "scene", mTitle);
-		// The launcher's picture of the project follows its default scene as it is saved.
-		if (!isPrefab && IsProjectDefaultScene)
+		// The launcher's picture of the project follows its default scene as it is saved (a
+		// running Simulate would picture the run, not the scene).
+		if (!isPrefab && !simulating && IsProjectDefaultScene)
 			RequestProjectThumbnail();
 		// The template changed: its instances in every other open scene rebuild, their overrides kept.
 		if (isPrefab && (mPrefabs != null))
@@ -878,6 +883,30 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		// would tell it.
 		if (isPrefab)
 			mContext.ReloadAuthoredResource(InstanceId);
+		return saved;
+	}
+
+	/// Writes `source` (the page's scene, or the one Simulate started from) to `instance`, as a
+	/// scene or a prefab.
+	private Result<void, ErrorCode> SaveSceneFrom(Sedulous.Scene.Scene source, Instance instance)
+	{
+		let isPrefab = AssetTypeNames.Matches(instance.TypeName, "PrefabDocument");
+		if (isPrefab)
+		{
+			let refused = scope String();
+			if (PrefabFlows.SaveRefusal(source, InstanceId, refused))
+			{
+				mContext.Notify(.Warning, refused);
+				return .Err(.InvalidArgument);
+			}
+		}
+		// What the animation panel posed is not the scene's: saved as it is, posed again after.
+		let posed = (source === mScene) && (mAnimation != null);
+		if (posed)
+			mAnimation.StopPreview();
+		let saved = isPrefab ? SceneStorage.SavePrefab(source, instance) : SceneStorage.SaveScene(source, instance);
+		if (posed)
+			mAnimation.Repose();
 		return saved;
 	}
 
@@ -897,14 +926,35 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		if ((mScene == null) || (mContext.Project == null))
 			return;
-		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
-		if (instance == null)
-			return;
 		if (IsDirty)
 		{
 			mContext.Notify(.Warning, scope $"'{mTitle}' changed on disk but has unsaved edits here - not refreshed.");
 			return;
 		}
+		if (IsSimulating)
+		{
+			mContext.Notify(.Warning, scope $"'{mTitle}' changed on disk while it simulates - stop Simulate and reload it to see the change.");
+			return;
+		}
+		ReloadFromSource();
+	}
+
+	/// Stops Simulate first: its run is not an edit, and it locks the history.
+	public override bool DiscardChanges()
+	{
+		StopSimulation();
+		return base.DiscardChanges();
+	}
+
+	/// Reads the scene again from its asset, dropping the history. False while Simulate runs (its
+	/// stop would put the old scene back).
+	public override bool ReloadFromSource()
+	{
+		if ((mScene == null) || (mContext.Project == null) || IsSimulating)
+			return false;
+		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
+		if (instance == null)
+			return false;
 		// The same entities come back from the stream; the history predates the reload and would
 		// replay onto the old content, so it goes.
 		while (mScene.FirstRoot.IsAssigned)
@@ -916,7 +966,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mLoadFailed = (loaded case .Err(let error)) && (error != .NotFound);
 		if (let state = Find<UIWidget>("scene-state"))
 			state.Displayed = mLoadFailed;
-		ClearDirty(); // Commands.Clear told OnChanged, which marks it dirty
+		ClearDirty();
+		return true;
 	}
 
 	public void StartSimulation()

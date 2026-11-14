@@ -168,6 +168,26 @@ abstract class CodeAssetPage : AssetObjectPage
 		return saved;
 	}
 
+	/// Reads the source file and the asset again. Replacing the text drops the code's own history
+	/// with the page's.
+	public override bool ReloadFromSource()
+	{
+		let text = scope String();
+		if (mRead && (System.IO.File.ReadAllText(mSourcePath, text, true) case .Err))
+			return false;
+		if (!base.ReloadFromSource())
+			return false;
+		if (mRead)
+		{
+			mSaved.Set(text);
+			if (mCode != null)
+				mCode.SetText(mSaved);
+		}
+		ClearDirty(); // the new text marked the page changed
+		CheckSoon();
+		return true;
+	}
+
 	/// Checks the code now (the page's own check), the problems shown in the list and on their lines.
 	public void CheckNow()
 	{

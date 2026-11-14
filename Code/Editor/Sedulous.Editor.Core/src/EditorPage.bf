@@ -15,16 +15,12 @@ abstract class EditorPage
 {
 	protected EditorCommandStack mCommands = new .() ~ delete _;
 	protected Guid mInstanceId = .Empty;
-	protected bool mDirty = false;
+	/// Changed without a step in the history.
+	private bool mMarkedDirty = false;
 	/// Where its asset's record lived when its file went outside the editor, and its stored type;
 	/// null while the asset is there.
 	private String mDeletedPath = null ~ delete _;
 	private String mDeletedTypeName = null ~ delete _;
-
-	public this()
-	{
-		mCommands.OnChanged = new () => { mDirty = true; };
-	}
 
 	/// The tab title, typically the instance name.
 	public abstract StringView Title { get; }
@@ -32,21 +28,40 @@ abstract class EditorPage
 	/// Persists the edited objects back to the source database, clearing dirty on success.
 	public abstract Result<void, ErrorCode> Save();
 
-	public bool IsDirty => mDirty;
-	public void MarkDirty() => mDirty = true;
-	public void ClearDirty() => mDirty = false;
-
-	/// Reverts every unsaved edit to the last saved state, the toolbar's Discard Changes.
-	/// The default undoes the whole command stack then clears it and the flag, right for a
-	/// page that routes every edit through commands; a page that caches loaded content
-	/// overrides to reload from the source database.
-	public virtual void DiscardChanges()
+	/// Unsaved: the history has left the point last saved, or the page changed without a step
+	/// (MarkDirty).
+	public bool IsDirty => mMarkedDirty || !mCommands.IsAtSaved;
+	/// The page changed without a step in its history.
+	public void MarkDirty() => mMarkedDirty = true;
+	/// What the page shows is what its file holds (after a save or a load).
+	public void ClearDirty()
 	{
-		while (mCommands.CanUndo)
-			mCommands.Undo();
+		mMarkedDirty = false;
+		mCommands.MarkSaved();
+	}
+
+	/// Puts the page back to what its file holds (the toolbar's Discard Changes): the history goes
+	/// back to the point last saved, or, when it no longer holds that point or the page changed
+	/// without a step, the page reads its file again (ReloadFromSource). The history is dropped
+	/// after. False, with the edits kept, when neither can be done: the history is locked (a scene
+	/// page stops Simulate first), or the page cannot read its file.
+	public virtual bool DiscardChanges()
+	{
+		if (mCommands.IsLocked)
+			return false;
+		if (mMarkedDirty || !mCommands.ReturnToSaved())
+		{
+			if (!ReloadFromSource())
+				return false;
+		}
 		mCommands.Clear();
 		ClearDirty();
+		return true;
 	}
+
+	/// Reads the page's file again and shows it, dropping the history. False, with nothing
+	/// changed, when the page has no file or it does not read.
+	public virtual bool ReloadFromSource() => false;
 
 	public EditorCommandStack Commands => mCommands;
 

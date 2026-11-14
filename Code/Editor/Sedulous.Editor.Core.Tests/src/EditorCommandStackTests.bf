@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Core.Tests;
@@ -308,5 +309,231 @@ static class EditorCommandStackTests
 		stack.Redo();
 		stack.Undo();
 		Test.Assert(value == 1, "neither moves while locked");
+	}
+
+	[Test]
+	public static void TheSavedPointFollowsUndoAndRedo()
+	{
+		let stack = scope EditorCommandStack();
+		int32 value = 0;
+		Test.Assert(stack.IsAtSaved, "an empty history is what was loaded");
+
+		Test.Assert(stack.Execute(new AddCommand(&value, 1)));
+		Test.Assert(stack.Execute(new AddCommand(&value, 2)));
+		Test.Assert(!stack.IsAtSaved);
+		stack.MarkSaved();
+		Test.Assert(stack.IsAtSaved);
+
+		Test.Assert(stack.Execute(new AddCommand(&value, 4)));
+		Test.Assert(!stack.IsAtSaved);
+		stack.Undo();
+		Test.Assert(stack.IsAtSaved, "undone back to what the file holds");
+		stack.Undo();
+		Test.Assert(!stack.IsAtSaved);
+		Test.Assert(value == 1);
+
+		// Past the save: going back to it redoes.
+		Test.Assert(stack.ReturnToSaved());
+		Test.Assert((value == 3) && stack.IsAtSaved);
+
+		// After the save: going back to it undoes.
+		stack.Redo();
+		Test.Assert(value == 7);
+		Test.Assert(stack.ReturnToSaved());
+		Test.Assert(value == 3);
+
+		// Dropping the history keeps the point saved when it was.
+		stack.Clear();
+		Test.Assert(stack.IsAtSaved);
+		Test.Assert(stack.Execute(new AddCommand(&value, 1)));
+		stack.Clear();
+		Test.Assert(!stack.IsAtSaved, "the history is gone, and the change it made is not saved");
+	}
+
+	[Test]
+	public static void AStepBelowTheSaveRemovesTheSaveFromTheHistory()
+	{
+		let stack = scope EditorCommandStack();
+		int32 value = 0;
+		Test.Assert(stack.Execute(new AddCommand(&value, 1)));
+		Test.Assert(stack.Execute(new AddCommand(&value, 2)));
+		stack.MarkSaved(); // value 3, two steps
+		stack.Undo();
+		stack.Undo();
+		Test.Assert(stack.Execute(new AddCommand(&value, 10))); // the saved step is dropped
+		Test.Assert(stack.Execute(new AddCommand(&value, 20))); // two steps long again
+		Test.Assert(value == 30);
+		Test.Assert(!stack.IsAtSaved, "at the saved position, not the saved state");
+		Test.Assert(!stack.ReturnToSaved());
+		Test.Assert(value == 30, "nothing changed");
+	}
+
+	[Test]
+	public static void AStepMergedIntoTheSavedOneRemovesTheSaveAndDropsTheRedoTail()
+	{
+		let stack = scope EditorCommandStack();
+		int32 value = 0;
+		Test.Assert(stack.Execute(new AddCommand(&value, 1, true)));
+		stack.MarkSaved();
+		Test.Assert(stack.Execute(new AddCommand(&value, 5, true))); // a drag continuing into the saved step
+		Test.Assert(stack.Count == 1);
+		Test.Assert(!stack.IsAtSaved);
+		Test.Assert(!stack.ReturnToSaved());
+
+		// A merge is a new step: what was undone before it no longer follows.
+		let other = scope EditorCommandStack();
+		int32 n = 0;
+		Test.Assert(other.Execute(new AddCommand(&n, 1, true)));
+		Test.Assert(other.Execute(new AddCommand(&n, 100)));
+		other.Undo();
+		Test.Assert(other.Execute(new AddCommand(&n, 2, true)));
+		Test.Assert(!other.CanRedo);
+		Test.Assert(n == 2);
+	}
+
+	[Test]
+	public static void AGroupReopenedOverTheSaveOrASaveInsideAGroupIsNoSavedPoint()
+	{
+		let stack = scope EditorCommandStack();
+		int32 value = 0;
+		stack.BeginGroup("drag");
+		Test.Assert(stack.Execute(new AddCommand(&value, 1)));
+		stack.EndGroup();
+		stack.MarkSaved();
+		stack.BeginGroup("drag"); // coalesces: the saved end marker is reopened
+		Test.Assert(stack.Execute(new AddCommand(&value, 1)));
+		stack.EndGroup();
+		Test.Assert(!stack.IsAtSaved);
+		Test.Assert(!stack.ReturnToSaved());
+
+		let inside = scope EditorCommandStack();
+		inside.BeginGroup("drag");
+		Test.Assert(inside.Execute(new AddCommand(&value, 1)));
+		inside.MarkSaved(); // no undo or redo lands mid-group
+		Test.Assert(!inside.IsAtSaved);
+		inside.EndGroup();
+		Test.Assert(!inside.ReturnToSaved());
+	}
+
+	[Test]
+	public static void ALockedStackDoesNotGoBackToTheSave()
+	{
+		let stack = scope EditorCommandStack();
+		int32 value = 0;
+		stack.MarkSaved();
+		Test.Assert(stack.Execute(new AddCommand(&value, 1)));
+		stack.IsLocked = true;
+		Test.Assert(!stack.CanUndo && !stack.CanRedo);
+		Test.Assert(!stack.ReturnToSaved());
+		Test.Assert(value == 1);
+	}
+
+	/// A page over one number: its "file" holds `Stored`, and reading it again can be refused.
+	private class NumberPage : EditorPage
+	{
+		public int32 Value = 0;
+		public int32 Stored = 0;
+		public int Reloads = 0;
+		public bool Readable = true;
+
+		public override StringView Title => "number";
+
+		public override Result<void, ErrorCode> Save()
+		{
+			Stored = Value;
+			ClearDirty();
+			return .Ok;
+		}
+
+		public override bool ReloadFromSource()
+		{
+			Reloads++;
+			if (!Readable)
+				return false;
+			Value = Stored;
+			Commands.Clear();
+			ClearDirty();
+			return true;
+		}
+	}
+
+	[Test]
+	public static void DiscardGoesBackToTheLastSaveNotPastIt()
+	{
+		let page = scope NumberPage();
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 1)));
+		Test.Assert(page.Save() case .Ok);
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 2)));
+		Test.Assert(page.IsDirty);
+
+		Test.Assert(page.DiscardChanges());
+		Test.Assert(page.Value == 1, "the saved step stays applied");
+		Test.Assert(!page.IsDirty);
+		Test.Assert(page.Reloads == 0, "the history reached the save");
+
+		// Undone past the save, Discard redoes back to it.
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 4)));
+		Test.Assert(page.Save() case .Ok);
+		page.Commands.Undo();
+		Test.Assert(page.Value == 1);
+		Test.Assert(page.IsDirty);
+		Test.Assert(page.DiscardChanges());
+		Test.Assert(page.Value == 5);
+		Test.Assert(!page.IsDirty);
+	}
+
+	[Test]
+	public static void UndoingBackToTheSaveMakesThePageClean()
+	{
+		let page = scope NumberPage();
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 1)));
+		Test.Assert(page.IsDirty);
+		page.Commands.Undo();
+		Test.Assert(!page.IsDirty);
+		page.MarkDirty(); // a change outside the history keeps it unsaved
+		Test.Assert(page.IsDirty);
+	}
+
+	[Test]
+	public static void DiscardReadsTheFileAgainWhenTheHistoryDoesNotReachTheSave()
+	{
+		let page = scope NumberPage();
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 1)));
+		Test.Assert(page.Save() case .Ok);
+		page.Commands.Undo();
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 7))); // drops the saved step
+		Test.Assert(page.DiscardChanges());
+		Test.Assert(page.Reloads == 1);
+		Test.Assert(page.Value == 1);
+		Test.Assert(!page.IsDirty);
+
+		// A change made outside the history is undone only by reading the file.
+		page.Value = 9;
+		page.MarkDirty();
+		Test.Assert(page.DiscardChanges());
+		Test.Assert(page.Reloads == 2);
+		Test.Assert(page.Value == 1);
+
+		// A file that does not read keeps the edits, and says so.
+		page.Readable = false;
+		page.Value = 9;
+		page.MarkDirty();
+		Test.Assert(!page.DiscardChanges());
+		Test.Assert(page.Value == 9);
+		Test.Assert(page.IsDirty);
+	}
+
+	/// Discard on a locked history (Simulate) returns at once and keeps the edits; it looped on
+	/// CanUndo while Undo refused.
+	[Test]
+	public static void DiscardOnALockedHistoryReturnsAtOnceAndKeepsTheEdits()
+	{
+		let page = scope NumberPage();
+		Test.Assert(page.Commands.Execute(new AddCommand(&page.Value, 1)));
+		page.Commands.IsLocked = true;
+		Test.Assert(!page.DiscardChanges());
+		Test.Assert(page.Value == 1);
+		Test.Assert(page.IsDirty);
+		Test.Assert(page.Reloads == 0);
 	}
 }

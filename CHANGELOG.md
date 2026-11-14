@@ -106,6 +106,12 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: Discard Changes goes back to the page's last save. It undid every step since the page
+  opened, past a save, and marked the page saved; during Simulate it froze the editor. It stops
+  Simulate first now, and a page whose history no longer reaches the save reads its file again.
+  Undoing back to the save marks the page saved.
+- Editor: Save during Simulate writes the scene as it was when Simulate started. It wrote what the
+  run had done to it.
 - Editor: names and paths read from files stay where they belong. Removing an export template
   deletes the folder whose `template.xml` names it, never a path built from that id, and a template
   whose id is a path is not imported. A script, GUI document or shader made with the name of one in

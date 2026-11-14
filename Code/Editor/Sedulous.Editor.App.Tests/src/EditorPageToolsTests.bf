@@ -39,6 +39,9 @@ class EditorPageToolsTests
 
 		public int Reloads = 0;
 		public override void OnAssetExternallyModified() { Reloads++; }
+		/// Discard reads the file again for a change made outside the history.
+		public bool Readable = true;
+		public override bool ReloadFromSource() => Readable;
 	}
 
 	class TestPageFactory : IEditorPageFactory
@@ -205,6 +208,18 @@ class EditorPageToolsTests
 			Test.Assert(reload.Payload.Get("active").AsBool());
 			Test.Assert(context.OpenPages.Count == 2);
 		}
+		// A file that does not read cannot be gone back to: the changes stay, and the call says so.
+		pageOne.Readable = false;
+		pageOne.MarkDirty();
+		{
+			let reload = Call(server, "page_reload", GuidArgument(one.Id, ",\"force\":true", .. scope .()));
+			defer delete reload;
+			Test.Assert(!reload.Ok);
+			Test.Assert(reload.Error.Contains("could not be discarded"), reload.Error);
+			Test.Assert(pageOne.IsDirty);
+			Test.Assert(pageOne.Reloads == 2);
+		}
+		pageOne.Readable = true;
 
 		pageOne.MarkDirty();
 		{

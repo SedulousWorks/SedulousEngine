@@ -43,16 +43,12 @@ class ClipDocument
 		public override StringView TypeId => mTypeId;
 	}
 
-	/// A history the save is no longer on.
-	private const int cNeverSaved = -2;
-
 	private EditorContext mContext;
 	private PropertyAnimationClip mClip = new .() ~ delete _;
 	private Guid mId = .Empty;
 	private String mName = new .() ~ delete _;
+	/// The clip's history, which keeps the place last saved (or loaded).
 	private EditorCommandStack mCommands = new .() ~ delete _;
-	/// The history's place when last saved (or loaded).
-	private int mSavedAt = -1;
 	/// A gesture's clip as it began; null while none is open.
 	private PropertyAnimationClip mGestureBefore = null ~ delete _;
 
@@ -70,7 +66,7 @@ class ClipDocument
 	public bool HasClip => mId != .Empty;
 	public Guid ClipId => mId;
 	public StringView Name => mName;
-	public bool IsDirty => HasClip && (mCommands.UndoIndex != mSavedAt);
+	public bool IsDirty => HasClip && !mCommands.IsAtSaved;
 	public PropertyAnimationClip Clip => mClip;
 	public EditorCommandStack Commands => mCommands;
 	public bool InGesture => mGestureBefore != null;
@@ -94,7 +90,7 @@ class ClipDocument
 		mId = clipId;
 		mName.Set(instance.Name);
 		mCommands.Clear();
-		mSavedAt = mCommands.UndoIndex;
+		mCommands.MarkSaved();
 		Changed();
 		return true;
 	}
@@ -112,7 +108,7 @@ class ClipDocument
 			GlobalLog(.Warning, "Editor: writing the clip '{}' failed", mName);
 			return .Err(error);
 		}
-		mSavedAt = mCommands.UndoIndex;
+		mCommands.MarkSaved();
 		mContext.RequestCook(false);
 		Changed(); // the unsaved mark
 		return .Ok;
@@ -127,7 +123,7 @@ class ClipDocument
 		mId = .Empty;
 		mName.Clear();
 		mCommands.Clear();
-		mSavedAt = mCommands.UndoIndex;
+		mCommands.MarkSaved();
 		Changed();
 	}
 
@@ -179,9 +175,6 @@ class ClipDocument
 	{
 		// Its length never cuts a key off.
 		mClip.Duration = Math.Max(mClip.Duration, mClip.ComputeDuration());
-		// A step taken below the save leaves the save off the history: no place is saved now.
-		if (mSavedAt > mCommands.UndoIndex)
-			mSavedAt = cNeverSaved;
 		mCommands.Execute(new Step(this, typeId, before, mClip.Clone()));
 	}
 

@@ -133,6 +133,34 @@ class ScriptPageTests
 		Test.Assert((found != null) && (found.PrimaryType == typeof(ScriptClassAsset)));
 	}
 
+	/// Discard puts back the source as last saved, and the code's own history goes with the page's.
+	[Test]
+	public static void DiscardPutsBackTheSourceAsLastSaved()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Hero);
+		defer delete page;
+		Test.Assert(page.Code != null);
+		page.Code.SetCaret(.(0, 0));
+		page.Code.Type("// saved\n");
+		Test.Assert(page.Save() case .Ok);
+		page.Code.Type("// not saved\n");
+		Test.Assert(page.IsDirty);
+
+		Test.Assert(page.DiscardChanges());
+		Test.Assert(!page.IsDirty);
+		let text = page.Text(.. scope .());
+		Test.Assert(text.StartsWith("// saved\n"));
+		Test.Assert(!text.Contains("// not saved"));
+		Test.Assert(!page.Commands.CanUndo);
+		Test.Assert(page.Code.Document.UndoCount == 0);
+
+		// Typing after the discard is a step of its own again.
+		page.Code.Type("x");
+		Test.Assert(page.IsDirty);
+		Test.Assert(page.Commands.CanUndo);
+	}
+
 	[Test]
 	public static void TheSourceReadAndCheckedABrokenEditsProblemOnItsLineOneHistorySaveWritingIt()
 	{

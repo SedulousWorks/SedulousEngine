@@ -17,6 +17,8 @@ class EditorCommandStack
 {
 	private const String cBeginGroup = "__begin_group";
 	private const String cEndGroup = "__end_group";
+	/// A saved point no undo or redo reaches any more.
+	private const int cSavedLost = -2;
 
 	/// Group brackets: inert markers on the stack that Undo and Redo unwind between.
 	private class BeginGroupCommand : EditorCommand
@@ -45,6 +47,8 @@ class EditorCommandStack
 	private bool mInGroup = false;
 	private String mGroupType = new .() ~ delete _;
 	private bool mLocked = false;
+	/// mUndoIndex when last saved, or cSavedLost.
+	private int mSavedIndex = -1;
 
 	/// Fired after any change (execute, undo, redo, clear): the dirty tracking and refresh hook.
 	public delegate void() OnChanged ~ delete _;
@@ -62,8 +66,12 @@ class EditorCommandStack
 	public int Count => mStack.Count;
 	public int UndoIndex => mUndoIndex;
 
-	public bool CanUndo => !mInGroup && (mUndoIndex >= 0);
-	public bool CanRedo => !mInGroup && (mUndoIndex + 1 < mStack.Count);
+	/// Undo and Redo refuse while locked, so neither is offered then.
+	public bool CanUndo => !mLocked && !mInGroup && (mUndoIndex >= 0);
+	public bool CanRedo => !mLocked && !mInGroup && (mUndoIndex + 1 < mStack.Count);
+
+	/// Whether the history is at the point last marked saved.
+	public bool IsAtSaved => mUndoIndex == mSavedIndex;
 
 	/// Executes and pushes `command`, TAKING OWNERSHIP. False, the command deleted and the
 	/// stack untouched, when Execute failed. May merge into the current top instead of pushing.
@@ -80,6 +88,11 @@ class EditorCommandStack
 			let top = mStack[mUndoIndex];
 			if ((top.TypeId == command.TypeId) && command.MergeInto(top))
 			{
+				// A merge is a new step, as a push is: what was undone no longer follows it.
+				TruncateRedo();
+				// The saved step now holds more than was saved.
+				if (mSavedIndex == mUndoIndex)
+					mSavedIndex = cSavedLost;
 				let ok = top.Execute();
 				Runtime.Assert(ok, "re-executing a merged command must not fail");
 				delete command;
@@ -101,7 +114,7 @@ class EditorCommandStack
 
 	public void Undo()
 	{
-		if (mLocked || !CanUndo)
+		if (!CanUndo)
 			return;
 		var i = mUndoIndex;
 		if (mStack[i].TypeId == cEndGroup)
@@ -126,7 +139,7 @@ class EditorCommandStack
 
 	public void Redo()
 	{
-		if (mLocked || !CanRedo)
+		if (!CanRedo)
 			return;
 		var i = mUndoIndex + 1;
 		if (mStack[i].TypeId == cBeginGroup)
@@ -166,6 +179,9 @@ class EditorCommandStack
 			{
 				if (!end.Locked && (end.GroupType == groupType))
 				{
+					// The saved point ends a group this one reopens: it falls inside a group.
+					if (mSavedIndex == mUndoIndex)
+						mSavedIndex = cSavedLost;
 					mStack.PopBack();
 					delete end;
 					mUndoIndex--;
@@ -211,16 +227,46 @@ class EditorCommandStack
 		}
 	}
 
+	/// Drops the history. The point it was at stays the saved one when it was saved.
 	public void Clear()
 	{
 		Runtime.Assert(!mInGroup, "Clear inside a group");
+		mSavedIndex = IsAtSaved ? -1 : cSavedLost;
 		ClearAndDeleteItems(mStack);
 		mUndoIndex = -1;
 		Notify();
 	}
 
+	/// The history's current point is what the file holds (after a save or a load). Taken inside
+	/// an open group, the point is one no undo or redo lands on, so none counts.
+	public void MarkSaved()
+	{
+		mSavedIndex = mInGroup ? cSavedLost : mUndoIndex;
+	}
+
+	/// Undoes or redoes to the point last marked saved. False, with nothing changed, when the
+	/// stack is locked or in a group, or when the history no longer holds that point: a step
+	/// merged into the saved one, or the steps after it were dropped by a new step taken below
+	/// it. The page then reads its file again instead.
+	public bool ReturnToSaved()
+	{
+		if (mLocked || mInGroup || (mSavedIndex == cSavedLost))
+			return false;
+		// Undo and Redo step over a whole group, and a saved point is never inside one
+		// (MarkSaved, BeginGroup), so stepping toward it lands on it.
+		while (mUndoIndex > mSavedIndex)
+			Undo();
+		while (mUndoIndex < mSavedIndex)
+			Redo();
+		Runtime.Assert(IsAtSaved, "the saved point is between steps");
+		return true;
+	}
+
 	private void TruncateRedo()
 	{
+		// The saved point was among the steps undone: none reaches it now.
+		if (mSavedIndex > mUndoIndex)
+			mSavedIndex = cSavedLost;
 		while (mStack.Count > mUndoIndex + 1)
 		{
 			let dropped = mStack.PopBack();

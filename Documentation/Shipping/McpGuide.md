@@ -82,7 +82,8 @@ not read, so a floor or an obstacle agents should respect needs a static body, a
 never bakes) into the zone's Navigation Zone asset, which must be assigned first. The scene
 itself is unchanged; cook for the game to see the navmesh. A `scene_write`, `prefab_write` or `asset_data_write` over an asset the user has open reaches
 its page at once: a clean page reloads in place, a page with unsaved edits keeps them and
-warns the user. Ask before `page_reload` with `force`, which discards them. A `prefab_write`
+warns the user. Ask before `page_reload` with `force`, which discards them (back to the page's
+last save; when its file does not read, the call refuses and the changes stay). A `prefab_write`
 (or an `asset_data_write` over a prefab) also reloads the loaded prefab, so the next spawn of a
 running game (Simulate or Play) is the written one; what was spawned before keeps its content.
 
