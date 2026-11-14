@@ -203,4 +203,62 @@ class ComponentTests
 		manager.RemoveComponent(e2);
 		Test.Assert(manager.Get(e2) == null);
 	}
+
+	/// A destroy hook that removes and adds components of its own manager, as a behaviour's
+	/// onDestroy may, leaves the pool whole. The hook was told in place and the removal then
+	/// swapped at the index it found before the hook moved the pool.
+	[Test]
+	public static void ADestroyHookThatChurnsItsOwnManagerLeavesThePoolWhole()
+	{
+		let manager = scope ChurningManager();
+		manager.Add(E(0)).Value = 1.0f;
+		manager.Add(E(1)).Value = 2.0f;
+		manager.Add(E(2)).Value = 3.0f;
+		manager.AlsoRemove = E(2); // the last one, which the first remove swaps into the hole
+		manager.AddOnDestroy = E(3);
+		manager.RemoveComponent(E(0));
+
+		Test.Assert(manager.ToldCount == 2);
+		Test.Assert(manager.Told[0] == 1.0f, "the removed value, not what took its place");
+		Test.Assert(manager.Told[1] == 3.0f);
+		Test.Assert(!manager.FoundSelf, "gone from the pool before the hook");
+		Test.Assert(manager.Count == 2);
+		Test.Assert(!manager.Has(E(0)));
+		Test.Assert(!manager.Has(E(2)));
+		Test.Assert(manager.Get(E(1)) != null);
+		Test.Assert(manager.Get(E(1)).Value == 2.0f);
+		Test.Assert(manager.Get(E(3)) != null);
+		Test.Assert(manager.Get(E(3)).Value == 99.0f);
+	}
+}
+
+/// Its destroy hook removes another entity's component and adds one, as a behaviour's
+/// onDestroy might, and records the value it was handed.
+class ChurningManager : ComponentManager<Health>
+{
+	public EntityHandle AlsoRemove = EntityHandle.Invalid;
+	public EntityHandle AddOnDestroy = EntityHandle.Invalid;
+	/// Held inline, not in an owned list: the base's teardown sweep tells the hook again
+	/// after this class's own fields are gone.
+	public float[4] Told;
+	public int ToldCount = 0;
+	public bool FoundSelf = false;
+
+	protected override void OnComponentDestroyed(Health* component, EntityHandle entity)
+	{
+		if (ToldCount < Told.Count)
+			Told[ToldCount++] = component.Value;
+		FoundSelf = FoundSelf || Has(entity);
+		if (AlsoRemove.IsAssigned)
+		{
+			let other = AlsoRemove;
+			AlsoRemove = EntityHandle.Invalid;
+			RemoveComponent(other);
+		}
+		if (AddOnDestroy.IsAssigned)
+		{
+			Add(AddOnDestroy).Value = 99.0f;
+			AddOnDestroy = EntityHandle.Invalid;
+		}
+	}
 }

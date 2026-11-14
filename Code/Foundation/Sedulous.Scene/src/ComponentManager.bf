@@ -78,7 +78,12 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 		// Narrowed ONCE, past the sentinel check: the sparse map stores uint32 while a pool
 		// index is an int, and those are only the same width on a 64 bit target.
 		let slot = (int)index;
-		OnComponentDestroyed(&mDense[slot], entity);
+
+		// Unlinked first, then the hook is told, on the value copied out: a hook (a
+		// behaviour's onDestroy) may add or remove components of this manager, which moves
+		// the pool, so the index found above and any address into the pool are only good
+		// until it runs.
+		T removed = mDense[slot];
 
 		// Swap the last element into the hole, which is what keeps the pool packed.
 		let last = mDense.Count - 1;
@@ -91,6 +96,8 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 		mDense.PopBack();
 		mOwners.PopBack();
 		mSparse.Remove(entity.Index);
+
+		OnComponentDestroyed(&removed, entity);
 	}
 
 	public void Remove(EntityHandle entity) => RemoveComponent(entity);
@@ -142,6 +149,8 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 
 	protected virtual void OnComponentCreated(T* component, EntityHandle entity) {}
 	protected virtual void OnComponentInitialized(T* component, EntityHandle entity) {}
+	/// Told after a removed component left the pool, with its value: the manager no longer
+	/// finds it, and the pointer is to that value, not into the pool.
 	protected virtual void OnComponentDestroyed(T* component, EntityHandle entity) {}
 
 	/// The dense index of a live, generation matching component, or cInvalid.
