@@ -238,3 +238,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   longer crashes the game; a cancelled coroutine never runs again.
 - GUI: a node can no longer be added under itself or one of its descendants, and `Popup` refuses
   content that holds its anchor; either made the tree a loop and froze the game.
+- GUI: a menu or list box row a script destroys leaves the menu or list; it stayed listed, freed,
+  and the next hover, key or redraw reached it. A list's selection follows its row.

@@ -985,4 +985,27 @@ class MenuTests
 		item.Text = "Command Palette and a great deal more";
 		Test.Assert(menu.Size.X >= item.PreferredWidth - 0.5f);
 	}
+
+	/// A row taken out by a script leaves the menu, which sizes to the rest. It stayed listed after
+	/// it was freed, and the next hover, key or layout reached it.
+	[Test]
+	public static void ARowTakenOutLeavesTheMenuWhichSizesToTheRest()
+	{
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(140.0f);
+		menu.SetItemHeight(25.0f);
+		menu.AddItem("Cut", new () => { });
+		let copy = menu.AddItem("Copy", new () => { });
+		menu.AddItem("Paste", new () => { });
+		let before = menu.Size.Y;
+
+		copy.RemoveFromParent(); // as a script's destroy takes it out
+		Test.Assert(menu.RowCount == 2);
+		Test.Assert(menu.ItemCount == 2, "asks each row: none of them freed");
+		Test.Assert(Near(menu.Size.Y, before - 25.0f));
+		menu.SetItemHeight(30.0f); // walks the rows again
+		menu.ClearItems();
+		Test.Assert(menu.RowCount == 0);
+	}
 }

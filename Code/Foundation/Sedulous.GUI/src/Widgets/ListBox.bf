@@ -183,9 +183,9 @@ class ListBox : UIWidget
 
 	public void Clear()
 	{
-		RemoveAllChildren();
-		mItems.Clear();
+		mItems.Clear(); // first: each removal is told to OnChildrenChanged
 		mSelected = -1;
+		RemoveAllChildren();
 	}
 
 	public int ItemCount => mItems.Count;
@@ -338,5 +338,30 @@ class ListBox : UIWidget
 			ScrollOffset = .(off.X, top);
 		else if (bottom > off.Y + viewH)
 			ScrollOffset = .(off.X, bottom - viewH);
+	}
+
+	/// A row taken out other than by Clear (a script destroying it) leaves the list: the rows
+	/// after it close up, and the selection follows its row or clears with it. The row being
+	/// removed is still alive here (the tree's reference goes after), so every entry can be asked
+	/// where it is.
+	public override void OnChildrenChanged()
+	{
+		base.OnChildrenChanged();
+		int kept = 0;
+		int32 selected = -1;
+		for (int i = 0; i < mItems.Count; ++i)
+		{
+			let item = mItems[i];
+			if (item.Parent != this)
+				continue;
+			if ((int32)i == mSelected)
+				selected = (int32)kept;
+			item.Index = (int32)kept;
+			mItems[kept++] = item;
+		}
+		if (kept == mItems.Count)
+			return;
+		mItems.Count = kept;
+		mSelected = selected;
 	}
 }

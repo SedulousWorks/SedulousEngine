@@ -850,9 +850,11 @@ class Menu : UIWidget
 	public void ClearItems()
 	{
 		Close();
-		for (let row in mRows)
-			RemoveChild(row);
+		// Taken out of the list first: each removal is told to OnChildrenChanged.
+		let rows = scope List<MenuRow>(mRows.GetEnumerator());
 		mRows.Clear();
+		for (let row in rows)
+			RemoveChild(row);
 		for (let sub in mOwnedSubMenus)
 			sub.ReleaseRef();
 		mOwnedSubMenus.Clear();
@@ -1183,6 +1185,31 @@ class Menu : UIWidget
 		else
 			AddChild(node);
 		mRows.Add(row);
+		Relayout();
+	}
+
+	/// A row taken out other than by ClearItems (a script destroying it) leaves the rows, and a
+	/// hover waiting on it is dropped. The row being removed is still alive here (the tree's
+	/// reference goes after).
+	public override void OnChildrenChanged()
+	{
+		base.OnChildrenChanged();
+		int kept = 0;
+		for (let row in mRows)
+		{
+			if (row.Parent == this)
+			{
+				mRows[kept++] = row;
+			}
+			else if (row == mDeferredRow)
+			{
+				mDeferredRow = null;
+				mDeferring = false;
+			}
+		}
+		if (kept == mRows.Count)
+			return;
+		mRows.Count = kept;
 		Relayout();
 	}
 

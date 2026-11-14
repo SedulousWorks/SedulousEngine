@@ -129,4 +129,31 @@ class ListBoxTests
 		lb.SelectedIndex = 0; // back to top
 		Test.Assert(Near(lb.ScrollOffset.Y, 0.0f));
 	}
+
+	/// A row taken out by a script leaves the list, and the selection follows its row. It stayed
+	/// listed after it was freed, and the next redraw or key reached it.
+	[Test]
+	public static void ARowTakenOutLeavesTheListAndTheSelectionFollowsItsRow()
+	{
+		let lb = new ListBox();
+		defer lb.ReleaseRef();
+		lb.Size = .(200.0f, 100.0f);
+		lb.AddItem("Alpha");
+		lb.AddItem("Beta");
+		lb.AddItem("Gamma");
+		lb.SelectedIndex = 2;
+
+		lb.GetChildAt(1).RemoveFromParent(); // as a script's destroy takes it out
+		Test.Assert(lb.ItemCount == 2);
+		Test.Assert(lb.GetItem(1) == "Gamma");
+		Test.Assert(lb.SelectedIndex == 1, "Gamma, still selected");
+
+		lb.GetChildAt(1).RemoveFromParent(); // the selected row
+		Test.Assert(lb.ItemCount == 1);
+		Test.Assert(lb.SelectedIndex == -1);
+		lb.SelectedIndex = 0; // nothing freed is reached
+		Test.Assert(lb.SelectedIndex == 0);
+		lb.ItemHeight = 30.0f; // walks the rows again
+		Test.Assert(lb.ItemsText == "Alpha");
+	}
 }
