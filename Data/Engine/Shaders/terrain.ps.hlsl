@@ -111,7 +111,6 @@ struct PSOutput {
 // Same set-0 layout role as the forward's ShadowMap/ShadowSampler.
 Texture2DArray         ShadowMap     : register(t1, space0);
 SamplerComparisonState ShadowSampler : register(s0, space0);
-static const float kTerrainShadowTexel = 1.0 / 1024.0; // 1 / shadow resolution
 
 // One cascade with a normal-offset bias (fading at grazing angles) + 3x3 hardware PCF. 1 = lit.
 // Adapted verbatim from forward.ps.hlsl SampleCascade, mapped to terrain's cbuffer fields.
@@ -125,11 +124,15 @@ float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 1.0; }
     float compareDepth = BiasTowardViewer(ndc.z, ShadowDepthBias);   // toward the light: fewer false occluders
     float layer = CascadeLayerBase + (float)cascade;
+    // One texel in uv: the resolution is the quality level's, so it is read from the map itself.
+    uint mapWidth, mapHeight, mapLayers;
+    ShadowMap.GetDimensions(mapWidth, mapHeight, mapLayers);
+    float texel = 1.0 / float(max(mapWidth, 1u));
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {
         [unroll] for (int x = -1; x <= 1; ++x) {
             sum += ShadowMap.SampleCmpLevelZero(
-                ShadowSampler, float3(uv + float2(x, y) * kTerrainShadowTexel, layer), compareDepth);
+                ShadowSampler, float3(uv + float2(x, y) * texel, layer), compareDepth);
         }
     }
     return sum * (1.0 / 9.0);

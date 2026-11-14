@@ -940,8 +940,9 @@ class RenderFrame
 			// The static layer, per scene: each tile is cached and re-rendered only when it has
 			// to be, tracked by a COUNTDOWN so a dirtied tile refreshes every frame in flight's
 			// copy. It is dirtied by the scene's static set changing, by the scene landing on a
-			// different slot or tile range, which shifts the layout under it, or by an animated
-			// caster overlapping it.
+			// different slot or tile range, which shifts the layout under it, by a new atlas (its
+			// size changed, so its static layer starts empty), or by an animated caster
+			// overlapping it.
 			context.StaticTiles.Clear();
 			for (let draw in mStaticAtlasDraws)
 			{
@@ -954,11 +955,13 @@ class RenderFrame
 
 			let signature = StaticCasterSignature(context.Scene);
 			if ((signature != context.StaticSignature) || (context.Scene != context.LastStaticScene)
-				|| (sceneStaticTileBase != context.StaticTileBase))
+				|| (sceneStaticTileBase != context.StaticTileBase)
+				|| (mShadows.AtlasGeneration != context.StaticAtlasGeneration))
 			{
 				context.StaticSignature = signature;
 				context.LastStaticScene = context.Scene;
 				context.StaticTileBase = sceneStaticTileBase;
+				context.StaticAtlasGeneration = mShadows.AtlasGeneration;
 				for (int t < context.StaticTileDirty.Count)
 					context.StaticTileDirty[t] = framesInFlight;
 			}

@@ -14,6 +14,14 @@ static class QualityApply
 		return (tier == .High) ? high : ((tier == .Medium) ? medium : low);
 	}
 
+	/// The shadow textures' sizes a shadows tier takes: each cascade's resolution and the local
+	/// light atlas's tile. High is the sizes they had before the levels; Off draws none, so it
+	/// takes Low's.
+	public static (uint32 cascade, uint32 atlasTile) ShadowResolutionFor(QualityTier tier)
+	{
+		return (TierValue<uint32>(tier, 512, 768, 1024), TierValue<uint32>(tier, 256, 512, 512));
+	}
+
 	/// Over a view's resolved post: an Off tier turns its effect off (the scene's values stay,
 	/// for a level that allows it), the other tiers set what each effect may cost (High is each
 	/// pass's full budget), and the scene pass takes the level's MSAA count. With

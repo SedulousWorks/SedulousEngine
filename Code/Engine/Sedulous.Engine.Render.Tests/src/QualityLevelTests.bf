@@ -92,6 +92,12 @@ class QualityLevelTests
 			Test.Assert(lo.AoMode == (uint32)AoMode.GTAO, "Low still runs it");
 			Test.Assert(lo.SsrEnabled);
 		}
+		// The shadows tier sizes the shared shadow textures: High the sizes before the levels, Off
+		// Low's.
+		Test.Assert(QualityApply.ShadowResolutionFor(.High) == (1024, 512));
+		Test.Assert(QualityApply.ShadowResolutionFor(.Medium) == (768, 512));
+		Test.Assert(QualityApply.ShadowResolutionFor(.Low) == (512, 256));
+		Test.Assert(QualityApply.ShadowResolutionFor(.Off) == (512, 256));
 		// Without `antialiasing` (a debug panel set its own), the view's AA stays as it was.
 		{
 			var config = ScenePost.Resolve(scene);

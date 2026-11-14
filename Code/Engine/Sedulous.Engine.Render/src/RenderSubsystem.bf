@@ -335,7 +335,23 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// over what each scene asks for. The count is clamped per view to the device. Not part of
 	/// the global override: the host's, applied over either. BORROWED; SetQuality copies.
 	public RenderQualitySettings Quality => mQuality;
-	public void SetQuality(RenderQualitySettings quality) => quality.CopyTo(mQuality);
+
+	/// The shadow textures are shared by every view, so they follow this level's tiers, not a
+	/// viewport's.
+	public void SetQuality(RenderQualitySettings quality)
+	{
+		quality.CopyTo(mQuality);
+		ApplyShadowResolution();
+	}
+
+	/// The cascades' and the atlas tiles' sizes, from the level's shadows tier.
+	private void ApplyShadowResolution()
+	{
+		if (mShadowSystem == null)
+			return;
+		let sizes = QualityApply.ShadowResolutionFor(mQuality.Shadows);
+		mShadowSystem.SetResolutions(sizes.cascade, sizes.atlasTile);
+	}
 
 	/// A level for the views drawn with `viewportKey` alone (a Game tab plays at its game's level
 	/// while the editor's own views keep theirs), copied, until cleared.
@@ -661,7 +677,11 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		if (mShadowSystem.Initialize() case .Err)
 			DeleteAndNullify!(mShadowSystem);
 		else
+		{
 			mShadowSystem.SetRetireQueue(mRetireQueue);
+			// A level set before the renderer started (a host's first SetQuality).
+			ApplyShadowResolution();
+		}
 
 		mIblSystem = new IBLSystem(mDevice, mShaders);
 		if (mIblSystem.Initialize() case .Err)

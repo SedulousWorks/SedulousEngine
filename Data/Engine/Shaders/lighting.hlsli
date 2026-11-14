@@ -56,8 +56,6 @@ float3 EvalSH9(float3 n) {
     return max(r, 0.0);
 }
 
-static const float kShadowTexel = 1.0 / 1024.0;   // 1 / shadow resolution
-
 // Sample one cascade with a normal-offset bias (scaled by the cascade's world texel size, fading at
 // grazing angles) + 3x3 hardware PCF on its array layer. 1 = lit, 0 = fully shadowed.
 float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
@@ -74,10 +72,14 @@ float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 1.0; }
     float compareDepth = BiasTowardViewer(ndc.z, ShadowDepthBias);   // toward the light: fewer false occluders
     float layer = CascadeLayerBase + (float)cascade;   // this view's slice of the shared array
+    // One texel in uv: the resolution is the quality level's, so it is read from the map itself.
+    uint mapWidth, mapHeight, mapLayers;
+    ShadowMap.GetDimensions(mapWidth, mapHeight, mapLayers);
+    float texel = 1.0 / float(max(mapWidth, 1u));
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {
         [unroll] for (int x = -1; x <= 1; ++x) {
-            sum += ShadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv + float2(x, y) * kShadowTexel, layer), compareDepth);
+            sum += ShadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv + float2(x, y) * texel, layer), compareDepth);
         }
     }
     return sum * (1.0 / 9.0);
@@ -128,8 +130,6 @@ struct GpuLocalShadow {
 };
 StructuredBuffer<GpuLocalShadow> LocalShadows : register(t3, space0);
 
-static const float kAtlasTexel = 1.0 / 2048.0;   // 1 / atlas resolution
-
 // Sample one local-shadow entry: project into its light clip, map the clip uv into the entry's atlas
 // tile (on its array layer), 3x3 PCF. 1 = lit, 0 = shadowed. The receiver is pushed along its normal
 // by the light's normal offset (its tile texels at this distance), fading as it faces the light, as
@@ -148,10 +148,14 @@ float SampleLocalShadow(int idx, float3 worldPos, float3 N, float3 lightPos) {
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z < 0.0 || ndc.z > 1.0) { return 1.0; }   // outside the light's depth range
     float2 atlasUV = uv * s.atlasScaleBias.xy + s.atlasScaleBias.zw;
     float compareDepth = BiasTowardViewer(ndc.z, s.depthBias);
+    // One atlas texel in uv: the tile size is the quality level's, so it is read from the atlas.
+    uint atlasWidth, atlasHeight, atlasLayers;
+    ShadowAtlas.GetDimensions(atlasWidth, atlasHeight, atlasLayers);
+    float texel = 1.0 / float(max(atlasWidth, 1u));
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {
         [unroll] for (int x = -1; x <= 1; ++x) {
-            sum += ShadowAtlas.SampleCmpLevelZero(ShadowSampler, float3(atlasUV + float2(x, y) * kAtlasTexel, s.atlasSelect), compareDepth);
+            sum += ShadowAtlas.SampleCmpLevelZero(ShadowSampler, float3(atlasUV + float2(x, y) * texel, s.atlasSelect), compareDepth);
         }
     }
     return sum * (1.0 / 9.0);

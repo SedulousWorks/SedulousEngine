@@ -12,16 +12,14 @@ namespace Sedulous.Render;
 class ShadowSystem
 {
 	private const TextureFormat cShadowFormat = .Depth32Float;
-	/// Per cascade.
-	private const uint32 cShadowResolution = 1024;
 	private const uint32 cCascadeCount = ShadowCascades.Count;
 	private const int cMaxFramesInFlight = 8;
 
 	/// The local light atlas: spot and point shadows pack into TWO LAYERS, while the cascades
 	/// keep an array of their own. The first layer is redrawn every frame; the second holds
-	/// the static casters, rendered only when that set changes and then cached.
-	public const uint32 AtlasResolutionValue = 2048;
-	public const uint32 AtlasTileValue = 512;
+	/// the static casters, rendered only when that set changes and then cached. 4 x 4 tiles a
+	/// layer, whatever the tile's size.
+	public const uint32 AtlasTilesPerRow = 4;
 	public const uint32 AtlasLayers = 2;
 	public const uint32 AtlasLayerRealtime = 0;
 	public const uint32 AtlasLayerStatic = 1;
@@ -38,16 +36,26 @@ class ShadowSystem
 	/// view keys on: a reused address would otherwise alias a destroyed texture.
 	private uint64 mGeneration = 0;
 
+	/// Each cascade's square resolution and the atlas's tile (SetResolutions).
+	private uint32 mResolution = 1024;
+	private uint32 mAtlasTile = 512;
+	/// Bumped whenever an atlas is (re)made: its static layer starts empty.
+	private uint64 mAtlasGeneration = 0;
+
 	private ITexture[cMaxFramesInFlight] mTextures = .();
 	private ITextureView[cMaxFramesInFlight] mAttachViews = .();
 	private ITextureView[cMaxFramesInFlight] mSampleViews = .();
 	private ResourceState[cMaxFramesInFlight] mStates = .();
 	private uint32[cMaxFramesInFlight] mLayerCounts = .();
+	/// The cascade resolution each slot was made at.
+	private uint32[cMaxFramesInFlight] mSlotResolutions = .();
 
 	private ITexture[cMaxFramesInFlight] mAtlasTextures = .();
 	private ITextureView[cMaxFramesInFlight] mAtlasAttachViews = .();
 	private ITextureView[cMaxFramesInFlight] mAtlasSampleViews = .();
 	private ResourceState[cMaxFramesInFlight] mAtlasStates = .();
+	/// The tile size each slot's atlas was made at.
+	private uint32[cMaxFramesInFlight] mAtlasSlotTiles = .();
 
 	public this(IDevice device, uint32 framesInFlight)
 	{
@@ -60,7 +68,7 @@ class ShadowSystem
 		Shutdown();
 	}
 
-	/// Wires the retire queue, which makes an atlas growth web safe. Null drains instead.
+	/// Wires the retire queue, which makes a growth or a resize web safe. Null drains instead.
 	public void SetRetireQueue(GpuRetireQueue retire) => mRetire = retire;
 
 	/// Nothing to do up front: the textures appear on first use, and the comparison sampler
@@ -68,23 +76,30 @@ class ShadowSystem
 	public Result<void> Initialize() => .Ok;
 
 	public TextureFormat Format => cShadowFormat;
-	public uint32 Resolution => cShadowResolution;
+	public uint32 Resolution => mResolution;
+
+	/// The sizes the shadow textures take from now on (a quality level's shadows tier): each
+	/// cascade's square resolution, and the local light atlas's tile. A frame slot whose
+	/// textures are another size remakes them when it next prepares, retiring the old through
+	/// the queue; the cached static atlas tiles redraw (AtlasGeneration).
+	public void SetResolutions(uint32 cascade, uint32 atlasTile)
+	{
+		mResolution = Math.Clamp(cascade, (uint32)256, (uint32)4096);
+		mAtlasTile = Math.Clamp(atlasTile, (uint32)128, (uint32)1024);
+	}
 	public uint32 FramesInFlight => mFramesInFlight;
 	public uint32 CascadeCount => cCascadeCount;
 	public uint64 Generation => mGeneration;
 
-	public uint32 AtlasResolution => AtlasResolutionValue;
-	public uint32 AtlasTileResolution => AtlasTileValue;
+	public uint32 AtlasResolution => mAtlasTile * AtlasTilesPerRow;
+	public uint32 AtlasTileResolution => mAtlasTile;
 
 	/// Tiles per LAYER.
-	public uint32 AtlasTileCapacity
-	{
-		get
-		{
-			let perRow = AtlasResolutionValue / AtlasTileValue;
-			return perRow * perRow;
-		}
-	}
+	public uint32 AtlasTileCapacity => AtlasTilesPerRow * AtlasTilesPerRow;
+
+	/// Bumped whenever an atlas is (re)made: its static layer starts empty, so the cached
+	/// static tiles must redraw.
+	public uint64 AtlasGeneration => mAtlasGeneration;
 
 	/// Makes sure this frame's cascade array has layers for every view, and answers the view
 	/// the forward pass samples. Null when it could not be made.
@@ -115,7 +130,8 @@ class ShadowSystem
 		return handle;
 	}
 
-	/// Makes sure this frame's local atlas exists. Fixed size, so it is built once per slot.
+	/// Makes sure this frame's local atlas exists at the current tile size: built once per slot,
+	/// and again only when the tile size changes.
 	public ITextureView PrepareAtlas(uint32 frameIndex)
 	{
 		let slot = (int)(frameIndex % mFramesInFlight);
@@ -140,10 +156,11 @@ class ShadowSystem
 	/// The cascade array for one frame slot, one layer per view cascade.
 	///
 	/// Recreated when the layer count GROWS, which is a frame rendering more views than the
-	/// last one did. The per layer attachment views are derived by the graph at pass time.
+	/// last one did, or the resolution changes. The per layer attachment views are derived by
+	/// the graph at pass time.
 	private bool EnsureTexture(int slot, uint32 layerCount)
 	{
-		if ((mTextures[slot] != null) && (mLayerCounts[slot] >= layerCount))
+		if ((mTextures[slot] != null) && (mLayerCounts[slot] >= layerCount) && (mSlotResolutions[slot] == mResolution))
 			return true;
 
 		RetireTexture(ref mTextures[slot], ref mAttachViews[slot], ref mSampleViews[slot]);
@@ -151,8 +168,8 @@ class ShadowSystem
 		var desc = TextureDesc();
 		desc.Dimension = .Texture2D;
 		desc.Format = cShadowFormat;
-		desc.Width = cShadowResolution;
-		desc.Height = cShadowResolution;
+		desc.Width = mResolution;
+		desc.Height = mResolution;
 		desc.Depth = 1;
 		desc.ArrayLayerCount = layerCount;
 		desc.Usage = .DepthStencil | .Sampled;
@@ -191,6 +208,7 @@ class ShadowSystem
 		mAttachViews[slot] = attachView;
 		mSampleViews[slot] = sampleView;
 		mLayerCounts[slot] = layerCount;
+		mSlotResolutions[slot] = mResolution;
 		mStates[slot] = .Undefined;
 		mGeneration++;
 		return true;
@@ -198,14 +216,16 @@ class ShadowSystem
 
 	private bool EnsureAtlas(int slot)
 	{
-		if (mAtlasTextures[slot] != null)
+		if ((mAtlasTextures[slot] != null) && (mAtlasSlotTiles[slot] == mAtlasTile))
 			return true;
+
+		RetireTexture(ref mAtlasTextures[slot], ref mAtlasAttachViews[slot], ref mAtlasSampleViews[slot]);
 
 		var desc = TextureDesc();
 		desc.Dimension = .Texture2D;
 		desc.Format = cShadowFormat;
-		desc.Width = AtlasResolutionValue;
-		desc.Height = AtlasResolutionValue;
+		desc.Width = AtlasResolution;
+		desc.Height = AtlasResolution;
 		desc.Depth = 1;
 		desc.ArrayLayerCount = AtlasLayers;
 		desc.Usage = .DepthStencil | .Sampled;
@@ -243,6 +263,8 @@ class ShadowSystem
 		mAtlasTextures[slot] = texture;
 		mAtlasAttachViews[slot] = attachView;
 		mAtlasSampleViews[slot] = sampleView;
+		mAtlasSlotTiles[slot] = mAtlasTile;
+		mAtlasGeneration++;
 		mAtlasStates[slot] = .Undefined;
 		mGeneration++;
 		return true;

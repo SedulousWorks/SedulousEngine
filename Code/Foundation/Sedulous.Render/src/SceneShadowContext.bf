@@ -53,6 +53,9 @@ class SceneShadowContext
 	public ExtractedScene LastStaticScene = null;
 	/// This scene's first static tile, so a shift in the atlas layout under it dirties it.
 	public uint32 StaticTileBase = 0;
+	/// The atlas the static tiles were drawn into: a resize makes a new one, its static layer
+	/// empty.
+	public uint64 StaticAtlasGeneration = 0;
 
 	/// This scene's first entry in the frame's concatenated local shadow buffer.
 	public uint32 EntryBase = 0;

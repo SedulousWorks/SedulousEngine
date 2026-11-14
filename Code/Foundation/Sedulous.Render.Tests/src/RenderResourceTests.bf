@@ -24,6 +24,57 @@ class RenderResourceTests
 			Device.CreateBuffer(.() { Label = "RenderResourceTests.Harness.MakeBuffer", Size = size, Usage = .Uniform | .CopyDst }).Value;
 	}
 
+	/// A quality level's shadows tier sizes the cascades and the atlas; a frame slot made at
+	/// another size remakes its textures when it next prepares, the old ones retired, not freed
+	/// in flight.
+	[Test]
+	public static void ANewShadowResolutionRemakesEachSlotsTexturesRetiringTheOld()
+	{
+		let harness = scope Harness();
+		let queue = scope GpuRetireQueue();
+		queue.Initialize(harness.Device, 2);
+		let shadows = scope ShadowSystem(harness.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+		shadows.SetRetireQueue(queue);
+		defer queue.Flush();
+
+		// The sizes before the levels: 1024 cascades, a 2048 atlas of 512 tiles.
+		let cascades = shadows.PrepareFrame(0, 1);
+		Test.Assert(cascades != null);
+		Test.Assert(cascades.Texture.Desc.Width == 1024);
+		let atlas = shadows.PrepareAtlas(0);
+		Test.Assert(atlas != null);
+		Test.Assert(atlas.Texture.Desc.Width == 2048);
+		Test.Assert(shadows.AtlasTileCapacity == 16);
+		let atlasGeneration = shadows.AtlasGeneration;
+		Test.Assert(queue.PendingCount == 0);
+
+		// The same sizes again: nothing is remade.
+		Test.Assert(shadows.PrepareFrame(0, 1) === cascades);
+		Test.Assert(shadows.PrepareAtlas(0) === atlas);
+
+		// Low: 512 cascades, a 1024 atlas of 256 tiles, still 16 of them.
+		shadows.SetResolutions(512, 256);
+		Test.Assert(shadows.Resolution == 512);
+		Test.Assert(shadows.AtlasResolution == 1024);
+		let smaller = shadows.PrepareFrame(0, 1);
+		Test.Assert(smaller != null);
+		Test.Assert(smaller.Texture.Desc.Width == 512);
+		let smallerAtlas = shadows.PrepareAtlas(0);
+		Test.Assert(smallerAtlas != null);
+		Test.Assert(smallerAtlas.Texture.Desc.Width == 1024);
+		Test.Assert(shadows.AtlasTileCapacity == 16);
+		Test.Assert(shadows.AtlasGeneration != atlasGeneration, "the cached static tiles redraw");
+		Test.Assert(queue.PendingCount == 6, "each old texture and its two views, retired");
+
+		// Only the cascades change: the atlas, at the same tile, stays.
+		let kept = shadows.AtlasGeneration;
+		shadows.SetResolutions(768, 256);
+		Test.Assert(shadows.PrepareFrame(0, 1).Texture.Desc.Width == 768);
+		Test.Assert(shadows.PrepareAtlas(0) === smallerAtlas);
+		Test.Assert(shadows.AtlasGeneration == kept);
+	}
+
 	/// A retired resource survives every frame that could still reference it, and no longer.
 	[Test]
 	public static void ARetiredResourceOutlivesTheFramesInFlight()
