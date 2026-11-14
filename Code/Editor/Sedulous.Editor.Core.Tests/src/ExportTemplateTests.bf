@@ -717,6 +717,50 @@ static class ExportTemplateTests
 	}
 
 	[Test]
+	public static void UnreadablePresetsAreSetAsideBeforeTheDefaultsAreSavedNeverWrittenOver()
+	{
+		let dir = Scratch("scratch_presets_damaged", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let fs = scope NativeFileSystem(dir);
+		let damaged = "<presets><preset name=\"Web\"";
+		Test.Assert(fs.Save(ExportPresetsFile.cFileName, .((uint8*)damaged.Ptr, damaged.Length)) case .Ok);
+
+		let controller = scope ExportPresetsController();
+		controller.Load(fs);
+		Test.Assert(controller.Count == 1, "the defaults, so the panel has something to show");
+		Test.Assert(controller.LoadProblem.Contains("export_presets.xml.unreadable"));
+		let aside = scope String(ExportPresetsFile.cFileName)..Append(".unreadable");
+		let kept = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(dir, aside, .. scope .()), kept) case .Ok);
+		Test.Assert(kept.Count == damaged.Length);
+
+		// Saving now writes the presets file afresh; the damaged one stays beside it.
+		Test.Assert(controller.Save(fs) case .Ok);
+		let reloaded = scope ExportPresetsController();
+		reloaded.Load(fs);
+		Test.Assert(reloaded.LoadProblem.IsEmpty);
+		Test.Assert(fs.Exists(aside));
+	}
+
+	[Test]
+	public static void UnreadableEditorSettingsAreSetAsideBeforeAnythingSavesOverThem()
+	{
+		EditorSerializables.RegisterAll();
+		let dir = Scratch("scratch_editor_settings_damaged", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let fs = scope NativeFileSystem(dir);
+		let damaged = "<settings><sections";
+		Test.Assert(fs.Save(EditorSettingsStore.cFileName, .((uint8*)damaged.Ptr, damaged.Length)) case .Ok);
+
+		let store = scope Sedulous.Settings.Settings();
+		let loaded = EditorSettingsStore.Load(fs, store);
+		Test.Assert(loaded case .Err);
+		Test.Assert(!(loaded case .Err(.NotFound)));
+		Test.Assert(!fs.Exists(EditorSettingsStore.cFileName));
+		Test.Assert(fs.Exists(scope String(EditorSettingsStore.cFileName)..Append(".unreadable")));
+	}
+
+	[Test]
 	public static void RootsMembershipTogglesIdempotentlyAndRoundTripsThroughXml()
 	{
 		let dir = Scratch("scratch_export_roots", .. scope .());

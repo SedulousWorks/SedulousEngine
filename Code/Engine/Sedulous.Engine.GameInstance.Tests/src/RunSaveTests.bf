@@ -38,16 +38,22 @@ class RunSaveTests
 		Test.Assert(reread.Values.GetInt("best.level2", 0) == 4210);
 		Test.Assert(reread.Values.GetFloat("time.level2", 0.0f) == 41.5f);
 
-		// A file that is not a save: an empty save, and the file is left alone until the game
-		// writes.
+		// A file that is not a save: an empty save, and the file is set aside, so the game's next
+		// write never replaces what the player had.
 		let garbage = "not a save";
+		let aside = scope String(path)..Append(".unreadable");
 		Test.Assert(WriteFile(path, .((uint8*)garbage.Ptr, garbage.Length)) case .Ok);
 		let damaged = scope RunSave();
 		damaged.Open(path);
 		Test.Assert(damaged.Values.Count == 0);
+		damaged.Values.SetInt("best.level1", 99);
+		damaged.MarkChanged();
 		Test.Assert(damaged.Flush());
 		let bytes = scope List<uint8>();
-		Test.Assert(ReadFile(path, bytes) case .Ok);
+		Test.Assert(ReadFile(aside, bytes) case .Ok);
 		Test.Assert(bytes.Count == garbage.Length);
+		let after = scope RunSave();
+		after.Open(path);
+		Test.Assert(after.Values.GetInt("best.level1", 0) == 99);
 	}
 }

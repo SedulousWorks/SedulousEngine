@@ -106,6 +106,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Files: a game's save, the editor's settings and a project's export presets that do not read are
+  set aside as `<file>.unreadable` before anything is written, and the log says where. They were
+  replaced by an empty store or the defaults, which the next save wrote over the file.
 - Files: an XML file that is not well-formed, or could not be read whole, fails to load and says
   why. It was read as empty, so whatever loaded it got its defaults and could save them over it.
 - Files: every save replaces its file whole or not at all. Assets, scenes, settings, sources and

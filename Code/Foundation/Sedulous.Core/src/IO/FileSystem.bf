@@ -90,6 +90,27 @@ static
 		return .Ok;
 	}
 
+	/// Moves a file that could not be read out of the way, so that what replaces it never
+	/// writes over it and it can still be recovered by hand: to "<path>.unreadable", or
+	/// "<path>.unreadable-2", -3 and on when that is taken. `outAside` is where it went; an
+	/// error when it could not be moved, and then nothing may be written over it.
+	public static Result<void, ErrorCode> SetAsideUnreadable(StringView path, String outAside)
+	{
+		outAside.Set(path);
+		outAside.Append(".unreadable");
+		for (int n = 2; FileExists(outAside); n++)
+		{
+			outAside.Set(path);
+			outAside.AppendF(".unreadable-{}", n);
+		}
+		if (!MoveFile(path, outAside))
+		{
+			outAside.Clear();
+			return .Err(.Internal);
+		}
+		return .Ok;
+	}
+
 	/// A move that replaces an existing target. `File.Move` is POSIX `rename`, which does, on
 	/// Linux; on Windows it is `MoveFileW`, which refuses an existing target.
 	private static bool MoveReplacing(StringView from, StringView to)

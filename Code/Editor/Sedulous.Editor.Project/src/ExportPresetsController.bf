@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.VFS;
 
 namespace Sedulous.Editor.Project;
@@ -9,15 +10,52 @@ namespace Sedulous.Editor.Project;
 class ExportPresetsController
 {
 	private ExportPresetSet mSet = new .() ~ delete _;
+	/// Why the last Load did not read the file; empty when it did, or there was none.
+	private String mProblem = new .() ~ delete _;
+	/// The unread file is still there: Save never writes over it.
+	private bool mSaveRefused;
 
+	/// Loads the project's export_presets.xml. When it is absent (the first export), seeds the
+	/// built in default so the panel always has something to show and export. When it is there
+	/// but does not read, it is set aside first ("export_presets.xml.unreadable", LoadProblem
+	/// says where) so saving the defaults never writes over the presets it held; when it
+	/// cannot be moved, Save refuses instead.
 	public void Load(IFileSystem projectFs)
 	{
 		ClearAndDeleteItems(mSet.Presets);
-		if (ExportPresetsFile.Load(projectFs, mSet) case .Err)
-			ExportPresetsFile.Defaults(mSet);
+		mProblem.Clear();
+		mSaveRefused = false;
+		let loaded = ExportPresetsFile.Load(projectFs, mSet);
+		if (loaded case .Ok)
+			return;
+		ExportPresetsFile.Defaults(mSet);
+		if (loaded case .Err(.NotFound))
+			return;
+
+		let aside = scope String();
+		if (UnreadableFiles.SetAside(projectFs, ExportPresetsFile.cFileName, aside) case .Ok)
+		{
+			mProblem.AppendF("{} could not be read; it was moved to {} and the presets start again", ExportPresetsFile.cFileName, aside);
+		}
+		else
+		{
+			mProblem.AppendF("{} could not be read, nor moved aside; the presets are not saved over it", ExportPresetsFile.cFileName);
+			mSaveRefused = true;
+		}
+		GlobalLog(.Error, "Export: {}", mProblem);
 	}
 
-	public Result<void, ErrorCode> Save(IWritableFileSystem projectFs) => ExportPresetsFile.Save(projectFs, mSet);
+	/// Why the last Load did not read the project's presets; empty when it did, or there were
+	/// none.
+	public StringView LoadProblem => mProblem;
+
+	/// Refused over a file Load could not read or set aside.
+	public Result<void, ErrorCode> Save(IWritableFileSystem projectFs)
+	{
+		if (mSaveRefused)
+			return .Err(.InvalidArgument);
+		return ExportPresetsFile.Save(projectFs, mSet);
+	}
 
 	public int Count => mSet.Presets.Count;
 	public ExportPreset At(int index) => mSet.Presets[index];

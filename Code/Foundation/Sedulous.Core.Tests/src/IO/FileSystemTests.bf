@@ -102,6 +102,34 @@ class FileSystemTests
 		Test.Assert(RemoveDirectoryRecursive(scratch));
 	}
 
+	/// An unreadable file is moved out of the way under a free name, its bytes kept.
+	[Test]
+	public static void AnUnreadableFileIsSetAsideUnderAFreeNameItsBytesKept()
+	{
+		let scratch = "scratch_filesystem_aside";
+		RemoveDirectoryRecursive(scratch);
+		Test.Assert(CreateDirectory(scratch));
+		let path = PathJoin(scratch, "damaged.xml", .. scope String());
+		uint8[1] bytes = .((uint8)'x');
+		Test.Assert(WriteFile(path, .(&bytes[0], 1)) case .Ok);
+		let first = scope String();
+		Test.Assert(SetAsideUnreadable(path, first) case .Ok);
+		Test.Assert(first == scope String(path)..Append(".unreadable"));
+		Test.Assert(!FileExists(path));
+
+		Test.Assert(WriteFile(path, .(&bytes[0], 1)) case .Ok);
+		let second = scope String();
+		Test.Assert(SetAsideUnreadable(path, second) case .Ok);
+		Test.Assert(second == scope String(path)..Append(".unreadable-2"));
+		Test.Assert(FileExists(first));
+		let kept = scope List<uint8>();
+		Test.Assert(ReadFile(second, kept) case .Ok);
+		Test.Assert((kept.Count == 1) && (kept[0] == (uint8)'x'));
+
+		Test.Assert(SetAsideUnreadable(PathJoin(scratch, "no_such_file.xml", .. scope String()), scope String()) case .Err);
+		Test.Assert(RemoveDirectoryRecursive(scratch));
+	}
+
 	/// Two writers of one file never share a temporary, and a watcher skips it by its ending.
 	[Test]
 	public static void AWholeFileWritesTemporaryIsUniqueToTheWriteAndEndsInTmp()

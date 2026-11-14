@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Settings;
 using Sedulous.VFS;
@@ -17,16 +18,32 @@ static class EditorSettingsStore
 	public const String cFileName = "editor.settings.xml";
 
 	/// NotFound when the file is absent: a first run, the store staying empty and every
-	/// section reading as its defaults.
+	/// section reading as its defaults. A file there that does not read is set aside first
+	/// ("<file>.unreadable", UnreadableFiles.SetAside), so the defaults this run saves never
+	/// write over the sections it held (the recent projects most painfully); the log says
+	/// where it went.
 	public static Result<void, ErrorCode> Load(IFileSystem root, Settings outStore, StringView fileName = cFileName)
 	{
-		let stream = root.Open(fileName, .Read);
-		if (stream == null)
-			return .Err(.NotFound);
-		defer delete stream;
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		return outStore.Load(stream, factory);
+		Result<void, ErrorCode> loaded;
+		{
+			// Closed at the end of this block, before the file may be moved aside below.
+			let stream = root.Open(fileName, .Read);
+			if (stream == null)
+				return .Err(.NotFound);
+			defer delete stream;
+			let factory = XmlSerializerFactory();
+			defer delete factory;
+			loaded = outStore.Load(stream, factory);
+		}
+		if (loaded case .Ok)
+			return .Ok;
+
+		let aside = scope String();
+		if (UnreadableFiles.SetAside(root, fileName, aside) case .Ok)
+			GlobalLog(.Error, "Editor: {} could not be read; it was moved to {} and the settings start again", fileName, aside);
+		else
+			GlobalLog(.Error, "Editor: {} could not be read, nor moved aside; saving the settings will replace it", fileName);
+		return loaded;
 	}
 
 	public static Result<void, ErrorCode> Save(IWritableFileSystem root, Settings store, StringView fileName = cFileName)

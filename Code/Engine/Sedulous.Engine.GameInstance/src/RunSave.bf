@@ -24,9 +24,11 @@ class RunSave
 	private Settings mStore = new .() ~ delete _;
 	private bool mChanged = false;
 
-	/// Names the save's file and reads it. Absent is an empty save; unreadable is an empty save
-	/// and a warning, and the file is left as it is until the game writes. An empty path closes
-	/// the save: values stay readable but are written nowhere.
+	/// Names the save's file and reads it. Absent is an empty save. Unreadable is an empty save
+	/// and a warning, and the file is set aside first ("<path>.unreadable", SetAsideUnreadable)
+	/// so the game's next write never replaces the player's progress; when it cannot be moved,
+	/// the save is closed instead and this run writes nowhere. An empty path closes the save:
+	/// values stay readable but are written nowhere.
 	public void Open(StringView path)
 	{
 		mPath.Set(path);
@@ -38,15 +40,27 @@ class RunSave
 
 		// The load instantiates the section by its name.
 		SaveValues.Register();
-		let file = scope FileStream(mPath, .Read);
-		let factory = XmlSerializerFactory();
-		defer delete factory;
-		if (!file.IsValid || (mStore.Load(file, factory) case .Err))
+		bool read;
 		{
-			GlobalLog(.Warning, "Save: could not read the save '{}'; starting from an empty save", mPath);
-			delete mStore;
-			mStore = new .();
+			// Closed at the end of this block, before the file may be moved aside below.
+			let file = scope FileStream(mPath, .Read);
+			let factory = XmlSerializerFactory();
+			defer delete factory;
+			read = file.IsValid && (mStore.Load(file, factory) case .Ok);
 		}
+		if (read)
+			return;
+
+		delete mStore;
+		mStore = new .();
+		let aside = scope String();
+		if (SetAsideUnreadable(mPath, aside) case .Ok)
+		{
+			GlobalLog(.Warning, "Save: could not read the save '{}'; it was moved to '{}', and the game starts from an empty save", mPath, aside);
+			return;
+		}
+		GlobalLog(.Warning, "Save: could not read the save '{}', nor move it aside; this run writes no save, so the file stays as it is", mPath);
+		mPath.Clear();
 	}
 
 	public bool IsOpen => !mPath.IsEmpty;

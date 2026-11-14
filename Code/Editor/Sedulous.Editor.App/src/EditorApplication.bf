@@ -496,19 +496,13 @@ class EditorApplication : IApplication
 
 	/// Loads the per-user editor settings from <user-data>/editor.settings.xml, registering the
 	/// section types first (the per-project store's among them). Absent on a first run, the store
-	/// stays empty and the sections read as defaults.
+	/// stays empty and the sections read as defaults; a file that does not read is set aside and
+	/// logged by the load.
 	private void LoadEditorSettings()
 	{
 		EditorSerializables.RegisterAll();
 		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
-		if (EditorSettingsStore.LoadFromUserData(mEditorSettings) case .Err(let error))
-		{
-			// NotFound (a first run) is fine; anything else is a partial load, since Settings
-			// aborts at the first section it cannot make, which a later save would write back
-			// without the sections it dropped (the project registry most painfully).
-			if (error != .NotFound)
-				GlobalLog(.Error, "Editor: editor.settings.xml load FAILED (partial store), check for unregistered section types; later saves may drop sections");
-		}
+		EditorSettingsStore.LoadFromUserData(mEditorSettings).IgnoreError();
 	}
 
 	public void OnStartup(IApplicationHost host)
