@@ -98,9 +98,11 @@ class BloomPass
 	/// Declares the pyramid for one view's scene image, and answers the accumulated bloom at
 	/// half resolution, which the tone map composites.
 	///
-	/// An invalid handle means the view is too small to be worth it.
+	/// An invalid handle means the view is too small to be worth it. `maxLevels` caps the
+	/// pyramid's depth (a quality level's budget, 1 to MaxLevels): fewer levels, a tighter glow
+	/// for less work.
 	public RGHandle DeclareBloom(RenderGraph graph, RGHandle hdr, uint32 viewportWidth,
-		uint32 viewportHeight, float threshold, float knee)
+		uint32 viewportHeight, float threshold, float knee, uint32 maxLevels)
 	{
 		if ((viewportWidth < 4) || (viewportHeight < 4))
 			return .Invalid;
@@ -121,11 +123,13 @@ class BloomPass
 		if ((mDownPipeline == null) || (mUpPipeline == null))
 			return .Invalid;
 
-		// Halved until the levels get too small to say anything, and capped.
+		// Halved until the levels get too small to say anything, capped by the pass and by the
+		// view's budget.
+		let cap = Math.Clamp(maxLevels, (uint32)1, MaxLevels);
 		var levels = (uint32)1;
 		var width = viewportWidth / 2;
 		var height = viewportHeight / 2;
-		while ((levels < MaxLevels) && (width > 8) && (height > 8))
+		while ((levels < cap) && (width > 8) && (height > 8))
 		{
 			levels++;
 			width /= 2;

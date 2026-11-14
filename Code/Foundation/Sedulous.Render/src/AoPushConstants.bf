@@ -19,8 +19,29 @@ struct GtaoPush
 	public int32 DebugMode = 0;
 	/// One: the view rays are parallel, no divide by depth.
 	public int32 Orthographic = 0;
+	/// The horizon slices and the march steps per slice direction: the view's budget.
+	public int32 Slices = 3;
+	public int32 Steps = 6;
 
 	public this() {}
+}
+
+/// What AO may cost in one view (a quality level's tier): SSAO's kernel samples (1 to 16, the
+/// kernel's size), GTAO's slices and steps. The defaults are the full budgets.
+struct AoBudget
+{
+	public uint32 SsaoSamples = 16;
+	public uint32 GtaoSlices = 3;
+	public uint32 GtaoSteps = 6;
+
+	public this() {}
+
+	public this(uint32 ssaoSamples, uint32 gtaoSlices, uint32 gtaoSteps)
+	{
+		SsaoSamples = ssaoSamples;
+		GtaoSlices = gtaoSlices;
+		GtaoSteps = gtaoSteps;
+	}
 }
 
 /// The screen space estimator's constants.

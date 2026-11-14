@@ -349,9 +349,10 @@ highest, 4x MSAA and no antialiasing, when the game lists none), and the Game ta
 project's. A level's MSAA count and antialiasing are the scene pass's; an `Off` tier turns its
 effect off whatever the scene asks, `shadowDistanceMax` shortens the scene's shadow reach, and no
 tier turns an effect on. Which antialiasing runs is the level's alone: a scene's post settings
-keep only how TAA and FXAA look (`taaBlendFactor`, `taaVarianceGamma`, `fxaaSubpixel`). The `Low`
-to `High` tiers and the environment's resolution do not change an effect's cost yet: each runs
-as at `High`. A project saved before the levels opens with one, `Quality/Default`, at its old
+keep only how TAA and FXAA look (`taaBlendFactor`, `taaVarianceGamma`, `fxaaSubpixel`). `High` is
+each effect's full cost; `Medium` and `Low` cost less (fewer AO samples, SSR march steps, SSGI
+rays, bloom levels). The shadows' tier and the environment's resolution do not change their cost
+yet: each runs as at `High`. A project saved before the levels opens with one, `Quality/Default`, at its old
 MSAA count.
 
 **Colours**: every colour is written as it is meant to look, in sRGB, the value a colour picker

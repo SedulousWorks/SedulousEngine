@@ -361,4 +361,41 @@ class RenderPostChainTests
 			Test.Assert(Declared(frame, "debug.blit"));
 		}
 	}
+
+	/// The bloom pyramid takes the view's level budget (a quality level's bloom tier), at most
+	/// the pass's own: a 1024 view halves to seven levels.
+	[Test]
+	public static void TheBloomPyramidTakesTheViewsLevelBudgetAtMostThePasssOwn()
+	{
+		let fixture = scope RenderFrameFixture(1024, 1024);
+		if (!fixture.Ready)
+			return;
+
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let tonemap = scope TonemapPass(fixture.Device, fixture.Shaders, 2);
+		Test.Assert(tonemap.Initialize() case .Ok);
+		let bloom = scope BloomPass(fixture.Device, fixture.Shaders);
+		Test.Assert(bloom.Initialize() case .Ok);
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, tonemap, null, null, null, bloom);
+
+		let scene = scope ExtractedScene();
+		int Downs(uint8 budget)
+		{
+			var settings = ViewSettings();
+			settings.Post.BloomEnabled = true;
+			settings.Post.BloomMaxLevels = budget;
+			frame.Begin(fixture.Encoder, 0);
+			frame.AddView(scene, RenderFrameFixture.LookingAtTheOrigin(), settings, fixture.ColorView,
+				.BGRA8Unorm, 1024, 1024);
+			frame.End();
+			return DeclaredCount(frame, "bloom.down");
+		}
+		Test.Assert(Downs(7) == 7, "High: the full pyramid");
+		Test.Assert(Downs(4) == 4, "Low");
+		Test.Assert(Downs(12) == 7, "never past the pass's own");
+	}
 }

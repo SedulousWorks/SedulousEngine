@@ -1804,6 +1804,9 @@ class RenderFrame
 			{
 				var parameters = SsgiParams();
 				parameters.Intensity = post.SsgiIntensity;
+				// The view's budget (a quality level's tier).
+				parameters.RayCount = Math.Clamp((int32)post.SsgiRayCount, 1, 4);
+				parameters.MaxSteps = Math.Max((int32)post.SsgiMaxSteps, 1);
 				var sky = SsgiSky();
 				// The forward's own test for shading with the scene's environment.
 				if (ibl.Valid && (ibl.ShBuffer != null) && (ibl.PrefilterView != null)
@@ -1830,8 +1833,11 @@ class RenderFrame
 			// and fade, and lerp over the environment's specular where they hit.
 			if ((mSsr != null) && post.SsrEnabled)
 			{
+				// The view's enable, intensity and step budget over the frame wide settings (a
+				// lower frame wide step count, a debug panel's, stands).
 				var parameters = mSsrParams;
 				parameters.Intensity = post.SsrIntensity;
+				parameters.MaxSteps = Math.Min(parameters.MaxSteps, Math.Max((int32)post.SsrMaxSteps, 1));
 				sceneHdr = mSsr.DeclareSsr(mGraph, sceneHdr, postDepth, postNormal, postMaterial,
 					postVelocity, view.Width, view.Height, view.ViewportX, view.ViewportY,
 					view.ViewportWidth, view.ViewportHeight, Inverse(view.Camera.Projection),
@@ -1851,7 +1857,8 @@ class RenderFrame
 			{
 				aoHandle = mAo.DeclareAo(mGraph, postDepth, postNormal, view.Width, view.Height,
 					Inverse(view.Camera.Projection), view.Camera.Projection, post.AoRadius,
-					post.AoIntensity, mFrameIndex, aoMode, mAoDebug);
+					post.AoIntensity, mFrameIndex, aoMode,
+					AoBudget(post.SsaoSamples, post.GtaoSlices, post.GtaoSteps), mAoDebug);
 			}
 
 			let showAo = aoHandle.IsValid && (mAoDebug != 0);
@@ -1880,7 +1887,7 @@ class RenderFrame
 			var bloomHandle = RGHandle.Invalid;
 			if ((mBloom != null) && post.BloomEnabled && (post.BloomIntensity > 0.0f))
 				bloomHandle = mBloom.DeclareBloom(mGraph, sceneColor, view.Width, view.Height,
-					post.BloomThreshold, post.BloomKnee);
+					post.BloomThreshold, post.BloomKnee, post.BloomMaxLevels);
 
 			let bloomStrength = bloomHandle.IsValid ? post.BloomIntensity : 0.0f;
 			// A valid binding even when it is off.

@@ -122,10 +122,10 @@ class AoPass
 	public TextureFormat Format => AoFormat;
 
 	/// Declares the occlusion for one view, and answers the blurred result. An invalid handle
-	/// means the mode is off.
+	/// means the mode is off. `budget` is what it may cost (a quality level's tier).
 	public RGHandle DeclareAo(RenderGraph graph, RGHandle depth, RGHandle normal, uint32 width,
 		uint32 height, Float4x4 invProj, Float4x4 proj, float radius, float intensity,
-		uint32 frameIndex, AoMode mode, int32 debugMode = 0)
+		uint32 frameIndex, AoMode mode, AoBudget budget, int32 debugMode = 0)
 	{
 		if ((mode == .Off) || (width == 0) || (height == 0))
 			return .Invalid;
@@ -162,6 +162,8 @@ class AoPass
 			push.FrameMod = (int32)(frameIndex & 63);
 			push.DebugMode = debugMode;
 			push.Orthographic = proj.IsOrthographic ? 1 : 0;
+			push.Slices = (int32)Math.Clamp(budget.GtaoSlices, (uint32)1, (uint32)8);
+			push.Steps = (int32)Math.Clamp(budget.GtaoSteps, (uint32)1, (uint32)16);
 
 			DeclareGenerate(graph, depth, normal, raw, width, height, mGtaoPipeline, &push,
 				sizeof(GtaoPush));
@@ -179,7 +181,7 @@ class AoPass
 			push.Radius = radius;
 			push.Intensity = intensity;
 			push.Bias = 0.05f;
-			push.SampleCount = 16;
+			push.SampleCount = (int32)Math.Clamp(budget.SsaoSamples, (uint32)1, (uint32)16); // the kernel's size
 			push.DebugMode = debugMode;
 
 			DeclareGenerate(graph, depth, normal, raw, width, height, mSsaoPipeline, &push,

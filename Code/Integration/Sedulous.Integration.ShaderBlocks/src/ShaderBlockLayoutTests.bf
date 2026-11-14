@@ -221,7 +221,9 @@ class ShaderBlockLayoutTests
 		.("ProjScaleY", offsetof(GtaoPush, ProjScaleY)),
 		.("FrameMod", offsetof(GtaoPush, FrameMod)),
 		.("DebugMode", offsetof(GtaoPush, DebugMode)),
-		.("Orthographic", offsetof(GtaoPush, Orthographic)));
+		.("Orthographic", offsetof(GtaoPush, Orthographic)),
+		.("Slices", offsetof(GtaoPush, Slices)),
+		.("Steps", offsetof(GtaoPush, Steps)));
 
 	private static FieldRow[?] sSsaoPush = .(
 		.("InvProj", offsetof(SsaoPush, InvProj)),

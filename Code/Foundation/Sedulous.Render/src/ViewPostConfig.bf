@@ -71,5 +71,20 @@ struct ViewPostConfig
 	/// what the adapter has. One leaves the single sampled path exactly as it was.
 	public uint8 MsaaSamples = 1;
 
+	/// What each effect may cost in this view (a quality level's tiers): the sample, step, ray
+	/// and level budgets the passes take as they declare. The defaults are the passes' full
+	/// budgets.
+	public uint8 SsaoSamples = 16;
+	/// GTAO's horizon slices, and its march steps per slice direction.
+	public uint8 GtaoSlices = 3;
+	public uint8 GtaoSteps = 6;
+	/// SSR's march steps, at most: a lower frame wide setting (a debug panel's) stands.
+	public uint8 SsrMaxSteps = 96;
+	/// SSGI's hemisphere rays per pixel, and its march steps per ray.
+	public uint8 SsgiRayCount = 4;
+	public uint8 SsgiMaxSteps = 12;
+	/// Bloom's pyramid levels, at most.
+	public uint8 BloomMaxLevels = 7;
+
 	public this() {}
 }

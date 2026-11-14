@@ -63,6 +63,35 @@ class QualityLevelTests
 			Test.Assert(config.AoMode == 0);
 			Test.Assert(!config.SsrEnabled && !config.SsgiEnabled && !config.BloomEnabled);
 		}
+		// The tiers set what each effect may cost: High each pass's full budget, Medium and Low
+		// less.
+		{
+			var high = ScenePost.Resolve(scene);
+			QualityApply.Apply(ref high, scope RenderQualitySettings(), true);
+			Test.Assert((high.SsaoSamples == 16) && (high.GtaoSlices == 3) && (high.GtaoSteps == 6));
+			Test.Assert((high.SsrMaxSteps == 96) && (high.SsgiRayCount == 4) && (high.SsgiMaxSteps == 12));
+			Test.Assert(high.BloomMaxLevels == 7);
+			let medium = scope RenderQualitySettings();
+			medium.AmbientOcclusion = .Medium;
+			medium.Reflections = .Medium;
+			medium.GlobalIllumination = .Medium;
+			medium.Bloom = .Medium;
+			var mid = ScenePost.Resolve(scene);
+			QualityApply.Apply(ref mid, medium, true);
+			Test.Assert((mid.SsaoSamples == 12) && (mid.GtaoSlices == 2) && (mid.GtaoSteps == 6));
+			Test.Assert((mid.SsrMaxSteps == 64) && (mid.SsgiRayCount == 2) && (mid.BloomMaxLevels == 5));
+			let low = scope RenderQualitySettings();
+			low.AmbientOcclusion = .Low;
+			low.Reflections = .Low;
+			low.GlobalIllumination = .Low;
+			low.Bloom = .Low;
+			var lo = ScenePost.Resolve(scene);
+			QualityApply.Apply(ref lo, low, true);
+			Test.Assert((lo.SsaoSamples == 8) && (lo.GtaoSlices == 2) && (lo.GtaoSteps == 4));
+			Test.Assert((lo.SsrMaxSteps == 32) && (lo.SsgiRayCount == 1) && (lo.BloomMaxLevels == 4));
+			Test.Assert(lo.AoMode == (uint32)AoMode.GTAO, "Low still runs it");
+			Test.Assert(lo.SsrEnabled);
+		}
 		// Without `antialiasing` (a debug panel set its own), the view's AA stays as it was.
 		{
 			var config = ScenePost.Resolve(scene);

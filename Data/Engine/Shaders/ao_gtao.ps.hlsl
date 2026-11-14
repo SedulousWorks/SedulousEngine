@@ -18,13 +18,13 @@ struct GtaoPush {
     int    FrameMod;              // per-frame noise rotation (unused while AO is static)
     int    DebugMode;             // 0=AO, 2=Nx, 3=Ny, 4=Nz, 5=viewZ, 6=rawDepth
     int    Orthographic;          // 1: parallel view rays (projection.hlsli)
+    int    Slices;                // horizon slices (the view's quality budget)
+    int    Steps;                 // march steps per slice direction
 };
 PUSH_CONSTANT(GtaoPush, pc, space1);
 
 static const float PI     = 3.14159265359;
 static const float HALFPI = 1.57079632679;
-static const int   SLICES = 3;
-static const int   STEPS  = 6;
 
 float3 ViewPos(float2 uv, float depth) {
     float2 ndc = float2(uv.x * 2.0 - 1.0, (1.0 - uv.y) * 2.0 - 1.0);
@@ -58,8 +58,10 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     const float thickness = 0.1;
 
     float ao = 0.0;
-    [unroll] for (int s = 0; s < SLICES; ++s) {
-        float  phi  = (PI / float(SLICES)) * (float(s) + noiseSlice);
+    const int slices = max(pc.Slices, 1);
+    const int steps  = max(pc.Steps, 1);
+    [loop] for (int s = 0; s < slices; ++s) {
+        float  phi  = (PI / float(slices)) * (float(s) + noiseSlice);
         float2 dir2 = float2(cos(phi), sin(phi));
         float3 sliceDir = normalize(float3(dir2, 0.0));
 
@@ -77,8 +79,8 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float  n = -sign(dot(projN, T)) * acos(cosN);
 
         float2 hcos = float2(-1.0, -1.0);   // x = negative side, y = positive side
-        [unroll] for (int t = 1; t <= STEPS; ++t) {
-            float  r   = screenR * (float(t) - noiseStep) / float(STEPS);
+        [loop] for (int t = 1; t <= steps; ++t) {
+            float  r   = screenR * (float(t) - noiseStep) / float(steps);
             float2 off = dir2 * r;
             float2 up  = uv + off;
             if (all(up >= 0.0) && all(up <= 1.0)) {
@@ -103,7 +105,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float H2 = n + min( h2 - n,  HALFPI);
         ao += projLen * 0.25 * (ArcCosWeight(H1, n) + ArcCosWeight(H2, n));
     }
-    ao = saturate(ao / float(SLICES));
+    ao = saturate(ao / float(slices));
     ao = pow(ao, max(pc.Intensity, 0.01));
 
     if (pc.DebugMode == 2) { return float4(N.x * 0.5 + 0.5, 0, 0, 0); }
