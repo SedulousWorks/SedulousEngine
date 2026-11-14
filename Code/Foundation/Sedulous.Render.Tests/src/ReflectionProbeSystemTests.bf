@@ -199,4 +199,59 @@ class ReflectionProbeSystemTests
 		Test.Assert(probes.CpuProbes[0].Slice == sliceB);
 		Test.Assert(probes.CpuProbes[1].Slice == sliceA);
 	}
+
+	/// A slot goes back when its probe is gone. Slots were claimed for good, so once
+	/// cMaxProbes keys had ever been seen (probes deleted and added in the editor, levels loaded
+	/// one after another) every new probe was dropped.
+	[Test]
+	public static void TheSlotOfAProbeGoneGoesToTheNextProbe()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+
+		let probes = scope ReflectionProbeSystem(fixture.Device, fixture.Shaders);
+		Test.Assert(probes.Initialize() case .Ok);
+
+		let max = ReflectionProbeSystem.cMaxProbes;
+		let level = scope ExtractedScene();
+		var first = ReflectionProbe[ReflectionProbeSystem.cMaxProbes]();
+		for (uint32 i = 0; i < max; i++)
+			first[i] = Probe(100 + i, .((float)i, 1, 0));
+
+		probes.BeginFrame();
+		probes.Assign(level, .(&first[0], (int)max));
+		Test.Assert(probes.ActiveCount == max);
+		for (let task in probes.Captures)
+			probes.MarkCaptured(task.Slot);
+
+		// While every slot holds a probe of this frame, one more has nowhere to go.
+		let other = scope ExtractedScene();
+		var extra = ReflectionProbe[1](Probe(999, .(0, 0, 0)));
+		probes.BeginFrame();
+		probes.Assign(level, .(&first[0], (int)max));
+		probes.Assign(other, .(&extra[0], 1));
+		Test.Assert(probes.RangeFor(other).Count == 0);
+
+		// The probe in slot 3 is deleted: the next frame's new probe takes its slot and captures
+		// into it; the others keep theirs and are not captured again.
+		let freedSlice = probes.CpuProbes[3].Slice;
+		first[3].Key = 500;
+		probes.BeginFrame();
+		probes.Assign(level, .(&first[0], (int)max));
+		Test.Assert(probes.ActiveCount == max);
+		Test.Assert(probes.CpuProbes[3].Slice == freedSlice);
+		Test.Assert(probes.Captures.Length == 1);
+		Test.Assert((float)probes.Captures[0].Slot == freedSlice);
+		probes.MarkCaptured(probes.Captures[0].Slot);
+
+		// A scene that stops drawing gives its slots up in the order its probes were last seen.
+		probes.BeginFrame();
+		probes.Assign(level, .(&first[0], (int)max - 1));
+		probes.BeginFrame();
+		probes.Assign(other, .(&extra[0], 1));
+		Test.Assert(probes.ActiveCount == 1);
+		Test.Assert(probes.CpuProbes[0].Slice == (float)(max - 1));
+		Test.Assert(probes.Captures.Length == 1);
+	}
 }

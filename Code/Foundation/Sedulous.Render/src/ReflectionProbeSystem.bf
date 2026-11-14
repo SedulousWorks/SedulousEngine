@@ -44,6 +44,8 @@ class ReflectionProbeSystem
 		public bool Dirty;
 		/// The probe's capture request count when last seen.
 		public uint32 CaptureRequest;
+		/// The frame the probe was last assigned.
+		public uint64 LastSeen;
 	}
 
 	/// One scene's run of records, appended in the order the scenes are assigned.
@@ -97,6 +99,8 @@ class ReflectionProbeSystem
 
 	private Dictionary<uint64, uint32> mSlots = new .() ~ delete _;
 	private uint32 mNextSlot = 0;
+	/// BeginFrame's count, for SlotState.LastSeen.
+	private uint64 mFrame = 0;
 	private SlotState[cMaxProbes] mSlotStates = .();
 	private GpuProbe[cMaxProbes] mCpuProbes = .();
 	private uint32 mActive = 0;
@@ -168,6 +172,7 @@ class ReflectionProbeSystem
 			mPipelineShaderVersion = shaderVersion;
 		}
 
+		mFrame++;
 		mActive = 0;
 		mCaptures.Clear();
 		mSceneRanges.Clear();
@@ -178,6 +183,7 @@ class ReflectionProbeSystem
 	/// is what several views of one scene amount to, is a no op the second time.
 	///
 	/// A probe is marked for capture when it takes a new slot or its transform has changed.
+	/// A slot passes to another probe only once its own was not assigned in a frame (SlotFor).
 	/// Probes beyond the limit are dropped.
 	public uint32 Assign(ExtractedScene scene, Span<ReflectionProbe> probes)
 	{
@@ -224,6 +230,7 @@ class ReflectionProbeSystem
 			mSlotStates[slot].Signature = signature;
 			mSlotStates[slot].CaptureRequest = probe.CaptureRequest;
 			mSlotStates[slot].ProbeKey = probe.Key;
+			mSlotStates[slot].LastSeen = mFrame;
 
 			if (mSlotStates[slot].Dirty)
 			{
@@ -418,16 +425,36 @@ class ReflectionProbeSystem
 			+ mShaders.Version("probe_prefilter_ps");
 	}
 
-	/// The stable slot for a key: the one it already has, or the next free one.
+	/// The stable slot for a key: the one it already has, else the next never used, else the slot
+	/// of the probe seen longest ago that no scene assigned this frame (a probe gone, or one in a
+	/// scene no longer drawn, which captures again if it comes back). With every slot holding a
+	/// probe of this frame, none.
 	private uint32 SlotFor(uint64 key)
 	{
 		if (mSlots.TryGetValue(key, let existing))
 			return existing;
 
-		if (mNextSlot >= cMaxProbes)
-			return cInvalidSlot;
+		var slot = cInvalidSlot;
+		if (mNextSlot < cMaxProbes)
+		{
+			slot = mNextSlot++;
+		}
+		else
+		{
+			for (uint32 i = 0; i < cMaxProbes; i++)
+			{
+				let lastSeen = mSlotStates[i].LastSeen;
+				if ((lastSeen < mFrame) && ((slot == cInvalidSlot) || (lastSeen < mSlotStates[slot].LastSeen)))
+					slot = i;
+			}
+			if (slot == cInvalidSlot)
+				return cInvalidSlot;
 
-		let slot = mNextSlot++;
+			// Not captured: the new probe captures into it.
+			mSlots.Remove(mSlotStates[slot].ProbeKey);
+			mSlotStates[slot] = .();
+		}
+
 		mSlots[key] = slot;
 		return slot;
 	}

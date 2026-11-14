@@ -270,3 +270,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: the GPU copies of meshes that are gone (a level unloaded, an asset reimported) are
   freed and their space reused; every mesh ever drawn stayed in GPU memory until the renderer
   closed. A mesh rebuilt in place (`StaticMesh.ContentChanged`) uploads again.
+- Rendering: a reflection probe added after sixteen others had ever existed (probes deleted and
+  added in the editor, levels loaded one after another) now reflects; its slot was never handed
+  back, so it was dropped.
