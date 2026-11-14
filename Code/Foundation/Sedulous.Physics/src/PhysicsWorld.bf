@@ -512,9 +512,14 @@ class PhysicsWorld
 	}
 
 	/// A velocity correct kinematic move over the step, so what it pushes is pushed at the
-	/// speed it is actually travelling.
+	/// speed it is actually travelling. Refused for a body that is not kinematic (one asked
+	/// kinematic over a static only shape was made static).
 	public void MoveKinematic(BodyId id, Float3 position, Quaternion rotation, float deltaTime)
 	{
+		// The backend moves a static body through null motion properties: a kinematic asked
+		// over a static only shape is static here, and moving it crashed.
+		if (MotionOf(id) != .Kinematic)
+			return;
 		var p = ToJolt(position);
 		var r = ToJolt(rotation);
 		JPH_BodyInterface_MoveKinematic(Bodies, id.Value, &p, &r, deltaTime);
@@ -546,6 +551,21 @@ class PhysicsWorld
 	}
 
 	public bool IsActive(BodyId id) => JPH_BodyInterface_IsActive(Bodies, id.Value);
+
+	/// How the body moves as it was made, which can differ from what was asked: a moving body
+	/// over a mesh, plane or heightfield shape is static (CreateBody). Static for an invalid id.
+	public MotionKind MotionOf(BodyId id)
+	{
+		let bodies = Bodies;
+		if (!id.IsValid || !JPH_BodyInterface_IsAdded(bodies, id.Value))
+			return .Static;
+		switch (JPH_BodyInterface_GetMotionType(bodies, id.Value))
+		{
+		case .JPH_MotionType_Kinematic: return .Kinematic;
+		case .JPH_MotionType_Dynamic: return .Dynamic;
+		default: return .Static;
+		}
+	}
 
 	public uint64 UserData(BodyId id) => JPH_BodyInterface_GetUserData(Bodies, id.Value);
 

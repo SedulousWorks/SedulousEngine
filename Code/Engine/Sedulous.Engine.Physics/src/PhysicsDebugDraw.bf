@@ -69,7 +69,7 @@ static class PhysicsDebugDraw
 		world.GetBodyTransform(component.Body, let position, let rotation);
 
 		let color = component.IsTrigger ? cTrigger
-			: (component.Motion == .Dynamic)
+			: (component.EffectiveMotion == .Dynamic)
 				? (world.IsActive(component.Body) ? cAwake : cAsleep)
 				: cStatic;
 

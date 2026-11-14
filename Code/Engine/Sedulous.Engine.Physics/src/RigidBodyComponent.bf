@@ -86,6 +86,10 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 
 	[Hidden]
 	public BodyId Body = .();
+	/// How the body moves as made (PhysicsWorld.MotionOf), which the scene system drives it by:
+	/// a moving body over a static only shape (mesh, plane, heightfield) is static.
+	[Hidden]
+	public MotionKind EffectiveMotion = .Static;
 
 	/// An impulse applied BEFORE the body existed, which is what a script that spawns a thing
 	/// and launches it in the same frame produces. Accumulated while the handle is invalid,

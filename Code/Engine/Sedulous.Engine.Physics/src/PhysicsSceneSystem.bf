@@ -384,7 +384,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 			// rather than teleported, so what it pushes is pushed rather than penetrated.
 			bodies.ForEach(scope (component, entity) =>
 				{
-					if (!component.Body.IsValid || (component.Motion != .Kinematic))
+					if (!component.Body.IsValid || (component.EffectiveMotion != .Kinematic))
 						return;
 
 					if (Decompose(mScene.GetWorldMatrix(entity), let position,
@@ -396,7 +396,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 			// script holds is added again before every step it should act in.
 			bodies.ForEach(scope (component, entity) =>
 				{
-					if (component.Body.IsValid && (component.Motion == .Dynamic)
+					if (component.Body.IsValid && (component.EffectiveMotion == .Dynamic)
 						&& ((component.HeldForce.X != 0.0f) || (component.HeldForce.Y != 0.0f) || (component.HeldForce.Z != 0.0f)))
 						mWorld.AddForce(component.Body, component.HeldForce);
 				});
@@ -427,7 +427,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 			// The dynamic poses into the double buffer, which is what the interpolation reads.
 			bodies.ForEach(scope (component, entity) =>
 				{
-					if (!component.Body.IsValid || (component.Motion != .Dynamic))
+					if (!component.Body.IsValid || (component.EffectiveMotion != .Dynamic))
 						return;
 
 					component.PrevPosition = component.CurrPosition;
@@ -530,7 +530,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 
 		bodies.ForEach(scope (component, entity) =>
 			{
-				if (!component.Body.IsValid || (component.Motion != .Dynamic))
+				if (!component.Body.IsValid || (component.EffectiveMotion != .Dynamic))
 					return;
 
 				let position = Lerp(component.PrevPosition, component.CurrPosition, alpha);
@@ -692,6 +692,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		let rotation = desc.Rotation;
 
 		component.Body = mWorld.CreateBody(desc);
+		component.EffectiveMotion = mWorld.MotionOf(component.Body); // static for a moving body over a static only shape
 		component.PrevPosition = position;
 		component.CurrPosition = position;
 		component.PrevRotation = rotation;

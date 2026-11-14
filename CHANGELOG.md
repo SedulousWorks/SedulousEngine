@@ -248,3 +248,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   pose; it drew from the animator's freed matrices.
 - Rendering: an instanced mesh set restored by an undo or a reload draws its restored instances;
   it drew the ones it held before, and read past them when it had fewer.
+- Physics: a kinematic body over a mesh, plane or heightfield shape, simulated as static (as the
+  log says), is no longer moved as a kinematic one, which crashed the game when its entity moved.

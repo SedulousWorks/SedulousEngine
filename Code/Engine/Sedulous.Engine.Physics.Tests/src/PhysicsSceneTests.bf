@@ -338,4 +338,34 @@ class PhysicsSceneTests
 		Test.Assert(play.Physics.World.RayCast(.(0, 3, 0), .(0, -1, 0), 10.0f, let raw));
 		Test.Assert(Math.Abs(raw.Position.Y - 1.0f) < 1e-3f);
 	}
+
+	/// A kinematic body over a plane is made static, and is never moved as a kinematic one: each
+	/// step's kinematic move on the static body read its missing motion properties.
+	[Test]
+	public static void AKinematicBodyOverAPlaneIsMadeStaticAndNeverMovedAsKinematic()
+	{
+		let play = scope PhysicsPlayScene();
+		let platform = play.Scene.CreateEntity("platform");
+		{
+			let body = play.Bodies.Add(platform);
+			body.Motion = .Kinematic; // asked kinematic, over a static only shape
+			body.Shape = .Plane;
+		}
+		play.Start();
+		play.Step(1);
+		let body = play.Bodies.Get(platform);
+		Test.Assert(body != null);
+		Test.Assert(body.Body.IsValid);
+		Test.Assert(body.EffectiveMotion == .Static);
+		Test.Assert(play.Physics.World.MotionOf(body.Body) == .Static);
+
+		// The scene moves it, as a script moving a platform would: the step drives it as what it is.
+		play.Scene.SetLocalPosition(platform, .(0.0f, 2.0f, 0.0f));
+		play.Scene.UpdateTransforms();
+		play.Step(10);
+		play.Physics.World.MoveKinematic(body.Body, .(0.0f, 3.0f, 0.0f), .Identity, 1.0f / 60.0f); // refused
+		Test.Assert(play.Physics.World.MotionOf(body.Body) == .Static);
+		play.Physics.World.GetBodyTransform(body.Body, let position, ?);
+		Test.Assert(Near(position.Y, 0.0f), "never moved");
+	}
 }
