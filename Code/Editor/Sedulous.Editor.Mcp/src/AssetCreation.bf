@@ -5,8 +5,9 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Mcp;
 
-/// asset_create's work, the same on every host: the group resolved (made when missing), a
-/// taken name refused, the creator run. Main thread: it writes the source database.
+/// asset_create's work, the same on every host: the group resolved (made when missing), a name
+/// the New dialog refuses (EditorProject.AssetNameRefusal: a name is one plain file name) or a
+/// taken one refused, the creator run. Main thread: it writes the source database.
 static class AssetCreation
 {
 	/// The new instance, or null with the reason in `outError`.
@@ -16,6 +17,12 @@ static class AssetCreation
 		let picked = request.GroupPath.IsEmpty ? null : McpTools.ResolveGroupPath(root, request.GroupPath);
 		if (!request.Name.IsEmpty)
 		{
+			let refused = EditorProject.AssetNameRefusal(request.Name, .. scope .());
+			if (!refused.IsEmpty)
+			{
+				outError.Append(refused);
+				return null;
+			}
 			// Where the creator will put it; a name taken there is refused, not suffixed: an
 			// agent that names an asset means that name.
 			let target = request.Creator.TargetFor(picked, root);

@@ -761,6 +761,43 @@ static class ExportTemplateTests
 	}
 
 	[Test]
+	public static void RemovingATemplateDeletesTheFolderItsManifestNamesNeverAPathFromItsId()
+	{
+		let root = Scratch("scratch_templates_remove_safe", .. scope .());
+		let victim = Scratch("scratch_templates_victim", .. scope .());
+		defer { RemoveDirectoryRecursive(root); RemoveDirectoryRecursive(victim); }
+		SaveText(victim, "f.txt", "keep");
+
+		// An id that is a path out of the root names no template there: nothing is deleted.
+		Test.Assert(ExportTemplates.Remove(root, "../scratch_templates_victim") case .Err(.NotFound));
+		Test.Assert(FileExists(PathJoin(victim, "f.txt", .. scope .())));
+
+		// A template whose folder was renamed by hand is still the one removed by its id.
+		let rootFs = scope NativeFileSystem(root);
+		let t = scope ExportTemplate();
+		t.Id.Set("web-release");
+		t.Platform.Set("Web");
+		Test.Assert(ExportTemplates.SaveManifest(rootFs, t, "renamed-by-hand/template.xml") case .Ok);
+		Test.Assert(ExportTemplates.Remove(root, "web-release") case .Ok);
+		Test.Assert(!DirectoryExists(PathJoin(root, "renamed-by-hand", .. scope .())));
+	}
+
+	[Test]
+	public static void ImportingATemplateWhoseIdIsAPathIsRefused()
+	{
+		let src = Scratch("scratch_templates_import_src", .. scope .());
+		let root = Scratch("scratch_templates_import_root", .. scope .());
+		defer { RemoveDirectoryRecursive(src); RemoveDirectoryRecursive(root); }
+		let srcFs = scope NativeFileSystem(src);
+		let t = scope ExportTemplate();
+		t.Id.Set("../escaped");
+		t.Platform.Set("Web");
+		Test.Assert(ExportTemplates.SaveManifest(srcFs, t) case .Ok);
+		Test.Assert(ExportTemplates.Import(src, root) case .Err(.InvalidArgument));
+		Test.Assert(!DirectoryExists(PathJoin(root, "../escaped", .. scope .())));
+	}
+
+	[Test]
 	public static void RootsMembershipTogglesIdempotentlyAndRoundTripsThroughXml()
 	{
 		let dir = Scratch("scratch_export_roots", .. scope .());

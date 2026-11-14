@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Content;
+using Sedulous.Core.IO;
 
 namespace Sedulous.Pipeline.Core;
 
@@ -60,6 +61,27 @@ class AssetCreator
 		if (DefaultGroup.IsEmpty)
 			return root;
 		return (root != null) ? root.GetGroup(DefaultGroup) : null;
+	}
+
+	/// The file a linked source asset named `name` takes under `sourcesRoot`: "<name><suffix>"
+	/// (the dotted extension, ".xml"), or the first free "<name>.2<suffix>", ".3" and on. Names
+	/// are unique per group but the sources folder is flat, so another group's asset of that
+	/// name may hold the file already, and a creation never writes over it. False when `name`
+	/// is not one plain file name.
+	public static bool FreeSourceFileName(StringView sourcesRoot, StringView name, StringView suffix, String outFileName)
+	{
+		if (!PathIsPlainComponent(name))
+			return false;
+		outFileName.Set(name);
+		outFileName.Append(suffix);
+		let path = PathJoin(sourcesRoot, outFileName, .. scope .());
+		for (int n = 2; FileExists(path); n++)
+		{
+			outFileName.Set(name);
+			outFileName.AppendF(".{}{}", n, suffix);
+			PathJoin(sourcesRoot, outFileName, path);
+		}
+		return true;
 	}
 
 	/// A uniquely named instance of `type` in `group`, holding `asset` as written: the shape

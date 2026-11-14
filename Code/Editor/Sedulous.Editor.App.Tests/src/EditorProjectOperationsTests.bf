@@ -351,4 +351,24 @@ class EditorProjectOperationsTests
 		Test.Assert(ops.Create(scope ToolCall(), request, outcome, error) == .Failed);
 		Test.Assert(error.Contains("already exists"), error);
 	}
+
+	/// A creation's name follows the New dialog's rule, so it is one file name.
+	[Test]
+	public static void ACreationsNameFollowsTheDialogsRule()
+	{
+		let bench = scope Bench("mcp_ops_create_name");
+		let ops = scope EditorProjectOperations(bench.Seams());
+		let probe = scope AssetCreator("Probe", "", typeof(ProbeAsset), new (context) =>
+			AssetCreator.CreateWritten(context.Target, context.NameOr("Probe"), typeof(ProbeAsset), scope ProbeAsset()));
+		for (let bad in StringView[?]("../Escape", "/abs", "C:x", "Ends."))
+		{
+			CreateRequest request = .();
+			request.Creator = probe;
+			request.Name = bad;
+			let outcome = scope CreateOutcome();
+			let error = scope String();
+			Test.Assert(ops.Create(scope ToolCall(), request, outcome, error) == .Failed, scope String(bad));
+			Test.Assert(!error.IsEmpty);
+		}
+	}
 }

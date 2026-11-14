@@ -142,4 +142,29 @@ class PathTests
 		PathJoin("/c", "d", joined);
 		Test.Assert(joined == "/c/d");
 	}
+
+	/// A name or a path read from a file stays inside the folder it is joined to.
+	[Test]
+	public static void ANameOrAPathReadFromAFileStaysInsideItsFolder()
+	{
+		Test.Assert(PathIsPlainComponent("web-release"));
+		Test.Assert(PathIsPlainComponent("Rock.2"));
+		Test.Assert(!PathIsPlainComponent(""));
+		Test.Assert(!PathIsPlainComponent("."));
+		Test.Assert(!PathIsPlainComponent(".."));
+		Test.Assert(!PathIsPlainComponent("a/b"));
+		Test.Assert(!PathIsPlainComponent("a\\b"));
+		Test.Assert(!PathIsPlainComponent("C:"));
+
+		Test.Assert(PathStaysInside("textures/shared/x.dds"));
+		Test.Assert(PathStaysInside("./x.bin"));
+		Test.Assert(!PathStaysInside(""));
+		Test.Assert(!PathStaysInside("/home/u/.bashrc"));
+		Test.Assert(!PathStaysInside("\\\\server\\share\\x"));
+		Test.Assert(!PathStaysInside("C:/x"));
+		Test.Assert(!PathStaysInside("C:x"));
+		Test.Assert(!PathStaysInside("a/../../x"));
+		Test.Assert(!PathStaysInside("a//x"));
+		Test.Assert(!PathStaysInside("http://x/y"));
+	}
 }

@@ -221,6 +221,41 @@ static class GuiPipelineTests
 		Test.Assert(said.IsEmpty);
 	}
 
+	/// Names are unique per group but the sources folder is flat: a second "Menu" document in
+	/// another group takes its own file, never the first one's, and a name that is not one file
+	/// name is refused.
+	[Test]
+	public static void AFileBackedCreationNeverWritesOverAnotherAssetsSource()
+	{
+		let creators = scope AssetCreatorRegistry();
+		GuiCreators.Register(creators);
+		let document = creators.FindByLabel("GUI Document");
+		Test.Assert(document != null);
+
+		let root = "scratch_guipipe_flat";
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let sources = PathJoin(root, "Sources", .. scope .());
+		let dbRoot = PathJoin(root, "db", .. scope .());
+		Test.Assert(CreateDirectory(root) && CreateDirectory(sources) && CreateDirectory(dbRoot));
+		let mount = scope NativeFileSystem(dbRoot);
+		SerializerFactory factory = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let db = scope ContentDatabase(mount, factory, "asset");
+		let a = db.RootGroup.CreateGroup("A");
+		let b = db.RootGroup.CreateGroup("B");
+
+		Test.Assert(document.Create(a, db.RootGroup, sources, "Menu") != null);
+		let first = PathJoin(sources, "Menu.xml", .. scope .());
+		Write(first, "<edited/>");
+
+		Test.Assert(document.Create(b, db.RootGroup, sources, "Menu") != null);
+		Test.Assert(ReadText(first, .. scope .()) == "<edited/>", "the first document's source is its own");
+		Test.Assert(FileExists(PathJoin(sources, "Menu.2.xml", .. scope .())));
+
+		Test.Assert(document.Create(b, db.RootGroup, sources, "../Escape") == null);
+		Test.Assert(!FileExists(PathJoin(root, "Escape.xml", .. scope .())));
+	}
+
 	private static void Write(StringView path, StringView text)
 		=> Test.Assert(WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Ok);
 

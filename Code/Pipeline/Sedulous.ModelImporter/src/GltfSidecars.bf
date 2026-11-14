@@ -71,19 +71,13 @@ static class GltfSidecars
 			// An inline payload is already inside the file that was copied.
 			if ((uri.Length >= 5) && (uri.Substring(0, 5) == "data:"))
 				continue;
-			// A reference climbing out of the model's own directory would land outside the
-			// sources tree, which is not somewhere an import may write.
-			var escapes = false;
-			for (int k = 0; (k + 1) < uri.Length; ++k)
+			// Only a path that stays under the model's folder: an absolute one, a drive, a
+			// scheme or a ".." would read, and then write, outside the package and the sources.
+			if (!PathStaysInside(uri))
 			{
-				if ((uri[k] == '.') && (uri[k + 1] == '.'))
-				{
-					escapes = true;
-					break;
-				}
-			}
-			if (escapes)
+				GlobalLog(.Warning, "Import: the glTF sidecar '{}' leaves the model's folder, so it is skipped", uri);
 				continue;
+			}
 
 			let from = scope String(dir);
 			from.Append(uri);

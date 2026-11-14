@@ -112,6 +112,42 @@ static
 		outParent.Append(StringView(path, 0, lastSeparator));
 	}
 
+	/// Whether `name` is one plain path component: not empty, not "." or "..", with no
+	/// separator and no colon (a drive, a scheme). What a name read from a file must be before
+	/// it is joined onto a folder, so the join stays a child of that folder.
+	public static bool PathIsPlainComponent(StringView name)
+	{
+		if (name.IsEmpty || (name == ".") || (name == ".."))
+			return false;
+		for (let c in name)
+		{
+			if (PathIsSeparator(c) || (c == ':') || (c == '\0'))
+				return false;
+		}
+		return true;
+	}
+
+	/// Whether `path` is relative and stays under the folder it is joined to: not absolute, no
+	/// colon (a drive, a scheme), and no ".." or empty component. What a path read from a file
+	/// (a model's texture uri) must be before it is joined onto a folder.
+	public static bool PathStaysInside(StringView path)
+	{
+		if (path.IsEmpty || PathIsAbsolute(path))
+			return false;
+		int start = 0;
+		for (int i = 0; i <= path.Length; i++)
+		{
+			if ((i == path.Length) || PathIsSeparator(path[i]))
+			{
+				let part = StringView(path, start, i - start);
+				if ((part != ".") && !PathIsPlainComponent(part))
+					return false;
+				start = i + 1;
+			}
+		}
+		return true;
+	}
+
 	/// Joins two paths with exactly one separator. An absolute second part wins outright.
 	///
 	/// Not corlib's Combine, which joins with the platform separator. These paths are

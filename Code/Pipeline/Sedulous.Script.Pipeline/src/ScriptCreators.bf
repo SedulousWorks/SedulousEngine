@@ -61,7 +61,8 @@ static class ScriptCreators
 	}
 
 	/// A new class from the language cook's starter for `tier`: the source file under the
-	/// sources folder, and the asset pointing at it. Refused without a sources folder.
+	/// sources folder (the next free name when another asset's file has that one), and the asset
+	/// pointing at it. Refused without a sources folder or for a name that is not one file name.
 	public static Instance CreateScript(AssetCreationContext context, StringView languageId, StringView fileSuffix, ScriptTier tier, StringView baseName)
 	{
 		let target = context.Target;
@@ -71,9 +72,9 @@ static class ScriptCreators
 		if (cook == null)
 			return null;
 		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
-		let fileName = scope String(name);
-		fileName.Append('.');
-		fileName.Append(fileSuffix);
+		let fileName = scope String();
+		if (!AssetCreator.FreeSourceFileName(context.SourcesRoot, name, scope $".{fileSuffix}", fileName))
+			return null;
 		let starter = scope String();
 		let className = ClassNameFor(name, baseName, .. scope .());
 		cook.NewAssetTemplate(tier, className, starter);

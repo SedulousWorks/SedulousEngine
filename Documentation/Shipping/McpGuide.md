@@ -288,7 +288,10 @@ particle effects, animation graphs, physics, audio and UI assets, primitive mesh
 classes) come from `asset_create`: `asset_creators` lists every creator with the `type` it
 makes and the `defaultGroup` it lands in; pass `creator` by label (or `type` when one
 creator makes it), optionally `name` and `group`. A name already taken in the target group
-is refused rather than renamed. A data asset's content (an input map's actions and bindings,
+is refused rather than renamed, and a `name` follows the New dialog's rule (no
+`/ \ : * ? " < > |`, no space at an end, no dot at the end). A script, shader or GUI document
+whose name another group's asset already holds gets its own source file (`Menu.2.xml`), never
+the other one's. A data asset's content (an input map's actions and bindings,
 a material, a physics material, a sound cue) is edited through its envelope:
 `asset_data_read` gives the XML, and `asset_data_write` takes the edited whole back, loading it
 exactly as the engine would and refusing it, unchanged, when it does not load. Enum fields are

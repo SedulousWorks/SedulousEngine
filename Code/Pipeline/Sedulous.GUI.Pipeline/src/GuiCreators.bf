@@ -18,8 +18,9 @@ static class GuiCreators
 			CreateWithStarterFile(context, "GuiStyleSheet", ".css", GuiPipeline.cStyleSheetStarter, typeof(GuiStyleSheetAsset), scope GuiStyleSheetAsset())));
 	}
 
-	/// The starter text under the sources folder as the instance's name plus `suffix`, and the asset
-	/// pointing at it. Refused without a sources folder.
+	/// The starter text under the sources folder as the instance's name plus `suffix` (the next
+	/// free name when another asset's file has that one), and the asset pointing at it. Refused
+	/// without a sources folder or for a name that is not one file name.
 	private static Instance CreateWithStarterFile<T>(AssetCreationContext context, StringView baseName, StringView suffix,
 		StringView starter, Type type, T asset) where T : Asset, Sedulous.Core.Serialization.ISerializable
 	{
@@ -27,7 +28,9 @@ static class GuiCreators
 		if ((target == null) || context.SourcesRoot.IsEmpty)
 			return null;
 		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
-		let fileName = scope $"{name}{suffix}";
+		let fileName = scope String();
+		if (!AssetCreator.FreeSourceFileName(context.SourcesRoot, name, suffix, fileName))
+			return null;
 		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
 		if (WriteFile(path, Span<uint8>((uint8*)starter.Ptr, starter.Length)) case .Err)
 			return null;

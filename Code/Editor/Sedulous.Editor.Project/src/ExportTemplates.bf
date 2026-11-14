@@ -359,6 +359,9 @@ static class ExportTemplates
 		let manifest = scope ExportTemplate();
 		if ((LoadManifest(srcFs, manifest) case .Err) || manifest.Id.IsEmpty)
 			return .Err(.NotFound);
+		// The id names the folder it lands in: one plain name, never a path out of the root.
+		if (!PathIsPlainComponent(manifest.Id))
+			return .Err(.InvalidArgument);
 		CreateDirectory(templatesRoot);
 		let dst = PathJoin(templatesRoot, manifest.Id, .. scope .());
 		// As an install does, the bundle is replaced whole; unless it IS the source, a bundle
@@ -383,15 +386,28 @@ static class ExportTemplates
 		return fullA == fullB;
 	}
 
-	/// Deletes an installed bundle; NotFound when there is none.
+	/// Deletes an installed bundle: the folder whose template.xml names `templateId`, among the
+	/// root's own folders. Never a path built from the id (which a bundle wrote), and the right
+	/// folder when one was renamed by hand. NotFound when there is none.
 	public static Result<void, ErrorCode> Remove(StringView templatesRoot, StringView templateId)
 	{
 		if (templateId.IsEmpty)
 			return .Err(.InvalidArgument);
-		let dir = PathJoin(templatesRoot, templateId, .. scope .());
-		if (!DirectoryExists(dir))
+		let rootFs = scope NativeFileSystem(templatesRoot);
+		let entries = scope List<DirEntry>();
+		defer { for (var entry in entries) entry.Dispose(); }
+		if (rootFs.Enumerate("", entries) case .Err)
 			return .Err(.NotFound);
-		return RemoveDirectoryRecursive(dir) ? .Ok : .Err(.Internal);
+		for (let entry in entries)
+		{
+			if (!entry.IsDirectory)
+				continue;
+			let manifest = scope ExportTemplate();
+			if ((LoadManifest(rootFs, manifest, PathJoin(entry.Name, cManifestFile, .. scope .())) case .Err) || (manifest.Id != templateId))
+				continue;
+			return RemoveDirectoryRecursive(PathJoin(templatesRoot, entry.Name, .. scope .())) ? .Ok : .Err(.Internal);
+		}
+		return .Err(.NotFound); // nothing to delete, so it was not there
 	}
 
 	/// A file copied between directories; the caller's names.
