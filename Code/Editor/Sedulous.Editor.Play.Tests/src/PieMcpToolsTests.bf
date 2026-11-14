@@ -147,6 +147,41 @@ class PieMcpToolsTests
 		public bool PhonePreview => Phone;
 		public void SelectPhonePreview(bool on) { Phone = on; }
 
+		/// The quality dropdown: the preset's level, then two of the project's, the preset's
+		/// chosen.
+		public List<GameQualityChoice> Qualities = new .() ~ DeleteContainerAndItems!(_);
+		public String QualityKeyValue = new .(GameResolution.cPresetQualityKey) ~ delete _;
+		public List<GameQualityChoice> QualityChoices()
+		{
+			if (Qualities.IsEmpty)
+			{
+				AddQuality(GameResolution.cPresetQualityKey, "Quality: the preset's");
+				AddQuality("11111111-0000-0000-0000-000000000001", "Quality/Low");
+				AddQuality("11111111-0000-0000-0000-000000000002", "Quality/High");
+			}
+			return Qualities;
+		}
+		private void AddQuality(StringView key, StringView label)
+		{
+			let choice = new GameQualityChoice();
+			choice.Key.Set(key);
+			choice.Label.Set(label);
+			Qualities.Add(choice);
+		}
+		public StringView QualityKey => QualityKeyValue;
+		public bool SelectQuality(StringView key)
+		{
+			for (let choice in QualityChoices())
+			{
+				if (choice.Key == key)
+				{
+					QualityKeyValue.Set(key);
+					return true;
+				}
+			}
+			return false;
+		}
+
 		/// The cook went idle: the run starts (or fails to) in the scene.
 		public void CookDone(StringView scene)
 		{
@@ -268,7 +303,7 @@ class PieMcpToolsTests
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == PieMcpTools.cPieToolCount);
-		Test.Assert(PieMcpTools.cPieToolCount == 7, "a tripwire: bump deliberately when a PIE tool comes or goes");
+		Test.Assert(PieMcpTools.cPieToolCount == 8, "a tripwire: bump deliberately when a PIE tool comes or goes");
 
 		// Nothing open: the state names the fix; no project, and the play action refuses.
 		{
@@ -845,6 +880,52 @@ class PieMcpToolsTests
 			let stopped = Call(server, "entity_inspect", "{\"pie\":\"game-page-1\",\"entity\":\"Player\"}");
 			defer delete stopped;
 			Test.Assert(stopped.Error.StartsWith("PIE instance 'game-page-1' is not running a scene"), stopped.Error);
+		}
+	}
+
+	/// pie_quality reads a tab's quality level and chooses one by its key or its label in any
+	/// case, on the tab asked for only; one matching nothing is an error naming what there is,
+	/// and the choice stands.
+	[Test]
+	public static void PieQualityReadsTheTabsLevelAndChoosesByKeyOrLabel()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let client = RunningPie(context, "game-page-1");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+
+		// Read: the preset's level first, then the project's levels.
+		{
+			let got = Call(server, "pie_quality", "{}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(got.Payload.Get("level").Get("key").AsString() == GameResolution.cPresetQualityKey);
+			Test.Assert(got.Payload.Get("choices").Count == 3);
+		}
+		// By label, in any case, on the tab asked for only.
+		{
+			let got = Call(server, "pie_quality", "{\"pie\":\"game-page-1\",\"level\":\"quality/low\"}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(client.QualityKeyValue == "11111111-0000-0000-0000-000000000001");
+			Test.Assert(host.QualityKeyValue == GameResolution.cPresetQualityKey);
+			Test.Assert(got.Payload.Get("level").Get("label").AsString() == "Quality/Low");
+		}
+		// By key, back to the preset's.
+		{
+			let got = Call(server, "pie_quality", "{\"pie\":\"game-page-1\",\"level\":\"preset\"}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(client.QualityKeyValue == GameResolution.cPresetQualityKey);
+		}
+		// Nothing of that name: an error naming what there is; the choice stands.
+		{
+			let got = Call(server, "pie_quality", "{\"pie\":\"game-page-1\",\"level\":\"Ultra\"}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.Contains("Quality/High"), got.Error);
+			Test.Assert(client.QualityKeyValue == GameResolution.cPresetQualityKey);
 		}
 	}
 

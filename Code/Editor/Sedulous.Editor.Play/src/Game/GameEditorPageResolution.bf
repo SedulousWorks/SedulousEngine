@@ -26,7 +26,8 @@ class GamePageSettings
 /// dropdown from the markup. A fixed choice is fitted into the panel by the project's render fit,
 /// as the player fits it into its window, and turned when the game is held to the other
 /// orientation. The phone toggle makes the tab's screen a phone held upright, letterboxed in the
-/// panel.
+/// panel. The quality dropdown plays the game at the previewed preset's level (else the
+/// project's starting one) or at one of the project's levels, for the session.
 extension GameEditorPage
 {
 	/// Seconds between looks at whether the choices changed (a preset, the project's
@@ -53,6 +54,10 @@ extension GameEditorPage
 	private ScreenOrientation mOrientation = .Any;
 	private bool mPhonePreview = false;
 	private ButtonBase mPhoneToggle = null;
+	/// The quality dropdown's entries and its choice, for the session (not saved).
+	private ComboBox mQualityCombo = null;
+	private List<GameQualityChoice> mQualityChoices = new .() ~ DeleteContainerAndItems!(_);
+	private String mQualityKey = new .(GameResolution.cPresetQualityKey) ~ delete _;
 
 	private void BindResolution()
 	{
@@ -146,6 +151,109 @@ extension GameEditorPage
 			return;
 		mResolutionRefresh = cResolutionRefreshSeconds;
 		RefreshResolutionChoices(false);
+		RefreshQualityChoices(); // the project's levels change with its settings too
+	}
+
+	private void BindQuality()
+	{
+		mQualityCombo = Find<ComboBox>("game-quality");
+		if (mQualityCombo != null)
+			mQualityCombo.SetOnSelectionChanged(new [=this] (index) =>
+				{
+					if (mResolutionRebuilding || (index < 0) || (index >= mQualityChoices.Count))
+						return;
+					mQualityKey.Set(mQualityChoices[index].Key);
+				});
+		RefreshQualityChoices();
+	}
+
+	/// The dropdown's entries: the previewed preset's level, then each of the project's levels.
+	/// Rebuilt only when they changed.
+	private void RefreshQualityChoices()
+	{
+		let fresh = scope List<GameQualityChoice>();
+		defer { ClearAndDeleteItems!(fresh); }
+		let preset = fresh.Add(.. new GameQualityChoice());
+		preset.Key.Set(GameResolution.cPresetQualityKey);
+		preset.Label.Set("Quality: the preset's");
+		if (let project = mContext?.Project)
+		{
+			let levels = scope List<ProjectQualityLevel>();
+			defer { ClearAndDeleteItems!(levels); }
+			project.QualityLevels(levels);
+			for (let level in levels)
+			{
+				let choice = fresh.Add(.. new GameQualityChoice());
+				level.Id.ToString(choice.Key);
+				choice.Label.Set(level.Name);
+				choice.LevelId = level.Id;
+			}
+		}
+		var same = fresh.Count == mQualityChoices.Count;
+		for (int i = 0; same && (i < fresh.Count); i++)
+			same = (fresh[i].Key == mQualityChoices[i].Key) && (fresh[i].Label == mQualityChoices[i].Label);
+		if (same)
+			return;
+		ClearAndDeleteItems!(mQualityChoices);
+		mQualityChoices.AddRange(fresh);
+		fresh.Clear();
+		// The choice survives a rebuild by its key; a level the project no longer lists falls
+		// back to the preset's.
+		int32 selected = 0;
+		for (int32 i < (int32)mQualityChoices.Count)
+		{
+			if (mQualityChoices[i].Key == mQualityKey)
+				selected = i;
+		}
+		mQualityKey.Set(mQualityChoices[selected].Key);
+		if (mQualityCombo != null)
+		{
+			mResolutionRebuilding = true; // the dropdown shows the choice; its handler stays out
+			mQualityCombo.ItemsText = "";
+			for (let choice in mQualityChoices)
+				mQualityCombo.AddItem(choice.Label);
+			mQualityCombo.SelectedIndex = selected;
+			mResolutionRebuilding = false;
+		}
+	}
+
+	public List<GameQualityChoice> QualityChoices()
+	{
+		RefreshQualityChoices();
+		return mQualityChoices;
+	}
+
+	public StringView QualityKey => mQualityKey;
+
+	public bool SelectQuality(StringView key)
+	{
+		RefreshQualityChoices();
+		for (int32 i < (int32)mQualityChoices.Count)
+		{
+			if (mQualityChoices[i].Key != key)
+				continue;
+			mQualityKey.Set(mQualityChoices[i].Key);
+			mResolutionRebuilding = true;
+			if (mQualityCombo != null)
+				mQualityCombo.SelectedIndex = i;
+			mResolutionRebuilding = false;
+			return true;
+		}
+		return false;
+	}
+
+	/// The level the tab plays at: the dropdown's, else the previewed preset's (nil: the project's
+	/// starting level).
+	public Guid PlayedQualityLevel()
+	{
+		for (let choice in mQualityChoices)
+		{
+			if ((choice.Key == mQualityKey) && !choice.LevelId.IsNil)
+				return choice.LevelId; // one of the project's levels, chosen for the session
+		}
+		// The previewed preset's level, if it has one.
+		let index = SelectedResolution();
+		return ((index >= 0) && (index < mResolutionChoices.Count)) ? mResolutionChoices[index].QualityLevelId : Guid();
 	}
 
 	private void RefreshResolutionChoices(bool force)

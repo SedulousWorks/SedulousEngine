@@ -283,6 +283,15 @@ class GamePageTests
 			// Without the resources, or a level that does not resolve: the engine's own highest.
 			GameEditorPage.GameQuality(settings, null, quality);
 			Test.Assert((quality.MsaaSamples == 4) && (quality.Label == "High"));
+			// A level the tab chose (its dropdown's, or the previewed preset's) while the project
+			// lists it; one it does not list is ignored for the project's starting level.
+			let other = Guid(0x93, 0x94, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+			settings.QualityLevelIds.Add(other);
+			GameEditorPage.GameQuality(settings, manager, quality, lowInstance.Id);
+			Test.Assert(quality.Label == "Low", "the chosen one, not the list's last");
+			GameEditorPage.GameQuality(settings, manager, quality, Guid(0x95, 0x96, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+			Test.Assert(quality.Label == "High", "unlisted: the starting level, the list's last, which does not resolve");
+			settings.QualityLevelIds.PopBack();
 			GameEditorPage.GameQuality(settings, manager, quality);
 			settings.QualityLevelIds[0] = Guid(0x91, 0x92, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 			GameEditorPage.GameQuality(settings, manager, quality);

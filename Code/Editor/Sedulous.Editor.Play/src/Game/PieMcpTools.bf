@@ -10,15 +10,15 @@ using Sedulous.Editor.Scene;
 namespace Sedulous.Editor.Play;
 
 /// The play-in-editor tools the editor's MCP host serves through the scene editor's tool
-/// contribution: pie_start, pie_stop, pie_state, pie_list, pie_resolution, pie_screenshot and
-/// pie_run (PieRunTool). PIE is not one
+/// contribution: pie_start, pie_stop, pie_state, pie_list, pie_resolution, pie_quality,
+/// pie_screenshot and pie_run (PieRunTool). PIE is not one
 /// game: every Game tab runs its own instance, so every call addresses ONE by its `pie` id
 /// (`game-page` for the primary, `game-page-1`, ... for Play New Instance's), defaulting to
 /// the primary, and every answer names the instance it is about.
 static class PieMcpTools
 {
 	/// How many tools Register registers; a tripwire like the scene tools'.
-	public const int cPieToolCount = 7;
+	public const int cPieToolCount = 8;
 
 	private const String cPieArgument = "the PIE instance's id, as pie_list reports it (default: the primary, `game-page`)";
 
@@ -113,6 +113,14 @@ static class PieMcpTools
 			resolutionSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) => Resolution(context, arguments, outResult, outError));
 
+		let qualitySchema = scope SchemaBuilder();
+		qualitySchema.Str("pie", cPieArgument);
+		qualitySchema.Str("level", "the entry to choose: `preset`, a level's guid or its asset path");
+		server.RegisterTool("pie_quality",
+			"The quality level one Game tab plays the game at, as its quality dropdown sets it. Without `level`, reads it. `level` chooses an entry by its key (`preset`: the previewed export preset's level, else the project's starting one; or a level's guid) or its label (the level's asset path, any case). The choice lasts the session and applies at once, running or not. Returns {pie, level, choices}, each entry {key, label}. An entry that matches nothing is an error listing the choices.",
+			qualitySchema.Build(), .Adjusts,
+			new (arguments, outResult, outError) => Quality(context, arguments, outResult, outError));
+
 		let shotSchema = scope SchemaBuilder();
 		shotSchema.Str("pie", cPieArgument);
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
@@ -196,6 +204,52 @@ static class PieMcpTools
 		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 		outResult.Set("resolution", chosen ?? JsonValue.MakeNull());
 		outResult.Set("phone", JsonValue.MakeBool(pie.PhonePreview));
+		outResult.Set("choices", items);
+		return true;
+	}
+
+	private static bool Quality(EditorContext context, JsonValue arguments, JsonValue outResult, String outError)
+	{
+		let page = ResolvePie(context, arguments, outError);
+		if (page == null)
+			return false;
+		let pie = page as IPieInstancePage;
+		let asked = arguments.Get("level")?.AsString() ?? StringView();
+		if (!asked.IsEmpty)
+		{
+			let choices = pie.QualityChoices();
+			int match = -1;
+			for (int i < choices.Count)
+			{
+				if ((choices[i].Key == asked) || StringView(choices[i].Label).Equals(asked, true))
+				{
+					match = i;
+					break;
+				}
+			}
+			if (match < 0)
+			{
+				outError.AppendF("no quality level '{}' in {}'s dropdown; it offers: ", asked, pie.PieId);
+				for (int i < choices.Count)
+					outError.AppendF("{}{} ({})", (i > 0) ? ", " : "", choices[i].Key, choices[i].Label);
+				return false;
+			}
+			pie.SelectQuality(choices[match].Key);
+		}
+		let choices = pie.QualityChoices();
+		let items = JsonValue.MakeArray();
+		JsonValue chosen = null;
+		for (let choice in choices)
+		{
+			let item = JsonValue.MakeObject();
+			item.Set("key", JsonValue.MakeString(choice.Key));
+			item.Set("label", JsonValue.MakeString(choice.Label));
+			items.Add(item);
+			if ((chosen == null) && (choice.Key == pie.QualityKey))
+				chosen = item.Clone();
+		}
+		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
+		outResult.Set("level", chosen ?? JsonValue.MakeNull());
 		outResult.Set("choices", items);
 		return true;
 	}

@@ -118,6 +118,10 @@ sideways in it, while `pie_run` still takes the game's own pixels. `pie_resoluti
 a tab's resolution dropdown and Phone toggle: an entry by its key (`project`, `export:<preset>`,
 `preset:<name>`, `panel`), its label, or a size (`1280x720`); the choice is the dropdown's, kept
 for the project, so every Game tab opens at it.
+`pie_quality` reads or sets the quality level a tab plays at, its quality dropdown: `preset` (the
+previewed export preset's own level, else the project's starting one) or one of the project's
+levels by its guid or asset path. The choice lasts the session and applies at once; compare two
+levels with a `pie_screenshot` at each.
 
 A networked game is played with two tabs at once: `pie_start`, then `pie_start` with
 `newInstance`, then `panel_dock {panel: "game-page-1", position: "right", relativeTo:

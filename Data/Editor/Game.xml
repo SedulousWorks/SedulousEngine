@@ -16,6 +16,7 @@
         <Spacer/>
         <Label id="game-cook" class="badge warning" text="Waiting for cook" tooltip="Play starts once the cook finishes, so the run binds what was just built"/>
         <ComboBox id="game-resolution" class="game-resolution" tooltip="The resolution the game draws at, fitted into the tab as the player fits it into its window"/>
+        <ComboBox id="game-quality" class="game-quality" tooltip="The quality level the game plays at: the previewed export preset's (else the project's), or one of the project's levels"/>
         <ToolButton id="game-phone" toggle="true" icon="Editor/Icons/phone.svg" tooltip="Phone: the game on a phone's screen held upright, turned when it is held the other way"/>
         <Separator/>
         <ToolButton id="game-debugger-toggle" toggle="true" icon="Editor/Icons/bug.svg" tooltip="Script debugger: the call stack and the locals at a break"/>

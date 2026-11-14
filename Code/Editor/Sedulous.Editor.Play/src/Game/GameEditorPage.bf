@@ -52,9 +52,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	/// editor's render subsystem serves every page, so the tab asks for the level on its own views
 	/// alone.
 	public static void GameQuality(Sedulous.Engine.Project.ProjectSettings settings, Sedulous.Resource.ResourceManager resources,
-		RenderQualitySettings outQuality)
+		RenderQualitySettings outQuality, Guid chosen = .())
 	{
-		let level = settings.StartupQuality(Guid());
+		// A level the tab chose (its dropdown's, or the previewed preset's) while the project still
+		// lists it; else where the game starts.
+		let level = (!chosen.IsNil && settings.IsQualityLevel(chosen)) ? chosen : settings.StartupQuality(Guid());
 		if ((level != Guid()) && (resources != null))
 		{
 			if (let quality = resources.Bind<RenderQuality>(level).Get)
@@ -347,10 +349,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mCaptureY = 0;
 		mCaptureWidth = w;
 		mCaptureHeight = h;
-		// The game's own quality level, as the player draws it, on this tab's views alone (keyed
-		// by the page). Asked every frame, so a level's edit or a settings change shows at once.
+		// The game's quality level (the dropdown's, else the previewed preset's, else the
+		// project's), as the player draws it, on this tab's views alone (keyed by the page). Asked
+		// every frame, so a level's edit or a settings change shows at once.
 		if (mContext?.Project != null)
-			GameQuality(mContext.Project.Settings, mContext.Resources, mQuality);
+			GameQuality(mContext.Project.Settings, mContext.Resources, mQuality, PlayedQualityLevel());
 		else
 			scope RenderQualitySettings().CopyTo(mQuality);
 		mRender.SetViewportQuality(Internal.UnsafeCastToPtr(this), mQuality);
@@ -472,6 +475,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if (mDebuggerToggle != null)
 			mDebuggerToggle.SetOnToggled(new [=this] (shown) => { ShowDebugger(shown); });
 		BindResolution();
+		BindQuality();
 	}
 
 	private void ShowDebugger(bool shown)

@@ -20,6 +20,21 @@ class GameResolutionChoice
 	/// previews it so; otherwise the project's orientation applies.
 	public bool OverridesOrientation = false;
 	public ScreenOrientation Orientation = .Any;
+	/// The quality level an export preset starts at (nil: the project's), which the Game tab
+	/// plays at while it previews that preset.
+	public Guid QualityLevelId;
+}
+
+/// One entry of the Game tab's quality dropdown: the previewed preset's level, or one of the
+/// project's levels for the session.
+class GameQualityChoice
+{
+	/// GameResolution.cPresetQualityKey, or the level's guid.
+	public String Key = new .() ~ delete _;
+	/// What the dropdown shows: the level's asset path.
+	public String Label = new .() ~ delete _;
+	/// Nil for the preset's entry.
+	public Guid LevelId;
 }
 
 /// What the Game tab draws at, and how it shows a game: pure, so a test reads it.
@@ -27,6 +42,9 @@ static class GameResolution
 {
 	public const String cProjectKey = "project";
 	public const String cPanelKey = "panel";
+	/// The quality dropdown's entry that plays at the previewed preset's level (else the
+	/// project's).
+	public const String cPresetQualityKey = "preset";
 
 	/// The Game tab's phone preview: a phone held upright, 9 by 19.5.
 	public const uint32 cPhonePreviewWidth = 720;
@@ -84,11 +102,12 @@ static class GameResolution
 		{
 			for (let preset in presets.Presets)
 			{
-				// A preset that draws at its own size, or is held its own way; one that changes
-				// neither looks as the project does.
+				// A preset that draws at its own size, is held its own way or starts at its own
+				// quality level; one that changes none of them looks as the project does.
 				let ownSize = preset.OverridesRender && (preset.RenderWidth > 0) && (preset.RenderHeight > 0);
 				let held = preset.OverridesOrientation ? OrientationLabel(preset.Orientation) : StringView();
-				if (!ownSize && held.IsEmpty)
+				let ownLevel = !preset.QualityLevelId.IsNil;
+				if (!ownSize && held.IsEmpty && !ownLevel)
 					continue;
 				let choice = new GameResolutionChoice();
 				choice.Key.AppendF("export:{}", preset.Name);
@@ -103,6 +122,11 @@ static class GameResolution
 					choice.Label.AppendF(", {}", held);
 					choice.OverridesOrientation = true;
 					choice.Orientation = preset.Orientation;
+				}
+				if (ownLevel)
+				{
+					choice.Label.Append(", its quality level");
+					choice.QualityLevelId = preset.QualityLevelId;
 				}
 				outChoices.Add(choice);
 			}
@@ -133,7 +157,7 @@ static class GameResolution
 	public static void Signature(List<GameResolutionChoice> choices, ProjectSettings settings, String outSignature)
 	{
 		for (let choice in choices)
-			outSignature.AppendF("{}={}x{}@{};", choice.Key, choice.Width, choice.Height, (int)choice.Orientation);
+			outSignature.AppendF("{}={}x{}@{}:{};", choice.Key, choice.Width, choice.Height, (int)choice.Orientation, choice.QualityLevelId);
 		if (settings != null)
 			outSignature.AppendF("fit={};orientation={}", (int)settings.RenderFit, (int)settings.Orientation);
 	}

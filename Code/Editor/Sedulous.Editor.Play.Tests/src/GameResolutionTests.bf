@@ -97,6 +97,38 @@ class GameResolutionTests
 		Test.Assert((panel.Rotation == .None) && Near(panel.ContentSize.X, 1600));
 	}
 
+	/// A preset that changes neither size nor orientation but starts at its own quality level plays
+	/// differently, so the Game tab offers it, and plays at its level while it is chosen.
+	[Test]
+	public static void AnExportPresetsOwnQualityLevelMakesItAnEntryCarryingTheLevel()
+	{
+		let settings = scope ProjectSettings();
+		settings.RenderWidth = 1280;
+		settings.RenderHeight = 720;
+		let presets = scope ExportPresetSet();
+		let plain = new ExportPreset();
+		plain.Name.Set("Desktop");
+		presets.Presets.Add(plain);
+		let phone = new ExportPreset();
+		phone.Name.Set("Phone");
+		phone.QualityLevelId = Guid(0x31, 0x32, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		presets.Presets.Add(phone);
+		let choices = scope List<GameResolutionChoice>();
+		defer ClearAndDeleteItems(choices);
+		GameResolution.Collect(settings, presets, null, choices);
+		int found = -1;
+		for (int i < choices.Count)
+		{
+			Test.Assert(choices[i].Key != "export:Desktop", "the same as the project's entry");
+			if (choices[i].Key == "export:Phone")
+				found = i;
+		}
+		Test.Assert(found >= 0);
+		Test.Assert(choices[found].QualityLevelId == phone.QualityLevelId);
+		Test.Assert(choices[found].Label.Contains("its quality level"), choices[found].Label);
+		Test.Assert(choices[0].QualityLevelId.IsNil, "the project's entry plays at the project's level");
+	}
+
 	/// The Game tab's settings moved from Editor.Scene with it: a project store saved before the
 	/// move, its name and type id the old ones, still loads the resolution chosen.
 	[Test]

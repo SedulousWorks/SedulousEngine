@@ -79,4 +79,13 @@ interface IPieInstancePage : IGameScenePage
 	bool PhonePreview { get; }
 	/// Sets the Phone toggle as a click does: shown, kept for the project, applied at once.
 	void SelectPhonePreview(bool on);
+
+	/// The quality levels the tab's quality dropdown offers, in its order: the previewed preset's
+	/// level first, then the project's levels. BORROWED: the page's own list.
+	List<GameQualityChoice> QualityChoices();
+	/// The chosen entry's key.
+	StringView QualityKey { get; }
+	/// Chooses the entry with this key as the dropdown does, for the session; applied at once.
+	/// False when no entry has the key.
+	bool SelectQuality(StringView key);
 }
