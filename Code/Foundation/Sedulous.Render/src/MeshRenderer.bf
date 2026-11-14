@@ -241,9 +241,10 @@ class MeshRenderer : Renderer
 	private List<Float4x4> mPrevWorld = new .() ~ delete _;
 	private List<Float4x4> mCurWorld = new .() ~ delete _;
 
-	/// The camera prepass fills the full instance data for each opaque group once and records
+	/// The camera prepass fills the full instance data for each opaque run once and records
 	/// the range here; the forward looks it up and REUSES it rather than filling it again.
-	/// Keyed by the view, the mesh and the material, and cleared each frame.
+	/// Keyed by the view and the run's first item: runs of one mesh and material split by their
+	/// slot materials, skinning or fade are apart, and each finds its own. Cleared each frame.
 	private Dictionary<uint64, InstShare> mInstShareCache = new .() ~ delete _;
 
 	/// The last level selected per view and item, persisted ACROSS frames, which is the point
@@ -1563,6 +1564,8 @@ class MeshRenderer : Renderer
 			// one instanced draw, and a lone one draws by the single path, which carries the same
 			// bones and fade per object.
 			let headFaded = head.Fade > 0.0f;
+			// A run draws skinned or not by its head: an item that is the other breaks it.
+			let headSkinned = (head.BoneMatrices != null) && (head.BoneCount > 0);
 
 			// The run extends while the mesh and its materials (every slot's: the run draws with
 			// its head's) match, and while it stays faded or solid as a whole: the two draw with
@@ -1577,6 +1580,7 @@ class MeshRenderer : Renderer
 					if (next.MultiMesh || (next.Mesh != head.Mesh)
 						|| (next.Material != head.Material) || !next.SameSubmeshMaterials(head)
 						|| ((next.Fade > 0.0f) != headFaded)
+						|| (((next.BoneMatrices != null) && (next.BoneCount > 0)) != headSkinned)
 						|| (next.OverrideCount > 0)
 						|| (next.CategorySlots != head.CategorySlots)) // a split mesh's item draws some slots only
 						break;
@@ -1674,13 +1678,16 @@ class MeshRenderer : Renderer
 			}
 
 			// Skinned casters batch like static ones; a lone one draws by the single path, its
-			// bone base riding the object block there.
+			// bone base riding the object block there. A run draws skinned or not by its head, so
+			// an item that is the other breaks it.
+			let headSkinned = (head.BoneMatrices != null) && (head.BoneCount > 0);
 			var j = i + 1;
 			while (j < items.Length)
 			{
 				let next = (MeshRenderData)items[j].Data;
 				if (next.MultiMesh || (next.Mesh != head.Mesh) || (next.Material != head.Material)
 					|| !next.SameSubmeshMaterials(head)
+					|| (((next.BoneMatrices != null) && (next.BoneCount > 0)) != headSkinned)
 					|| (next.CategorySlots != head.CategorySlots)) // a split mesh's item draws some slots only
 					break;
 				j++;
@@ -1790,9 +1797,10 @@ class MeshRenderer : Renderer
 		// objects in the same order, and recorded the range: REUSE it rather than filling it
 		// again. A miss, from no prepass or a changed count, falls back to a fresh fill. A faded
 		// run is never prepassed, and a solid group of the same mesh and material must not
-		// lend it its range.
+		// lend it its range. Keyed by the run's first item: runs of one mesh and material split
+		// by their slots, skinning or fade would share a key by those.
 		uint64 offsetsByteOffset;
-		let shareKey = InstShareKey(head.Mesh, head.Material, context.View);
+		let shareKey = InstShareKey(head, context.View);
 		let faded = head.Fade > 0.0f;
 
 		if (!faded && mInstShareCache.TryGetValue(shareKey, let shared) && (shared.Count == count))
@@ -2028,7 +2036,7 @@ class MeshRenderer : Renderer
 
 		if (feedsForward)
 		{
-			mInstShareCache[InstShareKey(head.Mesh, head.Material, context.View)] =
+			mInstShareCache[InstShareKey(head, context.View)] =
 				.() { OffsetsByteOffset = offsets.ByteOffset, Count = count };
 		}
 
@@ -3248,12 +3256,11 @@ class MeshRenderer : Renderer
 
 	/// Keyed by the VIEW rather than its index: the main view's prepass and forward share one
 	/// view, but a probe capture reuses index nought with a different list entirely.
-	private static uint64 InstShareKey(Object mesh, Object material, Object view)
+	private static uint64 InstShareKey(Object runHead, Object view)
 	{
 		var key = FnvOffsetBasis;
 		key = (key ^ (uint64)(int)(void*)Internal.UnsafeCastToPtr(view)) &* FnvPrime;
-		key = (key ^ (uint64)(int)(void*)Internal.UnsafeCastToPtr(mesh)) &* FnvPrime;
-		key = (key ^ (uint64)(int)(void*)Internal.UnsafeCastToPtr(material)) &* FnvPrime;
+		key = (key ^ (uint64)(int)(void*)Internal.UnsafeCastToPtr(runHead)) &* FnvPrime;
 		return key;
 	}
 

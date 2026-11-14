@@ -137,10 +137,12 @@ static class RenderExtract
 		let multiMaterial = component.MaterialCache.Count > 1;
 		data.SubmeshMaterials = multiMaterial ? component.MaterialCache.Ptr : null;
 		data.SubmeshMaterialCount = multiMaterial ? (uint32)component.MaterialCache.Count : 0;
-		// The batch key keeps opaque draws contiguous by mesh and materials, every slot's. The
-		// renderer id keeps its default, because the mesh renderer registers first.
+		// The batch key keeps opaque draws contiguous by mesh and materials, every slot's, and
+		// skinned ones beside each other. The renderer id keeps its default, because the mesh
+		// renderer registers first.
 		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),
-			Internal.UnsafeCastToPtr(primary), data.SubmeshMaterials, data.SubmeshMaterialCount);
+			Internal.UnsafeCastToPtr(primary), data.SubmeshMaterials, data.SubmeshMaterialCount)
+			^ ((data.BoneMatrices != null) ? 1u : 0u);
 		data.CategorySlots = false;
 		// Borrowed for the frame, like the material cache.
 		let overrides = component.MaterialOverrides;

@@ -741,4 +741,58 @@ class RenderFrameTests
 		Test.Assert(alike > 0, "drawn at all");
 		Test.Assert(mixed > alike, "the blue slotted cubes draw in a run of their own");
 	}
+
+	/// Skinned and unskinned instances of one mesh draw in runs of their own: a run took its
+	/// skinning from its head, so a still instance in a skinned run drew skinned at bone base 0,
+	/// and a skinned one in a still run drew unposed.
+	[Test]
+	public static void SkinnedAndStillInstancesOfOneMeshDrawInRunsOfTheirOwn()
+	{
+		let fixture = scope RenderFrameFixture(256, 256);
+		if (!fixture.Ready)
+			return;
+
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MakeLitMaterial();
+		defer delete material;
+		var pose = Float4x4[1](Float4x4.Identity());
+
+		uint64 DrawsOf(bool mixed, uint32 frameIndex)
+		{
+			let scene = scope ExtractedScene();
+			for (int32 n < 8)
+			{
+				let data = scene.Add<MeshRenderData>();
+				data.World = Float4x4.Translation(.((float)n - 4.0f, 0, 0));
+				data.WorldCenter = .((float)n - 4.0f, 0, 0);
+				data.WorldRadius = 1.0f;
+				data.Mesh = cube;
+				data.Material = material;
+				let skinned = mixed && (n >= 4);
+				data.BoneMatrices = skinned ? &pose[0] : null;
+				data.BoneCount = skinned ? 1u : 0u;
+				data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(data.Mesh), Internal.UnsafeCastToPtr(data.Material))
+					^ (skinned ? 1u : 0u);
+				data.Category = RenderCategories.Opaque;
+			}
+			let before = fixture.Device.Counters().Draws;
+			frame.Begin(fixture.Encoder, frameIndex);
+			frame.AddView(scene, RenderFrameFixture.LookingAtTheOrigin(20.0f), .(), fixture.ColorView,
+				.BGRA8Unorm, 256, 256);
+			frame.End();
+			return fixture.Device.Counters().Draws - before;
+		}
+		let alike = DrawsOf(false, 0);
+		let mixed = DrawsOf(true, 1);
+		Test.Assert(alike > 0, "drawn at all");
+		Test.Assert(mixed > alike, "the posed half draws in a run of its own");
+	}
 }

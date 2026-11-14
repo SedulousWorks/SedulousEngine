@@ -258,3 +258,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   most the fixed step's cap and goes on; the fixed-step loop never ended.
 - Rendering: meshes that share a mesh and their first material but differ in another slot's draw
   each with their own; drawn as one batch, they all took the first one's.
+- Rendering: an animated and a still copy of one mesh, side by side, each draw as they are; batched
+  together, the still ones were drawn with the animated one's skinning, or the animated ones
+  without it.
