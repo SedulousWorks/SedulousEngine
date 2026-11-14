@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Materials;
 
 namespace Sedulous.Render;
 
@@ -25,6 +26,16 @@ static class SortKeys
 		let a = (uint64)(int)first;
 		let b = (uint64)(int)second;
 		let mixed = (a >> 4) &* 1099511628211UL &+ (b >> 4);
+		return (uint32)(mixed & ((1UL << StateBits) - 1));
+	}
+
+	/// The same, telling meshes apart by their per submesh materials too: two instances of one
+	/// mesh whose second slot differs must not sort into (and be drawn as) one run.
+	public static uint32 BatchKey(void* mesh, void* material, Material* submesh, uint32 submeshCount)
+	{
+		var mixed = ((uint64)(int)mesh >> 4) &* 1099511628211UL &+ ((uint64)(int)material >> 4);
+		for (uint32 i < submeshCount)
+			mixed = (mixed &* 1099511628211UL) &+ ((uint64)(int)Internal.UnsafeCastToPtr(submesh[i]) >> 4);
 		return (uint32)(mixed & ((1UL << StateBits) - 1));
 	}
 

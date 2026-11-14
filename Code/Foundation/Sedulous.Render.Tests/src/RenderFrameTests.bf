@@ -682,4 +682,63 @@ class RenderFrameTests
 		Test.Assert(newcomer == side);
 		frame.End();
 	}
+
+	/// Instances whose per slot materials differ beyond the first draw in runs of their own: an
+	/// instanced run extended while the mesh and slot 0's material matched, and drew every
+	/// instance with its head's slot materials.
+	[Test]
+	public static void InstancesWhoseSlotMaterialsDifferBeyondTheFirstDrawApart()
+	{
+		let fixture = scope RenderFrameFixture(256, 256);
+		if (!fixture.Ready)
+			return;
+
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let body = MakeLitMaterial();
+		defer delete body;
+		let red = MakeLitMaterial();
+		defer delete red;
+		let blue = MakeLitMaterial();
+		defer delete blue;
+		Material[2] redSlots = .(body, red);
+		Material[2] blueSlots = .(body, blue);
+
+		// Draw calls of a frame of eight cubes: one mesh, slot 0 shared, slot 1 red or blue per cube.
+		uint64 DrawsOf(bool mixed, uint32 frameIndex)
+		{
+			let scene = scope ExtractedScene();
+			for (int32 n < 8)
+			{
+				let data = scene.Add<MeshRenderData>();
+				data.World = Float4x4.Translation(.((float)n - 4.0f, 0, 0));
+				data.WorldCenter = .((float)n - 4.0f, 0, 0);
+				data.WorldRadius = 1.0f;
+				data.Mesh = cube;
+				data.Material = body;
+				data.SubmeshMaterials = (mixed && ((n % 2) == 1)) ? &blueSlots[0] : &redSlots[0];
+				data.SubmeshMaterialCount = 2;
+				data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(data.Mesh), Internal.UnsafeCastToPtr(data.Material),
+					data.SubmeshMaterials, data.SubmeshMaterialCount);
+				data.Category = RenderCategories.Opaque;
+			}
+			let before = fixture.Device.Counters().Draws;
+			frame.Begin(fixture.Encoder, frameIndex);
+			frame.AddView(scene, RenderFrameFixture.LookingAtTheOrigin(20.0f), .(), fixture.ColorView,
+				.BGRA8Unorm, 256, 256);
+			frame.End();
+			return fixture.Device.Counters().Draws - before;
+		}
+		let alike = DrawsOf(false, 0);
+		let mixed = DrawsOf(true, 1);
+		Test.Assert(alike > 0, "drawn at all");
+		Test.Assert(mixed > alike, "the blue slotted cubes draw in a run of their own");
+	}
 }

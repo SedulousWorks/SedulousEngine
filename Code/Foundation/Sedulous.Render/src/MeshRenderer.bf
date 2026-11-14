@@ -1564,9 +1564,10 @@ class MeshRenderer : Renderer
 			// bones and fade per object.
 			let headFaded = head.Fade > 0.0f;
 
-			// The run extends while the mesh and material match, and while it stays faded or
-			// solid as a whole: the two draw with different pipelines (DITHER). A mesh with
-			// material overrides draws alone, with instances of its own.
+			// The run extends while the mesh and its materials (every slot's: the run draws with
+			// its head's) match, and while it stays faded or solid as a whole: the two draw with
+			// different pipelines (DITHER). A mesh with material overrides draws alone, with
+			// instances of its own.
 			var j = i + 1;
 			if (allowInstancing && (head.OverrideCount == 0))
 			{
@@ -1574,7 +1575,8 @@ class MeshRenderer : Renderer
 				{
 					let next = (MeshRenderData)items[j].Data;
 					if (next.MultiMesh || (next.Mesh != head.Mesh)
-						|| (next.Material != head.Material) || ((next.Fade > 0.0f) != headFaded)
+						|| (next.Material != head.Material) || !next.SameSubmeshMaterials(head)
+						|| ((next.Fade > 0.0f) != headFaded)
 						|| (next.OverrideCount > 0)
 						|| (next.CategorySlots != head.CategorySlots)) // a split mesh's item draws some slots only
 						break;
@@ -1678,6 +1680,7 @@ class MeshRenderer : Renderer
 			{
 				let next = (MeshRenderData)items[j].Data;
 				if (next.MultiMesh || (next.Mesh != head.Mesh) || (next.Material != head.Material)
+					|| !next.SameSubmeshMaterials(head)
 					|| (next.CategorySlots != head.CategorySlots)) // a split mesh's item draws some slots only
 					break;
 				j++;

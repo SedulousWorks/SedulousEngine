@@ -117,10 +117,6 @@ static class RenderExtract
 		// A faded opaque mesh leaves the depth prepass, whose depth would hide what the dither
 		// lets through.
 		data.Category = RenderCategories.MeshSlotCategory(primary, data.Fade);
-		// The batch key keeps opaque draws contiguous by mesh and material. The renderer id
-		// keeps its default, because the mesh renderer registers first.
-		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),
-			Internal.UnsafeCastToPtr(primary));
 		// GPU skinning: the palette of whatever poses the mesh now, borrowed for the frame; none
 		// (an animator that went, or never was) draws the mesh static.
 		let skinned = scene.FindSkinningPalette(entity, let palette);
@@ -141,6 +137,10 @@ static class RenderExtract
 		let multiMaterial = component.MaterialCache.Count > 1;
 		data.SubmeshMaterials = multiMaterial ? component.MaterialCache.Ptr : null;
 		data.SubmeshMaterialCount = multiMaterial ? (uint32)component.MaterialCache.Count : 0;
+		// The batch key keeps opaque draws contiguous by mesh and materials, every slot's. The
+		// renderer id keeps its default, because the mesh renderer registers first.
+		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),
+			Internal.UnsafeCastToPtr(primary), data.SubmeshMaterials, data.SubmeshMaterialCount);
 		data.CategorySlots = false;
 		// Borrowed for the frame, like the material cache.
 		let overrides = component.MaterialOverrides;

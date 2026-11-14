@@ -31,6 +31,20 @@ class MeshRenderData : RenderData
 	/// are here each submesh draws with its own; otherwise the one material covers the mesh.
 	public Material* SubmeshMaterials = null;
 	public uint32 SubmeshMaterialCount = 0;
+
+	/// Whether `other` draws with the same per submesh materials (an instanced run draws every
+	/// instance with its head's).
+	public bool SameSubmeshMaterials(MeshRenderData other)
+	{
+		if (SubmeshMaterialCount != other.SubmeshMaterialCount)
+			return false;
+		for (uint32 i < SubmeshMaterialCount)
+		{
+			if (SubmeshMaterials[i] !== other.SubmeshMaterials[i])
+				return false;
+		}
+		return true;
+	}
 	/// A multi material mesh whose slots draw in different categories (a pane's glass blended,
 	/// its frame opaque) comes as one item per category: this item draws only the submeshes
 	/// whose material is in its Category (RenderCategories.MeshSlotCategory).
