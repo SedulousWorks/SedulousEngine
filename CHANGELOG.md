@@ -261,3 +261,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: an animated and a still copy of one mesh, side by side, each draw as they are; batched
   together, the still ones were drawn with the animated one's skinning, or the animated ones
   without it.
+- Rendering: a double-sided material (foliage cards, a sail, a flag) casts its shadow from both
+  sides, and a material that culls front faces casts from its back; shadows always came from the
+  front faces.

@@ -795,4 +795,66 @@ class RenderFrameTests
 		Test.Assert(alike > 0, "drawn at all");
 		Test.Assert(mixed > alike, "the posed half draws in a run of its own");
 	}
+
+	/// Every depth like pass takes the material's cull mode: shadow casters and the camera
+	/// prepass always culled back faces, so a double sided card cast no shadow seen from behind
+	/// and a front culled material cast from the wrong side.
+	[Test]
+	public static void DepthPassesCullAsTheMaterialDoes()
+	{
+		let context = RenderRecordContext();
+		let cardBuilder = scope MaterialBuilder("card");
+		let card = cardBuilder..Shader("forward")..VertexLayout(.Mesh)..DoubleSided().Build();
+		defer delete card;
+		let insideBuilder = scope MaterialBuilder("inside");
+		let inside = insideBuilder..Shader("forward")..VertexLayout(.Mesh)..Cull(.Front).Build();
+		defer delete inside;
+		let solid = MakeLitMaterial();
+		defer delete solid;
+		for (let pick in bool[2](false, true))
+		{
+			Test.Assert(MeshRenderer.DepthLikeFor(context, card, false, pick).Config.CullMode == .None, "both faces");
+			Test.Assert(MeshRenderer.DepthLikeFor(context, inside, true, pick).Config.CullMode == .Front);
+			Test.Assert(MeshRenderer.DepthLikeFor(context, solid, false, pick).Config.CullMode == .Back);
+		}
+
+		// Through a frame: the card's prepass is a pipeline of its own, not the solid one's.
+		let fixture = scope RenderFrameFixture(256, 256);
+		if (!fixture.Ready)
+			return;
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+
+		int Render(bool withCard, uint32 frameIndex)
+		{
+			let scene = scope ExtractedScene();
+			for (int32 n < (withCard ? 2 : 1))
+			{
+				let data = scene.Add<MeshRenderData>();
+				data.World = Float4x4.Translation(.((float)n * 2.0f, 0, 0));
+				data.WorldCenter = .((float)n * 2.0f, 0, 0);
+				data.WorldRadius = 1.0f;
+				data.Mesh = cube;
+				data.Material = (n == 0) ? solid : card;
+				data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(data.Mesh), Internal.UnsafeCastToPtr(data.Material));
+				data.Category = RenderCategories.Opaque;
+			}
+			frame.Begin(fixture.Encoder, frameIndex);
+			frame.AddView(scene, RenderFrameFixture.LookingAtTheOrigin(20.0f), .(), fixture.ColorView,
+				.BGRA8Unorm, 256, 256);
+			frame.End();
+			return fixture.PsoCache.Size;
+		}
+		let solidOnly = Render(false, 0);
+		let withCard = Render(true, 1);
+		// The card's forward pipeline and its prepass one: the prepass was the solid one's (culled
+		// back) before, so the card added only one.
+		Test.Assert(withCard >= solidOnly + 2, scope $"{solidOnly} then {withCard}");
+	}
 }

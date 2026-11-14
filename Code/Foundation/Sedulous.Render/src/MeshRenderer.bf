@@ -2178,6 +2178,7 @@ class MeshRenderer : Renderer
 				layout = plain;
 				materialSet = null;
 				config = pick ? PickConfigFor(context, instanced, false) : ShadowConfigFor(context, instanced, false);
+				config.CullMode = material.Pipeline.CullMode; // still the material's faces
 				if (skinned)
 				{
 					config.VertexLayout = .SkinnedMesh;
@@ -2356,8 +2357,9 @@ class MeshRenderer : Renderer
 		let own = (material == null) ? StringView() : (pick ? StringView(material.PickShaderName) : StringView(material.DepthShaderName));
 		if (!own.IsEmpty)
 			choice.Config.ShaderName = own;
-		// A two sided material picks both faces.
-		if (pick && (material != null))
+		// The material's faces, in every depth like pass: a two sided card casts its shadow and
+		// fills the prepass from both sides, and picks from both, as the forward draws it.
+		if (material != null)
 			choice.Config.CullMode = material.Pipeline.CullMode;
 		choice.MaterialSet = masked || (effects != .None) || !own.IsEmpty;
 		return choice;
@@ -2393,7 +2395,8 @@ class MeshRenderer : Renderer
 		// FRONT faces into the shadow map. That is the conventional default and gives flat and
 		// architectural casters tight contacts. A curved caster keeps a small grazing gap
 		// inherent to shadow maps; the general fix is a contact shadow pass, not a cull mode
-		// change, which only moves the gap onto the flat casters that are far more common.
+		// change, which only moves the gap onto the flat casters that are far more common. A
+		// material's own cull mode replaces it (DepthLikeFor): a two sided one casts from both.
 		config.CullMode = .Back;
 
 		// A constant offset and a slope scaled term, applied in the map's own depth space, so
