@@ -1,5 +1,7 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Render;
 using Sedulous.Scene;
@@ -219,5 +221,66 @@ class InstancedMeshExtractTests
 			Test.Assert(NearlyEqual(data.Tints[1], .(1.0f, 1.0f, 1.0f, 1.0f), 1e-4f));
 			Test.Assert(NearlyEqual(data.Tints[2], ToLinear(Color(0.5f, 0.0f, 0.0f, 1.0f)), 1e-4f));
 		}
+	}
+
+	/// The x of each instance the set draws now.
+	private static void DrawnXs(Scene scene, System.Collections.List<float> outXs)
+	{
+		outXs.Clear();
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
+		Test.Assert(snapshot.Size == 1);
+		let data = (MultiMeshRenderData)snapshot.Items[0];
+		for (uint32 i < data.InstanceCount)
+			outXs.Add(data.Transforms[i].M[3][0]);
+	}
+
+	/// Reads `donor`'s set, given `instances`, over `entity`'s live one, as an undo restores it.
+	private static void ReadInto(InstancedMeshComponentManager sets, EntityHandle donor, EntityHandle entity,
+		Span<Float4x4> instances)
+	{
+		sets.Get(donor).SetInstances(instances);
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			sets.WriteComponent(writer, donor);
+			Test.Assert(writer.IsOk);
+		}
+		stream.Seek(0, .Begin);
+		let reader = scope BinarySerializer(stream, .Read);
+		sets.ReadComponent(reader, entity);
+		Test.Assert(reader.IsOk);
+	}
+
+	/// A set read in place (an undo, a reload) draws what it was read as. Only SetInstances moved
+	/// the version, so the composition cached before was drawn, read past its end when it held
+	/// fewer.
+	[Test]
+	public static void ASetReadInPlaceDrawsWhatItWasReadAs()
+	{
+		let scene = scope Scene("world");
+		let sets = scene.AddSystem<InstancedMeshComponentManager>();
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let entity = scene.CreateEntity("scatter");
+		sets.Add(entity).Mesh.SetDirect(cube);
+		let donor = scene.CreateEntity("donor"); // no mesh: not drawn
+		sets.Add(donor);
+		scene.UpdateTransforms();
+		let xs = scope System.Collections.List<float>();
+		DrawnXs(scene, xs);
+		Test.Assert(xs.Count == 1, "composed once, at one instance");
+
+		Float4x4[3] three = .(Float4x4.Translation(.(1, 0, 0)), Float4x4.Translation(.(2, 0, 0)), Float4x4.Translation(.(3, 0, 0)));
+		ReadInto(sets, donor, entity, .(&three[0], 3));
+		DrawnXs(scene, xs);
+		Test.Assert(xs.Count == 3);
+		Test.Assert(Near(xs[2], 3.0f), "composed again: nothing read past the old one instance cache");
+
+		Float4x4[3] moved = .(Float4x4.Translation(.(7, 0, 0)), Float4x4.Translation(.(8, 0, 0)), Float4x4.Translation(.(9, 0, 0)));
+		ReadInto(sets, donor, entity, .(&moved[0], 3)); // same size, new places
+		DrawnXs(scene, xs);
+		Test.Assert(xs.Count == 3);
+		Test.Assert(Near(xs[0], 7.0f));
 	}
 }

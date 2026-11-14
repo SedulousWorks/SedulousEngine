@@ -257,6 +257,12 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 
 		SerializeValue(ar, "visible", ref Visible);
 
+		// Read over a live set (an undo, a reload in place), its instances changed as
+		// SetInstances changes them: the version says so, or the set would draw what it
+		// composed before.
+		if (ar.Mode == .Read)
+			Version++;
+
 		// Version 1 had no pose policy: an animated set hashed its phases, as a fresh one does.
 		if ((ar.Mode == .Read) && (ar.Version == 1))
 			return;

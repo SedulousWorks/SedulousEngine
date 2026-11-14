@@ -246,3 +246,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   breakpoint sync and hover values stayed wired to the Game tab, and reached it after it closed.
 - Animation: a skinned mesh whose animator is removed, or no longer names it, draws in its bind
   pose; it drew from the animator's freed matrices.
+- Rendering: an instanced mesh set restored by an undo or a reload draws its restored instances;
+  it drew the ones it held before, and read past them when it had fewer.

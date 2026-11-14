@@ -309,8 +309,12 @@ static class RenderExtract
 				// renderer keys its upload on the composed version, so either kind of change
 				// re uploads.
 				let entityWorld = scene.GetWorldMatrix(entity);
+				// A cache of another size than the instances is stale whatever the version says:
+				// the draw is told the instances' count, and would read past the cache's end.
 				if ((component.ComposedFromVersion != component.Version)
-					|| !(component.ComposedEntityWorld == entityWorld))
+					|| !(component.ComposedEntityWorld == entityWorld)
+					|| (component.WorldTransforms.Count != component.Instances.Count)
+					|| (component.LinearTints.Count != component.Tints.Count))
 				{
 					component.WorldTransforms.Clear();
 					for (int i < component.Instances.Count)
