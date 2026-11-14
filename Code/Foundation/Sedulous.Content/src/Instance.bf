@@ -169,9 +169,12 @@ class Instance
 	/// Opens a named data stream, or null if there is none. THE CALLER OWNS the stream.
 	///
 	/// The text suffix is probed first and the binary one second, so a stream reads
-	/// whichever way it was written.
+	/// whichever way it was written. A name that is not a stream name (Sidecars.IsStreamName)
+	/// reads nothing.
 	public IStream ReadData(StringView streamName)
 	{
+		if (!Sidecars.IsStreamName(streamName))
+			return null;
 		if (let text = mDatabase.Mount.Open(DataPath(streamName, .Text, .. scope String()), .Read))
 			return text;
 		return mDatabase.Mount.Open(DataPath(streamName, .Binary, .. scope String()), .Read);
@@ -231,9 +234,12 @@ class Instance
 
 	/// Writes a named data stream, and removes the sibling under the other suffix so a
 	/// stream never exists as both at once. That is also how a stream migrates when its
-	/// encoding changes.
+	/// encoding changes. InvalidArgument for a name with a dot or a separator, whose file
+	/// another instance could own (Sidecars.IsStreamName).
 	public Result<void, ErrorCode> WriteData(StringView streamName, Span<uint8> data, StreamEncoding encoding = .Binary)
 	{
+		if (!Sidecars.IsStreamName(streamName))
+			return .Err(.InvalidArgument);
 		let writable = mDatabase.Mount as IWritableFileSystem;
 		if (writable == null)
 			return .Err(.NotSupported);
@@ -250,8 +256,11 @@ class Instance
 
 	/// Removes a named data stream. Idempotent: an absent stream is not an error, since a
 	/// re-cook that no longer produces one has to be able to clear a stale sidecar.
+	/// InvalidArgument for a name that is not a stream name.
 	public Result<void, ErrorCode> DeleteData(StringView streamName)
 	{
+		if (!Sidecars.IsStreamName(streamName))
+			return .Err(.InvalidArgument);
 		let writable = mDatabase.Mount as IWritableFileSystem;
 		if (writable == null)
 			return .Err(.NotSupported);
@@ -277,7 +286,7 @@ class Instance
 		outPath.Append(mDatabase.Extension);
 	}
 
-	/// "<path>.<stream>.bin" or "<path>.<stream>.data"
+	/// "<path>.<stream>.bin" or "<path>.<stream>.data"; the stream name has no dot.
 	public void DataPath(StringView streamName, StreamEncoding encoding, String outPath)
 	{
 		GetPath(outPath);

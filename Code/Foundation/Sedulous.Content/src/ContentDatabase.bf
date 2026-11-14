@@ -615,7 +615,8 @@ class ContentDatabase : IContentDatabase
 	// ---- sidecars ----
 
 	/// Every sidecar belonging to an instance, found by enumerating its folder rather than
-	/// by guessing stream names: the envelope does not list them.
+	/// by guessing stream names: the envelope does not list them. The match is exact, so
+	/// "Rock" never takes the files of a "Rock.2" beside it.
 	private void CollectSidecars(Instance instance, List<String> outPaths)
 	{
 		let enumerable = mMount as IEnumerableFileSystem;
@@ -628,12 +629,9 @@ class ContentDatabase : IContentDatabase
 		if (enumerable.Enumerate(folder, entries) case .Err)
 			return;
 
-		let prefix = scope String(instance.Name); prefix.Append('.');
-		let envelope = scope String(instance.Name); envelope.Append('.'); envelope.Append(mExtension);
-
 		for (let entry in entries)
 		{
-			if (entry.IsDirectory || !entry.Name.StartsWith(prefix) || (entry.Name == envelope))
+			if (entry.IsDirectory || !Sidecars.MatchSidecar(instance.Name, entry.Name, ?, ?))
 				continue;
 			outPaths.Add(PathJoin(folder, entry.Name, .. new String()));
 		}

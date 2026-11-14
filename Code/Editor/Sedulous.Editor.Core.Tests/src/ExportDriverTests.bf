@@ -1150,4 +1150,18 @@ static class ExportDriverTests
 		Test.Assert(streams.ContainsKey(deep.Id));
 		Test.Assert(streams[deep.Id].Count == 1);
 	}
+
+	[Test]
+	public static void APrunedOrStrippedAssetsFilesAreItsOwnNeverADottedNeighbours()
+	{
+		let paths = scope HashSet<String>();
+		paths.Add("Models/Rock");
+		Test.Assert(ExportStaging.FileOwnerReachable("Models/Rock.rasset", paths));
+		Test.Assert(ExportStaging.FileOwnerReachable("Models/Rock.geometry.bin", paths));
+		// "Rock.2" is another asset: reaching (or stripping) "Rock" says nothing about it.
+		Test.Assert(!ExportStaging.FileOwnerReachable("Models/Rock.2.rasset", paths));
+		Test.Assert(!ExportStaging.FileOwnerReachable("Models/Rock.2.geometry.bin", paths));
+		Test.Assert(!ExportStaging.FileOwnerReachable("Models/RockBig.rasset", paths));
+		Test.Assert(!ExportStaging.FileOwnerReachable("Models/Rock.notes.txt", paths));
+	}
 }

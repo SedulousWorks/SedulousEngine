@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Content;
+using Sedulous.Engine.Project;
 using Sedulous.Scene.Resource;
 using Sedulous.Shaders;
 using Sedulous.Shaders.Resource;
@@ -20,18 +21,13 @@ static class ExportStaging
 {
 	public const String cSceneStream = "scene";
 
-	/// Whether a packed file's owner is in the reachable set: the file's path with any
-	/// extension stripped names its instance's path.
+	/// Whether a packed file's owner is in the reachable set: the instance whose envelope
+	/// ("<path>.rasset") or sidecar ("<path>.<stream>.bin" or ".data") the file is. Exact, so
+	/// "Rock" never claims the files of a "Rock.2" beside it.
 	public static bool FileOwnerReachable(StringView file, HashSet<String> reachablePaths)
 	{
-		var nameStart = 0;
-		for (int i < file.Length)
-			if (file[i] == '/')
-				nameStart = i + 1;
-		for (int i = nameStart; i < file.Length; i++)
-			if ((file[i] == '.') && reachablePaths.Contains(scope String(file.Substring(0, i))))
-				return true;
-		return false;
+		let owner = Sidecars.OwnerPathOf(file, ProjectLayout.CookedAssetExtension);
+		return !owner.IsEmpty && reachablePaths.Contains(scope String(owner));
 	}
 
 	/// Every file under `folder` of the mount into the pak; `reachablePaths` null packs all.

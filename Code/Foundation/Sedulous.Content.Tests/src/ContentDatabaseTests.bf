@@ -818,4 +818,140 @@ class ContentDatabaseTests
 		editor.Refresh(scope StringView[]("nowhere/ghost.asset", "nowhere/ghost.scene.data", "notes.txt"), changes);
 		Test.Assert(changes.IsEmpty);
 	}
+
+	/// "Rock" and its duplicate "Rock.2" in one group, each with a "geometry" stream holding its
+	/// own byte: the layout the engine's own naming makes (a second "Rock" is "Rock.2").
+	private static void MakeRockPair(Group models, out Instance rock, out Instance rock2)
+	{
+		rock = models.CreateInstance("Rock", "Sedulous.Content.Tests.TestAsset");
+		let second = models.UniqueInstanceName("Rock", .. scope String());
+		Test.Assert(second == "Rock.2");
+		rock2 = models.CreateInstance(second, "Sedulous.Content.Tests.TestAsset");
+		let asset = scope TestAsset();
+		Test.Assert(rock.WriteObject(asset) case .Ok);
+		Test.Assert(rock2.WriteObject(asset) case .Ok);
+		uint8[1] one = .(1);
+		uint8[1] two = .(2);
+		Test.Assert(rock.WriteData("geometry", .(&one[0], 1)) case .Ok);
+		Test.Assert(rock2.WriteData("geometry", .(&two[0], 1)) case .Ok);
+	}
+
+	/// The single byte an instance's "geometry" stream holds, or -1 when it has none.
+	private static int GeometryByte(Instance instance)
+	{
+		let data = instance.ReadData("geometry");
+		if (data == null)
+			return -1;
+		defer delete data;
+		uint8[1] value = default;
+		if (data.Read(.(&value[0], 1)) != 1)
+			return -1;
+		return value[0];
+	}
+
+	[Test]
+	public static void DeletingRockLeavesRock2sFiles()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_sidecar_delete", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		MakeRockPair(database.RootGroup.CreateGroup("models"), let rock, let rock2);
+
+		Test.Assert(database.DeleteInstance(rock.Id) case .Ok);
+		Test.Assert(!fixture.Mount.Exists("models/Rock.geometry.bin"));
+		Test.Assert(fixture.Mount.Exists("models/Rock.2.geometry.bin"), "Rock.2's stream is its own");
+		Test.Assert(fixture.Mount.Exists("models/Rock.2.asset"), "and so is its envelope");
+		Test.Assert(GeometryByte(rock2) == 2);
+	}
+
+	[Test]
+	public static void RenamingRockLeavesRock2sFiles()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_sidecar_rename", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		MakeRockPair(database.RootGroup.CreateGroup("models"), let rock, let rock2);
+
+		Test.Assert(database.RenameInstance(rock.Id, "Stone") case .Ok);
+		Test.Assert(fixture.Mount.Exists("models/Stone.geometry.bin"));
+		Test.Assert(!fixture.Mount.Exists("models/Stone.2.geometry.bin"));
+		Test.Assert(!fixture.Mount.Exists("models/Stone.2.asset"));
+		Test.Assert(GeometryByte(rock) == 1);
+		Test.Assert(GeometryByte(rock2) == 2);
+	}
+
+	[Test]
+	public static void MovingRockLeavesRock2sFiles()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_sidecar_move", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		MakeRockPair(database.RootGroup.CreateGroup("models"), let rock, let rock2);
+		let props = database.RootGroup.CreateGroup("props");
+
+		Test.Assert(database.MoveInstance(rock.Id, props) case .Ok);
+		Test.Assert(fixture.Mount.Exists("props/Rock.geometry.bin"));
+		Test.Assert(!fixture.Mount.Exists("props/Rock.2.geometry.bin"));
+		Test.Assert(!fixture.Mount.Exists("props/Rock.2.asset"));
+		Test.Assert(GeometryByte(rock2) == 2);
+	}
+
+	[Test]
+	public static void CloningRockCopiesOnlyItsOwnStreams()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_sidecar_clone", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		MakeRockPair(database.RootGroup.CreateGroup("models"), let rock, ?);
+
+		let copy = database.CloneInstance(rock.Id, "Boulder");
+		Test.Assert(copy != null);
+		Test.Assert(GeometryByte(copy) == 1);
+		// Only the clone's own stream: no "2.geometry" stream taken from Rock.2.
+		Test.Assert(!fixture.Mount.Exists("models/Boulder.2.geometry.bin"));
+		Test.Assert(!fixture.Mount.Exists("models/Boulder.2.asset"));
+	}
+
+	/// A stream name with a dot or a separator names a file another instance could own.
+	[Test]
+	public static void AStreamNameWithADotOrASeparatorIsRefused()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_stream_name", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		let rock = database.RootGroup.CreateInstance("Rock", "Sedulous.Content.Tests.TestAsset");
+		uint8[1] one = .(1);
+		for (let bad in StringView[?]("2.geometry", "", "a/b", "a\\b"))
+		{
+			Test.Assert(rock.WriteData(bad, .(&one[0], 1)) case .Err(.InvalidArgument));
+			Test.Assert(rock.DeleteData(bad) case .Err(.InvalidArgument));
+			Test.Assert(rock.ReadData(bad) == null);
+		}
+		Test.Assert(!fixture.Mount.Exists("Rock.2.geometry.bin"));
+	}
+
+	[Test]
+	public static void AFilesOwnerIsItsEnvelopesOrItsSidecarsExactInstance()
+	{
+		Test.Assert(Sidecars.OwnerPathOf("models/Rock.rasset", "rasset") == "models/Rock");
+		Test.Assert(Sidecars.OwnerPathOf("models/Rock.2.rasset", "rasset") == "models/Rock.2");
+		Test.Assert(Sidecars.OwnerPathOf("models/Rock.geometry.bin", "rasset") == "models/Rock");
+		Test.Assert(Sidecars.OwnerPathOf("models/Rock.2.geometry.bin", "rasset") == "models/Rock.2");
+		Test.Assert(Sidecars.OwnerPathOf("models/Rock.2.scene.data", "rasset") == "models/Rock.2");
+		Test.Assert(Sidecars.OwnerPathOf("Rock.geometry.bin", "rasset") == "Rock");
+		// Neither an envelope nor a sidecar, or no owner name before the stream.
+		Test.Assert(Sidecars.OwnerPathOf("models/Rock.txt", "rasset").IsEmpty);
+		Test.Assert(Sidecars.OwnerPathOf("models/geometry.bin", "rasset").IsEmpty);
+		Test.Assert(Sidecars.OwnerPathOf("models/.geometry.bin", "rasset").IsEmpty);
+		Test.Assert(Sidecars.OwnerPathOf("models/.rasset", "rasset").IsEmpty);
+
+		Test.Assert(Sidecars.MatchSidecar("Rock", "Rock.geometry.bin", var stream, var encoding));
+		Test.Assert(stream == "geometry");
+		Test.Assert(encoding == .Binary);
+		Test.Assert(Sidecars.MatchSidecar("Rock.2", "Rock.2.scene.data", out stream, out encoding));
+		Test.Assert(encoding == .Text);
+		Test.Assert(!Sidecars.MatchSidecar("Rock", "Rock.2.geometry.bin", out stream, out encoding));
+		Test.Assert(!Sidecars.MatchSidecar("Rock", "Rock.asset", out stream, out encoding));
+		Test.Assert(!Sidecars.MatchSidecar("Rock", "RockBig.geometry.bin", out stream, out encoding));
+	}
 }
