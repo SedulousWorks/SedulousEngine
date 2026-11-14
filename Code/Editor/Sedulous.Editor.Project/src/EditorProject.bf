@@ -12,6 +12,13 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
 
+/// One of the project's quality levels as the editor offers it: its id and its asset's path.
+class ProjectQualityLevel
+{
+	public Guid Id;
+	public String Name = new .() ~ delete _;
+}
+
 /// An opened project: the manifest, and the source and cooked content databases mounted
 /// over its fixed layout.
 ///
@@ -147,6 +154,24 @@ class EditorProject
 	public StringView Name => mSettings.Name;
 	public StringView Directory => mDirectory;
 	public ProjectSettings Settings => mSettings;
+
+	/// The quality levels the manifest lists, in its order, each named by its asset's path (by
+	/// its id when the asset is gone), for the menus that offer them. Appends to `outLevels`;
+	/// the caller owns what it appends.
+	public void QualityLevels(List<ProjectQualityLevel> outLevels)
+	{
+		for (let id in mSettings.QualityLevelIds)
+		{
+			let level = new ProjectQualityLevel();
+			level.Id = id;
+			let instance = mSourceDb.GetInstance(id);
+			if (instance != null)
+				instance.GetPath(level.Name);
+			else
+				id.ToString(level.Name);
+			outLevels.Add(level);
+		}
+	}
 
 	/// The authored source database, XML envelopes: what the editor edits.
 	public ContentDatabase SourceDb => mSourceDb;

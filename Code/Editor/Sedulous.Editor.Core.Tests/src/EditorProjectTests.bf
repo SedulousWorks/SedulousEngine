@@ -272,6 +272,17 @@ static class EditorProjectTests
 			Test.Assert(again != null);
 			defer delete again;
 			Test.Assert(again.Settings.QualityLevelIds.Count == 1, "upgraded once, not again");
+			// The menus' list: each level by its asset's path, one whose asset is gone by its id.
+			let gone = Guid(0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B);
+			again.Settings.QualityLevelIds.Add(gone);
+			let levels = scope List<ProjectQualityLevel>();
+			defer { ClearAndDeleteItems!(levels); }
+			again.QualityLevels(levels);
+			Test.Assert(levels.Count == 2);
+			Test.Assert(levels[0].Id == again.Settings.DefaultQualityId);
+			Test.Assert(levels[0].Name == "Quality/Default", levels[0].Name);
+			Test.Assert(levels[1].Id == gone);
+			Test.Assert(levels[1].Name == gone.ToString(.. scope .()));
 		}
 	}
 
