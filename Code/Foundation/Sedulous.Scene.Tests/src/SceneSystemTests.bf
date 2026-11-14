@@ -325,4 +325,52 @@ class SceneSystemTests
 			run.Mutations.Flush(); // nothing reaches the freed scene
 		}
 	}
+
+	/// When `Trigger` is destroyed, moves `Away` to the roots and `Into` under `Parent`, as a
+	/// behaviour's onDestroy might.
+	private class Reparenter : SceneSystem
+	{
+		public EntityHandle Trigger = .Invalid;
+		public EntityHandle Away = .Invalid;
+		public EntityHandle Into = .Invalid;
+		public EntityHandle Parent = .Invalid;
+
+		public override void OnEntityDestroyed(EntityHandle entity)
+		{
+			if (!(entity == Trigger))
+				return;
+			Scene.SetParent(Away, .Invalid);
+			Scene.SetParent(Into, Parent);
+		}
+	}
+
+	/// A subtree's destroy follows the parent's children as its hooks move them: a sibling moved
+	/// away stays, an entity moved in goes with the parent, and no link is left to a freed slot.
+	[Test]
+	public static void ASubtreesDestroyFollowsItsChildrenAsHooksMoveThem()
+	{
+		let scene = scope Scene("subtree");
+		let hooks = scene.AddSystem<Reparenter>();
+		let parent = scene.CreateEntity("parent");
+		let first = scene.CreateEntity("first");
+		let second = scene.CreateEntity("second");
+		let outsider = scene.CreateEntity("outsider");
+		scene.SetParent(first, parent);
+		scene.SetParent(second, parent);
+		hooks.Trigger = first;
+		hooks.Away = second; // the sibling read before the first went, moved out
+		hooks.Into = outsider; // moved in while the parent goes
+		hooks.Parent = parent;
+		scene.DestroyEntity(parent);
+		Test.Assert(!scene.IsValid(parent));
+		Test.Assert(!scene.IsValid(first));
+		Test.Assert(scene.IsValid(second), "no longer a child when its turn would have come");
+		Test.Assert(!scene.GetParent(second).IsAssigned);
+		Test.Assert(!scene.IsValid(outsider), "a child by then: it went with the parent");
+		Test.Assert(scene.EntityCount == 1);
+		let next = scene.CreateEntity("next"); // the free list is sound
+		let more = scene.CreateEntity("more");
+		Test.Assert(!(next == more));
+		Test.Assert(scene.EntityCount == 3);
+	}
 }

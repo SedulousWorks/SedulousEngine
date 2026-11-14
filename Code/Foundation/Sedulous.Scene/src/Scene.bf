@@ -1079,17 +1079,25 @@ class Scene : IScriptWeaklyHeld
 
 	private void DestroyEntityImmediate(EntityHandle entity)
 	{
+		if (!IsValid(entity))
+			return; // gone already (a destroy queued twice)
 		let index = entity.Index;
 
-		// The subtree goes first. The next sibling is snapshot before each child dies,
-		// since the link it would be read through is cleared by the destroy.
+		// The subtree goes first. The first child is read again after each one goes: each
+		// unlinks itself, and a destroy hook may have moved a sibling (reparented it here or
+		// away), so a next sibling read before the destroy could name an entity no longer there.
 		var child = mTransforms[(int)index].FirstChild;
 		while (child.IsAssigned)
 		{
-			let nextSibling = IsValid(child) ? mTransforms[(int)child.Index].NextSibling
-				: EntityHandle.Invalid;
+			if (!IsValid(child))
+			{
+				// A link to the dead: cut.
+				mTransforms[(int)index].FirstChild = .Invalid;
+				mTransforms[(int)index].LastChild = .Invalid;
+				break;
+			}
 			DestroyEntityImmediate(child);
-			child = nextSibling;
+			child = mTransforms[(int)index].FirstChild;
 		}
 
 		RemoveFromParent(entity);
