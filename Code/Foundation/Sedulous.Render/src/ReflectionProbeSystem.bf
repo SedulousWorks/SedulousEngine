@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Shaders;
@@ -19,9 +20,8 @@ namespace Sedulous.Render;
 /// six face render per probe per frame would cost more than the reflections are worth.
 class ReflectionProbeSystem
 {
-	/// ONE resolution for every probe: they share one cube array, and its slices cannot differ.
-	public const uint32 cCaptureResolution = 128;
-	public const uint32 cPrefilterResolution = 128;
+	/// ONE resolution for every probe, captured and prefiltered alike: they share one cube
+	/// array, and its slices cannot differ (SetResolution).
 	/// The roughness of a level is its index over the last.
 	public const uint32 cPrefilterMips = 5;
 	public const uint32 cMaxProbes = RenderLimits.MaxReflectionProbes;
@@ -56,6 +56,11 @@ class ReflectionProbeSystem
 
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
+	/// BORROWED. Null means a resize drains the device instead.
+	private GpuRetireQueue mRetire = null;
+	/// The arrays' size from now on, and the size they were made at.
+	private uint32 mResolution = 128;
+	private uint32 mArraysResolution = 0;
 
 	// The captured into prefiltered blit, which corrects the horizontal mirror the face
 	// cameras leave. Per face two dimensional views, so the filtering stays within a face and
@@ -117,10 +122,38 @@ class ReflectionProbeSystem
 		return .Ok;
 	}
 
+	/// Wires the retire queue: a resize retires the old arrays and their views, rather than
+	/// freeing them while a frame in flight may still sample them. Null drains instead.
+	public void SetRetireQueue(GpuRetireQueue retire) => mRetire = retire;
+
+	/// Every probe's face resolution from now on (a quality level's environment tier). At the
+	/// next BeginFrame the arrays are remade at it, and every probe is captured once more.
+	public void SetResolution(uint32 resolution) => mResolution = Math.Clamp(resolution, (uint32)32, (uint32)512);
+	/// The arrays' size: BeginFrame keeps them at the one set.
+	public uint32 Resolution => mResolution;
+
 	/// Opens the frame, clearing the record accumulation. The slots and what has been captured
 	/// persist; only this frame's ranges and capture list are per frame.
 	public void BeginFrame()
 	{
+		// Another resolution (a quality level's environment tier): the arrays are remade at it,
+		// and every probe is captured again, once (an uncaptured slot is dirty at its next
+		// Assign).
+		if ((mCapturedCube != null) && (mArraysResolution != mResolution))
+		{
+			let previous = mArraysResolution;
+			ReleaseArrays();
+			if (!CreateArrays())
+			{
+				GlobalLog(.Error, "Render: reflection probes: the arrays did not remake at {}; back to {}", mResolution, previous);
+				ReleaseArrays();
+				mResolution = previous;
+				CreateArrays();
+			}
+			for (var state in ref mSlotStates)
+				state.Captured = false;
+		}
+
 		let shaderVersion = ShaderVersion();
 		if (shaderVersion != mPipelineShaderVersion)
 		{
@@ -316,7 +349,7 @@ class ReflectionProbeSystem
 					builder.SetColorTarget(0, prefiltered, .Clear, .Store, .Black,
 						.(0, 0, slot * 6 + face, 1));
 					builder.ReadTexture(captured);
-					builder.SetViewport(0, 0, cPrefilterResolution, cPrefilterResolution);
+					builder.SetViewport(0, 0, mArraysResolution, mArraysResolution);
 					builder.NeverCull();
 
 					builder.SetExecute(new (encoder) =>
@@ -343,7 +376,7 @@ class ReflectionProbeSystem
 		for (uint32 mip = 1; mip < cPrefilterMips; mip++)
 		{
 			let roughness = (float)mip / (float)(cPrefilterMips - 1);
-			let resolution = cPrefilterResolution >> mip;
+			let resolution = Math.Max(mArraysResolution >> mip, 1);
 
 			for (uint32 face = 0; face < 6; face++)
 			{
@@ -423,51 +456,8 @@ class ReflectionProbeSystem
 
 	private bool CreateResources()
 	{
-		let layers = cMaxProbes * 6;
-
-		// The captured array: the raw six face render per probe, which the blit samples.
-		var capturedDesc = TextureDesc();
-		capturedDesc.Format = cCubeFormat;
-		capturedDesc.Width = cCaptureResolution;
-		capturedDesc.Height = cCaptureResolution;
-		capturedDesc.ArrayLayerCount = layers;
-		capturedDesc.MipLevelCount = 1;
-		capturedDesc.Usage = .RenderTarget | .Sampled | .CopySrc;
-		capturedDesc.Label = "probes.captured";
-		if (!(mDevice.CreateTexture(capturedDesc) case .Ok(let capturedCube)))
+		if (!CreateArrays())
 			return false;
-		mCapturedCube = capturedCube;
-
-		var capturedViewDesc = TextureViewDesc();
-		capturedViewDesc.Format = cCubeFormat;
-		capturedViewDesc.Dimension = .TextureCubeArray;
-		capturedViewDesc.ArrayLayerCount = layers;
-		capturedViewDesc.MipLevelCount = 1;
-		if (!(mDevice.CreateTextureView(capturedCube, capturedViewDesc) case .Ok(let capturedView)))
-			return false;
-		mCapturedArrayView = capturedView;
-
-		// The prefiltered array, one level per roughness, which the forward samples.
-		var prefilterDesc = TextureDesc();
-		prefilterDesc.Format = cCubeFormat;
-		prefilterDesc.Width = cPrefilterResolution;
-		prefilterDesc.Height = cPrefilterResolution;
-		prefilterDesc.ArrayLayerCount = layers;
-		prefilterDesc.MipLevelCount = cPrefilterMips;
-		prefilterDesc.Usage = .RenderTarget | .Sampled | .CopyDst;
-		prefilterDesc.Label = "probes.prefilter";
-		if (!(mDevice.CreateTexture(prefilterDesc) case .Ok(let prefilterCube)))
-			return false;
-		mPrefilterCube = prefilterCube;
-
-		var prefilterViewDesc = TextureViewDesc();
-		prefilterViewDesc.Format = cCubeFormat;
-		prefilterViewDesc.Dimension = .TextureCubeArray;
-		prefilterViewDesc.ArrayLayerCount = layers;
-		prefilterViewDesc.MipLevelCount = cPrefilterMips;
-		if (!(mDevice.CreateTextureView(prefilterCube, prefilterViewDesc) case .Ok(let preView)))
-			return false;
-		mPrefilterArrayView = preView;
 
 		// The metadata, host visible so the forward reads this frame's records directly. It is
 		// small enough that streaming it through a staging buffer would cost more than it saves.
@@ -493,6 +483,120 @@ class ReflectionProbeSystem
 		mSampler = sampler;
 
 		return true;
+	}
+
+	/// The captured and prefiltered cube arrays and their array views, at the current
+	/// resolution.
+	private bool CreateArrays()
+	{
+		let layers = cMaxProbes * 6;
+
+		// The captured array: the raw six face render per probe, which the blit samples.
+		var capturedDesc = TextureDesc();
+		capturedDesc.Format = cCubeFormat;
+		capturedDesc.Width = mResolution;
+		capturedDesc.Height = mResolution;
+		capturedDesc.ArrayLayerCount = layers;
+		capturedDesc.MipLevelCount = 1;
+		capturedDesc.Usage = .RenderTarget | .Sampled | .CopySrc;
+		capturedDesc.Label = "probes.captured";
+		if (!(mDevice.CreateTexture(capturedDesc) case .Ok(let capturedCube)))
+			return false;
+		mCapturedCube = capturedCube;
+
+		var capturedViewDesc = TextureViewDesc();
+		capturedViewDesc.Format = cCubeFormat;
+		capturedViewDesc.Dimension = .TextureCubeArray;
+		capturedViewDesc.ArrayLayerCount = layers;
+		capturedViewDesc.MipLevelCount = 1;
+		if (!(mDevice.CreateTextureView(capturedCube, capturedViewDesc) case .Ok(let capturedView)))
+			return false;
+		mCapturedArrayView = capturedView;
+
+		// The prefiltered array, one level per roughness, which the forward samples.
+		var prefilterDesc = TextureDesc();
+		prefilterDesc.Format = cCubeFormat;
+		prefilterDesc.Width = mResolution;
+		prefilterDesc.Height = mResolution;
+		prefilterDesc.ArrayLayerCount = layers;
+		prefilterDesc.MipLevelCount = cPrefilterMips;
+		prefilterDesc.Usage = .RenderTarget | .Sampled | .CopyDst;
+		prefilterDesc.Label = "probes.prefilter";
+		if (!(mDevice.CreateTexture(prefilterDesc) case .Ok(let prefilterCube)))
+			return false;
+		mPrefilterCube = prefilterCube;
+
+		var prefilterViewDesc = TextureViewDesc();
+		prefilterViewDesc.Format = cCubeFormat;
+		prefilterViewDesc.Dimension = .TextureCubeArray;
+		prefilterViewDesc.ArrayLayerCount = layers;
+		prefilterViewDesc.MipLevelCount = cPrefilterMips;
+		if (!(mDevice.CreateTextureView(prefilterCube, prefilterViewDesc) case .Ok(let preView)))
+			return false;
+		mPrefilterArrayView = preView;
+
+		mArraysResolution = mResolution;
+		// The new arrays start undefined: their layouts are set once more.
+		mCapturedState = .Undefined;
+		mPrefilterState = .Undefined;
+		mLayoutsInitialised = false;
+		return true;
+	}
+
+	/// The arrays and every slot's face views and bind groups over them: retired where a queue
+	/// is wired (a frame in flight may still sample them), else after draining the device.
+	private void ReleaseArrays()
+	{
+		if (mRetire == null)
+			mDevice.WaitIdle();
+		for (int i < cMaxProbes * 6)
+		{
+			DropGroup(ref mBlitFaceBindGroups[i]);
+			DropView(ref mCapturedFaceViews[i]);
+		}
+		for (int i < cMaxProbes)
+		{
+			DropGroup(ref mPrefilterSourceBindGroups[i]);
+			DropView(ref mPrefilterSourceViews[i]);
+		}
+		DropView(ref mPrefilterArrayView);
+		DropTexture(ref mPrefilterCube);
+		DropView(ref mCapturedArrayView);
+		DropTexture(ref mCapturedCube);
+		mArraysResolution = 0;
+	}
+
+	private void DropGroup(ref IBindGroup group)
+	{
+		if (group == null)
+			return;
+		if (mRetire != null)
+			mRetire.Retire(group);
+		else
+			mDevice.DestroyBindGroup(ref group);
+		group = null;
+	}
+
+	private void DropView(ref ITextureView view)
+	{
+		if (view == null)
+			return;
+		if (mRetire != null)
+			mRetire.Retire(view);
+		else
+			mDevice.DestroyTextureView(ref view);
+		view = null;
+	}
+
+	private void DropTexture(ref ITexture texture)
+	{
+		if (texture == null)
+			return;
+		if (mRetire != null)
+			mRetire.Retire(texture);
+		else
+			mDevice.DestroyTexture(ref texture);
+		texture = null;
 	}
 
 	private bool CreateBlitPipeline()

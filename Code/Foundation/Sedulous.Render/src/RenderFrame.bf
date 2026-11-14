@@ -1399,7 +1399,8 @@ class RenderFrame
 		if (captures.IsEmpty)
 			return;
 
-		let resolution = ReflectionProbeSystem.cCaptureResolution;
+		// The arrays' size: BeginFrame keeps them at it.
+		let resolution = mProbeSystem.Resolution;
 		let nearZ = ReflectionProbeSystem.cCaptureNear;
 		let farZ = ReflectionProbeSystem.cCaptureFar;
 

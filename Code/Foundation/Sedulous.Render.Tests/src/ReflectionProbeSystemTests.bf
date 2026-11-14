@@ -145,6 +145,29 @@ class ReflectionProbeSystemTests
 		probes.Assign(sceneA, .(&listA[0], 1));
 		probes.Assign(sceneB, .(&listB[0], 2));
 		Test.Assert(probes.Captures.IsEmpty);
+
+		// Another resolution (a quality level's environment tier): the next frame remakes both
+		// arrays at it, retiring the old ones, and every probe is captured again, once.
+		let retire = scope GpuRetireQueue();
+		retire.Initialize(fixture.Device, 2);
+		probes.SetRetireQueue(retire);
+		defer { retire.Flush(); probes.SetRetireQueue(null); }
+		Test.Assert(probes.PrefilterArrayView.Texture.Desc.Width == 128);
+		probes.SetResolution(64);
+		probes.BeginFrame();
+		probes.Assign(sceneA, .(&listA[0], 1));
+		probes.Assign(sceneB, .(&listB[0], 2));
+		Test.Assert(probes.PrefilterArrayView.Texture.Desc.Width == 64);
+		Test.Assert(probes.CapturedSampleView.Texture.Desc.Width == 64);
+		Test.Assert(probes.Resolution == 64);
+		Test.Assert(retire.PendingCount == 4, "the two arrays and their two array views");
+		Test.Assert(probes.Captures.Length == 3);
+		for (let task in probes.Captures)
+			probes.MarkCaptured(task.Slot);
+		probes.BeginFrame();
+		probes.Assign(sceneA, .(&listA[0], 1));
+		probes.Assign(sceneB, .(&listB[0], 2));
+		Test.Assert(probes.Captures.IsEmpty);
 	}
 
 	/// A probe keeps its SLICE from frame to frame, keyed on its own tag, which is what lets a

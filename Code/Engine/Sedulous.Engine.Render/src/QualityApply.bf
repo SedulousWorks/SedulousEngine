@@ -22,6 +22,14 @@ static class QualityApply
 		return (TierValue<uint32>(tier, 512, 768, 1024), TierValue<uint32>(tier, 256, 512, 512));
 	}
 
+	/// The face resolution an environment tier gives the sky's prefiltered lighting (each
+	/// scene's): High is the size it had before the levels.
+	public static uint32 EnvironmentResolutionFor(ResolutionTier tier) => (tier == .Low) ? 128 : 256;
+
+	/// The face resolution an environment tier gives every reflection probe (one shared array):
+	/// High is the size it had before the levels.
+	public static uint32 ProbeResolutionFor(ResolutionTier tier) => (tier == .Low) ? 64 : 128;
+
 	/// Over a view's resolved post: an Off tier turns its effect off (the scene's values stay,
 	/// for a level that allows it), the other tiers set what each effect may cost (High is each
 	/// pass's full budget), and the scene pass takes the level's MSAA count. With

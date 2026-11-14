@@ -28,7 +28,6 @@ class IBLSystem
 	public const uint32 cEnvResolution = 256;
 	/// The environment's level pyramid, which the prefilter samples according to its density.
 	public const int cEnvMips = 5;
-	public const uint32 cPrefilterResolution = 256;
 	/// The roughness of a level is its index over the last.
 	public const int cPrefilterMips = 5;
 	public const uint32 cBrdfResolution = 256;
@@ -137,6 +136,21 @@ class IBLSystem
 	public bool Ready => mReady;
 	public int ContextCount => mContexts.Count;
 
+	/// BORROWED. Null means a resized prefilter drains the device instead.
+	private GpuRetireQueue mRetire = null;
+	/// The prefiltered cube's face resolution from now on (SetPrefilterResolution).
+	private uint32 mPrefilterResolution = 256;
+
+	/// Wires the retire queue: a resized prefilter's old cube is retired, not freed while a frame
+	/// in flight may still sample it. Null drains instead.
+	public void SetRetireQueue(GpuRetireQueue retire) => mRetire = retire;
+
+	/// The prefiltered specular cube's face resolution from now on (a quality level's
+	/// environment tier). A context made at another size remakes its cube when next prepared
+	/// and bakes once.
+	public void SetPrefilterResolution(uint32 resolution) => mPrefilterResolution = Math.Clamp(resolution, (uint32)32, (uint32)1024);
+	public uint32 PrefilterResolution => mPrefilterResolution;
+
 	/// Opens the frame: imports the shared table, declares its one time build, advances the
 	/// clock, and evicts the contexts whose scenes have not rendered in a long while.
 	public void BeginFrame(RenderGraph graph)
@@ -225,6 +239,16 @@ class IBLSystem
 		}
 
 		context.LastUsedFrame = mFrame;
+
+		// Another environment resolution (a quality level's): the prefiltered cube is remade at
+		// it and the context bakes again, once.
+		if (context.PrefilterResolution != mPrefilterResolution)
+		{
+			ReleasePrefilter(context);
+			if (!CreatePrefilter(context))
+				return null;
+			context.Dirty = true;
+		}
 
 		// Only the fields BAKED INTO the cube re dirty it. The sun's angular size is drawn
 		// live by the sky pass, so changing it rebuilds nothing.
@@ -640,7 +664,7 @@ class IBLSystem
 
 		for (uint32 mip = 0; mip < cPrefilterMips; mip++)
 		{
-			let resolution = cPrefilterResolution >> mip;
+			let resolution = Math.Max(context.PrefilterResolution >> mip, 1);
 			let roughness = (cPrefilterMips > 1)
 				? (float)mip / (float)(cPrefilterMips - 1)
 				: 0.0f;
@@ -778,26 +802,8 @@ class IBLSystem
 			context.EnvMipViews[mip] = mipView;
 		}
 
-		var prefilterDesc = TextureDesc();
-		prefilterDesc.Format = cCubeFormat;
-		prefilterDesc.Width = cPrefilterResolution;
-		prefilterDesc.Height = cPrefilterResolution;
-		prefilterDesc.ArrayLayerCount = 6;
-		prefilterDesc.MipLevelCount = cPrefilterMips;
-		prefilterDesc.Usage = .RenderTarget | .Sampled;
-		prefilterDesc.Label = "ibl.prefilter";
-		if (!(mDevice.CreateTexture(prefilterDesc) case .Ok(let prefilterCube)))
+		if (!CreatePrefilter(context))
 			return false;
-		context.PrefilterCube = prefilterCube;
-
-		var prefilterViewDesc = TextureViewDesc();
-		prefilterViewDesc.Format = cCubeFormat;
-		prefilterViewDesc.Dimension = .TextureCube;
-		prefilterViewDesc.ArrayLayerCount = 6;
-		prefilterViewDesc.MipLevelCount = cPrefilterMips;
-		if (!(mDevice.CreateTextureView(prefilterCube, prefilterViewDesc) case .Ok(let preView)))
-			return false;
-		context.PrefilterView = preView;
 
 		// The coefficients: written by the compute, read by the forward.
 		var shDesc = BufferDesc();
@@ -837,6 +843,55 @@ class IBLSystem
 		// Build the products on the first prepare.
 		context.Dirty = true;
 		return true;
+	}
+
+	/// The context's prefiltered cube and its view, at the current resolution.
+	private bool CreatePrefilter(IblContext context)
+	{
+		var prefilterDesc = TextureDesc();
+		prefilterDesc.Format = cCubeFormat;
+		prefilterDesc.Width = mPrefilterResolution;
+		prefilterDesc.Height = mPrefilterResolution;
+		prefilterDesc.ArrayLayerCount = 6;
+		prefilterDesc.MipLevelCount = cPrefilterMips;
+		prefilterDesc.Usage = .RenderTarget | .Sampled;
+		prefilterDesc.Label = "ibl.prefilter";
+		if (!(mDevice.CreateTexture(prefilterDesc) case .Ok(let prefilterCube)))
+			return false;
+		context.PrefilterCube = prefilterCube;
+
+		var prefilterViewDesc = TextureViewDesc();
+		prefilterViewDesc.Format = cCubeFormat;
+		prefilterViewDesc.Dimension = .TextureCube;
+		prefilterViewDesc.ArrayLayerCount = 6;
+		prefilterViewDesc.MipLevelCount = cPrefilterMips;
+		if (!(mDevice.CreateTextureView(prefilterCube, prefilterViewDesc) case .Ok(let preView)))
+			return false;
+		context.PrefilterView = preView;
+		context.PrefilterResolution = mPrefilterResolution;
+		context.PrefilterState = .Undefined;
+		return true;
+	}
+
+	/// A frame in flight may still sample the cube being replaced, so it is retired where a
+	/// queue is wired and the device drained where one is not.
+	private void ReleasePrefilter(IblContext context)
+	{
+		if (mRetire != null)
+		{
+			mRetire.Retire(context.PrefilterView);
+			mRetire.Retire(context.PrefilterCube);
+		}
+		else
+		{
+			mDevice.WaitIdle();
+			if (context.PrefilterView != null)
+				mDevice.DestroyTextureView(ref context.PrefilterView);
+			if (context.PrefilterCube != null)
+				mDevice.DestroyTexture(ref context.PrefilterCube);
+		}
+		context.PrefilterView = null;
+		context.PrefilterCube = null;
 	}
 
 	private void DestroyExternalBindGroups(IblContext context)

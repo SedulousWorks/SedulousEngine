@@ -336,12 +336,13 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// the global override: the host's, applied over either. BORROWED; SetQuality copies.
 	public RenderQualitySettings Quality => mQuality;
 
-	/// The shadow textures are shared by every view, so they follow this level's tiers, not a
-	/// viewport's.
+	/// The shadow textures and the environment's prefiltered maps are shared by every view, so
+	/// they follow this level's tiers, not a viewport's.
 	public void SetQuality(RenderQualitySettings quality)
 	{
 		quality.CopyTo(mQuality);
 		ApplyShadowResolution();
+		ApplyEnvironmentResolution();
 	}
 
 	/// The cascades' and the atlas tiles' sizes, from the level's shadows tier.
@@ -351,6 +352,16 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			return;
 		let sizes = QualityApply.ShadowResolutionFor(mQuality.Shadows);
 		mShadowSystem.SetResolutions(sizes.cascade, sizes.atlasTile);
+	}
+
+	/// The sky's prefiltered lighting every scene's context bakes at, and the reflection
+	/// probes', from the level's environment tier.
+	private void ApplyEnvironmentResolution()
+	{
+		if (mIblSystem != null)
+			mIblSystem.SetPrefilterResolution(QualityApply.EnvironmentResolutionFor(mQuality.EnvironmentResolution));
+		if (mProbeSystem != null)
+			mProbeSystem.SetResolution(QualityApply.ProbeResolutionFor(mQuality.EnvironmentResolution));
 	}
 
 	/// A level for the views drawn with `viewportKey` alone (a Game tab plays at its game's level
@@ -686,10 +697,16 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mIblSystem = new IBLSystem(mDevice, mShaders);
 		if (mIblSystem.Initialize() case .Err)
 			DeleteAndNullify!(mIblSystem);
+		else
+			mIblSystem.SetRetireQueue(mRetireQueue);
 
 		mProbeSystem = new ReflectionProbeSystem(mDevice, mShaders);
+		mProbeSystem.SetRetireQueue(mRetireQueue);
+		// Made at the level's size (a host's first SetQuality, before the renderer started).
+		mProbeSystem.SetResolution(QualityApply.ProbeResolutionFor(mQuality.EnvironmentResolution));
 		if (mProbeSystem.Initialize() case .Err)
 			DeleteAndNullify!(mProbeSystem);
+		ApplyEnvironmentResolution();
 
 		// The visible sky, drawn from the environment.
 		mSkyPass = new SkyPass(mDevice, mShaders, mFramesInFlight);

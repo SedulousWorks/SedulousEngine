@@ -98,6 +98,13 @@ class QualityLevelTests
 		Test.Assert(QualityApply.ShadowResolutionFor(.Medium) == (768, 512));
 		Test.Assert(QualityApply.ShadowResolutionFor(.Low) == (512, 256));
 		Test.Assert(QualityApply.ShadowResolutionFor(.Off) == (512, 256));
+		// The environment tier sizes every scene's prefiltered sky lighting and every reflection
+		// probe: High the sizes before the levels.
+		Test.Assert(QualityApply.EnvironmentResolutionFor(.High) == 256);
+		Test.Assert(QualityApply.EnvironmentResolutionFor(.Medium) == 256);
+		Test.Assert(QualityApply.EnvironmentResolutionFor(.Low) == 128);
+		Test.Assert(QualityApply.ProbeResolutionFor(.High) == 128);
+		Test.Assert(QualityApply.ProbeResolutionFor(.Low) == 64);
 		// Without `antialiasing` (a debug panel set its own), the view's AA stays as it was.
 		{
 			var config = ScenePost.Resolve(scene);

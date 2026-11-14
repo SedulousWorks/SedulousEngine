@@ -33,6 +33,8 @@ class IblContext
 	/// The prefiltered specular, one level per roughness.
 	public ITexture PrefilterCube = null;
 	public ITextureView PrefilterView = null;
+	/// The size the prefiltered cube was made at.
+	public uint32 PrefilterResolution = 0;
 	/// The nine spherical harmonic coefficients of the diffuse irradiance.
 	public IBuffer ShBuffer = null;
 

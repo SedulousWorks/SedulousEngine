@@ -171,6 +171,33 @@ class IblSystemTests
 
 		Test.Assert(contextA.Generation == generationA);
 		Test.Assert(contextB.Generation > generationB);
+
+		// Another environment resolution (a quality level's): each context remakes its
+		// prefiltered cube at it, the old one retired rather than freed in flight, and bakes once
+		// more; then rests.
+		let retire = scope GpuRetireQueue();
+		retire.Initialize(fixture.Device, 2);
+		ibl.SetRetireQueue(retire);
+		defer { retire.Flush(); ibl.SetRetireQueue(null); }
+		Test.Assert(contextA.PrefilterView.Texture.Desc.Width == 256);
+		ibl.SetPrefilterResolution(128);
+		{
+			let graph = scope RenderGraph(fixture.Device);
+			ibl.BeginFrame(graph);
+			Test.Assert(ibl.Prepare(sceneA, procedural, sun, graph) === contextA);
+			Test.Assert(ibl.Prepare(sceneB, image, sun, graph) === contextB);
+			Test.Assert(PrefilterPasses(graph) == 2 * bake);
+		}
+		Test.Assert(contextA.PrefilterView.Texture.Desc.Width == 128);
+		Test.Assert(contextB.PrefilterView.Texture.Desc.Width == 128);
+		Test.Assert(retire.PendingCount == 4, "each context's old cube and its view");
+		{
+			let graph = scope RenderGraph(fixture.Device);
+			ibl.BeginFrame(graph);
+			ibl.Prepare(sceneA, procedural, sun, graph);
+			ibl.Prepare(sceneB, image, sun, graph);
+			Test.Assert(PrefilterPasses(graph) == 0);
+		}
 	}
 
 	/// The prefilter passes a frame's graph declares.
