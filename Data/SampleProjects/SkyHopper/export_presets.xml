@@ -33,6 +33,7 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<string name="qualityLevelId">00000000-0000-0000-0000-000000000000</string>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
@@ -62,6 +63,7 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<string name="qualityLevelId">b9665091-aec1-b34e-bb2e-24ed660ce673</string>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
@@ -91,6 +93,7 @@
 				<bool name="overridesOrientation">true</bool>
 				<u8 name="orientation">1</u8>
 				<bool name="includeShaderSource">false</bool>
+				<string name="qualityLevelId">b9665091-aec1-b34e-bb2e-24ed660ce673</string>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
@@ -120,6 +123,7 @@
 				<bool name="overridesOrientation">false</bool>
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
+				<string name="qualityLevelId">00000000-0000-0000-0000-000000000000</string>
 			</object>
 		</array>
 	</object>
