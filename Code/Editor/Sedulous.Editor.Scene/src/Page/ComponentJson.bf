@@ -40,7 +40,8 @@ static class ComponentJson
 		case .Quaternion: var q = value.AsQuaternion; return FieldJson.ValueJson(typeof(Quaternion), &q);
 		case .Color: var c = value.AsColor; return FieldJson.ValueJson(typeof(Color), &c);
 		case .Entity:
-			let owner = (value.AsEntityScene != null) ? value.AsEntityScene : scene;
+			// Its own scene, else the page's when it names none; one whose scene is gone is none.
+			let owner = value.NamesEntityOwner ? value.AsEntityScene : scene;
 			if ((owner == null) || !owner.IsValid(value.AsEntity))
 				return JsonValue.MakeNull();
 			return FieldJson.GuidJson(owner.GetEntityId(value.AsEntity));

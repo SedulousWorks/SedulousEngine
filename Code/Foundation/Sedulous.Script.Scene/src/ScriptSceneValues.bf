@@ -3,9 +3,10 @@ using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
-/// The core carries an entity opaquely, an index, a generation and an owner object, so it
-/// depends on no scene. These read the same values as the scene's types; a project that
-/// knows scenes, and the code a surface root emits, reaches them through this one.
+/// The core carries an entity opaquely, an index, a generation and its owner's place in the
+/// process's weak table, so it depends on no scene. These read the same values as the scene's
+/// types; a project that knows scenes, and the code a surface root emits, reaches them through
+/// this one.
 
 extension ScriptEntity
 {
@@ -45,6 +46,8 @@ extension ScriptCallContext
 
 extension ScriptCallFrame
 {
-	/// The scene an entity value resolves in: its own, else the context's.
-	public Scene SceneOf(ScriptValue entity) => entity.AsEntityScene ?? Context.Scene;
+	/// The scene an entity value resolves in: its own, else the context's when it names none.
+	/// One whose scene is gone resolves in none, never the context's: its index would name
+	/// another scene's entity there.
+	public Scene SceneOf(ScriptValue entity) => entity.NamesEntityOwner ? entity.AsEntityScene : Context.Scene;
 }

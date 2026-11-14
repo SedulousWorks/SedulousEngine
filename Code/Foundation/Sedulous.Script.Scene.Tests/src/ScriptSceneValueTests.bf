@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Script;
 
@@ -7,15 +8,15 @@ using Sedulous.Script;
 // the bare name `Scene` from the type in the code a surface root emits.
 namespace Sedulous.ScriptScene.Tests;
 
-/// The opaque entity is laid out as the scene's handle, then the owner: a component handle
-/// reads its entity first, and an unassigned entity reads the same through both.
+/// The opaque entity is laid out as the scene's handle, then the owner's place: a component
+/// handle reads its entity first, and an unassigned entity reads the same through both.
 static
 {
 	private static void Assert_ScriptEntityMatchesEntityHandle()
 	{
 		Compiler.Assert(offsetof(ScriptEntity, Index) == offsetof(EntityHandle, Index));
 		Compiler.Assert(offsetof(ScriptEntity, Generation) == offsetof(EntityHandle, Generation));
-		Compiler.Assert(offsetof(ScriptEntity, Owner) == sizeof(EntityHandle));
+		Compiler.Assert(offsetof(ScriptEntity, OwnerSlot) == sizeof(EntityHandle));
 		Compiler.Assert(ScriptEntity.cInvalidIndex == EntityHandle.cInvalidIndex);
 	}
 }
@@ -41,6 +42,19 @@ class SceneTestCallContext : ScriptCallContext
 		mAllocs.Add(p);
 		return p;
 	}
+}
+
+/// An owner in the process's weak table that is no scene.
+class NotASceneOwner : IScriptWeaklyHeld
+{
+	private ScriptWeakSlot mSlot;
+
+	public ~this()
+	{
+		mSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mSlot.Take(this);
 }
 
 /// The scene typed members over the core's opaque entity, and the names the core matches
@@ -87,7 +101,7 @@ static class ScriptSceneValueTests
 		Test.Assert((bare.AsEntity == handle) && (bare.AsEntityOwner == null) && (bare.AsEntityScene == null));
 
 		// An owner that is no scene is carried, and reads as no scene.
-		let other = scope String();
+		let other = scope NotASceneOwner();
 		let opaque = ScriptValue.FromEntityRef(.(3, 7, other));
 		Test.Assert((opaque.AsEntityOwner === other) && (opaque.AsEntityScene == null));
 	}
@@ -128,6 +142,27 @@ static class ScriptSceneValueTests
 		Test.Assert(frame.SceneOf(args[1]) === b);
 		Test.Assert(frame.ExpectEntityIn(0, a));
 		Test.Assert(!frame.ExpectEntityIn(0, b) && frame.Failed);
+	}
+
+	/// An entity kept past its scene resolves in none, never the context's, where its index
+	/// would name another scene's entity; a call taking it does nothing.
+	[Test]
+	public static void AnEntityOfAGoneSceneResolvesInNone()
+	{
+		let ctx = scope SceneTestCallContext();
+		let live = scope Sedulous.Scene.Scene("live");
+		let level = new Sedulous.Scene.Scene("level");
+		let inLevel = level.CreateEntity("player");
+		live.CreateEntity("player");
+		ctx.Scene = live;
+		var args = ScriptValue[1](.FromEntity(inLevel, level));
+		var frame = ScriptCallFrame(ctx, args);
+		Test.Assert(frame.SceneOf(args[0]) === level);
+		delete level;
+
+		Test.Assert((args[0].AsEntityScene == null) && args[0].EntityOwnerGone);
+		Test.Assert(frame.SceneOf(args[0]) == null, "not the context's");
+		Test.Assert(!frame.ExpectEntityIn(0, live) && !frame.Failed, "the call does nothing");
 	}
 
 	[Test]

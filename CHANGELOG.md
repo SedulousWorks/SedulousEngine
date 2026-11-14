@@ -229,3 +229,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Editor: the UI scale preference shows its percentage while its slider is dragged.
 - Editor: Add Component is disabled while a scene simulates, as the rest of the inspector is.
 - Cook: GUI documents and style sheets no longer lose elements, or leak, when several cook at once.
+- Scripts: an entity, a scene, a component or a scene's service (`scene.Physics` and the like)
+  kept in a script past its scene (a Game class member across a level load) reads as gone, and
+  its calls do nothing; they reached the freed scene.

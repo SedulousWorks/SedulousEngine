@@ -9,11 +9,13 @@ namespace Sedulous.Script;
 /// accessors assume the kind; the surface says what each slot is, and the VM checks
 /// against it before calling.
 /// A script's entity: the handle AND the owner it lives in, so a call resolves it there and
-/// never in whichever owner happens to be ambient. Null owner means "the context's".
+/// never in whichever owner happens to be ambient. No owner means "the context's".
 ///
 /// Opaque to the core: an index and generation laid out as the scene's EntityHandle, and
-/// the owner as an object, so the core carries an entity without knowing what a scene is.
-[CRepr]
+/// the owner as its slot and generation in ScriptWeakTable.Shared, so the core carries an
+/// entity without knowing what a scene is, and an entity kept past its scene reads its owner
+/// as gone rather than reaching it. Sixteen bytes, as AngelScript registers it.
+[CRepr, Align(8)]
 struct ScriptEntity
 {
 	/// The same value as EntityHandle's: an unassigned entity reads the same through both.
@@ -21,16 +23,47 @@ struct ScriptEntity
 
 	public uint32 Index;
 	public uint32 Generation;
-	public Object Owner;
+	/// The owner's place in the process's weak table; generation 0 names none.
+	public uint32 OwnerSlot;
+	public uint32 OwnerGeneration;
 
 	public this(uint32 index, uint32 generation, Object owner)
 	{
 		Index = index;
 		Generation = generation;
+		OwnerSlot = 0;
+		OwnerGeneration = 0;
 		Owner = owner;
 	}
 
 	public static ScriptEntity Invalid => .(cInvalidIndex, 0, null);
+
+	/// The owner, read through the table on every use: null when the entity names none, or
+	/// the one it names is gone. Set from an object in the table (a scene, which takes its slot
+	/// here when it has none); any other object names none.
+	public Object Owner
+	{
+		get => ScriptWeakTable.Shared.ResolveWeak(OwnerSlot, OwnerGeneration);
+		set mut
+		{
+			ScriptWeakRef named = default;
+			if (let held = value as IScriptWeaklyHeld)
+				named = held.TakeScriptWeak();
+			let inTable = ScriptWeakTable.Shared.Holds(named);
+			OwnerSlot = inTable ? named.Slot : 0;
+			OwnerGeneration = inTable ? named.Generation : 0;
+		}
+	}
+
+	/// Whether the entity names an owner, there or gone.
+	public bool NamesOwner => OwnerGeneration != 0;
+
+	/// Whether the owner it names is gone: an entity kept past its scene.
+	public bool OwnerGone => NamesOwner && (Owner == null);
+
+	/// The same owner, by its place and never resolving, so two entities of one gone scene
+	/// still share it.
+	public bool SameOwner(ScriptEntity other) => (OwnerSlot == other.OwnerSlot) && (OwnerGeneration == other.OwnerGeneration);
 }
 
 [Union]
@@ -96,10 +129,28 @@ struct ScriptValue
 	public StringView AsString => Data.String;
 	public Guid AsGuid => Data.Guid;
 	/// The index and generation read whatever the kind, as AsEntity; the owner only from an
-	/// entity value.
-	public ScriptEntity AsEntityRef => .(Data.Entity.Index, Data.Entity.Generation, AsEntityOwner);
-	/// The owner an entity value names, null when it names none.
+	/// entity value, and as it was named, so one whose owner is gone stays gone where it is
+	/// written back.
+	public ScriptEntity AsEntityRef
+	{
+		get
+		{
+			var e = Data.Entity;
+			if (Kind != .Entity)
+			{
+				e.OwnerSlot = 0;
+				e.OwnerGeneration = 0;
+			}
+			return e;
+		}
+	}
+	/// The owner an entity value names, null when it names none or that owner is gone.
 	public Object AsEntityOwner => (Kind == .Entity) ? Data.Entity.Owner : null;
+	/// Whether this is an entity value that names an owner, there or gone.
+	public bool NamesEntityOwner => (Kind == .Entity) && Data.Entity.NamesOwner;
+	/// Whether this is an entity value whose owner is gone: one kept past its scene, whose
+	/// calls do nothing.
+	public bool EntityOwnerGone => (Kind == .Entity) && Data.Entity.OwnerGone;
 	public Float2 AsFloat2 => Data.Float2;
 	public Float3 AsFloat3 => Data.Float3;
 	public Float4 AsFloat4 => Data.Float4;

@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Script;
 using Sedulous.Script.Fixture;
 
@@ -15,13 +16,26 @@ static
 	}
 }
 
+/// An owner in the process's weak table that is no scene, as a scene is one.
+class TableOwner : IScriptWeaklyHeld
+{
+	private ScriptWeakSlot mSlot;
+
+	public ~this()
+	{
+		mSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mSlot.Take(this);
+}
+
 /// The opaque entity a value carries, read back through the core's own members.
 static class ScriptEntityTests
 {
 	[Test]
 	public static void AnOpaqueEntityRoundTripsWithItsOwner()
 	{
-		let owner = scope String();
+		let owner = scope TableOwner();
 		let value = ScriptValue.FromEntityRef(.(3, 7, owner));
 		Test.Assert(value.Kind == .Entity);
 		Test.Assert(value.AsEntityOwner === owner);
@@ -55,12 +69,48 @@ static class ScriptEntityTests
 		Test.Assert(notEntity.AsEntityOwner == null);
 	}
 
+	/// An owner outside the table cannot be named: the entity names none.
+	[Test]
+	public static void AnOwnerOutsideTheTableIsNone()
+	{
+		let other = scope String();
+		let value = ScriptValue.FromEntityRef(.(3, 7, other));
+		Test.Assert(value.AsEntityOwner == null);
+		Test.Assert(!value.NamesEntityOwner && !value.EntityOwnerGone);
+	}
+
+	/// An entity kept past its owner reads the owner as gone, by its place, never by what now
+	/// holds the slot: a call checking it does nothing and reports no failure.
+	[Test]
+	public static void AnEntityKeptPastItsOwnerReadsItGone()
+	{
+		let ctx = scope ScratchCallContext();
+		let owner = new TableOwner();
+		var args = ScriptValue[1](.FromEntityRef(.(1, 1, owner)));
+		let kept = args[0].AsEntityRef;
+		Test.Assert(args[0].NamesEntityOwner && !args[0].EntityOwnerGone);
+		delete owner;
+
+		// A new owner takes the freed slot: the kept entity is not in it.
+		let next = scope TableOwner();
+		let taken = ScriptValue.FromEntityRef(.(1, 1, next)).AsEntityRef;
+		Test.Assert(taken.OwnerSlot == kept.OwnerSlot, "the slot is reused");
+		Test.Assert(args[0].AsEntityOwner == null, "the kept entity's owner is gone");
+		Test.Assert(args[0].NamesEntityOwner && args[0].EntityOwnerGone);
+		Test.Assert(!kept.SameOwner(taken));
+		Test.Assert(args[0].AsEntityRef.SameOwner(kept), "written back, it stays gone");
+
+		var frame = ScriptCallFrame(ctx, args);
+		Test.Assert(!frame.ExpectEntityIn(0, next) && !frame.Failed, "a gone entity makes the call do nothing");
+		Test.Assert(!frame.ExpectEntityIn(0, null) && !frame.Failed, "in no owner too");
+	}
+
 	[Test]
 	public static void AnEntityIsExpectedInItsOwner()
 	{
 		let ctx = scope ScratchCallContext();
-		let a = scope String();
-		let b = scope String();
+		let a = scope TableOwner();
+		let b = scope TableOwner();
 		var args = ScriptValue[2](.FromEntityRef(.(1, 1, a)), .FromEntityRef(.(2, 1, null)));
 		var frame = ScriptCallFrame(ctx, args);
 		Test.Assert(frame.ExpectEntityIn(0, a));

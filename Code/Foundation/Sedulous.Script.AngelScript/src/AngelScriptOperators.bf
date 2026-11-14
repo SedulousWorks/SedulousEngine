@@ -261,7 +261,8 @@ extension AngelScriptRuntime
 			{
 				let a = (ScriptEntity*)self;
 				let other = Arg<ScriptEntity>(gen);
-				ReturnBool(gen, (a.Index == other.Index) && (a.Generation == other.Generation) && (a.Owner === other.Owner));
+				// The owner by its place, never resolved: two entities of one gone scene still compare.
+				ReturnBool(gen, (a.Index == other.Index) && (a.Generation == other.Generation) && a.SameOwner(*other));
 			}
 		}
 	}

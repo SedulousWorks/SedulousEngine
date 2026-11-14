@@ -22,10 +22,17 @@ namespace Sedulous.Scene;
 /// Destruction is recursive, children first. A destroy asked for while the scene steps, or
 /// while its run defers, waits for the end of that step or the run's flush, so iteration stays
 /// stable.
+///
+/// Scripts hold a scene weakly: its handle, and every entity a script keeps, name it by its
+/// place in the process's weak table, freed as the scene goes. A handle kept past it (a Game
+/// member across a level load) reads as gone, and its calls do nothing.
 [Scriptable]
-class Scene
+class Scene : IScriptWeaklyHeld
 {
 	private String mName = new .() ~ delete _;
+
+	/// Where scripts' handles to this scene resolve: taken the first time one names it.
+	private ScriptWeakSlot mScriptSlot;
 
 	private static int64 sNextSerial;
 
@@ -85,11 +92,15 @@ class Scene
 
 	public ~this()
 	{
+		// What scripts hold reads as gone from here, before any of the scene is torn down.
+		mScriptSlot.Free();
 		// Its queued destroys go with it. Only then is the run asked: a scene may outlive the run
 		// it was given (a test's, a tool's), and has nothing queued on it by then.
 		if (mRunFlushQueued && (mRun != null))
 			mRun.Mutations.Cancel(this);
 	}
+
+	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
 
 	[Scriptable]
 	public StringView Name => mName;

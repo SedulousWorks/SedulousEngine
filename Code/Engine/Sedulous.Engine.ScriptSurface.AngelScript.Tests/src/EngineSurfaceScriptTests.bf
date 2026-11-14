@@ -157,7 +157,7 @@ static class EngineSurfaceScriptTests
 		Test.Assert(ok, "compiled against the engine surface");
 
 		let scene = scope Scene();
-		var arg = ScriptValue[1](.FromObject(scene));
+		var arg = ScriptValue[1](.FromWeak(scene));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("game", "float run(Scene@)", arg, ref r), "ran");
 		for (let p in vm.Problems)
@@ -169,7 +169,7 @@ static class EngineSurfaceScriptTests
 		let b = scope Scene("b");
 		a.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
 		b.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
-		var two = ScriptValue[2](.FromObject(a), .FromObject(b));
+		var two = ScriptValue[2](.FromWeak(a), .FromWeak(b));
 		Test.Assert(vm.Call("game", "int bodies(Scene@, Scene@)", two, ref r), "two scenes at once");
 		for (let p in vm.Problems)
 			Console.WriteLine("  {}", p);
@@ -201,7 +201,7 @@ static class EngineSurfaceScriptTests
 		let scene = scope Scene("ray");
 		defer Sedulous.Script.SceneFacades.Release(scene);
 		scene.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
-		var arg = ScriptValue[1](.FromObject(scene));
+		var arg = ScriptValue[1](.FromWeak(scene));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("game", "bool underfoot(Scene@)", arg, ref r), "ran");
 		for (let p in vm.Problems)
@@ -241,7 +241,7 @@ static class EngineSurfaceScriptTests
 		lamp.Range = 0.0f; // no falloff: the full 4 arrives anywhere
 		scene.UpdateTransforms();
 
-		var arg = ScriptValue[1](.FromObject(scene));
+		var arg = ScriptValue[1](.FromWeak(scene));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("game", "bool meter(Scene@)", arg, ref r), "ran");
 		for (let p in vm.Problems)
@@ -288,7 +288,7 @@ static class EngineSurfaceScriptTests
 		let profile = scope Sedulous.Engine.Render.EnvironmentProfile();
 		environment.Environment.Profile.SetDirect(profile);
 
-		var args = ScriptValue[2](.FromObject(scene), .FromFloat(0.75f));
+		var args = ScriptValue[2](.FromWeak(scene), .FromFloat(0.75f));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("game", "void tune(Scene@, float)", args, ref r), "ran");
 		Test.Assert(Math.Abs(environment.Environment.AmbientIntensity - 0.75f) < 1e-5f, "the scene's own values");
@@ -296,7 +296,7 @@ static class EngineSurfaceScriptTests
 		Test.Assert(environment.Environment.Profile.Get == profile, "the reference kept its binding");
 		// A value the script made itself carries no binding at all: setting it changes the
 		// values, and the scene's references stay bound.
-		var sceneArg = ScriptValue[1](.FromObject(scene));
+		var sceneArg = ScriptValue[1](.FromWeak(scene));
 		Test.Assert(vm.Call("game", "void fresh(Scene@)", sceneArg, ref r), "ran");
 		Test.Assert(Math.Abs(environment.Environment.AmbientIntensity - 0.5f) < 1e-5f);
 		Test.Assert(environment.Environment.Profile.Get == profile, "a made value does not unbind the profile");
@@ -345,7 +345,7 @@ static class EngineSurfaceScriptTests
 		let entity = scene.CreateEntity("tinted");
 		meshes.Add(entity);
 
-		var args = ScriptValue[2](.FromObject(scene), .FromEntity(entity, scene));
+		var args = ScriptValue[2](.FromWeak(scene), .FromEntity(entity, scene));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("game", "bool tint(Scene@, const Entity &in)", args, ref r), "ran");
 		for (let p in vm.Problems)
@@ -395,7 +395,7 @@ static class EngineSurfaceScriptTests
 		let bystander = scene.CreateEntity("bystander");
 		characters.Add(rider);
 
-		var args = ScriptValue[3](.FromObject(scene), .FromEntity(rider, scene), .FromEntity(bystander, scene));
+		var args = ScriptValue[3](.FromWeak(scene), .FromEntity(rider, scene), .FromEntity(bystander, scene));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("game", "bool drive(Scene@, const Entity &in, const Entity &in)", args, ref r), "ran");
 		for (let p in vm.Problems)
@@ -592,6 +592,83 @@ static class EngineSurfaceScriptTests
 		Test.Assert(!vm.Call("game", "void setHeld()", default, ref r), "gone: the write fails");
 		Test.Assert(!members.Has(member), "and adds nothing");
 		// A handle still held when the module goes is released with it (ASan checks).
+	}
+
+	/// Handles kept past their scene, as a Game member is across a level load that destroys
+	/// it: the entity, the scene, its facade and a component of it read as gone (invalid, empty,
+	/// null), and their calls do nothing, with no error, rather than reach the freed scene. A
+	/// component gone from a live entity is still the script's error (above); a gone scene is not.
+	[Test]
+	public static void HandlesKeptPastTheirSceneReadGoneAndDoNothing()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		let ok = vm.Compile("game", "game.as", """
+			Entity kept;
+			Scene@ keptScene;
+			PhysicsFacade@ keptPhysics;
+			InstanceMemberComponent@ keptMember;
+			void keep(Scene@ scene, const Entity &in e)
+			{
+				kept = e;
+				@keptScene = scene;
+				@keptPhysics = scene.Physics;
+				@keptMember = InstanceMemberComponent::of(e);
+			}
+			bool entityValid() { return kept.IsValid(); }
+			string entityName() { return kept.GetName(); }
+			void rename() { kept.SetName("ghost"); }
+			string sceneName() { return keptScene.Name; }
+			int sceneCount() { return int(keptScene.EntityCount); }
+			bool sceneFinds() { return keptScene.FindEntityByName("player").IsValid(); }
+			bool physicsNull() { return keptScene.Physics is null; }
+			int bodies() { return int(keptPhysics.BodyCount); }
+			bool memberValid() { return keptMember.IsValid; }
+			int memberClip() { return int(keptMember.Clip); }
+			void setMemberClip() { keptMember.Clip = 9; }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let level = new Scene("level");
+		let members = level.AddSystem<Sedulous.Engine.Render.InstanceMemberComponentManager>();
+		let player = level.CreateEntity("player");
+		members.Add(player).Clip = 5;
+		var args = ScriptValue[2](.FromWeak(level), .FromEntity(player, level));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "void keep(Scene@, const Entity &in)", args, ref r), "kept");
+
+		// While the scene lives, every handle reads it.
+		Test.Assert(vm.Call("game", "bool entityValid()", default, ref r) && r.AsBool);
+		Test.Assert(vm.Call("game", "string entityName()", default, ref r) && (r.AsString == "player"));
+		Test.Assert(vm.Call("game", "string sceneName()", default, ref r) && (r.AsString == "level"));
+		Test.Assert(vm.Call("game", "int sceneCount()", default, ref r) && (r.AsInt == 1));
+		Test.Assert(vm.Call("game", "bool physicsNull()", default, ref r) && !r.AsBool, "the scene's facade");
+		Test.Assert(vm.Call("game", "bool memberValid()", default, ref r) && r.AsBool);
+		Test.Assert(vm.Call("game", "int memberClip()", default, ref r) && (r.AsInt == 5));
+
+		// The scene goes, its facades with it, as a level load destroys the level it replaces.
+		Sedulous.Script.SceneFacades.Release(level);
+		delete level;
+		ClearAndDeleteItems!(vm.Problems);
+
+		Test.Assert(vm.Call("game", "bool entityValid()", default, ref r) && !r.AsBool, "the entity is not valid");
+		Test.Assert(vm.Call("game", "string entityName()", default, ref r) && r.AsString.IsEmpty, "and has no name");
+		Test.Assert(vm.Call("game", "void rename()", default, ref r), "a rename does nothing, and is no error");
+		Test.Assert(vm.Call("game", "string entityName()", default, ref r) && r.AsString.IsEmpty);
+		Test.Assert(vm.Call("game", "string sceneName()", default, ref r) && r.AsString.IsEmpty, "the scene reads empty");
+		Test.Assert(vm.Call("game", "int sceneCount()", default, ref r) && (r.AsInt == 0));
+		Test.Assert(vm.Call("game", "bool sceneFinds()", default, ref r) && !r.AsBool, "and finds nothing");
+		Test.Assert(vm.Call("game", "bool physicsNull()", default, ref r) && r.AsBool, "its facade is null");
+		Test.Assert(vm.Call("game", "int bodies()", default, ref r) && (r.AsInt == 0), "a facade kept does nothing");
+		Test.Assert(vm.Call("game", "bool memberValid()", default, ref r) && !r.AsBool, "the component is not valid");
+		Test.Assert(vm.Call("game", "int memberClip()", default, ref r) && (r.AsInt == 0), "and reads nothing");
+		Test.Assert(vm.Call("game", "void setMemberClip()", default, ref r), "a write does nothing");
+		Test.Assert(vm.Problems.IsEmpty, "no call through a gone scene's handle is an error");
+		// The handles still held when the module goes are released with it (ASan checks).
 	}
 
 	/// `X::addTo(entity)` gives the entity the component when it has none and hands it back

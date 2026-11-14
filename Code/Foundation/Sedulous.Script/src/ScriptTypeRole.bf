@@ -7,7 +7,8 @@ enum ScriptTypeRole
 {
 	/// A plain type: constructed, or handed over.
 	case Plain;
-	/// A SceneSystem: reached through the scene, `scene.GetSystem<T>()`.
+	/// A SceneSystem: reached through the scene, `scene.GetSystem<T>()`. Held weakly, as the
+	/// scene is: a handle kept past its scene does nothing.
 	case SceneSystem;
 	/// A ComponentManager<T>: reached through the scene, and its components by entity.
 	case ComponentManager;

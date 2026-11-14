@@ -30,10 +30,10 @@ static class EngineThunkTests
 		let scene = scope Scene();
 		const String cScene = "Sedulous.Scene.Scene";
 
-		// Scene is a plain class: Self is the object.
+		// Scene is weakly held: Self is its handle.
 		var name = ScriptValue[1](.FromString("player"));
 		var frame = ScriptCallFrame(ctx, name);
-		frame.Self = .FromObject(scene);
+		frame.Self = .FromWeak(scene);
 		Method(s, cScene, "CreateEntity").Invoke(ref frame);
 		Test.Assert(!frame.Failed, scope String(frame.Error));
 		Test.Assert(frame.Result.Kind == .Entity);

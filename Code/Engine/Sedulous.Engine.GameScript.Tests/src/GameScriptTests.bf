@@ -514,6 +514,59 @@ static class GameScriptTests
 		Test.Assert(run.Prop("kept").AsGuid == levelId);
 	}
 
+	/// A Game member kept across a level load: the load destroys the level it came from, and the
+	/// kept scene and entity read as gone, their calls doing nothing, rather than reaching it.
+	/// Each load is read a frame later, when the run has adopted it.
+	[Test]
+	public static void AGameMemberKeptAcrossALevelLoadReadsGone()
+	{
+		let run = scope GameRun("scratch_game_kept_level");
+		let firstId = run.AuthorLevel("first", 2);
+		let secondId = run.AuthorLevel("second", 3);
+		let source = scope String();
+		source.AppendF("""
+			class Game
+			{{
+				Scene@ first;
+				Entity kept;
+				int stage = 0;
+				string before; string after = "unset"; string firstName = "unset";
+				bool validAfter = true; int countAfter = -1; int countNow = -1;
+				void launch() {{ Run.LoadScene(Guid::FromString("{0}")); }}
+				void update(float dt)
+				{{
+					if (stage == 0)
+					{{
+						@first = Run.CurrentScene;
+						kept = first.FindEntityByName("e0");
+						before = kept.GetName();
+						Run.LoadScene(Guid::FromString("{1}"));
+						stage = 1;
+					}}
+					else if (stage == 1)
+					{{
+						kept.SetName("ghost");
+						after = kept.GetName();
+						validAfter = kept.IsValid();
+						firstName = first.Name;
+						countAfter = int(first.EntityCount);
+						countNow = int(Run.CurrentScene.EntityCount);
+						stage = 2;
+					}}
+				}}
+			}}
+			""", firstId, secondId);
+		Test.Assert(run.Instance.StartScript(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		run.Step(2);
+		Test.Assert(run.Instance.ScriptRunning, scope String(run.Instance.ScriptFault));
+		Test.Assert(run.PropInt("stage") == 2, "both frames ran");
+		Test.Assert(run.Prop("before").AsString == "e0", "the first level's entity, while it lived");
+		Test.Assert(run.PropInt("countNow") == 3, "the run is in the second level");
+		Test.Assert(run.Prop("after").AsString.IsEmpty, "the kept entity reads gone, and its rename did nothing");
+		Test.Assert(!run.PropBool("validAfter"));
+		Test.Assert(run.Prop("firstName").AsString.IsEmpty && (run.PropInt("countAfter") == 0), "the kept scene reads empty");
+	}
+
 	/// A script rumbles its own run's pad and stops it; the run's end stops it too, and another
 	/// run's pad hears none of it.
 	[Test]

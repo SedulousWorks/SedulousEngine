@@ -1,14 +1,26 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
-/// The base of a scene facade: the scene it fronts, set when the registry makes it.
-abstract class SceneFacade
+/// The base of a scene facade: the scene it fronts, set when the registry makes it. Scripts hold
+/// it weakly: it is released with its scene, and a handle kept past that does nothing.
+abstract class SceneFacade : IScriptWeaklyHeld
 {
 	/// BORROWED: the facade lives no longer than its scene.
 	public Scene Scene { get; private set; }
+
+	/// Where scripts' handles to this facade resolve: taken the first time one names it.
+	private ScriptWeakSlot mScriptSlot;
+
+	public ~this()
+	{
+		mScriptSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
 
 	/// Nothing by default; a facade that caches a system looks it up here.
 	protected virtual void OnAttached() {}

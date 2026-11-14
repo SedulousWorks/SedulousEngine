@@ -32,13 +32,16 @@ namespace Sedulous.Script;
 /// splits them.
 ///
 /// A thunk resolves what it is called on from the type's role: a scene system from the
-/// object in Self, else the context's scene; a component through its manager in the ENTITY'S
-/// scene (an entity value carries the scene it lives in) and the entity in Self; a service
-/// through the context; a weakly held class by resolving the handle in Self, a gone one
-/// failing with ObjectGone; a counted class or a plain class or struct from Self itself. A scene system also gets a
-/// resolver, the scene's instance from a Scene self, which is how a script reaches
-/// `scene.Physics`. An entity a scene bound call answers is tagged with that scene, and an
-/// entity it takes is checked to be in it. A member whose types cannot cross the
+/// handle or object in Self, else the context's scene; a component through its manager in the
+/// ENTITY'S scene (an entity value carries the scene it lives in) and the entity in Self; a
+/// service through the context; a weakly held class by resolving the handle in Self, a gone one
+/// failing with ObjectGone; a counted class or a plain class or struct from Self itself. A scene
+/// system also gets a resolver, the scene's instance from a Scene self, which is how a script
+/// reaches `scene.Physics`. The scene, its systems and facades are weakly held, and a handle
+/// kept past its scene (an entity, the scene, a system, a component) makes every call do
+/// nothing rather than fail: the scene a script left behind is not its error. An entity a
+/// scene bound call answers is tagged with that scene, and an entity it takes is checked to be
+/// in it. A member whose types cannot cross the
 /// boundary (see ScriptValueMap) is still on the table, marked Blocked with the type that
 /// stopped it, so the listing shows the gap.
 ///
@@ -282,7 +285,8 @@ static class ScriptSurfaceWalker
 	/// Keeps of the marked candidates only what a script can reach: the seeds are the scene
 	/// and service facades, the global static blocks, the Scene, every marked component
 	/// that has a manager (a script takes one from an entity, `CharacterComponent::of(self)`),
-	/// every weakly held class (a script narrows one handle to another, `Button::Of(node)`), and
+	/// every weakly held class but a scene's own systems (a script narrows one handle to another,
+	/// `Button::Of(node)`; a system is reached from its scene), and
 /// every counted class with a marked constructor (a script makes one, `Tween()`);
 	/// then every type a kept type's members name, transitively, a component bringing its
 	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
@@ -301,7 +305,7 @@ static class ScriptSurfaceWalker
 			var seed = isStaticBlock || (fullName == ScriptSceneNames.cScene)
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
 					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()))
-				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type))
+				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type) && !IsSceneBound(type))
 				|| ((type != null) && ScriptValueMap.IsCounted(type) && HasMarkedConstructor(type));
 			if (!seed && withTooling && (type != null))
 				seed = !IsRuntimeDomain(type);
@@ -551,8 +555,10 @@ static class ScriptSurfaceWalker
 		if (ScriptValueMap.IsWeak(type) && type.ImplementsInterface(typeof(IScriptCounted)))
 			Runtime.FatalError(scope $"ScriptSurface: {ctx.FullName} is both weakly held and IScriptCounted; a script holds a type one way, so drop one of them");
 
-		// Held weakly: its owner destroys it, so a script's handle resolves on every use.
-		if (ScriptValueMap.IsWeak(type))
+		// Held weakly: its owner destroys it, so a script's handle resolves on every use. A
+		// scene's system, manager or facade is weakly held through its base too, and keeps the
+		// role it is reached from its scene by.
+		if (ScriptValueMap.IsWeak(type) && !IsSceneBound(type))
 		{
 			ctx.Role = .Weak;
 			ctx.Code.AppendF("\t\tt.As(.Weak);\n\t\tt.WeakRoot({});\n", Quote(WeakRootOf(ctx, .. scope .()), .. scope .()));
@@ -614,6 +620,17 @@ static class ScriptSurfaceWalker
 			t = t.BaseType;
 		}
 		return .Plain;
+	}
+
+	/// Whether a class is one of a scene's own: a system, a component manager or a facade,
+	/// reached from its scene (`scene.Physics`) and held weakly through its base.
+	[Comptime]
+	private static bool IsSceneBound(Type type)
+	{
+		if (!PooledComponent(type, .. scope .()).IsEmpty)
+			return true;
+		let role = BaseRole(type);
+		return (role == .SceneSystem) || (role == .SceneFacade);
 	}
 
 	/// Whether a base of the type has this full name prefix.
@@ -682,22 +699,34 @@ static class ScriptSurfaceWalker
 		switch (ctx.Role)
 		{
 		case .SceneSystem, .ComponentManager:
-			// The system a script holds, else the ambient scene's, for a host with no object.
-			outCode.AppendF("\tvar self = frame.Self.AsObject as {};\n\tif (self == null)\n\t{{\n\t\tlet ambient = frame.Context.Scene;\n\t\tself = (ambient != null) ? ambient.GetSystem<{}>() : null;\n\t}}\n\tif (self == null) {{ frame.Fail(\"no {} in the scene\"); return; }}\n", t, t, ctx.Name);
+			// The system a script's handle names (gone with its scene: the call does nothing), or
+			// a host's object, else the ambient scene's, for a host with no object.
+			outCode.AppendF("\tvar self = (frame.Self.Kind == .Weak) ? (frame.Self.ResolveWeak() as {}) : (frame.Self.AsObject as {});\n\tif ((self == null) && (frame.Self.Kind == .Weak)) return;\n\tif (self == null)\n\t{{\n\t\tlet ambient = frame.Context.Scene;\n\t\tself = (ambient != null) ? ambient.GetSystem<{}>() : null;\n\t}}\n\tif (self == null) {{ frame.Fail(\"no {} in the scene\"); return; }}\n", t, t, t, ctx.Name);
 			sceneExpr.Set("self.Scene");
 		case .SceneFacade:
-			// The facade a script holds, else the ambient scene's, made on first use.
-			outCode.AppendF("\tvar self = frame.Self.AsObject as {};\n\tif (self == null)\n\t\tself = SceneFacades.Resolve<{}>(frame.Context.Scene);\n\tif (self == null) {{ frame.Fail(\"no scene for {}\"); return; }}\n", t, t, ctx.Name);
+			// The facade a script's handle names (released with its scene: the call does
+			// nothing), or a host's object, else the ambient scene's, made on first use.
+			outCode.AppendF("\tvar self = (frame.Self.Kind == .Weak) ? (frame.Self.ResolveWeak() as {}) : (frame.Self.AsObject as {});\n\tif ((self == null) && (frame.Self.Kind == .Weak)) return;\n\tif (self == null)\n\t\tself = SceneFacades.Resolve<{}>(frame.Context.Scene);\n\tif (self == null) {{ frame.Fail(\"no scene for {}\"); return; }}\n", t, t, t, ctx.Name);
 			sceneExpr.Set("self.Scene");
 		case .Component:
-			// The entity's own scene, else the ambient one.
-			outCode.AppendF("\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif (self == null) {{ frame.Fail(scope $\"{{Sedulous.Script.ScriptErrors.ObjectGone}}: the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
+			// The entity's own scene, else the ambient one. A component gone from its entity is
+			// the script's error; one whose scene is gone does nothing.
+			outCode.AppendF("\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif ((self == null) && frame.Self.EntityOwnerGone) return;\n\tif (self == null) {{ frame.Fail(scope $\"{{Sedulous.Script.ScriptErrors.ObjectGone}}: the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
 			sceneExpr.Set("scene");
 		case .Service:
 			outCode.AppendF("\tlet self = frame.Context.FindService(typeof({})) as {};\n\tif (self == null) {{ frame.Fail(\"no {} service\"); return; }}\n", t, t, ctx.Name);
 		case .Weak:
-			// The handle resolved now: a gone one is the script's error, said the one way.
-			outCode.AppendF("\tlet resolved = frame.Self.ResolveWeak();\n\tif (resolved == null) {{ frame.Fail((frame.Self.Kind == .Weak) ? Sedulous.Script.ScriptErrors.ObjectGone : \"self is not a {}\"); return; }}\n\tlet self = resolved as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", ctx.Name, t, ctx.Name);
+			if (t == ScriptSceneNames.cScene)
+			{
+				// The scene resolved now: one gone (a handle kept past a level load) does nothing.
+				outCode.AppendF("\tlet resolved = frame.Self.ResolveWeak();\n\tif ((resolved == null) && (frame.Self.Kind == .Weak)) return;\n\tlet self = resolved as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
+				sceneExpr.Set("self");
+			}
+			else
+			{
+				// The handle resolved now: a gone one is the script's error, said the one way.
+				outCode.AppendF("\tlet resolved = frame.Self.ResolveWeak();\n\tif (resolved == null) {{ frame.Fail((frame.Self.Kind == .Weak) ? Sedulous.Script.ScriptErrors.ObjectGone : \"self is not a {}\"); return; }}\n\tlet self = resolved as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", ctx.Name, t, ctx.Name);
+			}
 		case .Counted:
 			// Borrowed from the handle the call is on.
 			outCode.AppendF("\tlet self = frame.Self.AsCounted as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
@@ -1014,7 +1043,7 @@ static class ScriptSurfaceWalker
 	{
 		if (m.IsStatic || m.IsConstructor || (m.ParamCount < 1))
 			return false;
-		let onScene = (ctx.Role == .Plain) && (ctx.FullName == ScriptSceneNames.cScene);
+		let onScene = ctx.FullName == ScriptSceneNames.cScene;
 		if (!onScene)
 		{
 			if ((ctx.Role != .SceneSystem) && (ctx.Role != .ComponentManager) && (ctx.Role != .SceneFacade))
@@ -1383,7 +1412,7 @@ static class ScriptSurfaceWalker
 			// checks the ones it takes against it.
 			if (ImplementsByName(ctx.Type, ScriptSceneNames.cEntitySceneInterface))
 				outExpr.Set("self.EntityScene");
-		case .Plain:
+		case .Plain, .Weak:
 			if ((ctx.Kind == .Class) && (ctx.FullName == ScriptSceneNames.cScene))
 				outExpr.Set("self");
 		default:
@@ -1417,13 +1446,14 @@ static class ScriptSurfaceWalker
 	/// The lines that resolve `self` for the entity side of an entity-first method: the
 	/// entity's scene, then the owner in it, the scene itself or its system. An entity with no
 	/// scene (one never assigned: `Entity m_figure;`) fails the call, or, with `noScene`, answers
-	/// that instead: IsValid's question is exactly whether there is a live entity.
+	/// that instead: IsValid's question is exactly whether there is a live entity. One whose
+	/// scene is gone (kept past a level load) does nothing, or answers `noScene`.
 	[Comptime]
 	private static void EntityPrologue(TypeCtx ctx, String outCode, StringView noScene = "")
 	{
 		outCode.Append("\tif (frame.Self.Kind != .Entity) { frame.Fail(\"self is not an entity\"); return; }\n\tlet scene = frame.SceneOf(frame.Self);\n");
 		if (noScene.IsEmpty)
-			outCode.Append("\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
+			outCode.Append("\tif ((scene == null) && frame.Self.EntityOwnerGone) return;\n\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
 		else
 			outCode.AppendF("\tif (scene == null) {{ frame.Result = {}; return; }}\n", noScene);
 		if (ctx.FullName == ScriptSceneNames.cScene)
@@ -1468,13 +1498,14 @@ static class ScriptSurfaceWalker
 		ctx.Code.AppendF("\t\tt.CastBy(=> {});\n", name);
 	}
 
-	/// The resolver a scene system or manager gets: the scene's instance, Self the scene.
+	/// The resolver a scene system or manager gets: the scene's instance, Self the scene, a
+	/// script's handle or a host's object. A handle whose scene is gone answers nothing.
 	[Comptime]
 	private static void EmitResolver(TypeCtx ctx)
 	{
 		let name = ctx.NextThunk(.. scope .());
 		let resolve = (ctx.Role == .SceneFacade) ? scope:: $"SceneFacades.Resolve<{ctx.FullName}>(scene)" : scope:: $"scene.GetSystem<{ctx.FullName}>()";
-		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tlet scene = frame.Self.AsObject as Sedulous.Scene.Scene;\n\tif (scene == null) {{ frame.Fail(\"self is not a Scene\"); return; }}\n\tframe.Result = .FromObject({});\n}}\n\n", name, resolve);
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tlet scene = (frame.Self.ResolveWeak() ?? frame.Self.AsObject) as Sedulous.Scene.Scene;\n\tif (scene == null) {{ if (frame.Self.Kind != .Weak) frame.Fail(\"self is not a Scene\"); return; }}\n\tframe.Result = .FromObject({});\n}}\n\n", name, resolve);
 		ctx.Code.AppendF("\t\tt.ResolvedBy(=> {});\n", name);
 	}
 

@@ -452,7 +452,7 @@ class ScriptSceneSystem : SceneSystem
 		// What the instance knows of its place: its entity, scene included, and the scene.
 		let runtime = mHost.Runtime;
 		runtime.SetProperty(behavior.Instance, "self", .FromEntity(entity, mScene));
-		runtime.SetProperty(behavior.Instance, "scene", .FromObject(mScene));
+		runtime.SetProperty(behavior.Instance, "scene", .FromWeak(mScene));
 		ScriptProperties.ApplyAll(runtime, behavior.Instance, scriptClass, behavior.Overrides, mScene, mScene.GetEntityName(entity));
 		SubscribeHandlers(scriptClass);
 	}
@@ -712,7 +712,7 @@ class ScriptSceneSystem : SceneSystem
 				GlobalLog(.Error, scope $"Script: scene '{mScene.Name}': the Level '{levelClass.ClassName}' failed to instantiate; disabled");
 				return;
 			}
-			mHost.Runtime.SetProperty(mLevel, "scene", .FromObject(mScene));
+			mHost.Runtime.SetProperty(mLevel, "scene", .FromWeak(mScene));
 			ScriptProperties.ApplyAll(mHost.Runtime, mLevel, levelClass, mSettings.Overrides, mScene, mScene.Name);
 			SubscribeHandlers(levelClass);
 		}

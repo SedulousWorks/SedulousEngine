@@ -21,6 +21,9 @@ join later without changing the assets. The bound surface is described per backe
 - **Game**: the run's orchestrator, the reserved class `Game`, set as the project's startup
   script. It runs for the whole game run, across scene loads, and reaches the run through
   the `Run` service: `Run.LoadScene(sceneId)`, `Run.RequestExit()`, `Run.Emit(...)`.
+  A load destroys the level it replaces: a scene, entity, component or `scene.Physics` style
+  handle a member kept from it reads as gone afterwards (an entity is not valid and has no
+  name, the scene is empty, `scene.Physics` is null) and every call through it does nothing.
   A debug menu can show the profiler overlay with `Run.SetProfilerOverlay(true)`;
   `Run.ProfilerAvailable()` says whether this build and app have one (never in a shipped
   build), so the menu can hide its entry. Both compile in every build.
@@ -185,7 +188,9 @@ has three static methods on its type:
 
 The handle holds the entity, so it reaches the component the entity has now. A handle kept
 after its component has gone answers `IsValid` false; any other use fails the handler with
-"the object is gone". An asset field takes the asset's guid (`sprite.TextureAsset`).
+"the object is gone". A handle kept after its whole scene has gone (a Game member across a
+level load) answers `IsValid` false too, and every other use does nothing: reads are zero or
+empty, writes are dropped. An asset field takes the asset's guid (`sprite.TextureAsset`).
 
 A prefab is still the way to make something with many parts at once (`scene.Prefabs.Spawn`);
 `addTo` is for one component on an entity that is already there.

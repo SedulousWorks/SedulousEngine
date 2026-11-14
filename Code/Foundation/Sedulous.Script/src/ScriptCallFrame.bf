@@ -62,10 +62,17 @@ struct ScriptCallFrame
 
 	/// Argument `i`, an entity, belongs to `owner`, or a failure. An entity that names no
 	/// owner is taken to be in it, and a call in none (a service with no scene now) takes any.
+	/// An entity whose owner is gone (kept past its scene) makes the call do nothing: false,
+	/// with no failure and no result.
 	public bool ExpectEntityIn(int i, Object owner) mut
 	{
 		if (i >= Args.Length)
 			return true;
+		if (Args[i].EntityOwnerGone)
+		{
+			Result = .Nil;
+			return false;
+		}
 		let named = Args[i].AsEntityOwner;
 		if ((named == null) || (owner == null) || (named === owner))
 			return true;

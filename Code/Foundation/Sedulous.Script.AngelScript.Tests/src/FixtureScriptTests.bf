@@ -206,7 +206,8 @@ static class FixtureScriptTests
 		defer delete vm;
 
 		// The fixture has no Scene type of its own, so the systems are reached by the
-		// handles a host passes in, and an entity by the value it passes in.
+		// handles a host passes in (weakly held, as every scene's system is), and an entity by
+		// the value it passes in.
 		let ok = vm.Compile("t", "t.as", """
 			int ticks(FixtureSystem@ fixture) { return fixture.Ticks; }
 			float widget(const Entity &in e, WidgetComponentManager@ widgets) { WidgetComponent@ w = WidgetComponent::of(e); w.Size = w.Size * 2; widgets.Poke(e); return w.Size; }
@@ -224,20 +225,20 @@ static class FixtureScriptTests
 		vm.CallContext.Scene = a;
 
 		var r = ScriptValue.Nil;
-		var systemArg = ScriptValue[1](.FromObject(system));
+		var systemArg = ScriptValue[1](.FromWeak(system));
 		Test.Assert(vm.Call("t", "int ticks(FixtureSystem@)", systemArg, ref r), "a scene system by handle");
 		Dump(vm);
 		Test.Assert(r.AsInt == 12);
 
 		let entity = b.CreateEntity("w");
 		widgetsB.Add(entity).Size = 4;
-		var args = ScriptValue[2](.FromEntity(entity, b), .FromObject(widgetsB));
+		var args = ScriptValue[2](.FromEntity(entity, b), .FromWeak(widgetsB));
 		Test.Assert(vm.Call("t", "float widget(const Entity &in, WidgetComponentManager@)", args, ref r), "a component through its entity, in the entity's scene");
 		Dump(vm);
 		Test.Assert(Near(r.AsFloat, 8) && Near(widgetsB.Get(entity).Size, 8));
 
 		// The wrong scene's manager refuses the entity: a script exception, reported.
-		args[1] = .FromObject(widgetsA);
+		args[1] = .FromWeak(widgetsA);
 		Test.Assert(!vm.Call("t", "float widget(const Entity &in, WidgetComponentManager@)", args, ref r));
 		Test.Assert(vm.Problems.Back.Contains("another scene"), vm.Problems.Back);
 	}
@@ -449,7 +450,7 @@ static class FixtureScriptTests
 		a.AddSystem<FixtureSystem>();
 		let e = a.CreateEntity("e");
 		widgets.Add(e).Size = 5;
-		var args = ScriptValue[2](.FromObject(SceneFacades.Resolve<WidgetsFacade>(a)), .FromEntity(e, a));
+		var args = ScriptValue[2](.FromWeak(SceneFacades.Resolve<WidgetsFacade>(a)), .FromEntity(e, a));
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("t", "int drive(WidgetsFacade@, const Entity &in)", args, ref r), "drove the facade");
 		Dump(vm);

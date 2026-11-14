@@ -20,8 +20,9 @@ namespace Sedulous.Script.AngelScript;
 ///    itself: each handle a script keeps is one reference, so the object lives while a script
 ///    or a native holder does, and a script-made one is freed by its last release; a handle
 ///    converts to its counted bases';
-///  - an entity is a value carrying its handle AND its scene, so a call on it resolves in
-///    that scene however many scenes there are; a component is a counted handle holding the
+///  - an entity is a value carrying its handle AND its scene (its place in the process's weak
+///    table), so a call on it resolves in that scene however many scenes there are, and does
+///    nothing once the scene is gone; a component is a counted handle holding the
 ///    entity, null when the entity has none: `MeshComponent::of(entity).Visible`, and a use
 ///    through a handle whose component has gone since is the script's error; beside `of`,
 ///    `X::addTo(entity)` adds one when there is none and hands it back as `of` does, and
@@ -33,7 +34,8 @@ namespace Sedulous.Script.AngelScript;
 ///    node is no X or is gone;
 ///  - a scene system or component manager is a read only property on Scene named for it
 ///    (its display name, else its type name without the role suffix): `scene.Physics.RayCast(...)`;
-///    the handle is the scene's own instance, and a script may keep it;
+///    the scene, and the instance the property answers, are weakly held, so a handle a script
+///    keeps past its scene reads null or gone and its calls do nothing;
 ///  - a service is a handle in a global property named the same way, `Service` appended
 ///    when the name is taken: `AudioService.PlayMusic(...)`;
 ///  - static members and a namespace's free functions are global functions and virtual
@@ -224,6 +226,26 @@ class AngelScriptRuntime : ScriptRuntime
 		DeclareOperators();
 	}
 
+	/// Where a placed member of a handle whose scene is gone points: zeroed for each use, so a
+	/// read sees nothing and a write is dropped. Grown to the largest member asked for.
+	private uint8* mGoneSink = null;
+	private int mGoneSinkSize = 0;
+
+	private void* GoneSink(StringView typeName)
+	{
+		let st = mSurface.Find(typeName);
+		let size = Math.Max((st != null) ? (int)st.Size : 0, 64);
+		if (size > mGoneSinkSize)
+		{
+			if (mGoneSink != null)
+				Internal.StdFree(mGoneSink);
+			mGoneSink = (uint8*)Internal.StdMalloc(size);
+			mGoneSinkSize = size;
+		}
+		Internal.MemSet(mGoneSink, 0, mGoneSinkSize);
+		return mGoneSink;
+	}
+
 	/// BORROWED: the debugger in force, which self registers and detaches.
 	private AngelScriptDebugger mDebugger = null;
 
@@ -320,6 +342,8 @@ class AngelScriptRuntime : ScriptRuntime
 		// a cook worker whose runtime dies while the main thread's live would leak it on exit.
 		AS.asThreadCleanup();
 		AS.asc_engine_release(mEngine);
+		if (mGoneSink != null)
+			Internal.StdFree(mGoneSink);
 	}
 
 	private static void OnMessage(char8* section, int32 row, int32 col, int32 type, char8* message, void* user)
@@ -407,10 +431,10 @@ class AngelScriptRuntime : ScriptRuntime
 				ApiType(AsName(t), t.FullName, false);
 			}
 		case .Class:
-			// A weakly held class is a counted handle of the backend's own (WeakHandle), a
-			// counted class the object itself, counted; any other is the engine's object
-			// itself, uncounted.
-			let classFlags = ((t.Role == .Weak) || (t.Role == .Counted)) ? AS.asOBJ_REF : (AS.asOBJ_REF | AS.asOBJ_NOCOUNT);
+			// A weakly held class, a scene's system or facade among them, is a counted handle of
+			// the backend's own (WeakHandle), a counted class the object itself, counted; any
+			// other is the engine's object itself, uncounted.
+			let classFlags = ((t.Role == .Weak) || (t.Role == .Counted) || IsSceneBound(t)) ? AS.asOBJ_REF : (AS.asOBJ_REF | AS.asOBJ_NOCOUNT);
 			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, classFlags), t.FullName))
 			{
 				mByName[new String(AsName(t))] = t;
@@ -425,11 +449,14 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 
 		// A service is reached through a global handle; a scene system or manager through
-		// the scene that owns it, `scene.Physics`.
+		// the scene that owns it, `scene.Physics`, a weak handle of its own.
 		if (t.Role == .Service)
 			DeclareRoleHandle(t);
-		else if ((t.Role == .SceneSystem) || (t.Role == .ComponentManager) || (t.Role == .SceneFacade))
+		else if (IsSceneBound(t))
+		{
+			BindSceneBoundHandle(t);
 			DeclareSceneProperty(t);
+		}
 
 		// A component is reached from the entity it lives on: `X::of(entity)`, a counted
 		// handle, null when the entity has none; `X::addTo` and `X::removeFrom` beside it.
@@ -721,6 +748,26 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
+	/// Whether a class is one of a scene's own, a system, manager or facade: held weakly, in the
+	/// same box a weakly held class's handle is, and reached from its scene.
+	private static bool IsSceneBound(ScriptTypeInfo t)
+		=> (t.Kind == .Class) && ((t.Role == .SceneSystem) || (t.Role == .ComponentManager) || (t.Role == .SceneFacade));
+
+	/// A scene's system, manager or facade handle's count: its box's, as a weak handle's.
+	private void BindSceneBoundHandle(ScriptTypeInfo t)
+	{
+		let typeName = scope String(AsName(t));
+		for (let kind in AngelScriptBinding.Role[2](.WeakAddRef, .WeakRelease))
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = kind;
+			b.Owner = t;
+			mBindings.Add(b);
+			let behaviour = (kind == .WeakAddRef) ? AS.asBEHAVE_ADDREF : AS.asBEHAVE_RELEASE;
+			Check(AS.asc_engine_register_object_behaviour(mEngine, typeName.CStr(), behaviour, "void f()", Internal.UnsafeCastToPtr(b)), t.FullName);
+		}
+	}
+
 	/// The counted object behind a handle's pointer: a Beef object, cast to its counting.
 	private static IScriptCounted CountedAt(void* object) => Internal.UnsafeCastToObject(object) as IScriptCounted;
 
@@ -807,8 +854,8 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
-	/// `scene.Physics`: a read only property on Scene answering the scene's instance,
-	/// through the type's resolver. Needs Scene on the surface.
+	/// `scene.Physics`: a read only property on Scene answering the scene's instance, as a weak
+	/// handle of its own, through the type's resolver. Needs Scene on the surface.
 	private void DeclareSceneProperty(ScriptTypeInfo t)
 	{
 		if ((t.FromScene == null) || !mByName.ContainsKey(scope String("Scene")))
@@ -1153,7 +1200,7 @@ class AngelScriptRuntime : ScriptRuntime
 			if (t.Kind == .Enum)
 				return .Int;
 			if (t.Kind == .Class)
-				return (t.Role == .Weak) ? .Weak : ((t.Role == .Counted) ? .Counted : .Object);
+				return ((t.Role == .Weak) || IsSceneBound(t)) ? .Weak : ((t.Role == .Counted) ? .Counted : .Object);
 			return .Struct;
 		}
 		return .Nil;
@@ -1413,20 +1460,27 @@ class AngelScriptRuntime : ScriptRuntime
 				AS.asc_set_active_exception(scope String(frame.Error).CStr());
 				return;
 			}
-			AS.asc_generic_set_return_address(gen, frame.Result.AsStruct);
+			// A handle whose scene is gone places nothing and does nothing: the script reads
+			// zeros, and what it writes lands in the runtime's own sink.
+			var placed = frame.Result.AsStruct;
+			if (placed == null)
+				placed = GoneSink(b.Field.TypeName);
+			AS.asc_generic_set_return_address(gen, placed);
 			return;
 		}
 		case .Resolve:
-			// `scene.Physics`: the scene's instance of the system.
+			// `scene.Physics`: the scene's instance of the system, a weak handle of its own; null
+			// when the scene has none, or is gone.
 			var frame = ScriptCallFrame(context, default);
-			frame.Self = .FromObject(Internal.UnsafeCastToObject(AS.asc_generic_get_object(gen)));
+			frame.Self = .FromWeakRef(((WeakHandle*)AS.asc_generic_get_object(gen)).Ref);
 			b.Owner.FromScene(ref frame);
 			if (frame.Failed)
 			{
 				AS.asc_set_active_exception(scope String(frame.Error).CStr());
 				return;
 			}
-			AS.asc_generic_set_return_address(gen, (frame.Result.AsObject != null) ? Internal.UnsafeCastToPtr(frame.Result.AsObject) : null);
+			let held = frame.Result.AsObject as IScriptWeaklyHeld;
+			AS.asc_generic_set_return_address(gen, (held != null) ? NewWeakBox(held.TakeScriptWeak()) : null);
 			return;
 		default:
 		}
@@ -1608,7 +1662,7 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		if (owner.Role == .Component)
 			return .Entity;
-		if (owner.Role == .Weak)
+		if ((owner.Role == .Weak) || IsSceneBound(owner))
 			return .Weak;
 		if (owner.Role == .Counted)
 			return .Counted;
@@ -1878,8 +1932,13 @@ class AngelScriptRuntime : ScriptRuntime
 			counted?.AddRef();
 			AS.asc_generic_set_return_address(gen, PointerOf(counted));
 		case .Struct:
-			// Built in place at the return location through ResultTarget; nothing to do,
-			// unless the thunk answered nothing.
+			// Built in place at the return location through ResultTarget; a call that answered
+			// nothing (one through a handle whose scene is gone) leaves it zeroed.
+			if (value.IsNil && (location != null))
+			{
+				if (let st = mSurface.Find(typeName))
+					Internal.MemSet(location, 0, st.Size);
+			}
 		default:
 			WriteValue(location, kind, typeName, value);
 		}
@@ -2280,9 +2339,11 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
-	/// The surface type of an AngelScript type id when it is a weak handle's, else null: what
-	/// tells a box apart from a Beef object behind a handle slot.
-	private ScriptTypeInfo WeakTypeOfId(int32 typeId) => ClassTypeOfId(typeId, .Weak);
+	/// The surface type of an AngelScript type id when it is a weak handle's, a scene's system,
+	/// manager or facade's included, else null: what tells a box apart from a Beef object behind
+	/// a handle slot.
+	private ScriptTypeInfo WeakTypeOfId(int32 typeId)
+		=> ClassTypeOfId(typeId, .Weak) ?? ClassTypeOfId(typeId, .SceneSystem) ?? ClassTypeOfId(typeId, .ComponentManager) ?? ClassTypeOfId(typeId, .SceneFacade);
 
 	/// The surface type of an AngelScript type id when it is a counted class's, else null: a
 	/// handle slot whose object has its count kept.
