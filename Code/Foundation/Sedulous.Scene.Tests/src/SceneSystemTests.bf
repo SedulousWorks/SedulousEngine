@@ -373,4 +373,109 @@ class SceneSystemTests
 		Test.Assert(!(next == more));
 		Test.Assert(scene.EntityCount == 3);
 	}
+
+	/// During its update, removes `Target`'s Health and records what the pool shows after.
+	private class Remover : SceneSystem
+	{
+		private Scene mScene = null;
+		public HealthManager Health = null;
+		public EntityHandle Target = .Invalid;
+		public bool GiveBack = false;
+		public bool Had = false;
+		public bool HasAfter = true;
+		public bool GetAfter = true;
+		public int WalkedAfter = -1;
+		public int DestroyedDuring = -1;
+
+		public override void OnSceneCreate(Scene scene) => mScene = scene;
+
+		public override void OnUpdate(ScenePhase phase, float deltaTime)
+		{
+			if ((phase != .Update) || !Target.IsAssigned)
+				return;
+			Had = mScene.RemoveComponent(Health, Target);
+			HasAfter = Health.Has(Target);
+			GetAfter = Health.Get(Target) != null;
+			WalkedAfter = 0;
+			Health.ForEach(scope [&] (component, owner) => { WalkedAfter++; });
+			DestroyedDuring = Health.Destroyed;
+			if (GiveBack)
+				Health.Add(Target); // given back before it left
+			Target = .Invalid;
+		}
+	}
+
+	/// A component removed during a step is gone to every lookup at once, and leaves the pool,
+	/// its hook told, at the step's end: swap-removed at once, it moved under whatever walked
+	/// the pool.
+	[Test]
+	public static void AComponentRemovedDuringAStepLeavesThePoolAtTheStepsEnd()
+	{
+		let scene = scope Scene("leaving");
+		let health = scene.AddSystem<HealthManager>();
+		let remover = scene.AddSystem<Remover>();
+		remover.Health = health;
+		let a = scene.CreateEntity("a");
+		let b = scene.CreateEntity("b");
+		health.Add(a).Value = 1.0f;
+		health.Add(b).Value = 2.0f;
+		remover.Target = a;
+		scene.Update(1.0f / 60.0f);
+		Test.Assert(remover.Had);
+		Test.Assert(!remover.HasAfter);
+		Test.Assert(!remover.GetAfter);
+		Test.Assert(remover.WalkedAfter == 1, "the walk passes it by");
+		Test.Assert(remover.DestroyedDuring == 0, "its hook waits for the step's end");
+		Test.Assert(health.Destroyed == 1);
+		Test.Assert(health.Count == 1);
+		Test.Assert((health.Get(b) != null) && (health.Get(b).Value == 2.0f));
+
+		// Outside a step it leaves at once.
+		Test.Assert(scene.RemoveComponent(health, b));
+		Test.Assert(health.Count == 0);
+		Test.Assert(health.Destroyed == 2);
+		Test.Assert(!scene.RemoveComponent(health, b), "none to take");
+	}
+
+	/// While its run defers (a physics contact handler, the network pump), a component removed
+	/// is gone to every lookup at once and leaves the pool at the run's flush.
+	[Test]
+	public static void WhileItsRunDefersAComponentRemovedLeavesAtTheRunsFlush()
+	{
+		let run = scope RunBase("run");
+		let scene = scope Scene("deferred");
+		scene.SetRun(run);
+		let health = scene.AddSystem<HealthManager>();
+		let a = scene.CreateEntity("a");
+		health.Add(a).Value = 1.0f;
+		run.Mutations.Enter();
+		Test.Assert(scene.RemoveComponent(health, a));
+		Test.Assert(!health.HasComponent(a), "gone to every lookup at once");
+		Test.Assert(health.Destroyed == 0, "its hook waits for the flush");
+		run.Mutations.Leave();
+		Test.Assert(health.Destroyed == 0, "and until the flush");
+		run.Mutations.Flush();
+		Test.Assert(health.Destroyed == 1);
+		Test.Assert(health.Count == 0);
+	}
+
+	/// A component removed and given back within a step was never removed: its values kept, its
+	/// hook never told.
+	[Test]
+	public static void AComponentRemovedAndGivenBackWithinAStepWasNeverRemoved()
+	{
+		let scene = scope Scene("given back");
+		let health = scene.AddSystem<HealthManager>();
+		let remover = scene.AddSystem<Remover>();
+		remover.Health = health;
+		let a = scene.CreateEntity("a");
+		health.Add(a).Value = 7.0f;
+		remover.Target = a;
+		remover.GiveBack = true;
+		scene.Update(1.0f / 60.0f);
+		Test.Assert(health.Get(a) != null);
+		Test.Assert(health.Get(a).Value == 7.0f, "its values kept");
+		Test.Assert(health.Destroyed == 0, "never destroyed");
+		Test.Assert(health.Count == 1);
+	}
 }

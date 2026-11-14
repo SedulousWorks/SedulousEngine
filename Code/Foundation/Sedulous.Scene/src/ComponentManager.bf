@@ -30,6 +30,9 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 	private Dictionary<uint32, uint32> mSparse = new .() ~ delete _;
 	/// Entities awaiting their initialisation hook.
 	private List<EntityHandle> mPendingInit = new .() ~ delete _;
+	/// Components marked leaving (MarkLeaving), removed by RemoveLeaving. Few, and only within
+	/// a step.
+	private List<EntityHandle> mLeaving = new .() ~ delete _;
 
 	/// Adds a component for `entity`, one per type per entity.
 	///
@@ -38,6 +41,10 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 	/// InitializePendingComponents, so a component can see its siblings before it runs.
 	public T* Add(EntityHandle entity)
 	{
+		// Taken off and given back before it left (a script's removeFrom, then addTo, in one
+		// step): it was never taken off, so it keeps its values and is not destroyed.
+		if (!mLeaving.IsEmpty && Unmark(entity))
+			return &mDense[(int)RawIndex(entity)];
 		Debug.Assert(!HasComponent(entity), "one component of a type per entity");
 
 		let slot = mDense.Count;
@@ -71,9 +78,11 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 
 	public override void RemoveComponent(EntityHandle entity)
 	{
-		let index = DenseIndex(entity);
+		let index = RawIndex(entity); // a leaving one too: this is how it leaves
 		if (index == cInvalid)
 			return;
+		if (!mLeaving.IsEmpty)
+			Unmark(entity);
 
 		// Narrowed ONCE, past the sentinel check: the sparse map stores uint32 while a pool
 		// index is an int, and those are only the same width on a 64 bit target.
@@ -102,20 +111,44 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 
 	public void Remove(EntityHandle entity) => RemoveComponent(entity);
 
+	public override bool MarkLeaving(EntityHandle entity)
+	{
+		if (RawIndex(entity) == cInvalid)
+			return false;
+		if (!IsLeaving(entity))
+			mLeaving.Add(entity);
+		return true;
+	}
+
+	public override void RemoveLeaving()
+	{
+		// Taken out first: a destroy hook may mark more, which a later call removes.
+		let leaving = scope List<EntityHandle>();
+		leaving.AddRange(mLeaving);
+		mLeaving.Clear();
+		for (let entity in leaving)
+			RemoveComponent(entity);
+	}
+
 	public override void* GetComponentAddress(EntityHandle entity) => (void*)Get(entity);
 
 	public override uint32 ComponentCount => (uint32)mDense.Count;
 	public uint32 Count => (uint32)mDense.Count;
 
-	/// The contiguous fast path: the packed components, and the owners parallel to them.
+	/// The contiguous fast path: the packed components, and the owners parallel to them. The
+	/// raw pool: a component marked leaving is in it until the step ends.
 	public Span<T> Dense => mDense;
 	public Span<EntityHandle> Owners => mOwners;
 
-	/// Visits every component with its owning entity, dense and with no holes.
+	/// Visits every component with its owning entity, dense and with no holes, passing by those
+	/// leaving (MarkLeaving), one marked during the walk included.
 	public void ForEach(delegate void(T* component, EntityHandle owner) fn)
 	{
 		for (int i = 0; i < mDense.Count; i++)
-			fn(&mDense[i], mOwners[i]);
+		{
+			if (mLeaving.IsEmpty || !IsLeaving(mOwners[i]))
+				fn(&mDense[i], mOwners[i]);
+		}
 	}
 
 	public override Span<EntityHandle> OwnerHandles => Owners;
@@ -153,8 +186,39 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 	/// finds it, and the pointer is to that value, not into the pool.
 	protected virtual void OnComponentDestroyed(T* component, EntityHandle entity) {}
 
-	/// The dense index of a live, generation matching component, or cInvalid.
+	/// The dense index of a live, generation matching component not leaving, or cInvalid.
 	private uint32 DenseIndex(EntityHandle entity)
+	{
+		let dense = RawIndex(entity);
+		return ((dense != cInvalid) && !mLeaving.IsEmpty && IsLeaving(entity)) ? cInvalid : dense;
+	}
+
+	/// Whether `entity`'s component is marked leaving.
+	private bool IsLeaving(EntityHandle entity)
+	{
+		for (let leaving in mLeaving)
+		{
+			if (leaving == entity)
+				return true;
+		}
+		return false;
+	}
+
+	private bool Unmark(EntityHandle entity)
+	{
+		for (int i < mLeaving.Count)
+		{
+			if (mLeaving[i] == entity)
+			{
+				mLeaving.RemoveAt(i);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// The dense index of a live, generation matching component, leaving or not, or cInvalid.
+	private uint32 RawIndex(EntityHandle entity)
 	{
 		if (!mSparse.TryGetValue(entity.Index, let dense))
 			return cInvalid;

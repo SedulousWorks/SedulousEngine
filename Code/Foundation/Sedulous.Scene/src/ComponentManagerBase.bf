@@ -12,6 +12,12 @@ abstract class ComponentManagerBase : SceneSystem
 
 	public abstract bool HasComponent(EntityHandle entity);
 	public abstract void RemoveComponent(EntityHandle entity);
+	/// Marks `entity`'s component as leaving (Scene.RemoveComponent, while the scene steps):
+	/// from now every lookup (Has, Get, ForEach) passes it by, while its storage stays where it
+	/// is for whatever walks the pool; RemoveLeaving takes it out. False when it has none.
+	public abstract bool MarkLeaving(EntityHandle entity);
+	/// Removes the components marked leaving, each told as RemoveComponent tells it.
+	public abstract void RemoveLeaving();
 	public virtual void InitializePendingComponents() {}
 	public abstract uint32 ComponentCount { get; }
 

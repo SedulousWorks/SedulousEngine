@@ -1484,7 +1484,9 @@ static class ScriptSurfaceWalker
 		ctx.Code.AppendF("\t\tt.AddedBy(=> {});\n", addTo);
 
 		let removeFrom = ctx.NextThunk(.. scope .());
-		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n{}\tlet had = (manager != null) && manager.HasComponent(entity);\n\tif (had)\n\t\tmanager.RemoveComponent(entity);\n\tframe.Result = .FromBool(had);\n}}\n\n", removeFrom, prologue);
+		// Through the scene: gone at once to every lookup, taken out of the pool once no step
+		// walks it.
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n{}\tlet had = (manager != null) && scene.RemoveComponent(manager, entity);\n\tframe.Result = .FromBool(had);\n}}\n\n", removeFrom, prologue);
 		ctx.Code.AppendF("\t\tt.RemovedBy(=> {});\n", removeFrom);
 	}
 

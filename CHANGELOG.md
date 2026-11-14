@@ -250,3 +250,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   it drew the ones it held before, and read past them when it had fewer.
 - Physics: a kinematic body over a mesh, plane or heightfield shape, simulated as static (as the
   log says), is no longer moved as a kinematic one, which crashed the game when its entity moved.
+- Scripts: `Component::removeFrom(entity)` during a frame takes the component away at once for
+  every lookup (`of`, `removeFrom` again) and frees it, its body or voice with it, at the end of
+  that step, so the systems walking those components never see it move. `addTo` before then gives
+  it back as it was.

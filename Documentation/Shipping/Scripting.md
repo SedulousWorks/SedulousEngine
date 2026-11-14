@@ -183,8 +183,11 @@ has three static methods on its type:
   b.Shape = ShapeKind::Capsule;`. Its systems take it up as they take up one placed in the
   editor: it initializes at the next frame's start, and physics builds its body at its next
   step. Null when the entity is gone.
-- `removeFrom(entity)` - takes it off and says whether there was one. What it held goes with
-  it: a body leaves the physics world, a voice stops.
+- `removeFrom(entity)` - takes it off and says whether there was one. During a frame it is gone
+  at once to every lookup (`of` is null, `removeFrom` again says none) and leaves at the end of
+  that step, so the systems walking those components never see it move; `addTo` before then
+  gives it back as it was. What it held goes with it: a body leaves the physics world, a voice
+  stops.
 
 The handle holds the entity, so it reaches the component the entity has now. A handle kept
 after its component has gone answers `IsValid` false; any other use fails the handler with

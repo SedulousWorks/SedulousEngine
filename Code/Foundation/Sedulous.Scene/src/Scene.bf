@@ -74,6 +74,8 @@ class Scene : IScriptWeaklyHeld
 	private List<UnresolvedComponent> mUnresolvedComponents = new .() ~ DeleteContainerAndItems!(_);
 	private List<UnresolvedSettings> mUnresolvedSettings = new .() ~ DeleteContainerAndItems!(_);
 	private List<EntityHandle> mPendingDestroys = new .() ~ delete _;
+	/// Managers with components marked leaving (RemoveComponent during a step). BORROWED.
+	private List<ComponentManagerBase> mLeavingManagers = new .() ~ delete _;
 
 	/// Stepping: Update, the fixed steps, a destroy's hooks.
 	private bool mIsUpdating = false;
@@ -160,20 +162,48 @@ class Scene : IScriptWeaklyHeld
 		if ((mRun != null) && mRun.Mutations.IsDeferring)
 		{
 			mPendingDestroys.Add(entity);
-			if (!mRunFlushQueued)
-			{
-				mRunFlushQueued = true;
-				mRun.Mutations.Enqueue(this, new () =>
-					{
-						mRunFlushQueued = false;
-						ProcessPendingDestroys();
-					});
-			}
+			QueueRunFlush();
 			return;
 		}
 		// Now, through the queue, so the hooks of what goes destroy after it, not inside it.
 		mPendingDestroys.Add(entity);
 		ProcessPendingDestroys();
+	}
+
+	/// Takes `entity`'s component out of `manager`; whether it had one. Asked while the scene
+	/// steps, or while its run defers (a physics contact handler, the network pump), the
+	/// component is gone at once to every lookup (Has, Get, ForEach, a script's `of`), and
+	/// leaves the pool, its hook told, at the end of that step or at the run's flush, so nothing
+	/// walking the pool sees it move; otherwise it leaves now.
+	public bool RemoveComponent(ComponentManagerBase manager, EntityHandle entity)
+	{
+		if ((manager == null) || !manager.HasComponent(entity))
+			return false;
+		let runDefers = (mRun != null) && mRun.Mutations.IsDeferring;
+		if (!mIsUpdating && !runDefers)
+		{
+			manager.RemoveComponent(entity);
+			return true;
+		}
+		manager.MarkLeaving(entity);
+		if (!mLeavingManagers.Contains(manager))
+			mLeavingManagers.Add(manager);
+		if (!mIsUpdating)
+			QueueRunFlush();
+		return true;
+	}
+
+	/// The pending destroys and leaving components go at the run's flush, queued once.
+	private void QueueRunFlush()
+	{
+		if (mRunFlushQueued)
+			return;
+		mRunFlushQueued = true;
+		mRun.Mutations.Enqueue(this, new () =>
+			{
+				mRunFlushQueued = false;
+				ProcessPendingDestroys();
+			});
 	}
 
 	[Scriptable]
@@ -852,6 +882,8 @@ class Scene : IScriptWeaklyHeld
 			return false;
 
 		mSystemsByType.Remove(systemType);
+		if (let manager = system.AsComponentManager)
+			mLeavingManagers.Remove(manager); // its components go with it
 		mSortedSystems.Remove(system);
 		if (mSystems.Remove(system))
 			delete system;
@@ -1317,6 +1349,15 @@ class Scene : IScriptWeaklyHeld
 	/// nested destroy leaves behind are skipped by the validity check.
 	private void ProcessPendingDestroys()
 	{
+		// The components marked leaving go first, each told as a removal tells it.
+		if (!mLeavingManagers.IsEmpty)
+		{
+			let managers = scope List<ComponentManagerBase>();
+			managers.AddRange(mLeavingManagers);
+			mLeavingManagers.Clear();
+			for (let manager in managers)
+				manager.RemoveLeaving();
+		}
 		if (mPendingDestroys.IsEmpty)
 			return;
 
