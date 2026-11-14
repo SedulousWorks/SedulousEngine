@@ -29,22 +29,31 @@ class XmlSerializerContext : SerializerContext
 		mDocument = new XmlDocument();
 
 		let size = stream.Size();
+		let text = scope String();
+		bool whole = size >= 0;
 		if (size > 0)
 		{
-			let text = scope String();
 			let raw = text.PrepareBuffer((int)size);
 			let read = stream.Read(.((uint8*)raw, (int)size));
 			// A short read leaves the string sized for what was asked rather than what
 			// arrived, so the tail would be uninitialised.
 			if (read < (int)size)
+			{
 				text.Length = read;
-
-			// A parse failure leaves an empty document, and every read against it then
-			// fails with NotFound rather than crashing.
-			mDocument.Parse(text);
+				whole = false;
+			}
 		}
+		let parsed = whole ? mDocument.Parse(text) : XmlResult.UnexpectedEndOfFile;
 
+		// Built after the parse: the serializer starts its read at the document's root.
 		mSerializer = new XmlSerializer(mDocument);
+
+		// A document that is not what its file held fails the read, saying why, so a loader
+		// never takes a damaged file for an empty one and saves its defaults over it.
+		if (!whole)
+			mSerializer.FailDocument("the file could not be read whole");
+		else if (parsed != .Ok)
+			mSerializer.FailDocument(scope $"the file is not well-formed XML ({parsed.Describe})");
 	}
 
 	public override Serializer Serializer => mSerializer;

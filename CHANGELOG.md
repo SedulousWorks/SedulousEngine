@@ -106,6 +106,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Files: an XML file that is not well-formed, or could not be read whole, fails to load and says
+  why. It was read as empty, so whatever loaded it got its defaults and could save them over it.
 - Files: every save replaces its file whole or not at all. Assets, scenes, settings, sources and
   exports were written over in place, so a crash, a power loss or a full disk mid-save could leave
   a file cut short; each write now goes to a temporary beside it, flushed to the disk, then moved

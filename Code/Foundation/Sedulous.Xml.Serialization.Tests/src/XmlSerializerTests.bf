@@ -641,4 +641,33 @@ class XmlSerializerTests
 		Serialize(strict, ref ignored);
 		Test.Assert(!strict.IsOk, "trailing garbage is not a number");
 	}
+
+	/// A document read through the factory, from `text`.
+	private static SerializerContext ReadContext(SerializerFactory factory, MemoryStream stream, StringView text)
+	{
+		Test.Assert(stream.Write(.((uint8*)text.Ptr, text.Length)) == text.Length);
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		return factory(stream, .Read);
+	}
+
+	/// A damaged file read as an empty document would hand its loader defaults it could save
+	/// back over the file.
+	[Test]
+	public static void AFileThatIsNotWellFormedFailsTheReadAndSaysSo()
+	{
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+
+		let broken = ReadContext(factory, scope MemoryStream(), "<root><a>1</a");
+		defer delete broken;
+		Test.Assert(broken.Serializer != null);
+		Test.Assert(!broken.Serializer.IsOk);
+		let why = broken.Serializer.DescribeFailure(.. scope String());
+		Test.Assert(why.Contains("not well-formed"));
+
+		// A well-formed one still reads.
+		let fine = ReadContext(factory, scope MemoryStream(), "<root/>");
+		defer delete fine;
+		Test.Assert(fine.Serializer.IsOk);
+	}
 }

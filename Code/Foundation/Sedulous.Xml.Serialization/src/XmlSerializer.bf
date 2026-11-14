@@ -333,6 +333,10 @@ class XmlSerializer : Serializer
 		return false;
 	}
 
+	/// The document under this reader is not what its file held (it did not parse, or the
+	/// file was cut short): the read fails, saying why.
+	public void FailDocument(StringView why) => FailRead(.InvalidArgument, why);
+
 	/// Fails the read, and the FIRST failure also says where: what was wanted (by key when
 	/// one was asked for), the scopes it was wanted in, and what stood there instead.
 	private void FailRead(ErrorCode code, StringView what)
