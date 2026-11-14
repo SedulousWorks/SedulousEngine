@@ -58,7 +58,7 @@ Handlers dispatch **by presence**: implement only what you need.
 Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `scene.Audio.Play(...)`, `scene.Render`, `scene.Animation`, `scene.Particles`,
 `scene.Splines`, `scene.Prefabs.Spawn(...)`, `scene.Debug`; the services `Audio`, `Input`,
-`Save`, `Gui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
+`Save`, `Gui`, `Run`, `Random`, `Http`, `RenderQuality`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
 `Gui` is the run's screen tier on the engine GUI: `Gui.Root()` is its root node, the gamekit's
@@ -278,6 +278,23 @@ Http.Post("https://example.com/scores", "application/json", "{\"score\":9}", Htt
 - In a browser build the browser makes the request: a server on another origin must send CORS
   headers, or the request fails without a reason the game can see.
 - Requests stop with the run: a handler is never called after its script has stopped.
+
+## Graphics quality
+
+The `RenderQuality` service is an options menu's graphics setting: the quality levels the game
+offers (its project's Render Quality assets, in the project's order), the one it plays at, and a
+switch:
+
+```
+for (int i = 0; i < RenderQuality.Count(); i++) addStep(RenderQuality.Label(i));
+string current = RenderQuality.Current();
+RenderQuality.Set("Low"); // false for a label the game does not offer
+```
+
+- A level is named by its asset's `label`. `Current()` is empty when the game plays at the
+  engine's own level (it lists none).
+- What a set does is the host's: the player plays at the level and keeps the choice for the next
+  run; a Game tab plays at it for the session.
 
 ## Editor properties
 

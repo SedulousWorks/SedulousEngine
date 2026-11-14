@@ -73,6 +73,8 @@ class GameInstance : RunBase
 	/// OWNED: `Http` to this run's scripts. Its client is made on the scripts' first request,
 	/// pumped by TickScript and reset by StopScript.
 	private HttpFacade mHttpFacade = new .() ~ delete _;
+	/// OWNED: `RenderQuality` to this run's scripts: the levels the host offers.
+	private RenderQualityFacade mQualityFacade = new .() ~ delete _;
 
 	/// OWNED: this run's action state, so one instance's input never reaches another's.
 	private ActionRuntime mInputRuntime = new .() ~ delete _;
@@ -166,6 +168,7 @@ class GameInstance : RunBase
 		Register<RunSave>(mSave);
 		Register<ScriptRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
+		Register<RenderQualityFacade>(mQualityFacade);
 	}
 
 	/// The platform's TLS backend for this run, made on first use; null in a browser.
@@ -183,6 +186,8 @@ class GameInstance : RunBase
 
 	/// This run's HTTP for its scripts.
 	public HttpFacade Http => mHttpFacade;
+	/// The quality levels this run offers its scripts; the host fills it.
+	public RenderQualityFacade Quality => mQualityFacade;
 
 	public ~this()
 	{
