@@ -106,6 +106,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: `Run.LoadScene` loads the scene before it returns, and the scene becomes the level at
+  the next frame's start, as `Run.LoadSceneAsync`'s does; the level it replaces is destroyed then.
+  Called from the fixed step or an event handler, it started the new level inside the old one's
+  step and destroyed the scene the script was running in.
 - Scripting: destroying an entity or a scene from the fixed step, an event handler, a network
   message or a destroy hook waits until that step or handler is done, as it did inside an update;
   it was done at once, under the code still walking the scene, and could crash the game. The

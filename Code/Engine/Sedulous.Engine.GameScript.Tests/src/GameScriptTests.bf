@@ -471,6 +471,7 @@ static class GameScriptTests
 			{{
 				bool guidSame = false; bool guidDifferent = false; bool nilSame = false; bool nilMade = false; bool noEntity = false;
 				bool loaded = false; bool entitySame = false; bool entityDifferent = false; bool selfSame = false;
+				bool compared = false;
 				Guid kept;
 				void launch()
 				{{
@@ -483,6 +484,13 @@ static class GameScriptTests
 					nilMade = made.IsNil && (made == Guid());
 					noEntity = Entity() == Entity();
 					loaded = Run.LoadScene(a);
+				}}
+				void update(float dt)
+				{{
+					// The level is the current scene from the frame after the load.
+					if (compared || !Run.SceneReady)
+						return;
+					compared = true;
 					Scene@ scene = Run.CurrentScene;
 					Entity first = scene.FindEntityByName("e0");
 					entitySame = first == scene.FindEntityByName("e0");
@@ -492,6 +500,9 @@ static class GameScriptTests
 			}}
 			""", levelId);
 		Test.Assert(run.Instance.StartScript(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		run.Step();
+		Test.Assert(run.Instance.ScriptFault.IsEmpty, scope String(run.Instance.ScriptFault));
+		Test.Assert(run.PropBool("compared"), "the level was current at the next frame");
 		Test.Assert(run.PropBool("guidSame") && run.PropBool("guidDifferent") && run.PropBool("nilSame"));
 		Test.Assert(run.PropBool("nilMade"), "a declared Guid and Guid() are both nil");
 		Test.Assert(run.PropBool("noEntity"), "Entity() is no entity, and equal to another");

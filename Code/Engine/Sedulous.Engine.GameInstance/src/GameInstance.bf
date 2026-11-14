@@ -551,8 +551,12 @@ class GameInstance : RunBase
 		return TrackLoad(handle);
 	}
 
-	/// Loads a level and activates it now, the app's policy applied, in place of the current
-	/// one, which is destroyed. False when it could not, and the current one stays.
+	/// Loads a level now, its resources bound before the call returns; it becomes the level at
+	/// the next frame's top, where PumpLoads adopts it as it does an async load (the app's policy
+	/// applied, the current one destroyed). Adopted where it was asked (a level's fixed step, an
+	/// event handler), it grew the scene list being ticked, started the new scene there and
+	/// destroyed the level the script was running in. False when it could not, and the current
+	/// one stays.
 	[Scriptable]
 	public bool LoadScene(Guid sceneId)
 	{
@@ -569,7 +573,6 @@ class GameInstance : RunBase
 			while (!handle.IsComplete)
 				handle.Resources.Pump(0.010);
 		}
-		PumpLoads();
 		return !LoadFailed(ticket);
 	}
 

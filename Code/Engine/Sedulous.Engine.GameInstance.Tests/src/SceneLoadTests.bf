@@ -131,7 +131,67 @@ class SceneLoadTests
 		Test.Assert(!instance.LoadScene(SceneRef()), "a field naming none loads nothing");
 		Test.Assert(instance.LoadSceneAsync(SceneRef()) == 0);
 		Test.Assert(instance.LoadScene(SceneRef(level.Id)));
+		Test.Assert(instance.GetScene() == null, "loaded, the level from the next pump");
+		instance.PumpLoads();
 		Test.Assert((instance.GetScene() != null) && (instance.GetScene().EntityCount == 2));
+	}
+
+	/// Loads `Next` on its first fixed step, as a behaviour's level exit does.
+	private class LevelExit : SceneSystem
+	{
+		public GameInstance Instance;
+		public SceneRef Next;
+		public int Steps = 0;
+		public bool Loaded = false;
+
+		public override void OnFixedUpdate(float fixedDeltaTime)
+		{
+			if (Steps++ == 0)
+				Loaded = Instance.LoadScene(Next);
+		}
+	}
+
+	/// A level loaded from the current level's own fixed step is loaded when the call returns,
+	/// but the current level stays whole, the level and the only one ticking, until the next
+	/// frame's pump adopts the new one and destroys it.
+	[Test]
+	public static void ALoadFromALevelsFixedStepIsAdoptedAtThePump()
+	{
+		let fixture = scope SceneContentFixture("scratch_gi_load_fixed_step");
+		let level = AuthorLevel(fixture, "level");
+		let resources = scope ResourceManager(fixture.Database);
+		let instance = scope GameInstance();
+		instance.SetSceneLoader(new [=fixture, =resources, =instance] (sceneId) =>
+			{
+				let sceneInstance = fixture.Database.GetInstance(sceneId);
+				if (sceneInstance == null)
+				{
+					var failed = SceneLoadHandle();
+					failed.Failed = true;
+					return failed;
+				}
+				return instance.LoadSceneAsync(sceneInstance, resources);
+			});
+		Test.Assert(instance.LoadScene(SceneRef(level.Id)));
+		instance.PumpLoads();
+		let current = instance.GetScene();
+		Test.Assert(current != null);
+		let exit = current.AddSystem<LevelExit>();
+		exit.Instance = instance;
+		exit.Next = SceneRef(level.Id);
+
+		// Two fixed steps of a quarter second each.
+		instance.Scenes.BeginFrame(FrameTime(0.5f, 1.0f, 1.0f, 1.0f, 0.25f));
+		Test.Assert(exit.Loaded, "loaded from the fixed step");
+		Test.Assert(exit.Steps == 2, "the level kept stepping");
+		Test.Assert(instance.GetScene() === current, "still the level until the pump");
+		Test.Assert(instance.Scenes.ActiveScenes.Length == 1, "the new scene waits inactive");
+		Test.Assert(instance.Scenes.SceneCount == 2);
+
+		instance.PumpLoads();
+		Test.Assert(instance.GetScene() !== current);
+		Test.Assert(instance.Scenes.IsActive(instance.GetScene()));
+		Test.Assert(instance.Scenes.SceneCount == 1, "the old level destroyed");
 	}
 
 	[Test]
