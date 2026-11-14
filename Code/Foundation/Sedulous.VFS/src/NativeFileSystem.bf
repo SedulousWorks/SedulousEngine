@@ -99,13 +99,11 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 		let full = Resolve(path, .. scope String());
 		EnsureParentDirectories(full);
 
-		bool written;
-		{
-			let stream = scope FileStream(full, .Write);
-			written = stream.IsValid && ((data.Length == 0) || (stream.Write(data) == data.Length));
-		}
-		Wrote(path); // the stream closed: the file is as it will stay
-		return written ? .Ok : .Err(.Internal);
+		// Whole or not at all: a crash or a full disk mid-save leaves the old file, never a
+		// truncated one.
+		let written = WriteFileAtomic(full, data);
+		Wrote(path); // the file is as it will stay
+		return written;
 	}
 
 	public Result<void, ErrorCode> Delete(StringView path)

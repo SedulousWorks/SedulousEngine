@@ -121,6 +121,17 @@ class EditorMcpHostTests
 		let port = host.BoundPort;
 		Test.Assert(port != 0);
 		Test.Assert(System.IO.File.ReadAllText("mcp_host_userdata/mcp-token", .. scope .()) == "sekrit");
+#if BF_PLATFORM_LINUX
+		// No other account reads the secret.
+		{
+			let bits = scope ProcessResult();
+			Sedulous.Core.Process.Run("/usr/bin/stat", scope StringView[]("-c", "%a", "mcp_host_userdata/mcp-token"), bits);
+			// Its first line: a run under a sanitizer's preload has the child report after it.
+			let output = StringView(bits.Output);
+			let lineEnd = output.IndexOf('\n');
+			Test.Assert(((lineEnd >= 0) ? output.Substring(0, lineEnd) : output) == "600");
+		}
+#endif
 
 		JsonValue info = null, projectInfo = null, tools = null;
 		bool wrongTokenRefused = false;

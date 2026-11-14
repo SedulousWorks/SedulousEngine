@@ -92,6 +92,36 @@ class FileStream : IStream
 			mFile.Flush().IgnoreError();
 	}
 
+	/// Pushes what was written out to the device itself (fsync; FlushFileBuffers on Windows),
+	/// so a rename after it publishes a whole file even across a power loss. False when the
+	/// stream is invalid or the platform refuses.
+	public bool Sync()
+	{
+		if (!mIsValid)
+			return false;
+		if (mFile.Flush() case .Err)
+			return false;
+#if BF_PLATFORM_WINDOWS
+		return FlushFileBuffers((void*)mFile.Handle) != 0;
+#else
+		return fsync((int32)mFile.Handle) == 0;
+#endif
+	}
+
+	/// Makes the open file readable and writable by its owner alone (0600), for a secret such
+	/// as a token. On Windows a file takes its folder's access list, and the user-data
+	/// folders are the user's own, so there is nothing to change.
+	public bool RestrictToOwner()
+	{
+		if (!mIsValid)
+			return false;
+#if BF_PLATFORM_WINDOWS
+		return true;
+#else
+		return fchmod((int32)mFile.Handle, cOwnerReadWrite) == 0;
+#endif
+	}
+
 	/// Closes the file. The stream is invalid afterwards.
 	public void Close()
 	{
@@ -163,12 +193,20 @@ class FileStream : IStream
 	private static extern int32 LockFileEx(void* file, uint32 flags, uint32 reserved, uint32 bytesLow, uint32 bytesHigh, Overlapped* overlapped);
 	[CLink, CallingConvention(.Stdcall)]
 	private static extern int32 UnlockFileEx(void* file, uint32 reserved, uint32 bytesLow, uint32 bytesHigh, Overlapped* overlapped);
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 FlushFileBuffers(void* file);
 #else
 	private const int32 cLockExclusive = 2;
 	private const int32 cLockNonBlocking = 4;
 	private const int32 cLockUnlock = 8;
 
+	private const uint32 cOwnerReadWrite = 0x180; // 0600
+
 	[CLink]
 	private static extern int32 flock(int32 fd, int32 operation);
+	[CLink]
+	private static extern int32 fsync(int32 fd);
+	[CLink]
+	private static extern int32 fchmod(int32 fd, uint32 mode);
 #endif
 }

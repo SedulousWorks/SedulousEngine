@@ -211,4 +211,32 @@ class NativeFileSystemTests
 		Test.Assert(heard.Count == expected.Count);
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
+
+	/// A save replaces the file whole, so a reader that had it open keeps the bytes it opened.
+	/// A save truncating in place would leave that reader the new bytes, or nothing at all (a
+	/// crash between the truncate and the write leaves the file empty).
+	[Test]
+	public static void ASaveReplacesTheFileWholeAndAnOpenReaderKeepsTheOldBytes()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+		uint8[4] before = .(1, 2, 3, 4);
+		uint8[1] after = .(9);
+		Test.Assert(fs.Save("a.bin", .(&before[0], 4)) case .Ok);
+
+		{
+			let reader = fs.Open("a.bin", .Read);
+			Test.Assert(reader != null);
+			defer delete reader;
+			Test.Assert(fs.Save("a.bin", .(&after[0], 1)) case .Ok);
+			uint8[4] held = default;
+			Test.Assert(reader.Read(.(&held[0], 4)) == 4);
+			Test.Assert(held[3] == 4);
+		}
+
+		let now = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(kScratch, "a.bin", .. scope String()), now) case .Ok);
+		Test.Assert((now.Count == 1) && (now[0] == 9));
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
 }

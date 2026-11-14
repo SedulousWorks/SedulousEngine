@@ -1,8 +1,17 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 
 namespace Sedulous.Core.IO;
+
+/// Who may read a file a whole-file write makes: whoever its folder lets (Shared), or its
+/// owner alone (OwnerOnly, for a secret such as a token).
+enum FileAccessRule : uint8
+{
+	Shared,
+	OwnerOnly
+}
 
 /// Whole-file helpers and the directory queries, on one surface.
 ///
@@ -35,30 +44,43 @@ static
 		return .Ok;
 	}
 
-	/// Writes a buffer to a file, replacing any existing contents.
-	public static Result<void, ErrorCode> WriteFile(StringView path, Span<uint8> data)
+	/// Writes a buffer to a file, replacing its contents whole or not at all
+	/// (WriteFileAtomic): never a file cut short by a crash or a full disk.
+	public static Result<void, ErrorCode> WriteFile(StringView path, Span<uint8> data) => WriteFileAtomic(path, data);
+
+	private static int32 sTemporaryWrites;
+
+	/// The temporary a whole-file write goes to before it is moved over `path`:
+	/// "<path>.<process>-<n>.tmp", unique to the process and to the write, so two writers of
+	/// one file never share a temporary. The ".tmp" ending is what file watchers skip.
+	public static void TemporaryPathFor(StringView path, String outPath)
 	{
-		let file = scope FileStream(path, .Write);
-		if (!file.IsValid)
-			return .Err(.Internal);
-		if (data.Length == 0)
-			return .Ok;
-		if (file.Write(data) != data.Length)
-			return .Err(.Internal);
-		return .Ok;
+		let n = Interlocked.Increment(ref sTemporaryWrites);
+		outPath.Append(path);
+		outPath.AppendF(".{}-{}.tmp", System.Diagnostics.Process.CurrentId, n);
 	}
 
-	/// Writes a buffer to a file so that a reader (or the next run, after a crash) sees the old
-	/// contents or the new ones, never a torn mix: the bytes go to `<path>.tmp` beside the
-	/// target, which is then moved over it (a rename on one volume replaces the target
-	/// atomically). A failed write leaves the target as it was.
-	public static Result<void, ErrorCode> WriteFileAtomic(StringView path, Span<uint8> data)
+	/// Writes a buffer to a file so that a reader, or the next run after a crash or a power
+	/// loss, sees the old contents or the new ones, never a torn mix: the bytes go to a
+	/// temporary beside the target (TemporaryPathFor), are flushed to the device, and the
+	/// temporary is moved over the target (a rename on one volume replaces it atomically). A
+	/// failed write leaves the target as it was and no temporary behind. OwnerOnly makes the
+	/// temporary its owner's alone before the bytes go in.
+	public static Result<void, ErrorCode> WriteFileAtomic(StringView path, Span<uint8> data, FileAccessRule access = .Shared)
 	{
-		let temporary = scope String(path)..Append(".tmp");
-		if (WriteFile(temporary, data) case .Err(let error))
+		let temporary = TemporaryPathFor(path, .. scope String());
+		bool written;
+		{
+			// Closed at the end of this block, before the move: Windows does not replace a
+			// file a handle of this process still holds open for writing.
+			let file = scope FileStream(temporary, .Write);
+			written = file.IsValid && ((access == .Shared) || file.RestrictToOwner())
+				&& ((data.Length == 0) || (file.Write(data) == data.Length)) && file.Sync();
+		}
+		if (!written)
 		{
 			DeleteFile(temporary);
-			return .Err(error);
+			return .Err(.Internal);
 		}
 		if (!MoveReplacing(temporary, path))
 		{

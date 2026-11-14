@@ -79,7 +79,6 @@ class FileSystemTests
 		RemoveDirectoryRecursive(scratch);
 		Test.Assert(CreateDirectory(scratch));
 		let path = PathJoin(scratch, "save.bin", .. scope String());
-		let temporary = scope String(path)..Append(".tmp");
 
 		// A new file, then a shorter one over it: the second write is the whole file, not a
 		// prefix over the first's tail.
@@ -90,15 +89,62 @@ class FileSystemTests
 		let readBack = scope List<uint8>();
 		Test.Assert(ReadFile(path, readBack) case .Ok);
 		Test.Assert((readBack.Count == 2) && (readBack[0] == 9) && (readBack[1] == 8));
-		Test.Assert(!FileExists(temporary));
+		// No temporary is left beside it: the folder holds the file alone.
+		int entries = 0;
+		Test.Assert(ListDirectory(scratch, scope [&](name, isDirectory) => { entries++; }));
+		Test.Assert(entries == 1);
 
-		// A write that cannot happen (its directory does not exist) fails and leaves nothing.
+		// A write that cannot happen (its directory does not exist) fails and makes nothing.
 		let nowhere = PathJoin(scratch, "no_such_dir/save.bin", .. scope String());
 		Test.Assert(WriteFileAtomic(nowhere, .(&first[0], 5)) case .Err);
-		Test.Assert(!FileExists(scope String(nowhere)..Append(".tmp")));
+		Test.Assert(!DirectoryExists(PathJoin(scratch, "no_such_dir", .. scope String())));
 
 		Test.Assert(RemoveDirectoryRecursive(scratch));
 	}
+
+	/// Two writers of one file never share a temporary, and a watcher skips it by its ending.
+	[Test]
+	public static void AWholeFileWritesTemporaryIsUniqueToTheWriteAndEndsInTmp()
+	{
+		let a = TemporaryPathFor("dir/save.bin", .. scope String());
+		let b = TemporaryPathFor("dir/save.bin", .. scope String());
+		Test.Assert(a != b);
+		Test.Assert(a.StartsWith("dir/save.bin."));
+		Test.Assert(a.EndsWith(".tmp"));
+	}
+
+#if BF_PLATFORM_LINUX
+	/// A file's permission bits as `stat` prints them ("600"): its first line, as a run under a
+	/// sanitizer's preload has the child report after it.
+	private static void PermissionBits(StringView path, String outBits)
+	{
+		let result = scope ProcessResult();
+		Sedulous.Core.Process.Run("/usr/bin/stat", scope StringView[]("-c", "%a", path), result);
+		let output = StringView(result.Output);
+		let lineEnd = output.IndexOf('\n');
+		outBits.Append((lineEnd >= 0) ? output.Substring(0, lineEnd) : output);
+		outBits.Trim();
+	}
+
+	/// A secret written owner-only is its owner's alone, over a file written shared.
+	[Test]
+	public static void ASecretWrittenOwnerOnlyIsItsOwnersAloneOverAFileThatWasNot()
+	{
+		let scratch = "scratch_filesystem_secret";
+		RemoveDirectoryRecursive(scratch);
+		Test.Assert(CreateDirectory(scratch));
+		let path = PathJoin(scratch, "secret.txt", .. scope String());
+		uint8[1] open = .((uint8)'o');
+		uint8[1] secret = .((uint8)'s');
+		Test.Assert(WriteFileAtomic(path, .(&open[0], 1)) case .Ok);
+		Test.Assert(WriteFileAtomic(path, .(&secret[0], 1), .OwnerOnly) case .Ok);
+		Test.Assert(PermissionBits(path, .. scope String()) == "600");
+		let readBack = scope List<uint8>();
+		Test.Assert(ReadFile(path, readBack) case .Ok);
+		Test.Assert((readBack.Count == 1) && (readBack[0] == (uint8)'s'));
+		Test.Assert(RemoveDirectoryRecursive(scratch));
+	}
+#endif
 
 	[Test]
 	public static void DirectoryCreateExistsRemove()

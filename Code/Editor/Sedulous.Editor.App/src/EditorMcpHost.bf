@@ -119,11 +119,11 @@ class EditorMcpHost
 			return false;
 		if (!config.TokenFileDirectory.IsEmpty)
 		{
-			// The same trust domain as the settings file next to it: user readable, so a
-			// local agent reads the secret instead of the user pasting it.
+			// Beside the settings file, readable by the user alone: a local agent of the user's
+			// reads the secret instead of the user pasting it, and no other account can.
 			CreateDirectory(config.TokenFileDirectory);
 			let path = PathJoin(config.TokenFileDirectory, cTokenFileName, .. scope .());
-			if (System.IO.File.WriteAllText(path, config.Token) case .Err)
+			if (WriteFileAtomic(path, .((uint8*)config.Token.Ptr, config.Token.Length), .OwnerOnly) case .Err)
 				GlobalLog(.Warning, scope $"MCP: the token file could not be written under '{config.TokenFileDirectory}', agents must take the token from Preferences");
 		}
 		return true;
