@@ -610,4 +610,78 @@ class KeyboardTests
 		Test.Assert(label.Text == "Size & Weight");
 		Test.Assert(label.Mnemonic == 'w');
 	}
+
+	/// A FocusLost handler that focuses elsewhere leaves no `:focus-within` behind: its request
+	/// waits for the change under way and is applied after it, so the node being focused is told
+	/// it gained the focus before it is told it lost it.
+	[Test]
+	public static void AFocusLostHandlerThatFocusesElsewhereLeavesNoFocusWithinBehind()
+	{
+		let bed = scope KeyBed();
+		let leftBox = new Panel();
+		defer leftBox.ReleaseRef();
+		let midBox = new Panel();
+		defer midBox.ReleaseRef();
+		let rightBox = new Panel();
+		defer rightBox.ReleaseRef();
+		bed.Root.AddChild(leftBox);
+		bed.Root.AddChild(midBox);
+		bed.Root.AddChild(rightBox);
+		let left = bed.Add("left", leftBox);
+		let mid = bed.Add("mid", midBox);
+		let right = bed.Add("right", rightBox);
+		int midGained = 0;
+		int midLost = 0;
+		bool redirected = false;
+		// Leaving `left` sends the focus to `right` instead, as a field that validates on blur might.
+		left.AddEventListener(.FocusLost, new [&] (e) =>
+			{
+				if (!redirected)
+				{
+					redirected = true;
+					bed.D.FocusNode = right;
+				}
+			});
+		mid.AddEventListener(.FocusGained, new [&] (e) => { ++midGained; });
+		mid.AddEventListener(.FocusLost, new [&] (e) => { ++midLost; });
+
+		bed.D.FocusNode = left;
+		bed.D.FocusNode = mid;
+		Test.Assert(bed.Focused == "right", "the handler's request, applied last");
+		Test.Assert(midGained == midLost, "told it lost what it was told it gained");
+		Test.Assert(!leftBox.IsFocusWithin);
+		Test.Assert(!midBox.IsFocusWithin);
+		Test.Assert(rightBox.IsFocusWithin);
+		Test.Assert(!mid.IsFocused);
+	}
+
+	/// A node taken out of the tree while the focus settles is let go, never kept as the focus,
+	/// and told it lost the focus while it still lives.
+	[Test]
+	public static void ANodeRemovedWhileTheFocusSettlesIsLetGo()
+	{
+		let bed = scope KeyBed();
+		let first = bed.Add("first");
+		let second = new Button();
+		second.Size = .(40.0f, 20.0f);
+		bed.Root.AddChild(second);
+		second.ReleaseRef(); // the tree alone keeps it
+		bool removed = false;
+		// Leaving `first` takes `second`, the node being focused, out of the tree.
+		first.AddEventListener(.FocusLost, new [&] (e) =>
+			{
+				if (!removed)
+				{
+					removed = true;
+					second.RemoveFromParent();
+				}
+			});
+
+		bed.D.FocusNode = first;
+		bed.D.FocusNode = second;
+		Test.Assert(removed);
+		Test.Assert(bed.D.FocusNode == null);
+		bed.Tab(); // nothing freed is reached
+		Test.Assert(bed.Focused == "first");
+	}
 }

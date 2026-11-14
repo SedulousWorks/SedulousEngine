@@ -240,3 +240,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   content that holds its anchor; either made the tree a loop and froze the game.
 - GUI: a menu or list box row a script destroys leaves the menu or list; it stayed listed, freed,
   and the next hover, key or redraw reached it. A list's selection follows its row.
+- GUI: a field that moves the focus elsewhere when it loses it (a validation on blur) no longer
+  leaves the container it was moving into styled as holding the focus.

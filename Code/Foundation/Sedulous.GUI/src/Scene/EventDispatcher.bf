@@ -1037,7 +1037,10 @@ class EventDispatcher
 	}
 
 	/// The focused node. Set, focus moves there (null: nowhere); what leaves or is inert takes no
-	/// focus.
+	/// focus. A focus asked for while a change is told (a FocusLost handler focusing elsewhere)
+	/// waits and is applied as the next change once this one is whole, the latest asked winning,
+	/// so every node told it gained the focus is later told it lost it and no `:focus-within`
+	/// stays behind.
 	public Node FocusNode
 	{
 		get => mFocusNode;
@@ -1045,32 +1048,86 @@ class EventDispatcher
 		{
 			if (value != null)
 				mPendingFocus = null; // a focus given now outranks one still waiting for the sheet
-			if ((value == mFocusNode) || ((value != null) && value.IsTreeInert))
-				return;
-			let previous = mFocusNode;
-			mFocusNode = value;
-			mFocusChanged.Notify(); // the focus path: which commands are available
-			if (previous != null)
-				previous.HandleFocusLost();
-			if (mFocusNode != null)
+			if (mSettlingFocus)
 			{
-				RememberInScopes(mFocusNode); // coming back to a scope returns here
-				mFocusNode.FocusVisible = mInputKind != .Pointer;
-				mFocusNode.HandleFocusGained();
-				// Scrollers around it bring it into view: those inside the popup it is in, not the
-				// ones its owner sits in (a popup is placed in the root's space, not scrolled with
-				// them: a page scrolled to a menu opened in it, a little further each time it
-				// opened).
-				for (var n = mFocusNode; (n != null) && !n.InTopLayer; n = n.Parent)
-				{
-					let p = n.Parent;
-					if (p != null)
-						p.OnDescendantFocused(mFocusNode);
-				}
+				value?.AddRef();
+				mFocusRequest?.ReleaseRef();
+				mFocusRequest = value;
+				mFocusRequested = true;
+				return;
 			}
-			if (mDragActive && mDragFromKeyboard)
-				QueryAtFocus(); // a keyboard drag asks where the focus went
+			mSettlingFocus = true;
+			ApplyFocus(value);
+			for (int i = 0; mFocusRequested && (i < cMaxFocusSettles); i++)
+			{
+				mFocusRequested = false;
+				let next = mFocusRequest; // its reference is ours now
+				mFocusRequest = null;
+				ApplyFocus(next);
+				next?.ReleaseRef();
+			}
+			// Handlers that kept moving it past the bound: the last applied stays.
+			mFocusRequested = false;
+			if (mFocusRequest != null)
+			{
+				mFocusRequest.ReleaseRef();
+				mFocusRequest = null;
+			}
+			mSettlingFocus = false;
+			if ((mFocusNode != null) && !IsInSubtree(mFocusNode, mRoot))
+				mFocusNode = null; // removed while it settled, and the bound cut its loss short
+			if (mFocusHold != null)
+			{
+				let held = mFocusHold;
+				mFocusHold = null;
+				held.ReleaseRef();
+			}
 		}
+	}
+
+	/// Handlers bouncing the focus give up after this many changes in one settling.
+	private const int cMaxFocusSettles = 8;
+
+	/// One focus change, its handlers' own requests waiting (FocusNode's setter).
+	private void ApplyFocus(Node node)
+	{
+		if ((node == mFocusNode) || ((node != null) && node.IsTreeInert))
+			return;
+		if ((node != null) && !IsInSubtree(node, mRoot))
+			return; // asked for, then taken out of the tree, while the focus settled
+		let previous = mFocusNode;
+		// The node losing the focus may be alive only through the hold (taken out of the tree
+		// while the focus settled): kept until it has been told.
+		previous?.AddRef();
+		mFocusNode = node;
+		// Alive until the settling ends, should it leave the tree.
+		node?.AddRef();
+		mFocusHold?.ReleaseRef();
+		mFocusHold = node;
+		mFocusChanged.Notify(); // the focus path: which commands are available
+		if (previous != null)
+		{
+			previous.HandleFocusLost();
+			previous.ReleaseRef();
+		}
+		if (node != null)
+		{
+			RememberInScopes(node); // coming back to a scope returns here
+			node.FocusVisible = mInputKind != .Pointer;
+			node.HandleFocusGained();
+			// Scrollers around it bring it into view: those inside the popup it is in, not the
+			// ones its owner sits in (a popup is placed in the root's space, not scrolled with
+			// them: a page scrolled to a menu opened in it, a little further each time it
+			// opened).
+			for (var n = node; (n != null) && !n.InTopLayer; n = n.Parent)
+			{
+				let p = n.Parent;
+				if (p != null)
+					p.OnDescendantFocused(node);
+			}
+		}
+		if (mDragActive && mDragFromKeyboard)
+			QueryAtFocus(); // a keyboard drag asks where the focus went
 	}
 
 	// === Drag and drop ===
@@ -3419,6 +3476,14 @@ class EventDispatcher
 	private Float2 mPanLast = .(0.0f, 0.0f); // where the finger was at the last pan step
 	private bool mClickSuppressed = false; // the press activated already (SuppressClick)
 	private Node mFocusNode = null;
+	/// FocusNode's setter is telling the nodes: a new request waits.
+	private bool mSettlingFocus = false;
+	/// One waits in mFocusRequest (null: no focus).
+	private bool mFocusRequested = false;
+	/// The latest focus asked for while it settled. A reference held.
+	private Node mFocusRequest = null ~ _?.ReleaseRef();
+	/// The focus node, kept alive while it settles. A reference held.
+	private Node mFocusHold = null ~ _?.ReleaseRef();
 	/// A focus asked before the sheet showed its node (RequestFocusAfterStyle). BORROWED.
 	private Node mPendingFocus = null;
 	private List<PopupEntry> mPopups = new .() ~ DeleteContainerAndItems!(_); // the top layer, bottom first
