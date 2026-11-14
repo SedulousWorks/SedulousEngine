@@ -54,6 +54,17 @@ class RenderQualityFacade
 		set => mCurrent = value;
 	}
 
+	/// Whether `id` is one of the levels offered.
+	public bool Offers(Guid id)
+	{
+		for (let level in mLevels)
+		{
+			if (level.Id == id)
+				return true;
+		}
+		return false;
+	}
+
 	/// What choosing a level does. TAKES OWNERSHIP of `onChoose`, which replaces any earlier one.
 	public void SetOnChoose(delegate void(Guid id) onChoose)
 	{

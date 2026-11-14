@@ -348,9 +348,11 @@ nothing) and `environmentResolution` (`Low` to `High`). The scene keeps deciding
 which effects it wants; a level is what that look costs on a platform. List the levels in the
 project's `qualityLevelIds`, pick its `defaultQualityId`, and give a phone's or a handheld's
 export preset its own `qualityLevelId`; the export carries them into the dist. The player starts
-at the preset's level (else the project's default, else the list's last; the engine's own
-highest, 4x MSAA and no antialiasing, when the game lists none), and the Game tab plays at the
-project's. A level's MSAA count and antialiasing are the scene pass's; an `Off` tier turns its
+at the player's saved choice (a script's `RenderQuality.Set`, kept in the user's settings), else
+the preset's level, else the project's default, else the list's last (the engine's own highest,
+4x MSAA and no antialiasing, when the game lists none), and the Game tab plays at the project's.
+A game's options menu lists the levels by their `label` through `RenderQuality.Count()` and
+`RenderQuality.Label(index)`. A level's MSAA count and antialiasing are the scene pass's; an `Off` tier turns its
 effect off whatever the scene asks, `shadowDistanceMax` shortens the scene's shadow reach, and no
 tier turns an effect on. Which antialiasing runs is the level's alone: a scene's post settings
 keep only how TAA and FXAA look (`taaBlendFactor`, `taaVarianceGamma`, `fxaaSubpixel`). `High` is

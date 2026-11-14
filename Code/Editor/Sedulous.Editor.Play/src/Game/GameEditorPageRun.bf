@@ -13,6 +13,7 @@ using Sedulous.Script.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Project;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Scene;
 
@@ -45,6 +46,9 @@ extension GameEditorPage
 			// never touches a player's save.
 			let saveName = ProjectLayout.SaveFileName(project.Settings.Name, .. scope String());
 			mGameInstance.SetSaveFile(PathJoin(project.EditorStateRoot(.. scope String()), saveName, .. scope String()));
+			// The project's levels as they are at this start, for the run's scripts.
+			QualityLevels.Offer(mGameInstance.Quality, project.Settings, mContext.Resources, .());
+			SyncQualityChoice();
 			EnableDebugging();
 			StartGameScriptFromProject();
 		}

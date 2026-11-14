@@ -46,17 +46,20 @@ class GameEditorPageServices
 /// the application and released back to it on close.
 class GameEditorPage : UIEditorPage, IPieInstancePage
 {
-	/// The quality level the Game tab plays its game at, into `outQuality`: the project's
-	/// starting level, as a run from the project folder starts at, read through `resources`. The
+	/// The quality level the Game tab plays its game at: `chosen` (the tab's quality dropdown's, or
+	/// the previewed export preset's) when the project lists it, else the project's starting level,
+	/// as a run from the project folder starts at. Nil when the project lists no levels.
+	public static Guid GameQualityLevel(Sedulous.Engine.Project.ProjectSettings settings, Guid chosen = .()) =>
+		(!chosen.IsNil && settings.IsQualityLevel(chosen)) ? chosen : settings.StartupQuality(Guid());
+
+	/// That level's values (GameQualityLevel), into `outQuality`, read through `resources`. The
 	/// engine's own highest when the project lists no levels, or its level does not resolve. The
 	/// editor's render subsystem serves every page, so the tab asks for the level on its own views
 	/// alone.
 	public static void GameQuality(Sedulous.Engine.Project.ProjectSettings settings, Sedulous.Resource.ResourceManager resources,
 		RenderQualitySettings outQuality, Guid chosen = .())
 	{
-		// A level the tab chose (its dropdown's, or the previewed preset's) while the project still
-		// lists it; else where the game starts.
-		let level = (!chosen.IsNil && settings.IsQualityLevel(chosen)) ? chosen : settings.StartupQuality(Guid());
+		let level = GameQualityLevel(settings, chosen);
 		if ((level != Guid()) && (resources != null))
 		{
 			if (let quality = resources.Bind<RenderQualityLevel>(level).Get)
@@ -196,6 +199,10 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 					GlobalLog(.Information, "Editor: Game: '{}' requested exit({})", mPieId, code);
 					mExitRequested = true;
 				});
+		// A script's RenderQuality.Set picks the level in the tab's quality dropdown, as the user
+		// would; the player would keep it for the next run, the tab keeps it for the session.
+		if (mGameInstance != null)
+			mGameInstance.Quality.SetOnChoose(new [=this] (id) => { SelectQuality(id.ToString(.. scope .())); });
 
 		// The tab from its markup: the bar over the stage, the game beside the debugger.
 		mContent = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cMarkupPath) : null;
@@ -299,6 +306,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		FollowInstanceScene();
 		AdvanceScriptedInput();
 		TickResolution(dt);
+		SyncQualityChoice(); // the dropdown or the previewed preset may have changed the level played
 		SyncGameFit(); // the target may have changed shape: the turn, and so the pointer's map
 		// A running game owns every key while its view has the focus (the editor's focus moves and
 		// its bindings stay out of it); Shift+F1 gives the keyboard back, the focus with it, until a
@@ -425,7 +433,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if (mGameInstance != null)
 			mGameInstance.SetInputSource((mInput != null) ? mInput.ShellSource : null);
 		if (mGameInstance != null)
+		{
 			mGameInstance.SetExitRequest(null); // it points at this page, which is going
+			mGameInstance.Quality.SetOnChoose(null); // so does the choice's hook
+			mGameInstance.Quality.Clear();
+		}
 		if ((mApp != null) && (mGameInstance != null))
 			mApp.ReleaseInstance(mGameInstance);
 		mGameInstance = null;

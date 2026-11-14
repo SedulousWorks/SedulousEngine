@@ -242,6 +242,18 @@ extension GameEditorPage
 		return false;
 	}
 
+	/// The run's quality choice follows the level the tab plays at: the one its scripts read as
+	/// current, when it is offered.
+	private void SyncQualityChoice()
+	{
+		if (mGameInstance == null)
+			return;
+		let project = mContext?.Project;
+		let played = (project != null) ? GameQualityLevel(project.Settings, PlayedQualityLevel()) : Guid();
+		let quality = mGameInstance.Quality;
+		quality.CurrentId = quality.Offers(played) ? played : Guid();
+	}
+
 	/// The level the tab plays at: the dropdown's, else the previewed preset's (nil: the project's
 	/// starting level).
 	public Guid PlayedQualityLevel()

@@ -293,8 +293,10 @@ RenderQuality.Set("Low"); // false for a label the game does not offer
 
 - A level is named by its asset's `label`. `Current()` is empty when the game plays at the
   engine's own level (it lists none).
-- What a set does is the host's: the player plays at the level and keeps the choice for the next
-  run; a Game tab plays at it for the session.
+- `Set` switches at once, and the player keeps the choice: the next run starts at it, ahead of
+  the export preset's level and the project's. A level the project no longer lists is ignored
+  then. A game does not need to save it.
+- In the editor's Game tab, `Set` picks the level in the tab's quality dropdown, for the session.
 
 ## Editor properties
 

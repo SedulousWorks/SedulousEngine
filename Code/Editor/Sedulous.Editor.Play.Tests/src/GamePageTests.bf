@@ -17,6 +17,8 @@ using Sedulous.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Core.Serialization;
 using Sedulous.Content;
+using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.DefaultApp;
 
 namespace Sedulous.Editor.Play.Tests;
 
@@ -85,7 +87,8 @@ class GamePageTests
 		public BareHost Host = new .() ~ delete _;
 		public GameEditorPage Page;
 
-		public this()
+		/// `instance` (borrowed, outliving the bed) is the tab's run; none by default.
+		public this(GameInstance instance = null)
 		{
 			RemoveDirectoryRecursive(Dir);
 			Test.Assert(EditorProject.Create(Dir, "P") case .Ok);
@@ -95,7 +98,7 @@ class GamePageTests
 			Context.ProjectEditorSettings = Store;
 			let services = new GameEditorPageServices();
 			services.LoadMarkup = new (path) => LoadMarkup(path);
-			Page = new GameEditorPage(Context, Host, services, null, null, "game-page");
+			Page = new GameEditorPage(Context, Host, services, null, instance, "game-page");
 		}
 
 		public ~this()
@@ -236,6 +239,71 @@ class GamePageTests
 		// The next frame does not arm it again while the view is not focused.
 		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!view.CapturesAllKeys);
+	}
+
+	/// RenderQuality in a Game tab: the run offers the project's levels and reads the one the tab
+	/// plays at as current; a script's set picks that level in the dropdown, for the session, as
+	/// the user would, and the user's pick reaches the scripts.
+	[Test]
+	public static void ItsRunOffersTheProjectsLevelsToScriptsAScriptsChoiceMovesTheQualityDropdown()
+	{
+		let root = "scratch_game_page_quality_choice_db";
+		RemoveDirectoryRecursive(root);
+		CreateDirectory(root);
+		defer RemoveDirectoryRecursive(root);
+		let serializables = scope SerializableRegistry();
+		RenderProfileResources.RegisterAll(serializables);
+		let mount = scope NativeFileSystem(root);
+		SerializerFactory serializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
+		defer delete serializers;
+		let database = scope ContentDatabase(mount, serializers, "asset", serializables);
+		Guid Write(StringView name)
+		{
+			let source = scope RenderQualitySource();
+			source.Values.Label.Set(name);
+			let instance = database.RootGroup.CreateInstance(name, "Sedulous.Engine.Render.RenderQualitySource");
+			Test.Assert(instance.WriteObject(source) case .Ok);
+			return instance.Id;
+		}
+		let low = Write("Low");
+		let high = Write("High");
+		let factory = scope RenderQualityFactory();
+		// Declared after the factory and the database, so it goes first.
+		let manager = scope ResourceManager(database, null);
+		manager.AddFactory(factory);
+
+		// The tab's run, which outlives the tab.
+		let run = scope GameInstance();
+		{
+			let bed = scope Bed(run);
+			bed.Context.Resources = manager;
+			defer { bed.Context.Resources = null; }
+			let settings = bed.Project.Settings;
+			settings.QualityLevelIds.Add(low);
+			settings.QualityLevelIds.Add(high);
+			settings.DefaultQualityId = high;
+			let page = bed.Page;
+			// What a start offers its scripts: the project's levels as they are then.
+			QualityLevels.Offer(run.Quality, settings, manager, .());
+			page.OnUpdate(bed.Host, 1.0f / 60.0f);
+			Test.Assert(run.Quality.Count() == 2);
+			Test.Assert(run.Quality.CurrentId == high, "the dropdown's preset entry: the project's starting level");
+
+			// A script's choice is the dropdown's.
+			Test.Assert(run.Quality.Set("Low"));
+			Test.Assert(page.QualityKey == low.ToString(.. scope .()));
+			page.OnUpdate(bed.Host, 1.0f / 60.0f);
+			Test.Assert(run.Quality.CurrentId == low);
+			Test.Assert(GameEditorPage.GameQualityLevel(settings, page.PlayedQualityLevel()) == low);
+
+			// The user's pick back to the preset's reaches the scripts.
+			Test.Assert(page.SelectQuality(GameResolution.cPresetQualityKey));
+			page.OnUpdate(bed.Host, 1.0f / 60.0f);
+			Test.Assert(run.Quality.CurrentId == high);
+		}
+		// The tab is gone: its run offers nothing, and a set reaches no page.
+		Test.Assert(run.Quality.Count() == 0);
+		Test.Assert(!run.Quality.Set("Low"));
 	}
 
 	/// The Game tab plays at the project's starting quality level, as the player starts at it,
