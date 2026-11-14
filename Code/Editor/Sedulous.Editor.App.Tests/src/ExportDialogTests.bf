@@ -43,6 +43,8 @@ class ExportDialogTests
 		public List<String> Notices = new .() ~ DeleteContainerAndItems!(_);
 		/// What the system's dialog answers.
 		public List<String> FromDisk = new .() ~ DeleteContainerAndItems!(_);
+		/// The project's quality levels the seam offers.
+		public List<ProjectQualityLevel> Levels = new .() ~ DeleteContainerAndItems!(_);
 
 		public this()
 		{
@@ -115,6 +117,16 @@ class ExportDialogTests
 				{
 					chosen(FromDisk);
 					delete chosen;
+				};
+			seams.QualityLevels = new [=this](outLevels) =>
+				{
+					for (let level in Levels)
+					{
+						let copy = new ProjectQualityLevel();
+						copy.Id = level.Id;
+						copy.Name.Set(level.Name);
+						outLevels.Add(copy);
+					}
 				};
 			seams.ProjectRoot.Set(Project);
 			seams.HostPlatform.Set("Linux64");
@@ -261,6 +273,40 @@ class ExportDialogTests
 		dialog.Select(0);
 		Test.Assert(f.FlagAt("overridesOrientation"));
 		Test.Assert(f.IntAt("orientation") == (int64)ScreenOrientation.Landscape);
+	}
+
+	/// A preset's quality level is one of the project's levels, offered by name, or the project's
+	/// default.
+	[Test]
+	public static void APresetStartsAtTheProjectsDefaultOrOneOfItsQualityLevels()
+	{
+		let f = scope Fixture();
+		let low = Guid(0xA1, 0xA2, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let high = Guid(0xA3, 0xA4, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let lowLevel = f.Levels.Add(.. new ProjectQualityLevel());
+		lowLevel.Id = low;
+		lowLevel.Name.Set("Quality/Low");
+		let highLevel = f.Levels.Add(.. new ProjectQualityLevel());
+		highLevel.Id = high;
+		highLevel.Name.Set("Quality/High");
+		f.Presets.At(1).QualityLevelId = high; // the other preset already starts at High
+		let dialog = f.Open();
+		Test.Assert(dialog.SelectedIndex == 0);
+
+		let row = dialog.Rows.FindInfo("qualityLevel");
+		Test.Assert(row != null);
+		Test.Assert(row.Choices.Count == 3);
+		Test.Assert(row.Choices[0].Name == "The project's default");
+		Test.Assert(row.Choices[1].Name == "Quality/Low");
+		Test.Assert(f.IntAt("qualityLevel") == 0);
+
+		f.Edit("qualityLevel", Sedulous.GUI.Variant((int64)1));
+		Test.Assert(f.Presets.At(0).QualityLevelId == low);
+		dialog.Select(1);
+		Test.Assert(f.IntAt("qualityLevel") == 2, "its own, High");
+		dialog.Select(0);
+		f.Edit("qualityLevel", Sedulous.GUI.Variant((int64)0));
+		Test.Assert(f.Presets.At(0).QualityLevelId.IsNil, "back to the project's default");
 	}
 
 	/// Add takes the host's platform, Duplicate names the copy, Remove asks first and keeps a

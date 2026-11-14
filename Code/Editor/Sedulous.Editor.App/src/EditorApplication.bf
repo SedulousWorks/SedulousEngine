@@ -1140,6 +1140,11 @@ class EditorApplication : IApplication
 				};
 			seams.Pick = new (request) => { ShowPicker(request); };
 			seams.Notify = new (message) => { mContext.Notify(.Warning, message); };
+			seams.QualityLevels = new (outLevels) =>
+				{
+					if (let open = mContext.Project)
+						open.QualityLevels(outLevels);
+				};
 			// Absolute, as the system's dialog answers.
 			if (PathIsAbsolute(project.Directory))
 				seams.ProjectRoot.Set(project.Directory);

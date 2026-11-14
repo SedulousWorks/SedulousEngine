@@ -24,6 +24,9 @@ namespace Sedulous.Editor.App;
 /// What the export dialog asks of the application. Every delegate is owned.
 class ExportDialogSeams
 {
+	/// Appends the project's quality levels, in its order: the ones a preset may start at. The
+	/// dialog owns what it appends.
+	public delegate void(List<ProjectQualityLevel> outLevels) QualityLevels ~ delete _;
 	/// Fills the registry with the templates this host sees.
 	public delegate void(TemplateRegistry registry) Refresh ~ delete _;
 	/// Persists the presets (the controller the dialog edits) to the project.
@@ -97,6 +100,8 @@ class ExportDialog
 	private Sedulous.GUI.PropertyBag mBag = null ~ delete _;
 	/// The platform row's choices, by index, and the config row's.
 	private List<String> mPlatforms = new .() ~ DeleteContainerAndItems!(_);
+	/// The quality row's levels, by its index less one.
+	private List<ProjectQualityLevel> mQualityLevels = new .() ~ DeleteContainerAndItems!(_);
 	private List<String> mConfigs = new .() ~ DeleteContainerAndItems!(_);
 	/// The question Remove asks, while it is asked (a reference of ours).
 	private MessageBox mAsking = null ~ _?.ReleaseRef();
@@ -620,6 +625,22 @@ class ExportDialog
 		Row("overridesOrientation", .Bool, Sedulous.GUI.Variant(preset.OverridesOrientation), "Own orientation", cDisplay,
 			"This platform is held its own way.");
 		EnumRow("orientation", typeof(ScreenOrientation), (int64)preset.Orientation, "Orientation", cDisplay);
+		// The quality level the platform starts at: the project's default, or one of its levels
+		// (a preset may start at those alone).
+		ClearAndDeleteItems(mQualityLevels);
+		if (mSeams.QualityLevels != null)
+			mSeams.QualityLevels(mQualityLevels);
+		int64 level = 0;
+		for (int i < mQualityLevels.Count)
+		{
+			if (mQualityLevels[i].Id == preset.QualityLevelId)
+				level = i + 1;
+		}
+		let quality = Row("qualityLevel", .Enum, Sedulous.GUI.Variant(level), "Quality level", cDisplay,
+			"The quality level this platform starts at; one of the project's (Project Settings, Quality).");
+		quality.AddChoice("The project's default", 0);
+		for (int i < mQualityLevels.Count)
+			quality.AddChoice(mQualityLevels[i].Name, i + 1);
 		ShowOverrides(preset);
 		mBag.SetOnCommit(new (commit) => { Store(); });
 		// An extra file added or removed on the grid is a list edit, not a commit: it applies as
@@ -748,6 +769,8 @@ class ExportDialog
 		preset.WindowResizable = FlagAt("windowResizable");
 		preset.OverridesOrientation = FlagAt("overridesOrientation");
 		preset.Orientation = (ScreenOrientation)ChoiceAt("orientation");
+		let level = ChoiceAt("qualityLevel");
+		preset.QualityLevelId = ((level > 0) && (level <= mQualityLevels.Count)) ? mQualityLevels[(int)level - 1].Id : Guid();
 		mPresets.Update(index, preset);
 		mDirty = true;
 		mModel.Changed((int32)index);
