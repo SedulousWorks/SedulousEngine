@@ -2103,6 +2103,81 @@ class ScenePageTests
 		page.OnClose();
 	}
 
+	/// The Shading chip's Quality Level draws the viewport at one of the project's levels, listed as
+	/// the menu opens: the editor's own, checked, then the project's levels by name; a level the
+	/// project stops listing is no longer drawn at, nor offered.
+	[Test]
+	public static void SceneHudTheShadingChipsQualityLevelDrawsTheViewportAtOneOfTheProjectsLevels()
+	{
+		// A level in a database of its own, read through the resources as the editor's are.
+		let root = "scratch_scene_page_quality_db";
+		RemoveDirectoryRecursive(root);
+		CreateDirectory(root);
+		defer RemoveDirectoryRecursive(root);
+		let serializables = scope Sedulous.Core.Serialization.SerializableRegistry();
+		RenderProfileResources.RegisterAll(serializables);
+		let mount = scope Sedulous.VFS.NativeFileSystem(root);
+		Sedulous.Core.Serialization.SerializerFactory serializers = new (stream, mode) => new Sedulous.Core.Serialization.BinarySerializerContext(stream, mode);
+		defer delete serializers;
+		let database = scope ContentDatabase(mount, serializers, "asset", serializables);
+		let low = scope RenderQualitySource();
+		low.Values.Label.Set("Low");
+		low.Values.MsaaSamples = 1;
+		low.Values.AmbientOcclusion = .Off;
+		let lowInstance = database.RootGroup.CreateInstance("low", "Sedulous.Engine.Render.RenderQualitySource");
+		Test.Assert(lowInstance.WriteObject(low) case .Ok);
+		let lowId = lowInstance.Id;
+		let factory = scope RenderQualityFactory();
+		// Declared after the factory and the database, so it goes first.
+		let manager = scope Sedulous.Resource.ResourceManager(database, null);
+		manager.AddFactory(factory);
+
+		let bed = scope Bed();
+		bed.Context.Resources = manager;
+		defer { bed.Context.Resources = null; }
+		bed.Project.Settings.QualityLevelIds.Add(lowId);
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let hud = page.Hud;
+		Test.Assert(hud != null);
+		let levels = hud.QualityMenu;
+		Test.Assert(levels != null);
+
+		// The editor's own level, checked, then the project's levels by name.
+		hud.ListQualityLevels();
+		Test.Assert(levels.RowCount == 3, "its own, a separator, Low");
+		Test.Assert(levels.ItemCount == 2);
+		MenuItem Row(int i) => levels.GetChildAt(i) as MenuItem;
+		Test.Assert((Row(0) != null) && (Row(2) != null));
+		Test.Assert(Row(0).Text == "Editor's Own");
+		Test.Assert(Row(0).Checked);
+		Test.Assert(Row(2).Text == lowId.ToString(.. scope .()), "its asset is not in the project's sources");
+		Test.Assert(page.PreviewedQuality == null);
+
+		// Picking a level draws the viewport at it; the next listing checks it.
+		Test.Assert(Row(2).HandleActivate());
+		let previewed = page.PreviewedQuality;
+		Test.Assert(previewed != null);
+		Test.Assert(previewed.Label == "Low");
+		Test.Assert(previewed.AmbientOcclusion == .Off);
+		hud.ListQualityLevels();
+		Test.Assert(!Row(0).Checked);
+		Test.Assert(Row(2).Checked);
+
+		// A level the project stops listing is no longer drawn at, nor offered.
+		bed.Project.Settings.QualityLevelIds.Clear();
+		Test.Assert(page.PreviewedQuality == null);
+		hud.ListQualityLevels();
+		Test.Assert(levels.RowCount == 1);
+		Test.Assert(Row(0).Checked, "the level the viewport is drawn at");
+
+		// The editor's own again.
+		bed.Project.Settings.QualityLevelIds.Add(lowId);
+		hud.SetQualityLevel(.());
+		Test.Assert(page.PreviewedQuality == null);
+		page.OnClose();
+	}
+
 	[Test]
 	public static void SceneHudTheChipsSayWhatIsOnAndChangeItTheStatsTheViewGizmoTheZoomReadoutAndTheToolsStatus()
 	{

@@ -104,6 +104,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private GizmoRendererRegistry mComponentGizmos = new .() ~ delete _;
 	/// The viewport's post show flags and debug view (not saved).
 	private ViewPostOverride mPostOverride = .();
+	/// The project's quality level the viewport previews; nil: the editor's own (not saved).
+	private Guid mQualityLevel = .();
 	private ViewDebugView mDebugView = new .() ~ delete _;
 	/// One reference, the page's.
 	private Node mContent = null;
@@ -312,6 +314,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			if (mServices.Pick != null)
 				hud.Pick = new [=this] (request) => { mServices.Pick(request); };
 			hud.OverlaysChanged = new [=this] () => { SaveViewState(); };
+			hud.QualityLevel = &mQualityLevel;
+			hud.QualityLevels = new [=this] (outLevels) =>
+				{
+					if (let project = mContext.Project)
+						project.QualityLevels(outLevels);
+				};
 			mHud = new SceneHud(hud, scope [=this] (id) => Find<Node>(id));
 			// The camera preview at the HUD's bottom end: the selected or pinned camera's view.
 			if (viewportPane != null)
@@ -725,10 +733,27 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	}
 
 	/// Inside the app's one renderer bracket, before the GUI draws.
+	/// The quality level the viewport is drawn at: the one its HUD chose while the project lists it
+	/// and it resolves (BORROWED: the resource's); null draws it at the editor's own.
+	public RenderQualitySettings PreviewedQuality
+	{
+		get
+		{
+			let project = mContext.Project;
+			let resources = mContext.Resources;
+			if (mQualityLevel.IsNil || (project == null) || (resources == null) || !project.Settings.IsQualityLevel(mQualityLevel))
+				return null;
+			if (let quality = resources.Bind<RenderQuality>(mQualityLevel).Get)
+				return quality.Values;
+			return null;
+		}
+	}
+
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
 		if (mScene == null)
 			return;
+		mViewport.SetQualityLevel(PreviewedQuality);
 		mViewport.Render(ref frame, mScene, &mPostOverride, mViewport.CleanCaptureFrame ? null : mDebugView);
 		if (mCameraPreview != null)
 			mCameraPreview.Render(ref frame);

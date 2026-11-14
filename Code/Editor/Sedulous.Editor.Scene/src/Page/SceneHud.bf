@@ -6,6 +6,7 @@ using Sedulous.VG;
 using Sedulous.GUI;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Camera;
 using Sedulous.Editor.ViewportTools;
@@ -233,6 +234,11 @@ class SceneHudServices
 	public delegate void(PickerRequest request) Pick ~ delete _;
 	/// An overlay changed: the page keeps its view state.
 	public delegate void() OverlaysChanged ~ delete _;
+	/// Appends the project's quality levels, which the viewport can be drawn at (the HUD deletes
+	/// what it appends).
+	public delegate void(List<ProjectQualityLevel> outLevels) QualityLevels ~ delete _;
+	/// The level the viewport is drawn at, the page's; nil draws it at the editor's own level.
+	public Guid* QualityLevel = null;
 }
 
 class SceneHud
@@ -271,6 +277,8 @@ class SceneHud
 	private SceneHudServices mServices ~ delete _;
 	private Chip mProjection = new .() ~ delete _;
 	private Chip mShading = new .() ~ delete _;
+	/// The Shading chip's Quality Level submenu, its rows made as it opens (its menu's).
+	private Menu mQualityMenu = null;
 	private Chip mOverlays = new .() ~ delete _;
 	private List<Checked> mChecks = new .() ~ DeleteContainerAndItems!(_);
 	// The page's, which outlive the HUD.
@@ -564,6 +572,49 @@ class SceneHud
 			AddCheck(msaa, level.Label, new [=post, =samples] () => (samples <= 1) ? (post.MsaaOverride <= 1) : (post.MsaaOverride == samples),
 				new [=post, =samples] () => { post.MsaaOverride = samples; });
 		}
+		if ((mServices.QualityLevel != null) && (mServices.QualityLevels != null))
+		{
+			// Listed as it opens: the project's levels change while the page is open.
+			mQualityMenu = menu.AddSubMenu("Quality Level");
+			mQualityMenu.SetOnOpening(new [=this] (opening) => { ListQualityLevels(); });
+			ListQualityLevels();
+		}
+	}
+
+	/// The Shading chip's Quality Level submenu.
+	public Menu QualityMenu => mQualityMenu;
+
+	/// Fills the Quality Level menu with the editor's own level and the project's levels as they
+	/// are now. The menu does this each time it opens.
+	public void ListQualityLevels()
+	{
+		if (mQualityMenu == null)
+			return;
+		let current = *mServices.QualityLevel;
+		let levels = scope List<ProjectQualityLevel>();
+		defer { ClearAndDeleteItems!(levels); }
+		mServices.QualityLevels(levels);
+		// A chosen level the project no longer lists is not drawn at: the editor's own is.
+		var listed = false;
+		for (let level in levels)
+			listed |= (level.Id == current);
+		mQualityMenu.ClearItems();
+		// Checked as built; picking one closes the menu, and the next opening lists it again.
+		mQualityMenu.AddCheckItem("Editor's Own", !listed, new [=this] (on) => { SetQualityLevel(.()); });
+		if (!levels.IsEmpty)
+			mQualityMenu.AddSeparator();
+		for (let level in levels)
+		{
+			let id = level.Id;
+			mQualityMenu.AddCheckItem(level.Name, current == id, new [=this, =id] (on) => { SetQualityLevel(id); });
+		}
+	}
+
+	/// Draws the viewport at the project's quality level `level`, or at the editor's own when nil.
+	public void SetQualityLevel(Guid level)
+	{
+		if (mServices.QualityLevel != null)
+			*mServices.QualityLevel = level;
 	}
 
 	private void BuildOverlays(Menu menu)

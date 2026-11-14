@@ -395,6 +395,18 @@ class SceneViewport
 		return true;
 	}
 
+	/// Draws the view at `level` (a quality level previewed), or at the renderer's own level when
+	/// null.
+	public void SetQualityLevel(RenderQualitySettings level)
+	{
+		if (mServices.Render == null)
+			return;
+		if (level != null)
+			mServices.Render.SetViewportQuality(Key, level);
+		else
+			mServices.Render.ClearViewportQuality(Key);
+	}
+
 	/// Before the page goes: the camera never closes captured, the picks keyed by it are
 	/// cancelled, a picture recorded and not yet written is written (it waits for the GPU: a save's
 	/// launcher picture, the editor closing that same frame, was freed while the copy was still
@@ -403,7 +415,10 @@ class SceneViewport
 	{
 		mCamera.ReleaseCapture(Mouse);
 		if (mServices.Render != null)
+		{
 			mServices.Render.CancelPicks(Key);
+			mServices.Render.ClearViewportQuality(Key); // the key is this view, about to go
+		}
 		if ((host != null) && (host.Graphics != null) && (host.Graphics.Raw != null))
 		{
 			CompleteCapture(host);
