@@ -285,6 +285,57 @@ class SettingsProfilePageTests
 		Test.Assert(Math.Abs(FloatOf(rows, "Turbidity") - 3.0) < 1e-5);
 	}
 
+	/// A Render Quality opens on the same page: its rows are the level's fields, an edit is one undo
+	/// step, and the preview is drawn at the level rather than a scene's block taking it.
+	[Test]
+	public static void ARenderQualitysRowsAreTheLevelsAndItsPreviewIsDrawnAtIt()
+	{
+		let bed = scope Bed();
+		let phone = bed.Project.SourceDb.RootGroup.CreateInstance("Phone", typeof(RenderQualityAsset).GetFullName(.. scope .()));
+		Test.Assert(phone != null);
+		let level = scope RenderQualityAsset();
+		level.Values.Label.Set("Low");
+		level.Values.MsaaSamples = 1;
+		Test.Assert(phone.WriteObject(level) case .Ok);
+
+		// The page factory takes it: profiles and quality levels share a base the registry matches.
+		Test.Assert(typeof(RenderQualityAsset).IsSubtypeOf(typeof(PreviewedSettingsAsset)));
+		Test.Assert(typeof(EnvironmentProfileAsset).IsSubtypeOf(typeof(PreviewedSettingsAsset)));
+		Test.Assert(bed.Context.Pages.FindFactory(typeof(RenderQualityAsset)) != null);
+
+		let services = new AssetPageServices();
+		services.LoadMarkup = new (path) => LoadMarkup(path);
+		let page = new SettingsProfilePage(bed.Context, services, phone);
+		defer delete page;
+		Test.Assert(!page.LoadFailed);
+		Test.Assert(page.PreviewsQualityLevel);
+		let rows = page.Rows;
+		Test.Assert(rows != null);
+		Test.Assert(HasRow(rows, "Label"));
+		Test.Assert(HasRow(rows, "MsaaSamples"));
+		Test.Assert(HasRow(rows, "AmbientOcclusion"));
+		Test.Assert(HasRow(rows, "EnvironmentResolution"));
+		Test.Assert(IntOf(rows, "MsaaSamples") == 1);
+
+		// An edit is one undo step.
+		page.EditValue("MsaaSamples", PropertyWrite(Sedulous.GUI.Variant((int64)4)));
+		Test.Assert(IntOf(rows, "MsaaSamples") == 4);
+		Test.Assert(page.IsDirty);
+		page.Commands.Undo();
+		Test.Assert(IntOf(rows, "MsaaSamples") == 1);
+
+		let profile = bed.Open();
+		defer delete profile;
+		Test.Assert(!profile.PreviewsQualityLevel, "a profile previews in its scene's block");
+	}
+
+	static int64 IntOf(IPropertySource rows, StringView path)
+	{
+		var value = rows.GetValue(path, 0);
+		defer value.Dispose();
+		return value.AsInt;
+	}
+
 	/// A scene's save wrote the profile: the page reads it again, its undo let go.
 	[Test]
 	public static void AScenesSaveWritingTheProfileHasThePageReadItAgain()

@@ -6,8 +6,9 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Render;
 
-/// Opens every profile asset in the profile page (the registry matches along the asset type's base
-/// chain); a page asks for its services when it is made.
+/// Opens every previewed settings asset, profiles and quality levels, in the profile page (the
+/// registry matches along the asset type's base chain); a page asks for its services when it is
+/// made.
 class SettingsProfilePageFactory : IEditorPageFactory
 {
 	/// Borrowed: the editor's (or a test's), which outlives it.
@@ -19,7 +20,7 @@ class SettingsProfilePageFactory : IEditorPageFactory
 		mServices = services;
 	}
 
-	public Type PrimaryType => typeof(SettingsProfileAsset);
+	public Type PrimaryType => typeof(PreviewedSettingsAsset);
 
 	public EditorPage CreatePage(EditorContext context, Instance instance) =>
 		new SettingsProfilePage(context, mServices.Make(), instance);

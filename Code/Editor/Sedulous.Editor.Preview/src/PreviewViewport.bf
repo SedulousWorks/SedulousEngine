@@ -113,6 +113,11 @@ class PreviewViewport
 		mSceneManager.TimeScale = scale;
 	}
 
+	/// The key the preview's views are drawn with: a page gives the preview a quality level of
+	/// its own under it (RenderSubsystem.SetViewportQuality; a Render Quality page previews its
+	/// level so) and clears it when it closes.
+	public void* ViewportKey => Internal.UnsafeCastToPtr(this);
+
 	/// Per-frame input and camera drive, from the page's OnUpdate before anything reads the
 	/// camera. True when F was pressed over it this frame (the page frames what it shows).
 	public bool Update(float dt)
@@ -166,7 +171,9 @@ class PreviewViewport
 		// The graph imports the colour target and owns its transitions: from the viewport's state
 		// to ShaderRead for the GUI to sample.
 		let targetState = TargetState(mView.ColorTexture, mView.ColorState, .ShaderRead);
-		mRender.RenderScene(mScene, mView.ColorView, mView.ColorFormat, w, h, .(0, 0, w, h), &cameraOverride, targetState);
+		// Keyed by this viewport (ViewportKey), so a level a page gives it reaches its views alone.
+		mRender.RenderScene(mScene, mView.ColorView, mView.ColorFormat, w, h, .(0, 0, w, h), &cameraOverride, targetState,
+			null, ViewportKey);
 		mView.ColorState = .ShaderRead;
 	}
 

@@ -6,14 +6,20 @@ using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Render.Pipeline;
 
-/// A profile asset: a settings block's values, reached without naming the block. The editor
-/// edits any profile through this, the layout ValuesType over Values.
-abstract class SettingsProfileAsset : Asset, ISerializable
+/// A settings asset the editor shows beside a preview: its values, reached without naming their
+/// type (the layout ValuesType over ValuesAddress). A render profile or a quality level.
+abstract class PreviewedSettingsAsset : Asset, ISerializable
 {
 	public abstract void Serialize(ISerializer ar);
 
 	public abstract Type ValuesType { get; }
 	public abstract void* ValuesAddress { get; }
+}
+
+/// A profile asset: a settings block's values, which a scene's block takes (by reference, or
+/// copied into a preview scene's).
+abstract class SettingsProfileAsset : PreviewedSettingsAsset
+{
 	/// Takes a settings block's values, in ValuesType's layout. The block's own source and
 	/// profile reference are not a profile's.
 	public abstract void SetValues(void* values);
@@ -105,11 +111,15 @@ class PostProcessProfileAsset : SettingsProfileAsset
 /// on it. Cooked to its record by a copy, as the profiles are.
 [Category("Rendering")]
 [DisplayName("Render Quality")]
-class RenderQualityAsset : Asset, ISerializable
+class RenderQualityAsset : PreviewedSettingsAsset
 {
 	public RenderQualitySettings Values = new .() ~ delete _;
 
-	public void Serialize(ISerializer ar)
+	public override Type ValuesType => typeof(RenderQualitySettings);
+	/// The settings object itself: its fields are read from it.
+	public override void* ValuesAddress => Internal.UnsafeCastToPtr(Values);
+
+	public override void Serialize(ISerializer ar)
 	{
 		ar.BeginObject();
 		ar.Key("fileName");

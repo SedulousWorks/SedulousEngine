@@ -134,8 +134,10 @@ class ProfileValuesSource : IPropertySource
 	public override bool PasteValue(StringView path, StringView text, String reason) => mInner.PasteValue(path, text, reason);
 }
 
-/// Edits a profile asset (an Environment Profile, a Post Process Profile; any
-/// SettingsProfileAsset), on the preview pages' markup (Data/Editor/PreviewPage.xml): a preview
+/// Edits a settings asset shown beside a preview (any PreviewedSettingsAsset): a profile (an
+/// Environment Profile, a Post Process Profile), whose values the preview scene's block takes, or
+/// a quality level (a Render Quality), which the preview is drawn at, on its own view. On the
+/// preview pages' markup (Data/Editor/PreviewPage.xml): a preview
 /// rendered with the profile applied, beside the
 /// profile's values, the rows a scene's settings show (the block's own fields, its source and its
 /// profile, left out, as they are a scene's). The preview is a built-in scene (a ground, spheres of
@@ -162,10 +164,14 @@ class SettingsProfilePage : AssetObjectPage
 	/// Owned: runtime built, never assets.
 	private List<StaticMesh> mPreviewMeshes = new .() ~ DeleteContainerAndItems!(_);
 	private List<Material> mPreviewMaterials = new .() ~ DeleteContainerAndItems!(_);
+	/// Where the level the preview was drawn at was given, cleared on close (borrowed; null when
+	/// none was).
+	private RenderSubsystem mPreviewLevelRender = null;
+	private void* mPreviewLevelKey = null;
 
 	/// It takes `services`.
 	public this(EditorContext context, AssetPageServices services, Instance instance)
-		: base(context, services, instance, typeof(SettingsProfileAsset), cMarkupPath)
+		: base(context, services, instance, typeof(PreviewedSettingsAsset), cMarkupPath)
 	{
 		// The asset holds its values in a wrapper; the rows are the values', as a scene's show them.
 		HideAssetRows();
@@ -178,7 +184,7 @@ class SettingsProfilePage : AssetObjectPage
 					// The whole asset before and after, one undo step; its apply tells the page.
 					EditWhole("edit_settings_profile", scope [&] (object) =>
 						{
-							if (let edited = object as SettingsProfileAsset)
+							if (let edited = object as PreviewedSettingsAsset)
 								apply(0, edited.ValuesAddress);
 						});
 				}, context.Resources);
@@ -202,7 +208,9 @@ class SettingsProfilePage : AssetObjectPage
 			// The scene the profile is previewed on: the built-in one, or one of the project's.
 			mSceneSlot = new AssetPickerSlot();
 			mSceneSlot.AddClass("preview-slot");
-			mSceneSlot.Tooltip = "A scene of the project to preview the profile in (the built-in one when none); kept for this profile";
+			mSceneSlot.Tooltip = PreviewsQualityLevel
+				? "A scene of the project to preview the level in (the built-in one when none); kept for this level"
+				: "A scene of the project to preview the profile in (the built-in one when none); kept for this profile";
 			let refs = Services.Refs;
 			mSceneSlot.AcceptTypesOf(refs, typeof(SceneDocument));
 			if ((refs != null) && (refs.Pick != null))
@@ -254,6 +262,9 @@ class SettingsProfilePage : AssetObjectPage
 	public PreviewPane Pane => mPane;
 	/// How often the values were given to the preview scene (a test has no scene to look at).
 	public int PreviewsApplied => mPreviewsApplied;
+	/// Whether the asset is a quality level, which the preview is drawn at (not a profile its
+	/// scene takes).
+	public bool PreviewsQualityLevel => ObjectAs<RenderQualityAsset>() != null;
 
 	/// An edit of the values' property `path` to `write`, as the grid commits one.
 	public void EditValue(StringView path, PropertyWrite write)
@@ -269,6 +280,16 @@ class SettingsProfilePage : AssetObjectPage
 		base.OnUpdate(host, dt);
 		if (mPane != null)
 			mPane.Update(dt);
+		// A quality level is what the preview is drawn at, on its own view: given every frame, so
+		// an edit (or an undo behind the values) shows at once.
+		let level = ObjectAs<RenderQualityAsset>();
+		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
+		if ((level != null) && (render != null) && (Preview != null))
+		{
+			mPreviewLevelKey = Preview.ViewportKey;
+			mPreviewLevelRender = render;
+			render.SetViewportQuality(mPreviewLevelKey, level.Values);
+		}
 	}
 
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
@@ -279,6 +300,12 @@ class SettingsProfilePage : AssetObjectPage
 
 	public override void OnClose()
 	{
+		if (mPreviewLevelRender != null)
+		{
+			mPreviewLevelRender.ClearViewportQuality(mPreviewLevelKey); // the key is the preview's, about to go
+			mPreviewLevelRender = null;
+			mPreviewLevelKey = null;
+		}
 		if (mPane != null)
 			mPane.Close();
 	}
@@ -296,7 +323,7 @@ class SettingsProfilePage : AssetObjectPage
 		ApplyPreview();
 	}
 
-	private SettingsProfileAsset Profile => ObjectAs<SettingsProfileAsset>();
+	private PreviewedSettingsAsset Profile => ObjectAs<PreviewedSettingsAsset>();
 
 	private PreviewViewport Preview => (mPane != null) ? mPane.Viewport : null;
 
@@ -304,8 +331,10 @@ class SettingsProfilePage : AssetObjectPage
 	{
 		mPreviewsApplied++;
 		let scene = (Preview != null) ? Preview.Scene : null;
-		if ((scene != null) && (Profile != null))
-			ProfilePreview.PreviewInScene(Profile, scene, Context.Resources);
+		// A profile's values are the preview scene's block's; a quality level is drawn at instead
+		// (OnUpdate), the scene's own blocks kept.
+		if ((scene != null) && (let profile = Profile as SettingsProfileAsset))
+			ProfilePreview.PreviewInScene(profile, scene, Context.Resources);
 	}
 
 	private void ShowScene()
