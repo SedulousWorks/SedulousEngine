@@ -54,6 +54,17 @@ class RenderQualityFacade
 		set => mCurrent = value;
 	}
 
+	/// The id of the level labelled `label`; nil when none is.
+	public Guid Find(StringView label)
+	{
+		for (let level in mLevels)
+		{
+			if (level.Label == label)
+				return level.Id;
+		}
+		return .();
+	}
+
 	/// Whether `id` is one of the levels offered.
 	public bool Offers(Guid id)
 	{

@@ -363,7 +363,17 @@ class PlayerApplication : DefaultApplication
 		let render = host.Subsystems.GetSubsystem<RenderSubsystem>();
 		if (render == null)
 			return;
-		let start = QualityLevels.Offer(Instance.Quality, mSettings, Resources, QualityLevels.Saved(mUserSettings));
+		var start = QualityLevels.Offer(Instance.Quality, mSettings, Resources, QualityLevels.Saved(mUserSettings));
+		// --quality: this run's level by its label, for measuring a level or trying it; a label the
+		// game does not offer leaves the start as it was.
+		if (!mOptions.QualityOverride.IsEmpty)
+		{
+			let asked = Instance.Quality.Find(mOptions.QualityOverride);
+			if (asked != Guid())
+				Instance.Quality.CurrentId = start = asked;
+			else
+				GlobalLog(.Warning, "Player: --quality '{}': the game offers no level of that label", mOptions.QualityOverride);
+		}
 		let quality = (start != Guid()) ? Resources.Bind<RenderQualityLevel>(start).Get : null;
 		if (quality != null)
 		{

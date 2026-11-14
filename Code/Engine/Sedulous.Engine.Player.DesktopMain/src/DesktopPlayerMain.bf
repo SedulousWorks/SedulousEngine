@@ -176,6 +176,8 @@ static class DesktopPlayerMain
 		{
 			if (args[i] == "--scene")
 				options.SceneOverride.Set(args[i + 1]);
+			else if (args[i] == "--quality")
+				options.QualityOverride.Set(args[i + 1]); // start at that quality level; the choice is not kept
 			else if (args[i] == "--exit-after")
 				options.ExitAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
 		}

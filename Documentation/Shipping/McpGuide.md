@@ -502,7 +502,7 @@ read the file before trusting it, and leave the judgement of how it looks to the
   [--screenshot-exit]` writes the window at frame N (30 by default) or after S seconds, N files
   in a row when counted (`shot-0.png`, ...: frame-to-frame changes such as TAA's jitter), and
   quits after the last. It plays no input, so it shows what the game opens on (`--scene <path>`
-  opens another); its window is the project's `windowWidth` / `windowHeight`. Compare it with
+  opens another, `--quality <label>` starts at that quality level without keeping it); its window is the project's `windowWidth` / `windowHeight`. Compare it with
   PIE's picture of the same screen: a difference is a finding.
 
 **Export**: `project_health` first, to catch breakage before a long cook, then

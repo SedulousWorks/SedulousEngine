@@ -11,6 +11,9 @@ class PlayerOptions
 	public String ProjectDir = new .() ~ delete _;
 	/// A source database path. Empty takes the manifest's own default scene.
 	public String SceneOverride = new .() ~ delete _;
+	/// A quality level's label to start at, ahead of the saved choice; not kept. Empty starts
+	/// where the game would.
+	public String QualityOverride = new .() ~ delete _;
 	/// Above nought exits after that many seconds, which is what a smoke run wants.
 	public float ExitAfterSeconds = 0.0f;
 	/// The game's mounts made by the host (an Android app's, read from its APK); null, they come
