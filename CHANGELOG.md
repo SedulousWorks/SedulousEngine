@@ -55,6 +55,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   edited. The Game tab has a quality dropdown (the preset's level, or any of the project's), a
   scene viewport's Shading chip a Quality Level menu, and the Export dialog a Quality level row
   for the preset's own level. MCP: `pie_quality` reads and sets a Game tab's level.
+- MCP: `asset_rename` renames an asset within its group as the Assets browser does, keeping its
+  guid; the default scene's path follows.
 - Scripting: the `RenderQuality` service, an options menu's graphics setting. `Count()` and
   `Label(index)` list the project's quality levels by label, `Current()` reads the one the game
   plays at, and `Set(label)` switches at once. The player keeps the choice in the user's settings

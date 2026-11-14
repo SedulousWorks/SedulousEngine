@@ -155,6 +155,74 @@ class EditorProject
 	public StringView Directory => mDirectory;
 	public ProjectSettings Settings => mSettings;
 
+	/// What a file cannot hold in its name, on any platform the project is opened on.
+	public const String cRefusedNameCharacters = "/\\:*?\"<>|";
+
+	/// Why `name` cannot name an asset (empty, a character a file cannot hold, a space at an end,
+	/// a dot at its end), appended to `outWhy`; nothing when it can. The one rule for a name a file
+	/// takes.
+	public static void AssetNameRefusal(StringView name, String outWhy)
+	{
+		if (name.IsEmpty)
+		{
+			outWhy.Append("Enter a name.");
+			return;
+		}
+		for (let c in name)
+		{
+			if (cRefusedNameCharacters.Contains(c))
+			{
+				outWhy.AppendF("A name cannot hold {}.", c);
+				return;
+			}
+		}
+		if ((name[0] == ' ') || (name[name.Length - 1] == ' ') || (name[name.Length - 1] == '.'))
+			outWhy.Append("A name cannot start or end with a space, or end with a dot.");
+	}
+
+	/// Renames the asset `id` within its group, its guid kept (everything binds by guid): the
+	/// source instance, its cooked product's name, and the default scene's path mirror. True when
+	/// it was renamed (or already had the name), else false with why not appended to `outWhy`: no
+	/// such asset, a name the rule refuses, one taken in its group, or a failed write.
+	public bool RenameAsset(Guid id, StringView name, String outWhy)
+	{
+		let instance = mSourceDb.GetInstance(id);
+		if (instance == null)
+		{
+			outWhy.AppendF("no asset with guid {}", id);
+			return false;
+		}
+		if (instance.Name == name)
+			return true;
+		let start = outWhy.Length;
+		AssetNameRefusal(name, outWhy);
+		if (outWhy.Length != start)
+			return false;
+		if (instance.OwningGroup.GetInstance(name) != null)
+		{
+			outWhy.AppendF("an asset named '{}' already exists in '{}'", name, instance.OwningGroup.GetPath(.. scope .()));
+			return false;
+		}
+		let oldPath = instance.GetPath(.. scope .());
+		if (mSourceDb.RenameInstance(id, name) case .Err(let error))
+		{
+			GlobalLog(.Warning, "Project: the rename of '{}' failed ({})", oldPath, error);
+			outWhy.Append("the rename failed (the log says why)");
+			return false;
+		}
+		// Its product keeps step; a product not cooked yet has none.
+		mCookedDb.RenameInstance(id, name).IgnoreError();
+		// The manifest's default scene is the guid; its path the readable mirror. The path's
+		// compare covers a manifest with no guid, which then takes it.
+		if ((mSettings.DefaultSceneId == id) || (mSettings.DefaultScene == oldPath))
+		{
+			mSettings.DefaultSceneId = id;
+			instance.GetPath(mSettings.DefaultScene..Clear());
+			SaveSettings().IgnoreError();
+		}
+		return true;
+	}
+
 	/// The quality levels the manifest lists, in its order, each named by its asset's path (by
 	/// its id when the asset is gone), for the menus that offer them. Appends to `outLevels`;
 	/// the caller owns what it appends.

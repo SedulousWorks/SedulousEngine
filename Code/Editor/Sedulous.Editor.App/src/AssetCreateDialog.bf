@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Content;
+using Sedulous.Editor.Project;
 using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
@@ -16,7 +17,7 @@ namespace Sedulous.Editor.App;
 static class AssetNames
 {
 	/// What a file cannot hold in its name, on any platform the project is opened on.
-	public const String cRefused = "/\\:*?\"<>|";
+	public const String cRefused = EditorProject.cRefusedNameCharacters;
 
 	/// Why `name` cannot name a new asset in `group` (empty, a character a file cannot hold, a
 	/// space at an end or a dot at the end, taken there), appended to `outWhy`; nothing when it can.
@@ -46,28 +47,9 @@ static class AssetNames
 	}
 
 	/// Why `name` cannot name a file (empty, a character a file cannot hold, a space at an end, a
-	/// dot at its end), appended to `outWhy`; nothing when it can.
-	public static void FormRefusal(StringView name, String outWhy)
-	{
-		if (name.IsEmpty)
-		{
-			outWhy.Append("Enter a name.");
-			return;
-		}
-		for (let c in name)
-		{
-			if (cRefused.Contains(c))
-			{
-				outWhy.AppendF("A name cannot hold {}.", c);
-				return;
-			}
-		}
-		if ((name[0] == ' ') || (name[name.Length - 1] == ' ') || (name[name.Length - 1] == '.'))
-		{
-			outWhy.Append("A name cannot start or end with a space, or end with a dot.");
-			return;
-		}
-	}
+	/// dot at its end), appended to `outWhy`; nothing when it can. The project's rule, which an
+	/// agent's rename keeps too.
+	public static void FormRefusal(StringView name, String outWhy) => EditorProject.AssetNameRefusal(name, outWhy);
 }
 
 class AssetCreate

@@ -557,6 +557,9 @@ call and the export refuse it.
   the refusal names the users); change those first, or pass `force` and fix the dangling
   references after. It removes the asset, not the original file an import copied under
   `Sources/`: delete that file yourself if it should go too.
+- `asset_rename` renames one within its group as the browser does: its guid stays, so what
+  uses it still does, and the default scene's path follows; a name a file cannot take, or one
+  taken in the group, is refused.
 - `log_read` is incremental: always pass the previous `lastSequence`; a non zero `dropped`
   means the ring overflowed and old lines are gone.
 - `asset_cook` and `project_export` are long running calls (a full cook may run inside

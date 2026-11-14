@@ -427,6 +427,24 @@ class EditorProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
+	/// On the main thread, never while a cook or an export reads the databases (it waits, as a
+	/// delete does); then renames through the project, as the browser does.
+	public OperationStep Rename(ToolCall call, Guid id, StringView name, String outError)
+	{
+		if (mSeams.Cook.MutationLocked)
+		{
+			if (call.State == null)
+				call.State = new CreateWait();
+			if (TimedOut((call.State as CreateWait).Started))
+			{
+				outError.AppendF("rename of asset {}: the databases stayed locked by a cook or export for {} s", id, (int64)mSeams.TimeoutSeconds);
+				return .Failed;
+			}
+			return .NotYet;
+		}
+		return mSeams.Project.RenameAsset(id, name, outError) ? .Finished : .Failed;
+	}
+
 	public OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError)
 	{
 		var export = call.State as ExportState;

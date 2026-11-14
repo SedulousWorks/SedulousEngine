@@ -73,24 +73,11 @@ class AssetOperations
 			Wait(new [=this, =id, =renamed] () => { Rename(id, renamed, scope .()); } ~ delete renamed, "Rename");
 			return true;
 		}
-		let project = CurrentProject;
+		// The project's rename, as an agent's asset_rename: the cooked product and the default
+		// scene's path mirror follow.
 		let oldPath = instance.GetPath(.. scope .());
-		if (project.SourceDb.RenameInstance(id, name) case .Err(let error))
-		{
-			GlobalLog(.Warning, "Assets: rename FAILED for '{}' ({})", oldPath, error);
-			outWhy.Append("The rename failed (see the Console).");
+		if (!CurrentProject.RenameAsset(id, name, outWhy))
 			return false;
-		}
-		// Its product's name in step: everything binds by guid, but a stale name in Cooked confuses.
-		project.CookedDb.RenameInstance(id, name).IgnoreError();
-		// The manifest's default scene is the guid; its path the readable mirror. The path's
-		// compare covers a manifest with no guid, which then takes it.
-		if ((project.Settings.DefaultSceneId == id) || (project.Settings.DefaultScene == oldPath))
-		{
-			project.Settings.DefaultSceneId = id;
-			instance.GetPath(project.Settings.DefaultScene..Clear());
-			project.SaveSettings().IgnoreError();
-		}
 		GlobalLog(.Information, "Assets: renamed '{}' -> '{}'", oldPath, instance.GetPath(.. scope .()));
 		return true;
 	}

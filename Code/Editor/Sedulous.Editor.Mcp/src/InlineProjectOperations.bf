@@ -123,6 +123,12 @@ class InlineProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
+	/// Renames at once: no pages here, and nothing reads the databases meanwhile.
+	public OperationStep Rename(ToolCall call, Guid id, StringView name, String outError)
+	{
+		return mSession.Project.RenameAsset(id, name, outError) ? .Finished : .Failed;
+	}
+
 	/// Creates at once; nothing follows it here: the agent cooks next.
 	public OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError)
 	{

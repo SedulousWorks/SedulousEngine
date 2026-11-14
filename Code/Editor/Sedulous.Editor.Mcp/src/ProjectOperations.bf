@@ -139,6 +139,9 @@ interface IProjectOperations
 	/// One source asset removed (asset_delete): its envelope and data files, never the
 	/// original file an import copied under Sources/. The host closes what has it open.
 	OperationStep Delete(ToolCall call, Guid id, String outError);
+	/// One source asset renamed within its group, its guid kept (asset_rename), through
+	/// EditorProject.RenameAsset; `outError` is the refusal. Finished once the asset has the name.
+	OperationStep Rename(ToolCall call, Guid id, StringView name, String outError);
 	/// One new asset from a creator (AssetCreation.Run), and whatever the host does after a
 	/// creation: the editor's cook request and default scene; nothing on the stdio host, whose
 	/// agent cooks next.
