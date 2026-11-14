@@ -17,28 +17,53 @@ namespace Sedulous.Materials.PipelineCache;
 /// Reload is handled by VERSION POLLING at the point of use. Each entry records the shader
 /// system's version of its shader when it was built, and a request compares that against
 /// the current one, rebuilding lazily when a shader has been invalidated since. That costs
-/// one lookup and an integer compare per draw, the same as a dirty flag, and needs no
-/// listener bookkeeping at all. A superseded pipeline goes to a graveyard rather than being
-/// freed, because the frames still in flight are drawing with it.
+/// one lookup, a key compare and an integer compare per draw, and needs no listener
+/// bookkeeping at all. A superseded pipeline goes to a graveyard rather than being freed,
+/// because the frames still in flight are drawing with it; TickRetired frees it once they
+/// have passed.
 class PipelineStateCache
 {
-	private struct Entry
+	/// One pipeline and the whole key it was built for. The config's name is a view into the
+	/// entry's own copy, since the caller's view may point at storage that goes.
+	private class Entry
 	{
+		public String ShaderName = new .() ~ delete _;
+		public PipelineConfig Config;
+		public IPipelineLayout Layout;
+		public TextureFormat ColorOverride;
+		/// Null when the build failed for this version of the shader.
 		public IRenderPipeline Pipeline;
 		public uint64 BuiltVersion;
+
+		public bool Matches(PipelineConfig config, IPipelineLayout layout, TextureFormat colorOverride) =>
+			(Layout === layout) && (ColorOverride == colorOverride) && (Config == config);
+	}
+
+	private struct Retired
+	{
+		public IRenderPipeline Pipeline;
+		public uint32 FramesLeft;
 	}
 
 	private ShaderSystem mShaders;
 	private IDevice mDevice;
+	private uint32 mFramesInFlight;
 
-	private Dictionary<uint64, Entry> mEntries = new .() ~ delete _;
-	private List<IRenderPipeline> mRetired = new .() ~ delete _;
+	/// By the key's hash; each entry holds the whole key, so two configs whose hashes collide
+	/// are two pipelines.
+	private Dictionary<uint64, List<Entry>> mEntries = new .() ~ { for (let bucket in _) DeleteContainerAndItems!(bucket.value); delete _; };
+	private int mCount;
+	private uint64 mBuilds;
+	private List<Retired> mRetired = new .() ~ delete _;
 
-	/// Both are BORROWED and must outlive this.
-	public this(ShaderSystem shaderSystem, IDevice device)
+	/// Both are BORROWED and must outlive this. `framesInFlight`: how many frames a pipeline
+	/// superseded by a reload is kept for (TickRetired), since frames still in flight may draw
+	/// with it.
+	public this(ShaderSystem shaderSystem, IDevice device, uint32 framesInFlight = 3)
 	{
 		mShaders = shaderSystem;
 		mDevice = device;
+		mFramesInFlight = (framesInFlight == 0) ? 1 : framesInFlight;
 	}
 
 	public ~this()
@@ -47,11 +72,14 @@ class PipelineStateCache
 		ReleaseRetired();
 	}
 
-	public int Size => mEntries.Count;
+	public int Size => mCount;
 	public int RetiredCount => mRetired.Count;
+	/// How many pipelines it has tried to build: a failure kept is not tried again.
+	public uint64 BuildAttempts => mBuilds;
 
 	/// The pipeline for this combination, built on first request and REBUILT when its
-	/// shader has been reloaded since. Null when the build fails.
+	/// shader has been reloaded since. Null when the build fails; a failure is kept, not
+	/// tried again every draw, until the shader's version changes (an edit that may fix it).
 	///
 	/// `layout` is the assembled pipeline layout, which the caller owns. It takes part in
 	/// the key by identity: two layouts describing the same thing are still two layouts as
@@ -59,38 +87,75 @@ class PipelineStateCache
 	public IRenderPipeline GetPipeline(PipelineConfig config, IPipelineLayout layout,
 		TextureFormat colorOverride = .Undefined)
 	{
-		let key = KeyOf(config, layout, colorOverride);
+		let hash = KeyOf(config, layout, colorOverride);
 		let version = mShaders.Version(config.ShaderName);
 
-		if (mEntries.TryGetValue(key, var entry))
+		List<Entry> bucket = null;
+		if (mEntries.TryGetValue(hash, out bucket))
 		{
-			if ((entry.BuiltVersion == version) && (entry.Pipeline != null))
+			// Matched on the whole key, not the hash.
+			for (let entry in bucket)
+			{
+				if (!entry.Matches(config, layout, colorOverride))
+					continue;
+				if (entry.BuiltVersion == version)
+					return entry.Pipeline; // null: it failed for this version of the shader
+
+				// The shader was reloaded since this was built. The stale pipeline is retired
+				// rather than destroyed: frames in flight are still drawing with it.
+				if (entry.Pipeline != null)
+					mRetired.Add(.() { Pipeline = entry.Pipeline, FramesLeft = mFramesInFlight });
+				entry.Pipeline = Build(config, layout, colorOverride);
+				entry.BuiltVersion = version;
 				return entry.Pipeline;
-
-			// The shader was reloaded since this was built. The stale pipeline is retired
-			// rather than destroyed: frames in flight are still drawing with it.
-			if (entry.Pipeline != null)
-				mRetired.Add(entry.Pipeline);
-
-			entry.Pipeline = Build(config, layout, colorOverride);
-			entry.BuiltVersion = version;
-			mEntries[key] = entry;
-			return entry.Pipeline;
+			}
+		}
+		else
+		{
+			bucket = new List<Entry>();
+			mEntries[hash] = bucket;
 		}
 
-		var fresh = Entry();
+		let fresh = new Entry();
+		fresh.ShaderName.Set(config.ShaderName);
+		fresh.Config = config;
+		fresh.Config.ShaderName = fresh.ShaderName; // its own copy, not the caller's storage
+		fresh.Layout = layout;
+		fresh.ColorOverride = colorOverride;
 		fresh.Pipeline = Build(config, layout, colorOverride);
 		fresh.BuiltVersion = version;
-		mEntries[key] = fresh;
+		bucket.Add(fresh);
+		mCount++;
 		return fresh.Pipeline;
 	}
 
-	/// Frees what a reload superseded. Called once the frames that may still reference them
-	/// have completed, which the frame ring is the gate for.
+	/// Once a frame: frees the pipelines superseded by a reload whose frames in flight have
+	/// all completed (framesInFlight of these ticks after).
+	public void TickRetired()
+	{
+		for (int i = 0; i < mRetired.Count;)
+		{
+			if (mRetired[i].FramesLeft <= 1)
+			{
+				var pipeline = mRetired[i].Pipeline;
+				if (pipeline != null)
+					mDevice.DestroyRenderPipeline(ref pipeline);
+				mRetired.RemoveAtFast(i);
+			}
+			else
+			{
+				mRetired[i].FramesLeft--;
+				i++;
+			}
+		}
+	}
+
+	/// Frees every pipeline superseded by a reload now: the GPU is idle (shutdown, a test).
 	public void ReleaseRetired()
 	{
-		for (var pipeline in mRetired)
+		for (let retired in mRetired)
 		{
+			var pipeline = retired.Pipeline;
 			if (pipeline != null)
 				mDevice.DestroyRenderPipeline(ref pipeline);
 		}
@@ -101,13 +166,18 @@ class PipelineStateCache
 	/// frames left to be in flight.
 	public void Clear()
 	{
-		for (let entry in mEntries)
+		for (let bucket in mEntries)
 		{
-			var pipeline = entry.value.Pipeline;
-			if (pipeline != null)
-				mDevice.DestroyRenderPipeline(ref pipeline);
+			for (let entry in bucket.value)
+			{
+				var pipeline = entry.Pipeline;
+				if (pipeline != null)
+					mDevice.DestroyRenderPipeline(ref pipeline);
+			}
+			DeleteContainerAndItems!(bucket.value);
 		}
 		mEntries.Clear();
+		mCount = 0;
 	}
 
 	private static uint64 KeyOf(PipelineConfig config, IPipelineLayout layout,
@@ -123,6 +193,7 @@ class PipelineStateCache
 	private IRenderPipeline Build(PipelineConfig config, IPipelineLayout layout,
 		TextureFormat colorOverride)
 	{
+		mBuilds++;
 		let vertexModule = mShaders.GetVariant(config.ShaderName,
 			Sedulous.Shaders.ShaderStage.Vertex, config.ShaderFlags);
 		if (vertexModule == null)

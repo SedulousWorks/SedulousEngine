@@ -639,7 +639,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			GlobalLog(.Error, "RenderSubsystem: the device wants WGSL and there is no cooked pack. The runtime compiler cannot produce WGSL, so NOTHING will render.");
 		}
 
-		mPsoCache = new PipelineStateCache(mShaders, mDevice);
+		mPsoCache = new PipelineStateCache(mShaders, mDevice, mFramesInFlight);
 		mMaterialSystem = new MaterialSystem();
 		if (mMaterialSystem.Initialize(mDevice) case .Err)
 		{
@@ -882,6 +882,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 		// Frees what has aged past every frame still in flight.
 		mRetireQueue.Tick();
+		// And the pipelines a shader reload superseded.
+		if (mPsoCache != null)
+			mPsoCache.TickRetired();
 
 		mFrame.SetExposure(mExposure);
 		// The previous value stays behind in the frame, for the motion vectors.

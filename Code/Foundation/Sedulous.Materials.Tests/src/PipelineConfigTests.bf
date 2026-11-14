@@ -135,18 +135,17 @@ class PipelineConfigTests
 		Differs(changed, "depth mode");
 	}
 
-	/// The slope scale is compared but NOT hashed, so two configs differing only there
-	/// collide in the cache and are then told apart by the comparison. That is the correct
-	/// shape for a hash, and this pins it so nobody reads the omission as a bug.
+	/// The slope scale is part of the key like every other field: two configs differing only
+	/// there are different pipelines, apart in the comparison and in the hash.
 	[Test]
-	public static void TheSlopeScaleIsComparedThoughItDoesNotHash()
+	public static void TheSlopeScaleIsPartOfTheKey()
 	{
 		var biased = PipelineConfig.ForOpaqueMesh("forward");
 		biased.DepthBiasSlopeScale = 2.0f;
 		let plain = PipelineConfig.ForOpaqueMesh("forward");
 
 		Test.Assert(!(plain == biased), "the comparison separates them");
-		Test.Assert(plain.HashCode == biased.HashCode, "a collision the comparison resolves");
+		Test.Assert(plain.HashCode != biased.HashCode, "and so does the hash");
 	}
 
 	/// Only the ACTIVE colour formats matter: the slots past the target count are never

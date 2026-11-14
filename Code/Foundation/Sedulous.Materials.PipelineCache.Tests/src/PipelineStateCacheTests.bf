@@ -278,4 +278,55 @@ class PipelineStateCacheTests
 		Test.Assert(fixture.Cache.GetPipeline(blended, fixture.Layout) != null);
 		Test.Assert(fixture.Cache.Size == 2, "the aux flag separates them");
 	}
+
+	/// Configs apart in any field are apart (the hash left out the slope bias, so a shadow
+	/// caster and the camera prepass shared one pipeline); a failed build waits for its shader
+	/// to change rather than running again every draw; a pipeline a reload superseded lives
+	/// through the frames in flight, then goes (nothing freed it before shutdown).
+	[Test]
+	public static void ConfigsApartInAnyFieldAreApartAndAFailureWaitsForTheShader()
+	{
+		let fixture = scope PipelineCacheFixture();
+		fixture.CookBothStages("shadow");
+		delete fixture.Cache;
+		fixture.Cache = new PipelineStateCache(fixture.Shaders, fixture.Device, 2);
+		let cache = fixture.Cache;
+
+		var caster = PipelineConfig.ForOpaqueMesh("shadow");
+		caster.DepthBiasSlopeScale = 1.5f;
+		var prepass = caster;
+		prepass.DepthBiasSlopeScale = 0.0f;
+		let a = cache.GetPipeline(caster, fixture.Layout);
+		let b = cache.GetPipeline(prepass, fixture.Layout);
+		Test.Assert((a != null) && (b != null));
+		Test.Assert(a != b, "two pipelines");
+		Test.Assert(cache.Size == 2);
+
+		// A name held elsewhere (a view into other storage) finds the same entry: the name is
+		// matched, not where it lives.
+		let sameName = scope String("shadow");
+		var again = caster;
+		again.ShaderName = sameName;
+		Test.Assert(cache.GetPipeline(again, fixture.Layout) == a);
+
+		// A shader with no variants fails once, and is not built again on every draw after.
+		let broken = PipelineConfig.ForOpaqueMesh("missing");
+		Test.Assert(cache.GetPipeline(broken, fixture.Layout) == null);
+		let tried = cache.BuildAttempts;
+		for (int draw < 10)
+			Test.Assert(cache.GetPipeline(broken, fixture.Layout) == null);
+		Test.Assert(cache.BuildAttempts == tried);
+		fixture.Shaders.InvalidateShader("missing"); // an edit: worth trying again
+		cache.GetPipeline(broken, fixture.Layout);
+		Test.Assert(cache.BuildAttempts == tried + 1);
+
+		// A pipeline a reload superseded lives through the frames in flight, then goes.
+		fixture.Shaders.InvalidateShader("shadow");
+		Test.Assert(cache.GetPipeline(caster, fixture.Layout) != a);
+		Test.Assert(cache.RetiredCount == 1);
+		cache.TickRetired();
+		Test.Assert(cache.RetiredCount == 1, "one frame in flight may still draw with it");
+		cache.TickRetired();
+		Test.Assert(cache.RetiredCount == 0);
+	}
 }

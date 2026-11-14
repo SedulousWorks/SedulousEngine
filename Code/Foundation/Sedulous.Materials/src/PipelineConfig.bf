@@ -100,6 +100,10 @@ struct PipelineConfig
 			Mix((uint64)DepthCompare);
 			Mix((uint64)DepthFormat);
 			Mix((uint64)(uint16)DepthBias);
+			// Compared by ==, so hashed too: a shadow caster and the camera prepass differ only
+			// here.
+			var slope = DepthBiasSlopeScale;
+			Mix((uint64)*(uint32*)&slope);
 
 			for (int i = 0; (i < ColorTargetCount) && (i < RhiLimits.MaxColorAttachments); i++)
 				Mix((uint64)ColorFormats[i]);
