@@ -158,6 +158,8 @@ class GameInstance : RunBase
 		// use the run's TLS backend, made when first needed.
 		mHttpFacade.SetFactory(new () => HttpClients.Create(TlsBackend));
 		mNetwork.TlsBackendSource = new () => TlsBackend;
+		// An endpoint a message's handler releases inside its pump is deleted at the run's flush.
+		mNetwork.SetMutations(Mutations);
 		// What the run owns and others reach through it (RunServices.Get, and its scripts by type):
 		// borrowed, fields all.
 		Register<GameInstance>(this);

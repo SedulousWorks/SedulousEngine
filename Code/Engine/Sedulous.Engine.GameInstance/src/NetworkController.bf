@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Engine.Net;
@@ -6,6 +7,7 @@ using Sedulous.Net.Manager;
 using Sedulous.Net.WebSocket;
 using Sedulous.Net.Tls;
 using Sedulous.Net.Replication;
+using Sedulous.Run;
 using Sedulous.Scene;
 
 namespace Sedulous.Engine.GameInstance;
@@ -34,6 +36,22 @@ class NetworkController : INetworkController
 	private SpawnResolverFactory mSpawnResolverFactory = null ~ delete _;
 	/// BORROWED: the scene a fresh endpoint replicates.
 	private Scene mScene = null;
+	/// BORROWED: the run's mutations (SetMutations); null outside a run.
+	private RunMutations mMutations = null;
+	/// OWNED: endpoints released inside their own pump, deleted at the run's flush.
+	private List<NetworkManager> mClosedEndpoints = new .() ~ DeleteContainerAndItems!(_);
+
+	public ~this()
+	{
+		// The flush that would delete the closed endpoints reaches this controller: it goes with
+		// it, and the list's destructor deletes them.
+		if (!mClosedEndpoints.IsEmpty && (mMutations != null))
+			mMutations.Cancel(this);
+	}
+
+	/// The run's mutations: an endpoint released while they defer (a message's handler stopped
+	/// or replaced the networking, inside the endpoint's own pump) is deleted at their flush.
+	public void SetMutations(RunMutations mutations) => mMutations = mutations;
 
 	/// The scene this run replicates.
 	///
@@ -77,7 +95,7 @@ class NetworkController : INetworkController
 	{
 		let webSocketPort = ((port != 0) && (port != 0xFFFF)) ? (uint16)(port + 1) : (uint16)0;
 
-		delete mNet;
+		ReleaseEndpoint();
 		mNet = NetworkManager.HostServer(port, dedicated, .(), webSocketPort);
 		if (mNet == null)
 		{
@@ -125,7 +143,7 @@ class NetworkController : INetworkController
 		if (gateway && (port != 0) && (port != 0xFFFF))
 			port = (uint16)(port + 1);
 
-		delete mNet;
+		ReleaseEndpoint();
 		mNet = NetworkManager.JoinServer(host, port, .(), (TlsBackendSource != null) ? TlsBackendSource() : null);
 		if (mNet == null)
 		{
@@ -147,15 +165,32 @@ class NetworkController : INetworkController
 	/// Drops the endpoint, which closes the session and its socket.
 	public void StopNetworking()
 	{
-		// The scene system is detached BEFORE the endpoint dies, so nothing is left driving a
-		// freed one.
-		WireSceneSystem(null);
-
 		if (mNet != null)
 			GlobalLog(.Information, "NetworkController: networking stopped");
+		ReleaseEndpoint();
+	}
 
-		delete mNet;
+	/// Releases the endpoint (StopNetworking, or a new role replacing it): detached at once, so
+	/// the run is offline from here and a new role may open straight away. Deleted now, or,
+	/// while the run's mutations defer (this may be inside its own pump, from a message's
+	/// handler), closed, so its pump delivers nothing more, and deleted at their flush.
+	private void ReleaseEndpoint()
+	{
+		// The scene system is detached BEFORE the endpoint goes, so nothing is left driving a
+		// freed one.
+		WireSceneSystem(null);
+		if (mNet == null)
+			return;
+		if ((mMutations == null) || !mMutations.IsDeferring)
+		{
+			DeleteAndNullify!(mNet);
+			return;
+		}
+		mNet.Close();
+		mClosedEndpoints.Add(mNet);
 		mNet = null;
+		if (mClosedEndpoints.Count == 1)
+			mMutations.Enqueue(this, new () => { ClearAndDeleteItems!(mClosedEndpoints); });
 	}
 
 	/// Points the CURRENT replicated scene's network system at `endpoint`, which is the live

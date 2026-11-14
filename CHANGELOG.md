@@ -106,6 +106,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Networking: `Net.Disconnect`, `Net.StartServer` or `Net.Connect` from a `Net.On` handler no
+  longer crashes the game. The handler freed the connection that was delivering its message; it is
+  now closed at once and freed after the message delivery returns, and no further message from it
+  is delivered.
 - Scripting: `Run.LoadScene` loads the scene before it returns, and the scene becomes the level at
   the next frame's start, as `Run.LoadSceneAsync`'s does; the level it replaces is destroyed then.
   Called from the fixed step or an event handler, it started the new level inside the old one's

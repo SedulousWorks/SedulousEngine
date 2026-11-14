@@ -154,4 +154,66 @@ class NetworkControllerTests
 		Test.Assert(instance.StartServer(0, true));
 		instance.StopNetworking();
 	}
+
+	/// As the network subsystem pumps a run: its mutations deferred, flushed after.
+	private static void Pump(GameInstance instance)
+	{
+		if (let endpoint = instance.NetEndpoint)
+		{
+			instance.Mutations.Enter();
+			endpoint.UpdateTransport(16.0f);
+			instance.Mutations.Leave();
+			instance.Mutations.Flush();
+		}
+	}
+
+	/// A message's handler that stops the networking and opens a new role at once, as a script's
+	/// Net.Disconnect and Net.Host in a Net.On handler do: the run is offline at once and the new
+	/// role opens, while the old endpoint, whose pump delivered the message, delivers nothing
+	/// more and is deleted once the pump has returned.
+	[Test]
+	public static void NetworkingStoppedFromInsideThePumpIsDeletedAfterIt()
+	{
+		let server = scope GameInstance();
+		let client = scope GameInstance();
+		Test.Assert(server.StartServer(0, true));
+		Test.Assert(client.Connect("127.0.0.1", server.NetEndpoint.BoundPort));
+		bool offlineInHandler = false;
+		int heard = 0;
+		server.NetEndpoint.Rpc.On("leave", new [&] (sender, args) =>
+			{
+				heard++;
+				server.StopNetworking();
+				offlineInHandler = server.NetEndpoint == null;
+				server.StartServer(0, true); // a new role, at once
+			});
+		for (int i < 400)
+		{
+			if (server.NetEndpoint.Session.PeerCount != 0)
+				break;
+			Pump(server);
+			Pump(client);
+			System.Threading.Thread.Sleep(1);
+		}
+		Test.Assert(server.NetEndpoint.Session.PeerCount == 1);
+
+		let first = server.NetEndpoint;
+		let joined = client.NetEndpoint;
+		joined.Rpc.Call(joined.Session, joined.Session.ServerPeer, "leave");
+		joined.Rpc.Call(joined.Session, joined.Session.ServerPeer, "leave");
+		for (int i < 400)
+		{
+			if (offlineInHandler)
+				break;
+			Pump(client);
+			Pump(server); // the handler deletes nothing under the pump
+			System.Threading.Thread.Sleep(1);
+		}
+		Test.Assert(offlineInHandler, "offline inside the handler");
+		Test.Assert(heard == 1, "the closed endpoint delivered nothing more");
+		Test.Assert(server.NetEndpoint != null);
+		Test.Assert(server.NetEndpoint !== first, "the new role's endpoint");
+		Test.Assert(server.NetEndpoint.Session.PeerCount == 0);
+		Test.Assert(server.Mutations.PendingCount == 0, "the old one deleted at the flush");
+	}
 }

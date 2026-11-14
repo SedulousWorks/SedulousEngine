@@ -225,6 +225,8 @@ class NetworkManager
 	private bool mWelcomed = false;
 	/// Host: joiners wait for their ready before any state.
 	private bool mWaitForReady = false;
+	/// Released inside its own pump: delivers nothing more (Close).
+	private bool mClosed = false;
 	/// Host: joined, not yet ready.
 	private HashSet<PeerId> mHeld = new .() ~ delete _;
 
@@ -255,6 +257,11 @@ class NetworkManager
 	/// the map's networked entities are there to take it. Off by default (state flows at once).
 	/// RPCs are never held: the host's welcome (naming its map, say) reaches a held joiner.
 	public bool WaitsForReady => mWaitForReady;
+
+	/// Its owner released it from inside its pump (a message's handler stopped the networking):
+	/// the pump delivers nothing more, and the owner deletes it once the pump has returned.
+	public void Close() => mClosed = true;
+	public bool IsClosed => mClosed;
 	public void SetWaitForReady(bool wait) => mWaitForReady = wait;
 
 	/// Host: whether a client is held (joined, not yet ready).
@@ -306,7 +313,7 @@ class NetworkManager
 
 			// One event, refilled: the same shape RpcTable.Pump uses.
 			let event = scope NetEvent();
-			while (mSession.PollEvent(event))
+			while (!mClosed && mSession.PollEvent(event))
 			{
 				if ((event.Kind == .Received) && (event.Channel == RpcTable.RpcChannel))
 				{
@@ -352,7 +359,7 @@ class NetworkManager
 			}
 
 			// A client has joined once the server has said who it is (the session's welcome).
-			if (mSession.IsClient && !mWelcomed && (mSession.LocalPeer != InvalidPeer))
+			if (!mClosed && mSession.IsClient && !mWelcomed && (mSession.LocalPeer != InvalidPeer))
 			{
 				mWelcomed = true;
 				if (mPlayerEvents != null)
