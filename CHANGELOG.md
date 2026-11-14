@@ -267,3 +267,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: a shader that fails to build is tried again when it is edited, not on every draw
   (each draw of a broken material rebuilt it, every frame), and pipelines a shader reload replaces
   are freed once the frames using them are done; they were kept until the renderer closed.
+- Rendering: the GPU copies of meshes that are gone (a level unloaded, an asset reimported) are
+  freed and their space reused; every mesh ever drawn stayed in GPU memory until the renderer
+  closed. A mesh rebuilt in place (`StaticMesh.ContentChanged`) uploads again.

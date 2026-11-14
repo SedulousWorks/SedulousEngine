@@ -21,6 +21,25 @@ class StaticMesh
 	/// one's GPU geometry.
 	public readonly uint64 Uid = (uint64)Interlocked.Increment(ref sNextUid);
 
+	/// Lives exactly as long as this mesh, so a cache can hold it weakly (Life) and learn the
+	/// mesh is gone without the mesh having to know about the cache.
+	private StaticMeshLife mLife = new .() ~ _.Release();
+	private uint32 mContentVersion = 0;
+
+	/// A weak reference that stops being alive when this mesh is destroyed. A holder that
+	/// stores it calls Retain, and Forget when done.
+	public WeakRef<StaticMeshLife> Life => .(mLife);
+
+	/// Moves whenever the mesh's geometry is rebuilt in place (ContentChanged), so what a
+	/// renderer uploaded from it knows to upload again.
+	public uint32 ContentVersion => mContentVersion;
+
+	/// Whoever rewrites the vertices, indices or submeshes of a live mesh calls this after.
+	public void ContentChanged()
+	{
+		mContentVersion++;
+	}
+
 	public String Name = new .() ~ delete _;
 	public List<StaticMeshVertex> Vertices = new .() ~ delete _;
 	public IndexBuffer Indices = new .(.U32) ~ delete _;

@@ -340,8 +340,8 @@ class MeshRenderer : Renderer
 		mShaders = shaderSystem;
 		mPsoCache = psoCache;
 		mMaterials = materialSystem;
-		mMeshes = new .(device);
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mMeshes = new .(device, mFramesInFlight);
 
 		mViewRing = new .(device, framesInFlight, cViewDataSlot, .Uniform | .CopyDst, "mesh.view");
 		mShadowViewRing = new .(device, framesInFlight, cViewSlot, .Uniform | .CopyDst,
@@ -611,6 +611,8 @@ class MeshRenderer : Renderer
 		// system's own replaced groups with them.
 		TickRetired();
 		mMaterials.TickRetired();
+		// And the streams of meshes gone or rebuilt in place.
+		mMeshes.Tick();
 
 		if (maxDraws == 0)
 			return;

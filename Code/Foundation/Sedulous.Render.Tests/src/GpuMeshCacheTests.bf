@@ -102,4 +102,74 @@ class GpuMeshCacheTests
 		Test.Assert(cache.GetOrUpload(empty) case .Err);
 		Test.Assert(cache.Size == 0);
 	}
+
+	/// A mesh that is gone gives its streams back once the frames in flight are past, and the
+	/// next mesh is placed in what it left.
+	[Test]
+	public static void AMeshGoneGivesItsStreamsBackAfterTheFramesInFlight()
+	{
+		let harness = scope Harness();
+		let cache = scope GpuMeshCache(harness.Device, 2);
+
+		let keep = Primitives.Cube(1.0f);
+		defer delete keep;
+		Test.Assert(cache.GetOrUpload(keep) case .Ok);
+
+		let gone = Primitives.Sphere(1.0f, 16, 8);
+		Test.Assert(cache.GetOrUpload(gone) case .Ok);
+		Test.Assert(cache.Size == 2);
+		delete gone;
+
+		cache.Tick();
+		Test.Assert(cache.Size == 1);
+		Test.Assert(cache.RetiredCount == 1);
+		// The frames in flight may still draw it.
+		Test.Assert(cache.FreeVertexBytes == 0);
+		cache.Tick();
+		Test.Assert(cache.RetiredCount == 1);
+		cache.Tick();
+		Test.Assert(cache.RetiredCount == 0);
+		let freed = cache.FreeVertexBytes;
+		Test.Assert(freed > 0);
+
+		let next = Primitives.Cube(2.0f);
+		defer delete next;
+		Test.Assert(cache.GetOrUpload(next) case .Ok);
+		// Placed in what the sphere left.
+		Test.Assert(cache.FreeVertexBytes < freed);
+	}
+
+	/// A mesh rebuilt in place (ContentChanged) uploads again rather than keeping its first
+	/// upload.
+	[Test]
+	public static void AMeshRebuiltInPlaceUploadsAgain()
+	{
+		let harness = scope Harness();
+		let cache = scope GpuMeshCache(harness.Device);
+
+		let mesh = Primitives.Cube(1.0f);
+		defer delete mesh;
+		Test.Assert(cache.GetOrUpload(mesh) case .Ok(let first));
+		// Unchanged: the same upload.
+		Test.Assert(cache.GetOrUpload(mesh) case .Ok(let again));
+		Test.Assert(again.VertexOffset == first.VertexOffset);
+
+		let bigger = Primitives.Sphere(1.0f, 16, 8);
+		defer delete bigger;
+		mesh.Vertices.Clear();
+		for (let vertex in bigger.Vertices)
+			mesh.Vertices.Add(vertex);
+		mesh.Indices.Resize(bigger.IndexCount); // sized first: Add writes into the count
+		for (uint32 i = 0; i < bigger.IndexCount; i++)
+			mesh.Indices.Add(bigger.Indices.Get(i));
+		mesh.ContentChanged();
+
+		Test.Assert(cache.GetOrUpload(mesh) case .Ok(let rebuilt));
+		// The new geometry, not the cube's.
+		Test.Assert(rebuilt.IndexCount == bigger.IndexCount);
+		Test.Assert(rebuilt.VertexOffset != first.VertexOffset);
+		// The cube's streams wait for the frames in flight.
+		Test.Assert(cache.RetiredCount == 1);
+		Test.Assert(cache.Size == 1);
+	}
 }
