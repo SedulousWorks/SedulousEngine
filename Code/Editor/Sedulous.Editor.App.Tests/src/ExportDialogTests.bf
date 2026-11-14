@@ -302,6 +302,8 @@ class ExportDialogTests
 
 		f.Edit("qualityLevel", Sedulous.GUI.Variant((int64)1));
 		Test.Assert(f.Presets.At(0).QualityLevelId == low);
+		f.Edit("qualityLevel", Sedulous.GUI.Variant((int64)2));
+		Test.Assert(f.Presets.At(0).QualityLevelId == high, "each row its own level");
 		dialog.Select(1);
 		Test.Assert(f.IntAt("qualityLevel") == 2, "its own, High");
 		dialog.Select(0);

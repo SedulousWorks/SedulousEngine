@@ -360,6 +360,9 @@ class GamePageTests
 			GameEditorPage.GameQuality(settings, manager, quality, Guid(0x95, 0x96, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 			Test.Assert(quality.Label == "High", "unlisted: the starting level, the list's last, which does not resolve");
 			settings.QualityLevelIds.PopBack();
+			// With a starting level that resolves, an unlisted choice is ignored for it.
+			GameEditorPage.GameQuality(settings, manager, quality, Guid(0x95, 0x96, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+			Test.Assert(quality.Label == "Low", "unlisted: the project's starting level");
 			GameEditorPage.GameQuality(settings, manager, quality);
 			settings.QualityLevelIds[0] = Guid(0x91, 0x92, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 			GameEditorPage.GameQuality(settings, manager, quality);
