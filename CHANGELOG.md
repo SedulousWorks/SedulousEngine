@@ -273,3 +273,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: a reflection probe added after sixteen others had ever existed (probes deleted and
   added in the editor, levels loaded one after another) now reflects; its slot was never handed
   back, so it was dropped.
+- Rendering: two scenes drawn at once (two editor pages, a page and its play) no longer share
+  an instanced mesh's instances or a reflection probe's cube when their entities have the same
+  handle.

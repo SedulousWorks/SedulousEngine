@@ -9,8 +9,8 @@ namespace Sedulous.Render;
 /// makes a reflection land on the wall it belongs to rather than at infinity.
 struct ReflectionProbe
 {
-	/// A stable per entity tag, so the system can keep this probe on the same GPU slot from
-	/// one frame to the next.
+	/// A stable tag of the probe's scene and entity, so the system can keep this probe on the
+	/// same GPU slot from one frame to the next.
 	public uint64 Key = 0;
 
 	public Float3 Center = .(0, 0, 0);

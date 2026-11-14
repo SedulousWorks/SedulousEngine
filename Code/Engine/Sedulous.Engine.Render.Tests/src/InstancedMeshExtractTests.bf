@@ -283,4 +283,47 @@ class InstancedMeshExtractTests
 		Test.Assert(xs.Count == 3);
 		Test.Assert(Near(xs[0], 7.0f));
 	}
+
+	/// The renderer keeps an instanced set's buffer and a reflection probe's cube per key. Two
+	/// scenes drawn in one frame reuse entity handles, so the key carries the scene too; it stays
+	/// the same from one extraction to the next.
+	[Test]
+	public static void PersistentKeysTellScenesApartAndHoldAcrossFrames()
+	{
+		let first = scope Scene("first");
+		let second = scope Scene("second");
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		Scene[2] both = .(first, second);
+		for (let scene in both)
+		{
+			let entity = scene.CreateEntity("thing");
+			scene.AddSystem<ReflectionProbeComponentManager>().Add(entity);
+			scene.AddSystem<InstancedMeshComponentManager>().Add(entity).Mesh.SetDirect(cube);
+			scene.UpdateTransforms();
+		}
+		// One handle in both scenes.
+		Test.Assert(first.FindEntityByName("thing") == second.FindEntityByName("thing"));
+
+		Test.Assert(ProbeKey(first) != ProbeKey(second));
+		Test.Assert(ProbeKey(first) == ProbeKey(first));
+		Test.Assert(SetKey(first) != SetKey(second));
+		Test.Assert(SetKey(first) == SetKey(first));
+	}
+
+	private static uint64 ProbeKey(Scene scene)
+	{
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractReflectionProbesInto(scene, snapshot);
+		Test.Assert(snapshot.ReflectionProbes.Length == 1);
+		return snapshot.ReflectionProbes[0].Key;
+	}
+
+	private static uint64 SetKey(Scene scene)
+	{
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
+		Test.Assert(snapshot.Size == 1);
+		return ((MultiMeshRenderData)snapshot.Items[0]).Key;
+	}
 }

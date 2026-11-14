@@ -33,6 +33,16 @@ static class RenderExtract
 	public static uint64 PackEntity(EntityHandle entity) =>
 		EntityTag.Pack(entity.Index, entity.Generation); // the one layout the pick readback decodes
 
+	/// The key of what the renderer keeps across frames for one entity (an instanced set's
+	/// buffer, a reflection probe's cube): the scene's serial with the entity. Scenes drawn in
+	/// one frame (two editor pages, a page and its play) reuse entity handles, and a key of the
+	/// entity alone gave their entities one buffer or one cube.
+	public static uint64 PersistentKey(Scene scene, EntityHandle entity)
+	{
+		uint64[2] identity = .(scene.Serial, PackEntity(entity));
+		return HashBytes(&identity[0], sizeof(uint64[2]));
+	}
+
 	/// A multi material mesh's items: `data` for its first slot's category and, when its other
 	/// slots draw in other categories (a pane's glass beside its frame), a copy for each from
 	/// `copy` (null: none made), each marked to draw only its own category's submeshes. Returns
@@ -366,7 +376,7 @@ static class RenderExtract
 					return;
 
 				data.MultiMesh = true;
-				data.Key = PackEntity(entity);
+				data.Key = PersistentKey(scene, entity);
 				// BORROWED for the frame, which the snapshot being immutable is what makes safe.
 				data.Transforms = drawn.Ptr;
 				let tintsMatch = !component.LinearTints.IsEmpty
@@ -894,7 +904,7 @@ static class RenderExtract
 
 				let world = scene.GetWorldMatrix(entity);
 				var probe = ReflectionProbe();
-				probe.Key = PackEntity(entity);
+				probe.Key = PersistentKey(scene, entity);
 				probe.Center = TransformPoint(Float3(0, 0, 0), world);
 				probe.HalfExtents = component.HalfExtents;
 				probe.BlendDistance = component.BlendDistance;

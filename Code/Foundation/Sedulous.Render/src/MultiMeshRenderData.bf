@@ -12,7 +12,8 @@ namespace Sedulous.Render;
 /// unused, since each instance has its own.
 class MultiMeshRenderData : MeshRenderData
 {
-	/// A stable per component id, which is the renderer's persistent buffer slot.
+	/// A stable tag of the set's scene and entity, which is the renderer's persistent buffer
+	/// slot.
 	public uint64 Key = 0;
 
 	/// The per instance world transforms, borrowed and valid this frame.
