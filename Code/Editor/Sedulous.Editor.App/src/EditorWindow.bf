@@ -117,6 +117,14 @@ class EditorLook
 
 class EditorWindow
 {
+	/// The keys the satellite libraries' widgets need, which a host binds once for its GUI (as it
+	/// adds their sheets): the code editor's Return, Backspace, arrows and the rest are bound in its
+	/// own key context, so without these a script page took typing and nothing else.
+	public static void BindEditorWidgetKeys(Keymap keymap)
+	{
+		BindCodeEditorKeys(keymap);
+	}
+
 	/// How every editor window presents: vsync, with a third swapchain image, so a compositor late
 	/// in giving one back (two images held the frame for whole refreshes, the user's spikes) costs
 	/// nothing; the frame of latency it adds is no matter in an editor. A game keeps the default.
@@ -228,6 +236,7 @@ class EditorWindow
 		let styles = mHost.Styles;
 		styles.ResourceProvider = mResources;
 		mHost.Context.ResourceProvider = mResources;
+		BindEditorWidgetKeys(mHost.Context.Keymap);
 		styles.SetFontFaceLoader(new (face, source) => LoadFontFace(face, source));
 		// The satellites' sheets over the widgets'.
 		let theme = scope $"{Sedulous.GUI.Theme.DefaultThemeCSS}\n{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}\n{ProfilerSheetCSS()}";

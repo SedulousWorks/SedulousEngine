@@ -106,6 +106,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: in a script page, Return, Backspace, Delete, the arrow keys and the code editor's other
+  keys work; the page took typed text and Tab and nothing else.
 - Editor and games: a floating window closed by a click inside it (its close button, a docked
   panel's) closes once the click has been handled, in the same frame; it was freed while the click
   was still being delivered to it.

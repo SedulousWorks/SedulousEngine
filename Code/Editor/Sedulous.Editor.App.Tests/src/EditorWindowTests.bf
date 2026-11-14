@@ -235,4 +235,27 @@ static class EditorWindowTests
 		Test.Assert(exported.Actions.Count == 1);
 		Test.Assert(exported.Actions[0].Text == "Open Folder");
 	}
+
+	/// The editor never bound them: a script page took typed text and Tab, and Return, Backspace and
+	/// the arrows did nothing.
+	[Test]
+	public static void TheCodeEditorsKeysAreBoundSoReturnBreaksALineInAScriptPage()
+	{
+		let keymap = scope Keymap();
+		EditorWindow.BindEditorWidgetKeys(keymap);
+		let codeEditor = scope KeyContextLayer();
+		codeEditor.Declare("codeeditor");
+		KeyContextLayer[1] stack = .(codeEditor);
+		StringView[4] keys = .("enter", "backspace", "left", "delete");
+		TextEditCommand[4] commands = .(.InsertNewline, .DeleteBackward, .MoveLeft, .DeleteForward);
+		let command = scope String();
+		for (int i < 4)
+		{
+			let stroke = ParseKeystroke(keys[i]);
+			Test.Assert(stroke.HasValue);
+			Keystroke[1] typed = .(stroke.Value);
+			Test.Assert(keymap.MatchWhole(typed, stack, command));
+			Test.Assert(command == TextEditCommandName(commands[i]));
+		}
+	}
 }
