@@ -488,4 +488,59 @@ class GeometryTests
 		// Out of range channels clamp rather than wrapping around to something unrelated.
 		Test.Assert(StaticMesh.PackColor(Float4(2, -1, 0, 1)) == 0xFF0000FF);
 	}
+
+	/// A skinned mesh's posed box follows its joints and holds every skinned vertex, where the
+	/// bind pose box stays put.
+	[Test]
+	public static void PosedBoundsFollowTheJointsAndHoldEverySkinnedVertex()
+	{
+		// Three vertices along x: one moved by joint 0, one by joint 2, one shared half and half
+		// (joint 1 moves nothing).
+		let mesh = scope SkinnedMesh();
+		for (int i < 3)
+			mesh.Vertices.Add(.(Float3((float)i - 1.0f, 0, 0), Float3(0, 1, 0), Float2(0, 0), 0xFFFFFFFF, Float3(1, 0, 0)));
+		var left = VertexSkinning();
+		var middle = VertexSkinning();
+		middle.Joints[1] = 2;
+		middle.Weights = .(0.5f, 0.5f, 0, 0);
+		var right = VertexSkinning();
+		right.Joints[0] = 2;
+		mesh.Skinning.Add(left);
+		mesh.Skinning.Add(middle);
+		mesh.Skinning.Add(right);
+		mesh.CalculateBounds();
+		mesh.CalculateJointBounds();
+		Test.Assert(mesh.JointBounds.Count == 3);
+		Test.Assert(Near(mesh.JointBounds[0].Max.X, 0.0f));
+		Test.Assert(!mesh.JointBounds[1].IsValid(), "joint 1 moves nothing");
+		Test.Assert(Near(mesh.JointBounds[2].Min.X, 0.0f));
+
+		// Joint 2 raised ten up: the box reaches it, where the bind pose box stays at y 0.
+		var palette = Float4x4[3](Float4x4.Identity(), Float4x4.Identity(), Float4x4.Translation(.(0, 10, 0)));
+		Test.Assert(mesh.PosedBounds(.(&palette[0], 3), let posed));
+		Test.Assert(Near(posed.Max.Y, 10.0f));
+		Test.Assert(Near(posed.Min.Y, 0.0f));
+		Test.Assert(Near(posed.Min.X, -1.0f));
+		Test.Assert(Near(posed.Max.X, 1.0f));
+		Test.Assert(Near(mesh.Bounds.Max.Y, 0.0f));
+		// Every vertex, skinned as the shader does, lies in the box (the shared one at y 5).
+		for (int i < mesh.Vertices.Count)
+		{
+			let skin = mesh.Skinning[i];
+			var skinned = Float3(0, 0, 0);
+			for (int k < 4)
+				skinned = skinned + TransformPoint(mesh.Vertices[i].Position, palette[(int)skin.Joints[k]]) * skin.Weights[k];
+			Test.Assert(posed.Contains(skinned), scope $"vertex {i} is outside the posed box");
+		}
+
+		// A palette shorter than the joints cannot bound the pose; a static mesh never can.
+		Test.Assert(!mesh.PosedBounds(.(&palette[0], 2), var shortPalette));
+		let plain = scope StaticMesh();
+		Test.Assert(!plain.PosedBounds(.(&palette[0], 3), var staticPose));
+
+		// Streams of different lengths give no joint bounds.
+		mesh.Skinning.PopBack();
+		mesh.CalculateJointBounds();
+		Test.Assert(mesh.JointBounds.IsEmpty);
+	}
 }

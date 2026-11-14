@@ -179,6 +179,49 @@ class ExtractSceneTests
 		}
 	}
 
+	/// A skinned mesh culls by its pose, not its bind pose: a character walked fifty metres
+	/// from its bind pose by its root joint vanished whenever the bind pose box left the view,
+	/// and drew when it was out of it.
+	[Test]
+	public static void ASkinnedMeshCullsByItsPose()
+	{
+		let scene = scope Scene();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let quad = Primitives.Quad();
+		defer delete quad;
+		let mesh = scope SkinnedMesh();
+		for (let vertex in quad.Vertices)
+		{
+			mesh.Vertices.Add(vertex);
+			// Every vertex on joint 0.
+			mesh.Skinning.Add(VertexSkinning());
+		}
+		mesh.CalculateBounds();
+		mesh.CalculateJointBounds();
+		var pose = Float4x4[1](Float4x4.Translation(.(50.0f, 0.0f, 0.0f)));
+		let entity = scene.CreateEntity();
+		let component = meshes.Add(entity);
+		component.Mesh.SetDirect(mesh);
+		let poser = scene.AddSystem<FixedPose>();
+		poser.Mesh = entity;
+		poser.Current = &pose[0];
+		scene.UpdateTransforms();
+
+		let posed = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, posed);
+		Test.Assert(posed.Size == 1);
+		let data = (MeshRenderData)posed.Items[0];
+		Test.Assert(Near(data.WorldCenter.X, 50.0f));
+		Test.Assert(Near(data.WorldRadius, Length(mesh.Bounds.Extents())));
+
+		// Without a pose it draws, and culls, as bound.
+		poser.Mesh = .Invalid;
+		let still = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, still);
+		Test.Assert(still.Size == 1);
+		Test.Assert(Near(((MeshRenderData)still.Items[0]).WorldCenter.X, mesh.Bounds.Center().X));
+	}
+
 	/// A skinned mesh in a scene that is not simulating reports no motion. The animator's last
 	/// two poses stay a step apart while nothing advances them; drawn as motion, TAA kept
 	/// dropping its history on a paused character.

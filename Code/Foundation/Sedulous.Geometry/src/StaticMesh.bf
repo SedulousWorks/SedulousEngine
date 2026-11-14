@@ -75,6 +75,15 @@ class StaticMesh
 	public virtual bool IsSkinned => false;
 	public virtual Span<VertexSkinning> SkinningStream => .();
 
+	/// The mesh's local box in the pose `palette` (one skinning matrix per joint) gives it, for
+	/// culling a posed mesh. False when the mesh cannot tell (a static mesh, a skinned one
+	/// without joint bounds), and `posed` is Bounds then.
+	public virtual bool PosedBounds(Span<Float4x4> palette, out AABB posed)
+	{
+		posed = Bounds;
+		return false;
+	}
+
 	/// The submesh table for one LOD level: 0 is SubMeshes, anything else the flattened
 	/// slice. Out of range or malformed tables fall back to level 0, because bad data
 	/// should render coarsely rather than crash selection.

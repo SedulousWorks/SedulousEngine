@@ -114,9 +114,16 @@ static class RenderExtract
 		let primary = component.MaterialCache.IsEmpty ? null : component.MaterialCache[0];
 
 		data.World = scene.GetWorldMatrix(entity);
-		let localBounds = (component.Mesh.Get != null)
+		// GPU skinning: the palette of whatever poses the mesh now, borrowed for the frame; none
+		// (an animator that went, or never was) draws the mesh static.
+		let skinned = scene.FindSkinningPalette(entity, let palette);
+		var localBounds = (component.Mesh.Get != null)
 			? component.Mesh.Get.Bounds
 			: AABB(.(0, 0, 0), .(0, 0, 0));
+		// A pose reaching past the bind pose (an arm raised, a walk off the root) culls as posed.
+		if (skinned && (component.Mesh.Get != null) && (palette.Current != null)
+			&& component.Mesh.Get.PosedBounds(.(palette.Current, (int)palette.BoneCount), var posed))
+			localBounds = posed;
 		data.WorldCenter = TransformPoint(localBounds.Center(), data.World);
 		data.WorldRadius = WorldBoundsRadius(localBounds, data.World);
 		data.Color = ToLinear(component.Color); // authored sRGB to linear render data
@@ -127,9 +134,6 @@ static class RenderExtract
 		// A faded opaque mesh leaves the depth prepass, whose depth would hide what the dither
 		// lets through.
 		data.Category = RenderCategories.MeshSlotCategory(primary, data.Fade);
-		// GPU skinning: the palette of whatever poses the mesh now, borrowed for the frame; none
-		// (an animator that went, or never was) draws the mesh static.
-		let skinned = scene.FindSkinningPalette(entity, let palette);
 		data.BoneMatrices = skinned ? palette.Current : null;
 		// Null reuses the current pose: no motion. A scene that is not simulating (the editor's
 		// pause, a debugger break) runs no animation, so the pose holds still, but the animator's

@@ -56,6 +56,8 @@ class SkinnedMeshSource : StaticMeshSource
 		mesh.Skinning.Resize(count);
 		if (count > 0)
 			Internal.MemCpy(mesh.Skinning.Ptr, SkinningBlob.Ptr, count * sizeof(VertexSkinning));
+		// Derived at load, as the bounds are.
+		mesh.CalculateJointBounds();
 
 		mesh.SkeletonIndex = SkeletonIndex;
 	}
