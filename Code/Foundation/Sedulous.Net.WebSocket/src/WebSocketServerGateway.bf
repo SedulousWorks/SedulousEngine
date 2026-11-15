@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using Sedulous.Http;
 using Sedulous.Net;
 using Sedulous.Net.Tls;
@@ -27,6 +28,10 @@ class WebSocketServerGateway
 	/// unauthenticated peer cannot make the gateway buffer.
 	private const int cHandshakeCap = 4096;
 	private const int cReadChunk = 4096;
+	/// How long a connection may take to finish its upgrade, and how long an upgraded client may
+	/// send nothing, before it is closed (SetDeadlines changes them).
+	public const double cHandshakeSeconds = 10.0;
+	public const double cIdleSeconds = 30.0;
 
 	/// One accepted connection, before or after its upgrade.
 	private class Client
@@ -41,6 +46,10 @@ class WebSocketServerGateway
 		public HttpMessageParser Handshake ~ delete _;
 		public WebSocketFrameParser Frames = new .() ~ delete _;
 		public bool Dead = false;
+		/// The handshake deadline's clock, from the accept.
+		public Stopwatch SinceAccept = new .(true) ~ delete _;
+		/// The idle deadline's clock, restarted on each read.
+		public Stopwatch SinceHeard = new .(true) ~ delete _;
 	}
 
 	private TcpListener mListener ~ delete _;
@@ -52,6 +61,8 @@ class WebSocketServerGateway
 	private List<WsGatewayEvent> mEvents = new .() ~ DeleteContainerAndItems!(_);
 	private int mEventHead = 0;
 	private uint32 mNextClientId = 1;
+	private double mHandshakeSeconds = cHandshakeSeconds;
+	private double mIdleSeconds = cIdleSeconds;
 
 	/// Scratch reused across a pump, so a busy tick does not allocate per read.
 	private List<uint8> mScratch = new .() ~ delete _;
@@ -97,6 +108,15 @@ class WebSocketServerGateway
 	public StringView Failure => mFailure;
 	public uint16 BoundPort => mListener.BoundPort;
 	public int ClientCount => mClients.Count;
+
+	/// How long a connection may take to finish its upgrade, and how long an upgraded client may
+	/// send nothing, before it is closed: a connection that never upgrades, or goes quiet, would
+	/// otherwise hold one of the gateway's slots for good.
+	public void SetDeadlines(double handshakeSeconds, double idleSeconds)
+	{
+		mHandshakeSeconds = handshakeSeconds;
+		mIdleSeconds = idleSeconds;
+	}
 
 	/// One pump: accept, move each stream on, read, decode, and drop what died.
 	public void Pump()
@@ -168,6 +188,7 @@ class WebSocketServerGateway
 			let frame = scope List<uint8>();
 			WebSocketFrame.Encode(.Close, .(), false, 0, frame);
 			SendRaw(entry, frame);
+			// Closed by its owner, who needs no Disconnected for it.
 			entry.Dead = true;
 			return;
 		}
@@ -208,25 +229,39 @@ class WebSocketServerGateway
 		mEvents.Add(entry);
 	}
 
-	/// The stream takes all of it, holding what the socket would not take yet.
+	/// Every way a client ends goes through here: it is closed once, and an upgraded one's owner
+	/// hears Disconnected once. Only an UPGRADED client was ever announced, so only that one is
+	/// mourned.
+	private void Drop(Client client)
+	{
+		if (client.Dead)
+			return;
+		client.Dead = true;
+		if (client.Upgraded)
+			PushEvent(.Disconnected, client.Id, .());
+	}
+
+	/// The stream takes all of it, holding what the socket would not take yet. A send that fails
+	/// ends the client.
 	private void SendRaw(Client client, List<uint8> bytes)
 	{
 		if (client.Stream.Send(bytes) < 0)
-			client.Dead = true;
+			Drop(client);
 	}
 
 	/// Moves the stream's bytes (and a TLS handshake) on; what it already holds is still read
-	/// before a closed stream counts.
+	/// before a closed stream counts. A connection that has not upgraded by the handshake
+	/// deadline, or an upgraded one that has sent nothing for the idle deadline, is closed.
 	private void PumpClient(Client client)
 	{
 		let alive = client.Stream.Pump();
 		ReadClient(client);
-		if (!alive && !client.Dead)
-		{
-			client.Dead = true;
-			if (client.Upgraded)
-				PushEvent(.Disconnected, client.Id, .());
-		}
+		if (!alive)
+			Drop(client);
+		else if (!client.Upgraded && (client.SinceAccept.Elapsed.TotalSeconds > mHandshakeSeconds))
+			Drop(client);
+		else if (client.Upgraded && (client.SinceHeard.Elapsed.TotalSeconds > mIdleSeconds))
+			Drop(client);
 	}
 
 	private void ReadClient(Client client)
@@ -237,15 +272,13 @@ class WebSocketServerGateway
 			let got = client.Stream.Receive(chunk);
 			if (got < 0)
 			{
-				client.Dead = true;
-				// Only an UPGRADED client was ever announced, so only that one is mourned.
-				if (client.Upgraded)
-					PushEvent(.Disconnected, client.Id, .());
+				Drop(client);
 				return;
 			}
 			// Would block: nothing more this pump.
 			if (got == 0)
 				return;
+			client.SinceHeard.Restart();
 
 			var offset = 0;
 			if (!client.Upgraded)
@@ -260,8 +293,7 @@ class WebSocketServerGateway
 			client.Frames.Push(.(&chunk[offset], (int)got - offset));
 			if (client.Frames.Failed)
 			{
-				client.Dead = true;
-				PushEvent(.Disconnected, client.Id, .());
+				Drop(client);
 				return;
 			}
 
@@ -287,7 +319,7 @@ class WebSocketServerGateway
 				let first = chunk[offset];
 				if ((first < (uint8)'A') || (first > (uint8)'Z'))
 				{
-					client.Dead = true;
+					Drop(client);
 					return false;
 				}
 				client.Started = true;
@@ -313,6 +345,9 @@ class WebSocketServerGateway
 			let response = scope List<uint8>();
 			WebSocketHandshake.BuildUpgradeResponse(key, response);
 			SendRaw(client, response);
+			// A connection the answer could not reach was never announced, so it is not now.
+			if (client.Dead)
+				return false;
 
 			client.Upgraded = true;
 			delete client.Handshake;
@@ -328,7 +363,7 @@ class WebSocketServerGateway
 		let response = scope List<uint8>();
 		WebSocketHandshake.BuildRejectResponse(response);
 		SendRaw(client, response);
-		client.Dead = true;
+		Drop(client);
 	}
 
 	/// Handles every decoded frame. False when the client is finished with.
@@ -354,15 +389,13 @@ class WebSocketServerGateway
 				mScratch.Clear();
 				WebSocketFrame.Encode(.Close, .(), false, 0, mScratch);
 				SendRaw(client, mScratch);
-				client.Dead = true;
-				PushEvent(.Disconnected, client.Id, .());
+				Drop(client);
 				return false;
 
 			default:
 				// Text and Continuation are not this wire's protocol: it is binary, and it
 				// does not fragment.
-				client.Dead = true;
-				PushEvent(.Disconnected, client.Id, .());
+				Drop(client);
 				return false;
 			}
 		}

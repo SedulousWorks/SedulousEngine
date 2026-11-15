@@ -215,6 +215,106 @@ static class WebSocketGatewayTests
 		Test.Assert(udpGot, "the native peer's datagram arrived without the WebSocket bit");
 	}
 
+	/// A connection that sent nothing held one of the gateway's 64 slots for as long as it
+	/// stayed open.
+	[Test]
+	public static void AConnectionThatNeverUpgradesIsClosedAtTheHandshakeDeadline()
+	{
+		let gateway = scope WebSocketServerGateway(cEphemeral);
+		Test.Assert(gateway.IsOpen, "the gateway bound a listener");
+		gateway.SetDeadlines(0.2, 30.0);
+		let silent = TcpSocket.Connect("127.0.0.1", gateway.BoundPort);
+		defer delete silent;
+		Test.Assert(silent.IsOpen, "the silent socket opened");
+
+		PumpFor(gateway, 50);
+		Test.Assert(gateway.ClientCount == 1, scope $"got {gateway.ClientCount} clients before the deadline");
+		PumpFor(gateway, 400);
+		Test.Assert(gateway.ClientCount == 0, scope $"got {gateway.ClientCount} clients after the deadline");
+	}
+
+	[Test]
+	public static void AnUpgradedClientThatGoesQuietIsClosedAtTheIdleDeadlineAndReported()
+	{
+		let gateway = scope WebSocketServerGateway(cEphemeral);
+		Test.Assert(gateway.IsOpen, "the gateway bound a listener");
+		gateway.SetDeadlines(10.0, 0.2);
+		let browser = scope WsLoopbackClient();
+		Test.Assert(browser.ConnectAndUpgrade(gateway, gateway.BoundPort), "the handshake answered 101");
+		var clientId = (uint32)0;
+		Test.Assert(CountGatewayEvents(gateway, .Connected, ref clientId) == 1, "the upgrade raised Connected");
+
+		PumpFor(gateway, 400); // the client sends nothing
+		Test.Assert(gateway.ClientCount == 0, scope $"got {gateway.ClientCount} clients after the deadline");
+		Test.Assert(CountGatewayEvents(gateway, .Disconnected, ref clientId) == 1, "the quiet client was reported once");
+	}
+
+	/// A failed send marked the client dead and dropped it without the Disconnected event, so its
+	/// owner kept a peer that was gone.
+	[Test]
+	public static void AClientWhoseSendsFailIsReportedDisconnected()
+	{
+		let gateway = scope WebSocketServerGateway(cEphemeral);
+		Test.Assert(gateway.IsOpen, "the gateway bound a listener");
+		let browser = scope WsLoopbackClient();
+		Test.Assert(browser.ConnectAndUpgrade(gateway, gateway.BoundPort), "the handshake answered 101");
+		var clientId = (uint32)0;
+		Test.Assert(CountGatewayEvents(gateway, .Connected, ref clientId) == 1, "the upgrade raised Connected");
+
+		let chunk = new uint8[1 << 20];
+		defer delete chunk;
+		// The browser reads none of it.
+		for (int i = 0; (i < 40) && (gateway.ClientCount > 0); i++)
+		{
+			gateway.SendBinary(clientId, chunk);
+			gateway.Pump();
+		}
+		Test.Assert(gateway.ClientCount == 0, "the client whose sends failed was dropped");
+		Test.Assert(CountGatewayEvents(gateway, .Disconnected, ref clientId) == 1, "and reported once");
+	}
+
+	[Test]
+	public static void TheHybridSocketClosesTheClientOfARemoteTheTransportLetGo()
+	{
+		let hybrid = scope WebSocketHybridSocket(cEphemeral, cEphemeral);
+		Test.Assert(hybrid.IsOpen, "both halves bound");
+		let browser = scope WsLoopbackClient();
+		Test.Assert(browser.ConnectAndUpgrade(hybrid.Gateway, hybrid.WebSocketBoundPort), "the handshake answered 101");
+		var clientId = (uint32)0;
+		Test.Assert(CountGatewayEvents(hybrid.Gateway, .Connected, ref clientId) == 1, "the upgrade raised Connected");
+		Test.Assert(hybrid.Gateway.ClientCount == 1);
+
+		hybrid.CloseRemote(WebSocketEndpoint.Make(clientId));
+		PumpFor(hybrid.Gateway, 20);
+		Test.Assert(hybrid.Gateway.ClientCount == 0, "the transport's let-go closed the client");
+	}
+
+	/// The gateway's events of `kind`, drained; `lastClient` gets the last one's client.
+	private static int CountGatewayEvents(WebSocketServerGateway gateway, WsGatewayEventKind kind, ref uint32 lastClient)
+	{
+		var count = 0;
+		let event = scope WsGatewayEvent();
+		while (gateway.Poll(event))
+		{
+			if (event.Kind == kind)
+			{
+				count++;
+				lastClient = event.Client;
+			}
+		}
+		return count;
+	}
+
+	/// Pumps the gateway about once a millisecond for `milliseconds`.
+	private static void PumpFor(WebSocketServerGateway gateway, int milliseconds)
+	{
+		for (int i < milliseconds)
+		{
+			gateway.Pump();
+			Thread.Sleep(1);
+		}
+	}
+
 	private static void Bytes(StringView text, List<uint8> outBytes)
 	{
 		outBytes.Clear();

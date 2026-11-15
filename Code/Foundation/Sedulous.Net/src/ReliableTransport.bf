@@ -424,7 +424,9 @@ class ReliableTransport : INetTransport
 	}
 
 	/// Deletes the connections that have disconnected. Their Disconnected events are queued
-	/// already, and nothing is said on the wire for them any more.
+	/// already, and nothing is said on the wire for them any more. The socket lets go of an
+	/// address no session uses any more (a WebSocket client's connection); one a new session
+	/// took over stays open.
 	private void RemoveDisconnected()
 	{
 		for (int i = mConnections.Count - 1; i >= 0; i--)
@@ -433,8 +435,11 @@ class ReliableTransport : INetTransport
 			if (connection.State != .Disconnected)
 				continue;
 			Forget(connection);
+			let remote = connection.Remote;
 			mConnections.RemoveAt(i);
 			delete connection;
+			if (!mByRemote.ContainsKey(remote))
+				mSocket.CloseRemote(remote);
 		}
 	}
 

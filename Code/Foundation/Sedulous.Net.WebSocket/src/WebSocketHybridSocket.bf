@@ -69,4 +69,11 @@ class WebSocketHybridSocket : IDatagramSocket
 	}
 
 	public DatagramEndpoint LocalEndpoint => mUdp.LocalEndpoint;
+
+	/// The transport dropped the peer at a WebSocket address: its client is closed.
+	public void CloseRemote(DatagramEndpoint remote)
+	{
+		if (WebSocketEndpoint.IsWebSocket(remote))
+			mGateway.DisconnectClient(WebSocketEndpoint.Client(remote));
+	}
 }

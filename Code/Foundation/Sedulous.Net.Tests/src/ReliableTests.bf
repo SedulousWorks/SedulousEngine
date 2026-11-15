@@ -69,6 +69,29 @@ class ReliableTests
 		public DatagramEndpoint LocalEndpoint => mInner.LocalEndpoint;
 	}
 
+	/// Records the remotes the transport closes, and passes everything else through.
+	private class CloseRecorder : IDatagramSocket
+	{
+		private IDatagramSocket mInner;
+		public List<DatagramEndpoint> Closed = new .() ~ delete _;
+
+		public this(IDatagramSocket inner)
+		{
+			mInner = inner;
+		}
+
+		public void Send(DatagramEndpoint to, Span<uint8> data) => mInner.Send(to, data);
+
+		public bool Receive(out DatagramEndpoint outFrom, List<uint8> outData) => mInner.Receive(out outFrom, outData);
+
+		public DatagramEndpoint LocalEndpoint => mInner.LocalEndpoint;
+
+		public void CloseRemote(DatagramEndpoint remote)
+		{
+			Closed.Add(remote);
+		}
+	}
+
 	/// The first byte of every Received payload, in arrival order.
 	private static void DrainReceived(INetTransport transport, List<uint8> outFirstBytes)
 	{
@@ -1077,5 +1100,38 @@ class ReliableTests
 		Test.Assert(got.Count > 50, "most arrive");
 		for (int i = 1; i < got.Count; i++)
 			Test.Assert(got[i] > got[i - 1], "each newer than the one before");
+	}
+
+	/// The transport dropped a peer and its socket never heard: a WebSocket client behind it kept
+	/// its gateway slot until the browser closed the TCP connection.
+	[Test]
+	public static void AConnectionThatEndsTellsItsSocketTheRemoteIsDone()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let clientSocket = network.CreateSocket();
+		let recorder = scope CloseRecorder(network.CreateSocket());
+		let client = scope ReliableTransport(clientSocket);
+		let server = scope ReliableTransport(recorder);
+		server.SetAccepting(true);
+
+		let serverPeer = client.Connect(recorder.LocalEndpoint);
+		for (int step < 10)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		Test.Assert(AnyKind(server, .Connected), "the server accepted");
+		Test.Assert(recorder.Closed.IsEmpty, "a live connection's remote stays open");
+
+		client.Disconnect(serverPeer);
+		for (int step < 10)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		Test.Assert(recorder.Closed.Count == 1, scope $"closed {recorder.Closed.Count} remotes");
+		Test.Assert(recorder.Closed[0] == clientSocket.LocalEndpoint, "the ended connection's remote");
 	}
 }
