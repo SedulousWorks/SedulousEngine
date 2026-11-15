@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.VG;
 
 namespace Sedulous.VG.Tests;
@@ -327,6 +328,42 @@ class VGLayerTests
 		Test.Assert(batch.Layers.Count == VGContext.MaxLayers);
 		Test.Assert(batch.Commands.Back.Layer == -1);
 		Test.Assert(Near(batch.Vertices.Back.Color.A, 0.5f), "faded on its own");
+	}
+
+	/// Past MaxLayers the fallback is logged, once: a layer there silently lost its blend, blur and
+	/// filters.
+	[Test]
+	public static void PastMaxLayersTheFallbackIsLoggedOnce()
+	{
+		let ring = scope RingLogger(32, .Warning);
+		bool previousOwned = false;
+		let previous = DetachGlobalLogger(out previousOwned);
+		InitGlobalLogger(ring);
+
+		let context = scope VGContext();
+		context.SetLayers(true);
+		let fill = Square(0, 0, 5, 5);
+		defer delete fill;
+		for (int i < VGContext.MaxLayers + 3)
+		{
+			context.PushLayer(0.5f);
+			context.FillPath(fill, .Red, .NonZero, false);
+			context.PopLayer();
+		}
+
+		bool ringOwned = false;
+		DetachGlobalLogger(out ringOwned); // the ring is the test's
+		InitGlobalLogger(previous, previousOwned);
+
+		Test.Assert(context.GetBatch().Layers.Count == VGContext.MaxLayers);
+		int said = 0;
+		for (int i = 0; i < ring.Count; i++)
+		{
+			let line = ring.GetMessage(i, .. scope String());
+			if (line.Contains("VG: layers full"))
+				said++;
+		}
+		Test.Assert(said == 1);
 	}
 
 	/// A layer left open when the context is cleared is freed with it, and the next frame starts

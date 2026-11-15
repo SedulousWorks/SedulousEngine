@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Fonts;
 using Sedulous.Image;
 
@@ -86,6 +87,7 @@ class VGContext
 	private bool mPerPixelGradients = false;
 	private bool mAnalyticBoxes = false;
 	private bool mLayersEnabled = false;
+	private bool mLayerCapLogged = false; // the first batch past MaxLayers is logged (once)
 	private bool mStencilFills = false;
 	private bool mPixelSnap = true;
 	private float mTolerance = 0.05f;
@@ -185,6 +187,20 @@ class VGContext
 	/// VGRenderer.RenderLayers before its pass. Off, a layer is an opacity push: each shape fades
 	/// on its own and overlaps show through.
 	public void SetLayers(bool enabled) => mLayersEnabled = enabled;
+
+	// Whether the batch can take another layer; the first time it cannot is logged, since past
+	// it a layer silently loses its blend, blur and filters.
+	private bool HasLayerRoom()
+	{
+		if (mBatch.Layers.Count < MaxLayers)
+			return true;
+		if (!mLayerCapLogged)
+		{
+			GlobalLog(.Warning, "VG: layers full ({} per batch), drawing past them without their effects", MaxLayers);
+			mLayerCapLogged = true;
+		}
+		return false;
+	}
 	public bool Layers => mLayersEnabled;
 
 	/// Turns on stencil then cover for COMPLEX fills: holes, self intersection, and the even
@@ -487,7 +503,7 @@ class VGContext
 	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal, float blur = 0.0f,
 		float saturation = 1.0f, float brightness = 1.0f)
 	{
-		if (!mLayersEnabled || (mBatch.Layers.Count >= MaxLayers))
+		if (!mLayersEnabled || !HasLayerRoom())
 		{
 			PushOpacity(opacity);
 			// Layer -1: PopLayer pops the opacity.
@@ -571,7 +587,7 @@ class VGContext
 	/// nothing is drawn.
 	public void DrawBackdropBlur(Rectangle rect, CornerRadii radii, float sigma)
 	{
-		if (!mLayersEnabled || (mBatch.Layers.Count >= MaxLayers) || !mClipPaths.IsEmpty || (sigma <= 0.0f)
+		if (!mLayersEnabled || !HasLayerRoom() || !mClipPaths.IsEmpty || (sigma <= 0.0f)
 			|| (rect.Width <= 0.0f) || (rect.Height <= 0.0f))
 			return;
 

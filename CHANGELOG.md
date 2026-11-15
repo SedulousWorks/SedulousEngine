@@ -163,6 +163,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   took the files of a `Rock.2` beside it (the name the editor gives a second `Rock`), and an export
   that pruned or stripped `Rock` dropped or packed `Rock.2`'s as well. A data stream's name may no
   longer contain a dot.
+- VG: drawing past the 128 layers a batch holds logs a warning, once; those layers drew as plain
+  opacity, losing their blend, blur and filters, without a word.
 - GUI: a widget made at the address of a destroyed one styled outside any GUI starts with its own
   style; it took the old widget's cached style and transitioned from it.
 - GUI: an event handler that removes its own node (the last reference to it) no longer leaves
