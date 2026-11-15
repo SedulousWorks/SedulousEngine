@@ -33,12 +33,14 @@ class TrueTypeFont : IFont
 		if (mFontData.IsEmpty)
 			return .InvalidFormat;
 
-		// A collection holds several fonts; the first is the one meant.
-		let offset = stb_truetype.stbtt_GetFontOffsetForIndex(mFontData.Ptr, 0);
-		if (offset < 0)
+		// stb_truetype trusts every offset in the file: the header, the table directory and
+		// each table's place must be inside the bytes before it reads any of them. A
+		// collection holds several fonts; the first is the one meant.
+		uint32 offset = 0;
+		if (!SfntDirectoryFits(.(mFontData.Ptr, mFontData.Count), out offset))
 			return .InvalidFormat;
 
-		if (stb_truetype.stbtt_InitFont(&mFontInfo, mFontData.Ptr, offset) == 0)
+		if (stb_truetype.stbtt_InitFont(&mFontInfo, mFontData.Ptr, (int32)offset) == 0)
 			return .CorruptedData;
 
 		mScale = stb_truetype.stbtt_ScaleForPixelHeight(&mFontInfo, pixelHeight);
@@ -49,6 +51,51 @@ class TrueTypeFont : IFont
 
 		ExtractFamilyName();
 		return .Success;
+	}
+
+	/// Whether `data` holds an sfnt font (TrueType or OpenType, or the first font of a
+	/// collection) whose header and table directory fit, with every table inside the data;
+	/// `fontOffset` is where that font starts. Offsets within the tables (glyph locations
+	/// and the like) are stb_truetype's to read and are not checked here.
+	public static bool SfntDirectoryFits(Span<uint8> data, out uint32 fontOffset)
+	{
+		fontOffset = 0;
+		let size = (uint64)data.Length;
+		if (size < 12)
+			return false;
+
+		uint32 ReadBE32(uint64 at)
+		{
+			let i = (int)at;
+			return ((uint32)data[i] << 24) | ((uint32)data[i + 1] << 16)
+				| ((uint32)data[i + 2] << 8) | (uint32)data[i + 3];
+		}
+
+		if ((data[0] == (uint8)'t') && (data[1] == (uint8)'t') && (data[2] == (uint8)'c') && (data[3] == (uint8)'f'))
+		{
+			// A collection's font count, then its first font's offset.
+			if ((size < 16) || (ReadBE32(8) == 0))
+				return false;
+			fontOffset = ReadBE32(12);
+		}
+		if ((uint64)fontOffset + 12 > size)
+			return false;
+
+		let start = (int)fontOffset;
+		let tables = ((uint32)data[start + 4] << 8) | (uint32)data[start + 5];
+		let directoryEnd = (uint64)fontOffset + 12 + (uint64)tables * 16;
+		if ((tables == 0) || (directoryEnd > size))
+			return false;
+
+		for (uint32 t = 0; t < tables; t++)
+		{
+			let record = (uint64)fontOffset + 12 + (uint64)t * 16;
+			let tableOffset = (uint64)ReadBE32(record + 8);
+			let tableLength = (uint64)ReadBE32(record + 12);
+			if (tableOffset + tableLength > size)
+				return false;
+		}
+		return true;
 	}
 
 	/// The raw bytes, for a baker that drives stb's packer or reads the outlines itself.

@@ -265,4 +265,37 @@ class TrueTypeFontTests
 		let view = scope ScaledFontView(font, font.PixelHeight * 2.0f); // borrows the font
 		Test.Assert(view.SourceData.Ptr == font.SourceData.Ptr);
 	}
+
+	/// stb_truetype reads offsets from the file without checking them, so a truncated or
+	/// crafted font was read past its bytes. The table directory is checked before it sees
+	/// the data.
+	[Test]
+	public static void AFontWhoseTablesDoNotFitItsBytesIsRefused()
+	{
+		let path = scope String();
+		Test.Assert(TestFont.FindPath(path));
+		let whole = scope List<uint8>();
+		Test.Assert(File.ReadAll(path, whole) case .Ok);
+
+		FontLoadResult InitializeWith(int count)
+		{
+			let bytes = new List<uint8>(); // the font takes it
+			bytes.AddRange(Span<uint8>(whole.Ptr, count));
+			let font = scope TrueTypeFont();
+			return font.Initialize(bytes, 16.0f);
+		}
+
+		Test.Assert(InitializeWith(whole.Count) == .Success);
+		// The directory is there; the tables it names run past the end.
+		Test.Assert(InitializeWith(whole.Count / 2) == .InvalidFormat);
+		// Twelve bytes claiming the font's own table count.
+		Test.Assert(InitializeWith(12) == .InvalidFormat);
+
+		// "ttcf", one font, at an offset far past the end.
+		uint8[16] header = .((uint8)'t', (uint8)'t', (uint8)'c', (uint8)'f', 0, 1, 0, 0, 0, 0, 0, 1, 0x7F, 0xFF, 0xFF, 0xFF);
+		let collection = new List<uint8>(); // the font takes it
+		collection.AddRange(Span<uint8>(&header[0], 16));
+		let font = scope TrueTypeFont();
+		Test.Assert(font.Initialize(collection, 16.0f) == .InvalidFormat);
+	}
 }

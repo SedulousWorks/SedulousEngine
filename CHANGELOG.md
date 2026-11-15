@@ -329,3 +329,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   waits unsent, instead of the sender buffering without limit.
 - Models: a glTF file that fails validation (an accessor or buffer view past its buffer) fails
   to import instead of being read past its buffers' ends.
+- Fonts: a truncated or damaged font file is refused instead of read past its end (a crafted one
+  could crash the game or editor that loaded it).
