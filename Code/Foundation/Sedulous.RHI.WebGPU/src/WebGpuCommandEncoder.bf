@@ -170,7 +170,16 @@ sealed class WebGpuCommandEncoder : ICommandEncoder
 			width = Math.Max(sized.Texture.Desc.Width >> mip, 1);
 			height = Math.Max(sized.Texture.Desc.Height >> mip, 1);
 		}
-		mRenderPass.Begin(mDevice, pass, width, height);
+		// The aspects the pass holds read-only, which a bundle it executes must leave unwritten.
+		var depthReadOnly = false;
+		var stencilReadOnly = false;
+		if (desc.DepthStencilAttachment.HasValue)
+		{
+			let attachment = desc.DepthStencilAttachment.Value;
+			depthReadOnly = attachment.DepthReadOnly;
+			stencilReadOnly = attachment.StencilReadOnly && (depth.stencilReadOnly != 0);
+		}
+		mRenderPass.Begin(mDevice, pass, width, height, depthReadOnly, stencilReadOnly, desc.Label);
 		mCounters?.RenderPass();
 		return mRenderPass;
 	}

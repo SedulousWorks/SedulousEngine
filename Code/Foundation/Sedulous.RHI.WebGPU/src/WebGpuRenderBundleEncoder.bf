@@ -16,6 +16,10 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 	private List<WebGpuRenderBundle> mBundles = new .() ~ DeleteContainerAndItems!(_);
 	/// What this recording has recorded, which the bundle counts each time it runs.
 	private RecordedCounts mRecorded;
+	/// The bundle's read-only aspects and label, copied to it at Finish.
+	private bool mDepthReadOnly = false;
+	private bool mStencilReadOnly = false;
+	private String mLabel = new .() ~ delete _;
 
 	public Result<void> Initialize(WGPUDevice device, RenderBundleDesc desc)
 	{
@@ -32,6 +36,9 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 		wgpu.depthReadOnly = desc.DepthReadOnly ? 1 : 0;
 		wgpu.stencilReadOnly = desc.StencilReadOnly ? 1 : 0;
 		wgpu.sampleCount = desc.SampleCount;
+		mDepthReadOnly = desc.DepthReadOnly;
+		mStencilReadOnly = desc.StencilReadOnly;
+		mLabel.Set(desc.Label);
 
 		mEncoder = wgpuDeviceCreateRenderBundleEncoder(device, &wgpu);
 		mPushConstants.Begin(device);
@@ -152,6 +159,9 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 		let bundle = new WebGpuRenderBundle();
 		bundle.Adopt(handle);
 		bundle.Counts = mRecorded;
+		bundle.DepthReadOnly = mDepthReadOnly;
+		bundle.StencilReadOnly = mStencilReadOnly;
+		bundle.Label.Set(mLabel);
 		mRecorded = .();
 		mBundles.Add(bundle); // owned until this encoder goes
 		return bundle;

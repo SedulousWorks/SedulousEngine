@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using wgpu_Beef;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.RHI;
 
 namespace Sedulous.RHI.WebGPU;
@@ -18,16 +19,28 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;
+	/// The aspects the pass's depth-stencil attachment holds read-only (false for one it has
+	/// not), which a bundle it executes must leave unwritten too, and the pass's label.
+	private bool mDepthReadOnly = false;
+	private bool mStencilReadOnly = false;
+	private String mLabel = new .() ~ delete _;
+	/// A bundle that does not fit its pass is said once per command encoder.
+	private bool mMismatchLogged = false;
 	/// The device's counts, BORROWED, set by the command encoder; null counts nothing.
 	public DeviceCounterBlock Counters;
 
 	/// `width` by `height`: the pass's render area (its attachments' size), which scissors are
-	/// clipped to.
-	public void Begin(WGPUDevice device, WGPURenderPassEncoder encoder, uint32 width, uint32 height)
+	/// clipped to. `depthReadOnly` and `stencilReadOnly`: the aspects its depth-stencil
+	/// attachment holds read-only; `label` names the pass when a bundle does not fit it.
+	public void Begin(WGPUDevice device, WGPURenderPassEncoder encoder, uint32 width, uint32 height,
+		bool depthReadOnly = false, bool stencilReadOnly = false, StringView label = default)
 	{
 		mEncoder = encoder;
 		mWidth = width;
 		mHeight = height;
+		mDepthReadOnly = depthReadOnly;
+		mStencilReadOnly = stencilReadOnly;
+		mLabel.Set(label);
 		mPushConstants.Begin(device);
 	}
 
@@ -187,6 +200,17 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 
 			if (let wgpuBundle = bundle as WebGpuRenderBundle)
 			{
+				// A browser's WebGPU refuses a bundle that may write an aspect this pass holds
+				// read-only, failing the whole submit; native wgpu lets it through, so it is said
+				// here, naming both, once.
+				let writesDepth = mDepthReadOnly && !wgpuBundle.DepthReadOnly;
+				let writesStencil = mStencilReadOnly && !wgpuBundle.StencilReadOnly;
+				if (!mMismatchLogged && (writesDepth || writesStencil))
+				{
+					GlobalLog(.Error, "[webgpu] render bundle '{}' may write {} that pass '{}' holds read-only",
+						wgpuBundle.Label, writesDepth ? "depth" : "stencil", mLabel);
+					mMismatchLogged = true;
+				}
 				handles[count] = wgpuBundle.Handle;
 				count++;
 				// A bundle's recorded work counts each time it runs.

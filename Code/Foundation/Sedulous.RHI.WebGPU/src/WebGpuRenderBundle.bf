@@ -12,6 +12,11 @@ sealed class WebGpuRenderBundle : IRenderBundle
 	private WGPURenderBundle mHandle;
 	/// What it recorded, counted each time it is executed.
 	public RecordedCounts Counts;
+	/// The aspects it leaves unwritten, and its label: a pass that executes it checks them
+	/// (WebGPU refuses a bundle that may write an aspect the pass holds read-only).
+	public bool DepthReadOnly = false;
+	public bool StencilReadOnly = false;
+	public String Label = new .() ~ delete _;
 
 	public WGPURenderBundle Handle => mHandle;
 
