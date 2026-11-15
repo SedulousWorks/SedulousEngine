@@ -303,3 +303,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   a game built before this cannot connect to one built after.
 - Networking: before the first round trip is measured, an unacknowledged message is resent after
   200 ms, then twice as long each time, instead of every 20 ms.
+- Networking: at most 1024 reliable messages are in flight to a peer, and a receiver buffers none
+  further ahead; a peer that leaves more than `MaxQueuedReliable` (16384) unacknowledged is
+  disconnected.

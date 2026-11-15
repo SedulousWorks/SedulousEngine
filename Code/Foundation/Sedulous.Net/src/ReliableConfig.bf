@@ -29,6 +29,9 @@ struct ReliableConfig
 	public uint32 MaxPacketsPerUpdate = 64;
 	/// The live connections a server holds; a handshake past them is refused.
 	public uint32 MaxPeers = 64;
+	/// Reliable messages queued to one peer and not yet acked. A peer that stays connected but
+	/// stops acking past this is disconnected, rather than the queue growing without end.
+	public uint32 MaxQueuedReliable = 16384;
 
 	public this() {}
 }

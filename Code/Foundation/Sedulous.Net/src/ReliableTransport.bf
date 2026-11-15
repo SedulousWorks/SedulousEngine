@@ -40,6 +40,12 @@ class ReliableTransport : INetTransport
 	private const int cHandshakeBytes = 2 + 1 + 4 + 8;
 	/// A cookie is good for the window it was made in and the one after.
 	private const double cCookieWindowMs = 10000.0;
+	/// Reliable message ids in flight at once: the sender sends none past its oldest unacked id
+	/// plus this, and the receiver buffers none past its next expected id plus this. Every id
+	/// below the sender's oldest unacked one has reached the receiver, so a sender inside its
+	/// window is inside the receiver's. Both ends use it, so it is not a setting; it keeps ids
+	/// well inside the sixteen bit half range, where SeqGreater stops telling older from newer.
+	private const uint16 cReliableWindow = 1024;
 
 	/// A message queued to go out. A reliable one lives here until it is acked.
 	private class OutMessage
@@ -265,6 +271,18 @@ class ReliableTransport : INetTransport
 			}
 			message.Data.AddRange(data);
 			connection.PendingUnreliable.Add(message);
+			return;
+		}
+
+		// A peer that stays connected but stops acking would grow the queue without end.
+		let pieces = Math.Max((data.Length + limit - 1) / limit, 1);
+		if ((connection.UnackedReliable.Count + pieces) > (int)mConfig.MaxQueuedReliable)
+		{
+			GlobalLog(.Warning, "Net: peer {}: {} reliable messages unacked, over MaxQueuedReliable {}, disconnecting",
+				connection.Peer, connection.UnackedReliable.Count, mConfig.MaxQueuedReliable);
+			SendControl(connection, .Disconnect);
+			connection.State = .Disconnected;
+			PushEvent(.Disconnected, connection.Peer, 0, .());
 			return;
 		}
 
@@ -561,10 +579,16 @@ class ReliableTransport : INetTransport
 		return Clamp(timeout, (double)mConfig.MinResendMs, (double)mConfig.MaxResendMs);
 	}
 
+	/// Whether a message is inside the send window. UnackedReliable is in id order, oldest first.
+	private static bool InSendWindow(Connection connection, OutMessage message) =>
+		(uint16)(message.Id - connection.UnackedReliable[0].Id) < cReliableWindow;
+
 	private bool AnyReliableDue(Connection connection)
 	{
 		for (let message in connection.UnackedReliable)
 		{
+			if (!InSendWindow(connection, message))
+				break;
 			if ((mNowMs - message.LastSentMs) >= ResendTimeout(connection, message))
 				return true;
 		}
@@ -602,6 +626,9 @@ class ReliableTransport : INetTransport
 
 		for (let message in connection.UnackedReliable)
 		{
+			// Past the window: it waits for the window to move.
+			if (!InSendWindow(connection, message))
+				break;
 			// Not due yet: the round-trip-timed resend is what stops every packet from
 			// carrying every outstanding message on a slow link.
 			if ((mNowMs - message.LastSentMs) < ResendTimeout(connection, message))
@@ -992,7 +1019,10 @@ class ReliableTransport : INetTransport
 
 		if (id != connection.NextInReliableId)
 		{
-			// Early: buffer it unless it is already buffered.
+			// Early: buffer it unless it is already buffered, or past the window, which a sender
+			// keeping to it never sends (the buffer is bounded by the window, not by the peer).
+			if ((uint16)(id - connection.NextInReliableId) >= cReliableWindow)
+				return;
 			for (let buffered in connection.ReorderBuffer)
 			{
 				if (buffered.Id == id)

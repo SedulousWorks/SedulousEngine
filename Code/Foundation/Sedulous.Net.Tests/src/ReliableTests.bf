@@ -393,6 +393,212 @@ class ReliableTests
 			scope $"{clientSocket.MessagePackets} message packets in two seconds");
 	}
 
+	/// The reliable message ids in a Data packet, read as the transport writes them.
+	private static void ReliableIdsIn(Span<uint8> data, List<uint16> outIds)
+	{
+		let reader = scope BitReader(data);
+		reader.ReadU16();
+		if (reader.ReadU8() != 2)
+			return;
+		reader.ReadU32(); // token
+		reader.ReadU16(); // seq
+		if (reader.ReadBool())
+		{
+			reader.ReadU16();
+			reader.ReadU32();
+		}
+		let count = reader.ReadVarU32();
+		for (uint32 i = 0; (i < count) && reader.Ok; i++)
+		{
+			reader.ReadU8(); // channel
+			let reliable = reader.ReadBool();
+			uint16 id = 0;
+			if (!reliable)
+			{
+				if (reader.ReadBool())
+					reader.ReadU16();
+			}
+			else
+			{
+				id = reader.ReadU16();
+				if (reader.ReadBool())
+				{
+					reader.ReadVarU32();
+					reader.ReadVarU32();
+					reader.ReadVarU32();
+				}
+			}
+			let length = reader.ReadVarU32();
+			for (uint32 b = 0; b < length; b++)
+				reader.ReadU8();
+			if (reliable && reader.Ok)
+				outIds.Add(id);
+		}
+	}
+
+	/// Records the reliable ids of every Data packet sent through it.
+	private class ReliableIdRecorder : IDatagramSocket
+	{
+		private IDatagramSocket mInner;
+		public List<uint16> Ids = new .() ~ delete _;
+
+		public this(IDatagramSocket inner)
+		{
+			mInner = inner;
+		}
+
+		public void Send(DatagramEndpoint to, Span<uint8> data)
+		{
+			ReliableIdsIn(data, Ids);
+			mInner.Send(to, data);
+		}
+
+		public bool Receive(out DatagramEndpoint outFrom, List<uint8> outData) => mInner.Receive(out outFrom, outData);
+
+		public DatagramEndpoint LocalEndpoint => mInner.LocalEndpoint;
+	}
+
+	/// A connection made by hand: the handshake through a raw socket, with `token`.
+	private static bool RawConnect(SimDatagramNetwork network, IDatagramSocket raw, ReliableTransport server,
+		DatagramEndpoint serverEndpoint, uint32 token)
+	{
+		let bytes = scope List<uint8>();
+		Handshake(0, token, 0, bytes);
+		raw.Send(serverEndpoint, bytes);
+		network.Advance(10.0f);
+		server.Update(10.0f);
+		network.Advance(10.0f);
+		let challenge = scope List<ReceivedPacket>();
+		ReceiveAll(raw, challenge);
+		if (challenge.IsEmpty || (challenge[0].Type != 4))
+			return false;
+		Handshake(5, token, challenge[0].Cookie, bytes);
+		raw.Send(serverEndpoint, bytes);
+		network.Advance(10.0f);
+		server.Update(10.0f);
+		network.Advance(10.0f);
+		let rest = scope List<ReceivedPacket>();
+		ReceiveAll(raw, rest);
+		return true;
+	}
+
+	/// One Data packet carrying one reliable message of one byte, through a raw socket, and the
+	/// server's update after it.
+	private static void DeliverReliable(SimDatagramNetwork network, IDatagramSocket raw, ReliableTransport server,
+		DatagramEndpoint serverEndpoint, uint32 token, ref uint16 seq, uint16 id)
+	{
+		let writer = scope BitWriter();
+		writer.WriteU16(0xDCE8);
+		writer.WriteU8(2);
+		writer.WriteU32(token);
+		writer.WriteU16(seq);
+		seq++;
+		writer.WriteBool(false); // no ack
+		writer.WriteVarU32(1);
+		writer.WriteU8(0); // channel
+		writer.WriteBool(true); // reliable
+		writer.WriteU16(id);
+		writer.WriteBool(false); // not fragmented
+		writer.WriteVarU32(1);
+		writer.WriteU8((uint8)id);
+		raw.Send(serverEndpoint, writer.Data);
+		network.Advance(10.0f);
+		server.Update(10.0f);
+	}
+
+	/// A peer that stops acking past the queue cap is disconnected. The unacked queue grew
+	/// without end while a peer stayed connected and acked nothing.
+	[Test]
+	public static void APeerThatStopsAckingPastTheQueueCapIsDisconnected()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let clientSocket = network.CreateSocket();
+		let serverSocket = network.CreateSocket();
+		var config = ReliableConfig();
+		config.MaxQueuedReliable = 10;
+		let client = scope ReliableTransport(clientSocket, config);
+		let server = scope ReliableTransport(serverSocket, config);
+		server.SetAccepting(true);
+		let serverPeer = client.Connect(serverSocket.LocalEndpoint);
+		for (int i < 10)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		Test.Assert(AnyKind(client, .Connected));
+		// The server is silent from here: nothing is acked.
+		for (int i < 10)
+			client.Send(serverPeer, 0, scope uint8[](1), .ReliableOrdered);
+		Test.Assert(CountKind(client, .Disconnected) == 0);
+		// The eleventh.
+		client.Send(serverPeer, 0, scope uint8[](1), .ReliableOrdered);
+		Test.Assert(CountKind(client, .Disconnected) == 1);
+	}
+
+	/// With nothing acked, no message past the window goes out. The sender sent every queued
+	/// message: ids could run past the receiver's buffer and, past 32768 in flight, past where
+	/// sixteen bit ids still tell older from newer.
+	[Test]
+	public static void WithNothingAckedNoMessagePastTheWindowGoesOut()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let clientRaw = network.CreateSocket();
+		let serverSocket = network.CreateSocket();
+		let recorder = scope ReliableIdRecorder(clientRaw);
+		let client = scope ReliableTransport(recorder);
+		let server = scope ReliableTransport(serverSocket);
+		server.SetAccepting(true);
+		let serverPeer = client.Connect(serverSocket.LocalEndpoint);
+		for (int i < 10)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		Test.Assert(AnyKind(client, .Connected));
+		for (int i < 3000)
+			client.Send(serverPeer, 0, scope uint8[](1), .ReliableOrdered);
+		// Three seconds, the server silent.
+		for (int i < 300)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+		}
+		Test.Assert(!recorder.Ids.IsEmpty);
+		uint16 highest = 0;
+		for (let id in recorder.Ids)
+			highest = Math.Max(highest, id);
+		// Ids 0 to 1023, the window from the oldest unacked.
+		Test.Assert(highest == 1023, scope $"the highest id sent is {highest}");
+	}
+
+	/// A message past the receive window is not buffered. Early arrivals were buffered at any
+	/// distance ahead: a peer could park 32767 messages each.
+	[Test]
+	public static void AMessagePastTheReceiveWindowIsNotBuffered()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let raw = network.CreateSocket();
+		let serverSocket = network.CreateSocket();
+		let server = scope ReliableTransport(serverSocket);
+		server.SetAccepting(true);
+		let endpoint = serverSocket.LocalEndpoint;
+		Test.Assert(RawConnect(network, raw, server, endpoint, 99));
+		Test.Assert(CountKind(server, .Connected) == 1);
+
+		uint16 seq = 0;
+		// 1029 ahead of the next expected id, nought: past the window of 1024.
+		DeliverReliable(network, raw, server, endpoint, 99, ref seq, 1029);
+		for (uint16 id = 0; id < 1029; id++)
+			DeliverReliable(network, raw, server, endpoint, 99, ref seq, id);
+		// Nought to 1028; 1029 was never kept.
+		Test.Assert(CountKind(server, .Received) == 1029);
+		// Sent again once inside the window, it goes through.
+		DeliverReliable(network, raw, server, endpoint, 99, ref seq, 1029);
+		Test.Assert(CountKind(server, .Received) == 1);
+	}
+
 	[Test]
 	public static void TheHandshakeConnectsBothSides()
 	{
