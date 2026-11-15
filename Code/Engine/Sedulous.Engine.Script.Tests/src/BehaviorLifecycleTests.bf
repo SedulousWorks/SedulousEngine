@@ -354,6 +354,28 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.Host.Runtime.Invoke(again, "get", default, ref r) && (r.AsInt == 60));
 	}
 
+	/// A reload's previous module stays while an instance made before it reads its globals, and
+	/// goes once nothing runs its code: every reload left one loaded until the run ended.
+	[Test]
+	public static void AReplacedClassModuleGoesOnceNothingRunsIt()
+	{
+		let play = scope ScriptPlayScene();
+		let v1 = play.Class("Keeper", "int kSeen = 1;\nclass Keeper { int read() { return kSeen; } }");
+		let old = play.Host.Instantiate(v1);
+		let v2 = play.Class("Keeper", "int kSeen = 2;\nclass Keeper { int read() { return kSeen; } }");
+		let fresh = play.Host.Instantiate(v2);
+		Test.Assert((old != null) && (fresh != null));
+		Test.Assert(play.Host.ReplacedModuleCount == 1, "kept: the old instance reads its module's globals");
+		var r = ScriptValue.Nil;
+		Test.Assert(play.Host.Runtime.Invoke(old, "read", default, ref r) && (r.AsInt == 1));
+		Test.Assert(play.Host.Runtime.Invoke(fresh, "read", default, ref r) && (r.AsInt == 2));
+
+		play.Host.Runtime.Release(old);
+		play.Host.Advance(0.0f);
+		Test.Assert(play.Host.ReplacedModuleCount == 0, "gone once nothing runs it");
+		Test.Assert(play.Host.Runtime.Invoke(fresh, "read", default, ref r) && (r.AsInt == 2));
+	}
+
 	[Test]
 	public static void AReloadRebuildsTheInstanceAndReappliesOverrides()
 	{

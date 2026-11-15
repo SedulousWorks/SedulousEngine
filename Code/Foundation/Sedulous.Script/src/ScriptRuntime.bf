@@ -91,6 +91,11 @@ abstract class ScriptRuntime
 	/// Drops a module and everything compiled into it.
 	public virtual void DiscardModule(StringView moduleName) {}
 
+	/// Whether anything still runs code of the module: a call under way, an instance of one of
+	/// its classes, a coroutine of it, a delegate to one of its functions. Discarding a module
+	/// resets its globals, so one in use must stay. True when the runtime cannot tell.
+	public virtual bool ModuleInUse(StringView moduleName) => true;
+
 	/// Compiles `source` against the bound surface WITHOUT running any of it: no global
 	/// initializer runs, and no module is kept. For checking code as it is typed, where a
 	/// compile that ran it would run whatever is half written. `includes` are the files it

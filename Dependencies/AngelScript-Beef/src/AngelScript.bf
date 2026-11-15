@@ -78,6 +78,7 @@ static class AS
 	[CLink] public static extern char8* asc_engine_get_type_declaration(Engine* engine, int32 typeId, int32 includeNamespace);
 	[CLink] public static extern char8* asc_typeinfo_get_name(TypeInfo* type);
 	[CLink] public static extern char8* asc_typeinfo_get_namespace(TypeInfo* type);
+	[CLink] public static extern char8* asc_typeinfo_get_module_name(TypeInfo* type);
 	[CLink] public static extern int32 asc_typeinfo_get_type_id(TypeInfo* type);
 	[CLink] public static extern uint64 asc_typeinfo_get_flags(TypeInfo* type);
 	[CLink] public static extern int32 asc_typeinfo_get_size(TypeInfo* type);
@@ -96,6 +97,7 @@ static class AS
 
 	// ---- functions ----
 	[CLink] public static extern char8* asc_function_get_name(Function* fn);
+	[CLink] public static extern char8* asc_function_get_module_name(Function* fn);
 	[CLink] public static extern char8* asc_function_get_declaration(Function* fn, int32 includeObjectName, int32 includeNamespace, int32 includeParamNames);
 	[CLink] public static extern uint32 asc_function_get_param_count(Function* fn);
 	[CLink] public static extern int32 asc_function_get_param(Function* fn, uint32 index, int32* typeId, uint32* flags, char8** name);

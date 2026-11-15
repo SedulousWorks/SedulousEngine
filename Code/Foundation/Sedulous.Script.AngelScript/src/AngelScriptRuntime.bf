@@ -2200,6 +2200,35 @@ class AngelScriptRuntime : ScriptRuntime
 		ForgetBuilder(moduleName);
 	}
 
+	public override bool ModuleInUse(StringView moduleName)
+	{
+		if (AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS) == null)
+			return false;
+		// A call under way may run its code, and a call the debugger holds does.
+		if ((AS.asc_get_active_context() != null) || ((mDebugger != null) && mDebugger.IsPaused))
+			return true;
+		for (let o in mObjects)
+		{
+			if ((o.Type != null) && InModule(AS.asc_typeinfo_get_module_name(o.Type), moduleName))
+				return true;
+		}
+		for (let co in mCoroutines)
+		{
+			if (InModule(AS.asc_function_get_module_name(co.Function), moduleName))
+				return true;
+			if ((co.Owner != null) && InModule(AS.asc_typeinfo_get_module_name(AS.asc_object_get_type((AS.ScriptObject*)co.Owner)), moduleName))
+				return true;
+		}
+		for (let d in mDelegates)
+		{
+			if (InModule(AS.asc_function_get_module_name(d.[Friend]mFunction), moduleName))
+				return true;
+		}
+		return false;
+	}
+
+	private static bool InModule(char8* name, StringView moduleName) => (name != null) && (StringView(name) == moduleName);
+
 	private void ForgetBuilder(StringView moduleName)
 	{
 		if (mBuilders.GetAndRemoveAlt(moduleName) case .Ok(let entry))

@@ -84,6 +84,9 @@ class ScriptRunHost
 	}
 	/// How many class modules the run has loaded: each a class's own.
 	private int mGeneration = 0;
+	/// Modules of classes a reload replaced, discarded once nothing runs their code: discarding
+	/// resets a module's globals, which an instance made before the reload may still read.
+	private List<String> mReplaced = new .() ~ DeleteContainerAndItems!(_);
 	private bool mWarnedLanguage = false;
 
 	public ScriptRuntime Runtime => mRuntime;
@@ -220,6 +223,25 @@ class ScriptRunHost
 	{
 		if ((mRuntime != null) && !IsDebugPaused)
 			mRuntime.AdvanceCoroutines(deltaTime);
+		DiscardUnusedReplaced();
+	}
+
+	/// How many replaced class modules still wait for what runs their code.
+	public int ReplacedModuleCount => mReplaced.Count;
+
+	/// Discards each replaced class module nothing runs code of any more.
+	private void DiscardUnusedReplaced()
+	{
+		if (mRuntime == null)
+			return;
+		for (int i = mReplaced.Count - 1; i >= 0; i--)
+		{
+			if (mRuntime.ModuleInUse(mReplaced[i]))
+				continue;
+			mRuntime.DiscardModule(mReplaced[i]);
+			delete mReplaced[i];
+			mReplaced.RemoveAt(i);
+		}
 	}
 
 	/// An instance of the class, its module loaded or reloaded as needed. Null on failure,
@@ -281,9 +303,12 @@ class ScriptRunHost
 			ReportProblems();
 			return false;
 		}
+		if (replaced != null)
+			mReplaced.Add(new String(replaced.ModuleName));
 		let loaded = replaced ?? mLoaded.Add(.. new LoadedClass());
 		loaded.Set(scriptClass);
 		loaded.ModuleName.Set(moduleName);
+		DiscardUnusedReplaced();
 		return true;
 	}
 
@@ -315,6 +340,7 @@ class ScriptRunHost
 		DeleteAndNullify!(mRuntime);
 		mLanguage.Clear();
 		ClearAndDeleteItems!(mLoaded);
+		ClearAndDeleteItems!(mReplaced);
 		mWarnedLanguage = false;
 		// The next run starts from the default seed, as a fresh run does: a second play in
 		// the same tab must not continue the first one's sequence.

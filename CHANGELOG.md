@@ -115,6 +115,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: reloading a behaviour script while the game runs no longer keeps every earlier
+  version loaded until the play ends; one goes once nothing made from it is still running.
 - Scripting (AngelScript): `#include` works: it resolves against the including file, inside the
   project's sources; editing an included file recooks the scripts that include it; an error or a
   breakpoint in one names that file; and a behaviour loaded in a run includes them as the cook

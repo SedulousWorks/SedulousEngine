@@ -185,6 +185,11 @@ asc_typeinfo* asc_engine_get_type_info_by_id(asc_engine* engine, int typeId) { r
 const char* asc_engine_get_type_declaration(asc_engine* engine, int typeId, int includeNamespace) { return E(engine)->GetTypeDeclaration(typeId, includeNamespace != 0); }
 const char* asc_typeinfo_get_name(asc_typeinfo* type) { return T(type)->GetName(); }
 const char* asc_typeinfo_get_namespace(asc_typeinfo* type) { return T(type)->GetNamespace(); }
+const char* asc_typeinfo_get_module_name(asc_typeinfo* type)
+{
+	asIScriptModule* module = T(type)->GetModule();
+	return module != nullptr ? module->GetName() : nullptr;
+}
 int asc_typeinfo_get_type_id(asc_typeinfo* type) { return T(type)->GetTypeId(); }
 uint64_t asc_typeinfo_get_flags(asc_typeinfo* type) { return static_cast<uint64_t>(T(type)->GetFlags()); }
 int asc_typeinfo_get_size(asc_typeinfo* type) { return static_cast<int>(T(type)->GetSize()); }
@@ -215,6 +220,13 @@ int asc_typeinfo_get_property_access(asc_typeinfo* type, unsigned index, int* is
 /* ---- functions ---- */
 
 const char* asc_function_get_name(asc_function* fn) { return F(fn)->GetName(); }
+const char* asc_function_get_module_name(asc_function* fn)
+{
+	asIScriptFunction* f = F(fn);
+	if (f->GetFuncType() == asFUNC_DELEGATE && f->GetDelegateFunction() != nullptr)
+		f = f->GetDelegateFunction();
+	return f->GetModuleName();
+}
 const char* asc_function_get_declaration(asc_function* fn, int includeObjectName, int includeNamespace, int includeParamNames)
 {
 	return F(fn)->GetDeclaration(includeObjectName != 0, includeNamespace != 0, includeParamNames != 0);

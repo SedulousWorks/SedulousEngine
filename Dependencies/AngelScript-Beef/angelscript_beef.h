@@ -70,6 +70,8 @@ asc_typeinfo* asc_engine_get_type_info_by_id(asc_engine* engine, int typeId);
 const char*   asc_engine_get_type_declaration(asc_engine* engine, int typeId, int includeNamespace);
 const char*   asc_typeinfo_get_name(asc_typeinfo* type);
 const char*   asc_typeinfo_get_namespace(asc_typeinfo* type);
+/* The module a script class was declared in; null for a registered type. */
+const char*   asc_typeinfo_get_module_name(asc_typeinfo* type);
 int           asc_typeinfo_get_type_id(asc_typeinfo* type);
 uint64_t      asc_typeinfo_get_flags(asc_typeinfo* type);
 int           asc_typeinfo_get_size(asc_typeinfo* type);
@@ -89,6 +91,8 @@ int           asc_typeinfo_get_property_access(asc_typeinfo* type, unsigned inde
 
 /* ---- functions ---- */
 const char*   asc_function_get_name(asc_function* fn);
+/* The module a script function was compiled in (a delegate's, its method's); null for a registered one. */
+const char*   asc_function_get_module_name(asc_function* fn);
 const char*   asc_function_get_declaration(asc_function* fn, int includeObjectName, int includeNamespace, int includeParamNames);
 unsigned      asc_function_get_param_count(asc_function* fn);
 int           asc_function_get_param(asc_function* fn, unsigned index, int* typeId, uint32_t* flags, const char** name);
