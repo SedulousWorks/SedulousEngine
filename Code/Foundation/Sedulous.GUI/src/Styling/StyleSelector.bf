@@ -161,6 +161,9 @@ class StyleSelectorRule
 	private List<StyleSelector> mWhere = new .() ~ DeleteContainerAndItems!(_); // :where(list): as :is, adding no specificity
 	private uint32 mPseudo = PseudoNone;
 	private bool mNever = false;
+	/// How deep selector functions (:not, :is, :where) may nest inside one argument: each level is
+	/// a recursive parse and match.
+	private const int MaxSelectorNesting = 32;
 	private Sedulous.GUI.Combinator mCombinator = .Descendant;
 	private int64 mSpecificity = 0;
 
@@ -495,6 +498,21 @@ class StyleSelectorRule
 		{
 			void Selectors(List<StyleSelector> into)
 			{
+				// Past the nesting limit the selector matches nothing, and is never parsed.
+				int nesting = 0;
+				int deepest = 0;
+				for (let c in argument)
+				{
+					if (c == '(')
+						deepest = Math.Max(deepest, ++nesting);
+					else if ((c == ')') && (nesting > 0))
+						nesting--;
+				}
+				if (deepest > MaxSelectorNesting)
+				{
+					mNever = true;
+					return;
+				}
 				let parts = scope List<StringView>();
 				StyleSelector.SplitList(argument, parts);
 				for (let part in parts)
@@ -1087,6 +1105,8 @@ internal static class StyleSelectorDetail
 			for (; k < s.Length; k++)
 			{
 				if ((s[k] < '0') || (s[k] > '9'))
+					return false;
+				if (v > 100000000) // past any sibling count; one more digit would overflow int32
 					return false;
 				v = v * 10 + ((int32)s[k] - (int32)'0');
 			}

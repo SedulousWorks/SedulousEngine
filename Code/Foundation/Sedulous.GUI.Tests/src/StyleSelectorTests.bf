@@ -399,4 +399,32 @@ class StyleSelectorTests
 		input.ReleaseFocus();
 		Test.Assert(!Sel("panel:focus-within", panel));
 	}
+
+	/// An nth index past int32 is invalid, not wrapped: 4294967297 wrapped to 1 and matched the
+	/// first child.
+	[Test]
+	public static void AnNthIndexPastInt32IsInvalid()
+	{
+		let row = scope Row("bl");
+		Test.Assert(!Sel(":nth-child(4294967297)", row[0]));
+		Test.Assert(!Sel(":nth-child(4294967297n+1)", row[0]));
+	}
+
+	/// Selector functions nested past the limit match nothing: each nested :not() was a
+	/// recursive parse and match, and deep nesting ran the stack out.
+	[Test]
+	public static void FunctionsNestedPastTheLimitMatchNothing()
+	{
+		let deep = scope String();
+		for (int i = 0; i < 100000; i++)
+			deep.Append(":not(");
+		deep.Append("label");
+		for (int i = 0; i < 100000; i++)
+			deep.Append(")");
+		let row = scope Row("bl");
+		Test.Assert(!Sel(deep, row[0]));
+		Test.Assert(!Sel(deep, row[1]));
+		Test.Assert(Sel(":not(:not(:not(label)))", row[0])); // shallow nesting still works
+		Test.Assert(!Sel(":not(:not(:not(label)))", row[1]));
+	}
 }
