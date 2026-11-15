@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -159,3 +160,5 @@ sealed class PushConstantEmulator
 		mDirty = false;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

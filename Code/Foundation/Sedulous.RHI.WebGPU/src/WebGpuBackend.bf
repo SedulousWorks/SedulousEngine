@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -392,3 +393,4 @@ static class WebGpuRhi
 	}
 }
 
+#endif // !BF_PLATFORM_ANDROID

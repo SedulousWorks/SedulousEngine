@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 
@@ -22,3 +23,5 @@ static class WebGpuBackendInfo
 			(packed >> 8) & 0xFF, packed & 0xFF);
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

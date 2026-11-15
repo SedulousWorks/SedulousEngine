@@ -8,7 +8,11 @@ using Sedulous.RHI;
 using Sedulous.RHI.Capture;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
+#if !BF_PLATFORM_ANDROID
+// The namespace itself does not exist on Android, which has no wgpu-native library: every file in
+// that backend is compiled out.
 using Sedulous.RHI.WebGPU;
+#endif
 #if BF_PLATFORM_WINDOWS
 // The namespace itself does not exist off Windows: every file in that backend is compiled out.
 using Sedulous.RHI.DX12;
@@ -303,12 +307,17 @@ abstract class SampleApp
 			return .Err;
 #endif
 		case .WebGPU:
+#if !BF_PLATFORM_ANDROID
 			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
 			{
 				Console.Error.WriteLine("SampleApp: the WebGPU backend could not be created");
 				return .Err;
 			}
 			mInnerBackend = backend;
+#else
+			Console.Error.WriteLine("SampleApp: WebGPU is not available on Android");
+			return .Err;
+#endif
 		}
 
 		// The wrapper BORROWS the real backend, so both are kept: one to use, one to destroy.

@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 
@@ -14,3 +15,5 @@ struct PushConstantEmulation
 	public WGPUBindGroupLayout Layout = null;
 	public uint32 BlockSize = 0;
 }
+
+#endif // !BF_PLATFORM_ANDROID

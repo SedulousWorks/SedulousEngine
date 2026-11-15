@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 
@@ -37,3 +38,5 @@ sealed class WebGpuBufferRegistry
 			buffer.FlushShadowIfOutstanding();
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

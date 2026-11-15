@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 using Sedulous.Core;
@@ -97,3 +98,5 @@ sealed class WebGpuComputePassEncoder : IComputePassEncoder
 			wgpuComputePassEncoderSetBindGroup(mEncoder, (uint32)group, bindGroup, 0, null);
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

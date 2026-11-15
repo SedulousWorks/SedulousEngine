@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 
@@ -16,3 +17,5 @@ sealed class WebGpuPendingDeviceRequest
 	/// The waiter gave up; the callback owns deletion.
 	public bool Orphaned = false;
 }
+
+#endif // !BF_PLATFORM_ANDROID

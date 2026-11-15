@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 
@@ -254,3 +255,5 @@ static class WebGpuApi
 		}
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

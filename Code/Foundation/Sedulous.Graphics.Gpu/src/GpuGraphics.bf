@@ -6,7 +6,11 @@ using Sedulous.Graphics.Null;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
+#if !BF_PLATFORM_ANDROID
+// The namespace itself does not exist on Android, which has no wgpu-native library: every file in
+// that backend is compiled out.
 using Sedulous.RHI.WebGPU;
+#endif
 #if BF_PLATFORM_WINDOWS
 // The namespace itself does not exist off Windows: every file in that backend is compiled out.
 using Sedulous.RHI.DX12;
@@ -49,12 +53,17 @@ static class GpuGraphics
 			return .Err;
 #endif
 		case .WebGPU:
+#if !BF_PLATFORM_ANDROID
 			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
 			{
 				GlobalLog(.Error, "GpuGraphics.CreateDevice: the WebGPU backend could not be created");
 				return .Err;
 			}
 			inner = backend;
+#else
+			GlobalLog(.Error, "GpuGraphics.CreateDevice: WebGPU is not available on Android");
+			return .Err;
+#endif
 		case .Null:
 			return .Err; // handled above
 		}

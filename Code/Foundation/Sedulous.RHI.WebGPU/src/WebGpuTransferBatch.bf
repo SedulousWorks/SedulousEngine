@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -228,3 +229,5 @@ sealed class WebGpuTransferBatch : ITransferBatch
 		}
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

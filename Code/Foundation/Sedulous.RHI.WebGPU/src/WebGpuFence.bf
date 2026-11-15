@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -125,3 +126,5 @@ sealed class WebGpuFence : IFence
 			mCompleted = value;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID
