@@ -246,7 +246,7 @@ class RenderWindow
 		let commandBuffer = frame.Encoder.Finish();
 		mFenceValues[(int)frameIndex]++;
 		var buffers = ICommandBuffer[1](commandBuffer);
-		mDevice.GraphicsQueue.Submit(buffers, mFences[(int)frameIndex], mFenceValues[(int)frameIndex]);
+		mDevice.GraphicsQueue.SubmitFrame(buffers, mSwapChain, mFences[(int)frameIndex], mFenceValues[(int)frameIndex]);
 		if ((mSwapChain.Present(mDevice.GraphicsQueue) case .Err(let error)) && (error == .OutOfDate))
 			mRebuild = true; // made again before the next acquire
 

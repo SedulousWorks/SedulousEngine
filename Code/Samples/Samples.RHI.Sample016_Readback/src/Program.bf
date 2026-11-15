@@ -187,7 +187,7 @@ class ReadbackSample : SampleApp
 		let commandBuffer = encoder.Finish();
 		mFenceValue++;
 		var buffers = ICommandBuffer[1](commandBuffer);
-		mGraphicsQueue.Submit(buffers, mFence, mFenceValue);
+		mGraphicsQueue.SubmitFrame(buffers, mSwapChain, mFence, mFenceValue);
 		mSwapChain.Present(mGraphicsQueue).IgnoreError();
 		mPool.DestroyEncoder(ref encoder);
 		mHasReadback = true;

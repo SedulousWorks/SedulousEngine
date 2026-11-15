@@ -10,6 +10,8 @@ class ValidatedSwapChain : ISwapChain
 {
 	private ISwapChain mInner;
 	private bool mAcquired = false;
+	/// The acquired image's frame went through Queue.SubmitFrame.
+	private bool mFrameSubmitted = false;
 
 	public this(ISwapChain inner) => mInner = inner;
 
@@ -34,8 +36,21 @@ class ValidatedSwapChain : ISwapChain
 			ValidationLog.Warn("SwapChain.AcquireNextImage: an image is already acquired");
 		let result = mInner.AcquireNextImage();
 		if (result case .Ok)
+		{
 			mAcquired = true;
+			mFrameSubmitted = false;
+		}
 		return result;
+	}
+
+	/// Queue.SubmitFrame says the acquired image's frame was submitted; false when no image is
+	/// acquired (a frame for an image not acquired).
+	public bool NoteFrameSubmitted()
+	{
+		if (!mAcquired)
+			return false;
+		mFrameSubmitted = true;
+		return true;
 	}
 
 	/// Presenting without an acquired image presents whatever was there last.
@@ -43,6 +58,11 @@ class ValidatedSwapChain : ISwapChain
 	{
 		if (!mAcquired)
 			ValidationLog.Warn("SwapChain.Present: no image has been acquired");
+		else if (!mFrameSubmitted)
+		{
+			// Nothing waited on its acquire or signalled its present.
+			ValidationLog.Error("SwapChain.Present: the image's frame was not submitted with Queue.SubmitFrame");
+		}
 
 		// UNWRAPPED before forwarding: the inner swap chain casts the queue to its own
 		// backend type, and a wrapper fails that cast. Presentation would then silently do

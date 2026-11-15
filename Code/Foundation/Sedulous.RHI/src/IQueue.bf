@@ -28,6 +28,22 @@ interface IQueue
 	void Submit(Span<ICommandBuffer> commandBuffers, Span<IFence> waitFences,
 		Span<uint64> waitValues, IFence signalFence, uint64 signalValue);
 
+	/// Submits the frame that renders `swapChain`'s acquired image: it waits on `waitFences`
+	/// (parallel to `waitValues`, as for Submit) and on the image's acquire, and signals
+	/// `signalFence` and what Present waits for. A swap chain's acquire and present belong to
+	/// this submit alone; every other submit leaves them alone, so an offscreen pass or a
+	/// profiler's sync point submitted between the acquire and the frame cannot take them and
+	/// present the image before its frame is drawn.
+	void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue);
+
+	/// The frame with nothing to wait on but its image.
+	void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, IFence signalFence,
+		uint64 signalValue)
+	{
+		SubmitFrame(commandBuffers, swapChain, .(), .(), signalFence, signalValue);
+	}
+
 	/// Blocks until everything submitted here has finished.
 	void WaitIdle();
 

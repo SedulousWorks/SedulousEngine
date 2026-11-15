@@ -8,10 +8,9 @@ namespace Sedulous.RHI.Vulkan;
 
 /// The surface's back buffers and the semaphores that order drawing against presenting.
 ///
-/// The chain does not submit anything itself. Acquiring LEAVES its two semaphores on the
-/// device, the next fence-signalling submit picks them up, and presenting waits on the one
-/// that submit signalled. That indirection is what keeps the queue from having to know a
-/// swap chain exists.
+/// The chain does not submit anything itself. The submit that renders the acquired image,
+/// Queue.SubmitFrame, names the chain: it waits on the image's acquire semaphore and signals
+/// its present semaphore, and presenting waits on that. No other submit touches them.
 class VulkanSwapChain : ISwapChain
 {
 	private VkDevice mDevice;
@@ -61,6 +60,13 @@ class VulkanSwapChain : ISwapChain
 
 	public VkSwapchainKHR Handle => mSwapChain;
 
+	/// What the acquired image's frame waits on before it writes the image; null with no chain.
+	public VkSemaphore CurrentAcquireSemaphore =>
+		(mFrameIndex < (uint32)mAcquireSemaphores.Count) ? mAcquireSemaphores[(int)mFrameIndex] : .Null;
+	/// What that frame signals, and Present waits on; null with no chain.
+	public VkSemaphore CurrentPresentSemaphore =>
+		(mCurrentImageIndex < (uint32)mPresentSemaphores.Count) ? mPresentSemaphores[(int)mCurrentImageIndex] : .Null;
+
 	public Result<void> Initialize(VkDevice device, VkPhysicalDevice physicalDevice,
 		VkSurfaceKHR surface, SwapChainDesc desc, VulkanDevice owner, bool mutableFormat)
 	{
@@ -109,8 +115,7 @@ class VulkanSwapChain : ISwapChain
 		}
 	}
 
-	/// Takes the next back buffer and leaves its semaphores with the device for the
-	/// submission that will draw into it.
+	/// Takes the next back buffer; the frame's SubmitFrame waits on its acquire.
 	public Result<void, ErrorCode> AcquireNextImage()
 	{
 
@@ -155,7 +160,6 @@ class VulkanSwapChain : ISwapChain
 		if ((result != .VK_SUCCESS) && (result != .VK_SUBOPTIMAL_KHR))
 			return .Err(.Unknown);
 
-		mOwner.SetPendingSwapChainSync(acquireSemaphore, mPresentSemaphores[(int)mCurrentImageIndex]);
 		return .Ok;
 	}
 

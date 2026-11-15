@@ -165,9 +165,9 @@ class TriangleSample : SampleApp
 		let commandBuffer = encoder.Finish();
 		mFenceValue++;
 		var buffers = ICommandBuffer[1](commandBuffer);
-		// The fence signalling overload, which is also what picks up the swap chain's
-		// acquire and present semaphores.
-		mGraphicsQueue.Submit(buffers, mFence, mFenceValue);
+		// The frame's submit names its swap chain, which is what waits on the image's acquire
+		// and signals what the present waits for.
+		mGraphicsQueue.SubmitFrame(buffers, mSwapChain, mFence, mFenceValue);
 
 		mSwapChain.Present(mGraphicsQueue).IgnoreError();
 		mPool.DestroyEncoder(ref encoder);

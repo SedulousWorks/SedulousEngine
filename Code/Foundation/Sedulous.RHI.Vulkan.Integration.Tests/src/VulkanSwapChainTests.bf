@@ -1,6 +1,5 @@
 using System;
 using Sedulous.Core;
-using Bulkan;
 using Sedulous.RHI;
 using Sedulous.RHI.Vulkan;
 using Sedulous.Shell;
@@ -135,8 +134,8 @@ class VulkanSwapChainTests
 	/// Acquire, draw, present, repeated: the frame actually reaches the screen, and the
 	/// acquire and present semaphores line up across frames.
 	///
-	/// This is the test the whole sync design exists for. A submit that failed to pick up
-	/// the pending acquire, or a present semaphore nothing signalled, hangs or trips
+	/// This is the test the whole sync design exists for. A frame submit that did not wait
+	/// on the image's acquire, or a present semaphore nothing signalled, hangs or trips
 	/// validation here rather than in a running game.
 	[Test]
 	public static void FramesAcquireDrawAndPresent()
@@ -181,9 +180,9 @@ class VulkanSwapChainTests
 			encoder.TransitionTexture(swapChain.CurrentTexture, .RenderTarget, .Present);
 
 			var buffers = ICommandBuffer[1](encoder.Finish());
-			// The fence-signalling overload is the one that consumes the pending acquire,
-			// so presentation is only ordered if THIS is what submits the frame.
-			queue.Submit(buffers, fence, (uint64)frame);
+			// The frame's submit names its swap chain: presentation is only ordered because
+			// THIS is what submits the frame.
+			queue.SubmitFrame(buffers, swapChain, fence, (uint64)frame);
 			Test.Assert(fence.Wait((uint64)frame), "the frame's work completed");
 
 			Test.Assert(swapChain.Present(queue) case .Ok, "the frame was presented");
@@ -261,7 +260,7 @@ class VulkanSwapChainTests
 			encoder.TransitionTexture(swapChain.CurrentTexture, .RenderTarget, .Present);
 
 			var buffers = ICommandBuffer[1](encoder.Finish());
-			queue.Submit(buffers, fence, (uint64)frame);
+			queue.SubmitFrame(buffers, swapChain, fence, (uint64)frame);
 			Test.Assert(fence.Wait((uint64)frame), "the frame's work completed");
 			Test.Assert(swapChain.Present(queue) case .Ok, "the frame was presented");
 
@@ -275,13 +274,11 @@ class VulkanSwapChainTests
 		sDevice.DestroySwapChain(ref swapChain);
 	}
 
-	/// A frame whose ONLY graphics submission is the wait-fences overload still presents.
+	/// A frame submitted with wait fences still presents.
 	///
-	/// The shape Sample017 has: the graphics work waits on another queue's fence, so the
-	/// two argument submit never runs that frame. When only that overload picked up the
-	/// pending acquire, nothing waited on it and nothing signalled the present semaphore,
-	/// and the layers reported a presentable image modified without waiting. What decides
-	/// is the QUEUE, not which overload the caller reached for.
+	/// The shape Sample017 has: the graphics work waits on another queue's fence. The frame's
+	/// submit waits on those fences and on the image's acquire together, and signals the
+	/// present semaphore.
 	[Test]
 	public static void AFrameSubmittedWithWaitFencesStillPresents()
 	{
@@ -311,7 +308,7 @@ class VulkanSwapChainTests
 			var buffers = ICommandBuffer[1](encoder.Finish());
 			var waitFences = IFence[1](waitFence);
 			var waitValues = uint64[1](1);
-			queue.Submit(buffers, waitFences, waitValues, fence, (uint64)frame);
+			queue.SubmitFrame(buffers, swapChain, waitFences, waitValues, fence, (uint64)frame);
 			Test.Assert(fence.Wait((uint64)frame), "the frame's work completed");
 
 			Test.Assert(swapChain.Present(queue) case .Ok, "the frame was presented");
@@ -328,46 +325,53 @@ class VulkanSwapChainTests
 		sDevice.DestroySwapChain(ref swapChain);
 	}
 
-	/// A submit the backend REJECTS leaves the acquire and present pair latched.
-	///
-	/// The pair is consumed once per acquire, so a submit that takes it and then does not
-	/// run would strand the frame: nothing waits on the acquire and nothing signals the
-	/// present. Every rejection therefore has to come BEFORE the consume, which this pins
-	/// with the cheapest rejection there is, a fenced submit with no fence.
+	/// A submit between the acquire and the frame's submit (an offscreen pass, a profiler's sync
+	/// point) leaves the image's semaphores alone: the frame's submit still waits on the acquire
+	/// and signals the present. When the first fenced submit after an acquire took them, the
+	/// image was presented before its frame was drawn.
 	[Test]
-	public static void ARejectedSubmitLeavesTheSwapChainSyncLatched()
+	public static void ASubmitBeforeTheFrameLeavesItsSyncToTheFrame()
 	{
 		if (!Ready()) { Console.WriteLine("SKIP: no display or no Vulkan"); return; }
-
-		let device = sDevice as VulkanDevice;
-		Test.Assert(device != null, "the integration suite runs on the real backend");
 
 		Test.Assert(MakeSwapChain() case .Ok(var swapChain));
 		let queue = sDevice.GetQueue(.Graphics);
 		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
 
-		if (!(swapChain.AcquireNextImage() case .Ok))
+		let frameCount = swapChain.BufferCount * 2;
+		uint64 value = 0;
+		for (uint32 frame = 1; frame <= frameCount; ++frame)
 		{
-			Console.WriteLine("SKIP: the surface went out of date");
-			sDevice.DestroyCommandPool(ref pool);
-			sDevice.DestroySwapChain(ref swapChain);
-			return;
+			if (!(swapChain.AcquireNextImage() case .Ok))
+			{
+				Console.WriteLine("SKIP: the surface went out of date");
+				break;
+			}
+
+			// Offscreen work, fenced, first after the acquire.
+			Test.Assert(pool.CreateEncoder() case .Ok(var offscreen));
+			var offscreenBuffers = ICommandBuffer[1](offscreen.Finish());
+			value++;
+			queue.Submit(offscreenBuffers, fence, value);
+			Test.Assert(fence.Wait(value), "the offscreen work completed");
+
+			Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+			encoder.TransitionTexture(swapChain.CurrentTexture, .Undefined, .Present);
+			var buffers = ICommandBuffer[1](encoder.Finish());
+			value++;
+			queue.SubmitFrame(buffers, swapChain, fence, value);
+			Test.Assert(fence.Wait(value), "the frame's work completed");
+			Test.Assert(swapChain.Present(queue) case .Ok, "the frame was presented");
+
+			pool.DestroyEncoder(ref offscreen);
+			pool.DestroyEncoder(ref encoder);
+			pool.Reset();
 		}
 
-		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
-		encoder.TransitionTexture(swapChain.CurrentTexture, .Undefined, .Present);
-		var buffers = ICommandBuffer[1](encoder.Finish());
+		Test.Assert(!sDevice.IsLost(), "the device survived the run");
 
-		// Both fenced overloads, since both consume.
-		queue.Submit(buffers, null, 1);
-		queue.Submit(buffers, .(), .(), null, 1);
-
-		VkSemaphore acquire = .Null;
-		VkSemaphore present = .Null;
-		Test.Assert(device.ConsumePendingSwapChainSync(ref acquire, ref present),
-			"the rejected submits left the pair for a submit that will honour it");
-
-		pool.DestroyEncoder(ref encoder);
+		sDevice.DestroyFence(ref fence);
 		sDevice.DestroyCommandPool(ref pool);
 		sDevice.DestroySwapChain(ref swapChain);
 	}

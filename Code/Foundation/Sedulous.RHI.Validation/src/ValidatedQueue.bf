@@ -67,6 +67,44 @@ class ValidatedQueue : IQueue
 			signalValue);
 	}
 
+	/// The frame for a swap chain whose image is acquired; its wrapper hears that the frame went
+	/// through here, so a present whose frame went through another submit is reported.
+	public void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue)
+	{
+		if (!CheckBuffers(commandBuffers))
+			return;
+		var inner = swapChain;
+		if (let validated = swapChain as ValidatedSwapChain)
+		{
+			if (!validated.NoteFrameSubmitted())
+				ValidationLog.Error("Queue.SubmitFrame: the swap chain has no image acquired");
+			inner = validated.Inner;
+		}
+		if (waitFences.Length != waitValues.Length)
+		{
+			ValidationLog.Error("Queue.SubmitFrame: waitFences and waitValues counts do not match");
+			return;
+		}
+		if (signalFence == null)
+		{
+			ValidationLog.Error("Queue.SubmitFrame: signalFence is null");
+			return;
+		}
+
+		let unwrapped = scope IFence[waitFences.Length];
+		for (int i < waitFences.Length)
+		{
+			if (let validated = waitFences[i] as ValidatedFence)
+				unwrapped[i] = validated.Inner;
+			else
+				unwrapped[i] = waitFences[i];
+		}
+
+		mInner.SubmitFrame(commandBuffers, inner, unwrapped, waitValues, Unwrap(signalFence, signalValue),
+			signalValue);
+	}
+
 	public void WaitIdle() => mInner.WaitIdle();
 
 	public Result<ITransferBatch> CreateTransferBatch()

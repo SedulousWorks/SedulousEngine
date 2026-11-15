@@ -367,7 +367,7 @@ class MultiQueueSample : SampleApp
 		// the two queues overlap and the CPU is already ahead by the time this runs.
 		var waitFences = IFence[1](mComputeFence);
 		var waitValues = uint64[1](mComputeFenceValue);
-		mGraphicsQueue.Submit(buffers, waitFences, waitValues, mGraphicsFence,
+		mGraphicsQueue.SubmitFrame(buffers, mSwapChain, waitFences, waitValues, mGraphicsFence,
 			mGraphicsFenceValue);
 		mGraphicsPool.DestroyEncoder(ref encoder);
 	}

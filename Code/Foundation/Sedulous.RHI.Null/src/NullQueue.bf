@@ -41,6 +41,13 @@ class NullQueue : IQueue
 			fence.Signal(signalValue);
 	}
 
+	/// Nothing to order against a surface that does not exist: a frame is a fenced submit.
+	public void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue)
+	{
+		Submit(commandBuffers, waitFences, waitValues, signalFence, signalValue);
+	}
+
 	public void WaitIdle() {}
 
 	public Result<ITransferBatch> CreateTransferBatch() => .Ok(mTransferBatch);

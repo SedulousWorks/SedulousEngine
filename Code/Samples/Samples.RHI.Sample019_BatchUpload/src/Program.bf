@@ -318,7 +318,7 @@ class BatchUploadSample : SampleApp
 		let commandBuffer = encoder.Finish();
 		mFrameFenceValue++;
 		var buffers = ICommandBuffer[1](commandBuffer);
-		mGraphicsQueue.Submit(buffers, mFrameFence, mFrameFenceValue);
+		mGraphicsQueue.SubmitFrame(buffers, mSwapChain, mFrameFence, mFrameFenceValue);
 		mSwapChain.Present(mGraphicsQueue).IgnoreError();
 		mPool.DestroyEncoder(ref encoder);
 	}

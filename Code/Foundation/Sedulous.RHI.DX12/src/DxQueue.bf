@@ -97,6 +97,14 @@ class DxQueue : IQueue
 			mQueue.Signal(f.Handle, signalValue);
 	}
 
+	/// DXGI orders the back buffer against the queue's submissions itself: a frame is a fenced
+	/// submit.
+	public void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue)
+	{
+		Submit(commandBuffers, waitFences, waitValues, signalFence, signalValue);
+	}
+
 	public void WaitIdle()
 	{
 		mFenceValue++;

@@ -336,3 +336,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: a window whose swapchain goes out of date without changing size (a surface lost, a
   display change) is made again instead of staying blank, and a failed rebuild keeps the old
   swapchain and is retried, where before the next frame read freed semaphores.
+- Rendering (Vulkan): a frame is presented only after it is drawn. The swapchain's wait and signal
+  went to whichever submit came first after the acquire, and an offscreen pass could take them.
+  `IQueue.SubmitFrame` names the swapchain the frame renders; code that submits its own frames
+  (the RHI samples) calls it in place of the fenced `Submit`.

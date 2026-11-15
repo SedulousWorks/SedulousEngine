@@ -114,6 +114,43 @@ class ResourceCycleValidationTests
 		fixture.Device.DestroySwapChain(ref swapChain);
 	}
 
+	/// The acquire and present semaphores were latched on the device and taken by the first
+	/// fenced submit, whichever it was: a profiler's sync point or an offscreen pass took them,
+	/// and the image was presented before its frame was drawn. The submit that renders the
+	/// image now names it, and a present whose frame went through another submit is reported.
+	[Test]
+	public static void ASwapChainsFrameIsSubmittedWithSubmitFrame()
+	{
+		let fixture = scope ValidationFixture();
+		Test.Assert(fixture.Backend.CreateSurface((void*)(int)1) case .Ok(let surface));
+		var desc = SwapChainDesc();
+		desc.Width = 64; desc.Height = 64; desc.BufferCount = 2;
+		Test.Assert(fixture.Device.CreateSwapChain(surface, desc) case .Ok(var swapChain));
+		Test.Assert(fixture.Device.CreateFence(0) case .Ok(var fence));
+		fixture.Own(fence);
+		let queue = fixture.Device.GetQueue(.Graphics);
+		fixture.Messages.Clear();
+
+		// The frame named: presented without a report.
+		Test.Assert(swapChain.AcquireNextImage() case .Ok);
+		queue.SubmitFrame(.(), swapChain, fence, 1);
+		Test.Assert(swapChain.Present(queue) case .Ok);
+		Test.Assert(fixture.Messages.Count == 0);
+
+		// A plain fenced submit does not take the image's sync: its present is reported.
+		Test.Assert(swapChain.AcquireNextImage() case .Ok);
+		queue.Submit(.(), fence, 2);
+		swapChain.Present(queue).IgnoreError();
+		Test.Assert(fixture.Messages.HasError("not submitted with Queue.SubmitFrame"));
+
+		// A frame for a swap chain with no image acquired is reported.
+		fixture.Messages.Clear();
+		queue.SubmitFrame(.(), swapChain, fence, 3);
+		Test.Assert(fixture.Messages.HasError("no image acquired"));
+
+		fixture.Device.DestroySwapChain(ref swapChain);
+	}
+
 	/// The acquire, present and resize cycle has a strict order that backends enforce with
 	/// a hang.
 	[Test]
@@ -146,8 +183,8 @@ class ResourceCycleValidationTests
 		Test.Assert(swapChain.Resize(128, 128) case .Err);
 		Test.Assert(fixture.Messages.HasError("cannot resize while an image is acquired"));
 
+		swapChain.Present(queue).IgnoreError(); // no frame was submitted: reported, and not the subject here
 		fixture.Messages.Clear();
-		swapChain.Present(queue).IgnoreError();
 		Test.Assert(swapChain.Resize(128, 128) case .Ok, "after presenting, it resizes");
 		Test.Assert(fixture.Messages.Count == 0);
 

@@ -72,6 +72,13 @@ sealed class WebGpuQueue : IQueue
 		NoteAndSignal(signalFence, signalValue, index);
 	}
 
+	/// WebGPU orders the surface's texture against the queue itself: a frame is a fenced submit.
+	public void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue)
+	{
+		Submit(commandBuffers, waitFences, waitValues, signalFence, signalValue);
+	}
+
 	public void WaitIdle()
 	{
 		// The same heap record and orphan on timeout the fence uses: a pump that gives

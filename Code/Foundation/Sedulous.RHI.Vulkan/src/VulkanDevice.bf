@@ -27,9 +27,6 @@ class VulkanDevice : IDevice
 	private bool mSwapchainMutableFormat = false;
 	private bool mDestroyed = false;
 	private bool mLost = false;
-	private VkSemaphore mPendingAcquire = .Null;
-	private VkSemaphore mPendingPresent = .Null;
-	private bool mHasPendingSync = false;
 
 	/// Reads the device's timestamp and the host clock together; null without the extension.
 	private VulkanNative.vkGetCalibratedTimestampsKHRFunction mGetCalibratedTimestamps = null;
@@ -460,33 +457,6 @@ class VulkanDevice : IDevice
 	public bool IsLost() => mLost;
 
 	public void MarkLost() => mLost = true;
-
-	/// Leaves the semaphores an acquire produced for the next fence-signalling submit.
-	///
-	/// The device is the meeting point because the swap chain does not know which
-	/// submission will draw into the image it just handed out, and the queue does not know
-	/// a swap chain exists.
-	public void SetPendingSwapChainSync(VkSemaphore acquire, VkSemaphore present)
-	{
-		mPendingAcquire = acquire;
-		mPendingPresent = present;
-		mHasPendingSync = true;
-	}
-
-	/// Takes those semaphores, if an acquire left any.
-	///
-	/// CONSUMING: only the first submit after an acquire waits on it, and every later
-	/// submit in the frame runs unsynchronised against presentation, which is correct
-	/// because they are already ordered behind the first on the same queue.
-	public bool ConsumePendingSwapChainSync(ref VkSemaphore acquire, ref VkSemaphore present)
-	{
-		if (!mHasPendingSync)
-			return false;
-		acquire = mPendingAcquire;
-		present = mPendingPresent;
-		mHasPendingSync = false;
-		return true;
-	}
 
 	public void WaitIdle()
 	{

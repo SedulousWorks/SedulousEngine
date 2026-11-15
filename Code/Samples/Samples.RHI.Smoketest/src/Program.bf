@@ -324,7 +324,7 @@ class Program
 				let commandBuffer = encoder.Finish();
 				var buffers = ICommandBuffer[1](commandBuffer);
 				fenceValue++;
-				graphics.Submit(buffers, fence, fenceValue);
+				graphics.SubmitFrame(buffers, swapChain, fence, fenceValue);
 				pool.DestroyEncoder(ref encoder);
 			}
 
@@ -584,7 +584,7 @@ class Program
 			return;
 		var buffers = ICommandBuffer[1](commandBuffer);
 		let graphics = device.GetQueue(.Graphics);
-		graphics.Submit(buffers, fence, 1);
+		graphics.SubmitFrame(buffers, swapChain, fence, 1);
 		fence.Wait(1);
 		swapChain.Present(graphics).IgnoreError();
 		Console.WriteLine("null frame completed");

@@ -7,8 +7,8 @@ namespace Sedulous.RHI.Vulkan;
 
 /// One Vulkan queue.
 ///
-/// Submission is always a single VkSubmitInfo: the RHI's three overloads differ only in
-/// what they wait on and signal, not in how the command buffers are batched.
+/// Submission is always a single VkSubmitInfo: the RHI's overloads differ only in what they
+/// wait on and signal, not in how the command buffers are batched.
 class VulkanQueue : IQueue
 {
 	private VkQueue mQueue;
@@ -46,21 +46,6 @@ class VulkanQueue : IQueue
 	}
 
 	/// Submits with no synchronisation.
-	/// Takes the swap chain's pending acquire and present semaphores, if this queue is the
-	/// one they belong to.
-	///
-	/// AcquireNextImage latches them on the DEVICE, because the queue does not know a swap
-	/// chain exists. They belong to the submission that renders the acquired image, which
-	/// is a GRAPHICS submission: without the queue check whichever queue submitted first
-	/// took them, so an async compute submit would wait on the acquire for nothing and
-	/// signal "present" before the frame had been drawn.
-	private bool TakeSwapChainSync(ref VkSemaphore acquire, ref VkSemaphore present)
-	{
-		if (mType != .Graphics)
-			return false;
-		return mDevice.ConsumePendingSwapChainSync(ref acquire, ref present);
-	}
-
 	public void Submit(Span<ICommandBuffer> commandBuffers)
 	{
 		if (commandBuffers.IsEmpty)
@@ -80,68 +65,49 @@ class VulkanQueue : IQueue
 	}
 
 	/// Submits and signals the fence's timeline when the work completes.
-	///
-	/// A swap chain acquire and present are interleaved HERE when one is pending, because
-	/// this is the submission the presented image was rendered by: the acquire semaphore is
-	/// waited on and the present semaphore signalled alongside the timeline value.
 	public void Submit(Span<ICommandBuffer> commandBuffers, IFence signalFence,
 		uint64 signalValue)
 	{
-		if (commandBuffers.IsEmpty)
-			return;
-
-		let fence = signalFence as VulkanFence;
-		if (fence == null)
-			return;
-
-		let handles = scope VkCommandBuffer[commandBuffers.Length];
-		let count = Unwrap(commandBuffers, handles);
-		if (count == 0)
-			return;
-
-		VkSemaphore acquireSemaphore = .Null;
-		VkSemaphore presentSemaphore = .Null;
-		let hasSwapChainSync = TakeSwapChainSync(ref acquireSemaphore, ref presentSemaphore);
-
-		var waitSemaphores = VkSemaphore[1](acquireSemaphore);
-		// The wait is on the colour attachment output stage: everything before it can run
-		// before the image is even acquired.
-		var waitStages = VkPipelineStageFlags[1](.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		// A binary semaphore carries no value, so its slot is zero and ignored.
-		var waitValues = uint64[1](0);
-
-		var signalSemaphores = VkSemaphore[2](fence.Handle, presentSemaphore);
-		var signalValues = uint64[2](signalValue, 0);
-
-		VkTimelineSemaphoreSubmitInfo timelineInfo = .();
-		timelineInfo.signalSemaphoreValueCount = hasSwapChainSync ? 2 : 1;
-		timelineInfo.pSignalSemaphoreValues = &signalValues[0];
-		timelineInfo.waitSemaphoreValueCount = hasSwapChainSync ? 1 : 0;
-		timelineInfo.pWaitSemaphoreValues = &waitValues[0];
-
-		VkSubmitInfo submitInfo = .();
-		submitInfo.pNext = &timelineInfo;
-		submitInfo.commandBufferCount = (uint32)count;
-		submitInfo.pCommandBuffers = &handles[0];
-		submitInfo.waitSemaphoreCount = hasSwapChainSync ? 1 : 0;
-		submitInfo.pWaitSemaphores = hasSwapChainSync ? &waitSemaphores[0] : null;
-		submitInfo.pWaitDstStageMask = hasSwapChainSync ? &waitStages[0] : null;
-		submitInfo.signalSemaphoreCount = hasSwapChainSync ? 2 : 1;
-		submitInfo.pSignalSemaphores = &signalSemaphores[0];
-
-		if (VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null) == .VK_ERROR_DEVICE_LOST)
-			mDevice.MarkLost();
+		SubmitSignalled(commandBuffers, .(), .(), signalFence, signalValue, .Null, .Null);
 	}
 
 	/// Submits after each wait fence reaches its value, then signals.
 	public void Submit(Span<ICommandBuffer> commandBuffers, Span<IFence> waitFences,
 		Span<uint64> waitValues, IFence signalFence, uint64 signalValue)
 	{
+		SubmitSignalled(commandBuffers, waitFences, waitValues, signalFence, signalValue, .Null, .Null);
+	}
+
+	/// The frame that renders the swap chain's acquired image: the image's acquire semaphore is
+	/// waited on and its present semaphore signalled alongside the timeline value. Only this
+	/// submit takes them, whatever else was submitted since the acquire.
+	public void SubmitFrame(Span<ICommandBuffer> commandBuffers, ISwapChain swapChain, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue)
+	{
+		VkSemaphore acquireSemaphore = .Null;
+		VkSemaphore presentSemaphore = .Null;
+		if (let chain = swapChain as VulkanSwapChain)
+		{
+			acquireSemaphore = chain.CurrentAcquireSemaphore;
+			presentSemaphore = chain.CurrentPresentSemaphore;
+		}
+		SubmitSignalled(commandBuffers, waitFences, waitValues, signalFence, signalValue, acquireSemaphore,
+			presentSemaphore);
+	}
+
+	/// The fenced submits' one body: waits on `waitFences` (and `acquireSemaphore`, when a frame
+	/// names its swap chain), signals `signalFence` (and `presentSemaphore`).
+	private void SubmitSignalled(Span<ICommandBuffer> commandBuffers, Span<IFence> waitFences,
+		Span<uint64> waitValues, IFence signalFence, uint64 signalValue, VkSemaphore acquireSemaphore,
+		VkSemaphore presentSemaphore)
+	{
 		if (commandBuffers.IsEmpty)
 			return;
 		if (waitFences.Length != waitValues.Length)
 			return;
 
+		// A fenced submit without a fence is a contract violation (the validation layer
+		// reports it; the plain overload is the unsignalled path).
 		let fence = signalFence as VulkanFence;
 		if (fence == null)
 			return;
@@ -151,18 +117,8 @@ class VulkanQueue : IQueue
 		if (count == 0)
 			return;
 
-		// This overload consumes the pending acquire too: a frame whose only graphics
-		// submission waits on another queue's fence, which is exactly what Sample017 does,
-		// would otherwise leave nobody to wait on the acquire and nobody to signal the
-		// present. What matters is the QUEUE, not which overload was reached for.
-		//
-		// AFTER the rejections above, so a submit that is refused leaves the pair latched
-		// for the submit that will honour it.
-		VkSemaphore acquireSemaphore = .Null;
-		VkSemaphore presentSemaphore = .Null;
-		let hasSwapChainSync = TakeSwapChainSync(ref acquireSemaphore, ref presentSemaphore);
-
-		let waitCount = waitFences.Length + (hasSwapChainSync ? 1 : 0);
+		let isFrame = acquireSemaphore != .Null;
+		let waitCount = waitFences.Length + (isFrame ? 1 : 0);
 		let waitSemaphores = scope VkSemaphore[waitCount == 0 ? 1 : waitCount];
 		let values = scope uint64[waitCount == 0 ? 1 : waitCount];
 		// Every fence wait is at the top of the pipe: the RHI does not express a finer
@@ -180,7 +136,7 @@ class VulkanQueue : IQueue
 				actualWaits++;
 			}
 		}
-		if (hasSwapChainSync)
+		if (isFrame)
 		{
 			waitSemaphores[actualWaits] = acquireSemaphore;
 			// A binary semaphore carries no value, so its slot is zero and ignored.
@@ -193,7 +149,7 @@ class VulkanQueue : IQueue
 
 		var signalSemaphores = VkSemaphore[2](fence.Handle, presentSemaphore);
 		var signalValues = uint64[2](signalValue, 0);
-		let signalCount = hasSwapChainSync ? 2 : 1;
+		let signalCount = (isFrame && (presentSemaphore != .Null)) ? 2 : 1;
 
 		VkTimelineSemaphoreSubmitInfo timelineInfo = .();
 		timelineInfo.waitSemaphoreValueCount = (uint32)actualWaits;
