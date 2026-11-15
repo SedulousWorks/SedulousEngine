@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Script.AngelScript.Pipeline.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Profiler" = "*"
 "Sedulous.Script" = "*"
 "Sedulous.Script.AngelScript" = "*"
 "Sedulous.Script.Resource" = "*"

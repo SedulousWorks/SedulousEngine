@@ -7,6 +7,7 @@ using Sedulous.GUI;
 using Sedulous.Runtime.Client;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
+using Sedulous.Profiler; // the page's check
 
 namespace Sedulous.Editor.App;
 
@@ -191,37 +192,40 @@ abstract class CodeAssetPage : AssetObjectPage
 	/// Checks the code now (the page's own check), the problems shown in the list and on their lines.
 	public void CheckNow()
 	{
-		mCheckIn = 0.0f;
-		ClearAndDeleteItems!(mFound);
-		if (mRead)
-			CheckCode(Text(.. scope .()), mFound);
-		else
+		using (ProfileScope("Editor.CodeCheck"))
 		{
-			let message = scope String();
-			if (mFileName.IsEmpty)
-				message.Append("The asset names no source file");
-			else
-				message.AppendF("The source file {} is not there (the code cannot be edited)", mFileName);
-			mFound.Add(new CodeProblem(.Error, message, "", 0, 0, false));
-		}
-		let marks = scope List<CodeDiagnostic>();
-		defer { ClearAndDeleteItems!(marks); }
-		for (let p in mFound)
-		{
-			if (p.File.IsEmpty && mRead && (mCode != null))
-				marks.Add(new CodeDiagnostic(RangeOf(p), p.Severity, p.Message));
-		}
-		if (mCode != null)
-			mCode.SetDiagnostics(marks);
-		if (mProblems != null)
-		{
-			let clean = scope String();
+			mCheckIn = 0.0f;
+			ClearAndDeleteItems!(mFound);
 			if (mRead)
-				CleanSummary(clean);
-			mProblems.SetClean(clean);
-			mProblems.Show(mFound);
+				CheckCode(Text(.. scope .()), mFound);
+			else
+			{
+				let message = scope String();
+				if (mFileName.IsEmpty)
+					message.Append("The asset names no source file");
+				else
+					message.AppendF("The source file {} is not there (the code cannot be edited)", mFileName);
+				mFound.Add(new CodeProblem(.Error, message, "", 0, 0, false));
+			}
+			let marks = scope List<CodeDiagnostic>();
+			defer { ClearAndDeleteItems!(marks); }
+			for (let p in mFound)
+			{
+				if (p.File.IsEmpty && mRead && (mCode != null))
+					marks.Add(new CodeDiagnostic(RangeOf(p), p.Severity, p.Message));
+			}
+			if (mCode != null)
+				mCode.SetDiagnostics(marks);
+			if (mProblems != null)
+			{
+				let clean = scope String();
+				if (mRead)
+					CleanSummary(clean);
+				mProblems.SetClean(clean);
+				mProblems.Show(mFound);
+			}
+			OnCodeChecked();
 		}
-		OnCodeChecked();
 	}
 
 	/// Takes the code to `problem` (its own code's: an include's has no place here).

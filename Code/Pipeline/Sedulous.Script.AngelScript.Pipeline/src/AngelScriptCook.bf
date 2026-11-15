@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Profiler; // a check's stages
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
 using Sedulous.Script.Pipeline;
@@ -105,14 +106,19 @@ class AngelScriptCook : IScriptLanguageCook
 
 	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems)
 	{
-		let runtime = scope AngelScriptRuntime();
-		runtime.Bind(mSurface);
+		AngelScriptRuntime runtime;
+		using (ProfileScope("Script.Cook.MakeEngine"))
+			runtime = scope:: AngelScriptRuntime();
+		using (ProfileScope("Script.Cook.RegisterApi"))
+			runtime.Bind(mSurface);
 		ClearAndDeleteItems!(runtime.Problems);
 
 		const String cModule = "cook";
 		// Compiled without running: the script's global initializers are the game's to run when
 		// it loads the script, under the call budget.
-		let ok = runtime.Compile(cModule, sourceName, source, false);
+		bool ok;
+		using (ProfileScope("Script.Cook.Compile"))
+			ok = runtime.Compile(cModule, sourceName, source, false);
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		if (!ok)
@@ -142,11 +148,16 @@ class AngelScriptCook : IScriptLanguageCook
 	/// Through the runtime's Check, which compiles as Cook does and keeps no module.
 	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden)
 	{
-		let runtime = scope AngelScriptRuntime();
-		runtime.Bind(mSurface, default, hidden);
+		AngelScriptRuntime runtime;
+		using (ProfileScope("Script.Cook.MakeEngine"))
+			runtime = scope:: AngelScriptRuntime();
+		using (ProfileScope("Script.Cook.RegisterApi"))
+			runtime.Bind(mSurface, default, hidden);
 		ClearAndDeleteItems!(runtime.Problems);
 
-		let ok = runtime.Check(sourceName, source);
+		bool ok;
+		using (ProfileScope("Script.Cook.Compile"))
+			ok = runtime.Check(sourceName, source);
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		outClassName.Clear();
