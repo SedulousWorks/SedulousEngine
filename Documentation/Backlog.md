@@ -40,6 +40,20 @@ sources. On Windows, `./build-all-native.ps1 build` rebuilds every one; commit t
 folders it writes. AngelScript's wasm32 archive is outdated too (`./build-all-native.sh wasm
 angelscript`), which keeps every web build from linking.
 
+### Web: Firefox refuses read-only render bundles in read-only depth passes
+Firefox (160) drops a render bundle descriptor's `depthReadOnly` and `stencilReadOnly`: its
+`Device::CreateRenderBundleEncoder` (`dom/webgpu/Device.cpp`) never copies them, so a bundle
+recorded read-only reaches wgpu as one that may write, and every submit fails with "Render bundle
+has incompatible read-only flags". Chrome, Opera, Safari and native wgpu are fine, and Firefox's
+own conformance expectations mark those cases as failing; no Bugzilla bug was found (2026-11-15),
+and filing one is worth it. What hits it here: every pass but the opaque one holds the scene depth
+read-only and executes bundles recorded read-only (`Foundation/Sedulous.Render/src/ForwardPass.bf:349`).
+The fix when taken: on WebGPU those passes record their draws straight into the pass, chosen by a
+device capability the WebGPU backend clears, so no bundle reaches a read-only pass; Vulkan and DX12
+keep bundles. Making their depth writable instead is out: the transparent pass samples the opaque
+depth. The backend now names a bundle that does not fit its pass (`WebGpuRenderPassEncoder`), which
+catches a mismatch of our own, not this one: our flags are right.
+
 ## The Raptor sync
 
 The sync from Raptor 0b60c738 to 8be4094d, and the PaperKid rebuild after it, are done; their
