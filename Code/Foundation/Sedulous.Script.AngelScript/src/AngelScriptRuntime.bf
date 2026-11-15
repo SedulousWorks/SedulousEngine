@@ -176,6 +176,8 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 			if (sPrepared)
 				return;
+			// Counted and capped before anything of the library allocates.
+			AS.asc_memory_install();
 			AS.asPrepareMultithread(null);
 			sPrepared = true;
 		}
@@ -236,6 +238,8 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 			mCallClock.Restart();
 			mLinesSinceCheck = 0;
+			// The library's memory is one for the process: held to the budget of the call running.
+			AS.asc_memory_set_cap((uint)Budget.HeapBytes);
 		}
 		mExecuteDepth++;
 	}

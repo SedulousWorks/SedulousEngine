@@ -38,6 +38,9 @@ static class AS
 	[CLink] public static extern char8* asc_builder_property_metadata(Builder* builder, int32 typeId, int32 propertyIndex, int32 entry);
 
 	// ---- engine ----
+	[CLink] public static extern void asc_memory_install();
+	[CLink] public static extern void asc_memory_set_cap(uint bytes);
+	[CLink] public static extern uint asc_memory_held();
 	[CLink] public static extern Engine* asc_engine_create();
 	/// AngelScript's own C API: frees the CALLING thread's local data, which the library keeps
 	/// per thread and otherwise frees only for the thread that releases the last engine. A

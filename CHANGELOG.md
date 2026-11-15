@@ -118,6 +118,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting (AngelScript): a script that allocates past its heap budget (512 MB) fails its call with
+  "Out of memory"; it took the machine's memory. The budget is one for the whole process.
 - Scripting: reloading a behaviour script while the game runs no longer keeps every earlier
   version loaded until the play ends; one goes once nothing made from it is still running.
 - Scripting (AngelScript): `#include` works: it resolves against the including file, inside the

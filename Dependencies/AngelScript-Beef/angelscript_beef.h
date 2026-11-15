@@ -38,6 +38,12 @@ typedef void (*asc_message_fn)(const char* section, int row, int col, int type, 
 typedef void (*asc_generic_fn)(asc_generic* gen, void* aux, void* user);
 
 /* ---- engine ---- */
+/* AngelScript's memory, process-wide: counted, and capped (a block past the cap is refused).
+   Installed by the first engine made, or before asPrepareMultithread by whoever calls it. */
+void   asc_memory_install(void);
+void   asc_memory_set_cap(size_t bytes);
+size_t asc_memory_held(void);
+
 asc_engine* asc_engine_create(void);
 void        asc_engine_release(asc_engine* engine);
 void        asc_engine_set_message_callback(asc_engine* engine, asc_message_fn fn, void* user);

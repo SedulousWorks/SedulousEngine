@@ -93,4 +93,30 @@ static class BudgetTests
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Call("fine", "double read()", default, ref r) && (r.AsNumber == 7), "the global was set");
 	}
+
+	/// A script that asks for more memory than its budget fails its call, and the runtime goes
+	/// on. AngelScript's memory was malloc's without a cap: a script that grew without end took
+	/// the machine's.
+	[Test]
+	public static void AScriptPastItsHeapBudgetFailsItsCallAndTheRuntimeGoesOn()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+		vm.Budget = .() { HeapBytes = 64 * 1024 * 1024 };
+		Test.Assert(vm.Compile("memory", "memory.as", """
+			double grow() { array<double> a; a.resize(100000000); return a.length(); }
+			double small() { array<double> a; a.resize(1000); return a.length(); }
+			"""), vm.Problems.IsEmpty ? "" : vm.Problems[0]);
+		ClearAndDeleteItems!(vm.Problems);
+		var r = ScriptValue.Nil;
+		Test.Assert(!vm.Call("memory", "double grow()", default, ref r), "800 MB asked for");
+		Test.Assert(AnyProblem(vm, "Out of memory"), vm.Problems.IsEmpty ? "" : vm.Problems[0]);
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(vm.Call("memory", "double small()", default, ref r) && (r.AsFloat == 1000), "the runtime goes on");
+		// The cap is the process's: the next call of any runtime sets its own, the default here.
+		vm.Budget = .();
+		Test.Assert(vm.Call("memory", "double small()", default, ref r));
+	}
 }

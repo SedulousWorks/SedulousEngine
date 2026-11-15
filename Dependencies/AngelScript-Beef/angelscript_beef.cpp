@@ -3,6 +3,9 @@
 #include "angelscript_beef.h"
 
 #include <angelscript.h>
+#include <atomic>
+#include <cstdlib>
+#include <cstring>
 #include <new>
 #include <string>
 #include <vector>
@@ -60,12 +63,65 @@ namespace
 	inline asc_function*      Wrap(asIScriptFunction* f) { return reinterpret_cast<asc_function*>(f); }
 }
 
+/* AngelScript's memory. The library takes one pair of functions for the whole process, so this is
+   process-wide: every block carries its size in a header, the bytes held are counted, and a block
+   that would take them past the cap is refused, so a script that allocates without end fails its
+   call ("Out of memory") instead of taking the machine's memory. */
+namespace
+{
+	constexpr size_t kMemoryHeader = 16; /* keeps the block 16-aligned, as malloc's is */
+	std::atomic<size_t> g_memoryHeld{0};
+	std::atomic<size_t> g_memoryCap{size_t(512) << 20};
+
+	void* CountedAlloc(size_t size)
+	{
+		const size_t held = g_memoryHeld.fetch_add(size, std::memory_order_relaxed) + size;
+		if (held > g_memoryCap.load(std::memory_order_relaxed))
+		{
+			g_memoryHeld.fetch_sub(size, std::memory_order_relaxed);
+			return nullptr;
+		}
+		unsigned char* block = static_cast<unsigned char*>(std::malloc(size + kMemoryHeader));
+		if (block == nullptr)
+		{
+			g_memoryHeld.fetch_sub(size, std::memory_order_relaxed);
+			return nullptr;
+		}
+		std::memcpy(block, &size, sizeof(size));
+		return block + kMemoryHeader;
+	}
+
+	void CountedFree(void* memory)
+	{
+		if (memory == nullptr)
+			return;
+		unsigned char* block = static_cast<unsigned char*>(memory) - kMemoryHeader;
+		size_t size = 0;
+		std::memcpy(&size, block, sizeof(size));
+		g_memoryHeld.fetch_sub(size, std::memory_order_relaxed);
+		std::free(block);
+	}
+}
+
 extern "C" {
+
+/* ---- memory ---- */
+
+void asc_memory_install(void)
+{
+	/* Once, before anything of the library allocates: a block must be freed by the functions
+	   that made it. */
+	static const int installed = asSetGlobalMemoryFunctions(CountedAlloc, CountedFree);
+	(void)installed;
+}
+void asc_memory_set_cap(size_t bytes) { g_memoryCap.store(bytes, std::memory_order_relaxed); }
+size_t asc_memory_held(void) { return g_memoryHeld.load(std::memory_order_relaxed); }
 
 /* ---- engine ---- */
 
 asc_engine* asc_engine_create(void)
 {
+	asc_memory_install();
 	asIScriptEngine* engine = asCreateScriptEngine();
 	if (engine == nullptr)
 		return nullptr;
