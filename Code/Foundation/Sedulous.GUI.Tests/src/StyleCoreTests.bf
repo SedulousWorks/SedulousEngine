@@ -200,4 +200,30 @@ class StyleCoreTests
 		Test.Assert(card.Box.Shadows.Count == 1);
 		Test.Assert(Near(card.Box.Shadows[0].ShadowColor.G, 1.0f));
 	}
+
+	/// A var() that expands past the size cap leaves its declaration out. Each variable naming
+	/// the one before twice doubles per level: within the depth limit a short sheet expanded to
+	/// megabytes.
+	[Test]
+	public static void AVarExpandingPastTheSizeCapLeavesItsDeclarationOut()
+	{
+		let css = scope String("box { --a0: xxxxxxxx; ");
+		for (int i = 1; i <= 13; i++)
+			css.AppendF("--a{}: var(--a{}) var(--a{}); ", i, i - 1, i - 1);
+		css.Append("font-family: var(--a13); }");
+		let w = StyleFixtures.Widget("box");
+		defer w.ReleaseRef();
+
+		let big = scope StyleSheet();
+		CSSParser.Parse(css, big);
+		let large = scope ResolvedStyle();
+		big.Resolve(w, large);
+		Test.Assert(!large.Has("font-family")); // 73 KB, past 64 KB
+
+		let small = scope StyleSheet();
+		CSSParser.Parse("box { --a0: serif; --a1: var(--a0) var(--a0); font-family: var(--a1); }", small);
+		let fits = scope ResolvedStyle();
+		small.Resolve(w, fits);
+		Test.Assert(fits.Has("font-family"));
+	}
 }

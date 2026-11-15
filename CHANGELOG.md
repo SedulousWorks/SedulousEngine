@@ -163,6 +163,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   took the files of a `Rock.2` beside it (the name the editor gives a second `Rock`), and an export
   that pruned or stripped `Rock` dropped or packed `Rock.2`'s as well. A data stream's name may no
   longer contain a dot.
+- GUI: a declaration whose `var()` references expand past 64 KB is left out, as a cycle is;
+  variables that each name the one before twice expanded a short sheet to megabytes.
 - GUI: a selector whose `:not()`, `:is()` or `:where()` nest more than 32 deep matches nothing
   instead of overflowing the stack, and an `:nth-child()` number too large for 32 bits is invalid
   instead of wrapping to a small one.

@@ -241,11 +241,16 @@ static
 
 	// === var() ===
 
+	/// The longest a substituted value may grow. Variables that each reference the one before
+	/// twice double per level, so the depth limit alone let a short sheet expand to megabytes.
+	public const int MaxSubstitutedLength = 64 * 1024;
+
 	/// Substitutes every var(--name[, fallback]) in `value`, anywhere and nested, through
 	/// `lookup` (true with a custom property's value appended to its string, false when it has
 	/// none), whose result is itself substituted. `outText` is cleared and receives the result.
 	/// False when a reference has no value and no fallback, or the references run deeper than a
-	/// cycle could (the declaration is then invalid, as CSS has it).
+	/// cycle could, or the result grows past MaxSubstitutedLength (the declaration is then
+	/// invalid, as CSS has it).
 	public static bool SubstituteVariables(StringView value, delegate bool(StringView name, String outValue) lookup, String outText,
 		int32 depth = 0)
 	{
@@ -258,6 +263,8 @@ static
 			let atVar = (i + 4 <= value.Length) && (value.Substring(i, 4) == "var(") && ((i == 0) || !ParseUtil.IsIdentChar(value[i - 1]));
 			if (!atVar)
 			{
+				if (outText.Length >= MaxSubstitutedLength)
+					return false;
 				outText.Append(value[i]);
 				i++;
 				continue;
@@ -297,6 +304,8 @@ static
 			{
 				return false;
 			}
+			if (outText.Length + resolved.Length > MaxSubstitutedLength)
+				return false; // the declaration is invalid, as for a cycle
 			outText.Append(resolved);
 			i = close + 1;
 		}
