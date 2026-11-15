@@ -196,7 +196,7 @@ static class ExportDriver
 				outVariants.Add(variant);
 			}
 		}
-		else if (platform.StartsWith("Android"))
+		else if (ExportAndroid.IsAndroidPlatform(platform))
 		{
 			// One pak, its textures ASTC (Android's GPUs do not read BC), cooked into a sibling
 			// of the host Cooked/ as Sedulous.Tools.Cook --target android does.
@@ -570,6 +570,18 @@ static class ExportDriver
 			result.Refusal.Set(choice.Refusal);
 			return .Err(.InvalidArgument);
 		}
+		// An Android app: what its preset gives the app and what its build needs, before any cook.
+		let android = ExportAndroid.IsAndroidPlatform(preset.Platform) && !contentOnly;
+		if (android)
+		{
+			if (ExportAndroid.CheckExport(project, preset, template, result.Refusal) && choice.OwnPlayer)
+				result.Refusal.Set("a game with its own native packages does not export to Android yet: the project's player is not built for it");
+			if (!result.Refusal.IsEmpty)
+			{
+				GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, result.Refusal);
+				return .Err(.InvalidArgument);
+			}
+		}
 		// A package of the project's is compiled into the project's own player, so that player
 		// ships, built for the preset's config and newer than every file of the packages; the
 		// template still gives the sidecars.
@@ -601,6 +613,19 @@ static class ExportDriver
 		let subdir = preset.OutputSubdir.IsEmpty ? ExportStaging.SanitizeName(preset.Name, .. scope :: .()) : StringView(preset.OutputSubdir);
 		PathJoin(outRoot, subdir, result.OutputDir);
 		CreateDirectory(result.OutputDir);
+		// An Android app carries the game inside it, so its content is exported into the app's work
+		// folder (fresh each time) and the dist gets the app.
+		let workDir = scope String();
+		let contentDir = scope String(result.OutputDir);
+		if (android)
+		{
+			ExportAndroid.WorkDir(project, preset, workDir);
+			PathJoin(workDir, "content", contentDir..Clear());
+			if (DirectoryExists(contentDir))
+				RemoveDirectoryRecursive(contentDir);
+			if (!CreateDirectory(contentDir))
+				return .Err(.Internal);
+		}
 
 		var prune = preset.PruneToReachable;
 		if (prune && (scanner == null) && (precomputedReachableRoots == null))
@@ -632,22 +657,22 @@ static class ExportDriver
 				let reachable = scope HashSet<Guid>();
 				for (let g in reachableList)
 					reachable.Add(g);
-				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, reachable, seeds, result.Pruning, variants, preset.IncludeShaderSource);
+				contentStatus = ExportContent(project, contentDir, result.Content, onProgress, sceneStreams, reachable, seeds, result.Pruning, variants, preset.IncludeShaderSource);
 			}
 		}
 		else if (cook)
 		{
-			contentStatus = ExportProject(project, result.OutputDir, builders, rebuild, result.Content, onProgress, sceneStreams, variants, preset.IncludeShaderSource);
+			contentStatus = ExportProject(project, contentDir, builders, rebuild, result.Content, onProgress, sceneStreams, variants, preset.IncludeShaderSource);
 		}
 		else
 		{
 			contentStatus = CookVariantTargets(project, builders, variants, rebuild, onProgress);
 			if (contentStatus case .Ok)
-				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, null, null, null, variants, preset.IncludeShaderSource);
+				contentStatus = ExportContent(project, contentDir, result.Content, onProgress, sceneStreams, null, null, null, variants, preset.IncludeShaderSource);
 		}
 		if (contentStatus case .Err)
 			return .Err(.Internal);
-		if (ApplyPresetOverrides(result.OutputDir, preset) case .Err)
+		if (ApplyPresetOverrides(contentDir, preset) case .Err)
 			return .Err(.Internal);
 
 		if (contentOnly)
@@ -659,6 +684,29 @@ static class ExportDriver
 			result.FilesStaged += 2; // the pack and the marker
 			GlobalLog(.Information, "Export: preset '{}': content only, at '{}' ({} shader variants)", preset.Name, result.OutputDir, shaderVariants);
 			return .Ok;
+		}
+
+		if (android)
+		{
+			if (onProgress != null)
+				onProgress("Cooking shaders...", 0.88f);
+			if (ExportStaging.StageShaderPack(contentDir, dataRoot, preset.Platform, project.CookedDb, result.Content.Shaders,
+				let shaderVariants) case .Err)
+				return .Err(.Internal);
+			GlobalLog(.Information, "Export: the app's shader pack has {} variants", shaderVariants);
+			if (onProgress != null)
+				onProgress("Staging the Android app...", 0.9f);
+			if (ExportAndroid.StageApp(project, preset, template, contentDir, dataRoot, workDir) case .Err(let staged))
+				return .Err(staged);
+			if (onProgress != null)
+				onProgress("Building the Android app with Gradle (this can take a while)...", 0.92f);
+			if (ExportAndroid.BuildApp(project, preset, template, workDir, result.OutputDir, result) case .Err(let built))
+				return .Err(built);
+			// The pruning report beside the app, where a desktop dist has it.
+			let report = PathJoin(contentDir, "export-report.txt", .. scope .());
+			if (FileExists(report))
+				ExportTemplates.CopyFile(contentDir, "export-report.txt", result.OutputDir, "export-report.txt");
+			return Finish(project, preset, hooks, result, onProgress);
 		}
 
 		if (onProgress != null)
@@ -713,18 +761,26 @@ static class ExportDriver
 					GlobalLog(.Warning, "Export: symbol file '{}' not found in template '{}'", symbol, template.Id);
 			}
 		}
+		// The deploy files of the plugins the project enables on this platform, beside the player.
+		if (!ExportPlugins.StageDeployFiles(project, template, choice, preset.Platform, result.OutputDir, ref result.FilesStaged))
+		{
+			result.Refusal.Set("a plugin's deploy file is missing (see the log)");
+			return .Err(.NotFound);
+		}
+		return Finish(project, preset, hooks, result, onProgress);
+	}
+
+	/// The dist's last steps, whichever player it runs: the preset's extra files, then the
+	/// project's plugins' export hooks.
+	private static Result<void, ErrorCode> Finish(EditorProject project, ExportPreset preset, ExportPluginServices hooks,
+		ExportResult result, ExportProgress onProgress)
+	{
 		for (let extra in preset.AdditionalFiles)
 		{
 			if (ExportTemplates.CopyFile(project.Directory, extra, result.OutputDir, PathFilename(extra, .. scope .())))
 				result.FilesStaged++;
 			else
 				GlobalLog(.Warning, "Export: additional file '{}' not found", extra);
-		}
-		// The deploy files of the plugins the project enables on this platform, beside the player.
-		if (!ExportPlugins.StageDeployFiles(project, template, choice, preset.Platform, result.OutputDir, ref result.FilesStaged))
-		{
-			result.Refusal.Set("a plugin's deploy file is missing (see the log)");
-			return .Err(.NotFound);
 		}
 		// The project's plugins' export hooks, over the staged dist.
 		if ((hooks != null) && (hooks.Count > 0))

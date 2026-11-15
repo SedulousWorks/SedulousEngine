@@ -288,6 +288,29 @@ static class AssetCreateTests
 		Test.Assert(accepted == "Props");
 		Test.Assert(!prompt.IsOpen);
 		Test.Assert(bed.Top.GetGroup("Props") == null, "its request makes it, not it");
+		Test.Assert(!name.IsPassword, "a name shows as typed");
+
+		// A secret (a keystore's password): the field masks it, and the accepted text is what was typed.
+		let typed = scope String();
+		let secret = new NameRequest();
+		secret.Title.Set("Keystore Password");
+		secret.Accept.Set("Export");
+		secret.Secret = true;
+		secret.Refusal = new (text, outWhy) => { if (text.IsEmpty) outWhy.Append("Type the keystore's password."); };
+		secret.Accepted = new [=typed] (text) => { typed.Set(text); };
+		let asking = NamePrompt.Open(scene.Root, PagesBed.LoadMarkup(NamePrompt.cMarkupPath), secret);
+		Test.Assert(asking != null);
+		defer delete asking;
+		scene.Layout();
+		let field = asking.Window.FindElement("name-prompt-name") as TextField;
+		let go = asking.Window.FindElement("name-prompt-accept") as Sedulous.GUI.Button;
+		Test.Assert((field != null) && (go != null));
+		Test.Assert(field.IsPassword);
+		Test.Assert(!go.Enabled);
+		scene.Type(field, "hunter2");
+		Test.Assert(go.Enabled);
+		Test.Assert(go.HandleActivate());
+		Test.Assert(typed == "hunter2");
 
 		// Markup without its parts opens nothing, the request let go.
 		let empty = new Sedulous.GUI.Panel();

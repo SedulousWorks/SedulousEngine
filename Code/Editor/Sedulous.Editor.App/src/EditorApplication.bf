@@ -614,6 +614,7 @@ class EditorApplication : IApplication
 		exportServices.Builders = mBuilders;
 		exportServices.UserSettings = mEditorSettings;
 		exportServices.DataRoot.Set(mConfig.DataRoot);
+		exportServices.AskName = new (request) => { AskName(request); };
 		// It stays, its button showing the build in the system's file manager (the old editor's).
 		exportServices.OnExported = new (folder) =>
 			{

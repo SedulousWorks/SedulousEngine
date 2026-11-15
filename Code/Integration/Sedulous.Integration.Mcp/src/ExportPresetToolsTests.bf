@@ -104,6 +104,27 @@ static class ExportPresetToolsTests
 			Test.Assert(deck.Get("renderWidth").AsInt() == 1280, "an unmentioned field keeps its value");
 		}
 
+		// An Android preset has its app's fields, which no other preset shows or takes.
+		{
+			var args = With(With(Obj(), "name", "Phone"), "platform", "Android64");
+			args = With(With(With(args, "androidApplicationId", "com.studio.presets"), "androidVersionCode", 3), "androidPackage", "Both");
+			let set = CallOk(server, "export_preset_set", args);
+			defer delete set;
+			let presets = set.Get("presets");
+			Test.Assert(presets.Count == 3, scope $"{presets.Count} presets");
+			let phone = Named(presets, "name", "Phone");
+			Test.Assert(phone.Get("platform").AsString() == "Android64");
+			Test.Assert(phone.Get("androidApplicationId").AsString() == "com.studio.presets");
+			Test.Assert(phone.Get("androidVersionCode").AsInt() == 3);
+			Test.Assert(phone.Get("androidPackage").AsString() == "Both");
+			Test.Assert(Named(presets, "name", "Deck").Get("androidApplicationId") == null, "the Deck's are not shown");
+		}
+		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "androidLabel", "Deck"), refusal..Clear());
+		Test.Assert(refusal.StartsWith("`androidLabel` is an Android64 preset's alone"), refusal);
+		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Phone"), "androidApplicationId", "presets"), refusal..Clear());
+		Test.Assert(refusal.StartsWith("`androidApplicationId`: 'presets' is not an application id"), refusal);
+		delete CallOk(server, "export_preset_set", WithBool(With(Obj(), "name", "Phone"), "remove", true));
+
 		CallErr(server, "export_preset_set", WithBool(With(With(Obj(), "name", "Deck"), "platform", "Win64"), "remove", true), refusal..Clear());
 		Test.Assert(refusal.Contains("only"));
 		{

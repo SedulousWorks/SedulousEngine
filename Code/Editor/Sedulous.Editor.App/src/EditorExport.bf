@@ -32,6 +32,9 @@ class EditorExportServices
 	public String DataRoot = new .() ~ delete _;
 	/// The export was written to `folder` (the application offers to open it). Owned.
 	public delegate void(StringView folder) OnExported ~ delete _;
+	/// Asks the user for a name or a secret (the keystore's password an Android export signs
+	/// with); it takes the request. Owned; null asks nothing.
+	public delegate void(NameRequest request) AskName ~ delete _;
 }
 
 /// Project > Export, out of the application: the same
@@ -111,6 +114,27 @@ class EditorExport
 			context.Notify(.Info, "An export is already in progress.");
 			return;
 		}
+		// An Android app signed with a release keystore needs its password, which no preset holds:
+		// asked for here when the environment lacks it, and kept in this editor's environment,
+		// where the export's Gradle build reads it, until the editor closes.
+		if (NeedsKeystorePassword(presetName, all) && (mServices.AskName != null))
+		{
+			let request = new NameRequest();
+			request.Title.Set("Keystore Password");
+			request.Accept.Set("Export");
+			request.Secret = true;
+			request.Refusal = new (text, outWhy) => { if (text.IsEmpty) outWhy.Append("Type the keystore's password."); };
+			request.Describe = new (text, outText) => { outText.Append("Signs the Android app; kept until the editor closes, never saved."); };
+			let name = new String(presetName);
+			// The delegate owns the name: a prompt cancelled never calls it, and deletes it unasked.
+			request.Accepted = new [=this, =name, =all] (password) =>
+				{
+					Environment.SetEnvironmentVariable(ExportAndroid.cStorePasswordVariable, password);
+					Run(name, all);
+				} ~ delete name;
+			mServices.AskName(request);
+			return;
+		}
 		mPending.PresetName.Set(presetName);
 		mPending.All = all;
 		mPending.WaitingCook = true;
@@ -124,6 +148,24 @@ class EditorExport
 
 	/// An export asked for and not yet handed to the jobs.
 	public bool IsPending => mPending.Active;
+
+	/// Whether the export of `presetName` (or every preset) signs an Android app with a keystore
+	/// whose password the environment does not give.
+	public bool NeedsKeystorePassword(StringView presetName, bool all)
+	{
+		let given = scope String();
+		if ((Environment.GetEnvironmentVariable(ExportAndroid.cStorePasswordVariable, given) case .Ok) && !given.IsEmpty)
+			return false;
+		let presets = scope ExportPresetSet();
+		if (ExportPresetsFile.Load(scope NativeFileSystem(mProject.Directory), presets) case .Err)
+			return false;
+		for (let preset in presets.Presets)
+		{
+			if ((all || (preset.Name == presetName)) && ExportAndroid.IsAndroidPlatform(preset.Platform) && !preset.AndroidKeystore.IsEmpty)
+				return true;
+		}
+		return false;
+	}
 
 	/// Each frame, after the cook service's Update: an export waiting on its cook goes to the
 	/// jobs once the cook is done, and the cook it remembered after it too (IsIdle). A cook that

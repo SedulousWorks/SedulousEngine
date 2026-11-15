@@ -9,6 +9,12 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Export: a game exports to Android, as an APK to install or an App Bundle for Google Play. An
+  Android preset gives the app's id, version, name, icon and release keystore (its password asked
+  for at export, or read from `ANDROID_KEYSTORE_PASSWORD`); the export builds the app with the
+  Android template's Gradle project, so the exporting machine needs the Android SDK
+  (`ANDROID_HOME`) and a JDK 17. `Code/Tools/android-app.sh Sedulous.Engine.Player.Android
+  --template` makes the template.
 - Scripting: the `script_declarations` MCP tool writes the bound script API as the declarations file
   an external editor reads (`as.predefined`), so VS Code and the like complete and check a project's
   scripts.

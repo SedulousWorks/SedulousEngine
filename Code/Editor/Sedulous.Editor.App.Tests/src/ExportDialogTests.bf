@@ -275,6 +275,51 @@ class ExportDialogTests
 		Test.Assert(f.IntAt("orientation") == (int64)ScreenOrientation.Landscape);
 	}
 
+	/// An Android preset's app (its id, version, name, icon, package and keystore) has a section of
+	/// its own, shown for an Android preset alone; Android is a platform to pick with no template
+	/// installed.
+	[Test]
+	public static void AnAndroidPresetsAppRowsShownForItAlone()
+	{
+		let f = scope Fixture();
+		let dialog = f.Open();
+		Test.Assert(dialog.SelectedIndex == 0);
+		let row = f.Bag.FindInfo("androidApplicationId");
+		Test.Assert((row != null) && (row.Category == "Android"));
+		Test.Assert(!f.Shows("androidApplicationId"), "a Linux preset");
+
+		// Android64 is offered though no template here has it.
+		int64 android = -1;
+		for (let choice in f.Bag.FindInfo("platform").Choices)
+		{
+			if (choice.Name == "Android64")
+				android = choice.Value;
+		}
+		Test.Assert(android >= 0);
+		f.Edit("platform", Sedulous.GUI.Variant(android));
+		Test.Assert(f.Presets.At(0).Platform == "Android64");
+		for (let path in StringView[8]("androidApplicationId", "androidVersionCode", "androidVersionName", "androidLabel",
+			"androidIcon", "androidPackage", "androidKeystore", "androidKeyAlias"))
+			Test.Assert((f.Bag.FindInfo(path) != null) && f.Shows(path), scope $"{path}");
+
+		f.Edit("androidApplicationId", Sedulous.GUI.Variant("com.studio.game"));
+		f.Edit("androidVersionCode", Sedulous.GUI.Variant((int64)4));
+		f.Edit("androidPackage", Sedulous.GUI.Variant((int64)AndroidPackage.Bundle));
+		f.Edit("androidKeystore", Sedulous.GUI.Variant("keys/release.jks"));
+		Test.Assert(f.Presets.At(0).AndroidApplicationId == "com.studio.game");
+		Test.Assert(f.Presets.At(0).AndroidVersionCode == 4);
+		Test.Assert(f.Presets.At(0).AndroidPackage == .Bundle);
+		Test.Assert(f.Presets.At(0).AndroidKeystore == "keys/release.jks");
+
+		// The Web preset hides them; this one shows its values again.
+		dialog.Select(1);
+		Test.Assert(!f.Shows("androidApplicationId"));
+		dialog.Select(0);
+		Test.Assert(f.Shows("androidApplicationId"));
+		Test.Assert(f.TextIs("androidApplicationId", "com.studio.game"));
+		Test.Assert(f.IntAt("androidVersionCode") == 4);
+	}
+
 	/// A preset's quality level is one of the project's levels, offered by name, or the project's
 	/// default.
 	[Test]

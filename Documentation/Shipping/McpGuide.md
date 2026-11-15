@@ -532,7 +532,13 @@ export with its reason. A preset with `pruneToReachable` ships only what its ent
 project's default scene, startup script and manifest assets, and what is flagged Always Export),
 following each scene and prefab to what its components and settings name, the prefabs it places
 (with what each placement's overrides name) and the assets its scripts' properties hold, and each asset to what it needs (a material's textures);
-the response's `pruning` counts what was kept and dropped.
+the response's `pruning` counts what was kept and dropped. An Android64 preset exports an app: its
+`android*` fields (shown for an Android preset alone) give the application id, version, name, icon,
+package (APK, App Bundle or both) and release keystore, and the dist holds the `.apk` / `.aab` with
+the game inside. The export runs the template's Gradle project, so this machine needs the Android SDK
+(`ANDROID_HOME`), a JDK 17 and, the first time, the network; a keystore's password comes from
+`ANDROID_KEYSTORE_PASSWORD` (and `ANDROID_KEY_PASSWORD` when the key's own differs), never a preset.
+A project with its own native packages does not export to Android yet.
 
 `export_presets` lists the project's presets, each its fields by the names
 `export_preset_set` takes, and the templates this machine can export them with;

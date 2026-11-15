@@ -110,6 +110,69 @@ class EditorExportTests
 		EditorExport.ReportResourceMemory(null); // no project: said in the log
 	}
 
+	/// An Android preset signed with a keystore asks for its password when the environment lacks
+	/// it; one signed with the debug key does not.
+	[Test]
+	public static void AnAndroidPresetSignedWithAKeystoreAsksForItsPasswordWhenTheEnvironmentLacksIt()
+	{
+		let was = scope String();
+		let had = Environment.GetEnvironmentVariable(ExportAndroid.cStorePasswordVariable, was) case .Ok;
+		Environment.SetEnvironmentVariable(ExportAndroid.cStorePasswordVariable, "");
+		defer Environment.SetEnvironmentVariable(ExportAndroid.cStorePasswordVariable, had ? StringView(was) : "");
+		let bench = scope Bench();
+		bench.OpenProject("scratch_export_keystore_project");
+		let asked = scope List<NameRequest>();
+		defer { ClearAndDeleteItems!(asked); }
+		EditorExport Make()
+		{
+			let services = bench.Services();
+			services.AskName = new [=asked] (request) => { asked.Add(request); };
+			let exporter = new EditorExport(services);
+			exporter.SetProject(bench.Project);
+			return exporter;
+		}
+		{
+			let first = Make();
+			defer delete first;
+			let phone = scope ExportPreset();
+			phone.Name.Set("Phone");
+			phone.Platform.Set("Android64");
+			phone.AndroidKeystore.Set("release.jks");
+			first.Presets.Add(phone);
+			let debugKey = scope ExportPreset();
+			debugKey.Name.Set("Phone Test");
+			debugKey.Platform.Set("Android64");
+			first.Presets.Add(debugKey);
+			first.SavePresets();
+		}
+
+		// The debug key needs no password: the export goes ahead.
+		{
+			let exporter = Make();
+			defer delete exporter;
+			exporter.Run("Phone Test", false);
+			Test.Assert(asked.IsEmpty);
+			Test.Assert(exporter.IsPending);
+		}
+
+		// The keystore's password is asked for, masked, and the export waits for it.
+		let exporter = Make();
+		defer delete exporter;
+		exporter.Run("Phone", false);
+		Test.Assert(asked.Count == 1);
+		Test.Assert(asked[0].Secret);
+		Test.Assert(!exporter.IsPending);
+		let why = scope String();
+		asked[0].Refusal("", why);
+		Test.Assert(!why.IsEmpty);
+		// Given, it is kept in the environment, where the export's build reads it, and the export runs.
+		asked[0].Accepted("secret");
+		let kept = scope String();
+		Test.Assert((Environment.GetEnvironmentVariable(ExportAndroid.cStorePasswordVariable, kept) case .Ok) && (kept == "secret"));
+		Test.Assert(exporter.IsPending);
+		Test.Assert(asked.Count == 1);
+	}
+
 	/// No user settings at all reads as no override: the root is the CLI's own resolution.
 	[Test]
 	public static void NoUserSettingsResolveTheTemplatesAsTheCliDoes()

@@ -61,6 +61,7 @@ class ExportDialog
 	private const String cGeneral = "General";
 	private const String cContent = "Content";
 	private const String cDisplay = "Display";
+	private const String cAndroid = "Android";
 
 	/// The presets as the list's model.
 	private class Model : IModel
@@ -490,7 +491,8 @@ class ExportDialog
 	}
 
 	// The values a choice offers: the preset's own, the fallback (the host's platform, Release),
-	// then the templates' here; a platform with no template stays choosable.
+	// then the templates' here and, for the platform, every one a game exports to; a platform with
+	// no template stays choosable.
 	private void FillChoices(PropertyInfo row, List<String> values, StringView current, StringView fallback, bool platforms)
 	{
 		ClearAndDeleteItems!(values);
@@ -509,6 +511,11 @@ class ExportDialog
 		Add(fallback);
 		for (int i < mRegistry.Count)
 			Add(platforms ? StringView(mRegistry.At(i).Platform) : mRegistry.At(i).EffectiveConfig);
+		if (platforms)
+		{
+			for (let known in ExportPlatform.All)
+				Add(known.Tag);
+		}
 		for (int i < values.Count)
 			row.AddChoice(values[i], i);
 	}
@@ -641,6 +648,25 @@ class ExportDialog
 		quality.AddChoice("The project's default", 0);
 		for (int i < mQualityLevels.Count)
 			quality.AddChoice(mQualityLevels[i].Name, i + 1);
+		Row("androidApplicationId", .String, Sedulous.GUI.Variant(preset.AndroidApplicationId), "Application id", cAndroid,
+			"The app's own name on the phone and in a store, as com.studio.game.");
+		let code = Row("androidVersionCode", .Integer, Sedulous.GUI.Variant((int64)preset.AndroidVersionCode), "Version code", cAndroid,
+			"The version a phone and a store compare: raise it for each release.");
+		code.HasRange = true;
+		code.Min = 1.0;
+		code.Max = 2100000000.0;
+		code.Step = 1.0;
+		Row("androidVersionName", .String, Sedulous.GUI.Variant(preset.AndroidVersionName), "Version name", cAndroid,
+			"The version a person reads.");
+		Row("androidLabel", .String, Sedulous.GUI.Variant(preset.AndroidLabel), "App name", cAndroid,
+			"The name under its icon. Empty: the project's.");
+		Row("androidIcon", .String, Sedulous.GUI.Variant(preset.AndroidIcon), "App icon", cAndroid,
+			"A square PNG in the project, 512 pixels or more. Empty: the platform's.");
+		EnumRow("androidPackage", typeof(AndroidPackage), (int64)preset.AndroidPackage, "Package", cAndroid);
+		Row("androidKeystore", .String, Sedulous.GUI.Variant(preset.AndroidKeystore), "Keystore", cAndroid,
+			"The release keystore, relative to the project. Empty: the debug key, for testing. Its password is asked for at export, or read from ANDROID_KEYSTORE_PASSWORD.");
+		Row("androidKeyAlias", .String, Sedulous.GUI.Variant(preset.AndroidKeyAlias), "Key alias", cAndroid,
+			"The key in the keystore that signs.");
 		ShowOverrides(preset);
 		mBag.SetOnCommit(new (commit) => { Store(); });
 		// An extra file added or removed on the grid is a list edit, not a commit: it applies as
@@ -686,6 +712,15 @@ class ExportDialog
 		Show("windowMode", preset.OverridesWindow);
 		Show("windowResizable", preset.OverridesWindow);
 		Show("orientation", preset.OverridesOrientation);
+		// A field of one platform's (the Android app's) shows for a preset of that platform.
+		let fields = scope List<System.Reflection.FieldInfo>();
+		SettingFields.Of(typeof(ExportPreset), fields);
+		let key = scope String();
+		for (let field in fields)
+		{
+			if (field.GetCustomAttribute<PresetPlatformAttribute>() case .Ok(let only))
+				Show(SettingFields.Key(field, .. key..Clear()), only.Platform == preset.Platform);
+		}
 		mBag.PropertiesChanged();
 	}
 
@@ -769,6 +804,14 @@ class ExportDialog
 		preset.WindowResizable = FlagAt("windowResizable");
 		preset.OverridesOrientation = FlagAt("overridesOrientation");
 		preset.Orientation = (ScreenOrientation)ChoiceAt("orientation");
+		TextAt("androidApplicationId", preset.AndroidApplicationId);
+		preset.AndroidVersionCode = Math.Max((uint32)1, NumberAt("androidVersionCode"));
+		TextAt("androidVersionName", preset.AndroidVersionName);
+		TextAt("androidLabel", preset.AndroidLabel);
+		TextAt("androidIcon", preset.AndroidIcon);
+		preset.AndroidPackage = (AndroidPackage)ChoiceAt("androidPackage");
+		TextAt("androidKeystore", preset.AndroidKeystore);
+		TextAt("androidKeyAlias", preset.AndroidKeyAlias);
 		let level = ChoiceAt("qualityLevel");
 		preset.QualityLevelId = ((level > 0) && (level <= mQualityLevels.Count)) ? mQualityLevels[(int)level - 1].Id : Guid();
 		mPresets.Update(index, preset);
