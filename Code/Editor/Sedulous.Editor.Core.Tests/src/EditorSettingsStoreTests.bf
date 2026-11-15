@@ -378,4 +378,24 @@ static class EditorSettingsStoreTests
 		let back = GamePreviewSettings.From(loaded);
 		Test.Assert((back.Presets.Count == 1) && (back.Presets[0].Name == "Handheld") && (back.Presets[0].Width == 960) && (back.Presets[0].Height == 544));
 	}
+
+	[Test]
+	public static void UnreadableEditorSettingsAreSetAsideBeforeAnythingSavesOverThem()
+	{
+		EditorSerializables.RegisterAll();
+		let dir = "scratch_editor_settings_damaged";
+		RemoveDirectoryRecursive(dir);
+		CreateDirectory(dir);
+		defer RemoveDirectoryRecursive(dir);
+		let fs = scope Sedulous.VFS.NativeFileSystem(dir);
+		let damaged = "<settings><sections";
+		Test.Assert(fs.Save(EditorSettingsStore.cFileName, .((uint8*)damaged.Ptr, damaged.Length)) case .Ok);
+
+		let store = scope Sedulous.Settings.Settings();
+		let loaded = EditorSettingsStore.Load(fs, store);
+		Test.Assert(loaded case .Err);
+		Test.Assert(!(loaded case .Err(.NotFound)));
+		Test.Assert(!fs.Exists(EditorSettingsStore.cFileName));
+		Test.Assert(fs.Exists(scope String(EditorSettingsStore.cFileName)..Append(".unreadable")));
+	}
 }

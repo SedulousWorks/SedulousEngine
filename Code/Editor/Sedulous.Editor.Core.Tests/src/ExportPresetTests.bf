@@ -171,7 +171,7 @@ static class ExportPresetTests
 				Test.Assert((least == 1) && (most == 16384));
 			}
 		}
-		Test.Assert(keys == "name,platform,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,builder", keys);
+		Test.Assert(keys == "name,platform,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,qualityLevelId,builder", keys);
 	}
 
 	[Test]
@@ -274,6 +274,32 @@ static class ExportPresetTests
 		Test.Assert(access(PathJoin(to, "Game", .. scope .()).CStr(), 1) == 0, "the player is still executable");
 		Test.Assert(access(PathJoin(to, "libfoo.so", .. scope .()).CStr(), 1) != 0, "and nothing became executable that was not");
 #endif
+	}
+
+	[Test]
+	public static void UnreadablePresetsAreSetAsideBeforeTheDefaultsAreSavedNeverWrittenOver()
+	{
+		let dir = Scratch("scratch_presets_damaged", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let fs = scope NativeFileSystem(dir);
+		let damaged = "<presets><preset name=\"Web\"";
+		Test.Assert(fs.Save(ExportPresetsFile.cFileName, .((uint8*)damaged.Ptr, damaged.Length)) case .Ok);
+
+		let controller = scope ExportPresetsController();
+		controller.Load(fs);
+		Test.Assert(controller.Count == 1, "the defaults, so the panel has something to show");
+		Test.Assert(controller.LoadProblem.Contains("export_presets.xml.unreadable"));
+		let aside = scope String(ExportPresetsFile.cFileName)..Append(".unreadable");
+		let kept = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(dir, aside, .. scope .()), kept) case .Ok);
+		Test.Assert(kept.Count == damaged.Length);
+
+		// Saving now writes the presets file afresh; the damaged one stays beside it.
+		Test.Assert(controller.Save(fs) case .Ok);
+		let reloaded = scope ExportPresetsController();
+		reloaded.Load(fs);
+		Test.Assert(reloaded.LoadProblem.IsEmpty);
+		Test.Assert(fs.Exists(aside));
 	}
 
 #if !BF_PLATFORM_WINDOWS
