@@ -68,7 +68,8 @@ static
 	/// Where this application's per-user files belong, with its own folder already joined
 	/// on.
 	///
-	/// XDG_DATA_HOME or ~/.local/share on Linux, LOCALAPPDATA on Windows: per user and
+	/// XDG_DATA_HOME or ~/.local/share on Linux (on Android, XDG_DATA_HOME, which the app's host
+	/// sets to its internal storage, else the temp folder), LOCALAPPDATA on Windows: per user and
 	/// machine local. Not the roaming folder on Windows, because a cache or a shader blob
 	/// following a user between machines is a slow login rather than a feature.
 	///
@@ -84,6 +85,15 @@ static
 #else
 		if (Environment.GetEnvironmentVariable("XDG_DATA_HOME", root) case .Err)
 			root.Clear();
+#if BF_PLATFORM_ANDROID
+		// An app's host sets XDG_DATA_HOME to its internal storage before anything asks. Without
+		// it (a test run from adb's shell, whose HOME is not writable), the temp folder.
+		if (root.IsEmpty)
+		{
+			if (System.IO.Path.GetTempPath(root) case .Err)
+				root.Clear();
+		}
+#else
 		if (root.IsEmpty)
 		{
 			let home = scope String();
@@ -93,6 +103,7 @@ static
 					PathJoin(home, ".local/share", root);
 			}
 		}
+#endif
 #endif
 
 		if (root.IsEmpty)
