@@ -23,12 +23,6 @@ class ScriptFieldInfo
 	/// the type cannot cross at all.
 	public ScriptThunk Get = null;
 	public ScriptThunk Set = null;
-	/// The member's place, for a writable struct-valued FIELD: the thunk resolves its owner as
-	/// Get does and answers the member's address (Result a Struct), so a script writing a field
-	/// of it writes it where it lives. Valid only until the owner next moves (a component's
-	/// pool grows), so a backend asks again on every use and never keeps it. Null for a
-	/// property (no storage to point at), a read-only member, and every other kind.
-	public ScriptThunk Place = null;
 	public String Unsupported = new .() ~ delete _;
 	public bool HasRange = false;
 	public float RangeMin = 0.0f;
@@ -74,16 +68,20 @@ class ScriptFieldInfo
 		return this;
 	}
 
+	/// A struct's instance field: its byte offset in the struct, so a backend that holds the
+	/// struct's bytes as the script's value may make it a real member there. -1 for any other.
+	public int32 Offset = -1;
+
+	public ScriptFieldInfo At(int offset)
+	{
+		Offset = (int32)offset;
+		return this;
+	}
+
 	public ScriptFieldInfo Bind(ScriptThunk get, ScriptThunk set)
 	{
 		Get = get;
 		Set = set;
-		return this;
-	}
-
-	public ScriptFieldInfo Placed(ScriptThunk place)
-	{
-		Place = place;
 		return this;
 	}
 

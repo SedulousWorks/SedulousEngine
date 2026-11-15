@@ -495,9 +495,10 @@ static class EngineSurfaceScriptTests
 		Test.Assert(sets.Get(e).PoseAssignment == .Unison);
 	}
 
-	/// A struct-valued property through a component handle (a light's colour) is written where
-	/// it lives: a whole value assigned, a field of it written, and one light's assigned from
-	/// another's all reach the components, while a copy taken out stays apart from the light.
+	/// A struct-valued property through a component handle (a light's colour) reads as a copy: a
+	/// whole value assigned, a copy changed and written back, and one light's assigned from
+	/// another's all reach the components, while a copy taken out stays apart from the light; a
+	/// field written through a read of it is refused.
 	[Test]
 	public static void AStructPropertyWrittenThroughAHandleReachesTheComponent()
 	{
@@ -511,7 +512,9 @@ static class EngineSurfaceScriptTests
 				LightComponent@ light = LightComponent::of(self);
 				Color saved = light.Color;
 				light.Color = Color(0.25f, 0.5f, 0.75f, 1.0f);
-				light.Color.R = 0.9f;
+				Color changed = light.Color;
+				changed.R = 0.9f;
+				light.Color = changed;
 				LightComponent::of(other).Color = light.Color;
 				return saved.R == 1.0f;
 			}
@@ -535,6 +538,11 @@ static class EngineSurfaceScriptTests
 		Test.Assert((color.R == 0.9f) && (color.G == 0.5f) && (color.B == 0.75f), "the whole value, then the field, reached the component");
 		let copied = lights.Get(other).Color;
 		Test.Assert((copied.R == 0.9f) && (copied.G == 0.5f) && (copied.B == 0.75f), "one light's from another's");
+
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(!vm.Compile("field", "field.as", "void f(const Entity &in self) { LightComponent::of(self).Color.R = 0.5f; }\n"),
+			"a field of the copy is refused");
+		ClearAndDeleteItems!(vm.Problems);
 	}
 
 	/// `X::of(entity)` is a handle, null when the entity has no such component, so `is null`

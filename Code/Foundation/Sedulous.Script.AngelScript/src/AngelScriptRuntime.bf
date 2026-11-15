@@ -335,26 +335,6 @@ class AngelScriptRuntime : ScriptRuntime
 		DeclareOperators();
 	}
 
-	/// Where a placed member of a handle whose scene is gone points: zeroed for each use, so a
-	/// read sees nothing and a write is dropped. Grown to the largest member asked for.
-	private uint8* mGoneSink = null;
-	private int mGoneSinkSize = 0;
-
-	private void* GoneSink(StringView typeName)
-	{
-		let st = mSurface.Find(typeName);
-		let size = Math.Max((st != null) ? (int)st.Size : 0, 64);
-		if (size > mGoneSinkSize)
-		{
-			if (mGoneSink != null)
-				Internal.StdFree(mGoneSink);
-			mGoneSink = (uint8*)Internal.StdMalloc(size);
-			mGoneSinkSize = size;
-		}
-		Internal.MemSet(mGoneSink, 0, mGoneSinkSize);
-		return mGoneSink;
-	}
-
 	/// BORROWED: the debugger in force, which self registers and detaches.
 	private AngelScriptDebugger mDebugger = null;
 
@@ -449,8 +429,6 @@ class AngelScriptRuntime : ScriptRuntime
 		// a cook worker whose runtime dies while the main thread's live would leak it on exit.
 		AS.asThreadCleanup();
 		AS.asc_engine_release(mEngine);
-		if (mGoneSink != null)
-			Internal.StdFree(mGoneSink);
 	}
 
 	private static void OnMessage(char8* section, int32 row, int32 col, int32 type, char8* message, void* user)
@@ -1014,14 +992,11 @@ class AngelScriptRuntime : ScriptRuntime
 	/// `on` is the type it is registered on when that is not its own: a derived class taking a
 	/// base's member.
 	///
-	/// A writable struct-valued field's getter returns a REFERENCE, `T &get_X() property`, to
-	/// the value where it lives (Field.Place): `light.Color.R = 0.9f` then writes the light,
-	/// where a value getter would hand back a copy and the write would land in it. The reference
-	/// is found again through the owner on every read and used at once (AngelScript evaluates a
-	/// call's arguments before its object), so a component pool that moves between reads is
-	/// never written through stale. A whole value still goes through the setter, and a local
-	/// declared from the property (`Color saved = light.Color;`) is a copy. A read-only member
-	/// reads as a value, so nothing reaches it.
+	/// A struct-valued one reads as a copy, as a C# struct does, and a plain struct's own stored
+	/// fields are real members at their offsets (MemberInPlace): written in place on a local
+	/// (`p.X += 1`, `r.Entry.Width = 3`), while a field written through a read of a property
+	/// (`light.Color.R = 0.9f`) is refused, since it would change the copy. A script copies the
+	/// value, changes it and writes it back whole through the setter.
 	private void BindField(ScriptTypeInfo t, ScriptFieldInfo f, StringView statics, ScriptTypeInfo on = null)
 	{
 		let target = on ?? t;
@@ -1032,15 +1007,26 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		}
 
-		let placed = (f.Place != null) && (f.Set != null);
+		if ((on == null) && MemberInPlace(t, f))
+		{
+			let readOnly = f.Set == null;
+			let decl = scope $"{readOnly ? "const " : ""}{typeDecl} {f.ScriptName}";
+			if (Check(AS.asc_engine_register_object_property(mEngine, scope String(AsName(t)).CStr(), decl.CStr(), f.Offset), t.FullName))
+			{
+				Record(ApiType(AsName(t), t.FullName, false), f.ScriptName, scope $"{typeDecl} {ReachedAs(t)}.{f.ScriptName}{readOnly ? " (read only)" : ""}",
+					false, .Property, readOnly);
+			}
+			return;
+		}
+
 		let get = new AngelScriptBinding();
-		get.Kind = placed ? .Place : .Get;
+		get.Kind = .Get;
 		get.Owner = t;
 		get.Field = f;
 		mBindings.Add(get);
 
 		let isGlobal = f.IsStatic || (t.Kind == .Global);
-		let getDecl = scope $"{typeDecl} {placed ? "&" : ""}get_{f.ScriptName}() property";
+		let getDecl = scope $"{typeDecl} get_{f.ScriptName}() property";
 		bool bound;
 		if (isGlobal)
 		{
@@ -1087,6 +1073,45 @@ class AngelScriptRuntime : ScriptRuntime
 			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(target)}.{f.ScriptName}");
 			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{setBound ? "" : " (read only)"}", isGlobal, .Property, !setBound);
 		}
+	}
+
+	/// Whether a struct's field is a real member of the script's value: the script holds the
+	/// struct's own bytes (its type registered at the struct's size), and the field's script type
+	/// is laid out as the engine's (a number of its width, a bool, a math value, a Guid, a struct
+	/// held the same way). Anything else (a string, an entity, an enum, a list) goes through
+	/// its getter and setter.
+	private bool MemberInPlace(ScriptTypeInfo owner, ScriptFieldInfo f)
+	{
+		if (f.IsStatic || (f.Offset < 0) || (owner.Kind != .Struct) || (owner.Role == .Component))
+			return false;
+		if (!HeldAsItsBytes(owner))
+			return false;
+		switch (f.Kind)
+		{
+		case .Bool, .Float, .Float2, .Float3, .Float4, .Quaternion, .Color, .Guid:
+			return true;
+		case .Int:
+			// Not an enum: a script enum is four bytes whatever the engine's is.
+			switch (f.TypeName)
+			{
+			case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "char8", "char32":
+				return true;
+			default:
+				return false;
+			}
+		case .Struct:
+			let st = mSurface.Find(f.TypeName);
+			return (st != null) && (st.Kind == .Struct) && (st.Role != .Component) && HeldAsItsBytes(st);
+		default:
+			return false;
+		}
+	}
+
+	/// Whether the script's value of `t` is its own bytes: registered as a value of its size.
+	private bool HeldAsItsBytes(ScriptTypeInfo t)
+	{
+		let type = AS.asc_engine_get_type_info_by_name(mEngine, scope String(AsName(t)).CStr());
+		return (type != null) && (t.Size > 0) && (AS.asc_typeinfo_get_size(type) == t.Size);
 	}
 
 	/// A method is registered once per arity its defaults allow.
@@ -1566,27 +1591,6 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Operator:
 			DispatchOperator(gen, b);
 			return;
-		case .Place:
-		{
-			// The member where it lives, its owner resolved now as a getter resolves it; the
-			// script writes through the reference before anything can move it.
-			var frame = ScriptCallFrame(context, default);
-			if (!b.Field.IsStatic && (b.Owner.Kind != .Global))
-				frame.Self = ReadSelf(AS.asc_generic_get_object(gen), SelfKind(b.Owner), b.Owner);
-			b.Field.Place(ref frame);
-			if (frame.Failed)
-			{
-				AS.asc_set_active_exception(scope String(frame.Error).CStr());
-				return;
-			}
-			// A handle whose scene is gone places nothing and does nothing: the script reads
-			// zeros, and what it writes lands in the runtime's own sink.
-			var placed = frame.Result.AsStruct;
-			if (placed == null)
-				placed = GoneSink(b.Field.TypeName);
-			AS.asc_generic_set_return_address(gen, placed);
-			return;
-		}
 		case .Resolve:
 			// `scene.Physics`: the scene's instance of the system, a weak handle of its own; null
 			// when the scene has none, or is gone.

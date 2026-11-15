@@ -365,9 +365,7 @@ property with its description as the tooltip and saves per instance values over 
   annotation.
 - Some engine fields are read only on purpose (a network identity's `Authority` and `Id`):
   a script reads them, and an assignment fails to compile, since no setter exists.
-- A struct-valued field (a light's `Color`, a `Float3`) is written where it lives:
-  `light.Color = c` and `light.Color.R = 0.5f` both write the light, and so does a field of a
-  struct inside one (`a.Inner.Value.X = 1`). A local declared from it (`Color saved =
-  light.Color;`) is a copy and stays apart. A read-only field reads as a copy, so a write to one
-  of its fields changes nothing; so does one to a field of a struct-valued property (a getter and
-  setter rather than a field), which has no storage to write into: assign the whole value.
+- A struct-valued field or property (a light's `Color`, a `Float3`) reads as a copy, as a C#
+  struct does: `light.Color = c` writes the light, and `light.Color.R = 0.5f` does not compile,
+  since it would change the copy. Copy, change and write back: `Color c = light.Color; c.R =
+  0.5f; light.Color = c;`. A local declared from one is a copy and stays apart.

@@ -73,6 +73,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Scripting: a struct value read from an engine property is a copy, as a C# struct is:
+  `light.Color.R = 0.5f` no longer compiles (it would change the copy); copy, change and write
+  back (`Color c = light.Color; c.R = 0.5f; light.Color = c;`). It wrote the light.
 - Scripting: compiler warnings are shown as warnings in the script page's problems, the log and
   `script_validate` (its `warnings`), never as a reason a cook failed; they were shown as errors,
   with the compiler's notes beside them.

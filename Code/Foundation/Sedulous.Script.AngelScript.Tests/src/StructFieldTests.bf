@@ -5,15 +5,15 @@ using Sedulous.Script.AngelScript.Tests.Values;
 
 namespace Sedulous.Script.AngelScript.Tests;
 
-/// A struct-valued field is written where it lives: whole, field by field, a struct inside
-/// it, and from another owner's; a local taken from it is a copy; a read-only one is never
-/// written.
+/// A struct-valued field reads as a copy, as a C# struct does: it is written whole, from a
+/// value or another owner's; a field written through a read of it is refused, since it would
+/// change the copy; a local taken from it stays apart; a read-only one is never written.
 static class StructFieldTests
 {
 	private static bool Near(double a, double b) => Math.Abs(a - b) < 1e-4;
 
 	[Test]
-	public static void AStructFieldIsWrittenWholeOrFieldByFieldAndACopyOutOfItStaysApart()
+	public static void AStructFieldIsWrittenWholeAndACopyOutOfItStaysApart()
 	{
 		let s = scope ScriptSurface();
 		ValuesSurface.Populate(s);
@@ -31,16 +31,23 @@ static class StructFieldTests
 				fresh.Size = 4;
 				h.Spare = fresh;        // whole
 				A = h.Spare.Size;
-				h.Spare.Size = 9;       // a field of it
+				Room changed = h.Spare; // copy, change, write back
+				changed.Size = 9;
+				h.Spare = changed;
 				B = h.Spare.Size;
 				Room saved = h.Spare;   // a copy, not a view
-				h.Spare.Size = 1;
+				changed.Size = 1;
+				h.Spare = changed;
 				C = saved.Size;
-				g.Spare.Size = 6;
+				Room other = g.Spare;
+				other.Size = 6;
+				g.Spare = other;
 				h.Spare = g.Spare;      // one owner's from another's
-				g.Spare.Size = 2;       // h keeps its own
-				h.Spare.Entry.Width = 3; // a field of a struct inside it
-				h.Shown.Size = 5;       // read only: lands in a copy
+				other.Size = 2;
+				g.Spare = other;        // h keeps its own
+				Room nested = h.Spare;  // a struct inside it, the same way
+				nested.Entry.Width = 3;
+				h.Spare = nested;
 			}
 			float a() { return A; }
 			float b() { return B; }
@@ -60,9 +67,42 @@ static class StructFieldTests
 		Test.Assert(vm.Call("t", "float c()", default, ref r) && Near(r.AsFloat, 9), "the copy kept its value");
 		Test.Assert(Near(h.Spare.Size, 6), scope $"from the other owner's: {h.Spare.Size}");
 		Test.Assert(Near(g.Spare.Size, 2), "the other kept its own");
-		Test.Assert(Near(h.Spare.Entry.Width, 3), "the nested field, in place");
+		Test.Assert(Near(h.Spare.Entry.Width, 3), "the nested field, written back");
 		Test.Assert(Near(g.Spare.Entry.Width, 0));
 		Test.Assert(Near(h.Shown.Size, 0), "the read-only field untouched");
+	}
+
+	/// A field written through a read of a struct-valued member would change the copy, so the
+	/// compiler refuses it: copy, change, write back. It compiled and wrote the owner.
+	[Test]
+	public static void AFieldWrittenThroughAStructReadIsRefused()
+	{
+		let s = scope ScriptSurface();
+		ValuesSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(!vm.Compile("t", "t.as", "void main(House@ h) { h.Spare.Size = 9; }\n"), "a field of the copy");
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(!vm.Compile("n", "n.as", "void main(House@ h) { h.Spare.Entry.Width = 3; }\n"), "a field of a struct inside it");
+		ClearAndDeleteItems!(vm.Problems);
+	}
+
+	/// A value's own fields are members: written in place on a local, compound assignments
+	/// included, a struct inside it too. Through accessors they were refused (`+=`) or landed in
+	/// a temporary (a nested field).
+	[Test]
+	public static void AValuesOwnFieldsAreMembersWrittenInPlace()
+	{
+		let s = scope ScriptSurface();
+		ValuesSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		ClearAndDeleteItems!(vm.Problems);
+		let ok = vm.Compile("v", "v.as", "float f() { Room r; r.Size = 0; r.Size += 2; r.Entry.Width = 3; r.Entry.Width += 1; return r.Size + r.Entry.Width; }\n");
+		Test.Assert(ok, vm.Problems.IsEmpty ? "" : vm.Problems[0]);
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("v", "float f()", default, ref r) && Near(r.AsFloat, 6));
 	}
 
 	/// A read-only struct field still refuses a whole assignment at compile time.
