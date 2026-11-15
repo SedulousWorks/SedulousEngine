@@ -73,6 +73,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Editor: its windows present with two swapchain images, as a game does, a frame less between
+  input and the screen; they had three.
 - Samples: each sample game offers Low, Medium and High quality levels; High is how it drew
   before the levels. Their Steam Deck and Web exports start at Medium, and Sky Hopper's and
   PaperKid's settings choose the graphics level.

@@ -120,12 +120,12 @@ static class EditorWindowTests
 	}
 
 	[Test]
-	public static void ItsWindowsPresentWithAThirdImageSoALateCompositorCostsNoRefresh()
+	public static void ItsWindowsPresentWithVsyncAndTwoImagesAsAGameDoes()
 	{
 		let desc = EditorWindow.EditorRenderWindowDesc();
-		Test.Assert(desc.BufferCount == 3);
+		Test.Assert(desc.BufferCount == 2);
 		Test.Assert(desc.PresentMode == .Fifo);
-		Test.Assert(RenderWindowDesc().BufferCount == 2, "a game keeps the default");
+		Test.Assert(desc.BufferCount == RenderWindowDesc().BufferCount);
 	}
 
 	[Test]

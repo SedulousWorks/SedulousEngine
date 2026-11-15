@@ -125,14 +125,13 @@ class EditorWindow
 		BindCodeEditorKeys(keymap);
 	}
 
-	/// How every editor window presents: vsync, with a third swapchain image, so a compositor late
-	/// in giving one back (two images held the frame for whole refreshes, the user's spikes) costs
-	/// nothing; the frame of latency it adds is no matter in an editor. A game keeps the default.
+	/// How every editor window presents: vsync with two swapchain images, as a game does. A third
+	/// image would hide a compositor late returning one, at a frame more of latency.
 	public static RenderWindowDesc EditorRenderWindowDesc()
 	{
 		var desc = RenderWindowDesc();
 		desc.PresentMode = .Fifo;
-		desc.BufferCount = 3;
+		desc.BufferCount = 2;
 		return desc;
 	}
 
