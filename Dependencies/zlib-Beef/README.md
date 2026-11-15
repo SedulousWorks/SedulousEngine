@@ -21,5 +21,11 @@ is `z_`-prefixed. The surface grows with what the engine needs.
 ./build-native.sh wasm
 ```
 
-Each drops `libzlib-c.a` in `dist/`, which is what `BeefProj.toml` points `LibPaths` at. The
-Windows counterpart (`build-native.ps1`) and its libraries are owed.
+Each drops `libzlib-c.a` in `dist/`, which is what `BeefProj.toml` points `LibPaths` at. On
+Windows, `build-native.ps1` does the same with Visual Studio's CMake generator, dropping
+`zlib-c.lib` in `dist/Debug-Win64` and `dist/Release-Win64`:
+
+```
+./build-native.ps1 make
+./build-native.ps1 build ALL
+```

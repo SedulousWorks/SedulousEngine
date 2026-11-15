@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds zlib (zlib-c/, over the vendored sources in zlib/) into one archive and copies it into
-# dist/ so the BeefProj's Linux64 and wasm32 LibPaths find it. build-native.ps1, for Windows, is owed.
+# dist/ so the BeefProj's Linux64 and wasm32 LibPaths find it. build-native.ps1 builds the Windows ones.
 set -euo pipefail
 cd "$(dirname "$0")"
 
