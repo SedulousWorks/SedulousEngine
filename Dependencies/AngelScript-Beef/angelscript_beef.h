@@ -111,6 +111,7 @@ asc_typeinfo* asc_module_get_type_info_by_name(asc_module* module, const char* n
 asc_typeinfo* asc_module_get_type_info_by_decl(asc_module* module, const char* decl);
 unsigned      asc_module_get_global_var_count(asc_module* module);
 void*         asc_module_get_address_of_global_var(asc_module* module, unsigned index);
+int           asc_module_reset_global_vars(asc_module* module, asc_context* ctx);
 
 /* ---- contexts ---- */
 asc_context*  asc_engine_create_context(asc_engine* engine);

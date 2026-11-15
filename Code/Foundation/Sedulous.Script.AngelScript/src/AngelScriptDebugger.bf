@@ -261,6 +261,9 @@ class AngelScriptDebugger : IScriptDebugger
 	private static void OnLineCallback(AS.Context* ctx, void* user)
 	{
 		let self = Internal.UnsafeCastToObject(user) as AngelScriptDebugger;
+		// A context has one line callback: the debugger's stands in for the budget's.
+		if ((self.mRuntime != null) && self.mRuntime.[Friend]StopIfOverBudget(ctx))
+			return;
 		self.OnLine(ctx);
 	}
 
@@ -339,15 +342,19 @@ class AngelScriptDebugger : IScriptDebugger
 		mNextObjectRef = 1;
 		FireState(.Running);
 
+		// A resume is a call of its own on the budget's clock: the time stopped at the break
+		// was not running.
+		mRuntime.[Friend]BeginExecute();
 		let state = AS.asc_context_execute(ctx);
+		mRuntime.[Friend]EndExecute();
 		if ((state == AS.asEXECUTION_SUSPENDED) && (mPausedContext == ctx))
 		{
 			mPaused = true;
 			FireState((mCause == .Step) ? .Stepped : .Breakpoint);
 			return;
 		}
-		// Ran to completion, or faulted: the call is over.
-		if (state == AS.asEXECUTION_EXCEPTION)
+		// Ran to completion, faulted, or ran past the budget: the call is over.
+		if ((state == AS.asEXECUTION_EXCEPTION) || (state == AS.asEXECUTION_ABORTED))
 			mRuntime.[Friend]ReportExecution(ctx, state, mHeldWhat);
 		ReleaseHeld(ctx);
 		FireState(.Terminated);

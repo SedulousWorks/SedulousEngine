@@ -49,7 +49,7 @@ class ScriptSourceDocumentTests
 		EnsureCook();
 		let doc = scope ScriptSourceDocument();
 		doc.Bind("", "mover.as", "angelscript");
-		// A cook runs this initializer and faults; the check never runs it.
+		// This initializer faults when run; the check never runs it.
 		doc.SetSource("""
 			int Zero() { return 0; }
 			int boom = 10 / Zero();

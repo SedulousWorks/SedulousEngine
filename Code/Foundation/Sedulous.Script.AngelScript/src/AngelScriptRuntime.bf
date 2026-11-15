@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using AngelScript;
 using Sedulous.Core;
 using Sedulous.Script;
@@ -93,6 +94,20 @@ class AngelScriptRuntime : ScriptRuntime
 	private List<AS.Context*> mFreeContexts = new .() ~ delete _;
 	private List<AS.Context*> mAllContexts = new .() ~ delete _;
 
+	/// Script lines between reads of the budget's clock: one read a line would cost more than
+	/// the lines.
+	private const int32 cLinesPerCheck = 256;
+	/// Nested script calls before one fails with "Stack overflow": recursion that never ends
+	/// fails its call instead of growing the script's stacks until memory runs out.
+	private const uint cMaxScriptCallDepth = 20000;
+	/// One script call's data stack, the frames' locals, in bytes.
+	private const uint cMaxScriptStackBytes = 1 << 20;
+	/// Executes in flight from the engine: the outermost starts the budget's clock.
+	private int32 mExecuteDepth = 0;
+	/// Since the outermost Execute began.
+	private Stopwatch mCallClock = new .() ~ delete _;
+	private int32 mLinesSinceCheck = 0;
+
 	/// One live coroutine: its own context, the seconds still to wait, and the object it
 	/// is a method of, so that object's teardown cancels it.
 	private class Coroutine
@@ -174,6 +189,12 @@ class AngelScriptRuntime : ScriptRuntime
 		// reference of its own. In the default mode the reference passes to the callee
 		// unless the parameter is declared `@+`, which would show in every signature.
 		AS.asc_engine_set_property(mEngine, AS.asEP_GENERIC_CALL_MODE, 0);
+		// Global initializers run on a context the budget covers (InitGlobals), not inside the
+		// build, where nothing stops one that never ends; so a build that is not a game's load
+		// (a cook's, a check's) compiles without running script.
+		AS.asc_engine_set_property(mEngine, AS.asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 0);
+		AS.asc_engine_set_property(mEngine, AS.asEP_MAX_CALL_STACK_SIZE, cMaxScriptCallDepth);
+		AS.asc_engine_set_property(mEngine, AS.asEP_MAX_STACK_SIZE, cMaxScriptStackBytes);
 		AS.asc_engine_register_std_string(mEngine);
 		AS.asc_engine_register_script_array(mEngine, 1);
 		DeclareInlineKinds();
@@ -193,6 +214,75 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		AS.asc_context_unprepare(ctx);
 		mFreeContexts.Add(ctx);
+	}
+
+	// ---- the budget ----
+
+	/// One Execute from the engine begins: the outermost starts the budget's clock; a call into
+	/// script from inside one (a callback a bound call runs) runs on the outer call's clock.
+	/// Paired with EndExecute.
+	private void BeginExecute()
+	{
+		if (mExecuteDepth == 0)
+		{
+			mCallClock.Restart();
+			mLinesSinceCheck = 0;
+		}
+		mExecuteDepth++;
+	}
+
+	private void EndExecute()
+	{
+		mExecuteDepth--;
+	}
+
+	/// Puts the budget's line callback on `ctx`. A debugger arms its own instead, which checks
+	/// the budget too.
+	private void ArmBudget(AS.Context* ctx)
+	{
+		AS.asc_context_set_line_callback(ctx, => OnBudgetLine, Internal.UnsafeCastToPtr(this));
+	}
+
+	private static void OnBudgetLine(AS.Context* ctx, void* user)
+	{
+		let self = Internal.UnsafeCastToObject(user) as AngelScriptRuntime;
+		self.StopIfOverBudget(ctx);
+	}
+
+	/// Aborts `ctx` when the running call has used its seconds; true then. The clock is read
+	/// every cLinesPerCheck lines.
+	private bool StopIfOverBudget(AS.Context* ctx)
+	{
+		if (mExecuteDepth == 0)
+			return false;
+		mLinesSinceCheck++;
+		if (mLinesSinceCheck < cLinesPerCheck)
+			return false;
+		mLinesSinceCheck = 0;
+		if (mCallClock.Elapsed.TotalSeconds <= Budget.CallSeconds)
+			return false;
+		AS.asc_context_abort(ctx);
+		return true;
+	}
+
+	/// Runs `module`'s global initializers on a context the budget covers. False when one
+	/// faulted or ran past the budget, the reason in Problems.
+	private bool InitGlobals(AS.Module* module)
+	{
+		let ctx = AcquireContext();
+		defer ReleaseContext(ctx);
+		ArmBudget(ctx);
+		defer AS.asc_context_clear_line_callback(ctx);
+		BeginExecute();
+		let result = AS.asc_module_reset_global_vars(module, ctx);
+		EndExecute();
+		if (result >= 0)
+			return true;
+		// A faulting initializer's exception the engine has said already, through the message
+		// callback; a budget stop it does not say.
+		if (AS.asc_context_get_state(ctx) == AS.asEXECUTION_ABORTED)
+			ReportExecution(ctx, AS.asEXECUTION_ABORTED, "a global variable's initializer");
+		return false;
 	}
 
 	/// `startCoroutine(fn)` and `wait(seconds)`: the scheduler's surface. A coroutine is any
@@ -1970,8 +2060,9 @@ class AngelScriptRuntime : ScriptRuntime
 	// ==================== modules and calls ====================
 
 	/// Builds through the SDK's script builder, which strips `[metadata]` in front of
-	/// declarations from what the compiler sees and keeps it for DescribeClass.
-	public override bool CompileModule(StringView moduleName, Span<ScriptSection> sections)
+	/// declarations from what the compiler sees and keeps it for DescribeClass; then runs the
+	/// global initializers under the budget, unless asked not to.
+	public override bool CompileModule(StringView moduleName, Span<ScriptSection> sections, bool runInitializers = true)
 	{
 		ForgetBuilder(moduleName);
 		let builder = AS.asc_builder_create();
@@ -1996,7 +2087,17 @@ class AngelScriptRuntime : ScriptRuntime
 			if (AS.asc_builder_add_section(builder, name.CStr(), section.Source.Ptr, (uint)section.Source.Length) < 0)
 				return false;
 		}
-		return AS.asc_builder_build(builder) >= 0;
+		if (AS.asc_builder_build(builder) < 0)
+			return false;
+		if (!runInitializers)
+			return true;
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
+		if ((module == null) || !InitGlobals(module))
+		{
+			DiscardModule(moduleName);
+			return false;
+		}
+		return true;
 	}
 
 	/// Through a builder of its own, so `[metadata]` checks as it compiles, into a module
@@ -2017,13 +2118,8 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 		if (AS.asc_builder_add_section(builder, scope String(sectionName).CStr(), source.Ptr, (uint)source.Length) < 0)
 			return false;
-
-		// A build runs the global initializers once it compiles: off for this one build, and
-		// back on, the library's default, which nothing here changes, for every other.
-		AS.asc_engine_set_property(mEngine, AS.asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 0);
-		let built = AS.asc_builder_build(builder);
-		AS.asc_engine_set_property(mEngine, AS.asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 1);
-		return built >= 0;
+		// A build runs no global initializer (they run in CompileModule, after it).
+		return AS.asc_builder_build(builder) >= 0;
 	}
 
 	private const String cCheckModule = "__check";
@@ -2102,18 +2198,23 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 
 		// The debugger, when one is attached, may suspend the call at a line: it then owns
-		// the context for inspection and resumption, and the call reports as paused.
+		// the context for inspection and resumption, and the call reports as paused. Its line
+		// callback checks the budget too.
 		if (mDebugger != null)
 			mDebugger.Arm(ctx);
+		else
+			ArmBudget(ctx);
+		BeginExecute();
 		let state = AS.asc_context_execute(ctx);
+		EndExecute();
 		if ((state == AS.asEXECUTION_SUSPENDED) && (mDebugger != null)
 			&& mDebugger.Adopt(ctx, fn, what, copies, strings))
 		{
 			held = true;
 			return false;
 		}
-		if (mDebugger != null)
-			AS.asc_context_clear_line_callback(ctx);
+		// Never back to the pool carrying a line callback.
+		AS.asc_context_clear_line_callback(ctx);
 		FreeArgCopies(copies, strings);
 		if (state != AS.asEXECUTION_FINISHED)
 		{
@@ -2209,6 +2310,10 @@ class AngelScriptRuntime : ScriptRuntime
 			let line = AS.asc_context_get_exception_line_number(ctx, &column, &section);
 			Problem(scope $"{StringView(section)}({line},{column}): exception: {StringView(AS.asc_context_get_exception_string(ctx))}");
 		}
+		else if (state == AS.asEXECUTION_ABORTED)
+		{
+			Problem(scope $"{what}: script call stopped: ran past its {Budget.CallSeconds} s budget");
+		}
 		else
 		{
 			Problem(scope $"{what}: execution ended in state {state}");
@@ -2243,7 +2348,12 @@ class AngelScriptRuntime : ScriptRuntime
 		defer ReleaseContext(ctx);
 		if (AS.asc_context_prepare(ctx, factory) < 0)
 			return null;
+		// A constructor can loop as well as a method.
+		ArmBudget(ctx);
+		BeginExecute();
 		let state = AS.asc_context_execute(ctx);
+		EndExecute();
+		AS.asc_context_clear_line_callback(ctx);
 		if (state != AS.asEXECUTION_FINISHED)
 		{
 			ReportExecution(ctx, state, scope $"constructing {className}");
@@ -2620,6 +2730,8 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_function_add_ref(fn);
 		co.Owner = AS.asc_function_get_delegate_object(fn);
 		AS.asc_context_set_user_data(co.Context, Internal.UnsafeCastToPtr(co));
+		// Its own context, armed for its life: each run between its waits is a call.
+		ArmBudget(co.Context);
 		mCoroutines.Add(co);
 		if (AS.asc_context_prepare(co.Context, fn) < 0)
 		{
@@ -2648,7 +2760,9 @@ class AngelScriptRuntime : ScriptRuntime
 	private void Step(Coroutine co)
 	{
 		co.Running = true;
+		BeginExecute();
 		let state = AS.asc_context_execute(co.Context);
+		EndExecute();
 		co.Running = false;
 		if ((state != AS.asEXECUTION_SUSPENDED) && (state != AS.asEXECUTION_FINISHED))
 			ReportExecution(co.Context, state, "coroutine");

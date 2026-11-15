@@ -110,7 +110,9 @@ class AngelScriptCook : IScriptLanguageCook
 		ClearAndDeleteItems!(runtime.Problems);
 
 		const String cModule = "cook";
-		let ok = runtime.Compile(cModule, sourceName, source);
+		// Compiled without running: the script's global initializers are the game's to run when
+		// it loads the script, under the call budget.
+		let ok = runtime.Compile(cModule, sourceName, source, false);
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		if (!ok)
@@ -137,7 +139,7 @@ class AngelScriptCook : IScriptLanguageCook
 		return harvested;
 	}
 
-	/// Through the runtime's Check, so unlike Cook no global initializer runs.
+	/// Through the runtime's Check, which compiles as Cook does and keeps no module.
 	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden)
 	{
 		let runtime = scope AngelScriptRuntime();

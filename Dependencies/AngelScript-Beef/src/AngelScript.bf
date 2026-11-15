@@ -118,6 +118,8 @@ static class AS
 	[CLink] public static extern TypeInfo* asc_module_get_type_info_by_decl(Module* module, char8* decl);
 	[CLink] public static extern uint32 asc_module_get_global_var_count(Module* module);
 	[CLink] public static extern void* asc_module_get_address_of_global_var(Module* module, uint32 index);
+	/// Runs the module's global variable initializers on `ctx` (its line callback applies).
+	[CLink] public static extern int32 asc_module_reset_global_vars(Module* module, Context* ctx);
 
 	// ---- contexts ----
 	[CLink] public static extern Context* asc_engine_create_context(Engine* engine);
@@ -329,4 +331,5 @@ static class AS
 	public const int32 asEP_INIT_GLOBAL_VARS_AFTER_BUILD = 9;
 	public const int32 asEP_REQUIRE_ENUM_SCOPE = 10;
 	public const int32 asEP_GENERIC_CALL_MODE = 28;
+	public const int32 asEP_MAX_CALL_STACK_SIZE = 31;
 }

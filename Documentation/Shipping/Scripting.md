@@ -351,8 +351,12 @@ property with its description as the tooltip and saves per instance values over 
 
 - The class names `Game` and `Level` are reserved for their tiers; do not use them for a
   behavior.
-- `script_validate` compiles; it does not run. A global variable's initialiser does run
-  whenever the module builds, cook time included, so keep it to plain values.
+- `script_validate` compiles; it does not run, and neither does the cook. A global variable's
+  initialiser runs when the game loads the script, so one that faults fails that load, not the
+  cook; keep it to plain values.
+- A call into script (a handler, a constructor, a coroutine's run between its waits, a global's
+  initialiser) that runs past 5 s is stopped with an error that fails that call, not the game,
+  and recursion that never ends fails its call at 20000 nested calls ("Stack overflow").
 - A plain field is not a property: if the inspector does not show a field, it has no
   annotation.
 - Some engine fields are read only on purpose (a network identity's `Authority` and `Id`):

@@ -261,6 +261,7 @@ asc_typeinfo* asc_module_get_type_info_by_name(asc_module* module, const char* n
 asc_typeinfo* asc_module_get_type_info_by_decl(asc_module* module, const char* decl) { return Wrap(M(module)->GetTypeInfoByDecl(decl)); }
 unsigned asc_module_get_global_var_count(asc_module* module) { return M(module)->GetGlobalVarCount(); }
 void* asc_module_get_address_of_global_var(asc_module* module, unsigned index) { return M(module)->GetAddressOfGlobalVar(index); }
+int asc_module_reset_global_vars(asc_module* module, asc_context* ctx) { return M(module)->ResetGlobalVars(C(ctx)); }
 
 /* ---- contexts ---- */
 

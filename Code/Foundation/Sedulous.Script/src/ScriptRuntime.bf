@@ -73,14 +73,20 @@ abstract class ScriptRuntime
 			Context.SetService(typeof(T), service);
 	}
 
-	/// Compiles `source` into the module, replacing what it held. False on a compile error,
-	/// with the messages in Problems.
-	public bool Compile(StringView moduleName, StringView sectionName, StringView source)
-		=> CompileModule(moduleName, scope ScriptSection[](.(sectionName, source)));
+	/// The budget every call into this runtime's script runs under, from the next call on.
+	public ScriptBudget Budget = .();
+
+	/// Compiles `source` into the module, replacing what it held, and runs its global
+	/// initializers under the budget. False on a compile error or a failed initializer, with
+	/// the messages in Problems. With `runInitializers` false nothing in the source runs, and
+	/// its globals hold nothing: what a cook compiles with to read a class's members.
+	public bool Compile(StringView moduleName, StringView sectionName, StringView source, bool runInitializers = true)
+		=> CompileModule(moduleName, scope ScriptSection[](.(sectionName, source)), runInitializers);
 
 	/// Compiles the sections into one module, replacing what it held: every behaviour
-	/// class of a run in one module, each keeping its own file identity for errors.
-	public virtual bool CompileModule(StringView moduleName, Span<ScriptSection> sections) => false;
+	/// class of a run in one module, each keeping its own file identity for errors. The global
+	/// initializers run as Compile's do.
+	public virtual bool CompileModule(StringView moduleName, Span<ScriptSection> sections, bool runInitializers = true) => false;
 
 	/// Drops a module and everything compiled into it.
 	public virtual void DiscardModule(StringView moduleName) {}

@@ -185,6 +185,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   and reports every client it loses.
 - HTTP: a redirect to another origin no longer carries the request's Authorization,
   Proxy-Authorization or Cookie headers.
+- Scripting: a call into script that runs longer than its budget (5 s by default) is stopped with
+  an error that fails that call, not the game; a script loop that never ended used to hang it.
+  Recursion that never ends fails its call at 20000 nested calls. Global variable initializers
+  run when the game loads the script, under the budget, and no longer during the cook: a
+  faulting initializer fails the load, not the cook.
 - Editor: the Export dialog shows the selected preset's settings again; since the property grid
   measured its rows, the column beside the presets had shrunk to nothing.
 - Rendering (Vulkan): the screen UI waits for the scene's last pass before drawing over it, where on

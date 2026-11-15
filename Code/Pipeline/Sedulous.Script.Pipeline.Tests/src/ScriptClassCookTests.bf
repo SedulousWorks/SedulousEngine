@@ -135,7 +135,8 @@ static class ScriptClassCookTests
 	}
 
 	/// What the editor checks as a script is typed: a compile as the cook's, with nothing in
-	/// the source run and nothing harvested.
+	/// the source run and nothing harvested. Neither runs script: a global initializer's fault
+	/// is the game's to meet when it loads the script, under the call budget.
 	[Test]
 	public static void ACheckCompilesWithoutRunningTheScript()
 	{
@@ -143,7 +144,7 @@ static class ScriptClassCookTests
 		let cook = ScriptLanguageCooks.Find("angelscript");
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
-		// The cook runs this initializer and faults; the check never runs it.
+		// An initializer that faults when run; the check and the cook pass it.
 		let faulting = """
 			int Zero() { return 0; }
 			int boom = 10 / Zero();
@@ -157,7 +158,8 @@ static class ScriptClassCookTests
 		Test.Assert(className == "Mover");
 		Test.Assert(problems.IsEmpty);
 		let record = scope ScriptClassSource();
-		Test.Assert(!cook.Cook(faulting, "Mover.as", "", record, problems));
+		Test.Assert(cook.Cook(faulting, "Mover.as", "", record, problems), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(record.ClassName == "Mover");
 
 		// A compile error still fails it, where it is.
 		ClearAndDeleteItems(problems);
