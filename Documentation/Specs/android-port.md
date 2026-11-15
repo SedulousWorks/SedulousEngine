@@ -51,8 +51,9 @@ Working files outside the repos in `~/Dev/Beef/android-spike`.
 
 ### Gaps the spike found in Beef's Android runtime
 
-- `Runtime.FatalError` exits with code 1 and prints raw addresses; its MESSAGE appears nowhere,
-  neither on stdout nor in logcat.
+- `Runtime.FatalError` exits with code 1; its message, with the file and line, goes to logcat under
+  the tag `Beef` (the Android runtime routes its error output there), followed by an unsymbolised
+  backtrace.
 - Beef's own crash catcher reports nothing on a SIGSEGV; Android's debuggerd writes the tombstone
   to logcat. The tombstone symbolises to Beef source lines with the NDK's `llvm-symbolizer
   --obj=<unstripped binary>` (`ndk-stack` found nothing for an executable outside an APK).
@@ -130,8 +131,7 @@ needed on the device.
 
 - The SIGPIPE fix upstream, and the runtime's arm64 Android build in a script (the only one in
   the Beef repo is a Windows batch file for NDK 20).
-- The fatal error message to logcat (`__android_log_print`), and the CPU count from
-  `sysconf(_SC_NPROCESSORS_ONLN)`.
+- The CPU count from `sysconf(_SC_NPROCESSORS_ONLN)`.
 - Crash reports: either Beef's crash catcher made to print on Android, or rely on the tombstone
   plus symbolising (the export keeps the unstripped `libmain.so` for that).
 
@@ -152,7 +152,7 @@ needed on the device.
 
 Each phase ends with something running on the phone.
 
-- **A0 Toolchain**: the Beef fixes (SIGPIPE, fatal message, CPU count) on the fork; the runtime's
+- **A0 Toolchain**: the Beef fixes (SIGPIPE, CPU count) on the fork; the runtime's
   Android build scripted; `build-native.sh android` for the player's libraries; a test runner that
   pushes a few headless test suites (Core, Scene, Messaging) to the phone and runs them.
 - **A1 A triangle**: the Vulkan Android surface and loader, WebGPU compiled out; a sample that
