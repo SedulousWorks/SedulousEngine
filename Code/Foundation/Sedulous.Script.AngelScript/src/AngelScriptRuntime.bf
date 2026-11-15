@@ -2097,7 +2097,7 @@ class AngelScriptRuntime : ScriptRuntime
 				name.AppendF("#{}", n);
 			}
 			names.Add(new String(name));
-			if (AS.asc_builder_add_section(builder, name.CStr(), section.Source.Ptr, (uint)section.Source.Length) < 0)
+			if (!AddSection(builder, name, section.Source))
 				return false;
 		}
 		if (AS.asc_builder_build(builder) < 0)
@@ -2115,7 +2115,7 @@ class AngelScriptRuntime : ScriptRuntime
 
 	/// Through a builder of its own, so `[metadata]` checks as it compiles, into a module
 	/// discarded before any of it could be called.
-	public override bool Check(StringView sectionName, StringView source)
+	public override bool Check(StringView sectionName, StringView source, Span<ScriptSection> includes = default)
 	{
 		let builder = AS.asc_builder_create();
 		if (builder == null)
@@ -2129,13 +2129,68 @@ class AngelScriptRuntime : ScriptRuntime
 			if (module != null)
 				AS.asc_module_discard(module);
 		}
-		if (AS.asc_builder_add_section(builder, scope String(sectionName).CStr(), source.Ptr, (uint)source.Length) < 0)
+		if (!AddSection(builder, sectionName, source))
 			return false;
+		for (let included in includes)
+		{
+			if (!AddSection(builder, included.Name, included.Source))
+				return false;
+		}
 		// A build runs no global initializer (they run in CompileModule, after it).
 		return AS.asc_builder_build(builder) >= 0;
 	}
 
 	private const String cCheckModule = "__check";
+
+	/// Adds `source` as the section `name`, its `#include` lines blanked: the files they name come
+	/// as sections of their own (the cook resolved and recorded them), and the builder must not
+	/// look for them.
+	private static bool AddSection(AS.Builder* builder, StringView name, StringView source)
+	{
+		let text = BlankIncludes(source, .. scope .());
+		return AS.asc_builder_add_section(builder, scope String(name).CStr(), text.Ptr, (uint)text.Length) >= 0;
+	}
+
+	/// `source` with its `#include` lines blanked, into `outText`. Blanking, not removing,
+	/// keeps every other line where it was, for errors and breakpoints.
+	public static void BlankIncludes(StringView source, String outText)
+	{
+		let start = outText.Length;
+		outText.Append(source);
+		int lineStart = start;
+		for (int i = start; i <= outText.Length; i++)
+		{
+			if ((i < outText.Length) && (outText[i] != '\n'))
+				continue;
+			var first = lineStart;
+			while ((first < i) && ((outText[first] == ' ') || (outText[first] == '\t')))
+				first++;
+			if (StringView(outText, first, i - first).StartsWith("#include"))
+			{
+				for (int k = first; k < i; k++)
+				{
+					if (outText[k] != '\r')
+						outText[k] = ' ';
+				}
+			}
+			lineStart = i + 1;
+		}
+	}
+
+	/// The paths `source`'s `#include "<path>"` lines name, as written, in order.
+	public static void IncludesOf(StringView source, List<String> outPaths)
+	{
+		for (var line in source.Split('\n'))
+		{
+			line.Trim();
+			if (!line.StartsWith("#include"))
+				continue;
+			let open = line.IndexOf('"');
+			let close = (open >= 0) ? line.IndexOf('"', open + 1) : -1;
+			if (close > open)
+				outPaths.Add(new String(line.Substring(open + 1, close - open - 1)));
+		}
+	}
 
 	public override void DiscardModule(StringView moduleName)
 	{

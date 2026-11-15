@@ -83,9 +83,9 @@ abstract class ScriptRuntime
 	public bool Compile(StringView moduleName, StringView sectionName, StringView source, bool runInitializers = true)
 		=> CompileModule(moduleName, scope ScriptSection[](.(sectionName, source)), runInitializers);
 
-	/// Compiles the sections into one module, replacing what it held: every behaviour
-	/// class of a run in one module, each keeping its own file identity for errors. The global
-	/// initializers run as Compile's do.
+	/// Compiles the sections into one module, replacing what it held: a class's source and the
+	/// files it includes, each keeping its own file identity for errors and breakpoints. The
+	/// global initializers run as Compile's do.
 	public virtual bool CompileModule(StringView moduleName, Span<ScriptSection> sections, bool runInitializers = true) => false;
 
 	/// Drops a module and everything compiled into it.
@@ -93,9 +93,10 @@ abstract class ScriptRuntime
 
 	/// Compiles `source` against the bound surface WITHOUT running any of it: no global
 	/// initializer runs, and no module is kept. For checking code as it is typed, where a
-	/// compile that ran it would run whatever is half written. False on a compile error,
-	/// with the messages in Problems.
-	public virtual bool Check(StringView sectionName, StringView source) => false;
+	/// compile that ran it would run whatever is half written. `includes` are the files it
+	/// includes, each a section named by its path (a language without an include directive
+	/// ignores them). False on a compile error, with the messages in Problems.
+	public virtual bool Check(StringView sectionName, StringView source, Span<ScriptSection> includes = default) => false;
 
 	/// Calls a global function of a module by its declaration, `float f(int, int)` say.
 	/// False when it is not there, or the call failed; the reason is in Problems.
