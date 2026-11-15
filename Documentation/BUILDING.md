@@ -9,7 +9,9 @@
 - Linux x64 or Windows x64. Prebuilt native libraries for both are in the tree under
   `Dependencies/*/dist`, except SDL3 on Linux, which links the system's: install SDL 3.4
   (`libsdl3-dev` or your distribution's equivalent). The dependencies built from source carry a
-  `build-native.sh` / `build-native.ps1` to rebuild them.
+  `build-native.sh` / `build-native.ps1` to rebuild them, and `Dependencies/build-all-native.sh` /
+  `build-all-native.ps1` run every one: `status` says which committed archives are older than
+  their sources, `build` rebuilds them (and `wasm`, from bash, the wasm32 ones).
 - A Vulkan 1.3 or D3D12 capable GPU to run anything that draws.
 - For web builds, [emsdk](https://emscripten.org/) on the path.
 

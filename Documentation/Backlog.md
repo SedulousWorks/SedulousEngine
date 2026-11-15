@@ -31,17 +31,14 @@ depends on it) is pushed and awaiting its upstream PR. Reword once it merges, or
 Both sit at fa11f9ab, behind `master`, which is the default branch again. Bring them along with
 `master`, or retire them.
 
-### Rebuild the Jolt Windows binaries
-`jcb_shape_world_triangles` (added to `Dependencies/joltc-Beef/joltc_beef.cpp` for
-`PhysicsWorld.AppendBodyTriangles`) is in the Linux `.so` and the wasm archives, not yet in
-`dist/Debug-Win64` and `dist/Release-Win64`: run `build-native.ps1` on Windows and commit them,
-or a Windows build fails to link.
-
-### Rebuild the miniaudio Windows libraries
-`mab_engine_stop` and `mab_engine_start` (added to `Dependencies/miniaudio-Beef/miniaudio_beef.c`
-for `AudioEngine.Suspend` and `Resume`) are in the Linux and wasm archives, not yet in
-`dist/Debug-Win64` and `dist/Release-Win64`: run `build-native.ps1` on Windows and commit them,
-or a Windows build fails to link.
+### Rebuild the Windows native libraries
+`Dependencies/build-all-native.sh status` (or `.ps1`) lists the committed archives older than
+their sources. On 2026-11-15 a Windows build cannot link: HarfBuzz, Mbed TLS, SheenBidi and zlib
+have no `dist/*-Win64` archives at all, and AngelScript's (the shim's memory cap, module names and
+declarations) and miniaudio's (`mab_engine_stop` and `mab_engine_start`) are older than their
+sources. On Windows, `./build-all-native.ps1 build` rebuilds every one; commit the `dist/*-Win64`
+folders it writes. AngelScript's wasm32 archive is outdated too (`./build-all-native.sh wasm
+angelscript`), which keeps every web build from linking.
 
 ## The Raptor sync
 
