@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Threading;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Net;
 using Sedulous.Net.Tls;
 using Sedulous.Net.Tls.MbedTLS;
@@ -256,6 +257,43 @@ class TlsTests
 		defer delete rootless;
 		Test.Assert(rootless.State == .Failed);
 		Test.Assert(rootless.Failure.Contains("no trusted roots", true), scope String(rootless.Failure));
+	}
+
+	/// A folder of certificates, a file each with text around it, is one bundle of roots: as
+	/// Android keeps its roots, a file per certificate, its description before the PEM.
+	[Test]
+	public static void AFolderOfCertificatesAFileEachWithTextAroundItIsOneBundleOfRoots()
+	{
+		let first = scope Certificate("localhost");
+		let second = scope Certificate("localhost");
+		let folder = "tls-certificate-folder";
+		RemoveDirectoryRecursive(folder);
+		Test.Assert(CreateDirectory(folder));
+		defer RemoveDirectoryRecursive(folder);
+		void Write(StringView name, Certificate cert)
+		{
+			let text = scope String("Certificate:\n    Data:\n        Version: 3 (0x2)\nSHA1 Fingerprint=00:11\n");
+			text.Append(cert.Pem);
+			Test.Assert(WriteFile(PathJoin(folder, name, .. scope .()), Bytes(text)) case .Ok);
+		}
+		Write("1a2b3c4d.0", first);
+		Write("5e6f7a8b.0", second);
+		Test.Assert(CreateDirectory(PathJoin(folder, "nested", .. scope .()))); // not a certificate
+
+		let bundle = scope String();
+		Test.Assert(TlsSystemRoots.ReadCertificateFolder(folder, bundle) == 2);
+		for (let cert in scope Certificate[](first, second))
+		{
+			let config = scope TlsClientConfig();
+			config.ServerName.Set("localhost");
+			config.TrustPem(bundle);
+			let pair = scope Pair(cert, config);
+			Test.Assert(pair.Client.State == .Open, scope String(pair.Client.Failure));
+		}
+
+		let none = scope String();
+		Test.Assert(TlsSystemRoots.ReadCertificateFolder("tls-no-such-folder", none) == 0);
+		Test.Assert(none.IsEmpty);
 	}
 
 	[Test]

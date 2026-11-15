@@ -6,8 +6,8 @@ using Sedulous.Core.IO;
 namespace Sedulous.Net.Tls;
 
 /// The system's trusted roots: the distribution's bundle on Linux and SteamOS (the first of the
-/// usual paths that exists), the ROOT store on Windows; none where none is found (a web build, a
-/// box without a bundle).
+/// usual paths that exists), the ROOT store on Windows, the system's certificate folder on
+/// Android; none where none is found (a web build, a box without a bundle).
 static class TlsSystemRoots
 {
 	/// Fills `outRoots`; `outWhere`, when given, says what was read or where it looked.
@@ -33,6 +33,20 @@ static class TlsSystemRoots
 #elif BF_PLATFORM_WASM
 		// A browser checks certificates itself; a web build has no TLS backend.
 		outWhere?.Set("none: the browser does TLS");
+#elif BF_PLATFORM_ANDROID
+		// Android keeps its roots as a folder of certificates: since Android 14 in the module the
+		// system updates for security, before that in the system image. Certificates a user added
+		// are left out, as Android leaves them out for an app unless it asks for them.
+		StringView[2] folders = .("/apex/com.android.conscrypt/cacerts", "/system/etc/security/cacerts");
+		for (let folder in folders)
+		{
+			let count = ReadCertificateFolder(folder, outRoots.Pem..Clear());
+			if (outRoots.Pem.IsEmpty)
+				continue;
+			outWhere?.Set(scope $"{folder} ({count} certificates)");
+			return;
+		}
+		outWhere?.Set("no certificates in /apex/com.android.conscrypt/cacerts or /system/etc/security/cacerts");
 #else
 		// The bundle a distribution keeps (Debian/Ubuntu/SteamOS/Arch, Fedora/RHEL, openSUSE,
 		// Alpine), the first that exists.
@@ -53,6 +67,32 @@ static class TlsSystemRoots
 		}
 		outWhere?.Set("no bundle at /etc/ssl/certs/ca-certificates.crt or the other usual paths");
 #endif
+	}
+
+	/// Appends the certificates in `folder`, a PEM file each (Android keeps its roots so), to
+	/// `outBundle` as one bundle; text around a certificate is kept, as a PEM reader skips it.
+	/// Nothing when the folder is missing or holds none. Returns the number of files read.
+	public static int ReadCertificateFolder(StringView folder, String outBundle)
+	{
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		ListDirectory(folder, scope [&] (name, isDirectory) =>
+			{
+				if (!isDirectory)
+					names.Add(new String(name));
+			});
+		int read = 0;
+		let bytes = scope List<uint8>();
+		for (let name in names)
+		{
+			bytes.Clear();
+			if ((ReadFile(PathJoin(folder, name, .. scope .()), bytes) case .Err) || bytes.IsEmpty)
+				continue;
+			outBundle.Append(StringView((char8*)bytes.Ptr, bytes.Count));
+			outBundle.Append('\n');
+			read++;
+		}
+		return read;
 	}
 
 #if BF_PLATFORM_WINDOWS
