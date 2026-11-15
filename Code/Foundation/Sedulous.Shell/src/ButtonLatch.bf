@@ -1,11 +1,11 @@
-namespace Sedulous.Shell.SDL3;
+namespace Sedulous.Shell;
 
 /// One button's state and the edges the frame's events brought, latched until the next
 /// frame begins.
 ///
-/// A press and its release arriving in one frame (a quick click while a frame takes long)
-/// read as both pressed and released, never as neither, which comparing the state at the
-/// frame's two ends alone would give.
+/// A press and its release arriving in one frame (a quick click or tap while a frame takes
+/// long) read as both pressed and released, never as neither, which comparing the state at the
+/// frame's two ends alone would give. Every shell's keys and buttons keep them so.
 struct ButtonLatch
 {
 	public bool Down;

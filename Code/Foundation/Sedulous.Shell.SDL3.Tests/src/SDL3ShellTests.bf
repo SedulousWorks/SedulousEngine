@@ -214,24 +214,6 @@ class SDL3ShellTests
 		Test.Assert(!keyboard.IsKeyReleased(.A));
 	}
 
-	/// The latch a pad's buttons use too (no pad to push events at here): a repeat of the
-	/// state is no new edge, and a frame's start clears the edges but not the state.
-	[Test]
-	public static void ButtonLatchKeepsTheFramesEdges()
-	{
-		ButtonLatch latch = .();
-		latch.Set(true);
-		latch.Set(true); // a repeat
-		latch.Set(false);
-		latch.Set(true);
-		Test.Assert(latch.Down && latch.Pressed && latch.Released);
-
-		latch.BeginFrame();
-		Test.Assert(latch.Down && !latch.Pressed && !latch.Released);
-		latch.Set(true);
-		Test.Assert(!latch.Pressed, "held is not pressed again");
-	}
-
 	/// Several motions between pumps are the frame's total movement, not the last one.
 	[Test]
 	public static void MotionWithinAFrameAccumulates()

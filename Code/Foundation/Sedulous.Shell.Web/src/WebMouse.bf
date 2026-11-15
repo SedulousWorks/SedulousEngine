@@ -13,8 +13,9 @@ class WebMouse : IMouse
 {
 	private const int cCount = (int)MouseButton.Count;
 
-	private bool[cCount] mCurrent;
-	private bool[cCount] mPrevious;
+	/// Each button's state and the frame's edges: a click whose press and release share a frame
+	/// reads as both.
+	private ButtonLatch[cCount] mButtons;
 	private float mX;
 	private float mY;
 	private float mDeltaX;
@@ -34,11 +35,9 @@ class WebMouse : IMouse
 	public float ScrollX => mScrollX;
 	public float ScrollY => mScrollY;
 
-	public bool IsButtonDown(MouseButton button) => mCurrent[Index(button)];
-	public bool IsButtonPressed(MouseButton button) =>
-		mCurrent[Index(button)] && !mPrevious[Index(button)];
-	public bool IsButtonReleased(MouseButton button) =>
-		!mCurrent[Index(button)] && mPrevious[Index(button)];
+	public bool IsButtonDown(MouseButton button) => mButtons[Index(button)].Down;
+	public bool IsButtonPressed(MouseButton button) => mButtons[Index(button)].Pressed;
+	public bool IsButtonReleased(MouseButton button) => mButtons[Index(button)].Released;
 
 	/// Pointer lock is a REQUEST a browser only grants from a user gesture, so this records
 	/// the wish and the lock itself is not wired.
@@ -61,7 +60,7 @@ class WebMouse : IMouse
 		mDeltaY += deltaY;
 	}
 
-	public void OnButton(MouseButton button, bool down) => mCurrent[Index(button)] = down;
+	public void OnButton(MouseButton button, bool down) => mButtons[Index(button)].Set(down);
 
 	public void OnWheel(float scrollX, float scrollY)
 	{
@@ -71,7 +70,8 @@ class WebMouse : IMouse
 
 	public void BeginFrame()
 	{
-		mPrevious = mCurrent;
+		for (var button in ref mButtons)
+			button.BeginFrame();
 		mDeltaX = 0.0f;
 		mDeltaY = 0.0f;
 		mScrollX = 0.0f;
@@ -82,7 +82,8 @@ class WebMouse : IMouse
 	/// gets its mouseup.
 	public void ReleaseAll()
 	{
-		mCurrent = default;
+		for (var button in ref mButtons)
+			button.Set(false);
 	}
 
 	private static int Index(MouseButton button)
