@@ -430,17 +430,9 @@ class AngelScriptRuntime : ScriptRuntime
 		for (let d in mDelegates)
 			d.RuntimeGone();
 		for (let co in mCoroutines)
-		{
-			AS.asc_context_abort(co.Context);
-			AS.asc_context_release(co.Context);
-			AS.asc_function_release(co.Function);
-		}
+			ReleaseCoroutineContext(co);
 		for (let co in mRetired)
-		{
-			AS.asc_context_abort(co.Context);
-			AS.asc_context_release(co.Context);
-			AS.asc_function_release(co.Function);
-		}
+			ReleaseCoroutineContext(co);
 		// The objects before the engine that owns their memory.
 		ClearAndDeleteItems!(mObjects);
 		for (let ctx in mAllContexts)
@@ -2828,10 +2820,18 @@ class AngelScriptRuntime : ScriptRuntime
 
 	private void Free(Coroutine co)
 	{
+		ReleaseCoroutineContext(co);
+		delete co;
+	}
+
+	/// Lets go of a coroutine's own context and function. Its line callback goes first: the
+	/// shim keeps the callback's record with the context, and only clearing it frees that.
+	private static void ReleaseCoroutineContext(Coroutine co)
+	{
 		AS.asc_context_abort(co.Context);
+		AS.asc_context_clear_line_callback(co.Context);
 		AS.asc_context_release(co.Context);
 		AS.asc_function_release(co.Function);
-		delete co;
 	}
 
 	/// Frees the retired coroutines nothing runs any more.
