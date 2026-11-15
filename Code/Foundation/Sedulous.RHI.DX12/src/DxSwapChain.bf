@@ -120,14 +120,14 @@ class DxSwapChain : ISwapChain
 		return .Ok;
 	}
 
-	public Result<void> AcquireNextImage()
+	public Result<void, Sedulous.Core.ErrorCode> AcquireNextImage()
 	{
 		// DXGI has no acquire: the index is simply asked for.
 		mCurrentIndex = mSwapChain.GetCurrentBackBufferIndex();
 		return .Ok;
 	}
 
-	public Result<void> Present(IQueue queue)
+	public Result<void, Sedulous.Core.ErrorCode> Present(IQueue queue)
 	{
 		// The queue is not named here. DXGI presents against the queue the swap chain was
 		// created with, unlike Vulkan where the present queue is given per call.
@@ -145,7 +145,7 @@ class DxSwapChain : ISwapChain
 			syncInterval = 1;
 		}
 
-		return SUCCEEDED(mSwapChain.Present(syncInterval, flags)) ? .Ok : .Err;
+		return SUCCEEDED(mSwapChain.Present(syncInterval, flags)) ? .Ok : .Err(.Unknown);
 	}
 
 	public Result<void> Resize(uint32 width, uint32 height)

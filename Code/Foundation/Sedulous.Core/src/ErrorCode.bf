@@ -18,5 +18,7 @@ enum ErrorCode
 	AlreadyExists,
 	Internal,
 	/// Told to stop through its CancelToken, and stopped.
-	Cancelled
+	Cancelled,
+	/// No longer matches what it serves (a swap chain its surface outgrew): make it again.
+	OutOfDate
 }

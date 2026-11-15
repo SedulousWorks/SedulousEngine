@@ -111,10 +111,8 @@ class VulkanSwapChain : ISwapChain
 
 	/// Takes the next back buffer and leaves its semaphores with the device for the
 	/// submission that will draw into it.
-	public Result<void> AcquireNextImage()
+	public Result<void, ErrorCode> AcquireNextImage()
 	{
-		if (mSwapChain == .Null)
-			return .Err;
 
 		// Pre-rotated: when a present said the surface may have turned (a phone turned from one
 		// landscape to the other keeps its size, so nothing else would say), make the swap chain
@@ -126,8 +124,11 @@ class VulkanSwapChain : ISwapChain
 			VkSurfaceCapabilitiesKHR capabilities = .();
 			if ((VulkanNative.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mPhysicalDevice, mSurface, &capabilities) == .VK_SUCCESS)
 				&& (capabilities.currentTransform != mTransform) && (Resize(mAskedWidth, mAskedHeight) case .Err))
-				return .Err;
+				return .Err(.OutOfDate);
 		}
+		// A chain whose rebuild failed after the old one went has no images to give.
+		if ((mSwapChain == .Null) || (mFrameIndex >= (uint32)mAcquireSemaphores.Count) || mPresentSemaphores.IsEmpty)
+			return .Err(.OutOfDate);
 
 		var acquireSemaphore = mAcquireSemaphores[(int)mFrameIndex];
 		uint32 imageIndex = 0;
@@ -138,30 +139,31 @@ class VulkanSwapChain : ISwapChain
 		{
 			// Turned past what the images can be presented as: made again for the surface as it
 			// is now, then acquired once more.
-			if (Resize(mAskedWidth, mAskedHeight) case .Err)
-				return .Err;
+			if ((Resize(mAskedWidth, mAskedHeight) case .Err) || mAcquireSemaphores.IsEmpty)
+				return .Err(.OutOfDate);
 			acquireSemaphore = mAcquireSemaphores[(int)mFrameIndex];
 			result = VulkanNative.vkAcquireNextImageKHR(mDevice, mSwapChain, uint64.MaxValue,
 				acquireSemaphore, .Null, &imageIndex);
 			mCurrentImageIndex = imageIndex;
 		}
 
-		// OUT_OF_DATE means the surface changed under us and the caller has to resize;
-		// SUBOPTIMAL still presents, so it is not worth failing an otherwise usable frame.
+		// OUT_OF_DATE means the surface changed under us and the caller makes the chain again,
+		// at the same size if need be; SUBOPTIMAL still presents, so it is not worth failing an
+		// otherwise usable frame.
 		if (result == .VK_ERROR_OUT_OF_DATE_KHR)
-			return .Err;
+			return .Err(.OutOfDate);
 		if ((result != .VK_SUCCESS) && (result != .VK_SUBOPTIMAL_KHR))
-			return .Err;
+			return .Err(.Unknown);
 
 		mOwner.SetPendingSwapChainSync(acquireSemaphore, mPresentSemaphores[(int)mCurrentImageIndex]);
 		return .Ok;
 	}
 
-	public Result<void> Present(IQueue queue)
+	public Result<void, ErrorCode> Present(IQueue queue)
 	{
 		let vulkanQueue = queue as VulkanQueue;
 		if (vulkanQueue == null || mSwapChain == .Null)
-			return .Err;
+			return .Err(.InvalidArgument);
 
 		var waitSemaphore = mPresentSemaphores[(int)mCurrentImageIndex];
 		var swapChain = mSwapChain;
@@ -181,24 +183,53 @@ class VulkanSwapChain : ISwapChain
 
 		if (result == .VK_ERROR_DEVICE_LOST)
 			mOwner.MarkLost();
-		// SUBOPTIMAL is a failure HERE, unlike on acquire: the frame is on screen, and the
-		// caller is being told to rebuild the chain before the next one.
 		if ((result == .VK_ERROR_OUT_OF_DATE_KHR) || (result == .VK_SUBOPTIMAL_KHR))
 		{
 			mCheckTransform = mPreRotate; // the surface may have turned: the next acquire looks
-			return .Err;
+			// Suboptimal still presented; only out of date needs the chain made again (a
+			// surface that keeps answering suboptimal must not be rebuilt every frame).
+			if (result == .VK_ERROR_OUT_OF_DATE_KHR)
+				return .Err(.OutOfDate);
+			return .Ok;
 		}
-		return (result == .VK_SUCCESS) ? .Ok : .Err;
+		if (result == .VK_SUCCESS)
+			return .Ok;
+		return .Err(.Unknown);
 	}
 
 	public Result<void> Resize(uint32 width, uint32 height)
 	{
 		VulkanNative.vkDeviceWaitIdle(mDevice);
-		CleanupImages();
-		DestroySyncObjects();
-		// The old chain is passed in rather than destroyed first, which lets the driver
-		// reuse its images, and Create destroys it once the new one exists.
-		return Create(width, height, mRequestedFormat, mBufferCount, mSwapChain);
+		// The old chain is passed in rather than destroyed first, which lets the driver reuse
+		// its images, and Create lets it go only once the new one exists: a rebuild that fails
+		// leaves the old chain working, its settings put back. Destroying first left empty
+		// semaphore lists that the next acquire indexed.
+		let before = mSwapChain;
+		let oldWidth = mWidth;
+		let oldHeight = mHeight;
+		let oldCount = mBufferCount;
+		let oldAskedWidth = mAskedWidth;
+		let oldAskedHeight = mAskedHeight;
+		let oldFormat = mFormat;
+		let oldAlternate = mAlternate;
+		let oldRotation = mRotation;
+		let oldTransform = mTransform;
+		let oldCheckTransform = mCheckTransform;
+		let made = Create(width, height, mRequestedFormat, mBufferCount, mSwapChain);
+		if ((made case .Err) && (mSwapChain == before))
+		{
+			mWidth = oldWidth;
+			mHeight = oldHeight;
+			mBufferCount = oldCount;
+			mAskedWidth = oldAskedWidth;
+			mAskedHeight = oldAskedHeight;
+			mFormat = oldFormat;
+			mAlternate = oldAlternate;
+			mRotation = oldRotation;
+			mTransform = oldTransform;
+			mCheckTransform = oldCheckTransform;
+		}
+		return made;
 	}
 
 	public void Cleanup()
@@ -343,11 +374,18 @@ class VulkanSwapChain : ISwapChain
 			createInfo.flags |= .VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
 		}
 
-		if (VulkanNative.vkCreateSwapchainKHR(mDevice, &createInfo, null, &mSwapChain)
+		// The new chain first; only once it exists do the old one, its images and its
+		// semaphores go. A failure before here leaves the old chain whole (Resize puts its
+		// settings back).
+		VkSwapchainKHR created = .Null;
+		if (VulkanNative.vkCreateSwapchainKHR(mDevice, &createInfo, null, &created)
 			!= .VK_SUCCESS)
 			return .Err;
+		CleanupImages();
+		DestroySyncObjects();
 		if (old != .Null)
 			VulkanNative.vkDestroySwapchainKHR(mDevice, old, null);
+		mSwapChain = created;
 
 		if (RetrieveImages(surfaceFormat.format) case .Err)
 			return .Err;

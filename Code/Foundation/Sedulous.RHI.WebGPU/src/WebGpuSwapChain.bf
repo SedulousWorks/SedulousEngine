@@ -89,7 +89,7 @@ sealed class WebGpuSwapChain : ISwapChain
 		return Configure(desc.Width, desc.Height);
 	}
 
-	public Result<void> AcquireNextImage()
+	public Result<void, ErrorCode> AcquireNextImage()
 	{
 		DropCurrent();
 
@@ -101,7 +101,12 @@ sealed class WebGpuSwapChain : ISwapChain
 			if (surfaceTexture.texture != null)
 				wgpuTextureRelease(surfaceTexture.texture);
 
-			return .Err; // lost or outdated: the host resizes and retries
+			// Outdated or lost: configured again by the host, at the same size if that is
+			// unchanged (only a size change reconfigured, so the window stayed blank).
+			if ((surfaceTexture.status == .WGPUSurfaceGetCurrentTextureStatus_Outdated)
+				|| (surfaceTexture.status == .WGPUSurfaceGetCurrentTextureStatus_Lost))
+				return .Err(.OutOfDate);
+			return .Err(.Unknown);
 		}
 
 		// Size the frame from the TEXTURE WE GOT, not the size we configured: on the browser
@@ -142,7 +147,7 @@ sealed class WebGpuSwapChain : ISwapChain
 			DeleteAndNullify!(mCurrentView);
 			DeleteAndNullify!(mCurrentTexture);
 			DropCurrent();
-			return .Err;
+			return .Err(.Unknown);
 		}
 		if (AlternateViewFormat != .Undefined)
 		{
@@ -155,7 +160,7 @@ sealed class WebGpuSwapChain : ISwapChain
 				DeleteAndNullify!(mCurrentView);
 				DeleteAndNullify!(mCurrentTexture);
 				DropCurrent();
-				return .Err;
+				return .Err(.Unknown);
 			}
 		}
 
@@ -167,10 +172,10 @@ sealed class WebGpuSwapChain : ISwapChain
 		return .Ok;
 	}
 
-	public Result<void> Present(IQueue queue)
+	public Result<void, ErrorCode> Present(IQueue queue)
 	{
 		if (!mHaveImage)
-			return .Err;
+			return .Err(.Unknown);
 
 		// The frame is closing, so a yield past this point is no longer mid frame.
 		WebGpuApi.NoteFrameClosed();
@@ -201,7 +206,7 @@ sealed class WebGpuSwapChain : ISwapChain
 #else
 		let status = wgpuSurfacePresent(mSurface.Handle);
 		DropCurrent();
-		return (status == .WGPUStatus_Success) ? .Ok : .Err;
+		return (status == .WGPUStatus_Success) ? .Ok : .Err(.Unknown);
 #endif
 	}
 

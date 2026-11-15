@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Graphics;
 using Sedulous.Graphics.Null;
 using Sedulous.RHI;
+using Sedulous.RHI.Null; // NullSwapChain's fault hooks
 using Sedulous.Shell;
 using Sedulous.Shell.Null;
 using Sedulous.Profiler;
@@ -346,5 +347,69 @@ class GraphicsHostTests
 		Test.Assert(plain.Width == plain.WindowWidth);
 		plainWindow.EndFrame(ref plain);
 		device.AdvanceFrame();
+	}
+
+	/// One frame begun and ended; whether it rendered.
+	private static bool RenderOne(GraphicsDevice device, RenderWindow window)
+	{
+		var frame = window.BeginFrame();
+		let valid = frame.Valid;
+		window.EndFrame(ref frame);
+		device.AdvanceFrame();
+		return valid;
+	}
+
+	/// Only a size change rebuilt the swap chain: one out of date at the window's size (a
+	/// surface lost, a display change) failed every acquire, and the window stayed blank.
+	[Test]
+	public static void ASwapChainOutOfDateAtTheSameSizeIsMadeAgain()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let device));
+		defer delete device;
+		Test.Assert(device.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let window));
+		defer delete window;
+		let swap = window.Swap as NullSwapChain;
+		Test.Assert(swap != null);
+		Test.Assert(RenderOne(device, window));
+		let before = swap.Resizes;
+
+		swap.NextAcquire = .Err(.OutOfDate);
+		Test.Assert(!RenderOne(device, window), "this frame is lost");
+		Test.Assert(RenderOne(device, window), "the next makes it again, at the same size, and renders");
+		Test.Assert(swap.Resizes == before + 1);
+
+		swap.NextPresent = .Err(.OutOfDate); // said by the present instead
+		Test.Assert(RenderOne(device, window));
+		Test.Assert(RenderOne(device, window));
+		Test.Assert(swap.Resizes == before + 2);
+
+		// Any other failure is not a reason to make it again.
+		swap.NextAcquire = .Err(.Unknown);
+		Test.Assert(!RenderOne(device, window));
+		Test.Assert(RenderOne(device, window));
+		Test.Assert(swap.Resizes == before + 2);
+	}
+
+	/// SyncSize ignored Resize's result and took the new size as done: a failed rebuild was
+	/// never tried again, and the window went on at a size its swap chain did not have.
+	[Test]
+	public static void ARebuildThatFailsKeepsTheOldChainAndIsTriedAgain()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let device));
+		defer delete device;
+		Test.Assert(device.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let window));
+		defer delete window;
+		let swap = window.Swap as NullSwapChain;
+		Test.Assert(swap != null);
+		let oldWidth = swap.Width;
+
+		(shell.MainWindow as NullWindow).Resize(1600, 900);
+		swap.NextResizeFails = true;
+		Test.Assert(!window.SyncSize(), "failed: no resize happened");
+		Test.Assert(swap.Width == oldWidth, "the old chain stands");
+		Test.Assert(RenderOne(device, window), "the next frame tries again, succeeds, and renders");
+		Test.Assert(swap.Width == 1600);
 	}
 }

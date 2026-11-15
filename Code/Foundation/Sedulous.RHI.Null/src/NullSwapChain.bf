@@ -62,8 +62,19 @@ class NullSwapChain : ISwapChain
 	public uint32 BufferCount => mBufferCount;
 	public uint32 CurrentImageIndex => mImageIndex;
 
-	public Result<void> AcquireNextImage()
+	/// Faults for tests, each taken once: what the next acquire, present or resize answers.
+	public Result<void, ErrorCode> NextAcquire = .Ok;
+	public Result<void, ErrorCode> NextPresent = .Ok;
+	public bool NextResizeFails = false;
+	/// Resize calls, failed ones included.
+	public uint32 Resizes = 0;
+
+	public Result<void, ErrorCode> AcquireNextImage()
 	{
+		let fault = NextAcquire;
+		NextAcquire = .Ok;
+		if (fault case .Err)
+			return fault;
 		mImageIndex = (mImageIndex + 1) % mBufferCount;
 		return .Ok;
 	}
@@ -82,14 +93,22 @@ class NullSwapChain : ISwapChain
 	/// validation layer that forgot to unwrap would pass its tests.
 	public IQueue LastPresentQueue { get; private set; } = null;
 
-	public Result<void> Present(IQueue queue)
+	public Result<void, ErrorCode> Present(IQueue queue)
 	{
 		LastPresentQueue = queue;
-		return .Ok;
+		let fault = NextPresent;
+		NextPresent = .Ok;
+		return fault;
 	}
 
 	public Result<void> Resize(uint32 width, uint32 height)
 	{
+		Resizes++;
+		if (NextResizeFails)
+		{
+			NextResizeFails = false;
+			return .Err;
+		}
 		let swaps = ContentFit.TurnSwapsSides(mRotation);
 		mWidth = swaps ? height : width;
 		mHeight = swaps ? width : height;

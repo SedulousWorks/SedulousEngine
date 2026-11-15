@@ -333,3 +333,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   could crash the game or editor that loaded it).
 - XML: a document nested more than 512 elements deep is refused (`NestingTooDeep`) instead of
   overflowing the stack of whatever read it.
+- Rendering: a window whose swapchain goes out of date without changing size (a surface lost, a
+  display change) is made again instead of staying blank, and a failed rebuild keeps the old
+  swapchain and is retried, where before the next frame read freed semaphores.

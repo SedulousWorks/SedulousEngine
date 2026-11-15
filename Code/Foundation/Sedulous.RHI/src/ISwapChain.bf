@@ -13,8 +13,10 @@ interface ISwapChain
 	uint32 CurrentImageIndex { get; }
 
 	/// Takes the next back buffer. MUST be called before reading CurrentTexture or
-	/// CurrentTextureView, which name whatever this acquired.
-	Result<void> AcquireNextImage();
+	/// CurrentTextureView, which name whatever this acquired. OutOfDate when the chain no
+	/// longer fits its surface (a surface lost, a display change), even at the window's size:
+	/// the caller makes it again with Resize before the next acquire.
+	Result<void, ErrorCode> AcquireNextImage();
 
 	ITexture CurrentTexture { get; }
 	ITextureView CurrentTextureView { get; }
@@ -35,10 +37,12 @@ interface ISwapChain
 	/// landing at their top-right.
 	ContentRotation PreRotation { get; }
 
-	/// Hands the acquired buffer to the display.
-	Result<void> Present(IQueue queue);
+	/// Hands the acquired buffer to the display. OutOfDate as for AcquireNextImage: the frame
+	/// may not have been shown, and the chain is made again before the next acquire.
+	Result<void, ErrorCode> Present(IQueue queue);
 
-	/// Rebuilds at a new size, after a window resize. The back buffer textures and views
-	/// are replaced, so anything holding them must reacquire.
+	/// Rebuilds at a new size, after a window resize, or at the same size after OutOfDate. The
+	/// back buffer textures and views are replaced, so anything holding them must reacquire. A
+	/// rebuild that fails leaves the chain it had.
 	Result<void> Resize(uint32 width, uint32 height);
 }

@@ -28,6 +28,8 @@ class RenderWindow
 
 	private uint32 mWidth;
 	private uint32 mHeight;
+	/// Out of date, or its rebuild failed: the swap chain is made again before the next acquire.
+	private bool mRebuild = false;
 	private IRenderWindowData mData;
 
 	/// Takes ownership of the RHI objects handed in. Built only by
@@ -115,8 +117,9 @@ class RenderWindow
 		}
 	}
 
-	/// Polls the window's size and rebuilds the swap chain when it changed, returning
-	/// whether it did.
+	/// Polls the window's size and rebuilds the swap chain when it changed, or when it went out
+	/// of date at the same size, returning whether it did. A rebuild that fails keeps the old
+	/// chain and its size, and is tried again at the next frame.
 	///
 	/// POLLED rather than event driven, so a host needs no event handler and a window
 	/// manager that resizes without telling anyone still works.
@@ -129,14 +132,16 @@ class RenderWindow
 		let height = mWindow.PixelHeight;
 		if ((width == 0) || (height == 0))
 			return false;
-		if ((width == mWidth) && (height == mHeight))
+		if ((width == mWidth) && (height == mHeight) && !mRebuild)
 			return false;
 
-		mWidth = width;
-		mHeight = height;
 		// The old back buffers may still be in flight, and resizing frees them.
 		mDevice.Raw.WaitIdle();
-		mSwapChain.Resize(width, height).IgnoreError();
+		mRebuild = (mSwapChain.Resize(width, height) case .Err);
+		if (mRebuild)
+			return false;
+		mWidth = width;
+		mHeight = height;
 		return true;
 	}
 
@@ -161,6 +166,7 @@ class RenderWindow
 				return .();
 			mWidth = mWindow.PixelWidth;
 			mHeight = mWindow.PixelHeight;
+			mRebuild = false; // a new chain, made for the surface as it is now
 		}
 
 		// After device loss, stop. Continuing spins through failing acquires and submits,
@@ -183,10 +189,22 @@ class RenderWindow
 				mFences[(int)frameIndex].Wait(mFenceValues[(int)frameIndex]);
 		}
 
+		// Out of date at the same size (a surface lost, a display change) is told apart from a
+		// size change, which SyncSize sees: the chain is made again before the next frame.
+		if (mRebuild)
+		{
+			SyncSize();
+			if (mRebuild)
+				return .();
+		}
+
 		using (ProfileScope("Render.Acquire.Image"))
 		{
-			if (mSwapChain.AcquireNextImage() case .Err)
+			if (mSwapChain.AcquireNextImage() case .Err(let error))
+			{
+				mRebuild = (error == .OutOfDate);
 				return .();
+			}
 		}
 
 		mPools[(int)frameIndex].Reset();
@@ -229,7 +247,8 @@ class RenderWindow
 		mFenceValues[(int)frameIndex]++;
 		var buffers = ICommandBuffer[1](commandBuffer);
 		mDevice.GraphicsQueue.Submit(buffers, mFences[(int)frameIndex], mFenceValues[(int)frameIndex]);
-		mSwapChain.Present(mDevice.GraphicsQueue).IgnoreError();
+		if ((mSwapChain.Present(mDevice.GraphicsQueue) case .Err(let error)) && (error == .OutOfDate))
+			mRebuild = true; // made again before the next acquire
 
 		var encoder = frame.Encoder;
 		mPools[(int)frameIndex].DestroyEncoder(ref encoder);

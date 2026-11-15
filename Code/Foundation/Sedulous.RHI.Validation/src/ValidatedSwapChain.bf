@@ -28,7 +28,7 @@ class ValidatedSwapChain : ISwapChain
 
 	/// Acquiring twice without presenting exhausts the chain and blocks, which reads as a
 	/// hang rather than a mistake.
-	public Result<void> AcquireNextImage()
+	public Result<void, ErrorCode> AcquireNextImage()
 	{
 		if (mAcquired)
 			ValidationLog.Warn("SwapChain.AcquireNextImage: an image is already acquired");
@@ -39,7 +39,7 @@ class ValidatedSwapChain : ISwapChain
 	}
 
 	/// Presenting without an acquired image presents whatever was there last.
-	public Result<void> Present(IQueue queue)
+	public Result<void, ErrorCode> Present(IQueue queue)
 	{
 		if (!mAcquired)
 			ValidationLog.Warn("SwapChain.Present: no image has been acquired");
