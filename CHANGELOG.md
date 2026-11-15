@@ -183,6 +183,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Networking: the WebSocket gateway closes a connection that has not upgraded within 10 s or an
   upgraded one silent for 30 s, closes a browser's connection when the game drops that player,
   and reports every client it loses.
+- HTTP: a redirect to another origin no longer carries the request's Authorization,
+  Proxy-Authorization or Cookie headers.
 - Editor: the Export dialog shows the selected preset's settings again; since the property grid
   measured its rows, the column beside the presets had shrunk to nothing.
 - Rendering (Vulkan): the screen UI waits for the scene's last pass before drawing over it, where on

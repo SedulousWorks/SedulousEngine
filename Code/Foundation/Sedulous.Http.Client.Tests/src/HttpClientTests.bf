@@ -294,6 +294,66 @@ class HttpClientTests
 		Test.Assert(r.Error.Contains("too many redirects", true), r.Error);
 	}
 
+	/// What a request's credential headers arrived as.
+	private static HttpResponse Credentials(HttpRequest request) =>
+		HttpResponse.Text(200, "text/plain", scope $"auth=[{request.Header("Authorization")}] cookie=[{request.Header("Cookie")}] proxy=[{request.Header("Proxy-Authorization")}]");
+
+	/// A GET of `url` carrying credentials, and one header that is not.
+	private static HttpClientRequest WithCredentials(StringView url)
+	{
+		let request = HttpClientRequest.Get(url);
+		request.Headers.Add(new .("Authorization", "Bearer secret"));
+		request.Headers.Add(new .("Cookie", "session=1"));
+		request.Headers.Add(new .("Proxy-Authorization", "Basic x"));
+		request.Headers.Add(new .("X-Other", "kept"));
+		return request;
+	}
+
+	/// Every hop resent the caller's headers: a redirect anywhere took its Authorization and
+	/// Cookie with it.
+	[Test]
+	public static void ARedirectToAnotherOriginDoesNotCarryTheCallersCredentials()
+	{
+		let first = scope HttpServer();
+		let second = scope HttpServer();
+		Test.Assert(first.Start(.()));
+		Test.Assert(second.Start(.()));
+		let secondPort = second.BoundPort;
+		first.SetHandler(new (request) =>
+			{
+				let target = StringView(request.Target);
+				if ((target == "/away") || (target == "/here"))
+				{
+					let r = HttpResponse.Text(302, "text/plain", "");
+					if (target == "/away")
+						r.AddHeader("Location", Url(secondPort, "/creds", false, .. scope .()));
+					else
+						r.AddHeader("Location", "/creds");
+					return r;
+				}
+				return Credentials(request);
+			});
+		second.SetHandler(new (request) => Credentials(request));
+		let client = scope NativeHttpClient(null);
+		delegate void() serve = scope () =>
+			{
+				first.Pump();
+				second.Pump();
+			};
+
+		// Another port: another origin.
+		let away = scope HttpClientResponse();
+		Fetch(client, WithCredentials(Url(first.BoundPort, "/away", false, .. scope .())), serve, away);
+		Test.Assert(away.Status == 200, away.Error);
+		Test.Assert(away.BodyText == "auth=[] cookie=[] proxy=[]", scope String(away.BodyText));
+
+		// The same origin keeps them.
+		let here = scope HttpClientResponse();
+		Fetch(client, WithCredentials(Url(first.BoundPort, "/here", false, .. scope .())), serve, here);
+		Test.Assert(here.Status == 200, here.Error);
+		Test.Assert(here.BodyText == "auth=[Bearer secret] cookie=[session=1] proxy=[Basic x]", scope String(here.BodyText));
+	}
+
 	[Test]
 	public static void ABodyPastTheCapFailsTheRequest()
 	{

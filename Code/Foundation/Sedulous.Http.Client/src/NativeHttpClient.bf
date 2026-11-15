@@ -310,6 +310,9 @@ class NativeHttpClient : IHttpClient
 		let method = scope String(request.Method);
 		let body = scope List<uint8>();
 		body.AddRange(request.Body);
+		// The request's own headers, BORROWED: a hop to another origin goes without some of them.
+		let headers = scope List<HttpHeader>();
+		headers.AddRange(request.Headers);
 		for (int32 hop = 0; ; hop++)
 		{
 			let at = scope:: HttpUrl();
@@ -344,7 +347,7 @@ class NativeHttpClient : IHttpClient
 					else
 						Post(piece);
 				};
-			if (!Exchange(at, method, request.Headers, body, request, clock, parser, response.Error, received))
+			if (!Exchange(at, method, headers, body, request, clock, parser, response.Error, received))
 				return;
 			received(parser); // the last of it
 			let status = parser.Status;
@@ -363,6 +366,20 @@ class NativeHttpClient : IHttpClient
 				{
 					response.Error.AppendF("an https request was redirected to http ({}): refused", next);
 					return;
+				}
+				// The caller's credentials are for the origin it asked: a redirect to another
+				// (scheme, host or port) does not carry them, as browsers do not.
+				let sameOrigin = (nextAt.Secure == at.Secure) && (nextAt.Port == at.Port)
+					&& HttpHeader.AsciiEqualsIgnoreCase(nextAt.Host, at.Host);
+				if (!sameOrigin)
+				{
+					for (int i = headers.Count - 1; i >= 0; i--)
+					{
+						let name = headers[i].Name;
+						if (HttpHeader.AsciiEqualsIgnoreCase(name, "Authorization") || HttpHeader.AsciiEqualsIgnoreCase(name, "Proxy-Authorization")
+							|| HttpHeader.AsciiEqualsIgnoreCase(name, "Cookie"))
+							headers.RemoveAt(i);
+					}
 				}
 				// 303, and 301/302 after a POST (as browsers do): the next request is a GET.
 				if ((status == 303) || (((status == 301) || (status == 302)) && HttpHeader.AsciiEqualsIgnoreCase(method, "POST")))
