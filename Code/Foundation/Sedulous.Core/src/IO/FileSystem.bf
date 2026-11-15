@@ -116,7 +116,31 @@ static
 	private static bool MoveReplacing(StringView from, StringView to)
 	{
 #if BF_PLATFORM_WINDOWS
-		return MoveFileExW(from.ToScopedNativeWChar!(), to.ToScopedNativeWChar!(), cMoveFileReplaceExisting) != 0;
+		let source = from.ToScopedNativeWChar!();
+		let target = to.ToScopedNativeWChar!();
+		// MoveFileEx refuses to replace a file another handle has open, even one opened with
+		// FILE_SHARE_DELETE, so a save over a file a reader held failed. A rename with POSIX
+		// semantics (Windows 10 1809 and later, NTFS) replaces it, and the reader keeps the file
+		// it opened. Where that is not supported (an older system, a FAT volume), MoveFileEx.
+		int length = 0;
+		while (target[length] != 0)
+			length++;
+		let size = (int)Math.Max(sizeof(FileRenameInfo), offsetof(FileRenameInfo, FileName) + (length + 1) * sizeof(char16));
+		// In words, so the record is aligned for its handle.
+		let info = (FileRenameInfo*)scope uint64[(size + 7) / 8]*;
+		let handle = CreateFileW(source, cDelete | cSynchronize, cShareReadWriteDelete, null, cOpenExisting, cFileAttributeNormal, null);
+		if (handle != (void*)-1)
+		{
+			info.Flags = cRenameReplaceIfExists | cRenamePosixSemantics;
+			info.RootDirectory = null;
+			info.FileNameLength = (uint32)(length * sizeof(char16)); // no terminator
+			Internal.MemCpy(&info.FileName, target, (length + 1) * sizeof(char16));
+			let renamed = SetFileInformationByHandle(handle, cFileRenameInfoEx, info, (uint32)(offsetof(FileRenameInfo, FileName) + length * sizeof(char16)));
+			CloseHandle(handle);
+			if (renamed != 0)
+				return true;
+		}
+		return MoveFileExW(source, target, cMoveFileReplaceExisting) != 0;
 #else
 		return System.IO.File.Move(from, to) case .Ok;
 #endif
@@ -124,6 +148,32 @@ static
 
 #if BF_PLATFORM_WINDOWS
 	private const uint32 cMoveFileReplaceExisting = 0x1;
+	private const uint32 cDelete = 0x00010000;
+	private const uint32 cSynchronize = 0x00100000;
+	private const uint32 cShareReadWriteDelete = 0x7;
+	private const uint32 cOpenExisting = 3;
+	private const uint32 cFileAttributeNormal = 0x80;
+	private const uint32 cRenameReplaceIfExists = 0x1;
+	private const uint32 cRenamePosixSemantics = 0x2;
+	/// FILE_INFO_BY_HANDLE_CLASS's FileRenameInfoEx.
+	private const int32 cFileRenameInfoEx = 22;
+
+	/// FILE_RENAME_INFO, its name running on past the record.
+	[CRepr]
+	private struct FileRenameInfo
+	{
+		public uint32 Flags;
+		public void* RootDirectory;
+		public uint32 FileNameLength;
+		public char16 FileName;
+	}
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern void* CreateFileW(char16* name, uint32 access, uint32 share, void* security, uint32 disposition, uint32 flags, void* templateFile);
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 SetFileInformationByHandle(void* file, int32 infoClass, void* info, uint32 size);
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 CloseHandle(void* handle);
 
 	[CLink, CallingConvention(.Stdcall)]
 	private static extern int32 MoveFileExW(char16* existingName, char16* newName, uint32 flags);

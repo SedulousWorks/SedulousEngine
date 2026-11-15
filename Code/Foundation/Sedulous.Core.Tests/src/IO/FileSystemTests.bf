@@ -102,6 +102,33 @@ class FileSystemTests
 		Test.Assert(RemoveDirectoryRecursive(scratch));
 	}
 
+	/// A save over a file a reader holds open replaces it, and the reader keeps the file it
+	/// opened. On Windows a rename refused to replace a file another handle had open, so every
+	/// save over a file a reader held failed.
+	[Test]
+	public static void ASaveReplacesAFileAReaderHasOpen()
+	{
+		let scratch = "scratch_filesystem_reader";
+		RemoveDirectoryRecursive(scratch);
+		Test.Assert(CreateDirectory(scratch));
+		let path = PathJoin(scratch, "save.bin", .. scope String());
+		uint8[3] first = .(1, 2, 3);
+		uint8[2] second = .(9, 8);
+		Test.Assert(WriteFileAtomic(path, .(&first[0], 3)) case .Ok);
+		{
+			let reader = scope System.IO.FileStream();
+			Test.Assert(reader.Open(path, .Read, .ReadWrite | .Delete) case .Ok);
+			Test.Assert(WriteFileAtomic(path, .(&second[0], 2)) case .Ok);
+			uint8[3] held = default;
+			Test.Assert(reader.TryRead(.(&held[0], 3)) case .Ok(3));
+			Test.Assert((held[0] == 1) && (held[2] == 3)); // the file it opened
+		}
+		let readBack = scope List<uint8>();
+		Test.Assert(ReadFile(path, readBack) case .Ok);
+		Test.Assert((readBack.Count == 2) && (readBack[0] == 9));
+		Test.Assert(RemoveDirectoryRecursive(scratch));
+	}
+
 	/// An unreadable file is moved out of the way under a free name, its bytes kept.
 	[Test]
 	public static void AnUnreadableFileIsSetAsideUnderAFreeNameItsBytesKept()
