@@ -22,11 +22,20 @@ static class ExportAndroid
 	/// Whether `platform` is Android's: its export builds an app around the player.
 	public static bool IsAndroidPlatform(StringView platform) => platform == BuildLayout.cAndroidPlatform;
 
-	/// Where an Android preset's app is made, kept between exports: <project>/.cache/android/<preset>.
+	/// Where an Android preset's app is made, kept between exports: <project>/.cache/android/<preset>,
+	/// absolute (Gradle reads a relative path against its own project folder, not this process's).
 	public static void WorkDir(EditorProject project, ExportPreset preset, String outDir)
 	{
 		let name = ExportStaging.SanitizeName(preset.Name, .. scope .());
-		PathJoin(project.Directory, scope $"{ProjectLayout.CacheDir}/android/{name}", outDir);
+		let work = PathJoin(project.Directory, scope $"{ProjectLayout.CacheDir}/android/{name}", .. scope .());
+		Absolute(work, outDir);
+	}
+
+	/// `path` made absolute against the current directory; as it is when it already is.
+	private static void Absolute(StringView path, String outPath)
+	{
+		outPath.Clear();
+		System.IO.Path.GetFullPath(path, outPath);
 	}
 
 	/// Why an Android preset cannot export, appended to `outWhy`, or true when it can: its
@@ -169,7 +178,9 @@ static class ExportAndroid
 		outArguments.Add(new $"-PsedulousOrientation={ScreenOrientationOf(project, preset)}");
 		if (!preset.AndroidKeystore.IsEmpty)
 		{
-			outArguments.Add(new $"-PsedulousKeystore={PathJoin(project.Directory, preset.AndroidKeystore, .. scope .())}");
+			// Absolute, as the work folder is: Gradle would look under its own project.
+			let keystore = Absolute(PathJoin(project.Directory, preset.AndroidKeystore, .. scope .()), .. scope .());
+			outArguments.Add(new $"-PsedulousKeystore={keystore}");
 			outArguments.Add(new $"-PsedulousKeyAlias={preset.AndroidKeyAlias}");
 		}
 		if (preset.AndroidPackage != .Bundle)

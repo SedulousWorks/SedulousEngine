@@ -222,6 +222,44 @@ static class ExportAndroidTests
 		Test.Assert(!workFs.Exists("staged/res/mipmap-xxxhdpi/ic_launcher.png"));
 	}
 
+	/// Gradle reads a relative path against its own project folder, so the staged folder and the
+	/// keystore would be looked for under it: from a project opened by a relative path (the
+	/// command-line exporter's usual way), both reach it absolute.
+	[Test]
+	public static void AnAndroidAppsPathsReachGradleAbsoluteFromAProjectOpenedByARelativePath()
+	{
+		let dir = "scratch_android_relative_proj";
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Relative") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let preset = scope ExportPreset();
+		preset.Name.Set("Phone");
+		preset.Platform.Set("Android64");
+		preset.AndroidKeystore.Set("release.jks");
+		preset.AndroidKeyAlias.Set("upload");
+		let work = ExportAndroid.WorkDir(project, preset, .. scope .());
+		Test.Assert(work.StartsWith(Directory.GetCurrentDirectory(.. scope .())), work);
+		let template = scope ExportTemplate();
+		template.Config.Set("Release");
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		let arguments = scope List<String>();
+		defer { ClearAndDeleteItems!(arguments); }
+		ExportAndroid.GradleArguments(project, preset, template, work, arguments);
+		int checkedPaths = 0;
+		for (let argument in arguments)
+		{
+			if (argument.StartsWith("-PsedulousStaged=") || argument.StartsWith("-PsedulousKeystore="))
+			{
+				Test.Assert(argument.Contains(cwd), argument);
+				checkedPaths++;
+			}
+		}
+		Test.Assert(checkedPaths == 2);
+	}
+
 #if BF_PLATFORM_LINUX
 	[CLink]
 	private static extern int32 chmod(char8* path, uint32 mode);
