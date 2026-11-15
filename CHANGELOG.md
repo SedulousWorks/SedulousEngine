@@ -163,6 +163,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   took the files of a `Rock.2` beside it (the name the editor gives a second `Rock`), and an export
   that pruned or stripped `Rock` dropped or packed `Rock.2`'s as well. A data stream's name may no
   longer contain a dot.
+- SVG: a path with a number after `Z` is an error instead of hanging the load; a self-closing
+  element (`<g/>`) no longer swallows the elements after it as its children; groups nested more
+  than 128 deep fail the load instead of overflowing the stack.
 - Editor: play-in-editor draws the game at the project's MSAA, as the player does; it drew at 1x.
 - Rendering: a game with MSAA on keeps its scenes' post-processing in the player (auto exposure,
   AO, SSR and TAA, from the scene or its profile); the project's MSAA setting replaced them with the

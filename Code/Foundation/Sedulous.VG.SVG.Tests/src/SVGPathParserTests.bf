@@ -260,6 +260,24 @@ class SVGPathParserTests
 		}
 	}
 
+	/// A number after Z is an error, never a loop. It repeated Close, which reads nothing, so
+	/// the parser never moved on and the load hung.
+	[Test]
+	public static void ANumberAfterCloseIsAnError()
+	{
+		for (let data in scope StringView[]("M 0 0 L 10 0 Z 5", "M 0 0 L 10 0 z 5 5", "5 5"))
+		{
+			let builder = scope PathBuilder();
+			Test.Assert(SVGPathParser.Parse(data, builder) case .Err,
+				scope $"'{data}' should not parse");
+		}
+
+		// Closing and going on with a new command is fine.
+		let path = Parse("M 0 0 L 10 0 Z M 1 1 L 2 2 Z");
+		defer delete path;
+		Test.Assert(CountOf(path, .Close) == 2);
+	}
+
 	/// A real path: several subpaths, mixed cases, and every command kind.
 	[Test]
 	public static void AMixedPathParsesEndToEnd()

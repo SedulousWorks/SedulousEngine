@@ -22,6 +22,7 @@ static class SVGPathParser
 			SVGScan.SkipWhitespaceAndCommas(pathData, ref pos);
 			if (pos >= pathData.Length)
 				break;
+			let commandStart = pos;
 
 			var command = pathData[pos];
 
@@ -36,15 +37,17 @@ static class SVGPathParser
 				//
 				// Except after a move, which repeats as a LINE: that is what makes
 				// "M 0 0 10 0 10 10" a triangle rather than three separate moves.
+				//
+				// Close takes no numbers, so a number after it (or before any command) is an
+				// error: repeating Z would read nothing and never move on.
+				if ((lastCommand == 0) || (lastCommand == 'Z') || (lastCommand == 'z'))
+					return .Err(.InvalidArgument);
 				if (lastCommand == 'M')
 					command = 'L';
 				else if (lastCommand == 'm')
 					command = 'l';
 				else
 					command = lastCommand;
-
-				if (command == 0)
-					return .Err(.InvalidArgument);
 			}
 			else
 			{
@@ -59,6 +62,9 @@ static class SVGPathParser
 				ref current, ref subPathStart, ref lastControl));
 
 			lastCommand = command;
+			// A command that read nothing would repeat for ever.
+			if (pos == commandStart)
+				return .Err(.InvalidArgument);
 		}
 
 		return .Ok;

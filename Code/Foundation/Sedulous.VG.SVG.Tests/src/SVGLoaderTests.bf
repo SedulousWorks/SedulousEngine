@@ -272,6 +272,55 @@ class SVGLoaderTests
 		Test.Assert(!document.Elements[0].IsGroup);
 	}
 
+	/// A self-closing element ends at its own tag. The loader looked for the '/' after it had
+	/// read past "/>", so `<g/>` was taken as open and the elements after it as its children.
+	[Test]
+	public static void ASelfClosingElementKeepsItsSiblingsSiblings()
+	{
+		let document = Load("""
+			<svg width="64" height="64">
+				<g/>
+				<rect x="0" y="0" width="4" height="4"/>
+				<rect x="8" y="8" width="4" height="4"/>
+				<g><rect x="1" y="1" width="2" height="2"/></g>
+			</svg>
+			""");
+		defer delete document;
+
+		Test.Assert(document.Elements.Count == 4);
+		Test.Assert(document.Elements[0].Type == .Group);
+		Test.Assert(document.Elements[0].Children.IsEmpty);
+		Test.Assert(document.Elements[1].Type == .Rectangle);
+		Test.Assert(document.Elements[2].Type == .Rectangle);
+		Test.Assert(document.Elements[3].IsGroup);
+		Test.Assert(document.Elements[3].Children.Count == 1);
+	}
+
+	/// Groups nested past the limit fail the load instead of running the stack out.
+	[Test]
+	public static void GroupsNestedPastTheLimitFailTheLoad()
+	{
+		String Nested(int depth, String svg)
+		{
+			svg.Append("<svg width=\"8\" height=\"8\">");
+			for (int i = 0; i < depth; i++)
+				svg.Append("<g>");
+			svg.Append("<rect width=\"1\" height=\"1\"/>");
+			for (int i = 0; i < depth; i++)
+				svg.Append("</g>");
+			svg.Append("</svg>");
+			return svg;
+		}
+
+		let shallow = Load(Nested(100, scope .()));
+		defer delete shallow;
+		Test.Assert(shallow.Elements.Count == 1);
+
+		let result = SVGLoader.Load(Nested(2000, scope .()));
+		Test.Assert(result case .Err(let error), "a document nested 2000 deep loaded");
+		Test.Assert(error == .OutOfRange);
+	}
+
 	/// An unrecognised tag is SKIPPED rather than failing the document. Real files carry
 	/// editor metadata that no renderer needs.
 	[Test]

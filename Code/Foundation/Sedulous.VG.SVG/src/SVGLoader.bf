@@ -56,7 +56,12 @@ static class SVGLoader
 			ReadViewBoxSize(attributes, document);
 
 		let rootPaint = Cascade(PaintStyle(), attributes);
-		ParseChildren(content, ref pos, document.Elements, document, rootPaint);
+		if (ParseChildren(content, ref pos, document.Elements, document, rootPaint) case .Err(let error))
+		{
+			// Nested past the limit: the whole document fails rather than loading a part of it.
+			delete document;
+			return .Err(error);
+		}
 		return document;
 	}
 
@@ -132,9 +137,18 @@ static class SVGLoader
 		return style;
 	}
 
-	private static void ParseChildren(StringView content, ref int pos, List<SVGElement> elements,
-		SVGDocument document, PaintStyle inherited)
+	/// How deep groups nest. Each level is a native call, and a file of nested groups would
+	/// otherwise run the stack out; past it the load fails with OutOfRange.
+	private const int MaxNesting = 128;
+
+	/// Fails only with OutOfRange, when the elements nest past MaxNesting; anything this
+	/// reader does not draw is skipped.
+	private static Result<void, ErrorCode> ParseChildren(StringView content, ref int pos,
+		List<SVGElement> elements, SVGDocument document, PaintStyle inherited, int depth = 0)
 	{
+		if (depth > MaxNesting)
+			return .Err(.OutOfRange);
+
 		while (pos < content.Length)
 		{
 			SVGScan.SkipWhitespace(content, ref pos);
@@ -152,8 +166,12 @@ static class SVGLoader
 			}
 
 			let saved = pos;
-			if (TryParseElement(content, ref pos, elements, document, inherited) case .Err)
+			if (TryParseElement(content, ref pos, elements, document, inherited, depth) case .Err(let error))
 			{
+				// Too deep: the whole load fails, never skipped and read on.
+				if (error == .OutOfRange)
+					return .Err(error);
+
 				// An unrecognised tag is SKIPPED rather than failing the document: real
 				// files carry editor metadata and namespaced elements that no renderer
 				// needs, and refusing them would reject most of them.
@@ -161,10 +179,11 @@ static class SVGLoader
 				SkipTag(content, ref pos);
 			}
 		}
+		return .Ok;
 	}
 
 	private static Result<void, ErrorCode> TryParseElement(StringView content, ref int pos,
-		List<SVGElement> elements, SVGDocument document, PaintStyle inherited)
+		List<SVGElement> elements, SVGDocument document, PaintStyle inherited, int depth)
 	{
 		if ((pos >= content.Length) || (content[pos] != '<'))
 			return .Err(.InvalidArgument);
@@ -179,14 +198,7 @@ static class SVGLoader
 		let tag = content.Substring(tagStart, pos - tagStart);
 
 		let attributes = scope SVGAttributes();
-		ParseAttributes(content, ref pos, attributes);
-
-		// The attribute scan stops ON the closing bracket, so the character before it says
-		// whether the tag closed itself.
-		let selfClosing = (pos > 0) && (pos <= content.Length) && (content[pos - 1] == '/');
-
-		if ((pos < content.Length) && (content[pos] == '>'))
-			pos++;
+		let selfClosing = ParseAttributes(content, ref pos, attributes);
 		let paint = Cascade(inherited, attributes);
 
 		// A gradient or a defs block registers on the DOCUMENT rather than becoming an
@@ -198,9 +210,9 @@ static class SVGLoader
 				let discarded = scope List<SVGElement>();
 				defer { ClearAndDeleteItems!(discarded); }
 				// Nothing in a defs block is drawn from here, so it inherits nothing.
-				ParseChildren(content, ref pos, discarded, document, PaintStyle());
+				Try!(ParseChildren(content, ref pos, discarded, document, PaintStyle(), depth + 1));
+				SkipClosingTag(content, ref pos);
 			}
-			SkipClosingTag(content, ref pos);
 			return .Ok;
 		}
 
@@ -212,10 +224,11 @@ static class SVGLoader
 		}
 
 		let element = new SVGElement();
-		if (!BuildGeometry(content, ref pos, tag, attributes, paint, selfClosing, element, document))
+		if (BuildGeometry(content, ref pos, tag, attributes, paint, selfClosing, element, document,
+			depth) case .Err(let error))
 		{
 			delete element;
-			return .Err(.InvalidArgument);
+			return .Err(error);
 		}
 
 		ApplyStyle(attributes, paint, element);
@@ -223,11 +236,11 @@ static class SVGLoader
 		return .Ok;
 	}
 
-	/// Fills in the element's type and geometry. False means the tag is not one this
-	/// reader draws.
-	private static bool BuildGeometry(StringView content, ref int pos, StringView tag,
-		SVGAttributes attributes, PaintStyle paint, bool selfClosing, SVGElement element,
-		SVGDocument document)
+	/// Fills in the element's type and geometry. InvalidArgument means the tag is not one
+	/// this reader draws; OutOfRange, a group nested past MaxNesting.
+	private static Result<void, ErrorCode> BuildGeometry(StringView content, ref int pos,
+		StringView tag, SVGAttributes attributes, PaintStyle paint, bool selfClosing,
+		SVGElement element, SVGDocument document, int depth)
 	{
 		if (SVGScan.EqualsIgnoreCase(tag, "path"))
 		{
@@ -240,14 +253,14 @@ static class SVGLoader
 				if (SVGPathParser.Parse(data, builder) case .Ok)
 					element.Path = builder.ToPath();
 			}
-			return true;
+			return .Ok;
 		}
 
 		if (SVGScan.EqualsIgnoreCase(tag, "rect"))
 		{
 			element.Type = .Rectangle;
 			element.Path = BuildRect(attributes);
-			return true;
+			return .Ok;
 		}
 
 		if (SVGScan.EqualsIgnoreCase(tag, "circle"))
@@ -257,7 +270,7 @@ static class SVGLoader
 			ShapeBuilder.BuildCircle(.(attributes.Number("cx"), attributes.Number("cy")),
 				attributes.Number("r"), builder);
 			element.Path = builder.ToPath();
-			return true;
+			return .Ok;
 		}
 
 		if (SVGScan.EqualsIgnoreCase(tag, "ellipse"))
@@ -267,7 +280,7 @@ static class SVGLoader
 			ShapeBuilder.BuildEllipse(.(attributes.Number("cx"), attributes.Number("cy")),
 				attributes.Number("rx"), attributes.Number("ry"), builder);
 			element.Path = builder.ToPath();
-			return true;
+			return .Ok;
 		}
 
 		if (SVGScan.EqualsIgnoreCase(tag, "line"))
@@ -277,7 +290,7 @@ static class SVGLoader
 			builder.MoveTo(attributes.Number("x1"), attributes.Number("y1"));
 			builder.LineTo(attributes.Number("x2"), attributes.Number("y2"));
 			element.Path = builder.ToPath();
-			return true;
+			return .Ok;
 		}
 
 		let polygon = SVGScan.EqualsIgnoreCase(tag, "polygon");
@@ -285,26 +298,28 @@ static class SVGLoader
 		{
 			element.Type = polygon ? .Polygon : .Polyline;
 			element.Path = BuildPoly(attributes, polygon);
-			return true;
+			return .Ok;
 		}
 
 		if (SVGScan.EqualsIgnoreCase(tag, "g"))
 		{
 			element.Type = .Group;
 			if (!selfClosing)
-				ParseChildren(content, ref pos, element.Children, document, paint);
-			SkipClosingTag(content, ref pos);
-			return true;
+			{
+				Try!(ParseChildren(content, ref pos, element.Children, document, paint, depth + 1));
+				SkipClosingTag(content, ref pos);
+			}
+			return .Ok;
 		}
 
 		if (SVGScan.EqualsIgnoreCase(tag, "text"))
 		{
 			element.Type = .Text;
 			ReadText(content, ref pos, attributes, selfClosing, element);
-			return true;
+			return .Ok;
 		}
 
-		return false;
+		return .Err(.InvalidArgument);
 	}
 
 	private static Path BuildRect(SVGAttributes attributes)
@@ -535,9 +550,8 @@ static class SVGLoader
 			}
 
 			let attributes = scope SVGAttributes();
+			// Past the stop's '>' or '/>'.
 			ParseAttributes(content, ref pos, attributes);
-			if ((pos < content.Length) && (content[pos] == '>'))
-				pos++;
 
 			gradient.Stops.Add(ReadStop(attributes));
 		}
@@ -643,7 +657,10 @@ static class SVGLoader
 	///
 	/// An attribute with no value is SKIPPED rather than stored empty, because the reader
 	/// only ever asks for ones that carry a value.
-	private static void ParseAttributes(StringView content, ref int pos, SVGAttributes attributes)
+	/// Reads a tag's attributes and its end ('>' or '/>'), leaving `pos` past it. True when
+	/// the tag closed itself: the caller cannot tell from the text before `pos`, which is the
+	/// '>'.
+	private static bool ParseAttributes(StringView content, ref int pos, SVGAttributes attributes)
 	{
 		while (pos < content.Length)
 		{
@@ -651,19 +668,16 @@ static class SVGLoader
 
 			if ((pos >= content.Length) || (content[pos] == '>') || (content[pos] == '/'))
 			{
-				// Stops just PAST the bracket, so the caller reads the character before it
-				// to learn whether the tag closed itself.
 				if ((pos < content.Length) && (content[pos] == '/'))
 				{
 					pos++;
 					if ((pos < content.Length) && (content[pos] == '>'))
 						pos++;
+					return true;
 				}
-				else if ((pos < content.Length) && (content[pos] == '>'))
-				{
+				if ((pos < content.Length) && (content[pos] == '>'))
 					pos++;
-				}
-				break;
+				return false;
 			}
 
 			let nameStart = pos;
@@ -695,6 +709,7 @@ static class SVGLoader
 			if (pos < content.Length)
 				pos++;
 		}
+		return false;
 	}
 
 	/// Steps over a tag AND EVERYTHING INSIDE IT.
