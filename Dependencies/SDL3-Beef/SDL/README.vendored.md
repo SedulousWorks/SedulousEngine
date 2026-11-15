@@ -20,3 +20,12 @@ INSTALL.md WhatsNew.txt`, and from `android-project/` only its Java glue,
 Removed: tests, examples, docs, IDE project files (VisualC, Xcode), and the rest of
 `android-project/` (its Gradle files, manifest and resources: the engine's Android app has its
 own). A new version takes the same prune, so its diff stays reviewable.
+
+## Local changes
+
+- `src/core/android/SDL_android.c`, `onNativeSurfaceDestroyed`: clears the window's
+  `SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER` when it releases the native window. Upstream leaves the
+  property naming the released window until the next surface arrives, so a Vulkan surface made in
+  between (the window going fullscreen as it opens, or a return from the background) crashed in
+  `vkCreateAndroidSurfaceKHR`. Each change is marked `Sedulous:` in the source; a new version
+  takes them again.
