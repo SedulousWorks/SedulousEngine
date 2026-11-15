@@ -8,7 +8,7 @@ namespace Sedulous.Shaders;
 /// Turns one HLSL stage into browser conformant WGSL, at cook time.
 ///
 ///   HLSL  -DXC->  SPIR-V, at vulkan1.1 with the engine's standard binding shifts
-///         -naga-> WGSL
+///         -naga-> WGSL, its long float literals written with an exponent (ShortenLongFloatLiterals)
 ///         -tint-> validated against what Chrome actually accepts
 ///
 /// COOK TIME ONLY. It shells out to the vendored naga and tint executables, so it has no
@@ -94,13 +94,67 @@ class WgslTranslator
 			outResult.Error.Set("naga reported success but produced no WGSL");
 			return;
 		}
-		outResult.Wgsl.Append(StringView((char8*)wgslBytes.Ptr, wgslBytes.Count));
+		ShortenLongFloatLiterals(StringView((char8*)wgslBytes.Ptr, wgslBytes.Count), outResult.Wgsl);
+		// tint validates what ships.
+		if (WriteFile(wgslPath, .((uint8*)outResult.Wgsl.Ptr, outResult.Wgsl.Length)) case .Err)
+		{
+			outResult.FailedStage = .Translate;
+			outResult.Error.Set("could not write the WGSL back to the scratch directory");
+			return;
+		}
 
 		if (RunTint(wgslPath, outResult) case .Err)
 			return;
 
 		outResult.Success = true;
 		outResult.FailedStage = .Ok;
+	}
+
+	/// Appends `wgsl` to `outWgsl` with every long float literal written with an exponent. naga
+	/// writes a float literal in full decimal digits ("1000000000000000000000000000000f" for
+	/// 1e30), and WebKit's WGSL parser (Safari's WebGPU, and every browser on iOS) refuses one
+	/// that long, so the shader fails to compile there and the game draws nothing. A literal
+	/// whose whole-number part has more than nine digits (and no fraction or exponent of its own)
+	/// is written with one digit before the point and an exponent instead: the same value, since
+	/// naga writes the shortest digits that read back as the same f32. Everything else is kept.
+	public static void ShortenLongFloatLiterals(StringView wgsl, String outWgsl)
+	{
+		bool IsDigit(char8 c) => (c >= '0') && (c <= '9');
+		bool IsWord(char8 c) => IsDigit(c) || ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || (c == '_') || (c == '.');
+		int i = 0;
+		while (i < wgsl.Length)
+		{
+			let starts = IsDigit(wgsl[i]) && ((i == 0) || !IsWord(wgsl[i - 1]));
+			if (!starts)
+			{
+				outWgsl.Append(wgsl[i]);
+				i++;
+				continue;
+			}
+			int end = i;
+			while ((end < wgsl.Length) && IsDigit(wgsl[end]))
+				end++;
+			let digits = end - i;
+			let floatSuffix = (end < wgsl.Length) && (wgsl[end] == 'f') && ((end + 1 == wgsl.Length) || !IsWord(wgsl[end + 1]));
+			if ((digits <= 9) || !floatSuffix || (wgsl[i] == '0'))
+			{
+				outWgsl.Append(wgsl.Substring(i, end - i));
+				i = end;
+				continue;
+			}
+			// The significant digits (trailing zeros dropped) and the power of ten of the first.
+			int significant = digits;
+			while ((significant > 1) && (wgsl[i + significant - 1] == '0'))
+				significant--;
+			outWgsl.Append(wgsl[i]);
+			if (significant > 1)
+			{
+				outWgsl.Append('.');
+				outWgsl.Append(wgsl.Substring(i + 1, significant - 1));
+			}
+			outWgsl.AppendF("e{}f", digits - 1);
+			i = end + 1;
+		}
 	}
 
 	/// The DXC half, with the WebGPU compile settings the runtime would use.

@@ -289,6 +289,54 @@ class WgslCookTests
 		Test.Assert(result.Wgsl.Contains("@binding(0)"), "and the constant buffer stayed at 0");
 	}
 
+	/// A float literal of more than nine whole digits is written with an exponent; nine digits or
+	/// fewer, a fraction, an exponent, an integer and a name are left alone.
+	[Test]
+	public static void AFloatLiteralOfMoreThanNineWholeDigitsIsWrittenWithAnExponent()
+	{
+		String Shortened(StringView wgsl) => WgslTranslator.ShortenLongFloatLiterals(wgsl, .. new String());
+		void Check(StringView wgsl, StringView expected)
+		{
+			let shortened = Shortened(wgsl);
+			defer delete shortened;
+			Test.Assert(shortened == expected, shortened);
+		}
+		Check("vec3<f32>(1000000000000000000000000000000f, -1000000000000000000000000000000f)", "vec3<f32>(1e30f, -1e30f)");
+		Check("x = 123450000000f;", "x = 1.2345e11f;");
+		Check("x = 3402823500000000000000000000000000000000f;", "x = 3.4028235e39f;");
+		let kept = "a = 100000000f + 1.5f + 1e30f + 10000000000000u + 1000000000000i + _e1000000000000f;";
+		Check(kept, kept);
+	}
+
+	/// A large constant, as the cluster build and the forward pass write a bound, cooks to WGSL
+	/// with no float literal longer than nine digits: Safari refused naga's 31 digits for 1e30.
+	[Test]
+	public static void ALargeConstantCooksToWgslWithNoLongFloatLiteral()
+	{
+		if (!ToolsPresent()) { Console.WriteLine("SKIP: no naga or tint"); return; }
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let scratch = ScratchDirectory(.. scope String());
+		let translator = scope WgslTranslator(compiler, scratch);
+		translator.SetNagaPath(NagaPath(.. scope String()));
+		translator.SetTintPath(TintPath(.. scope String()));
+
+		const String cLargeConstantPs = """
+			cbuffer C : register(b0, space0) { float4 Value; };
+			float4 main() : SV_Target0 {
+			    float3 low = min(float3(1e30, 1e30, 1e30), Value.xyz);
+			    return float4(low, Value.w < 1e30 ? 1.0 : 0.0);
+			}
+			""";
+		let result = scope WgslCookResult();
+		translator.Translate(cLargeConstantPs, .Fragment, "main", .None, default, result);
+		Test.Assert(result.Success, scope String(result.Error));
+		Test.Assert(!result.Wgsl.Contains("0000000000f"), result.Wgsl);
+		Test.Assert(result.Wgsl.Contains("1e30f"), result.Wgsl);
+	}
+
 	/// tint rejects a uniformity violation that naga lets through, which is the whole reason
 	/// there are two tools rather than one.
 	[Test]
