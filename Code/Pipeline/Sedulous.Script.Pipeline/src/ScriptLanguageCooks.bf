@@ -33,6 +33,14 @@ static class ScriptLanguageCooks
 		sEntries.Add(entry);
 	}
 
+	/// Has every cook build what its checks use (PrepareCheck), so the first check of each
+	/// language does not wait for it. For a worker thread, while no cook is registered.
+	public static void PrepareChecks()
+	{
+		for (let entry in sEntries)
+			entry.Cook.PrepareCheck();
+	}
+
 	public static IScriptLanguageCook Find(StringView language)
 	{
 		for (let entry in sEntries)

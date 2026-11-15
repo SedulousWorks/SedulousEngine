@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Script;
 using Sedulous.Script.Resource;
 
 namespace Sedulous.Script.Pipeline;
@@ -36,4 +37,17 @@ interface IScriptLanguageCook
 	/// surface less the `hidden` types (by full name): a platform without a plugin lacks that
 	/// plugin's types, and a script that uses one does not compile there.
 	bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden);
+
+	/// Builds what Check uses before the first check needs it, so a project's first script page
+	/// does not wait for it. Callable from a worker thread.
+	void PrepareCheck() { }
+
+	/// The API a script checked here can use, described for completion and the API browser, when
+	/// `surface` is the one the cook checks against: true then. False, `outTypes` untouched, for
+	/// another surface or a cook that keeps nothing for its checks.
+	bool DescribeApi(ScriptSurface surface, List<ScriptApiType> outTypes) => false;
+
+	/// How many times Check has made the runtime it keeps for checks: once, and again each time
+	/// the surface changes. 0 for a language whose every check builds its own.
+	uint32 CheckRuntimeBuildCount => 0;
 }

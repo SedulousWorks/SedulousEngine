@@ -26,10 +26,30 @@ class AngelScriptCook : IScriptLanguageCook
 	private bool mHashed = false;
 	/// The surface's revision the hash was taken at: a plugin's types joining or leaving moves it.
 	private uint64 mHashedRevision = 0;
+	/// The runtime the checks with nothing hidden share.
+	private CachedCheckRuntime mChecks ~ delete _;
 
 	public this(ScriptSurface surface)
 	{
 		mSurface = surface;
+		mChecks = new .(surface, new () => new AngelScriptRuntime());
+	}
+
+	public uint32 CheckRuntimeBuildCount => mChecks.BuildCount;
+
+	public void PrepareCheck()
+	{
+		mChecks.Prepare();
+		// A worker's thread local data, freed while its runtime's engine lives on for the checks.
+		AngelScriptRuntime.ThreadCleanup();
+	}
+
+	public bool DescribeApi(ScriptSurface surface, List<ScriptApiType> outTypes)
+	{
+		if (surface != mSurface)
+			return false;
+		mChecks.DescribeApi(outTypes);
+		return true;
 	}
 
 	public int32 CookVersion => 1;
@@ -148,6 +168,28 @@ class AngelScriptCook : IScriptLanguageCook
 	/// Through the runtime's Check, which compiles as Cook does and keeps no module.
 	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden)
 	{
+		outClassName.Clear();
+		if (hidden.IsEmpty)
+		{
+			// The whole surface: the shared runtime, the script in a module of its own, discarded
+			// after.
+			bool ok = false;
+			let ran = mChecks.Run(scope [&] (runtime) =>
+				{
+					using (ProfileScope("Script.Cook.Compile"))
+						ok = runtime.Check(sourceName, source);
+					for (let p in runtime.Problems)
+						problems.Add(new String(p));
+					ClearAndDeleteItems!(runtime.Problems);
+					return true;
+				});
+			if (!ran)
+				problems.Add(new $"{sourceName}: no AngelScript runtime to check it in");
+			if (!ok)
+				return false;
+			return ChooseClass(source, sourceName, className, outClassName, problems);
+		}
+
 		AngelScriptRuntime runtime;
 		using (ProfileScope("Script.Cook.MakeEngine"))
 			runtime = scope:: AngelScriptRuntime();

@@ -168,6 +168,59 @@ static class ScriptClassCookTests
 		Test.Assert(!problems.IsEmpty && problems.Back.StartsWith("Broken.as(1,"), problems.IsEmpty ? "" : problems.Back);
 	}
 
+	/// Checks share one runtime, each script in a module of its own: every check bound the whole
+	/// surface into a new runtime, about half a second, for a compile of a few milliseconds.
+	[Test]
+	public static void ChecksShareOneRuntimeEachScriptInAModuleOfItsOwn()
+	{
+		let surface = scope ScriptSurface();
+		FixtureSurface.Populate(surface);
+		let cook = scope AngelScriptCook(surface);
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems(problems); }
+		let className = scope String();
+		Test.Assert(cook.CheckRuntimeBuildCount == 0);
+		Test.Assert(cook.Check("class Alpha { int x; }\n", "Alpha.as", "Alpha", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.CheckRuntimeBuildCount == 1);
+
+		// The next checks make no runtime, and see nothing of the scripts checked before them.
+		Test.Assert(!cook.Check("class Beta { Alpha@ a; }\n", "Beta.as", "Beta", className, problems, default));
+		Test.Assert(!problems.IsEmpty);
+		ClearAndDeleteItems(problems);
+		Test.Assert(cook.Check("class Alpha { float y; }\n", "Alpha.as", "Alpha", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.CheckRuntimeBuildCount == 1);
+
+		// A check with types hidden binds a runtime of its own, the shared one kept.
+		StringView[1] hidden = .("Fixture.NoSuchType");
+		Test.Assert(cook.Check("class Gamma { }\n", "Gamma.as", "Gamma", className, problems, hidden), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.CheckRuntimeBuildCount == 1);
+
+		// The surface changed (a plugin's types joined): it is made again, once.
+		surface.AddType("Fixture.Joined", .Enum, ScriptDomains.Runtime);
+		Test.Assert(cook.Check("class Alpha { }\n", "Alpha.as", "Alpha", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(cook.Check("class Alpha { }\n", "Alpha.as", "Alpha", className, problems, default));
+		Test.Assert(cook.CheckRuntimeBuildCount == 2);
+	}
+
+	/// The API a page's completion and browser read comes from the cook's check runtime for the
+	/// surface it checks against, and from nothing for another.
+	[Test]
+	public static void TheCookDescribesTheApiOfItsOwnSurfaceOnly()
+	{
+		let surface = scope ScriptSurface();
+		FixtureSurface.Populate(surface);
+		let cook = scope AngelScriptCook(surface);
+		let types = scope List<ScriptApiType>();
+		defer { ClearAndDeleteItems!(types); }
+		Test.Assert(cook.DescribeApi(surface, types));
+		Test.Assert(!types.IsEmpty);
+		Test.Assert(cook.CheckRuntimeBuildCount == 1);
+		let other = scope ScriptSurface();
+		let none = scope List<ScriptApiType>();
+		Test.Assert(!cook.DescribeApi(other, none));
+		Test.Assert(none.IsEmpty);
+	}
+
 	/// A check against a surface without some types (a platform without the plugin that registers
 	/// them) fails a script that uses one and passes one that does not; the full surface passes
 	/// both, and the types that name a hidden one in a member still bind without that member.

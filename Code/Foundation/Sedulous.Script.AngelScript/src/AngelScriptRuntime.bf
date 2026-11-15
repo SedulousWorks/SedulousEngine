@@ -176,6 +176,10 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
+	/// Frees this thread's AngelScript local data: a worker's, once it is done with the library,
+	/// while engines made on it live on.
+	public static void ThreadCleanup() => AS.asThreadCleanup();
+
 	public this()
 	{
 		PrepareThreads();
