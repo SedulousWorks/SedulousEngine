@@ -327,3 +327,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   allocated for it; a crafted replication record could make a client allocate 4 GB.
 - Networking: an HTTP, WebSocket or TLS connection whose peer stops reading is closed once 8 MB
   waits unsent, instead of the sender buffering without limit.
+- Models: a glTF file that fails validation (an accessor or buffer view past its buffer) fails
+  to import instead of being read past its buffers' ends.

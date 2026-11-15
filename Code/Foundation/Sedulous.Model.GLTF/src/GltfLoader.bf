@@ -76,10 +76,11 @@ class GltfLoader : IModelLoader
 		if (cgltf_load_buffers(&options, mData, pathZ) != .cgltf_result_success)
 			return .InvalidData;
 
-		// Validation failing is NOT fatal: exporters routinely produce files that violate
-		// the spec in ways that load and render perfectly well, and refusing them would
-		// reject most of the content people actually have.
-		cgltf_validate(mData);
+		// Validation is what holds every accessor and buffer view inside its buffer: the
+		// readers below go through them unchecked, so a file that fails it would be read
+		// past its end.
+		if (cgltf_validate(mData) != .cgltf_result_success)
+			return .InvalidData;
 
 		// glTF is Y up by specification, so there is nothing to detect.
 		model.OriginalUpAxis = .PositiveY;

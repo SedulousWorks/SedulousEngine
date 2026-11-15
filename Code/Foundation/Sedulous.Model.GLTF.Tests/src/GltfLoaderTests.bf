@@ -92,6 +92,39 @@ class GltfLoaderTests
 		Test.Assert(loader.Load(path, model) == .ParseError);
 	}
 
+	/// Validation is what keeps accessors inside their buffers. A file whose accessor claims
+	/// more than its buffer holds fails the load rather than being read past the buffer's end.
+	[Test]
+	public static void AFileThatFailsValidationFailsTheLoad()
+	{
+		// One float3 (12 bytes of zeros) in the buffer; the accessor claims COUNT of them.
+		const String cTemplate = """
+			{"asset":{"version":"2.0"},
+			"buffers":[{"byteLength":12,"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAA"}],
+			"bufferViews":[{"buffer":0,"byteLength":12}],
+			"accessors":[{"bufferView":0,"componentType":5126,"count":COUNT,"type":"VEC3","min":[0,0,0],"max":[0,0,0]}],
+			"meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],
+			"nodes":[{"mesh":0}],
+			"scenes":[{"nodes":[0]}]}
+			""";
+		let path = scope String("scratch_gltf_invalid.gltf");
+		defer { File.Delete(path).IgnoreError(); }
+
+		ModelLoadResult LoadWithCount(StringView count)
+		{
+			let document = scope String(cTemplate);
+			document.Replace("COUNT", count);
+			File.WriteAllText(path, document).IgnoreError();
+			let model = scope ModelData();
+			let loader = scope GltfLoader();
+			return loader.Load(path, model);
+		}
+
+		Test.Assert(LoadWithCount("1") == .Ok);
+		// 12000 bytes claimed from a buffer of 12.
+		Test.Assert(LoadWithCount("1000") == .InvalidData);
+	}
+
 	/// A node carrying only a matrix has to populate the translation, rotation and scale
 	/// fields too, because that is what every consumer reads. Leaving them at identity puts
 	/// the node at the origin, which only shows up on models exported with baked matrices.
