@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Render;
 using Sedulous.RHI;
 using Sedulous.Shaders;
@@ -22,6 +23,7 @@ class TerrainRenderer : Renderer
 {
 	/// A terrain allocates a view slot per PASS, so this bounds how many terrains a scene
 	/// draws before the ring runs dry.
+	/// The view ring's start: terrains a frame draws before it grows.
 	private const uint32 cMaxTerrains = 8;
 	/// Matches ShadowCascades.Count.
 	private const uint32 cCascadeCount = 4;
@@ -235,8 +237,13 @@ class TerrainRenderer : Renderer
 
 	private uint32 mFrameChunks = 0;
 	private uint32 mMaxChunksSeen = 0;
+	/// Chunk ring allocations ASKED FOR this frame across all passes, which sizes the ring.
 	private uint32 mFrameChunkAllocations = 0;
 	private uint32 mMaxChunkAllocations = 0;
+	/// View ring allocations asked for this frame, which sizes the ring.
+	private uint32 mFrameViewAllocations = 0;
+	private uint32 mMaxViewAllocations = 0;
+	private bool mOverflowLogged = false;
 	private bool mSkirtsEnabled = true;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
@@ -277,10 +284,12 @@ class TerrainRenderer : Renderer
 		const uint32 cChunk = 4096;
 
 		// Each terrain takes a view slot PER PASS: the colour pass, the depth prepass, and one
-		// per cascade. The chunk ring holds every pass's chunk allocations, sized from the
-		// observed peak across both.
+		// per cascade. Both rings are sized from the most a frame ASKED for, failed allocations
+		// included: counting only the ones that fit kept a full ring full, and the terrains or
+		// chunks past it never drew.
 		let perTerrainViews = (uint32)(cMaxTerrains * (2 + cCascadeCount));
-		mViewRing.Reserve(Math.Max(perTerrainViews, (maxDraws == 0) ? 1 : maxDraws));
+		mViewRing.Reserve(Math.Max(Math.Max(perTerrainViews, (maxDraws == 0) ? 1 : maxDraws),
+			mMaxViewAllocations));
 
 		let wantChunks = (uint32)(((mMaxChunkAllocations + cChunk - 1) / cChunk) * cChunk);
 		mChunkRing.Reserve((wantChunks == 0) ? cChunk : wantChunks);
@@ -290,6 +299,7 @@ class TerrainRenderer : Renderer
 
 		mFrameChunks = 0;
 		mFrameChunkAllocations = 0;
+		mFrameViewAllocations = 0;
 	}
 
 	public override void Resolve(RenderRecordContext context, Span<DrawItem> items,
@@ -326,9 +336,13 @@ class TerrainRenderer : Renderer
 				|| (data.HeightView == null) || (data.ChunkCount == 0))
 				continue;
 
+			mFrameViewAllocations++;
 			let viewRange = mViewRing.Allocate();
 			if (!viewRange.Ok)
+			{
+				LogRingOverflow();
 				continue;
+			}
 
 			// The vertex shader works in WORLD space, with the placement applied there rather
 			// than folded into the view projection, so the pixel shader can shadow sample the
@@ -412,12 +426,15 @@ class TerrainRenderer : Renderer
 				if ((mesh.IndexBuffer == null) || (mesh.IndexCount == 0))
 					continue;
 
+				mFrameChunkAllocations++;
 				let chunkRange = mChunkRing.Allocate();
 				if (!chunkRange.Ok)
+				{
+					LogRingOverflow();
 					continue;
+				}
 
 				mFrameChunks++;
-				mFrameChunkAllocations++;
 
 				var chunkUniforms = MakeChunkUniforms(data, data.Chunks[draw.ChunkIndex]);
 				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(GpuTerrainChunk));
@@ -495,9 +512,13 @@ class TerrainRenderer : Renderer
 				|| (data.HeightView == null) || (data.ChunkCount == 0))
 				continue;
 
+			mFrameViewAllocations++;
 			let viewRange = mViewRing.Allocate();
 			if (!viewRange.Ok)
+			{
+				LogRingOverflow();
 				continue;
+			}
 
 			if (pick)
 			{
@@ -547,11 +568,13 @@ class TerrainRenderer : Renderer
 				if ((mesh.IndexBuffer == null) || (mesh.SurfaceIndexCount == 0))
 					continue;
 
+				mFrameChunkAllocations++;
 				let chunkRange = mChunkRing.Allocate();
 				if (!chunkRange.Ok)
+				{
+					LogRingOverflow();
 					continue;
-
-				mFrameChunkAllocations++;
+				}
 
 				var chunkUniforms = MakeChunkUniforms(data, data.Chunks[draw.ChunkIndex]);
 				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(GpuTerrainChunk));
@@ -584,6 +607,7 @@ class TerrainRenderer : Renderer
 	{
 		mMaxChunksSeen = Math.Max(mMaxChunksSeen, mFrameChunks);
 		mMaxChunkAllocations = Math.Max(mMaxChunkAllocations, mFrameChunkAllocations);
+		mMaxViewAllocations = Math.Max(mMaxViewAllocations, mFrameViewAllocations);
 
 		mViewRing.EndFrame();
 		mChunkRing.EndFrame();
@@ -623,6 +647,20 @@ class TerrainRenderer : Renderer
 	/// The peak chunk draw count seen so far, which is above nought only once a frame actually
 	/// emitted terrain draws, and so only once the pipeline, and with it the shaders, built.
 	public uint32 MaxChunksDrawn => mMaxChunksSeen;
+	/// Slots the view and chunk rings hold per frame.
+	public uint32 ViewSlotsPerFrame => mViewRing.SlotsPerFrame;
+	public uint32 ChunkSlotsPerFrame => mChunkRing.SlotsPerFrame;
+
+	/// A ring ran out this frame: the rest of it waits for the next frame, which holds what this
+	/// one asked for. Said the first time.
+	private void LogRingOverflow()
+	{
+		if (!mOverflowLogged)
+		{
+			GlobalLog(.Warning, "TerrainRenderer: the view or chunk ring is full; it grows next frame");
+			mOverflowLogged = true;
+		}
+	}
 
 	/// Draws the level seam skirts, on by default. Off draws the surface alone, which is what
 	/// proves the skirts plug the cracks: a skirtless mixed level frame leaks the background
@@ -729,8 +767,10 @@ class TerrainRenderer : Renderer
 			&& (cachedShadow === shadowView) && (cachedShadowGeneration == shadowGeneration))
 			return bindGroup;
 
+		// May sit in a submitted frame's descriptor set: retired, or with no queue wired, freed
+		// once the device idles.
 		if (bindGroup != null)
-			RetireBindGroup(ref bindGroup);
+			BindGroups.Retire(mDevice, mRetire, ref bindGroup);
 
 		if ((mViewRing.Buffer == null) || (shadowView == null))
 			return null;
@@ -759,8 +799,9 @@ class TerrainRenderer : Renderer
 		if ((mChunkBindGroup != null) && (mChunkBindGroupGeneration == generation))
 			return mChunkBindGroup;
 
+		// May sit in a submitted frame's descriptor set, now that the ring grows.
 		if (mChunkBindGroup != null)
-			mDevice.DestroyBindGroup(ref mChunkBindGroup);
+			BindGroups.Retire(mDevice, mRetire, ref mChunkBindGroup);
 
 		if (mChunkRing.Buffer == null)
 			return null;

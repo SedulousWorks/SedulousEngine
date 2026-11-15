@@ -119,6 +119,67 @@ class TerrainRendererTests
 		heightCache.Clear(fixture.Device);
 	}
 
+	/// A frame that outgrows the view ring draws everything from the next frame on. The rings
+	/// were sized from the allocations that fit, so a full ring stayed full and the terrains past
+	/// it never drew. Sixty terrains in one view ask for more view slots (colour and depth passes
+	/// each) than the ring starts with.
+	[Test]
+	public static void AFrameThatOutgrowsTheViewRingDrawsEverythingFromTheNextFrame()
+	{
+		let fixture = scope TerrainRenderFixture(256, 256);
+		if (!fixture.Ready)
+			return;
+
+		let renderer = scope TerrainRenderer(fixture.Device, fixture.Shaders, 2);
+		Test.Assert(renderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(renderer);
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		let grid = MakeRampX();
+		defer delete grid;
+		let chunks = scope List<TerrainChunk>();
+		TerrainChunks.BuildChunks(grid, chunks);
+		Test.Assert(chunks.Count == 4);
+		let tree = scope TerrainQuadtree();
+		tree.Build(chunks, TerrainChunks.ChunksPerSide(grid.Size));
+		let heightCache = scope TerrainHeightTextureCache();
+		let heightView = heightCache.GetOrCreate(fixture.Device, grid, 1);
+		Test.Assert(heightView != null);
+
+		let terrains = (uint32)60;
+		let scene = scope ExtractedScene();
+		for (uint32 i < terrains)
+		{
+			let data = scene.Add<TerrainRenderData>();
+			Test.Assert(data != null);
+			FillTerrainRenderData(data, grid, chunks, tree, heightView, renderer.RendererId);
+		}
+
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(.(0.0f, 300.0f, 0.1f), .(0.0f, 0.0f, 0.0f),
+			.(0.0f, 0.0f, 1.0f));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.2f, 1.0f, 1.0f, 2000.0f);
+		camera.Position = .(0.0f, 300.0f, 0.1f);
+
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 256, 256);
+		frame.End();
+		let startSlots = renderer.ViewSlotsPerFrame;
+		// The first frame ran out.
+		Test.Assert(renderer.MaxChunksDrawn < terrains * 4);
+
+		frame.Begin(fixture.Encoder, 1);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 256, 256);
+		frame.End();
+		Test.Assert(renderer.ViewSlotsPerFrame > startSlots);
+		// Every terrain's every chunk.
+		Test.Assert(renderer.MaxChunksDrawn == terrains * 4);
+
+		// The GPU objects go back to the device before it dies.
+		heightCache.Clear(fixture.Device);
+	}
+
 	[Test]
 	public static void NothingDrawsWhenTheTerrainIsOffScreen()
 	{

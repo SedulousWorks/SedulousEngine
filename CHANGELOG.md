@@ -291,3 +291,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   lights or several scenes are drawn at once (editor pages side by side, a page and its play).
 - Rendering: sprites and particles no longer vanish in a busy frame: past the eighth run of
   transparent draws in a frame, or the eighth view, the rest drew nothing.
+- Terrain: a frame with many terrains or chunks draws all of them from the next frame on; the
+  ones past the renderer's first budget never drew.
