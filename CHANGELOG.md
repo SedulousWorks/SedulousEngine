@@ -287,3 +287,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: the sky's diffuse light is right along world z: one of its nine terms was three
   times too strong, so a sky brighter to the front or back over- or under-lit surfaces facing
   those ways. Scenes lit by such a sky look a little different.
+- Rendering: lights no longer go missing, or come from another scene, when a scene has many
+  lights or several scenes are drawn at once (editor pages side by side, a page and its play).

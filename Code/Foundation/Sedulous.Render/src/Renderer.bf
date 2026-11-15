@@ -72,6 +72,11 @@ abstract class Renderer
 	/// Called before PrepareFrame.
 	public virtual void SetShadowCasterDraws(uint32 draws) {}
 
+	/// The lights this frame's scenes hold together, each scene's list counted once (every view
+	/// of a scene draws its one list). A renderer that uploads each scene's lights once a frame
+	/// sizes its ring by it. Called before PrepareFrame.
+	public virtual void SetSceneLights(uint32 lights) {}
+
 	/// This frame's probes: the prefiltered cube array, the metadata, and how many are active.
 	public virtual void SetProbes(ITextureView cubeArray, IBuffer probeBuffer, uint32 count) {}
 

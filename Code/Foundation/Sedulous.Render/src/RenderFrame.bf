@@ -1139,6 +1139,12 @@ class RenderFrame
 		let pickPasses = (mPick != null) ? mPick.PendingTotal() : 0;
 		for (let renderer in mRegistry.Unique)
 			renderer.SetPickPasses(pickPasses);
+		// Each scene's lights go up once a frame, whatever views and passes draw it.
+		uint32 sceneLights = 0;
+		for (int k < sceneCount)
+			sceneLights += (uint32)mSceneShadowPool[k].Scene.Lights.Length;
+		for (let renderer in mRegistry.Unique)
+			renderer.SetSceneLights(sceneLights);
 		// Each view draws its own cascades from its scene's caster list, so the shadow passes'
 		// draws are every view's scene's casters together.
 		uint32 casterDraws = 0;

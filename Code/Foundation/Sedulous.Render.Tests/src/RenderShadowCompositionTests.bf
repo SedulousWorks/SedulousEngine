@@ -42,6 +42,67 @@ class RenderShadowCompositionTests
 		return builder..Shader("forward")..VertexLayout(.Mesh).Build();
 	}
 
+	/// Each scene's lights go up once a frame, into a ring sized for every scene. The upload ran
+	/// per renderer run in every pass of every view, into a ring of 256 a frame: a scene with many
+	/// lights, or two scenes, ran it out, and a view whose upload failed read the lights of
+	/// whichever scene went first.
+	[Test]
+	public static void EachScenesLightsGoUpOnceAFrame()
+	{
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MakeLitMaterial();
+		defer delete material;
+
+		let lights = (uint32)200;
+		let first = scope ExtractedScene();
+		let second = scope ExtractedScene();
+		ExtractedScene[2] both = .(first, second);
+		for (let scene in both)
+		{
+			AddCube(scene, cube, material);
+			for (uint32 i < lights)
+			{
+				var light = GpuLight();
+				light.Type = 1.0f;
+				light.PositionWS = .((float)i, 2, 0);
+				light.Range = 3.0f;
+				scene.AddLight(light);
+			}
+		}
+		let camera = RenderFrameFixture.LookingAtTheOrigin();
+
+		// Each scene drawn through two views: each scene's lights go up once, and the ring holds
+		// both scenes' in the first frame.
+		frame.Begin(fixture.Encoder, 0);
+		for (let scene in both)
+		{
+			frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+			frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		}
+		frame.End();
+		Test.Assert(meshRenderer.LightSlotsPerFrame >= 2 * lights);
+		Test.Assert(meshRenderer.LightSlotsUsed == 2 * lights);
+
+		// One scene alone takes its lights once.
+		frame.Begin(fixture.Encoder, 1);
+		frame.AddView(first, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.AddView(first, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+		Test.Assert(meshRenderer.LightSlotsUsed == lights);
+	}
+
 	/// Two scenes in ONE frame: only the one with a directional caster gets cascades, both
 	/// bind the map, and both scenes' local casters get entries in the concatenated buffer at
 	/// their own bases.

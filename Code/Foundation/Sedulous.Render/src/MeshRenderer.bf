@@ -247,6 +247,20 @@ class MeshRenderer : Renderer
 	/// slot materials, skinning or fade are apart, and each finds its own. Cleared each frame.
 	private Dictionary<uint64, InstShare> mInstShareCache = new .() ~ delete _;
 
+	/// This frame's light uploads, one per scene's light list (keyed by the list's address):
+	/// every view and pass of a scene reads the same range, so the ring holds each scene's
+	/// lights once. Cleared each frame.
+	private struct LightUpload
+	{
+		public uint32 Offset;
+		public uint32 Count;
+	}
+	private Dictionary<int, LightUpload> mLightUploads = new .() ~ delete _;
+	/// SetSceneLights: what the light ring is sized for.
+	private uint32 mSceneLights = 0;
+	/// The first overflow is said once.
+	private bool mLightOverflowLogged = false;
+
 	/// The last level selected per view and item, persisted ACROSS frames, which is the point
 	/// of hysteresis. Bounded by a cap: on overflow it clears wholesale, which costs at worst
 	/// one frame of unsmoothed selection.
@@ -546,6 +560,11 @@ class MeshRenderer : Renderer
 		mShadowCasterDraws = draws;
 	}
 
+	public override void SetSceneLights(uint32 lights)
+	{
+		mSceneLights = lights;
+	}
+
 	/// The per frame slots the object, instance and offset rings need. Each camera pass (the
 	/// depth prepass, the forward, a probe face, a pick) re-emits at most the views' draws;
 	/// each shadow pass (a cascade, a local tile) at most its scene's casters, which the camera
@@ -631,7 +650,7 @@ class MeshRenderer : Renderer
 		if (!mViewRing.Reserve(maxDraws)
 			|| !mShadowViewRing.Reserve(shadowViewCap)
 			|| !mObjectRing.Reserve(drawCap) || !mInstanceRing.Reserve(drawCap)
-			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(cMaxLights)
+			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(Math.Max(cMaxLights, mSceneLights))
 			|| !mLocalShadowRing.Reserve(cMaxLocalShadows) || !mBoneRing.Reserve(mBoneSlotsWanted))
 			return;
 
@@ -652,6 +671,7 @@ class MeshRenderer : Renderer
 		mInstanceRing.BeginFrame(frameIndex);
 		mOffsetsRing.BeginFrame(frameIndex);
 		mLightRing.BeginFrame(frameIndex);
+		mLightUploads.Clear();
 		mLocalShadowRing.BeginFrame(frameIndex);
 		mBoneRing.BeginFrame(frameIndex);
 
@@ -713,6 +733,9 @@ class MeshRenderer : Renderer
 	/// draw skinned; else in their bind pose).
 	public bool IsSkinUploaded(Float4x4* boneMatrices) => mBoneStart.ContainsKey((int)(void*)boneMatrices);
 	public static uint32 InitialBonePoolSlots => cInitialBoneMatrices;
+	/// Light slots the ring holds per frame, and those this frame's uploads took.
+	public uint32 LightSlotsPerFrame => mLightRing.SlotsPerFrame;
+	public uint32 LightSlotsUsed => mLightRing.FrameAllocatedSlots;
 
 	/// The device local mirror of the staging ring, recreated when the ring's capacity moves.
 	private bool EnsureBoneDevice()
@@ -1428,30 +1451,48 @@ class MeshRenderer : Renderer
 			return;
 
 		// This view's lights into the ring, bound whole: the shader reads them from the
-		// offset stamped into the view block.
-		var lightCount = (uint32)context.Lights.Length;
-		if (lightCount > cMaxLights)
-			lightCount = cMaxLights;
-
+		// offset stamped into the view block. A scene's lights go up ONCE a frame: this runs per
+		// renderer run in each pass of each view, and an upload per call ran the ring out, after
+		// which a view read slot nought onward, the lights of whichever scene went first.
+		var lightCount = Math.Min((uint32)context.Lights.Length, cMaxLights);
 		uint32 lightOffset = 0;
 		if (lightCount > 0)
 		{
-			let range = mLightRing.AllocateRange(lightCount);
-			if (range.Ok)
+			let key = (int)(void*)context.Lights.Ptr;
+			if (mLightUploads.TryGetValue(key, let upload))
 			{
-				Internal.MemCpy(range.Ptr, context.Lights.Ptr, (int)lightCount * sizeof(GpuLight));
-				lightOffset = range.SlotIndex;
+				lightOffset = upload.Offset;
+				lightCount = upload.Count;
 			}
 			else
 			{
-				lightCount = 0;
+				let range = mLightRing.AllocateRange(lightCount);
+				if (range.Ok)
+				{
+					Internal.MemCpy(range.Ptr, context.Lights.Ptr, (int)lightCount * sizeof(GpuLight));
+					lightOffset = range.SlotIndex;
+				}
+				else
+				{
+					// SetSceneLights sized the ring for every scene; a renderer driven without it
+					// runs out here. The view draws unlit rather than with another scene's lights.
+					if (!mLightOverflowLogged)
+					{
+						GlobalLog(.Warning, "MeshRenderer: the light ring is full ({} slots a frame); {} lights dropped, the view drawn unlit",
+							mLightRing.SlotsPerFrame, lightCount);
+						mLightOverflowLogged = true;
+					}
+					lightCount = 0;
+				}
+				mLightUploads[key] = .() { Offset = lightOffset, Count = lightCount };
 			}
 		}
 
 		// This view's clustered light lists. Without them the grid width stays nought, which
-		// is what makes the shader fall back to looping every light.
+		// is what makes the shader fall back to looping every light. No lights uploaded: the
+		// binned indices name none, so the lists are not bound.
 		var clusterBindGroup = mDummyClusterBindGroup;
-		if (context.Cluster.Valid)
+		if (context.Cluster.Valid && (lightCount > 0))
 		{
 			// A slot per view AND frame: two views in one frame have different buffers and must
 			// not share a group, or it thrashes and frees a set still in flight.
