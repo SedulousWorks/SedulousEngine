@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sky Hopper's app icon: Branding/AppIcon.png, 512 pixels square, what the Android preset's
-androidIcon names. The game's sky (#4DA3EE into the deep sky #1F5FAF), a cloud, and the HUD's
-star (Sources/IconStar.svg's gold) on it. Drawn as an SVG here and rendered by librsvg into cairo
+androidIcon names. A dusk sky (#FFB25B into #7A4FB5), a cloud, and the HUD's star
+(Sources/IconStar.svg's gold) on it. Drawn as an SVG here and rendered by librsvg into cairo
 through ctypes, as Code/Tools/icon-sheet.py does.
 
     python3 Tools/appicon.py          (from the project folder)
@@ -20,8 +20,8 @@ OUT = os.path.join(HERE, '..', 'Branding', 'AppIcon.png')
 ICON = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#4DA3EE"/>
-      <stop offset="1" stop-color="#1F5FAF"/>
+      <stop offset="0" stop-color="#FFB25B"/>
+      <stop offset="1" stop-color="#7A4FB5"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#sky)"/>
