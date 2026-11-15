@@ -27,6 +27,8 @@ Made with the Sedulous engine. Third-party assets, with thanks:
 
 - The HUD and clear card icons (heart, coin, star, clock, gem) are vector images drawn for this
   game, under the project's own licence.
+- The app icon (`Branding/AppIcon.png`: the star on a cloud in the sky) is drawn for this game by
+  `Tools/appicon.py`, under the project's own licence.
 
 ## Fonts
 
