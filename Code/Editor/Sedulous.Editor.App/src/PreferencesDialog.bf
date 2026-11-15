@@ -35,6 +35,9 @@ class EditorPreferencesServices
 	/// (the context's): registered at boot, before the dialog is made, and kept until the editor
 	/// goes.
 	public List<EditorSettingsContribution> Contributions = null;
+	/// The export section was saved, so the Android SDK and JDK it names apply; unset: nothing
+	/// follows. Owned.
+	public delegate void() ExportChanged ~ delete _;
 	/// The MCP section was saved: the host follows it over the open project; unset: nothing
 	/// follows. Owned.
 	public delegate void() McpChanged ~ delete _;
@@ -228,7 +231,7 @@ class EditorPreferencesDialog
 		if (let add = Find<Sedulous.GUI.Button>("pref-preview-add"))
 			add.SetOnClick(new () => { AddPreview("Custom", 1920, 1080); });
 		// The Export tab's folders: Browse fills its field with the folder picked.
-		for (let field in StringView[1]("pref-templates-root"))
+		for (let field in StringView[3]("pref-templates-root", "pref-android-sdk", "pref-java-home"))
 		{
 			if (let browse = Find<Sedulous.GUI.Button>(scope $"{field}-browse"))
 			{
@@ -286,6 +289,17 @@ class EditorPreferencesDialog
 			// Empty, the default is what it takes, so the default is what it shows.
 			root.Placeholder = Sedulous.Editor.Project.ExportTemplates.DefaultRoot(.. scope .());
 		}
+		let exportSettings = (user != null) ? user.Find<EditorExportSettings>() : null;
+		if (let sdk = Find<Sedulous.GUI.TextField>("pref-android-sdk"))
+		{
+			sdk.Text = (exportSettings != null) ? exportSettings.AndroidSdk : "";
+			sdk.Placeholder = "$ANDROID_HOME";
+		}
+		if (let jdk = Find<Sedulous.GUI.TextField>("pref-java-home"))
+		{
+			jdk.Text = (exportSettings != null) ? exportSettings.JavaHome : "";
+			jdk.Placeholder = "$JAVA_HOME, else java on the PATH";
+		}
 		let mcp = (user != null) ? user.Find<EditorMcpSettings>() : null;
 		if (let enabled = Find<Sedulous.GUI.CheckBox>("pref-mcp-enabled"))
 			enabled.Checked = (mcp != null) && mcp.Enabled;
@@ -306,10 +320,26 @@ class EditorPreferencesDialog
 	private void SaveSettings()
 	{
 		let user = mServices.User;
-		if (let root = Find<Sedulous.GUI.TextField>("pref-templates-root"))
+		// The export section: the templates' folder and the Android SDK and JDK an export runs,
+		// marked changed once.
+		let root = Find<Sedulous.GUI.TextField>("pref-templates-root");
+		let sdk = Find<Sedulous.GUI.TextField>("pref-android-sdk");
+		let jdk = Find<Sedulous.GUI.TextField>("pref-java-home");
+		if ((root != null) || ((sdk != null) && (jdk != null)))
 		{
-			user.Section<EditorExportSettings>().TemplatesRoot.Set(root.Text);
+			let exportSettings = user.Section<EditorExportSettings>();
+			if (root != null)
+				exportSettings.TemplatesRoot.Set(root.Text);
+			if ((sdk != null) && (jdk != null))
+			{
+				exportSettings.AndroidSdk.Set(sdk.Text);
+				exportSettings.AndroidSdk.Trim();
+				exportSettings.JavaHome.Set(jdk.Text);
+				exportSettings.JavaHome.Trim();
+			}
 			user.MarkChanged<EditorExportSettings>();
+			if (mServices.ExportChanged != null)
+				mServices.ExportChanged();
 		}
 		let enabled = Find<Sedulous.GUI.CheckBox>("pref-mcp-enabled");
 		let port = Find<Sedulous.GUI.TextField>("pref-mcp-port");

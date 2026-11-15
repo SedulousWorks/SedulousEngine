@@ -79,6 +79,9 @@ class EditorApplication : IApplication
 	private ThumbnailService mThumbnailService = new .() ~ delete _;
 	/// The per-user editor preferences, <user-data>/editor.settings.xml.
 	private Settings mEditorSettings = new .() ~ delete _;
+	/// ANDROID_HOME and JAVA_HOME as the editor was started with them, which Preferences' SDK and
+	/// JDK folders stand in for while set.
+	private ExportToolEnvironment mInheritedTools = new .() ~ delete _;
 	/// The user's registry of projects.
 	private ProjectManagerController mProjectManager ~ delete _;
 
@@ -511,6 +514,10 @@ class EditorApplication : IApplication
 		EditorSerializables.RegisterAll();
 		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
 		EditorSettingsStore.LoadFromUserData(mEditorSettings).IgnoreError();
+		// The Android SDK and JDK an export runs, as Preferences names them.
+		mInheritedTools.ReadCurrent();
+		if (let exportSettings = mEditorSettings.Find<EditorExportSettings>())
+			mInheritedTools.Apply(exportSettings);
 	}
 
 	public void OnStartup(IApplicationHost host)
@@ -905,6 +912,7 @@ class EditorApplication : IApplication
 			services.Actions = mContext.Actions;
 			services.Warn = new (text) => { mContext.Notify(.Warning, text); };
 			services.Contributions = mContext.EditorSettingsContributions;
+			services.ExportChanged = new () => { mInheritedTools.Apply(mEditorSettings.Section<EditorExportSettings>()); };
 			services.McpChanged = new () =>
 				{
 					// The host follows the saved section, over the open project or the manager:

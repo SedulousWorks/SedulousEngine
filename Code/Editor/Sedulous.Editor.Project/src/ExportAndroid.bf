@@ -82,7 +82,7 @@ static class ExportAndroid
 		let sdk = scope String();
 		if ((Environment.GetEnvironmentVariable("ANDROID_HOME", sdk) case .Err) || sdk.IsEmpty || !DirectoryExists(sdk))
 		{
-			outWhy.Append("an Android export runs Gradle, which needs the Android SDK: set ANDROID_HOME to it");
+			outWhy.Append("an Android export runs Gradle, which needs the Android SDK: set ANDROID_HOME to it (in the editor, Preferences > Export > Android SDK)");
 			return false;
 		}
 		if (template != null)
@@ -209,7 +209,7 @@ static class ExportAndroid
 		Process.Run(wrapper, views, built);
 		if (built.ExitCode != 0)
 		{
-			GlobalLog(.Error, "Export: the Android app's Gradle build failed ({}); it needs a JDK 17 (JAVA_HOME or java on the PATH) and, the first time, the network:\n{}",
+			GlobalLog(.Error, "Export: the Android app's Gradle build failed ({}); it needs a JDK 17 (JAVA_HOME, java on the PATH, or in the editor Preferences > Export > JDK) and, the first time, the network:\n{}",
 				built.ExitCode, built.Output);
 			result.Refusal.Set("the Android app's Gradle build failed (the log has its output)");
 			return .Err(.Internal);

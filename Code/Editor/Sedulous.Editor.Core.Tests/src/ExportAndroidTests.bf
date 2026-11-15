@@ -260,6 +260,33 @@ static class ExportAndroidTests
 		Test.Assert(checkedPaths == 2);
 	}
 
+	/// The editor's Android SDK and JDK stand in for the environment's while set; cleared, what
+	/// the process started with comes back, and none started gives none.
+	[Test]
+	public static void TheEditorsAndroidSdkAndJdkStandInForTheEnvironmentsWhileSet()
+	{
+		let was = scope ExportToolEnvironment();
+		was.ReadCurrent();
+		let none = scope EditorExportSettings();
+		defer was.Apply(none); // put back as the test found them
+		let started = scope ExportToolEnvironment();
+		started.AndroidHome.Set("/started/sdk");
+		started.HadAndroidHome = true;
+		let settings = scope EditorExportSettings();
+		settings.AndroidSdk.Set("/chosen/sdk");
+		settings.JavaHome.Set("/chosen/jdk");
+		started.Apply(settings);
+		let now = scope ExportToolEnvironment();
+		now.ReadCurrent();
+		Test.Assert((now.AndroidHome == "/chosen/sdk") && (now.JavaHome == "/chosen/jdk"));
+		settings.AndroidSdk.Clear();
+		settings.JavaHome.Clear();
+		started.Apply(settings);
+		now.ReadCurrent();
+		Test.Assert(now.AndroidHome == "/started/sdk");
+		Test.Assert(!now.HadJavaHome || now.JavaHome.IsEmpty);
+	}
+
 #if BF_PLATFORM_LINUX
 	[CLink]
 	private static extern int32 chmod(char8* path, uint32 mode);
