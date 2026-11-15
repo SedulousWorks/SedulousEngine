@@ -331,3 +331,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   to import instead of being read past its buffers' ends.
 - Fonts: a truncated or damaged font file is refused instead of read past its end (a crafted one
   could crash the game or editor that loaded it).
+- XML: a document nested more than 512 elements deep is refused (`NestingTooDeep`) instead of
+  overflowing the stack of whatever read it.

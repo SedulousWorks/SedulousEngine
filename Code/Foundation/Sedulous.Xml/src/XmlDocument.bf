@@ -19,6 +19,11 @@ class XmlDocument : XmlNode
 	private StringView mLineText;
 	private int mLineFrom = 0;
 	private uint32 mLineAt = 1;
+	/// Elements open around the one being parsed. Each level is a native call (ParseElement
+	/// and ParseContent), so a document nested deeper than cMaxNesting is refused rather than
+	/// run the stack out.
+	private uint32 mDepth = 0;
+	private const uint32 cMaxNesting = 512;
 
 	public this() : base(.Document)
 	{
@@ -57,6 +62,7 @@ class XmlDocument : XmlNode
 		mLineText = text;
 		mLineFrom = 0;
 		mLineAt = 1;
+		mDepth = 0;
 
 		var remaining = text;
 		let result = ParseDocument(ref remaining);
@@ -442,7 +448,11 @@ class XmlDocument : XmlNode
 		// partial subtree owned by the tree and not leaked.
 		parent.AppendChild(element);
 
+		if (mDepth >= cMaxNesting)
+			return .NestingTooDeep;
+		mDepth++;
 		let contentResult = ParseContent(ref text, element);
+		mDepth--;
 		if (contentResult != .Ok)
 			return contentResult;
 

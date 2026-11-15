@@ -303,4 +303,32 @@ class ParserTests
 		Test.Assert(made.Line == 0);
 		document.RootElement.AppendChild(made);
 	}
+
+	/// Each element was a native call with no limit: a file of nested elements ran out the
+	/// stack of whatever parsed it (a scene, an asset, a project file).
+	[Test]
+	public static void ADocumentNestedPastTheLimitIsRefused()
+	{
+		void Nested(int depth, String outText)
+		{
+			for (int i < depth)
+				outText.Append("<a>");
+			for (int i < depth)
+				outText.Append("</a>");
+		}
+
+		let fits = scope XmlDocument();
+		Test.Assert(fits.Parse(Nested(500, .. scope .())) == .Ok);
+		let deep = scope XmlDocument();
+		Test.Assert(deep.Parse(Nested(200000, .. scope .())) == .NestingTooDeep);
+		Test.Assert(XmlResult.NestingTooDeep.Describe == "Elements are nested too deep");
+
+		// The count is of OPEN elements: siblings past the limit in number are not nested.
+		let siblings = scope String("<r>");
+		for (int i < 600)
+			siblings.Append("<a></a>");
+		siblings.Append("</r>");
+		let wide = scope XmlDocument();
+		Test.Assert(wide.Parse(siblings) == .Ok);
+	}
 }

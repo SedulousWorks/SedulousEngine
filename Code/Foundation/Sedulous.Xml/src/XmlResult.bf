@@ -47,6 +47,7 @@ enum XmlResult : uint32
 	case ContentBeforeRoot = 0x43425254; // 'CBRT'
 	case ContentAfterRoot = 0x43415254; // 'CART'
 	case NoRootElement = 0x4E4F5254; // 'NORT'
+	case NestingTooDeep = 0x4E455354; // 'NEST'
 	case EncodingUnsupported = 0x454E5553; // 'ENUS'
 	case EncodingInvalidUtf8 = 0x454E5538; // 'ENU8'
 
@@ -97,6 +98,7 @@ enum XmlResult : uint32
 			case .ContentBeforeRoot: return "Content before root element";
 			case .ContentAfterRoot: return "Content after root element";
 			case .NoRootElement: return "Document has no root element";
+			case .NestingTooDeep: return "Elements are nested too deep";
 			case .EncodingUnsupported: return "Encoding is not supported";
 			case .EncodingInvalidUtf8: return "Invalid UTF-8 sequence";
 			}
