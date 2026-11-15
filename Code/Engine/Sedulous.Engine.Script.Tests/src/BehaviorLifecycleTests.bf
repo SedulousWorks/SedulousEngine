@@ -4,6 +4,7 @@ using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Script;
+using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Script;
@@ -300,6 +301,28 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.Prop(e, "composed").AsBool, "its world turn is its parent's after its own");
 		Test.Assert(play.Prop(e, "scaled").AsBool, "its world scale is theirs multiplied");
 		Test.Assert(play.Prop(e, "deadIsIdentity").AsBool, "an invalid entity reads identity and one");
+	}
+
+	/// A class that fails to load fails no class after it: each new class rebuilt every class
+	/// into one module, so one that failed stayed in the list and failed every class after it.
+	[Test]
+	public static void AClassThatFailsToLoadFailsNoClassAfterIt()
+	{
+		let play = scope ScriptPlayScene();
+		let good = play.Class("Good", "class Good { int n = 1; }", "Good.as");
+		// Made by hand: the bed's Class compiles it to harvest it, which this one cannot.
+		let broken = scope ScriptClass();
+		broken.Language.Set(AngelScriptBackend.cLanguage);
+		broken.ClassName.Set("Broken");
+		broken.SourceName.Set("Broken.as");
+		broken.Source.Set("class Broken { void f() { this does not compile } }");
+		let later = play.Class("Later", "class Later { int n = 3; }", "Later.as");
+		Test.Assert(play.Host.Instantiate(good) != null);
+		Test.Assert(play.Host.Instantiate(broken) == null);
+		Test.Assert(play.Host.Instantiate(later) != null, "a class after the broken one loads");
+		Test.Assert(play.Host.Instantiate(good) != null, "and one before it still does");
+		Test.Assert(play.Host.ModuleOf("Broken").IsEmpty, "the broken class is not kept");
+		Test.Assert(play.Host.ModuleOf("Good") != play.Host.ModuleOf("Later"), "each in its own module");
 	}
 
 	[Test]

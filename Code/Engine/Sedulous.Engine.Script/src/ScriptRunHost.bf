@@ -41,7 +41,7 @@ class ScriptRunHost
 	public SubsystemManager Subsystems = null;
 	private String mLanguage = new .() ~ delete _;
 	/// BORROWED: the resource manager owns the products.
-	/// The classes compiled into the current module, as COPIES of their names and sources: a
+	/// The classes loaded, each in a module of its own, as COPIES of their names and sources: a
 	/// ScriptClass is a product the resource manager replaces (and frees) on every hot reload,
 	/// and this host outlives a play, so it must not hold one.
 	private List<LoadedClass> mLoaded = new .() ~ DeleteContainerAndItems!(_);
@@ -51,6 +51,8 @@ class ScriptRunHost
 		public String ClassName = new .() ~ delete _;
 		public String SourceName = new .() ~ delete _;
 		public String Source = new .() ~ delete _;
+		/// The module it loaded into.
+		public String ModuleName = new .() ~ delete _;
 
 		public void Set(ScriptClass scriptClass)
 		{
@@ -59,9 +61,8 @@ class ScriptRunHost
 			Source.Set(scriptClass.Source);
 		}
 	}
-	private bool mModuleCurrent = false;
+	/// How many class modules the run has loaded: each a class's own.
 	private int mGeneration = 0;
-	private String mModuleName = new .() ~ delete _;
 	private bool mWarnedLanguage = false;
 
 	public ScriptRuntime Runtime => mRuntime;
@@ -115,7 +116,6 @@ class ScriptRunHost
 		return (Subsystems != null) ? Subsystems.FindService(type) : null;
 	}
 	public bool IsActive => mRuntime != null;
-	public StringView ModuleName => mModuleName;
 	public int Generation => mGeneration;
 
 	/// The runtime for the language, created on first use.
@@ -207,55 +207,58 @@ class ScriptRunHost
 	{
 		if (!EnsureClassLoaded(scriptClass))
 			return null;
-		let instance = mRuntime.Instantiate(mModuleName, scriptClass.ClassName);
+		let instance = mRuntime.Instantiate(ModuleOf(scriptClass.ClassName), scriptClass.ClassName);
 		if (instance == null)
 			ReportProblems();
 		return instance;
 	}
 
-	/// Compiles the class, with every other class of the run, into the current generation.
+	/// The module class `className` loaded into; empty when it has not.
+	public StringView ModuleOf(StringView className)
+	{
+		for (let loaded in mLoaded)
+		{
+			if (loaded.ClassName == className)
+				return loaded.ModuleName;
+		}
+		return default;
+	}
+
+	/// Loads the class unless it is already loaded. Each class is compiled and cooked alone, so
+	/// it loads alone, in a module of its own: no class waits on another, a class that fails to
+	/// load is not kept (so it fails no class after it), and a reloaded class (the same name, a
+	/// changed source) loads beside its predecessor, whose live instances keep running. False on
+	/// a load failure, logged.
 	public bool EnsureClassLoaded(ScriptClass scriptClass)
 	{
 		if (EnsureRuntime(scriptClass.Language) == null)
 			return false;
 
-		bool present = false;
+		LoadedClass replaced = null;
 		for (let loaded in mLoaded)
 		{
 			if (loaded.ClassName != scriptClass.ClassName)
 				continue;
-			// A reloaded product carries its class under the same name: a changed source
-			// recompiles, the same one does not.
-			if ((loaded.Source != scriptClass.Source) || (loaded.SourceName != scriptClass.SourceName))
-			{
-				loaded.Set(scriptClass);
-				mModuleCurrent = false;
-			}
-			present = true;
+			// A reloaded product carries its class under the same name: a changed source loads
+			// again, the same one does not.
+			if ((loaded.Source == scriptClass.Source) && (loaded.SourceName == scriptClass.SourceName))
+				return true;
+			replaced = loaded;
 			break;
 		}
-		if (!present)
-		{
-			let loaded = new LoadedClass();
-			loaded.Set(scriptClass);
-			mLoaded.Add(loaded);
-			mModuleCurrent = false;
-		}
-		if (mModuleCurrent)
-			return true;
 
-		let sections = scope List<ScriptSection>();
-		for (let loaded in mLoaded)
-			sections.Add(.(loaded.SourceName, loaded.Source));
 		mGeneration++;
-		mModuleName.Set(scope $"behaviors#{mGeneration}");
-		if (!mRuntime.CompileModule(mModuleName, sections))
+		let moduleName = scope $"behavior:{scriptClass.ClassName}#{mGeneration}";
+		ScriptSection[1] sections = .(.(scriptClass.SourceName, scriptClass.Source));
+		if (!mRuntime.CompileModule(moduleName, sections))
 		{
-			GlobalLog(.Error, scope $"Script: the behaviours module failed to compile (class '{scriptClass.ClassName}' newly added)");
+			GlobalLog(.Error, scope $"Script: class '{scriptClass.ClassName}' failed to load");
 			ReportProblems();
 			return false;
 		}
-		mModuleCurrent = true;
+		let loaded = replaced ?? mLoaded.Add(.. new LoadedClass());
+		loaded.Set(scriptClass);
+		loaded.ModuleName.Set(moduleName);
 		return true;
 	}
 
@@ -287,8 +290,6 @@ class ScriptRunHost
 		DeleteAndNullify!(mRuntime);
 		mLanguage.Clear();
 		ClearAndDeleteItems!(mLoaded);
-		mModuleCurrent = false;
-		mModuleName.Clear();
 		mWarnedLanguage = false;
 		// The next run starts from the default seed, as a fresh run does: a second play in
 		// the same tab must not continue the first one's sequence.

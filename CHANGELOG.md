@@ -115,6 +115,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: a behaviour script that fails to load no longer stops every behaviour loaded after it
+  in the same play, and each new behaviour class loads alone rather than recompiling every class
+  loaded before it.
 - Scripting (AngelScript): a breakpoint inside a coroutine stops there; coroutines ran past every
   breakpoint.
 - Scripting (AngelScript): an engine method of more than 16 parameters is not offered to scripts,
