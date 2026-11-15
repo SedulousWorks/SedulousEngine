@@ -188,8 +188,8 @@ class ParticleRenderer : Renderer
 
 	public override void PrepareFrame(uint32 maxDraws, uint32 frameIndex)
 	{
-		// Rounded up in chunks, so growth ramps for one frame and then holds: a ring cannot
-		// grow mid frame.
+		// Rounded up in chunks. A frame that needs more than this grows the ring before its first
+		// write (Resolve's MakeRoom).
 		const uint32 cChunk = 8192;
 		let want = (uint32)Math.Max(maxDraws, ((mMaxInstancesSeen + cChunk - 1) / cChunk) * cChunk);
 		mInstanceRing.Reserve((want == 0) ? 1 : want);
@@ -254,6 +254,28 @@ class ParticleRenderer : Renderer
 			? context.SceneDepthView : mWhiteView);
 		if (depthBindGroup == null)
 			return;
+
+		// Room for this view's instances and trail vertices before the first write: the rings
+		// are sized from earlier frames, so the frame a scene first shows (or grows) its
+		// particles would otherwise lose them while the rings catch up. Only a ring nothing has
+		// written this frame can grow (a second view's need waits for the next frame).
+		{
+			uint32 instances = 0;
+			uint32 trailVertices = 0;
+			for (let item in items)
+			{
+				let data = (ParticleRenderDataBase)item.Data;
+				if (data.ParticleKind == 1)
+					trailVertices += Math.Min(((ParticleTrailRenderData)data).VertexCount, cTrailMaxIndices);
+				else
+					instances += ((ParticleBillboardRenderData)data).Count;
+			}
+			const uint32 cChunk = 8192;
+			if (instances > 0)
+				mInstanceRing.MakeRoom(((instances + cChunk - 1) / cChunk) * cChunk);
+			if (trailVertices > 0)
+				mTrailRing.MakeRoom(((trailVertices + cChunk - 1) / cChunk) * cChunk);
+		}
 
 		var i = 0;
 		while (i < items.Length)

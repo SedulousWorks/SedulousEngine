@@ -124,6 +124,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Web: games draw in Safari and in every browser on iPhone and iPad. Their shaders wrote a very
   large number in full digits, which WebKit's WebGPU refused, so the screen stayed black while the
   game and its sound ran; the cook writes such numbers with an exponent.
+- Rendering: the first frame a scene shows its particles draws them; it drew none and logged a
+  full particle ring.
 - Scripting (AngelScript): a script that allocates past its heap budget (512 MB) fails its call with
   "Out of memory"; it took the machine's memory. The budget is one for the whole process.
 - Scripting: reloading a behaviour script while the game runs no longer keeps every earlier

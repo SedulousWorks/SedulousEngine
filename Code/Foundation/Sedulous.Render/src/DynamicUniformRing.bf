@@ -25,6 +25,8 @@ class DynamicUniformRing
 	private uint32 mFramesInFlight;
 	private uint64 mSlotSize;
 	private uint32 mSlotsPerFrame = 0;
+	/// This frame's region: frameIndex % framesInFlight.
+	private uint32 mFrameSlot = 0;
 	private uint32 mFrameBase = 0;
 	private uint32 mCursor = 0;
 	private uint32 mGeneration = 0;
@@ -100,7 +102,8 @@ class DynamicUniformRing
 	/// particle rings.
 	public void BeginFrame(uint32 frameIndex)
 	{
-		mFrameBase = (frameIndex % mFramesInFlight) * mSlotsPerFrame;
+		mFrameSlot = frameIndex % mFramesInFlight;
+		mFrameBase = mFrameSlot * mSlotsPerFrame;
 		mCursor = 0;
 		mMapped = null;
 		mInFrame = true;
@@ -141,6 +144,20 @@ class DynamicUniformRing
 	}
 
 	public DynamicUniformRange Allocate() => AllocateRange(1);
+
+	/// Room for `count` more slots this frame: true when this frame's region has them, after
+	/// growing every region to `count` (Reserve) when nothing has been written this frame yet.
+	/// An owner that knows a frame's need before its first write asks here, so the frame that
+	/// first needs more is drawn whole rather than dropped while the ring catches up.
+	public bool MakeRoom(uint32 count)
+	{
+		if ((mBuffer != null) && ((mCursor + count) <= mSlotsPerFrame))
+			return true;
+		if (!mInFrame || (mCursor != 0) || (mMapped != null) || !Reserve(count))
+			return false;
+		mFrameBase = mFrameSlot * mSlotsPerFrame;
+		return true;
+	}
 
 	/// Flushes exactly the slots this frame wrote, a no-op on a coherent mapping and a window
 	/// upload on the emulated one, then unmaps.
