@@ -18,7 +18,8 @@ namespace Sedulous.Render;
 /// A resolved draw is always indexed, so a static six index buffer drives the generated quad.
 class SpriteRenderer : Renderer
 {
-	private const int cMaxViews = 8;
+	/// The view ring's start; it grows to the views a frame has.
+	private const uint32 cMinViews = 8;
 	/// Two matrices, padded up to the dynamic uniform alignment.
 	private const uint64 cViewSlotSize = 256;
 
@@ -36,7 +37,9 @@ class SpriteRenderer : Renderer
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
 	private DynamicUniformRing mInstanceRing ~ delete _;
-	private DynamicUniformRing mViewRing ~ delete _;
+	private ViewUniformRing mViewRing ~ delete _;
+	/// BORROWED. Null idles the device before freeing a replaced view group.
+	private GpuRetireQueue mRetire = null;
 
 	private IBindGroupLayout mViewLayout = null;
 	private IBindGroupLayout mTexLayout = null;
@@ -57,8 +60,7 @@ class SpriteRenderer : Renderer
 		mShaders = shaders;
 		mInstanceRing = new .(device, framesInFlight, sizeof(SpriteInstance),
 			.Vertex | .CopyDst, "sprite.instances");
-		mViewRing = new .(device, framesInFlight, cViewSlotSize,
-			.Uniform | .CopyDst, "sprite.view");
+		mViewRing = new .(device, framesInFlight, cViewSlotSize, cMinViews, "sprite.view");
 	}
 
 	public ~this()
@@ -133,9 +135,8 @@ class SpriteRenderer : Renderer
 	{
 		// One draw pass, the blended forward, so the instance ring only needs the draw count
 		// itself: there are no cascades or prepasses re emitting the same sprites. The view
-		// ring needs a slot per view.
+		// ring holds a slot per view, grown to the views a frame has.
 		mInstanceRing.Reserve((maxDraws == 0) ? 1 : maxDraws);
-		mViewRing.Reserve(cMaxViews);
 		mInstanceRing.BeginFrame(frameIndex);
 		mViewRing.BeginFrame(frameIndex);
 	}
@@ -153,14 +154,14 @@ class SpriteRenderer : Renderer
 		if (viewBindGroup == null)
 			return;
 
-		let viewRange = mViewRing.Allocate();
-		if (!viewRange.Ok)
-			return;
-
+		// Once a frame per view, however many runs it resolves: a slot per run spent the ring
+		// within a view, and its later runs drew nothing.
 		var viewUniforms = GpuSpriteView();
 		viewUniforms.ViewProj = context.ViewProj;
 		viewUniforms.View = context.ViewMatrix;
-		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(GpuSpriteView));
+		uint32 viewOffset = 0;
+		if (!mViewRing.SlotFor(&viewUniforms, (uint32)sizeof(GpuSpriteView), out viewOffset))
+			return;
 
 		// Fuse consecutive sprites sharing a texture and a blend mode into one instanced draw.
 		var i = 0;
@@ -205,7 +206,7 @@ class SpriteRenderer : Renderer
 					draw.Pso = pipeline;
 					draw.ViewSet = viewBindGroup;
 					draw.ViewDynamic = true;
-					draw.ViewOffset = viewRange.ByteOffset;
+					draw.ViewOffset = viewOffset;
 					draw.DrawSet = texBindGroup;
 					draw.VertexBuffer0 = mInstanceRing.Buffer;
 					draw.VertexOffset0 = instanceRange.ByteOffset;
@@ -232,11 +233,15 @@ class SpriteRenderer : Renderer
 	{
 		mInstanceRing.SetRetireQueue(retire);
 		mViewRing.SetRetireQueue(retire);
+		mRetire = retire;
 	}
 
-	/// One group over the whole view ring, the view chosen by a dynamic offset. It is only
-	/// rebuilt when the ring itself is reallocated, which drains the device first, so it can
-	/// never free a set still in flight.
+	/// View slots the ring holds per frame, and those this frame took.
+	public uint32 ViewSlotsPerFrame => mViewRing.SlotsPerFrame;
+	public uint32 ViewSlotsUsed => mViewRing.FrameSlots;
+
+	/// One group over the whole view ring, the view chosen by a dynamic offset. Rebuilt when
+	/// the ring grows; the old one is retired, since a frame in flight may still use it.
 	private IBindGroup EnsureViewBindGroup()
 	{
 		let generation = mViewRing.Generation;
@@ -244,7 +249,7 @@ class SpriteRenderer : Renderer
 			return mViewBindGroup;
 
 		if (mViewBindGroup != null)
-			mDevice.DestroyBindGroup(ref mViewBindGroup);
+			BindGroups.Retire(mDevice, mRetire, ref mViewBindGroup);
 
 		if (mViewRing.Buffer == null)
 			return null;

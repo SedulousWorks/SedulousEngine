@@ -21,7 +21,8 @@ namespace Sedulous.Engine.Particles;
 /// A particle count would otherwise flood the draw list's sort.
 class ParticleRenderer : Renderer
 {
-	private const uint32 cMaxViews = 8;
+	/// The view ring's start; it grows to the views a frame has.
+	private const uint32 cMinViews = 8;
 	/// Two matrices and a vector, padded up to the dynamic uniform alignment.
 	private const uint64 cViewSlotSize = 256;
 	/// The identity index buffer's cap, which is the largest single ribbon.
@@ -57,7 +58,9 @@ class ParticleRenderer : Renderer
 
 	private DynamicUniformRing mInstanceRing ~ delete _;
 	private DynamicUniformRing mTrailRing ~ delete _;
-	private DynamicUniformRing mViewRing ~ delete _;
+	private ViewUniformRing mViewRing ~ delete _;
+	/// BORROWED. Null idles the device before freeing a replaced view group.
+	private GpuRetireQueue mRetire = null;
 
 	private IBindGroupLayout mViewLayout = null;
 	private IBindGroupLayout mTexLayout = null;
@@ -104,8 +107,7 @@ class ParticleRenderer : Renderer
 			.Vertex | .CopyDst, "particle.instances");
 		mTrailRing = new .(device, framesInFlight, sizeof(TrailVertex),
 			.Vertex | .CopyDst, "particle.trailverts");
-		mViewRing = new .(device, framesInFlight, cViewSlotSize,
-			.Uniform | .CopyDst, "particle.view");
+		mViewRing = new .(device, framesInFlight, cViewSlotSize, cMinViews, "particle.view");
 	}
 
 	public ~this()
@@ -195,10 +197,9 @@ class ParticleRenderer : Renderer
 		let trailWant = ((mMaxTrailVerticesSeen + cChunk - 1) / cChunk) * cChunk;
 		mTrailRing.Reserve((trailWant == 0) ? 1 : (uint32)trailWant);
 
-		mViewRing.Reserve(cMaxViews);
-
 		mInstanceRing.BeginFrame(frameIndex);
 		mTrailRing.BeginFrame(frameIndex);
+		// A slot per view, grown to the views a frame has.
 		mViewRing.BeginFrame(frameIndex);
 
 		mFrameInstances = 0;
@@ -231,10 +232,6 @@ class ParticleRenderer : Renderer
 		if (viewBindGroup == null)
 			return;
 
-		let viewRange = mViewRing.Allocate();
-		if (!viewRange.Ok)
-			return;
-
 		let projection = (context.View != null) ? context.View.Camera.Projection : Float4x4.Identity();
 
 		var viewUniforms = GpuParticleView();
@@ -245,7 +242,10 @@ class ParticleRenderer : Renderer
 		viewUniforms.ProjZScale = projection.M[2][2];
 		viewUniforms.ProjZOffset = projection.M[3][2];
 		viewUniforms.ProjWScale = projection.M[2][3];
-		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(GpuParticleView));
+		// Once a frame per view, however many runs it resolves.
+		uint32 viewOffset = 0;
+		if (!mViewRing.SlotFor(&viewUniforms, (uint32)sizeof(GpuParticleView), out viewOffset))
+			return;
 
 		// The scene depth the soft fade reads. The transparent pass hands over the opaque
 		// depth already in a readable state; with none, the fallback stands in so the set is
@@ -262,7 +262,7 @@ class ParticleRenderer : Renderer
 
 			if (head.ParticleKind == 1)
 			{
-				EmitTrailDraw(context, (ParticleTrailRenderData)head, viewBindGroup, viewRange,
+				EmitTrailDraw(context, (ParticleTrailRenderData)head, viewBindGroup, viewOffset,
 					outDraws);
 				i++;
 				continue;
@@ -288,7 +288,7 @@ class ParticleRenderer : Renderer
 			}
 
 			if (total > 0)
-				EmitBillboardDraw(context, items, i, j, total, batch, viewBindGroup, viewRange,
+				EmitBillboardDraw(context, items, i, j, total, batch, viewBindGroup, viewOffset,
 					depthBindGroup, outDraws);
 
 			i = j;
@@ -312,11 +312,16 @@ class ParticleRenderer : Renderer
 		mInstanceRing.SetRetireQueue(retire);
 		mTrailRing.SetRetireQueue(retire);
 		mViewRing.SetRetireQueue(retire);
+		mRetire = retire;
 	}
+
+	/// View slots the ring holds per frame, and those this frame took.
+	public uint32 ViewSlotsPerFrame => mViewRing.SlotsPerFrame;
+	public uint32 ViewSlotsUsed => mViewRing.FrameSlots;
 
 	private void EmitBillboardDraw(RenderRecordContext context, Span<DrawItem> items, int first,
 		int last, uint32 total, ParticleBillboardRenderData head, IBindGroup viewBindGroup,
-		DynamicUniformRange viewRange, IBindGroup depthBindGroup, List<ResolvedDraw> outDraws)
+		uint32 viewOffset, IBindGroup depthBindGroup, List<ResolvedDraw> outDraws)
 	{
 		// The frame's SUM is what sizes the ring next frame.
 		mFrameInstances += total;
@@ -351,7 +356,7 @@ class ParticleRenderer : Renderer
 		draw.Pso = pso;
 		draw.ViewSet = viewBindGroup;
 		draw.ViewDynamic = true;
-		draw.ViewOffset = (uint32)viewRange.ByteOffset;
+		draw.ViewOffset = viewOffset;
 		draw.DrawSet = texBindGroup;
 		draw.MaterialSet = depthBindGroup;
 		draw.VertexBuffer0 = mInstanceRing.Buffer;
@@ -366,7 +371,7 @@ class ParticleRenderer : Renderer
 	/// One system's ribbon: upload its already oriented vertices and draw them as a triangle
 	/// list through the identity index buffer, a resolved draw always being indexed.
 	private void EmitTrailDraw(RenderRecordContext context, ParticleTrailRenderData batch,
-		IBindGroup viewBindGroup, DynamicUniformRange viewRange, List<ResolvedDraw> outDraws)
+		IBindGroup viewBindGroup, uint32 viewOffset, List<ResolvedDraw> outDraws)
 	{
 		if ((batch.VertexCount == 0) || (batch.Vertices == null))
 			return;
@@ -390,7 +395,7 @@ class ParticleRenderer : Renderer
 		draw.Pso = pso;
 		draw.ViewSet = viewBindGroup;
 		draw.ViewDynamic = true;
-		draw.ViewOffset = (uint32)viewRange.ByteOffset;
+		draw.ViewOffset = viewOffset;
 		draw.DrawSet = texBindGroup;
 		draw.VertexBuffer0 = mTrailRing.Buffer;
 		draw.VertexOffset0 = range.ByteOffset;
@@ -407,8 +412,9 @@ class ParticleRenderer : Renderer
 		if ((mViewBindGroup != null) && (mViewBindGroupGeneration == generation))
 			return mViewBindGroup;
 
+		// The ring grew: a frame in flight may still use the old group.
 		if (mViewBindGroup != null)
-			mDevice.DestroyBindGroup(ref mViewBindGroup);
+			BindGroups.Retire(mDevice, mRetire, ref mViewBindGroup);
 
 		if (mViewRing.Buffer == null)
 			return null;

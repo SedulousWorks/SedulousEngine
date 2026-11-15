@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.RHI;
 using Sedulous.RHI.Null;
 using Sedulous.Render;
@@ -166,6 +167,45 @@ class RenderResourceTests
 		queue.Tick();
 		queue.Flush();
 		Test.Assert(queue.PendingCount == 0);
+	}
+
+	/// One slot per distinct view a frame, and a frame of more views grows the next. A renderer
+	/// resolves several runs per view, and a slot per run spent a ring of eight within one view,
+	/// after which the view's remaining runs were dropped.
+	[Test]
+	public static void AViewRingGivesOneSlotPerViewAndGrowsForTheNextFrame()
+	{
+		let harness = scope Harness();
+		let ring = scope ViewUniformRing(harness.Device, 2, 256, 2, "test.view");
+		var views = Float4x4[3](Float4x4.Identity(), Float4x4.Translation(.(1, 0, 0)),
+			Float4x4.Translation(.(2, 0, 0)));
+		let size = (uint32)sizeof(Float4x4);
+
+		Test.Assert(ring.BeginFrame(0));
+		Test.Assert(ring.SlotsPerFrame == 2);
+		Test.Assert(ring.SlotFor(&views[0], size, let first));
+		// Twenty runs of one view: one slot.
+		for (int run < 20)
+		{
+			Test.Assert(ring.SlotFor(&views[0], size, let again));
+			Test.Assert(again == first);
+		}
+		Test.Assert(ring.SlotFor(&views[1], size, let second));
+		Test.Assert(second != first);
+		Test.Assert(ring.FrameSlots == 2);
+		// A third view: none this frame.
+		Test.Assert(!ring.SlotFor(&views[2], size, let third));
+		ring.EndFrame();
+
+		// The next frame holds the three, in a new buffer (the bind group over it is rebuilt).
+		let generation = ring.Generation;
+		Test.Assert(ring.BeginFrame(1));
+		Test.Assert(ring.SlotsPerFrame == 3);
+		Test.Assert(ring.Generation != generation);
+		for (int v < 3)
+			Test.Assert(ring.SlotFor(&views[v], size, let offset));
+		Test.Assert(ring.FrameSlots == 3);
+		ring.EndFrame();
 	}
 
 	[Test]
