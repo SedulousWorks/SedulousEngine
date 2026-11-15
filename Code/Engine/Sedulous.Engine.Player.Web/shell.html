@@ -207,11 +207,16 @@
     };
 
     // ?trace in the address: a panel of the browser's pointer events (each with whether the game
-    // took it: defaultPrevented) and the engine's input log (the player turns SEDULOUS_INPUT_TRACE
-    // on, WebPage.ApplyInputTrace).
+    // took it: defaultPrevented), the engine's input log (the player turns SEDULOUS_INPUT_TRACE on,
+    // WebPage.ApplyInputTrace), every error and warning (the engine's, the page's uncaught ones and
+    // rejections), and what WebGPU reports (the adapter, the device asked for, an uncaptured error,
+    // a device lost, the canvas configured): for a browser with no console at hand, Safari on a
+    // phone. A line repeated at once is counted, not written again, so a per-frame error does not
+    // push the first one out.
     var trace = null;
     if (new URLSearchParams(location.search).has('trace')) {
       var traceLines = [];
+      var traceRepeats = 0;
       trace = function (text) {
         var panel = document.getElementById('trace');
         if (!panel) {
@@ -219,10 +224,82 @@
           panel.id = 'trace';
           document.body.appendChild(panel);
         }
-        traceLines.push(text);
-        if (traceLines.length > 28) traceLines.shift();
-        panel.textContent = traceLines.join('\n');
+        var stamped = (performance.now() / 1000).toFixed(2) + 's ' + text;
+        if (traceLines.length > 0 && traceLines[traceLines.length - 1].text === text) {
+          traceRepeats += 1;
+          traceLines[traceLines.length - 1].line = stamped + '  (x' + (traceRepeats + 1) + ')';
+        } else {
+          traceRepeats = 0;
+          traceLines.push({ text: text, line: stamped });
+          if (traceLines.length > 40) traceLines.shift();
+        }
+        panel.textContent = traceLines.map(function (l) { return l.line; }).join('\n');
       };
+      var describe = function (value) {
+        if (value instanceof Error) return value.name + ': ' + value.message + (value.stack ? '\n' + value.stack : '');
+        if (typeof value === 'object' && value !== null) { try { return JSON.stringify(value); } catch (e) { } }
+        return String(value);
+      };
+      ['warn', 'error'].forEach(function (name) {
+        var original = console[name].bind(console);
+        console[name] = function () {
+          original.apply(null, arguments);
+          var parts = [];
+          for (var i = 0; i < arguments.length; ++i) parts.push(describe(arguments[i]));
+          trace((name === 'error' ? 'ERROR ' : 'WARN ') + parts.join(' '));
+        };
+      });
+      window.addEventListener('error', function (e) {
+        trace('ERROR uncaught: ' + e.message + ' at ' + (e.filename || '?') + ':' + e.lineno + ':' + e.colno);
+      });
+      window.addEventListener('unhandledrejection', function (e) { trace('ERROR unhandled rejection: ' + describe(e.reason)); });
+      trace(navigator.userAgent);
+      trace('secure context: ' + window.isSecureContext + ', WebGPU: ' + ('gpu' in navigator) +
+            ', device pixel ratio: ' + window.devicePixelRatio);
+      if (!('gpu' in navigator)) {
+        trace(window.isSecureContext ? 'ERROR navigator.gpu is missing: this browser has no WebGPU'
+                                     : 'ERROR navigator.gpu is missing: WebGPU needs https (or localhost)');
+      } else {
+        var gpu = navigator.gpu;
+        var requestAdapter = gpu.requestAdapter.bind(gpu);
+        gpu.requestAdapter = function (options) {
+          return requestAdapter(options).then(function (adapter) {
+            if (!adapter) { trace('ERROR requestAdapter gave no adapter'); return adapter; }
+            var info = adapter.info || {};
+            trace('adapter: ' + [info.vendor, info.architecture, info.device, info.description].filter(Boolean).join(' / ') +
+                  (adapter.isFallbackAdapter ? ' (fallback)' : ''));
+            trace('features: ' + Array.from(adapter.features).sort().join(', '));
+            var limits = [];
+            for (var key in adapter.limits) limits.push(key + '=' + adapter.limits[key]);
+            trace('limits: ' + limits.join(', '));
+            return adapter;
+          }, function (e) { trace('ERROR requestAdapter failed: ' + describe(e)); throw e; });
+        };
+        if (window.GPUAdapter) {
+          var requestDevice = GPUAdapter.prototype.requestDevice;
+          GPUAdapter.prototype.requestDevice = function (descriptor) {
+            if (descriptor) {
+              trace('requestDevice: features ' + JSON.stringify(Array.from(descriptor.requiredFeatures || [])) +
+                    ', limits ' + JSON.stringify(descriptor.requiredLimits || {}));
+            }
+            return requestDevice.call(this, descriptor).then(function (device) {
+              trace('device created');
+              device.addEventListener('uncapturederror', function (e) { trace('ERROR WebGPU: ' + e.error.constructor.name + ': ' + e.error.message); });
+              device.lost.then(function (info) { trace('ERROR WebGPU device lost (' + info.reason + '): ' + info.message); });
+              return device;
+            }, function (e) { trace('ERROR requestDevice failed: ' + describe(e)); throw e; });
+          };
+        }
+        if (window.GPUCanvasContext) {
+          var configure = GPUCanvasContext.prototype.configure;
+          GPUCanvasContext.prototype.configure = function (config) {
+            trace('canvas configured: ' + config.format + ', alpha ' + (config.alphaMode || 'opaque') + ', ' +
+                  this.canvas.width + 'x' + this.canvas.height + ' (preferred ' + gpu.getPreferredCanvasFormat() + ')');
+            try { return configure.call(this, config); }
+            catch (e) { trace('ERROR configure failed: ' + describe(e)); throw e; }
+          };
+        }
+      }
       ['touchstart', 'touchend', 'touchcancel', 'mousedown', 'mouseup', 'click'].forEach(function (type) {
         window.addEventListener(type, function (e) {
           var p = e.changedTouches ? e.changedTouches[0] : e;
@@ -277,8 +354,11 @@
         console.error('the game stopped while loading: ' + what);
         loading.fail('Sorry, something went wrong while loading the game.', true);
       },
-      print: function (t) { console.log(t); if (trace && /Ui|Input/.test(t)) trace(t); },
-      printErr: function (t) { console.error(t); if (trace && /Ui|Input/.test(t)) trace(t); }
+      // The engine's log goes to stdout ("[name] [Warning] ...", "[name] [Error] ..."), as do the
+      // WebGPU backend's own lines ("WebGpuBackend: ..."); what reaches stderr the trace already
+      // takes through console.error.
+      print: function (t) { console.log(t); if (trace && /Ui|Input|WebGpu|\[(Warning|Error|Critical)\]/.test(t)) trace(t); },
+      printErr: function (t) { console.error(t); }
     };
   </script>
   {{{ SCRIPT }}}
