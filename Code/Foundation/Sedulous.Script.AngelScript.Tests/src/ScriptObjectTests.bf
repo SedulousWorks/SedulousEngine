@@ -185,6 +185,38 @@ static class ScriptObjectTests
 		Test.Assert(vm.Problems.Back.Contains("coroutine"));
 	}
 
+	/// A coroutine that faults after a wait is reported, with its stack, once; one cancelled
+	/// (its owner released) ends quietly.
+	[Test]
+	public static void ACoroutinesFaultIsReportedAndACancelledOneEndsQuietly()
+	{
+		let vm = Bound();
+		defer delete vm;
+		Test.Assert(vm.Compile("f", "faulty.as", """
+			class Faulty
+			{
+				int zero = 0;
+				void onStart() { startCoroutine(ScriptCoroutine(this.run)); }
+				void run() { wait(1.0); int x = 10 / zero; }
+			}
+			"""), "compiled");
+		ClearAndDeleteItems!(vm.Problems);
+		var r = ScriptValue.Nil;
+		let faulty = vm.Instantiate("f", "Faulty");
+		Test.Assert(vm.Invoke(faulty, "onStart", default, ref r));
+		vm.AdvanceCoroutines(1.5);
+		Test.Assert(vm.CoroutineCount == 0, "dropped once it faulted");
+		Test.Assert(vm.Problems.Count == 1);
+		Test.Assert(vm.Problems[0].Contains("exception") && vm.Problems[0].Contains("void Faulty::run()"), vm.Problems[0]);
+		ClearAndDeleteItems!(vm.Problems);
+
+		// Cancelled while it waits: nothing to report.
+		Test.Assert(vm.Invoke(faulty, "onStart", default, ref r));
+		vm.Release(faulty);
+		vm.AdvanceCoroutines(1.5);
+		Test.Assert(vm.Problems.IsEmpty, vm.Problems.IsEmpty ? "" : vm.Problems[0]);
+	}
+
 	private static AngelScriptRuntime sChurnRuntime;
 	private static ScriptObject sChurnOwner;
 
