@@ -916,7 +916,11 @@ class AngelScriptRuntime : ScriptRuntime
 			d.AppendF(" {}", p.Name);
 			paramDecls.Add(d);
 		}
-		for (int arity = m.RequiredEntityParams; arity <= paramDecls.Count; arity++)
+		// The trampoline carries cMaxArgs arguments: an arity past them is not bound, so its use
+		// does not compile, rather than called with its last arguments dropped.
+		if (paramDecls.Count > cMaxArgs)
+			Problem(scope $"{t.FullName}.{m.EntityName}: a call carries at most {cMaxArgs} arguments; past them it is not bound");
+		for (int arity = m.RequiredEntityParams; arity <= Math.Min(paramDecls.Count, cMaxArgs); arity++)
 		{
 			let b = new AngelScriptBinding();
 			b.Kind = .EntityCall;
@@ -1116,7 +1120,11 @@ class AngelScriptRuntime : ScriptRuntime
 
 		let isGlobal = m.IsStatic || (t.Kind == .Global);
 		let name = m.IsConstructor ? "f" : m.ScriptName;
-		for (int arity = m.RequiredParams; arity <= m.Params.Count; arity++)
+		// The trampoline carries cMaxArgs arguments: an arity past them is not bound, so its use
+		// does not compile, rather than called with its last arguments dropped.
+		if (m.Params.Count > cMaxArgs)
+			Problem(scope $"{t.FullName}.{m.Name}: a call carries at most {cMaxArgs} arguments; past them it is not bound");
+		for (int arity = m.RequiredParams; arity <= Math.Min(m.Params.Count, cMaxArgs); arity++)
 		{
 			let b = new AngelScriptBinding();
 			b.Kind = m.IsConstructor ? .Construct : .Call;

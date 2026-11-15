@@ -217,6 +217,51 @@ static class ScriptObjectTests
 		Test.Assert(vm.Problems.IsEmpty, vm.Problems.IsEmpty ? "" : vm.Problems[0]);
 	}
 
+	private static void Sum2Thunk(ref ScriptCallFrame frame)
+	{
+		frame.Begin();
+		frame.Result = .FromFloat(frame.Args[0].AsFloat + frame.Args[1].AsFloat);
+	}
+
+	private static void SumThunk(ref ScriptCallFrame frame)
+	{
+		frame.Begin();
+		double sum = 0;
+		for (let arg in frame.Args)
+			sum += arg.AsFloat;
+		frame.Result = .FromFloat(sum);
+	}
+
+	/// A native method past the arguments the trampoline carries is not bound, so its use does
+	/// not compile, and that is said; it was bound and read past them. One within them is bound.
+	[Test]
+	public static void PastSixteenArgumentsAMethodIsNotBoundNeverCalledWithArgumentsDropped()
+	{
+		let s = new ScriptSurface();
+		FixtureSurface.Populate(s);
+		let wide = s.AddType("Wide", .Global, ScriptDomains.Runtime);
+		let sum17 = wide.AddMethod("sum17", "double", true).Returns(.Float);
+		for (int i < 17)
+			sum17.Param(scope $"a{i}", "double", .Float);
+		sum17.Bind(=> SumThunk);
+		wide.AddMethod("sum2", "double", true).Param("a", "double", .Float).Param("b", "double", .Float).Returns(.Float).Bind(=> Sum2Thunk);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		sSurfaces.Add(s);
+		bool said = false;
+		for (let p in vm.Problems)
+			said |= p.Contains("sum17") && p.Contains("at most 16");
+		Test.Assert(said, "the method left out is said");
+		ClearAndDeleteItems!(vm.Problems);
+
+		Test.Assert(!vm.Compile("w", "wide.as", "double f() { return sum17(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17); }\n"));
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(vm.Compile("c", "calls.as", "double two() { return sum2(1, 2); }\n"));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("c", "double two()", default, ref r) && (r.AsFloat == 3.0));
+	}
+
 	private static AngelScriptRuntime sChurnRuntime;
 	private static ScriptObject sChurnOwner;
 

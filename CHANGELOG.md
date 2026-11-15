@@ -115,6 +115,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting (AngelScript): an engine method of more than 16 parameters is not offered to scripts,
+  and the log says so; it was offered and called reading past its arguments.
 - Scripting: a runtime error's report includes the script call stack.
 - Editor: a script page opens at once and checks an edit without a pause; each check made and
   bound a new script engine, about half a second, before compiling for a few milliseconds.
