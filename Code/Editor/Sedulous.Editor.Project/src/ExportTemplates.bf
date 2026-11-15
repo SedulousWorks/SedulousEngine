@@ -133,6 +133,19 @@ static class ExportTemplates
 			BuildLayout.CollectWebParts(playerDir, webPage, template.Sidecars);
 			ClearAndDeleteItems(template.Plugins); // the web player links none
 		}
+		// An Android player's folder (Tools/android-app.sh --template stages it beside the
+		// Android build): the library the app loads and the app's Gradle project, which an
+		// export builds the app with. A host packages it for another platform, so its plugins
+		// are not the host's.
+		let androidPlayer = ExportPlatform.PlayerFile(BuildLayout.cAndroidPlatform, BuildLayout.cAndroidPlayerBaseName, .. scope .());
+		if (FileExists(PathJoin(playerDir, androidPlayer, .. scope .())))
+		{
+			template.Platform.Set(BuildLayout.cAndroidPlatform);
+			template.PlayerBinary.Set(androidPlayer);
+			ClearAndDeleteItems(template.Sidecars);
+			BuildLayout.CollectAndroidParts(playerDir, template.Sidecars);
+			ClearAndDeleteItems(template.Plugins);
+		}
 		let parsedConfig = scope String();
 		let parsedPlatform = scope String();
 		BuildLayout.ParseBuildDirectory(playerDir, parsedConfig, parsedPlatform);
@@ -140,7 +153,7 @@ static class ExportTemplates
 			template.Config.Set(BuildLayout.TemplateConfigFor(parsedConfig));
 		if (template.Config.IsEmpty)
 			template.Config.Set("Release");
-		if (!parsedPlatform.IsEmpty && (template.Platform != BuildLayout.cWebPlatform))
+		if (!parsedPlatform.IsEmpty && (template.Platform != BuildLayout.cWebPlatform) && (template.Platform != BuildLayout.cAndroidPlatform))
 			template.Platform.Set(parsedPlatform);
 
 		template.Id.Set(scope $"{BuildLayout.cTemplateIdPrefix}-{scope String(template.Platform)..ToLower()}-{scope String(template.Config)..ToLower()}-{template.EngineVersion}");

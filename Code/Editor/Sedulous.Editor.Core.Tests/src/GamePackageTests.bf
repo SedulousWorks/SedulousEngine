@@ -46,6 +46,10 @@ class GamePackageTests
 		Test.Assert(manifest.EngineVersion == scope $"{EngineVersion.Major}.{EngineVersion.Minor}");
 		Test.Assert((manifest.Parts.Count == 1) && manifest.HasPart(.Engine));
 		Test.Assert((manifest.FindPlatform("Linux64") != null) && (manifest.FindPlatform("Win64") != null) && (manifest.FindPlatform("Web") != null));
+		// A new package supports every platform a game exports to, Android among them.
+		for (let platform in ExportPlatform.All)
+			Test.Assert(manifest.FindPlatform(platform.Tag) != null);
+		Test.Assert(manifest.FindPlatform("Android64") != null);
 
 		let partProject = Read(PathJoin(package, "NativeGame.Engine/BeefProj.toml", .. scope .()), .. scope .());
 		Test.Assert(partProject.Contains("Name = \"NativeGame.Engine\"") && partProject.Contains("\"Sedulous.Runtime\" = \"*\""), partProject);

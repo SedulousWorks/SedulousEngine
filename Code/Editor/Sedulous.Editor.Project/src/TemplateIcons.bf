@@ -91,15 +91,12 @@ static class TemplateIcons
 		}
 	}
 
-	/// The built-in icon a template for `platform` gets when its maker names none.
+	/// The built-in icon a template for `platform` gets when its maker names none: the export
+	/// platform's, or the plain desktop for a platform not among them.
 	public static StringView DefaultName(StringView platform)
 	{
-		if (platform == "Win64")
-			return "windows";
-		if (platform == "Linux64")
-			return "linux";
-		if (platform == BuildLayout.cWebPlatform)
-			return "web";
+		if (let known = ExportPlatform.Find(platform))
+			return known.Icon;
 		return "desktop";
 	}
 

@@ -39,7 +39,7 @@ static class ScriptValidateTool
 		schema.Enum("language", choices, "the script backend to compile against", true);
 		schema.Str("name", "a display name for error messages (e.g. the intended file name; default 'script'); its stem is the class it plays when the source declares several");
 		schema.Str("className", "the class it plays when the source declares several (a script asset's Class Name); default: the one named like `name`");
-		schema.Str("platform", "also check it for this platform's plugins (Linux64, Win64, Web); needs an open project");
+		schema.Str("platform", scope $"also check it for this platform's plugins ({ExportPlatform.List(.. scope .())}); needs an open project");
 		server.RegisterTool("script_validate",
 			"""
 			COMPILE-CHECK a script source against a backend without saving: the exact compile the asset cook would run. Returns compile errors with line numbers, the compiler's warnings apart from them (`warnings`: it compiled, but each is likely a mistake), and on success the harvested metadata (className, handlers, properties, usesCoroutines) - confirm the engine recognized what you wrote. Use as the validation loop while authoring scripts, BEFORE creating the asset. Limits: compile only - a misspelled engine method is a compile error only where the language sees the call; check signatures with script_api. With `platform`, also checks it against what the open project's plugins leave there (a plugin the project does not enable on that platform takes its types with it), as an export for it does.

@@ -70,10 +70,10 @@ static class GamePackage
 			manifest.Name.Set(project.Settings.Name);
 			manifest.Version.Set("0.1.0");
 			manifest.EngineVersion.AppendF("{}.{}", EngineVersion.Major, EngineVersion.Minor);
-			for (let platform in StringView[3]("Linux64", "Win64", "Web"))
+			for (let platform in ExportPlatform.All)
 			{
 				let entry = new PluginPlatform();
-				entry.Platform.Set(platform);
+				entry.Platform.Set(platform.Tag);
 				manifest.Platforms.Add(entry);
 			}
 		}

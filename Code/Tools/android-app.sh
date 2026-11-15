@@ -13,8 +13,16 @@
 #     shader compiler.
 #
 #   Usage:  Code/Tools/android-app.sh <Target> [--game <project>] [--install] [--run] [--args "<flags>"]
+#           Code/Tools/android-app.sh Sedulous.Engine.Player.Android --template
 #           e.g. Code/Tools/android-app.sh Sedulous.Engine.Player.Android --game Data/SampleProjects/SkyHopper --run
 #                Code/Tools/android-app.sh Samples.RHI.Sample001_Triangle --run
+#                CONFIG=ShippingRelease Code/Tools/android-app.sh Sedulous.Engine.Player.Android --template
+#
+# --template makes the player's export template instead of an app: the library, the app's Gradle
+# project (SDL's Java glue in its sdl-java/) and the notices, staged in a player folder beside the
+# Android build (build/<Config>_aarch64-linux-android33/AndroidPlayer) and installed from there by
+# the host's Sedulous.Tools.Export --template create (a ShippingRelease build is the Release
+# template a game ships, a Release build the Profile one).
 #   Env:    CONFIG=Debug         the Android build's configuration (Debug, Release, ShippingRelease)
 #           HOST_BIN=<dir>       the host build with the tools (default Code/build/Debug_Linux64)
 #           SERIAL=<id>          the phone, when more than one is attached (adb -s)
@@ -43,17 +51,18 @@ app="$code/Engine/Sedulous.Engine.Player.Android/app"
 
 target="${1:-}"
 if [[ -z "$target" || "$target" == -* ]]; then
-  sed -n '2,24p' "$0" >&2
+  sed -n '2,32p' "$0" >&2
   exit 2
 fi
 shift
-install=0; run=0; game=""; launch_args=""
+install=0; run=0; game=""; launch_args=""; template=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --install) install=1 ;;
     --run) install=1; run=1 ;;
     --game) game="$(cd "$2" && pwd)"; shift ;;
     --args) launch_args="$2"; shift ;;
+    --template) template=1 ;;
     *) echo "android-app: unknown option $1" >&2; exit 2 ;;
   esac
   shift
@@ -89,6 +98,21 @@ native_archives=$(find "$deps" -path '*/dist/Release-Android64/*.a' ! -path '*SD
   "$start" -Wl,--start-group $beef_archives $native_archives \
   "$deps/BeefRT-Android/dist/Release-Android64/libBeefRT.a" -Wl,--end-group \
   -static-libstdc++ -landroid -llog -lm -ldl -lGLESv2 -lEGL -lOpenSLES -laaudio -pthread -Wl,--no-undefined
+
+if [ "$template" = 1 ]; then
+  player_dir="$out/AndroidPlayer"
+  echo "== staging the export template's player folder in $player_dir"
+  rm -rf "$player_dir"
+  mkdir -p "$player_dir/android/sdl-java"
+  "$tools/llvm-strip" --strip-debug -o "$player_dir/libmain.so" "$staged/libmain.so"
+  # The Gradle project less Gradle's own state, and SDL's Java glue where its build.gradle looks first.
+  (cd "$app" && find . -type f ! -path './.gradle/*' ! -path '*/build/*' ! -name local.properties \
+    -exec cp --parents -p {} "$player_dir/android/" \;)
+  cp -r "$deps/SDL3-Beef/SDL/android-project/app/src/main/java/." "$player_dir/android/sdl-java/"
+  cp "$deps/THIRD-PARTY-NOTICES.txt" "$player_dir/"
+  "$host_bin/Sedulous.Tools.Export/Sedulous.Tools.Export" --template create "$player_dir" --install
+  exit 0
+fi
 
 echo "== staging $target into $staged"
 rm -rf "$staged/jniLibs" "$staged/assets"

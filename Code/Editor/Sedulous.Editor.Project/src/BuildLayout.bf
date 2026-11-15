@@ -25,6 +25,15 @@ static class BuildLayout
 	public const String cThirdPartyNotices = "THIRD-PARTY-NOTICES.txt";
 	/// The platform tag of the web build; the Beef directory says wasm32.
 	public const String cWebPlatform = "Web";
+	/// The platform tag of the Android build; the Beef directory says aarch64-linux-android33.
+	public const String cAndroidPlatform = "Android64";
+	/// The Android build's platform as BeefBuild names it (the NDK's triple, its API level last).
+	public const String cAndroidBuildPlatform = "aarch64-linux-android33";
+	/// The Android player's base name: the library the app's activity loads (SDL's, libmain.so).
+	public const String cAndroidPlayerBaseName = "main";
+	/// Where an Android player's folder keeps the app's Gradle project, which its template
+	/// carries: SDL's Java glue in its sdl-java/.
+	public const String cAndroidProjectFolder = "android";
 
 	public static StringView HostPlatformName
 	{
@@ -105,10 +114,16 @@ static class BuildLayout
 		let platform = name.Substring(underscore + 1);
 		if ((config != "Debug") && (config != "Release") && (config != "ShippingRelease") && (config != "Test"))
 			return;
-		if ((platform != "Linux64") && (platform != "Win64") && (platform != "macOS") && (platform != "wasm32"))
+		if ((platform != "Linux64") && (platform != "Win64") && (platform != "macOS") && (platform != "wasm32") &&
+			(platform != cAndroidBuildPlatform))
 			return;
 		outConfig.Set(config);
-		outPlatform.Set((platform == "wasm32") ? cWebPlatform : platform);
+		if (platform == "wasm32")
+			outPlatform.Set(cWebPlatform);
+		else if (platform == cAndroidBuildPlatform)
+			outPlatform.Set(cAndroidPlatform);
+		else
+			outPlatform.Set(platform);
 	}
 
 	/// The config a template made from a `buildConfig` build is named by. The shipping build
@@ -139,6 +154,33 @@ static class BuildLayout
 					outNames.Add(new String(name));
 			});
 		outNames.Sort(scope (a, b) => a <=> b);
+	}
+
+	/// An Android player's parts beside its library: every file of the app's Gradle project
+	/// (relative to `directory`, under android/), and the notices.
+	public static void CollectAndroidParts(StringView directory, List<String> outNames)
+	{
+		CollectTree(directory, cAndroidProjectFolder, outNames);
+		if (FileExists(PathJoin(directory, cThirdPartyNotices, .. scope .())))
+			outNames.Add(new String(cThirdPartyNotices));
+		outNames.Sort(scope (a, b) => a <=> b);
+	}
+
+	/// Every file under `root`/`relative`, named relative to `root` with '/' between.
+	private static void CollectTree(StringView root, StringView relative, List<String> outNames)
+	{
+		let folders = scope List<String>();
+		defer { ClearAndDeleteItems!(folders); }
+		ListDirectory(PathJoin(root, relative, .. scope .()), scope [&](name, isDirectory) =>
+			{
+				let entry = scope $"{relative}/{name}";
+				if (isDirectory)
+					folders.Add(new String(entry));
+				else
+					outNames.Add(new String(entry));
+			});
+		for (let folder in folders)
+			CollectTree(root, folder, outNames);
 	}
 
 	/// The web player's parts beside its page: the .js and .wasm, and anything else shipped
