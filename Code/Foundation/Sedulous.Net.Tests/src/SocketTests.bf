@@ -117,6 +117,33 @@ class SocketTests
 		Test.Assert(NetAddress.EndpointPort(from) == a.BoundPort);
 	}
 
+	/// An empty datagram is a datagram, and the ones behind it are read the same frame. An
+	/// empty one read as "nothing waiting": the receive loop stopped there, so a stream of them
+	/// held back every real packet behind them.
+	[Test]
+	public static void AnEmptyDatagramIsADatagramAndTheOnesBehindItAreRead()
+	{
+		let a = scope UdpSocket(0);
+		let b = scope UdpSocket(0);
+		Test.Assert(a.IsOpen);
+		Test.Assert(b.IsOpen);
+		a.Send(b.LocalEndpoint, .());
+		a.Send(b.LocalEndpoint, scope uint8[](0x5A));
+		// Both are queued on loopback by then.
+		Thread.Sleep(50);
+
+		let got = scope List<uint8>();
+		DatagramEndpoint from = .();
+		Test.Assert(b.Receive(out from, got));
+		Test.Assert(got.Count == 0);
+		Test.Assert(NetAddress.EndpointPort(from) == a.BoundPort);
+		Test.Assert(b.Receive(out from, got));
+		Test.Assert(got.Count == 1);
+		Test.Assert(got[0] == 0x5A);
+		// And then nothing is waiting.
+		Test.Assert(!b.Receive(out from, got));
+	}
+
 	[Test]
 	public static void ATcpStreamConnectsAcceptsAndCarriesBytesBothWays()
 	{

@@ -59,17 +59,28 @@ class UdpSocket : IDatagramSocket
 			return false;
 
 		mScratch.Count = cMaxDatagram;
-		if (mSocket.RecvFrom(mScratch.Ptr, cMaxDatagram, let from) case .Ok(let received))
+		Socket.SockAddr_in from = default;
+		int received = 0;
+		switch (mSocket.RecvFrom(mScratch.Ptr, cMaxDatagram, out from))
 		{
-			if (received <= 0)
+		case .Ok(let count):
+			received = count;
+		case .Err(let error):
+			// The socket reads recvfrom's 0 as a closed stream, but for a datagram socket 0 is an
+			// EMPTY DATAGRAM, not "none waiting": reading it as none stopped the receive loop with
+			// the rest still queued, so a stream of them held back every real packet. Would-block
+			// and real errors are none.
+			if (error != .ConnectionClosed)
 				return false;
-			outData.Clear();
-			outData.AddRange(Span<uint8>(mScratch.Ptr, received));
-			outFrom = NetAddress.MakeEndpoint(NetAddress.PackIPv4(from.sin_addr),
-				(uint16)Socket.htons((int16)from.sin_port));
-			return true;
+			received = 0;
 		}
-		return false;
+
+		outData.Clear();
+		if (received > 0)
+			outData.AddRange(Span<uint8>(mScratch.Ptr, received));
+		outFrom = NetAddress.MakeEndpoint(NetAddress.PackIPv4(from.sin_addr),
+			(uint16)Socket.htons((int16)from.sin_port));
+		return true;
 	}
 
 	/// Loopback plus the bound port: the address a peer ON THIS HOST connects to. A real
