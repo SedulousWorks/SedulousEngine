@@ -13,8 +13,9 @@ class TlsStream : INetByteStream
 	private TcpSocket mSocket ~ delete _;
 	/// OWNED.
 	private ITlsSession mSession ~ delete _;
-	/// Ciphertext the socket did not take yet.
+	/// Ciphertext the socket did not take yet, from mOutHead.
 	private List<uint8> mOut = new .() ~ delete _;
+	private int mOutHead = 0;
 	private bool mConnected = false;
 	private bool mSocketGone = false;
 	private String mFailure = new .() ~ delete _;
@@ -38,7 +39,7 @@ class TlsStream : INetByteStream
 		mSession.TakeOutgoing(mOut);
 		if (!mConnected || mSocketGone)
 			return !mSocketGone;
-		if (!NetByteStreams.SendSome(mSocket, mOut))
+		if (!NetByteStreams.SendSome(mSocket, mOut, ref mOutHead))
 			mSocketGone = true;
 		return !mSocketGone;
 	}
@@ -83,6 +84,15 @@ class TlsStream : INetByteStream
 		if (mSession.Write(data) case .Err)
 			return -1;
 		Flush();
+		// A peer that stopped reading: the ciphertext would pile up without end.
+		let unsent = mOut.Count - mOutHead;
+		if (unsent > NetByteStreams.MaxUnsentBytes)
+		{
+			mSocketGone = true;
+			mFailure.Clear();
+			mFailure.AppendF("the peer stopped reading ({} bytes unsent)", unsent);
+			return -1;
+		}
 		return data.Length;
 	}
 

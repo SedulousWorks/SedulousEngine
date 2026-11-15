@@ -9,8 +9,9 @@ class PlainStream : INetByteStream
 {
 	/// OWNED.
 	private TcpSocket mSocket ~ delete _;
-	/// What the socket did not take yet.
+	/// What the socket did not take yet, from mOutHead.
 	private List<uint8> mOut = new .() ~ delete _;
+	private int mOutHead = 0;
 	private bool mConnected = false;
 	private bool mDone = false;
 	private String mFailure = new .() ~ delete _;
@@ -37,7 +38,7 @@ class PlainStream : INetByteStream
 		}
 		if (status == 0)
 			return true;
-		if (!NetByteStreams.SendSome(mSocket, mOut))
+		if (!NetByteStreams.SendSome(mSocket, mOut, ref mOutHead))
 		{
 			mDone = true;
 			mFailure.Set("the connection closed while sending");
@@ -49,8 +50,16 @@ class PlainStream : INetByteStream
 	{
 		if (mDone)
 			return -1;
+		let unsent = mOut.Count - mOutHead;
+		if ((unsent + data.Length) > NetByteStreams.MaxUnsentBytes)
+		{
+			mDone = true;
+			mFailure.Clear();
+			mFailure.AppendF("the peer stopped reading ({} bytes unsent)", unsent);
+			return -1;
+		}
 		mOut.AddRange(data);
-		if (mConnected && !NetByteStreams.SendSome(mSocket, mOut))
+		if (mConnected && !NetByteStreams.SendSome(mSocket, mOut, ref mOutHead))
 		{
 			mDone = true;
 			mFailure.Set("the connection closed while sending");
@@ -73,7 +82,7 @@ class PlainStream : INetByteStream
 
 	public void Close()
 	{
-		NetByteStreams.SendSome(mSocket, mOut);
+		NetByteStreams.SendSome(mSocket, mOut, ref mOutHead);
 		mSocket.Close();
 		mDone = true;
 	}

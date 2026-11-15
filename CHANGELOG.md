@@ -312,3 +312,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   hold back every real packet.
 - Networking: a length in a packet is checked against what the packet holds before anything is
   allocated for it; a crafted replication record could make a client allocate 4 GB.
+- Networking: an HTTP, WebSocket or TLS connection whose peer stops reading is closed once 8 MB
+  waits unsent, instead of the sender buffering without limit.

@@ -17,6 +17,8 @@ interface INetByteStream
 	/// Connected, and for TLS the handshake done: what is sent now goes at once.
 	bool Ready { get; }
 	/// Plaintext to send: all of it taken (`data.Length`), or minus one when the stream is done.
+	/// A stream holding more than NetByteStreams.MaxUnsentBytes the socket has not taken (a peer
+	/// that stopped reading) fails instead of holding more: Failure says so.
 	int64 Send(Span<uint8> data);
 	/// Plaintext received: bytes read, nought when none is ready yet, minus one when the stream is
 	/// done.
@@ -28,21 +30,34 @@ interface INetByteStream
 /// What the streams share over their socket.
 static class NetByteStreams
 {
-	/// As much of `pending` as the socket takes now, the rest kept; false when the socket is gone.
-	public static bool SendSome(TcpSocket socket, List<uint8> pending)
+	/// What a stream holds unsent before it fails: a peer that never reads (a stalled browser tab
+	/// on a WebSocket server) grew the sender's memory without end.
+	public const int MaxUnsentBytes = 8 << 20;
+
+	/// As much of `pending` from `head` as the socket takes now, the rest kept; false when the
+	/// socket is gone. What was sent is skipped by moving `head`, and dropped once it is most of
+	/// the buffer: moving the rest down on every partial send cost a backlog's size each time.
+	public static bool SendSome(TcpSocket socket, List<uint8> pending, ref int head)
 	{
-		int sent = 0;
-		while (sent < pending.Count)
+		while (head < pending.Count)
 		{
-			let n = socket.Send(.(pending.Ptr + sent, pending.Count - sent));
+			let n = socket.Send(.(pending.Ptr + head, pending.Count - head));
 			if (n < 0)
 				return false;
 			if (n == 0)
 				break; // would block: the rest on the next Pump
-			sent += (int)n;
+			head += (int)n;
 		}
-		if (sent > 0)
-			pending.RemoveRange(0, sent);
+		if (head == pending.Count)
+		{
+			pending.Clear();
+			head = 0;
+		}
+		else if ((head >= (64 << 10)) && ((head * 2) >= pending.Count))
+		{
+			pending.RemoveRange(0, head);
+			head = 0;
+		}
 		return true;
 	}
 

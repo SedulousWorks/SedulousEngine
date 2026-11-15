@@ -406,4 +406,42 @@ class TlsTests
 		Test.Assert(ended);
 		Test.Assert(nowhere.Failure.Contains("could not be made", true), scope String(nowhere.Failure));
 	}
+
+	/// A peer that stops reading fails the stream instead of growing its buffer. Send took every
+	/// byte into the unsent buffer and reported it sent: a peer that never read (a stalled browser
+	/// tab on a WebSocket server) grew the sender's memory without end.
+	[Test]
+	public static void APeerThatStopsReadingFailsTheStream()
+	{
+		let listener = scope TcpListener(0, true);
+		let connected = Connect(listener, let clientSocket, let serverSocket);
+		// The far end, which reads nothing.
+		defer delete serverSocket;
+		Test.Assert(connected);
+		let stream = scope PlainStream(clientSocket);
+		for (int i = 0; (i < 2000) && !stream.Ready; i++)
+		{
+			stream.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(stream.Ready);
+
+		// On the heap: a megabyte is too much for the stack.
+		let chunk = new uint8[1 << 20];
+		defer delete chunk;
+		int queued = 0;
+		var failed = false;
+		while (queued < (64 << 20))
+		{
+			if (stream.Send(chunk) < 0)
+			{
+				failed = true;
+				break;
+			}
+			queued += chunk.Count;
+			stream.Pump();
+		}
+		Test.Assert(failed, scope $"{queued >> 20} MB queued without failing");
+		Test.Assert(stream.Failure.Contains("stopped reading"), scope String(stream.Failure));
+	}
 }
