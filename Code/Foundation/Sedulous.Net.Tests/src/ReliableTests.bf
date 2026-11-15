@@ -329,6 +329,70 @@ class ReliableTests
 		Test.Assert((delivered.Count == 1) && (delivered[0] == 42));
 	}
 
+	/// Counts the Data packets bigger than a bare keepalive: the ones carrying a message.
+	private class MessagePacketCounter : IDatagramSocket
+	{
+		private IDatagramSocket mInner;
+		public int MessagePackets = 0;
+
+		public this(IDatagramSocket inner)
+		{
+			mInner = inner;
+		}
+
+		public void Send(DatagramEndpoint to, Span<uint8> data)
+		{
+			let reader = scope BitReader(data);
+			reader.ReadU16(); // protocol
+			// A keepalive from a client that has received nothing carries no ack fields: 11 bytes.
+			if ((reader.ReadU8() == 2) && (data.Length > 11))
+				MessagePackets++;
+			mInner.Send(to, data);
+		}
+
+		public bool Receive(out DatagramEndpoint outFrom, List<uint8> outData) => mInner.Receive(out outFrom, outData);
+
+		public DatagramEndpoint LocalEndpoint => mInner.LocalEndpoint;
+	}
+
+	/// Before a round trip is measured, resends back off. With no sample yet the resend timeout
+	/// was the 20 ms floor: a message sent the moment a connection opened, to a peer that went
+	/// quiet, was resent fifty times a second.
+	[Test]
+	public static void BeforeARoundTripIsMeasuredResendsBackOff()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let clientRaw = network.CreateSocket();
+		let serverSocket = network.CreateSocket();
+		let clientSocket = scope MessagePacketCounter(clientRaw);
+		// InitialResendMs 200, MaxResendMs 1000.
+		let client = scope ReliableTransport(clientSocket);
+		let server = scope ReliableTransport(serverSocket);
+		server.SetAccepting(true);
+		let serverPeer = client.Connect(serverSocket.LocalEndpoint);
+		var connected = false;
+		for (int step = 0; (step < 50) && !connected; step++)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+			connected = AnyKind(client, .Connected);
+		}
+		Test.Assert(connected);
+
+		client.Send(serverPeer, 0, scope uint8[](7), .ReliableOrdered);
+		// Two seconds, the server silent.
+		for (int step < 200)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+		}
+		// Sent at 0 and resent after 200, 400, 800 and 1000 ms (the ceiling): at 0, 200, 600
+		// and 1400.
+		Test.Assert((clientSocket.MessagePackets >= 3) && (clientSocket.MessagePackets <= 5),
+			scope $"{clientSocket.MessagePackets} message packets in two seconds");
+	}
+
 	[Test]
 	public static void TheHandshakeConnectsBothSides()
 	{

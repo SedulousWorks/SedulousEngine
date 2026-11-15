@@ -59,6 +59,8 @@ class ReliableTransport : INetTransport
 		public uint32 FragCount = 1;
 		/// Far in the past, so the first send is always due.
 		public double LastSentMs = -1.0e9;
+		/// Times sent. Before a round trip is measured, each resend waits twice the last.
+		public uint32 SendCount = 0;
 		public List<uint8> Data = new .() ~ delete _;
 	}
 
@@ -154,6 +156,8 @@ class ReliableTransport : INetTransport
 
 		// Timing.
 		public double RttMs = 0.0;
+		/// An ack has measured a round trip (a 0 ms one counts).
+		public bool RttSampled = false;
 		public double LastRecvMs = 0.0;
 		public double LastSendMs = -1000.0;
 		public double LastConnectSendMs = -1000.0;
@@ -542,21 +546,26 @@ class ReliableTransport : INetTransport
 			? (int)(mConfig.MaxPacketBytes - cFragmentHeadroom) : 1;
 
 	/// How long to wait before resending an unacked reliable: scaled to the round trip so a
-	/// slow link is not flooded, and clamped so a fast one still backs off.
-	private double ResendTimeout(Connection connection)
+	/// slow link is not flooded, and clamped so a fast one still backs off. Before a round trip
+	/// is measured, InitialResendMs doubled per resend: the floor alone resent every message
+	/// every 20 ms on a link whose acks had not come back yet.
+	private double ResendTimeout(Connection connection, OutMessage message)
 	{
-		// `base` is a Beef keyword, so the local is named for what it is.
-		let scaled = (connection.RttMs > 0.0)
-			? (connection.RttMs * 1.5) : (double)mConfig.MinResendMs;
-		return Clamp(scaled, (double)mConfig.MinResendMs, (double)mConfig.MaxResendMs);
+		var timeout = connection.RttMs * 1.5;
+		if (!connection.RttSampled)
+		{
+			timeout = (double)mConfig.InitialResendMs;
+			for (uint32 i = 1; (i < message.SendCount) && (timeout < (double)mConfig.MaxResendMs); i++)
+				timeout *= 2.0;
+		}
+		return Clamp(timeout, (double)mConfig.MinResendMs, (double)mConfig.MaxResendMs);
 	}
 
 	private bool AnyReliableDue(Connection connection)
 	{
-		let timeout = ResendTimeout(connection);
 		for (let message in connection.UnackedReliable)
 		{
-			if ((mNowMs - message.LastSentMs) >= timeout)
+			if ((mNowMs - message.LastSentMs) >= ResendTimeout(connection, message))
 				return true;
 		}
 		return false;
@@ -590,13 +599,12 @@ class ReliableTransport : INetTransport
 
 		let chosen = scope List<OutMessage>();
 		var budget = (int)mConfig.MaxPacketBytes;
-		let resendTimeout = ResendTimeout(connection);
 
 		for (let message in connection.UnackedReliable)
 		{
 			// Not due yet: the round-trip-timed resend is what stops every packet from
 			// carrying every outstanding message on a slow link.
-			if ((mNowMs - message.LastSentMs) < resendTimeout)
+			if ((mNowMs - message.LastSentMs) < ResendTimeout(connection, message))
 				continue;
 			if ((message.Data.Count + cReliableOverhead) > budget)
 				break;
@@ -604,6 +612,7 @@ class ReliableTransport : INetTransport
 			budget -= (message.Data.Count + cReliableOverhead);
 			record.ReliableIds.Add(message.Id);
 			message.LastSentMs = mNowMs;
+			message.SendCount++;
 		}
 
 		int unreliableTaken = 0;
@@ -912,8 +921,9 @@ class ReliableTransport : INetTransport
 		let sample = mNowMs - packet.SendTimeMs;
 		// A running average rather than the latest sample, so one delayed ack does not
 		// swing the resend timing.
-		connection.RttMs = (connection.RttMs <= 0.0)
+		connection.RttMs = !connection.RttSampled
 			? sample : (connection.RttMs * 0.9 + sample * 0.1);
+		connection.RttSampled = true;
 		for (let messageId in packet.ReliableIds)
 			AckReliableMessage(connection, messageId);
 	}

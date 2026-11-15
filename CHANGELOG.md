@@ -301,3 +301,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Networking: a server makes a peer only for a client that answers its challenge, and holds at
   most `MaxPeers` (64 by default); data packets carry the session token. The wire format changed:
   a game built before this cannot connect to one built after.
+- Networking: before the first round trip is measured, an unacknowledged message is resent after
+  200 ms, then twice as long each time, instead of every 20 ms.

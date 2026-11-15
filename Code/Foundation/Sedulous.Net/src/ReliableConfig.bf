@@ -16,6 +16,9 @@ struct ReliableConfig
 	public float MinResendMs = 20.0f;
 	/// The ceiling on the round-trip-scaled backoff.
 	public float MaxResendMs = 1000.0f;
+	/// Before the first round trip is measured: a reliable message's first resend waits this,
+	/// and each one after twice the last, up to MaxResendMs.
+	public float InitialResendMs = 200.0f;
 	/// The largest message, reassembled. Bigger is refused rather than fragmented forever.
 	public uint32 MaxMessageBytes = 256 * 1024;
 	/// The per datagram budget, kept under a typical path MTU so a packet is not fragmented
