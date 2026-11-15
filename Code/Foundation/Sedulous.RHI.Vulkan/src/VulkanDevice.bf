@@ -456,7 +456,13 @@ class VulkanDevice : IDevice
 	/// and rebuild it. Latched from a submit, present or wait that reported the loss.
 	public bool IsLost() => mLost;
 
-	public void MarkLost() => mLost = true;
+	public void MarkLost()
+	{
+		// Said once: everything after the loss fails quietly, so this line is the whole report.
+		if (!mLost)
+			Console.Error.WriteLine("[RHI] the Vulkan device was lost: rendering stops until a new device is made");
+		mLost = true;
+	}
 
 	public void WaitIdle()
 	{
