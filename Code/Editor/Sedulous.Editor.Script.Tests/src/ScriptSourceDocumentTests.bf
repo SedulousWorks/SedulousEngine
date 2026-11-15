@@ -22,6 +22,10 @@ class ScriptSourceDocumentTests
 		let runtime = ScriptCompileError.Parse("main.as(12,4): error: unexpected token");
 		defer delete runtime;
 		Test.Assert((runtime.Module == "main.as") && (runtime.Line == 12) && (runtime.Column == 4) && (runtime.Message == "error: unexpected token"));
+		Test.Assert(!runtime.IsWarning);
+		let warning = ScriptCompileError.Parse("main.as(3,7): warning: Variable 'a' hides another variable of same name in outer scope");
+		defer delete warning;
+		Test.Assert(warning.IsWarning && (warning.Line == 3));
 		let bare = ScriptCompileError.Parse("no class in the source");
 		defer delete bare;
 		Test.Assert((bare.Line == 0) && (bare.Column == 0) && (bare.Message == "no class in the source"));

@@ -13,12 +13,15 @@ class ScriptCompileError
 	/// One based on the line; zero when the problem does not say.
 	public int32 Column = 0;
 	public String Message = new .() ~ delete _;
+	/// A compiler warning: it compiled, and this is worth a look.
+	public bool IsWarning = false;
 
 	/// Parses a runtime's "section(row,col): kind: message"; anything else lands whole in
 	/// the message.
 	public static ScriptCompileError Parse(StringView problem)
 	{
 		let error = new ScriptCompileError();
+		error.IsWarning = Sedulous.Script.ScriptProblems.IsWarning(problem);
 		let open = problem.IndexOf('(');
 		let close = (open >= 0) ? problem.IndexOf(')', open) : -1;
 		if ((open > 0) && (close > open) && (close + 1 < problem.Length) && (problem[close + 1] == ':'))

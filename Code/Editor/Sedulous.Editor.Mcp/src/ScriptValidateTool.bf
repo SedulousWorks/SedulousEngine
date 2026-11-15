@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Script; // ScriptProblems: a warning apart from an error
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Json;
@@ -41,7 +42,7 @@ static class ScriptValidateTool
 		schema.Str("platform", "also check it for this platform's plugins (Linux64, Win64, Web); needs an open project");
 		server.RegisterTool("script_validate",
 			"""
-			COMPILE-CHECK a script source against a backend without saving: the exact compile the asset cook would run. Returns compile errors with line numbers, and on success the harvested metadata (className, handlers, properties, usesCoroutines) - confirm the engine recognized what you wrote. Use as the validation loop while authoring scripts, BEFORE creating the asset. Limits: compile only - a misspelled engine method is a compile error only where the language sees the call; check signatures with script_api. With `platform`, also checks it against what the open project's plugins leave there (a plugin the project does not enable on that platform takes its types with it), as an export for it does.
+			COMPILE-CHECK a script source against a backend without saving: the exact compile the asset cook would run. Returns compile errors with line numbers, the compiler's warnings apart from them (`warnings`: it compiled, but each is likely a mistake), and on success the harvested metadata (className, handlers, properties, usesCoroutines) - confirm the engine recognized what you wrote. Use as the validation loop while authoring scripts, BEFORE creating the asset. Limits: compile only - a misspelled engine method is a compile error only where the language sees the call; check signatures with script_api. With `platform`, also checks it against what the open project's plugins leave there (a plugin the project does not enable on that platform takes its types with it), as an export for it does.
 			""",
 			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(session, arguments, outResult, outError));
@@ -88,6 +89,8 @@ static class ScriptValidateTool
 		}
 
 		let errors = JsonValue.MakeArray();
+		// Warnings apart from errors: the script compiled, and they are worth a look.
+		let warnings = JsonValue.MakeArray();
 		for (let problem in problems)
 		{
 			// The compiler's "name(line,col): error: text" is split so an agent reads the
@@ -95,10 +98,11 @@ static class ScriptValidateTool
 			let entry = JsonValue.MakeObject();
 			entry.Set("line", JsonValue.MakeNumber((double)LineOf(problem)));
 			entry.Set("message", JsonValue.MakeString(problem));
-			errors.Add(entry);
+			(ScriptProblems.IsWarning(problem) ? warnings : errors).Add(entry);
 		}
 		outResult.Set("valid", JsonValue.MakeBool(ok));
 		outResult.Set("errors", errors);
+		outResult.Set("warnings", warnings);
 		if (ok)
 		{
 			outResult.Set("className", JsonValue.MakeString(record.ClassName));

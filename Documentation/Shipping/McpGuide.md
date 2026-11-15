@@ -550,7 +550,8 @@ call and the export refuse it.
 
 - `script_validate` is a COMPILE check (`checkLevel: "compile"`): a call the language cannot
   see through, a misspelled member on a handle say, compiles and fails at runtime. Cross
-  check against `script_api`.
+  check against `script_api`. The compiler's warnings come in `warnings`, apart from `errors`:
+  the script compiled (`valid` is true), but each is likely a mistake worth reading.
 - `shader_validate` compiles every variant, the cook's check; an error under one flag says so
   (`(under ALPHA_TEST)`). An error in an engine include names that file, not yours.
 - `scene_validate` warnings mean component records of a type the engine does not know; they

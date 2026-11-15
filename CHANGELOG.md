@@ -73,6 +73,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Scripting: compiler warnings are shown as warnings in the script page's problems, the log and
+  `script_validate` (its `warnings`), never as a reason a cook failed; they were shown as errors,
+  with the compiler's notes beside them.
 - Editor: its windows present with two swapchain images, as a game does, a frame less between
   input and the screen; they had three.
 - Samples: each sample game offers Low, Medium and High quality levels; High is how it drew

@@ -227,7 +227,7 @@ class ScriptEditorPage : CodeAssetPage
 		for (let e in mDoc.Errors)
 		{
 			let own = e.Module.IsEmpty || (e.Module == mDoc.FileName);
-			outProblems.Add(new CodeProblem(.Error, e.Message, own ? "" : (StringView)e.Module, (e.Line > 0) ? (uint32)(e.Line - 1) : 0,
+			outProblems.Add(new CodeProblem(e.IsWarning ? .Warning : .Error, e.Message, own ? "" : (StringView)e.Module, (e.Line > 0) ? (uint32)(e.Line - 1) : 0,
 				(e.Column > 0) ? (uint32)(e.Column - 1) : 0, e.Column > 0));
 		}
 	}

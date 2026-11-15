@@ -267,7 +267,7 @@ class ScriptRunHost
 			return;
 		for (let p in mRuntime.Problems)
 		{
-			GlobalLog(.Error, scope $"Script: {p}");
+			GlobalLog(ScriptProblems.IsWarning(p) ? .Warning : .Error, scope $"Script: {p}");
 			if (outText != null)
 			{
 				if (!outText.IsEmpty)

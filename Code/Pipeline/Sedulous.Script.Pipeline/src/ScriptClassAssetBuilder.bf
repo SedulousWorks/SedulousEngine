@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Script; // ScriptProblems
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -52,8 +53,9 @@ class ScriptClassAssetBuilder : IAssetBuilder
 		let preferred = ScriptClasses.Preferred(authored, .. scope .());
 		if (!cook.Cook(source, authored.FileName.Value, preferred, record, problems))
 		{
+			// A warning is not why it failed.
 			for (let p in problems)
-				GlobalLog(.Error, "Cook: {}", p);
+				GlobalLog(ScriptProblems.IsWarning(p) ? .Warning : .Error, "Cook: {}", p);
 			return .Err(.InvalidArgument);
 		}
 		for (let p in problems)

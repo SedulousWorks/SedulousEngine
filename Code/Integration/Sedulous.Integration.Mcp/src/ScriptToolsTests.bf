@@ -49,6 +49,14 @@ static class ScriptToolsTests
 		Test.Assert(bad.Get("errors").At(0).Get("line").AsInt() >= 1, "the line is read off the message");
 		Test.Assert(!bad.Get("errors").At(0).Get("message").AsString().IsEmpty);
 
+		// A warning comes apart from the errors, and the script is valid.
+		let shaded = CallOk(server, "script_validate", With(With(With(Obj(), "source", "class Shade { int f() { int a = 1; { int a = 2; return a; } } }\n"), "language", "angelscript"), "name", "Shade.as"));
+		defer delete shaded;
+		Test.Assert(shaded.Get("valid").AsBool(), shaded.Get("errors").ToString(.. scope .()));
+		Test.Assert(shaded.Get("errors").Count == 0);
+		Test.Assert(shaded.Get("warnings").Count == 1);
+		Test.Assert(shaded.Get("warnings").At(0).Get("line").AsInt() == 1);
+
 		// A missing required argument is a PROTOCOL error, -32602, not a tool failure.
 		let response = CallResponse(server, "script_validate", With(Obj(), "language", "angelscript"));
 		defer delete response;

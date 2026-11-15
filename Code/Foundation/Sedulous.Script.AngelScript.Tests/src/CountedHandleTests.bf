@@ -146,4 +146,20 @@ static class CountedHandleTests
 		Test.Assert(Spool.Live == live, scope $"{Spool.Live - live} spools left after the module");
 		delete vm;
 	}
+
+	/// A compiler warning is reported as one, the compile succeeding; the compiler's notes stay
+	/// quiet.
+	[Test]
+	public static void ACompilerWarningIsReportedAsAWarningAndTheCompileSucceeds()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(vm.Compile("w", "shade.as", "int f() { int a = 1; { int a = 2; return a; } }\n"));
+		Test.Assert(vm.Problems.Count == 1, vm.Problems.IsEmpty ? "" : vm.Problems[0]);
+		Test.Assert(ScriptProblems.IsWarning(vm.Problems[0]), vm.Problems[0]);
+		Test.Assert(vm.Problems[0].StartsWith("shade.as(1,"));
+	}
 }

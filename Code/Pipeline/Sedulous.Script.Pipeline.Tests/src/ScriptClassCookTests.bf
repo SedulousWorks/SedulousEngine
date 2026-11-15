@@ -221,6 +221,21 @@ static class ScriptClassCookTests
 		Test.Assert(none.IsEmpty);
 	}
 
+	/// A compiler warning is reported as a warning, and the check still passes.
+	[Test]
+	public static void ACompilerWarningIsReportedAsAWarningAndTheCheckStillPasses()
+	{
+		Registered();
+		let cook = ScriptLanguageCooks.Find("angelscript");
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems(problems); }
+		let className = scope String();
+		Test.Assert(cook.Check("class Shade { int f() { int a = 1; { int a = 2; return a; } } }\n", "Shade.as", "Shade", className, problems, default));
+		Test.Assert(problems.Count == 1, problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(ScriptProblems.IsWarning(problems[0]), problems[0]);
+		Test.Assert(className == "Shade");
+	}
+
 	/// A check against a surface without some types (a platform without the plugin that registers
 	/// them) fails a script that uses one and passes one that does not; the full surface passes
 	/// both, and the types that name a hidden one in a member still bind without that member.

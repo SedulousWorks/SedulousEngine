@@ -458,8 +458,12 @@ class AngelScriptRuntime : ScriptRuntime
 
 	private static void OnMessage(char8* section, int32 row, int32 col, int32 type, char8* message, void* user)
 	{
+		// The compiler's notes ("Compiling void X::f()") stay quiet; its warnings and errors are
+		// reported, a warning as one (ScriptProblems.IsWarning).
+		if (type == AS.asMSGTYPE_INFORMATION)
+			return;
 		let self = Internal.UnsafeCastToObject(user) as AngelScriptRuntime;
-		let kind = (type == AS.asMSGTYPE_ERROR) ? "error" : ((type == AS.asMSGTYPE_WARNING) ? "warning" : "info");
+		let kind = (type == AS.asMSGTYPE_ERROR) ? "error" : "warning";
 		self.Problem(scope $"{StringView(section)}({row},{col}): {kind}: {StringView(message)}");
 	}
 
