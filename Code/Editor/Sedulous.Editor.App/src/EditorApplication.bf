@@ -15,6 +15,7 @@ using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
+using Sedulous.Script.Pipeline; // ScriptLanguageCooks: the script checks prepared at project open
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Profiler;
@@ -329,6 +330,13 @@ class EditorApplication : IApplication
 			};
 		services.OnOpened = new (project) =>
 			{
+				// The script checks' runtimes, built now on a worker: binding the API into one takes
+				// about half a second, which the first script page opened would wait for.
+				mContext.Tasks.Submit("Prepare script checks", new (task) =>
+					{
+						ScriptLanguageCooks.PrepareChecks();
+						return .Ok;
+					}, null, mContext.LightLane);
 				// The project's layout, else the default (the one before was another project's).
 				let store = mSession.Store;
 				mDock.TakeLayout(store);

@@ -2,13 +2,15 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Script;
+using Sedulous.Script.Pipeline;
 
 namespace Sedulous.Editor.Script;
 
-/// What a script may call, as the runtime binds it for one language: a throwaway runtime for the
-/// language, bound against the script surface, asked to describe what it bound. Built once per page
-/// and read by its completion, its hover and its API browser alike, so they cannot disagree. Built
-/// on first use; a language without a backend, or no surface, stays empty.
+/// What a script may call, as the runtime binds it for one language: the language's cook describes
+/// it from the runtime it keeps for checks (for the surface the cook checks against), else a
+/// throwaway runtime for the language, bound against the script surface. Built once per page and
+/// read by its completion, its hover and its API browser alike, so they cannot disagree. Built on
+/// first use; a language without a backend, or no surface, stays empty.
 class ScriptApiSurface
 {
 	private String mLanguage = new .() ~ delete _;
@@ -38,6 +40,11 @@ class ScriptApiSurface
 			if (mBuilt || mLanguage.IsEmpty || (mSurface == null))
 				return mTypes;
 			mBuilt = true; // one attempt
+			// The cook's runtime for checks, already bound: binding another here cost as much again
+			// as a check.
+			let cook = ScriptLanguageCooks.Find(mLanguage);
+			if ((cook != null) && cook.DescribeApi(mSurface, mTypes))
+				return mTypes;
 			let runtime = ScriptBackends.Create(mLanguage);
 			if (runtime == null)
 				return mTypes;

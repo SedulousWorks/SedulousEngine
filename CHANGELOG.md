@@ -110,6 +110,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: a script page opens at once and checks an edit without a pause; each check made and
+  bound a new script engine, about half a second, before compiling for a few milliseconds.
 - Editor: in a script page, Return, Backspace, Delete, the arrow keys and the code editor's other
   keys work; the page took typed text and Tab and nothing else.
 - Editor and games: a floating window closed by a click inside it (its close button, a docked
