@@ -2309,6 +2309,24 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
+	/// `ctx`'s script call stack, innermost first: a paused context's (the debugger) or one that
+	/// stopped on an exception (a fault's report).
+	public static void StackOf(AS.Context* ctx, List<ScriptStackFrame> outFrames)
+	{
+		let size = AS.asc_context_get_callstack_size(ctx);
+		for (uint32 level = 0; level < size; level++)
+		{
+			let frame = new ScriptStackFrame();
+			char8* section = null;
+			frame.Line = AS.asc_context_get_line_number(ctx, level, null, &section);
+			if (section != null)
+				frame.File.Set(StringView(section));
+			let fn = AS.asc_context_get_function(ctx, level);
+			frame.Function.Set((fn != null) ? StringView(AS.asc_function_get_declaration(fn, 1, 0, 1)) : "?");
+			outFrames.Add(frame);
+		}
+	}
+
 	private void ReportExecution(AS.Context* ctx, int32 state, StringView what)
 	{
 		if (state == AS.asEXECUTION_EXCEPTION)
@@ -2316,7 +2334,14 @@ class AngelScriptRuntime : ScriptRuntime
 			int32 column = 0;
 			char8* section = null;
 			let line = AS.asc_context_get_exception_line_number(ctx, &column, &section);
-			Problem(scope $"{StringView(section)}({line},{column}): exception: {StringView(AS.asc_context_get_exception_string(ctx))}");
+			let problem = scope $"{StringView(section)}({line},{column}): exception: {StringView(AS.asc_context_get_exception_string(ctx))}";
+			// The call stack beneath the message, innermost first.
+			let frames = scope List<ScriptStackFrame>();
+			defer { ClearAndDeleteItems!(frames); }
+			StackOf(ctx, frames);
+			for (let frame in frames)
+				problem.AppendF("\n  at {} ({}:{})", frame.Function, frame.File, frame.Line);
+			Problem(problem);
 		}
 		else if (state == AS.asEXECUTION_ABORTED)
 		{

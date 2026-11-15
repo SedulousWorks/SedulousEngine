@@ -162,4 +162,25 @@ static class CountedHandleTests
 		Test.Assert(ScriptProblems.IsWarning(vm.Problems[0]), vm.Problems[0]);
 		Test.Assert(vm.Problems[0].StartsWith("shade.as(1,"));
 	}
+
+	/// A runtime fault's report carries the script call stack, innermost first: it gave a file, a
+	/// line and a message though the debugger walks the stack.
+	[Test]
+	public static void ARuntimeFaultsReportCarriesTheScriptCallStack()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(vm.Compile("n", "nested.as", "int inner(int d) { return 10 / d; }\nint outer() { return inner(0); }\n"));
+		var r = ScriptValue.Nil;
+		Test.Assert(!vm.Call("n", "int outer()", default, ref r));
+		Test.Assert(vm.Problems.Count == 1);
+		let report = vm.Problems[0];
+		let inner = report.IndexOf("\n  at int inner(int");
+		let outer = report.IndexOf("\n  at int outer()");
+		Test.Assert((inner > 0) && (outer > inner), report);
+		Test.Assert(report.Contains("(nested.as:1)") && report.Contains("(nested.as:2)"), report);
+	}
 }

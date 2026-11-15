@@ -115,6 +115,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: a runtime error's report includes the script call stack.
 - Editor: a script page opens at once and checks an edit without a pause; each check made and
   bound a new script engine, about half a second, before compiling for a few milliseconds.
 - Editor: in a script page, Return, Backspace, Delete, the arrow keys and the code editor's other

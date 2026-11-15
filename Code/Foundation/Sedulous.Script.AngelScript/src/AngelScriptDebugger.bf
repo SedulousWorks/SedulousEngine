@@ -129,18 +129,7 @@ class AngelScriptDebugger : IScriptDebugger
 	{
 		if (!mPaused || (mPausedContext == null))
 			return;
-		let size = AS.asc_context_get_callstack_size(mPausedContext);
-		for (uint32 level = 0; level < size; level++)
-		{
-			let frame = new ScriptStackFrame();
-			char8* section = null;
-			frame.Line = AS.asc_context_get_line_number(mPausedContext, level, null, &section);
-			if (section != null)
-				frame.File.Set(StringView(section));
-			let fn = AS.asc_context_get_function(mPausedContext, level);
-			frame.Function.Set((fn != null) ? StringView(AS.asc_function_get_declaration(fn, 1, 0, 1)) : "?");
-			outFrames.Add(frame);
-		}
+		AngelScriptRuntime.StackOf(mPausedContext, outFrames);
 	}
 
 	public void CaptureLocals(uint32 depth, List<ScriptVariable> outLocals)
