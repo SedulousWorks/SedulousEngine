@@ -53,12 +53,33 @@ class ScriptRunHost
 		public String Source = new .() ~ delete _;
 		/// The module it loaded into.
 		public String ModuleName = new .() ~ delete _;
+		/// The files it included, path and text, each pair in turn.
+		public List<String> Includes = new .() ~ DeleteContainerAndItems!(_);
 
 		public void Set(ScriptClass scriptClass)
 		{
 			ClassName.Set(scriptClass.ClassName);
 			SourceName.Set(scriptClass.SourceName);
 			Source.Set(scriptClass.Source);
+			ClearAndDeleteItems!(Includes);
+			for (let included in scriptClass.Includes)
+			{
+				Includes.Add(new String(included.Path));
+				Includes.Add(new String(included.Source));
+			}
+		}
+
+		/// Whether `scriptClass` is what was loaded: its source, its file and what it includes.
+		public bool Matches(ScriptClass scriptClass)
+		{
+			if ((Source != scriptClass.Source) || (SourceName != scriptClass.SourceName) || (Includes.Count != scriptClass.Includes.Count * 2))
+				return false;
+			for (int i < scriptClass.Includes.Count)
+			{
+				if ((Includes[i * 2] != scriptClass.Includes[i].Path) || (Includes[i * 2 + 1] != scriptClass.Includes[i].Source))
+					return false;
+			}
+			return true;
 		}
 	}
 	/// How many class modules the run has loaded: each a class's own.
@@ -239,9 +260,9 @@ class ScriptRunHost
 		{
 			if (loaded.ClassName != scriptClass.ClassName)
 				continue;
-			// A reloaded product carries its class under the same name: a changed source loads
-			// again, the same one does not.
-			if ((loaded.Source == scriptClass.Source) && (loaded.SourceName == scriptClass.SourceName))
+			// A reloaded product carries its class under the same name: a changed source, or a
+			// changed file it includes, loads again; the same one does not.
+			if (loaded.Matches(scriptClass))
 				return true;
 			replaced = loaded;
 			break;
@@ -249,7 +270,11 @@ class ScriptRunHost
 
 		mGeneration++;
 		let moduleName = scope $"behavior:{scriptClass.ClassName}#{mGeneration}";
-		ScriptSection[1] sections = .(.(scriptClass.SourceName, scriptClass.Source));
+		// Its own source and the files it includes, each a section named by its path.
+		let sections = scope List<ScriptSection>();
+		sections.Add(.(scriptClass.SourceName, scriptClass.Source));
+		for (let included in scriptClass.Includes)
+			sections.Add(.(included.Path, included.Source));
 		if (!mRuntime.CompileModule(moduleName, sections))
 		{
 			GlobalLog(.Error, scope $"Script: class '{scriptClass.ClassName}' failed to load");

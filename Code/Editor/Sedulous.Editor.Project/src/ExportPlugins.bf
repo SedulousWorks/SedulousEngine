@@ -181,7 +181,8 @@ static class ExportPlugins
 			defer { ClearAndDeleteItems!(problems); }
 			let className = scope String();
 			let preferred = ScriptClasses.Preferred(script, .. scope .());
-			if (cook.Check(StringView((char8*)bytes.Ptr, bytes.Count), script.FileName.Value, preferred, className, problems, (Span<StringView>)views))
+			if (cook.Check(StringView((char8*)bytes.Ptr, bytes.Count), script.FileName.Value, preferred, className, problems, (Span<StringView>)views,
+				scope FolderIncludeReader(sources)))
 				continue;
 			outWhy.AppendF("script '{}' cannot run on {}, where plugin(s) {} are not enabled", script.FileName.Value, platform, absent);
 			if (!problems.IsEmpty)

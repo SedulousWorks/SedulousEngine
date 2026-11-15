@@ -12,9 +12,9 @@ namespace Sedulous.Script.Resource;
 /// The harvested properties and handlers are what let the EDITOR render an inspector
 /// without a VM, and the RUNTIME dispatch handlers without probing for them per frame.
 ///
-/// Data version 1: each property's replicated flag. A record cooked before it is in another
-/// layout; the strict reader refuses it and the script recooks.
-[Serializable(1)]
+/// Data version 1: each property's replicated flag; 2: the included files. A record cooked
+/// before is in another layout; the strict reader refuses it and the script recooks.
+[Serializable(2)]
 class ScriptClassSource
 {
 	/// The backend id, "angelscript".
@@ -25,6 +25,8 @@ class ScriptClassSource
 	/// breakpoint key on. Stamped by the cook from the asset's file name.
 	public String SourceName = new .() ~ delete _;
 	public String Source = new .() ~ delete _;
+	/// Every file `Source` includes, each once, as the cook resolved and read them.
+	public List<ScriptIncludedSource> Includes = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
 	/// The lifecycle and event handlers the class declares: the dispatch gate.
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);

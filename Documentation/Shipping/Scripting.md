@@ -357,6 +357,10 @@ property with its description as the tooltip and saves per instance values over 
 - A call into script (a handler, a constructor, a coroutine's run between its waits, a global's
   initialiser) that runs past 5 s is stopped with an error that fails that call, not the game,
   and recursion that never ends fails its call at 20000 nested calls ("Stack overflow").
+- `#include "<path>"` resolves against the file that includes it (`#include "Lib/Math.as"` in
+  `Scripts/Player.as` is `Scripts/Lib/Math.as`), and never outside the project's sources. An
+  included file is part of every script that includes it: editing it recooks them, and an error
+  in it names it.
 - A plain field is not a property: if the inspector does not show a field, it has no
   annotation.
 - Some engine fields are read only on purpose (a network identity's `Authority` and `Id`):

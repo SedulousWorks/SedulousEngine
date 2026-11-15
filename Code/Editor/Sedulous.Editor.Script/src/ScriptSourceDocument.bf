@@ -83,7 +83,8 @@ class ScriptSourceDocument
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems!(problems); }
 		let className = scope String();
-		let ok = cook.Check(mSource, mFileName, mPreferredClass, className, problems, default);
+		// The files it includes, from the project's sources, as the cook reads them.
+		let ok = cook.Check(mSource, mFileName, mPreferredClass, className, problems, default, scope FolderIncludeReader(mSourcesRoot));
 		for (let problem in problems)
 			mErrors.Add(ScriptCompileError.Parse(problem));
 		if (ok)

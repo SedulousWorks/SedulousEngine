@@ -71,7 +71,12 @@ static class ScriptValidateTool
 		let record = scope ScriptClassSource();
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
-		var ok = cook.Cook(source, name, className, record, problems);
+		// The files it includes, from the open project's sources, resolved against `name`.
+		let sourcesRoot = scope String();
+		if ((session != null) && session.IsOpen)
+			session.Project.SourcesRoot(sourcesRoot);
+		let includes = scope FolderIncludeReader(sourcesRoot);
+		var ok = cook.Cook(source, name, className, record, problems, includes);
 		// Then against the platform's surface, when one is asked for and it lacks plugins.
 		let absent = scope String();
 		if (ok && !platform.IsEmpty && (session.Plugins != null))
@@ -84,7 +89,7 @@ static class ScriptValidateTool
 				let views = scope List<StringView>();
 				for (let hiddenName in hidden)
 					views.Add(hiddenName);
-				ok = cook.Check(source, name, className, scope .(), problems, (Span<StringView>)views);
+				ok = cook.Check(source, name, className, scope .(), problems, (Span<StringView>)views, includes);
 			}
 		}
 

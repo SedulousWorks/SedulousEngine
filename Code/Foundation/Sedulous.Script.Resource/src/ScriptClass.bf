@@ -12,6 +12,8 @@ class ScriptClass
 	public String ClassName = new .() ~ delete _;
 	public String SourceName = new .() ~ delete _;
 	public String Source = new .() ~ delete _;
+	/// The files `Source` includes, loaded beside it.
+	public List<ScriptIncludedSource> Includes = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);
 	public bool UsesCoroutines = false;
@@ -50,6 +52,14 @@ class ScriptClass
 		ClassName.Set(source.ClassName);
 		SourceName.Set(source.SourceName);
 		Source.Set(source.Source);
+		ClearAndDeleteItems!(Includes);
+		for (let i in source.Includes)
+		{
+			let copy = new ScriptIncludedSource();
+			copy.Path.Set(i.Path);
+			copy.Source.Set(i.Source);
+			Includes.Add(copy);
+		}
 		ClearAndDeleteItems!(Properties);
 		for (let p in source.Properties)
 		{

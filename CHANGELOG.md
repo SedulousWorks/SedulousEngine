@@ -115,6 +115,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting (AngelScript): `#include` works: it resolves against the including file, inside the
+  project's sources; editing an included file recooks the scripts that include it; an error or a
+  breakpoint in one names that file; and a behaviour loaded in a run includes them as the cook
+  did. An `#include` failed everywhere.
 - Scripting: a behaviour script that fails to load no longer stops every behaviour loaded after it
   in the same play, and each new behaviour class loads alone rather than recompiling every class
   loaded before it.

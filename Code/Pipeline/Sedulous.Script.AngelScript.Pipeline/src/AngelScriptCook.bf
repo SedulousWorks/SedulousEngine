@@ -124,8 +124,20 @@ class AngelScriptCook : IScriptLanguageCook
 		}
 	}
 
-	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems)
+	public void ListIncludes(StringView source, List<String> outPaths) => AngelScriptRuntime.IncludesOf(source, outPaths);
+
+	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+		IScriptIncludeReader includes = null)
 	{
+		// The files it includes, compiled beside it and recorded for a run that compiles it again.
+		ClearAndDeleteItems!(outRecord.Includes);
+		if (!ScriptIncludes.Gather(this, sourceName, source, includes, outRecord.Includes, problems))
+			return false;
+		let sections = scope List<ScriptSection>();
+		sections.Add(.(sourceName, source));
+		for (let included in outRecord.Includes)
+			sections.Add(.(included.Path, included.Source));
+
 		AngelScriptRuntime runtime;
 		using (ProfileScope("Script.Cook.MakeEngine"))
 			runtime = scope:: AngelScriptRuntime();
@@ -138,7 +150,7 @@ class AngelScriptCook : IScriptLanguageCook
 		// it loads the script, under the call budget.
 		bool ok;
 		using (ProfileScope("Script.Cook.Compile"))
-			ok = runtime.Compile(cModule, sourceName, source, false);
+			ok = runtime.CompileModule(cModule, sections, false);
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		if (!ok)
@@ -166,9 +178,17 @@ class AngelScriptCook : IScriptLanguageCook
 	}
 
 	/// Through the runtime's Check, which compiles as Cook does and keeps no module.
-	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden)
+	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+		IScriptIncludeReader includes = null)
 	{
 		outClassName.Clear();
+		let found = scope List<ScriptIncludedSource>();
+		defer { ClearAndDeleteItems!(found); }
+		if (!ScriptIncludes.Gather(this, sourceName, source, includes, found, problems))
+			return false;
+		let sections = scope List<ScriptSection>();
+		for (let included in found)
+			sections.Add(.(included.Path, included.Source));
 		if (hidden.IsEmpty)
 		{
 			// The whole surface: the shared runtime, the script in a module of its own, discarded
@@ -177,7 +197,7 @@ class AngelScriptCook : IScriptLanguageCook
 			let ran = mChecks.Run(scope [&] (runtime) =>
 				{
 					using (ProfileScope("Script.Cook.Compile"))
-						ok = runtime.Check(sourceName, source);
+						ok = runtime.Check(sourceName, source, sections);
 					for (let p in runtime.Problems)
 						problems.Add(new String(p));
 					ClearAndDeleteItems!(runtime.Problems);
@@ -199,7 +219,7 @@ class AngelScriptCook : IScriptLanguageCook
 
 		bool ok;
 		using (ProfileScope("Script.Cook.Compile"))
-			ok = runtime.Check(sourceName, source);
+			ok = runtime.Check(sourceName, source, sections);
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		outClassName.Clear();

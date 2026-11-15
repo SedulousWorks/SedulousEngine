@@ -17,12 +17,45 @@ class ScriptClassAssetBuilder : IAssetBuilder
 
 	/// The shell's own version (2: each property a replicated flag; 3: the record carries
 	/// data version 1, so the reader refuses one from before the flag; 4: the class is the
-	/// asset's choice, never a guess among several) plus every cook's, so a cook change recooks.
-	public int32 Version => 4 + ScriptLanguageCooks.VersionSum;
+	/// asset's choice, never a guess among several; 5: the record carries the included files)
+	/// plus every cook's, so a cook change recooks.
+	public int32 Version => 5 + ScriptLanguageCooks.VersionSum;
 
 	/// The surface the scripts are checked against: a change (an engine whose facades changed)
 	/// recooks them, so a script that no longer compiles is found at cook time, not at load.
 	public uint64 EnvironmentHash => ScriptLanguageCooks.SurfaceHashSum;
+
+	/// Every file the script includes, and every file those include: each a cook input, so
+	/// editing an included file recooks the scripts that include it.
+	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
+	{
+		let authored = (ScriptClassAsset)asset;
+		let cook = ScriptLanguageCooks.Find(authored.Language);
+		let source = scope String();
+		if ((cook == null) || (AssetSource.ReadText(context, authored.FileName.Value, source) case .Err))
+			return; // Build says so
+		let found = scope List<ScriptIncludedSource>();
+		defer { ClearAndDeleteItems!(found); }
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems!(problems); }
+		// One that cannot be read the cook reports; those found before it are still inputs.
+		ScriptIncludes.Gather(cook, authored.FileName.Value, source, scope MountIncludeReader(context), found, problems);
+		for (let included in found)
+			outDeps.AddFile(included.Path);
+	}
+
+	/// Included files, read from the cook's sources mount.
+	private class MountIncludeReader : IScriptIncludeReader
+	{
+		private AssetBuildContext mContext;
+
+		public this(AssetBuildContext context)
+		{
+			mContext = context;
+		}
+
+		public bool Read(StringView path, String outText) => AssetSource.ReadText(mContext, path, outText) case .Ok;
+	}
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
@@ -51,7 +84,7 @@ class ScriptClassAssetBuilder : IAssetBuilder
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
 		let preferred = ScriptClasses.Preferred(authored, .. scope .());
-		if (!cook.Cook(source, authored.FileName.Value, preferred, record, problems))
+		if (!cook.Cook(source, authored.FileName.Value, preferred, record, problems, scope MountIncludeReader(context)))
 		{
 			// A warning is not why it failed.
 			for (let p in problems)

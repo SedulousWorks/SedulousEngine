@@ -28,7 +28,10 @@ interface IScriptLanguageCook
 	/// recorded class; empty: the one named like `sourceName`'s file): that one, else the
 	/// source's only class. False when the source does not compile, or declares several classes
 	/// and none so named.
-	bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems);
+	/// The files the source includes are read through `includes` (null: none can be, so a script
+	/// that includes one fails), and recorded in the record's Includes.
+	bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+		IScriptIncludeReader includes = null);
 
 	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
 	/// harvest: the problems into `problems`, the class it plays (chosen by `className` as Cook
@@ -36,7 +39,12 @@ interface IScriptLanguageCook
 	/// is typed. False when it does not compile or the class cannot be chosen. Against the
 	/// surface less the `hidden` types (by full name): a platform without a plugin lacks that
 	/// plugin's types, and a script that uses one does not compile there.
-	bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden);
+	bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+		IScriptIncludeReader includes = null);
+
+	/// The paths `source`'s include directives name, as written, in order (none for a language
+	/// without one): resolved, they are the files a cook depends on.
+	void ListIncludes(StringView source, List<String> outPaths) { }
 
 	/// Builds what Check uses before the first check needs it, so a project's first script page
 	/// does not wait for it. Callable from a worker thread.

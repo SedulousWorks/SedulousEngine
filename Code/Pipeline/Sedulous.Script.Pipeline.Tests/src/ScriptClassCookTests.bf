@@ -78,7 +78,7 @@ static class ScriptClassCookTests
 			context.Sources = mount;
 			context.Output = instance;
 			let builder = scope ScriptClassAssetBuilder();
-			Test.Assert(builder.Version == 5, "the shell's 4 plus the cook's 1");
+			Test.Assert(builder.Version == 6, "the shell's 5 plus the cook's 1");
 			Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
 		}
 
@@ -101,6 +101,79 @@ static class ScriptClassCookTests
 		Test.Assert(product.HasHandler("onStart") && product.HasHandler("onUpdate") && product.HasHandler("onHit"));
 		Test.Assert(!product.HasHandler("run"), "a helper is not a handler");
 		Test.Assert(product.UsesCoroutines);
+	}
+
+	/// An include resolves against the including file, inside the sources: the builder declares
+	/// every included file as a cook input (an edit to one recooks), the record carries them,
+	/// and a handler inherited from a class in one is found. The builder read includes from
+	/// nowhere and never declared them.
+	[Test]
+	public static void AnIncludedFileIsACookInputAndTravelsWithTheRecord()
+	{
+		Registered();
+		let root = "scratch_script_include";
+		RemoveDirectoryRecursive(root);
+		CreateDirectory(root);
+		defer { RemoveDirectoryRecursive(root); }
+		CreateDirectory(scope $"{root}/scripts");
+		CreateDirectory(scope $"{root}/scripts/lib");
+		CreateDirectory(scope $"{root}/common");
+		Test.Assert(File.WriteAllText(scope $"{root}/scripts/Player.as",
+			"#include \"lib/Base.as\"\nclass Player : Base\n{\n\tint lives = 3;\n}\n") case .Ok);
+		Test.Assert(File.WriteAllText(scope $"{root}/scripts/lib/Base.as",
+			"#include \"../../common/Math.as\"\nclass Base\n{\n\tint ticks = 0;\n\tvoid onUpdate(float dt) { ticks = twice(ticks); }\n}\n") case .Ok);
+		Test.Assert(File.WriteAllText(scope $"{root}/common/Math.as", "int twice(int x) { return x * 2; }\n") case .Ok);
+
+		let mount = scope NativeFileSystem(root);
+		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let database = scope ContentDatabase(mount, serializers, "rasset");
+		let instance = database.RootGroup.CreateInstance("player", cProductType);
+		let asset = scope ScriptClassAsset();
+		asset.FileName.Set("scripts/Player.as");
+		asset.Language.Set("angelscript");
+		let context = scope AssetBuildContext();
+		context.Sources = mount;
+		context.Output = instance;
+		let builder = scope ScriptClassAssetBuilder();
+
+		let deps = scope AssetDependencies();
+		builder.ScanDependencies(asset, context, deps);
+		Test.Assert(deps.Files.Count == 2, scope $"{deps.Files.Count} inputs");
+		Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
+
+		let record = instance.ReadObject() as ScriptClassSource;
+		Test.Assert(record != null);
+		defer delete record;
+		Test.Assert(record.Includes.Count == 2);
+		Test.Assert(record.Includes[0].Path == "scripts/lib/Base.as");
+		Test.Assert(record.Includes[1].Path == "common/Math.as");
+		bool inherited = false;
+		for (let handler in record.Handlers)
+			inherited |= (handler == "onUpdate");
+		Test.Assert(inherited, "a handler inherited from the included base");
+
+		// A file that cannot be read, or a path out of the sources, fails the cook and says so.
+		let cook = ScriptLanguageCooks.Find("angelscript");
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems(problems); }
+		let missing = scope ScriptClassSource();
+		Test.Assert(!cook.Cook("#include \"lib/Nope.as\"\nclass Player {}\n", "scripts/Player.as", "", missing, problems, scope FolderIncludeReader(root)));
+		Test.Assert(!problems.IsEmpty && problems.Back.Contains("scripts/lib/Nope.as"), problems.IsEmpty ? "" : problems.Back);
+		Test.Assert(!cook.Cook("#include \"../../outside.as\"\nclass Player {}\n", "scripts/Player.as", "", missing, problems, scope FolderIncludeReader(root)));
+		Test.Assert(problems.Back.Contains("leaves"), problems.Back);
+	}
+
+	[Test]
+	public static void AnIncludeResolvesAgainstItsFileInsideTheSources()
+	{
+		let path = scope String();
+		Test.Assert(ScriptIncludes.Resolve("Scripts/Player.as", "Lib/Math.as", path) && (path == "Scripts/Lib/Math.as"));
+		Test.Assert(ScriptIncludes.Resolve("Scripts/A/b.as", "../Common.as", path) && (path == "Scripts/Common.as"));
+		Test.Assert(ScriptIncludes.Resolve("Player.as", "./x\\y.as", path) && (path == "x/y.as"));
+		Test.Assert(!ScriptIncludes.Resolve("Player.as", "../x.as", path), "out of the sources");
+		Test.Assert(!ScriptIncludes.Resolve("Player.as", "/x.as", path), "absolute");
+		Test.Assert(!ScriptIncludes.Resolve("Player.as", "C:x.as", path), "a drive");
+		Test.Assert(!ScriptIncludes.Resolve("Player.as", "", path));
 	}
 
 	[Test]
