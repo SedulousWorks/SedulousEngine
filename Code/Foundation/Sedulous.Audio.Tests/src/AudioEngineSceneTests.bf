@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Audio;
+using internal Sedulous.Audio;
 using static Sedulous.Audio.Tests.AudioEngineFixture;
 
 namespace Sedulous.Audio.Tests;
@@ -321,5 +322,25 @@ class AudioEngineSceneTests
 		engine.Stop(voice);
 		engine.Update(0.2f);
 		Test.Assert(!engine.IsValidHandle(voice));
+	}
+
+	/// A streamed clip's name carries its key through hex and back whole, a key with its top
+	/// bit set included: Android tags heap addresses in their top byte, and such a key read
+	/// back as a signed number overflowed, so the clip never opened.
+	[Test]
+	public static void AStreamNameCarriesAnyKey()
+	{
+		uint64[4] keys = .(0x7FFF12345678, 0xB400007566E45E90, uint64.MaxValue, 0);
+		for (let bits in keys)
+		{
+			let name = scope String();
+			AudioEngine.AppendStreamName(name, (int)bits);
+			Test.Assert(AudioEngine.TryParseStreamName(name, let key));
+			Test.Assert(key == (int)bits);
+		}
+
+		Test.Assert(!AudioEngine.TryParseStreamName("dclip:12", ?));
+		Test.Assert(!AudioEngine.TryParseStreamName("dstream:", ?));
+		Test.Assert(!AudioEngine.TryParseStreamName("dstream:zz", ?));
 	}
 }

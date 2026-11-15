@@ -508,7 +508,7 @@ class AudioEngine
 		if (clip.Stream)
 		{
 			mStreamClips[clipKey] = clip;
-			mNameScratch.AppendF("dstream:{:X}", clipKey);
+			AppendStreamName(mNameScratch, clipKey);
 		}
 		else
 		{
@@ -1918,6 +1918,25 @@ class AudioEngine
 		return ((BridgedFile)Internal.UnsafeCastToObject(file)).Stream.Size();
 	}
 
+	/// The name a streamed clip's voice opens it by: its key (the clip's address) in hex.
+	internal static void AppendStreamName(String outName, int key)
+	{
+		outName.AppendF("dstream:{:X}", (uint64)key);
+	}
+
+	/// The key a streamed clip's name carries, read back as the bits it was written from.
+	/// Android tags heap addresses in their top byte, so the hex is often past int's range.
+	internal static bool TryParseStreamName(StringView name, out int key)
+	{
+		key = 0;
+		if (!name.StartsWith("dstream:"))
+			return false;
+		if (!(uint64.Parse(name.Substring(8), .Hex) case .Ok(let bits)))
+			return false;
+		key = (int)bits;
+		return true;
+	}
+
 	/// Resolves a name the backend asked for.
 	///
 	/// A "dstream:" prefix names a registered stream clip, whose source opens a FRESH stream
@@ -1925,12 +1944,9 @@ class AudioEngine
 	/// straight off the virtual file system.
 	private IStream OpenBridgedStream(StringView path)
 	{
-		if (path.StartsWith("dstream:"))
+		if (TryParseStreamName(path, let key))
 		{
-			let key = int.Parse(path.Substring(8), .Hex);
-			if (key case .Err)
-				return null;
-			if (!mStreamClips.TryGetValue(key.Value, let clip))
+			if (!mStreamClips.TryGetValue(key, let clip))
 				return null;
 			if ((clip == null) || (clip.StreamSource == null))
 				return null;
