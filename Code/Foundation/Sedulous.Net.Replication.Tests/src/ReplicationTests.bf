@@ -778,4 +778,29 @@ class ReplicationTests
 		ReplicationScene.CaptureEntityTransforms(server);
 		Test.Assert(Near(transforms.Get(entity).Position, .(9.0f, 0.0f, 0.0f)));
 	}
+
+	/// A component record whose length passes the packet is neither applied nor allocated. The
+	/// record's blob length was read and allocated before anything checked the packet held it:
+	/// a few bytes made a client allocate 4 GB.
+	[Test]
+	public static void AComponentRecordWhoseLengthPassesThePacketIsRefused()
+	{
+		let writer = scope BitWriter();
+		writer.WriteVarU32(1); // one entry
+		writer.WriteU32(5); // its network id
+		writer.WriteU8(0); // not a spawn, not a removal
+		writer.WriteVarU32(1); // one component record
+		writer.WriteVarU32(1); // its type id: one byte
+		writer.WriteU8((uint8)'x');
+		writer.WriteVarU32(0xFFFFFFF0); // the blob's length
+		writer.WriteU8(0);
+
+		let client = scope Scene("client");
+		AddManagers(client);
+		let clientReplication = scope StateReplication();
+		let reader = scope BitReader(writer.Data);
+		clientReplication.ApplySnapshot(client, reader);
+		// Refused as truncated.
+		Test.Assert(!reader.Ok);
+	}
 }

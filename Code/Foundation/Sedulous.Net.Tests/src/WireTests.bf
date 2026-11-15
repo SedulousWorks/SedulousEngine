@@ -129,4 +129,28 @@ class WireTests
 		// Flagged rather than returning whatever was next in memory.
 		Test.Assert(!reader.Ok);
 	}
+
+	/// A byte count past what the buffer holds fails the reader and reads as nought. A VarU32
+	/// length was taken as is, and a few bytes could ask a peer to allocate 4 GB.
+	[Test]
+	public static void AByteCountPastTheBufferFailsTheReader()
+	{
+		let writer = scope BitWriter();
+		writer.WriteVarU32(3);
+		writer.WriteU8(1);
+		writer.WriteU8(2);
+		writer.WriteU8(3);
+		writer.WriteVarU32(0xFFFFFFF0);
+		writer.WriteU8(9);
+
+		let reader = scope BitReader(writer.Data);
+		// Exactly what follows.
+		Test.Assert(reader.ReadByteCount() == 3);
+		for (int i < 3)
+			reader.ReadU8();
+		Test.Assert(reader.Ok);
+		// One byte left, not four billion.
+		Test.Assert(reader.ReadByteCount() == 0);
+		Test.Assert(!reader.Ok);
+	}
 }

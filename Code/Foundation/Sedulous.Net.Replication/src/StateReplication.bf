@@ -461,7 +461,9 @@ class StateReplication : IReplicationModel
 		for (uint32 i = 0; (i < count) && reader.Ok; i++)
 		{
 			ReplicationWire.ReadString(reader, typeId);
-			let blobBytes = reader.ReadVarU32();
+			// Checked against the packet before the blob is sized from it: a record of a few bytes
+			// claiming a 4 GB blob made a client allocate it.
+			let blobBytes = reader.ReadByteCount();
 			let blob = scope List<uint8>();
 			blob.Resize((int)blobBytes);
 			if (blobBytes > 0)

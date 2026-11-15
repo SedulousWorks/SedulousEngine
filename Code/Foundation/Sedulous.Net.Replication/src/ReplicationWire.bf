@@ -23,7 +23,8 @@ static class ReplicationWire
 	public static void ReadString(BitReader reader, String outText)
 	{
 		outText.Clear();
-		let count = reader.ReadVarU32();
+		// Checked against the packet before the buffer is sized from it.
+		let count = reader.ReadByteCount();
 		if ((count == 0) || !reader.Ok)
 			return;
 

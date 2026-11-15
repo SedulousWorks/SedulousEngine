@@ -106,6 +106,20 @@ class BitReader
 		return value;
 	}
 
+	/// A VarU32 count of the bytes that follow. A count past what the buffer holds fails the
+	/// reader (Ok false) and reads as nought, so no caller sizes a buffer from a length the
+	/// packet does not carry (a 4 GB one from a few bytes).
+	public uint32 ReadByteCount()
+	{
+		let count = ReadVarU32();
+		if (!mOverflow && ((uint64)count > (uint64)BytesLeft))
+			mOverflow = true;
+		return mOverflow ? 0 : count;
+	}
+
+	/// Whole bytes left to read.
+	public int BytesLeft => (mData.Length - mBytePosition) + (int)(mScratchBits / 8);
+
 	public float ReadFloatRanged(float min, float max, uint32 bits)
 	{
 		Debug.Assert((bits >= 1) && (bits <= 32));

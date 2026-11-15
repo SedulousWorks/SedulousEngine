@@ -304,7 +304,7 @@ class NetFacade : IScriptEntityScene
 				case .Number:
 					values[count++] = .FromFloat(args.ReadDouble());
 				case .Text:
-					let size = args.ReadVarU32();
+					let size = args.ReadByteCount();
 					if (!args.Ok || (size > (uint32)MaxTextBytes))
 						return;
 					let bytes = scope uint8[size];

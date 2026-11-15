@@ -907,7 +907,7 @@ class ReliableTransport : INetTransport
 				}
 			}
 
-			let length = reader.ReadVarU32();
+			let length = reader.ReadByteCount();
 			// One message fits one datagram by construction, so a longer claim is a corrupt
 			// or hostile packet and the rest of it is not worth reading.
 			if (!reader.Ok || (length > mConfig.MaxPacketBytes))
