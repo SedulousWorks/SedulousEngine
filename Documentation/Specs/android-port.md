@@ -165,7 +165,9 @@ Each phase ends with something running on the phone.
   clears and draws a triangle in the spike's app.
 - **A2 The player** (done): `Sedulous.Engine.Player.Android`, the paths, the platform tag; Sky
   Hopper exported content-only and played from the APK. `Code/Tools/android-app.sh <export-dir>
-  --run` builds, links, packages, installs and starts it.
+  --run` builds, links, packages, installs and starts it. The device found one engine bug:
+  Android tags heap addresses in their top byte, and streamed audio named a clip by its address
+  read back as a signed number, so music never started.
 - **A3 Lifecycle**: background and foreground with the surface released and made again, audio
   stopped and started, the save written on the way out, Back to the platform when nothing takes
   it.
