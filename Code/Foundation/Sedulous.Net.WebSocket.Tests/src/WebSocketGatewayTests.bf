@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Collections;
 using System.Threading;
 using Sedulous.Net;
@@ -305,10 +306,12 @@ static class WebSocketGatewayTests
 		return count;
 	}
 
-	/// Pumps the gateway about once a millisecond for `milliseconds`.
+	/// Pumps the gateway for `milliseconds` of wall time: a count of 1 ms sleeps is not that, since
+	/// a sleep on Windows lasts a scheduler tick (about 15 ms).
 	private static void PumpFor(WebSocketServerGateway gateway, int milliseconds)
 	{
-		for (int i < milliseconds)
+		let clock = scope Stopwatch(true);
+		while (clock.ElapsedMilliseconds < milliseconds)
 		{
 			gateway.Pump();
 			Thread.Sleep(1);
