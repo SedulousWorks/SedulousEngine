@@ -2550,22 +2550,24 @@ class AngelScriptRuntime : ScriptRuntime
 			let m = AS.asc_typeinfo_get_method_by_index(o.Type, i);
 			if ((StringView(AS.asc_function_get_name(m)) != name) || (AS.asc_function_get_param_count(m) != (uint32)args.Length))
 				continue;
-			bool fits = true;
-			for (int a = 0; a < args.Length; a++)
-			{
-				int32 typeId = 0;
-				uint32 flags = 0;
-				AS.asc_function_get_param(m, (uint32)a, &typeId, &flags, null);
-				if (!Takes(typeId, args[a]))
-				{
-					fits = false;
-					break;
-				}
-			}
-			if (fits)
+			if (Fits(m, args))
 				return m;
 		}
 		return null;
+	}
+
+	/// Whether each argument's kind fits its parameter of `fn`.
+	private bool Fits(AS.Function* fn, Span<ScriptValue> args)
+	{
+		for (int a = 0; a < args.Length; a++)
+		{
+			int32 typeId = 0;
+			uint32 flags = 0;
+			AS.asc_function_get_param(fn, (uint32)a, &typeId, &flags, null);
+			if (!Takes(typeId, args[a]))
+				return false;
+		}
+		return true;
 	}
 
 	/// Whether a parameter of `typeId` takes the value: a number into any numeric type, the
@@ -2607,13 +2609,33 @@ class AngelScriptRuntime : ScriptRuntime
 		let o = object as AngelScriptObject;
 		if (o == null)
 			return false;
-		let fn = FindMethod(o, name, args);
-		if (fn == null)
+		// What this object found before, by name and count, the arguments' kinds checked again
+		// (an overload of the same count takes other kinds).
+		AngelScriptObject.FoundMethod found = null;
+		for (let f in o.Found)
 		{
-			Problem(scope $"{o.ClassName} has no {name} taking these {args.Length} arguments");
-			return false;
+			if ((f.Arity == args.Length) && (f.Name == name) && Fits(f.Function, args))
+			{
+				found = f;
+				break;
+			}
 		}
-		return Execute(fn, o.Object, args, ref result, scope $"{o.ClassName}.{name}");
+		if (found == null)
+		{
+			let fn = FindMethod(o, name, args);
+			if (fn == null)
+			{
+				Problem(scope $"{o.ClassName} has no {name} taking these {args.Length} arguments");
+				return false;
+			}
+			found = new .();
+			found.Name.Set(name);
+			found.Arity = args.Length;
+			found.Function = fn;
+			found.What.AppendF("{}.{}", o.ClassName, name);
+			o.Found.Add(found);
+		}
+		return Execute(found.Function, o.Object, args, ref result, found.What);
 	}
 
 	public override bool GetProperty(ScriptObject object, StringView name, ref ScriptValue value)

@@ -21,6 +21,18 @@ class AngelScriptObject : ScriptObject
 
 	public Dictionary<String, Property> Properties = new .() ~ DeleteDictionaryAndKeys!(_);
 
+	/// A method found for a call, by its name and argument count, with the label its call
+	/// reports under: a compiled class's methods never change, so each is found once.
+	public class FoundMethod
+	{
+		public String Name = new .() ~ delete _;
+		public String What = new .() ~ delete _;
+		public int Arity;
+		public AS.Function* Function;
+	}
+
+	public List<FoundMethod> Found = new .() ~ DeleteContainerAndItems!(_);
+
 	public ~this()
 	{
 		if (Object != null)

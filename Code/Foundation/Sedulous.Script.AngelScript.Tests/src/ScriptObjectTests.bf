@@ -262,6 +262,27 @@ static class ScriptObjectTests
 		Test.Assert(vm.Call("c", "double two()", default, ref r) && (r.AsFloat == 3.0));
 	}
 
+	/// An object finds each method once, and keeps calling the right overload from what it found.
+	[Test]
+	public static void AnObjectFindsEachMethodOnceAndKeepsCallingTheRightOverload()
+	{
+		let vm = Bound();
+		defer delete vm;
+		Test.Assert(vm.Compile("p", "pick.as", "class Pick { double f() { return 1; } double f(double v) { return v + 2; } }\n"));
+		let pick = vm.Instantiate("p", "Pick");
+		Test.Assert(pick != null);
+		var r = ScriptValue.Nil;
+		var five = ScriptValue[1](.FromFloat(5.0));
+		for (int round < 2) // the second round runs from what the first found
+		{
+			Test.Assert(vm.Invoke(pick, "f", default, ref r) && (r.AsFloat == 1.0));
+			Test.Assert(vm.Invoke(pick, "f", five, ref r) && (r.AsFloat == 7.0));
+			Test.Assert(!vm.Invoke(pick, "missing", default, ref r));
+		}
+		Test.Assert(((AngelScriptObject)pick).Found.Count == 2);
+		ClearAndDeleteItems!(vm.Problems);
+	}
+
 	private static AngelScriptRuntime sChurnRuntime;
 	private static ScriptObject sChurnOwner;
 
