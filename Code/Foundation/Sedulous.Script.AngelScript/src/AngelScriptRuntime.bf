@@ -122,6 +122,11 @@ class AngelScriptRuntime : ScriptRuntime
 		/// Cancelled or finished: out of the schedule, never resumed again, freed once nothing
 		/// runs it.
 		public bool Dropped;
+		/// Paused at a breakpoint or a step: the debugger has it until it runs it on.
+		public bool Held;
+		/// Its `wait` asked for the suspend, which AngelScript honours after the next line begins:
+		/// no breakpoint or step may stop on that line.
+		public bool Suspending;
 	}
 	private List<Coroutine> mCoroutines = new .() ~ DeleteContainerAndItems!(_);
 	/// Coroutines dropped while one ran or the scheduler walked: freed once neither holds them.
@@ -2786,17 +2791,44 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		}
 		co.Remaining = seconds;
+		co.Suspending = true;
 		AS.asc_context_suspend(active);
 	}
 
-	/// Resumes the coroutine: it runs until it waits again, finishes or faults.
+	/// Resumes the coroutine: it runs until it waits again, finishes or faults, or a debugger
+	/// pauses it, which then holds it until it runs it on.
 	private void Step(Coroutine co)
 	{
 		co.Running = true;
+		co.Suspending = false;
+		// Armed for each run between its waits: the debugger's line callback (which checks the
+		// budget too) when one is attached, a debugger attached since its last run included,
+		// else the budget's.
+		if (mDebugger != null)
+			mDebugger.Arm(co.Context);
+		else
+			ArmBudget(co.Context);
 		BeginExecute();
 		let state = AS.asc_context_execute(co.Context);
 		EndExecute();
 		co.Running = false;
+		if ((mDebugger != null) && (state == AS.asEXECUTION_SUSPENDED))
+		{
+			if (co.Dropped)
+				mDebugger.Forget(co.Context); // cancelled by what it ran: nothing to hold
+			else if (mDebugger.AdoptCoroutine(co.Context))
+			{
+				co.Held = true;
+				return;
+			}
+		}
+		Settle(co, state);
+	}
+
+	/// After a run of the coroutine that did not leave it held: a fault reported, and the
+	/// coroutine dropped unless it waits again.
+	private void Settle(Coroutine co, int32 state)
+	{
 		if ((state != AS.asEXECUTION_SUSPENDED) && (state != AS.asEXECUTION_FINISHED))
 			ReportExecution(co.Context, state, "coroutine");
 		if (co.Dropped)
@@ -2816,6 +2848,13 @@ class AngelScriptRuntime : ScriptRuntime
 	/// executing, or let a coroutine started meanwhile reuse its address in the snapshot.
 	private void Drop(Coroutine co)
 	{
+		if (co.Held)
+		{
+			// Cancelled under the debugger: it lets go.
+			co.Held = false;
+			if (mDebugger != null)
+				mDebugger.Forget(co.Context);
+		}
 		mCoroutines.Remove(co);
 		co.Dropped = true;
 		if (co.Running || mAdvancing)
@@ -2866,6 +2905,8 @@ class AngelScriptRuntime : ScriptRuntime
 		let due = scope List<Coroutine>();
 		for (let co in mCoroutines)
 		{
+			if (co.Held)
+				continue; // waits for the debugger
 			co.Remaining -= deltaSeconds;
 			if (co.Remaining <= 0)
 				due.Add(co);
@@ -2877,6 +2918,55 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 		mAdvancing = false;
 		FreeRetired();
+	}
+
+	/// The coroutine running on `ctx`; null for a call's context.
+	private static Coroutine CoroutineOf(AS.Context* ctx)
+	{
+		let data = AS.asc_context_get_user_data(ctx);
+		return (data != null) ? Internal.UnsafeCastToObject(data) as Coroutine : null;
+	}
+
+	/// Whether `ctx` is a coroutine whose `wait` is suspending it.
+	private bool IsWaitSuspending(AS.Context* ctx)
+	{
+		let co = CoroutineOf(ctx);
+		return (co != null) && co.Suspending;
+	}
+
+	/// The debugger runs a held coroutine on (`running`), or has run it.
+	private void HeldCoroutineRunning(AS.Context* ctx, bool running)
+	{
+		let co = CoroutineOf(ctx);
+		if (co == null)
+			return;
+		co.Running = running;
+		if (running)
+			co.Suspending = false;
+	}
+
+	/// The debugger ran a held coroutine on and it did not pause again: it waits again, or it
+	/// ended and is reported and dropped, as from the scheduler.
+	private void ReleaseHeldCoroutine(AS.Context* ctx, int32 state)
+	{
+		let co = CoroutineOf(ctx);
+		if (co == null)
+			return;
+		co.Held = false;
+		AS.asc_context_clear_line_callback(ctx);
+		Settle(co, state);
+	}
+
+	/// The debugger holding the coroutine on `ctx` is going away: the coroutine goes too.
+	private void DropHeldCoroutine(AS.Context* ctx)
+	{
+		let co = CoroutineOf(ctx);
+		if (co == null)
+			return;
+		co.Held = false;
+		AS.asc_context_clear_line_callback(ctx);
+		if (!co.Dropped)
+			Drop(co);
 	}
 
 	public override void CancelCoroutinesFor(ScriptObject object)

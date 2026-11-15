@@ -55,6 +55,9 @@ class AngelScriptDebugger : IScriptDebugger
 	private List<void*> mHeldCopies = new .() ~ delete _;
 	private List<void*> mHeldStrings = new .() ~ delete _;
 	private AS.Function* mHeldFunction = null;
+	/// The held context is a coroutine's: its own, not the pool's, and back to the scheduler
+	/// when it is run on.
+	private bool mHeldCoroutine = false;
 	private String mHeldWhat = new .() ~ delete _;
 
 	private List<CapturedObject> mObjects = new .() ~ DeleteContainerAndItems!(_);
@@ -247,6 +250,34 @@ class AngelScriptDebugger : IScriptDebugger
 		return true;
 	}
 
+	/// True, and the coroutine's context is held, when this debugger's line callback suspended
+	/// it (not its wait).
+	public bool AdoptCoroutine(AS.Context* ctx)
+	{
+		if (mPausedContext != ctx)
+			return false;
+		mPaused = true;
+		mHeldCoroutine = true;
+		mHeldFunction = null;
+		mHeldWhat.Set("coroutine");
+		FireState((mCause == .Step) ? .Stepped : .Breakpoint);
+		return true;
+	}
+
+	/// Lets go of `ctx` if it is the held one: its coroutine was cancelled under the debugger.
+	public void Forget(AS.Context* ctx)
+	{
+		if (mPausedContext != ctx)
+			return;
+		let wasPaused = mPaused;
+		mPausedContext = null;
+		mPaused = false;
+		mHeldCoroutine = false;
+		ClearAndDeleteItems!(mObjects);
+		if (wasPaused)
+			FireState(.Terminated);
+	}
+
 	private static void OnLineCallback(AS.Context* ctx, void* user)
 	{
 		let self = Internal.UnsafeCastToObject(user) as AngelScriptDebugger;
@@ -261,6 +292,9 @@ class AngelScriptDebugger : IScriptDebugger
 	private void OnLine(AS.Context* ctx)
 	{
 		if ((mPausedContext != null) && (mPausedContext != ctx))
+			return;
+		// The line after a coroutine's `wait`: it runs when the wait is over.
+		if ((mRuntime != null) && mRuntime.[Friend]IsWaitSuspending(ctx))
 			return;
 		char8* section = null;
 		let line = AS.asc_context_get_line_number(ctx, 0, null, &section);
@@ -333,13 +367,27 @@ class AngelScriptDebugger : IScriptDebugger
 
 		// A resume is a call of its own on the budget's clock: the time stopped at the break
 		// was not running.
+		if (mHeldCoroutine)
+			mRuntime.[Friend]HeldCoroutineRunning(ctx, true);
 		mRuntime.[Friend]BeginExecute();
 		let state = AS.asc_context_execute(ctx);
 		mRuntime.[Friend]EndExecute();
+		if (mHeldCoroutine)
+			mRuntime.[Friend]HeldCoroutineRunning(ctx, false);
 		if ((state == AS.asEXECUTION_SUSPENDED) && (mPausedContext == ctx))
 		{
 			mPaused = true;
 			FireState((mCause == .Step) ? .Stepped : .Breakpoint);
+			return;
+		}
+		if (mHeldCoroutine)
+		{
+			// Back to the scheduler, which keeps it if it waits again, or reports and drops it if
+			// it ended.
+			mHeldCoroutine = false;
+			mRuntime.[Friend]ReleaseHeldCoroutine(ctx, state);
+			if (state != AS.asEXECUTION_SUSPENDED)
+				FireState(.Terminated);
 			return;
 		}
 		// Ran to completion, faulted, or ran past the budget: the call is over.
@@ -366,6 +414,14 @@ class AngelScriptDebugger : IScriptDebugger
 		let ctx = mPausedContext;
 		mPausedContext = null;
 		mPaused = false;
+		if (mHeldCoroutine)
+		{
+			// A coroutine's context is its own: it goes with its coroutine.
+			mHeldCoroutine = false;
+			mRuntime.[Friend]DropHeldCoroutine(ctx);
+			ClearAndDeleteItems!(mObjects);
+			return;
+		}
 		if (abort)
 			AS.asc_context_abort(ctx);
 		ReleaseHeld(ctx);

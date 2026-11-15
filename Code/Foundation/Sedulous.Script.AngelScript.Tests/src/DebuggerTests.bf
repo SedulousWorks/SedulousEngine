@@ -266,4 +266,64 @@ static class DebuggerTests
 		Test.Assert((variable2.Name == "w") && (variable2.TypeName == "Walker") && (variable2.Value == "Walker") && (variable2.ObjectRef == 7));
 		Test.Assert((object2.Ref == 7) && (object2.Text == "Walker"));
 	}
+
+	/// A breakpoint inside a coroutine hits: only a call's own context was armed. The held
+	/// coroutine waits for the debugger, not the clock, and Continue hands it back to the
+	/// scheduler, which runs it on after its next wait.
+	[Test]
+	public static void ABreakpointInsideACoroutineHits()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		Test.Assert(vm.Compile("c", "co.as", """
+			int stage = 0;
+			void body()
+			{
+				stage = 1;
+				wait(1.0);
+				stage = 2;
+				stage = 3;
+				wait(1.0);
+				stage = 4;
+			}
+			void begin() { startCoroutine(body); }
+			int getStage() { return stage; }
+			"""), "compiled");
+
+		let debugger = vm.CreateDebugger();
+		defer delete debugger;
+		let log = scope StateLog();
+		debugger.SetListener(log);
+		debugger.SetBreakpoint("co.as", 7); // `stage = 3;`, after the first wait
+		var r = ScriptValue.Nil;
+		var v = ScriptValue.Nil;
+		Test.Assert(vm.Call("c", "void begin()", default, ref r), "the call is not what pauses");
+		Test.Assert(!debugger.IsPaused);
+		Test.Assert(vm.CoroutineCount == 1);
+
+		vm.AdvanceCoroutines(1.5);
+		Test.Assert(debugger.IsPaused && (debugger.State == .Breakpoint), "hit inside the coroutine");
+		let frames = scope List<ScriptStackFrame>();
+		defer { ClearAndDeleteItems(frames); }
+		debugger.CaptureStackFrames(frames);
+		Test.Assert(!frames.IsEmpty && (frames[0].Line == 7) && frames[0].Function.Contains("body"));
+		Test.Assert(vm.Call("c", "int getStage()", default, ref v) && (v.AsInt == 2));
+
+		// Held: the clock does not run it on.
+		vm.AdvanceCoroutines(5.0);
+		Test.Assert(debugger.IsPaused);
+		Test.Assert(vm.Call("c", "int getStage()", default, ref v) && (v.AsInt == 2));
+
+		// Continue: it runs to its next wait, back with the scheduler.
+		debugger.Continue();
+		Test.Assert(!debugger.IsPaused);
+		Test.Assert(vm.Call("c", "int getStage()", default, ref v) && (v.AsInt == 3));
+		Test.Assert(vm.CoroutineCount == 1);
+		vm.AdvanceCoroutines(1.5);
+		Test.Assert(vm.Call("c", "int getStage()", default, ref v) && (v.AsInt == 4));
+		Test.Assert(vm.CoroutineCount == 0, "finished and dropped");
+		Test.Assert(vm.Problems.IsEmpty, vm.Problems.IsEmpty ? "" : vm.Problems[0]);
+	}
 }
