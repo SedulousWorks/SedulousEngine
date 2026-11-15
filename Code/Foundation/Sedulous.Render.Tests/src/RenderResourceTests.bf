@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.RHI;
 using Sedulous.RHI.Null;
 using Sedulous.Render;
@@ -167,6 +168,38 @@ class RenderResourceTests
 		queue.Tick();
 		queue.Flush();
 		Test.Assert(queue.PendingCount == 0);
+	}
+
+	/// A ring that runs out says so once, by its label. A fixed ring that ran out dropped what
+	/// did not fit without a word.
+	[Test]
+	public static void ARingThatRunsOutSaysSoOnceByItsLabel()
+	{
+		let harness = scope Harness();
+		let ring = scope DynamicUniformRing(harness.Device, 2, 256, .Uniform, "test.objects");
+		Test.Assert(ring.Reserve(2));
+
+		let log = scope RingLogger(32, .Warning);
+		bool previousOwned = false;
+		let previous = DetachGlobalLogger(out previousOwned);
+		InitGlobalLogger(log);
+		for (uint32 frame < 3)
+		{
+			ring.BeginFrame(frame);
+			Test.Assert(ring.Allocate().Ok);
+			Test.Assert(ring.Allocate().Ok);
+			// Every frame drops the third.
+			Test.Assert(!ring.Allocate().Ok);
+			ring.EndFrame();
+		}
+		bool logOwned = false;
+		DetachGlobalLogger(out logOwned);
+		InitGlobalLogger(previous, previousOwned);
+
+		// The first time only.
+		Test.Assert(log.Count == 1);
+		let line = log.GetMessage(0, .. scope String());
+		Test.Assert(line.Contains("test.objects"));
 	}
 
 	/// One slot per distinct view a frame, and a frame of more views grows the next. A renderer

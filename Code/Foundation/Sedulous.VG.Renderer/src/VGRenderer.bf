@@ -118,6 +118,8 @@ class VGRenderer
 	private int32 mTargetVertexCapacity = cInitialVertexCapacity;
 	private List<int32> mFrameVertexCapacity = new .() ~ delete _;
 	private bool mCapacityWarned = false;
+	/// Once, when a frame's uniform slots run out.
+	private bool mUniformSlotsWarned = false;
 
 	private List<CachedTexture> mTextureCache = new .() ~ DeleteContainerAndItems!(_);
 	private List<(CachedTexture Entry, int32 FramesLeft)> mRetiredTextures = new .() ~ delete _;
@@ -371,7 +373,10 @@ class VGRenderer
 		// A HARD cap rather than a growable one: a slot is per surface, and past sixty
 		// four surfaces something else has gone wrong.
 		if (uniformSlot >= (uint32)cMaxUniformSlots)
+		{
+			LogUniformSlotsExhausted();
 			return .();
+		}
 
 		if (!FitsOrGrows(frameIndex, vertexOffset, vertexBytes + boxBytes, indexOffset, indexBytes))
 			return .();
@@ -432,8 +437,10 @@ class VGRenderer
 			layer.BackdropBlur = (mBlurPipeline != null) ? source.BackdropBlur : 0.0f;
 			let blurs = (layer.Blur > 0.0f) || (layer.BackdropBlur > 0.0f);
 			let slots = blurs ? 3u : 1u;
-			layer.Valid = parentValid && (layer.Width > 0) && (layer.Height > 0)
-				&& ((nextUniformSlot + slots) <= (uint32)cMaxUniformSlots);
+			let slotsRemaining = (nextUniformSlot + slots) <= (uint32)cMaxUniformSlots;
+			if (!slotsRemaining)
+				LogUniformSlotsExhausted();
+			layer.Valid = parentValid && (layer.Width > 0) && (layer.Height > 0) && slotsRemaining;
 			if (layer.Valid)
 			{
 				layer.UniformOffset = nextUniformSlot * (uint32)cUniformSlotSize;
@@ -544,6 +551,16 @@ class VGRenderer
 	///
 	/// One frame may blank during a growth step and then render, rather than the surface
 	/// staying blank for as long as the large draw list persists.
+	/// A frame's uniform slots ran out: the slice or layer asking draws nothing. Said once.
+	private void LogUniformSlotsExhausted()
+	{
+		if (!mUniformSlotsWarned)
+		{
+			mUniformSlotsWarned = true;
+			GlobalLog(.Warning, "VG: the uniform slots are full ({} a frame); surfaces and layers past them are dropped this frame", cMaxUniformSlots);
+		}
+	}
+
 	private bool FitsOrGrows(int32 frameIndex, uint32 vertexOffset, uint32 vertexBytes,
 		uint32 indexOffset, uint32 indexBytes)
 	{

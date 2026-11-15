@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Image;
 using Sedulous.RHI;
 using Sedulous.VG;
@@ -185,6 +186,47 @@ class VGRendererTests
 		fixture.Renderer.BeginFrame(1);
 		// The next frame's have grown.
 		Test.Assert(fixture.Renderer.Prepare(batch, 1, 800, 600).IsValid);
+	}
+
+	/// A frame past its uniform slots says so once. A slice past the frame's uniform slots drew
+	/// nothing, without a word.
+	[Test]
+	public static void AFramePastItsUniformSlotsSaysSoOnce()
+	{
+		let fixture = scope RendererFixture();
+		let white = scope OwnedImageData(1, 1, .RGBA8, scope uint8[4](255, 255, 255, 255), .Linear);
+		let batch = scope VGBatch();
+		FillBatch(batch, white);
+
+		let log = scope RingLogger(32, .Warning);
+		bool previousOwned = false;
+		let previous = DetachGlobalLogger(out previousOwned);
+		InitGlobalLogger(log);
+		int drawn = 0;
+		for (int32 frame < 2)
+		{
+			fixture.Renderer.BeginFrame(frame);
+			drawn = 0;
+			// One slot a slice: past the 256 a frame.
+			for (int i < 300)
+			{
+				if (fixture.Renderer.Prepare(batch, frame, 800, 600).IsValid)
+					drawn++;
+			}
+		}
+		bool logOwned = false;
+		DetachGlobalLogger(out logOwned);
+		InitGlobalLogger(previous, previousOwned);
+
+		Test.Assert(drawn == 256);
+		// The first frame past them, not every slice or frame.
+		int warnings = 0;
+		for (int i < log.Count)
+		{
+			if (log.GetMessage(i, .. scope String()).Contains("uniform slots"))
+				warnings++;
+		}
+		Test.Assert(warnings == 1);
 	}
 
 	/// An empty batch has nothing to upload, and an invalid slice draws nothing.

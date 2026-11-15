@@ -1,6 +1,7 @@
 using System;
 using Sedulous.RHI;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 
 namespace Sedulous.Render;
 
@@ -28,6 +29,8 @@ class DynamicUniformRing
 	private uint32 mCursor = 0;
 	private uint32 mGeneration = 0;
 	private bool mInFrame = false;
+	/// The first exhaustion is logged, once.
+	private bool mExhaustionLogged = false;
 
 	/// `slotSize` is the per allocation stride, which a dynamic offset uniform needs aligned
 	/// to what the adapter demands and a storage ring can leave as the struct's own size.
@@ -109,9 +112,19 @@ class DynamicUniformRing
 	/// would move the buffer out from under the draws already recorded against it.
 	public DynamicUniformRange AllocateRange(uint32 count)
 	{
-		if (!mInFrame || (mBuffer == null) || (count == 0)
-			|| ((mCursor + count) > mSlotsPerFrame))
+		if (!mInFrame || (mBuffer == null) || (count == 0))
 			return .();
+		if ((mCursor + count) > mSlotsPerFrame)
+		{
+			// What the caller meant to draw with these slots is not drawn this frame. A ring its
+			// owner grows says so too; a fixed one says it here, once.
+			if (!mExhaustionLogged)
+			{
+				GlobalLog(.Warning, "{}: the ring is full ({} slots a frame); a request for {} was dropped", mLabel, mSlotsPerFrame, count);
+				mExhaustionLogged = true;
+			}
+			return .();
+		}
 
 		if (mMapped == null)
 		{

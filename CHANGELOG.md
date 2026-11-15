@@ -296,3 +296,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - GUI and vector graphics: a complex shape (concave, or several contours) filled inside a clip
   path no longer paints outside the clip; and a draw list whose indices outgrow the frame's
   buffers draws from the next frame instead of never.
+- Rendering and GUI: a fixed per-frame budget that runs out (a renderer's ring, the vector
+  renderer's uniform slots) now logs a warning the first time instead of dropping draws silently.
