@@ -30,6 +30,9 @@ class WebInputManager : IInputManager
 	private float mPointerScaleX = 1.0f;
 	private float mPointerScaleY = 1.0f;
 	/// The canvas's backing size: touches normalize over it.
+	/// The finger the mouse copies (CopyFingerToMouse), while one is down.
+	private uint64 mMouseFinger = 0;
+	private bool mMouseFingerDown = false;
 	private float mBackingWidth = 0.0f;
 	private float mBackingHeight = 0.0f;
 
@@ -235,7 +238,47 @@ class WebInputManager : IInputManager
 			touch.X = touchX;
 			touch.Y = touchY;
 			mEvents.Add(touch);
+			CopyFingerToMouse(raw.TouchId, raw.Phase, touchX, touchY);
 		}
+	}
+
+	/// The first finger down is the mouse too, its left button held while it is: as SDL copies a
+	/// finger to the mouse, so a GUI that takes the pointer from the mouse (a screen fitted to its
+	/// own resolution) is tapped on the web as on a phone's native app. Its events come after the
+	/// finger's, and a GUI that also reads the fingers knows them for the copy and drops them.
+	private void CopyFingerToMouse(uint64 finger, WebRawEvent.TouchPhase phase, float x, float y)
+	{
+		if ((phase == .Start) && !mMouseFingerDown)
+		{
+			mMouseFinger = finger;
+			mMouseFingerDown = true;
+		}
+		else if (!mMouseFingerDown || (finger != mMouseFinger))
+		{
+			return;
+		}
+		let dx = x - mMouse.X;
+		let dy = y - mMouse.Y;
+		mMouse.OnMotion(x, y, dx, dy);
+		InputEvent move = .();
+		move.Kind = .MouseMove;
+		move.Window = mMainWindow;
+		move.X = x;
+		move.Y = y;
+		move.DX = dx;
+		move.DY = dy;
+		mEvents.Add(move);
+		if (phase == .Move)
+			return;
+		let down = phase == .Start;
+		if (!down)
+			mMouseFingerDown = false;
+		mMouse.OnButton(.Left, down);
+		InputEvent button = .();
+		button.Kind = down ? .MouseButtonDown : .MouseButtonUp;
+		button.Window = mMainWindow;
+		button.Button = .Left;
+		mEvents.Add(button);
 	}
 
 	/// Rebuilds the connected list and emits this frame's button transitions.
@@ -413,6 +456,7 @@ class WebInputManager : IInputManager
 		self.mKeyboard.ReleaseAll();
 		self.mMouse.ReleaseAll();
 		self.mTouch.Clear();
+		self.mMouseFingerDown = false;
 		return false;
 	}
 
