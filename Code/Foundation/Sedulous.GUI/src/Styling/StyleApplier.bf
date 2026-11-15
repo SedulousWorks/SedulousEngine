@@ -1061,6 +1061,10 @@ internal static class StyleApplierDetail
 		return true;
 	}
 
+	// Grid lines and spans clamp here: each line is a track the layout allocates, and a style
+	// sheet is untrusted input.
+	public const int32 MaxGridLine = 1000;
+
 	// grid-column / grid-row: `2`, `1 / 3`, `span 2`, `2 / span 3`, `auto`.
 	public static GridPlacement? ParseGridPlacement(StringView text)
 	{
@@ -1075,7 +1079,7 @@ internal static class StyleApplierDetail
 			{
 				let n = ParseLength(ParseUtil.Trim(t.Substring(5, t.Length - 5)));
 				if (n.HasValue && (n.Value >= 1.0f))
-					return (int32)n.Value;
+					return (int32)Math.Min(n.Value, (float)MaxGridLine);
 			}
 			return null;
 		}
@@ -1086,7 +1090,7 @@ internal static class StyleApplierDetail
 				return 0;
 			let n = ParseLength(t);
 			if (n.HasValue && (n.Value >= 1.0f))
-				return (int32)n.Value;
+				return (int32)Math.Min(n.Value, (float)MaxGridLine);
 			return null;
 		}
 		var placement = GridPlacement();

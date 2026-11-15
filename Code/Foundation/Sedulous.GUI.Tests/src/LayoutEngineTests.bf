@@ -1319,4 +1319,60 @@ class LayoutEngineTests
 		Test.Assert(Near(list.Size.Y, 200.0f)); // not the rows it realised, nor all of them
 		Test.Assert(Near(list.ScrollRange.Y, 200.0f * 20.0f - 200.0f));
 	}
+
+	/// A grid item on a row line past the explicit rows widens them. In a column flow such a
+	/// line never fitted, and the search for a free place never ended; with a column line too,
+	/// the item was written past the taken cells.
+	[Test]
+	public static void AGridRowLinePastTheTemplateWidensTheRows()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let grid = new Panel();
+		defer grid.ReleaseRef();
+		grid.AddClass("cards");
+		root.AddChild(grid);
+		let low = new Panel();
+		defer low.ReleaseRef();
+		low.AddClass("low");
+		grid.AddChild(low);
+		let corner = new Panel();
+		defer corner.ReleaseRef();
+		corner.AddClass("corner");
+		grid.AddChild(corner);
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".cards { display: grid; grid-auto-flow: column; grid-template-rows: 40px 40px; grid-auto-rows: 40px;" +
+			" grid-template-columns: 50px 50px; gap: 0; padding: 0; }" +
+			".low { grid-row: 5; } .corner { grid-row: 4; grid-column: 2; }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(Near(low.Position.Y, 160.0f));
+		Test.Assert(Near(corner.Position.X, 50.0f));
+		Test.Assert(Near(corner.Position.Y, 120.0f));
+	}
+
+	/// A grid line or span past the limit is clamped: each line is a track, and span 100000000
+	/// allocated a grid that size.
+	[Test]
+	public static void AGridLineOrSpanPastTheLimitIsClamped()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let grid = new Panel();
+		defer grid.ReleaseRef();
+		grid.AddClass("cards");
+		root.AddChild(grid);
+		let wide = new Panel();
+		defer wide.ReleaseRef();
+		wide.AddClass("wide");
+		grid.AddChild(wide);
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".cards { display: grid; } .wide { grid-column: span 100000000; grid-row: 2000000000; }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		Test.Assert(wide.LayoutStyle.Column.Span == 1000);
+		Test.Assert(wide.LayoutStyle.Row.Start == 1000);
+		root.UpdateLayout();
+	}
 }

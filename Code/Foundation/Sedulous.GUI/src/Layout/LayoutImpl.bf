@@ -526,12 +526,18 @@ internal static class LayoutImplDetail
 		let byRow = s.AutoFlow == .Row;
 		int32 columnCount = Math.Max((int32)1, (int32)templateColumns.Count);
 		int32 rowCount = Math.Max((int32)0, (int32)s.Rows.Count);
+		// Explicit lines widen their axis, and a span widens the flow's cross axis. A row line
+		// past the explicit rows has to widen them too, or no free place is ever found.
 		for (let item in items)
 		{
 			if (item.Column > 0)
 				columnCount = Math.Max(columnCount, item.Column + item.ColumnSpan - 1);
+			if (item.Row > 0)
+				rowCount = Math.Max(rowCount, item.Row + item.RowSpan - 1);
 			if (byRow)
 				columnCount = Math.Max(columnCount, item.ColumnSpan);
+			else
+				rowCount = Math.Max(rowCount, item.RowSpan);
 		}
 		let taken = scope List<bool>(); // rows x columns (byRow) or columns x rows
 		let across = byRow ? columnCount : Math.Max((int32)1, rowCount);

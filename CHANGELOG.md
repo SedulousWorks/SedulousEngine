@@ -163,6 +163,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   took the files of a `Rock.2` beside it (the name the editor gives a second `Rock`), and an export
   that pruned or stripped `Rock` dropped or packed `Rock.2`'s as well. A data stream's name may no
   longer contain a dot.
+- GUI: a grid item placed on a row line past the grid's rows widens the rows instead of hanging
+  the layout (in a column flow) or writing past the grid's cells, and a grid line or span above
+  1000 is taken as 1000 instead of allocating that many tracks.
 - SVG: a path with a number after `Z` is an error instead of hanging the load; a self-closing
   element (`<g/>`) no longer swallows the elements after it as its children; groups nested more
   than 128 deep fail the load instead of overflowing the stack.
