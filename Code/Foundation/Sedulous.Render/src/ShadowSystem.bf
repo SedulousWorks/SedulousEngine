@@ -2,6 +2,7 @@ using System;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Core;
+using Sedulous.Shaders;
 
 namespace Sedulous.Render;
 
@@ -31,6 +32,12 @@ class ShadowSystem
 	private uint32 mFramesInFlight = 2;
 	/// BORROWED. Null means growing drains the device instead.
 	private GpuRetireQueue mRetire = null;
+	/// BORROWED. The atlas tile clear's shaders; null means the static layer clears whole.
+	private ShaderSystem mShaders = null;
+	private IPipelineLayout mTileClearLayout = null;
+	private IRenderPipeline mTileClearPipeline = null;
+	/// The shader version the tile clear was built (or failed) at.
+	private uint64 mTileClearVersion = uint64.MaxValue;
 
 	/// Bumped on every texture recreation, which is what a bind group cache over the sample
 	/// view keys on: a reused address would otherwise alias a destroyed texture.
@@ -70,6 +77,60 @@ class ShadowSystem
 
 	/// Wires the retire queue, which makes a growth or a resize web safe. Null drains instead.
 	public void SetRetireQueue(GpuRetireQueue retire) => mRetire = retire;
+
+	/// The shaders the atlas tile clear builds from. Without them, or when the clear does not
+	/// build, the static atlas layer clears whole and every static tile redraws when one is
+	/// dirty.
+	public void SetShaderSystem(ShaderSystem shaders) => mShaders = shaders;
+
+	/// A depth only pipeline writing the far depth wherever it draws: a fullscreen triangle,
+	/// compare Always, three vertices, no bindings. Drawn inside a tile's viewport and scissor it
+	/// clears that tile, in a pass that loads the rest of the layer, which a partial clear of an
+	/// attachment cannot do on the web. Built on first use and again when its shader reloads; a
+	/// failed build is not retried until then. Null without a shader system or a build.
+	public IRenderPipeline TileClearPipeline()
+	{
+		if (mShaders == null)
+			return null;
+
+		let version = mShaders.Version("shadow_tile_clear");
+		if (version == mTileClearVersion)
+			return mTileClearPipeline;
+
+		// A reload: the device is idle then, as for every engine pass's pipeline rebuild.
+		if (mTileClearPipeline != null)
+			mDevice.DestroyRenderPipeline(ref mTileClearPipeline);
+		mTileClearVersion = version;
+
+		if (mTileClearLayout == null)
+		{
+			if (!(mDevice.CreatePipelineLayout(PipelineLayoutDesc()) case .Ok(let layout)))
+				return null;
+			mTileClearLayout = layout;
+		}
+
+		let vertex = mShaders.GetVariant("shadow_tile_clear", .Vertex, .None);
+		if (vertex == null)
+			return null;
+
+		var depthStencil = DepthStencilState();
+		depthStencil.Format = cShadowFormat;
+		// A backend writes depth only with the test on.
+		depthStencil.DepthTestEnabled = true;
+		depthStencil.DepthWriteEnabled = true;
+		depthStencil.DepthCompare = .Always;
+
+		var desc = RenderPipelineDesc();
+		desc.Layout = mTileClearLayout;
+		desc.Vertex.Shader = .(vertex, .Vertex);
+		desc.DepthStencil = depthStencil;
+		desc.Primitive.Topology = .TriangleList;
+		desc.Primitive.CullMode = .None;
+		desc.Label = "shadow.tile-clear";
+		if (mDevice.CreateRenderPipeline(desc) case .Ok(let pipeline))
+			mTileClearPipeline = pipeline;
+		return mTileClearPipeline;
+	}
 
 	/// Nothing to do up front: the textures appear on first use, and the comparison sampler
 	/// that reads them belongs to whoever owns the set they are bound in.
@@ -301,6 +362,11 @@ class ShadowSystem
 	{
 		if (mDevice == null)
 			return;
+
+		if (mTileClearPipeline != null)
+			mDevice.DestroyRenderPipeline(ref mTileClearPipeline);
+		if (mTileClearLayout != null)
+			mDevice.DestroyPipelineLayout(ref mTileClearLayout);
 
 		for (int slot < cMaxFramesInFlight)
 		{

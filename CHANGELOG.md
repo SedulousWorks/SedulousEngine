@@ -281,3 +281,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: an animated character is culled where its pose puts it, not where its bind pose
   stands: a character walked or reaching away from its bind pose no longer vanishes at the edge of
   the view.
+- Rendering: a Static spot or point light keeps its shadow while something moves near another
+  Static light; the cached shadows of every other Static light were wiped whenever one of them
+  redrew.

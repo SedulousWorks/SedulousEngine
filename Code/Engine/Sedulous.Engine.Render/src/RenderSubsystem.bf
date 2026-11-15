@@ -690,6 +690,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		else
 		{
 			mShadowSystem.SetRetireQueue(mRetireQueue);
+			mShadowSystem.SetShaderSystem(mShaders);
 			// A level set before the renderer started (a host's first SetQuality).
 			ApplyShadowResolution();
 		}

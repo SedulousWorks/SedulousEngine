@@ -1051,6 +1051,20 @@ class RenderFrame
 			for (let tile in context.StaticRenderTiles)
 				mStaticRenderDraws.Add(.(tile, context));
 		}
+		// The static layer's pass loads the layer and clears each tile it redraws. Without the
+		// tile clear it must clear the whole layer, so a dirty tile redraws every static tile
+		// with it.
+		let staticTileClear = ((mShadows != null) && !mStaticRenderDraws.IsEmpty) ? mShadows.TileClearPipeline() : null;
+		if (!mStaticRenderDraws.IsEmpty && (staticTileClear == null))
+		{
+			mStaticRenderDraws.Clear();
+			for (int k < sceneCount)
+			{
+				let context = mSceneShadowPool[k];
+				for (let tile in context.StaticTiles)
+					mStaticRenderDraws.Add(.(tile, context));
+			}
+		}
 		let renderStatic = !mStaticRenderDraws.IsEmpty;
 
 		// Only the atlas passes that actually re-emit casters this frame count toward the
@@ -1064,7 +1078,8 @@ class RenderFrame
 
 		phase.Dispose();
 		phase = ProfileScope("Compose.Declare");
-		DeclareFrame(sceneCount, hasShadow, shadowMap, atlasView, staticTileCount, renderStatic);
+		DeclareFrame(sceneCount, hasShadow, shadowMap, atlasView, staticTileCount, renderStatic,
+			staticTileClear);
 
 		// Unmap the decal ring before the graph executes.
 		if (mDecalPass != null)
@@ -1176,7 +1191,8 @@ class RenderFrame
 
 	/// Declares every pass of the frame into the one graph.
 	private void DeclareFrame(int sceneCount, bool hasShadow, ITextureView shadowMap,
-		ITextureView atlasView, uint32 staticTileCount, bool renderStatic)
+		ITextureView atlasView, uint32 staticTileCount, bool renderStatic,
+		IRenderPipeline staticTileClear)
 	{
 		if (mViews.ActiveCount > 0)
 			mGraph.SetOutputSize(mViews.At(0).Width, mViews.At(0).Height);
@@ -1200,9 +1216,11 @@ class RenderFrame
 		}
 
 		// The local light atlas is a two layer array. The realtime layer re-renders every
-		// frame; the static one only when something dirtied it. Each pass targets its own
-		// layer, clears it, and renders its tiles at their own viewports. Every forward pass
-		// reads the array, which orders both ahead of it and barriers it readable.
+		// frame; the static one only its dirty tiles. Each pass targets its own layer and
+		// renders its tiles at their own viewports. The realtime pass clears its layer; the
+		// static pass loads its layer, which holds the clean tiles, and clears each tile it
+		// redraws (staticTileClear), or clears whole when it redraws every tile. Every forward
+		// pass reads the array, which orders both ahead of it and barriers it readable.
 		var atlasHandle = RGHandle.Invalid;
 		let atlasActive = (atlasView != null)
 			&& (!mRealtimeAtlasDraws.IsEmpty || (staticTileCount > 0));
@@ -1210,9 +1228,9 @@ class RenderFrame
 		if (atlasActive)
 		{
 			atlasHandle = mShadows.ImportAtlas(mGraph, mFrameIndex);
-			DeclareAtlasLayer(atlasHandle, 0, mRealtimeAtlasDraws);
+			DeclareAtlasLayer(atlasHandle, 0, mRealtimeAtlasDraws, null);
 			if (renderStatic)
-				DeclareAtlasLayer(atlasHandle, 1, mStaticRenderDraws);
+				DeclareAtlasLayer(atlasHandle, 1, mStaticRenderDraws, staticTileClear);
 		}
 
 		var shadowHandle = RGHandle.Invalid;
@@ -1355,8 +1373,10 @@ class RenderFrame
 	}
 
 	/// One atlas layer's depth pass over a list of tiles, which can span several scenes: each
-	/// draw records ITS OWN scene's casters.
-	private void DeclareAtlasLayer(RGHandle atlasHandle, uint32 layer, List<AtlasDraw> draws)
+	/// draw records ITS OWN scene's casters. With `tileClear` the pass loads the layer and
+	/// clears each tile it draws to the far depth first; without it the pass clears the layer.
+	private void DeclareAtlasLayer(RGHandle atlasHandle, uint32 layer, List<AtlasDraw> draws,
+		IRenderPipeline tileClear)
 	{
 		if (draws.IsEmpty)
 			return;
@@ -1365,7 +1385,8 @@ class RenderFrame
 
 		mGraph.AddRenderPass("shadow.atlas", scope (builder) =>
 			{
-				builder.SetDepthTarget(atlasHandle, .Clear, .Store, Depth.ClearValue, .(0, 0, layer, 1));
+				builder.SetDepthTarget(atlasHandle, (tileClear != null) ? LoadOp.Load : LoadOp.Clear, .Store,
+					Depth.ClearValue, .(0, 0, layer, 1));
 				// The pass's default; each tile sets its own below.
 				builder.SetViewport(0, 0, atlasResolution, atlasResolution);
 
@@ -1377,6 +1398,12 @@ class RenderFrame
 							encoder.SetViewport(tile.X, tile.Y, tile.Width, tile.Height);
 							encoder.SetScissor((int32)tile.X, (int32)tile.Y, tile.Width,
 								tile.Height);
+							if (tileClear != null)
+							{
+								// This tile to the far depth.
+								encoder.SetPipeline(tileClear);
+								encoder.Draw(3, 1, 0, 0);
+							}
 							RecordShadowCasters(encoder, draw.Context.Casters, mRegistry,
 								tile.ViewProjection, tile.CullCenter, tile.CullRadius, false,
 								default, null, draw.Context.Scene);
