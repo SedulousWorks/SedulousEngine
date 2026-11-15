@@ -91,8 +91,12 @@ static class CSSParser
 		ParseBlock(outSheet, source, cleaned, media);
 	}
 
+	// Each @media level is a native call; deeper blocks are skipped with a warning.
+	private const int MaxMediaNesting = 16;
+
 	// Parse a run of rules (and nested @media blocks), attaching `media` to each rule.
-	private static void ParseBlock(StyleSheet sheet, Source source, StringView src, MediaQuery media)
+	private static void ParseBlock(StyleSheet sheet, Source source, StringView src, MediaQuery media,
+		int mediaDepth = 0)
 	{
 		let n = src.Length;
 		int i = 0;
@@ -158,11 +162,15 @@ static class CSSParser
 				if (i < n)
 					i++; // consume '}'
 
-				if (IsMedia(prelude))
+				if (IsMedia(prelude) && (mediaDepth >= MaxMediaNesting))
+				{
+					source.Skipped(prelude, message..Clear()..AppendF("@media nested more than {} deep", MaxMediaNesting));
+				}
+				else if (IsMedia(prelude))
 				{
 					let condition = ParseUtil.Trim(prelude.Substring(6, prelude.Length - 6));
 					let innerMedia = scope MediaQuery(condition);
-					ParseBlock(sheet, source, inner, innerMedia); // v1: inner media replaces outer
+					ParseBlock(sheet, source, inner, innerMedia, mediaDepth + 1); // v1: inner media replaces outer
 				}
 				else if (IsKeyframes(prelude))
 				{
@@ -188,7 +196,10 @@ static class CSSParser
 			{
 				let stray = ParseUtil.Trim(src.Substring(selStart, i - selStart));
 				source.Skipped(src.Substring(selStart, i - selStart), message..Clear()..AppendF("text with no rule block: {}", stray));
-				break;
+				if (i >= n)
+					break;
+				i++; // a stray '}': skipped with what came before it, and the rules after it read
+				continue;
 			}
 			let selectorList = src.Substring(selStart, i - selStart);
 			i++; // consume '{'

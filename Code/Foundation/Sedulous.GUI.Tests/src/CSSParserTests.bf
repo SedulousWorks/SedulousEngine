@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -149,5 +150,41 @@ class CSSParserTests
 		let d = sheet.Rules[3].Properties;
 		Test.Assert(d.Length == 2);
 		Test.Assert(d[1].Value == "black");
+	}
+
+	/// A stray closing brace is skipped and the rules after it read; the parse stopped at it,
+	/// dropping every rule after it.
+	[Test]
+	public static void AStrayClosingBraceIsSkipped()
+	{
+		let said = scope List<GuiDiagnostic>();
+		defer { ClearAndDeleteItems!(said); }
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".a { color: red; } } .b { color: blue; }", default, said, sheet);
+		Test.Assert(sheet.RuleCount == 2);
+		Test.Assert(sheet.Rules[1].SelectorText == ".b");
+		Test.Assert(said.Count == 1);
+	}
+
+	/// @media nested past the limit is skipped, not recursed into: each level was a native
+	/// call, and a sheet of deeply nested @media ran the stack out.
+	[Test]
+	public static void MediaNestedPastTheLimitIsSkipped()
+	{
+		let depth = 100000;
+		let css = scope String();
+		for (int i = 0; i < depth; i++)
+			css.Append("@media (min-width: 1px) { ");
+		css.Append(".deep { color: red; }");
+		for (int i = 0; i < depth; i++)
+			css.Append(" }");
+		css.Append(" @media (min-width: 1px) { @media (min-width: 2px) { .shallow { color: blue; } } }");
+		let said = scope List<GuiDiagnostic>();
+		defer { ClearAndDeleteItems!(said); }
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(css, default, said, sheet);
+		Test.Assert(sheet.RuleCount == 1); // the shallow rule; the deep one is past the limit
+		Test.Assert(sheet.Rules[0].SelectorText == ".shallow");
+		Test.Assert(said.Count == 1);
 	}
 }
