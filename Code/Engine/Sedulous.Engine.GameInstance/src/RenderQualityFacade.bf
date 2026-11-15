@@ -1,21 +1,19 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
-using Sedulous.Script;
 
 namespace Sedulous.Engine.GameInstance;
 
-/// A run's quality levels to a script, reached as `RenderQuality`: what an options menu's
+/// A run's quality levels to its game, reached as `GameInstance.Quality`: what an options menu's
 /// graphics setting lists, the level the game plays at, and a switch.
 ///
-///     for (int i = 0; i < RenderQuality.Count(); i++) list(RenderQuality.Label(i));
-///     RenderQuality.Set("Low");
+///     for (int32 i < quality.Count()) list(quality.Label(i));
+///     quality.Set("Low");
 ///
 /// The host fills it and decides what choosing does (the player plays at the level and keeps the
 /// choice in the user's settings; a Game tab plays at it for the session). It holds each level's
 /// id and label, in the project's order; the host resolves the values. A run that offers none
 /// counts none, reads an empty label and refuses a set.
-[Scriptable, ServiceFacade("RenderQuality")]
 class RenderQualityFacade
 {
 	private struct Offered
@@ -83,18 +81,15 @@ class RenderQualityFacade
 		mOnChoose = onChoose;
 	}
 
-	// === A script's ===
+	// === The game's ===
 
 	/// How many levels the game offers.
-	[Scriptable]
 	public int32 Count() => (int32)mLevels.Count;
 
 	/// The label of the level at `index`, in the project's order; empty past the end.
-	[Scriptable]
 	public StringView Label(int32 index) => ((index >= 0) && (index < mLevels.Count)) ? mLevels[index].Label : "";
 
 	/// The label of the level the game plays at (empty: the engine's own).
-	[Scriptable]
 	public StringView Current()
 	{
 		for (let level in mLevels)
@@ -107,7 +102,6 @@ class RenderQualityFacade
 
 	/// Plays at the level labelled `label` now and keeps the choice; false, and nothing changes,
 	/// for a label the game does not offer.
-	[Scriptable]
 	public bool Set(StringView label)
 	{
 		for (let level in mLevels)
