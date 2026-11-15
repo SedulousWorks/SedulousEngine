@@ -1,8 +1,16 @@
 # Android: the player on phones and tablets
 
-> Status: IN PROGRESS on the `android` branch, 2026-11-15. A1 and A2 are done: the RHI triangle
-> drew on the Pixel 6, and Sky Hopper, exported content-only, plays from its APK (menu, touch
-> controls, the level, music). The phases from A3 on are still the proposal.
+> Status: BUILT on the `android` branch, 2026-11-15, as a port of the C++ mirror's Android series
+> (whose own port of this ran first). A game exports to Android from the editor or
+> `Sedulous.Tools.Export --preset <android preset>` as an APK or App Bundle over the Android
+> template (`Code/Tools/android-app.sh Sedulous.Engine.Player.Android --template`); Sky Hopper's
+> exported app installs and plays on a Pixel 6 (touch, sounds and music, Back, rotation, the
+> background and back); the headless suites run on the phone (`Code/Tools/android-tests.sh`: Core,
+> Json, Messaging, VFS, VFS.Zip, VFS.Pak, Content, Scene, 617 tests). Building for Android needs
+> the Beef fork's `working` until its four fixes are upstream (`fix/android-posix`,
+> `fix/triple-none-vendor`, `fix/devirt-thunk-struct-types`, `fix/android-pipe-folder`). Left: the
+> brief squish on a run's first turn (the backlog), and a game with its own native packages, which
+> the export refuses for Android.
 > Scope: an Android build of the shipping PLAYER and an editor export that makes an APK. The
 > editor, the cook and the tools stay desktop programs.
 
