@@ -4,7 +4,10 @@
 A BeefBuild for Android compiles every project the workspace enables for that platform, and with
 no section of its own every one is enabled: the editor, the tools, the tests, the deprecated UI.
 The sections this writes enable only what the Android targets below reach through their
-dependencies, so an Android build compiles the player's tree and nothing beside it.
+dependencies, so an Android build compiles the player's tree and nothing beside it. The Test
+config's section enables the test suites that run on a phone (Tools/android-tests.sh) instead,
+and each of those suites' project files gets its Android Test section: Beef builds every project
+for Android as a static library unless told it is a test.
 
 Run it from anywhere after adding a target or a dependency to one: it replaces the sections it
 wrote before and leaves the rest of the file as it is.
@@ -17,6 +20,17 @@ import sys
 # as the platform None, and then defines no BF_PLATFORM_ANDROID.
 PLATFORM = "aarch64-linux-android33"
 CONFIGS = ["Debug", "Release", "ShippingRelease"]
+# The headless suites Tools/android-tests.sh runs on a phone, built in the Test config.
+TEST_TARGETS = [
+    "Sedulous.Core.Tests",
+    "Sedulous.Json.Tests",
+    "Sedulous.Messaging.Tests",
+    "Sedulous.VFS.Tests",
+    "Sedulous.VFS.Zip.Tests",
+    "Sedulous.VFS.Pak.Tests",
+    "Sedulous.Content.Tests",
+    "Sedulous.Scene.Tests",
+]
 TARGETS = [
     "Sedulous.Engine.Player.Android",
     "Samples.RHI.Sample001_Triangle",
@@ -39,25 +53,32 @@ def dependencies(name):
     return re.findall(r'"?([\w.\-]+)"?\s*=', inline.group(1)) if inline else []
 
 
-reached = set()
-pending = list(TARGETS)
-while pending:
-    name = pending.pop()
-    if name in reached or name == "corlib":
-        continue
-    if name not in projects:
-        sys.exit(f"android-workspace: '{name}' is not a project of the workspace")
-    reached.add(name)
-    pending += dependencies(name)
+def closure(targets):
+    reached = set()
+    pending = list(targets)
+    while pending:
+        name = pending.pop()
+        if name in reached or name == "corlib":
+            continue
+        if name not in projects:
+            sys.exit(f"android-workspace: '{name}' is not a project of the workspace")
+        reached.add(name)
+        pending += dependencies(name)
+    return reached
 
-disabled = sorted(name for name in projects if name not in reached)
-selections = ", ".join(f'"{name}" = {{Enabled = false}}' for name in disabled)
+
+def section(config, reached):
+    disabled = sorted(name for name in projects if name not in reached)
+    selections = ", ".join(f'"{name}" = {{Enabled = false}}' for name in disabled)
+    return [f'[Configs.{config}."{PLATFORM}"]', 'AllocType = "CRT"', f"ConfigSelections = {{{selections}}}", ""]
+
+
+reached = closure(TARGETS)
+tested = closure(TEST_TARGETS)
 sections = [BEGIN]
 for config in CONFIGS:
-    sections.append(f'[Configs.{config}."{PLATFORM}"]')
-    sections.append('AllocType = "CRT"')
-    sections.append(f"ConfigSelections = {{{selections}}}")
-    sections.append("")
+    sections += section(config, reached)
+sections += section("Test", tested)
 sections.append(END)
 block = "\n".join(sections) + "\n"
 
@@ -66,4 +87,13 @@ if BEGIN in space:
 else:
     space = space.rstrip("\n") + "\n\n" + block
 open(space_path, "w").write(space)
-print(f"android-workspace: {len(reached)} projects enabled for {PLATFORM}, {len(disabled)} disabled")
+
+# A suite's own Android Test section: BuildKind Test, so BeefBuild compiles it as a test executable
+# (its own link then fails here, as no host linker takes Android objects; android-tests.sh links it).
+SUITE_SECTION = f'[Configs.Test."{PLATFORM}"]\nBuildKind = "Test"\n'
+for name in TEST_TARGETS:
+    path = os.path.join(code, projects[name], "BeefProj.toml")
+    text = open(path).read()
+    if f'[Configs.Test."{PLATFORM}"]' not in text:
+        open(path, "w").write(text.rstrip("\n") + "\n\n" + SUITE_SECTION)
+print(f"android-workspace: {len(reached)} projects enabled for {PLATFORM}, {len(tested)} for its tests")

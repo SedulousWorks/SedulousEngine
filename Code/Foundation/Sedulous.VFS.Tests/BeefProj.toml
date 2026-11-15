@@ -9,3 +9,6 @@ StartupObject = "Sedulous.VFS.Tests.Program"
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.VFS" = "*"
+
+[Configs.Test."aarch64-linux-android33"]
+BuildKind = "Test"

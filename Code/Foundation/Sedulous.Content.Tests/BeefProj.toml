@@ -12,3 +12,6 @@ corlib = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Content" = "*"
+
+[Configs.Test."aarch64-linux-android33"]
+BuildKind = "Test"
