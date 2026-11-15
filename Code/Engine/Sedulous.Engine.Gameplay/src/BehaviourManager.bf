@@ -36,6 +36,9 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 
 	/// OWNED instances, in pool order, no holes.
 	private List<T> mDense = new .() ~ delete _;
+	/// Instances marked leaving (MarkLeaving: Scene.RemoveComponent while the scene steps),
+	/// removed by RemoveLeaving. Few, and only within a step.
+	private List<EntityHandle> mLeaving = new .() ~ delete _;
 	/// The owning entity per dense slot.
 	private List<EntityHandle> mOwners = new .() ~ delete _;
 	/// Entity index to dense index.
@@ -178,6 +181,10 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 	/// resolved. Nothing runs on it until the scene simulates.
 	public T Add(EntityHandle entity)
 	{
+		// Taken off and given back before it left, in one step: it was never taken off, so it
+		// keeps its instance and is not destroyed.
+		if (!mLeaving.IsEmpty && Unmark(entity))
+			return mDense[(int)DenseIndex(entity)];
 		let instance = AddUnbound(entity);
 		if (mResources != null)
 			BindReferences(instance, mResources);
@@ -202,10 +209,42 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 	public T Get(EntityHandle entity)
 	{
 		let index = DenseIndex(entity);
-		return (index != cInvalid) ? mDense[(int)index] : null;
+		if ((index == cInvalid) || (!mLeaving.IsEmpty && IsLeaving(entity)))
+			return null;
+		return mDense[(int)index];
 	}
 
-	public override bool HasComponent(EntityHandle entity) => DenseIndex(entity) != cInvalid;
+	public override bool HasComponent(EntityHandle entity) => (DenseIndex(entity) != cInvalid) && (mLeaving.IsEmpty || !IsLeaving(entity));
+
+	public override bool MarkLeaving(EntityHandle entity)
+	{
+		if (DenseIndex(entity) == cInvalid)
+			return false;
+		if (!IsLeaving(entity))
+			mLeaving.Add(entity);
+		return true;
+	}
+
+	public override void RemoveLeaving()
+	{
+		// Taken out first: an OnDestroy may mark more, which a later call removes.
+		let leaving = scope List<EntityHandle>();
+		leaving.AddRange(mLeaving);
+		mLeaving.Clear();
+		for (let entity in leaving)
+			RemoveComponent(entity);
+	}
+
+	private bool IsLeaving(EntityHandle entity) => mLeaving.Contains(entity);
+
+	private bool Unmark(EntityHandle entity)
+	{
+		let at = mLeaving.IndexOf(entity);
+		if (at < 0)
+			return false;
+		mLeaving.RemoveAt(at);
+		return true;
+	}
 
 	public override bool AddDefaultComponent(EntityHandle entity)
 	{
@@ -223,6 +262,8 @@ class BehaviourManager<T> : BehaviourManagerBase, IReplicatedStateSource where T
 		let index = DenseIndex(entity);
 		if (index == cInvalid)
 			return;
+		if (!mLeaving.IsEmpty)
+			Unmark(entity);
 
 		let slot = (int)index;
 		let instance = mDense[slot];

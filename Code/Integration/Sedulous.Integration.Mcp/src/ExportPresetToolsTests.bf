@@ -166,7 +166,6 @@ static class ExportPresetToolsTests
 		let dir = Scratch("mcp_export_preset_quality", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let creators = scope AssetCreatorRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
@@ -177,7 +176,7 @@ static class ExportPresetToolsTests
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
 		ExportPresetTools.Register(server, session);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetCreateTools.Register(server, session, creators, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Levels"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));

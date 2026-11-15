@@ -198,44 +198,41 @@ class SceneManagerTests
 	}
 
 	/// Destroys its own scene through the group from a fixed step, and records whether the
-	/// group read as updating there and whether the scene was still owned at its Update.
-	private class SelfDestroyer : SceneSystem
+	/// group read as updating there.
+	private class OwnSceneDestroyer : SceneSystem
 	{
 		public SceneManager Manager;
 		public Scene Own;
-		public bool UpdatingInStep = false;
-		public bool* OwnedAtUpdate = null;
+		public bool* UpdatingInStep = null;
+		public int* Steps = null;
 		public int* Stops = null;
 
 		public override void OnFixedUpdate(float fixedDeltaTime)
 		{
-			UpdatingInStep = Manager.IsUpdating;
+			*UpdatingInStep = Manager.IsUpdating;
+			(*Steps)++;
 			Manager.DestroyScene(Own);
 			Manager.DestroyScene(Own); // asked twice: freed once
-		}
-
-		public override void OnUpdate(ScenePhase phase, float deltaTime)
-		{
-			if (phase == .Update)
-				*OwnedAtUpdate = Manager.SceneCount == 1;
 		}
 
 		public override void OnSceneStopped() { (*Stops)++; }
 	}
 
 	/// A scene destroyed from inside its own fixed step is not freed under it: the group reads
-	/// as updating through BeginFrame, the scene finishes the frame's Update, and goes once at
-	/// its end.
+	/// as updating through the steps, the scene is stepped to the end of the lane, and it goes
+	/// once after them.
 	[Test]
-	public static void ASceneDestroyedDuringAFixedStepGoesAtTheEndOfUpdate()
+	public static void ASceneDestroyedDuringAFixedStepGoesOnceAfterTheSteps()
 	{
 		let manager = scope SceneManager();
 		Test.Assert(!manager.IsUpdating);
 		let scene = manager.CreateScene("doomed");
 		int stops = 0;
-		bool ownedAtUpdate = false;
-		let system = scene.AddSystem<SelfDestroyer>();
-		system.OwnedAtUpdate = &ownedAtUpdate;
+		int steps = 0;
+		bool updatingInStep = false;
+		let system = scene.AddSystem<OwnSceneDestroyer>();
+		system.UpdatingInStep = &updatingInStep;
+		system.Steps = &steps;
 		system.Manager = manager;
 		system.Own = scene;
 		system.Stops = &stops;
@@ -244,14 +241,11 @@ class SceneManagerTests
 
 		let time = FrameTime(0.05f, 1.0f, 1.0f, 1.0f, 0.02f); // two steps
 		manager.BeginFrame(time);
-		Test.Assert(system.UpdatingInStep, "updating during the fixed steps");
-		Test.Assert(!manager.IsUpdating, "and not after them");
-		Test.Assert((manager.SceneCount == 1) && manager.IsActive(scene), "still there after the steps");
-
-		manager.Update(time);
 		// The system went with its scene: what it saw is read through the locals it wrote.
-		Test.Assert(ownedAtUpdate, "it finished its frame");
-		Test.Assert(manager.SceneCount == 0, "gone at the end of Update");
+		Test.Assert(updatingInStep, "updating during the fixed steps");
+		Test.Assert(!manager.IsUpdating, "and not after them");
+		Test.Assert(steps == 2, "the lane stepped the scene to its end");
+		Test.Assert(manager.SceneCount == 0, "gone once the steps were done");
 		Test.Assert(stops == 1, "stopped and freed once");
 	}
 

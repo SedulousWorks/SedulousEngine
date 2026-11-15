@@ -37,14 +37,13 @@ static class AssetRenameToolTests
 		defer RemoveDirectoryRecursive(dir);
 
 		PipelineRegistration.RegisterPipelineTypes();
-		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
-		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let operations = scope InlineProjectOperations(session, builders, "");
 		AssetRenameTool.Register(server, session, operations);
 
 		let noProject = scope String();

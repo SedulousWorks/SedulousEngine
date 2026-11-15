@@ -359,7 +359,7 @@ class GamePageTests
 	public static void ARelaunchReadsWhetherTheTabRunsAndPlaysItAgainFromItsStart()
 	{
 		let factory = scope PieProbeFactory();
-		let bed = scope Bed(true);
+		let bed = scope Bed(null, false, true);
 		bed.TabRun.Register<IGameFactory>(factory);
 		bed.AddDefaultScene("Level", false);
 		Test.Assert(!bed.Page.RelaunchRuns);
@@ -604,10 +604,8 @@ class GamePageTests
 		}
 	}
 
-	/// A start whose default scene does not load undoes itself as Stop does: what it wired to
-	/// the tab for the run (the breakpoint sync, the hover values, the debugger's listener) goes
-	/// with it, so nothing reaches the tab once it closes. Stop returned at once for a tab that
-	/// was not running, and they stayed.
+	/// A start whose default scene does not load undoes itself as Stop does: what it made for the
+	/// run (its scene) goes with it, so nothing of it reaches the tab once it closes.
 	[Test]
 	public static void AStartWhoseDefaultSceneDoesNotLoadLeavesNothingWiredToTheTab()
 	{
@@ -622,8 +620,6 @@ class GamePageTests
 		bed.Page.Play();
 		bed.Page.OnUpdate(bed.Host, 1.0f / 60.0f); // the start runs, and fails on the scene
 		Test.Assert(!bed.Page.IsRunning);
-		Test.Assert(bed.Context.OnBreakpointsChanged == null, "the breakpoint sync is undone with the start");
-		Test.Assert(bed.Context.ScriptValueProbe == null, "and the hover values");
-		Test.Assert(run.Scenes.ActiveScenes.Length == 0, "and its scene");
+		Test.Assert(run.Scenes.ActiveScenes.Length == 0, "its scene is undone with the start");
 	}
 }

@@ -1,20 +1,22 @@
 using System;
 using System.Collections;
+using Sedulous.Run;
 using Sedulous.Engine.GameInstance;
 
-namespace Sedulous.Engine.GameScript.Tests;
+namespace Sedulous.Engine.GameInstance.Tests;
 
-/// `RenderQuality` to a game script: it lists the levels its run offers, reads the one it plays
+/// `RenderQuality` to a game's code: it lists the levels its run offers, reads the one it plays
 /// at and switches to another by its label, through the run's facade, whose choose hook (the
 /// host's: the player plays at the level and keeps the choice) hears it. A label the run does
 /// not offer is refused, and a run that offers none lists nothing.
 class RenderQualityFacadeRunTests
 {
 	[Test]
-	public static void AGameScriptListsTheLevelsReadsTheCurrentOneAndSwitchesByLabel()
+	public static void GameCodeListsTheLevelsReadsTheCurrentOneAndSwitchesByLabel()
 	{
-		let run = scope GameRun("scratch_quality_run");
-		let quality = run.Instance.Quality;
+		let instance = scope GameInstance();
+		let quality = instance.Quality;
+		Test.Assert(RunServices.Get<RenderQualityFacade>(instance) === quality, "a service of the run");
 		let low = Guid(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 		let medium = Guid(2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 		let high = Guid(3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -25,39 +27,20 @@ class RenderQualityFacadeRunTests
 		let played = scope List<Guid>();
 		quality.SetOnChoose(new [&] (id) => { played.Add(id); });
 
-		let game = run.Class("Game", """
-			class Game
-			{
-				string listed = "";
-				string before = "";
-				string after = "";
-				bool switched = false;
-				bool refused = true;
-				void launch()
-				{
-					for (int i = 0; i < RenderQuality.Count(); i++)
-					{
-						if (i > 0)
-							listed += ",";
-						listed += RenderQuality.Label(i);
-					}
-					before = RenderQuality.Current();
-					switched = RenderQuality.Set("Low");
-					refused = RenderQuality.Set("Ultra");
-					after = RenderQuality.Current();
-				}
-			}
-			""");
-		Test.Assert(run.Instance.StartScript(game));
-		run.Step();
-		Test.Assert(run.Prop("listed").AsString == "Low,Medium,High", scope String(run.Prop("listed").AsString));
-		Test.Assert(run.Prop("before").AsString == "High");
-		Test.Assert(run.PropBool("switched"));
-		Test.Assert(!run.PropBool("refused"), "Ultra is not offered");
-		Test.Assert(run.Prop("after").AsString == "Low");
+		let listed = scope String();
+		for (int32 i < quality.Count())
+		{
+			if (i > 0)
+				listed.Append(",");
+			listed.Append(quality.Label(i));
+		}
+		Test.Assert(listed == "Low,Medium,High", listed);
+		Test.Assert(quality.Current() == "High");
+		Test.Assert(quality.Set("Low"));
+		Test.Assert(!quality.Set("Ultra"), "Ultra is not offered");
+		Test.Assert(quality.Current() == "Low");
 		Test.Assert(quality.CurrentId == low);
 		Test.Assert((played.Count == 1) && (played[0] == low), "the refused set asked for nothing");
-		run.Instance.StopScript();
 
 		// A run that offers none lists nothing, reads an empty label and refuses a set.
 		quality.Clear();
