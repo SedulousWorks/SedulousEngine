@@ -163,6 +163,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   took the files of a `Rock.2` beside it (the name the editor gives a second `Rock`), and an export
   that pruned or stripped `Rock` dropped or packed `Rock.2`'s as well. A data stream's name may no
   longer contain a dot.
+- GUI: a widget made at the address of a destroyed one styled outside any GUI starts with its own
+  style; it took the old widget's cached style and transitioned from it.
 - GUI: an event handler that removes its own node (the last reference to it) no longer leaves
   the dispatch reading freed memory: wheel, pointer move and press keep their nodes alive to the
   end, and a node's own listeners keep it alive while they run.

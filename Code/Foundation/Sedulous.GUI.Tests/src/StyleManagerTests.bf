@@ -679,4 +679,37 @@ class StyleManagerTests
 		Test.Assert(styles.LastRestyleCount == 0); // a list rebuilding its rows restyled itself every frame
 		Test.Assert(list.GetChildAt(0) == firstRow); // its rows were not made again
 	}
+
+	/// A widget at a destroyed widget's address does not take its style entries. A widget styled
+	/// outside any GUI had nothing to check its entries against: a later widget at its address took
+	/// them, and its first style transitioned from the old widget's.
+	[Test]
+	public static void AWidgetAtADestroyedWidgetsAddressDoesNotTakeItsEntries()
+	{
+		let mgr = scope StyleManager(Sheet("button { transition: opacity 10s; } .a { opacity: 0.2; } .b { opacity: 0.9; }", scope StyleSheet()));
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		UIWidget reused = null;
+		for (int attempt = 0; (attempt < 64) && (reused == null); attempt++)
+		{
+			let old = NewTagged("button", .(0.0f, 0.0f), .(10.0f, 10.0f));
+			old.AddClass("a");
+			mgr.ApplyTree(old); // in no GUI
+			let address = Internal.UnsafeCastToPtr(old);
+			old.ReleaseRef();
+			let fresh = NewTagged("button", .(0.0f, 0.0f), .(10.0f, 10.0f));
+			if (Internal.UnsafeCastToPtr(fresh) == address)
+				reused = fresh;
+			else
+				fresh.ReleaseRef();
+		}
+		// No address reused (an allocator that holds freed memory back): nothing to check.
+		if (reused == null)
+			return;
+		defer reused.ReleaseRef();
+		reused.AddClass("b");
+		root.AddChild(reused);
+		mgr.ApplyTree(root);
+		Test.Assert(Near(reused.Alpha, 0.9f)); // its first style, not a transition
+	}
 }

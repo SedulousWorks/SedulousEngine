@@ -114,10 +114,13 @@ class StyleManager
 		public Sedulous.GUI.StyleSheet Sheet = new .() ~ delete _;
 	}
 
-	// Whose entries an address's are: the widget's place in its GUI's element table when they were
-	// made (the table held, so a closed GUI's reads as gone, not freed).
+	// Whose entries an address's are: the widget's serial, and its place in its GUI's element table
+	// when they were made. The serial tells a later widget at the same address apart; the place
+	// lets a sweep find widgets that are gone (the table held, so a closed GUI's reads as gone, not
+	// freed).
 	private class Owner
 	{
+		public uint64 Serial = 0;
 		public ElementTable Table ~ _?.ReleaseRef();
 		public uint32 Slot = 0;
 		public uint32 Generation = 0;
@@ -1255,13 +1258,12 @@ class StyleManager
 		mRelationsKnown = true;
 	}
 
-	// Whether the entries at `widget`'s address are its own: none yet, or made for it (a widget in
-	// no GUI has nothing to check against, and keeps them).
+	// Whether the entries at `widget`'s address are its own: none yet, or made for it.
 	private bool IsOwn(Node widget)
 	{
 		if (!mOwners.TryGetValue(KeyOf(widget), let owner))
 			return true;
-		return (owner.Table == null) || (owner.Table.Resolve(owner.Slot, owner.Generation) == widget);
+		return owner.Serial == widget.Serial;
 	}
 
 	// Makes the entries at `widget`'s address its own, dropping a destroyed widget's first.
@@ -1274,6 +1276,7 @@ class StyleManager
 			return;
 		let elementRef = widget.TakeElementRef();
 		let owner = new Owner();
+		owner.Serial = widget.Serial;
 		owner.Table = elementRef.Table;
 		if (owner.Table != null)
 			owner.Table.AddRef();

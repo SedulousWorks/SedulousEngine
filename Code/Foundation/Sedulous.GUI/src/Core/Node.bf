@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.VG;
@@ -1720,6 +1721,13 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	// The tree owns its nodes. Anything else holds one weakly: a slot and a generation in its GUI's
 	// element table, resolved on every use (Element<T> natively, a handle in a script), reading as
 	// gone once the node is destroyed.
+
+	private static int64 sNextSerial;
+	private uint64 mSerial = (uint64)Interlocked.Increment(ref sNextSerial);
+
+	/// A number no other node of this process has or had, set at construction: an address can be
+	/// reused by a later node, this cannot.
+	public uint64 Serial => mSerial;
 
 	/// This node's place in its GUI's element table, taking a slot the first time; an empty ref
 	/// (null table) for a node in no GUI.
