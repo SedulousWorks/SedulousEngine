@@ -343,4 +343,94 @@ class CodeEditorTests
 		Test.Assert(editor.TabSize == 2);
 		Test.Assert(editor.IsReadOnly);
 	}
+
+	private static MenuItem ItemNamed(Menu menu, StringView text)
+	{
+		for (int i = 0; i < menu.ChildCount; i++)
+		{
+			if ((menu.GetChildAt(i) is MenuItem) && ((MenuItem)menu.GetChildAt(i)).Text == text)
+				return (MenuItem)menu.GetChildAt(i);
+		}
+		return null;
+	}
+
+	private static void RightClick(CodeBed bed, Float2 at)
+	{
+		bed.D.InjectMouseMove(at);
+		bed.D.InjectMouseDown(at, .Right);
+		bed.D.InjectMouseUp(at, .Right);
+	}
+
+	/// A right click in the code did nothing.
+	[Test]
+	public static void ARightClickOpensItsEditMenuWithEachCommandsKeysAtTheClick()
+	{
+		let bed = scope CodeBed(default, "int a;\nint b;", 240.0f, true);
+		bed.Editor.SetCaret(At(0, 0));
+		RightClick(bed, bed.Over(At(1, 2)));
+		let menu = bed.Editor.ContextMenu;
+		Test.Assert(menu != null);
+		Test.Assert(menu.IsOpen);
+		Test.Assert(bed.Caret == At(1, 2)); // outside any selection: the caret moves to the click
+
+		let undo = ItemNamed(menu, "Undo");
+		let copy = ItemNamed(menu, "Copy");
+		let paste = ItemNamed(menu, "Paste");
+		let comment = ItemNamed(menu, "Toggle comment");
+		Test.Assert((undo != null) && (copy != null) && (paste != null) && (comment != null));
+		Test.Assert(ItemNamed(menu, "Redo") != null);
+		Test.Assert(ItemNamed(menu, "Cut") != null);
+		Test.Assert(ItemNamed(menu, "Select all") != null);
+		Test.Assert(!undo.Enabled); // nothing edited yet
+		Test.Assert(copy.Enabled); // with no selection, the caret's line
+		Test.Assert(!paste.Enabled); // the clipboard is empty
+		Test.Assert(!comment.Enabled); // no language, so no comment syntax
+		Test.Assert(copy.Shortcut.Length != 0);
+
+		copy.HandleActivate();
+		Test.Assert(bed.Clipboard.Text == "int b;\n");
+	}
+
+	[Test]
+	public static void ARightClickInsideTheSelectionKeepsIt()
+	{
+		let bed = scope CodeBed(default, "int alpha;", 240.0f, true);
+		CodeSelection[1] word = .(.(At(0, 4), At(0, 9)));
+		bed.Editor.SetSelections(word);
+		RightClick(bed, bed.Over(At(0, 6)));
+		Test.Assert(bed.Editor.ContextMenu != null);
+		Test.Assert(bed.Editor.Primary == word[0]);
+		let cut = ItemNamed(bed.Editor.ContextMenu, "Cut");
+		Test.Assert(cut != null);
+		cut.HandleActivate();
+		bed.CheckText("int ;");
+		Test.Assert(bed.Clipboard.Text == "alpha");
+	}
+
+	[Test]
+	public static void TheHostAddsItsItemsToTheContextMenuForTheClickedLine()
+	{
+		let bed = scope CodeBed(default, "a\nb\nc", 240.0f, true);
+		uint32 toggled = 99;
+		bed.Editor.SetOnContextMenu(new [&toggled] (menu, line) =>
+			{
+				menu.AddItem("Toggle breakpoint", new [&toggled, =line] () => { toggled = line; });
+			});
+		RightClick(bed, bed.Over(At(2, 0)));
+		Test.Assert(bed.Editor.ContextMenu != null);
+		let item = ItemNamed(bed.Editor.ContextMenu, "Toggle breakpoint");
+		Test.Assert(item != null);
+		item.HandleActivate();
+		Test.Assert(toggled == 2);
+		// Opened again, the host's item is there once.
+		RightClick(bed, bed.Over(At(1, 0)));
+		let menu = bed.Editor.ContextMenu;
+		int count = 0;
+		for (int i = 0; i < menu.ChildCount; i++)
+		{
+			if ((menu.GetChildAt(i) is MenuItem) && ((MenuItem)menu.GetChildAt(i)).Text == "Toggle breakpoint")
+				count++;
+		}
+		Test.Assert(count == 1);
+	}
 }

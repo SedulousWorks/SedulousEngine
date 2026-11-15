@@ -85,6 +85,10 @@ class ScriptEditorPage : CodeAssetPage
 					mBreakpoints.Add(code.AddMarker((uint32)(breakpoint.Line - 1), "breakpoint"));
 			}
 			code.SetOnGutterClick(new [=this] (line) => { ToggleBreakpoint(line); });
+			code.SetOnContextMenu(new [=this] (menu, line) =>
+				{
+					menu.AddItem("Toggle breakpoint", new [=this, =line] () => { ToggleBreakpoint(line); });
+				});
 		}
 
 		// The API browser: its parts found while it is in the page, then out of the splitter until

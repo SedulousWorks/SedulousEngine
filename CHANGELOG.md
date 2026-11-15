@@ -9,6 +9,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Editor: a right click in a script, shader or GUI page's code opens a menu of its edit
+  commands (Undo, Redo, Cut, Copy, Paste, Select all, Toggle comment), each with its keys; a
+  script page adds Toggle breakpoint for the line. The click moves the caret unless it lands in
+  the selection.
 - Rendering: the player draws its frame turned for a display that presents turned (a phone held
   away from its natural orientation), so the display has nothing to turn (pre-rotation); its scene,
   its screens and a screenshot follow the turn, and the pointer is unchanged. A window asks for it

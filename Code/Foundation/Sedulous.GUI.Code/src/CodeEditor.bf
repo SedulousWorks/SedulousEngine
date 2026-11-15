@@ -287,6 +287,9 @@ class CodeEditor : UIWidget
 	private uint32 mLastMarker = 0;
 	private List<Diagnostic> mDiagnostics = new .() ~ DeleteContainerAndItems!(_);
 	private delegate void(uint32 line) mOnGutterClick ~ delete _;
+	private delegate void(Menu menu, uint32 line) mOnContextMenu ~ delete _;
+	// Made on the first right click, filled again on each.
+	private Menu mContextMenu = null ~ _?.ReleaseRef();
 	// The diagnostics under the pointer, and what the service says there.
 	private String mHoverTip = new .() ~ delete _;
 	private ICodeLanguageService mService = null;
@@ -1386,6 +1389,17 @@ class CodeEditor : UIWidget
 		mOnGutterClick = callback;
 	}
 
+	/// Adds the host's items to the context menu, after the editor's own, each time it opens:
+	/// `line` is the 0-based line the right click landed on. OWNERSHIP of `callback` transfers.
+	public void SetOnContextMenu(delegate void(Menu menu, uint32 line) callback)
+	{
+		delete mOnContextMenu;
+		mOnContextMenu = callback;
+	}
+
+	/// The context menu, once a right click has made it.
+	public Menu ContextMenu => mContextMenu;
+
 	/// Sets the diagnostics (a host's whole set, each time it has one); they keep their places
 	/// through edits until the next set. The caller keeps `diagnostics`.
 	public void SetDiagnostics(Span<CodeDiagnostic> diagnostics)
@@ -2006,6 +2020,86 @@ class CodeEditor : UIWidget
 		// A key that types is its own (it neither activates nor moves focus).
 		if (((mods & (KeyModCtrl | KeyModAlt | KeyModSuper)) == 0) && ((key == .Space) || ((key >= .A) && (key <= .Num9))))
 			e.Handled = true;
+	}
+
+	// A right click opens the editor's menu (undo and redo, the clipboard's commands, select all,
+	// toggle comment, each showing its keys), then the host's items. It moves the caret to the
+	// click unless the click lands inside a selection.
+	protected override void OnContextMenu(MouseEvent e)
+	{
+		if (!IsTreeEnabled || FromCompletion(e))
+			return;
+		e.Handled = true;
+		CloseCompletion();
+		RequestFocus();
+		let at = PositionAt(ConvertToNodeSpace(e.Position));
+		bool insideSelection = false;
+		for (let s in mSelections)
+		{
+			let range = s.Range;
+			insideSelection = insideSelection || (!s.IsEmpty && (range.Start <= at) && (at <= range.End));
+		}
+		if (!insideSelection)
+		{
+			mDoc.BreakMerge();
+			CodeSelection[1] one = .(.(at, at));
+			SetSelections(one);
+		}
+
+		if (mContextMenu == null)
+		{
+			mContextMenu = new Menu();
+			mContextMenu.SetAutoWidth(true);
+		}
+		mContextMenu.ClearItems();
+		// Each shows the keys bound to its command in the editor's own contexts.
+		let contexts = scope List<KeyContextLayer>();
+		defer { ClearAndDeleteItems!(contexts); }
+		let scene = SceneRoot;
+		if (scene != null)
+			scene.KeyContextsAt(this, contexts);
+		let clipboard = Clipboard;
+		let hasText = (mDoc.LineCount > 1) || !mDoc.LineText(0).IsEmpty;
+		AddMenuEdit("Undo", "gui.undo", .Undo, !mReadOnly && mDoc.CanUndo, contexts);
+		AddMenuEdit("Redo", "gui.redo", .Redo, !mReadOnly && mDoc.CanRedo, contexts);
+		mContextMenu.AddSeparator();
+		// With no selection, Cut and Copy take the caret's line, so they need only text.
+		AddMenuEdit("Cut", "gui.cut", .Cut, !mReadOnly && hasText, contexts);
+		AddMenuEdit("Copy", "gui.copy", .Copy, hasText, contexts);
+		AddMenuEdit("Paste", "gui.paste", .Paste, !mReadOnly && (clipboard != null) && clipboard.HasText, contexts);
+		mContextMenu.AddSeparator();
+		AddMenuEdit("Select all", "gui.select-all", .SelectAll, hasText, contexts);
+		AddMenuItem("Toggle comment", "gui.toggle-comment", cCodeToggleComment, !mReadOnly && (mLanguage != null),
+			new [=this] () => { ToggleComment(); }, contexts);
+		if (mOnContextMenu != null)
+		{
+			mContextMenu.AddSeparator();
+			mOnContextMenu(mContextMenu, at.Line);
+		}
+		let root = RootNode;
+		mContextMenu.Open(this, (root != null) ? root.ConvertToNodeSpace(e.Position) : e.Position);
+	}
+
+	private void AddMenuEdit(StringView label, StringView key, TextEditCommand command, bool enabled, List<KeyContextLayer> contexts)
+	{
+		AddMenuItem(label, key, TextEditCommandName(command), enabled, new [=this, =command] () => { Run(command); }, contexts);
+	}
+
+	// Its label translated where the GUI's tables have its key, otherwise English. OWNERSHIP of
+	// `run` transfers.
+	private void AddMenuItem(StringView label, StringView key, StringView command, bool enabled, delegate void() run,
+		List<KeyContextLayer> contexts)
+	{
+		let item = mContextMenu.AddItem(label, run);
+		item.BindTranslation("text", key, null, null, Span<Node.TranslationArgument>(), label);
+		item.Enabled = enabled;
+		let scene = SceneRoot;
+		if (scene != null)
+		{
+			let shortcut = scope String();
+			scene.Context.Keymap.ShortcutText(command, (Span<KeyContextLayer>)contexts, shortcut);
+			item.Shortcut = shortcut;
+		}
 	}
 
 	protected override void OnMouseDown(MouseEvent e)
