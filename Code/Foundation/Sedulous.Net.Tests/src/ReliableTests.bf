@@ -599,6 +599,79 @@ class ReliableTests
 		Test.Assert(CountKind(server, .Received) == 1);
 	}
 
+	/// One Data packet carrying one fragment of `bytes` bytes, through a raw socket, and the
+	/// server's update after it.
+	private static void DeliverFragment(SimDatagramNetwork network, IDatagramSocket raw, ReliableTransport server,
+		DatagramEndpoint serverEndpoint, uint32 token, ref uint16 seq, ref uint16 id, uint32 group, uint32 index,
+		uint32 count, uint32 bytes)
+	{
+		let writer = scope BitWriter();
+		writer.WriteU16(0xDCE8);
+		writer.WriteU8(2);
+		writer.WriteU32(token);
+		writer.WriteU16(seq);
+		seq++;
+		writer.WriteBool(false); // no ack
+		writer.WriteVarU32(1);
+		writer.WriteU8(0); // channel
+		writer.WriteBool(true); // reliable
+		writer.WriteU16(id);
+		id++;
+		writer.WriteBool(true); // fragmented
+		writer.WriteVarU32(group);
+		writer.WriteVarU32(index);
+		writer.WriteVarU32(count);
+		writer.WriteVarU32(bytes);
+		for (uint32 b = 0; b < bytes; b++)
+			writer.WriteU8((uint8)b);
+		raw.Send(serverEndpoint, writer.Data);
+		network.Advance(10.0f);
+		server.Update(10.0f);
+	}
+
+	/// A fragmented message over MaxMessageBytes is not reassembled. The limit was checked when
+	/// sending only: a peer's fragments were appended without end.
+	[Test]
+	public static void AFragmentedMessageOverMaxMessageBytesIsNotReassembled()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let raw = network.CreateSocket();
+		let serverSocket = network.CreateSocket();
+		var config = ReliableConfig();
+		config.MaxMessageBytes = 4096;
+		let server = scope ReliableTransport(serverSocket, config);
+		server.SetAccepting(true);
+		let endpoint = serverSocket.LocalEndpoint;
+		Test.Assert(RawConnect(network, raw, server, endpoint, 7));
+		Test.Assert(CountKind(server, .Connected) == 1);
+
+		uint16 seq = 0;
+		uint16 id = 0;
+		// Six fragments of 1000 bytes: 6000, over 4096.
+		for (uint32 i < 6)
+			DeliverFragment(network, raw, server, endpoint, 7, ref seq, ref id, 1, i, 6, 1000);
+		// A first fragment claiming more pieces than 4096 bytes can hold.
+		DeliverFragment(network, raw, server, endpoint, 7, ref seq, ref id, 2, 0, 100000, 10);
+		Test.Assert(CountKind(server, .Received) == 0);
+
+		// Then one that fits: delivered whole.
+		for (uint32 i < 3)
+			DeliverFragment(network, raw, server, endpoint, 7, ref seq, ref id, 3, i, 3, 1000);
+		var received = 0;
+		var size = 0;
+		let event = scope NetEvent();
+		while (server.Poll(event))
+		{
+			if (event.Kind == .Received)
+			{
+				received++;
+				size = event.Payload.Count;
+			}
+		}
+		Test.Assert(received == 1);
+		Test.Assert(size == 3000);
+	}
+
 	[Test]
 	public static void TheHandshakeConnectsBothSides()
 	{

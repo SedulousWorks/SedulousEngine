@@ -306,3 +306,5 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Networking: at most 1024 reliable messages are in flight to a peer, and a receiver buffers none
   further ahead; a peer that leaves more than `MaxQueuedReliable` (16384) unacknowledged is
   disconnected.
+- Networking: a received message is held to `MaxMessageBytes` as a sent one is; a peer's fragments
+  past it are dropped instead of reassembled without limit.

@@ -201,6 +201,8 @@ class ReliableTransport : INetTransport
 	private uint64 mCookieSecret = 0;
 	private List<QueuedEvent> mEvents = new .() ~ DeleteContainerAndItems!(_);
 	private int mEventHead = 0;
+	/// The first oversized reassembly is logged.
+	private bool mOversizedLogged = false;
 
 	/// Scratch reused across receives, so draining a tick does not allocate per datagram.
 	private List<uint8> mReceiveBuffer = new .() ~ delete _;
@@ -1066,6 +1068,16 @@ class ReliableTransport : INetTransport
 		}
 	}
 
+	private void LogOversizedMessage(Connection connection)
+	{
+		if (!mOversizedLogged)
+		{
+			GlobalLog(.Warning, "Net: peer {}: a fragmented message over MaxMessageBytes {}, dropped",
+				connection.Peer, mConfig.MaxMessageBytes);
+			mOversizedLogged = true;
+		}
+	}
+
 	/// One reliable message, in order. A whole message is delivered as it is; a fragment is
 	/// appended to the reassembly and the whole goes up when the last one lands.
 	private void ReleaseMessage(Connection connection, uint8 channel, bool fragmented,
@@ -1080,6 +1092,14 @@ class ReliableTransport : INetTransport
 		let reassembly = connection.Reassembly;
 		if (fragIndex == 0)
 		{
+			// Every fragment carries at least a byte, so more fragments than MaxMessageBytes
+			// cannot make a message this end takes.
+			if ((fragCount == 0) || (fragCount > mConfig.MaxMessageBytes))
+			{
+				reassembly.Reset();
+				LogOversizedMessage(connection);
+				return;
+			}
 			reassembly.Reset();
 			reassembly.Active = true;
 			reassembly.Group = fragGroup;
@@ -1096,6 +1116,14 @@ class ReliableTransport : INetTransport
 			return;
 		}
 
+		if ((reassembly.Data.Count + payload.Length) > (int)mConfig.MaxMessageBytes)
+		{
+			// Bigger than a message may be: the sender's limit is this end's, so this is a peer
+			// not keeping to it. What it sent so far is let go, and the rest is dropped.
+			reassembly.Reset();
+			LogOversizedMessage(connection);
+			return;
+		}
 		reassembly.Data.AddRange(payload);
 		reassembly.NextIndex++;
 		if (reassembly.NextIndex >= reassembly.Count)
