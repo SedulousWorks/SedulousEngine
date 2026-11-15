@@ -9,6 +9,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Scripting: the `script_declarations` MCP tool writes the bound script API as the declarations file
+  an external editor reads (`as.predefined`), so VS Code and the like complete and check a project's
+  scripts.
 - Editor: a right click in a script, shader or GUI page's code opens a menu of its edit
   commands (Undo, Redo, Cut, Copy, Paste, Select all, Toggle comment), each with its keys; a
   script page adds Toggle breakpoint for the line. The click moves the caret unless it lands in

@@ -91,6 +91,11 @@ abstract class ScriptRuntime
 	/// Drops a module and everything compiled into it.
 	public virtual void DiscardModule(StringView moduleName) {}
 
+	/// The bound API as the declarations file an external editor reads to complete and check
+	/// scripts: its file name into `outFileName` (empty for a backend that writes none) and its
+	/// text into `outText`. From what this runtime bound, so exactly what a script compiles against.
+	public virtual void Declarations(String outFileName, String outText) {}
+
 	/// Whether anything still runs code of the module: a call under way, an instance of one of
 	/// its classes, a coroutine of it, a delegate to one of its functions. Discarding a module
 	/// resets its globals, so one in use must stay. True when the runtime cannot tell.

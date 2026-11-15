@@ -119,6 +119,150 @@ size_t asc_memory_held(void) { return g_memoryHeld.load(std::memory_order_relaxe
 
 /* ---- engine ---- */
 
+const char* asc_engine_declarations(asc_engine* handle)
+{
+	static thread_local std::string out;
+	out.clear();
+	asIScriptEngine* engine = reinterpret_cast<asIScriptEngine*>(handle);
+	if (engine == nullptr)
+		return out.c_str();
+	struct Section
+	{
+		std::string space; /* the namespace, a::b, empty for the global one */
+		std::string body;
+	};
+	std::vector<Section> sections;
+	auto body = [&](const char* space) -> std::string&
+	{
+		const std::string name = space != nullptr ? space : "";
+		for (Section& section : sections)
+		{
+			if (section.space == name)
+				return section.body;
+		}
+		sections.push_back(Section{name, std::string()});
+		return sections.back().body;
+	};
+	for (asUINT i = 0; i < engine->GetEnumCount(); ++i)
+	{
+		asITypeInfo* type = engine->GetEnumByIndex(i);
+		std::string& text = body(type->GetNamespace());
+		text += "enum ";
+		text += type->GetName();
+		text += "\n{\n";
+		for (asUINT v = 0; v < type->GetEnumValueCount(); ++v)
+		{
+			int value = 0;
+			const char* valueName = type->GetEnumValueByIndex(v, &value);
+			text += "    ";
+			text += valueName;
+			text += " = ";
+			text += std::to_string(static_cast<long long>(value));
+			text += ",\n";
+		}
+		text += "}\n\n";
+	}
+	for (asUINT i = 0; i < engine->GetFuncdefCount(); ++i)
+	{
+		asITypeInfo* type = engine->GetFuncdefByIndex(i);
+		asIScriptFunction* signature = type->GetFuncdefSignature();
+		if (type->GetParentType() != nullptr || signature == nullptr)
+			continue;
+		std::string& text = body(type->GetNamespace());
+		text += "funcdef ";
+		text += signature->GetDeclaration(false, false, true);
+		text += ";\n\n";
+	}
+	for (asUINT i = 0; i < engine->GetObjectTypeCount(); ++i)
+	{
+		asITypeInfo* type = engine->GetObjectTypeByIndex(i);
+		std::string& text = body(type->GetNamespace());
+		text += "class ";
+		text += type->GetName();
+		if (type->GetSubTypeCount() > 0)
+			text += "<T>";
+		text += "\n{\n";
+		for (asUINT b = 0; b < type->GetBehaviourCount(); ++b)
+		{
+			asEBehaviours behaviour = asBEHAVE_CONSTRUCT;
+			asIScriptFunction* made = type->GetBehaviourByIndex(b, &behaviour);
+			if (made == nullptr || (behaviour != asBEHAVE_CONSTRUCT && behaviour != asBEHAVE_FACTORY))
+				continue;
+			const std::string decl = made->GetDeclaration(false, false, true);
+			const size_t open = decl.find('(');
+			if (open == std::string::npos)
+				continue;
+			text += "    ";
+			text += type->GetName();
+			text += decl.substr(open);
+			text += ";\n";
+		}
+		for (asUINT p = 0; p < type->GetPropertyCount(); ++p)
+		{
+			text += "    ";
+			text += type->GetPropertyDeclaration(p, true);
+			text += ";\n";
+		}
+		for (asUINT m = 0; m < type->GetMethodCount(); ++m)
+		{
+			asIScriptFunction* method = type->GetMethodByIndex(m, false);
+			text += "    ";
+			text += method->GetDeclaration(false, false, true);
+			if (method->IsProperty())
+				text += " property"; /* read as `entity.Scene`, not get_Scene() */
+			text += ";\n";
+		}
+		text += "}\n\n";
+	}
+	for (asUINT i = 0; i < engine->GetGlobalFunctionCount(); ++i)
+	{
+		asIScriptFunction* function = engine->GetGlobalFunctionByIndex(i);
+		std::string& text = body(function->GetNamespace());
+		text += function->GetDeclaration(false, false, true);
+		if (function->IsProperty())
+			text += " property";
+		text += ";\n";
+	}
+	for (asUINT i = 0; i < engine->GetGlobalPropertyCount(); ++i)
+	{
+		const char* name = nullptr;
+		const char* space = nullptr;
+		int typeId = 0;
+		bool isConst = false;
+		if (engine->GetGlobalPropertyByIndex(i, &name, &space, &typeId, &isConst) < 0)
+			continue;
+		std::string& text = body(space);
+		if (isConst)
+			text += "const ";
+		text += engine->GetTypeDeclaration(typeId, true);
+		text += " ";
+		text += name;
+		text += ";\n";
+	}
+	out += "// Engine API declarations (as.predefined), written from what the engine bound. "
+	       "Do not edit: write them again after the engine changes.\n\n";
+	for (const Section& section : sections)
+	{
+		size_t depth = 0;
+		std::string rest = section.space;
+		while (!rest.empty())
+		{
+			const size_t cut = rest.find("::");
+			const std::string part = cut == std::string::npos ? rest : rest.substr(0, cut);
+			rest = cut == std::string::npos ? std::string() : rest.substr(cut + 2);
+			out += "namespace ";
+			out += part;
+			out += "\n{\n";
+			++depth;
+		}
+		out += section.body;
+		for (size_t d = 0; d < depth; ++d)
+			out += "}\n";
+		out += "\n";
+	}
+	return out.c_str();
+}
+
 asc_engine* asc_engine_create(void)
 {
 	asc_memory_install();

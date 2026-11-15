@@ -1,13 +1,14 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Script;
 
 namespace Sedulous.Mcp.Script;
 
-/// The scripting tool contribution: script_api.
+/// The scripting tool contribution: script_api and script_declarations.
 ///
 /// Dumps the PER BACKEND bound API: the exact script visible names and signatures a language
 /// actually bound, spelled the way a script writes them, so an agent writes a correct script
@@ -26,7 +27,7 @@ static class ScriptTools
 		public ScriptSurface Surface;
 	}
 
-	/// Registers script_api against `server`. `surface` is the surface each backend binds,
+	/// Registers script_api and script_declarations against `server`. `surface` is the surface each backend binds,
 	/// the pipeline surface in a cooking host, and must outlive the server.
 	public static void Register(McpServer server, ScriptSurface surface)
 	{
@@ -42,6 +43,73 @@ static class ScriptTools
 			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => ScriptApi(context, arguments, outResult, outError),
 			context);
+
+		let declarations = scope SchemaBuilder();
+		declarations.Str("directory", "the folder to write into (the project's folder, say)", true);
+		declarations.Str("language", "backend language id (e.g. \"angelscript\"); default: all");
+		server.RegisterTool("script_declarations",
+			"""
+			Writes each backend's bound scripting API as the declarations file an external editor reads to complete and check scripts (AngelScript's as.predefined) into 'directory', usually the project's folder. Write them again after the engine changes. Optional 'language' writes one.
+			""",
+			declarations.Build(), .Overwrites,
+			new (arguments, outResult, outError) => ScriptDeclarations(context, arguments, outResult, outError));
+	}
+
+	private static bool ScriptDeclarations(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	{
+		let directory = scope String();
+		let wanted = scope String();
+		if ((arguments.Get("directory") != null) && arguments.Get("directory").IsString)
+			directory.Set(arguments.Get("directory").AsString());
+		if ((arguments.Get("language") != null) && arguments.Get("language").IsString)
+			wanted.Set(arguments.Get("language").AsString());
+		if (directory.IsEmpty || !DirectoryExists(directory))
+		{
+			outError.AppendF("no such folder '{}'", directory);
+			return false;
+		}
+
+		let languages = scope List<String>();
+		defer { ClearAndDeleteItems(languages); }
+		ScriptBackends.CollectLanguages(languages);
+		let files = JsonValue.MakeArray();
+		bool matched = false;
+		for (let language in languages)
+		{
+			if (!wanted.IsEmpty && (language != wanted))
+				continue;
+			matched = true;
+			let runtime = ScriptBackends.Create(language);
+			if (runtime == null)
+				continue;
+			defer delete runtime;
+			runtime.Bind(context.Surface);
+			let fileName = scope String();
+			let text = scope String();
+			runtime.Declarations(fileName, text);
+			if (fileName.IsEmpty)
+				continue;
+			let path = PathJoin(directory, fileName, .. scope .());
+			if (WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Err)
+			{
+				delete files;
+				outError.AppendF("could not write '{}'", path);
+				return false;
+			}
+			let file = JsonValue.MakeObject();
+			file.Set("language", JsonValue.MakeString(language));
+			file.Set("path", JsonValue.MakeString(path));
+			file.Set("bytes", JsonValue.MakeNumber((double)text.Length));
+			files.Add(file);
+		}
+		if (!wanted.IsEmpty && !matched)
+		{
+			delete files;
+			outError.AppendF("no scripting backend registered for language '{}'", wanted);
+			return false;
+		}
+		outResult.Set("files", files);
+		return true;
 	}
 
 	private static bool ScriptApi(Context context, JsonValue arguments, JsonValue outResult,

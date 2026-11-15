@@ -45,6 +45,10 @@ void   asc_memory_set_cap(size_t bytes);
 size_t asc_memory_held(void);
 
 asc_engine* asc_engine_create(void);
+/* The engine's registered API as `as.predefined`, the declarations file AngelScript editor
+   extensions read: enums, funcdefs, classes with their constructors, fields and methods, and the
+   functions and globals of each namespace. Valid until the next call on this thread. */
+const char* asc_engine_declarations(asc_engine* engine);
 void        asc_engine_release(asc_engine* engine);
 void        asc_engine_set_message_callback(asc_engine* engine, asc_message_fn fn, void* user);
 void        asc_engine_set_generic_callback(asc_engine* engine, asc_generic_fn fn, void* user);

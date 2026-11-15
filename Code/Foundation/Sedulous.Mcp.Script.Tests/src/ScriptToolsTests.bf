@@ -133,4 +133,38 @@ static class ScriptToolsTests
 		let text = bogus.Get("result").Get("content").At(0).Get("text").AsString();
 		Test.Assert(text.Contains("cobol"));
 	}
+
+	/// script_declarations writes the backend's declarations file into the folder: an external
+	/// editor completes and checks scripts from it, and nothing wrote one.
+	[Test]
+	public static void ScriptDeclarationsWritesTheBackendsDeclarationsFile()
+	{
+		AngelScriptBackend.Register();
+		let surface = scope ScriptSurface();
+		FixtureSurface.Populate(surface);
+		let server = scope McpServer();
+		ScriptTools.Register(server, surface);
+		let folder = "scratch_script_declarations";
+		Sedulous.Core.IO.RemoveDirectoryRecursive(folder);
+		Test.Assert(Sedulous.Core.IO.CreateDirectory(folder));
+		defer Sedulous.Core.IO.RemoveDirectoryRecursive(folder);
+
+		let arguments = Arg("directory", folder);
+		arguments.Set("language", JsonValue.MakeString("angelscript"));
+		let written = CallOk(server, "script_declarations", arguments);
+		defer delete written;
+		Test.Assert(written.Get("files").Count == 1);
+		let path = written.Get("files").At(0).Get("path").AsString();
+		Test.Assert(path.EndsWith("as.predefined"));
+		let bytes = scope System.Collections.List<uint8>();
+		Test.Assert(Sedulous.Core.IO.ReadFile(path, bytes) case .Ok);
+		let text = StringView((char8*)bytes.Ptr, bytes.Count);
+		Test.Assert(text.Contains("class Thing"), "a bound class");
+		Test.Assert(text.Contains("class Float3"), "a math value");
+		Test.Assert(text.Contains(" property;"), "an accessor reads as a property");
+
+		let refused = CallResponse(server, "script_declarations", Arg("directory", "no_such_folder_here"));
+		defer delete refused;
+		Test.Assert((refused.Get("error") != null) || refused.Get("result").Get("isError").AsBool());
+	}
 }

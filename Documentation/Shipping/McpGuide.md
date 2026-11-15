@@ -388,7 +388,9 @@ class attachable. A script file may declare several classes (data, helpers); the
 its asset's Class Name (`ClassName`: the name its file was imported under, or a new script's
 starter class), else the one named like its file, else its only one. Several and none so named
 fails the cook, naming them: set the asset's Class Name, or pass `script_validate` the file's
-`name` (or `className`).
+`name` (or `className`). `script_declarations {directory}` writes the bound API as each backend's
+declarations file (`as.predefined`) for an external editor's completion; write it into the
+project's folder, and again after an engine update.
 
 **Shaders**: a custom shader is one `.hlsl` with a `properties` block declaring its materials'
 parameters, in one of two kinds. A SURFACE shader (a `// surface: lit` or `// surface: unlit`

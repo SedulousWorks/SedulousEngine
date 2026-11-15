@@ -2208,6 +2208,14 @@ class AngelScriptRuntime : ScriptRuntime
 		ForgetBuilder(moduleName);
 	}
 
+	/// `as.predefined`, the file AngelScript editor extensions read, written from what the
+	/// engine registered: accessors marked as properties, a value's own fields as members.
+	public override void Declarations(String outFileName, String outText)
+	{
+		outFileName.Append("as.predefined");
+		outText.Append(StringView(AS.asc_engine_declarations(mEngine)));
+	}
+
 	public override bool ModuleInUse(StringView moduleName)
 	{
 		if (AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS) == null)
