@@ -293,3 +293,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   transparent draws in a frame, or the eighth view, the rest drew nothing.
 - Terrain: a frame with many terrains or chunks draws all of them from the next frame on; the
   ones past the renderer's first budget never drew.
+- GUI and vector graphics: a complex shape (concave, or several contours) filled inside a clip
+  path no longer paints outside the clip; and a draw list whose indices outgrow the frame's
+  buffers draws from the next frame instead of never.

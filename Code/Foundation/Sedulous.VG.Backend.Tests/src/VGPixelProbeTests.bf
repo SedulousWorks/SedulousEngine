@@ -297,6 +297,64 @@ class VGPixelProbeTests
 	/// left corner, then a clip rect inside the outer. Red fills the canvas under both clips and
 	/// only their intersection shows, the outer's rounded corner included; with the inner popped,
 	/// blue fills the outer alone; inside it, a clip rect confines green to its left part.
+	/// A stencil then cover fill under a clip path stays inside the clip. A concave shape over the
+	/// whole canvas, filled inside a rounded clip: its cover passed wherever the stencil was not
+	/// the clip value, which includes everywhere outside the clip (stencil nought), so it painted
+	/// the corners.
+	[Test]
+	public static void AStencilFillUnderAClipPathStaysInsideTheClip()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			ClippedStencilFillOn(kind);
+	}
+
+	private static void ClippedStencilFillOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				let clipBuilder = scope PathBuilder();
+				ShapeBuilder.BuildRoundedRect(.(16, 16, 96, 96), .(24), clipBuilder);
+				let clip = clipBuilder.ToPath();
+				defer delete clip;
+				context.PushClipPath(clip);
+				// The canvas with a notch cut up from its bottom edge to the middle.
+				let dentedBuilder = scope PathBuilder();
+				dentedBuilder.MoveTo(0, 0);
+				dentedBuilder.LineTo(128, 0);
+				dentedBuilder.LineTo(128, 128);
+				dentedBuilder.LineTo(64, 64);
+				dentedBuilder.LineTo(0, 128);
+				dentedBuilder.Close();
+				let dented = dentedBuilder.ToPath();
+				defer delete dented;
+				context.FillPath(dented, ByteColor(255, 0, 0), .NonZero, false);
+				context.PopClipPath();
+				// The clip mask is intact after the fill: a fill after the pop covers everything.
+				let band = Rect(0, 120, 128, 128);
+				defer delete band;
+				context.FillPath(band, ByteColor(0, 0, 255), .NonZero, false);
+			});
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = kind.ToString(.. scope .());
+		bool Red(uint32 x, uint32 y) => (image.At(x, y)[0] > 200) && (image.At(x, y)[2] < 60);
+		bool Blue(uint32 x, uint32 y) => (image.At(x, y)[2] > 200) && (image.At(x, y)[0] < 60);
+		bool Dark(uint32 x, uint32 y) => (image.At(x, y)[0] < 40) && (image.At(x, y)[1] < 40) && (image.At(x, y)[2] < 40);
+		Test.Assert(Red(40, 40), scope $"{name}: inside the shape and the clip");
+		Test.Assert(Red(100, 40), scope $"{name}: inside the shape and the clip, right");
+		Test.Assert(Dark(4, 4), scope $"{name}: inside the shape, outside the clip");
+		Test.Assert(Dark(124, 60), scope $"{name}: inside the shape, right of the clip");
+		Test.Assert(Dark(20, 20), scope $"{name}: inside the shape, outside the clip's rounded corner");
+		Test.Assert(Dark(64, 100), scope $"{name}: inside the clip, in the notch");
+		Test.Assert(Blue(4, 124), scope $"{name}: after the pop, outside where the clip was");
+		Test.Assert(Blue(64, 124), scope $"{name}: after the pop, in the notch");
+	}
+
 	[Test]
 	public static void ClipPathsNestAsIntersectionsWithAClipRectInsideOne()
 	{

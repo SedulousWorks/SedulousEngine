@@ -557,7 +557,12 @@ class VGRenderer
 			&& ((indexOffset + indexBytes) <= maxIndexBytes))
 			return true;
 
-		let needed = ((vertexOffset + vertexBytes) / (uint32)VGRenderVertex.SizeInBytes) + 1;
+		// The index buffer holds three indices a vertex of capacity, so the target covers both:
+		// one from the vertices alone never grew a list whose indices overflowed first.
+		let neededForVertices = ((vertexOffset + vertexBytes) / (uint32)VGRenderVertex.SizeInBytes) + 1;
+		let neededIndices = (indexOffset + indexBytes) / (uint32)sizeof(uint32);
+		let neededForIndices = (neededIndices + 2) / 3;
+		let needed = Math.Max(neededForVertices, neededForIndices);
 		if (needed > (uint32)cMaxVertexCapacity)
 		{
 			// Once, so a persistently oversized draw list does not flood the log.
@@ -1446,13 +1451,15 @@ class VGRenderer
 			if (clipped)
 			{
 				// Inside means the clip bit set AND the winding non zero, which under a
-				// full read mask is any value other than the clip bit alone. Replacing
-				// with the clip reference zeroes the winding and RESTORES the mask in one
-				// operation.
+				// full read mask is a value ABOVE the clip bit alone: the reference is Less
+				// than it (the test is reference OP stencil). Outside the clip the value is
+				// nought, which a not-equal test let through, so the cover painted wherever
+				// the clip did not reach. Replacing with the clip reference zeroes the
+				// winding and RESTORES the mask in one operation.
 				state.StencilReadMask = 0xFF;
 				state.StencilWriteMask = 0xFF;
 				state.StencilFront = .() {
-					Compare = .NotEqual, FailOp = .Keep, DepthFailOp = .Keep, PassOp = .Replace
+					Compare = .Less, FailOp = .Keep, DepthFailOp = .Keep, PassOp = .Replace
 				};
 			}
 			else

@@ -154,6 +154,39 @@ class VGRendererTests
 		Test.Assert(slice.VertexByteOffset == 0);
 	}
 
+	/// A batch whose indices outgrow the frame's buffers draws once they grow. The growth
+	/// target came from the vertices alone, so a batch with few vertices and many indices (the
+	/// index buffer holds three a vertex of capacity) asked for the size the buffers already
+	/// were, and never drew.
+	[Test]
+	public static void ABatchWhoseIndicesOutgrowTheBuffersDrawsOnceTheyGrow()
+	{
+		let fixture = scope RendererFixture();
+		let white = scope OwnedImageData(1, 1, .RGBA8, scope uint8[4](255, 255, 255, 255), .Linear);
+
+		let batch = scope VGBatch();
+		FillBatch(batch, white);
+		Test.Assert(batch.Vertices.Count == 4);
+		Test.Assert(batch.Commands.Count == 1);
+		var quad = uint32[6]();
+		for (int i < 6)
+			quad[i] = batch.Indices[i];
+		// Past the starting index capacity, by indices alone.
+		let indices = 131072 * 3 + 600;
+		batch.Indices.Clear();
+		for (int i < indices)
+			batch.Indices.Add(quad[i % 6]);
+		batch.Commands[0].StartIndex = 0;
+		batch.Commands[0].IndexCount = (int32)indices;
+
+		fixture.Renderer.BeginFrame(0);
+		// This frame's buffers are too small.
+		Test.Assert(!fixture.Renderer.Prepare(batch, 0, 800, 600).IsValid);
+		fixture.Renderer.BeginFrame(1);
+		// The next frame's have grown.
+		Test.Assert(fixture.Renderer.Prepare(batch, 1, 800, 600).IsValid);
+	}
+
 	/// An empty batch has nothing to upload, and an invalid slice draws nothing.
 	[Test]
 	public static void AnEmptyBatchYieldsAnInvalidSlice()
