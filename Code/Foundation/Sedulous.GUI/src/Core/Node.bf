@@ -3113,6 +3113,9 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// Tells this node's listeners of an event about it (not routed: geometry, focus, change).
 	public void SendEvent(Event e)
 	{
+		// A listener may drop the last reference: held until they return.
+		let pinned = PinWhileLive();
+		defer { if (pinned) ReleaseRef(); }
 		mDispatching++;
 		defer
 		{
@@ -3272,6 +3275,9 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	// add another.
 	protected void RunListeners(Event e, bool capture)
 	{
+		// A listener may drop the last reference: held until they return.
+		let pinned = PinWhileLive();
+		defer { if (pinned) ReleaseRef(); }
 		mDispatching++;
 		defer
 		{
@@ -3284,6 +3290,17 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 			if (!listener.Removed && (listener.Type == e.Type) && (listener.Capture == capture))
 				listener.Callback(e);
 		}
+	}
+
+	// Takes a reference while this node's listeners run, so one that removes the node (dropping
+	// its last owner) leaves it alive until they return. None for a node already being destroyed
+	// (its count at zero): a reference taken then would delete it twice.
+	private bool PinWhileLive()
+	{
+		if (mRefCount <= 0)
+			return false;
+		mRefCount++;
+		return true;
 	}
 
 	// While its listeners or handlers run, the lists hold still: one removed is marked, one added

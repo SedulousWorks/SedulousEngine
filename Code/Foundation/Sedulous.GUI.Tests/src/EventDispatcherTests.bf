@@ -460,4 +460,36 @@ class EventDispatcherTests
 		Test.Assert(NodeFixtures.Near(popup.ConvertToRootSpace(.(0.0f, 0.0f)).Y, 220.0f));
 		d.ClosePopup(popup);
 	}
+
+	/// A handler that removes its node leaves it alive until the dispatch returns. A node owned
+	/// only by its parent was freed inside its own handler, and the dispatch went on reading it
+	/// (an ASan run reports the read).
+	[Test]
+	public static void AHandlerRemovingItsNodeLeavesItAliveUntilTheDispatchReturns()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let d = root.EventDispatcher;
+		int removed = 0;
+		let wheeled = SceneFixtures.NewNode(10.0f, 10.0f, 50.0f, 50.0f);
+		wheeled.AddEventListener(.MouseWheel, new [&](e) => { removed++; e.Target.RemoveFromParent(); });
+		let pressed = SceneFixtures.NewNode(10.0f, 10.0f, 50.0f, 50.0f);
+		pressed.AddEventListener(.MouseDown, new [&](e) => { removed++; e.Target.RemoveFromParent(); });
+		let moved = SceneFixtures.NewNode(10.0f, 10.0f, 50.0f, 50.0f);
+		moved.AddEventListener(.MouseMove, new [&](e) => { removed++; e.Target.RemoveFromParent(); });
+		Node[3] children = .(wheeled, pressed, moved);
+
+		root.AddChild(children[0]);
+		children[0].ReleaseRef(); // the parent's reference is the only one
+		d.InjectMouseWheel(.(20.0f, 20.0f), .(0.0f, -1.0f));
+		root.AddChild(children[1]);
+		children[1].ReleaseRef();
+		d.InjectMouseDown(.(20.0f, 20.0f), .Left);
+		d.InjectMouseUp(.(20.0f, 20.0f), .Left);
+		root.AddChild(children[2]);
+		children[2].ReleaseRef();
+		d.InjectMouseMove(.(21.0f, 21.0f));
+		Test.Assert(removed == 3);
+		Test.Assert(root.ChildCount == 0);
+	}
 }

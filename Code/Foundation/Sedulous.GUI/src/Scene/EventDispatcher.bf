@@ -562,6 +562,10 @@ class EventDispatcher
 		// nearest enabled node up from it (a list of cards, some disabled, scrolls).
 		while ((hit != null) && !hit.IsTreeEnabled)
 			hit = hit.Parent;
+		// Held for the rest of this call, as PointerUp holds its nodes: a handler may remove it,
+		// and IsPointerTaken reads it after the route.
+		EventDispatcherDetail.Hold(hit);
+		defer { EventDispatcherDetail.Let(hit); }
 		bool used = false;
 		if (hit != null)
 		{
@@ -1795,10 +1799,16 @@ class EventDispatcher
 				return true;
 		}
 		let hit = HitTest(position);
+		// Held for the rest of this call: the hover changes and the route run handlers that may
+		// remove either node, and both are read after them.
+		EventDispatcherDetail.Hold(hit);
+		defer { EventDispatcherDetail.Let(hit); }
 		UpdateHoverPath(hit, position);
 		// The captured node (explicitly, or the pressed one while a button is held) keeps the
 		// moves, so a drag goes on when the pointer leaves it; otherwise the hovered node.
 		let target = PointerTarget(hit);
+		EventDispatcherDetail.Hold(target);
+		defer { EventDispatcherDetail.Let(target); }
 		bool used = false;
 		if ((target != null) && target.IsTreeEnabled)
 		{
@@ -1827,6 +1837,10 @@ class EventDispatcher
 		mDragTried = button != .Left; // only a left press (a finger's) drags
 		mTouchDragArmed = false;
 		let hit = HitTest(position);
+		// Held for the rest of this call: the hover changes, popup closes, focus change and the
+		// route all run handlers that may remove it, and it is read after each.
+		EventDispatcherDetail.Hold(hit);
+		defer { EventDispatcherDetail.Let(hit); }
 		UpdateHoverPath(hit, position);
 		// Any press hides a tooltip. A press closes the auto popups above the one it is in; one in
 		// no popup is consumed with the rest of its gesture: closing a menu never acts on what lies
