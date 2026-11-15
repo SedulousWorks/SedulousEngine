@@ -204,6 +204,26 @@ abstract class SampleApp
 		delete mScreenshotOptions;
 		mScreenshotOptions = ScreenshotOptions.FromArguments((args != null) ? args : Span<String>());
 
+#if BF_PLATFORM_ANDROID
+		// On Android the data is the app's APK's assets/Data, read in place (the activity names
+		// the APK with --apk).
+		if (args != null)
+		{
+			for (int i = 0; i + 1 < args.Count; i++)
+			{
+				if (args[i] == "--apk")
+				{
+					delete mDataMount;
+					mDataMount = new Sedulous.VFS.Zip.ZipFileSystem(args[i + 1], "assets/Data");
+				}
+			}
+		}
+		if (mDataMount == null)
+		{
+			Console.Error.WriteLine("SampleApp: no --apk, so no data (the app's activity names its APK)");
+			return 1;
+		}
+#else
 		// These samples have no application above them, so this is where the data root is
 		// resolved: --data-root if it was given, otherwise the discovery walk.
 		ResolveDataRoot((args != null) ? args : Span<String>(), mDataRoot);
@@ -213,6 +233,7 @@ abstract class SampleApp
 			return 1;
 		}
 		mDataMount = new NativeFileSystem(mDataRoot);
+#endif
 		mShaders.Open(mDataMount, "Samples/RHI");
 
 		if (Initialize() case .Err)
