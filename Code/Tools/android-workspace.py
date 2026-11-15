@@ -18,6 +18,7 @@ import sys
 PLATFORM = "aarch64-linux-android33"
 CONFIGS = ["Debug", "Release", "ShippingRelease"]
 TARGETS = [
+    "Sedulous.Engine.Player.Android",
     "Samples.RHI.Sample001_Triangle",
 ]
 BEGIN = "# ---- Android (written by Tools/android-workspace.py) ----"

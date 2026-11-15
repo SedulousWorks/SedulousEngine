@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+// What the app is built from, both named by Tools/android-app.sh: the staged native library, game
+// and engine data, and SDL's Java glue (vendored with SDL's source).
+def staged = file(providers.gradleProperty('sedulousStaged').get())
+def sdlJava = file(providers.gradleProperty('sdlJava').get())
+def property = { String name, String fallback -> providers.gradleProperty(name).getOrElse(fallback) }
+
+android {
+    namespace 'com.sedulous.player'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId property('sedulousApplicationId', 'com.sedulous.player')
+        minSdk 33 // Android 13: its libvulkan exports the Vulkan 1.3 calls the RHI makes
+        targetSdk 36
+        versionCode property('sedulousVersionCode', '1').toInteger()
+        versionName property('sedulousVersionName', '0.1')
+        resValue 'string', 'app_name', property('sedulousLabel', 'Sedulous Player')
+        ndk {
+            abiFilters 'arm64-v8a' // arm64 only
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += [sdlJava]
+            jniLibs.srcDirs = ["${staged}/jniLibs"]
+            assets.srcDirs = ["${staged}/assets"]
+        }
+    }
+
+    androidResources {
+        // The paks are read in place as regions of the APK, which they can only be stored.
+        noCompress += ['pak', 'dpak']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}

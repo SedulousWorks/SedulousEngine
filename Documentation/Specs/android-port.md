@@ -1,8 +1,8 @@
 # Android: the player on phones and tablets
 
-> Status: PLAN, 2026-11-15. The feasibility spike passed (below): Beef code runs on a Pixel 6 as a
-> plain executable and inside an app started by SDL's activity, with a window, touch, files,
-> threads and pause/resume. Nothing of the port is built yet; the phases below are the proposal.
+> Status: IN PROGRESS on the `android` branch, 2026-11-15. A1 and A2 are done: the RHI triangle
+> drew on the Pixel 6, and Sky Hopper, exported content-only, plays from its APK (menu, touch
+> controls, the level, music). The phases from A3 on are still the proposal.
 > Scope: an Android build of the shipping PLAYER and an editor export that makes an APK. The
 > editor, the cook and the tools stay desktop programs.
 
@@ -23,10 +23,10 @@ Working files outside the repos in `~/Dev/Beef/android-spike`.
    `BeefRT/CMakeLists.txt` with the NDK's toolchain file, `ANDROID_ABI=arm64-v8a`,
    `ANDROID_PLATFORM=android-33`, Release. One fix was needed: the SIGPIPE handler in
    `BeefySysLib/platform/posix/PosixCommon.cpp` initialised `struct sigaction` positionally, and
-   bionic orders its members differently from glibc (branch `spike/android` in the Beef fork,
-   uncommitted; it goes upstream by the usual fix workflow).
+   bionic orders its members differently from glibc (Beef fork branch `fix/android-posix`).
 2. **BeefBuild compiles Beef for Android** with no project changes: `BeefBuild
-   -platform=aarch64-none-linux-android33` gives each project a static archive (`StaticLib`,
+   -platform=aarch64-linux-android33` (no vendor part: a "none" vendor made Beef read the platform
+   as None, so `BF_PLATFORM_ANDROID` was not defined; Beef fork branch `fix/triple-none-vendor`) gives each project a static archive (`StaticLib`,
    PIC is forced), with `BeefMain`, `BeefStart` and `BeefStop` exported for a console
    application. BeefBuild cannot link an Android shared library itself; the NDK's clang does.
 3. **A plain executable** (a C `main` calling `BeefMain`, linked with the Beef archives and
@@ -64,6 +64,12 @@ Working files outside the repos in `~/Dev/Beef/android-spike`.
 - BeefBuild names the runtime libraries for Windows on an Android target
   (`IDE/src/BuildContext.bf`, `GetRtLibNames`); harmless while the link is ours, worth fixing
   upstream.
+
+- An executable's devirtualisation thunks named struct types (a `Float2` return, say) that its
+  vdata module had only declared; AArch64 returns such a two-float struct as itself, and LLVM
+  refused the module ("Instruction returns a non-scalar type"). Every library built; the player
+  did not. Fixed on the Beef fork branch `fix/devirt-thunk-struct-types`: building the player
+  needs a BeefBuild with it until it is upstream.
 
 Beef defines one platform macro per target: an Android build has `BF_PLATFORM_ANDROID` and NOT
 `BF_PLATFORM_LINUX`, so every `#elif BF_PLATFORM_LINUX` branch misses Android while every
@@ -124,8 +130,8 @@ into `dist/Release-Android64`), and `Dependencies/build-all-native.sh android` b
 Each BeefProj names its archive under a `[Configs.*.<android platform>]` section only where
 that helps; the link is ours, so the host's link step can list them.
 
-The cook-only libraries (astcenc, bc7enc, cgltf, ufbx, meshoptimizer, msdfgen, zlib, DXC) are not
-needed on the device.
+The cook-only libraries (astcenc, bc7enc, cgltf, ufbx, meshoptimizer, msdfgen, DXC) are not
+needed on the device. zlib is: the player reads the APK through `Sedulous.VFS.Zip`.
 
 ### Beef runtime
 
@@ -137,7 +143,7 @@ needed on the device.
 
 ### Build and export
 
-- **The link**: BeefBuild builds the Beef archives for `aarch64-none-linux-android33`; a script
+- **The link**: BeefBuild builds the Beef archives for `aarch64-linux-android33`; a script
   (later the export) links `libmain.so` with the NDK's clang as above.
 - **The app**: a Gradle project like the spike's (SDL's Java glue, one activity, `minSdk 33`,
   `abiFilters 'arm64-v8a'`), the paks and `player.xml` in `assets/`, stored uncompressed
@@ -155,10 +161,11 @@ Each phase ends with something running on the phone.
 - **A0 Toolchain**: the Beef fixes (SIGPIPE, CPU count) on the fork; the runtime's
   Android build scripted; `build-native.sh android` for the player's libraries; a test runner that
   pushes a few headless test suites (Core, Scene, Messaging) to the phone and runs them.
-- **A1 A triangle**: the Vulkan Android surface and loader, WebGPU compiled out; a sample that
+- **A1 A triangle** (done): the Vulkan Android surface and loader, WebGPU compiled out; a sample that
   clears and draws a triangle in the spike's app.
-- **A2 The player**: `Sedulous.Engine.Player.Android`, the paths, the platform tag; Sky Hopper
-  exported content-only and played from the APK.
+- **A2 The player** (done): `Sedulous.Engine.Player.Android`, the paths, the platform tag; Sky
+  Hopper exported content-only and played from the APK. `Code/Tools/android-app.sh <export-dir>
+  --run` builds, links, packages, installs and starts it.
 - **A3 Lifecycle**: background and foreground with the surface released and made again, audio
   stopped and started, the save written on the way out, Back to the platform when nothing takes
   it.
