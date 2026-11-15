@@ -85,9 +85,12 @@ class VulkanBackend : IBackend
 		// fails instance creation outright, and a machine may have only one of these.
 		if (!ProbeSurfaceExtensions(extensions))
 			return .Err;
+#elif BF_PLATFORM_ANDROID
+		// Every Android loader with Vulkan has it: the platform's one window surface.
+		extensions.Add(VulkanNative.VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
 #endif
-		// Anywhere else (Android among them, which is not Linux's X11 or Wayland) there is no
-		// window surface yet: the instance is made without one, and CreateSurface refuses.
+		// Anywhere else there is no window surface yet: the instance is made without one, and
+		// CreateSurface refuses.
 
 		// ASKED FOR rather than tied to validation. The debug label calls are made
 		// UNCONDITIONALLY by the render graph, once per pass, and the loader only resolves
@@ -121,6 +124,8 @@ class VulkanBackend : IBackend
 		let platformFunctions = InstanceFunctionFlags.Win32;
 #elif BF_PLATFORM_LINUX
 		let platformFunctions = InstanceFunctionFlags.Xlib | InstanceFunctionFlags.Wayland;
+#elif BF_PLATFORM_ANDROID
+		let platformFunctions = InstanceFunctionFlags.Android;
 #else
 		InstanceFunctionFlags platformFunctions = default;
 #endif
@@ -255,8 +260,13 @@ class VulkanBackend : IBackend
 			createInfo.window = windowHandle;
 			result = VulkanNative.vkCreateXlibSurfaceKHR(mInstance, &createInfo, null, &surface);
 		}
+#elif BF_PLATFORM_ANDROID
+		// The ANativeWindow SDL holds for the app's surface; there is no display.
+		VkAndroidSurfaceCreateInfoKHR createInfo = .();
+		createInfo.window = windowHandle;
+		result = VulkanNative.vkCreateAndroidSurfaceKHR(mInstance, &createInfo, null, &surface);
 #else
-		// No window surface here yet (Android's is VK_KHR_android_surface): the failure below says so.
+		// No window surface here yet: the failure below says so.
 		Log("VulkanBackend: window surfaces are not supported on this platform");
 #endif
 

@@ -233,6 +233,7 @@ class GraphicsDevice
 		// host registered no RenderWindow at all: every frame ticked and nothing ever
 		// acquired a back buffer, which presents as a wholly black page and not one error.
 		case .Web: return .Web;
+		case .Android: return .Android;
 		default: return .Unknown;
 		}
 	}
