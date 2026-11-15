@@ -222,6 +222,11 @@ class SDL3WindowManager : IWindowManager
 			flags |= .SDL_WINDOW_BORDERLESS;
 		if (settings.Hidden)
 			flags |= .SDL_WINDOW_HIDDEN;
+#if BF_PLATFORM_ANDROID
+		// A phone's window is the screen, whatever the settings ask: fullscreen, which SDL's
+		// activity makes immersive (the status and navigation bars hidden until swiped back).
+		flags |= .SDL_WINDOW_FULLSCREEN;
+#endif
 		if (settings.SoftwareSurface)
 			return flags; // drawn through SDL's window surface: no Vulkan surface on it
 

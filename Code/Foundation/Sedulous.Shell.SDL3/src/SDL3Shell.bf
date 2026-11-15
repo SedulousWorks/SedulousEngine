@@ -36,6 +36,11 @@ class SDL3Shell : IShell
 		// reads the hint as it starts).
 		if (settings.DrawsTextComposition)
 			SDL3.SDL_SetHint(SDL3.SDL_HINT_IME_IMPLEMENTED_UI, "composition");
+#if BF_PLATFORM_ANDROID
+		// The back button comes to the app as a key (KeyCode.Back), where by default Android's
+		// activity takes it; what the game does not handle goes back to it (PassBackToPlatform).
+		SDL3.SDL_SetHint(SDL3.SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+#endif
 		if (!SDL3.SDL_Init(.SDL_INIT_VIDEO | .SDL_INIT_GAMEPAD))
 		{
 			mRunning = false;
@@ -55,6 +60,60 @@ class SDL3Shell : IShell
 			mRunning = false;
 		}
 	}
+
+	/// Android: the app goes to the background, kept as it is (Activity.moveTaskToBack). The
+	/// activity's own back (SDL_SendAndroidBackButton) does that only for an app opened from the
+	/// launcher, and ends the activity otherwise, so the app started over when opened again.
+	/// Nothing on a desktop, which has no back of its own.
+	public void PassBackToPlatform()
+	{
+#if BF_PLATFORM_ANDROID
+		let env = (JniEnv*)SDL3.SDL_GetAndroidJNIEnv();
+		let activity = SDL3.SDL_GetAndroidActivity();
+		if ((env == null) || (activity == null))
+			return;
+		let functions = env.Functions;
+		let type = functions.GetObjectClass(env, activity);
+		let moveTaskToBack = functions.GetMethodID(env, type, "moveTaskToBack", "(Z)Z");
+		if (moveTaskToBack != null)
+		{
+			uint64 nonRoot = 1; // a jvalue holding the jboolean true
+			functions.CallBooleanMethodA(env, activity, moveTaskToBack, &nonRoot);
+		}
+		if (functions.ExceptionCheck(env) != 0)
+			functions.ExceptionClear(env);
+		functions.DeleteLocalRef(env, type);
+		functions.DeleteLocalRef(env, activity);
+#endif
+	}
+
+#if BF_PLATFORM_ANDROID
+	/// The JNI calls PassBackToPlatform makes, at their places in JNI's function table (fixed
+	/// by the JNI specification: jni.h's JNINativeInterface).
+	[CRepr]
+	private struct JniFunctions
+	{
+		private void*[17] mBefore17;
+		public function void(JniEnv* env) ExceptionClear; // 17
+		private void*[5] mBefore23;
+		public function void(JniEnv* env, void* object) DeleteLocalRef; // 23
+		private void*[7] mBefore31;
+		public function void*(JniEnv* env, void* object) GetObjectClass; // 31
+		private void* mBefore33;
+		public function void*(JniEnv* env, void* type, char8* name, char8* signature) GetMethodID; // 33
+		private void*[5] mBefore39;
+		public function uint8(JniEnv* env, void* object, void* method, uint64* arguments) CallBooleanMethodA; // 39
+		private void*[188] mBefore228;
+		public function uint8(JniEnv* env) ExceptionCheck; // 228
+	}
+
+	/// A JNIEnv: a pointer to the function table.
+	[CRepr]
+	private struct JniEnv
+	{
+		public JniFunctions* Functions;
+	}
+#endif
 
 	public ~this()
 	{
