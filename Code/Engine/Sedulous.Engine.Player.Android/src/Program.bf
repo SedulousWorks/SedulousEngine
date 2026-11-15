@@ -17,7 +17,6 @@ namespace Sedulous.Engine.Player.Android;
 /// assets/Data; the paks stored uncompressed so they are regions of the file), and the user's data
 /// and temporary files go to the app's own storage, which the activity names: `--apk <path>
 /// --files <dir> --cache <dir>`. The rest of the arguments go to the player as on the desktop.
-/// Without `--apk` (a run on a desktop for a test) it is the desktop player as it is.
 class Program
 {
 	public const String cGameFolder = "assets/Game";
@@ -52,7 +51,10 @@ class Program
 			Environment.SetEnvironmentVariable("TMPDIR", cache);
 
 		if (apk.IsEmpty)
-			return DesktopPlayerMain.Run(passed);
+		{
+			Console.Error.WriteLine("Player: no --apk: the activity names the app's APK, where the game is");
+			return 1;
+		}
 
 		let mounts = scope PlayerMounts();
 		if (MountApk(apk, mounts) case .Err)
@@ -77,7 +79,10 @@ class Program
 		if (game.StoredRegion(ProjectLayout.DistContentPak, let offset, let size))
 			outMounts.Content = new PakFileSystem(apk, offset, size);
 		else if (game.Exists(ProjectLayout.DistContentPak))
-			Console.Error.WriteLine("Player: the game's content pak is compressed in the APK; store it uncompressed (noCompress)");
+		{
+			Console.Error.WriteLine("Player: the game's content pak is compressed in the APK; it must be stored to be read in place (noCompress)");
+			return .Err;
+		}
 
 		let data = new ZipFileSystem(apk, cDataFolder);
 		if (data.IsValid && (data.EntryCount > 0))
