@@ -11,11 +11,12 @@ namespace Sedulous.Engine.Script;
 
 /// The run's script runtime and the behaviour classes loaded into it.
 ///
-/// ONE runtime per run: every behaviour class of the run is compiled into one module, a
-/// fresh generation (`behaviors#N`) whenever a class is added or reloaded, each class as
-/// its own section so an error names its file. Instances keep running on the generation
-/// they were built from, so a previous module is kept until the run's teardown: discarding
-/// it would free its global variables under the instances still reading them.
+/// ONE runtime per run: each behaviour class of the run loads into a module of its own,
+/// named by generation (`behavior:<Class>#N`, ModuleOf), so a fresh name per load gives hot
+/// reload clean semantics. Instances of a replaced class keep running on its old module until
+/// they end; the module is discarded once nothing runs it (DiscardUnusedReplaced), as
+/// discarding it earlier would free its global variables under the instances still reading
+/// them.
 ///
 /// The language is the first class's; a second language in the same run is refused, since
 /// the run has one gameplay context. Plain class, no runtime dependencies, so a headless

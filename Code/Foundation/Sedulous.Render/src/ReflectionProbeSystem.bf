@@ -8,12 +8,13 @@ using Sedulous.Shaders;
 
 namespace Sedulous.Render;
 
-/// Reflection probes: local, parallax corrected, cluster assigned cubemap reflections.
+/// Reflection probes: local, parallax corrected cubemap reflections, each fragment blending the
+/// view's probes whose boxes hold it.
 ///
 /// Three resources. The captured array holds each probe's raw six face render of the scene.
 /// The prefiltered array holds its convolved specular, one level per roughness, which is what
 /// the forward samples. The metadata buffer carries each probe's centre, box, blend and slice,
-/// which is what the clustering assigns by.
+/// which the forward reads per fragment to test and weigh it.
 ///
 /// A probe keeps its slice from frame to frame, keyed on a stable per entity tag, so only a
 /// probe that is new or has moved captures again. That static caching is the whole point: a
