@@ -284,3 +284,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 - Rendering: a Static spot or point light keeps its shadow while something moves near another
   Static light; the cached shadows of every other Static light were wiped whenever one of them
   redrew.
+- Rendering: the sky's diffuse light is right along world z: one of its nine terms was three
+  times too strong, so a sky brighter to the front or back over- or under-lit surfaces facing
+  those ways. Scenes lit by such a sky look a little different.

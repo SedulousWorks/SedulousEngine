@@ -9,6 +9,7 @@
 #define LIGHTING_HLSLI
 
 #include "depth.hlsli"
+#include "sh9.hlsli"
 #include "view.hlsli"
 
 struct GpuLight {                            // matches render::GpuLight (64 bytes)
@@ -42,18 +43,11 @@ struct GpuProbe {                 // GpuProbe (GpuProbe.bf; 64 bytes)
 };
 StructuredBuffer<GpuProbe> Probes : register(t9, space0);
 
-// Evaluate the 9-coefficient SH irradiance in direction n (Ramamoorthi/Hanrahan cosine-convolved).
+// The scene's SH9 irradiance in direction n (sh9.hlsli).
 float3 EvalSH9(float3 n) {
-    float3 r = IblSH[0].rgb * 0.886227;                       // l=0
-    r += IblSH[1].rgb * (2.0 * 0.511664 * n.y);              // l=1
-    r += IblSH[2].rgb * (2.0 * 0.511664 * n.z);
-    r += IblSH[3].rgb * (2.0 * 0.511664 * n.x);
-    r += IblSH[4].rgb * (2.0 * 0.429043 * n.x * n.y);        // l=2
-    r += IblSH[5].rgb * (2.0 * 0.429043 * n.y * n.z);
-    r += IblSH[6].rgb * (0.743125 * (3.0 * n.z * n.z - 1.0));
-    r += IblSH[7].rgb * (2.0 * 0.429043 * n.x * n.z);
-    r += IblSH[8].rgb * (0.429043 * (n.x * n.x - n.y * n.y));
-    return max(r, 0.0);
+    float3 sh[9];
+    for (uint i = 0; i < 9; ++i) { sh[i] = IblSH[i].rgb; }
+    return EvalSH9Irradiance(sh, n);
 }
 
 // Sample one cascade with a normal-offset bias (scaled by the cascade's world texel size, fading at
