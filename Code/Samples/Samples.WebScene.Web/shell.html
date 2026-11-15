@@ -2,25 +2,149 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Sedulous WebScene</title>
 <style>
   html, body { margin: 0; height: 100%; background: #14151a; color: #d8dae0;
                font: 14px/1.5 system-ui, sans-serif; }
   #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
-  #status { position: fixed; left: 12px; bottom: 12px; opacity: 0.7; }
+  /* The log: what the page and the engine said, for a browser with no console at hand (Safari
+     on a phone). Hide folds it to its bar; Copy puts the whole log on the clipboard. */
+  #log { position: fixed; left: 0; right: 0; bottom: 0; max-height: 45vh; display: flex;
+         flex-direction: column; background: rgba(0, 0, 0, 0.8); color: #ddd;
+         font: 11px/1.35 ui-monospace, Menlo, monospace; z-index: 10; }
+  #log-bar { display: flex; gap: 6px; padding: 4px 6px; }
+  #log-bar button { font: inherit; color: #ddd; background: #333; border: 1px solid #555;
+                    border-radius: 3px; padding: 3px 8px; }
+  #log-count { margin-left: auto; align-self: center; color: #999; }
+  #log-text { margin: 0; padding: 0 6px 6px; overflow: auto; white-space: pre-wrap;
+              word-break: break-word; -webkit-user-select: text; user-select: text; }
+  #log.hidden #log-text { display: none; }
+  .log-warn { color: #f0c060; }
+  .log-error { color: #ff7070; }
 </style>
 </head>
 <body>
 <!-- tabindex makes the canvas focusable, which is what lets it receive key events at all. -->
 <canvas id="canvas" tabindex="0"></canvas>
-<div id="status">starting…</div>
+<div id="log">
+  <div id="log-bar"><button id="log-toggle">Hide</button><button id="log-copy">Copy</button><span id="log-count"></span></div>
+  <pre id="log-text"></pre>
+</div>
 <script>
+  // The log, before anything else runs: the console's lines, the page's uncaught errors and
+  // rejections, and what WebGPU reports (the adapter, a device lost, an uncaptured error, the
+  // canvas configured), each also left on the real console. A line repeated at once is counted,
+  // not written again, so a per-frame error does not bury the first one.
+  (function () {
+    var box = document.getElementById('log');
+    var text = document.getElementById('log-text');
+    var count = document.getElementById('log-count');
+    var lines = [];
+    var last = null, lastNode = null, repeats = 0, errors = 0, warnings = 0;
+    var kMaxLines = 2000;
+    function stamp() { return (performance.now() / 1000).toFixed(2) + 's '; }
+    function show(level, message) {
+      if (message === last && lastNode) {
+        repeats += 1;
+        lastNode.textContent = stamp() + message + '  (x' + (repeats + 1) + ')\n';
+      } else {
+        last = message; repeats = 0;
+        lastNode = document.createElement('span');
+        if (level !== 'log') lastNode.className = 'log-' + level;
+        lastNode.textContent = stamp() + message + '\n';
+        text.appendChild(lastNode);
+        lines.push(lastNode);
+        if (lines.length > kMaxLines) text.removeChild(lines.shift());
+      }
+      if (level === 'error') errors += 1;
+      if (level === 'warn') warnings += 1;
+      count.textContent = errors + ' errors, ' + warnings + ' warnings';
+      text.scrollTop = text.scrollHeight;
+    }
+    function describe(value) {
+      if (value instanceof Error) return value.name + ': ' + value.message + (value.stack ? '\n' + value.stack : '');
+      if (typeof value === 'object' && value !== null) { try { return JSON.stringify(value); } catch (e) { } }
+      return String(value);
+    }
+    ['log', 'info', 'warn', 'error'].forEach(function (name) {
+      var original = console[name].bind(console);
+      console[name] = function () {
+        original.apply(null, arguments);
+        var parts = [];
+        for (var i = 0; i < arguments.length; ++i) parts.push(describe(arguments[i]));
+        show(name === 'info' ? 'log' : name, parts.join(' '));
+      };
+    });
+    window.addEventListener('error', function (e) {
+      show('error', 'uncaught: ' + e.message + ' at ' + (e.filename || '?') + ':' + e.lineno + ':' + e.colno +
+           (e.error && e.error.stack ? '\n' + e.error.stack : ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) { show('error', 'unhandled rejection: ' + describe(e.reason)); });
+    document.getElementById('log-toggle').onclick = function () {
+      var hidden = box.classList.toggle('hidden');
+      this.textContent = hidden ? 'Show' : 'Hide';
+    };
+    document.getElementById('log-copy').onclick = function () {
+      var all = lines.map(function (n) { return n.textContent; }).join('');
+      if (navigator.clipboard) navigator.clipboard.writeText(all).then(function () { show('log', 'log copied'); },
+        function (e) { show('warn', 'copy refused: ' + describe(e)); });
+    };
+
+    show('log', navigator.userAgent);
+    show('log', 'secure context: ' + window.isSecureContext + ', WebGPU: ' + ('gpu' in navigator) +
+         ', device pixel ratio: ' + window.devicePixelRatio + ', screen: ' + screen.width + 'x' + screen.height);
+    if (!('gpu' in navigator)) {
+      show('error', window.isSecureContext ? 'navigator.gpu is missing: this browser has no WebGPU'
+                                           : 'navigator.gpu is missing: WebGPU needs https (or localhost)');
+      return;
+    }
+    var gpu = navigator.gpu;
+    var requestAdapter = gpu.requestAdapter.bind(gpu);
+    gpu.requestAdapter = function (options) {
+      return requestAdapter(options).then(function (adapter) {
+        if (!adapter) { show('error', 'requestAdapter gave no adapter'); return adapter; }
+        var info = adapter.info || {};
+        show('log', 'adapter: ' + [info.vendor, info.architecture, info.device, info.description].filter(Boolean).join(' / ') +
+             (adapter.isFallbackAdapter ? ' (fallback)' : ''));
+        show('log', 'features: ' + Array.from(adapter.features).sort().join(', '));
+        var limits = [];
+        for (var key in adapter.limits) limits.push(key + '=' + adapter.limits[key]);
+        show('log', 'limits: ' + limits.join(', '));
+        return adapter;
+      }, function (e) { show('error', 'requestAdapter failed: ' + describe(e)); throw e; });
+    };
+    if (window.GPUAdapter) {
+      var requestDevice = GPUAdapter.prototype.requestDevice;
+      GPUAdapter.prototype.requestDevice = function (descriptor) {
+        if (descriptor) {
+          show('log', 'requestDevice: features ' + JSON.stringify(Array.from(descriptor.requiredFeatures || [])) +
+               ', limits ' + JSON.stringify(descriptor.requiredLimits || {}));
+        }
+        return requestDevice.call(this, descriptor).then(function (device) {
+          show('log', 'device created');
+          device.addEventListener('uncapturederror', function (e) { show('error', 'WebGPU: ' + e.error.constructor.name + ': ' + e.error.message); });
+          device.lost.then(function (info) { show('error', 'WebGPU device lost (' + info.reason + '): ' + info.message); });
+          return device;
+        }, function (e) { show('error', 'requestDevice failed: ' + describe(e)); throw e; });
+      };
+    }
+    if (window.GPUCanvasContext) {
+      var configure = GPUCanvasContext.prototype.configure;
+      GPUCanvasContext.prototype.configure = function (config) {
+        show('log', 'canvas configured: ' + config.format + ', alpha ' + (config.alphaMode || 'opaque') +
+             ', ' + this.canvas.width + 'x' + this.canvas.height + ' (preferred ' + gpu.getPreferredCanvasFormat() + ')');
+        try { return configure.call(this, config); }
+        catch (e) { show('error', 'configure failed: ' + describe(e)); throw e; }
+      };
+    }
+  })();
+
   // The WebGPU backend's mid frame wait tripwire prints a C stack, and Chrome truncates
   // Error.stack at ten frames by default: exactly deep enough to reach WaitIdle and stop
   // BEFORE the frame that names the waiter the message is asking you to find.
   Error.stackTraceLimit = 64;
 
-  var statusEl = document.getElementById('status');
   var canvas = document.getElementById('canvas');
 
   // The canvas BACKING size is what the swap chain renders at, and CSS only sets its
@@ -37,14 +161,10 @@
   resize();
   canvas.focus();
 
-  if (!navigator.gpu) {
-    statusEl.textContent = 'WebGPU is not available in this browser.';
-  }
-
   var Module = {
     canvas: canvas,
-    print: function (text) { console.log(text); statusEl.textContent = text; },
-    printErr: function (text) { console.error(text); statusEl.textContent = text; },
+    print: function (text) { console.log(text); },
+    printErr: function (text) { console.error(text); },
   };
 </script>
 {{{ SCRIPT }}}
