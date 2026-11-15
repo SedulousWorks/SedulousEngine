@@ -4,8 +4,8 @@ namespace Sedulous.Net;
 struct ReliableConfig
 {
 	/// Stamped on every packet, so a foreign or mismatched-version sender is rejected before
-	/// its bytes are interpreted as a header.
-	public uint16 ProtocolId = 0xDCE7;
+	/// its bytes are interpreted as a header. Bumped with the wire format.
+	public uint16 ProtocolId = 0xDCE8;
 	/// Send an ack-only packet after this long idle, which is what keeps acks flowing when
 	/// neither side has anything to say.
 	public float KeepAliveMs = 100.0f;
@@ -24,6 +24,8 @@ struct ReliableConfig
 	public uint32 MaxPacketBytes = 1200;
 	/// The most Data packets one update sends a connection: a burst's cap.
 	public uint32 MaxPacketsPerUpdate = 64;
+	/// The live connections a server holds; a handshake past them is refused.
+	public uint32 MaxPeers = 64;
 
 	public this() {}
 }

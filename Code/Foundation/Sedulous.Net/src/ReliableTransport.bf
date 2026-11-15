@@ -10,9 +10,10 @@ namespace Sedulous.Net;
 /// Per remote it layers on: a packet header (protocol, type, sequence, ack, ack bits),
 /// ack-driven round trip estimation, RELIABLE messages re-included in every packet until a
 /// packet carrying them is acked and then released IN ORDER by message id, unreliable pass
-/// through (SEQUENCED ones numbered per channel, a stale one dropped), a connect and accept
-/// handshake that tells a new session from the same address apart by its token, and keepalive
-/// and timeout.
+/// through (SEQUENCED ones numbered per channel, a stale one dropped), a connect handshake
+/// whose challenge cookie keeps a server from holding anything for a request until the client
+/// answers from its address, a session token on every packet that tells a new session from the
+/// same address apart, and keepalive and timeout.
 ///
 /// The model is include-every-unacked-reliable-per-packet, which suits a low message rate:
 /// there is no separate retransmit path to get wrong, and a lost packet costs one round trip
@@ -27,7 +28,18 @@ class ReliableTransport : INetTransport
 		case ConnectAccept = 1;
 		case Data = 2;
 		case Disconnect = 3;
+		/// Server: the cookie a ConnectResponse must echo.
+		case Challenge = 4;
+		/// Client: the ConnectRequest again, with the challenge's cookie.
+		case ConnectResponse = 5;
 	}
+
+	/// A handshake packet's size: protocol, type, token and a cookie. A ConnectRequest is padded
+	/// to it, so a challenge is never bigger than the request that drew it (no amplification
+	/// toward a spoofed address).
+	private const int cHandshakeBytes = 2 + 1 + 4 + 8;
+	/// A cookie is good for the window it was made in and the one after.
+	private const double cCookieWindowMs = 10000.0;
 
 	/// A message queued to go out. A reliable one lives here until it is acked.
 	private class OutMessage
@@ -145,6 +157,9 @@ class ReliableTransport : INetTransport
 		public double LastRecvMs = 0.0;
 		public double LastSendMs = -1000.0;
 		public double LastConnectSendMs = -1000.0;
+		/// Client: the server's challenge, echoed until accepted.
+		public uint64 Cookie = 0;
+		public bool HaveCookie = false;
 		/// Data arrived since our last send, so an ack is owed promptly.
 		public bool AckPending = false;
 		public uint32 SentBytes = 0;
@@ -171,6 +186,9 @@ class ReliableTransport : INetTransport
 	private Dictionary<DatagramEndpoint, Connection> mByRemote = new .() ~ delete _;
 	private Dictionary<PeerId, Connection> mByPeer = new .() ~ delete _;
 	private Sedulous.Core.Random mRandom = .FromSystemEntropy();
+	/// Keys the handshake cookies; drawn once, so a cookie made by another transport, or before
+	/// a restart, is not this one's.
+	private uint64 mCookieSecret = 0;
 	private List<QueuedEvent> mEvents = new .() ~ DeleteContainerAndItems!(_);
 	private int mEventHead = 0;
 
@@ -181,6 +199,7 @@ class ReliableTransport : INetTransport
 	{
 		mSocket = socket;
 		mConfig = config;
+		mCookieSecret = ((uint64)mRandom.NextU32() << 32) | (uint64)mRandom.NextU32();
 	}
 
 	// ---- Connection establishment ------------------------------------------------------------
@@ -439,10 +458,70 @@ class ReliableTransport : INetTransport
 		connection.LastSendMs = mNowMs;
 	}
 
+	/// Client: the request, or once challenged, the response with the server's cookie.
 	private void SendConnectRequest(Connection connection)
 	{
-		SendControl(connection, .ConnectRequest);
+		let writer = scope BitWriter();
+		writer.WriteU16(mConfig.ProtocolId);
+		writer.WriteU8((uint8)(connection.HaveCookie ? PacketType.ConnectResponse : PacketType.ConnectRequest));
+		writer.WriteU32(connection.Token);
+		// The request's is padding, to cHandshakeBytes.
+		writer.WriteU64(connection.HaveCookie ? connection.Cookie : 0);
+		RawSend(connection, writer);
 		connection.LastConnectSendMs = mNowMs;
+	}
+
+	/// Server: a packet to an address it holds no connection for (a challenge, a refusal).
+	private void SendStateless(DatagramEndpoint to, PacketType type, uint32 token, bool withCookie,
+		uint64 cookie = 0)
+	{
+		let writer = scope BitWriter();
+		writer.WriteU16(mConfig.ProtocolId);
+		writer.WriteU8((uint8)type);
+		writer.WriteU32(token);
+		if (withCookie)
+			writer.WriteU64(cookie);
+		mSocket.Send(to, writer.Data);
+	}
+
+	/// The cookie for a handshake from `remote` with `token` in cookie window `window`: a hash
+	/// keyed by this transport's secret, so only an address that received the challenge can
+	/// answer it.
+	private uint64 Cookie(DatagramEndpoint remote, uint32 token, uint64 window)
+	{
+		var secret = mCookieSecret;
+		var address = remote.Value;
+		var tokenBytes = token;
+		var windowBytes = window;
+		uint8[28] input = .();
+		Internal.MemCpy(&input[0], &secret, 8);
+		Internal.MemCpy(&input[8], &address, 8);
+		Internal.MemCpy(&input[16], &tokenBytes, 4);
+		Internal.MemCpy(&input[20], &windowBytes, 8);
+		var digest = Sha256.Of(.(&input[0], 28));
+		uint64 cookie = 0;
+		Internal.MemCpy(&cookie, &digest.Bytes[0], 8);
+		return cookie;
+	}
+
+	private uint64 CookieWindow => (uint64)(mNowMs / cCookieWindowMs);
+
+	private bool CookieValid(DatagramEndpoint remote, uint32 token, uint64 cookie)
+	{
+		let window = CookieWindow;
+		return (cookie == Cookie(remote, token, window))
+			|| ((window > 0) && (cookie == Cookie(remote, token, window - 1)));
+	}
+
+	private int LiveConnections()
+	{
+		int live = 0;
+		for (let connection in mConnections)
+		{
+			if (connection.State != .Disconnected)
+				live++;
+		}
+		return live;
 	}
 
 	/// A control packet, carrying the session's token so the far end can tell this session
@@ -490,6 +569,8 @@ class ReliableTransport : INetTransport
 		let writer = scope BitWriter();
 		writer.WriteU16(mConfig.ProtocolId);
 		writer.WriteU8((uint8)PacketType.Data);
+		// The session's: a packet of another session at this address is dropped.
+		writer.WriteU32(connection.Token);
 
 		let seq = connection.LocalSeq;
 		connection.LocalSeq++;
@@ -638,25 +719,50 @@ class ReliableTransport : INetTransport
 		let reader = scope BitReader(bytes);
 		let protocol = reader.ReadU16();
 		let typeRaw = reader.ReadU8();
-		// A foreign or corrupt packet is dropped before anything else is read from it.
-		if (!reader.Ok || (protocol != mConfig.ProtocolId))
+		// A foreign or corrupt packet, or a type this version does not know, is dropped before
+		// anything else is read from it.
+		if (!reader.Ok || (protocol != mConfig.ProtocolId) || (typeRaw > (uint8)PacketType.ConnectResponse))
 			return;
 
 		let type = (PacketType)typeRaw;
 		var connection = FindByRemote(from);
 
-		uint32 token = 0;
-		if (type != .Data)
-		{
-			token = reader.ReadU32();
-			if (!reader.Ok)
-				return;
-		}
+		// Every packet carries its session's token, Data included.
+		let token = reader.ReadU32();
+		if (!reader.Ok)
+			return;
 
 		switch (type)
 		{
 		case .ConnectRequest:
-			if (!mAccepting)
+			// Nothing is kept for a request: it is answered with a challenge, which only the
+			// address that sent it receives, so a spoofed request costs one packet and no peer.
+			if (!mAccepting || (bytes.Length < cHandshakeBytes))
+				return;
+			if ((connection != null) && (connection.Token == token) && (connection.State != .Disconnected))
+			{
+				// Re-accept: our accept was lost, and the client is still asking.
+				connection.LastRecvMs = mNowMs;
+				SendControl(connection, .ConnectAccept);
+				return;
+			}
+			SendStateless(from, .Challenge, token, true, Cookie(from, token, CookieWindow));
+			return;
+
+		case .Challenge:
+			let challengeCookie = reader.ReadU64();
+			if (!reader.Ok || (connection == null) || (connection.Token != token)
+				|| (connection.State != .Connecting))
+				return;
+			connection.Cookie = challengeCookie;
+			connection.HaveCookie = true;
+			// The response, now.
+			SendConnectRequest(connection);
+			return;
+
+		case .ConnectResponse:
+			let responseCookie = reader.ReadU64();
+			if (!mAccepting || !reader.Ok || !CookieValid(from, token, responseCookie))
 				return;
 			if ((connection != null) && (connection.Token == token) && (connection.State != .Disconnected))
 			{
@@ -665,7 +771,14 @@ class ReliableTransport : INetTransport
 				SendControl(connection, .ConnectAccept);
 				return;
 			}
-			if ((connection != null) && (connection.State != .Disconnected))
+			let replaces = (connection != null) && (connection.State != .Disconnected);
+			if (!replaces && (LiveConnections() >= (int)mConfig.MaxPeers))
+			{
+				// Full: the client hears it and stops trying.
+				SendStateless(from, .Disconnect, token, false);
+				return;
+			}
+			if (replaces)
 			{
 				// Another session from the same address (the client restarted, or connected
 				// again): the old one is over, and its state must not carry into the new one.
@@ -704,7 +817,7 @@ class ReliableTransport : INetTransport
 			break;
 		}
 
-		if ((connection == null) || (connection.State == .Disconnected))
+		if ((connection == null) || (connection.State == .Disconnected) || (connection.Token != token))
 			return;
 
 		connection.RecvBytes += (uint32)bytes.Length;

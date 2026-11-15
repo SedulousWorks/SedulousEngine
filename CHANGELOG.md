@@ -298,3 +298,6 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   buffers draws from the next frame instead of never.
 - Rendering and GUI: a fixed per-frame budget that runs out (a renderer's ring, the vector
   renderer's uniform slots) now logs a warning the first time instead of dropping draws silently.
+- Networking: a server makes a peer only for a client that answers its challenge, and holds at
+  most `MaxPeers` (64 by default); data packets carry the session token. The wire format changed:
+  a game built before this cannot connect to one built after.

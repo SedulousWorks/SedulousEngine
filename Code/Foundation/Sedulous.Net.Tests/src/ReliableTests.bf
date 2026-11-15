@@ -104,6 +104,231 @@ class ReliableTests
 		return sim;
 	}
 
+	private static int CountKind(INetTransport transport, NetEventKind kind)
+	{
+		var count = 0;
+		let event = scope NetEvent();
+		while (transport.Poll(event))
+		{
+			if (event.Kind == kind)
+				count++;
+		}
+		return count;
+	}
+
+	/// A handshake packet as the transport writes it: protocol, type, token, and a cookie or
+	/// padding.
+	private static void Handshake(uint8 type, uint32 token, uint64 cookie, List<uint8> outBytes, bool padded = true)
+	{
+		let writer = scope BitWriter();
+		writer.WriteU16(0xDCE8);
+		writer.WriteU8(type);
+		writer.WriteU32(token);
+		if (padded)
+			writer.WriteU64(cookie);
+		outBytes.Clear();
+		outBytes.AddRange(writer.Data);
+	}
+
+	/// A packet a socket received, by type.
+	private struct ReceivedPacket
+	{
+		public uint8 Type;
+		public uint32 Token;
+		public uint64 Cookie;
+		public int Size;
+	}
+
+	private static void ReceiveAll(IDatagramSocket socket, List<ReceivedPacket> outPackets)
+	{
+		let data = scope List<uint8>();
+		while (socket.Receive(let from, data))
+		{
+			let reader = scope BitReader(data);
+			reader.ReadU16();
+			var packet = ReceivedPacket();
+			packet.Type = reader.ReadU8();
+			packet.Token = reader.ReadU32();
+			packet.Size = data.Count;
+			if (packet.Type == 4)
+				packet.Cookie = reader.ReadU64();
+			outPackets.Add(packet);
+		}
+	}
+
+	/// Holds back the first Data packet that carries a message, for the test to replay.
+	private class HoldDataSocket : IDatagramSocket
+	{
+		private IDatagramSocket mInner;
+		public bool Arm = false;
+		public List<uint8> Held = new .() ~ delete _;
+		public DatagramEndpoint HeldTo;
+
+		public this(IDatagramSocket inner)
+		{
+			mInner = inner;
+		}
+
+		public void Send(DatagramEndpoint to, Span<uint8> data)
+		{
+			let reader = scope BitReader(data);
+			reader.ReadU16(); // protocol
+			let type = reader.ReadU8();
+			// A Data packet with a message.
+			if (Arm && Held.IsEmpty && (type == 2) && (data.Length > 16))
+			{
+				Held.AddRange(data);
+				HeldTo = to;
+				return;
+			}
+			mInner.Send(to, data);
+		}
+
+		public bool Receive(out DatagramEndpoint outFrom, List<uint8> outData) => mInner.Receive(out outFrom, outData);
+
+		public DatagramEndpoint LocalEndpoint => mInner.LocalEndpoint;
+
+		public void SendRaw(Span<uint8> data) => mInner.Send(HeldTo, data);
+	}
+
+	/// A request alone makes no peer; it draws one challenge no bigger than itself. A
+	/// connection was made for any ConnectRequest, spoofed addresses included, so a flood of them
+	/// filled the server with peers. Now a request is answered with a cookie and nothing is kept.
+	[Test]
+	public static void ARequestAloneMakesNoPeerAndDrawsOneChallengeNoBiggerThanItself()
+	{
+		let fixture = scope Fixture(Conditions(0.0f));
+		fixture.Server.SetAccepting(true);
+		let raw = fixture.Network.CreateSocket();
+		let request = scope List<uint8>();
+		Handshake(0, 1234, 0, request);
+		raw.Send(fixture.ServerSocket.LocalEndpoint, request);
+		// Too short to answer.
+		let unpadded = scope List<uint8>();
+		Handshake(0, 1234, 0, unpadded, false);
+		raw.Send(fixture.ServerSocket.LocalEndpoint, unpadded);
+		fixture.Pump(5);
+		Test.Assert(CountKind(fixture.Server, .Connected) == 0);
+		let got = scope List<ReceivedPacket>();
+		ReceiveAll(raw, got);
+		// The padded one, once: a challenge.
+		Test.Assert(got.Count == 1);
+		Test.Assert(got[0].Type == 4);
+		Test.Assert(got[0].Token == 1234);
+		Test.Assert(got[0].Size <= request.Count);
+
+		// A response with any other cookie makes no peer either; the challenge's does.
+		let wrong = scope List<uint8>();
+		Handshake(5, 1234, got[0].Cookie ^ 1, wrong);
+		raw.Send(fixture.ServerSocket.LocalEndpoint, wrong);
+		fixture.Pump(5);
+		Test.Assert(CountKind(fixture.Server, .Connected) == 0);
+		let none = scope List<ReceivedPacket>();
+		ReceiveAll(raw, none);
+		Test.Assert(none.IsEmpty);
+		let right = scope List<uint8>();
+		Handshake(5, 1234, got[0].Cookie, right);
+		raw.Send(fixture.ServerSocket.LocalEndpoint, right);
+		fixture.Pump(5);
+		Test.Assert(CountKind(fixture.Server, .Connected) == 1);
+		let accepted = scope List<ReceivedPacket>();
+		ReceiveAll(raw, accepted);
+		Test.Assert(!accepted.IsEmpty);
+		// ConnectAccept.
+		Test.Assert(accepted[0].Type == 1);
+	}
+
+	/// A server at its peer limit refuses the next client, who stops.
+	[Test]
+	public static void AServerAtItsPeerLimitRefusesTheNextClient()
+	{
+		var config = ReliableConfig();
+		config.MaxPeers = 1;
+		let fixture = scope Fixture(Conditions(10.0f), config);
+		fixture.Server.SetAccepting(true);
+		fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		Test.Assert(AnyKind(fixture.Client, .Connected));
+
+		let second = fixture.Network.CreateSocket();
+		let late = scope ReliableTransport(second, config);
+		late.Connect(fixture.ServerSocket.LocalEndpoint);
+		var refused = false;
+		var connected = false;
+		let event = scope NetEvent();
+		for (int step < 40)
+		{
+			fixture.Step();
+			late.Update(10.0f);
+			while (late.Poll(event))
+			{
+				refused = refused || (event.Kind == .Disconnected);
+				connected = connected || (event.Kind == .Connected);
+			}
+		}
+		Test.Assert(refused);
+		Test.Assert(!connected);
+		// The first client only.
+		Test.Assert(CountKind(fixture.Server, .Connected) == 1);
+	}
+
+	/// A data packet of another session at the peer's address is dropped. Data packets carried
+	/// no session token: one from an earlier session at the same address (or forged with it)
+	/// was read as this session's.
+	[Test]
+	public static void ADataPacketOfAnotherSessionAtThePeersAddressIsDropped()
+	{
+		let network = scope SimDatagramNetwork(Conditions(0.0f));
+		let clientRaw = network.CreateSocket();
+		let serverSocket = network.CreateSocket();
+		let clientSocket = scope HoldDataSocket(clientRaw);
+		let client = scope ReliableTransport(clientSocket);
+		let server = scope ReliableTransport(serverSocket);
+		server.SetAccepting(true);
+		let serverPeer = client.Connect(serverSocket.LocalEndpoint);
+		for (int i < 20)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		Test.Assert(AnyKind(client, .Connected));
+		let drained = scope List<uint8>();
+		DrainReceived(server, drained);
+
+		clientSocket.Arm = true;
+		client.Send(serverPeer, 1, scope uint8[](42), .Unreliable);
+		network.Advance(10.0f);
+		client.Update(10.0f);
+		server.Update(10.0f);
+		Test.Assert(!clientSocket.Held.IsEmpty);
+		let forged = scope List<uint8>()..AddRange(clientSocket.Held);
+		// The token's first byte.
+		forged[3] = (uint8)(forged[3] ^ 0xFF);
+		clientSocket.SendRaw(forged);
+		for (int i < 2)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		let afterForged = scope List<uint8>();
+		DrainReceived(server, afterForged);
+		Test.Assert(afterForged.IsEmpty);
+
+		// The same packet with its own token.
+		clientSocket.SendRaw(clientSocket.Held);
+		for (int i < 2)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+			server.Update(10.0f);
+		}
+		let delivered = scope List<uint8>();
+		DrainReceived(server, delivered);
+		Test.Assert((delivered.Count == 1) && (delivered[0] == 42));
+	}
+
 	[Test]
 	public static void TheHandshakeConnectsBothSides()
 	{
@@ -241,6 +466,15 @@ class ReliableTests
 		let fixture = scope Fixture(Conditions(20.0f, 0.6f, 0.0f, 0.0f, 3));
 		fixture.Server.SetAccepting(true);
 		let serverPeer = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		// The handshake's four legs (request, challenge, response, accept) take a few resends at
+		// 60% loss.
+		var connected = false;
+		for (int step = 0; (step < 1000) && !connected; step++)
+		{
+			fixture.Step();
+			connected = AnyKind(fixture.Client, .Connected);
+		}
+		Test.Assert(connected);
 		fixture.Pump(30);
 		AnyKind(fixture.Server, .Connected);
 
