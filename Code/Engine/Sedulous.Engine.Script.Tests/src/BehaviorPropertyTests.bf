@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
@@ -122,6 +123,36 @@ static class BehaviorPropertyTests
 		play.BehaviorOf(other).SetOverride(ScriptPropertyNames.HashOf("target"), .Entity(Guid.Create()));
 		play.Step();
 		Test.Assert(!play.Prop(other, "target").AsEntity.IsAssigned);
+	}
+
+	/// An entity property never set is the invalid handle, applied like any other value: the
+	/// script reads it as an entity that names none, and the instance is not reported as
+	/// missing the property.
+	[Test]
+	public static void AnUnsetEntityPropertyIsTheInvalidHandleAppliedWithoutAWarning()
+	{
+		let ring = scope RingLogger(32, .Warning);
+		bool previousOwned = false;
+		let previous = DetachGlobalLogger(out previousOwned);
+		InitGlobalLogger(ring);
+
+		let play = scope ScriptPlayScene();
+		let mover = play.Class("Mover", cMover);
+		let e = play.AddBehavior(mover);
+		play.Start();
+		play.Step();
+
+		bool ringOwned = false;
+		DetachGlobalLogger(out ringOwned); // the ring is the test's
+		InitGlobalLogger(previous, previousOwned);
+
+		Test.Assert(!play.Prop(e, "target").AsEntity.IsAssigned, "no entity");
+		Test.Assert(play.Prop(e, "targetName").AsString.IsEmpty, "the scene says it is not valid");
+		for (int i < ring.Count)
+		{
+			let message = ring.GetMessage(i, .. scope .());
+			Test.Assert(!message.Contains("'target'"), message);
+		}
 	}
 
 	[Test]
