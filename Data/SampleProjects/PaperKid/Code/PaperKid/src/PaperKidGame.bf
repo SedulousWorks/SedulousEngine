@@ -278,6 +278,7 @@ class PaperKidGame : Game
 		BindVolume("master", .Master);
 		BindVolume("music", .Music);
 		BindVolume("effects", .Effects);
+		BindQuality();
 		Wire("settings-back-btn", new [=this] (e) =>
 			{
 				SettingsBack();
@@ -475,6 +476,42 @@ class PaperKidGame : Game
 				VolumeChanged(rowName, bus);
 				return true;
 			} ~ delete rowName);
+	}
+
+	/// The graphics row: a step per quality level the game offers (the run's Quality), at the one
+	/// it plays at. A step switches at once, and the player keeps the choice for the next run.
+	private void BindQuality()
+	{
+		let slider = Find("quality-slider") as Slider;
+		let quality = (Instance != null) ? Instance.Quality : null;
+		if ((slider == null) || (quality == null))
+			return;
+		let current = quality.Current();
+		int32 at = 0;
+		for (int32 i < quality.Count())
+		{
+			if (quality.Label(i) == current)
+				at = i;
+		}
+		slider.Max = (quality.Count() > 0) ? (double)(quality.Count() - 1) : 0.0;
+		slider.Value = at;
+		SetText("quality-value", current);
+		slider.On("input", new [=this] (e) =>
+			{
+				QualityChanged();
+				return true;
+			});
+	}
+
+	private void QualityChanged()
+	{
+		let slider = Find("quality-slider") as Slider;
+		let quality = (Instance != null) ? Instance.Quality : null;
+		if ((slider == null) || (quality == null))
+			return;
+		let index = (int32)(slider.Value + 0.5);
+		if ((index >= 0) && (index < quality.Count()) && quality.Set(quality.Label(index)))
+			SetText("quality-value", quality.Label(index));
 	}
 
 	private void VolumeChanged(StringView row, AudioBus bus)
