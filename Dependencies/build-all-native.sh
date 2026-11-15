@@ -4,6 +4,8 @@
 #   build-all-native.sh status [names...]  which committed archives are older than their sources
 #   build-all-native.sh build  [names...]  configure and build each one's Debug and Release (Linux64)
 #   build-all-native.sh wasm   [names...]  build each one's wasm32 archive (those that have one)
+#   build-all-native.sh android [names...] build each one's Android arm64 archive (those that have
+#                                          one; needs ANDROID_NDK_HOME)
 #
 # Names are folder names (joltc-Beef, or just joltc); none means all of them. A build goes on past a
 # failure and lists the failures at the end. Bulkan, Win32-Beef, SDL3-Beef, wgpu-Beef, Dxc-Beef and
@@ -57,7 +59,7 @@ status() {
     mapfile -t specs < <(native_sources "$d")
     sources=$(last_commit "${specs[@]}")
     newest=$(git log -1 --format='%h %s' -- "${specs[@]}" 2>/dev/null | cut -c1-60)
-    for platform in Win64 Linux64 wasm32; do
+    for platform in Win64 Linux64 wasm32 Android64; do
       oldest=0; any=0
       for cfg in Debug Release; do
         folder="$d/dist/$cfg-$platform"
@@ -86,7 +88,7 @@ failed=()
 run() {
   local d="$1"; shift
   echo "==== $d: $*"
-  if ! (cd "$d" && ./build-native.sh "$@"); then failed+=("$d ($*)"); return 1; fi
+  if ! (cd "$d" && bash ./build-native.sh "$@"); then failed+=("$d ($*)"); return 1; fi
 }
 
 case "$option" in
@@ -101,8 +103,13 @@ case "$option" in
       grep -q '^ *wasm)' "$d/build-native.sh" || { echo "==== $d: no wasm32 build"; continue; }
       run "$d" wasm
     done ;;
+  android)
+    for d in $(selected "$@"); do
+      grep -q '^ *android)' "$d/build-native.sh" || continue
+      run "$d" android
+    done ;;
   *)
-    echo "Usage: build-all-native.sh [status|build|wasm] [names...]"
+    echo "Usage: build-all-native.sh [status|build|wasm|android] [names...]"
     exit 1 ;;
 esac
 
