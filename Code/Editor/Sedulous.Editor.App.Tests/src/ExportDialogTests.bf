@@ -320,6 +320,46 @@ class ExportDialogTests
 		Test.Assert(f.IntAt("androidVersionCode") == 4);
 	}
 
+	/// An Android preset's icon and keystore are paths with Browse: the icon from the project's PNGs
+	/// with the editor's picker, the keystore with the system's dialog (kept outside the project as
+	/// a rule), named relative to the project when it is inside it.
+	[Test]
+	public static void AnAndroidPresetsIconAndKeystoreAreBrowsedFor()
+	{
+		let f = scope Fixture();
+		RemoveDirectoryRecursive(f.Project);
+		for (let file in StringView[4]("Branding/AppIcon.png", "Branding/notes.txt", "Cooked/Icon.png", "keys/release.jks"))
+		{
+			let full = PathJoin(f.Project, file, .. scope .());
+			Test.Assert(CreateDirectory(PathParent(full, .. scope .())));
+			Test.Assert(WriteFile(full, Span<uint8>()) case .Ok);
+		}
+		let phone = scope ExportPreset();
+		phone.Name.Set("Phone");
+		phone.Platform.Set("Android64");
+		f.Presets.Add(phone);
+		let dialog = f.Open();
+		dialog.Select(2);
+		Test.Assert(f.Bag.FindInfo("androidIcon").Hint == ExportPathEditor.cHint);
+		Test.Assert(f.Bag.FindInfo("androidKeystore").Hint == ExportPathEditor.cHint);
+
+		dialog.Browse("androidIcon");
+		Test.Assert(f.Picks.Count == 1);
+		Test.Assert(f.Picks[0].Items.Count == 1, "the project's PNGs, not a cook's");
+		Test.Assert(f.Picks[0].Items[0].Key == "Branding/AppIcon.png");
+		f.Picks[0].OnPicked("Branding/AppIcon.png");
+		Test.Assert(f.Presets.At(2).AndroidIcon == "Branding/AppIcon.png");
+
+		f.FromDisk.Add(PathJoin(f.Project, "keys/release.jks", .. new .()));
+		dialog.Browse("androidKeystore");
+		Test.Assert(f.Presets.At(2).AndroidKeystore == "keys/release.jks");
+		ClearAndDeleteItems!(f.FromDisk);
+		f.FromDisk.Add(new .("/home/me/keys/upload.jks"));
+		dialog.Browse("androidKeystore");
+		Test.Assert(f.Presets.At(2).AndroidKeystore == "/home/me/keys/upload.jks");
+		Test.Assert(f.Notices.IsEmpty, "a keystore outside the project is no refusal");
+	}
+
 	/// A preset's quality level is one of the project's levels, offered by name, or the project's
 	/// default.
 	[Test]
