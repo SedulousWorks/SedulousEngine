@@ -231,6 +231,53 @@ class CodeEditorTests
 		bed.CheckText("abc");
 	}
 
+	/// A caret another caret's edit swallowed ends where that edit left it: from 5 a word deleted
+	/// backward takes "abcde", carrying the caret at 3 to 0, where its own delete has nothing to
+	/// take; it kept its place from before the edit, a caret at 3 in "fgh".
+	[Test]
+	public static void ACaretAnotherCaretsEditSwallowedEndsWhereThatEditLeftIt()
+	{
+		let bed = scope CodeBed(default, "abcdefgh", 120.0f, true);
+		CodeSelection[2] two = .(.(At(0, 3), At(0, 3)), .(At(0, 5), At(0, 5)));
+		bed.Editor.SetSelections(two);
+		Test.Assert(bed.Run(.DeleteWordBackward));
+		bed.CheckText("fgh");
+		Test.Assert(bed.Editor.Selections.Length == 1);
+		Test.Assert(bed.Caret == At(0, 0));
+		// Carets that do not overlap still each make their edit.
+		let apart = scope CodeBed(default, "ab cd ef", 120.0f, true);
+		CodeSelection[3] three = .(.(At(0, 2), At(0, 2)), .(At(0, 5), At(0, 5)), .(At(0, 8), At(0, 8)));
+		apart.Editor.SetSelections(three);
+		Test.Assert(apart.Run(.DeleteBackward));
+		apart.CheckText("a c e");
+	}
+
+	/// Read only holds for undo, redo and the line commands, which edit the document without the
+	/// planned edits' check.
+	[Test]
+	public static void ReadOnlyUndoRedoAndTheLineCommandsChangeNothing()
+	{
+		let bed = scope CodeBed(default, "one\ntwo\nthree", 120.0f, true);
+		bed.Editor.SetCaret(At(0, 3));
+		bed.Editor.Type("!");
+		bed.CheckText("one!\ntwo\nthree");
+		bed.Editor.IsReadOnly = true;
+		bed.Editor.SetCaret(At(1, 0));
+		Test.Assert(!bed.Run(.Undo));
+		bed.CheckText("one!\ntwo\nthree");
+		bed.Editor.MoveLines(true);
+		bed.Editor.MoveLines(false);
+		bed.Editor.DuplicateLines(true);
+		bed.Editor.DuplicateLines(false);
+		bed.Editor.DeleteLines();
+		bed.Editor.IndentLines(false);
+		bed.Editor.IndentLines(true);
+		bed.CheckText("one!\ntwo\nthree");
+		bed.Editor.IsReadOnly = false;
+		Test.Assert(bed.Run(.Undo), "writable again, the edit undoes");
+		bed.CheckText("one\ntwo\nthree");
+	}
+
 	[Test]
 	public static void TwoEditorsOverOneDocumentSeeEachOthersEdits()
 	{

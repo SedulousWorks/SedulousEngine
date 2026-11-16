@@ -771,6 +771,8 @@ class CodeEditor : UIWidget
 			return true;
 		case .Undo, .Redo:
 			{
+				if (mReadOnly)
+					return false; // undoing is editing the text: a read-only editor shows, never changes
 				let selections = scope List<CodeSelection>();
 				let done = (command == .Undo) ? doc.Undo(selections) : doc.Redo(selections);
 				if (done)
@@ -946,6 +948,8 @@ class CodeEditor : UIWidget
 	/// Moves the lines the selections cover up or down past their neighbour.
 	public void MoveLines(bool up)
 	{
+		if (mReadOnly)
+			return; // edits the document directly, not through ApplyPlanned's read-only check
 		let firsts = scope List<uint32>();
 		let lasts = scope List<uint32>();
 		LineBlocks(firsts, lasts);
@@ -984,6 +988,8 @@ class CodeEditor : UIWidget
 	/// copy.
 	public void DuplicateLines(bool up)
 	{
+		if (mReadOnly)
+			return; // edits the document directly, not through ApplyPlanned's read-only check
 		let firsts = scope List<uint32>();
 		let lasts = scope List<uint32>();
 		LineBlocks(firsts, lasts);
@@ -3420,8 +3426,14 @@ class CodeEditor : UIWidget
 			var replaced = CodeRange();
 			let text = scope String();
 			uint32 back = 0; // the caret this many bytes before the end of what it put
+			// A selection that makes no edit keeps where it is now: the document's change listener
+			// has carried it through the edits already made (one reaching back over it, a word
+			// deleted backward, moved it), and its copy from before them is stale.
 			if (!edit(mSelections[i], ref replaced, text, ref back))
+			{
+				after[i] = mSelections[i];
 				continue;
+			}
 			let put = mDoc.Replace(replaced, text, kind);
 			// `back` bytes before the end of what it put (across its line breaks too).
 			var caret = put.Start;
