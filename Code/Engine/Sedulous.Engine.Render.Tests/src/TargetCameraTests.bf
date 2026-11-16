@@ -41,6 +41,17 @@ class TargetCameraTests
 			mTextures.Add(texture);
 			return texture;
 		}
+
+		/// A texture made from `desc`, as an import or another product would be.
+		public Texture MakeFrom(TextureDesc desc)
+		{
+			let gpu = Device.CreateTexture(desc).Value;
+			let view = Device.CreateTextureView(gpu, .()).Value;
+			let texture = new Texture();
+			texture.Adopt(Device, gpu, view, null, desc.Width, desc.Height, desc.Format, false);
+			mTextures.Add(texture);
+			return texture;
+		}
 	}
 
 	[Test]
@@ -118,6 +129,21 @@ class TargetCameraTests
 		monitorCamera.Target.SetDirect(null);
 		RenderExtract.CollectTargetCameras(scene, 6, views);
 		Test.Assert(views.IsEmpty);
+
+		// An imported image (sampled, not a render target) and a depth texture are refused: the
+		// camera draws into its target as a colour attachment, which every backend refuses them as.
+		var imageDesc = TextureDesc();
+		imageDesc.Format = .RGBA8UnormSrgb;
+		imageDesc.Width = 64;
+		imageDesc.Height = 64;
+		imageDesc.Usage = .Sampled | .CopyDst;
+		monitorCamera.Target.SetDirect(targets.MakeFrom(imageDesc));
+		RenderExtract.CollectTargetCameras(scene, 6, views);
+		Test.Assert(views.IsEmpty, "an imported image");
+
+		monitorCamera.Target.SetDirect(targets.MakeFrom(TextureDesc.RenderTarget(.Depth32Float, 64, 64)));
+		RenderExtract.CollectTargetCameras(scene, 6, views);
+		Test.Assert(views.IsEmpty, "a depth texture");
 	}
 
 	[Test]

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.RHI;
@@ -552,6 +553,16 @@ static class RenderExtract
 			});
 	}
 
+	/// Whether a camera can draw into `texture`, which it does as a colour attachment: an imported
+	/// image (sampled only) or a depth texture is refused, as every backend would refuse the pass.
+	public static bool CanRenderInto(ITexture texture)
+	{
+		return texture.Desc.Usage.HasFlag(.RenderTarget) && !TextureFormats.IsDepthFormat(texture.Desc.Format);
+	}
+
+	/// The first unrenderable target is logged.
+	private static bool sUnrenderableTargetLogged = false;
+
 	/// The scene's target cameras due on frame `frameNumber`: effectively active, with a live
 	/// target texture, and on their TargetInterval. Manager order, so a fixed set of target
 	/// cameras keeps its view order (and so its per view history) from frame to frame.
@@ -566,6 +577,15 @@ static class RenderExtract
 				let target = component.Target.Get;
 				if ((target == null) || (target.GpuTexture == null) || !scene.IsEffectivelyActive(entity))
 					return;
+				if (!CanRenderInto(target.GpuTexture))
+				{
+					if (!sUnrenderableTargetLogged)
+					{
+						GlobalLog(.Warning, "Render: camera '{}': its target is not a render texture, not drawn", scene.GetEntityName(entity));
+						sUnrenderableTargetLogged = true;
+					}
+					return;
+				}
 				if ((frameNumber % Math.Max(component.TargetInterval, 1)) != 0)
 					return; // the texture keeps the image it last drew
 				let world = scene.GetWorldMatrix(entity);
@@ -574,7 +594,7 @@ static class RenderExtract
 				view.Camera.Camera.View = Inverse(world);
 				view.Camera.Camera.Projection = component.MakeProjection((float)target.Width / (float)Math.Max(target.Height, 1));
 				view.Camera.Camera.Position = TransformPoint(Float3(0, 0, 0), world);
-				view.Camera.Camera.FarZ = component.FarZ;
+				view.Camera.Camera.FarZ = component.ClipPlanes.FarZ;
 				view.Camera.ClearColor = ToLinear(component.ClearColor);
 				outViews.Add(view);
 			});
@@ -610,7 +630,7 @@ static class RenderExtract
 				// aspect only stands in when it does not.
 				camera.Projection = component.MakeProjection((aspect > 0.0f) ? aspect : component.Aspect);
 				camera.Position = TransformPoint(Float3(0, 0, 0), world);
-				camera.FarZ = component.FarZ;
+				camera.FarZ = component.ClipPlanes.FarZ;
 				clear = ToLinear(component.ClearColor);
 			});
 
@@ -636,13 +656,16 @@ static class RenderExtract
 		light.PositionWS = TransformPoint(Float3(0, 0, 0), world);
 		// Forward is -Z, which is the third basis row negated under the row vector convention.
 		light.DirectionWS = Normalized(Float3(-world.M[2][0], -world.M[2][1], -world.M[2][2]));
-		light.Range = component.Range;
+		// Authored values are not trusted: a negative range, a negative intensity or an inner cone
+		// wider than the outer one shade nonsense (the spot falloff divides by inner - outer).
+		light.Range = Math.Max(component.Range, 0.0f);
 		let lightColor = ToLinear(component.Color);
 		light.Color = .(lightColor.R, lightColor.G, lightColor.B);
-		light.Intensity = component.Intensity;
+		light.Intensity = Math.Max(component.Intensity, 0.0f);
 		light.Type = (float)(uint32)component.Type;
-		light.InnerCos = Math.Cos(component.InnerAngle);
-		light.OuterCos = Math.Cos(component.OuterAngle);
+		let outer = Math.Clamp(component.OuterAngle, 0.0f, Math.PI_f * 0.5f);
+		light.InnerCos = Math.Cos(Math.Clamp(component.InnerAngle, 0.0f, outer));
+		light.OuterCos = Math.Cos(outer);
 		light.ShadowStrength = component.ShadowStrength;
 		return light;
 	}

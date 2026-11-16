@@ -178,4 +178,49 @@ class CameraProjectionTests
 		SerializeValue(reader, "trailing", ref trailing);
 		Test.Assert(trailing == 77);
 	}
+
+	private static bool Finite(Float4x4 m)
+	{
+		for (int r < 4)
+		{
+			for (int c < 4)
+			{
+				if (!m.M[r][c].IsFinite)
+					return false;
+			}
+		}
+		return true;
+	}
+
+	/// Authored values that cannot be drawn are clamped: NearZ 0, FarZ below NearZ, a field of view
+	/// of 0 or a zero aspect each made the projection divide by zero, and every pixel of the view NaN.
+	[Test]
+	public static void AuthoredCameraAndLightValuesThatCannotBeDrawnAreClamped()
+	{
+		var camera = CameraComponent();
+		camera.NearZ = 0.0f;
+		Test.Assert(Finite(camera.MakeProjection(1.5f)));
+		camera.NearZ = 5.0f;
+		camera.FarZ = 1.0f;
+		Test.Assert(Finite(camera.MakeProjection(1.5f)));
+		Test.Assert(camera.ClipPlanes.FarZ > camera.ClipPlanes.NearZ);
+		camera.FovYRadians = 0.0f;
+		Test.Assert(Finite(camera.MakeProjection(0.0f)));
+		camera.Projection = .Orthographic;
+		camera.NearZ = 2.0f;
+		camera.FarZ = 2.0f;
+		Test.Assert(Finite(camera.MakeProjection(1.5f)));
+
+		// A spot whose inner cone is wider than its outer one, with a negative range and intensity.
+		var spot = LightComponent();
+		spot.Type = .Spot;
+		spot.InnerAngle = 0.9f;
+		spot.OuterAngle = 0.3f;
+		spot.Range = -4.0f;
+		spot.Intensity = -2.0f;
+		let light = RenderExtract.MakeGpuLight(spot, .Identity());
+		Test.Assert(light.InnerCos >= light.OuterCos);
+		Test.Assert(light.Range >= 0.0f);
+		Test.Assert(light.Intensity >= 0.0f);
+	}
 }

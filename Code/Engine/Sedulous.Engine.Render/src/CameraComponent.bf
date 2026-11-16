@@ -7,6 +7,15 @@ using Sedulous.Resource;
 
 namespace Sedulous.Engine.Render;
 
+/// A camera's near and far planes as the renderer draws with them.
+struct CameraClipPlanes
+{
+	public float NearZ = 0.1f;
+	public float FarZ = 1000.0f;
+
+	public this() {}
+}
+
 /// A camera frustum on an entity.
 ///
 /// These fields are the PROJECTION only: the view transform is the inverse of the entity's
@@ -70,12 +79,36 @@ struct CameraComponent : ISerializable, IComponentResources
 	/// gizmo all build through it, so the preview frames what the game draws.
 	public Float4x4 MakeProjection(float aspect)
 	{
+		let planes = ClipPlanes;
+		let safeAspect = (aspect.IsFinite && (aspect > 0.0f)) ? aspect : 1.0f;
 		if (Projection == .Orthographic)
 		{
-			let height = Math.Max(OrthoHeight, 1.0e-4f);
-			return Float4x4.OrthographicRH(height * aspect, height, NearZ, FarZ);
+			let height = OrthoHeight.IsFinite ? Math.Max(OrthoHeight, 1.0e-4f) : 10.0f;
+			return Float4x4.OrthographicRH(height * safeAspect, height, planes.NearZ, planes.FarZ);
 		}
-		return Float4x4.PerspectiveFovRH(FovYRadians, aspect, NearZ, FarZ);
+		// A field of view inside (0, pi): 0 and pi have no finite tangent.
+		const float cMinFov = 1.0e-3f;
+		let fov = FovYRadians.IsFinite ? Math.Clamp(FovYRadians, cMinFov, Math.PI_f - cMinFov) : 1.04719755f;
+		return Float4x4.PerspectiveFovRH(fov, safeAspect, planes.NearZ, planes.FarZ);
+	}
+
+	/// The clip planes as drawn: a perspective near plane in front of the eye, and a far plane
+	/// past the near one. Authored values are not trusted (an inspector or a script can set NearZ 0
+	/// or FarZ below NearZ), and either would make the projection divide by zero.
+	public CameraClipPlanes ClipPlanes
+	{
+		get
+		{
+			const float cMinNear = 1.0e-3f;
+			const float cMinDepth = 1.0e-3f;
+			var planes = CameraClipPlanes();
+			planes.NearZ = NearZ.IsFinite ? NearZ : 0.1f;
+			if (Projection != .Orthographic)
+				planes.NearZ = Math.Max(planes.NearZ, cMinNear);
+			planes.FarZ = FarZ.IsFinite ? FarZ : planes.NearZ + 1000.0f;
+			planes.FarZ = Math.Max(planes.FarZ, planes.NearZ + cMinDepth);
+			return planes;
+		}
 	}
 
 	public void Serialize(ISerializer ar) mut

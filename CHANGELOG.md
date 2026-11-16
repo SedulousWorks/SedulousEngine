@@ -127,6 +127,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: a camera whose target is not a render texture (an imported image, a depth texture)
+  is skipped with a warning instead of failing the frame. A camera with a near plane of 0, a far
+  plane below its near one or a field of view of 0, and a spot light whose inner cone is wider
+  than its outer one, draw clamped to sensible values instead of breaking the view.
 - Rendering: a material with an unset cube texture slot gets a white cube instead of a flat
   texture its layout refuses.
 - Rendering: a frame that draws more than eight views (cameras, render textures, editor
