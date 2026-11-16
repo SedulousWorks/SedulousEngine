@@ -281,6 +281,22 @@ class TessellatorTests
 	// ---- strokes ----
 
 	[Test]
+	public static void AHugeStrokesRoundCapsAndJoinsHaveABoundedVertexCount()
+	{
+		// A width of 1e7 asked for millions of segments per arc (hostile content, a runaway value).
+		let points = scope Float2[](.(0, 0), .(10, 0), .(10, 10));
+		let vertices = scope List<VGVertex>();
+		let indices = scope List<uint32>();
+		StrokeTessellator.Tessellate(points, false, .(1.0e7f, .Round, .Round), .(), false, .White, vertices, indices);
+		Test.Assert((vertices.Count > 0) && (vertices.Count < 2000), scope $"{vertices.Count} vertices");
+		// A non-finite width draws nothing past the bound either.
+		let nanVertices = scope List<VGVertex>();
+		let nanIndices = scope List<uint32>();
+		StrokeTessellator.Tessellate(points, false, .(Math.Sqrt(-1.0f), .Round, .Round), .(), false, .White, nanVertices, nanIndices);
+		Test.Assert(nanVertices.Count < 2000, scope $"{nanVertices.Count} vertices");
+	}
+
+	[Test]
 	public static void AStraightLineIsAQuad()
 	{
 		let points = scope Float2[](.(0, 0), .(10, 0));

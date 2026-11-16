@@ -8,6 +8,18 @@ namespace Sedulous.VG;
 /// fringe.
 static class StrokeTessellator
 {
+	/// The segments a round join or cap is drawn with, from the count its size asks for: at least
+	/// `least`, at most 128 (a smooth arc at any size on screen). Unbounded, a stroke of a huge
+	/// width (hostile SVG, a runaway value) asked for millions, and a non-finite size cast to an
+	/// integer is undefined.
+	public static int32 ArcSegments(float wanted, int32 least)
+	{
+		const float cMost = 128.0f;
+		if (!(wanted < cMost)) // also NaN
+			return (int32)cMost;
+		return Math.Max(least, (int32)wanted);
+	}
+
 	/// The antialiased fringe width, in pixels, matching the fill tessellator's.
 	public const float FringeWidth = 0.75f;
 
@@ -389,7 +401,7 @@ static class StrokeTessellator
 
 		// Segment count scales with both the sweep and the radius, so a wide stroke's
 		// corner is no coarser than a thin one's.
-		let segments = Max(3, (int32)(Abs(endAngle - startAngle) * halfWidth * 0.5f));
+		let segments = ArcSegments(Abs(endAngle - startAngle) * halfWidth * 0.5f, 3);
 		EmitFan(point, startAngle, (endAngle - startAngle) / (float)segments, segments, halfWidth,
 			color, vertices, indices);
 	}
@@ -415,7 +427,7 @@ static class StrokeTessellator
 		{
 			// A half turn from one side of the stroke to the other, through its direction (an angle
 			// from the normal alone would turn the end cap back over the stroke).
-			let segments = Max(4, (int32)(outerHalf * 0.5f));
+			let segments = ArcSegments(outerHalf * 0.5f, 4);
 			for (int32 i = 0; i <= segments; i++)
 			{
 				let angle = Pi * (float)i / (float)segments;
