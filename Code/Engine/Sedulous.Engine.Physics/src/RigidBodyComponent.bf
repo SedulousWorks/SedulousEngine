@@ -121,6 +121,16 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	public Quaternion PrevRotation = Quaternion.Identity;
 	[Hidden]
 	public Quaternion CurrRotation = Quaternion.Identity;
+	/// The world pose the scene system last gave the entity: a different one at the next step
+	/// was written by someone else (a script, the editor), and the body is moved there.
+	[Hidden]
+	public Float3 WrittenPosition = .(0, 0, 0);
+	[Hidden]
+	public Quaternion WrittenRotation = Quaternion.Identity;
+	/// What the body was built from (the authored fields and the entity's scale): a change
+	/// rebuilds it.
+	[Hidden]
+	public uint64 BuiltSignature = 0;
 
 	public this() {}
 

@@ -74,7 +74,7 @@ static class NavigationBakeTests
 	}
 
 	/// Authoring a zone directly on a ground entity scaled up 20x: the bake frame must be
-	/// rigid. A primitive body keeps its world size, as physics builds it, and an inverse
+	/// rigid. A primitive body takes its entity's scale, as physics builds it, and an inverse
 	/// carrying the scale would shrink it 20x, which the agent-radius erosion wipes.
 	[Test]
 	public static void BakeSucceedsWhenTheZoneSharesAScaledEntityWithItsGround()
@@ -93,8 +93,9 @@ static class NavigationBakeTests
 		NavigationScene.AddNavigationSceneManagers(scene);
 		scene.AddSystem<RigidBodyComponentManager>();
 
-		// One entity carries both the ground slab and the zone, scaled 20x in X and Z.
-		let entity = BakeFixtures.AddBody(scene, "ground_zone", .(0, 0, 0), .(10, 0.5f, 10), .Static);
+		// One entity carries both the ground slab and the zone, scaled 20x in X and Z: a unit
+		// slab drawn and collided at 20 x 20.
+		let entity = BakeFixtures.AddBody(scene, "ground_zone", .(0, 0, 0), .(0.5f, 0.5f, 0.5f), .Static);
 		let z = scene.GetSystem<NavMeshZoneComponentManager>().Add(entity);
 		z.Extents = .(15, 10, 15);
 

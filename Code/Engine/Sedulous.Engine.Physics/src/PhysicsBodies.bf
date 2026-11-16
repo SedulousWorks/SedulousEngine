@@ -62,7 +62,11 @@ static class PhysicsBodies
 			// Cooked geometry is authored at unit scale, so the entity's scale applies here.
 			own.Scale = scale;
 		}
-		else if (component.Shape == .Heightfield)
+		else if (component.Shape != .Heightfield)
+		{
+			ScalePrimitive(ref own, scale);
+		}
+		else
 		{
 			if (!FillHeightfield(ref own, component.Heightfield, heightBuffers))
 			{
@@ -101,6 +105,29 @@ static class PhysicsBodies
 			outDesc.Density = material.Density;
 		}
 		return true;
+	}
+
+	/// A primitive's size in the entity's scale, as the mesh it stands for is drawn: a box takes
+	/// each axis; a sphere, whose shape cannot stretch, the largest; a capsule its height from y
+	/// and its radius from x and z; a plane its extent from x and z. Cooked shapes take the scale
+	/// whole, and a heightfield has its own world size.
+	public static void ScalePrimitive(ref ShapeDesc shape, Float3 scale)
+	{
+		let s = Float3(Math.Abs(scale.X), Math.Abs(scale.Y), Math.Abs(scale.Z));
+		switch (shape.Kind)
+		{
+		case .Box:
+			shape.HalfExtents = .(shape.HalfExtents.X * s.X, shape.HalfExtents.Y * s.Y,
+				shape.HalfExtents.Z * s.Z);
+		case .Sphere:
+			shape.Radius *= Math.Max(s.X, Math.Max(s.Y, s.Z));
+		case .Capsule:
+			shape.Radius *= Math.Max(s.X, s.Z);
+			shape.HalfHeight *= s.Y;
+		case .Plane:
+			shape.PlaneHalfExtent *= Math.Max(s.X, s.Z);
+		default:
+		}
 	}
 
 	/// The hierarchy's extra shapes fold into the body's compound at their offset relative to
@@ -145,7 +172,11 @@ static class PhysicsBodies
 					shape.Cooked = cooked.Blob;
 					shape.Scale = worldScale;
 				}
-				else if (extra.Shape == .Heightfield)
+				else if (extra.Shape != .Heightfield)
+				{
+					ScalePrimitive(ref shape, worldScale);
+				}
+				else
 				{
 					if (!FillHeightfield(ref shape, extra.Heightfield, heightBuffers))
 						return;

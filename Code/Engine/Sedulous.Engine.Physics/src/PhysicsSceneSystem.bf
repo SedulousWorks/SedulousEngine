@@ -389,6 +389,27 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 			// away does not take one more step first.
 			ReconcileActiveState();
 
+			// A dynamic body whose entity was moved by someone else since the last write (a
+			// script, the editor's gizmo) is moved there: a teleport, its velocity kept.
+			bodies.ForEach(scope (component, entity) =>
+				{
+					if (!component.Body.IsValid || (component.EffectiveMotion != .Dynamic))
+						return;
+					if (!Decompose(mScene.GetWorldMatrix(entity), let position, let rotation, ?))
+						return;
+					let moved = position - component.WrittenPosition;
+					let turn = Math.Abs(Dot(rotation, component.WrittenRotation)); // 1: the same rotation
+					if ((Dot(moved, moved) <= 1e-6f) && (turn >= 0.99999f))
+						return;
+					mWorld.SetBodyTransform(component.Body, position, rotation);
+					component.PrevPosition = position;
+					component.CurrPosition = position;
+					component.WrittenPosition = position;
+					component.PrevRotation = rotation;
+					component.CurrRotation = rotation;
+					component.WrittenRotation = rotation;
+				});
+
 			// A KINEMATIC body follows the scene, moved by velocity toward this step's target
 			// rather than teleported, so what it pushes is pushed rather than penetrated.
 			bodies.ForEach(scope (component, entity) =>
@@ -545,6 +566,9 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 				let position = Lerp(component.PrevPosition, component.CurrPosition, alpha);
 				let rotation = Slerp(component.PrevRotation, component.CurrRotation,
 					alpha);
+				// What the entity holds now: the teleport check's base.
+				component.WrittenPosition = position;
+				component.WrittenRotation = rotation;
 				WriteWorldPose(entity, position, rotation, true);
 			});
 
@@ -685,6 +709,47 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		mWorld.CreateBody(desc);
 	}
 
+	/// What a body is built from: its authored fields, its resources and its entity's scale.
+	private uint64 BuiltSignature(RigidBodyComponent* component, EntityHandle entity)
+	{
+		var hash = 1469598103934665603UL;
+		Mix(ref hash, component.Motion);
+		Mix(ref hash, component.Layer);
+		Mix(ref hash, component.Shape);
+		Mix(ref hash, component.HalfExtents);
+		Mix(ref hash, component.Radius);
+		Mix(ref hash, component.HalfHeight);
+		Mix(ref hash, component.PlaneHalfExtent);
+		Mix(ref hash, component.Friction);
+		Mix(ref hash, component.Restitution);
+		Mix(ref hash, component.LinearDamping);
+		Mix(ref hash, component.AngularDamping);
+		Mix(ref hash, component.IsTrigger);
+		Mix(ref hash, component.ContinuousCollision);
+		Mix(ref hash, component.Mass);
+		Mix(ref hash, component.CollisionGroup);
+		Mix(ref hash, Internal.UnsafeCastToPtr(component.CollisionShape.Get));
+		Mix(ref hash, Internal.UnsafeCastToPtr(component.Heightfield.Get));
+		Mix(ref hash, Internal.UnsafeCastToPtr(component.Material.Get));
+		if (Decompose(mScene.GetWorldMatrix(entity), ?, ?, let scale))
+		{
+			// Rounded, so the drift of a decomposed matrix does not read as a new scale.
+			Mix(ref hash, (int32)(scale.X * 1000.0f));
+			Mix(ref hash, (int32)(scale.Y * 1000.0f));
+			Mix(ref hash, (int32)(scale.Z * 1000.0f));
+		}
+		return hash;
+	}
+
+	/// Folds a value's bytes into an FNV-1a hash.
+	private static void Mix<T>(ref uint64 hash, T value)
+	{
+		var value;
+		let bytes = (uint8*)&value;
+		for (int i < sizeof(T))
+			hash = (hash ^ bytes[i]) * 1099511628211UL;
+	}
+
 	/// One entity's body, shared by the scene's start and the activation edge.
 	///
 	/// It reads the entity's CURRENT world transform, so a body rebuilt on reactivation starts
@@ -704,8 +769,11 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		component.EffectiveMotion = mWorld.MotionOf(component.Body); // static for a moving body over a static only shape
 		component.PrevPosition = position;
 		component.CurrPosition = position;
+		component.WrittenPosition = position;
 		component.PrevRotation = rotation;
 		component.CurrRotation = rotation;
+		component.WrittenRotation = rotation;
+		component.BuiltSignature = BuiltSignature(component, entity);
 
 		if (!component.Body.IsValid)
 		{
@@ -894,6 +962,23 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	/// Whether the joint holds a body released this reconcile. An explicit target or the joint's
 	/// own body is caught by the readiness checks, its component being gone; an ANCESTOR the
 	/// joint resolved to is not, so it is asked of the world.
+	/// Destroys the joints that hold `body`, leaving their components without one: the joint
+	/// pass makes each again once its bodies are ready.
+	private void DropJointsHolding(BodyId body)
+	{
+		let joints = mScene.GetSystem<JointComponentManager>();
+		if (joints == null)
+			return;
+		joints.ForEach(scope (component, entity) =>
+			{
+				if (component.Joint.IsValid && mWorld.JointHolds(component.Joint, body))
+				{
+					mWorld.DestroyJoint(component.Joint);
+					component.Joint = .();
+				}
+			});
+	}
+
 	private bool JointHoldsReleasedBody(JointId joint)
 	{
 		if (!joint.IsValid)
@@ -1000,6 +1085,22 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 			bodies.ForEach(scope (component, entity) =>
 				{
 					let effective = mScene.IsEffectivelyActive(entity);
+					if ((effective == component.SimActive) && component.Body.IsValid
+						&& (BuiltSignature(component, entity) != component.BuiltSignature))
+					{
+						// Edited while live (an inspector field, a script, a rescale): built
+						// again from what it is now, keeping its motion.
+						let velocity = mWorld.LinearVelocity(component.Body);
+						// A joint on the old body goes first, which the backend needs, and is made
+						// again on the new body by the next reconcile's joint pass.
+						DropJointsHolding(component.Body);
+						mWorld.DestroyBody(component.Body);
+						component.Body = .();
+						CreateBodyForEntity(component, entity);
+						if (component.Body.IsValid && (component.EffectiveMotion == .Dynamic))
+							mWorld.SetLinearVelocity(component.Body, velocity);
+						return;
+					}
 					if (effective == component.SimActive)
 					{
 						// A queued impulse lives only until the assembly right after it was

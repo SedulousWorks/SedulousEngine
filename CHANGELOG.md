@@ -127,6 +127,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Physics: moving a simulated body's entity (from a script or the editor) moves the body; editing
+  a body's shape, size or surface while the game runs rebuilds it, keeping its joints; a box,
+  sphere, capsule or plane collider takes its entity's scale (it collided at its unscaled size).
 - Physics: characters are solid to the world. Rays, sweeps and overlaps find them, dynamic bodies
   collide with them and two characters no longer walk through each other. A ray or sweep that
   starts inside a body now passes out of it instead of hitting it at distance 0, and `RayCast` and
