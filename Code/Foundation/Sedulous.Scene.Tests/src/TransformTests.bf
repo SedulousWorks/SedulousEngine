@@ -79,6 +79,34 @@ class TransformTests
 		Test.Assert(Near(scene.GetWorldPosition(child).Y, 7.0f));
 	}
 
+	/// Marking dirty went up as well as down: a moved child dirtied its parent, and the parent
+	/// its other children, so one entity moved recomputed everything under its root.
+	[Test]
+	public static void MovingAChildLeavesItsParentAndItsSiblingsClean()
+	{
+		let scene = scope Scene();
+		let root = scene.CreateEntity();
+		let a = scene.CreateEntity();
+		let b = scene.CreateEntity();
+		let aChild = scene.CreateEntity();
+		scene.SetParent(a, root);
+		scene.SetParent(b, root);
+		scene.SetParent(aChild, a);
+		scene.SetLocalPosition(root, .(1, 0, 0));
+		scene.UpdateTransforms();
+		scene.UpdateTransforms(); // settled
+
+		scene.SetLocalPosition(a, .(0, 2, 0));
+		scene.UpdateTransforms();
+		Test.Assert(scene.IsTransformUpdatedThisFrame(a));
+		Test.Assert(scene.IsTransformUpdatedThisFrame(aChild));
+		Test.Assert(!scene.IsTransformUpdatedThisFrame(root), "the parent stays clean");
+		Test.Assert(!scene.IsTransformUpdatedThisFrame(b), "and the sibling");
+		Test.Assert(scene.TransformsUpdatedThisFrame.Length == 2);
+		Test.Assert(Near(scene.GetWorldPosition(aChild).X, 1.0f), "still under the root's offset");
+		Test.Assert(Near(scene.GetWorldPosition(aChild).Y, 2.0f));
+	}
+
 	/// The previous world matrix is what a motion vector is computed from, so it has to
 	/// hold LAST frame's value while something moves, and catch up the frame after it
 	/// stops. Otherwise a stopped object smears forever.

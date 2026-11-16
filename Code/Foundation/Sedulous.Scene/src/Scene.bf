@@ -1219,10 +1219,10 @@ class Scene : IScriptWeaklyHeld
 			MarkDirty(child);
 			child = next;
 		}
-
-		let parent = mTransforms[(int)entity.Index].Parent;
-		if (parent.IsAssigned)
-			MarkDirty(parent);
+		// Down only: a parent is not moved by its child. Marking it too dirtied the parent's other
+		// children and, up the chain, the whole tree, so one moved entity recomputed (and reported
+		// as updated) everything under its root. UpdateTransforms starts from each dirty entity
+		// whose parent is clean, so a dirty subtree needs nothing marked above it.
 	}
 
 	/// Rewrites `child`'s LOCAL transform so its world matrix stays `childWorld` under its
