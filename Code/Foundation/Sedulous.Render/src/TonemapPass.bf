@@ -13,10 +13,6 @@ namespace Sedulous.Render;
 class TonemapPass
 {
 	private const TextureFormat cHdrFormat = .RGBA16Float;
-	private const int cMaxFramesInFlight = 8;
-	private const int cMaxViews = 8;
-	/// Two uses per view a frame: the scene's tone map, and a scaled view's present copy.
-	private const int cMaxSlots = cMaxViews * cMaxFramesInFlight * 2;
 
 	/// One frame can hold views with DIFFERENT target formats, an offscreen thumbnail beside
 	/// the window say, so the pipelines are cached per format. Destroying one on a format
@@ -34,15 +30,22 @@ class TonemapPass
 	/// Linear and clamped, for the bloom composite.
 	private ISampler mSampler = null;
 
-	private IBindGroup[cMaxSlots] mBindGroups = .();
-	/// What each slot's group was built from.
-	private BindGroupInputs<5>[cMaxSlots] mBindGroupInputs = .();
+	/// A view's bind group for one frame in flight, and what it was built from.
+	private struct Slot
+	{
+		public IBindGroup Group;
+		public BindGroupInputs<5> Inputs;
+	}
+	/// Per (view and use, frame in flight), however many views a frame has. Two uses per view a
+	/// frame: the scene's tone map, and a scaled view's present copy.
+	private ViewSlots<Slot> mSlots = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = Max(framesInFlight, (uint32)1);
+		mSlots.SetFramesInFlight(mFramesInFlight);
 	}
 
 	public ~this()
@@ -118,8 +121,7 @@ class TonemapPass
 		// The present copy has slots of its own: the tone map's group for this view is still
 		// referenced by commands recorded earlier in the frame.
 		let use = copyOnly ? 1 : 0;
-		let slot = ((use * cMaxViews) + (int)(viewIndex % cMaxViews)) * (int)mFramesInFlight
-			+ (int)(frameIndex % mFramesInFlight);
+		let viewUse = viewIndex * 2 + (uint32)use;
 
 		// The scene input is mirrored on a backend that flips clip space, unless the temporal
 		// resolve already unmirrored it; the shader compensates here when it did not.
@@ -178,7 +180,7 @@ class TonemapPass
 						// Unused bindings take the HDR view, as the layout needs a texture there.
 						inputs.Set(3, (autoView != null) ? autoView : hdrView, (autoView != null) ? autoGeneration : hdrGeneration);
 						inputs.Set(4, (lutView != null) ? lutView : hdrView, (lutView != null) ? lutUid : hdrGeneration);
-						let bindGroup = EnsureBindGroup(slot, inputs);
+						let bindGroup = EnsureBindGroup(viewUse, frameIndex, inputs);
 						if (bindGroup == null)
 							return;
 
@@ -273,16 +275,17 @@ class TonemapPass
 	/// exposure's two ping pong textures, folded in with the transients', could land on last
 	/// frame's value, and the group kept the other exposure texture, so every other frame showed
 	/// a stale exposure.
-	private IBindGroup EnsureBindGroup(int slot, BindGroupInputs<5> inputs)
+	private IBindGroup EnsureBindGroup(uint32 viewUse, uint32 frameIndex, BindGroupInputs<5> inputs)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots) || !inputs.Complete)
+		if (!inputs.Complete)
 			return null;
 
-		if ((mBindGroups[slot] != null) && mBindGroupInputs[slot].Matches(inputs))
-			return mBindGroups[slot];
+		ref Slot slot = ref mSlots.At(viewUse, frameIndex);
+		if ((slot.Group != null) && slot.Inputs.Matches(inputs))
+			return slot.Group;
 
-		if (mBindGroups[slot] != null)
-			mDevice.DestroyBindGroup(ref mBindGroups[slot]);
+		if (slot.Group != null)
+			mDevice.DestroyBindGroup(ref slot.Group);
 
 		var entries = BindGroupEntry[6](
 			BindGroupEntry.TextureEntry(inputs.Views[0]),
@@ -299,8 +302,8 @@ class TonemapPass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mBindGroups[slot] = bindGroup;
-		mBindGroupInputs[slot] = inputs;
+		slot.Group = bindGroup;
+		slot.Inputs = inputs;
 		return bindGroup;
 	}
 
@@ -309,10 +312,10 @@ class TonemapPass
 		if (mDevice == null)
 			return;
 
-		for (int slot < cMaxSlots)
+		for (var slot in ref mSlots.All)
 		{
-			if (mBindGroups[slot] != null)
-				mDevice.DestroyBindGroup(ref mBindGroups[slot]);
+			if (slot.Group != null)
+				mDevice.DestroyBindGroup(ref slot.Group);
 		}
 
 		for (int i < cMaxPipelineFormats)

@@ -19,9 +19,6 @@ namespace Sedulous.Render;
 /// works; a depth resource binds through its depth only view.
 class DebugBlitPass
 {
-	private const int cMaxViews = 8;
-	private const int cMaxFramesInFlight = 8;
-	private const int cMaxSlots = cMaxViews * cMaxFramesInFlight;
 	private const int cMaxPipelineFormats = 4;
 
 	private IDevice mDevice;
@@ -31,15 +28,22 @@ class DebugBlitPass
 	private IBindGroupLayout mLayout = null;
 	private IPipelineLayout mPipelineLayout = null;
 	private PipelineEntry[cMaxPipelineFormats] mPipelines = .();
-	private IBindGroup[cMaxSlots] mBindGroups = .();
-	private ITextureView[cMaxSlots] mBindGroupViews = .();
-	private uint64[cMaxSlots] mBindGroupGenerations = .();
+	/// A view's bind group for one frame in flight, and the source it was built over.
+	private struct Slot
+	{
+		public IBindGroup Group;
+		public ITextureView View;
+		public uint64 Generation;
+	}
+	/// Per (view, frame in flight), however many views a frame has.
+	private ViewSlots<Slot> mSlots = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mSlots.SetFramesInFlight(mFramesInFlight);
 	}
 
 	public ~this()
@@ -88,8 +92,6 @@ class DebugBlitPass
 		if (pipeline == null)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
-			+ (int)(frameIndex % mFramesInFlight);
 
 		var push = DebugBlitPush();
 		push.UvScaleX = 1.0f;
@@ -121,7 +123,7 @@ class DebugBlitPass
 						if (view == null)
 							view = graph.GetTextureView(source);
 
-						let bindGroup = EnsureBindGroup(slot, view,
+						let bindGroup = EnsureBindGroup(viewIndex, frameIndex, view,
 							graph.GetTextureGeneration(source));
 						if (bindGroup == null)
 							return;
@@ -201,17 +203,17 @@ class DebugBlitPass
 		return pipeline;
 	}
 
-	private IBindGroup EnsureBindGroup(int slot, ITextureView source, uint64 generation)
+	private IBindGroup EnsureBindGroup(uint32 viewIndex, uint32 frameIndex, ITextureView source, uint64 generation)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots) || (source == null))
+		if (source == null)
 			return null;
 
-		if ((mBindGroups[slot] != null) && (mBindGroupViews[slot] == source)
-			&& (mBindGroupGenerations[slot] == generation))
-			return mBindGroups[slot];
+		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
+		if ((slot.Group != null) && (slot.View == source) && (slot.Generation == generation))
+			return slot.Group;
 
-		if (mBindGroups[slot] != null)
-			mDevice.DestroyBindGroup(ref mBindGroups[slot]);
+		if (slot.Group != null)
+			mDevice.DestroyBindGroup(ref slot.Group);
 
 		var entries = BindGroupEntry[1](BindGroupEntry.TextureEntry(source));
 
@@ -222,9 +224,9 @@ class DebugBlitPass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mBindGroups[slot] = bindGroup;
-		mBindGroupViews[slot] = source;
-		mBindGroupGenerations[slot] = generation;
+		slot.Group = bindGroup;
+		slot.View = source;
+		slot.Generation = generation;
 		return bindGroup;
 	}
 
@@ -233,10 +235,10 @@ class DebugBlitPass
 		if (mDevice == null)
 			return;
 
-		for (int i < cMaxSlots)
+		for (var slot in ref mSlots.All)
 		{
-			if (mBindGroups[i] != null)
-				mDevice.DestroyBindGroup(ref mBindGroups[i]);
+			if (slot.Group != null)
+				mDevice.DestroyBindGroup(ref slot.Group);
 		}
 
 		for (int i < cMaxPipelineFormats)

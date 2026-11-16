@@ -158,4 +158,28 @@ class BindGroupCacheTests
 		Test.Assert(cache.Find(history, regenerated, out stale) == null);
 		Test.Assert(stale == group1);
 	}
+
+	/// A pass keeps one entry per (view, frame in flight). A fixed table shared a slot between view
+	/// 0 and view 8, so a ninth view rebuilt the first view's group under it every frame.
+	[Test]
+	public static void EveryViewAFrameDrawsHasSlotsOfItsOwnHoweverManyViews()
+	{
+		let slots = scope ViewSlots<int32>();
+		slots.SetFramesInFlight(2);
+		const uint32 cViews = 20;
+		for (uint32 v < cViews)
+		{
+			for (uint32 f < 2)
+				slots.At(v, f) = (int32)(v * 2 + f + 1);
+		}
+		Test.Assert(slots.Views == cViews);
+		for (uint32 v < cViews)
+		{
+			for (uint32 f < 2)
+				Test.Assert(slots.At(v, f) == (int32)(v * 2 + f + 1));
+		}
+		// The device's frame index wraps to the frames in flight.
+		Test.Assert(slots.At(3, 4) == slots.At(3, 0));
+		Test.Assert(slots.All.Length == cViews * 2);
+	}
 }

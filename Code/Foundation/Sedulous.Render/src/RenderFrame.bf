@@ -1510,16 +1510,17 @@ class RenderFrame
 				ReflectionProbeSystem.cCubeFormat, normal, velocity, material, albedo, faceViewProj,
 				.(0, 0), .(0, 0), .(), shadow, ibl, .Clear, subresource);
 
-			// The sky into the same face, after the forward, loading the captured depth. Its
-			// own slot is distinct per face, so a capture never shares a slot with a main view
-			// or another face: the last recorder would otherwise win the slot and the captured
-			// sky would read another view's camera.
+			// The sky into the same face, after the forward, loading the captured depth. It takes
+			// the capture's own view indices (the forward's, above): never a main view's, so the
+			// capture never shares the sky's per-view slot with one, or with another face; the last
+			// recorder would otherwise win the slot and the captured sky would read another view's
+			// camera.
 			mSky.DeclareSky(mGraph, captured, velocity, depth, captureIbl.EnvHandle,
 				captureIbl.EnvView, ReflectionProbeSystem.cCubeFormat, mPass.DepthFormat,
 				Inverse(faceViewProj), faceViewProj, .(0, 0), .(0, 0), task.Center,
 				captureIbl.Sky.BackgroundIntensity, captureIbl.SunDir,
 				captureIbl.Sky.SunAngularSize, .(1.0f, 0.98f, 0.92f), sunIntensity, 0, 0,
-				resolution, resolution, mFrameIndex, 10 + face, captureIbl.Uid, 1, subresource);
+				resolution, resolution, mFrameIndex, ProbeCapture.cViewIndexBase + face, captureIbl.Uid, 1, subresource);
 		}
 
 		// Bridge the captured faces into the prefiltered array's first level, correcting the

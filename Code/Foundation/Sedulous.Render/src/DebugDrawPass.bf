@@ -19,8 +19,6 @@ namespace Sedulous.Render;
 /// on top.
 class DebugDrawPass
 {
-	private const int cMaxViews = 8;
-	private const int cMaxSlots = cMaxViews * 8;
 	private const int cMaxGeomFormats = 4;
 
 	private IDevice mDevice;
@@ -43,10 +41,16 @@ class DebugDrawPass
 	private TextureFormat mScreenFormat = .Undefined;
 	private uint64 mScreenShaderVersion = 0;
 
-	private IBuffer[cMaxSlots] mGeomBuffers;
-	private uint64[cMaxSlots] mGeomCapacities;
-	private IBuffer[cMaxSlots] mScreenBuffers;
-	private uint64[cMaxSlots] mScreenCapacities;
+	/// A view's vertex buffers for one frame in flight, each with its capacity.
+	private struct Slot
+	{
+		public IBuffer Geom;
+		public uint64 GeomCapacity;
+		public IBuffer Screen;
+		public uint64 ScreenCapacity;
+	}
+	/// Per (view, frame in flight), however many views a frame has.
+	private ViewSlots<Slot> mSlots = new .() ~ delete _;
 
 	/// The staging the declares build into, reused rather than allocated per view.
 	private List<DebugVertex> mGeomScratch = new .() ~ delete _;
@@ -57,6 +61,7 @@ class DebugDrawPass
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mSlots.SetFramesInFlight(mFramesInFlight);
 	}
 
 	public ~this()
@@ -175,9 +180,7 @@ class DebugDrawPass
 		if ((total == 0) && !gridDesc.HasValue)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
-			+ (int)(frameIndex % mFramesInFlight);
-		let buffer = (total > 0) ? UploadGeometry(slot, mGeomScratch) : null;
+		let buffer = (total > 0) ? UploadGeometry(viewIndex, frameIndex, mGeomScratch) : null;
 		if ((total > 0) && (buffer == null))
 			return;
 
@@ -266,9 +269,7 @@ class DebugDrawPass
 		if (mScreenScratch.IsEmpty)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
-			+ (int)(frameIndex % mFramesInFlight);
-		let buffer = UploadScreen(slot, mScreenScratch);
+		let buffer = UploadScreen(viewIndex, frameIndex, mScreenScratch);
 		if (buffer == null)
 			return;
 
@@ -412,40 +413,36 @@ class DebugDrawPass
 		outVertices.Add(bottomLeft);
 	}
 
-	private IBuffer UploadGeometry(int slot, List<DebugVertex> vertices)
+	private IBuffer UploadGeometry(uint32 viewIndex, uint32 frameIndex, List<DebugVertex> vertices)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots))
-			return null;
-
+		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
 		let bytes = (uint64)vertices.Count * sizeof(DebugVertex);
-		if (!EnsureBuffer(ref mGeomBuffers[slot], ref mGeomCapacities[slot], bytes))
+		if (!EnsureBuffer(ref slot.Geom, ref slot.GeomCapacity, bytes))
 			return null;
 
-		let mapped = mGeomBuffers[slot].Map();
+		let mapped = slot.Geom.Map();
 		if (mapped != null)
 		{
 			Internal.MemCpy(mapped, vertices.Ptr, (int)bytes);
-			mGeomBuffers[slot].Unmap();
+			slot.Geom.Unmap();
 		}
-		return mGeomBuffers[slot];
+		return slot.Geom;
 	}
 
-	private IBuffer UploadScreen(int slot, List<DebugTextVertex> vertices)
+	private IBuffer UploadScreen(uint32 viewIndex, uint32 frameIndex, List<DebugTextVertex> vertices)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots))
-			return null;
-
+		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
 		let bytes = (uint64)vertices.Count * sizeof(DebugTextVertex);
-		if (!EnsureBuffer(ref mScreenBuffers[slot], ref mScreenCapacities[slot], bytes))
+		if (!EnsureBuffer(ref slot.Screen, ref slot.ScreenCapacity, bytes))
 			return null;
 
-		let mapped = mScreenBuffers[slot].Map();
+		let mapped = slot.Screen.Map();
 		if (mapped != null)
 		{
 			Internal.MemCpy(mapped, vertices.Ptr, (int)bytes);
-			mScreenBuffers[slot].Unmap();
+			slot.Screen.Unmap();
 		}
-		return mScreenBuffers[slot];
+		return slot.Screen;
 	}
 
 	/// Grows a slot's buffer by doubling, so a frame that draws steadily stops reallocating.
@@ -760,12 +757,12 @@ class DebugDrawPass
 		if (mDevice == null)
 			return;
 
-		for (int i < cMaxSlots)
+		for (var slot in ref mSlots.All)
 		{
-			if (mGeomBuffers[i] != null)
-				mDevice.DestroyBuffer(ref mGeomBuffers[i]);
-			if (mScreenBuffers[i] != null)
-				mDevice.DestroyBuffer(ref mScreenBuffers[i]);
+			if (slot.Geom != null)
+				mDevice.DestroyBuffer(ref slot.Geom);
+			if (slot.Screen != null)
+				mDevice.DestroyBuffer(ref slot.Screen);
 		}
 
 		for (int i < cMaxGeomFormats)

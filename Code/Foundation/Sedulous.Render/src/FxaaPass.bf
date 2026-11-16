@@ -13,9 +13,6 @@ namespace Sedulous.Render;
 /// cannot keep a history: no reprojection, no ghosting, and no accumulated detail either.
 class FxaaPass
 {
-	private const int cMaxViews = 8;
-	private const int cMaxFramesInFlight = 8;
-	private const int cMaxSlots = cMaxViews * cMaxFramesInFlight;
 	/// One frame can hold views with different target formats, so the pipelines are cached
 	/// per format rather than destroyed on a mismatch.
 	private const int cMaxPipelineFormats = 4;
@@ -29,15 +26,22 @@ class FxaaPass
 	private PipelineEntry[cMaxPipelineFormats] mPipelines = .();
 	private ISampler mSampler = null;
 
-	private IBindGroup[cMaxSlots] mBindGroups = .();
-	private ITextureView[cMaxSlots] mBindGroupViews = .();
-	private uint64[cMaxSlots] mBindGroupGeneration = .();
+	/// A view's bind group for one frame in flight, and the source it was built over.
+	private struct Slot
+	{
+		public IBindGroup Group;
+		public ITextureView View;
+		public uint64 Generation;
+	}
+	/// Per (view, frame in flight), however many views a frame has.
+	private ViewSlots<Slot> mSlots = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = Max(framesInFlight, (uint32)1);
+		mSlots.SetFramesInFlight(mFramesInFlight);
 	}
 
 	public ~this()
@@ -95,8 +99,6 @@ class FxaaPass
 		if (pipeline == null)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
-			+ (int)(frameIndex % mFramesInFlight);
 
 		// The edge thresholds: the relative one, and the absolute floor below which a difference
 		// is noise rather than an edge. Then whether the source is linear: it is the tonemap's
@@ -123,7 +125,7 @@ class FxaaPass
 
 				builder.SetExecute(new (encoder) =>
 					{
-						let bindGroup = EnsureBindGroup(slot, graph.GetTextureView(source),
+						let bindGroup = EnsureBindGroup(viewIndex, frameIndex, graph.GetTextureView(source),
 							graph.GetTextureGeneration(source));
 						if (bindGroup == null)
 							return;
@@ -201,17 +203,17 @@ class FxaaPass
 		return pipeline;
 	}
 
-	private IBindGroup EnsureBindGroup(int slot, ITextureView sourceView, uint64 generation)
+	private IBindGroup EnsureBindGroup(uint32 viewIndex, uint32 frameIndex, ITextureView sourceView, uint64 generation)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots) || (sourceView == null))
+		if (sourceView == null)
 			return null;
 
-		if ((mBindGroups[slot] != null) && (mBindGroupViews[slot] == sourceView)
-			&& (mBindGroupGeneration[slot] == generation))
-			return mBindGroups[slot];
+		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
+		if ((slot.Group != null) && (slot.View == sourceView) && (slot.Generation == generation))
+			return slot.Group;
 
-		if (mBindGroups[slot] != null)
-			mDevice.DestroyBindGroup(ref mBindGroups[slot]);
+		if (slot.Group != null)
+			mDevice.DestroyBindGroup(ref slot.Group);
 
 		var entries = BindGroupEntry[2](
 			BindGroupEntry.TextureEntry(sourceView),
@@ -224,9 +226,9 @@ class FxaaPass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mBindGroups[slot] = bindGroup;
-		mBindGroupViews[slot] = sourceView;
-		mBindGroupGeneration[slot] = generation;
+		slot.Group = bindGroup;
+		slot.View = sourceView;
+		slot.Generation = generation;
 		return bindGroup;
 	}
 
@@ -235,10 +237,10 @@ class FxaaPass
 		if (mDevice == null)
 			return;
 
-		for (int slot < cMaxSlots)
+		for (var slot in ref mSlots.All)
 		{
-			if (mBindGroups[slot] != null)
-				mDevice.DestroyBindGroup(ref mBindGroups[slot]);
+			if (slot.Group != null)
+				mDevice.DestroyBindGroup(ref slot.Group);
 		}
 
 		for (int i < cMaxPipelineFormats)

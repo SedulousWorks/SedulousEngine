@@ -14,10 +14,6 @@ namespace Sedulous.Render;
 /// drawn, which is what makes it a backdrop rather than an overdraw of the whole screen.
 class SkyPass
 {
-	private const int cMaxFramesInFlight = 4;
-	/// Room for the main views and for the probe capture faces beside them.
-	private const int cMaxViews = 16;
-	private const int cMaxSlots = cMaxViews * cMaxFramesInFlight;
 	/// How long a replaced pipeline is kept before it is freed.
 	private const uint32 cRetireFrames = 3;
 
@@ -56,13 +52,16 @@ class SkyPass
 	private uint32 mLastRetireFrame = 0xFFFFFFFF;
 
 	private ISampler mSampler = null;
-	private Slot[cMaxSlots] mSlots = .();
+	/// Per (view, frame in flight), however many views a frame has: the main views and the probe
+	/// capture faces beside them.
+	private ViewSlots<Slot> mSlots = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = Max(framesInFlight, (uint32)1);
+		mSlots.SetFramesInFlight(mFramesInFlight);
 	}
 
 	public ~this()
@@ -121,8 +120,6 @@ class SkyPass
 		if ((pipeline == null) || (envView == null))
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
-			+ (int)(frameIndex % mFramesInFlight);
 
 		var uniform = SkyUniform();
 		uniform.InvViewProj = invViewProj;
@@ -153,7 +150,7 @@ class SkyPass
 
 				builder.SetExecute(new (encoder) =>
 					{
-						let bindGroup = EnsureBindGroup(slot, envView, uid, uniform);
+						let bindGroup = EnsureBindGroup(viewIndex, frameIndex, envView, uid, uniform);
 						if (bindGroup == null)
 							return;
 
@@ -247,13 +244,12 @@ class SkyPass
 
 	/// The environment's identity is the view AND the context's own id: the id catches an
 	/// address that came back around after a context was evicted.
-	private IBindGroup EnsureBindGroup(int slot, ITextureView envView, uint64 envUid,
+	private IBindGroup EnsureBindGroup(uint32 viewIndex, uint32 frameIndex, ITextureView envView, uint64 envUid,
 		SkyUniform uniform)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots))
-			return null;
+		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
 
-		if (mSlots[slot].Ubo == null)
+		if (slot.Ubo == null)
 		{
 			var desc = BufferDesc();
 			desc.Size = sizeof(SkyUniform);
@@ -263,25 +259,25 @@ class SkyPass
 
 			if (!(mDevice.CreateBuffer(desc) case .Ok(let buffer)))
 				return null;
-			mSlots[slot].Ubo = buffer;
+			slot.Ubo = buffer;
 		}
 
-		let mapped = mSlots[slot].Ubo.Map();
+		let mapped = slot.Ubo.Map();
 		if (mapped != null)
 		{
 			var value = uniform;
 			Internal.MemCpy(mapped, &value, sizeof(SkyUniform));
-			mSlots[slot].Ubo.Unmap();
+			slot.Ubo.Unmap();
 		}
 
-		if ((mSlots[slot].BindGroup == null) || (mSlots[slot].Env != envView)
-			|| (mSlots[slot].EnvUid != envUid))
+		if ((slot.BindGroup == null) || (slot.Env != envView)
+			|| (slot.EnvUid != envUid))
 		{
-			if (mSlots[slot].BindGroup != null)
-				mDevice.DestroyBindGroup(ref mSlots[slot].BindGroup);
+			if (slot.BindGroup != null)
+				mDevice.DestroyBindGroup(ref slot.BindGroup);
 
 			var entries = BindGroupEntry[3](
-				BindGroupEntry.BufferEntry(mSlots[slot].Ubo, 0, sizeof(SkyUniform)),
+				BindGroupEntry.BufferEntry(slot.Ubo, 0, sizeof(SkyUniform)),
 				BindGroupEntry.TextureEntry(envView),
 				BindGroupEntry.SamplerEntry(mSampler));
 
@@ -292,12 +288,12 @@ class SkyPass
 			if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 				return null;
 
-			mSlots[slot].BindGroup = bindGroup;
-			mSlots[slot].Env = envView;
-			mSlots[slot].EnvUid = envUid;
+			slot.BindGroup = bindGroup;
+			slot.Env = envView;
+			slot.EnvUid = envUid;
 		}
 
-		return mSlots[slot].BindGroup;
+		return slot.BindGroup;
 	}
 
 	private void Shutdown()
@@ -305,12 +301,12 @@ class SkyPass
 		if (mDevice == null)
 			return;
 
-		for (int slot < cMaxSlots)
+		for (var slot in ref mSlots.All)
 		{
-			if (mSlots[slot].BindGroup != null)
-				mDevice.DestroyBindGroup(ref mSlots[slot].BindGroup);
-			if (mSlots[slot].Ubo != null)
-				mDevice.DestroyBuffer(ref mSlots[slot].Ubo);
+			if (slot.BindGroup != null)
+				mDevice.DestroyBindGroup(ref slot.BindGroup);
+			if (slot.Ubo != null)
+				mDevice.DestroyBuffer(ref slot.Ubo);
 		}
 
 		for (var retired in ref mRetiredPipelines)
