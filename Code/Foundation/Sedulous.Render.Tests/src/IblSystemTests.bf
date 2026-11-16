@@ -156,8 +156,36 @@ class IblSystemTests
 			Test.Assert(PrefilterPasses(graph) == 0);
 		}
 
-		let generationA = contextA.Generation;
 		let generationB = contextB.Generation;
+
+		// The sun moves. The image sky carries its own sun and never bakes for it; the procedural
+		// one bakes once the sun has turned past the threshold, not for a sliver of a degree.
+		{
+			let nudged = Normalized(Float3(0.001f, -1.0f, 0.0f)); // about 0.06 degrees
+			let graph = scope RenderGraph(fixture.Device);
+			ibl.BeginFrame(graph);
+			ibl.Prepare(sceneA, procedural, nudged, graph);
+			ibl.Prepare(sceneB, image, nudged, graph);
+			Test.Assert(PrefilterPasses(graph) == 0);
+			Test.Assert(contextA.SunDir.X == nudged.X, "the live direction follows regardless");
+		}
+		{
+			let turned = Normalized(Float3(0.5f, -1.0f, 0.0f));
+			let graph = scope RenderGraph(fixture.Device);
+			ibl.BeginFrame(graph);
+			ibl.Prepare(sceneA, procedural, turned, graph);
+			ibl.Prepare(sceneB, image, turned, graph);
+			Test.Assert(PrefilterPasses(graph) == bake, "the procedural sky alone");
+		}
+		{
+			let graph = scope RenderGraph(fixture.Device);
+			ibl.BeginFrame(graph);
+			ibl.Prepare(sceneA, procedural, sun, graph);
+			ibl.Prepare(sceneB, image, sun, graph);
+			Test.Assert(PrefilterPasses(graph) == bake, "back again: the procedural sky bakes once more");
+		}
+		Test.Assert(contextB.Generation == generationB);
+		let generationA = contextA.Generation;
 
 		// The SAME view, but a different product behind it.
 		image.TextureUid = 102;

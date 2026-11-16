@@ -127,6 +127,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: moving the sun no longer rebakes the lighting of an HDR, cubemap or coloured sky,
+  and a slowly moving sun rebakes a procedural sky every half degree, not every frame.
 - Rendering: on Vulkan, a texture updated after first use keeps its new contents.
 - Rendering: a camera whose target is not a render texture (an imported image, a depth texture)
   is skipped with a warning instead of failing the frame. A camera with a near plane of 0, a far

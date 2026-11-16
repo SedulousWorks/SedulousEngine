@@ -32,6 +32,9 @@ class IBLSystem
 	public const int cPrefilterMips = 5;
 	public const uint32 cBrdfResolution = 256;
 	public const int cShCoeffCount = 9;
+	/// A sun-drawn sky bakes again once the sun has turned more than about half a degree (cos 0.5
+	/// degrees) from the direction it was baked with.
+	public const float cSunRebakeCos = 0.99996f;
 
 	/// A context whose scene has not rendered for this many frames is evicted, its page having
 	/// been closed. Long enough that nothing in flight can still be referencing the products.
@@ -255,12 +258,17 @@ class IBLSystem
 		if (!PrecomputeEqual(sky, context.Sky))
 			context.Dirty = true;
 
-		if ((sunDir.X != context.SunDir.X) || (sunDir.Y != context.SunDir.Y)
-			|| (sunDir.Z != context.SunDir.Z))
-		{
-			context.SunDir = sunDir;
+		// Only the procedural and analytic skies draw the sun into the environment; a coloured or
+		// textured one bakes the same whatever the sun does. And a sun that moves a little each
+		// frame (a day cycle) bakes again once it has moved past cSunRebakeCos, not every frame: a
+		// bake is a whole prefilter chain. The live direction is kept either way (the probe
+		// capture's sky reads it).
+		context.SunDir = sunDir;
+		let sunBaked = (sky.Mode == .Procedural) || (sky.Mode == .Analytic);
+		if (sunBaked && (Dot(Normalized(sunDir), Normalized(context.BakedSunDir)) < cSunRebakeCos))
 			context.Dirty = true;
-		}
+		if (context.Dirty)
+			context.BakedSunDir = sunDir;
 
 		// A programmatic source changed, so the textured modes rebake.
 		if ((context.SourceStamp != mSourceStamp)

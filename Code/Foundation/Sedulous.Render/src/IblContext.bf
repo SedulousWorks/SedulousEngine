@@ -57,7 +57,10 @@ class IblContext
 	public RGHandle EnvHandle = .Invalid;
 
 	public SkySnapshot Sky = .();
+	/// The sun now.
 	public Float3 SunDir = .(0.0f, -1.0f, 0.0f);
+	/// The sun the products were baked with.
+	public Float3 BakedSunDir = .(0.0f, -1.0f, 0.0f);
 	public bool Dirty = true;
 
 	/// From ONE system wide counter, so a value never collides across contexts and a
