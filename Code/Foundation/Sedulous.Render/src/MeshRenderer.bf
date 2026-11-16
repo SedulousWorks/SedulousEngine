@@ -82,8 +82,6 @@ class MeshRenderer : Renderer
 	private const uint64 cProbeBufferBytes = 64 * RenderLimits.MaxReflectionProbes;
 
 	private const int cMaxFramesInFlight = 8;
-	private const int cMaxViewsPerFrame = 8;
-	private const int cMaxClusterSlots = cMaxViewsPerFrame * cMaxFramesInFlight;
 
 	/// A material instance whose material has not been drawn for this many frames is dropped,
 	/// so a stale group stops holding destroyed texture views alive.
@@ -341,9 +339,15 @@ class MeshRenderer : Renderer
 	private IBuffer mDummyClusterOffsets = null;
 	private IBuffer mDummyClusterIndices = null;
 	private IBindGroup mDummyClusterBindGroup = null;
-	private IBindGroup[cMaxClusterSlots] mClusterBindGroups;
-	private IBuffer[cMaxClusterSlots] mClusterBindGroupOffsets;
-	private uint32[cMaxClusterSlots] mClusterBindGroupVersions;
+	/// A view's set three group for one frame in flight, and what it was built over.
+	private struct ClusterSlot
+	{
+		public IBindGroup Group;
+		public IBuffer Offsets;
+		public uint32 Version;
+	}
+	/// Per (view, frame in flight), grown to the most views one frame draws.
+	private ViewSlots<ClusterSlot> mClusterSlots = new .() ~ delete _;
 
 	private bool mReady = false;
 
@@ -355,9 +359,10 @@ class MeshRenderer : Renderer
 		mPsoCache = psoCache;
 		mMaterials = materialSystem;
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mClusterSlots.SetFramesInFlight(mFramesInFlight);
 		mMeshes = new .(device, mFramesInFlight);
 
-		mViewRing = new .(device, framesInFlight, cViewDataSlot, .Uniform | .CopyDst, "mesh.view");
+		mViewRing = new .(device, framesInFlight, cViewDataSlot, cMinViewSlots, "mesh.view");
 		mShadowViewRing = new .(device, framesInFlight, cViewSlot, .Uniform | .CopyDst,
 			"mesh.shadowView");
 		mObjectRing = new .(device, framesInFlight, cViewSlot, .Uniform | .CopyDst, "mesh.object");
@@ -1496,15 +1501,9 @@ class MeshRenderer : Renderer
 		{
 			// A slot per view AND frame: two views in one frame have different buffers and must
 			// not share a group, or it thrashes and frees a set still in flight.
-			let slot = (int)(context.ViewIndex * mFramesInFlight
-				+ (context.FrameIndex % mFramesInFlight));
-			clusterBindGroup = EnsureClusterBindGroup(slot, context.Cluster.Offsets,
+			clusterBindGroup = EnsureClusterBindGroup(context.ViewIndex, context.FrameIndex, context.Cluster.Offsets,
 				context.Cluster.LightIndices, context.Cluster.Version);
 		}
-
-		let view = mViewRing.Allocate();
-		if (!view.Ok)
-			return;
 
 		var viewData = MeshViewData();
 		viewData.ViewProj = context.ViewProj;
@@ -3250,18 +3249,19 @@ class MeshRenderer : Renderer
 	/// It is rebuilt when the buffers' VERSION changes rather than when their addresses do: a
 	/// freed buffer's address is reused by the new allocation, so a cache keyed on the address
 	/// would keep pointing at a destroyed one.
-	private IBindGroup EnsureClusterBindGroup(int slot, IBuffer offsets, IBuffer indices,
+	private IBindGroup EnsureClusterBindGroup(uint32 viewIndex, uint32 frameIndex, IBuffer offsets, IBuffer indices,
 		uint32 version)
 	{
-		if ((slot < 0) || (slot >= cMaxClusterSlots) || (offsets == null) || (indices == null))
+		if ((offsets == null) || (indices == null))
 			return mDummyClusterBindGroup;
+		ref ClusterSlot slot = ref mClusterSlots.At(viewIndex, frameIndex);
 
-		if ((mClusterBindGroups[slot] != null) && (mClusterBindGroupOffsets[slot] == offsets)
-			&& (mClusterBindGroupVersions[slot] == version))
-			return mClusterBindGroups[slot];
+		if ((slot.Group != null) && (slot.Offsets == offsets)
+			&& (slot.Version == version))
+			return slot.Group;
 
-		if (mClusterBindGroups[slot] != null)
-			mDevice.DestroyBindGroup(ref mClusterBindGroups[slot]);
+		if (slot.Group != null)
+			mDevice.DestroyBindGroup(ref slot.Group);
 
 		var entries = BindGroupEntry[2](
 			BindGroupEntry.BufferEntry(offsets, 0, offsets.Size),
@@ -3465,10 +3465,10 @@ class MeshRenderer : Renderer
 		if (mPickRampBuffer != null)
 			mDevice.DestroyBuffer(ref mPickRampBuffer);
 
-		for (int i < cMaxClusterSlots)
+		for (var slot in ref mClusterSlots.All)
 		{
-			if (mClusterBindGroups[i] != null)
-				mDevice.DestroyBindGroup(ref mClusterBindGroups[i]);
+			if (slot.Group != null)
+				mDevice.DestroyBindGroup(ref slot.Group);
 		}
 		if (mDummyClusterBindGroup != null)
 			mDevice.DestroyBindGroup(ref mDummyClusterBindGroup);

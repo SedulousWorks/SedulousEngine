@@ -1191,7 +1191,7 @@ class RenderFrame
 			renderer.UploadSkinning(mFrameScenes, mEncoder);
 
 		if (mClusters != null)
-			mClusters.PrepareFrame(mFrameIndex);
+			mClusters.PrepareFrame(mFrameIndex, (uint32)mViews.ActiveCount);
 
 		// The per worker pools are reset once, before any view.
 		mPass.BeginFrame(mFrameIndex);

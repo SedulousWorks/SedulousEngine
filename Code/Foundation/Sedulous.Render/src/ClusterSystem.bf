@@ -21,12 +21,6 @@ class ClusterSystem
 	private const uint32 cMaxLights = 256;
 	/// The dynamic offset alignment, which is at least the size of the parameters.
 	private const uint64 cParamsSlot = 256;
-	private const uint32 cMaxViewsPerFrame = 8;
-	private const int cMaxFramesInFlight = 8;
-
-	/// The buffers belong to a (view, frame) SLOT: two views in one frame must not share
-	/// one, or the second stomps what the first is still reading.
-	private const int cMaxBufferSlots = (int)cMaxViewsPerFrame * cMaxFramesInFlight;
 
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
@@ -46,20 +40,28 @@ class ClusterSystem
 	/// the order is the same.
 	private DynamicUniformRing mLightRing ~ delete _;
 
-	private IBuffer[cMaxBufferSlots] mOffsets = .();
-	private IBuffer[cMaxBufferSlots] mIndices = .();
-	private uint64[cMaxBufferSlots] mOffsetsBytes = .();
-	private uint64[cMaxBufferSlots] mIndicesBytes = .();
-	/// Bumped on reallocation, so a consumer rebuilds its cached group rather than holding
-	/// one over an address that has come back around.
-	private uint32[cMaxBufferSlots] mBufferVersion = .();
+	/// One (view, frame in flight) slot's cluster buffers and the group over them: two views in
+	/// one frame must not share buffers, or the second stomps what the first is still reading.
+	private struct Slot
+	{
+		public IBuffer Offsets;
+		public IBuffer Indices;
+		/// The size of the slot's buffers (views can differ).
+		public uint64 OffsetsBytes;
+		public uint64 IndicesBytes;
+		/// Bumped on reallocation, so a consumer rebuilds its cached group rather than holding
+		/// one over an address that has come back around.
+		public uint32 BufferVersion;
+		/// The group over the slot's own buffers, so a group is never freed while a frame still
+		/// in flight refers to it, and what it was built over.
+		public IBindGroup BindGroup;
+		public uint32 BindGroupParamsGen;
+		public uint32 BindGroupLightGen;
+		public IBuffer BindGroupOffsets;
+	}
 
-	/// One group per slot, over that slot's own buffers, so a group is never freed while a
-	/// frame still in flight refers to it.
-	private IBindGroup[cMaxBufferSlots] mBindGroups = .();
-	private uint32[cMaxBufferSlots] mBindGroupParamsGen = .();
-	private uint32[cMaxBufferSlots] mBindGroupLightGen = .();
-	private IBuffer[cMaxBufferSlots] mBindGroupOffsets = .();
+	/// Per (view, frame in flight), grown to the most views one frame draws.
+	private ViewSlots<Slot> mSlots = new .() ~ delete _;
 
 	private bool mReady = false;
 
@@ -68,6 +70,7 @@ class ClusterSystem
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = Max(framesInFlight, (uint32)1);
+		mSlots.SetFramesInFlight(mFramesInFlight);
 
 		mParamsRing = new DynamicUniformRing(device, mFramesInFlight, cParamsSlot,
 			.Uniform | .CopyDst, "cluster.params");
@@ -130,9 +133,9 @@ class ClusterSystem
 		return .Ok;
 	}
 
-	/// Sizes the rings for the frame and selects this frame's regions. Once per frame, before
-	/// any view.
-	public void PrepareFrame(uint32 frameIndex)
+	/// Sizes the rings for `viewCount` views this frame and selects this frame's regions. Once
+	/// per frame, before any view.
+	public void PrepareFrame(uint32 frameIndex, uint32 viewCount)
 	{
 		// A hot reload rebuilds the pipeline. The device was idled by the reload itself.
 		let shaderVersion = mShaders.Version("cluster_build");
@@ -148,8 +151,8 @@ class ClusterSystem
 			mPipelineShaderVersion = shaderVersion;
 		}
 
-		mReady = mParamsRing.Reserve(cMaxViewsPerFrame)
-			&& mLightRing.Reserve(cMaxLights * cMaxViewsPerFrame);
+		let views = Math.Max(viewCount, (uint32)1);
+		mReady = mParamsRing.Reserve(views) && mLightRing.Reserve(cMaxLights * views);
 
 		if (mReady)
 		{
@@ -161,16 +164,13 @@ class ClusterSystem
 	/// Declares this view's build pass into the graph and answers what the forward pass binds.
 	///
 	/// An empty binding means the shading falls back to walking every light, which is slower
-	/// but correct: a view beyond the budget, or a build that could not be set up, must not
-	/// leave the lighting wrong.
+	/// but correct: a build that could not be set up must not leave the lighting wrong.
 	public ClusterBinding DeclareBuild(RenderGraph graph, RenderView view, uint32 frameIndex,
 		uint32 viewIndex)
 	{
 		var binding = ClusterBinding();
 
 		if (!mReady || (mPipeline == null) || (view.Width == 0) || (view.Height == 0))
-			return binding;
-		if (viewIndex >= cMaxViewsPerFrame)
 			return binding;
 
 		// The grid covers the VIEWPORT rather than the whole target, in viewport local
@@ -181,8 +181,8 @@ class ClusterSystem
 		if (totalClusters == 0)
 			return binding;
 
-		let bufferSlot = (int)viewIndex * (int)mFramesInFlight + (int)(frameIndex % mFramesInFlight);
-		if (!EnsureBuffers(bufferSlot, totalClusters))
+		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
+		if (!EnsureBuffers(ref slot, totalClusters))
 			return binding;
 
 		// The camera's own planes. The slices are logarithmic in view depth, so the near one stays
@@ -228,14 +228,14 @@ class ClusterSystem
 		parameters.InverseProjection = Inverse(view.Camera.Projection);
 		*(ClusterBuildParams*)paramsRange.Ptr = parameters;
 
-		let offsets = mOffsets[bufferSlot];
-		let indices = mIndices[bufferSlot];
-		if (!EnsureBindGroup(bufferSlot, offsets, indices))
+		let offsets = slot.Offsets;
+		let indices = slot.Indices;
+		if (!EnsureBindGroup(ref slot, offsets, indices))
 			return binding;
 
 		let paramsOffset = paramsRange.ByteOffset;
 		let groups = (uint32)((totalClusters + 63) / 64);
-		let bindGroup = mBindGroups[bufferSlot];
+		let bindGroup = slot.BindGroup;
 		let pipeline = mPipeline;
 
 		let offsetsHandle = graph.ImportBuffer("cluster.offsets", offsets);
@@ -260,7 +260,7 @@ class ClusterSystem
 
 		binding.Offsets = offsets;
 		binding.LightIndices = indices;
-		binding.Version = mBufferVersion[bufferSlot];
+		binding.Version = slot.BufferVersion;
 		binding.OffsetsHandle = offsetsHandle;
 		binding.IndicesHandle = indicesHandle;
 		binding.GridX = gridX;
@@ -294,21 +294,21 @@ class ClusterSystem
 	}
 
 	/// Grows a slot's buffers when its cluster count outgrows them.
-	private bool EnsureBuffers(int bufferSlot, uint32 totalClusters)
+	private bool EnsureBuffers(ref Slot slot, uint32 totalClusters)
 	{
 		let offsetsBytes = (uint64)totalClusters * sizeof(uint32) * 2;
 		let indicesBytes = (uint64)totalClusters * cMaxPerCluster * sizeof(uint32);
 
-		if ((mOffsets[bufferSlot] != null) && (offsetsBytes <= mOffsetsBytes[bufferSlot]))
+		if ((slot.Offsets != null) && (offsetsBytes <= slot.OffsetsBytes))
 			return true;
 
 		// A frame in flight may still be reading the OLD buffers, and the group over them.
-		let replacing = (mOffsets[bufferSlot] != null) || (mIndices[bufferSlot] != null);
+		let replacing = (slot.Offsets != null) || (slot.Indices != null);
 		if (replacing && (mRetire == null))
 			mDevice.WaitIdle();
 
-		ReleaseBuffer(ref mOffsets[bufferSlot]);
-		ReleaseBuffer(ref mIndices[bufferSlot]);
+		ReleaseBuffer(ref slot.Offsets);
+		ReleaseBuffer(ref slot.Indices);
 
 		var offsetsDesc = BufferDesc();
 		offsetsDesc.Size = offsetsBytes;
@@ -317,7 +317,7 @@ class ClusterSystem
 		offsetsDesc.Label = "cluster.offsets";
 		if (!(mDevice.CreateBuffer(offsetsDesc) case .Ok(let offsets)))
 			return false;
-		mOffsets[bufferSlot] = offsets;
+		slot.Offsets = offsets;
 
 		var indicesDesc = BufferDesc();
 		indicesDesc.Size = indicesBytes;
@@ -326,31 +326,31 @@ class ClusterSystem
 		indicesDesc.Label = "cluster.indices";
 		if (!(mDevice.CreateBuffer(indicesDesc) case .Ok(let indices)))
 			return false;
-		mIndices[bufferSlot] = indices;
+		slot.Indices = indices;
 
-		mOffsetsBytes[bufferSlot] = offsetsBytes;
-		mIndicesBytes[bufferSlot] = indicesBytes;
-		mBufferVersion[bufferSlot]++;
+		slot.OffsetsBytes = offsetsBytes;
+		slot.IndicesBytes = indicesBytes;
+		slot.BufferVersion++;
 
 		// The slot's group referred to the old buffers, so it goes with them.
-		ReleaseBindGroup(bufferSlot);
-		mBindGroupOffsets[bufferSlot] = null;
+		ReleaseBindGroup(ref slot);
+		slot.BindGroupOffsets = null;
 		return true;
 	}
 
 	/// Rebuilds a slot's group when anything it was built over has moved.
-	private bool EnsureBindGroup(int bufferSlot, IBuffer offsets, IBuffer indices)
+	private bool EnsureBindGroup(ref Slot slot, IBuffer offsets, IBuffer indices)
 	{
 		let lights = mLightRing.Buffer;
-		let stable = (mBindGroups[bufferSlot] != null)
-			&& (mBindGroupParamsGen[bufferSlot] == mParamsRing.Generation)
-			&& (mBindGroupLightGen[bufferSlot] == mLightRing.Generation)
-			&& (mBindGroupOffsets[bufferSlot] == offsets);
+		let stable = (slot.BindGroup != null)
+			&& (slot.BindGroupParamsGen == mParamsRing.Generation)
+			&& (slot.BindGroupLightGen == mLightRing.Generation)
+			&& (slot.BindGroupOffsets == offsets);
 		if (stable)
 			return true;
 
-		if (mBindGroups[bufferSlot] != null)
-			mDevice.DestroyBindGroup(ref mBindGroups[bufferSlot]);
+		if (slot.BindGroup != null)
+			mDevice.DestroyBindGroup(ref slot.BindGroup);
 
 		let paramsBuffer = mParamsRing.Buffer;
 		if ((paramsBuffer == null) || (lights == null) || (offsets == null) || (indices == null))
@@ -359,8 +359,8 @@ class ClusterSystem
 		var entries = BindGroupEntry[4](
 			BindGroupEntry.BufferEntry(paramsBuffer, 0, sizeof(ClusterBuildParams)),
 			BindGroupEntry.BufferEntry(lights, 0, mLightRing.ByteCapacity),
-			BindGroupEntry.BufferEntry(offsets, 0, mOffsetsBytes[bufferSlot]),
-			BindGroupEntry.BufferEntry(indices, 0, mIndicesBytes[bufferSlot]));
+			BindGroupEntry.BufferEntry(offsets, 0, slot.OffsetsBytes),
+			BindGroupEntry.BufferEntry(indices, 0, slot.IndicesBytes));
 
 		var desc = BindGroupDesc();
 		desc.Layout = mLayout;
@@ -369,10 +369,10 @@ class ClusterSystem
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return false;
 
-		mBindGroups[bufferSlot] = bindGroup;
-		mBindGroupParamsGen[bufferSlot] = mParamsRing.Generation;
-		mBindGroupLightGen[bufferSlot] = mLightRing.Generation;
-		mBindGroupOffsets[bufferSlot] = offsets;
+		slot.BindGroup = bindGroup;
+		slot.BindGroupParamsGen = mParamsRing.Generation;
+		slot.BindGroupLightGen = mLightRing.Generation;
+		slot.BindGroupOffsets = offsets;
 		return true;
 	}
 
@@ -389,17 +389,17 @@ class ClusterSystem
 		buffer = null;
 	}
 
-	private void ReleaseBindGroup(int bufferSlot)
+	private void ReleaseBindGroup(ref Slot slot)
 	{
-		if (mBindGroups[bufferSlot] == null)
+		if (slot.BindGroup == null)
 			return;
 
 		if (mRetire != null)
-			mRetire.Retire(mBindGroups[bufferSlot]);
+			mRetire.Retire(slot.BindGroup);
 		else
-			mDevice.DestroyBindGroup(ref mBindGroups[bufferSlot]);
+			mDevice.DestroyBindGroup(ref slot.BindGroup);
 
-		mBindGroups[bufferSlot] = null;
+		slot.BindGroup = null;
 	}
 
 	private void Shutdown()
@@ -407,14 +407,14 @@ class ClusterSystem
 		if (mDevice == null)
 			return;
 
-		for (int slot < cMaxBufferSlots)
+		for (var slot in ref mSlots.All)
 		{
-			if (mBindGroups[slot] != null)
-				mDevice.DestroyBindGroup(ref mBindGroups[slot]);
-			if (mOffsets[slot] != null)
-				mDevice.DestroyBuffer(ref mOffsets[slot]);
-			if (mIndices[slot] != null)
-				mDevice.DestroyBuffer(ref mIndices[slot]);
+			if (slot.BindGroup != null)
+				mDevice.DestroyBindGroup(ref slot.BindGroup);
+			if (slot.Offsets != null)
+				mDevice.DestroyBuffer(ref slot.Offsets);
+			if (slot.Indices != null)
+				mDevice.DestroyBuffer(ref slot.Indices);
 		}
 
 		if (mPipeline != null)
