@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Scripts: `onAnimationEvent(string name)` on an entity's behaviours when its animation passes one
+  of its clip's events (a footstep or hit marker authored on the clip), in the order passed.
 - Export: a game exports to Android, as an APK to install or an App Bundle for Google Play. An
   Android preset gives the app's id, version, name, icon and release keystore (its password asked
   for at export, or read from `ANDROID_KEYSTORE_PASSWORD`); the export builds the app with the

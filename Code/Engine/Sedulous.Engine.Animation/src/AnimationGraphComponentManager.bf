@@ -23,6 +23,8 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 	private PosedMeshes mPosed = new .() ~ delete _;
 	/// The one-shots that ended since the last DrainEnded.
 	private List<OneShotEnded> mEnded = new .() ~ delete _;
+	/// The clip events passed since the last DrainEvents.
+	private List<ClipEventFired> mEvents = new .() ~ DeleteContainerAndItems!(_);
 
 	public override void OnSceneCreate(Scene scene)
 	{
@@ -115,6 +117,13 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 
 	/// The one-shots that ended since the last call, added to `outEnded` (the animation
 	/// subsystem tells its listeners).
+	/// The clip events passed since the last call, handed to `outEvents`, which owns them.
+	public void DrainEvents(List<ClipEventFired> outEvents)
+	{
+		outEvents.AddRange(mEvents);
+		mEvents.Clear();
+	}
+
 	public void DrainEnded(List<OneShotEnded> outEnded)
 	{
 		outEnded.AddRange(mEnded);
@@ -173,6 +182,8 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 		{
 			delete component.Player;
 			component.Player = new AnimationGraphPlayer(graph, skeleton);
+			// Its clip events, for the animation subsystem to tell its listeners.
+			component.Player.SetEventHandler(new (name, time) => { mEvents.Add(new ClipEventFired(owner, name)); });
 			component.PlayerSkeleton = skeleton;
 			component.PlayerGraph = graph;
 		}

@@ -249,7 +249,8 @@ class ScriptSceneSystem : SceneSystem
 		switch (handler)
 		{
 		case cOnStart, cOnUpdate, cOnFixedUpdate, cOnEnable, cOnDisable, cOnDestroy, cOnStop,
-			"onContactBegin", "onContactEnd", "onTriggerEnter", "onTriggerExit", "onAnimationFinished":
+			"onContactBegin", "onContactEnd", "onTriggerEnter", "onTriggerExit", "onAnimationFinished",
+			"onAnimationEvent":
 			return;
 		default:
 			outEvent.Append(handler.Substring(2));

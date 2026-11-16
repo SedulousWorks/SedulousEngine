@@ -26,6 +26,20 @@ struct OneShotRuntime
 }
 
 /// A one-shot that ended: its entity and its clip, for the animation subsystem's listeners.
+/// A clip event a player passed: its entity and the event's name, for the animation
+/// subsystem's listeners.
+class ClipEventFired
+{
+	public EntityHandle Entity;
+	public String Name = new .() ~ delete _;
+
+	public this(EntityHandle entity, StringView name)
+	{
+		Entity = entity;
+		Name.Set(name);
+	}
+}
+
 struct OneShotEnded
 {
 	public EntityHandle Entity;

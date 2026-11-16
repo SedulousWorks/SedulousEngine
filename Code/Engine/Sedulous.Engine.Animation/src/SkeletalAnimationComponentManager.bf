@@ -27,6 +27,8 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	private PosedMeshes mPosed = new .() ~ delete _;
 	/// The one-shots that ended since the last DrainEnded.
 	private List<OneShotEnded> mEnded = new .() ~ delete _;
+	/// The clip events passed since the last DrainEvents.
+	private List<ClipEventFired> mEvents = new .() ~ DeleteContainerAndItems!(_);
 
 	public override void OnSceneCreate(Scene scene)
 	{
@@ -155,6 +157,13 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 	/// The one-shots that ended since the last call, added to `outEnded` (the animation
 	/// subsystem tells its listeners).
+	/// The clip events passed since the last call, handed to `outEvents`, which owns them.
+	public void DrainEvents(List<ClipEventFired> outEvents)
+	{
+		outEvents.AddRange(mEvents);
+		mEvents.Clear();
+	}
+
 	public void DrainEnded(List<OneShotEnded> outEnded)
 	{
 		outEnded.AddRange(mEnded);
@@ -212,6 +221,8 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 		{
 			delete component.Player;
 			component.Player = new AnimationPlayer(skeleton);
+			// Its clip events, for the animation subsystem to tell its listeners.
+			component.Player.SetEventHandler(new (name, time) => { mEvents.Add(new ClipEventFired(owner, name)); });
 			component.PlayerSkeleton = skeleton;
 			// The new player has no clip, so the block below plays one.
 			component.PlayerClip = null;

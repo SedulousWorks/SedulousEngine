@@ -20,9 +20,27 @@ struct AnimationOneShotEnded
 	}
 }
 
+/// A clip event an entity's animation passed (an authored marker: a footstep, a swing's hit):
+/// the scene, the entity and the event's name, a view valid for the call.
+struct AnimationClipEvent
+{
+	/// BORROWED.
+	public Scene Scene;
+	public EntityHandle Entity;
+	public StringView Name;
+
+	public this(Scene scene, EntityHandle entity, StringView name)
+	{
+		Scene = scene;
+		Entity = entity;
+		Name = name;
+	}
+}
+
 /// A consumer of the animation's events. The host bridges them to scripts, so the animation
 /// stays script agnostic, as physics contacts do.
 interface IAnimationListener
 {
 	void OnOneShotEnded(AnimationOneShotEnded ended);
+	void OnClipEvent(AnimationClipEvent event);
 }

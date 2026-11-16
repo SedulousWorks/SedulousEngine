@@ -27,10 +27,18 @@ static class OneShotTests
 	private class Listener : IAnimationListener
 	{
 		public List<AnimationOneShotEnded> Ended = new .() ~ delete _;
+		/// The clip events heard, by name.
+		public List<String> Events = new .() ~ DeleteContainerAndItems!(_);
 
 		public void OnOneShotEnded(AnimationOneShotEnded ended)
 		{
 			Ended.Add(ended);
+		}
+
+		public void OnClipEvent(AnimationClipEvent event)
+		{
+			Test.Assert(event.Entity.IsAssigned);
+			Events.Add(new String(event.Name));
 		}
 	}
 
@@ -205,5 +213,38 @@ static class OneShotTests
 		// Stopping what never played, and asking of an entity with no animator, are quiet.
 		stage.Animators.StopOneShot(stage.Hero, 0.2f);
 		Test.Assert(!stage.Animators.IsPlayingOneShot(stage.Level.CreateEntity("Bare")));
+	}
+
+	/// The player fired its events into a handler nobody set: an authored footstep or hit marker
+	/// reached nothing, and scripts never heard onAnimationEvent.
+	[Test]
+	public static void AClipsEventsReachTheAnimationSubsystemsListeners()
+	{
+		let stage = scope Stage();
+		let walk = scope AnimationClip("Walk", 1.0f, true);
+		Hold(walk, 0.0f);
+		walk.AddEvent(0.25f, "StepLeft");
+		walk.AddEvent(0.75f, "StepRight");
+		stage.Animator(walk);
+
+		let subsystem = scope AnimationSubsystem();
+		let listener = scope Listener();
+		subsystem.RegisterListener(listener);
+		subsystem.OnSystemsReady(stage.Level);
+
+		stage.Run(0.5f);
+		subsystem.Update(0.0f);
+		Test.Assert(listener.Events.Count == 1, scope $"{listener.Events.Count} events");
+		Test.Assert(listener.Events[0] == "StepLeft");
+
+		stage.Run(0.6f); // past 0.75 and round the loop to 1.1 (0.1 into the next pass)
+		subsystem.Update(0.0f);
+		Test.Assert(listener.Events.Count == 2, scope $"{listener.Events.Count} events");
+		Test.Assert(listener.Events[1] == "StepRight");
+		subsystem.Update(0.0f);
+		Test.Assert(listener.Events.Count == 2, "told once");
+
+		subsystem.UnregisterListener(listener);
+		subsystem.OnDestroying(stage.Level);
 	}
 }

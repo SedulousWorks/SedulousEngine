@@ -226,4 +226,42 @@ static class AnimationBridgeTests
 		Test.Assert(world.Prop(pet, "clip").AsGuid == hopId);
 		Test.Assert(!world.BehaviorOf(pet).Faulted);
 	}
+
+	/// A clip's authored event reaches the entity's behaviours as onAnimationEvent(name).
+	[Test]
+	public static void AClipsEventCallsTheEntitysBehavioursOnAnimationEvent()
+	{
+		let world = scope AnimationWorld();
+		let skeleton = scope Skeleton(1);
+		skeleton.Bones[0].Index = 0;
+		skeleton.Bones[0].ParentIndex = -1;
+		skeleton.FindRootBones();
+		skeleton.BuildChildIndices();
+		let walk = scope AnimationClip("Walk", 1.0f, true);
+		walk.AddEvent(0.1f, "Footstep");
+
+		let pet = world.Scene.CreateEntity("pet");
+		let animator = world.Scene.GetSystem<SkeletalAnimationComponentManager>().Add(pet);
+		animator.Skeleton.SetDirect(skeleton);
+		animator.Clip.SetDirect(walk);
+		let listener = world.Class("Listener", """
+			class Listener
+			{
+				Entity self;
+				int heard = 0;
+				string last;
+				void onAnimationEvent(string name)
+				{
+					heard++;
+					last = name;
+				}
+			}
+			""");
+		world.Attach(pet, listener);
+
+		world.Play(20); // past 0.1 s, and the next tick delivered it
+		Test.Assert(world.Prop(pet, "heard").AsInt == 1, scope $"heard {world.Prop(pet, "heard").AsInt} times");
+		Test.Assert(world.Prop(pet, "last").AsString == "Footstep", scope $"heard '{world.Prop(pet, "last").AsString}'");
+		Test.Assert(!world.BehaviorOf(pet).Faulted);
+	}
 }

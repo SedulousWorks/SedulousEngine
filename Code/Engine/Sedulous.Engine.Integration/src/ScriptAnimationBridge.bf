@@ -57,4 +57,14 @@ class ScriptAnimationBridge : IAnimationListener
 		var args = ScriptValue[1](.FromGuid(ended.Clip));
 		mScripts.DeliverEvent(ended.Scene, ended.Entity, "onAnimationFinished", .(&args[0], 1));
 	}
+
+	/// Only enqueues, the name copied by the queue: onAnimationEvent(name) on the entity's
+	/// behaviours at the next tick.
+	public void OnClipEvent(AnimationClipEvent event)
+	{
+		if (mScripts == null)
+			return;
+		var args = ScriptValue[1](.FromString(event.Name));
+		mScripts.DeliverEvent(event.Scene, event.Entity, "onAnimationEvent", .(&args[0], 1));
+	}
 }

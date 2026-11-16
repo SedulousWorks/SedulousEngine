@@ -42,9 +42,9 @@ Handlers dispatch **by presence**: implement only what you need.
   the speed the system reports, a navigation agent's `DesiredVelocity` say. A scene's Level
   script updates before its entities' behaviors.
 - The game: `launch()`, `update(float dt)`, `exit()`.
-- `on<Event>(...)`: named events. Physics contacts and an animation's one-shot ending
-  (`onAnimationFinished`) arrive as events; any script can send one:
-  `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
+- `on<Event>(...)`: named events. Physics contacts, an animation's one-shot ending
+  (`onAnimationFinished`) and its clip events (`onAnimationEvent`) arrive as events; any script
+  can send one: `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
   `scene.Scripts.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. A scene's
   event bus IS its run's bus (a game's, or a scene page's Simulate): one bus per run, heard by
   every behaviour, each Level and the Game. Emit an event once; emitting it through both calls
@@ -133,6 +133,9 @@ spawned this frame waits for its body to be built.
   true from the call until it has blended out.
 - When a one-shot ends (played out or stopped), the entity's behaviours get
   `void onAnimationFinished(Guid clip)` at a later scene tick, as physics contacts arrive.
+- When an entity's animation passes one of its clip's events (a marker authored on the clip's
+  page: a footstep, the moment a swing lands), its behaviours get `void onAnimationEvent(string
+  name)` at a later scene tick, in the order passed.
 - `ClipLength(clip)` is a clip's length in seconds (0 for no clip).
 - `SetClip(entity, clip, blendSeconds)` swaps an animator's clip easing from the pose shown now
   into the new clip, instead of the snap of `SetClip(entity, clip)`.

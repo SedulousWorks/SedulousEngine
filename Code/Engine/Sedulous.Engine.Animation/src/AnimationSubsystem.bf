@@ -22,6 +22,8 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 	private List<IAnimationListener> mListeners = new .() ~ delete _;
 	/// Scratch: one scene's ended one-shots, drained from its managers.
 	private List<OneShotEnded> mEnded = new .() ~ delete _;
+	/// Scratch: one scene's clip events, drained from its managers.
+	private List<ClipEventFired> mEvents = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Registering twice is once.
 	public void RegisterListener(IAnimationListener listener)
@@ -95,8 +97,19 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 				for (let listener in mListeners)
 					listener.OnOneShotEnded(event);
 			}
+
+			ClearAndDeleteItems!(mEvents);
+			scene.GetSystem<AnimationGraphComponentManager>()?.DrainEvents(mEvents);
+			scene.GetSystem<SkeletalAnimationComponentManager>()?.DrainEvents(mEvents);
+			for (let fired in mEvents)
+			{
+				let event = AnimationClipEvent(scene, fired.Entity, fired.Name);
+				for (let listener in mListeners)
+					listener.OnClipEvent(event);
+			}
 		}
 		mEnded.Clear();
+		ClearAndDeleteItems!(mEvents);
 	}
 
 	protected override void OnReady()
