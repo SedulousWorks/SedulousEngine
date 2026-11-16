@@ -92,6 +92,12 @@ struct NavAgentComponent : ISerializable
 	[Hidden]
 	[ReadOnly]
 	public bool Finished = true;
+	/// Whether the last Navigate could not be walked: its target is off every navmesh the
+	/// agent's zone holds, or no path reaches it. The agent stops, and Finished is true too.
+	[Scriptable]
+	[Hidden]
+	[ReadOnly]
+	public bool Failed = false;
 	[Scriptable]
 	[Hidden]
 	[ReadOnly]
@@ -147,6 +153,7 @@ struct NavAgentComponent : ISerializable
 		TargetDirty = true;
 		StopRequested = false;
 		Finished = false;
+		Failed = false;
 	}
 
 	/// Halts where the agent is.
@@ -157,6 +164,7 @@ struct NavAgentComponent : ISerializable
 		HasTarget = false;
 		StopRequested = true;
 		Finished = true;
+		Failed = false;
 	}
 
 	/// Puts the agent somewhere else at once (a respawn, a door to another room, a late joiner
@@ -173,6 +181,7 @@ struct NavAgentComponent : ISerializable
 		TargetDirty = false;
 		StopRequested = false;
 		Finished = true;
+		Failed = false;
 	}
 
 	/// Moves at a velocity across the ground (metres a second, world X and Z) instead of to a
@@ -189,6 +198,7 @@ struct NavAgentComponent : ISerializable
 		TargetDirty = false;
 		StopRequested = false;
 		Finished = (vx == 0.0f) && (vz == 0.0f);
+		Failed = false;
 	}
 
 	/// A destination, a speed and an arrival radius in one call, which is the common scripted

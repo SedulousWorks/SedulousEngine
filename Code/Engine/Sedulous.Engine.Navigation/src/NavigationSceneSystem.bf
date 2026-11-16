@@ -183,9 +183,9 @@ class NavigationSceneSystem : SceneSystem
 
 		if (agent.TargetDirty)
 		{
-			zone.Crowd.SetTarget(agent.AgentId,
-				TransformPoint(agent.Target, zone.InverseWorld));
 			agent.TargetDirty = false;
+			if (!zone.Crowd.SetTarget(agent.AgentId, TransformPoint(agent.Target, zone.InverseWorld)))
+				Fail(agent); // no navmesh near the target: it cannot be walked
 		}
 
 		if (agent.StopRequested)
@@ -238,6 +238,14 @@ class NavigationSceneSystem : SceneSystem
 		}
 	}
 
+	/// A Navigate that cannot be walked: the agent stops where it is, finished and failed.
+	private static void Fail(NavAgentComponent* agent)
+	{
+		agent.HasTarget = false;
+		agent.Finished = true;
+		agent.Failed = true;
+	}
+
 	private void ReadBack(NavAgentComponent* agent, EntityHandle entity)
 	{
 		if ((agent.ZoneIndex < 0) || (agent.AgentId < 0))
@@ -256,6 +264,11 @@ class NavigationSceneSystem : SceneSystem
 		let state = zone.Crowd.AgentState(agent.AgentId);
 		agent.CrowdState = state.State;
 		agent.CrowdTargetState = state.TargetState;
+		if (agent.HasTarget && (state.TargetState == .Failed))
+		{
+			Fail(agent); // the path search found no way there
+			zone.Crowd.ClearTarget(agent.AgentId);
+		}
 		agent.CrowdDesiredSpeed = state.DesiredSpeed;
 		agent.PathCorners = state.CornerCount;
 

@@ -728,4 +728,44 @@ class NavigationSceneTests
 		scene.SetSimulationEnabled(false);
 		scene.Stop();
 	}
+
+	/// The crowd's refusal was dropped: the agent stood still forever, Finished never true, and
+	/// a script waiting for it waited for good.
+	[Test]
+	public static void ATargetOffTheNavmeshFinishesTheAgentAsFailed()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navfail_db");
+		let zoneId = fixture.CookGroundZone("zone");
+
+		let scene = scope Scene("navfail");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zoneEntity = scene.CreateEntity("zone");
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(zoneEntity);
+		zone.Extents = .(15, 10, 15);
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+
+		let agentEntity = scene.CreateEntity("agent");
+		scene.SetLocalPosition(agentEntity, .(-5, 0, 0));
+		let agent = scene.GetSystem<NavAgentComponentManager>().Add(agentEntity);
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		Test.Assert(agent.AgentId >= 0);
+
+		agent.Navigate(.(300, 0, 300)); // nowhere near the zone's ground
+		Run(scene, 30);
+		Test.Assert(agent.Failed, "the order failed");
+		Test.Assert(agent.Finished, "and the agent is finished");
+
+		// A new order clears it, and a reachable one is walked.
+		agent.Navigate(.(5, 0, 0));
+		Test.Assert(!agent.Failed);
+		Run(scene, cCrossingSteps, agent);
+		Test.Assert(agent.Finished);
+		Test.Assert(!agent.Failed);
+
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+	}
 }

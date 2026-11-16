@@ -127,6 +127,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Navigation: an agent told to go somewhere it cannot walk to (off the navmesh, or with no path
+  there) stops and reports finished, and the new `Failed` says why; before, it stood still and a
+  script waiting for it to finish waited forever. Any new order clears it.
 - Physics: a world that reaches its body limit, or whose contact caches run out in a step, says so
   once in the log, naming the setting to raise; before, bodies were silently not made or passed
   through each other. Scenes share one physics worker pool instead of each starting a thread per
