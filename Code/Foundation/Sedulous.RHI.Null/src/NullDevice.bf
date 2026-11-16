@@ -112,7 +112,11 @@ class NullDevice : IDevice
 		=> .Ok(new NullBindGroupLayout());
 
 	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc)
-		=> .Ok(new NullBindGroup());
+	{
+		let group = new NullBindGroup();
+		group.Initialize(desc.Entries);
+		return .Ok(group);
+	}
 
 	public Result<IPipelineLayout> CreatePipelineLayout(PipelineLayoutDesc desc)
 		=> .Ok(new NullPipelineLayout());

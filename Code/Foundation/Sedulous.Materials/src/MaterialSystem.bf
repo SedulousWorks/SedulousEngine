@@ -37,6 +37,10 @@ class MaterialSystem : IMaterialInstanceSink
 	private ITextureView mNormalView;
 	private ITexture mBlackTexture;
 	private ITextureView mBlackView;
+	/// An unbound TextureCube slot's: its layout entry wants a cube view, and the 2D white texture
+	/// there made a bind group no backend accepts.
+	private ITexture mWhiteCubeTexture;
+	private ITextureView mWhiteCubeView;
 
 	private Dictionary<uint64, IBindGroupLayout> mLayoutCache = new .() ~ delete _;
 	private Dictionary<uint64, ISampler> mSamplerCache = new .() ~ delete _;
@@ -391,22 +395,27 @@ class MaterialSystem : IMaterialInstanceSink
 			return .Err(.Unknown);
 		if (!CreateTexture1x1(.(0, 0, 0, 255), out mBlackTexture, out mBlackView))
 			return .Err(.Unknown);
+		if (!CreateTexture1x1(.(255, 255, 255, 255), out mWhiteCubeTexture, out mWhiteCubeView, true))
+			return .Err(.Unknown);
 
 		return .Ok;
 	}
 
-	private bool CreateTexture1x1(Color32 color, out ITexture outTexture, out ITextureView outView)
+	/// A 1x1 texture of one colour; `cube` makes it six layers seen as a cube.
+	private bool CreateTexture1x1(Color32 color, out ITexture outTexture, out ITextureView outView, bool cube = false)
 	{
 		outTexture = null;
 		outView = null;
+		let layers = cube ? (uint32)6 : 1;
 
 		var desc = TextureDesc();
 		desc.Dimension = .Texture2D;
 		desc.Format = .RGBA8Unorm;
 		desc.Width = 1;
 		desc.Height = 1;
+		desc.ArrayLayerCount = layers;
 		desc.Usage = .Sampled | .CopyDst;
-		desc.Label = "1x1";
+		desc.Label = cube ? "1x1.cube" : "1x1";
 
 		if (!(mDevice.CreateTexture(desc) case .Ok(let texture)))
 			return false;
@@ -418,14 +427,16 @@ class MaterialSystem : IMaterialInstanceSink
 			var layout = TextureDataLayout();
 			layout.BytesPerRow = 4;
 			layout.RowsPerImage = 1;
-			batch.WriteTexture(texture, .(&pixel[0], 4), layout, .(1, 1, 1));
+			for (uint32 layer < layers)
+				batch.WriteTexture(texture, .(&pixel[0], 4), layout, .(1, 1, 1), 0, layer);
 			batch.Submit().IgnoreError();
 			mQueue.DestroyTransferBatch(ref batch);
 		}
 
 		var viewDesc = TextureViewDesc();
 		viewDesc.Format = .RGBA8Unorm;
-		viewDesc.Dimension = .Texture2D;
+		viewDesc.Dimension = cube ? .TextureCube : .Texture2D;
+		viewDesc.ArrayLayerCount = layers;
 		if (!(mDevice.CreateTextureView(texture, viewDesc) case .Ok(let view)))
 			return false;
 
@@ -568,7 +579,7 @@ class MaterialSystem : IMaterialInstanceSink
 			{
 				var view = instance.GetTexture(index);
 				if (view == null)
-					view = NeutralTextureFor(property.Name);
+					view = (property.Type == .TextureCube) ? mWhiteCubeView : NeutralTextureFor(property.Name);
 				if (view != null)
 					entries.Add(BindGroupEntry.TextureEntry(view));
 			}
@@ -707,9 +718,11 @@ class MaterialSystem : IMaterialInstanceSink
 		if (mWhiteView != null) mDevice.DestroyTextureView(ref mWhiteView);
 		if (mNormalView != null) mDevice.DestroyTextureView(ref mNormalView);
 		if (mBlackView != null) mDevice.DestroyTextureView(ref mBlackView);
+		if (mWhiteCubeView != null) mDevice.DestroyTextureView(ref mWhiteCubeView);
 		if (mWhiteTexture != null) mDevice.DestroyTexture(ref mWhiteTexture);
 		if (mNormalTexture != null) mDevice.DestroyTexture(ref mNormalTexture);
 		if (mBlackTexture != null) mDevice.DestroyTexture(ref mBlackTexture);
+		if (mWhiteCubeTexture != null) mDevice.DestroyTexture(ref mWhiteCubeTexture);
 		if (mDefaultSampler != null) mDevice.DestroySampler(ref mDefaultSampler);
 
 		mDevice = null;

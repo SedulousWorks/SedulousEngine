@@ -127,6 +127,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: a material with an unset cube texture slot gets a white cube instead of a flat
+  texture its layout refuses.
 - Rendering: a frame that draws more than eight views (cameras, render textures, editor
   previews) draws each with its own inputs. The ninth view shared the first's tone map, FXAA,
   sky and debug slots, its TAA, SSR, SSGI and exposure history, and its clustered lights, so one

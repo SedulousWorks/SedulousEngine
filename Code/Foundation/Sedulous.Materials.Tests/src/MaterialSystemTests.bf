@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Materials;
 using Sedulous.RHI;
+using Sedulous.RHI.Null;
 
 namespace Sedulous.Materials.Tests;
 
@@ -143,6 +144,31 @@ class MaterialSystemTests
 		Test.Assert(fixture.System.EnsureUniformBuffer(instance) == null);
 		// It still preps: the textures and sampler are the whole bind group.
 		Test.Assert(fixture.System.PrepareInstance(instance) != null);
+	}
+
+	/// An unbound cube slot binds a cube, an unbound 2D slot a 2D texture: the layout declares a
+	/// cube view for a TextureCube property, and the unbound fallback was the 2D white texture, a
+	/// bind group no backend accepts.
+	[Test]
+	public static void AnUnboundCubeSlotBindsACubeAndAnUnbound2DSlotA2DTexture()
+	{
+		let fixture = scope MaterialSystemFixture();
+		let builder = scope MaterialBuilder("sky");
+		let material = builder..Shader("forward")..Texture("AlbedoMap")..TextureCube("EnvMap")
+			..Sampler("MainSampler").Build();
+		defer delete material;
+
+		let instance = scope MaterialInstance(material);
+		let group = fixture.System.PrepareInstance(instance) as NullBindGroup;
+		Test.Assert(group != null);
+		Test.Assert(group.Entries.Length == 3, "t0, t1, s0 (no uniforms)");
+		let albedo = group.Entries[0].TextureView;
+		let env = group.Entries[1].TextureView;
+		Test.Assert((albedo != null) && (env != null));
+		Test.Assert(albedo.Desc.Dimension == .Texture2D);
+		Test.Assert(env.Desc.Dimension == .TextureCube);
+		Test.Assert(env.Desc.ArrayLayerCount == 6);
+		Test.Assert(env.Texture.Desc.ArrayLayerCount == 6);
 	}
 
 	/// A sampler combination is cached, so a thousand materials wanting repeat and linear
