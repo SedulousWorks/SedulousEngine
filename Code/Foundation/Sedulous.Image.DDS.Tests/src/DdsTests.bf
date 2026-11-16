@@ -484,4 +484,23 @@ class DdsTests
 		Test.Assert(p.G == 128);
 		Test.Assert(p.B >= 254);
 	}
+
+	/// A header claiming more mips than its image has levels is refused at once: 0xFFFFFFFF levels
+	/// walked the size loop that many times and shifted the width past its bits.
+	[Test]
+	public static void AHeaderClaimingMoreMipsThanItsImageHasLevelsIsRefused()
+	{
+		let file = scope List<uint8>();
+		LegacyHeader(file, 1, 1, 0xFFFFFFFF, 0x4, FourCC("DXT1"), 0, 0, 0, 0, 0);
+		Bc1Block(file, 0xF800);
+		let dds = scope DdsImage();
+		Test.Assert(Dds.LoadDds(file, dds) case .Err(.InvalidArgument));
+		// One more level than an 8x4 image has (8, 4, 2, 1: four), with the bytes a fifth would take
+		// (BC1: 2 blocks, then 1 for each smaller level), so only the count can refuse it.
+		let five = scope List<uint8>();
+		LegacyHeader(five, 8, 4, 5, 0x4, FourCC("DXT1"), 0, 0, 0, 0, 0);
+		for (int block < 6)
+			Bc1Block(five, 0xF800);
+		Test.Assert(Dds.LoadDds(five, dds) case .Err(.InvalidArgument));
+	}
 }

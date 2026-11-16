@@ -22,6 +22,8 @@ static class Dds
 	private const int cHeaderSize = 124;
 	private const int cPixelFormatSize = 32;
 	private const int cDx10HeaderSize = 20;
+	/// D3D11 and later, and every Vulkan device the engine targets.
+	private const uint32 cMaxArrayLayers = 2048;
 	private const int cFileHeaderBytes = 4 + cHeaderSize;
 
 	// DDS_HEADER.dwFlags
@@ -282,6 +284,14 @@ static class Dds
 		if (cube && ((caps2 & cCaps2Cubemap) != 0)
 			&& ((caps2 & cCaps2CubemapAllFaces) != cCaps2CubemapAllFaces))
 			return .Err(.NotSupported);
+		// The header's counts are a file's word: a mip chain longer than the image has levels
+		// (whose size shifts past the width's bits), or more layers than a GPU takes (whose count
+		// times six wraps), is not a texture to read.
+		uint32 levels = 1;
+		for (var side = Math.Max(width, height); side > 1; side >>= 1)
+			levels++;
+		if ((outHeader.MipLevels > levels) || (arraySize > cMaxArrayLayers))
+			return .Err(.InvalidArgument);
 
 		outHeader.Cubemap = cube;
 		outHeader.ArrayLayers = cube ? (arraySize * 6) : arraySize;
