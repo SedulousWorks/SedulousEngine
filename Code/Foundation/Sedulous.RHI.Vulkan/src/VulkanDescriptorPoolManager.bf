@@ -14,7 +14,8 @@ namespace Sedulous.RHI.Vulkan;
 class VulkanDescriptorPoolManager
 {
 	private VkDevice mDevice;
-	private List<VkDescriptorPool> mPools = new .() ~ delete _;
+	/// Plain pools, then update-after-bind ones: each kind of set comes from pools of its own kind.
+	private List<VkDescriptorPool>[2] mPools = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
 	private uint32 mMaxSetsPerPool;
 	private bool mAccelStructEnabled;
 	private VkDescriptorSet mLastAllocatedSet;
@@ -28,7 +29,8 @@ class VulkanDescriptorPoolManager
 
 	/// The set the last successful Allocate produced. Read straight after allocating.
 	public VkDescriptorSet LastAllocatedSet => mLastAllocatedSet;
-	public int PoolCount => mPools.Count;
+	/// How many pools of one kind exist.
+	public int PoolCount(bool updateAfterBind) => mPools[updateAfterBind ? 1 : 0].Count;
 
 	public Result<VkDescriptorPool> Allocate(VkDescriptorSetLayout layout,
 		bool updateAfterBind = false, uint32 variableCount = 0)
@@ -41,9 +43,12 @@ class VulkanDescriptorPoolManager
 			variableInfo.pDescriptorCounts = &count;
 		}
 
-		// Every existing pool first. A failure here is "this pool is full", not an error:
-		// it is the ordinary way to discover the capacity has run out.
-		for (let pool in mPools)
+		// Every existing pool of the same kind first: an update-after-bind layout must come from an
+		// update-after-bind pool, and a plain set has no place in one (their sizes are 64x). A
+		// failure here is "this pool is full", not an error: it is the ordinary way to discover
+		// the capacity has run out.
+		let pools = mPools[updateAfterBind ? 1 : 0];
+		for (let pool in pools)
 		{
 			if (TryAllocateFrom(pool, layout, variableCount, &variableInfo) case .Ok(let set))
 			{
@@ -55,7 +60,7 @@ class VulkanDescriptorPoolManager
 		if (CreatePool(updateAfterBind) case .Err)
 			return .Err;
 
-		let fresh = mPools.Back;
+		let fresh = pools.Back;
 		if (TryAllocateFrom(fresh, layout, variableCount, &variableInfo) case .Ok(let set))
 		{
 			mLastAllocatedSet = set;
@@ -91,9 +96,12 @@ class VulkanDescriptorPoolManager
 
 	public void Destroy()
 	{
-		for (let pool in mPools)
-			VulkanNative.vkDestroyDescriptorPool(mDevice, pool, null);
-		mPools.Clear();
+		for (let pools in mPools)
+		{
+			for (let pool in pools)
+				VulkanNative.vkDestroyDescriptorPool(mDevice, pool, null);
+			pools.Clear();
+		}
 	}
 
 	/// A pool sized by a rough profile of what a frame binds, rather than by counting.
@@ -138,7 +146,7 @@ class VulkanDescriptorPoolManager
 		if (VulkanNative.vkCreateDescriptorPool(mDevice, &createInfo, null, &pool) != .VK_SUCCESS)
 			return .Err;
 
-		mPools.Add(pool);
+		mPools[updateAfterBind ? 1 : 0].Add(pool);
 		return .Ok;
 	}
 }

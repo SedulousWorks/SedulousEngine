@@ -601,6 +601,31 @@ class VulkanCommandTests
 		sDevice.DestroyTexture(ref texture);
 	}
 
+	/// Plain and update-after-bind sets come from pools of their own kind: one list held both, so
+	/// an update-after-bind set could land in a plain pool (invalid), and plain sets filled the
+	/// update-after-bind pools.
+	[Test]
+	public static void PlainAndUpdateAfterBindSetsComeFromPoolsOfTheirOwnKind()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		let device = (sDevice as VulkanDevice).Handle;
+		VkDescriptorSetLayoutCreateInfo layoutInfo = .();
+		VkDescriptorSetLayout empty = .Null;
+		Test.Assert(VulkanNative.vkCreateDescriptorSetLayout(device, &layoutInfo, null, &empty) == .VK_SUCCESS);
+		{
+			let pools = scope VulkanDescriptorPoolManager(device, 4);
+			Test.Assert(pools.Allocate(empty) case .Ok(let plain));
+			Test.Assert(pools.PoolCount(false) == 1);
+			Test.Assert(pools.PoolCount(true) == 0);
+			Test.Assert(pools.Allocate(empty, true) case .Ok(let afterBind));
+			Test.Assert(pools.PoolCount(true) == 1);
+			Test.Assert(afterBind != plain);
+			pools.Destroy();
+		}
+		VulkanNative.vkDestroyDescriptorSetLayout(device, empty, null);
+	}
+
 	/// A fenced submit given no fence still runs its command buffers: it returned early on a null
 	/// fence, so the commands never ran, and in a frame submit the acquire semaphore was never
 	/// waited on.
