@@ -268,12 +268,25 @@ class AudioSceneSystem : SceneSystem, IAudioReleaser
 				PlayComponent(component, entity);
 		}
 
+		if (component.AwaitingVoice && component.AutoPlay)
+		{
+			// Taken for another voice: back once one is free, taking no other's (two loops at the
+			// pool's edge would otherwise keep taking each other's place).
+			let clip = (component.SourceType == .Clip) ? component.Clip.Get : null;
+			let free = (clip != null) ? mEngine.HasFreeVoiceFor(clip)
+				: mEngine.HasFreeVoice(); // a cue's next pick: the in-memory pool
+			if (free)
+				PlayComponent(component, entity);
+		}
+
 		if (!component.Voice.IsValid)
 			return;
 
 		if (!mEngine.IsValidHandle(component.Voice))
 		{
-			// A finished one shot: reap the handle.
+			// A looping automatic voice never ends by itself: it was taken for a voice of higher
+			// priority (or nearer). Otherwise a finished one shot. Either way the handle is reaped.
+			component.AwaitingVoice = component.VoiceLoops && component.AutoPlay;
 			component.Voice = .();
 			component.HasPreviousPosition = false;
 			return;
@@ -389,6 +402,9 @@ class AudioSceneSystem : SceneSystem, IAudioReleaser
 		}
 
 		component.Voice = mEngine.Play(clip, parameters);
+		component.VoiceLoops = component.Loop || clip.Loop;
+		// No voice now: later.
+		component.AwaitingVoice = !component.Voice.IsValid && component.VoiceLoops && component.AutoPlay;
 		component.PreviousPosition = parameters.Position;
 		component.HasPreviousPosition = component.Spatial;
 		return component.Voice;

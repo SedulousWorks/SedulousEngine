@@ -129,6 +129,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Audio: a looping sound that loses its voice to a more important one comes back once a voice is
+  free, instead of staying silent; when every voice is busy, a new 2D sound replaces the oldest
+  of its priority instead of the one just started.
 - Particles: a one-shot effect finishes once its emitters run out, and playing it again starts it
   over; a slow emitter thinned by distance still emits (at its thinned rate) instead of stopping;
   an effect's first particles no longer fly off as if the emitter had travelled from the origin.

@@ -137,6 +137,8 @@ class AudioEngine
 		public uint32 Generation = 1;
 		public VoiceState State = .Free;
 		public uint8 Priority = 0;
+		/// When it was played (mPlaySerial): the oldest of a tie is taken.
+		public uint64 Started = 0;
 		public bool Spatial = false;
 		public bool Looping = false;
 
@@ -268,6 +270,8 @@ class AudioEngine
 	private List<VoiceSlot> mVoices = new .() ~ DeleteContainerAndItems!(_);
 	private uint32 mVoiceCount = 0;
 	private uint32 mStreamVoiceCount = 0;
+	/// Counts voices played (VoiceSlot.Started).
+	private uint64 mPlaySerial = 0;
 
 	private List<DyingVoice> mDyingVoices = new .() ~ DeleteContainerAndItems!(_);
 
@@ -562,6 +566,7 @@ class AudioEngine
 
 		slot.State = parameters.StartPaused ? .Paused : .Playing;
 		slot.Priority = parameters.Priority;
+		slot.Started = ++mPlaySerial;
 		slot.Spatial = parameters.Spatial;
 		slot.Position = parameters.Position;
 		slot.Volume = parameters.Volume;
@@ -933,8 +938,38 @@ class AudioEngine
 		return Dot(delta, delta);
 	}
 
+	/// Whether `candidate` goes before `held` among voices of one priority: the farther from the
+	/// listener, else the older (2D voices are all at distance 0: the oldest goes, not the first
+	/// slot, which is the voice just started there).
+	private bool StealsBefore(VoiceSlot candidate, VoiceSlot held)
+	{
+		let a = DistanceToListener(candidate);
+		let b = DistanceToListener(held);
+		return (a != b) ? (a > b) : (candidate.Started < held.Started);
+	}
+
+	/// Whether a pool has a free slot: a voice played now would take no other's.
+	private bool HasFreeSlot(bool streamPool)
+	{
+		let first = streamPool ? (int)mVoiceCount : 0;
+		let last = streamPool ? (int)(mVoiceCount + mStreamVoiceCount) : (int)mVoiceCount;
+		for (int i = first; (i < last) && (i < mVoices.Count); i++)
+		{
+			if (mVoices[i].State == .Free)
+				return true;
+		}
+		return false;
+	}
+
+	/// Whether `clip` played now would find a free voice (in its pool: the streamed one for a
+	/// streamed clip), taking no other voice's.
+	public bool HasFreeVoiceFor(AudioClip clip) => (clip != null) && HasFreeSlot(clip.Stream);
+
+	/// Whether the in-memory pool (or the streamed one) has a free voice.
+	public bool HasFreeVoice(bool streamPool = false) => HasFreeSlot(streamPool);
+
 	/// A free slot, else the lowest priority strictly below the newcomer, else the FARTHEST
-	/// voice of equal priority. Negative when nothing may be taken.
+	/// (then oldest) voice of equal priority. Negative when nothing may be taken.
 	///
 	/// Distance breaks a tie because the farthest of several equally important sounds is the
 	/// one whose loss is least audible.
@@ -955,7 +990,7 @@ class AudioEngine
 		{
 			if ((mVoices[i].Priority < victimPriority)
 				|| ((victim >= 0) && (mVoices[i].Priority == victimPriority)
-					&& (DistanceToListener(mVoices[i]) > DistanceToListener(mVoices[victim]))))
+					&& StealsBefore(mVoices[i], mVoices[victim])))
 			{
 				victim = i;
 				victimPriority = mVoices[i].Priority;
@@ -969,8 +1004,7 @@ class AudioEngine
 			{
 				if (mVoices[i].Priority != priority)
 					continue;
-				if ((victim < 0)
-					|| (DistanceToListener(mVoices[i]) > DistanceToListener(mVoices[victim])))
+				if ((victim < 0) || StealsBefore(mVoices[i], mVoices[victim]))
 					victim = i;
 			}
 		}

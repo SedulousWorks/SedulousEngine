@@ -531,4 +531,40 @@ class AudioSceneTests
 		// No source: a no-op.
 		play.Audio.SetClip(play.Scene.CreateEntity("bare"), id);
 	}
+
+	/// A stolen voice read as a finished one shot: the handle was reaped and the source stayed
+	/// silent for the rest of the scene.
+	[Test]
+	public static void ALoopingAutoPlaySourceTakenForAnotherVoiceComesBackWhenOneIsFree()
+	{
+		let play = scope AudioPlayScene();
+		let clip = play.AddClip(1.0f);
+		let entity = play.AddSource(clip, .(0, 0, 0));
+		play.Start();
+		play.Frame();
+		Test.Assert(play.Engine.IsValidHandle(play.Sources.Get(entity).Voice));
+
+		// Fill the pool with louder business: the source's voice is the one taken.
+		let loud = scope List<VoiceHandle>();
+		var high = AudioPlayParams();
+		high.Loop = true;
+		high.Priority = 250;
+		for (uint32 i < play.Settings.VoiceCount)
+			loud.Add(play.Engine.Play(clip, high));
+		play.Frame();
+		Test.Assert(!play.Engine.IsValidHandle(play.Sources.Get(entity).Voice), "taken");
+
+		// While the pool stays full it waits, taking nothing.
+		play.Frame();
+		Test.Assert(play.Sources.Get(entity).AwaitingVoice, "waiting for a voice");
+		for (let voice in loud)
+			Test.Assert(play.Engine.IsValidHandle(voice), "took no other's");
+
+		// A voice frees: the source plays again.
+		play.Engine.Stop(loud[0]);
+		for (int i < 10)
+			play.Frame(0.05f);
+		Test.Assert(play.Engine.IsPlaying(play.Sources.Get(entity).Voice), "back");
+		Test.Assert(!play.Sources.Get(entity).AwaitingVoice);
+	}
 }

@@ -101,6 +101,13 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 	/// effectively inactive. Reactivation restarts an automatic source from it.
 	[Hidden]
 	public bool ActiveSuspended = false;
+	/// The voice loops (the source's loop, or its clip's): a looping automatic voice that goes
+	/// without being stopped was taken for another (the pool was full), and comes back when a
+	/// voice is free (AwaitingVoice).
+	[Hidden]
+	public bool VoiceLoops = false;
+	[Hidden]
+	public bool AwaitingVoice = false;
 
 	/// The cue's no repeat state, one per component so two things triggering the same cue do
 	/// not share a sequence.

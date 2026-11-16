@@ -206,4 +206,33 @@ class AudioEngineStealTests
 			Test.Assert(!(shot == voices[i]));
 		Test.Assert(engine.ActiveVoiceCount == 5);
 	}
+
+	/// 2D voices are all at distance 0 from the listener, so every tie went to the first slot:
+	/// with the pool full, each new sound took the one just started there.
+	[Test]
+	public static void AmongTwoDimensionalVoicesOfOnePriorityTheOldestIsTaken()
+	{
+		let engine = scope AudioEngine(HeadlessSettings!(2, 0));
+		let clip = MakeToneClip(2.0f);
+		defer delete clip;
+		var flat = AudioPlayParams();
+		flat.Loop = true;
+		flat.Priority = 50;
+		let first = engine.Play(clip, flat);
+		let second = engine.Play(clip, flat);
+		Test.Assert(first.IsValid && second.IsValid);
+		let third = engine.Play(clip, flat); // takes the oldest: first
+		Test.Assert(third.IsValid);
+		Test.Assert(!engine.IsValidHandle(first), "the oldest was taken");
+		Test.Assert(engine.IsValidHandle(second));
+		let fourth = engine.Play(clip, flat); // the oldest now is second, not third
+		Test.Assert(fourth.IsValid);
+		Test.Assert(!engine.IsValidHandle(second), "then the next oldest");
+		Test.Assert(engine.IsValidHandle(third), "not the one just started");
+		Test.Assert(!engine.HasFreeVoice());
+		engine.Stop(third);
+		for (int i < 10)
+			engine.Update(0.05f);
+		Test.Assert(engine.HasFreeVoice());
+	}
 }
