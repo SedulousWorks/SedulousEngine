@@ -127,6 +127,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Physics: a body falling out of a trigger raises `onTriggerExit`; a body that comes to rest on
+  another keeps its contact instead of ending it as it falls asleep; a compound body touching
+  with two of its parts begins one contact.
 - Navigation: a navmesh of more than 256 tiles loads; it failed silently before. A tile with more
   polygons than its grid can address is refused with an error that says to bake smaller tiles.
 - Rendering: in a split screen, ambient occlusion and TAA work on each side as they do on a

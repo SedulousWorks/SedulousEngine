@@ -56,6 +56,12 @@ class PhysicsWorld
 	/// everything that touches it holds the lock; the fixed step driver drains it after.
 	private Monitor mContactLock = new .() ~ delete _;
 	private List<ContactEvent> mContacts = new .() ~ delete _;
+	/// Each touching body pair's contact, by PairKey; under the contact lock.
+	private Dictionary<uint64, ContactPair> mContactPairs = new .() ~ delete _;
+	/// Pairs whose last sub-shape contact went this step, settled after it.
+	private List<uint64> mEndedPairs = new .() ~ delete _;
+	/// Pairs kept through their bodies' sleep.
+	private List<uint64> mAsleepPairs = new .() ~ delete _;
 
 	// ==================== bring up ====================
 
@@ -208,7 +214,12 @@ class PhysicsWorld
 	public void Step(float deltaTime, int32 collisionSteps = 1)
 	{
 		JPH_PhysicsSystem_Update(mSystem, deltaTime, collisionSteps, mJobSystem);
+		FinishContacts();
 	}
+
+	/// Whether the body is simulating: false once it has come to rest and fallen asleep (and for
+	/// a static body or one that does not exist).
+	public bool IsBodyActive(BodyId id) => JPH_BodyInterface_IsActive(Bodies, id.Value);
 
 	public int BodyCount => (int)JPH_PhysicsSystem_GetNumBodies(mSystem);
 
@@ -870,6 +881,34 @@ class PhysicsWorld
 
 	// ==================== contacts ====================
 
+	/// One body pair's contact. Contacts are counted per body pair, not per sub-shape pair: a
+	/// compound's children touching one body are one contact, begun on the first and ended with
+	/// the last. The backend removes a contact when its bodies fall asleep, though they still
+	/// touch; such a pair is kept, asleep, and ends only if its bodies wake apart. A sensor's pair
+	/// ends as a trigger exit.
+	private struct ContactPair
+	{
+		public BodyId BodyA;
+		public BodyId BodyB;
+		public uint64 UserA;
+		public uint64 UserB;
+		/// Sub-shape contacts this step.
+		public uint32 Touching;
+		public bool Sensor;
+		/// Removed by sleep, still touching.
+		public bool Asleep;
+	}
+
+	private static uint64 PairKey(JPH_BodyID a, JPH_BodyID b) => ((uint64)a << 32) | (uint64)b;
+
+	/// The pair's record in place, or null; under the contact lock.
+	private ContactPair* FindPair(uint64 key)
+	{
+		if (mContactPairs.TryGetRef(key, ?, var pair))
+			return pair;
+		return null;
+	}
+
 	private static void OnContactAdded(void* user, JPH_Body* bodyA, JPH_Body* bodyB,
 		JPH_ContactManifold* manifold, JPH_ContactSettings* settings)
 	{
@@ -906,37 +945,122 @@ class PhysicsWorld
 		JPH_Body_GetLinearVelocity(bodyB, &velocityB);
 		event.Speed = Abs(Dot(FromJolt(velocityA) - FromJolt(velocityB), event.Normal));
 
-		world.Buffer(event);
+		let key = PairKey(event.BodyA.Value, event.BodyB.Value);
+		using (world.mContactLock.Enter())
+		{
+			if (!world.mContactPairs.ContainsKey(key))
+			{
+				var pair = ContactPair();
+				pair.BodyA = event.BodyA;
+				pair.BodyB = event.BodyB;
+				pair.UserA = event.UserA;
+				pair.UserB = event.UserB;
+				pair.Sensor = event.Kind == .TriggerEnter;
+				world.mContactPairs[key] = pair;
+			}
+			let pair = world.FindPair(key);
+			pair.Touching++;
+			if (pair.Touching > 1)
+				return; // another child of the same pair: already begun
+			if (pair.Asleep)
+			{
+				pair.Asleep = false; // woke still touching: the contact never ended
+				return;
+			}
+			world.mContacts.Add(event);
+		}
 	}
 
-	private static void OnContactRemoved(void* user, JPH_SubShapeIDPair* pair)
+	/// A sub-shape contact went. Nothing here reads a body, which the backend forbids inside this
+	/// callback: whether the pair separated or fell asleep is decided after the step.
+	private static void OnContactRemoved(void* user, JPH_SubShapeIDPair* subShapes)
 	{
 		let world = (PhysicsWorld)Internal.UnsafeCastToObject(user);
-
-		var event = ContactEvent();
-		event.Kind = .End;
-		event.BodyA = BodyId(pair.Body1ID);
-		event.BodyB = BodyId(pair.Body2ID);
-
-		// The user words are resolved BY ID, since a removal carries no bodies: this fires
-		// for an already destroyed body too, and that side stays nought so a subsystem skips
-		// it rather than acting on a corpse.
-		//
-		// The NO LOCK interface, because a contact callback already runs with the bodies
-		// locked and taking them again would deadlock.
-		let bodies = JPH_PhysicsSystem_GetBodyLockInterfaceNoLock(world.mSystem);
-		event.UserA = world.UserDataOrZero(bodies, pair.Body1ID);
-		event.UserB = world.UserDataOrZero(bodies, pair.Body2ID);
-
-		world.Buffer(event);
+		let key = PairKey(subShapes.Body1ID, subShapes.Body2ID);
+		using (world.mContactLock.Enter())
+		{
+			let pair = world.FindPair(key);
+			if ((pair == null) || (pair.Touching == 0))
+				return;
+			pair.Touching--;
+			if (pair.Touching == 0)
+				world.mEndedPairs.Add(key); // decided after the step: separated, or asleep
+		}
 	}
 
-	private uint64 UserDataOrZero(JPH_BodyLockInterface* bodies, JPH_BodyID id)
+	/// What a body is doing after a step, for a pair's ending: gone, awake, or still (asleep, or
+	/// static and so never moving on its own).
+	private enum BodyState { Gone, Awake, Still }
+
+	private BodyState StateOf(BodyId id)
 	{
+		let bodies = JPH_PhysicsSystem_GetBodyLockInterface(mSystem);
 		var lock = JPH_BodyLockRead();
-		JPH_BodyLockInterface_LockRead(bodies, id, &lock);
+		JPH_BodyLockInterface_LockRead(bodies, id.Value, &lock);
 		defer JPH_BodyLockInterface_UnlockRead(bodies, &lock);
-		return (lock.body != null) ? JPH_Body_GetUserData(lock.body) : 0;
+		if (lock.body == null)
+			return .Gone;
+		return (JPH_Body_IsStatic(lock.body) || !JPH_Body_IsActive(lock.body)) ? .Still : .Awake;
+	}
+
+	/// Ends a pair: a sensor's as a trigger exit. A destroyed body's side has user word nought, so
+	/// a subsystem skips it rather than acting on a corpse.
+	private void EndPair(ContactPair pair, bool goneA, bool goneB)
+	{
+		var event = ContactEvent();
+		event.Kind = pair.Sensor ? .TriggerExit : .End;
+		event.BodyA = pair.BodyA;
+		event.BodyB = pair.BodyB;
+		event.UserA = goneA ? 0 : pair.UserA;
+		event.UserB = goneB ? 0 : pair.UserB;
+		mContacts.Add(event);
+	}
+
+	/// After a step, when bodies may be read: a pair whose bodies woke apart ends now; a pair that
+	/// lost its last contact ends unless its bodies only fell asleep.
+	private void FinishContacts()
+	{
+		using (mContactLock.Enter())
+		{
+			for (int i = 0; i < mAsleepPairs.Count;)
+			{
+				let key = mAsleepPairs[i];
+				let pair = FindPair(key);
+				if ((pair == null) || !pair.Asleep)
+				{
+					mAsleepPairs.RemoveAtFast(i); // touching again: woke still in contact
+					continue;
+				}
+				let a = StateOf(pair.BodyA);
+				let b = StateOf(pair.BodyB);
+				if ((a == .Still) && (b == .Still))
+				{
+					i++; // still asleep together
+					continue;
+				}
+				EndPair(*pair, a == .Gone, b == .Gone); // woke (or went) without touching again
+				mContactPairs.Remove(key);
+				mAsleepPairs.RemoveAtFast(i);
+			}
+			for (let key in mEndedPairs)
+			{
+				let pair = FindPair(key);
+				if ((pair == null) || (pair.Touching > 0) || pair.Asleep)
+					continue; // touching again within the step, or already handled
+				let a = StateOf(pair.BodyA);
+				let b = StateOf(pair.BodyB);
+				if ((a == .Still) && (b == .Still))
+				{
+					// Fell asleep in contact (or at rest inside a sensor): still touching.
+					pair.Asleep = true;
+					mAsleepPairs.Add(key);
+					continue;
+				}
+				EndPair(*pair, a == .Gone, b == .Gone);
+				mContactPairs.Remove(key);
+			}
+			mEndedPairs.Clear();
+		}
 	}
 
 	/// Appends one event. Called from the backend's WORKER THREADS, which is the whole reason
