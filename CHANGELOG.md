@@ -129,6 +129,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Vegetation: changing a layer's scatter (its density, say) in the editor or a game redraws it;
+  the old scatter could stay on screen.
 - Audio: a looping sound that loses its voice to a more important one comes back once a voice is
   free, instead of staying silent; when every voice is busy, a new 2D sound replaces the oldest
   of its priority instead of the one just started.

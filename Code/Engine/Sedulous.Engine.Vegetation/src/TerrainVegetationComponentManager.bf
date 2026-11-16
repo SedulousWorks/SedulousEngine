@@ -39,7 +39,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	{
 		/// The ChunkSeed, which is the renderer's persistent buffer key.
 		public uint64 Key = 0;
-		/// Bumps per rebuild, so the renderer re-uploads on a change.
+		/// A fresh value per rebuild (mNextVersion), so the renderer re-uploads on a change.
 		public uint32 Version = 0;
 		public bool Built = false;
 		/// Needs a rescatter before it can draw.
@@ -88,6 +88,10 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	private Scene mScene = null;
 	private uint32 mBuildBudget = cDefaultBuildBudget;
 	private uint64 mBuilds = 0;
+	/// Every set's versions come from here, never from the set: a cache reset rebuilds its sets
+	/// at 0, and a set counting from 0 again matched what the renderer (which keys sets by chunk)
+	/// had uploaded, so a rescatter after the reset was never drawn.
+	private uint32 mNextVersion = 0;
 	/// Keyed by the layer entity's tag.
 	private Dictionary<uint64, LayerCache> mCaches = new .() ~ DeleteDictionaryAndValues!(_);
 	private List<HeightfieldRegion> mPendingRegions = new .() ~ delete _;
@@ -278,7 +282,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			set.Dirty = true;
 	}
 
-	private static void Compose(LayerCache cache, ChunkSet set)
+	private void Compose(LayerCache cache, ChunkSet set)
 	{
 		set.World.Clear();
 		for (let local in set.Local)
@@ -298,7 +302,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		}
 		set.WorldCenter = world.Center();
 		set.WorldRadius = Length(world.Extents());
-		set.Version++; // the renderer re-uploads the set's buffer on a version change
+		set.Version = ++mNextVersion; // the renderer re-uploads the set's buffer on a version change
 	}
 
 	/// The chunk an authored instance belongs to, by its terrain local XZ: exactly one, so a

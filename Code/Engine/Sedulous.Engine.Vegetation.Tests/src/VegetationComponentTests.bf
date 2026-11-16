@@ -1235,4 +1235,41 @@ class VegetationComponentTests
 		ar.Key("instances");
 		SerializeList(ar, instances);
 	}
+
+	/// A reset rebuilt the chunk sets with their version back at 0, so the regrown set came out
+	/// at the version its first growth had. The renderer keys sets by chunk and keeps what it
+	/// uploaded, so it saw no change and kept drawing the old scatter.
+	[Test]
+	public static void ALayerResetAndRegrownGivesEveryChunkAVersionItNeverHad()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4, scope $"{sets.Count} sets");
+		let keys = scope List<uint64>();
+		let versions = scope List<uint32>();
+		for (let s in sets)
+		{
+			keys.Add(s.Key);
+			versions.Add(s.Version);
+		}
+
+		f.Layer.Density = 0.5f; // a scatter parameter: the layer resets and regrows
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4, scope $"{sets.Count} sets regrown");
+		int matched = 0;
+		for (let s in sets)
+		{
+			for (int i < keys.Count)
+			{
+				if (keys[i] != s.Key)
+					continue;
+				matched++;
+				Test.Assert(s.Version != versions[i], scope $"chunk {s.Key} kept version {s.Version}");
+			}
+		}
+		Test.Assert(matched == 4, "the same chunks");
+	}
 }
