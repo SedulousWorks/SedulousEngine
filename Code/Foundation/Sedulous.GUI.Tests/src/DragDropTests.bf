@@ -1004,6 +1004,35 @@ class DragDropTests
 		s.Root.Context.RootPlaces = null;
 	}
 
+	/// The target in another root removed under a drag is let go of, not used after it is gone:
+	/// only the node's own root's dispatcher hears of a removal, and the dragging root's
+	/// dispatcher kept a raw reference to it and touched it on the next move.
+	[Test]
+	public static void TheTargetInAnotherRootRemovedUnderADragIsNotUsedAfterItIsGone()
+	{
+		let s = scope Scene();
+		let other = new SceneRoot(s.Root.Context);
+		defer other.ReleaseRef();
+		other.Size = .(300.0f, 300.0f);
+		let far = Box(other, 50.0f, 20.0f, 100.0f, 100.0f);
+		far.DropTypes = "card";
+		other.UpdateLayout();
+		let places = scope TwoPlaces();
+		places.First = s.D;
+		places.Second = other.EventDispatcher;
+		s.Root.Context.RootPlaces = places;
+
+		s.DragTo(.(600.0f, 50.0f));
+		Test.Assert(s.D.DropTarget == far);
+		other.RemoveChild(far); // the other root takes it away, its last owner
+		other.UpdateLayout();
+		s.D.InjectMouseMove(.(610.0f, 60.0f)); // the drag goes on over where it was
+		s.D.InjectMouseUp(.(610.0f, 60.0f), .Left);
+		Test.Assert(s.Ends == 1);
+		Test.Assert(s.Ended.Target == null, "nothing took it");
+		s.Root.Context.RootPlaces = null;
+	}
+
 	[Test]
 	public static void WhereNoHostTellsTheRootsPlacesADragLetGoPastItsRootsEdgeEndsOutsideNowhereSaid()
 	{

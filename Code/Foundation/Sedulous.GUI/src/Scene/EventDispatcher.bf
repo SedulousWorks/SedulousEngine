@@ -1183,7 +1183,7 @@ class EventDispatcher
 			mDragOver = this;
 			mDragOutside = true;
 			if ((mDropTarget != null) && (mDropTarget.RootNode == gone.mRoot))
-				mDropTarget = null; // its tree goes with it: nothing to tell
+				HoldDropTarget(null); // its tree goes with it: nothing to tell
 		}
 		if (mDragLayerIn == gone)
 			mDragLayerIn = null;
@@ -1755,7 +1755,7 @@ class EventDispatcher
 		if (IsInSubtree(mPendingFocus, removed))
 			mPendingFocus = null;
 		if (IsInSubtree(mDropTarget, removed))
-			mDropTarget = null;
+			HoldDropTarget(null);
 		if (IsInSubtree(mDragSource, removed))
 		{
 			mDragSource = null; // gone: it is told nothing
@@ -2566,21 +2566,34 @@ class EventDispatcher
 		SetDropTarget(target, query, at);
 	}
 
+	/// Holds `node` as the drop target (null: none), letting go of the one held before.
+	private void HoldDropTarget(Node node)
+	{
+		if (node != null)
+			node.AddRef();
+		let old = mDropTarget;
+		mDropTarget = node;
+		if (old != null)
+			old.ReleaseRef();
+	}
+
 	private void SetDropTarget(Node target, DropQuery query, Float2 at)
 	{
 		let rootAt = DragRootPoint();
 		if (target != mDropTarget)
 		{
+			// The held reference moves to `left`, let go once it has been told.
 			let left = mDropTarget;
 			if (left != null)
 			{
 				mDropTarget = null;
+				defer left.ReleaseRef();
 				left.DropTargetState = false;
 				let e = scope DragEvent(.DragLeave, left, mDragPayload);
 				FillDragEvent(e, query, rootAt);
 				left.HandleDragEvent(e);
 			}
-			mDropTarget = target;
+			HoldDropTarget(target);
 			if (target != null)
 			{
 				target.DropTargetState = true;
@@ -2694,10 +2707,12 @@ class EventDispatcher
 		let payload = scope DragPayload();
 		payload.Set(mDragPayload);
 		mDragPayload.Reset();
+		// The held reference moves to `left`, let go once it has been told.
 		let left = mDropTarget;
 		if (left != null)
 		{
 			mDropTarget = null;
+			defer left.ReleaseRef();
 			left.DropTargetState = false;
 			if (target == null)
 			{
@@ -3551,7 +3566,9 @@ class EventDispatcher
 	private float mDragRest = 0.0f;
 	private bool mDragRestOpened = false;
 	private Node mDragSource = null;
-	private Node mDropTarget = null; // the current target
+	/// The current target, a reference held: a drag over another root's window keeps it, and only
+	/// that root's dispatcher hears of its removal, so a raw one could be used after it was freed.
+	private Node mDropTarget = null ~ { if (_ != null) _.ReleaseRef(); };
 	private Sedulous.GUI.DragPayload mDragPayload = new .() ~ delete _;
 	private Float2 mMousePos = .(0.0f, 0.0f);
 	private Observable mFocusChanged = new .() ~ delete _; // told when focus moves
