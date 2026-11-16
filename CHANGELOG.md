@@ -127,6 +127,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: in a scene with more than 256 lights, the lights near the camera and the brightest
+  are the ones drawn; before, the ones extracted last were dropped wherever they were.
 - Rendering: a tall object reaching toward the sun past a shadow cascade casts its shadow
   instead of losing it.
 - Editor: editing an engine shader include rebuilds the project's own shaders that include it.

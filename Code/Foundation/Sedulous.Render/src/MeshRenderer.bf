@@ -32,7 +32,7 @@ class MeshRenderer : Renderer
 	/// The view ring's start; it grows to the frame's views.
 	private const uint32 cMinViewSlots = 8;
 	/// The per view light budget, the clustering doing the narrowing.
-	private const uint32 cMaxLights = 256;
+	private const uint32 cMaxLights = RenderLimits.MaxLightsPerView;
 	/// One per shadow pass and category run, sized with headroom since a slot is tiny.
 	private const uint32 cMaxShadowPasses = 256;
 	/// A set not extracted for this many upload frames releases its buffers and bind groups,

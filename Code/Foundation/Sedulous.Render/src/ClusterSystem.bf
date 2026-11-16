@@ -18,7 +18,7 @@ class ClusterSystem
 	/// The per cluster cap, which matches the kernel's own.
 	private const uint32 cMaxPerCluster = 64;
 	/// The per view light budget, which matches the forward pass's.
-	private const uint32 cMaxLights = 256;
+	private const uint32 cMaxLights = RenderLimits.MaxLightsPerView;
 	/// The dynamic offset alignment, which is at least the size of the parameters.
 	private const uint64 cParamsSlot = 256;
 

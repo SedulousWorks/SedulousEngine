@@ -1027,6 +1027,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 					if ((provider.Scene === scene) && (provider.Provider != null))
 						provider.Provider.ExtractRenderData(snapshot);
 				}
+				// Past the view's budget, the least of the lights are the ones cut.
+				snapshot.RankLights();
 
 				// Maps the probes onto persistent array slots; the capture itself is later.
 				if (mProbeSystem != null)

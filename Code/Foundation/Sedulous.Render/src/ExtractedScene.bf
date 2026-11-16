@@ -78,6 +78,48 @@ class ExtractedScene
 
 	public void AddLight(GpuLight light) => mLights.Add(light);
 
+	/// With more lights than a view shades (RenderLimits.MaxLightsPerView), orders them by what each
+	/// brings to the view, so the cut drops the least: directional lights first, then the rest by
+	/// intensity over distance from the view origin, measured against the light's reach. Stable,
+	/// and called once the lights are extracted; the order is otherwise extraction order. Each
+	/// light carries its own ShadowIndex, so nothing else refers to its place in the list.
+	public void RankLights()
+	{
+		if (mLights.Count <= (int)RenderLimits.MaxLightsPerView)
+			return; // every light is shaded: keep extraction order
+
+		let ranked = scope List<(float Contribution, int Index)>(mLights.Count);
+		for (int i < mLights.Count)
+			ranked.Add((Contribution(mLights[i]), i));
+		// The extraction index breaks ties, which is what keeps the order stable.
+		ranked.Sort(scope (a, b) =>
+			{
+				if (a.Contribution != b.Contribution)
+					return (a.Contribution > b.Contribution) ? -1 : 1;
+				return a.Index <=> b.Index;
+			});
+		let original = scope List<GpuLight>(mLights.Count);
+		original.AddRange(mLights);
+		for (int i < ranked.Count)
+			mLights[i] = original[ranked[i].Index];
+	}
+
+	/// What a light brings to the view: its strongest channel times its intensity, over the
+	/// distance to the view against its reach (a light whose reach covers the view counts in
+	/// full, one far off falls with the square of its distance).
+	private float Contribution(GpuLight light)
+	{
+		if (light.Type == 0.0f)
+			return float.MaxValue; // directional: lights everything
+		let strength = Math.Max(light.Intensity, 0.0f)
+			* Math.Max(Math.Max(light.Color.X, light.Color.Y), light.Color.Z);
+		let reach = Math.Max(light.Range, 1.0e-3f);
+		if (!mHasViewOrigin)
+			return strength * reach * reach;
+		let offset = light.PositionWS - mViewOrigin;
+		return strength * reach * reach / (reach * reach + Dot(offset, offset));
+	}
+
 	/// Registers a spot or point light as a shadow caster. The shadow system builds its
 	/// atlas tile and matrix at frame time and patches the light's own shadow index once the
 	/// slot is known.

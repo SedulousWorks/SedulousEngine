@@ -8,6 +8,9 @@ static class RenderLimits
 {
 	/// Atlas tiles for local shadows per frame. A spot takes one tile, a point light six.
 	public const uint32 MaxLocalShadowTiles = 16;
+	/// Lights one view shades (the forward's and the cluster build's budget); a scene with more has
+	/// them ranked (ExtractedScene.RankLights) and the rest cut.
+	public const uint32 MaxLightsPerView = 256;
 	/// Local shadow entries across every scene in the frame.
 	public const uint32 MaxLocalShadowEntries = 64;
 	/// Reflection probes per frame, which bounds both the prefiltered slices and the
