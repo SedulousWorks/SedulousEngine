@@ -1,0 +1,89 @@
+plugins {
+    id 'com.android.application'
+}
+
+// What the app is built from: the engine's checkout (Tools/android-app.sh), or an export
+// template's copy of this project, which carries SDL's Java glue beside it in sdl-java/.
+def repoRoot = file("${rootDir}/../../../..")
+def staged = file(providers.gradleProperty('sedulousStaged').getOrElse("${repoRoot}/Code/build/android-app/default"))
+def sdlJava = file("${rootDir}/sdl-java").exists() ? file("${rootDir}/sdl-java")
+                                                   : file("${repoRoot}/Dependencies/SDL3-Beef/SDL/android-project/app/src/main/java")
+def property = { String name, String fallback -> providers.gradleProperty(name).getOrElse(fallback) }
+
+// The game's identity and how it is held, as the export's preset gives them (the defaults are the
+// development app's).
+def applicationIdValue = property('sedulousApplicationId', 'com.sedulous.player')
+def labelValue = property('sedulousLabel', 'Sedulous Player')
+def orientationValue = property('sedulousOrientation', 'fullUser') // android:screenOrientation
+// The launcher icon the export staged (res/mipmap-xxxhdpi/ic_launcher.png), else the platform's.
+def hasIcon = new File(staged, 'res/mipmap-xxxhdpi/ic_launcher.png').exists()
+
+// A release keystore, when the preset names one; its passwords come from the environment, so they
+// are never in a project file or on a command line.
+def keystorePath = property('sedulousKeystore', '')
+def keyAliasValue = property('sedulousKeyAlias', '')
+
+android {
+    namespace 'com.sedulous.player'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId applicationIdValue
+        minSdk 33 // Android 13: its libvulkan exports the Vulkan 1.3 calls the RHI makes
+        targetSdk 36
+        versionCode property('sedulousVersionCode', '1').toInteger()
+        versionName property('sedulousVersionName', '0.1')
+        resValue 'string', 'app_name', labelValue
+        manifestPlaceholders = [
+            screenOrientation: orientationValue,
+            appIcon: hasIcon ? '@mipmap/ic_launcher' : '@android:drawable/sym_def_app_icon',
+        ]
+        ndk {
+            abiFilters 'arm64-v8a' // arm64 only
+        }
+    }
+
+    signingConfigs {
+        if (!keystorePath.isEmpty()) {
+            release {
+                storeFile file(keystorePath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias keyAliasValue
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: System.getenv('ANDROID_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // No keystore: the developer's debug key, so a release build installs for a test.
+            signingConfig keystorePath.isEmpty() ? signingConfigs.debug : signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    sourceSets {
+        main {
+            // SDL's Java glue (SDLActivity and what it uses), vendored with SDL.
+            java.srcDirs += [sdlJava]
+            // The engine (libmain.so, SDL linked in) and the data it reads, staged per build.
+            jniLibs.srcDirs = ["${staged}/jniLibs"]
+            assets.srcDirs = ["${staged}/assets"]
+            res.srcDirs += ["${staged}/res"]
+        }
+    }
+
+    androidResources {
+        // The paks are read in place as regions of the APK, which they can only be stored.
+        noCompress += ['pak', 'dpak']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}

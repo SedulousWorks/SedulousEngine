@@ -21,6 +21,65 @@ namespace Sedulous.Editor.App;
 // Templates opens that window over this one, and the card follows what it changed. What it needs
 // from outside comes through ExportDialogSeams, so a test drives it without a window system.
 
+/// A preset field that names a file: its path, typed or picked with Browse. The dialog decides how
+/// Browse picks (the editor's picker for a file of the project's, the system's dialog for one kept
+/// outside it), given the row's path.
+class ExportPathEditor : PropertyEditor
+{
+	public const String cHint = "exportPath";
+
+	private delegate void(StringView row) mBrowse ~ delete _;
+	private TextField mField ~ _.ReleaseRef();
+	private Sedulous.GUI.Button mButton ~ _.ReleaseRef();
+
+	/// Takes `browse`, told the row's path when Browse is pressed.
+	public this(delegate void(StringView row) browse)
+	{
+		mBrowse = browse;
+		AddClass("export-path");
+		EditLayoutStyle(scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Center;
+				s.ColumnGap = 6.0f;
+			});
+		mField = new TextField();
+		mField.EditLayoutStyle(scope (s) =>
+			{
+				s.Grow = 1.0f;
+				s.Shrink = 1.0f;
+				s.MinWidth = .Px(0.0f);
+			});
+		mField.SetOnTextChanged(new [=this] (text) => { ApplyEdit(PropertyWrite(Sedulous.GUI.Variant(text))); });
+		AddChild(mField);
+		mButton = new Sedulous.GUI.Button();
+		mButton.Text = "Browse...";
+		mButton.SetOnClick(new [=this] () =>
+			{
+				if (mBrowse != null)
+					mBrowse(Path);
+			});
+		AddChild(mButton);
+	}
+
+	public override bool IsTyping => mField.IsFocused;
+	public TextField Field => mField;
+	public Sedulous.GUI.Button BrowseButton => mButton;
+
+	protected override void OnBind(PropertyInfo info, PropertyValue value)
+	{
+		mField.Text = value.Value.AsString;
+		mField.IsReadOnly = IsReadOnly;
+		mButton.Enabled = !IsReadOnly;
+	}
+
+	protected override void OnTextStyleChange()
+	{
+		ShareTextStyle(mField);
+		ShareTextStyle(mButton);
+	}
+}
+
 /// What the export dialog asks of the application. Every delegate is owned.
 class ExportDialogSeams
 {
@@ -61,6 +120,7 @@ class ExportDialog
 	private const String cGeneral = "General";
 	private const String cContent = "Content";
 	private const String cDisplay = "Display";
+	private const String cAndroid = "Android";
 
 	/// The presets as the list's model.
 	private class Model : IModel
@@ -146,6 +206,9 @@ class ExportDialog
 				});
 		}
 		mGrid = Find<PropertyGrid>("export-grid");
+		// A file a preset names (the Android app's icon and keystore): typed, or picked with Browse.
+		if (mGrid != null)
+			mGrid.Editors.RegisterHint(ExportPathEditor.cHint, new [=this] () => new ExportPathEditor(new [=this] (row) => { Browse(row); }));
 		mExport = Find<Sedulous.GUI.Button>("export-run");
 		mDuplicate = Find<Sedulous.GUI.Button>("export-duplicate");
 		mRemove = Find<Sedulous.GUI.Button>("export-remove");
@@ -401,6 +464,54 @@ class ExportDialog
 			});
 	}
 
+	/// Browse for the file a path row names: the app icon from the project's PNGs with the editor's
+	/// picker (not those of the folders the editor, a cook or an export writes), since the icon
+	/// ships from the project; the keystore with the system's dialog, since a release keystore is
+	/// kept outside the project as a rule, named relative to the project when it is inside it.
+	public void Browse(StringView row)
+	{
+		let index = SelectedIndex;
+		if (index < 0)
+			return;
+		let path = new String(row);
+		if (row == "androidIcon")
+		{
+			if ((mSeams.Pick == null) || mSeams.ProjectRoot.IsEmpty)
+			{
+				delete path;
+				return;
+			}
+			let request = PathPicker.Request(mSeams.ProjectRoot, scope StringView[](".png"), mPresets.At(index).AndroidIcon,
+				scope (folder) => ProjectLayout.IsOutputFolder(folder));
+			request.Placeholder.Set("Search the project's PNGs");
+			request.OnPicked = new [=index, =this, =path] (picked) => { SetPath(index, path, picked); } ~ delete path;
+			mSeams.Pick(request);
+			return;
+		}
+		if (mSeams.PickFiles == null)
+		{
+			delete path;
+			return;
+		}
+		mSeams.PickFiles(new [=index, =this, =path] (paths) =>
+			{
+				if (paths.IsEmpty)
+					return;
+				let relative = ProjectRelative(paths[0], .. scope .());
+				SetPath(index, path, relative.IsEmpty ? StringView(paths[0]) : StringView(relative));
+			} ~ delete path);
+	}
+
+	/// Sets preset `index`'s path row `row` to `value`, if it is still the one selected.
+	private void SetPath(int index, StringView row, StringView value)
+	{
+		if ((SelectedIndex != index) || (mBag == null))
+			return; // another preset by now
+		mBag.SetValue(row, 0, Sedulous.GUI.Variant(value));
+		Store();
+		mBag.PropertiesChanged();
+	}
+
 	/// `path` relative to the project's folder, appended to `outRelative`; nothing when it is not
 	/// under it.
 	public void ProjectRelative(StringView path, String outRelative)
@@ -490,7 +601,8 @@ class ExportDialog
 	}
 
 	// The values a choice offers: the preset's own, the fallback (the host's platform, Release),
-	// then the templates' here; a platform with no template stays choosable.
+	// then the templates' here and, for the platform, every one a game exports to; a platform with
+	// no template stays choosable.
 	private void FillChoices(PropertyInfo row, List<String> values, StringView current, StringView fallback, bool platforms)
 	{
 		ClearAndDeleteItems!(values);
@@ -509,6 +621,11 @@ class ExportDialog
 		Add(fallback);
 		for (int i < mRegistry.Count)
 			Add(platforms ? StringView(mRegistry.At(i).Platform) : mRegistry.At(i).EffectiveConfig);
+		if (platforms)
+		{
+			for (let known in ExportPlatform.All)
+				Add(known.Tag);
+		}
 		for (int i < values.Count)
 			row.AddChoice(values[i], i);
 	}
@@ -641,6 +758,25 @@ class ExportDialog
 		quality.AddChoice("The project's default", 0);
 		for (int i < mQualityLevels.Count)
 			quality.AddChoice(mQualityLevels[i].Name, i + 1);
+		Row("androidApplicationId", .String, Sedulous.GUI.Variant(preset.AndroidApplicationId), "Application id", cAndroid,
+			"The app's own name on the phone and in a store, as com.studio.game.");
+		let code = Row("androidVersionCode", .Integer, Sedulous.GUI.Variant((int64)preset.AndroidVersionCode), "Version code", cAndroid,
+			"The version a phone and a store compare: raise it for each release.");
+		code.HasRange = true;
+		code.Min = 1.0;
+		code.Max = 2100000000.0;
+		code.Step = 1.0;
+		Row("androidVersionName", .String, Sedulous.GUI.Variant(preset.AndroidVersionName), "Version name", cAndroid,
+			"The version a person reads.");
+		Row("androidLabel", .String, Sedulous.GUI.Variant(preset.AndroidLabel), "App name", cAndroid,
+			"The name under its icon. Empty: the project's.");
+		Row("androidIcon", .String, Sedulous.GUI.Variant(preset.AndroidIcon), "App icon", cAndroid,
+			"A square PNG in the project, 512 pixels or more. Empty: the platform's.").Hint.Set(ExportPathEditor.cHint);
+		EnumRow("androidPackage", typeof(AndroidPackage), (int64)preset.AndroidPackage, "Package", cAndroid);
+		Row("androidKeystore", .String, Sedulous.GUI.Variant(preset.AndroidKeystore), "Keystore", cAndroid,
+			"The release keystore, relative to the project. Empty: the debug key, for testing. Its password is asked for at export, or read from ANDROID_KEYSTORE_PASSWORD.").Hint.Set(ExportPathEditor.cHint);
+		Row("androidKeyAlias", .String, Sedulous.GUI.Variant(preset.AndroidKeyAlias), "Key alias", cAndroid,
+			"The key in the keystore that signs.");
 		ShowOverrides(preset);
 		mBag.SetOnCommit(new (commit) => { Store(); });
 		// An extra file added or removed on the grid is a list edit, not a commit: it applies as
@@ -686,6 +822,15 @@ class ExportDialog
 		Show("windowMode", preset.OverridesWindow);
 		Show("windowResizable", preset.OverridesWindow);
 		Show("orientation", preset.OverridesOrientation);
+		// A field of one platform's (the Android app's) shows for a preset of that platform.
+		let fields = scope List<System.Reflection.FieldInfo>();
+		SettingFields.Of(typeof(ExportPreset), fields);
+		let key = scope String();
+		for (let field in fields)
+		{
+			if (field.GetCustomAttribute<PresetPlatformAttribute>() case .Ok(let only))
+				Show(SettingFields.Key(field, .. key..Clear()), only.Platform == preset.Platform);
+		}
 		mBag.PropertiesChanged();
 	}
 
@@ -769,6 +914,14 @@ class ExportDialog
 		preset.WindowResizable = FlagAt("windowResizable");
 		preset.OverridesOrientation = FlagAt("overridesOrientation");
 		preset.Orientation = (ScreenOrientation)ChoiceAt("orientation");
+		TextAt("androidApplicationId", preset.AndroidApplicationId);
+		preset.AndroidVersionCode = Math.Max((uint32)1, NumberAt("androidVersionCode"));
+		TextAt("androidVersionName", preset.AndroidVersionName);
+		TextAt("androidLabel", preset.AndroidLabel);
+		TextAt("androidIcon", preset.AndroidIcon);
+		preset.AndroidPackage = (AndroidPackage)ChoiceAt("androidPackage");
+		TextAt("androidKeystore", preset.AndroidKeystore);
+		TextAt("androidKeyAlias", preset.AndroidKeyAlias);
 		let level = ChoiceAt("qualityLevel");
 		preset.QualityLevelId = ((level > 0) && (level <= mQualityLevels.Count)) ? mQualityLevels[(int)level - 1].Id : Guid();
 		mPresets.Update(index, preset);

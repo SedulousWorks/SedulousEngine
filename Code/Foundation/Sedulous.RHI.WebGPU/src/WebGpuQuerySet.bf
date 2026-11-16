@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 using Sedulous.Core;
@@ -49,3 +50,5 @@ sealed class WebGpuQuerySet : IQuerySet
 		return (mHandle != null) ? .Ok : .Err;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

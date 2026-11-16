@@ -37,6 +37,7 @@ static class PreferencesDialogTests
 		public bool Muted = false;
 		public bool BakeBounds = false;
 		public int McpChanged = 0;
+		public int ExportChanged = 0;
 		/// Where the folder dialog was asked to start; null until it is asked.
 		public String FolderFrom = null ~ delete _;
 		public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
@@ -69,6 +70,7 @@ static class PreferencesDialogTests
 			}
 			services.Contributions = Contributions;
 			services.McpChanged = new () => { McpChanged++; };
+			services.ExportChanged = new () => { ExportChanged++; };
 			services.PickFolder = new (from, chosen) =>
 				{
 					String.NewOrSet!(FolderFrom, from);
@@ -685,6 +687,35 @@ static class PreferencesDialogTests
 		Test.Assert(root.Text == "/picked/folder");
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot == "/picked/folder", "Save keeps it");
+	}
+
+	/// The Android SDK and JDK an export runs: empty, the environment's; Browse fills a field from
+	/// the system's folder dialog, which starts at the folder it names (an empty field's placeholder
+	/// names a variable, not a folder); Save keeps them trimmed and says the export section changed.
+	[Test]
+	public static void TheAndroidSdkAndJdkFieldsAreBrowsedForAndSaved()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let sdk = Find<Sedulous.GUI.TextField>(bed.Window, "pref-android-sdk");
+		let jdk = Find<Sedulous.GUI.TextField>(bed.Window, "pref-java-home");
+		Test.Assert((sdk != null) && (jdk != null));
+		Test.Assert(sdk.Text.IsEmpty && (sdk.Placeholder == "$ANDROID_HOME"));
+
+		jdk.Text = "/usr/lib/jvm";
+		let jdkBrowse = Find<Sedulous.GUI.Button>(bed.Window, "pref-java-home-browse");
+		Test.Assert((jdkBrowse != null) && jdkBrowse.HandleActivate());
+		Test.Assert(bed.FolderFrom == "/usr/lib/jvm");
+		Test.Assert(jdk.Text == "/picked/folder");
+		Test.Assert(Find<Sedulous.GUI.Button>(bed.Window, "pref-android-sdk-browse").HandleActivate());
+		Test.Assert(bed.FolderFrom.IsEmpty, "an empty field's placeholder names a variable, not a folder");
+
+		sdk.Text = " /opt/android-sdk ";
+		jdk.Text = "/opt/jdk-17";
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Store.Find<EditorExportSettings>().AndroidSdk == "/opt/android-sdk", "trimmed");
+		Test.Assert(bed.Store.Find<EditorExportSettings>().JavaHome == "/opt/jdk-17");
+		Test.Assert(bed.ExportChanged == 1);
 	}
 
 	/// The MCP host's fields: what the store has (the default port with no section); a port in

@@ -65,13 +65,27 @@ static class ExportTemplateTests
 		b.OverridesOrientation = true;
 		b.Orientation = .Landscape;
 		b.IncludeShaderSource = true;
+		let c = new ExportPreset();
+		c.Name.Set("Android");
+		c.Platform.Set("Android64");
+		c.AndroidApplicationId.Set("com.studio.game");
+		c.AndroidVersionCode = 12;
+		c.AndroidVersionName.Set("1.2");
+		c.AndroidLabel.Set("The Game");
+		c.AndroidIcon.Set("Branding/icon.png");
+		c.AndroidPackage = .Both;
+		c.AndroidKeystore.Set("/keys/release.jks");
+		c.AndroidKeyAlias.Set("upload");
 		written.Presets.Add(a);
 		written.Presets.Add(b);
+		written.Presets.Add(c);
 		Test.Assert(ExportPresetsFile.Save(root, written) case .Ok);
 
 		let loaded = scope ExportPresetSet();
 		Test.Assert(ExportPresetsFile.Load(root, loaded) case .Ok);
-		Test.Assert(loaded.Presets.Count == 2);
+		Test.Assert(loaded.Presets.Count == 3);
+		// The Android fields' defaults.
+		Test.Assert((loaded.Presets[0].AndroidVersionCode == 1) && (loaded.Presets[0].AndroidVersionName == "1.0") && (loaded.Presets[0].AndroidPackage == .Apk));
 		Test.Assert((loaded.Presets[0].Name == "Linux Desktop") && loaded.Presets[0].TemplateId.IsEmpty && loaded.Presets[0].PlayerName.IsEmpty && !loaded.Presets[0].PruneToReachable);
 		let win = loaded.Find("Windows Desktop");
 		Test.Assert(win != null);
@@ -83,6 +97,29 @@ static class ExportTemplateTests
 		Test.Assert(win.IncludeShaderSource, "keeping shader source round trips");
 		Test.Assert(!loaded.Presets[0].IncludeShaderSource, "no shader source by default");
 		Test.Assert(loaded.Find("nope") == null);
+		let android = loaded.Find("Android");
+		Test.Assert(android != null);
+		Test.Assert((android.AndroidApplicationId == "com.studio.game") && (android.AndroidVersionCode == 12) && (android.AndroidVersionName == "1.2"));
+		Test.Assert((android.AndroidLabel == "The Game") && (android.AndroidIcon == "Branding/icon.png") && (android.AndroidPackage == .Both));
+		Test.Assert((android.AndroidKeystore == "/keys/release.jks") && (android.AndroidKeyAlias == "upload"));
+		// A copy carries them too.
+		let copy = scope ExportPreset();
+		android.CopyTo(copy);
+		Test.Assert((copy.AndroidApplicationId == "com.studio.game") && (copy.AndroidVersionCode == 12) && (copy.AndroidPackage == .Both) && (copy.AndroidKeyAlias == "upload"));
+	}
+
+	[Test]
+	public static void AnAndroidApplicationIdIsTwoOrMorePartsOfLettersDigitsAndUnderscores()
+	{
+		let why = scope String();
+		Test.Assert(ExportPreset.CheckAndroidApplicationId("com.studio.game", why) && why.IsEmpty);
+		Test.Assert(ExportPreset.CheckAndroidApplicationId("org.my_studio.Game2", why));
+		Test.Assert(!ExportPreset.CheckAndroidApplicationId("", why..Clear()) && !why.IsEmpty);
+		Test.Assert(!ExportPreset.CheckAndroidApplicationId("game", why..Clear())); // one part
+		Test.Assert(!ExportPreset.CheckAndroidApplicationId("com..game", why..Clear())); // an empty part
+		Test.Assert(!ExportPreset.CheckAndroidApplicationId("com.studio.", why..Clear())); // a trailing dot
+		Test.Assert(!ExportPreset.CheckAndroidApplicationId("com.2studio", why..Clear())); // a part's first is a digit
+		Test.Assert(!ExportPreset.CheckAndroidApplicationId("com.my-studio", why..Clear())); // '-'
 	}
 
 	/// A preset describes its fields through reflection, each labelled, the sizes with their
@@ -112,7 +149,16 @@ static class ExportTemplateTests
 				Test.Assert((least == 1) && (most == 16384));
 			}
 		}
-		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,qualityLevelId", keys);
+		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,qualityLevelId,androidApplicationId,androidVersionCode,androidVersionName,androidLabel,androidIcon,androidPackage,androidKeystore,androidKeyAlias", keys);
+		// The Android app's fields are an Android64 preset's alone; the others are every platform's.
+		for (let field in fields)
+		{
+			let only = field.GetCustomAttribute<PresetPlatformAttribute>();
+			if (field.Name.StartsWith("Android"))
+				Test.Assert((only case .Ok(let attribute)) && (attribute.Platform == "Android64"), scope $"{field.Name}");
+			else
+				Test.Assert(only case .Err, scope $"{field.Name}");
+		}
 	}
 
 	[Test]
@@ -430,6 +476,12 @@ static class ExportTemplateTests
 		Test.Assert(!platformIcon.IsEmpty);
 		Test.Assert(BundledIcon(.. scope .()) == platformIcon);
 
+		// Each export platform's own icon; a platform not among them gets the plain desktop.
+		Test.Assert(TemplateIcons.DefaultName("Android64") == "phone");
+		Test.Assert(TemplateIcons.DefaultName("Web") == "web");
+		Test.Assert(TemplateIcons.DefaultName("Mac64") == "desktop");
+		Test.Assert(ExportPlatform.List(.. scope .()) == "Linux64, Win64, Web, Android64");
+
 		// A built-in one by name: the Deck build's handheld.
 		var identity = TemplateIdentity();
 		identity.Icon = "handheld";
@@ -614,6 +666,52 @@ static class ExportTemplateTests
 		Test.Assert(FileExists(PathJoin(createdDir, "serve.py", .. scope .())), "the export's server ships with the page");
 		Test.Assert(FileExists(PathJoin(createdDir, BuildLayout.cWebLogoName, .. scope .())), "and the loading card's logo");
 		Test.Assert(FileExists(PathJoin(createdDir, scope $"{BuildLayout.cWebPlayerBaseName}.wasm", .. scope .())));
+	}
+
+	/// An Android build's player folder (Tools/android-app.sh --template stages it beside the build):
+	/// the library the app loads and the app's Gradle project, its files in folders of their own.
+	[Test]
+	public static void CreateRecognisesAnAndroidPlayerFolder()
+	{
+		let basePath = Scratch("scratch_createtmpl_android", .. scope .());
+		let root = Scratch("scratch_createtmpl_android_root", .. scope .());
+		defer { RemoveDirectoryRecursive(basePath); RemoveDirectoryRecursive(root); }
+		// The build directory names the config, and its Beef platform is Android's.
+		let playerDir = PathJoin(PathJoin(basePath, scope $"ShippingRelease_{BuildLayout.cAndroidBuildPlatform}", .. scope .()), "AndroidPlayer", .. scope .());
+		CreateDirectory(playerDir);
+		let config = scope String();
+		let platform = scope String();
+		BuildLayout.ParseBuildDirectory(playerDir, config, platform);
+		Test.Assert((config == "ShippingRelease") && (platform == "Android64"), scope $"{config} {platform}");
+
+		SaveText(playerDir, "libmain.so", "elf\n");
+		SaveText(playerDir, BuildLayout.cThirdPartyNotices, "notices\n");
+		let project = PathJoin(playerDir, BuildLayout.cAndroidProjectFolder, .. scope .());
+		CreateDirectory(PathJoin(project, "app/src/main", .. scope .()));
+		CreateDirectory(PathJoin(project, "sdl-java/org/libsdl/app", .. scope .()));
+		SaveText(project, "settings.gradle", "settings\n");
+		SaveText(project, "app/build.gradle", "app\n");
+		SaveText(project, "app/src/main/AndroidManifest.xml", "<manifest/>\n");
+		SaveText(project, "sdl-java/org/libsdl/app/SDLActivity.java", "class SDLActivity {}\n");
+
+		let createdId = scope String();
+		let createdDir = scope String();
+		Test.Assert(ExportTemplates.Create(playerDir, root, .Install, createdId, createdDir) case .Ok);
+		Test.Assert(createdId == scope $"sedulous-android64-release-{EngineVersion.String}", scope $"{createdId}");
+		let manifest = scope ExportTemplate();
+		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(createdDir), manifest) case .Ok);
+		Test.Assert((manifest.Platform == "Android64") && (manifest.PlayerBinary == "libmain.so") && (manifest.Config == "Release"));
+		Test.Assert(manifest.Sidecars.Count == 5, scope $"{manifest.Sidecars.Count} parts");
+		Test.Assert(manifest.Sidecars.Contains("android/sdl-java/org/libsdl/app/SDLActivity.java"));
+		Test.Assert(FileExists(PathJoin(createdDir, "android/app/src/main/AndroidManifest.xml", .. scope .())), "a part in folders of its own");
+		Test.Assert(FileExists(PathJoin(createdDir, "libmain.so", .. scope .())));
+		Test.Assert(FileExists(PathJoin(createdDir, BuildLayout.cThirdPartyNotices, .. scope .())));
+		Test.Assert(TemplateIcons.SvgFor(manifest, .. scope .()) == TemplateIcons.BuiltInSvg("phone"), "the phone's icon");
+
+		// The player each platform's build makes of a base name.
+		Test.Assert(ExportPlatform.PlayerFile("Android64", "main", .. scope .()) == "libmain.so");
+		Test.Assert(ExportPlatform.PlayerFile("Win64", "Player", .. scope .()) == "Player.exe");
+		Test.Assert(ExportPlatform.PlayerFile("Mac64", "Player", .. scope .()) == "Player");
 	}
 
 	[Test]

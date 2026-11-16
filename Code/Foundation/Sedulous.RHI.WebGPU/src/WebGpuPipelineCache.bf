@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using Sedulous.Core;
 using Sedulous.RHI;
@@ -21,3 +22,5 @@ sealed class WebGpuPipelineCache : IPipelineCache
 		return .Ok;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

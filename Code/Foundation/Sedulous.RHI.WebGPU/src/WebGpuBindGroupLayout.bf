@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -109,3 +110,5 @@ sealed class WebGpuBindGroupLayout : IBindGroupLayout
 		return (mHandle != null) ? .Ok : .Err;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

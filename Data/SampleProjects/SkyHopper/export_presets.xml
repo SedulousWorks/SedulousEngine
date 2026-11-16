@@ -4,7 +4,7 @@
 		<u32 name="version">3</u32>
 	</array>
 	<object>
-		<array name="presets" count="4">
+		<array name="presets" count="5">
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
 				<u32 name="version">1</u32>
@@ -34,6 +34,14 @@
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
 				<string name="qualityLevelId">00000000-0000-0000-0000-000000000000</string>
+				<string name="androidApplicationId"/>
+				<u32 name="androidVersionCode">1</u32>
+				<string name="androidVersionName">1.0</string>
+				<string name="androidLabel"/>
+				<string name="androidIcon"/>
+				<u8 name="androidPackage">0</u8>
+				<string name="androidKeystore"/>
+				<string name="androidKeyAlias"/>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
@@ -64,6 +72,14 @@
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
 				<string name="qualityLevelId">b9665091-aec1-b34e-bb2e-24ed660ce673</string>
+				<string name="androidApplicationId"/>
+				<u32 name="androidVersionCode">1</u32>
+				<string name="androidVersionName">1.0</string>
+				<string name="androidLabel"/>
+				<string name="androidIcon"/>
+				<u8 name="androidPackage">0</u8>
+				<string name="androidKeystore"/>
+				<string name="androidKeyAlias"/>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
@@ -94,6 +110,14 @@
 				<u8 name="orientation">1</u8>
 				<bool name="includeShaderSource">false</bool>
 				<string name="qualityLevelId">b9665091-aec1-b34e-bb2e-24ed660ce673</string>
+				<string name="androidApplicationId"/>
+				<u32 name="androidVersionCode">1</u32>
+				<string name="androidVersionName">1.0</string>
+				<string name="androidLabel"/>
+				<string name="androidIcon"/>
+				<u8 name="androidPackage">0</u8>
+				<string name="androidKeystore"/>
+				<string name="androidKeyAlias"/>
 			</object>
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
@@ -124,6 +148,50 @@
 				<u8 name="orientation">0</u8>
 				<bool name="includeShaderSource">false</bool>
 				<string name="qualityLevelId">00000000-0000-0000-0000-000000000000</string>
+				<string name="androidApplicationId"/>
+				<u32 name="androidVersionCode">1</u32>
+				<string name="androidVersionName">1.0</string>
+				<string name="androidLabel"/>
+				<string name="androidIcon"/>
+				<u8 name="androidPackage">0</u8>
+				<string name="androidKeystore"/>
+				<string name="androidKeyAlias"/>
+			</object>
+			<array name="dataVersions" count="1">
+				<u64 name="type">864580422535781968</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object>
+				<string name="name">Android</string>
+				<string name="platform">Android64</string>
+				<string name="templateId"/>
+				<string name="playerName"/>
+				<string name="outputSubdir">Android</string>
+				<array name="additionalFiles" count="0"/>
+				<string name="config"/>
+				<bool name="stageSymbols">false</bool>
+				<bool name="pruneToReachable">false</bool>
+				<bool name="overridesRender">false</bool>
+				<u32 name="renderWidth">0</u32>
+				<u32 name="renderHeight">0</u32>
+				<u8 name="renderFit">1</u8>
+				<bool name="overridesWindow">false</bool>
+				<u32 name="windowWidth">1280</u32>
+				<u32 name="windowHeight">720</u32>
+				<u8 name="windowMode">0</u8>
+				<bool name="windowResizable">true</bool>
+				<bool name="overridesOrientation">true</bool>
+				<u8 name="orientation">1</u8>
+				<bool name="includeShaderSource">false</bool>
+				<string name="qualityLevelId">b9665091-aec1-b34e-bb2e-24ed660ce673</string>
+				<string name="androidApplicationId">com.sedulous.skyhopper</string>
+				<u32 name="androidVersionCode">1</u32>
+				<string name="androidVersionName">1.0</string>
+				<string name="androidLabel">Sky Hopper</string>
+				<string name="androidIcon">Branding/AppIcon.png</string>
+				<u8 name="androidPackage">0</u8>
+				<string name="androidKeystore"/>
+				<string name="androidKeyAlias"/>
 			</object>
 		</array>
 	</object>

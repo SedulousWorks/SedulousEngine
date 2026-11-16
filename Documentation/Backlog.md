@@ -100,6 +100,16 @@ timeline do):
   others hard-cut), and whether skeletal clips and property tracks share one clip format. Spec
   it once script cutscenes have run long enough to say what the tracks must be.
 
+### A surface lost while the app stays in front is not made again
+`RenderWindow.BeginFrame` (`Code/Foundation/Sedulous.Graphics/src/RenderWindow.bf`) rebuilds the
+swap chain on `OutOfDate` and treats any other acquire failure as passing (a test,
+`ASwapChainOutOfDateAtTheSameSizeIsMadeAgain`, holds that). Android's `VK_ERROR_SURFACE_LOST_KHR`
+is such a failure: it comes back as `Unknown`, so a surface lost while the app is in front would
+leave the window blank, every frame skipped (the swap chain now logs it once). Seen on the Pixel 6
+only on the way to the background (2026-11-15), where the suspension makes the surface again on
+return. A fix needs the loss told apart (an error of its own) and the window suspended on it;
+Raptor's render window has the same rule.
+
 ### A page save re-records a scene's prefab instances
 Saving the Snowline Meadow page after painting its vegetation mask re-recorded the scene's
 prefab instances (40 to 77, with member lists) though its entities (47) and components (55)

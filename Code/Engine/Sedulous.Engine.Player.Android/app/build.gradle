@@ -1,0 +1,10 @@
+plugins {
+    id 'com.android.application' version '8.11.1' apply false
+}
+
+// What Tools/android-app.sh or an export staged (jniLibs, assets, res) and where the build goes:
+// outside the source tree, so the checkout (or the template) holds only this project's sources.
+def staged = file(providers.gradleProperty('sedulousStaged').getOrElse("${rootDir}/../../../../Code/build/android-app/default"))
+allprojects {
+    layout.buildDirectory = new File(staged, "gradle/${project.name}")
+}

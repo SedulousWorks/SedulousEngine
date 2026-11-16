@@ -133,6 +133,8 @@ class PluginHost
 			return "macOS";
 #elif BF_PLATFORM_WASM
 			return "Web";
+#elif BF_PLATFORM_ANDROID
+			return "Android64";
 #else
 			return "Linux64";
 #endif

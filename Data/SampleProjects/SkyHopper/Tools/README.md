@@ -28,5 +28,8 @@ Raptor's Sky Hopper tools, ported to this engine's asset envelopes, schema keys 
   Jump in the bottom-right corner, Pause small in the top-left. It replaces only the map's touch
   bindings, so it can run again after a change.
 
+- `appicon.py`: the app icon, `Branding/AppIcon.png` (512 pixels: the HUD's star on a cloud in
+  a dusk sky), which the Android preset's `androidIcon` names. It draws an SVG and renders it
+  with librsvg through ctypes.
 Levels 1 to 3 were built earlier through the editor's tools, one entity at a time; their hearts
 and gems were placed afterwards through `scene_read` and `scene_write`.

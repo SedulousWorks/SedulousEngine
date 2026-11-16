@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 
 namespace Sedulous.RHI.WebGPU;
@@ -16,3 +17,5 @@ sealed class WebGpuPendingSignal
 	public WebGpuFence Fence;
 	public uint64 Value;
 }
+
+#endif // !BF_PLATFORM_ANDROID

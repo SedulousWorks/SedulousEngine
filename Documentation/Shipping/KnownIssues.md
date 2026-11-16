@@ -11,6 +11,19 @@ facing half here; remove entries when the fix ships.
 
 ---
 
+## Android: a game with its own native packages does not export yet
+
+An Android preset exports a game whose code is its scripts and the engine's plugins. A project
+with its own native packages (Beef under `Plugins/`) is refused with that reason, since the player
+with its packages is not yet built for Android. Desktop and web exports of it work.
+
+## Android: the first export downloads Gradle
+
+An Android export builds the app with the template's Gradle project. The first one on a machine
+downloads Gradle and the Android build plugin, so it needs the network and takes minutes; later
+exports reuse them, and each preset's build is kept in `<project>/.cache/android/` so the next
+export builds only what changed.
+
 ## Web (WebGPU) targets: scene MSAA is 1x or 4x only
 
 WebGPU supports sample counts 1 and 4 for the scene pass; there is no 2x. A project whose

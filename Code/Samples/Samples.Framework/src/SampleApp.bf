@@ -8,7 +8,11 @@ using Sedulous.RHI;
 using Sedulous.RHI.Capture;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
+#if !BF_PLATFORM_ANDROID
+// The namespace itself does not exist on Android, which has no wgpu-native library: every file in
+// that backend is compiled out.
 using Sedulous.RHI.WebGPU;
+#endif
 #if BF_PLATFORM_WINDOWS
 // The namespace itself does not exist off Windows: every file in that backend is compiled out.
 using Sedulous.RHI.DX12;
@@ -200,6 +204,26 @@ abstract class SampleApp
 		delete mScreenshotOptions;
 		mScreenshotOptions = ScreenshotOptions.FromArguments((args != null) ? args : Span<String>());
 
+#if BF_PLATFORM_ANDROID
+		// On Android the data is the app's APK's assets/Data, read in place (the activity names
+		// the APK with --apk).
+		if (args != null)
+		{
+			for (int i = 0; i + 1 < args.Count; i++)
+			{
+				if (args[i] == "--apk")
+				{
+					delete mDataMount;
+					mDataMount = new Sedulous.VFS.Zip.ZipFileSystem(args[i + 1], "assets/Data");
+				}
+			}
+		}
+		if (mDataMount == null)
+		{
+			Console.Error.WriteLine("SampleApp: no --apk, so no data (the app's activity names its APK)");
+			return 1;
+		}
+#else
 		// These samples have no application above them, so this is where the data root is
 		// resolved: --data-root if it was given, otherwise the discovery walk.
 		ResolveDataRoot((args != null) ? args : Span<String>(), mDataRoot);
@@ -209,6 +233,7 @@ abstract class SampleApp
 			return 1;
 		}
 		mDataMount = new NativeFileSystem(mDataRoot);
+#endif
 		mShaders.Open(mDataMount, "Samples/RHI");
 
 		if (Initialize() case .Err)
@@ -303,12 +328,17 @@ abstract class SampleApp
 			return .Err;
 #endif
 		case .WebGPU:
+#if !BF_PLATFORM_ANDROID
 			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
 			{
 				Console.Error.WriteLine("SampleApp: the WebGPU backend could not be created");
 				return .Err;
 			}
 			mInnerBackend = backend;
+#else
+			Console.Error.WriteLine("SampleApp: WebGPU is not available on Android");
+			return .Err;
+#endif
 		}
 
 		// The wrapper BORROWS the real backend, so both are kept: one to use, one to destroy.

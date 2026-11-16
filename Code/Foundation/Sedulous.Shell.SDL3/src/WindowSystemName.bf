@@ -23,6 +23,7 @@ static class WindowSystems
 		case .Wayland: return "Wayland";
 		case .Cocoa: return "Cocoa";
 		case .Web: return "Web";
+		case .Android: return "Android";
 		default: return "Unknown";
 		}
 	}

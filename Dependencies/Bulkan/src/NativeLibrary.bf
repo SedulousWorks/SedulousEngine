@@ -87,7 +87,7 @@ abstract class NativeLibrary : IDisposable
 
 #if BF_PLATFORM_WINDOWS
 		handle = new WindowsNativeLibrary(libraryName);
-		#elif BF_PLATFORM_LINUX || BF_PLATFORM_MACOS
+		#elif BF_PLATFORM_LINUX || BF_PLATFORM_MACOS || BF_PLATFORM_ANDROID
 		handle = new UnixNativeLibrary(libraryName);
 #else
 		Runtime.FatalError("Unsupported platform.");

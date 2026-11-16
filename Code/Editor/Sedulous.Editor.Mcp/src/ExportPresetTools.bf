@@ -18,13 +18,12 @@ namespace Sedulous.Editor.Mcp;
 /// identity), removal, and a platform the engine targets and a config it builds.
 static class ExportPresetTools
 {
-	private static StringView[3] cPlatforms = .("Linux64", "Win64", "Web");
 	private static StringView[3] cConfigs = .("Debug", "Release", "Test");
 
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("export_presets",
-			"The open project's export presets and the export templates this machine has. Each preset: its fields as export_preset_set takes them (name, platform, templateId - \"\" resolves by platform and config - playerName, outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, includeShaderSource (ship custom shaders' HLSL too; off by default), and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable, overridesOrientation with orientation), qualityLevelId (the quality level the platform starts at, one of the project's qualityLevelIds; \"\" is the project's default), and `template`: the id it resolves to here, or null when this machine has no template for it. A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). Each template: id, name, platform, config, engineVersion, notes, host (the player beside this tool, not an installed bundle). export_preset_set changes them; project_export runs one.",
+			"The open project's export presets and the export templates this machine has. Each preset: its fields as export_preset_set takes them (name, platform, templateId - \"\" resolves by platform and config - playerName, outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, includeShaderSource (ship custom shaders' HLSL too; off by default), and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable, overridesOrientation with orientation; an Android64 preset also has its app's: androidApplicationId (as com.studio.game), androidVersionCode, androidVersionName, androidLabel (\"\": the project's name), androidIcon (a square PNG in the project), androidPackage (Apk, Bundle or Both), androidKeystore (\"\": the debug key) and androidKeyAlias; the keystore's password is never a field: the export reads ANDROID_KEYSTORE_PASSWORD), qualityLevelId (the quality level the platform starts at, one of the project's qualityLevelIds; \"\" is the project's default), and `template`: the id it resolves to here, or null when this machine has no template for it. A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). Each template: id, name, platform, config, engineVersion, notes, host (the player beside this tool, not an installed bundle). export_preset_set changes them; project_export runs one.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => List(session, outResult, outError));
 
@@ -34,7 +33,7 @@ static class ExportPresetTools
 		ReflectedFields.AddToSchema(schema, fields);
 		schema.Boolean("remove", "delete the preset instead; nothing but `name` may be given");
 		server.RegisterTool("export_preset_set",
-			"Create, change or remove one export preset of the open project, by `name` (required): only what is given changes, a field name that is no preset field is refused with the list, and a new preset starts as the host's platform, Release. `platform` takes Linux64, Win64 or Web and `config` Debug, Release, Test or \"\" (Release); a choice takes one of its values by name (renderFit, windowMode, orientation); qualityLevelId must be one of the project's qualityLevelIds, \"\" for the project's default. Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A templateId need not exist on this machine - presets travel with the project and templates do not - so the result's `template` says whether it resolves here. Returns the presets as export_presets does.",
+			scope $"Create, change or remove one export preset of the open project, by `name` (required): only what is given changes, a field name that is no preset field is refused with the list, and a new preset starts as the host's platform, Release. `platform` takes one of {ExportPlatform.List(.. scope .())} and `config` Debug, Release, Test or \"\" (Release); a choice takes one of its values by name (renderFit, windowMode, orientation); qualityLevelId must be one of the project's qualityLevelIds, \"\" for the project's default. The android* fields are an Android64 preset's alone, and an application id is checked as Android takes it. Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A templateId need not exist on this machine - presets travel with the project and templates do not - so the result's `template` says whether it resolves here. Returns the presets as export_presets does.",
 			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
 	}
@@ -80,7 +79,8 @@ static class ExportPresetTools
 		SettingFields.Of(typeof(ExportPreset), fields);
 		for (let preset in presets.Presets)
 		{
-			let json = ReflectedFields.ToJson(preset, fields, project.SourceDb);
+			let own = FieldsFor(fields, preset.Platform, .. scope .());
+			let json = ReflectedFields.ToJson(preset, own, project.SourceDb);
 			let resolved = templates.Resolve(preset);
 			json.Set("template", (resolved != null) ? JsonValue.MakeString(resolved.Id) : JsonValue.MakeNull());
 			list.Add(json);
@@ -103,6 +103,26 @@ static class ExportPresetTools
 			templateList.Add(json);
 		}
 		outResult.Set("templates", templateList);
+	}
+
+	/// The platform `field` belongs to alone (the Android app's fields are an Android64 preset's), or
+	/// empty when it is every platform's.
+	private static StringView FieldPlatform(FieldInfo field)
+	{
+		if (field.GetCustomAttribute<PresetPlatformAttribute>() case .Ok(let only))
+			return only.Platform;
+		return default;
+	}
+
+	/// The fields a preset of `platform` has: every platform's and its own.
+	private static void FieldsFor(List<FieldInfo> fields, StringView platform, List<FieldInfo> outFields)
+	{
+		for (let field in fields)
+		{
+			let only = FieldPlatform(field);
+			if (only.IsEmpty || (only == platform))
+				outFields.Add(field);
+		}
 	}
 
 	private static bool Set(ProjectSession session, JsonValue arguments, JsonValue outResult, String outError)
@@ -156,9 +176,34 @@ static class ExportPresetTools
 		// here: presets travel with the project and templates do not.
 		if (let arg = arguments.Get("platform"))
 		{
-			if (!Contains(cPlatforms, arg.AsString()))
+			if (!ExportPlatform.IsKnown(arg.AsString()))
 			{
-				outError.Append("`platform` takes Linux64, Win64 or Web");
+				outError.AppendF("`platform` takes one of {}", ExportPlatform.List(.. scope .()));
+				return false;
+			}
+		}
+		// A platform's own fields go on a preset of that platform alone: the one it has after this.
+		let platform = scope String(BuildLayout.HostPlatformName);
+		if (let arg = arguments.Get("platform"))
+			platform.Set(arg.AsString());
+		else if (existing != null)
+			platform.Set(existing.Platform);
+		for (let field in fields)
+		{
+			let only = FieldPlatform(field);
+			let key = SettingFields.Key(field, .. scope .());
+			if (!only.IsEmpty && (arguments.Get(key) != null) && (only != platform))
+			{
+				outError.AppendF("`{}` is an {} preset's alone; '{}' is {}", key, only, name, platform);
+				return false;
+			}
+		}
+		if (let arg = arguments.Get("androidApplicationId"))
+		{
+			let why = scope String();
+			if (!ExportPreset.CheckAndroidApplicationId(arg.AsString(), why))
+			{
+				outError.AppendF("`androidApplicationId`: {}", why);
 				return false;
 			}
 		}

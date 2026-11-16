@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Threading;
 
@@ -15,3 +16,5 @@ static class WebGpuDiagnostics
 
 	public static void RecordUncapturedError() => Interlocked.Increment(ref sUncapturedErrors);
 }
+
+#endif // !BF_PLATFORM_ANDROID

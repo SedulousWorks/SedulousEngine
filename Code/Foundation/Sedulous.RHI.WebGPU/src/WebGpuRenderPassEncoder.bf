@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -258,3 +259,5 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 			wgpuRenderPassEncoderSetBindGroup(mEncoder, (uint32)group, bindGroup, 0, null);
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

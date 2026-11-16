@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -274,3 +275,5 @@ sealed class WebGpuQueue : IQueue
 		public WGPUTexture Texture;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

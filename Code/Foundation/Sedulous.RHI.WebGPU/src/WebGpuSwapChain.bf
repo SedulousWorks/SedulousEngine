@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 using Sedulous.Core;
@@ -528,3 +529,5 @@ sealed class WebGpuSwapChain : ISwapChain
 		mHaveImage = false;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

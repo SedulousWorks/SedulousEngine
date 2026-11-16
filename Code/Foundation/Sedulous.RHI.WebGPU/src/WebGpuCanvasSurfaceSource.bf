@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using wgpu_Beef;
 
@@ -20,3 +21,5 @@ struct WebGpuCanvasSurfaceSource
 	public WGPUChainedStruct Chain;
 	public WGPUStringView Selector;
 }
+
+#endif // !BF_PLATFORM_ANDROID

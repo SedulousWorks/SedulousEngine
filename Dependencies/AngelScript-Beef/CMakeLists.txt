@@ -1,9 +1,12 @@
 # AngelScript-Beef's native build.
 #
-# The vendored angelscript/ and add_on/ are left EXACTLY as the SDK ships them: the SDK's own
-# CMake project builds the library, and the C shim (angelscript_beef.cpp) plus the add-ons it
-# needs (string, array, and the script builder for `[metadata]`) are a second static target
-# beside it. Both archives go to dist/.
+# The vendored angelscript/ and add_on/ are left as the SDK ships them, but for one fix the SDK
+# made in 2.39.0: in add_on/scriptstdstring/scriptstdstring.cpp, the guard around restoring the
+# locale closed before the restore, so an Android build saw a variable only declared off Android.
+#
+# The SDK's own CMake project builds the library, and the C shim (angelscript_beef.cpp) plus the
+# add-ons it needs (string, array, and the script builder for `[metadata]`) are a second static
+# target beside it. Both archives go to dist/.
 #
 # Everything is registered with the generic calling convention, so AS_MAX_PORTABILITY, which
 # the SDK turns on by itself under Emscripten, changes nothing for the host.

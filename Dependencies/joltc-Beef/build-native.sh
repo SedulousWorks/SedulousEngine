@@ -37,12 +37,40 @@ wasm() {
   done
 }
 
+# ---- Android (arm64-v8a, API 33) ----
+#
+# The NDK's toolchain file in front of cmake; everything after is the same as the wasm32 build. Needs
+# ANDROID_NDK_HOME (or ANDROID_NDK_ROOT). The result lands in dist/Release-Android64, which the
+# Android player's link takes it from.
+android() {
+  local ndk="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
+  [ -f "$ndk/build/cmake/android.toolchain.cmake" ] || { echo "Set ANDROID_NDK_HOME to the Android NDK."; exit 1; }
+  echo "Configuring Android64..."
+  # STATIC, not shared: the player links one shared library, so JPH_MASTER_PROJECT goes OFF and
+  # joltc falls back to the archive it builds when it is not the top level project.
+  cmake -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-33 -S . -B build-android -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DINTERPROCEDURAL_OPTIMIZATION=OFF -DJPH_MASTER_PROJECT=OFF
+  echo "Building Android64..."
+  cmake --build build-android
+  mkdir -p dist/Release-Android64
+  # BOTH archives: the Linux .so bundles Jolt statically, but a static joltc.a only holds the
+  # C wrapper and leaves JPH::Allocate and the rest to libJolt.a beside it.
+  for l in libjoltc.a libJolt.a; do
+    cp -f "$(find build-android -name "$l" | head -1)" "dist/Release-Android64/$l"
+    echo "Copied $l -> dist/Release-Android64"
+  done
+  # Without debug information: the NDK's toolchain file compiles with it even in Release, which
+  # made these several times the size of the Linux archives.
+  "$ndk"/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip --strip-debug dist/Release-Android64/*.a
+}
+
 case "$option" in
   make)  { [ "$target" = DEBUG ] || [ "$target" = ALL ]; } && configure Debug build-linux-debug
          { [ "$target" = RELEASE ] || [ "$target" = ALL ]; } && configure Release build-linux-release; ;;
   build) { [ "$target" = DEBUG ] || [ "$target" = ALL ]; } && build Debug build-linux-debug dist/Debug-Linux64
          { [ "$target" = RELEASE ] || [ "$target" = ALL ]; } && build Release build-linux-release dist/Release-Linux64; ;;
   wasm)  wasm; ;;
+  android) android; ;;
   clean) rm -rf build-linux-debug build-linux-release build-wasm; echo "Clean complete."; ;;
-  *) echo "Usage: build-native.sh [make|build|wasm|clean] [DEBUG|RELEASE|ALL]"; ;;
+  *) echo "Usage: build-native.sh [make|build|wasm|android|clean] [DEBUG|RELEASE|ALL]"; ;;
 esac

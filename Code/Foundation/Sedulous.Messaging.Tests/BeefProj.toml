@@ -9,3 +9,6 @@ StartupObject = "Sedulous.Messaging.Tests.Program"
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Messaging" = "*"
+
+[Configs.Test."aarch64-linux-android33"]
+BuildKind = "Test"

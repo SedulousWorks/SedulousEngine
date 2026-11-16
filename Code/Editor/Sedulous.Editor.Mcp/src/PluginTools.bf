@@ -40,7 +40,7 @@ static class PluginTools
 			});
 
 		server.RegisterTool("plugin_enable",
-			"Enable a plugin in the open project, or change an enabled one's `path` or `platforms`; its settings are kept. `id` is the plugin's manifest id. `path` locates a project-local package (a folder with its Plugin.xml, relative to the project; \"\" for the engine's). `platforms` lists the platforms it is enabled on (Linux64, Win64, Web), [] for every one its manifest supports. Refused when the id is not a plugin id, when the package at `path` is not this plugin's, or when a platform named is one its manifest does not support. A host enables the project's plugins when it opens the project, so the change takes effect there. Returns the list as plugin_list does.",
+			scope $"Enable a plugin in the open project, or change an enabled one's `path` or `platforms`; its settings are kept. `id` is the plugin's manifest id. `path` locates a project-local package (a folder with its Plugin.xml, relative to the project; \"\" for the engine's). `platforms` lists the platforms it is enabled on ({ExportPlatform.List(.. scope .())}), [] for every one its manifest supports. Refused when the id is not a plugin id, when the package at `path` is not this plugin's, or when a platform named is one its manifest does not support. A host enables the project's plugins when it opens the project, so the change takes effect there. Returns the list as plugin_list does.",
 			scope SchemaBuilder()
 				.Str("id", "the plugin's manifest id", true)
 				.Str("path", "a project-local package, relative to the project (\"\" for the engine's)")
@@ -276,7 +276,7 @@ static class PluginTools
 				let platform = given.At(i);
 				if (!platform.IsString)
 				{
-					outError.Append("`platforms` takes platform names (Linux64, Win64, Web)");
+					outError.AppendF("`platforms` takes platform names ({})", ExportPlatform.List(.. scope .()));
 					return false;
 				}
 				bool listed = false;

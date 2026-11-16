@@ -9,4 +9,6 @@ enum WindowSystem : uint8
 	case Wayland;
 	case Cocoa;
 	case Web;
+	/// An Android app's ANativeWindow (no display handle).
+	case Android;
 }

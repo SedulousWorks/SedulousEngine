@@ -97,7 +97,7 @@ class PluginHostTests
 	private static void ClearLog() => ClearAndDeleteItems!(sLog);
 
 	/// The platforms a test plugin supports unless it names its own.
-	private static StringView[3] sEveryPlatform = .("Linux64", "Win64", "Web");
+	private static StringView[4] sEveryPlatform = .("Linux64", "Win64", "Web", "Android64");
 
 	/// The parts compiled into the test, and the manifests their plugins carry.
 	private class Linked

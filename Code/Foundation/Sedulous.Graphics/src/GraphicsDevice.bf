@@ -179,7 +179,13 @@ class GraphicsDevice
 	/// and fences. The window must outlive what comes back.
 	public Result<RenderWindow> CreateRenderWindow(IWindow window, RenderWindowDesc desc)
 	{
-		if (!MakePresentation(window, desc, var surface, var swapChain))
+		ISurface surface = null;
+		ISwapChain swapChain = null;
+		// An Android window with no surface yet (the platform gave it one and took it back as the
+		// window went fullscreen, say) starts suspended: its first frame makes the surface and swap
+		// chain once the new one is there.
+		let suspended = (window.Native.System == .Android) && (window.Native.Window == null);
+		if (!suspended && !MakePresentation(window, desc, out surface, out swapChain))
 			return .Err;
 
 		let pools = scope List<ICommandPool>();
@@ -233,6 +239,7 @@ class GraphicsDevice
 		// host registered no RenderWindow at all: every frame ticked and nothing ever
 		// acquired a back buffer, which presents as a wholly black page and not one error.
 		case .Web: return .Web;
+		case .Android: return .Android;
 		default: return .Unknown;
 		}
 	}

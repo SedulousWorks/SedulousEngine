@@ -51,6 +51,9 @@ class VulkanSwapChain : ISwapChain
 	private uint32 mAskedWidth = 0;
 	private uint32 mAskedHeight = 0;
 	private bool mCheckTransform = false;
+	/// The last failure logged, so one that repeats every frame is said once and a new one is
+	/// said when it comes.
+	private VkResult mReportedFailure = .VK_SUCCESS;
 
 	public TextureFormat Format => mFormat;
 	public uint32 Width => mWidth;
@@ -158,8 +161,12 @@ class VulkanSwapChain : ISwapChain
 		if (result == .VK_ERROR_OUT_OF_DATE_KHR)
 			return .Err(.OutOfDate);
 		if ((result != .VK_SUCCESS) && (result != .VK_SUBOPTIMAL_KHR))
+		{
+			ReportFailure("acquire", result);
 			return .Err(.Unknown);
+		}
 
+		mReportedFailure = .VK_SUCCESS;
 		return .Ok;
 	}
 
@@ -198,7 +205,18 @@ class VulkanSwapChain : ISwapChain
 		}
 		if (result == .VK_SUCCESS)
 			return .Ok;
+		ReportFailure("present", result);
 		return .Err(.Unknown);
+	}
+
+	/// Logs a failure the first time it comes: the render window skips frames quietly while it
+	/// lasts, so without this a swap chain that stopped working leaves no trace.
+	private void ReportFailure(StringView what, VkResult result)
+	{
+		if (result == mReportedFailure)
+			return;
+		mReportedFailure = result;
+		Console.Error.WriteLine("[RHI] swapchain {} failed: {}", what, result);
 	}
 
 	public Result<void> Resize(uint32 width, uint32 height)
@@ -382,9 +400,12 @@ class VulkanSwapChain : ISwapChain
 		// semaphores go. A failure before here leaves the old chain whole (Resize puts its
 		// settings back).
 		VkSwapchainKHR created = .Null;
-		if (VulkanNative.vkCreateSwapchainKHR(mDevice, &createInfo, null, &created)
-			!= .VK_SUCCESS)
+		let createResult = VulkanNative.vkCreateSwapchainKHR(mDevice, &createInfo, null, &created);
+		if (createResult != .VK_SUCCESS)
+		{
+			ReportFailure("create", createResult);
 			return .Err;
+		}
 		CleanupImages();
 		DestroySyncObjects();
 		if (old != .Null)

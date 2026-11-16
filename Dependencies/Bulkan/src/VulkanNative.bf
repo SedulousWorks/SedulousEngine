@@ -185,6 +185,9 @@ public static class VulkanNative
 		return "libvulkan.so.1";
 		#elif BF_PLATFORM_MACOS  
 		return "libvulkan.dylib";
+#elif BF_PLATFORM_ANDROID
+		// The system's loader, in every Android image that has Vulkan (unversioned there).
+		return "libvulkan.so";
 #else
 		Runtime.FatalError("Unsupported platform.");
 #endif

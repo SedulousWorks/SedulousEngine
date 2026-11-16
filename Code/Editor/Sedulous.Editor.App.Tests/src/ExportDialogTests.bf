@@ -275,6 +275,91 @@ class ExportDialogTests
 		Test.Assert(f.IntAt("orientation") == (int64)ScreenOrientation.Landscape);
 	}
 
+	/// An Android preset's app (its id, version, name, icon, package and keystore) has a section of
+	/// its own, shown for an Android preset alone; Android is a platform to pick with no template
+	/// installed.
+	[Test]
+	public static void AnAndroidPresetsAppRowsShownForItAlone()
+	{
+		let f = scope Fixture();
+		let dialog = f.Open();
+		Test.Assert(dialog.SelectedIndex == 0);
+		let row = f.Bag.FindInfo("androidApplicationId");
+		Test.Assert((row != null) && (row.Category == "Android"));
+		Test.Assert(!f.Shows("androidApplicationId"), "a Linux preset");
+
+		// Android64 is offered though no template here has it.
+		int64 android = -1;
+		for (let choice in f.Bag.FindInfo("platform").Choices)
+		{
+			if (choice.Name == "Android64")
+				android = choice.Value;
+		}
+		Test.Assert(android >= 0);
+		f.Edit("platform", Sedulous.GUI.Variant(android));
+		Test.Assert(f.Presets.At(0).Platform == "Android64");
+		for (let path in StringView[8]("androidApplicationId", "androidVersionCode", "androidVersionName", "androidLabel",
+			"androidIcon", "androidPackage", "androidKeystore", "androidKeyAlias"))
+			Test.Assert((f.Bag.FindInfo(path) != null) && f.Shows(path), scope $"{path}");
+
+		f.Edit("androidApplicationId", Sedulous.GUI.Variant("com.studio.game"));
+		f.Edit("androidVersionCode", Sedulous.GUI.Variant((int64)4));
+		f.Edit("androidPackage", Sedulous.GUI.Variant((int64)AndroidPackage.Bundle));
+		f.Edit("androidKeystore", Sedulous.GUI.Variant("keys/release.jks"));
+		Test.Assert(f.Presets.At(0).AndroidApplicationId == "com.studio.game");
+		Test.Assert(f.Presets.At(0).AndroidVersionCode == 4);
+		Test.Assert(f.Presets.At(0).AndroidPackage == .Bundle);
+		Test.Assert(f.Presets.At(0).AndroidKeystore == "keys/release.jks");
+
+		// The Web preset hides them; this one shows its values again.
+		dialog.Select(1);
+		Test.Assert(!f.Shows("androidApplicationId"));
+		dialog.Select(0);
+		Test.Assert(f.Shows("androidApplicationId"));
+		Test.Assert(f.TextIs("androidApplicationId", "com.studio.game"));
+		Test.Assert(f.IntAt("androidVersionCode") == 4);
+	}
+
+	/// An Android preset's icon and keystore are paths with Browse: the icon from the project's PNGs
+	/// with the editor's picker, the keystore with the system's dialog (kept outside the project as
+	/// a rule), named relative to the project when it is inside it.
+	[Test]
+	public static void AnAndroidPresetsIconAndKeystoreAreBrowsedFor()
+	{
+		let f = scope Fixture();
+		RemoveDirectoryRecursive(f.Project);
+		for (let file in StringView[4]("Branding/AppIcon.png", "Branding/notes.txt", "Cooked/Icon.png", "keys/release.jks"))
+		{
+			let full = PathJoin(f.Project, file, .. scope .());
+			Test.Assert(CreateDirectory(PathParent(full, .. scope .())));
+			Test.Assert(WriteFile(full, Span<uint8>()) case .Ok);
+		}
+		let phone = scope ExportPreset();
+		phone.Name.Set("Phone");
+		phone.Platform.Set("Android64");
+		f.Presets.Add(phone);
+		let dialog = f.Open();
+		dialog.Select(2);
+		Test.Assert(f.Bag.FindInfo("androidIcon").Hint == ExportPathEditor.cHint);
+		Test.Assert(f.Bag.FindInfo("androidKeystore").Hint == ExportPathEditor.cHint);
+
+		dialog.Browse("androidIcon");
+		Test.Assert(f.Picks.Count == 1);
+		Test.Assert(f.Picks[0].Items.Count == 1, "the project's PNGs, not a cook's");
+		Test.Assert(f.Picks[0].Items[0].Key == "Branding/AppIcon.png");
+		f.Picks[0].OnPicked("Branding/AppIcon.png");
+		Test.Assert(f.Presets.At(2).AndroidIcon == "Branding/AppIcon.png");
+
+		f.FromDisk.Add(PathJoin(f.Project, "keys/release.jks", .. new .()));
+		dialog.Browse("androidKeystore");
+		Test.Assert(f.Presets.At(2).AndroidKeystore == "keys/release.jks");
+		ClearAndDeleteItems!(f.FromDisk);
+		f.FromDisk.Add(new .("/home/me/keys/upload.jks"));
+		dialog.Browse("androidKeystore");
+		Test.Assert(f.Presets.At(2).AndroidKeystore == "/home/me/keys/upload.jks");
+		Test.Assert(f.Notices.IsEmpty, "a keystore outside the project is no refusal");
+	}
+
 	/// A preset's quality level is one of the project's levels, offered by name, or the project's
 	/// default.
 	[Test]

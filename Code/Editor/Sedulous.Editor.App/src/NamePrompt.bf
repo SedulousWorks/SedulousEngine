@@ -21,6 +21,8 @@ class NameRequest
 	public String Suggested = new .() ~ delete _;
 	/// The accept button's text ("Create"); empty: the markup's.
 	public String Accept = new .() ~ delete _;
+	/// A secret (a keystore's password): the field shows bullets and lets nothing be copied out.
+	public bool Secret = false;
 	/// Why `name` is refused, appended to `outWhy` (nothing: accepted); null accepts any.
 	public delegate void(StringView name, String outWhy) Refusal ~ delete _;
 	/// What accepting `name` makes, appended to `outText` ("Makes the group Props in Models."); null
@@ -98,6 +100,7 @@ class NamePrompt
 		accept.SetOnClick(new [=prompt] () => { prompt.Commit(); });
 		if (cancel != null)
 			cancel.SetOnClick(new [=window] () => { window.Close(); });
+		name.IsPassword = request.Secret;
 		name.Text = request.Suggested;
 		prompt.Check();
 		window.OpenModal(root);

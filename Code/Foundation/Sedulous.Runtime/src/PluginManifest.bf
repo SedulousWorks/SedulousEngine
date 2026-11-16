@@ -127,7 +127,7 @@ class PluginManifestPart
 [Serializable]
 class PluginPlatform
 {
-	/// The export platform's tag: "Linux64", "Win64", "Web".
+	/// The export platform's tag: "Linux64", "Win64", "Web", "Android64".
 	public String Platform = new .() ~ delete _;
 	public List<String> Deploy = new .() ~ DeleteContainerAndItems!(_);
 }

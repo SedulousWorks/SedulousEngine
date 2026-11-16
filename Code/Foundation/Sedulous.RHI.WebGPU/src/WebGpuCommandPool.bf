@@ -1,3 +1,4 @@
+#if !BF_PLATFORM_ANDROID
 using System;
 using System.Collections;
 using wgpu_Beef;
@@ -89,3 +90,5 @@ sealed class WebGpuCommandPool : ICommandPool
 		return encoder;
 	}
 }
+
+#endif // !BF_PLATFORM_ANDROID

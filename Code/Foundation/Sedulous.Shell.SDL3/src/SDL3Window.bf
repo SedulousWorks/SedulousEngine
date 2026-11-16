@@ -160,6 +160,10 @@ class SDL3Window : IWindow
 #elif BF_PLATFORM_MACOS
 			native.System = .Cocoa;
 			native.Window = SDL3.SDL_GetPointerProperty(props, SDL3.SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, null);
+#elif BF_PLATFORM_ANDROID
+			// Null while the app is in the background: its surface is gone until it returns.
+			native.System = .Android;
+			native.Window = SDL3.SDL_GetPointerProperty(props, SDL3.SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, null);
 #else
 			// Which of the two it is cannot be decided at compile time: one binary serves
 			// both, and the driver is chosen at run time.

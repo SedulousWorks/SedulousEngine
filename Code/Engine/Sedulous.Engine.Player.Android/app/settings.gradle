@@ -1,0 +1,19 @@
+// The Android player's app: SDL's Java activity running the player from libmain.so.
+// Tools/android-app.sh stages what it carries (the native library, the game and the engine's data)
+// and builds it.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = 'SedulousPlayer'
+include ':app'
