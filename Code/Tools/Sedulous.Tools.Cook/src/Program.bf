@@ -26,7 +26,7 @@ namespace Sedulous.Tools.Cook;
 ///                  target. "web-astc" is the ASTC mobile web target and "android" the
 ///                  Android one (ASTC); everything else is BC desktop, and "host" is the
 ///                  default.
-/// The exit code is the number of failed cooks, so 0 is success.
+/// The exit code is 1 when any cook failed (the count is printed), 0 on success.
 class Program
 {
 	public static int Main(String[] args)
@@ -152,6 +152,8 @@ class Program
 			totalFailed += targetStats.Failed;
 		}
 
-		return totalFailed;
+		// A process's exit status keeps its low 8 bits, so the failure count itself would read 256
+		// failures as success: any failure exits 1, and the count is printed above.
+		return (totalFailed > 0) ? 1 : 0;
 	}
 }
