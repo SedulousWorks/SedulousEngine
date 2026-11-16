@@ -1123,6 +1123,9 @@ class TerrainRenderer : Renderer
 		desc.DepthStencil = depthStencil;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .Back;
+		// A shadow pass clamps depth where the device can: terrain rising toward the light past the
+		// cascade's near plane still casts, as the mesh renderer's casters do.
+		desc.Primitive.DepthClipEnabled = !(biased && mDevice.Features.DepthClamp);
 		desc.Label = holes ? "terrain.depth.holes" : "terrain.depth";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))

@@ -128,6 +128,7 @@ class NullDevice : IDevice
 	{
 		let pipeline = new NullRenderPipeline();
 		pipeline.Layout = desc.Layout;
+		pipeline.Primitive = desc.Primitive;
 		return .Ok(pipeline);
 	}
 

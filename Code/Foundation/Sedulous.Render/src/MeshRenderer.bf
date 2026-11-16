@@ -2461,6 +2461,10 @@ class MeshRenderer : Renderer
 			// The bias pushes casters AWAY from the light; its sign follows the depth convention.
 			config.DepthBias = (int16)Depth.BiasAwayFromViewer(50);
 			config.DepthBiasSlopeScale = Depth.SlopeBiasAwayFromViewer(1.5f);
+			// The cascade fit bounds the receivers the camera sees; a tall caster toward the light
+			// reaches past its near plane and was clipped away, its shadow with it. Clamped, it
+			// lands on the near plane and still occludes everything behind it.
+			config.DepthClamp = true;
 		}
 
 		return config;

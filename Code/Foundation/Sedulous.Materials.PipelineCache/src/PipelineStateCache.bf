@@ -264,6 +264,9 @@ class PipelineStateCache
 		desc.Primitive.FrontFace = config.FrontFace;
 		desc.Primitive.CullMode = CullFor(config.CullMode);
 		desc.Primitive.FillMode = config.FillMode;
+		// Asked for and supported: without the device feature the flag is invalid, and the pass
+		// clips as before.
+		desc.Primitive.DepthClipEnabled = !(config.DepthClamp && mDevice.Features.DepthClamp);
 
 		// ---- depth and stencil ----
 		if (config.DepthMode != .Disabled)

@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Materials;
 using Sedulous.Materials.PipelineCache;
 using Sedulous.RHI;
+using Sedulous.RHI.Null;
 using Sedulous.Shaders;
 
 namespace Sedulous.Materials.PipelineCache.Tests;
@@ -277,6 +278,43 @@ class PipelineStateCacheTests
 		Test.Assert(fixture.Cache.GetPipeline(opaque, fixture.Layout) != null);
 		Test.Assert(fixture.Cache.GetPipeline(blended, fixture.Layout) != null);
 		Test.Assert(fixture.Cache.Size == 2, "the aux flag separates them");
+	}
+
+	/// A depth-clamp config clamps where the device can, and clips where it cannot: asking for it
+	/// without the feature is invalid.
+	[Test]
+	public static void ADepthClampConfigClampsWhereTheDeviceCanAndClipsWhereItCannot()
+	{
+		let fixture = scope PipelineCacheFixture();
+		fixture.CookBothStages("shadow");
+		let device = fixture.Device as NullDevice;
+
+		var clipped = PipelineConfig.ForOpaqueMesh("shadow");
+		clipped.DepthOnly = true;
+		clipped.VertexLayout = .PositionOnly;
+		var clamped = clipped;
+		clamped.DepthClamp = true;
+		Test.Assert(clamped != clipped, "a config of its own");
+		Test.Assert(clamped.HashCode != clipped.HashCode);
+
+		var features = device.Features;
+		features.DepthClamp = true;
+		device.Features = features;
+		let clampedPso = fixture.Cache.GetPipeline(clamped, fixture.Layout) as NullRenderPipeline;
+		Test.Assert(clampedPso != null);
+		Test.Assert(!clampedPso.Primitive.DepthClipEnabled);
+		let clippedPso = fixture.Cache.GetPipeline(clipped, fixture.Layout) as NullRenderPipeline;
+		Test.Assert(clippedPso != null);
+		Test.Assert(clippedPso.Primitive.DepthClipEnabled);
+
+		// Without the feature: a fresh cache builds the clamped config clipping.
+		features.DepthClamp = false;
+		device.Features = features;
+		let unsupported = scope PipelineStateCache(fixture.Shaders, fixture.Device);
+		let fallback = unsupported.GetPipeline(clamped, fixture.Layout) as NullRenderPipeline;
+		Test.Assert(fallback != null);
+		Test.Assert(fallback.Primitive.DepthClipEnabled);
+		unsupported.Clear();
 	}
 
 	/// Configs apart in any field are apart (the hash left out the slope bias, so a shadow

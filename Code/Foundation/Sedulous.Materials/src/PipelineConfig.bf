@@ -71,6 +71,9 @@ struct PipelineConfig
 	/// blending over. Such a draw still BINDS every target, because the render pass says so,
 	/// but with the auxiliary write masks off.
 	public bool WriteAuxTargets = true;
+	/// Clamp depth instead of clipping at the near and far planes, where the device can (a shadow
+	/// map: a caster between the light and the fitted volume still casts).
+	public bool DepthClamp = false;
 
 	public this() {}
 
@@ -112,6 +115,7 @@ struct PipelineConfig
 			Mix(SampleCount);
 			Mix(DepthOnly ? 1 : 0);
 			Mix(WriteAuxTargets ? 1 : 0);
+			Mix(DepthClamp ? 1 : 0);
 			return hash;
 		}
 	}
@@ -131,7 +135,8 @@ struct PipelineConfig
 			|| (a.DepthFormat != b.DepthFormat) || (a.DepthBias != b.DepthBias)
 			|| (a.DepthBiasSlopeScale != b.DepthBiasSlopeScale)
 			|| (a.ColorTargetCount != b.ColorTargetCount) || (a.SampleCount != b.SampleCount)
-			|| (a.DepthOnly != b.DepthOnly) || (a.WriteAuxTargets != b.WriteAuxTargets))
+			|| (a.DepthOnly != b.DepthOnly) || (a.WriteAuxTargets != b.WriteAuxTargets)
+			|| (a.DepthClamp != b.DepthClamp))
 			return false;
 
 		for (int i = 0; (i < a.ColorTargetCount) && (i < RhiLimits.MaxColorAttachments); i++)
