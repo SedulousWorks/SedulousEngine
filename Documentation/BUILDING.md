@@ -14,6 +14,9 @@
   their sources, `build` rebuilds them (and `wasm`, from bash, the wasm32 ones).
 - A Vulkan 1.3 or D3D12 capable GPU to run anything that draws.
 - For web builds, [emsdk](https://emscripten.org/) on the path.
+- For Android builds, a Linux host with the Android NDK r30 (`30.0.16248370`) named by
+  `ANDROID_NDK_HOME`; to package an app, the Android SDK (`ANDROID_HOME`, with platform 36) and a
+  JDK 17 (`JAVA_HOME`). The first Gradle build downloads Gradle and the Android plugin.
 
 ## Building
 
@@ -30,6 +33,25 @@ BeefBuild -test -project=Sedulous.Core.Tests     # one test project
 Outputs land in `Code/build/<Config>_<Platform>/<Project>/`. Executables find the engine's data
 by walking up to the `.dataroot` marker in `Data/`, so they run from the build directory, the
 project directory or the repository root alike.
+
+## Android
+
+BeefBuild compiles the player for `aarch64-linux-android33`; the NDK's clang links it into the
+app's `libmain.so` against the native libraries' `dist/Release-Android64` archives and Beef's
+Android runtime (`Dependencies/BeefRT-Android`, committed; its `build-native.sh` rebuilds it from
+a Beef checkout). Only the player and the RHI samples build for Android: the editor and the tools
+run on the desktop.
+
+```
+Code/Tools/android-app.sh Sedulous.Engine.Player.Android --game Data/SampleProjects/SkyHopper --run
+Code/Tools/android-tests.sh                       # the headless suites, on a phone over adb
+CONFIG=ShippingRelease Code/Tools/android-app.sh Sedulous.Engine.Player.Android --template
+```
+
+The first builds a development app with a sample game in it, installs it on the phone attached
+over adb and starts it. The second runs the suites on the phone: it builds each for Android,
+pushes it with the engine's data and reads its results back. The third makes the Android export
+template a game ships on (a Release build makes the profile one).
 
 ## Running the editor
 

@@ -58,8 +58,8 @@ This is the second iteration of the engine. The previous one continues on the `v
   profiler, and a page per asset type.
 - **Asset pipeline:** importers for glTF, FBX, OBJ, images, audio and fonts; cooks per asset
   type; BC7 and ASTC texture compression.
-- **Export** to the desktop player, the web (WebAssembly with WebGPU) and the Steam Deck, from
-  per-target presets and player templates. Headless tools can run all of it from the command
+- **Export** to the desktop player, the web (WebAssembly with WebGPU), the Steam Deck and Android
+  (an APK or an App Bundle), from per-target presets and player templates. Headless tools can run all of it from the command
   line.
 - **Agent tooling:** an MCP host (`Sedulous.Tools.Mcp`) exposes the engine's reflection, the
   script API and project operations (import, cook, scene validation, export, health checks). The
@@ -181,6 +181,8 @@ flows that cross collections.
 - **Web:** games export to the browser as WebAssembly with WebGPU.
 - **Steam Deck:** games export through a Deck player template, built in a container by
   `Code/Tools/SteamDeck/build-steamdeck.sh`.
+- **Android:** the player runs on arm64 phones (Android 13 and later) through Vulkan, and a game
+  exports to an APK or an App Bundle through an Android player template.
 - **macOS:** no backend yet.
 
 ## Dependencies

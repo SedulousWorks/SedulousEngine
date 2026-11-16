@@ -132,3 +132,12 @@ opens the manager on Samples.
 `Code/Tools/SteamDeck/build-steamdeck.sh` builds a player in an Ubuntu 22.04 container (glibc
 2.35, below SteamOS), Beef included, and installs it as the `sedulous-steamdeck-release-<ver>`
 export template. It needs podman or docker, and nothing else building beside it.
+
+## Android
+
+The player builds for Android on a Linux host through the NDK (`ANDROID_NDK_HOME`); the recipes
+are in [Documentation/BUILDING.md](Documentation/BUILDING.md). `Code/Tools/android-tests.sh` runs
+the suites on a phone over adb, and `Code/Tools/android-app.sh` builds, installs and starts a
+development app with a sample game in it. Input, rotation and how a game looks on the phone are
+the user's to check on the device. A project the workspace builds for Android needs its Android
+Test section (`Code/Tools/android-workspace.py` writes them) for its suite to link.
