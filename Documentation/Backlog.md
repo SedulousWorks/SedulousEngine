@@ -31,14 +31,14 @@ depends on it) is pushed and awaiting its upstream PR. Reword once it merges, or
 Both sit at fa11f9ab, behind `master`, which is the default branch again. Bring them along with
 `master`, or retire them.
 
-### Rebuild the Windows native libraries
+### Rebuild AngelScript's wasm32 archive
 `Dependencies/build-all-native.sh status` (or `.ps1`) lists the committed archives older than
-their sources. On 2026-11-15 a Windows build cannot link: HarfBuzz, Mbed TLS, SheenBidi and zlib
-have no `dist/*-Win64` archives at all, and AngelScript's (the shim's memory cap, module names and
-declarations) and miniaudio's (`mab_engine_stop` and `mab_engine_start`) are older than their
-sources. On Windows, `./build-all-native.ps1 build` rebuilds every one; commit the `dist/*-Win64`
-folders it writes. AngelScript's wasm32 archive is outdated too (`./build-all-native.sh wasm
-angelscript`), which keeps every web build from linking.
+their sources. The Windows archives were rebuilt on 2026-11-15 (6149088cc). AngelScript's wasm32
+archive is older than the shim's memory cap, module names and declarations, which keeps every
+web build from linking: `./build-all-native.sh wasm angelscript` with the emsdk's environment,
+then commit `dist/Release-wasm32`. The status's other flags are not real: the desktop AngelScript
+archives predate only b3d2e4bbf, which moved an `#endif` and a CMake comment for Android, and
+astcenc, bc7enc and msdfgen were built the same day as their last source commit.
 
 ### Web: Firefox refuses read-only render bundles in read-only depth passes
 Firefox (160) drops a render bundle descriptor's `depthReadOnly` and `stencilReadOnly`: its
