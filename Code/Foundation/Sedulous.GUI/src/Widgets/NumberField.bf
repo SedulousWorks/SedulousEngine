@@ -48,6 +48,10 @@ internal static class NumberFieldDetail
 		public StringView Text;
 		public int At = 0;
 		public bool Ok = true;
+		/// Signs and parentheses nest by recursion: past this depth the text is refused, rather
+		/// than a field's typed text (or a paste) overflowing the stack.
+		public const int cMaxDepth = 64;
+		public int Depth = 0;
 
 		public this(StringView text)
 		{
@@ -63,16 +67,25 @@ internal static class NumberFieldDetail
 		public double Primary() mut
 		{
 			Skip();
+			if (Depth >= cMaxDepth)
+			{
+				Ok = false;
+				return 0.0;
+			}
 			if ((At < Text.Length) && ((Text[At] == '-') || (Text[At] == '+')))
 			{
 				let negative = Text[At++] == '-';
+				++Depth;
 				let v = Primary();
+				--Depth;
 				return negative ? -v : v;
 			}
 			if ((At < Text.Length) && (Text[At] == '('))
 			{
 				++At;
+				++Depth;
 				let v = Sum();
+				--Depth;
 				Skip();
 				if ((At < Text.Length) && (Text[At] == ')'))
 					++At;

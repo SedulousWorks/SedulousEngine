@@ -68,6 +68,22 @@ class NumberFieldTests
 		Test.Assert(!EvaluateExpression("").HasValue);
 	}
 
+	/// Signs and parentheses nested past any reasonable depth are refused, not a stack overflow;
+	/// nesting a person would type still evaluates.
+	[Test]
+	public static void AnExpressionNestedPastAnyReasonableDepthIsRefused()
+	{
+		let deep = scope String();
+		deep.Append('(', 1000000);
+		deep.Append("1");
+		Test.Assert(!EvaluateExpression(deep).HasValue);
+		let signs = scope String();
+		signs.Append('-', 1000000);
+		signs.Append("1");
+		Test.Assert(!EvaluateExpression(signs).HasValue);
+		Test.Assert(Near(EvaluateExpression("((((((((((2))))))))))*-(-3)").Value, 6.0));
+	}
+
 	[Test]
 	public static void WrittenWithTheStepsDecimalsBetweenItsPrefixAndSuffix()
 	{
