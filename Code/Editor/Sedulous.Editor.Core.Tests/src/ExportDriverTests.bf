@@ -82,8 +82,13 @@ static class ExportDriverTests
 			Test.Assert((bytes.Count > 0) && (bytes[0] != (uint8)'<'), "binary, not the XML source");
 			sceneStreams[fx.SceneId] = bytes;
 		}
+		// A scene file left in the staging folder by an export that failed: it was packed too.
+		Test.Assert(CreateDirectory(PathJoin(distDir, ".stage-scenes", .. scope .())));
+		uint8[1] stale = .(1);
+		Test.Assert(WriteFile(PathJoin(distDir, ".stage-scenes/Stale.asset", .. scope .()), stale) case .Ok);
 		let stats = scope ExportStats();
 		Test.Assert(ExportDriver.ExportProject(fx.Project, distDir, fx.Builders, false, stats, null, sceneStreams) case .Ok);
+		Test.Assert(!DirectoryExists(PathJoin(distDir, ".stage-scenes", .. scope .())));
 		Test.Assert(stats.Cooked == 2, scope $"{stats.Cooked} cooked");
 		Test.Assert(stats.ScenesStaged == 1);
 		Test.Assert(stats.FilesPacked >= 3, "products plus the scene envelope and stream");
@@ -105,6 +110,7 @@ static class ExportDriverTests
 		// The pak, read as the player reads it: the scene by guid and by path, its stream
 		// binary, its mesh resolving through the factory to the 2.0 cube.
 		let pak = scope PakFileSystem(PathJoin(distDir, ProjectLayout.DistContentPak, .. scope .()));
+		Test.Assert(!pak.Exists("Stale.asset"), "staging starts empty: only this export's scenes ship");
 		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
 		let db = OpenDistPak(distDir, pak, binary);
 		defer delete db;

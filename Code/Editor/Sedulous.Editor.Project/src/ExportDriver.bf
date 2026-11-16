@@ -266,7 +266,10 @@ static class ExportDriver
 			onProgress("Staging scenes...", 0.65f);
 		if (!CreateDirectory(outDir))
 			return .Err(.NotSupported);
+		// The staging folder is this export's alone: what an export that failed left in it (a crash,
+		// say) would be packed with these scenes, so it starts empty, and it goes on every way out.
 		let stagingDir = PathJoin(outDir, ".stage-scenes", .. scope .());
+		RemoveDirectoryRecursive(stagingDir);
 		CreateDirectory(stagingDir);
 		defer RemoveDirectoryRecursive(stagingDir);
 		let stagingMount = scope NativeFileSystem(stagingDir);
