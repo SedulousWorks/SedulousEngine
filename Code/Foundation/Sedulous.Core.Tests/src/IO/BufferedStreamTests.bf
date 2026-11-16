@@ -176,4 +176,55 @@ class BufferedStreamTests
 		Test.Assert(buffered.IsValid);
 		Test.Assert(buffered.Size() == backing.Size());
 	}
+
+	/// A stream that takes only `Room` bytes in all, as a full disk does.
+	class ShortStream : IStream
+	{
+		public int Room;
+		public int Taken;
+
+		public override bool IsValid => true;
+		public override int Read(Span<uint8> destination) => 0;
+		public override int Write(Span<uint8> source)
+		{
+			let n = Math.Min(source.Length, Room - Taken);
+			Taken += n;
+			return n;
+		}
+		public override int64 Seek(int64 offset, SeekOrigin origin) => Taken;
+		public override int64 Tell() => Taken;
+		public override int64 Size() => Taken;
+	}
+
+	/// The stream under it taking less than it is given is said: a short flush fails the write
+	/// that made it, and Flush and Failed report it; a stream with room never is.
+	[Test]
+	public static void ItSaysSoWhenTheStreamUnderItTakesLessThanItIsGiven()
+	{
+		uint8[100] bytes = default;
+		// A write that fills the buffer flushes it: a short flush fails that write.
+		{
+			let full = scope ShortStream() { Room = 4 };
+			let buffered = scope BufferedStream(full, 8);
+			Test.Assert(buffered.Write(.(&bytes, 16)) < 16);
+			Test.Assert(buffered.Failed);
+			Test.Assert(!buffered.Flush());
+		}
+		// A short final flush is reported by Flush, and the writes before it were accepted.
+		{
+			let full = scope ShortStream() { Room = 2 };
+			let buffered = scope BufferedStream(full, 64);
+			Test.Assert(buffered.Write(.(&bytes, 5)) == 5, "still in the buffer");
+			Test.Assert(!buffered.Flush());
+			Test.Assert(buffered.Failed);
+		}
+		// A stream with room is never reported.
+		{
+			let roomy = scope ShortStream() { Room = 1000 };
+			let buffered = scope BufferedStream(roomy, 8);
+			Test.Assert(buffered.Write(.(&bytes, 100)) == 100);
+			Test.Assert(buffered.Flush());
+			Test.Assert(roomy.Taken == 100);
+		}
+	}
 }

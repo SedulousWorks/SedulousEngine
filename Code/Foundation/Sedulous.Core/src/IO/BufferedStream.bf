@@ -25,6 +25,8 @@ class BufferedStream : IStream
 	/// Reading: how many bytes of the buffer are valid.
 	private int mLen;
 	private Mode mMode;
+	/// The underlying stream took less than a flush gave it.
+	private bool mFailed;
 
 	public this(IStream stream, int bufferSize = 4096)
 	{
@@ -39,8 +41,13 @@ class BufferedStream : IStream
 
 	public override bool IsValid => mStream.IsValid;
 
-	/// Pushes pending writes down to the underlying stream.
-	public void Flush() => FlushWrites();
+	/// Pushes pending writes down to the underlying stream. False when the stream took less than
+	/// it was given, now or on an earlier flush (a full disk, a closed file): the bytes past what
+	/// it took are lost.
+	public bool Flush() => FlushWrites() && !mFailed;
+
+	/// Whether a write to the underlying stream has fallen short since this stream was made.
+	public bool Failed => mFailed;
 
 	public override int Write(Span<uint8> source)
 	{
@@ -58,10 +65,11 @@ class BufferedStream : IStream
 			mPos += chunk;
 			src += chunk;
 			remaining -= chunk;
-			if (mPos == mBuffer.Count)
-				FlushBuffer();
+			// The stream refused what was buffered: this write is not all there.
+			if ((mPos == mBuffer.Count) && !FlushBuffer())
+				return 0;
 		}
-		return source.Length;
+		return mFailed ? 0 : source.Length;
 	}
 
 	public override int Read(Span<uint8> destination)
@@ -110,22 +118,31 @@ class BufferedStream : IStream
 	public override int64 Size() => mStream.Size();
 
 	/// Pushes the pending bytes down and empties the buffer, leaving the direction alone.
-	/// Called when the buffer fills mid-write, where the write is still going.
-	private void FlushBuffer()
+	/// Called when the buffer fills mid-write, where the write is still going. False when the
+	/// stream took less than the buffered bytes (remembered in mFailed, so a caller that checks
+	/// only at the end still hears of it).
+	private bool FlushBuffer()
 	{
+		var written = true;
 		if (mPos > 0)
-			mStream.Write(.(&mBuffer[0], mPos));
+		{
+			written = mStream.Write(.(&mBuffer[0], mPos)) == mPos;
+			mFailed |= !written;
+		}
 		mPos = 0;
+		return written;
 	}
 
 	/// Ends the write, pushing anything pending down first.
-	private void FlushWrites()
+	private bool FlushWrites()
 	{
+		var written = true;
 		if (mMode == .Write)
-			FlushBuffer();
+			written = FlushBuffer();
 		mPos = 0;
 		mLen = 0;
 		mMode = .None;
+		return written;
 	}
 
 	/// Leaves the underlying position where the caller of this stream believes it to be.
