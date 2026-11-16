@@ -127,6 +127,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: on Vulkan, a texture updated after first use keeps its new contents.
 - Rendering: a camera whose target is not a render texture (an imported image, a depth texture)
   is skipped with a warning instead of failing the frame. A camera with a near plane of 0, a far
   plane below its near one or a field of view of 0, and a spot light whose inner cone is wider

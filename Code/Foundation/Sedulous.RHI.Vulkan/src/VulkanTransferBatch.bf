@@ -168,7 +168,11 @@ class VulkanTransferBatch : ITransferBatch
 		submitInfo.pSignalSemaphores = &semaphore;
 
 		if (VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null) != .VK_SUCCESS)
+		{
+			// Nothing was queued: the fence will never reach the value, so nothing waits on it.
+			ResetCommandPool();
 			return .Err;
+		}
 
 		mAsyncFence = vulkanFence;
 		mAsyncValue = signalValue;
@@ -362,17 +366,21 @@ class VulkanTransferBatch : ITransferBatch
 		range.baseArrayLayer = copy.ArrayLayer;
 		range.layerCount = 1;
 
-		// UNDEFINED as the old layout discards whatever the subresource held, which is what
-		// a full overwrite wants and what saves tracking the layout across the batch.
+		// From the layout the image is tracked in, not UNDEFINED: a copy into part of a subresource
+		// keeps the rest, and an image the GPU has used waits for that use.
+		let oldLayout = texture.GetSubresourceLayout(copy.MipLevel, copy.ArrayLayer);
+		let fresh = oldLayout == .VK_IMAGE_LAYOUT_UNDEFINED;
 		VkImageMemoryBarrier before = .();
+		before.srcAccessMask = fresh ? .VK_ACCESS_NONE : .VK_ACCESS_MEMORY_WRITE_BIT;
 		before.dstAccessMask = .VK_ACCESS_TRANSFER_WRITE_BIT;
-		before.oldLayout = .VK_IMAGE_LAYOUT_UNDEFINED;
+		before.oldLayout = oldLayout;
 		before.newLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		before.srcQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
 		before.dstQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
 		before.image = texture.Handle;
 		before.subresourceRange = range;
-		VulkanNative.vkCmdPipelineBarrier(commandBuffer, .VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VulkanNative.vkCmdPipelineBarrier(commandBuffer,
+			fresh ? .VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : .VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 			.VK_PIPELINE_STAGE_TRANSFER_BIT, .None, 0, null, 0, null, 1, &before);
 
 		VkBufferImageCopy region = .();
@@ -398,8 +406,10 @@ class VulkanTransferBatch : ITransferBatch
 		after.dstAccessMask = .VK_ACCESS_SHADER_READ_BIT;
 		after.oldLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		after.newLayout = .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		// Any stage may read it next (a vertex or compute shader as well as a fragment one), and
+		// the batch may run on a family without graphics stages: ALL_COMMANDS is valid on every one.
 		VulkanNative.vkCmdPipelineBarrier(commandBuffer, .VK_PIPELINE_STAGE_TRANSFER_BIT,
-			.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, .None, 0, null, 0, null, 1, &after);
+			.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, .None, 0, null, 0, null, 1, &after);
 
 		// The batch leaves every uploaded subresource readable by a shader, so the tracked
 		// layout has to say so or the next barrier transitions from the wrong one.

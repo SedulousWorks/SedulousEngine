@@ -601,6 +601,48 @@ class VulkanCommandTests
 		sDevice.DestroyTexture(ref texture);
 	}
 
+	/// A texture written through a transfer batch is tracked as shader-read, and writing it again
+	/// starts from that tracked layout: a barrier from UNDEFINED there discards what the subresource
+	/// held, and the encoder's next barrier on it would start from the wrong layout.
+	[Test]
+	public static void ATransferBatchUploadIsTrackedAsShaderReadAndAgainStartsFromIt()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		var textureDesc = TextureDesc();
+		textureDesc.Label = "VulkanCommandTests.ATransferBatchUploadIsTrackedAsShaderRead";
+		textureDesc.Format = .RGBA8Unorm;
+		textureDesc.Width = 2;
+		textureDesc.Height = 2;
+		textureDesc.ArrayLayerCount = 2;
+		textureDesc.Usage = .Sampled | .CopyDst;
+		Test.Assert(sDevice.CreateTexture(textureDesc) case .Ok(var texture));
+		let vulkanTexture = texture as VulkanTexture;
+		Test.Assert(vulkanTexture.GetSubresourceLayout(0, 0) == .VK_IMAGE_LAYOUT_UNDEFINED);
+
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(queue.CreateTransferBatch() case .Ok(var batch));
+		uint8[16] pixels = default;
+		var layout = TextureDataLayout();
+		layout.BytesPerRow = 8;
+		layout.RowsPerImage = 2;
+		batch.WriteTexture(texture, .(&pixels[0], 16), layout, .(2, 2, 1), 0, 1);
+		Test.Assert(batch.Submit() case .Ok);
+		Test.Assert(vulkanTexture.GetSubresourceLayout(0, 1) == .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		Test.Assert(vulkanTexture.GetSubresourceLayout(0, 0) == .VK_IMAGE_LAYOUT_UNDEFINED, "not written");
+
+		// Writing it again starts from the tracked layout and leaves it shader-read.
+		batch.Reset();
+		batch.WriteTexture(texture, .(&pixels[0], 16), layout, .(2, 2, 1), 0, 0);
+		Test.Assert(batch.Submit() case .Ok);
+		Test.Assert(vulkanTexture.GetSubresourceLayout(0, 0) == .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		Test.Assert(vulkanTexture.CurrentLayout == .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, "collapsed");
+		Test.Assert(!sDevice.IsLost());
+
+		queue.DestroyTransferBatch(ref batch);
+		sDevice.DestroyTexture(ref texture);
+	}
+
 	/// Generating a mip chain leaves EVERY level in the same layout.
 	///
 	/// The chain is built by blitting each level from the one above, so mid-generation the
