@@ -43,6 +43,9 @@ class ShaderSystem
 	private HashSet<uint64> mLoggedFailures = new HashSet<uint64>() ~ delete _;
 	/// Variants that compiled and failed (see GetVariant); forgotten when the source changes.
 	private HashSet<ShaderVariantKey> mFailedVariants = new .() ~ delete _;
+	/// Registered shaders whose source includes anything: a change to an include rebuilds them
+	/// from the text kept here, since a registered source cannot be fetched again.
+	private List<String> mIncludingRegistered = new .() ~ DeleteContainerAndItems!(_);
 	/// Variant to the GPU module it owns.
 	private Dictionary<ShaderVariantKey, Sedulous.RHI.IShaderModule> mCache = new .() ~ delete _;
 	private Dictionary<uint64, uint64> mVersions = new Dictionary<uint64, uint64>() ~ delete _;
@@ -109,6 +112,14 @@ class ShaderSystem
 		else
 			mDeclaredMasks.Remove(key);
 		ForgetFailures(ShaderFlagNames.ShaderNameHash(name));
+		if (hlsl.Contains("#include"))
+		{
+			var known = false;
+			for (let including in mIncludingRegistered)
+				known = known || (including == name);
+			if (!known)
+				mIncludingRegistered.Add(new .(name));
+		}
 	}
 
 	/// The provider is BORROWED and may be null.
@@ -210,19 +221,37 @@ class ShaderSystem
 		if (!mProvider.PollChanges(changed))
 			return 0;
 
+		var reloaded = 0;
+		var includeChanged = false;
 		for (let name in changed)
 		{
+			if (name.EndsWith(".hlsli"))
+			{
+				includeChanged = true;
+				continue;
+			}
 			// Dropped rather than refetched here: the next request pulls it, so a shader
 			// nothing asks for costs nothing to reload.
 			RemoveSource(name);
 			InvalidateShader(name);
+			reloaded++;
+		}
+		if (includeChanged)
+		{
+			// The provider's own shaders are named above; a registered shader that includes
+			// anything may include the changed file, and keeps its text.
+			for (let name in mIncludingRegistered)
+			{
+				InvalidateShader(name);
+				reloaded++;
+			}
 		}
 		// A registered shader (a project's) may include a changed library file; the provider
 		// cannot say which, so every remembered failure gets another compile.
 		mFailedVariants.Clear();
 		// An include may have changed an effect block; they are read again on the next ask.
 		mEffectsScanned = false;
-		return changed.Count;
+		return reloaded;
 	}
 
 	/// Drops the cached source text for every stage of a shader.

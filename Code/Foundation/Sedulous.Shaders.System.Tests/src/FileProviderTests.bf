@@ -270,7 +270,9 @@ class FileProviderTests
 
 	/// A registered (project) shader that includes a library file the provider serves: its
 	/// failure is remembered, and fixing the library and reloading gives it another compile,
-	/// since the provider cannot say which registered shaders include the file.
+	/// since the provider cannot say which registered shaders include the file. A compiled one is
+	/// rebuilt by a later edit too, not kept from before it: only the provider's own shaders were
+	/// dropped.
 	[Test]
 	public static void AReloadRetriesARegisteredShadersRememberedFailure()
 	{
@@ -312,8 +314,21 @@ class FileProviderTests
 			if (reloaded > 0)
 				break;
 		}
-		Test.Assert(reloaded > 0, "the library edit was seen");
+		Test.Assert(reloaded == 2, "the library edit reloads the corpus shader and the registered one that includes");
+		Test.Assert(shaders.Version("user") == 1);
 		Test.Assert(shaders.GetVariant("user", .Fragment, .None) != null, "the project shader that needed it now compiles");
+
+		Write(root, "reload_common.hlsli", "// v3, bigger than both before it\n#define COMMON_RED 0.5\n");
+		reloaded = 0;
+		for (int i < FileShaderSourceProvider.PollEveryNCalls * 2)
+		{
+			reloaded += shaders.PumpReloads();
+			if (reloaded > 0)
+				break;
+		}
+		Test.Assert(reloaded == 2);
+		Test.Assert(shaders.Version("user") == 2, "the compiled registered shader rebuilt");
+		Test.Assert(shaders.GetVariant("user", .Fragment, .None) != null);
 	}
 
 	/// Reload detection works with an ABSOLUTE root.
@@ -388,8 +403,14 @@ class FileProviderTests
 				break;
 		}
 
-		Test.Assert(changed.Count == 2,
-			"an include edit reports every shader, since the includers are unknown");
+		// Every shader, since the includers are unknown, and the include itself, so the shader
+		// system rebuilds the registered shaders that include.
+		Test.Assert(changed.Count == 3,
+			"an include edit reports every shader, since the includers are unknown, and the include");
+		var namesInclude = false;
+		for (let name in changed)
+			namesInclude = namesInclude || name.EndsWith("shared.hlsli");
+		Test.Assert(namesInclude, "the include is named");
 	}
 
 	// ---- effects: a game reads their tables from the cooked pack, the editor parses them from

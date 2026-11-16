@@ -210,7 +210,10 @@ class FileShaderSourceProvider : IShaderSourceProvider, IShaderIncludeResolver
 			{
 				// Which shaders include it is unknown, so EVERYTHING this provider serves
 				// reloads. A full recompile is the correct answer in development, and the
-				// alternative is tracking an include graph to save a second.
+				// alternative is tracking an include graph to save a second. The file is named
+				// too, so the shader system rebuilds the registered shaders that include.
+				any = true;
+				AppendUnique(outChangedNames, file);
 				for (let entry in mEntries)
 				{
 					any = true;

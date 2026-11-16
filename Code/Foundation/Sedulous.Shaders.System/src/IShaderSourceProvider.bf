@@ -24,7 +24,8 @@ interface IShaderSourceProvider
 	void CollectIncludeNames(List<String> outNames);
 
 	/// Appends the names whose source changed since the last poll, returning whether any
-	/// did.
+	/// did. A changed include is appended too, by its file name (ending in ".hlsli"), so shaders
+	/// from elsewhere that include it are rebuilt as well.
 	///
 	/// Called once per frame, so an implementation THROTTLES rather than sweeping every
 	/// time: the caller has no way to know how expensive the check is.

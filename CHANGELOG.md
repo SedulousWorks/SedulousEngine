@@ -127,6 +127,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: editing an engine shader include rebuilds the project's own shaders that include it.
 - Rendering: moving the sun no longer rebakes the lighting of an HDR, cubemap or coloured sky,
   and a slowly moving sun rebakes a procedural sky every half degree, not every frame.
 - Rendering: on Vulkan, a texture updated after first use keeps its new contents.
