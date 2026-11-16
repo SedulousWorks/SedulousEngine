@@ -285,6 +285,54 @@ class AnimationGraphTests
 		Test.Assert(skin.Length == 1);
 	}
 
+	/// Every update consumed every trigger, and no transition is looked at mid-fade: a trigger
+	/// set while a layer crossfaded was gone before anything could test it.
+	[Test]
+	public static void ATriggerSetDuringACrossfadeFiresOnceTheFadeIsDoneAndIsSpent()
+	{
+		let skeleton = scope Skeleton(1);
+		skeleton.Bones[0].ParentIndex = -1;
+		skeleton.FindRootBones();
+		skeleton.BuildChildIndices();
+		skeleton.ComputeInverseBindPoses();
+		let clip = scope AnimationClip("pose", 1.0f, true);
+		clip.GetOrCreatePositionTrack(0).AddKeyframe(0.0f, .(0, 0, 0));
+		clip.GetOrCreatePositionTrack(0).AddKeyframe(1.0f, .(0, 0, 0));
+
+		let graph = scope AnimationGraph();
+		let go = graph.AddParameter("Go", .Bool);
+		let jump = graph.AddParameter("Jump", .Trigger);
+		let layer = new AnimationLayer("Base");
+		layer.AddState(new AnimationGraphState("Idle", new ClipStateNode(clip), true));
+		layer.AddState(new AnimationGraphState("Walk", new ClipStateNode(clip), true));
+		layer.AddState(new AnimationGraphState("Jump", new ClipStateNode(clip), true));
+		let toWalk = new AnimationGraphTransition();
+		toWalk.SourceStateIndex = 0;
+		toWalk.DestStateIndex = 1;
+		toWalk.Duration = 0.5f; // a long fade
+		toWalk.AddBoolCondition(go, true);
+		layer.AddTransition(toWalk);
+		let toJump = new AnimationGraphTransition();
+		toJump.SourceStateIndex = 1;
+		toJump.DestStateIndex = 2;
+		toJump.Duration = 0.001f;
+		toJump.AddBoolCondition(jump, true);
+		layer.AddTransition(toJump);
+		graph.AddLayer(layer);
+
+		let player = scope AnimationGraphPlayer(graph, skeleton);
+		player.SetBool(go, true);
+		player.Update(0.016f);
+		Test.Assert(player.GetCurrentStateIndex() == 1, "fading into Walk");
+		player.SetTrigger(jump); // mid-fade
+		player.Update(0.1f);
+		Test.Assert(player.GetCurrentStateIndex() == 1, "still fading: nothing transitions yet");
+		for (int i < 10)
+			player.Update(0.1f);
+		Test.Assert(player.GetCurrentStateIndex() == 2, "the trigger fired once the fade was done");
+		Test.Assert(!player.GetBool(jump), "and is spent");
+	}
+
 	/// A blend tree fires its DOMINANT clip's events, once. Two walk clips both carrying a
 	/// footstep would otherwise fire it twice for one step.
 	[Test]

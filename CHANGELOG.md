@@ -129,6 +129,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Animation: an animation graph trigger set while the graph crossfades fires once the fade is
+  done; it was cleared before anything could test it. A trigger now stays set until a transition
+  that tests it fires.
 - Animation: a glTF clip with cubic-spline keys plays as authored. Its keys were read from the
   wrong elements (a key's value from a tangent) and its tangents dropped, so it played the wrong
   poses; such a clip takes the fix at its next reimport.

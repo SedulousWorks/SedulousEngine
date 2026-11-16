@@ -150,7 +150,7 @@ class AnimationGraphPlayer
 
 	public bool GetBool(int32 index) => Valid(index) ? mParameters[index].BoolValue : false;
 
-	/// Sets a trigger, which the NEXT update consumes.
+	/// Sets a trigger, which stays set until a transition that tests it fires.
 	public void SetTrigger(int32 index)
 	{
 		if (Valid(index))
@@ -180,9 +180,8 @@ class AnimationGraphPlayer
 			// Only the base layer moves the character: an override or additive layer moves bones.
 			UpdateLayer(mGraph.Layers[i], mLayerRuntimes[i], deltaTime, i == 0);
 
-		// AFTER the layers, so every state machine saw the trigger before it is cleared.
-		for (let parameter in mParameters)
-			parameter.ConsumeTrigger();
+		// A trigger stays set until a transition that tests it fires (EvaluateTransitions): one set
+		// while a layer crossfades, when no transition is looked at, waits for the fade.
 
 		CombineLayers();
 		// One-shots and crossfades over the combined pose, then the pose modifiers (inverse
@@ -401,6 +400,13 @@ class AnimationGraphPlayer
 
 		if (best == null)
 			return;
+
+		// The triggers this transition tested are spent; others wait for theirs.
+		for (let condition in best.Conditions)
+		{
+			if ((condition.ParameterIndex >= 0) && (condition.ParameterIndex < mParameters.Count))
+				mParameters[condition.ParameterIndex].ConsumeTrigger();
+		}
 
 		runtime.PreviousStateIndex = runtime.CurrentStateIndex;
 		runtime.PreviousTime = runtime.CurrentTime;

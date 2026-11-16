@@ -187,9 +187,10 @@ static class AnimationControlTests
 		Test.Assert(player.GetBool(grounded));
 		Test.Assert(player.GetBool(jump), "armed");
 
-		// The update consumes the trigger and keeps the rest.
+		// The update keeps them all: a trigger waits for a transition that tests it, and this
+		// graph has none.
 		scene.Update(cStep);
-		Test.Assert(!player.GetBool(jump), "consumed");
+		Test.Assert(player.GetBool(jump), "still armed, nothing has tested it");
 		Test.Assert(Near(player.GetFloat(speed), 3.0f));
 		Test.Assert(player.GetInt(stance) == 2);
 		Test.Assert(player.GetBool(grounded));
