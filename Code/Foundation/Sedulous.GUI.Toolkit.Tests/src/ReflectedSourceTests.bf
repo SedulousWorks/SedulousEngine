@@ -775,6 +775,16 @@ class ReflectedSourceTests
 
 		bed.Commit("Priority", .((int64)7));
 		Test.Assert(bed.A.Priority == 7);
+		// Past its field's range, the nearest value it holds, not its low bits (300 was 44).
+		bed.Commit("Priority", .((int64)300));
+		Test.Assert(bed.A.Priority == 255);
+		bed.Commit("Priority", .((int64)-5));
+		Test.Assert(bed.A.Priority == 0);
+		bed.Commit("Bounces", .((int64)5000000000));
+		Test.Assert(bed.A.Bounces == int32.MaxValue);
+		bed.Commit("Bounces", .((int64)-5000000000));
+		Test.Assert(bed.A.Bounces == int32.MinValue);
+		bed.Commit("Priority", .((int64)7));
 		bed.Commit("Range", .(2.5));
 		CheckNear(bed.A.Range, 2.5);
 		bed.Commit("Kind", .((int64)2));

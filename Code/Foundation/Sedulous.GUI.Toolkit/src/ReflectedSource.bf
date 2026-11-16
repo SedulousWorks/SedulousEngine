@@ -1516,7 +1516,9 @@ class ReflectedPropertySource : IPropertySource
 		{
 		case .Bool:
 			return System.Variant.Create(value.AsBool);
-		case .Integer, .Enum:
+		case .Integer:
+			return ReflectedSourceDetail.IntegerOf(ReflectedSourceDetail.ClampInteger(value.AsInt, type), type);
+		case .Enum:
 			return ReflectedSourceDetail.IntegerOf(value.AsInt, type);
 		case .Float:
 			if (type == typeof(float))
@@ -2412,6 +2414,21 @@ internal static class ReflectedSourceDetail
 		case 4: return integer.IsSigned ? (int64)*(int32*)data : (int64)*(uint32*)data;
 		default: return *(int64*)data;
 		}
+	}
+
+	/// `value` clamped to what an integer of `type` holds: typed or pasted past its range, a value
+	/// takes the nearest it can hold (300 into a uint8 is 255), never the low bits (it was 44).
+	public static int64 ClampInteger(int64 value, System.Type type)
+	{
+		let size = type.Size;
+		if ((size >= 8) && type.IsSigned)
+			return value;
+		if (size >= 8)
+			return Math.Max(value, 0); // a uint64 takes no negative; its top half is past int64 anyway
+		let bits = size * 8;
+		let low = type.IsSigned ? -((int64)1 << (bits - 1)) : 0;
+		let high = type.IsSigned ? ((int64)1 << (bits - 1)) - 1 : ((int64)1 << bits) - 1;
+		return Math.Clamp(value, low, high);
 	}
 
 	/// `bits` as a Variant of `type` itself (an integer type, or an enum), so its setter takes it
