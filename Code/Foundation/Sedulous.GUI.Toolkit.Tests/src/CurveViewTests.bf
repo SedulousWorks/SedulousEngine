@@ -144,6 +144,23 @@ class CurveBed
 /// from their menu; the wheel zooming and a middle drag panning.
 class CurveViewTests
 {
+	/// A value range of no span keeps a span its values can tell apart, and ignores NaN: a zero
+	/// range at 1000 took the fixed least span, 1e-6, which float loses at 1000, and the grid's step
+	/// was then zero and its loop never ended.
+	[Test]
+	public static void AValueRangeOfNoSpanKeepsASpanItsValuesCanTellApartAndIgnoresNaN()
+	{
+		let bed = scope CurveBed();
+		bed.View.SetValueRange(1000.0f, 1000.0f);
+		Test.Assert(bed.View.ValueHigh > bed.View.ValueLow);
+		bed.View.SetValueRange(-50000.0f, -50000.0f);
+		Test.Assert(bed.View.ValueHigh > bed.View.ValueLow);
+		let low = bed.View.ValueLow;
+		let high = bed.View.ValueHigh;
+		bed.View.SetValueRange(Math.Sqrt(-1.0f), 1.0f); // NaN keeps the range the view had
+		Test.Assert((bed.View.ValueLow == low) && (bed.View.ValueHigh == high));
+	}
+
 	[Test]
 	public static void ACurveSetsEditPreviewsLiveCommitsOnceWithEachChangedCurvesKeysBeforeAndAfterOrCancels()
 	{

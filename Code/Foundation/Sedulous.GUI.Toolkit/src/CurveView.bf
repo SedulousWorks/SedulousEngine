@@ -158,8 +158,14 @@ class CurveView : UIWidget, ITimeAxisClient, ICurveSourceClient
 	public void SetValueRange(float low, float high)
 	{
 		var high;
-		if (high - low < 1e-6f)
-			high = low + 1e-6f;
+		if (!low.IsFinite || !high.IsFinite)
+			return; // a NaN or infinite range has no grid to draw: the view keeps its own
+		// The least span, relative to the values' size: a fixed 1e-6 is lost in float at 16 and
+		// above (1000 + 1e-6 is 1000), which left a zero range and a grid step of zero.
+		let size = Math.Max(Math.Abs(low), Math.Abs(high));
+		let least = Math.Max(1e-6f, size * 1e-5f);
+		if (high - low < least)
+			high = low + least;
 		mValueLow = low;
 		mValueHigh = high;
 		Invalidate();
@@ -617,7 +623,12 @@ class CurveView : UIWidget, ITimeAxisClient, ICurveSourceClient
 			}
 		}
 		let label = scope String();
-		for (int64 i = (int64)Ceil(mValueLow / valueStep); (float)i * valueStep <= mValueHigh; ++i)
+		// A line per step, at most one a pixel: a step too small for the values' float precision (or
+		// not finite) would otherwise never reach the top.
+		let maxLines = (int64)@box.Height + 2;
+		let stepUsable = valueStep.IsFinite && (valueStep > 0.0f);
+		int64 drawn = 0;
+		for (int64 i = stepUsable ? (int64)Ceil(mValueLow / valueStep) : 0; stepUsable && (drawn < maxLines) && ((float)i * valueStep <= mValueHigh); ++i, ++drawn)
 		{
 			let value = (float)i * valueStep;
 			let y = KeyPoint(0.0f, value).Y;
