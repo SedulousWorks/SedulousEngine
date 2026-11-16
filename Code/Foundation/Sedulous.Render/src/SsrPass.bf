@@ -17,7 +17,6 @@ class SsrPass
 {
 	/// Matches the scene's own.
 	private const TextureFormat cHdrFormat = .RGBA16Float;
-	private const int cMaxViews = 8;
 	private const uint32 cRetireFrames = 4;
 
 	private struct ViewHistory
@@ -62,7 +61,8 @@ class SsrPass
 	private ISampler mSampler = null;
 	private ISampler mLinearSampler = null;
 
-	private ViewHistory[cMaxViews] mViews = .();
+	/// Per history slot (RenderFrame.HistorySlotFor), grown to however many a frame has.
+	private List<ViewHistory> mViews = new .() ~ delete _;
 	private Dictionary<int, Entry> mBindGroups = new .() ~ delete _;
 	/// The resolve's groups, one per history view being read, rebuilt when ANY of its inputs
 	/// (the reflection, velocity, HDR) is a different view or texture.
@@ -162,7 +162,7 @@ class SsrPass
 	/// blending in what the slot's previous view saw.
 	public void InvalidateHistory(uint32 slot)
 	{
-		if (slot < cMaxViews)
+		if (slot < (uint32)mViews.Count)
 			mViews[slot].Valid = false;
 	}
 
@@ -173,8 +173,10 @@ class SsrPass
 		int32 viewportY, uint32 viewportWidth, uint32 viewportHeight, Float4x4 invProj,
 		Float4x4 proj, SsrParams parameters, uint32 viewIndex, uint32 frameIndex)
 	{
-		if ((width == 0) || (height == 0) || (viewIndex >= cMaxViews))
+		if ((width == 0) || (height == 0))
 			return hdr;
+		while (mViews.Count <= (int)viewIndex)
+			mViews.Add(default); // one per history slot, however many
 
 		let shaderVersion = ShaderVersion();
 		if (shaderVersion != mPipelineShaderVersion)
@@ -581,8 +583,9 @@ class SsrPass
 		}
 		mRetired.Clear();
 
-		for (int i < cMaxViews)
-			DestroyHistory(ref mViews[i]);
+		for (var history in ref mViews)
+			DestroyHistory(ref history);
+		mViews.Clear();
 
 		if (mPipeline != null)
 			mDevice.DestroyRenderPipeline(ref mPipeline);

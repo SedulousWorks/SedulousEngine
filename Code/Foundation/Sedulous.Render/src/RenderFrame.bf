@@ -109,8 +109,8 @@ class RenderFrame
 	private List<Float2> mPrevJitter = new .() ~ delete _;
 	private List<Float2> mCurJitter = new .() ~ delete _;
 
-	/// The passes' per view history arrays hold this many.
-	public const uint32 cHistorySlots = 8;
+	/// Frames a history slot goes unseen before a newcomer may take it.
+	public const uint32 cHistoryStaleFrames = 60;
 
 	private struct HistorySlot
 	{
@@ -120,7 +120,8 @@ class RenderFrame
 		public bool Used;
 	}
 
-	private HistorySlot[cHistorySlots] mHistorySlots = .();
+	/// Grows to the most views one frame draws.
+	private List<HistorySlot> mHistorySlots = new .() ~ delete _;
 
 	private List<ResolvedDraw> mPrepassResolved = new .() ~ delete _;
 	private List<ResolvedDraw> mShadowResolved = new .() ~ delete _;
@@ -225,15 +226,16 @@ class RenderFrame
 	/// jitter, the TAA, SSR, SSGI and exposure histories), from its ViewSettings.HistoryKey;
 	/// nought is the view's place in this frame's list, `viewIndex`. The same key gets the same
 	/// slot every frame, wherever the view falls in the list; a key new to the frame takes a
-	/// free slot or the one seen longest ago, and `fresh` says so (its state is the last
-	/// owner's, to be reset).
+	/// free slot, the stale one seen longest ago or a new one, and `fresh` says so (reused state
+	/// is the last owner's, to be reset).
 	public uint32 HistorySlotFor(uint64 historyKey, uint32 viewIndex, out bool fresh)
 	{
 		fresh = false;
 		// An unkeyed view is known by its place in the list, as before keys: a key of its own
 		// that no real key (a hash) is expected to meet.
 		let key = (historyKey != 0) ? historyKey : (0xFFFFFFFF00000000UL | viewIndex);
-		for (uint32 slot = 0; slot < cHistorySlots; slot++)
+		let count = (uint32)mHistorySlots.Count;
+		for (uint32 slot = 0; slot < count; slot++)
 		{
 			if (mHistorySlots[slot].Used && (mHistorySlots[slot].Key == key))
 			{
@@ -242,11 +244,12 @@ class RenderFrame
 			}
 		}
 
-		// New to the slots: a free one, else the one seen longest ago, never one taken this
-		// frame.
-		var pick = cHistorySlots;
-		var oldestAge = (uint32)0;
-		for (uint32 slot = 0; slot < cHistorySlots; slot++)
+		// New to the slots: a free one, else the one seen longest ago once it has gone stale,
+		// else a new one. A view drawn only now and then keeps its history between draws, and
+		// every view a frame draws has a slot of its own.
+		var pick = count;
+		var oldestAge = cHistoryStaleFrames;
+		for (uint32 slot = 0; slot < count; slot++)
 		{
 			if (!mHistorySlots[slot].Used)
 			{
@@ -254,15 +257,14 @@ class RenderFrame
 				break;
 			}
 			let age = (uint32)(mNoiseFrame &- mHistorySlots[slot].LastFrame);
-			if ((age > 0) && (age >= oldestAge))
+			if (age > oldestAge)
 			{
 				oldestAge = age;
 				pick = slot;
 			}
 		}
-		// More views this frame than slots: they share, as before keys.
-		if (pick == cHistorySlots)
-			pick = viewIndex % cHistorySlots;
+		if (pick == count)
+			mHistorySlots.Add(default);
 
 		mHistorySlots[pick] = .() { Key = key, LastFrame = mNoiseFrame, Used = true };
 		fresh = true;

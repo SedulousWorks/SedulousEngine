@@ -665,13 +665,13 @@ class RenderFrameTests
 		Test.Assert(!fresh);
 		frame.End();
 
-		// Every slot taken: a new key takes the one seen longest ago (the side view's), never
-		// one in use this frame, and is told it is fresh.
-		for (uint32 f = 0; f < RenderFrame.cHistorySlots; f++)
+		// Every slot taken: a new key takes the one gone stale longest ago (the side view's), never
+		// one in use, and is told it is fresh.
+		for (uint32 f = 0; f <= RenderFrame.cHistoryStaleFrames; f++)
 		{
 			frame.Begin(fixture.Encoder, f % 2);
 			frame.HistorySlotFor(1001, 0, out fresh);
-			for (uint64 k = 0; k < RenderFrame.cHistorySlots - 2; k++)
+			for (uint64 k = 0; k < 6; k++)
 				frame.HistorySlotFor(5000 + k, (uint32)(k + 1), out fresh);
 			frame.End();
 		}
@@ -680,6 +680,29 @@ class RenderFrameTests
 		let newcomer = frame.HistorySlotFor(9009, 1, out fresh);
 		Test.Assert(fresh);
 		Test.Assert(newcomer == side);
+		frame.End();
+
+		// More views in one frame than ever before: each takes a slot of its own, none shared.
+		const uint32 cMany = 20;
+		frame.Begin(fixture.Encoder, 1);
+		uint32[cMany] slots = default;
+		for (uint32 v < cMany)
+		{
+			slots[v] = frame.HistorySlotFor(7000 + v, v, out fresh);
+			Test.Assert(fresh);
+		}
+		frame.End();
+		for (uint32 a < cMany)
+		{
+			for (uint32 b = a + 1; b < cMany; b++)
+				Test.Assert(slots[a] != slots[b]);
+		}
+		frame.Begin(fixture.Encoder, 0);
+		for (uint32 v < cMany)
+		{
+			Test.Assert(frame.HistorySlotFor(7000 + v, v, out fresh) == slots[v]);
+			Test.Assert(!fresh);
+		}
 		frame.End();
 	}
 

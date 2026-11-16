@@ -15,7 +15,6 @@ namespace Sedulous.Render;
 class TaaPass
 {
 	public const TextureFormat HistoryFormat = .RGBA16Float;
-	public const int MaxViews = 8;
 
 	/// One view's pair, and which of them is next to be written.
 	private struct ViewHistory
@@ -43,7 +42,8 @@ class TaaPass
 	private ISampler mPointSampler = null;
 	private ISampler mLinearSampler = null;
 
-	private ViewHistory[MaxViews] mViews = .();
+	/// Per history slot (RenderFrame.HistorySlotFor), grown to however many a frame has.
+	private List<ViewHistory> mViews = new .() ~ delete _;
 	/// One bind group per history view being READ, rebuilt when ANY of the frame's transient
 	/// inputs (the jittered colour, motion, depth) is a different view or texture.
 	private BindGroupCache<3> mBindGroups = new .() ~ delete _;
@@ -117,7 +117,7 @@ class TaaPass
 	/// blending in what the slot's previous view saw.
 	public void InvalidateHistory(uint32 slot)
 	{
-		if (slot < MaxViews)
+		if (slot < (uint32)mViews.Count)
 			mViews[slot].Valid = false;
 	}
 
@@ -130,8 +130,10 @@ class TaaPass
 		RGHandle depth, uint32 viewIndex, uint32 width, uint32 height, float blendFactor,
 		float varianceGamma, float motionScale, float nearPlane, float farPlane, bool orthographic)
 	{
-		if ((viewIndex >= MaxViews) || (width == 0) || (height == 0))
+		if ((width == 0) || (height == 0))
 			return current;
+		while (mViews.Count <= (int)viewIndex)
+			mViews.Add(default); // one per history slot, however many
 
 		let shaderVersion = mShaders.Version("taa");
 		if (shaderVersion != mPipelineShaderVersion)
@@ -356,8 +358,9 @@ class TaaPass
 
 		mBindGroups.Release(scope (bindGroup) => { var group = bindGroup; mDevice.DestroyBindGroup(ref group); });
 
-		for (int i < MaxViews)
-			DestroyHistory(ref mViews[i]);
+		for (var history in ref mViews)
+			DestroyHistory(ref history);
+		mViews.Clear();
 
 		if (mPipeline != null)
 			mDevice.DestroyRenderPipeline(ref mPipeline);

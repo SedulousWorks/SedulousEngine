@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
@@ -15,9 +16,6 @@ namespace Sedulous.Render;
 /// into a multiplier clamped to the authored exposure window.
 class ExposurePass
 {
-	public const int cMaxViews = 8;
-	public const int cMaxFramesInFlight = 8;
-	public const int cMaxSlots = cMaxViews * cMaxFramesInFlight;
 	public const TextureFormat cFormat = .R16Float;
 
 	private struct ViewState
@@ -52,14 +50,17 @@ class ExposurePass
 	private uint64 mPipelineShaderVersion = 0;
 	private ISampler mSampler = null;
 
-	private ViewState[cMaxViews] mViews = .();
-	private Entry[cMaxSlots] mBindGroups = .();
+	/// Per history slot (RenderFrame.HistorySlotFor), grown to however many a frame has.
+	private List<ViewState> mViews = new .() ~ delete _;
+	/// Per (history slot, frame in flight).
+	private ViewSlots<Entry> mBindGroups = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
 		mDevice = device;
 		mShaders = shaders;
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mBindGroups.SetFramesInFlight(mFramesInFlight);
 	}
 
 	public ~this()
@@ -109,14 +110,14 @@ class ExposurePass
 
 	/// Whether `viewIndex`'s last declared pass took the measured value outright (its first
 	/// frame, or the first of another scene) instead of easing from the last frame.
-	public bool Snapped(uint32 viewIndex) => mViews[viewIndex % cMaxViews].Snapped;
+	public bool Snapped(uint32 viewIndex) => (viewIndex < (uint32)mViews.Count) && mViews[viewIndex].Snapped;
 
 	/// Forgets history slot `slot`'s accumulated state, the frame having handed the slot to
 	/// another view (RenderFrame.HistorySlotFor): its next frame starts fresh rather than
 	/// blending in what the slot's previous view saw.
 	public void InvalidateHistory(uint32 slot)
 	{
-		if (slot < cMaxViews)
+		if (slot < (uint32)mViews.Count)
 			mViews[slot].Valid = false;
 	}
 
@@ -134,7 +135,9 @@ class ExposurePass
 		if (pipeline == null)
 			return result;
 
-		let view = viewIndex % cMaxViews;
+		let view = viewIndex;
+		while (mViews.Count <= (int)view)
+			mViews.Add(default); // one per history slot, however many
 		if (!EnsureState(ref mViews[view]))
 			return result;
 		// Another scene in this view (a level loaded, or the slot taken by another view's scene):
@@ -172,7 +175,6 @@ class ExposurePass
 		// on the view alone mismatches every frame, and rebuilding it then frees a set the
 		// previous frame's command buffer is still reading. Folding the frame in means a slot
 		// is only rewritten once that many frames have passed, its buffer long since done.
-		let slot = (int)view * (int)mFramesInFlight + (int)(frameIndex % mFramesInFlight);
 
 		graph.AddRenderPass("exposure.measure", scope (builder) =>
 			{
@@ -184,7 +186,7 @@ class ExposurePass
 
 				builder.SetExecute(new (encoder) =>
 					{
-						let bindGroup = EnsureBindGroup(slot, graph.GetTextureView(hdr),
+						let bindGroup = EnsureBindGroup(view, frameIndex, graph.GetTextureView(hdr),
 							previousView, graph.GetTextureGeneration(hdr));
 						if (bindGroup == null)
 							return;
@@ -298,19 +300,20 @@ class ExposurePass
 		return mPipeline;
 	}
 
-	private IBindGroup EnsureBindGroup(int slot, ITextureView hdr, ITextureView previous,
+	private IBindGroup EnsureBindGroup(uint32 view, uint32 frameIndex, ITextureView hdr, ITextureView previous,
 		uint64 generation)
 	{
-		if ((slot < 0) || (slot >= cMaxSlots) || (hdr == null) || (previous == null))
+		if ((hdr == null) || (previous == null))
 			return null;
+		ref Entry slot = ref mBindGroups.At(view, frameIndex);
 
-		if ((mBindGroups[slot].BindGroup != null) && (mBindGroups[slot].Hdr == hdr)
-			&& (mBindGroups[slot].Previous == previous)
-			&& (mBindGroups[slot].Generation == generation))
-			return mBindGroups[slot].BindGroup;
+		if ((slot.BindGroup != null) && (slot.Hdr == hdr)
+			&& (slot.Previous == previous)
+			&& (slot.Generation == generation))
+			return slot.BindGroup;
 
-		if (mBindGroups[slot].BindGroup != null)
-			mDevice.DestroyBindGroup(ref mBindGroups[slot].BindGroup);
+		if (slot.BindGroup != null)
+			mDevice.DestroyBindGroup(ref slot.BindGroup);
 
 		var entries = BindGroupEntry[3](
 			BindGroupEntry.TextureEntry(hdr),
@@ -324,10 +327,10 @@ class ExposurePass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mBindGroups[slot].BindGroup = bindGroup;
-		mBindGroups[slot].Hdr = hdr;
-		mBindGroups[slot].Previous = previous;
-		mBindGroups[slot].Generation = generation;
+		slot.BindGroup = bindGroup;
+		slot.Hdr = hdr;
+		slot.Previous = previous;
+		slot.Generation = generation;
 		return bindGroup;
 	}
 
@@ -336,14 +339,15 @@ class ExposurePass
 		if (mDevice == null)
 			return;
 
-		for (int i < cMaxSlots)
+		for (var slot in ref mBindGroups.All)
 		{
-			if (mBindGroups[i].BindGroup != null)
-				mDevice.DestroyBindGroup(ref mBindGroups[i].BindGroup);
+			if (slot.BindGroup != null)
+				mDevice.DestroyBindGroup(ref slot.BindGroup);
 		}
 
-		for (int i < cMaxViews)
-			DestroyState(ref mViews[i]);
+		for (var state in ref mViews)
+			DestroyState(ref state);
+		mViews.Clear();
 
 		if (mPipeline != null)
 			mDevice.DestroyRenderPipeline(ref mPipeline);
