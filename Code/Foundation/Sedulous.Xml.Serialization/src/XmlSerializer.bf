@@ -148,7 +148,19 @@ class XmlSerializer : Serializer
 		}
 
 		if (uint32.Parse(Trimmed(element.GetAttribute("count"), .. scope String())) case .Ok(let parsed))
+		{
 			count = parsed;
+			// Every element an array writes is at least one child element, so a count past them
+			// is a file's claim, not its contents (a reader reserves that many first).
+			uint32 children = 0;
+			for (var child = element.FirstChildElement; child != null; child = child.NextSiblingElement)
+				children++;
+			if (count > children)
+			{
+				count = 0;
+				FailRead(.InvalidArgument, "an array's count is more than its elements");
+			}
+		}
 		else
 		{
 			count = 0;

@@ -222,6 +222,32 @@ class XmlSerializerTests
 			Test.Assert(target[i] == source[i]);
 	}
 
+	/// An array's count past its elements is refused, not reserved: a file that claims four billion
+	/// elements over the two it has made a reader reserve them all.
+	[Test]
+	public static void AnArraysCountPastItsElementsIsRefused()
+	{
+		let source = scope List<int32>()..Add(10)..Add(20);
+		let text = scope String();
+		{
+			let writer = scope XmlSerializer();
+			writer.Key("nums");
+			SerializeList(writer, source);
+			writer.GetOutput(text);
+		}
+		Test.Assert(text.Contains("count=\"2\""), text);
+		text.Replace("count=\"2\"", "count=\"4000000000\"");
+
+		let document = scope XmlDocument();
+		Test.Assert(document.Parse(text) == .Ok);
+		let target = scope List<int32>();
+		let reader = scope XmlSerializer(document);
+		reader.Key("nums");
+		SerializeList(reader, target);
+		Test.Assert(!reader.IsOk);
+		Test.Assert(target.Count == 0);
+	}
+
 	[Test]
 	public static void ArrayOfObjectsRoundTrip()
 	{
