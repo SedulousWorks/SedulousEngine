@@ -127,6 +127,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Navigation: a navmesh of more than 256 tiles loads; it failed silently before. A tile with more
+  polygons than its grid can address is refused with an error that says to bake smaller tiles.
 - Rendering: in a split screen, ambient occlusion and TAA work on each side as they do on a
   full screen; one side's occlusion was misplaced and a moving camera smeared under TAA.
 - Rendering: in a scene with more than 256 lights, the lights near the camera and the brightest

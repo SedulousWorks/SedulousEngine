@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using recastnavigation_Beef;
 
 namespace Sedulous.Navigation;
@@ -11,9 +12,11 @@ namespace Sedulous.Navigation;
 /// must outlive both.
 class NavigationMesh
 {
-	/// The most polygons one tile may hold. A tile is bounded by its own cell count long
-	/// before this, so it is a ceiling rather than a budget.
-	private const int32 cMaxPolysPerTile = 1 << 14;
+	/// The most poly bits a 32-bit ref gives a tile, whatever the grid. A tile is bounded by its
+	/// own cell count long before this, so it is a ceiling rather than a budget.
+	private const int32 cMaxPolyBits = 14;
+	/// The fewest salt bits Detour gives a 32-bit ref.
+	private const int32 cSaltBits = 10;
 
 	private dtNavMeshHandle mNavMesh = default;
 	private float mAgentRadius = 0.0f;
@@ -46,6 +49,30 @@ class NavigationMesh
 	/// INTERNAL: the backend's mesh, for building a query or a crowd on. Default when the mesh
 	/// holds nothing.
 	public dtNavMeshHandle NativeHandle => mNavMesh;
+
+	/// The poly bits a 32-bit ref has for a grid of `maxTiles`: what the tile bits and the salt
+	/// bits leave, at most 14. Below 1, the grid is too big for 32-bit refs.
+	private static int32 PolyBitsFor(int32 maxTiles)
+	{
+		int32 tileBits = 0;
+		while (((int64)1 << tileBits) < maxTiles)
+			tileBits++;
+		return Math.Min(cMaxPolyBits, 32 - cSaltBits - tileBits);
+	}
+
+	/// Whether a tile's polys fit the mesh's poly bits (a ref past them would name another
+	/// tile's poly). Logged when one does not.
+	private static bool TileFits(uint8* data, int size, int32 maxPolys)
+	{
+		if (size < sizeof(dtMeshHeader))
+			return false;
+		let header = (dtMeshHeader*)data;
+		if (header.polyCount <= maxPolys)
+			return true;
+		GlobalLog(.Error, "Navigation: a navmesh tile of {} polys is more than its grid's refs address ({}): bake with smaller tiles",
+			header.polyCount, maxPolys);
+		return false;
+	}
 
 	/// Loads a blob, REPLACING whatever was there.
 	public Result<void, ErrorCode> Load(Span<uint8> data)
@@ -80,7 +107,18 @@ class NavigationMesh
 		meshParams.tileWidth = info.TileWorldSize;
 		meshParams.tileHeight = info.TileWorldSize;
 		meshParams.maxTiles = info.TileCountX * info.TileCountY;
-		meshParams.maxPolys = cMaxPolysPerTile;
+		// A 32-bit poly ref holds a salt, the tile and the poly. A fixed 14 poly bits left 8 for
+		// the tile, so a grid of more than 256 tiles never loaded: the polys take what the grid
+		// leaves (up to 14), and each tile is checked against it.
+		let polyBits = PolyBitsFor(meshParams.maxTiles);
+		if (polyBits < 1)
+		{
+			GlobalLog(.Error, "Navigation: a navmesh of {} tiles is more than one 32-bit poly ref can address",
+				meshParams.maxTiles);
+			C_dtFreeNavMesh(mesh);
+			return .Err(.NotSupported);
+		}
+		meshParams.maxPolys = (int32)1 << polyBits;
 
 		if (C_dtStatusFailed(C_dtNavMeshInit(mesh, &meshParams)) != 0)
 		{
@@ -115,6 +153,12 @@ class NavigationMesh
 			}
 			Internal.MemCpy(tileBytes, &data[cursor], (int)record.DataSize);
 			cursor += (int)record.DataSize;
+			if (!TileFits(tileBytes, (int)record.DataSize, meshParams.maxPolys))
+			{
+				C_dtFree(tileBytes);
+				C_dtFreeNavMesh(mesh);
+				return .Err(.NotSupported);
+			}
 
 			// Detour places the tile by the coordinates baked into its own header.
 			let added = C_dtNavMeshAddTile(mesh, tileBytes, (int32)record.DataSize,
@@ -161,6 +205,11 @@ class NavigationMesh
 		if (bytes == null)
 			return .Err(.OutOfMemory);
 		Internal.MemCpy(bytes, tileData.Ptr, tileData.Length);
+		if (!TileFits(bytes, tileData.Length, meshParams.maxPolys))
+		{
+			C_dtFree(bytes);
+			return .Err(.NotSupported);
+		}
 
 		let added = C_dtNavMeshAddTile(mNavMesh, bytes, (int32)tileData.Length,
 			(int32)dtTileFlags.DT_TILE_FREE_DATA, 0, null);
