@@ -127,6 +127,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Physics: a world that reaches its body limit, or whose contact caches run out in a step, says so
+  once in the log, naming the setting to raise; before, bodies were silently not made or passed
+  through each other. Scenes share one physics worker pool instead of each starting a thread per
+  core.
 - Physics: a terrain takes its entity's scale (it collided at its unscaled size), and a terrain
   hole's drawn rim has collision, so the player no longer falls through ground drawn around a hole.
 - Physics: moving a simulated body's entity (from a script or the editor) moves the body; editing

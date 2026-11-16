@@ -23,7 +23,11 @@ class PhysicsWorld
 	private JPH_ObjectLayerPairFilter* mPairFilter = null;
 	private JPH_ObjectVsBroadPhaseLayerFilter* mObjectVsBroadPhase = null;
 	private JPH_PhysicsSystem* mSystem = null;
+	/// Shared by every world (PhysicsJobPool).
 	private JPH_JobSystem* mJobSystem = null;
+	/// Budgets met, each said once: a body past MaxBodies, and the step's own caches.
+	private bool mSaidBodyLimit = false;
+	private JPH_PhysicsUpdateError mSaidUpdateErrors = .JPH_PhysicsUpdateError_None;
 	private JPH_ContactListener* mContactListener = null;
 
 	/// A joint's id is its slot, and a freed slot is a null joint.
@@ -91,14 +95,7 @@ class PhysicsWorld
 			};
 		mSystem = JPH_PhysicsSystem_Create(&systemSettings);
 
-		var config = JobSystemThreadPoolConfig()
-			{
-				maxJobs = (uint32)JPH_MAX_PHYSICS_JOBS,
-				maxBarriers = (uint32)JPH_MAX_PHYSICS_BARRIERS,
-				// One less than the machine has, since the calling thread joins the step.
-				numThreads = Math.Max(JobSystem.LogicalCoreCount() - 1, 1)
-			};
-		mJobSystem = JPH_JobSystemThreadPool_Create(&config);
+		mJobSystem = PhysicsJobPool.Acquire();
 
 		var gravity = ToJolt(mSettings.Gravity);
 		JPH_PhysicsSystem_SetGravity(mSystem, &gravity);
@@ -136,7 +133,7 @@ class PhysicsWorld
 		if (mContactListener != null)
 			JPH_ContactListener_Destroy(mContactListener);
 		if (mJobSystem != null)
-			JPH_JobSystem_Destroy(mJobSystem);
+			PhysicsJobPool.Release();
 
 		JoltRuntime.Release();
 	}
@@ -221,13 +218,30 @@ class PhysicsWorld
 	/// One fixed step. The contacts buffered during it are drained afterwards.
 	public void Step(float deltaTime, int32 collisionSteps = 1)
 	{
-		JPH_PhysicsSystem_Update(mSystem, deltaTime, collisionSteps, mJobSystem);
+		let errors = JPH_PhysicsSystem_Update(mSystem, deltaTime, collisionSteps, mJobSystem);
+		ReportUpdateErrors(errors);
 		FinishContacts();
 	}
 
 	/// Whether the body is simulating: false once it has come to rest and fallen asleep (and for
 	/// a static body or one that does not exist).
 	public bool IsBodyActive(BodyId id) => JPH_BodyInterface_IsActive(Bodies, id.Value);
+
+	/// A cache that ran out drops contacts for the step, and bodies pass through each other:
+	/// each is said once per world, naming the setting to raise.
+	private void ReportUpdateErrors(JPH_PhysicsUpdateError errors)
+	{
+		let fresh = (int32)errors & ~(int32)mSaidUpdateErrors;
+		if (fresh == 0)
+			return;
+		mSaidUpdateErrors = (JPH_PhysicsUpdateError)((int32)mSaidUpdateErrors | fresh);
+		if ((fresh & (int32)JPH_PhysicsUpdateError.JPH_PhysicsUpdateError_BodyPairCacheFull) != 0)
+			GlobalLog(.Error, "Physics: too many touching body pairs this step (PhysicsWorldSettings.MaxBodyPairs): some contacts were dropped");
+		if ((fresh & (int32)JPH_PhysicsUpdateError.JPH_PhysicsUpdateError_ContactConstraintsFull) != 0)
+			GlobalLog(.Error, "Physics: too many contacts this step (PhysicsWorldSettings.MaxContactConstraints): some were dropped");
+		if ((fresh & (int32)JPH_PhysicsUpdateError.JPH_PhysicsUpdateError_ManifoldCacheFull) != 0)
+			GlobalLog(.Error, "Physics: the contact cache ran out this step: some contacts were dropped");
+	}
 
 	public int BodyCount => (int)JPH_PhysicsSystem_GetNumBodies(mSystem);
 
@@ -473,6 +487,13 @@ class PhysicsWorld
 		let activation = (kind == .Static) ? JPH_Activation.JPH_Activation_DontActivate
 			: JPH_Activation.JPH_Activation_Activate;
 		let id = JPH_BodyInterface_CreateAndAddBody(Bodies, settings, activation);
+		if ((id == BodyId.Invalid) && !mSaidBodyLimit
+			&& (JPH_PhysicsSystem_GetNumBodies(mSystem) >= mSettings.MaxBodies))
+		{
+			GlobalLog(.Error, "Physics: the world holds its most bodies ({}, PhysicsWorldSettings.MaxBodies): no more are made",
+				mSettings.MaxBodies);
+			mSaidBodyLimit = true;
+		}
 		return (id == BodyId.Invalid) ? BodyId() : BodyId(id);
 	}
 
