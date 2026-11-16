@@ -271,4 +271,42 @@ class ParticleSystemTests
 		// The dispatch would cost more than the work.
 		Test.Assert(system.ResolvedMode == .CPU);
 	}
+
+	/// The detail level scaled each step's whole spawn count: 30 a second at 60 steps a second
+	/// is 0 or 1 a step, and half of 1 truncated to 0, so a thinned slow emitter spawned nothing.
+	[Test]
+	public static void ASlowEmitterAtHalfDetailStillSpawnsAtHalfItsRate()
+	{
+		let system = scope ParticleSystem(1000);
+		BuildFountain(system, 30.0f);
+		system.LodStartDistance = 10.0f;
+		system.LodCullDistance = 30.0f;
+		for (int i < 60) // one second, the camera halfway through the fade
+			system.Update(1.0f / 60.0f, .(20.0f, 0.0f, 0.0f));
+		// Halfway through the fade (with the minimum rate's floor, a little over a half).
+		let scale = system.LodRateMultiplier;
+		Test.Assert((scale > 0.4f) && (scale < 0.7f), scope $"scale {scale}");
+		let expected = 30.0f * scale; // a second at the thinned rate
+		let alive = (float)system.AliveCount;
+		Test.Assert((alive >= expected - 2.0f) && (alive <= expected + 2.0f), scope $"{alive} alive, {expected} expected");
+	}
+
+	/// The last position started at the origin: an emitter placed far away read the whole
+	/// distance as one step's motion, and its first particles flew off at it.
+	[Test]
+	public static void TheFirstStepInheritsNoVelocityFromTheEmittersPlace()
+	{
+		let system = scope ParticleSystem(100);
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(1.0f, 1.0f);
+		let velocity = system.AddInitializer<VelocityInitializer>();
+		velocity.BaseVelocity = .(0, 0, 0);
+		velocity.VelocityInheritance = 1.0f;
+		system.Emitter.Mode = .Burst;
+		system.Emitter.BurstCount = 4;
+		system.Position = .(500.0f, 0.0f, 0.0f);
+		system.Update(1.0f / 60.0f);
+		Test.Assert(system.AliveCount == 4);
+		let speed = Length(system.Streams.Velocities[0]);
+		Test.Assert(speed < 0.01f, scope $"first particle at {speed} m/s");
+	}
 }

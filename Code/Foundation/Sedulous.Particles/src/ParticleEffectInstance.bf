@@ -76,7 +76,12 @@ class ParticleEffectInstance
 		if (mEffect == null)
 			return;
 		for (int32 i = 0; i < mEffect.SystemCount; i++)
-			mEffect.GetSystem(i).Emitter.IsEmitting = true;
+		{
+			let emitter = mEffect.GetSystem(i).Emitter;
+			if (emitter.CycleDone)
+				emitter.Reset(); // a finished one-shot plays again from its start
+			emitter.IsEmitting = true;
+		}
 	}
 
 	public void Reset()
@@ -112,9 +117,11 @@ class ParticleEffectInstance
 					{
 						// A spatial hash rather than the generator: the gate has to be
 						// DETERMINISTIC per event, and drawing here would couple the child's
-						// spawns to however many events the parent happened to produce.
-						let hash = (uint32)(event.Position.X * 73856093.0f)
-							^ (uint32)(event.Position.Y * 19349663.0f);
+						// spawns to however many events the parent happened to produce. From the
+						// bits of the position: a negative coordinate cast to uint32 is undefined.
+						var x = event.Position.X;
+						var y = event.Position.Y;
+						let hash = (*(uint32*)&x * 73856093U) ^ (*(uint32*)&y * 19349663U);
 						if ((float)(hash % 1000) / 1000.0f > link.Probability)
 							continue;
 					}

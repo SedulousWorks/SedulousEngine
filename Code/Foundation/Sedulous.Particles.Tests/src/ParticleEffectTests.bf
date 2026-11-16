@@ -282,4 +282,26 @@ class ParticleEffectTests
 		Test.Assert(sparks.AliveCount == 10, scope $"{sparks.AliveCount}");
 		Test.Assert(shells.AliveCount == 0);
 	}
+
+	/// A non-looping emitter past its duration stopped spawning but still counted as emitting,
+	/// so the effect never finished (a spent one-shot was never cleaned up).
+	[Test]
+	public static void AOneShotFinishesAndPlayPlaysItAgain()
+	{
+		let effect = scope ParticleEffect("puff");
+		let system = effect.AddSystem(200);
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(0.2f, 0.2f);
+		system.Emitter.Mode = .Continuous;
+		system.Emitter.SpawnRate = 100.0f;
+		system.Emitter.Duration = 0.3f;
+		system.Emitter.Looping = false;
+		let instance = scope ParticleEffectInstance(effect);
+		for (int i < 60)
+			instance.Update(1.0f / 60.0f);
+		Test.Assert(instance.IsFinished, "the spent one-shot finished");
+
+		instance.Play();
+		instance.Update(0.1f);
+		Test.Assert(system.AliveCount > 0, "a played one-shot runs from its start");
+	}
 }

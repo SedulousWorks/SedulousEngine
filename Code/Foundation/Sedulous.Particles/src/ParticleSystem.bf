@@ -111,6 +111,8 @@ class ParticleSystem
 	private float mStepDeltaTime = 0.0f;
 	private float mLodRateMultiplier = 1.0f;
 	private bool mPrewarmed = false;
+	/// False until the first step (and after a reset).
+	private bool mHasPrevPosition = false;
 	private SimulationMode mResolvedMode = .CPU;
 
 	private ParticleEvent[MaxEventsPerFrame] mDeathEvents = .();
@@ -343,11 +345,13 @@ class ParticleSystem
 		mBirthCount = 0;
 
 		mLodRateMultiplier = CalculateLodMultiplier(cameraPosition);
-		var spawnCount = Emitter.CalculateSpawnCount(deltaTime);
-		spawnCount = (mLodRateMultiplier <= 0.0f)
-			? 0
-			: (int32)((float)spawnCount * mLodRateMultiplier);
-		SpawnParticles(spawnCount);
+		if (!mHasPrevPosition)
+		{
+			// The first step: no last position to measure motion from, so none is inherited.
+			PrevPosition = Position;
+			mHasPrevPosition = true;
+		}
+		SpawnParticles(Emitter.CalculateSpawnCount(deltaTime, Math.Max(mLodRateMultiplier, 0.0f)));
 
 		var context = ParticleUpdateContext();
 		context.TotalTime = mTotalTime;
@@ -398,6 +402,7 @@ class ParticleSystem
 		mTotalTime = 0.0f;
 		mStepDeltaTime = 0.0f;
 		mPrewarmed = false;
+		mHasPrevPosition = false;
 		mRandom = .(mSeed);
 	}
 

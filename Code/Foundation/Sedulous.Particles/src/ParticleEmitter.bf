@@ -42,8 +42,9 @@ class ParticleEmitter
 	///
 	/// The continuous rate is ACCUMULATED rather than rounded per frame, so a rate below one
 	/// per frame still emits at the right average and a frame rate change does not change how
-	/// many particles come out.
-	public int32 CalculateSpawnCount(float deltaTime)
+	/// many particles come out. `rateScale` thins the emission (level of detail): applied to the
+	/// rate before it gathers, so a slow emitter at half detail still spawns, at half its rate.
+	public int32 CalculateSpawnCount(float deltaTime, float rateScale = 1.0f)
 	{
 		if (!IsEmitting)
 			return 0;
@@ -54,7 +55,10 @@ class ParticleEmitter
 			if (mCycleTime >= Duration)
 			{
 				if (!Looping)
+				{
+					IsEmitting = false; // a one-shot done: the effect can finish
 					return 0;
+				}
 				// A loop rather than a modulo, so a step longer than the whole window still
 				// lands inside it.
 				while (mCycleTime >= Duration)
@@ -70,7 +74,7 @@ class ParticleEmitter
 
 		if ((Mode == .Continuous) || (Mode == .ContinuousAndBurst))
 		{
-			mSpawnAccumulator += SpawnRate * deltaTime;
+			mSpawnAccumulator += SpawnRate * rateScale * deltaTime;
 			let whole = (int32)mSpawnAccumulator;
 			count += whole;
 			// The fraction is KEPT, which is the whole point of the accumulator.
@@ -83,7 +87,7 @@ class ParticleEmitter
 			{
 				if (!mSingleBurstDone)
 				{
-					count += BurstCount;
+					count += ScaledBurst(rateScale);
 					mSingleBurstDone = true;
 				}
 			}
@@ -94,7 +98,7 @@ class ParticleEmitter
 				while ((mBurstTimer >= BurstInterval)
 					&& ((BurstCycles == 0) || (mBurstCyclesCompleted < BurstCycles)))
 				{
-					count += BurstCount;
+					count += ScaledBurst(rateScale);
 					mBurstTimer -= BurstInterval;
 					mBurstCyclesCompleted++;
 				}
@@ -103,6 +107,13 @@ class ParticleEmitter
 
 		return count;
 	}
+
+	/// A one-shot whose duration has run out (its cycle starts over on Reset).
+	public bool CycleDone => (Duration > 0.0f) && !Looping && (mCycleTime >= Duration);
+
+	/// A burst thinned by the level of detail, rounded: a burst of one at half detail still fires.
+	private int32 ScaledBurst(float rateScale)
+		=> (rateScale >= 1.0f) ? BurstCount : (int32)((float)BurstCount * rateScale + 0.5f);
 
 	/// Forgets the timing state, leaving the configuration alone.
 	public void Reset()

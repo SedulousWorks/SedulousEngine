@@ -129,6 +129,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Particles: a one-shot effect finishes once its emitters run out, and playing it again starts it
+  over; a slow emitter thinned by distance still emits (at its thinned rate) instead of stopping;
+  an effect's first particles no longer fly off as if the emitter had travelled from the origin.
 - Animation: an animation graph trigger set while the graph crossfades fires once the fade is
   done; it was cleared before anything could test it. A trigger now stays set until a transition
   that tests it fires.
