@@ -353,4 +353,57 @@ class MultiMeshLifecycleTests
 		Test.Assert(renderer.ReadMultiMeshInstanceSet(0x51, 0, let plainBlock));
 		Test.Assert(Math.Abs(plainBlock.FadeEnd) < 0.001f, "unfaded");
 	}
+
+	/// A probe's faces each get a view slot, and a view's runs share one: the view ring was sized
+	/// by the frame's draws and took a slot per renderer run, so one mesh and a probe capturing its
+	/// six faces asked for seven slots of a ring holding one, the faces past the first drew nothing
+	/// and the probe baked empty.
+	[Test]
+	public static void AProbesFacesEachGetAViewSlotAndAViewsRunsShareOne()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+		let renderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		if (renderer.Initialize() case .Err)
+			return;
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MaterialPresets.CreatePbr("lit", .(1, 1, 1, 1), 0.0f, 0.5f);
+		defer delete material;
+		let rd = scope MeshRenderData();
+		rd.WorldRadius = 1.0f;
+		rd.Mesh = cube;
+		rd.Material = material;
+		rd.RendererId = renderer.RendererId;
+		rd.Category = RenderCategories.Opaque;
+		var item = DrawItem(0, rd);
+
+		// A first frame of one view teaches the ring one view.
+		renderer.SetCaptureFacePasses(0);
+		renderer.PrepareFrame(1, 0);
+		let draws = scope List<ResolvedDraw>();
+		renderer.Resolve(RenderRecordContext(), .(&item, 1), draws);
+		renderer.FinishFrame();
+		Test.Assert(draws.Count == 1, scope $"{draws.Count} draws");
+
+		// The capture frame: the main view, three runs of it, then six faces, each its own camera.
+		const uint32 cFaces = 6;
+		renderer.SetCaptureFacePasses(cFaces);
+		renderer.PrepareFrame(1, 1);
+		draws.Clear();
+		for (int run < 3)
+			renderer.Resolve(RenderRecordContext(), .(&item, 1), draws);
+		for (uint32 face < cFaces)
+		{
+			var faceContext = RenderRecordContext();
+			faceContext.ViewProj = Float4x4.Translation(.((float)(face + 1), 0, 0));
+			renderer.Resolve(faceContext, .(&item, 1), draws);
+		}
+		Test.Assert(renderer.ViewSlotsUsed == 1 + cFaces, scope $"{renderer.ViewSlotsUsed} view slots");
+		renderer.FinishFrame();
+		Test.Assert(draws.Count == 3 + cFaces, "every face drew");
+	}
 }

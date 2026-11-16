@@ -29,6 +29,8 @@ class MeshRenderer : Renderer
 	private const uint64 cViewSlot = 256;
 	/// The view block is larger than one alignment unit, the cascades seeing to that.
 	private const uint64 cViewDataSlot = 1024;
+	/// The view ring's start; it grows to the frame's views.
+	private const uint32 cMinViewSlots = 8;
 	/// The per view light budget, the clustering doing the narrowing.
 	private const uint32 cMaxLights = 256;
 	/// One per shadow pass and category run, sized with headroom since a slot is tiny.
@@ -204,7 +206,8 @@ class MeshRenderer : Renderer
 	/// By (entity, slot), mixed into one key; the entry's own fields tell a collision apart.
 	private Dictionary<uint64, OverrideInstance> mOverrideInstances = new .() ~ delete _;
 
-	private DynamicUniformRing mViewRing ~ delete _;
+	/// One slot per distinct view block a frame: a view's runs and passes share one.
+	private ViewUniformRing mViewRing ~ delete _;
 	private DynamicUniformRing mShadowViewRing ~ delete _;
 	private DynamicUniformRing mObjectRing ~ delete _;
 	private DynamicUniformRing mInstanceRing ~ delete _;
@@ -555,6 +558,9 @@ class MeshRenderer : Renderer
 		mPickPasses = passes;
 	}
 
+	/// The view slots this frame has used (distinct view blocks).
+	public uint32 ViewSlotsUsed => mViewRing.FrameSlots;
+
 	public override void SetCaptureFacePasses(uint32 passes)
 	{
 		mCaptureFacePasses = passes;
@@ -651,9 +657,7 @@ class MeshRenderer : Renderer
 		// A pick pass takes a shadow view slot each, as a shadow pass does.
 		let shadowViewCap = cMaxShadowPasses + mPickPasses;
 
-		// The view ring takes one slot per pass view.
-		if (!mViewRing.Reserve(maxDraws)
-			|| !mShadowViewRing.Reserve(shadowViewCap)
+		if (!mShadowViewRing.Reserve(shadowViewCap)
 			|| !mObjectRing.Reserve(drawCap) || !mInstanceRing.Reserve(drawCap)
 			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(Math.Max(cMaxLights, mSceneLights))
 			|| !mLocalShadowRing.Reserve(cMaxLocalShadows) || !mBoneRing.Reserve(mBoneSlotsWanted))
@@ -669,8 +673,11 @@ class MeshRenderer : Renderer
 				ref mInstanceBindGroupGeneration, true, mNoFadeSetBuffer))
 			return;
 
+		// The view ring holds the views the last frame drew, and a probe's faces when one captures
+		// this frame: a face missing its slot would bake an empty probe.
+		if (!mViewRing.BeginFrame(frameIndex, mCaptureFacePasses))
+			return;
 		mFrameIndex = frameIndex;
-		mViewRing.BeginFrame(frameIndex);
 		mShadowViewRing.BeginFrame(frameIndex);
 		mObjectRing.BeginFrame(frameIndex);
 		mInstanceRing.BeginFrame(frameIndex);
@@ -1580,8 +1587,10 @@ class MeshRenderer : Renderer
 			viewData.ClusterLogBias = context.Cluster.LogBias;
 		}
 
-		*(MeshViewData*)view.Ptr = viewData;
-		let viewOffset = view.ByteOffset;
+		// Every run of a pass, and every pass of a view, writes the same block: one slot for all.
+		uint32 viewOffset = 0;
+		if (!mViewRing.SlotFor(&viewData, (uint32)sizeof(MeshViewData), out viewOffset))
+			return;
 
 		// A blended run is never instanced: its back to front order has to dominate.
 		let allowInstancing = (items[0].Data.Category != RenderCategories.Transparent);
@@ -3274,9 +3283,9 @@ class MeshRenderer : Renderer
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let group)))
 			return mDummyClusterBindGroup;
 
-		mClusterBindGroups[slot] = group;
-		mClusterBindGroupOffsets[slot] = offsets;
-		mClusterBindGroupVersions[slot] = version;
+		slot.Group = group;
+		slot.Offsets = offsets;
+		slot.Version = version;
 		return group;
 	}
 

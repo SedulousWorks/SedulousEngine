@@ -47,10 +47,11 @@ class ViewUniformRing
 
 	public void SetRetireQueue(GpuRetireQueue retire) => mRing.SetRetireQueue(retire);
 
-	/// Starts a frame: the ring holds every view the last frame asked for.
-	public bool BeginFrame(uint32 frameIndex)
+	/// Starts a frame: the ring holds every view the last frame asked for, and `extraViews` this
+	/// frame adds on top (a probe capture's faces, which cannot wait a frame for their slots).
+	public bool BeginFrame(uint32 frameIndex, uint32 extraViews = 0)
 	{
-		if (!mRing.Reserve(mWanted))
+		if (!mRing.Reserve(mWanted + extraViews))
 			return false;
 		mRing.BeginFrame(frameIndex);
 		mWritten.Clear();
