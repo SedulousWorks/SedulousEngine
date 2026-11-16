@@ -127,6 +127,12 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: a frame that draws more than eight views (cameras, render textures, editor
+  previews) draws each with its own inputs. The ninth view shared the first's tone map, FXAA,
+  sky and debug slots, its TAA, SSR, SSGI and exposure history, and its clustered lights, so one
+  view could show another's image or ghost with its history.
+- Rendering: a reflection probe captured in a scene with few meshes bakes them on every face;
+  past the first face they drew nothing.
 - Tools: `Sedulous.Tools.Cook` exits 1 when any cook fails; it exited with the failure count,
   which a shell reads modulo 256, so 256 failures read as success.
 - Editor: a read-only code page no longer changes on Undo, Redo, Move lines or Duplicate lines;
