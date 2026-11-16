@@ -127,6 +127,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Physics: characters are solid to the world. Rays, sweeps and overlaps find them, dynamic bodies
+  collide with them and two characters no longer walk through each other. A ray or sweep that
+  starts inside a body now passes out of it instead of hitting it at distance 0, and `RayCast` and
+  `SphereCast` take an entity to pass over. A script that casts a ray at a character (a guard's
+  line of sight to the player) now hits the character itself.
 - Physics: a body falling out of a trigger raises `onTriggerExit`; a body that comes to rest on
   another keeps its contact instead of ending it as it falls asleep; a compound body touching
   with two of its parts begins one contact.

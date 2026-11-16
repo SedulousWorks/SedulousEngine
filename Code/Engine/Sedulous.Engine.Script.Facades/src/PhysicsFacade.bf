@@ -24,13 +24,17 @@ class PhysicsFacade : SceneFacade
 	[Scriptable]
 	public int BodyCount => System?.BodyCount ?? 0;
 
-	/// The nearest hit along a ray, or a miss.
+	/// The nearest hit along a ray, or a miss. A ray that starts inside a body (a character's own
+	/// capsule) passes out of it; `ignore`'s bodies are passed over.
 	[Scriptable]
-	public PhysicsHit RayCast(Float3 from, Float3 direction, float maxDistance, uint32 groupMask = 0xFFFFFFFF)
-		=> System?.RayCast(from, direction, maxDistance, groupMask) ?? .();
+	public PhysicsHit RayCast(Float3 from, Float3 direction, float maxDistance, uint32 groupMask = 0xFFFFFFFF,
+		EntityHandle ignore = .Invalid)
+		=> System?.RayCast(from, direction, maxDistance, groupMask, ignore) ?? .();
+	/// Like RayCast, with a sphere: it passes out of the bodies it starts in, and over `ignore`'s.
 	[Scriptable]
-	public PhysicsHit SphereCast(Float3 from, Float3 direction, float maxDistance, float radius, uint32 groupMask = 0xFFFFFFFF)
-		=> System?.SphereCast(from, direction, maxDistance, radius, groupMask) ?? .();
+	public PhysicsHit SphereCast(Float3 from, Float3 direction, float maxDistance, float radius, uint32 groupMask = 0xFFFFFFFF,
+		EntityHandle ignore = .Invalid)
+		=> System?.SphereCast(from, direction, maxDistance, radius, groupMask, ignore) ?? .();
 	[Scriptable]
 	public PhysicsHit NearestOverlap(Float3 center, float radius, uint32 groupMask = 0xFFFFFFFF)
 		=> System?.NearestOverlap(center, radius, groupMask) ?? .();

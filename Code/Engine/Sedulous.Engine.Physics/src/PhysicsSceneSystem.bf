@@ -105,16 +105,25 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	public int BodyCount => (mWorld != null) ? mWorld.BodyCount : 0;
 
 	/// A ray against this scene's world, answering the CLOSEST hit. Direction must be unit
-	/// length: Distance scales by its magnitude otherwise.
+	/// length: Distance scales by its magnitude otherwise. A ray that starts inside a body (a
+	/// character's own capsule) passes out of it; `ignore`'s bodies are passed over.
 	public PhysicsHit RayCast(Float3 from, Float3 direction, float maxDistance,
-		uint32 groupMask = 0xFFFFFFFF)
+		uint32 groupMask = 0xFFFFFFFF, EntityHandle ignore = .Invalid)
 	{
 		var result = PhysicsHit();
 		if (mWorld == null)
 			return result;
-		if (mWorld.RayCast(from, direction, maxDistance, let hit, groupMask))
+		if (mWorld.RayCast(from, direction, maxDistance, let hit, groupMask, false, IgnoredWord(ignore)))
 			FillHit(ref result, hit, maxDistance);
 		return result;
+	}
+
+	/// The user word of `entity`'s bodies, to pass them over in a query; none for an unassigned one.
+	private static uint64? IgnoredWord(EntityHandle entity)
+	{
+		if (!entity.IsAssigned)
+			return null;
+		return PhysicsEntityPacking.PackEntity(entity);
 	}
 
 	/// Rays against the world's solid bodies for systems that do not depend on physics (foot
@@ -137,7 +146,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	/// A swept SPHERE from `from` along `direction`, answering the closest hit. Like RayCast
 	/// with a volume: the ray that slips through a gap a fat projectile cannot.
 	public PhysicsHit SphereCast(Float3 from, Float3 direction, float maxDistance, float radius,
-		uint32 groupMask = 0xFFFFFFFF)
+		uint32 groupMask = 0xFFFFFFFF, EntityHandle ignore = .Invalid)
 	{
 		var result = PhysicsHit();
 		if (mWorld == null)
@@ -145,7 +154,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		var shape = QueryShape();
 		shape.Kind = .Sphere;
 		shape.Radius = radius;
-		if (mWorld.ShapeCast(shape, from, .Identity, direction, maxDistance, let hit, groupMask))
+		if (mWorld.ShapeCast(shape, from, .Identity, direction, maxDistance, let hit, groupMask, IgnoredWord(ignore)))
 			FillHit(ref result, hit, maxDistance);
 		return result;
 	}

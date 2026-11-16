@@ -214,7 +214,8 @@ class Guard
 			if (dist < cone.Range && cosAngle >= Cos(cone.OuterAngle))
 			{
 				PhysicsHit hit = scene.Physics.RayCast(eye, Float3(to.X / dist, to.Y / dist, to.Z / dist), dist, mask);
-				if (!hit.Hit)
+				// The thief has a body: the ray reaching him first is a clear view of him.
+				if (!hit.Hit || hit.Entity == thief)
 				{
 					Float3 light = scene.Render.LightAt(chest, mask);
 					float lum = 0.2126f * light.X + 0.7152f * light.Y + 0.0722f * light.Z;

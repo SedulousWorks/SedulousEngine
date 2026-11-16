@@ -46,6 +46,8 @@ class PhysicsWorld
 	}
 
 	private List<JointSlot> mJoints = new .() ~ delete _;
+	/// Characters block each other: each is checked against the rest as it moves.
+	private JPH_CharacterVsCharacterCollision* mCharacterCollision = null;
 	private List<CharacterSlot> mCharacters = new .() ~ delete _;
 	/// The triggers each character stood inside after its last sweep, per slot: a character is
 	/// a swept capsule, not a body in the solver, so the contact listener never sees it enter
@@ -73,6 +75,7 @@ class PhysicsWorld
 
 		JoltRuntime.Acquire();
 		InstallCallbacks();
+		mCharacterCollision = JPH_CharacterVsCharacterCollision_CreateSimple();
 
 		BuildLayerTables();
 
@@ -117,8 +120,13 @@ class PhysicsWorld
 		for (var slot in mCharacters)
 		{
 			if (slot.Character != null)
+			{
+				JPH_CharacterVsCharacterCollisionSimple_RemoveCharacter(mCharacterCollision, slot.Character);
 				JPH_CharacterBase_Destroy((JPH_CharacterBase*)slot.Character);
+			}
 		}
+		if (mCharacterCollision != null)
+			JPH_CharacterVsCharacterCollision_Destroy(mCharacterCollision);
 
 		if (mSystem != null)
 		{
@@ -591,13 +599,44 @@ class PhysicsWorld
 	/// Triggers only: what a character stands inside.
 	private const int cSensorsOnly = 2;
 
+	/// A character's sweep: what a dynamic body meets, less characters' inner bodies (other
+	/// characters are met through the character-vs-character check, which sees where they are now).
+	private const int cNoCharacters = 3;
+	/// The modes above are small words; anything past them is a QueryBodies a ray or sweep passes.
+	private const int cLastMode = 3;
+
+	/// A ray or sweep's bodies: triggers unless skipped, never the ignored user word's body or a
+	/// body the query starts inside.
+	private class QueryBodies
+	{
+		public bool SkipTriggers;
+		public bool HasIgnore;
+		public uint64 IgnoreUserData;
+		public List<JPH_BodyID> StartsInside = new .() ~ delete _;
+	}
+
+	private static bool BodyKindShouldCollide(void* user, JPH_BodyID body)
+	{
+		if ((int)user <= cLastMode)
+			return true;
+		let query = (QueryBodies)Internal.UnsafeCastToObject(user);
+		return !query.StartsInside.Contains(body);
+	}
+
 	private static bool BodyKindShouldCollideLocked(void* user, JPH_Body* body)
 	{
 		switch ((int)user)
 		{
 		case cSolidBodiesOnly: return !JPH_Body_IsSensor(body);
 		case cSensorsOnly: return JPH_Body_IsSensor(body);
-		default: return true;
+		case cNoCharacters: return PhysicsLayers.Semantic(JPH_Body_GetObjectLayer(body)) != PhysicsLayers.Character;
+		default:
+			if ((int)user <= cLastMode)
+				return true;
+			let query = (QueryBodies)Internal.UnsafeCastToObject(user);
+			if (query.SkipTriggers && JPH_Body_IsSensor(body))
+				return false;
+			return !query.HasIgnore || (JPH_Body_GetUserData(body) != query.IgnoreUserData);
 		}
 	}
 
@@ -635,7 +674,7 @@ class PhysicsWorld
 			sLayerProcs.ShouldCollide = => GroupMaskShouldCollide;
 			JPH_ObjectLayerFilter_SetProcs(&sLayerProcs);
 
-			sBodyProcs.ShouldCollide = null;
+			sBodyProcs.ShouldCollide = => BodyKindShouldCollide;
 			sBodyProcs.ShouldCollideLocked = => BodyKindShouldCollideLocked;
 			JPH_BodyFilter_SetProcs(&sBodyProcs);
 
@@ -689,9 +728,11 @@ class PhysicsWorld
 	}
 
 	/// The closest body along the ray. The mask's bit g considers bodies in group g. Triggers
-	/// are hit unless `skipTriggers`: a probe for ground wants solid surfaces only.
+	/// are hit unless `skipTriggers`: a probe for ground wants solid surfaces only. A ray that
+	/// starts inside a body passes out of it without a hit (a character's own probe from within
+	/// its capsule), and bodies whose user word is `ignoreUserData` are passed over.
 	public bool RayCast(Float3 from, Float3 direction, float maxDistance, out RayHit outHit,
-		uint32 groupMask = 0xFFFFFFFF, bool skipTriggers = false)
+		uint32 groupMask = 0xFFFFFFFF, bool skipTriggers = false, uint64? ignoreUserData = null)
 	{
 		outHit = .();
 
@@ -700,14 +741,28 @@ class PhysicsWorld
 		// fraction along it, so the distance rides in its length.
 		var ray = ToJolt(direction * maxDistance);
 		var hit = JPH_RayCastResult();
+		var found = false;
 
 		let filter = JPH_ObjectLayerFilter_Create((void*)(int)groupMask);
 		defer JPH_ObjectLayerFilter_Destroy(filter);
-		let solid = skipTriggers ? JPH_BodyFilter_Create((void*)(int)cSolidBodiesOnly) : null;
-		defer { if (solid != null) JPH_BodyFilter_Destroy(solid); }
+		let query = scope QueryBodies();
+		query.SkipTriggers = skipTriggers;
+		query.HasIgnore = ignoreUserData.HasValue;
+		query.IgnoreUserData = ignoreUserData.GetValueOrDefault();
+		let bodies = JPH_BodyFilter_Create(Internal.UnsafeCastToPtr(query));
+		defer JPH_BodyFilter_Destroy(bodies);
 
-		if (!JPH_NarrowPhaseQuery_CastRay(JPH_PhysicsSystem_GetNarrowPhaseQuery(mSystem), &origin,
-			&ray, &hit, null, filter, solid))
+		// Convex shapes hollow and back faces ignored: a ray from inside a body leaves it unseen,
+		// and hits from outside are as before.
+		var settings = JPH_RayCastSettings();
+		settings.backFaceModeTriangles = .JPH_BackFaceMode_IgnoreBackFaces;
+		settings.backFaceModeConvex = .JPH_BackFaceMode_IgnoreBackFaces;
+		settings.treatConvexAsSolid = false;
+		let collected = scope RayCollected() { Hit = &hit, Found = &found };
+		JPH_NarrowPhaseQuery_CastRay3(JPH_PhysicsSystem_GetNarrowPhaseQuery(mSystem), &origin, &ray,
+			&settings, .JPH_CollisionCollectorType_ClosestHit, => CollectRay,
+			Internal.UnsafeCastToPtr(collected), null, filter, bodies, null);
+		if (!found)
 			return false;
 
 		outHit.Body = BodyId(hit.bodyID);
@@ -812,9 +867,10 @@ class PhysicsWorld
 	}
 
 	/// Sweeps the shape from a placement along a direction and reports the CLOSEST hit, which
-	/// is a ray cast with a volume. The fraction is the sweep's.
+	/// is a ray cast with a volume. The fraction is the sweep's. Like a ray, it passes out of the
+	/// bodies it starts in, and over `ignoreUserData`'s.
 	public bool ShapeCast(QueryShape shape, Float3 from, Quaternion rotation, Float3 direction,
-		float maxDistance, out RayHit outHit, uint32 groupMask = 0xFFFFFFFF)
+		float maxDistance, out RayHit outHit, uint32 groupMask = 0xFFFFFFFF, uint64? ignoreUserData = null)
 	{
 		var hit = RayHit();
 		var hitAny = false;
@@ -838,10 +894,27 @@ class PhysicsWorld
 				var found = false;
 				let collected = scope ShapeCastCollected() { Hit = &closest, Found = &found };
 
+				// The bodies the shape overlaps where it starts are passed over, as a ray leaves
+				// the body it starts in.
+				let starting = scope List<BodyId>();
+				var overlapSettings = JPH_CollideShapeSettings();
+				JPH_CollideShapeSettings_Init(&overlapSettings);
+				var scale = JPH_Vec3() { x = 1.0f, y = 1.0f, z = 1.0f };
+				JPH_NarrowPhaseQuery_CollideShape2(JPH_PhysicsSystem_GetNarrowPhaseQuery(mSystem), js,
+					&scale, &transform, &overlapSettings, &baseOffset, .JPH_CollisionCollectorType_AllHit,
+					=> CollectOverlap, Internal.UnsafeCastToPtr(starting), null, filter, null, null);
+				let query = scope QueryBodies();
+				query.HasIgnore = ignoreUserData.HasValue;
+				query.IgnoreUserData = ignoreUserData.GetValueOrDefault();
+				for (let body in starting)
+					query.StartsInside.Add(body.Value);
+				let bodies = JPH_BodyFilter_Create(Internal.UnsafeCastToPtr(query));
+				defer JPH_BodyFilter_Destroy(bodies);
+
 				JPH_NarrowPhaseQuery_CastShape2(JPH_PhysicsSystem_GetNarrowPhaseQuery(mSystem),
 					js, &transform, &sweep, &settings, &baseOffset,
 					.JPH_CollisionCollectorType_ClosestHit, => CollectCast,
-					Internal.UnsafeCastToPtr(collected), null, filter, null, null);
+					Internal.UnsafeCastToPtr(collected), null, filter, bodies, null);
 
 				if (!found)
 					return;
@@ -862,6 +935,20 @@ class PhysicsWorld
 
 		outHit = hit;
 		return hitAny;
+	}
+
+	/// What a ray's closest hit is collected into, as a sweep's is.
+	private class RayCollected
+	{
+		public JPH_RayCastResult* Hit;
+		public bool* Found;
+	}
+
+	private static void CollectRay(void* user, JPH_RayCastResult* result)
+	{
+		let collected = (RayCollected)Internal.UnsafeCastToObject(user);
+		*collected.Hit = *result;
+		*collected.Found = true;
 	}
 
 	/// What a sweep's closest hit is collected into. The backend hands one result at a time
@@ -1110,6 +1197,11 @@ class PhysicsWorld
 		settings.@base.maxSlopeAngle = desc.MaxSlopeDegrees * (JPH_M_PI / 180.0f);
 		settings.mass = desc.Mass;
 		settings.maxStrength = desc.MaxStrength;
+		// An inner body of the same capsule makes the character part of the world: rays, overlaps
+		// and sweeps find it (with its user word), and dynamic bodies collide with it. The
+		// character itself never collides with its own inner body.
+		settings.innerBodyShape = shape;
+		settings.innerBodyLayer = PhysicsLayers.From(PhysicsLayers.Character, 0);
 
 		var position = ToJolt(desc.Position);
 		var rotation = ToJolt(Quaternion.Identity);
@@ -1117,6 +1209,9 @@ class PhysicsWorld
 			desc.UserData, mSystem);
 		if (character == null)
 			return .();
+		// Characters block each other: each is checked against the rest as it moves.
+		JPH_CharacterVirtual_SetCharacterVsCharacterCollision(character, mCharacterCollision);
+		JPH_CharacterVsCharacterCollisionSimple_AddCharacter(mCharacterCollision, character);
 
 		// The step settings are authored PER CHARACTER, so they ride the slot rather than
 		// being a property of the world.
@@ -1146,6 +1241,8 @@ class PhysicsWorld
 		if (!ResolveCharacter(id, let index))
 			return;
 
+		// Destroying the character removes its inner body too.
+		JPH_CharacterVsCharacterCollisionSimple_RemoveCharacter(mCharacterCollision, mCharacters[index].Character);
 		JPH_CharacterBase_Destroy((JPH_CharacterBase*)mCharacters[index].Character);
 		mCharacters[index] = .();
 		mCharacterSensors[index].Clear();
@@ -1204,9 +1301,12 @@ class PhysicsWorld
 			};
 
 		// It sweeps against the DYNAMIC layer's filters, which is what a character collides
-		// with; its own group is nought, since a character is not a designer group member.
+		// with; its own group is nought, since a character is not a designer group member. Other
+		// characters' inner bodies are left out: characters meet through the character check.
+		let sweep = JPH_BodyFilter_Create((void*)(int)cNoCharacters);
+		defer JPH_BodyFilter_Destroy(sweep);
 		JPH_CharacterVirtual_ExtendedUpdate(slot.Character, deltaTime, &settings,
-			PhysicsLayers.From(.Dynamic, 0), mSystem, null, null);
+			PhysicsLayers.From(.Dynamic, 0), mSystem, sweep, null);
 		SenseTriggers(index);
 	}
 

@@ -13,8 +13,12 @@ namespace Sedulous.Physics;
 static class PhysicsLayers
 {
 	public const uint32 GroupCount = 32;
-	/// Four semantics times thirty two groups.
-	public const uint32 Count = (uint32)PhysicsLayer.Count * GroupCount;
+	/// A character's inner body: not a layer a body is authored on. Queries and moving bodies meet
+	/// it; statics, triggers and other characters do not (the character itself stands on statics,
+	/// senses triggers and meets other characters directly).
+	public const PhysicsLayer Character = (PhysicsLayer)PhysicsLayer.Count;
+	/// The four authored semantics and the character's, times thirty two groups.
+	public const uint32 Count = (uint32)(PhysicsLayer.Count + 1) * GroupCount;
 
 	public const uint32 BroadPhaseStatic = 0;
 	public const uint32 BroadPhaseMoving = 1;
@@ -33,6 +37,11 @@ static class PhysicsLayers
 	/// else collides.
 	public static bool SemanticCollides(PhysicsLayer a, PhysicsLayer b)
 	{
+		if ((a == Character) || (b == Character))
+		{
+			let other = (a == Character) ? b : a;
+			return (other != .Static) && (other != .Trigger) && (other != Character);
+		}
 		if ((a == .Static) && (b == .Static))
 			return false;
 		if ((a == .Trigger) && (b == .Trigger))

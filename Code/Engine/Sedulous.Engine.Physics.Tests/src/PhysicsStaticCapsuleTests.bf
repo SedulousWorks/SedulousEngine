@@ -56,7 +56,7 @@ class PhysicsStaticCapsuleTests
 		play.Scene.SetLocalPosition(hero, .(0.0f, 0.9f, 0.0f));
 		play.Characters.Add(hero);
 		play.Start();
-		Test.Assert(play.Physics.BodyCount == 2, "the floor and the trunk");
+		Test.Assert(play.Physics.BodyCount == 3, "the floor, the trunk and the hero's inner body");
 
 		play.Step(30);
 		play.Characters.Get(hero).MoveVelocity = .(3.0f, 0.0f, 0.0f);
