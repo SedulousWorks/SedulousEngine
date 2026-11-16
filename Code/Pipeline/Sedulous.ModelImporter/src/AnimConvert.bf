@@ -217,7 +217,18 @@ static class AnimConvert
 				// The first three components for a position or a scale, all four for a
 				// rotation, which is the layout the reader unpacks by kind.
 				outSource.KeyValue.Add(keys[k].Value);
+				outSource.KeyInTangent.Add(keys[k].InTangent);
+				outSource.KeyOutTangent.Add(keys[k].OutTangent);
 			}
+		}
+		// Tangents are kept only for a clip with a cubic track (the rest are zero, unread).
+		bool cubic = false;
+		for (let interp in outSource.TrackInterp)
+			cubic |= interp == (uint8)InterpolationMode.CubicSpline;
+		if (!cubic)
+		{
+			outSource.KeyInTangent.Clear();
+			outSource.KeyOutTangent.Clear();
 		}
 	}
 }

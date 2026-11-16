@@ -13,8 +13,9 @@ class AnimationClipAssetBuilder : IAssetBuilder
 {
 	public Type AssetType => typeof(AnimationClipAsset);
 	public Type ProductType => typeof(AnimationClipSource);
-	/// Two: the root motion bake and strip, and the record's appended fields; every clip re-cooks.
-	public int32 Version => 2;
+	/// Two: the root motion bake and strip, and the record's appended fields. Three: cubic
+	/// tangents in the product. Every clip re-cooks.
+	public int32 Version => 3;
 
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
 	{

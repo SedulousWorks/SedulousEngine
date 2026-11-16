@@ -109,6 +109,30 @@ class GltfLoader : IModelLoader
 
 	// ---------------------------------------------------------------- helpers
 
+	/// One element of an animation sampler's output as a keyframe value. One keyframe type
+	/// carries every path, with the unused components left at zero, so a channel is a flat array
+	/// whatever it animates.
+	private static Float4 ReadKeyElement(cgltf_accessor* output, AnimationPath path, cgltf_size element)
+	{
+		Float4 value = .Zero;
+		switch (path)
+		{
+		case .Translation, .Scale:
+			float[3] v3 = .(0, 0, 0);
+			cgltf_accessor_read_float(output, element, &v3[0], 3);
+			value = .(v3[0], v3[1], v3[2], 0);
+		case .Rotation:
+			float[4] v4 = .(0, 0, 0, 0);
+			cgltf_accessor_read_float(output, element, &v4[0], 4);
+			value = .(v4[0], v4[1], v4[2], v4[3]);
+		case .Weights:
+			float weight = 0;
+			cgltf_accessor_read_float(output, element, &weight, 1);
+			value.X = weight;
+		}
+		return value;
+	}
+
 	private static bool EqualsIgnoreCase(StringView a, StringView b)
 	{
 		if (a.Length != b.Length)
@@ -910,27 +934,17 @@ class GltfLoader : IModelLoader
 							float time = 0;
 							cgltf_accessor_read_float(sampler.input, (cgltf_size)k, &time, 1);
 
-							// One keyframe type carries every path, with the unused
-							// components left at zero, so a channel is a flat array
-							// whatever it animates.
-							Float4 value = .Zero;
-							switch (channel.Path)
+							// A cubic spline stores three elements a key, in-tangent, value,
+							// out-tangent: the value is element 3k+1, not k.
+							if (sampler.interpolation == .cgltf_interpolation_type_cubic_spline)
 							{
-							case .Translation, .Scale:
-								float[3] v3 = .(0, 0, 0);
-								cgltf_accessor_read_float(sampler.output, (cgltf_size)k, &v3[0], 3);
-								value = .(v3[0], v3[1], v3[2], 0);
-							case .Rotation:
-								float[4] v4 = .(0, 0, 0, 0);
-								cgltf_accessor_read_float(sampler.output, (cgltf_size)k, &v4[0], 4);
-								value = .(v4[0], v4[1], v4[2], v4[3]);
-							case .Weights:
-								float weight = 0;
-								cgltf_accessor_read_float(sampler.output, (cgltf_size)k, &weight, 1);
-								value.X = weight;
+								let key = (cgltf_size)k;
+								channel.AddKeyframe(time, ReadKeyElement(sampler.output, channel.Path, 3 * key + 1),
+									ReadKeyElement(sampler.output, channel.Path, 3 * key),
+									ReadKeyElement(sampler.output, channel.Path, 3 * key + 2));
+								continue;
 							}
-
-							channel.AddKeyframe(time, value);
+							channel.AddKeyframe(time, ReadKeyElement(sampler.output, channel.Path, (cgltf_size)k));
 						}
 					}
 				}

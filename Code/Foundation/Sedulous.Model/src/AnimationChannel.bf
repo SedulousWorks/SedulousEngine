@@ -19,6 +19,9 @@ class AnimationChannel
 	public int KeyframeCount => mKeyframes.Count;
 
 	public void AddKeyframe(float time, Float4 value) => mKeyframes.Add(.(time, value));
+	/// A cubic spline keyframe with its tangents.
+	public void AddKeyframe(float time, Float4 value, Float4 inTangent, Float4 outTangent)
+		=> mKeyframes.Add(.(time, value, inTangent, outTangent));
 
 	/// The value at a time, clamped to the channel's own range at both ends.
 	///
@@ -49,7 +52,26 @@ class AnimationChannel
 		case .Step:
 			return first.Value;
 
-		case .Linear, .CubicSpline:
+		case .CubicSpline:
+			{
+				// glTF's Hermite: the tangents are per second, so scaled by the keys' gap; a
+				// rotation is the same blend of its components, normalized.
+				let dt = second.Time - first.Time;
+				let t2 = t * t;
+				let t3 = t2 * t;
+				let v = first.Value * (2.0f * t3 - 3.0f * t2 + 1.0f)
+					+ first.OutTangent * (dt * (t3 - 2.0f * t2 + t))
+					+ second.Value * (-2.0f * t3 + 3.0f * t2)
+					+ second.InTangent * (dt * (t3 - t2));
+				if (Path == .Rotation)
+				{
+					let q = Normalized(Quaternion(v.X, v.Y, v.Z, v.W));
+					return .(q.X, q.Y, q.Z, q.W);
+				}
+				return v;
+			}
+
+		case .Linear:
 			// A rotation is a quaternion, and interpolating its four numbers separately
 			// does not produce a rotation: the result is off the unit sphere and the pose
 			// shears. Slerp is what keeps it a rotation.
@@ -60,8 +82,6 @@ class AnimationChannel
 				let result = Slerp(a, b, t);
 				return .(result.X, result.Y, result.Z, result.W);
 			}
-			// Cubic spline falls through to linear. A file asking for it gets a straight line
-			// between its keys rather than a refusal.
 			return Lerp4(first.Value, second.Value, t);
 		}
 	}

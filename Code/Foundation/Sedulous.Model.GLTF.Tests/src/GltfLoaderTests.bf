@@ -498,4 +498,50 @@ class GltfLoaderTests
 		Test.Assert(Near(model.Materials[0].Transmission, 0.8f), scope $"{model.Materials[0].Transmission}");
 		Test.Assert(model.Materials[1].Transmission == 0.0f);
 	}
+
+	/// A cubic sampler stores in-tangent, value, out-tangent for each key; reading element k
+	/// took key 0's value from its in-tangent and key 1's from key 0's out-tangent, and the
+	/// tangents were dropped. One translation channel, two keys: values (1,2,3) and (7,8,9),
+	/// key 0 leaving along (4,0,0), key 1 arriving along (0,5,0).
+	[Test]
+	public static void ACubicSplineKeyReadsItsValueAndKeepsItsTangents()
+	{
+		let path = scope String("scratch_gltf_cubic.gltf");
+		File.WriteAllText(path, """
+			{
+			  "asset": {"version": "2.0"},
+			  "buffers": [{"byteLength": 80, "uri": "data:application/octet-stream;base64,AAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAQAAAQEAAAIBAAAAAAAAAAAAAAAAAAACgQAAAAAAAAOBAAAAAQQAAEEEAAAAAAAAAAAAAAAA="}],
+			  "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 8},
+			                  {"buffer": 0, "byteOffset": 8, "byteLength": 72}],
+			  "accessors": [{"bufferView": 0, "componentType": 5126, "count": 2, "type": "SCALAR", "min": [0], "max": [1]},
+			                {"bufferView": 1, "componentType": 5126, "count": 6, "type": "VEC3"}],
+			  "nodes": [{"name": "mover"}],
+			  "scenes": [{"nodes": [0]}],
+			  "scene": 0,
+			  "animations": [{"name": "Swing",
+			                  "samplers": [{"input": 0, "output": 1, "interpolation": "CUBICSPLINE"}],
+			                  "channels": [{"sampler": 0, "target": {"node": 0, "path": "translation"}}]}]
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+
+		let model = scope ModelData();
+		let loader = scope GltfLoader();
+		let result = loader.Load(path, model);
+		Test.Assert(result == .Ok, scope $"loaded as {result}");
+		Test.Assert(model.Animations.Length == 1);
+		let animation = model.Animations[0];
+		Test.Assert(animation.ChannelCount == 1);
+		let channel = animation.Channels[0];
+		Test.Assert(channel.Interpolation == .CubicSpline);
+		let keys = channel.Keyframes;
+		Test.Assert(keys.Length == 2);
+		Test.Assert(Near(keys[0].Value.X, 1.0f) && Near(keys[0].Value.Z, 3.0f), scope $"key 0 value {keys[0].Value.X}");
+		Test.Assert(Near(keys[0].OutTangent.X, 4.0f), "key 0's out-tangent");
+		Test.Assert(Near(keys[1].Value.X, 7.0f), scope $"key 1 value {keys[1].Value.X}");
+		Test.Assert(Near(keys[1].InTangent.Y, 5.0f), "key 1's in-tangent");
+		// The curve leaves key 0 at its tangent's slope: a hundredth of a second on, 0.04 along x.
+		let early = channel.Sample(0.01f).X;
+		Test.Assert(Near(early, 1.04f, 0.002f), scope $"at 0.01 s: {early}");
+	}
 }

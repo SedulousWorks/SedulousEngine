@@ -59,8 +59,21 @@ class AnimationClipSource
 	public List<Float3> RootPositions = new .() ~ delete _;
 	[Appended]
 	public List<float> RootYaws = new .() ~ delete _;
+	/// A cubic spline's tangents (per second), parallel to KeyValue; empty when the clip has no
+	/// cubic track.
+	[Appended]
+	public List<Float4> KeyInTangent = new .() ~ delete _;
+	[Appended]
+	public List<Float4> KeyOutTangent = new .() ~ delete _;
 
 	public bool RootMotionAny => RootHorizontal || RootVertical || RootYaw;
+
+	/// Whether the clip carries tangents for every key (it does when a track is cubic).
+	public bool HasTangents => !KeyValue.IsEmpty && (KeyInTangent.Count == KeyValue.Count)
+		&& (KeyOutTangent.Count == KeyValue.Count);
+
+	/// Key `key`'s in or out tangent, zero for a clip without them.
+	public Float4 TangentAt(List<Float4> from, int key) => HasTangents ? from[key] : .Zero;
 
 	/// Every field of `other`: a cook's working copy, which the builder bakes and strips while the
 	/// authored asset stays as it was.
@@ -87,6 +100,8 @@ class AnimationClipSource
 		RootTimes.Set(other.RootTimes);
 		RootPositions.Set(other.RootPositions);
 		RootYaws.Set(other.RootYaws);
+		KeyInTangent.Set(other.KeyInTangent);
+		KeyOutTangent.Set(other.KeyOutTangent);
 	}
 
 	public static void FromClip(AnimationClip clip, AnimationClipSource outSource)
@@ -102,6 +117,16 @@ class AnimationClipSource
 		outSource.TrackCount.Clear();
 		outSource.KeyTime.Clear();
 		outSource.KeyValue.Clear();
+		outSource.KeyInTangent.Clear();
+		outSource.KeyOutTangent.Clear();
+
+		bool cubic = false;
+		for (let track in clip.PositionTracks)
+			cubic |= track.Interpolation == .CubicSpline;
+		for (let track in clip.RotationTracks)
+			cubic |= track.Interpolation == .CubicSpline;
+		for (let track in clip.ScaleTracks)
+			cubic |= track.Interpolation == .CubicSpline;
 
 		for (let track in clip.PositionTracks)
 			AppendVec3Track(outSource, track, .Position);
@@ -109,6 +134,12 @@ class AnimationClipSource
 			AppendQuatTrack(outSource, track);
 		for (let track in clip.ScaleTracks)
 			AppendVec3Track(outSource, track, .Scale);
+		if (!cubic)
+		{
+			// No cubic track: the tangents carry nothing.
+			outSource.KeyInTangent.Clear();
+			outSource.KeyOutTangent.Clear();
+		}
 
 		outSource.EventTime.Clear();
 		ClearAndDeleteItems!(outSource.EventName);
@@ -178,7 +209,10 @@ class AnimationClipSource
 				for (int j = from; j < to; j++)
 				{
 					let value = KeyValue[j];
-					track.AddKeyframe(KeyTime[j], .(value.X, value.Y, value.Z, value.W));
+					let tin = TangentAt(KeyInTangent, j);
+					let tout = TangentAt(KeyOutTangent, j);
+					track.AddKeyframe(KeyTime[j], .(value.X, value.Y, value.Z, value.W),
+						.(tin.X, tin.Y, tin.Z, tin.W), .(tout.X, tout.Y, tout.Z, tout.W));
 				}
 			}
 			else
@@ -190,7 +224,10 @@ class AnimationClipSource
 				for (int j = from; j < to; j++)
 				{
 					let value = KeyValue[j];
-					track.AddKeyframe(KeyTime[j], .(value.X, value.Y, value.Z));
+					let tin = TangentAt(KeyInTangent, j);
+					let tout = TangentAt(KeyOutTangent, j);
+					track.AddKeyframe(KeyTime[j], .(value.X, value.Y, value.Z), .(tin.X, tin.Y, tin.Z),
+						.(tout.X, tout.Y, tout.Z));
 				}
 			}
 		}
@@ -225,6 +262,8 @@ class AnimationClipSource
 		{
 			outSource.KeyTime.Add(key.Time);
 			outSource.KeyValue.Add(.(key.Value.X, key.Value.Y, key.Value.Z, 0.0f));
+			outSource.KeyInTangent.Add(.(key.InTangent.X, key.InTangent.Y, key.InTangent.Z, 0.0f));
+			outSource.KeyOutTangent.Add(.(key.OutTangent.X, key.OutTangent.Y, key.OutTangent.Z, 0.0f));
 		}
 	}
 
@@ -241,6 +280,8 @@ class AnimationClipSource
 		{
 			outSource.KeyTime.Add(key.Time);
 			outSource.KeyValue.Add(.(key.Value.X, key.Value.Y, key.Value.Z, key.Value.W));
+			outSource.KeyInTangent.Add(.(key.InTangent.X, key.InTangent.Y, key.InTangent.Z, key.InTangent.W));
+			outSource.KeyOutTangent.Add(.(key.OutTangent.X, key.OutTangent.Y, key.OutTangent.Z, key.OutTangent.W));
 		}
 	}
 }

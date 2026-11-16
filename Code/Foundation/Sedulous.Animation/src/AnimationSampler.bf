@@ -26,18 +26,29 @@ static class AnimationSampler
 		return p0 * h00 + m0 * h10 + p1 * h01 + m1 * h11;
 	}
 
-	/// The rotation's spline: Hermite reshapes the factor and a slerp does the rotating.
-	///
-	/// A squad would be more accurate, and this is what Sedulous shipped: a spline authored
-	/// against one and evaluated by the other would not play as it was authored.
+	/// The rotation's spline, glTF's rule: the same Hermite as a vector's, on the four
+	/// components with their tangents, then normalized. The tangents had been ignored, so every
+	/// key eased in and out.
 	public static Quaternion CubicSplineQuat(Keyframe<Quaternion> prev, Keyframe<Quaternion> next,
 		float t, float duration)
 	{
 		let t2 = t * t;
 		let t3 = t2 * t;
 		let h00 = 2.0f * t3 - 3.0f * t2 + 1.0f;
+		let h10 = (t3 - 2.0f * t2 + t) * duration;
 		let h01 = -2.0f * t3 + 3.0f * t2;
-		return Normalized(Slerp(prev.Value, next.Value, h01 / (h00 + h01)));
+		let h11 = (t3 - t2) * duration;
+		let p0 = prev.Value;
+		let m0 = prev.OutTangent;
+		let m1 = next.InTangent;
+		// The keys on one hemisphere, as a slerp would take them.
+		let side = ((p0.X * next.Value.X + p0.Y * next.Value.Y + p0.Z * next.Value.Z
+			+ p0.W * next.Value.W) < 0.0f) ? -1.0f : 1.0f;
+		let p1 = Quaternion(next.Value.X * side, next.Value.Y * side, next.Value.Z * side, next.Value.W * side);
+		return Normalized(Quaternion(p0.X * h00 + m0.X * h10 + p1.X * h01 + m1.X * h11 * side,
+			p0.Y * h00 + m0.Y * h10 + p1.Y * h01 + m1.Y * h11 * side,
+			p0.Z * h00 + m0.Z * h10 + p1.Z * h01 + m1.Z * h11 * side,
+			p0.W * h00 + m0.W * h10 + p1.W * h01 + m1.W * h11 * side));
 	}
 
 	/// A vector track at a time. The default is answered for an empty track, so a bone with

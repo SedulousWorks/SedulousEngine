@@ -109,4 +109,26 @@ class AnimationSamplerTests
 		AnimationSampler.AdditivePoses(basePose, additive, 0.5f, result);
 		Test.Assert(Near(result[0].Position, .(1, 2.5f, 0)));
 	}
+
+	/// A rotation's cubic ignored its tangents, easing in and out of every key whatever they
+	/// said. Two keys of equal value with an out-tangent of one unit a second: the curve leaves
+	/// the first key at that slope.
+	[Test]
+	public static void ACubicTrackFollowsItsTangentsARotationsIncluded()
+	{
+		let move = scope AnimationTrack<Float3>();
+		move.Interpolation = .CubicSpline;
+		move.AddKeyframe(0.0f, .(0, 0, 0), .(0, 0, 0), .(1, 0, 0));
+		move.AddKeyframe(1.0f, .(0, 0, 0), .(0, 0, 0), .(0, 0, 0));
+		let x = AnimationSampler.SampleVec3(move, 0.01f).X;
+		Test.Assert(Abs(x - 0.01f) <= 0.0005f, scope $"x at 0.01 s: {x}");
+
+		let turn = scope AnimationTrack<Quaternion>();
+		turn.Interpolation = .CubicSpline;
+		turn.AddKeyframe(0.0f, Quaternion.Identity, .(0, 0, 0, 0), .(0, 1, 0, 0));
+		turn.AddKeyframe(1.0f, Quaternion.Identity, .(0, 0, 0, 0), .(0, 0, 0, 0));
+		let early = AnimationSampler.SampleQuat(turn, 0.1f);
+		Test.Assert(early.Y > 0.05f, scope $"turning about y, as the tangent says: {early.Y}");
+		Test.Assert(Abs(early.Y * early.Y + early.W * early.W - 1.0f) <= 0.001f, "normalized");
+	}
 }

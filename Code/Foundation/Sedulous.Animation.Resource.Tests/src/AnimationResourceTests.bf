@@ -303,4 +303,33 @@ class AnimationResourceTests
 		let bound = fixture.Manager.Bind<AnimationClip>(instance.Id);
 		Test.Assert(bound.Get == null, "a malformed record binds nothing");
 	}
+
+	/// The record kept values only: a cubic clip came back with zero tangents everywhere.
+	[Test]
+	public static void ACubicTracksTangentsSurviveTheCookedRecord()
+	{
+		let clip = scope AnimationClip("swing", 1.0f, true);
+		let pos = clip.GetOrCreatePositionTrack(0);
+		pos.Interpolation = .CubicSpline;
+		pos.AddKeyframe(0.0f, .(0, 0, 0), .(0, 0, 0), .(2, 0, 0));
+		pos.AddKeyframe(1.0f, .(1, 0, 0), .(0, 3, 0), .(0, 0, 0));
+		let source = scope AnimationClipSource();
+		AnimationClipSource.FromClip(clip, source);
+		Test.Assert(source.HasTangents);
+
+		let back = scope AnimationClip();
+		Test.Assert(source.FillClip(back));
+		Test.Assert(back.PositionTracks.Count == 1);
+		let read = back.PositionTracks[0];
+		Test.Assert(read.Keyframes.Count == 2);
+		Test.Assert(Near(read.Keyframes[0].OutTangent.X, 2.0f));
+		Test.Assert(Near(read.Keyframes[1].InTangent.Y, 3.0f));
+
+		// A clip with no cubic track carries none.
+		let linear = scope AnimationClip("walk", 1.0f, true);
+		linear.GetOrCreatePositionTrack(0).AddKeyframe(0.0f, .(0, 0, 0));
+		let plain = scope AnimationClipSource();
+		AnimationClipSource.FromClip(linear, plain);
+		Test.Assert(plain.KeyInTangent.IsEmpty);
+	}
 }

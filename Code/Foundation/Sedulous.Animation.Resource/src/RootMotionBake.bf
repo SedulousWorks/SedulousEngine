@@ -41,7 +41,10 @@ static class RootMotionBake
 		for (int k = 0; (k < (int)clip.TrackCount[track]) && (start + k < clip.KeyTime.Count); k++)
 		{
 			let v = clip.KeyValue[start + k];
-			outTrack.AddKeyframe(clip.KeyTime[start + k], .(v.X, v.Y, v.Z));
+			let tin = clip.TangentAt(clip.KeyInTangent, start + k);
+			let tout = clip.TangentAt(clip.KeyOutTangent, start + k);
+			outTrack.AddKeyframe(clip.KeyTime[start + k], .(v.X, v.Y, v.Z), .(tin.X, tin.Y, tin.Z),
+				.(tout.X, tout.Y, tout.Z));
 		}
 	}
 
@@ -54,7 +57,10 @@ static class RootMotionBake
 		for (int k = 0; (k < (int)clip.TrackCount[track]) && (start + k < clip.KeyTime.Count); k++)
 		{
 			let v = clip.KeyValue[start + k];
-			outTrack.AddKeyframe(clip.KeyTime[start + k], .(v.X, v.Y, v.Z, v.W));
+			let tin = clip.TangentAt(clip.KeyInTangent, start + k);
+			let tout = clip.TangentAt(clip.KeyOutTangent, start + k);
+			outTrack.AddKeyframe(clip.KeyTime[start + k], .(v.X, v.Y, v.Z, v.W), .(tin.X, tin.Y, tin.Z, tin.W),
+				.(tout.X, tout.Y, tout.Z, tout.W));
 		}
 	}
 
@@ -129,6 +135,7 @@ static class RootMotionBake
 			if ((positionTrack >= 0) && (clip.RootHorizontal || clip.RootVertical))
 			{
 				let start = (int)clip.TrackStart[positionTrack];
+				let tangents = clip.HasTangents;
 				for (int k < (int)clip.TrackCount[positionTrack])
 				{
 					var v = ref clip.KeyValue[start + k];
@@ -139,11 +146,31 @@ static class RootMotionBake
 					}
 					if (clip.RootVertical)
 						v.Y = first.Y;
+					if (!tangents)
+						continue;
+					// A stripped axis is held still: its cubic tangents go with its motion.
+					var tin = ref clip.KeyInTangent[start + k];
+					var tout = ref clip.KeyOutTangent[start + k];
+					if (clip.RootHorizontal)
+					{
+						tin.X = tin.Z = 0.0f;
+						tout.X = tout.Z = 0.0f;
+					}
+					if (clip.RootVertical)
+					{
+						tin.Y = 0.0f;
+						tout.Y = 0.0f;
+					}
 				}
 			}
 			if ((rotationTrack >= 0) && clip.RootYaw)
 			{
 				let start = (int)clip.TrackStart[rotationTrack];
+				// Each key turned back by its own yaw: the tangents no longer fit the keys, so the
+				// track plays linearly between them (the baked curve keeps the motion's shape).
+				if ((rotationTrack < clip.TrackInterp.Count)
+					&& (clip.TrackInterp[rotationTrack] == (uint8)InterpolationMode.CubicSpline))
+					clip.TrackInterp[rotationTrack] = (uint8)InterpolationMode.Linear;
 				for (int k < (int)clip.TrackCount[rotationTrack])
 				{
 					var v = ref clip.KeyValue[start + k];
