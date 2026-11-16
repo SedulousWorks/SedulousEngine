@@ -601,6 +601,53 @@ class VulkanCommandTests
 		sDevice.DestroyTexture(ref texture);
 	}
 
+	/// A fenced submit given no fence still runs its command buffers: it returned early on a null
+	/// fence, so the commands never ran, and in a frame submit the acquire semaphore was never
+	/// waited on.
+	[Test]
+	public static void AFencedSubmitGivenNoFenceStillRunsItsCommandBuffers()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		var desc = BufferDesc();
+		desc.Size = 16;
+		desc.Memory = .CpuToGpu;
+		desc.Usage = .CopySrc;
+		desc.Label = "VulkanCommandTests.NoFence.src";
+		Test.Assert(sDevice.CreateBuffer(desc) case .Ok(var source));
+		desc.Memory = .GpuToCpu;
+		desc.Usage = .CopyDst;
+		desc.Label = "VulkanCommandTests.NoFence.dst";
+		Test.Assert(sDevice.CreateBuffer(desc) case .Ok(var destination));
+		let sourceBytes = (uint8*)source.Map();
+		Test.Assert(sourceBytes != null);
+		for (int i < 16)
+			sourceBytes[i] = (uint8)(i + 1);
+		source.Unmap();
+		let cleared = (uint8*)destination.Map();
+		Test.Assert(cleared != null);
+		Internal.MemSet(cleared, 0, 16);
+		destination.Unmap();
+
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		encoder.CopyBufferToBuffer(source, 0, destination, 0, 16);
+		var buffers = ICommandBuffer[1](encoder.Finish());
+		sDevice.GetQueue(.Graphics).Submit(buffers, null, 0);
+		sDevice.WaitIdle();
+
+		let bytes = (uint8*)destination.Map();
+		Test.Assert(bytes != null);
+		Test.Assert(bytes[0] == 1, "the commands ran");
+		Test.Assert(bytes[15] == 16);
+		destination.Unmap();
+
+		pool.DestroyEncoder(ref encoder);
+		sDevice.DestroyCommandPool(ref pool);
+		sDevice.DestroyBuffer(ref source);
+		sDevice.DestroyBuffer(ref destination);
+	}
+
 	/// A texture written through a transfer batch is tracked as shader-read, and writing it again
 	/// starts from that tracked layout: a barrier from UNDEFINED there discards what the subresource
 	/// held, and the encoder's next barrier on it would start from the wrong layout.

@@ -106,11 +106,10 @@ class VulkanQueue : IQueue
 		if (waitFences.Length != waitValues.Length)
 			return;
 
-		// A fenced submit without a fence is a contract violation (the validation layer
-		// reports it; the plain overload is the unsignalled path).
+		// A null fence submits without the timeline signal: dropping the submit lost the command
+		// buffers, and in a frame the acquire semaphore was never waited on, so the next acquire
+		// with it failed.
 		let fence = signalFence as VulkanFence;
-		if (fence == null)
-			return;
 
 		let handles = scope VkCommandBuffer[commandBuffers.Length];
 		let count = Unwrap(commandBuffers, handles);
@@ -147,15 +146,26 @@ class VulkanQueue : IQueue
 			actualWaits++;
 		}
 
-		var signalSemaphores = VkSemaphore[2](fence.Handle, presentSemaphore);
-		var signalValues = uint64[2](signalValue, 0);
-		let signalCount = (isFrame && (presentSemaphore != .Null)) ? 2 : 1;
+		var signalSemaphores = VkSemaphore[2](.Null, .Null);
+		var signalValues = uint64[2](0, 0);
+		int signalCount = 0;
+		if (fence != null)
+		{
+			signalSemaphores[signalCount] = fence.Handle;
+			signalValues[signalCount++] = signalValue;
+		}
+		if (isFrame && (presentSemaphore != .Null))
+		{
+			// A binary semaphore carries no value, so its slot is zero and ignored.
+			signalSemaphores[signalCount] = presentSemaphore;
+			signalValues[signalCount++] = 0;
+		}
 
 		VkTimelineSemaphoreSubmitInfo timelineInfo = .();
 		timelineInfo.waitSemaphoreValueCount = (uint32)actualWaits;
 		timelineInfo.pWaitSemaphoreValues = (actualWaits > 0) ? &values[0] : null;
 		timelineInfo.signalSemaphoreValueCount = (uint32)signalCount;
-		timelineInfo.pSignalSemaphoreValues = &signalValues[0];
+		timelineInfo.pSignalSemaphoreValues = (signalCount > 0) ? &signalValues[0] : null;
 
 		VkSubmitInfo submitInfo = .();
 		submitInfo.pNext = &timelineInfo;
@@ -165,7 +175,7 @@ class VulkanQueue : IQueue
 		submitInfo.pWaitSemaphores = (actualWaits > 0) ? &waitSemaphores[0] : null;
 		submitInfo.pWaitDstStageMask = (actualWaits > 0) ? &stages[0] : null;
 		submitInfo.signalSemaphoreCount = (uint32)signalCount;
-		submitInfo.pSignalSemaphores = &signalSemaphores[0];
+		submitInfo.pSignalSemaphores = (signalCount > 0) ? &signalSemaphores[0] : null;
 
 		if (VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null) == .VK_ERROR_DEVICE_LOST)
 			mDevice.MarkLost();
