@@ -127,8 +127,8 @@ class TaaPass
 	/// The input comes back unchanged when the view cannot be resolved, so the frame carries
 	/// on with an aliased image rather than a missing one.
 	public RGHandle DeclareTaa(RenderGraph graph, RGHandle current, RGHandle motion,
-		RGHandle depth, uint32 viewIndex, uint32 width, uint32 height, float blendFactor,
-		float varianceGamma, float motionScale, float nearPlane, float farPlane, bool orthographic)
+		RGHandle depth, uint32 viewIndex, uint32 width, uint32 height, int32 viewportX, int32 viewportY,
+		uint32 viewportWidth, uint32 viewportHeight, float blendFactor, float varianceGamma, float motionScale, float nearPlane, float farPlane, bool orthographic)
 	{
 		if ((width == 0) || (height == 0))
 			return current;
@@ -175,6 +175,9 @@ class TaaPass
 		push.NearPlane = nearPlane;
 		push.FarPlane = (farPlane > nearPlane) ? farPlane : 1000.0f;
 		push.Orthographic = orthographic ? 1 : 0;
+		push.VpMin = .((float)viewportX / (float)width, (float)viewportY / (float)height);
+		push.VpSize = .((float)((viewportWidth == 0) ? width : viewportWidth) / (float)width,
+			(float)((viewportHeight == 0) ? height : viewportHeight) / (float)height);
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 

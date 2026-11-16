@@ -84,9 +84,11 @@ class TaaProbeTests
 	/// Renders cFrames with the camera stepping `step` along +X a frame (TAA on or off) and
 	/// reads back the last cKept into `kept`. `skinnedStep`: the camera stays and the bars, one
 	/// skinned mesh, slide that far along -X a frame by their bone; `twin` adds a copy hidden
-	/// behind the wall, so the two batch and draw by the instanced path.
+	/// behind the wall, so the two batch and draw by the instanced path. `leftHalf`: the view
+	/// fills only the target's left half, one side of a split screen, with a projection for that
+	/// half.
 	private static bool RenderSlide(BackendProbeFixture fixture, float step, bool taaOn, SideView side,
-		List<CapturedImage> kept, float skinnedStep = 0.0f, bool twin = false)
+		List<CapturedImage> kept, float skinnedStep = 0.0f, bool twin = false, bool leftHalf = false)
 	{
 		let device = fixture.Device;
 		let shaders = fixture.Shaders;
@@ -217,6 +219,11 @@ class TaaProbeTests
 		settings.Post.TaaEnabled = taaOn;
 		settings.Post.NeedsMotion = taaOn;
 		settings.HistoryKey = side.Keyed ? 1 : 0;
+		if (leftHalf)
+		{
+			settings.ViewportWidth = cSize / 2;
+			settings.ViewportHeight = cSize;
+		}
 
 		var sideSettings = ViewSettings();
 		sideSettings.Clear = ClearColor.Black;
@@ -241,7 +248,7 @@ class TaaProbeTests
 			var camera = ViewCamera();
 			camera.Position = eye;
 			camera.View = Float4x4.LookAtRH(eye, eye + Float3(0, 0, -1), .(0, 1, 0));
-			camera.Projection = Float4x4.PerspectiveFovRH(cFov, 1.0f, 0.1f, 100.0f);
+			camera.Projection = Float4x4.PerspectiveFovRH(cFov, leftHalf ? 0.5f : 1.0f, 0.1f, 100.0f);
 
 			if (!(pool.CreateEncoder() case .Ok(var encoder)))
 				return false;
@@ -280,8 +287,8 @@ class TaaProbeTests
 
 	/// How far the resolved image strays from moving with the scene: the mean difference
 	/// between each frame and the one before shifted `shift` pixels left (the scene's motion),
-	/// over the interior columns.
-	private static float MeanStray(List<CapturedImage> frames, uint32 shift)
+	/// over the interior columns (those before `xEnd`).
+	private static float MeanStray(List<CapturedImage> frames, uint32 shift, uint32 xEnd = cSize)
 	{
 		double sum = 0.0;
 		var count = (uint32)0;
@@ -289,7 +296,7 @@ class TaaProbeTests
 		{
 			for (uint32 y = 8; y + 8 < cSize; y++)
 			{
-				for (uint32 x = 8; x + 8 < cSize; x++)
+				for (uint32 x = 8; x + 8 < xEnd; x++)
 				{
 					let now = frames[f].At(x, y);
 					let before = frames[f - 1].At(x + shift, y);
@@ -304,18 +311,18 @@ class TaaProbeTests
 
 	/// The stray of one run, or -1 when it did not render.
 	private static float Stray(BackendProbeFixture fixture, float step, bool taaOn, SideView side, uint32 shift,
-		float skinnedStep = 0.0f, bool twin = false)
+		float skinnedStep = 0.0f, bool twin = false, bool leftHalf = false)
 	{
 		let frames = scope List<CapturedImage>();
 		defer { for (let image in frames) delete image; }
-		if (!RenderSlide(fixture, step, taaOn, side, frames, skinnedStep, twin) || (frames.Count != cKept))
+		if (!RenderSlide(fixture, step, taaOn, side, frames, skinnedStep, twin, leftHalf) || (frames.Count != cKept))
 			return -1.0f;
 		for (let image in frames)
 		{
 			if ((image == null) || !image.Valid)
 				return -1.0f;
 		}
-		return MeanStray(frames, shift);
+		return MeanStray(frames, shift, leftHalf ? cSize / 2 : cSize);
 	}
 
 	[Test]
@@ -341,6 +348,28 @@ class TaaProbeTests
 		// times worse: the jitter showed through.
 		Test.Assert(moving < still * 2.5f,
 			scope $"{kind}: frame to frame stray, TAA still {still}, TAA moving {moving}, no TAA moving {raw}");
+	}
+
+	/// The same slide in the left half of the target, one side of a split screen. The motion
+	/// vectors are in the view's own uv: read as the whole texture's, the history came from twice
+	/// as far and the image smeared.
+	[Test]
+	public static void InOneHalfOfASplitScreenTheResolvedImageMovesWithTheSceneAsWell()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			SplitSlideOn(kind);
+	}
+
+	private static void SplitSlideOn(ProbeBackend kind)
+	{
+		let fixture = scope BackendProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let still = Stray(fixture, 0.0f, true, .(), 0, 0.0f, false, true);
+		let moving = Stray(fixture, PixelStep(), true, .(), 1, 0.0f, false, true);
+		Test.Assert((still >= 0.0f) && (moving >= 0.0f), scope $"{kind}: rendered");
+		Test.Assert(moving < still * 2.5f, scope $"{kind}: split frame to frame stray, TAA still {still}, TAA moving {moving}");
 	}
 
 	[Test]

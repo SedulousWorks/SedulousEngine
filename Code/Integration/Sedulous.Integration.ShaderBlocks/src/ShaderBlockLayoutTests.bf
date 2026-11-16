@@ -223,12 +223,16 @@ class ShaderBlockLayoutTests
 		.("DebugMode", offsetof(GtaoPush, DebugMode)),
 		.("Orthographic", offsetof(GtaoPush, Orthographic)),
 		.("Slices", offsetof(GtaoPush, Slices)),
-		.("Steps", offsetof(GtaoPush, Steps)));
+		.("Steps", offsetof(GtaoPush, Steps)),
+		.("VpMin", offsetof(GtaoPush, VpMin)),
+		.("VpSize", offsetof(GtaoPush, VpSize)));
 
 	private static FieldRow[?] sSsaoPush = .(
 		.("InvProj", offsetof(SsaoPush, InvProj)),
 		.("TexelSize", offsetof(SsaoPush, TexelSize)),
 		.("Jitter", offsetof(SsaoPush, Jitter)),
+		.("VpMin", offsetof(SsaoPush, VpMin)),
+		.("VpSize", offsetof(SsaoPush, VpSize)),
 		.("ProjXX", offsetof(SsaoPush, ProjXX)),
 		.("ProjYY", offsetof(SsaoPush, ProjYY)),
 		.("Radius", offsetof(SsaoPush, Radius)),
@@ -236,12 +240,13 @@ class ShaderBlockLayoutTests
 		.("Bias", offsetof(SsaoPush, Bias)),
 		.("SampleCount", offsetof(SsaoPush, SampleCount)),
 		.("DebugMode", offsetof(SsaoPush, DebugMode)),
-		.("Orthographic", offsetof(SsaoPush, Orthographic)),
-		.("_pad", offsetof(SsaoPush, Pad)));
+		.("Orthographic", offsetof(SsaoPush, Orthographic)));
 
 	private static FieldRow[?] sAoBlurPush = .(
 		.("Dir", offsetof(AoBlurPush, Direction)),
 		.("TexelSize", offsetof(AoBlurPush, TexelSize)),
+		.("VpMin", offsetof(AoBlurPush, VpMin)),
+		.("VpSize", offsetof(AoBlurPush, VpSize)),
 		.("DepthSigma", offsetof(AoBlurPush, DepthSigma)),
 		.("_pad0", offsetof(AoBlurPush, Pad0)),
 		.("_pad1", offsetof(AoBlurPush, Pad1)),
@@ -272,6 +277,8 @@ class ShaderBlockLayoutTests
 		.("FarPlane", offsetof(TaaPush, FarPlane)),
 		.("Orthographic", offsetof(TaaPush, Orthographic)),
 		.("_pad0", offsetof(TaaPush, Pad0)),
+		.("VpMin", offsetof(TaaPush, VpMin)),
+		.("VpSize", offsetof(TaaPush, VpSize)),
 		.("_pad1", offsetof(TaaPush, Pad1)),
 		.("_pad2", offsetof(TaaPush, Pad2)));
 

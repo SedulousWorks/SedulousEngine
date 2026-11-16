@@ -22,6 +22,9 @@ struct GtaoPush
 	/// The horizon slices and the march steps per slice direction: the view's budget.
 	public int32 Slices = 3;
 	public int32 Steps = 6;
+	/// The view's sub-rectangle in full-texture uv (split screen).
+	public Float2 VpMin = .(0, 0);
+	public Float2 VpSize = .(1, 1);
 
 	public this() {}
 }
@@ -53,6 +56,9 @@ struct SsaoPush
 	/// The projection's own jitter, so the back projection matches the jittered depth it is
 	/// reading rather than landing half a pixel off.
 	public Float2 Jitter = .(0, 0);
+	/// The view's sub-rectangle in full-texture uv (split screen).
+	public Float2 VpMin = .(0, 0);
+	public Float2 VpSize = .(1, 1);
 	public float ProjXX = 1.0f;
 	public float ProjYY = 1.0f;
 	public float Radius = 0.5f;
@@ -62,7 +68,6 @@ struct SsaoPush
 	public int32 DebugMode = 0;
 	/// One: the view rays are parallel, no divide by depth.
 	public int32 Orthographic = 0;
-	public int32 Pad = 0;
 
 	public this() {}
 }
@@ -73,6 +78,9 @@ struct AoBlurPush
 {
 	public Float2 Direction = .(0, 0);
 	public Float2 TexelSize = .(0, 0);
+	/// The view's sub-rectangle in full-texture uv: taps stay inside it (split screen).
+	public Float2 VpMin = .(0, 0);
+	public Float2 VpSize = .(1, 1);
 	/// How sharply the blur stops at a depth discontinuity, which is what keeps occlusion
 	/// from bleeding across an edge.
 	public float DepthSigma = 120.0f;

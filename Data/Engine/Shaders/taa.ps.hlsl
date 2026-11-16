@@ -18,7 +18,10 @@ struct TaaPush {
     float  NearPlane;      // camera near - linearize depth for the disocclusion test
     float  FarPlane;       // camera far
     int    Orthographic;   // 1: an orthographic camera's depth is linear (projection.hlsli)
-    int    _pad0; int _pad1; int _pad2;
+    int    _pad0;
+    float2 VpMin;          // the view's sub-rectangle in full-texture uv (split screen): the motion
+    float2 VpSize;         // vectors are in its local uv, and every tap stays inside it
+    int    _pad1; int _pad2;
 };
 PUSH_CONSTANT(TaaPush, pc, space1);
 
@@ -40,6 +43,9 @@ float3 ClipToAABB(float3 color, float3 aabbMin, float3 aabbMax) {
     return maxUnit > 1.0 ? center + (shift / maxUnit) : color;
 }
 
+// A tap kept inside the view's sub-rectangle: past its edge lies another view's image.
+float2 InView(float2 fuv) { return clamp(fuv, pc.VpMin + 0.5 * pc.TexelSize, pc.VpMin + pc.VpSize - 0.5 * pc.TexelSize); }
+
 // 5-tap Catmull-Rom (Karis) - sharp bicubic history reconstruction from a bilinear sampler.
 float3 SampleHistoryCatmullRom(float2 uv, float2 texSize) {
     float2 samplePos = uv * texSize;
@@ -50,9 +56,9 @@ float3 SampleHistoryCatmullRom(float2 uv, float2 texSize) {
     float2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
     float2 w3 = f * f * (-0.5 + 0.5 * f);
     float2 w12 = w1 + w2;
-    float2 tc0  = (tc1 - 1.0) / texSize;
-    float2 tc3  = (tc1 + 2.0) / texSize;
-    float2 tc12 = (tc1 + w2 / w12) / texSize;
+    float2 tc0  = InView((tc1 - 1.0) / texSize);
+    float2 tc3  = InView((tc1 + 2.0) / texSize);
+    float2 tc12 = InView((tc1 + w2 / w12) / texSize);
     float3 r = float3(0,0,0); float wSum = 0.0;
     r += HistoryColor.SampleLevel(LinearSamp, float2(tc12.x, tc0.y),  0).rgb * (w12.x * w0.y);  wSum += w12.x * w0.y;
     r += HistoryColor.SampleLevel(LinearSamp, float2(tc0.x,  tc12.y), 0).rgb * (w0.x  * w12.y); wSum += w0.x  * w12.y;
@@ -81,16 +87,19 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
     float2 closestUV    = uv;
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
-            float2 s = uv + float2(x, y) * pc.TexelSize;
+            float2 s = InView(uv + float2(x, y) * pc.TexelSize);
             float  d = DepthTexture.SampleLevel(PointSamp, s, 0).r;
             if (IsNearerDepth(d, closestDepth)) { closestDepth = d; closestUV = s; }
         }
     }
-    float2 motion    = MotionVectors.SampleLevel(PointSamp, closestUV, 0).rg;
-    float2 historyUV = uv - motion;
+    // Motion is a delta in the view's local uv: the history position is found there, then mapped back
+    // into the view's sub-rectangle of the texture.
+    float2 motion     = MotionVectors.SampleLevel(PointSamp, closestUV, 0).rg;
+    float2 historyLoc = (uv - pc.VpMin) / pc.VpSize - motion;
+    float2 historyUV  = pc.VpMin + historyLoc * pc.VpSize;
 
     PSOut o;
-    if (pc.HistoryValid < 0.5 || any(historyUV < 0.0) || any(historyUV > 1.0)) {
+    if (pc.HistoryValid < 0.5 || any(historyLoc < 0.0) || any(historyLoc > 1.0)) {
         o.Color = float4(current, 1.0); o.History = float4(current, centerLin); return o;
     }
 
@@ -105,7 +114,7 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
     // Without the gate the reject fires on every boundary pixel each frame, so the edge shows the raw
     // jittered current and the jaggies crawl. Motion is geometric (jitter-free) so static == exactly 0.
     float linPrev  = HistoryColor.SampleLevel(PointSamp, historyUV, 0).a;
-    float motionPx = length(motion / pc.TexelSize);   // motion-vector magnitude in pixels
+    float motionPx = length(motion * pc.VpSize / pc.TexelSize);   // motion-vector magnitude in pixels
     if (linPrev > 0.0 && motionPx > 0.5) {
         float linCur   = LinearViewDepth(closestDepth, pc.NearPlane, pc.FarPlane, pc.Orthographic != 0);
         float relDiff  = abs(linCur - linPrev) / max(min(linCur, linPrev), 0.001);
@@ -116,7 +125,7 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
     float3 m1 = float3(0,0,0), m2 = float3(0,0,0);
     for (int ny = -1; ny <= 1; ++ny) {
         for (int nx = -1; nx <= 1; ++nx) {
-            float3 y = RGBToYCoCg(CurrentColor.SampleLevel(PointSamp, uv + float2(nx, ny) * pc.TexelSize, 0).rgb);
+            float3 y = RGBToYCoCg(CurrentColor.SampleLevel(PointSamp, InView(uv + float2(nx, ny) * pc.TexelSize), 0).rgb);
             m1 += y; m2 += y * y;
         }
     }

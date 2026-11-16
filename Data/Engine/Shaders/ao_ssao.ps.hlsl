@@ -13,6 +13,8 @@ struct SsaoPush {
     row_major float4x4 InvProj;   // (ndc, depth) -> view space
     float2 TexelSize;
     float2 Jitter;                // this frame's projection jitter in NDC (projection::JitterOf)
+    float2 VpMin;                 // the view's sub-rectangle in full-texture uv
+    float2 VpSize;
     float  ProjXX;                // projection(0,0): view -> ndc.x
     float  ProjYY;                // projection(1,1): view -> ndc.y
     float  Radius;
@@ -21,22 +23,29 @@ struct SsaoPush {
     int    SampleCount;
     int    DebugMode;
     int    Orthographic;          // 1: parallel view rays (projection.hlsli)
-    int    _pad;
 };
 PUSH_CONSTANT(SsaoPush, pc, space1);
 
+// The view's sub-rectangle of the texture (split screen): the projection covers it, so a full-texture
+// uv becomes the view's local uv before it becomes ndc.
+float2 FullToLocal(float2 fuv) { return (fuv - pc.VpMin) / pc.VpSize; }
+float2 LocalToFull(float2 luv) { return pc.VpMin + luv * pc.VpSize; }
+bool   InView(float2 fuv) { return all(fuv >= pc.VpMin) && all(fuv <= pc.VpMin + pc.VpSize); }
+
 float3 ViewPos(float2 uv, float depth) {
-    float2 ndc = float2(uv.x * 2.0 - 1.0, (1.0 - uv.y) * 2.0 - 1.0);
+    float2 luv = FullToLocal(uv);
+    float2 ndc = float2(luv.x * 2.0 - 1.0, (1.0 - luv.y) * 2.0 - 1.0);
     float4 h = mul(float4(ndc, depth, 1.0), pc.InvProj);
     return h.xyz / h.w;
 }
-// View-space position -> top-origin uv (inverse of ViewPos's uv->ndc: uv.y = (1-ndc.y)/2). The jitter
+// View-space position -> the full texture's top-origin uv (inverse of ViewPos: the view's local uv is
+// (ndc.x/2 + 1/2, (1-ndc.y)/2), then mapped into its sub-rectangle). The jitter
 // (off the diagonal ProjXX/YY) must be included or the back-projected UV won't match the jittered
 // depth buffer we sample -> per-frame occlusion oscillation (flicker under TAA).
 float2 ViewToUv(float3 vp) {
     // Full jittered ndc = diagonal ndc - jitter (either projection shifts ndc by -jitter).
     float2 ndc = ViewToNdcXY(vp, float2(pc.ProjXX, pc.ProjYY), pc.Orthographic != 0) - pc.Jitter;
-    return float2(ndc.x * 0.5 + 0.5, 0.5 - 0.5 * ndc.y);
+    return LocalToFull(float2(ndc.x * 0.5 + 0.5, 0.5 - 0.5 * ndc.y));
 }
 static const float3 KERNEL[16] = {
     float3( 0.5381, 0.1856,-0.4319), float3( 0.1379, 0.2486, 0.4430),
@@ -79,7 +88,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float3 samplePos = P + off * pc.Radius * scale;
 
         float2 sUv = ViewToUv(samplePos);
-        if (any(sUv < 0.0) || any(sUv > 1.0)) { continue; }
+        if (!InView(sUv)) { continue; }
         float  sampleZ = ViewPos(sUv, DepthTex.SampleLevel(PointSamp, sUv, 0).r).z;
         // The scene surface under the SAMPLE's pixel against the SAMPLE point, not against P:
         // RH view space, an occluder (closer) is less negative -> positive diff. Comparing to P

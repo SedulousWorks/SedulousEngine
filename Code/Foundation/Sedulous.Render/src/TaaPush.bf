@@ -24,6 +24,10 @@ struct TaaPush
 	/// One: an orthographic camera's depth is linear (taa.ps.hlsl's disocclusion test).
 	public int32 Orthographic = 0;
 	public int32 Pad0 = 0;
+	/// The view's sub-rectangle in full-texture uv (split screen): motion vectors are in its local
+	/// uv, and the neighbourhood and history taps stay inside it.
+	public Float2 VpMin = .(0, 0);
+	public Float2 VpSize = .(1, 1);
 	public int32 Pad1 = 0;
 	public int32 Pad2 = 0;
 

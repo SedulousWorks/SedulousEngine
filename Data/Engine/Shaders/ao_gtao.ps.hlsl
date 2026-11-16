@@ -20,14 +20,23 @@ struct GtaoPush {
     int    Orthographic;          // 1: parallel view rays (projection.hlsli)
     int    Slices;                // horizon slices (the view's quality budget)
     int    Steps;                 // march steps per slice direction
+    float2 VpMin;                 // the view's sub-rectangle in full-texture uv
+    float2 VpSize;
 };
 PUSH_CONSTANT(GtaoPush, pc, space1);
 
 static const float PI     = 3.14159265359;
 static const float HALFPI = 1.57079632679;
 
+// The view's sub-rectangle of the texture (split screen): the projection covers it, so a full-texture
+// uv becomes the view's local uv before it becomes ndc.
+float2 FullToLocal(float2 fuv) { return (fuv - pc.VpMin) / pc.VpSize; }
+float2 LocalToFull(float2 luv) { return pc.VpMin + luv * pc.VpSize; }
+bool   InView(float2 fuv) { return all(fuv >= pc.VpMin) && all(fuv <= pc.VpMin + pc.VpSize); }
+
 float3 ViewPos(float2 uv, float depth) {
-    float2 ndc = float2(uv.x * 2.0 - 1.0, (1.0 - uv.y) * 2.0 - 1.0);
+    float2 luv = FullToLocal(uv);
+    float2 ndc = float2(luv.x * 2.0 - 1.0, (1.0 - luv.y) * 2.0 - 1.0);
     float4 h = mul(float4(ndc, depth, 1.0), pc.InvProj);
     return h.xyz / h.w;
 }
@@ -43,11 +52,12 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     const bool ortho = pc.Orthographic != 0;
     float3 V = ViewDirToViewer(P, ortho);
 
-    // uv-space march radius for this pixel's depth (under orthographic, the same at every depth).
-    // NDC spans [-1,1] (length 2) -> uv [0,1] (length 1), hence the /2. Clamp: at least one texel,
-    // at most a quarter screen.
+    // The view's local-uv march radius for this pixel's depth (under orthographic, the same at every
+    // depth). NDC spans [-1,1] (length 2) -> uv [0,1] (length 1), hence the /2. Clamp: at least one
+    // texel, at most a quarter of the view; a step is mapped to the texture through the view's
+    // sub-rectangle.
     float screenR = pc.Radius * pc.ProjScaleY / (2.0 * max(ProjectionDivide(P, ortho), 1e-3));
-    screenR = clamp(screenR, pc.TexelSize.y, 0.25);
+    screenR = clamp(screenR, pc.TexelSize.y / pc.VpSize.y, 0.25);
 
     // Static interleaved-gradient noise (blur denoises it; static avoids temporal flicker).
     float noise      = frac(52.9829189 * frac(dot(pos.xy, float2(0.06711056, 0.00583715))));
@@ -81,9 +91,9 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float2 hcos = float2(-1.0, -1.0);   // x = negative side, y = positive side
         [loop] for (int t = 1; t <= steps; ++t) {
             float  r   = screenR * (float(t) - noiseStep) / float(steps);
-            float2 off = dir2 * r;
+            float2 off = dir2 * r * pc.VpSize;
             float2 up  = uv + off;
-            if (all(up >= 0.0) && all(up <= 1.0)) {
+            if (InView(up)) {
                 float3 ds = ViewPos(up, DepthTex.SampleLevel(PointSamp, up, 0).r) - P;
                 float  d2 = dot(ds, ds);
                 float  H  = dot(ds, V) * rsqrt(max(d2, 1e-12));
@@ -91,7 +101,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
                 hcos.y = (H > hcos.y) ? lerp(H, hcos.y, fo) : lerp(H, hcos.y, thickness);
             }
             float2 un = uv - off;
-            if (all(un >= 0.0) && all(un <= 1.0)) {
+            if (InView(un)) {
                 float3 ds = ViewPos(un, DepthTex.SampleLevel(PointSamp, un, 0).r) - P;
                 float  d2 = dot(ds, ds);
                 float  H  = dot(ds, V) * rsqrt(max(d2, 1e-12));

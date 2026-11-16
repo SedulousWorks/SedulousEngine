@@ -127,6 +127,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: in a split screen, ambient occlusion and TAA work on each side as they do on a
+  full screen; one side's occlusion was misplaced and a moving camera smeared under TAA.
 - Rendering: in a scene with more than 256 lights, the lights near the camera and the brightest
   are the ones drawn; before, the ones extracted last were dropped wherever they were.
 - Rendering: a tall object reaching toward the sun past a shadow cascade casts its shadow

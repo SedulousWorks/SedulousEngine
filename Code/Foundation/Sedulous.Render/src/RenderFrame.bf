@@ -1896,6 +1896,7 @@ class RenderFrame
 			if ((mAo != null) && aoActive)
 			{
 				aoHandle = mAo.DeclareAo(mGraph, postDepth, postNormal, view.Width, view.Height,
+					view.ViewportX, view.ViewportY, view.ViewportWidth, view.ViewportHeight,
 					Inverse(view.Camera.Projection), view.Camera.Projection, post.AoRadius,
 					post.AoIntensity, mFrameIndex, aoMode,
 					AoBudget(post.SsaoSamples, post.GtaoSlices, post.GtaoSteps), mAoDebug);
@@ -1914,7 +1915,8 @@ class RenderFrame
 			if (post.TaaEnabled && (mTaa != null))
 			{
 				sceneColor = mTaa.DeclareTaa(mGraph, litHdr, postVelocity, postDepth, historySlot,
-					view.Width, view.Height, post.TaaBlend, post.TaaGamma, mTaaMotionScale, view.Camera.NearPlane,
+					view.Width, view.Height, view.ViewportX, view.ViewportY, view.ViewportWidth,
+					view.ViewportHeight, post.TaaBlend, post.TaaGamma, mTaaMotionScale, view.Camera.NearPlane,
 					view.Camera.FarPlane, view.Camera.IsOrthographic);
 			}
 

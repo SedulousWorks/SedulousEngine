@@ -122,9 +122,12 @@ class AoPass
 	public TextureFormat Format => AoFormat;
 
 	/// Declares the occlusion for one view, and answers the blurred result. An invalid handle
-	/// means the mode is off. `budget` is what it may cost (a quality level's tier).
+	/// means the mode is off. `budget` is what it may cost (a quality level's tier). The viewport
+	/// is the view's rectangle of the width x height targets: the projection covers that
+	/// rectangle, not the whole texture (split screen).
 	public RGHandle DeclareAo(RenderGraph graph, RGHandle depth, RGHandle normal, uint32 width,
-		uint32 height, Float4x4 invProj, Float4x4 proj, float radius, float intensity,
+		uint32 height, int32 viewportX, int32 viewportY, uint32 viewportWidth, uint32 viewportHeight,
+		Float4x4 invProj, Float4x4 proj, float radius, float intensity,
 		uint32 frameIndex, AoMode mode, AoBudget budget, int32 debugMode = 0)
 	{
 		if ((mode == .Off) || (width == 0) || (height == 0))
@@ -147,6 +150,10 @@ class AoPass
 		Tick(frameIndex);
 
 		let texel = Float2(1.0f / (float)width, 1.0f / (float)height);
+		// The view's rectangle in full-texture uv: the projection maps it, not the whole texture.
+		let vpMin = Float2((float)viewportX / (float)width, (float)viewportY / (float)height);
+		let vpSize = Float2((float)((viewportWidth == 0) ? width : viewportWidth) / (float)width,
+			(float)((viewportHeight == 0) ? height : viewportHeight) / (float)height);
 		let raw = graph.CreateTransient("ao.raw", .(AoFormat, width, height));
 		let temporary = graph.CreateTransient("ao.tmp", .(AoFormat, width, height));
 		let blurred = graph.CreateTransient("ao.ao", .(AoFormat, width, height));
@@ -164,6 +171,8 @@ class AoPass
 			push.Orthographic = proj.IsOrthographic ? 1 : 0;
 			push.Slices = (int32)Math.Clamp(budget.GtaoSlices, (uint32)1, (uint32)8);
 			push.Steps = (int32)Math.Clamp(budget.GtaoSteps, (uint32)1, (uint32)16);
+			push.VpMin = vpMin;
+			push.VpSize = vpSize;
 
 			DeclareGenerate(graph, depth, normal, raw, width, height, mGtaoPipeline, &push,
 				sizeof(GtaoPush));
@@ -183,6 +192,8 @@ class AoPass
 			push.Bias = 0.05f;
 			push.SampleCount = (int32)Math.Clamp(budget.SsaoSamples, (uint32)1, (uint32)16); // the kernel's size
 			push.DebugMode = debugMode;
+			push.VpMin = vpMin;
+			push.VpSize = vpSize;
 
 			DeclareGenerate(graph, depth, normal, raw, width, height, mSsaoPipeline, &push,
 				sizeof(SsaoPush));
@@ -194,8 +205,8 @@ class AoPass
 			return raw;
 
 		// Separable: across, then down.
-		DeclareBlur(graph, raw, depth, temporary, width, height, texel, .(1.0f, 0.0f));
-		DeclareBlur(graph, temporary, depth, blurred, width, height, texel, .(0.0f, 1.0f));
+		DeclareBlur(graph, raw, depth, temporary, width, height, texel, .(1.0f, 0.0f), vpMin, vpSize);
+		DeclareBlur(graph, temporary, depth, blurred, width, height, texel, .(0.0f, 1.0f), vpMin, vpSize);
 		return blurred;
 	}
 
@@ -282,11 +293,13 @@ class AoPass
 	/// One direction of the bilateral blur, which stops at depth discontinuities so the
 	/// occlusion does not bleed across an edge.
 	private void DeclareBlur(RenderGraph graph, RGHandle ao, RGHandle depth, RGHandle result,
-		uint32 width, uint32 height, Float2 texel, Float2 direction)
+		uint32 width, uint32 height, Float2 texel, Float2 direction, Float2 vpMin, Float2 vpSize)
 	{
 		var push = AoBlurPush();
 		push.Direction = direction;
 		push.TexelSize = texel;
+		push.VpMin = vpMin;
+		push.VpSize = vpSize;
 
 		graph.AddRenderPass("ao.blur", scope (builder) =>
 			{

@@ -30,6 +30,13 @@ class MsaaProbeTests
 		/// angle, a floor seen from just above it, in place of the small rotated cube: the
 		/// flat surface AO probe. Thin, so the camera at z=6 is never inside it.
 		public bool ObliquePlane = false;
+		/// Draw the view into the right half of the target only (one side of a split screen),
+		/// with a projection for that half's aspect.
+		public bool RightHalf = false;
+		/// A target half as wide (the half's view drawn alone, to compare a split side against).
+		public bool HalfWidthTarget = false;
+		/// A box sunk into the oblique slab: the crease around it is what AO darkens.
+		public bool SunkBox = false;
 
 		public this() {}
 	}
@@ -120,15 +127,27 @@ class MsaaProbeTests
 		cube.Mesh = cubeMesh;
 		cube.Material = cubeMaterial;
 		cube.Category = RenderCategories.Opaque;
+		if (config.SunkBox)
+		{
+			let sunk = scene.Add<MeshRenderData>();
+			sunk.World = Float4x4.RotationY(0.5f) * Float4x4.RotationX(0.35f) * Float4x4.Translation(.(0.0f, 0.0f, -8.0f));
+			sunk.WorldCenter = .(0.0f, 0.0f, -8.0f);
+			sunk.WorldRadius = 2.0f;
+			sunk.Mesh = cubeMesh;
+			sunk.Material = cubeMaterial;
+			sunk.Category = RenderCategories.Opaque;
+		}
 
 		var camera = ViewCamera();
 		camera.View = Float4x4.LookAtRH(.(0, 0, 6), .(0, 0, 0), .(0, 1, 0));
-		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 1.0f, 0.1f, 100.0f);
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, (config.RightHalf || config.HalfWidthTarget) ? 0.5f : 1.0f,
+			0.1f, 100.0f);
 		camera.Position = .(0, 0, 6);
+		let targetWidth = config.HalfWidthTarget ? cSize / 2 : cSize;
 
 		var textureDesc = TextureDesc();
 		textureDesc.Format = .RGBA8Unorm;
-		textureDesc.Width = cSize;
+		textureDesc.Width = targetWidth;
 		textureDesc.Height = cSize;
 		textureDesc.Usage = .RenderTarget | .CopySrc;
 		textureDesc.Label = "msaa.probe.target";
@@ -166,6 +185,13 @@ class MsaaProbeTests
 		// The temporal resolve and a temporal reflection both read motion vectors.
 		settings.Post.NeedsMotion = config.Taa || config.Ssr;
 		settings.Post.MsaaSamples = (uint8)config.Samples;
+		if (config.RightHalf)
+		{
+			settings.ViewportX = (int32)(cSize / 2);
+			settings.ViewportY = 0;
+			settings.ViewportWidth = cSize / 2;
+			settings.ViewportHeight = cSize;
+		}
 
 		// The temporal resolve warms its history over a few frames even on a still camera.
 		let frames = config.Taa ? 8 : 2;
@@ -177,7 +203,7 @@ class MsaaProbeTests
 			settings.TargetCurrentState = (i == 0) ? .Undefined : .CopySrc;
 
 			frame.Begin(encoder, i % 2);
-			frame.AddView(scene, camera, settings, targetView, .RGBA8Unorm, cSize, cSize);
+			frame.AddView(scene, camera, settings, targetView, .RGBA8Unorm, targetWidth, cSize);
 			frame.End();
 
 			let commandBuffer = encoder.Finish();
@@ -193,7 +219,7 @@ class MsaaProbeTests
 			pool.DestroyEncoder(ref encoder);
 		}
 
-		let image = RhiTestSupport.Readback(device, target, cSize, cSize);
+		let image = RhiTestSupport.Readback(device, target, targetWidth, cSize);
 		device.WaitIdle();
 		return image;
 	}
@@ -367,6 +393,63 @@ class MsaaProbeTests
 			// hemisphere half is what this probe guards. GTAO sits at 523 throughout.
 			Test.Assert(lit * 100 >= unoccluded * 98,
 				scope $"{kind} {run.Name}: flat surface mean luma {lit} against {unoccluded} with AO off");
+		}
+	}
+
+	/// One side of a split screen takes the AO its view takes drawn alone: a box sunk into the
+	/// oblique slab, drawn in the right half of the target, against the same view drawn into a
+	/// target that size. AO mapped the whole texture's uv through the view's projection, so the
+	/// half's surfaces reconstructed at the wrong place and the crease's occlusion moved and
+	/// stretched.
+	[Test]
+	public static void OneSideOfASplitScreenTakesTheAoItsViewTakesDrawnAlone()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			SplitAoOn(kind);
+	}
+
+	private static void SplitAoOn(ProbeBackend kind)
+	{
+		let fixture = scope BackendProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let noAo = RenderMsaa(fixture, .() { ObliquePlane = true, HalfWidthTarget = true, SunkBox = true });
+		defer delete noAo;
+		Test.Assert((noAo != null) && noAo.Valid, scope $"{kind}: rendered without AO");
+		for (let run in scope EffectRun[2](
+			.("gtao", .() { AoMode = 1, ObliquePlane = true, RightHalf = true, SunkBox = true }),
+			.("ssao", .() { AoMode = 2, ObliquePlane = true, RightHalf = true, SunkBox = true })))
+		{
+			let split = RenderMsaa(fixture, run.Config);
+			defer delete split;
+			var aloneConfig = run.Config;
+			aloneConfig.RightHalf = false;
+			aloneConfig.HalfWidthTarget = true;
+			let alone = RenderMsaa(fixture, aloneConfig);
+			defer delete alone;
+			Test.Assert((split != null) && split.Valid && (alone != null) && alone.Valid, scope $"{kind} {run.Name}: rendered");
+
+			uint64 difference = 0;
+			uint64 darkened = 0;
+			uint32 count = 0;
+			for (uint32 y = 4; y + 4 < cSize; y++)
+			{
+				for (uint32 x = 4; x + 4 < cSize / 2; x++)
+				{
+					let a = split.Luma(cSize / 2 + x, y);
+					let b = alone.Luma(x, y);
+					let c = noAo.Luma(x, y);
+					difference += (a > b) ? a - b : b - a;
+					darkened += (c > b) ? c - b : 0;
+					count++;
+				}
+			}
+			let meanDifference = (double)difference / count;
+			let meanDarkening = (double)darkened / count;
+			Console.WriteLine(scope $"[ao-split] {kind} {run.Name}: split against alone {meanDifference:F2}, AO darkening {meanDarkening:F2}");
+			Test.Assert(meanDarkening > 1.0, scope $"{kind} {run.Name}: the crease is occluded ({meanDarkening}), so there is AO to compare");
+			Test.Assert(meanDifference < meanDarkening * 0.15, scope $"{kind} {run.Name}: the split side takes the same AO ({meanDifference} against {meanDarkening})");
 		}
 	}
 }

@@ -5,14 +5,16 @@
 Texture2D    AoTex     : register(t0, space0);
 Texture2D    DepthTex  : register(t1, space0);
 SamplerState PointSamp : register(s0, space0);
-struct BlurPush { float2 Dir; float2 TexelSize; float DepthSigma; float _pad0, _pad1, _pad2; }; // scalar pad (WGSL uniform vec3 align)
+// VpMin and VpSize: the view's sub-rectangle in full-texture uv; taps stay inside it (split screen).
+struct BlurPush { float2 Dir; float2 TexelSize; float2 VpMin; float2 VpSize; float DepthSigma; float _pad0, _pad1, _pad2; }; // scalar pad (WGSL uniform vec3 align)
 PUSH_CONSTANT(BlurPush, pc, space1);
 
 float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float  centerD = DepthTex.SampleLevel(PointSamp, uv, 0).r;
     float  sum = 0.0, wsum = 0.0;
     [unroll] for (int i = -3; i <= 3; ++i) {
-        float2 suv = uv + pc.Dir * pc.TexelSize * float(i);
+        float2 suv = clamp(uv + pc.Dir * pc.TexelSize * float(i), pc.VpMin + 0.5 * pc.TexelSize,
+                           pc.VpMin + pc.VpSize - 0.5 * pc.TexelSize);
         float  a   = AoTex.SampleLevel(PointSamp, suv, 0).r;
         float  d   = DepthTex.SampleLevel(PointSamp, suv, 0).r;
         float  wd  = exp(-abs(d - centerD) * pc.DepthSigma);
