@@ -70,8 +70,11 @@ struct Random
 	/// Uniform in [min, max], INCLUSIVE of both.
 	public int32 NextInt(int32 min, int32 max) mut
 	{
-		let range = (uint32)(max - min) + 1;
-		return min + (int32)(NextU32() % range);
+		// In unsigned arithmetic: max - min overflows int32 for a wide range, and the whole int32
+		// range is 2^32 values, one more than a uint32 holds (any uint32 is then in range).
+		let span = (uint32)max &- (uint32)min;
+		let offset = (span == uint32.MaxValue) ? NextU32() : (NextU32() % (span + 1));
+		return (int32)((uint32)min &+ offset);
 	}
 
 	public bool NextBool() mut => (NextU32() & 1) != 0;

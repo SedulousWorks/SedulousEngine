@@ -100,6 +100,23 @@ class RandomTests
 			Test.Assert(rng.NextInt(5, 5) == 5);
 	}
 
+	/// A range wider than int32 can subtract, the whole range included: max - min overflowed, and
+	/// the whole range wrapped to 0 and divided by it.
+	[Test]
+	public static void NextIntTakesARangeWiderThanInt32CanSubtract()
+	{
+		var rng = Random(7);
+		for (int i < 1000)
+		{
+			rng.NextInt(int32.MinValue, int32.MaxValue); // was % 0
+			let wide = rng.NextInt(-2000000000, 2000000000);
+			Test.Assert((wide >= -2000000000) && (wide <= 2000000000));
+			let low = rng.NextInt(int32.MinValue, int32.MinValue + 3);
+			Test.Assert((low >= int32.MinValue) && (low <= int32.MinValue + 3));
+			Test.Assert(rng.NextInt(5, 5) == 5);
+		}
+	}
+
 	/// Two generators from the system's entropy do not walk the same sequence.
 	[Test]
 	public static void TwoGeneratorsFromSystemEntropyDiffer()
