@@ -127,6 +127,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Physics: a terrain takes its entity's scale (it collided at its unscaled size), and a terrain
+  hole's drawn rim has collision, so the player no longer falls through ground drawn around a hole.
 - Physics: moving a simulated body's entity (from a script or the editor) moves the body; editing
   a body's shape, size or surface while the game runs rebuilds it, keeping its joints; a box,
   sphere, capsule or plane collider takes its entity's scale (it collided at its unscaled size).

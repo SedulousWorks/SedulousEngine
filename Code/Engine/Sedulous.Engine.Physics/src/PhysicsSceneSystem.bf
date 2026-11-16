@@ -31,7 +31,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 
 	/// Sample buffers held alive across ONE body build, because the backend copies them when
 	/// the body is created rather than when the shape is described.
-	private List<List<float>> mHeightBuffers = new .() ~ DeleteContainerAndItems!(_);
+	private BodyBuffers mBodyBuffers = new .() ~ delete _;
 
 	/// The static collider sources not ready at the last ask, asked again each step. BORROWED:
 	/// they are the scene's systems.
@@ -758,9 +758,9 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	{
 		// The sample buffers live until the body is created, which is where the backend
 		// copies them.
-		ClearAndDeleteItems!(mHeightBuffers);
+		mBodyBuffers.Clear();
 		let desc = scope BodyDesc();
-		if (!PhysicsBodies.Describe(mScene, component, entity, desc, mHeightBuffers))
+		if (!PhysicsBodies.Describe(mScene, component, entity, desc, mBodyBuffers))
 			return;
 		let position = desc.Position;
 		let rotation = desc.Rotation;

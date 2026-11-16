@@ -52,8 +52,7 @@ class RigidBodyComponentManager : ResourceBindingComponentManager<RigidBodyCompo
 	/// entity has no body, as at scene start. Needs no world: the bake runs in edit mode.
 	public void CollectStaticGeometry(Scene scene, AABB bounds, float detail, List<Float3> outTriangles)
 	{
-		let heightBuffers = scope List<List<float>>();
-		defer { ClearAndDeleteItems!(heightBuffers); }
+		let buffers = scope BodyBuffers();
 		let bodies = scope List<BodyDesc>();
 		defer { ClearAndDeleteItems!(bodies); }
 		for (let entity in Owners)
@@ -62,7 +61,7 @@ class RigidBodyComponentManager : ResourceBindingComponentManager<RigidBodyCompo
 			if ((component.Motion != .Static) || component.IsTrigger || !scene.IsEffectivelyActive(entity))
 				continue;
 			let desc = new BodyDesc();
-			if (PhysicsBodies.Describe(scene, component, entity, desc, heightBuffers))
+			if (PhysicsBodies.Describe(scene, component, entity, desc, buffers))
 				bodies.Add(desc);
 			else
 				delete desc;
