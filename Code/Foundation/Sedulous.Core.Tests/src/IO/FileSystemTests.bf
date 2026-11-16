@@ -398,4 +398,37 @@ class FileSystemTests
 		Test.Assert(!cwd.IsEmpty);
 		Test.Assert(DirectoryExists(cwd), scope $"working directory '{cwd}'");
 	}
+
+	/// A recursive delete removes a link, never what it points to: a folder outside the tree,
+	/// reached through a link inside it and through a link as the root.
+	[Test]
+	public static void ARecursiveDeleteRemovesALinkNeverWhatItPointsTo()
+	{
+		RemoveDirectoryRecursive("scratch_rml_outside");
+		RemoveDirectoryRecursive("scratch_rml_tree");
+		RemoveDirectoryRecursive("scratch_rml_root");
+		Test.Assert(CreateDirectory("scratch_rml_outside"));
+		uint8[1] payload = .(7);
+		Test.Assert(WriteFile("scratch_rml_outside/keep.bin", payload) case .Ok);
+		Test.Assert(CreateDirectory("scratch_rml_tree"));
+		let outside = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_rml_outside", .. scope .());
+		if (!CreateSymbolicLink(outside, "scratch_rml_tree/inside", true) || !CreateSymbolicLink(outside, "scratch_rml_root", true))
+		{
+			// This platform refuses symbolic links here (Windows without developer mode).
+			RemoveDirectoryRecursive("scratch_rml_tree");
+			RemoveDirectoryRecursive("scratch_rml_outside");
+			return;
+		}
+		Test.Assert(IsSymbolicLink("scratch_rml_root"));
+		Test.Assert(!IsSymbolicLink("scratch_rml_outside"));
+
+		Test.Assert(RemoveDirectoryRecursive("scratch_rml_tree"), "a link inside the tree");
+		Test.Assert(!DirectoryExists("scratch_rml_tree"));
+		Test.Assert(FileExists("scratch_rml_outside/keep.bin"));
+
+		Test.Assert(RemoveDirectoryRecursive("scratch_rml_root"), "the root itself a link");
+		Test.Assert(!IsSymbolicLink("scratch_rml_root"));
+		Test.Assert(FileExists("scratch_rml_outside/keep.bin"));
+		Test.Assert(RemoveDirectoryRecursive("scratch_rml_outside"));
+	}
 }

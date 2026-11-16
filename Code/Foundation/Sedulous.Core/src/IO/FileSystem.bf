@@ -273,10 +273,84 @@ static
 
 	/// A directory and everything under it. A directory that is already absent counts as
 	/// gone, so this is idempotent.
+	///
+	/// A link is removed, never walked: walking it would delete what it points to, which may lie
+	/// outside the tree being removed. (The platform's listing reports a link to a directory as a
+	/// directory, so a link inside the tree would be walked too.)
 	public static bool RemoveDirectoryRecursive(StringView path)
 	{
+		if (IsSymbolicLink(path))
+			return DeleteFile(path) || RemoveDirectory(path); // a directory link on Windows goes by RemoveDirectory
 		if (!System.IO.Directory.Exists(path))
 			return true;
-		return System.IO.Directory.DelTree(path) case .Ok;
+		let files = scope List<String>();
+		let folders = scope List<String>();
+		defer { ClearAndDeleteItems!(files); ClearAndDeleteItems!(folders); }
+		ListDirectory(path, scope [&](name, isDirectory) =>
+			{
+				let child = PathJoin(path, name, .. new String());
+				((isDirectory && !IsSymbolicLink(child)) ? folders : files).Add(child);
+			});
+		bool removed = true;
+		for (let folder in folders)
+			removed &= RemoveDirectoryRecursive(folder);
+		for (let file in files)
+		{
+			if (IsSymbolicLink(file))
+			{
+				removed &= DeleteFile(file) || RemoveDirectory(file);
+				continue;
+			}
+			// A read-only file is deleted too, as the platform's tree delete does.
+			System.IO.File.SetAttributes(file, .Archive).IgnoreError();
+			removed &= DeleteFile(file);
+		}
+		RemoveDirectory(path);
+		return removed && !System.IO.Directory.Exists(path);
 	}
+
+	/// Whether `path` itself is a symbolic link (on Windows, any reparse point: a symlink or a
+	/// junction), not what it points to.
+	public static bool IsSymbolicLink(StringView path)
+	{
+#if BF_PLATFORM_WINDOWS
+		let attributes = GetFileAttributesW(path.ToScopedNativeWChar!());
+		return (attributes != cInvalidFileAttributes) && ((attributes & cFileAttributeReparsePoint) != 0);
+#else
+		// readlink answers for a link alone (anything else is EINVAL).
+		char8[1] target = ?;
+		return readlink(path.ToScopeCStr!(), &target, 1) >= 0;
+#endif
+	}
+
+	/// Makes `link` point to `target`; `directory` when the target is one (Windows needs to know).
+	/// False when the platform refuses (Windows without developer mode or the privilege).
+	public static bool CreateSymbolicLink(StringView target, StringView link, bool directory)
+	{
+#if BF_PLATFORM_WINDOWS
+		var flags = cSymbolicLinkAllowUnprivilegedCreate;
+		if (directory)
+			flags |= cSymbolicLinkDirectory;
+		return CreateSymbolicLinkW(link.ToScopedNativeWChar!(), target.ToScopedNativeWChar!(), flags) != 0;
+#else
+		return symlink(target.ToScopeCStr!(), link.ToScopeCStr!()) == 0;
+#endif
+	}
+
+#if BF_PLATFORM_WINDOWS
+	private const uint32 cInvalidFileAttributes = 0xFFFFFFFF;
+	private const uint32 cFileAttributeReparsePoint = 0x400;
+	private const uint32 cSymbolicLinkDirectory = 0x1;
+	private const uint32 cSymbolicLinkAllowUnprivilegedCreate = 0x2;
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern uint32 GetFileAttributesW(char16* path);
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern uint8 CreateSymbolicLinkW(char16* link, char16* target, uint32 flags);
+#else
+	[CLink]
+	private static extern int readlink(char8* path, char8* buffer, uint size);
+	[CLink]
+	private static extern int32 symlink(char8* target, char8* link);
+#endif
 }
