@@ -651,6 +651,48 @@ class ContentDatabaseTests
 	/// written before the header carried it is read once on asking; a binary envelope keeps its
 	/// layout and reads on asking.
 	[Test]
+	public static void OneInstanceReadByEightThreadsAtOnceAsACooksBuildersDo()
+	{
+		// Each read rewrote the instance's cached source name: two at once wrote one String
+		// together. A read that finds it known writes nothing.
+		TestSerializables.RegisterAll();
+		let typeName = "Sedulous.Content.Tests.SourcedRecord";
+		let fixture = scope ContentFixture("scratch_content_parallel", true);
+		{
+			let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+			let record = scope SourcedRecord();
+			record.File.Set("Art/shared.png");
+			let art = database.RootGroup.CreateInstance("skeleton", typeName);
+			Test.Assert(art.WriteObject(record) case .Ok);
+		}
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		let art = database.GetInstanceByPath("skeleton");
+		Test.Assert(art != null);
+		int32 failed = 0;
+		let threads = scope List<System.Threading.Thread>();
+		defer { ClearAndDeleteItems!(threads); }
+		for (int t < 8)
+		{
+			let thread = new System.Threading.Thread(new [&failed, =art] () =>
+				{
+					for (int i < 200)
+					{
+						let read = art.ReadObject();
+						if (read == null)
+							System.Threading.Interlocked.Increment(ref failed);
+						delete read;
+					}
+				});
+			thread.Start(false);
+			threads.Add(thread);
+		}
+		for (let thread in threads)
+			thread.Join();
+		Test.Assert(failed == 0);
+		Test.Assert(art.SourceName == "Art/shared.png");
+	}
+
+	[Test]
 	public static void ARecordsSourceFileComesFromItsHeaderWithoutReadingThePayload()
 	{
 		TestSerializables.RegisterAll();

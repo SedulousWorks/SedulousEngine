@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
@@ -28,6 +29,9 @@ class Instance
 	/// SourceName, once known: from the scan's header, a write, or a read of the object.
 	private String mSource = new .() ~ delete _;
 	private bool mSourceKnown;
+	/// Reads of one instance run in parallel (a cook's builders share a skeleton or a material): a
+	/// read that learns a different source name records it under this, and only then.
+	private Monitor mSourceLock = new .() ~ delete _;
 
 	public this(ContentDatabase database, Group group, Guid id, StringView name, StringView typeName)
 	{
@@ -57,7 +61,8 @@ class Instance
 			{
 				// Records the name when it reads; an unreadable object names none.
 				delete ReadObject();
-				mSourceKnown = true;
+				using (mSourceLock.Enter())
+					mSourceKnown = true;
 			}
 			return mSource;
 		}
@@ -90,8 +95,20 @@ class Instance
 		let buffered = scope BufferedStream(stream, 64 * 1024);
 		let object = ReadEnvelope(buffered, false, scope .());
 		// The object names its source as it stands on disk: keep that, whatever the header said.
+		// Most reads find the name already known and change nothing, so parallel reads write
+		// nothing; a changed name is recorded under the lock.
 		if (object != null)
-			SetSourceName(object.SourceName());
+		{
+			let named = object.SourceName();
+			using (mSourceLock.Enter())
+			{
+				if (!mSourceKnown || (mSource != named))
+				{
+					mSource.Set(named);
+					mSourceKnown = true;
+				}
+			}
+		}
 		return object;
 	}
 
