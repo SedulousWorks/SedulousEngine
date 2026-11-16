@@ -695,14 +695,10 @@ class RenderGraph
 						let outputs = scope:: List<RGResourceAccess>();
 						candidate.GetOutputs(outputs);
 
-						for (let output in outputs)
+						// The resource's own mip and layer counts: a range's count of 0 means "to the
+						// end", which the default of one mip read as nothing past mip 0.
+						if (AnyOverlap(outputs, input))
 						{
-							if (output.Handle != input.Handle)
-								continue;
-							if (!input.Subresource.IsAll && !output.Subresource.IsAll
-								&& !input.Subresource.Overlaps(output.Subresource))
-								continue;
-
 							candidate.IsCulled = false;
 							changed = true;
 						}

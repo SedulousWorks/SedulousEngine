@@ -454,4 +454,32 @@ class RGCullingTests
 		Test.Assert(needs[1], "the second's");
 		Test.Assert(needs[2], "and the nearest");
 	}
+
+	/// A reader of mip 2 to the end keeps the writer of mip 2: culling read a count of 0 ("to the
+	/// end") against one mip, so a read from mip 2 onward met no writer past mip 0 and the pass that
+	/// wrote mip 2 was culled.
+	[Test]
+	public static void AReaderOfMip2ToTheEndKeepsTheWriterOfMip2()
+	{
+		let graph = scope RenderGraph(null);
+		graph.BeginFrame(0);
+		var desc = RGTextureDesc(TextureFormat.RGBA16Float, 64, 64);
+		desc.MipLevelCount = 4;
+		let pyramid = graph.CreateTransient("Pyramid", desc);
+		let output = graph.CreateTransient("Out", RGTextureDesc(TextureFormat.RGBA8Unorm));
+
+		graph.AddComputePass("WriteMip2", scope (builder) =>
+			{
+				builder.WriteStorage(pyramid, .(2, 1, 0, 1));
+			});
+		graph.AddRenderPass("ReadFromMip2", scope (builder) =>
+			{
+				builder.ReadTexture(pyramid, .(2, 0, 0, 1));
+				builder.SetColorTarget(0, output, .Clear, .Store);
+				builder.NeverCull();
+			});
+
+		Test.Assert(graph.Compile() case .Ok);
+		Test.Assert(graph.CulledPassCount == 0);
+	}
 }
