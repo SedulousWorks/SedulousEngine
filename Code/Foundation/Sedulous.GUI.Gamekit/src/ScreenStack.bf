@@ -301,15 +301,24 @@ class ScreenStack : UIWidget
 		bool blocked = false;
 		bool covered = false;
 		bool paused = false;
-		for (int i = mScreens.Count - 1; i >= 0; i--)
+		// A screen's handlers may push or pop screens (each of which settles the stack again): walk
+		// a pinned copy, a reference held to each, and stop once the stack is not the one being
+		// walked, since the settle the change made has already placed every screen.
+		let walked = scope List<Screen>()..AddRange(mScreens);
+		for (let screen in walked)
+			screen.AddRef();
+		defer { for (let screen in walked) screen.ReleaseRef(); }
+		for (int i = walked.Count - 1; i >= 0; i--)
 		{
-			let screen = mScreens[i];
+			let screen = walked[i];
 			screen.SetInert(blocked);
 			if (covered != screen.[Friend]mCovered)
 			{
 				screen.[Friend]mCovered = covered;
 				screen.Visible = !covered;
 				screen.SendNamedEvent(covered ? "screenhidden" : "screenrevealed");
+				if (!SameScreens(walked))
+					return;
 			}
 			blocked = blocked || screen.[Friend]mBlocks;
 			covered = covered || screen.[Friend]mCovers;
@@ -322,6 +331,19 @@ class ScreenStack : UIWidget
 				mOnPausedChanged(paused);
 			SendNamedEvent("pausechange", paused ? "paused" : "running");
 		}
+	}
+
+	/// Whether the stack is still exactly `walked`, bottom first.
+	private bool SameScreens(List<Screen> walked)
+	{
+		if (walked.Count != mScreens.Count)
+			return false;
+		for (int k < walked.Count)
+		{
+			if (walked[k] !== mScreens[k])
+				return false;
+		}
+		return true;
 	}
 
 	// Its remembered focus, its `nav-default` or its first focusable; with nothing focusable (a

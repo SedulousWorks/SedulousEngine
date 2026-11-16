@@ -38,6 +38,39 @@ class ScreenStackTests
 		Test.Assert(bed.Stack.Push(pause) == null); // on the stack already
 	}
 
+	/// A hidden screen's handler that pops screens leaves the stack settled, not walked past its
+	/// end: Settle walked the stack by index while a screenhidden handler popped three screens out
+	/// from under it.
+	[Test]
+	public static void AHiddenScreensHandlerThatPopsScreensLeavesTheStackSettled()
+	{
+		let bed = scope Bed();
+		let a = bed.MakeScreen("a");
+		let b = bed.MakeScreen("b");
+		let c = bed.MakeScreen("c");
+		let d = bed.MakeScreen("d");
+		defer { a.ReleaseRef(); b.ReleaseRef(); c.ReleaseRef(); d.ReleaseRef(); }
+		d.Covers = true;
+		bed.Stack.Push(a);
+		bed.Stack.Push(b);
+		bed.Stack.Push(c);
+		bool popped = false;
+		let stack = bed.Stack;
+		c.AddNamedListener("screenhidden", new [&popped, =stack] (e) =>
+			{
+				if (popped)
+					return;
+				popped = true;
+				stack.Pop(); // d
+				stack.Pop(); // c
+				stack.Pop(); // b
+			});
+		bed.Stack.Push(d);
+		Test.Assert(popped);
+		Test.Assert(bed.Stack.Top == a);
+		Test.Assert(a.Visible && !a.IsCovered);
+	}
+
 	[Test]
 	public static void APopRefocusesTheScreenUnderItWhereItsFocusWasACoveringScreenHidesThoseUnderIt()
 	{
