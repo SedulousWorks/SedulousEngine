@@ -367,4 +367,27 @@ static class WebSocketGatewayTests
 		for (int j < hello.Count)
 			Test.Assert(message[j] == hello[j], "intact");
 	}
+
+	/// The cap was a constant 64, apart from the session's own peer limit; a host now sets it to that
+	/// limit.
+	[Test]
+	public static void TheGatewayHoldsAsManyClientsAsItIsSetToAndNoMore()
+	{
+		let gateway = scope WebSocketServerGateway(cEphemeral);
+		Test.Assert(gateway.IsOpen);
+		gateway.SetMaxClients(2);
+		let a = TcpSocket.Connect("127.0.0.1", gateway.BoundPort);
+		defer delete a;
+		let b = TcpSocket.Connect("127.0.0.1", gateway.BoundPort);
+		defer delete b;
+		let c = TcpSocket.Connect("127.0.0.1", gateway.BoundPort);
+		defer delete c;
+		Test.Assert(a.IsOpen && b.IsOpen && c.IsOpen);
+		for (int i < 100)
+		{
+			gateway.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(gateway.ClientCount == 2, scope $"{gateway.ClientCount} clients");
+	}
 }

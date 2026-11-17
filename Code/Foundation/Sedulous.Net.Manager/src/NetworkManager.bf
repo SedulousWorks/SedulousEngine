@@ -109,6 +109,7 @@ class NetworkManager
 				delete hybrid;
 				return null;
 			}
+			hybrid.Gateway.SetMaxClients(config.MaxPeers); // browser peers count against the session's limit
 			let manager = new NetworkManager(hybrid, hybrid.BoundPort, hybrid.WebSocketBoundPort,
 				config);
 			manager.StartServer(dedicated);

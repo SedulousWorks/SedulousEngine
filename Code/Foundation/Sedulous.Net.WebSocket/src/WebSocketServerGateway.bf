@@ -22,8 +22,10 @@ namespace Sedulous.Net.WebSocket;
 /// SINGLE THREADED, like the HTTP server.
 class WebSocketServerGateway
 {
-	/// The connection cap. Past it a pending connection is dropped, which closes it.
-	private const int cMaxClients = 64;
+	/// Most clients connected at once: past it a pending connection is dropped, which closes it. A
+	/// host sets it to its session's ReliableConfig.MaxPeers (SetMaxClients), which it is by default,
+	/// so browser peers count against the one limit the session holds.
+	private int mMaxClients = (int)ReliableConfig().MaxPeers;
 	/// The handshake head cap. Far past a real upgrade request, and small enough that an
 	/// unauthenticated peer cannot make the gateway buffer.
 	private const int cHandshakeCap = 4096;
@@ -108,6 +110,12 @@ class WebSocketServerGateway
 	public StringView Failure => mFailure;
 	public uint16 BoundPort => mListener.BoundPort;
 	public int ClientCount => mClients.Count;
+
+	/// Sets the most clients connected at once (one at the least).
+	public void SetMaxClients(uint32 count)
+	{
+		mMaxClients = Math.Max((int)count, 1);
+	}
 
 	/// How long a connection may take to finish its upgrade, and how long an upgraded client may
 	/// send nothing, before it is closed: a connection that never upgrades, or goes quiet, would
@@ -204,7 +212,7 @@ class WebSocketServerGateway
 			if (accepted == null)
 				break;
 
-			if (mClients.Count >= cMaxClients)
+			if (mClients.Count >= mMaxClients)
 			{
 				delete accepted;
 				continue;
