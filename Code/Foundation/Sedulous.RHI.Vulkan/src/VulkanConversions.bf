@@ -616,4 +616,15 @@ static class VulkanConversions
 		return f;
 	}
 
+	/// Logs a Vulkan call that failed, the first time at its call site: `reported` is the site's
+	/// own flag, since the same failure would otherwise repeat every frame. True when this call
+	/// said it, false when the site had already.
+	public static bool ReportVkFailure(ref bool reported, StringView what, VkResult result)
+	{
+		if (reported)
+			return false;
+		reported = true;
+		Console.Error.WriteLine("[RHI] Vulkan: {} failed ({})", what, result);
+		return true;
+	}
 }

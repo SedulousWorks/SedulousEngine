@@ -414,7 +414,8 @@ class VulkanSwapChain : ISwapChain
 
 		if (RetrieveImages(surfaceFormat.format) case .Err)
 			return .Err;
-		CreateSyncObjects();
+		if (CreateSyncObjects() case .Err)
+			return .Err;
 		mFrameIndex = 0;
 		return .Ok;
 	}
@@ -423,15 +424,22 @@ class VulkanSwapChain : ISwapChain
 	private VkSurfaceFormatKHR ChooseSurfaceFormat(TextureFormat requested)
 	{
 		uint32 count = 0;
-		VulkanNative.vkGetPhysicalDeviceSurfaceFormatsKHR(mPhysicalDevice, mSurface, &count,
-			null);
-		if (count == 0)
-			return .();
+		var result = VulkanNative.vkGetPhysicalDeviceSurfaceFormatsKHR(mPhysicalDevice, mSurface,
+			&count, null);
+		if ((result == .VK_SUCCESS) || (result == .VK_INCOMPLETE))
+		{
+			if (count == 0)
+				return .();
 
-		let formats = scope VkSurfaceFormatKHR[count];
-		VulkanNative.vkGetPhysicalDeviceSurfaceFormatsKHR(mPhysicalDevice, mSurface, &count,
-			&formats[0]);
-		return ChooseSurfaceFormat(.(&formats[0], (int)count), VulkanConversions.ToVkFormat(requested));
+			let formats = scope VkSurfaceFormatKHR[count];
+			result = VulkanNative.vkGetPhysicalDeviceSurfaceFormatsKHR(mPhysicalDevice, mSurface,
+				&count, &formats[0]);
+			if ((result == .VK_SUCCESS) || (result == .VK_INCOMPLETE))
+				return ChooseSurfaceFormat(.(&formats[0], (int)count), VulkanConversions.ToVkFormat(requested));
+		}
+		// A query that failed offers nothing: the chooser's default, the format asked for, stands.
+		ReportFailure("surface format query", result);
+		return ChooseSurfaceFormat(Span<VkSurfaceFormatKHR>(), VulkanConversions.ToVkFormat(requested));
 	}
 
 	/// The surface format a swapchain asked for `desired` takes from what the surface offers: the
@@ -515,14 +523,23 @@ class VulkanSwapChain : ISwapChain
 	private VkPresentModeKHR ChoosePresentMode(PresentMode requested)
 	{
 		uint32 count = 0;
-		VulkanNative.vkGetPhysicalDeviceSurfacePresentModesKHR(mPhysicalDevice, mSurface,
-			&count, null);
-		if (count == 0)
-			return .VK_PRESENT_MODE_FIFO_KHR;
+		var result = VulkanNative.vkGetPhysicalDeviceSurfacePresentModesKHR(mPhysicalDevice,
+			mSurface, &count, null);
+		Span<VkPresentModeKHR> modes = .();
+		if ((result == .VK_SUCCESS) || (result == .VK_INCOMPLETE))
+		{
+			if (count == 0)
+				return .VK_PRESENT_MODE_FIFO_KHR;
 
-		let modes = scope VkPresentModeKHR[count];
-		VulkanNative.vkGetPhysicalDeviceSurfacePresentModesKHR(mPhysicalDevice, mSurface,
-			&count, &modes[0]);
+			let storage = scope:: VkPresentModeKHR[count];
+			result = VulkanNative.vkGetPhysicalDeviceSurfacePresentModesKHR(mPhysicalDevice,
+				mSurface, &count, &storage[0]);
+			if ((result == .VK_SUCCESS) || (result == .VK_INCOMPLETE))
+				modes = .(&storage[0], (int)count);
+		}
+		// A query that failed offers nothing: FIFO, which every surface has, is what remains.
+		if ((result != .VK_SUCCESS) && (result != .VK_INCOMPLETE))
+			ReportFailure("present mode query", result);
 
 		bool Has(Span<VkPresentModeKHR> available, VkPresentModeKHR mode)
 		{
@@ -559,12 +576,25 @@ class VulkanSwapChain : ISwapChain
 	private Result<void> RetrieveImages(VkFormat format)
 	{
 		uint32 imageCount = 0;
-		VulkanNative.vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, null);
+		var result = VulkanNative.vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, null);
+		if ((result != .VK_SUCCESS) && (result != .VK_INCOMPLETE))
+		{
+			ReportFailure("image query", result);
+			return .Err;
+		}
 		if (imageCount == 0)
 			return .Err;
 
 		let images = scope VkImage[imageCount];
-		VulkanNative.vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, &images[0]);
+		result = VulkanNative.vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, &images[0]);
+		// Incomplete here means the count changed between the two calls: not every image is known.
+		if (result != .VK_SUCCESS)
+		{
+			ReportFailure("image query", result);
+			return .Err;
+		}
+		if (imageCount == 0)
+			return .Err;
 		mBufferCount = imageCount;
 
 		var textureFormat = FromVkFormat(format);
@@ -622,18 +652,32 @@ class VulkanSwapChain : ISwapChain
 	///
 	/// Binary, not timeline: presentation engines take only binary semaphores, which is
 	/// also why these do not go through IFence.
-	private void CreateSyncObjects()
+	///
+	/// A semaphore that could not be made fails the swap chain: a null one handed to acquire or
+	/// present is undefined. The lists are left empty then, which the next acquire reads as a
+	/// chain with no images to give.
+	private Result<void> CreateSyncObjects()
 	{
 		VkSemaphoreCreateInfo createInfo = .();
 		for (uint32 i < mBufferCount)
 		{
 			VkSemaphore acquire = .Null;
 			VkSemaphore present = .Null;
-			VulkanNative.vkCreateSemaphore(mDevice, &createInfo, null, &acquire);
-			VulkanNative.vkCreateSemaphore(mDevice, &createInfo, null, &present);
+			var result = VulkanNative.vkCreateSemaphore(mDevice, &createInfo, null, &acquire);
+			if (result == .VK_SUCCESS)
+				result = VulkanNative.vkCreateSemaphore(mDevice, &createInfo, null, &present);
+			if (result != .VK_SUCCESS)
+			{
+				if (acquire != .Null)
+					VulkanNative.vkDestroySemaphore(mDevice, acquire, null);
+				DestroySyncObjects();
+				ReportFailure("semaphore creation", result);
+				return .Err;
+			}
 			mAcquireSemaphores.Add(acquire);
 			mPresentSemaphores.Add(present);
 		}
+		return .Ok;
 	}
 
 	private void CleanupImages()

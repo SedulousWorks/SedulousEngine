@@ -18,6 +18,8 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 	private VulkanRenderPipeline mPipeline;
 	private VulkanRenderBundle mBundle ~ delete _;
 	private bool mFinished = false;
+	/// An end that failed is logged once for every bundle (ReportVkFailure).
+	private static bool sEndFailureReported = false;
 
 	public VulkanRenderBundle ProducedBundle => mBundle;
 
@@ -190,7 +192,11 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 			return mBundle;
 
 		mFinished = true;
-		VulkanNative.vkEndCommandBuffer(mCommandBuffer);
+		// A bundle whose recording failed is not executable; running it is the next failure, so
+		// this one is logged where it happens.
+		let ended = VulkanNative.vkEndCommandBuffer(mCommandBuffer);
+		if (ended != .VK_SUCCESS)
+			VulkanConversions.ReportVkFailure(ref sEndFailureReported, "vkEndCommandBuffer (bundle)", ended);
 		mBundle = new VulkanRenderBundle(mCommandBuffer);
 		mBundle.Counts = mRecorded;
 		return mBundle;

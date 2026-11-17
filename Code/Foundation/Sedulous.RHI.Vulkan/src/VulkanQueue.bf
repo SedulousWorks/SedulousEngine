@@ -16,6 +16,8 @@ class VulkanQueue : IQueue
 	private uint32 mFamilyIndex;
 	private float mTimestampPeriod;
 	private VulkanDevice mDevice;
+	/// A submit that failed other than by device loss is logged once (ReportVkFailure).
+	private bool mSubmitFailureReported = false;
 
 	public this(VkQueue queue, QueueType type, uint32 familyIndex, float timestampPeriod,
 		VulkanDevice device)
@@ -60,8 +62,11 @@ class VulkanQueue : IQueue
 		submitInfo.commandBufferCount = (uint32)count;
 		submitInfo.pCommandBuffers = &handles[0];
 
-		if (VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null) == .VK_ERROR_DEVICE_LOST)
+		let submitted = VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null);
+		if (submitted == .VK_ERROR_DEVICE_LOST)
 			mDevice.MarkLost();
+		else if (submitted != .VK_SUCCESS)
+			VulkanConversions.ReportVkFailure(ref mSubmitFailureReported, "vkQueueSubmit", submitted); // out of memory: the work is lost
 	}
 
 	/// Submits and signals the fence's timeline when the work completes.
@@ -177,8 +182,11 @@ class VulkanQueue : IQueue
 		submitInfo.signalSemaphoreCount = (uint32)signalCount;
 		submitInfo.pSignalSemaphores = (signalCount > 0) ? &signalSemaphores[0] : null;
 
-		if (VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null) == .VK_ERROR_DEVICE_LOST)
+		let submitted = VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null);
+		if (submitted == .VK_ERROR_DEVICE_LOST)
 			mDevice.MarkLost();
+		else if (submitted != .VK_SUCCESS)
+			VulkanConversions.ReportVkFailure(ref mSubmitFailureReported, "vkQueueSubmit", submitted); // out of memory: the work is lost
 	}
 
 	/// Pulls the Vulkan handles out, skipping anything that is not ours.

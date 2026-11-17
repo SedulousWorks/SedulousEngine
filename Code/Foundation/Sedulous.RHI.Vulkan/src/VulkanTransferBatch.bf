@@ -43,6 +43,8 @@ class VulkanTransferBatch : ITransferBatch
 	private VkPhysicalDevice mPhysicalDevice;
 	private VkQueue mQueue;
 	private uint32 mQueueFamilyIndex;
+	/// A begin or end that failed is logged once (ReportVkFailure).
+	private bool mRecordFailureReported = false;
 
 	private VkCommandPool mCommandPool = .Null;
 	private VkBuffer mStagingBuffer = .Null;
@@ -335,7 +337,13 @@ class VulkanTransferBatch : ITransferBatch
 
 		VkCommandBufferBeginInfo beginInfo = .();
 		beginInfo.flags = .VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		VulkanNative.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		let begun = VulkanNative.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		if (begun != .VK_SUCCESS)
+		{
+			VulkanConversions.ReportVkFailure(ref mRecordFailureReported, "vkBeginCommandBuffer (uploads)", begun);
+			VulkanNative.vkFreeCommandBuffers(mDevice, mCommandPool, 1, &commandBuffer);
+			return .Null;
+		}
 
 		for (let copy in mBufferCopies)
 		{
@@ -350,7 +358,13 @@ class VulkanTransferBatch : ITransferBatch
 		for (let copy in mTextureCopies)
 			RecordTextureCopy(commandBuffer, copy);
 
-		VulkanNative.vkEndCommandBuffer(commandBuffer);
+		let ended = VulkanNative.vkEndCommandBuffer(commandBuffer);
+		if (ended != .VK_SUCCESS)
+		{
+			VulkanConversions.ReportVkFailure(ref mRecordFailureReported, "vkEndCommandBuffer (uploads)", ended);
+			VulkanNative.vkFreeCommandBuffers(mDevice, mCommandPool, 1, &commandBuffer);
+			return .Null;
+		}
 		return commandBuffer;
 	}
 

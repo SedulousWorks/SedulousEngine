@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Vulkan: a failing semaphore creation, surface query, queue submit or command buffer begin and end is
+  reported (once) and handled, instead of silently going on with a null handle or lost work.
 - A light whose intensity, colour or position is not a number is left out of the frame instead of
   turning what it lights into NaN.
 - Two scenes drawn at once (two editor pages, a page and its play) no longer share a mesh's material

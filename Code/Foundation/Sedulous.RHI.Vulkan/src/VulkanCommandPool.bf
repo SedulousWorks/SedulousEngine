@@ -31,6 +31,8 @@ class VulkanCommandPool : ICommandPool
 	private List<VkCommandBuffer> mFreeSecondaries = new .() ~ delete _;
 	private List<VkCommandBuffer> mLiveSecondaries = new .() ~ delete _;
 	private List<VulkanRenderBundleEncoder> mBundleEncoders = new .() ~ DeleteContainerAndItems!(_);
+	/// A begin that failed is logged once for every pool (ReportVkFailure).
+	private static bool sBeginFailureReported = false;
 
 	public VkCommandPool Handle => mPool;
 	public VkDevice Device => mDevice;
@@ -92,7 +94,14 @@ class VulkanCommandPool : ICommandPool
 		VkCommandBufferBeginInfo beginInfo = .();
 		// Recorded once and thrown away, which lets the driver skip preserving it for reuse.
 		beginInfo.flags = .VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		VulkanNative.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		let begun = VulkanNative.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		if (begun != .VK_SUCCESS)
+		{
+			// Not reused: a buffer whose begin failed may be invalid until its pool resets, so it
+			// stays allocated in the pool and goes with it. Only a device out of memory gets here.
+			VulkanConversions.ReportVkFailure(ref sBeginFailureReported, "vkBeginCommandBuffer", begun);
+			return .Err;
+		}
 
 		let encoder = new VulkanCommandEncoder(commandBuffer, mDevice, this);
 		mEncoders.Add(encoder);

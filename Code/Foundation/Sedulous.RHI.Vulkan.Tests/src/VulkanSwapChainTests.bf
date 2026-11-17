@@ -59,4 +59,24 @@ class VulkanSwapChainTests
 		Test.Assert(VulkanSwapChain.AlternateViewFor(.BGRA8UnormSrgb, .Undefined, .BGRA8UnormSrgb) == .Undefined);
 		Test.Assert(VulkanSwapChain.AlternateViewFor(.BGRA8UnormSrgb, .BGRA8Unorm, .RGB10A2Unorm) == .Undefined);
 	}
+
+	/// The swap chain's semaphores, the surface queries, queue submits and command buffer begin
+	/// and end went unchecked: a failure was silent. Each is now logged, once per call site, so
+	/// one that repeats every frame is said once and another site's failure is still said.
+	[Test]
+	public static void AFailingCallIsReportedOnceAtItsSiteNotEveryTimeItRepeats()
+	{
+		int said = 0;
+		bool reported = false;
+		if (VulkanConversions.ReportVkFailure(ref reported, "vkQueueSubmit", .VK_ERROR_OUT_OF_DEVICE_MEMORY))
+			said++;
+		if (VulkanConversions.ReportVkFailure(ref reported, "vkQueueSubmit", .VK_ERROR_OUT_OF_DEVICE_MEMORY))
+			said++;
+		bool other = false;
+		if (VulkanConversions.ReportVkFailure(ref other, "vkEndCommandBuffer", .VK_ERROR_OUT_OF_HOST_MEMORY))
+			said++;
+		Test.Assert(reported);
+		Test.Assert(other);
+		Test.Assert(said == 2); // one per site
+	}
 }
