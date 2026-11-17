@@ -555,4 +555,41 @@ class DockSpaceTests
 		Test.Assert(bottom.Bar.Size.Y > 0.0f);
 		Test.Assert(Near(central.Bar.Size.Y, bottom.Bar.Size.Y));
 	}
+
+	/// The kept entry's kind was never brought up to date when an id came back as another kind (a
+	/// layout read from a file numbers its nodes afresh), so every ShowLayout rebuilt its widget.
+	[Test]
+	public static void ALayoutAdoptedWhereAnIdIsNowAnotherKindBuildsItOnceThenKeepsIt()
+	{
+		let bed = scope SpaceBed();
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("scene", bed.Central)).Ok);
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertBeside("hierarchy", bed.Central, .Start, 0.25f)).Ok);
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertAtEdge("console", l.MainSurface, .Start, 0.2f)).Ok);
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertAtEdge("log", l.MainSurface, .Start, 0.2f)).Ok);
+		bed.Lay();
+
+		// Another layout, built otherwise, in which some id the shown one has is another kind.
+		let other = scope DockLayout();
+		Test.Assert(other.InsertAtEdge("console", other.MainSurface, .End, 0.3f).Ok);
+		Test.Assert(other.InsertBeside("log", other.StackOf("console"), .Bottom, 0.5f).Ok); // across: a new split
+		Test.Assert(other.InsertTab("scene", other.CentralStack).Ok);
+		var swapped = cNoDock;
+		for (let node in other.Nodes)
+		{
+			let shown = bed.Controller.Layout.FindNode(node.Id);
+			if ((shown != null) && (shown.Kind != node.Kind))
+				swapped = node.Id;
+		}
+		Test.Assert(swapped != cNoDock);
+
+		Test.Assert(bed.Controller.Adopt(other).Ok);
+		bed.Lay();
+		let built = bed.Space.WidgetOf(swapped);
+		Test.Assert(built != null);
+		built.AddClass("test-mark"); // a widget built again would not have it (an address can be reused)
+		bed.Space.ShowLayout();
+		bed.Lay();
+		Test.Assert(bed.Space.WidgetOf(swapped) != null);
+		Test.Assert(bed.Space.WidgetOf(swapped).HasClass("test-mark")); // kept, not built again
+	}
 }

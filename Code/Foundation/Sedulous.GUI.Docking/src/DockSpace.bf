@@ -1031,9 +1031,16 @@ class DockSpace : UIWidget, IDockView
 		var shown = Find(id);
 		if ((shown != null) && (shown.Kind != node.Kind))
 		{
-			shown.Widget.RemoveFromParent();
-			shown.Widget.ReleaseRef();
-			shown.Widget = null;
+			// The id is another kind now (a layout read afresh numbers its nodes again): its widget
+			// and a stack's pages go, and the entry takes the new kind, or every later show would
+			// find the kinds differ and build it again.
+			if (shown.Widget != null)
+			{
+				shown.Widget.RemoveFromParent();
+				shown.Widget.ReleaseRef();
+				shown.Widget = null;
+			}
+			ClearAndDeleteItems!(shown.Pages);
 			shown.Kind = node.Kind;
 		}
 		if (shown == null)
