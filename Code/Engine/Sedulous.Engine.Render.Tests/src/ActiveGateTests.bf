@@ -117,4 +117,28 @@ class ActiveGateTests
 		// No active primary at all.
 		Test.Assert(!RenderExtract.ExtractPrimaryCamera(scene, ref view));
 	}
+
+	/// A NaN intensity, colour or position (from a NaN transform) went into the light buffer as it
+	/// was, and from there into every pixel the light reached.
+	[Test]
+	public static void ALightWithAFieldThatIsNotANumberIsLeftOutTheOthersKept()
+	{
+		let scene = scope Scene("nan-lights");
+		let lights = scene.AddSystem<LightComponentManager>();
+		let notANumber = Math.Sqrt(-1.0f);
+		let good = scene.CreateEntity("good");
+		lights.Add(good).Type = .Point;
+		let badIntensity = scene.CreateEntity("intensity");
+		let a = lights.Add(badIntensity);
+		a.Type = .Point;
+		a.Intensity = notANumber;
+		let badPlace = scene.CreateEntity("place");
+		lights.Add(badPlace).Type = .Point;
+		scene.SetLocalPosition(badPlace, .(notANumber, 0.0f, 0.0f));
+		scene.UpdateTransforms();
+
+		let extracted = scope ExtractedScene();
+		RenderExtract.ExtractLightsInto(scene, extracted);
+		Test.Assert(extracted.Lights.Length == 1, scope $"{extracted.Lights.Length} lights");
+	}
 }

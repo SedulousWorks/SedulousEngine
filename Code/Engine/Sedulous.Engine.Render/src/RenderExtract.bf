@@ -759,6 +759,16 @@ static class RenderExtract
 		public this() {}
 	}
 
+	/// Whether every field a shader reads of `light` is a number: one NaN (an intensity typed in, a
+	/// position from a NaN transform) reaches every pixel the light touches, and through the
+	/// clustered and shadow passes the whole frame.
+	private static bool IsLightFinite(GpuLight light)
+	{
+		bool Finite3(Float3 v) => v.X.IsFinite && v.Y.IsFinite && v.Z.IsFinite;
+		return Finite3(light.PositionWS) && light.Range.IsFinite && Finite3(light.Color) && light.Intensity.IsFinite
+			&& Finite3(light.DirectionWS) && light.InnerCos.IsFinite && light.OuterCos.IsFinite;
+	}
+
 	public static void ExtractLightsInto(Scene scene, ExtractedScene outScene)
 	{
 		let lights = scene.GetSystem<LightComponentManager>();
@@ -775,6 +785,8 @@ static class RenderExtract
 					return;
 
 				var light = MakeGpuLight(*component, scene.GetWorldMatrix(entity));
+				if (!IsLightFinite(light))
+					return; // draws nothing rather than NaN-ing the frame
 
 				if (!haveShadow && component.CastsShadows && (component.Type == .Directional))
 				{

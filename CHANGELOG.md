@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- A light whose intensity, colour or position is not a number is left out of the frame instead of
+  turning what it lights into NaN.
 - Two scenes drawn at once (two editor pages, a page and its play) no longer share a mesh's material
   overrides or its motion history when their entities have the same handle.
 - A navigation zone with a zero (or non-number) Cell Size or Cell Height is no longer baked into
