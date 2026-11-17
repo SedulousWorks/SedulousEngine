@@ -129,6 +129,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Networking: two scene objects whose ids happened to clash no longer drive each other; the later
+  one takes another id, the same on every player, with a warning naming both.
 - Networking: changing scenes in a networked game starts replication afresh, rather than keeping
   the last scene's entity ids and what each player had been sent.
 - Networking: a player who joins late no longer sees scene objects that were destroyed before they

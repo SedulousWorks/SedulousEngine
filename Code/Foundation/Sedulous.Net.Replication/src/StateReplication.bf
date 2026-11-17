@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Net;
 using Sedulous.Scene;
 
@@ -163,7 +164,7 @@ class StateReplication : IReplicationModel
 		manager.ForEach(scope [&](component, entity) =>
 			{
 				if (!component.Id.IsValid)
-					component.Id = ReplicationWire.DeterministicNetworkId(scene.GetEntityId(entity));
+					component.Id = AuthoredId(scene, entity);
 
 				mNetIdToEntity[component.Id.Value] = entity;
 				if (!mAuthoredIds.Contains(component.Id.Value))
@@ -172,6 +173,23 @@ class StateReplication : IReplicationModel
 				if (component.Id.Value > mNextNetworkId)
 					mNextNetworkId = component.Id.Value;
 			});
+	}
+
+	/// The id an authored entity gets from its Guid; the next free one when another entity holds
+	/// it (said each time). Two Guids can hash to one 32-bit id, and replication would drive one
+	/// entity from the other's state. Both peers agree on which takes the next: they load the same
+	/// scene, so its networked entities come in the same order on each.
+	public NetworkId AuthoredId(Scene scene, EntityHandle entity)
+	{
+		var id = ReplicationWire.DeterministicNetworkId(scene.GetEntityId(entity));
+		while (true)
+		{
+			if (!mNetIdToEntity.TryGetValue(id.Value, let holder) || (holder == entity) || !scene.IsValid(holder))
+				return id;
+			GlobalLog(.Warning, "Net: the network ids of '{}' and '{}' collide; '{}' takes the next free one",
+				scene.GetEntityName(holder), scene.GetEntityName(entity), scene.GetEntityName(entity));
+			id = NetworkId((id.Value == 0xFFFFFFFF) ? 1 : id.Value + 1);
+		}
 	}
 
 	/// Forgets the scene replicated so far: its id map, every peer's baseline and its authored
@@ -198,7 +216,7 @@ class StateReplication : IReplicationModel
 		manager.ForEach(scope [&](component, entity) =>
 			{
 				if (!component.Id.IsValid)
-					component.Id = ReplicationWire.DeterministicNetworkId(scene.GetEntityId(entity));
+					component.Id = AuthoredId(scene, entity);
 				mNetIdToEntity[component.Id.Value] = entity;
 			});
 	}

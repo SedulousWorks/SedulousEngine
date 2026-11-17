@@ -845,4 +845,40 @@ class ReplicationTests
 		Test.Assert(clientMovers.Get(clientA).Health == 3, "with its state, sent in full");
 		Test.Assert(client.EntityCount == 1, scope $"{client.EntityCount} entities: no duplicate of it");
 	}
+
+	/// The 32-bit id hashed from a Guid had no collision check: the second entity took the
+	/// first's id, and replication drove one of them from the other's state.
+	[Test]
+	public static void TwoAuthoredEntitiesWhoseGuidsHashToOneIdGetTwoIdsTheSameOnBothPeers()
+	{
+		let first = Guid(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		let second = Guid(0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		Test.Assert(ReplicationWire.DeterministicNetworkId(first) == ReplicationWire.DeterministicNetworkId(second),
+			"the two Guids collide");
+
+		let server = scope Scene("server");
+		AddManagers(server);
+		let serverFirst = server.CreateEntity(first, "First");
+		let serverSecond = server.CreateEntity(second, "Second");
+		server.GetSystem<NetworkComponentManager>().Add(serverFirst);
+		server.GetSystem<NetworkComponentManager>().Add(serverSecond);
+		let replication = scope StateReplication();
+		replication.AssignSceneNetworkIds(server);
+		let a = server.GetSystem<NetworkComponentManager>().Get(serverFirst).Id;
+		let b = server.GetSystem<NetworkComponentManager>().Get(serverSecond).Id;
+		Test.Assert(a != b, "two ids");
+		Test.Assert(replication.FindEntity(a) == serverFirst);
+		Test.Assert(replication.FindEntity(b) == serverSecond);
+
+		let client = scope Scene("client");
+		AddManagers(client);
+		let clientFirst = client.CreateEntity(first, "First");
+		let clientSecond = client.CreateEntity(second, "Second");
+		client.GetSystem<NetworkComponentManager>().Add(clientFirst);
+		client.GetSystem<NetworkComponentManager>().Add(clientSecond);
+		let clientReplication = scope StateReplication();
+		clientReplication.RegisterAuthoredEntities(client);
+		Test.Assert(client.GetSystem<NetworkComponentManager>().Get(clientFirst).Id == a, "the same on the client");
+		Test.Assert(client.GetSystem<NetworkComponentManager>().Get(clientSecond).Id == b);
+	}
 }
