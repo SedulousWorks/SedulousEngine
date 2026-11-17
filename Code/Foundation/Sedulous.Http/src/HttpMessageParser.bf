@@ -26,6 +26,8 @@ class HttpMessageParser
 	private int mBodyExpected = 0;
 	private bool mNoBody = false;
 	private bool mChunked = false;
+	/// SetNoBody: kept across an interim (1xx) response.
+	private bool mHeadRequest = false;
 	private bool mTooLarge = false;
 
 	private enum Chunk : uint8
@@ -67,7 +69,11 @@ class HttpMessageParser
 	public bool TooLarge => mTooLarge;
 
 	/// Response mode: the request was a HEAD, so the response has headers alone.
-	public void SetNoBody() => mNoBody = true;
+	public void SetNoBody()
+	{
+		mNoBody = true;
+		mHeadRequest = true;
+	}
 
 	// Request mode.
 	public StringView Method => mMethod;
@@ -133,6 +139,24 @@ class HttpMessageParser
 			{
 				mState = .Failed;
 				return mState;
+			}
+			// An interim response (100 Continue, 103 Early Hints) comes before the real one, which
+			// follows it on the same connection: it is passed over, not taken as the answer. 101
+			// is final: what follows it is another protocol's.
+			if ((mMode == .Response) && (mStatus >= 100) && (mStatus < 200) && (mStatus != 101))
+			{
+				mStatus = 0;
+				ClearAndDeleteItems!(mHeaders);
+				mNoBody = mHeadRequest;
+				mBodyUntilClose = false;
+				mBodyExpected = 0;
+				mChunked = false;
+				mBuffer.Clear();
+				mScanFrom = 0;
+				let used = bytes.Length - spill.Count;
+				let next = Push(.(spill.Ptr, spill.Count));
+				mConsumed += used;
+				return next;
 			}
 			mHeadParsed = true;
 			mBuffer.Clear();

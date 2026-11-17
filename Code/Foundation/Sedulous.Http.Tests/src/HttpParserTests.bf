@@ -286,4 +286,33 @@ class HttpParserTests
 		Test.Assert(body.Push(Bytes(bodied)) == .Complete);
 		Test.Assert(body.Consumed == sized.Length, scope $"body consumed {body.Consumed}");
 	}
+
+	/// A 1xx response completed the parse at its head, so a server's 100 Continue or 103 Early
+	/// Hints was taken as the answer and the real response was never read.
+	[Test]
+	public static void AnInterimResponseIsPassedOverForTheOneAfterItAndA101IsFinal()
+	{
+		let wire = "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 103 Early Hints\r\nLink: </a>\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok";
+		let whole = scope HttpMessageParser(.Response);
+		Test.Assert(whole.Push(Bytes(wire)) == .Complete);
+		Test.Assert(whole.Status == 200, scope $"status {whole.Status}");
+		Test.Assert(whole.Headers.Count == 1, "the final response's own headers");
+		Test.Assert(whole.Consumed == wire.Length, scope $"consumed {whole.Consumed}");
+
+		let split = scope HttpMessageParser(.Response); // a byte at a time
+		var state = HttpParseState.NeedMore;
+		for (int i = 0; (i < wire.Length) && (state == .NeedMore); i++)
+			state = split.Push(Bytes(wire.Substring(i, 1)));
+		Test.Assert(state == .Complete);
+		Test.Assert(split.Status == 200);
+
+		let head = scope HttpMessageParser(.Response); // a HEAD's answer stays bodiless
+		head.SetNoBody();
+		Test.Assert(head.Push(Bytes("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\n")) == .Complete);
+		Test.Assert(head.Status == 200);
+
+		let upgrade = scope HttpMessageParser(.Response);
+		Test.Assert(upgrade.Push(Bytes("HTTP/1.1 101 Switching Protocols\r\n\r\n")) == .Complete);
+		Test.Assert(upgrade.Status == 101);
+	}
 }

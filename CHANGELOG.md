@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- HTTP: a server's interim answer (100 Continue, 103 Early Hints) is no longer taken as the response;
+  the real one after it is read.
 - HTTP: a request whose header, method or URL holds a line break is refused before anything is
   sent, so a game's data can no longer write headers of its own into a request.
 - Networking: two scene objects whose ids happened to clash no longer drive each other; the later
