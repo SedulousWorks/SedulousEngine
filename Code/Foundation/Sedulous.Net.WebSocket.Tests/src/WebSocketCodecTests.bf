@@ -209,4 +209,35 @@ class WebSocketCodecTests
 		Test.Assert(StringView((char8*)frame.Payload.Ptr, frame.Payload.Count) == "two");
 		Test.Assert(!parser.Next(frame));
 	}
+
+	/// The buffer was emptied only when a read ended exactly on a frame's end, so a peer whose
+	/// reads always ended mid-frame grew it by every frame it ever sent.
+	[Test]
+	public static void TheFrameParserKeepsOnlyWhatIsNotParsedYetHoweverTheReadsSplit()
+	{
+		let parser = scope WebSocketFrameParser(true);
+		let payload = scope List<uint8>();
+		for (let c in "0123456789".RawChars)
+			payload.Add((uint8)c);
+		let frame = scope List<uint8>();
+		WebSocketFrame.Encode(.Binary, .(payload.Ptr, payload.Count), true, 0xA1B2C3D4, frame);
+		let half = frame.Count / 2;
+		parser.Push(.(frame.Ptr, half)); // the first read ends mid-frame
+		// Each read: the rest of one frame and the start of the next, so none ends on a frame's end.
+		let read = scope List<uint8>();
+		read.AddRange(Span<uint8>(frame.Ptr + half, frame.Count - half));
+		read.AddRange(Span<uint8>(frame.Ptr, half));
+		let parsed = scope WsFrame();
+		int frames = 0;
+		for (int i < 1000)
+		{
+			parser.Push(.(read.Ptr, read.Count));
+			while (parser.Next(parsed))
+				frames++;
+		}
+		Test.Assert(frames == 1000, scope $"{frames} frames");
+		Test.Assert(!parser.Failed);
+		Test.Assert(parser.HeldBytes == half);
+		Test.Assert(parser.BufferBytes <= 2 * frame.Count, scope $"buffer of {parser.BufferBytes} bytes");
+	}
 }

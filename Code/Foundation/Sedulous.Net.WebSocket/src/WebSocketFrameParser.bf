@@ -12,7 +12,7 @@ namespace Sedulous.Net.WebSocket;
 class WebSocketFrameParser
 {
 	private List<uint8> mBuffer = new .() ~ delete _;
-	/// Where the next undecoded frame starts. The buffer is only compacted once it drains.
+	/// Where the next undecoded frame starts. What comes before it goes at the next Push.
 	private int mHead = 0;
 	private List<WsFrame> mFrames = new .() ~ DeleteContainerAndItems!(_);
 	private int mFrameHead = 0;
@@ -20,6 +20,10 @@ class WebSocketFrameParser
 	private bool mServerSide;
 
 	public bool Failed => mFailed;
+	/// The bytes it holds: what the last parse left (a frame not all arrived) and nothing else.
+	public int HeldBytes => mBuffer.Count - mHead;
+	/// The buffer's size, frames already parsed included until the next Push drops them.
+	public int BufferBytes => mBuffer.Count;
 
 	/// `serverSide`: reading what a client sent (masked), else what a server sent.
 	public this(bool serverSide = true)
@@ -31,6 +35,13 @@ class WebSocketFrameParser
 	{
 		if (mFailed)
 			return;
+		// What the last parse used goes first. The buffer was emptied only when a read ended on
+		// a frame's end, so a peer whose reads always end mid-frame grew it by every frame it sent.
+		if (mHead > 0)
+		{
+			mBuffer.RemoveRange(0, mHead);
+			mHead = 0;
+		}
 		mBuffer.AddRange(bytes);
 		Parse();
 	}
