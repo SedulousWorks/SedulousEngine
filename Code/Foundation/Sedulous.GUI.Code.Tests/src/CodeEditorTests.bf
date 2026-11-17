@@ -480,4 +480,18 @@ class CodeEditorTests
 		}
 		Test.Assert(count == 1);
 	}
+
+	/// The clipboard's lines were split at the line feed alone, so text copied on Windows put a CR at
+	/// the end of each line pasted into a caret.
+	[Test]
+	public static void LinesPastedOneToACaretFromACrLfClipboardCarryNoCr()
+	{
+		let bed = scope CodeBed(default, "x\ny", 120.0f, true);
+		bed.Clipboard.SetText("one\r\ntwo");
+		bed.Editor.SetCaret(At(0, 1));
+		bed.Editor.AddCaret(At(1, 1));
+		bed.Run(.Paste);
+		Test.Assert(bed.Editor.Document.LineText(0) == "xone");
+		Test.Assert(bed.Editor.Document.LineText(1) == "ytwo");
+	}
 }
