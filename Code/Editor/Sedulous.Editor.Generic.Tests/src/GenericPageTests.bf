@@ -230,4 +230,31 @@ class GenericPageTests
 		Test.Assert(page.Save() case .Err);
 		page.OnClose();
 	}
+
+	/// The page had no outside refresh: it went on showing (and would save over) the old values.
+	[Test]
+	public static void AnAssetWrittenOutsideThePageShowsWhenCleanAndKeepsTheEditsWhenNot()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Probe);
+		defer delete page;
+		let index = FieldIndex(page, "friction");
+		let outside = scope FormProbeAsset();
+		outside.Friction = 0.9f;
+		Test.Assert(bed.Probe.WriteObject(outside) case .Ok);
+		page.OnAssetExternallyModified();
+		page.Refresh();
+		Test.Assert(Near(page.Fields[index].FloatValue, 0.9));
+		Test.Assert(!page.IsDirty);
+		Test.Assert(!page.Commands.CanUndo);
+
+		// With an edit: kept, the outside write not taken.
+		page.Edit(scope String(PathOf(page, "friction")), .(0.25));
+		outside.Friction = 0.1f;
+		Test.Assert(bed.Probe.WriteObject(outside) case .Ok);
+		page.OnAssetExternallyModified();
+		page.Refresh();
+		Test.Assert(Near(page.Fields[index].FloatValue, 0.25));
+		Test.Assert(page.IsDirty);
+	}
 }

@@ -153,6 +153,37 @@ class GenericAssetEditorPage : UIEditorPage
 		return saved;
 	}
 
+	/// The asset was written outside the page (another editor, an agent): a clean page shows it and
+	/// drops its history; one with edits keeps them and says so. With no hook here, the page went on
+	/// showing the old values, and its next Save wrote them back.
+	public override void OnAssetExternallyModified()
+	{
+		if (IsDirty)
+		{
+			mContext.Notify(.Warning, scope String()..AppendF("'{}' changed on disk but has unsaved edits here - not refreshed.", mTitle));
+			return;
+		}
+		ReloadFromSource();
+	}
+
+	public override bool ReloadFromSource()
+	{
+		let instance = (mContext.Project != null) ? mContext.Project.SourceDb.GetInstance(InstanceId) : null;
+		let object = (instance != null) ? instance.ReadObject() : null;
+		if (object == null)
+			return false;
+		delete mObject;
+		mObject = object;
+		ClearAndDeleteItems(mFields);
+		AssetForm.Scan(mObject, mFields).IgnoreError();
+		mUndoBaseline.Clear();
+		Snapshot(mUndoBaseline);
+		mCommands.Clear();
+		ClearDirty();
+		mRebuild = true;
+		return true;
+	}
+
 	// === For tests ===
 
 	public List<AssetFormField> Fields => mFields;

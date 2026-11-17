@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- An asset open in the generic property page shows a change made outside it (by an agent, say)
+  when the page has no edits, and warns when it has.
 - The move, rotate and scale gizmo, Delete and Duplicate act on every selected entity, not the first
   only; scaling a mirrored entity keeps it mirrored.
 - Separate inspector actions of one kind (adding two components, two Active toggles) are separate
