@@ -178,12 +178,81 @@ static class StrokeTessellator
 		if (antiAlias && ((halfWidth - (fringeWidth * 0.5f)) < 0.0f))
 			strokeColor.A *= 2.0f * halfWidth / outerHalf;
 
-		if (antiAlias)
-			EmitAntiAliased(points, closed, innerHalf, outerHalf, strokeColor, vertexNormals,
-				vertices, indices);
-		else
-			EmitPlain(points, closed, halfWidth, color, vertexNormals, vertices, indices);
+		// Each side of a vertex is offset along its mitred normal, except the outer side of a round or
+		// bevel join: there each segment ends square, along its own normal, and the join fills the
+		// wedge between them. With one mitred vertex for both, the outer side ran out to the miter
+		// point and the join was drawn under that spike, so a round or bevel corner showed as a mitre.
+		let outerLeft = scope List<bool>(); // at a join: the left (+normal) side is the outside of the turn
+		outerLeft.Resize(n);
+		for (int i = 0; i < n; i++)
+		{
+			if (!needsJoin[i])
+				continue;
+			let previousEdge = closed ? ((i + edgeCount - 1) % edgeCount) : (i - 1);
+			let nextEdge = closed ? (i % edgeCount) : i;
+			let a = edgeNormals[previousEdge];
+			let b = edgeNormals[nextEdge];
+			// Turning left (the normals' cross product positive), the outside is the right.
+			outerLeft[i] = ((a.X * b.Y) - (a.Y * b.X)) < 0.0f;
+		}
+		// The normal segment `edge` uses at vertex `v` on its left (`left`) or right side.
+		Float2 SideNormal(int v, int edge, bool left)
+		{
+			if (needsJoin[v] && (outerLeft[v] == left))
+				return edgeNormals[edge];
+			return vertexNormals[v];
+		}
 
+		// One end of an antialiased segment: its four lines' points.
+		void AddEnd(Float2 p, Float2 l, Float2 r)
+		{
+			vertices.Add(VGVertex.Solid(p + (l * outerHalf), strokeColor, 0.0f));
+			vertices.Add(VGVertex.Solid(p + (l * innerHalf), strokeColor, 1.0f));
+			vertices.Add(VGVertex.Solid(p - (r * innerHalf), strokeColor, 1.0f));
+			vertices.Add(VGVertex.Solid(p - (r * outerHalf), strokeColor, 0.0f));
+		}
+
+		let segmentCount = closed ? n : (n - 1);
+		for (int i = 0; i < segmentCount; i++)
+		{
+			let j = (i + 1) % n;
+			let pi = points[i];
+			let pj = points[j];
+			let li = SideNormal(i, i, true);
+			let ri = SideNormal(i, i, false);
+			let lj = SideNormal(j, i, true);
+			let rj = SideNormal(j, i, false);
+			let baseIndex = (uint32)vertices.Count;
+			if (antiAlias)
+			{
+				// Four lines along the segment, at each end: the left fringe (coverage 0), the left
+				// edge, the right edge (coverage 1) and the right fringe.
+				AddEnd(pi, li, ri);
+				AddEnd(pj, lj, rj);
+				for (uint32 band = 0; band < 3; band++)
+				{
+					// Start: this line and the next; end: the same.
+					AddQuad(indices, baseIndex + band, baseIndex + 4 + band, baseIndex + 5 + band,
+						baseIndex + band + 1);
+				}
+			}
+			else
+			{
+				vertices.Add(VGVertex.Solid(pi + (li * halfWidth), color));
+				vertices.Add(VGVertex.Solid(pi - (ri * halfWidth), color));
+				vertices.Add(VGVertex.Solid(pj + (lj * halfWidth), color));
+				vertices.Add(VGVertex.Solid(pj - (rj * halfWidth), color));
+				indices.Add(baseIndex);
+				indices.Add(baseIndex + 2);
+				indices.Add(baseIndex + 1);
+				indices.Add(baseIndex + 1);
+				indices.Add(baseIndex + 2);
+				indices.Add(baseIndex + 3);
+			}
+		}
+
+		// The joins: the wedge between the two square segment ends, solid to the edge and,
+		// antialiased, with a fringe outside it as the segments have.
 		for (int i = 0; i < n; i++)
 		{
 			if (!needsJoin[i])
@@ -191,9 +260,9 @@ static class StrokeTessellator
 
 			let previousEdge = closed ? ((i + edgeCount - 1) % edgeCount) : (i - 1);
 			let nextEdge = closed ? (i % edgeCount) : i;
-			// At the solid radius: the body's mitred edge (and its fringe) covers the corner.
-			AddJoin(points[i], edgeNormals[previousEdge], edgeNormals[nextEdge], innerHalf,
-				style.Join, strokeColor, vertices, indices);
+			AddJoin(points[i], edgeNormals[previousEdge], edgeNormals[nextEdge],
+				antiAlias ? innerHalf : halfWidth, antiAlias ? outerHalf : 0.0f, style.Join, strokeColor,
+				vertices, indices);
 		}
 
 		// Only an open path has ends to cap, and a butt cap is the absence of geometry.
@@ -220,78 +289,6 @@ static class StrokeTessellator
 				AddCap(points[n - 1], direction, edgeNormals[edgeCount - 1], innerHalf,
 					antiAlias ? outerHalf : innerHalf, style.Cap, strokeColor, vertices, indices);
 			}
-		}
-	}
-
-	/// Four rings: a fringe (no coverage), the two solid edges at `innerHalf`, and a fringe on the
-	/// other side, the fringes at `outerHalf`. Three quad strips between them.
-	private static void EmitAntiAliased(Span<Float2> points, bool closed, float innerHalf,
-		float outerHalf, Color color, List<Float2> vertexNormals, List<VGVertex> vertices,
-		List<uint32> indices)
-	{
-		let n = points.Length;
-
-		let outerLeftBase = (uint32)vertices.Count;
-		for (int i = 0; i < n; i++)
-			vertices.Add(VGVertex.Solid(points[i] + (vertexNormals[i] * outerHalf), color, 0.0f));
-
-		let strokeLeftBase = (uint32)vertices.Count;
-		for (int i = 0; i < n; i++)
-			vertices.Add(VGVertex.Solid(points[i] + (vertexNormals[i] * innerHalf), color, 1.0f));
-
-		let strokeRightBase = (uint32)vertices.Count;
-		for (int i = 0; i < n; i++)
-			vertices.Add(VGVertex.Solid(points[i] - (vertexNormals[i] * innerHalf), color, 1.0f));
-
-		let outerRightBase = (uint32)vertices.Count;
-		for (int i = 0; i < n; i++)
-			vertices.Add(VGVertex.Solid(points[i] - (vertexNormals[i] * outerHalf), color, 0.0f));
-
-		let segmentCount = closed ? n : (n - 1);
-		for (int i = 0; i < segmentCount; i++)
-		{
-			let a = (uint32)i;
-			let b = (uint32)((i + 1) % n);
-
-			AddQuad(indices, outerLeftBase + a, outerLeftBase + b, strokeLeftBase + b,
-				strokeLeftBase + a);
-			AddQuad(indices, strokeLeftBase + a, strokeLeftBase + b, strokeRightBase + b,
-				strokeRightBase + a);
-			AddQuad(indices, strokeRightBase + a, strokeRightBase + b, outerRightBase + b,
-				outerRightBase + a);
-		}
-	}
-
-	/// One quad strip: the two stroke edges and nothing else.
-	private static void EmitPlain(Span<Float2> points, bool closed, float halfWidth, Color color,
-		List<Float2> vertexNormals, List<VGVertex> vertices, List<uint32> indices)
-	{
-		let n = points.Length;
-		let strokeBase = (uint32)vertices.Count;
-
-		// Interleaved, two per point, which is why the index arithmetic below doubles.
-		for (int i = 0; i < n; i++)
-		{
-			let offset = vertexNormals[i] * halfWidth;
-			vertices.Add(VGVertex.Solid(points[i] + offset, color));
-			vertices.Add(VGVertex.Solid(points[i] - offset, color));
-		}
-
-		let segmentCount = closed ? n : (n - 1);
-		for (int i = 0; i < segmentCount; i++)
-		{
-			let j = (i + 1) % n;
-			let i0 = strokeBase + (uint32)(i * 2);
-			let i1 = strokeBase + (uint32)((i * 2) + 1);
-			let i2 = strokeBase + (uint32)(j * 2);
-			let i3 = strokeBase + (uint32)((j * 2) + 1);
-
-			indices.Add(i0);
-			indices.Add(i2);
-			indices.Add(i1);
-			indices.Add(i1);
-			indices.Add(i2);
-			indices.Add(i3);
 		}
 	}
 
@@ -355,55 +352,68 @@ static class StrokeTessellator
 		miterNormal = average * miterLength;
 	}
 
-	/// The wedge of geometry that fills the outside of a corner.
+	/// The wedge of a round or bevel join, outside the turn: solid to `solidHalf`, then, when
+	/// `fringeHalf` is past it, a fringe fading out to `fringeHalf`.
 	private static void AddJoin(Float2 point, Float2 previousNormal, Float2 nextNormal,
-		float halfWidth, VGLineJoin joinType, Color color, List<VGVertex> vertices,
+		float solidHalf, float fringeHalf, VGLineJoin joinType, Color color, List<VGVertex> vertices,
 		List<uint32> indices)
 	{
 		let cross = (previousNormal.X * nextNormal.Y) - (previousNormal.Y * nextNormal.X);
 		if (Abs(cross) < cJoinEpsilon)
 			return;
-
-		// The SIGN says which side of the line the corner turns toward, and therefore which
-		// side the wedge belongs on.
-		let outward = (cross > 0.0f) ? 1.0f : -1.0f;
-
-		if (joinType == .Bevel)
-		{
-			let baseIndex = (uint32)vertices.Count;
-			vertices.Add(VGVertex.Solid(point, color));
-			vertices.Add(VGVertex.Solid(point + (previousNormal * halfWidth * outward), color));
-			vertices.Add(VGVertex.Solid(point + (nextNormal * halfWidth * outward), color));
-
-			indices.Add(baseIndex);
-			indices.Add(baseIndex + 1);
-			indices.Add(baseIndex + 2);
+		if ((joinType != .Round) && (joinType != .Bevel))
 			return;
+		let side = (cross > 0.0f) ? -1.0f : 1.0f; // the outside of the turn: right when turning left
+
+		// The rim: unit directions from the point, from the incoming segment's normal to the
+		// outgoing one's (two for a bevel, an arc's worth for a round join).
+		let rim = scope List<Float2>();
+		let from = previousNormal * side;
+		let to = nextNormal * side;
+		if (joinType == .Round)
+		{
+			// The short way from one to the other, the turn's own angle.
+			let startAngle = Atan2(from.Y, from.X);
+			let endAngle = startAngle + Atan2((from.X * to.Y) - (from.Y * to.X), (from.X * to.X) + (from.Y * to.Y));
+			// Segment count scales with both the sweep and the radius, so a wide stroke's corner is
+			// no coarser than a thin one's.
+			let segments = ArcSegments(Abs(endAngle - startAngle) * solidHalf * 0.5f, 3);
+			let angleStep = (endAngle - startAngle) / (float)segments;
+			for (int32 k = 0; k <= segments; k++)
+			{
+				let angle = startAngle + (angleStep * (float)k);
+				rim.Add(.(Cos(angle), Sin(angle)));
+			}
+		}
+		else
+		{
+			rim.Add(from);
+			rim.Add(to);
 		}
 
-		if (joinType != .Round)
+		let centre = (uint32)vertices.Count;
+		vertices.Add(VGVertex.Solid(point, color, 1.0f));
+		let solid = (uint32)vertices.Count;
+		for (let d in rim)
+			vertices.Add(VGVertex.Solid(point + (d * solidHalf), color, 1.0f));
+		for (uint32 k = 0; (k + 1) < (uint32)rim.Count; k++)
+		{
+			indices.Add(centre);
+			indices.Add(solid + k);
+			indices.Add(solid + k + 1);
+		}
+		if (fringeHalf <= solidHalf)
 			return;
-
-		let startAngle = Atan2(previousNormal.Y, previousNormal.X);
-		var endAngle = Atan2(nextNormal.Y, nextNormal.X);
-
-		// Swept the SHORT way round, in the direction the corner turns. Without this the
-		// fan could take the long way and cover the wrong side entirely.
-		if (cross > 0.0f)
+		// A bevel's fringe runs along its chord: its rim points pushed out across the chord.
+		let chordOut = (joinType == .Round) ? Float2.Zero : (Normalized(from + to) * (fringeHalf - solidHalf));
+		let fringe = (uint32)vertices.Count;
+		for (let d in rim)
 		{
-			if (endAngle < startAngle)
-				endAngle += TwoPi;
+			let edge = (joinType == .Round) ? (point + (d * fringeHalf)) : (point + (d * solidHalf) + chordOut);
+			vertices.Add(VGVertex.Solid(edge, color, 0.0f));
 		}
-		else if (endAngle > startAngle)
-		{
-			endAngle -= TwoPi;
-		}
-
-		// Segment count scales with both the sweep and the radius, so a wide stroke's
-		// corner is no coarser than a thin one's.
-		let segments = ArcSegments(Abs(endAngle - startAngle) * halfWidth * 0.5f, 3);
-		EmitFan(point, startAngle, (endAngle - startAngle) / (float)segments, segments, halfWidth,
-			color, vertices, indices);
+		for (uint32 k = 0; (k + 1) < (uint32)rim.Count; k++)
+			AddQuad(indices, solid + k, fringe + k, fringe + k + 1, solid + k + 1);
 	}
 
 	/// The geometry past the end of an open stroke. Its outline runs from the stroke's one side, out
@@ -457,28 +467,5 @@ static class StrokeTessellator
 			vertices.Add(VGVertex.Solid(point + (offset * outerHalf), color, 0.0f));
 		for (uint32 i = 0; (i + 1) < count; i++)
 			AddQuad(indices, inner + i, outer + i, outer + i + 1, inner + i + 1);
-	}
-
-	/// A triangle fan around a centre: the centre, then one vertex per step of the sweep.
-	private static void EmitFan(Float2 center, float startAngle, float angleStep, int32 segments,
-		float radius, Color color, List<VGVertex> vertices, List<uint32> indices)
-	{
-		let baseIndex = (uint32)vertices.Count;
-		vertices.Add(VGVertex.Solid(center, color));
-
-		// One MORE vertex than segments: a fan of n triangles needs n plus one rim points.
-		for (int32 i = 0; i <= segments; i++)
-		{
-			let angle = startAngle + (angleStep * (float)i);
-			vertices.Add(VGVertex.Solid(center.X + (Cos(angle) * radius),
-				center.Y + (Sin(angle) * radius), color));
-		}
-
-		for (int32 i = 0; i < segments; i++)
-		{
-			indices.Add(baseIndex);
-			indices.Add(baseIndex + (uint32)(i + 1));
-			indices.Add(baseIndex + (uint32)(i + 2));
-		}
 	}
 }

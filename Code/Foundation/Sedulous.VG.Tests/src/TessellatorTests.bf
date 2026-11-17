@@ -305,7 +305,7 @@ class TessellatorTests
 
 		StrokeTessellator.Tessellate(points, false, .(2.0f), .(), false, .Red, vertices, indices);
 
-		Test.Assert(vertices.Count == 4, "two per point");
+		Test.Assert(vertices.Count == 4, "two at each end");
 		Test.Assert(indices.Count == 6);
 
 		// One unit either side of the line, which is half of a width of two.
@@ -326,7 +326,7 @@ class TessellatorTests
 		let aaIndices = scope List<uint32>();
 		StrokeTessellator.Tessellate(points, false, .(2.0f), .(), true, .Red, aa, aaIndices);
 
-		Test.Assert(aa.Count == 8, "four rings of two points");
+		Test.Assert(aa.Count == 8, "four lines, at each end");
 		Test.Assert(aaIndices.Count == plainIndices.Count * 3, "three strips instead of one");
 
 		var faded = 0;
@@ -455,7 +455,7 @@ class TessellatorTests
 		StrokeTessellator.Tessellate(straight, false, .(4.0f, .Butt, .Bevel), .(), false, .Red,
 			vertices, indices);
 
-		Test.Assert(vertices.Count == 6, "two per point and nothing added");
+		Test.Assert(vertices.Count == 8, "four per segment (each ends on its own) and nothing added");
 	}
 
 	/// A dash pattern strokes each dash as its OWN open polyline, so each gets its own caps.
@@ -547,5 +547,61 @@ class TessellatorTests
 
 		for (let vertex in vertices)
 			Test.Assert(Abs(vertex.Position.X) < 200.0f, "no spike off to infinity");
+	}
+
+	/// How far from `corner` a vertex reaches in the corner's outside quadrant (right of it, not
+	/// below it), for a right angle turning left there.
+	private static float Farthest(VGLineJoin join, bool antiAlias)
+	{
+		let corner = Float2(10.0f, 0.0f);
+		let points = scope Float2[](.(0.0f, 0.0f), corner, .(10.0f, 10.0f));
+		let vertices = scope List<VGVertex>();
+		let indices = scope List<uint32>();
+		StrokeTessellator.Tessellate(points, false, .(4.0f, .Butt, join), .(), antiAlias, .White, vertices, indices);
+		float reach = 0.0f;
+		for (let v in vertices)
+		{
+			let d = v.Position - corner;
+			if ((v.Position.X > (corner.X - 0.5f)) && (v.Position.Y < 0.5f))
+				reach = Max(reach, Math.Sqrt((d.X * d.X) + (d.Y * d.Y)));
+		}
+		return reach;
+	}
+
+	/// Both sides of a corner were offset along one mitred normal, so the outside of a round or
+	/// bevel join ran out to the miter point, and the join drawn under it never showed.
+	[Test]
+	public static void ARoundOrBevelJoinStaysInsideTheStrokesRadiusAndAMiterReachesItsPoint()
+	{
+		let width = 4.0f;
+		let miterPoint = width * 0.5f * Math.Sqrt(2.0f);
+		Test.Assert(Abs(Farthest(.Miter, false) - miterPoint) < (miterPoint * 0.01f));
+		Test.Assert(Farthest(.Round, false) <= ((width * 0.5f) + 0.01f));
+		Test.Assert(Farthest(.Bevel, false) <= ((width * 0.5f) + 0.01f));
+		Test.Assert(Farthest(.Round, true) <= ((width * 0.5f) + 1.01f)); // antialiased: its fringe past it
+	}
+
+	[Test]
+	public static void ARightTurnsRoundJoinIsOnItsOutsideTooAndCoversIt()
+	{
+		let corner = Float2(10.0f, 0.0f);
+		let points = scope Float2[](.(0.0f, 0.0f), corner, .(10.0f, -10.0f)); // turning right
+		let vertices = scope List<VGVertex>();
+		let indices = scope List<uint32>();
+		StrokeTessellator.Tessellate(points, false, .(4.0f, .Butt, .Round), .(), false, .White, vertices, indices);
+		float reach = 0.0f;
+		bool diagonal = false; // the arc has a vertex out between the segments' square ends
+		for (let v in vertices)
+		{
+			let d = v.Position - corner;
+			if ((d.X > -0.5f) && (d.Y > -0.5f))
+			{
+				let r = Math.Sqrt((d.X * d.X) + (d.Y * d.Y));
+				reach = Max(reach, r);
+				diagonal = diagonal || ((r > 1.9f) && (d.X > 0.3f) && (d.Y > 0.3f)); // on the rim, between the two ends
+			}
+		}
+		Test.Assert(reach <= 2.01f);
+		Test.Assert(diagonal);
 	}
 }
