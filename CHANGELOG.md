@@ -135,6 +135,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- `Sedulous.Tools.Cook` exits with failure when a source cannot be read, instead of 0.
 - MCP: opening a project whose plugins add tools no longer changes the tool table under the running
   call (a possible crash).
 - Two assets (or folders) in one folder can no longer differ only in case ("Rock" and "rock"), which

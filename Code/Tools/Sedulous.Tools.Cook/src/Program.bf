@@ -113,8 +113,8 @@ class Program
 		let host = scope CookDriver(project.SourceDb, project.CookedDb, builders, sourcesMount, cacheMount, jobs);
 		let hostPlan = scope CookPlan();
 		host.Plan(hostPlan, rebuild);
-		Console.WriteLine("cook plan (host): {} dirty, {} up to date, {} orphan(s), {} without builders",
-			hostPlan.Dirty.Count, hostPlan.UpToDate, hostPlan.Orphans.Count, hostPlan.Unbuildable);
+		Console.WriteLine("cook plan (host): {} dirty, {} up to date, {} orphan(s), {} without builders, {} unreadable",
+			hostPlan.Dirty.Count, hostPlan.UpToDate, hostPlan.Orphans.Count, hostPlan.Unbuildable, hostPlan.Unreadable);
 		if (dryRun && hostOnly)
 		{
 			for (let item in hostPlan.Dirty)
@@ -125,7 +125,9 @@ class Program
 		host.Execute(hostPlan, hostStats, progress);
 		Console.WriteLine("host cooked {}, failed {}, swept {} orphan(s)", hostStats.Cooked, hostStats.Failed, hostStats.OrphansSwept);
 
-		int totalFailed = hostStats.Failed;
+		// A source that did not read (named in the log above) cannot cook, and an export would ship
+		// without it: a failure, not a success with a warning.
+		int totalFailed = hostStats.Failed + hostPlan.Unreadable;
 
 		if (!hostOnly)
 		{
