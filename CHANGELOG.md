@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Two assets (or folders) in one folder can no longer differ only in case ("Rock" and "rock"), which
+  Windows and macOS keep as one file.
 - The editor no longer replaces a settings file it cannot read (its own or a project's) when it
   could not move the file aside; the log says so.
 - An asset open in the generic property page shows a change made outside it (by an agent, say)

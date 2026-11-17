@@ -172,8 +172,11 @@ class ContentDatabase : IContentDatabase
 		if (instance.Name == newName)
 			return .Ok;
 
+		// Taken in any case but its own ("rock" may become "Rock"): two names one file apart on a
+		// case-insensitive file system.
 		let group = instance.OwningGroup;
-		if (group.GetInstance(newName) != null)
+		let taken = group.GetInstanceIgnoringCase(newName);
+		if ((taken != null) && (taken !== instance))
 			return .Err(.AlreadyExists);
 
 		let writable = mMount as IWritableFileSystem;
@@ -229,7 +232,7 @@ class ContentDatabase : IContentDatabase
 		let from = instance.OwningGroup;
 		if (from == to)
 			return .Err(.InvalidArgument);
-		if (to.GetInstance(instance.Name) != null)
+		if (to.GetInstanceIgnoringCase(instance.Name) != null)
 			return .Err(.AlreadyExists);
 
 		let writable = mMount as IWritableFileSystem;
@@ -286,7 +289,8 @@ class ContentDatabase : IContentDatabase
 			return .Ok;
 
 		let parent = group.Parent;
-		if (parent.GetGroup(newName) != null)
+		let takenGroup = parent.GetGroupIgnoringCase(newName);
+		if ((takenGroup != null) && (takenGroup !== group))
 			return .Err(.AlreadyExists);
 
 		let writable = mMount as IWritableFileSystem;
@@ -352,7 +356,7 @@ class ContentDatabase : IContentDatabase
 			return null;
 
 		let group = source.OwningGroup;
-		if (group.GetInstance(newName) != null)
+		if (group.GetInstanceIgnoringCase(newName) != null)
 			return null;
 
 		let object = source.ReadObject();

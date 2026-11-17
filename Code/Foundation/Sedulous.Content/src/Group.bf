@@ -71,13 +71,55 @@ class Group
 		return null;
 	}
 
+	/// The child group whose name matches `name` ignoring ASCII case: on a case-insensitive file
+	/// system (Windows, macOS) "Rock" and "rock" are one directory, so a name is claimed case-folded.
+	public Group GetGroupIgnoringCase(StringView name)
+	{
+		for (let group in mGroups)
+		{
+			if (NamesEqualIgnoringCase(group.Name, name))
+				return group;
+		}
+		return null;
+	}
+
+	/// The instance whose name matches `name` ignoring ASCII case (one file, on such a system).
+	public Instance GetInstanceIgnoringCase(StringView name)
+	{
+		for (let instance in mInstances)
+		{
+			if (NamesEqualIgnoringCase(instance.Name, name))
+				return instance;
+		}
+		return null;
+	}
+
+	/// Whether two names are one ignoring ASCII case, as the children's sort compares them.
+	public static bool NamesEqualIgnoringCase(StringView a, StringView b)
+	{
+		if (a.Length != b.Length)
+			return false;
+		for (int i < a.Length)
+		{
+			var ca = a[i];
+			var cb = b[i];
+			if ((ca >= 'A') && (ca <= 'Z'))
+				ca = (char8)((uint8)ca + 32);
+			if ((cb >= 'A') && (cb <= 'Z'))
+				cb = (char8)((uint8)cb + 32);
+			if (ca != cb)
+				return false;
+		}
+		return true;
+	}
+
 	// ---- tooling ----
 
-	/// The child group of this name, creating it if there is none. Nothing reaches disk
-	/// until an instance under it is written.
+	/// The child group of this name (in any case: one directory), creating it if there is none.
+	/// Nothing reaches disk until an instance under it is written.
 	public Group CreateGroup(StringView name)
 	{
-		if (let existing = GetGroup(name))
+		if (let existing = GetGroupIgnoringCase(name))
 			return existing;
 		return AddChildGroup(name);
 	}
@@ -87,7 +129,8 @@ class Group
 	/// A NAME ALREADY TAKEN RETURNS THE EXISTING INSTANCE, which is what makes a reimport
 	/// or a re-cook idempotent. A creator making a brand new asset must therefore ask for
 	/// UniqueInstanceName first, or it will write its starter object over whatever was
-	/// already there.
+	/// already there. A name taken in another case ("rock" beside "Rock") is refused: null, as
+	/// the two would be one file on a case-insensitive file system.
 	public Instance CreateInstance(StringView name, StringView typeName)
 	{
 		return CreateInstanceWithId(Guid.Create(), name, typeName);
@@ -97,8 +140,8 @@ class Group
 	/// the source's so the two stay linked across databases.
 	public Instance CreateInstanceWithId(Guid id, StringView name, StringView typeName)
 	{
-		if (let existing = GetInstance(name))
-			return existing;
+		if (let existing = GetInstanceIgnoringCase(name))
+			return (existing.Name == name) ? existing : null;
 		return mDatabase.[Friend]RegisterInstance(this, id, name, typeName);
 	}
 
@@ -107,14 +150,14 @@ class Group
 	public void UniqueInstanceName(StringView @base, String outName)
 	{
 		outName.Set(@base);
-		if (GetInstance(outName) == null)
+		if (GetInstanceIgnoringCase(outName) == null)
 			return;
 
 		for (int suffix = 2; ; suffix++)
 		{
 			outName.Clear();
 			outName.AppendF("{}.{}", @base, suffix);
-			if (GetInstance(outName) == null)
+			if (GetInstanceIgnoringCase(outName) == null)
 				return;
 		}
 	}
@@ -123,14 +166,14 @@ class Group
 	public void UniqueGroupName(StringView @base, String outName)
 	{
 		outName.Set(@base);
-		if (GetGroup(outName) == null)
+		if (GetGroupIgnoringCase(outName) == null)
 			return;
 
 		for (int suffix = 2; ; suffix++)
 		{
 			outName.Clear();
 			outName.AppendF("{}.{}", @base, suffix);
-			if (GetGroup(outName) == null)
+			if (GetGroupIgnoringCase(outName) == null)
 				return;
 		}
 	}

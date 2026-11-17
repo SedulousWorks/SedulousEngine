@@ -1022,4 +1022,32 @@ class ContentDatabaseTests
 			|| ((duplicate.Kept == "copy") && (duplicate.Ignored == "original"));
 		Test.Assert(both, scope $"kept '{duplicate.Kept}', ignored '{duplicate.Ignored}'");
 	}
+
+	/// "Rock" and "rock" were two assets in one group, one file on Windows and macOS: whichever wrote
+	/// last replaced the other.
+	[Test]
+	public static void ANameIsClaimedIgnoringCaseAsACaseInsensitiveFileSystemSeesIt()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_case", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		let type = "Sedulous.Content.Tests.TestAsset";
+		let group = database.RootGroup.CreateGroup("Materials");
+		Test.Assert(group != null);
+		Test.Assert(database.RootGroup.CreateGroup("materials") === group); // one directory
+
+		let rock = group.CreateInstance("Rock", type);
+		Test.Assert(rock != null);
+		Test.Assert(group.CreateInstance("Rock", type) === rock);
+		Test.Assert(group.CreateInstance("rock", type) == null);
+		Test.Assert(group.UniqueInstanceName("ROCK", .. scope .()) == "ROCK.2");
+
+		let asset = scope TestAsset();
+		Test.Assert(rock.WriteObject(asset) case .Ok);
+		let stone = group.CreateInstance("Stone", type);
+		Test.Assert(stone != null);
+		Test.Assert(stone.WriteObject(asset) case .Ok);
+		Test.Assert(database.RenameInstance(stone.Id, "rOCK") case .Err(.AlreadyExists));
+		Test.Assert(database.RenameInstance(rock.Id, "ROCK") case .Ok); // its own name in another case
+	}
 }
