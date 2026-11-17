@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- GUI: Chinese, Japanese and Korean text wraps between its characters, keeping closing punctuation
+  off the start of a line, rather than running out of its box as one long word.
 - Exported games start faster: reading an asset from the game's pak no longer copies it whole into
   memory twice, and startup reads only each asset's header.
 - Text settings and assets saved as XML keep a value made only of spaces (a separator, padding),

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
 using Sedulous.GUI;
@@ -112,5 +113,86 @@ class OverflowWrapTests
 		WidgetFixtures.UseSheet(styles, ".page { overflow-wrap: anywhere; } .text { overflow-wrap: normal; }");
 		styles.ApplyTree(root);
 		Test.Assert(!label.GetTextStyle().BreakWords);
+	}
+
+	/// A font every character of which is 10 wide, CJK included: no font in the repository has CJK
+	/// glyphs, and one without them measures them 0, so nothing would ever wrap.
+	private class EvenFont : IFont
+	{
+		public override void GetFamilyName(String outName) { outName.Append("Even"); }
+		public override Span<uint8> SourceData => default;
+		public override FontMetrics Metrics => .(12.0f, -4.0f, 0.0f, 16.0f, 1.0f);
+		public override float PixelHeight => 16.0f;
+
+		public override GlyphInfo GetGlyphInfo(int32 codepoint)
+		{
+			var info = GlyphInfo();
+			info.Codepoint = codepoint;
+			info.AdvanceWidth = 10.0f;
+			return info;
+		}
+
+		public override float GetKerning(int32 firstCodepoint, int32 secondCodepoint) => 0.0f;
+		public override bool HasGlyph(int32 codepoint) => true;
+		public override float MeasureString(StringView text) => MeasureString(text, scope .());
+
+		public override float MeasureString(StringView text, List<GlyphPosition> outPositions)
+		{
+			float x = 0.0f;
+			int at = 0;
+			while (at < text.Length)
+			{
+				let start = at;
+				let c = DecodeCodepoint(text, ref at);
+				var position = GlyphPosition();
+				position.Cluster = (int32)start;
+				position.ClusterLength = (int32)(at - start);
+				position.X = x;
+				position.Advance = 10.0f;
+				position.GlyphInfo = GetGlyphInfo((int32)c);
+				outPositions.Add(position);
+				x += 10.0f;
+			}
+			return x;
+		}
+	}
+
+	private static TextLayout LayEven(CachedFont font, StringView text, float maxWidth, TextLayout outLayout)
+	{
+		let style = scope TextLayoutStyle();
+		style.Font = font;
+		style.Family.Set("Even");
+		style.Size = 16.0f;
+		style.MaxWidth = maxWidth;
+		return LayOutText(TextFixtures.OneRun(text, scope .()), style, outLayout);
+	}
+
+	/// Pieces ended only at spaces, so 150 characters of Chinese or Japanese were one word that
+	/// never wrapped and ran out of its box.
+	[Test]
+	public static void CjkTextWrapsBetweenItsCharactersAndKeepsItsPunctuationOffALinesStart()
+	{
+		let font = scope CachedFont(new EvenFont(), null); // owns and deletes the font
+		let text = scope String();
+		for (int i < 50)
+			text.Append("漢字か");
+		let layout = LayEven(font, text, 105.0f, scope .()); // ten characters to a line
+		Test.Assert(layout.Lines.Count == 15, scope $"{layout.Lines.Count} lines");
+		CheckCovers(layout, text.Length, 105.0f);
+
+		// "。" may not start a line: the break before it moves back one character.
+		let punctuated = scope String();
+		for (int i < 10)
+			punctuated.Append("漢");
+		punctuated.Append("。字字");
+		let kept = LayEven(font, punctuated, 105.0f, scope .());
+		Test.Assert(kept.Lines.Count == 2, scope $"{kept.Lines.Count} lines");
+		Test.Assert(punctuated.Substring(kept.Lines[1].Start, 3) == "漢");
+
+		// Latin text still breaks only at its spaces.
+		Test.Assert(LayEven(font, "abcdefghijklmnopqrstuvwxyz", 105.0f, scope .()).Lines.Count == 1);
+		Test.Assert(!IsLineBreakBetween((uint32)'a', (uint32)'b'));
+		Test.Assert(IsLineBreakBetween(0x6F22, 0x5B57));
+		Test.Assert(!IsLineBreakBetween(0x300C, 0x6F22)); // nothing after an opening bracket
 	}
 }

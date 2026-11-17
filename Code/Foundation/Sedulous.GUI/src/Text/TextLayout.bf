@@ -789,6 +789,7 @@ static
 			StringView text = run.Text;
 			int start = 0;
 			int i = 0;
+			uint32 previous = 0; // the codepoint before i, for the breaks between characters
 			while (i < text.Length)
 			{
 				if (text[i] == '\n')
@@ -812,7 +813,17 @@ static
 					start = i;
 					continue;
 				}
-				i++;
+				// Text with no spaces (CJK) breaks between its characters: each place a line may
+				// break ends a piece, so a line wraps there as it would after a space.
+				int next = i;
+				let here = DecodeCodepoint(text, ref next);
+				if ((i > start) && IsLineBreakBetween(previous, here))
+				{
+					TextLayoutDetail.EmitPiece(pieces, (int32)r, text, start, i, runStart, font, spacing);
+					start = i;
+				}
+				previous = here;
+				i = next;
 			}
 			TextLayoutDetail.EmitPiece(pieces, (int32)r, text, start, text.Length, runStart, font, spacing);
 			runStart += text.Length;

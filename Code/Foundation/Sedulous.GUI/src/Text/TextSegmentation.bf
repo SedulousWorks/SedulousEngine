@@ -49,6 +49,25 @@ struct TextRange : IEquatable<TextRange>
 
 static
 {
+	/// Whether `c` is of the ideographic line-break class: a line may break before and after it.
+	public static bool IsIdeographic(uint32 c) => (c >= 0x1100) && TextSegmentationDetail.InRanges(c, TextSegmentationDetail.sIdeographic);
+
+	/// Whether a line may break between `before` and `after` without a space: either is
+	/// ideographic, `after` may start a line and `before` may end one.
+	///
+	/// Space-separated text breaks after its spaces; CJK has none, and breaks between its characters
+	/// (ideographs, kana, Hangul syllables, full-width forms). Two exceptions keep punctuation where a
+	/// reader expects it: no line starts with a closing mark or a small kana ("。", "、", "）", "ー",
+	/// "っ"), and none ends with an opening mark ("「", "（").
+	public static bool IsLineBreakBetween(uint32 before, uint32 after)
+	{
+		if (!IsIdeographic(before) && !IsIdeographic(after))
+			return false;
+		if (TextSegmentationDetail.IsIn(after, TextSegmentationDetail.sNoLineStart))
+			return false;
+		return !TextSegmentationDetail.IsIn(before, TextSegmentationDetail.sNoLineEnd);
+	}
+
 	/// Whether a caret may stand between the codepoints before and after `offset`.
 	public static bool IsGraphemeBoundary(StringView text, int offset)
 	{
@@ -229,6 +248,36 @@ internal static class TextSegmentationDetail
 		.(0xE0100, 0xE01EF));
 
 	public const uint32 cZeroWidthJoiner = 0x200D;
+
+	/// The ideographic line-break class (UAX #14's ID, the common ranges): ideographs, kana,
+	/// Hangul, full-width forms.
+	public static CodeRange[18] sIdeographic = .(
+		.(0x1100, 0x115F), .(0x2E80, 0x2FFF), .(0x3040, 0x309F), .(0x30A0, 0x30FF), .(0x3100, 0x312F),
+		.(0x3130, 0x318F), .(0x3190, 0x31FF), .(0x3200, 0x33FF), .(0x3400, 0x4DBF), .(0x4E00, 0x9FFF),
+		.(0xA000, 0xA4CF), .(0xAC00, 0xD7AF), .(0xF900, 0xFAFF), .(0xFE30, 0xFE4F), .(0xFF00, 0xFF60),
+		.(0xFFE0, 0xFFE6), .(0x20000, 0x2FFFD), .(0x30000, 0x3FFFD));
+
+	/// No line starts with these: closing punctuation, iteration and prolonged-sound marks, and the
+	/// small kana (UAX #14's CL, CP, EX and NS, as Japanese kinsoku rules use them).
+	public static uint32[58] sNoLineStart = .(
+		0x3001, 0x3002, 0xFF0C, 0xFF0E, 0xFF01, 0xFF1F, 0xFF1A, 0xFF1B, 0x30FB, 0x300D, 0x300F, 0x3011,
+		0x3015, 0x3009, 0x300B, 0x3017, 0x3019, 0x301B, 0xFF09, 0xFF3D, 0xFF5D, 0x30FC, 0x3005, 0x309D,
+		0x309E, 0x30FD, 0x30FE, 0x3041, 0x3043, 0x3045, 0x3047, 0x3049, 0x3063, 0x3083, 0x3085, 0x3087,
+		0x308E, 0x30A1, 0x30A3, 0x30A5, 0x30A7, 0x30A9, 0x30C3, 0x30E3, 0x30E5, 0x30E7, 0x30EE, 0x30F5,
+		0x30F6, 0x0021, 0x0029, 0x002C, 0x002E, 0x003A, 0x003B, 0x003F, 0x005D, 0x007D);
+
+	/// No line ends with these: opening punctuation (OP).
+	public static uint32[15] sNoLineEnd = .(
+		0x300C, 0x300E, 0x3010, 0x3014, 0x3008, 0x300A, 0x3016, 0x3018, 0x301A, 0xFF08, 0xFF3B, 0xFF5B,
+		0x0028, 0x005B, 0x007B);
+
+	public static bool IsIn(uint32 c, Span<uint32> list)
+	{
+		for (let entry in list)
+			if (entry == c)
+				return true;
+		return false;
+	}
 
 	public static bool InRanges(uint32 c, Span<CodeRange> ranges)
 	{
