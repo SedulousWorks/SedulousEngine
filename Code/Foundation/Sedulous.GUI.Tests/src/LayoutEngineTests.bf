@@ -1375,4 +1375,29 @@ class LayoutEngineTests
 		Test.Assert(wide.LayoutStyle.Row.Start == 1000);
 		root.UpdateLayout();
 	}
+
+	/// A node with a percent width and height counted as fixed in size, so the relayout walk from a
+	/// change inside it stopped there. Where the percent is of an axis with no limit (inside an
+	/// auto-height column) it resolves to nothing and the node follows its content, so the column
+	/// above it kept its old height.
+	[Test]
+	public static void APercentHeightOfAnAxisWithNoLimitFollowsItsContentAndSoDoItsAncestors()
+	{
+		let bed = scope Bed();
+		bed.Root.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		let column = NodeFixtures.Box(bed.Root, scope (s) => { s.Height = LayoutLength(); }); // auto height
+		let percent = NodeFixtures.Box(column, scope (s) =>
+			{
+				s.Width = LayoutLength.Px(100.0f);
+				s.Height = LayoutLength.Percent(50.0f); // of the column's auto height: no limit
+			});
+		let inner = NodeFixtures.Box(percent);
+		NodeFixtures.Fixed(inner, 50.0f, 20.0f);
+		bed.Layout();
+		Test.Assert(Near(column.Size.Y, 20.0f), scope $"{column.Size.Y}"); // its content's height, the percent of nothing
+
+		NodeFixtures.Fixed(inner, 50.0f, 100.0f); // a child added deep inside
+		bed.Layout();
+		Test.Assert(Near(column.Size.Y, 120.0f), scope $"{column.Size.Y}"); // the walk went past the percent node
+	}
 }

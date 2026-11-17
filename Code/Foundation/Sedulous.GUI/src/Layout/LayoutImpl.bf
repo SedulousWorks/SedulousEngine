@@ -45,6 +45,9 @@ internal static class LayoutImplDetail
 
 	private static bool Definite(LayoutLength l) => (l.Kind == .Px) || (l.Kind == .Percent) || (l.Kind == .Calc);
 
+	// A length of its container: nothing when the container's axis has no limit.
+	public static bool IsRelative(LayoutLength l) => (l.Kind == .Percent) || (l.Kind == .Calc);
+
 	public static float Less(float available, float by) => IsUnbounded(available) ? cUnbounded : Max(0.0f, available - by);
 	public static float BaseOf(float available) => IsUnbounded(available) ? -1.0f : available;
 
@@ -1019,6 +1022,9 @@ extension Node
 			}
 			var w = BorderBoxOf(s.Width, constraints.PercentBase.X, ch);
 			var h = BorderBoxOf(s.Height, constraints.PercentBase.Y, cv);
+			// A percent (or a calc with one) that resolved to nothing: the axis had no limit.
+			if ((!w.HasValue && LayoutImplDetail.IsRelative(s.Width)) || (!h.HasValue && LayoutImplDetail.IsRelative(s.Height)))
+				mFollowedContent = true;
 			// An aspect ratio gives the auto side from the other: one the style gives, else one the
 			// container fixes (a stretch). It is the ratio of the box the sizing names.
 			if (s.AspectRatio > 0.0f)
@@ -1290,8 +1296,10 @@ extension Node
 		// Up through the containers whose size follows what is inside them: each measures and lays
 		// out again. One of definite size stops it (its size does not change); one out of flow
 		// makes its container place it again, nothing more.
+		// A size of its own on both axes stops the walk, unless a percent of it was ever of an axis
+		// with no limit: then it resolved to nothing and the node followed its content.
 		var n = this;
-		while ((n.mParent != null) && !LayoutImplDetail.HasDefiniteSize(n))
+		while ((n.mParent != null) && !(LayoutImplDetail.HasDefiniteSize(n) && !n.mFollowedContent))
 		{
 			let outOfFlow = n.mLayoutStyle.Placement == .Absolute;
 			n = n.mParent;

@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- GUI: a box sized in percent inside a container that sizes to its content now grows that container
+  when something inside it grows, rather than leaving it at its old size.
 - GUI: Chinese, Japanese and Korean text wraps between its characters, keeping closing punctuation
   off the start of a line, rather than running out of its box as one long word.
 - Exported games start faster: reading an asset from the game's pak no longer copies it whole into

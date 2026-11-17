@@ -3670,6 +3670,11 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	private Thickness mPadding = .();
 	private Thickness mPaddingPercent = .(); // of the containing box's width (CSS's padding percentages)
 	private float mPercentWidth = -1.0f; // the containing box's width it was last measured in (-1: unknown)
+	// A measure found its style giving no size on an axis (a percent of an axis with no limit: a
+	// scroller's content, an auto-sized parent), so it sized from its content. Kept: the same node
+	// is measured again against a final size later in a pass, and a change inside it must still
+	// reach the containers that sized from it.
+	private bool mFollowedContent = false;
 	private Float2 mScrollOffset = .(0.0f, 0.0f); // a scroll container's (its children move by minus it)
 	private float mPixelScale = 1.0f; // device pixels per unit at its last arrange (its edges round to them)
 	private Float2 mContentExtent = .(0.0f, 0.0f); // the children's extent as last laid out
