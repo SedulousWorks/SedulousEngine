@@ -373,7 +373,9 @@ class JobSystem
 			if (RunOneJob())
 				continue;
 
-			if (mStop)
+			// Stopping, and nothing left: a job submitted between the failed run above and the
+			// stop is still run (returning on the stop alone left it unrun, its delegate freed).
+			if (mStop && !HasAnyWork())
 				return;
 
 			// The event latches, so a Set between the failed run above and this wait is

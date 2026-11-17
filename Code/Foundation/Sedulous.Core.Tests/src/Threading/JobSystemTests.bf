@@ -411,4 +411,23 @@ class JobSystemTests
 		for (int i = 0; i + 1 < names.Count; i += 2)
 			Test.Assert(names[i] == names[i + 1], names[i]);
 	}
+
+	/// A worker whose last look for work came up empty returned on the stop without looking again:
+	/// a job submitted in between was never run. The window is small, so the shutdown is repeated,
+	/// with one worker (a second would drain what the first left).
+	[Test]
+	public static void RunsEveryJobSubmittedBeforeItIsDestroyed()
+	{
+		for (int round < 2000)
+		{
+			int32 ran = 0;
+			let jobs = new JobSystem(1);
+			if ((round % 4) == 1)
+				Thread.Sleep(1); // the worker asleep; otherwise still starting, or looking
+			for (int i < 4)
+				jobs.Submit(new [&ran] () => { Interlocked.Increment(ref ran); });
+			delete jobs; // destroyed at once: no Wait
+			Test.Assert(ran == 4, scope $"round {round}: {ran} of 4 ran");
+		}
+	}
 }
