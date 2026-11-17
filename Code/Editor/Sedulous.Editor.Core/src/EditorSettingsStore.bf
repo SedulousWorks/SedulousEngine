@@ -42,18 +42,42 @@ static class EditorSettingsStore
 		if (UnreadableFiles.SetAside(root, fileName, aside) case .Ok)
 			GlobalLog(.Error, "Editor: {} could not be read; it was moved to {} and the settings start again", fileName, aside);
 		else
-			GlobalLog(.Error, "Editor: {} could not be read, nor moved aside; saving the settings will replace it", fileName);
+			GlobalLog(.Error, "Editor: {} could not be read, nor moved aside; the settings are not saved over it", fileName);
 		return loaded;
 	}
 
-	public static Result<void, ErrorCode> Save(IWritableFileSystem root, Settings store, StringView fileName = cFileName)
+	/// True when a settings file is there and does not read: a save refuses to replace it (a load
+	/// that could not set it aside leaves it in place, and the sections it held are only there).
+	public static bool IsSettingsFileUnreadable(IFileSystem root, StringView fileName)
 	{
+		let stream = root.Open(fileName, .Read);
+		if (stream == null)
+			return false;
+		defer delete stream;
+		let probe = scope Settings();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		return probe.Load(stream, factory) case .Err;
+	}
+
+	/// Persists the store to `root` (XML). Refused (AlreadyExists) over a file there that does not
+	/// read, and NotSupported for a file system that cannot be written.
+	public static Result<void, ErrorCode> Save(IFileSystem root, Settings store, StringView fileName = cFileName)
+	{
+		let writable = root as IWritableFileSystem;
+		if (writable == null)
+			return .Err(.NotSupported);
+		if (IsSettingsFileUnreadable(root, fileName))
+		{
+			GlobalLog(.Error, "Editor: {} is there and does not read; not saved over it", fileName);
+			return .Err(.AlreadyExists);
+		}
 		let buffer = scope MemoryStream();
 		let factory = XmlSerializerFactory();
 		defer delete factory;
 		if (store.Save(buffer, factory) case .Err(let error))
 			return .Err(error);
-		return root.Save(fileName, buffer.Bytes);
+		return writable.Save(fileName, buffer.Bytes);
 	}
 
 	/// The canonical location, <user-data>/editor.settings.xml; the editor uses these, the

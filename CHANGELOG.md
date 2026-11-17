@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- The editor no longer replaces a settings file it cannot read (its own or a project's) when it
+  could not move the file aside; the log says so.
 - An asset open in the generic property page shows a change made outside it (by an agent, say)
   when the page has no edits, and warns when it has.
 - The move, rotate and scale gizmo, Delete and Duplicate act on every selected entity, not the first

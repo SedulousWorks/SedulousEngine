@@ -858,6 +858,24 @@ static class ExportTemplateTests
 		Test.Assert(fs.Exists(scope String(EditorSettingsStore.cFileName)..Append(".unreadable")));
 	}
 
+	/// A load that could not set an unreadable file aside left it in place, and the next save replaced
+	/// it with the defaults: the recent projects and every other section it held, gone.
+	[Test]
+	public static void ASettingsFileThatDoesNotReadIsNotSavedOver()
+	{
+		EditorSerializables.RegisterAll();
+		let dir = Scratch("scratch_editor_settings_unreadable", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let fs = scope NativeFileSystem(dir);
+		let junk = "<not settings";
+		Test.Assert(fs.Save(EditorSettingsStore.cFileName, .((uint8*)junk.Ptr, junk.Length)) case .Ok);
+		let store = scope Sedulous.Settings.Settings();
+		Test.Assert(EditorSettingsStore.Save(fs, store) case .Err(.AlreadyExists));
+		let kept = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(dir, EditorSettingsStore.cFileName, .. scope .()), kept) case .Ok);
+		Test.Assert(kept.Count == junk.Length);
+	}
+
 	[Test]
 	public static void RemovingATemplateDeletesTheFolderItsManifestNamesNeverAPathFromItsId()
 	{
