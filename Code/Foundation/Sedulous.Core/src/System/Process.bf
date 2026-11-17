@@ -10,9 +10,10 @@ namespace Sedulous.Core;
 /// Running a child process to completion.
 static class Process
 {
-	/// Cook diagnostics are small, and this caps a runaway tool without truncating a real
-	/// error.
-	private const int cMaxOutputBytes = 64 * 1024;
+	/// What is kept of a tool's output: its END, which is where a build's errors are, bounded so
+	/// a runaway tool cannot fill memory. The first 64 KiB was kept, and an export's build showed
+	/// only its start.
+	private const int cMaxOutputBytes = 16 * 1024 * 1024;
 	private const int cReadChunk = 4096;
 
 	/// Runs `executable` with `arguments` and BLOCKS until it exits, capturing its combined
@@ -22,11 +23,15 @@ static class Process
 	/// That is what makes it safe to hand a caller supplied path: nothing in it is
 	/// interpreted.
 	///
+	/// With `timeoutMilliseconds` (negative: none), a run past it is killed with what it started,
+	/// and the result says it TimedOut: there was no limit, so a hung tool held the cook for good.
+	///
 	/// For cook time tool invocations. Do NOT call it on a thread that must stay responsive.
 	public static void Run(StringView executable, Span<StringView> arguments,
-		ProcessResult outResult)
+		ProcessResult outResult, int timeoutMilliseconds = -1)
 	{
 		outResult.ExitCode = -1;
+		outResult.TimedOut = false;
 		outResult.Output.Clear();
 
 		// Beef joins the arguments into one command line, so each is quoted here: an
@@ -77,25 +82,36 @@ static class Process
 		let errorStream = haveError ? standardError : null;
 		let outputStream = haveOutput ? standardOutput : null;
 
+		let outputText = outResult.Output;
 		let errorDrain = scope Thread(new [&errorStream, &errorText]() =>
 			{
 				Drain(errorStream, errorText);
 			});
+		let outputDrain = scope Thread(new [&outputStream, &outputText]() =>
+			{
+				Drain(outputStream, outputText);
+			});
 		errorDrain.Start(false);
-		Drain(outputStream, outResult.Output);
+		outputDrain.Start(false);
+
+		// The wait is the timeout's: a child killed with what it started closes its pipes, and
+		// the drains end with them.
+		if (!process.WaitFor(timeoutMilliseconds))
+		{
+			process.Kill(-1, .KillChildren);
+			process.WaitFor(-1);
+			outResult.TimedOut = true;
+		}
+		outputDrain.Join();
 		errorDrain.Join();
 
 		// Appended rather than interleaved: two pipes cannot be merged after the fact, and a
 		// caller wants the whole diagnostic, not its exact ordering.
-		if (!errorText.IsEmpty)
-		{
-			let room = cMaxOutputBytes - outResult.Output.Length;
-			if (room > 0)
-				outResult.Output.Append(errorText, 0, Math.Min(errorText.Length, room));
-		}
+		outResult.Output.Append(errorText);
+		KeepTail(outResult.Output);
 
-		process.WaitFor(-1);
-		outResult.ExitCode = process.ExitCode;
+		if (!outResult.TimedOut)
+			outResult.ExitCode = process.ExitCode;
 	}
 
 	/// Starts `executable` with `arguments` and returns without waiting: the child runs on its
@@ -139,15 +155,21 @@ static class Process
 		case .Ok(let read):
 			if (read <= 0)
 				return false;
-			// Capped rather than truncated mid-read: the cap exists to bound a runaway
-			// tool, and the first 64 KiB is where a real diagnostic is.
-			let room = cMaxOutputBytes - outText.Length;
-			if (room > 0)
-				outText.Append(StringView((char8*)chunk.Ptr, Math.Min(read, room)));
+			outText.Append(StringView((char8*)chunk.Ptr, read));
+			// Bounded as it grows, at a chunk's cost: the oldest goes, the end is kept.
+			if (outText.Length > (cMaxOutputBytes + (cMaxOutputBytes / 4)))
+				KeepTail(outText);
 			return true;
 		case .Err:
 			return false;
 		}
+	}
+
+	/// The last cMaxOutputBytes of `text`, the rest before it dropped.
+	private static void KeepTail(String text)
+	{
+		if (text.Length > cMaxOutputBytes)
+			text.Remove(0, text.Length - cMaxOutputBytes);
 	}
 
 	/// Wraps an argument in quotes, escaping what a command line would otherwise eat.

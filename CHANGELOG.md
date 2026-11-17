@@ -131,6 +131,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Export: a failed build's errors at the end of a long log are kept in what the editor shows
+  (only the first 64 KiB of a tool's output was), and the shader cook gives up on a WebGPU tool that
+  hangs instead of waiting for good.
 - Editor: "Add transition" in an animation graph's node menu starts the transition, rather than
   being cancelled by the click that chose it.
 - Fonts: text whose size animates no longer builds a new font for every size it passes through,

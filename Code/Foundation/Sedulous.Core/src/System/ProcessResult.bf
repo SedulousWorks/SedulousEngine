@@ -12,8 +12,10 @@ class ProcessResult
 {
 	/// Zero or more is the child's exit code; less than zero means it never ran.
 	public int ExitCode = -1;
-	/// The child's combined standard output and standard error, capped.
+	/// The child's combined standard output and standard error: all of it, up to its last 16 MiB.
 	public String Output = new String() ~ delete _;
+	/// It ran past the timeout it was given and was killed (its exit code stays negative).
+	public bool TimedOut = false;
 
 	/// Whether the process started and exited on its own.
 	public bool Ran => ExitCode >= 0;

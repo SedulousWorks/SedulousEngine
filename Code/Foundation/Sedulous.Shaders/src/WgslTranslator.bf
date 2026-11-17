@@ -207,7 +207,7 @@ class WgslTranslator
 		StringView[3] arguments = .("--keep-coordinate-space", spirvPath, wgslPath);
 
 		let result = scope ProcessResult();
-		Process.Run(mNagaPath, arguments, result);
+		Process.Run(mNagaPath, arguments, result, cToolTimeoutMilliseconds);
 		if (result.Ok)
 			return .Ok;
 
@@ -233,7 +233,7 @@ class WgslTranslator
 
 		StringView[3] arguments = .("--format", "wgsl", wgslPath);
 		let result = scope ProcessResult();
-		Process.Run(mTintPath, arguments, result);
+		Process.Run(mTintPath, arguments, result, cToolTimeoutMilliseconds);
 		if (result.Ok)
 			return .Ok;
 
@@ -241,6 +241,10 @@ class WgslTranslator
 		Describe("tint", mTintPath, result, outResult.Error);
 		return .Err;
 	}
+
+	/// How long naga or tint may take on one shader before the cook gives it up: a translation
+	/// takes well under a second, and a hung tool would otherwise stall the cook for good.
+	private const int cToolTimeoutMilliseconds = 120000;
 
 	/// Why a tool failed, always naming the tool.
 	///
@@ -252,7 +256,9 @@ class WgslTranslator
 	private static void Describe(StringView tool, StringView path, ProcessResult result,
 		String outError)
 	{
-		if (!result.Ran)
+		if (result.TimedOut)
+			outError.AppendF("{} at {} did not finish in time", tool, path);
+		else if (!result.Ran)
 			outError.AppendF("could not run {} at {}", tool, path);
 		else
 			outError.AppendF("{} at {} failed with exit code {}", tool, path, result.ExitCode);
