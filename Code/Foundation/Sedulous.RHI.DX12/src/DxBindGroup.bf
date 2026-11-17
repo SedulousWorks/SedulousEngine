@@ -149,12 +149,15 @@ class DxBindGroup : IBindGroup
 
 		if (mCachedSamplerCount > 0)
 		{
-			mSamplerOffset = cpuSamplerHeap.Allocate(mCachedSamplerCount);
-			if (mSamplerOffset < 0)
-				return .Err;
-
+			// Only a group with its own table takes slots in the CPU sampler heap (as big as the
+			// shader visible one): the copy written there is never read, and a group sharing a
+			// table taking them failed there at the 2049th group of one sampler.
 			if (!AcquireSharedSamplers(d))
 			{
+				mSamplerOffset = cpuSamplerHeap.Allocate(mCachedSamplerCount);
+				if (mSamplerOffset < 0)
+					return .Err;
+
 				mGpuSamplerOffset = gpuSamplerHeap.Allocate(mCachedSamplerCount);
 				if (mGpuSamplerOffset < 0)
 					return .Err;
@@ -390,14 +393,12 @@ class DxBindGroup : IBindGroup
 	private void WriteSampler(BindGroupEntry e, DxBindingRangeInfo r, uint32 arrayIdx = 0)
 	{
 		let s = e.Sampler as DxSampler;
-		if (s == null)
-			return;
+		if ((s == null) || mSharedSamplers)
+			return; // a shared table was written when it was made
 
 		let off = (uint32)mSamplerOffset + r.HeapOffset + arrayIdx;
 		mDevice.CopyDescriptorsSimple(1, mCpuSamplerHeap.GetCpuHandle(off), s.Handle,
 			.D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-		if (mSharedSamplers)
-			return; // the shared table was written when it was made
 
 		// And mirror it into the baked shader visible table, which SetBindGroup binds
 		// directly rather than staging per draw.
