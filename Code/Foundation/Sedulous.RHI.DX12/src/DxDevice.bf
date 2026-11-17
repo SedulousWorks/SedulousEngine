@@ -52,6 +52,8 @@ class DxDevice : IDevice
 	// Shader visible, which is what a command list can actually bind.
 	private DxGpuDescriptorHeap mGpuSrvHeap = new .() ~ delete _;
 	private DxGpuDescriptorHeap mGpuSamplerHeap = new .() ~ delete _;
+	/// Shared shader visible sampler tables over mGpuSamplerHeap.
+	private DxSamplerTables mSamplerTables = new .() ~ delete _;
 
 	// Not shader visible; bind groups write their descriptors here and they are staged in.
 	private DxGpuDescriptorHeap mCpuSrvHeap = new .() ~ delete _;
@@ -181,6 +183,7 @@ class DxDevice : IDevice
 			.IgnoreError();
 		mGpuSamplerHeap.Initialize(mDevice, .D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 2048, true)
 			.IgnoreError();
+		mSamplerTables.Initialize(mDevice, mGpuSamplerHeap);
 
 		mCpuSrvHeap.Initialize(mDevice, .D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 65536, false)
 			.IgnoreError();
@@ -466,7 +469,7 @@ class DxDevice : IDevice
 	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc)
 	{
 		let g = new DxBindGroup();
-		if (g.Initialize(mDevice, desc, mCpuSrvHeap, mCpuSamplerHeap, mGpuSamplerHeap) case .Err)
+		if (g.Initialize(mDevice, desc, mCpuSrvHeap, mCpuSamplerHeap, mGpuSamplerHeap, mSamplerTables) case .Err)
 		{
 			delete g;
 			return .Err;

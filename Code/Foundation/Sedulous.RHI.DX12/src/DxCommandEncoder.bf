@@ -241,7 +241,10 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			if (dxBuf == null)
 				continue;
 
-			let oldState = ToResourceStates(bb.OldState);
+			// The state the buffer is in, as tracked: the caller's OldState is what it believes, and a
+			// before-state that is not the real one is a D3D12 error (a debug layer stop, undefined on
+			// a release driver).
+			let oldState = dxBuf.CurrentState;
 			let newState = ToResourceStates(bb.NewState);
 			if (oldState == newState)
 				continue;
@@ -316,9 +319,12 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 				let mipCount = dxTex.Desc.MipLevelCount;
 				let layerCount = dxTex.StateLayerCount;
 				let baseMip = tb.BaseMipLevel;
-				let mipEnd = Math.Min(baseMip + tb.MipLevelCount, mipCount);
+				// "The rest" (uint32.MaxValue) is resolved before it is added: base + MaxValue wraps to
+				// base - 1, so a barrier of the mips past the first covered none.
+				let mipEnd = (baseMip >= mipCount) ? baseMip : (baseMip + Math.Min(tb.MipLevelCount, mipCount - baseMip));
 				let baseLayer = tb.BaseArrayLayer;
-				let layerEnd = Math.Min(baseLayer + tb.ArrayLayerCount, layerCount);
+				let layerEnd = (baseLayer >= layerCount) ? baseLayer
+					: (baseLayer + Math.Min(tb.ArrayLayerCount, layerCount - baseLayer));
 
 				for (uint32 layer = baseLayer; layer < layerEnd; layer++)
 				{
@@ -572,6 +578,8 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			return;
 
 		let rtvHandle = mDevice.RtvHeap.Allocate();
+		if (rtvHandle.ptr == 0)
+			return; // no heap page could be made: this mip is not blitted
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = .();
 		rtvDesc.Format = dxgiFormat;
 		rtvDesc.ViewDimension = .D3D12_RTV_DIMENSION_TEXTURE2D;

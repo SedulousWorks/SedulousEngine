@@ -131,6 +131,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- DirectX 12: a scene with more than 2048 material bind groups, or more than 4096 texture views, no
+  longer fails or crashes; a tearing (Immediate) swap chain survives a window resize; and barriers
+  over "the rest of the mips" and buffer barriers use the right ranges and states.
 - Files of 2 GiB and more read and write whole.
 - Text: malformed UTF-8 (overlong forms, surrogates, values past U+10FFFF) reads as the replacement
   character rather than as the character it spelt.

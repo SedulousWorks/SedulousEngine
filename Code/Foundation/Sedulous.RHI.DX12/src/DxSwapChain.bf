@@ -31,6 +31,8 @@ class DxSwapChain : ISwapChain
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 	private uint32 mBufferCount = 2;
+	/// DXGI_SWAP_CHAIN_DESC1.Flags at creation.
+	private uint32 mSwapChainFlags = 0;
 	private uint32 mCurrentIndex = 0;
 	private PresentMode mPresentMode = .Fifo;
 
@@ -96,6 +98,7 @@ class DxSwapChain : ISwapChain
 		// Tearing has to be asked for at CREATION, not just at present.
 		if (d.PresentMode == .Immediate)
 			sd.Flags = (uint32)DXGI_SWAP_CHAIN_FLAG.DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+		mSwapChainFlags = sd.Flags; // ResizeBuffers must be given them again
 
 		IDXGISwapChain1* sc1 = null;
 		let hr = factory.CreateSwapChainForHwnd((IUnknown*)gfxQueue, surface.Handle, &sd, null,
@@ -160,8 +163,10 @@ class DxSwapChain : ISwapChain
 		// or it fails.
 		ReleaseBackBuffers();
 
+		// The flags it was made with: given 0, a tearing swap chain loses ALLOW_TEARING, and its
+		// next Present with DXGI_PRESENT_ALLOW_TEARING fails.
 		if (FAILED(mSwapChain.ResizeBuffers(mBufferCount, width, height,
-			DxConversions.StripSrgb(DxConversions.ToDxgiFormat(mFormat)), 0)))
+			DxConversions.StripSrgb(DxConversions.ToDxgiFormat(mFormat)), mSwapChainFlags)))
 			return .Err;
 
 		if (AcquireBackBuffers() case .Err)

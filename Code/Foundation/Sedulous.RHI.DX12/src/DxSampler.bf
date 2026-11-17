@@ -15,10 +15,14 @@ class DxSampler : ISampler
 	// Kept because ISampler asks for it: D3D12 keeps no sampler object to read it back from.
 	private SamplerDesc mDesc = .();
 	private D3D12_CPU_DESCRIPTOR_HANDLE mHandle = .();
+	/// What its descriptor was made from: the descriptor is a function of it, so two samplers of
+	/// one description share a shader-visible table.
+	private D3D12_SAMPLER_DESC mD3DDesc = .();
 	private DxDescriptorHeapAllocator mSamplerHeap = null; // NOT owned, the device's
 
 	public SamplerDesc Desc => mDesc;
 	public D3D12_CPU_DESCRIPTOR_HANDLE Handle => mHandle;
+	public D3D12_SAMPLER_DESC D3DDesc => mD3DDesc;
 
 	public Result<void> Initialize(ID3D12Device* device, SamplerDesc d,
 		DxDescriptorHeapAllocator samplerHeap)
@@ -57,7 +61,10 @@ class DxSampler : ISampler
 			sd.BorderColor = .(1, 1, 1, 1);
 		}
 
+		mD3DDesc = sd;
 		mHandle = samplerHeap.Allocate();
+		if (mHandle.ptr == 0)
+			return .Err; // no heap page could be made
 		device.CreateSampler(&sd, mHandle);
 		return .Ok;
 	}

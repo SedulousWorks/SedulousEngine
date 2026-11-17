@@ -7,90 +7,129 @@ using Win32.Graphics.Direct3D12;
 
 namespace Sedulous.RHI.DX12;
 
-/// A fixed CPU descriptor heap with a free list over it.
+/// CPU descriptors in pages, with a free list over each.
 ///
-/// D3D12 descriptors live in heaps the application sizes up front, so this hands out slots
-/// from one and takes them back. The search RESUMES where the last allocation landed rather
-/// than restarting, which keeps a heap that is mostly full from costing a full scan per
-/// allocation.
+/// D3D12 descriptors live in heaps the application sizes up front. When every page is full another
+/// of the same size is made, so an allocation never fails while the device can make heaps: a fixed
+/// heap handed out a zero handle when full, and the view written through it took the process down.
+/// A zero handle comes back only when a new page cannot be made, and callers check for it. The
+/// search RESUMES where the last allocation landed rather than restarting, which keeps a page that
+/// is mostly full from costing a full scan per allocation.
 ///
-/// The heap is a COM object owned here and released in Destroy.
+/// The pages' heaps are COM objects owned here and released in Destroy.
 class DxDescriptorHeapAllocator
 {
-	private ID3D12DescriptorHeap* mHeap = null; // owned, released in Destroy
-	private D3D12_CPU_DESCRIPTOR_HANDLE mHeapStart = .();
-	private uint32 mDescriptorSize = 0;
-	private uint32 mMaxCount = 0;
-	private uint32 mAllocCount = 0;
-	private uint32 mSearchStart = 0;
-	private List<uint8> mAlive = new .() ~ delete _;
+	private class Page
+	{
+		public ID3D12DescriptorHeap* Heap = null; // owned, released in Destroy
+		public D3D12_CPU_DESCRIPTOR_HANDLE Start = .();
+		public List<uint8> Alive = new .() ~ delete _;
+		public uint32 Count = 0;
+		public uint32 SearchStart = 0;
+	}
 
-	public ID3D12DescriptorHeap* Heap => mHeap;
+	private ID3D12Device* mDevice = null; // borrowed: the device outlives its heaps
+	private D3D12_DESCRIPTOR_HEAP_TYPE mType = .D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	private D3D12_DESCRIPTOR_HEAP_FLAGS mFlags = .D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	private uint32 mPageSize = 0;
+	private uint32 mDescriptorSize = 0;
+	private int mCurrentPage = 0;
+	private List<Page> mPages = new .() ~ DeleteContainerAndItems!(_);
+
 	public uint32 DescriptorSize => mDescriptorSize;
+	public int PageCount => mPages.Count;
 
 	public Result<void> Initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type,
 		uint32 maxCount,
 		D3D12_DESCRIPTOR_HEAP_FLAGS flags = .D3D12_DESCRIPTOR_HEAP_FLAG_NONE)
 	{
-		mMaxCount = maxCount;
-		mAlive.Clear();
-		mAlive.Resize((int)maxCount, 0);
-
-		D3D12_DESCRIPTOR_HEAP_DESC hd = .();
-		hd.Type = type;
-		hd.NumDescriptors = maxCount;
-		hd.Flags = flags;
-
-		if (FAILED(device.CreateDescriptorHeap(&hd, ID3D12DescriptorHeap.IID, (void**)&mHeap)))
-			return .Err;
-
-		mHeapStart = mHeap.GetCPUDescriptorHandleForHeapStart();
+		mDevice = device;
+		mType = type;
+		mFlags = flags;
+		mPageSize = maxCount;
 		mDescriptorSize = device.GetDescriptorHandleIncrementSize(type);
-		return .Ok;
+		return AddPage() ? .Ok : .Err;
 	}
 
-	/// A free slot, or a zero handle when the heap is full.
+	/// A free slot, a new page made when every page is full; a zero handle only when the device
+	/// made no new heap.
 	public D3D12_CPU_DESCRIPTOR_HANDLE Allocate()
 	{
-		for (uint32 i = 0; i < mMaxCount; i++)
+		for (int p < mPages.Count)
 		{
-			let idx = (mSearchStart + i) % mMaxCount;
-			if (mAlive[(int)idx] == 0)
+			let pageIndex = (mCurrentPage + p) % mPages.Count;
+			let page = mPages[pageIndex];
+			if (page.Count == mPageSize)
+				continue;
+			for (uint32 i = 0; i < mPageSize; i++)
 			{
-				mAlive[(int)idx] = 1;
-				mAllocCount++;
-				mSearchStart = (idx + 1) % mMaxCount;
+				let idx = (page.SearchStart + i) % mPageSize;
+				if (page.Alive[(int)idx] == 0)
+				{
+					page.Alive[(int)idx] = 1;
+					page.Count++;
+					page.SearchStart = (idx + 1) % mPageSize;
+					mCurrentPage = pageIndex;
 
-				D3D12_CPU_DESCRIPTOR_HANDLE h = .();
-				h.ptr = mHeapStart.ptr + (uint)idx * (uint)mDescriptorSize;
-				return h;
+					D3D12_CPU_DESCRIPTOR_HANDLE h = .();
+					h.ptr = page.Start.ptr + (uint)idx * (uint)mDescriptorSize;
+					return h;
+				}
 			}
 		}
 
-		return .(); // heap full
+		if (!AddPage())
+			return .(); // the device made no new heap: the caller reports it
+		mCurrentPage = mPages.Count - 1;
+		return Allocate();
 	}
 
 	public void Free(D3D12_CPU_DESCRIPTOR_HANDLE handle)
 	{
-		if (handle.ptr < mHeapStart.ptr)
-			return;
-
-		let offset = (uint32)((handle.ptr - mHeapStart.ptr) / (uint)mDescriptorSize);
-		if ((offset < mMaxCount) && (mAlive[(int)offset] != 0))
+		for (let page in mPages)
 		{
-			mAlive[(int)offset] = 0;
-			mAllocCount--;
+			if (handle.ptr < page.Start.ptr)
+				continue;
+			let offset = (handle.ptr - page.Start.ptr) / (uint)mDescriptorSize;
+			if (offset >= (uint)mPageSize)
+				continue;
+			if (page.Alive[(int)offset] != 0)
+			{
+				page.Alive[(int)offset] = 0;
+				page.Count--;
+			}
+			return;
 		}
 	}
 
 	public void Destroy()
 	{
-		if (mHeap != null)
+		for (let page in mPages)
 		{
-			mHeap.Release();
-			mHeap = null;
+			if (page.Heap != null)
+				page.Heap.Release();
+			delete page;
 		}
-		mAlive.Clear();
+		mPages.Clear();
+	}
+
+	private bool AddPage()
+	{
+		if ((mDevice == null) || (mPageSize == 0))
+			return false;
+		D3D12_DESCRIPTOR_HEAP_DESC hd = .();
+		hd.Type = mType;
+		hd.NumDescriptors = mPageSize;
+		hd.Flags = mFlags;
+		ID3D12DescriptorHeap* heap = null;
+		if (FAILED(mDevice.CreateDescriptorHeap(&hd, ID3D12DescriptorHeap.IID, (void**)&heap)))
+			return false;
+		let page = new Page();
+		page.Heap = heap;
+		page.Start = heap.GetCPUDescriptorHandleForHeapStart();
+		page.Alive.Resize((int)mPageSize, 0);
+		mPages.Add(page);
+		return true;
 	}
 }
 

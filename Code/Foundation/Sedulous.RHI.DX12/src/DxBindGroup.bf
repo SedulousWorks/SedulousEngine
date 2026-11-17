@@ -7,6 +7,84 @@ using Win32.Graphics.Dxgi.Common;
 
 namespace Sedulous.RHI.DX12;
 
+/// Shader visible sampler tables shared by the bind groups whose samplers are the same, in the
+/// same order.
+///
+/// The shader visible sampler heap holds 2048 descriptors (a D3D12 limit) and every bind group took
+/// a table of its own, so the 2049th group with a sampler failed however few distinct samplers there
+/// were. Keyed by the samplers' descriptions (an address is reused once a sampler is gone; a
+/// description determines the descriptor), counted, and freed with the last group holding it.
+class DxSamplerTables
+{
+	private class Table
+	{
+		public List<D3D12_SAMPLER_DESC> Descs = new .() ~ delete _;
+		public int32 Offset = -1;
+		public uint32 Refs = 0;
+	}
+
+	private ID3D12Device* mDevice = null; // NOT owned
+	private DxGpuDescriptorHeap mHeap = null; // NOT owned, the device's
+	private List<Table> mTables = new .() ~ DeleteContainerAndItems!(_);
+
+	public int TableCount => mTables.Count;
+
+	public void Initialize(ID3D12Device* device, DxGpuDescriptorHeap gpuSamplerHeap)
+	{
+		mDevice = device;
+		mHeap = gpuSamplerHeap;
+	}
+
+	/// The offset of a table holding `sources` (described by `descs`), made or shared; -1 when the
+	/// heap has no room. Slots with no source (an array's unwritten tail) are left as they are.
+	public int32 Acquire(Span<D3D12_SAMPLER_DESC> descs, Span<D3D12_CPU_DESCRIPTOR_HANDLE> sources)
+	{
+		for (let table in mTables)
+		{
+			if ((table.Descs.Count == descs.Length)
+				&& (Internal.MemCmp(table.Descs.Ptr, descs.Ptr, descs.Length * sizeof(D3D12_SAMPLER_DESC)) == 0))
+			{
+				table.Refs++;
+				return table.Offset;
+			}
+		}
+		if (mHeap == null)
+			return -1;
+		let offset = mHeap.Allocate((uint32)descs.Length);
+		if (offset < 0)
+			return -1;
+		for (int i < sources.Length)
+		{
+			if (sources[i].ptr != 0)
+				mDevice.CopyDescriptorsSimple(1, mHeap.GetCpuHandle((uint32)offset + (uint32)i), sources[i],
+					.D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+		}
+		let table = new Table();
+		table.Descs.AddRange(descs);
+		table.Offset = offset;
+		table.Refs = 1;
+		mTables.Add(table);
+		return offset;
+	}
+
+	public void Release(int32 offset)
+	{
+		for (int i < mTables.Count)
+		{
+			let table = mTables[i];
+			if (table.Offset != offset)
+				continue;
+			if (--table.Refs == 0)
+			{
+				mHeap.Free((uint32)offset, (uint32)table.Descs.Count);
+				mTables.RemoveAtFast(i);
+				delete table;
+			}
+			return;
+		}
+	}
+}
+
 /// One bind group: descriptors written into the slots its layout reserved.
 ///
 /// A bind group is IMMUTABLE except through UpdateBindless, so its descriptors are written
@@ -14,8 +92,10 @@ namespace Sedulous.RHI.DX12;
 ///
 /// Samplers are treated differently from everything else. CBV/SRV/UAV descriptors live in a
 /// CPU heap and are copied into the shader visible one per draw, but the shader visible
-/// SAMPLER heap has a hard cap of 2048 and cannot take per draw staging, so each group's
-/// sampler table is BAKED into it once at creation and bound directly.
+/// SAMPLER heap has a hard cap of 2048 and cannot take per draw staging, so a group's sampler
+/// table is BAKED into it once at creation and bound directly. A group whose samplers are all given
+/// shares its table with every group of the same ones (DxSamplerTables); one with bindless sampler
+/// ranges, rewritten in place, keeps its own.
 class DxBindGroup : IBindGroup
 {
 	private ID3D12Device* mDevice = null; // NOT owned
@@ -23,6 +103,9 @@ class DxBindGroup : IBindGroup
 	private DxGpuDescriptorHeap mCpuSrvHeap = null; // none owned, all the device's
 	private DxGpuDescriptorHeap mCpuSamplerHeap = null;
 	private DxGpuDescriptorHeap mGpuSamplerHeap = null;
+	private DxSamplerTables mSamplerTables = null; // the device's
+	/// The table is a shared one: released, not freed, and never written through this group.
+	private bool mSharedSamplers = false;
 
 	// Cached so Cleanup need not reach into the layout, which may be destroyed first.
 	private uint32 mCachedCbvSrvUavCount = 0;
@@ -42,9 +125,10 @@ class DxBindGroup : IBindGroup
 
 	public Result<void> Initialize(ID3D12Device* device, BindGroupDesc d,
 		DxGpuDescriptorHeap cpuSrvHeap, DxGpuDescriptorHeap cpuSamplerHeap,
-		DxGpuDescriptorHeap gpuSamplerHeap)
+		DxGpuDescriptorHeap gpuSamplerHeap, DxSamplerTables samplerTables)
 	{
 		mDevice = device;
+		mSamplerTables = samplerTables;
 		mLayout = d.Layout as DxBindGroupLayout;
 		mCpuSrvHeap = cpuSrvHeap;
 		mCpuSamplerHeap = cpuSamplerHeap;
@@ -69,9 +153,12 @@ class DxBindGroup : IBindGroup
 			if (mSamplerOffset < 0)
 				return .Err;
 
-			mGpuSamplerOffset = gpuSamplerHeap.Allocate(mCachedSamplerCount);
-			if (mGpuSamplerOffset < 0)
-				return .Err;
+			if (!AcquireSharedSamplers(d))
+			{
+				mGpuSamplerOffset = gpuSamplerHeap.Allocate(mCachedSamplerCount);
+				if (mGpuSamplerOffset < 0)
+					return .Err;
+			}
 		}
 
 		WriteDescriptors(d);
@@ -109,11 +196,54 @@ class DxBindGroup : IBindGroup
 		if ((mSamplerOffset >= 0) && (mCachedSamplerCount > 0))
 			mCpuSamplerHeap.Free((uint32)mSamplerOffset, mCachedSamplerCount);
 		if ((mGpuSamplerOffset >= 0) && (mCachedSamplerCount > 0))
-			mGpuSamplerHeap.Free((uint32)mGpuSamplerOffset, mCachedSamplerCount);
+		{
+			if (mSharedSamplers)
+				mSamplerTables.Release(mGpuSamplerOffset);
+			else
+				mGpuSamplerHeap.Free((uint32)mGpuSamplerOffset, mCachedSamplerCount);
+		}
 
+		mSharedSamplers = false;
 		mCbvSrvUavOffset = -1;
 		mSamplerOffset = -1;
 		mGpuSamplerOffset = -1;
+	}
+
+	/// Takes a shared table for the group's samplers when every sampler range is a plain one and
+	/// given; false leaves the group to make its own.
+	private bool AcquireSharedSamplers(BindGroupDesc d)
+	{
+		if (mSamplerTables == null)
+			return false;
+		let descs = scope List<D3D12_SAMPLER_DESC>();
+		descs.Resize((int)mCachedSamplerCount); // zeroed
+		let sources = scope List<D3D12_CPU_DESCRIPTOR_HANDLE>();
+		sources.Resize((int)mCachedSamplerCount); // zero handles
+		int entryIdx = 0; // walked as WriteDescriptors walks them
+		for (let r in mLayout.Ranges)
+		{
+			if (r.Type == .BindlessSamplers)
+				return false; // rewritten in place by UpdateBindless: its own
+			if ((r.Type == .BindlessTextures) || (r.Type == .BindlessStorageBuffers)
+				|| (r.Type == .BindlessStorageTextures))
+				continue;
+			if (entryIdx >= d.Entries.Length)
+				break;
+			let e = d.Entries[entryIdx++];
+			if (!r.IsSampler || r.HasDynamicOffset)
+				continue;
+			let sampler = e.Sampler as DxSampler;
+			if ((sampler == null) || (r.HeapOffset >= mCachedSamplerCount))
+				return false;
+			descs[(int)r.HeapOffset] = sampler.D3DDesc;
+			sources[(int)r.HeapOffset] = sampler.Handle;
+		}
+		let offset = mSamplerTables.Acquire(descs, sources);
+		if (offset < 0)
+			return false;
+		mGpuSamplerOffset = offset;
+		mSharedSamplers = true;
+		return true;
 	}
 
 	private void WriteDescriptors(BindGroupDesc d)
@@ -266,6 +396,8 @@ class DxBindGroup : IBindGroup
 		let off = (uint32)mSamplerOffset + r.HeapOffset + arrayIdx;
 		mDevice.CopyDescriptorsSimple(1, mCpuSamplerHeap.GetCpuHandle(off), s.Handle,
 			.D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+		if (mSharedSamplers)
+			return; // the shared table was written when it was made
 
 		// And mirror it into the baked shader visible table, which SetBindGroup binds
 		// directly rather than staging per draw.

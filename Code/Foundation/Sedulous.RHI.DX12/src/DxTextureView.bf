@@ -155,6 +155,8 @@ class DxTextureView : ITextureView
 		}
 
 		mSrv = mSrvHeap.Allocate();
+		if (mSrv.ptr == 0)
+			return mSrv; // no heap page could be made: nothing is written through a zero handle
 		mDevice.CreateShaderResourceView(mTexture.Handle, &sd, mSrv);
 		mHasSrv = true;
 		return mSrv;
@@ -223,6 +225,8 @@ class DxTextureView : ITextureView
 		}
 
 		mRtv = mRtvHeap.Allocate();
+		if (mRtv.ptr == 0)
+			return mRtv; // no heap page could be made
 		mDevice.CreateRenderTargetView(mTexture.Handle, &rd, mRtv);
 		mHasRtv = true;
 		return mRtv;
@@ -284,6 +288,8 @@ class DxTextureView : ITextureView
 		}
 
 		mDsv = mDsvHeap.Allocate();
+		if (mDsv.ptr == 0)
+			return mDsv; // no heap page could be made
 		mDevice.CreateDepthStencilView(mTexture.Handle, &dd, mDsv);
 		mHasDsv = true;
 		return mDsv;
@@ -324,6 +330,8 @@ class DxTextureView : ITextureView
 
 		// A UAV comes out of the SHADER VISIBLE heap, the same one SRVs do.
 		mUav = mSrvHeap.Allocate();
+		if (mUav.ptr == 0)
+			return mUav; // no heap page could be made
 		mDevice.CreateUnorderedAccessView(mTexture.Handle, null, &ud, mUav);
 		mHasUav = true;
 		return mUav;
