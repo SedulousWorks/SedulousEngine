@@ -28,6 +28,15 @@ class PhysicsSceneSettings : ISerializable
 	[Scriptable]
 	public bool DebugDraw = false;
 
+	// The world's budgets: a scene with more bodies than MaxBodies refuses the rest, saying so. The
+	// defaults are PhysicsWorldSettings'; a large level raises them.
+	[Range(1, 1048576, 1)]
+	public uint32 MaxBodies = 4096;
+	[Range(1, 1048576, 1)]
+	public uint32 MaxBodyPairs = 4096;
+	[Range(1, 1048576, 1)]
+	public uint32 MaxContactConstraints = 2048;
+
 	[Hidden]
 	public List<String> GroupNames = new .() ~ DeleteContainerAndItems!(_);
 	[Hidden]
@@ -51,6 +60,13 @@ class PhysicsSceneSettings : ISerializable
 		Sedulous.Core.Serialization.Serialize(ar, ref Gravity);
 		SerializeValue(ar, "collisionSteps", ref CollisionSteps);
 		SerializeValue(ar, "debugDraw", ref DebugDraw);
+		// Data version 2: the budgets. A version 1 block keeps the defaults.
+		if ((ar.Mode == .Write) || (ar.Version >= 2))
+		{
+			SerializeValue(ar, "maxBodies", ref MaxBodies);
+			SerializeValue(ar, "maxBodyPairs", ref MaxBodyPairs);
+			SerializeValue(ar, "maxContactConstraints", ref MaxContactConstraints);
+		}
 
 		SerializeStrings(ar, "groupNames", GroupNames);
 

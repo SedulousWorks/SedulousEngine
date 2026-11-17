@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Core.Serialization;
+using Sedulous.Core.IO;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Engine.Physics;
@@ -367,5 +369,68 @@ class PhysicsSceneTests
 		Test.Assert(play.Physics.World.MotionOf(body.Body) == .Static);
 		play.Physics.World.GetBodyTransform(body.Body, let position, ?);
 		Test.Assert(Near(position.Y, 0.0f), "never moved");
+	}
+
+	/// A physics settings block as it was written before the budgets (data version 1).
+	private class PhysicsSettingsV1Writer : SceneSystem
+	{
+		public PhysicsSceneSettings Settings = new .() ~ delete _;
+
+		public override Type SettingsType => typeof(PhysicsSceneSettings);
+		public override void* SettingsInstance => Internal.UnsafeCastToPtr(Settings);
+		public override StringView SettingsId => "physics";
+		public override uint32 SettingsDataVersion => 1;
+
+		public override void SerializeSettings(ISerializer ar)
+		{
+			ar.Key("gravity");
+			Sedulous.Core.Serialization.Serialize(ar, ref Settings.Gravity);
+			SerializeValue(ar, "collisionSteps", ref Settings.CollisionSteps);
+			SerializeValue(ar, "debugDraw", ref Settings.DebugDraw);
+			ar.Key("groupNames");
+			uint32 names = 0;
+			ar.BeginArray(ref names);
+			ar.EndArray();
+			ar.Key("groupCollides");
+			uint32 rows = 0;
+			ar.BeginArray(ref rows);
+			ar.EndArray();
+		}
+	}
+
+	/// The world's budgets were constants the scene could not change: a level with more bodies than
+	/// 4096 lost the rest whatever its author wanted.
+	[Test]
+	public static void TheScenesSettingsSetTheWorldsBodyBudgetAndAVersion1BlockKeepsTheDefault()
+	{
+		{
+			let play = scope PhysicsPlayScene();
+			play.Physics.Settings.MaxBodies = 2;
+			play.AddFloor();
+			play.AddBox(2.0f);
+			play.AddBox(4.0f);
+			play.Start();
+			Test.Assert(play.Physics.World != null);
+			Test.Assert(play.Physics.World.BodyCount == 2, scope $"{play.Physics.World.BodyCount} bodies"); // the third refused, and logged
+		}
+
+		// A block written before the budgets (data version 1) is read, and keeps the defaults.
+		let buffer = scope MemoryStream();
+		{
+			let source = scope Scene("physics-v1");
+			let writer = source.AddSystem<PhysicsSettingsV1Writer>();
+			writer.Settings.Gravity = .(0.0f, -3.5f, 0.0f);
+			let ar = scope BinarySerializer(buffer, .Write);
+			SceneSerializer.SerializeScene(ar, source, .Referenced, true, .Binary);
+			Test.Assert(ar.IsOk);
+			buffer.Seek(0, .Begin);
+		}
+		let play = scope PhysicsPlayScene();
+		play.Physics.Settings.MaxBodies = 7;
+		let reader = scope BinarySerializer(buffer, .Read);
+		SceneSerializer.SerializeScene(reader, play.Scene, .Referenced, true, .Binary);
+		Test.Assert(reader.IsOk, "version 1 is still read");
+		Test.Assert(play.Physics.Settings.Gravity.Y == -3.5f);
+		Test.Assert(play.Physics.Settings.MaxBodies == 7, "untouched: a version 1 block has no budgets");
 	}
 }

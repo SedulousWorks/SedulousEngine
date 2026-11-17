@@ -62,6 +62,9 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	public override Type SettingsType => typeof(PhysicsSceneSettings);
 	public override void* SettingsInstance => Internal.UnsafeCastToPtr(mSettings);
 	public override StringView SettingsId => "physics";
+	/// 2: the world's budgets.
+	public override uint32 SettingsDataVersion => 2;
+	public override uint32 SettingsMinReadDataVersion => 1;
 
 	public override void SerializeSettings(ISerializer ar)
 	{
@@ -303,6 +306,9 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		// AUTHORED layout rather than from identity matrices no update has touched yet.
 		let settings = scope PhysicsWorldSettings();
 		settings.Gravity = mSettings.Gravity;
+		settings.MaxBodies = Math.Max(mSettings.MaxBodies, (uint32)1);
+		settings.MaxBodyPairs = Math.Max(mSettings.MaxBodyPairs, (uint32)1);
+		settings.MaxContactConstraints = Math.Max(mSettings.MaxContactConstraints, (uint32)1);
 
 		let rows = Math.Min(mSettings.GroupCollides.Count, PhysicsWorldSettings.CollisionGroupCount);
 		for (int i < rows)

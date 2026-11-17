@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scene physics settings hold the world's budgets (most bodies, body pairs, contact constraints),
+  4096, 4096 and 2048 by default as before.
 - The WebSocket client refuses an address whose host or path holds a line break, control character
   or space, rather than writing it into its upgrade request.
 - Windows: a server whose client left no longer stops reading the frame's other datagrams (the
