@@ -160,6 +160,14 @@ class NetworkManager
 			webSocket.TrustedPem.Set(trustedPem);
 			return JoinWebSocket(webSocket, config);
 		}
+		// A host that does not resolve is no server to join: the session would send its connect to
+		// an empty endpoint, and the caller would wait out a timeout for a join that never began.
+		let server = NetAddress.ResolveEndpoint(host, port);
+		if (!server.IsValid)
+		{
+			GlobalLog(.Error, "Net: cannot join '{}': the name does not resolve to an address", host);
+			return null;
+		}
 		let socket = new UdpSocket(0);
 		if (!socket.IsOpen)
 		{
@@ -167,7 +175,7 @@ class NetworkManager
 			return null;
 		}
 		let manager = new NetworkManager(socket, socket.BoundPort, 0, config);
-		manager.ConnectTo(NetAddress.ResolveEndpoint(host, port));
+		manager.ConnectTo(server);
 		return manager;
 #endif
 	}

@@ -303,4 +303,17 @@ class ReplicationWiringTests
 		Test.Assert(!server.Replication.FindEntity(oldId).IsAssigned, "the old id names nothing");
 		Test.Assert(server.Replication.NetworkedCount == 0);
 	}
+
+	/// The join went ahead with an empty endpoint, so it read as started and the caller waited
+	/// out the connect timeout for a server that was never asked.
+	[Test]
+	public static void JoiningANameThatDoesNotResolveFailsAtOnce()
+	{
+		let unresolved = NetworkManager.JoinServer("no-such-host.invalid", 7777);
+		Test.Assert(unresolved == null, "no manager for a name that does not resolve");
+		delete unresolved;
+		let local = NetworkManager.JoinServer("127.0.0.1", 7777);
+		Test.Assert(local != null, "an address joins");
+		delete local;
+	}
 }
