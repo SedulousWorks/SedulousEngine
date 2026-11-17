@@ -6,8 +6,8 @@ using Sedulous.Input;
 
 namespace Sedulous.Engine.Input;
 
-/// The runtime hookup: it owns the action runtime and the device source, and evaluates once
-/// per frame before scenes tick.
+/// The runtime hookup: it owns the action runtime and the device source, and evaluates it and
+/// every run's once per frame, as the frame begins, before scenes step.
 ///
 /// The provider seam is the play in editor story. The player hands over the shell's devices;
 /// an editor's game tab hands over its viewport's gated facades, so an unfocused viewport
@@ -168,13 +168,26 @@ class InputSubsystem : Subsystem, IRunListener
 	/// knowing which it is.
 	public IInputSourceProvider ActiveSource => (mOverride != null) ? mOverride : mShellSource;
 
-	public override void Update(float deltaTime)
-	{
-		if (Manager != null)
-			mRuntime.SetTimeScale(Manager.TimeScale);
+	/// After the GUI (-640), which marks what it takes on every runtime, and before physics
+	/// (-600) and the scenes (-500), whose fixed steps run in their BeginFrame.
+	public override int32 UpdateOrder => -620;
 
+	/// Actions are evaluated as the frame begins, this subsystem's and every run's, so what a
+	/// scene reads in its fixed steps and its update is this frame's input, not the last.
+	public override void BeginFrame(float deltaTime)
+	{
+		let timeScale = (Manager != null) ? Manager.TimeScale : 1.0f;
+		mRuntime.SetTimeScale(timeScale);
 		let devices = ActiveSource;
 		mInputKinds.Update(devices);
 		mRuntime.Update(devices, deltaTime);
+		if (let runs = Manager?.RunManager)
+		{
+			runs.ForEachRun(scope (run) =>
+				{
+					if (let input = RunServices.Get<IRunInput>(run))
+						input.DriveInput(deltaTime, timeScale);
+				});
+		}
 	}
 }

@@ -1,3 +1,5 @@
+using System;
+
 namespace Sedulous.Core;
 
 /// The fixed timestep accumulator.
@@ -73,4 +75,43 @@ struct FixedStepper
 	/// rate frame: without it, physics at sixty hertz rendered at a hundred and forty four
 	/// visibly stutters.
 	public float Alpha => (Step > 0.0f) ? (Accumulator / Step) : 0.0f;
+}
+
+/// The fixed step running on this thread: which of its frame's steps it is (0 for the first) and
+/// how many frames have gone by since its stepper last ran one (1 when it stepped the frame
+/// before). What happens once a frame (an action pressed) belongs to the first step of a frame
+/// only, and what happened in frames that ran no step belongs to the next one that does: so a
+/// fixed step sees each such edge once, never twice in a frame of two steps and never not at all
+/// in a frame of none.
+struct FixedStepFrame
+{
+	public uint32 Index = 0;
+	public uint64 FramesSinceLastStep = 1;
+
+	public this(uint32 index, uint64 framesSinceLastStep)
+	{
+		Index = index;
+		FramesSinceLastStep = framesSinceLastStep;
+	}
+}
+
+/// The running fixed step, per thread. A step sets it around itself (Enter, then Exit with what
+/// Enter returned), so a step that steps another restores it.
+static class FixedStepFrames
+{
+	[ThreadStatic]
+	private static FixedStepFrame* sCurrent = null;
+
+	/// Null outside every fixed step.
+	public static FixedStepFrame* Current => sCurrent;
+
+	/// Makes `frame` the running step until Exit; answers the one it replaced.
+	public static FixedStepFrame* Enter(FixedStepFrame* frame)
+	{
+		let previous = sCurrent;
+		sCurrent = frame;
+		return previous;
+	}
+
+	public static void Exit(FixedStepFrame* previous) => sCurrent = previous;
 }

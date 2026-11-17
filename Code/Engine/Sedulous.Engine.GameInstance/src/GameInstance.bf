@@ -44,7 +44,7 @@ namespace Sedulous.Engine.GameInstance;
 /// It IS its run, through RunBase: its id, name, sessions, event
 /// bus, and what it owns registered on it, so others reach those through the run.
 [Scriptable, ScriptService, DisplayName("Run")]
-class GameInstance : RunBase
+class GameInstance : RunBase, IRunInput
 {
 	/// What the APP does to a scene the moment one of its tracked loads completes: find a
 	/// camera, start it, enable simulation. Pairing it as the current scene is the instance's
@@ -169,6 +169,7 @@ class GameInstance : RunBase
 		Register<NetworkController>(mNetwork);
 		Register<INetworkController>(mNetwork); // how the engine's network subsystem reaches it (below this library)
 		Register<ActionRuntime>(mInputRuntime);
+		Register<IRunInput>(this); // the input subsystem drives it as the frame begins
 		Register<RunSave>(mSave);
 		Register<ScriptRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
@@ -863,7 +864,8 @@ class GameInstance : RunBase
 	/// This run's action runtime.
 	public ActionRuntime InputRuntime => mInputRuntime;
 
-	/// Evaluates the runtime against its source. Nothing to do without one.
+	/// Evaluates the runtime against its source. The input subsystem calls it for every run as
+	/// the frame begins (IRunInput). Nothing to do without a source.
 	public void DriveInput(float deltaTime, float contextTimeScale)
 	{
 		if (mInputSource == null)

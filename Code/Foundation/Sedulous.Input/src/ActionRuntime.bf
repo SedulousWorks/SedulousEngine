@@ -73,7 +73,8 @@ class ActionRuntime
 	/// ExclusiveTopSet, kept as the stack changes (queries compare no names).
 	private int mExclusiveTop = -1;
 	private List<RefEntry> mRefs = new .() ~ DeleteContainerAndItems!(_);
-	private uint64 mFrame = 0;
+	/// From 1: an edge's frame 0 means none (EdgeSeen).
+	private uint64 mFrame = 1;
 	private float mTimeScale = 1.0f;
 	private ConsumptionMask mConsumed = .();
 	/// Set by an exclusive push or pop, consumed by the next Update.
@@ -459,11 +460,23 @@ class ActionRuntime
 		return false;
 	}
 
+	/// An edge recorded in `frame` is seen now: in the frame's update, the frame it happened; in a
+	/// fixed step, the first step of a frame, for every frame since the step before it (see
+	/// FixedStepFrame). Frame 0 is never: an action that never moved has no edge.
+	private bool EdgeSeen(uint64 frame)
+	{
+		if (frame == 0)
+			return false;
+		if (let step = FixedStepFrames.Current)
+			return (step.Index == 0) && (mFrame - frame < step.FramesSinceLastStep);
+		return frame == mFrame;
+	}
+
 	[Scriptable]
 	public bool WasPressed(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
-			return mStates[index].PressedFrame == mFrame;
+			return EdgeSeen(mStates[index].PressedFrame);
 		return false;
 	}
 
@@ -471,7 +484,7 @@ class ActionRuntime
 	public bool WasReleased(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
-			return mStates[index].ReleasedFrame == mFrame;
+			return EdgeSeen(mStates[index].ReleasedFrame);
 		return false;
 	}
 
@@ -603,7 +616,10 @@ class ActionRuntime
 	{
 		if (keyboard == null)
 			return false;
-		if (!keyboard.IsKeyDown((KeyCode)code))
+		// Pressed as well as down: a key pressed and released inside one frame is up at the
+		// frame's end, and reads as held for this one frame rather than not at all.
+		let key = (KeyCode)code;
+		if (!keyboard.IsKeyDown(key) && !keyboard.IsKeyPressed(key))
 			return false;
 		if (modifiers == 0)
 			return true;
@@ -645,7 +661,8 @@ class ActionRuntime
 
 		case .MouseButton:
 			let mouse = devices.Mouse;
-			if ((mouse != null) && mouse.IsButtonDown((Sedulous.Shell.MouseButton)binding.Code))
+			let button = (Sedulous.Shell.MouseButton)binding.Code;
+			if ((mouse != null) && (mouse.IsButtonDown(button) || mouse.IsButtonPressed(button)))
 			{
 				result.Value.X = binding.Scale * sign;
 				result.DigitalDown = true;
@@ -677,7 +694,8 @@ class ActionRuntime
 		case .GamepadButton:
 			ForEachPad(devices, binding.Device, scope [&](pad) =>
 			{
-				if (!pad.IsButtonDown((GamepadButton)binding.Code))
+				let button = (GamepadButton)binding.Code;
+				if (!pad.IsButtonDown(button) && !pad.IsButtonPressed(button))
 					return;
 				result.Value.X = binding.Scale * sign;
 				result.DigitalDown = true;

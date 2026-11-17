@@ -129,6 +129,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Input: actions read the frame's own input, not the last frame's. `WasPressed` and `WasReleased`
+  in `onFixedUpdate` see each press once, whether the frame runs two fixed steps or none; a key
+  tapped inside one frame counts; and no action reads pressed before the first frame.
 - Scene: moving one entity no longer recomputes every transform under its root; its parent and
   siblings stay as they were.
 - Vegetation: changing a layer's scatter (its density, say) in the editor or a game redraws it;

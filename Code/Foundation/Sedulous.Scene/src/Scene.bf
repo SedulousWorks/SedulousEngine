@@ -85,6 +85,8 @@ class Scene : IScriptWeaklyHeld
 	private bool mSimulationEnabled = true;
 	private float mTimeScale = 1.0f;
 	private FixedStepper mStepper = .();
+	/// AdvanceTime calls since the last that stepped.
+	private uint64 mFramesSinceFixedStep = 0;
 	private float mFixedAlpha = 0.0f;
 
 	public this(StringView name = default)
@@ -993,11 +995,20 @@ class Scene : IScriptWeaklyHeld
 	public uint32 AdvanceTime(float scaledDelta)
 	{
 		let steps = mStepper.Advance(scaledDelta);
+		mFramesSinceFixedStep++;
 		// The fixed step walks the scene as Update does: what it destroys waits for the end.
 		let outermost = !mIsUpdating;
 		mIsUpdating = true;
 		for (uint32 i < steps)
+		{
+			// Which step of the frame this is, for what reads once-a-frame edges (actions).
+			var frame = FixedStepFrame(i, mFramesSinceFixedStep);
+			let previous = FixedStepFrames.Enter(&frame);
 			FixedUpdate(mStepper.Step);
+			FixedStepFrames.Exit(previous);
+		}
+		if (steps > 0)
+			mFramesSinceFixedStep = 0;
 		mFixedAlpha = mStepper.Alpha;
 		if (outermost)
 		{

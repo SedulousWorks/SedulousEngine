@@ -683,13 +683,12 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		let contextScale = host.Subsystems.TimeScale;
 
-		// Every instance, the primary and any extras. Input FIRST, so a tick sees this
-		// frame's keys.
+		// Every instance, the primary and any extras. Their input was evaluated as the frame
+		// began (the input subsystem drives every run's), so a tick sees this frame's keys.
 		ForEachInstance(scope (instance) =>
 			{
 				// Activate any load that finished, which is why this follows the pump.
 				instance.PumpLoads();
-				instance.DriveInput(deltaTime, contextScale);
 				// The game script sees this frame's input, and the bus drains after it with
 				// no script call active.
 				instance.TickScript(deltaTime, contextScale);

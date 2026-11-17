@@ -782,4 +782,100 @@ class ActionRuntimeTests
 		Test.Assert(runtime.IsKeyBound(.Back));
 		Test.Assert(!runtime.IsKeyBound(.W));
 	}
+
+	/// Frames counted from 0, like an edge that never happened, so before the first Update every
+	/// action read as pressed and released this frame.
+	[Test]
+	public static void NoActionReadsPressedOrReleasedBeforeItsFirstUpdate()
+	{
+		let map = InputTestMaps.Gameplay();
+		defer delete map;
+		let runtime = scope ActionRuntime();
+		runtime.SetMap(map);
+		let jump = runtime.Resolve("Jump");
+		Test.Assert(jump.IsValid);
+		Test.Assert(!runtime.WasPressed(jump));
+		Test.Assert(!runtime.WasReleased(jump));
+	}
+
+	/// Only the state at the frame's end was read, so a tap shorter than a frame was lost.
+	[Test]
+	public static void AKeyPressedAndReleasedInsideOneFrameIsAPressThenARelease()
+	{
+		let map = InputTestMaps.Gameplay();
+		defer delete map;
+		let runtime = scope ActionRuntime();
+		runtime.SetMap(map);
+		runtime.DisableSet("Menu");
+		let devices = scope FakeDevices();
+		let jump = runtime.Resolve("Jump");
+		runtime.Update(devices, cStep);
+
+		devices.FakeKeyboard.SetPressed(.Space); // down and up again within the frame
+		runtime.Update(devices, cStep);
+		Test.Assert(runtime.WasPressed(jump), "the tap is a press");
+		Test.Assert(runtime.IsDown(jump));
+
+		devices.FakeKeyboard.SetPressed(.Space, false);
+		runtime.Update(devices, cStep);
+		Test.Assert(runtime.WasReleased(jump), "then a release");
+		Test.Assert(!runtime.IsDown(jump));
+
+		// The same for a mouse button.
+		var click = Binding();
+		click.Source = .MouseButton;
+		click.Code = (.)MouseButton.Left;
+		let shootMap = InputTestMaps.Single("Fire", .Button, click, "Shoot");
+		defer delete shootMap;
+		let shooter = scope ActionRuntime();
+		shooter.SetMap(shootMap);
+		let fire = shooter.Resolve("Fire");
+		devices.FakeMouse.SetPressed(.Left);
+		shooter.Update(devices, cStep);
+		Test.Assert(shooter.WasPressed(fire), "a click inside one frame is a press");
+	}
+
+	/// Edges were per frame only: a frame of two fixed steps read a press in both, and a frame
+	/// of none lost it, since the next frame's step compared against that frame.
+	[Test]
+	public static void AFixedStepSeesEachEdgeOnceInTheFirstStepOfAFrame()
+	{
+		let map = InputTestMaps.Gameplay();
+		defer delete map;
+		let runtime = scope ActionRuntime();
+		runtime.SetMap(map);
+		runtime.DisableSet("Menu");
+		let devices = scope FakeDevices();
+		let jump = runtime.Resolve("Jump");
+		runtime.Update(devices, cStep);
+
+		// Pressed in a frame of two steps: the first sees it, the second does not.
+		devices.FakeKeyboard.SetDown(.Space);
+		runtime.Update(devices, cStep);
+		var first = FixedStepFrame(0, 1);
+		var previous = FixedStepFrames.Enter(&first);
+		let firstSaw = runtime.WasPressed(jump);
+		FixedStepFrames.Exit(previous);
+		var second = FixedStepFrame(1, 1);
+		previous = FixedStepFrames.Enter(&second);
+		let secondSaw = runtime.WasPressed(jump);
+		FixedStepFrames.Exit(previous);
+		Test.Assert(firstSaw, "the first step sees the press");
+		Test.Assert(!secondSaw, "the second does not");
+		Test.Assert(runtime.WasPressed(jump), "the frame's update still sees it");
+
+		// Released in a frame of no step: the next frame's first step sees it, from two frames back.
+		devices.FakeKeyboard.SetDown(.Space, false);
+		runtime.Update(devices, cStep); // no step this frame
+		runtime.Update(devices, cStep);
+		Test.Assert(!runtime.WasReleased(jump), "not this frame's update");
+		var next = FixedStepFrame(0, 2);
+		previous = FixedStepFrames.Enter(&next);
+		let releaseSeen = runtime.WasReleased(jump);
+		let pressSeen = runtime.WasPressed(jump);
+		FixedStepFrames.Exit(previous);
+		Test.Assert(releaseSeen, "the step after the stepless frame sees the release");
+		Test.Assert(!pressSeen, "but not the press before the step that saw it");
+		Test.Assert(FixedStepFrames.Current == null);
+	}
 }

@@ -478,4 +478,32 @@ class SceneSystemTests
 		Test.Assert(health.Destroyed == 0, "never destroyed");
 		Test.Assert(health.Count == 1);
 	}
+
+	/// Records what each fixed step says it is.
+	private class StepRecorder : SceneSystem
+	{
+		public List<FixedStepFrame> Seen = new .() ~ delete _;
+
+		public override void OnFixedUpdate(float fixedDeltaTime)
+		{
+			let step = FixedStepFrames.Current;
+			Seen.Add((step != null) ? *step : FixedStepFrame(99, 99));
+		}
+	}
+
+	[Test]
+	public static void EachFixedStepSaysWhichOfItsFramesStepsItIsAndTheFramesSinceTheLast()
+	{
+		let scene = scope Scene("steps");
+		let recorder = scene.AddSystem<StepRecorder>();
+		scene.SetFixedTiming(1.0f / 60.0f, 4);
+		scene.AdvanceTime(1.0f / 30.0f + 0.001f); // two steps
+		scene.AdvanceTime(0.0f); // none
+		scene.AdvanceTime(1.0f / 60.0f); // one, two frames after the last
+		Test.Assert(recorder.Seen.Count == 3, scope $"{recorder.Seen.Count} steps");
+		Test.Assert((recorder.Seen[0].Index == 0) && (recorder.Seen[0].FramesSinceLastStep == 1));
+		Test.Assert(recorder.Seen[1].Index == 1);
+		Test.Assert((recorder.Seen[2].Index == 0) && (recorder.Seen[2].FramesSinceLastStep == 2));
+		Test.Assert(FixedStepFrames.Current == null, "only while a step runs");
+	}
 }

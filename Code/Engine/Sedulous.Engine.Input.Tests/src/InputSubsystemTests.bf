@@ -116,6 +116,59 @@ class InputSubsystemTests
 		Test.Assert((order.Count == 3) && (order[0] === input.Runtime) && (order[1] === first) && (order[2] === second));
 	}
 
+	/// A run with input of its own, as a game instance has.
+	private class InputRun : RunBase, IRunInput
+	{
+		public ActionRuntime Runtime = new .() ~ delete _;
+		public PadSource Devices = new .() ~ delete _;
+
+		public this() : base("input")
+		{
+			Register<IRunInput>(this);
+		}
+
+		public void DriveInput(float deltaTime, float timeScale)
+		{
+			Runtime.SetTimeScale(timeScale);
+			Runtime.Update(Devices, deltaTime);
+		}
+	}
+
+	/// Actions were evaluated in Update at order 0 (and a game's in the app's update, later
+	/// still), after the scenes had stepped and updated on the last frame's input.
+	[Test]
+	public static void ActionsAreEvaluatedAsTheFrameBeginsTheSubsystemsAndEveryRuns()
+	{
+		let runs = scope RunRegistry();
+		let run = scope InputRun();
+		let runMap = JumpAndConfirm();
+		defer delete runMap;
+		run.Runtime.SetMap(runMap);
+		run.Runtime.DisableSet("Menu");
+		runs.Add(run);
+
+		let context = scope SubsystemManager();
+		let input = scope InputSubsystem(null);
+		context.RegisterSubsystem(input);
+		context.SetRunManager(runs);
+		let devices = scope PadSource();
+		input.SetSourceProvider(devices);
+		let map = JumpAndConfirm();
+		defer delete map;
+		input.SetMap(map);
+		input.Runtime.DisableSet("Menu");
+
+		devices.Gamepad.Pressed = .South;
+		run.Devices.Gamepad.Pressed = .South;
+		context.BeginFrame(1.0f / 60.0f);
+		Test.Assert(input.Runtime.WasPressed(input.Runtime.Resolve("Jump")), "the subsystem's, at BeginFrame");
+		Test.Assert(run.Runtime.WasPressed(run.Runtime.Resolve("Jump")), "and the run's");
+		// Before the scenes, which step in their BeginFrame at -500, and after the GUI (-640),
+		// which marks what it takes on every runtime first.
+		Test.Assert((input.UpdateOrder < -500) && (input.UpdateOrder > -640));
+		context.RemoveSubsystem<InputSubsystem>();
+	}
+
 	/// A map with Jump on Space then the pad's south button, in Gameplay, and Confirm on Space in
 	/// Menu. The CALLER owns it.
 	private static InputMap JumpAndConfirm()
@@ -153,10 +206,10 @@ class InputSubsystemTests
 		let devices = scope PadSource();
 		let input = scope InputSubsystem(null);
 		input.SetSourceProvider(devices);
-		input.Update(1.0f / 60.0f);
+		input.BeginFrame(1.0f / 60.0f);
 		Test.Assert(input.InputKinds.Kind == .Pointer, "nothing deliberate yet");
 		devices.Gamepad.Pressed = .South;
-		input.Update(1.0f / 60.0f);
+		input.BeginFrame(1.0f / 60.0f);
 		Test.Assert(input.InputKinds.Kind == .Pad);
 
 		let context = scope SubsystemManager();

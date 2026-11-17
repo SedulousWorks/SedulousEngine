@@ -7,8 +7,8 @@ namespace Sedulous.Editor.Play;
 
 /// Scripted input (pie_run): a timeline source in place of the viewport's, on this tab's game
 /// instance and, while this tab holds it, the input subsystem, so the other tabs keep their
-/// own. Advanced in OnUpdate by the run's time; the embedded app's DriveInput, which runs
-/// before the pages each frame, reads it on the next frame.
+/// own. Advanced in OnUpdate by the run's time; the input subsystem, which drives every run's
+/// input as the embedded runtime's frame begins, before the pages, reads it on the next frame.
 extension GameEditorPage
 {
 	/// OWNED while a run scripts this tab.
