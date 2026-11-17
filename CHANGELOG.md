@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Script, shader and GUI code pages no longer save over a source changed outside the editor: a
+  clean page reloads it, and a page with edits says so and asks for a second Save before overwriting.
 - Rendering: the clustered light lists take a fraction of the GPU memory they did (about 13 MB a view
   at 1080p at most, from 50 MB, and far less for a scene of a few lights).
 - Code editor: with no selection, two carets on one line cut or copy that line once, rather than

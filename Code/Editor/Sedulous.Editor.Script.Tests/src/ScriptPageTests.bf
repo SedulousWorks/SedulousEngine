@@ -249,4 +249,45 @@ class ScriptPageTests
 		Test.Assert(!page.HasBreakpointMark(2));
 		Test.Assert(!bed.Context.HasBreakpoint("Hero.as", 3));
 	}
+
+	/// The page compared its text only with what it last read, never the file: Save wrote over an
+	/// edit made in another editor without a word.
+	[Test]
+	public static void ASourceChangedOutsideTheEditorIsNotSavedOverInSilence()
+	{
+		let bed = scope Bed();
+		let outside = scope String("// edited elsewhere\n")..Append(bed.Source);
+		let path = PathJoin(bed.Project.SourcesRoot(.. scope .()), "Hero.as", .. scope .());
+
+		// A dirty page: the first Save refused, the disk kept; a second Save overwrites.
+		{
+			let page = bed.Open(bed.Hero);
+			defer delete page;
+			Test.Assert(page.Code != null);
+			page.Code.SetCaret(.(0, 0));
+			page.Code.Type("// mine\n");
+			Test.Assert(System.IO.File.WriteAllText(path, outside) case .Ok);
+			page.CheckSourceOnDisk();
+			Test.Assert(page.IsDirty); // the edits stay
+			Test.Assert(page.Save() case .Err(.OutOfDate));
+			Test.Assert(bed.OnDisk(.. scope .()) == outside);
+			Test.Assert(page.IsDirty);
+			Test.Assert(page.Save() case .Ok);
+			Test.Assert(bed.OnDisk(.. scope .()).StartsWith("// mine\n"));
+			Test.Assert(!page.IsDirty);
+		}
+
+		// A clean page takes the change, and then saves without a refusal.
+		Test.Assert(System.IO.File.WriteAllText(path, bed.Source) case .Ok);
+		{
+			let page = bed.Open(bed.Hero);
+			defer delete page;
+			Test.Assert(System.IO.File.WriteAllText(path, outside) case .Ok);
+			page.CheckSourceOnDisk();
+			Test.Assert(page.Text(.. scope .()) == outside);
+			Test.Assert(!page.IsDirty);
+			page.Code.Type("x");
+			Test.Assert(page.Save() case .Ok);
+		}
+	}
 }

@@ -72,6 +72,15 @@ abstract class CodeAssetPage : AssetObjectPage
 	/// The page walking the code's history: no new step.
 	private bool mStepping = false;
 	private float mCheckIn = 0.0f;
+	// The source file's size and time as the page last read or wrote it; the hash of the disk text a
+	// refused Save warned about (a second Save overwrites that text); and whether an outside change
+	// under unsaved edits has been warned about.
+	private int64 mDiskSize = 0;
+	private int64 mDiskTime = 0;
+	private uint64 mRefusedSaveHash = 0;
+	private bool mConflictWarned = false;
+	private float mNextFileCheck = 1.0f;
+	private const float cFileCheckInterval = 1.0f;
 	private List<CodeProblem> mFound = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(EditorContext context, AssetPageServices services, Instance instance, Type type, StringView markupPath)
@@ -89,7 +98,10 @@ abstract class CodeAssetPage : AssetObjectPage
 			mFileName.Set(asset.FileName.Value);
 			PathJoin(context.Project.SourcesRoot(.. scope .()), mFileName, mSourcePath);
 			if (System.IO.File.ReadAllText(mSourcePath, mSaved, true) case .Ok)
+			{
 				mRead = true;
+				RememberSourceFile();
+			}
 			else
 				mSaved.Clear();
 		}
@@ -132,6 +144,12 @@ abstract class CodeAssetPage : AssetObjectPage
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
 		base.OnUpdate(host, dt);
+		mNextFileCheck -= dt;
+		if (mNextFileCheck <= 0.0f)
+		{
+			mNextFileCheck = cFileCheckInterval;
+			CheckSourceOnDisk();
+		}
 		if (mCheckIn > 0.0f)
 		{
 			mCheckIn -= dt;
@@ -149,8 +167,23 @@ abstract class CodeAssetPage : AssetObjectPage
 			Context.Notify(.Error, scope String()..AppendF("Not saved: {} is not there", mFileName.IsEmpty ? "its source" : (StringView)mFileName));
 			return .Err(.NotFound);
 		}
+		// Changed outside the editor since the page read or wrote it: the first Save says so and
+		// writes nothing; a second Save (the user's choice, having been told) overwrites it. Saved
+		// over in silence, an edit made in another editor was lost.
+		let onDisk = scope String();
+		if (System.IO.File.ReadAllText(mSourcePath, onDisk, true) case .Ok)
+		{
+			let diskHash = HashBytes(onDisk.Ptr, onDisk.Length);
+			if ((onDisk != mSaved) && (diskHash != mRefusedSaveHash))
+			{
+				mRefusedSaveHash = diskHash;
+				Context.Notify(.Warning, scope String()..AppendF(
+					"Not saved: {} changed outside the editor. Save again to overwrite it, or Reload to take it", mFileName));
+				return .Err(.OutOfDate);
+			}
+		}
 		let text = Text(.. scope .());
-		if (text != mSaved)
+		if ((text != mSaved) || (mRefusedSaveHash != 0))
 		{
 			if (System.IO.File.WriteAllText(mSourcePath, text) case .Err)
 			{
@@ -158,6 +191,7 @@ abstract class CodeAssetPage : AssetObjectPage
 				return .Err(.Unknown);
 			}
 			mSaved.Set(text);
+			RememberSourceFile();
 		}
 		let saved = base.Save(); // the asset, and a cook asked for
 		if (saved case .Err)
@@ -183,10 +217,52 @@ abstract class CodeAssetPage : AssetObjectPage
 			mSaved.Set(text);
 			if (mCode != null)
 				mCode.SetText(mSaved);
+			RememberSourceFile();
 		}
 		ClearDirty(); // the new text marked the page changed
 		CheckSoon();
 		return true;
+	}
+
+	/// Looks at the source on disk (the page does every second): changed outside the editor, a clean
+	/// page reloads it and a dirty one says so once (its Save then asks before overwriting).
+	public void CheckSourceOnDisk()
+	{
+		if (!mRead)
+			return;
+		int64 size = 0;
+		int64 time = 0;
+		if (!FileStat(mSourcePath, out size, out time))
+			return;
+		if ((size == mDiskSize) && (time == mDiskTime))
+			return;
+		mDiskSize = size;
+		mDiskTime = time;
+		let onDisk = scope String();
+		if (System.IO.File.ReadAllText(mSourcePath, onDisk, true) case .Err)
+			return;
+		if (onDisk == mSaved)
+			return; // touched, not changed
+		if (!IsDirty)
+		{
+			if (ReloadFromSource())
+				Context.Notify(.Info, scope String()..AppendF("Reloaded {}: it changed outside the editor", mFileName));
+			return;
+		}
+		if (!mConflictWarned)
+		{
+			mConflictWarned = true;
+			Context.Notify(.Warning, scope String()..AppendF(
+				"{} changed outside the editor while it has edits here. Save asks before it overwrites that; Reload takes it", mFileName));
+		}
+	}
+
+	/// The source file as it now stands is the one the page knows: no refused Save, no warning given.
+	private void RememberSourceFile()
+	{
+		FileStat(mSourcePath, out mDiskSize, out mDiskTime);
+		mRefusedSaveHash = 0;
+		mConflictWarned = false;
 	}
 
 	/// Checks the code now (the page's own check), the problems shown in the list and on their lines.
