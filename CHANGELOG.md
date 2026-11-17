@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Separate inspector actions of one kind (adding two components, two Active toggles) are separate
+  undo steps; Undo took them all back at once.
 - Prefab Apply and Revert can be undone, each as one step, and Apply marks the scene changed.
 - Script, shader and GUI code pages no longer save over a source changed outside the editor: a
   clean page reloads it, and a page with edits says so and asks for a second Save before overwriting.

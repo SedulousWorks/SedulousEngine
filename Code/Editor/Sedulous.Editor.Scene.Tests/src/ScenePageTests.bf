@@ -2741,6 +2741,39 @@ class ScenePageTests
 		Test.Assert(!SceneViewport.ShiftHeldOver(null, null, true));
 	}
 
+	/// The add groups were never locked, and consecutive groups of one type coalesce: add X then add
+	/// Y was one step, and Undo took both away.
+	[Test]
+	public static void TwoComponentsAddedOneAfterTheOtherAreTwoUndoSteps()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		inspector.AddableComponents(names);
+		String other = null;
+		for (let name in names)
+		{
+			if ((other == null) && (name != "LightComponent"))
+				other = name;
+		}
+		Test.Assert(other != null);
+		Test.Assert(inspector.AddComponent("LightComponent"));
+		Test.Assert(inspector.AddComponent(other));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let both = inspector.SectionTitles(.. scope .());
+		page.Commands.Undo();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let after = inspector.SectionTitles(.. scope .());
+		Test.Assert(after.Contains("Light"), after);
+		Test.Assert(after.Length < both.Length, scope $"'{after}' after '{both}'");
+		page.OnClose();
+	}
+
 	private static EntityHandle Named(Sedulous.Scene.Scene scene, StringView name)
 	{
 		var found = EntityHandle.Invalid;

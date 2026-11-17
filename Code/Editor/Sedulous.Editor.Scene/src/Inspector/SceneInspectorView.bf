@@ -545,6 +545,7 @@ class SceneInspectorView
 		for (let entity in mEntities)
 			pasted = mEdit.PasteComponent(entity, clip) || pasted;
 		mEdit.Commands.EndGroup();
+		mEdit.Commands.LockGroup(); // a separate action: never one undo step with the next
 		return pasted;
 	}
 
@@ -565,6 +566,7 @@ class SceneInspectorView
 				mEdit.AddComponent(entity, type);
 		}
 		mEdit.Commands.EndGroup();
+		mEdit.Commands.LockGroup(); // a separate action: never one undo step with the next
 		return true;
 	}
 
@@ -825,6 +827,7 @@ class SceneInspectorView
 				for (int i < Math.Min(mEntities.Count, commit.After.Count))
 					mEdit.SetEntityActive(mEntities[i], commit.After[i].AsBool);
 				mEdit.Commands.EndGroup();
+				mEdit.Commands.LockGroup(); // a separate action: never one undo step with the next
 			});
 		mSections.Add(cActiveKey, "Entity", mActive);
 		BuildTransform();
@@ -1128,6 +1131,7 @@ class SceneInspectorView
 					for (let entity in mEntities)
 						mEdit.PasteComponent(entity, clip);
 					mEdit.Commands.EndGroup();
+					mEdit.Commands.LockGroup(); // a separate action: never one undo step with the next
 				});
 			paste.Enabled = !context.ClipboardData("component").IsEmpty;
 			menu.AddSeparator();
@@ -1159,6 +1163,7 @@ class SceneInspectorView
 				for (let entity in mEntities)
 					mEdit.RemoveComponent(entity, type);
 				mEdit.Commands.EndGroup();
+				mEdit.Commands.LockGroup(); // a separate action: never one undo step with the next
 			});
 	}
 
