@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Sedulous.Core.IO;
 
@@ -173,5 +174,87 @@ static
 		if (!PathIsSeparator(a[a.Length - 1]))
 			outPath.Append(PathSeparator);
 		outPath.Append(b);
+	}
+
+	/// `path` with its separators made '/', and empty, "." and ".." components resolved by the text
+	/// alone (a ".." above the root is dropped; a relative path keeps its leading ".."), into
+	/// `outPath`. Links are not followed: a link inside a folder can still lead out of it.
+	public static void PathNormalizeLexically(StringView path, String outPath)
+	{
+		outPath.Clear();
+		int i = 0;
+#if BF_PLATFORM_WINDOWS
+		if ((path.Length >= 2) && (path[1] == ':'))
+		{
+			outPath.Append(path[0]);
+			outPath.Append(':');
+			i = 2;
+		}
+#endif
+		let absolute = (i < path.Length) && PathIsSeparator(path[i]);
+		if (absolute)
+		{
+			outPath.Append(PathSeparator);
+			i++;
+#if BF_PLATFORM_WINDOWS
+			if ((outPath.Length == 1) && (i < path.Length) && PathIsSeparator(path[i])) // UNC "\\server\share"
+			{
+				outPath.Append(PathSeparator);
+				i++;
+			}
+#endif
+		}
+		let parts = scope List<StringView>();
+		var start = i;
+		for (; i <= path.Length; i++)
+		{
+			if ((i < path.Length) && !PathIsSeparator(path[i]))
+				continue;
+			let part = StringView(path, start, i - start);
+			start = i + 1;
+			if (part.IsEmpty || (part == "."))
+				continue;
+			if (part == "..")
+			{
+				if (!parts.IsEmpty && (parts.Back != ".."))
+					parts.PopBack();
+				else if (!absolute)
+					parts.Add(part);
+				continue;
+			}
+			parts.Add(part);
+		}
+		for (int n < parts.Count)
+		{
+			if (n > 0)
+				outPath.Append(PathSeparator);
+			outPath.Append(parts[n]);
+		}
+		if (outPath.IsEmpty)
+			outPath.Append('.');
+	}
+
+	/// Whether `path` is `folder` or inside it, both taken as PathNormalizeLexically gives them (on
+	/// Windows ignoring ASCII case, as its file system does).
+	public static bool PathIsInside(StringView path, StringView folder)
+	{
+		let p = PathNormalizeLexically(path, .. scope String());
+		let f = PathNormalizeLexically(folder, .. scope String());
+		if (p.Length < f.Length)
+			return false;
+		for (int i < f.Length)
+		{
+			var a = p[i];
+			var b = f[i];
+#if BF_PLATFORM_WINDOWS
+			if ((a >= 'A') && (a <= 'Z'))
+				a = (char8)((uint8)a + 32);
+			if ((b >= 'A') && (b <= 'Z'))
+				b = (char8)((uint8)b + 32);
+#endif
+			if (a != b)
+				return false;
+		}
+		return (p.Length == f.Length) || (f[f.Length - 1] == '/') || (p[f.Length] == '/');
 	}
 }

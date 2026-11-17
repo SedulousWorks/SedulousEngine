@@ -179,4 +179,21 @@ class PathTests
 		Test.Assert(PathParent("/", .. scope String()) == "");
 		Test.Assert(PathParent("/a/b", .. scope String()) == "/a");
 	}
+
+	[Test]
+	public static void PathsNormalisedByTheirTextAndAFolderContainmentCheck()
+	{
+		Test.Assert(PathNormalizeLexically("/a/./b//c/../d", .. scope .()) == "/a/b/d");
+		Test.Assert(PathNormalizeLexically("/a/../../x", .. scope .()) == "/x"); // above the root: dropped
+		Test.Assert(PathNormalizeLexically("a/../../x", .. scope .()) == "../x");
+		Test.Assert(PathNormalizeLexically("a\\b", .. scope .()) == "a/b");
+		Test.Assert(PathNormalizeLexically("/", .. scope .()) == "/");
+		Test.Assert(PathNormalizeLexically("a/..", .. scope .()) == ".");
+
+		Test.Assert(PathIsInside("/proj/Sources/a.png", "/proj"));
+		Test.Assert(PathIsInside("/proj", "/proj/"));
+		Test.Assert(!PathIsInside("/project2/a", "/proj")); // a prefix, not a folder
+		Test.Assert(!PathIsInside("/proj/../etc/passwd", "/proj"));
+		Test.Assert(PathIsInside("/anything", "/"));
+	}
 }
