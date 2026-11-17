@@ -3823,15 +3823,28 @@ class CodeEditor : UIWidget
 		bool any = false;
 		for (let s in mSelections)
 			any = any || !s.IsEmpty;
-		let text = scope String();
-		for (let s in mSelections)
+		// With no selection each caret takes its whole line, once: a caret on a line an earlier caret
+		// took does nothing. Decided before any edit, which moves the carets (two on one line cut that
+		// line and then the one after it, the first caret having moved onto it).
+		let repeated = scope List<bool>();
+		repeated.Resize(mSelections.Count);
+		for (int i < mSelections.Count)
 		{
-			if (any && s.IsEmpty)
+			for (int j = 0; !any && (j < i); j++)
+				repeated[i] = repeated[i] || (mSelections[j].Head.Line == mSelections[i].Head.Line);
+		}
+		let text = scope String();
+		for (int i < mSelections.Count)
+		{
+			let s = mSelections[i];
+			if ((any && s.IsEmpty) || repeated[i])
 				continue;
-			if (!text.IsEmpty)
-				text.Append("\n");
 			if (any)
+			{
+				if (!text.IsEmpty)
+					text.Append("\n");
 				mDoc.TextIn(s.Range, text);
+			}
 			else // no selection: the caret's whole line, with its line feed (VS Code's)
 			{
 				text.Append(mDoc.LineText(s.Head.Line));
@@ -3842,8 +3855,12 @@ class CodeEditor : UIWidget
 			clipboard.SetText(text);
 		if (!cut || mReadOnly)
 			return;
-		EditEach(.Other, scope (s, replaced, put, back) =>
+		int index = mSelections.Count;
+		EditEach(.Other, scope [&] (s, replaced, put, back) =>
 			{
+				index--; // EditEach goes from the last selection
+				if (repeated[index])
+					return false;
 				if (any)
 					replaced = s.Range;
 				else if (s.Head.Line + 1 < mDoc.LineCount)

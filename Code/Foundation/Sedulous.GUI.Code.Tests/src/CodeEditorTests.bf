@@ -494,4 +494,17 @@ class CodeEditorTests
 		Test.Assert(bed.Editor.Document.LineText(0) == "xone");
 		Test.Assert(bed.Editor.Document.LineText(1) == "ytwo");
 	}
+
+	/// With no selection each caret cut its whole line, and two carets on one line both did: the
+	/// second cut removed the line, the first caret moved to the next line, and that went too.
+	[Test]
+	public static void TwoCaretsOnOneLineCutThatLineOnceAndNoOther()
+	{
+		let bed = scope CodeBed(default, "one\ntwo\nthree", 120.0f, true);
+		bed.Editor.SetCaret(At(0, 1));
+		bed.Editor.AddCaret(At(0, 2));
+		bed.Run(.Cut);
+		Test.Assert(bed.Text(.. scope .()) == "two\nthree", bed.Text(.. scope .()));
+		Test.Assert(bed.Clipboard.Text == "one\n", bed.Clipboard.Text);
+	}
 }
