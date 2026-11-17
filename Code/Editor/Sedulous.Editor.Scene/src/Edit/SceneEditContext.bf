@@ -37,6 +37,16 @@ class SceneEditContext
 
 	public Sedulous.Scene.Scene Scene => mScene;
 	public EditorCommandStack Commands => mCommands;
+
+	/// Runs `change` as one undoable step over snapshots of the whole scene (SnapshotCommand): Undo
+	/// puts the scene back as it was before, Redo as it was after, guids kept. `change` is called
+	/// now, during this call, and not kept; `undone` and `redone` (TAKEN) run after a restore, to put
+	/// back what lives outside the scene. False, with nothing pushed, when `change` did nothing.
+	public bool RunSnapshotCommand(StringView typeId, delegate bool() change, delegate void() undone = null,
+		delegate void() redone = null)
+	{
+		return mCommands.Execute(new SnapshotCommand(this, typeId, change, undone, redone));
+	}
 	public Selection<Guid> EntitySelection => mSelection;
 
 	/// The manager a restored reference rebinds through. Borrowed; null leaves restored

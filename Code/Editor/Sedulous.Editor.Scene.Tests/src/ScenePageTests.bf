@@ -2740,4 +2740,82 @@ class ScenePageTests
 		Test.Assert(SceneViewport.ShiftHeldOver(null, device, true));
 		Test.Assert(!SceneViewport.ShiftHeldOver(null, null, true));
 	}
+
+	private static EntityHandle Named(Sedulous.Scene.Scene scene, StringView name)
+	{
+		var found = EntityHandle.Invalid;
+		scene.ForEachEntity(scope [&] (e) => { if (scene.GetEntityName(e) == name) found = e; });
+		return found;
+	}
+
+	/// Both wrote around the command stack: Revert could not be undone, and Apply left the page clean
+	/// though its scene had changed.
+	[Test]
+	public static void PrefabRevertAndApplyAreOneUndoStepEachAndApplyLeavesThePageDirty()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let edit = page.EditContext;
+		let scene = page.ScenePtr;
+		let boxEntity = edit.CreateEntity("Box");
+		edit.CreateEntity("Lid", boxEntity);
+		let services = new PrefabFlowServices();
+		services.Context = bed.Context;
+		services.Edit = edit;
+		let level = bed.Level.Id;
+		services.PageAsset = new () => level;
+		services.Later = new (work) => { work(); delete work; };
+		services.Confirm = new (title, text, verb, yes) => { yes(); delete yes; };
+		let flows = scope PrefabFlows(services);
+		flows.CreateFromEntity(boxEntity);
+		var root = Guid();
+		var prefabId = Guid();
+		scene.ForEachPrefabInstance(scope [&] (state) => { root = state.RootEntityId; prefabId = state.PrefabId; });
+		Test.Assert(!root.IsNil);
+		Test.Assert(Named(scene, "Lid").IsAssigned);
+
+		// An override: the lid moved.
+		float LidX() => scene.GetLocalTransform(Named(scene, "Lid")).Position.X;
+		var moved = scene.GetLocalTransform(Named(scene, "Lid"));
+		moved.Position.X = 5.0f;
+		edit.SetLocalTransform(scene.GetEntityId(Named(scene, "Lid")), moved);
+		Test.Assert(Math.Abs(LidX() - 5.0f) < 1e-4f);
+
+		flows.Revert(root);
+		Test.Assert(Math.Abs(LidX()) < 1e-4f);
+		page.Commands.Undo();
+		Test.Assert(Math.Abs(LidX() - 5.0f) < 1e-4f, "the override is back");
+		Test.Assert(scene.FindPrefabInstanceByRoot(root) != null);
+		page.Commands.Redo();
+		Test.Assert(Math.Abs(LidX()) < 1e-4f);
+		page.Commands.Undo();
+
+		// Apply: the prefab takes the moved lid; Undo writes the prefab as it was.
+		let prefab = bed.Project.SourceDb.GetInstance(prefabId);
+		Test.Assert(prefab != null);
+		void Payload(String outText)
+		{
+			let stream = prefab.ReadData("scene");
+			Test.Assert(stream != null);
+			defer delete stream;
+			let bytes = scope List<uint8>();
+			PrefabFlows.ReadAll(stream, bytes);
+			outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
+		}
+		let before = Payload(.. scope .());
+		Test.Assert(page.Save() case .Ok);
+		Test.Assert(!page.IsDirty);
+		flows.Apply(root);
+		Test.Assert(Payload(.. scope .()) != before);
+		Test.Assert(page.IsDirty);
+		Test.Assert(Math.Abs(LidX() - 5.0f) < 1e-4f);
+		page.Commands.Undo();
+		Test.Assert(Payload(.. scope .()) == before);
+		Test.Assert(Math.Abs(LidX() - 5.0f) < 1e-4f, "the scene as it was: the override over the old prefab");
+		Test.Assert(!page.IsDirty);
+		page.Commands.Redo();
+		Test.Assert(Payload(.. scope .()) != before);
+		page.OnClose();
+	}
 }

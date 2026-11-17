@@ -12,12 +12,12 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Scene;
 
-// The scene page's prefab flows, which write assets and ask first where they cannot be undone: a
-// prefab made from an entity and what is under it (under "Prefabs/", named after the entity, the
-// original replaced by an instance of it, one undo group); an instance's state written back to its
-// prefab and every instance in the open scenes rebuilt from it (not undoable, so asked first); an
-// instance's overrides discarded (asked first too: entities parented under it that are not the
-// prefab's go); an instance spawned through the asset picker. And the prefab half of a save: what
+// The scene page's prefab flows, which write assets and ask first before they change one: a prefab
+// made from an entity and what is under it (under "Prefabs/", named after the entity, the original
+// replaced by an instance of it, one undo group); an instance's state written back to its prefab
+// and every instance in the open scenes rebuilt from it (one undo step; asked first, since the
+// asset changes); an instance's overrides discarded (one undo step, asked first too: entities
+// parented under it that are not the prefab's go); an instance spawned through the asset picker. And the prefab half of a save: what
 // refuses it (a prefab has one root and never holds itself), and the other open scenes' instances
 // rebuilt once it is saved. Out of the page's class as it was; the page's dialogs, its deferral
 // and its picker come in as services.
@@ -110,14 +110,16 @@ class PrefabFlows
 			Context.Notify(.Warning, "The instance's prefab asset no longer exists.");
 			return;
 		}
-		let text = scope $"Apply '{scene.GetEntityName(scene.FindEntity(rootId))}' to prefab '{asset.Name}'? The prefab asset is rewritten and every instance in open scenes updates to match. This cannot be undone.";
+		let text = scope $"Apply '{scene.GetEntityName(scene.FindEntity(rootId))}' to prefab '{asset.Name}'? The prefab asset is rewritten and every instance in open scenes updates to match.";
 		// Deferred: rebuilding instances destroys and respawns entities (and their rows), never
 		// in the middle of the dialog's event.
 		mServices.Confirm("Apply to Prefab", text, "Apply", new [=this, =rootId]() => { Later(new [=this, =rootId]() => { ApplyNow(rootId); }); });
 	}
 
 	/// The instance's current state becomes the template (source id keyed, so other instances'
-	/// overrides stay valid), then every instance everywhere rebuilds from it, this one too.
+	/// overrides stay valid), then every instance everywhere rebuilds from it, this one too. One undo
+	/// step: Undo writes the prefab as it was, rebuilds the other scenes' instances from it and puts
+	/// this scene back.
 	public void ApplyNow(Guid rootId)
 	{
 		let project = Project;
@@ -131,21 +133,69 @@ class PrefabFlows
 			Context.Notify(.Warning, "The instance's prefab asset no longer exists.");
 			return;
 		}
-		let payload = scope MemoryStream();
-		if (!(PrefabApply.CaptureAsTemplate(scene, state, payload, Edit.PrefabResolver) case .Ok)
-			|| !(asset.WriteData("scene", payload.Bytes, .Text) case .Ok))
+		let prefabId = state.PrefabId;
+		let before = new List<uint8>();
+		{
+			let stored = asset.ReadData("scene");
+			if (stored != null)
+			{
+				ReadAll(stored, before);
+				delete stored;
+			}
+		}
+		let after = new List<uint8>();
+		{
+			let payload = scope MemoryStream();
+			if (!(PrefabApply.CaptureAsTemplate(scene, state, payload, Edit.PrefabResolver) case .Ok))
+			{
+				delete before;
+				delete after;
+				Context.Notify(.Error, "Apply to Prefab failed.");
+				return;
+			}
+			after.AddRange(payload.Bytes);
+		}
+		let applied = Edit.RunSnapshotCommand("prefab_apply",
+			scope [&] () =>
+			{
+				if (!WritePrefab(prefabId, after))
+					return false;
+				RebuildInstances(prefabId, after, null);
+				return true;
+			},
+			// Undo and Redo restore this scene from its snapshots; the other open scenes rebuild.
+			new [=this, =prefabId, =before] () => { RestorePrefab(prefabId, before); } ~ delete before,
+			new [=this, =prefabId, =after] () => { RestorePrefab(prefabId, after); } ~ delete after);
+		if (!applied)
 		{
 			Context.Notify(.Error, "Apply to Prefab failed.");
 			return;
 		}
-		let bytes = scope List<uint8>();
-		bytes.AddRange(payload.Bytes);
-		let prefabId = state.PrefabId;
-		RebuildInstances(prefabId, bytes, null);
-		// An open page on the prefab itself shows the template (plain entities, not an instance):
-		// the rebuild cannot reach it, so it is told to refresh.
+		Context.Notify(.Success, scope $"Applied to prefab '{asset.Name}'.");
+	}
+
+	/// The prefab's template written as `payload`; false, said, when it could not be. An open page on
+	/// the prefab itself shows the template (plain entities, not an instance): the rebuild cannot
+	/// reach it, so it is told to refresh.
+	private bool WritePrefab(Guid prefabId, List<uint8> payload)
+	{
+		let project = Project;
+		let asset = (project != null) ? project.SourceDb.GetInstance(prefabId) : null;
+		if ((asset == null) || !(asset.WriteData("scene", payload, .Text) case .Ok))
+		{
+			Context.Notify(.Error, "The prefab asset could not be written.");
+			return false;
+		}
 		Context.NotifyAssetExternallyModified(prefabId);
-		Context.Notify(.Success, scope $"Applied to prefab '{asset.Name}' (not undoable - the asset changed).");
+		return true;
+	}
+
+	/// An Apply undone or redone: the prefab written as `payload`, and the instances of the other
+	/// open scenes rebuilt from it (this scene's own come back with its snapshot).
+	private void RestorePrefab(Guid prefabId, List<uint8> payload)
+	{
+		if (WritePrefab(prefabId, payload))
+			RebuildInstances(prefabId, payload, Scene);
 	}
 
 	/// Asks, then discards the instance's overrides.
@@ -154,11 +204,11 @@ class PrefabFlows
 		let scene = Scene;
 		if ((Project == null) || (scene.FindPrefabInstanceByRoot(rootId) == null) || (mServices.Confirm == null))
 			return;
-		let text = scope $"Revert '{scene.GetEntityName(scene.FindEntity(rootId))}' to its prefab? All overrides on this instance are discarded, and any non-prefab entities parented under it are destroyed. This cannot be undone.";
+		let text = scope $"Revert '{scene.GetEntityName(scene.FindEntity(rootId))}' to its prefab? All overrides on this instance are discarded, and any non-prefab entities parented under it are destroyed.";
 		mServices.Confirm("Revert Instance", text, "Revert", new [=this, =rootId]() => { Later(new [=this, =rootId]() => { RevertNow(rootId); }); });
 	}
 
-	/// The instance respawned from the current template, its placement kept. Not undoable.
+	/// The instance respawned from the current template, its placement kept, as one undo step.
 	public void RevertNow(Guid rootId)
 	{
 		let project = Project;
@@ -176,16 +226,15 @@ class PrefabFlows
 		defer delete payload;
 		let bytes = scope List<uint8>();
 		ReadAll(payload, bytes);
-		if (PrefabRebuild.Revert(scene, rootId, bytes, Edit.PrefabResolver))
-		{
-			if (Context.Resources != null)
+		let reverted = Edit.RunSnapshotCommand("prefab_revert", scope [&] () =>
 			{
-				let async = AsyncBindScope(Context.Resources);
-				defer async.Dispose();
-				SceneResolve.ResolveSceneResources(scene, Context.Resources);
-			}
-			Context.Notify(.Info, "Instance reverted to its prefab (not undoable).");
-		}
+				if (!PrefabRebuild.Revert(scene, rootId, bytes, Edit.PrefabResolver))
+					return false;
+				Edit.ResolveRestoredResources();
+				return true;
+			});
+		if (reverted)
+			Context.Notify(.Info, "Instance reverted to its prefab.");
 	}
 
 	/// An instance of the prefab the picker gives, under `parent` (nil: the scene's root).
