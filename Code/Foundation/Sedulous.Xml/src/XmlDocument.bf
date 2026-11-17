@@ -552,7 +552,10 @@ class XmlDocument : XmlNode
 		if (content.IsEmpty)
 			return .Ok;
 
-		if (!mParseSettings.PreserveWhitespace && !HasNonWhitespace(content))
+		// Whitespace between elements is layout (indentation) and goes. Whitespace that is an
+		// element's whole content (`<name> </name>`, a string of spaces) is its value, and stays.
+		let wholeContent = (parent.FirstChild == null) && text.StartsWith("</");
+		if (!mParseSettings.PreserveWhitespace && !HasNonWhitespace(content) && !wholeContent)
 			return .Ok;
 
 		parent.AppendChild(new XmlText(content));

@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Text settings and assets saved as XML keep a value made only of spaces (a separator, padding),
+  which read back empty before.
 - Content: two asset files with one identity (a file copied outside the editor) are reported by
   name, rather than one silently hiding the other.
 - Cook: a source file saved again within a second of the last cook, at the same size, is cooked

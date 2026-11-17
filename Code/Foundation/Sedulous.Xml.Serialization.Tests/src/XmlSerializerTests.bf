@@ -696,4 +696,38 @@ class XmlSerializerTests
 		defer delete fine;
 		Test.Assert(fine.Serializer.IsOk);
 	}
+
+	/// Whitespace-only text was always dropped as layout, so a string of spaces (a separator, a
+	/// padding) read back empty.
+	[Test]
+	public static void AStringOfSpacesRoundTripsAndIndentationIsStillDropped()
+	{
+		let document = scope XmlDocument();
+		{
+			let writer = scope XmlSerializer();
+			writer.Key("spaces"); Serialize(writer, scope String("   "));
+			writer.Key("tab"); Serialize(writer, scope String("\t"));
+			Reparse(writer, document);
+		}
+		let spaces = scope String();
+		let tab = scope String();
+		{
+			let reader = scope XmlSerializer(document);
+			reader.Key("spaces"); Serialize(reader, spaces);
+			reader.Key("tab"); Serialize(reader, tab);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(spaces == "   ", scope $"'{spaces}'");
+		Test.Assert(tab == "\t");
+
+		// Whitespace between elements is layout: no text node is made of it.
+		let layout = scope XmlDocument();
+		Test.Assert(layout.Parse("<root>\n  <a> </a>\n  <b/>\n</root>") == .Ok);
+		let root = layout.FirstChild;
+		Test.Assert(root != null);
+		int children = 0;
+		for (var child = root.FirstChild; child != null; child = child.NextSibling)
+			children++;
+		Test.Assert(children == 2, scope $"{children} children");
+	}
 }
